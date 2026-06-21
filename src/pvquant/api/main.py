@@ -16,7 +16,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from pvquant import __version__
-from pvquant.api.routes import calibration, forecast
+from pvquant.api.routes import calibration, calibration_scada, forecast
 from pvquant.config import get_settings
 
 
@@ -52,6 +52,7 @@ def create_app() -> FastAPI:
     # Route'ları kaydet
     app.include_router(forecast.router)
     app.include_router(calibration.router)
+    app.include_router(calibration_scada.router)
 
     @app.get("/", tags=["health"])
     def root() -> dict[str, str]:
