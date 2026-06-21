@@ -39,6 +39,7 @@ def forecast(req: ForecastRequest) -> ForecastResponse:
             latitude=req.plant.latitude,
             longitude=req.plant.longitude,
             days=req.days,
+            timezone="auto",
         )
     except OpenMeteoError as e:
         raise HTTPException(status_code=502, detail=f"Meteo servisi hatası: {e}") from e

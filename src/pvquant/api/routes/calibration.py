@@ -95,6 +95,7 @@ async def calibrate(
             longitude=plant_schema.longitude,
             start_date=start,
             end_date=end,
+            timezone="Europe/Istanbul",
         )
     except OpenMeteoError as e:
         raise HTTPException(status_code=502, detail=f"Meteo arşiv hatası: {e}") from e
