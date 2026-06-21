@@ -1,0 +1,83 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pvquant"
+version = "0.1.0"
+description = "Saha-kalibre PV performans analitiği ve 7 günlük üretim tahmini"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "PVQuant Contributors" },
+]
+keywords = ["solar", "photovoltaic", "pv", "energy", "forecast", "scada", "bifacial"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Atmospheric Science",
+]
+
+dependencies = [
+    "numpy>=1.26",
+    "pandas>=2.1",
+    "pvlib>=0.11",
+    "scipy>=1.11",
+    "pydantic>=2.5",
+    "pydantic-settings>=2.1",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "httpx>=0.26",
+    "python-multipart>=0.0.9",
+    "python-dateutil>=2.8",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.1",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.3",
+    "black>=24.0",
+    "mypy>=1.8",
+    "types-python-dateutil",
+]
+
+[project.urls]
+Homepage = "https://github.com/YOUR_USERNAME/pvquant"
+Documentation = "https://github.com/YOUR_USERNAME/pvquant#readme"
+Repository = "https://github.com/YOUR_USERNAME/pvquant.git"
+Issues = "https://github.com/YOUR_USERNAME/pvquant/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "RUF"]
+ignore = ["E501"]  # line length handled by black
+
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311", "py312"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = false
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short --strict-markers"
+pythonpath = ["src"]

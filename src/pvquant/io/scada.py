@@ -1,0 +1,232 @@
+"""SCADA CSV okuyucusu.
+
+FusionSolar (Huawei) ve genel CSV formatlarından üretim verisini yükler.
+Üretim verisi PVQuant'ta iki amaçla kullanılır:
+
+1. **Kalibrasyon**: 6+ ay tarihsel veri ile model parametrelerini sahaya kalibre et.
+2. **Doğrulama**: Tahmin sonrası gerçek üretim ile karşılaştırma (MAPE, RMSE).
+
+CSV'lerde beklenen iki temel alan: timestamp ve güç/enerji. POA ışınımı ve
+ortam sıcaklığı varsa kalibrasyon kalitesi artar.
+
+Kullanım:
+    >>> from pvquant.io.scada import load_fusionsolar_csv
+    >>> scada = load_fusionsolar_csv("merkas_2025.csv")
+    >>> scada.power_kw.head()
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+
+import pandas as pd
+
+
+@dataclass(frozen=True)
+class SCADAData:
+    """SCADA üretim verisi konteyneri.
+
+    Tüm seriler aynı zaman indeksini paylaşır.
+
+    Attributes:
+        power_kw: Anlık veya saatlik ortalama AC güç, kW.
+        energy_kwh: Saatlik enerji üretimi, kWh (varsa).
+        poa_irradiance: Ölçülen POA ışınımı, W/m² (varsa, kalibrasyon için).
+        temp_ambient: Ortam sıcaklığı, °C (varsa).
+        temp_module: Modül arka yüz sıcaklığı, °C (varsa, ileri kalibrasyon için).
+        wind_speed: Rüzgar hızı, m/s (varsa).
+        plant_name: Santral adı.
+        timestep_minutes: Veri zaman adımı (15, 30, 60 dakika).
+    """
+
+    power_kw: pd.Series
+    energy_kwh: pd.Series | None
+    poa_irradiance: pd.Series | None
+    temp_ambient: pd.Series | None
+    temp_module: pd.Series | None
+    wind_speed: pd.Series | None
+    plant_name: str
+    timestep_minutes: int
+
+    @property
+    def has_irradiance(self) -> bool:
+        """POA ışınım ölçümü var mı? (Kalibrasyon kalitesi için kritik.)"""
+        return self.poa_irradiance is not None and self.poa_irradiance.notna().any()
+
+    @property
+    def hours_count(self) -> int:
+        """Geçerli (NaN olmayan) saat sayısı."""
+        return int(self.power_kw.notna().sum())
+
+    def to_hourly(self) -> SCADAData:
+        """Sub-saatlik veriyi saatlik ortalamaya indirir.
+
+        Güç ortalama alınır, enerji toplanır.
+        """
+        if self.timestep_minutes >= 60:
+            return self
+
+        def resample_mean(s: pd.Series | None) -> pd.Series | None:
+            return s.resample("1h").mean() if s is not None else None
+
+        def resample_sum(s: pd.Series | None) -> pd.Series | None:
+            return s.resample("1h").sum() if s is not None else None
+
+        return SCADAData(
+            power_kw=self.power_kw.resample("1h").mean(),
+            energy_kwh=resample_sum(self.energy_kwh),
+            poa_irradiance=resample_mean(self.poa_irradiance),
+            temp_ambient=resample_mean(self.temp_ambient),
+            temp_module=resample_mean(self.temp_module),
+            wind_speed=resample_mean(self.wind_speed),
+            plant_name=self.plant_name,
+            timestep_minutes=60,
+        )
+
+
+# -----------------------------------------------------------------------------
+# Genel CSV okuyucusu
+# -----------------------------------------------------------------------------
+
+# CSV'lerdeki kolon isimlerinin standart isimlere eşlemesi
+# Buraya zaman içinde başka servislerin formatları eklenir
+COLUMN_ALIASES: dict[str, list[str]] = {
+    "timestamp": [
+        "timestamp", "time", "datetime", "date", "tarih", "zaman",
+        "Time", "Date Time", "Tarih Saat",
+    ],
+    "power_kw": [
+        "power_kw", "ac_power", "active_power", "p_ac",
+        "AC Active Power(kW)", "Active Power(kW)",
+        "Aktif Güç(kW)", "Üretim(kW)",
+    ],
+    "energy_kwh": [
+        "energy_kwh", "ac_energy", "yield",
+        "Energy(kWh)", "Yield(kWh)",
+        "Üretim(kWh)", "Enerji(kWh)",
+    ],
+    "poa_irradiance": [
+        "poa_irradiance", "irradiance", "ghi", "g_poa",
+        "POA Irradiance(W/m2)", "Irradiance(W/m2)",
+        "Işınım(W/m2)",
+    ],
+    "temp_ambient": [
+        "temp_ambient", "ambient_temp", "t_amb",
+        "Ambient Temperature(°C)", "Ambient(°C)",
+        "Ortam Sıcaklığı(°C)",
+    ],
+    "temp_module": [
+        "temp_module", "module_temp", "t_mod",
+        "Module Temperature(°C)",
+        "Modül Sıcaklığı(°C)",
+    ],
+    "wind_speed": [
+        "wind_speed", "ws",
+        "Wind Speed(m/s)",
+        "Rüzgar(m/s)",
+    ],
+}
+
+
+def _detect_column(df: pd.DataFrame, target: str) -> str | None:
+    """DataFrame'de hedef alan için olası kolonu bulur (case-insensitive)."""
+    aliases = COLUMN_ALIASES.get(target, [])
+    cols_lower = {c.lower(): c for c in df.columns}
+    for alias in aliases:
+        if alias.lower() in cols_lower:
+            return cols_lower[alias.lower()]
+    return None
+
+
+def _detect_timestep_minutes(index: pd.DatetimeIndex) -> int:
+    """Veri zaman adımını tespit eder."""
+    if len(index) < 2:
+        return 60
+    diffs = index.to_series().diff().dropna()
+    median_delta = diffs.median()
+    return int(median_delta.total_seconds() / 60)
+
+
+def load_csv(
+    path: str | Path,
+    plant_name: str | None = None,
+    timestamp_column: str | None = None,
+    power_column: str | None = None,
+    delimiter: str = ",",
+    decimal: str = ".",
+) -> SCADAData:
+    """Genel CSV okuyucusu.
+
+    Yaygın kolon isimlerini otomatik olarak algılar (Türkçe ve İngilizce).
+    Kolonlar otomatik bulunamazsa açıkça `timestamp_column` ve `power_column`
+    verilebilir.
+
+    Args:
+        path: CSV dosya yolu.
+        plant_name: Santral adı (verilmezse dosya adından alınır).
+        timestamp_column: Tarih-saat kolonunu manuel belirt.
+        power_column: Güç kolonunu manuel belirt.
+        delimiter: CSV ayracı (virgül, noktalı virgül).
+        decimal: Ondalık ayracı (nokta veya virgül - TR Excel için).
+
+    Returns:
+        SCADAData nesnesi.
+
+    Raises:
+        ValueError: Zorunlu kolonlar bulunamazsa.
+    """
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(f"Dosya yok: {path}")
+
+    df = pd.read_csv(path, delimiter=delimiter, decimal=decimal)
+
+    ts_col = timestamp_column or _detect_column(df, "timestamp")
+    if not ts_col:
+        raise ValueError(
+            f"Zaman kolonu bulunamadı. Mevcut kolonlar: {list(df.columns)}. "
+            "timestamp_column parametresi ile manuel belirtin."
+        )
+
+    pwr_col = power_column or _detect_column(df, "power_kw")
+    if not pwr_col:
+        raise ValueError(
+            f"Güç kolonu bulunamadı. Mevcut kolonlar: {list(df.columns)}. "
+            "power_column parametresi ile manuel belirtin."
+        )
+
+    # Zaman indeksini kur
+    df[ts_col] = pd.to_datetime(df[ts_col], errors="coerce")
+    df = df.dropna(subset=[ts_col]).set_index(ts_col).sort_index()
+
+    def col_or_none(target: str) -> pd.Series | None:
+        col = _detect_column(df, target)
+        return df[col] if col else None
+
+    return SCADAData(
+        power_kw=df[pwr_col].astype(float),
+        energy_kwh=col_or_none("energy_kwh"),
+        poa_irradiance=col_or_none("poa_irradiance"),
+        temp_ambient=col_or_none("temp_ambient"),
+        temp_module=col_or_none("temp_module"),
+        wind_speed=col_or_none("wind_speed"),
+        plant_name=plant_name or path.stem,
+        timestep_minutes=_detect_timestep_minutes(df.index),
+    )
+
+
+def load_fusionsolar_csv(path: str | Path, plant_name: str | None = None) -> SCADAData:
+    """FusionSolar (Huawei) export CSV okuyucusu.
+
+    FusionSolar genelde Türkçe yerel ayarlarla virgül ondalık kullanır,
+    fakat dosyalar sistemden sisteme değişebilir. Bu wrapper genel
+    `load_csv`'yi çağırır; özel format farkları çıkarsa burada handle edilir.
+
+    Args:
+        path: CSV dosya yolu.
+        plant_name: Santral adı.
+
+    Returns:
+        SCADAData nesnesi.
+    """
+    return load_csv(path, plant_name=plant_name, delimiter=",", decimal=".")

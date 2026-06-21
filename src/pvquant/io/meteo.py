@@ -1,0 +1,221 @@
+"""Open-Meteo Forecast API istemcisi.
+
+Open-Meteo, anahtar gerektirmeyen ve günlük 10.000 ücretsiz çağrı sunan
+açık bir meteoroloji servisidir. Güneş enerjisi modellemesi için gereken
+GHI, sıcaklık, rüzgar gibi tüm değişkenleri sağlar.
+
+API dokümantasyonu: https://open-meteo.com/en/docs
+
+Kullanım:
+    >>> from pvquant.io.meteo import OpenMeteoClient
+    >>> client = OpenMeteoClient()
+    >>> df = client.get_forecast(latitude=37.87, longitude=32.49, days=7)
+    >>> df.columns
+    Index(['ghi', 'temp_air', 'wind_speed_10m', ...], dtype='object')
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import httpx
+import pandas as pd
+
+from pvquant.config import get_settings
+
+
+@dataclass(frozen=True)
+class MeteoData:
+    """Meteorolojik veri konteyneri.
+
+    Tüm seriler aynı zaman indeksini paylaşır (saatlik, UTC).
+
+    Attributes:
+        ghi: Yatay küresel ışınım, W/m².
+        temp_air: 2m hava sıcaklığı, °C.
+        wind_speed_10m: 10m yüksekliğinde rüzgar hızı, m/s.
+        relative_humidity: Bağıl nem, % (opsiyonel).
+        cloud_cover: Bulutluluk, % (opsiyonel).
+        latitude: Sorgulanan enlem.
+        longitude: Sorgulanan boylam.
+        timezone: API'nin döndürdüğü zaman dilimi (genelde 'UTC').
+    """
+
+    ghi: pd.Series
+    temp_air: pd.Series
+    wind_speed_10m: pd.Series
+    relative_humidity: pd.Series | None
+    cloud_cover: pd.Series | None
+    latitude: float
+    longitude: float
+    timezone: str
+
+    def to_dataframe(self) -> pd.DataFrame:
+        """Tüm seriler tek bir DataFrame'de döner."""
+        data: dict[str, pd.Series] = {
+            "ghi": self.ghi,
+            "temp_air": self.temp_air,
+            "wind_speed_10m": self.wind_speed_10m,
+        }
+        if self.relative_humidity is not None:
+            data["relative_humidity"] = self.relative_humidity
+        if self.cloud_cover is not None:
+            data["cloud_cover"] = self.cloud_cover
+        return pd.DataFrame(data)
+
+
+class OpenMeteoError(Exception):
+    """Open-Meteo API hatası."""
+
+
+class OpenMeteoClient:
+    """Open-Meteo Forecast API istemcisi.
+
+    Args:
+        base_url: API kök adresi. Varsayılan yapılandırmadan okur.
+        timeout: HTTP timeout, saniye.
+    """
+
+    # PVQuant için gerekli olan saatlik değişkenler
+    # https://open-meteo.com/en/docs#hourly_variables
+    HOURLY_VARS: tuple[str, ...] = (
+        "shortwave_radiation",      # GHI, W/m²
+        "temperature_2m",            # °C
+        "wind_speed_10m",           # m/s
+        "relative_humidity_2m",      # %
+        "cloud_cover",              # %
+        "direct_radiation",         # DNI'ye yakın, doğrulama için
+        "diffuse_radiation",        # DHI'ye yakın, doğrulama için
+    )
+
+    def __init__(self, base_url: str | None = None, timeout: int | None = None) -> None:
+        settings = get_settings()
+        self.base_url = base_url or settings.meteo_base_url
+        self.timeout = timeout or settings.meteo_timeout
+
+    def get_forecast(
+        self,
+        latitude: float,
+        longitude: float,
+        days: int = 7,
+        timezone: str = "UTC",
+    ) -> MeteoData:
+        """Verilen koordinat için saatlik 7 günlük forecast getirir.
+
+        Args:
+            latitude: Enlem, derece (-90 ila 90).
+            longitude: Boylam, derece (-180 ila 180).
+            days: Forecast gün sayısı (1-16 arası, Open-Meteo limiti).
+            timezone: Sonuçların döndürüleceği zaman dilimi.
+                'UTC' veya 'auto' (koordinata göre) veya 'Europe/Istanbul' gibi.
+
+        Returns:
+            MeteoData nesnesi.
+
+        Raises:
+            OpenMeteoError: API'den hata dönerse veya bağlantı problemi olursa.
+        """
+        if not -90 <= latitude <= 90:
+            raise ValueError(f"latitude {latitude} aralık dışı (-90..90)")
+        if not -180 <= longitude <= 180:
+            raise ValueError(f"longitude {longitude} aralık dışı (-180..180)")
+        if not 1 <= days <= 16:
+            raise ValueError(f"days {days} aralık dışı (1..16)")
+
+        params = {
+            "latitude": latitude,
+            "longitude": longitude,
+            "hourly": ",".join(self.HOURLY_VARS),
+            "forecast_days": days,
+            "timezone": timezone,
+        }
+
+        url = f"{self.base_url}/forecast"
+        try:
+            with httpx.Client(timeout=self.timeout) as client:
+                response = client.get(url, params=params)
+                response.raise_for_status()
+                data = response.json()
+        except httpx.HTTPStatusError as e:
+            raise OpenMeteoError(f"API hata: {e.response.status_code} {e.response.text}") from e
+        except httpx.RequestError as e:
+            raise OpenMeteoError(f"Bağlantı hatası: {e}") from e
+
+        return self._parse_response(data)
+
+    def get_historical(
+        self,
+        latitude: float,
+        longitude: float,
+        start_date: str,
+        end_date: str,
+        timezone: str = "UTC",
+    ) -> MeteoData:
+        """Tarihsel arşiv verisi getirir.
+
+        Open-Meteo'nun ücretsiz arşiv API'sine başvurur. Forecast'ten farklı
+        bir URL kullanır.
+
+        Args:
+            latitude: Enlem.
+            longitude: Boylam.
+            start_date: 'YYYY-MM-DD' formatında başlangıç.
+            end_date: 'YYYY-MM-DD' formatında bitiş.
+            timezone: Zaman dilimi.
+
+        Returns:
+            MeteoData nesnesi.
+        """
+        # Arşiv API'si farklı domain'de
+        archive_url = "https://archive-api.open-meteo.com/v1/archive"
+        params = {
+            "latitude": latitude,
+            "longitude": longitude,
+            "start_date": start_date,
+            "end_date": end_date,
+            "hourly": ",".join(self.HOURLY_VARS),
+            "timezone": timezone,
+        }
+        try:
+            with httpx.Client(timeout=self.timeout) as client:
+                response = client.get(archive_url, params=params)
+                response.raise_for_status()
+                data = response.json()
+        except httpx.HTTPStatusError as e:
+            raise OpenMeteoError(f"Arşiv API hata: {e.response.status_code}") from e
+        except httpx.RequestError as e:
+            raise OpenMeteoError(f"Bağlantı hatası: {e}") from e
+
+        return self._parse_response(data)
+
+    def _parse_response(self, data: dict) -> MeteoData:
+        """API JSON yanıtını MeteoData'ya dönüştürür."""
+        hourly = data.get("hourly", {})
+        times_raw = hourly.get("time", [])
+        if not times_raw:
+            raise OpenMeteoError("API yanıtında saatlik veri bulunamadı")
+
+        times = pd.to_datetime(times_raw)
+
+        def series_or_none(key: str) -> pd.Series | None:
+            values = hourly.get(key)
+            if values is None:
+                return None
+            return pd.Series(values, index=times, name=key)
+
+        ghi = series_or_none("shortwave_radiation")
+        temp_air = series_or_none("temperature_2m")
+        wind_speed = series_or_none("wind_speed_10m")
+
+        if ghi is None or temp_air is None or wind_speed is None:
+            raise OpenMeteoError("Zorunlu değişkenlerden biri eksik (GHI/T/WS)")
+
+        return MeteoData(
+            ghi=ghi,
+            temp_air=temp_air,
+            wind_speed_10m=wind_speed,
+            relative_humidity=series_or_none("relative_humidity_2m"),
+            cloud_cover=series_or_none("cloud_cover"),
+            latitude=float(data["latitude"]),
+            longitude=float(data["longitude"]),
+            timezone=data.get("timezone", "UTC"),
+        )
