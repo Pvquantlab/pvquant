@@ -76,3 +76,9 @@ logs/
 
 # API cache
 .cache/
+
+# Local SCADA/test data (not committed)
+data/
+
+# Local SCADA/test data (not committed)
+data/

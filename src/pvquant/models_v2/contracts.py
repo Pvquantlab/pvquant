@@ -65,7 +65,11 @@ class PlantProfile(BaseModel):
     mounting: MountingSpec
     inverter: InverterSpec
     commissioning_date: Optional[datetime] = None
-    notes: Optional[str] = None
+    notes: Optional[str] = None 
+    # Saha / kurulum parametreleri (Barhdadi-Bennis kalibrasyonu için)
+    albedo: float = Field(default=0.20, ge=0, le=1)
+    initial_bifacial_gain: float = Field(default=0.30, ge=0, le=1)
+    initial_eta_bos: float = Field(default=0.85, ge=0.5, le=1)
 
 
 # ============================================================
