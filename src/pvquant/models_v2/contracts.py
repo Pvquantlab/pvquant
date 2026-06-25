@@ -9,7 +9,7 @@ Tasarım: pvmodel_interface_draft_v1.2.py
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal, Optional, Any
+from typing import Literal, Optional, Any, List
 
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field
@@ -70,6 +70,10 @@ class PlantProfile(BaseModel):
     albedo: float = Field(default=0.20, ge=0, le=1)
     initial_bifacial_gain: float = Field(default=0.30, ge=0, le=1)
     initial_eta_bos: float = Field(default=0.85, ge=0.5, le=1)
+    # GHI bias düzeltmesi (POA-bin lookup tablosu — kalibrasyondan öğrenilir)
+    # Her iki liste de None ise Mod A (düzeltme yok); dolu ise Mod B
+    ghi_bias_bins: Optional[List[float]] = None
+    ghi_bias_corrections: Optional[List[float]] = None
 
 
 # ============================================================
