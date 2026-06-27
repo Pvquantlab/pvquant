@@ -74,6 +74,86 @@ class BarhdadiBennisModel:
             power_model="barhdadi_bennis",
         )
 
+    def _fit_ghi_bias(
+        self,
+        scada_poa,
+        meteo,
+    ):
+        """SCADA POA ile Open-Meteo POA arasindaki bias icin 11-bin lookup fit eder.
+
+        Open-Meteo GHI'den Erbs+Perez ile POA hesaplar, SCADA POA ile
+        karsilastirir, her quantile bin icin carpan ogrenir.
+
+        Returns:
+            (bin_centers, corrections) - her ikisi liste.
+        """
+        import numpy as np
+        from pvquant.models import irradiance
+
+        times = meteo.ghi.index
+        if not isinstance(times, pd.DatetimeIndex):
+            times = pd.to_datetime(times)
+
+        solpos = irradiance.solar_position(
+            times=times,
+            latitude=meteo.latitude,
+            longitude=meteo.longitude,
+            altitude=self._plant_spec.altitude_m,
+        )
+        decomposed = irradiance.decompose_ghi_erbs(
+            ghi=meteo.ghi,
+            solar_zenith=solpos["zenith"],
+            times=times,
+        )
+        dni_extra, airmass = irradiance.extra_radiation_and_airmass(
+            times, solpos["zenith"]
+        )
+        poa_om = irradiance.transpose_perez(
+            surface_tilt=self._plant_spec.tilt,
+            surface_azimuth=self._plant_spec.azimuth,
+            solar_zenith=solpos["zenith"],
+            solar_azimuth=solpos["azimuth"],
+            dni=decomposed["dni"],
+            ghi=decomposed["ghi"],
+            dhi=decomposed["dhi"],
+            dni_extra=dni_extra,
+            airmass=airmass,
+            albedo=self._plant_spec.albedo,
+        )
+
+        df = pd.DataFrame({
+            "scada_poa": scada_poa,
+            "om_poa": poa_om.global_,
+        }).dropna()
+        df = df[(df["scada_poa"] > 50) & (df["om_poa"] > 50)]
+
+        if len(df) < 100:
+            raise ValueError(
+                f"Bias fit icin yetersiz veri: {len(df)} saat (min 100)"
+            )
+
+        n_bins = 11
+        quantiles = np.linspace(0, 1, n_bins + 1)
+        bin_edges = df["om_poa"].quantile(quantiles).values
+        bin_centers = []
+        corrections = []
+        for i in range(n_bins):
+            lo, hi = bin_edges[i], bin_edges[i + 1]
+            if i < n_bins - 1:
+                mask = (df["om_poa"] >= lo) & (df["om_poa"] < hi)
+            else:
+                mask = (df["om_poa"] >= lo) & (df["om_poa"] <= hi)
+            if mask.sum() == 0:
+                continue
+            center = float(df.loc[mask, "om_poa"].mean())
+            ratio = float(
+                df.loc[mask, "scada_poa"].sum() / df.loc[mask, "om_poa"].sum()
+            )
+            bin_centers.append(center)
+            corrections.append(ratio)
+
+        return bin_centers, corrections
+
     def predict(
         self,
         forecast_input: ForecastInput,
@@ -111,7 +191,12 @@ class BarhdadiBennisModel:
             timezone=self.plant_profile.location.timezone,
         )
 
-        pipeline_result = forecast_7day(meteo, self._plant_spec)
+        pipeline_result = forecast_7day(
+            meteo,
+            self._plant_spec,
+            ghi_bias_bins=self.plant_profile.ghi_bias_bins,
+            ghi_bias_corrections=self.plant_profile.ghi_bias_corrections,
+        )
 
         timeseries = pd.DataFrame(
             {
@@ -178,6 +263,18 @@ class BarhdadiBennisModel:
             timezone=self.plant_profile.location.timezone,
         )
 
+        # --- BIAS OGRENME (POA-bin lookup) ---
+        bias_bins = None
+        bias_corrections = None
+        if scada.poa_irradiance is not None:
+            bias_bins, bias_corrections = self._fit_ghi_bias(
+                scada_poa=scada.poa_irradiance,
+                meteo=historical_meteo,
+            )
+            # PlantProfile'a kaydet (mutable, dogrudan atama)
+            self.plant_profile.ghi_bias_bins = bias_bins
+            self.plant_profile.ghi_bias_corrections = bias_corrections
+
         cal_result = calibrate_from_scada(
             scada=scada,
             historical_meteo=historical_meteo,
@@ -200,6 +297,8 @@ class BarhdadiBennisModel:
                 "eta_bos": float(cal_result.eta_bos),
                 "albedo": float(self._plant_spec.albedo),
                 "gamma_pdc": float(self._plant_spec.effective_gamma),
+                "ghi_bias_bins": bias_bins,
+                "ghi_bias_corrections": bias_corrections,
             },
             quality_metrics={
                 "mape_pct_before": float(cal_result.validation_before.mape_pct),

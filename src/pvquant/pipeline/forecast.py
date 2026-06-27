@@ -25,8 +25,8 @@ Tam fizik zinciri:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal
-
+from typing import Literal, Optional, List 
+import numpy as np
 import pandas as pd
 
 from pvquant.io.meteo import MeteoData
@@ -132,9 +132,51 @@ class ForecastResult:
         return float(self.total_kwh / (self.plant.p_nom_kwp * hours))
 
 
+def _apply_poa_correction(
+    poa: "irradiance.POAComponents",
+    bins: List[float],
+    corrections: List[float],
+) -> "irradiance.POAComponents":
+    """POA global isinima POA-bin lookup duzeltmesi uygular.
+
+    Her saat icin, o saatin POA degerinin hangi bin'e dustugune gore
+    bir carpan uygular. Bin merkezleri arasinda lineer interpolasyon
+    yapilir. Bin sinirlarinin disindaki degerler icin en yakin bin'in
+    carpani kullanilir.
+
+    Bu duzeltme, Open-Meteo GHI -> Erbs+Perez ile hesaplanan POA'nin
+    saha SCADA POA olcumunden sapmasini telafi eder (kalibrasyondan
+    ogrenilir).
+
+    Args:
+        poa: Erbs+Perez sonrasi POA bilesenleri (immutable).
+        bins: POA bin merkezleri (W/m^2), artan sirali.
+        corrections: Her bin icin carpan, bins ile ayni boyutta.
+
+    Returns:
+        Yeni POAComponents - global_ duzeltilmis, diger bilesenler ayni.
+    """
+    poa_global_values = poa.global_.values
+    multipliers = np.interp(poa_global_values, bins, corrections)
+    corrected_global = pd.Series(
+        poa_global_values * multipliers,
+        index=poa.global_.index,
+        name=poa.global_.name,
+    )
+    return irradiance.POAComponents(
+        global_=corrected_global,
+        beam=poa.beam,
+        sky_diffuse=poa.sky_diffuse,
+        ground_diffuse=poa.ground_diffuse,
+        aoi=poa.aoi,
+    )
+
+
 def forecast_7day(
     meteo: MeteoData,
     plant: PlantSpec,
+    ghi_bias_bins: Optional[List[float]] = None,
+    ghi_bias_corrections: Optional[List[float]] = None,
 ) -> ForecastResult:
     """7 günlük üretim tahmini ana pipeline'ı.
 
@@ -190,6 +232,10 @@ def forecast_7day(
         airmass=airmass,
         albedo=plant.albedo,
     )
+
+    # --- 3.5. POA bias duzeltmesi (Mod B'de kalibrasyondan ogrenilir) ---
+    if ghi_bias_bins is not None and ghi_bias_corrections is not None:
+        poa = _apply_poa_correction(poa, ghi_bias_bins, ghi_bias_corrections)
 
     # --- 4. Bifacial katkı (basit çarpan, ön yüze uygulanır) ---
     if plant.is_bifacial:
