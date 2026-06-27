@@ -25,6 +25,8 @@ Bu, PVQuant'ın "saha-kalibre" özelliğinin teknik karşılığıdır.
 """
 from __future__ import annotations
 
+from typing import Optional, List
+
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -88,6 +90,8 @@ def calibrate_from_scada(
     fit_bg: bool = True,
     fit_eta_bos: bool = True,
     threshold_kw: float = 1.0,
+    ghi_bias_bins: Optional[List[float]] = None,
+    ghi_bias_corrections: Optional[List[float]] = None,
 ) -> CalibrationResult:
     """SCADA + tarihsel meteoroloji verisinden parametre kalibrasyonu.
 
@@ -129,7 +133,11 @@ def calibrate_from_scada(
         )
 
     # 2. Başlangıç tahminini hesapla (kalibrasyon öncesi)
-    initial_forecast = forecast_7day(historical_meteo, plant)
+    initial_forecast = forecast_7day(
+        historical_meteo, plant,
+        ghi_bias_bins=ghi_bias_bins,
+        ghi_bias_corrections=ghi_bias_corrections,
+    )
     predicted_power_initial = initial_forecast.hourly["p_ac_kw"]
 
     # 3. Doğrulama (öncesi)
@@ -158,7 +166,11 @@ def calibrate_from_scada(
             candidate_plant = _clone_plant(
                 plant, eta_bos=fitted_eta_bos, bifacial_gain_geometric=bg_candidate
             )
-            forecast = forecast_7day(historical_meteo, candidate_plant)
+            forecast = forecast_7day(
+                historical_meteo, candidate_plant,
+                ghi_bias_bins=ghi_bias_bins,
+                ghi_bias_corrections=ghi_bias_corrections,
+            )
             pred = forecast.hourly["p_ac_kw"]
             common_idx = pred.index.intersection(actual_power.index)
             if len(common_idx) == 0:
@@ -181,7 +193,11 @@ def calibrate_from_scada(
     calibrated_plant = _clone_plant(
         plant, eta_bos=fitted_eta_bos, bifacial_gain_geometric=fitted_bg
     )
-    final_forecast = forecast_7day(historical_meteo, calibrated_plant)
+    final_forecast = forecast_7day(
+        historical_meteo, calibrated_plant,
+        ghi_bias_bins=ghi_bias_bins,
+        ghi_bias_corrections=ghi_bias_corrections,
+    )
     predicted_power_final = final_forecast.hourly["p_ac_kw"]
     validation_after = validate(predicted_power_final, actual_power, threshold=threshold_kw)
 

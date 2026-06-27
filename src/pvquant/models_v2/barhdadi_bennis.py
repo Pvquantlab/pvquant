@@ -297,8 +297,6 @@ class BarhdadiBennisModel:
                 "eta_bos": float(cal_result.eta_bos),
                 "albedo": float(self._plant_spec.albedo),
                 "gamma_pdc": float(self._plant_spec.effective_gamma),
-                "ghi_bias_bins": bias_bins,
-                "ghi_bias_corrections": bias_corrections,
             },
             quality_metrics={
                 "mape_pct_before": float(cal_result.validation_before.mape_pct),
