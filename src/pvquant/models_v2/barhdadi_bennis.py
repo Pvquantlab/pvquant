@@ -67,7 +67,11 @@ class BarhdadiBennisModel:
             albedo=plant.albedo,
             eta_bos=plant.initial_eta_bos,
             eta_inv=plant.inverter.efficiency,
-            p_ac_clip_kw=plant.inverter.clipping_kw,
+            p_ac_clip_kw=(
+                plant.inverter.clipping_kw
+                if plant.inverter.clipping_kw is not None
+                else plant.inverter.count * plant.inverter.ac_capacity_kw
+            ),
             altitude_m=plant.location.elevation_m,
             module_height_m=plant.mounting.height_above_ground_m or 2.0,
             thermal_model="faiman",
