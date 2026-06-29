@@ -929,6 +929,34 @@ if "Santral" in page:
                         "comp_df": comp,  # Adim 2D'de grafik icin
                     }
                     bt_status.update(label="Backtest tamamlandi", state="complete", expanded=False)
+
+                # Diske kalibrasyon sonucunu kaydet (mevcut profil uzerine guncellenir)
+                try:
+                    calibration_payload = {
+                        "params": {
+                            "bifacial_gain_geometric": float(cal_result.parameters["bifacial_gain_geometric"]),
+                            "eta_bos": float(cal_result.parameters["eta_bos"]),
+                        },
+                        "metrics": {
+                            "yillik_sapma_pct": float(st.session_state.backtest_result["dev_pct"]),
+                            "pik_sapma_pct": float(st.session_state.backtest_result["peak_dev_pct"]),
+                            "rmse_kw": float(st.session_state.backtest_result["rmse_kw"]),
+                            "mae_kw": float(st.session_state.backtest_result["mae_kw"]),
+                            "mape_day_pct": float(st.session_state.backtest_result["mape_day_pct"]),
+                            "scada_total_mwh": float(st.session_state.backtest_result["scada_total_mwh"]),
+                            "pred_total_mwh": float(st.session_state.backtest_result["pred_total_mwh"]),
+                            "n_hours_compared": int(st.session_state.backtest_result["n_hours_compared"]),
+                            "n_days": int(st.session_state.backtest_result["n_days"]),
+                        },
+                        "calibrated_at": pd.Timestamp.now().isoformat(timespec="seconds"),
+                    }
+                    save_plant(
+                        st.session_state.plant.plant_id,
+                        st.session_state.plant,
+                        calibration=calibration_payload,
+                    )
+                except Exception as save_err:
+                    st.warning(f"Kalibrasyon diske yazilamadi (session'da duruyor): {save_err}")
                 
 
                 # Ozet basari mesaji (gecici - Adim 2C/2D'de detayli sonuc gelecek)
