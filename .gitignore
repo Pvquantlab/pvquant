@@ -82,3 +82,5 @@ data/
 
 # Local SCADA/test data (not committed)
 data/
+frontend/app.py.faz1_backup
+data/santraller/
