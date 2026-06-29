@@ -146,7 +146,7 @@ def list_plants() -> list[dict]:
             "yillik_sapma_pct": (
                 cal.get("metrics", {}).get("yillik_sapma_pct") if cal else None
             ),
-            "capacity_kwp": data.get("profile", {}).get("total_capacity_kwp"),
+            "capacity_kwp": data.get("profile", {}).get("dc_capacity_kwp"),
             "panel_tech": data.get("profile", {}).get("panel", {}).get("technology"),
         }
         summaries.append(summary)

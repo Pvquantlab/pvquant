@@ -545,6 +545,155 @@ with st.sidebar:
         label_visibility="collapsed",
     )
 
+    # KAYITLI SANTRALLER - diske kaydedilmis tum santraller
+    saved_plants = list_plants()
+    if saved_plants:
+        st.markdown("<div class='pv-sidebar-section'>KAYITLI SANTRALLER</div>", unsafe_allow_html=True)
+        # Saved-plant kart stilleri (sidebar icin ozel)
+        st.markdown("""
+        <style>
+        .pv-saved-card {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-left: 3px solid transparent;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            transition: all 0.15s ease;
+        }
+        .pv-saved-card.active {
+            border-left-color: #F59E0B;
+            background: rgba(245, 158, 11, 0.04);
+        }
+        .pv-saved-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: #F3F4F6;
+            letter-spacing: -0.01em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 2px;
+        }
+        .pv-saved-meta {
+            font-size: 10.5px;
+            color: #9CA3AF;
+            font-weight: 500;
+            margin-bottom: 6px;
+            letter-spacing: 0.01em;
+        }
+        .pv-saved-sapma {
+            font-size: 11px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            letter-spacing: -0.01em;
+        }
+        .pv-saved-sapma .dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+        /* Sidebar buttonlarini sadelestir */
+        [data-testid="stSidebar"] [data-testid="stHorizontalBlock"] button {
+            background: transparent !important;
+            border: 1px solid rgba(255,255,255,0.08) !important;
+            color: #E5E7EB !important;
+            font-size: 11px !important;
+            font-weight: 500 !important;
+            padding: 4px 8px !important;
+            min-height: 28px !important;
+            height: 28px !important;
+            border-radius: 6px !important;
+            box-shadow: none !important;
+        }
+        [data-testid="stSidebar"] [data-testid="stHorizontalBlock"] button:hover {
+            background: rgba(255,255,255,0.05) !important;
+            border-color: rgba(255,255,255,0.12) !important;
+        }
+        /* Sil butonu hover'da kirmizi tonuna gecsin */
+        [data-testid="stSidebar"] button[data-testid="stBaseButton-secondary"]:has(span:contains("delete")):hover,
+        [data-testid="stSidebar"] button[kind="secondary"][title*="kaydini sil"]:hover {
+            background: rgba(239, 68, 68, 0.08) !important;
+            border-color: rgba(239, 68, 68, 0.25) !important;
+            color: #EF4444 !important;
+        }
+        /* Material ikonlarini hizala */
+        [data-testid="stSidebar"] button span[data-testid="stIconMaterial"] {
+            font-size: 16px !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
+        current_plant_id = st.session_state.plant.plant_id if st.session_state.plant else None
+        tech_label_map = {"mono": "Monofacial", "bifacial": "Bifacial", "thin_film": "Ince Film"}
+
+        for sp in saved_plants:
+            sp_id = sp["plant_id"]
+            is_active = (sp_id == current_plant_id)
+            sapma = sp.get("yillik_sapma_pct")
+            cap = sp.get("capacity_kwp") or 0
+            tech = sp.get("panel_tech") or ""
+            tech_tr = tech_label_map.get(tech, tech.title() if tech else "—")
+
+            # Sapma rengi ve metni
+            if sapma is None:
+                sapma_color = "#6B7280"
+                sapma_text = "Kalibre edilmedi"
+            elif abs(sapma) <= 5:
+                sapma_color = "#10B981"
+                sapma_text = f"{sapma:+.2f}% sapma"
+            elif abs(sapma) <= 10:
+                sapma_color = "#F59E0B"
+                sapma_text = f"{sapma:+.2f}% sapma"
+            else:
+                sapma_color = "#EF4444"
+                sapma_text = f"{sapma:+.2f}% sapma"
+
+            # Kart goruntusu
+            active_class = "active" if is_active else ""
+            st.markdown(f"""
+            <div class='pv-saved-card {active_class}'>
+                <div class='pv-saved-name' title='{sp_id}'>{sp_id}</div>
+                <div class='pv-saved-meta'>{cap:,.0f} kWp - {tech_tr}</div>
+                <div class='pv-saved-sapma' style='color:{sapma_color};'>
+                    <span class='dot' style='background:{sapma_color};'></span>
+                    {sapma_text}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # Aksiyon butonlari (Yukle / Sil) - tek satir
+            col_load, col_del = st.columns([4, 1])
+            with col_load:
+                if st.button(
+                    "Aktif Santral" if is_active else "Bu Santrali Yukle",
+                    key=f"load_{sp_id}",
+                    use_container_width=True,
+                    disabled=is_active,
+                ):
+                    loaded = load_plant(sp_id)
+                    if loaded:
+                        try:
+                            st.session_state.plant = PlantProfile.model_validate(loaded["profile"])
+                            st.session_state.forecast_result = None
+                            st.session_state.calibrated = False
+                            st.session_state.calibration_result = None
+                            st.session_state.backtest_result = None
+                            st.session_state.scada_df = None
+                            st.session_state.scada_filename = None
+                            st.rerun()
+                        except Exception as load_err:
+                            st.error(f"Yukleme hatasi: {load_err}")
+            with col_del:
+                if st.button(":material/delete:", key=f"del_{sp_id}", use_container_width=True, help=f"{sp_id} kaydini sil"):
+                    if delete_plant(sp_id):
+                        if current_plant_id == sp_id:
+                            st.session_state.plant = None
+                        st.rerun()
+
     if st.session_state.plant:
         plant = st.session_state.plant
         tech_tr = {"mono": "Monokristal", "bifacial": "Bifacial", "thin_film": "Ince Film"}
