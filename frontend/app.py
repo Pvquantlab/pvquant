@@ -18,6 +18,7 @@ from pvquant.models_v2.contracts import (
 )
 from pvquant.models_v2.barhdadi_bennis import BarhdadiBennisModel
 from pvquant.io.meteo import OpenMeteoClient
+from pvquant.storage import save_plant, load_plant, list_plants, delete_plant
 
 
 st.set_page_config(
@@ -659,7 +660,19 @@ if "Santral" in page:
                     )
                     st.session_state.plant = plant
                     st.session_state.forecast_result = None
-                    st.success(f"{name} kaydedildi. Sol panelden 7 Gunluk Tahmin sayfasina gecebilirsiniz.")
+                    # Diske kalici yaz
+                    try:
+                        save_path = save_plant(plant.plant_id, plant)
+                        st.success(
+                            f"{name} kaydedildi (disk: {save_path.name}). "
+                            f"Sol panelden 7 Gunluk Tahmin sayfasina gecebilirsiniz."
+                        )
+                    except Exception as save_err:
+                        # Disk hatasi - session'da yine de duruyor, devam edilebilir
+                        st.warning(
+                            f"{name} session'a kaydedildi ama diske yazilamadi: {save_err}. "
+                            "Streamlit yeniden baslarsa kaybolur."
+                        )
                 except Exception as e:
                     st.error(f"Hata: {e}")
 
