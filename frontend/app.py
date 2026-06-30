@@ -1248,7 +1248,12 @@ if "Santral" in page:
                 col_a, col_b = st.columns(2)
                 with col_a:
                     st.markdown("**Ogrenilen Katsayilar**")
-                    st.markdown(f"- **Bifacial Gain (BG):** `{cal.parameters['bifacial_gain_geometric']:.4f}`")
+                    is_bifacial = st.session_state.plant.panel.technology == "bifacial"
+                    if is_bifacial:
+                        bg_value = cal.parameters['bifacial_gain_geometric']
+                        st.markdown(f"- **Bifacial Gain (BG):** `{bg_value:.4f}`")
+                        if bg_value <= 0.06:
+                            st.warning("Bifacial gain dusuk. Sistemde gercek bifacial uretim aliyor musunuz?")
                     st.markdown(f"- **η_BoS (BoS verimi):** `{cal.parameters['eta_bos']:.4f}`")
                     st.markdown(f"- **Albedo:** `{cal.parameters['albedo']:.2f}`")
                     st.markdown(f"- **Gamma (sicaklik katsayisi):** `{cal.parameters['gamma_pdc']:.4f}`")
