@@ -84,6 +84,31 @@ class SCADAData:
         )
 
 
+
+
+    def to_dataframe(self) -> pd.DataFrame:
+            """SCADAData'yi app.py'in bekledigi DataFrame formatina cevirir.
+
+            Sutun adlari mevcut app.py adlandirma ile uyumlu:
+            - timestamp (DatetimeIndex'ten gelir)
+            - power_kw (zorunlu)
+            - poa_global (opsiyonel, poa_irradiance'tan)
+            - t_air (opsiyonel, temp_ambient'tan)
+
+            Returns:
+                DataFrame with timestamp column and standardized data columns.
+            """
+            df = pd.DataFrame({"power_kw": self.power_kw})
+            df.index.name = "timestamp"
+            df = df.reset_index()
+
+            if self.poa_irradiance is not None:
+                df["poa_global"] = self.poa_irradiance.values
+            if self.temp_ambient is not None:
+                df["t_air"] = self.temp_ambient.values
+
+            return df
+
 # -----------------------------------------------------------------------------
 # Genel CSV okuyucusu
 # -----------------------------------------------------------------------------
