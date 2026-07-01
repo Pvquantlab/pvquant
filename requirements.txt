@@ -1,0 +1,24 @@
+# Core dependencies for PVQuant
+# Install with: pip install -r requirements.txt
+
+# Data & numerical
+pandas>=2.0
+numpy>=1.24
+scipy>=1.11              # optimization for calibration
+
+# Visualization
+plotly>=5.0
+
+# Web UI
+streamlit>=1.28
+
+# I/O & parsing
+rapidfuzz>=3.0           # fuzzy column name matching in scada.py
+
+# API / models
+fastapi>=0.100
+pydantic>=2.0
+pydantic-settings>=2.0
+
+# Dev tools
+pytest>=7.4
