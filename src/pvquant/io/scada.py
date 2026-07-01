@@ -121,38 +121,166 @@ logger = logging.getLogger(__name__)
 
 
 COLUMN_ALIASES: dict[str, list[str]] = {
+    # ------------------------------------------------------------------
+    # Zaman damgası
+    # ------------------------------------------------------------------
     "timestamp": [
+        # MEVCUT
         "timestamp", "time", "datetime", "date", "tarih", "zaman",
-        "Time", "Date Time", "Tarih Saat",
+        "Date Time", "Tarih Saat",
+        # BELGE — global vendor aliases
+        "DATE_TIME", "localtime",
     ],
+
+    # ------------------------------------------------------------------
+    # AC güç (kW / W)
+    # ------------------------------------------------------------------
     "power_kw": [
+        # MEVCUT
         "power_kw", "ac_power", "active_power", "p_ac",
         "AC Active Power(kW)", "Active Power(kW)",
         "Aktif Güç(kW)", "Üretim(kW)",
+        # BELGE — global vendor aliases
+        "PAC", "PowerReal_P_Sum", "total_active_power",
+        "Active Power",
+        "pvpowerout", "Pout", "wNow",
+        "W", "Output active power", "AC Power",
     ],
+
+    # ------------------------------------------------------------------
+    # DC güç (kW / W) — YENİ HEDEF
+    # ------------------------------------------------------------------
+    "power_dc_kw": [
+        "DC_POWER", "Pdc", "total_dc_power",
+        "pvpowerin", "Pin", "DCW",
+        "DC Power",
+    ],
+
+    # ------------------------------------------------------------------
+    # Enerji — kümülatif (kWh / Wh)
+    # ------------------------------------------------------------------
     "energy_kwh": [
+        # MEVCUT
         "energy_kwh", "ac_energy", "yield",
         "Energy(kWh)", "Yield(kWh)",
         "Üretim(kWh)", "Enerji(kWh)",
+        # BELGE — global vendor aliases
+        "WH", "AC_Energy_WH",
+        "TOTAL_ENERGY", "YEAR_ENERGY",
+        "Total production", "Total Energy",
+        "t_yield", "whLifetime", "TOTAL_YIELD",
+        "epvtotal", "Etotal", "E_Z_EVU",
     ],
+
+    # ------------------------------------------------------------------
+    # Enerji — günlük (kWh / Wh) — YENİ HEDEF
+    # ------------------------------------------------------------------
+    "energy_today_kwh": [
+        "DAY_ENERGY", "Eday", "whToday", "DAILY_YIELD",
+        "today_generation", "Today production",
+        "epvtoday", "d_yield",
+        "Daily Energy", "Generation Today", "daily_pv_generation",
+    ],
+
+    # ------------------------------------------------------------------
+    # Gerilim (V) — YENİ HEDEFLER
+    # ------------------------------------------------------------------
+    "voltage_dc": [
+        "Udc", "DC_Voltage",
+        "PV1 Voltage", "PV2 Voltage",
+        "dc_v", "pv1voltage", "pv2voltage", "DCV",
+        "DC Voltage 1", "DC Voltage 2",
+    ],
+    "voltage_ac": [
+        "Uac", "AC_Voltage", "rmsVoltage", "grid_voltage",
+        "PhVphA", "PhVphB", "PhVphC",
+        "AC Voltage 1", "L1 Voltage",
+    ],
+
+    # ------------------------------------------------------------------
+    # Akım (A) — YENİ HEDEFLER
+    # ------------------------------------------------------------------
+    "current_ac": [
+        "Iac", "AC_Current", "rmsCurrent",
+        "A", "AphA", "AphB", "AphC",
+        "AC Current 1", "L1 Current",
+    ],
+    "current_dc": [
+        "Idc", "DC_Current",
+        "PV1 Current", "PV2 Current",
+        "dc_a", "DCA", "DC Current 1",
+    ],
+
+    # ------------------------------------------------------------------
+    # AC şebeke kalite ölçütleri — YENİ HEDEFLER
+    # ------------------------------------------------------------------
+    "frequency": [
+        "Hz", "Grid frequency", "AC_Frequency",
+        "freq", "Grid Freq", "Frequency",
+    ],
+    "power_factor": [
+        "PF", "Power Factor", "pwrFactor",
+    ],
+
+    # ------------------------------------------------------------------
+    # Işınım (W/m²)
+    # ------------------------------------------------------------------
     "poa_irradiance": [
+        # MEVCUT
         "poa_irradiance", "irradiance", "ghi", "g_poa",
         "POA Irradiance(W/m2)", "Irradiance(W/m2)",
-        "Işınım(W/m2)", "poa_irradiance_kwh_m2"],
+        "Işınım(W/m2)", "poa_irradiance_kwh_m2",
+        # BELGE — global vendor aliases
+        "IRRADIATION", "GlobalIrradiance", "G_M0",
+    ],
+
+    # ------------------------------------------------------------------
+    # Sıcaklık (°C)
+    # ------------------------------------------------------------------
     "temp_ambient": [
+        # MEVCUT
         "temp_ambient", "temp_air_c", "ambient_temp", "t_amb", "t_air",
         "Ambient Temperature(°C)", "Ambient(°C)",
         "Ortam Sıcaklığı(°C)",
+        # BELGE — global vendor aliases
+        "AMBIENT_TEMPERATURE", "Ambient Temp",
+        "temp_air", "ambient_temp_celsius", "temp_amb",
     ],
     "temp_module": [
+        # MEVCUT
         "temp_module", "module_temp", "t_mod",
         "Module Temperature(°C)",
         "Modül Sıcaklığı(°C)",
+        # BELGE — global vendor aliases
+        "MODULE_TEMPERATURE", "Module Temp",
+        "pvtemperature", "cell_temperature",
+        "PV Temperature",
     ],
+    "temp_inverter": [
+        # YENİ HEDEF — inverter iç sıcaklık
+        "TmpCab", "TmpSnk", "TmpTrns",
+        "inverter_temp", "temp_hs",
+        "Heat Sink Temperature", "Inverter Temperature",
+        "inverterHS_temp",
+    ],
+
+    # ------------------------------------------------------------------
+    # İşletim durumu (enum) — YENİ HEDEF
+    # ------------------------------------------------------------------
+    "operating_state": [
+        "St", "Operating State", "Status", "running_state",
+    ],
+
+    # ------------------------------------------------------------------
+    # Meteoroloji
+    # ------------------------------------------------------------------
     "wind_speed": [
+        # MEVCUT
         "wind_speed", "ws",
         "Wind Speed(m/s)",
         "Rüzgar(m/s)",
+        # BELGE — global vendor aliases
+        "WindSpeed", "v_wind", "Wind Speed",
     ],
 }
 
