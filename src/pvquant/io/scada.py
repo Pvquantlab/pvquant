@@ -20,6 +20,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pandas as pd
+import logging
+from rapidfuzz import fuzz, process
 
 
 @dataclass(frozen=True)
@@ -115,6 +117,9 @@ class SCADAData:
 
 # CSV'lerdeki kolon isimlerinin standart isimlere eşlemesi
 # Buraya zaman içinde başka servislerin formatları eklenir
+logger = logging.getLogger(__name__)
+
+
 COLUMN_ALIASES: dict[str, list[str]] = {
     "timestamp": [
         "timestamp", "time", "datetime", "date", "tarih", "zaman",
@@ -153,12 +158,48 @@ COLUMN_ALIASES: dict[str, list[str]] = {
 
 
 def _detect_column(df: pd.DataFrame, target: str) -> str | None:
-    """DataFrame'de hedef alan için olası kolonu bulur (case-insensitive)."""
+    """DataFrame'de hedef alan için olası kolonu bulur.
+
+    Önce tam eşleşme (case-insensitive) denenir. Bulunamazsa rapidfuzz ile
+    fuzzy eşleşme yapılır; skor eşiği (85) üstündeki en iyi aday döndürülür.
+    Bu, "AC Active Power(kW)" gibi biçim farklarını tolere eder.
+    """
     aliases = COLUMN_ALIASES.get(target, [])
     cols_lower = {c.lower(): c for c in df.columns}
+
+    # 1. Tam eşleşme (mevcut davranış, hızlı yol)
     for alias in aliases:
         if alias.lower() in cols_lower:
             return cols_lower[alias.lower()]
+
+    # 2. Fuzzy fallback: her sütun için en yüksek alias skorunu hesapla,
+    #    genel en yüksek skorlu sütunu seç (eşik 85)
+    if not aliases or df.columns.empty:
+        return None
+
+    best_col: str | None = None
+    best_score: float = 0.0
+    for col in df.columns:
+        # process.extractOne: alias listesinden en iyi eşleşmeyi bulur
+        result = process.extractOne(
+            col.lower(),
+            [a.lower() for a in aliases],
+            scorer=fuzz.WRatio,
+        )
+        if result is None:
+            continue
+        _matched_alias, score, _idx = result
+        if score > best_score:
+            best_score = score
+            best_col = col
+
+    if best_col is not None and best_score >= 85:
+        logger.info(
+            "Fuzzy match: '%s' -> '%s' (score=%.1f)",
+            best_col, target, best_score,
+        )
+        return best_col
+
     return None
 
 
