@@ -31,6 +31,7 @@ import pandas as pd
 
 from pvquant.io.meteo import MeteoData
 from pvquant.models import bifacial, irradiance, power, temperature
+from pvquant.pipeline.utils import _detect_timestep_hours
 
 
 @dataclass
@@ -125,11 +126,16 @@ class ForecastResult:
         """Kapasite faktörü (0-1 arası).
 
         CF = toplam üretim / (P_nom * süre)
+
+        Not: 'hours' aslında len(hourly) değil, gerçek geçen saat sayısı.
+        15 dk veride 96 kayıt 24 saati temsil eder.
         """
-        hours = len(self.hourly)
-        if hours == 0 or self.plant.p_nom_kwp == 0:
+        n_records = len(self.hourly)
+        if n_records < 2 or self.plant.p_nom_kwp == 0:
             return 0.0
-        return float(self.total_kwh / (self.plant.p_nom_kwp * hours))
+        dt_hours = _detect_timestep_hours(self.hourly.index)
+        total_hours = n_records * dt_hours
+        return float(self.total_kwh / (self.plant.p_nom_kwp * total_hours))
 
 
 def _apply_poa_correction(
@@ -304,8 +310,10 @@ def forecast_7day(
         p_ac_clip=plant.p_ac_clip_kw,
     )
 
-    # --- 8. Saatlik enerji (kWh = kW × 1h) ---
-    energy_kwh = p_ac  # saatlik adımda kW = kWh
+    # --- 8. Enerji hesabı (kWh = kW × dt_saat) ---
+    # Frekans agnostik: 1h -> ×1.0, 15dk -> ×0.25, 5dk -> ×0.0833...
+    dt_hours = _detect_timestep_hours(p_ac.index)
+    energy_kwh = p_ac * dt_hours
 
     # --- Sonuçları topla ---
     hourly = pd.DataFrame(
