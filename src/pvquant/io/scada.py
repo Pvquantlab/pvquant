@@ -136,7 +136,7 @@ COLUMN_ALIASES: dict[str, list[str]] = {
         "Işınım(W/m2)",
     ],
     "temp_ambient": [
-        "temp_ambient", "ambient_temp", "t_amb",
+        "temp_ambient", "temp_air_c", "ambient_temp", "t_amb", "t_air",
         "Ambient Temperature(°C)", "Ambient(°C)",
         "Ortam Sıcaklığı(°C)",
     ],

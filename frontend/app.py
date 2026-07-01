@@ -18,6 +18,7 @@ from pvquant.models_v2.contracts import (
 )
 from pvquant.models_v2.barhdadi_bennis import BarhdadiBennisModel
 from pvquant.io.meteo import OpenMeteoClient
+from pvquant.io.scada import load_csv
 from pvquant.storage import save_plant, load_plant, list_plants, delete_plant
 
 
@@ -888,13 +889,18 @@ if "Santral" in page:
         if sample_clicked:
             try:
                 merkas_path = ROOT / "data" / "MERKAS_SCADA_FULL.csv"
-                scada_df_local = pd.read_csv(merkas_path, parse_dates=["timestamp"])
+                scada_df_local = load_csv(merkas_path).to_dataframe()
                 scada_source_name = "MERKAS_SCADA_FULL.csv (ornek)"
             except Exception as e:
                 st.error(f"MERKAS ornek dosyasi yuklenemedi: {e}")
         elif uploaded_file is not None:
             try:
-                scada_df_local = pd.read_csv(uploaded_file, parse_dates=["timestamp"])
+                # Streamlit UploadedFile'i gecici dosyaya yaz (load_csv Path bekliyor)
+                import tempfile
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
+                    tmp.write(uploaded_file.getvalue())
+                    tmp_path = tmp.name
+                scada_df_local = load_csv(tmp_path).to_dataframe()
                 scada_source_name = uploaded_file.name
             except Exception as e:
                 st.error(f"CSV okunamadi: {e}")
