@@ -133,8 +133,7 @@ COLUMN_ALIASES: dict[str, list[str]] = {
     "poa_irradiance": [
         "poa_irradiance", "irradiance", "ghi", "g_poa",
         "POA Irradiance(W/m2)", "Irradiance(W/m2)",
-        "Işınım(W/m2)",
-    ],
+        "Işınım(W/m2)", "poa_irradiance_kwh_m2"],
     "temp_ambient": [
         "temp_ambient", "temp_air_c", "ambient_temp", "t_amb", "t_air",
         "Ambient Temperature(°C)", "Ambient(°C)",
@@ -161,6 +160,30 @@ def _detect_column(df: pd.DataFrame, target: str) -> str | None:
         if alias.lower() in cols_lower:
             return cols_lower[alias.lower()]
     return None
+
+
+def _normalize_poa_units(poa: pd.Series | None) -> pd.Series | None:
+    """POA irradiance birimini otomatik olarak W/m²'ye normalize et.
+
+    Bazı SCADA sistemleri POA'yı kWh/m² (saatlik integral) olarak raporlar
+    (tipik pik: 0.8-1.2). PVQuant motoru W/m² bekler (tipik pik: 800-1100).
+    Pik değere bakarak birim tespiti yapıp gerekirse ×1000 dönüşümü uygular.
+
+    Args:
+        poa: Ham POA serisi veya None.
+
+    Returns:
+        W/m² birimine normalize edilmiş seri, None ise None.
+    """
+    if poa is None:
+        return None
+    max_val = poa.dropna().abs().max()
+    if pd.isna(max_val):
+        return poa
+    # Pik < 10 → kWh/m² varsayımı (asla W/m² olmaz), ×1000 dönüştür
+    if max_val < 10:
+        return poa * 1000.0
+    return poa
 
 
 def _detect_timestep_minutes(index: pd.DatetimeIndex) -> int:
@@ -231,7 +254,7 @@ def load_csv(
     return SCADAData(
         power_kw=df[pwr_col].astype(float),
         energy_kwh=col_or_none("energy_kwh"),
-        poa_irradiance=col_or_none("poa_irradiance"),
+        poa_irradiance=_normalize_poa_units(col_or_none("poa_irradiance")),
         temp_ambient=col_or_none("temp_ambient"),
         temp_module=col_or_none("temp_module"),
         wind_speed=col_or_none("wind_speed"),
