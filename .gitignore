@@ -84,3 +84,4 @@ data/
 data/
 frontend/app.py.faz1_backup
 data/santraller/
+*.bak_adim3_*

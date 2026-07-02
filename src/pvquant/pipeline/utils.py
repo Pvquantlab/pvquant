@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import pandas as pd
 
+from pvquant.io.meteo import MeteoData
+
 
 def _detect_timestep_hours(index: pd.DatetimeIndex) -> float:
     """Zaman ekseninden ortalama adımı saat cinsinden döner.
@@ -86,3 +88,92 @@ def _detect_timestep_minutes(index: pd.DatetimeIndex) -> int:
     """
     hours = _detect_timestep_hours(index)
     return int(round(hours * 60))
+
+
+# --- Faz 1.6 Adim 3.1: Meteo Alignment [BEGIN] ---
+def _align_meteo_to_scada(
+    meteo: MeteoData,
+    target_index: pd.DatetimeIndex,
+) -> MeteoData:
+    """MeteoData'yi hedef zaman indeksine hizalar (lineer interpolasyon).
+
+    Frekans-agnostik kalibrasyon icin kritik. 1h meteo + 15dk SCADA gibi
+    durumlarda meteo'yu SCADA cozunurlugune upsample eder. Ayni cozunurlukte
+    ise pratik olarak no-op'tur (identity).
+
+    Yaklasim:
+      1. Meteo serilerini bir DataFrame'de birlestir.
+      2. Meteo ve hedef index'in birlesimi ile reindex et (arada NaN olusur).
+      3. time-based interpolation ile NaN'lari doldur.
+      4. Yalniz hedef index'i dondur.
+
+    GHI icin ozel dikkat: Gece saatlerinde meteo zaten 0 raporlar; iki 0
+    arasi interpolasyon yine 0 verir. Gunduz-gece gecisi (ornegin gundogumu)
+    ise linear interpolasyon ile makul sekilde yumuşatilir.
+
+    Hedef index meteo araligi disina taşarsa: uc noktalarda NaN kalir
+    (interpolate limit_direction="both" ile forward/backward fill yapiyoruz;
+    bu durumda uc degerler tekrar edilir). Kalibrasyon downstream'de
+    intersection kullandigi icin bu satirlar zaten elenir.
+
+    Args:
+        meteo: Kaynak MeteoData (herhangi bir cozunurlukte).
+        target_index: Hedef DatetimeIndex (genelde SCADA'nin index'i).
+
+    Returns:
+        target_index'e hizalanmis yeni MeteoData nesnesi.
+        Latitude/longitude/timezone alanlari kaynaktan kopyalanir.
+
+    Example:
+        >>> import pandas as pd
+        >>> from pvquant.io.meteo import MeteoData
+        >>> hourly_idx = pd.date_range("2024-06-01", periods=24, freq="1h")
+        >>> quarter_idx = pd.date_range("2024-06-01", periods=96, freq="15min")
+        >>> # meteo = MeteoData(ghi=..., temp_air=..., wind_speed_10m=..., ...)
+        >>> # aligned = _align_meteo_to_scada(meteo, quarter_idx)
+        >>> # aligned.ghi has 96 points instead of 24
+    """
+    # 1. Meteo serilerini bir DataFrame'de topla
+    df = pd.DataFrame({
+        "ghi": meteo.ghi,
+        "temp_air": meteo.temp_air,
+        "wind_speed_10m": meteo.wind_speed_10m,
+    })
+    if meteo.relative_humidity is not None:
+        df["relative_humidity"] = meteo.relative_humidity
+    if meteo.cloud_cover is not None:
+        df["cloud_cover"] = meteo.cloud_cover
+
+    # 2. Meteo ve hedef index'in birlesimi ile reindex
+    combined_index = df.index.union(target_index).sort_values()
+    df_reindexed = df.reindex(combined_index)
+
+    # 3. Time-based interpolation. limit_direction="both" ile uc noktalarda
+    #    forward/backward fill yaparak NaN birakmayiz. Meteo araligi
+    #    disindaki hedef noktalar en yakin gozlem degeriyle doldurulur.
+    df_interpolated = df_reindexed.interpolate(
+        method="time",
+        limit_direction="both",
+    )
+
+    # 4. Yalniz hedef index'i cikart
+    df_target = df_interpolated.loc[target_index]
+
+    # 5. Yeni MeteoData olustur
+    return MeteoData(
+        ghi=df_target["ghi"],
+        temp_air=df_target["temp_air"],
+        wind_speed_10m=df_target["wind_speed_10m"],
+        relative_humidity=(
+            df_target["relative_humidity"]
+            if meteo.relative_humidity is not None
+            else None
+        ),
+        cloud_cover=(
+            df_target["cloud_cover"] if meteo.cloud_cover is not None else None
+        ),
+        latitude=meteo.latitude,
+        longitude=meteo.longitude,
+        timezone=meteo.timezone,
+    )
+# --- Faz 1.6 Adim 3.1: Meteo Alignment [END] ---
