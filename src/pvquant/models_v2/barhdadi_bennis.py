@@ -245,6 +245,10 @@ class BarhdadiBennisModel:
         if "power_kw" not in df.columns:
             raise ValueError("HistoricalData.data 'power_kw' kolonu icermelidir")
 
+        # --- Faz 1.6 Adim 4: auto-detect timestep ---
+        from pvquant.pipeline.utils import _detect_timestep_minutes
+        detected_timestep = _detect_timestep_minutes(df.index)
+
         scada = SCADAData(
             power_kw=df["power_kw"].astype(float),
             energy_kwh=None,
@@ -253,7 +257,7 @@ class BarhdadiBennisModel:
             temp_module=df["t_module"].astype(float) if "t_module" in df.columns else None,
             wind_speed=df["wind_speed"].astype(float) if "wind_speed" in df.columns else None,
             plant_name=self.plant_profile.name,
-            timestep_minutes=60,
+            timestep_minutes=detected_timestep,
         )
 
         start_date = df.index.min().strftime("%Y-%m-%d")
