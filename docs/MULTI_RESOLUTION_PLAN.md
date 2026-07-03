@@ -29,6 +29,65 @@ belgeler.
 
 ---
 
+
+<!-- Faz 1.6 TAMAMLANDI (Adim 6) -->
+
+---
+
+## ✅ TAMAMLANDI — Faz 1.6
+
+**Tamamlanma tarihi:** 2026-07-03
+
+Model artik **frekans-agnostik**. 1 dakika, 5 dakika, 15 dakika, 30 dakika ve
+1 saatlik SCADA verileriyle calisir. Ana odak: dunya capinda utility-scale
+santralleri (15 dk standart) destekleyebilmek.
+
+### Commit Zinciri
+
+| Adim | Commit | Aciklama |
+|---|---|---|
+| Plan | `1bc02d2` | docs: add multi-resolution model plan |
+| Adim 1 | `b5049f2` | feat(pipeline): timestep detection utilities |
+| Adim 2 | `5ace061` | feat(pipeline): frequency-agnostic energy and capacity factor |
+| Adim 3.1 | `18920fb` | feat(pipeline): add meteo alignment utility |
+| Adim 3.3 | `e8b436e` | feat(pipeline): frequency-agnostic calibration |
+| Adim 4 | `27e4719` | feat(models_v2): auto-detect timestep in BarhdadiBennisModel |
+
+### Neler Yapildi
+
+- **`pipeline/utils.py`**: `_detect_timestep_hours`, `_detect_timestep_minutes`,
+  `_align_meteo_to_scada` yardimci fonksiyonlari.
+- **`pipeline/forecast.py`**: Enerji hesabi ve kapasite faktoru cozunurluk agnostik.
+- **`pipeline/calibration.py`**: `to_hourly()` cagrisi kaldirildi. SCADA ham
+  cozunurlukte kullaniliyor. Meteo otomatik olarak SCADA index'ine hizalaniyor
+  (1h meteo + 15dk SCADA gibi durumlar destekleniyor).
+- **`api/routes/calibration.py`**: FastAPI endpoint'i de agnostik.
+- **`models_v2/barhdadi_bennis.py`**: Model API'sinde hardcoded `timestep_minutes=60`
+  otomatik tespite cevrildi.
+
+### Test Durumu (Faz 1.6 sonu)
+
+- **88 test yesil** (2.14 saniye)
+- Yeni testler:
+  - `test_pipeline_utils.py`: `TestAlignMeteoToScada` (8 test)
+  - `test_calibration_multi_resolution.py`: 13 test (1h regresyon + 15dk kabiliyet)
+- Regresyon: mevcut testlerin hicbiri bozulmadi.
+
+### Kapsam Disi Kalanlar (Faz 2'ye Ertelendi)
+
+- `hourly` -> `timeseries` isim degisikligi (UI etkilenir, ayri is)
+- `forecast_horizon_hours` -> `forecast_horizon_periods` (Open-Meteo hala 1h)
+- Streamlit UI cozunurluk secici
+- Cikti raporlama farkli cozunurlukte
+
+### Sonraki Faz
+
+**Faz 1.7 — Gercek Dunya Testi**: NREL FSA_1 (Arbuckle, CA) 15 dakikalik veri
+seti ile Mod B testi. Kullanici gercek 15dk SCADA yukleyecek, kalibrasyon
+sonuclari incelenecek.
+
+---
+
 ## 2. Kod Tabanı Analizi — Ne Buldum?
 
 ### 2.1 İyi Haberler ✅
