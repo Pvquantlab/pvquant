@@ -16,6 +16,7 @@ from pvquant.api.schemas.plant import PlantSpecSchema
 from pvquant.io.meteo import OpenMeteoClient, OpenMeteoError
 from pvquant.io.scada import load_csv
 from pvquant.pipeline.calibration import calibrate_from_scada
+from pvquant.pipeline.utils import _detect_timestep_hours
 
 router = APIRouter(prefix="/calibration", tags=["calibration"])
 
@@ -78,16 +79,25 @@ async def calibrate(
     finally:
         tmp_path.unlink(missing_ok=True)
 
-    if scada.hours_count < 100:
+    # --- Faz 1.6 Adim 3.3: frequency-agnostic api route ---
+    # Cozunurluk-agnostik yetersiz veri kontrolu
+    scada_dt_hours = _detect_timestep_hours(scada.power_kw.index)
+    min_samples = int(100 / scada_dt_hours)  # 1h->100, 15dk->400, 5dk->1200
+    n_valid = int(scada.power_kw.notna().sum())
+
+    if n_valid < min_samples:
+        n_hours = n_valid * scada_dt_hours
         raise HTTPException(
             status_code=400,
-            detail=f"Yetersiz veri: {scada.hours_count} saat, minimum 100 gerekli",
+            detail=(
+                f"Yetersiz veri: {n_valid} örnek "
+                f"({n_hours:.1f} saat, minimum 100 saat gerekli)"
+            ),
         )
 
-    # SCADA tarihinin başlangıç/bitiş aralığı
-    scada_hourly = scada.to_hourly()
-    start = scada_hourly.power_kw.index.min().date().isoformat()
-    end = scada_hourly.power_kw.index.max().date().isoformat()
+    # SCADA tarihinin başlangıç/bitiş aralığı — ham index yeter
+    start = scada.power_kw.index.min().date().isoformat()
+    end = scada.power_kw.index.max().date().isoformat()
 
     try:
         meteo = OpenMeteoClient().get_historical(

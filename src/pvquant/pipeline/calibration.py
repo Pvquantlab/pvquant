@@ -36,6 +36,7 @@ from scipy.optimize import minimize_scalar
 from pvquant.io.meteo import MeteoData
 from pvquant.io.scada import SCADAData
 from pvquant.pipeline.forecast import PlantSpec, forecast_7day
+from pvquant.pipeline.utils import _align_meteo_to_scada, _detect_timestep_hours
 from pvquant.validation.metrics import ValidationReport, validate
 
 
@@ -123,14 +124,22 @@ def calibrate_from_scada(
     """
     notes: list[str] = []
 
-    # 1. SCADA'yı saatliğe indir
-    scada_hourly = scada.to_hourly()
-    actual_power = scada_hourly.power_kw
+    # 1. SCADA'yı ham çözünürlükte kullan (frekans-agnostik)
+    # --- Faz 1.6 Adim 3.3: frequency-agnostic calibration ---
+    actual_power = scada.power_kw
+    scada_dt_hours = _detect_timestep_hours(actual_power.index)
+    min_samples = int(100 / scada_dt_hours)  # 1h->100, 15dk->400, 5dk->1200
 
-    if scada_hourly.hours_count < 100:
+    n_valid = int(actual_power.notna().sum())
+    if n_valid < min_samples:
+        n_hours = n_valid * scada_dt_hours
         raise ValueError(
-            f"Yetersiz SCADA verisi: {scada_hourly.hours_count} saat (minimum 100)"
+            f"Yetersiz SCADA verisi: {n_valid} örnek "
+            f"({n_hours:.1f} saat, minimum 100 saat gerekli)"
         )
+
+    # 2. Meteo'yu SCADA index'ine hizala (1h meteo + 15dk SCADA gibi durumlar icin)
+    historical_meteo = _align_meteo_to_scada(historical_meteo, actual_power.index)
 
     # 2. Başlangıç tahminini hesapla (kalibrasyon öncesi)
     initial_forecast = forecast_7day(
