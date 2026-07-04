@@ -133,16 +133,27 @@ def _align_meteo_to_scada(
         >>> # aligned = _align_meteo_to_scada(meteo, quarter_idx)
         >>> # aligned.ghi has 96 points instead of 24
     """
-    # 1. Meteo serilerini bir DataFrame'de topla
+    # --- Faz 1.7: defansif duplicate temizligi ---
+    # Defansif: kaynak meteo'da duplicate timestamp varsa (Open-Meteo DST bug'i gibi),
+    # ilkini tut. reindex() duplicate index'te patlar.
+    def _dedupe(s: pd.Series | None) -> pd.Series | None:
+        if s is None:
+            return None
+        if s.index.duplicated().any():
+            return s[~s.index.duplicated(keep="first")]
+        return s
+
+    # 1. Meteo serilerini bir DataFrame'de topla (duplicate temizligi ile)
     df = pd.DataFrame({
-        "ghi": meteo.ghi,
-        "temp_air": meteo.temp_air,
-        "wind_speed_10m": meteo.wind_speed_10m,
+        "ghi": _dedupe(meteo.ghi),
+        "temp_air": _dedupe(meteo.temp_air),
+        "wind_speed_10m": _dedupe(meteo.wind_speed_10m),
     })
+    # --- Faz 1.7: opsiyonel serilerde de dedupe ---
     if meteo.relative_humidity is not None:
-        df["relative_humidity"] = meteo.relative_humidity
+        df["relative_humidity"] = _dedupe(meteo.relative_humidity)
     if meteo.cloud_cover is not None:
-        df["cloud_cover"] = meteo.cloud_cover
+        df["cloud_cover"] = _dedupe(meteo.cloud_cover)
 
     # 2. Meteo ve hedef index'in birlesimi ile reindex
     combined_index = df.index.union(target_index).sort_values()

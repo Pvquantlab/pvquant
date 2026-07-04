@@ -196,6 +196,32 @@ class OpenMeteoClient:
 
         times = pd.to_datetime(times_raw)
 
+        # --- Faz 1.7: DST duplicate cleanup ---
+        # Open-Meteo DST gecis gunlerinde bazen ayni timestamp'i iki kez donduruyor
+        # (orn: 2024-03-10 03:00:00 iki kez). Duplicate'lari temizle.
+        if times.duplicated().any():
+            # times bir DatetimeIndex, series olusturup mask uygulayacagiz
+            dup_mask = ~pd.Series(times).duplicated().values
+            times = times[dup_mask]
+            # Ilgili hourly veri kolonlarini da ayni maske ile filtrele
+            for k, v in list(hourly.items()):
+                if k == "time":
+                    hourly[k] = [t for i, t in enumerate(times_raw) if dup_mask[i]]
+                elif isinstance(v, list):
+                    hourly[k] = [x for i, x in enumerate(v) if dup_mask[i]]
+
+        # --- Faz 1.7: tz-aware localize ---
+        # Open-Meteo timestamp'leri belirtilen timezone'da (yerel saat) donuyor
+        # ama tz bilgisi olmadan. pvlib.solarposition tz-aware bekliyor,
+        # aksi halde UTC varsayip solar geometry hesabini bozuyor.
+        response_tz = data.get("timezone", "UTC")
+        if times.tz is None:
+            try:
+                times = times.tz_localize(response_tz, ambiguous="infer", nonexistent="shift_forward")
+            except Exception:
+                # DST bilinmezliginden kacinmak icin fallback: UTC olarak varsay
+                times = times.tz_localize("UTC")
+
         def series_or_none(key: str) -> pd.Series | None:
             values = hourly.get(key)
             if values is None:

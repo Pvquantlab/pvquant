@@ -232,6 +232,10 @@ COLUMN_ALIASES: dict[str, list[str]] = {
         "Işınım(W/m2)", "poa_irradiance_kwh_m2",
         # BELGE — global vendor aliases
         "IRRADIATION", "GlobalIrradiance", "G_M0",
+        # --- Faz 1.7: poa_global alias ---
+        # PVLib/pvfarm/NREL PVDAQ standardi
+        "poa_global", "POA_global", "poa_global_irradiance",
+        "GlobalPOA", "poa_ref", "POA",
     ],
 
     # ------------------------------------------------------------------
