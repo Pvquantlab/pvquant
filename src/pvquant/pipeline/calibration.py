@@ -90,6 +90,9 @@ def calibrate_from_scada(
     plant: PlantSpec,
     fit_bg: bool = True,
     fit_eta_bos: bool = True,
+    # --- Faz 1.8.1: fit_azimuth parametresi ---
+    fit_azimuth: bool = False,
+    azimuth_bounds: tuple[float, float] = (90.0, 270.0),
     threshold_kw: float = 1.0,
     ghi_bias_bins: Optional[List[float]] = None,
     ghi_bias_corrections: Optional[List[float]] = None,
@@ -171,6 +174,64 @@ def calibrate_from_scada(
 
     # 2. Meteo'yu SCADA index'ine hizala (1h meteo + 15dk SCADA gibi durumlar icin)
     historical_meteo = _align_meteo_to_scada(historical_meteo, actual_power.index)
+
+    # --- Faz 1.8.1: azimuth fit blogu ---
+    # Azimuth fit: panel yonelim varsayimini SCADA verisinden ogret.
+    # OZELLIKLE eta_bos/BG fit'ten ONCE yapilir - geometri hatasi olursa
+    # performans fit'i onu telafi etmeye calisir ve yanlis ogrenir.
+    # Loss: sadece abs(NMBE). Sapmayi sifira cek, MAPE fit sonrasi kalabilir
+    # (o profil hatasi, azimuth ile tam cozulmez).
+    if fit_azimuth:
+        # Kendi dataclass replace import'umuz - Faz 1.8.0 blogundaki _dc_replace
+        # kosullu bir blokta tanimliydi, guvenli olmayabilir. Bagimsiz alalim.
+        from dataclasses import replace as _az_replace
+
+        _valid_mask = (actual_power.notna()) & (actual_power > threshold_kw)
+        _valid_actual = actual_power[_valid_mask]
+
+        if len(_valid_actual) < 100:
+            notes.append(
+                f"Azimuth fit atlandi: yetersiz gunduz verisi "
+                f"({len(_valid_actual)} nokta, min 100)"
+            )
+        else:
+            def _azimuth_loss(az: float) -> float:
+                _cand_plant = _az_replace(plant, azimuth=float(az))
+                _f = forecast_7day(
+                    historical_meteo, _cand_plant,
+                    ghi_bias_bins=ghi_bias_bins,
+                    ghi_bias_corrections=ghi_bias_corrections,
+                )
+                _pred = _f.hourly["p_ac_kw"]
+                _common = _pred.index.intersection(_valid_actual.index)
+                if len(_common) == 0:
+                    return 1e18
+                _p = _pred.loc[_common]
+                _a = _valid_actual.loc[_common]
+                # --- Faz 1.8.1: loss=MAPE ---
+                # MAPE - profil sekli hatasini minimize et.
+                # NMBE (sapma) sonraki eta_bos fit ile zaten sifirlanir.
+                # NMBE=0 olan bir egri var (birden fazla azimuth); MAPE ise
+                # tek minimuma sahip - daha guvenilir hedef.
+                _mape = (abs(_p - _a) / _a).mean()
+                return _mape
+
+            _az_result = minimize_scalar(
+                _azimuth_loss,
+                bounds=azimuth_bounds,
+                method="bounded",
+                options={"xatol": 1.0},  # 1° hassasiyet yeterli
+            )
+            if _az_result.success:
+                _new_azimuth = float(_az_result.x)
+                _old_azimuth = plant.azimuth
+                plant = _az_replace(plant, azimuth=_new_azimuth)
+                notes.append(
+                    f"Azimuth fit: {_old_azimuth:.1f}° -> {_new_azimuth:.1f}° "
+                    f"(MAPE={_az_result.fun*100:.2f}%, {_az_result.nfev} iterasyon)"
+                )
+            else:
+                notes.append("Azimuth fit basarisiz: minimize_scalar convergence yok")
 
     # 2. Başlangıç tahminini hesapla (kalibrasyon öncesi)
     initial_forecast = forecast_7day(
