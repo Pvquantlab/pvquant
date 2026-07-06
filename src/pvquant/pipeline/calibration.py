@@ -63,6 +63,8 @@ class CalibrationResult:
     eta_bos: float
     n_valid_hours: int
     notes: list[str] = field(default_factory=list)
+    # --- Faz 1.9.1: warnings alani ---
+    warnings: list[str] = field(default_factory=list)
 
     @property
     def mape_improvement_pct(self) -> float:
@@ -70,7 +72,7 @@ class CalibrationResult:
         return self.validation_before.mape_pct - self.validation_after.mape_pct
 
     def __str__(self) -> str:
-        return (
+        base = (
             f"CalibrationResult(\n"
             f"  BG (geometrik)     = {self.bg:.4f}\n"
             f"  η_BoS              = {self.eta_bos:.4f}\n"
@@ -82,6 +84,13 @@ class CalibrationResult:
             f"  Toplam sapma sonrası = {self.validation_after.total_deviation_pct:+.2f} %\n"
             f")"
         )
+        # --- Faz 1.9.1: notes+warnings repr ---
+        if self.warnings:
+            warn_lines = ["", "  UYARILAR:"]
+            for w in self.warnings:
+                warn_lines.append(f"    * {w}")
+            base += "\n" + "\n".join(warn_lines)
+        return base
 
 
 def calibrate_from_scada(
@@ -362,6 +371,45 @@ def calibrate_from_scada(
     predicted_power_final = final_forecast.hourly["p_ac_kw"]
     validation_after = validate(predicted_power_final, actual_power, threshold=threshold_kw)
 
+    # --- Faz 1.9.1: sanity checks ---
+    _warnings: list[str] = []
+
+    _mape_after = validation_after.mape_pct
+    if _mape_after > 40.0:
+        _warnings.append(
+            f"MAPE %{_mape_after:.1f} - kalibrasyon zayif. "
+            f"Muhtemelen meteo verinizde bias var (bulutlu donem?). "
+            f"Farkli bir donem deneyebilirsiniz."
+        )
+
+    _eta_bos_final = calibrated_plant.eta_bos
+    if _eta_bos_final > 0.98:
+        _warnings.append(
+            f"eta_bos={_eta_bos_final:.3f} ust sinira dayandi. Model "
+            f"verinizi yakalamaya calisiyor ama fiziksel limit asildi. "
+            f"Azimuth/tilt yanlis olabilir veya veri kalitesi dusuk."
+        )
+    elif _eta_bos_final < 0.70:
+        _warnings.append(
+            f"eta_bos={_eta_bos_final:.3f} alt sinira dayandi. Panelinizde "
+            f"olagandisi kayip var (kirlilik, ariza, dc/ac orani?)."
+        )
+
+    _dev_after = validation_after.total_deviation_pct
+    if abs(_dev_after) > 5.0:
+        _warnings.append(
+            f"Toplam sapma %{_dev_after:+.2f} - sifirlanamadi. "
+            f"Kalibrasyon parametreleri yetersiz kaldi."
+        )
+
+    _n_samples = validation_after.n_samples
+    if _n_samples < 100:
+        _warnings.append(
+            f"Sadece {_n_samples} gecerli saat kullanildi (min 100 onerilir). "
+            f"Daha uzun bir donem verin."
+        )
+
+    # --- Faz 1.9.1: warnings return ---
     return CalibrationResult(
         plant=calibrated_plant,
         original_plant=plant,
@@ -371,6 +419,7 @@ def calibrate_from_scada(
         eta_bos=fitted_eta_bos,
         n_valid_hours=validation_after.n_samples,
         notes=notes,
+        warnings=_warnings,
     )
 
 
