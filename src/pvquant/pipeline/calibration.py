@@ -124,6 +124,31 @@ def calibrate_from_scada(
     """
     notes: list[str] = []
 
+    # --- Faz 1.8: SCADA tz-aware localize ---
+    # SCADA tz-naive, meteo tz-aware oldugunda pvlib solar position hesabi
+    # bozulur (Faz 1.7'de tespit edilen bug). SCADA'yi meteo'nun timezone'una
+    # localize ederek buna cozum getir.
+    from dataclasses import replace as _dc_replace
+    _meteo_tz = getattr(historical_meteo.ghi.index, 'tz', None)
+    _scada_tz = getattr(scada.power_kw.index, 'tz', None)
+    if _meteo_tz is not None and _scada_tz is None:
+        def _tz_localize(s):
+            if s is None:
+                return None
+            return s.tz_localize(
+                _meteo_tz, ambiguous='infer', nonexistent='shift_forward'
+            )
+        scada = _dc_replace(
+            scada,
+            power_kw=_tz_localize(scada.power_kw),
+            poa_irradiance=_tz_localize(scada.poa_irradiance),
+            temp_ambient=_tz_localize(scada.temp_ambient),
+            temp_module=_tz_localize(scada.temp_module),
+            wind_speed=_tz_localize(scada.wind_speed),
+            energy_kwh=_tz_localize(scada.energy_kwh),
+        )
+        notes.append(f"SCADA meteo timezone'una localize edildi: {_meteo_tz}")
+
     # 1. SCADA'yı ham çözünürlükte kullan (frekans-agnostik)
     # --- Faz 1.6 Adim 3.3: frequency-agnostic calibration ---
     actual_power = scada.power_kw
