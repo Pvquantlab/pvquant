@@ -135,9 +135,15 @@ def calibrate_from_scada(
         def _tz_localize(s):
             if s is None:
                 return None
-            return s.tz_localize(
+            _result = s.tz_localize(
                 _meteo_tz, ambiguous='infer', nonexistent='shift_forward'
             )
+            # --- Faz 1.8.0.1: DST duplicate temizligi ---
+            # DST 'shift_forward' 02:00 kaydini 03:00'a tasidiginda SCADA'da
+            # zaten 03:00 varsa duplicate olusur. Ilkini tut.
+            if _result.index.duplicated().any():
+                _result = _result[~_result.index.duplicated(keep='first')]
+            return _result
         scada = _dc_replace(
             scada,
             power_kw=_tz_localize(scada.power_kw),
