@@ -93,6 +93,9 @@ def calibrate_from_scada(
     # --- Faz 1.8.1: fit_azimuth parametresi ---
     fit_azimuth: bool = False,
     azimuth_bounds: tuple[float, float] = (90.0, 270.0),
+    # --- Faz 1.9.0: fit_tilt parametresi ---
+    fit_tilt: bool = False,
+    tilt_bounds: tuple[float, float] = (5.0, 60.0),
     threshold_kw: float = 1.0,
     ghi_bias_bins: Optional[List[float]] = None,
     ghi_bias_corrections: Optional[List[float]] = None,
@@ -172,6 +175,15 @@ def calibrate_from_scada(
             f"({n_hours:.1f} saat, minimum 100 saat gerekli)"
         )
 
+    # --- Faz 1.9.0: fit_azimuth vs fit_tilt XOR ---
+    # Azimuth ve tilt ayni anda fit edilemez - iki degiskenli optimizasyon
+    # local minimum'a takilabilir. Kullanici birini bilmeli, digerini fit et.
+    if fit_azimuth and fit_tilt:
+        raise ValueError(
+            "fit_azimuth ve fit_tilt ayni anda kullanilamaz. "
+            "Ikisinden birini secin - digerini plant spec'te dogru verin."
+        )
+
     # 2. Meteo'yu SCADA index'ine hizala (1h meteo + 15dk SCADA gibi durumlar icin)
     historical_meteo = _align_meteo_to_scada(historical_meteo, actual_power.index)
 
@@ -232,6 +244,54 @@ def calibrate_from_scada(
                 )
             else:
                 notes.append("Azimuth fit basarisiz: minimize_scalar convergence yok")
+
+    # --- Faz 1.9.0: tilt fit blogu ---
+    # Tilt fit: panel egim varsayimini SCADA verisinden ogret.
+    # Ayni yaklasim: MAPE minimize, eta_bos'tan ONCE.
+    if fit_tilt:
+        from dataclasses import replace as _tilt_replace
+
+        _valid_mask = (actual_power.notna()) & (actual_power > threshold_kw)
+        _valid_actual = actual_power[_valid_mask]
+
+        if len(_valid_actual) < 100:
+            notes.append(
+                f"Tilt fit atlandi: yetersiz gunduz verisi "
+                f"({len(_valid_actual)} nokta, min 100)"
+            )
+        else:
+            def _tilt_loss(tilt: float) -> float:
+                _cand_plant = _tilt_replace(plant, tilt=float(tilt))
+                _f = forecast_7day(
+                    historical_meteo, _cand_plant,
+                    ghi_bias_bins=ghi_bias_bins,
+                    ghi_bias_corrections=ghi_bias_corrections,
+                )
+                _pred = _f.hourly["p_ac_kw"]
+                _common = _pred.index.intersection(_valid_actual.index)
+                if len(_common) == 0:
+                    return 1e18
+                _p = _pred.loc[_common]
+                _a = _valid_actual.loc[_common]
+                _mape = (abs(_p - _a) / _a).mean()
+                return _mape
+
+            _tilt_result = minimize_scalar(
+                _tilt_loss,
+                bounds=tilt_bounds,
+                method="bounded",
+                options={"xatol": 0.5},  # 0.5° hassasiyet
+            )
+            if _tilt_result.success:
+                _new_tilt = float(_tilt_result.x)
+                _old_tilt = plant.tilt
+                plant = _tilt_replace(plant, tilt=_new_tilt)
+                notes.append(
+                    f"Tilt fit: {_old_tilt:.1f}° -> {_new_tilt:.1f}° "
+                    f"(MAPE={_tilt_result.fun*100:.2f}%, {_tilt_result.nfev} iterasyon)"
+                )
+            else:
+                notes.append("Tilt fit basarisiz: minimize_scalar convergence yok")
 
     # 2. Başlangıç tahminini hesapla (kalibrasyon öncesi)
     initial_forecast = forecast_7day(
