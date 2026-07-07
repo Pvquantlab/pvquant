@@ -105,6 +105,8 @@ def calibrate_from_scada(
     # --- Faz 1.9.0: fit_tilt parametresi ---
     fit_tilt: bool = False,
     tilt_bounds: tuple[float, float] = (5.0, 60.0),
+    # --- Faz 1.9.3: clean_outliers parametresi ---
+    clean_outliers: bool = False,
     threshold_kw: float = 1.0,
     ghi_bias_bins: Optional[List[float]] = None,
     ghi_bias_corrections: Optional[List[float]] = None,
@@ -169,6 +171,18 @@ def calibrate_from_scada(
             energy_kwh=_tz_localize(scada.energy_kwh),
         )
         notes.append(f"SCADA meteo timezone'una localize edildi: {_meteo_tz}")
+
+    # --- Faz 1.9.3: outlier temizlik cagirisi ---
+    # SCADA outlier temizlik - kullanici istegine bagli
+    if clean_outliers:
+        from pvquant.pipeline.utils import clean_scada_outliers
+        scada, _clean_info = clean_scada_outliers(scada, plant)
+        _pct = _clean_info["removed_frac"] * 100
+        notes.append(
+            f"SCADA outlier temizlik: {_clean_info['total_removed']} nokta silindi "
+            f"({_pct:.1f}%): downtime={_clean_info['downtime_removed']}, "
+            f"spike={_clean_info['spike_removed']}"
+        )
 
     # 1. SCADA'yı ham çözünürlükte kullan (frekans-agnostik)
     # --- Faz 1.6 Adim 3.3: frequency-agnostic calibration ---

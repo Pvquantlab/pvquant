@@ -188,3 +188,97 @@ def _align_meteo_to_scada(
         timezone=meteo.timezone,
     )
 # --- Faz 1.6 Adim 3.1: Meteo Alignment [END] ---
+
+
+# --- Faz 1.9.3: SCADA outlier temizligi ---
+def clean_scada_outliers(
+    scada,
+    plant,
+    downtime_threshold_frac: float = 0.02,
+    downtime_min_duration_min: int = 60,
+    spike_max_frac: float = 1.10,
+    spike_negative_frac: float = 0.05,
+) -> tuple:
+    """SCADA verisinden downtime ve spike outlier'lari filtrele.
+
+    Iki anomali tipi tespit eder ve filtreler:
+      1. **Downtime**: Solar zenith < 85 (gunduz) VE guc < nominal * threshold_frac
+         (dusuk uretim) VE >= min_duration_min sure ardisik.
+      2. **Spike**: Guc > nominal * spike_max_frac (fiziksel maksimum ustu) veya
+         guc < -nominal * spike_negative_frac (asiri negatif).
+
+    Args:
+        scada: SCADAData - temizlenecek veri
+        plant: PlantSpec - nominal guc ve konum icin
+        downtime_threshold_frac: Downtime esik oran (nominal * X)
+        downtime_min_duration_min: Downtime min sure (dk)
+        spike_max_frac: Spike ust siniri (nominal * X)
+        spike_negative_frac: Spike alt siniri (-nominal * X)
+
+    Returns:
+        (temizlenmis_scada, bilgi_dict)
+    """
+    from dataclasses import replace
+    from pvquant.models import irradiance
+
+    p = scada.power_kw
+    n_total = len(p)
+    nominal = plant.p_nom_kwp
+
+    # 1. Spike tespiti
+    spike_max = nominal * spike_max_frac
+    spike_min = -nominal * spike_negative_frac
+    spike_mask = (p > spike_max) | (p < spike_min)
+    n_spike = int(spike_mask.sum())
+
+    # 2. Downtime tespiti - solar zenith hesapla
+    times = p.index
+    solpos = irradiance.solar_position(
+        times=times,
+        latitude=plant.latitude,
+        longitude=plant.longitude,
+        altitude=plant.altitude_m,
+    )
+    is_daytime = solpos["zenith"] < 85.0
+    is_daytime.index = p.index
+
+    low_power = p < (nominal * downtime_threshold_frac)
+    downtime_candidate = is_daytime & low_power & (~spike_mask)
+
+    # Ardisiklik kontrolu
+    dt_hours = (p.index[1] - p.index[0]).total_seconds() / 3600.0
+    dt_minutes = dt_hours * 60.0
+    min_points = max(1, int(round(downtime_min_duration_min / dt_minutes)))
+
+    group_ids = (~downtime_candidate).cumsum()
+    group_lengths = downtime_candidate.groupby(group_ids).transform("sum")
+    downtime_mask = downtime_candidate & (group_lengths >= min_points)
+    n_downtime = int(downtime_mask.sum())
+
+    # 3. Toplam filtreleme
+    remove_mask = spike_mask | downtime_mask
+    keep_mask = ~remove_mask
+    n_removed = int(remove_mask.sum())
+
+    def _filter(s):
+        if s is None:
+            return None
+        return s[keep_mask.reindex(s.index, fill_value=True)]
+
+    cleaned = replace(
+        scada,
+        power_kw=_filter(scada.power_kw),
+        energy_kwh=_filter(scada.energy_kwh),
+        poa_irradiance=_filter(scada.poa_irradiance),
+        temp_ambient=_filter(scada.temp_ambient),
+        temp_module=_filter(scada.temp_module),
+        wind_speed=_filter(scada.wind_speed),
+    )
+
+    info = {
+        "total_removed": n_removed,
+        "downtime_removed": n_downtime,
+        "spike_removed": n_spike,
+        "removed_frac": n_removed / n_total if n_total > 0 else 0.0,
+    }
+    return cleaned, info
