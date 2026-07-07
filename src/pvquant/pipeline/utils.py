@@ -190,48 +190,91 @@ def _align_meteo_to_scada(
 # --- Faz 1.6 Adim 3.1: Meteo Alignment [END] ---
 
 
-# --- Faz 1.9.3: SCADA outlier temizligi ---
+# --- Faz 1.9.4: akilli outlier tespiti ---
 def clean_scada_outliers(
     scada,
     plant,
-    downtime_threshold_frac: float = 0.02,
     downtime_min_duration_min: int = 60,
     spike_max_frac: float = 1.10,
     spike_negative_frac: float = 0.05,
+    spike_local_deviation: float = 0.50,
+    spike_local_window: int = 5,
+    daytime_high_threshold_frac: float = 0.05,
+    daytime_low_threshold_frac: float = 0.02,
+    daytime_high_elevation_deg: float = 30.0,
+    daytime_low_elevation_deg: float = 10.0,
 ) -> tuple:
-    """SCADA verisinden downtime ve spike outlier'lari filtrele.
+    """SCADA verisinden akilli outlier tespiti + zengin rapor.
 
-    Iki anomali tipi tespit eder ve filtreler:
-      1. **Downtime**: Solar zenith < 85 (gunduz) VE guc < nominal * threshold_frac
-         (dusuk uretim) VE >= min_duration_min sure ardisik.
-      2. **Spike**: Guc > nominal * spike_max_frac (fiziksel maksimum ustu) veya
-         guc < -nominal * spike_negative_frac (asiri negatif).
+    Iki anomali tipi:
+
+    1) **Downtime**: Adaptif esik (gunes elevation'a bagli).
+       - Elevation > high_deg: p < nominal * high_frac (siki)
+       - Elevation 10-30°: p < nominal * low_frac (gevsek)
+       - Elevation < low_deg: tespit yok (gundogumu/batisi)
+       - Downtime "candidate"lar >= min_duration_min ardisik olmali
+
+    2) **Spike**: Iki katmanli tespit.
+       - Mutlak: p > nominal * spike_max_frac veya p < -nominal * spike_negative_frac
+       - Yerel: p, komsu spike_local_window medianindan %spike_local_deviation+
+         farkli (izole tepe veya cukur)
+
+    Rapor: outlier_report dict icinde:
+      {
+        "total_removed": int,
+        "removed_frac": float,
+        "downtime": {"count": int, "events": int, "longest_event_min": float,
+                     "longest_event_start": str},
+        "spike": {"count": int, "max_value_kw": float,
+                  "max_frac_of_nominal": float, "hour_distribution": dict},
+      }
 
     Args:
-        scada: SCADAData - temizlenecek veri
-        plant: PlantSpec - nominal guc ve konum icin
-        downtime_threshold_frac: Downtime esik oran (nominal * X)
+        scada: SCADAData
+        plant: PlantSpec
         downtime_min_duration_min: Downtime min sure (dk)
-        spike_max_frac: Spike ust siniri (nominal * X)
-        spike_negative_frac: Spike alt siniri (-nominal * X)
+        spike_max_frac: Fiziksel spike ust siniri
+        spike_negative_frac: Fiziksel spike alt siniri
+        spike_local_deviation: Yerel spike icin median'dan sapma orani
+        spike_local_window: Yerel spike icin komsu penceresi (±N)
+        daytime_high_threshold_frac: Yuksek gunes esigi (nominal * X)
+        daytime_low_threshold_frac: Dusuk gunes esigi (nominal * X)
+        daytime_high_elevation_deg: Yuksek gunes acisi esigi (°)
+        daytime_low_elevation_deg: Dusuk gunes acisi esigi (°)
 
     Returns:
-        (temizlenmis_scada, bilgi_dict)
+        (temizlenmis_scada, outlier_report_dict)
     """
     from dataclasses import replace
+    import numpy as np
+    import pandas as pd
     from pvquant.models import irradiance
 
     p = scada.power_kw
     n_total = len(p)
     nominal = plant.p_nom_kwp
 
-    # 1. Spike tespiti
-    spike_max = nominal * spike_max_frac
-    spike_min = -nominal * spike_negative_frac
-    spike_mask = (p > spike_max) | (p < spike_min)
-    n_spike = int(spike_mask.sum())
+    # --- 1) MUTLAK SPIKE (nominal * 1.10 usti veya asiri negatif) ---
+    abs_spike_max = nominal * spike_max_frac
+    abs_spike_min = -nominal * spike_negative_frac
+    abs_spike_mask = (p > abs_spike_max) | (p < abs_spike_min)
 
-    # 2. Downtime tespiti - solar zenith hesapla
+    # --- 2) YEREL SPIKE (median filter tabanli) ---
+    # Rolling median with window ±spike_local_window
+    window = 2 * spike_local_window + 1
+    rolling_median = p.rolling(window=window, center=True, min_periods=1).median()
+    # Mutlak referans: nominal * 0.05 (cok kucuk uretimde spike hesabi anlamsiz)
+    # Bolme ile normalize: |p - median| / max(median, nominal*0.05) > deviation
+    min_ref = nominal * 0.05
+    ref = rolling_median.where(rolling_median.abs() > min_ref, min_ref)
+    rel_diff = (p - rolling_median).abs() / ref
+    local_spike_mask = (rel_diff > spike_local_deviation) & (~abs_spike_mask)
+    # Sadece gunduz saatlerinde uygula (gece 0'a yakin degerlerde anlamsiz)
+    # (asagida hesaplanacak is_daytime ile filtrele)
+
+    spike_mask = abs_spike_mask | local_spike_mask
+
+    # --- 3) ADAPTIF DOWNTIME ---
     times = p.index
     solpos = irradiance.solar_position(
         times=times,
@@ -239,11 +282,29 @@ def clean_scada_outliers(
         longitude=plant.longitude,
         altitude=plant.altitude_m,
     )
-    is_daytime = solpos["zenith"] < 85.0
-    is_daytime.index = p.index
+    elevation = 90.0 - solpos["zenith"]
+    elevation.index = p.index
 
-    low_power = p < (nominal * downtime_threshold_frac)
-    downtime_candidate = is_daytime & low_power & (~spike_mask)
+    # Elevation'a bagli esik
+    high_thresh = nominal * daytime_high_threshold_frac
+    low_thresh = nominal * daytime_low_threshold_frac
+
+    # Yuksek gunes: sıkı eşik
+    high_daytime = elevation > daytime_high_elevation_deg
+    downtime_high = high_daytime & (p < high_thresh)
+
+    # Orta gunes: gevsek eşik
+    mid_daytime = (elevation > daytime_low_elevation_deg) & (elevation <= daytime_high_elevation_deg)
+    downtime_mid = mid_daytime & (p < low_thresh)
+
+    # Dusuk gunes: tespit yok
+
+    downtime_candidate = (downtime_high | downtime_mid) & (~spike_mask)
+
+    # Lokal spike'i sadece gunduz'e uygula
+    is_daytime = elevation > daytime_low_elevation_deg
+    local_spike_mask = local_spike_mask & is_daytime
+    spike_mask = abs_spike_mask | local_spike_mask
 
     # Ardisiklik kontrolu
     dt_hours = (p.index[1] - p.index[0]).total_seconds() / 3600.0
@@ -253,13 +314,18 @@ def clean_scada_outliers(
     group_ids = (~downtime_candidate).cumsum()
     group_lengths = downtime_candidate.groupby(group_ids).transform("sum")
     downtime_mask = downtime_candidate & (group_lengths >= min_points)
-    n_downtime = int(downtime_mask.sum())
 
-    # 3. Toplam filtreleme
+    # --- 4) BIRLESIK MASKE ---
     remove_mask = spike_mask | downtime_mask
     keep_mask = ~remove_mask
-    n_removed = int(remove_mask.sum())
 
+    n_removed = int(remove_mask.sum())
+    n_downtime = int(downtime_mask.sum())
+    n_spike_abs = int(abs_spike_mask.sum())
+    n_spike_local = int(local_spike_mask.sum())
+    n_spike_total = int(spike_mask.sum())
+
+    # --- 5) SCADA'yi filtrele ---
     def _filter(s):
         if s is None:
             return None
@@ -275,10 +341,52 @@ def clean_scada_outliers(
         wind_speed=_filter(scada.wind_speed),
     )
 
-    info = {
+    # --- 6) ZENGIN RAPOR ---
+    # Downtime olaylari (ardisik gruplar)
+    downtime_events_info = {"events": 0, "longest_event_min": 0.0, "longest_event_start": None}
+    if n_downtime > 0:
+        # Ardisik gruplari bul
+        dt_group_ids = (~downtime_mask).cumsum()[downtime_mask]
+        event_lengths = dt_group_ids.value_counts()
+        n_events = len(event_lengths)
+        longest_len = int(event_lengths.max())
+        longest_len_min = longest_len * dt_minutes
+        # En uzun olayin baslangicini bul
+        longest_group_id = event_lengths.idxmax()
+        longest_start = dt_group_ids[dt_group_ids == longest_group_id].index[0]
+        downtime_events_info = {
+            "events": int(n_events),
+            "longest_event_min": float(longest_len_min),
+            "longest_event_start": str(longest_start),
+        }
+
+    # Spike raporu
+    spike_info = {"max_value_kw": 0.0, "max_frac_of_nominal": 0.0, "hour_distribution": {}}
+    if n_spike_total > 0:
+        spike_values = p[spike_mask]
+        max_val = float(spike_values.abs().max())
+        spike_info = {
+            "max_value_kw": max_val,
+            "max_frac_of_nominal": max_val / nominal,
+            "hour_distribution": (
+                spike_values.index.hour
+                if hasattr(spike_values.index, "hour")
+                else pd.DatetimeIndex(spike_values.index).hour
+            ).value_counts().sort_index().to_dict(),
+        }
+
+    outlier_report = {
         "total_removed": n_removed,
-        "downtime_removed": n_downtime,
-        "spike_removed": n_spike,
         "removed_frac": n_removed / n_total if n_total > 0 else 0.0,
+        "downtime": {
+            "count": n_downtime,
+            **downtime_events_info,
+        },
+        "spike": {
+            "count": n_spike_total,
+            "count_absolute": n_spike_abs,
+            "count_local": n_spike_local,
+            **spike_info,
+        },
     }
-    return cleaned, info
+    return cleaned, outlier_report

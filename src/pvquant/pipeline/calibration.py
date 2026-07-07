@@ -65,6 +65,8 @@ class CalibrationResult:
     notes: list[str] = field(default_factory=list)
     # --- Faz 1.9.1: warnings alani ---
     warnings: list[str] = field(default_factory=list)
+    # --- Faz 1.9.4: outlier_report alani ---
+    outlier_report: dict | None = None
 
     @property
     def mape_improvement_pct(self) -> float:
@@ -172,17 +174,36 @@ def calibrate_from_scada(
         )
         notes.append(f"SCADA meteo timezone'una localize edildi: {_meteo_tz}")
 
-    # --- Faz 1.9.3: outlier temizlik cagirisi ---
-    # SCADA outlier temizlik - kullanici istegine bagli
+    # --- Faz 1.9.4: outlier temizlik cagirisi ---
+    # SCADA outlier temizlik - akilli tespit + zengin rapor
+    _outlier_report = None
     if clean_outliers:
         from pvquant.pipeline.utils import clean_scada_outliers
-        scada, _clean_info = clean_scada_outliers(scada, plant)
-        _pct = _clean_info["removed_frac"] * 100
+        scada, _outlier_report = clean_scada_outliers(scada, plant)
+        _pct = _outlier_report["removed_frac"] * 100
+        _dt = _outlier_report["downtime"]
+        _sp = _outlier_report["spike"]
+        # Ana ozet
         notes.append(
-            f"SCADA outlier temizlik: {_clean_info['total_removed']} nokta silindi "
-            f"({_pct:.1f}%): downtime={_clean_info['downtime_removed']}, "
-            f"spike={_clean_info['spike_removed']}"
+            f"SCADA outlier temizlik: {_outlier_report['total_removed']} nokta "
+            f"silindi ({_pct:.1f}%)"
         )
+        # Downtime detay
+        if _dt["count"] > 0:
+            _longest_min = _dt["longest_event_min"]
+            _longest_start = _dt["longest_event_start"]
+            notes.append(
+                f"  Downtime: {_dt['count']} nokta, {_dt['events']} olay, "
+                f"en uzun {_longest_min:.0f}dk (basladi: {_longest_start})"
+            )
+        # Spike detay
+        if _sp["count"] > 0:
+            _max_frac = _sp["max_frac_of_nominal"]
+            notes.append(
+                f"  Spike: {_sp['count']} nokta "
+                f"(mutlak={_sp['count_absolute']}, yerel={_sp['count_local']}), "
+                f"en yuksek nominal x{_max_frac:.2f}"
+            )
 
     # 1. SCADA'yı ham çözünürlükte kullan (frekans-agnostik)
     # --- Faz 1.6 Adim 3.3: frequency-agnostic calibration ---
@@ -424,6 +445,7 @@ def calibrate_from_scada(
         )
 
     # --- Faz 1.9.1: warnings return ---
+    # --- Faz 1.9.4: outlier_report return ---
     return CalibrationResult(
         plant=calibrated_plant,
         original_plant=plant,
@@ -434,6 +456,7 @@ def calibrate_from_scada(
         n_valid_hours=validation_after.n_samples,
         notes=notes,
         warnings=_warnings,
+        outlier_report=_outlier_report,
     )
 
 
