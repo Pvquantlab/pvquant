@@ -128,8 +128,10 @@ def _make_synthetic_scada(
 class TestCalibrationRegression1h:
     """1h SCADA + 1h meteo ile regresyon: baseline degerleri korunmali."""
 
+    # --- Faz 1.9.5: staticmethod fixture ---
+    @staticmethod
     @pytest.fixture(scope="class")
-    def calibration_result(self):
+    def calibration_result():
         """Bir kez hesapla, class icinde paylas (calibration pahali)."""
         meteo = _make_synthetic_meteo(freq="1h")
         plant = _make_synthetic_plant()
@@ -230,8 +232,10 @@ class TestCalibration15minSCADA:
     interpolasyon ve fit convergence'inden kaynaklanabilir.
     """
 
+    # --- Faz 1.9.5: staticmethod fixture ---
+    @staticmethod
     @pytest.fixture(scope="class")
-    def calibration_result(self):
+    def calibration_result():
         # 15dk meteo -> 15dk forecast -> 15dk SCADA
         meteo_15min = _make_synthetic_meteo(freq="15min")
         plant = _make_synthetic_plant()
