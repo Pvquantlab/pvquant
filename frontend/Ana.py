@@ -1,5 +1,5 @@
 """
-PVQuant Ana Giris Noktasi (Faz 2 Adim 1a - Yaklasim B+)
+PVQuant Ana Giris Noktasi (Faz 2 Adim 1a + 1b)
 
 Streamlit'in native sidebar'ini kullanir, CSS ile PVQuant tasarim
 sistemine uydurulur.
@@ -11,6 +11,7 @@ Calistirmak:
 """
 
 import sys
+from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -27,7 +28,7 @@ from sayfalar import PAGE_RENDERERS
 
 
 # ============================================================
-# SAYFA AYARLARI - ilk cagrildiginda geciyor
+# SAYFA AYARLARI
 # ============================================================
 st.set_page_config(
     page_title="PVQuant - Santralinizi tanıyan tahmin",
@@ -96,6 +97,45 @@ with st.sidebar:
         f'</div>',
         unsafe_allow_html=True,
     )
+
+
+# ============================================================
+# UST BAR (Adim 1b)
+# ============================================================
+_gunler = ["Pzt", "Sal", "Car", "Per", "Cum", "Cmt", "Paz"]
+_aylar = ["Oca", "Sub", "Mar", "Nis", "May", "Haz",
+          "Tem", "Agu", "Eyl", "Eki", "Kas", "Ara"]
+_now = datetime.now()
+_tarih_str = f"{_now.day} {_aylar[_now.month - 1]} {_now.year} · {_gunler[_now.weekday()]}"
+
+st.markdown(
+    f'<div class="pvq-topbar">'
+    f'  <div class="pvq-topbar-search">'
+    f'    <span>🔍</span>'
+    f'    <span class="pvq-topbar-search-text">Ara veya komut yaz...</span>'
+    f'    <span class="pvq-topbar-search-kbd">⌘K</span>'
+    f'  </div>'
+    f'  <div class="pvq-topbar-right">'
+    f'    <div class="pvq-topbar-plant">'
+    f'      <span class="pvq-topbar-plant-label">Santral</span>'
+    f'      <span class="pvq-topbar-plant-name">Konya GES</span>'
+    f'    </div>'
+    f'    <div class="pvq-topbar-live">'
+    f'      <span class="pvq-topbar-live-dot"></span>'
+    f'      <span>Veri akisi aktif</span>'
+    f'    </div>'
+    f'    <div class="pvq-topbar-date">{_tarih_str}</div>'
+    f'    <div class="pvq-topbar-avatar">'
+    f'      <div class="pvq-topbar-avatar-circle">D</div>'
+    f'      <div class="pvq-topbar-avatar-info">'
+    f'        <div class="pvq-topbar-avatar-name">Deniz Yilmaz</div>'
+    f'        <div class="pvq-topbar-avatar-org">Anadolu Enerji A.S.</div>'
+    f'      </div>'
+    f'    </div>'
+    f'  </div>'
+    f'</div>',
+    unsafe_allow_html=True,
+)
 
 
 # ============================================================

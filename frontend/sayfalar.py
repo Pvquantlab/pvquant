@@ -3,24 +3,19 @@ PVQuant Sayfa Fonksiyonlari (Faz 2 Adim 1a - Placeholder'lar)
 """
 
 import streamlit as st
+from components import page_header
 
 
 def _placeholder(page_title: str, subtitle: str, adim: str) -> None:
     """Standart placeholder ekran."""
-    # Sayfa basligi
-    st.markdown(
-        f'<div class="pvq-page-title">{page_title}</div>'
-        f'<div class="pvq-page-subtitle">{subtitle}</div>',
-        unsafe_allow_html=True,
-    )
+    page_header(page_title, subtitle)
 
-    # Placeholder kart
     st.markdown(
         f'<div class="pvq-placeholder">'
         f'  <div class="pvq-placeholder-title">{page_title}</div>'
         f'  <div>Bu ekran <strong>{adim}</strong>&apos;de gelecek.</div>'
         f'  <div style="margin-top:12px;font-size:12px;">'
-        f'    Su an sadece kabuk test ediliyor: sol menu, renkler, fontlar, footer.'
+        f'    Su an sadece kabuk test ediliyor: sol menu, ust bar, renkler, fontlar, footer.'
         f'  </div>'
         f'</div>',
         unsafe_allow_html=True,

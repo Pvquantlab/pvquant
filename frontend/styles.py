@@ -240,6 +240,276 @@ def _build_css() -> str:
         border-radius: 50%;
         background: {SUCCESS};
     }}
+    /* ============================================================ */
+    /* UST BAR (Adim 1b)                                            */
+    /* ============================================================ */
+
+    .pvq-topbar {{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: {SPACE_MD};
+        padding: {SPACE_SM} 0 {SPACE_MD} 0;
+        margin-bottom: {SPACE_LG};
+        border-bottom: 1px solid {BORDER};
+    }}
+
+    .pvq-topbar-search {{
+        display: flex;
+        align-items: center;
+        gap: {SPACE_SM};
+        background: {CARD_BG};
+        border: 1px solid {BORDER};
+        border-radius: {RADIUS_BUTTON};
+        padding: {SPACE_XS} {SPACE_MD};
+        color: {TEXT_TERTIARY};
+        font-size: {SIZE_BODY};
+        min-width: 320px;
+    }}
+    .pvq-topbar-search-text {{
+        flex: 1;
+    }}
+    .pvq-topbar-search-kbd {{
+        font-family: {FONT_MONO};
+        font-size: 11px;
+        color: {TEXT_TERTIARY};
+        border: 1px solid {BORDER};
+        border-radius: 4px;
+        padding: 1px 5px;
+        background: {PAGE_BG};
+    }}
+
+    .pvq-topbar-right {{
+        display: flex;
+        align-items: center;
+        gap: {SPACE_MD};
+    }}
+
+    .pvq-topbar-plant {{
+        display: flex;
+        align-items: center;
+        gap: {SPACE_XS};
+        font-size: {SIZE_LABEL};
+        padding: {SPACE_XS} {SPACE_SM};
+    }}
+    .pvq-topbar-plant-label {{
+        color: {TEXT_TERTIARY};
+        font-weight: {WEIGHT_MEDIUM};
+    }}
+    .pvq-topbar-plant-name {{
+        color: {TEXT_PRIMARY};
+        font-weight: {WEIGHT_SEMI};
+    }}
+
+    .pvq-topbar-live {{
+        display: flex;
+        align-items: center;
+        gap: {SPACE_XS};
+        font-size: {SIZE_CAPTION};
+        color: {SUCCESS};
+    }}
+    .pvq-topbar-live-dot {{
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: {SUCCESS};
+    }}
+
+    .pvq-topbar-date {{
+        font-family: {FONT_MONO};
+        font-size: {SIZE_CAPTION};
+        color: {TEXT_SECONDARY};
+    }}
+
+    .pvq-topbar-avatar {{
+        display: flex;
+        align-items: center;
+        gap: {SPACE_SM};
+    }}
+    .pvq-topbar-avatar-circle {{
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: {PRIMARY};
+        color: #FFFFFF;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: {WEIGHT_SEMI};
+        font-size: {SIZE_LABEL};
+    }}
+    .pvq-topbar-avatar-info {{
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        line-height: 1.2;
+    }}
+    .pvq-topbar-avatar-name {{
+        font-size: {SIZE_LABEL};
+        font-weight: {WEIGHT_SEMI};
+        color: {TEXT_PRIMARY};
+    }}
+    .pvq-topbar-avatar-org {{
+        font-size: {SIZE_CAPTION};
+        color: {TEXT_TERTIARY};
+    }}
+    /* ============================================================ */
+    /* PAYLASILAN BILESENLER (Adim 1c)                              */
+    /* ============================================================ */
+
+    /* Sayfa basligi satiri - sagda damga icin */
+    .pvq-page-header-row {{
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: {SPACE_MD};
+        margin-bottom: {SPACE_LG};
+    }}
+    .pvq-page-header-row .pvq-page-title,
+    .pvq-page-header-row .pvq-page-subtitle {{
+        margin-bottom: 0;
+    }}
+    .pvq-page-header-row .pvq-page-subtitle {{
+        margin-top: {SPACE_XS};
+    }}
+
+    /* Kart temel */
+    .pvq-card {{
+        background: {CARD_BG};
+        border: 1px solid {BORDER};
+        border-radius: {RADIUS_CARD};
+        padding: {SPACE_LG};
+    }}
+
+    /* KPI karti */
+    .pvq-kpi {{
+        display: flex;
+        flex-direction: column;
+        gap: {SPACE_SM};
+    }}
+    .pvq-kpi-value {{
+        font-size: 32px;
+        font-weight: {WEIGHT_BOLD};
+        color: {TEXT_PRIMARY};
+        line-height: 1.1;
+        display: flex;
+        align-items: baseline;
+        gap: {SPACE_XS};
+    }}
+    .pvq-kpi-value--success {{
+        color: {SUCCESS};
+    }}
+    .pvq-kpi-value--primary {{
+        color: {PRIMARY};
+    }}
+    .pvq-kpi-unit {{
+        font-size: {SIZE_BODY};
+        font-weight: {WEIGHT_MEDIUM};
+        color: {TEXT_SECONDARY};
+        font-family: {FONT_UI};
+    }}
+    .pvq-kpi-subtitle {{
+        font-size: {SIZE_CAPTION};
+        color: {TEXT_TERTIARY};
+    }}
+    .pvq-kpi-info {{
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        border: 1px solid {TEXT_TERTIARY};
+        color: {TEXT_TERTIARY};
+        font-size: 10px;
+        font-style: italic;
+        margin-left: 4px;
+        cursor: help;
+    }}
+
+    /* Pill/Rozet */
+    .pvq-pill {{
+        display: inline-flex;
+        align-items: center;
+        gap: {SPACE_XS};
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: {WEIGHT_SEMI};
+        border: 1px solid transparent;
+        white-space: nowrap;
+    }}
+    .pvq-pill--success {{
+        color: {SUCCESS};
+        border-color: {SUCCESS};
+        background: rgba(30, 158, 106, 0.08);
+    }}
+    .pvq-pill--primary {{
+        color: {PRIMARY};
+        border-color: {PRIMARY};
+        background: rgba(31, 82, 136, 0.08);
+    }}
+    .pvq-pill--neutral {{
+        color: {TEXT_SECONDARY};
+        border-color: {BORDER};
+        background: {PAGE_BG};
+    }}
+    .pvq-pill-dot {{
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+    }}
+
+    /* Marka bandi (Santralim ekraninin ust bolumu) */
+    .pvq-brand-band {{
+        background: linear-gradient(135deg, {DARK_NAVY} 0%, #1a2f4a 100%);
+        color: #FFFFFF;
+        border-radius: {RADIUS_CARD};
+        padding: {SPACE_LG} {SPACE_XL};
+        margin-bottom: {SPACE_LG};
+    }}
+    .pvq-brand-band-content {{
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: {SPACE_LG};
+    }}
+    .pvq-brand-band-name {{
+        font-size: 28px;
+        font-weight: {WEIGHT_BOLD};
+        letter-spacing: {LETTER_SPACING_TIGHT};
+        margin-bottom: {SPACE_XS};
+    }}
+    .pvq-brand-band-meta {{
+        font-size: {SIZE_BODY};
+        color: rgba(255, 255, 255, 0.7);
+        margin-bottom: {SPACE_MD};
+    }}
+    .pvq-brand-band-pills {{
+        display: flex;
+        gap: {SPACE_SM};
+    }}
+    .pvq-brand-band-pills .pvq-pill {{
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.2);
+    }}
+    .pvq-brand-band-pills .pvq-pill--success {{
+        color: #6EE7B7;
+        border-color: rgba(110, 231, 183, 0.4);
+        background: rgba(30, 158, 106, 0.15);
+    }}
+    .pvq-brand-band-weather {{
+        display: flex;
+        gap: {SPACE_LG};
+    }}
+    .pvq-brand-band-footer {{
+        margin-top: {SPACE_MD};
+        padding-top: {SPACE_MD};
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        font-size: {SIZE_BODY};
+        color: rgba(255, 255, 255, 0.8);
+    }}
     """
 
 
