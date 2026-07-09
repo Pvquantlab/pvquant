@@ -1,61 +1,32 @@
-# PVQuant Frontend
+# PVQuant Frontend - Streamlit UI (Faz 2)
 
-React + Vite + TypeScript frontend.
+Bu klasor, PVQuant kullanici arayuzunun Streamlit tabanli implementasyonunu icerir.
+Backend'e (src/pvquant/) yalnizca cagirarak bagli calisir; backend degistirilmez.
 
-## Kurulum
+## Kaynak belgeler
 
-```bash
-npm create vite@latest . -- --template react-ts
-npm install
-npm install axios recharts @tanstack/react-query
-```
+- docs/design/CLAUDE.md - Faz 2 kod tarafi sozlesmesi
+- docs/design/PVQuant_UI_Tasarim_Brief_v2.md - Gorsel/UX anayasasi
+- docs/design/PVQuant_Prototip_Final.html - Onaylanmis gorsel prototip
 
-## Çalıştırma
+## Calistirmak
 
-```bash
-npm run dev
-```
+    cd ~/Desktop/pvquant
+    source .venv/bin/activate
+    streamlit run frontend/Ana.py
 
-Backend `http://localhost:8000` üzerinde, frontend `http://localhost:5173` üzerinde çalışır.
+Ana.py Faz 2 Adim 1'de olusacak.
 
-## Yapı (önerilen)
+## Cagrilacak backend fonksiyonlari
 
-```
-frontend/
-├── src/
-│   ├── App.tsx
-│   ├── api/              # FastAPI client (axios)
-│   ├── components/
-│   │   ├── PlantForm.tsx       # PlantSpec girişi
-│   │   ├── ScadaUpload.tsx     # CSV upload
-│   │   ├── ForecastChart.tsx   # Recharts ile 7-gün grafiği
-│   │   └── ValidationCard.tsx  # MAPE/RMSE gösterimi
-│   └── pages/
-│       ├── ForecastOnly.tsx    # Meteo-only akışı
-│       └── Calibrated.tsx      # SCADA + kalibrasyon akışı
-```
+CLAUDE.md sozlesmesine gore UI yalnizca su 4 arayuzu cagirir:
 
-## Backend ile İletişim
+- calibrate_from_scada
+- forecast_7day
+- OpenMeteoClient
+- load_csv
 
-```typescript
-// src/api/client.ts
-import axios from 'axios';
+## Gizlilik denetimi
 
-export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-});
-
-// Meteo-only forecast
-export const getForecast = (plant: PlantSpec) =>
-  api.post('/forecast/', { plant });
-
-// SCADA + kalibrasyon
-export const calibrateAndForecast = (plant: PlantSpec, csv: File) => {
-  const fd = new FormData();
-  fd.append('plant_json', JSON.stringify(plant));
-  fd.append('scada_csv', csv);
-  return api.post('/calibration/', fd);
-};
-```
-
-CORS backend tarafında zaten açık (`api/main.py`).
+Her PR/commit oncesi UI metinlerinde yasak kelime taramasi yapilir.
+Detay: docs/design/CLAUDE.md - Gizlilik Anayasasi bolumu.

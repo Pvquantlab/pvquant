@@ -1,9 +1,13 @@
+# PVQuant Streamlit theme
+# CLAUDE.md ve UI Tasarim Brief v2 ile uyumlu.
+# Detayli tipografi ve renk sistemi global CSS ile enjekte edilir (Adim 1).
+
 [theme]
-base = "dark"
-primaryColor = "#F59E0B"
-backgroundColor = "#0F172A"
-secondaryBackgroundColor = "#1E293B"
-textColor = "#F1F5F9"
+base = "light"
+primaryColor = "#1F5288"
+backgroundColor = "#F7F8F9"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#0F1B28"
 font = "sans serif"
 
 [server]
