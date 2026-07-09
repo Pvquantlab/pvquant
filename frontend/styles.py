@@ -58,7 +58,6 @@ def _build_css() -> str:
         left: 0 !important;
         margin-left: 0 !important;
     }}
-    /* Sidebar'in animasyon wrapper'i */
     section[data-testid="stSidebar"] > div {{
         transform: none !important;
     }}
@@ -71,10 +70,6 @@ def _build_css() -> str:
         color: #FFFFFF !important;
     }}
 
-    /* NOT: Streamlit 1.58'in sidebar collapse butonunu gizleme kurallari
-       tum sidebar'i kirdigi icin cikarildi. Buton gorunur kaliyor. */
-
-    /* Sidebar butonlari - nav */
     section[data-testid="stSidebar"] button {{
         width: 100%;
         text-align: left;
@@ -103,7 +98,6 @@ def _build_css() -> str:
         border-color: {PRIMARY_HOVER} !important;
     }}
 
-    /* Marka blogu */
     .pvq-sidebar-brand {{
         font-size: {SIZE_H3};
         font-weight: {WEIGHT_BOLD};
@@ -114,7 +108,6 @@ def _build_css() -> str:
         letter-spacing: {LETTER_SPACING_TIGHT};
     }}
 
-    /* Gizlilik cumlesi */
     .pvq-sidebar-privacy {{
         color: #94A3B8 !important;
         font-size: {SIZE_CAPTION};
@@ -122,7 +115,6 @@ def _build_css() -> str:
         padding: {SPACE_MD} 0;
     }}
 
-    /* Kurulus blogu */
     .pvq-sidebar-org {{
         display: flex;
         align-items: center;
@@ -168,7 +160,6 @@ def _build_css() -> str:
         max-width: {CONTENT_MAX} !important;
     }}
 
-    /* Tipografi */
     .pvq-mono {{
         font-family: {FONT_MONO};
         font-feature-settings: 'tnum' 1, 'zero' 1;
@@ -198,7 +189,6 @@ def _build_css() -> str:
         color: {TEXT_TERTIARY};
     }}
 
-    /* Placeholder kart */
     .pvq-placeholder {{
         background: {CARD_BG};
         border: 1px dashed {BORDER};
@@ -215,7 +205,6 @@ def _build_css() -> str:
         margin-bottom: {SPACE_SM};
     }}
 
-    /* Footer */
     .pvq-footer {{
         border-top: 1px solid {BORDER};
         padding: {SPACE_MD} 0;
@@ -240,6 +229,7 @@ def _build_css() -> str:
         border-radius: 50%;
         background: {SUCCESS};
     }}
+
     /* ============================================================ */
     /* UST BAR (Adim 1b)                                            */
     /* ============================================================ */
@@ -253,7 +243,6 @@ def _build_css() -> str:
         margin-bottom: {SPACE_LG};
         border-bottom: 1px solid {BORDER};
     }}
-
     .pvq-topbar-search {{
         display: flex;
         align-items: center;
@@ -278,13 +267,11 @@ def _build_css() -> str:
         padding: 1px 5px;
         background: {PAGE_BG};
     }}
-
     .pvq-topbar-right {{
         display: flex;
         align-items: center;
         gap: {SPACE_MD};
     }}
-
     .pvq-topbar-plant {{
         display: flex;
         align-items: center;
@@ -300,7 +287,6 @@ def _build_css() -> str:
         color: {TEXT_PRIMARY};
         font-weight: {WEIGHT_SEMI};
     }}
-
     .pvq-topbar-live {{
         display: flex;
         align-items: center;
@@ -314,13 +300,11 @@ def _build_css() -> str:
         border-radius: 50%;
         background: {SUCCESS};
     }}
-
     .pvq-topbar-date {{
         font-family: {FONT_MONO};
         font-size: {SIZE_CAPTION};
         color: {TEXT_SECONDARY};
     }}
-
     .pvq-topbar-avatar {{
         display: flex;
         align-items: center;
@@ -353,11 +337,11 @@ def _build_css() -> str:
         font-size: {SIZE_CAPTION};
         color: {TEXT_TERTIARY};
     }}
+
     /* ============================================================ */
     /* PAYLASILAN BILESENLER (Adim 1c)                              */
     /* ============================================================ */
 
-    /* Sayfa basligi satiri - sagda damga icin */
     .pvq-page-header-row {{
         display: flex;
         justify-content: space-between;
@@ -373,7 +357,6 @@ def _build_css() -> str:
         margin-top: {SPACE_XS};
     }}
 
-    /* Kart temel */
     .pvq-card {{
         background: {CARD_BG};
         border: 1px solid {BORDER};
@@ -381,7 +364,6 @@ def _build_css() -> str:
         padding: {SPACE_LG};
     }}
 
-    /* KPI karti */
     .pvq-kpi {{
         display: flex;
         flex-direction: column;
@@ -427,7 +409,6 @@ def _build_css() -> str:
         cursor: help;
     }}
 
-    /* Pill/Rozet */
     .pvq-pill {{
         display: inline-flex;
         align-items: center;
@@ -503,6 +484,39 @@ def _build_css() -> str:
         display: flex;
         gap: {SPACE_LG};
     }}
+
+    /* Hava sutunlari - marka bandi sag tarafta */
+    .pvq-weather-col {{
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        padding: {SPACE_SM} {SPACE_MD};
+        border-radius: {RADIUS_BUTTON};
+        min-width: 76px;
+    }}
+    .pvq-weather-col--active {{
+        background: rgba(255, 255, 255, 0.08);
+    }}
+    .pvq-weather-day {{
+        font-size: 11px;
+        font-weight: {WEIGHT_SEMI};
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: rgba(255, 255, 255, 0.7);
+    }}
+    .pvq-weather-temp {{
+        font-size: 20px;
+        font-weight: {WEIGHT_BOLD};
+        color: #FFFFFF;
+        font-family: {FONT_MONO};
+    }}
+    .pvq-weather-ghi {{
+        font-size: {SIZE_CAPTION};
+        color: rgba(255, 255, 255, 0.6);
+        font-family: {FONT_MONO};
+    }}
+
     .pvq-brand-band-footer {{
         margin-top: {SPACE_MD};
         padding-top: {SPACE_MD};

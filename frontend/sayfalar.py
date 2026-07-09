@@ -4,6 +4,7 @@ PVQuant Sayfa Fonksiyonlari (Faz 2 Adim 1a - Placeholder'lar)
 
 import streamlit as st
 from components import page_header
+from santralim import render_santralim
 
 
 def _placeholder(page_title: str, subtitle: str, adim: str) -> None:
@@ -14,19 +15,8 @@ def _placeholder(page_title: str, subtitle: str, adim: str) -> None:
         f'<div class="pvq-placeholder">'
         f'  <div class="pvq-placeholder-title">{page_title}</div>'
         f'  <div>Bu ekran <strong>{adim}</strong>&apos;de gelecek.</div>'
-        f'  <div style="margin-top:12px;font-size:12px;">'
-        f'    Su an sadece kabuk test ediliyor: sol menu, ust bar, renkler, fontlar, footer.'
-        f'  </div>'
         f'</div>',
         unsafe_allow_html=True,
-    )
-
-
-def render_santralim() -> None:
-    _placeholder(
-        "Santralim",
-        "Santralinizin bugununu ve onumuzdeki 7 gunu tek bakista gorun",
-        "Adim 2",
     )
 
 
