@@ -1,5 +1,5 @@
 """
-PVQuant Sayfa Fonksiyonlari (Faz 2 Adim 1a - Placeholder'lar)
+PVQuant Sayfa Fonksiyonlari (Faz 2)
 """
 
 import streamlit as st
@@ -21,11 +21,8 @@ def _placeholder(page_title: str, subtitle: str, adim: str) -> None:
 
 
 def render_veri_yukleme() -> None:
-    _placeholder(
-        "Veri Yukleme",
-        "Tahmin yolunuzu secin; SCADA veriniz varsa kalibre tahmine gecin",
-        "Adim 3-4",
-    )
+    from veri_yukleme import render_veri_yukleme as _render
+    _render()
 
 
 def render_kalibrasyon() -> None:
