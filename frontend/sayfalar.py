@@ -26,11 +26,8 @@ def render_veri_yukleme() -> None:
 
 
 def render_kalibrasyon() -> None:
-    _placeholder(
-        "Kalibrasyon",
-        "Modeli santralinize uyarlama sihirbazi",
-        "Adim 4",
-    )
+    from kalibrasyon import render_kalibrasyon as _render
+    _render()
 
 
 def render_tahminler() -> None:
