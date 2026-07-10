@@ -2,7 +2,7 @@
 PVQuant Kalibrasyon Ekrani (Faz 2 Adim 4b)
 
 Adim 4b.1: PlantSpec formu + validation
-Adim 4b.2: Open-Meteo get_historical (sonra)
+Adim 4b.2: Open-Meteo get_historical
 Adim 4b.3: calibrate_from_scada + sonuç gösterimi (sonra)
 
 Ön koşul: session_state.scada_data varsa devam eder, yoksa uyarır.
@@ -20,7 +20,7 @@ from design_tokens import PRIMARY, SUCCESS, TEXT_SECONDARY, TEXT_TERTIARY, WARNI
 
 
 # ============================================================
-# Sihirbaz gostergesi - Adim 3 sonrasi, artık Kalibrasyon aktif
+# Sihirbaz gostergesi
 # ============================================================
 
 def _adim_gostergesi() -> None:
@@ -95,7 +95,7 @@ def _uyari_scada_yok() -> None:
 
 
 # ============================================================
-# Santral bilgi formu
+# 4b.1: Santral bilgi formu
 # ============================================================
 
 def _santral_formu() -> None:
@@ -231,7 +231,7 @@ def _santral_formu() -> None:
             help="180 = guney (kuzey yarikure icin ideal), 90 = dogu, 270 = bati",
         )
 
-    # XOR uyari - ikisi birden bilinmiyorsa
+    # XOR uyari
     if tilt_bilmiyorum and azimuth_bilmiyorum:
         st.markdown(
             f"""
@@ -294,7 +294,6 @@ def _santral_formu() -> None:
             use_container_width=True,
             type="primary",
         ):
-            # PlantSpec'i olustur ve session_state'e kaydet
             from pvquant.pipeline.forecast import PlantSpec
 
             plant = PlantSpec(
@@ -309,13 +308,186 @@ def _santral_formu() -> None:
             st.session_state.plant_spec = plant
             st.session_state.calibration_fit_tilt = tilt_bilmiyorum
             st.session_state.calibration_fit_azimuth = azimuth_bilmiyorum
+            st.session_state.calibration_stage = "meteo_fetch"
+            st.rerun()
 
-            # Adim 4b.2 henuz yok
-            st.info(
-                "Kalibrasyon baslatildi! Ancak 4b.2 (Open-Meteo cagrisi) ve "
-                "4b.3 (calibrate_from_scada) henuz uygulanmadi. "
-                "Adim 4b.1 (form) tamam."
+
+# ============================================================
+# 4b.2: Open-Meteo tarihsel meteo cagrisi
+# ============================================================
+
+@st.cache_data(show_spinner=False, ttl=3600)
+def _fetch_historical_meteo_cached(
+    latitude: float,
+    longitude: float,
+    start_date: str,
+    end_date: str,
+) -> dict:
+    """Cache'lenmis Open-Meteo cagrisi.
+
+    MeteoData nesnesi cache'lenemez (pd.Series icerir), bu yuzden
+    dict'e cevirip cache'liyoruz. Daha sonra tekrar MeteoData'ya donuyoruz.
+    """
+    from pvquant.io.meteo import OpenMeteoClient
+
+    client = OpenMeteoClient()
+    meteo = client.get_historical(
+        latitude=latitude,
+        longitude=longitude,
+        start_date=start_date,
+        end_date=end_date,
+    )
+    return {
+        "ghi": meteo.ghi,
+        "temp_air": meteo.temp_air,
+        "wind_speed_10m": meteo.wind_speed_10m,
+        "relative_humidity": meteo.relative_humidity,
+        "cloud_cover": meteo.cloud_cover,
+        "latitude": meteo.latitude,
+        "longitude": meteo.longitude,
+        "timezone": meteo.timezone,
+    }
+
+
+def _dict_to_meteodata(d: dict):
+    """Cache'lenmis dict'i MeteoData nesnesine cevir."""
+    from pvquant.io.meteo import MeteoData
+    return MeteoData(
+        ghi=d["ghi"],
+        temp_air=d["temp_air"],
+        wind_speed_10m=d["wind_speed_10m"],
+        relative_humidity=d["relative_humidity"],
+        cloud_cover=d["cloud_cover"],
+        latitude=d["latitude"],
+        longitude=d["longitude"],
+        timezone=d["timezone"],
+    )
+
+
+def _stage_meteo_fetch() -> None:
+    """Meteo cekilirken gosterilen ekran."""
+    scada = st.session_state.scada_data
+    plant = st.session_state.plant_spec
+
+    start_date = scada.power_kw.index.min().strftime("%Y-%m-%d")
+    end_date = scada.power_kw.index.max().strftime("%Y-%m-%d")
+
+    st.markdown(
+        f"""
+        <div class="pvq-card" style="text-align:center;padding:48px 24px">
+          <div style="font-size:48px;margin-bottom:16px">🌤</div>
+          <div style="font-size:20px;font-weight:600;color:#0F1B28;
+                      margin-bottom:12px">
+            Meteoroloji verisi cekiliyor
+          </div>
+          <div style="font-size:14px;color:{TEXT_SECONDARY};max-width:520px;
+                      margin:0 auto 24px auto">
+            Santralinizin bulundugu konum icin
+            <strong>{start_date}</strong> - <strong>{end_date}</strong>
+            tarihleri arasindaki profesyonel meteoroloji verisi cekiliyor.
+            Bu birkac saniye surer.
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    try:
+        with st.spinner("Tarihsel meteoroloji verisi cekiliyor..."):
+            meteo_dict = _fetch_historical_meteo_cached(
+                latitude=plant.latitude,
+                longitude=plant.longitude,
+                start_date=start_date,
+                end_date=end_date,
             )
+        meteo = _dict_to_meteodata(meteo_dict)
+        st.session_state.historical_meteo = meteo
+        st.session_state.calibration_stage = "meteo_done"
+        st.rerun()
+
+    except Exception as e:
+        st.session_state.calibration_stage = "meteo_error"
+        st.session_state.calibration_error = str(e)
+        st.rerun()
+
+
+def _stage_meteo_error() -> None:
+    """Meteo cekimi basarisiz oldu."""
+    err = st.session_state.get("calibration_error", "Bilinmeyen hata")
+
+    st.markdown(
+        f"""
+        <div class="pvq-card" style="border-left:3px solid {WARNING};
+             text-align:center;padding:48px 24px">
+          <div style="font-size:48px;margin-bottom:16px">⚠</div>
+          <div style="font-size:20px;font-weight:600;color:#0F1B28;
+                      margin-bottom:12px">
+            Meteoroloji verisi cekilemedi
+          </div>
+          <div style="font-size:14px;color:{TEXT_SECONDARY};max-width:520px;
+                      margin:0 auto 8px auto">
+            Baglanti sorunu ya da servis gecici olarak kullanilmiyor olabilir.
+          </div>
+          <div style="font-size:12px;color:{TEXT_TERTIARY};
+                      font-family:IBM Plex Mono,monospace;
+                      margin-top:16px;padding:8px;
+                      background:#F7F8F9;border-radius:4px;
+                      max-width:600px;margin-left:auto;margin-right:auto">
+            {err}
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        if st.button("← Forma don", key="err_geri", use_container_width=True):
+            st.session_state.calibration_stage = "form"
+            st.rerun()
+    with col2:
+        if st.button(
+            "Tekrar dene",
+            key="err_retry",
+            use_container_width=True,
+            type="primary",
+        ):
+            st.session_state.calibration_stage = "meteo_fetch"
+            st.rerun()
+
+
+def _stage_meteo_done() -> None:
+    """Meteo cekildi, sirada calibrate_from_scada var (4b.3)."""
+    meteo = st.session_state.historical_meteo
+    n_saat = len(meteo.ghi)
+
+    st.markdown(
+        f"""
+        <div class="pvq-card" style="border-left:3px solid {SUCCESS}">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+            <span style="color:{SUCCESS};font-size:18px">✓</span>
+            <span style="font-size:15px;font-weight:600">
+              Meteoroloji verisi basariyla cekildi
+            </span>
+          </div>
+          <div style="font-size:13px;color:{TEXT_SECONDARY}">
+            {n_saat:,} saatlik veri ({meteo.timezone}) hazir.
+          </div>
+        </div>
+        """.replace(",", "."),
+        unsafe_allow_html=True,
+    )
+
+    st.info(
+        "Adim 4b.2 (Open-Meteo) tamam! "
+        "Adim 4b.3 (calibrate_from_scada) henuz uygulanmadi."
+    )
+
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        if st.button("← Forma don", key="done_geri", use_container_width=True):
+            st.session_state.calibration_stage = "form"
+            st.rerun()
 
 
 # ============================================================
@@ -336,4 +508,15 @@ def render_kalibrasyon() -> None:
         _uyari_scada_yok()
         return
 
-    _santral_formu()
+    # Stage yonetimi
+    stage = st.session_state.get("calibration_stage", "form")
+    if stage == "form":
+        _santral_formu()
+    elif stage == "meteo_fetch":
+        _stage_meteo_fetch()
+    elif stage == "meteo_error":
+        _stage_meteo_error()
+    elif stage == "meteo_done":
+        _stage_meteo_done()
+    else:
+        _santral_formu()
