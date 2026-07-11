@@ -31,11 +31,8 @@ def render_kalibrasyon() -> None:
 
 
 def render_tahminler() -> None:
-    _placeholder(
-        "Tahminler",
-        "7 gunluk saatlik uretim tahmini ve model bulgular",
-        "Adim 5",
-    )
+    from tahminler import render_tahminler as _render
+    _render()
 
 
 def render_raporlar() -> None:
