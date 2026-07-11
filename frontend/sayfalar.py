@@ -36,11 +36,8 @@ def render_tahminler() -> None:
 
 
 def render_raporlar() -> None:
-    _placeholder(
-        "Raporlar",
-        "PDF yonetici ozeti, Excel tam veri, JSON API formati",
-        "Adim 6",
-    )
+    from raporlar import render_raporlar as _render
+    _render()
 
 
 PAGE_RENDERERS = {

@@ -22,3 +22,4 @@ pydantic-settings>=2.0
 
 # Dev tools
 pytest>=7.4
+fpdf2>=2.8
