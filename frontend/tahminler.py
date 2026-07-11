@@ -551,6 +551,116 @@ def _tablo_7_gun(result) -> None:
 # ============================================================
 # ANA render
 # ============================================================
+# ============================================================
+# 5d: Export butonlari + API URL
+# ============================================================
+
+def _export_ve_api_bolumu() -> None:
+    """CSV, Excel, JSON download + API URL kopyala kutusu."""
+    import io
+    import pandas as pd
+
+    result = st.session_state.forecast_result
+    plant = st.session_state.plant_spec
+
+    hourly = result.hourly.copy()
+    # Kolon adlarini kullanici dostu yap
+    hourly_export = hourly.reset_index().rename(columns={"index": "timestamp"})
+
+    # CSV
+    csv_bytes = hourly_export.to_csv(index=False).encode("utf-8")
+
+    # Excel - openpyxl timezone-aware datetime kabul etmiyor,
+    # timestamp'i tz-unaware'e cevir (sadece Excel icin)
+    hourly_excel = hourly_export.copy()
+    if pd.api.types.is_datetime64_any_dtype(hourly_excel["timestamp"]):
+        if hourly_excel["timestamp"].dt.tz is not None:
+            hourly_excel["timestamp"] = hourly_excel["timestamp"].dt.tz_localize(None)
+
+    excel_buffer = io.BytesIO()
+    with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:
+        hourly_excel.to_excel(writer, index=False, sheet_name="Saatlik Tahmin")
+        # Ozet sayfasi
+        ozet_df = pd.DataFrame({
+            "Metrik": [
+                "Toplam uretim (7 gun)",
+                "Ortalama gunluk",
+                "Pik guc",
+                "Kapasite faktoru",
+                "Latitude",
+                "Longitude",
+                "Kurulu guc (kWp)",
+            ],
+            "Deger": [
+                f"{result.total_kwh:.1f} kWh",
+                f"{result.average_daily_kwh:.1f} kWh",
+                f"{result.peak_power_kw:.2f} kW",
+                f"{result.capacity_factor:.3f}",
+                plant.latitude,
+                plant.longitude,
+                plant.p_nom_kwp,
+            ],
+        })
+        ozet_df.to_excel(writer, index=False, sheet_name="Ozet")
+    excel_bytes = excel_buffer.getvalue()
+
+    # JSON
+    json_bytes = hourly_export.to_json(orient="records", date_format="iso").encode("utf-8")
+
+    # Ust satir: 3 buton + API URL kutusu
+    st.markdown(
+        '<div class="pvq-card" style="margin-top:16px">'
+        '<div style="display:flex;justify-content:space-between;'
+        'align-items:center;margin-bottom:12px">'
+        '<div style="font-size:15px;font-weight:600">Disa aktar</div>'
+        '<div style="font-size:11px;color:#6B7684;'
+        'text-transform:uppercase;letter-spacing:0.05em;font-weight:600">'
+        '168 saatlik veri'
+        '</div>'
+        '</div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+    cols = st.columns([1, 1, 1, 3])
+    with cols[0]:
+        st.download_button(
+            label="⬇ CSV",
+            data=csv_bytes,
+            file_name="pvquant_tahmin_7gun.csv",
+            mime="text/csv",
+            use_container_width=True,
+            key="dl_csv",
+        )
+    with cols[1]:
+        st.download_button(
+            label="⬇ Excel",
+            data=excel_bytes,
+            file_name="pvquant_tahmin_7gun.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True,
+            key="dl_xlsx",
+        )
+    with cols[2]:
+        st.download_button(
+            label="⬇ JSON",
+            data=json_bytes,
+            file_name="pvquant_tahmin_7gun.json",
+            mime="application/json",
+            use_container_width=True,
+            key="dl_json",
+        )
+    with cols[3]:
+        # API URL - dekoratif, kopyalanabilir
+        api_url = "https://api.pvquant.io/v1/santral/konya-ges/tahmin"
+        st.text_input(
+            "API adresi (yakinda)",
+            value=api_url,
+            key="api_url",
+            label_visibility="collapsed",
+            disabled=True,
+            help="REST API entegrasyonu yakinda gelecek",
+        )
 
 def render_tahminler() -> None:
     page_header(
@@ -573,5 +683,10 @@ def render_tahminler() -> None:
 
     _uyarilar_karti()
 
-    # 5c: Forecast + grafik + tablo
+  # 5c: Forecast + grafik + tablo
     _forecast_bolumu()
+
+    # 5d: Export butonlari
+    if "forecast_result" in st.session_state:
+        _export_ve_api_bolumu()
+        
