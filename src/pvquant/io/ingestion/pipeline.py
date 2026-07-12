@@ -22,6 +22,11 @@ Self-healing prensibi (Fable 5, Temmuz 2026):
 
 Hiçbir şey tutmazsa MappingFailedError fırlatılır — ölü uç yerine
 yapılandırılmış istisna, UI kırmızı kutu yerine manuel eşleme kurar.
+
+MappingFailedError'da initial_fmt ile okunmuş kolonlar dönülür
+(son denenen değil), çünkü detection'ın ilk çıkarımı en makul olan;
+manuel eşleme kullanıcının anlayabileceği gerçek kolon adlarını
+göstermeli.
 """
 from __future__ import annotations
 
@@ -48,9 +53,9 @@ class MappingFailedError(Exception):
     yerine yapılandırılmış bilgi taşır:
 
     Attributes:
-        columns: Dosyada bulunan tüm kolonlar
+        columns: Dosyada bulunan tüm kolonlar (initial detection'a göre)
         sample_rows: İlk ~10 satır (kullanıcıya gösterilecek)
-        file_format: Denenmiş son format (kullanıcı düzeltebilir)
+        file_format: Denenmiş initial format (kullanıcı düzeltebilir)
         original_error: Sözlük eşlemesinin ham ValueError'ı
     """
 
@@ -111,13 +116,22 @@ def _try_mapping_variants(
 
     Raises:
         MappingFailedError: hiçbir varyant eşlemeyi çalıştıramazsa
+            (initial_fmt ile okunmuş df/kolonlarla — en makul olan)
     """
     is_excel = path.suffix.lower() in (".xlsx", ".xls")
     notes: list[str] = []
     best: Optional[tuple[float, FileFormat, pd.DataFrame, ColumnMapping, list[str]]] = None
     last_error: Optional[Exception] = None
-    last_read_df: Optional[pd.DataFrame] = None
-    last_fmt: FileFormat = initial_fmt
+
+    # İlk okuma - initial_fmt ile. Bu MappingFailedError'da kullanılacak
+    # (son denenen varyant genellikle saçma olur — yanlış ayraç, çok
+    # yüksek header_row. İlk deneme en makul olandır).
+    initial_df: Optional[pd.DataFrame] = None
+    try:
+        initial_df = _read_raw(path, initial_fmt)
+        initial_df.columns = [str(c).strip() for c in initial_df.columns]
+    except Exception as e:
+        last_error = e
 
     # Varyant seti oluştur (initial önce)
     variants: list[FileFormat] = [initial_fmt]
@@ -148,15 +162,16 @@ def _try_mapping_variants(
                     variants.append(v)
 
     for i, fmt in enumerate(variants):
-        try:
-            df = _read_raw(path, fmt)
-            df.columns = [str(c).strip() for c in df.columns]
-        except Exception as e:
-            last_error = e
-            continue
-
-        last_read_df = df
-        last_fmt = fmt
+        # İlk varyant için initial_df'i yeniden okumaya gerek yok
+        if i == 0 and initial_df is not None:
+            df = initial_df
+        else:
+            try:
+                df = _read_raw(path, fmt)
+                df.columns = [str(c).strip() for c in df.columns]
+            except Exception as e:
+                last_error = e
+                continue
 
         try:
             mapping, unmapped = suggest_mapping(df)
@@ -186,14 +201,20 @@ def _try_mapping_variants(
                 break
 
     if best is None:
-        # Hiçbir varyant eşleme kuramadı → MappingFailedError
-        sample = (last_read_df.head(10) if last_read_df is not None
-                  else pd.DataFrame())
-        columns = list(map(str, last_read_df.columns)) if last_read_df is not None else []
+        # Hiçbir varyant eşleme kuramadı → MappingFailedError.
+        # BURADA: initial_df kullan (son denenen değil), çünkü initial
+        # detection'ın en makul çıkarımıdır. Kullanıcı UI'da doğru
+        # kolonları göreceği için manuel eşleme çalışabilir.
+        if initial_df is not None:
+            sample = initial_df.head(10)
+            columns = list(map(str, initial_df.columns))
+        else:
+            sample = pd.DataFrame()
+            columns = []
         raise MappingFailedError(
             columns=columns,
             sample_rows=sample,
-            file_format=last_fmt,
+            file_format=initial_fmt,
             original_error=last_error or ValueError("Bilinmeyen eşleme hatası"),
         )
 

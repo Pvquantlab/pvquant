@@ -10,6 +10,9 @@ Ingestion akisi (2 bolum, tek sayfa):
                        + santral bilgisi formu + ornek satirlar
   2. Onayla + Karne: ingest_file -> kalite karnesi + to_clean_frame() saklanir
                      -> "Kalibrasyona gec" butonu aktif
+
+MappingFailedError: otomatik esleme basarisiz olursa manuel esleme
+mini-ekrani devreye girer (dropdown'lar + ornek satirlar).
 """
 
 import os
@@ -27,6 +30,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from pvquant.io.ingestion import (
     ColumnMapping,
     FileFormat,
+    MappingFailedError,
     TemplateStore,
     ingest_file,
     preview_file,
@@ -438,6 +442,125 @@ def _notlar_karti(pv) -> None:
     )
 
 
+# --- Manuel esleme mini ekrani (MappingFailedError yakalayinca) ---
+
+def _manuel_esleme_ekrani(err: MappingFailedError, tmp_path: str) -> None:
+    """Otomatik esleme basarisiz olunca kullaniciya dropdown'larla soruyoruz.
+
+    En az timestamp + (power VEYA energy) secmesi gerek. Onaylayinca
+    session_state.scada_preview'a IngestionPreview yerlestirilir ve
+    normal akis devam eder.
+    """
+    st.markdown(
+        f"""
+        <div class="pvq-card" style="margin-top:16px;
+             border-left:3px solid {WARNING};background:rgba(201,80,46,0.06)">
+          <div style="font-size:15px;font-weight:600;color:#0F1B28;
+                      margin-bottom:8px">
+            Otomatik esleme basarisiz — manuel secim gerekli
+          </div>
+          <div style="font-size:13px;color:{TEXT_SECONDARY};line-height:1.6">
+            Sistem dosyanizin kolonlarini otomatik taniyamadi. Asagidan 
+            hangi kolonun zamani ve hangisinin guc/enerjiyi tasidigini 
+            secin. Diger alanlar opsiyoneldir.
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Ornek satirlar (varsa) goster
+    if len(err.sample_rows) > 0:
+        with st.expander("Dosyadan ornek satirlar (ilk 10)", expanded=True):
+            st.dataframe(err.sample_rows, use_container_width=True, height=280)
+
+    # Dropdown'lar
+    kolonlar = ["(seciniz)"] + list(err.columns)
+
+    col1, col2 = st.columns(2)
+    with col1:
+        timestamp_col = st.selectbox(
+            "Zaman kolonu *", options=kolonlar, key="manuel_ts",
+            help="Tarih/saat bilgisini tasiyan kolon",
+        )
+        power_col = st.selectbox(
+            "Guc kolonu (kW/MW)", options=kolonlar, key="manuel_pow",
+            help="Anlik guc degerleri. Bu YOKSA enerji kolonu secmelisiniz.",
+        )
+        poa_col = st.selectbox(
+            "Isinim (POA) — opsiyonel", options=kolonlar, key="manuel_poa",
+        )
+        temp_ambient_col = st.selectbox(
+            "Ortam sicakligi — opsiyonel", options=kolonlar, key="manuel_temp",
+        )
+    with col2:
+        energy_col = st.selectbox(
+            "Enerji kolonu (kWh) — guc yoksa zorunlu",
+            options=kolonlar, key="manuel_ene",
+            help="Aralik enerjisi veya kumulatif sayac.",
+        )
+        temp_module_col = st.selectbox(
+            "Modul sicakligi — opsiyonel", options=kolonlar, key="manuel_tmod",
+        )
+        wind_col = st.selectbox(
+            "Ruzgar hizi — opsiyonel", options=kolonlar, key="manuel_wind",
+        )
+        ghi_col = st.selectbox(
+            "GHI (yatay isinim) — opsiyonel", options=kolonlar, key="manuel_ghi",
+        )
+
+    st.markdown("<div style='margin-top:16px'></div>", unsafe_allow_html=True)
+
+    # Dogrulama ve devam
+    if st.button("Bu esleme ile devam et", key="manuel_devam",
+                 type="primary", use_container_width=True):
+        if timestamp_col == "(seciniz)":
+            st.error("Zaman kolonu zorunludur.")
+            return
+        if power_col == "(seciniz)" and energy_col == "(seciniz)":
+            st.error("En az bir guc veya enerji kolonu secmelisiniz.")
+            return
+
+        def _or_none(col):
+            return None if col == "(seciniz)" else col
+
+        manual_mapping = ColumnMapping(
+            timestamp=timestamp_col,
+            power=_or_none(power_col),
+            energy=_or_none(energy_col),
+            poa_irradiance=_or_none(poa_col),
+            temp_ambient=_or_none(temp_ambient_col),
+            temp_module=_or_none(temp_module_col),
+            wind_speed=_or_none(wind_col),
+            ghi=_or_none(ghi_col),
+            confidence={},  # manuel secim - guven skorlamasi yok
+        )
+
+        # IngestionPreview'i taklit et
+        from pvquant.io.ingestion import IngestionPreview
+        secilen = {v for v in [
+            manual_mapping.timestamp,
+            manual_mapping.power,
+            manual_mapping.energy,
+            manual_mapping.poa_irradiance,
+            manual_mapping.temp_ambient,
+            manual_mapping.temp_module,
+            manual_mapping.wind_speed,
+            manual_mapping.ghi,
+        ] if v is not None}
+        st.session_state.scada_preview = IngestionPreview(
+            file_format=err.file_format,
+            mapping=manual_mapping,
+            unmapped_columns=[c for c in err.columns if c not in secilen],
+            sample_rows=err.sample_rows,
+            matched_template=None,
+            notes=["Manuel esleme kullanildi."],
+        )
+        # Manuel esleme bayrakini kaldir ki normal akis devam etsin
+        st.session_state.pop("scada_mapping_failed", None)
+        st.rerun()
+
+
 # --- Kalite karnesi ---
 
 def _kalite_karnesi_karti(result) -> None:
@@ -554,7 +677,8 @@ def _render_mod_b_scada() -> None:
     if st.button("← Yol ayrimina don", key="scada_geri", type="secondary"):
         st.session_state.veri_yukleme_mod = "yol_ayrimi"
         for k in ("scada_preview", "scada_result", "scada_clean",
-                  "scada_filename", "scada_tmp_path"):
+                  "scada_filename", "scada_tmp_path",
+                  "scada_mapping_failed"):
             st.session_state.pop(k, None)
         st.rerun()
 
@@ -609,7 +733,8 @@ def _render_mod_b_scada() -> None:
             except OSError:
                 pass
         # Sonuclari sifirla
-        for k in ("scada_preview", "scada_result", "scada_clean"):
+        for k in ("scada_preview", "scada_result", "scada_clean",
+                  "scada_mapping_failed"):
             st.session_state.pop(k, None)
         
         # Yeni gecici dosya
@@ -622,21 +747,29 @@ def _render_mod_b_scada() -> None:
     tmp_path = st.session_state.scada_tmp_path
     
     # Preview cagirma (cache session'da)
-    if "scada_preview" not in st.session_state:
+    if "scada_preview" not in st.session_state and \
+       "scada_mapping_failed" not in st.session_state:
         try:
             with st.spinner("Dosya analiz ediliyor..."):
                 pv = preview_file(tmp_path, template_store=_TEMPLATE_STORE)
             st.session_state.scada_preview = pv
-        except ValueError as e:
-            st.error(f"Dosya cozumlenemedi: {e}")
+        except MappingFailedError as e:
+            # Yapilandirilmis istisna: manuel esleme ekrani kur
+            st.session_state.scada_mapping_failed = e
+        except Exception as e:
+            st.error(f"Dosya okunurken hata: {e}")
             st.info(
                 "Ipucu: Dosyanizda en azindan bir 'zaman' ve bir 'guc/enerji' "
                 "kolonu olmali. Baslik satiri dosyanin ilk 10 satirinda olmali."
             )
             return
-        except Exception as e:
-            st.error(f"Dosya okunurken hata: {e}")
-            return
+    
+    # Manuel esleme gerekiyor mu?
+    if "scada_mapping_failed" in st.session_state:
+        _manuel_esleme_ekrani(
+            st.session_state.scada_mapping_failed, tmp_path,
+        )
+        return
     
     pv = st.session_state.scada_preview
     
@@ -713,7 +846,8 @@ def _render_mod_b_scada() -> None:
                 except OSError:
                     pass
             for k in ("scada_preview", "scada_result", "scada_clean",
-                      "scada_filename", "scada_tmp_path"):
+                      "scada_filename", "scada_tmp_path",
+                      "scada_mapping_failed"):
                 st.session_state.pop(k, None)
             st.rerun()
     with col2:
