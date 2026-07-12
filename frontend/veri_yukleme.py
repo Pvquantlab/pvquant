@@ -1,27 +1,41 @@
 """
-PVQuant Veri Yukleme Ekrani (Faz 2 Adim 3 + 4a)
+PVQuant Veri Yukleme Ekrani (Faz 2 Adim 3 + 4a + Ingestion)
 
 Iki mod:
 - Mod A (varsayilan): 'SCADA veriniz var mi?' - Hizli vs Kalibre yol ayrimi
-- Mod B (scada_upload): CSV yukleme + load_csv cagrisi + ozet
+- Mod B (scada_upload): CSV yukleme + ingestion (preview -> onayla -> karne)
 
-Mod B'ye gecis: session_state.veri_yukleme_mod = 'scada_upload'
-Adim 3'teki 'Kalibre tahmine gec' butonu bunu tetikler.
+Ingestion akisi (2 bolum, tek sayfa):
+  1. Yukle + Onizleme: preview_file -> format karti + kolon eslemesi
+                       + santral bilgisi formu + ornek satirlar
+  2. Onayla + Karne: ingest_file -> kalite karnesi + to_clean_frame() saklanir
+                     -> "Kalibrasyona gec" butonu aktif
 """
 
+import os
 import sys
-from datetime import datetime
-from pathlib import Path
 import tempfile
+from pathlib import Path
 
 import streamlit as st
 
 from components import page_header
-from design_tokens import PRIMARY, SUCCESS, TEXT_SECONDARY, TEXT_TERTIARY
+from design_tokens import PRIMARY, SUCCESS, TEXT_SECONDARY, TEXT_TERTIARY, WARNING
 
-# Backend import (Adim 4a)
+# Backend import - yeni ingestion katmani
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-from pvquant.io.scada import load_csv
+from pvquant.io.ingestion import (
+    ColumnMapping,
+    FileFormat,
+    TemplateStore,
+    ingest_file,
+    preview_file,
+)
+
+# Sablon deposu - kullanicinin ikinci yuklemesinde otomatik esleme
+_TEMPLATE_STORE = TemplateStore(
+    Path(__file__).parent.parent / "ingestion_templates"
+)
 
 
 # ============================================================
@@ -31,7 +45,6 @@ from pvquant.io.scada import load_csv
 def _adim_gostergesi(aktif_adim: int = 2) -> None:
     """Sihirbaz - 1: Santral, 2: Veri yolu, 3: Sonuc."""
     def _dot(num, label, state):
-        # state: 'done' | 'active' | 'pending'
         if state == "done":
             bg = SUCCESS
             fg = "white"
@@ -85,11 +98,10 @@ def _adim_gostergesi(aktif_adim: int = 2) -> None:
 
 
 # ============================================================
-# MOD A: Yol ayrimi kartlari
+# MOD A: Yol ayrimi kartlari (degismedi)
 # ============================================================
 
 def _yol_karti(baslik, ikon, sapma_txt, maddeler, buton_metni, onerilen, on_click_action):
-    """Iki yol karti icin ortak render."""
     onerilen_rozet = ""
     kart_style = "border:1px solid #E2E6EA;background:white"
     if onerilen:
@@ -142,7 +154,6 @@ def _yol_karti(baslik, ikon, sapma_txt, maddeler, buton_metni, onerilen, on_clic
         """,
         unsafe_allow_html=True,
     )
-    # Butonu Streamlit ile - callback'i tetiklemek icin
     st.button(
         buton_metni,
         key=f"yol_{on_click_action}",
@@ -153,7 +164,6 @@ def _yol_karti(baslik, ikon, sapma_txt, maddeler, buton_metni, onerilen, on_clic
 
 
 def _render_mod_a() -> None:
-    """Mod A: SCADA veriniz var mi? - iki kart."""
     _adim_gostergesi(aktif_adim=2)
 
     st.markdown(
@@ -217,17 +227,335 @@ def _render_mod_a() -> None:
 
 
 # ============================================================
-# MOD B: SCADA CSV yukleme + load_csv cagrisi
+# MOD B: SCADA yukleme (Ingestion akisi)
 # ============================================================
 
+# --- Santral bilgisi formu (ingestion parametreleri icin) ---
+
+def _santral_bilgi_formu() -> dict | None:
+    """4 alanli santral bilgisi formu.
+    
+    Returns:
+        dict: {capacity_kwp, latitude, longitude, timezone} veya None
+    """
+    # Onceki oturumdan varsa varsayilan olarak koy
+    saved = st.session_state.get("plant_context", {})
+    
+    st.markdown(
+        f"""
+        <div style="margin-top:8px;margin-bottom:12px">
+          <div style="font-size:15px;font-weight:600;color:#0F1B28;
+                      margin-bottom:4px">Santral bilgisi</div>
+          <div style="font-size:12px;color:{TEXT_SECONDARY}">
+            Bu bilgiler dosyanin dogru okunmasi icin gerekli 
+            (birim tespiti, saat dilimi, gece uretimi kontrolu).
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        capacity = st.number_input(
+            "Kurulu guc (kWp)",
+            min_value=1.0, max_value=1_000_000.0,
+            value=float(saved.get("capacity_kwp", 4514.0)),
+            step=100.0, key="ing_capacity",
+        )
+        latitude = st.number_input(
+            "Enlem",
+            min_value=-90.0, max_value=90.0,
+            value=float(saved.get("latitude", 37.87)),
+            step=0.01, format="%.4f", key="ing_lat",
+        )
+    with col2:
+        timezone_options = [
+            "Europe/Istanbul", "UTC", "Europe/London", "Europe/Berlin",
+            "America/New_York", "America/Los_Angeles",
+            "Asia/Tokyo", "Australia/Sydney", "Australia/Darwin",
+        ]
+        default_tz = saved.get("timezone", "Europe/Istanbul")
+        tz_index = timezone_options.index(default_tz) if default_tz in timezone_options else 0
+        timezone = st.selectbox(
+            "Saat dilimi (dosyadaki zamanlar)",
+            options=timezone_options,
+            index=tz_index,
+            key="ing_tz",
+            help="Dosyanizdaki zaman damgalari hangi dilimde? "
+                 "Emin degilseniz 'UTC' secin.",
+        )
+        longitude = st.number_input(
+            "Boylam",
+            min_value=-180.0, max_value=180.0,
+            value=float(saved.get("longitude", 32.49)),
+            step=0.01, format="%.4f", key="ing_lon",
+        )
+    
+    return {
+        "capacity_kwp": capacity,
+        "latitude": latitude,
+        "longitude": longitude,
+        "timezone": timezone,
+    }
+
+
+# --- Onizleme kartlari ---
+
+def _format_karti(pv) -> None:
+    """Preview file_format bilgisini gosteren kart."""
+    ff = pv.file_format
+    conf_renk = SUCCESS if ff.confidence >= 0.7 else WARNING
+    
+    matched_rozet = ""
+    if pv.matched_template:
+        matched_rozet = f"""
+        <div style="margin-bottom:12px">
+          <span style="background:rgba(30,158,106,0.12);color:{SUCCESS};
+                       padding:4px 10px;border-radius:999px;font-size:11px;
+                       font-weight:600;letter-spacing:0.05em">
+            ✓ '{pv.matched_template}' SABLONU ILE ESLESTI
+          </span>
+        </div>
+        """
+    
+    rows_html = ""
+    for label, value in [
+        ("Kodlama", ff.encoding),
+        ("Ayrac", repr(ff.delimiter)),
+        ("Ondalik", repr(ff.decimal)),
+        ("Baslik satiri", str(ff.header_row + 1)),
+    ]:
+        rows_html += (
+            f'<div style="display:flex;justify-content:space-between;'
+            f'padding:6px 0;font-size:13px">'
+            f'<span style="color:{TEXT_SECONDARY}">{label}</span>'
+            f'<span style="font-family:IBM Plex Mono,monospace;'
+            f'color:#0F1B28;font-weight:500">{value}</span>'
+            f'</div>'
+        )
+    
+    st.markdown(
+        f"""
+        <div class="pvq-card" style="height:100%">
+          {matched_rozet}
+          <div style="display:flex;justify-content:space-between;
+                      align-items:center;margin-bottom:12px">
+            <div style="font-size:15px;font-weight:600">Dosya formati</div>
+            <span style="font-family:IBM Plex Mono,monospace;font-size:11px;
+                         color:{conf_renk};font-weight:600">
+              guven %{ff.confidence * 100:.0f}
+            </span>
+          </div>
+          {rows_html}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _kolon_eslemesi_karti(pv) -> None:
+    """Preview kolon eslemesini gosteren kart."""
+    m = pv.mapping
+    alan_isimleri = {
+        "timestamp": "Zaman",
+        "power": "Guc",
+        "energy": "Enerji",
+        "poa_irradiance": "Isinim (POA)",
+        "temp_ambient": "Ortam sicakligi",
+        "temp_module": "Modul sicakligi",
+        "wind_speed": "Ruzgar hizi",
+        "ghi": "Yatay isinim (GHI)",
+    }
+    
+    rows_html = ""
+    for alan, tr_isim in alan_isimleri.items():
+        col_adi = getattr(m, alan, None)
+        if col_adi is None:
+            continue
+        conf = m.confidence.get(alan, 1.0)
+        conf_renk = SUCCESS if conf >= 0.6 else WARNING
+        rows_html += (
+            f'<div style="display:flex;justify-content:space-between;'
+            f'align-items:center;padding:6px 0;font-size:13px">'
+            f'<span style="color:{TEXT_SECONDARY}">{tr_isim}</span>'
+            f'<span style="display:flex;align-items:center;gap:8px">'
+            f'<span style="font-family:IBM Plex Mono,monospace;'
+            f'color:#0F1B28;font-weight:500;font-size:12px">{col_adi}</span>'
+            f'<span style="font-family:IBM Plex Mono,monospace;font-size:10px;'
+            f'color:{conf_renk};font-weight:600">%{conf * 100:.0f}</span>'
+            f'</span>'
+            f'</div>'
+        )
+    
+    unmapped_html = ""
+    if pv.unmapped_columns:
+        unmapped_txt = ", ".join(pv.unmapped_columns[:3])
+        if len(pv.unmapped_columns) > 3:
+            unmapped_txt += f" +{len(pv.unmapped_columns) - 3} daha"
+        unmapped_html = f"""
+        <div style="margin-top:12px;padding-top:12px;
+                    border-top:1px solid #E2E6EA;
+                    font-size:11px;color:{TEXT_TERTIARY}">
+          Yoksayilan: {unmapped_txt}
+        </div>
+        """
+    
+    st.markdown(
+        f"""
+        <div class="pvq-card" style="height:100%">
+          <div style="font-size:15px;font-weight:600;margin-bottom:12px">
+            Kolon eslemesi
+          </div>
+          {rows_html}
+          {unmapped_html}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _notlar_karti(pv) -> None:
+    """Preview notes'lari uyari olarak gosterir."""
+    if not pv.notes:
+        return
+    
+    notlar_html = "".join(f"<li style='margin-bottom:6px'>{n}</li>" for n in pv.notes)
+    st.markdown(
+        f"""
+        <div class="pvq-card" style="margin-top:16px;
+             border-left:3px solid {WARNING};background:rgba(201,80,46,0.04)">
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px">
+            Kontrol edilmesi gerekenler
+          </div>
+          <ul style="margin:0;padding-left:20px;font-size:13px;
+                     color:{TEXT_SECONDARY};line-height:1.6">
+            {notlar_html}
+          </ul>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+# --- Kalite karnesi ---
+
+def _kalite_karnesi_karti(result) -> None:
+    """ingest_file sonucundaki QualityReport'u gosterir."""
+    r = result.report
+    valid_renk = SUCCESS if r.valid_fraction >= 0.9 else WARNING
+    
+    # KPI seridi
+    st.markdown(
+        f"""
+        <div class="pvq-card" style="margin-top:16px">
+          <div style="font-size:15px;font-weight:600;margin-bottom:16px">
+            Veri kaliteniz
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:24px">
+            <div>
+              <div class="pvq-microlabel">OKUNAN SATIR</div>
+              <div style="font-family:IBM Plex Mono,monospace;
+                          font-size:22px;font-weight:700">
+                {r.n_rows_read:,}</div>
+            </div>
+            <div>
+              <div class="pvq-microlabel">GECERLI SATIR</div>
+              <div style="font-family:IBM Plex Mono,monospace;
+                          font-size:22px;font-weight:700;color:{valid_renk}">
+                {r.n_rows_valid:,}</div>
+              <div style="font-size:11px;color:{TEXT_SECONDARY};margin-top:2px">
+                %{r.valid_fraction * 100:.1f}</div>
+            </div>
+            <div>
+              <div class="pvq-microlabel">BOSLUK</div>
+              <div style="font-family:IBM Plex Mono,monospace;
+                          font-size:22px;font-weight:700">
+                {r.gap_hours}</div>
+              <div style="font-size:11px;color:{TEXT_SECONDARY};margin-top:2px">
+                saat</div>
+            </div>
+            <div>
+              <div class="pvq-microlabel">TARIH ARALIGI</div>
+              <div style="font-family:IBM Plex Mono,monospace;
+                          font-size:12px;font-weight:600;line-height:1.4">
+                {r.coverage_start[:10] if r.coverage_start else '-'}<br>
+                {r.coverage_end[:10] if r.coverage_end else '-'}</div>
+            </div>
+          </div>
+        </div>
+        """.replace(",", "."),
+        unsafe_allow_html=True,
+    )
+    
+    # Bayrak dagilimi
+    flag_labels = {
+        "negative_power": "Negatif guc",
+        "night_production": "Gece uretimi",
+        "over_capacity": "Kapasite ustu",
+        "frozen_value": "Donmus deger",
+        "duplicate_time": "Tekrar eden zaman",
+        "dst_ambiguous": "Yaz saati belirsizligi",
+        "unparseable": "Okunamayan",
+    }
+    
+    rows_html = ""
+    for flag, count in sorted(r.flag_counts.items(), key=lambda kv: -kv[1]):
+        if flag == "valid" or count == 0:
+            continue
+        label = flag_labels.get(flag, flag)
+        renk = WARNING if flag == "night_production" else TEXT_SECONDARY
+        rows_html += (
+            f'<div style="display:flex;justify-content:space-between;'
+            f'padding:8px 0;border-bottom:1px solid #F0F2F4;font-size:13px">'
+            f'<span style="color:{renk}">{label}</span>'
+            f'<span style="font-family:IBM Plex Mono,monospace;'
+            f'font-weight:600">{count:,}</span>'
+            f'</div>'
+        )
+    
+    if rows_html:
+        st.markdown(
+            f"""
+            <div class="pvq-card" style="margin-top:12px">
+              <div style="font-size:13px;font-weight:600;margin-bottom:8px">
+                Bayrakli satirlar (kalibrasyona girmez)
+              </div>
+              {rows_html}
+            </div>
+            """.replace(",", "."),
+            unsafe_allow_html=True,
+        )
+    
+    # Uyarilar (ozellikle gece uretimi = tz hatasi)
+    for uyari in r.warnings:
+        tz_hatasi = "saat dilimi" in uyari.lower()
+        renk = "#C9502E" if tz_hatasi else WARNING
+        bg = "rgba(201,80,46,0.08)" if tz_hatasi else "rgba(201,80,46,0.04)"
+        st.markdown(
+            f"""
+            <div class="pvq-card" style="margin-top:12px;
+                 border-left:3px solid {renk};background:{bg}">
+              <div style="font-size:13px;color:#0F1B28;line-height:1.6">
+                {uyari}
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
+# --- Mod B ana render ---
+
 def _render_mod_b_scada() -> None:
-    """Mod B: CSV yukleme + load_csv + ozet."""
+    """Mod B: CSV yukleme + ingestion pipeline."""
     _adim_gostergesi(aktif_adim=2)
 
-    # Geri donme
     if st.button("← Yol ayrimina don", key="scada_geri", type="secondary"):
         st.session_state.veri_yukleme_mod = "yol_ayrimi"
-        st.session_state.pop("scada_data", None)
+        for k in ("scada_preview", "scada_result", "scada_clean",
+                  "scada_filename", "scada_tmp_path"):
+            st.session_state.pop(k, None)
         st.rerun()
 
     st.markdown(
@@ -238,17 +566,17 @@ def _render_mod_b_scada() -> None:
             SCADA verinizi yukleyin
           </div>
           <div style="font-size:14px;color:{TEXT_SECONDARY}">
-            En az 3 ay veri onerilir. Turkce ve Ingilizce sutun adlari otomatik tanindir.
+            Herhangi bir format kabul edilir — Turkce/Ingilizce sutunlar, 
+            cp1254/utf-8, virgul/noktali virgul, kW/MW hepsi otomatik tespit.
           </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # File uploader
     uploaded = st.file_uploader(
-        "CSV dosyasi",
-        type=["csv"],
+        "CSV / Excel dosyasi",
+        type=["csv", "xlsx", "xls"],
         key="scada_uploader",
         label_visibility="collapsed",
     )
@@ -259,190 +587,145 @@ def _render_mod_b_scada() -> None:
             <div style="margin-top:16px;padding:16px;background:#F7F8F9;
                         border:1px solid #E2E6EA;border-radius:8px;
                         font-size:13px;color:{TEXT_SECONDARY}">
-              <strong>Ipucu:</strong> SCADA dosyanizin en az 'zaman' ve 'guc' sutunlarini
-              icermesi yeterli. Isinim (POA), sicaklik, ruzgar gibi ek sutunlar varsa
-              kalibrasyon daha isabetli olur.
+              <strong>Ne kabul edilir:</strong> Zaman kolonu + Guc (kW/MW) 
+              veya Enerji (kWh) kolonu zorunlu. Isinim, sicaklik, ruzgar 
+              gibi ek sutunlar varsa kalibrasyon daha isabetli olur.
             </div>
             """,
             unsafe_allow_html=True,
         )
         return
 
-    # Yuklendi - load_csv cagir
-    # Streamlit file_uploader BytesIO doner, load_csv Path bekliyor
-    # Gecici dosyaya yazip yolu ver
-    with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as tmp:
-        tmp.write(uploaded.getvalue())
-        tmp_path = tmp.name
-
-    try:
-        with st.spinner("Dosya okunuyor ve sutunlar tanindir..."):
-            # Once virgul ile dene, olmazsa noktali virgul
+    # --- BOLUM 1: Yukle + Onizleme ---
+    
+    # Gecici dosya (yalniz preview icin - ingest sonrasi silinir)
+    if "scada_tmp_path" not in st.session_state or \
+       st.session_state.get("scada_filename") != uploaded.name:
+        # Yeni dosya - eskiyi temizle
+        old_tmp = st.session_state.get("scada_tmp_path")
+        if old_tmp and os.path.exists(old_tmp):
             try:
-                scada = load_csv(tmp_path, delimiter=",")
-            except (ValueError, Exception):
-                try:
-                    scada = load_csv(tmp_path, delimiter=";", decimal=",")
-                except Exception as e2:
-                    st.error(f"Dosya okunamadi: {e2}")
-                    return
-
-        st.session_state.scada_data = scada
+                os.unlink(old_tmp)
+            except OSError:
+                pass
+        # Sonuclari sifirla
+        for k in ("scada_preview", "scada_result", "scada_clean"):
+            st.session_state.pop(k, None)
+        
+        # Yeni gecici dosya
+        suffix = "." + uploaded.name.rsplit(".", 1)[-1]
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+            tmp.write(uploaded.getvalue())
+            st.session_state.scada_tmp_path = tmp.name
         st.session_state.scada_filename = uploaded.name
 
-    except Exception as e:
-        st.error(f"Dosya okunurken hata: {e}")
-        return
-
-    # Basari - ozet karti
-    _scada_ozet_karti(scada, uploaded.name)
-
-
-def _scada_ozet_karti(scada, filename: str) -> None:
-    """Yuklenen SCADA'nin ozet karti."""
-    n_kayit = len(scada.power_kw)
-    baslangic = scada.power_kw.index.min()
-    bitis = scada.power_kw.index.max()
-    sure_gun = (bitis - baslangic).days
-
-    # Tespit edilen ek sutunlar
-    ek_sutunlar = []
-    for isim, sutun in [
-        ("POA (isinim)", scada.poa_irradiance),
-        ("Enerji (kWh)", scada.energy_kwh),
-    ]:
-        if sutun is not None:
-            ek_sutunlar.append(isim)
-    # Diger optional sutunlari da kontrol et
-    for attr, label in [
-        ("temperature_ambient", "Ortam sicakligi"),
-        ("temperature_module", "Modul sicakligi"),
-        ("wind_speed", "Ruzgar hizi"),
-    ]:
-        val = getattr(scada, attr, None)
-        if val is not None:
-            ek_sutunlar.append(label)
-
-    ek_sutunlar_html = ""
-    if ek_sutunlar:
-        rozet_html = "".join(
-            f'<span style="display:inline-block;padding:4px 10px;'
-            f'background:rgba(30,158,106,0.08);color:{SUCCESS};'
-            f'border:1px solid rgba(30,158,106,0.2);'
-            f'border-radius:999px;font-size:12px;margin-right:6px;'
-            f'margin-bottom:6px;font-weight:500">{s}</span>'
-            for s in ek_sutunlar
-        )
-        ek_sutunlar_html = f"""
-        <div style="margin-top:16px">
-          <div style="font-size:12px;color:{TEXT_TERTIARY};margin-bottom:8px;
-                      text-transform:uppercase;letter-spacing:0.05em;font-weight:600">
-            Ek sutunlar tespit edildi
-          </div>
-          <div>{rozet_html}</div>
-        </div>
-        """
-
-    # Yeterlilik uyarisi
-    yeterlilik = ""
-    if sure_gun < 90:
-        yeterlilik = f"""
-        <div style="margin-top:16px;padding:12px 16px;
-                    background:rgba(201,80,46,0.08);
-                    border-left:3px solid #C9502E;
-                    border-radius:4px;font-size:13px;color:#0F1B28">
-          <strong>Dikkat:</strong> {sure_gun} gunluk veriniz var, 90 gunden az.
-          Kalibre tahmin yerine Hizli tahmini onerdik.
-        </div>
-        """
-    elif sure_gun < 365:
-        yeterlilik = f"""
-        <div style="margin-top:16px;padding:12px 16px;
-                    background:rgba(31,82,136,0.06);
-                    border-left:3px solid {PRIMARY};
-                    border-radius:4px;font-size:13px;color:#0F1B28">
-          <strong>Iyi:</strong> {sure_gun} gunluk veri kalibre tahmin icin yeterli.
-          12 ay ({sure_gun}/365) veriye ulasirsaniz mevsimsel dogruluk artar.
-        </div>
-        """
-    else:
-        yeterlilik = f"""
-        <div style="margin-top:16px;padding:12px 16px;
-                    background:rgba(30,158,106,0.08);
-                    border-left:3px solid {SUCCESS};
-                    border-radius:4px;font-size:13px;color:#0F1B28">
-          <strong>Mukemmel:</strong> {sure_gun} gunluk veri kalibrasyon icin ideal.
-        </div>
-        """
-
-    baslangic_str = baslangic.strftime("%d %b %Y").replace(baslangic.strftime("%b"),
-        {"Jan":"Oca","Feb":"Sub","Mar":"Mar","Apr":"Nis","May":"May","Jun":"Haz",
-         "Jul":"Tem","Aug":"Agu","Sep":"Eyl","Oct":"Eki","Nov":"Kas","Dec":"Ara"}
-        [baslangic.strftime("%b")])
-    bitis_str = bitis.strftime("%d %b %Y").replace(bitis.strftime("%b"),
-        {"Jan":"Oca","Feb":"Sub","Mar":"Mar","Apr":"Nis","May":"May","Jun":"Haz",
-         "Jul":"Tem","Aug":"Agu","Sep":"Eyl","Oct":"Eki","Nov":"Kas","Dec":"Ara"}
-        [bitis.strftime("%b")])
-
-    st.markdown(
-        f"""
-        <div class="pvq-card" style="margin-top:24px;
-             border-left:3px solid {SUCCESS}">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
-            <span style="color:{SUCCESS};font-size:18px">✓</span>
-            <span style="font-size:15px;font-weight:600">
-              {filename} - Basariyla okundu
-            </span>
-          </div>
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px">
-            <div>
-              <div style="font-size:11px;color:{TEXT_TERTIARY};
-                          text-transform:uppercase;letter-spacing:0.05em;
-                          font-weight:600;margin-bottom:6px">Kayit sayisi</div>
-              <div style="font-family:IBM Plex Mono,monospace;font-size:20px;
-                          font-weight:700;color:#0F1B28">
-                {n_kayit:,}</div>
-            </div>
-            <div>
-              <div style="font-size:11px;color:{TEXT_TERTIARY};
-                          text-transform:uppercase;letter-spacing:0.05em;
-                          font-weight:600;margin-bottom:6px">Tarih araligi</div>
-              <div style="font-family:IBM Plex Mono,monospace;font-size:14px;
-                          font-weight:600;color:#0F1B28">
-                {baslangic_str}<br>{bitis_str}</div>
-            </div>
-            <div>
-              <div style="font-size:11px;color:{TEXT_TERTIARY};
-                          text-transform:uppercase;letter-spacing:0.05em;
-                          font-weight:600;margin-bottom:6px">Sure</div>
-              <div style="font-family:IBM Plex Mono,monospace;font-size:20px;
-                          font-weight:700;color:#0F1B28">
-                {sure_gun} gun</div>
-            </div>
-          </div>
-          {ek_sutunlar_html}
-          {yeterlilik}
-        </div>
-        """.replace(",", "."),
-        unsafe_allow_html=True,
-    )
-
+    tmp_path = st.session_state.scada_tmp_path
+    
+    # Preview cagirma (cache session'da)
+    if "scada_preview" not in st.session_state:
+        try:
+            with st.spinner("Dosya analiz ediliyor..."):
+                pv = preview_file(tmp_path, template_store=_TEMPLATE_STORE)
+            st.session_state.scada_preview = pv
+        except ValueError as e:
+            st.error(f"Dosya cozumlenemedi: {e}")
+            st.info(
+                "Ipucu: Dosyanizda en azindan bir 'zaman' ve bir 'guc/enerji' "
+                "kolonu olmali. Baslik satiri dosyanin ilk 10 satirinda olmali."
+            )
+            return
+        except Exception as e:
+            st.error(f"Dosya okunurken hata: {e}")
+            return
+    
+    pv = st.session_state.scada_preview
+    
+    # Onizleme: 2 sutun (format + kolon) yan yana, sonra santral formu
     st.markdown("<div style='margin-top:16px'></div>", unsafe_allow_html=True)
+    c1, c2 = st.columns(2, gap="medium")
+    with c1:
+        _format_karti(pv)
+    with c2:
+        _kolon_eslemesi_karti(pv)
+    
+    _notlar_karti(pv)
+    
+    # Ornek satirlar
+    with st.expander("Dosyadan ornek satirlar (ilk 10)"):
+        st.dataframe(pv.sample_rows, use_container_width=True, height=280)
+    
+    # Santral bilgisi formu
+    st.markdown("<div style='margin-top:24px'></div>", unsafe_allow_html=True)
+    plant_ctx = _santral_bilgi_formu()
+    
+    # --- BOLUM 2: Onayla + Karne ---
+    
+    st.markdown("<div style='margin-top:16px'></div>", unsafe_allow_html=True)
+    
+    if "scada_result" not in st.session_state:
+        if st.button(
+            "Onayla ve dogrula",
+            key="ingest_onayla",
+            use_container_width=True,
+            type="primary",
+        ):
+            try:
+                with st.spinner("Veri donusturuluyor ve dogrulaniyor..."):
+                    result = ingest_file(
+                        tmp_path,
+                        capacity_kwp=plant_ctx["capacity_kwp"],
+                        latitude=plant_ctx["latitude"],
+                        longitude=plant_ctx["longitude"],
+                        source_timezone=plant_ctx["timezone"],
+                        file_format=pv.file_format,
+                        mapping=pv.mapping,
+                    )
+                st.session_state.scada_result = result
+                st.session_state.scada_clean = result.to_clean_frame()
+                st.session_state.plant_context = plant_ctx
+                # Sablonu kaydet (ikinci yuklemede otomatik esleme)
+                try:
+                    _TEMPLATE_STORE.save(
+                        f"user_{uploaded.name.rsplit('.', 1)[0]}",
+                        result.to_template(),
+                    )
+                except Exception:
+                    pass  # sablon kaydi kritik degil
+                st.rerun()
+            except Exception as e:
+                st.error(f"Islem sirasinda hata: {e}")
+                return
+        return
+    
+    # Sonuc var - kalite karnesi goster
+    result = st.session_state.scada_result
+    _kalite_karnesi_karti(result)
+    
+    # Alt butonlar
+    st.markdown("<div style='margin-top:20px'></div>", unsafe_allow_html=True)
     col1, col2 = st.columns([1, 1])
     with col1:
         if st.button("Farkli dosya sec", key="farkli_dosya", use_container_width=True):
-            st.session_state.pop("scada_data", None)
-            st.session_state.pop("scada_filename", None)
+            # Gecici dosyayi temizle
+            if os.path.exists(tmp_path):
+                try:
+                    os.unlink(tmp_path)
+                except OSError:
+                    pass
+            for k in ("scada_preview", "scada_result", "scada_clean",
+                      "scada_filename", "scada_tmp_path"):
+                st.session_state.pop(k, None)
             st.rerun()
     with col2:
-        st.button(
+        # Kalibrasyona gec - clean frame session'da hazir
+        if st.button(
             "Kalibrasyona gec →",
             key="kalibrasyona_gec",
             use_container_width=True,
             type="primary",
-            disabled=True,
-            help="Kalibrasyon sayfasi Adim 4b'de gelecek",
-        )
+        ):
+            st.session_state.active_page = "kalibrasyon"
+            st.rerun()
 
 
 # ============================================================
@@ -450,8 +733,6 @@ def _scada_ozet_karti(scada, filename: str) -> None:
 # ============================================================
 
 def render_veri_yukleme() -> None:
-    """Veri Yukleme sayfasi - iki modlu."""
-    # Session state init
     if "veri_yukleme_mod" not in st.session_state:
         st.session_state.veri_yukleme_mod = "yol_ayrimi"
 
@@ -460,11 +741,10 @@ def render_veri_yukleme() -> None:
     if mod == "scada_upload":
         page_header(
             "Veri Yukleme",
-            "SCADA verinizi yukleyin, model sutunlarinizi otomatik tanisin",
+            "SCADA verinizi yukleyin — format otomatik tespit + kalite kontrolu",
         )
         _render_mod_b_scada()
     elif mod == "hizli":
-        # Hizli tahmin secildi - Adim 5'e yonlendir (henuz yok)
         st.session_state.veri_yukleme_mod = "yol_ayrimi"
         st.info("Hizli tahmin akisi Adim 5'te gelecek. Simdilik yol ayrimina donduruldunuz.")
         _render_mod_a_wrapper()
@@ -473,7 +753,6 @@ def render_veri_yukleme() -> None:
 
 
 def _render_mod_a_wrapper():
-    """Mod A icin sayfa basligi + gorsel."""
     page_header(
         "Veri Yukleme",
         "Tahmin yolunuzu secin — SCADA veriniz varsa kalibre tahmine gecin",
