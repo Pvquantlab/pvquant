@@ -11,7 +11,7 @@ import pandas as pd
 import pytest
 
 from pvquant.io.ingestion import (
-    RowFlag, TemplateStore, ingest_file, preview_file,
+    MappingFailedError, RowFlag, TemplateStore, ingest_file, preview_file,
 )
 
 LAT, LON, CAP_KWP = 37.87, 32.49, 4514.0
@@ -35,8 +35,7 @@ def _hourly_power_profile(n_days: int, tz: str) -> pd.Series:
 
 
 # ---------------------------------------------------------------------------
-# Senaryo 1: Türkçe FusionSolar tarzı — cp1254, ';', ondalık virgül,
-# 4 satır meta, yerel saat, Türkçe kolon adları
+# Senaryo 1: Türkçe FusionSolar tarzı
 # ---------------------------------------------------------------------------
 
 @pytest.fixture
@@ -77,21 +76,18 @@ def test_turkish_fusionsolar_end_to_end(turkish_csv):
         path, capacity_kwp=CAP_KWP, latitude=LAT, longitude=LON,
         source_timezone=TZ, file_format=pv.file_format, mapping=pv.mapping,
     )
-    # UTC'ye çevrildi mi? (Istanbul = UTC+3)
     assert str(result.data.index.tz) == "UTC"
     first_local = original.index[0]
     assert result.data.index[0] == first_local.tz_convert("UTC")
-    # Değerler ondalık virgüle rağmen doğru okundu mu?
     got = result.data["power_kw"].iloc[:100].values
     want = original.iloc[:100].round(1).values
     np.testing.assert_allclose(got, want, atol=0.06)
-    # Kalite: her satır geçerli, gece üretimi uyarısı YOK
     assert result.report.valid_fraction > 0.98
     assert not any("saat dilimi" in w for w in result.report.warnings)
 
 
 # ---------------------------------------------------------------------------
-# Senaryo 2: MW birimli, virgül ayraçlı, UTC zamanlı dosya
+# Senaryo 2: MW birimli, UTC zamanlı
 # ---------------------------------------------------------------------------
 
 def test_mw_unit_detection(tmp_path):
@@ -106,7 +102,6 @@ def test_mw_unit_detection(tmp_path):
     result = ingest_file(path, capacity_kwp=CAP_KWP, latitude=LAT,
                          longitude=LON, source_timezone="UTC")
     assert result.transform.power_unit == "MW"
-    # kW'a çevrilmiş olmalı
     np.testing.assert_allclose(
         result.data["power_kw"].iloc[:50].values,
         p.iloc[:50].values, rtol=0.01,
@@ -114,15 +109,15 @@ def test_mw_unit_detection(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# Senaryo 3: 15 dakikalık, yalnız enerji (kWh) kolonu → saatlik güce
+# Senaryo 3: 15 dakikalık, yalnız enerji → saatlik güce
 # ---------------------------------------------------------------------------
 
 def test_energy_only_15min_to_hourly_power(tmp_path):
     times = pd.date_range("2025-05-01", periods=10 * 96, freq="15min", tz="UTC")
-    hour = times.hour + times.minute / 60
+    hour = np.array(times.hour) + np.array(times.minute) / 60
     bell = np.clip(np.sin(np.pi * (hour - 3.3) / 13), 0, None) ** 1.6
     power_kw = CAP_KWP * 0.8 * bell
-    energy_kwh_15 = power_kw * 0.25          # 15 dk enerji = P × 0.25h
+    energy_kwh_15 = power_kw * 0.25
 
     df = pd.DataFrame({
         "Time": times.tz_localize(None).strftime("%Y-%m-%d %H:%M"),
@@ -135,21 +130,19 @@ def test_energy_only_15min_to_hourly_power(tmp_path):
                          longitude=LON, source_timezone="UTC")
     assert result.transform.energy_to_power is True
     assert result.transform.timestep_minutes == 60
-    # Saatlik enerji toplamı = 4 × 15dk; güç = o toplam / 1h
     hourly_expected = pd.Series(energy_kwh_15, index=times).resample("1h").sum()
     np.testing.assert_allclose(
         result.data["power_kw"].values,
-        hourly_expected.values, rtol=1e-3,   # CSV 3 ondalıkla yazıldı
+        hourly_expected.values, rtol=1e-3,
     )
 
 
 # ---------------------------------------------------------------------------
-# Senaryo 4: Saat dilimi HATASI — UTC veri "yerel" diye yüklenirse
-# gece üretimi bayrağı ve uyarı üretilmeli
+# Senaryo 4: Saat dilimi hatası → gece üretimi uyarısı
 # ---------------------------------------------------------------------------
 
 def test_timezone_mistake_triggers_night_warning(tmp_path):
-    p = _hourly_power_profile(20, TZ)          # gerçek: Istanbul yereli
+    p = _hourly_power_profile(20, TZ)
     df = pd.DataFrame({
         "Time": p.index.tz_localize(None).strftime("%Y-%m-%d %H:%M"),
         "Power(kW)": p.values.round(1),
@@ -157,7 +150,6 @@ def test_timezone_mistake_triggers_night_warning(tmp_path):
     path = tmp_path / "tz_mistake.csv"
     df.to_csv(path, index=False)
 
-    # Kullanıcı yanlışlıkla "UTC" seçti → üretim 3 saat kayar
     result = ingest_file(path, capacity_kwp=CAP_KWP, latitude=LAT,
                          longitude=LON, source_timezone="UTC")
     n_night = result.report.flag_counts.get(RowFlag.NIGHT_PRODUCTION.value, 0)
@@ -166,15 +158,15 @@ def test_timezone_mistake_triggers_night_warning(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# Senaryo 5: Kalite kuralları — negatif, kapasite üstü, donmuş değer
+# Senaryo 5: Kalite kuralları
 # ---------------------------------------------------------------------------
 
 def test_quality_flags(tmp_path):
     p = _hourly_power_profile(10, "UTC")
     vals = p.values.copy()
-    vals[30] = -500.0                    # büyük negatif
-    vals[40] = CAP_KWP * 1.5             # kapasite üstü
-    vals[56:64] = 1234.5                 # 8 saat donmuş (08-15 UTC, gün ortası)
+    vals[30] = -500.0
+    vals[40] = CAP_KWP * 1.5
+    vals[56:64] = 1234.5
     df = pd.DataFrame({
         "Time": p.index.tz_localize(None).strftime("%Y-%m-%d %H:%M"),
         "Power(kW)": vals.round(1),
@@ -188,7 +180,6 @@ def test_quality_flags(tmp_path):
     assert fc.get(RowFlag.NEGATIVE_POWER.value, 0) >= 1
     assert fc.get(RowFlag.OVER_CAPACITY.value, 0) >= 1
     assert fc.get(RowFlag.FROZEN_VALUE.value, 0) >= 4
-    # to_clean_frame bayraklıları dışlar
     clean = result.to_clean_frame()
     assert len(clean) == result.report.n_rows_valid
     assert "flag" not in clean.columns
@@ -196,7 +187,7 @@ def test_quality_flags(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# Senaryo 6: Şablon döngüsü — kaydet, eşleştir, yeniden kullan
+# Senaryo 6: Şablon döngüsü
 # ---------------------------------------------------------------------------
 
 def test_template_roundtrip(turkish_csv, tmp_path):
@@ -204,7 +195,7 @@ def test_template_roundtrip(turkish_csv, tmp_path):
     store = TemplateStore(tmp_path / "templates")
 
     pv1 = preview_file(path, template_store=store)
-    assert pv1.matched_template is None          # ilk sefer: şablon yok
+    assert pv1.matched_template is None
 
     result = ingest_file(
         path, capacity_kwp=CAP_KWP, latitude=LAT, longitude=LON,
@@ -212,6 +203,166 @@ def test_template_roundtrip(turkish_csv, tmp_path):
     )
     store.save("fusionsolar_tr_v1", result.to_template())
 
-    pv2 = preview_file(path, template_store=store)  # ikinci sefer
+    pv2 = preview_file(path, template_store=store)
     assert pv2.matched_template == "fusionsolar_tr_v1"
     assert pv2.mapping.power == "Aktif Güç(kW)"
+
+
+# ---------------------------------------------------------------------------
+# Senaryo 7: MERKAS xlsx — başlık 5. satırda
+# ---------------------------------------------------------------------------
+
+def test_merkas_xlsx_header_row_detection(tmp_path):
+    """MERKAS xlsx dosyalarında başlık genellikle 5. satırda olur;
+    üstünde 'Tesis Raporu_MERKAS GES' ve boş satırlar bulunur."""
+    p = _hourly_power_profile(10, TZ)
+
+    meta_rows = [
+        ["Tesis Raporu_MERKAS GES"] + [None] * 3,
+        ["Rapor Aralığı", "01.03.2025 - 10.03.2025", None, None],
+        ["Kapasite", "4514 kWp", None, None],
+        [None, None, None, None],
+    ]
+    header_row = ["Zaman", "Aktif Güç (kW)", "POA Işınım (W/m2)", "Ortam (°C)"]
+    data_rows = []
+    for t, v in p.items():
+        local = t.tz_localize(None)
+        data_rows.append([
+            local.strftime("%Y-%m-%d %H:%M"),
+            round(float(v), 1),
+            round(max(0, float(v) / CAP_KWP * 1000), 0),
+            round(15 + 10 * np.sin(local.hour / 24 * np.pi), 1),
+        ])
+
+    all_rows = meta_rows + [header_row] + data_rows
+    df = pd.DataFrame(all_rows)
+    path = tmp_path / "merkas.xlsx"
+    df.to_excel(path, index=False, header=False)
+
+    pv = preview_file(path)
+    assert pv.file_format.header_row == 4
+    assert pv.mapping.timestamp == "Zaman"
+    assert pv.mapping.power == "Aktif Güç (kW)"
+
+    result = ingest_file(
+        path, capacity_kwp=CAP_KWP, latitude=LAT, longitude=LON,
+        source_timezone=TZ, file_format=pv.file_format, mapping=pv.mapping,
+    )
+    assert result.report.valid_fraction > 0.95
+
+
+# ---------------------------------------------------------------------------
+# Senaryo 8: Kümülatif ömür sayacı → aralık enerjisi
+# ---------------------------------------------------------------------------
+
+def test_cumulative_energy_counter_diff(tmp_path):
+    """SolarEdge Etotal, Enphase whLifetime: ömür sayacı (monoton artan).
+    Aralık enerjisi olarak yorumlanırsa güç yüzlerce kat yanlış çıkar."""
+    times = pd.date_range("2025-05-01", periods=200, freq="h", tz="UTC")
+    hour = np.array(times.hour) + np.array(times.minute) / 60
+    bell = np.clip(np.sin(np.pi * (hour - 3.3) / 13), 0, None) ** 1.6
+    interval_energy = pd.Series(CAP_KWP * 0.8 * bell, index=times)
+    cumulative = interval_energy.cumsum() + 12_345_000  # başlangıçta yüksek
+
+    df = pd.DataFrame({
+        "Time": times.tz_localize(None).strftime("%Y-%m-%d %H:%M"),
+        "Etotal(kWh)": cumulative.round(3).values,
+    })
+    path = tmp_path / "solaredge_etotal.csv"
+    df.to_csv(path, index=False)
+
+    result = ingest_file(path, capacity_kwp=CAP_KWP, latitude=LAT,
+                         longitude=LON, source_timezone="UTC")
+    assert result.transform.energy_cumulative is True
+    # İlk satır NaN olur (diff), sonraki değerler ~aralık enerjisi
+    expected_power = interval_energy.values[1:]
+    got_power = result.data["power_kw"].values[1:len(expected_power) + 1]
+    np.testing.assert_allclose(got_power, expected_power, rtol=0.01)
+
+
+# ---------------------------------------------------------------------------
+# Senaryo 9: SMA Sunny Explorer — 7 satır metadata
+# ---------------------------------------------------------------------------
+
+def test_sma_sunny_explorer_pattern(tmp_path):
+    """SMA export deseni: 7 satır metadata, sonra başlık."""
+    p = _hourly_power_profile(15, "UTC")
+    lines = [
+        "sep=;",
+        "Version;1.5.0;;",
+        "Anlage;Test PV;;",
+        "Zeitraum;01.05.2025 - 15.05.2025;;",
+        "Zeitzone;UTC+0;;",
+        "Aufloesung;60 Min;;",
+        ";;;",
+        "Zeit;Pac (kW);E-Total (kWh);T-Modul (°C)",
+    ]
+    cumulative = pd.Series(p.values, index=p.index).cumsum() + 1_000_000
+    for t, v, e in zip(p.index, p.values, cumulative.values):
+        local = t.tz_localize(None)
+        val = f"{v:.2f}".replace(".", ",")
+        etotal = f"{e:.2f}".replace(".", ",")
+        temp = f"{25 + 15 * v / CAP_KWP:.1f}".replace(".", ",")
+        lines.append(f"{local:%d.%m.%Y %H:%M};{val};{etotal};{temp}")
+
+    path = tmp_path / "sma_sunny.csv"
+    path.write_bytes("\r\n".join(lines).encode("cp1254"))
+
+    pv = preview_file(path)
+    assert pv.file_format.delimiter == ";"
+    assert pv.file_format.decimal == ","
+    assert pv.mapping.power == "Pac (kW)"
+    assert pv.mapping.energy == "E-Total (kWh)"
+
+
+# ---------------------------------------------------------------------------
+# Senaryo 10: Kaggle Anikannal deseni — BÜYÜK_HARF alt çizgi
+# ---------------------------------------------------------------------------
+
+def test_kaggle_upper_underscore_pattern(tmp_path):
+    """Kaggle Anikannal Hindistan santrali deseni: AC_POWER, AMBIENT_TEMPERATURE
+    gibi büyük harf underscore. Fuzzy eşleşme bunları yakalamalı."""
+    p = _hourly_power_profile(15, "UTC")
+    df = pd.DataFrame({
+        "DATE_TIME": p.index.tz_localize(None).strftime("%Y-%m-%d %H:%M"),
+        "AC_POWER": p.values.round(1),
+        "AMBIENT_TEMPERATURE": [20 + 5 * np.sin(h / 24 * np.pi) for h in p.index.hour],
+        "IRRADIATION": [max(0, v / CAP_KWP * 1000) for v in p.values],
+    })
+    path = tmp_path / "kaggle_anikannal.csv"
+    df.to_csv(path, index=False)
+
+    pv = preview_file(path)
+    assert pv.mapping.timestamp == "DATE_TIME"
+    assert pv.mapping.power == "AC_POWER"
+    assert pv.mapping.temp_ambient == "AMBIENT_TEMPERATURE"
+    # IRRADIATION belirsiz — POA veya GHI olabilir; en az birine eşlenmeli
+    assert pv.mapping.poa_irradiance == "IRRADIATION" or pv.mapping.ghi == "IRRADIATION"
+
+
+# ---------------------------------------------------------------------------
+# Senaryo 11: Alakasız dosya → MappingFailedError
+# ---------------------------------------------------------------------------
+
+def test_unrelated_file_raises_mapping_failed(tmp_path):
+    """SCADA'yla alakasız bir dosya (mesela alışveriş listesi) yüklenirse
+    otomatik eşleme pes etmeli, MappingFailedError fırlatmalı ki UI
+    manuel eşleme ekranı kursun."""
+    df = pd.DataFrame({
+        "Ürün": ["Elma", "Armut", "Muz"],
+        "Fiyat": [10.5, 8.0, 12.3],
+        "Stok": [100, 50, 75],
+    })
+    path = tmp_path / "market.csv"
+    df.to_csv(path, index=False)
+
+    with pytest.raises(MappingFailedError) as exc_info:
+        preview_file(path)
+
+    err = exc_info.value
+    # MappingFailedError fırlatıldı; kolon listesi ve sample_rows
+    # CSV ayraç tespitine göre değişebilir (tek kolonda birleşik
+    # gelebilir), önemli olan istisnanın yapılandırılmış bilgi
+    # taşıması ve UI'ın manuel eşleme kurabilmesi.
+    assert len(err.columns) > 0
+    assert err.file_format is not None

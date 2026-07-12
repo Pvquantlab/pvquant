@@ -10,12 +10,16 @@ tasarlandı:
      (çünkü ondalık ayracı virgüldür).
   3. Başlık satırı: FusionSolar ve benzeri portallar dosyanın başına
      3-5 satır meta bilgi (santral adı, rapor aralığı) koyar; gerçek
-     başlık aşağıdadır.
+     başlık aşağıdadır. Bu MERKAS xlsx örneğinde de görüldü ve
+     Excel dosyaları için de aynı taramayı yapıyoruz artık
+     (`_detect_excel_format`).
 """
 from __future__ import annotations
 
 import io
 from pathlib import Path
+
+import pandas as pd
 
 from .contracts import FileFormat
 
@@ -27,13 +31,17 @@ DELIMITER_CANDIDATES = (";", ",", "\t")
 
 #: Başlık araması bu kadar satırla sınırlı — daha derindeyse dosya
 #: zaten standart dışıdır, kullanıcı manuel belirtir.
-MAX_HEADER_SEARCH_ROWS = 10
+MAX_HEADER_SEARCH_ROWS = 15
 
 #: Başlık satırında aranan anahtar kelimeler (küçük harfe çevrilerek).
 HEADER_HINTS = (
     "time", "date", "tarih", "zaman", "saat",
     "power", "güç", "guc", "energy", "enerji", "yield", "üretim", "uretim",
     "kw", "mw", "irrad", "ışınım", "isinim",
+    # Marka referans dokümanından eklenen ipuçları
+    "period", "interval", "timestamp", "datetime",
+    "ac_power", "pac", "wnow", "etotal", "wh",
+    "ambient", "module", "temperature", "sicaklik",
 )
 
 
@@ -112,22 +120,26 @@ def _looks_like_decimal(token: str, sep: str) -> bool:
     return left.isdigit() and right.isdigit() and len(right) <= 6
 
 
-def detect_header_row(sample_lines: list[str], delimiter: str) -> tuple[int, float]:
-    """Gerçek başlık satırını bulur.
+def _row_header_score(cells: list[str]) -> float:
+    """Başlık adayı skorlaması (CSV ve Excel için ortak).
 
-    Skor: satırdaki parçaların kaçı HEADER_HINTS'ten kelime içeriyor +
-    parça sayısı sonraki satırlarla tutarlı mı. Meta satırlar (tek
-    hücrelik 'Santral: MERKAS' gibi) düşük skor alır.
+    HEADER_HINTS ipuçlarına vurgu, sayısal görünen hücrelere ceza.
+    Meta satırlar (tek hücre, çoğu boş) düşük skor alır.
     """
+    if len(cells) < 2:
+        return -1.0
+    hint_hits = sum(1 for c in cells if any(h in c for h in HEADER_HINTS))
+    numeric_cells = sum(1 for c in cells if _is_numeric_like(c))
+    empty_cells = sum(1 for c in cells if not c.strip())
+    return hint_hits * 2.0 - numeric_cells - 0.3 * empty_cells + 0.1 * len(cells)
+
+
+def detect_header_row(sample_lines: list[str], delimiter: str) -> tuple[int, float]:
+    """Gerçek başlık satırını CSV için bulur."""
     best_row, best_score = 0, -1.0
     for i, line in enumerate(sample_lines[:MAX_HEADER_SEARCH_ROWS]):
         cells = [c.strip().lower() for c in line.split(delimiter)]
-        if len(cells) < 2:
-            continue
-        hint_hits = sum(1 for c in cells if any(h in c for h in HEADER_HINTS))
-        # Başlık hücreleri sayı olmamalı
-        numeric_cells = sum(1 for c in cells if _is_numeric_like(c))
-        score = hint_hits * 2.0 - numeric_cells + 0.1 * len(cells)
+        score = _row_header_score(cells)
         if score > best_score:
             best_row, best_score = i, score
     confidence = 0.9 if best_score >= 2 else 0.5
@@ -139,16 +151,59 @@ def _is_numeric_like(cell: str) -> bool:
     return c.replace(".", "").isdigit() and len(c) > 0
 
 
+def _detect_excel_format(path: Path) -> FileFormat:
+    """Excel için başlık satırını taraması, sayfa seçimi.
+
+    Çok sayfalı dosyalarda ilk sayfa varsayılır; kullanıcı UI'da
+    sheet_name'i değiştirebilir. Başlık satırı CSV ile aynı puanlama
+    mantığıyla bulunur — 'Tesis Raporu MERKAS GES' gibi meta üstlerini
+    aşar ve gerçek başlığı (5. satırda) bulur.
+    """
+    try:
+        xls = pd.ExcelFile(path)
+    except Exception:
+        return FileFormat(encoding="binary", delimiter=",", decimal=".",
+                          header_row=0, sheet_name=None, confidence=0.3)
+
+    sheet = xls.sheet_names[0] if xls.sheet_names else None
+
+    try:
+        # header=None: her satır ham veri olarak gelsin, başlığı biz seçelim
+        raw = pd.read_excel(path, sheet_name=sheet, header=None,
+                            nrows=MAX_HEADER_SEARCH_ROWS, dtype=str)
+    except Exception:
+        return FileFormat(encoding="binary", delimiter=",", decimal=".",
+                          header_row=0, sheet_name=sheet, confidence=0.3)
+
+    best_row, best_score = 0, -1.0
+    for i in range(len(raw)):
+        cells = [str(c).strip().lower() if pd.notna(c) else "" for c in raw.iloc[i]]
+        score = _row_header_score(cells)
+        if score > best_score:
+            best_row, best_score = i, score
+
+    confidence = 0.9 if best_score >= 2 else 0.5
+    return FileFormat(
+        encoding="binary",
+        delimiter=",",           # Excel için anlamsız ama yapıyı koru
+        decimal=".",             # aynı
+        header_row=best_row,
+        sheet_name=sheet,
+        n_preview_rows=len(raw),
+        confidence=confidence,
+    )
+
+
 def detect_file_format(path: str | Path) -> FileFormat:
     """Aşama 1'in tamamı: kodlama + ayraç + ondalık + başlık satırı.
 
-    Excel dosyaları (.xlsx/.xls) için yalnızca sheet seçimi anlamlıdır;
-    diğer alanlar varsayılan kalır (pandas.read_excel halleder).
+    Excel dosyaları (.xlsx/.xls) için ayrı yol: `_detect_excel_format`
+    başlık satırını da tarar (MERKAS xlsx gibi 5. satırda başlık olan
+    dosyalar için gereklidir).
     """
     path = Path(path)
     if path.suffix.lower() in (".xlsx", ".xls"):
-        return FileFormat(encoding="binary", delimiter=",", decimal=".",
-                          header_row=0, sheet_name=None, confidence=0.7)
+        return _detect_excel_format(path)
 
     encoding = detect_encoding(path)
     with io.open(path, "r", encoding=encoding, errors="replace") as f:

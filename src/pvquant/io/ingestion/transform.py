@@ -1,6 +1,6 @@
 """Aşama 3 — Dönüştürme: ham kolonlardan kanonik saatlik UTC frame'e.
 
-Dört klasik tuzağı burada çözüyoruz:
+Beş klasik tuzağı burada çözüyoruz:
 
   (a) Saat dilimi: dosyadaki zaman yerelse UTC'ye çevrilir. Yaz saati
       (DST) geçişlerinde ileri alınan saat 'yok' (nonexistent), geri
@@ -11,6 +11,10 @@ Dört klasik tuzağı burada çözüyoruz:
       (P[kW] = E[kWh] / adım_saat). İkisi de varsa güç esas alınır.
   (d) Çözünürlük: sub-saatlik veri saatliğe indirgenir — güç ORTALAMA,
       enerji TOPLAM ile (karıştırmak 4x/12x hataya yol açar).
+  (e) Kümülatif ömür sayacı: SolarEdge Etotal, Enphase whLifetime gibi
+      kolonlar ARALIK enerjisi değil TOPLAM üretimdir — monoton artan
+      sayaç olarak tespit edilip diff() alınır. Yakalanmasa güç 
+      hesabı sessizce yüzlerce kat yanlış çıkar.
 """
 from __future__ import annotations
 
@@ -26,6 +30,11 @@ from .contracts import ColumnMapping, TransformSpec
 _MW_RATIO_MAX = 0.005
 #: max/kapasite > bu → değerler W olmalı (max "4.400.000" gelirse).
 _W_RATIO_MIN = 200.0
+
+#: Kümülatif tespiti: seri örnekleminin bu kadarı monoton artıyorsa
+#: kolonu ömür sayacı say. NaN ve geri sayım (sayaç sıfırlama)
+#: durumlarına karşı tolerans.
+_CUMULATIVE_MONOTONE_FRACTION = 0.90
 
 
 def _parse_datetime_robust(raw: pd.Series) -> pd.Series:
@@ -110,7 +119,6 @@ def detect_power_unit(power: pd.Series, capacity_kwp: float,
     return "kW"
 
 
-
 _UNIT_FACTORS = {"kW": 1.0, "MW": 1000.0, "W": 0.001}
 
 
@@ -120,6 +128,50 @@ def detect_timestep_minutes(index: pd.DatetimeIndex) -> int:
         return 60
     diffs = index.to_series().diff().dropna()
     return max(int(diffs.median().total_seconds() / 60), 1)
+
+
+def _is_cumulative_energy(series: pd.Series, column_name: str = "") -> bool:
+    """Enerji kolonu monoton artan bir ömür sayacı mı?
+
+    İki güçlü sinyal:
+      - İsim: 'total', 'lifetime', 'cumulative', 'etotal', 'wh_lifetime'
+      - İçerik: değerlerin >90%'ı önceki satırdan büyük/eşit
+
+    İçerik sinyali baskındır; isim yalnızca sınır durumları çözer
+    (%88-92 aralığında).
+    """
+    name = column_name.lower()
+    name_hits = any(k in name for k in (
+        "total", "lifetime", "cumulative", "etotal", "e_total",
+        "whlifetime", "wh_lifetime", "e-total",
+    ))
+
+    values = pd.to_numeric(series, errors="coerce").dropna()
+    if len(values) < 20:
+        return name_hits
+
+    diffs = values.diff().dropna()
+    if len(diffs) == 0:
+        return name_hits
+
+    monotone_frac = float((diffs >= 0).mean())
+    if monotone_frac >= _CUMULATIVE_MONOTONE_FRACTION + 0.02:
+        return True
+    if monotone_frac < _CUMULATIVE_MONOTONE_FRACTION - 0.02:
+        return False
+    # Sınır: isim ipucu karar verir
+    return name_hits
+
+
+def energy_to_power_kw(energy_kwh_per_interval: pd.Series,
+                       step_minutes: int) -> pd.Series:
+    """Aralık enerjisinden aralık ortalama gücünü türetir.
+
+    P[kW] = E[kWh] / (adım_saat)
+    Örn 15 dk için: P = E / 0.25 = 4 × E.
+    """
+    hours = step_minutes / 60.0
+    return energy_kwh_per_interval / hours
 
 
 def transform_to_canonical(
@@ -162,16 +214,30 @@ def transform_to_canonical(
         work["power_kw"] = power_raw * _UNIT_FACTORS[unit]
         spec.power_unit = unit
         if mapping.energy is not None:
-            e = coerce_numeric(df[mapping.energy], decimal)
-            e.index = utc_index
-            work["energy_kwh"] = e
+            e_raw = coerce_numeric(df[mapping.energy], decimal)
+            e_raw.index = utc_index
+            # Kümülatif tespiti güç varken de kayda geçer (denetim izi)
+            if _is_cumulative_energy(e_raw, mapping.energy):
+                spec.energy_cumulative = True
+                work["energy_kwh"] = e_raw.diff().clip(lower=0)
+            else:
+                work["energy_kwh"] = e_raw
     else:
-        # Yalnız enerji var: P[kW] = E[kWh] / adım_saat
-        energy = coerce_numeric(df[mapping.energy], decimal)
-        energy.index = utc_index
+        # Yalnız enerji var: kümülatif mi kontrol et
+        energy_raw = coerce_numeric(df[mapping.energy], decimal)
+        energy_raw.index = utc_index
+
+        if _is_cumulative_energy(energy_raw, mapping.energy):
+            # Ömür sayacı: aralık enerjisine çevir
+            spec.energy_cumulative = True
+            interval_energy = energy_raw.diff().clip(lower=0)
+            work["energy_kwh"] = interval_energy
+        else:
+            interval_energy = energy_raw
+            work["energy_kwh"] = interval_energy
+
         step_min = detect_timestep_minutes(utc_index.dropna())
-        work["energy_kwh"] = energy
-        work["power_kw"] = energy / (step_min / 60.0)
+        work["power_kw"] = energy_to_power_kw(interval_energy, step_min)
         spec.energy_to_power = True
         spec.power_unit = "kW"
 

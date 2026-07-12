@@ -91,12 +91,16 @@ class TransformSpec:
         power_unit: "kW" | "MW" | "W". Otomatik tespit kurulu güce göre.
         timestep_minutes: Kaynak verinin zaman adımı.
         energy_to_power: Enerji kolonundan güç türetildi mi?
+        energy_cumulative: Kaynak enerji kolonu kümülatif (ömür) sayaç
+            mıydı? True ise diff alınarak aralık enerjisine çevrildi
+            (SolarEdge Etotal, Enphase whLifetime deseni).
     """
 
     source_timezone: Optional[str] = None
     power_unit: str = "kW"
     timestep_minutes: int = 60
     energy_to_power: bool = False
+    energy_cumulative: bool = False
 
     def to_dict(self) -> dict:
         return asdict(self)
