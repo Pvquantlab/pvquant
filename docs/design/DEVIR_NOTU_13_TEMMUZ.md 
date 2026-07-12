@@ -1,0 +1,156 @@
+# PVQuant Devir Notu — 13 Temmuz 2026
+
+Bu belge yarın (13 Temmuz) yapılacak işleri anlatır. Dünkü çalışmanın
+detayları commit tarihçesinde. Buradaki tek amaç: yeni Claude oturumu 
+açıldığında hızlıca doğru yerden başlayabilmek.
+
+---
+
+## Nereden geldik
+
+Faz 2 UI için 12 Temmuz'da büyük bir gün oldu:
+
+- **Ingestion katmanı** repo'ya girdi (`src/pvquant/io/ingestion/`, 8 modül)
+- **Fable 5 iyileştirmesi** entegre edildi (Excel başlık tespiti, self-healing, `MappingFailedError`, kümülatif enerji, 16 marka sözlüğü)
+- **UI ingestion'a bağlandı** (`frontend/veri_yukleme.py`, 2 fazlı akış)
+- **MERKAS canlı test** başarılı (8760 satır, uçtan uca)
+- **Manuel eşleme mini-ekranı** eklendi (`MappingFailedError` yakalanıp UI'da dropdown gösteriliyor)
+
+Sonuç: `st.session_state.scada_clean` (temiz DataFrame) + `st.session_state.plant_context` (kapasite/koordinat/tz) Kalibrasyon sayfası için hazır bekliyor. Ama Kalibrasyon sayfası hâlâ eski `SCADAData` bekliyor olabilir — köprü kurulmadı.
+
+---
+
+## Repo Durumu
+
+- Dal: `faz2-ui`, origin ile senkron
+- Testler: **11/11 ingestion + 88 backend = 99 yeşil**
+- `.gitignore`: `ingestion_templates/` eklendi (kullanıcı şablonları repo'ya girmez)
+
+**Kritik konum:**
+- `frontend/veri_yukleme.py` — ingestion akışı burada
+- `frontend/kalibrasyon.py` — **dokunulmadı**, muhtemelen eski API çağırıyor
+- `src/pvquant/io/ingestion/` — 8 modül + testler
+- `src/pvquant/models_v2/` — Fable 5'in tasarladığı hibrit sistem (henüz repo'da yok)
+
+---
+
+## Yarın: Cephe 1 — Kalibrasyon Boru Hattı
+
+**Amaç:** MERKAS gibi bir dosya yükleyip Veri Yükleme'de "Kalibrasyona geç →" butonuna basınca gerçekten kalibrasyon çalışsın.
+
+### Adım 1 — Mevcut durumu keşfet (10 dk)
+
+Kalibrasyon sayfasının ne beklediğini görmeden değişiklik yapma:
+
+```bash
+cd ~/Desktop/pvquant
+head -60 frontend/kalibrasyon.py
+```
+
+Özellikle:
+- Ne import ediyor? (`SCADAData`, `calibrate_from_scada`?)
+- `st.session_state` içinde neyi arıyor? (`scada_data`? `scada`? `scada_clean`?)
+- Kalibrasyon başlatma fonksiyonu hangi imzayı çağırıyor?
+
+Bir de backend imzasını doğrula:
+
+```bash
+grep -n "def calibrate_from_scada" src/pvquant/**/*.py
+```
+
+`calibrate_from_scada` `SCADAData` mı bekliyor, DataFrame mi?
+
+### Adım 2 — Adaptör yaz (20-30 dk)
+
+Muhtemelen ingestion çıktısı (`scada_clean` DataFrame) ile eski `SCADAData` arasında bir köprü lazım. İki seçenek:
+
+**A) `veri_yukleme.py`'de köprü kur:** "Kalibrasyona geç" butonunda `scada_clean` DataFrame'ini `SCADAData(...)`'ya sarıp `st.session_state.scada_data`'ya koy. Kalibrasyon sayfası aynı kalır.
+
+**B) `kalibrasyon.py`'yi güncelle:** Kalibrasyon sayfası doğrudan `scada_clean` DataFrame'ini + `plant_context`'i kabul etsin.
+
+**A daha güvenli** çünkü Kalibrasyon sayfası dokunulmadı, kırılma riski düşük. **B daha temiz** ama daha çok iş.
+
+Kullanıcı Öncelik 1 seçiminde bunu netleştirmeli.
+
+### Adım 3 — Uçtan uca test (10 dk)
+
+MERKAS xlsx'i yükle → Onayla → Kalibrasyona geç → Kalibrasyonun gerçekten başladığını gör. Bir sonuç çıkarsa hipotez doğrulanır.
+
+---
+
+## Cephe 2 — Kalıcılık (opsiyonel, süre kalırsa)
+
+Şu an session_state kaybolursa her şey uçuyor. Fable 5 rehberinin 5. bölümü:
+
+- **Ham dosya:** `data/raw/{plant_id}/{upload_id}.xlsx`
+- **Şablon:** `ingestion_templates/{name}.json` — zaten var
+- **Normalize veri:** `data/normalized/{plant_id}/{upload_id}.parquet` (flag kolonu dahil)
+
+Yeni klasör: `src/pvquant/storage/`. `save_scada`, `load_scada` gibi fonksiyonlar. Parquet için pyarrow gerekir (`pip install pyarrow`).
+
+---
+
+## Cephe 3 — Faz 2 UI: Raporlar 6b-6e (Cephe 1 bitince)
+
+Adım 6a bitmişti (iskelet + KPI + guard'lar). Kalanlar:
+
+- **6b:** 3 format kartı (görsel)
+- **6c:** Excel + JSON gerçek işleyiş
+- **6d:** PDF yönetici özeti (fpdf2)
+- **6e:** Rapor geçmişi (dekoratif)
+
+Bu, Faz 2 UI'nın son büyük ekranı. Kalibrasyon köprüsü kurulmadan test edilmesi zor (rapor forecast sonucuna dayanıyor).
+
+---
+
+## Bilinen Sorunlar
+
+| # | Sorun | Etki | Öncelik |
+|---|-------|------|---------|
+| 1 | Streamlit cache: frontend değişince `Cmd+R` yetmez, `pkill -f streamlit` gerek | Geliştirici deneyimi | Düşük |
+| 2 | `_try_mapping_variants` yavaş: xlsx için ilk yükleme ~10-15 sn | UX (ilk yükleme) | Orta |
+| 3 | POA vs GHI: Otomatik eşleme başarılıysa kullanıcı düzeltemez (dropdown yok) | Kalibrasyon doğruluğu | Orta |
+| 4 | `Kalibrasyona geç →` sadece sayfa değiştiriyor, veri geçişi yok | **Kalibrasyon çalışmıyor** | **Yüksek (Cephe 1)** |
+
+---
+
+## Yarın Başlarken
+
+Yeni Claude sohbeti açtığında bu notu yükle. Sonra ilk komutlar:
+
+```bash
+cd ~/Desktop/pvquant
+git status
+git log --oneline -6
+PYTHONPATH=src pytest tests/test_ingestion.py -v --tb=no -q
+```
+
+Sırasıyla:
+1. Working tree temiz olmalı, dal `faz2-ui`
+2. Son commit **MappingFailedError yakalama** olmalı
+3. **11 passed** görmeli
+
+Bunlar OK'se Cephe 1 Adım 1'e başla: `head -60 frontend/kalibrasyon.py`
+
+---
+
+## Uzun Vadeli Yol Haritası (özet)
+
+Kısa vade (bu hafta):
+- Kalibrasyon köprüsü (yarın)
+- Raporlar 6b-6e (Faz 2 UI'yı bitir)
+- Kalıcılık (parquet)
+
+Orta vade:
+- **models_v2**: Hibrit rezidüel model (fizik + LightGBM) — Fable 5 tasarımı, henüz repo'da yok
+- Backend `calibrate_from_scada`'nın implementasyonunu bu yeni modele yönlendir
+- UI'nın çağırdığı fonksiyonlar aynı kalır, arka plan evrilir
+
+Uzun vade:
+- Olasılık katmanı (P10/P50/P90)
+- Fizik kilitleri (hibrit üstüne)
+- FastAPI + React iskelet (Streamlit'ten prod'a geçiş)
+
+---
+
+*Son güncelleme: 12 Temmuz 2026, akşam. Yazarlar: Claude (Sonnet 4.6, bu oturum) + kullanıcı. Referans: Fable 5 raporları, PVQuant_Anlasilir_Anlatim.docx, INGESTION_ENTEGRASYON.md.*
