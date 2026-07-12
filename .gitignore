@@ -87,3 +87,6 @@ data/santraller/
 *.bak_adim3_*
 *.bak_faz17_*
 *.bak_faz18*
+
+# Ingestion sablonlari (kullanici verisi)
+ingestion_templates/
