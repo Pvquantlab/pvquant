@@ -93,3 +93,4 @@ ingestion_templates/
 
 # Ingestion sablonlari (kullanici verisi)
 ingestion_templates/
+calibration_cache/
