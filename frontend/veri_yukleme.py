@@ -13,11 +13,17 @@ Ingestion akisi (2 bolum, tek sayfa):
 
 MappingFailedError: otomatik esleme basarisiz olursa manuel esleme
 mini-ekrani devreye girer (dropdown'lar + ornek satirlar).
+
+Kopru (Cephe 1): "Kalibrasyona gec" butonu, ingestion cikti
+(scada_clean DataFrame) -> SCADAData donusumunu yapar ve
+session_state.scada_data'ya koyar (kalibrasyon sayfasi eski API
+bekliyor).
 """
 
 import os
 import sys
 import tempfile
+import pandas as pd
 from pathlib import Path
 
 import streamlit as st
@@ -851,15 +857,95 @@ def _render_mod_b_scada() -> None:
                 st.session_state.pop(k, None)
             st.rerun()
     with col2:
-        # Kalibrasyona gec - clean frame session'da hazir
+        # Kalibrasyona gec - clean frame -> SCADAData kopru
         if st.button(
             "Kalibrasyona gec →",
             key="kalibrasyona_gec",
             use_container_width=True,
             type="primary",
         ):
-            st.session_state.active_page = "kalibrasyon"
+            _kopru_scadadata_ve_gec()
             st.rerun()
+
+
+# ============================================================
+# KOPRU: Ingestion -> Kalibrasyon (scada_clean -> SCADAData)
+# ============================================================
+
+def _kopru_scadadata_ve_gec() -> None:
+    """Ingestion cikti (scada_clean DataFrame) -> SCADAData kopru.
+
+    Kalibrasyon sayfasi eski SCADAData nesnesi bekliyor; ingestion
+    ise DataFrame + plant_context dondu. Burada kolon adlarini
+    ceviriyor ve dataclass'i insa ediyoruz.
+
+    Kolon esleme (ingestion adi -> SCADAData adi):
+      power_kw       -> power_kw          (ayni)
+      energy_kwh     -> energy_kwh        (ayni)
+      poa_global     -> poa_irradiance    (ad degisir!)
+      t_air          -> temp_ambient      (ad degisir!)
+      t_module       -> temp_module       (ad degisir!)
+      wind_speed     -> wind_speed        (ayni)
+    """
+    from pvquant.io.scada import SCADAData
+
+    clean = st.session_state.scada_clean  # DataFrame
+    filename = st.session_state.get("scada_filename", "SCADA verisi")
+
+    # timestamp kolonunu index yap (SCADAData'nin tum serileri paylasan index)
+    df = clean.set_index("timestamp") if "timestamp" in clean.columns else clean
+
+    # KOPRU FIX: kalibrasyon backend'i tam saatlik izgara bekliyor
+    # (_detect_timestep_hours %90+ tutarlilik istiyor). Ingestion sadece
+    # VALID satirlari veriyor -> gece saatleri dusuyor -> diff'ler bozuluyor.
+    # Cozum: full saatlik range'e reindex, eksik saatler NaN kalir.
+    # power_kw NaN olan gece saatleri kalibrasyona zaten girmez (backend
+    # asagi akista dropna yapar) ama index tutarli olur.
+    if isinstance(df.index, pd.DatetimeIndex) and len(df) > 1:
+        full_range = pd.date_range(
+            start=df.index.min(),
+            end=df.index.max(),
+            freq="1h",
+            tz=df.index.tz,
+        )
+        df = df.reindex(full_range)
+        df.index.name = "timestamp"
+        
+        # Gece saatlerinde NaN power_kw -> 0 doldur (gerçekte uretim yok)
+        # Gunduz NaN'lari NaN kalir (backend duser). Boylece index tam kalir
+        # ama gunduzun tam satirlari kesintisiz olur -> %90+ tutarlilik.
+        try:
+            import pvlib
+            solpos = pvlib.solarposition.get_solarposition(
+                df.index,
+                st.session_state.plant_context["latitude"],
+                st.session_state.plant_context["longitude"],
+            )
+            is_night = solpos["apparent_elevation"] < -3.0
+            night_nan_mask = is_night.values & df["power_kw"].isna().values
+            df.loc[night_nan_mask, "power_kw"] = 0.0
+        except Exception:
+            # pvlib yoksa fallback: tum NaN'lari 0 yap (daha az temiz ama calisir)
+            df["power_kw"] = df["power_kw"].fillna(0.0)
+
+    def _opt(col_name: str):
+        """Kolon varsa Series don, yoksa None."""
+        return df[col_name] if col_name in df.columns else None
+
+    scada = SCADAData(
+        power_kw=df["power_kw"],
+        energy_kwh=_opt("energy_kwh"),
+        poa_irradiance=_opt("poa_global"),   # ingestion "poa_global" -> SCADAData "poa_irradiance"
+        temp_ambient=_opt("t_air"),          # ingestion "t_air" -> SCADAData "temp_ambient"
+        temp_module=_opt("t_module"),        # ingestion "t_module" -> SCADAData "temp_module"
+        wind_speed=_opt("wind_speed"),
+        plant_name=filename.rsplit(".", 1)[0],
+        timestep_minutes=60,  # ingestion her zaman saatlige indiriyor
+    )
+
+    st.session_state.scada_data = scada
+    st.session_state.scada_filename = filename  # kalibrasyon.py bunu kullaniyor
+    st.session_state.active_page = "kalibrasyon"
 
 
 # ============================================================
