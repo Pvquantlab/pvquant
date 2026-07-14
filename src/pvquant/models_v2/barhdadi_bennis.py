@@ -195,11 +195,21 @@ class BarhdadiBennisModel:
             timezone=self.plant_profile.location.timezone,
         )
 
+        # --- 14 Temmuz 2026: Olculen POA varsa fizige geçir ---
+        # Holdout değerlendirmede SCADA'nın poa_global kolonu geliyor —
+        # fizik onu Perez'in hesapladigi POA yerine kullanir.
+        # 7 gunluk geleceğe tahminde bu kolon olmaz -> None gecer,
+        # fizik eskiye donuk hesaplar.
+        measured_poa = None
+        if "poa_global" in df.columns:
+            measured_poa = df["poa_global"].astype(float)
+
         pipeline_result = forecast_7day(
             meteo,
             self._plant_spec,
             ghi_bias_bins=self.plant_profile.ghi_bias_bins,
             ghi_bias_corrections=self.plant_profile.ghi_bias_corrections,
+            measured_poa=measured_poa,
         )
 
         timeseries = pd.DataFrame(

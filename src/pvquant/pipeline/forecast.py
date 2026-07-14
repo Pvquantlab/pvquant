@@ -183,6 +183,7 @@ def forecast_7day(
     plant: PlantSpec,
     ghi_bias_bins: Optional[List[float]] = None,
     ghi_bias_corrections: Optional[List[float]] = None,
+    measured_poa: Optional[pd.Series] = None,
 ) -> ForecastResult:
     """7 günlük üretim tahmini ana pipeline'ı.
 
@@ -238,6 +239,19 @@ def forecast_7day(
         airmass=airmass,
         albedo=plant.albedo,
     )
+    # --- 3.25. Olculen POA override (varsa) ---
+    if measured_poa is not None:
+        aligned = measured_poa.reindex(poa.global_.index)
+        mask = aligned.notna()
+        yeni_global = poa.global_.copy()
+        yeni_global[mask] = aligned[mask]
+        poa = irradiance.POAComponents(
+            global_=yeni_global,
+            beam=poa.beam,
+            sky_diffuse=poa.sky_diffuse,
+            ground_diffuse=poa.ground_diffuse,
+            aoi=poa.aoi,
+        )
 
     # --- 3.5. POA bias duzeltmesi (Mod B'de kalibrasyondan ogrenilir) ---
     if ghi_bias_bins is not None and ghi_bias_corrections is not None:

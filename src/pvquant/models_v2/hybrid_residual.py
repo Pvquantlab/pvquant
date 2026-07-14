@@ -419,6 +419,10 @@ class HybridResidualModel:
           - ghi, t_air, wind_speed (varsa Open-Meteo çağrısı atlanır —
             saha meteo istasyonu verisi tercih sebebidir)
           - poa_global, t_module (opsiyonel; fizik bias fit'inde kullanılır)
+
+        14 Temmuz 2026: poa_global kolonu meteo_df'e taşınır ki holdout
+        fizik tahmini de olculen POA'yı kullansın (BarhdadiBennisModel.predict
+        forecast_input.data içindeki poa_global'ı forecast_7day'e geçirir).
         """
         lgb = _import_lgbm()
         from pvquant.io.meteo import MeteoData
@@ -448,7 +452,12 @@ class HybridResidualModel:
                 longitude=loc.longitude,
                 timezone=loc.timezone,
             )
-            meteo_df = df[list(meteo_cols)].copy()
+            # 14 Temmuz: poa_global SCADA'da varsa meteo_df'e taşı ki
+            # fizik holdout tahmini de olculen POA'yı kullansın.
+            _cols = list(meteo_cols)
+            if "poa_global" in df.columns:
+                _cols.append("poa_global")
+            meteo_df = df[_cols].copy()
             meteo_source = "scada"
         else:
             from pvquant.io.meteo import OpenMeteoClient
@@ -468,6 +477,10 @@ class HybridResidualModel:
                     "wind_speed": hist_meteo.wind_speed_10m,
                 }
             )
+            # 14 Temmuz: Open-Meteo dalında da olculen POA varsa SCADA
+            # CSV'sinden ekle (hist_meteo'da yok, orasi Open-Meteo).
+            if "poa_global" in df.columns:
+                meteo_df["poa_global"] = df["poa_global"].reindex(meteo_df.index)
             meteo_source = "open_meteo"
 
         # ---------- Aşama 1: fizik kalibrasyonu ----------

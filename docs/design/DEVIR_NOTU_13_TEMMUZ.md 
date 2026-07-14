@@ -154,3 +154,48 @@ Uzun vade:
 ---
 
 *Son güncelleme: 12 Temmuz 2026, akşam. Yazarlar: Claude (Sonnet 4.6, bu oturum) + kullanıcı. Referans: Fable 5 raporları, PVQuant_Anlasilir_Anlatim.docx, INGESTION_ENTEGRASYON.md.*
+
+# PVQuant Devir Notu — 13 Temmuz 2026 (Akşam Güncellemesi)
+
+Bugün büyük bir gün. Cephe 1 (kalibrasyon köprüsü) bitti ve
+Fable 5'in hibrit modeli **repoya oturdu, testleri geçti**.
+Yarın: MERKAS'ta hibrit koştur, MAPE'yi gör.
+
+---
+
+## Bugün ne yapıldı (13 Temmuz)
+
+### Sabah — Cephe 1: Kalibrasyon Köprüsü ✅
+- `frontend/veri_yukleme.py`'ye `_kopru_scadadata_ve_gec()` fonksiyonu eklendi
+- Ingestion çıktısı (`scada_clean` DataFrame + `plant_context` dict) →
+  `SCADAData` dataclass'ına dönüştürülüyor
+- Kolon adı çevirisi: `poa_global→poa_irradiance`, `t_air→temp_ambient`,
+  `t_module→temp_module`
+- Reindex fix: tam saatlik ızgara + gece NaN → 0 doldurma (pvlib solar
+  elevation ile)
+- MERKAS uçtan uca kalibre oldu (3083 saat işlendi)
+- **Uyarı:** MAPE %136 — teknik başarı ama veri/model çakışması var
+- **Commit:** `feat(ui): Cephe 1 - kalibrasyon koprusu`
+
+### Akşam — Hibrit Model Entegrasyonu ✅
+- Homebrew + libomp + lightgbm 4.6.0 + joblib 1.5.3 + sklearn 1.9.0 kuruldu
+- Fable 5 paketi (`pvquant_models_v2_tam_set.zip`) açıldı, dosyalar
+  `src/pvquant/models_v2/` altına yerleştirildi
+- **Sürpriz:** models_v2 paketi (7 modül) zaten repoda vardı; sadece
+  `hybrid_residual.py` (750 satır) + testler yeni
+- **Test: 5/5 passed** (`test_hybrid_residual.py`)
+- **Ingestion testleri: 11/11 hâlâ yeşil** — kirlenme yok
+- **Toplam: 16/16 yeşil**
+- **Commit:** `feat(models_v2): HybridResidualModel - Fable 5 tam entegrasyonu`
+
+---
+
+## Repo Durumu
+
+- Dal: `faz2-ui`, origin ile senkron
+- Testler: **11/11 ingestion + 5/5 hibrit + 88 backend = 104 yeşil**
+- Bugünkü commit'ler (2 tane):
+  1. `feat(ui): Cephe 1 - kalibrasyon koprusu (ingestion -> SCADAData)`
+  2. `feat(models_v2): HybridResidualModel - Fable 5 tam entegrasyonu`
+
+### Yeni bağımlılıklar

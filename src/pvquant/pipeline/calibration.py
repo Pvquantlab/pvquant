@@ -140,6 +140,8 @@ def calibrate_from_scada(
         - BG fit'i bifacial sistemler için anlamlıdır (BF > 0).
         - Daha gelişmiş kalibrasyon (c1, c2, γ aynı anda) için
           gelecek versiyonda scipy.optimize.differential_evolution eklenecek.
+        - 14 Temmuz 2026: forecast_7day çağrılarına measured_poa=scada.poa_irradiance
+          eklendi. SCADA'da POA sensörü varsa fizik onu kullanır (bypass düzeltildi).
     """
     notes: list[str] = []
 
@@ -257,6 +259,7 @@ def calibrate_from_scada(
                     historical_meteo, _cand_plant,
                     ghi_bias_bins=ghi_bias_bins,
                     ghi_bias_corrections=ghi_bias_corrections,
+                    measured_poa=scada.poa_irradiance,
                 )
                 _pred = _f.hourly["p_ac_kw"]
                 _common = _pred.index.intersection(_valid_actual.index)
@@ -310,6 +313,7 @@ def calibrate_from_scada(
                     historical_meteo, _cand_plant,
                     ghi_bias_bins=ghi_bias_bins,
                     ghi_bias_corrections=ghi_bias_corrections,
+                    measured_poa=scada.poa_irradiance,
                 )
                 _pred = _f.hourly["p_ac_kw"]
                 _common = _pred.index.intersection(_valid_actual.index)
@@ -342,6 +346,7 @@ def calibrate_from_scada(
         historical_meteo, plant,
         ghi_bias_bins=ghi_bias_bins,
         ghi_bias_corrections=ghi_bias_corrections,
+        measured_poa=scada.poa_irradiance,
     )
     predicted_power_initial = initial_forecast.hourly["p_ac_kw"]
 
@@ -375,6 +380,7 @@ def calibrate_from_scada(
                 historical_meteo, candidate_plant,
                 ghi_bias_bins=ghi_bias_bins,
                 ghi_bias_corrections=ghi_bias_corrections,
+                measured_poa=scada.poa_irradiance,
             )
             pred = forecast.hourly["p_ac_kw"]
             common_idx = pred.index.intersection(actual_power.index)
@@ -402,6 +408,7 @@ def calibrate_from_scada(
         historical_meteo, calibrated_plant,
         ghi_bias_bins=ghi_bias_bins,
         ghi_bias_corrections=ghi_bias_corrections,
+        measured_poa=scada.poa_irradiance,
     )
     predicted_power_final = final_forecast.hourly["p_ac_kw"]
     validation_after = validate(predicted_power_final, actual_power, threshold=threshold_kw)
