@@ -178,6 +178,13 @@ def _apply_poa_correction(
     )
 
 
+
+# --- measured_poa akil kontrolu esikleri (config'e tasinabilir) ---
+MEASURED_POA_SANITY_RATIO = 0.20      # olculen/Perez alt siniri
+MEASURED_POA_SANITY_DAY_WM2 = 200.0   # 'gunduz' esigi (Perez POA)
+MEASURED_POA_SANITY_MIN_HOURS = 24    # karar icin asgari kiyas saati
+
+
 def forecast_7day(
     meteo: MeteoData,
     plant: PlantSpec,
@@ -240,9 +247,32 @@ def forecast_7day(
         albedo=plant.albedo,
     )
     # --- 3.25. Olculen POA override (varsa) ---
+    _measured_poa_meta = None
     if measured_poa is not None:
         aligned = measured_poa.reindex(poa.global_.index)
         mask = aligned.notna()
+        # --- 14 Tem 2026: olu-sensor akil kontrolu ---
+        # Gunduz (Perez POA > MEASURED_POA_SANITY_DAY_WM2) saatlerinde olculen
+        # POA ortalamasi Perez'in MEASURED_POA_SANITY_RATIO'sunun altindaysa
+        # sensor olu ya da yanlis eslenmis demektir: override ATLANIR, fizik
+        # Perez ile devam eder ve karar meta'ya yazilir. Sessiz sifir uretimi
+        # bu blokla yapisal olarak engellenir.
+        _gunduz = (poa.global_ > MEASURED_POA_SANITY_DAY_WM2) & mask
+        if int(_gunduz.sum()) >= MEASURED_POA_SANITY_MIN_HOURS:
+            _olc = float(aligned[_gunduz].mean())
+            _perez = float(poa.global_[_gunduz].mean())
+            if _olc < MEASURED_POA_SANITY_RATIO * _perez:
+                _measured_poa_meta = (
+                    f"measured_poa YOK SAYILDI (olu/yanlis sensor suphesi): "
+                    f"gunduz olculen ort {_olc:.1f} W/m2, Perez {_perez:.1f} W/m2, "
+                    f"esik oran {MEASURED_POA_SANITY_RATIO:.0%}. Perez POA kullanildi."
+                )
+                mask = pd.Series(False, index=mask.index)
+        if mask.any() and _measured_poa_meta is None:
+            _measured_poa_meta = (
+                f"measured_poa uygulandi: {int(mask.sum())} saat SCADA POA "
+                f"ile override edildi."
+            )
         yeni_global = poa.global_.copy()
         yeni_global[mask] = aligned[mask]
         poa = irradiance.POAComponents(
@@ -354,6 +384,7 @@ def forecast_7day(
         total_kwh=total,
         plant=plant,
         meta={
+            "measured_poa": _measured_poa_meta,
             "thermal_model": plant.thermal_model,
             "power_model": plant.power_model,
             "is_bifacial": plant.is_bifacial,

@@ -174,6 +174,44 @@ def energy_to_power_kw(energy_kwh_per_interval: pd.Series,
     return energy_kwh_per_interval / hours
 
 
+_IRR_KWH_P99_MAX = 3.0  # gunduz p99 bunun altindaysa kWh/m2 suphesi (W/m2 icin imkansiz dusuk)
+
+
+def normalize_irradiance_wm2(
+    s: pd.Series, column_name: str, step_minutes: int
+) -> tuple[pd.Series, str, str]:
+    """Isinim serisini W/m2'ye normalize eder.
+
+    Vendor exportlari isinimi uc birimde verir ve W/m2 disindakiler
+    1000x olcek hatasi yaratir (yasandi: 'Toplam Isima (kWh/m2)' kolonu
+    0.5 girdi, fizik olu sensor sandi).
+
+    Oncelik sirasi:
+      1. Kolon ADINDAKI birim: kWh/m2 -> x(1000/saat), Wh/m2 -> x(1/saat),
+         W/m2 -> oldugu gibi.
+      2. Ad birimsizse ICERIK sezgiseli: p99 < 3 ise kWh/m2 varsayilir
+         (saatlik kWh/m2 fiziksel tavani ~1.4; W/m2 gunduzu yuzlerdedir).
+      3. Hicbiri degilse W/m2 varsayilir.
+
+    Returns:
+        (seri_wm2, birim_etiketi, karar_kaynagi)  kaynak: 'ad'|'icerik'|'varsayilan'
+    """
+    name = (column_name or "").lower().replace(" ", "").replace("²", "2")
+    hours = step_minutes / 60.0
+    if "kwh/m" in name:
+        return s * (1000.0 / hours), "kWh/m2", "ad"
+    if "wh/m" in name:  # kwh yukarida yakalandi; bu saf Wh
+        return s * (1.0 / hours), "Wh/m2", "ad"
+    if "w/m" in name:
+        return s, "W/m2", "ad"
+    vals = pd.to_numeric(s, errors="coerce").dropna()
+    if len(vals) >= 24:
+        p99 = float(vals.quantile(0.99))
+        if 0.0 < p99 < _IRR_KWH_P99_MAX:
+            return s * (1000.0 / hours), "kWh/m2", "icerik"
+    return s, "W/m2", "varsayilan"
+
+
 def transform_to_canonical(
     df: pd.DataFrame,
     mapping: ColumnMapping,
@@ -245,6 +283,15 @@ def transform_to_canonical(
         if src is not None:
             s = coerce_numeric(df[src], decimal)
             s.index = utc_index
+            # --- 14 Tem 2026: isinim birim normalizasyonu (B1) ---
+            if canon in ("poa_global", "ghi"):
+                _step_irr = detect_timestep_minutes(
+                    pd.DatetimeIndex(utc_index).dropna()
+                )
+                s, _iu, _isrc = normalize_irradiance_wm2(s, src, _step_irr)
+                if canon == "poa_global":
+                    spec.irradiance_unit = _iu
+                    spec.irradiance_unit_source = _isrc
             work[canon] = s
 
     # DST bayrağını index'e taşı (NaT'ler birazdan düşecek)

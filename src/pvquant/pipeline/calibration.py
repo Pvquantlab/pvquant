@@ -176,6 +176,29 @@ def calibrate_from_scada(
         )
         notes.append(f"SCADA meteo timezone'una localize edildi: {_meteo_tz}")
 
+    # --- 14 Tem 2026: measured_poa on-ucus kontrolu ---
+    # Olu/yanlis eslenen POA sensoru fizigi sifira ceker (yaşandı: gunduz
+    # ort 0.5 W/m2 olan kolon). GHI ile kaba kiyas: gunduz GHI > 200 iken
+    # olculen POA ortalamasi GHI'nin %20'sinin altindaysa POA'yi kalibrasyona
+    # HIC sokma (tum forecast_7day cagrilari otomatik Perez'e duser) ve
+    # kullaniciya gorunur not birak. forecast.py'deki akil kontrolu ikinci
+    # savunma hattidir; bu blok kararin KULLANICIYA soylendigi yerdir.
+    if scada.poa_irradiance is not None:
+        _ghi_al = historical_meteo.ghi.reindex(scada.poa_irradiance.index)
+        _gunduz = (_ghi_al > 200.0) & scada.poa_irradiance.notna()
+        if int(_gunduz.sum()) >= 24:
+            _poa_ort = float(scada.poa_irradiance[_gunduz].mean())
+            _ghi_ort = float(_ghi_al[_gunduz].mean())
+            if _poa_ort < 0.2 * _ghi_ort:
+                _poa_uyarisi = (
+                    f"SCADA POA sensoru olu/yanlis eslenmis gorunuyor "
+                    f"(gunduz ort {_poa_ort:.1f} W/m2, GHI {_ghi_ort:.1f} W/m2). "
+                    f"POA kalibrasyonda KULLANILMADI; Perez transpozisyonu esas alindi. "
+                    f"Yukleme ekranindaki kolon eslemesini kontrol edin."
+                )
+                notes.append("UYARI: " + _poa_uyarisi)
+                scada = _dc_replace(scada, poa_irradiance=None)
+
     # --- Faz 1.9.4: outlier temizlik cagirisi ---
     # SCADA outlier temizlik - akilli tespit + zengin rapor
     _outlier_report = None
@@ -415,6 +438,11 @@ def calibrate_from_scada(
 
     # --- Faz 1.9.1: sanity checks ---
     _warnings: list[str] = []
+    # --- POA on-ucus uyarisi UI'nin bastigi listeye de gitsin (Faz 1.9.1) ---
+    try:
+        _warnings.append(_poa_uyarisi)
+    except NameError:
+        pass
 
     _mape_after = validation_after.mape_pct
     if _mape_after > 40.0:

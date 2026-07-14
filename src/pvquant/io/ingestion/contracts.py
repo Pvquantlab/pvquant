@@ -98,6 +98,9 @@ class TransformSpec:
 
     source_timezone: Optional[str] = None
     power_unit: str = "kW"
+    # --- isinim birim karari (B1): W/m2'ye nasil normalize edildi? ---
+    irradiance_unit: Optional[str] = None          # "kWh/m2"|"Wh/m2"|"W/m2"
+    irradiance_unit_source: Optional[str] = None   # "ad"|"icerik"|"varsayilan"
     timestep_minutes: int = 60
     energy_to_power: bool = False
     energy_cumulative: bool = False
