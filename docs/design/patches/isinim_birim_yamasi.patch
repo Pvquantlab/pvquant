@@ -1,0 +1,190 @@
+diff --git a/src/pvquant/io/ingestion/contracts.py b/src/pvquant/io/ingestion/contracts.py
+index 088ccde..b0ce67c 100644
+--- a/src/pvquant/io/ingestion/contracts.py
++++ b/src/pvquant/io/ingestion/contracts.py
+@@ -98,6 +98,9 @@ class TransformSpec:
+ 
+     source_timezone: Optional[str] = None
+     power_unit: str = "kW"
++    # --- isinim birim karari (B1): W/m2'ye nasil normalize edildi? ---
++    irradiance_unit: Optional[str] = None          # "kWh/m2"|"Wh/m2"|"W/m2"
++    irradiance_unit_source: Optional[str] = None   # "ad"|"icerik"|"varsayilan"
+     timestep_minutes: int = 60
+     energy_to_power: bool = False
+     energy_cumulative: bool = False
+diff --git a/src/pvquant/io/ingestion/transform.py b/src/pvquant/io/ingestion/transform.py
+index 9969b28..29d88de 100644
+--- a/src/pvquant/io/ingestion/transform.py
++++ b/src/pvquant/io/ingestion/transform.py
+@@ -174,6 +174,44 @@ def energy_to_power_kw(energy_kwh_per_interval: pd.Series,
+     return energy_kwh_per_interval / hours
+ 
+ 
++_IRR_KWH_P99_MAX = 3.0  # gunduz p99 bunun altindaysa kWh/m2 suphesi (W/m2 icin imkansiz dusuk)
++
++
++def normalize_irradiance_wm2(
++    s: pd.Series, column_name: str, step_minutes: int
++) -> tuple[pd.Series, str, str]:
++    """Isinim serisini W/m2'ye normalize eder.
++
++    Vendor exportlari isinimi uc birimde verir ve W/m2 disindakiler
++    1000x olcek hatasi yaratir (yasandi: 'Toplam Isima (kWh/m2)' kolonu
++    0.5 girdi, fizik olu sensor sandi).
++
++    Oncelik sirasi:
++      1. Kolon ADINDAKI birim: kWh/m2 -> x(1000/saat), Wh/m2 -> x(1/saat),
++         W/m2 -> oldugu gibi.
++      2. Ad birimsizse ICERIK sezgiseli: p99 < 3 ise kWh/m2 varsayilir
++         (saatlik kWh/m2 fiziksel tavani ~1.4; W/m2 gunduzu yuzlerdedir).
++      3. Hicbiri degilse W/m2 varsayilir.
++
++    Returns:
++        (seri_wm2, birim_etiketi, karar_kaynagi)  kaynak: 'ad'|'icerik'|'varsayilan'
++    """
++    name = (column_name or "").lower().replace(" ", "").replace("²", "2")
++    hours = step_minutes / 60.0
++    if "kwh/m" in name:
++        return s * (1000.0 / hours), "kWh/m2", "ad"
++    if "wh/m" in name:  # kwh yukarida yakalandi; bu saf Wh
++        return s * (1.0 / hours), "Wh/m2", "ad"
++    if "w/m" in name:
++        return s, "W/m2", "ad"
++    vals = pd.to_numeric(s, errors="coerce").dropna()
++    if len(vals) >= 24:
++        p99 = float(vals.quantile(0.99))
++        if 0.0 < p99 < _IRR_KWH_P99_MAX:
++            return s * (1000.0 / hours), "kWh/m2", "icerik"
++    return s, "W/m2", "varsayilan"
++
++
+ def transform_to_canonical(
+     df: pd.DataFrame,
+     mapping: ColumnMapping,
+@@ -245,6 +283,15 @@ def transform_to_canonical(
+         if src is not None:
+             s = coerce_numeric(df[src], decimal)
+             s.index = utc_index
++            # --- 14 Tem 2026: isinim birim normalizasyonu (B1) ---
++            if canon in ("poa_global", "ghi"):
++                _step_irr = detect_timestep_minutes(
++                    pd.DatetimeIndex(utc_index).dropna()
++                )
++                s, _iu, _isrc = normalize_irradiance_wm2(s, src, _step_irr)
++                if canon == "poa_global":
++                    spec.irradiance_unit = _iu
++                    spec.irradiance_unit_source = _isrc
+             work[canon] = s
+ 
+     # DST bayrağını index'e taşı (NaT'ler birazdan düşecek)
+diff --git a/tests/test_irradiance_unit.py b/tests/test_irradiance_unit.py
+new file mode 100644
+index 0000000..522e01d
+--- /dev/null
++++ b/tests/test_irradiance_unit.py
+@@ -0,0 +1,105 @@
++"""Isinim birim normalizasyonu testleri (B1) — 14 Tem 2026.
++
++Yasanan vaka: 'Toplam Isima (kWh/m2)' kolonu ham gecti, fizik 0.5 W/m2
++sanip sifir uretti. Bu testler o hata sinifini kalici kilitler.
++"""
++from __future__ import annotations
++import numpy as np
++import pandas as pd
++import pytest
++
++from pvquant.io.ingestion.pipeline import ingest_file
++from pvquant.io.ingestion.transform import normalize_irradiance_wm2
++
++
++def _saat_index(n=72):
++    return pd.date_range("2025-06-01 00:00", periods=n, freq="1h")
++
++
++def _gunes_profili(n=72, tepe=1.0):
++    """Basit gunduz cani: gece 0, ogle tepe."""
++    idx = _saat_index(n)
++    saat = idx.hour.values
++    profil = np.clip(np.sin((saat - 5) / 14 * np.pi), 0, None) * tepe
++    return idx, profil
++
++
++def test_kwh_m2_adiyla_donusur():
++    idx, p = _gunes_profili(tepe=1.05)  # kWh/m2 olceginde
++    s = pd.Series(p, index=idx)
++    out, unit, src = normalize_irradiance_wm2(s, "Toplam Işıma (kWh/m²)", 60)
++    assert unit == "kWh/m2" and src == "ad"
++    assert out.max() == pytest.approx(1050.0, rel=0.01)
++
++
++def test_wh_m2_adiyla_donusur():
++    idx, p = _gunes_profili(tepe=1050.0)  # Wh/m2 (saatlikte W/m2 ile ayni)
++    out, unit, src = normalize_irradiance_wm2(
++        pd.Series(p, index=idx), "POA (Wh/m2)", 60
++    )
++    assert unit == "Wh/m2" and src == "ad"
++    assert out.max() == pytest.approx(1050.0, rel=0.01)
++
++
++def test_w_m2_dokunulmaz():
++    idx, p = _gunes_profili(tepe=980.0)
++    out, unit, src = normalize_irradiance_wm2(
++        pd.Series(p, index=idx), "POA Irradiance(W/m2)", 60
++    )
++    assert unit == "W/m2" and src == "ad"
++    assert out.max() == pytest.approx(980.0, rel=0.01)
++
++
++def test_birimsiz_ad_icerikten_yakalanir():
++    idx, p = _gunes_profili(tepe=0.95)  # ad birimsiz, degerler kWh olceginde
++    out, unit, src = normalize_irradiance_wm2(
++        pd.Series(p, index=idx), "Isinim", 60
++    )
++    assert unit == "kWh/m2" and src == "icerik"
++    assert out.max() == pytest.approx(950.0, rel=0.01)
++
++
++def test_15dk_kwh_m2_carpani():
++    idx = pd.date_range("2025-06-01", periods=96, freq="15min")
++    s = pd.Series(0.25, index=idx)  # 15 dk'da 0.25 kWh/m2 = 1000 W/m2 ort
++    out, unit, _ = normalize_irradiance_wm2(s, "Işıma (kWh/m²)", 15)
++    assert unit == "kWh/m2"
++    assert out.iloc[50] == pytest.approx(1000.0, rel=0.001)
++
++
++def test_merkas_istatistik_exportu_uctan_uca(tmp_path):
++    """MERKAS vakasinin birebir taklidi: enerji-tek + kWh/m2 isinim.
++
++    Dogrulanan iki sey:
++      B1 — poa_global W/m2 olceginde cikar (gunduz yuzler),
++      C  — power kolonu yokken 'Inverter Kazanci (kWh)' gucten turer.
++    """
++    idx, gunes = _gunes_profili(n=72, tepe=1.0)
++    df = pd.DataFrame({
++        "İstatistiksel dönem": idx.strftime("%Y-%m-%d %H:%M:%S"),
++        "Toplam Işıma (kWh/m²)": np.round(gunes * 1.05, 3),
++        "Ortalama Sıcaklık (°C)": 22 + 8 * gunes,
++        "İnverter Kazancı (kWh)": np.round(gunes * 3800, 1),
++    })
++    yol = tmp_path / "stats_export.csv"
++    df.to_csv(yol, index=False)
++
++    res = ingest_file(
++        str(yol), capacity_kwp=4514.0,
++        latitude=37.87, longitude=32.49,
++        source_timezone="Europe/Istanbul",
++    )
++    clean = res.data if hasattr(res, "data") else res[0]
++    spec = getattr(res, "transform", None) or getattr(res, "spec", None)
++
++    assert "poa_global" in clean.columns
++    gunduz = clean["poa_global"].dropna()
++    gunduz = gunduz[gunduz > 0]
++    assert gunduz.max() > 300, "kWh/m2 -> W/m2 donusumu uygulanmamis!"
++
++    assert "power_kw" in clean.columns
++    assert clean["power_kw"].max() == pytest.approx(3800.0, rel=0.05)
++
++    if spec is not None:
++        assert getattr(spec, "irradiance_unit", None) == "kWh/m2"
++        assert getattr(spec, "irradiance_unit_source", None) == "ad"

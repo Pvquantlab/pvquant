@@ -1,0 +1,32 @@
+diff --git a/src/pvquant/pipeline/calibration.py b/src/pvquant/pipeline/calibration.py
+index a53add9..512544b 100644
+--- a/src/pvquant/pipeline/calibration.py
++++ b/src/pvquant/pipeline/calibration.py
+@@ -190,12 +190,13 @@ def calibrate_from_scada(
+             _poa_ort = float(scada.poa_irradiance[_gunduz].mean())
+             _ghi_ort = float(_ghi_al[_gunduz].mean())
+             if _poa_ort < 0.2 * _ghi_ort:
+-                notes.append(
+-                    f"UYARI: SCADA POA sensoru olu/yanlis eslenmis gorunuyor "
++                _poa_uyarisi = (
++                    f"SCADA POA sensoru olu/yanlis eslenmis gorunuyor "
+                     f"(gunduz ort {_poa_ort:.1f} W/m2, GHI {_ghi_ort:.1f} W/m2). "
+                     f"POA kalibrasyonda KULLANILMADI; Perez transpozisyonu esas alindi. "
+                     f"Yukleme ekranindaki kolon eslemesini kontrol edin."
+                 )
++                notes.append("UYARI: " + _poa_uyarisi)
+                 scada = _dc_replace(scada, poa_irradiance=None)
+ 
+     # --- Faz 1.9.4: outlier temizlik cagirisi ---
+@@ -437,6 +438,11 @@ def calibrate_from_scada(
+ 
+     # --- Faz 1.9.1: sanity checks ---
+     _warnings: list[str] = []
++    # --- POA on-ucus uyarisi UI'nin bastigi listeye de gitsin (Faz 1.9.1) ---
++    try:
++        _warnings.append(_poa_uyarisi)
++    except NameError:
++        pass
+ 
+     _mape_after = validation_after.mape_pct
+     if _mape_after > 40.0:
