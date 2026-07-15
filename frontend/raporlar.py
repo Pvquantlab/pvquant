@@ -5,12 +5,13 @@ Kalibre tahmin sonuclarini 3 farkli formatta (PDF/Excel/JSON) disa aktarir.
 
 Adim 6a: Iskelet + KPI seridi + guard'lar          [OK]
 Adim 6b: 3 format karti (gorsel)                    [OK - 14 Temmuz]
-Adim 6c: Excel + JSON gercek isleyisi
-Adim 6d: PDF yonetici ozeti (fpdf2)
+Adim 6c: PDF + Excel + JSON gercek isleyisi         [OK - 14 Temmuz aksam]
+Adim 6d: PDF yonetici ozeti fine-tuning
 Adim 6e: Rapor gecmisi (dekoratif)
 """
 
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import streamlit as st
@@ -101,14 +102,10 @@ def _uyari_forecast_yok() -> None:
 # ============================================================
 
 def _kpi_seridi() -> None:
-    from datetime import datetime
-
     result = st.session_state.forecast_result
     n_saat = len(result.hourly)
 
-    # Boyut tahmini: kaba hesap (satir sayisi * kolon sayisi * ~10 byte)
     boyut_kb = int((n_saat * len(result.hourly.columns) * 10) / 1024)
-
     bugun = datetime.now().strftime("%d %b").replace(" 0", " ")
 
     kpi_cols = st.columns(4)
@@ -162,34 +159,71 @@ def _kpi_seridi() -> None:
 
 
 # ============================================================
-# 6b: 3 format karti
+# 6c: Rapor uretim motoru
+# ============================================================
+
+def _rapor_dosya_adi(uzanti: str) -> str:
+    """Rapor dosya adi: PVQuant_<santral>_<yyyymmdd>_hhmm.<uzanti>"""
+    santral = st.session_state.get("plant_context", {}).get("plant_name", "santral")
+    santral = "".join(c if c.isalnum() or c in "-_" else "_" for c in santral)
+    zaman = datetime.now().strftime("%Y%m%d_%H%M")
+    return f"PVQuant_{santral}_{zaman}.{uzanti}"
+
+
+def _raporlari_uret():
+    """3 formati bir kerede uretir, session_state'e cacheler."""
+    forecast = st.session_state.forecast_result
+    calibration = st.session_state.calibration_result
+
+    cache_key = (id(forecast), id(calibration))
+    if st.session_state.get("_rapor_cache_key") == cache_key:
+        return st.session_state._rapor_cache
+
+    with st.spinner("Raporlar hazirlaniyor..."):
+        from pvquant.reporting import from_results, build_pdf, build_excel, build_json
+
+        plant_ctx = st.session_state.get("plant_context", {})
+        plant_name = plant_ctx.get("plant_name", "Santral")
+        plant_tz = plant_ctx.get("timezone", "Europe/Istanbul")
+
+        ctx = from_results(
+            forecast, calibration,
+            plant_name=plant_name,
+            plant_tz=plant_tz,
+            mode="B",
+        )
+
+        sonuc = {"pdf": None, "xlsx": None, "json": None, "hatalar": {}}
+
+        try:
+            sonuc["pdf"] = build_pdf(ctx)
+        except Exception as e:
+            sonuc["hatalar"]["pdf"] = str(e)
+
+        try:
+            sonuc["xlsx"] = build_excel(ctx)
+        except Exception as e:
+            sonuc["hatalar"]["xlsx"] = str(e)
+
+        try:
+            sonuc["json"] = build_json(ctx)
+        except Exception as e:
+            sonuc["hatalar"]["json"] = str(e)
+
+    st.session_state._rapor_cache_key = cache_key
+    st.session_state._rapor_cache = sonuc
+    return sonuc
+
+
+# ============================================================
+# 6c: 3 format karti + indir butonlari
 # ============================================================
 
 def _format_karti(
-    ikon: str,
-    baslik: str,
-    aciklama: str,
-    hedef: str,
-    boyut_kb: int,
-    buton_key: str,
-    aktif: bool = False,
-    aksiyon_notu: str = "",
-) -> bool:
-    """Tek bir format kartini render eder.
-    
-    Args:
-        ikon: Emoji ikonu (48px gosterilir).
-        baslik: Format adi.
-        aciklama: 1-2 satirlik aciklama.
-        hedef: Hedef kitle etiketi (kucuk yazi).
-        boyut_kb: Yaklasik dosya boyutu (KB).
-        buton_key: Streamlit button key.
-        aktif: False ise buton disabled, hazir degil notu goserilir.
-        aksiyon_notu: Aktif degilse gosterilecek not.
-    
-    Returns:
-        Butona tiklanip tiklanmadigi.
-    """
+    ikon, baslik, aciklama, hedef, boyut_bilgisi,
+    indir_bytes, indir_dosya_adi, indir_mime, buton_key,
+    hata_mesaji=None,
+) -> None:
     st.markdown(
         f"""
         <div class="pvq-card" style="min-height:280px;
@@ -212,43 +246,59 @@ def _format_karti(
             <div style="text-align:right">
               <div class="pvq-microlabel" style="margin-bottom:2px">BOYUT</div>
               <div style="font-size:12px;color:{TEXT_PRIMARY};
-                          font-weight:500" class="pvq-mono">~{boyut_kb} KB</div>
+                          font-weight:500" class="pvq-mono">{boyut_bilgisi}</div>
             </div>
           </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
-    
-    if aktif:
-        return st.button(
-            f"↓  {baslik} indir",
-            key=buton_key,
-            use_container_width=True,
-            type="primary",
-        )
-    else:
+
+    if hata_mesaji is not None:
+        st.error(f"Uretim hatasi: {hata_mesaji[:150]}")
         st.button(
             f"↓  {baslik} indir",
             key=buton_key,
             use_container_width=True,
             disabled=True,
-            help=aksiyon_notu or "Bu format sonraki adimda gelecek",
         )
-        return False
+        return
+
+    if indir_bytes is None:
+        st.button(
+            f"↓  {baslik} indir",
+            key=buton_key,
+            use_container_width=True,
+            disabled=True,
+        )
+        return
+
+    if isinstance(indir_bytes, str):
+        indir_bytes = indir_bytes.encode("utf-8")
+
+    st.download_button(
+        f"↓  {baslik} indir",
+        data=indir_bytes,
+        file_name=indir_dosya_adi,
+        mime=indir_mime,
+        key=buton_key,
+        use_container_width=True,
+        type="primary",
+    )
 
 
 def _format_kartlari() -> None:
-    """Uc format kartini yan yana gosterir."""
-    result = st.session_state.forecast_result
-    n_saat = len(result.hourly)
-    n_kolon = len(result.hourly.columns)
-    
-    # Boyut tahminleri (kaba hesap - 6c/6d'de gercek boyut alinacak)
-    excel_kb = int((n_saat * n_kolon * 12) / 1024) + 15  # header/formatting overhead
-    json_kb = int((n_saat * n_kolon * 25) / 1024) + 2    # JSON verbose
-    pdf_kb = 45  # tek sayfa yonetici ozeti ~40-50 KB
-    
+    """Uc format kartini yan yana gosterir - butonlar aktif."""
+    sonuc = _raporlari_uret()
+
+    def _boyut_str(icerik):
+        if icerik is None:
+            return "—"
+        if isinstance(icerik, str):
+            icerik = icerik.encode("utf-8")
+        kb = len(icerik) / 1024
+        return f"~{kb:.0f} KB"
+
     st.markdown(
         f'<div style="margin-top:24px;margin-bottom:12px">'
         f'<div style="font-size:15px;font-weight:600;color:{TEXT_PRIMARY};'
@@ -259,11 +309,11 @@ def _format_kartlari() -> None:
         f'</div>',
         unsafe_allow_html=True,
     )
-    
+
     col_pdf, col_excel, col_json = st.columns(3)
-    
+
     with col_pdf:
-        pdf_tiklandi = _format_karti(
+        _format_karti(
             ikon="📄",
             baslik="PDF Yonetici Ozeti",
             aciklama=(
@@ -271,14 +321,17 @@ def _format_kartlari() -> None:
                 "gunluk grafik, kritik notlar. E-posta ekine, sunuma uygun."
             ),
             hedef="Yonetim, e-posta paylasimi",
-            boyut_kb=pdf_kb,
+            boyut_bilgisi=_boyut_str(sonuc["pdf"]),
+            indir_bytes=sonuc["pdf"],
+            indir_dosya_adi=_rapor_dosya_adi("pdf"),
+            indir_mime="application/pdf",
             buton_key="rapor_pdf_indir",
-            aktif=False,
-            aksiyon_notu="PDF uretimi Adim 6d'de gelecek",
+            hata_mesaji=sonuc["hatalar"].get("pdf"),
         )
-    
+
     with col_excel:
-        excel_tiklandi = _format_karti(
+        n_saat = len(st.session_state.forecast_result.hourly)
+        _format_karti(
             ikon="📊",
             baslik="Excel Tam Veri",
             aciklama=(
@@ -286,14 +339,16 @@ def _format_kartlari() -> None:
                 "hucre sicakligi, POA isinim. Analiz ve raporlama icin."
             ),
             hedef="Analiz, muhasebe, arsiv",
-            boyut_kb=excel_kb,
+            boyut_bilgisi=_boyut_str(sonuc["xlsx"]),
+            indir_bytes=sonuc["xlsx"],
+            indir_dosya_adi=_rapor_dosya_adi("xlsx"),
+            indir_mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             buton_key="rapor_excel_indir",
-            aktif=False,
-            aksiyon_notu="Excel disa aktarim Adim 6c'de gelecek",
+            hata_mesaji=sonuc["hatalar"].get("xlsx"),
         )
-    
+
     with col_json:
-        json_tiklandi = _format_karti(
+        _format_karti(
             ikon="🔧",
             baslik="JSON API Formati",
             aciklama=(
@@ -301,24 +356,38 @@ def _format_kartlari() -> None:
                 "Baska bir sisteme (SCADA, ERP, BI) beslemek icin."
             ),
             hedef="Sistem entegrasyonu, otomasyon",
-            boyut_kb=json_kb,
+            boyut_bilgisi=_boyut_str(sonuc["json"]),
+            indir_bytes=sonuc["json"],
+            indir_dosya_adi=_rapor_dosya_adi("json"),
+            indir_mime="application/json",
             buton_key="rapor_json_indir",
-            aktif=False,
-            aksiyon_notu="JSON disa aktarim Adim 6c'de gelecek",
+            hata_mesaji=sonuc["hatalar"].get("json"),
         )
-    
-    # 6b bilgi notu (6c-6d bittiginde bu blok kaldirilir)
-    st.markdown(
-        f'<div style="margin-top:16px;padding:12px 16px;'
-        f'background:#F7F8F9;border-radius:6px;border-left:3px solid {PRIMARY}">'
-        f'<div style="font-size:12px;color:{TEXT_SECONDARY};line-height:1.5">'
-        f'<b style="color:{TEXT_PRIMARY}">Adim 6b tamam.</b> Format kartlari '
-        f'gorsel olarak hazir. Gercek dosya uretimi Adim 6c (Excel + JSON) '
-        f've Adim 6d (PDF) ile devreye girecek.'
-        f'</div>'
-        f'</div>',
-        unsafe_allow_html=True,
-    )
+
+    basarili = sum(1 for k in ("pdf", "xlsx", "json") if sonuc[k] is not None)
+    if basarili == 3:
+        st.markdown(
+            f'<div style="margin-top:16px;padding:12px 16px;'
+            f'background:#F0FDF4;border-radius:6px;border-left:3px solid {SUCCESS}">'
+            f'<div style="font-size:12px;color:{TEXT_SECONDARY};line-height:1.5">'
+            f'<b style="color:{TEXT_PRIMARY}">3 format hazir.</b> '
+            f'Butona basarak indirebilirsiniz. Raporlar mevcut kalibrasyon + '
+            f'tahmine gore uretildi.'
+            f'</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            f'<div style="margin-top:16px;padding:12px 16px;'
+            f'background:#FEF2F2;border-radius:6px;border-left:3px solid {WARNING}">'
+            f'<div style="font-size:12px;color:{TEXT_SECONDARY};line-height:1.5">'
+            f'<b style="color:{TEXT_PRIMARY}">{basarili}/3 format hazirlandi.</b> '
+            f'Basarisiz formatlarda hata mesaji gosteriliyor.'
+            f'</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
 
 
 # ============================================================
@@ -326,23 +395,18 @@ def _format_kartlari() -> None:
 # ============================================================
 
 def render_raporlar() -> None:
-    page_header(   
+    page_header(
         "Raporlar",
         "PDF yonetici ozeti, Excel tam veri, JSON API formati",
     )
 
-    # Guard 1: kalibrasyon var mi?
     if "calibration_result" not in st.session_state:
         _uyari_kalibrasyon_yok()
         return
 
-    # Guard 2: forecast var mi?
     if "forecast_result" not in st.session_state:
         _uyari_forecast_yok()
         return
 
-    # 6a: KPI seridi
     _kpi_seridi()
-
-    # 6b: Format kartlari
     _format_kartlari()

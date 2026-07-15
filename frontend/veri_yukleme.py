@@ -267,6 +267,12 @@ def _santral_bilgi_formu() -> dict | None:
     
     col1, col2 = st.columns(2)
     with col1:
+        _ad = st.text_input(
+            "Santral adı (opsiyonel)",
+            value=saved.get("plant_name", saved.get("name", "")),
+            key="ing_plant_name",
+            help="Raporlarda görünecek ad. Boşsa dosya adı kullanılır.",
+        )
         capacity = st.number_input(
             "Kurulu guc (kWp)",
             min_value=1.0, max_value=1_000_000.0,
