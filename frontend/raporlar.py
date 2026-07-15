@@ -183,7 +183,11 @@ def _raporlari_uret():
         from pvquant.reporting import from_results, build_pdf, build_excel, build_json
 
         plant_ctx = st.session_state.get("plant_context", {})
-        plant_name = plant_ctx.get("plant_name", "Santral")
+        plant_name = (
+            st.session_state.get("plant_display_name")
+            or plant_ctx.get("plant_name")
+            or "Santral"
+        )
         plant_tz = plant_ctx.get("timezone", "Europe/Istanbul")
 
         ctx = from_results(
