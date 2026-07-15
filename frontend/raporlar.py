@@ -198,6 +198,8 @@ def _raporlari_uret():
             plant_tz=plant_tz,
             mode="B",
         )
+        from pvquant.reporting import apply_hybrid_session
+        ctx = apply_hybrid_session(ctx, st.session_state)
 
         sonuc = {"pdf": None, "xlsx": None, "json": None, "hatalar": {}}
 

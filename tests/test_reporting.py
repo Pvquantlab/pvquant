@@ -150,7 +150,7 @@ def test_json_semasi_ve_gun_sayisi():
     fr = _sentetik_forecast()
     ctx = from_results(fr, _sentetik_calibration(), plant_name="Test")
     d = json.loads(build_json(ctx))
-    assert d["schema_version"] == "1.0.0"
+    assert d["schema_version"] == "1.1.0"   # Tur 6: quality.hybrid eklendi (minor)
     assert len(d["daily"]) == 7           # düzeltme 2+3 JSON'da da geçerli
     assert len(d["hourly"]) == 168
     assert d["plant"]["name"] == "Test"
@@ -207,3 +207,63 @@ def test_pozitif_not_n_valid_ile():
     ctx = from_results(fr, cr, plant_name="Test")
     assert ctx.n_valid_hours == 4162
     assert build_pdf(ctx)[:4] == b"%PDF"
+
+
+# ----------------------------------------------------------------- Tur 6
+def _mod_c_ctx():
+    ctx = from_results(_sentetik_forecast(), _sentetik_calibration(),
+                       plant_name="Test")
+    session = {"hybrid_active": True, "hybrid_report": {
+        "holdout_mape_pct": 17.6, "holdout_rmse_kw": 260.0,
+        "physics_mape_pct": 26.8, "improvement_pct": 34.3,
+        "holdout_hours": 832}}
+    from pvquant.reporting import apply_hybrid_session
+    return apply_hybrid_session(ctx, session)
+
+
+def test_json_hybrid_block_when_mode_c():
+    import json
+    d = json.loads(build_json(_mod_c_ctx()))
+    assert d["schema_version"] == "1.1.0"
+    hy = d["quality"]["hybrid"]
+    assert hy["holdout_mape_pct"] == 17.6
+    assert hy["holdout_rmse_kw"] == 260.0
+    assert hy["physics_mape_pct"] == 26.8
+    assert hy["improvement_pct"] == 34.3
+    assert hy["holdout_hours"] == 832
+    assert hy["note"] is None                  # %34 > kapı eşiği %3
+
+
+def test_json_no_hybrid_block_when_mode_b():
+    import json
+    ctx = from_results(_sentetik_forecast(), _sentetik_calibration(),
+                       plant_name="Test", mode="B")
+    d = json.loads(build_json(ctx))
+    assert "hybrid" not in d["quality"]        # null değil, YOK
+
+
+def test_excel_holdout_visible_when_mode_c():
+    import zipfile, io
+    xlsx = build_excel(_mod_c_ctx())
+    z = zipfile.ZipFile(io.BytesIO(xlsx))
+    metin = z.read("xl/sharedStrings.xml").decode("utf-8")
+    assert "HOLDOUT (Mod C)" in metin
+    assert "Holdout MAPE (%)" in metin         # Metadata künyesi
+
+
+def test_excel_holdout_hidden_when_mode_b():
+    import zipfile, io
+    ctx = from_results(_sentetik_forecast(), _sentetik_calibration(),
+                       plant_name="Test", mode="B")
+    xlsx = build_excel(ctx)
+    z = zipfile.ZipFile(io.BytesIO(xlsx))
+    metin = z.read("xl/sharedStrings.xml").decode("utf-8")
+    assert "HOLDOUT" not in metin
+
+
+def test_json_marjinal_iyilesme_notu():
+    ctx = _mod_c_ctx()
+    ctx.holdout_improvement_pct = 1.8          # kapı eşiği %3 altı
+    import json
+    d = json.loads(build_json(ctx))
+    assert "marjinal" in d["quality"]["hybrid"]["note"]

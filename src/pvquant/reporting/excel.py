@@ -115,6 +115,19 @@ def build_excel(ctx) -> bytes:
         ws.write(6, 7, "isabet: " + ("iyi" if ctx.mape_pct < 15 else
                  "orta" if ctx.mape_pct < 30 else "zayıf"), fmt)
 
+    # ---- Tur 6: Mod C holdout blogu (Ozet gorunurlugu) ----
+    _hibrit_var = ctx.mode == "C" and ctx.holdout_mape_pct is not None
+    if _hibrit_var:
+        ws.write(7, 1, "HOLDOUT (Mod C)", F["kpi_et"])
+        ws.write(7, 2, f"MAPE %{ctx.holdout_mape_pct:.1f}", F["iyi"])
+        if ctx.holdout_rmse_kw is not None:
+            ws.write(7, 3, f"RMSE {ctx.holdout_rmse_kw:,.0f} kW", F["hucre"])
+        if ctx.holdout_improvement_pct is not None:
+            ws.write(7, 4, f"iyileşme %{ctx.holdout_improvement_pct:.0f}",
+                     F["hucre"])
+        if ctx.holdout_hours is not None:
+            ws.write(7, 5, f"{ctx.holdout_hours} test saati", F["alt"])
+
     # Günlük tablo (B10'dan) — kWh kolonu SUMIFS ile Saatlik'ten DİNAMİK
     bas = 9
     for j, ad in enumerate(["Tarih", "Tahmin (kWh)", "Kümülatif (MWh)"]):
@@ -178,6 +191,15 @@ def build_excel(ctx) -> bytes:
         ("Şema sürümü", ctx.schema_version),
         ("Adlandırma", "IEC 61724-1 uyumlu"),
     ]
+    if ctx.mode == "C" and ctx.holdout_mape_pct is not None:
+        satirlar += [
+            ("Holdout MAPE (%)", round(ctx.holdout_mape_pct, 2)),
+            ("Holdout RMSE (kW)", round(ctx.holdout_rmse_kw, 1)
+                if ctx.holdout_rmse_kw is not None else "—"),
+            ("Holdout iyileşme (%)", round(ctx.holdout_improvement_pct, 1)
+                if ctx.holdout_improvement_pct is not None else "—"),
+            ("Holdout test saati", ctx.holdout_hours or "—"),
+        ]
     ws_m.write(1, 1, "RAPOR KÜNYESİ", F["bolum"])
     for i, (et, dg) in enumerate(satirlar, start=3):
         ws_m.write(i, 1, et, F["alt"])

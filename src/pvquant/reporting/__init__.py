@@ -7,10 +7,10 @@ Kullanım (frontend/raporlar.py):
     xlsx_bytes = build_excel(ctx)
     json_str   = build_json(ctx)
 """
-from .contracts import ReportContext, from_results
+from .contracts import ReportContext, apply_hybrid_session, from_results
 from .pdf import build_pdf
 from .excel import build_excel
 from .schemas import build_json, ForecastReport
 
-__all__ = ["ReportContext", "from_results", "build_pdf", "build_excel",
+__all__ = ["ReportContext", "apply_hybrid_session", "from_results", "build_pdf", "build_excel",
            "build_json", "ForecastReport"]

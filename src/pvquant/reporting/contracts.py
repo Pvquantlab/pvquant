@@ -13,6 +13,10 @@ from typing import Optional
 
 import pandas as pd
 
+# Sema surumu: alan EKLEME minor, kaldirma/yeniden adlandirma major (pratikte
+# yapilmaz — alan 'deprecated' isaretlenir). Tur 6: quality.hybrid blogu -> 1.1.0
+SCHEMA_VERSION = "1.1.0"
+
 
 @dataclass
 class ReportContext:
@@ -44,8 +48,12 @@ class ReportContext:
     calibrated_at: Optional[datetime] = None
     n_valid_hours: Optional[int] = None          # kalibrasyondaki geçerli saat
     holdout_mape_pct: Optional[float] = None     # kronolojik son %20 sınavı
+    holdout_rmse_kw: Optional[float] = None
+    holdout_physics_mape_pct: Optional[float] = None
+    holdout_improvement_pct: Optional[float] = None
+    holdout_hours: Optional[int] = None
     warnings: list[str] = None
-    schema_version: str = "1.0.0"
+    schema_version: str = SCHEMA_VERSION
 
     # ---- türetilmiş KPI'lar (tek yerde yaşar; üç format aynı sayıyı basar) ----
     @property
@@ -151,6 +159,29 @@ def from_results(
         calibrated_at=getattr(cr, "calibrated_at", None) if cr else None,
         warnings=list(getattr(cr, "warnings", []) or []) if cr else [],
     )
+
+
+def apply_hybrid_session(ctx: "ReportContext", session) -> "ReportContext":
+    """raporlar.py'nin tek satırlık hibrit bağlantısı.
+
+    session: st.session_state (veya testte düz dict). Sözleşme:
+      hybrid_active (bool)  -> ctx.mode = "C" (rozet + KPI dili)
+      hybrid_report (dict)  -> holdout_mape_pct / holdout_rmse_kw
+    Hibrit yoksa ctx'e DOKUNULMAZ — fizik akışı aynen kalır.
+    """
+    getter = session.get if hasattr(session, "get") else lambda k, d=None: d
+    if getter("hybrid_active"):
+        ctx.mode = "C"
+    hr = getter("hybrid_report") or {}
+    _esle = (("holdout_mape_pct", "holdout_mape_pct", float),
+             ("holdout_rmse_kw", "holdout_rmse_kw", float),
+             ("physics_mape_pct", "holdout_physics_mape_pct", float),
+             ("improvement_pct", "holdout_improvement_pct", float),
+             ("holdout_hours", "holdout_hours", int))
+    for kaynak, hedef, tip in _esle:
+        if hr.get(kaynak) is not None:
+            setattr(ctx, hedef, tip(hr[kaynak]))
+    return ctx
 
 
 import re as _re

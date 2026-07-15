@@ -16,7 +16,7 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from components import page_header
-from design_tokens import PRIMARY, SUCCESS, TEXT_SECONDARY, TEXT_TERTIARY, WARNING
+from design_tokens import PRIMARY, SUCCESS, TEXT_PRIMARY, TEXT_SECONDARY, TEXT_TERTIARY, WARNING
 
 
 # ============================================================
@@ -697,6 +697,83 @@ def _stage_done() -> None:
             f'</div>',
             unsafe_allow_html=True,
         )
+        # =========================================================
+    # Tur 5: Hibrit iyileştirme butonu + sonuç kartı
+    # =========================================================
+    st.markdown("---")
+    _gerekli = ("scada_data", "historical_meteo", "plant_spec")
+    _eksik = [k for k in _gerekli if k not in st.session_state]
+    if _eksik:
+        st.caption(
+            f"Hibrit iyileştirme için önce kalibrasyon tamamlanmalı "
+            f"(eksik: {', '.join(_eksik)})."
+        )
+    elif st.session_state.get("hybrid_active"):
+        _hs = st.session_state.get("hybrid_report", {}) 
+
+        holdout = _hs.get("holdout_mape_pct")
+        rmse = _hs.get("holdout_rmse_kw")
+        st.markdown(
+            f'<div class="pvq-card" '
+            f'style="border-left:3px solid {SUCCESS};padding:16px 20px">'
+            f'<div style="font-size:14px;font-weight:600;color:{TEXT_PRIMARY};'
+            f'margin-bottom:6px">🚀 Hibrit model devrede</div>'
+            f'<div style="font-size:12px;color:{TEXT_SECONDARY};line-height:1.6">'
+            f'AI rezidüel katmanı kalibre fizik üstüne eklendi. '
+            f'<b>Holdout MAPE: %{holdout:.1f}</b> '
+            f'(kronolojik son %20 sınavı, RMSE {rmse:.0f} kW). '
+            f'Raporlar sayfası artık Mod C rozetiyle üretilir.'
+            f'</div></div>',
+            unsafe_allow_html=True,
+        )
+    else:
+        col_a, col_b = st.columns([2, 3])
+        with col_a:
+            hybrid_btn = st.button(
+                "🚀 Hibritle iyileştir",
+                key="hybrid_train_btn",
+                use_container_width=True,
+                type="secondary",
+            )
+        with col_b:
+            st.markdown(
+                f'<div style="padding:8px 12px;font-size:12px;'
+                f'color:{TEXT_SECONDARY};line-height:1.5">'
+                f'AI rezidüel katmanı fizik hatalarını öğrenir. '
+                f'Eğitim ~30-60 sn sürer, holdout MAPE ölçülür.'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+        if hybrid_btn:
+            with st.spinner("Hibrit model eğitiliyor... (30-60 sn)"):
+                from pvquant.pipeline.hybrid_ui import run_hybrid_training, session_ozeti
+                _plant = st.session_state.plant_spec
+                _plant_ctx = {
+                    "capacity_kwp": _plant.p_nom_kwp,
+                    "latitude": _plant.latitude,
+                    "longitude": _plant.longitude,
+                    "timezone": st.session_state.get("plant_context", {}).get("timezone", "Europe/Istanbul"),
+                    "tilt": _plant.tilt,
+                    "azimuth": _plant.azimuth,
+                    "panel_technology": "bifacial" if _plant.bifacial_factor > 0 else "mono",
+                }
+                _res = run_hybrid_training(
+                    scada=st.session_state.scada_data,
+                    historical_meteo=st.session_state.historical_meteo,
+                    plant_ctx=_plant_ctx,
+                    plant_name=st.session_state.get("plant_display_name", "Santral"),
+                )
+            if _res.ok:
+                st.session_state.hybrid_model = _res.model
+                st.session_state.hybrid_report = session_ozeti(_res)
+                st.session_state.hybrid_active = True
+                st.rerun() 
+            else:
+                st.info(
+                    "Hibrit model eğitilemedi, fizik akışıyla devam. "
+                   f"({_res.error})"
+                )
 
     # Aksiyon butonlari
     st.markdown("<div style='margin-top:24px'></div>", unsafe_allow_html=True)

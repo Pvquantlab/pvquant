@@ -1,0 +1,243 @@
+diff --git a/src/pvquant/reporting/contracts.py b/src/pvquant/reporting/contracts.py
+index 351e2e7..6350207 100644
+--- a/src/pvquant/reporting/contracts.py
++++ b/src/pvquant/reporting/contracts.py
+@@ -13,6 +13,10 @@ from typing import Optional
+ 
+ import pandas as pd
+ 
++# Sema surumu: alan EKLEME minor, kaldirma/yeniden adlandirma major (pratikte
++# yapilmaz — alan 'deprecated' isaretlenir). Tur 6: quality.hybrid blogu -> 1.1.0
++SCHEMA_VERSION = "1.1.0"
++
+ 
+ @dataclass
+ class ReportContext:
+@@ -45,8 +49,11 @@ class ReportContext:
+     n_valid_hours: Optional[int] = None          # kalibrasyondaki geçerli saat
+     holdout_mape_pct: Optional[float] = None     # kronolojik son %20 sınavı
+     holdout_rmse_kw: Optional[float] = None
++    holdout_physics_mape_pct: Optional[float] = None
++    holdout_improvement_pct: Optional[float] = None
++    holdout_hours: Optional[int] = None
+     warnings: list[str] = None
+-    schema_version: str = "1.0.0"
++    schema_version: str = SCHEMA_VERSION
+ 
+     # ---- türetilmiş KPI'lar (tek yerde yaşar; üç format aynı sayıyı basar) ----
+     @property
+@@ -166,10 +173,14 @@ def apply_hybrid_session(ctx: "ReportContext", session) -> "ReportContext":
+     if getter("hybrid_active"):
+         ctx.mode = "C"
+     hr = getter("hybrid_report") or {}
+-    if hr.get("holdout_mape_pct") is not None:
+-        ctx.holdout_mape_pct = float(hr["holdout_mape_pct"])
+-    if hr.get("holdout_rmse_kw") is not None:
+-        ctx.holdout_rmse_kw = float(hr["holdout_rmse_kw"])
++    _esle = (("holdout_mape_pct", "holdout_mape_pct", float),
++             ("holdout_rmse_kw", "holdout_rmse_kw", float),
++             ("physics_mape_pct", "holdout_physics_mape_pct", float),
++             ("improvement_pct", "holdout_improvement_pct", float),
++             ("holdout_hours", "holdout_hours", int))
++    for kaynak, hedef, tip in _esle:
++        if hr.get(kaynak) is not None:
++            setattr(ctx, hedef, tip(hr[kaynak]))
+     return ctx
+ 
+ 
+diff --git a/src/pvquant/reporting/excel.py b/src/pvquant/reporting/excel.py
+index 64777c8..9dd7b10 100644
+--- a/src/pvquant/reporting/excel.py
++++ b/src/pvquant/reporting/excel.py
+@@ -115,6 +115,19 @@ def build_excel(ctx) -> bytes:
+         ws.write(6, 7, "isabet: " + ("iyi" if ctx.mape_pct < 15 else
+                  "orta" if ctx.mape_pct < 30 else "zayıf"), fmt)
+ 
++    # ---- Tur 6: Mod C holdout blogu (Ozet gorunurlugu) ----
++    _hibrit_var = ctx.mode == "C" and ctx.holdout_mape_pct is not None
++    if _hibrit_var:
++        ws.write(7, 1, "HOLDOUT (Mod C)", F["kpi_et"])
++        ws.write(7, 2, f"MAPE %{ctx.holdout_mape_pct:.1f}", F["iyi"])
++        if ctx.holdout_rmse_kw is not None:
++            ws.write(7, 3, f"RMSE {ctx.holdout_rmse_kw:,.0f} kW", F["hucre"])
++        if ctx.holdout_improvement_pct is not None:
++            ws.write(7, 4, f"iyileşme %{ctx.holdout_improvement_pct:.0f}",
++                     F["hucre"])
++        if ctx.holdout_hours is not None:
++            ws.write(7, 5, f"{ctx.holdout_hours} test saati", F["alt"])
++
+     # Günlük tablo (B10'dan) — kWh kolonu SUMIFS ile Saatlik'ten DİNAMİK
+     bas = 9
+     for j, ad in enumerate(["Tarih", "Tahmin (kWh)", "Kümülatif (MWh)"]):
+@@ -178,6 +191,15 @@ def build_excel(ctx) -> bytes:
+         ("Şema sürümü", ctx.schema_version),
+         ("Adlandırma", "IEC 61724-1 uyumlu"),
+     ]
++    if ctx.mode == "C" and ctx.holdout_mape_pct is not None:
++        satirlar += [
++            ("Holdout MAPE (%)", round(ctx.holdout_mape_pct, 2)),
++            ("Holdout RMSE (kW)", round(ctx.holdout_rmse_kw, 1)
++                if ctx.holdout_rmse_kw is not None else "—"),
++            ("Holdout iyileşme (%)", round(ctx.holdout_improvement_pct, 1)
++                if ctx.holdout_improvement_pct is not None else "—"),
++            ("Holdout test saati", ctx.holdout_hours or "—"),
++        ]
+     ws_m.write(1, 1, "RAPOR KÜNYESİ", F["bolum"])
+     for i, (et, dg) in enumerate(satirlar, start=3):
+         ws_m.write(i, 1, et, F["alt"])
+diff --git a/src/pvquant/reporting/schemas.py b/src/pvquant/reporting/schemas.py
+index 92b422a..06f643e 100644
+--- a/src/pvquant/reporting/schemas.py
++++ b/src/pvquant/reporting/schemas.py
+@@ -39,16 +39,27 @@ class Totals(BaseModel):
+         description="IEC 61724-1 dönem özgül verimi")
+ 
+ 
++class HybridQuality(BaseModel):
++    """Mod C holdout sınavı — kronolojik son %20 (yalnız hibrit aktifken)."""
++    holdout_mape_pct: float
++    holdout_rmse_kw: float | None = None
++    physics_mape_pct: float | None = None
++    improvement_pct: float | None = None
++    holdout_hours: int | None = None
++    note: str | None = None      # marjinal iyileşme uyarısı (< kapı eşiği %3)
++
++
+ class Quality(BaseModel):
+     mape_pct: float | None = None
+     deviation_pct: float | None = None
+     eta_bos: float | None = None
+     bg: float | None = None
++    hybrid: HybridQuality | None = None
+     warnings: list[str] = []
+ 
+ 
+ class ForecastReport(BaseModel):
+-    schema_version: str = "1.0.0"
++    schema_version: str = "1.0.0"   # build_json ctx'ten geçirir (SCHEMA_VERSION)
+     generated_at: datetime
+     plant: PlantInfo
+     run: RunInfo
+@@ -58,9 +69,33 @@ class ForecastReport(BaseModel):
+     quality: Quality
+ 
+ 
++def _hybrid_quality(ctx) -> "HybridQuality | None":
++    """Sözleşme koruması: mode!='C' ya da holdout yoksa blok HİÇ üretilmez
++    (null değil, YOK) — Mod B tüketicileri geriye dönük aynen çalışır."""
++    if ctx.mode != "C" or ctx.holdout_mape_pct is None:
++        return None
++    imp = ctx.holdout_improvement_pct
++    not_metni = None
++    if imp is not None and imp < 3.0:   # terfi kapısıyla AYNI eşik (config)
++        not_metni = ("marjinal iyileşme — kapı eşiği %3'ün altında; "
++                     "fizikten istatistiksel ayrışma zayıf olabilir")
++    return HybridQuality(
++        holdout_mape_pct=round(ctx.holdout_mape_pct, 2),
++        holdout_rmse_kw=round(ctx.holdout_rmse_kw, 1)
++            if ctx.holdout_rmse_kw is not None else None,
++        physics_mape_pct=round(ctx.holdout_physics_mape_pct, 2)
++            if ctx.holdout_physics_mape_pct is not None else None,
++        improvement_pct=round(imp, 1) if imp is not None else None,
++        holdout_hours=ctx.holdout_hours,
++        note=not_metni,
++    )
++
++
+ def build_json(ctx) -> str:
++    import json as _json
+     h = ctx.hourly
+     rapor = ForecastReport(
++        schema_version=ctx.schema_version,
+         generated_at=ctx.run_at_utc,
+         plant=PlantInfo(name=ctx.plant_name, capacity_kwp=ctx.capacity_kwp,
+                         latitude=ctx.latitude, longitude=ctx.longitude,
+@@ -79,6 +114,10 @@ def build_json(ctx) -> str:
+                 for ts, r in h.iterrows()],
+         quality=Quality(mape_pct=ctx.mape_pct, deviation_pct=ctx.deviation_pct,
+                         eta_bos=ctx.eta_bos, bg=ctx.bg,
++                        hybrid=_hybrid_quality(ctx),
+                         warnings=ctx.warnings or []),
+     )
+-    return rapor.model_dump_json(indent=2)
++    d = rapor.model_dump(mode="json")
++    if d["quality"].get("hybrid") is None:      # yok = YOK (null değil)
++        d["quality"].pop("hybrid", None)
++    return _json.dumps(d, indent=2, ensure_ascii=False)
+diff --git a/tests/test_reporting.py b/tests/test_reporting.py
+index 4d29376..50430e4 100644
+--- a/tests/test_reporting.py
++++ b/tests/test_reporting.py
+@@ -150,7 +150,7 @@ def test_json_semasi_ve_gun_sayisi():
+     fr = _sentetik_forecast()
+     ctx = from_results(fr, _sentetik_calibration(), plant_name="Test")
+     d = json.loads(build_json(ctx))
+-    assert d["schema_version"] == "1.0.0"
++    assert d["schema_version"] == "1.1.0"   # Tur 6: quality.hybrid eklendi (minor)
+     assert len(d["daily"]) == 7           # düzeltme 2+3 JSON'da da geçerli
+     assert len(d["hourly"]) == 168
+     assert d["plant"]["name"] == "Test"
+@@ -207,3 +207,63 @@ def test_pozitif_not_n_valid_ile():
+     ctx = from_results(fr, cr, plant_name="Test")
+     assert ctx.n_valid_hours == 4162
+     assert build_pdf(ctx)[:4] == b"%PDF"
++
++
++# ----------------------------------------------------------------- Tur 6
++def _mod_c_ctx():
++    ctx = from_results(_sentetik_forecast(), _sentetik_calibration(),
++                       plant_name="Test")
++    session = {"hybrid_active": True, "hybrid_report": {
++        "holdout_mape_pct": 17.6, "holdout_rmse_kw": 260.0,
++        "physics_mape_pct": 26.8, "improvement_pct": 34.3,
++        "holdout_hours": 832}}
++    from pvquant.reporting import apply_hybrid_session
++    return apply_hybrid_session(ctx, session)
++
++
++def test_json_hybrid_block_when_mode_c():
++    import json
++    d = json.loads(build_json(_mod_c_ctx()))
++    assert d["schema_version"] == "1.1.0"
++    hy = d["quality"]["hybrid"]
++    assert hy["holdout_mape_pct"] == 17.6
++    assert hy["holdout_rmse_kw"] == 260.0
++    assert hy["physics_mape_pct"] == 26.8
++    assert hy["improvement_pct"] == 34.3
++    assert hy["holdout_hours"] == 832
++    assert hy["note"] is None                  # %34 > kapı eşiği %3
++
++
++def test_json_no_hybrid_block_when_mode_b():
++    import json
++    ctx = from_results(_sentetik_forecast(), _sentetik_calibration(),
++                       plant_name="Test", mode="B")
++    d = json.loads(build_json(ctx))
++    assert "hybrid" not in d["quality"]        # null değil, YOK
++
++
++def test_excel_holdout_visible_when_mode_c():
++    import zipfile, io
++    xlsx = build_excel(_mod_c_ctx())
++    z = zipfile.ZipFile(io.BytesIO(xlsx))
++    metin = z.read("xl/sharedStrings.xml").decode("utf-8")
++    assert "HOLDOUT (Mod C)" in metin
++    assert "Holdout MAPE (%)" in metin         # Metadata künyesi
++
++
++def test_excel_holdout_hidden_when_mode_b():
++    import zipfile, io
++    ctx = from_results(_sentetik_forecast(), _sentetik_calibration(),
++                       plant_name="Test", mode="B")
++    xlsx = build_excel(ctx)
++    z = zipfile.ZipFile(io.BytesIO(xlsx))
++    metin = z.read("xl/sharedStrings.xml").decode("utf-8")
++    assert "HOLDOUT" not in metin
++
++
++def test_json_marjinal_iyilesme_notu():
++    ctx = _mod_c_ctx()
++    ctx.holdout_improvement_pct = 1.8          # kapı eşiği %3 altı
++    import json
++    d = json.loads(build_json(ctx))
++    assert "marjinal" in d["quality"]["hybrid"]["note"]
