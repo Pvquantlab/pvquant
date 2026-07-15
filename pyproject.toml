@@ -29,13 +29,16 @@ dependencies = [
     "pandas>=2.1",
     "pvlib>=0.11",
     "scipy>=1.11",
-    "pydantic>=2.5",
+    "pydantic>=2.10",
     "pydantic-settings>=2.1",
     "fastapi>=0.110",
     "uvicorn[standard]>=0.27",
     "httpx>=0.26",
     "python-multipart>=0.0.9",
     "python-dateutil>=2.8",
+    "reportlab>=4.4",
+    "xlsxwriter>=3.2",
+    "matplotlib>=3.8",
 ]
 
 [project.optional-dependencies]
@@ -64,7 +67,7 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "RUF"]
-ignore = ["E501"]  # line length handled by black
+ignore = ["E501"]
 
 [tool.black]
 line-length = 100
