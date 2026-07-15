@@ -272,6 +272,12 @@ def _santral_formu() -> None:
                 module_tech=module_tech,
                 bifacial_factor=0.7 if bifacial else 0.0,
             )
+            _pctx = st.session_state.get("plant_context", {})
+            st.session_state.plant_display_name = (
+                _pctx.get("plant_name")
+                or st.session_state.get("scada_filename", "").rsplit(".", 1)[0]
+                or "Santral"
+            )
             st.session_state.plant_spec = plant
             st.session_state.calibration_fit_tilt = tilt_bilmiyorum
             st.session_state.calibration_fit_azimuth = azimuth_bilmiyorum
