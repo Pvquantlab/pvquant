@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <!-- PVQuant marka simgesi: yükselen üretim barları + doğan güneş.
+       Tek marka rengi (#0F6E56) + tek vurgu (#F59E0B). -->
+  <rect x="0" y="0" width="48" height="48" rx="11" fill="#0F6E56"/>
+  <circle cx="36.5" cy="10.5" r="4" fill="#F59E0B"/>
+  <rect x="10"   y="28" width="6.5" height="9"  rx="1.5" fill="#FFFFFF"/>
+  <rect x="20.5" y="22" width="6.5" height="15" rx="1.5" fill="#FFFFFF"/>
+  <rect x="31"   y="16" width="6.5" height="21" rx="1.5" fill="#FFFFFF"/>
+</svg>

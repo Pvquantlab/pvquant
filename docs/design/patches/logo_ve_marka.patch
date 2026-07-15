@@ -1,0 +1,49 @@
+diff --git a/src/pvquant/reporting/assets/pvquant_logo.svg b/src/pvquant/reporting/assets/pvquant_logo.svg
+new file mode 100644
+index 0000000..ff9717d
+--- /dev/null
++++ b/src/pvquant/reporting/assets/pvquant_logo.svg
+@@ -0,0 +1,9 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
++  <!-- PVQuant marka simgesi: yükselen üretim barları + doğan güneş.
++       Tek marka rengi (#0F6E56) + tek vurgu (#F59E0B). -->
++  <rect x="0" y="0" width="48" height="48" rx="11" fill="#0F6E56"/>
++  <circle cx="36.5" cy="10.5" r="4" fill="#F59E0B"/>
++  <rect x="10"   y="28" width="6.5" height="9"  rx="1.5" fill="#FFFFFF"/>
++  <rect x="20.5" y="22" width="6.5" height="15" rx="1.5" fill="#FFFFFF"/>
++  <rect x="31"   y="16" width="6.5" height="21" rx="1.5" fill="#FFFFFF"/>
++</svg>
+diff --git a/src/pvquant/reporting/pdf.py b/src/pvquant/reporting/pdf.py
+index 55457ba..0bc8a88 100644
+--- a/src/pvquant/reporting/pdf.py
++++ b/src/pvquant/reporting/pdf.py
+@@ -57,10 +57,27 @@ def build_pdf(ctx) -> bytes:
+ 
+ 
+ # ---------------------------------------------------------------- bantlar
++def _logo(c, x_pt: float, ust_mm: float, boyut_mm: float = 8.0):
++    """PVQuant simgesi — assets/pvquant_logo.svg ile birebir ayni geometri,
++    ReportLab primitifleriyle (svglib bagimliligi yok). 48 birimlik SVG
++    izgarasi boyut_mm'ye olceklenir."""
++    s = boyut_mm * mm / 48.0            # 1 SVG birimi -> pt
++    y_alt = _y(ust_mm + boyut_mm)       # kutunun alt kenari (pt)
++    _hex(c, RENK.MARKA)
++    c.roundRect(x_pt, y_alt, 48 * s, 48 * s, 11 * s, stroke=0, fill=1)
++    _hex(c, RENK.VURGU)                 # dogan gunes
++    c.circle(x_pt + 36.5 * s, y_alt + (48 - 10.5) * s, 4 * s, stroke=0, fill=1)
++    _hex(c, "#FFFFFF")                  # yukselen barlar (svg y'si ustten)
++    for bx, by, bh in ((10, 28, 9), (20.5, 22, 15), (31, 16, 21)):
++        c.roundRect(x_pt + bx * s, y_alt + (48 - by - bh) * s,
++                    6.5 * s, bh * s, 1.5 * s, stroke=0, fill=1)
++
++
+ def _header(c, ctx, F, FB):
++    _logo(c, KENAR, ust_mm=11.5, boyut_mm=8.0)
+     _hex(c, RENK.MARKA)
+-    c.setFont(FB, 13)
+-    c.drawString(KENAR, _y(17), "PVQuant")
++    c.setFont(FB, 14)
++    c.drawString(KENAR + 10.5 * mm, _y(17.6), "PVQuant")
+     _hex(c, RENK.METIN)
+     c.setFont(FB, TIPO.BASLIK)
+     c.drawString(KENAR, _y(25.5), "7 Günlük Üretim Tahmini")

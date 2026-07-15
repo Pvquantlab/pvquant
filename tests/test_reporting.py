@@ -155,3 +155,55 @@ def test_json_semasi_ve_gun_sayisi():
     assert len(d["hourly"]) == 168
     assert d["plant"]["name"] == "Test"
     assert d["hourly"][0]["ts"].endswith("Z")   # ISO 8601 UTC
+
+
+# ----------------------------------------------------------------- Tur 4
+def test_sayi_tr():
+    from pvquant.reporting.styles import sayi_tr
+    assert sayi_tr(218.9, 1) == "218,9"
+    assert sayi_tr(4514, 0) == "4.514"
+    assert sayi_tr(1234.5, 1) == "1.234,5"     # eski replace bug'ının kanıtı
+
+
+def test_donem_tr():
+    import pandas as pd
+    from pvquant.reporting.styles import donem_tr
+    ayni = donem_tr(pd.Timestamp("2026-07-14"), pd.Timestamp("2026-07-21"))
+    assert ayni == "14 – 21 Temmuz 2026"
+    gecis = donem_tr(pd.Timestamp("2026-07-28"), pd.Timestamp("2026-08-03"))
+    assert gecis == "28 Temmuz – 3 Ağustos 2026"
+    yil = donem_tr(pd.Timestamp("2026-12-28"), pd.Timestamp("2027-01-03"))
+    assert yil == "28 Aralık 2026 – 3 Ocak 2027"
+
+
+def test_normalize_plant_name():
+    from pvquant.reporting.contracts import normalize_plant_name
+    assert normalize_plant_name("SANTRAL_GES_yillik_SCADA") == "SANTRAL GES"
+    assert normalize_plant_name("konya-ges_2025_export") == "konya ges"
+    assert normalize_plant_name("Konya GES") == "Konya GES"   # temiz ad dokunulmaz
+    assert normalize_plant_name("") == "Santral"
+
+
+def test_fallback_ad_normalize_ediliyor():
+    fr = _sentetik_forecast()
+    ctx = from_results(fr, None,
+                       plant_context={"name": "SANTRAL_GES_yillik_SCADA"})
+    assert ctx.plant_name == "SANTRAL GES"
+
+
+def test_holdout_kutusu_pdf_de():
+    fr = _sentetik_forecast()
+    cr = _sentetik_calibration()
+    ctx = from_results(fr, cr, plant_name="Test")
+    ctx.holdout_mape_pct = 18.5
+    pdf = build_pdf(ctx)
+    assert pdf[:4] == b"%PDF" and len(pdf) > 5000
+
+
+def test_pozitif_not_n_valid_ile():
+    fr = _sentetik_forecast()
+    cr = _sentetik_calibration()
+    cr.n_valid_hours = 4162
+    ctx = from_results(fr, cr, plant_name="Test")
+    assert ctx.n_valid_hours == 4162
+    assert build_pdf(ctx)[:4] == b"%PDF"

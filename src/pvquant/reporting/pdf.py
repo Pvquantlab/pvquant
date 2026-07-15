@@ -21,7 +21,7 @@ from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas as rl_canvas
 
 from .charts import fig_gunluk_barlar, fig_tipik_gun, fig_to_png
-from .styles import RENK, TIPO, pdf_fontlarini_kaydet
+from .styles import RENK, TIPO, pdf_fontlarini_kaydet, sayi_tr
 
 SAYFA_W, SAYFA_H = A4          # pt
 KENAR = 12 * mm
@@ -57,10 +57,27 @@ def build_pdf(ctx) -> bytes:
 
 
 # ---------------------------------------------------------------- bantlar
-def _header(c, ctx, F, FB):
+def _logo(c, x_pt: float, ust_mm: float, boyut_mm: float = 8.0):
+    """PVQuant simgesi — assets/pvquant_logo.svg ile birebir ayni geometri,
+    ReportLab primitifleriyle (svglib bagimliligi yok). 48 birimlik SVG
+    izgarasi boyut_mm'ye olceklenir."""
+    s = boyut_mm * mm / 48.0            # 1 SVG birimi -> pt
+    y_alt = _y(ust_mm + boyut_mm)       # kutunun alt kenari (pt)
     _hex(c, RENK.MARKA)
-    c.setFont(FB, 13)
-    c.drawString(KENAR, _y(17), "PVQuant")
+    c.roundRect(x_pt, y_alt, 48 * s, 48 * s, 11 * s, stroke=0, fill=1)
+    _hex(c, RENK.VURGU)                 # dogan gunes
+    c.circle(x_pt + 36.5 * s, y_alt + (48 - 10.5) * s, 4 * s, stroke=0, fill=1)
+    _hex(c, "#FFFFFF")                  # yukselen barlar (svg y'si ustten)
+    for bx, by, bh in ((10, 28, 9), (20.5, 22, 15), (31, 16, 21)):
+        c.roundRect(x_pt + bx * s, y_alt + (48 - by - bh) * s,
+                    6.5 * s, bh * s, 1.5 * s, stroke=0, fill=1)
+
+
+def _header(c, ctx, F, FB):
+    _logo(c, KENAR, ust_mm=11.5, boyut_mm=8.0)
+    _hex(c, RENK.MARKA)
+    c.setFont(FB, 14)
+    c.drawString(KENAR + 10.5 * mm, _y(17.6), "PVQuant")
     _hex(c, RENK.METIN)
     c.setFont(FB, TIPO.BASLIK)
     c.drawString(KENAR, _y(25.5), "7 Günlük Üretim Tahmini")
@@ -114,19 +131,19 @@ def _kpi_seridi(c, ctx, F, FB):
             c.setLineWidth(0.7)
             c.line(x - 4 * mm, _y(40), x - 4 * mm, _y(58))
 
-    t = f"{ctx.total_mwh:,.1f}".replace(",", ".")
+    t = sayi_tr(ctx.total_mwh, 1)
     kart(0, "TOPLAM BEKLENEN ÜRETİM", t, "MWh", f"P50 · {len(ctx.daily_kwh)} gün")
 
     if ctx.has_band:
         p90, p10 = ctx.band_mwh
-        kart(1, "GÜVEN ARALIĞI", f"{p90:,.0f}–{p10:,.0f}".replace(",", "."),
+        kart(1, "GÜVEN ARALIĞI", f"{sayi_tr(p90, 0)}–{sayi_tr(p10, 0)}",
              "MWh", "P90 – P10 (IEA-PVPS)")
     else:
         kart(1, "GÜVEN ARALIĞI", "—", "",
              "Mod C'de P10–P90 eklenir")
 
     kart(2, "KAPASİTE FAKTÖRÜ", f"%{ctx.capacity_factor_pct:.1f}", "",
-         f"özgül verim {ctx.specific_yield:.1f} kWh/kWp")
+         f"özgül verim {sayi_tr(ctx.specific_yield, 1)} kWh/kWp")
 
     if ctx.mape_pct is not None:
         kart(3, "KALİBRASYON İSABETİ", f"%{ctx.mape_pct:.1f}", "MAPE",
@@ -153,10 +170,15 @@ def _notlar(c, ctx, F, FB) -> float:
     _hex(c, RENK.IKINCIL)
     c.setFont(FB, TIPO.BOLUM)
     c.drawString(KENAR, _y(y0), "KALİBRASYON NOTLARI")
+    _holdout_kutusu(c, ctx, F, FB, y0)
     uyarilar = (ctx.warnings or [])[:4]
     if not uyarilar:
         c.setFont(F, TIPO.GOVDE)
-        c.drawString(KENAR, _y(y0 + 6), "Uyarı yok — kalibrasyon temiz.")
+        _hex(c, RENK.POZITIF)
+        n = ctx.n_valid_hours
+        mesaj = (f"\u2713 Veri kalitesi başarılı — {sayi_tr(n, 0)} geçerli saat işlendi."
+                 if n else "\u2713 Kalibrasyon temiz — uyarı yok.")
+        c.drawString(KENAR, _y(y0 + 6), mesaj)
         return y0 + 10
     y = y0 + 6
     c.setFont(F, TIPO.GOVDE)
@@ -170,6 +192,26 @@ def _notlar(c, ctx, F, FB) -> float:
     return y
 
 
+def _holdout_kutusu(c, ctx, F, FB, y0: float):
+    """Notlar bandının sağında küçük doğruluk kutusu (holdout varsa)."""
+    if ctx.holdout_mape_pct is None:
+        return
+    kw, kh = 52 * mm, 15 * mm
+    x = SAYFA_W - KENAR - kw
+    _hex(c, RENK.CIZGI)
+    c.setLineWidth(0.8)
+    c.roundRect(x, _y(y0 + 11.5), kw, kh, 4, stroke=1, fill=0)
+    _hex(c, RENK.IKINCIL)
+    c.setFont(FB, TIPO.KPI_ETIKET)
+    c.drawString(x + 3 * mm, _y(y0 + 1.2), "HOLDOUT MAPE")
+    _hex(c, RENK.MARKA)
+    c.setFont(FB, 15)
+    c.drawString(x + 3 * mm, _y(y0 + 7.4), f"%{sayi_tr(ctx.holdout_mape_pct, 1)}")
+    _hex(c, RENK.IKINCIL)
+    c.setFont(F, 6.6)
+    c.drawString(x + 3 * mm, _y(y0 + 10.6), "kronolojik son %20 sınavı")
+
+
 def _metadata(c, ctx, F, FB, y_ust: float):
     _hex(c, RENK.ZEMIN_SOLUK)
     kutu_h = 34
@@ -180,7 +222,7 @@ def _metadata(c, ctx, F, FB, y_ust: float):
     c.drawString(KENAR + 4 * mm, _y(y_ust + 6), "SANTRAL VE MODEL")
 
     sol = [
-        ("Kurulu güç", f"{ctx.capacity_kwp:,.0f} kWp".replace(",", ".")),
+        ("Kurulu güç", f"{sayi_tr(ctx.capacity_kwp, 0)} kWp"),
         ("Konum", f"{ctx.latitude:.2f}, {ctx.longitude:.2f}"),
         ("Eğim / Azimut", f"{ctx.tilt_deg:.0f}° / {ctx.azimuth_deg:.0f}°"),
         ("Saat dilimi", ctx.plant_tz),
@@ -209,7 +251,12 @@ def _footer(c, ctx, F):
     c.line(KENAR, _y(283), SAYFA_W - KENAR, _y(283))
     _hex(c, RENK.IKINCIL)
     c.setFont(F, TIPO.KUCUK)
+    # Sol: standart atıflar. Sağ: marka+sürüm+kalibrasyon+damga.
+    # (Tek satırda çakışmaması için genişlikler ölçülü: sol ~210pt, sağ ~205pt.)
     c.drawString(KENAR, _y(287),
-                 "IEC 61724-1 uyumlu adlandırma · P90: %90 olasılıkla aşılacak değer (IEA-PVPS T13)")
-    c.drawRightString(SAYFA_W - KENAR, _y(287),
-                      f"PVQuant · {ctx.run_at_utc:%Y-%m-%dT%H:%M}Z · Sayfa 1/1")
+                 "IEC 61724-1 · P90: %90 olasılıkla aşılacak değer (IEA-PVPS T13)")
+    sag_metin = f"PVQuant {ctx.model_version}"
+    if ctx.calibrated_at is not None:
+        sag_metin += f" · kal. {ctx.calibrated_at:%d.%m.%Y}"
+    sag_metin += f" · {ctx.run_at_utc:%Y-%m-%dT%H:%M}Z · 1/1"
+    c.drawRightString(SAYFA_W - KENAR, _y(287), sag_metin)

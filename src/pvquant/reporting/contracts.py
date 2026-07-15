@@ -42,6 +42,8 @@ class ReportContext:
     mape_pct: Optional[float] = None
     deviation_pct: Optional[float] = None
     calibrated_at: Optional[datetime] = None
+    n_valid_hours: Optional[int] = None          # kalibrasyondaki geçerli saat
+    holdout_mape_pct: Optional[float] = None     # kronolojik son %20 sınavı
     warnings: list[str] = None
     schema_version: str = "1.0.0"
 
@@ -78,8 +80,9 @@ class ReportContext:
 
     @property
     def period_str(self) -> str:
+        from .styles import donem_tr
         h = self.hourly.tz_convert(self.plant_tz)
-        return f"{h.index[0]:%d.%m.%Y} – {h.index[-1]:%d.%m.%Y}"
+        return donem_tr(h.index[0], h.index[-1])
 
 
 def from_results(
@@ -102,7 +105,8 @@ def from_results(
     """
     if plant_name is None:
         pc = plant_context or {}
-        plant_name = pc.get("plant_name") or pc.get("name") or "Santral"
+        ham = pc.get("plant_name") or pc.get("name") or "Santral"
+        plant_name = normalize_plant_name(ham)
     fr = forecast_result
     h = fr.hourly.copy()
     if h.index.tz is None:                       # güvence: UTC'ye sabitle
@@ -142,5 +146,27 @@ def from_results(
         bg=getattr(cr, "bg", None) if cr else None,
         mape_pct=mape,
         deviation_pct=dev,
+        n_valid_hours=getattr(cr, "n_valid_hours", None) if cr else None,
+        holdout_mape_pct=getattr(cr, "holdout_mape_pct", None) if cr else None,
+        calibrated_at=getattr(cr, "calibrated_at", None) if cr else None,
         warnings=list(getattr(cr, "warnings", []) or []) if cr else [],
     )
+
+
+import re as _re
+
+_AD_KIRP = _re.compile(
+    r"(?i)[_\s-]*(scada|yillik|yıllık|full|data|export|rapor|report"
+    r"|20\d{2}|19\d{2})[_\s-]*")
+
+
+def normalize_plant_name(ham: str) -> str:
+    """Dosya adından türeyen santral adını insanileştirir.
+    'SANTRAL_GES_yillik_SCADA' -> 'SANTRAL GES'
+    Kural: bilinen ekler (scada/yillik/full/data/export/yıl) kırpılır,
+    alt çizgiler boşluğa döner, çoklu boşluk teklenir. Büyük harf
+    kısaltmalar (GES gibi) korunur."""
+    ad = _AD_KIRP.sub(" ", ham or "")
+    ad = ad.replace("_", " ").replace("-", " ")
+    ad = " ".join(ad.split()).strip()
+    return ad or "Santral"

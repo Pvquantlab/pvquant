@@ -1,0 +1,335 @@
+diff --git a/src/pvquant/reporting/charts.py b/src/pvquant/reporting/charts.py
+index ffee3f2..dab78bb 100644
+--- a/src/pvquant/reporting/charts.py
++++ b/src/pvquant/reporting/charts.py
+@@ -10,7 +10,7 @@ from io import BytesIO
+ import matplotlib.pyplot as plt
+ import numpy as np
+ 
+-from .styles import RENK, tema_uygula
++from .styles import RENK, sayi_tr, tema_uygula
+ 
+ 
+ def fig_to_png(fig, dpi: int = 300) -> BytesIO:
+@@ -31,7 +31,7 @@ def fig_gunluk_barlar(ctx) -> plt.Figure:
+     renkler[int(np.argmin(d.values))] = RENK.VURGU
+     ax.bar(range(len(d)), d.values, color=renkler, width=0.62, zorder=3)
+     for i, v in enumerate(d.values):
+-        ax.text(i, v, f"{v:.1f}", ha="center", va="bottom",
++        ax.text(i, v, sayi_tr(v, 1), ha="center", va="bottom",
+                 fontsize=7, color=RENK.METIN)
+     if ctx.has_band:
+         p90 = ctx.daily_p90.values / 1000.0
+@@ -39,7 +39,7 @@ def fig_gunluk_barlar(ctx) -> plt.Figure:
+                   color=RENK.METIN, linewidth=1.0, zorder=4)
+     ax.set_xticks(range(len(d)))
+     ax.set_xticklabels([f"{t:%d %b}" for t in d.index], rotation=0)
+-    ax.set_title("Günlük üretim beklentisi")
++    ax.set_title("Günlük üretim")
+     ax.set_ylabel("MWh")
+     ax.set_ylim(0, d.max() * 1.18)
+     ax.margins(x=0.02)
+@@ -54,15 +54,16 @@ def fig_tipik_gun(ctx) -> plt.Figure:
+     grp = h["p50_kw"].groupby(h.index.hour)
+     ort, alt, ust = grp.mean(), grp.min(), grp.max()
+     fig, ax = plt.subplots(figsize=(3.55, 2.35))
+-    ax.fill_between(ort.index, alt, ust, color=RENK.MARKA, alpha=0.14,
++    ax.fill_between(ort.index, alt, ust, color=RENK.MARKA, alpha=0.22,
+                     linewidth=0)
+     ax.plot(ort.index, ort.values, color=RENK.MARKA, linewidth=1.9)
+     tepe_s = int(ort.idxmax())
+-    ax.annotate(f"tepe {ort.max():,.0f} kW".replace(",", "."),
+-                xy=(tepe_s, ort.max()), xytext=(0, 5),
+-                textcoords="offset points", ha="center",
++    ax.plot([tepe_s], [ort.max()], "o", ms=3.5, color=RENK.MARKA, zorder=5)
++    ax.annotate(f"tepe {sayi_tr(ort.max(), 0)} kW",
++                xy=(tepe_s, ort.max()), xytext=(7, -3),
++                textcoords="offset points", ha="left", va="top",
+                 fontsize=7, color=RENK.METIN, fontweight="bold")
+-    ax.set_title("Tipik gün profili (7 gün ort.)")
++    ax.set_title("Tipik gün profili")
+     ax.set_ylabel("kW")
+     ax.set_xlabel("saat (yerel)")
+     ax.set_xticks([0, 6, 12, 18, 23])
+diff --git a/src/pvquant/reporting/contracts.py b/src/pvquant/reporting/contracts.py
+index 996af75..f7fb849 100644
+--- a/src/pvquant/reporting/contracts.py
++++ b/src/pvquant/reporting/contracts.py
+@@ -42,6 +42,8 @@ class ReportContext:
+     mape_pct: Optional[float] = None
+     deviation_pct: Optional[float] = None
+     calibrated_at: Optional[datetime] = None
++    n_valid_hours: Optional[int] = None          # kalibrasyondaki geçerli saat
++    holdout_mape_pct: Optional[float] = None     # kronolojik son %20 sınavı
+     warnings: list[str] = None
+     schema_version: str = "1.0.0"
+ 
+@@ -78,8 +80,9 @@ class ReportContext:
+ 
+     @property
+     def period_str(self) -> str:
++        from .styles import donem_tr
+         h = self.hourly.tz_convert(self.plant_tz)
+-        return f"{h.index[0]:%d.%m.%Y} – {h.index[-1]:%d.%m.%Y}"
++        return donem_tr(h.index[0], h.index[-1])
+ 
+ 
+ def from_results(
+@@ -102,7 +105,8 @@ def from_results(
+     """
+     if plant_name is None:
+         pc = plant_context or {}
+-        plant_name = pc.get("plant_name") or pc.get("name") or "Santral"
++        ham = pc.get("plant_name") or pc.get("name") or "Santral"
++        plant_name = normalize_plant_name(ham)
+     fr = forecast_result
+     h = fr.hourly.copy()
+     if h.index.tz is None:                       # güvence: UTC'ye sabitle
+@@ -142,5 +146,27 @@ def from_results(
+         bg=getattr(cr, "bg", None) if cr else None,
+         mape_pct=mape,
+         deviation_pct=dev,
++        n_valid_hours=getattr(cr, "n_valid_hours", None) if cr else None,
++        holdout_mape_pct=getattr(cr, "holdout_mape_pct", None) if cr else None,
++        calibrated_at=getattr(cr, "calibrated_at", None) if cr else None,
+         warnings=list(getattr(cr, "warnings", []) or []) if cr else [],
+     )
++
++
++import re as _re
++
++_AD_KIRP = _re.compile(
++    r"(?i)[_\s-]*(scada|yillik|yıllık|full|data|export|rapor|report"
++    r"|20\d{2}|19\d{2})[_\s-]*")
++
++
++def normalize_plant_name(ham: str) -> str:
++    """Dosya adından türeyen santral adını insanileştirir.
++    'SANTRAL_GES_yillik_SCADA' -> 'SANTRAL GES'
++    Kural: bilinen ekler (scada/yillik/full/data/export/yıl) kırpılır,
++    alt çizgiler boşluğa döner, çoklu boşluk teklenir. Büyük harf
++    kısaltmalar (GES gibi) korunur."""
++    ad = _AD_KIRP.sub(" ", ham or "")
++    ad = ad.replace("_", " ").replace("-", " ")
++    ad = " ".join(ad.split()).strip()
++    return ad or "Santral"
+diff --git a/src/pvquant/reporting/pdf.py b/src/pvquant/reporting/pdf.py
+index 74798b0..55457ba 100644
+--- a/src/pvquant/reporting/pdf.py
++++ b/src/pvquant/reporting/pdf.py
+@@ -21,7 +21,7 @@ from reportlab.lib.utils import ImageReader
+ from reportlab.pdfgen import canvas as rl_canvas
+ 
+ from .charts import fig_gunluk_barlar, fig_tipik_gun, fig_to_png
+-from .styles import RENK, TIPO, pdf_fontlarini_kaydet
++from .styles import RENK, TIPO, pdf_fontlarini_kaydet, sayi_tr
+ 
+ SAYFA_W, SAYFA_H = A4          # pt
+ KENAR = 12 * mm
+@@ -114,19 +114,19 @@ def _kpi_seridi(c, ctx, F, FB):
+             c.setLineWidth(0.7)
+             c.line(x - 4 * mm, _y(40), x - 4 * mm, _y(58))
+ 
+-    t = f"{ctx.total_mwh:,.1f}".replace(",", ".")
++    t = sayi_tr(ctx.total_mwh, 1)
+     kart(0, "TOPLAM BEKLENEN ÜRETİM", t, "MWh", f"P50 · {len(ctx.daily_kwh)} gün")
+ 
+     if ctx.has_band:
+         p90, p10 = ctx.band_mwh
+-        kart(1, "GÜVEN ARALIĞI", f"{p90:,.0f}–{p10:,.0f}".replace(",", "."),
++        kart(1, "GÜVEN ARALIĞI", f"{sayi_tr(p90, 0)}–{sayi_tr(p10, 0)}",
+              "MWh", "P90 – P10 (IEA-PVPS)")
+     else:
+         kart(1, "GÜVEN ARALIĞI", "—", "",
+              "Mod C'de P10–P90 eklenir")
+ 
+     kart(2, "KAPASİTE FAKTÖRÜ", f"%{ctx.capacity_factor_pct:.1f}", "",
+-         f"özgül verim {ctx.specific_yield:.1f} kWh/kWp")
++         f"özgül verim {sayi_tr(ctx.specific_yield, 1)} kWh/kWp")
+ 
+     if ctx.mape_pct is not None:
+         kart(3, "KALİBRASYON İSABETİ", f"%{ctx.mape_pct:.1f}", "MAPE",
+@@ -153,10 +153,15 @@ def _notlar(c, ctx, F, FB) -> float:
+     _hex(c, RENK.IKINCIL)
+     c.setFont(FB, TIPO.BOLUM)
+     c.drawString(KENAR, _y(y0), "KALİBRASYON NOTLARI")
++    _holdout_kutusu(c, ctx, F, FB, y0)
+     uyarilar = (ctx.warnings or [])[:4]
+     if not uyarilar:
+         c.setFont(F, TIPO.GOVDE)
+-        c.drawString(KENAR, _y(y0 + 6), "Uyarı yok — kalibrasyon temiz.")
++        _hex(c, RENK.POZITIF)
++        n = ctx.n_valid_hours
++        mesaj = (f"\u2713 Veri kalitesi başarılı — {sayi_tr(n, 0)} geçerli saat işlendi."
++                 if n else "\u2713 Kalibrasyon temiz — uyarı yok.")
++        c.drawString(KENAR, _y(y0 + 6), mesaj)
+         return y0 + 10
+     y = y0 + 6
+     c.setFont(F, TIPO.GOVDE)
+@@ -170,6 +175,26 @@ def _notlar(c, ctx, F, FB) -> float:
+     return y
+ 
+ 
++def _holdout_kutusu(c, ctx, F, FB, y0: float):
++    """Notlar bandının sağında küçük doğruluk kutusu (holdout varsa)."""
++    if ctx.holdout_mape_pct is None:
++        return
++    kw, kh = 52 * mm, 15 * mm
++    x = SAYFA_W - KENAR - kw
++    _hex(c, RENK.CIZGI)
++    c.setLineWidth(0.8)
++    c.roundRect(x, _y(y0 + 11.5), kw, kh, 4, stroke=1, fill=0)
++    _hex(c, RENK.IKINCIL)
++    c.setFont(FB, TIPO.KPI_ETIKET)
++    c.drawString(x + 3 * mm, _y(y0 + 1.2), "HOLDOUT MAPE")
++    _hex(c, RENK.MARKA)
++    c.setFont(FB, 15)
++    c.drawString(x + 3 * mm, _y(y0 + 7.4), f"%{sayi_tr(ctx.holdout_mape_pct, 1)}")
++    _hex(c, RENK.IKINCIL)
++    c.setFont(F, 6.6)
++    c.drawString(x + 3 * mm, _y(y0 + 10.6), "kronolojik son %20 sınavı")
++
++
+ def _metadata(c, ctx, F, FB, y_ust: float):
+     _hex(c, RENK.ZEMIN_SOLUK)
+     kutu_h = 34
+@@ -180,7 +205,7 @@ def _metadata(c, ctx, F, FB, y_ust: float):
+     c.drawString(KENAR + 4 * mm, _y(y_ust + 6), "SANTRAL VE MODEL")
+ 
+     sol = [
+-        ("Kurulu güç", f"{ctx.capacity_kwp:,.0f} kWp".replace(",", ".")),
++        ("Kurulu güç", f"{sayi_tr(ctx.capacity_kwp, 0)} kWp"),
+         ("Konum", f"{ctx.latitude:.2f}, {ctx.longitude:.2f}"),
+         ("Eğim / Azimut", f"{ctx.tilt_deg:.0f}° / {ctx.azimuth_deg:.0f}°"),
+         ("Saat dilimi", ctx.plant_tz),
+@@ -209,7 +234,10 @@ def _footer(c, ctx, F):
+     c.line(KENAR, _y(283), SAYFA_W - KENAR, _y(283))
+     _hex(c, RENK.IKINCIL)
+     c.setFont(F, TIPO.KUCUK)
+-    c.drawString(KENAR, _y(287),
+-                 "IEC 61724-1 uyumlu adlandırma · P90: %90 olasılıkla aşılacak değer (IEA-PVPS T13)")
++    sol_metin = ("IEC 61724-1 uyumlu adlandırma · P90: %90 olasılıkla "
++                 f"aşılacak değer (IEA-PVPS T13) · model {ctx.model_version}")
++    if ctx.calibrated_at is not None:
++        sol_metin += f" · kalibrasyon {ctx.calibrated_at:%d.%m.%Y}"
++    c.drawString(KENAR, _y(287), sol_metin)
+     c.drawRightString(SAYFA_W - KENAR, _y(287),
+                       f"PVQuant · {ctx.run_at_utc:%Y-%m-%dT%H:%M}Z · Sayfa 1/1")
+diff --git a/src/pvquant/reporting/styles.py b/src/pvquant/reporting/styles.py
+index b81becd..b17ff37 100644
+--- a/src/pvquant/reporting/styles.py
++++ b/src/pvquant/reporting/styles.py
+@@ -86,3 +86,30 @@ def tema_uygula() -> None:
+         "legend.frameon": False,
+         "axes.unicode_minus": False,
+     })
++
++
++# ---------------------------------------------------------------- Türkçe format
++AYLAR_TR = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
++            "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"]
++
++
++def sayi_tr(x: float, ondalik: int = 1) -> str:
++    """Türkçe sayı biçimi: binlik ayracı nokta, ondalık virgül.
++    4514 -> '4.514' · 218.9 -> '218,9' · 1234.5 -> '1.234,5'
++    (Önceki tek-replace yaklaşımı binlikli ondalıklarda '1.234.5'
++    üretiyordu — bu yardımcı o hata sınıfını kapatır.)"""
++    metin = f"{x:,.{ondalik}f}"
++    return metin.replace(",", "\u00a7").replace(".", ",").replace("\u00a7", ".")
++
++
++def donem_tr(t1, t2) -> str:
++    """Dönem metni, Türkçe ay adlarıyla:
++    aynı ay  -> '14 – 21 Temmuz 2026'
++    ay geçişi-> '14 Temmuz – 3 Ağustos 2026'
++    yıl geçişi-> '28 Aralık 2026 – 3 Ocak 2027'"""
++    a1, a2 = AYLAR_TR[t1.month - 1], AYLAR_TR[t2.month - 1]
++    if t1.year == t2.year and t1.month == t2.month:
++        return f"{t1.day} – {t2.day} {a1} {t1.year}"
++    if t1.year == t2.year:
++        return f"{t1.day} {a1} – {t2.day} {a2} {t1.year}"
++    return f"{t1.day} {a1} {t1.year} – {t2.day} {a2} {t2.year}"
+diff --git a/tests/test_reporting.py b/tests/test_reporting.py
+index 9f805de..4d29376 100644
+--- a/tests/test_reporting.py
++++ b/tests/test_reporting.py
+@@ -155,3 +155,55 @@ def test_json_semasi_ve_gun_sayisi():
+     assert len(d["hourly"]) == 168
+     assert d["plant"]["name"] == "Test"
+     assert d["hourly"][0]["ts"].endswith("Z")   # ISO 8601 UTC
++
++
++# ----------------------------------------------------------------- Tur 4
++def test_sayi_tr():
++    from pvquant.reporting.styles import sayi_tr
++    assert sayi_tr(218.9, 1) == "218,9"
++    assert sayi_tr(4514, 0) == "4.514"
++    assert sayi_tr(1234.5, 1) == "1.234,5"     # eski replace bug'ının kanıtı
++
++
++def test_donem_tr():
++    import pandas as pd
++    from pvquant.reporting.styles import donem_tr
++    ayni = donem_tr(pd.Timestamp("2026-07-14"), pd.Timestamp("2026-07-21"))
++    assert ayni == "14 – 21 Temmuz 2026"
++    gecis = donem_tr(pd.Timestamp("2026-07-28"), pd.Timestamp("2026-08-03"))
++    assert gecis == "28 Temmuz – 3 Ağustos 2026"
++    yil = donem_tr(pd.Timestamp("2026-12-28"), pd.Timestamp("2027-01-03"))
++    assert yil == "28 Aralık 2026 – 3 Ocak 2027"
++
++
++def test_normalize_plant_name():
++    from pvquant.reporting.contracts import normalize_plant_name
++    assert normalize_plant_name("SANTRAL_GES_yillik_SCADA") == "SANTRAL GES"
++    assert normalize_plant_name("konya-ges_2025_export") == "konya ges"
++    assert normalize_plant_name("Konya GES") == "Konya GES"   # temiz ad dokunulmaz
++    assert normalize_plant_name("") == "Santral"
++
++
++def test_fallback_ad_normalize_ediliyor():
++    fr = _sentetik_forecast()
++    ctx = from_results(fr, None,
++                       plant_context={"name": "SANTRAL_GES_yillik_SCADA"})
++    assert ctx.plant_name == "SANTRAL GES"
++
++
++def test_holdout_kutusu_pdf_de():
++    fr = _sentetik_forecast()
++    cr = _sentetik_calibration()
++    ctx = from_results(fr, cr, plant_name="Test")
++    ctx.holdout_mape_pct = 18.5
++    pdf = build_pdf(ctx)
++    assert pdf[:4] == b"%PDF" and len(pdf) > 5000
++
++
++def test_pozitif_not_n_valid_ile():
++    fr = _sentetik_forecast()
++    cr = _sentetik_calibration()
++    cr.n_valid_hours = 4162
++    ctx = from_results(fr, cr, plant_name="Test")
++    assert ctx.n_valid_hours == 4162
++    assert build_pdf(ctx)[:4] == b"%PDF"
+diff --git a/src/pvquant/reporting/pdf.py b/src/pvquant/reporting/pdf.py
+index 0bc8a88..e61e24d 100644
+--- a/src/pvquant/reporting/pdf.py
++++ b/src/pvquant/reporting/pdf.py
+@@ -251,10 +251,12 @@ def _footer(c, ctx, F):
+     c.line(KENAR, _y(283), SAYFA_W - KENAR, _y(283))
+     _hex(c, RENK.IKINCIL)
+     c.setFont(F, TIPO.KUCUK)
+-    sol_metin = ("IEC 61724-1 uyumlu adlandırma · P90: %90 olasılıkla "
+-                 f"aşılacak değer (IEA-PVPS T13) · model {ctx.model_version}")
++    # Sol: standart atıflar. Sağ: marka+sürüm+kalibrasyon+damga.
++    # (Tek satırda çakışmaması için genişlikler ölçülü: sol ~210pt, sağ ~205pt.)
++    c.drawString(KENAR, _y(287),
++                 "IEC 61724-1 · P90: %90 olasılıkla aşılacak değer (IEA-PVPS T13)")
++    sag_metin = f"PVQuant {ctx.model_version}"
+     if ctx.calibrated_at is not None:
+-        sol_metin += f" · kalibrasyon {ctx.calibrated_at:%d.%m.%Y}"
+-    c.drawString(KENAR, _y(287), sol_metin)
+-    c.drawRightString(SAYFA_W - KENAR, _y(287),
+-                      f"PVQuant · {ctx.run_at_utc:%Y-%m-%dT%H:%M}Z · Sayfa 1/1")
++        sag_metin += f" · kal. {ctx.calibrated_at:%d.%m.%Y}"
++    sag_metin += f" · {ctx.run_at_utc:%Y-%m-%dT%H:%M}Z · 1/1"
++    c.drawRightString(SAYFA_W - KENAR, _y(287), sag_metin)

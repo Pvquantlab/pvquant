@@ -37,3 +37,22 @@ MERKAS xlsx üzerinde UI kalibrasyonu:
 - Sonrası: SAPMA %-3.23, MAPE %27.5, eta_BoS 0.897
 
 Testler: 104 → 110 (6 yeni birim testi)
+
+## Tur 4 Yamaları — 15 Temmuz 2026
+
+**4. kozmetik_ve_icerik.patch**
+Sayı formatı bug'ı (1.234.5 -> 1.234,5), Türkçe dönem (14 – 21 Temmuz 2026),
+santral adı normalize (`_yillik_SCADA` gibi ekleri kırpar), holdout MAPE
+kutusu, pozitif kalibrasyon notu, grafik başlıkları kısaltıldı, footer
+düzenlendi. 6 yeni test.
+
+**5. logo_ve_marka.patch**
+PVQuant SVG logosu + PDF'te ReportLab primitifleriyle birebir çizim
+(svglib bağımlılığı yok). Petrol yeşili kutu + 3 beyaz üretim barı +
+amber güneş.
+
+## Sonuç (Tur 4 sonrası)
+
+MERKAS UI'dan PDF: logo + "MERKAS GES" (normalize) + "15 – 22 Temmuz 2026"
+Türkçe dönem + 206,0 MWh (virgül) + 4.514 kWp (binlik nokta) + yeşil
+✓ Kalibrasyon notu. Testler: 129 passed.

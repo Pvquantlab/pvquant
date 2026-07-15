@@ -86,3 +86,30 @@ def tema_uygula() -> None:
         "legend.frameon": False,
         "axes.unicode_minus": False,
     })
+
+
+# ---------------------------------------------------------------- Türkçe format
+AYLAR_TR = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
+            "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"]
+
+
+def sayi_tr(x: float, ondalik: int = 1) -> str:
+    """Türkçe sayı biçimi: binlik ayracı nokta, ondalık virgül.
+    4514 -> '4.514' · 218.9 -> '218,9' · 1234.5 -> '1.234,5'
+    (Önceki tek-replace yaklaşımı binlikli ondalıklarda '1.234.5'
+    üretiyordu — bu yardımcı o hata sınıfını kapatır.)"""
+    metin = f"{x:,.{ondalik}f}"
+    return metin.replace(",", "\u00a7").replace(".", ",").replace("\u00a7", ".")
+
+
+def donem_tr(t1, t2) -> str:
+    """Dönem metni, Türkçe ay adlarıyla:
+    aynı ay  -> '14 – 21 Temmuz 2026'
+    ay geçişi-> '14 Temmuz – 3 Ağustos 2026'
+    yıl geçişi-> '28 Aralık 2026 – 3 Ocak 2027'"""
+    a1, a2 = AYLAR_TR[t1.month - 1], AYLAR_TR[t2.month - 1]
+    if t1.year == t2.year and t1.month == t2.month:
+        return f"{t1.day} – {t2.day} {a1} {t1.year}"
+    if t1.year == t2.year:
+        return f"{t1.day} {a1} – {t2.day} {a2} {t1.year}"
+    return f"{t1.day} {a1} {t1.year} – {t2.day} {a2} {t2.year}"

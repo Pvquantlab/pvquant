@@ -10,7 +10,7 @@ from io import BytesIO
 import matplotlib.pyplot as plt
 import numpy as np
 
-from .styles import RENK, tema_uygula
+from .styles import RENK, sayi_tr, tema_uygula
 
 
 def fig_to_png(fig, dpi: int = 300) -> BytesIO:
@@ -31,7 +31,7 @@ def fig_gunluk_barlar(ctx) -> plt.Figure:
     renkler[int(np.argmin(d.values))] = RENK.VURGU
     ax.bar(range(len(d)), d.values, color=renkler, width=0.62, zorder=3)
     for i, v in enumerate(d.values):
-        ax.text(i, v, f"{v:.1f}", ha="center", va="bottom",
+        ax.text(i, v, sayi_tr(v, 1), ha="center", va="bottom",
                 fontsize=7, color=RENK.METIN)
     if ctx.has_band:
         p90 = ctx.daily_p90.values / 1000.0
@@ -39,7 +39,7 @@ def fig_gunluk_barlar(ctx) -> plt.Figure:
                   color=RENK.METIN, linewidth=1.0, zorder=4)
     ax.set_xticks(range(len(d)))
     ax.set_xticklabels([f"{t:%d %b}" for t in d.index], rotation=0)
-    ax.set_title("Günlük üretim beklentisi")
+    ax.set_title("Günlük üretim")
     ax.set_ylabel("MWh")
     ax.set_ylim(0, d.max() * 1.18)
     ax.margins(x=0.02)
@@ -54,15 +54,16 @@ def fig_tipik_gun(ctx) -> plt.Figure:
     grp = h["p50_kw"].groupby(h.index.hour)
     ort, alt, ust = grp.mean(), grp.min(), grp.max()
     fig, ax = plt.subplots(figsize=(3.55, 2.35))
-    ax.fill_between(ort.index, alt, ust, color=RENK.MARKA, alpha=0.14,
+    ax.fill_between(ort.index, alt, ust, color=RENK.MARKA, alpha=0.22,
                     linewidth=0)
     ax.plot(ort.index, ort.values, color=RENK.MARKA, linewidth=1.9)
     tepe_s = int(ort.idxmax())
-    ax.annotate(f"tepe {ort.max():,.0f} kW".replace(",", "."),
-                xy=(tepe_s, ort.max()), xytext=(0, 5),
-                textcoords="offset points", ha="center",
+    ax.plot([tepe_s], [ort.max()], "o", ms=3.5, color=RENK.MARKA, zorder=5)
+    ax.annotate(f"tepe {sayi_tr(ort.max(), 0)} kW",
+                xy=(tepe_s, ort.max()), xytext=(7, -3),
+                textcoords="offset points", ha="left", va="top",
                 fontsize=7, color=RENK.METIN, fontweight="bold")
-    ax.set_title("Tipik gün profili (7 gün ort.)")
+    ax.set_title("Tipik gün profili")
     ax.set_ylabel("kW")
     ax.set_xlabel("saat (yerel)")
     ax.set_xticks([0, 6, 12, 18, 23])
