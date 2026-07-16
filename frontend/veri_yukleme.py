@@ -28,6 +28,8 @@ from pathlib import Path
 
 import streamlit as st
 import ui_kit
+from pvquant.services import plant_service
+from pvquant.services import ingest_service
 
 from components import page_header
 from design_tokens import PRIMARY, SUCCESS, TEXT_SECONDARY, TEXT_TERTIARY, WARNING
@@ -264,6 +266,73 @@ def _santral_bilgi_formu() -> dict | None:
 
 
 # --- Onizleme kartlari ---
+
+
+
+def _adim1_santral() -> dict | None:
+    """Anayasa 6.2 Adim 1 - IKI MODLU (Fable 5 v1.4):
+    - Sidebar'da santral SECILIYSE: salt-okunur ozet karti + Devam tusu
+    - SECILI DEGILSE: mevcut form + Devam -> plant_service.olustur
+    Donen dict = plant_ctx (capacity_kwp, latitude, longitude, timezone).
+    None dondururse akis durur (form eksik ya da Devam basilmadi)."""
+    auth = st.session_state.get("auth")
+    aktif_pid = st.session_state.get("aktif_plant_id")
+
+    # --- MOD 1: sidebar'da santral secili ---
+    if aktif_pid and auth:
+        try:
+            p = plant_service.getir(auth["tenant_id"], aktif_pid)
+        except Exception:
+            p = None
+        if p:
+            # Salt-okunur ozet karti
+            st.markdown(
+                f'<div class="pv-kart" style="margin:12px 0">'
+                f'  <div class="pv-eyebrow">BU SANTRAL ICIN YUKLUYORSUNUZ</div>'
+                f'  <div style="font-family:var(--f-mono);font-size:15px;'
+                f'              margin-top:6px">'
+                f'    {p["name"]} · {p["capacity_kwp"]:.0f} kWp · '
+                f'    {p["lat"]:.2f}, {p["lon"]:.2f} · {p["tz"]}'
+                f'  </div>'
+                f'  <div class="pv-mikro" style="margin-top:6px">'
+                f'    Farklı santral mı? Kenar çubuğundan seçin.'
+                f'  </div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+            # plant_ctx turetilmis gorunum (Fable 5 v1.4)
+            plant_ctx = {
+                "capacity_kwp": p["capacity_kwp"],
+                "latitude": p["lat"],
+                "longitude": p["lon"],
+                "timezone": p["tz"],
+                "name": p["name"],
+            }
+            return plant_ctx
+
+    # --- MOD 2: yeni kullanici (santral yok) ---
+    plant_ctx_form = _santral_bilgi_formu()
+    if plant_ctx_form is None:
+        return None
+    # Kullanici formu doldurdu; Devam anında santral olustur
+    if st.button("Devam", type="primary", use_container_width=True,
+                 key="adim1_devam"):
+        try:
+            pid = plant_service.olustur(
+                auth["tenant_id"],
+                name=plant_ctx_form.get("name", "Yeni santral"),
+                lat=plant_ctx_form["latitude"],
+                lon=plant_ctx_form["longitude"],
+                tz=plant_ctx_form["timezone"],
+                capacity_kwp=plant_ctx_form["capacity_kwp"],
+            )
+            st.session_state.aktif_plant_id = pid
+            st.session_state.plant_context = plant_ctx_form
+            st.rerun()
+        except Exception as e:
+            st.error(f"Santral olusturulamadi: {e}")
+            return None
+    return None
 
 def _format_karti(pv) -> None:
     """Preview file_format bilgisini gosteren kart."""
@@ -635,7 +704,7 @@ def _render_mod_b_scada() -> None:
 
     if st.button("← Yol ayrimina don", key="scada_geri", type="secondary"):
         st.session_state.veri_yukleme_mod = "yol_ayrimi"
-        for k in ("scada_preview", "scada_result", "scada_clean",
+        for k in ("scada_preview", "scada_result", "scada_clean", "scada_batch_id",
                   "scada_filename", "scada_tmp_path",
                   "scada_mapping_failed"):
             st.session_state.pop(k, None)
@@ -692,7 +761,7 @@ def _render_mod_b_scada() -> None:
             except OSError:
                 pass
         # Sonuclari sifirla
-        for k in ("scada_preview", "scada_result", "scada_clean",
+        for k in ("scada_preview", "scada_result", "scada_clean", "scada_batch_id",
                   "scada_mapping_failed"):
             st.session_state.pop(k, None)
         
@@ -748,7 +817,7 @@ def _render_mod_b_scada() -> None:
     
     # Santral bilgisi formu
     st.markdown("<div style='margin-top:24px'></div>", unsafe_allow_html=True)
-    plant_ctx = _santral_bilgi_formu()
+    plant_ctx = _adim1_santral()
     
     # --- BOLUM 2: Onayla + Karne ---
     
@@ -775,14 +844,6 @@ def _render_mod_b_scada() -> None:
                 st.session_state.scada_result = result
                 st.session_state.scada_clean = result.to_clean_frame()
                 st.session_state.plant_context = plant_ctx
-                # Sablonu kaydet (ikinci yuklemede otomatik esleme)
-                try:
-                    _TEMPLATE_STORE.save(
-                        f"user_{uploaded.name.rsplit('.', 1)[0]}",
-                        result.to_template(),
-                    )
-                except Exception:
-                    pass  # sablon kaydi kritik degil
                 st.rerun()
             except Exception as e:
                 st.error(f"Islem sirasinda hata: {e}")
@@ -804,7 +865,7 @@ def _render_mod_b_scada() -> None:
                     os.unlink(tmp_path)
                 except OSError:
                     pass
-            for k in ("scada_preview", "scada_result", "scada_clean",
+            for k in ("scada_preview", "scada_result", "scada_clean", "scada_batch_id",
                       "scada_filename", "scada_tmp_path",
                       "scada_mapping_failed"):
                 st.session_state.pop(k, None)
@@ -817,6 +878,40 @@ def _render_mod_b_scada() -> None:
             use_container_width=True,
             type="primary",
         ):
+            # ---- FAZ 2 (Fable 5 v1.4): DB'ye kalicilastir ----
+            auth = st.session_state.get("auth")
+            aktif_pid = st.session_state.get("aktif_plant_id")
+            plant_ctx = st.session_state.get("plant_context", {})
+            if auth and aktif_pid and plant_ctx:
+                try:
+                    with st.spinner("Kalicilastiriliyor..."):
+                        out = ingest_service.yukle_ve_kaydet(
+                            auth["tenant_id"],
+                            aktif_pid,
+                            tmp_path,
+                            capacity_kwp=plant_ctx["capacity_kwp"],
+                            latitude=plant_ctx["latitude"],
+                            longitude=plant_ctx["longitude"],
+                            source_timezone=plant_ctx["timezone"],
+                            file_format=result.file_format,
+                            mapping=result.mapping,
+                            hazir_sonuc=result,
+                        )
+                    st.session_state.scada_batch_id = out["batch_id"]
+                    # Sablonu ONAY DALINDA kaydet (Fable 5 v1.4)
+                    try:
+                        _TEMPLATE_STORE.save(
+                            f"user_{uploaded.name.rsplit('.', 1)[0]}",
+                            result.to_template(),
+                        )
+                    except Exception:
+                        pass  # sablon kaydi kritik degil
+                    st.toast(
+                        f"Kalicilastirildi ✓ · {out['n_satir']} satir kaydedildi"
+                    )
+                except Exception as e:
+                    st.error(f"Kalicilastirma hatasi: {e}")
+                    return
             _kopru_scadadata_ve_gec()
             st.rerun()
 
