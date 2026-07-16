@@ -38,7 +38,13 @@ dependencies = [
     "python-dateutil>=2.8",
     "reportlab>=4.4",
     "xlsxwriter>=3.2",
-    "matplotlib>=3.8",
+  "matplotlib>=3.8",
+    "sqlalchemy>=2.0",
+    "alembic>=1.13",
+    "psycopg[binary]>=3.1",
+    "passlib[bcrypt]>=1.7",
+    "pyjwt>=2.8",
+    "apscheduler>=3.10",
 ]
 
 [project.optional-dependencies]
