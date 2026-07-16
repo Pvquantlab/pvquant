@@ -9,8 +9,8 @@ Phase 3: PostgreSQL (drop-in replacement)
 
 Kullanım:
     storage = JsonCalibrationStorage(base_dir="./calibration_cache")
-    storage.save(plant_id="merkas", model_name="barhdadi_bennis", params=...)
-    params = storage.load(plant_id="merkas", model_name="barhdadi_bennis")
+    storage.save(plant_id="refplant", model_name="barhdadi_bennis", params=...)
+    params = storage.load(plant_id="refplant", model_name="barhdadi_bennis")
 """
 
 from __future__ import annotations
@@ -80,7 +80,7 @@ class JsonCalibrationStorage:
 
     Dosya yolu: {base_dir}/{plant_id}_{model_name}.json
 
-    Örnek: calibration_cache/merkas_barhdadi_bennis.json
+    Örnek: calibration_cache/refplant_barhdadi_bennis.json
     """
 
     def __init__(self, base_dir: str | Path = "./calibration_cache"):

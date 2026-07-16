@@ -322,7 +322,7 @@ Yaz 3 ay (Mayıs-Ağustos 2024), 15,538 geçerli saat.
 | 1.9.0 | %0.00 | %21 | 0.85 | 159° | 10°→**26°** | +tilt fit |
 | 1.9.4 | %0.00 | **%20.33** | 0.85 | 159° | 26° | +akıllı outlier temizlik |
 
-**MERKAS referans:** yıllık %0.77. FSA_1 Faz 1.9'da yaz için %0.00 — MERKAS'tan iyi.
+**REFPLANT referans:** yıllık %0.77. FSA_1 Faz 1.9'da yaz için %0.00 — REFPLANT'tan iyi.
 
 **MAPE %20 ne demek?** Kaliforniya utility-scale için makul. Daha düşürmek için:
 - NREL NSRDB (kaliteli meteo) — Faz 1.10+

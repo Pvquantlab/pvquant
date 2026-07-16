@@ -73,15 +73,15 @@ def demo_forecast_only() -> None:
 def demo_calibration() -> None:
     """Senaryo 2: SCADA CSV ile kalibrasyon (yerel örnek veri)."""
     print("\n" + "=" * 60)
-    print("SENARYO 2: SCADA tabanlı kalibrasyon (MERKAS örnek)")
+    print("SENARYO 2: SCADA tabanlı kalibrasyon (REFPLANT örnek)")
     print("=" * 60)
 
-    sample_csv = REPO_ROOT / "tests" / "data" / "merkas_sample.csv"
+    sample_csv = REPO_ROOT / "tests" / "data" / "refplant_sample.csv"
     if not sample_csv.exists():
         print(f"Örnek CSV bulunamadı: {sample_csv}")
         return
 
-    scada = load_csv(sample_csv, plant_name="MERKAS Sample")
+    scada = load_csv(sample_csv, plant_name="REFPLANT Sample")
     print(f"SCADA yüklendi: {scada.hours_count} geçerli saat, {scada.timestep_minutes} dk adım")
 
     scada_hourly = scada.to_hourly()

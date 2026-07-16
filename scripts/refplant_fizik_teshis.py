@@ -1,13 +1,13 @@
-"""MERKAS fizik kalibrasyonu teshis betigi."""
+"""REFPLANT fizik kalibrasyonu teshis betigi."""
 from __future__ import annotations
 import time
 from pathlib import Path
 import pandas as pd
 
-MERKAS_CAPACITY_KWP = 4514.0
-MERKAS_LAT = 37.87
-MERKAS_LON = 32.49
-CSV_PATH = Path("data/MERKAS_SCADA_FULL.csv")
+REFPLANT_CAPACITY_KWP = 4514.0
+REFPLANT_LAT = 37.87
+REFPLANT_LON = 32.49
+CSV_PATH = Path("data/REFPLANT_SCADA_FULL.csv")
 
 
 def build_scada_data():
@@ -20,7 +20,7 @@ def build_scada_data():
     df = df.reindex(full_range)
     df.index.name = "timestamp"
     import pvlib
-    solpos = pvlib.solarposition.get_solarposition(df.index, MERKAS_LAT, MERKAS_LON)
+    solpos = pvlib.solarposition.get_solarposition(df.index, REFPLANT_LAT, REFPLANT_LON)
     is_night = solpos["apparent_elevation"].values < -3.0
     night_nan_mask = is_night & df["power_kw"].isna().values
     df.loc[night_nan_mask, "power_kw"] = 0.0
@@ -33,7 +33,7 @@ def build_scada_data():
         temp_ambient=_opt("t_air"),
         temp_module=_opt("t_module"),
         wind_speed=_opt("wind_speed"),
-        plant_name="MERKAS_teshis",
+        plant_name="REFPLANT_teshis",
         timestep_minutes=60,
     )
     n_valid = int(df["power_kw"].notna().sum())
@@ -49,7 +49,7 @@ def fetch_meteo(start_date, end_date):
     t0 = time.time()
     client = OpenMeteoClient()
     meteo = client.get_historical(
-        latitude=MERKAS_LAT, longitude=MERKAS_LON,
+        latitude=REFPLANT_LAT, longitude=REFPLANT_LON,
         start_date=start_date, end_date=end_date,
     )
     print(f"      -> tamam ({time.time() - t0:.1f}s), {len(meteo.ghi):,} saat")
@@ -59,9 +59,9 @@ def fetch_meteo(start_date, end_date):
 def build_plant_spec():
     from pvquant.pipeline.forecast import PlantSpec
     plant = PlantSpec(
-        p_nom_kwp=MERKAS_CAPACITY_KWP,
-        latitude=MERKAS_LAT,
-        longitude=MERKAS_LON,
+        p_nom_kwp=REFPLANT_CAPACITY_KWP,
+        latitude=REFPLANT_LAT,
+        longitude=REFPLANT_LON,
     )
     print(f"[3/4] PlantSpec: p_nom={plant.p_nom_kwp:.0f} kWp, "
           f"tilt={plant.tilt}, azimuth={plant.azimuth}, tech={plant.module_tech}")
@@ -102,7 +102,7 @@ def format_row(name, result, duration):
 
 def main():
     print("=" * 68)
-    print("MERKAS FIZIK KALIBRASYONU -- TESHIS")
+    print("REFPLANT FIZIK KALIBRASYONU -- TESHIS")
     print("=" * 68)
     scada = build_scada_data()
     start_date = scada.power_kw.index.min().strftime("%Y-%m-%d")

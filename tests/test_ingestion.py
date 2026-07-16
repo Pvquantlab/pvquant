@@ -42,7 +42,7 @@ def _hourly_power_profile(n_days: int, tz: str) -> pd.Series:
 def turkish_csv(tmp_path):
     p = _hourly_power_profile(30, TZ)
     lines = [
-        "Santral;MERKAS GES;;",
+        "Santral;REFPLANT GES;;",
         "Rapor Aralığı;01.03.2025 - 30.03.2025;;",
         "Oluşturma;31.03.2025 09:15;;",
         ";;;",
@@ -209,16 +209,16 @@ def test_template_roundtrip(turkish_csv, tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# Senaryo 7: MERKAS xlsx — başlık 5. satırda
+# Senaryo 7: REFPLANT xlsx — başlık 5. satırda
 # ---------------------------------------------------------------------------
 
-def test_merkas_xlsx_header_row_detection(tmp_path):
-    """MERKAS xlsx dosyalarında başlık genellikle 5. satırda olur;
-    üstünde 'Tesis Raporu_MERKAS GES' ve boş satırlar bulunur."""
+def test_refplant_xlsx_header_row_detection(tmp_path):
+    """REFPLANT xlsx dosyalarında başlık genellikle 5. satırda olur;
+    üstünde 'Tesis Raporu_REFPLANT GES' ve boş satırlar bulunur."""
     p = _hourly_power_profile(10, TZ)
 
     meta_rows = [
-        ["Tesis Raporu_MERKAS GES"] + [None] * 3,
+        ["Tesis Raporu_REFPLANT GES"] + [None] * 3,
         ["Rapor Aralığı", "01.03.2025 - 10.03.2025", None, None],
         ["Kapasite", "4514 kWp", None, None],
         [None, None, None, None],
@@ -236,7 +236,7 @@ def test_merkas_xlsx_header_row_detection(tmp_path):
 
     all_rows = meta_rows + [header_row] + data_rows
     df = pd.DataFrame(all_rows)
-    path = tmp_path / "merkas.xlsx"
+    path = tmp_path / "refplant.xlsx"
     df.to_excel(path, index=False, header=False)
 
     pv = preview_file(path)

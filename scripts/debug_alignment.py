@@ -2,7 +2,7 @@
 Debug: Open-Meteo + SCADA hizalama kontrolü.
 
 Bu script ne yapar:
-1. SCADA CSV'yi yükler (MERKAS_SCADA_clean.csv).
+1. SCADA CSV'yi yükler (REFPLANT_SCADA_clean.csv).
 2. Aynı dönem için Open-Meteo arşivinden veri çeker.
 3. İlk 30 saati yan yana yazdırır → TZ hizalı mı görsel kontrol.
 4. Günlük toplam üretim ve günlük toplam GHI grafiği için CSV üretir.
@@ -11,7 +11,7 @@ Bu script ne yapar:
 Kullanım:
     cd ~/Desktop/pvquant
     source .venv/bin/activate
-    python scripts/debug_alignment.py ~/Desktop/MERKAS_SCADA_clean.csv
+    python scripts/debug_alignment.py ~/Desktop/REFPLANT_SCADA_clean.csv
 """
 from __future__ import annotations
 

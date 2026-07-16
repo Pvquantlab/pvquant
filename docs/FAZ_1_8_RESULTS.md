@@ -93,7 +93,7 @@ sonrası duplicate temizliği ekle (Faz 1.7 meteo tarafında yaptığımızın a
 ### Problem 3: Azimuth Bilinmediğinde Model Doğru Değil
 
 **Belirti:** FSA_1 metadata'sındaki `azimuth=180°` yanlıştı. Elle test:
-- azimuth=140° → MAPE %28, sapma %0.15 (MERKAS seviyesi)
+- azimuth=140° → MAPE %28, sapma %0.15 (REFPLANT seviyesi)
 - azimuth=180° → MAPE %71, sapma %7
 
 **Çözüm (Faz 1.8.1):** `calibrate_from_scada` fonksiyonuna `fit_azimuth: bool =
@@ -188,8 +188,8 @@ saat.
 | Faz 1.8.0 (Mod B) | +%0.00 | %41→%32 | 0.81 | 180° | tz-aware fix |
 | Faz 1.8.1 (Mod B) | +%0.00 | %26→**%20** | 0.85 | **159°** | +azimuth fit |
 
-**MERKAS referans:** Yıllık sapma %0.77. FSA_1 Faz 1.8'de yaz için %0.00
-sapma — MERKAS'tan iyi.
+**REFPLANT referans:** Yıllık sapma %0.77. FSA_1 Faz 1.8'de yaz için %0.00
+sapma — REFPLANT'tan iyi.
 
 ---
 
@@ -277,7 +277,7 @@ daralt" veya "eta_bos üst sınırı zorla" gibi düzeltmeler yapmaktı. Duraksa
 
 Faz 1.8 üç somut çıktı bıraktı:
 1. **Kalibrasyon artık gerçek dünyada çalışıyor.** FSA_1 yaz için sapma %0,
-   MAPE %20 — MERKAS seviyesine ulaştık ve geçtik.
+   MAPE %20 — REFPLANT seviyesine ulaştık ve geçtik.
 2. **Azimuth fit ürüne entegre edildi.** Kullanıcı azimuth bilmiyor durumu
    otomatik çözülüyor.
 3. **DST-safe.** Yıllık kalibrasyon senaryosu patlmıyor.

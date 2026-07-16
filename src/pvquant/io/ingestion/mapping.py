@@ -39,7 +39,7 @@ SYNONYMS: dict[str, list[str]] = {
         # Marka referansı
         "reading_time", "measured_at", "sample time", "log time",
         "date_time", "log date", "record time",
-        # MERKAS / Türkçe yıllık üretim raporları
+        # REFPLANT / Türkçe yıllık üretim raporları
         "dönem", "donem", "istatistiksel donem", "istatistiksel dönem",
     ],
     "power": [
@@ -62,7 +62,7 @@ SYNONYMS: dict[str, list[str]] = {
         "wh lifetime", "lifetime energy", "cumulative energy",
         "energyreal_wac_sum_produced", "day_energy", "energy_today",
         "eday", "e_day", "ac_energy", "total_energy_generated",
-        # MERKAS / Türkçe yıllık üretim raporları
+        # REFPLANT / Türkçe yıllık üretim raporları
         "kazanç", "kazanc", "inverter kazanç", "inverter kazanc",
         "inverter kazancı", "inverter kazanci",
         "pv kazancı", "pv kazanci", "teorik kazanç", "teorik kazanc",
@@ -74,7 +74,7 @@ SYNONYMS: dict[str, list[str]] = {
         # Marka referansı
         "irradiation", "irradiance_poa", "gti", "g_tilted",
         "poa_global", "poa global", "irradiance tilted",
-        # MERKAS Türkçe - "işıma" genel PV konteksinde POA/tilted
+        # REFPLANT Türkçe - "işıma" genel PV konteksinde POA/tilted
         # anlamında kullanılır; kullanıcı onay ekranında düzeltebilir
         "işıma", "isima", "toplam işıma", "toplam isima",
         # DİKKAT: 'ghi', 'global horizontal' BURAYA EKLENMEZ (bkz. modül docstring)
@@ -92,7 +92,7 @@ SYNONYMS: dict[str, list[str]] = {
         # Marka referansı
         "ambient_temperature", "outdoor_temp", "environment temp",
         "t_ambient", "air_temp",
-        # MERKAS
+        # REFPLANT
         "ortalama sicaklik", "ortalama sıcaklık",
     ],
     "temp_module": [

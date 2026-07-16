@@ -11,7 +11,7 @@ ortam sıcaklığı varsa kalibrasyon kalitesi artar.
 
 Kullanım:
     >>> from pvquant.io.scada import load_fusionsolar_csv
-    >>> scada = load_fusionsolar_csv("merkas_2025.csv")
+    >>> scada = load_fusionsolar_csv("refplant_2025.csv")
     >>> scada.power_kw.head()
 """
 from __future__ import annotations

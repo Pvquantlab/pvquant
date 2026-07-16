@@ -1,10 +1,10 @@
-"""MERKAS GES üzerinde HybridResidualModel demo.
+"""REFPLANT GES üzerinde HybridResidualModel demo.
 
-merkas_validation.py ile aynı kurulum; tek fark model sınıfı.
+refplant_validation.py ile aynı kurulum; tek fark model sınıfı.
 Fizik-vs-hibrit holdout karşılaştırmasını yazdırır.
 
 Gereksinim: pip install lightgbm joblib
-Veri: data/MERKAS_SCADA_FULL.csv (timestamp, power_kw [, poa_global, t_air, ...])
+Veri: data/REFPLANT_SCADA_FULL.csv (timestamp, power_kw [, poa_global, t_air, ...])
 """
 from __future__ import annotations
 import sys
@@ -23,13 +23,13 @@ from pvquant.models_v2.hybrid_residual import HybridResidualModel
 from pvquant.io.meteo import OpenMeteoClient
 
 print("=" * 60)
-print("MERKAS GES — HYBRID RESIDUAL MODEL DEMO")
+print("REFPLANT GES — HYBRID RESIDUAL MODEL DEMO")
 print("=" * 60)
 
-# --- 1. PlantProfile (merkas_validation.py ile aynı) ---
+# --- 1. PlantProfile (refplant_validation.py ile aynı) ---
 plant = PlantProfile(
-    plant_id="MERKAS",
-    name="MERKAS GES",
+    plant_id="REFPLANT",
+    name="REFPLANT GES",
     location=Location(
         latitude=37.87, longitude=32.49,
         timezone="Europe/Istanbul", elevation_m=1000,
@@ -52,7 +52,7 @@ plant = PlantProfile(
 
 # --- 2. SCADA ---
 print("\n[1/4] SCADA yükleniyor...")
-scada_df = pd.read_csv(ROOT / "data" / "MERKAS_SCADA_FULL.csv", parse_dates=["timestamp"])
+scada_df = pd.read_csv(ROOT / "data" / "REFPLANT_SCADA_FULL.csv", parse_dates=["timestamp"])
 # TZ fix: SCADA timestamps yerel saatte (Europe/Istanbul), models_v2 tz-aware bekliyor
 scada_df["timestamp"] = scada_df["timestamp"].dt.tz_localize(
     "Europe/Istanbul", ambiguous="infer", nonexistent="shift_forward"
@@ -64,7 +64,7 @@ print(f"  OK: {len(scada_df)} satır (tz: Europe/Istanbul)")
 # kullanılır ve Open-Meteo çağrısı atlanır; yoksa arşivden çekilir.
 print("\n[2/4] Hibrit kalibrasyon (fizik + LightGBM)...")
 model = HybridResidualModel(plant)
-params = model.calibrate(HistoricalData(plant_id="MERKAS", data=scada_df))
+params = model.calibrate(HistoricalData(plant_id="REFPLANT", data=scada_df))
 
 q = params.quality_metrics
 print("\n  --- Holdout raporu (kronolojik son %20) ---")
@@ -77,7 +77,7 @@ print(f"  İyileşme    : {q['mape_improvement_pct']:+.2f} puan")
 # --- 4. ML katmanını kaydet ---
 print("\n[3/4] ML katmanı kaydediliyor...")
 model.save_ml_layer(ROOT / "calibration_cache")
-print("  OK: calibration_cache/MERKAS_hybrid_residual.joblib")
+print("  OK: calibration_cache/REFPLANT_hybrid_residual.joblib")
 
 # --- 5. 7 günlük canlı tahmin (P10/P50/P90 ile) ---
 print("\n[4/4] 7 günlük tahmin...")

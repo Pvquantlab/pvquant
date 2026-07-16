@@ -32,7 +32,7 @@ yaratan asıl problem buydu.
 
 ## Sonuç
 
-MERKAS xlsx üzerinde UI kalibrasyonu:
+REFPLANT xlsx üzerinde UI kalibrasyonu:
 - Öncesi: SAPMA %-100, MAPE %100 (fizik çıktıları sıfır)
 - Sonrası: SAPMA %-3.23, MAPE %27.5, eta_BoS 0.897
 
@@ -53,6 +53,6 @@ amber güneş.
 
 ## Sonuç (Tur 4 sonrası)
 
-MERKAS UI'dan PDF: logo + "MERKAS GES" (normalize) + "15 – 22 Temmuz 2026"
+REFPLANT UI'dan PDF: logo + "REFPLANT GES" (normalize) + "15 – 22 Temmuz 2026"
 Türkçe dönem + 206,0 MWh (virgül) + 4.514 kWp (binlik nokta) + yeşil
 ✓ Kalibrasyon notu. Testler: 129 passed.
