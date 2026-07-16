@@ -27,6 +27,7 @@ import pandas as pd
 from pathlib import Path
 
 import streamlit as st
+import ui_kit
 
 from components import page_header
 from design_tokens import PRIMARY, SUCCESS, TEXT_SECONDARY, TEXT_TERTIARY, WARNING
@@ -51,60 +52,6 @@ _TEMPLATE_STORE = TemplateStore(
 # ============================================================
 # ORTAK: Sihirbaz adim gostergesi
 # ============================================================
-
-def _adim_gostergesi(aktif_adim: int = 2) -> None:
-    """Sihirbaz - 1: Santral, 2: Veri yolu, 3: Sonuc."""
-    def _dot(num, label, state):
-        if state == "done":
-            bg = SUCCESS
-            fg = "white"
-            metin_renk = SUCCESS
-            weight = "500"
-            icon = "✓"
-        elif state == "active":
-            bg = PRIMARY
-            fg = "white"
-            metin_renk = PRIMARY
-            weight = "600"
-            icon = str(num)
-        else:
-            bg = "#E2E6EA"
-            fg = TEXT_TERTIARY
-            metin_renk = TEXT_TERTIARY
-            weight = "500"
-            icon = str(num)
-        return (
-            f'<span style="display:inline-flex;align-items:center;gap:6px;'
-            f'             color:{metin_renk};font-weight:{weight}">'
-            f'  <span style="display:inline-flex;align-items:center;justify-content:center;'
-            f'               width:20px;height:20px;border-radius:50%;'
-            f'               background:{bg};color:{fg};font-size:11px">{icon}</span>'
-            f'  {label}'
-            f'</span>'
-        )
-
-    def _state(i):
-        if i < aktif_adim:
-            return "done"
-        elif i == aktif_adim:
-            return "active"
-        else:
-            return "pending"
-
-    st.markdown(
-        f"""
-        <div style="display:flex;align-items:center;gap:12px;
-                    margin-bottom:32px;font-size:13px;
-                    font-family:IBM Plex Mono,monospace">
-          {_dot(1, "Santral bilgisi", _state(1))}
-          <span style="color:#CBD5E1">·</span>
-          {_dot(2, "Veri yolu", _state(2))}
-          <span style="color:#CBD5E1">·</span>
-          {_dot(3, "Sonuc", _state(3))}
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
 
 
 # ============================================================
@@ -174,7 +121,7 @@ def _yol_karti(baslik, ikon, sapma_txt, maddeler, buton_metni, onerilen, on_clic
 
 
 def _render_mod_a() -> None:
-    _adim_gostergesi(aktif_adim=2)
+    ui_kit.adimlar(aktif=2)
 
     st.markdown(
         f"""
@@ -684,7 +631,7 @@ def _kalite_karnesi_karti(result) -> None:
 
 def _render_mod_b_scada() -> None:
     """Mod B: CSV yukleme + ingestion pipeline."""
-    _adim_gostergesi(aktif_adim=2)
+    ui_kit.adimlar(aktif=2)
 
     if st.button("← Yol ayrimina don", key="scada_geri", type="secondary"):
         st.session_state.veri_yukleme_mod = "yol_ayrimi"

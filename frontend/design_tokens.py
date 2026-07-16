@@ -108,7 +108,7 @@ MENU_ITEMS = [
     ("raporlar",     "Raporlar"),
 ]
 
-PRIVACY_TEXT = "Veriniz yalnizca bu oturumda kullanilir; oturum kapaninca silinir."
+PRIVACY_TEXT = "Veriniz yalnızca hesabınızda saklanır; dilediğinizde dışa aktarır ya da silersiniz."
 ORG_NAME     = "Anadolu Enerji A.S."
 ORG_PLAN     = "Kurumsal plan"
 ORG_INITIAL  = "A"

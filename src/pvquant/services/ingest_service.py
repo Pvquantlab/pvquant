@@ -13,11 +13,16 @@ _KOLONLAR = {"power_kw":"power_kw","energy_kwh":"energy_kwh",
 
 def yukle_ve_kaydet(tenant_id, plant_id, dosya_yolu, *, capacity_kwp,
                     latitude, longitude, source_timezone,
-                    file_format=None, mapping=None) -> dict:
-    res = ingest_file(str(dosya_yolu), capacity_kwp=capacity_kwp,
-                      latitude=latitude, longitude=longitude,
-                      source_timezone=source_timezone,
-                      file_format=file_format, mapping=mapping)
+                    file_format=None, mapping=None,
+                    hazir_sonuc=None) -> dict:
+    """hazir_sonuc verilirse ingest_file ATLANIR; Faz 1'de uretilip
+    kullanicinin onayladigi sonuc aynen kalicilastirilir. None ise
+    eski atomik davranis (yukle+kaydet) aynen gecerli."""
+    res = hazir_sonuc if hazir_sonuc is not None else ingest_file(
+        str(dosya_yolu), capacity_kwp=capacity_kwp,
+        latitude=latitude, longitude=longitude,
+        source_timezone=source_timezone,
+        file_format=file_format, mapping=mapping)
     clean = res.data if hasattr(res, "data") else res.to_clean_frame()
     df = clean.set_index("timestamp") if "timestamp" in clean.columns else clean
     with tenant_baglami(tenant_id) as s:
