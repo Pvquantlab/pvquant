@@ -94,3 +94,6 @@ ingestion_templates/
 # Ingestion sablonlari (kullanici verisi)
 ingestion_templates/
 calibration_cache/
+# Cikti ornekleri (yeniden uretilebilir)
+outputs/
+*.pdf
