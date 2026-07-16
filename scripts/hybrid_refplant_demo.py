@@ -1,4 +1,4 @@
-"""REFPLANT GES üzerinde HybridResidualModel demo.
+"""Referans santral üzerinde HybridResidualModel demo.
 
 refplant_validation.py ile aynı kurulum; tek fark model sınıfı.
 Fizik-vs-hibrit holdout karşılaştırmasını yazdırır.
@@ -23,13 +23,13 @@ from pvquant.models_v2.hybrid_residual import HybridResidualModel
 from pvquant.io.meteo import OpenMeteoClient
 
 print("=" * 60)
-print("REFPLANT GES — HYBRID RESIDUAL MODEL DEMO")
+print("REFERANS SANTRAL — HYBRID RESIDUAL MODEL DEMO")
 print("=" * 60)
 
 # --- 1. PlantProfile (refplant_validation.py ile aynı) ---
 plant = PlantProfile(
     plant_id="REFPLANT",
-    name="REFPLANT GES",
+  name="Referans Santral",
     location=Location(
         latitude=37.87, longitude=32.49,
         timezone="Europe/Istanbul", elevation_m=1000,

@@ -216,13 +216,14 @@ daha fazla üretim yapıyor.
 
 ---
 
-## 6. REFPLANT ile Kıyaslama
-
-Model dokümantasyonu (`PVQuant_Model_Mantigi_v2.docx`) REFPLANT santralı için
-Mod B'nin **yıllık %0.77 sapma** verdiğini kaydediyor. FSA_1'de sapma %52.
+## 6. Referans Santral ile Kıyaslama
+Model dokümantasyonu (`PVQuant_Model_Mantigi_v2.docx`), Konya'daki 4.514 kWp
+bifacial bir referans santralin bir yıllık SCADA verisiyle Mod B'nin **yıllık
+%0.77 sapma** verdiğini kaydediyor (santral adı, veri sahibinin gizliliği için
+anonimleştirilmiştir). FSA_1'de sapma %52.
 
 Bu 68x fark model matematiğinden değil, **ön işleme kalitesinden** kaynaklanıyor.
-REFPLANT'ta:
+Referans santralda:
 - SCADA muhtemelen manuel temizlenmiş (arıza günleri elenmiş)
 - Meteoroloji doğrulanmış
 - Panel spesifikasyonu ölçülmüş (tahminen değil)
@@ -262,7 +263,7 @@ adımları gereklidir. Faz 1.8 bu adımların ürüne entegrasyonu olacak.
 
 FSA_1 için sabah/akşam asimetrisi gerçekten var. Bir ipucu:
 - `PlantSpec.tilt` ve `azimuth` fit parametresi yapılabilir (ilerleyen bir adım)
-- Sadece bir öğle penceresi (10:00-14:00) REFPLANT başarısı için yeterli olurdu
+- Sadece bir öğle penceresi (10:00-14:00) referans santral başarısı için yeterli olurdu
 
 ---
 
@@ -296,14 +297,12 @@ Faz 1.7 **birincil hedefine ulaştı**: Faz 1.6'nın frekans-agnostik kodu gerç
 bir 15 dakikalık SCADA veri setinde mekanik olarak doğrulandı. Aynı zamanda
 üç ürün-seviyesi bug tespit edilip düzeltildi (timezone, DST, sözlük).
 
-Faz 1.7 **ikincil hedefine ulaşamadı**: gerçek dünyada Mod B kalibrasyonun REFPLANT
-benzeri doğruluk göstermesi. Bunun sebebi model matematiğinde değil, **ham
-veriden kalibre modele giden preprocessing zincirinde** eksiklik.
+Faz 1.7 **ikincil hedefine ulaşamadı**: gerçek dünyada Mod B kalibrasyonun referans
+santral benzeri doğruluk göstermesi.
 
 Faz 1.8 bu preprocessing zincirini inşa edecek: SCADA kalite kontrolü, meteo
 bias fit, robust kalibrasyon. Bu adımlar tamamlandığında FSA_1'de Mod B'nin
-REFPLANT seviyesine yaklaşması bekleniyor.
-
+referans santral seviyesine yaklaşması bekleniyor.
 ---
 
 **Faz 1.7 kapandı. Faz 1.8: Data Quality & Preprocessing.**

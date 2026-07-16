@@ -43,7 +43,7 @@ pip install -e ".[dev]"
 from pvquant.pipeline.forecast import forecast_7day
 from pvquant.io.meteo import OpenMeteoClient
 
-# Konya'da 5 MWp bir santralin 7 günlük tahmini
+# 5 MWp bir santralin 7 günlük tahmini
 meteo = OpenMeteoClient().get_forecast(latitude=37.87, longitude=32.49)
 
 result = forecast_7day(

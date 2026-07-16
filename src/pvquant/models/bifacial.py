@@ -37,7 +37,7 @@ class SimpleBifacialParams:
         bg: Geometrik arka yüz / ön yüz ışınım oranı.
             Modülün eğimi, yüksekliği, sıra aralığı (GCR) ve view factor'in
             net sonucu. Tipik 0.10-0.40. Saha verisinden geri hesaplanabilir
-            (bkz. tez Bölüm 3.3.7). REFPLANT GES: BG = 0.347.
+            Bir bifacial referans santralda gözlenen BG = 0.347 (bkz. tez Bölüm 3.3.7).
         bf: Bifacial faktör (datasheet'ten). Arka yüz verimi / ön yüz verimi.
             Tipik 0.65-0.85. Elin ELNSM72M-HC-BF: BF = 0.70.
         albedo: Saha albedosu. Sabit veya saatlik/aylık seri olabilir.
@@ -112,7 +112,7 @@ def back_solve_bg_from_scada(
         Geri hesaplanmış BG değeri (0-0.5 arası tipik).
 
     Referans:
-        Bahsedilen tezde REFPLANT GES (Karahisar) için 2794 geçerli saat üzerinden
+    Bahsedilen tezde referans santral için 2794 geçerli saat üzerinden
         BG = 0.347 olarak bulunmuştur.
     """
     net_gain_hourly = measured_eta_rel / (eta_irradiance * eta_temperature) - 1.0

@@ -1,7 +1,7 @@
 """
 SCADA POA vs Open-Meteo POA bias analizi.
 
-Amac: REFPLANT'in olculmus POA'sini, Open-Meteo GHI'den Erbs+Perez ile
+Amac: Referans santralin olculmus POA'sini, Open-Meteo GHI'den Erbs+Perez ile
 hesaplanmis POA ile karsilastirmak.
 
 Cikti:

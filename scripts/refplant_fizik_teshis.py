@@ -1,4 +1,4 @@
-"""REFPLANT fizik kalibrasyonu teshis betigi."""
+"""Referans santral fizik kalibrasyonu teshis betigi."""
 from __future__ import annotations
 import time
 from pathlib import Path
@@ -33,7 +33,7 @@ def build_scada_data():
         temp_ambient=_opt("t_air"),
         temp_module=_opt("t_module"),
         wind_speed=_opt("wind_speed"),
-        plant_name="REFPLANT_teshis",
+        plant_name="referans_teshis",
         timestep_minutes=60,
     )
     n_valid = int(df["power_kw"].notna().sum())
@@ -102,7 +102,7 @@ def format_row(name, result, duration):
 
 def main():
     print("=" * 68)
-    print("REFPLANT FIZIK KALIBRASYONU -- TESHIS")
+    print("REFERANS SANTRAL FIZIK KALIBRASYONU -- TESHIS")
     print("=" * 68)
     scada = build_scada_data()
     start_date = scada.power_kw.index.min().strftime("%Y-%m-%d")

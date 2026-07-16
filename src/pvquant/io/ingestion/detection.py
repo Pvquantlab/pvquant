@@ -156,7 +156,7 @@ def _detect_excel_format(path: Path) -> FileFormat:
 
     Çok sayfalı dosyalarda ilk sayfa varsayılır; kullanıcı UI'da
     sheet_name'i değiştirebilir. Başlık satırı CSV ile aynı puanlama
-    mantığıyla bulunur — 'Tesis Raporu REFPLANT GES' gibi meta üstlerini
+   mantığıyla bulunur — 'Tesis Raporu <santral adı>' gibi meta üstlerini
     aşar ve gerçek başlığı (5. satırda) bulur.
     """
     try:

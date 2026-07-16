@@ -400,7 +400,7 @@ Her adım **bağımsız** olarak test edilir, işe yaradığından emin olunur, 
 
 ### ADIM 5: Kapsamlı Test (60 dk)
 
-- 1 saatlik test — mevcut REFPLANT regresyonu
+- 1 saatlik test — mevcut referans santral regresyonu
 - 15 dakikalık test — sentetik veri veya FSA'nın 15 dk resample'ı
 - 5 dakikalık test — FSA'nın irradiance'ı zaten 5 dk
 - Kapasite faktörü, sapma metrikleri, MAPE — hepsi tutarlı mı?

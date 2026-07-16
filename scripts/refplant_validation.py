@@ -1,4 +1,4 @@
-"""REFPLANT GES (4514 kWp Konya bifacial) ucu uca dogrulama."""
+"""Referans santral (4514 kWp bifacial) ucu uca dogrulama."""
 from __future__ import annotations
 import sys
 from pathlib import Path
@@ -18,14 +18,14 @@ from pvquant.io.meteo import OpenMeteoClient
 
 
 print("=" * 60)
-print("REFPLANT GES UCU UCA DOGRULAMA")
+print("REFERANS SANTRAL UCU UCA DOGRULAMA")
 print("=" * 60)
 
 # --- 1. PlantProfile ---
 print("\n[1/5] PlantProfile olusturuluyor...")
 plant = PlantProfile(
     plant_id="REFPLANT",
-    name="REFPLANT GES",
+   name="Referans Santral",
     location=Location(
         latitude=37.87, longitude=32.49,
         timezone="Europe/Istanbul", elevation_m=1000,
