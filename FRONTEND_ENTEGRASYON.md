@@ -131,7 +131,7 @@ matplotlib kullanıyorsan üstteki blok.)
 ---
 
 ## Kabul kontrolü (uçtan uca, elle)
-1. MERKAS xlsx → kalibrasyon → "Bulduklarımız" ekranında fizik sonuçları.
+1. Referans santral xlsx'i → kalibrasyon → "Bulduklarımız" ekranında fizik sonuçları.
 2. "🚀 Hibritle iyileştir" → spinner 30-60 sn → yeşil "Hibrit model
    devrede" + önce/sonra MAPE.
 3. Raporlar → PDF indir → rozet "Mod C — hibrit" + HOLDOUT MAPE kutusu.

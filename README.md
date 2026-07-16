@@ -43,7 +43,7 @@ pip install -e ".[dev]"
 from pvquant.pipeline.forecast import forecast_7day
 from pvquant.io.meteo import OpenMeteoClient
 
-# Konya'da 5 MWp bir santralin 7 günlük tahmini
+# 5 MWp bir santralin 7 günlük tahmini
 meteo = OpenMeteoClient().get_forecast(latitude=37.87, longitude=32.49)
 
 result = forecast_7day(
@@ -66,7 +66,7 @@ print(result.total_kwh)         # toplam
 from pvquant.pipeline.calibration import calibrate_from_scada
 from pvquant.io.scada import load_fusionsolar_csv
 
-scada = load_fusionsolar_csv("merkas_2025.csv")
+scada = load_fusionsolar_csv("refplant_2025.csv")
 calibration = calibrate_from_scada(
     scada=scada,
     p_nom_kwp=4514,

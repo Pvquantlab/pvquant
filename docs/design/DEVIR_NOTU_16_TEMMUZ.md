@@ -9,7 +9,7 @@ uçtan uca kanıtlandı. Yarın bitirme sunumu.
 
 ### Sabah — Fable 5 Tur 4 (kozmetik + logo)
 - İki patch uygulandı: `kozmetik_ve_icerik.patch` + `logo_ve_marka.patch`
-- PDF: normalize "MERKAS GES", Türkçe dönem (15 – 22 Temmuz 2026),
+- PDF: normalize "REFPLANT GES", Türkçe dönem (15 – 22 Temmuz 2026),
   Türkçe sayı formatı (206,0 MWh / 4.514 kWp), tepe marker
   (3.836 kW), yeşil ✓ pozitif kalibrasyon notu, IEC 61724-1 footer
 - Yeni: `sayi_tr()`, `donem_tr()`, `normalize_plant_name()`
@@ -44,8 +44,8 @@ yok. Fable 5 kök nedeni buldu:
 Dört düzeltmenin sonrası + `hybrid_ui.py`'ye başarı log satırı
 eklendi.
 
-### Öğleden sonra — MERKAS canlı test
-Streamlit'te MERKAS xlsx uçtan uca:
+### Öğleden sonra — REFPLANT canlı test
+Streamlit'te REFPLANT xlsx uçtan uca:
 - Fizik kalibrasyon MAPE: %26.8 (fizik modelinin ortalaması)
 - Hibrit holdout MAPE: %17.6 (kronolojik son %20)
 - Physics vs Hybrid iyileşme: %57.9 (holdout diliminde fizik
@@ -127,7 +127,7 @@ formatta rapor üretir.
    uygulanır
 5. **Rapor** — PDF (yönetici), Excel (analist), JSON (API)
 
-**MERKAS'ta kanıt:**
+**REFPLANT'ta kanıt:**
 - Fizik MAPE %26.8
 - Hibrit holdout MAPE %17.6 (%58 iyileşme)
 - Süre: kalibrasyon anlık, hibrit eğitim ~30 sn
@@ -144,7 +144,7 @@ formatta rapor üretir.
 ## Yarın (17 Temmuz — Teslim Günü)
 
 1. **Sunum hazırlığı:** Bu devir notu → sunum slide'ları
-2. **Canlı demo:** MERKAS xlsx → uçtan uca akış (5-7 dakika)
+2. **Canlı demo:** REFPLANT xlsx → uçtan uca akış (5-7 dakika)
 3. **Sorular için hazır cevaplar:**
    - "Neden hibrit?" → holdout %57.9 iyileşme kanıtı
    - "Neden LightGBM?" → gradient boosted trees, tabular veride
@@ -153,7 +153,7 @@ formatta rapor üretir.
    - "Ölçeklenebilir mi?" → API endpoint iskeleti var
      (`src/pvquant/api/`), tek santral yerine çok santral
      desteği ekli
-   - "Hangi santralda çalıştı?" → MERKAS GES 4514 kWp bifacial,
+   - "Hangi santralda çalıştı?" → REFPLANT GES 4514 kWp bifacial,
      Konya bölgesi
 4. **Push:** Bugünün son durumu zaten push'lu, ek bir şey yok
 5. **Yedek plan:** Streamlit çalışmazsa `pvquant_demo_20260716.mp4`
@@ -165,8 +165,8 @@ formatta rapor üretir.
 
 **Repo:** `~/Desktop/pvquant`
 **Dal:** `faz2-ui` (main değil — teslimden sonra merge)
-**MERKAS xlsx:**
-`/Users/sisamlipisagor/Desktop/güncel mat. model/MERKAS_GES_yillik_SCADA.xlsx`
+**REFPLANT xlsx:**
+`/Users/sisamlipisagor/Desktop/güncel mat. model/REFPLANT_GES_yillik_SCADA.xlsx`
 **Bağımlılıklar:** `pyproject.toml`'da (reportlab, xlsxwriter,
 matplotlib, pydantic, lightgbm, joblib, scikit-learn)
 **libomp:** brew install libomp (macOS LightGBM için)

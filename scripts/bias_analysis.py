@@ -1,7 +1,7 @@
 """
 SCADA POA vs Open-Meteo POA bias analizi.
 
-Amac: MERKAS'in olculmus POA'sini, Open-Meteo GHI'den Erbs+Perez ile
+Amac: Referans santralin olculmus POA'sini, Open-Meteo GHI'den Erbs+Perez ile
 hesaplanmis POA ile karsilastirmak.
 
 Cikti:
@@ -24,7 +24,7 @@ from pvquant.io.meteo import OpenMeteoClient
 from pvquant.models import irradiance
 
 
-SCADA_CSV = ROOT / "data" / "MERKAS_SCADA_FULL.csv"
+SCADA_CSV = ROOT / "data" / "REFPLANT_SCADA_FULL.csv"
 OUT_HOURLY = ROOT / "data" / "bias_hourly.csv"
 OUT_SUMMARY = ROOT / "data" / "bias_summary.csv"
 

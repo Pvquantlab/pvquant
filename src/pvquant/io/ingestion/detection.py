@@ -10,7 +10,7 @@ tasarlandı:
      (çünkü ondalık ayracı virgüldür).
   3. Başlık satırı: FusionSolar ve benzeri portallar dosyanın başına
      3-5 satır meta bilgi (santral adı, rapor aralığı) koyar; gerçek
-     başlık aşağıdadır. Bu MERKAS xlsx örneğinde de görüldü ve
+     başlık aşağıdadır. Bu REFPLANT xlsx örneğinde de görüldü ve
      Excel dosyaları için de aynı taramayı yapıyoruz artık
      (`_detect_excel_format`).
 """
@@ -156,7 +156,7 @@ def _detect_excel_format(path: Path) -> FileFormat:
 
     Çok sayfalı dosyalarda ilk sayfa varsayılır; kullanıcı UI'da
     sheet_name'i değiştirebilir. Başlık satırı CSV ile aynı puanlama
-    mantığıyla bulunur — 'Tesis Raporu MERKAS GES' gibi meta üstlerini
+   mantığıyla bulunur — 'Tesis Raporu <santral adı>' gibi meta üstlerini
     aşar ve gerçek başlığı (5. satırda) bulur.
     """
     try:
@@ -198,7 +198,7 @@ def detect_file_format(path: str | Path) -> FileFormat:
     """Aşama 1'in tamamı: kodlama + ayraç + ondalık + başlık satırı.
 
     Excel dosyaları (.xlsx/.xls) için ayrı yol: `_detect_excel_format`
-    başlık satırını da tarar (MERKAS xlsx gibi 5. satırda başlık olan
+    başlık satırını da tarar (REFPLANT xlsx gibi 5. satırda başlık olan
     dosyalar için gereklidir).
     """
     path = Path(path)

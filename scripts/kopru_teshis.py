@@ -1,7 +1,7 @@
 """KOPRU TESHISI — UI'nin kalibrasyona gonderdigi SCADAData'yi birebir yeniden uretir.
 
 Kullanim (repo kokunden):
-    python scripts/kopru_teshis.py data/MERKAS.xlsx --tz Europe/Istanbul --kwp 4514
+    python scripts/kopru_teshis.py data/REFPLANT.xlsx --tz Europe/Istanbul --kwp 4514
 
 Ne yapar:
   1. Ayni ingestion cagrisini yapar (UI ile ayni parametrelerle)

@@ -67,8 +67,8 @@ def test_15dk_kwh_m2_carpani():
     assert out.iloc[50] == pytest.approx(1000.0, rel=0.001)
 
 
-def test_merkas_istatistik_exportu_uctan_uca(tmp_path):
-    """MERKAS vakasinin birebir taklidi: enerji-tek + kWh/m2 isinim.
+def test_refplant_istatistik_exportu_uctan_uca(tmp_path):
+    """REFPLANT vakasinin birebir taklidi: enerji-tek + kWh/m2 isinim.
 
     Dogrulanan iki sey:
       B1 — poa_global W/m2 olceginde cikar (gunduz yuzler),

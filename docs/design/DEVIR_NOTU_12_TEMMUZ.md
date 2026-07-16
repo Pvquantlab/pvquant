@@ -53,17 +53,17 @@ mock'lanmalı ya da adaptör yazılmalı.
 ### Cephe 2 — Hibrit model (Ingestion'dan sonra)
 
 `models_v2/hybrid_residual.py` — fizik + LightGBM rezidüel öğrenme.
-MERKAS GES üzerinde sentetik test: MAPE %6.8 → %3.15.
+REFPLANT GES üzerinde sentetik test: MAPE %6.8 → %3.15.
 
 **Durum:** Kod hazır ama repo'da değil.
-`~/Desktop/pvquant_fable5_hazirlanan/models_v2/hybrid_merkas_demo.py`
+`~/Desktop/pvquant_fable5_hazirlanan/models_v2/hybrid_refplant_demo.py`
 Bağımlılık: `pip install lightgbm joblib`
 
 **Yarın yapılacaklar (Cephe 1 bitince):**
 1. `models_v2/` paketini oluştur, `contracts.py` + `hybrid_residual.py` koy
 2. `lightgbm` + `joblib` kur
-3. MERKAS SCADA verisiyle demo koştur
-   (`data/MERKAS_SCADA_FULL.csv` durumu belirsiz — kontrol et)
+3. REFPLANT SCADA verisiyle demo koştur
+   (`data/REFPLANT_SCADA_FULL.csv` durumu belirsiz — kontrol et)
 4. Sonucu doğrula: Fizik MAPE, Hibrit MAPE, iyileşme puanı
 5. Faz 2 UI'nin `calibrate_from_scada`'sını bunun üzerine yönlendir
 

@@ -197,7 +197,7 @@ def pdc_barhdadi_bennis(
         p_nom: Nominal DC güç, W (veya kW).
         params: BarhdadiBennisParams.
         bifacial_gain_fraction: Net bifacial katkı (BG·BF·A çarpımı, mevcut tez için
-            MERKAS GES'te 0.0607). Bifacial olmayan sistemler için 0.
+      bifacial referans santralda ölçülen 0.0607). Bifacial olmayan sistemler için 0.
 
     Returns:
         DC güç zaman serisi, p_nom ile aynı birimde.

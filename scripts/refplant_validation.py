@@ -1,4 +1,4 @@
-"""MERKAS GES (4514 kWp Konya bifacial) ucu uca dogrulama."""
+"""Referans santral (4514 kWp bifacial) ucu uca dogrulama."""
 from __future__ import annotations
 import sys
 from pathlib import Path
@@ -18,14 +18,14 @@ from pvquant.io.meteo import OpenMeteoClient
 
 
 print("=" * 60)
-print("MERKAS GES UCU UCA DOGRULAMA")
+print("REFERANS SANTRAL UCU UCA DOGRULAMA")
 print("=" * 60)
 
 # --- 1. PlantProfile ---
 print("\n[1/5] PlantProfile olusturuluyor...")
 plant = PlantProfile(
-    plant_id="MERKAS",
-    name="MERKAS GES",
+    plant_id="REFPLANT",
+   name="Referans Santral",
     location=Location(
         latitude=37.87, longitude=32.49,
         timezone="Europe/Istanbul", elevation_m=1000,
@@ -51,14 +51,14 @@ print(f"  OK: {plant.name} - {plant.dc_capacity_kwp} kWp")
 
 # --- 2. SCADA verisi ---
 print("\n[2/5] SCADA verisi yukleniyor...")
-SCADA_CSV = ROOT / "data" / "MERKAS_SCADA_FULL.csv"
+SCADA_CSV = ROOT / "data" / "REFPLANT_SCADA_FULL.csv"
 scada_df = pd.read_csv(SCADA_CSV, parse_dates=["timestamp"])
 print(f"  OK: {len(scada_df)} satir, {scada_df['timestamp'].min()} -> {scada_df['timestamp'].max()}")
 
 # --- 3. Kalibrasyon ---
 print("\n[3/5] Kalibrasyon calistiriliyor (birkac dakika)...")
 model = BarhdadiBennisModel(plant)
-historical = HistoricalData(plant_id="MERKAS", data=scada_df)
+historical = HistoricalData(plant_id="REFPLANT", data=scada_df)
 cal = model.calibrate(historical)
 print(f"  OK: Kalibrasyon tamamlandi.")
 print(f"  BG          : {cal.parameters['bifacial_gain_geometric']:.4f}")
