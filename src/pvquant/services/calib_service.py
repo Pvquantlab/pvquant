@@ -155,3 +155,15 @@ def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
     sonuc["calibration_id"] = str(cal_id)
     sonuc["gate"] = gate
     return sonuc
+
+
+def aktif_kalibrasyon(tenant_id, plant_id):
+    """UI'nin tek kalibrasyon okuması. Yoksa None."""
+    from sqlalchemy import text
+    from pvquant.db import tenant_baglami
+    with tenant_baglami(tenant_id) as s:
+        return s.execute(text(
+            "SELECT id, mode, params_json, quality_json, gate_json,"
+            " n_valid_hours, created_at FROM calibrations "
+            "WHERE plant_id=:p AND active LIMIT 1"),
+            {"p": plant_id}).first()

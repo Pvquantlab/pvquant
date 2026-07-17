@@ -175,3 +175,51 @@ def mono_tablo(df, kolon_adlari: dict):
     METIN olarak gelir (dataframe'e ham float verme)."""
     st.dataframe(df.rename(columns=kolon_adlari),
         use_container_width=True, hide_index=True)
+
+
+def once_sonra_seridi(once, sonra, eyebrow: str, mikro_not: str,
+                      birim: str = "%"):
+    """İMZA bileşen (Zeyilname v2.0): iki büyük mono sayı arasında ok.
+    once None => TEK değer + 'ilk kayıt' notu (v2.0). Değerler MUTLAK
+    gösterilir (yön bilgisi gerekiyorsa mikro nota yazılır)."""
+    from pvquant.reporting.styles import sayi_tr
+    if once is None:
+        orta = (f'<span class="pv-serit-sayi">{birim}'
+                f'{sayi_tr(abs(sonra), 2)}</span>')
+        mikro_not = "ilk kayıt — karşılaştırma sonraki kalibrasyonda"
+    else:
+        orta = (f'<span class="pv-serit-sayi pv-soluk">{birim}'
+                f'{sayi_tr(abs(once), 2)}</span>'
+                f'<span class="pv-serit-ok">→</span>'
+                f'<span class="pv-serit-sayi">{birim}'
+                f'{sayi_tr(abs(sonra), 2)}</span>')
+    st.markdown(
+        f'<div class="pv-kart pv-serit">'
+        f'<div class="pv-eyebrow">{eyebrow}</div>'
+        f'<div class="pv-serit-govde">{orta}</div>'
+        f'<div class="pv-mikro">{mikro_not}</div></div>',
+        unsafe_allow_html=True)
+
+
+def mono_kart(baslik: str, satirlar):
+    """Genel anahtar-değer kartı (Bulduklarımız, künyeler, hibrit özeti).
+    satirlar: [(etiket, deger_metni), ...] — değerler çağıran tarafta
+    sayi_tr'den geçmiş METİN olarak gelir (K4 sorumluluğu çağırandadır)."""
+    govde = "".join(
+        f'<div class="pv-mono-satir"><span>{e}</span><b>{d}</b></div>'
+        for e, d in satirlar)
+    st.markdown(
+        f'<div class="pv-kart"><div class="pv-eyebrow">{baslik}</div>'
+        f'<div class="pv-mono-govde">{govde}</div></div>',
+        unsafe_allow_html=True)
+
+
+def bos_durum_eylemli(ikon: str, baslik: str, aciklama: str):
+    """K6 boş-durum kutusunun CTA'sız hali: sayfa kendi birincil butonunu
+    ALTINA koyar (eylem sayfa-değiştirme değilse bu kullanılır)."""
+    st.markdown(
+        f'<div class="pv-bos">'
+        f'<div class="pv-bos-ikon">{ikon}</div>'
+        f'<div class="pv-bos-baslik">{baslik}</div>'
+        f'<div class="pv-bos-metin">{aciklama}</div></div>',
+        unsafe_allow_html=True)

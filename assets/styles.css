@@ -113,3 +113,19 @@ section[data-testid="stSidebar"] * { color: var(--gece-metin); }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+/* --- Adım 3 ekleri: Önce/Sonra Şeridi + mono kart + sayfa başlığı --- */
+.pv-sayfa-baslik{font-size:22px;font-weight:650}
+.pv-sayfa-alt{font-size:13px;color:var(--ikincil);margin:var(--s1) 0 var(--s5)}
+.pv-serit{text-align:left}
+.pv-serit-govde{margin:var(--s2) 0 var(--s1)}
+.pv-serit-sayi{font-family:var(--f-mono);font-size:34px;font-weight:600}
+.pv-soluk{color:var(--ikincil)}
+.pv-serit-ok{margin:0 var(--s4);color:var(--marka);font-size:22px;
+  vertical-align:6px}
+.pv-mono-govde{margin-top:var(--s2)}
+.pv-mono-satir{display:flex;justify-content:space-between;
+  font-size:13px;padding:4px 0;border-bottom:1px solid var(--zemin)}
+.pv-mono-satir:last-child{border-bottom:0}
+.pv-mono-satir b{font-family:var(--f-mono);font-weight:600}
+

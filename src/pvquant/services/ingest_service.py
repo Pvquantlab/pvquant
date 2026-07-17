@@ -72,3 +72,16 @@ def scada_oku(tenant_id, plant_id) -> pd.DataFrame:
             s.connection(), params={"p": plant_id},
             index_col="ts_utc", parse_dates=["ts_utc"])
     return df
+
+
+def veri_ozeti(tenant_id, plant_id) -> dict:
+    """Hafif varlık kontrolü: tüm satırları ÇEKMEDEN sayım + son damga.
+    (scada_oku 15 bin satırı yükler; boş-durum kontrolü için israftır.)"""
+    from sqlalchemy import text
+    from pvquant.db import tenant_baglami
+    with tenant_baglami(tenant_id) as s:
+        r = s.execute(text(
+            "SELECT count(*) FILTER (WHERE flag='valid') AS valid_saat,"
+            " max(ts_utc) AS son_ts FROM scada_hourly WHERE plant_id=:p"),
+            {"p": plant_id}).first()
+    return {"valid_saat": int(r.valid_saat or 0), "son_ts": r.son_ts}
