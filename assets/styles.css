@@ -129,3 +129,35 @@ section[data-testid="stSidebar"] * { color: var(--gece-metin); }
 .pv-mono-satir:last-child{border-bottom:0}
 .pv-mono-satir b{font-family:var(--f-mono);font-weight:600}
 
+/* ============ ADIM 7: Login (Zeyilname v2.10) ============ */
+/* Sol panel — kontrol odasının camı */
+.pv-login-panel{background:linear-gradient(160deg,#0B1F2A 0%,#10283A 70%,#0F3A30 100%);
+  border-radius:16px;padding:var(--s8) var(--s7);min-height:76vh;
+  display:flex;flex-direction:column;color:#E7EEF2;
+  background-image:radial-gradient(rgba(255,255,255,.045) 1px,transparent 1px),
+    linear-gradient(160deg,#0B1F2A 0%,#10283A 70%,#0F3A30 100%);
+  background-size:22px 22px,cover}
+.pv-login-marka{font-size:19px;font-weight:650;color:#fff;letter-spacing:.01em}
+.pv-login-slogan{font-size:14px;color:#C9D6DD;margin-top:var(--s2)}
+.pv-login-egri{margin:var(--s8) 0 var(--s6)}
+.pv-login-kanit{border:1px solid rgba(255,255,255,.12);border-radius:12px;
+  padding:var(--s4) var(--s5);background:rgba(255,255,255,.04);max-width:340px}
+.pv-login-kanit-sayi{font-family:var(--f-mono);font-size:24px;font-weight:600;
+  color:#7FD1B9;margin:var(--s1) 0}
+.pv-login-kanit-not{font-size:11px;color:#9FB3BE}
+.pv-login-ilkeler{margin-top:auto;padding-top:var(--s6);display:flex;
+  flex-direction:column;gap:var(--s2);font-size:12.5px;color:#B7C4CC}
+/* Sağ — form kartı (kozmetik borç: form artık kartın İÇİNDE) */
+.pv-login-baslik{font-size:20px;font-weight:650;margin:var(--s6) 0 var(--s4)}
+section[data-testid="stForm"]{background:var(--kart);
+  border:1px solid var(--cizgi);border-radius:12px;
+  padding:var(--s6);box-shadow:var(--golge)}
+.pv-login-hata{color:var(--negatif);font-size:12.5px;margin-top:var(--s2)}
+.pv-login-yardim{margin:var(--s3) 0 var(--s2);font-size:12.5px}
+.pv-login-pasif{color:var(--soluk);cursor:not-allowed;
+  border-bottom:1px dotted var(--soluk)}
+.pv-login-footer{margin-top:var(--s7);font-family:var(--f-mono);
+  font-size:10.5px;color:var(--soluk)}
+.pv-login-durum{color:var(--pozitif)}
+@media(max-width:1000px){.pv-login-panel{min-height:auto;
+  margin-bottom:var(--s5)}}

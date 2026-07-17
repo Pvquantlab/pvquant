@@ -10,35 +10,9 @@ def giris_bekcisi() -> dict | None:
     ve None doner (sayfa icerigini cizme!). Girilmisse claims doner."""
     if "auth" in st.session_state:
         return st.session_state.auth
-    # Anayasa 3.3 — orta kolonda tek kart (mock detay P2 Adim 4'te temizlendi)
-    _l, orta, _r = st.columns([1, 2, 1])
-    with orta:
-        st.markdown(
-            '<div class="pv-kart" style="max-width:380px;margin:0 auto">'
-            '<div style="text-align:center;font-size:28px;'
-            'font-weight:650;margin-bottom:4px">⚡ PVQuant</div>'
-            '<div style="text-align:center;color:var(--ikincil);'
-            'font-size:13px;margin-bottom:20px">'
-            'Santralinizin kanıtlı üretim tahmini</div>',
-            unsafe_allow_html=True,
-        )
-        with st.form("login", clear_on_submit=False):
-            e = st.text_input("E-posta", key="login_email")
-            p = st.text_input("Şifre", type="password", key="login_sifre")
-            submitted = st.form_submit_button("Gir", type="primary",
-                                              use_container_width=True)
-            if submitted:
-                r = auth_service.giris(e, p)
-                if r is None:
-                    st.markdown(
-                        '<div style="color:var(--negatif);font-size:12px;'
-                        'margin-top:8px">E-posta veya şifre hatalı.</div>',
-                        unsafe_allow_html=True,
-                    )
-                else:
-                    st.session_state.auth = r
-                    st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
+    # Anayasa Adim 7 (v2.10): login gorunumu tek dosyaya cikarildi
+    from login_gorunum import login_ekrani
+    login_ekrani()
     return None
 
 
