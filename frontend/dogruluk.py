@@ -48,7 +48,7 @@ def render_dogruluk() -> None:
             "Kalibrasyon'a git", "kalibrasyon")
         st.stop()
 
-    sk = forecast_service.skill_gecmisi(tid, pid, gun=30)
+    sk = forecast_service.skill_gecmisi(tid, pid, gun=120)  # v2.14: demo icin genis pencere
 
     # -------- bos durum 2: karne henuz birikiyor
     if sk.empty:
