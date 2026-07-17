@@ -94,3 +94,18 @@ def son_kosu(tenant_id, plant_id) -> pd.DataFrame | None:
             "FROM forecast_values WHERE run_id=:r ORDER BY ts_utc"),
             s.connection(), params={"r": run.id},
             index_col="ts_utc", parse_dates=["ts_utc"])
+
+def skill_gecmisi(tenant_id, plant_id, gun: int = 30):
+    """skill_daily'den son N gunun karnesi. SUNUM icin ham okuma;
+    hesap yok (gece skill hesabini worker yapar — tek uretici o)."""
+    import pandas as pd
+    from sqlalchemy import text
+    from pvquant.db import tenant_baglami
+    with tenant_baglami(tenant_id) as s:
+        return pd.read_sql(text(
+            "SELECT date, horizon_bucket, mape, skill_vs_naive "
+            "FROM skill_daily WHERE plant_id=:p "
+            "AND date >= current_date - (:g * INTERVAL '1 day') "
+            "ORDER BY date"),
+            s.connection(), params={"p": plant_id, "g": gun},
+            parse_dates=["date"])

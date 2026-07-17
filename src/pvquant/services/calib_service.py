@@ -167,3 +167,13 @@ def aktif_kalibrasyon(tenant_id, plant_id):
             " n_valid_hours, created_at FROM calibrations "
             "WHERE plant_id=:p AND active LIMIT 1"),
             {"p": plant_id}).first()
+
+def kalibrasyon_gecmisi(tenant_id, plant_id):
+    """Mod gecmisi icin tum kayitlar (eski->yeni)."""
+    from sqlalchemy import text
+    from pvquant.db import tenant_baglami
+    with tenant_baglami(tenant_id) as s:
+        return s.execute(text(
+            "SELECT created_at, mode, gate_json FROM calibrations "
+            "WHERE plant_id=:p ORDER BY created_at"),
+            {"p": plant_id}).fetchall()

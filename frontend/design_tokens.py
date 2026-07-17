@@ -105,6 +105,7 @@ MENU_ITEMS = [
     ("veri_yukleme", "Veri Yukleme"),
     ("kalibrasyon",  "Kalibrasyon"),
     ("tahminler",    "Tahminler"),
+    ("dogruluk",     "Doğruluk"),
     ("raporlar",     "Raporlar"),
 ]
 

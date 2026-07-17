@@ -35,6 +35,9 @@ def render_tahminler() -> None:
     _render()
 
 
+def render_dogruluk() -> None:
+    from dogruluk import render_dogruluk as _render
+    _render()
 def render_raporlar() -> None:
     from raporlar import render_raporlar as _render
     _render()
@@ -45,5 +48,6 @@ PAGE_RENDERERS = {
     "veri_yukleme": render_veri_yukleme,
     "kalibrasyon":  render_kalibrasyon,
     "tahminler":    render_tahminler,
+    "dogruluk":    render_dogruluk,
     "raporlar":     render_raporlar,
 }

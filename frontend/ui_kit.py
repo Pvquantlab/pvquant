@@ -254,3 +254,23 @@ def tahmin_grafigi(df_yerel, mode: str):
                     mode="lines", name="P50",
                     line=dict(color="#0F6E56", width=2.2))
     return tema_uygula(fig, yukseklik=320)
+
+# Anayasa Adim 5 — kovali skill grafigi
+_KOVA_STIL = {                       # Anayasa §6.5 renk duzeni
+    "0-24":  dict(color="#0F6E56", width=2.4),   # marka
+    "24-72": dict(color="#6B7280", width=1.8),   # gri
+    "72+":   dict(color="#C4CBD4", width=1.6),   # soluk
+}
+
+
+def skill_grafigi(piv):
+    """Gunluk MAPE cizgileri, ufuk kovalarina gore. piv: pivot_table
+    (index=date, columns=horizon_bucket, values=mape)."""
+    fig = go.Figure()
+    for kova, stil in _KOVA_STIL.items():
+        if kova in piv.columns:
+            fig.add_scatter(x=piv.index, y=piv[kova], mode="lines",
+                            name=f"{kova} saat", line=stil,
+                            connectgaps=False)
+    fig.update_layout(showlegend=False)
+    return tema_uygula(fig, 300)

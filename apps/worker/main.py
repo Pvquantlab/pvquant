@@ -39,7 +39,7 @@ def sabah_tahmin(plant):
     forecast_service.uret_ve_kaydet(plant["tenant_id"], plant)
 
 
-def gece_skill(plant):
+def gece_skill(plant, pencere_gun: int = 10):
     """Yeni gerceklesmeleri gecmis kosularla esle, gun+kova skoru yaz."""
     tid, pid = plant["tenant_id"], plant["id"]
     with tenant_baglami(tid) as s:
@@ -49,8 +49,8 @@ def gece_skill(plant):
             "JOIN forecast_runs r ON r.id=f.run_id "
             "JOIN scada_hourly s ON s.plant_id=f.plant_id AND s.ts_utc=f.ts_utc"
             " AND s.flag='valid' "
-            "WHERE f.plant_id=:p AND f.ts_utc >= now()-interval '10 days'"),
-            s.connection(), params={"p": pid}, parse_dates=["ts_utc","run_at"])
+            "WHERE f.plant_id=:p AND f.ts_utc >= now()-(:g * INTERVAL '1 day')"),
+            s.connection(), params={"p": pid, "g": pencere_gun}, parse_dates=["ts_utc","run_at"])
     if df.empty:
         return
     df["ufuk_s"] = (df.ts_utc - df.run_at).dt.total_seconds()/3600
