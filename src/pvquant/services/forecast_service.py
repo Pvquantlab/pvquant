@@ -1,6 +1,7 @@
 """Tahmin uret ve ARSIVLE. Ekranlar yalniz bu tablolardan okur."""
 from __future__ import annotations
 import json, pickle
+from datetime import datetime, timezone
 import pandas as pd
 from sqlalchemy import text
 from pvquant.db import tenant_baglami
@@ -40,11 +41,22 @@ def uret_ve_kaydet(tenant_id, plant: dict) -> str:
             for k in ("p10_kw", "p90_kw"):
                 if k in hh.columns: h[k] = hh[k].reindex(h.index)
     with tenant_baglami(tenant_id) as s:
+        meteo_ozet = json.dumps({
+            "kaynak": "open-meteo",
+            "cekim_utc": datetime.now(timezone.utc).isoformat(),
+            "gunler": [
+                {"tarih": str(g), "t_max": round(t, 1),
+                 "ghi_kwh_m2": round(ghi_g / 1000.0, 1)}
+                for g, t, ghi_g in list(_gun_ozetleri(meteo, plant["tz"]))[:3]
+            ],
+        }, default=str)
         run_id = s.execute(text(
-            "INSERT INTO forecast_runs(tenant_id,plant_id,mode,model,meteo_source)"
-            " VALUES(:t,:p,:m,:mo,'open-meteo') RETURNING id"),
+            "INSERT INTO forecast_runs(tenant_id,plant_id,mode,model,"
+            " meteo_source,meteo_ozet_json)"
+            " VALUES(:t,:p,:m,:mo,'open-meteo',:oz) RETURNING id"),
             {"t": tenant_id, "p": plant["id"], "m": mode,
-             "mo": "hybrid_residual" if mode == "C" else "barhdadi_bennis"}).scalar()
+             "mo": "hybrid_residual" if mode == "C" else "barhdadi_bennis",
+             "oz": meteo_ozet}).scalar()
         satirlar = [{"t": tenant_id, "r": run_id, "p": plant["id"], "ts": ts,
                      "p50": _f(v["p50_kw"]), "p10": _f(v["p10_kw"]),
                      "p90": _f(v["p90_kw"]), "ph": _f(v["physics_kw"]),
@@ -58,6 +70,17 @@ def uret_ve_kaydet(tenant_id, plant: dict) -> str:
 
 def _f(v):
     return None if v is None or pd.isna(v) else float(v)
+
+
+def _gun_ozetleri(meteo, tz: str):
+    """Meteo serilerini yerel gune grupla; her gun icin (tarih, t_max, ghi_toplam_wh_m2).
+    Fable 5 v1.8: hava_3gun icin en fazla 3 gun kullanilir."""
+    ta = meteo.temp_air.tz_convert(tz)
+    gh = meteo.ghi.tz_convert(tz)
+    ta_gun = ta.groupby(ta.index.date).max()
+    gh_gun = gh.groupby(gh.index.date).sum()
+    for gun in sorted(set(ta_gun.index) | set(gh_gun.index)):
+        yield gun, float(ta_gun.get(gun, 0.0)), float(gh_gun.get(gun, 0.0))
 
 
 def son_kosu(tenant_id, plant_id) -> pd.DataFrame | None:
