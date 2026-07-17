@@ -60,3 +60,29 @@ def rapor_baglami(tenant_id, plant: dict) -> ReportContext | None:
             ctx.holdout_physics_mape_pct = g.get("fizik_mape")
             ctx.holdout_improvement_pct = g.get("iyilesme_pct")
     return ctx
+
+# --------------------------------------------------------------- Adim 6
+import datetime as _dt
+from pvquant.reporting import build_pdf, build_excel, build_json
+
+
+def uret(tenant_id, plant: dict, fmt: str):
+    """Tek uretim kapisi (KURAL 2 — sayfada build_* cagrisi olmaz).
+    Donus: (bytes, dosya_adi, uretim_ts). ctx None ise ValueError —
+    sayfa bos-durum bekcileri bunu zaten engeller."""
+    ctx = rapor_baglami(tenant_id, plant)
+    if ctx is None:
+        raise ValueError("rapor baglami kurulamadi — once tahmin uretin")
+    ad_kok = plant["name"].replace(" ", "_")
+    gun = _dt.date.today().strftime("%Y%m%d")
+    if fmt == "pdf":
+        veri, uzanti = build_pdf(ctx), "pdf"
+    elif fmt == "xlsx":
+        veri, uzanti = build_excel(ctx), "xlsx"
+    elif fmt == "json":
+        j = build_json(ctx)
+        veri = j.encode("utf-8") if isinstance(j, str) else j
+        uzanti = "json"
+    else:
+        raise ValueError(f"bilinmeyen format: {fmt}")
+    return veri, f"PVQuant_{ad_kok}_{gun}.{uzanti}", _dt.datetime.now()

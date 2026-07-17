@@ -109,3 +109,13 @@ def skill_gecmisi(tenant_id, plant_id, gun: int = 30):
             "ORDER BY date"),
             s.connection(), params={"p": plant_id, "g": gun},
             parse_dates=["date"])
+
+def kosu_gecmisi(tenant_id, plant_id, n: int = 10):
+    """Gecmis kosular tablosu icin hafif okuma (yeni->eski)."""
+    from sqlalchemy import text as _text
+    from pvquant.db import tenant_baglami as _tb
+    with _tb(tenant_id) as s:
+        return s.execute(_text(
+            "SELECT run_at, mode, model FROM forecast_runs "
+            "WHERE plant_id=:p ORDER BY run_at DESC LIMIT :n"),
+            {"p": plant_id, "n": n}).fetchall()
