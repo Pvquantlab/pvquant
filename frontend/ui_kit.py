@@ -52,7 +52,7 @@ def bos_durum(ikon: str, baslik: str, aciklama: str,
       <div class="pv-bos-metin">{aciklama}</div>
     </div>''', unsafe_allow_html=True)
     if st.button(cta_metin, type="primary", use_container_width=True):
-        st.switch_page(cta_sayfa)
+        sayfaya_git(cta_sayfa)
 
 
 # --- 5.4 Sihirbaz adım göstergesi (yalnız Veri Yükleme — K9) ---
@@ -223,3 +223,34 @@ def bos_durum_eylemli(ikon: str, baslik: str, aciklama: str):
         f'<div class="pv-bos-baslik">{baslik}</div>'
         f'<div class="pv-bos-metin">{aciklama}</div></div>',
         unsafe_allow_html=True)
+
+# =====================================================================
+# Anayasa Adim 4 ekleri
+# =====================================================================
+
+def sayfaya_git(sayfa_adi: str) -> None:
+    """Tek yonlendirme kapisi (D-1). bos_durum CTA'si ve sessiz eylemler
+    hepsi buradan gecer — iki ayri yol yasatilmaz."""
+    st.switch_page(sayfa_adi)
+
+
+def tahmin_grafigi(df_yerel, mode: str):
+    """Ana tahmin grafigi: p50 cizgi (marka); Mod C'de P10-P90 dolgu
+    bandi (marka %14 opak). Bant verisi yoksa (eski kosu) bant cizilmez
+    — K1: sayfa caption'i sebebini soyler."""
+    import plotly.graph_objects as go
+    fig = go.Figure()
+    bant_var = (mode == "C" and "p10_kw" in df_yerel.columns
+                and df_yerel["p10_kw"].notna().any())
+    if bant_var:
+        fig.add_scatter(x=df_yerel.index, y=df_yerel["p90_kw"],
+                        mode="lines", line=dict(width=0),
+                        hoverinfo="skip", showlegend=False)
+        fig.add_scatter(x=df_yerel.index, y=df_yerel["p10_kw"],
+                        mode="lines", line=dict(width=0),
+                        fill="tonexty", fillcolor="rgba(15,110,86,.14)",
+                        name="P10-P90", hoverinfo="skip")
+    fig.add_scatter(x=df_yerel.index, y=df_yerel["p50_kw"],
+                    mode="lines", name="P50",
+                    line=dict(color="#0F6E56", width=2.2))
+    return tema_uygula(fig, yukseklik=320)
