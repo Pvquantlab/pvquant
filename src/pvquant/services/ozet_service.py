@@ -30,6 +30,7 @@ class GununOzeti:
     bugun_kwh: Optional[float] = None
     yarin_kwh: Optional[float] = None
     yarin_hava: str = ""
+    kalibrasyon_tarihi: object = None
     hafta_mwh: Optional[float] = None
     model_alt: str = ""
     saatler: list = field(default_factory=list)
@@ -116,7 +117,7 @@ def gunun_ozeti(tenant_id: str, santral: dict) -> GununOzeti:
     # ---------- 2) Aktif calibrations ----------
     with tenant_baglami(tenant_id) as s:
         cal = s.execute(text(
-            "SELECT mode, quality_json FROM calibrations "
+            "SELECT mode, quality_json, created_at FROM calibrations "
             "WHERE plant_id=:p AND active LIMIT 1"),
             {"p": santral["id"]}).first()
     if cal:
@@ -124,6 +125,7 @@ def gunun_ozeti(tenant_id: str, santral: dict) -> GununOzeti:
         q = cal.quality_json if isinstance(cal.quality_json, dict) else {}
         o.sapma_pct = q.get("deviation_pct")
         o.model_alt = "Kalibre fizik" if cal.mode == "B" else "Hibrit"
+        o.kalibrasyon_tarihi = cal.created_at  # v2.13: KPI alt satirinda
 
     # ---------- 3) son_kosu -> KPI + grafik + hava ----------
     df = son_kosu(tenant_id, santral["id"])

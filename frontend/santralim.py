@@ -84,7 +84,7 @@ def render_santralim() -> None:
             "MODEL DURUMU",
             ui_kit.MOD_KISA[o.mode],
             "",
-            o.model_alt if o.model_alt else "Kalibrasyon sayfasından başlayın",
+            _model_alt_zengin(o) if o.model_alt else "Kalibrasyon sayfasından başlayın",
             durum="pozitif" if o.mode is not None and o.mode != "A" else "notr",
         )
 
@@ -138,3 +138,16 @@ def render_santralim() -> None:
         islenen_saat=o.islenen_saat,
         anomali=o.anomali_sayisi,
     )
+
+
+def _model_alt_zengin(o):
+    """v2.13: Model Durumu KPI alt satiri bilgi tasisin.
+    'Hibrit' yerine 'sapma %3,23 · son kalibrasyon 17 Tem'."""
+    from pvquant.reporting.styles import sayi_tr
+    import ui_kit
+    parcalar = []
+    if o.sapma_pct is not None:
+        parcalar.append(f"sapma %{sayi_tr(abs(o.sapma_pct), 2)}")
+    if o.kalibrasyon_tarihi is not None:
+        parcalar.append(f"son kalibrasyon {ui_kit.tarih_tr(o.kalibrasyon_tarihi)}")
+    return " · ".join(parcalar) if parcalar else o.model_alt

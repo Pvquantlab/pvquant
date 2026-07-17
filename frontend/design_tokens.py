@@ -102,7 +102,7 @@ CONTENT_MAX     = "1280px"  # Icerik alani max genislik
 
 MENU_ITEMS = [
     ("santralim",    "Santralim"),
-    ("veri_yukleme", "Veri Yukleme"),
+    ("veri_yukleme", "Veri Yükleme"),
     ("kalibrasyon",  "Kalibrasyon"),
     ("tahminler",    "Tahminler"),
     ("dogruluk",     "Doğruluk"),

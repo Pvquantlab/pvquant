@@ -2,7 +2,7 @@
 PVQuant Veri Yukleme Ekrani (Faz 2 Adim 3 + 4a + Ingestion)
 
 Iki mod:
-- Mod A (varsayilan): 'SCADA veriniz var mi?' - Hizli vs Kalibre yol ayrimi
+- Mod A (varsayilan): 'SCADA veriniz var mı?' - Hizli vs Kalibre yol ayrimi
 - Mod B (scada_upload): CSV yukleme + ingestion (preview -> onayla -> karne)
 
 Ingestion akisi (2 bolum, tek sayfa):
@@ -130,10 +130,10 @@ def _render_mod_a() -> None:
         <div style="text-align:center;margin-bottom:40px">
           <div style="font-size:32px;font-weight:700;color:#0F1B28;
                       letter-spacing:-0.02em;margin-bottom:12px">
-            SCADA veriniz var mi?
+            SCADA veriniz var mı?
           </div>
           <div style="font-size:15px;color:{TEXT_SECONDARY}">
-            Fark, modelin santralinizi ne kadar tanidiginda.
+            Fark, modelin santralinizi ne kadar tanıdığında.
           </div>
         </div>
         """,
@@ -144,15 +144,15 @@ def _render_mod_a() -> None:
 
     with cols[0]:
         _yol_karti(
-            baslik="Hizli tahmin",
+            baslik="Hızlı tahmin",
             ikon="⚡",
-            sapma_txt="Veri yuklemeden — hemen simdi.|%5-10",
+            sapma_txt="Veri yüklemeden — hemen şimdi.|%5-10",
             maddeler=[
-                "Veri yuklemeden, saniyeler icinde sonuc",
-                "Profesyonel meteoroloji verisiyle 7 gunluk tahmin",
-                "Diledigimiz an kalibre tahmine yukseltin",
+                "Veri yüklemeden, saniyeler içinde sonuç",
+                "Profesyonel meteoroloji verisiyle 7 günlük tahmin",
+                "Dilediğiniz an kalibre tahmine yükseltin",
             ],
-            buton_metni="Hizli tahminle devam et",
+            buton_metni="Hızlı tahminle devam et",
             onerilen=False,
             on_click_action="hizli",
         )
@@ -163,11 +163,11 @@ def _render_mod_a() -> None:
             ikon="🛡",
             sapma_txt="SCADA verinizle — model kendini santralinize kalibre eder.|%1-3",
             maddeler=[
-                "Model kendini gecmis uretiminize gore ayarlar",
-                "Panel yonu ve egimi bilinmiyorsa model bulur",
-                "En az 3 ay SCADA verisi gerekir — onerilen 12 ay",
+                "Model kendini geçmiş üretiminize göre ayarlar",
+                "Panel yönü ve eğimi bilinmiyorsa model bulur",
+                "En az 3 ay SCADA verisi gerekir — önerilen 12 ay",
             ],
-            buton_metni="Kalibre tahmine gec",
+            buton_metni="Kalibre tahmine geç",
             onerilen=True,
             on_click_action="scada_upload",
         )
@@ -177,8 +177,8 @@ def _render_mod_a() -> None:
         <div style="text-align:center;margin-top:32px;font-size:13px;
                     color:{TEXT_SECONDARY};max-width:720px;
                     margin-left:auto;margin-right:auto">
-          Veriniz azsa endiselenmeyin: 3 aydan kisa veri bulursak sizi engellemeyiz,
-          hizli tahminle baslatip sonra yukseltmenizi oneririz.
+          Veriniz azsa endişelenmeyin: 3 aydan kısa veri bulursak sizi engellemeyiz,
+          hızlı tahminle başlatıp sonra yükseltmenizi öneririz.
         </div>
         """,
         unsafe_allow_html=True,
@@ -248,7 +248,7 @@ def _santral_bilgi_formu() -> dict | None:
             index=tz_index,
             key="ing_tz",
             help="Dosyanizdaki zaman damgalari hangi dilimde? "
-                 "Emin degilseniz 'UTC' secin.",
+                 "Emin değilseniz 'UTC' seçin.",
         )
         longitude = st.number_input(
             "Boylam",
@@ -503,7 +503,7 @@ def _manuel_esleme_ekrani(err: MappingFailedError, tmp_path: str) -> None:
             st.dataframe(err.sample_rows, use_container_width=True, height=280)
 
     # Dropdown'lar
-    kolonlar = ["(seciniz)"] + list(err.columns)
+    kolonlar = ["(seçiniz)"] + list(err.columns)
 
     col1, col2 = st.columns(2)
     with col1:
@@ -516,10 +516,10 @@ def _manuel_esleme_ekrani(err: MappingFailedError, tmp_path: str) -> None:
             help="Anlik guc degerleri. Bu YOKSA enerji kolonu secmelisiniz.",
         )
         poa_col = st.selectbox(
-            "Isinim (POA) — opsiyonel", options=kolonlar, key="manuel_poa",
+            "Işınım (POA) — opsiyonel", options=kolonlar, key="manuel_poa",
         )
         temp_ambient_col = st.selectbox(
-            "Ortam sicakligi — opsiyonel", options=kolonlar, key="manuel_temp",
+            "Ortam sıcaklığı — opsiyonel", options=kolonlar, key="manuel_temp",
         )
     with col2:
         energy_col = st.selectbox(
@@ -528,13 +528,13 @@ def _manuel_esleme_ekrani(err: MappingFailedError, tmp_path: str) -> None:
             help="Aralik enerjisi veya kumulatif sayac.",
         )
         temp_module_col = st.selectbox(
-            "Modul sicakligi — opsiyonel", options=kolonlar, key="manuel_tmod",
+            "Modül sıcaklığı — opsiyonel", options=kolonlar, key="manuel_tmod",
         )
         wind_col = st.selectbox(
-            "Ruzgar hizi — opsiyonel", options=kolonlar, key="manuel_wind",
+            "Rüzgar hızı — opsiyonel", options=kolonlar, key="manuel_wind",
         )
         ghi_col = st.selectbox(
-            "GHI (yatay isinim) — opsiyonel", options=kolonlar, key="manuel_ghi",
+            "GHI (yatay ışınım) — opsiyonel", options=kolonlar, key="manuel_ghi",
         )
 
     st.markdown("<div style='margin-top:16px'></div>", unsafe_allow_html=True)
@@ -542,15 +542,15 @@ def _manuel_esleme_ekrani(err: MappingFailedError, tmp_path: str) -> None:
     # Dogrulama ve devam
     if st.button("Bu esleme ile devam et", key="manuel_devam",
                  type="primary", use_container_width=True):
-        if timestamp_col == "(seciniz)":
+        if timestamp_col == "(seçiniz)":
             st.error("Zaman kolonu zorunludur.")
             return
-        if power_col == "(seciniz)" and energy_col == "(seciniz)":
+        if power_col == "(seçiniz)" and energy_col == "(seçiniz)":
             st.error("En az bir guc veya enerji kolonu secmelisiniz.")
             return
 
         def _or_none(col):
-            return None if col == "(seciniz)" else col
+            return None if col == "(seçiniz)" else col
 
         manual_mapping = ColumnMapping(
             timestamp=timestamp_col,
@@ -1008,13 +1008,13 @@ def render_veri_yukleme() -> None:
 
     if mod == "scada_upload":
         page_header(
-            "Veri Yukleme",
+            "Veri Yükleme",
             "SCADA verinizi yukleyin — format otomatik tespit + kalite kontrolu",
         )
         _render_mod_b_scada()
     elif mod == "hizli":
         st.session_state.veri_yukleme_mod = "yol_ayrimi"
-        st.info("Hizli tahmin akisi Adim 5'te gelecek. Simdilik yol ayrimina donduruldunuz.")
+        st.info("Hızlı tahmin akışı Adım 5'te gelecek. Şimdilik yol ayrımına döndürüldünüz.")
         _render_mod_a_wrapper()
     else:
         _render_mod_a_wrapper()
@@ -1022,7 +1022,7 @@ def render_veri_yukleme() -> None:
 
 def _render_mod_a_wrapper():
     page_header(
-        "Veri Yukleme",
-        "Tahmin yolunuzu secin — SCADA veriniz varsa kalibre tahmine gecin",
+        "Veri Yükleme",
+        "Tahmin yolunuzu seçin — SCADA veriniz varsa kalibre tahmine geçin",
     )
     _render_mod_a()

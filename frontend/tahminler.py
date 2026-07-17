@@ -102,11 +102,14 @@ def render_tahminler() -> None:
 
     # gunluk ozet tablosu (sunum ozetlemesi — v1.9 genellemesi)
     gunluk = g["p50_kw"].groupby(g.index.date).sum()
+    gunluk = gunluk[gunluk > 0]  # v2.12: sifir-kuyruk gunleri dus
     satirlar = {"Tarih": [ui_kit.tarih_tr(t) for t in gunluk.index],
                 "P50 (kWh)": [sayi_tr(v, 0) for v in gunluk.values]}
     if cal.mode == "C" and g["p10_kw"].notna().any():
         alt = g["p10_kw"].groupby(g.index.date).sum()
+        alt = alt[gunluk.index]  # v2.12: aynı maske
         ust = g["p90_kw"].groupby(g.index.date).sum()
+        ust = ust[gunluk.index]  # v2.12: aynı maske
         satirlar["P90-P10 (kWh)"] = [
             f"{sayi_tr(a, 0)} - {sayi_tr(u, 0)}"
             for a, u in zip(alt.values, ust.values)]
