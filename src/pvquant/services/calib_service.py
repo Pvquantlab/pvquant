@@ -134,8 +134,8 @@ def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
              "q": json.dumps({
                  "mape_pct":            getattr(cr.validation_after,  "mape_pct", None),
                  "mape_before_pct":     getattr(cr.validation_before, "mape_pct", None),
-                 "deviation_pct":       getattr(cr.validation_after,  "deviation_pct", None),
-                 "deviation_before_pct":getattr(cr.validation_before, "deviation_pct", None),
+                 "deviation_pct":       getattr(cr.validation_after,  "total_deviation_pct", None),
+                 "deviation_before_pct":getattr(cr.validation_before, "total_deviation_pct", None),
                  "warnings": sonuc["warnings"],
              }, default=str),
              "g": json.dumps(gate) if gate else None,
