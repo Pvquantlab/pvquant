@@ -1,4 +1,4 @@
-"""PVQuant worker — uc is: sabah tahmini, gece skill, aylik kalibrasyon."""
+"""PVQuant worker — dort is: sabah tahmini, gece skill, aylik kalibrasyon, alarm."""
 from __future__ import annotations
 import datetime as dt, traceback
 import pandas as pd
@@ -6,6 +6,7 @@ from sqlalchemy import text
 from apscheduler.schedulers.blocking import BlockingScheduler
 from pvquant.db import sistem_baglami, tenant_baglami
 from pvquant.services import forecast_service, calib_service, plant_service
+from pvquant.services.alarm_service import tara as alarm_tara
 
 
 def _tum_santraller():
@@ -98,7 +99,8 @@ if __name__ == "__main__":
     sch = BlockingScheduler(timezone="UTC")
     sch.add_job(_logla("sabah_tahmin", sabah_tahmin), "cron", hour=2, minute=0)
     sch.add_job(_logla("gece_skill", gece_skill), "cron", hour=0, minute=30)
+    sch.add_job(_logla("alarm", alarm_tara), "cron", hour=4, minute=0)
     sch.add_job(_logla("aylik_kalibrasyon", aylik_kalibrasyon),
                 "cron", day=1, hour=3, minute=0)
-    print("PVQuant worker basladi (UTC cron: 02:00 tahmin / 00:30 skill / ay-1 03:00 kal.)")
+    print("PVQuant worker basladi (UTC cron: 00:30 skill / 02:00 tahmin / 04:00 alarm / ay-1 03:00 kal.)")
     sch.start()
