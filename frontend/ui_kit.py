@@ -95,10 +95,15 @@ def gun_isigi_egrisi(saat, gercek_kw, tahmin_kw, simdi_idx) -> go.Figure:
     fig.add_scatter(x=saat[simdi_idx:], y=tahmin_kw[simdi_idx:],
         mode="lines", line=dict(color="#1D4ED8", width=1.8, dash="dot"),
         name="Kalan saatler")
-    fig.add_vline(x=saat[simdi_idx], line_width=1, line_dash="dash",
-        line_color="#9CA3AF",
-        annotation_text=f"şimdi · {saat[simdi_idx]}",
-        annotation_font=dict(family="JetBrains Mono", size=10))
+    # v2.21: kategori ekseninde add_vline string x kabul etmez —
+    # add_shape + add_annotation, x = kategori KONUMU (indeks)
+    fig.add_shape(type="line",
+        x0=simdi_idx, x1=simdi_idx, y0=0, y1=1,
+        xref="x", yref="paper",
+        line=dict(width=1, dash="dash", color="#9CA3AF"))
+    fig.add_annotation(x=simdi_idx, y=1.04, xref="x", yref="paper",
+        text=f"şimdi · {saat[simdi_idx]}", showarrow=False,
+        font=dict(family="JetBrains Mono", size=10, color="#6B7280"))
     return tema_uygula(fig)
 
 
