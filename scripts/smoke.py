@@ -9,6 +9,7 @@ DOKUNMAZ. Ağ gerektirir (Open-Meteo) — üretimde de gerekir.
 from __future__ import annotations
 
 import re
+import secrets
 import sys
 import traceback
 from pathlib import Path
@@ -79,7 +80,7 @@ def a2():
         TID = str(row.tenant_id)
     else:
         TID, _ = auth_service.tenant_ve_admin_olustur(
-            SMOKE_FIRMA, SMOKE_EPOSTA, "smoke-gecici-sifre-1")
+            SMOKE_FIRMA, SMOKE_EPOSTA, secrets.token_urlsafe(24))
     ps = [p for p in plant_service.listele(TID)
           if p["name"] == SMOKE_SANTRAL]
     if ps:

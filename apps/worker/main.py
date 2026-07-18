@@ -111,7 +111,7 @@ def aylik_kalibrasyon(plant):
 
 
 if __name__ == "__main__":
-    sch = BlockingScheduler(timezone="UTC")
+    sch = BlockingScheduler(timezone="UTC", job_defaults=dict(coalesce=True, misfire_grace_time=3600, max_instances=1))
     sch.add_job(_logla("sabah_tahmin", sabah_tahmin), "cron", hour=2, minute=0)
     sch.add_job(_logla("gece_skill", gece_skill), "cron", hour=0, minute=30)
     sch.add_job(_logla("alarm", alarm_tara), "cron", hour=4, minute=0)

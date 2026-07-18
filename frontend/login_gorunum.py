@@ -19,6 +19,8 @@ santral holdout sonucu) — güncellenirse tek yer burası.
 """
 from __future__ import annotations
 
+import time
+
 import streamlit as st
 
 from pvquant.services import auth_service
@@ -81,9 +83,13 @@ def login_ekrani() -> None:
         if gonder:
             r = auth_service.giris(e, p)              # MANTIK: birebir
             if r is None:
+                n = st.session_state.get("giris_deneme", 0) + 1
+                st.session_state["giris_deneme"] = n
+                time.sleep(min(2 ** min(n, 4), 12))   # 2-4-8-12sn artan fren
                 st.markdown('<div class="pv-login-hata">E-posta veya '
                             'şifre hatalı.</div>', unsafe_allow_html=True)
             else:
+                st.session_state.pop("giris_deneme", None)
                 st.session_state.auth = r
                 st.rerun()
 
