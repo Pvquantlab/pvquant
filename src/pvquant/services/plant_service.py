@@ -12,15 +12,17 @@ def listele(tenant_id):
 
 
 def olustur(tenant_id, *, name, lat, lon, tz, capacity_kwp,
-            tilt=None, azimuth=None, panel_tech="bifacial"):
+            tilt=None, azimuth=None, panel_tech="bifacial",
+            ac_limit_kw=None):
     with tenant_baglami(tenant_id) as s:
         return str(s.execute(text(
             "INSERT INTO plants(tenant_id,name,lat,lon,tz,capacity_kwp,"
-            " tilt,azimuth,panel_tech) VALUES(:t,:n,:la,:lo,:tz,:c,:ti,:az,:pt)"
+            " tilt,azimuth,panel_tech,ac_limit_kw)"
+            " VALUES(:t,:n,:la,:lo,:tz,:c,:ti,:az,:pt,:ac)"
             " RETURNING id"),
             {"t": tenant_id, "n": name, "la": lat, "lo": lon, "tz": tz,
              "c": capacity_kwp, "ti": tilt, "az": azimuth,
-             "pt": panel_tech}).scalar())
+             "pt": panel_tech, "ac": ac_limit_kw}).scalar())
 
 
 def getir(tenant_id, plant_id):
@@ -32,7 +34,7 @@ def getir(tenant_id, plant_id):
 
 def guncelle(tenant_id, plant_id, **alanlar):
     if not alanlar: return
-    izinli = {"name","lat","lon","tz","capacity_kwp","tilt","azimuth","panel_tech"}
+    izinli = {"name","lat","lon","tz","capacity_kwp","tilt","azimuth","panel_tech","ac_limit_kw"}
     kume = {k: v for k, v in alanlar.items() if k in izinli}
     sset = ", ".join(f"{k}=:{k}" for k in kume)
     with tenant_baglami(tenant_id) as s:

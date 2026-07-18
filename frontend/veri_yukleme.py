@@ -228,6 +228,15 @@ def _santral_bilgi_formu() -> dict | None:
             value=float(saved.get("capacity_kwp", 4514.0)),
             step=100.0, key="ing_capacity",
         )
+        # B-1 Adım 2: AC gücü opsiyonel (invertör toplamı) — boş=None
+        _ac_saved = saved.get("ac_limit_kw")
+        ac_limit_kw = st.number_input(
+            "AC gücü (kW, invertör toplamı) — opsiyonel",
+            min_value=None, max_value=None,
+            value=float(_ac_saved) if _ac_saved is not None else None,
+            step=100.0, key="ing_ac_limit",
+            help="Bilmiyorsanız boş bırakın; kırpma modeli buna göre çalışır.",
+        )
         latitude = st.number_input(
             "Enlem",
             min_value=-90.0, max_value=90.0,
@@ -259,6 +268,7 @@ def _santral_bilgi_formu() -> dict | None:
     
     return {
         "capacity_kwp": capacity,
+        "ac_limit_kw": ac_limit_kw,
         "latitude": latitude,
         "longitude": longitude,
         "timezone": timezone,
@@ -325,6 +335,7 @@ def _adim1_santral() -> dict | None:
                 lon=plant_ctx_form["longitude"],
                 tz=plant_ctx_form["timezone"],
                 capacity_kwp=plant_ctx_form["capacity_kwp"],
+                ac_limit_kw=plant_ctx_form.get("ac_limit_kw"),
             )
             st.session_state.aktif_plant_id = pid
             st.session_state.plant_context = plant_ctx_form
