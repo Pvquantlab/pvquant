@@ -8,6 +8,15 @@ from pvquant.db import sistem_baglami, tenant_baglami
 from pvquant.services import forecast_service, calib_service, plant_service
 from pvquant.services.alarm_service import tara as alarm_tara
 
+import os as _os
+try:
+    import sentry_sdk
+    if _os.environ.get("PVQ_SENTRY_DSN"):
+        sentry_sdk.init(dsn=_os.environ["PVQ_SENTRY_DSN"],
+                        traces_sample_rate=0)
+except ImportError:
+    pass  # sentry-sdk kurulu değilse sessiz geç (dev ortamı)
+
 
 def _tum_santraller():
     with sistem_baglami() as s:

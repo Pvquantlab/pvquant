@@ -97,3 +97,6 @@ calibration_cache/
 # Cikti ornekleri (yeniden uretilebilir)
 outputs/
 *.pdf
+
+# P4-B yedekler - müşteri verisi + hash'ler, ASLA commit'e girmemeli
+yedekler/

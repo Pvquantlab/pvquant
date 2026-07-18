@@ -46,6 +46,8 @@ dependencies = [
     "bcrypt<5.0",
     "pyjwt>=2.8",
     "apscheduler>=3.10",
+    "sentry-sdk>=2.0",
+    "slowapi>=0.1.10",
 ]
 
 [project.optional-dependencies]

@@ -112,6 +112,10 @@ def login_ekrani() -> None:
                         st.session_state.auth = r
                         st.rerun()
 
+        with st.expander("Kişisel verilerin korunması (KVKK)"):
+            from pathlib import Path
+            st.markdown(Path("assets/kvkk_aydinlatma.md")
+                        .read_text(encoding="utf-8"))
         st.markdown('<div class="pv-login-footer">PVQuant · '
                     '<span class="pv-login-durum">● Sistem sağlıklı'
                     '</span> · © 2026</div>', unsafe_allow_html=True)
