@@ -86,15 +86,15 @@ def render_dogruluk() -> None:
                    "kesintisiz kanıt geçmişi")
 
     # -------- gunluk MAPE — ufuk kovalarina gore
-    st.markdown('<div class="pv-eyebrow">GUNLUK MAPE — UFUK '
-                'KOVALARINA GORE</div>', unsafe_allow_html=True)
+    st.markdown('<div class="pv-eyebrow">GÜNLÜK MAPE — UFUK '
+                'KOVALARINA GÖRE</div>', unsafe_allow_html=True)
     piv = sk.pivot_table(index="date", columns="horizon_bucket",
                          values="mape")
     st.plotly_chart(ui_kit.skill_grafigi(piv),
                     use_container_width=True,
                     config={"displayModeBar": False})
     st.caption("0-24s marka · 24-72s gri · 72s+ soluk — uzak ufuk "
-               "dogal olarak daha belirsizdir.")
+               "doğal olarak daha belirsizdir.")
 
     # -------- mod gecmisi (kapi kayitlariyla)
     st.markdown('<div class="pv-eyebrow">MOD GEÇMİŞİ</div>',
@@ -106,6 +106,7 @@ def render_dogruluk() -> None:
         ek = (f"kapı: +%{sayi_tr(g['iyilesme_pct'], 0)}"
               if g.get("gecti") else
               ("kapı: geçemedi" if g.get("denendi") else "—"))
-        satirlar.append((ui_kit.tarih_tr(r.created_at),
+        satirlar.append((f"{ui_kit.tarih_tr(r.created_at)} "
+                         f"{r.created_at:%H:%M}",
                          f"Mod {r.mode} · {ek}"))
     ui_kit.mono_kart("KALİBRASYON KAYITLARI", satirlar)

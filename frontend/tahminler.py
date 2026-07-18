@@ -21,7 +21,7 @@ UFUKLAR = {"24s": 24, "72s": 72, "7g": 168}
 
 # ---------------------------------------------------------------- eylem
 def _tahmin_uret(auth: dict, santral: dict) -> None:
-    with st.spinner("Tahmin uretiliyor… 10-20 sn"):
+    with st.spinner("Tahmin üretiliyor… 10-20 sn"):
         forecast_service.uret_ve_kaydet(auth["tenant_id"], santral)
     st.rerun()
 
@@ -35,9 +35,9 @@ def render_tahminler() -> None:
 
     aktif_id = st.session_state.get("aktif_plant_id")          # v2.2 kalibi
     if aktif_id is None:
-        ui_kit.bos_durum("🏭", "Santral secilmedi",
-            "Kenar cubugundan bir santral secin ya da ilk santralinizi "
-            "ekleyin.", "Veri Yukleme'ye git", "veri_yukleme")
+        ui_kit.bos_durum("🏭", "Santral seçilmedi",
+            "Kenar çubuğundan bir santral seçin ya da ilk santralinizi "
+            "ekleyin.", "Veri Yükleme'ye git", "veri_yukleme")
         st.stop()
     santral = plant_service.getir(auth["tenant_id"], aktif_id)
     if santral is None:                                        # bayat id
@@ -46,8 +46,8 @@ def render_tahminler() -> None:
 
     st.markdown('<div class="pv-sayfa-baslik">Tahminler</div>',
                 unsafe_allow_html=True)
-    st.markdown('<div class="pv-sayfa-alt">168 saatlik kalibre uretim '
-                'tahmini — arsivden, son kosu.</div>',
+    st.markdown('<div class="pv-sayfa-alt">168 saatlik kalibre üretim '
+                'tahmini — arşivden, son koşu.</div>',
                 unsafe_allow_html=True)
 
     tid, pid = auth["tenant_id"], santral["id"]
@@ -55,20 +55,20 @@ def render_tahminler() -> None:
     # -------- bos durum 1: kalibrasyon yok
     cal = calib_service.aktif_kalibrasyon(tid, pid)
     if cal is None:
-        ui_kit.bos_durum("📊", "Once kalibrasyon yapin",
-            "Tahmin, modelin santralinizi tanimasiyla baslar. SCADA "
-            "verinizi yukleyip modeli kalibre edin.",
+        ui_kit.bos_durum("📊", "Önce kalibrasyon yapın",
+            "Tahmin, modelin santralinizi tanımasıyla başlar. SCADA "
+            "verinizi yükleyip modeli kalibre edin.",
             "Kalibrasyon'a git", "kalibrasyon")
         st.stop()
 
-    # -------- bos durum 2: kalibrasyon var, henuz kosu yok
+    # -------- boş durum 2: kalibrasyon var, henüz koşu yok
     df = forecast_service.son_kosu(tid, pid)
     if df is None or df.empty:
         ui_kit.bos_durum_eylemli("↗",
-            "Ilk tahmin henuz uretilmedi",
-            f"Model kalibre (Mod {cal.mode}). Ilk 7 gunluk tahmini simdi "
-            "uretebilirsiniz; sonrakiler her sabah otomatik kosar.")
-        if st.button("Tahmin uret", type="primary",
+            "İlk tahmin henüz üretilmedi",
+            f"Model kalibre (Mod {cal.mode}). İlk 7 günlük tahmini şimdi "
+            "üretebilirsiniz; sonrakiler her sabah otomatik koşar.")
+        if st.button("Tahmin üret", type="primary",
                      key="btn_tahmin", use_container_width=True):
             _tahmin_uret(auth, santral)
         st.stop()
@@ -87,7 +87,7 @@ def render_tahminler() -> None:
                             horizontal=True, key="ufuk_sec",
                             label_visibility="collapsed")
     with ust2:
-        if st.button("Rapor sayfasinda indir →", type="tertiary",
+        if st.button("Rapor sayfasında indir →", type="tertiary",
                      key="btn_rapora"):
             ui_kit.sayfaya_git("raporlar")
 
@@ -98,7 +98,7 @@ def render_tahminler() -> None:
                     use_container_width=True,
                     config={"displayModeBar": False})
     if cal.mode != "C":
-        st.caption("Belirsizlik bandi (P10-P90) Mod C ile gelir.")
+        st.caption("Belirsizlik bandı (P10–P90) Mod C ile gelir.")
 
     # gunluk ozet tablosu (sunum ozetlemesi — v1.9 genellemesi)
     gunluk = g["p50_kw"].groupby(g.index.date).sum()
@@ -116,5 +116,5 @@ def render_tahminler() -> None:
     import pandas as pd                                        # sunum
     ui_kit.mono_tablo(pd.DataFrame(satirlar), {})
 
-    st.caption(f"Son kosu Mod {cal.mode} · kaynak: tahmin arsivi "
-               "(forecast_values) — kosular guncellenmez, yenisi eklenir.")
+    st.caption(f"Son koşu Mod {cal.mode} · kaynak: tahmin arşivi "
+               "— koşular güncellenmez, yenisi eklenir.")

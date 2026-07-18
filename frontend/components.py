@@ -82,7 +82,7 @@ def brand_band(
 
     name: 'Konya GES'
     meta_line: '2.5 MW * Konya, Turkiye * Devreye alma 2023'
-    pills_html: iki pill (Kalibre, Bugunun tahmini hazir)
+    pills_html: iki pill (Kalibre, Bugünün tahmini hazır)
     weather_html: sagda hava sutunlari
     footer_note: alt seritte uretim etkisi cumlesi
     """

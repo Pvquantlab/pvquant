@@ -50,10 +50,10 @@ def _icgoru_sec(o: GununOzeti, tenant_id, santral) -> Optional[str]:
     ilk sablon kazanir. Ucu de bulamazsa None -> icgoru satiri cizilmez."""
     if len(o.hava_3gun) >= 2 and o.bugun_kwh and o.yarin_kwh and o.bugun_kwh > 0:
         fark = (o.yarin_kwh - o.bugun_kwh) / o.bugun_kwh * 100
-        fark_tam = round(abs(fark))
-        # Fable 5 v1.9: |fark|<1 -> "aynı seviyede" varyanti
-        if fark_tam < 1:
+        # v2.16 P6: |fark| < 1,5 -> "ayni seviyede" (anlamsiz fark sunulmaz)
+        if abs(fark) < 1.5:
             return "Yarın beklenen üretim bugünle aynı seviyede."
+        fark_tam = round(abs(fark))
         yon = "yüksek" if fark >= 0 else "düşük"
         return (f"Yarın beklenen üretim bugünden "
                 f"%{fark_tam} {yon}.")
@@ -146,6 +146,7 @@ def gunun_ozeti(tenant_id: str, santral: dict) -> GununOzeti:
         o.hafta_mwh = float(df_yerel["p50_kw"].sum()) / 1000.0
 
         gunluk = df_yerel["p50_kw"].groupby(df_yerel.index.date).sum() / 1000.0
+        gunluk = gunluk[gunluk > 0]          # v2.16 F2: sifir-kuyruk dus
         o.gunler = [_gun_etiketi(str(d), tz) for d in gunluk.index]
         o.gunluk_mwh = [float(v) for v in gunluk.values]
         for i, d in enumerate(gunluk.index):
@@ -168,14 +169,15 @@ def gunun_ozeti(tenant_id: str, santral: dict) -> GununOzeti:
                     reindexed = bugun_scada["power_kw"].reindex(bugun_df.index)
                     o.gercek_kw = [float(v) if pd.notna(v) else None
                                    for v in reindexed.values]
-                # Fable 5 v1.9: simdi = gercek duvar saati (santral tz)
-                simdi_wall = datetime.now(ZoneInfo(tz))
-                for i, ts in enumerate(bugun_df.index):
-                    if ts >= simdi_wall:
-                        o.simdi_idx = max(0, i - 1)
-                        break
-                else:
-                    o.simdi_idx = len(bugun_df) - 1  # gun sonuna gectiysek
+            # v2.16 F1: simdi imleci SCADA'dan BAGIMSIZ hesaplanir
+            # (Fable 5 v1.9: simdi = gercek duvar saati, santral tz)
+            simdi_wall = datetime.now(ZoneInfo(tz))
+            for i, ts in enumerate(bugun_df.index):
+                if ts >= simdi_wall:
+                    o.simdi_idx = max(0, i - 1)
+                    break
+            else:
+                o.simdi_idx = len(bugun_df) - 1  # gun sonuna gectiysek
 
         with tenant_baglami(tenant_id) as s:
             run_row = s.execute(text(

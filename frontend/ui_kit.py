@@ -9,6 +9,8 @@ import plotly.graph_objects as go
 # --- 5.2 Mod sözlüğü (PDF ile aynı) ---
 MOD_METIN = {"A": "Mod A — saf fizik", "B": "Mod B — kalibre fizik",
              "C": "Mod C — hibrit"}
+AYLAR_KISA_TR = ["Oca", "Şub", "Mar", "Nis", "May", "Haz",
+                 "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"]  # v2.16 F3
 MOD_KISA = {"A": "Saf fizik", "B": "Kalibre", "C": "Hibrit", None: "—"}
 
 
@@ -253,7 +255,19 @@ def tahmin_grafigi(df_yerel, mode: str):
     fig.add_scatter(x=df_yerel.index, y=df_yerel["p50_kw"],
                     mode="lines", name="P50",
                     line=dict(color="#0F6E56", width=2.2))
-    return tema_uygula(fig, yukseklik=320)
+    fig = tema_uygula(fig, yukseklik=320)
+    # v2.16 F3: eksen Türkçe — 3+ günde günlük etiket, kısa ufukta saat
+    gunler = sorted({ts.date() for ts in df_yerel.index})
+    if len(gunler) <= 2:
+        fig.update_xaxes(tickformat="%H:%M")     # dil-nötr saat ekseni
+    else:
+        import datetime as _dt
+        tzinfo = df_yerel.index.tz
+        tv = [_dt.datetime.combine(d, _dt.time(12), tzinfo=tzinfo)
+              for d in gunler]
+        tt = [f"{d.day} {AYLAR_KISA_TR[d.month - 1]}" for d in gunler]
+        fig.update_xaxes(tickvals=tv, ticktext=tt)
+    return fig
 
 # Anayasa Adim 5 — kovali skill grafigi
 _KOVA_STIL = {                       # Anayasa §6.5 renk duzeni
@@ -265,12 +279,18 @@ _KOVA_STIL = {                       # Anayasa §6.5 renk duzeni
 
 def skill_grafigi(piv):
     """Gunluk MAPE cizgileri, ufuk kovalarina gore. piv: pivot_table
-    (index=date, columns=horizon_bucket, values=mape)."""
+    (index=date, columns=horizon_bucket, values=mape).
+    v2.16 F4: gun-eksenli kategori + lines+markers (az nokta okunur)."""
     fig = go.Figure()
     for kova, stil in _KOVA_STIL.items():
         if kova in piv.columns:
-            fig.add_scatter(x=piv.index, y=piv[kova], mode="lines",
-                            name=f"{kova} saat", line=stil,
+            fig.add_scatter(x=list(piv.index), y=piv[kova],
+                            mode="lines+markers", name=f"{kova} saat",
+                            line=stil, marker=dict(size=6),
                             connectgaps=False)
     fig.update_layout(showlegend=False)
-    return tema_uygula(fig, 300)
+    fig = tema_uygula(fig, 300)
+    tt = [f"{d.day} {AYLAR_KISA_TR[d.month - 1]}" for d in piv.index]
+    fig.update_xaxes(tickvals=list(piv.index), ticktext=tt,
+                     type="category")
+    return fig

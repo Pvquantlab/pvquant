@@ -30,17 +30,35 @@ meteo = OpenMeteoClient().get_historical(
     start_date=str(gun), end_date=str(gun + dt.timedelta(days=3)))
 fr = forecast_7day(meteo, spec)
 h = fr.hourly.rename(columns={"p_ac_kw": "p50_kw"})
+# v2.19 S2: fizik p50 sakla (backtest teshis kanitina hazir)
+h["physics_kw"] = h["p50_kw"].copy()
+# v2.18: hibrit artefakt varsa uret_ve_kaydet ile AYNI yol uygulanir
+kosu_mode = "B"
+with tenant_baglami(tid) as s:
+    ml = s.execute(text("SELECT artifact_path FROM ml_models "
+        "WHERE plant_id=:p AND active LIMIT 1"), {"p": pid}).first()
+if cal.mode == "C" and ml:
+    import pickle
+    from pvquant.pipeline.hybrid_ui import hybrid_forecast_hourly
+    with open(ml.artifact_path, "rb") as f:
+        model = pickle.load(f)
+    hh = hybrid_forecast_hourly(model, meteo)
+    if hh is not None:
+        h["p50_kw"] = hh["p50_kw"].reindex(h.index)
+        h["ml_kw"] = h["p50_kw"] - h["physics_kw"]
+        kosu_mode = "C"
 
 with tenant_baglami(tid) as s:
     rid = s.execute(text(
         "INSERT INTO forecast_runs(tenant_id,plant_id,run_at,mode,model,"
         "meteo_source) VALUES(:t,:p,:r,:m,\'backtest\',\'open-meteo-arsiv\') "
         "RETURNING id"), {"t": tid, "p": pid,
-        "r": dt.datetime.combine(gun, dt.time(5)), "m": cal.mode}).scalar()
+        "r": dt.datetime.combine(gun, dt.time(5)), "m": kosu_mode}).scalar()
     s.execute(text(
-        "INSERT INTO forecast_values(tenant_id,run_id,plant_id,ts_utc,p50_kw)"
-        " VALUES(:t,:r,:p,:ts,:v)"),
-        [{"t": tid, "r": rid, "p": pid, "ts": ts, "v": _f(v["p50_kw"])}
+        "INSERT INTO forecast_values(tenant_id,run_id,plant_id,ts_utc,p50_kw,physics_kw,ml_kw)"
+        " VALUES(:t,:r,:p,:ts,:v,:px,:ml)"),
+        [{"t": tid, "r": rid, "p": pid, "ts": ts, "v": _f(v["p50_kw"]),
+           "px": _f(v.get("physics_kw")), "ml": _f(v.get("ml_kw"))}
          for ts, v in h.iterrows()])
 print(f"[+] Backtest kosu yazildi: run_id={rid}, {len(h)} satir")
 

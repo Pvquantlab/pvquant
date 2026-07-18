@@ -10,7 +10,7 @@ def giris_bekcisi() -> dict | None:
     ve None doner (sayfa icerigini cizme!). Girilmisse claims doner."""
     if "auth" in st.session_state:
         return st.session_state.auth
-    # Anayasa Adim 7 (v2.10): login gorunumu tek dosyaya cikarildi
+    # Anayasa Adım 7 (v2.10): login görünümü tek dosyaya çıkarıldı
     from login_gorunum import login_ekrani
     login_ekrani()
     return None

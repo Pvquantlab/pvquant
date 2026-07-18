@@ -26,6 +26,9 @@ _FORMATLAR = [
     ("json", "🔌 JSON",  "API formatı — şema 1.1.0, entegrasyona hazır"),
 ]
 
+MODEL_AD = {"hybrid_residual": "Hibrit", "barhdadi_bennis": "Fizik",
+            "backtest": "Geriye dönük"}   # v2.16 P3 sunum sözlüğü
+
 
 def render_raporlar() -> None:
     tema.kur("Raporlar")
@@ -60,7 +63,7 @@ def render_raporlar() -> None:
             "Kalibrasyon'a git", "kalibrasyon")
         st.stop()
 
-    # -------- bos durum 2: kalibre ama kosu yok
+    # -------- boş durum 2: kalibre ama koşu yok
     if forecast_service.son_kosu(tid, pid) is None:
         ui_kit.bos_durum("↗", "Önce tahmin üretin",
             "Rapor, arşivdeki son tahmin koşusundan kurulur. "
@@ -98,6 +101,6 @@ def render_raporlar() -> None:
         ui_kit.mono_tablo(pd.DataFrame(
             {"Tarih": [f"{r.run_at:%d.%m.%Y %H:%M}" for r in gecmis],
              "Mod": [r.mode for r in gecmis],
-             "Model": [r.model for r in gecmis]}), {})
+             "Model": [MODEL_AD.get(r.model, r.model) for r in gecmis]}), {})
         st.caption("Koşular güncellenmez, yenisi eklenir — rapor her "
                    "koşudan yeniden üretilebilir.")

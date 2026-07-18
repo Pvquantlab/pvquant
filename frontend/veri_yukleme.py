@@ -300,7 +300,7 @@ def _adim1_santral() -> dict | None:
                 f'</div>',
                 unsafe_allow_html=True,
             )
-            # plant_ctx turetilmis gorunum (Fable 5 v1.4)
+            # plant_ctx türetilmis görünüm (Fable 5 v1.4)
             plant_ctx = {
                 "capacity_kwp": p["capacity_kwp"],
                 "latitude": p["lat"],

@@ -46,13 +46,21 @@ def _bulduklarimiz(cal, santral: dict, ozet: dict) -> None:
     p = cal.params_json if isinstance(cal.params_json, dict) else json.loads(cal.params_json or "{}")
     satirlar = [
         ("η_BoS", sayi_tr(p["eta_bos"], 3) if p.get("eta_bos") is not None else "—"),
-        ("BG (bifacial kazanç)", sayi_tr(p["bg"], 3) if p.get("bg") is not None else "—"),
+    ]
+    # v2.16 P2: BG yalniz bifacial santralda gosterilir (mono'da anlamsiz)
+    if (santral.get("panel_tech") or "bifacial") == "bifacial":
+        satirlar.append(("BG (bifacial kazanç)",
+                         sayi_tr(p["bg"], 3) if p.get("bg") is not None else "—"))
+    satirlar += [
+        # v2.16 F6: None -> 0° yalan soylerdi; "model buldu" durust
         ("Eğim / Azimut",
-         f"{sayi_tr(santral.get('tilt') or 0, 0)}° / "
-         f"{sayi_tr(santral.get('azimuth') or 0, 0)}°"),
+         "— (model buldu)" if santral.get("tilt") is None
+         else f"{sayi_tr(santral['tilt'], 0)}° / "
+              f"{sayi_tr(santral.get('azimuth') or 0, 0)}°"),
         ("Geçerli saat", sayi_tr(cal.n_valid_hours or ozet["valid_saat"], 0)),
         ("Kalibrasyon tarihi", ui_kit.tarih_tr(cal.created_at)),
     ]
+
     ui_kit.mono_kart("BULDUKLARIMIZ", satirlar)
 
 

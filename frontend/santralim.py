@@ -97,19 +97,25 @@ def render_santralim() -> None:
             '<div class="pv-eyebrow">BUGÜN — SAATLİK ÜRETİM</div>',
             unsafe_allow_html=True,
         )
-        if o.saatler and o.gercek_kw and o.tahmin_kw:
+        # v2.16 F1: egri TAHMIN varsa cizilir; gerceklesen yoklugu
+        # yalniz dolgu katmanini dusurur (imza grafigi kapali duramaz)
+        if o.saatler and o.tahmin_kw:
+            gercek = (o.gercek_kw if o.gercek_kw
+                      else [None] * len(o.saatler))
             st.plotly_chart(
                 ui_kit.gun_isigi_egrisi(
-                    o.saatler, o.gercek_kw, o.tahmin_kw, o.simdi_idx
+                    o.saatler, gercek, o.tahmin_kw, o.simdi_idx
                 ),
                 use_container_width=True,
                 config={"displayModeBar": False},
             )
+            if not o.gercek_kw or all(v is None for v in o.gercek_kw):
+                st.caption("bugünün gerçekleşeni için güncel SCADA gerekli")
         else:
             ui_kit.bos_durum(
                 "📊", "Gün Işığı Eğrisi henüz hazır değil",
-                "Kalibrasyon tamamlandığında saatlik üretim eğrisi burada görünür.",
-                "Kalibrasyona geç", "kalibrasyon",
+                "İlk tahmin üretildiğinde saatlik üretim eğrisi burada görünür.",
+                "Tahminler'e geç", "tahminler",
             )
     with g2:
         st.markdown(
