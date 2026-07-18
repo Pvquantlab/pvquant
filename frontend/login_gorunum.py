@@ -56,7 +56,7 @@ def login_ekrani() -> None:
           <div class="pv-login-kanit">
             <div class="pv-eyebrow" style="color:#7E93A0">REFERANS
             SANTRAL · HOLDOUT SINAVI</div>
-            <div class="pv-login-kanit-sayi">MAPE %39,2 → %17,8</div>
+            <div class="pv-login-kanit-sayi">MAPE %38,7 → %14,8</div>
             <div class="pv-login-kanit-not">saf fizik → hibrit ·
             kronolojik son %20 üzerinde ölçüldü</div>
           </div>

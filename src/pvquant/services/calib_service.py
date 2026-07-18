@@ -77,6 +77,8 @@ def _plant_spec(plant) -> PlantSpec:
         longitude=plant["lon"], tilt=plant.get("tilt") or 20.0,
         azimuth=plant.get("azimuth") or 180.0,
         bifacial_factor=0.7 if plant.get("panel_tech") == "bifacial" else 0.0,
+        # B-1 Adım 3: AC kırpma köprüsü (None = kırpma yok, mevcut davranış)
+        p_ac_clip_kw=plant.get("ac_limit_kw"),
     )
 
 
@@ -104,6 +106,8 @@ def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
                 "tilt": plant.get("tilt") or 20,
                 "azimuth": plant.get("azimuth") or 180,
                 "panel_technology": plant.get("panel_tech") or "bifacial",
+                # B-1 v2.27: AC tavanı kaynağı → PlantProfile ailesi
+                "ac_limit_kw": plant.get("ac_limit_kw"),
             },
             plant_name=plant["name"],
         )

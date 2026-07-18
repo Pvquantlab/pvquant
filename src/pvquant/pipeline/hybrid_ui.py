@@ -64,7 +64,9 @@ def _plant_profile(plant_ctx: dict, plant_name: str = "Santral"):
         InverterSpec, Location, MountingSpec, PanelSpec, PlantProfile,
     )
     kwp = float(plant_ctx["capacity_kwp"])
-    inv_ac = kwp / 21.0                       # ~%95 DC/AC oranı, 21 dilim
+    # B-1 v2.27 Yol A: AC tavanı varsa uygula, yoksa geriye uyumlu (kwp/21)
+    ac_limit = plant_ctx.get("ac_limit_kw")
+    inv_ac = (float(ac_limit) / 21.0) if ac_limit else (kwp / 21.0)
     return PlantProfile(
         plant_id=plant_name.replace(" ", "_")[:32] or "PLANT",
         name=plant_name,
