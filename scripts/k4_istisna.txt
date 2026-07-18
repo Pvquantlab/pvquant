@@ -1,0 +1,10 @@
+# K4 bekçi allowlist — Zeyilname v2.24 mühürlü
+# (a) Kullanıcıya görünen metin ASLA buraya girmez — o her zaman düzeltilir.
+# (b) Yeni kayıt YALNIZ Fable 5 hükmüyle eklenir (bekçiyi susturma değil).
+Koyu marka bandi
+Marka bandi (Santralim
+Hava sutunlari
+gunluk = g[
+koyu = bugun, acik
+bandi (marka %14
+Mod A (varsayilan): 'SCADA veriniz var mı?'

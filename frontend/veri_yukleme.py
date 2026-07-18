@@ -715,7 +715,7 @@ def _render_mod_b_scada() -> None:
         <div style="margin:24px 0 8px 0">
           <div style="font-size:22px;font-weight:700;color:#0F1B28;
                       letter-spacing:-0.02em;margin-bottom:8px">
-            SCADA verinizi yukleyin
+            SCADA verinizi yükleyin
           </div>
           <div style="font-size:14px;color:{TEXT_SECONDARY}">
             Herhangi bir format kabul edilir — Turkce/Ingilizce sutunlar, 
@@ -1009,7 +1009,7 @@ def render_veri_yukleme() -> None:
     if mod == "scada_upload":
         page_header(
             "Veri Yükleme",
-            "SCADA verinizi yukleyin — format otomatik tespit + kalite kontrolu",
+            "SCADA verinizi yükleyin — format otomatik tespit + kalite kontrolü",
         )
         _render_mod_b_scada()
     elif mod == "hizli":
