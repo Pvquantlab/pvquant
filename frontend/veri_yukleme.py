@@ -26,8 +26,9 @@ from pathlib import Path
 
 import streamlit as st
 import ui_kit
-from pvquant.services import plant_service
+from pvquant.services import forecast_service
 from pvquant.services import ingest_service
+from pvquant.services import plant_service
 
 from components import page_header
 from design_tokens import PRIMARY, SUCCESS, TEXT_SECONDARY, TEXT_TERTIARY, WARNING
@@ -951,11 +952,29 @@ def render_veri_yukleme() -> None:
         )
         _render_mod_b_scada()
     elif mod == "hizli":
-        st.session_state.veri_yukleme_mod = "yol_ayrimi"
-        st.info("Hızlı tahmin akışı Adım 5'te gelecek. Şimdilik yol ayrımına döndürüldünüz.")
-        _render_mod_a_wrapper()
+        _render_mod_hizli()
     else:
         _render_mod_a_wrapper()
+
+
+def _render_mod_hizli():
+    """Hızlı tahmin (Mod A — v2.32): kalibrasyon YOK, mevcut
+    uret_ve_kaydet kalibrasyonsuz çağrılır; sonuç Tahminler'de."""
+    auth = st.session_state.get("auth")
+    aktif_pid = st.session_state.get("aktif_plant_id")
+    if not (auth and aktif_pid):
+        ui_kit.banner("hata", "Oturum süresi dolmuş görünüyor — "
+                              "yeniden giriş yapın.")
+        st.stop()
+    santral = plant_service.getir(auth["tenant_id"], aktif_pid)
+    if santral is None:
+        ui_kit.banner("hata", "Santral bilgisi bulunamadı — "
+                              "Adım 1'e dönüp santral seçin.")
+        st.stop()
+    with st.spinner("Hızlı tahmin üretiliyor… 10-20 sn"):
+        forecast_service.uret_ve_kaydet(auth["tenant_id"], santral)
+    st.toast("Tahmin hazır ✓")
+    ui_kit.sayfaya_git("tahminler")
 
 
 def _render_mod_a_wrapper():
