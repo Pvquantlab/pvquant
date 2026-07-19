@@ -14,16 +14,14 @@ Ingestion akisi (2 bolum, tek sayfa):
 MappingFailedError: otomatik esleme basarisiz olursa manuel esleme
 mini-ekrani devreye girer (dropdown'lar + ornek satirlar).
 
-Kopru (Cephe 1): "Kalibrasyona gec" butonu, ingestion cikti
-(scada_clean DataFrame) -> SCADAData donusumunu yapar ve
-session_state.scada_data'ya koyar (kalibrasyon sayfasi eski API
-bekliyor).
+"Kalibrasyona gec" butonu ingestion sonucunu DB'ye kalicilastirir
+(yukle_ve_kaydet) ve dogrudan Kalibrasyon sayfasina gecirir. Ara SCADAData
+kopru katmani v2.30'da silindi -- Kalibrasyon sayfasi zaten DB'den okur.
 """
 
 import os
 import sys
 import tempfile
-import pandas as pd
 from pathlib import Path
 
 import streamlit as st
@@ -341,7 +339,7 @@ def _adim1_santral() -> dict | None:
             st.session_state.plant_context = plant_ctx_form
             st.rerun()
         except Exception as e:
-            st.error(f"Santral olusturulamadi: {e}")
+            st.error(f"Santral oluşturulamadı: {e}")
             return None
     return None
 
@@ -524,7 +522,7 @@ def _manuel_esleme_ekrani(err: MappingFailedError, tmp_path: str) -> None:
         )
         power_col = st.selectbox(
             "Guc kolonu (kW/MW)", options=kolonlar, key="manuel_pow",
-            help="Anlik guc degerleri. Bu YOKSA enerji kolonu secmelisiniz.",
+            help="Anlık güç değerleri. Bu YOKSA enerji kolonu seçmelisiniz.",
         )
         poa_col = st.selectbox(
             "Işınım (POA) — opsiyonel", options=kolonlar, key="manuel_poa",
@@ -551,13 +549,13 @@ def _manuel_esleme_ekrani(err: MappingFailedError, tmp_path: str) -> None:
     st.markdown("<div style='margin-top:16px'></div>", unsafe_allow_html=True)
 
     # Dogrulama ve devam
-    if st.button("Bu esleme ile devam et", key="manuel_devam",
+    if st.button("Bu eşleme ile devam et", key="manuel_devam",
                  type="primary", use_container_width=True):
         if timestamp_col == "(seçiniz)":
             st.error("Zaman kolonu zorunludur.")
             return
         if power_col == "(seçiniz)" and energy_col == "(seçiniz)":
-            st.error("En az bir guc veya enerji kolonu secmelisiniz.")
+            st.error("En az bir güç veya enerji kolonu seçmelisiniz.")
             return
 
         def _or_none(col):
@@ -713,7 +711,7 @@ def _render_mod_b_scada() -> None:
     """Mod B: CSV yukleme + ingestion pipeline."""
     ui_kit.adimlar(aktif=2)
 
-    if st.button("← Yol ayrimina don", key="scada_geri", type="secondary"):
+    if st.button("← Yol ayrımına dön", key="scada_geri", type="secondary"):
         st.session_state.veri_yukleme_mod = "yol_ayrimi"
         for k in ("scada_preview", "scada_result", "scada_clean", "scada_batch_id",
                   "scada_filename", "scada_tmp_path",
@@ -836,13 +834,13 @@ def _render_mod_b_scada() -> None:
     
     if "scada_result" not in st.session_state:
         if st.button(
-            "Onayla ve dogrula",
+            "Onayla ve doğrula",
             key="ingest_onayla",
             use_container_width=True,
             type="primary",
         ):
             try:
-                with st.spinner("Veri donusturuluyor ve dogrulaniyor..."):
+                with st.spinner("Veri dönüştürülüyor ve doğrulanıyor…"):
                     result = ingest_file(
                         tmp_path,
                         capacity_kwp=plant_ctx["capacity_kwp"],
@@ -853,11 +851,10 @@ def _render_mod_b_scada() -> None:
                         mapping=pv.mapping,
                     )
                 st.session_state.scada_result = result
-                st.session_state.scada_clean = result.to_clean_frame()
                 st.session_state.plant_context = plant_ctx
                 st.rerun()
             except Exception as e:
-                st.error(f"Islem sirasinda hata: {e}")
+                st.error(f"İşlem sırasında hata: {e}")
                 return
         return
     
@@ -869,7 +866,7 @@ def _render_mod_b_scada() -> None:
     st.markdown("<div style='margin-top:20px'></div>", unsafe_allow_html=True)
     col1, col2 = st.columns([1, 1])
     with col1:
-        if st.button("Farkli dosya sec", key="farkli_dosya", use_container_width=True):
+        if st.button("Farklı dosya seç", key="farkli_dosya", use_container_width=True):
             # Gecici dosyayi temizle
             if os.path.exists(tmp_path):
                 try:
@@ -884,7 +881,7 @@ def _render_mod_b_scada() -> None:
     with col2:
         # Kalibrasyona gec - clean frame -> SCADAData kopru
         if st.button(
-            "Kalibrasyona gec →",
+            "Kalibrasyona geç →",
             key="kalibrasyona_gec",
             use_container_width=True,
             type="primary",
@@ -893,118 +890,48 @@ def _render_mod_b_scada() -> None:
             auth = st.session_state.get("auth")
             aktif_pid = st.session_state.get("aktif_plant_id")
             plant_ctx = st.session_state.get("plant_context", {})
-            if auth and aktif_pid and plant_ctx:
+            # v2.30-Ek: iki ayrı teşhis (K10: sayfada tek banner, iki dal aynı anda tetiklenmez)
+            if not (auth and aktif_pid):
+                ui_kit.banner("hata", "Oturum süresi dolmuş görünüyor — "
+                                      "yeniden giriş yapın.")
+                st.stop()
+            if not plant_ctx:
+                ui_kit.banner("hata", "Santral bilgisi bulunamadı — "
+                                      "Adım 1'e dönüp santral seçin.")
+                st.stop()
+            try:
+                with st.spinner("Kalıcılaştırılıyor…"):
+                    out = ingest_service.yukle_ve_kaydet(
+                        auth["tenant_id"],
+                        aktif_pid,
+                        tmp_path,
+                        capacity_kwp=plant_ctx["capacity_kwp"],
+                        latitude=plant_ctx["latitude"],
+                        longitude=plant_ctx["longitude"],
+                        source_timezone=plant_ctx["timezone"],
+                        file_format=result.file_format,
+                        mapping=result.mapping,
+                        hazir_sonuc=result,
+                    )
+                st.session_state.scada_batch_id = out["batch_id"]
+                # Sablonu ONAY DALINDA kaydet (Fable 5 v1.4)
                 try:
-                    with st.spinner("Kalicilastiriliyor..."):
-                        out = ingest_service.yukle_ve_kaydet(
-                            auth["tenant_id"],
-                            aktif_pid,
-                            tmp_path,
-                            capacity_kwp=plant_ctx["capacity_kwp"],
-                            latitude=plant_ctx["latitude"],
-                            longitude=plant_ctx["longitude"],
-                            source_timezone=plant_ctx["timezone"],
-                            file_format=result.file_format,
-                            mapping=result.mapping,
-                            hazir_sonuc=result,
-                        )
-                    st.session_state.scada_batch_id = out["batch_id"]
-                    # Sablonu ONAY DALINDA kaydet (Fable 5 v1.4)
-                    try:
-                        _TEMPLATE_STORE.save(
-                            f"user_{uploaded.name.rsplit('.', 1)[0]}",
-                            result.to_template(),
-                        )
-                    except Exception:
-                        pass  # sablon kaydi kritik degil
-                    st.toast(
-                        f"Kalicilastirildi ✓ · {out['n_satir']} satir kaydedildi"
+                    _TEMPLATE_STORE.save(
+                        f"user_{uploaded.name.rsplit('.', 1)[0]}",
+                        result.to_template(),
                     )
                 except Exception as e:
-                    st.error(f"Kalicilastirma hatasi: {e}")
-                    return
-            _kopru_scadadata_ve_gec()
-            st.rerun()
-
-
-# ============================================================
-# KOPRU: Ingestion -> Kalibrasyon (scada_clean -> SCADAData)
-# ============================================================
-
-def _kopru_scadadata_ve_gec() -> None:
-    """Ingestion cikti (scada_clean DataFrame) -> SCADAData kopru.
-
-    Kalibrasyon sayfasi eski SCADAData nesnesi bekliyor; ingestion
-    ise DataFrame + plant_context dondu. Burada kolon adlarini
-    ceviriyor ve dataclass'i insa ediyoruz.
-
-    Kolon esleme (ingestion adi -> SCADAData adi):
-      power_kw       -> power_kw          (ayni)
-      energy_kwh     -> energy_kwh        (ayni)
-      poa_global     -> poa_irradiance    (ad degisir!)
-      t_air          -> temp_ambient      (ad degisir!)
-      t_module       -> temp_module       (ad degisir!)
-      wind_speed     -> wind_speed        (ayni)
-    """
-    from pvquant.io.scada import SCADAData
-
-    clean = st.session_state.scada_clean  # DataFrame
-    filename = st.session_state.get("scada_filename", "SCADA verisi")
-
-    # timestamp kolonunu index yap (SCADAData'nin tum serileri paylasan index)
-    df = clean.set_index("timestamp") if "timestamp" in clean.columns else clean
-
-    # KOPRU FIX: kalibrasyon backend'i tam saatlik izgara bekliyor
-    # (_detect_timestep_hours %90+ tutarlilik istiyor). Ingestion sadece
-    # VALID satirlari veriyor -> gece saatleri dusuyor -> diff'ler bozuluyor.
-    # Cozum: full saatlik range'e reindex, eksik saatler NaN kalir.
-    # power_kw NaN olan gece saatleri kalibrasyona zaten girmez (backend
-    # asagi akista dropna yapar) ama index tutarli olur.
-    if isinstance(df.index, pd.DatetimeIndex) and len(df) > 1:
-        full_range = pd.date_range(
-            start=df.index.min(),
-            end=df.index.max(),
-            freq="1h",
-            tz=df.index.tz,
-        )
-        df = df.reindex(full_range)
-        df.index.name = "timestamp"
-        
-        # Gece saatlerinde NaN power_kw -> 0 doldur (gerçekte uretim yok)
-        # Gunduz NaN'lari NaN kalir (backend duser). Boylece index tam kalir
-        # ama gunduzun tam satirlari kesintisiz olur -> %90+ tutarlilik.
-        try:
-            import pvlib
-            solpos = pvlib.solarposition.get_solarposition(
-                df.index,
-                st.session_state.plant_context["latitude"],
-                st.session_state.plant_context["longitude"],
-            )
-            is_night = solpos["apparent_elevation"] < -3.0
-            night_nan_mask = is_night.values & df["power_kw"].isna().values
-            df.loc[night_nan_mask, "power_kw"] = 0.0
-        except Exception:
-            # pvlib yoksa fallback: tum NaN'lari 0 yap (daha az temiz ama calisir)
-            df["power_kw"] = df["power_kw"].fillna(0.0)
-
-    def _opt(col_name: str):
-        """Kolon varsa Series don, yoksa None."""
-        return df[col_name] if col_name in df.columns else None
-
-    scada = SCADAData(
-        power_kw=df["power_kw"],
-        energy_kwh=_opt("energy_kwh"),
-        poa_irradiance=_opt("poa_global"),   # ingestion "poa_global" -> SCADAData "poa_irradiance"
-        temp_ambient=_opt("t_air"),          # ingestion "t_air" -> SCADAData "temp_ambient"
-        temp_module=_opt("t_module"),        # ingestion "t_module" -> SCADAData "temp_module"
-        wind_speed=_opt("wind_speed"),
-        plant_name=filename.rsplit(".", 1)[0],
-        timestep_minutes=60,  # ingestion her zaman saatlige indiriyor
-    )
-
-    st.session_state.scada_data = scada
-    st.session_state.scada_filename = filename  # kalibrasyon.py bunu kullaniyor
-    st.session_state.active_page = "kalibrasyon"
+                    print(f"[sablon][kaydedilemedi] {e}")  # v2.30-Ek: sessiz-kullaniciya/gorunur-loga
+                st.toast(
+                    f"Kalıcılaştırıldı ✓ · {out['n_satir']} satır kaydedildi"
+                )
+            except Exception as e:
+                st.error(f"Kalıcılaştırma hatası: {e}")
+                return
+            # v2.30: onay dali pop (batch_id kalir - karne referansi)
+            for k in ("scada_clean", "scada_preview", "scada_result"):
+                st.session_state.pop(k, None)
+            ui_kit.sayfaya_git("kalibrasyon")
 
 
 # ============================================================

@@ -237,8 +237,13 @@ def bos_durum_eylemli(ikon: str, baslik: str, aciklama: str):
 
 def sayfaya_git(sayfa_adi: str) -> None:
     """Tek yonlendirme kapisi (D-1). bos_durum CTA'si ve sessiz eylemler
-    hepsi buradan gecer — iki ayri yol yasatilmaz."""
-    st.switch_page(sayfa_adi)
+    hepsi buradan gecer — iki ayri yol yasatilmaz.
+
+    v2.31: govde repo'nun gercek yonlendirme mimarisine (active_page +
+    PAGE_RENDERERS) baglandi; st.switch_page pages/ konvansiyonu ister,
+    bu repo onu kullanmaz."""
+    st.session_state.active_page = sayfa_adi
+    st.rerun()
 
 
 def tahmin_grafigi(df_yerel, mode: str):

@@ -8,6 +8,7 @@ DOKUNMAZ. Ağ gerektirir (Open-Meteo) — üretimde de gerekir.
 """
 from __future__ import annotations
 
+import inspect
 import re
 import secrets
 import sys
@@ -29,7 +30,9 @@ ORNEK_CSV = REPO / "tests" / "data" / "refplant_sample.csv"
 K4_PATTERNS = re.compile(
     r"Bugun|Yukleme'|gorunum[\"']|Once |kosu[ \"'.]|arsiv|"
     r"secilmedi|uretilmedi|bandi[ \"']|dusuk|saglik[ \"']|Islenen|"
-    r"gunluk[ \"']|yukleyin|endiselenmeyin|Hizli |gecin|tanimasiyla")
+    r"gunluk[ \"']|yukleyin|endiselenmeyin|Hizli |gecin|tanimasiyla|"
+    r"Kalicilastir|dogrula\"|Farkli dosya|satir kaydedildi|hatasi:|"
+    r"olusturulamadi|secmelisiniz|Yol ayrimina|donusturuluyor|Islem sirasinda|Kalibrasyona gec")
 K4_ISTISNA = ("import", "login_gorunum", "def ", "class ", "#")
 
 DURUM: list[tuple[str, str]] = []
@@ -153,7 +156,10 @@ def a8():
         index=idx), "C")
     ui_kit.skill_grafigi(pd.DataFrame(
         {"0-24": [45.1]}, index=[pd.Timestamp("2026-04-16").date()]))
-    return "3 grafik"
+    # v2.31: sayfaya_git kaynak denetimi (D-1 sozlesmesi canli)
+    src = inspect.getsource(ui_kit.sayfaya_git)
+    assert "active_page" in src, "sayfaya_git govdesi active_page kullanmiyor"
+    return "3 grafik + sayfaya_git kaynak"
 
 
 @adim("9. K4 diakritik bekçisi (frontend/)")

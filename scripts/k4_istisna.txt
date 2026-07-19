@@ -8,3 +8,6 @@ gunluk = g[
 koyu = bugun, acik
 bandi (marka %14
 Mod A (varsayilan): 'SCADA veriniz var mı?'
+# v2.30-Ek5: veri_yukleme docstring (kalip-docstring kesisimi)
+-> "Kalibrasyona gec" butonu aktif
+"Kalibrasyona gec" butonu ingestion sonucunu
