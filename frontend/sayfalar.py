@@ -2,22 +2,7 @@
 PVQuant Sayfa Fonksiyonlari (Faz 2)
 """
 
-import streamlit as st
-from components import page_header
 from santralim import render_santralim
-
-
-def _placeholder(page_title: str, subtitle: str, adim: str) -> None:
-    """Standart placeholder ekran."""
-    page_header(page_title, subtitle)
-
-    st.markdown(
-        f'<div class="pvq-placeholder">'
-        f'  <div class="pvq-placeholder-title">{page_title}</div>'
-        f'  <div>Bu ekran <strong>{adim}</strong>&apos;de gelecek.</div>'
-        f'</div>',
-        unsafe_allow_html=True,
-    )
 
 
 def render_veri_yukleme() -> None:

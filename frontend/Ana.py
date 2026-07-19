@@ -97,6 +97,13 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
+    # v2.33: Cikis - org-karti alti, on_click callback deseni (rerun ortuk)
+    def _cikis() -> None:
+        st.session_state.clear()
+
+    st.button("Çıkış", key="logout_btn", type="tertiary",
+              use_container_width=True, on_click=_cikis)
+
 # ============================================================
 # 5) UST BAR (Anayasa 3.2 — kanit seridi)
 # ============================================================
@@ -111,11 +118,6 @@ _santral_ad = santral["name"] if santral else "—"
 # Mod bilgisi P3'te ozet_service'ten gelecek; simdilik notr rozet
 st.markdown(
     f'<div class="pvq-topbar">'
-    f'  <div class="pvq-topbar-search">'
-    f'    <span>🔍</span>'
-    f'    <span class="pvq-topbar-search-text">Ara veya komut yaz…</span>'
-    f'    <span class="pvq-topbar-search-kbd">⌘K</span>'
-    f'  </div>'
     f'  <div class="pvq-topbar-right">'
     f'    <div class="pvq-topbar-plant">'
     f'      <span class="pvq-topbar-plant-label">Santral</span>'

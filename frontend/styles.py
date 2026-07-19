@@ -189,21 +189,6 @@ def _build_css() -> str:
         color: {TEXT_TERTIARY};
     }}
 
-    .pvq-placeholder {{
-        background: {CARD_BG};
-        border: 1px dashed {BORDER};
-        border-radius: {RADIUS_CARD};
-        padding: {SPACE_XL};
-        text-align: center;
-        color: {TEXT_TERTIARY};
-        margin-top: {SPACE_MD};
-    }}
-    .pvq-placeholder-title {{
-        font-size: {SIZE_H2};
-        font-weight: {WEIGHT_SEMI};
-        color: {TEXT_SECONDARY};
-        margin-bottom: {SPACE_SM};
-    }}
 
     .pvq-footer {{
         border-top: 1px solid {BORDER};
@@ -243,34 +228,11 @@ def _build_css() -> str:
         margin-bottom: {SPACE_LG};
         border-bottom: 1px solid {BORDER};
     }}
-    .pvq-topbar-search {{
-        display: flex;
-        align-items: center;
-        gap: {SPACE_SM};
-        background: {CARD_BG};
-        border: 1px solid {BORDER};
-        border-radius: {RADIUS_BUTTON};
-        padding: {SPACE_XS} {SPACE_MD};
-        color: {TEXT_TERTIARY};
-        font-size: {SIZE_BODY};
-        min-width: 320px;
-    }}
-    .pvq-topbar-search-text {{
-        flex: 1;
-    }}
-    .pvq-topbar-search-kbd {{
-        font-family: {FONT_MONO};
-        font-size: 11px;
-        color: {TEXT_TERTIARY};
-        border: 1px solid {BORDER};
-        border-radius: 4px;
-        padding: 1px 5px;
-        background: {PAGE_BG};
-    }}
     .pvq-topbar-right {{
         display: flex;
         align-items: center;
         gap: {SPACE_MD};
+        margin-left: auto;
     }}
     .pvq-topbar-plant {{
         display: flex;
