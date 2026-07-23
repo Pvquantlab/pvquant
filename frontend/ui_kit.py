@@ -37,7 +37,7 @@ def mod_rozet(mode: str | None, sapma_pct: float | None = None):
             '<span class="pv-rozet pv-rozet-notr">Kalibre değil</span>',
             unsafe_allow_html=True)
         return
-    ek = (f" · sapma %{abs(sapma_pct):.2f}".replace(".", ",")
+    ek = (f" · yıllık sapma %{abs(sapma_pct):.2f}".replace(".", ",")
           if sapma_pct is not None else "")
     st.markdown(f'<span class="pv-rozet pv-rozet-marka">'
                 f'{MOD_METIN[mode]}{ek}</span>', unsafe_allow_html=True)
@@ -80,21 +80,24 @@ def tema_uygula(fig: go.Figure, yukseklik: int = 300) -> go.Figure:
         showlegend=False, hovermode="x unified",
         xaxis=dict(gridcolor="rgba(0,0,0,0)",
                    tickfont=dict(family="JetBrains Mono", size=11)),
-        yaxis=dict(gridcolor="#E5E7EB", zeroline=False,
+        yaxis=dict(gridcolor="#EDF0F3", zeroline=False,
                    tickfont=dict(family="JetBrains Mono", size=11)))
     return fig
 
 
 def gun_isigi_egrisi(saat, gercek_kw, tahmin_kw, simdi_idx) -> go.Figure:
-    """IMZA 1. gercek: dolgulu; kalan: kesikli; simdi: dikey cizgi."""
+    """IMZA 1. gercek: amber dolgulu; tahmin: yesil dolgulu kesikli;
+    simdi: dikey cizgi. v2.34 K-3: lejant + kW ekseni.
+    v2.37: tahmin egrisine gun-isigi dolgusu (canlilik, durust yolla)."""
     fig = go.Figure()
     fig.add_scatter(x=saat[:simdi_idx+1], y=gercek_kw[:simdi_idx+1],
         mode="lines", line=dict(color="#D97706", width=2.2),
         fill="tozeroy", fillcolor="rgba(245,158,11,.12)",
         name="Gerçekleşen")
     fig.add_scatter(x=saat[simdi_idx:], y=tahmin_kw[simdi_idx:],
-        mode="lines", line=dict(color="#1D4ED8", width=1.8, dash="dot"),
-        name="Kalan saatler")
+        mode="lines", line=dict(color="#0E6B54", width=2, dash="dot"),
+        fill="tozeroy", fillcolor="rgba(14,107,84,.10)",
+        name="Tahmin (kalan saatler)")
     # v2.21: kategori ekseninde add_vline string x kabul etmez —
     # add_shape + add_annotation, x = kategori KONUMU (indeks)
     fig.add_shape(type="line",
@@ -104,7 +107,13 @@ def gun_isigi_egrisi(saat, gercek_kw, tahmin_kw, simdi_idx) -> go.Figure:
     fig.add_annotation(x=simdi_idx, y=1.04, xref="x", yref="paper",
         text=f"şimdi · {saat[simdi_idx]}", showarrow=False,
         font=dict(family="JetBrains Mono", size=10, color="#6B7280"))
-    return tema_uygula(fig)
+    fig = tema_uygula(fig)
+    fig.update_layout(showlegend=True, legend=dict(
+        orientation="h", x=0, y=1.12, yanchor="bottom",
+        font=dict(family="JetBrains Mono", size=11)))
+    fig.update_yaxes(title_text="kW",
+        title_font=dict(family="JetBrains Mono", size=11))
+    return fig
 
 
 def yedi_gun_bar(gunler, mwh, bugun_idx) -> go.Figure:
@@ -125,32 +134,122 @@ def hero(santral: dict, mod, sapma, icgoru, hava: list):
     icgoru None ise satir CIZILMEZ (K1 — veri yoksa cumle yok)."""
     hava_html = "".join(
         f'<div class="pv-hava"><div class="pv-hava-gun">{h["gun"]}</div>'
-        f'<div class="pv-hava-derece">{h["derece"]}°</div>'
+        f'<div class="pv-hava-derece">{str(h["derece"]).replace(".", ",")}°</div>'
         f'<div class="pv-hava-kwh">{str(h["kwhm2"]).replace(".", ",")} '
         f'kWh/m²</div></div>' for h in hava)
     icgoru_html = (f'<div class="pv-hero-icgoru">{icgoru}</div>'
                    if icgoru else "")
+    # v2.34 K-2: rozetteki yuzde YILLIK enerji sapmasidir
     rozet = (f'<span class="pv-rozet pv-rozet-hero">{MOD_KISA[mod]}'
-             + (f' — sapma %{abs(sapma):.2f}'.replace(".", ",")
+             + (f' — yıllık sapma %{abs(sapma):.2f}'.replace(".", ",")
                 if sapma is not None else "") + "</span>")
     konum = santral.get("konum_metni", "")
+    mw_tr = f"{santral['capacity_kwp']/1000:.1f}".replace(".", ",")  # O-1
     html = ('<div class="pv-hero"><div class="pv-hero-sol">'
         f'<div class="pv-hero-ad">{santral["name"]}</div>'
-        f'<div class="pv-hero-kunye">{santral["capacity_kwp"]/1000:.1f}'
+        f'<div class="pv-hero-kunye">{mw_tr}'
         f' MW · {konum}</div>'
         f'<div class="pv-hero-rozetler">{rozet}</div>' + icgoru_html +
         f'</div><div class="pv-hero-hava">{hava_html}</div></div>')
     st.markdown(html, unsafe_allow_html=True)
 
 
+# --- v2.37: Santral Künye Kartı ---
+_KUNYE_SVG = ('<svg viewBox="0 0 240 150" width="240" height="150" '
+  'aria-hidden="true"><defs>'
+  '<linearGradient id="kCam" x1="0" y1="0" x2="1" y2="1">'
+  '<stop offset="0" stop-color="#1B3A55"/>'
+  '<stop offset=".5" stop-color="#12293D"/>'
+  '<stop offset="1" stop-color="#0C1E2E"/></linearGradient>'
+  '<linearGradient id="kHucre" x1="0" y1="0" x2="0" y2="1">'
+  '<stop offset="0" stop-color="#1E4668"/>'
+  '<stop offset="1" stop-color="#132C42"/></linearGradient>'
+  '<linearGradient id="kParilti" x1="0" y1="0" x2="1" y2="1">'
+  '<stop offset="0" stop-color="#FFFFFF" stop-opacity=".22"/>'
+  '<stop offset=".45" stop-color="#FFFFFF" stop-opacity=".05"/>'
+  '<stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient>'
+  '<linearGradient id="kCerceve" x1="0" y1="0" x2="0" y2="1">'
+  '<stop offset="0" stop-color="#B8C4CC"/>'
+  '<stop offset="1" stop-color="#5E6B74"/></linearGradient></defs>'
+  '<ellipse cx="120" cy="132" rx="88" ry="8" fill="#000" opacity=".28"/>'
+  '<g transform="translate(20,8) skewX(-14)">'
+  '<rect x="46" y="10" width="160" height="98" rx="4" '
+  'fill="url(#kCerceve)"/>'
+  '<rect x="50" y="14" width="152" height="90" rx="2" fill="url(#kCam)"/>'
+  + "".join(
+    f'<rect x="{54+s*37.5}" y="{18+r*28}" width="33" height="24" rx="1.5" '
+    f'fill="url(#kHucre)" stroke="#0A1B26" stroke-width="1.2"/>'
+    for r in range(3) for s in range(4)) +
+  '<rect x="50" y="14" width="152" height="90" rx="2" '
+  'fill="url(#kParilti)"/>'
+  '<rect x="46" y="104" width="160" height="5" rx="2" fill="#47535C"/></g>'
+  '<path d="M70 116 L64 136 L70 136 L75 118 Z" fill="#5E6B74"/>'
+  '<path d="M182 116 L188 136 L182 136 L177 118 Z" fill="#4A565F"/>'
+  '<line x1="76" y1="141" x2="204" y2="141" stroke="#F59E0B" '
+  'stroke-width="2" opacity="0.85"/>'
+  '<line x1="204" y1="141" x2="226" y2="141" stroke="#7FD1B9" '
+  'stroke-width="2" opacity="0.5"/></svg>')
+
+
+def kunye_karti(santral: dict, mod, foto_yolu: str | None = None):
+    """v2.37: santral kimligi tek kartta — buyuk DC gucu + kunye cipleri +
+    santral gorseli. foto_yolu varsa gercek fotograf, yoksa sematik SVG.
+    K1: bilinmeyen alan '—' gosterir, sahte deger yok."""
+    dc = f"{santral['capacity_kwp']:,.0f}".replace(",", ".")
+    ac = santral.get("ac_limit_kw")
+    ac_txt = (f"{ac:,.0f}".replace(",", ".") + " kW") if ac else "—"
+    egim = "model buldu" if mod == "C" else "—"
+    gorsel = _KUNYE_SVG
+    if foto_yolu:
+        try:
+            import base64
+            from pathlib import Path
+            b64 = base64.b64encode(Path(foto_yolu).read_bytes()).decode()
+            gorsel = (f'<img src="data:image/jpeg;base64,{b64}" '
+                      f'class="pv-kunye-foto" alt="Santral fotoğrafı">')
+        except OSError:
+            pass                       # foto okunamazsa sematik kalir
+    st.markdown(f'''
+    <div class="pv-kunye">
+      <div>
+        <div class="pv-eyebrow" style="color:#96A9B4">SANTRAL KÜNYESİ</div>
+        <div class="pv-kunye-buyuk">{dc}<span class="pv-kunye-birim">kWp DC</span></div>
+        <div class="pv-kunye-cipler">
+          <div><div class="pv-kunye-cip-ad">AC tavanı</div>
+               <div class="pv-kunye-cip-deger">{ac_txt}</div></div>
+          <div><div class="pv-kunye-cip-ad">Eğim / Azimut</div>
+               <div class="pv-kunye-cip-deger" style="color:var(--mint)">{egim}</div></div>
+          <div><div class="pv-kunye-cip-ad">Saat dilimi</div>
+               <div class="pv-kunye-cip-deger">{santral.get("tz") or "—"}</div></div>
+        </div>
+      </div>
+      <div>{gorsel}</div>
+    </div>''', unsafe_allow_html=True)
+
+
 # --- 5.8 Veri sağlığı kartı ---
 def saglik_karti(son_yukleme, islenen_saat: int, anomali: int):
+    import datetime as _dt
     saat_tr = f"{islenen_saat:,}".replace(",", ".")   # sayi_tr dili
+    # v2.34 O-2: bayatlik esikleri — <=7 notr, 8-30 vurgu, 31+ negatif.
+    tarih_stil, yas_html = "", ""
+    if son_yukleme is not None:
+        g = son_yukleme.date() if hasattr(son_yukleme, "date") else son_yukleme
+        yas = (_dt.date.today() - g).days
+        if yas > 30:
+            tarih_stil = ' style="color:var(--negatif)"'
+            yas_html = (f'<div class="pv-mikro" style="color:var(--negatif)">'
+                        f'{yas} gün önce — karne bu pencerede kalır</div>')
+        elif yas > 7:
+            tarih_stil = ' style="color:var(--vurgu)"'
+            yas_html = (f'<div class="pv-mikro" style="color:var(--vurgu)">'
+                        f'{yas} gün önce</div>')
     html = ('<div class="pv-kart">'
       '<div class="pv-eyebrow">VERİ SAĞLIĞI</div>'
       '<div class="pv-saglik-izgara">'
       '<div><div class="pv-mikro">Son SCADA yüklemesi</div>'
-      f'<div class="pv-olcum-kucuk">{tarih_tr(son_yukleme)}</div></div>'
+      f'<div class="pv-olcum-kucuk"{tarih_stil}>{tarih_tr(son_yukleme)}</div>'
+      f'{yas_html}</div>'
       '<div><div class="pv-mikro">İşlenen veri</div>'
       f'<div class="pv-olcum-kucuk">{saat_tr} saat</div></div>'
       '<div><div class="pv-mikro">Bayraklanan anomali</div>'
@@ -281,9 +380,9 @@ def tahmin_grafigi(df_yerel, mode: str):
 
 # Anayasa Adim 5 — kovali skill grafigi
 _KOVA_STIL = {                       # Anayasa §6.5 renk duzeni
-    "0-24":  dict(color="#0F6E56", width=2.4),   # marka
-    "24-72": dict(color="#6B7280", width=1.8),   # gri
-    "72+":   dict(color="#C4CBD4", width=1.6),   # soluk
+    "0-24":  dict(color="#0F6E56", width=2.4),               # marka — duz
+    "24-72": dict(color="#6B7280", width=1.8, dash="dash"),  # v2.34 O-3
+    "72+":   dict(color="#C4CBD4", width=1.6, dash="dot"),   # v2.34 O-3
 }
 
 
@@ -298,8 +397,10 @@ def skill_grafigi(piv):
                             mode="lines+markers", name=f"{kova} saat",
                             line=stil, marker=dict(size=6),
                             connectgaps=False)
-    fig.update_layout(showlegend=False)
     fig = tema_uygula(fig, 300)
+    fig.update_layout(showlegend=True, legend=dict(
+        orientation="h", x=0, y=1.08, yanchor="bottom",
+        font=dict(family="JetBrains Mono", size=11)))
     tt = [f"{d.day} {AYLAR_KISA_TR[d.month - 1]}" for d in piv.index]
     fig.update_xaxes(tickvals=list(piv.index), ticktext=tt,
                      type="category")

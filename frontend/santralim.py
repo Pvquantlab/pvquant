@@ -1,6 +1,6 @@
 """Anayasa 8.4 — Santralim referans uygulama.
 Cerceve (tema.kur + giris_bekcisi + santral_secici + top bar) Ana.py'de.
-Bu dosya SALT ICERIK: hero + KPI + grafikler + veri sagligi.
+Bu dosya SALT ICERIK: hero + kunye + KPI + grafikler + veri sagligi.
 
 K10: ham hex/style YASAK — hepsi ui_kit + styles.css'ten.
 K1: ozet_service mode=None dondurursa 'Kalibre değil' + bos KPI (sahte deger YOK).
@@ -32,7 +32,8 @@ def render_santralim() -> None:
     from pvquant.db import tenant_baglami
     with tenant_baglami(auth["tenant_id"]) as s:
         row = s.execute(text(
-            "SELECT id, name, capacity_kwp, lat, lon, tz FROM plants WHERE id=:p"
+            "SELECT id, name, capacity_kwp, ac_limit_kw, lat, lon, tz "
+            "FROM plants WHERE id=:p"
         ), {"p": aktif_id}).first()
     if row is None:
         ui_kit.bos_durum(
@@ -45,6 +46,8 @@ def render_santralim() -> None:
         "id": str(row.id),
         "name": row.name,
         "capacity_kwp": float(row.capacity_kwp),
+        # v2.37: kunye karti icin AC tavani (B-1) — yoksa None, kart '—' basar
+        "ac_limit_kw": float(row.ac_limit_kw) if row.ac_limit_kw is not None else None,
         "lat": row.lat, "lon": row.lon, "tz": row.tz,
         # konum_metni: 'Konya' gibi il/koordinat kisa — simdilik koordinat
         "konum_metni": f"{row.lat:.2f}, {row.lon:.2f}",
@@ -87,6 +90,13 @@ def render_santralim() -> None:
             _model_alt_zengin(o) if o.model_alt else "Kalibrasyon sayfasından başlayın",
             durum="pozitif" if o.mode is not None and o.mode != "A" else "notr",
         )
+
+    # ----- v2.37: SANTRAL KÜNYE KARTI -----
+    # foto varsa gercek fotograf (assets/santral/{id}.jpg), yoksa sematik SVG
+    from pathlib import Path
+    _foto = Path("assets/santral") / f"{santral['id']}.jpg"
+    ui_kit.kunye_karti(santral, o.mode,
+                       foto_yolu=str(_foto) if _foto.exists() else None)
 
     st.markdown('<div style="margin-top:24px"></div>', unsafe_allow_html=True)
 
@@ -153,7 +163,7 @@ def _model_alt_zengin(o):
     import ui_kit
     parcalar = []
     if o.sapma_pct is not None:
-        parcalar.append(f"sapma %{sayi_tr(abs(o.sapma_pct), 2)}")
+        parcalar.append(f"yıllık sapma %{sayi_tr(abs(o.sapma_pct), 2)}")
     if o.kalibrasyon_tarihi is not None:
         parcalar.append(f"son kalibrasyon {ui_kit.tarih_tr(o.kalibrasyon_tarihi)}")
     return " · ".join(parcalar) if parcalar else o.model_alt

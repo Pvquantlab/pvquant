@@ -40,3 +40,20 @@ def guncelle(tenant_id, plant_id, **alanlar):
     with tenant_baglami(tenant_id) as s:
         s.execute(text(f"UPDATE plants SET {sset} WHERE id=:_p"),
                   {**kume, "_p": plant_id})
+def sil(tenant_id, plant_id) -> dict:
+    """Santrali ve TUM bagimli verisini siler (RLS icinde, kalici).
+    Sidebar vaadinin ('dilediginizde silersiniz') teknik karsiligi.
+    Donen sozluk: tablo -> silinen satir sayisi (kanit)."""
+    sira = ["forecast_values", "forecast_runs", "skill_daily",
+            "alerts", "ml_models", "calibrations",
+            "ingestion_batches", "scada_hourly"]
+    rapor = {}
+    with tenant_baglami(tenant_id) as s:
+        for tablo in sira:
+            r = s.execute(text(
+                f"DELETE FROM {tablo} WHERE plant_id=:p"), {"p": plant_id})
+            rapor[tablo] = r.rowcount
+        r = s.execute(text("DELETE FROM plants WHERE id=:p"),
+                      {"p": plant_id})
+        rapor["plants"] = r.rowcount
+    return rapor

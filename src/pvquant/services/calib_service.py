@@ -111,7 +111,14 @@ def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
             },
             plant_name=plant["name"],
         )
-        if res.ok and res.improvement_pct is not None and res.improvement_pct >= 3.0:
+      # v2.40: kapi cift kosullu — GORELI iyilesme YETMEZ, MUTLAK taban sart.
+        # %35 ustu holdout MAPE "kullanilabilir model" degildir; kapi kapali
+        # kalir, sistem Mod B'de durur ve sebep karneye yazilir.
+        HIBRIT_MUTLAK_TAVAN = 35.0
+        if (res.ok and res.improvement_pct is not None
+                and res.improvement_pct >= 3.0
+                and res.holdout_mape_pct is not None
+                and res.holdout_mape_pct <= HIBRIT_MUTLAK_TAVAN):
             sonuc["mode"] = "C"
             hyb = res
             gate = {
@@ -123,8 +130,11 @@ def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
         else:
             gate = {
                 "denendi": True, "gecti": False,
-                "sebep": res.error or f"iyilesme %{res.improvement_pct} < 3",
-            }
+"sebep": (res.error
+                          or (f"holdout MAPE %{res.holdout_mape_pct:.0f} > "
+                              f"%{HIBRIT_MUTLAK_TAVAN:.0f} tavanı"
+                              if (res.holdout_mape_pct or 0) > HIBRIT_MUTLAK_TAVAN
+                              else f"iyilesme %{res.improvement_pct} < 3")),            }
     with tenant_baglami(tenant_id) as s:
         s.execute(text(
             "UPDATE calibrations SET active=false WHERE plant_id=:p"),

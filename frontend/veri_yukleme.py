@@ -243,13 +243,18 @@ def _santral_bilgi_formu() -> dict | None:
             step=0.01, format="%.4f", key="ing_lat",
         )
     with col2:
-        timezone_options = [
-            "Europe/Istanbul", "UTC", "Europe/London", "Europe/Berlin",
-            "America/New_York", "America/Los_Angeles",
-            "Asia/Tokyo", "Australia/Sydney", "Australia/Darwin",
-        ]
+        # v2.42: TUM IANA saat dilimleri — sik kullanilanlar en ustte
+        import zoneinfo
+        _sik = ["Europe/Istanbul", "UTC",
+                "Etc/GMT+5", "Etc/GMT+6", "Etc/GMT+7", "Etc/GMT+8",
+                "America/New_York", "America/Chicago", "America/Denver",
+                "America/Los_Angeles", "Asia/Kolkata", "Europe/Berlin",
+                "Europe/London", "Asia/Tokyo", "Australia/Sydney"]
+        _hepsi = sorted(zoneinfo.available_timezones() - set(_sik))
+        timezone_options = _sik + _hepsi
         default_tz = saved.get("timezone", "Europe/Istanbul")
-        tz_index = timezone_options.index(default_tz) if default_tz in timezone_options else 0
+        tz_index = (timezone_options.index(default_tz)
+                    if default_tz in timezone_options else 0)
         timezone = st.selectbox(
             "Saat dilimi (dosyadaki zamanlar)",
             options=timezone_options,
@@ -264,8 +269,16 @@ def _santral_bilgi_formu() -> dict | None:
             value=float(saved.get("longitude", 32.49)),
             step=0.01, format="%.4f", key="ing_lon",
         )
+        # v2.39-C: yarimkure bekcisi — tz ile boylam isareti celisirse uyar
+    _bati = timezone.startswith(("America", "Etc/GMT+"))
+    if _bati and longitude > 0:
+        st.warning("Batı yarımküre saat dilimi + pozitif boylam: ABD "
+                   "sahaları için boylam EKSİ olmalı (ör. −73,25).")
+    elif (not _bati) and timezone != "UTC" and longitude < 0:
+        st.warning("Doğu yarımküre saat dilimi + negatif boylam — kontrol edin.")
     
     return {
+        "name": _ad.strip(),
         "capacity_kwp": capacity,
         "ac_limit_kw": ac_limit_kw,
         "latitude": latitude,
@@ -329,14 +342,14 @@ def _adim1_santral() -> dict | None:
         try:
             pid = plant_service.olustur(
                 auth["tenant_id"],
-                name=plant_ctx_form.get("name", "Yeni santral"),
-                lat=plant_ctx_form["latitude"],
+name=(plant_ctx_form.get("name") or "Yeni santral"),                lat=plant_ctx_form["latitude"],
                 lon=plant_ctx_form["longitude"],
                 tz=plant_ctx_form["timezone"],
                 capacity_kwp=plant_ctx_form["capacity_kwp"],
                 ac_limit_kw=plant_ctx_form.get("ac_limit_kw"),
             )
             st.session_state.aktif_plant_id = pid
+            st.session_state.pop("aktif_santral_ad", None)  # v2.39-B: seçici yeni listeyle kurulsun
             st.session_state.plant_context = plant_ctx_form
             st.rerun()
         except Exception as e:
@@ -356,7 +369,7 @@ def _format_karti(pv) -> None:
           <span style="background:rgba(30,158,106,0.12);color:{SUCCESS};
                        padding:4px 10px;border-radius:999px;font-size:11px;
                        font-weight:600;letter-spacing:0.05em">
-            ✓ '{pv.matched_template}' SABLONU ILE ESLESTI
+            ✓ '{pv.matched_template}' ✓ Dosya yapısı tanındı — önceki yüklemeden öğrenilen kalıpla okundu
           </span>
         </div>
         """
@@ -828,6 +841,12 @@ def _render_mod_b_scada() -> None:
     # Santral bilgisi formu
     st.markdown("<div style='margin-top:24px'></div>", unsafe_allow_html=True)
     plant_ctx = _adim1_santral()
+    # v2.39-C: santral olusmadan Onayla cizilmez (NoneType kazasi)
+    if plant_ctx is None:
+        st.caption("Önce santral bilgisini doldurup Devam'a basın — "
+                   "doğrulama, santral oluştuktan sonra açılır.")
+        return
+    
     
     # --- BOLUM 2: Onayla + Karne ---
     

@@ -26,8 +26,37 @@ def santral_secici(auth: dict) -> dict | None:
         )
         return None
     adlar = {p["name"]: str(p["id"]) for p in ps}
+    YENI = "＋ Yeni santral ekle"                     # v2.39-B
+    secenekler = list(adlar) + [YENI]
+    varsayilan = 0
+    aktif = str(st.session_state.get("aktif_plant_id") or "")
+    if aktif in adlar.values():
+        varsayilan = list(adlar.values()).index(aktif)
     sec = st.sidebar.selectbox(
-        "Santral", list(adlar), key="aktif_santral_ad"
+        "Santral", secenekler, index=varsayilan, key="aktif_santral_ad"
     )
+    if sec == YENI:
+        # yeni-santral modu: aktif kaydi birak, Veri Yukleme Adim 1'e
+        st.session_state.aktif_plant_id = None
+        st.session_state.active_page = "veri_yukleme"
+        return None
     st.session_state.aktif_plant_id = adlar[sec]
+    # v2.42: santral yonetimi — silme, ad-onayli (kalici islem)
+    secili = next(p for p in ps if str(p["id"]) == adlar[sec])
+    with st.sidebar.expander("Santral yönetimi"):
+        st.caption(f"'{secili['name']}' ve TÜM verisi kalıcı silinir "
+                   "(SCADA, kalibrasyon, tahminler, raporlar).")
+        onay = st.text_input("Silmek için santral adını yazın",
+                             key=f"sil_onay_{secili['id']}")
+        if st.button("Santralı kalıcı sil", type="secondary",
+                     use_container_width=True,
+                     disabled=(onay.strip() != secili["name"]),
+                     key=f"sil_btn_{secili['id']}"):
+            rapor = plant_service.sil(auth["tenant_id"], secili["id"])
+            st.session_state.aktif_plant_id = None
+            st.session_state.pop("aktif_santral_ad", None)
+            st.toast(f"Silindi — {sum(rapor.values())} kayıt.")
+            st.rerun()
+    st.session_state.aktif_plant_id = adlar[sec]
+    return secili
     return next(p for p in ps if str(p["id"]) == adlar[sec])
