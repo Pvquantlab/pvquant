@@ -123,5 +123,5 @@ def login_ekrani() -> None:
             st.markdown(Path("assets/kvkk_aydinlatma.md")
                         .read_text(encoding="utf-8"))
         st.markdown('<div class="pv-login-footer">PVQuant · '
-                    '<span class="pv-login-durum">● Sistem sağlıklı'
+                    '<span class="pv-login-durum">● Tüm sistemler çalışır durumda'
                     '</span> · © 2026</div>', unsafe_allow_html=True)

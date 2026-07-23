@@ -254,3 +254,44 @@ section[data-testid="stForm"]{background:var(--kart);
   font-variant-numeric:tabular-nums}
 .pv-kunye-foto{width:220px;height:130px;object-fit:cover;border-radius:10px;
   border:1px solid rgba(255,255,255,.12)}
+  /* ============ v2.45: TİPOGRAFİ ÖLÇEĞİ — tek sistem, altı basamak ============
+   H1 23/display · KPI 30/mono · ara-değer 16/mono · gövde 14 · yardımcı 12 · etiket 11
+   Kural: iki komşu metin arasında en az bir basamak fark; aynı basamakta iki ses olmaz. */
+html, body, [class*="css"] { line-height: 1.55; }
+
+.pv-eyebrow { font-size: 11px; letter-spacing: .12em; }
+.pv-mikro   { font-size: 12px; line-height: 1.5; }
+.pv-olcum   { font-size: 30px; line-height: 1.15; letter-spacing: -.015em; }
+.pv-birim   { font-size: 12.5px; }
+.pv-kpi .pv-mikro { margin-top: 6px; }
+.pv-kart    { padding: var(--s6); }
+
+/* koyu yüzeylerde ikincil metin: sönükten okunura */
+.pv-hero-kunye, .pv-hava-gun, .pv-hava-kwh,
+.pv-kunye-cip-ad, .pv-kunye-birim, .pv-login-kanit-not { color: #A7B8C2; }
+.pv-hero-icgoru { color: #D3DDE3; font-size: 13.5px; }
+
+/* açık yüzeylerde ikincil metin: bir tık koyu (kontrast ~9:1) */
+:root { --ikincil: #525E6B; }
+
+/* durum deseni: DEĞER güçlü, BAĞLAM sakin — aynı renk, farklı ağırlık */
+.pv-olcum-kucuk { font-size: 17px; }
+.pv-saglik-izgara .pv-mikro { font-weight: 400; }
+.pv-saglik-izgara [style*="--negatif"].pv-mikro,
+.pv-saglik-izgara .pv-mikro[style*="--negatif"] { font-weight: 500; font-size: 12px; }
+
+/* çipler: kanıt satırı biraz daha görünür */
+.pv-rozet-notr { font-size: 12px; padding: 4px 12px; }
+/* v2.47: Claude Design uyarlamasi — olcek + manset rakamlar display aile */
+.pv-olcum { font-family: var(--f-display); font-size: 34px; }
+.pv-serit-sayi { font-family: var(--f-display); font-size: 38px; }
+.pv-kunye-buyuk { font-family: var(--f-display); font-size: 34px; }
+.pv-hero-ad { font-size: 26px; }
+.pv-hava-derece { font-size: 22px; }
+.pv-eyebrow { letter-spacing: .14em; }
+.pv-kpi { min-height: 118px; }
+/* v2.47-B: yukleyici karti (Veri Yukleme mock uyarlamasi) */
+[data-testid="stFileUploader"] section {
+  border: 1px dashed var(--cizgi); border-radius: var(--r-kart);
+  background: var(--kart); padding: var(--s5); }
+[data-testid="stFileUploader"] section:hover { border-color: var(--marka); }

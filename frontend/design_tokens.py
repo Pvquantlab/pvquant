@@ -109,7 +109,7 @@ MENU_ITEMS = [
     ("raporlar",     "Raporlar"),
 ]
 
-PRIVACY_TEXT = "Veriniz yalnızca hesabınızda saklanır; dilediğinizde dışa aktarır ya da silersiniz."
+PRIVACY_TEXT = "Verinizin sahibi sizsiniz. Yalnızca sizin hesabınızda tutulur; dilediğiniz an dışa aktarabilir veya kalıcı olarak silebilirsiniz."
 ORG_NAME     = "Anadolu Enerji A.S."
 ORG_PLAN     = "Kurumsal plan"
 ORG_INITIAL  = "A"

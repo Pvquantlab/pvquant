@@ -148,7 +148,7 @@ else:
 # ============================================================
 # 7) FOOTER
 # ============================================================
-_STATUS = "Sistem sağlıklı"
+_STATUS = "Tüm sistemler çalışır durumda"
 st.markdown(
     f'<div class="pvq-footer">'
     f'  <div>{APP_VERSION}</div>'

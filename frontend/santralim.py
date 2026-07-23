@@ -72,22 +72,25 @@ def render_santralim() -> None:
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         deger = sayi_tr(o.bugun_kwh, 0) if o.bugun_kwh is not None else "—"
-        ui_kit.kpi("BUGÜNKÜ TAHMİNİ ÜRETİM", deger, "kWh",
+        ui_kit.kpi("BUGÜN — TAHMİNİ ÜRETİM", deger, "kWh",
                    "kalibrasyon bekleniyor" if o.mode is None
-                   else "gün sonuna kadar")
+                   else "gün sonu itibarıyla · P50")
     with c2:
         deger = sayi_tr(o.yarin_kwh, 0) if o.yarin_kwh is not None else "—"
-        ui_kit.kpi("YARIN BEKLENEN", deger, "kWh", o.yarin_hava)
+        ui_kit.kpi("YARIN — BEKLENEN ÜRETİM", deger, "kWh", o.yarin_hava)
     with c3:
         deger = sayi_tr(o.hafta_mwh, 1) if o.hafta_mwh is not None else "—"
-        ui_kit.kpi("BU HAFTAKİ TOPLAM", deger, "MWh",
-                   "7 günlük tahmin" if o.hafta_mwh is not None else "")
+        ui_kit.kpi("7 GÜNLÜK TOPLAM — TAHMİN", deger, "MWh",
+                   "kayan 7 gün · P50" if o.hafta_mwh is not None else "")
     with c4:
+        _mod_alt = ((f"Mod {o.mode} · " if o.mode else "") +
+                    (_model_alt_zengin(o) if o.model_alt
+                     else "Kalibrasyon sayfasından başlayın"))
         ui_kit.kpi(
             "MODEL DURUMU",
             ui_kit.MOD_KISA[o.mode],
             "",
-            _model_alt_zengin(o) if o.model_alt else "Kalibrasyon sayfasından başlayın",
+            _mod_alt,
             durum="pozitif" if o.mode is not None and o.mode != "A" else "notr",
         )
 
@@ -95,6 +98,29 @@ def render_santralim() -> None:
     # foto varsa gercek fotograf (assets/santral/{id}.jpg), yoksa sematik SVG
     from pathlib import Path
     _foto = Path("assets/santral") / f"{santral['id']}.jpg"
+    # ----- v2.43: kanit cipi + operasyon satiri (K1: veri yoksa cip yok)
+    from pvquant.services import forecast_service as _fs
+    _cipler = []
+    try:
+        _sk = _fs.skill_gecmisi(auth["tenant_id"], santral["id"], gun=120)
+        if len(_sk):
+            _k0 = _sk[_sk["horizon_bucket"] == "0-24"]
+            if len(_k0):
+                _n = int(_k0["date"].nunique())
+                _cipler.append(f"Saatlik MAPE (0-24s, {_n} gün): "
+                               f"%{sayi_tr(float(_k0['mape'].mean()), 1)}")
+    except Exception:
+        pass
+    try:
+        _run1 = _fs.kosu_gecmisi(auth["tenant_id"], santral["id"], n=1)
+        if _run1:
+            _cipler.append(f"Son tahmin koşusu {_run1[0].run_at:%d.%m %H:%M}")
+    except Exception:
+        pass
+    if _cipler:
+        st.markdown('<div style="margin-top:12px">' + " ".join(
+            f'<span class="pv-rozet pv-rozet-notr">{c}</span>'
+            for c in _cipler) + "</div>", unsafe_allow_html=True)
     ui_kit.kunye_karti(santral, o.mode,
                        foto_yolu=str(_foto) if _foto.exists() else None)
 
@@ -114,13 +140,15 @@ def render_santralim() -> None:
                       else [None] * len(o.saatler))
             st.plotly_chart(
                 ui_kit.gun_isigi_egrisi(
-                    o.saatler, gercek, o.tahmin_kw, o.simdi_idx
+                    o.saatler, gercek, o.tahmin_kw, o.simdi_idx,
+                    p10_kw=getattr(o, "p10_kw", None),
+                    p90_kw=getattr(o, "p90_kw", None)
                 ),
                 use_container_width=True,
                 config={"displayModeBar": False},
             )
             if not o.gercek_kw or all(v is None for v in o.gercek_kw):
-                st.caption("bugünün gerçekleşeni için güncel SCADA gerekli")
+                st.caption("Gerçekleşen üretimi görmek için bugünün SCADA verisini yükleyin.")
         else:
             ui_kit.bos_durum(
                 "📊", "Gün Işığı Eğrisi henüz hazır değil",
@@ -163,7 +191,7 @@ def _model_alt_zengin(o):
     import ui_kit
     parcalar = []
     if o.sapma_pct is not None:
-        parcalar.append(f"yıllık sapma %{sayi_tr(abs(o.sapma_pct), 2)}")
+        parcalar.append(f"yıllık enerji sapması %{sayi_tr(abs(o.sapma_pct), 2)}")
     if o.kalibrasyon_tarihi is not None:
         parcalar.append(f"son kalibrasyon {ui_kit.tarih_tr(o.kalibrasyon_tarihi)}")
     return " · ".join(parcalar) if parcalar else o.model_alt

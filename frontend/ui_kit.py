@@ -85,19 +85,33 @@ def tema_uygula(fig: go.Figure, yukseklik: int = 300) -> go.Figure:
     return fig
 
 
-def gun_isigi_egrisi(saat, gercek_kw, tahmin_kw, simdi_idx) -> go.Figure:
+def gun_isigi_egrisi(saat, gercek_kw, tahmin_kw, simdi_idx,
+                     p10_kw=None, p90_kw=None) -> go.Figure:
     """IMZA 1. gercek: amber dolgulu; tahmin: yesil dolgulu kesikli;
     simdi: dikey cizgi. v2.34 K-3: lejant + kW ekseni.
     v2.37: tahmin egrisine gun-isigi dolgusu (canlilik, durust yolla)."""
     fig = go.Figure()
+    # v2.43: P10-P90 bandi — sektor dili ana sayfada
+    if p10_kw and p90_kw and any(v is not None for v in p10_kw):
+        fig.add_scatter(x=saat, y=p90_kw, mode="lines",
+            line=dict(width=0), hoverinfo="skip", showlegend=False)
+        fig.add_scatter(x=saat, y=p10_kw, mode="lines",
+            line=dict(width=0), fill="tonexty",
+            fillcolor="rgba(15,110,86,.10)", name="P10-P90",
+            hoverinfo="skip")
     fig.add_scatter(x=saat[:simdi_idx+1], y=gercek_kw[:simdi_idx+1],
         mode="lines", line=dict(color="#D97706", width=2.2),
         fill="tozeroy", fillcolor="rgba(245,158,11,.12)",
         name="Gerçekleşen")
+    # v2.43: tam-gun P50 plani her zaman cizilir — gerceklesen yoksa da
+    # sayfa "plan"i gosterir; gelince "plana karsi gercek" okumasi dogar.
+    fig.add_scatter(x=saat, y=tahmin_kw,
+        mode="lines", line=dict(color="#0E6B54", width=1.6, dash="dot"),
+        name="Tahmin (P50)")
     fig.add_scatter(x=saat[simdi_idx:], y=tahmin_kw[simdi_idx:],
-        mode="lines", line=dict(color="#0E6B54", width=2, dash="dot"),
+        mode="lines", line=dict(color="#0E6B54", width=0.1),
         fill="tozeroy", fillcolor="rgba(14,107,84,.10)",
-        name="Tahmin (kalan saatler)")
+        showlegend=False, hoverinfo="skip")
     # v2.21: kategori ekseninde add_vline string x kabul etmez —
     # add_shape + add_annotation, x = kategori KONUMU (indeks)
     fig.add_shape(type="line",
@@ -111,8 +125,10 @@ def gun_isigi_egrisi(saat, gercek_kw, tahmin_kw, simdi_idx) -> go.Figure:
     fig.update_layout(showlegend=True, legend=dict(
         orientation="h", x=0, y=1.12, yanchor="bottom",
         font=dict(family="JetBrains Mono", size=11)))
-    fig.update_yaxes(title_text="kW",
+    fig.update_yaxes(title_text="kW",       
         title_font=dict(family="JetBrains Mono", size=11))
+    fig.update_xaxes(tickvals=list(saat)[::2])       # v2.47: saat etiketi seyrelt
+    fig.update_yaxes(tickformat="~s", nticks=5)      # v2.47: 20k bicimi, az izgara
     return fig
 
 
@@ -124,7 +140,8 @@ def yedi_gun_bar(gunler, mwh, bugun_idx) -> go.Figure:
     fig = go.Figure(go.Bar(x=gunler, y=mwh, marker_color=renk,
         text=[f"{v:.1f}".replace(".", ",") for v in mwh],
         textposition="outside",
-        textfont=dict(family="JetBrains Mono", size=10)))
+        textfont=dict(family="JetBrains Mono", size=12)))
+    fig.update_yaxes(nticks=5)                       # v2.47
     return tema_uygula(fig, 260)
 
 
@@ -140,8 +157,8 @@ def hero(santral: dict, mod, sapma, icgoru, hava: list):
     icgoru_html = (f'<div class="pv-hero-icgoru">{icgoru}</div>'
                    if icgoru else "")
     # v2.34 K-2: rozetteki yuzde YILLIK enerji sapmasidir
-    rozet = (f'<span class="pv-rozet pv-rozet-hero">{MOD_KISA[mod]}'
-             + (f' — yıllık sapma %{abs(sapma):.2f}'.replace(".", ",")
+    rozet = (f'<span class="pv-rozet pv-rozet-hero">{MOD_KISA[mod]}{" model" if mod else ""}'
+             + (f' — yıllık enerji sapması %{abs(sapma):.2f}'.replace(".", ",")
                 if sapma is not None else "") + "</span>")
     konum = santral.get("konum_metni", "")
     mw_tr = f"{santral['capacity_kwp']/1000:.1f}".replace(".", ",")  # O-1
@@ -230,7 +247,8 @@ def kunye_karti(santral: dict, mod, foto_yolu: str | None = None):
 # --- 5.8 Veri sağlığı kartı ---
 def saglik_karti(son_yukleme, islenen_saat: int, anomali: int):
     import datetime as _dt
-    saat_tr = f"{islenen_saat:,}".replace(",", ".")   # sayi_tr dili
+    saat_tr = f"{islenen_saat:,}".replace(",", ".")   # sayi_tr dili 
+    anomali_tr = f"{anomali:,}".replace(",", ".")   # v2.44 binlik
     # v2.34 O-2: bayatlik esikleri — <=7 notr, 8-30 vurgu, 31+ negatif.
     tarih_stil, yas_html = "", ""
     if son_yukleme is not None:
@@ -239,11 +257,11 @@ def saglik_karti(son_yukleme, islenen_saat: int, anomali: int):
         if yas > 30:
             tarih_stil = ' style="color:var(--negatif)"'
             yas_html = (f'<div class="pv-mikro" style="color:var(--negatif)">'
-                        f'{yas} gün önce — karne bu pencerede kalır</div>')
+                        f'Veri akışı {yas} gündür kesik — karne son veri tarihine kadar hesaplanır.</div>')
         elif yas > 7:
             tarih_stil = ' style="color:var(--vurgu)"'
             yas_html = (f'<div class="pv-mikro" style="color:var(--vurgu)">'
-                        f'{yas} gün önce</div>')
+                        f'Son veri {yas} gün önce</div>')
     html = ('<div class="pv-kart">'
       '<div class="pv-eyebrow">VERİ SAĞLIĞI</div>'
       '<div class="pv-saglik-izgara">'
@@ -252,11 +270,11 @@ def saglik_karti(son_yukleme, islenen_saat: int, anomali: int):
       f'{yas_html}</div>'
       '<div><div class="pv-mikro">İşlenen veri</div>'
       f'<div class="pv-olcum-kucuk">{saat_tr} saat</div></div>'
-      '<div><div class="pv-mikro">Bayraklanan anomali</div>'
-      f'<div class="pv-olcum-kucuk">{anomali}</div>'
-      '<div class="pv-mikro">bayraklandı, silinmedi</div></div></div>'
-      '<div class="pv-mikro">Daha güncel veri, daha isabetli '
-      'kalibrasyon demektir.</div></div>')
+      '<div><div class="pv-mikro">Anomali tespiti</div>'
+      f'<div class="pv-olcum-kucuk">{anomali_tr}</div>'
+      '<div class="pv-mikro">satır işaretlendi · ham veri değiştirilmedi</div></div></div>'
+      '<div class="pv-mikro">Model,en '
+      'güncel veriniz kadar isabetlidir.</div></div>')
     st.markdown(html, unsafe_allow_html=True)
 
 
@@ -343,7 +361,15 @@ def sayfaya_git(sayfa_adi: str) -> None:
     bu repo onu kullanmaz."""
     st.session_state.active_page = sayfa_adi
     st.rerun()
-
+# v2.48: AC tavani referansi — plato, kirpmanin kanitidir
+    if ac_limit_kw:
+        _ac = f"{ac_limit_kw:,.0f}".replace(",", ".")
+        fig.add_hline(y=ac_limit_kw, line_dash="dot", line_width=1,
+                      line_color="#9CA3AF",
+                      annotation_text=f"AC tavanı {_ac} kW",
+                      annotation_position="top left",
+                      annotation_font=dict(family="JetBrains Mono",
+                                           size=10, color="#6B7280"))
 
 def tahmin_grafigi(df_yerel, mode: str):
     """Ana tahmin grafigi: p50 cizgi (marka); Mod C'de P10-P90 dolgu
@@ -363,8 +389,9 @@ def tahmin_grafigi(df_yerel, mode: str):
                         name="P10-P90", hoverinfo="skip")
     fig.add_scatter(x=df_yerel.index, y=df_yerel["p50_kw"],
                     mode="lines", name="P50",
-                    line=dict(color="#0F6E56", width=2.2))
+                    line=dict(color="#0F6E56", width=2.2))    
     fig = tema_uygula(fig, yukseklik=320)
+    fig.update_yaxes(tickformat="~s", nticks=5)      # v2.47-B: 20k bicimi
     # v2.16 F3: eksen Türkçe — 3+ günde günlük etiket, kısa ufukta saat
     gunler = sorted({ts.date() for ts in df_yerel.index})
     if len(gunler) <= 2:

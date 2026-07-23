@@ -36,6 +36,8 @@ class GununOzeti:
     saatler: list = field(default_factory=list)
     gercek_kw: list = field(default_factory=list)
     tahmin_kw: list = field(default_factory=list)
+    p10_kw: list = field(default_factory=list)     # v2.43 bant
+    p90_kw: list = field(default_factory=list)     # v2.43 bant
     simdi_idx: int = 0
     gunler: list = field(default_factory=list)
     gunluk_mwh: list = field(default_factory=list)
@@ -60,8 +62,13 @@ def _icgoru_sec(o: GununOzeti, tenant_id, santral) -> Optional[str]:
 
     if o.gunler and o.gunluk_mwh and len(o.gunler) == len(o.gunluk_mwh):
         max_idx = max(range(len(o.gunluk_mwh)), key=lambda i: o.gunluk_mwh[i])
-        return (f"Önümüzdeki 7 günün en güçlü günü {o.gunler[max_idx]} "
-                f"({o.gunluk_mwh[max_idx]:.1f} MWh).")
+        _GUN_TAM = {"PAZ": "Pazar", "PZT": "Pazartesi", "SAL": "Salı",
+                    "ÇAR": "Çarşamba", "PER": "Perşembe", "CUM": "Cuma",
+                    "CMT": "Cumartesi", "BUGÜN": "bugün", "YARIN": "yarın"}
+        _gun = _GUN_TAM.get(o.gunler[max_idx], o.gunler[max_idx])
+        _mwh = f"{o.gunluk_mwh[max_idx]:.1f}".replace(".", ",")   # K4
+        return (f"7 günlük ufukta en yüksek üretim {_gun} bekleniyor: "
+                f"{_mwh} MWh.")
 
     if o.hafta_mwh is not None:
         with tenant_baglami(tenant_id) as s:
@@ -158,6 +165,12 @@ def gunun_ozeti(tenant_id: str, santral: dict) -> GununOzeti:
             bugun_df = df_yerel.loc[bugun_mask]
             o.saatler = [ts.strftime("%H:%M") for ts in bugun_df.index]
             o.tahmin_kw = [float(v) for v in bugun_df["p50_kw"].values]
+            # v2.43: bant ana sayfaya — kosuda p10/p90 varsa listelenir
+            if "p10_kw" in bugun_df.columns and bugun_df["p10_kw"].notna().any():
+                o.p10_kw = [None if v != v else float(v)
+                            for v in bugun_df["p10_kw"].values]
+                o.p90_kw = [None if v != v else float(v)
+                            for v in bugun_df["p90_kw"].values]
 
             scada = scada_oku(tenant_id, santral["id"])
             if len(scada) > 0:
@@ -203,7 +216,8 @@ def gunun_ozeti(tenant_id: str, santral: dict) -> GununOzeti:
                     break
 
         if len(o.hava_3gun) >= 2:
-            o.yarin_hava = f'{o.hava_3gun[1]["kwhm2"]:.1f} kWh/m² ışınım'
+            _kwhm2 = f'{o.hava_3gun[1]["kwhm2"]:.1f}'.replace(".", ",")  # K4
+            o.yarin_hava = f'{_kwhm2} kWh/m² ışınım'
 
     # ---------- 4) Icgoru ----------
     o.icgoru_cumlesi = _icgoru_sec(o, tenant_id, santral)
