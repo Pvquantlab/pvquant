@@ -123,14 +123,23 @@ def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
         _taban_ok = ((_w <= HIBRIT_MUTLAK_TAVAN_WMAPE) if _w is not None
                      else (res.holdout_mape_pct is not None
                            and res.holdout_mape_pct <= HIBRIT_MUTLAK_TAVAN))
-        if (res.ok and res.improvement_pct is not None
-                and res.improvement_pct >= _cfg.gate_min_improvement_pct
+        # v2.51-C: goreli esik de WMAPE diline tasinir. Ayrisma vakasi #1
+        # kaniti: ayni holdout'ta MAPE-iyilesmesi %-43 derken WMAPE
+        # hibriti 0,23p onde gormustu — kapi karari yanlis dilden geliyordu.
+        _pw = getattr(res, "physics_wmape_pct", None)
+        _w_iyi = (float((_pw - _w) / _pw * 100.0)
+                  if (_w is not None and _pw is not None and _pw > 0) else None)
+        _iyi_etkin = _w_iyi if _w_iyi is not None else res.improvement_pct
+        _iyi_dil = "WMAPE" if _w_iyi is not None else "MAPE (yedek yol)"
+        if (res.ok and _iyi_etkin is not None
+                and _iyi_etkin >= _cfg.gate_min_improvement_pct
                 and _taban_ok):
             sonuc["mode"] = "C"
             hyb = res
             gate = {
                 "denendi": True, "gecti": True,
                 "iyilesme_pct": res.improvement_pct,
+                "wmape_iyilesme_pct": _w_iyi,
                 "holdout_mape": res.holdout_mape_pct,
                 "fizik_mape": res.physics_mape_pct,
                 "holdout_wmape": _w,
@@ -140,6 +149,7 @@ def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
             gate = {
                 "denendi": True, "gecti": False,
                 "iyilesme_pct": res.improvement_pct,
+                "wmape_iyilesme_pct": _w_iyi,
                 "holdout_mape": res.holdout_mape_pct,
                 "fizik_mape": res.physics_mape_pct,
                 "holdout_wmape": _w,
@@ -148,7 +158,10 @@ def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
                           or (f"holdout WMAPE %{_wtxt} > "
                               f"%{HIBRIT_MUTLAK_TAVAN_WMAPE:.0f} tavanı (WMAPE)"
                               if not _taban_ok
-                              else f"iyilesme %{res.improvement_pct:.1f} < {_cfg.gate_min_improvement_pct:g}")),            }
+                              else (f"iyilesme %{_iyi_etkin:.1f} < "
+                                    f"{_cfg.gate_min_improvement_pct:g} ({_iyi_dil})"
+                                    if _iyi_etkin is not None
+                                    else "iyilesme hesaplanamadi"))),            }
     with tenant_baglami(tenant_id) as s:
         s.execute(text(
             "UPDATE calibrations SET active=false WHERE plant_id=:p"),
