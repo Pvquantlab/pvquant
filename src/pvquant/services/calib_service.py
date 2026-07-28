@@ -114,15 +114,17 @@ def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
       # v2.40: kapi cift kosullu — GORELI iyilesme YETMEZ, MUTLAK taban sart.
         # %35 ustu holdout MAPE "kullanilabilir model" degildir; kapi kapali
         # kalir, sistem Mod B'de durur ve sebep karneye yazilir.
-        HIBRIT_MUTLAK_TAVAN = 35.0            # eski MAPE tavani — yedek yol
-        HIBRIT_MUTLAK_TAVAN_WMAPE = 25.0      # v2.51-B: birincil kapi (WMAPE)
+        from pvquant.config import get_settings as _gs
+        _cfg = _gs()
+        HIBRIT_MUTLAK_TAVAN = _cfg.gate_mape_ceiling          # v2.53: ayardan
+        HIBRIT_MUTLAK_TAVAN_WMAPE = _cfg.gate_wmape_ceiling   # v2.53: ayardan
         _w = getattr(res, "holdout_wmape_pct", None)
         _wtxt = f"{_w:.1f}" if _w is not None else "yok"
         _taban_ok = ((_w <= HIBRIT_MUTLAK_TAVAN_WMAPE) if _w is not None
                      else (res.holdout_mape_pct is not None
                            and res.holdout_mape_pct <= HIBRIT_MUTLAK_TAVAN))
         if (res.ok and res.improvement_pct is not None
-                and res.improvement_pct >= 3.0
+                and res.improvement_pct >= _cfg.gate_min_improvement_pct
                 and _taban_ok):
             sonuc["mode"] = "C"
             hyb = res
@@ -146,7 +148,7 @@ def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
                           or (f"holdout WMAPE %{_wtxt} > "
                               f"%{HIBRIT_MUTLAK_TAVAN_WMAPE:.0f} tavanı (WMAPE)"
                               if not _taban_ok
-                              else f"iyilesme %{res.improvement_pct:.1f} < 3")),            }
+                              else f"iyilesme %{res.improvement_pct:.1f} < {_cfg.gate_min_improvement_pct:g}")),            }
     with tenant_baglami(tenant_id) as s:
         s.execute(text(
             "UPDATE calibrations SET active=false WHERE plant_id=:p"),

@@ -43,6 +43,13 @@ class Settings(BaseSettings):
     # ----- Cache -----
     cache_ttl_seconds: int = 3600
 
+    # ----- Kapi ve bekci esikleri (v2.53 — Sozlesme 9) -----
+    gate_wmape_ceiling: float = 25.0        # hibrit mutlak taban (birincil, WMAPE)
+    gate_mape_ceiling: float = 35.0         # eski MAPE tavani — yedek yol
+    gate_min_improvement_pct: float = 3.0   # goreli kapi esigi
+    guard_capacity_tolerance: float = 0.20  # v2.41 kapasite-celiski bekcisi
+    min_valid_hours_calibration: int = 1500 # Mod B icin asgari saglam saat
+
     @property
     def cors_origins_list(self) -> list[str]:
         """CORS origins virgülle ayrılmış stringi listeye çevirir."""

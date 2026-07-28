@@ -823,7 +823,9 @@ def _render_mod_b_scada() -> None:
             try:
                 _p = plant_service.getir(_auth["tenant_id"], _pid)
                 _kayit_kw = float((_p or {}).get("capacity_kwp") or 0)
-                if _kayit_kw > 0 and abs(_dosya_kw - _kayit_kw) / _kayit_kw > 0.20:
+                from pvquant.config import get_settings as _vgs
+                _tol = _vgs().guard_capacity_tolerance
+                if _kayit_kw > 0 and abs(_dosya_kw - _kayit_kw) / _kayit_kw > _tol:
                     st.warning(
                         f"Dosya adı ~{_m.group(1)} MW kapasiteye işaret ediyor; "
                         f"seçili santralın kaydı {_kayit_kw:.0f} kWp. "

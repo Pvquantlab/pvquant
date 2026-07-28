@@ -68,19 +68,19 @@ def santral_secici(auth: dict) -> dict | None:
         return None
     st.session_state.aktif_plant_id = adlar[sec]
     secili = next(p for p in ps if str(p["id"]) == adlar[sec])
-    # v2.42: santral yonetimi — silme, ad-onayli (kalici islem)
+    # v2.54 (eski v2.42): santral yonetimi — ARSIVLEME, ad-onayli
     with st.sidebar.expander("Santral yönetimi"):
-        st.caption(f"'{secili['name']}' ve TÜM verisi kalıcı silinir "
-                   "(SCADA, kalibrasyon, tahminler, raporlar).")
-        onay = st.text_input("Silmek için santral adını yazın",
+        st.caption(f"'{secili['name']}' arşivlenir: listelerden kalkar, "
+                   "verisi (SCADA, kalibrasyon, tahminler) denetim için saklanır.")
+        onay = st.text_input("Arşivlemek için santral adını yazın",
                              key=f"sil_onay_{secili['id']}")
-        if st.button("Santralı kalıcı sil", type="secondary",
+        if st.button("Santralı arşivle", type="secondary",
                      use_container_width=True,
                      disabled=(onay.strip() != secili["name"]),
                      key=f"sil_btn_{secili['id']}"):
-            rapor = plant_service.sil(auth["tenant_id"], secili["id"])
+            plant_service.sil(auth["tenant_id"], secili["id"])
             st.session_state.aktif_plant_id = None
             st.session_state.pop("aktif_santral_ad", None)
-            st.toast(f"Silindi — {sum(rapor.values())} kayıt.")
+            st.toast("Arşivlendi — verisi saklanıyor.")
             st.rerun()
     return secili

@@ -29,7 +29,8 @@ from .registry import ModelRegistry
 
 MINI_CAPACITY_THRESHOLD_KWP = 300  # Bunun altı "mini", üstü "medium/large"
 MIN_SCADA_MONTHS_FOR_CALIBRATION = 3
-MIN_VALID_HOURS_FOR_CALIBRATION = 1500
+from pvquant.config import get_settings as _gs
+MIN_VALID_HOURS_FOR_CALIBRATION = _gs().min_valid_hours_calibration  # v2.53: ayardan
 
 
 # ============================================================

@@ -8,7 +8,7 @@ def listele(tenant_id):
     with tenant_baglami(tenant_id) as s:
         return [dict(r._mapping) for r in s.execute(text(
             "SELECT id,name,capacity_kwp,lat,lon,tz,tilt,azimuth,panel_tech"
-            " FROM plants ORDER BY name"))]
+            " FROM plants WHERE NOT archived ORDER BY name"))]  # v2.54
 
 
 def olustur(tenant_id, *, name, lat, lon, tz, capacity_kwp,
@@ -41,19 +41,11 @@ def guncelle(tenant_id, plant_id, **alanlar):
         s.execute(text(f"UPDATE plants SET {sset} WHERE id=:_p"),
                   {**kume, "_p": plant_id})
 def sil(tenant_id, plant_id) -> dict:
-    """Santrali ve TUM bagimli verisini siler (RLS icinde, kalici).
-    Sidebar vaadinin ('dilediginizde silersiniz') teknik karsiligi.
-    Donen sozluk: tablo -> silinen satir sayisi (kanit)."""
-    sira = ["forecast_values", "forecast_runs", "skill_daily",
-            "alerts", "ml_models", "calibrations",
-            "ingestion_batches", "scada_hourly"]
-    rapor = {}
+    """v2.54 (Sozlesme 4): SILMEZ, ARSIVLER. Tarih yerinde kalir.
+    Santral listelerden ve koşulardan cekilir; olcum/kalibrasyon/tahmin
+    gecmisi denetim icin durur. Geri alma: archived=false."""
     with tenant_baglami(tenant_id) as s:
-        for tablo in sira:
-            r = s.execute(text(
-                f"DELETE FROM {tablo} WHERE plant_id=:p"), {"p": plant_id})
-            rapor[tablo] = r.rowcount
-        r = s.execute(text("DELETE FROM plants WHERE id=:p"),
-                      {"p": plant_id})
-        rapor["plants"] = r.rowcount
-    return rapor
+        r = s.execute(text(
+            "UPDATE plants SET archived=true WHERE id=:p AND NOT archived"),
+            {"p": plant_id})
+    return {"archived": r.rowcount}
