@@ -55,6 +55,8 @@ class Settings(BaseSettings):
     worker_hour_alarm: int = 4              # v2.56: alarm taramasi (UTC)
     worker_day_calibration: int = 1         # v2.56: aylik kalibrasyon gunu
     worker_hour_calibration: int = 3        # v2.56: aylik kalibrasyon saati (UTC)
+    meteo_retry_attempts: int = 3           # B-19: gecici hatada deneme sayisi
+    meteo_retry_base_seconds: float = 2.0   # B-19: bekleme tabani (2,6,18 sn)
 
     @property
     def cors_origins_list(self) -> list[str]:

@@ -92,6 +92,29 @@ class OpenMeteoClient:
         self.base_url = base_url or settings.meteo_base_url
         self.timeout = timeout or settings.meteo_timeout
 
+    def _istekle(self, client: "httpx.Client", url: str, params: dict) -> "httpx.Response":
+        """B-19 (Kutu 13): 3 deneme, artan bekleme. Yalniz GECICI hatalarda
+        tekrar: 429, 5xx, ag kopmasi. Diger 4xx (kalici) aninda firlar."""
+        import time
+        from pvquant.config import get_settings as _gs
+        _cfg = _gs()
+        son_hata: Exception | None = None
+        for deneme in range(_cfg.meteo_retry_attempts):
+            try:
+                r = client.get(url, params=params)
+                r.raise_for_status()
+                return r
+            except httpx.HTTPStatusError as e:
+                kod = e.response.status_code
+                if kod != 429 and kod < 500:
+                    raise                       # kalici 4xx — beklemek anlamsiz
+                son_hata = e
+            except httpx.RequestError as e:
+                son_hata = e                    # ag kopmasi — gecici sayilir
+            if deneme < _cfg.meteo_retry_attempts - 1:
+                time.sleep(_cfg.meteo_retry_base_seconds * (3 ** deneme))
+        raise son_hata  # denemeler bitti; mevcut except bloklari yakalar
+
     def get_forecast(
         self,
         latitude: float,
@@ -132,8 +155,7 @@ class OpenMeteoClient:
         url = f"{self.base_url}/forecast"
         try:
             with httpx.Client(timeout=self.timeout) as client:
-                response = client.get(url, params=params)
-                response.raise_for_status()
+                response = self._istekle(client, url, params)   # B-19
                 data = response.json()
         except httpx.HTTPStatusError as e:
             raise OpenMeteoError(f"API hata: {e.response.status_code} {e.response.text}") from e
@@ -177,8 +199,7 @@ class OpenMeteoClient:
         }
         try:
             with httpx.Client(timeout=self.timeout) as client:
-                response = client.get(archive_url, params=params)
-                response.raise_for_status()
+                response = self._istekle(client, archive_url, params)   # B-19
                 data = response.json()
         except httpx.HTTPStatusError as e:
             raise OpenMeteoError(f"Arşiv API hata: {e.response.status_code}") from e
