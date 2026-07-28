@@ -32,8 +32,10 @@ class HybridUIResult:
     error: Optional[str] = None
     model: Any = None                          # HybridResidualModel
     holdout_mape_pct: Optional[float] = None   # hibrit
+    holdout_wmape_pct: Optional[float] = None  # v2.51-B: hibrit agirlikli
     holdout_rmse_kw: Optional[float] = None    # hibrit
     physics_mape_pct: Optional[float] = None   # aynı holdout'ta fizik
+    physics_wmape_pct: Optional[float] = None  # v2.51-B: fizik agirlikli
     improvement_pct: Optional[float] = None    # (fizik-hibrit)/fizik*100
     holdout_hours: Optional[int] = None
     trained_at: Optional[datetime] = None
@@ -44,6 +46,8 @@ def session_ozeti(res: HybridUIResult) -> dict:
     """st.session_state['hybrid_report'] içeriği — raporlar.py bunu okur."""
     return {
         "holdout_mape_pct": res.holdout_mape_pct,
+        "holdout_wmape_pct": res.holdout_wmape_pct,
+        "physics_wmape_pct": res.physics_wmape_pct,
         "holdout_rmse_kw": res.holdout_rmse_kw,
         "physics_mape_pct": res.physics_mape_pct,
         "improvement_pct": res.improvement_pct,
@@ -136,7 +140,9 @@ def run_hybrid_training(
 
         r = dict(getattr(model, "_training_report", {}) or {})
         hib = r.get("mape_pct_hybrid_holdout")
+        whib = r.get("wmape_pct_hybrid_holdout")
         fiz = r.get("mape_pct_physics_holdout")
+        wfiz = r.get("wmape_pct_physics_holdout")
         iyilesme = None
         if hib is not None and fiz not in (None, 0):
             iyilesme = (fiz - hib) / fiz * 100.0
@@ -144,6 +150,8 @@ def run_hybrid_training(
         return HybridUIResult(
             ok=True, model=model,
             holdout_mape_pct=hib,
+            holdout_wmape_pct=whib,
+            physics_wmape_pct=wfiz,
             holdout_rmse_kw=r.get("rmse_kw_hybrid_holdout"),
             physics_mape_pct=fiz,
             improvement_pct=iyilesme,

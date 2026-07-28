@@ -75,7 +75,7 @@ def _once_sonra(cal) -> None:
         once=q.get("deviation_before_pct"),
         sonra=sonra,
         eyebrow="YILLIK ENERJİ SAPMASI",
-        mikro_not=("kalibrasyonun düzelttiği sistematik sapmadır; "
+        mikro_not=("kalibrasyonun düzelttiği sistematik sapmadır (kalibrasyon dönemi); "
                    "saatlik tahmin isabeti Doğruluk sayfasında ölçülür."),
     )
 

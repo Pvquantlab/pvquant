@@ -106,7 +106,8 @@ def render_tahminler() -> None:
     g = yerel.head(UFUKLAR[ufuk or "7g"])                      # (9) onayli
 
     # ana grafik — bant kurali bilesenin icinde (Mod C + veri varsa)
-    st.plotly_chart(ui_kit.tahmin_grafigi(g, mode),
+    st.plotly_chart(ui_kit.tahmin_grafigi(
+        g, mode, ac_limit_kw=santral.get("ac_limit_kw")),
                     use_container_width=True,
                     config={"displayModeBar": False})
     if mode != "C":

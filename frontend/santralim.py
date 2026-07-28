@@ -142,7 +142,8 @@ def render_santralim() -> None:
                 ui_kit.gun_isigi_egrisi(
                     o.saatler, gercek, o.tahmin_kw, o.simdi_idx,
                     p10_kw=getattr(o, "p10_kw", None),
-                    p90_kw=getattr(o, "p90_kw", None)
+                    p90_kw=getattr(o, "p90_kw", None),
+                    ac_limit_kw=santral.get("ac_limit_kw")
                 ),
                 use_container_width=True,
                 config={"displayModeBar": False},

@@ -37,7 +37,7 @@ def mod_rozet(mode: str | None, sapma_pct: float | None = None):
             '<span class="pv-rozet pv-rozet-notr">Kalibre değil</span>',
             unsafe_allow_html=True)
         return
-    ek = (f" · yıllık sapma %{abs(sapma_pct):.2f}".replace(".", ",")
+    ek = (f" · yıllık enerji sapması %{abs(sapma_pct):.2f}".replace(".", ",")
           if sapma_pct is not None else "")
     st.markdown(f'<span class="pv-rozet pv-rozet-marka">'
                 f'{MOD_METIN[mode]}{ek}</span>', unsafe_allow_html=True)
@@ -73,20 +73,24 @@ def adimlar(aktif: int,
 
 # --- 5.5 Grafik teması ---
 def tema_uygula(fig: go.Figure, yukseklik: int = 300) -> go.Figure:
+    koyu = bool(st.session_state.get("koyu_tema"))          # v2.50
+    izgara = "#1E2A36" if koyu else "#EDF0F3"
+    yazi = "#A7B8C2" if koyu else "#6B7280"
     fig.update_layout(
         height=yukseklik, margin=dict(l=8, r=8, t=8, b=8),
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(family="Inter", size=12, color="#6B7280"),
+        font=dict(family="Inter", size=12, color=yazi),
         showlegend=False, hovermode="x unified",
         xaxis=dict(gridcolor="rgba(0,0,0,0)",
                    tickfont=dict(family="JetBrains Mono", size=11)),
-        yaxis=dict(gridcolor="#EDF0F3", zeroline=False,
+        yaxis=dict(gridcolor=izgara, zeroline=False,
                    tickfont=dict(family="JetBrains Mono", size=11)))
     return fig
 
 
 def gun_isigi_egrisi(saat, gercek_kw, tahmin_kw, simdi_idx,
-                     p10_kw=None, p90_kw=None) -> go.Figure:
+                     p10_kw=None, p90_kw=None,
+                     ac_limit_kw=None) -> go.Figure:
     """IMZA 1. gercek: amber dolgulu; tahmin: yesil dolgulu kesikli;
     simdi: dikey cizgi. v2.34 K-3: lejant + kW ekseni.
     v2.37: tahmin egrisine gun-isigi dolgusu (canlilik, durust yolla)."""
@@ -121,11 +125,19 @@ def gun_isigi_egrisi(saat, gercek_kw, tahmin_kw, simdi_idx,
     fig.add_annotation(x=simdi_idx, y=1.04, xref="x", yref="paper",
         text=f"şimdi · {saat[simdi_idx]}", showarrow=False,
         font=dict(family="JetBrains Mono", size=10, color="#6B7280"))
+    if ac_limit_kw:                                     # v2.48
+        _ac = f"{ac_limit_kw:,.0f}".replace(",", ".")
+        fig.add_hline(y=ac_limit_kw, line_dash="dot", line_width=1,
+                      line_color="#9CA3AF",
+                      annotation_text=f"AC tavanı {_ac} kW",
+                      annotation_position="top left",
+                      annotation_font=dict(family="JetBrains Mono",
+                                           size=10, color="#6B7280"))
     fig = tema_uygula(fig)
     fig.update_layout(showlegend=True, legend=dict(
         orientation="h", x=0, y=1.12, yanchor="bottom",
         font=dict(family="JetBrains Mono", size=11)))
-    fig.update_yaxes(title_text="kW",       
+    fig.update_yaxes(title_text="kW",
         title_font=dict(family="JetBrains Mono", size=11))
     fig.update_xaxes(tickvals=list(saat)[::2])       # v2.47: saat etiketi seyrelt
     fig.update_yaxes(tickformat="~s", nticks=5)      # v2.47: 20k bicimi, az izgara
@@ -247,7 +259,7 @@ def kunye_karti(santral: dict, mod, foto_yolu: str | None = None):
 # --- 5.8 Veri sağlığı kartı ---
 def saglik_karti(son_yukleme, islenen_saat: int, anomali: int):
     import datetime as _dt
-    saat_tr = f"{islenen_saat:,}".replace(",", ".")   # sayi_tr dili 
+    saat_tr = f"{islenen_saat:,}".replace(",", ".")   # sayi_tr dili
     anomali_tr = f"{anomali:,}".replace(",", ".")   # v2.44 binlik
     # v2.34 O-2: bayatlik esikleri — <=7 notr, 8-30 vurgu, 31+ negatif.
     tarih_stil, yas_html = "", ""
@@ -273,7 +285,7 @@ def saglik_karti(son_yukleme, islenen_saat: int, anomali: int):
       '<div><div class="pv-mikro">Anomali tespiti</div>'
       f'<div class="pv-olcum-kucuk">{anomali_tr}</div>'
       '<div class="pv-mikro">satır işaretlendi · ham veri değiştirilmedi</div></div></div>'
-      '<div class="pv-mikro">Model,en '
+      '<div class="pv-mikro">Model, en '
       'güncel veriniz kadar isabetlidir.</div></div>')
     st.markdown(html, unsafe_allow_html=True)
 
@@ -361,17 +373,9 @@ def sayfaya_git(sayfa_adi: str) -> None:
     bu repo onu kullanmaz."""
     st.session_state.active_page = sayfa_adi
     st.rerun()
-# v2.48: AC tavani referansi — plato, kirpmanin kanitidir
-    if ac_limit_kw:
-        _ac = f"{ac_limit_kw:,.0f}".replace(",", ".")
-        fig.add_hline(y=ac_limit_kw, line_dash="dot", line_width=1,
-                      line_color="#9CA3AF",
-                      annotation_text=f"AC tavanı {_ac} kW",
-                      annotation_position="top left",
-                      annotation_font=dict(family="JetBrains Mono",
-                                           size=10, color="#6B7280"))
 
-def tahmin_grafigi(df_yerel, mode: str):
+
+def tahmin_grafigi(df_yerel, mode: str, ac_limit_kw=None):
     """Ana tahmin grafigi: p50 cizgi (marka); Mod C'de P10-P90 dolgu
     bandi (marka %14 opak). Bant verisi yoksa (eski kosu) bant cizilmez
     — K1: sayfa caption'i sebebini soyler."""
@@ -389,7 +393,16 @@ def tahmin_grafigi(df_yerel, mode: str):
                         name="P10-P90", hoverinfo="skip")
     fig.add_scatter(x=df_yerel.index, y=df_yerel["p50_kw"],
                     mode="lines", name="P50",
-                    line=dict(color="#0F6E56", width=2.2))    
+                    line=dict(color="#0F6E56", width=2.2))
+    # v2.48: AC tavani referansi — plato, kirpmanin kanitidir
+    if ac_limit_kw:
+        _ac = f"{ac_limit_kw:,.0f}".replace(",", ".")
+        fig.add_hline(y=ac_limit_kw, line_dash="dot", line_width=1,
+                      line_color="#9CA3AF",
+                      annotation_text=f"AC tavanı {_ac} kW",
+                      annotation_position="top left",
+                      annotation_font=dict(family="JetBrains Mono",
+                                           size=10, color="#6B7280"))
     fig = tema_uygula(fig, yukseklik=320)
     fig.update_yaxes(tickformat="~s", nticks=5)      # v2.47-B: 20k bicimi
     # v2.16 F3: eksen Türkçe — 3+ günde günlük etiket, kısa ufukta saat
@@ -404,6 +417,7 @@ def tahmin_grafigi(df_yerel, mode: str):
         tt = [f"{d.day} {AYLAR_KISA_TR[d.month - 1]}" for d in gunler]
         fig.update_xaxes(tickvals=tv, ticktext=tt)
     return fig
+
 
 # Anayasa Adim 5 — kovali skill grafigi
 _KOVA_STIL = {                       # Anayasa §6.5 renk duzeni

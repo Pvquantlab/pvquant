@@ -269,7 +269,16 @@ def _santral_bilgi_formu() -> dict | None:
             value=float(saved.get("longitude", 32.49)),
             step=0.01, format="%.4f", key="ing_lon",
         )
-        # v2.39-C: yarimkure bekcisi — tz ile boylam isareti celisirse uyar
+        # v2.52: panel tipi kunyenin parcasidir — kWp neyse bu da o.
+    panel_tipi = st.selectbox(
+        "Panel tipi",
+        ["Tek yüzlü (monofacial)", "Çift yüzlü (bifacial)"],
+        index=(1 if saved.get("panel_tech") == "bifacial" else 0),
+        help="Çift yüzlü panelde arka yüz katkısı (BG·BF·A) modele girer; "
+             "BG değerini kalibrasyon sahanızın verisinden öğrenir.")
+    _panel_tech = "bifacial" if "bifacial" in panel_tipi else "monofacial"
+
+    # v2.39-C: yarimkure bekcisi — tz ile boylam isareti celisirse uyar
     _bati = timezone.startswith(("America", "Etc/GMT+"))
     if _bati and longitude > 0:
         st.warning("Batı yarımküre saat dilimi + pozitif boylam: ABD "
@@ -279,6 +288,7 @@ def _santral_bilgi_formu() -> dict | None:
     
     return {
         "name": _ad.strip(),
+        "panel_tech": _panel_tech,
         "capacity_kwp": capacity,
         "ac_limit_kw": ac_limit_kw,
         "latitude": latitude,
@@ -342,7 +352,8 @@ def _adim1_santral() -> dict | None:
         try:
             pid = plant_service.olustur(
                 auth["tenant_id"],
-name=(plant_ctx_form.get("name") or "Yeni santral"),                lat=plant_ctx_form["latitude"],
+name=(plant_ctx_form.get("name") or "Yeni santral"),
+                panel_tech=plant_ctx_form.get("panel_tech") or "monofacial",                lat=plant_ctx_form["latitude"],
                 lon=plant_ctx_form["longitude"],
                 tz=plant_ctx_form["timezone"],
                 capacity_kwp=plant_ctx_form["capacity_kwp"],
@@ -794,6 +805,31 @@ def _render_mod_b_scada() -> None:
             tmp.write(uploaded.getvalue())
             st.session_state.scada_tmp_path = tmp.name
         st.session_state.scada_filename = uploaded.name
+
+    # --- v2.41 bekcileri: uyarir, ENGELLEMEZ ---
+    import re as _re
+    _ad = st.session_state.get("scada_filename", "") or ""
+    if _ad.upper().startswith(("DA_", "HA4_")):
+        st.warning(
+            "Bu dosya adı bir tahmin dosyasına işaret ediyor (DA_/HA4_ öneki). "
+            "Kalibrasyon, SCADA üretim verisi bekler — tahmin verisiyle sonuçlar "
+            "anlamsız olur. Emin değilseniz Actual/SCADA dosyanızı seçin.")
+    _m = _re.search(r"(\d+(?:\.\d+)?)MW", _ad, _re.IGNORECASE)
+    if _m:
+        _dosya_kw = float(_m.group(1)) * 1000.0
+        _auth = st.session_state.get("auth")
+        _pid = st.session_state.get("aktif_plant_id")
+        if _auth and _pid:
+            try:
+                _p = plant_service.getir(_auth["tenant_id"], _pid)
+                _kayit_kw = float((_p or {}).get("capacity_kwp") or 0)
+                if _kayit_kw > 0 and abs(_dosya_kw - _kayit_kw) / _kayit_kw > 0.20:
+                    st.warning(
+                        f"Dosya adı ~{_m.group(1)} MW kapasiteye işaret ediyor; "
+                        f"seçili santralın kaydı {_kayit_kw:.0f} kWp. "
+                        "Yanlış santrala yüklüyor olabilirsiniz.")
+            except Exception:
+                pass
 
     tmp_path = st.session_state.scada_tmp_path
     

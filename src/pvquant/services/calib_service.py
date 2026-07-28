@@ -114,11 +114,16 @@ def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
       # v2.40: kapi cift kosullu — GORELI iyilesme YETMEZ, MUTLAK taban sart.
         # %35 ustu holdout MAPE "kullanilabilir model" degildir; kapi kapali
         # kalir, sistem Mod B'de durur ve sebep karneye yazilir.
-        HIBRIT_MUTLAK_TAVAN = 35.0
+        HIBRIT_MUTLAK_TAVAN = 35.0            # eski MAPE tavani — yedek yol
+        HIBRIT_MUTLAK_TAVAN_WMAPE = 25.0      # v2.51-B: birincil kapi (WMAPE)
+        _w = getattr(res, "holdout_wmape_pct", None)
+        _wtxt = f"{_w:.1f}" if _w is not None else "yok"
+        _taban_ok = ((_w <= HIBRIT_MUTLAK_TAVAN_WMAPE) if _w is not None
+                     else (res.holdout_mape_pct is not None
+                           and res.holdout_mape_pct <= HIBRIT_MUTLAK_TAVAN))
         if (res.ok and res.improvement_pct is not None
                 and res.improvement_pct >= 3.0
-                and res.holdout_mape_pct is not None
-                and res.holdout_mape_pct <= HIBRIT_MUTLAK_TAVAN):
+                and _taban_ok):
             sonuc["mode"] = "C"
             hyb = res
             gate = {
@@ -126,15 +131,22 @@ def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
                 "iyilesme_pct": res.improvement_pct,
                 "holdout_mape": res.holdout_mape_pct,
                 "fizik_mape": res.physics_mape_pct,
+                "holdout_wmape": _w,
+                "fizik_wmape": getattr(res, "physics_wmape_pct", None),
             }
         else:
             gate = {
                 "denendi": True, "gecti": False,
-"sebep": (res.error
-                          or (f"holdout MAPE %{res.holdout_mape_pct:.0f} > "
-                              f"%{HIBRIT_MUTLAK_TAVAN:.0f} tavanı"
-                              if (res.holdout_mape_pct or 0) > HIBRIT_MUTLAK_TAVAN
-                              else f"iyilesme %{res.improvement_pct} < 3")),            }
+                "iyilesme_pct": res.improvement_pct,
+                "holdout_mape": res.holdout_mape_pct,
+                "fizik_mape": res.physics_mape_pct,
+                "holdout_wmape": _w,
+                "fizik_wmape": getattr(res, "physics_wmape_pct", None),
+                "sebep": (res.error
+                          or (f"holdout WMAPE %{_wtxt} > "
+                              f"%{HIBRIT_MUTLAK_TAVAN_WMAPE:.0f} tavanı (WMAPE)"
+                              if not _taban_ok
+                              else f"iyilesme %{res.improvement_pct:.1f} < 3")),            }
     with tenant_baglami(tenant_id) as s:
         s.execute(text(
             "UPDATE calibrations SET active=false WHERE plant_id=:p"),
@@ -148,6 +160,8 @@ def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
              "q": json.dumps({
                  "mape_pct":            getattr(cr.validation_after,  "mape_pct", None),
                  "mape_before_pct":     getattr(cr.validation_before, "mape_pct", None),
+                 "wmape_pct":           getattr(cr.validation_after,  "wmape_pct", None),
+                 "wmape_before_pct":    getattr(cr.validation_before, "wmape_pct", None),
                  "deviation_pct":       getattr(cr.validation_after,  "total_deviation_pct", None),
                  "deviation_before_pct":getattr(cr.validation_before, "total_deviation_pct", None),
                  "warnings": sonuc["warnings"],

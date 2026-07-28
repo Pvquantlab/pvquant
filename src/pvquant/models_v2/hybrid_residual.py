@@ -646,11 +646,21 @@ class HybridResidualModel:
         def _rmse(pred: pd.Series, act: pd.Series) -> float:
             return float(np.sqrt(np.mean((pred - act) ** 2)))
 
+        def _wmape(pred: pd.Series, act: pd.Series) -> float:
+            # v2.51-B: agirlikli MAPE = sum|hata|/sum(gercek); maskesiz —
+            # tan saatleri dogal agirligiyla dahil, payda sismesi yok.
+            s = float(act.sum())
+            if s <= 0:
+                return float("nan")
+            return float(np.abs(pred - act).sum() / s * 100)
+
         report = {
             "holdout_hours": float(len(X_va)),
             "train_hours": float(len(X_tr)),
             "mape_pct_physics_holdout": _mape(p_phys_va, actual_va),
             "mape_pct_hybrid_holdout": _mape(p_hyb_va, actual_va),
+            "wmape_pct_physics_holdout": _wmape(p_phys_va, actual_va),
+            "wmape_pct_hybrid_holdout": _wmape(p_hyb_va, actual_va),
             "rmse_kw_physics_holdout": _rmse(p_phys_va, actual_va),
             "rmse_kw_hybrid_holdout": _rmse(p_hyb_va, actual_va),
             "best_iteration": float(self._booster.best_iteration_ or 0),

@@ -228,16 +228,17 @@ def forecast_7day(
     # --- 2. GHI → DHI/DNI (Erbs) ---
     decomposed = irradiance.decompose_ghi_erbs(
         ghi=meteo.ghi,
-        solar_zenith=solpos["zenith"],
+        # v2.51 (R-3): apparent_zenith — atmosferik kirilma dahil
+        solar_zenith=solpos["apparent_zenith"],
         times=times,
     )
 
     # --- 3. POA (Perez) ---
-    dni_extra, airmass = irradiance.extra_radiation_and_airmass(times, solpos["zenith"])
+    dni_extra, airmass = irradiance.extra_radiation_and_airmass(times, solpos["apparent_zenith"])
     poa = irradiance.transpose_perez(
         surface_tilt=plant.tilt,
         surface_azimuth=plant.azimuth,
-        solar_zenith=solpos["zenith"],
+        solar_zenith=solpos["apparent_zenith"],
         solar_azimuth=solpos["azimuth"],
         dni=decomposed["dni"],
         ghi=decomposed["ghi"],
@@ -375,6 +376,9 @@ def forecast_7day(
         }
     )
 
+    # v2.51 (R-4): gunluk toplam indeks tz gunundedir (genelde UTC).
+    # PV gece ~0 urettigi icin yerel-gun kaymasi enerji toplamini etkilemez
+    # (denetim raporu, bilinçli kabul).
     daily_energy = energy_kwh.resample("1D").sum()
     total = float(energy_kwh.sum())
 

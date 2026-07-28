@@ -12,7 +12,7 @@ def listele(tenant_id):
 
 
 def olustur(tenant_id, *, name, lat, lon, tz, capacity_kwp,
-            tilt=None, azimuth=None, panel_tech="bifacial",
+            tilt=None, azimuth=None, panel_tech="monofacial",
             ac_limit_kw=None):
     with tenant_baglami(tenant_id) as s:
         return str(s.execute(text(

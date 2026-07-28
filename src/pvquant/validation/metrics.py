@@ -133,11 +133,15 @@ class ValidationReport:
     total_predicted: float
     total_actual: float
     total_deviation_pct: float
+    # v2.51: agirlikli MAPE = sum|hata|/sum(gercek). Kucuk paydalara
+    # dayanikli; MAPE ile yan yana raporlanir, esikler DEGISMEDI.
+    wmape_pct: float = float("nan")
 
     def __str__(self) -> str:
         return (
             f"ValidationReport(\n"
             f"  MAPE        = {self.mape_pct:.2f} %\n"
+            f"  WMAPE       = {self.wmape_pct:.2f} %\n"
             f"  RMSE        = {self.rmse:.2f} (predicted units)\n"
             f"  NMBE        = {self.nmbe_pct:+.2f} %\n"
             f"  Toplam fark = {self.total_deviation_pct:+.2f} %\n"
@@ -178,4 +182,6 @@ def validate(
         total_predicted=total_pred,
         total_actual=total_act,
         total_deviation_pct=float(total_dev),
+        wmape_pct=(float(np.sum(np.abs(pred - act)) / total_act * 100)
+                   if total_act > 0 else float("nan")),
     )

@@ -4,6 +4,27 @@ from __future__ import annotations
 import streamlit as st
 from pvquant.services import auth_service, plant_service
 
+# v2.50 Faz-1: koyu tema gecersiz kilma seti — yalniz anahtar acikken
+# basilir. Isik mimarisi korunur: gece yuzeyleri (hero/kunye/sidebar)
+# sabit kalir, kanvas/kartlar token takasiyla doner.
+_KOYU_CSS = """<style>
+:root{ --zemin:#0E1822; --kart:#14202E; --cizgi:#22303C;
+  --metin:#E8EDF1; --ikincil:#A7B8C2; --soluk:#7C8798;
+  --marka-acik:#0F3A30; --vurgu-acik:#3A2E14;
+  --pozitif-acik:#0F3A30; --negatif-acik:#3A1720;
+  --golge:none; --golge-hover:none; }
+.stApp{ background:var(--zemin); }
+.stApp p, .stApp label, .stApp span, .stApp li,
+.stApp h1,.stApp h2,.stApp h3 { color:var(--metin); }
+.pv-banner-bilgi{ background:#12263A; color:#9EC5FF; border-color:#1E3A5C; }
+.pv-banner-hata{ background:#3A1720; color:#FF9EA8; border-color:#5C1E2A; }
+.pv-uyari-kart{ background:#2E2410; border-color:#4A3A14; }
+.pv-uyari-kart .pv-uyari-metin{ color:var(--metin); }
+.pv-bos{ background:#121D28; border-color:#22303C; }
+.pv-kart, .pv-kart div { color: var(--metin); }
+.pv-adimlar { color: var(--soluk); }
+</style>"""
+
 
 def giris_bekcisi() -> dict | None:
     """Her sayfanin EN BASINDA cagrilir. Girilmemisse login formu cizer
@@ -19,6 +40,11 @@ def giris_bekcisi() -> dict | None:
 def santral_secici(auth: dict) -> dict | None:
     """Sidebar'da santral listesi; secilen SANTRAL DICT'ini doner.
     Session'da yalniz plant_id tutulur — profil verisi DEGIL (Kural)."""
+    # v2.50: tema anahtari — her kimlikli durumda calisir (yeni-santral
+    # modu ve santralsiz kiraci dahil), o yuzden fonksiyonun BASINDA.
+    if st.sidebar.toggle("Koyu tema", key="koyu_tema"):
+        st.markdown(_KOYU_CSS, unsafe_allow_html=True)
+
     ps = plant_service.listele(auth["tenant_id"])
     if not ps:
         st.sidebar.info(
@@ -41,8 +67,8 @@ def santral_secici(auth: dict) -> dict | None:
         st.session_state.active_page = "veri_yukleme"
         return None
     st.session_state.aktif_plant_id = adlar[sec]
-    # v2.42: santral yonetimi — silme, ad-onayli (kalici islem)
     secili = next(p for p in ps if str(p["id"]) == adlar[sec])
+    # v2.42: santral yonetimi — silme, ad-onayli (kalici islem)
     with st.sidebar.expander("Santral yönetimi"):
         st.caption(f"'{secili['name']}' ve TÜM verisi kalıcı silinir "
                    "(SCADA, kalibrasyon, tahminler, raporlar).")
@@ -57,6 +83,4 @@ def santral_secici(auth: dict) -> dict | None:
             st.session_state.pop("aktif_santral_ad", None)
             st.toast(f"Silindi — {sum(rapor.values())} kayıt.")
             st.rerun()
-    st.session_state.aktif_plant_id = adlar[sec]
     return secili
-    return next(p for p in ps if str(p["id"]) == adlar[sec])

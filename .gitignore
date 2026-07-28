@@ -100,3 +100,4 @@ outputs/
 
 # P4-B yedekler - müşteri verisi + hash'ler, ASLA commit'e girmemeli
 yedekler/
+*.bak
