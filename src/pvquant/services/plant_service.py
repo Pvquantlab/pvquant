@@ -14,6 +14,23 @@ def listele(tenant_id):
 def olustur(tenant_id, *, name, lat, lon, tz, capacity_kwp,
             tilt=None, azimuth=None, panel_tech="monofacial",
             ac_limit_kw=None):
+    # v2.49: ad, tenant kapsaminda benzersiz (DB kisiti plants_tenant_name_uq).
+    # Kisita carpan kayit, kullaniciya insan diliyle doner — olu uc yok.
+    from sqlalchemy.exc import IntegrityError
+    try:
+        return _olustur_ic(tenant_id, name=name, lat=lat, lon=lon, tz=tz,
+                           capacity_kwp=capacity_kwp, tilt=tilt, azimuth=azimuth,
+                           panel_tech=panel_tech, ac_limit_kw=ac_limit_kw)
+    except IntegrityError as e:
+        if "plants_tenant_name_uq" in str(e.orig):
+            raise ValueError(
+                f"'{name}' adinda bir santral zaten var. "
+                "Farkli bir ad secin veya mevcut santrali kullanin.") from e
+        raise
+
+
+def _olustur_ic(tenant_id, *, name, lat, lon, tz, capacity_kwp,
+                tilt, azimuth, panel_tech, ac_limit_kw):
     with tenant_baglami(tenant_id) as s:
         return str(s.execute(text(
             "INSERT INTO plants(tenant_id,name,lat,lon,tz,capacity_kwp,"
