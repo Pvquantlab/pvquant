@@ -52,11 +52,14 @@ def _bulduklarimiz(cal, santral: dict, ozet: dict) -> None:
         satirlar.append(("BG (bifacial kazanç)",
                          sayi_tr(p["bg"], 3) if p.get("bg") is not None else "—"))
     satirlar += [
-        # v2.16 F6: None -> 0° yalan soylerdi; "model buldu" durust
+        # v2.46: "model buldu" da tam durust degildi — model fit ETMIYOR
+        # (fit_tilt/fit_azimuth kapali); bos kayitta varsayilan kullanilir.
+        # Kart, gercekte kullanilani soyler. Fit acilirsa: v2.46-B.
         ("Eğim / Azimut",
-         "— (model buldu)" if santral.get("tilt") is None
+         "20° / 180° (varsayılan)" if santral.get("tilt") is None
          else f"{sayi_tr(santral['tilt'], 0)}° / "
-              f"{sayi_tr(santral.get('azimuth') or 0, 0)}°"),
+              f"{sayi_tr(santral.get('azimuth') or 180, 0)}°"
+              " (santral kaydı)"),
         ("Geçerli saat", sayi_tr(cal.n_valid_hours or ozet["valid_saat"], 0)),
         ("Kalibrasyon tarihi", ui_kit.tarih_tr(cal.created_at)),
     ]
