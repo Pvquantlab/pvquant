@@ -115,7 +115,7 @@ def _yol_karti(baslik, ikon, sapma_txt, maddeler, buton_metni, onerilen, on_clic
     st.button(
         buton_metni,
         key=f"yol_{on_click_action}",
-        use_container_width=True,
+        width="stretch",
         type="primary" if onerilen else "secondary",
         on_click=lambda: st.session_state.update({"veri_yukleme_mod": on_click_action}),
     )
@@ -347,7 +347,7 @@ def _adim1_santral() -> dict | None:
     if plant_ctx_form is None:
         return None
     # Kullanici formu doldurdu; Devam anında santral olustur
-    if st.button("Devam", type="primary", use_container_width=True,
+    if st.button("Devam", type="primary", width="stretch",
                  key="adim1_devam"):
         try:
             pid = plant_service.olustur(
@@ -534,7 +534,7 @@ def _manuel_esleme_ekrani(err: MappingFailedError, tmp_path: str) -> None:
     # Ornek satirlar (varsa) goster
     if len(err.sample_rows) > 0:
         with st.expander("Dosyadan ornek satirlar (ilk 10)", expanded=True):
-            st.dataframe(err.sample_rows, use_container_width=True, height=280)
+            st.dataframe(err.sample_rows, width="stretch", height=280)
 
     # Dropdown'lar
     kolonlar = ["(seçiniz)"] + list(err.columns)
@@ -575,7 +575,7 @@ def _manuel_esleme_ekrani(err: MappingFailedError, tmp_path: str) -> None:
 
     # Dogrulama ve devam
     if st.button("Bu eşleme ile devam et", key="manuel_devam",
-                 type="primary", use_container_width=True):
+                 type="primary", width="stretch"):
         if timestamp_col == "(seçiniz)":
             st.error("Zaman kolonu zorunludur.")
             return
@@ -874,7 +874,7 @@ def _render_mod_b_scada() -> None:
     
     # Ornek satirlar
     with st.expander("Dosyadan ornek satirlar (ilk 10)"):
-        st.dataframe(pv.sample_rows, use_container_width=True, height=280)
+        st.dataframe(pv.sample_rows, width="stretch", height=280)
     
     # Santral bilgisi formu
     st.markdown("<div style='margin-top:24px'></div>", unsafe_allow_html=True)
@@ -894,7 +894,7 @@ def _render_mod_b_scada() -> None:
         if st.button(
             "Onayla ve doğrula",
             key="ingest_onayla",
-            use_container_width=True,
+            width="stretch",
             type="primary",
         ):
             try:
@@ -924,7 +924,7 @@ def _render_mod_b_scada() -> None:
     st.markdown("<div style='margin-top:20px'></div>", unsafe_allow_html=True)
     col1, col2 = st.columns([1, 1])
     with col1:
-        if st.button("Farklı dosya seç", key="farkli_dosya", use_container_width=True):
+        if st.button("Farklı dosya seç", key="farkli_dosya", width="stretch"):
             # Gecici dosyayi temizle
             if os.path.exists(tmp_path):
                 try:
@@ -941,7 +941,7 @@ def _render_mod_b_scada() -> None:
         if st.button(
             "Kalibrasyona geç →",
             key="kalibrasyona_gec",
-            use_container_width=True,
+            width="stretch",
             type="primary",
         ):
             # ---- FAZ 2 (Fable 5 v1.4): DB'ye kalicilastir ----

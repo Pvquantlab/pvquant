@@ -145,7 +145,7 @@ def render_santralim() -> None:
                     p90_kw=getattr(o, "p90_kw", None),
                     ac_limit_kw=santral.get("ac_limit_kw")
                 ),
-                use_container_width=True,
+                width="stretch",
                 config={"displayModeBar": False},
             )
             if not o.gercek_kw or all(v is None for v in o.gercek_kw):
@@ -164,7 +164,7 @@ def render_santralim() -> None:
         if o.gunler and o.gunluk_mwh:
             st.plotly_chart(
                 ui_kit.yedi_gun_bar(o.gunler, o.gunluk_mwh, o.bugun_idx),
-                use_container_width=True,
+                width="stretch",
                 config={"displayModeBar": False},
             )
         else:

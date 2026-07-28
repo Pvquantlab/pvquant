@@ -75,7 +75,7 @@ def santral_secici(auth: dict) -> dict | None:
         onay = st.text_input("Arşivlemek için santral adını yazın",
                              key=f"sil_onay_{secili['id']}")
         if st.button("Santralı arşivle", type="secondary",
-                     use_container_width=True,
+                     width="stretch",
                      disabled=(onay.strip() != secili["name"]),
                      key=f"sil_btn_{secili['id']}"):
             plant_service.sil(auth["tenant_id"], secili["id"])

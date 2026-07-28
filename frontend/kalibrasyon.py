@@ -105,7 +105,7 @@ def _hibrit_karti(auth: dict, santral: dict, cal) -> None:
 
     # ---- KAPALI (hiç denenmedi) — sayfanın TEK birincil butonu (K5)
     if st.button("🚀 Hibritle iyileştir", type="primary",
-                 key="btn_hibrit", use_container_width=True):
+                 key="btn_hibrit", width="stretch"):
         _kalibre(auth, santral, hibrit=True)
     st.caption("Fizik + AI rezidüel. Sistematik sapmaları öğrenir; "
                "eğitim 30-60 sn sürer.")
@@ -161,7 +161,7 @@ def render_kalibrasyon() -> None:
             f"{sayi_tr(ozet['valid_saat'], 0)} geçerli saat hazır. "
             "Model kendini bu veriyle santralinize uyarlayacak.")
         if st.button("Kalibre et (Mod B)", type="primary",
-                     key="btn_kalibre", use_container_width=True):
+                     key="btn_kalibre", width="stretch"):
             _kalibre(auth, santral, hibrit=False)
         st.stop()
 

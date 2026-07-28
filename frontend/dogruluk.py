@@ -91,7 +91,7 @@ def render_dogruluk() -> None:
     piv = sk.pivot_table(index="date", columns="horizon_bucket",
                          values="mape")
     st.plotly_chart(ui_kit.skill_grafigi(piv),
-                    use_container_width=True,
+                    width="stretch",
                     config={"displayModeBar": False})
     st.caption("0-24s marka · 24-72s gri · 72s+ soluk — uzak ufuk "
                "doğal olarak daha belirsizdir.")

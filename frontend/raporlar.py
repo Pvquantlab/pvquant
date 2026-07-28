@@ -80,7 +80,7 @@ def render_raporlar() -> None:
             hazir = st.session_state.get(anahtar)
             if hazir is None:
                 if st.button("Hazırla", key=f"btn_{fmt}",
-                             type="secondary", use_container_width=True):
+                             type="secondary", width="stretch"):
                     with st.spinner("Üretiliyor…"):
                         st.session_state[anahtar] = report_service.uret(
                             tid, santral, fmt)
@@ -89,7 +89,7 @@ def render_raporlar() -> None:
                 veri, dosya_adi, uretim_ts = hazir
                 st.download_button("İndir", data=veri,
                     file_name=dosya_adi, key=f"dl_{fmt}",
-                    use_container_width=True)
+                    width="stretch")
                 st.caption(f"hazır · {uretim_ts:%H:%M}")
 
     # -------- gecmis kosular (v2.9: dosya kolonu yok)

@@ -68,7 +68,7 @@ def render_tahminler() -> None:
                 f"Model kalibre (Mod {cal.mode}). İlk 7 günlük tahmini şimdi "
                 "üretebilirsiniz; sonrakiler her sabah otomatik koşar.")
             if st.button("Tahmin üret", type="primary",
-                         key="btn_tahmin", use_container_width=True):
+                         key="btn_tahmin", width="stretch"):
                 _tahmin_uret(auth, santral)
         st.stop()
 
@@ -108,7 +108,7 @@ def render_tahminler() -> None:
     # ana grafik — bant kurali bilesenin icinde (Mod C + veri varsa)
     st.plotly_chart(ui_kit.tahmin_grafigi(
         g, mode, ac_limit_kw=santral.get("ac_limit_kw")),
-                    use_container_width=True,
+                    width="stretch",
                     config={"displayModeBar": False})
     if mode != "C":
         st.caption("Belirsizlik bandı (P10–P90) Mod C ile gelir.")

@@ -53,7 +53,7 @@ def bos_durum(ikon: str, baslik: str, aciklama: str,
       <div class="pv-bos-baslik">{baslik}</div>
       <div class="pv-bos-metin">{aciklama}</div>
     </div>''', unsafe_allow_html=True)
-    if st.button(cta_metin, type="primary", use_container_width=True):
+    if st.button(cta_metin, type="primary", width="stretch"):
         sayfaya_git(cta_sayfa)
 
 
@@ -310,7 +310,7 @@ def mono_tablo(df, kolon_adlari: dict):
     """Tum tablolar bu yoldan: mono hucre, sayilar sayi_tr'den gecmis
     METIN olarak gelir (dataframe'e ham float verme)."""
     st.dataframe(df.rename(columns=kolon_adlari),
-        use_container_width=True, hide_index=True)
+        width="stretch", hide_index=True)
 
 
 def once_sonra_seridi(once, sonra, eyebrow: str, mikro_not: str,

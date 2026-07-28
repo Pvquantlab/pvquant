@@ -79,7 +79,7 @@ def login_ekrani() -> None:
             p = st.text_input("Şifre", type="password",
                               key="login_sifre")
             gonder = st.form_submit_button("Gir", type="primary",
-                                           use_container_width=True)
+                                           width="stretch")
         if gonder:
             r = auth_service.giris(e, p)              # MANTIK: birebir
             if r is None:
@@ -105,7 +105,7 @@ def login_ekrani() -> None:
                 ks = st.text_input("Şifre", type="password",
                                    key="kayit_sifre")
                 kg = st.form_submit_button("Firmayı oluştur",
-                                           use_container_width=True)
+                                           width="stretch")
             if kg:
                 if not (f and ke and len(ks) >= 8):
                     st.markdown('<div class="pv-login-hata">Tüm alanlar '

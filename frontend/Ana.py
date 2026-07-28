@@ -68,7 +68,7 @@ with st.sidebar:
         st.button(
             label,
             key=f"nav_{key}",
-            use_container_width=True,
+            width="stretch",
             type="primary" if is_active else "secondary",
             on_click=_set_page,
             args=(key,),
@@ -102,7 +102,7 @@ with st.sidebar:
         st.session_state.clear()
 
     st.button("Çıkış", key="logout_btn", type="tertiary",
-              use_container_width=True, on_click=_cikis)
+              width="stretch", on_click=_cikis)
 
 # ============================================================
 # 5) UST BAR (Anayasa 3.2 — kanit seridi)
