@@ -50,6 +50,11 @@ class Settings(BaseSettings):
     guard_capacity_tolerance: float = 0.20  # v2.41 kapasite-celiski bekcisi
     min_valid_hours_calibration: int = 1500 # Mod B icin asgari saglam saat
     skill_naive_ratio_clip: float = 4.0     # v2.55: berrak-gok orani kelepcesi
+    worker_hour_skill: int = 0              # v2.56: gece skill (UTC, dakika 30)
+    worker_hour_forecast: int = 2           # v2.56: sabah tahmin (UTC)
+    worker_hour_alarm: int = 4              # v2.56: alarm taramasi (UTC)
+    worker_day_calibration: int = 1         # v2.56: aylik kalibrasyon gunu
+    worker_hour_calibration: int = 3        # v2.56: aylik kalibrasyon saati (UTC)
 
     @property
     def cors_origins_list(self) -> list[str]:

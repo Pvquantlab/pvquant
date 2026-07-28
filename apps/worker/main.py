@@ -125,11 +125,25 @@ def aylik_kalibrasyon(plant):
 
 
 if __name__ == "__main__":
+    import sys
+    from pvquant.config import get_settings
+    cfg = get_settings()
+    if "--once" in sys.argv:
+        # v2.56: elle tam tur — scheduler'siz, sirayla. Aylik kalibrasyon
+        # BILEREK haric (durum degistiren agir is; takvimin/kullanicinin isi).
+        print("PVQuant worker --once: tam tur basliyor…")
+        _logla("gece_skill", gece_skill)()
+        _logla("sabah_tahmin", sabah_tahmin)()
+        _logla("alarm", alarm_tara)()
+        print("Tam tur bitti — kanit jobs_log'da.")
+        raise SystemExit(0)
     sch = BlockingScheduler(timezone="UTC", job_defaults=dict(coalesce=True, misfire_grace_time=3600, max_instances=1))
-    sch.add_job(_logla("sabah_tahmin", sabah_tahmin), "cron", hour=2, minute=0)
-    sch.add_job(_logla("gece_skill", gece_skill), "cron", hour=0, minute=30)
-    sch.add_job(_logla("alarm", alarm_tara), "cron", hour=4, minute=0)
+    sch.add_job(_logla("sabah_tahmin", sabah_tahmin), "cron", hour=cfg.worker_hour_forecast, minute=0)
+    sch.add_job(_logla("gece_skill", gece_skill), "cron", hour=cfg.worker_hour_skill, minute=30)
+    sch.add_job(_logla("alarm", alarm_tara), "cron", hour=cfg.worker_hour_alarm, minute=0)
     sch.add_job(_logla("aylik_kalibrasyon", aylik_kalibrasyon),
-                "cron", day=1, hour=3, minute=0)
-    print("PVQuant worker basladi (UTC cron: 00:30 skill / 02:00 tahmin / 04:00 alarm / ay-1 03:00 kal.)")
+                "cron", day=cfg.worker_day_calibration, hour=cfg.worker_hour_calibration, minute=0)
+    print(f"PVQuant worker basladi (UTC cron: {cfg.worker_hour_skill:02d}:30 skill /"
+          f" {cfg.worker_hour_forecast:02d}:00 tahmin / {cfg.worker_hour_alarm:02d}:00 alarm /"
+          f" ay-{cfg.worker_day_calibration} {cfg.worker_hour_calibration:02d}:00 kal.)")
     sch.start()
