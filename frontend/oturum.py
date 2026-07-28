@@ -23,6 +23,84 @@ _KOYU_CSS = """<style>
 .pv-bos{ background:#121D28; border-color:#22303C; }
 .pv-kart, .pv-kart div { color: var(--metin); }
 .pv-adimlar { color: var(--soluk); }
+/* --- v2.50 Faz-2d: KAPSAYICI metin kurali — koyu zeminde tum metin
+   acik aileden. Sinif kovalamak yerine genel kural + istisnalar. --- */
+.stApp div, .stApp small, .stApp caption, .stApp td, .stApp th,
+.stApp a, .stApp b, .stApp i, .stApp em, .stApp strong{
+  color:var(--metin); }
+.pv-sayfa-alt, .pv-yol-tanim, .pv-yol-sapma-not, .pv-soluk,
+.pv-eyebrow, .stApp caption, .stCaption, div[data-testid="stCaptionContainer"]{
+  color:var(--ikincil) !important; }
+.pvq-topbar-date, .pvq-footer, .pvq-footer div{
+  color:var(--ikincil) !important; }
+.pvq-topbar-avatar-name{ color:var(--metin) !important; }
+.pvq-topbar-avatar-org{ color:var(--ikincil) !important; }
+.js-plotly-plot .legendtext{ fill:var(--ikincil) !important; }
+/* --- v2.50 Faz-2b: renksiz pv-ailesi (miras koyu kaliyordu) --- */
+.pv-sayfa-baslik, .pv-yol-baslik, .pv-serit-sayi,
+.pv-mono-satir, .pv-yol-sapma{ color:var(--metin); }
+.pv-eyebrow{ color:var(--ikincil); }
+section[data-testid="stSidebar"] [data-testid="stExpander"] *{
+  color:#C6D3DA !important; }
+/* --- v2.50 Faz-2: tablolar + formlar --- */
+.stTextInput input, .stNumberInput input, .stTextArea textarea{
+  background:var(--kart) !important; color:var(--metin) !important;
+  border-color:var(--cizgi) !important; }
+div[data-baseweb="input"], div[data-baseweb="base-input"]{
+  background:var(--kart) !important; border-color:var(--cizgi) !important; }
+div[data-baseweb="select"] > div{
+  background:var(--kart) !important; color:var(--metin) !important;
+  border-color:var(--cizgi) !important; }
+ul[data-testid="stSelectboxVirtualDropdown"], div[data-baseweb="popover"] ul{
+  background:var(--kart) !important; }
+div[data-baseweb="popover"] li{ color:var(--metin) !important; }
+.stNumberInput button{
+  background:var(--kart) !important; color:var(--ikincil) !important;
+  border-color:var(--cizgi) !important; }
+div[data-testid="stFileUploader"] section{
+  background:var(--kart) !important; border-color:var(--cizgi) !important; }
+div[data-testid="stFileUploader"] section span,
+div[data-testid="stFileUploader"] section small{ color:var(--ikincil) !important; }
+div[data-testid="stExpander"] details{
+  background:var(--kart) !important; border-color:var(--cizgi) !important; }
+div[data-testid="stExpander"] summary{ color:var(--metin) !important; }
+div[data-testid="stDataFrame"]{ background:var(--kart) !important; }
+/* --- v2.50 Faz-2c: yerlesik tablo/segment ic renkleri --- */
+div[data-testid="stDataFrame"] *,
+div[data-testid="stTable"] *{
+  color:var(--metin) !important; }
+div[data-testid="stTable"] table,
+div[data-testid="stTable"] th, div[data-testid="stTable"] td{
+  background:var(--kart) !important; border-color:var(--cizgi) !important; }
+div[data-testid="stDataFrame"] [role="columnheader"],
+div[data-testid="stTable"] th{
+  background:#0F1B27 !important; color:var(--ikincil) !important; }
+div[data-testid="stSegmentedControl"] button{
+  background:var(--kart) !important; color:var(--metin) !important;
+  border-color:var(--cizgi) !important; }
+div[data-testid="stSegmentedControl"] button[aria-checked="true"],
+div[data-testid="stSegmentedControl"] button[kind="segmented_controlActive"]{
+  background:var(--marka-acik) !important; color:#7FD1B9 !important; }
+/* v2.50-F2g: Streamlit 1.58 segment DOM'u — genis kapsam */
+div[data-testid="stButtonGroup"] button,
+div[class*="stButtonGroup"] button{
+  background:var(--kart) !important; color:var(--metin) !important;
+  border-color:var(--cizgi) !important; }
+div[data-testid="stButtonGroup"] button[aria-checked="true"],
+div[data-testid="stButtonGroup"] button[kind*="Active"],
+div[class*="stButtonGroup"] button[aria-checked="true"]{
+  background:var(--marka-acik) !important; color:#7FD1B9 !important; }
+.pv-yol-baslik, .pv-yol-maddeler li{ color:var(--metin) !important; }
+.pv-yol-tanim{ color:var(--ikincil) !important; }
+.stApp table{ background:var(--kart); color:var(--metin); }
+.stApp table th{ background:#0F1B27; color:var(--ikincil);
+  border-color:var(--cizgi) !important; }
+.stApp table td{ border-color:var(--cizgi) !important; }
+div[data-testid="stAlert"]{ background:var(--kart) !important;
+  color:var(--metin) !important; }
+.stButton button[kind="secondary"]{
+  background:transparent !important; color:var(--metin) !important;
+  border-color:var(--cizgi) !important; }
 </style>"""
 
 
@@ -42,8 +120,10 @@ def santral_secici(auth: dict) -> dict | None:
     Session'da yalniz plant_id tutulur — profil verisi DEGIL (Kural)."""
     # v2.50: tema anahtari — her kimlikli durumda calisir (yeni-santral
     # modu ve santralsiz kiraci dahil), o yuzden fonksiyonun BASINDA.
+    # v2.50-F2: toggle yalniz bayragi yonetir; CSS'i tema.kur basar
+    # (siradan bagimsiz). Ilk acilis rerun'unda kur() bayragi gorur.
     if st.sidebar.toggle("Koyu tema", key="koyu_tema"):
-        st.markdown(_KOYU_CSS, unsafe_allow_html=True)
+        st.markdown(_KOYU_CSS, unsafe_allow_html=True)  # ayni-run kapsami
 
     ps = plant_service.listele(auth["tenant_id"])
     if not ps:

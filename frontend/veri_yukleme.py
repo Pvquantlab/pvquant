@@ -61,16 +61,16 @@ _TEMPLATE_STORE = TemplateStore(
 
 def _yol_karti(baslik, ikon, sapma_txt, maddeler, buton_metni, onerilen, on_click_action):
     onerilen_rozet = ""
-    kart_style = "border:1px solid #E2E6EA;background:white"
+    kart_style = "border:1px solid var(--cizgi);background:var(--kart)"  # v2.50-F2e
     if onerilen:
         onerilen_rozet = f"""
         <div style="position:absolute;top:-11px;right:24px">
-          <span style="background:white;border:1px solid {SUCCESS};color:{SUCCESS};
+          <span style="background:var(--kart);border:1px solid {SUCCESS};color:{SUCCESS};
                        padding:4px 12px;border-radius:999px;font-size:11px;
                        font-weight:600;letter-spacing:0.05em">ONERILEN</span>
         </div>
         """
-        kart_style = f"border:2px solid {SUCCESS};background:white"
+        kart_style = f"border:2px solid {SUCCESS};background:var(--kart)"  # v2.50-F2e
 
     sapma_renk = SUCCESS if onerilen else TEXT_SECONDARY
 
@@ -93,7 +93,7 @@ def _yol_karti(baslik, ikon, sapma_txt, maddeler, buton_metni, onerilen, on_clic
             <span style="font-size:20px;margin-right:8px">{ikon}</span>
             <span style="font-weight:600">{baslik}</span>
           </div>
-          <div style="font-size:14px;color:#3D4854;margin-bottom:20px">
+          <div style="font-size:14px;color:var(--ikincil);margin-bottom:20px">
             {sapma_txt.split('|')[0]}
           </div>
           <div style="margin-bottom:24px">
@@ -127,7 +127,7 @@ def _render_mod_a() -> None:
     st.markdown(
         f"""
         <div style="text-align:center;margin-bottom:40px">
-          <div style="font-size:32px;font-weight:700;color:#0F1B28;
+          <div style="font-size:32px;font-weight:700;color:var(--metin);
                       letter-spacing:-0.02em;margin-bottom:12px">
             SCADA veriniz var mı?
           </div>

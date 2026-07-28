@@ -19,8 +19,8 @@ DARK_NAVY     = "#0E1D30"   # Sol menu zemini, tooltip zemini
 
 # Metin hiyerarsisi (uc ton)
 TEXT_PRIMARY   = "#0F1B28"   # Ana metin, basliklar, tablo hucreleri
-TEXT_SECONDARY = "#3D4854"   # Aciklamalar, kart alt notlari
-TEXT_TERTIARY  = "#6B7684"   # Placeholder, disabled
+TEXT_SECONDARY = "var(--ikincil)"   # v2.50-F2f: tema-duyarli (acikta ~#5B6673, koyuda #A7B8C2)
+TEXT_TERTIARY  = "var(--soluk)"     # v2.50-F2f: tema-duyarli
 
 # Yuzey
 BORDER      = "#E2E6EA"      # Tum kart/giris kenarliklari

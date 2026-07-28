@@ -309,8 +309,13 @@ def banner(tur: str, metin: str):
 def mono_tablo(df, kolon_adlari: dict):
     """Tum tablolar bu yoldan: mono hucre, sayilar sayi_tr'den gecmis
     METIN olarak gelir (dataframe'e ham float verme)."""
-    st.dataframe(df.rename(columns=kolon_adlari),
-        width="stretch", hide_index=True)
+    # v2.50-F2g: koyu modda glide-grid canvas'i CSS dinlemiyor —
+    # ayni veri st.table (HTML) ile basilir; koyu kurallar onu kapsar.
+    _df = df.rename(columns=kolon_adlari)
+    if st.session_state.get("koyu_tema"):
+        st.table(_df.reset_index(drop=True))
+    else:
+        st.dataframe(_df, width="stretch", hide_index=True)
 
 
 def once_sonra_seridi(once, sonra, eyebrow: str, mikro_not: str,
