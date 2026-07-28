@@ -22,7 +22,8 @@ def olustur(tenant_id, *, name, lat, lon, tz, capacity_kwp,
                            capacity_kwp=capacity_kwp, tilt=tilt, azimuth=azimuth,
                            panel_tech=panel_tech, ac_limit_kw=ac_limit_kw)
     except IntegrityError as e:
-        if "plants_tenant_name_uq" in str(e.orig):
+        if ("plants_tenant_name_uq" in str(e.orig)
+                or "plants_tenant_lower_name_uq" in str(e.orig)):  # v2.49-B
             raise ValueError(
                 f"'{name}' adinda bir santral zaten var. "
                 "Farkli bir ad secin veya mevcut santrali kullanin.") from e
