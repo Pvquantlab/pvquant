@@ -63,11 +63,11 @@ def render_dogruluk() -> None:
     c1, c2, c3 = st.columns(3)
     with c1:
         if len(kova0):
-            ui_kit.kpi("MAPE (0-24s, 30 GÜN ORT.)",
+            ui_kit.kpi("WMAPE (0-24s, 30 GÜN ORT.)",
                        f"%{sayi_tr(kova0['mape'].mean(), 1)}", "",
                        "gündüz saatleri, valid veriyle")
         else:
-            ui_kit.kpi("MAPE (0-24s, 30 GÜN ORT.)", "—", "",
+            ui_kit.kpi("WMAPE (0-24s, 30 GÜN ORT.)", "—", "",
                        "0-24s kovası henüz boş")
     with c2:
         sv = kova0["skill_vs_naive"].dropna() if len(kova0) else []
@@ -75,7 +75,7 @@ def render_dogruluk() -> None:
             ort = sv.mean()
             ui_kit.kpi("NAİFE GÖRE ÜSTÜNLÜK",
                        f"%{sayi_tr(ort, 0)}", "",
-                       "referans: dünün aynı saati",
+                       "referans: dün-aynı-saat, gök açıklığıyla ölçekli",
                        durum="pozitif" if ort > 0 else "dikkat")
         else:
             ui_kit.kpi("NAİFE GÖRE ÜSTÜNLÜK", "—", "",
@@ -86,7 +86,7 @@ def render_dogruluk() -> None:
                    "kesintisiz kanıt geçmişi")
 
     # -------- gunluk MAPE — ufuk kovalarina gore
-    st.markdown('<div class="pv-eyebrow">GÜNLÜK MAPE — UFUK '
+    st.markdown('<div class="pv-eyebrow">GÜNLÜK WMAPE — UFUK '
                 'KOVALARINA GÖRE</div>', unsafe_allow_html=True)
     piv = sk.pivot_table(index="date", columns="horizon_bucket",
                          values="mape")

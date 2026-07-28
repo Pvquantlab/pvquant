@@ -22,7 +22,7 @@ def _tum_santraller():
     with sistem_baglami() as s:
         return [dict(r._mapping) for r in s.execute(text(
             "SELECT p.*, p.tenant_id FROM plants p JOIN tenants t "
-            "ON t.id=p.tenant_id WHERE t.status='active'"))]
+            "ON t.id=p.tenant_id WHERE t.status='active' AND NOT p.archived"))]
 
 
 def _logla(job, fn):
@@ -76,9 +76,23 @@ def gece_skill(plant, pencere_gun: int = 10):
     df = df[gunduz]
     if df.empty:
         return
-    ap = df.pivot_table(index="ts_utc", values="power_kw", aggfunc="first")
-    naif = ap.power_kw.shift(24)
-    df = df.merge(naif.rename("naif"), left_on="ts_utc", right_index=True)
+    # v2.55: AKILLI persistans (Kutu 14) — iki duzeltme birden:
+    # (1) zaman-bazli dun-ayni-saat: eski shift(24) POZISYONELdi ve gunduz
+    #     filtresinden sonra ~2 gun kayiyordu (hizalama hatasi).
+    # (2) berrak-gok orani: dun bulutlu / bugun acik farki citaya islenir;
+    #     duz 'dun=bugun' citasi puani sisiriyordu (kitap Kutu 14 tuzagi).
+    import pvlib as _pvlib
+    from pvquant.config import get_settings as _gs
+    _clip = _gs().skill_naive_ratio_clip
+    _act = df.drop_duplicates("ts_utc").set_index("ts_utc").power_kw
+    df["naif_ham"] = (df.ts_utc - pd.Timedelta(hours=24)).map(_act)
+    _ts = pd.DatetimeIndex(sorted(set(df.ts_utc) | set(df.ts_utc - pd.Timedelta(hours=24))))
+    _cs = _pvlib.location.Location(float(plant["lat"]), float(plant["lon"]),
+                                   tz="UTC").get_clearsky(_ts, model="haurwitz").ghi
+    df["_cs_t"] = df.ts_utc.map(_cs)
+    df["_cs_d"] = (df.ts_utc - pd.Timedelta(hours=24)).map(_cs)
+    df["naif"] = df.naif_ham * (df._cs_t / df._cs_d).clip(1.0 / _clip, _clip)
+    df.loc[(df._cs_d <= 5.0) | df.naif_ham.isna(), "naif"] = float("nan")
     satirlar = []
     for (gun, kova), g in df.groupby(["gun", "kova"], observed=True):
         if len(g) < 3:

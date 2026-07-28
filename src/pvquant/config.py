@@ -49,6 +49,7 @@ class Settings(BaseSettings):
     gate_min_improvement_pct: float = 3.0   # goreli kapi esigi
     guard_capacity_tolerance: float = 0.20  # v2.41 kapasite-celiski bekcisi
     min_valid_hours_calibration: int = 1500 # Mod B icin asgari saglam saat
+    skill_naive_ratio_clip: float = 4.0     # v2.55: berrak-gok orani kelepcesi
 
     @property
     def cors_origins_list(self) -> list[str]:
