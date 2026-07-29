@@ -7,6 +7,4 @@ __pycache__
 *.v*.bak
 tests
 docs
-frontend
-assets
 scripts

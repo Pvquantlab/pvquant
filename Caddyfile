@@ -1,0 +1,6 @@
+# PVQuant TLS kapisi (v2.64)
+# PVQ_DOMAIN bos/localhost ise: Caddy kendi yerel CA'siyla https://localhost (Mac durusmasi).
+# Sunucuda .env'e PVQ_DOMAIN=app.alanadi.com yazilinca: Let's Encrypt otomatik.
+{$PVQ_DOMAIN:localhost} {
+	reverse_proxy frontend:8501
+}

@@ -32,5 +32,38 @@ services:
         condition: service_healthy
     restart: unless-stopped        # v2.63 (GUN 0)
 
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    environment:
+      PVQ_DB_URL: postgresql+psycopg://pvquant:${DB_PASSWORD:-pvquant_dev}@db:5432/pvquant
+      PVQ_JWT_SECRET: ${PVQ_JWT_SECRET:-}
+    volumes:
+      - ./var:/app/var             # UI'dan kalibrasyon artifact yazar/okur
+    ports:
+      - "8502:8501"                # yerel durusma icin (host'taki 8501 ile catismasin)
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped        # v2.64
+
+  caddy:
+    image: caddy:2
+    environment:
+      PVQ_DOMAIN: ${PVQ_DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+    restart: unless-stopped        # v2.64
+
 volumes:
   pgdata:
+  caddy_data:
+  caddy_config:
