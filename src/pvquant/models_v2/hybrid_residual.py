@@ -261,6 +261,7 @@ class HybridResidualModel:
         self._calibrated = False
         self._last_calibration_date: Optional[datetime] = None
         self._training_report: dict[str, float] = {}
+        self._conformal_offset_kw: Optional[float] = None  # v2.57-B
 
     # ------------------------------------------------------------------
     # Protocol: predict
@@ -382,6 +383,12 @@ class HybridResidualModel:
                 # bazi saatlerde p10 > p50 cikabiliyor (test kaniti).
                 _lo = np.minimum(_lo, p_final)
                 _hi = np.maximum(_hi, p_final)
+                # v2.57-B: konformal ofset + kisitlar (gece=0, AC clip)
+                _ofs = float(self._conformal_offset_kw or 0.0)
+                if _ofs != 0.0:
+                    _poa_all = physics_hourly["poa_global"]
+                    _lo = self._apply_constraints(_lo - _ofs, _poa_all)
+                    _hi = self._apply_constraints(_hi + _ofs, _poa_all)
                 out_ts["ac_power_p10_kw"] = _lo.values
                 out_ts["ac_power_p90_kw"] = _hi.values
             if 0.5 in _qser:
@@ -697,6 +704,20 @@ class HybridResidualModel:
             # v2.58-B: uretim bandiyla ayni kucaklama (p_hyb = merkez)
             _lo = np.minimum(_lo, p_hyb_va)
             _hi = np.maximum(_hi, p_hyb_va)
+            # v2.57-B: konformal ayar (CQR) — uyum skorlarinin hedef-seviye
+            # persentili ofset olur; kapsama dusukse pozitif (genisletir),
+            # fazlaysa negatif (daraltir). Ayni holdout'tan hesaplandigi icin
+            # bu holdout'ta hedefe oturmasi insa geregidir; gercek sinav
+            # gelecek veridedir (durustluk serhi raporda).
+            _inside_raw = (actual_va >= _lo) & (actual_va <= _hi)
+            _cov_raw = float(_inside_raw.mean() * 100)
+            from pvquant.config import get_settings as _qgs
+            _hedef = float(_qgs().quantile_coverage_target_pct) / 100.0
+            _skor = np.maximum(_lo - actual_va, actual_va - _hi)
+            _q_hat = float(np.quantile(np.asarray(_skor, dtype=float), _hedef))
+            self._conformal_offset_kw = _q_hat
+            _lo = (_lo - _q_hat).clip(lower=0.0)
+            _hi = _hi + _q_hat
             _inside = (actual_va >= _lo) & (actual_va <= _hi)
             _cov = float(_inside.mean() * 100)
             _bw_mean = float((_hi - _lo).mean())
@@ -715,6 +736,8 @@ class HybridResidualModel:
             "rmse_kw_hybrid_holdout": _rmse(p_hyb_va, actual_va),
             "best_iteration": float(self._booster.best_iteration_ or 0),
             "coverage_p10_p90_holdout_pct": _cov,
+            "coverage_p10_p90_raw_pct": _cov_raw,
+            "conformal_offset_kw": float(self._conformal_offset_kw or 0.0),
             "band_width_mean_kw": _bw_mean,
             "band_width_pct_of_p50": _bw_pct,
         }
@@ -775,6 +798,7 @@ class HybridResidualModel:
                 "booster": self._booster,
                 "quantile_boosters": self._quantile_boosters,
                 "training_report": self._training_report,
+                "conformal_offset_kw": self._conformal_offset_kw,
                 "feature_columns": FEATURE_COLUMNS,
                 "model_version": self.MODEL_VERSION,
             },
@@ -805,6 +829,7 @@ class HybridResidualModel:
         self._booster = payload["booster"]
         self._quantile_boosters = payload["quantile_boosters"]
         self._training_report = payload.get("training_report", {})
+        self._conformal_offset_kw = payload.get("conformal_offset_kw")
         return True
 
     # ------------------------------------------------------------------

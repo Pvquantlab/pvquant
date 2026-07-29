@@ -57,6 +57,8 @@ def session_ozeti(res: HybridUIResult) -> dict:
         "holdout_hours": res.holdout_hours,
         "trained_at": res.trained_at,
         "coverage_p10_p90_pct": res.coverage_p10_p90_pct,
+        "coverage_p10_p90_raw_pct": res.raw_report.get("coverage_p10_p90_raw_pct"),
+        "conformal_offset_kw": res.raw_report.get("conformal_offset_kw"),
         "band_width_mean_kw": res.band_width_mean_kw,
         "band_width_pct_of_p50": res.band_width_pct_of_p50,
     }
