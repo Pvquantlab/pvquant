@@ -187,11 +187,10 @@ def hybrid_forecast_hourly(model, meteo) -> Optional[pd.DataFrame]:
     Dönen kolonlar: p50_kw, p10_kw (alt), p90_kw (üst), energy_kwh, poa,
     temp_cell, p_dc_kw — pipeline ForecastResult.hourly ile aynı dil.
 
-    Kantil notu (dürüstlük): models_v2 güven aralığı yalnız DÖNEM TOPLAMI
-    kantillerini verir (p10/p50/p90 toplam kWh). Saatlik bant, toplam
-    oranlarının saatliğe ölçeklenmesiyle türetilir — şekil korunur,
-    saat-bazlı asimetri taşınmaz. Saatlik kantil, modelin kendi yol
-    haritasında; adaptör o gün tek satır değişir.
+    Kantil notu (v2.58): model saatlik P10/P90 serilerini timeseries'e
+    yazar; bant saat-bazlı asimetriyi taşır. Toplam kantiller hâlâ saatlik
+    toplamdan (istatistik şerhi defterde). Eski çıktılar için oran-köprüsü
+    yedek yol olarak korunur.
 
     Adlandırma köprüsü: models_v2 p10=0.10 kantili (DÜŞÜK senaryo).
     Raporlamada p10_kw=alt bant, p90_kw=üst bant olarak eşlenir; IEA
@@ -222,7 +221,12 @@ def hybrid_forecast_hourly(model, meteo) -> Optional[pd.DataFrame]:
         h["temp_cell"] = ts.get("t_cell", pd.Series(25.0, index=ts.index)).values
         h["p_dc_kw"] = ts.get("dc_power_kw", h["p50_kw"] * 1.03).values
         h["energy_kwh"] = h["p50_kw"]          # saatlik çözünürlük
-        if res.confidence is not None and res.confidence.p50_total_kwh > 0:
+        # v2.58: model saatlik kuantil serilerini artik kendisi yazar —
+        # dogrudan gecir. Oran-koprusu yalniz eski ciktilar icin yedek yol.
+        if "ac_power_p10_kw" in ts.columns and "ac_power_p90_kw" in ts.columns:
+            h["p10_kw"] = ts["ac_power_p10_kw"].values
+            h["p90_kw"] = ts["ac_power_p90_kw"].values
+        elif res.confidence is not None and res.confidence.p50_total_kwh > 0:
             c = res.confidence
             h["p10_kw"] = h["p50_kw"] * (c.p10_total_kwh / c.p50_total_kwh)
             h["p90_kw"] = h["p50_kw"] * (c.p90_total_kwh / c.p50_total_kwh)

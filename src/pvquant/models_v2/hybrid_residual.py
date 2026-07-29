@@ -360,6 +360,7 @@ class HybridResidualModel:
         confidence = None
         if config.confidence_intervals and self._quantile_boosters:
             totals = {}
+            _qser = {}  # v2.58: saatlik kuantil serileri
             for q, booster in self._quantile_boosters.items():
                 res_q = pd.Series(
                     booster.predict(features[FEATURE_COLUMNS]), index=features.index
@@ -368,6 +369,23 @@ class HybridResidualModel:
                     physics_hourly["p_ac_kw"] + res_q, physics_hourly["poa_global"]
                 )
                 totals[q] = float(p_q.sum())
+                _qser[q] = p_q
+            # v2.58: saatlik durust bant — kuantil serileri timeseries'e
+            # yazilir; sum() ile atilan bilgi artik tasinir. 0.1/0.9 gecisme
+            # guvenligi v2.57'deki gibi min/max ile. Adlandirma: p10 = 0.10
+            # kantili (DUSUK senaryo); raporlama koprusu ayni dili konusur.
+            if 0.1 in _qser and 0.9 in _qser:
+                _lo = np.minimum(_qser[0.1], _qser[0.9])
+                _hi = np.maximum(_qser[0.1], _qser[0.9])
+                # v2.58-B: kuantil gecismesi #2 — bant merkez tahmini (p_final)
+                # kucaklamali; 0.1 boosteri ile L2 nokta modeli bagimsiz,
+                # bazi saatlerde p10 > p50 cikabiliyor (test kaniti).
+                _lo = np.minimum(_lo, p_final)
+                _hi = np.maximum(_hi, p_final)
+                out_ts["ac_power_p10_kw"] = _lo.values
+                out_ts["ac_power_p90_kw"] = _hi.values
+            if 0.5 in _qser:
+                out_ts["ac_power_p50q_kw"] = _qser[0.5].values
             confidence = ConfidenceIntervals(
                 p10_total_kwh=totals.get(0.1, energy_total),
                 p50_total_kwh=totals.get(0.5, energy_total),
@@ -676,6 +694,9 @@ class HybridResidualModel:
             # Kuantil gecisme guvenligi: alt/ust ters duserse sirala
             _lo = np.minimum(_p10_va, _p90_va)
             _hi = np.maximum(_p10_va, _p90_va)
+            # v2.58-B: uretim bandiyla ayni kucaklama (p_hyb = merkez)
+            _lo = np.minimum(_lo, p_hyb_va)
+            _hi = np.maximum(_hi, p_hyb_va)
             _inside = (actual_va >= _lo) & (actual_va <= _hi)
             _cov = float(_inside.mean() * 100)
             _bw_mean = float((_hi - _lo).mean())
