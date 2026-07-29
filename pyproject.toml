@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Saha-kalibre PV performans analitiği ve 7 günlük üretim tahmini"
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
+license = { text = "Elastic-2.0" }
 authors = [
     { name = "PVQuant Contributors" },
 ]
@@ -16,7 +16,6 @@ keywords = ["solar", "photovoltaic", "pv", "energy", "forecast", "scada", "bifac
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",

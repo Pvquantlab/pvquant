@@ -1,9 +1,9 @@
 # PVQuant
 
-> **Saha-kalibre PV Performans Analitiği** — SCADA verisinden modeli sahaya özel kalibre eden, canlı meteoroloji ile 7 günlük üretim tahmini yapan açık kaynak Python kütüphanesi ve REST API.
+> **Saha-kalibre PV Performans Analitiği** — SCADA verisinden modeli sahaya özel kalibre eden, canlı meteoroloji ile 7 günlük üretim tahmini yapan kaynağı-açık (source-available) Python kütüphanesi ve REST API.
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: Elastic 2.0](https://img.shields.io/badge/License-Elastic%202.0-blue.svg)](LICENSE)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 ## Ne yapar?
@@ -134,7 +134,9 @@ React + Vite + TypeScript frontend için bkz. [`frontend/README.md`](frontend/RE
 
 ## Lisans
 
-MIT — bkz. [LICENSE](LICENSE).
+Elastic License 2.0 (ELv2) — bkz. [LICENSE](LICENSE). Kaynak açıktır;
+kullanım, kopyalama ve türev çalışma serbesttir. Yazılımın üçüncü taraflara
+barındırılan/yönetilen servis (SaaS) olarak sunulması lisansça yasaktır.
 
 ## Atıflar
 
