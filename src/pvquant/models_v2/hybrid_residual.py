@@ -248,6 +248,7 @@ class HybridResidualModel:
         "subsample_freq": 1,
         "colsample_bytree": 0.9,
         "reg_lambda": 1.0,
+        "random_state": 42,  # v2.60: karne tekrarlanabilirligi (subsample zari sabitlenir)
         "verbose": -1,
     }
 
