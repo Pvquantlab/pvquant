@@ -8,10 +8,29 @@ services:
       POSTGRES_DB: pvquant
     ports: ["5432:5432"]
     volumes: [pgdata:/var/lib/postgresql/data]
+    restart: unless-stopped        # v2.63 (GUN 0): elle dokunmadan ayaga kalkis
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U pvquant"]
       interval: 5s
       retries: 10
+
+  worker:
+    build: .
+    environment:
+      PVQ_DB_URL: postgresql+psycopg://pvquant:${DB_PASSWORD:-pvquant_dev}@db:5432/pvquant
+      PVQ_SENTRY_DSN: ${PVQ_SENTRY_DSN:-}
+      PVQ_SMTP_HOST: ${PVQ_SMTP_HOST:-}
+      PVQ_SMTP_PORT: ${PVQ_SMTP_PORT:-}
+      PVQ_SMTP_USER: ${PVQ_SMTP_USER:-}
+      PVQ_SMTP_PASS: ${PVQ_SMTP_PASS:-}
+      PVQ_SMTP_FROM: ${PVQ_SMTP_FROM:-}
+      PVQ_ALARM_TO: ${PVQ_ALARM_TO:-}
+    volumes:
+      - ./var:/app/var             # model artifact'leri (hyb_*.pkl) — imaja gomulmez, paylasilir
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped        # v2.63 (GUN 0)
 
 volumes:
   pgdata:

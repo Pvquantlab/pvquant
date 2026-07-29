@@ -1,0 +1,12 @@
+.git
+.venv
+venv*
+__pycache__
+*.pyc
+*.bak
+*.v*.bak
+tests
+docs
+frontend
+assets
+scripts
