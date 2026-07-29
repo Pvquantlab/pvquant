@@ -918,6 +918,34 @@ def _render_mod_b_scada() -> None:
     
     # Sonuc var - kalite karnesi goster
     result = st.session_state.scada_result
+
+    # --- v2.59 bekcisi: damga-penceresi — uyarir, ENGELLEMEZ ---
+    # Vaka 29 Tem 2026: 2006 damgali NREL dosyasi Konya'ya yuklendi,
+    # 8758 satir yanlis yil kirliligi tum kalibrasyonlari zehirledi.
+    # Kapsama araligi QualityReport'ta zaten var; burada okunur,
+    # kalici iz quality_json'da (yukle_ve_kaydet) kendiliginden durur.
+    try:
+        import pandas as _pd
+        from pvquant.config import get_settings as _bgs
+        _bcfg = _bgs()
+        _r = result.report
+        _simdi = _pd.Timestamp.now(tz="UTC")
+        _bas = _pd.to_datetime(_r.coverage_start, utc=True) if _r.coverage_start else None
+        _son = _pd.to_datetime(_r.coverage_end, utc=True) if _r.coverage_end else None
+        if _son is not None and (_simdi - _son).days > _bcfg.guard_stale_data_years * 365.25:
+            st.warning(
+                f"Dosyadaki verinin tamamı {_son.year} yılında bitiyor — "
+                f"{_bcfg.guard_stale_data_years:g} yıldan eski. Yanlış yıla "
+                "damgalanmış ya da başka bir döneme/santrala ait bir dosya "
+                "olabilir (ör. 2006 damgalı NREL test setleri). Emin değilseniz "
+                "dosyanın tarih kolonunu kontrol edin.")
+        if _bas is not None and (_bas - _simdi).days > _bcfg.guard_future_days:
+            st.warning(
+                f"Dosyadaki damgalar gelecekte başlıyor ({_bas.date()}) — "
+                "tarih kolonu ya da saat dilimi hatalı olabilir.")
+    except Exception:
+        pass  # bekci hicbir kosulda akisi kirmaz
+
     _kalite_karnesi_karti(result)
     
     # Alt butonlar

@@ -58,6 +58,8 @@ class Settings(BaseSettings):
     meteo_retry_attempts: int = 3           # B-19: gecici hatada deneme sayisi
     meteo_retry_base_seconds: float = 2.0   # B-19: bekleme tabani (2,6,18 sn)
     quantile_coverage_target_pct: float = 80.0  # v2.57: P10-P90 gunduz kapsama hedefi
+    guard_stale_data_years: float = 3.0     # v2.59: tum damgalar bundan eskiyse uyar
+    guard_future_days: float = 2.0          # v2.59: damgalar gelecekteyse uyar
 
     @property
     def cors_origins_list(self) -> list[str]:
