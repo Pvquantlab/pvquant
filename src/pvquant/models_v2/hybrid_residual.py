@@ -654,6 +654,35 @@ class HybridResidualModel:
                 return float("nan")
             return float(np.abs(pred - act).sum() / s * 100)
 
+        # ---------- Kuantil karnesi (v2.57): gunduz-kosullu kapsama ----------
+        # X_va clean_idx'ten gelir (gece + curtailment elenmis), dolayisiyla
+        # kapsama otomatik gunduz-kosullu olculur; gece bandi skoru sisiremez.
+        # Bant tarifi uretimle birebir: physics + res_q, _apply_constraints.
+        _cov = float("nan")
+        _bw_mean = float("nan")
+        _bw_pct = float("nan")
+        _b10 = self._quantile_boosters.get(0.1)
+        _b90 = self._quantile_boosters.get(0.9)
+        if _b10 is not None and _b90 is not None and len(X_va) > 0:
+            _poa_va = physics_hourly["poa_global"].loc[X_va.index]
+            _p10_va = self._apply_constraints(
+                p_phys_va + pd.Series(_b10.predict(X_va), index=X_va.index),
+                _poa_va,
+            )
+            _p90_va = self._apply_constraints(
+                p_phys_va + pd.Series(_b90.predict(X_va), index=X_va.index),
+                _poa_va,
+            )
+            # Kuantil gecisme guvenligi: alt/ust ters duserse sirala
+            _lo = np.minimum(_p10_va, _p90_va)
+            _hi = np.maximum(_p10_va, _p90_va)
+            _inside = (actual_va >= _lo) & (actual_va <= _hi)
+            _cov = float(_inside.mean() * 100)
+            _bw_mean = float((_hi - _lo).mean())
+            _s50 = float(p_hyb_va.sum())
+            if _s50 > 0:
+                _bw_pct = float((_hi - _lo).sum() / _s50 * 100)
+
         report = {
             "holdout_hours": float(len(X_va)),
             "train_hours": float(len(X_tr)),
@@ -664,6 +693,9 @@ class HybridResidualModel:
             "rmse_kw_physics_holdout": _rmse(p_phys_va, actual_va),
             "rmse_kw_hybrid_holdout": _rmse(p_hyb_va, actual_va),
             "best_iteration": float(self._booster.best_iteration_ or 0),
+            "coverage_p10_p90_holdout_pct": _cov,
+            "band_width_mean_kw": _bw_mean,
+            "band_width_pct_of_p50": _bw_pct,
         }
         report["mape_improvement_pct"] = (
             report["mape_pct_physics_holdout"] - report["mape_pct_hybrid_holdout"]

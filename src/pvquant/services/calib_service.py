@@ -144,6 +144,9 @@ def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
                 "fizik_mape": res.physics_mape_pct,
                 "holdout_wmape": _w,
                 "fizik_wmape": getattr(res, "physics_wmape_pct", None),
+                "kapsama_p10_p90": getattr(res, "coverage_p10_p90_pct", None),
+                "bant_ort_kw": getattr(res, "band_width_mean_kw", None),
+                "bant_pct": getattr(res, "band_width_pct_of_p50", None),
             }
         else:
             gate = {
@@ -154,6 +157,9 @@ def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
                 "fizik_mape": res.physics_mape_pct,
                 "holdout_wmape": _w,
                 "fizik_wmape": getattr(res, "physics_wmape_pct", None),
+                "kapsama_p10_p90": getattr(res, "coverage_p10_p90_pct", None),
+                "bant_ort_kw": getattr(res, "band_width_mean_kw", None),
+                "bant_pct": getattr(res, "band_width_pct_of_p50", None),
                 "sebep": (res.error
                           or (f"holdout WMAPE %{_wtxt} > "
                               f"%{HIBRIT_MUTLAK_TAVAN_WMAPE:.0f} tavanı (WMAPE)"

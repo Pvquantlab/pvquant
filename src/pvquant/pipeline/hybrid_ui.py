@@ -39,6 +39,9 @@ class HybridUIResult:
     improvement_pct: Optional[float] = None    # (fizik-hibrit)/fizik*100
     holdout_hours: Optional[int] = None
     trained_at: Optional[datetime] = None
+    coverage_p10_p90_pct: Optional[float] = None    # v2.57: gunduz-kosullu kapsama
+    band_width_mean_kw: Optional[float] = None      # v2.57: P10-P90 ort. genislik
+    band_width_pct_of_p50: Optional[float] = None   # v2.57: genislik / p50 toplami
     raw_report: dict = field(default_factory=dict)
 
 
@@ -53,6 +56,9 @@ def session_ozeti(res: HybridUIResult) -> dict:
         "improvement_pct": res.improvement_pct,
         "holdout_hours": res.holdout_hours,
         "trained_at": res.trained_at,
+        "coverage_p10_p90_pct": res.coverage_p10_p90_pct,
+        "band_width_mean_kw": res.band_width_mean_kw,
+        "band_width_pct_of_p50": res.band_width_pct_of_p50,
     }
 
 
@@ -139,6 +145,13 @@ def run_hybrid_training(
         model.calibrate(HistoricalData(plant_id=profil.plant_id, data=df))
 
         r = dict(getattr(model, "_training_report", {}) or {})
+
+        def _san(v):
+            # v2.57: NaN JSON'a "NaN" olarak gider, Postgres jsonb reddeder
+            try:
+                return None if v is None or v != v else float(v)
+            except TypeError:
+                return None
         hib = r.get("mape_pct_hybrid_holdout")
         whib = r.get("wmape_pct_hybrid_holdout")
         fiz = r.get("mape_pct_physics_holdout")
@@ -156,6 +169,9 @@ def run_hybrid_training(
             physics_mape_pct=fiz,
             improvement_pct=iyilesme,
             holdout_hours=int(r["holdout_hours"]) if r.get("holdout_hours") else None,
+            coverage_p10_p90_pct=_san(r.get("coverage_p10_p90_holdout_pct")),
+            band_width_mean_kw=_san(r.get("band_width_mean_kw")),
+            band_width_pct_of_p50=_san(r.get("band_width_pct_of_p50")),
             trained_at=datetime.now(timezone.utc),
             raw_report=r,
         )

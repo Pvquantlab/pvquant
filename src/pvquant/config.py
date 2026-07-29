@@ -57,6 +57,7 @@ class Settings(BaseSettings):
     worker_hour_calibration: int = 3        # v2.56: aylik kalibrasyon saati (UTC)
     meteo_retry_attempts: int = 3           # B-19: gecici hatada deneme sayisi
     meteo_retry_base_seconds: float = 2.0   # B-19: bekleme tabani (2,6,18 sn)
+    quantile_coverage_target_pct: float = 80.0  # v2.57: P10-P90 gunduz kapsama hedefi
 
     @property
     def cors_origins_list(self) -> list[str]:
