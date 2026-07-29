@@ -161,6 +161,10 @@ def _detect_excel_format(path: Path) -> FileFormat:
     """
     try:
         xls = pd.ExcelFile(path)
+    except ImportError:
+        # v2.61: eksik kutuphane (openpyxl) dosya kusuru degildir —
+        # yutulursa kullaniciya "kolon eslesmedi" diye yanlis teshis gider.
+        raise
     except Exception:
         return FileFormat(encoding="binary", delimiter=",", decimal=".",
                           header_row=0, sheet_name=None, confidence=0.3)
@@ -171,6 +175,8 @@ def _detect_excel_format(path: Path) -> FileFormat:
         # header=None: her satır ham veri olarak gelsin, başlığı biz seçelim
         raw = pd.read_excel(path, sheet_name=sheet, header=None,
                             nrows=MAX_HEADER_SEARCH_ROWS, dtype=str)
+    except ImportError:
+        raise  # v2.61: capa 1 ile ayni gerekce
     except Exception:
         return FileFormat(encoding="binary", delimiter=",", decimal=".",
                           header_row=0, sheet_name=sheet, confidence=0.3)
