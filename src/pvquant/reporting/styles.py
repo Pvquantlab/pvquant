@@ -102,6 +102,18 @@ def sayi_tr(x: float, ondalik: int = 1) -> str:
     return metin.replace(",", "\u00a7").replace(".", ",").replace("\u00a7", ".")
 
 
+BANT_BASLIK = "P10-P90 (kWh)"       # v2.71-B: baslik ile hucre tek kaynakta
+
+
+def bant_araligi(alt: float, ust: float) -> str:
+    """P10-P90 bandinin hucre metni - sira BANT_BASLIK ile ayni.
+
+    v2.71-B: onceki halinde baslik tahminler.py'de 'P90-P10' yaziyor,
+    hucre ise P10 -> P90 sirasiyla basiliyordu (ekranda P50=30.356 iken
+    '29.076 - 33.287'). Iki yer ayri tanimliydi; ikisi de buradan gelir.
+    """
+    return f"{sayi_tr(alt, 0)} - {sayi_tr(ust, 0)}"
+
 def donem_tr(t1, t2) -> str:
     """Dönem metni, Türkçe ay adlarıyla:
     aynı ay  -> '14 – 21 Temmuz 2026'

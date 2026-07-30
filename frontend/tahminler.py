@@ -13,7 +13,7 @@ import streamlit as st
 import tema
 import ui_kit
 from oturum import giris_bekcisi
-from pvquant.reporting.styles import sayi_tr
+from pvquant.reporting.styles import BANT_BASLIK, bant_araligi, sayi_tr
 from pvquant.services import calib_service, forecast_service, plant_service
 
 UFUKLAR = {"24s": 24, "72s": 72, "7g": 168, "16g": 384}  # v2.69
@@ -123,8 +123,8 @@ def render_tahminler() -> None:
         alt = alt[gunluk.index]  # v2.12: aynı maske
         ust = g["p90_kw"].groupby(g.index.date).sum()
         ust = ust[gunluk.index]  # v2.12: aynı maske
-        satirlar["P90-P10 (kWh)"] = [
-            f"{sayi_tr(a, 0)} - {sayi_tr(u, 0)}"
+        satirlar[BANT_BASLIK] = [                    # v2.71-B
+            bant_araligi(a, u)
             for a, u in zip(alt.values, ust.values)]
     import pandas as pd                                        # sunum
     ui_kit.mono_tablo(pd.DataFrame(satirlar), {})
