@@ -154,3 +154,27 @@ def donem_tr(t1, t2) -> str:
     if t1.year == t2.year:
         return f"{t1.day} {a1} – {t2.day} {a2} {t1.year}"
     return f"{t1.day} {a1} {t1.year} – {t2.day} {a2} {t2.year}"
+
+
+def wmape_baslik(gun_sayisi: int) -> str:
+    """Karne WMAPE kartinin basligi - kac gun ortalandigini soyler.
+
+    v2.71-E: baslik '30 GUN ORT.' diye sabitti. Sorgu penceresi ise
+    v2.14'te 120 gune cikarilmisti ve gercekte kac gun ortalandigi
+    hicbir yerde yazmiyordu (Konya'da 4 gun vardi, kart 30 diyordu).
+    """
+    if gun_sayisi <= 0:
+        return "WMAPE (0-24s)"
+    return f"WMAPE (0-24s, {gun_sayisi} GÜN ORT.)"
+
+
+def karne_donem_metni(ilk, son) -> str:
+    """Karnenin kapsadigi donem - tek gunse tek tarih yazar.
+
+    v2.71-E: sayfa "her gece karsilastirilir" diyordu ama hangi tarihleri
+    kapsadigini soylemiyordu. Konya SCADA'si 30 Nis'te bittigi icin
+    Temmuz'da bakan biri Nisan verisini guncel saniyordu.
+    """
+    if ilk == son:
+        return f"{ilk.day} {AYLAR_TR[ilk.month - 1]} {ilk.year}"
+    return donem_tr(ilk, son)

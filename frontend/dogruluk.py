@@ -12,7 +12,8 @@ import streamlit as st
 import tema
 import ui_kit
 from oturum import giris_bekcisi
-from pvquant.reporting.styles import sayi_tr
+from pvquant.reporting.styles import (karne_donem_metni, sayi_tr,
+                                      wmape_baslik)
 from pvquant.services import calib_service, forecast_service, plant_service
 
 
@@ -63,11 +64,11 @@ def render_dogruluk() -> None:
     c1, c2, c3 = st.columns(3)
     with c1:
         if len(kova0):
-            ui_kit.kpi("WMAPE (0-24s, 30 GÜN ORT.)",
+            ui_kit.kpi(wmape_baslik(kova0["date"].nunique()),   # v2.71-E
                        f"%{sayi_tr(kova0['mape'].mean(), 1)}", "",
                        "gündüz saatleri, valid veriyle")
         else:
-            ui_kit.kpi("WMAPE (0-24s, 30 GÜN ORT.)", "—", "",
+            ui_kit.kpi(wmape_baslik(0), "—", "",
                        "0-24s kovası henüz boş")
     with c2:
         sv = kova0["skill_vs_naive"].dropna() if len(kova0) else []
@@ -84,6 +85,9 @@ def render_dogruluk() -> None:
         ui_kit.kpi("KARNE GÜNÜ",
                    sayi_tr(sk["date"].nunique(), 0), "gün",
                    "kesintisiz kanıt geçmişi")
+
+    st.caption("Kapsanan dönem: "                              # v2.71-E
+               + karne_donem_metni(sk["date"].min(), sk["date"].max()))
 
     # -------- gunluk MAPE — ufuk kovalarina gore
     st.markdown('<div class="pv-eyebrow">GÜNLÜK WMAPE — UFUK '
