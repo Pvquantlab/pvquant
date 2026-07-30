@@ -184,6 +184,29 @@ def render_santralim() -> None:
         anomali=o.anomali_sayisi,
     )
 
+    # ----- AYLIK ÜRETİM (v2.68, Issue #1) -----
+    st.markdown('<div style="margin-top:24px"></div>', unsafe_allow_html=True)
+    st.markdown('<div class="pv-eyebrow">AYLIK ÜRETİM (GERÇEKLEŞEN)</div>',
+                unsafe_allow_html=True)
+    from pvquant.services.ingest_service import aylik_uretim
+    ay_df = aylik_uretim(auth["tenant_id"], santral["id"])
+    if ay_df.empty:
+        st.markdown(
+            '<div class="pv-mikro" style="color:var(--ikincil);'
+            'margin-top:12px">SCADA verisi yüklendikçe aylık üretim '
+            'burada görünecek.</div>', unsafe_allow_html=True)
+    else:
+        son12 = ay_df.tail(12)
+        etiket = [f"{ui_kit.AYLAR_KISA_TR[int(a[5:7])-1]} {a[2:4]}"
+                  for a in son12["ay"]]
+        st.plotly_chart(
+            ui_kit.aylik_bar(etiket, list(son12["uretim_mwh"])),
+            width="stretch", config={"displayModeBar": False})
+        ui_kit.mono_tablo(
+            son12.iloc[::-1].assign(ay=etiket[::-1]),
+            {"ay": "Ay", "uretim_mwh": "Üretim (MWh)",
+             "saat": "Sağlam saat", "kapsam_pct": "Kapsam %"})
+
 
 def _model_alt_zengin(o):
     """v2.13: Model Durumu KPI alt satiri bilgi tasisin.

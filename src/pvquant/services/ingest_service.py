@@ -74,6 +74,37 @@ def scada_oku(tenant_id, plant_id) -> pd.DataFrame:
     return df
 
 
+def aylik_ozet(df: pd.DataFrame, tz: str | None = None) -> pd.DataFrame:
+    """Issue #1 (v2.68): valid saatlik SCADA'dan aylik uretim ozeti.
+    Saf fonksiyon — DB'siz test edilir. Girdi: scada_oku ciktisi (UTC index).
+    tz verilirse ay siniri o saat diliminin takvimiyle cizilir (durust ay:
+    31 Mart 21:00 UTC, Istanbul'da 1 Nisan'dir). tz=None -> UTC takvimi.
+    Cikti kolonlari: ay (YYYY-MM), uretim_mwh, saat, kapsam_pct.
+    kWh kaynagi: energy_kwh; bos satirda power_kw (saatlik seri: kW x 1h = kWh).
+    """
+    if df is None or df.empty:
+        return pd.DataFrame(columns=["ay", "uretim_mwh", "saat", "kapsam_pct"])
+    kwh = df["energy_kwh"].fillna(df["power_kw"])
+    idx = df.index.tz_convert(tz) if tz else df.index
+    g = kwh.groupby(idx.tz_localize(None).to_period("M"))
+    out = pd.DataFrame({
+        "uretim_mwh": (g.sum() / 1000.0).round(2),
+        "saat": g.count().astype(int),
+    })
+    ay_saat = out.index.to_timestamp().days_in_month * 24
+    out["kapsam_pct"] = (out["saat"] / ay_saat * 100).round(1)
+    out.insert(0, "ay", out.index.astype(str))
+    return out.reset_index(drop=True)
+
+
+def aylik_uretim(tenant_id, plant_id) -> pd.DataFrame:
+    """Ince DB sarmalayici: scada_oku -> aylik_ozet, santralin tz'siyle (v2.68)."""
+    with tenant_baglami(tenant_id) as s:
+        tz = s.execute(text("SELECT tz FROM plants WHERE id=:p"),
+                       {"p": plant_id}).scalar()
+    return aylik_ozet(scada_oku(tenant_id, plant_id), tz=tz)
+
+
 def veri_ozeti(tenant_id, plant_id) -> dict:
     """Hafif varlık kontrolü: tüm satırları ÇEKMEDEN sayım + son damga.
     (scada_oku 15 bin satırı yükler; boş-durum kontrolü için israftır.)"""

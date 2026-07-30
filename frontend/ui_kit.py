@@ -158,6 +158,21 @@ def yedi_gun_bar(gunler, mwh, bugun_idx) -> go.Figure:
 
 
 # --- 5.7 Hero (Santralim üst bandı) ---
+def aylik_bar(aylar, mwh) -> go.Figure:
+    """v2.68 (Issue #1): aylik uretim cubugu — yedi_gun_bar uslubu.
+    koyu = son ay, amber = en dusuk ay."""
+    renk = ["#8FB8CB"] * len(mwh)
+    if mwh:
+        renk[-1] = "#1E5A78"
+        renk[mwh.index(min(mwh))] = "#F59E0B"
+    fig = go.Figure(go.Bar(x=aylar, y=mwh, marker_color=renk,
+        text=[f"{v:.1f}".replace(".", ",") for v in mwh],
+        textposition="outside",
+        textfont=dict(family="JetBrains Mono", size=12)))
+    fig.update_yaxes(nticks=5)
+    return tema_uygula(fig, 260)
+
+
 def hero(santral: dict, mod, sapma, icgoru, hava: list):
     """hava: [{"gun":"BUGÜN","derece":31,"kwhm2":7.1}, ...] en cok 3.
     icgoru None ise satir CIZILMEZ (K1 — veri yoksa cumle yok)."""
