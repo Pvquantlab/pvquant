@@ -2,5 +2,10 @@
 # PVQ_DOMAIN bos/localhost ise: Caddy kendi yerel CA'siyla https://localhost (Mac durusmasi).
 # Sunucuda .env'e PVQ_DOMAIN=app.alanadi.com yazilinca: Let's Encrypt otomatik.
 {$PVQ_DOMAIN:localhost} {
+	# v2.72: API ayni alan adinin /v1/* yolunda — SPA'da CORS derdi dogmaz.
+	# Uc yollari zaten /v1 onekli; soyma (strip) gerekmez.
+	route /v1/* {
+		reverse_proxy api:8000
+	}
 	reverse_proxy frontend:8501
 }

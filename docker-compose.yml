@@ -32,6 +32,20 @@ services:
         condition: service_healthy
     restart: unless-stopped        # v2.63 (GUN 0)
 
+  api:
+    build: .                       # v2.72: worker ile ayni imaj, komut farkli
+    command: ["uvicorn", "apps.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      PVQ_DB_URL: postgresql+psycopg://pvquant:${DB_PASSWORD:-pvquant_dev}@db:5432/pvquant
+      PVQ_JWT_SECRET: ${PVQ_JWT_SECRET:-}
+      PVQ_SENTRY_DSN: ${PVQ_SENTRY_DSN:-}
+    ports:
+      - "8000:8000"                # yerel durusma: curl ile dogrudan
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped        # v2.72
+
   frontend:
     build:
       context: .

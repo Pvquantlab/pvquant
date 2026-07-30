@@ -1,6 +1,14 @@
 """Pytest yapılandırması ve ortak fixture'lar."""
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+# v2.72: `apps` paketi (API/worker) kurulan pakete dahil degil (src layout
+# yalniz pvquant'i kurar). API testleri `import apps.api.main` yapabilsin
+# diye depo koku sys.path'e eklenir — pip kurulumundan bagimsiz, CI dahil.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 import numpy as np
 import pandas as pd
 import pytest

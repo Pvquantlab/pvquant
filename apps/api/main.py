@@ -59,6 +59,45 @@ def plant_ekle(p: PlantIstek, claims=Depends(yazma_yetkisi())):
     return {"id": plant_service.olustur(claims["tenant_id"], **p.model_dump())}
 
 
+def _kw(x):
+    """JSON NaN tasiyamaz — NaN/None -> null, sayi -> 3 hane (kW)."""
+    import math
+    if x is None or (isinstance(x, float) and math.isnan(x)):
+        return None
+    return round(float(x), 3)
+
+
+@app.get("/v1/plants/{plant_id}/forecast")
+def forecast(plant_id: str, hours: int = 168,
+             claims=Depends(gecerli_kullanici)):
+    """v2.72 — son kosunun saatlik P10/P50/P90 serisi (ilk `hours` saat).
+
+    Ince sargi: veri yolu forecast_service.son_kosu (tenant_baglami/RLS
+    orada) + kosu_gecmisi(n=1) meta. Baska tenant'in santrali RLS'te
+    bos doner -> 404; veri sizintisi yok. hours varsayilani 168 (7 gun,
+    sartname); tavan 384 (16 gun ufku, v2.69).
+    """
+    from pvquant.services import forecast_service
+    if not (1 <= hours <= 384):
+        raise HTTPException(422, "hours 1-384 araliginda olmali")
+    df = forecast_service.son_kosu(claims["tenant_id"], plant_id)
+    if df is None:
+        raise HTTPException(404, "tahmin kosusu yok")
+    kosu = forecast_service.kosu_gecmisi(claims["tenant_id"], plant_id, n=1)
+    df = df.iloc[:hours]
+    return {
+        "plant_id": plant_id,
+        "run_at": kosu[0].run_at.isoformat() if kosu else None,
+        "mode": kosu[0].mode if kosu else None,
+        "hours": int(len(df)),
+        "series": [
+            {"ts_utc": ts.isoformat(), "p10_kw": _kw(r.p10_kw),
+             "p50_kw": _kw(r.p50_kw), "p90_kw": _kw(r.p90_kw)}
+            for ts, r in df.iterrows()
+        ],
+    }
+
+
 @app.get("/v1/healthz")
 def healthz():
     return {"ok": True}
