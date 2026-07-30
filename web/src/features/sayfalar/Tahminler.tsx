@@ -27,7 +27,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
                                   { renk: "var(--marka-acik)", ad: "P10–P90" }]} />}>
             <FanChart seri={seri} yukseklik={360} />
             <p style={{ fontSize: 12, color: "var(--soluk)", margin: "12px 0 0" }}>
-              Son koşu Mod {seri.mod} · kaynak: tahmin arşivi — koşular güncellenmez, yenisi eklenir.
+              Son koşu Mod {seri.mod ?? "—"} · kaynak: tahmin arşivi — koşular güncellenmez, yenisi eklenir.
             </p>
           </Kart>
           <Kart baslik="Günlük toplamlar">

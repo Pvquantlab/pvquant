@@ -22,7 +22,7 @@ export interface SantralOzeti {
 }
 
 export interface TahminSerisi {
-  mod: Mod; model: string; kosu_zamani: string; ufuk_saat: number;
+  mod: Mod | null; model: string; kosu_zamani: string; ufuk_saat: number;
   ac_tavani_kw: number | null; simdi_idx: number | null;
   saatlik: { ts: string; p50_kw: number; p10_kw: number | null;
              p90_kw: number | null; gercek_kw: number | null }[];
