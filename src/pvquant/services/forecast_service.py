@@ -4,6 +4,7 @@ import json, pickle
 from datetime import datetime, timezone
 import pandas as pd
 from sqlalchemy import text
+from pvquant.config import get_settings
 from pvquant.db import tenant_baglami
 from pvquant.io.meteo import OpenMeteoClient
 from pvquant.pipeline.forecast import forecast_7day
@@ -12,8 +13,9 @@ from pvquant.services.calib_service import _plant_spec
 
 
 def uret_ve_kaydet(tenant_id, plant: dict) -> str:
-    meteo = OpenMeteoClient().get_forecast(latitude=plant["lat"],
-                                           longitude=plant["lon"])
+    meteo = OpenMeteoClient().get_forecast(
+        latitude=plant["lat"], longitude=plant["lon"],
+        days=get_settings().forecast_horizon_days)  # v2.69: 7g -> 16g
     with tenant_baglami(tenant_id) as s:
         cal = s.execute(text(
             "SELECT mode, params_json FROM calibrations "

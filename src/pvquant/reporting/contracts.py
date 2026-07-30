@@ -116,7 +116,9 @@ def from_results(
         ham = pc.get("plant_name") or pc.get("name") or "Santral"
         plant_name = normalize_plant_name(ham)
     fr = forecast_result
-    h = fr.hourly.copy()
+    # v2.69: kosu artik 16 gun (384s) tasiyabilir; RAPOR sozlesmesi 7 gundur
+    # (yedi_gun_yedi_bar, "8. gun DOGMAZ" testi). PDF/Excel ilk 168 saati basar.
+    h = fr.hourly.copy().iloc[:168]
     if h.index.tz is None:                       # güvence: UTC'ye sabitle
         h.index = h.index.tz_localize("UTC")
     h = h.rename(columns={"p_ac_kw": "p50_kw"})

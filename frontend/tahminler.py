@@ -16,7 +16,7 @@ from oturum import giris_bekcisi
 from pvquant.reporting.styles import sayi_tr
 from pvquant.services import calib_service, forecast_service, plant_service
 
-UFUKLAR = {"24s": 24, "72s": 72, "7g": 168}
+UFUKLAR = {"24s": 24, "72s": 72, "7g": 168, "16g": 384}  # v2.69
 
 
 # ---------------------------------------------------------------- eylem

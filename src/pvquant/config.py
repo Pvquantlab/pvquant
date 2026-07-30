@@ -55,6 +55,7 @@ class Settings(BaseSettings):
     worker_hour_alarm: int = 4              # v2.56: alarm taramasi (UTC)
     worker_day_calibration: int = 1         # v2.56: aylik kalibrasyon gunu
     worker_hour_calibration: int = 3        # v2.56: aylik kalibrasyon saati (UTC)
+    forecast_horizon_days: int = 16         # v2.69: Kitap KUTU-2 / Kilavuz Adim-5 (16g, 384 saat)
     meteo_retry_attempts: int = 3           # B-19: gecici hatada deneme sayisi
     meteo_retry_base_seconds: float = 2.0   # B-19: bekleme tabani (2,6,18 sn)
     quantile_coverage_target_pct: float = 80.0  # v2.57: P10-P90 gunduz kapsama hedefi
