@@ -73,10 +73,75 @@ export async function giris(email: string, sifre: string): Promise<boolean> {
 
 export function cikis(): void { localStorage.removeItem("pvq_token"); }
 
+/** /summary yaniti — apps/api/main.py v2.74-A ile birebir. */
+interface OzetYanit {
+  plant: { id: string; name: string; capacity_kwp: number;
+           ac_limit_kw: number | null; lat: number; lon: number; tz: string;
+           tilt: number | null; azimuth: number | null;
+           panel_tech: string | null };
+  mode: "A" | "B" | "C" | null; sapma_pct: number | null;
+  anlati: string | null; bugun_kwh: number | null; yarin_kwh: number | null;
+  yarin_hava: string; hafta_mwh: number | null; model_alt: string;
+  kalibrasyon_tarihi: string | null;
+  hava: { gun: string; derece: number; kwhm2: number }[];
+  gunler: { etiket: string; mwh: number | null }[];
+  saglik: { son_scada: string | null; islenen_saat: number; anomali: number };
+  aylik: { ay: string; mwh: number | null; saglam_saat: number | null;
+           kapsam_pct: number | null }[];
+}
+
+const AYLAR_KISA_TR = ["Oca", "Şub", "Mar", "Nis", "May", "Haz",
+                       "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
+
+/** '2026-06' -> 'Haz 26' (Streamlit'in aylik cubuk sesi). */
+function ayEtiketi(ay: string): string {
+  const [yil, ayNo] = ay.split("-");
+  const ad = AYLAR_KISA_TR[Number(ayNo) - 1];
+  return ad ? `${ad} ${yil.slice(2)}` : ay;
+}
+
+function trTarih(iso: string | null): string | null {
+  return iso ? new Date(iso).toLocaleDateString("tr-TR",
+    { day: "numeric", month: "short", year: "numeric" }) : null;
+}
+
+/** API yanitini UI sekline tasi. Sapma UI'da mutlak deger (%X,XX kalibi);
+ *  egim/azimut null ise ornekteki 'varsayilan' sesi; kesinti_gun istemcide. */
+function uyarlaOzet(g: OzetYanit): SantralOzeti {
+  const sonScada = g.saglik.son_scada;
+  const kesintiGun = sonScada
+    ? Math.max(0, Math.floor((Date.now() - new Date(sonScada).getTime()) / 86400000))
+    : null;
+  return {
+    ad: g.plant.name, kapasite_kwp: g.plant.capacity_kwp,
+    ac_tavani_kw: g.plant.ac_limit_kw,
+    lat: g.plant.lat, lon: g.plant.lon, tz: g.plant.tz,
+    egim_azimut: g.plant.tilt !== null && g.plant.azimuth !== null
+      ? `${g.plant.tilt}° / ${g.plant.azimuth}°`
+      : "20° / 180° (varsayılan)",
+    mod: g.mode, model_adi: g.model_alt || "—",
+    sapma_pct: g.sapma_pct !== null ? Math.abs(g.sapma_pct) : null,
+    son_kalibrasyon: trTarih(g.kalibrasyon_tarihi),
+    saatlik_mape: null, son_kosu: null,
+    bugun_kwh: g.bugun_kwh, yarin_kwh: g.yarin_kwh, hafta_mwh: g.hafta_mwh,
+    anlati: g.anlati ?? "",
+    hava: g.hava.map((h) => ({ etiket: h.gun, sicaklik: h.derece,
+                               isinim: h.kwhm2 })),
+    gunler: g.gunler.map((x) => ({ etiket: x.etiket, mwh: x.mwh ?? 0 })),
+    aylik: g.aylik.map((a) => ({ ay: ayEtiketi(a.ay), mwh: a.mwh ?? 0,
+      saglam_saat: a.saglam_saat ?? 0, kapsam_pct: a.kapsam_pct ?? 0 })),
+    saglik: { son_scada: trTarih(sonScada), kesinti_gun: kesintiGun,
+              islenen_saat: g.saglik.islenen_saat, anomali: g.saglik.anomali },
+  };
+}
+
 export const api = {
-  /** ozet/karne: gercek kapilari HENUZ yok — API tarafiyla birlikte dogana
-   *  kadar ornekte kalirlar; var olmayan URL cagrilmaz (v2.73-A karari). */
-  ozet: async (_p: string): Promise<SantralOzeti> => ornekOzet,
+  /** karne: gercek kapisi HENUZ yok — API tarafiyla birlikte dogana
+   *  kadar ornekte kalir; var olmayan URL cagrilmaz (v2.73-A karari). */
+  ozet: async (p: string): Promise<SantralOzeti> => {
+    if (!TABAN) return ornekOzet;
+    return uyarlaOzet(await getir<OzetYanit>(`/v1/plants/${p}/summary`));
+  },
   karne: async (_p: string): Promise<Karne> => ornekKarne,
   tahmin: async (p: string, u: Ufuk): Promise<TahminSerisi> => {
     if (!TABAN) return ornekTahmin(u);

@@ -37,9 +37,10 @@ def istemci(monkeypatch):
            "panel_tech": "bifacial"}
     monkeypatch.setattr(plant_service, "getir", lambda t, p: row)
     monkeypatch.setattr(ozet_service, "gunun_ozeti", lambda t, s: _sahte_ozet())
+    # aylik_ozet'in GERCEK kolonlari: ay, uretim_mwh, saat, kapsam_pct (v2.68).
     monkeypatch.setattr(ingest_service, "aylik_uretim", lambda t, p: pd.DataFrame(
         {"ay": ["2026-06", "2026-07"], "uretim_mwh": [870.1, 812.5],
-         "saglam_saat": [710, 700], "kapsam_pct": [98.6, 94.0]}))
+         "saat": [710, 700], "kapsam_pct": [98.6, 94.0]}))
     yield TestClient(api_main.app)
     api_main.app.dependency_overrides.clear()
 

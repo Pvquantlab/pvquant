@@ -139,7 +139,8 @@ def summary(plant_id: str, claims=Depends(gecerli_kullanici)):
     ay = ingest_service.aylik_uretim(claims["tenant_id"], plant_id)
     aylik = [] if ay.empty else [
         {"ay": r["ay"], "mwh": _kw(r["uretim_mwh"]),
-         "saglam_saat": int(r["saglam_saat"]) if "saglam_saat" in r else None,
+         # aylik_ozet kolonu 'saat' (v2.68) — 'saglam_saat' degil (canli ders #2)
+         "saglam_saat": int(r["saat"]) if "saat" in r else None,
          "kapsam_pct": _kw(r["kapsam_pct"]) if "kapsam_pct" in r else None}
         for _, r in ay.tail(12).iterrows()]
     return {
