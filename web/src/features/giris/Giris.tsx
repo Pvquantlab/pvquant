@@ -1,9 +1,22 @@
 import { useState } from "react";
+import { giris } from "../../api/client";
 
 /** Giris ekrani — urunun ilk yuzu. Pano sakin; burasi iddiali olabilir. */
 export function Giris({ onGiris }: { onGiris: () => void }) {
   const [email, setEmail] = useState("");
   const [sifre, setSifre] = useState("");
+  const [hata, setHata] = useState<string | null>(null);
+  const [bekliyor, setBekliyor] = useState(false);
+
+  async function gonder() {
+    setHata(null); setBekliyor(true);
+    try {
+      if (await giris(email, sifre)) onGiris();
+      else setHata("E-posta ya da parola hatalı.");
+    } catch {
+      setHata("Sunucuya ulaşılamadı — API ayakta mı?");
+    } finally { setBekliyor(false); }
+  }
 
   const zincir = [
     ["GHI", "küresel ışınım"], ["POA", "panel düzlemi"],
@@ -65,8 +78,11 @@ export function Giris({ onGiris }: { onGiris: () => void }) {
           <label className="giris-et">Parola</label>
           <input className="giris-girdi" type="password" value={sifre} autoComplete="current-password"
                  onChange={(e) => setSifre(e.target.value)} placeholder="••••••••" />
+          {hata && <p role="alert" style={{ fontSize: 13, color: "var(--negatif)",
+                     margin: "12px 0 0" }}>{hata}</p>}
           <button className="dugme dugme-ana" style={{ width: "100%", marginTop: 20, padding: "10px" }}
-                  onClick={onGiris}>Giriş yap</button>
+                  onClick={gonder} disabled={bekliyor}>
+            {bekliyor ? "Denetleniyor…" : "Giriş yap"}</button>
           <p style={{ fontSize: 12, color: "var(--soluk)", marginTop: 22, lineHeight: 1.7 }}>
             Verinizin sahibi sizsiniz. Yalnızca sizin hesabınızda tutulur;
             dilediğiniz an dışa aktarır ya da silersiniz.

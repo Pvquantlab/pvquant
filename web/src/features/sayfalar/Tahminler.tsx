@@ -40,7 +40,8 @@ export function Tahminler({ plantId }: { plantId: string }) {
                         { day: "numeric", month: "short" })}</td>
                     <td>{sayiTr(g.p50_kwh)}</td>
                     <td style={{ color: "var(--ikincil)" }}>
-                      {sayiTr(g.p10_kwh ?? 0)}–{sayiTr(g.p90_kwh ?? 0)}</td>
+                      {g.p10_kwh !== null && g.p90_kwh !== null
+                        ? `${sayiTr(g.p10_kwh)}–${sayiTr(g.p90_kwh)}` : "—"}</td>
                   </tr>
                 ))}
               </tbody>

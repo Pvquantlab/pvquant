@@ -15,6 +15,16 @@ except ImportError:
 
 app = FastAPI(title="PVQuant API", version="0.1")
 
+# v2.73-B: dev SPA (vite, :5173) tarayici kapisi. Prod'da SPA ayni alan
+# adindan (Caddy /v1) sunulur — oraya CORS gerekmez; liste env ile dar tutulur.
+from fastapi.middleware.cors import CORSMiddleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_os.environ.get(
+        "PVQ_CORS_ORIGINS", "http://localhost:5173").split(","),
+    allow_methods=["GET", "POST"], allow_headers=["Authorization",
+                                                  "Content-Type"])
+
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address

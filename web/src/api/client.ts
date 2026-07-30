@@ -52,6 +52,20 @@ function uyarla(g: ForecastYanit): TahminSerisi {
   };
 }
 
+/** v2.73-B: gercek oturum. Ornek kipte (TABAN yok) kapi yoktur, gecis serbest. */
+export async function giris(email: string, sifre: string): Promise<boolean> {
+  if (!TABAN) return true;
+  const y = await fetch(`${TABAN}/v1/auth/login`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, sifre }) });
+  if (!y.ok) return false;
+  const g = (await y.json()) as { token: string };
+  localStorage.setItem("pvq_token", g.token);
+  return true;
+}
+
+export function cikis(): void { localStorage.removeItem("pvq_token"); }
+
 export const api = {
   /** ozet/karne: gercek kapilari HENUZ yok — API tarafiyla birlikte dogana
    *  kadar ornekte kalirlar; var olmayan URL cagrilmaz (v2.73-A karari). */
