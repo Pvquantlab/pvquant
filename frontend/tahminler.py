@@ -13,7 +13,8 @@ import streamlit as st
 import tema
 import ui_kit
 from oturum import giris_bekcisi
-from pvquant.reporting.styles import BANT_BASLIK, bant_araligi, sayi_tr
+from pvquant.reporting.styles import (BANT_BASLIK, bant_araligi,
+                                      sayi_tr, ufuk_alt_yazisi)
 from pvquant.services import calib_service, forecast_service, plant_service
 
 UFUKLAR = {"24s": 24, "72s": 72, "7g": 168, "16g": 384}  # v2.69
@@ -46,8 +47,9 @@ def render_tahminler() -> None:
 
     st.markdown('<div class="pv-sayfa-baslik">Tahminler</div>',
                 unsafe_allow_html=True)
-    st.markdown('<div class="pv-sayfa-alt">168 saatlik kalibre üretim '
-                'tahmini — arşivden, son koşu.</div>',
+    _ufuk = st.session_state.get("ufuk_sec") or "7g"        # v2.71-D
+    st.markdown(f'<div class="pv-sayfa-alt">'
+                f'{ufuk_alt_yazisi(UFUKLAR[_ufuk])}</div>',
                 unsafe_allow_html=True)
 
     tid, pid = auth["tenant_id"], santral["id"]

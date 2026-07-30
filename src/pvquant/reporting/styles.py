@@ -127,10 +127,21 @@ def egim_azimut_metni(tilt, azimuth=None) -> str:
     dusmemek icin acikca None kontrolu yapilir.
     """
     if tilt is None:
-        return "20\u00b0 / 180\u00b0 (varsay\u0131lan)"
+        return "20° / 180° (varsayılan)"
     az = 180 if azimuth is None else azimuth
-    return (f"{sayi_tr(tilt, 0)}\u00b0 / {sayi_tr(az, 0)}\u00b0"
-            " (santral kayd\u0131)")
+    return (f"{sayi_tr(tilt, 0)}° / {sayi_tr(az, 0)}°"
+            " (santral kaydı)")
+
+
+def ufuk_alt_yazisi(saat: int) -> str:
+    """Tahminler sayfasinin alt yazisi - secili ufku soyler.
+
+    v2.71-D: cumle '168 saatlik ...' diye sabit yazilmisti; v2.69 ufku
+    384 saate cikarinca 16g sekmesinde de 168 diyordu. Sabit metin
+    yalniz 7g sekmesinde dogruydu.
+    """
+    return f"{saat} saatlik kalibre üretim tahmini — arşivden, son koşu."
+
 
 def donem_tr(t1, t2) -> str:
     """Dönem metni, Türkçe ay adlarıyla:
