@@ -10,8 +10,9 @@ export const SAYFALAR = [
 ] as const;
 export type SayfaId = (typeof SAYFALAR)[number]["id"];
 
-export function Kabuk({ sayfa, setSayfa, santral, children }:
-  { sayfa: SayfaId; setSayfa: (s: SayfaId) => void; santral: string; children: ReactNode }) {
+export function Kabuk({ sayfa, setSayfa, santral, onCikis, children }:
+  { sayfa: SayfaId; setSayfa: (s: SayfaId) => void; santral: string;
+    onCikis?: () => void; children: ReactNode }) {
   const [koyu, setKoyu] = useState(false);
   useEffect(() => { document.documentElement.dataset.tema = koyu ? "koyu" : "acik"; }, [koyu]);
   const bugun = new Date().toLocaleDateString("tr-TR",
@@ -32,6 +33,14 @@ export function Kabuk({ sayfa, setSayfa, santral, children }:
         <div className="yan-alt">
           <div style={{ fontSize: 12.5, color: "#fff", fontWeight: 500 }}>Meridyen Enerji</div>
           <div style={{ fontSize: 11.5, color: "var(--yan-metin)" }}>Admin</div>
+          {onCikis && (
+            <button onClick={onCikis}
+              style={{ marginTop: 8, background: "none", border: "none", padding: 0,
+                       fontSize: 11.5, color: "var(--yan-metin)", cursor: "pointer",
+                       textDecoration: "underline" }}>
+              Çıkış yap
+            </button>
+          )}
         </div>
       </nav>
       <main>

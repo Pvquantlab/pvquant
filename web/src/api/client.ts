@@ -19,10 +19,17 @@ interface ForecastYanit {
             p50_kw: number | null; p90_kw: number | null }[];
 }
 
+/** v2.73-C: 401'de oturum dusurulur — token 12 saatte olur, SPA sessiz kirilmasin. */
+let oturumDusunce: (() => void) | null = null;
+export function oturumDusunce_kaydet(fn: (() => void) | null): void {
+  oturumDusunce = fn;
+}
+
 async function getir<T>(yol: string): Promise<T> {
   const jeton = localStorage.getItem("pvq_token");
   const y = await fetch(`${TABAN}${yol}`, {
     headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
+  if (y.status === 401) { cikis(); oturumDusunce?.(); }
   if (!y.ok) throw new Error(`${y.status} ${yol}`);
   return (await y.json()) as T;
 }

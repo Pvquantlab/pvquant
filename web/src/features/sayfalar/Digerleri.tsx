@@ -10,8 +10,11 @@ export function VeriYukleme() {
                    margin: 0, lineHeight: 2 }}>
         {maddeler.map((m) => <li key={m}>{m}</li>)}
       </ul>
-      <button className={onerilen ? "dugme dugme-ana" : "dugme"}
-        style={{ width: "100%", marginTop: 18 }}>
+      {/* v2.73-C rotusu: akis SPA'ya henuz baglanmadi — olu dugme
+          calisir gibi durmasin (sifir degil, tire ilkesi). */}
+      <button className={onerilen ? "dugme dugme-ana" : "dugme"} disabled
+        title="Bu akış şimdilik Streamlit panelinde — SPA'ya sırası gelince taşınacak"
+        style={{ width: "100%", marginTop: 18, opacity: 0.55, cursor: "not-allowed" }}>
         {onerilen ? "Kalibre tahmine geç" : "Hızlı tahminle devam et"}
       </button>
     </Kart>
@@ -43,7 +46,9 @@ export function Kalibrasyon() {
   return (
     <Sayfa baslik="Kalibrasyon"
       alt="Model, santralinizin kendi verisiyle uyarlanır — kanıtı bu sayfada görürsünüz."
-      sag={<button className="dugme">Yeniden kalibre et</button>}>
+      sag={<button className="dugme" disabled
+        title="Bu akış şimdilik Streamlit panelinde — SPA'ya sırası gelince taşınacak"
+        style={{ opacity: 0.55, cursor: "not-allowed" }}>Yeniden kalibre et</button>}>
       <div className="ızgara satir-3" style={{ marginBottom: 14 }}>
         <Kpi etiket="Holdout WMAPE · hibrit" deger="%30,1" alt="kronolojik son %20 sınavı" />
         <Kpi etiket="Fizik · aynı sınav" deger="%38,7" alt="karşılaştırma tabanı" />
@@ -91,7 +96,10 @@ export function Raporlar() {
         {kartlar.map(([ad, alt]) => (
           <Kart key={ad} baslik={ad}>
             <div style={{ fontSize: 13, color: "var(--ikincil)", minHeight: 38 }}>{alt}</div>
-            <button className="dugme" style={{ width: "100%", marginTop: 14 }}>Hazırla</button>
+            <button className="dugme" disabled
+              title="Bu akış şimdilik Streamlit panelinde — SPA'ya sırası gelince taşınacak"
+              style={{ width: "100%", marginTop: 14, opacity: 0.55,
+                       cursor: "not-allowed" }}>Hazırla</button>
           </Kart>
         ))}
       </div>
