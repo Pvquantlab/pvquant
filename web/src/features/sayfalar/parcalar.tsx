@@ -1,32 +1,59 @@
 import type { ReactNode } from "react";
 
-export function Kpi({ etiket, deger, birim }: { etiket: string; deger: string; birim?: string }) {
+export const sayiTr = (x: number, ondalik = 0): string =>
+  new Intl.NumberFormat("tr-TR", { minimumFractionDigits: ondalik,
+                                   maximumFractionDigits: ondalik }).format(x);
+
+export function Kpi({ etiket, deger, birim, alt }:
+  { etiket: string; deger: string; birim?: string; alt?: ReactNode }) {
   return (
     <div className="kpi">
       <div className="kpi-et">{etiket}</div>
-      <div className="kpi-dg mono">{deger}</div>
-      {birim && <div className="kpi-br">{birim}</div>}
+      <div className="kpi-dg mono">{deger}{birim &&
+        <span style={{ fontSize: 13, color: "var(--soluk)", marginLeft: 5 }}>{birim}</span>}</div>
+      {alt && <div className="kpi-br">{alt}</div>}
     </div>
   );
 }
 
-export function Bolum({ baslik, sag, children }:
-  { baslik: string; sag?: ReactNode; children: ReactNode }) {
+export function Kart({ baslik, sag, children, ...rest }:
+  { baslik?: string; sag?: ReactNode; children: ReactNode } & { style?: React.CSSProperties }) {
   return (
-    <section className="kart">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div className="eyebrow">{baslik}</div>{sag}
-      </div>
+    <section className="kart" {...rest}>
+      {(baslik || sag) && <div className="kart-bas"><h3>{baslik}</h3>{sag}</div>}
       {children}
     </section>
   );
 }
 
-export function BosDurum({ baslik, metin }: { baslik: string; metin: string }) {
+export function Sayfa({ baslik, alt, sag, children }:
+  { baslik: string; alt?: string; sag?: ReactNode; children: ReactNode }) {
   return (
-    <div style={{ textAlign: "center", padding: "48px 20px", color: "var(--ikincil)" }}>
-      <div style={{ fontSize: 15, fontWeight: 500, color: "var(--metin)", marginBottom: 6 }}>{baslik}</div>
-      <div style={{ fontSize: 13, maxWidth: 380, margin: "0 auto" }}>{metin}</div>
+    <>
+      <div style={{ display: "flex", justifyContent: "space-between",
+                    alignItems: "flex-start", gap: 20, marginBottom: 20 }}>
+        <div>
+          <h1 style={{ fontSize: 24 }}>{baslik}</h1>
+          {alt && <p style={{ fontSize: 13, color: "var(--ikincil)", margin: "5px 0 0" }}>{alt}</p>}
+        </div>
+        {sag}
+      </div>
+      {children}
+    </>
+  );
+}
+
+export function Lejant({ ogeler }: { ogeler: { renk: string; ad: string; kesik?: boolean }[] }) {
+  return (
+    <div className="lejant">
+      {ogeler.map((o) => (
+        <span key={o.ad}>
+          {o.kesik
+            ? <span style={{ width: 14, borderTop: `2px dashed ${o.renk}` }} />
+            : <span className="nokta" style={{ background: o.renk }} />}
+          {o.ad}
+        </span>
+      ))}
     </div>
   );
 }

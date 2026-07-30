@@ -20,8 +20,8 @@ export const renk = {
 } as const;
 
 export const yazi = {
-  govde: "'Inter', system-ui, -apple-system, sans-serif",
-  mono: "'JetBrains Mono', ui-monospace, 'SF Mono', monospace",
+  govde: "'IBM Plex Sans', system-ui, sans-serif",
+  mono: "'IBM Plex Mono', ui-monospace, monospace",
 } as const;
 
 export const olcu = { yaricap: 8, kartYaricap: 12, hat: "0.5px" } as const;
