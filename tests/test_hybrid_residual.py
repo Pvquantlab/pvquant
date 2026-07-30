@@ -208,3 +208,23 @@ def test_save_and_load_ml_layer(calibrated_model, plant, tmp_path):
     a = model.predict(fi, cfg).summary.total_energy_kwh
     b = fresh.predict(fi, cfg).summary.total_energy_kwh
     assert abs(a - b) < 1e-6
+
+
+def test_negatif_konformal_ofset_kucaklamayi_bozamaz(calibrated_model, plant):
+    """v2.58-C: daraltici (negatif) ofset omuz saatlerinde p10 > p50
+    uretebiliyordu (16g kosusunda 137/384 satir; ilacsiz bu test 39 satir
+    gecisme ile kirmizi yanar). Asiri negatif ofsetle bile siralama
+    her satirda korunmali."""
+    from pvquant.models_v2.contracts import ForecastInput, OperationConfig
+
+    model, _, meteo = calibrated_model
+    model._conformal_offset_kw = -1e6  # kasitli asiri daraltma
+    future = meteo.tail(3 * 24).copy()
+    fi = ForecastInput(source="open_meteo", resolution_minutes=60, data=future)
+    res = model.predict(fi, OperationConfig(
+        operation_mode="calibrated", confidence_intervals=True))
+    ts = res.timeseries
+    assert "ac_power_p10_kw" in ts.columns
+    ok = ((ts["ac_power_p10_kw"] <= ts["ac_power_kw"]) &
+          (ts["ac_power_kw"] <= ts["ac_power_p90_kw"]))
+    assert ok.all(), f"gecisme: {int((~ok).sum())} satir"

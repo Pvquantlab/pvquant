@@ -390,6 +390,12 @@ class HybridResidualModel:
                     _poa_all = physics_hourly["poa_global"]
                     _lo = self._apply_constraints(_lo - _ofs, _poa_all)
                     _hi = self._apply_constraints(_hi + _ofs, _poa_all)
+                    # v2.58-C: kuantil gecismesi #3 — NEGATIF ofset (daraltma)
+                    # kucaklamayi bozabiliyor: omuz saatlerinde (POA>=esik,
+                    # uretim kucuk) bant 2|ofset|'ten darsa _lo merkezi asar.
+                    # 16g kosusu yakaladi (137/384 satir). Ilac: yeniden kucakla.
+                    _lo = np.minimum(_lo, p_final)
+                    _hi = np.maximum(_hi, p_final)
                 out_ts["ac_power_p10_kw"] = _lo.values
                 out_ts["ac_power_p90_kw"] = _hi.values
             if 0.5 in _qser:
