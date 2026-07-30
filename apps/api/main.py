@@ -108,6 +108,61 @@ def forecast(plant_id: str, hours: int = 168,
     }
 
 
+def _tarih(x):
+    """datetime/None -> ISO/None (JSON guvenli)."""
+    return x.isoformat() if hasattr(x, "isoformat") else (x if x else None)
+
+
+@app.get("/v1/plants/{plant_id}/summary")
+def summary(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """v2.74-A — Santralim'in tek servis sozlesmesi (Anayasa 8.4) API'de.
+
+    Streamlit'in veri yolunun kopyasi: plant_service.getir -> santral dict
+    -> gunun_ozeti -> aylik_uretim. Alan adlari GununOzeti + kunye ile
+    birebir; olmayan/dolmayan alan null (icat yok, sahte deger yok).
+    """
+    from pvquant.services import plant_service, ozet_service, ingest_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    # getir dict dondurur (canli durusma dersi: SimpleNamespace sahtesi
+    # nitelik erisimiyle bu farki maskeledi — sahte, gercegin seklini tasir).
+    santral = {
+        "id": str(row["id"]), "name": row["name"],
+        "capacity_kwp": float(row["capacity_kwp"]),
+        "ac_limit_kw": float(row["ac_limit_kw"])
+        if row.get("ac_limit_kw") is not None else None,
+        "lat": row["lat"], "lon": row["lon"], "tz": row["tz"],
+        "konum_metni": f"{row['lat']:.2f}, {row['lon']:.2f}",
+    }
+    o = ozet_service.gunun_ozeti(claims["tenant_id"], santral)
+    ay = ingest_service.aylik_uretim(claims["tenant_id"], plant_id)
+    aylik = [] if ay.empty else [
+        {"ay": r["ay"], "mwh": _kw(r["uretim_mwh"]),
+         "saglam_saat": int(r["saglam_saat"]) if "saglam_saat" in r else None,
+         "kapsam_pct": _kw(r["kapsam_pct"]) if "kapsam_pct" in r else None}
+        for _, r in ay.tail(12).iterrows()]
+    return {
+        "plant": {**santral,
+                  "tilt": row.get("tilt"),
+                  "azimuth": row.get("azimuth"),
+                  "panel_tech": row.get("panel_tech")},
+        "mode": o.mode, "sapma_pct": _kw(o.sapma_pct),
+        "anlati": o.icgoru_cumlesi,
+        "bugun_kwh": _kw(o.bugun_kwh), "yarin_kwh": _kw(o.yarin_kwh),
+        "yarin_hava": o.yarin_hava, "hafta_mwh": _kw(o.hafta_mwh),
+        "model_alt": o.model_alt,
+        "kalibrasyon_tarihi": _tarih(o.kalibrasyon_tarihi),
+        "hava": o.hava_3gun,
+        "gunler": [{"etiket": e, "mwh": _kw(v)}
+                   for e, v in zip(o.gunler, o.gunluk_mwh)],
+        "saglik": {"son_scada": _tarih(o.son_scada_tarihi),
+                   "islenen_saat": o.islenen_saat,
+                   "anomali": o.anomali_sayisi},
+        "aylik": aylik,
+    }
+
+
 @app.get("/v1/healthz")
 def healthz():
     return {"ok": True}
