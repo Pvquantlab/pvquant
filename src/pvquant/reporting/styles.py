@@ -114,6 +114,24 @@ def bant_araligi(alt: float, ust: float) -> str:
     """
     return f"{sayi_tr(alt, 0)} - {sayi_tr(ust, 0)}"
 
+
+def egim_azimut_metni(tilt, azimuth=None) -> str:
+    """Egim/azimut ciftinin ekran metni - gercekte kullanilani soyler.
+
+    v2.46 bunu Kalibrasyon sayfasinda duzeltmisti; Santralim kunyesi
+    atlanmisti ve orada "model buldu" yaziyordu. Model egimi FIT ETMIYOR
+    (fit_tilt/fit_azimuth kapali) - bos kayitta varsayilan kullanilir.
+    v2.71-C: iki sayfa da bu tek metinden okur.
+
+    Not: azimuth=0 (kuzey) gecerli bir degerdir; 'or 180' tuzagina
+    dusmemek icin acikca None kontrolu yapilir.
+    """
+    if tilt is None:
+        return "20\u00b0 / 180\u00b0 (varsay\u0131lan)"
+    az = 180 if azimuth is None else azimuth
+    return (f"{sayi_tr(tilt, 0)}\u00b0 / {sayi_tr(az, 0)}\u00b0"
+            " (santral kayd\u0131)")
+
 def donem_tr(t1, t2) -> str:
     """Dönem metni, Türkçe ay adlarıyla:
     aynı ay  -> '14 – 21 Temmuz 2026'

@@ -27,7 +27,7 @@ import streamlit as st
 import tema
 import ui_kit
 from oturum import giris_bekcisi
-from pvquant.reporting.styles import sayi_tr
+from pvquant.reporting.styles import egim_azimut_metni, sayi_tr
 from pvquant.services import calib_service, plant_service
 from pvquant.services.ingest_service import veri_ozeti
 
@@ -55,11 +55,9 @@ def _bulduklarimiz(cal, santral: dict, ozet: dict) -> None:
         # v2.46: "model buldu" da tam durust degildi — model fit ETMIYOR
         # (fit_tilt/fit_azimuth kapali); bos kayitta varsayilan kullanilir.
         # Kart, gercekte kullanilani soyler. Fit acilirsa: v2.46-B.
-        ("Eğim / Azimut",
-         "20° / 180° (varsayılan)" if santral.get("tilt") is None
-         else f"{sayi_tr(santral['tilt'], 0)}° / "
-              f"{sayi_tr(santral.get('azimuth') or 180, 0)}°"
-              " (santral kaydı)"),
+        ("Eğim / Azimut",                                  # v2.71-C
+         egim_azimut_metni(santral.get("tilt"),
+                           santral.get("azimuth"))),
         ("Geçerli saat", sayi_tr(cal.n_valid_hours or ozet["valid_saat"], 0)),
         ("Kalibrasyon tarihi", ui_kit.tarih_tr(cal.created_at)),
     ]

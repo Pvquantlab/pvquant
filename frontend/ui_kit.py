@@ -5,6 +5,8 @@ from __future__ import annotations
 import streamlit as st
 import plotly.graph_objects as go
 
+from pvquant.reporting.styles import egim_azimut_metni
+
 
 # --- 5.2 Mod sözlüğü (PDF ile aynı) ---
 MOD_METIN = {"A": "Mod A — saf fizik", "B": "Mod B — kalibre fizik",
@@ -242,7 +244,9 @@ def kunye_karti(santral: dict, mod, foto_yolu: str | None = None):
     dc = f"{santral['capacity_kwp']:,.0f}".replace(",", ".")
     ac = santral.get("ac_limit_kw")
     ac_txt = (f"{ac:,.0f}".replace(",", ".") + " kW") if ac else "—"
-    egim = "model buldu" if mod == "C" else "—"
+    egim = (egim_azimut_metni(santral.get("tilt"),        # v2.71-C
+                              santral.get("azimuth"))
+            if mod == "C" else "—")
     gorsel = _KUNYE_SVG
     if foto_yolu:
         try:
