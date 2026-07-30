@@ -102,6 +102,17 @@ def _gun_etiketi(tarih_str: str, tz: str) -> str:
     return GUNLER_KISA_TR[d.weekday()]
 
 
+def yedi_gun_serisi(gunluk_mwh: "pd.Series") -> "pd.Series":
+    """v2.71: gunluk MWh serisinden ILK 7 dolu yerel gunu dondurur.
+
+    v2.69 ufku 168 -> 384 saate cikardi; buradaki dilim yoktu, bu yuzden
+    '7 GUNLUK TOPLAM' karti sessizce 16 gunu topluyordu (kanit: ekranda
+    474,3 MWh, Tahminler 7g tablosu 213 MWh). Sifir-kuyruk gunler (v2.16 F2)
+    once dusulur, sonra bastan 7 gun alinir - en buyuk 7 gun degil.
+    """
+    return gunluk_mwh[gunluk_mwh > 0].head(7)
+
+
 def gunun_ozeti(tenant_id: str, santral: dict) -> GununOzeti:
     """Santralim'in tek cagrisi. Fable 5 v1.5: forecast_service bittikten
     sonra tum bagimliliklar hazir; okuma + sablon secimi burada."""
@@ -150,10 +161,9 @@ def gunun_ozeti(tenant_id: str, santral: dict) -> GununOzeti:
         if yarin_mask.any():
             o.yarin_kwh = float(df_yerel.loc[yarin_mask, "p50_kw"].sum())
 
-        o.hafta_mwh = float(df_yerel["p50_kw"].sum()) / 1000.0
-
         gunluk = df_yerel["p50_kw"].groupby(df_yerel.index.date).sum() / 1000.0
-        gunluk = gunluk[gunluk > 0]          # v2.16 F2: sifir-kuyruk dus
+        gunluk = yedi_gun_serisi(gunluk)     # v2.71 (v2.16 F2 iceride)
+        o.hafta_mwh = float(gunluk.sum())    # v2.71: kart = 7 cubugun toplami
         o.gunler = [_gun_etiketi(str(d), tz) for d in gunluk.index]
         o.gunluk_mwh = [float(v) for v in gunluk.values]
         for i, d in enumerate(gunluk.index):
