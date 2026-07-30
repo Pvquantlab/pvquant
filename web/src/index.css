@@ -1,0 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --marka: #0F6E56; --marka-acik: #9FE1CB; --marka-koyu: #085041;
+  --amber: #E8940A; --uyari: #C9502E; --basari: #1E9E6A;
+  --zemin: #F7F8F9; --kart: #FFFFFF; --yuzey: #F1F3F4;
+  --metin: #0F1B28; --ikincil: #5B6673; --soluk: #8A939E;
+  --kenar: #E4E8EC; --izgara: #EDF0F3;
+  --yan: #0E1D30; --yan-metin: #A9B6C2; --yan-aktif: #1B3350;
+  --font: 'Inter', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+  --r: 8px; --rk: 12px;
+}
+[data-tema="koyu"] {
+  --zemin: #0B1219; --kart: #121B24; --yuzey: #18232E;
+  --metin: #E8EDF2; --ikincil: #A7B8C2; --soluk: #6E7E8C;
+  --kenar: #223140; --izgara: #1B2733;
+  --yan: #080E14; --yan-metin: #8FA0AE; --yan-aktif: #16283C;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--zemin); color: var(--metin);
+       font-family: var(--font); -webkit-font-smoothing: antialiased; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+.kabuk { display: grid; grid-template-columns: 232px 1fr; min-height: 100vh; }
+.yan { background: var(--yan); padding: 20px 14px; display: flex; flex-direction: column; gap: 2px; }
+.marka-satir { display: flex; align-items: center; gap: 8px; color: #fff;
+               font-weight: 600; font-size: 15px; padding: 0 10px 18px; letter-spacing: -0.01em; }
+.nav-btn { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+           background: none; border: 0; color: var(--yan-metin); font-family: var(--font);
+           font-size: 14px; padding: 9px 10px; border-radius: var(--r); cursor: pointer;
+           transition: background .12s, color .12s; }
+.nav-btn:hover { background: var(--yan-aktif); color: #fff; }
+.nav-btn[aria-current="page"] { background: var(--yan-aktif); color: #fff; font-weight: 500; }
+
+.ust { display: flex; align-items: center; justify-content: space-between;
+       padding: 14px 28px; border-bottom: 0.5px solid var(--kenar); background: var(--kart); }
+.icerik { padding: 28px; max-width: 1240px; }
+
+.kart { background: var(--kart); border: 0.5px solid var(--kenar);
+        border-radius: var(--rk); padding: 18px 20px; }
+.kpi { background: var(--yuzey); border-radius: var(--r); padding: 13px 15px; }
+.kpi-et { font-size: 12px; color: var(--soluk); margin-bottom: 5px; }
+.kpi-dg { font-size: 23px; letter-spacing: -0.02em; }
+.kpi-br { font-size: 12px; color: var(--soluk); }
+
+.sekme { display: inline-flex; background: var(--yuzey); border-radius: var(--r); padding: 3px; gap: 2px; }
+.sekme button { border: 0; background: none; padding: 5px 13px; border-radius: 6px;
+                font-family: var(--mono); font-size: 13px; color: var(--ikincil);
+                cursor: pointer; transition: background .12s, color .12s; }
+.sekme button:hover { color: var(--metin); }
+.sekme button[aria-pressed="true"] { background: var(--kart); color: var(--marka);
+                                     font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+
+table.veri { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.veri th { text-align: right; font-weight: 500; color: var(--soluk); font-size: 12px;
+                padding: 7px 0; border-bottom: 0.5px solid var(--kenar); }
+table.veri th:first-child, table.veri td:first-child { text-align: left; }
+table.veri td { text-align: right; padding: 8px 0; border-bottom: 0.5px solid var(--izgara); }
+table.veri tbody tr:hover td { background: var(--yuzey); }
+
+.rozet { display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
+         padding: 3px 9px; border-radius: 999px; }
+.rozet-ok { background: color-mix(in srgb, var(--basari) 12%, transparent); color: var(--basari); }
+.rozet-uyari { background: color-mix(in srgb, var(--uyari) 12%, transparent); color: var(--uyari); }
+.eyebrow { font-size: 12px; color: var(--soluk); margin-bottom: 10px; }
+.tema-btn { border: 0.5px solid var(--kenar); background: var(--kart); color: var(--ikincil);
+            border-radius: var(--r); padding: 6px 11px; font-size: 13px; cursor: pointer;
+            font-family: var(--font); }
+.tema-btn:hover { color: var(--metin); }
