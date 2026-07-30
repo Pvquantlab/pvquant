@@ -49,6 +49,16 @@ def sabah_tahmin(plant):
     forecast_service.uret_ve_kaydet(plant["tenant_id"], plant)
 
 
+def kova_etiketle(ufuk_s: "pd.Series") -> "pd.Series":
+    """v2.70: ufuk saatini kovaya esle — 16g ufkuyla dorduncu kova dogdu.
+    Eski '72+' kovasi 168 saatlik ufukta fiilen 72-168 idi; 16g kosulari
+    baslayinca 3-7g ile 7-16g ayni kovada bulaniklasirdi. Simdi:
+    (0,24] / (24,72] / (72,168] / (168,999]. Kova-bazli konformal ayarin
+    (defter madde b) hakem verisi 168+ kovasinda birikecek."""
+    return pd.cut(ufuk_s, [0, 24, 72, 168, 999],
+                  labels=["0-24", "24-72", "72-168", "168+"])
+
+
 def gece_skill(plant, pencere_gun: int = 10):
     """Yeni gerceklesmeleri gecmis kosularla esle, gun+kova skoru yaz.
     v2.16 P1: mape = gunluk WMAPE = sum(|p50-gercek|)/sum(gercek)*100
@@ -69,8 +79,7 @@ def gece_skill(plant, pencere_gun: int = 10):
         return
     df["ufuk_s"] = (df.ts_utc - df.run_at).dt.total_seconds() / 3600
     df = df[df.ufuk_s >= 0]
-    df["kova"] = pd.cut(df.ufuk_s, [0, 24, 72, 999],
-                        labels=["0-24", "24-72", "72+"])
+    df["kova"] = kova_etiketle(df.ufuk_s)  # v2.70: 4 kova
     df["gun"] = df.ts_utc.dt.date
     gunduz = df.power_kw > 0.02 * float(plant["capacity_kwp"])
     df = df[gunduz]
