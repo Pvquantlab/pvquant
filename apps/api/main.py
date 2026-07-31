@@ -164,6 +164,35 @@ def summary(plant_id: str, claims=Depends(gecerli_kullanici)):
     }
 
 
+@app.get("/v1/plants/{plant_id}/skill")
+def skill(plant_id: str, bucket: str = "0-24", gun: int = 120,
+          claims=Depends(gecerli_kullanici)):
+    """v2.75-A — karne kapisi. Toplulastirma Streamlit dogruluk.py'nin
+    KOPYASI (iki panel ayni sayiyi soyler): kova filtresi -> mape.mean(),
+    date.nunique(), skill_vs_naive.dropna().mean() (zaten yuzde saklanir).
+    naif_wmape tabloda yok -> null (icat yok). Bos karne 200 + bos gunluk
+    doner — 'birikiyor' durumunu istemci anlatir.
+    """
+    from pvquant.services import forecast_service
+    if not (1 <= gun <= 365):
+        raise HTTPException(422, "gun 1-365 araliginda olmali")
+    sk = forecast_service.skill_gecmisi(claims["tenant_id"], plant_id, gun=gun)
+    kova = sk[sk["horizon_bucket"] == bucket] if not sk.empty else sk
+    sv = kova["skill_vs_naive"].dropna() if len(kova) else []
+    return {
+        "kova": bucket,
+        "gun_sayisi": int(kova["date"].nunique()) if len(kova) else 0,
+        "wmape_ort": _kw(kova["mape"].mean()) if len(kova) else None,
+        "naife_ustunluk_pct": _kw(sv.mean()) if len(sv) else None,
+        "ilk_tarih": kova["date"].min().date().isoformat() if len(kova) else None,
+        "son_tarih": kova["date"].max().date().isoformat() if len(kova) else None,
+        "gunluk": [
+            {"tarih": r["date"].date().isoformat(), "kova": r["horizon_bucket"],
+             "wmape": _kw(r["mape"]), "naif_wmape": None}
+            for _, r in kova.iterrows()],
+    }
+
+
 @app.get("/v1/healthz")
 def healthz():
     return {"ok": True}
