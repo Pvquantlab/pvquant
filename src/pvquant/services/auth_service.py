@@ -6,8 +6,21 @@ from passlib.hash import bcrypt
 from sqlalchemy import text
 from pvquant.db import sistem_baglami
 
-JWT_SECRET = os.environ.get("PVQ_JWT_SECRET", "dev-secret-DEGISTIR")
 JWT_SAAT = 12
+
+
+def _sir() -> str:
+    """v2.79 — bos sir gurultuyle reddedilir (gece vakasi: compose'un
+    ${PVQ_JWT_SECRET:-} kalibi degiskeni BOS DIZEyle set eder; get'in
+    varsayilani devreye girmez, jwt 'HMAC key must not be empty' ile
+    sessizce 500 verirdi). Bos != yok: bos -> aciklamali hata;
+    hic yok -> yerel dev varsayilani (davranis genisletilmedi)."""
+    s = os.environ.get("PVQ_JWT_SECRET")
+    if s == "":
+        raise RuntimeError(
+            "PVQ_JWT_SECRET BOS dize — .env'e gercek sir yazin "
+            "(openssl rand -hex 32). Bos sirla oturum imzalanmaz.")
+    return s if s is not None else "dev-secret-DEGISTIR"
 
 
 def tenant_ve_admin_olustur(firma_adi, email, sifre):
@@ -45,13 +58,13 @@ def giris(email, sifre) -> dict | None:
         "sub": str(row.id), "tenant_id": str(row.tenant_id),
         "role": row.role,
         "exp": dt.datetime.utcnow() + dt.timedelta(hours=JWT_SAAT)},
-        JWT_SECRET, algorithm="HS256")
+        _sir(), algorithm="HS256")
     return {"token": token, "user_id": str(row.id),
             "tenant_id": str(row.tenant_id), "role": row.role}
 
 
 def token_coz(token) -> dict | None:
     try:
-        return jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        return jwt.decode(token, _sir(), algorithms=["HS256"])
     except jwt.PyJWTError:
         return None
