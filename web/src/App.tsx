@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { cikis, oturumDusunce_kaydet } from "./api/client";
 import { Giris } from "./features/giris/Giris";
+import { Vitrin } from "./features/vitrin/Vitrin";
 import { Kabuk, type SayfaId } from "./shell/Kabuk";
 import { Santralim } from "./features/santralim/Santralim";
 import { Tahminler } from "./features/sayfalar/Tahminler";
@@ -14,12 +15,20 @@ export default function App() {
   const [sayfa, setSayfa] = useState<SayfaId>("santralim");
   const [girdi, setGirdi] = useState(false);
 
+  const [gorunum, setGorunum] = useState<"vitrin" | "giris">("vitrin");
+
   useEffect(() => {
-    oturumDusunce_kaydet(() => setGirdi(false));   // v2.73-C: 401 -> giris ekrani
+    oturumDusunce_kaydet(() => {                   // v2.73-C: 401 -> giris
+      setGirdi(false); setGorunum("giris");        // v2.81: vitrine degil girise
+    });
     return () => oturumDusunce_kaydet(null);
   }, []);
 
-  if (!girdi) return <Giris onGiris={() => setGirdi(true)} />;
+  if (!girdi) {
+    if (gorunum === "vitrin")
+      return <Vitrin onPanel={() => setGorunum("giris")} />;   // v2.81
+    return <Giris onGiris={() => setGirdi(true)} />;
+  }
   return (
     <Kabuk sayfa={sayfa} setSayfa={setSayfa} santral="Konya GES"
            onCikis={() => { cikis(); setGirdi(false); }}>
