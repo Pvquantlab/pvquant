@@ -133,6 +133,15 @@ def aylik_kalibrasyon(plant):
     calib_service.kalibre_et(plant["tenant_id"], plant, hibrit=True)
 
 
+def aylik_iklim(plant):
+    """v2.77-C: iklim beklentisi ayda bir tazelenir (KUTU-2 hesaplayan yol).
+    Arsiv probu olcumu: 20 yil tek cagri ~3 sn — santral basina ucuz."""
+    from pvquant.services import iklim_service
+    b = iklim_service.iklim_beklentisi(plant["lat"], plant["lon"],
+                                       tz=plant.get("tz"))
+    iklim_service.iklim_kaydet(plant["tenant_id"], plant["id"], b)
+
+
 if __name__ == "__main__":
     import sys
     from pvquant.config import get_settings
@@ -152,6 +161,8 @@ if __name__ == "__main__":
     sch.add_job(_logla("alarm", alarm_tara), "cron", hour=cfg.worker_hour_alarm, minute=0)
     sch.add_job(_logla("aylik_kalibrasyon", aylik_kalibrasyon),
                 "cron", day=cfg.worker_day_calibration, hour=cfg.worker_hour_calibration, minute=0)
+    sch.add_job(_logla("aylik_iklim", aylik_iklim),                      # v2.77-C
+                "cron", day=cfg.worker_day_calibration, hour=cfg.worker_hour_calibration, minute=30)
     print(f"PVQuant worker basladi (UTC cron: {cfg.worker_hour_skill:02d}:30 skill /"
           f" {cfg.worker_hour_forecast:02d}:00 tahmin / {cfg.worker_hour_alarm:02d}:00 alarm /"
           f" ay-{cfg.worker_day_calibration} {cfg.worker_hour_calibration:02d}:00 kal.)")
