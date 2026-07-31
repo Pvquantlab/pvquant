@@ -6,6 +6,7 @@ export const SAYFALAR = [
   { id: "kalibrasyon", ad: "Kalibrasyon" },
   { id: "tahminler", ad: "Tahminler" },
   { id: "dogruluk", ad: "Doğruluk" },
+  { id: "aylik", ad: "Aylık beklenti" },
   { id: "raporlar", ad: "Raporlar" },
 ] as const;
 export type SayfaId = (typeof SAYFALAR)[number]["id"];

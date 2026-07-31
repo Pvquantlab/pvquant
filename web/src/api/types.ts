@@ -35,3 +35,12 @@ export interface Karne {
   ilk_tarih: string | null; son_tarih: string | null;
   gunluk: { tarih: string; kova: string; wmape: number; naif_wmape: number | null }[];
 }
+
+/** /monthly yaniti — apps/api/main.py v2.78-B ile birebir. */
+export interface AylikBeklenti {
+  plant_id: string;
+  hesap_zamani: string;
+  beklenti: { ay: number; p10: number | null; p50: number | null;
+              p90: number | null; yil_sayisi: number }[];
+  yillik: { yil: number; ay: number; ghi_kwh_m2: number | null }[];
+}

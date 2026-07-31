@@ -1,5 +1,5 @@
-import type { SantralOzeti, TahminSerisi, Karne } from "./types";
-import { ornekOzet, ornekTahmin, ornekKarne } from "./ornek";
+import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti } from "./types";
+import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
  *  VITE_API_URL tanimliysa GERCEK kapiya gider; degilse ornek veriye duser. */
@@ -151,6 +151,10 @@ export const api = {
       getir<Karne>(`/v1/plants/${p}/skill?bucket=24-72`),
     ]);
     return { ...k0, gunluk: [...k0.gunluk, ...k1.gunluk] };
+  },
+  aylik: async (p: string): Promise<AylikBeklenti> => {
+    if (!TABAN) return ornekAylik;
+    return getir<AylikBeklenti>(`/v1/plants/${p}/monthly`);
   },
   tahmin: async (p: string, u: Ufuk): Promise<TahminSerisi> => {
     if (!TABAN) return ornekTahmin(u);

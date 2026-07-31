@@ -53,9 +53,10 @@ def tam_yillar(toplamlar: pd.DataFrame, ilk_yil: int,
                      & (toplamlar["yil"] <= son_yil)].reset_index(drop=True)
 
 
-def iklim_beklentisi(lat: float, lon: float, yil_sayisi: int = 20,
-                     tz: str | None = None) -> pd.DataFrame:
-    """Ince ag sargisi: arsivden cek -> iki saf fonksiyondan gecir.
+def iklim_hesapla(lat: float, lon: float, yil_sayisi: int = 20,
+                  tz: str | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Ince ag sargisi: arsivden cek -> saf fonksiyonlardan gecir.
+    Doner: (toplamlar, beklenti) — serpili katmani (v2.78) toplamlari da ister.
 
     Son TAM yila kadar `yil_sayisi` yil ceker (icinde bulunulan yil eksik
     oldugundan dagilimi egmesin diye disarida birakilir).
@@ -71,7 +72,13 @@ def iklim_beklentisi(lat: float, lon: float, yil_sayisi: int = 20,
     df = OpenMeteoClient(timeout=180).get_historical(
         lat, lon, baslangic, bitis).to_dataframe()
     t = tam_yillar(aylik_toplamlar(df, tz=tz), ilk_yil, son_tam_yil)
-    return aylik_beklenti(t)
+    return t, aylik_beklenti(t)
+
+
+def iklim_beklentisi(lat: float, lon: float, yil_sayisi: int = 20,
+                     tz: str | None = None) -> pd.DataFrame:
+    """Geriye uyum: yalniz beklenti isteyenler icin (test/kapi)."""
+    return iklim_hesapla(lat, lon, yil_sayisi, tz)[1]
 
 
 def iklim_kaydet(tenant_id, plant_id, beklenti: pd.DataFrame) -> int:
@@ -115,4 +122,39 @@ def iklim_oku(tenant_id, plant_id) -> pd.DataFrame:
             "SELECT ay, ghi_p10_kwh_m2, ghi_p50_kwh_m2, ghi_p90_kwh_m2,"
             " yil_sayisi, hesap_zamani FROM iklim_beklenti"
             " WHERE plant_id=:p ORDER BY ay"),
+            s.connection(), params={"p": str(plant_id)})
+
+
+def iklim_yil_kaydet(tenant_id, plant_id, toplamlar: pd.DataFrame) -> int:
+    """20 yil serpilisinin hazir-sonuc katmani (v2.78-A). Upsert kalibi ayni."""
+    from sqlalchemy import text
+
+    from pvquant.db import tenant_baglami
+
+    if toplamlar is None or toplamlar.empty:
+        return 0
+    satirlar = [
+        {"t": str(tenant_id), "p": str(plant_id), "y": int(r["yil"]),
+         "a": int(r["ay"]), "g": float(r["ghi_kwh_m2"])}
+        for _, r in toplamlar.iterrows()]
+    with tenant_baglami(tenant_id) as s:
+        s.execute(text(
+            "INSERT INTO iklim_yil(tenant_id,plant_id,yil,ay,"
+            " ghi_kwh_m2,hesap_zamani)"
+            " VALUES(:t,:p,:y,:a,:g,now())"
+            " ON CONFLICT (plant_id,yil,ay) DO UPDATE SET"
+            " ghi_kwh_m2=EXCLUDED.ghi_kwh_m2, hesap_zamani=now()"), satirlar)
+    return len(satirlar)
+
+
+def iklim_yil_oku(tenant_id, plant_id) -> pd.DataFrame:
+    """Serpilinin okuyan yolu — ham okuma, hesap yok."""
+    from sqlalchemy import text
+
+    from pvquant.db import tenant_baglami
+
+    with tenant_baglami(tenant_id) as s:
+        return pd.read_sql(text(
+            "SELECT yil, ay, ghi_kwh_m2 FROM iklim_yil"
+            " WHERE plant_id=:p ORDER BY yil, ay"),
             s.connection(), params={"p": str(plant_id)})

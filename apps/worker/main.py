@@ -137,9 +137,10 @@ def aylik_iklim(plant):
     """v2.77-C: iklim beklentisi ayda bir tazelenir (KUTU-2 hesaplayan yol).
     Arsiv probu olcumu: 20 yil tek cagri ~3 sn — santral basina ucuz."""
     from pvquant.services import iklim_service
-    b = iklim_service.iklim_beklentisi(plant["lat"], plant["lon"],
+    t, b = iklim_service.iklim_hesapla(plant["lat"], plant["lon"],
                                        tz=plant.get("tz"))
     iklim_service.iklim_kaydet(plant["tenant_id"], plant["id"], b)
+    iklim_service.iklim_yil_kaydet(plant["tenant_id"], plant["id"], t)  # v2.78-A
 
 
 if __name__ == "__main__":

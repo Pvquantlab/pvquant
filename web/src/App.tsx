@@ -5,6 +5,7 @@ import { Kabuk, type SayfaId } from "./shell/Kabuk";
 import { Santralim } from "./features/santralim/Santralim";
 import { Tahminler } from "./features/sayfalar/Tahminler";
 import { Dogruluk } from "./features/sayfalar/Dogruluk";
+import { Aylik } from "./features/sayfalar/Aylik";
 import { VeriYukleme, Kalibrasyon, Raporlar } from "./features/sayfalar/Digerleri";
 
 const PLANT = "1242a0a8-2899-438e-8c67-661c9016968d";
@@ -27,6 +28,7 @@ export default function App() {
       {sayfa === "kalibrasyon" && <Kalibrasyon />}
       {sayfa === "tahminler" && <Tahminler plantId={PLANT} />}
       {sayfa === "dogruluk" && <Dogruluk plantId={PLANT} />}
+      {sayfa === "aylik" && <Aylik plantId={PLANT} />}
       {sayfa === "raporlar" && <Raporlar />}
     </Kabuk>
   );

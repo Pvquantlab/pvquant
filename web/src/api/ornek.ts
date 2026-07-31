@@ -71,3 +71,14 @@ export const ornekKarne: Karne = {
     { tarih: "18 Nis", kova: "24-72", wmape: 53, naif_wmape: 63 },
   ],
 };
+
+export const ornekAylik = {
+  plant_id: "ornek",
+  hesap_zamani: new Date().toISOString(),
+  beklenti: Array.from({ length: 12 }, (_, i) => ({
+    ay: i + 1, p10: 60 + i * 14, p50: 75 + i * 15, p90: 90 + i * 16,
+    yil_sayisi: 20 })),
+  yillik: Array.from({ length: 60 }, (_, i) => ({
+    yil: 2005 + (i % 5), ay: (i % 12) + 1,
+    ghi_kwh_m2: 70 + ((i * 37) % 180) })),
+};

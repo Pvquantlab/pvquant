@@ -200,6 +200,32 @@ def skill(plant_id: str, bucket: str = "0-24", gun: int = 120,
     }
 
 
+@app.get("/v1/plants/{plant_id}/monthly")
+def monthly(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """v2.78-B — aylik beklenti kapisi (KUTU-2 okuyan yol).
+
+    Ham okuma, hesap yok: iklim_beklenti (P10/50/90, worker ayda bir yazar)
+    + iklim_yil (20 yil serpilisi). Henuz hesaplanmadiysa durust 404 —
+    'birikiyor' anlatisi istemcinin isi.
+    """
+    from pvquant.services import iklim_service
+    b = iklim_service.iklim_oku(claims["tenant_id"], plant_id)
+    if b.empty:
+        raise HTTPException(404, "iklim beklentisi henuz hesaplanmadi")
+    y = iklim_service.iklim_yil_oku(claims["tenant_id"], plant_id)
+    return {
+        "plant_id": plant_id,
+        "hesap_zamani": b["hesap_zamani"].max().isoformat(),
+        "beklenti": [
+            {"ay": int(r.ay), "p10": _kw(r.ghi_p10_kwh_m2),
+             "p50": _kw(r.ghi_p50_kwh_m2), "p90": _kw(r.ghi_p90_kwh_m2),
+             "yil_sayisi": int(r.yil_sayisi)} for r in b.itertuples()],
+        "yillik": [
+            {"yil": int(r.yil), "ay": int(r.ay),
+             "ghi_kwh_m2": _kw(r.ghi_kwh_m2)} for r in y.itertuples()],
+    }
+
+
 @app.get("/v1/healthz")
 def healthz():
     return {"ok": True}
