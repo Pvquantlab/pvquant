@@ -12,6 +12,18 @@ from pvquant.pipeline.hybrid_ui import hybrid_forecast_hourly
 from pvquant.services.calib_service import _plant_spec
 
 
+def _model_yukle(yol: str):
+    """v2.80 — artifact'i yukler; diskte yoksa None (kosu olmez, mod duser).
+    Yalniz yasanan vaka yakalanir (FileNotFoundError); baska hatalar
+    maskelenmez — bozuk pickle vb. hala gurultuyle patlar."""
+    try:
+        with open(yol, "rb") as f:
+            return pickle.load(f)
+    except FileNotFoundError:
+        print(f"UYARI: model artifact'i diskte yok ({yol}) — mod C->B dusuluyor")
+        return None
+
+
 def uret_ve_kaydet(tenant_id, plant: dict) -> str:
     meteo = OpenMeteoClient().get_forecast(
         latitude=plant["lat"], longitude=plant["lon"],
@@ -35,8 +47,13 @@ def uret_ve_kaydet(tenant_id, plant: dict) -> str:
     h["physics_kw"] = h["p50_kw"]; h["ml_kw"] = None
     h["p10_kw"] = None; h["p90_kw"] = None
     if mode == "C" and ml:
-        with open(ml.artifact_path, "rb") as f: model = pickle.load(f)
-        hh = hybrid_forecast_hourly(model, meteo)
+        model = _model_yukle(ml.artifact_path)
+        if model is None:
+            # v2.80: DB 'aktif model var' der, disk 'yok' derse kosu OLMEZ —
+            # kalibre-fizik (B) moduna dusulur; etiket kayda durustce gider
+            # (20:25 vakasi: acilis yarisinda artifact henuz diskte yoktu).
+            mode = "B"
+        hh = hybrid_forecast_hourly(model, meteo) if model is not None else None
         if hh is not None:
             h["p50_kw"] = hh["p50_kw"].reindex(h.index)
             h["ml_kw"] = h["p50_kw"] - h["physics_kw"]
