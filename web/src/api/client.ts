@@ -144,8 +144,13 @@ export const api = {
   },
   karne: async (p: string): Promise<Karne> => {
     if (!TABAN) return ornekKarne;
-    // /skill yaniti Karne tipiyle birebir tasarlandi (v2.75-A) — adaptor gecis hatti.
-    return getir<Karne>(`/v1/plants/${p}/skill?bucket=0-24`);
+    // v2.76: KPI'lar 0-24 kovasindan; grafik karsilastirmasi icin 24-72 de
+    // cekilir ve gunluk birlesir (kapi kova basina calisir).
+    const [k0, k1] = await Promise.all([
+      getir<Karne>(`/v1/plants/${p}/skill?bucket=0-24`),
+      getir<Karne>(`/v1/plants/${p}/skill?bucket=24-72`),
+    ]);
+    return { ...k0, gunluk: [...k0.gunluk, ...k1.gunluk] };
   },
   tahmin: async (p: string, u: Ufuk): Promise<TahminSerisi> => {
     if (!TABAN) return ornekTahmin(u);

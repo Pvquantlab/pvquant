@@ -1,4 +1,5 @@
 """PVQuant API — ince katman: HTTP -> services -> HTTP."""
+import pandas as pd
 from fastapi import FastAPI, Depends, HTTPException, Request
 from pydantic import BaseModel
 from apps.api.deps import gecerli_kullanici, yazma_yetkisi
@@ -188,7 +189,13 @@ def skill(plant_id: str, bucket: str = "0-24", gun: int = 120,
         "son_tarih": kova["date"].max().date().isoformat() if len(kova) else None,
         "gunluk": [
             {"tarih": r["date"].date().isoformat(), "kova": r["horizon_bucket"],
-             "wmape": _kw(r["mape"]), "naif_wmape": None}
+             "wmape": _kw(r["mape"]),
+             # v2.76: turetme, icat degil — worker satir 120: skill=100*(1-mape/naif)
+             # => naif = mape/(1-skill/100). skill yoksa naif bilinmez -> null.
+             "naif_wmape": _kw(r["mape"] / (1 - r["skill_vs_naive"] / 100))
+             if r["skill_vs_naive"] is not None
+             and not pd.isna(r["skill_vs_naive"])
+             and r["skill_vs_naive"] < 100 else None}
             for _, r in kova.iterrows()],
     }
 

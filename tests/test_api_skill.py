@@ -39,8 +39,10 @@ def test_skill_200_toplulastirma_streamlit_kopyasi(istemci):
     assert g["naife_ustunluk_pct"] == 31.0                  # (31+27+35)/3
     assert g["ilk_tarih"] == "2026-07-28" and g["son_tarih"] == "2026-07-30"
     assert len(g["gunluk"]) == 3
+    # v2.76: naif_wmape turetilir — skill=100*(1-mape/naif) ozdesliginden
+    # naif = wmape/(1-skill/100). 8.2/(1-0.31) = 11.884; skill None -> null.
     assert g["gunluk"][0] == {"tarih": "2026-07-28", "kova": "0-24",
-                              "wmape": 8.2, "naif_wmape": None}
+                              "wmape": 8.2, "naif_wmape": 11.884}
 
 
 def test_skill_bos_kova_durust_bos(istemci):

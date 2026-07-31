@@ -26,15 +26,21 @@ export function Dogruluk({ plantId }: { plantId: string }) {
     const izgara = oku("--izgara"), soluk = oku("--soluk"), kenar = oku("--kenar");
     const gri = oku("--notr-acik"), mono = "IBM Plex Mono";
     const g = k?.gunluk ?? [];
-    const etiket = g.map((r) => r.tarih);
+    // v2.76: iki kova ayni gunde birlesir — eksen benzersiz sirali tarih,
+    // seriler tarih+kova aramasiyla hizalanir (satir-basina-kategori kalkti).
+    const tarihler = [...new Set(g.map((r) => r.tarih))].sort();
+    const bul = (t: string, kova: string) =>
+      g.find((r) => r.tarih === t && r.kova === kova);
     const seri = (kova: string) =>
-      g.map((r) => (r.kova === kova ? r.wmape : null));
+      tarihler.map((t) => bul(t, kova)?.wmape ?? null);
+    const naifSeri = tarihler.map((t) =>
+      bul(t, "0-24")?.naif_wmape ?? bul(t, "24-72")?.naif_wmape ?? null);
     return {
       grid: { left: 46, right: 12, top: 24, bottom: 28 }, animation: false,
       tooltip: { trigger: "axis", backgroundColor: oku("--kart"), borderColor: kenar,
         borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 12 },
         valueFormatter: (v: unknown) => (v === null ? "—" : `%${sayiTr(Number(v), 1)}`) },
-      xAxis: { type: "category", data: etiket, axisTick: { show: false },
+      xAxis: { type: "category", data: tarihler, axisTick: { show: false },
         axisLine: { lineStyle: { color: kenar } },
         axisLabel: { color: soluk, fontFamily: mono, fontSize: 11 } },
       yAxis: { type: "value", splitLine: { lineStyle: { color: izgara } },
@@ -43,7 +49,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
                      formatter: (v: number) => `%${v}` } },
       series: [
         { name: "Naif referans", type: "bar", barMaxWidth: 26,
-          data: g.map((r) => r.naif_wmape), itemStyle: { color: gri, borderRadius: [2,2,0,0] } },
+          data: naifSeri, itemStyle: { color: gri, borderRadius: [2,2,0,0] } },
         { name: "PVQuant 0-24s", type: "bar", barMaxWidth: 26,
           data: seri("0-24"), itemStyle: { color: marka, borderRadius: [2,2,0,0] } },
         { name: "PVQuant 24-72s", type: "bar", barMaxWidth: 26,
@@ -55,10 +61,16 @@ export function Dogruluk({ plantId }: { plantId: string }) {
 
   if (!k) return <div style={{ color: "var(--soluk)" }}>Yükleniyor…</div>;
 
+  // v2.76: karne gunu + kapsanan donem TUM kovalardan (Streamlit tanimi:
+  // sk["date"].nunique() ve sk min/max — kova filtresiz).
+  const tumTarihler = [...new Set(k.gunluk.map((r) => r.tarih))].sort();
+  const donemIlk = tumTarihler[0] ?? k.ilk_tarih;
+  const donemSon = tumTarihler[tumTarihler.length - 1] ?? k.son_tarih;
+
   return (
     <Sayfa baslik="Doğruluk karnesi"
       alt="Tahminlerimiz gerçekleşenle her gece karşılaştırılır — kanıt burada birikir."
-      sag={<span className="cip">Kapsanan dönem: {donem(k.ilk_tarih, k.son_tarih)}</span>}>
+      sag={<span className="cip">Kapsanan dönem: {donem(donemIlk, donemSon)}</span>}>
       <div className="ızgara satir-3" style={{ marginBottom: 14 }}>
         <Kpi etiket={`WMAPE · 0-24s · ${k.gun_sayisi} gün ort.`}
              deger={`%${sayiTr(k.wmape_ort ?? 0, 1)}`} alt="gündüz saatleri, valid veriyle" />
