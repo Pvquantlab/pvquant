@@ -16,10 +16,6 @@ function Egri() {
     <svg viewBox="0 0 720 240" style={{ width: "100%", display: "block" }}
          role="img" aria-label="Temsili günlük üretim eğrisi, tahmin aralığı ve AC tavanı">
       <defs>
-        <linearGradient id="bant" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#3FB489" stopOpacity="0.45" />
-          <stop offset="1" stopColor="#3FB489" stopOpacity="0.06" />
-        </linearGradient>
         <linearGradient id="alan" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#0E7C5A" stopOpacity="0.16" />
           <stop offset="1" stopColor="#0E7C5A" stopOpacity="0" />

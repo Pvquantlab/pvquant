@@ -1,8 +1,14 @@
 import type { ReactNode } from "react";
 
+/** v2.85: Intl, sayinin kisa ondalik yazimindan yuvarlar (212.95 -> "213,0");
+ *  Python/Streamlit ikili degerden yuvarlar (-> 212,9). Iki panel ayni sayiyi
+ *  soylesin diye once toFixed ile ikili degerde yuvarlanir, sonra bicimlenir.
+ *  (Serh: tam ikili dugumde — orn. 2.5 — JS yarim-yukari, Python cift-e; olculmus
+ *  toplamlarda dogmaz.) */
 export const sayiTr = (x: number, ondalik = 0): string =>
   new Intl.NumberFormat("tr-TR", { minimumFractionDigits: ondalik,
-                                   maximumFractionDigits: ondalik }).format(x);
+                                   maximumFractionDigits: ondalik })
+    .format(Number(x.toFixed(ondalik)));
 
 export function Kpi({ etiket, deger, birim, alt }:
   { etiket: string; deger: string; birim?: string; alt?: ReactNode }) {
