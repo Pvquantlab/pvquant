@@ -142,7 +142,11 @@ export const api = {
     if (!TABAN) return ornekOzet;
     return uyarlaOzet(await getir<OzetYanit>(`/v1/plants/${p}/summary`));
   },
-  karne: async (_p: string): Promise<Karne> => ornekKarne,
+  karne: async (p: string): Promise<Karne> => {
+    if (!TABAN) return ornekKarne;
+    // /skill yaniti Karne tipiyle birebir tasarlandi (v2.75-A) — adaptor gecis hatti.
+    return getir<Karne>(`/v1/plants/${p}/skill?bucket=0-24`);
+  },
   tahmin: async (p: string, u: Ufuk): Promise<TahminSerisi> => {
     if (!TABAN) return ornekTahmin(u);
     return uyarla(await getir<ForecastYanit>(
