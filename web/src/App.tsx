@@ -13,7 +13,9 @@ const PLANT = "1242a0a8-2899-438e-8c67-661c9016968d";
 
 export default function App() {
   const [sayfa, setSayfa] = useState<SayfaId>("santralim");
-  const [girdi, setGirdi] = useState(false);
+  // v2.83: oturum kalicidir — jeton varsa panelden basla; hukmu sunucu verir
+  // (curuk/olmus jeton ilk cagrida 401 yer, oturumDusunce girise dusurur).
+  const [girdi, setGirdi] = useState(() => !!localStorage.getItem("pvq_token"));
 
   const [gorunum, setGorunum] = useState<"vitrin" | "giris">("vitrin");
 
@@ -31,7 +33,8 @@ export default function App() {
   }
   return (
     <Kabuk sayfa={sayfa} setSayfa={setSayfa} santral="Konya GES"
-           onCikis={() => { cikis(); setGirdi(false); }}>
+           onCikis={() => { cikis(); setGirdi(false);
+                            setGorunum("vitrin"); }}>  {/* gonullu cikis -> vitrin */}
       {sayfa === "santralim" && <Santralim plantId={PLANT} />}
       {sayfa === "veri" && <VeriYukleme />}
       {sayfa === "kalibrasyon" && <Kalibrasyon />}
