@@ -29,7 +29,12 @@ async function getir<T>(yol: string): Promise<T> {
   const jeton = localStorage.getItem("pvq_token");
   const y = await fetch(`${TABAN}${yol}`, {
     headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
-  if (y.status === 401) { cikis(); oturumDusunce?.(); }
+  if (y.status === 401) {
+    cikis(); oturumDusunce?.();
+    // v2.84: uygulama zaten girise dusuyor — bekleyen cagri ne cozulur ne
+    // reddedilir; "Uncaught (in promise)" gurultusu konsola dusmez.
+    return new Promise<T>(() => {});
+  }
   if (!y.ok) throw new Error(`${y.status} ${yol}`);
   return (await y.json()) as T;
 }
