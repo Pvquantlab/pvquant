@@ -80,25 +80,28 @@ export function Santralim({ plantId }: { plantId: string }) {
         <Kart baslik="Veri sağlığı">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16 }}>
             <div>
-              <div className="kpi-et">Son SCADA yüklemesi</div>
+              <div className="kpi-et">Son veri yüklemesi</div>
               <div className="mono" style={{ fontSize: 17, color: "var(--uyari)" }}>{s.son_scada}</div>
-              <div style={{ fontSize: 11.5, color: "var(--uyari)", marginTop: 3 }}>
-                veri akışı {s.kesinti_gun} gündür kesik</div>
+              <div style={{ fontSize: 12, color: "var(--uyari)", marginTop: 3, fontWeight: 500 }}>
+                {s.kesinti_gun} gündür yeni veri yok</div>
             </div>
             <div>
               <div className="kpi-et">İşlenen veri</div>
               <div className="mono" style={{ fontSize: 17 }}>{sayiTr(s.islenen_saat)}</div>
-              <div style={{ fontSize: 11.5, color: "var(--soluk)", marginTop: 3 }}>saat</div>
+              <div style={{ fontSize: 12, color: "var(--soluk)", marginTop: 3 }}>
+                saatlik ölçüm, temiz ve hazır</div>
             </div>
             <div>
               <div className="kpi-et">Anomali tespiti</div>
               <div className="mono" style={{ fontSize: 17 }}>{sayiTr(s.anomali)}</div>
-              <div style={{ fontSize: 11.5, color: "var(--soluk)", marginTop: 3 }}>
-                işaretlendi, silinmedi</div>
+              <div style={{ fontSize: 12, color: "var(--soluk)", marginTop: 3 }}>
+                işaretlendi — tek satır silinmedi</div>
             </div>
           </div>
-          <p style={{ fontSize: 12, color: "var(--soluk)", margin: "16px 0 0" }}>
-            Model, en güncel veriniz kadar isabetlidir.
+          <p style={{ fontSize: 13, color: "var(--ikincil)", margin: "16px 0 0",
+                      lineHeight: 1.55 }}>
+            Model, en taze verinizle en güçlü hâlindedir. Yeni SCADA dosyanızı
+            yükleyin — tahmin o gece kendini yeniden sınar, karneniz büyür.
           </p>
         </Kart>
       </div>
