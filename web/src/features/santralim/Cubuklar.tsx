@@ -18,7 +18,7 @@ export function Cubuklar({ etiketler, degerler, birim, vurguIdx, yukseklik = 260
         { offset: 0, color: `rgba(${r},${ust})` },
         { offset: 1, color: `rgba(${r},${alt})` }] });
     const izgara = oku("--izgara"), soluk = oku("--soluk"), kenar = oku("--kenar");
-    const mono = "IBM Plex Mono";
+    const mono = oku("--mono");  // v2.92: sabit ad degil token
     const enDusuk = degerler.indexOf(Math.min(...degerler));
     return {
       grid: { left: 46, right: 10, top: 26, bottom: 26 }, animation: false,

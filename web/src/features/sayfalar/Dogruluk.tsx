@@ -24,7 +24,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
   const option = useMemo<EChartsOption>(() => {
     const marka = oku("--marka"), acik = oku("--marka-acik");
     const izgara = oku("--izgara"), soluk = oku("--soluk"), kenar = oku("--kenar");
-    const gri = oku("--notr-acik"), mono = "IBM Plex Mono";
+    const gri = oku("--notr-acik"), mono = oku("--mono");  // v2.92: sabit ad degil token
     const g = k?.gunluk ?? [];
     // v2.76: iki kova ayni gunde birlesir — eksen benzersiz sirali tarih,
     // seriler tarih+kova aramasiyla hizalanir (satir-basina-kategori kalkti).

@@ -27,7 +27,7 @@ export function Aylik({ plantId }: { plantId: string }) {
   const option = useMemo<EChartsOption>(() => {
     const marka = oku("--marka"), acik = oku("--marka-acik");
     const izgara = oku("--izgara"), soluk = oku("--soluk");
-    const kenar = oku("--kenar"), mono = "JetBrains Mono";
+    const kenar = oku("--kenar"), mono = oku("--mono");  // v2.92: sabit ad degil token
     const bek = b?.beklenti ?? [];
     const p10 = bek.map((r) => r.p10);
     const bant = bek.map((r) => (r.p90 !== null && r.p10 !== null)

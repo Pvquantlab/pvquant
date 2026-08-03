@@ -17,7 +17,7 @@ export function FanChart({ seri, yukseklik = 300 }:
       { offset: 0, color: `rgba(${mr},.26)` },
       { offset: 1, color: `rgba(${mr},.04)` }] };
     const izgara = oku("--izgara"), soluk = oku("--soluk"), kenar = oku("--kenar");
-    const mono = "IBM Plex Mono";
+    const mono = oku("--mono");  // v2.92: sabit ad degil token
     const cokGun = seri.ufuk_saat > 48;
     const x = seri.saatlik.map((s) => {
       const d = new Date(s.ts);
