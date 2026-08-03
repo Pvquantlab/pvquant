@@ -349,3 +349,20 @@ def scada_yukle(plant_id: str, dosya: UploadFile = File(...),
         _os.unlink(yol)
     return {**out, "report": res.report.to_dict(),
             "transform": res.transform.to_dict()}
+
+
+# ---------------------------------------------------------------- v2.93
+# Hizli tahmin — Streamlit'teki tek satirin HTTP hali:
+# forecast_service.uret_ve_kaydet. Kalibre santralda aktif modla kosar
+# (vaat edilenden iyisi); kalibrasyonsuz santralda fizik (Mod A).
+# Es zamanli doner (10-20 sn) — panel icin kabul edilir, serh dusuldu.
+
+@app.post("/v1/plants/{plant_id}/forecast/run")
+def tahmin_kos(plant_id: str, claims=Depends(yazma_yetkisi())):
+    """v2.93: taze tahmin kosusu tetikle; run_id doner."""
+    from pvquant.services.forecast_service import uret_ve_kaydet
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    run_id = uret_ve_kaydet(claims["tenant_id"], row)
+    return {"run_id": str(run_id)}

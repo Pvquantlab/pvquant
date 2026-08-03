@@ -19,6 +19,11 @@ export function FanChart({ seri, yukseklik = 300 }:
     const izgara = oku("--izgara"), soluk = oku("--soluk"), kenar = oku("--kenar");
     const mono = oku("--mono");  // v2.92: sabit ad degil token
     const cokGun = seri.ufuk_saat > 48;
+    // v2.93: bant verisi yoksa bant HIC cizilmez. ?? 0 gecmisi ayna
+    // yaratiyordu: null p90 -> ust = -p50; ECharts samesign yigini
+    // negatifi sifirdan ASAGI serer (gunes gece -3.500 kW "uretir"di).
+    const varBant = seri.saatlik.some(
+      (s) => s.p10_kw !== null && s.p90_kw !== null);
     const x = seri.saatlik.map((s) => {
       const d = new Date(s.ts);
       return cokGun ? d.toLocaleDateString("tr-TR", { day: "numeric", month: "short" })
@@ -46,8 +51,10 @@ export function FanChart({ seri, yukseklik = 300 }:
         borderColor: kenar, borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 12 },
         formatter: (p: unknown) => {
           const i = (p as { dataIndex: number }[])[0].dataIndex;
-          return `<b>${x[i]}</b><br/>P90 &nbsp;${sayiTr(p90[i])} kW<br/>` +
-                 `<b>P50 &nbsp;${sayiTr(p50[i])} kW</b><br/>P10 &nbsp;${sayiTr(p10[i])} kW`;
+          return varBant
+            ? `<b>${x[i]}</b><br/>P90 &nbsp;${sayiTr(p90[i])} kW<br/>` +
+              `<b>P50 &nbsp;${sayiTr(p50[i])} kW</b><br/>P10 &nbsp;${sayiTr(p10[i])} kW`
+            : `<b>${x[i]}</b><br/><b>P50 &nbsp;${sayiTr(p50[i])} kW</b>`;
         } },
       xAxis: { type: "category", data: x, boundaryGap: false,
         axisLine: { lineStyle: { color: kenar } }, axisTick: { show: false },
@@ -59,14 +66,19 @@ export function FanChart({ seri, yukseklik = 300 }:
         axisLabel: { color: soluk, fontFamily: mono, fontSize: 11,
                      formatter: (v: number) => sayiTr(v) } },
       series: [
-        { name: "taban", type: "line", stack: "band", data: p10, symbol: "none",
-          lineStyle: { opacity: 0 }, areaStyle: { opacity: 0 }, silent: true },
-        { name: "alt", type: "line", stack: "band", symbol: "none", silent: true,
-          data: p50.map((v, i) => v - p10[i]), lineStyle: { opacity: 0 },
-          areaStyle: { color: bant } },
-        { name: "ust", type: "line", stack: "band", symbol: "none", silent: true,
-          data: p90.map((v, i) => v - p50[i]), lineStyle: { opacity: 0 },
-          areaStyle: { color: bant } },
+        ...(varBant ? [
+          { name: "taban", type: "line" as const, stack: "band", data: p10,
+            symbol: "none" as const, lineStyle: { opacity: 0 },
+            areaStyle: { opacity: 0 }, silent: true },
+          { name: "alt", type: "line" as const, stack: "band",
+            symbol: "none" as const, silent: true,
+            data: p50.map((v, i) => v - p10[i]), lineStyle: { opacity: 0 },
+            areaStyle: { color: bant } },
+          { name: "ust", type: "line" as const, stack: "band",
+            symbol: "none" as const, silent: true,
+            data: p90.map((v, i) => v - p50[i]), lineStyle: { opacity: 0 },
+            areaStyle: { color: bant } },
+        ] : []),
         { name: "P50", type: "line", data: p50, symbol: "none", smooth: 0.25, z: 3,
           lineStyle: { color: marka, width: 2.4 },
           markLine: isaretler.length ? { silent: true, symbol: "none",

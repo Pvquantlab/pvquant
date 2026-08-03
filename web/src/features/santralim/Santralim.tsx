@@ -40,7 +40,10 @@ export function Santralim({ plantId }: { plantId: string }) {
                                        marginBottom: 14 }}>
         <Kart baslik="Bugün — saatlik üretim"
           sag={<Lejant ogeler={[{ renk: "var(--marka)", ad: "Tahmin P50" },
-                                { renk: "var(--marka-acik)", ad: "P10–P90" }]} />}>
+                                ...(seri && seri.saatlik.some((s) =>
+                                    s.p10_kw !== null && s.p90_kw !== null)
+                                  ? [{ renk: "var(--marka-acik)", ad: "P10–P90" }]
+                                  : [])]} />}>
           {seri && <FanChart seri={seri} yukseklik={300} />}
           <p style={{ fontSize: 12, color: "var(--soluk)", margin: "10px 0 0" }}>
             Gerçekleşen üretimi görmek için bugünün SCADA verisini yükleyin.

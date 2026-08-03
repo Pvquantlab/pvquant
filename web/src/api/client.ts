@@ -237,6 +237,28 @@ export const api = {
         if (v) alanlar["map_" + k] = v;     // v2.91: sihirbaz kararlari
     return dosyaGonder<ScadaKayit>(`/v1/plants/${p}/scada`, dosya, alanlar);
   },
+  /** v2.93: taze tahmin kosusu — es zamanli, 10-20 sn surer. */
+  tahminKos: async (p: string): Promise<{ run_id: string }> => {
+    if (!TABAN) throw new Error(
+      "Örnek kipte koşu tetiklenmez — VITE_API_URL tanımlı değil.");
+    const jeton = localStorage.getItem("pvq_token");
+    const y = await fetch(`${TABAN}/v1/plants/${p}/forecast/run`, {
+      method: "POST",
+      headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
+    if (y.status === 401) {
+      cikis(); oturumDusunce?.();
+      return new Promise(() => {});   // v2.84 sozlesmesi
+    }
+    if (!y.ok) {
+      let mesaj = `${y.status} kosu`;
+      try {
+        const g = (await y.json()) as { detail?: unknown };
+        if (typeof g.detail === "string") mesaj = g.detail;
+      } catch { /* govde yoksa kod kalir */ }
+      throw new Error(mesaj);
+    }
+    return (await y.json()) as { run_id: string };
+  },
   /** karne: gercek kapisi HENUZ yok — API tarafiyla birlikte dogana
    *  kadar ornekte kalir; var olmayan URL cagrilmaz (v2.73-A karari). */
   ozet: async (p: string): Promise<SantralOzeti> => {

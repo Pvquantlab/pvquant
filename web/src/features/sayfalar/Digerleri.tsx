@@ -3,8 +3,9 @@ import { api, EslemeHatasi, type EslemeVerisi,
          type ScadaOnizleme, type ScadaKayit } from "../../api/client";
 import { Kart, Sayfa, Kpi, sayiTr } from "./parcalar";
 
-export function VeriYukleme({ plantId, santralimeGit }:
-  { plantId: string; santralimeGit?: () => void }) {
+export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
+  { plantId: string; santralimeGit?: () => void;
+    tahminlereGit?: () => void }) {
   // v2.88: "Kalibre tahmine gec" canlandi — dosya sec -> /scada/preview ->
   // onizleme (format + esleme + ham satirlar). Onay dugmesi v2.89'a kadar
   // bilerek pasif (olu dugme degil: sirasi acikca yazili).
@@ -21,6 +22,9 @@ export function VeriYukleme({ plantId, santralimeGit }:
   // v2.91: sihirbaz — otomatik esleme dusunce kullanici karar verir
   const [sihirbaz, setSihirbaz] = useState<EslemeVerisi | null>(null);
   const [secimler, setSecimler] = useState<Record<string, string>>({});
+  // v2.93: hizli yol — kosu tetikleme durumu
+  const [kosuyor, setKosuyor] = useState(false);
+  const [kosuHata, setKosuHata] = useState<string | null>(null);
 
   const sec = async (d: File) => {
     setYukleniyor(true); setHata(null); setOn(null); setDosyaAdi(d.name);
@@ -62,6 +66,15 @@ export function VeriYukleme({ plantId, santralimeGit }:
   const sihirbazGecerli = !!secimler.timestamp &&
     (!!secimler.power || !!secimler.energy);
 
+  const hizliKos = async () => {
+    // v2.93: Streamlit'teki tek satirin SPA hali — kosu biter bitmez
+    // Tahminler'e gecilir (sonuc orada, soz degil kanit).
+    setKosuyor(true); setKosuHata(null);
+    try { await api.tahminKos(plantId); tahminlereGit?.(); }
+    catch (e) { setKosuHata(e instanceof Error ? e.message : String(e)); }
+    finally { setKosuyor(false); }
+  };
+
   const BAYRAK_ADI: Record<string, string> = {
     valid: "Geçerli", negative_power: "Negatif güç",
     night_production: "Gece üretimi", over_capacity: "Kapasite üstü",
@@ -93,11 +106,11 @@ export function VeriYukleme({ plantId, santralimeGit }:
           {yukleniyor ? "Dosya okunuyor…" : "Kalibre tahmine geç"}
         </button>
       ) : (
-        /* v2.73-C rotusu surer: hizli yol SPA'ya henuz baglanmadi. */
-        <button className="dugme" disabled
-          title="Bu akış şimdilik Streamlit panelinde — SPA'ya sırası gelince taşınacak"
-          style={{ width: "100%", marginTop: 18, opacity: 0.55, cursor: "not-allowed" }}>
-          Hızlı tahminle devam et
+        /* v2.93: hizli yol canlandi — uret_ve_kaydet HTTP'den. */
+        <button className="dugme" disabled={kosuyor || yukleniyor}
+          onClick={hizliKos}
+          style={{ width: "100%", marginTop: 18 }}>
+          {kosuyor ? "Tahmin üretiliyor… 10-20 sn" : "Hızlı tahminle devam et"}
         </button>
       )}
     </Kart>
@@ -118,12 +131,17 @@ export function VeriYukleme({ plantId, santralimeGit }:
         {yol("Hızlı tahmin", "%5–10", "beklenen yıllık enerji sapması",
           ["Veri yüklemeden, saniyeler içinde sonuç",
            "Profesyonel meteoroloji verisiyle",
-           "Dilediğiniz an kalibre tahmine yükseltin"])}
+           "Kalibreli santralda aktif modla koşar — yoksa fizik"])}
         {yol("Kalibre tahmin", "%1–3", "beklenen yıllık enerji sapması",
           ["Model geçmiş üretiminize uyarlanır",
            "Panel yönü bilinmiyorsa varsayılan kullanılır",
            "En az 3 ay SCADA — önerilen 12 ay"], true)}
       </div>
+
+      {kosuHata && (
+        <p style={{ fontSize: 13, color: "var(--ikincil)", maxWidth: 900,
+                    margin: "14px 0 0", lineHeight: 1.65 }}>{kosuHata}</p>
+      )}
 
       {hata && (
         <div style={{ maxWidth: 900, marginTop: 14 }}>

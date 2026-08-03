@@ -11,6 +11,9 @@ export function Tahminler({ plantId }: { plantId: string }) {
   const [ufuk, setUfuk] = useState<U>("7d");
   const [seri, setSeri] = useState<TahminSerisi | null>(null);
   useEffect(() => { api.tahmin(plantId, ufuk).then(setSeri); }, [plantId, ufuk]);
+  // v2.93: bant var mi — baslik ve lejant ayni gercege bakar
+  const varBant = !!seri && seri.saatlik.some(
+    (s) => s.p10_kw !== null && s.p90_kw !== null);
 
   return (
     <Sayfa baslik="Tahminler"
@@ -22,9 +25,12 @@ export function Tahminler({ plantId }: { plantId: string }) {
       </div>}>
       {seri && (
         <div className="ızgara" style={{ gridTemplateColumns: "minmax(0,1.9fr) minmax(0,1fr)" }}>
-          <Kart baslik="Saatlik tahmin ve P10–P90 aralığı"
+          <Kart baslik={varBant ? "Saatlik tahmin ve P10–P90 aralığı"
+                                : "Saatlik tahmin"}
             sag={<Lejant ogeler={[{ renk: "var(--marka)", ad: "P50" },
-                                  { renk: "var(--marka-acik)", ad: "P10–P90" }]} />}>
+                                  ...(varBant
+                                    ? [{ renk: "var(--marka-acik)", ad: "P10–P90" }]
+                                    : [])]} />}>
             <FanChart seri={seri} yukseklik={360} />
             <p style={{ fontSize: 12, color: "var(--soluk)", margin: "12px 0 0" }}>
               Son koşu Mod {seri.mod ?? "—"} · kaynak: tahmin arşivi — koşular güncellenmez, yenisi eklenir.

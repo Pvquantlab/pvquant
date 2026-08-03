@@ -37,7 +37,8 @@ export default function App() {
                             setGorunum("vitrin"); }}>  {/* gonullu cikis -> vitrin */}
       {sayfa === "santralim" && <Santralim plantId={PLANT} />}
       {sayfa === "veri" && <VeriYukleme plantId={PLANT}
-        santralimeGit={() => setSayfa("santralim")} />}
+        santralimeGit={() => setSayfa("santralim")}
+        tahminlereGit={() => setSayfa("tahminler")} />}
       {sayfa === "kalibrasyon" && <Kalibrasyon />}
       {sayfa === "tahminler" && <Tahminler plantId={PLANT} />}
       {sayfa === "dogruluk" && <Dogruluk plantId={PLANT} />}
