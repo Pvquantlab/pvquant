@@ -229,3 +229,89 @@ def monthly(plant_id: str, claims=Depends(gecerli_kullanici)):
 @app.get("/v1/healthz")
 def healthz():
     return {"ok": True}
+
+
+# ---------------------------------------------------------------- v2.87
+# SCADA yukleme kapilari — SPA'nin veri isi. Cekirdek boru hatti
+# (preview_file / ingest_file / yukle_ve_kaydet) DEGISMEZ; buradaki
+# uclar ince HTTP sarmasidir. API durumsuz: dosya iki uca da gonderilir
+# (12 ay saatlik ~9k satir, MB mertebesi — bilinene kapsam karari).
+# Manuel esleme sihirbazi kapsam disi (v2.90 adayi): esleme tutmazsa
+# durust 422, Streamlit sihirbazina yonlendirme.
+from fastapi import File, Form, UploadFile
+
+
+def _gecici_dosya(f) -> str:
+    """UploadFile -> diskte gecici kopya. Uzanti korunur: format
+    algilama .xlsx/.csv ayrimini dosya adindan da okur."""
+    import shutil, tempfile
+    from pathlib import Path
+    ek = Path(f.filename or "veri.csv").suffix or ".csv"
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=ek)
+    shutil.copyfileobj(f.file, tmp)
+    tmp.close()
+    return tmp.name
+
+
+def _ornek_satirlar(df):
+    """Ham onizleme JSON-guvenli: NaN -> null, her deger metin.
+    Onay ekrani ham gorunumu GOSTERIR, yorumlamaz (icat yok)."""
+    return {"columns": [str(c) for c in df.columns],
+            "rows": [[None if pd.isna(v) else str(v) for v in r]
+                     for r in df.head(10).itertuples(index=False, name=None)]}
+
+
+@app.post("/v1/plants/{plant_id}/scada/preview")
+def scada_preview(plant_id: str, dosya: UploadFile = File(...),
+                  claims=Depends(gecerli_kullanici)):
+    """v2.87 Faz 1: algila + esle — KAYDETME YOK. Onay ekranini besler."""
+    from pvquant.io.ingestion.pipeline import MappingFailedError, preview_file
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    yol = _gecici_dosya(dosya)
+    try:
+        pv = preview_file(yol)
+    except MappingFailedError as e:
+        raise HTTPException(422, "otomatik esleme kurulamadi: "
+                            f"{e} — simdilik Streamlit sihirbazini kullanin")
+    finally:
+        _os.unlink(yol)
+    return {"file_format": pv.file_format.to_dict(),
+            "mapping": pv.mapping.to_dict(),
+            "unmapped_columns": pv.unmapped_columns,
+            "sample_rows": _ornek_satirlar(pv.sample_rows),
+            "matched_template": pv.matched_template,
+            "notes": pv.notes,
+            "onerilen_tz": row["tz"]}
+
+
+@app.post("/v1/plants/{plant_id}/scada")
+def scada_yukle(plant_id: str, dosya: UploadFile = File(...),
+                source_timezone: str = Form(...),
+                claims=Depends(yazma_yetkisi())):
+    """v2.87 Faz 2: onayli kararla dogrula + kalicilastir. Kapasite/konum
+    santral KAYDINDAN okunur (kunye tek gercek, formda tekrar yok).
+    Karne (QualityReport) cevapta doner — SPA yorumsuz gosterir."""
+    from pvquant.io.ingestion.pipeline import MappingFailedError, ingest_file
+    from pvquant.services import ingest_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    yol = _gecici_dosya(dosya)
+    try:
+        res = ingest_file(yol, capacity_kwp=float(row["capacity_kwp"]),
+                          latitude=row["lat"], longitude=row["lon"],
+                          source_timezone=source_timezone)
+        out = ingest_service.yukle_ve_kaydet(
+            claims["tenant_id"], plant_id, dosya.filename or yol,
+            capacity_kwp=float(row["capacity_kwp"]),
+            latitude=row["lat"], longitude=row["lon"],
+            source_timezone=source_timezone, hazir_sonuc=res)
+    except MappingFailedError as e:
+        raise HTTPException(422, "otomatik esleme kurulamadi: "
+                            f"{e} — simdilik Streamlit sihirbazini kullanin")
+    finally:
+        _os.unlink(yol)
+    return {**out, "report": res.report.to_dict(),
+            "transform": res.transform.to_dict()}
