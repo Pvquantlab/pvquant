@@ -78,6 +78,46 @@ export async function giris(email: string, sifre: string): Promise<boolean> {
 
 export function cikis(): void { localStorage.removeItem("pvq_token"); }
 
+/** v2.88: SCADA onizleme yaniti — apps/api/main.py v2.87 ile birebir. */
+export interface ScadaOnizleme {
+  file_format: { encoding: string; delimiter: string; decimal: string;
+                 header_row: number; sheet_name: string | null;
+                 n_preview_rows: number; confidence: number };
+  mapping: { timestamp: string; power: string | null; energy: string | null;
+             poa_irradiance: string | null; temp_ambient: string | null;
+             temp_module: string | null; wind_speed: string | null;
+             ghi: string | null; confidence: Record<string, number> };
+  unmapped_columns: string[];
+  sample_rows: { columns: string[]; rows: (string | null)[][] };
+  matched_template: string | null;
+  notes: string[];
+  onerilen_tz: string;
+}
+
+/** v2.88: dosyali POST — getir'in 401 sozlesmesinin aynisi. 4xx'te sunucunun
+ *  detail mesaji Error olur (422 esleme reddi UI'da durustce okunur). */
+async function dosyaGonder<T>(yol: string, dosya: File): Promise<T> {
+  const jeton = localStorage.getItem("pvq_token");
+  const veri = new FormData();
+  veri.append("dosya", dosya);
+  const y = await fetch(`${TABAN}${yol}`, {
+    method: "POST", body: veri,
+    headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
+  if (y.status === 401) {
+    cikis(); oturumDusunce?.();
+    return new Promise<T>(() => {});   // v2.84 sozlesmesi: sessiz dusus
+  }
+  if (!y.ok) {
+    let mesaj = `${y.status} ${yol}`;
+    try {
+      const g = (await y.json()) as { detail?: unknown };
+      if (typeof g.detail === "string") mesaj = g.detail;
+    } catch { /* govde yoksa durum kodu kalir */ }
+    throw new Error(mesaj);
+  }
+  return (await y.json()) as T;
+}
+
 /** /summary yaniti — apps/api/main.py v2.74-A ile birebir. */
 interface OzetYanit {
   plant: { id: string; name: string; capacity_kwp: number;
@@ -141,6 +181,13 @@ function uyarlaOzet(g: OzetYanit): SantralOzeti {
 }
 
 export const api = {
+  /** v2.88: SCADA onizleme — dosyayi kapiya tasir, yaniti OLDUGU GIBI doner
+   *  (yorum UI'nin isi degil; icat yok). Ornek kipte kapi yok — durust hata. */
+  scadaOnizleme: async (p: string, dosya: File): Promise<ScadaOnizleme> => {
+    if (!TABAN) throw new Error(
+      "Örnek kipte dosya kapısı yok — VITE_API_URL tanımlı değil.");
+    return dosyaGonder<ScadaOnizleme>(`/v1/plants/${p}/scada/preview`, dosya);
+  },
   /** karne: gercek kapisi HENUZ yok — API tarafiyla birlikte dogana
    *  kadar ornekte kalir; var olmayan URL cagrilmaz (v2.73-A karari). */
   ozet: async (p: string): Promise<SantralOzeti> => {

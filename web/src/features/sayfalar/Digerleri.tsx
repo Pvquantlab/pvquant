@@ -1,6 +1,37 @@
+import { useRef, useState } from "react";
+import { api, type ScadaOnizleme } from "../../api/client";
 import { Kart, Sayfa, Kpi, sayiTr } from "./parcalar";
 
-export function VeriYukleme() {
+export function VeriYukleme({ plantId }: { plantId: string }) {
+  // v2.88: "Kalibre tahmine gec" canlandi — dosya sec -> /scada/preview ->
+  // onizleme (format + esleme + ham satirlar). Onay dugmesi v2.89'a kadar
+  // bilerek pasif (olu dugme degil: sirasi acikca yazili).
+  const dosyaRef = useRef<HTMLInputElement>(null);
+  const [yukleniyor, setYukleniyor] = useState(false);
+  const [dosyaAdi, setDosyaAdi] = useState<string | null>(null);
+  const [on, setOn] = useState<ScadaOnizleme | null>(null);
+  const [hata, setHata] = useState<string | null>(null);
+
+  const sec = async (d: File) => {
+    setYukleniyor(true); setHata(null); setOn(null); setDosyaAdi(d.name);
+    try { setOn(await api.scadaOnizleme(plantId, d)); }
+    catch (e) { setHata(e instanceof Error ? e.message : String(e)); }
+    finally { setYukleniyor(false); }
+  };
+
+  const ALAN_ADI: Record<string, string> = {
+    timestamp: "Zaman damgası", power: "Güç", energy: "Enerji",
+    poa_irradiance: "POA ışınımı", temp_ambient: "Ortam sıcaklığı",
+    temp_module: "Modül sıcaklığı", wind_speed: "Rüzgâr hızı", ghi: "GHI",
+  };
+  const eslemeler = on
+    ? Object.keys(ALAN_ADI)
+        .map((k) => ({ k,
+          kolon: (on.mapping as unknown as Record<string, string | null>)[k],
+          guven: on.mapping.confidence[k] }))
+        .filter((x) => x.kolon)
+    : [];
+
   const yol = (ad: string, bant: string, alt: string, maddeler: string[], onerilen = false) => (
     <Kart baslik={ad} sag={onerilen ? <span className="rozet rozet-ok">Önerilen</span> : undefined}>
       <div className="mono" style={{ fontSize: 30, letterSpacing: "-0.03em",
@@ -10,18 +41,33 @@ export function VeriYukleme() {
                    margin: 0, lineHeight: 2 }}>
         {maddeler.map((m) => <li key={m}>{m}</li>)}
       </ul>
-      {/* v2.73-C rotusu: akis SPA'ya henuz baglanmadi — olu dugme
-          calisir gibi durmasin (sifir degil, tire ilkesi). */}
-      <button className={onerilen ? "dugme dugme-ana" : "dugme"} disabled
-        title="Bu akış şimdilik Streamlit panelinde — SPA'ya sırası gelince taşınacak"
-        style={{ width: "100%", marginTop: 18, opacity: 0.55, cursor: "not-allowed" }}>
-        {onerilen ? "Kalibre tahmine geç" : "Hızlı tahminle devam et"}
-      </button>
+      {onerilen ? (
+        <button className="dugme dugme-ana" disabled={yukleniyor}
+          onClick={() => dosyaRef.current?.click()}
+          style={{ width: "100%", marginTop: 18 }}>
+          {yukleniyor ? "Dosya okunuyor…" : "Kalibre tahmine geç"}
+        </button>
+      ) : (
+        /* v2.73-C rotusu surer: hizli yol SPA'ya henuz baglanmadi. */
+        <button className="dugme" disabled
+          title="Bu akış şimdilik Streamlit panelinde — SPA'ya sırası gelince taşınacak"
+          style={{ width: "100%", marginTop: 18, opacity: 0.55, cursor: "not-allowed" }}>
+          Hızlı tahminle devam et
+        </button>
+      )}
     </Kart>
   );
+
+  const sr = (a: string, b: string) =>
+    <tr key={a}><td>{a}</td><td className="mono">{b}</td></tr>;
+
   return (
     <Sayfa baslik="Veri yükleme"
       alt="Tahmin yolunuzu seçin — SCADA veriniz varsa kalibre tahmine geçin.">
+      <input ref={dosyaRef} type="file" hidden
+        accept=".csv,.tsv,.txt,.xlsx,.xls"
+        onChange={(e) => { const d = e.target.files?.[0];
+                           if (d) sec(d); e.target.value = ""; }} />
       <div className="ızgara" style={{ gridTemplateColumns: "repeat(2, minmax(0,1fr))",
                                        maxWidth: 900 }}>
         {yol("Hızlı tahmin", "%5–10", "beklenen yıllık enerji sapması",
@@ -33,6 +79,104 @@ export function VeriYukleme() {
            "Panel yönü bilinmiyorsa varsayılan kullanılır",
            "En az 3 ay SCADA — önerilen 12 ay"], true)}
       </div>
+
+      {hata && (
+        <div style={{ maxWidth: 900, marginTop: 14 }}>
+          <Kart baslik="Dosya okunamadı">
+            <p style={{ fontSize: 13, color: "var(--ikincil)", margin: 0,
+                        lineHeight: 1.65 }}>{hata}</p>
+            <button className="dugme" style={{ marginTop: 14 }}
+              onClick={() => { setHata(null); setDosyaAdi(null); }}>
+              Başka dosya dene
+            </button>
+          </Kart>
+        </div>
+      )}
+
+      {on && (
+        <div style={{ maxWidth: 900, marginTop: 14, display: "grid", gap: 14 }}>
+          <Kart baslik="Dosya nasıl okundu"
+            sag={<span className="rozet mono">{dosyaAdi}</span>}>
+            <table className="veri"><tbody>
+              {sr("Başlık satırı", (on.file_format.header_row + 1) + ". satır")}
+              {sr("Ayraç", on.file_format.delimiter === ";" ? "; (noktalı virgül)"
+                  : on.file_format.delimiter === "," ? ", (virgül)"
+                  : on.file_format.delimiter)}
+              {sr("Ondalık işareti", on.file_format.decimal)}
+              {sr("Kodlama", on.file_format.encoding)}
+              {sr("Algılama güveni", "%" + Math.round(on.file_format.confidence * 100))}
+              {on.matched_template ? sr("Eşleşen şablon", on.matched_template) : null}
+            </tbody></table>
+            {on.notes.length > 0 && (
+              <p style={{ fontSize: 12.5, color: "var(--soluk)", margin: "12px 0 0" }}>
+                {on.notes.join(" · ")}
+              </p>
+            )}
+          </Kart>
+
+          <Kart baslik="Kolon eşlemesi">
+            <table className="veri">
+              <thead><tr><th>Alan</th><th>Dosyadaki kolon</th><th>Güven</th></tr></thead>
+              <tbody>
+                {eslemeler.map((x) => (
+                  <tr key={x.k}>
+                    <td>{ALAN_ADI[x.k]}</td>
+                    <td className="mono">{x.kolon}</td>
+                    <td className="mono">
+                      {x.guven !== undefined ? "%" + Math.round(x.guven * 100) : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {on.unmapped_columns.length > 0 && (
+              <p style={{ fontSize: 12.5, color: "var(--soluk)", margin: "12px 0 0" }}>
+                Eşlenmeyen kolonlar (yok sayılacak):{" "}
+                <span className="mono">{on.unmapped_columns.join(", ")}</span>
+              </p>
+            )}
+          </Kart>
+
+          <Kart baslik="Örnek satırlar — ham görünüm">
+            <div style={{ overflowX: "auto" }}>
+              <table className="veri">
+                <thead><tr>
+                  {on.sample_rows.columns.map((c) => <th key={c}>{c}</th>)}
+                </tr></thead>
+                <tbody className="mono">
+                  {on.sample_rows.rows.map((r, i) => (
+                    <tr key={i}>{r.map((h, j) =>
+                      <td key={j}>{h ?? "—"}</td>)}</tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p style={{ fontSize: 12.5, color: "var(--soluk)", margin: "12px 0 0" }}>
+              Değerler dosyadan olduğu gibi — dönüştürme onaydan sonra yapılır.
+            </p>
+          </Kart>
+
+          <Kart baslik="Onay">
+            <p style={{ fontSize: 13, color: "var(--ikincil)", margin: 0,
+                        lineHeight: 1.65 }}>
+              Saat dilimi <span className="mono">{on.onerilen_tz}</span> (santral
+              kaydından) ile yüklenecek. Şüpheli satırlar silinmez, bayraklanır.
+            </p>
+            <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+              <button className="dugme dugme-ana" disabled
+                title="Sırada — önizleme onayı v2.89'da bağlanacak"
+                style={{ opacity: 0.55, cursor: "not-allowed" }}>
+                Onayla ve yükle
+              </button>
+              <button className="dugme"
+                onClick={() => { setOn(null); setDosyaAdi(null); }}>
+                Vazgeç
+              </button>
+            </div>
+          </Kart>
+        </div>
+      )}
+
       <p style={{ fontSize: 12.5, color: "var(--soluk)", marginTop: 16, maxWidth: 900 }}>
         Veriniz azsa endişelenmeyin: 3 aydan kısa veri bulursak sizi engellemeyiz,
         hızlı tahminle başlatıp sonra yükseltmenizi öneririz.
