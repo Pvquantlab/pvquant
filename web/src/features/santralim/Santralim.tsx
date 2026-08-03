@@ -27,7 +27,9 @@ export function Santralim({ plantId }: { plantId: string }) {
         <Kpi etiket="Bugün · P50" deger={sayiTr(o.bugun_kwh ?? 0)} birim="kWh"
              alt="gün sonu itibarıyla" />
         <Kpi etiket="Yarın · P50" deger={sayiTr(o.yarin_kwh ?? 0)} birim="kWh"
-             alt={`${sayiTr(o.hava[1]?.isinim ?? 0, 1)} kWh/m² ışınım`} />
+             alt={o.hava[1]
+               ? `${sayiTr(o.hava[1].isinim, 1)} kWh/m² ışınım`
+               : "—"} />  {/* v2.90: veri yokken 0,0 uydurma — tire ilkesi */}
         <Kpi etiket="7 gün · P50" deger={sayiTr(o.hafta_mwh ?? 0, 1)} birim="MWh"
              alt="kayan 7 gün" />
         <Kpi etiket="Model durumu" deger={o.model_adi}
@@ -47,6 +49,14 @@ export function Santralim({ plantId }: { plantId: string }) {
 
         <div style={{ display: "grid", gap: 14, alignContent: "start" }}>
           <Kart baslik="Hava">
+            {o.hava.length === 0 && (
+              /* v2.90: bos kart sessiz kalmasin — neden bos, soyle */
+              <p style={{ fontSize: 12.5, color: "var(--soluk)", margin: 0,
+                          lineHeight: 1.65 }}>
+                Hava özeti son tahmin koşusundan gelir — bugünü kapsayan
+                koşu yok. Yeni koşuyla bu kart kendiliğinden dolar.
+              </p>
+            )}
             <div className="hava">
               {o.hava.map((h) => (
                 <div key={h.etiket} className="hava-kart">
