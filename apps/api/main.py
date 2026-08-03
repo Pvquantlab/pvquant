@@ -273,8 +273,14 @@ def scada_preview(plant_id: str, dosya: UploadFile = File(...),
     try:
         pv = preview_file(yol)
     except MappingFailedError as e:
-        raise HTTPException(422, "otomatik esleme kurulamadi: "
-                            f"{e} — simdilik Streamlit sihirbazini kullanin")
+        # v2.91: duz metin degil YAPILANDIRILMIS red — SPA sihirbazi bu
+        # govdeyle kurulur (hata zaten kolonlari + ornekleri tasiyor).
+        raise HTTPException(422, {
+            "tur": "esleme",
+            "columns": e.columns,
+            "sample_rows": _ornek_satirlar(e.sample_rows),
+            "file_format": e.file_format.to_dict(),
+        })
     finally:
         _os.unlink(yol)
     return {"file_format": pv.file_format.to_dict(),
@@ -288,7 +294,15 @@ def scada_preview(plant_id: str, dosya: UploadFile = File(...),
 
 @app.post("/v1/plants/{plant_id}/scada")
 def scada_yukle(plant_id: str, dosya: UploadFile = File(...),
-                source_timezone: str = Form(...),
+                source_timezone: str | None = Form(None),
+                map_timestamp: str | None = Form(None),
+                map_power: str | None = Form(None),
+                map_energy: str | None = Form(None),
+                map_poa_irradiance: str | None = Form(None),
+                map_temp_ambient: str | None = Form(None),
+                map_temp_module: str | None = Form(None),
+                map_wind_speed: str | None = Form(None),
+                map_ghi: str | None = Form(None),
                 claims=Depends(yazma_yetkisi())):
     """v2.87 Faz 2: onayli kararla dogrula + kalicilastir. Kapasite/konum
     santral KAYDINDAN okunur (kunye tek gercek, formda tekrar yok).
@@ -298,16 +312,36 @@ def scada_yukle(plant_id: str, dosya: UploadFile = File(...),
     row = plant_service.getir(claims["tenant_id"], plant_id)
     if row is None:
         raise HTTPException(404, "santral yok")
+    tz = source_timezone or row["tz"]   # v2.91: bos ise santral kaydi konusur
+    esleme = None
+    if map_timestamp:
+        # v2.91: sihirbaz kararlari. ONEMLI: yalniz mapping vermek otomatik
+        # dala dusurur (pipeline kurali); file_format da birlikte gerekli.
+        # Algilama 1. asamada zaten basariliydi — ayni tespiti uretiriz.
+        from pvquant.io.ingestion.contracts import ColumnMapping
+        esleme = ColumnMapping(
+            timestamp=map_timestamp, power=map_power, energy=map_energy,
+            poa_irradiance=map_poa_irradiance, temp_ambient=map_temp_ambient,
+            temp_module=map_temp_module, wind_speed=map_wind_speed,
+            ghi=map_ghi)
     yol = _gecici_dosya(dosya)
     try:
-        res = ingest_file(yol, capacity_kwp=float(row["capacity_kwp"]),
-                          latitude=row["lat"], longitude=row["lon"],
-                          source_timezone=source_timezone)
+        if esleme is not None:
+            from pvquant.io.ingestion.detection import detect_file_format
+            res = ingest_file(yol, capacity_kwp=float(row["capacity_kwp"]),
+                              latitude=row["lat"], longitude=row["lon"],
+                              source_timezone=tz,
+                              file_format=detect_file_format(yol),
+                              mapping=esleme)
+        else:
+            res = ingest_file(yol, capacity_kwp=float(row["capacity_kwp"]),
+                              latitude=row["lat"], longitude=row["lon"],
+                              source_timezone=tz)
         out = ingest_service.yukle_ve_kaydet(
             claims["tenant_id"], plant_id, dosya.filename or yol,
             capacity_kwp=float(row["capacity_kwp"]),
             latitude=row["lat"], longitude=row["lon"],
-            source_timezone=source_timezone, hazir_sonuc=res)
+            source_timezone=tz, hazir_sonuc=res)
     except MappingFailedError as e:
         raise HTTPException(422, "otomatik esleme kurulamadi: "
                             f"{e} — simdilik Streamlit sihirbazini kullanin")

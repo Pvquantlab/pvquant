@@ -110,6 +110,18 @@ export interface ScadaKayit {
                energy_cumulative: boolean };
 }
 
+/** v2.91: otomatik esleme reddi — sihirbazi kuran yapilandirilmis 422. */
+export interface EslemeVerisi {
+  tur: "esleme";
+  columns: string[];
+  sample_rows: { columns: string[]; rows: (string | null)[][] };
+  file_format: ScadaOnizleme["file_format"];
+}
+export class EslemeHatasi extends Error {
+  veri: EslemeVerisi;
+  constructor(veri: EslemeVerisi) { super("esleme reddi"); this.veri = veri; }
+}
+
 /** v2.88: dosyali POST — getir'in 401 sozlesmesinin aynisi. 4xx'te sunucunun
  *  detail mesaji Error olur (422 esleme reddi UI'da durustce okunur). */
 async function dosyaGonder<T>(yol: string, dosya: File,
@@ -128,10 +140,15 @@ async function dosyaGonder<T>(yol: string, dosya: File,
   }
   if (!y.ok) {
     let mesaj = `${y.status} ${yol}`;
+    let esleme: EslemeHatasi | null = null;
     try {
       const g = (await y.json()) as { detail?: unknown };
-      if (typeof g.detail === "string") mesaj = g.detail;
+      const d = g.detail;
+      if (d && typeof d === "object" && (d as { tur?: string }).tur === "esleme")
+        esleme = new EslemeHatasi(d as EslemeVerisi);   // v2.91
+      else if (typeof d === "string") mesaj = d;
     } catch { /* govde yoksa durum kodu kalir */ }
+    if (esleme) throw esleme;
     throw new Error(mesaj);
   }
   return (await y.json()) as T;
@@ -209,11 +226,16 @@ export const api = {
   },
   /** v2.89: onayli kayit — dosya + santral kaydindan gelen tz. Karne
    *  yanitta doner; UI oldugu gibi gosterir (yorum yok, icat yok). */
-  scadaYukle: async (p: string, dosya: File, tz: string): Promise<ScadaKayit> => {
+  scadaYukle: async (p: string, dosya: File, tz: string | null,
+                     esleme?: Record<string, string>): Promise<ScadaKayit> => {
     if (!TABAN) throw new Error(
       "Örnek kipte dosya kapısı yok — VITE_API_URL tanımlı değil.");
-    return dosyaGonder<ScadaKayit>(`/v1/plants/${p}/scada`, dosya,
-      { source_timezone: tz });
+    const alanlar: Record<string, string> = {};
+    if (tz) alanlar.source_timezone = tz;   // v2.91: bos -> santral tz (sunucu)
+    if (esleme)
+      for (const [k, v] of Object.entries(esleme))
+        if (v) alanlar["map_" + k] = v;     // v2.91: sihirbaz kararlari
+    return dosyaGonder<ScadaKayit>(`/v1/plants/${p}/scada`, dosya, alanlar);
   },
   /** karne: gercek kapisi HENUZ yok — API tarafiyla birlikte dogana
    *  kadar ornekte kalir; var olmayan URL cagrilmaz (v2.73-A karari). */

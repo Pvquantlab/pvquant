@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
-import { api, type ScadaOnizleme, type ScadaKayit } from "../../api/client";
+import { api, EslemeHatasi, type EslemeVerisi,
+         type ScadaOnizleme, type ScadaKayit } from "../../api/client";
 import { Kart, Sayfa, Kpi, sayiTr } from "./parcalar";
 
 export function VeriYukleme({ plantId, santralimeGit }:
@@ -17,12 +18,19 @@ export function VeriYukleme({ plantId, santralimeGit }:
   const [kayitta, setKayitta] = useState(false);
   const [kayitHata, setKayitHata] = useState<string | null>(null);
   const [karne, setKarne] = useState<ScadaKayit | null>(null);
+  // v2.91: sihirbaz — otomatik esleme dusunce kullanici karar verir
+  const [sihirbaz, setSihirbaz] = useState<EslemeVerisi | null>(null);
+  const [secimler, setSecimler] = useState<Record<string, string>>({});
 
   const sec = async (d: File) => {
     setYukleniyor(true); setHata(null); setOn(null); setDosyaAdi(d.name);
     setKarne(null); setKayitHata(null); setDosya(d);
+    setSihirbaz(null); setSecimler({});
     try { setOn(await api.scadaOnizleme(plantId, d)); }
-    catch (e) { setHata(e instanceof Error ? e.message : String(e)); }
+    catch (e) {
+      if (e instanceof EslemeHatasi) setSihirbaz(e.veri);   // v2.91
+      else setHata(e instanceof Error ? e.message : String(e));
+    }
     finally { setYukleniyor(false); }
   };
 
@@ -40,6 +48,19 @@ export function VeriYukleme({ plantId, santralimeGit }:
     } catch (e) { setKayitHata(e instanceof Error ? e.message : String(e)); }
     finally { setKayitta(false); }
   };
+
+  const sihirbazYukle = async () => {
+    if (!dosya) return;
+    setKayitta(true); setKayitHata(null);
+    try {
+      // tz null: santral kaydi sunucuda konusur (onizleme yok ki onersin)
+      setKarne(await api.scadaYukle(plantId, dosya, null, secimler));
+      setSihirbaz(null);
+    } catch (e) { setKayitHata(e instanceof Error ? e.message : String(e)); }
+    finally { setKayitta(false); }
+  };
+  const sihirbazGecerli = !!secimler.timestamp &&
+    (!!secimler.power || !!secimler.energy);
 
   const BAYRAK_ADI: Record<string, string> = {
     valid: "Geçerli", negative_power: "Negatif güç",
@@ -113,6 +134,85 @@ export function VeriYukleme({ plantId, santralimeGit }:
               onClick={() => { setHata(null); setDosyaAdi(null); }}>
               Başka dosya dene
             </button>
+          </Kart>
+        </div>
+      )}
+
+      {sihirbaz && (
+        <div style={{ maxWidth: 900, marginTop: 14, display: "grid", gap: 14 }}>
+          <Kart baslik="Kolonları elle eşleyin"
+            sag={<span className="rozet mono">{dosyaAdi}</span>}>
+            <p style={{ fontSize: 13, color: "var(--ikincil)",
+                        margin: "0 0 14px", lineHeight: 1.65 }}>
+              Otomatik eşleme bu dosyada tutmadı — hangi kolonun hangi alana
+              denk geldiğini siz söyleyin. Zorunlu: Zaman damgası ve Güç
+              (ya da Enerji); gerisi isteğe bağlı.
+            </p>
+            <table className="veri">
+              <thead><tr><th>Alan</th><th>Dosyadaki kolon</th></tr></thead>
+              <tbody>
+                {Object.entries(ALAN_ADI).map(([k, ad]) => (
+                  <tr key={k}>
+                    <td>{ad}</td>
+                    <td>
+                      <select value={secimler[k] ?? ""}
+                        style={{ width: "100%", padding: "6px 8px",
+                                 font: "inherit" }}
+                        onChange={(e) => setSecimler((s) => {
+                          const y = { ...s };
+                          if (e.target.value) y[k] = e.target.value;
+                          else delete y[k];
+                          return y;
+                        })}>
+                        <option value="">—</option>
+                        {sihirbaz.columns.map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Kart>
+          <Kart baslik="Örnek satırlar — ham görünüm">
+            <div style={{ overflowX: "auto" }}>
+              <table className="veri">
+                <thead><tr>
+                  {sihirbaz.sample_rows.columns.map((c) => <th key={c}>{c}</th>)}
+                </tr></thead>
+                <tbody className="mono">
+                  {sihirbaz.sample_rows.rows.map((r, i) => (
+                    <tr key={i}>{r.map((h, j) => <td key={j}>{h ?? "—"}</td>)}</tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Kart>
+          <Kart baslik="Onay">
+            <p style={{ fontSize: 13, color: "var(--ikincil)", margin: 0,
+                        lineHeight: 1.65 }}>
+              Saat dilimi santral kaydından alınacak. Şüpheli satırlar
+              silinmez, bayraklanır.
+            </p>
+            <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+              <button className="dugme dugme-ana"
+                disabled={kayitta || !sihirbazGecerli}
+                title={sihirbazGecerli ? undefined
+                  : "Zaman damgası + Güç (veya Enerji) seçilmeli"}
+                onClick={sihirbazYukle}>
+                {kayitta ? "Yükleniyor…" : "Bu eşlemeyle yükle"}
+              </button>
+              <button className="dugme" disabled={kayitta}
+                onClick={() => { setSihirbaz(null); setDosyaAdi(null);
+                                 setDosya(null); }}>
+                Vazgeç
+              </button>
+            </div>
+            {kayitHata && (
+              <p style={{ fontSize: 13, color: "var(--ikincil)",
+                          margin: "12px 0 0", lineHeight: 1.65 }}>{kayitHata}</p>
+            )}
           </Kart>
         </div>
       )}
