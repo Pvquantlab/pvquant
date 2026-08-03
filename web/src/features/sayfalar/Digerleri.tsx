@@ -1,8 +1,9 @@
 import { useRef, useState } from "react";
-import { api, type ScadaOnizleme } from "../../api/client";
+import { api, type ScadaOnizleme, type ScadaKayit } from "../../api/client";
 import { Kart, Sayfa, Kpi, sayiTr } from "./parcalar";
 
-export function VeriYukleme({ plantId }: { plantId: string }) {
+export function VeriYukleme({ plantId, santralimeGit }:
+  { plantId: string; santralimeGit?: () => void }) {
   // v2.88: "Kalibre tahmine gec" canlandi — dosya sec -> /scada/preview ->
   // onizleme (format + esleme + ham satirlar). Onay dugmesi v2.89'a kadar
   // bilerek pasif (olu dugme degil: sirasi acikca yazili).
@@ -11,9 +12,15 @@ export function VeriYukleme({ plantId }: { plantId: string }) {
   const [dosyaAdi, setDosyaAdi] = useState<string | null>(null);
   const [on, setOn] = useState<ScadaOnizleme | null>(null);
   const [hata, setHata] = useState<string | null>(null);
+  // v2.89: onay zinciri — dosya elde tutulur (API durumsuz, kayda yeniden gider)
+  const [dosya, setDosya] = useState<File | null>(null);
+  const [kayitta, setKayitta] = useState(false);
+  const [kayitHata, setKayitHata] = useState<string | null>(null);
+  const [karne, setKarne] = useState<ScadaKayit | null>(null);
 
   const sec = async (d: File) => {
     setYukleniyor(true); setHata(null); setOn(null); setDosyaAdi(d.name);
+    setKarne(null); setKayitHata(null); setDosya(d);
     try { setOn(await api.scadaOnizleme(plantId, d)); }
     catch (e) { setHata(e instanceof Error ? e.message : String(e)); }
     finally { setYukleniyor(false); }
@@ -24,6 +31,23 @@ export function VeriYukleme({ plantId }: { plantId: string }) {
     poa_irradiance: "POA ışınımı", temp_ambient: "Ortam sıcaklığı",
     temp_module: "Modül sıcaklığı", wind_speed: "Rüzgâr hızı", ghi: "GHI",
   };
+  const onayla = async () => {
+    if (!dosya || !on) return;
+    setKayitta(true); setKayitHata(null);
+    try {
+      setKarne(await api.scadaYukle(plantId, dosya, on.onerilen_tz));
+      setOn(null);   // onizleme gorevini tamamladi — yerini karne alir
+    } catch (e) { setKayitHata(e instanceof Error ? e.message : String(e)); }
+    finally { setKayitta(false); }
+  };
+
+  const BAYRAK_ADI: Record<string, string> = {
+    valid: "Geçerli", negative_power: "Negatif güç",
+    night_production: "Gece üretimi", over_capacity: "Kapasite üstü",
+    frozen_value: "Donmuş değer", duplicate_time: "Tekrarlanan zaman",
+    dst_ambiguous: "Yaz saati belirsizliği", unparseable: "Okunamayan",
+  };
+
   const eslemeler = on
     ? Object.keys(ALAN_ADI)
         .map((k) => ({ k,
@@ -163,14 +187,79 @@ export function VeriYukleme({ plantId }: { plantId: string }) {
               kaydından) ile yüklenecek. Şüpheli satırlar silinmez, bayraklanır.
             </p>
             <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-              <button className="dugme dugme-ana" disabled
-                title="Sırada — önizleme onayı v2.89'da bağlanacak"
-                style={{ opacity: 0.55, cursor: "not-allowed" }}>
-                Onayla ve yükle
+              <button className="dugme dugme-ana" disabled={kayitta}
+                onClick={onayla}>
+                {kayitta ? "Yükleniyor…" : "Onayla ve yükle"}
               </button>
-              <button className="dugme"
-                onClick={() => { setOn(null); setDosyaAdi(null); }}>
+              <button className="dugme" disabled={kayitta}
+                onClick={() => { setOn(null); setDosyaAdi(null); setDosya(null); }}>
                 Vazgeç
+              </button>
+            </div>
+            {kayitHata && (
+              <p style={{ fontSize: 13, color: "var(--ikincil)",
+                          margin: "12px 0 0", lineHeight: 1.65 }}>{kayitHata}</p>
+            )}
+          </Kart>
+        </div>
+      )}
+
+      {karne && (
+        <div style={{ maxWidth: 900, marginTop: 14, display: "grid", gap: 14 }}>
+          <Kart baslik="Yükleme tamamlandı — kalite karnesi"
+            sag={<span className="rozet rozet-ok">
+              {sayiTr(karne.n_satir)} satır kaydedildi</span>}>
+            <table className="veri"><tbody>
+              {sr("Okunan satır", sayiTr(karne.report.n_rows_read))}
+              {sr("Geçerli satır", sayiTr(karne.report.n_rows_valid))}
+              {sr("Kapsam (UTC)",
+                (karne.report.coverage_start?.slice(0, 16) ?? "—") + "  →  " +
+                (karne.report.coverage_end?.slice(0, 16) ?? "—"))}
+              {sr("Boşluk", sayiTr(karne.report.gap_hours) + " saat")}
+            </tbody></table>
+            {Object.keys(karne.report.flag_counts).some((k) => k !== "valid") && (
+              <>
+                <table className="veri" style={{ marginTop: 14 }}>
+                  <thead><tr><th>Bayrak</th><th>Satır</th></tr></thead>
+                  <tbody>
+                    {Object.entries(karne.report.flag_counts)
+                      .filter(([k]) => k !== "valid")
+                      .map(([k, v]) => (
+                        <tr key={k}>
+                          <td>{BAYRAK_ADI[k] ?? k}</td>
+                          <td className="mono">{sayiTr(v)}</td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+                <p style={{ fontSize: 12.5, color: "var(--soluk)",
+                            margin: "12px 0 0" }}>
+                  Bayraklı satırlar eğitime girmez ama silinmez — izleri kayıtta.
+                </p>
+              </>
+            )}
+            {karne.report.warnings.length > 0 && (
+              <p style={{ fontSize: 12.5, color: "var(--soluk)",
+                          margin: "12px 0 0" }}>
+                {karne.report.warnings.join(" · ")}
+              </p>
+            )}
+          </Kart>
+          <Kart baslik="Sırada ne var">
+            <p style={{ fontSize: 13, color: "var(--ikincil)", margin: 0,
+                        lineHeight: 1.65 }}>
+              Model, gece koşusunda bu veriyle kendini yeniden sınar — karneniz
+              oradan büyür. Santralim'de "Son veri yüklemesi" şimdi tazelendi.
+            </p>
+            <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+              {santralimeGit && (
+                <button className="dugme dugme-ana" onClick={santralimeGit}>
+                  Santralim'e git
+                </button>
+              )}
+              <button className="dugme"
+                onClick={() => { setKarne(null); setDosyaAdi(null); setDosya(null); }}>
+                Yeni dosya yükle
               </button>
             </div>
           </Kart>

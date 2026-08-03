@@ -36,7 +36,8 @@ export default function App() {
            onCikis={() => { cikis(); setGirdi(false);
                             setGorunum("vitrin"); }}>  {/* gonullu cikis -> vitrin */}
       {sayfa === "santralim" && <Santralim plantId={PLANT} />}
-      {sayfa === "veri" && <VeriYukleme plantId={PLANT} />}
+      {sayfa === "veri" && <VeriYukleme plantId={PLANT}
+        santralimeGit={() => setSayfa("santralim")} />}
       {sayfa === "kalibrasyon" && <Kalibrasyon />}
       {sayfa === "tahminler" && <Tahminler plantId={PLANT} />}
       {sayfa === "dogruluk" && <Dogruluk plantId={PLANT} />}

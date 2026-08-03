@@ -94,12 +94,31 @@ export interface ScadaOnizleme {
   onerilen_tz: string;
 }
 
+/** v2.89: kayit yaniti — apps/api/main.py v2.87 /scada ucu ile birebir. */
+export interface ScadaKayit {
+  batch_id: string;
+  n_satir: number;
+  report: { n_rows_read: number; n_rows_valid: number;
+            flag_counts: Record<string, number>; gap_hours: number;
+            gap_periods: [string, string][];
+            coverage_start: string | null; coverage_end: string | null;
+            warnings: string[] };
+  transform: { source_timezone: string | null; power_unit: string;
+               irradiance_unit: string | null;
+               irradiance_unit_source: string | null;
+               timestep_minutes: number; energy_to_power: boolean;
+               energy_cumulative: boolean };
+}
+
 /** v2.88: dosyali POST — getir'in 401 sozlesmesinin aynisi. 4xx'te sunucunun
  *  detail mesaji Error olur (422 esleme reddi UI'da durustce okunur). */
-async function dosyaGonder<T>(yol: string, dosya: File): Promise<T> {
+async function dosyaGonder<T>(yol: string, dosya: File,
+                              alanlar?: Record<string, string>): Promise<T> {
   const jeton = localStorage.getItem("pvq_token");
   const veri = new FormData();
   veri.append("dosya", dosya);
+  if (alanlar)
+    for (const [k, v] of Object.entries(alanlar)) veri.append(k, v);
   const y = await fetch(`${TABAN}${yol}`, {
     method: "POST", body: veri,
     headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
@@ -187,6 +206,14 @@ export const api = {
     if (!TABAN) throw new Error(
       "Örnek kipte dosya kapısı yok — VITE_API_URL tanımlı değil.");
     return dosyaGonder<ScadaOnizleme>(`/v1/plants/${p}/scada/preview`, dosya);
+  },
+  /** v2.89: onayli kayit — dosya + santral kaydindan gelen tz. Karne
+   *  yanitta doner; UI oldugu gibi gosterir (yorum yok, icat yok). */
+  scadaYukle: async (p: string, dosya: File, tz: string): Promise<ScadaKayit> => {
+    if (!TABAN) throw new Error(
+      "Örnek kipte dosya kapısı yok — VITE_API_URL tanımlı değil.");
+    return dosyaGonder<ScadaKayit>(`/v1/plants/${p}/scada`, dosya,
+      { source_timezone: tz });
   },
   /** karne: gercek kapisi HENUZ yok — API tarafiyla birlikte dogana
    *  kadar ornekte kalir; var olmayan URL cagrilmaz (v2.73-A karari). */
