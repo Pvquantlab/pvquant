@@ -122,6 +122,9 @@ export class EslemeHatasi extends Error {
   constructor(veri: EslemeVerisi) { super("esleme reddi"); this.veri = veri; }
 }
 
+/** v2.94: gecmis kosu satiri — /runs ucu ile birebir. */
+export interface KosuSatiri { run_at: string; mode: string; model: string; }
+
 /** v2.88: dosyali POST — getir'in 401 sozlesmesinin aynisi. 4xx'te sunucunun
  *  detail mesaji Error olur (422 esleme reddi UI'da durustce okunur). */
 async function dosyaGonder<T>(yol: string, dosya: File,
@@ -258,6 +261,44 @@ export const api = {
       throw new Error(mesaj);
     }
     return (await y.json()) as { run_id: string };
+  },
+  /** v2.94: gecmis kosular — ornek kipte sayfanin eski sabit listesi doner. */
+  kosular: async (p: string): Promise<KosuSatiri[]> => {
+    if (!TABAN) return [
+      { run_at: "2026-07-30T12:58:00", mode: "C", model: "hybrid_residual" },
+      { run_at: "2026-07-30T00:42:00", mode: "C", model: "hybrid_residual" },
+      { run_at: "2026-07-30T00:30:00", mode: "C", model: "hybrid_residual" },
+      { run_at: "2026-07-29T20:27:00", mode: "C", model: "hybrid_residual" },
+      { run_at: "2026-07-28T21:49:00", mode: "B", model: "barhdadi_bennis" },
+    ];
+    return getir<KosuSatiri[]>(`/v1/plants/${p}/runs`);
+  },
+  /** v2.94: rapor indir — blob + Content-Disposition adi; 401 sozlesmesi ayni. */
+  raporIndir: async (p: string, fmt: "pdf" | "xlsx" | "json"): Promise<void> => {
+    if (!TABAN) throw new Error(
+      "Örnek kipte rapor üretimi yok — VITE_API_URL tanımlı değil.");
+    const jeton = localStorage.getItem("pvq_token");
+    const y = await fetch(`${TABAN}/v1/plants/${p}/report?fmt=${fmt}`, {
+      headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
+    if (y.status === 401) {
+      cikis(); oturumDusunce?.();
+      return new Promise<void>(() => {});   // v2.84 sozlesmesi
+    }
+    if (!y.ok) {
+      let mesaj = `${y.status} rapor`;
+      try {
+        const g = (await y.json()) as { detail?: unknown };
+        if (typeof g.detail === "string") mesaj = g.detail;
+      } catch { /* govde yoksa kod kalir */ }
+      throw new Error(mesaj);
+    }
+    const cd = y.headers.get("Content-Disposition") ?? "";
+    const es = /filename="([^"]+)"/.exec(cd);
+    const ad = es ? es[1] : `PVQuant_rapor.${fmt}`;
+    const url = URL.createObjectURL(await y.blob());
+    const a = document.createElement("a");
+    a.href = url; a.download = ad; a.click();
+    URL.revokeObjectURL(url);
   },
   /** karne: gercek kapisi HENUZ yok — API tarafiyla birlikte dogana
    *  kadar ornekte kalir; var olmayan URL cagrilmaz (v2.73-A karari). */

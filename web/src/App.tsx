@@ -43,7 +43,7 @@ export default function App() {
       {sayfa === "tahminler" && <Tahminler plantId={PLANT} />}
       {sayfa === "dogruluk" && <Dogruluk plantId={PLANT} />}
       {sayfa === "aylik" && <Aylik plantId={PLANT} />}
-      {sayfa === "raporlar" && <Raporlar />}
+      {sayfa === "raporlar" && <Raporlar plantId={PLANT} />}
     </Kabuk>
   );
 }

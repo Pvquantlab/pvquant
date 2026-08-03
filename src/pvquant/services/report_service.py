@@ -23,6 +23,13 @@ def rapor_baglami(tenant_id, plant: dict) -> ReportContext | None:
     import pandas as pd
     daily.index = pd.to_datetime(daily.index)
     with tenant_baglami(tenant_id) as s:
+        # v2.94: rapor kimligi KOSUDAN gelir, kalibrasyondan degil.
+        # Onceki hal: artifact-yok gerilemesiyle Mod B kosan kosu raporda
+        # "Mod C" etiketi tasiyordu; run_at da rapor ani yaziliyordu.
+        kosu = s.execute(text(
+            "SELECT run_at, mode, model FROM forecast_runs "
+            "WHERE plant_id=:p ORDER BY run_at DESC LIMIT 1"),
+            {"p": plant["id"]}).first()
         cal = s.execute(text(
             "SELECT mode,params_json,quality_json,gate_json,n_valid_hours,"
             " created_at FROM calibrations WHERE plant_id=:p AND active"),
@@ -35,9 +42,9 @@ def rapor_baglami(tenant_id, plant: dict) -> ReportContext | None:
         tilt_deg=plant.get("tilt") or 20,
         azimuth_deg=plant.get("azimuth") or 180,
         plant_tz=plant["tz"],
-        run_at_utc=datetime.now(timezone.utc),
-        mode=(cal.mode if cal else "A"),
-        model_name="barhdadi_bennis",
+        run_at_utc=(kosu.run_at if kosu else datetime.now(timezone.utc)),
+        mode=(kosu.mode if kosu else (cal.mode if cal else "A")),
+        model_name=(kosu.model if kosu else "barhdadi_bennis"),
         meteo_source="open-meteo",
         hourly=h,
         daily_kwh=daily,

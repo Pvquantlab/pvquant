@@ -1,6 +1,7 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, EslemeHatasi, type EslemeVerisi,
-         type ScadaOnizleme, type ScadaKayit } from "../../api/client";
+         type ScadaOnizleme, type ScadaKayit,
+         type KosuSatiri } from "../../api/client";
 import { Kart, Sayfa, Kpi, sayiTr } from "./parcalar";
 
 export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
@@ -431,38 +432,79 @@ export function Kalibrasyon() {
   );
 }
 
-export function Raporlar() {
-  const kartlar = [
-    ["PDF", "Yönetici özeti — logo, KPI'lar, holdout kutusu"],
-    ["Excel", "Tam veri — saatlik tablo, özet ve metadata"],
-    ["JSON", "API formatı — şema 1.1.0, entegrasyona hazır"],
+export function Raporlar({ plantId }: { plantId: string }) {
+  // v2.94: Hazirla canlandi — tek uretim kapisi HTTP'den; gecmis kosular
+  // sabit ornek degil, forecast_runs'tan gercek liste.
+  const [kosular, setKosular] = useState<KosuSatiri[]>([]);
+  const [uretilen, setUretilen] = useState<string | null>(null);
+  const [hata, setHata] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.kosular(plantId).then(setKosular).catch(() => {});
+  }, [plantId]);
+
+  const MODEL_AD: Record<string, string> = {
+    hybrid_residual: "Hibrit", barhdadi_bennis: "Fizik",
+    backtest: "Geriye dönük",
+  };
+  const tarihTr = (iso: string) => {
+    const d = new Date(iso);
+    const iki = (x: number) => String(x).padStart(2, "0");
+    return iki(d.getDate()) + "." + iki(d.getMonth() + 1) + "." +
+           d.getFullYear() + " " + iki(d.getHours()) + ":" + iki(d.getMinutes());
+  };
+
+  const hazirla = async (fmt: "pdf" | "xlsx" | "json") => {
+    setUretilen(fmt); setHata(null);
+    try { await api.raporIndir(plantId, fmt); }
+    catch (e) { setHata(e instanceof Error ? e.message : String(e)); }
+    finally { setUretilen(null); }
+  };
+
+  const kartlar: [string, "pdf" | "xlsx" | "json", string][] = [
+    ["PDF", "pdf", "Yönetici özeti — logo, KPI'lar, holdout kutusu"],
+    ["Excel", "xlsx", "Tam veri — saatlik tablo, özet ve metadata"],
+    ["JSON", "json", "API formatı — şema 1.1.0, entegrasyona hazır"],
   ];
-  const kosular = [["30.07.2026 12:58","C","Hibrit"],["30.07.2026 00:42","C","Hibrit"],
-    ["30.07.2026 00:30","C","Hibrit"],["29.07.2026 20:27","C","Hibrit"],
-    ["28.07.2026 21:49","B","Fizik"]];
   return (
     <Sayfa baslik="Raporlar"
       alt="Hepsi tahmin arşivinden üretilir — koşular güncellenmez, yenisi eklenir.">
       <div className="ızgara satir-3" style={{ marginBottom: 14 }}>
-        {kartlar.map(([ad, alt]) => (
+        {kartlar.map(([ad, fmt, alt]) => (
           <Kart key={ad} baslik={ad}>
             <div style={{ fontSize: 13, color: "var(--ikincil)", minHeight: 38 }}>{alt}</div>
-            <button className="dugme" disabled
-              title="Bu akış şimdilik Streamlit panelinde — SPA'ya sırası gelince taşınacak"
-              style={{ width: "100%", marginTop: 14, opacity: 0.55,
-                       cursor: "not-allowed" }}>Hazırla</button>
+            <button className="dugme" disabled={uretilen !== null}
+              onClick={() => hazirla(fmt)}
+              style={{ width: "100%", marginTop: 14 }}>
+              {uretilen === fmt ? "Hazırlanıyor…" : "Hazırla"}
+            </button>
           </Kart>
         ))}
       </div>
+      {hata && (
+        <p style={{ fontSize: 13, color: "var(--ikincil)", margin: "0 0 14px",
+                    lineHeight: 1.65 }}>{hata}</p>
+      )}
       <Kart baslik="Geçmiş koşular">
-        <table className="veri">
-          <thead><tr><th>Tarih</th><th>Mod</th><th>Model</th></tr></thead>
-          <tbody className="mono">
-            {kosular.map((r) => (
-              <tr key={r[0]}><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td></tr>
-            ))}
-          </tbody>
-        </table>
+        {kosular.length === 0 ? (
+          <p style={{ fontSize: 12.5, color: "var(--soluk)", margin: 0,
+                      lineHeight: 1.65 }}>
+            Henüz koşu yok — ilk tahmin koşusuyla bu tablo dolar.
+          </p>
+        ) : (
+          <table className="veri">
+            <thead><tr><th>Tarih</th><th>Mod</th><th>Model</th></tr></thead>
+            <tbody className="mono">
+              {kosular.map((r) => (
+                <tr key={r.run_at}>
+                  <td>{tarihTr(r.run_at)}</td>
+                  <td>{r.mode}</td>
+                  <td>{MODEL_AD[r.model] ?? r.model}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </Kart>
     </Sayfa>
   );

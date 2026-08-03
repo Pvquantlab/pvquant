@@ -24,7 +24,9 @@ app.add_middleware(
     allow_origins=_os.environ.get(
         "PVQ_CORS_ORIGINS", "http://localhost:5173").split(","),
     allow_methods=["GET", "POST"], allow_headers=["Authorization",
-                                                  "Content-Type"])
+                                                  "Content-Type"],
+    # v2.94: rapor dosya adi — tarayici bu basligi ancak expose ile gorur
+    expose_headers=["Content-Disposition"])
 
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -366,3 +368,45 @@ def tahmin_kos(plant_id: str, claims=Depends(yazma_yetkisi())):
         raise HTTPException(404, "santral yok")
     run_id = uret_ve_kaydet(claims["tenant_id"], row)
     return {"run_id": str(run_id)}
+
+
+# ---------------------------------------------------------------- v2.94
+# Raporlar — tek uretim kapisi (report_service.uret) HTTP'ye acilir.
+# reporting paketi TEK SATIR degismez (Parca 3 §4 sozlesmesi surer).
+
+_RAPOR_MIME = {
+    "pdf": "application/pdf",
+    "xlsx": ("application/vnd.openxmlformats-officedocument"
+             ".spreadsheetml.sheet"),
+    "json": "application/json",
+}
+
+
+@app.get("/v1/plants/{plant_id}/runs")
+def kosu_listesi(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """v2.94: gecmis kosular — SPA'daki sabit ornegin yerine gercek tablo."""
+    from pvquant.services.forecast_service import kosu_gecmisi
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    return [{"run_at": r.run_at.isoformat(), "mode": r.mode, "model": r.model}
+            for r in kosu_gecmisi(claims["tenant_id"], plant_id, n=10)]
+
+
+@app.get("/v1/plants/{plant_id}/report")
+def rapor_uret(plant_id: str, fmt: str, claims=Depends(gecerli_kullanici)):
+    """v2.94: uret() -> bytes; dosya adi basliga yazilir, tarayici indirir."""
+    from fastapi.responses import Response
+    from pvquant.services import report_service
+    if fmt not in _RAPOR_MIME:
+        raise HTTPException(422, f"bilinmeyen format: {fmt}")
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    try:
+        veri, ad, _ts = report_service.uret(claims["tenant_id"], row, fmt)
+    except ValueError as e:
+        raise HTTPException(409, str(e))   # "once tahmin uretin" durustce doner
+    return Response(content=veri, media_type=_RAPOR_MIME[fmt],
+                    headers={"Content-Disposition":
+                             f'attachment; filename="{ad}"'})
