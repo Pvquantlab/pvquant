@@ -52,6 +52,21 @@ class ReportContext:
     holdout_physics_mape_pct: Optional[float] = None
     holdout_improvement_pct: Optional[float] = None
     holdout_hours: Optional[int] = None
+    # dogruluk karnesi (v2.96, sartname S4 — skill_daily fotografi; kolonlar:
+    # date, horizon_bucket, mape (=gunluk WMAPE %), naive_wmape,
+    # skill_vs_naive). Worker gece yazar, rapor yalniz OKUR (tek uretici o).
+    karne: Optional[pd.DataFrame] = None
+    # v2.96 tam sartname (S2/S5/S6/S8) veri alanlari — hepsi opsiyonel,
+    # yoksa ilgili sayfa durust '—' / 'veri eksik' basar:
+    iklim: Optional[pd.DataFrame] = None        # ay, ghi_p10/p50/p90_kwh_m2
+    son12: Optional[pd.DataFrame] = None        # ay(ts), actual_mwh
+    flag_dagilimi: Optional[dict] = None        # flag -> satir sayisi
+    coverage_pct: Optional[float] = None        # gecerli saat / toplam saat
+    son_scada_ts: Optional[datetime] = None
+    kosu_evrim: Optional[pd.DataFrame] = None   # run_at, p50_mwh (hedef gun)
+    evrim_gunu: Optional[object] = None         # S8 hedef gunu (date)
+    kapsama_p10_p90: Optional[float] = None     # gate_json'dan (Mod C)
+    bant_pct: Optional[float] = None            # bant genisligi / p50 (%)
     warnings: list[str] = None
     schema_version: str = SCHEMA_VERSION
 
@@ -91,6 +106,74 @@ class ReportContext:
         from .styles import donem_tr
         h = self.hourly.tz_convert(self.plant_tz)
         return donem_tr(h.index[0], h.index[-1])
+
+    # ---- karne KPI'lari (S4; toplulastirma dogruluk.py/API /skill'in
+    #      KOPYASI — uc yuzey ayni sayiyi soyler) ----
+    @property
+    def karne_var(self) -> bool:
+        return self.karne is not None and len(self.karne) > 0
+
+    def karne_ozet(self, kova: str) -> Optional[dict]:
+        """Kova bazli donem ozeti: mape.mean(), date.nunique(),
+        skill_vs_naive.dropna().mean(). Veri yoksa None — sifir uydurulmaz."""
+        if not self.karne_var:
+            return None
+        k = self.karne[self.karne["horizon_bucket"] == kova]
+        if len(k) == 0:
+            return None
+        sv = k["skill_vs_naive"].dropna()
+        nf = (k["naive_wmape"].dropna()
+              if "naive_wmape" in k.columns else pd.Series(dtype=float))
+        return {"gun": int(k["date"].nunique()),
+                "wmape_ort": float(k["mape"].mean()),
+                "naif_ort": float(nf.mean()) if len(nf) else None,
+                "skill_ort": float(sv.mean()) if len(sv) else None,
+                "ilk": min(k["date"]), "son": max(k["date"])}
+
+    @property
+    def karne_kesintisiz_gun(self) -> Optional[int]:
+        """Son karne gununden geriye ARDISIK 0-24 kovali gun sayisi.
+        Olculmeyen gun zinciri KIRAR (sartname: '—', hesaba katilmaz)."""
+        if not self.karne_var:
+            return None
+        g = self.karne[self.karne["horizon_bucket"] == "0-24"]
+        if len(g) == 0:
+            return 0
+        gunler = sorted({d.date() if hasattr(d, "date") else d
+                         for d in g["date"]})
+        n = 1
+        for i in range(len(gunler) - 1, 0, -1):
+            if (gunler[i] - gunler[i - 1]).days == 1:
+                n += 1
+            else:
+                break
+        return n
+
+    @property
+    def karne_donem(self) -> Optional[tuple]:
+        """Karnenin kapsadigi TUM tarihler (kova ayrimsiz) — v2.96 PDF
+        durusmasi dersi: yalniz 0-24'ten hesaplamak donemi kisa gosteriyordu
+        (baslik 15-16 Nis derken grafik 18 Nis'e uzaniyordu)."""
+        if not self.karne_var:
+            return None
+        return (min(self.karne["date"]), max(self.karne["date"]))
+
+    def karne_ufuk_kiyasi(self) -> Optional[dict]:
+        """ADIL ufuk kiyasi: yalniz iki kovanin da olculdugu ORTAK gunlerde
+        0-24 vs 24-72 ortalama farki. v2.96 durusmasi dersi: donem ortalamasi
+        kiyasi farkli gun kumelerini karsilastiriyordu (0-24: 15-16 Nis,
+        24-72: 16-18 Nis) — elma/armut. Ortak gun yoksa None (kiyas yapilmaz,
+        uydurulmaz)."""
+        if not self.karne_var:
+            return None
+        k = self.karne
+        a = k[k["horizon_bucket"] == "0-24"].set_index("date")["mape"]
+        b = k[k["horizon_bucket"] == "24-72"].set_index("date")["mape"]
+        ortak = a.index.intersection(b.index)
+        if len(ortak) == 0:
+            return None
+        return {"gun": int(len(ortak)),
+                "fark": float(b.loc[ortak].mean() - a.loc[ortak].mean())}
 
 
 def from_results(
