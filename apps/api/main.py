@@ -167,14 +167,27 @@ def summary(plant_id: str, claims=Depends(gecerli_kullanici)):
     }
 
 
+def _naif_wmape(r):
+    """Gunluk naif WMAPE: once SAKLANAN kolon (v2.95, sartname S4), yoksa
+    v2.76 turetmesi (migration-oncesi satirlar), o da yoksa null — icat yok."""
+    nv = r.get("naive_wmape")
+    if nv is not None and not pd.isna(nv):
+        return _kw(nv)
+    sv = r.get("skill_vs_naive")
+    if sv is not None and not pd.isna(sv) and sv < 100:
+        return _kw(r["mape"] / (1 - sv / 100))
+    return None
+
+
 @app.get("/v1/plants/{plant_id}/skill")
 def skill(plant_id: str, bucket: str = "0-24", gun: int = 120,
           claims=Depends(gecerli_kullanici)):
     """v2.75-A — karne kapisi. Toplulastirma Streamlit dogruluk.py'nin
     KOPYASI (iki panel ayni sayiyi soyler): kova filtresi -> mape.mean(),
     date.nunique(), skill_vs_naive.dropna().mean() (zaten yuzde saklanir).
-    naif_wmape tabloda yok -> null (icat yok). Bos karne 200 + bos gunluk
-    doner — 'birikiyor' durumunu istemci anlatir.
+    naif_wmape v2.95'te tablodan okunur (sartname S4: olcum, turetme degil);
+    migration-oncesi eski satirlar icin v2.76 turetmesi yedek kalir. Bos
+    karne 200 + bos gunluk doner — 'birikiyor' durumunu istemci anlatir.
     """
     from pvquant.services import forecast_service
     if not (1 <= gun <= 365):
@@ -192,12 +205,10 @@ def skill(plant_id: str, bucket: str = "0-24", gun: int = 120,
         "gunluk": [
             {"tarih": r["date"].date().isoformat(), "kova": r["horizon_bucket"],
              "wmape": _kw(r["mape"]),
-             # v2.76: turetme, icat degil — worker satir 120: skill=100*(1-mape/naif)
-             # => naif = mape/(1-skill/100). skill yoksa naif bilinmez -> null.
-             "naif_wmape": _kw(r["mape"] / (1 - r["skill_vs_naive"] / 100))
-             if r["skill_vs_naive"] is not None
-             and not pd.isna(r["skill_vs_naive"])
-             and r["skill_vs_naive"] < 100 else None}
+             # v2.95: SAKLANAN naif oncelikli (sartname S4). Eski satirlar
+             # icin v2.76 turetmesi yedek — ayni ozdeslik: skill=100*(1-mape/
+             # naif) => naif = mape/(1-skill/100). Ikisi de yoksa null.
+             "naif_wmape": _naif_wmape(r)}
             for _, r in kova.iterrows()],
     }
 

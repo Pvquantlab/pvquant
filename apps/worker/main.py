@@ -112,23 +112,26 @@ def gece_skill(plant, pencere_gun: int = 10):
         mape = float(abs(g.p50_kw - g.power_kw).sum() / toplam * 100)  # WMAPE
         rmse = float(((g.p50_kw - g.power_kw) ** 2).mean() ** 0.5)
         gn = g.dropna(subset=["naif"])
-        skill = None
+        skill, nm = None, None
         if len(gn) >= 3 and float(gn.power_kw.sum()) > 0:
             nm = float(abs(gn.naif - gn.power_kw).sum()
                        / float(gn.power_kw.sum()) * 100)               # WMAPE
             if nm > 0:
                 skill = float(100 * (1 - mape / nm))
+        # v2.95 (sartname S4): naif olcumdur, saklanir — turetme donemi bitti.
         satirlar.append({"t": tid, "p": pid, "g": gun, "k": str(kova),
-                         "m": mape, "r": rmse, "s": skill})
+                         "m": mape, "r": rmse, "s": skill, "n": nm})
     if not satirlar:
         return
     with tenant_baglami(tid) as s:
         s.execute(text(
             "INSERT INTO skill_daily(tenant_id,plant_id,date,horizon_bucket,"
-            " mape,rmse,skill_vs_naive) VALUES(:t,:p,:g,:k,:m,:r,:s) "
+            " mape,rmse,skill_vs_naive,naive_wmape)"
+            " VALUES(:t,:p,:g,:k,:m,:r,:s,:n) "
             "ON CONFLICT (plant_id,date,horizon_bucket) DO UPDATE SET "
             " mape=EXCLUDED.mape, rmse=EXCLUDED.rmse,"
-            " skill_vs_naive=EXCLUDED.skill_vs_naive"), satirlar)
+            " skill_vs_naive=EXCLUDED.skill_vs_naive,"
+            " naive_wmape=EXCLUDED.naive_wmape"), satirlar)
 def aylik_kalibrasyon(plant):
     calib_service.kalibre_et(plant["tenant_id"], plant, hibrit=True)
 
