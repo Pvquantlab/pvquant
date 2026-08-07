@@ -2,23 +2,8 @@ from pvq import *
 
 tr = lambda x, d=1: ("%.*f" % (d, x)).replace(".", ",").replace("-", "\u2212")
 
-AYLAR = ["Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz"]
-GECERLI = [84, 58, 49, 55, 88, 92]
-HATALI = [10, 36, 45, 39, 6, 3]          # kaynak dosyadaki bozuk yıl bloğu
-DIGER = [6, 6, 6, 6, 6, 5]
-
-BAYRAK = [
-    ("Hatalı yıl bloğu", "1.052", "%23,7",
-     "Kaynak dosyadaki bozuk yıl etiketi düzeltilip veri yeniden yüklenmeli."),
-    ("Gece üretimi", "62", "%1,4",
-     "Sayaç ofseti kontrol edilmeli; gece sıfırdan büyük üretim fiziksel değildir."),
-    ("Donmuş veri", "76", "%1,7",
-     "Telemetri kesintisi; aynı değerin tekrarlandığı bloklar düşürüldü."),
-    ("Kapasite üstü kayıt", "22", "%0,5",
-     "Ölçek hatası olasılığı; kurulu güç künyesiyle çapraz doğrulanmalı."),
-    ("Okunamayan satır", "66", "%1,5",
-     "Ayrıştırılamayan kayıtlar; örnekleri veri ekinde listelenir."),
-]
+from veri import (KALITE_AYLAR as AYLAR, KALITE_GECERLI as GECERLI,
+                  KALITE_HATALI as HATALI, KALITE_DIGER as DIGER, BAYRAK)
 
 
 def kapsama(W=1000, H=290, ml=58, mb=52, fs=14):

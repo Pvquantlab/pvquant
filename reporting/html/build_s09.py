@@ -3,15 +3,7 @@ from pvq import *
 tr = lambda x, d=1: ("%.*f" % (d, x)).replace(".", ",").replace("-", "\u2212")
 
 # (etiket, değişim, tür)  tür: bas = başlangıç/bitiş, iyi = iyileştirme, kotu = bedel
-ADIM = [
-    ("Ham fizik", None, "bas"),
-    ("Sistem verimi", -1.8, "iyi"),
-    ("Bifacial kazanç", -1.2, "iyi"),
-    ("Bulut geçişi", +0.3, "kotu"),
-    ("ML artık öğrenme", -2.0, "iyi"),
-    ("Hibrit model", None, "bas"),
-]
-BAS, BIT = 13.6, 8.9
+from veri import SELALE_ADIM as ADIM, SELALE_BAS as BAS, SELALE_BIT as BIT
 
 
 def selale(W=1000, H=352, ml=64, mb=88, fs=14):

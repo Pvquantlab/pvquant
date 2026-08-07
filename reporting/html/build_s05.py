@@ -1,10 +1,9 @@
 from pvq import *
 
-# --- tipik gün: saat ortası değerleri [MW]; toplamı 65,8 MWh
-BASE = [(5.0, 0.0), (5.5, 0.489), (6.5, 1.048), (7.5, 2.004), (8.5, 3.412), (9.5, 5.175),
-        (10.5, 6.991), (11.5, 8.413), (12.5, 9.017), (13.5, 8.610), (14.5, 7.322),
-        (15.5, 5.547), (16.5, 3.743), (17.5, 2.250), (18.5, 1.205), (19.5, 0.574), (20.0, 0.0)]
-DAILY = [65.8, 65.0, 66.4, 68.3, 69.4, 67.1, 59.3, 53.6]
+# --- tipik gün: saat ortası değerleri [MW]; toplamı 65,8 MWh — BASE_KW'den türetilir
+from veri import BASE_KW, P50_GUN
+BASE = [(5.0, 0.0)] + [(5.5 + i, BASE_KW[i] / 1000) for i in range(len(BASE_KW))] + [(20.0, 0.0)]
+DAILY = P50_GUN[:8]
 MEAN = 64.8 / 65.8
 
 

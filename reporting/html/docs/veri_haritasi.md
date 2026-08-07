@@ -1,8 +1,9 @@
 # Veri Haritası
 
-Şu anda her sayfanın verisi kendi betiğinin başında sabit olarak duruyor. Bu dosya, hangi
-değişkenin hangi sayfayı beslediğini ve JSON v2.0'da hangi alandan gelmesi gerektiğini
-listeler. Adaptör yazılırken tek referans budur.
+**Dalga E.2 güncellemesi:** sabit veriler artık tek modülde: `veri.py`. Build betikleri
+veriyi oradan alır (`from veri import …`); bu dosya, `veri.py`'deki hangi değişkenin hangi
+sayfayı beslediğini ve JSON v2.0'da hangi alandan gelmesi gerektiğini listeler. Adaptör
+yazılırken tek referans budur ve adaptör yalnız `veri.py`'yi değiştirecektir.
 
 **Önce okuyun:** birden fazla sayfada görünen değerler tek bir kaynaktan türetilmelidir.
 Örneğin günlük beklenti dizisi hem sayfa 4'ün çizelgesini hem sayfa 6'nın toplam satırını

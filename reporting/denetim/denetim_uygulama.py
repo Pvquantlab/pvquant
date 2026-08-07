@@ -6,7 +6,8 @@ import numpy as np
 pdf, taban = sys.argv[1], sys.argv[2]
 subprocess.run(["pdftotext","-layout",pdf,"/tmp/_r.txt"],check=True)
 s=open("/tmp/_r.txt").read(); T=json.load(open(taban))
-ok=lambda ad,c: print(("✓" if c else "✗ FARK"),ad)
+HATA=[]
+ok=lambda ad,c: (print(("✓" if c else "✗ FARK"),ad), c or HATA.append(ad))
 sayi=lambda x: float(x.replace(".","").replace(",","."))
 blok=re.search(r"04–05.*?Σ \[MWh\][^\n]*", s, re.S).group(0)
 veri={}
@@ -37,4 +38,6 @@ ok("Kapsama 84/58/49/55/88/92 + %71", all(x in s for x in ["%84","%58","%49","%5
 ok("Naif özdeşliği 7/7 (Çizelge 7.1)", all(abs(w/(1-k/100)-nf)<0.06 for w,k,nf in
    [(8.1,44.5,14.6),(9.0,40.4,15.1),(12.7,20.1,15.9),(8.5,42.2,14.7),(7.4,46.4,13.8),(8.8,40.9,14.9),(9.6,37.7,15.4)]))
 ok("Evrim ±7,4→±2,8 · son 65,8", all(x in s for x in ["±7,4","±2,8","65,8 MWh"]))
+if HATA:
+    print("\n✗ ÇAPRAZ DENETİM BAŞARISIZ: %d fark" % len(HATA)); sys.exit(1)
 print("\nÇAPRAZ DENETİM TAMAM")

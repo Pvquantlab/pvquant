@@ -1,17 +1,10 @@
 from pvq import *
 
-# --- son 30 günün karnesi -------------------------------------------------
-wm = [10.4, 9.1, 11.2, 7.8, 6.2, 6.4, 12.9, 9.3, 8.6, 10.2, 7.1, 8.4, 11.0,
-      8.2, 8.9, 9.5, 10.6, 8.0, 9.9, 11.1, 7.6, 8.3, 9.2,
-      8.1, 9.0, 12.7, 8.5, 7.4, 8.8, 9.6]
-sk = [.36, .40, .31, .44, .47, .45, .28, .39, .41, .35, .46, .38, .33,
-      .42, .37, .36, .34, .43, .35, .32, .44, .40, .38,
-      .445, .404, .201, .422, .464, .409, .377]
+# --- son 30 günün karnesi (tek kaynak: veri.py) ---------------------------
+from veri import KARNE_WM as wm, KARNE_SK as sk, KARNE_H72_KUYRUK, KARNE_TARIH as TARIH
 naif = [round(w / (1 - s), 1) for w, s in zip(wm, sk)]
-h72 = [round(w * 1.36, 1) for w in wm[:23]] + [11.9, 12.4, 16.2, 12.0, 10.8, 12.1, 13.0]
+h72 = [round(w * 1.36, 1) for w in wm[:23]] + KARNE_H72_KUYRUK
 ORT_SKILL = sum(sk) / len(sk) * 100
-
-TARIH = ["%02d Tem" % d for d in range(5, 32)] + ["%02d Ağu" % d for d in (1, 2, 3)]
 tr = lambda x, d=1: ("%.*f" % (d, x)).replace(".", ",")
 
 

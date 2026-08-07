@@ -2,9 +2,7 @@ from pvq import *
 
 tr = lambda x, d=1: ("%.*f" % (d, x)).replace(".", ",")
 
-EVRIM = [("29 Tem", 63.2, 7.4), ("30 Tem", 63.9, 6.6), ("31 Tem", 64.6, 5.9),
-         ("01 Ağu", 66.1, 5.1), ("02 Ağu", 67.3, 4.3), ("03 Ağu", 64.5, 3.4),
-         ("04 Ağu", 65.8, 2.8)]
+from veri import EVRIM
 
 STANDART = [
     ("IEC 61724-1", "Fotovoltaik sistem performans izleme standardı",

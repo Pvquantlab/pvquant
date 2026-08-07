@@ -1,6 +1,10 @@
 """PVQuant rapor tasarım sistemi — tüm sayfalar bu modülden beslenir."""
 import base64, os
 
+# ------------------------------------------------- veri tek kaynaktan (Dalga E.2)
+from veri import (AY_TR, IKLIM, TAM_YILLAR, LTA_AY, LTA_YIL, ay_pct,   # iklim arşivi
+                  SANTRAL, MUSTERI, DONEM, MOD_ROZET, SAYFA_TOPLAM)     # kimlik
+
 import os as _os
 _BURASI = _os.path.dirname(_os.path.abspath(__file__))
 FONTS = _os.environ.get("PVQ_FONTLAR", _os.path.join(_BURASI, "fontlar"))
@@ -100,12 +104,12 @@ tr:nth-child(even) td{background:#F4F8FA}
    .replace("BRAND2", BRAND2).replace("BRAND", BRAND)
 
 HEAD = ('<div class="head"><div class="m">PVQuant<span>Kanıta dayalı üretim tahmini</span></div>'
-        '<div>Konya GES · 05–20 Ağustos 2026</div></div>')
+        '<div>%s · %s</div></div>' % (SANTRAL, DONEM))
 
 
 def foot(page):
-    return ('<div class="foot"><div><b>MOD C · HİBRİT</b></div>'
-            '<div>Sayfa %d / 16</div></div>' % page)
+    return ('<div class="foot"><div><b>%s</b></div>'
+            '<div>Sayfa %d / %d</div></div>' % (MOD_ROZET, page, SAYFA_TOPLAM))
 
 
 def shell(css, body, title):
@@ -270,39 +274,3 @@ def fan_chart(vals, half, labels, xtitle, ytitle, ymin=40, ymax=80, step=10,
     return ('<svg class="fig" viewBox="0 0 %d %d" xmlns="http://www.w3.org/2000/svg" role="img" '
             'aria-label="%s">%s</svg>' % (W, H, xtitle, "".join(o)))
 
-
-# ------------------------------------------------- iklim arşivi (aylık üretim, MWh)
-AY_TR = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"]
-IKLIM = {
-    2007: [971, 1178, 1514, 1913, 2310, 2370, 2142, 2231, 1847, 1497, 1029, 895],
-    2008: [1010, 1139, 1693, 1805, 2280, 2487, 2362, 2268, 1854, 1487, 1039, 917],
-    2009: [1068, 1031, 1580, 1781, 2082, 2472, 2381, 2022, 1743, 1437, 1033, 889],
-    2010: [962, 1114, 1567, 1650, 2097, 2114, 2224, 1954, 1626, 1332, 1051, 877],
-    2011: [941, 1081, 1572, 1604, 2114, 2246, 2452, 2236, 1718, 1378, 1036, 931],
-    2012: [942, 1059, 1482, 1694, 2050, 2037, 2202, 2026, 1769, 1387, 1002, 854],
-    2013: [1027, 1227, 1583, 1906, 2105, 2385, 2194, 2023, 1788, 1394, 1098, 999],
-    2014: [1085, 1227, 1763, 2082, 2433, 2544, 2739, 2479, 1892, 1605, 1191, 945],
-    2015: [1027, 1085, 1611, 1814, 2191, 2209, 2311, 1970, 1663, 1442, 948, 909],
-    2016: [907, 1150, 1440, 1827, 2150, 2056, 2419, 2288, 1720, 1367, 1028, 811],
-    2017: [1128, 1163, 1617, 1820, 2229, 2248, 2609, 2281, 1948, 1496, 1078, 905],
-    2018: [1038, 1194, 1591, 1867, 2145, 2305, 2657, 2223, 1762, 1519, 1195, 853],
-    2019: [1048, 1147, 1466, 1947, 2278, 2388, 2341, 2327, 1794, 1470, 1046, 857],
-    2020: [1022, 1043, 1473, 1694, 2016, 2096, 2266, 2030, 1652, 1338, 1059, 853],
-    2021: [1029, 1096, 1421, 1876, 2281, 2251, 2380, 2257, 1830, 1477, 1030, 937],
-    2022: [1001, 1246, 1662, 1977, 2520, 2581, 2308, 2103, 1936, 1417, 1115, 960],
-    2023: [893, 974, 1489, 1723, 2064, 2183, 2130, 1938, 1673, 1291, 932, 856],
-    2024: [1006, 1150, 1454, 1730, 2066, 2167, 2337, 2088, 1786, 1434, 1159, 808],
-    2025: [933, 995, 1377, 1490, 1895, 2105, 2082, 1916, 1553, 1345, 938, 702],
-    2026: [922, 965, 1238, 1420, 2205, 2173, 2105, None, None, None, None, None],
-}
-TAM_YILLAR = list(range(2007, 2026))          # 19 tam yıl
-LTA_AY = [round(sum(IKLIM[y][m] for y in TAM_YILLAR) / len(TAM_YILLAR)) for m in range(12)]
-LTA_YIL = sum(LTA_AY)
-
-
-def ay_pct(m, p):
-    """Bir ayın 19 yıllık dağılımından yüzdelik (doğrusal ara değer)."""
-    v = sorted(IKLIM[y][m] for y in TAM_YILLAR)
-    k = (len(v) - 1) * p / 100
-    i = int(k)
-    return v[i] + (v[min(i + 1, len(v) - 1)] - v[i]) * (k - i)

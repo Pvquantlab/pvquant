@@ -1,12 +1,7 @@
 from pvq import *
 
-BASE_KW = [489, 1048, 2004, 3412, 5175, 6991, 8413, 9017, 8610, 7322, 5547, 3743,
-           2250, 1205, 574]                      # 05–06 … 19–20 saat dilimleri
+from veri import BASE_KW, PEAK, P50_GUN as DAILY, GUN_ETIKET as DAYS
 HOURS = ["%02d–%02d" % (h, h + 1) for h in range(5, 20)]
-DAILY = [65.8, 65.0, 66.4, 68.3, 69.4, 67.1, 59.3, 53.6, 58.9,
-         65.6, 68.8, 69.6, 67.9, 66.2, 63.5, 61.0]
-DAYS = ["%02d" % d for d in range(5, 21)]
-PEAK = 9600.0
 
 
 def mix(t):

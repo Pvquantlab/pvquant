@@ -1,16 +1,12 @@
 from pvq import *
 
-p50 = [65.8, 65.0, 66.4, 68.3, 69.4, 67.1, 59.3, 53.6, 58.9,
-       65.6, 68.8, 69.6, 67.9, 66.2, 63.5, 61.0]
-hw = [4.3, 4.2, 4.3, 4.4, 4.5, 4.4, 7.6, 9.7, 7.4,
-      4.3, 4.5, 4.5, 4.4, 4.3, 4.2, 4.0]
-days = ["%02d" % d for d in range(5, 21)]
+from veri import P50_GUN as p50, HW_GUN as hw, GUN_ETIKET as days, CEPHE
 
 tr = lambda x, d=1: ("%.*f" % (d, x)).replace(".", ",")
 
 CHART = fan_chart(p50, hw, days, "Ağustos 2026 [gün]", "[MWh/gün]",
                   ymin=40, ymax=80, step=10, H=290, fs=15,
-                  highlight=(6, 8), hl_label="cephe geçişi")
+                  highlight=CEPHE, hl_label="cephe geçişi")
 
 hdr = "".join("<th class='num'>%s</th>" % d for d in days)
 

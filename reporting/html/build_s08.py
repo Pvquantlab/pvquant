@@ -4,8 +4,8 @@ from pvq import *
 R = random.Random(7)
 tr = lambda x, d=1: ("%.*f" % (d, x)).replace(".", ",").replace("-", "\u2212")
 
-# --- saçılım verisi: gerçekleşen ve tahmin çiftleri [MW]
-PROF = [0.5, 1.0, 2.0, 3.4, 5.2, 7.0, 8.4, 9.0, 8.6, 7.3, 5.5, 3.7, 2.3, 1.2, 0.6]
+# --- saçılım verisi: gerçekleşen ve tahmin çiftleri [MW] (tek kaynak: veri.py)
+from veri import PROF, MAE24 as _MAE24, MAE72 as _MAE72, MU as _MU, SD as _SD, NDAYS as _NDAYS
 pairs24, pairs72 = [], []
 for _ in range(150):
     a = max(0.15, R.choice(PROF) * R.uniform(.72, 1.06))
@@ -13,14 +13,13 @@ for _ in range(150):
     pairs72.append((a, max(0.05, a + R.gauss(0, .62 + a * .085))))
 
 MAE_H = list(range(6, 20))
-mae24 = [.07, .12, .19, .30, .42, .52, .58, .56, .49, .37, .25, .16, .10, .06]
-mae72 = [.11, .19, .31, .49, .69, .84, .90, .87, .74, .57, .38, .24, .14, .08]
+mae24, mae72 = _MAE24, _MAE72
 
 # --- günlük sapma dağılımı (F − A) [MWh/gün]
 # Tek kaynak: ortalama −0,2 · standart sapma 2,0 · 116 geçerli gün.
 # Histogram, medyan ve yüzdelikler bu tek dağılımdan türetilir.
 import math
-MU, SD, NDAYS = -0.2, 2.0, 116
+MU, SD, NDAYS = _MU, _SD, _NDAYS
 _cdf = lambda x: 0.5 * (1 + math.erf((x - MU) / (SD * math.sqrt(2))))
 BINS = [(lo, lo + 1, round(NDAYS * (_cdf(lo + 1) - _cdf(lo)))) for lo in range(-6, 6)]
 TOTAL = sum(b[2] for b in BINS)

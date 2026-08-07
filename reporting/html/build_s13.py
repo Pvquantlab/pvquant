@@ -13,29 +13,7 @@ HALKA = [
      "Makine öğrenmesi kalan hatayı öğrenir ve P10 / P50 / P90 aralıkları üretilir.", True),
 ]
 
-SAHA = [
-    ("Koordinat", "37,9000°K · 32,5000°D"),
-    ("Yükseklik", "1.016 m"),
-    ("Kurulu güç", "12,4 MWp / 10,0 MWe"),
-    ("DC/AC oranı", "1,24"),
-    ("Panel eğimi / azimut", "25° / 180° (güney)"),
-    ("İzleyici", "sabit eğim"),
-    ("Panel / inverter", "MonoPERC-540B · INV-3125K"),
-    ("Saat dilimi", "Europe/Istanbul (UTC+3)"),
-]
-
-KUNYE = [
-    ("Hava tahmini", "Saatlik ışınım, bulut, sıcaklık, rüzgâr", "saatlik · ~11 km",
-     "her tahmin için 16 gün", "UTC"),
-    ("Santral verisi (SCADA)", "Gerçekleşen üretim ve kalite bayrakları", "15 dakika → saatlik",
-     "1 Şubat – 4 Ağustos 2026", "UTC"),
-    ("İklim arşivi", "Aylık üretim geçmişi", "aylık", "2007–2025 (19 tam yıl) + 2026",
-     "yerel ay"),
-    ("Zemin albedosu", "Bifacial kazanç hesabının girdisi (0,16)", "sabit", "kurulumda girilir",
-     "—"),
-    ("Santral künyesi", "Kurulu güç, koordinat, eğim/azimut, panel ve inverter", "—",
-     "kurulumda bir kez", "Europe/Istanbul"),
-]
+from veri import SAHA, KUNYE
 
 halkalar = ""
 for i, (kod, ad, ac, aktif) in enumerate(HALKA):
