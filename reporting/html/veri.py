@@ -218,7 +218,9 @@ def _json_yukle(path):
 
     # kalibrasyon şelalesi
     C = J["calibration"]
-    g["SELALE_ADIM"] = [(s["label"], s["delta"], s["kind"]) for s in C["steps"]]
+    if "steps" in C:  # KARAR (B4, 8 Ağu): worker kırılım yazana dek opsiyonel;
+        # yoksa sayfa 9 motor sabitleriyle basılır (2-adım şelaleye geçilmez).
+        g["SELALE_ADIM"] = [(s["label"], s["delta"], s["kind"]) for s in C["steps"]]
     g["SELALE_BAS"], g["SELALE_BIT"] = C["physics_mape"], C["holdout_mape"]
 
     # veri kalitesi

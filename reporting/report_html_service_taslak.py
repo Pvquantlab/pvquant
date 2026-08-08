@@ -21,7 +21,7 @@ DOLDURULABİLENLER (ctx'te bugün var):
   accuracy.report_card[] ← ctx.karne satırları (0-24 + 24-72 kovaları)
 
 BOŞLUKLAR (DB/worker'da bugün YOK — yarın kapatılacak, şimdilik ValueError):
-  B1 accuracy.uninterrupted_days  → karneden ardışık gün sayımı türetilebilir (karar: türet?)
+  B1 accuracy.uninterrupted_days  → KARAR: worker ayrı alan yazacak (türetme reddedildi, 8 Ağu)
   B2 scada.quality_monthly        → flag_dagilimi TOPLAM; aylık kırılım SQL'i gerekli (s10)
   B3 scada.quality_flags aksiyon metinleri → bayrak adı→aksiyon sabit tablosu (aşağıda kısmen)
   B4 calibration.steps ara adımları → gate yalnız BAS/BIT verir; sistem verimi/bifacial/ML
@@ -102,7 +102,8 @@ def ctx_to_json(ctx, plant: dict) -> dict:
             "skill_basis": "akilli-sureklilik (EPRI naif referans)",
             "wmape_0_24": round(float(g24.mape.mean()), 1),
             "skill": int(round(100 * float(g24.skill_vs_naive.mean()))),
-            "uninterrupted_days": _ardisik_gun(g24),          # B1 — karar bekliyor
+            "uninterrupted_days": _zorunlu(ctx, "uninterrupted_days"),  # KARAR (B1, 8 Ağu):
+            # worker ayrı alan yazar (karneden türetme YOK); alan gelene dek ValueError.
             "report_card": _karne_satirlari(k),
         }
 
@@ -181,3 +182,10 @@ def _karne_satirlari(k):
 
 def _iklim_sozluk(ik):
     ...
+
+def _zorunlu(ctx, alan):
+    """B-kararları: eksik alan sessizce düşmez — isim isim ValueError."""
+    v = getattr(ctx, alan, None)
+    if v is None:
+        raise ValueError("worker alanı eksik: ctx.%s (bkz. B1 kararı)" % alan)
+    return v
