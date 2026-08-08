@@ -55,7 +55,7 @@ def profile(W=1000, H=292, ml=54, mb=50, fs=15):
     o.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#8FA4AE" '
              'stroke-width="1.2" stroke-dasharray="5 4"/>' % (X(12.5), Y(8.9), X(12.5), Y(9.9)))
     o.append('<text x="%.1f" y="%.1f" text-anchor="middle" font-family="PlexSans" font-size="%d" '
-             'font-weight="600" fill="%s">tepe 8,9 MW</text>' % (X(12.5), Y(10) - 3, fs, INK))
+             'font-weight="600" fill="%s">tepe {{TEPE_TIPIK}} MW</text>' % (X(12.5), Y(10) - 3, fs, INK))
     return ('<svg class="fig" viewBox="0 0 %d %d" xmlns="http://www.w3.org/2000/svg" role="img" '
             'aria-label="Tipik gun profili">%s</svg>' % (W, H, "".join(o)))
 
@@ -132,14 +132,14 @@ BODY = """<div class="page"><div class="sheet">
     <div class="legend"><span><i class="line"></i>Beklenti (P50)</span>
       <span><i class="fan"></i>%80 olasılık aralığı (P10–P90)</span></div>
     <div class="figcap"><b>Şekil 5.1</b>&nbsp;&nbsp;Tipik gün profili. Üretim 05:15 civarında
-      başlar, 12:00–13:00 arasında 8,9 MW tepe değerine ulaşır ve 19:45'te sona erer. Kum
+      başlar, 12:00–13:00 arasında {{TEPE_TIPIK}} MW tepe değerine ulaşır ve 19:45'te sona erer. Kum
       rengi alan %80 olasılık aralığıdır; gerçekleşen üretim on günün sekizinde bu alanın
       içinde kalır.</div>
 
   <div class="two">
     <div>
       <h2>Öğle platosu neden düz?</h2>
-      <p>Tepe 8,9 MW'ta kalıyor; santralin şebeke gücü ise 10,0 MWe. Yani inverterler kırpma
+      <p>Tepe {{TEPE_TIPIK}} MW'ta kalıyor; santralin şebeke gücü ise {{SEBEKE}}. Yani inverterler kırpma
       yapmıyor, üretilen gücün tamamı şebekeye verilebiliyor. Plato tavana dayansaydı aradaki
       fark kalıcı kayıp olurdu.</p>
     </div>

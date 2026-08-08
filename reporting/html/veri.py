@@ -144,6 +144,19 @@ EVRIM = [("29 Tem", 63.2, 7.4), ("30 Tem", 63.9, 6.6), ("31 Tem", 64.6, 5.9),
          ("01 Ağu", 66.1, 5.1), ("02 Ağu", 67.3, 4.3), ("03 Ağu", 64.5, 3.4),
          ("04 Ağu", 65.8, 2.8)]
 
+# ---------------------------------------------------------------- dönem özeti (totals.* / accuracy.*)
+TOPLAM_P50_MWH = 1036.4        # totals.p50_mwh
+TOPLAM_P10_MWH = 1005          # totals.p10_mwh — taahhüt alt sınırı
+TOPLAM_P90_MWH = 1068          # totals.p90_mwh
+KF_PCT = 27.0                  # totals.capacity_factor
+WMAPE120_PCT = 9.4             # accuracy.wmape_0_24 (120 gün)
+SKILL120_PCT = 38              # accuracy.skill (120 gün, tam sayı gösterim)
+KAPSAMA_PCT = 71               # scada.coverage_pct
+KESINTISIZ_GUN = 87            # accuracy.uninterrupted_days
+RAPOR_ID = "PVQ-2026-08-04-C-0417"       # report.id (yer tutucu)
+HAZIRLANMA = "4 Ağustos 2026 · 08:00"    # run.run_at (görsel)
+EPOSTA = "rapor@pvquant.example"         # report.contact (yer tutucu)
+
 # ================================================================ JSON adaptörü (E.2 Adım 2)
 # PVQ_VERI_JSON ortam değişkeni bir JSON v2.0/v2.1 dosyası gösteriyorsa
 # yukarıdaki varsayılanlar oradan gelen değerlerle değiştirilir.
@@ -215,6 +228,19 @@ def _json_yukle(path):
     g["BAYRAK"] = [(b["ad"], b["saat"], b["pay"], b["aksiyon"])
                    for b in J["scada"]["quality_flags"]]
 
+    # dönem özeti (E.2 Adım 2b)
+    T = J["totals"]
+    g["TOPLAM_P50_MWH"], g["TOPLAM_P10_MWH"] = T["p50_mwh"], T["p10_mwh"]
+    g["TOPLAM_P90_MWH"], g["KF_PCT"] = T["p90_mwh"], T["capacity_factor"]
+    g["WMAPE120_PCT"] = J["accuracy"]["wmape_0_24"]
+    g["SKILL120_PCT"] = J["accuracy"]["skill"]
+    g["KESINTISIZ_GUN"] = J["accuracy"]["uninterrupted_days"]
+    g["KAPSAMA_PCT"] = J["scada"]["coverage_pct"]
+    g["RAPOR_ID"] = J["report"]["id"]
+    g["EPOSTA"] = J["report"]["contact"]
+    py, pm, pd_, ps = J["run"]["prepared"][:4], J["run"]["prepared"][5:7], J["run"]["prepared"][8:10], J["run"]["prepared"][11:16]
+    g["HAZIRLANMA"] = "%d %s %s · %s" % (int(pd_), AY_UZUN[int(pm) - 1], py, ps)
+
     # künye ve evrim
     g["SAHA"] = [tuple(p) for p in J["plant"]["display"]]
     g["KUNYE"] = [tuple(k) for k in J["sources"]["display"]]
@@ -227,3 +253,45 @@ import os as _os2
 _J = _os2.environ.get("PVQ_VERI_JSON")
 if _J:
     _json_yukle(_J)
+
+
+# ================================================================ görsel doldurma (E.2 Adım 2b)
+def _tr(x, d=1):
+    return ("%.*f" % (d, x)).replace(".", ",")
+
+
+def _bin(x):
+    return "{:,}".format(int(round(x))).replace(",", ".")
+
+
+def _bin1(x):
+    return ("{:,.1f}".format(x).replace(",", "X").replace(".", ",").replace("X", "."))
+
+
+def doldur(s):
+    """HTML/CSS içindeki {{TOKEN}} yer tutucularını güncel veriyle doldurur.
+    pvq.build() her sayfada çağırır; token yoksa metin aynen geçer."""
+    d = dict(SAHA)
+    i_min = P50_GUN.index(min(P50_GUN))
+    D = {
+        "SANTRAL": SANTRAL, "MUSTERI": MUSTERI, "DONEM": DONEM,
+        "RAPOR_ID": RAPOR_ID, "HAZIRLANMA": HAZIRLANMA, "EPOSTA": EPOSTA,
+        "KURULU": d.get("Kurulu güç", ""),
+        "KOORD_YUK": (d.get("Koordinat", "") + " · " + d.get("Yükseklik", "")),
+        "TOPLAM_P50": _bin1(TOPLAM_P50_MWH),
+        "TOPLAM_BANT": _bin(TOPLAM_P10_MWH) + "–" + _bin(TOPLAM_P90_MWH),
+        "TOPLAM_P10": _bin(TOPLAM_P10_MWH),
+        "KF": _tr(KF_PCT), "WMAPE120": _tr(WMAPE120_PCT),
+        "SKILL120": "%d" % SKILL120_PCT,
+        "FIZIK": _tr(SELALE_BAS), "HOLDOUT": _tr(SELALE_BIT),
+        "IYILESME": _tr(round((SELALE_BAS - SELALE_BIT) / SELALE_BAS * 100, 1)),
+        "KAPSAMA": "%d" % KAPSAMA_PCT, "KESINTISIZ": "%d" % KESINTISIZ_GUN,
+        "MIN_P50": _tr(P50_GUN[i_min]), "MIN_HW": _tr(HW_GUN[i_min]),
+        "TEPE_TIPIK": _tr(max(BASE_KW) / 1000 * (sum(P50_GUN) / len(P50_GUN))
+                          / (sum(BASE_KW) / 1000)),
+        "SEBEKE": dict(SAHA).get("Kurulu güç", "/").split("/")[1].strip(),
+        "TOPLAM_P90": _bin(TOPLAM_P90_MWH),
+    }
+    for k, v in D.items():
+        s = s.replace("{{%s}}" % k, v)
+    return s

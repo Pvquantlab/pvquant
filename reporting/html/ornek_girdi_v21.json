@@ -2,7 +2,8 @@
  "schema_version": "2.1",
  "report": {
   "customer": "Anadolu Enerji A.Ş.",
-  "id": "PVQ-2026-08-04-C-0417"
+  "id": "PVQ-2026-08-04-C-0417",
+  "contact": "rapor@pvquant.example"
  },
  "plant": {
   "name": "Konya GES",
@@ -43,7 +44,8 @@
  },
  "run": {
   "mode": "MOD C · HİBRİT",
-  "pages": 16
+  "pages": 16,
+  "prepared": "2026-08-04T08:00"
  },
  "forecast": {
   "start": "2026-08-05",
@@ -679,7 +681,10 @@
     "skill": 0.377,
     "wmape_24_72": 13.0
    }
-  ]
+  ],
+  "wmape_0_24": 9.4,
+  "skill": 38,
+  "uninterrupted_days": 87
  },
  "error_dist": {
   "prof_mw": [
@@ -837,7 +842,8 @@
     "pay": "%1,5",
     "aksiyon": "Ayrıştırılamayan kayıtlar; örnekleri veri ekinde listelenir."
    }
-  ]
+  ],
+  "coverage_pct": 71
  },
  "history": {
   "evolution": [
@@ -877,5 +883,11 @@
     "half": 2.8
    }
   ]
+ },
+ "totals": {
+  "p50_mwh": 1036.4,
+  "p10_mwh": 1005,
+  "p90_mwh": 1068,
+  "capacity_factor": 27.0
  }
 }

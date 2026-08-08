@@ -5,6 +5,13 @@ oradan alır (`from veri import …`). **JSON adaptörü çalışır durumda:** 
 ortam değişkeni bir JSON v2.0/v2.1 dosyası gösterirse `veri.py` içindeki `_json_yukle`
 varsayılanları o dosyadan gelen değerlerle değiştirir; türetilen alanlar (LTA, gün
 etiketleri, dönem metni, cephe aralığı, karne tarihleri) otomatik yeniden hesaplanır.
+**Adım 2b — gömülü sayılar:** metin içi tutarlar artık `{{TOKEN}}` yer tutucularıyla
+`veri.doldur()` üzerinden basılır (toplamlar, KF, WMAPE, skill, holdout/fizik/iyileşme,
+kapsama, kesintisiz gün, rapor kimliği, hazırlanma, tipik gün tepesi, en düşük gün).
+`pvq.build()` ve s01'in kendi yazıcısı doldurmayı otomatik uygular; İYİLEŞME, MIN gün
+ve TEPE türetilir, gerisi `totals.*` / `accuracy.*` / `scada.coverage_pct` /
+`report.*` / `run.prepared` alanlarından gelir.
+
 Kanonik örnek: `ornek_girdi_v21.json` — bu girdiyle üretim, varsayılanlarla **bayt-birebir**
 aynı çıktıyı verir (md5 `8764…c001`). Kullanım:
 `PVQ_VERI_JSON=ornek_girdi_v21.json python3 uret.py`

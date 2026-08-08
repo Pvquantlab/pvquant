@@ -107,7 +107,7 @@ BODY = """<div class="page"><div class="sheet">
     kronolojik olarak bölünür. Rastgele bölme bilinçli olarak kullanılmaz: rastgelelik, test
     dönemine eğitim dönemiyle aynı hava koşullarını sızdırır ve başarımı yapay biçimde şişirir.
     Kronolojik bölmede test dönemi gerçek bir gelecektir. Eğitim penceresinde hata %6,8, hiç
-    görülmemiş test döneminde %8,9'dur — aradaki fark makul, yani model ezberlememiştir.</div>
+    görülmemiş test döneminde %{{HOLDOUT}}'dur — aradaki fark makul, yani model ezberlememiştir.</div>
 
   """ + kapsama() + """
     <div class="legend"><span><i class="g"></i>Kalite süzgecini geçen saatler</span>

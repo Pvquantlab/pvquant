@@ -3,7 +3,8 @@ import base64, os
 
 # ------------------------------------------------- veri tek kaynaktan (Dalga E.2)
 from veri import (AY_TR, IKLIM, TAM_YILLAR, LTA_AY, LTA_YIL, ay_pct,   # iklim arşivi
-                  SANTRAL, MUSTERI, DONEM, MOD_ROZET, SAYFA_TOPLAM)     # kimlik
+                  SANTRAL, MUSTERI, DONEM, MOD_ROZET, SAYFA_TOPLAM,     # kimlik
+                  doldur)                                               # {{TOKEN}} doldurma
 
 import os as _os
 _BURASI = _os.path.dirname(_os.path.abspath(__file__))
@@ -121,7 +122,7 @@ def shell(css, body, title):
 def build(name, css, body, title):
     from weasyprint import HTML as WH
     hp = f"{OUT}/{name}.html"
-    open(hp, "w", encoding="utf-8").write(shell(css, body, title))
+    open(hp, "w", encoding="utf-8").write(doldur(shell(css, body, title)))
     doc = WH(hp).render()
     doc.write_pdf(f"{OUT}/{name}.pdf")
     n = len(doc.pages)

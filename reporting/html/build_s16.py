@@ -88,10 +88,10 @@ BODY = """<div class="page"><div class="sheet">
   </div>
 
   <div class="kunye">
-    <div><b>Rapor kimliği</b><span>PVQ-2026-08-04-C-0417</span></div>
+    <div><b>Rapor kimliği</b><span>{{RAPOR_ID}}</span></div>
     <div><b>Hazırlanma</b><span>4 Ağustos 2026 · 08:00</span></div>
     <div><b>Model</b><span>MOD C · Hibrit</span></div>
-    <div><b>İletişim</b><span>rapor@pvquant.example</span></div>
+    <div><b>İletişim</b><span>{{EPOSTA}}</span></div>
   </div>
 """ + foot(16) + """
 </div></div>"""

@@ -103,14 +103,14 @@ IMPRINT = """
     <div>
       <h2>Santral</h2>
       <div class="row"><dt>Saha</dt><dd>Konya GES — Konya, Türkiye</dd></div>
-      <div class="row"><dt>Kurulu güç</dt><dd>12,4 MWp / 10,0 MWe</dd></div>
-      <div class="row"><dt>Koordinat</dt><dd>37,9000°K · 32,5000°D · 1.016 m</dd></div>
+      <div class="row"><dt>Kurulu güç</dt><dd>{{KURULU}}</dd></div>
+      <div class="row"><dt>Koordinat</dt><dd>{{KOORD_YUK}}</dd></div>
       <div class="row"><dt>Panel / inverter</dt><dd>MonoPERC-540B · INV-3125K</dd></div>
     </div>
     <div>
       <h2>Rapor</h2>
-      <div class="row"><dt>Rapor kimliği</dt><dd class="mono">PVQ-2026-08-04-C-0417</dd></div>
-      <div class="row"><dt>Hazırlanma</dt><dd>4 Ağustos 2026 · 08:00</dd></div>
+      <div class="row"><dt>Rapor kimliği</dt><dd class="mono">{{RAPOR_ID}}</dd></div>
+      <div class="row"><dt>Hazırlanma</dt><dd>{{HAZIRLANMA}}</dd></div>
       <div class="row"><dt>Tahmin ufku</dt><dd>05–20 Ağustos 2026 (16 gün)</dd></div>
       <div class="row"><dt>Karne penceresi</dt><dd>7 Nisan – 4 Ağustos 2026 (120 gün)</dd></div>
     </div>
@@ -171,7 +171,7 @@ BODY_A = """<div class="page">
  <div class="band">
   <div class="bhead"><div class="m">PVQuant<span>Kanıta dayalı üretim tahmini</span></div>
     <div class="r">Üretim Tahmini ve Doğruluk Raporu</div></div>
-  <div class="eyeb">Anadolu Enerji A.Ş. için hazırlanmıştır</div>
+  <div class="eyeb">{{MUSTERI}} için hazırlanmıştır</div>
   <h1>Konya GES</h1>
   <div class="sub"><b>05–20 Ağustos 2026</b> · 16 günlük saatlik üretim tahmini
     ve 120 günlük doğruluk karnesi</div>
@@ -182,17 +182,17 @@ BODY_A = """<div class="page">
  <div class="main">
   <div class="strip">
     <div class="cell"><div class="k">16 günlük toplam beklenti</div>
-      <div class="v">1.036,4<u>MWh</u></div><div class="n">P50 · en olası senaryo</div></div>
+      <div class="v">{{TOPLAM_P50}}<u>MWh</u></div><div class="n">P50 · en olası senaryo</div></div>
     <div class="cell"><div class="k">%80 olasılık bandı</div>
-      <div class="v">1.005–1.068<u>MWh</u></div>
-      <div class="n">taahhüt için önerilen alt sınır 1.005 MWh</div></div>
+      <div class="v">{{TOPLAM_BANT}}<u>MWh</u></div>
+      <div class="n">taahhüt için önerilen alt sınır {{TOPLAM_P10}} MWh</div></div>
   </div>
   <p class="lede">Bu rapor önümüzdeki 16 gün için saatlik üretim beklentisini, beklentinin
   olasılık bandını ve son 120 günde her tahminin gerçekleşen üretimle gece-gece
   karşılaştırıldığı doğruluk karnesini bir arada sunar.</p>
   <div class="figwrap">__CHART__""" + LEGCAP + """</div>
   """ + IMPRINT + """
-  <div class="evi">Bu tahmin, 87 gündür kesintisiz olarak ertesi gün gerçekleşen üretimle
+  <div class="evi">Bu tahmin, {{KESINTISIZ}} gündür kesintisiz olarak ertesi gün gerçekleşen üretimle
     karşılaştırılmaktadır; sonuçlar S4 · Doğruluk Karnesi'ndedir.</div>
   <div class="foot"><div><b>MOD C · HİBRİT</b></div><div>Sayfa 1 / 16</div></div>
  </div>
@@ -236,22 +236,22 @@ h1{font-family:Newsreader,Georgia,serif;font-weight:600;font-size:37pt;line-heig
 BODY_B = """<div class="page">
  <div class="head"><div class="mark">PVQuant<span>Kanıta dayalı üretim tahmini</span></div>
    <div class="r">Üretim Tahmini ve Doğruluk Raporu</div></div>
- <div class="eyeb">Anadolu Enerji A.Ş. için hazırlanmıştır</div>
+ <div class="eyeb">{{MUSTERI}} için hazırlanmıştır</div>
  <div class="hero"><h1>Konya GES</h1>
    <div class="sub">05–20 Ağustos 2026<br>16 günlük saatlik tahmin ·
      120 günlük doğruluk karnesi</div></div>
  <div class="figwrap">__CHART__""" + LEGCAP + """</div>
  <div class="numbers">
    <div class="cell"><div class="k">16 günlük toplam beklenti</div>
-     <div class="v">1.036,4<u>MWh</u></div><div class="n">P50 · en olası senaryo</div></div>
+     <div class="v">{{TOPLAM_P50}}<u>MWh</u></div><div class="n">P50 · en olası senaryo</div></div>
    <div class="cell"><div class="k">%80 olasılık bandı</div>
-     <div class="v">1.005–1.068<u>MWh</u></div>
-     <div class="n">taahhüt için önerilen alt sınır 1.005 MWh</div></div>
+     <div class="v">{{TOPLAM_BANT}}<u>MWh</u></div>
+     <div class="n">taahhüt için önerilen alt sınır {{TOPLAM_P10}} MWh</div></div>
  </div>
  <div class="pills"><div class="pill">MOD A · HAM FİZİK</div>
    <div class="pill">MOD B · KALİBRE</div><div class="pill on">MOD C · HİBRİT ✓</div></div>
  """ + IMPRINT + """
- <div class="evi">Bu tahmin, 87 gündür kesintisiz olarak ertesi gün gerçekleşen üretimle
+ <div class="evi">Bu tahmin, {{KESINTISIZ}} gündür kesintisiz olarak ertesi gün gerçekleşen üretimle
    karşılaştırılmaktadır; sonuçlar S4 · Doğruluk Karnesi'ndedir.</div>
  <div class="foot"><div><b>MOD C · HİBRİT</b></div><div>Sayfa 1 / 16</div></div>
 </div>"""
@@ -299,12 +299,12 @@ BODY_C = """<div class="page">
    <div class="tag">Kanıta dayalı<br>üretim tahmini</div>
    <div class="big">
      <div class="bk">16 günlük toplam beklenti</div>
-     <div class="bv">1.036,4<u>MWh</u></div>
+     <div class="bv">{{TOPLAM_P50}}<u>MWh</u></div>
      <div class="bn">P50 · en olası senaryo</div>
      <div class="sep"></div>
      <div class="bk">%80 olasılık bandı</div>
-     <div class="bv" style="font-size:17.5pt">1.005–1.068<u>MWh</u></div>
-     <div class="bn">taahhüt için önerilen alt sınır 1.005 MWh</div>
+     <div class="bv" style="font-size:17.5pt">{{TOPLAM_BANT}}<u>MWh</u></div>
+     <div class="bn">taahhüt için önerilen alt sınır {{TOPLAM_P10}} MWh</div>
    </div>
    <div class="pg"><div class="mode">MOD C · HİBRİT ✓</div>
      <div class="modes">A ham fizik · B kalibre · C hibrit</div>
@@ -312,7 +312,7 @@ BODY_C = """<div class="page">
  </div>
  <div class="main">
    <div class="head">Üretim Tahmini ve Doğruluk Raporu</div>
-   <div class="eyeb">Anadolu Enerji A.Ş. için hazırlanmıştır</div>
+   <div class="eyeb">{{MUSTERI}} için hazırlanmıştır</div>
    <h1>Konya GES</h1>
    <div class="sub"><b>05–20 Ağustos 2026</b> · 16 günlük saatlik üretim tahmini
      ve 120 günlük doğruluk karnesi</div>
@@ -321,7 +321,7 @@ BODY_C = """<div class="page">
    karşılaştırıldığı doğruluk karnesini bir arada sunar.</p>
    <div class="figwrap">__CHART__""" + LEGCAP + """</div>
    """ + IMPRINT + """
-   <div class="evi">Bu tahmin, 87 gündür kesintisiz olarak ertesi gün gerçekleşen üretimle
+   <div class="evi">Bu tahmin, {{KESINTISIZ}} gündür kesintisiz olarak ertesi gün gerçekleşen üretimle
      karşılaştırılmaktadır; sonuçlar S4 · Doğruluk Karnesi'ndedir.</div>
  </div>
 </div>"""
@@ -335,7 +335,8 @@ from weasyprint import HTML as WH
 for name, css, body, ch in VARIANTS:
     html = shell(css, body.replace("__CHART__", ch), "PVQuant — Konya GES · Kapak")
     hp = f"{OUT}/{name}.html"
-    open(hp, "w", encoding="utf-8").write(html)
+    from veri import doldur
+    open(hp, "w", encoding="utf-8").write(doldur(html))
     doc = WH(hp).render()
     doc.write_pdf(f"{OUT}/{name}.pdf")
     print(name, "sayfa:", len(doc.pages))

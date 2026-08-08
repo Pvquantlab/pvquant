@@ -65,9 +65,9 @@ BODY = """<div class="page"><div class="sheet">
   </table>
   <div class="tot">
     <span class="lb">Dönem toplamı:</span>
-    <span><b>1.036,4 MWh</b> beklenti</span>
-    <span><b>1.005 MWh</b> alt sınır</span>
-    <span><b>1.068 MWh</b> üst sınır</span>
+    <span><b>{{TOPLAM_P50}} MWh</b> beklenti</span>
+    <span><b>{{TOPLAM_P10}} MWh</b> alt sınır</span>
+    <span><b>{{TOPLAM_P90}} MWh</b> üst sınır</span>
   </div>
 
   <div class="two">
@@ -85,7 +85,7 @@ BODY = """<div class="page"><div class="sheet">
       <p style="margin-top:4mm">Günlük bantlar ±%6–8 iken dönem toplamının bandı ±%3'tür. Bunun
       nedeni günlerin birbirinden kısmen bağımsız olmasıdır: bir günün beklenenden düşük gelmesi,
       başka bir günün yüksek gelmesiyle kısmen dengelenir. Bu yüzden <b>dönem toplamının alt
-      sınırı, günlük alt sınırların toplamı değildir</b> — 948 değil, 1.005 MWh'tir.</p>
+      sınırı, günlük alt sınırların toplamı değildir</b> — 948 değil, {{TOPLAM_P10}} MWh'tir.</p>
       <p>Tahmin üretilemeyen bir gün olursa o gün için çubuk çizilmez ve eksende boş bırakılır;
       eksik gün hiçbir toplama dahil edilmez.</p>
     </div>

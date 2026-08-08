@@ -19,7 +19,7 @@ SINIR = [
      "modelinin döndüğü tahmin kaydına işlenmez. Bu, tahminin geriye dönük denetiminde tek "
      "eksik halkadır ve geliştirme listesindedir."),
     ("Santral verisi kapsaması hedefin altındadır",
-     "Tüm arşivde %71; hedef en az %80. Kaynak dosyadaki bozuk yıl bloğu düzeltilene kadar "
+     "Tüm arşivde %{{KAPSAMA}}; hedef en az %80. Kaynak dosyadaki bozuk yıl bloğu düzeltilene kadar "
      "kalibrasyon, olması gerekenden az saatle çalışmaktadır (sayfa 10)."),
     ("Normal dağılım varsayımı yalnızca yıllık eğride kullanılır",
      "Sayfa 11'deki aşılma olasılığı eğrisi normal dağılım varsayar; bu bilinçli bir "

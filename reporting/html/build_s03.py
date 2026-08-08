@@ -35,16 +35,16 @@ h2{font-size:11pt;font-weight:600;margin-top:8mm;padding-bottom:2mm;
 
 # (etiket, değer, birim, not, durum, punto)
 KPI = [
-    ("16 günlük toplam beklenti", "1.036,4", "MWh", "Aşılma olasılığı %50 olan değer", "", 17),
-    ("%80 olasılık bandı", "1.005–1.068", "MWh", "Gerçekleşenin bu aralıkta kalma olasılığı %80", "ok", 14),
-    ("Kapasite faktörü", "%27,0", "", "Şebeke gücünün dönem boyunca kullanılan oranı", "ok", 17),
-    ("Gün-öncesi ortalama hata", "%9,4", "WMAPE", "Son 120 günün ortalaması · hedef %10 altı", "ok", 17),
-    ("Basit referansa üstünlük", "%38", "skill", "Basit referans yönteme göre kazanılan isabet",
+    ("16 günlük toplam beklenti", "{{TOPLAM_P50}}", "MWh", "Aşılma olasılığı %50 olan değer", "", 17),
+    ("%80 olasılık bandı", "{{TOPLAM_BANT}}", "MWh", "Gerçekleşenin bu aralıkta kalma olasılığı %80", "ok", 14),
+    ("Kapasite faktörü", "%{{KF}}", "", "Şebeke gücünün dönem boyunca kullanılan oranı", "ok", 17),
+    ("Gün-öncesi ortalama hata", "%{{WMAPE120}}", "WMAPE", "Son 120 günün ortalaması · hedef %10 altı", "ok", 17),
+    ("Basit referansa üstünlük", "%{{SKILL120}}", "skill", "Basit referans yönteme göre kazanılan isabet",
      "ok", 17),
-    ("Bağımsız testte hata", "%8,9", "MAPE", "Modelin eğitimde görmediği veride · hedef %10 altı",
+    ("Bağımsız testte hata", "%{{HOLDOUT}}", "MAPE", "Modelin eğitimde görmediği veride · hedef %10 altı",
      "ok", 17),
     ("Kesintisiz doğrulama", "87", "gün", "Ara vermeden doğrulanan gün sayısı", "ok", 17),
-    ("Santral verisi kapsaması", "%71", "", "Kalite süzgecini geçen saatlerin oranı · hedef %80 üstü", "watch", 17),
+    ("Santral verisi kapsaması", "%{{KAPSAMA}}", "", "Kalite süzgecini geçen saatlerin oranı · hedef %80 üstü", "watch", 17),
 ]
 
 cards = "".join(
@@ -58,9 +58,9 @@ BODY = """<div class="page"><div class="sheet">
   <div class="eyebrow">Yönetici özeti</div>
   <h1>Bu dönemin bulguları</h1>
   <p class="lead" style="max-width:158mm">Önümüzdeki 16 gün için toplam üretim beklentisi
-  <b>1.036,4 MWh</b>'tir ve %80 olasılıkla 1.005–1.068 MWh aralığında gerçekleşecektir.
-  Gün-öncesi tahminler son 120 günde ortalama %9,4 hatayla çalışmış, basit bir referans yönteme
-  göre %38 daha isabetli olmuştur. Takip edilmesi gereken tek kalem santral verisinin
+  <b>{{TOPLAM_P50}} MWh</b>'tir ve %80 olasılıkla {{TOPLAM_BANT}} MWh aralığında gerçekleşecektir.
+  Gün-öncesi tahminler son 120 günde ortalama %{{WMAPE120}} hatayla çalışmış, basit bir referans yönteme
+  göre %{{SKILL120}} daha isabetli olmuştur. Takip edilmesi gereken tek kalem santral verisinin
   kapsamasıdır.</p>
 
   <div class="cards">""" + cards + """</div>
@@ -76,10 +76,10 @@ BODY = """<div class="page"><div class="sheet">
     <div>
       <p><b>Belirsizlik dar.</b> Bant genişliği dönem genelinde günlük ±%6–8 düzeyindedir;
       yalnızca 11–13 Ağustos'ta beklenen cephe geçişi bandı genişletmektedir. 12 Ağustos'ta
-      beklenti 53,6 MWh'e gerilemekte, belirsizlik ±9,7 MWh'e çıkmaktadır. Cephe sonrasında
+      beklenti {{MIN_P50}} MWh'e gerilemekte, belirsizlik ±{{MIN_HW}} MWh'e çıkmaktadır. Cephe sonrasında
       üretim mevsim normaline dönmektedir.</p>
       <p><b>İyileşme bağımsız veride doğrulandı.</b> Model, santralin kendi üretim verisiyle
-      kalibre edildikten sonra hatayı %13,6'dan %8,9'a indirmiştir — %34,6 iyileşme. Bu ölçüm,
+      kalibre edildikten sonra hatayı %{{FIZIK}}'dan %{{HOLDOUT}}'a indirmiştir — %{{IYILESME}} iyileşme. Bu ölçüm,
       modelin eğitimde hiç görmediği son dönem verisi üzerinde yapılmıştır.</p>
     </div>
     <div>
@@ -87,14 +87,14 @@ BODY = """<div class="page"><div class="sheet">
       (21 ve 29 Nisan, 7–8 Mayıs) ölçüm eksikliği nedeniyle karne dışında kalmıştır. Bu günler
       hiçbir ortalamaya katılmamış, boş bırakılmıştır.</p>
       <p><b>Taahhüt için önerilen değer.</b> İşletme planlamasında bandın alt sınırı (P10)
-      güvenli taahhüt seviyesi olarak kullanılabilir: 16 günlük dönem için 1.005 MWh. Günler
+      güvenli taahhüt seviyesi olarak kullanılabilir: 16 günlük dönem için {{TOPLAM_P10}} MWh. Günler
       kısmen bağımsız olduğundan dönem toplamındaki bant, günlük banttan dardır.</p>
     </div>
   </div>
 
   <div class="watchbox">
-    <h3>İzleme kalemi · santral verisi kapsaması %71</h3>
-    <p>Kalite süzgecini geçen saat oranı tüm arşivde %71'dir; hedef en az %80. Düşüşün
+    <h3>İzleme kalemi · santral verisi kapsaması %{{KAPSAMA}}</h3>
+    <p>Kalite süzgecini geçen saat oranı tüm arşivde %{{KAPSAMA}}'dir; hedef en az %80. Düşüşün
     tamamına yakını Mart–Mayıs döneminde kaynak dosyadaki bozuk bir yıl bloğundan
     kaynaklanmaktadır. Bu blok düzeltilip yeniden yüklendiğinde kapsama hedefin üzerine çıkar;
     Haziran'dan itibaren oran zaten %88–92 seviyesindedir. Ayrıntı ve aylık kırılım

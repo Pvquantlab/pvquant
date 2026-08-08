@@ -82,7 +82,7 @@ def selale(W=1000, H=352, ml=64, mb=88, fs=14):
              'font-family="PlexSans" font-size="%d" font-weight="600" fill="%s">Ortalama hata '
              '[%%]</text>' % (MT + PH / 2, fs + 1, INK))
     o.append('<text x="%.1f" y="%.1f" font-family="PlexSans" font-size="%d" font-weight="600" '
-             'fill="%s">Net sonuç: %%13,6 → %%8,9 · %%34,6 iyileşme</text>'
+             'fill="%s">Net sonuç: %%{{FIZIK}} → %%{{HOLDOUT}} · %%{{IYILESME}} iyileşme</text>'
              % (ml, 16, fs + 2, INK))
     # grafiğin kendi lejantı
     lx = ml
