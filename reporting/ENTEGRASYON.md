@@ -42,3 +42,14 @@ Doğrulama durumu (7 Ağu 2026, konteyner provası):
 ## Dondurulan hat
 Word/docx şablonu (Rev D.1) tasarım referansı olarak arşivde kalır;
 ürün çıktısı bu HTML/WeasyPrint hattıdır. (Onay bekliyor.)
+
+
+## Dalga E.2 Adım 3a — köprü (v2.101 adayı)
+- `reporting/kopru.py`: uygulama→motor tek kapı. `json_ile_uret(json)` üretir,
+  iki bekçi koşar (16 sayfa + denetim çıkış 0), yolları döner. Konteyner ispatı:
+  kanonik JSON → md5 `8764…c001`; bozuk günlükle çıkış 1 (denetim 2 fark).
+- `reporting/report_html_service_taslak.py`: ctx→JSON v2.1 eşlemesi; **DB'ye karşı
+  test edilmedi**. Yerleşim: `src/pvquant/services/report_html_service.py`.
+  Boşluk defteri başlıkta (B1–B7); eksikler sessizce Konya'ya düşmez, ValueError.
+- CI adımı (3b): `python3 reporting/kopru.py reporting/html/ornek_girdi_v21.json` —
+  "RAPOR HAZIR" + çıkış 0 mühür koşuludur.
