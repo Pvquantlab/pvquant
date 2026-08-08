@@ -143,3 +143,87 @@ KUNYE = [
 EVRIM = [("29 Tem", 63.2, 7.4), ("30 Tem", 63.9, 6.6), ("31 Tem", 64.6, 5.9),
          ("01 Ağu", 66.1, 5.1), ("02 Ağu", 67.3, 4.3), ("03 Ağu", 64.5, 3.4),
          ("04 Ağu", 65.8, 2.8)]
+
+# ================================================================ JSON adaptörü (E.2 Adım 2)
+# PVQ_VERI_JSON ortam değişkeni bir JSON v2.0/v2.1 dosyası gösteriyorsa
+# yukarıdaki varsayılanlar oradan gelen değerlerle değiştirilir.
+# Alan eşlemesi: docs/veri_haritasi.md · Örnek girdi: ornek_girdi_v21.json
+AY_UZUN = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz",
+           "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"]
+
+
+def _tarih(s):
+    y, m, d = (int(x) for x in s.split("-"))
+    return y, m, d
+
+
+def _json_yukle(path):
+    import json
+    J = json.load(open(path, encoding="utf-8"))
+    g = {}
+
+    # kimlik
+    g["SANTRAL"] = J["plant"]["name"]
+    g["MUSTERI"] = J["report"]["customer"]
+    g["MOD_ROZET"] = J["run"]["mode"]
+    g["SAYFA_TOPLAM"] = J["run"]["pages"]
+    (y1, m1, d1), (y2, m2, d2) = _tarih(J["forecast"]["start"]), _tarih(J["forecast"]["end"])
+    g["DONEM"] = ("%02d–%02d %s %d" % (d1, d2, AY_UZUN[m1 - 1], y1) if (y1, m1) == (y2, m2)
+                  else "%02d %s – %02d %s %d" % (d1, AY_UZUN[m1 - 1], d2, AY_UZUN[m2 - 1], y2))
+
+    # iklim arşivi + türetilenler
+    g["IKLIM"] = {int(y): v for y, v in J["climate"]["monthly_history"].items()}
+    g["TAM_YILLAR"] = [y for y in sorted(g["IKLIM"]) if None not in g["IKLIM"][y]]
+    g["LTA_AY"] = [round(sum(g["IKLIM"][y][m] for y in g["TAM_YILLAR"]) / len(g["TAM_YILLAR"]))
+                   for m in range(12)]
+    g["LTA_YIL"] = sum(g["LTA_AY"])
+
+    # günlük tahmin
+    D = J["daily"]
+    g["P50_GUN"] = [x["p50_mwh"] for x in D]
+    g["HW_GUN"] = [x["half_mwh"] for x in D]
+    g["GUN_ETIKET"] = ["%02d" % _tarih(x["date"])[2] for x in D]
+    cf = [i for i, x in enumerate(D) if x.get("flag") == "cephe"]
+    g["CEPHE"] = (min(cf), max(cf)) if cf else None
+
+    # saatlik taban
+    g["BASE_KW"] = J["hourly_typical"]["base_kw"]
+    g["PEAK"] = J["hourly_typical"]["peak_kw"]
+
+    # doğruluk karnesi
+    K = J["accuracy"]["report_card"]
+    g["KARNE_WM"] = [x["wmape_0_24"] for x in K]
+    g["KARNE_SK"] = [x["skill"] for x in K]
+    g["KARNE_H72_KUYRUK"] = [x["wmape_24_72"] for x in K if x["wmape_24_72"] is not None]
+    g["KARNE_TARIH"] = ["%02d %s" % (_tarih(x["date"])[2], AY_TR[_tarih(x["date"])[1] - 1])
+                        for x in K]
+
+    # hata dağılımı
+    E = J["error_dist"]
+    g["PROF"], g["MAE24"], g["MAE72"] = E["prof_mw"], E["mae24"], E["mae72"]
+    g["MU"], g["SD"], g["NDAYS"] = E["mu"], E["sd"], E["ndays"]
+
+    # kalibrasyon şelalesi
+    C = J["calibration"]
+    g["SELALE_ADIM"] = [(s["label"], s["delta"], s["kind"]) for s in C["steps"]]
+    g["SELALE_BAS"], g["SELALE_BIT"] = C["physics_mape"], C["holdout_mape"]
+
+    # veri kalitesi
+    Q = J["scada"]["quality_monthly"]
+    g["KALITE_AYLAR"], g["KALITE_GECERLI"] = Q["aylar"], Q["gecerli"]
+    g["KALITE_HATALI"], g["KALITE_DIGER"] = Q["hatali"], Q["diger"]
+    g["BAYRAK"] = [(b["ad"], b["saat"], b["pay"], b["aksiyon"])
+                   for b in J["scada"]["quality_flags"]]
+
+    # künye ve evrim
+    g["SAHA"] = [tuple(p) for p in J["plant"]["display"]]
+    g["KUNYE"] = [tuple(k) for k in J["sources"]["display"]]
+    g["EVRIM"] = [(e["date"], e["p50"], e["half"]) for e in J["history"]["evolution"]]
+
+    globals().update(g)
+
+
+import os as _os2
+_J = _os2.environ.get("PVQ_VERI_JSON")
+if _J:
+    _json_yukle(_J)

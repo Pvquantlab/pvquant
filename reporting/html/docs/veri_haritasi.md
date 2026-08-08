@@ -1,9 +1,13 @@
 # Veri Haritası
 
-**Dalga E.2 güncellemesi:** sabit veriler artık tek modülde: `veri.py`. Build betikleri
-veriyi oradan alır (`from veri import …`); bu dosya, `veri.py`'deki hangi değişkenin hangi
-sayfayı beslediğini ve JSON v2.0'da hangi alandan gelmesi gerektiğini listeler. Adaptör
-yazılırken tek referans budur ve adaptör yalnız `veri.py`'yi değiştirecektir.
+**Dalga E.2 güncellemesi:** sabit veriler tek modülde: `veri.py`. Build betikleri veriyi
+oradan alır (`from veri import …`). **JSON adaptörü çalışır durumda:** `PVQ_VERI_JSON`
+ortam değişkeni bir JSON v2.0/v2.1 dosyası gösterirse `veri.py` içindeki `_json_yukle`
+varsayılanları o dosyadan gelen değerlerle değiştirir; türetilen alanlar (LTA, gün
+etiketleri, dönem metni, cephe aralığı, karne tarihleri) otomatik yeniden hesaplanır.
+Kanonik örnek: `ornek_girdi_v21.json` — bu girdiyle üretim, varsayılanlarla **bayt-birebir**
+aynı çıktıyı verir (md5 `8764…c001`). Kullanım:
+`PVQ_VERI_JSON=ornek_girdi_v21.json python3 uret.py`
 
 **Önce okuyun:** birden fazla sayfada görünen değerler tek bir kaynaktan türetilmelidir.
 Örneğin günlük beklenti dizisi hem sayfa 4'ün çizelgesini hem sayfa 6'nın toplam satırını
