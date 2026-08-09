@@ -24,7 +24,7 @@ FONTCSS = "".join([
 BRAND, BRAND2, DEEP = "#0D4C68", "#2B7B9B", "#082F42"
 INK, SEC, RULE = "#11171A", "#414B46", "#CDD6D1"
 
-from veri import P50_GUN as p50, HW_GUN as hw, GUN_YMIN, GUN_YMAX, DONEM, GUN_SAYISI, KARNE_PENCERE, AY_YIL
+from veri import P50_GUN as p50, HW_GUN as hw, GUN_YMIN, GUN_YMAX, DONEM, GUN_SAYISI, KARNE_PENCERE, AY_YIL, CEPHE
 days = list(range(5, 21))
 
 
@@ -329,7 +329,7 @@ BODY_C = """<div class="page">
 VARIANTS = [("PVQuant_Konya_GES_s01_kapak", CSS_A, BODY_A,
              fan_chart(p50, hw, ["%02d" % d for d in days], AY_YIL + " [gün]",
                        "[MWh/gün]", ymin=GUN_YMIN, ymax=GUN_YMAX, step=10, H=250, fs=15,
-                       highlight=(6, 8), hl_label="cephe geçişi"))]
+                       highlight=CEPHE, hl_label="cephe geçişi"))]
 
 from weasyprint import HTML as WH
 for name, css, body, ch in VARIANTS:

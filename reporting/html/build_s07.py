@@ -126,10 +126,8 @@ BODY = """<div class="page"><div class="sheet">
       yükseldikçe daha iyi demektir.</p>
     </div>
     <div>
-      <h2>30 Temmuz'da ne oldu?</h2>
-      <p>O gün hata %12,7'ye çıktı, kazanç %20,1'e düştü — dönemin en zayıf günü. Nedeni ani
-      bulut açılmasıdır: model temkinli kalmış, öğleden sonraki gerçekleşen üretim beklentinin
-      üzerine çıkmıştır. Bu gün karneden çıkarılmadı; zayıf günler de ortalamaya girer.</p>
+      <h2>{{NARR_S07_BASLIK}}</h2>
+      <p>{{NARR_S07_GOVDE}}</p>
     </div>
   </div>
 """ + foot(7) + """

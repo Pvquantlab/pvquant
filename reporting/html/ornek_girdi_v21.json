@@ -890,5 +890,25 @@
   "p10_mwh": 1005,
   "p90_mwh": 1068,
   "capacity_factor": 27.0
+ },
+ "narrative": {
+  "exec_1": "<b>Belirsizlik dar.</b> Bant genişliği dönem genelinde günlük ±%6–8 düzeyindedir;\n      yalnızca 11–13 Ağustos'ta beklenen cephe geçişi bandı genişletmektedir. 12 Ağustos'ta\n      beklenti 53,6 MWh'e gerilemekte, belirsizlik ±9,7 MWh'e çıkmaktadır. Cephe sonrasında\n      üretim mevsim normaline dönmektedir.",
+  "exec_2": "<b>İyileşme bağımsız veride doğrulandı.</b> Model, santralin kendi üretim verisiyle\n      kalibre edildikten sonra hatayı %13,6'dan %8,9'a indirmiştir — %34,6 iyileşme. Bu ölçüm,\n      modelin eğitimde hiç görmediği son dönem verisi üzerinde yapılmıştır.",
+  "exec_3": "<b>Doğrulama 87 gündür kesintisiz.</b> 120 günlük karne penceresinde yalnızca dört gün\n      (21 ve 29 Nisan, 7–8 Mayıs) ölçüm eksikliği nedeniyle karne dışında kalmıştır. Bu günler\n      hiçbir ortalamaya katılmamış, boş bırakılmıştır.",
+  "exec_4": "<b>Taahhüt için önerilen değer.</b> İşletme planlamasında bandın alt sınırı (P10)\n      güvenli taahhüt seviyesi olarak kullanılabilir: 16 günlük dönem için 1.005 MWh. Günler\n      kısmen bağımsız olduğundan dönem toplamındaki bant, günlük banttan dardır.",
+  "izleme": "Kalite süzgecini geçen saat oranı tüm arşivde %71'dir; hedef en az %80. Düşüşün\n    tamamına yakını Mart–Mayıs döneminde kaynak dosyadaki bozuk bir yıl bloğundan\n    kaynaklanmaktadır. Bu blok düzeltilip yeniden yüklendiğinde kapsama hedefin üzerine çıkar;\n    Haziran'dan itibaren oran zaten %88–92 seviyesindedir. Ayrıntı ve aylık kırılım\n    Bağımsız test ve veri kalitesi bölümündedir (sayfa 10).",
+  "s04_kuyruk": " Dönemin ilk yarısı istikrarlıdır; 11–13 Ağustos'ta beklenen\n      cephe geçişi hem beklentiyi düşürmekte hem de belirsizliği genişletmektedir. Cephe\n      sonrasında üretim mevsim normaline dönmektedir.",
+  "s06": "Sütunlar arasındaki fark gün kalitesini, satırlar arasındaki fark gün içi seyri verir.\n      11–13 Ağustos sütunlarının öğle saatleri komşularından belirgin biçimde açık: cephe\n      geçişinin en çok vurduğu saatler 10:00–15:00 arasıdır. Sabah ve akşam saatleri ise\n      neredeyse hiç etkilenmemiştir.",
+  "s07_baslik": "30 Temmuz'da ne oldu?",
+  "s07_govde": "O gün hata %12,7'ye çıktı, kazanç %20,1'e düştü — dönemin en zayıf günü. Nedeni ani\n      bulut açılmasıdır: model temkinli kalmış, öğleden sonraki gerçekleşen üretim beklentinin\n      üzerine çıkmıştır. Bu gün karneden çıkarılmadı; zayıf günler de ortalamaya girer.",
+  "s09_prose": "Kalibrasyonun bir modeli veriye uydurup uydurmadığı, bulunan katsayıların fiziksel\n      olarak anlamlı olup olmadığına bakılarak anlaşılır. Sistem verimi 0,942, tipik bir\n      kablolama–inverter–trafo zincirinin beklenen aralığındadır. %7,3'lük bifacial kazanç,\n      sahanın 0,16 olan zemin albedosuyla tutarlıdır.",
+  "s10_sekil": "Aylık geçerli saat payı. Mart–Mayıs\n      döneminde kapsama %49–58'e düşmüştür ve baskın neden tek bir kalemdir: kaynak dosyadaki\n      bozuk yıl bloğu. Haziran'dan itibaren oran %88–92 ile hedefin üzerindedir. Bu, ölçüm\n      sisteminden değil veri aktarımından kaynaklanan, düzeltilebilir bir sorundur.",
+  "arsiv_etiket": "1 Şubat – 4 Ağustos 2026\n    (4.440 saat)",
+  "lejant_hatali": "Hatalı yıl bloğu",
+  "s14_kapsama": "Kaynak dosyadaki bozuk yıl bloğu düzeltilene kadar kalibrasyon, olması gerekenden az saatle çalışmaktadır (sayfa 10).",
+  "kat_eta": "0,942",
+  "kat_bif": "%7,3",
+  "kat_saat": "1.487",
+  "kat_tarih": "19 Temmuz 2026"
  }
 }

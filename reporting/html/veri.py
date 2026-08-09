@@ -16,6 +16,27 @@ GUN_SAYISI = 16                            # len(daily)
 AY_YIL = "Ağustos 2026"                    # eksen/başlık ay etiketi
 KARNE_PENCERE = "7 Nisan – 4 Ağustos 2026 (120 gün)"       # prepared−119g → prepared
 EGITIM_SERIT = "<i>7 Nisan 2026</i><i>11 Temmuz</i><i>4 Ağustos 2026</i>"  # %80/%20 şeridi
+
+# c2b (v2.107): anlatı token'ları — kanonik metinler (statik yol);
+# JSON yolunda narrative.* alanından gelir, yoksa nötr kalır.
+NARR_EXEC_1 = "<b>Belirsizlik dar.</b> Bant genişliği dönem genelinde günlük ±%6–8 düzeyindedir;\n      yalnızca 11–13 Ağustos'ta beklenen cephe geçişi bandı genişletmektedir. 12 Ağustos'ta\n      beklenti 53,6 MWh'e gerilemekte, belirsizlik ±9,7 MWh'e çıkmaktadır. Cephe sonrasında\n      üretim mevsim normaline dönmektedir."
+NARR_EXEC_2 = "<b>İyileşme bağımsız veride doğrulandı.</b> Model, santralin kendi üretim verisiyle\n      kalibre edildikten sonra hatayı %13,6'dan %8,9'a indirmiştir — %34,6 iyileşme. Bu ölçüm,\n      modelin eğitimde hiç görmediği son dönem verisi üzerinde yapılmıştır."
+NARR_EXEC_3 = '<b>Doğrulama 87 gündür kesintisiz.</b> 120 günlük karne penceresinde yalnızca dört gün\n      (21 ve 29 Nisan, 7–8 Mayıs) ölçüm eksikliği nedeniyle karne dışında kalmıştır. Bu günler\n      hiçbir ortalamaya katılmamış, boş bırakılmıştır.'
+NARR_EXEC_4 = '<b>Taahhüt için önerilen değer.</b> İşletme planlamasında bandın alt sınırı (P10)\n      güvenli taahhüt seviyesi olarak kullanılabilir: 16 günlük dönem için 1.005 MWh. Günler\n      kısmen bağımsız olduğundan dönem toplamındaki bant, günlük banttan dardır.'
+NARR_IZLEME = "Kalite süzgecini geçen saat oranı tüm arşivde %71'dir; hedef en az %80. Düşüşün\n    tamamına yakını Mart–Mayıs döneminde kaynak dosyadaki bozuk bir yıl bloğundan\n    kaynaklanmaktadır. Bu blok düzeltilip yeniden yüklendiğinde kapsama hedefin üzerine çıkar;\n    Haziran'dan itibaren oran zaten %88–92 seviyesindedir. Ayrıntı ve aylık kırılım\n    Bağımsız test ve veri kalitesi bölümündedir (sayfa 10)."
+NARR_S04_KUYRUK = " Dönemin ilk yarısı istikrarlıdır; 11–13 Ağustos'ta beklenen\n      cephe geçişi hem beklentiyi düşürmekte hem de belirsizliği genişletmektedir. Cephe\n      sonrasında üretim mevsim normaline dönmektedir."
+NARR_S06 = 'Sütunlar arasındaki fark gün kalitesini, satırlar arasındaki fark gün içi seyri verir.\n      11–13 Ağustos sütunlarının öğle saatleri komşularından belirgin biçimde açık: cephe\n      geçişinin en çok vurduğu saatler 10:00–15:00 arasıdır. Sabah ve akşam saatleri ise\n      neredeyse hiç etkilenmemiştir.'
+NARR_S07_BASLIK = "30 Temmuz'da ne oldu?"
+NARR_S07_GOVDE = "O gün hata %12,7'ye çıktı, kazanç %20,1'e düştü — dönemin en zayıf günü. Nedeni ani\n      bulut açılmasıdır: model temkinli kalmış, öğleden sonraki gerçekleşen üretim beklentinin\n      üzerine çıkmıştır. Bu gün karneden çıkarılmadı; zayıf günler de ortalamaya girer."
+NARR_S09_PROSE = "Kalibrasyonun bir modeli veriye uydurup uydurmadığı, bulunan katsayıların fiziksel\n      olarak anlamlı olup olmadığına bakılarak anlaşılır. Sistem verimi 0,942, tipik bir\n      kablolama–inverter–trafo zincirinin beklenen aralığındadır. %7,3'lük bifacial kazanç,\n      sahanın 0,16 olan zemin albedosuyla tutarlıdır."
+NARR_S10_SEKIL = "Aylık geçerli saat payı. Mart–Mayıs\n      döneminde kapsama %49–58'e düşmüştür ve baskın neden tek bir kalemdir: kaynak dosyadaki\n      bozuk yıl bloğu. Haziran'dan itibaren oran %88–92 ile hedefin üzerindedir. Bu, ölçüm\n      sisteminden değil veri aktarımından kaynaklanan, düzeltilebilir bir sorundur."
+ARSIV_ETIKET = '1 Şubat – 4 Ağustos 2026\n    (4.440 saat)'
+LEJANT_HATALI = 'Hatalı yıl bloğu'
+NARR_S14_KAPSAMA = 'Kaynak dosyadaki bozuk yıl bloğu düzeltilene kadar kalibrasyon, olması gerekenden az saatle çalışmaktadır (sayfa 10).'
+KAT_ETA = '0,942'
+KAT_BIF = '%7,3'
+KAT_SAAT = '1.487'
+KAT_TARIH = '19 Temmuz 2026'
 MOD_ROZET = "MOD C · HİBRİT"               # run.mode
 SAYFA_TOPLAM = 16
 
@@ -259,6 +280,26 @@ def _json_yukle(path):
     _m = _b + _dtm.timedelta(days=95)
     g["KARNE_PENCERE"] = "%d %s – %d %s %d (120 gün)" % (
         _b.day, AY_UZUN[_b.month - 1], _p.day, AY_UZUN[_p.month - 1], _p.year)
+    # c2b (v2.107): anlatılar GİRDİNİN parçası — motor hikâye taşımaz
+    _N = J.get("narrative") or {}
+    g["NARR_EXEC_1"] = _N.get("exec_1", "")
+    g["NARR_EXEC_2"] = _N.get("exec_2", "")
+    g["NARR_EXEC_3"] = _N.get("exec_3", "")
+    g["NARR_EXEC_4"] = _N.get("exec_4", "")
+    g["NARR_IZLEME"] = _N.get("izleme", "")
+    g["NARR_S04_KUYRUK"] = _N.get("s04_kuyruk", "")
+    g["NARR_S06"] = _N.get("s06", "")
+    g["NARR_S07_BASLIK"] = _N.get("s07_baslik", "")
+    g["NARR_S07_GOVDE"] = _N.get("s07_govde", "")
+    g["NARR_S09_PROSE"] = _N.get("s09_prose", "")
+    g["NARR_S10_SEKIL"] = _N.get("s10_sekil", "")
+    g["ARSIV_ETIKET"] = _N.get("arsiv_etiket", "—")
+    g["LEJANT_HATALI"] = _N.get("lejant_hatali", "hatalı")
+    g["NARR_S14_KAPSAMA"] = _N.get("s14_kapsama", "")
+    g["KAT_ETA"] = _N.get("kat_eta", "—")
+    g["KAT_BIF"] = _N.get("kat_bif", "—")
+    g["KAT_SAAT"] = _N.get("kat_saat", "—")
+    g["KAT_TARIH"] = _N.get("kat_tarih", "—")
     g["EGITIM_SERIT"] = "<i>%d %s %d</i><i>%d %s</i><i>%d %s %d</i>" % (
         _b.day, AY_UZUN[_b.month - 1], _b.year,
         _m.day, AY_UZUN[_m.month - 1],
@@ -305,6 +346,7 @@ def doldur(s):
     i_min = P50_GUN.index(min(P50_GUN))
     D = {
         "SANTRAL": SANTRAL, "MUSTERI": MUSTERI, "DONEM": DONEM,
+        "NARR_EXEC_1": NARR_EXEC_1, "NARR_EXEC_2": NARR_EXEC_2, "NARR_EXEC_3": NARR_EXEC_3, "NARR_EXEC_4": NARR_EXEC_4, "NARR_IZLEME": NARR_IZLEME, "NARR_S04_KUYRUK": NARR_S04_KUYRUK, "NARR_S06": NARR_S06, "NARR_S07_BASLIK": NARR_S07_BASLIK, "NARR_S07_GOVDE": NARR_S07_GOVDE, "NARR_S09_PROSE": NARR_S09_PROSE, "NARR_S10_SEKIL": NARR_S10_SEKIL, "ARSIV_ETIKET": ARSIV_ETIKET, "LEJANT_HATALI": LEJANT_HATALI, "NARR_S14_KAPSAMA": NARR_S14_KAPSAMA, "KAT_ETA": KAT_ETA, "KAT_BIF": KAT_BIF, "KAT_SAAT": KAT_SAAT, "KAT_TARIH": KAT_TARIH,
         "RAPOR_ID": RAPOR_ID, "HAZIRLANMA": HAZIRLANMA, "EPOSTA": EPOSTA,
         "DONEM": DONEM,
         "KURULU": d.get("Kurulu güç", ""),

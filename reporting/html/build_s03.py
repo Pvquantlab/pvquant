@@ -74,31 +74,18 @@ BODY = """<div class="page"><div class="sheet">
   <h2>Değerlendirme</h2>
   <div class="two">
     <div>
-      <p><b>Belirsizlik dar.</b> Bant genişliği dönem genelinde günlük ±%6–8 düzeyindedir;
-      yalnızca 11–13 Ağustos'ta beklenen cephe geçişi bandı genişletmektedir. 12 Ağustos'ta
-      beklenti {{MIN_P50}} MWh'e gerilemekte, belirsizlik ±{{MIN_HW}} MWh'e çıkmaktadır. Cephe sonrasında
-      üretim mevsim normaline dönmektedir.</p>
-      <p><b>İyileşme bağımsız veride doğrulandı.</b> Model, santralin kendi üretim verisiyle
-      kalibre edildikten sonra hatayı %{{FIZIK}}'dan %{{HOLDOUT}}'a indirmiştir — %{{IYILESME}} iyileşme. Bu ölçüm,
-      modelin eğitimde hiç görmediği son dönem verisi üzerinde yapılmıştır.</p>
+      <p>{{NARR_EXEC_1}}</p>
+      <p>{{NARR_EXEC_2}}</p>
     </div>
     <div>
-      <p><b>Doğrulama 87 gündür kesintisiz.</b> 120 günlük karne penceresinde yalnızca dört gün
-      (21 ve 29 Nisan, 7–8 Mayıs) ölçüm eksikliği nedeniyle karne dışında kalmıştır. Bu günler
-      hiçbir ortalamaya katılmamış, boş bırakılmıştır.</p>
-      <p><b>Taahhüt için önerilen değer.</b> İşletme planlamasında bandın alt sınırı (P10)
-      güvenli taahhüt seviyesi olarak kullanılabilir: 16 günlük dönem için {{TOPLAM_P10}} MWh. Günler
-      kısmen bağımsız olduğundan dönem toplamındaki bant, günlük banttan dardır.</p>
+      <p>{{NARR_EXEC_3}}</p>
+      <p>{{NARR_EXEC_4}}</p>
     </div>
   </div>
 
   <div class="watchbox">
     <h3>İzleme kalemi · santral verisi kapsaması %{{KAPSAMA}}</h3>
-    <p>Kalite süzgecini geçen saat oranı tüm arşivde %{{KAPSAMA}}'dir; hedef en az %80. Düşüşün
-    tamamına yakını Mart–Mayıs döneminde kaynak dosyadaki bozuk bir yıl bloğundan
-    kaynaklanmaktadır. Bu blok düzeltilip yeniden yüklendiğinde kapsama hedefin üzerine çıkar;
-    Haziran'dan itibaren oran zaten %88–92 seviyesindedir. Ayrıntı ve aylık kırılım
-    Bağımsız test ve veri kalitesi bölümündedir (sayfa 10).</p>
+    <p>{{NARR_IZLEME}}</p>
   </div>
 """ + foot(3) + """
 </div></div>"""

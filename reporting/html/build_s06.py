@@ -83,10 +83,7 @@ BODY = """<div class="page"><div class="sheet">
   <div class="two">
     <div>
       <h2>Matriste ne görünür?</h2>
-      <p>Sütunlar arasındaki fark gün kalitesini, satırlar arasındaki fark gün içi seyri verir.
-      11–13 Ağustos sütunlarının öğle saatleri komşularından belirgin biçimde açık: cephe
-      geçişinin en çok vurduğu saatler 10:00–15:00 arasıdır. Sabah ve akşam saatleri ise
-      neredeyse hiç etkilenmemiştir.</p>
+      <p>{{NARR_S06}}</p>
     </div>
     <div>
       <h2>Renk neyi gösterir?</h2>

@@ -112,15 +112,11 @@ BODY = """<div class="page"><div class="sheet">
 
   """ + kapsama() + """
     <div class="legend"><span><i class="g"></i>Kalite süzgecini geçen saatler</span>
-      <span><i class="h"></i>Hatalı yıl bloğu</span>
+      <span><i class="h"></i>{{LEJANT_HATALI}}</span>
       <span><i class="d"></i>Diğer bayraklar</span></div>
-    <div class="figcap"><b>Şekil 10.2</b>&nbsp;&nbsp;Aylık geçerli saat payı. Mart–Mayıs
-      döneminde kapsama %49–58'e düşmüştür ve baskın neden tek bir kalemdir: kaynak dosyadaki
-      bozuk yıl bloğu. Haziran'dan itibaren oran %88–92 ile hedefin üzerindedir. Bu, ölçüm
-      sisteminden değil veri aktarımından kaynaklanan, düzeltilebilir bir sorundur.</div>
+    <div class="figcap"><b>Şekil 10.2</b>&nbsp;&nbsp;{{NARR_S10_SEKIL}}</div>
 
-  <div class="tcap">Çizelge 10.1 <span>Kalite bayrakları — tüm arşiv: 1 Şubat – 4 Ağustos 2026
-    (4.440 saat)</span></div>
+  <div class="tcap">Çizelge 10.1 <span>Kalite bayrakları — tüm arşiv: {{ARSIV_ETIKET}}</span></div>
   <table>
     <tr><th>Bayrak</th><th class="num">Saat</th><th class="num">Pay</th><th>Ne yapılmalı</th></tr>
     """ + rows + """

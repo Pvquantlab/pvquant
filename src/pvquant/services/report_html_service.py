@@ -125,6 +125,7 @@ def ctx_to_json(ctx, plant: dict) -> dict:
 
     # kaynak künyesi (s14) — tarih aralıkları GİRDİDEN, sabit değil
     J["sources"] = _kunye(ctx)
+    J["narrative"] = _anlati(ctx, J)   # c2b: hikâye girdinin parçası
 
     # kalibrasyon uçları — steps opsiyonel (B4 kararı, v2.102)
     if getattr(ctx, "holdout_mape_pct", None) is not None:
@@ -386,6 +387,87 @@ def _zorunlu(ctx, alan):
         raise ValueError("worker alanı eksik: ctx.%s (bkz. B1/B5 kararı — "
                          "gece worker'ı report_stats'ı doldurmuş mu?)" % alan)
     return v
+
+
+
+def _anlati(ctx, J):
+    """c2b (v2.107): rapor anlatıları — motor hikâye taşımaz, VERİDEN kısa ve
+    dürüst cümleler üretilir. Kanonik süslü anlatı yalnız örnek girdide yaşar."""
+    n = {}
+    D = [d for d in (J.get("daily") or [])
+         if d.get("p50_mwh") is not None and d.get("half_mwh") is not None]
+    if D:
+        oran = sorted(100.0 * d["half_mwh"] / max(d["p50_mwh"], 1e-9) for d in D)
+        tip = oran[len(oran) // 2]
+        gi = max(range(len(D)), key=lambda k: D[k]["half_mwh"])
+        gy, gm, gd = (int(x) for x in D[gi]["date"].split("-"))
+        n["exec_1"] = ("<b>Belirsizlik.</b> Bant genişliği dönem genelinde günlük "
+                       "yaklaşık ±%%%d düzeyindedir; en geniş bant %d %s tarihindedir "
+                       "(beklenti %s MWh, ±%s MWh).") % (round(tip), gd, AY_UZUN[gm - 1],
+                       _tr(D[gi]["p50_mwh"], 1), _tr(D[gi]["half_mwh"], 1))
+    C = J.get("calibration") or {}
+    if C.get("physics_mape") is not None and C.get("holdout") is not None:
+        n["exec_2"] = ("<b>Bağımsız test.</b> Kalibrasyon sonrası hata bağımsız test "
+                       "penceresinde %%%s'ten %%%s'e inmiştir; ölçüm modelin eğitimde "
+                       "görmediği son dönem verisindedir.") % (_tr(C["physics_mape"], 1),
+                       _tr(C["holdout"], 1))
+    else:
+        n["exec_2"] = ("<b>Bağımsız test.</b> Bu koşu için kalibrasyon karşılaştırması "
+                       "raporlanmıyor; sonuçlar sayfa 9-10'dadır.")
+    kg = (J.get("accuracy") or {}).get("uninterrupted_days")
+    if kg is not None:
+        n["exec_3"] = ("<b>Doğrulama %d gündür kesintisiz.</b> 30 günlük karnenin tüm "
+                       "satırları ölçülü günlerden oluşur; ölçülemeyen gün karneye "
+                       "katılmaz.") % kg
+    T = J.get("totals") or {}
+    if T.get("p10_mwh") is not None:
+        n["exec_4"] = ("<b>Taahhüt için önerilen değer.</b> Dönem toplamının alt sınırı "
+                       "(P10) %s MWh'tir; işletme planlamasında güvenli taahhüt seviyesi "
+                       "olarak bu değer önerilir.") % _tr(T["p10_mwh"], 0)
+    Q = (J.get("scada") or {}).get("quality_monthly") or {}
+    kap = (J.get("scada") or {}).get("coverage_pct")
+    if Q.get("aylar"):
+        g = Q["gecerli"]
+        mi = min(range(len(g)), key=lambda k: g[k])
+        n["izleme"] = ("Kalite süzgecini geçen saat oranı arşiv genelinde %%%s'tir; "
+                       "hedef en az %%80. Son altı ayın en düşük kapsaması %s ayındadır "
+                       "(%%%d). Aylık kırılım ve bayrak dökümü sayfa 10'dadır.") % (
+                       _tr(kap, 0) if kap is not None else "—", Q["aylar"][mi], round(g[mi]))
+        n["s10_sekil"] = ("Aylık geçerli saat payı; en düşük ay %s (%%%d). Bayrak "
+                          "dökümü ve aksiyonlar alttaki çizelgededir.") % (Q["aylar"][mi], round(g[mi]))
+    n["s04_kuyruk"] = ""
+    n["s06"] = ("Sütunlar arasındaki fark gün kalitesini, satırlar arasındaki fark gün "
+                "içi seyri verir; en koyu bant öğle saatlerindedir. Bakım penceresi ve "
+                "saatlik satış kararları bu çizelgeden okunur.")
+    K = (J.get("accuracy") or {}).get("report_card") or []
+    zk = [r for r in K if r.get("wmape_0_24") is not None]
+    if zk:
+        z = max(zk, key=lambda r: r["wmape_0_24"])
+        zy, zm, zd = (int(x) for x in z["date"].split("-"))
+        n["s07_baslik"] = "%d %s: dönemin en zayıf günü" % (zd, AY_UZUN[zm - 1])
+        kaz = z.get("skill")
+        n["s07_govde"] = ("O gün gün-öncesi hata %%%s olarak ölçüldü%s. Zayıf günler "
+                          "karneden çıkarılmaz; ortalamaya girer.") % (
+                          _tr(z["wmape_0_24"], 1),
+                          (", kazanç %%%s" % _tr(100 * kaz, 0)) if kaz is not None else "")
+    n["s09_prose"] = ("Kalibrasyonun bir modeli veriye uydurup uydurmadığı, bulunan "
+                      "katsayıların fiziksel olarak anlamlı olup olmadığına bakılarak "
+                      "anlaşılır; katsayılar fiziksel aralık denetiminden geçirilir.")
+    for k, a in (("kat_eta", "eta_bos"), ("kat_bif", "bifacial_pct"),
+                 ("kat_saat", "kal_saat"), ("kat_tarih", "kal_tarih")):
+        v = getattr(ctx, a, None)
+        n[k] = _tr(v, 3) if (k == "kat_eta" and v is not None) else (
+               "%%%s" % _tr(v, 1) if (k == "kat_bif" and v is not None) else (
+               str(v) if v is not None else "—"))
+    fd = getattr(ctx, "flag_dagilimi", None)
+    if fd and getattr(ctx, "ilk_scada_ts", None) is not None:
+        i, so = ctx.ilk_scada_ts, ctx.son_scada_ts
+        n["arsiv_etiket"] = "%d %s – %d %s %d (%s saat)" % (
+            i.day, AY_UZUN[i.month - 1], so.day, AY_UZUN[so.month - 1], so.year,
+            "{:,}".format(sum(fd.values())).replace(",", "."))
+    n["lejant_hatali"] = "hatalı kayıtlar"
+    n["s14_kapsama"] = "Aylık kırılım ve bayrak dökümü sayfa 10'dadır."
+    return n
 
 
 if __name__ == "__main__":

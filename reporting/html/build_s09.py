@@ -106,10 +106,10 @@ def selale(W=1000, H=352, ml=64, mb=88, fs=14):
 
 
 KATSAYI = [
-    ("Sistem verimi (η_BoS)", "0,942", "kablolama, inverter ve trafo zincirinin toplam etkisi"),
-    ("Bifacial kazanç", "%7,3", "modüllerin arka yüzünden gelen ek üretim"),
-    ("Kalibrasyonda kullanılan saat", "1.487", "kalite süzgecini geçen gündüz saati, 120 gün"),
-    ("Kalibrasyon tarihi", "19 Temmuz 2026", "katsayıların son güncellenme tarihi"),
+    ("Sistem verimi (η_BoS)", "{{KAT_ETA}}", "kablolama, inverter ve trafo zincirinin toplam etkisi"),
+    ("Bifacial kazanç", "{{KAT_BIF}}", "modüllerin arka yüzünden gelen ek üretim"),
+    ("Kalibrasyonda kullanılan saat", "{{KAT_SAAT}}", "kalite süzgecini geçen gündüz saati, 120 gün"),
+    ("Kalibrasyon tarihi", "{{KAT_TARIH}}", "katsayıların son güncellenme tarihi"),
 ]
 
 rows = "".join('<tr><td class="lb">%s</td><td class="val">%s</td></tr>'
@@ -159,10 +159,7 @@ BODY = """<div class="page"><div class="sheet">
     </div>
     <div>
       <h2>Katsayılar makul mü?</h2>
-      <p>Kalibrasyonun bir modeli veriye uydurup uydurmadığı, bulunan katsayıların fiziksel
-      olarak anlamlı olup olmadığına bakılarak anlaşılır. Sistem verimi 0,942, tipik bir
-      kablolama–inverter–trafo zincirinin beklenen aralığındadır. %7,3'lük bifacial kazanç,
-      sahanın 0,16 olan zemin albedosuyla tutarlıdır.</p>
+      <p>{{NARR_S09_PROSE}}</p>
       <p>Katsayılar fiziksel aralığın dışına çıkarsa model “şüpheli kalibrasyon” olarak
       işaretlenir ve sonuç yayımlanmadan önce incelenir. Bu raporda böyle bir işaret yoktur.</p>
     </div>

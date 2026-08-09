@@ -52,9 +52,7 @@ BODY = """<div class="page"><div class="sheet">
       <span><i class="fan"></i>%80 olasılık aralığı (P10–P90)</span></div>
     <div class="figcap"><b>Şekil 4.1</b>&nbsp;&nbsp;Günlük üretim tahmini. Çizgi beklentiyi, çevresindeki
       alan %80 olasılık aralığını gösterir; alan ne kadar kalınsa o gün hava o kadar
-      belirsizdir. Düşey eksen """ + str(GUN_YMIN) + """ MWh'ten başlar. Dönemin ilk yarısı istikrarlıdır; 11–13 Ağustos'ta beklenen
-      cephe geçişi hem beklentiyi düşürmekte hem de belirsizliği genişletmektedir. Cephe
-      sonrasında üretim mevsim normaline dönmektedir.</div>
+      belirsizdir. Düşey eksen """ + str(GUN_YMIN) + """ MWh'ten başlar.{{NARR_S04_KUYRUK}}</div>
 
   <div class="tcap">Çizelge 4.1 <span>Günlük değerler [MWh]</span></div>
   <table>
