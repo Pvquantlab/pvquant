@@ -1,11 +1,11 @@
 from pvq import *
 
-from veri import P50_GUN as p50, HW_GUN as hw, GUN_ETIKET as days, CEPHE
+from veri import P50_GUN as p50, HW_GUN as hw, GUN_ETIKET as days, CEPHE, GUN_YMIN, GUN_YMAX
 
 tr = lambda x, d=1: ("%.*f" % (d, x)).replace(".", ",")
 
 CHART = fan_chart(p50, hw, days, "Ağustos 2026 [gün]", "[MWh/gün]",
-                  ymin=40, ymax=80, step=10, H=290, fs=15,
+                  ymin=GUN_YMIN, ymax=GUN_YMAX, step=10, H=290, fs=15,
                   highlight=CEPHE, hl_label="cephe geçişi")
 
 hdr = "".join("<th class='num'>%s</th>" % d for d in days)
@@ -52,7 +52,7 @@ BODY = """<div class="page"><div class="sheet">
       <span><i class="fan"></i>%80 olasılık aralığı (P10–P90)</span></div>
     <div class="figcap"><b>Şekil 4.1</b>&nbsp;&nbsp;Günlük üretim tahmini. Çizgi beklentiyi, çevresindeki
       alan %80 olasılık aralığını gösterir; alan ne kadar kalınsa o gün hava o kadar
-      belirsizdir. Düşey eksen 40 MWh'ten başlar. Dönemin ilk yarısı istikrarlıdır; 11–13 Ağustos'ta beklenen
+      belirsizdir. Düşey eksen """ + str(GUN_YMIN) + """ MWh'ten başlar. Dönemin ilk yarısı istikrarlıdır; 11–13 Ağustos'ta beklenen
       cephe geçişi hem beklentiyi düşürmekte hem de belirsizliği genişletmektedir. Cephe
       sonrasında üretim mevsim normaline dönmektedir.</div>
 

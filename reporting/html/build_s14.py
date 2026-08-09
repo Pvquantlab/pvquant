@@ -2,7 +2,16 @@ from pvq import *
 
 tr = lambda x, d=1: ("%.*f" % (d, x)).replace(".", ",")
 
+import math
+
 from veri import EVRIM
+
+# c1 (v2.105): eksen EVRIM bandından, ±2 yastık + 4'e oturtma —
+# kanonikte (55,8..71,6) → 52/76'yı ve 52,58,64,70,76 tiklerini birebir üretir.
+_vlo = min(v - b for _, v, b in EVRIM)
+_vhi = max(v + b for _, v, b in EVRIM)
+E_LO = int(math.floor((_vlo - 2) / 4.0)) * 4
+E_HI = int(math.ceil((_vhi + 2) / 4.0)) * 4
 
 STANDART = [
     ("IEC 61724-1", "Fotovoltaik sistem performans izleme standardı",
@@ -33,9 +42,9 @@ def evrim(W=1000, H=286, ml=62, mb=52, fs=14):
     n = len(EVRIM)
     step = PW / (n - 1)
     cx = lambda i: ml + step * i
-    y = lambda v: MT + PH * (76 - v) / (76 - 52)
+    y = lambda v: MT + PH * (E_HI - v) / (E_HI - E_LO)
     o = []
-    for t in range(52, 77, 6):
+    for t in range(E_LO, E_HI + 1, max(1, (E_HI - E_LO) // 4)):
         o.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1.3"/>'
                  % (ml, y(t), W - MR, y(t), GRID))
         o.append('<text x="%.1f" y="%.1f" text-anchor="end" font-family="PlexSans" font-size="%d"'

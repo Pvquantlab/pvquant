@@ -81,7 +81,9 @@ def zarf(W=1000, H=300, ml=64, mb=52, fs=14):
 def egri(W=1000, H=272, ml=64, mb=52, fs=14):
     MR, MT = 38, 22
     PW, PH = W - ml - MR, H - MT - mb
-    x0v, x1v = 16000, 23000
+    # c1 (v2.105): eksen ORT±3·SD, binliğe yuvarlı — kanonikte 16000/23000
+    x0v = int(math.floor((ORT - 3 * SD) / 1000.0)) * 1000
+    x1v = int(math.ceil((ORT + 3 * SD) / 1000.0)) * 1000
     X = lambda v: ml + PW * (v - x0v) / (x1v - x0v)
     Y = lambda v: MT + PH * (100 - v) / 100
     F = lambda v: 100 * (1 - 0.5 * (1 + math.erf((v - ORT) / (SD * math.sqrt(2)))))
@@ -110,7 +112,7 @@ def egri(W=1000, H=272, ml=64, mb=52, fs=14):
                  % (X(v) - 12, Y(p) + 31, fs, th(v)))
     o.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#7C8781" stroke-width="1.5"/>'
              % (ml, Y(0), W - MR, Y(0)))
-    for v in range(16000, 23001, 1000):
+    for v in range(x0v, x1v + 1, 1000):
         o.append('<text x="%.1f" y="%.1f" text-anchor="middle" font-family="PlexSans" '
                  'font-size="%d" font-weight="500" fill="#2B3439">%s</text>'
                  % (X(v), Y(0) + fs * 1.5, fs, th(v)))

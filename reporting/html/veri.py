@@ -259,6 +259,12 @@ _J = _os2.environ.get("PVQ_VERI_JSON")
 if _J:
     _json_yukle(_J)
 
+# c1 (v2.105): günlük fan ekseni veri-güdümlü — kanonik girdide 40/80'i
+# birebir üretir (min P10=43,9→40; max P90=74,1→80).
+import math as _math
+GUN_YMIN = int(_math.floor(min(v - h for v, h in zip(P50_GUN, HW_GUN)) / 10.0)) * 10
+GUN_YMAX = int(_math.ceil(max(v + h for v, h in zip(P50_GUN, HW_GUN)) / 10.0)) * 10
+
 
 # ================================================================ görsel doldurma (E.2 Adım 2b)
 def _tr(x, d=1):
