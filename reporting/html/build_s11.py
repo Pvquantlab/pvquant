@@ -6,7 +6,21 @@ th = lambda x: "{:,}".format(int(round(x))).replace(",", ".")
 
 P10 = [ay_pct(m, 10) for m in range(12)]
 P90 = [ay_pct(m, 90) for m in range(12)]
-SON12 = [IKLIM[2026][m] for m in range(7)] + [IKLIM[2025][m] for m in range(7, 12)]
+# SON12 veri-güdümlü (v2.104): her takvim ayı için o ayı içeren EN YENİ yılın
+# değeri — kanonik girdide 2026(Oca–Tem)+2025(Ağu–Ara) bölünmesini birebir üretir.
+def _son12(iklim):
+    yillar = sorted(iklim)
+    out = []
+    for m in range(12):
+        v = 0.0
+        for y in reversed(yillar):
+            d = iklim[y][m]
+            if d is not None and d > 0:     # kanonikte boş ay None gelebilir
+                v = d
+                break
+        out.append(v)
+    return out
+SON12 = _son12(IKLIM)
 
 YIL = [sum(IKLIM[y]) for y in TAM_YILLAR]
 ORT = sum(YIL) / len(YIL)

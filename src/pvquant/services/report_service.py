@@ -88,11 +88,23 @@ def rapor_baglami(tenant_id, plant: dict) -> ReportContext | None:
         ctx.karne = kr
     # v2.96 tam sartname kaynaklari — hepsi ham okuma, hesap yok; bos
     # gelen her sey None kalir, ilgili sayfa durust isaret basar.
-    from pvquant.services.iklim_service import iklim_oku
-    ik = iklim_oku(tenant_id, plant["id"])
-    if ik is not None and len(ik) > 0:
-        ctx.iklim = ik
+    # v2.104 (E.3-b prova dersi): s11/s12 YIL-AY tarihcesi ister; iklim_oku
+    # aylik BEKLENTI (p10/p50/p90) doner — tarihce iklim_yil tablosundadir.
     with tenant_baglami(tenant_id) as s:
+        ik = pd.read_sql(text(
+            "SELECT yil, ay, ghi_kwh_m2 FROM iklim_yil "
+            "WHERE plant_id=:p ORDER BY yil, ay"),
+            s.connection(), params={"p": plant["id"]})
+        if len(ik) > 0:
+            ctx.iklim = ik
+        # v2.104: report.customer kaynağı KİRACI adıdır (santralda alan yok);
+        # kolon adı şemaya göre değişebilir — esnek seçim.
+        trow = s.execute(text("SELECT * FROM tenants WHERE id=:t"),
+                         {"t": tenant_id}).first()
+        if trow is not None:
+            m = trow._mapping
+            ctx.tenant_adi = (m.get("name") or m.get("ad")
+                              or m.get("title") or m.get("company"))
         # S6: son 12 ayin gerceklesen uretimi (saatlik kW ~ kWh/saat)
         ctx.son12 = pd.read_sql(text(
             "SELECT date_trunc('month', ts_utc) AS ay,"
@@ -129,7 +141,9 @@ def rapor_baglami(tenant_id, plant: dict) -> ReportContext | None:
                 "SUM(f.p90_kw - f.p10_kw)/2000.0 AS half_mwh "  # v2.103: evrim bandı
                 "FROM forecast_values f JOIN forecast_runs r ON r.id=f.run_id "
                 "WHERE f.plant_id=:p AND f.ts_utc >= :g0 AND f.ts_utc < :g1 "
-                "GROUP BY r.run_at ORDER BY r.run_at DESC LIMIT 8"),
+                "GROUP BY r.run_at "
+                "HAVING SUM(f.p90_kw - f.p10_kw) IS NOT NULL "  # bantsız koşu evrimde çizilemez
+                "ORDER BY r.run_at DESC LIMIT 8"),
                 s.connection(), params={
                     "p": plant["id"],
                     "g0": _dt.datetime.combine(hedef, _dt.time.min,
@@ -196,6 +210,13 @@ def uret(tenant_id, plant: dict, fmt: str):
     gun = _dt.date.today().strftime("%Y%m%d")
     if fmt == "pdf":
         veri, uzanti = build_pdf(ctx), "pdf"
+    elif fmt == "pdf16":
+        # v2.104 (E.3-b): 16 sayfalik musteri raporu — HTML/WeasyPrint hatti.
+        # Hazir ctx gecirilir — rapor_baglami ikinci kez kosMAZ; B6 kimligi
+        # ve isim isim korkuluklar report_html_service icinde.
+        from pvquant.services.report_html_service import uret_html_pdf
+        veri, uzanti = uret_html_pdf(tenant_id, plant, ctx=ctx), "pdf"
+        ad_kok += "_16sayfa"
     elif fmt == "xlsx":
         veri, uzanti = build_excel(ctx), "xlsx"
     elif fmt == "json":

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""report_html_service.py TASLAĞI (E.3-a, v2.103) — DB'ye karşı henüz TEST EDİLMEDİ.
+"""16 sayfalık HTML/PDF rapor servisi (E.3-b, v2.104).
 
-Yerleşim: src/pvquant/services/report_html_service.py  (eski pvquant.reporting paketine
-SIFIR dokunuş — 'reporting paketi TEK SATIR değişmez' kuralı korunur.)
+Eski pvquant.reporting paketine SIFIR dokunuş; üretim reporting/kopru.py
+üzerinden (KURAL: tek kapı). report_service.uret'in "pdf16" dalı burayı çağırır.
 
 Akış:  rapor_baglami(ctx)  →  ctx_to_json()  →  reporting/kopru.json_ile_uret()
 İlke:  eksik alan SESSİZCE Konya varsayılanına düşmez; isim isim ValueError.
@@ -20,6 +20,9 @@ from __future__ import annotations
 import datetime as _dt
 import json
 import os
+import pathlib
+import shutil
+import sys
 import tempfile
 
 AY_UZUN = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz",
@@ -55,8 +58,9 @@ def ctx_to_json(ctx, plant: dict) -> dict:
     J = {"schema_version": "2.1"}
 
     # kimlik / künye — report.id çağıran doldurur (uret_html_pdf → rapor_id_uret)
-    iste(plant.get("customer"), "report.customer")
-    J["report"] = {"customer": plant.get("customer"),
+    musteri = plant.get("customer") or getattr(ctx, "tenant_adi", None)
+    iste(musteri, "report.customer")
+    J["report"] = {"customer": musteri,
                    "id": None,
                    "contact": plant.get("contact") or "—"}
     J["plant"] = {"name": ctx.plant_name,
@@ -107,7 +111,8 @@ def ctx_to_json(ctx, plant: dict) -> dict:
     # iklim arşivi
     iste(getattr(ctx, "iklim", None) is not None, "climate.monthly_history (iklim_oku)")
     if getattr(ctx, "iklim", None) is not None:
-        J["climate"] = {"monthly_history": _iklim_sozluk(ctx.iklim)}
+        J["climate"] = {"monthly_history": _iklim_sozluk(
+            ctx.iklim, plant.get("capacity_kwp"))}
 
     # SCADA kalite — B2 (servis SQL'i) + B3 (bayrak çizelgesi)
     J["scada"] = {"coverage_pct": iste(getattr(ctx, "coverage_pct", None), "scada.coverage_pct")
@@ -147,24 +152,43 @@ def ctx_to_json(ctx, plant: dict) -> dict:
     return J
 
 
-def uret_html_pdf(tenant_id, plant: dict):
-    """Tek üretim kapısı (report_service.uret'e 'pdf16' formatı olarak bağlanır)."""
+def _depo_koku_yola_ekle():
+    """reporting/ paketi src altında değil depo kökünde — kökü sys.path'e ekle.
+    (Editable kurulumda parents[3] = depo kökü; değilse dokunma, import kendini savunur.)"""
+    kok = pathlib.Path(__file__).resolve().parents[3]
+    if (kok / "reporting" / "kopru.py").exists() and str(kok) not in sys.path:
+        sys.path.insert(0, str(kok))
+
+
+def uret_html_pdf(tenant_id, plant: dict, ctx=None) -> bytes:
+    """Tek üretim kapısı — report_service.uret("pdf16") buradan geçer.
+    Her çağrı KENDİ geçici klasöründe üretir: ortak cikti/ klasörü yok,
+    iki eşzamanlı istek çakışmaz. ctx verilirse (uret zaten kurduysa)
+    rapor_baglami İKİNCİ KEZ koşmaz."""
     from pvquant.services.report_service import rapor_baglami, rapor_id_uret
-    from reporting.kopru import json_ile_uret                   # depo kökü sys.path'te
-    ctx = rapor_baglami(tenant_id, plant)
+    _depo_koku_yola_ekle()
+    from reporting.kopru import json_ile_uret
+    if ctx is None:
+        ctx = rapor_baglami(tenant_id, plant)
     if ctx is None:
         raise ValueError("rapor bağlamı kurulamadı — önce tahmin üretin")
     J = ctx_to_json(ctx, plant)
     J["report"]["id"] = rapor_id_uret(tenant_id, plant, ctx.mode)   # B6
-    with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False,
-                                     encoding="utf-8") as f:
-        json.dump(J, f, ensure_ascii=False)
-        yol = f.name
+    tmp = tempfile.mkdtemp(prefix="pvq16_")
     try:
-        # Konya-dışı santralde taban denetimi anlamsız → denetim=False (E.3-c: taban türetimi)
-        return json_ile_uret(yol, denetim=(plant.get("name") == "Konya GES"))
+        yol = os.path.join(tmp, "girdi.json")
+        with open(yol, "w", encoding="utf-8") as f:
+            json.dump(J, f, ensure_ascii=False)
+        # denetim=False BİLİNÇLİ (E.3-b kararı): taban_d.json KANONİK örneğin
+        # tabanıdır; DB'den beslenen üretim (Konya dahil) onunla uyuşamaz.
+        # Yapısal bekçi (16 sayfa / tek A4) köprüde her üretimde koşar;
+        # taban denetimi kanonik girdiyle CI'ın işidir.
+        pdf_yolu, _html = json_ile_uret(
+            yol, cikti=os.path.join(tmp, "cikti"), denetim=False)
+        with open(pdf_yolu, "rb") as f:
+            return f.read()
     finally:
-        os.unlink(yol)
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 # ---- yardımcılar ----
@@ -236,15 +260,20 @@ def _karne_satirlari(k):
     skill_daily.skill_vs_naive yüzde (100·(1−m/n)) → rapor 0-1 kesir ister."""
     out = {}
     for r in k.itertuples():
-        d = out.setdefault(str(r.date), {"date": str(r.date), "wmape_0_24": None,
-                                         "skill": None, "wmape_24_72": None})
+        tarih = str(r.date)[:10]          # pandas Timestamp → 'YYYY-AA-GG'
+        d = out.setdefault(tarih, {"date": tarih, "wmape_0_24": None,
+                                   "skill": None, "wmape_24_72": None})
         if r.horizon_bucket == "0-24":
             d["wmape_0_24"] = round(float(r.mape), 1)
             if r.skill_vs_naive == r.skill_vs_naive and r.skill_vs_naive is not None:
                 d["skill"] = round(float(r.skill_vs_naive) / 100.0, 2)
         elif r.horizon_bucket == "24-72":
             d["wmape_24_72"] = round(float(r.mape), 1)
-    sira = [out[t] for t in sorted(out)]
+    # Bugün doğası gereği YARIMDIR (gün bitmeden skor kesinleşmez) — karne
+    # dünle biten son 30 TAM günü alır; aksi hâlde sabah üretilen hiçbir
+    # rapor geçemezdi (E.3-b prova dersi, 9 Ağu).
+    bugun = str(_dt.datetime.now(_dt.timezone.utc).date())
+    sira = [out[t] for t in sorted(out) if t < bugun]
     if len(sira) < 30:
         raise ValueError("accuracy.report_card 30 gün ister; karnede %d gün var "
                          "(skill_daily birikimi yetersiz)" % len(sira))
@@ -261,18 +290,31 @@ def _karne_satirlari(k):
     return sira
 
 
-def _iklim_sozluk(ik):
+_IKLIM_PR = 0.80   # E.3-b kararı: GHI→üretim köprüsü performans oranı (belgeli varsayım)
+
+
+def _iklim_sozluk(ik, kwp=None):
     """climate.monthly_history: {yıl: [12 aylık MWh]}. iklim_oku çerçevesini
-    esnek karşılar (yaygın kolon adları); tanınmazsa isim isim ValueError."""
+    esnek karşılar (yaygın kolon adları); tanınmazsa isim isim ValueError.
+    iklim_yil GHI (kWh/m²) taşır — MWh yoksa GHI×kWp×PR/1000 köprüsü kurulur;
+    CV ve P50/P90 oranları PR'dan bağımsızdır, mutlak seviye tahminîdir."""
     kolon = {c.lower(): c for c in ik.columns}
     y = kolon.get("yil") or kolon.get("year")
     a = kolon.get("ay") or kolon.get("month")
     v = (kolon.get("mwh") or kolon.get("uretim_mwh") or kolon.get("aylik_mwh")
          or kolon.get("value"))
-    if not (y and a and v):
+    ghi = kolon.get("ghi_kwh_m2")
+    if not (y and a) or not (v or ghi):
         raise ValueError("iklim çerçevesi tanınmadı — kolonlar: %s "
                          "(_iklim_sozluk'u iklim_service şemasına eşleyin)"
                          % list(ik.columns))
+    if not v:
+        if not kwp:
+            raise ValueError("iklim GHI→MWh köprüsü kWp ister — "
+                             "plant.capacity_kwp boş")
+        ik = ik.copy()
+        ik["_mwh"] = ik[ghi] * float(kwp) * _IKLIM_PR / 1000.0
+        v = "_mwh"
     piv = ik.pivot_table(index=y, columns=a, values=v, aggfunc="first")
     # eksik ay NaN döner; 'NaN or 0' TUTMAZ (NaN truthy) — açık fillna şart
     piv = piv.reindex(columns=range(1, 13)).fillna(0.0)
@@ -351,7 +393,7 @@ if __name__ == "__main__":
     # Korkuluk (isim isim ValueError) BAŞARI sayılır — sessiz sahte rapor yok.
     import sys as _sys
     import pathlib as _pl
-    _KOK = _pl.Path(__file__).resolve().parent.parent
+    _KOK = _pl.Path(__file__).resolve().parents[3]
     if str(_KOK) not in _sys.path:
         _sys.path.insert(0, str(_KOK))       # reporting.kopru importu için
     from sqlalchemy import create_engine as _ce, text as _text
@@ -368,7 +410,7 @@ if __name__ == "__main__":
     for _p in _plants:
         print("=== prova: %s ===" % _p["name"])
         try:
-            print("OK →", uret_html_pdf(_p["tenant_id"], _p))
+            print("OK → %d bayt PDF" % len(uret_html_pdf(_p["tenant_id"], _p)))
         except ValueError as e:
             print("KORKULUK (tasarım gereği durdu):", e)
         except Exception as e:

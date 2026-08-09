@@ -1,7 +1,7 @@
 from pvq import *
 
 th = lambda x: "{:,}".format(int(round(x))).replace(",", ".")
-YILLAR = list(range(2007, 2027))
+YILLAR = sorted(IKLIM)   # veri-güdümlü (v2.104): kanonikte 2007–2026'yı birebir üretir
 AYMIN = [min(IKLIM[y][m] for y in TAM_YILLAR) for m in range(12)]
 AYMAX = [max(IKLIM[y][m] for y in TAM_YILLAR) for m in range(12)]
 

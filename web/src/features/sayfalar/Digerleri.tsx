@@ -454,7 +454,7 @@ export function Raporlar({ plantId }: { plantId: string }) {
            d.getFullYear() + " " + iki(d.getHours()) + ":" + iki(d.getMinutes());
   };
 
-  const hazirla = async (fmt: "pdf" | "xlsx" | "json") => {
+  const hazirla = async (fmt: "pdf" | "pdf16" | "xlsx" | "json") => {
     setUretilen(fmt); setHata(null);
     try { await api.raporIndir(plantId, fmt); }
     catch (e) { setHata(e instanceof Error ? e.message : String(e)); }
@@ -469,7 +469,19 @@ export function Raporlar({ plantId }: { plantId: string }) {
   return (
     <Sayfa baslik="Raporlar"
       alt="Hepsi tahmin arşivinden üretilir — koşular güncellenmez, yenisi eklenir.">
-      <div className="ızgara satir-3" style={{ marginBottom: 14 }}>
+      <Kart baslik="16 sayfalık müşteri raporu">
+        <div style={{ fontSize: 13, color: "var(--ikincil)", lineHeight: 1.6 }}>
+          Kapaktan eklere tam rapor — doğruluk karnesi, hata dağılımı,
+          kalibrasyon, veri kalitesi, iklim zarfı ve model zinciri. Tek A4,
+          16 sayfa, PDF.
+        </div>
+        <button className="dugme" disabled={uretilen !== null}
+          onClick={() => hazirla("pdf16")}
+          style={{ width: "100%", marginTop: 14 }}>
+          {uretilen === "pdf16" ? "Hazırlanıyor…" : "Hazırla"}
+        </button>
+      </Kart>
+      <div className="ızgara satir-3" style={{ margin: "14px 0 14px" }}>
         {kartlar.map(([ad, fmt, alt]) => (
           <Kart key={ad} baslik={ad}>
             <div style={{ fontSize: 13, color: "var(--ikincil)", minHeight: 38 }}>{alt}</div>

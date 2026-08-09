@@ -387,6 +387,7 @@ def tahmin_kos(plant_id: str, claims=Depends(yazma_yetkisi())):
 
 _RAPOR_MIME = {
     "pdf": "application/pdf",
+    "pdf16": "application/pdf",   # v2.104: 16 sayfalik musteri raporu
     "xlsx": ("application/vnd.openxmlformats-officedocument"
              ".spreadsheetml.sheet"),
     "json": "application/json",

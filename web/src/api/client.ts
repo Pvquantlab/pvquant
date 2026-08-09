@@ -274,7 +274,7 @@ export const api = {
     return getir<KosuSatiri[]>(`/v1/plants/${p}/runs`);
   },
   /** v2.94: rapor indir — blob + Content-Disposition adi; 401 sozlesmesi ayni. */
-  raporIndir: async (p: string, fmt: "pdf" | "xlsx" | "json"): Promise<void> => {
+  raporIndir: async (p: string, fmt: "pdf" | "pdf16" | "xlsx" | "json"): Promise<void> => {
     if (!TABAN) throw new Error(
       "Örnek kipte rapor üretimi yok — VITE_API_URL tanımlı değil.");
     const jeton = localStorage.getItem("pvq_token");
