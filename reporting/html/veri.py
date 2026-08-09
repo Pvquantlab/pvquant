@@ -12,6 +12,10 @@ MUSTERI = "Anadolu Enerji A.Ş."            # report.customer (şema v2.1)
 KAPASITE_MWP = 12.4                        # plant.capacity_kwp/1000 (v2.103:
                                            # s11 özgül üretimdeki gömülü 12.4)
 DONEM = "05–20 Ağustos 2026"               # forecast.horizon
+GUN_SAYISI = 16                            # len(daily)
+AY_YIL = "Ağustos 2026"                    # eksen/başlık ay etiketi
+KARNE_PENCERE = "7 Nisan – 4 Ağustos 2026 (120 gün)"       # prepared−119g → prepared
+EGITIM_SERIT = "<i>7 Nisan 2026</i><i>11 Temmuz</i><i>4 Ağustos 2026</i>"  # %80/%20 şeridi
 MOD_ROZET = "MOD C · HİBRİT"               # run.mode
 SAYFA_TOPLAM = 16
 
@@ -245,6 +249,20 @@ def _json_yukle(path):
     g["EPOSTA"] = J["report"]["contact"]
     py, pm, pd_, ps = J["run"]["prepared"][:4], J["run"]["prepared"][5:7], J["run"]["prepared"][8:10], J["run"]["prepared"][11:16]
     g["HAZIRLANMA"] = "%d %s %s · %s" % (int(pd_), AY_UZUN[int(pm) - 1], py, ps)
+    # c2a (v2.106): tarih token'ları girdiden — kanonikte birebir aynı metinler
+    g["GUN_SAYISI"] = len(D)
+    _ilk_y, _ilk_m, _ilk_d = _tarih(D[0]["date"])
+    g["AY_YIL"] = "%s %d" % (AY_UZUN[_ilk_m - 1], _ilk_y)
+    import datetime as _dtm
+    _p = _dtm.date(int(py), int(pm), int(pd_))
+    _b = _p - _dtm.timedelta(days=119)
+    _m = _b + _dtm.timedelta(days=95)
+    g["KARNE_PENCERE"] = "%d %s – %d %s %d (120 gün)" % (
+        _b.day, AY_UZUN[_b.month - 1], _p.day, AY_UZUN[_p.month - 1], _p.year)
+    g["EGITIM_SERIT"] = "<i>%d %s %d</i><i>%d %s</i><i>%d %s %d</i>" % (
+        _b.day, AY_UZUN[_b.month - 1], _b.year,
+        _m.day, AY_UZUN[_m.month - 1],
+        _p.day, AY_UZUN[_p.month - 1], _p.year)
 
     # künye ve evrim
     g["SAHA"] = [tuple(p) for p in J["plant"]["display"]]
@@ -262,6 +280,7 @@ if _J:
 # c1 (v2.105): günlük fan ekseni veri-güdümlü — kanonik girdide 40/80'i
 # birebir üretir (min P10=43,9→40; max P90=74,1→80).
 import math as _math
+IKLIM_ARALIK = "%d–%d" % (min(IKLIM), max(IKLIM))   # c2a: matris yıl aralığı
 GUN_YMIN = int(_math.floor(min(v - h for v, h in zip(P50_GUN, HW_GUN)) / 10.0)) * 10
 GUN_YMAX = int(_math.ceil(max(v + h for v, h in zip(P50_GUN, HW_GUN)) / 10.0)) * 10
 
@@ -287,6 +306,7 @@ def doldur(s):
     D = {
         "SANTRAL": SANTRAL, "MUSTERI": MUSTERI, "DONEM": DONEM,
         "RAPOR_ID": RAPOR_ID, "HAZIRLANMA": HAZIRLANMA, "EPOSTA": EPOSTA,
+        "DONEM": DONEM,
         "KURULU": d.get("Kurulu güç", ""),
         "KOORD_YUK": (d.get("Koordinat", "") + " · " + d.get("Yükseklik", "")),
         "TOPLAM_P50": _bin1(TOPLAM_P50_MWH),

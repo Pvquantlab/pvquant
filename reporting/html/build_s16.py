@@ -89,7 +89,7 @@ BODY = """<div class="page"><div class="sheet">
 
   <div class="kunye">
     <div><b>Rapor kimliği</b><span>{{RAPOR_ID}}</span></div>
-    <div><b>Hazırlanma</b><span>4 Ağustos 2026 · 08:00</span></div>
+    <div><b>Hazırlanma</b><span>{{HAZIRLANMA}}</span></div>
     <div><b>Model</b><span>MOD C · Hibrit</span></div>
     <div><b>İletişim</b><span>{{EPOSTA}}</span></div>
   </div>

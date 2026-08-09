@@ -2,6 +2,7 @@ from pvq import *
 
 tr = lambda x, d=1: ("%.*f" % (d, x)).replace(".", ",").replace("-", "\u2212")
 
+from veri import EGITIM_SERIT
 from veri import (KALITE_AYLAR as AYLAR, KALITE_GECERLI as GECERLI,
                   KALITE_HATALI as HATALI, KALITE_DIGER as DIGER, BAYRAK)
 
@@ -102,7 +103,7 @@ BODY = """<div class="page"><div class="sheet">
     <div class="test"><b>TEST — son %20</b>
       <span>24 gün · modelin hiç görmediği</span></div>
   </div>
-  <div class="tarih"><i>7 Nisan 2026</i><i>11 Temmuz</i><i>4 Ağustos 2026</i></div>
+  <div class="tarih">""" + EGITIM_SERIT + """</div>
   <div class="figcap" style="margin-top:2.5mm"><b>Şekil 10.1</b>&nbsp;&nbsp;120 günlük pencere
     kronolojik olarak bölünür. Rastgele bölme bilinçli olarak kullanılmaz: rastgelelik, test
     dönemine eğitim dönemiyle aynı hava koşullarını sızdırır ve başarımı yapay biçimde şişirir.

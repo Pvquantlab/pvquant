@@ -24,7 +24,7 @@ FONTCSS = "".join([
 BRAND, BRAND2, DEEP = "#0D4C68", "#2B7B9B", "#082F42"
 INK, SEC, RULE = "#11171A", "#414B46", "#CDD6D1"
 
-from veri import P50_GUN as p50, HW_GUN as hw, GUN_YMIN, GUN_YMAX
+from veri import P50_GUN as p50, HW_GUN as hw, GUN_YMIN, GUN_YMAX, DONEM, GUN_SAYISI, KARNE_PENCERE, AY_YIL
 days = list(range(5, 21))
 
 
@@ -111,8 +111,8 @@ IMPRINT = """
       <h2>Rapor</h2>
       <div class="row"><dt>Rapor kimliği</dt><dd class="mono">{{RAPOR_ID}}</dd></div>
       <div class="row"><dt>Hazırlanma</dt><dd>{{HAZIRLANMA}}</dd></div>
-      <div class="row"><dt>Tahmin ufku</dt><dd>05–20 Ağustos 2026 (16 gün)</dd></div>
-      <div class="row"><dt>Karne penceresi</dt><dd>7 Nisan – 4 Ağustos 2026 (120 gün)</dd></div>
+      <div class="row"><dt>Tahmin ufku</dt><dd>""" + DONEM + """ (""" + str(GUN_SAYISI) + """ gün)</dd></div>
+      <div class="row"><dt>Karne penceresi</dt><dd>""" + KARNE_PENCERE + """</dd></div>
     </div>
   </div>"""
 
@@ -120,7 +120,7 @@ LEGCAP = """
     <div class="legend"><span><i style="display:inline-block;width:5mm;height:1.1mm;background:#0D4C68;margin-right:1.6mm;vertical-align:-0.1mm"></i>Beklenti (P50)</span>
       <span><i style="display:inline-block;width:4.4mm;height:2.8mm;background:#F0E3C9;border:0.4pt solid #DCC79A;margin-right:1.6mm;vertical-align:-0.4mm"></i>%80 olasılık aralığı (P10–P90)</span>
       </div>
-    <div class="figcap"><b>Şekil 1.1</b>&nbsp;&nbsp;Günlük üretim tahmini, 05–20 Ağustos 2026. Çizgi
+    <div class="figcap"><b>Şekil 1.1</b>&nbsp;&nbsp;Günlük üretim tahmini, """ + DONEM + """. Çizgi
       beklentiyi, çevresindeki alan %80 olasılık aralığını gösterir; alan ne kadar kalınsa hava
       o kadar belirsizdir. Düşey eksen """ + str(GUN_YMIN) + """ MWh'ten başlar.</div>"""
 
@@ -173,7 +173,7 @@ BODY_A = """<div class="page">
     <div class="r">Üretim Tahmini ve Doğruluk Raporu</div></div>
   <div class="eyeb">{{MUSTERI}} için hazırlanmıştır</div>
   <h1>Konya GES</h1>
-  <div class="sub"><b>05–20 Ağustos 2026</b> · 16 günlük saatlik üretim tahmini
+  <div class="sub"><b>""" + DONEM + """</b> · 16 günlük saatlik üretim tahmini
     ve 120 günlük doğruluk karnesi</div>
   <div class="pills"><div class="pill">MOD A · HAM FİZİK</div>
     <div class="pill">MOD B · KALİBRE</div>
@@ -238,7 +238,7 @@ BODY_B = """<div class="page">
    <div class="r">Üretim Tahmini ve Doğruluk Raporu</div></div>
  <div class="eyeb">{{MUSTERI}} için hazırlanmıştır</div>
  <div class="hero"><h1>Konya GES</h1>
-   <div class="sub">05–20 Ağustos 2026<br>16 günlük saatlik tahmin ·
+   <div class="sub">""" + DONEM + """<br>16 günlük saatlik tahmin ·
      120 günlük doğruluk karnesi</div></div>
  <div class="figwrap">__CHART__""" + LEGCAP + """</div>
  <div class="numbers">
@@ -314,7 +314,7 @@ BODY_C = """<div class="page">
    <div class="head">Üretim Tahmini ve Doğruluk Raporu</div>
    <div class="eyeb">{{MUSTERI}} için hazırlanmıştır</div>
    <h1>Konya GES</h1>
-   <div class="sub"><b>05–20 Ağustos 2026</b> · 16 günlük saatlik üretim tahmini
+   <div class="sub"><b>""" + DONEM + """</b> · 16 günlük saatlik üretim tahmini
      ve 120 günlük doğruluk karnesi</div>
    <p class="lede">Bu rapor önümüzdeki 16 gün için saatlik üretim beklentisini, beklentinin
    olasılık bandını ve son 120 günde her tahminin gerçekleşen üretimle gece-gece
@@ -327,7 +327,7 @@ BODY_C = """<div class="page">
 </div>"""
 
 VARIANTS = [("PVQuant_Konya_GES_s01_kapak", CSS_A, BODY_A,
-             fan_chart(p50, hw, ["%02d" % d for d in days], "Ağustos 2026 [gün]",
+             fan_chart(p50, hw, ["%02d" % d for d in days], AY_YIL + " [gün]",
                        "[MWh/gün]", ymin=GUN_YMIN, ymax=GUN_YMAX, step=10, H=250, fs=15,
                        highlight=(6, 8), hl_label="cephe geçişi"))]
 

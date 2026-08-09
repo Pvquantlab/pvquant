@@ -1,6 +1,6 @@
 from pvq import *
 
-from veri import BASE_KW, PEAK, P50_GUN as DAILY, GUN_ETIKET as DAYS
+from veri import BASE_KW, PEAK, P50_GUN as DAILY, GUN_ETIKET as DAYS, DONEM
 HOURS = ["%02d–%02d" % (h, h + 1) for h in range(5, 20)]
 
 
@@ -69,7 +69,7 @@ BODY = """<div class="page"><div class="sheet">
   bir saatindeki beklenen ortalama gücü verir. Grafik biçimi gösterir, bu çizelge sayıyı verir —
   saatlik satış, dengeleme ve bakım penceresi kararları doğrudan buradan okunur.</p>
 
-  <div class="tcap">Çizelge 6.1 <span>Saatlik beklenen güç [kW], 05–20 Ağustos 2026 ·
+  <div class="tcap">Çizelge 6.1 <span>Saatlik beklenen güç [kW], """ + DONEM + """ ·
     yerel saat</span></div>
   <table>
     <tr><th>Saat</th>""" + "".join("<th>%s</th>" % d for d in DAYS) + """</tr>

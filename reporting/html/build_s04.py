@@ -1,10 +1,10 @@
 from pvq import *
 
-from veri import P50_GUN as p50, HW_GUN as hw, GUN_ETIKET as days, CEPHE, GUN_YMIN, GUN_YMAX
+from veri import P50_GUN as p50, HW_GUN as hw, GUN_ETIKET as days, CEPHE, GUN_YMIN, GUN_YMAX, AY_YIL
 
 tr = lambda x, d=1: ("%.*f" % (d, x)).replace(".", ",")
 
-CHART = fan_chart(p50, hw, days, "Ağustos 2026 [gün]", "[MWh/gün]",
+CHART = fan_chart(p50, hw, days, AY_YIL + " [gün]", "[MWh/gün]",
                   ymin=GUN_YMIN, ymax=GUN_YMAX, step=10, H=290, fs=15,
                   highlight=CEPHE, hl_label="cephe geçişi")
 
@@ -58,7 +58,7 @@ BODY = """<div class="page"><div class="sheet">
 
   <div class="tcap">Çizelge 4.1 <span>Günlük değerler [MWh]</span></div>
   <table>
-    <tr><th>Ağustos 2026</th>""" + hdr + """</tr>
+    <tr><th>""" + AY_YIL + """</th>""" + hdr + """</tr>
     <tr><td>P90 · üst sınır</td>""" + rowcells([a + b for a, b in zip(p50, hw)]) + """</tr>
     <tr class="mid"><td>P50 · beklenti</td>""" + rowcells(p50, True) + """</tr>
     <tr><td>P10 · alt sınır</td>""" + rowcells([a - b for a, b in zip(p50, hw)]) + """</tr>

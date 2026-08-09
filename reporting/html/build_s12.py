@@ -72,7 +72,7 @@ BODY = """<div class="page"><div class="sheet">
   toplam üretimidir; rengi, o hücrenin aynı ayın kendi 19 yıllık dağılımı içindeki yerini
   gösterir. Böylece Ocak ayı Temmuz'la değil, diğer Ocak aylarıyla karşılaştırılır.</p>
 
-  <div class="tcap">Çizelge 12.1 <span>Aylık üretim [MWh], 2007–2026</span></div>
+  <div class="tcap">Çizelge 12.1 <span>Aylık üretim [MWh], """ + ("%d–%d" % (YILLAR[0], YILLAR[-1])) + """</span></div>
   <table>
     <tr><th>Yıl</th>""" + "".join("<th>%s</th>" % a for a in AY_TR) + """<th>Yıl</th></tr>
     """ + rows + """

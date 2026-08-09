@@ -1,4 +1,5 @@
 from pvq import *
+from veri import IKLIM_ARALIK
 
 CSS = """
 .cols{display:flex;gap:12mm;margin-top:8mm}
@@ -50,7 +51,7 @@ TOC = [
         ("Bağımsız test ve veri kalitesi", "holdout ve kapsama", 10)]),
     ("S6", "İklim bağlamı", None, [
         ("İklim zarfı ve aşılma olasılıkları", None, 11),
-        ("Yıl × ay üretim matrisi", "2007–2026", 12)]),
+        ("Yıl × ay üretim matrisi", IKLIM_ARALIK, 12)]),
     ("S7", "Model zinciri ve veri künyesi", 13, []),
     ("S8", "Standartlar, sınırlar ve tahmin evrimi", 14, []),
     ("EK", "Ekler", None, [
