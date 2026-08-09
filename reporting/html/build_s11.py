@@ -37,9 +37,14 @@ def zarf(W=1000, H=300, ml=64, mb=52, fs=14):
     PW, PH = W - ml - MR, H - MT - mb
     slot = PW / 12
     cx = lambda i: ml + slot * (i + .5)
-    y = lambda v: MT + PH * (2800 - v) / 2800
+    # c1b (v2.105): eksen zarf tepesinden, çeyrek-adım 100'e yuvarlı —
+    # kanonikte (max P90≈2739) 700 adım / 2800 tavanı birebir üretir.
+    _tepe = max(max(P90), max(SON12))
+    z_adim = int(-(-(_tepe / 4.0) // 100)) * 100
+    z_ymax = 4 * z_adim
+    y = lambda v: MT + PH * (z_ymax - v) / z_ymax
     o = []
-    for t in range(0, 2801, 700):
+    for t in range(0, z_ymax + 1, z_adim):
         o.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1.3"/>'
                  % (ml, y(t), W - MR, y(t), GRID))
         o.append('<text x="%.1f" y="%.1f" text-anchor="end" font-family="PlexSans" font-size="%d"'

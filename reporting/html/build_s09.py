@@ -10,12 +10,21 @@ def selale(W=1000, H=352, ml=64, mb=88, fs=14):
     MR, MT = 14, 46
     PW, PH = W - ml - MR, H - MT - mb
     n = len(ADIM)
+    # c1b (v2.105): eksen şelale seviyelerinden — kanonikte (BAS=13,6) 16'yı üretir
+    _lvl, _run = [BAS, BIT], BAS
+    for _a in ADIM:
+        if _a[1] is None:                    # "Ham fizik" başlangıç sütunu
+            continue
+        _run += _a[1]
+        _lvl.append(_run)
+    ymax = int(-(-max(_lvl) // 4)) * 4          # ceil(max/4)*4
+    adim_t = ymax // 4
     slot = PW / n
     bw = slot * .46
     cx = lambda i: ml + slot * (i + .5)
-    y = lambda v: MT + PH * (16 - v) / 16
+    y = lambda v: MT + PH * (ymax - v) / ymax
     o = []
-    for t in range(0, 17, 4):
+    for t in range(0, ymax + 1, adim_t):
         o.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1.3"/>'
                  % (ml, y(t), W - MR, y(t), GRID))
         o.append('<text x="%.1f" y="%.1f" text-anchor="end" font-family="PlexSans" font-size="%d"'
