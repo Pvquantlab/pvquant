@@ -114,16 +114,19 @@ def rapor_baglami(tenant_id, plant: dict) -> ReportContext | None:
                 ctx.coverage_pct = 100.0 * ctx.flag_dagilimi.get(
                     "valid", 0) / toplam
         sc = s.execute(text(
-            "SELECT MAX(ts_utc) AS son FROM scada_hourly WHERE plant_id=:p"),
+            "SELECT MIN(ts_utc) AS ilk, MAX(ts_utc) AS son "
+            "FROM scada_hourly WHERE plant_id=:p"),
             {"p": plant["id"]}).first()
         if sc and sc.son:
             ctx.son_scada_ts = sc.son
+            ctx.ilk_scada_ts = sc.ilk  # v2.103: künye aralığı sabit kalmasın
         # S8: hedef gun (kosu penceresinin ilk tam gunu = yarin) icin son
         # kosularda P50 evrimi. <2 kosu ise sayfa 'veri eksik' der.
         if kosu:
             hedef = (kosu.run_at.date() + _dt.timedelta(days=1))
             ev = pd.read_sql(text(
-                "SELECT r.run_at, SUM(f.p50_kw)/1000.0 AS p50_mwh "
+                "SELECT r.run_at, SUM(f.p50_kw)/1000.0 AS p50_mwh, "
+                "SUM(f.p90_kw - f.p10_kw)/2000.0 AS half_mwh "  # v2.103: evrim bandı
                 "FROM forecast_values f JOIN forecast_runs r ON r.id=f.run_id "
                 "WHERE f.plant_id=:p AND f.ts_utc >= :g0 AND f.ts_utc < :g1 "
                 "GROUP BY r.run_at ORDER BY r.run_at DESC LIMIT 8"),
@@ -138,6 +141,43 @@ def rapor_baglami(tenant_id, plant: dict) -> ReportContext | None:
             if len(ev) > 0:
                 ctx.kosu_evrim = ev
                 ctx.evrim_gunu = hedef
+        # v2.103 (E.3-a, B1+B5): worker fotograflari — report_stats'tan HAM
+        # okuma, hesap yok. Gecis bekcisi: migration oncesi tablo yoksa
+        # alanlar None kalir, taslak _zorunlu() isim isim ValueError verir
+        # (sessiz Konya varsayilani YOK — E.2 ilkesi).
+        if s.execute(text(
+                "SELECT to_regclass('report_stats') IS NOT NULL")).scalar():
+            for r in s.execute(text(
+                    "SELECT key, value_json FROM report_stats "
+                    "WHERE plant_id=:p"), {"p": plant["id"]}).fetchall():
+                v = (r.value_json if isinstance(r.value_json, dict)
+                     else json.loads(r.value_json))   # Fable 5 v1.7 kurali
+                if r.key == "uninterrupted_days":
+                    ctx.uninterrupted_days = v.get("value")
+                elif r.key == "error_dist":
+                    ctx.error_dist = v
+        # v2.103 (B2, karar 9 Agu): aylik kalite kirilimi — son 6 ay, yuzde.
+        # Siniflama: gecerli=valid; hatali={yanlis_yil*,gece_uretim,
+        # kapasite_ustu,okunamayan}; diger=kalan (donmus + yeni bayraklar).
+        # diger = 100-g-h: yuvarlama sonrasi toplam 100 garanti.
+        ql = pd.read_sql(text(
+            "SELECT date_trunc('month', ts_utc) AS ay, COUNT(*) AS n, "
+            " COUNT(*) FILTER (WHERE flag='valid') AS g, "
+            " COUNT(*) FILTER (WHERE flag IN ('gece_uretim','kapasite_ustu',"
+            "'okunamayan') OR flag LIKE 'yanlis%') AS h "
+            "FROM scada_hourly WHERE plant_id=:p "
+            "AND ts_utc >= date_trunc('month', now()) - INTERVAL '5 months' "
+            "GROUP BY 1 ORDER BY 1"), s.connection(),
+            params={"p": plant["id"]}, parse_dates=["ay"])
+        if len(ql) > 0:
+            _ayl = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
+                    "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"]
+            gy = [round(100 * r.g / r.n) for r in ql.itertuples()]
+            hy = [round(100 * r.h / r.n) for r in ql.itertuples()]
+            ctx.quality_monthly = {
+                "aylar": [_ayl[r.ay.month - 1] for r in ql.itertuples()],
+                "gecerli": gy, "hatali": hy,
+                "diger": [max(0, 100 - a - b) for a, b in zip(gy, hy)]}
     return ctx
 
 # --------------------------------------------------------------- Adim 6
@@ -165,3 +205,15 @@ def uret(tenant_id, plant: dict, fmt: str):
     else:
         raise ValueError(f"bilinmeyen format: {fmt}")
     return veri, f"PVQuant_{ad_kok}_{gun}.{uzanti}", _dt.datetime.now()
+
+
+def rapor_id_uret(tenant_id, plant: dict, mode: str) -> str:
+    """v2.103 (B6, karar 9 Agu): PVQ-<tarih>-<mod>-<sira>.
+    Sira report_log BIGSERIAL'den — gunluk sayac degil: sifirlanmaz ve
+    'hangi rapor ne zaman uretildi' denetim izini bedavaya verir."""
+    with tenant_baglami(tenant_id) as s:
+        rid = s.execute(text(
+            "INSERT INTO report_log(tenant_id,plant_id,mode) "
+            "VALUES(:t,:p,:m) RETURNING id"),
+            {"t": tenant_id, "p": plant["id"], "m": mode}).scalar()
+    return "PVQ-%s-%s-%04d" % (_dt.date.today().isoformat(), mode, rid % 10000)

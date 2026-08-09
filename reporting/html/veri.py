@@ -9,6 +9,8 @@ dosyaları ve pvq.py veriye dokunmayacak. Alan eşlemesi: docs/veri_haritasi.md
 # ---------------------------------------------------------------- kimlik
 SANTRAL = "Konya GES"                      # plant.name
 MUSTERI = "Anadolu Enerji A.Ş."            # report.customer (şema v2.1)
+KAPASITE_MWP = 12.4                        # plant.capacity_kwp/1000 (v2.103:
+                                           # s11 özgül üretimdeki gömülü 12.4)
 DONEM = "05–20 Ağustos 2026"               # forecast.horizon
 MOD_ROZET = "MOD C · HİBRİT"               # run.mode
 SAYFA_TOPLAM = 16
@@ -178,6 +180,7 @@ def _json_yukle(path):
     # kimlik
     g["SANTRAL"] = J["plant"]["name"]
     g["MUSTERI"] = J["report"]["customer"]
+    g["KAPASITE_MWP"] = float(J["plant"].get("capacity_kwp", 12400)) / 1000  # v2.103
     g["MOD_ROZET"] = J["run"]["mode"]
     g["SAYFA_TOPLAM"] = J["run"]["pages"]
     (y1, m1, d1), (y2, m2, d2) = _tarih(J["forecast"]["start"]), _tarih(J["forecast"]["end"])

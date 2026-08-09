@@ -3,6 +3,7 @@ import base64, os
 
 # ------------------------------------------------- veri tek kaynaktan (Dalga E.2)
 from veri import (AY_TR, IKLIM, TAM_YILLAR, LTA_AY, LTA_YIL, ay_pct,   # iklim arşivi
+                  KAPASITE_MWP,                                        # v2.103 (s11)
                   SANTRAL, MUSTERI, DONEM, MOD_ROZET, SAYFA_TOPLAM,     # kimlik
                   doldur)                                               # {{TOKEN}} doldurma
 

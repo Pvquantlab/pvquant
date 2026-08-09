@@ -112,7 +112,8 @@ def egri(W=1000, H=272, ml=64, mb=52, fs=14):
 
 IST = [
     ("Uzun dönem ortalaması", th(ORT) + " MWh/yıl", "19 tam yılın ortalaması"),
-    ("Özgül üretim", th(ORT / 12.4) + " kWh/kWp", "12,4 MWp kurulu güce göre"),
+    ("Özgül üretim", th(ORT / KAPASITE_MWP) + " kWh/kWp",           # v2.103
+     "%s MWp kurulu güce göre" % tr(KAPASITE_MWP)),
     ("En parlak yıl", str(PARLAK), "%s MWh · ortalamanın %%%d üzeri"
      % (th(sum(IKLIM[PARLAK])), round((sum(IKLIM[PARLAK]) / ORT - 1) * 100))),
     ("En bulutlu yıl", str(BULUT), "%s MWh · ortalamanın %%%d altı"

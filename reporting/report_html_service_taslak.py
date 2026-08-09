@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""report_html_service.py TASLAĞI (Dalga E.2, Adım 3a) — henüz DB'ye karşı TEST EDİLMEDİ.
+"""report_html_service.py TASLAĞI (E.3-a, v2.103) — DB'ye karşı henüz TEST EDİLMEDİ.
 
 Yerleşim: src/pvquant/services/report_html_service.py  (eski pvquant.reporting paketine
 SIFIR dokunuş — 'reporting paketi TEK SATIR değişmez' kuralı korunur.)
@@ -7,28 +7,14 @@ SIFIR dokunuş — 'reporting paketi TEK SATIR değişmez' kuralı korunur.)
 Akış:  rapor_baglami(ctx)  →  ctx_to_json()  →  reporting/kopru.json_ile_uret()
 İlke:  eksik alan SESSİZCE Konya varsayılanına düşmez; isim isim ValueError.
 
-DOLDURULABİLENLER (ctx'te bugün var):
-  plant.* ← plant dict + ctx.capacity/lat/lon/tilt/azimuth/tz
-  run.mode/prepared ← ctx.mode, ctx.run_at_utc
-  daily[] ← ctx.daily_kwh (+ daily_p10/p90 varsa)  [kWh→MWh]
-  totals.p50/p10/p90 ← daily toplamları; capacity_factor ← toplam/(kWp·saat)
-  accuracy.wmape_0_24, skill ← ctx.karne (0-24 kovası ortalaması, 120 g penceresi)
-  climate.monthly_history ← ctx.iklim (iklim_oku)
-  scada.coverage_pct ← ctx.coverage_pct
-  calibration.physics_mape/holdout_mape ← ctx.holdout_physics_mape_pct / holdout_mape_pct
-  history.evolution ← ctx.kosu_evrim
-  hourly_typical.base_kw ← ctx.hourly p50'nin tipik-gün profili (medyan gün)
-  accuracy.report_card[] ← ctx.karne satırları (0-24 + 24-72 kovaları)
-
-BOŞLUKLAR (DB/worker'da bugün YOK — yarın kapatılacak, şimdilik ValueError):
-  B1 accuracy.uninterrupted_days  → KARAR: worker ayrı alan yazacak (türetme reddedildi, 8 Ağu)
-  B2 scada.quality_monthly        → flag_dagilimi TOPLAM; aylık kırılım SQL'i gerekli (s10)
-  B3 scada.quality_flags aksiyon metinleri → bayrak adı→aksiyon sabit tablosu (aşağıda kısmen)
-  B4 calibration.steps ara adımları → gate yalnız BAS/BIT verir; sistem verimi/bifacial/ML
-     kırılımı worker'a yazdırılmalı (ya da 2 adımlık dürüst şelale basılmalı — karar)
-  B5 error_dist (mu/sd/ndays, mae eğrileri, prof) → günlük sapma fotoğrafı worker'da yok
-  B6 report.id üretim kuralı      → PVQ-<tarih>-<mod>-<sıra> üretici
-  B7 sources.weather.model/version → forecast_runs.meteo_ozet_json'a model adı yazılmalı
+BOŞLUK DURUMU (E.3-a kapanışı, 9 Ağu kararları):
+  B1 accuracy.uninterrupted_days  ✔ worker yazar (report_stats) — ctx'ten okunur
+  B2 scada.quality_monthly        ✔ servis SQL'i (rapor_baglami, v2.103)
+  B3 scada.quality_flags          ✔ BAYRAK_AKSIYON çizelgesi + ctx.flag_dagilimi
+  B4 calibration.steps            ⏳ opsiyonel (v2.102) — yoksa sayfa 9 motor sabitleri
+  B5 error_dist                   ✔ worker fotoğrafı (report_stats.error_dist)
+  B6 report.id                    ✔ report_service.rapor_id_uret (report_log)
+  B7 sources.weather.model        ⏳ io/meteo damgası gelene dek dürüst 'sabitlenmemiş'
 """
 from __future__ import annotations
 import datetime as _dt
@@ -68,10 +54,14 @@ def ctx_to_json(ctx, plant: dict) -> dict:
 
     J = {"schema_version": "2.1"}
 
-    # kimlik / künye
-    J["report"] = {"customer": plant.get("customer") or eksik.append("report.customer"),
-                   "id": None, "contact": None}      # B6 + iletişim ayarı
-    J["plant"] = {"name": ctx.plant_name, "display": _saha_display(ctx, plant)}
+    # kimlik / künye — report.id çağıran doldurur (uret_html_pdf → rapor_id_uret)
+    iste(plant.get("customer"), "report.customer")
+    J["report"] = {"customer": plant.get("customer"),
+                   "id": None,
+                   "contact": plant.get("contact") or "—"}
+    J["plant"] = {"name": ctx.plant_name,
+                  "capacity_kwp": float(ctx.capacity_kwp),   # v2.103: s11 özgül üretim
+                  "display": _saha_display(ctx, plant)}
     J["run"] = {"mode": _mod_rozet(ctx.mode), "pages": 16,
                 "prepared": ctx.run_at_utc.strftime("%Y-%m-%dT%H:%M")}
 
@@ -84,7 +74,7 @@ def ctx_to_json(ctx, plant: dict) -> dict:
     J["daily"] = [{"date": str(g.date()),
                    "p50_mwh": _mwh(ctx.daily_kwh[g]),
                    "half_mwh": (_mwh((ctx.daily_p90[g] - ctx.daily_p10[g]) / 2) if bant else None),
-                   "flag": None}                      # cephe bayrağı: meteo'dan (E.3)
+                   "flag": None}                      # cephe bayrağı: meteo'dan (E.3-c)
                   for g in gunler]
     top50 = round(sum(d["p50_mwh"] for d in J["daily"]), 1)
     J["totals"] = {"p50_mwh": top50,
@@ -93,7 +83,12 @@ def ctx_to_json(ctx, plant: dict) -> dict:
                    "capacity_factor": round(100 * top50 * 1000
                                             / (ctx.capacity_kwp * 24 * len(gunler)), 1)}
 
-    # doğruluk (120 g penceresi — report_service.skill_gecmisi(gun=120) ile aynı)
+    # tipik gün profili (medyan gün — ctx.hourly p50'den)
+    iste(getattr(ctx, "hourly", None) is not None, "hourly (tipik gün için)")
+    if getattr(ctx, "hourly", None) is not None:
+        J["hourly_typical"] = _tipik_gun(ctx)
+
+    # doğruluk (120 g penceresi — skill_gecmisi(gun=120) ile aynı)
     iste(getattr(ctx, "karne", None) is not None, "accuracy.karne (skill_daily)")
     if getattr(ctx, "karne", None) is not None:
         k = ctx.karne
@@ -101,38 +96,51 @@ def ctx_to_json(ctx, plant: dict) -> dict:
         J["accuracy"] = {
             "skill_basis": "akilli-sureklilik (EPRI naif referans)",
             "wmape_0_24": round(float(g24.mape.mean()), 1),
-            "skill": int(round(100 * float(g24.skill_vs_naive.mean()))),
-            "uninterrupted_days": _zorunlu(ctx, "uninterrupted_days"),  # KARAR (B1, 8 Ağu):
-            # worker ayrı alan yazar (karneden türetme YOK); alan gelene dek ValueError.
+            "skill": int(round(float(g24.skill_vs_naive.dropna().mean()))),
+            "uninterrupted_days": _zorunlu(ctx, "uninterrupted_days"),  # B1 (worker)
             "report_card": _karne_satirlari(k),
         }
+
+    # hata dağılımı fotoğrafı — B5 (worker, report_stats.error_dist)
+    J["error_dist"] = _zorunlu(ctx, "error_dist")
 
     # iklim arşivi
     iste(getattr(ctx, "iklim", None) is not None, "climate.monthly_history (iklim_oku)")
     if getattr(ctx, "iklim", None) is not None:
         J["climate"] = {"monthly_history": _iklim_sozluk(ctx.iklim)}
 
-    # SCADA kalite
+    # SCADA kalite — B2 (servis SQL'i) + B3 (bayrak çizelgesi)
     J["scada"] = {"coverage_pct": iste(getattr(ctx, "coverage_pct", None), "scada.coverage_pct")
                   and round(ctx.coverage_pct)}
-    eksik.append("scada.quality_monthly (B2 — aylık SQL)")     # bilinçli açık
-    eksik.append("error_dist.* (B5 — worker fotoğrafı)")
-    eksik.append("calibration.steps (B4)")
-    eksik.append("hourly_typical.base_kw (medyan gün türetimi — yazılacak)")
+    iste(getattr(ctx, "quality_monthly", None) is not None,
+         "scada.quality_monthly (B2 SQL — rapor_baglami v2.103)")
+    if getattr(ctx, "quality_monthly", None) is not None:
+        J["scada"]["quality_monthly"] = ctx.quality_monthly
+    J["scada"]["quality_flags"] = _bayrak_cizelgesi(ctx)
 
-    # kalibrasyon uçları
+    # kaynak künyesi (s14) — tarih aralıkları GİRDİDEN, sabit değil
+    J["sources"] = _kunye(ctx)
+
+    # kalibrasyon uçları — steps opsiyonel (B4 kararı, v2.102)
     if getattr(ctx, "holdout_mape_pct", None) is not None:
         J["calibration"] = {"physics_mape": ctx.holdout_physics_mape_pct,
-                            "holdout_mape": ctx.holdout_mape_pct, "steps": None}
+                            "holdout_mape": ctx.holdout_mape_pct}
     else:
         eksik.append("calibration.holdout (gate)")
 
-    # evrim
+    # evrim — bant koşu p10/p90'dan (v2.103 SQL'i half_mwh verir)
+    iste(getattr(ctx, "kosu_evrim", None) is not None, "history.evolution (koşu geçmişi)")
     if getattr(ctx, "kosu_evrim", None) is not None:
-        J["history"] = {"evolution": [
-            {"date": r.run_at.strftime("%d ") + AY_UZUN[r.run_at.month - 1][:3],
-             "p50": round(float(r.p50_mwh), 1), "half": None}   # bant: koşu p10/p90 (E.3)
-            for r in ctx.kosu_evrim.itertuples()]}
+        ev, yarim_yok = [], False
+        for r in ctx.kosu_evrim.itertuples():
+            h = getattr(r, "half_mwh", None)
+            if h is None or h != h:          # None ya da NaN
+                yarim_yok = True
+            ev.append({"date": r.run_at.strftime("%d ") + AY_UZUN[r.run_at.month - 1][:3],
+                       "p50": round(float(r.p50_mwh), 1),
+                       "half": (round(float(h), 1) if h == h and h is not None else None)})
+        iste(not yarim_yok, "history.evolution[].half (koşu p10/p90 bandı)")
+        J["history"] = {"evolution": ev}
 
     if eksik:
         raise ValueError("JSON v2.1 için eksik alanlar:\n  - " + "\n  - ".join(map(str, eksik)))
@@ -141,51 +149,227 @@ def ctx_to_json(ctx, plant: dict) -> dict:
 
 def uret_html_pdf(tenant_id, plant: dict):
     """Tek üretim kapısı (report_service.uret'e 'pdf16' formatı olarak bağlanır)."""
-    from pvquant.services.report_service import rapor_baglami
+    from pvquant.services.report_service import rapor_baglami, rapor_id_uret
     from reporting.kopru import json_ile_uret                   # depo kökü sys.path'te
     ctx = rapor_baglami(tenant_id, plant)
     if ctx is None:
         raise ValueError("rapor bağlamı kurulamadı — önce tahmin üretin")
     J = ctx_to_json(ctx, plant)
+    J["report"]["id"] = rapor_id_uret(tenant_id, plant, ctx.mode)   # B6
     with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False,
                                      encoding="utf-8") as f:
         json.dump(J, f, ensure_ascii=False)
         yol = f.name
     try:
-        # Konya-dışı santralde taban denetimi anlamsız → denetim=False (E.3: taban türetimi)
+        # Konya-dışı santralde taban denetimi anlamsız → denetim=False (E.3-c: taban türetimi)
         return json_ile_uret(yol, denetim=(plant.get("name") == "Konya GES"))
     finally:
         os.unlink(yol)
 
 
-# ---- yardımcılar (iskelet; yarın DB karşısında doldurulup test edilecek) ----
+# ---- yardımcılar ----
 def _mod_rozet(m):
     return {"A": "MOD A · HAM FİZİK", "B": "MOD B · KALİBRE",
             "C": "MOD C · HİBRİT"}.get(m, "MOD %s" % m)
 
 
+def _tr(x, d=1):
+    """Türkçe ondalık: 12.4 → '12,4'."""
+    return ("%.*f" % (d, float(x))).replace(".", ",")
+
+
 def _saha_display(ctx, plant):
-    return [("Koordinat", "%.4f°K · %.4f°D" % (ctx.latitude, ctx.longitude)),
-            ("Kurulu güç", "%.1f MWp" % (ctx.capacity_kwp / 1000)),
-            ("Panel eğimi / azimut", "%d° / %d°" % (ctx.tilt_deg, ctx.azimuth_deg)),
-            ("Saat dilimi", ctx.plant_tz)]
+    """plant.display — veri.py sözleşmesi: 8 satır; 'Kurulu güç' MUTLAKA
+    'X MWp / Y MWe' biçiminde (SEBEKE, '/'ın sağından ayrıştırılır).
+    Bilinmeyen alanlar dürüst '—' (sessiz Konya varsayılanı YOK)."""
+    ac_kw = plant.get("capacity_ac_kw")
+    guc = "%s MWp / %s MWe" % (_tr(ctx.capacity_kwp / 1000),
+                               _tr(ac_kw / 1000) if ac_kw else "—")
+    dcac = _tr(ctx.capacity_kwp / ac_kw, 2) if ac_kw else "—"
+    yon = {90: " (doğu)", 180: " (güney)", 270: " (batı)"}.get(ctx.azimuth_deg, "")
+    yuk = plant.get("elevation_m")
+    pv, inv = plant.get("panel_model"), plant.get("inverter_model")
+    try:
+        from zoneinfo import ZoneInfo
+        ofs = _dt.datetime.now(ZoneInfo(ctx.plant_tz)).utcoffset()
+        tzs = "%s (UTC%+d)" % (ctx.plant_tz, int(ofs.total_seconds() // 3600))
+    except Exception:
+        tzs = ctx.plant_tz
+    return [
+        ["Koordinat", "%s°K · %s°D" % (_tr(ctx.latitude, 4), _tr(ctx.longitude, 4))],
+        ["Yükseklik", ("{:,} m".format(int(yuk)).replace(",", ".")) if yuk else "—"],
+        ["Kurulu güç", guc],
+        ["DC/AC oranı", dcac],
+        ["Panel eğimi / azimut", "%d° / %d°%s" % (ctx.tilt_deg, ctx.azimuth_deg, yon)],
+        ["İzleyici", plant.get("tracker") or "sabit eğim"],
+        ["Panel / inverter", (" · ".join(x for x in (pv, inv) if x)) or "—"],
+        ["Saat dilimi", tzs],
+    ]
 
 
-def _ardisik_gun(g24):
-    """B1: karnede bugünden geriye kesintisiz gün sayısı."""
-    ...
+def _tipik_gun(ctx):
+    """hourly_typical: medyan günün yerel 05–19 p50 profili [kW].
+    Medyan gün = günlük p50 toplamları sıralanınca ortadaki gün; band_method
+    'quantile' (Mod C zorunlu — daily bandı zaten iste() ile şart koşuldu).
+    peak_kw: renk ölçeği üst sınırı — tepe·1,065, yüzlüğe yuvarlı (motor kalıbı)."""
+    h = ctx.hourly["p50_kw"]
+    yerel = h.tz_convert(ctx.plant_tz)
+    gun = yerel.groupby(yerel.index.date).sum()
+    if len(gun) == 0:
+        raise ValueError("hourly boş — tipik gün türetilemedi")
+    medyan_gun = sorted(gun.index, key=lambda d: gun[d])[len(gun) // 2]
+    p = yerel[[d == medyan_gun for d in yerel.index.date]]
+    saatlik = {t.hour: float(v) for t, v in p.items()}
+    base = [int(round(saatlik.get(s, 0.0))) for s in range(5, 20)]
+    tepe = max(base) or int(ctx.capacity_kwp)
+    return {"base_kw": base,
+            "peak_kw": float(int(round(tepe * 1.065 / 100.0)) * 100),
+            "band_method": "quantile"}
 
 
 def _karne_satirlari(k):
-    ...
+    """accuracy.report_card — s07 SÖZLEŞMESİ (motor katı):
+    · TAM 30 satır ('Son 30 günün doğruluk karnesi'; azı/fazlası IndexError)
+    · her satırda wmape_0_24 + skill dolu (naif = wm/(1−sk) motor içinde türer)
+    · SADECE son 7 satırda wmape_24_72 dolu (KARNE_H72_KUYRUK uzunluğu 7 olmalı;
+      erken günlerde veri olsa da null'lanır — kuyruk şişerse s07 kayar).
+    skill_daily.skill_vs_naive yüzde (100·(1−m/n)) → rapor 0-1 kesir ister."""
+    out = {}
+    for r in k.itertuples():
+        d = out.setdefault(str(r.date), {"date": str(r.date), "wmape_0_24": None,
+                                         "skill": None, "wmape_24_72": None})
+        if r.horizon_bucket == "0-24":
+            d["wmape_0_24"] = round(float(r.mape), 1)
+            if r.skill_vs_naive == r.skill_vs_naive and r.skill_vs_naive is not None:
+                d["skill"] = round(float(r.skill_vs_naive) / 100.0, 2)
+        elif r.horizon_bucket == "24-72":
+            d["wmape_24_72"] = round(float(r.mape), 1)
+    sira = [out[t] for t in sorted(out)]
+    if len(sira) < 30:
+        raise ValueError("accuracy.report_card 30 gün ister; karnede %d gün var "
+                         "(skill_daily birikimi yetersiz)" % len(sira))
+    sira = sira[-30:]
+    bos = [d["date"] for d in sira if d["wmape_0_24"] is None or d["skill"] is None]
+    if bos:
+        raise ValueError("report_card: wmape/skill eksik günler: %s" % ", ".join(bos))
+    for d in sira[:23]:
+        d["wmape_24_72"] = None          # kuyruk sözleşmesi: yalnız son 7
+    kuyruk_bos = [d["date"] for d in sira[23:] if d["wmape_24_72"] is None]
+    if kuyruk_bos:
+        raise ValueError("report_card kuyruk (son 7 gün) 24-72 eksik: %s"
+                         % ", ".join(kuyruk_bos))
+    return sira
 
 
 def _iklim_sozluk(ik):
-    ...
+    """climate.monthly_history: {yıl: [12 aylık MWh]}. iklim_oku çerçevesini
+    esnek karşılar (yaygın kolon adları); tanınmazsa isim isim ValueError."""
+    kolon = {c.lower(): c for c in ik.columns}
+    y = kolon.get("yil") or kolon.get("year")
+    a = kolon.get("ay") or kolon.get("month")
+    v = (kolon.get("mwh") or kolon.get("uretim_mwh") or kolon.get("aylik_mwh")
+         or kolon.get("value"))
+    if not (y and a and v):
+        raise ValueError("iklim çerçevesi tanınmadı — kolonlar: %s "
+                         "(_iklim_sozluk'u iklim_service şemasına eşleyin)"
+                         % list(ik.columns))
+    piv = ik.pivot_table(index=y, columns=a, values=v, aggfunc="first")
+    # eksik ay NaN döner; 'NaN or 0' TUTMAZ (NaN truthy) — açık fillna şart
+    piv = piv.reindex(columns=range(1, 13)).fillna(0.0)
+    return {str(int(yy)): [int(round(float(piv.loc[yy, m])))
+                           for m in range(1, 13)]
+            for yy in sorted(piv.index)}
+
+
+def _bayrak_cizelgesi(ctx):
+    """B3: ctx.flag_dagilimi → s10 çizelgesi (ad / saat / pay / aksiyon)."""
+    fd = getattr(ctx, "flag_dagilimi", None) or {}
+    toplam = sum(fd.values()) or 1
+    out = []
+    for ad, n in sorted(fd.items(), key=lambda kv: -kv[1]):
+        if ad == "valid":
+            continue
+        baslik, aksiyon = BAYRAK_AKSIYON.get(
+            ad, (ad, "Yeni bayrak — aksiyon çizelgesine eklenmeli."))
+        out.append({"ad": baslik,
+                    "saat": ("%d" % n) if n < 1000 else
+                            ("{:,}".format(n).replace(",", ".")),
+                    "pay": "%" + ("%.1f" % (100.0 * n / toplam)).replace(".", ","),
+                    "aksiyon": aksiyon})
+    return out
+
+
+def _kunye(ctx):
+    """s14 kaynak künyesi — tarih aralıkları girdiden (Konya sabiti sızmaz).
+    B7: NWP model adı io/meteo damgası gelene dek dürüst 'sabitlenmemiş'."""
+    ay_kisa = [x[:3] for x in AY_UZUN]
+    scada_aralik = "—"
+    if getattr(ctx, "ilk_scada_ts", None) is not None and \
+       getattr(ctx, "son_scada_ts", None) is not None:
+        i, s = ctx.ilk_scada_ts, ctx.son_scada_ts
+        scada_aralik = "%d %s – %d %s %d" % (i.day, AY_UZUN[i.month - 1],
+                                             s.day, AY_UZUN[s.month - 1], s.year)
+    iklim_aralik = "—"
+    if getattr(ctx, "iklim", None) is not None:
+        try:
+            yillar = sorted(int(y) for y in _iklim_sozluk(ctx.iklim))
+            tam = [y for y in yillar if y < yillar[-1]]
+            iklim_aralik = "%d–%d (%d tam yıl) + %d" % (
+                tam[0], tam[-1], len(tam), yillar[-1])
+        except (ValueError, IndexError):
+            pass
+    return {
+        "weather": {"model": "saglayici-en-uygun", "version": "sabitlenmemis",
+                    "note": "hangi NWP modelinin dondugu kayda islenmiyor "
+                            "(sayfa 14, sinir 1)"},   # B7 açık
+        "display": [
+            ["Hava tahmini", "Saatlik ışınım, bulut, sıcaklık, rüzgâr",
+             "saatlik · ~11 km", "her tahmin için 16 gün", "UTC"],
+            ["Santral verisi (SCADA)", "Gerçekleşen üretim ve kalite bayrakları",
+             "15 dakika → saatlik", scada_aralik, "UTC"],
+            ["İklim arşivi", "Aylık üretim geçmişi", "aylık", iklim_aralik,
+             "yerel ay"],
+            ["Zemin albedosu", "Bifacial kazanç hesabının girdisi (0,16)",
+             "sabit", "kurulumda girilir", "—"],
+            ["Santral künyesi",
+             "Kurulu güç, koordinat, eğim/azimut, panel ve inverter",
+             "—", "kurulumda bir kez", ctx.plant_tz],
+        ]}
+
 
 def _zorunlu(ctx, alan):
     """B-kararları: eksik alan sessizce düşmez — isim isim ValueError."""
     v = getattr(ctx, alan, None)
     if v is None:
-        raise ValueError("worker alanı eksik: ctx.%s (bkz. B1 kararı)" % alan)
+        raise ValueError("worker alanı eksik: ctx.%s (bkz. B1/B5 kararı — "
+                         "gece worker'ı report_stats'ı doldurmuş mu?)" % alan)
     return v
+
+
+if __name__ == "__main__":
+    # Prova sürücüsü: aktif santralleri gez, uret_html_pdf'i dene.
+    # Korkuluk (isim isim ValueError) BAŞARI sayılır — sessiz sahte rapor yok.
+    import sys as _sys
+    import pathlib as _pl
+    _KOK = _pl.Path(__file__).resolve().parent.parent
+    if str(_KOK) not in _sys.path:
+        _sys.path.insert(0, str(_KOK))       # reporting.kopru importu için
+    from sqlalchemy import create_engine as _ce, text as _text
+    _url = os.environ.get(
+        "PVQ_DB_URL",
+        "postgresql+psycopg://pvquant:pvquant_dev@localhost:5432/pvquant")
+    with _ce(_url).connect() as _c:
+        _plants = [dict(r._mapping) for r in _c.execute(_text(
+            "SELECT p.*, p.tenant_id FROM plants p JOIN tenants t "
+            "ON t.id=p.tenant_id WHERE t.status='active' AND NOT p.archived"))]
+    if not _plants:
+        print("prova: aktif santral yok")
+        _sys.exit(2)
+    for _p in _plants:
+        print("=== prova: %s ===" % _p["name"])
+        try:
+            print("OK →", uret_html_pdf(_p["tenant_id"], _p))
+        except ValueError as e:
+            print("KORKULUK (tasarım gereği durdu):", e)
+        except Exception as e:
+            print("HATA [%s]: %s" % (type(e).__name__, e))
