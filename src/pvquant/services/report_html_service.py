@@ -41,6 +41,14 @@ BAYRAK_AKSIYON = {
     "okunamayan": ("Okunamayan satır",
                    "Ayrıştırılamayan kayıtlar; örnekleri veri ekinde listelenir."),
 }
+# c3 (v2.108): DB bayrakları İngilizce yazılıyor — aynı aksiyonlara eşle
+BAYRAK_AKSIYON.update({
+    "night_production": BAYRAK_AKSIYON["gece_uretim"],
+    "over_capacity":    BAYRAK_AKSIYON["kapasite_ustu"],
+    "unparseable":      BAYRAK_AKSIYON["okunamayan"],
+    "frozen":           BAYRAK_AKSIYON["donmus"],
+    "yanlis_yil_2006":  BAYRAK_AKSIYON["yanlis_yil"],
+})
 
 
 def _mwh(kwh):
@@ -406,11 +414,11 @@ def _anlati(ctx, J):
                        "(beklenti %s MWh, ±%s MWh).") % (round(tip), gd, AY_UZUN[gm - 1],
                        _tr(D[gi]["p50_mwh"], 1), _tr(D[gi]["half_mwh"], 1))
     C = J.get("calibration") or {}
-    if C.get("physics_mape") is not None and C.get("holdout") is not None:
+    if C.get("physics_mape") is not None and C.get("holdout_mape") is not None:
         n["exec_2"] = ("<b>Bağımsız test.</b> Kalibrasyon sonrası hata bağımsız test "
                        "penceresinde %%%s'ten %%%s'e inmiştir; ölçüm modelin eğitimde "
                        "görmediği son dönem verisindedir.") % (_tr(C["physics_mape"], 1),
-                       _tr(C["holdout"], 1))
+                       _tr(C["holdout_mape"], 1))
     else:
         n["exec_2"] = ("<b>Bağımsız test.</b> Bu koşu için kalibrasyon karşılaştırması "
                        "raporlanmıyor; sonuçlar sayfa 9-10'dadır.")
@@ -428,7 +436,9 @@ def _anlati(ctx, J):
     kap = (J.get("scada") or {}).get("coverage_pct")
     if Q.get("aylar"):
         g = Q["gecerli"]
-        mi = min(range(len(g)), key=lambda k: g[k])
+        _dolu = [k for k in range(len(g)) if g[k] is not None]   # c5/3: 'veri yok' ayları atla
+        mi = min(_dolu, key=lambda k: g[k]) if _dolu else None
+    if Q.get("aylar") and mi is not None:
         n["izleme"] = ("Kalite süzgecini geçen saat oranı arşiv genelinde %%%s'tir; "
                        "hedef en az %%80. Son altı ayın en düşük kapsaması %s ayındadır "
                        "(%%%d). Aylık kırılım ve bayrak dökümü sayfa 10'dadır.") % (
@@ -453,12 +463,16 @@ def _anlati(ctx, J):
     n["s09_prose"] = ("Kalibrasyonun bir modeli veriye uydurup uydurmadığı, bulunan "
                       "katsayıların fiziksel olarak anlamlı olup olmadığına bakılarak "
                       "anlaşılır; katsayılar fiziksel aralık denetiminden geçirilir.")
-    for k, a in (("kat_eta", "eta_bos"), ("kat_bif", "bifacial_pct"),
-                 ("kat_saat", "kal_saat"), ("kat_tarih", "kal_tarih")):
-        v = getattr(ctx, a, None)
-        n[k] = _tr(v, 3) if (k == "kat_eta" and v is not None) else (
-               "%%%s" % _tr(v, 1) if (k == "kat_bif" and v is not None) else (
-               str(v) if v is not None else "—"))
+    _eta = getattr(ctx, "eta_bos", None)
+    n["kat_eta"] = _tr(_eta, 3) if _eta is not None else "—"
+    _bif = getattr(ctx, "bifacial_pct", None)
+    n["kat_bif"] = "%%%s" % _tr(_bif, 1) if _bif is not None else "—"
+    _sa = getattr(ctx, "kal_saat", None)
+    n["kat_saat"] = ("{:,}".format(int(_sa)).replace(",", ".")
+                     if _sa is not None else "—")
+    _ta = getattr(ctx, "kal_tarih", None)
+    n["kat_tarih"] = ("%d %s %d" % (_ta.day, AY_UZUN[_ta.month - 1], _ta.year)
+                      if _ta is not None else "—")
     fd = getattr(ctx, "flag_dagilimi", None)
     if fd and getattr(ctx, "ilk_scada_ts", None) is not None:
         i, so = ctx.ilk_scada_ts, ctx.son_scada_ts
@@ -467,6 +481,18 @@ def _anlati(ctx, J):
             "{:,}".format(sum(fd.values())).replace(",", "."))
     n["lejant_hatali"] = "hatalı kayıtlar"
     n["s14_kapsama"] = "Aylık kırılım ve bayrak dökümü sayfa 10'dadır."
+    if zk:
+        import statistics as _st
+        _mw = _st.median(r["wmape_0_24"] for r in zk)
+        _nf = [r["wmape_0_24"] / (1 - r["skill"]) for r in zk
+               if r.get("skill") is not None and r["skill"] < 1]
+        n["s07_sekil"] = ("Gün-öncesi hata medyanı %%%s'tir%s.") % (
+            _tr(_mw, 1),
+            ("; naif referans medyanı %%%s" % _tr(_st.median(_nf), 1)) if _nf else "")
+    if C.get("holdout_mape") is not None:
+        n["s10_sekil1"] = ("Modelin hiç görmediği test dönemindeki hata %%%s'tir; "
+                           "bölme kronolojiktir, test dönemi gerçek bir gelecektir."
+                           ) % _tr(C["holdout_mape"], 1)
     return n
 
 

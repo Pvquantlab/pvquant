@@ -74,10 +74,25 @@ def _temizle(plant, gun_sayisi):
         n4 = s.execute(text(
             "DELETE FROM skill_daily WHERE plant_id=:p AND date >= :e"),
             {"p": pid, "e": esik.date()}).rowcount
+        # c5/2 (v2.109): pencere içi YABANCI koşu değerleri karneyi zehirler
+        # (eski hava tahmini × sentetik gerçekleşme) — değerler karantinaya,
+        # koşu kayıtları denetim izi olarak kalır.
+        n5 = s.execute(text(
+            "DELETE FROM forecast_values WHERE plant_id=:p AND ts_utc >= :e "
+            "AND run_id IN (SELECT id FROM forecast_runs WHERE plant_id=:p "
+            " AND meteo_source <> 'sentetik_tohum')"),
+            {"p": pid, "e": esik}).rowcount
+        # değersiz kalan kabuk koşular son_kosu'yu şaşırtmasın
+        n6 = s.execute(text(
+            "DELETE FROM forecast_runs WHERE plant_id=:p "
+            "AND meteo_source <> 'sentetik_tohum' AND run_at >= :e "
+            "AND NOT EXISTS (SELECT 1 FROM forecast_values v "
+            "                WHERE v.run_id = forecast_runs.id)"),
+            {"p": pid, "e": esik}).rowcount
         s.execute(text("DELETE FROM report_stats WHERE plant_id=:p"),
                   {"p": pid})
-    print("  temizlik: %d tahmin, %d koşu, %d scada, %d skill satırı" %
-          (n1, n2, n3, n4))
+    print("  temizlik: %d tahmin, %d koşu, %d scada, %d skill, %d yabancı değer, %d kabuk koşu" %
+          (n1, n2, n3, n4, n5, n6))
 
 
 def _sentetik_seri(plant, saatler, rng):
@@ -89,11 +104,22 @@ def _sentetik_seri(plant, saatler, rng):
     gunler = sorted(set(saatler.date))
     f, faktor = 0.85, {}
     for g in gunler:                      # AR(1) hava faktörü — ardışık günler benzer
-        f = 0.72 * f + 0.28 * rng.uniform(0.50, 1.02)
+        f = 0.45 * f + 0.55 * rng.uniform(0.45, 1.05)   # tohum v2: günler daha bağımsız
         faktor[g] = f
     fdizi = np.array([faktor[t.date()] for t in saatler])
+    # tohum v2 (c4): gün-içi bulut geçişleri — naif referans gerçekçi yanılsın,
+    # model (gerçeğe gürültülü bakan) yakalasın → pozitif, inandırıcı skill
+    bulut = np.ones(len(saatler))
+    for g in gunler:
+        for _ in range(int(rng.integers(1, 4))):
+            h0 = int(rng.integers(6, 16))
+            sure = int(rng.integers(1, 4))
+            derinlik = float(rng.uniform(0.35, 0.80))
+            for i, t in enumerate(saatler):
+                if t.date() == g and h0 <= t.hour < h0 + sure:
+                    bulut[i] *= derinlik
     kwp = float(plant["capacity_kwp"])
-    guc = kwp * (cs.values / 1000.0) * 0.88 * fdizi
+    guc = kwp * (cs.values / 1000.0) * 0.88 * fdizi * bulut
     guc = guc * rng.normal(1.0, 0.02, len(guc))          # ölçüm gürültüsü
     return np.clip(guc, 0.0, kwp)
 
@@ -104,8 +130,8 @@ def ek(plant, gun_sayisi):
     simdi = dt.datetime.now(dt.timezone.utc).replace(minute=0, second=0,
                                                      microsecond=0)
     bas = simdi - dt.timedelta(days=gun_sayisi)
-    # gerçekleşen: bas → simdi-1h; tahmin ufku simdi+72h'ye taşar
-    tum_saatler = pd.date_range(bas, simdi + dt.timedelta(hours=72),
+    # gerçekleşen: bas → simdi-1h; 'gelecek' 16 güne uzar (yayın koşusu için)
+    tum_saatler = pd.date_range(bas, simdi + dt.timedelta(days=16),
                                 freq="h", tz="UTC")
     gercek = pd.Series(_sentetik_seri(plant, tum_saatler, rng),
                        index=tum_saatler)
@@ -155,8 +181,8 @@ def ek(plant, gun_sayisi):
                 if a <= 0.0:
                     continue                     # gece: tahmin de 0, satır yok
                 h = (ts - run_at).total_seconds() / 3600
-                sap = 0.05 if h < 24 else 0.11   # ufukla büyüyen hata
-                bant = 0.10 if h < 24 else 0.18
+                sap = 0.07 if h < 24 else 0.13   # ufukla büyüyen hata (tohum v2)
+                bant = 0.12 if h < 24 else 0.20
                 p50 = max(0.0, a * (1 + rng.normal(0, sap)))
                 degerler.append({
                     "t": tid, "r": rid, "p": pid, "ts": ts, "p50": p50,
@@ -169,7 +195,38 @@ def ek(plant, gun_sayisi):
                     " ts_utc,p50_kw,p10_kw,p90_kw,physics_kw,ml_kw)"
                     " VALUES(:t,:r,:p,:ts,:p50,:p10,:p90,:f,:m)"), degerler)
                 n_deger += len(degerler)
-    print("  tahmin: %d koşu, %d değer" % (gun_sayisi, n_deger))
+    # c5/2 (v2.109): YAYIN koşusu — rapor daily[16] ister; bugünden 16 günlük
+    # ufuk, banda günle genişleyen belirsizlik.
+    with _sahip_oturum() as s, s.begin():
+        # 03:00'e demirle: geç saatte koşulursa ilk gün boş kalır (daily[16] dersi)
+        pub_at = dt.datetime(simdi.year, simdi.month, simdi.day, 3,
+                             tzinfo=dt.timezone.utc)
+        rid = uuid.uuid5(uuid.NAMESPACE_DNS,
+                         "pvq-seed-pub-%s-%s" % (pid, simdi.date()))
+        s.execute(text(
+            "INSERT INTO forecast_runs(id,tenant_id,plant_id,run_at,mode,"
+            " model,meteo_source,meteo_ozet_json) VALUES(:i,:t,:p,:r,'C',"
+            " 'hybrid_residual','sentetik_tohum','{}'::jsonb)"),
+            {"i": rid, "t": tid, "p": pid, "r": pub_at})
+        yayin = []
+        for ts in pd.date_range(pub_at + dt.timedelta(hours=1),
+                                pub_at + dt.timedelta(days=16), freq="h", tz="UTC"):
+            a = float(gercek.get(ts, 0.0))
+            if a <= 0.0:
+                continue
+            gd = (ts - pub_at).days
+            p50 = max(0.0, a * (1 + rng.normal(0, 0.05 + 0.004 * gd)))
+            bant = 0.10 + 0.006 * gd
+            yayin.append({"t": tid, "r": rid, "p": pid, "ts": ts, "p50": p50,
+                          "p10": p50 * (1 - bant), "p90": p50 * (1 + bant),
+                          "f": p50 * float(rng.normal(1, 0.03)),
+                          "m": p50 * float(rng.normal(1, 0.02))})
+        s.execute(text(
+            "INSERT INTO forecast_values(tenant_id,run_id,plant_id,"
+            " ts_utc,p50_kw,p10_kw,p90_kw,physics_kw,ml_kw)"
+            " VALUES(:t,:r,:p,:ts,:p50,:p10,:p90,:f,:m)"), yayin)
+    print("  tahmin: %d koşu, %d değer · yayın: 16 gün, %d değer"
+          % (gun_sayisi, n_deger, len(yayin)))
 
     # --- Türevler GERÇEK boru hattından ---
     gece_skill(plant, pencere_gun=gun_sayisi + 5)

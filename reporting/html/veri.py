@@ -37,6 +37,8 @@ KAT_ETA = '0,942'
 KAT_BIF = '%7,3'
 KAT_SAAT = '1.487'
 KAT_TARIH = '19 Temmuz 2026'
+NARR_S07_SEKIL = 'Gün-öncesi hata dönem boyunca %6–13 bandında\n      kalmış, referansın belirgin altında seyretmiştir.'
+NARR_S10_SEKIL1 = "Eğitim penceresinde hata %6,8, hiç\n    görülmemiş test döneminde %{{HOLDOUT}}'dur — aradaki fark makul, yani model ezberlememiştir."
 MOD_ROZET = "MOD C · HİBRİT"               # run.mode
 SAYFA_TOPLAM = 16
 
@@ -300,6 +302,8 @@ def _json_yukle(path):
     g["KAT_BIF"] = _N.get("kat_bif", "—")
     g["KAT_SAAT"] = _N.get("kat_saat", "—")
     g["KAT_TARIH"] = _N.get("kat_tarih", "—")
+    g["NARR_S07_SEKIL"] = _N.get("s07_sekil", "")
+    g["NARR_S10_SEKIL1"] = _N.get("s10_sekil1", "")
     g["EGITIM_SERIT"] = "<i>%d %s %d</i><i>%d %s</i><i>%d %s %d</i>" % (
         _b.day, AY_UZUN[_b.month - 1], _b.year,
         _m.day, AY_UZUN[_m.month - 1],
@@ -346,7 +350,7 @@ def doldur(s):
     i_min = P50_GUN.index(min(P50_GUN))
     D = {
         "SANTRAL": SANTRAL, "MUSTERI": MUSTERI, "DONEM": DONEM,
-        "NARR_EXEC_1": NARR_EXEC_1, "NARR_EXEC_2": NARR_EXEC_2, "NARR_EXEC_3": NARR_EXEC_3, "NARR_EXEC_4": NARR_EXEC_4, "NARR_IZLEME": NARR_IZLEME, "NARR_S04_KUYRUK": NARR_S04_KUYRUK, "NARR_S06": NARR_S06, "NARR_S07_BASLIK": NARR_S07_BASLIK, "NARR_S07_GOVDE": NARR_S07_GOVDE, "NARR_S09_PROSE": NARR_S09_PROSE, "NARR_S10_SEKIL": NARR_S10_SEKIL, "ARSIV_ETIKET": ARSIV_ETIKET, "LEJANT_HATALI": LEJANT_HATALI, "NARR_S14_KAPSAMA": NARR_S14_KAPSAMA, "KAT_ETA": KAT_ETA, "KAT_BIF": KAT_BIF, "KAT_SAAT": KAT_SAAT, "KAT_TARIH": KAT_TARIH,
+        "NARR_EXEC_1": NARR_EXEC_1, "NARR_EXEC_2": NARR_EXEC_2, "NARR_EXEC_3": NARR_EXEC_3, "NARR_EXEC_4": NARR_EXEC_4, "NARR_IZLEME": NARR_IZLEME, "NARR_S04_KUYRUK": NARR_S04_KUYRUK, "NARR_S06": NARR_S06, "NARR_S07_BASLIK": NARR_S07_BASLIK, "NARR_S07_GOVDE": NARR_S07_GOVDE, "NARR_S09_PROSE": NARR_S09_PROSE, "NARR_S10_SEKIL": NARR_S10_SEKIL, "ARSIV_ETIKET": ARSIV_ETIKET, "LEJANT_HATALI": LEJANT_HATALI, "NARR_S14_KAPSAMA": NARR_S14_KAPSAMA, "KAT_ETA": KAT_ETA, "KAT_BIF": KAT_BIF, "KAT_SAAT": KAT_SAAT, "KAT_TARIH": KAT_TARIH, "NARR_S07_SEKIL": NARR_S07_SEKIL, "NARR_S10_SEKIL1": NARR_S10_SEKIL1,
         "RAPOR_ID": RAPOR_ID, "HAZIRLANMA": HAZIRLANMA, "EPOSTA": EPOSTA,
         "DONEM": DONEM,
         "KURULU": d.get("Kurulu güç", ""),

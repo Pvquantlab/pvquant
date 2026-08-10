@@ -23,6 +23,11 @@ def kapsama(W=1000, H=290, ml=58, mb=52, fs=14):
                  ' font-weight="500" fill="#2B3439">%%%d</text>' % (ml - 9, y(t) + fs * .34, fs, t))
     for i in range(n):
         x0 = cx(i) - bw / 2
+        if GECERLI[i] is None:               # c5/3: verisiz ay yutulmaz, dürüstçe söylenir
+            o.append('<text x="%.1f" y="%.1f" text-anchor="middle" font-family="PlexSans" '
+                     'font-size="%d" font-style="italic" fill="#8A949A">veri yok</text>'
+                     % (cx(i), y(50) + fs * .34, fs))
+            continue
         alt = 0
         for deger, renk in ((GECERLI[i], "#5A6A73"), (HATALI[i], AMBER), (DIGER[i], "#C9D1D5")):
             o.append('<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="%s"/>'
@@ -107,8 +112,7 @@ BODY = """<div class="page"><div class="sheet">
   <div class="figcap" style="margin-top:2.5mm"><b>Şekil 10.1</b>&nbsp;&nbsp;120 günlük pencere
     kronolojik olarak bölünür. Rastgele bölme bilinçli olarak kullanılmaz: rastgelelik, test
     dönemine eğitim dönemiyle aynı hava koşullarını sızdırır ve başarımı yapay biçimde şişirir.
-    Kronolojik bölmede test dönemi gerçek bir gelecektir. Eğitim penceresinde hata %6,8, hiç
-    görülmemiş test döneminde %{{HOLDOUT}}'dur — aradaki fark makul, yani model ezberlememiştir.</div>
+    Kronolojik bölmede test dönemi gerçek bir gelecektir. {{NARR_S10_SEKIL1}}</div>
 
   """ + kapsama() + """
     <div class="legend"><span><i class="g"></i>Kalite süzgecini geçen saatler</span>

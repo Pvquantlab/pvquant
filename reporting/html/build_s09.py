@@ -17,7 +17,7 @@ def selale(W=1000, H=352, ml=64, mb=88, fs=14):
             continue
         _run += _a[1]
         _lvl.append(_run)
-    ymax = int(-(-max(_lvl) // 4)) * 4          # ceil(max/4)*4
+    ymax = int(-(-(max(_lvl) * 1.08) // 4)) * 4  # c5/2: %8 etiket payı — kanonikte yine 16
     adim_t = ymax // 4
     slot = PW / n
     bw = slot * .46
@@ -47,7 +47,7 @@ def selale(W=1000, H=352, ml=64, mb=88, fs=14):
             hi, lo = max(kum, kum + d), min(kum, kum + d)
             renk = "#2B7B9B" if tip == "iyi" else AMBER
             o.append('<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="%s" stroke="%s" '
-                     'stroke-width="1"/>' % (x0, y(hi), bw, max(2.5, y(lo) - y(hi)), renk, renk))
+                     'stroke-width="1"/>' % (x0, y(hi), bw, max(3.0, y(lo) - y(hi)), renk, renk))
             o.append('<text x="%.1f" y="%.1f" text-anchor="middle" font-family="PlexSans" '
                      'font-size="%d" font-weight="600" fill="%s">%s%s puan</text>'
                      % (cx(i), y(hi) - 8, fs, renk if tip == "kotu" else INK,

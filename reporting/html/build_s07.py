@@ -14,9 +14,11 @@ def karne(W=1000, H=272, ml=60, mb=52, fs=15):
     n = len(wm)
     step = PW / (n - 1)
     cx = lambda i: ml + step * i
-    y = lambda v: MT + PH * (20 - v) / 20
+    # c5 (v2.109): eksen serilerin tepesinden, 5'e yuvarlı — kanonikte 20'yi üretir
+    k_ymax = max(20, int(-(-max(max(wm), max(h72), max(naif)) // 5)) * 5)
+    y = lambda v: MT + PH * (k_ymax - v) / k_ymax
     o = []
-    for t in range(0, 21, 5):
+    for t in range(0, k_ymax + 1, 5):
         o.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1.3"/>'
                  % (ml, y(t), W - MR, y(t), GRID))
         o.append('<text x="%.1f" y="%.1f" text-anchor="end" font-family="PlexSans" font-size="%d"'
@@ -38,7 +40,7 @@ def karne(W=1000, H=272, ml=60, mb=52, fs=15):
     # kazanç etiketi
     o.append('<text x="%.1f" y="%.1f" text-anchor="middle" font-family="PlexSans" font-size="%d" '
              'font-weight="600" fill="#8A6A28">kazanç: ortalama %%%s</text>'
-             % (cx(9), y(19.2), fs, tr(ORT_SKILL, 0)))
+             % (cx(9), y(k_ymax * 0.96), fs, tr(ORT_SKILL, 0)))
     o.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#7C8781" stroke-width="1.5"/>'
              % (ml, y(0), W - MR, y(0)))
     for i in range(0, n, 4):
@@ -107,8 +109,7 @@ BODY = """<div class="page"><div class="sheet">
       <span><i class="gain"></i>Kazanç</span></div>
     <div class="figcap"><b>Şekil 7.1</b>&nbsp;&nbsp;Son 30 günün karnesi. Kum rengi alan,
       tahminin basit referans yönteme göre kazandırdığı isabettir — alan ne kadar kalınsa
-      model o gün o kadar değer üretmiştir. Gün-öncesi hata dönem boyunca %6–13 bandında
-      kalmış, referansın belirgin altında seyretmiştir.</div>
+      model o gün o kadar değer üretmiştir. {{NARR_S07_SEKIL}}</div>
 
   <div class="tcap">Çizelge 7.1 <span>Son yedi günün karnesi</span></div>
   <table>

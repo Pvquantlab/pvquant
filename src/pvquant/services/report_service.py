@@ -99,6 +99,17 @@ def rapor_baglami(tenant_id, plant: dict) -> ReportContext | None:
             ctx.iklim = ik
         # v2.104: report.customer kaynağı KİRACI adıdır (santralda alan yok);
         # kolon adı şemaya göre değişebilir — esnek seçim.
+        # c3 (v2.108): s09 katsayı kartı — calibrations.params_json'dan esnek okuma
+        if cal is not None:
+            _pj = cal.params_json or {}
+            ctx.eta_bos = (_pj.get("eta_bos") or _pj.get("eta")
+                           or _pj.get("sistem_verimi"))
+            _bf = (_pj.get("bifacial_pct") or _pj.get("bifacial")
+                   or _pj.get("bifacial_gain") or _pj.get("bg"))  # c5: gerçek anahtar 'bg' 
+            ctx.bifacial_pct = (_bf * 100 if (_bf is not None and _bf < 1)
+                                else _bf)
+            ctx.kal_saat = cal.n_valid_hours
+            ctx.kal_tarih = cal.created_at
         trow = s.execute(text("SELECT * FROM tenants WHERE id=:t"),
                          {"t": tenant_id}).first()
         if trow is not None:
@@ -178,7 +189,8 @@ def rapor_baglami(tenant_id, plant: dict) -> ReportContext | None:
             "SELECT date_trunc('month', ts_utc) AS ay, COUNT(*) AS n, "
             " COUNT(*) FILTER (WHERE flag='valid') AS g, "
             " COUNT(*) FILTER (WHERE flag IN ('gece_uretim','kapasite_ustu',"
-            "'okunamayan') OR flag LIKE 'yanlis%') AS h "
+            "'okunamayan','night_production','over_capacity','unparseable') "
+            " OR flag LIKE 'yanlis%') AS h "  # c5: İngilizce bayraklar (v2.109)
             "FROM scada_hourly WHERE plant_id=:p "
             "AND ts_utc >= date_trunc('month', now()) - INTERVAL '5 months' "
             "GROUP BY 1 ORDER BY 1"), s.connection(),
@@ -186,12 +198,20 @@ def rapor_baglami(tenant_id, plant: dict) -> ReportContext | None:
         if len(ql) > 0:
             _ayl = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
                     "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"]
-            gy = [round(100 * r.g / r.n) for r in ql.itertuples()]
-            hy = [round(100 * r.h / r.n) for r in ql.itertuples()]
+            # c5/3 (v2.109): takvim iskeleti — verisiz ay yutulmaz, 'veri yok' basılır
+            _kayit = {(r.ay.year, r.ay.month): r for r in ql.itertuples()}
+            _bug = pd.Timestamp.now(tz="UTC")
+            aylar, gy, hy = [], [], []
+            for k in range(5, -1, -1):
+                _a = (_bug - pd.DateOffset(months=k))
+                aylar.append(_ayl[_a.month - 1])
+                r = _kayit.get((_a.year, _a.month))
+                gy.append(round(100 * r.g / r.n) if r is not None else None)
+                hy.append(round(100 * r.h / r.n) if r is not None else None)
             ctx.quality_monthly = {
-                "aylar": [_ayl[r.ay.month - 1] for r in ql.itertuples()],
-                "gecerli": gy, "hatali": hy,
-                "diger": [max(0, 100 - a - b) for a, b in zip(gy, hy)]}
+                "aylar": aylar, "gecerli": gy, "hatali": hy,
+                "diger": [None if a is None else max(0, 100 - a - b)
+                          for a, b in zip(gy, hy)]}
     return ctx
 
 # --------------------------------------------------------------- Adim 6
