@@ -5,6 +5,8 @@ FROM python:3.12-slim
 
 # lightgbm calisma zamani OpenMP ister (libgomp1); gerisi wheel'le gelir
 RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
+    libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf-2.0-0 libcairo2 \
+    libffi8 shared-mime-info fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -15,6 +17,8 @@ COPY src ./src
 COPY apps ./apps
 COPY alembic ./alembic
 COPY alembic.ini ./
+COPY reporting ./reporting
+COPY scripts ./scripts
 
 RUN pip install --no-cache-dir .
 
