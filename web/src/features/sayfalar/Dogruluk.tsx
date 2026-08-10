@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { EChartsOption } from "echarts";
 import { api } from "../../api/client";
-import type { Karne } from "../../api/types";
+import type { Karne, HataMatrisi } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
 import { Kpi, Kart, Sayfa, Lejant, sayiTr } from "./parcalar";
@@ -18,8 +18,10 @@ const donem = (a: string | null, b: string | null) => {
 
 export function Dogruluk({ plantId }: { plantId: string }) {
   const [k, setK] = useState<Karne | null>(null);
+  const [hm, setHm] = useState<HataMatrisi | null>(null);
   const { n, oku } = useTema();
   useEffect(() => { api.karne(plantId).then(setK); }, [plantId]);
+  useEffect(() => { api.hataMatrisi(plantId).then(setHm); }, [plantId]);
 
   const option = useMemo<EChartsOption>(() => {
     const marka = oku("--marka"), acik = oku("--marka-acik");
@@ -59,6 +61,48 @@ export function Dogruluk({ plantId }: { plantId: string }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [k, n]);
 
+  const matrisOption = useMemo<EChartsOption>(() => {
+    const kenar = oku("--kenar"), soluk = oku("--soluk"), mono = oku("--mono");
+    const orta = oku("--kart");
+    const gunler = hm?.gunler ?? [], saatler = hm?.saatler ?? [];
+    const veri: [number, number, number][] = [];
+    let tepe = 0;
+    const mutlak: number[] = [];
+    (hm?.hucreler ?? []).forEach((satir, si) => satir.forEach((v, gi) => {
+      if (v !== null) { veri.push([gi, si, v]); mutlak.push(Math.abs(v)); }
+    }));
+    // skala siniri P95: tek uc deger govdeyi soldurmasin (uc, renk tavaninda kirpilir)
+    mutlak.sort((a, b) => a - b);
+    tepe = mutlak.length ? mutlak[Math.floor(0.85 * (mutlak.length - 1))] : 0;
+    return {
+      grid: { left: 56, right: 12, top: 8, bottom: 64 }, animation: false,
+      tooltip: { backgroundColor: oku("--kart"), borderColor: kenar,
+        borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 12 },
+        formatter: (p0: unknown) => {
+          const p1 = p0 as { value: [number, number, number] };
+          const [gi, si, v] = p1.value;
+          const yon = v >= 0 ? "fazla tahmin" : "eksik tahmin";
+          return `${gunler[gi]} · ${saatler[si]}<br/>${v >= 0 ? "+" : ""}${sayiTr(v, 1)} kW (${yon})`;
+        } },
+      xAxis: { type: "category", data: gunler, axisTick: { show: false },
+        axisLine: { lineStyle: { color: kenar } },
+        axisLabel: { color: soluk, fontFamily: mono, fontSize: 10,
+          formatter: (t: string) => t.slice(8) } },
+      yAxis: { type: "category", data: saatler, axisTick: { show: false },
+        axisLine: { show: false },
+        axisLabel: { color: soluk, fontFamily: mono, fontSize: 10 } },
+      visualMap: { min: -tepe || -1, max: tepe || 1, calculable: false,
+        orient: "horizontal", left: "center", bottom: 0, itemWidth: 10, itemHeight: 90,
+        text: ["fazla tahmin (kW)", "eksik tahmin"], textStyle: { color: soluk, fontSize: 11 },
+        inRange: { color: ["#0D3A6E", "#2166AC", "#67A9CF", "#D1E5F0",
+                           orta, "#FDDBC7", "#EF8A62", "#B2182B", "#7F0A1E"] } },
+      series: [{ type: "heatmap", data: veri,
+        itemStyle: { borderColor: oku("--izgara"), borderWidth: 1 },
+        emphasis: { itemStyle: { borderColor: soluk } } }],
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hm, n]);
+
   if (!k) return <div style={{ color: "var(--soluk)" }}>Yükleniyor…</div>;
 
   // v2.76: karne gunu + kapsanan donem TUM kovalardan (Streamlit tanimi:
@@ -89,6 +133,24 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           Yeşil sütunların gri sütunların altında kalması, modelin naif tahminden
           ne kadar iyi olduğunu gösterir.
         </p>
+      </Kart>
+      <Kart baslik="Saat × gün hata ısı haritası"
+        sag={<span className="cip">son 30 gün · 0-24s · {hm?.tz ?? "—"}</span>}>
+        {hm && hm.gunler.length > 0 ? (
+          <>
+            <EChart option={matrisOption} height={360}
+              ariaLabel="Saat ve gün kırılımında işaretli tahmin hatası ısı haritası" />
+            <p style={{ fontSize: 12, color: "var(--soluk)", margin: "12px 0 0" }}>
+              Kızıl hücreler fazla, mavi hücreler eksik tahmini gösterir (p50 − gerçek).
+              Aynı saatte üst üste aynı renk, sistematik sapmanın adresidir.
+            </p>
+          </>
+        ) : (
+          <p style={{ fontSize: 13, color: "var(--soluk)", margin: 0 }}>
+            Matris için henüz eşleşmiş tahmin-gerçek çifti birikmedi — SCADA
+            yüklemeleri sürdükçe burası kendiliğinden dolar.
+          </p>
+        )}
       </Kart>
     </Sayfa>
   );

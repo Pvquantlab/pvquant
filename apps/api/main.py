@@ -179,6 +179,23 @@ def _naif_wmape(r):
     return None
 
 
+@app.get("/v1/plants/{plant_id}/hata-matrisi")
+def hata_matrisi_uc(plant_id: str, gun: int = 30, kova: str = "0-24",
+                    claims=Depends(gecerli_kullanici)):
+    """v2.111 — saat x gun isaretli hata matrisi (p50 - gercek, kW).
+    Hesap accuracy_service'te; kurallar gece_skill ile ozdes (flag='valid',
+    gunduz > %2 kapasite, yerel gun penceresi). Bos matris 200 + bos listeler
+    doner — 'birikiyor' durumunu istemci anlatir."""
+    from pvquant.services import accuracy_service
+    if not (1 <= gun <= 120):
+        raise HTTPException(422, "gun 1-120 araliginda olmali")
+    try:
+        return accuracy_service.hata_matrisi(
+            claims["tenant_id"], plant_id, gun=gun, kova=kova)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+
+
 @app.get("/v1/plants/{plant_id}/skill")
 def skill(plant_id: str, bucket: str = "0-24", gun: int = 120,
           claims=Depends(gecerli_kullanici)):
