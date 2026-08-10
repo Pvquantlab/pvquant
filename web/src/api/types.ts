@@ -36,6 +36,14 @@ export interface Karne {
   gunluk: { tarih: string; kova: string; wmape: number; naif_wmape: number | null }[];
 }
 
+/** /hata-dagilimi yaniti — apps/api/main.py v2.112 ile birebir. */
+export interface HataDagilimi {
+  kutular: { lo: number; hi: number; adet: number }[];
+  mu: number | null; sd: number | null; ndays: number;
+  p10: number | null; p50: number | null; p90: number | null;
+  birim: string; kova: string; tz: string;
+}
+
 /** /hata-matrisi yaniti — apps/api/main.py v2.111 ile birebir. */
 export interface HataMatrisi {
   gunler: string[]; saatler: string[];

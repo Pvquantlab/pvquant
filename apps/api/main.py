@@ -179,6 +179,22 @@ def _naif_wmape(r):
     return None
 
 
+@app.get("/v1/plants/{plant_id}/hata-dagilimi")
+def hata_dagilimi_uc(plant_id: str, gun: int = 120, kova: str = "0-24",
+                     claims=Depends(gecerli_kullanici)):
+    """v2.112 — gunluk sapma dagilimi (F-A, MWh/gun), rapor s08 tanimi.
+    Hesap accuracy_service'te; coklu-kosu savunmali. Bos dagilim 200 +
+    bos kutular doner."""
+    from pvquant.services import accuracy_service
+    if not (1 <= gun <= 365):
+        raise HTTPException(422, "gun 1-365 araliginda olmali")
+    try:
+        return accuracy_service.hata_dagilimi(
+            claims["tenant_id"], plant_id, gun=gun, kova=kova)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+
+
 @app.get("/v1/plants/{plant_id}/hata-matrisi")
 def hata_matrisi_uc(plant_id: str, gun: int = 30, kova: str = "0-24",
                     claims=Depends(gecerli_kullanici)):
