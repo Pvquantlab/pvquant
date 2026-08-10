@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
     libffi8 shared-mime-info fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
+ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 # once metadata + kaynak, tek katman pip (proje kucuk, ayri katman oyunu gereksiz)
