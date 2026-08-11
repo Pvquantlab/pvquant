@@ -10,9 +10,9 @@ KOK="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$KOK"
 
 if [ "${1:-}" = "durdur" ]; then
-  kill $(lsof -t -iTCP:8000) $(lsof -t -iTCP:5173) 2>/dev/null
+  kill $(lsof -t -iTCP:5173) 2>/dev/null
   pkill -f "vite" 2>/dev/null
-  echo "kapatıldı."
+  echo "spa kapatıldı. (compose yığını çalışmaya devam eder; kapatmak için: docker compose stop)"
   exit 0
 fi
 
@@ -24,23 +24,18 @@ if ! (echo > /dev/tcp/127.0.0.1/5432) 2>/dev/null; then
 fi
 echo "✓ postgres 5432"
 
-# 2) API — önce kapıyı KİMİN tuttuğuna bak (9 Ağu dersi: Docker'ın eski
-# API'si 8000'i kapıp sağlık kontrolünü cevaplıyor, dev.sh aldanıyordu)
-SAHIP=$(lsof -nP -iTCP:8000 -sTCP:LISTEN | awk 'NR==2{print $1}')
-if [ -n "$SAHIP" ] && [ "${SAHIP#Python}" = "$SAHIP" ]; then
-  echo "✗ 8000'i '$SAHIP' tutuyor (Docker yığını?) — kurtar:"
-  echo "  docker stop pvquant-api-1 && ./scripts/dev.sh"
-  exit 1
-fi
-# 2) API — yalnız kapalıysa başlat
+# 2) API — v2.114: 8000'in sahibi COMPOSE'dur (E.4 kararı). dev.sh artık
+# uvicorn dikmez; yığın kapalıysa compose ile kaldırır. Kod değişince:
+#   docker compose build api worker && docker compose up -d api worker  (~8 sn, v2.113)
 if ! lsof -nP -iTCP:8000 -sTCP:LISTEN >/dev/null; then
-  nohup uvicorn apps.api.main:app --port 8000 > /tmp/pvq_api.log 2>&1 &
-  sleep 2
+  echo "· compose yığını kalkıyor (api+worker)…"
+  docker compose up -d api worker >/dev/null 2>&1
+  sleep 5
 fi
-if curl -s -m 2 http://127.0.0.1:8000/v1/healthz | grep -q ok; then
-  echo "✓ api 8000"
+if curl -s -m 3 http://127.0.0.1:8000/v1/healthz | grep -q ok; then
+  echo "✓ api 8000 (compose)"
 else
-  echo "✗ api KALKMADI — son satırlar:"; tail -5 /tmp/pvq_api.log; exit 1
+  echo "✗ api KALKMADI — teşhis:"; docker compose ps api; docker compose logs --tail 5 api; exit 1
 fi
 
 # 3) SPA — çift aile (--host) + sabit port; başkası porttaysa önce temizle
