@@ -1,6 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { EChartsOption } from "echarts";
 import { api } from "../../api/client";
-import type { SantralOzeti, TahminSerisi } from "../../api/types";
+import type { SantralOzeti, TahminSerisi, GunesYolu } from "../../api/types";
+import { EChart } from "../../lib/EChart";
+import { useTema } from "../../lib/useTema";
 import { Kpi, Kart, Sayfa, Lejant, sayiTr } from "../sayfalar/parcalar";
 import { FanChart } from "./FanChart";
 import { Cubuklar } from "./Cubuklar";
@@ -8,8 +11,58 @@ import { Cubuklar } from "./Cubuklar";
 export function Santralim({ plantId }: { plantId: string }) {
   const [o, setO] = useState<SantralOzeti | null>(null);
   const [seri, setSeri] = useState<TahminSerisi | null>(null);
+  const [gy, setGy] = useState<GunesYolu | null>(null);
+  const { n, oku } = useTema();
   useEffect(() => { api.ozet(plantId).then(setO); }, [plantId]);
   useEffect(() => { api.tahmin(plantId, "24h").then(setSeri); }, [plantId]);
+  useEffect(() => { api.gunesYolu(plantId).then(setGy).catch(() => {}); }, [plantId]);
+  const gyOption = useMemo<EChartsOption>(() => {
+    const soluk = oku("--soluk"), kenar = oku("--kenar"), mono = oku("--mono");
+    const izgara = oku("--izgara");
+    const renk: Record<string, string> = {
+      yaz: oku("--marka"), ekinoks: "#B08A3E", kis: "#4A6FA5" };
+    const ad: Record<string, string> = {
+      yaz: "Yaz gündönümü", ekinoks: "Ekinoks", kis: "Kış gündönümü" };
+    const seriler = (gy?.egriler ?? []).flatMap((e) => [
+      { name: ad[e.ad] ?? e.ad, type: "line" as const, symbol: "none",
+        smooth: true, lineStyle: { color: renk[e.ad], width: 2 },
+        itemStyle: { color: renk[e.ad] }, data: e.nokta },
+      { name: ad[e.ad] ?? e.ad, type: "scatter" as const, symbolSize: 5,
+        itemStyle: { color: renk[e.ad] }, tooltip: { show: true },
+        label: { show: e.ad === "yaz", position: "top" as const,
+          color: soluk, fontSize: 9, fontFamily: mono,
+          formatter: (pr: { value: [number, number, number] }) =>
+            `${pr.value[2]}:00` },
+        data: e.saat },
+    ]);
+    return {
+      grid: { left: 44, right: 12, top: 30, bottom: 30 }, animation: false,
+      legend: { top: 0, right: 0, textStyle: { color: soluk, fontSize: 11 },
+        itemWidth: 14, data: Object.values(ad) },
+      tooltip: { backgroundColor: oku("--kart"), borderColor: kenar,
+        borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 12 },
+        formatter: (p0: unknown) => {
+          const p1 = p0 as { seriesName: string; value: number[] };
+          const saat = p1.value.length > 2 ? ` · ${p1.value[2]}:00` : "";
+          return `${p1.seriesName}${saat}<br/>azimut ${Math.round(p1.value[0])}° · yükseklik ${Math.round(p1.value[1])}°`;
+        } },
+      xAxis: { type: "value", min: 45, max: 315, name: "azimut °",
+        nameLocation: "middle", nameGap: 22,
+        nameTextStyle: { color: soluk, fontSize: 10 },
+        axisLabel: { color: soluk, fontFamily: mono, fontSize: 10,
+          formatter: (v: number) =>
+            ({ 90: "D", 180: "G", 270: "B" } as Record<number, string>)[v] ?? `${v}°` },
+        splitLine: { lineStyle: { color: izgara } },
+        axisLine: { lineStyle: { color: kenar } } },
+      yAxis: { type: "value", min: 0, max: 90, name: "yükseklik °",
+        nameTextStyle: { color: soluk, fontSize: 10 },
+        axisLabel: { color: soluk, fontFamily: mono, fontSize: 10 },
+        splitLine: { lineStyle: { color: izgara } }, axisLine: { show: false } },
+      series: seriler,
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gy, n]);
+
   if (!o) return <div style={{ color: "var(--soluk)" }}>Yükleniyor…</div>;
 
   const s = o.saglik;
@@ -82,6 +135,18 @@ export function Santralim({ plantId }: { plantId: string }) {
           </Kart>
         </div>
       </div>
+
+      {gy && gy.egriler.length > 0 && (
+        <Kart baslik="Güneş yolu — yaz / ekinoks / kış"
+          sag={<span className="cip">{gy.lat}°K · {gy.tz}</span>}>
+          <EChart option={gyOption} height={300}
+            ariaLabel="Azimut ve yükseklik düzleminde yaz gündönümü, ekinoks ve kış gündönümü güneş yolları, saat işaretleriyle" />
+          <p style={{ fontSize: 12, color: "var(--soluk)", margin: "12px 0 0" }}>
+            Eğriler güneşin gökyüzündeki günlük yolunu gösterir; noktalar saat başlarıdır.
+            Panel eğim/azimut kararları ve gölgelenme analizi bu geometriden beslenir.
+          </p>
+        </Kart>
+      )}
 
       <div className="ızgara" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)",
                                        marginBottom: 14 }}>

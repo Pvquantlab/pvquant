@@ -36,6 +36,14 @@ export interface Karne {
   gunluk: { tarih: string; kova: string; wmape: number; naif_wmape: number | null }[];
 }
 
+/** /gunes-yolu yaniti — apps/api/main.py v2.116 ile birebir. */
+export interface GunesYolu {
+  lat: number; lon: number; tz: string; yil: number;
+  egriler: { ad: string;
+             nokta: [number, number][];          // [azimut, yukseklik]
+             saat: [number, number, number][] }[]; // [azimut, yukseklik, saat]
+}
+
 /** /hata-dagilimi yaniti — apps/api/main.py v2.112 ile birebir. */
 export interface HataDagilimi {
   kutular: { lo: number; hi: number; adet: number }[];

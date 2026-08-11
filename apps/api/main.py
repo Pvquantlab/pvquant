@@ -179,6 +179,15 @@ def _naif_wmape(r):
     return None
 
 
+@app.get("/v1/plants/{plant_id}/gunes-yolu")
+def gunes_yolu_uc(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """v2.116 — sunpath (Solargis Fig 2.3 gelenegi): yaz/ekinoks/kis
+    azimut x yukseklik egrileri + saat isaretleri. Salt astronomi (pvlib);
+    santralin lat/lon/tz'sinden hesaplanir, arsiv verisi gerektirmez."""
+    from pvquant.services import gunes_service
+    return gunes_service.gunes_yolu(claims["tenant_id"], plant_id)
+
+
 @app.get("/v1/plants/{plant_id}/hata-dagilimi")
 def hata_dagilimi_uc(plant_id: str, gun: int = 120, kova: str = "0-24",
                      claims=Depends(gecerli_kullanici)):
