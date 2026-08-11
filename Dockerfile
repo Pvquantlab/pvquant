@@ -12,8 +12,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
 ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
-# once metadata + kaynak, tek katman pip (proje kucuk, ayri katman oyunu gereksiz)
+# v2.113: bagimliliklar KAYNAKTAN ONCE ayri katmanda — src degisince ~2 dk pip
+# tekrari biter (v2.63'un 'ayri katman gereksiz' karari WeasyPrint+lightgbm
+# yigini buyuyunce gecersizlesti). pyproject degismedikce bu katman onbellekten.
 COPY pyproject.toml README.md ./
+RUN python -c "import tomllib; d=tomllib.load(open('pyproject.toml','rb')); print('\n'.join(d['project']['dependencies']))" > /tmp/reqs.txt \
+    && pip install --no-cache-dir -r /tmp/reqs.txt
 COPY src ./src
 COPY apps ./apps
 COPY alembic ./alembic
@@ -21,7 +25,7 @@ COPY alembic.ini ./
 COPY reporting ./reporting
 COPY scripts ./scripts
 
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir --no-deps .
 
 # varsayilan: surekli zamanlayici; tek tur icin: docker compose run --rm worker \
 #   python -m apps.worker.main --once
