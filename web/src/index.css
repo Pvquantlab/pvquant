@@ -8,9 +8,9 @@
   --amber: #E8940A; --amber-zemin: #FDF1DE; --amber-r: 232,148,10;
   --uyari: #C9502E; --uyari-zemin: #FBEEEA;
   --basari: #1E9E6A;
-  --zemin: #FFFFFF; --kart: #FFFFFF; --yuzey: #F5F6F7; --yuzey2: #EBEDF0;
+  --zemin: #F3F5F4; --kart: #FFFFFF; --yuzey: #F5F6F7; --yuzey2: #EBEDF0;
   --metin: #1C1E21; --ikincil: #444950; --soluk: #525860;
-  --kenar: #DADDE1; --izgara: #EBEDF0;
+  --kenar: #D3D8D6; --izgara: #E4E8E6;
   --yan: #111827; --yan-metin: #9AA6B5; --yan-aktif: #1E293B; --yan-cizgi: rgba(255,255,255,.08);
   /* docs-derisi: sistem yigini (Mac'te SF Pro). Geri donus: 'IBM Plex Sans', system-ui, sans-serif */
   --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
