@@ -25,41 +25,39 @@ export function Dogruluk({ plantId }: { plantId: string }) {
   useEffect(() => { api.hataMatrisi(plantId).then(setHm); }, [plantId]);
   useEffect(() => { api.hataDagilimi(plantId).then(setHd); }, [plantId]);
 
-  const option = useMemo<EChartsOption>(() => {
-    const marka = oku("--marka"), acik = oku("--marka-acik");
-    const izgara = oku("--izgara"), soluk = oku("--soluk"), kenar = oku("--kenar");
-    const gri = oku("--notr-acik"), mono = oku("--mono");  // v2.92: sabit ad degil token
+  const wmapePanel = useMemo(() => {
+    const izgara = oku("--izgara"), soluk = oku("--soluk");
+    const kenar = oku("--kenar"), mono = oku("--mono");
+    const marka = oku("--marka");
     const g = k?.gunluk ?? [];
-    // v2.76: iki kova ayni gunde birlesir — eksen benzersiz sirali tarih,
-    // seriler tarih+kova aramasiyla hizalanir (satir-basina-kategori kalkti).
     const tarihler = [...new Set(g.map((r) => r.tarih))].sort();
     const bul = (t: string, kova: string) =>
       g.find((r) => r.tarih === t && r.kova === kova);
-    const seri = (kova: string) =>
-      tarihler.map((t) => bul(t, kova)?.wmape ?? null);
-    const naifSeri = tarihler.map((t) =>
-      bul(t, "0-24")?.naif_wmape ?? bul(t, "24-72")?.naif_wmape ?? null);
-    return {
-      grid: { left: 46, right: 12, top: 24, bottom: 28 }, animation: false,
+    return (kova: string): EChartsOption => ({
+      grid: { left: 40, right: 10, top: 14, bottom: 26 }, animation: false,
       tooltip: { trigger: "axis", backgroundColor: oku("--kart"), borderColor: kenar,
         borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 12 },
-        valueFormatter: (v: unknown) => (v === null ? "—" : `%${sayiTr(Number(v), 1)}`) },
+        valueFormatter: (v: unknown) => (v == null ? "—" : `%${sayiTr(Number(v), 1)}`) },
       xAxis: { type: "category", data: tarihler, axisTick: { show: false },
         axisLine: { lineStyle: { color: kenar } },
-        axisLabel: { color: soluk, fontFamily: mono, fontSize: 11 } },
-      yAxis: { type: "value", splitLine: { lineStyle: { color: izgara } },
+        axisLabel: { color: soluk, fontFamily: mono, fontSize: 10, interval: 13 } },
+      yAxis: { type: "value", max: 70, splitLine: { lineStyle: { color: izgara } },
         axisLine: { show: false },
-        axisLabel: { color: soluk, fontFamily: mono, fontSize: 11,
+        axisLabel: { color: soluk, fontFamily: mono, fontSize: 10,
                      formatter: (v: number) => `%${v}` } },
       series: [
-        { name: "Naif referans", type: "bar", barMaxWidth: 26,
-          data: naifSeri, itemStyle: { color: gri, borderRadius: [2,2,0,0] } },
-        { name: "PVQuant 0-24s", type: "bar", barMaxWidth: 26,
-          data: seri("0-24"), itemStyle: { color: marka, borderRadius: [2,2,0,0] } },
-        { name: "PVQuant 24-72s", type: "bar", barMaxWidth: 26,
-          data: seri("24-72"), itemStyle: { color: acik, borderRadius: [2,2,0,0] } },
+        { name: "Naif referans", type: "line", symbol: "none", z: 1,
+          lineStyle: { color: "transparent" },
+          areaStyle: { color: soluk, opacity: 0.16 },
+          data: tarihler.map((t) => bul(t, kova)?.naif_wmape ?? null),
+          connectNulls: true },
+        { name: `PVQuant ${kova}s`, type: "line", symbol: "none", z: 2,
+          lineStyle: { color: marka, width: 2 },
+          itemStyle: { color: marka },
+          data: tarihler.map((t) => bul(t, kova)?.wmape ?? null),
+          connectNulls: true },
       ],
-    };
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [k, n]);
 
@@ -164,14 +162,24 @@ export function Dogruluk({ plantId }: { plantId: string }) {
              birim="gün" alt="kesintisiz kanıt geçmişi" />
       </div>
       <Kart baslik="Günlük WMAPE — naif referansla karşılaştırma"
-        sag={<Lejant ogeler={[{ renk: "var(--yuzey2)", ad: "Naif referans" },
-                              { renk: "var(--marka)", ad: "PVQuant 0-24s" },
-                              { renk: "var(--marka-acik)", ad: "PVQuant 24-72s" }]} />}>
-        <EChart option={option} height={300}
-          ariaLabel="Günlük WMAPE sütunları, naif referansla karşılaştırmalı" />
+        sag={<span className="cip">gri zemin: naif referans</span>}>
+        <div className="ızgara" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)" }}>
+          <div>
+            <p style={{ fontSize: 12.5, fontWeight: 600, color: "var(--metin)",
+                        margin: "0 0 4px" }}>0–24 saat ufku</p>
+            <EChart option={wmapePanel("0-24")} height={240}
+              ariaLabel="0-24 saat ufku günlük WMAPE, naif referans zeminiyle" />
+          </div>
+          <div>
+            <p style={{ fontSize: 12.5, fontWeight: 600, color: "var(--metin)",
+                        margin: "0 0 4px" }}>24–72 saat ufku</p>
+            <EChart option={wmapePanel("24-72")} height={240}
+              ariaLabel="24-72 saat ufku günlük WMAPE, naif referans zeminiyle" />
+          </div>
+        </div>
         <p style={{ fontSize: 12, color: "var(--soluk)", margin: "12px 0 0" }}>
-          Yeşil sütunların gri sütunların altında kalması, modelin naif tahminden
-          ne kadar iyi olduğunu gösterir.
+          Yeşil çizginin gri naif zemininin altında seyretmesi kazancı gösterir —
+          her panel kendi ufkunu anlatır.
         </p>
       </Kart>
       <Kart baslik="Saat × gün hata ısı haritası"

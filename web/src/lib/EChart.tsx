@@ -12,7 +12,8 @@ export function EChart({ option, height = 300, ariaLabel }:
 
   useEffect(() => {
     if (!kutuRef.current) return;
-    const g = echarts.init(kutuRef.current);
+    const g = echarts.init(kutuRef.current, undefined,
+      { devicePixelRatio: Math.max(2, window.devicePixelRatio || 1) });
     grafikRef.current = g;
     const gozlemci = new ResizeObserver(() => g.resize());
     gozlemci.observe(kutuRef.current);
