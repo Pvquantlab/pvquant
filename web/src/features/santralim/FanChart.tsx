@@ -7,8 +7,8 @@ import { useTema } from "../../lib/useTema";
 import { sayiTr } from "../sayfalar/parcalar";
 import type { TahminSerisi } from "../../api/types";
 
-export function FanChart({ seri, yukseklik = 300 }:
-  { seri: TahminSerisi; yukseklik?: number }) {
+export function FanChart({ seri, yukseklik = 300, acTavaniKw }:
+  { seri: TahminSerisi; yukseklik?: number; acTavaniKw?: number | null }) {
   const { n, oku } = useTema();
   const option = useMemo<EChartsOption>(() => {
     const marka = oku("--marka"), amber = oku("--amber");
@@ -19,30 +19,47 @@ export function FanChart({ seri, yukseklik = 300 }:
     const izgara = oku("--izgara"), soluk = oku("--soluk"), kenar = oku("--kenar");
     const mono = oku("--mono");  // v2.92: sabit ad degil token
     const cokGun = seri.ufuk_saat > 48;
+    // v2.119: 24s gorunumde gece sifir-kuyruklari kirp (Solargis: egri merkezde,
+    // bos gok yok) — ilk/son uretimli saatin 1 saat oncesi/sonrasi kalir.
+    let ham = seri.saatlik;
+    if (!cokGun) {
+      const dolu = ham.map((s) => s.p50_kw > 0 || (s.gercek_kw ?? 0) > 0);
+      const ilk = dolu.indexOf(true), son = dolu.lastIndexOf(true);
+      if (ilk > 0 || (son >= 0 && son < ham.length - 1))
+        ham = ham.slice(Math.max(0, ilk - 1), Math.min(ham.length, son + 2));
+    }
     // v2.93: bant verisi yoksa bant HIC cizilmez. ?? 0 gecmisi ayna
     // yaratiyordu: null p90 -> ust = -p50; ECharts samesign yigini
     // negatifi sifirdan ASAGI serer (gunes gece -3.500 kW "uretir"di).
-    const varBant = seri.saatlik.some(
+    const varBant = ham.some(
       (s) => s.p10_kw !== null && s.p90_kw !== null);
-    const x = seri.saatlik.map((s) => {
+    const x = ham.map((s) => {
       const d = new Date(s.ts);
       return cokGun ? d.toLocaleDateString("tr-TR", { day: "numeric", month: "short" })
                     : d.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
     });
-    const p10 = seri.saatlik.map((s) => s.p10_kw ?? 0);
-    const p50 = seri.saatlik.map((s) => s.p50_kw);
-    const p90 = seri.saatlik.map((s) => s.p90_kw ?? 0);
-    const gercek = seri.saatlik.map((s) => s.gercek_kw);
+    const p10 = ham.map((s) => s.p10_kw ?? 0);
+    const p50 = ham.map((s) => s.p50_kw);
+    const p90 = ham.map((s) => s.p90_kw ?? 0);
+    const gercek = ham.map((s) => s.gercek_kw);
     const varGercek = gercek.some((v) => v !== null);
 
     const isaretler: Record<string, unknown>[] = [];
-    if (seri.ac_tavani_kw)
-      isaretler.push({ yAxis: seri.ac_tavani_kw, label: {
-        formatter: `AC tavanı ${sayiTr(seri.ac_tavani_kw)} kW`, position: "insideStartTop",
-        color: soluk, fontFamily: mono, fontSize: 11 } });
-    if (seri.simdi_idx !== null)
-      isaretler.push({ xAxis: seri.simdi_idx, label: {
-        formatter: "şimdi", position: "insideEndTop",
+    const tavan = seri.ac_tavani_kw ?? acTavaniKw;
+    if (tavan)
+      isaretler.push({ yAxis: tavan, label: {
+        formatter: `AC tavanı ${sayiTr(tavan)} kW`, position: "insideStartTop",
+        color: "#B03A3A", fontFamily: mono, fontSize: 11 },
+        lineStyle: { color: "#B03A3A", type: "dashed", width: 1 } });
+    const simdiT = Date.now();
+    let simdiIdx: number | null = null;
+    ham.forEach((h, i) => {
+      if (simdiIdx === null && new Date(h.ts).getTime() > simdiT)
+        simdiIdx = Math.max(0, i - 1);
+    });
+    if (simdiIdx !== null)
+      isaretler.push({ xAxis: simdiIdx, label: {
+        formatter: `şimdi · ${sayiTr(p50[simdiIdx])} kW`, position: "insideEndTop",
         color: soluk, fontFamily: mono, fontSize: 11 } });
 
     return {

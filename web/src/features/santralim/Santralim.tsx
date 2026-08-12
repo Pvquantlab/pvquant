@@ -97,7 +97,7 @@ export function Santralim({ plantId }: { plantId: string }) {
                                     s.p10_kw !== null && s.p90_kw !== null)
                                   ? [{ renk: "var(--marka-acik)", ad: "P10–P90" }]
                                   : [])]} />}>
-          {seri && <FanChart seri={seri} yukseklik={300} />}
+          {seri && <FanChart seri={seri} yukseklik={300} acTavaniKw={o.ac_tavani_kw} />}
           <p style={{ fontSize: 12, color: "var(--soluk)", margin: "10px 0 0" }}>
             Gerçekleşen üretimi görmek için bugünün SCADA verisini yükleyin.
           </p>
