@@ -36,6 +36,12 @@ export interface Karne {
   gunluk: { tarih: string; kova: string; wmape: number; naif_wmape: number | null }[];
 }
 
+/** /saat-ay-matrisi yaniti — apps/api/main.py v2.121 ile birebir. */
+export interface SaatAyMatrisi {
+  saatler: string[]; hucreler: (number | null)[][];
+  toplam: (number | null)[]; birim: string; tz: string;
+}
+
 /** /gunes-yolu yaniti — apps/api/main.py v2.116 ile birebir. */
 export interface GunesYolu {
   lat: number; lon: number; tz: string; yil: number;

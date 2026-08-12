@@ -1,4 +1,4 @@
-import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu } from "./types";
+import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -315,6 +315,10 @@ export const api = {
       getir<Karne>(`/v1/plants/${p}/skill?bucket=24-72`),
     ]);
     return { ...k0, gunluk: [...k0.gunluk, ...k1.gunluk] };
+  },
+  saatAyMatrisi: async (p: string): Promise<SaatAyMatrisi> => {
+    if (!TABAN) return { saatler: [], hucreler: [], toplam: [], birim: "kW", tz: "UTC" };
+    return getir<SaatAyMatrisi>(`/v1/plants/${p}/saat-ay-matrisi`);
   },
   gunesYolu: async (p: string): Promise<GunesYolu> => {
     if (!TABAN) return { lat: 0, lon: 0, tz: "UTC", yil: 2026, egriler: [] };

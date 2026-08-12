@@ -233,3 +233,46 @@ def gunun_ozeti(tenant_id: str, santral: dict) -> GununOzeti:
     o.icgoru_cumlesi = _icgoru_sec(o, tenant_id, santral)
 
     return o
+
+
+def saat_ay_matrisi(tenant_id: str, plant_id: str):
+    """v2.121 — Solargis Tablo 4.3 gelenegi: yerel saat x ay ortalama uretim (kW).
+    Tum valid SCADA'dan; hucre = o ay o saatin cok-yilli ortalamasi.
+    'toplam' satiri = saat ortalamalarinin toplami (tipik gunun kWh'i)."""
+    import pandas as pd
+    from sqlalchemy import text
+    from pvquant.db import tenant_baglami
+    with tenant_baglami(tenant_id) as s:
+        p = s.execute(text("SELECT tz FROM plants WHERE id=:p"),
+                      {"p": plant_id}).mappings().first()
+        if p is None:
+            raise LookupError("santral yok: %s" % plant_id)
+        df = pd.read_sql(text(
+            "SELECT ts_utc, power_kw FROM scada_hourly "
+            "WHERE plant_id=:p AND flag='valid'"),
+            s.connection(), params={"p": plant_id}, parse_dates=["ts_utc"])
+    tz = p["tz"] or "UTC"
+    if df.empty:
+        return {"saatler": [], "hucreler": [], "toplam": [None] * 12,
+                "birim": "kW", "tz": tz}
+    if df.ts_utc.dt.tz is None:
+        yerel = df.ts_utc.dt.tz_localize("UTC").dt.tz_convert(tz)
+    else:
+        yerel = df.ts_utc.dt.tz_convert(tz)
+    df = df.assign(ay=yerel.dt.month, saat=yerel.dt.hour)
+    piv = df.pivot_table(index="saat", columns="ay",
+                         values="power_kw", aggfunc="mean")
+    # gunduz iskeleti: ortalamasi anlamli (>=1 kW) ilk/son saat arasi —
+    # gece sifir satirlari panelde yer kaplamasin (rapor 0-24 verir, panel vermez)
+    anlamli = piv.index[piv.mean(axis=1, skipna=True) >= 1]
+    if len(anlamli) == 0:
+        anlamli = piv.index
+    s_ilk, s_son = int(anlamli.min()), int(anlamli.max())
+    piv = piv.reindex(index=range(s_ilk, s_son + 1), columns=range(1, 13))
+    hucreler = [[None if pd.isna(v) else round(float(v)) for v in satir]
+                for satir in piv.values]
+    toplam = [None if pd.isna(piv[m].sum()) or piv[m].isna().all()
+              else round(float(piv[m].sum(skipna=True)))
+              for m in range(1, 13)]
+    return {"saatler": [f"{h:02d}\u2013{h+1:02d}" for h in range(s_ilk, s_son + 1)],
+            "hucreler": hucreler, "toplam": toplam, "birim": "kW", "tz": tz}

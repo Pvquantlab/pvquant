@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { EChartsOption } from "echarts";
 import { api } from "../../api/client";
-import type { SantralOzeti, TahminSerisi, GunesYolu } from "../../api/types";
+import type { SantralOzeti, TahminSerisi, GunesYolu, SaatAyMatrisi } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
 import { Kpi, Kart, Sayfa, Lejant, sayiTr } from "../sayfalar/parcalar";
@@ -12,10 +12,26 @@ export function Santralim({ plantId }: { plantId: string }) {
   const [o, setO] = useState<SantralOzeti | null>(null);
   const [seri, setSeri] = useState<TahminSerisi | null>(null);
   const [gy, setGy] = useState<GunesYolu | null>(null);
+  const [sam, setSam] = useState<SaatAyMatrisi | null>(null);
   const { n, oku } = useTema();
   useEffect(() => { api.ozet(plantId).then(setO); }, [plantId]);
   useEffect(() => { api.tahmin(plantId, "24h").then(setSeri); }, [plantId]);
   useEffect(() => { api.gunesYolu(plantId).then(setGy).catch(() => {}); }, [plantId]);
+  useEffect(() => { api.saatAyMatrisi(plantId).then(setSam).catch(() => {}); }, [plantId]);
+  const AYLAR_K = ["Oca","Şub","Mar","Nis","May","Haz","Tem","Ağu","Eyl","Eki","Kas","Ara"];
+  const samAralik = useMemo(() => {
+    const v = (sam?.hucreler ?? []).flat().filter((x): x is number => x !== null);
+    return v.length ? { lo: Math.min(...v), hi: Math.max(...v) } : { lo: 0, hi: 1 };
+  }, [sam]);
+  const solargisTon = (t: number) => {
+    const durak: [number, number, number][] = [
+      [233, 244, 238], [199, 227, 212], [240, 226, 189], [232, 148, 10], [178, 106, 8]];
+    const k = Math.min(0.999, Math.max(0, t)) * (durak.length - 1);
+    const i = Math.floor(k), f = k - i;
+    return "rgb(" + durak[i].map((a, c) =>
+      Math.round(a + (durak[i + 1][c] - a) * f)).join(",") + ")";
+  };
+
   const gyOption = useMemo<EChartsOption>(() => {
     const soluk = oku("--soluk"), kenar = oku("--kenar"), mono = oku("--mono");
     const izgara = oku("--izgara");
@@ -135,6 +151,50 @@ export function Santralim({ plantId }: { plantId: string }) {
           </Kart>
         </div>
       </div>
+
+      {sam && sam.saatler.length > 0 && (
+        <Kart baslik="Üretim parmak izi — saat × ay"
+          sag={<span className="cip">tüm geçerli SCADA · kW · {sam.tz}</span>}>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ borderCollapse: "collapse", width: "100%",
+                            fontFamily: "var(--mono)", fontSize: 11.5 }}>
+              <thead><tr>
+                <th style={{ textAlign: "left", padding: "4px 6px",
+                             color: "var(--soluk)", fontWeight: 500 }}></th>
+                {AYLAR_K.map((a) => (
+                  <th key={a} style={{ padding: "4px 2px", color: "var(--soluk)",
+                                       fontWeight: 500 }}>{a}</th>))}
+              </tr></thead>
+              <tbody>
+                {sam.saatler.map((st, si) => (
+                  <tr key={st}>
+                    <td style={{ padding: "2px 6px", color: "var(--soluk)" }}>{st}</td>
+                    {sam.hucreler[si].map((v, mi) => (
+                      <td key={mi} style={{ padding: "2px 2px", textAlign: "center",
+                        border: "1px solid var(--kart)", color: "#26303A",
+                        background: v === null ? "transparent"
+                          : solargisTon((v - samAralik.lo) / (samAralik.hi - samAralik.lo)) }}>
+                        {v === null ? <span style={{ color: "var(--soluk)" }}>–</span> : v}
+                      </td>))}
+                  </tr>))}
+                <tr style={{ borderTop: "2px solid var(--marka)" }}>
+                  <td style={{ padding: "3px 6px", fontWeight: 600,
+                               color: "var(--metin)" }}>Tipik gün</td>
+                  {sam.toplam.map((v, mi) => (
+                    <td key={mi} style={{ padding: "3px 2px", textAlign: "center",
+                      fontWeight: 600, color: "var(--metin)" }}>
+                      {v === null ? "–" : `${sayiTr(Math.round(v / 100) / 10, 1)}`}
+                    </td>))}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p style={{ fontSize: 12, color: "var(--soluk)", margin: "12px 0 0" }}>
+            Hücreler saat×ay çok-yıllı ortalama güç (kW); Tipik gün satırı, o ayın
+            karakteristik günlük üretimidir (MWh).
+          </p>
+        </Kart>
+      )}
 
       {gy && gy.egriler.length > 0 && (
         <Kart baslik="Güneş yolu — yaz / ekinoks / kış"

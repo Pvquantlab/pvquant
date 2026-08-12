@@ -55,7 +55,7 @@ export function Aylik({ plantId }: { plantId: string }) {
   // Solargis paleti: acik yesil -> sari -> turuncu -> kizil (deger arka plani)
   const solargisTon = (t: number) => {
     const durak: [number, number, number][] = [
-      [228, 239, 211], [247, 233, 160], [245, 193, 92], [232, 130, 60], [200, 64, 30]];
+      [233, 244, 238], [199, 227, 212], [240, 226, 189], [232, 148, 10], [178, 106, 8]];
     const k = Math.min(0.999, Math.max(0, t)) * (durak.length - 1);
     const i = Math.floor(k), f = k - i;
     return "rgb(" + durak[i].map((a, c) =>

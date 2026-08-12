@@ -179,6 +179,14 @@ def _naif_wmape(r):
     return None
 
 
+@app.get("/v1/plants/{plant_id}/saat-ay-matrisi")
+def saat_ay_matrisi_uc(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """v2.121 — Solargis Tablo 4.3: yerel saat x ay ortalama uretim (kW),
+    tum valid SCADA'dan. Bos SCADA'da 200 + bos listeler."""
+    from pvquant.services import ozet_service
+    return ozet_service.saat_ay_matrisi(claims["tenant_id"], plant_id)
+
+
 @app.get("/v1/plants/{plant_id}/gunes-yolu")
 def gunes_yolu_uc(plant_id: str, claims=Depends(gecerli_kullanici)):
     """v2.116 — sunpath (Solargis Fig 2.3 gelenegi): yaz/ekinoks/kis
