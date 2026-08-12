@@ -187,6 +187,7 @@ export function Santralim({ plantId }: { plantId: string }) {
       <Kart baslik="Aylık üretim — gerçekleşen"
         sag={<span className="cip">son 12 ay</span>}>
         <Cubuklar etiketler={o.aylik.map((a) => a.ay)} degerler={o.aylik.map((a) => a.mwh)}
+          kapsamPct={o.aylik.map((a) => a.kapsam_pct)}
           birim="MWh" vurguIdx={o.aylik.length - 1} yukseklik={250} />
         <table className="veri" style={{ marginTop: 18 }}>
           <thead><tr><th>Ay</th><th>Üretim MWh</th><th>Sağlam saat</th><th>Kapsam %</th></tr></thead>

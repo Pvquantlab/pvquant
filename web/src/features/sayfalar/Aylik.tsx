@@ -91,10 +91,7 @@ export function Aylik({ plantId }: { plantId: string }) {
         axisLabel: { color: soluk, fontFamily: mono, fontSize: 11 } },
       series: [
         { name: "P50", type: "bar", barMaxWidth: 34, z: 1,
-          itemStyle: { borderRadius: [2, 2, 0, 0],
-            color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1,
-              colorStops: [{ offset: 0, color: marka },
-                           { offset: 1, color: oku("--marka-acik") }] } },
+          itemStyle: { borderRadius: [2, 2, 0, 0], color: "#4E9B72" },
           label: { show: true, position: "top", distance: 16,
             color: oku("--metin"), fontFamily: mono, fontSize: 10.5,
             formatter: (pr: { value: number }) => `${Math.round(pr.value)}` },
