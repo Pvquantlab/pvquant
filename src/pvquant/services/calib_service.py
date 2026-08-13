@@ -217,6 +217,26 @@ def aktif_kalibrasyon(tenant_id, plant_id):
             "WHERE plant_id=:p AND active LIMIT 1"),
             {"p": plant_id}).first()
 
+def kalibrasyon_ozeti(tenant_id, plant_id):
+    """v2.122 — aktif kaydin UI sozlesmesi (JSON-donusur sozluk).
+    UYDURMA YOK: kayit ne tasiyorsa o; uyarilar dahil. Yoksa None."""
+    r = aktif_kalibrasyon(tenant_id, plant_id)
+    if r is None:
+        return None
+    q = r.quality_json or {}
+    pj = r.params_json or {}
+    return {
+        "mode": r.mode,
+        "eta_bos": pj.get("eta_bos"), "bg": pj.get("bg"),
+        "gecerli_saat": r.n_valid_hours,
+        "tarih": r.created_at.isoformat() if r.created_at else None,
+        "mape_once": q.get("mape_before_pct"), "mape_sonra": q.get("mape_pct"),
+        "wmape_once": q.get("wmape_before_pct"), "wmape_sonra": q.get("wmape_pct"),
+        "sapma_once": q.get("deviation_before_pct"), "sapma_sonra": q.get("deviation_pct"),
+        "uyarilar": q.get("warnings") or [],
+    }
+
+
 def kalibrasyon_gecmisi(tenant_id, plant_id):
     """Mod gecmisi icin tum kayitlar (eski->yeni)."""
     from sqlalchemy import text

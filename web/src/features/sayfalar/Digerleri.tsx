@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api, EslemeHatasi, type EslemeVerisi,
          type ScadaOnizleme, type ScadaKayit,
          type KosuSatiri } from "../../api/client";
+import type { KalibrasyonOzeti } from "../../api/types";
 import { Kart, Sayfa, Kpi, sayiTr } from "./parcalar";
 
 export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
@@ -393,41 +394,74 @@ export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
   );
 }
 
-export function Kalibrasyon() {
+export function Kalibrasyon({ plantId }: { plantId: string }) {
+  const [k, setK] = useState<KalibrasyonOzeti | null>(null);
+  const [yuklendi, setYuklendi] = useState(false);
+  useEffect(() => {
+    api.kalibrasyon(plantId).then((v) => { setK(v); setYuklendi(true); });
+  }, [plantId]);
   const sr = (a: string, b: string) => <tr key={a}><td>{a}</td><td className="mono">{b}</td></tr>;
+  const yzd = (v: number | null) => v === null ? "\u2014" : `%${sayiTr(v, 1)}`;
+  const iyilesme = k && k.mape_once && k.mape_sonra
+    ? Math.round((1 - k.mape_sonra / k.mape_once) * 100) : null;
+  const AY = ["Oca","Şub","Mar","Nis","May","Haz","Tem","Ağu","Eyl","Eki","Kas","Ara"];
+  const trTarih = (iso: string | null) => {
+    if (!iso) return "\u2014";
+    const d = new Date(iso);
+    return `${d.getDate()} ${AY[d.getMonth()]} ${d.getFullYear()}`;
+  };
   return (
     <Sayfa baslik="Kalibrasyon"
       alt="Model, santralinizin kendi verisiyle uyarlanır — kanıtı bu sayfada görürsünüz."
       sag={<button className="dugme" disabled
         title="Bu akış şimdilik Streamlit panelinde — SPA'ya sırası gelince taşınacak"
         style={{ opacity: 0.55, cursor: "not-allowed" }}>Yeniden kalibre et</button>}>
+      {yuklendi && !k && (
+        <Kart baslik="Aktif kalibrasyon yok">
+          <p style={{ fontSize: 13.5, color: "var(--soluk)", margin: 0 }}>
+            Bu santral için aktif bir kalibrasyon kaydı bulunmuyor — SCADA verisi
+            yükleyip kalibre tahmine geçtiğinizde bu sayfa kendiliğinden dolar.
+          </p>
+        </Kart>
+      )}
+      {k && (<>
+      {k.uyarilar.length > 0 && (
+        <div style={{ background: "var(--amber-zemin)", border: "1px solid var(--amber)",
+                      borderRadius: "var(--rk)", padding: "12px 16px", marginBottom: 14,
+                      fontSize: 13, color: "var(--metin)" }}>
+          <b>Kalibrasyon uyarısı:</b> {k.uyarilar.join(" · ")}
+        </div>
+      )}
       <div className="ızgara satir-3" style={{ marginBottom: 14 }}>
-        <Kpi etiket="Holdout WMAPE · hibrit" deger="%30,1" alt="kronolojik son %20 sınavı" />
-        <Kpi etiket="Fizik · aynı sınav" deger="%38,7" alt="karşılaştırma tabanı" />
-        <Kpi etiket="İyileşme" deger="%22" alt="hibrit kapıyı geçti" />
+        <Kpi etiket={`Kalibre MAPE · Mod ${k.mode}`} deger={yzd(k.mape_sonra)}
+             alt="kalibrasyon dönemi, saatlik" />
+        <Kpi etiket="Fizik · aynı sınav" deger={yzd(k.mape_once)}
+             alt="karşılaştırma tabanı" />
+        <Kpi etiket="İyileşme" deger={iyilesme === null ? "\u2014" : `%${iyilesme}`}
+             alt={iyilesme !== null && iyilesme > 0 ? "kalibrasyon kazancı" : "\u2014"} />
       </div>
       <div className="ızgara" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)" }}>
         <Kart baslik="Bulduklarımız">
           <table className="veri"><tbody>
-            {sr("η_BoS", "0,927")}
-            {sr("BG (bifasyal kazanç)", "0,186")}
-            {sr("Eğim / azimut", "20° / 180° (varsayılan)")}
-            {sr("Geçerli saat", sayiTr(4272))}
-            {sr("Kalibrasyon tarihi", "29 Tem 2026")}
+            {sr("η_BoS", k.eta_bos === null ? "\u2014" : sayiTr(k.eta_bos, 3))}
+            {sr("BG (bifasyal kazanç)", k.bg === null ? "\u2014" : sayiTr(k.bg, 3))}
+            {sr("Geçerli saat", k.gecerli_saat === null ? "\u2014" : sayiTr(k.gecerli_saat))}
+            {sr("Kalibrasyon tarihi", trTarih(k.tarih))}
           </tbody></table>
         </Kart>
         <Kart baslik="Yıllık enerji sapması">
           <div style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
-            <span className="mono" style={{ fontSize: 22, color: "var(--soluk)" }}>%0,35</span>
-            <span style={{ color: "var(--soluk)" }}>→</span>
-            <span className="mono" style={{ fontSize: 30, letterSpacing: "-0.03em" }}>%1,65</span>
+            <span className="mono" style={{ fontSize: 22, color: "var(--soluk)" }}>{yzd(k.sapma_once)}</span>
+            <span style={{ color: "var(--soluk)" }}>{"\u2192"}</span>
+            <span className="mono" style={{ fontSize: 30, letterSpacing: "-0.03em" }}>{yzd(k.sapma_sonra)}</span>
           </div>
           <p style={{ fontSize: 12.5, color: "var(--soluk)", margin: "14px 0 0" }}>
-            Fizik → hibrit. Bu sayı kalibrasyon dönemindeki sistematik sapmadır;
+            Fizik → kalibre model. Bu sayı kalibrasyon dönemindeki sistematik sapmadır;
             saatlik tahmin isabeti Doğruluk sayfasında ölçülür.
           </p>
         </Kart>
       </div>
+      </>)}
     </Sayfa>
   );
 }

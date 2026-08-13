@@ -179,6 +179,16 @@ def _naif_wmape(r):
     return None
 
 
+@app.get("/v1/plants/{plant_id}/kalibrasyon")
+def kalibrasyon_uc(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """v2.122 — aktif kalibrasyon ozeti; kayit yoksa 404 (icat yok)."""
+    from pvquant.services import calib_service
+    k = calib_service.kalibrasyon_ozeti(claims["tenant_id"], plant_id)
+    if k is None:
+        raise HTTPException(404, "aktif kalibrasyon yok")
+    return k
+
+
 @app.get("/v1/plants/{plant_id}/saat-ay-matrisi")
 def saat_ay_matrisi_uc(plant_id: str, claims=Depends(gecerli_kullanici)):
     """v2.121 — Solargis Tablo 4.3: yerel saat x ay ortalama uretim (kW),

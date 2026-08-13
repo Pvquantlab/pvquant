@@ -36,6 +36,16 @@ export interface Karne {
   gunluk: { tarih: string; kova: string; wmape: number; naif_wmape: number | null }[];
 }
 
+/** /kalibrasyon yaniti — apps/api/main.py v2.122 ile birebir. */
+export interface KalibrasyonOzeti {
+  mode: string; eta_bos: number | null; bg: number | null;
+  gecerli_saat: number | null; tarih: string | null;
+  mape_once: number | null; mape_sonra: number | null;
+  wmape_once: number | null; wmape_sonra: number | null;
+  sapma_once: number | null; sapma_sonra: number | null;
+  uyarilar: string[];
+}
+
 /** /saat-ay-matrisi yaniti — apps/api/main.py v2.121 ile birebir. */
 export interface SaatAyMatrisi {
   saatler: string[]; hucreler: (number | null)[][];

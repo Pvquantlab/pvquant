@@ -39,7 +39,7 @@ export default function App() {
       {sayfa === "veri" && <VeriYukleme plantId={PLANT}
         santralimeGit={() => setSayfa("santralim")}
         tahminlereGit={() => setSayfa("tahminler")} />}
-      {sayfa === "kalibrasyon" && <Kalibrasyon />}
+      {sayfa === "kalibrasyon" && <Kalibrasyon plantId={PLANT} />}
       {sayfa === "tahminler" && <Tahminler plantId={PLANT} />}
       {sayfa === "dogruluk" && <Dogruluk plantId={PLANT} />}
       {sayfa === "aylik" && <Aylik plantId={PLANT} />}
