@@ -42,6 +42,15 @@ for mod in SAYFALAR:
         sorunlu.append(mod)
 
 print("-" * 60)
+# ---- Render denetimi (v2.135): birlesimden ONCE — doldurulmamis token,
+# s02/s15 sayfa referanslari. Ihlal -> birlesim yok, rc=1.
+_rb = denetim.render_denetle(OUT)
+for _b in _rb:
+    print("[%s] %s — %s | beklenen: %s | bulunan: %s"
+          % (_b.seviye.upper(), _b.kod, _b.mesaj, _b.beklenen, _b.bulunan))
+if _rb:
+    print("\nRENDER DENETIMI BASARISIZ: %d bulgu — birlesim yapilmadi." % len(_rb))
+    sys.exit(1)
 runpy.run_module("merge_html", run_name="__main__")
 
 if sorunlu:

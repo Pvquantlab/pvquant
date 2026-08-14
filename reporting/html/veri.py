@@ -343,6 +343,20 @@ GUN_YMAX = int(_math.ceil(max(v + h for v, h in zip(P50_GUN, HW_GUN)) / 10.0)) *
 # canlı santralde matris sütunları günlük P50'yi tanım gereği tutar (D3).
 MATRIS_OLCEK_MWH = sum(BASE_KW) / 1000.0
 
+# v2.135: şelaledeki iyileşme yüzdesi TEK yerde türetilir (spec #7 — baş/sondan
+# yeniden hesaplanabilir; denetim D12 bayat/elle değere karşı bekçiler).
+IYILESME_PCT = (round((SELALE_BAS - SELALE_BIT) / SELALE_BAS * 100, 1)
+                if SELALE_BAS else None)
+
+# v2.135: KPI durumları elle değil eşikten türetilir (spec #18 — eşik ile
+# değer arasındaki yön tutarlılığı; kopyadaki "hedef %10 altı / %80 üstü"
+# iddialarının makine karşılığı). Kanonikte ok/ok/watch üretir (md5 korunur).
+KPI_ESIK = {"WMAPE120": (10.0, "alt"), "HOLDOUT": (10.0, "alt"),
+            "KAPSAMA": (80.0, "ust")}
+DURUM_WMAPE120 = "ok" if WMAPE120_PCT < KPI_ESIK["WMAPE120"][0] else "watch"
+DURUM_HOLDOUT = "ok" if SELALE_BIT < KPI_ESIK["HOLDOUT"][0] else "watch"
+DURUM_KAPSAMA = "ok" if KAPSAMA_PCT > KPI_ESIK["KAPSAMA"][0] else "watch"
+
 
 # ================================================================ görsel doldurma (E.2 Adım 2b)
 def _tr(x, d=1):
@@ -375,7 +389,11 @@ def doldur(s):
         "KF": _tr(KF_PCT), "WMAPE120": _tr(WMAPE120_PCT),
         "SKILL120": "%d" % SKILL120_PCT,
         "FIZIK": _tr(SELALE_BAS), "HOLDOUT": _tr(SELALE_BIT),
-        "IYILESME": _tr(round((SELALE_BAS - SELALE_BIT) / SELALE_BAS * 100, 1)),
+        "IYILESME": _tr(IYILESME_PCT) if IYILESME_PCT is not None else "—",
+        "KESINTISIZ": (str(int(KESINTISIZ_GUN)) if KESINTISIZ_GUN is not None
+                       else "—"),  # v2.135: s03'teki elle '87' baypası kapandı
+        "DURUM_WMAPE120": DURUM_WMAPE120, "DURUM_HOLDOUT": DURUM_HOLDOUT,
+        "DURUM_KAPSAMA": DURUM_KAPSAMA,
         "KAPSAMA": "%d" % KAPSAMA_PCT, "KESINTISIZ": "%d" % KESINTISIZ_GUN,
         "MIN_P50": _tr(P50_GUN[i_min]), "MIN_HW": _tr(HW_GUN[i_min]),
         "TEPE_TIPIK": _tr(max(BASE_KW) / 1000 * (sum(P50_GUN) / len(P50_GUN))

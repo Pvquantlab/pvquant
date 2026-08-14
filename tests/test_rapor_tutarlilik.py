@@ -77,7 +77,8 @@ def test_kanonik_tum_kontrollerden_gecer():
     assert bulgular == [], "kanonik girdi bulgu üretmemeli: %r" % bulgular
     assert bayrak is False
     assert sorted({k["kod"] for k in kayitlar}) == [
-        "D1", "D10", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9"]
+        "D1", "D10", "D11", "D12", "D13", "D14", "D15", "D16",
+        "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9"]
     assert all(k["durum"] == "gecti" for k in kayitlar)
 
 
@@ -92,7 +93,7 @@ def test_kanonik_uret_cikis_0_ve_16_sayfa(tmp_path):
     sayfalar = sorted(tmp_path.glob("*_s??_*.html"))
     assert len(sayfalar) == 16, [s.name for s in sayfalar]
     j = json.loads((tmp_path / "denetim.json").read_text(encoding="utf-8"))
-    assert j["ozet"]["hata"] == 0 and j["ozet"]["gecti"] == 11
+    assert j["ozet"]["hata"] == 0 and j["ozet"]["gecti"] == 20
     assert j["bulgular"] == [] and j["suphe_bayragi"] is False
 
 
@@ -193,7 +194,7 @@ def test_hata_yoksa_bile_denetim_json_yazilir(tmp_path):
     denetim.json_yaz(kayitlar, bayrak, yol)
     j = json.loads(yol.read_text(encoding="utf-8"))
     assert {"zaman", "suphe_bayragi", "ozet", "gecenler", "bulgular"} <= set(j)
-    assert len(j["gecenler"]) == 11
+    assert len(j["gecenler"]) == 20
     assert all({"kod", "mesaj", "beklenen", "bulunan"} <= set(g) for g in j["gecenler"])
 
 
@@ -235,3 +236,62 @@ def test_d6_kapasite_asimi_hala_duser():
     d = _yuzey()
     d["ARSIV_ETIKET"] = "1 Şubat – 4 Ağustos 2026\n    (4.600 saat)"
     assert "D6" in {x.kod for x in denetim.denetle(d) if x.seviye == "hata"}
+
+
+# ------------------------------------------------- v2.135 Faz A testleri
+def test_d11_bayat_lta_yakalanir():
+    d = _yuzey(); d["LTA_AY"] = list(d["LTA_AY"]); d["LTA_AY"][5] += 50
+    assert "D11" in {b.kod for b in denetim.denetle(d) if b.seviye == "hata"}
+
+
+def test_d12_bayat_iyilesme_yakalanir():
+    d = _yuzey(); d["IYILESME_PCT"] = 99.9
+    assert "D12" in {b.kod for b in denetim.denetle(d) if b.seviye == "hata"}
+
+
+def test_d13_tepe_dc_ustunde_duser():
+    d = _yuzey(); d["BASE_KW"] = list(d["BASE_KW"]); d["BASE_KW"][7] = 13000  # > 12,4 MWp
+    assert "D13" in {b.kod for b in denetim.denetle(d) if b.seviye == "hata"}
+
+
+def test_d14_sicrama_yakalanir():
+    d = _yuzey(); b = list(d["BASE_KW"]); b[6] = b[5] + 0.5 * max(b); d["BASE_KW"] = b
+    assert "D14" in {x.kod for x in denetim.denetle(d) if x.seviye == "hata"}
+
+
+def test_d15_ayrik_arsiv_duser():
+    d = _yuzey()
+    d["ARSIV_ETIKET"] = "1 Ocak – 28 Şubat 2024\n    (1.416 saat)"
+    assert "D15" in {x.kod for x in denetim.denetle(d) if x.seviye == "hata"}
+
+
+def test_d16_celisen_durum_duser():
+    d = _yuzey(); d["DURUM_KAPSAMA"] = "ok"      # 71 < 80 iken 'ok' basilamaz
+    assert "D16" in {x.kod for x in denetim.denetle(d) if x.seviye == "hata"}
+
+
+def test_d16_kesintisiz_alansiz_basilamaz():
+    d = _yuzey(); d["KESINTISIZ_GUN"] = None
+    assert "D16" in {x.kod for x in denetim.denetle(d) if x.seviye == "hata"}
+
+
+def test_render_dolmamis_token_yakalanir(tmp_path):
+    for i in range(1, 17):
+        (tmp_path / ("x_s%02d_a.html" % i)).write_text("<html>ok</html>", encoding="utf-8")
+    (tmp_path / "x_s07_a.html").write_text("<html>{{KAYIP}}</html>", encoding="utf-8")
+    b = denetim.render_denetle(str(tmp_path))
+    assert any(x.kod == "R1" for x in b)
+
+
+def test_render_sayfa_referansi_araliginda(tmp_path):
+    for i in range(1, 17):
+        (tmp_path / ("x_s%02d_a.html" % i)).write_text("<html>ok</html>", encoding="utf-8")
+    (tmp_path / "x_s15_a.html").write_text("<html>bkz. sayfa 19</html>", encoding="utf-8")
+    b = denetim.render_denetle(str(tmp_path))
+    assert any(x.kod == "R2" for x in b)
+
+
+def test_render_kanonik_temiz(tmp_path):
+    p = uret_kos(KANONIK, tmp_path)
+    assert p.returncode == 0
+    assert denetim.render_denetle(str(tmp_path)) == []

@@ -38,13 +38,13 @@ KPI = [
     ("16 günlük toplam beklenti", "{{TOPLAM_P50}}", "MWh", "Aşılma olasılığı %50 olan değer", "", 17),
     ("%80 olasılık bandı", "{{TOPLAM_BANT}}", "MWh", "Gerçekleşenin bu aralıkta kalma olasılığı %80", "ok", 14),
     ("Kapasite faktörü", "%{{KF}}", "", "Şebeke gücünün dönem boyunca kullanılan oranı", "ok", 17),
-    ("Gün-öncesi ortalama hata", "%{{WMAPE120}}", "WMAPE", "Son 120 günün ortalaması · hedef %10 altı", "ok", 17),
+    ("Gün-öncesi ortalama hata", "%{{WMAPE120}}", "WMAPE", "Son 120 günün ortalaması · hedef %10 altı", "{{DURUM_WMAPE120}}", 17),
     ("Basit referansa üstünlük", "%{{SKILL120}}", "skill", "Basit referans yönteme göre kazanılan isabet",
      "ok", 17),
     ("Bağımsız testte hata", "%{{HOLDOUT}}", "MAPE", "Modelin eğitimde görmediği veride · hedef %10 altı",
-     "ok", 17),
-    ("Kesintisiz doğrulama", "87", "gün", "Ara vermeden doğrulanan gün sayısı", "ok", 17),
-    ("Santral verisi kapsaması", "%{{KAPSAMA}}", "", "Kalite süzgecini geçen saatlerin oranı · hedef %80 üstü", "watch", 17),
+     "{{DURUM_HOLDOUT}}", 17),
+    ("Kesintisiz doğrulama", "{{KESINTISIZ}}", "gün", "Ara vermeden doğrulanan gün sayısı", "ok", 17),
+    ("Santral verisi kapsaması", "%{{KAPSAMA}}", "", "Kalite süzgecini geçen saatlerin oranı · hedef %80 üstü", "{{DURUM_KAPSAMA}}", 17),
 ]
 
 cards = "".join(
