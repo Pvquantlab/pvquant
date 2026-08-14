@@ -1,4 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { EChartsOption } from "echarts";
+import { EChart } from "../../lib/EChart";
+import { useTema } from "../../lib/useTema";
 import { api, EslemeHatasi, type EslemeVerisi,
          type ScadaOnizleme, type ScadaKayit,
          type KosuSatiri } from "../../api/client";
@@ -405,6 +408,51 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
   const iyilesme = k && k.mape_once && k.mape_sonra
     ? Math.round((1 - k.mape_sonra / k.mape_once) * 100) : null;
   const AY = ["Oca","Şub","Mar","Nis","May","Haz","Tem","Ağu","Eyl","Eki","Kas","Ara"];
+  const { n, oku } = useTema();
+  const selale = useMemo(() => {
+    const yap = (once: number | null, sonra: number | null, birim: string): EChartsOption | null => {
+      if (once === null || sonra === null) return null;
+      const o = Math.abs(once), so = Math.abs(sonra);
+      const d = so - o;
+      const iyi = d < 0;
+      const soluk = oku("--soluk"), mono = oku("--mono"), izgara = oku("--izgara");
+      const marka = oku("--marka");
+      const et = (v: number) => `%${sayiTr(v, 1)}`;
+      return {
+        grid: { left: 44, right: 10, top: 30, bottom: 26 }, animation: false,
+        xAxis: { type: "category", data: ["Fizik", "Kalibrasyon", "Kalibre"],
+          axisTick: { show: false }, axisLine: { show: false },
+          axisLabel: { color: oku("--ikincil"), fontFamily: mono, fontSize: 12.5 } },
+        yAxis: { type: "value", splitLine: { lineStyle: { color: izgara } },
+          axisLine: { show: false },
+          min: +(Math.min(o, so) * 0.9).toFixed(1),
+          max: +(Math.max(o, so) * 1.12).toFixed(1),
+          axisLabel: { color: soluk, fontFamily: mono, fontSize: 11,
+                       formatter: (v: number) => `%${sayiTr(v, 1)}` } },
+        series: [
+          { type: "bar", stack: "s", barMaxWidth: 44, silent: true,
+            itemStyle: { color: "transparent" },
+            data: [0, Math.min(o, so), 0] },
+          { type: "bar", stack: "s", barMaxWidth: 44,
+            label: { show: true, position: "top", fontFamily: mono,
+              fontSize: 13, fontWeight: 600, color: oku("--metin"),
+              formatter: (pr: { dataIndex: number }) =>
+                [et(o), `${d >= 0 ? "+" : ""}${sayiTr(d, 1)} puan`, et(so)][pr.dataIndex] },
+            itemStyle: { borderRadius: [2, 2, 0, 0] },
+            data: [
+              { value: o, itemStyle: { color: marka } },
+              { value: Math.abs(d), itemStyle: { color: iyi ? "#2B7B9B" : "#E8940A" } },
+              { value: so, itemStyle: { color: marka } },
+            ] },
+        ],
+      };
+    };
+    return {
+      mape: yap(k?.mape_once ?? null, k?.mape_sonra ?? null, "MAPE"),
+      sapma: yap(k?.sapma_once ?? null, k?.sapma_sonra ?? null, "sapma"),
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [k, n]);
   const trTarih = (iso: string | null) => {
     if (!iso) return "\u2014";
     const d = new Date(iso);
@@ -461,6 +509,33 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
           </p>
         </Kart>
       </div>
+      {(selale.mape || selale.sapma) && (
+        <Kart baslik="Kalibrasyonun etkisi — fizikten kalibre modele"
+          sag={<span className="cip">mavi: iyileşme · amber: bedel</span>}>
+          <div className="ızgara" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)" }}>
+            {selale.mape && (
+              <div>
+                <p style={{ fontSize: 12.5, fontWeight: 600, color: "var(--metin)",
+                            margin: "0 0 4px" }}>Saatlik isabet — MAPE</p>
+                <EChart option={selale.mape} height={210}
+                  ariaLabel="Fizikten kalibre modele MAPE değişimi şelalesi" />
+              </div>
+            )}
+            {selale.sapma && (
+              <div>
+                <p style={{ fontSize: 12.5, fontWeight: 600, color: "var(--metin)",
+                            margin: "0 0 4px" }}>Enerji sapması — mutlak %</p>
+                <EChart option={selale.sapma} height={210}
+                  ariaLabel="Fizikten kalibre modele mutlak enerji sapması şelalesi" />
+              </div>
+            )}
+          </div>
+          <p style={{ fontSize: 12, color: "var(--soluk)", margin: "12px 0 0" }}>
+            Orta basamak kalibrasyonun katkısıdır — aşağı inen mavi basamak iyileşmeyi,
+            yukarı çıkan amber basamak bedeli gösterir.
+          </p>
+        </Kart>
+      )}
       </>)}
     </Sayfa>
   );
