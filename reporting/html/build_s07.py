@@ -3,8 +3,27 @@ from pvq import *
 # --- son 30 günün karnesi (tek kaynak: veri.py) ---------------------------
 from veri import KARNE_WM as wm, KARNE_SK as sk, KARNE_H72_KUYRUK, KARNE_TARIH as TARIH
 from veri import KARNE_NAIF as naif   # v2.137: naif ölçümdür, motor türetmez
-h72 = [round(w * 1.36, 1) for w in wm[:23]] + KARNE_H72_KUYRUK
-ORT_SKILL = sum(sk) / len(sk) * 100
+from veri import KARNE_OLCULDU as olc  # v2.140: ölçülmemiş gün '—' ve boşluk
+h72 = [round(w * 1.36, 1) if w is not None else None
+       for w in wm[:23]] + list(KARNE_H72_KUYRUK)
+_sk_olc = [s for s in sk if s is not None]
+ORT_SKILL = sum(_sk_olc) / len(_sk_olc) * 100
+
+
+def _kosular(*seriler):
+    """Ardışık ölçülü indis koşuları — verilen serilerin HEPSİ dolu olan
+    noktalar; ölçülmemiş gün çizgiyi KESER (v2.140, kural 3)."""
+    runs, cur = [], []
+    for i in range(len(seriler[0])):
+        if all(s[i] is not None for s in seriler):
+            cur.append(i)
+        else:
+            if len(cur) > 1:
+                runs.append(cur)
+            cur = []
+    if len(cur) > 1:
+        runs.append(cur)
+    return runs
 tr = lambda x, d=1: ("%.*f" % (d, x)).replace(".", ",")
 
 
@@ -15,7 +34,8 @@ def karne(W=1000, H=272, ml=60, mb=52, fs=15):
     step = PW / (n - 1)
     cx = lambda i: ml + step * i
     # c5 (v2.109): eksen serilerin tepesinden, 5'e yuvarlı — kanonikte 20'yi üretir
-    k_ymax = max(20, int(-(-max(max(wm), max(h72), max(naif)) // 5)) * 5)
+    _dolu = [v for seri in (wm, h72, naif) for v in seri if v is not None]
+    k_ymax = max(20, int(-(-max(_dolu) // 5)) * 5)
     y = lambda v: MT + PH * (k_ymax - v) / k_ymax
     o = []
     for t in range(0, k_ymax + 1, 5):
@@ -24,17 +44,24 @@ def karne(W=1000, H=272, ml=60, mb=52, fs=15):
         o.append('<text x="%.1f" y="%.1f" text-anchor="end" font-family="PlexSans" font-size="%d"'
                  ' font-weight="500" fill="#2B3439">%%%d</text>' % (ml - 9, y(t) + fs * .34, fs, t))
     # kazanç alanı: naif referans ile gün-öncesi hata arasındaki fark
-    pts = " ".join("%.1f,%.1f" % (cx(i), y(naif[i])) for i in range(n))
-    pts += " " + " ".join("%.1f,%.1f" % (cx(i), y(wm[i])) for i in reversed(range(n)))
-    o.append('<polygon points="%s" fill="%s"/>' % (pts, FAN_AREA))
-    o.append('<path d="M %s" fill="none" stroke="#B08C43" stroke-width="1.8" '
-             'stroke-dasharray="7 5"/>'
-             % " L ".join("%.1f,%.1f" % (cx(i), y(naif[i])) for i in range(n)))
-    o.append('<path d="M %s" fill="none" stroke="#6E93A6" stroke-width="1.6"/>'
-             % " L ".join("%.1f,%.1f" % (cx(i), y(h72[i])) for i in range(n)))
-    o.append('<path d="M %s" fill="none" stroke="%s" stroke-width="3" stroke-linejoin="round"/>'
-             % (" L ".join("%.1f,%.1f" % (cx(i), y(wm[i])) for i in range(n)), BRAND))
+    # (v2.140: ölçülmemiş günlerde alan ve çizgiler kesilir — koşu koşu)
+    for kosu in _kosular(naif, wm):
+        pts = " ".join("%.1f,%.1f" % (cx(i), y(naif[i])) for i in kosu)
+        pts += " " + " ".join("%.1f,%.1f" % (cx(i), y(wm[i])) for i in reversed(kosu))
+        o.append('<polygon points="%s" fill="%s"/>' % (pts, FAN_AREA))
+    for kosu in _kosular(naif):
+        o.append('<path d="M %s" fill="none" stroke="#B08C43" stroke-width="1.8" '
+                 'stroke-dasharray="7 5"/>'
+                 % " L ".join("%.1f,%.1f" % (cx(i), y(naif[i])) for i in kosu))
+    for kosu in _kosular(h72):
+        o.append('<path d="M %s" fill="none" stroke="#6E93A6" stroke-width="1.6"/>'
+                 % " L ".join("%.1f,%.1f" % (cx(i), y(h72[i])) for i in kosu))
+    for kosu in _kosular(wm):
+        o.append('<path d="M %s" fill="none" stroke="%s" stroke-width="3" stroke-linejoin="round"/>'
+                 % (" L ".join("%.1f,%.1f" % (cx(i), y(wm[i])) for i in kosu), BRAND))
     for i in range(n):
+        if wm[i] is None:
+            continue
         o.append('<circle cx="%.1f" cy="%.1f" r="3.2" fill="#fff" stroke="%s" stroke-width="2"/>'
                  % (cx(i), y(wm[i]), BRAND))
     # kazanç etiketi
@@ -56,11 +83,18 @@ def karne(W=1000, H=272, ml=60, mb=52, fs=15):
 
 rows = ""
 for i in range(23, 30):
+    if not olc[i]:
+        # v2.140: ölçülmemiş gün karnede KALIR, '—' ile (kural 3; olculdu=false)
+        rows += ('<tr><td class="d">%s</td><td class="num">—</td><td class="num">—</td>'
+                 '<td class="num">—</td><td class="num">—</td>'
+                 '<td class="st">—</td></tr>' % TARIH[i])
+        continue
     izle = wm[i] > 10
     rows += ('<tr%s><td class="d">%s</td><td class="num b">%%%s</td><td class="num">%%%s</td>'
              '<td class="num">%%%s</td><td class="num b">%%%s</td>'
              '<td class="st">%s</td></tr>'
-             % (' class="w"' if izle else "", TARIH[i], tr(wm[i]), tr(h72[i]), tr(naif[i]),
+             % (' class="w"' if izle else "", TARIH[i], tr(wm[i]),
+                tr(h72[i]) if h72[i] is not None else "—", tr(naif[i]),
                 tr(sk[i] * 100), '<span class="izle">izle</span>' if izle else
                 '<span class="ok">✓</span>'))
 

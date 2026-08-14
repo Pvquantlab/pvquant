@@ -30,6 +30,7 @@ D14 profil surekliligi: ardisik sicrama <= kurulu DC'nin %30'u (v2.136 tanim duz
 D15 karne penceresi ∩ SCADA arsiv donemi ≠ ∅
 D16 KPI durum rengi esik yonuyle tutarli + kesintisiz karti alansiz basilamaz
 D17 yillik Pxx = ORT - z·SD yeniden uretilebilir (SD orneklem n-1; z sozlesmeli)
+D18 karne butunlugu: 30 takvim satiri; olculdu↔null tutarli; KESINTISIZ ↔ kuyruk
 R1/R2 (render, sayfalar sonrasi): doldurulmamis token yok; s02/s15 sayfa
     referanslari 1..16 icinde — render_denetle(cikti_dizin)
     (MWe → kapak {{KURULU}}, s05 {{SEBEKE}} cümlesi, kapasite faktörü)
@@ -205,8 +206,13 @@ def _d4(veri, ekle):
         return ekle("D4", "uyari", "naif girdide ölçüm olarak yok, türetildi — "
                     "özdeşlik totolojik, denetim anlamsız (kök iş: naif_wmape alanı)",
                     "KARNE_NAIF_KAYNAK='alan'", str(kaynak))
+    olc = _al(veri, "KARNE_OLCULDU") or [True] * len(wm)
     kotu = []
     for i, (w, s, n) in enumerate(zip(wm, sk, naif)):
+        if not (olc[i] if i < len(olc) else True):
+            continue          # v2.140: ölçülmemiş gün özdeşliğe girmez (D18 bekçiler)
+        if w is None or s is None:
+            kotu.append((i, "ölçülü satırda değer yok")); continue
         if not (0.0 < s < 1.0):
             kotu.append((i, "skill ∉ (0,1): %s" % _tr(s, 3))); continue
         if n is None or n <= 0:
@@ -566,6 +572,49 @@ def _d17(veri, ekle):
          "ya da formul kaymasi)", "yeniden hesap (±0,01)", "; ".join(kotu))
 
 
+def _d18(veri, ekle):
+    """v2.140 (karar a): karne butunlugu — 30 takvim satiri; olculdu=false
+    ise TUM degerler null (olculmemis gune sayi basilamaz, kural 3);
+    olculdu=true ise tum degerler dolu; en az bir olculu gun; ve KESINTISIZ
+    kartiyla capraz tutarlilik: karne kuyrugundaki ardisik-olculu gun sayisi
+    t < 30 ise KESINTISIZ tam t olmalidir (ilk kesinti karnede gorunur),
+    t = 30 ise KESINTISIZ >= 30."""
+    wm, sk = _al(veri, "KARNE_WM") or [], _al(veri, "KARNE_SK") or []
+    naif = _al(veri, "KARNE_NAIF") or []
+    olc = _al(veri, "KARNE_OLCULDU")
+    if olc is None or not wm:
+        return ekle("D18", "uyari", "olculdu yuzeyi yok — denetlenemedi",
+                    "KARNE_OLCULDU", "eksik")
+    if not (len(wm) == len(sk) == len(naif) == len(olc) == 30):
+        return ekle("D18", "hata", "karne 30 takvim satiri degil",
+                    "30/30/30/30", "%d/%d/%d/%d" % (len(wm), len(sk), len(naif), len(olc)))
+    for i, o in enumerate(olc):
+        uclu = (wm[i], sk[i], naif[i])
+        if not o and any(x is not None for x in uclu):
+            return ekle("D18", "hata", "ölçülmemiş güne sayı basılmış (%d. satır) "
+                        "— eksik '—' ile gösterilir, kısmi sayıyla değil", "hepsi null",
+                        str(uclu))
+        if o and any(x is None for x in uclu):
+            return ekle("D18", "hata", "ölçülü günde değer boş (%d. satır)" % (i + 1),
+                        "wm+sk+naif dolu", str(uclu))
+    if not any(olc):
+        return ekle("D18", "hata", "karnede tek ölçülü gün yok", "≥1", "0")
+    t = 0
+    for o in reversed(olc):
+        if o: t += 1
+        else: break
+    kes = _al(veri, "KESINTISIZ_GUN")
+    if kes is None:
+        return ekle("D18", "uyari", "KESINTISIZ yok — çapraz denetlenemedi (D16 zaten hata verir)",
+                    "sayısal gün", "yok")
+    if (t < 30 and int(kes) != t) or (t == 30 and int(kes) < 30):
+        return ekle("D18", "hata", "kesintisiz-doğrulama karti karne kuyruğuyla çelişiyor",
+                    ("= %d (ilk kesinti karnede)" % t) if t < 30 else "≥ 30",
+                    _tr(kes, 0) + " gün")
+    ekle("D18", "gecti", "karne bütünlüğü: %d/30 ölçülü, kuyruk %d gün, "
+         "KESINTISIZ tutarlı" % (sum(olc), t), "yapı + çapraz", _tr(kes, 0) + " gün")
+
+
 # ------------------------------------------------- render denetimi (v2.135)
 def render_denetle(cikti_dizin):
     """Sayfalar uretildikten SONRA, birlesim/yayimdan ONCE kosar:
@@ -617,7 +666,7 @@ def denetle_tam(veri):
     _d8(veri, ekle); _d9(veri, ekle); _d10(veri, ekle)
     _d11(veri, ekle); _d12(veri, ekle); _d13(veri, ekle)
     _d14(veri, ekle); _d15(veri, ekle); _d16(veri, ekle)
-    _d17(veri, ekle)
+    _d17(veri, ekle); _d18(veri, ekle)
 
     bulgular = [Bulgu(k["kod"], k["durum"], k["mesaj"], k["beklenen"], k["bulunan"])
                 for k in kayitlar if k["durum"] in ("hata", "uyari")]

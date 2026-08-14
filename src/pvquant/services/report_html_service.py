@@ -268,7 +268,7 @@ def _tipik_gun(ctx):
 
 def _karne_satirlari(k):
     """accuracy.report_card — s07 SÖZLEŞMESİ (motor katı):
-    · TAM 30 satır ('Son 30 günün doğruluk karnesi'; azı/fazlası IndexError)
+    · TAM 30 TAKVİM satırı (v2.140: ölçülmemiş gün olculdu=false + null ile kalır)
     · her satırda wmape_0_24 + skill + naif_wmape dolu (v2.137: naif ölçümdür)
     · SADECE son 7 satırda wmape_24_72 dolu (KARNE_H72_KUYRUK uzunluğu 7 olmalı;
       erken günlerde veri olsa da null'lanır — kuyruk şişerse s07 kayar).
@@ -294,18 +294,28 @@ def _karne_satirlari(k):
                 d["naif_wmape"] = round(float(r.naive_wmape), 1)
         elif r.horizon_bucket == "24-72":
             d["wmape_24_72"] = round(float(r.mape), 1)
-    # Bugün doğası gereği YARIMDIR (gün bitmeden skor kesinleşmez) — karne
-    # dünle biten son 30 TAM günü alır; aksi hâlde sabah üretilen hiçbir
-    # rapor geçemezdi (E.3-b prova dersi, 9 Ağu).
-    bugun = str(_dt.datetime.now(_dt.timezone.utc).date())
-    sira = [out[t] for t in sorted(out) if t < bugun]
-    if len(sira) < 30:
-        raise ValueError("accuracy.report_card 30 gün ister; karnede %d gün var "
-                         "(skill_daily birikimi yetersiz)" % len(sira))
-    sira = sira[-30:]
-    bos = [d["date"] for d in sira if d["wmape_0_24"] is None or d["skill"] is None]
-    if bos:
-        raise ValueError("report_card: wmape/skill eksik günler: %s" % ", ".join(bos))
+    # v2.140 (karar a): karne SON 30 TAKVIM gunudur, dunle biter (bugun
+    # yarimdir). Olculmemis/yarim gun REDDEDILMEZ; olculdu=false + null
+    # degerlerle karnede KALIR ('—' basilir, hicbir ortalamaya girmez) —
+    # sartname sozlesmesi + kanonik anlatiyla (NARR_EXEC_3) tutarli. Yarim
+    # olculmus gun (wmape var skill yok vb.) da SKORLANAMAZ: false + null
+    # (kismi sayi basmak kural 3/4 ihlali olurdu). Eski davranis 409'du
+    # (2-4 Agu vakasi); simdi rapor cikar ve boslugu durustce gosterir.
+    bugun = _dt.datetime.now(_dt.timezone.utc).date()
+    sira = []
+    for g in range(30, 0, -1):
+        t = str(bugun - _dt.timedelta(days=g))
+        d = out.get(t, {"date": t, "wmape_0_24": None, "skill": None,
+                        "wmape_24_72": None, "naif_wmape": None})
+        tam = all(d.get(k) is not None
+                  for k in ("wmape_0_24", "skill", "naif_wmape"))
+        d["olculdu"] = tam
+        if not tam:
+            d["wmape_0_24"] = d["skill"] = d["naif_wmape"] = None
+        sira.append(d)
+    if not any(d["olculdu"] for d in sira):
+        raise ValueError("report_card: son 30 günde tek ölçülü gün yok — "
+                         "karne tamamen boş, rapor anlamsız")
     for d in sira[:23]:
         d["wmape_24_72"] = None          # kuyruk sözleşmesi: yalnız son 7
     kuyruk_bos = [d["date"] for d in sira[23:] if d["wmape_24_72"] is None]

@@ -38,6 +38,7 @@ BOZUKLAR = [
     ("bozuk_6_ogle_cukuru_d8.json", "D8", False),
     ("bozuk_7_mwe_bos_d10.json", "D10", False),
     ("bozuk_8_naif_celisik_d4.json", "D4", False),
+    ("bozuk_9_olculdu_sayili_d18.json", "D18", False),
 ]
 _sayac = [0]
 
@@ -78,7 +79,7 @@ def test_kanonik_tum_kontrollerden_gecer():
     assert bulgular == [], "kanonik girdi bulgu üretmemeli: %r" % bulgular
     assert bayrak is False
     assert sorted({k["kod"] for k in kayitlar}) == [
-        "D1", "D10", "D11", "D12", "D13", "D14", "D15", "D16", "D17",
+        "D1", "D10", "D11", "D12", "D13", "D14", "D15", "D16", "D17", "D18",
         "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9"]
     assert all(k["durum"] == "gecti" for k in kayitlar)
 
@@ -94,7 +95,7 @@ def test_kanonik_uret_cikis_0_ve_16_sayfa(tmp_path):
     sayfalar = sorted(tmp_path.glob("*_s??_*.html"))
     assert len(sayfalar) == 16, [s.name for s in sayfalar]
     j = json.loads((tmp_path / "denetim.json").read_text(encoding="utf-8"))
-    assert j["ozet"]["hata"] == 0 and j["ozet"]["gecti"] == 21
+    assert j["ozet"]["hata"] == 0 and j["ozet"]["gecti"] == 22
     assert j["bulgular"] == [] and j["suphe_bayragi"] is False
 
 
@@ -203,7 +204,7 @@ def test_hata_yoksa_bile_denetim_json_yazilir(tmp_path):
     denetim.json_yaz(kayitlar, bayrak, yol)
     j = json.loads(yol.read_text(encoding="utf-8"))
     assert {"zaman", "suphe_bayragi", "ozet", "gecenler", "bulgular"} <= set(j)
-    assert len(j["gecenler"]) == 21
+    assert len(j["gecenler"]) == 22
     assert all({"kod", "mesaj", "beklenen", "bulunan"} <= set(g) for g in j["gecenler"])
 
 
@@ -331,3 +332,33 @@ def test_d17_populasyon_sd_kaymasi_yakalanir():
     ort = sum(yil) / len(yil)
     d["YIL_SD"] = math.sqrt(sum((v - ort) ** 2 for v in yil) / len(yil))  # n boleni
     assert "D17" in {x.kod for x in denetim.denetle(d) if x.seviye == "hata"}
+
+
+def test_d18_olculmemis_gun_durust_gecer(tmp_path):
+    """Karar (a): olculmemis gun karnede olculdu=false + null ile KALIR;
+    rapor uretilir, s07 son-7 tablosunda '—' satiri vardir, D4 o satiri
+    atlar, D18 KESINTISIZ'la capraz tutarliligi dogrular."""
+    J = json.loads(KANONIK.read_text(encoding="utf-8"))
+    r = J["accuracy"]["report_card"][27]          # son 7 icinde
+    r["olculdu"] = False
+    r["wmape_0_24"] = r["skill"] = r["naif_wmape"] = None
+    J["accuracy"]["uninterrupted_days"] = 2       # kuyruk: 28,29 olculu -> t=2
+    yol = tmp_path / "olculmemis.json"
+    yol.write_text(json.dumps(J, ensure_ascii=False), encoding="utf-8")
+    kayitlar, bulgular, _b = denetim.denetle_tam(taze_veri(yol))
+    assert not [b for b in bulgular if b.seviye == "hata"], bulgular
+    p = uret_kos(yol, tmp_path / "c")
+    assert p.returncode == 0, p.stdout + p.stderr
+    s07 = next((tmp_path / "c").glob("*_s07_*.html")).read_text(encoding="utf-8")
+    assert "—</td>" in s07                      # tabloda '—' satiri
+
+
+def test_d18_kesintisiz_celiskisi_yakalanir():
+    d = _yuzey()
+    olc = [True] * 30; olc[27] = False
+    d["KARNE_OLCULDU"] = olc
+    wm = list(d["KARNE_WM"]); sk = list(d["KARNE_SK"]); nf = list(d["KARNE_NAIF"])
+    wm[27] = sk[27] = nf[27] = None
+    d["KARNE_WM"], d["KARNE_SK"], d["KARNE_NAIF"] = wm, sk, nf
+    d["KESINTISIZ_GUN"] = 87                      # kuyruk t=2 iken 87 iddiasi
+    assert "D18" in {x.kod for x in denetim.denetle(d) if x.seviye == "hata"}

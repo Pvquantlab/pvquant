@@ -106,6 +106,7 @@ KARNE_SK = [.36, .40, .31, .44, .47, .45, .28, .39, .41, .35, .46, .38, .33,
 KARNE_NAIF = [16.2, 15.2, 16.2, 13.9, 11.7, 11.6, 17.9, 15.2, 14.6, 15.7, 13.1, 13.5, 16.4, 14.1, 14.1,
               14.8, 16.1, 14, 15.2, 16.3, 13.6, 13.8, 14.8, 14.6, 15.1, 15.9, 14.7, 13.8, 14.9, 15.4]   # naif WMAPE (v2.137: ÖLÇÜMdür, türetilmez)
 KARNE_NAIF_KAYNAK = "alan"
+KARNE_OLCULDU = [True] * 30                # v2.140: statik kanonikte hepsi ölçülü
 KARNE_H72_KUYRUK = [11.9, 12.4, 16.2, 12.0, 10.8, 12.1, 13.0]   # son 7 günün 24–72 sa hatası
 KARNE_TARIH = ["%02d Tem" % d for d in range(5, 32)] + ["%02d Ağu" % d for d in (1, 2, 3)]
 
@@ -245,13 +246,21 @@ def _json_yukle(path):
     # yoksa GECICI turetme korunur ama kaynak isaretlenir — D4 turetilmis
     # naifi totolojik sayar ve uyari verir (kok is: kontrat alani).
     _nf = [x.get("naif_wmape") for x in K]
-    if all(n is not None for n in _nf):
+    _olc = [bool(x.get("olculdu", True)) for x in K]
+    # v2.140: kaynak "alan"dır — anahtar girdide var VE her ÖLÇÜLÜ satırda
+    # dolu ise (ölçülmemiş satırın None'ı alan eksikliği sayılmaz).
+    if any("naif_wmape" in x for x in K) and \
+            all(n is not None for n, o in zip(_nf, _olc) if o):
         g["KARNE_NAIF"], g["KARNE_NAIF_KAYNAK"] = _nf, "alan"
     else:
         g["KARNE_NAIF"] = [round(w / (1 - s), 1)
+                           if (w is not None and s is not None) else None
                            for w, s in zip(g["KARNE_WM"], g["KARNE_SK"])]
         g["KARNE_NAIF_KAYNAK"] = "turetilmis"
-    g["KARNE_H72_KUYRUK"] = [x["wmape_24_72"] for x in K if x["wmape_24_72"] is not None]
+    # v2.140: kuyruk SON 7 satırdır ve None KORUNUR — ölçülmemiş günde
+    # süzme kuyruğu kısaltıp s07 hizalamasını kaydırıyordu.
+    g["KARNE_H72_KUYRUK"] = [x["wmape_24_72"] for x in K[-7:]]
+    g["KARNE_OLCULDU"] = [bool(x.get("olculdu", True)) for x in K]
     g["KARNE_TARIH"] = ["%02d %s" % (_tarih(x["date"])[2], AY_TR[_tarih(x["date"])[1] - 1])
                         for x in K]
 

@@ -588,7 +588,7 @@
     "skill": 0.46,
     "wmape_24_72": null,
     "naif_wmape": 13.1,
-    "olculdu": true
+    "olculdu": false
    },
    {
     "date": "2026-07-16",
