@@ -13,7 +13,7 @@ D2  şelale: fizik + Σ adım == holdout                 tolerans 0,1 puan
 D3  saat×gün matrisi sütun toplamı == günlük P50      tolerans 0,1 MWh
     (matris s06 ile aynı formülle, MATRIS_OLCEK_MWH üzerinden kurulur)
 D4  karne satırı: skill == 1 − wmape/naif             tolerans 0,5 puan
-    (naif, build_s07.py:5 gibi türetilir: round(wm/(1−sk), 1))
+    (v2.137: naif ÖLÇÜMdür — KARNE_NAIF; türetilmişse totoloji uyarısı)
 D5  kalibrasyon saati <= pencere_gün × 14  (pencere KART İDDİASINDAN okunur)
 D6  SCADA arşiv saati <= dönem_gün × 24 × 1,01  (v2.132: üst-sınır — aşım imkânsızdır)
 D7  katsayı aralıkları: η_BoS ∈ [0,80–0,98] · bifacial ∈ [%0–12]
@@ -191,28 +191,35 @@ def _d3(veri, ekle):
 
 
 def _d4(veri, ekle):
+    """v2.137 (Faz B1): naif ARTIK OLCUMDUR (KARNE_NAIF, skill_daily.naive_wmape).
+    Ozdeslik skill = 1 - wmape/naif uc bagimsiz sayi arasinda GERCEK denetime
+    donustu. Naif hala turetilmisse (eski girdi) ozdeslik totolojiktir -> uyari."""
     wm, sk = _al(veri, "KARNE_WM") or [], _al(veri, "KARNE_SK") or []
-    if not wm or not sk or len(wm) != len(sk):
+    naif = _al(veri, "KARNE_NAIF") or []
+    kaynak = _al(veri, "KARNE_NAIF_KAYNAK")
+    if not wm or not sk or len(wm) != len(sk) or len(naif) != len(wm):
         return ekle("D4", "uyari", "karne serileri yok ya da uzunlukları farklı — denetlenemedi",
-                    "KARNE_WM ↔ KARNE_SK", "eksik/uyumsuz")
+                    "KARNE_WM ↔ KARNE_SK ↔ KARNE_NAIF", "eksik/uyumsuz")
+    if kaynak != "alan":
+        return ekle("D4", "uyari", "naif girdide ölçüm olarak yok, türetildi — "
+                    "özdeşlik totolojik, denetim anlamsız (kök iş: naif_wmape alanı)",
+                    "KARNE_NAIF_KAYNAK='alan'", str(kaynak))
     kotu = []
-    for i, (w, s) in enumerate(zip(wm, sk)):
+    for i, (w, s, n) in enumerate(zip(wm, sk, naif)):
         if not (0.0 < s < 1.0):
-            kotu.append((i, s, "skill ∉ (0,1)"))
-            continue
-        naif = round(w / (1.0 - s), 1)             # build_s07.py:5 birebir
-        if naif <= 0:
-            kotu.append((i, s, "naif ≤ 0"))
-            continue
-        if abs(s - (1.0 - w / naif)) > 0.005:      # 0,5 puan
-            kotu.append((i, s, "skill ≠ 1 − wmape/naif"))
+            kotu.append((i, "skill ∉ (0,1): %s" % _tr(s, 3))); continue
+        if n is None or n <= 0:
+            kotu.append((i, "naif ≤ 0/yok")); continue
+        if abs(s - (1.0 - w / n)) > 0.005:      # 0,5 puan
+            kotu.append((i, "skill=%s ≠ 1−%s/%s" % (_tr(s, 2), _tr(w), _tr(n))))
     if not kotu:
-        return ekle("D4", "gecti", "her karne satırında skill = 1 − wmape/naif",
-                    "±0,5 puan", "%d/%d satır uyumlu" % (len(wm), len(wm)))
-    i, s, neden = kotu[0]
+        return ekle("D4", "gecti", "her karne satırında skill = 1 − wmape/naif "
+                    "(naif ölçüm)", "±0,5 puan", "%d/%d satır uyumlu" % (len(wm), len(wm)))
+    i, neden = kotu[0]
     ekle("D4", "hata",
-         "karne satırı iç tutarsız (%d satır; ilki: %d. satır, %s)" % (len(kotu), i + 1, neden),
-         "skill = 1 − wmape/naif (±0,5 puan)", "skill=" + _tr(s, 3))
+         "karne satırı ölçülmüş naifle tutarsız (%d satır; ilki: %d. satır, %s)"
+         % (len(kotu), i + 1, neden),
+         "skill = 1 − wmape/naif (±0,5 puan)", "satır %d" % (i + 1))
 
 
 def _d5(veri, ekle):

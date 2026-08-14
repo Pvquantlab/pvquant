@@ -2,7 +2,7 @@ from pvq import *
 
 # --- son 30 günün karnesi (tek kaynak: veri.py) ---------------------------
 from veri import KARNE_WM as wm, KARNE_SK as sk, KARNE_H72_KUYRUK, KARNE_TARIH as TARIH
-naif = [round(w / (1 - s), 1) for w, s in zip(wm, sk)]
+from veri import KARNE_NAIF as naif   # v2.137: naif ölçümdür, motor türetmez
 h72 = [round(w * 1.36, 1) for w in wm[:23]] + KARNE_H72_KUYRUK
 ORT_SKILL = sum(sk) / len(sk) * 100
 tr = lambda x, d=1: ("%.*f" % (d, x)).replace(".", ",")

@@ -269,7 +269,7 @@ def _tipik_gun(ctx):
 def _karne_satirlari(k):
     """accuracy.report_card — s07 SÖZLEŞMESİ (motor katı):
     · TAM 30 satır ('Son 30 günün doğruluk karnesi'; azı/fazlası IndexError)
-    · her satırda wmape_0_24 + skill dolu (naif = wm/(1−sk) motor içinde türer)
+    · her satırda wmape_0_24 + skill + naif_wmape dolu (v2.137: naif ölçümdür)
     · SADECE son 7 satırda wmape_24_72 dolu (KARNE_H72_KUYRUK uzunluğu 7 olmalı;
       erken günlerde veri olsa da null'lanır — kuyruk şişerse s07 kayar).
     skill_daily.skill_vs_naive yüzde (100·(1−m/n)) → rapor 0-1 kesir ister."""
@@ -277,11 +277,16 @@ def _karne_satirlari(k):
     for r in k.itertuples():
         tarih = str(r.date)[:10]          # pandas Timestamp → 'YYYY-AA-GG'
         d = out.setdefault(tarih, {"date": tarih, "wmape_0_24": None,
-                                   "skill": None, "wmape_24_72": None})
+                                   "skill": None, "wmape_24_72": None,
+                                   "naif_wmape": None})
         if r.horizon_bucket == "0-24":
             d["wmape_0_24"] = round(float(r.mape), 1)
             if r.skill_vs_naive == r.skill_vs_naive and r.skill_vs_naive is not None:
                 d["skill"] = round(float(r.skill_vs_naive) / 100.0, 2)
+            # v2.137 (Faz B1): naif OLCUMDUR — skill_daily.naive_wmape'ten
+            # yayilir; motor artik turetmez (spec #4: gercek alan denetimi).
+            if r.naive_wmape == r.naive_wmape and r.naive_wmape is not None:
+                d["naif_wmape"] = round(float(r.naive_wmape), 1)
         elif r.horizon_bucket == "24-72":
             d["wmape_24_72"] = round(float(r.mape), 1)
     # Bugün doğası gereği YARIMDIR (gün bitmeden skor kesinleşmez) — karne

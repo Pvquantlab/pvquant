@@ -37,6 +37,7 @@ BOZUKLAR = [
     ("bozuk_5_kf_mwe_d10.json", "D10", False),
     ("bozuk_6_ogle_cukuru_d8.json", "D8", False),
     ("bozuk_7_mwe_bos_d10.json", "D10", False),
+    ("bozuk_8_naif_celisik_d4.json", "D4", False),
 ]
 _sayac = [0]
 
@@ -167,6 +168,14 @@ def test_d3_turetilen_olcekle_tutarli():
 def test_d4_karne_skill_ozdesligi():
     d = _yuzey(); d["KARNE_SK"] = [1.4] + list(d["KARNE_SK"][1:])
     assert "D4" in {b.kod for b in denetim.denetle(d) if b.seviye == "hata"}
+
+
+def test_d4_turetilmis_naif_totoloji_uyarisi():
+    """v2.137: naif alandan gelmiyorsa ozdeslik denetimi anlamsizdir — uyari."""
+    d = _yuzey(); d["KARNE_NAIF_KAYNAK"] = "turetilmis"
+    b = denetim.denetle(d)
+    assert "D4" not in {x.kod for x in b if x.seviye == "hata"}
+    assert "D4" in {x.kod for x in b if x.seviye == "uyari"}
 
 
 def test_d9_ay_siniri_asan_donem_yakalanir():
