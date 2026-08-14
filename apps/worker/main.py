@@ -93,7 +93,21 @@ def gece_skill(plant, pencere_gun: int = 10):
     import pvlib as _pvlib
     from pvquant.config import get_settings as _gs
     _clip = _gs().skill_naive_ratio_clip
-    _act = df.drop_duplicates("ts_utc").set_index("ts_utc").power_kw
+    # v2.130: naif kaynagi pencere+1 gun — kayan pencerenin ilk tam gununun
+    # D-1'i cerceve disinda kaliyor, naif NaN'laniyor ve upsert onceki iyi
+    # skoru NULL'la eziyordu (skill_daily'de 2-4 Agu yaralari; her kosu
+    # sinir gununu yaralar, pencere kayinca yara kalici olur). Gerceklesme
+    # artik scada_hourly'den BIR GUN geriden okunur; skor penceresi (df)
+    # DEGISMEZ, yalniz naifin referans verisi tamamlanir. Yan kazanc: naif,
+    # 'o saatte tahmin satiri da var' ortuk sartindan kurtulur.
+    with tenant_baglami(tid) as s:
+        _act = pd.read_sql(text(
+            "SELECT ts_utc, power_kw FROM scada_hourly "
+            "WHERE plant_id=:p AND flag='valid' "
+            "AND ts_utc >= now()-((:g + 1) * INTERVAL '1 day')"),
+            s.connection(), params={"p": pid, "g": pencere_gun},
+            parse_dates=["ts_utc"]).drop_duplicates("ts_utc") \
+            .set_index("ts_utc").power_kw
     df["naif_ham"] = (df.ts_utc - pd.Timedelta(hours=24)).map(_act)
     _ts = pd.DatetimeIndex(sorted(set(df.ts_utc) | set(df.ts_utc - pd.Timedelta(hours=24))))
     _cs = _pvlib.location.Location(float(plant["lat"]), float(plant["lon"]),
