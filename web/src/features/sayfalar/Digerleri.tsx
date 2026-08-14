@@ -486,7 +486,10 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
         <Kpi etiket="Fizik · aynı sınav" deger={yzd(k.mape_once)}
              alt="karşılaştırma tabanı" />
         <Kpi etiket="İyileşme" deger={iyilesme === null ? "\u2014" : `%${iyilesme}`}
-             alt={iyilesme !== null && iyilesme > 0 ? "kalibrasyon kazancı" : "\u2014"} />
+             ton={iyilesme !== null && iyilesme < 0 ? "amber" : undefined}
+             alt={iyilesme === null ? "\u2014"
+               : iyilesme > 0 ? "kalibrasyon kazancı"
+               : "MAPE kazancı yok — sapma düzeltmesi için Mod C aktif"} />
       </div>
       <div className="ızgara" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)" }}>
         <Kart baslik="Bulduklarımız">

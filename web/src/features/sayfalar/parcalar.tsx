@@ -10,12 +10,20 @@ export const sayiTr = (x: number, ondalik = 0): string =>
                                    maximumFractionDigits: ondalik })
     .format(Number(x.toFixed(ondalik)));
 
-export function Kpi({ etiket, deger, birim, alt }:
-  { etiket: string; deger: string; birim?: string; alt?: ReactNode }) {
+export function Kpi({ etiket, deger, birim, alt, ton }:
+  { etiket: string; deger: string; birim?: string; alt?: ReactNode;
+    ton?: "amber" }) {
+  // v2.124: opsiyonel uyari tonu — negatif iyilesme gibi "dikkat" KPI'lari
+  // icin; verilmezse davranis birebir eski hali (geriye uyumlu).
+  const st = ton === "amber"
+    ? { borderColor: "var(--amber)",
+        background: "linear-gradient(180deg, var(--amber-zemin) 0%, var(--kart) 72%)" }
+    : undefined;
   return (
-    <div className="kpi">
+    <div className="kpi" style={st}>
       <div className="kpi-et">{etiket}</div>
-      <div className="kpi-dg mono">{deger}{birim &&
+      <div className="kpi-dg mono"
+           style={ton === "amber" ? { color: "#B26E07" } : undefined}>{deger}{birim &&
         <span style={{ fontSize: 13, color: "var(--soluk)", marginLeft: 5 }}>{birim}</span>}</div>
       {alt && <div className="kpi-br">{alt}</div>}
     </div>
