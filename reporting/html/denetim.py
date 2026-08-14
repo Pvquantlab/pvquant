@@ -1,0 +1,387 @@
+# -*- coding: utf-8 -*-
+"""denetim.py — rapor verisinin İÇ TUTARLILIK denetimi (saf modül).
+
+Hiçbir sayfa üretilmeden ÖNCE koşar. Girdi, veri.py'nin yüklediği veri
+yüzeyidir (modül ya da sözlük). Tek bir seviye="hata" bulgusu rapor
+üretimini durdurur; eşik gevşetmek, alan ikame etmek, eksiği sıfırla
+doldurmak YASAKTIR (görev kuralı).
+
+Kontroller
+----------
+D1  Σ günlük P50 == dönem toplamı                     tolerans 0,1 MWh
+D2  şelale: fizik + Σ adım == holdout                 tolerans 0,1 puan
+D3  saat×gün matrisi sütun toplamı == günlük P50      tolerans 0,1 MWh
+    (matris build_s06.py:25 ile birebir yeniden kurulur)
+D4  karne satırı: skill == 1 − wmape/naif             tolerans 0,5 puan
+    (naif, build_s07.py:5 gibi türetilir: round(wm/(1−sk), 1))
+D5  kalibrasyon saati <= pencere_gün × 14             (120 gün → 1.680)
+D6  SCADA arşiv saati == dönem_gün × 24               tolerans %1
+D7  katsayı aralıkları: η_BoS ∈ [0,80–0,98] · bifacial ∈ [%0–12]
+    aralık dışı → hata + "şüpheli kalibrasyon" bayrağı (denetim.json)
+D8  saatlik profil tek tepeli: gündüz saatlerinde yerel minimum yok
+D9  gösterilen tarihler ∈ [tahmin başı, tahmin sonu]
+    (s05 panel başlıkları "%02d Ağustos" % (5+k) ve s14 hedef günü
+     "05 Ağustos" sabit metinlerdir; birebir yeniden kurulup sınanır)
+D10 zorunlu-alan varlığı: tükettiği alan yokken gösterge/cümle üretilmez
+    (MWe → kapak {{KURULU}}, s05 {{SEBEKE}} cümlesi, kapasite faktörü)
+
+Not (D7 özel kuralı): "Bu raporda böyle bir işaret yoktur." cümlesi
+build_s09.py:163'te sabit kopyadır ve kapsam gereği DOKUNULMAZ. Koşulluluk
+kapıyla sağlanır: D7 hatası raporu tümden engellediğinden bu cümle yalnız
+D7'yi geçmiş raporlarda basılabilir; bayrak denetim.json'a yazılır.
+"""
+from dataclasses import dataclass, asdict
+import datetime as _dt
+import json as _json
+import re as _re
+
+# ---------------------------------------------------------------- sabitler
+S06_OLCEK_MWH = 65.8      # build_s06.py:25 — matris ölçekleyicisi (motor sabiti)
+PENCERE_GUN = 120         # s09 kartı "…, 120 gün" (build_s09.py:111) + KARNE_PENCERE
+GUNDUZ_SAAT_TAVAN = 14    # gündüz saati üst sınırı (D5: gün × 14)
+ETA_ARALIK = (0.80, 0.98)
+BIF_ARALIK = (0.0, 12.0)
+S05_PANEL = 8             # build_s05: ilk sekiz günün paneli, başlık "%02d Ağustos" % (5+k)
+S05_GUN0 = 5              # build_s05.py:102 sabiti
+S14_HEDEF = (5, 8)        # build_s14: "05 Ağustos" sabit metni (gün, ay)
+AYLAR = ["ocak", "şubat", "mart", "nisan", "mayıs", "haziran", "temmuz",
+         "ağustos", "eylül", "ekim", "kasım", "aralık"]
+
+
+@dataclass
+class Bulgu:
+    kod: str
+    seviye: str          # "hata" | "uyari"
+    mesaj: str
+    beklenen: str
+    bulunan: str
+
+
+# ---------------------------------------------------------------- yardımcılar
+def _al(veri, ad, varsayilan=None):
+    """Modülden (getattr) ya da sözlükten (get) alan okur."""
+    if isinstance(veri, dict):
+        return veri.get(ad, varsayilan)
+    return getattr(veri, ad, varsayilan)
+
+
+def _tr(x, d=1):
+    try:
+        return ("%.*f" % (d, float(x))).replace(".", ",")
+    except (TypeError, ValueError):
+        return str(x)
+
+
+def _sayi(s):
+    """Türkçe biçimli sayı metni → float. Yok/'—'/çözümlenemez → None.
+    '1.487'→1487 · '0,942'→0.942 · '%7,3'→7.3 · '4.440'→4440"""
+    if s is None:
+        return None
+    if isinstance(s, (int, float)):
+        return float(s)
+    t = str(s).replace("%", "").replace("\u00a0", " ").strip()
+    if t in ("", "—", "–", "-"):
+        return None
+    if "," in t:                                   # virgül = ondalık
+        t = t.replace(".", "").replace(",", ".")
+    elif _re.fullmatch(r"\d{1,3}(\.\d{3})+", t) and not t.startswith("0."):
+        t = t.replace(".", "")                     # nokta = binlik
+    try:
+        return float(t)
+    except ValueError:
+        return None
+
+
+def _ay_no(ad):
+    ad = ad.strip().lower().replace("i̇", "i")
+    for i, tam in enumerate(AYLAR):
+        if ad == tam or (len(ad) >= 3 and tam.startswith(ad[:3])):
+            return i + 1
+    return None
+
+
+def _arsiv_coz(etiket):
+    """'1 Şubat – 4 Ağustos 2026\\n (4.440 saat)' → (tarih1, tarih2, saat)."""
+    if not etiket:
+        return None
+    t = " ".join(str(etiket).split())
+    m = _re.search(r"(\d{1,2})\s+(\S+?)(?:\s+(\d{4}))?\s*[–—-]\s*"
+                   r"(\d{1,2})\s+(\S+?)\s+(\d{4})", t)
+    h = _re.search(r"\(\s*([\d.\s]+?)\s*saat\s*\)", t)
+    if not (m and h):
+        return None
+    a1, a2 = _ay_no(m.group(2)), _ay_no(m.group(5))
+    saat = _sayi(h.group(1).strip())
+    if a1 is None or a2 is None or saat is None:
+        return None
+    y2 = int(m.group(6))
+    y1 = int(m.group(3)) if m.group(3) else y2
+    try:
+        return (_dt.date(y1, a1, int(m.group(1))),
+                _dt.date(y2, a2, int(m.group(4))), saat)
+    except ValueError:
+        return None
+
+
+# ---------------------------------------------------------------- kontroller
+def _d1(veri, ekle):
+    p50, top = _al(veri, "P50_GUN") or [], _al(veri, "TOPLAM_P50_MWH")
+    if not p50 or top is None:
+        return ekle("D1", "uyari", "günlük seri ya da dönem toplamı yok — denetlenemedi",
+                    "P50_GUN + TOPLAM_P50_MWH", "eksik")
+    s = sum(p50)
+    if abs(s - top) <= 0.1:
+        return ekle("D1", "gecti", "Σ günlük P50 dönem toplamıyla örtüşüyor",
+                    _tr(top) + " MWh (±0,1)", _tr(s) + " MWh")
+    ekle("D1", "hata", "günlük P50 toplamı dönem toplamını tutmuyor",
+         _tr(top) + " MWh (±0,1)", _tr(s) + " MWh")
+
+
+def _d2(veri, ekle):
+    bas, bit = _al(veri, "SELALE_BAS"), _al(veri, "SELALE_BIT")
+    adimlar = _al(veri, "SELALE_ADIM") or []
+    deltalar = [d for (_ad, d, _k) in adimlar if d is not None]
+    if bas is None or bit is None or not deltalar:
+        return ekle("D2", "uyari", "şelale uçları ya da adımları yok — denetlenemedi",
+                    "physics_mape + steps + holdout_mape", "eksik")
+    s = bas + sum(deltalar)
+    if abs(s - bit) <= 0.1:
+        return ekle("D2", "gecti", "şelale kapanıyor: fizik + Σ adım = holdout",
+                    _tr(bit) + " puan (±0,1)", _tr(s) + " puan")
+    ekle("D2", "hata",
+         "şelale kapanmıyor: fizik (%s) + Σ adım (%s) ≠ holdout — arkasında "
+         "adım olmayan sıçrama var" % (_tr(bas), _tr(sum(deltalar))),
+         _tr(bit) + " puan (±0,1)", _tr(s) + " puan")
+
+
+def _d3(veri, ekle):
+    taban, p50 = _al(veri, "BASE_KW") or [], _al(veri, "P50_GUN") or []
+    if not taban or not p50:
+        return ekle("D3", "uyari", "saatlik taban ya da günlük seri yok — denetlenemedi",
+                    "BASE_KW + P50_GUN", "eksik")
+    kotu = []
+    for d, gun in enumerate(p50):
+        # build_s06.py:25 birebir: v = BASE_KW[i] * DAILY[d] / 65.8  → sütun MWh
+        sutun = sum(v * gun / S06_OLCEK_MWH for v in taban) / 1000.0
+        if abs(sutun - gun) > 0.1:
+            kotu.append((d, gun, sutun))
+    if not kotu:
+        return ekle("D3", "gecti", "matris sütun toplamları günlük P50 ile örtüşüyor",
+                    "her gün: günlük P50 (±0,1 MWh)", "%d/%d sütun uyumlu" % (len(p50), len(p50)))
+    d, gun, sutun = kotu[0]
+    ekle("D3", "hata",
+         "saat×gün matrisi sütunları günlük değeri tutmuyor (%d gün uyumsuz; ilki: %d. gün)"
+         % (len(kotu), d + 1),
+         _tr(gun) + " MWh (±0,1)", _tr(sutun) + " MWh")
+
+
+def _d4(veri, ekle):
+    wm, sk = _al(veri, "KARNE_WM") or [], _al(veri, "KARNE_SK") or []
+    if not wm or not sk or len(wm) != len(sk):
+        return ekle("D4", "uyari", "karne serileri yok ya da uzunlukları farklı — denetlenemedi",
+                    "KARNE_WM ↔ KARNE_SK", "eksik/uyumsuz")
+    kotu = []
+    for i, (w, s) in enumerate(zip(wm, sk)):
+        if not (0.0 < s < 1.0):
+            kotu.append((i, s, "skill ∉ (0,1)"))
+            continue
+        naif = round(w / (1.0 - s), 1)             # build_s07.py:5 birebir
+        if naif <= 0:
+            kotu.append((i, s, "naif ≤ 0"))
+            continue
+        if abs(s - (1.0 - w / naif)) > 0.005:      # 0,5 puan
+            kotu.append((i, s, "skill ≠ 1 − wmape/naif"))
+    if not kotu:
+        return ekle("D4", "gecti", "her karne satırında skill = 1 − wmape/naif",
+                    "±0,5 puan", "%d/%d satır uyumlu" % (len(wm), len(wm)))
+    i, s, neden = kotu[0]
+    ekle("D4", "hata",
+         "karne satırı iç tutarsız (%d satır; ilki: %d. satır, %s)" % (len(kotu), i + 1, neden),
+         "skill = 1 − wmape/naif (±0,5 puan)", "skill=" + _tr(s, 3))
+
+
+def _d5(veri, ekle):
+    saat = _sayi(_al(veri, "KAT_SAAT"))
+    if saat is None:
+        return ekle("D5", "uyari", "kalibrasyon saati alanı yok — denetlenemedi "
+                    "(kartta '—' basılması dürüst-eksiklik kuralına uygundur)",
+                    "kat_saat", "eksik")
+    tavan = PENCERE_GUN * GUNDUZ_SAAT_TAVAN
+    if saat <= tavan:
+        return ekle("D5", "gecti", "kalibrasyon saati %d günlük pencereye sığıyor" % PENCERE_GUN,
+                    "≤ " + _tr(tavan, 0) + " saat (%d×%d)" % (PENCERE_GUN, GUNDUZ_SAAT_TAVAN),
+                    _tr(saat, 0) + " saat")
+    ekle("D5", "hata",
+         "%d günlük pencerede fiziksel olarak sığmayan gündüz saati" % PENCERE_GUN,
+         "≤ " + _tr(tavan, 0) + " saat (%d×%d)" % (PENCERE_GUN, GUNDUZ_SAAT_TAVAN),
+         _tr(saat, 0) + " saat")
+
+
+def _d6(veri, ekle):
+    coz = _arsiv_coz(_al(veri, "ARSIV_ETIKET"))
+    if coz is None:
+        return ekle("D6", "uyari", "arşiv etiketi yok ya da çözümlenemedi — denetlenemedi",
+                    "'G Ay – G Ay YYYY (N saat)'", repr(_al(veri, "ARSIV_ETIKET"))[:60])
+    t1, t2, saat = coz
+    gun = (t2 - t1).days + 1
+    beklenen = gun * 24
+    if beklenen > 0 and abs(saat - beklenen) / beklenen <= 0.01:
+        return ekle("D6", "gecti", "SCADA arşiv saati dönem uzunluğuyla örtüşüyor",
+                    _tr(beklenen, 0) + " saat (%d gün × 24, ±%%1)" % gun,
+                    _tr(saat, 0) + " saat")
+    ekle("D6", "hata",
+         "SCADA arşiv saati dönem uzunluğunu tutmuyor (%s – %s = %d gün)"
+         % (t1.isoformat(), t2.isoformat(), gun),
+         _tr(beklenen, 0) + " saat (%d gün × 24, ±%%1)" % gun,
+         _tr(saat, 0) + " saat")
+
+
+def _d7(veri, ekle):
+    eta, bif = _sayi(_al(veri, "KAT_ETA")), _sayi(_al(veri, "KAT_BIF"))
+    bayrak = False
+    if eta is None:
+        ekle("D7", "uyari", "η_BoS alanı yok — aralık denetlenemedi", "kat_eta", "eksik")
+    elif ETA_ARALIK[0] <= eta <= ETA_ARALIK[1]:
+        ekle("D7", "gecti", "η_BoS fiziksel aralıkta",
+             "%s–%s" % (_tr(ETA_ARALIK[0], 2), _tr(ETA_ARALIK[1], 2)), _tr(eta, 3))
+    else:
+        bayrak = True
+        ekle("D7", "hata", "η_BoS fiziksel aralığın dışında — ŞÜPHELİ KALİBRASYON bayrağı",
+             "%s–%s" % (_tr(ETA_ARALIK[0], 2), _tr(ETA_ARALIK[1], 2)), _tr(eta, 3))
+    if bif is None:
+        ekle("D7", "uyari", "bifacial alanı yok — aralık denetlenemedi", "kat_bif", "eksik")
+    elif BIF_ARALIK[0] <= bif <= BIF_ARALIK[1]:
+        ekle("D7", "gecti", "bifacial kazanç fiziksel aralıkta",
+             "%%%s–%%%s" % (_tr(BIF_ARALIK[0], 0), _tr(BIF_ARALIK[1], 0)), "%" + _tr(bif))
+    else:
+        bayrak = True
+        ekle("D7", "hata", "bifacial kazanç fiziksel aralığın dışında — ŞÜPHELİ "
+             "KALİBRASYON bayrağı", "%%%s–%%%s" % (_tr(BIF_ARALIK[0], 0), _tr(BIF_ARALIK[1], 0)),
+             "%" + _tr(bif))
+    return bayrak
+
+
+def _d8(veri, ekle):
+    taban = _al(veri, "BASE_KW") or []
+    if len(taban) < 3:
+        return ekle("D8", "uyari", "saatlik taban yok/kısa — denetlenemedi",
+                    "BASE_KW (≥3 dilim)", "eksik")
+    cukur = [i for i in range(1, len(taban) - 1)
+             if taban[i] < taban[i - 1] and taban[i] < taban[i + 1]]
+    if not cukur:
+        return ekle("D8", "gecti", "saatlik profil tek tepeli (gündüz yerel minimumu yok)",
+                    "yerel minimum: 0", "0")
+    i = cukur[0]
+    ekle("D8", "hata",
+         "saatlik profilde gündüz çukuru: güneş öğlene doğru inip tekrar çıkmaz "
+         "(%02d–%02d dilimi %s kW; komşuları %s / %s kW)"
+         % (5 + i, 6 + i, _tr(taban[i], 0), _tr(taban[i - 1], 0), _tr(taban[i + 1], 0)),
+         "yerel minimum: 0", "%d çukur (ilki %02d–%02d)" % (len(cukur), 5 + i, 6 + i))
+
+
+def _d9(veri, ekle):
+    etiket = _al(veri, "GUN_ETIKET") or []
+    ay_yil = str(_al(veri, "AY_YIL") or "")
+    n = int(_al(veri, "GUN_SAYISI") or len(etiket) or 0)
+    par = ay_yil.split()
+    ay = _ay_no(par[0]) if par else None
+    yil = int(par[1]) if len(par) > 1 and par[1].isdigit() else None
+    if not etiket or ay is None or yil is None or n == 0:
+        return ekle("D9", "uyari", "dönem tarih aralığı kurulamadı — denetlenemedi",
+                    "GUN_ETIKET + AY_YIL", "eksik")
+    try:
+        bas = _dt.date(yil, ay, int(etiket[0]))
+    except ValueError:
+        return ekle("D9", "uyari", "dönem başlangıcı çözümlenemedi", "AY_YIL + GUN_ETIKET[0]",
+                    "%s / %s" % (ay_yil, etiket[0]))
+    gecerli = {bas + _dt.timedelta(days=i) for i in range(n)}
+    # sayfa 5 panel başlıkları (build_s05.py:102: '%02d Ağustos' % (5+k)) + s14 hedef günü
+    gosterilen = [("s05 panel", S05_GUN0 + k, 8) for k in range(min(S05_PANEL, n))]
+    gosterilen.append(("s14 hedef gün", S14_HEDEF[0], S14_HEDEF[1]))
+    disari = []
+    for yer, gun, ayno in gosterilen:
+        try:
+            t = _dt.date(bas.year, ayno, gun)
+        except ValueError:
+            disari.append((yer, "%02d/%02d geçersiz" % (gun, ayno)))
+            continue
+        if t not in gecerli:
+            disari.append((yer, t.isoformat()))
+    if not disari:
+        return ekle("D9", "gecti", "gösterilen tüm tarihler tahmin dönemi içinde",
+                    "[%s, %s]" % (bas.isoformat(), max(gecerli).isoformat()),
+                    "%d tarih uyumlu" % len(gosterilen))
+    ekle("D9", "hata",
+         "dönem dışına düşen sabit tarih metni: " + "; ".join("%s → %s" % yd for yd in disari),
+         "[%s, %s]" % (bas.isoformat(), max(gecerli).isoformat()),
+         "%d tarih dışarıda" % len(disari))
+
+
+def _d10(veri, ekle):
+    saha = dict(_al(veri, "SAHA") or [])
+    kurulu = saha.get("Kurulu güç", "")
+    m = _re.search(r"/\s*([0-9][\d.,]*)\s*MWe", kurulu)
+    mwe = _sayi(m.group(1)) if m else None
+    if mwe is not None:
+        return ekle("D10", "gecti", "MWe alanı mevcut; tüketen gösterge ve cümleler basılabilir",
+                    "sayısal MWe", _tr(mwe) + " MWe")
+    kf = _al(veri, "KF_PCT")
+    tuketici = ["kapak göstergesi {{KURULU}}", "s05 şebeke gücü cümlesi {{SEBEKE}}"]
+    if kf is not None:
+        tuketici.append("kapasite faktörü (%%%s — tanımı MWe ister, MWp ikamesi yasak)" % _tr(kf))
+    ekle("D10", "hata",
+         "MWe alanı boşken onu tüketen çıktı üretilemez: " + " · ".join(tuketici) +
+         ". Eksik alan cümle ortasında '—' olarak basılamaz; gösterge tümden atlanmalı "
+         "ya da alan doldurulmalıdır.",
+         "sayısal MWe ('… MWp / X MWe')", repr(kurulu)[:60])
+
+
+# ---------------------------------------------------------------- API
+def denetle_tam(veri):
+    """Tüm kontrolleri koşar. → (kayitlar, bulgular, suphe_bayragi)
+    kayitlar: geçen+geçmeyen tüm sonuçlar (denetim.json için);
+    bulgular: yalnız hata/uyari (denetle() sözleşmesi)."""
+    kayitlar = []
+
+    def ekle(kod, durum, mesaj, beklenen, bulunan):
+        kayitlar.append({"kod": kod, "durum": durum, "mesaj": mesaj,
+                         "beklenen": str(beklenen), "bulunan": str(bulunan)})
+
+    _d1(veri, ekle); _d2(veri, ekle); _d3(veri, ekle); _d4(veri, ekle)
+    _d5(veri, ekle); _d6(veri, ekle)
+    bayrak = bool(_d7(veri, ekle))
+    _d8(veri, ekle); _d9(veri, ekle); _d10(veri, ekle)
+
+    bulgular = [Bulgu(k["kod"], k["durum"], k["mesaj"], k["beklenen"], k["bulunan"])
+                for k in kayitlar if k["durum"] in ("hata", "uyari")]
+    return kayitlar, bulgular, bayrak
+
+
+def denetle(veri):
+    """Sözleşme: veri yüzeyi (modül ya da sözlük) → list[Bulgu].
+    Boş liste = tüm kontroller geçti."""
+    _kayitlar, bulgular, _bayrak = denetle_tam(veri)
+    return bulgular
+
+
+def json_yaz(kayitlar, bayrak, yol):
+    """denetim.json: geçen/geçmeyen ayrımı + her kontrolün kodu,
+    beklenen ve bulunan değerleri."""
+    gecenler = [k for k in kayitlar if k["durum"] == "gecti"]
+    kalanlar = [{"kod": k["kod"], "seviye": k["durum"], "mesaj": k["mesaj"],
+                 "beklenen": k["beklenen"], "bulunan": k["bulunan"]}
+                for k in kayitlar if k["durum"] != "gecti"]
+    govde = {
+        "zaman": _dt.datetime.now().isoformat(timespec="seconds"),
+        "suphe_bayragi": bayrak,
+        "ozet": {"gecti": len(gecenler),
+                 "hata": sum(1 for k in kalanlar if k["seviye"] == "hata"),
+                 "uyari": sum(1 for k in kalanlar if k["seviye"] == "uyari")},
+        "gecenler": [{"kod": k["kod"], "mesaj": k["mesaj"],
+                      "beklenen": k["beklenen"], "bulunan": k["bulunan"]}
+                     for k in gecenler],
+        "bulgular": kalanlar,
+    }
+    with open(yol, "w", encoding="utf-8") as f:
+        _json.dump(govde, f, ensure_ascii=False, indent=2)
+    return govde
