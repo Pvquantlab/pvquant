@@ -10,6 +10,7 @@
   --basari: #1E9E6A;
   --zemin: #F3F5F4; --kart: #FFFFFF; --yuzey: #F5F6F7; --yuzey2: #EBEDF0;
   --metin: #1C1E21; --ikincil: #444950; --soluk: #525860;
+  --cubuk-vurgu: #1B5E3F;
   --kenar: #D3D8D6; --izgara: #E4E8E6;
   --yan: #111827; --yan-metin: #9AA6B5; --yan-aktif: #1E293B; --yan-cizgi: rgba(255,255,255,.08);
   /* docs-derisi: sistem yigini (Mac'te SF Pro). Geri donus: 'IBM Plex Sans', system-ui, sans-serif */
@@ -26,6 +27,7 @@
   --zemin: #0B1017; --kart: #131B26; --yuzey: #18222E; --yuzey2: #24303D;
   --marka-zemin: #0F2A22; --amber-zemin: #2A2013; --uyari-zemin: #2B1813;
   --metin: #FBFDFF; --ikincil: #C6D2DC; --soluk: #9FAEBB;
+  --cubuk-vurgu: #7FBF9A;
   --kenar: #1F2D3A; --izgara: #182430;
   --yan: #080D14; --yan-metin: #8A97A8; --yan-aktif: #1A2531;
 }

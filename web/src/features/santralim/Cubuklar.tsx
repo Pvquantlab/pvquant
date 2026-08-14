@@ -49,7 +49,7 @@ export function Cubuklar({ etiketler, degerler, birim, vurguIdx, yukseklik = 260
           borderRadius: [2, 2, 0, 0],
           color: !tam(i) ? `rgba(${nr},.18)`
                : i === enDusuk ? "#E8940A"
-               : i === vurguIdx ? "#1B5E3F"
+               : i === vurguIdx ? oku("--cubuk-vurgu")
                : "#4E9B72",
           borderType: !tam(i) ? "dashed" as const : "solid" as const,
           borderColor: !tam(i) ? `rgba(${nr},.5)` : "transparent",
