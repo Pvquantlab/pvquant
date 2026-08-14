@@ -775,7 +775,8 @@
     "delta": null,
     "kind": "bas"
    }
-  ]
+  ],
+  "window_days": 120
  },
  "scada": {
   "quality_monthly": {

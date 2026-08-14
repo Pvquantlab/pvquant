@@ -108,7 +108,7 @@ def selale(W=1000, H=352, ml=64, mb=88, fs=14):
 KATSAYI = [
     ("Sistem verimi (η_BoS)", "{{KAT_ETA}}", "kablolama, inverter ve trafo zincirinin toplam etkisi"),
     ("Bifacial kazanç", "{{KAT_BIF}}", "modüllerin arka yüzünden gelen ek üretim"),
-    ("Kalibrasyonda kullanılan saat", "{{KAT_SAAT}}", "kalite süzgecini geçen gündüz saati, 120 gün"),
+    ("Kalibrasyonda kullanılan saat", "{{KAT_SAAT}}", "kalite süzgecini geçen gündüz saati{{KAL_PENCERE}}"),
     ("Kalibrasyon tarihi", "{{KAT_TARIH}}", "katsayıların son güncellenme tarihi"),
 ]
 
@@ -143,7 +143,7 @@ BODY = """<div class="page"><div class="sheet">
   yolun her adımını sayıyla belgeler — hangi düzeltmenin ne kazandırdığı, hangisinin bedel
   ödettiği dâhil.</p>
 
-  """ + selale() + """
+  """ + (selale() if ADIM is not None else '<p class="veri-eksik">veri eksik (gerekli: kalibrasyon adımları) — şelale, adım kırılımı kayda işlenince basılır; uçlar sağdaki kartlardadır.</p>') + """
     <div class="figcap"><b>Şekil 9.1</b>&nbsp;&nbsp;Ham fizik modelinden hibrit modele geçişte
       ortalama hatanın adım adım kapanması. Aradaki sütunlar havada durur, çünkü bir seviyeyi
       değil bir değişimi gösterirler; her sütunun altındaki satır o adımdan sonra kalan hatayı

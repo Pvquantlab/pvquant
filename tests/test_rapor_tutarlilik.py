@@ -195,3 +195,42 @@ def test_hata_yoksa_bile_denetim_json_yazilir(tmp_path):
     assert {"zaman", "suphe_bayragi", "ozet", "gecenler", "bulgular"} <= set(j)
     assert len(j["gecenler"]) == 11
     assert all({"kod", "mesaj", "beklenen", "bulunan"} <= set(g) for g in j["gecenler"])
+
+
+# ------------------------------------------------- v2.132 anlam testleri
+def test_d2_adimsiz_girdi_engellemez_ama_selale_basilmaz(tmp_path):
+    """B4 tersine çevrildi: steps yoksa rapor çıkar (uyarı), s09'da şelale
+    yerine 'veri eksik' satırı vardır — görev reçetesinin kendisi."""
+    J = json.loads(KANONIK.read_text(encoding="utf-8"))
+    del J["calibration"]["steps"]
+    yol = tmp_path / "adimsiz.json"
+    yol.write_text(json.dumps(J, ensure_ascii=False), encoding="utf-8")
+    kayitlar, bulgular, _b = denetim.denetle_tam(taze_veri(yol))
+    assert "D2" not in {b.kod for b in bulgular if b.seviye == "hata"}
+    assert "D2" in {b.kod for b in bulgular if b.seviye == "uyari"}
+    p = uret_kos(yol, tmp_path / "cikti")
+    assert p.returncode == 0, p.stdout + p.stderr
+    s09 = next((tmp_path / "cikti").glob("*_s09_*.html")).read_text(encoding="utf-8")
+    assert "veri eksik (gerekli: kalibrasyon adımları)" in s09
+    assert "Kalibrasyon iyilesme selalesi" not in s09
+
+
+def test_d5_pencere_iddiasi_yoksa_uyari():
+    """Pencere kartta iddia edilmiyorsa uydurma 120'ye karşı denetlenmez."""
+    d = _yuzey(); d["KAL_PENCERE"] = ""; d["KAT_SAAT"] = "4.272"
+    b = denetim.denetle(d)
+    assert "D5" not in {x.kod for x in b if x.seviye == "hata"}
+    assert "D5" in {x.kod for x in b if x.seviye == "uyari"}
+
+
+def test_d6_bosluklu_durust_arsiv_gecer():
+    """v2.132 üst-sınır: 468 günlük dönemde 9.419 saat (%84) meşrudur."""
+    d = _yuzey()
+    d["ARSIV_ETIKET"] = "30 Nisan 2025 – 10 Ağustos 2026\n    (9.419 saat)"
+    assert "D6" not in {x.kod for x in denetim.denetle(d) if x.seviye == "hata"}
+
+
+def test_d6_kapasite_asimi_hala_duser():
+    d = _yuzey()
+    d["ARSIV_ETIKET"] = "1 Şubat – 4 Ağustos 2026\n    (4.600 saat)"
+    assert "D6" in {x.kod for x in denetim.denetle(d) if x.seviye == "hata"}

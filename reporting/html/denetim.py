@@ -14,8 +14,8 @@ D3  saat×gün matrisi sütun toplamı == günlük P50      tolerans 0,1 MWh
     (matris s06 ile aynı formülle, MATRIS_OLCEK_MWH üzerinden kurulur)
 D4  karne satırı: skill == 1 − wmape/naif             tolerans 0,5 puan
     (naif, build_s07.py:5 gibi türetilir: round(wm/(1−sk), 1))
-D5  kalibrasyon saati <= pencere_gün × 14             (120 gün → 1.680)
-D6  SCADA arşiv saati == dönem_gün × 24               tolerans %1
+D5  kalibrasyon saati <= pencere_gün × 14  (pencere KART İDDİASINDAN okunur)
+D6  SCADA arşiv saati <= dönem_gün × 24 × 1,01  (v2.132: üst-sınır — aşım imkânsızdır)
 D7  katsayı aralıkları: η_BoS ∈ [0,80–0,98] · bifacial ∈ [%0–12]
     aralık dışı → hata + "şüpheli kalibrasyon" bayrağı (denetim.json)
 D8  saatlik profil tek tepeli: gündüz saatlerinde yerel minimum yok
@@ -36,7 +36,6 @@ import json as _json
 import re as _re
 
 # ---------------------------------------------------------------- sabitler
-PENCERE_GUN = 120         # s09 kartı "…, 120 gün" (build_s09.py:111) + KARNE_PENCERE
 GUNDUZ_SAAT_TAVAN = 14    # gündüz saati üst sınırı (D5: gün × 14)
 ETA_ARALIK = (0.80, 0.98)
 BIF_ARALIK = (0.0, 12.0)
@@ -139,6 +138,12 @@ def _d2(veri, ekle):
     bas, bit = _al(veri, "SELALE_BAS"), _al(veri, "SELALE_BIT")
     adimlar = _al(veri, "SELALE_ADIM") or []
     deltalar = [d for (_ad, d, _k) in adimlar if d is not None]
+    if adimlar is None:
+        # v2.132: adım kırılımı girdide yok → motor şelaleyi BASMAZ
+        # ("veri eksik" satırı) — kapanmayan bir şelale basılamıyorsa
+        # D2'nin engelleyeceği bir iddia da yoktur; kayıt uyarıyla düşer.
+        return ekle("D2", "uyari", "şelale adımsız — basılmaz, 'veri eksik' satırı çıkar",
+                    "calibration.steps", "yok (şelale basılmadı)")
     if bas is None or bit is None or not deltalar:
         return ekle("D2", "uyari", "şelale uçları ya da adımları yok — denetlenemedi",
                     "physics_mape + steps + holdout_mape", "eksik")
@@ -208,14 +213,25 @@ def _d5(veri, ekle):
         return ekle("D5", "uyari", "kalibrasyon saati alanı yok — denetlenemedi "
                     "(kartta '—' basılması dürüst-eksiklik kuralına uygundur)",
                     "kat_saat", "eksik")
-    tavan = PENCERE_GUN * GUNDUZ_SAAT_TAVAN
+    # v2.132: pencere GÖMÜLÜ 120 değil, kartın bastığı iddiadan (KAL_PENCERE
+    # ", N gün") okunur. İddia yoksa kart pencere söylemiyor demektir —
+    # uydurulmuş bir pencereye karşı denetlemek alan icat etmek olurdu.
+    import re as _re2
+    _kp = str(_al(veri, "KAL_PENCERE") or "")
+    _m = _re2.search(r"(\d+)\s*gün", _kp)
+    if not _m:
+        return ekle("D5", "uyari", "pencere iddiası yok — saat tavanı denetlenemedi "
+                    "(kart pencere söylemiyor; kök iş: pipeline pencereyi kayda yazmalı)",
+                    "KAL_PENCERE (', N gün')", repr(_kp))
+    pencere_gun = int(_m.group(1))
+    tavan = pencere_gun * GUNDUZ_SAAT_TAVAN
     if saat <= tavan:
-        return ekle("D5", "gecti", "kalibrasyon saati %d günlük pencereye sığıyor" % PENCERE_GUN,
-                    "≤ " + _tr(tavan, 0) + " saat (%d×%d)" % (PENCERE_GUN, GUNDUZ_SAAT_TAVAN),
+        return ekle("D5", "gecti", "kalibrasyon saati %d günlük pencereye sığıyor" % pencere_gun,
+                    "≤ " + _tr(tavan, 0) + " saat (%d×%d)" % (pencere_gun, GUNDUZ_SAAT_TAVAN),
                     _tr(saat, 0) + " saat")
     ekle("D5", "hata",
-         "%d günlük pencerede fiziksel olarak sığmayan gündüz saati" % PENCERE_GUN,
-         "≤ " + _tr(tavan, 0) + " saat (%d×%d)" % (PENCERE_GUN, GUNDUZ_SAAT_TAVAN),
+         "%d günlük pencerede fiziksel olarak sığmayan gündüz saati" % pencere_gun,
+         "≤ " + _tr(tavan, 0) + " saat (%d×%d)" % (pencere_gun, GUNDUZ_SAAT_TAVAN),
          _tr(saat, 0) + " saat")
 
 
@@ -226,15 +242,19 @@ def _d6(veri, ekle):
                     "'G Ay – G Ay YYYY (N saat)'", repr(_al(veri, "ARSIV_ETIKET"))[:60])
     t1, t2, saat = coz
     gun = (t2 - t1).days + 1
-    beklenen = gun * 24
-    if beklenen > 0 and abs(saat - beklenen) / beklenen <= 0.01:
-        return ekle("D6", "gecti", "SCADA arşiv saati dönem uzunluğuyla örtüşüyor",
-                    _tr(beklenen, 0) + " saat (%d gün × 24, ±%%1)" % gun,
+    kapasite = gun * 24
+    # v2.132 ANLAM DÜZELTİMESİ (kayıtlı, gizli gevşetme değil): eşitlik±%1
+    # kusursuz arşiv varsayıyordu; gerçek arşivlerde boşluk normaldir ve
+    # kapsam s10'da zaten dürüstçe raporlanır. Aritmetik-imkânsız olan tek
+    # şey kapasiteyi AŞMAKtır (10 Ağu vakası buydu) → üst-sınır denetimi.
+    if kapasite > 0 and saat <= kapasite * 1.01:
+        return ekle("D6", "gecti", "SCADA arşiv saati dönem kapasitesine sığıyor",
+                    "≤ " + _tr(kapasite, 0) + " saat (%d gün × 24, +%%1)" % gun,
                     _tr(saat, 0) + " saat")
     ekle("D6", "hata",
-         "SCADA arşiv saati dönem uzunluğunu tutmuyor (%s – %s = %d gün)"
-         % (t1.isoformat(), t2.isoformat(), gun),
-         _tr(beklenen, 0) + " saat (%d gün × 24, ±%%1)" % gun,
+         "SCADA arşiv saati dönem kapasitesini AŞIYOR (%s – %s = %d gün) — "
+         "aritmetik olarak imkânsız" % (t1.isoformat(), t2.isoformat(), gun),
+         "≤ " + _tr(kapasite, 0) + " saat (%d gün × 24, +%%1)" % gun,
          _tr(saat, 0) + " saat")
 
 

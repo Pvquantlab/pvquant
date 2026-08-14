@@ -39,6 +39,7 @@ KAT_SAAT = '1.487'
 KAT_TARIH = '19 Temmuz 2026'
 NARR_S07_SEKIL = 'Gün-öncesi hata dönem boyunca %6–13 bandında\n      kalmış, referansın belirgin altında seyretmiştir.'
 NARR_S10_SEKIL1 = "Eğitim penceresinde hata %6,8, hiç\n    görülmemiş test döneminde %{{HOLDOUT}}'dur — aradaki fark makul, yani model ezberlememiştir."
+KAL_PENCERE = ", 120 gün"                  # kanonik pencere iddiasi (v2.132)
 MOD_ROZET = "MOD C · HİBRİT"               # run.mode
 SAYFA_TOPLAM = 16
 
@@ -248,10 +249,18 @@ def _json_yukle(path):
 
     # kalibrasyon şelalesi
     C = J["calibration"]
-    if "steps" in C:  # KARAR (B4, 8 Ağu): worker kırılım yazana dek opsiyonel;
-        # yoksa sayfa 9 motor sabitleriyle basılır (2-adım şelaleye geçilmez).
+    if "steps" in C:
         g["SELALE_ADIM"] = [(s["label"], s["delta"], s["kind"]) for s in C["steps"]]
+    else:
+        # v2.132: B4 karari TERSINE cevrildi — 10 Agu vakasinin koku, gercek
+        # uclarla (fizik/holdout) SABIT motor adimlarini ayni selalede
+        # karistirmakti. Adim kirilimi girdide yoksa selale HIC basilmaz;
+        # s09 yerine tek satir "veri eksik" basar (gorev recetesi: yanlis
+        # selale, selalesizlikten kotudur). None bu isarettir.
+        g["SELALE_ADIM"] = None
     g["SELALE_BAS"], g["SELALE_BIT"] = C["physics_mape"], C["holdout_mape"]
+    _wd = C.get("window_days")
+    g["KAL_PENCERE"] = (", %d gün" % int(_wd)) if _wd else ""
 
     # veri kalitesi
     Q = J["scada"]["quality_monthly"]
@@ -374,6 +383,7 @@ def doldur(s):
         "SEBEKE": dict(SAHA).get("Kurulu güç", "/").split("/")[1].strip(),
         # v2.131: s14 hedef günü veri-güdümlü — kanonikte '05 Ağustos' birebir
         "HEDEF_GUN": GUN_ETIKET[0] + " " + AY_YIL.split()[0],
+        "KAL_PENCERE": KAL_PENCERE,  # v2.132: pencere iddiasi veriden
         "TOPLAM_P90": _bin(TOPLAM_P90_MWH),
     }
     for k, v in D.items():
