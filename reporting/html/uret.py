@@ -5,7 +5,29 @@
 Çıktılar PVQ_CIKTI (varsayılan: ./cikti) altına yazılır.
 Bir sayfa taşarsa uyarı basılır ve çıkış kodu 1 olur — CI adımı olarak kullanılabilir.
 """
-import runpy, sys, io, contextlib
+import runpy, sys, io, contextlib, os
+
+# ---- İç tutarlılık denetimi: HERHANGİ bir sayfa üretilmeden ÖNCE (v2.128).
+# Tek bir "hata" bulgusu rapor üretimini durdurur; bozuk rapor hiç yazılmaz.
+# Bulgular her koşuda cikti/denetim.json'a da yazılır (geçen/geçmeyen ayrımı).
+import veri, denetim
+from pvq import OUT
+
+_kayitlar, _bulgular, _bayrak = denetim.denetle_tam(veri)
+denetim.json_yaz(_kayitlar, _bayrak, os.path.join(OUT, "denetim.json"))
+for _b in _bulgular:
+    print("[%s] %s — %s | beklenen: %s | bulunan: %s"
+          % (_b.seviye.upper(), _b.kod, _b.mesaj, _b.beklenen, _b.bulunan))
+if _bayrak:
+    print("[BAYRAK] ŞÜPHELİ KALİBRASYON işareti kaldırıldı (denetim.json).")
+_hatalar = [_b for _b in _bulgular if _b.seviye == "hata"]
+if _hatalar:
+    print("\nDENETİM BAŞARISIZ: %d hata — rapor üretilmedi. Ayrıntı: %s"
+          % (len(_hatalar), os.path.join(OUT, "denetim.json")))
+    sys.exit(1)
+print("Denetim: %d kontrol geçti (%d uyarı). Sayfa üretimi başlıyor."
+      % (sum(1 for k in _kayitlar if k["durum"] == "gecti"),
+         sum(1 for k in _kayitlar if k["durum"] == "uyari")))
 
 SAYFALAR = ["build_s%02d" % i for i in range(1, 17)]
 sorunlu = []
