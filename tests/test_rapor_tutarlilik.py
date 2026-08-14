@@ -145,9 +145,22 @@ def test_d1_gunluk_toplam_donemi_tutmali():
     assert "D1" in {b.kod for b in denetim.denetle(d) if b.seviye == "hata"}
 
 
-def test_d3_matris_sutunlari_gunlugu_tutmali():
-    d = _yuzey(); d["BASE_KW"] = [v * 1.1 for v in d["BASE_KW"]]
+def test_d3_bayat_olcek_yakalanir():
+    """v2.131: ölçek Σbase'den türediği için sabit-bölen kusuru kurulumla
+    yok edildi; kalan sınıf, taban değişmişken yüzeyde BAYAT ölçeğin
+    sürülmesidir — D3 bunu yakalar."""
+    d = _yuzey()
+    d["BASE_KW"] = [v * 1.1 for v in d["BASE_KW"]]
+    d["MATRIS_OLCEK_MWH"] = 65.8          # taban değişti, ölçek eski
     assert "D3" in {b.kod for b in denetim.denetle(d) if b.seviye == "hata"}
+
+
+def test_d3_turetilen_olcekle_tutarli():
+    """Aynı yüzeyde ölçek de yeniden türetilirse tutarlılık kurulur."""
+    d = _yuzey()
+    d["BASE_KW"] = [v * 1.1 for v in d["BASE_KW"]]
+    d["MATRIS_OLCEK_MWH"] = sum(d["BASE_KW"]) / 1000.0
+    assert "D3" not in {b.kod for b in denetim.denetle(d) if b.seviye == "hata"}
 
 
 def test_d4_karne_skill_ozdesligi():
@@ -155,9 +168,23 @@ def test_d4_karne_skill_ozdesligi():
     assert "D4" in {b.kod for b in denetim.denetle(d) if b.seviye == "hata"}
 
 
-def test_d9_gosterilen_tarih_donem_disina_dusmemeli():
-    d = _yuzey(); d["AY_YIL"] = "Eylül 2026"   # s05/s14 'Ağustos' sabitleri dışarıda kalır
+def test_d9_ay_siniri_asan_donem_yakalanir():
+    """v2.131: panel/hedef tarihleri veri-güdümlü; kalan kusur sınıfı,
+    ay sınırını aşan dönemde etiketin '01'e dönüp ay adının ilk ayda
+    kalmasıdır — D9 bunu yakalar."""
+    d = _yuzey()
+    d["GUN_ETIKET"] = ["%02d" % g for g in list(range(25, 32)) + list(range(1, 10))]
+    d["AY_YIL"] = "Ağustos 2026"
+    d["GUN_SAYISI"] = 16
     assert "D9" in {b.kod for b in denetim.denetle(d) if b.seviye == "hata"}
+
+
+def test_d9_farkli_ayda_donem_artik_gecer():
+    """v2.131 öncesi 'Ağustos' gömülüydü ve Eylül dönemi düşerdi; artık
+    ay veriden basıldığı için aynı-ay-içi her dönem geçer."""
+    d = _yuzey()
+    d["AY_YIL"] = "Eylül 2026"
+    assert "D9" not in {b.kod for b in denetim.denetle(d) if b.seviye == "hata"}
 
 
 def test_hata_yoksa_bile_denetim_json_yazilir(tmp_path):

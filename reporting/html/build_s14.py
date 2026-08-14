@@ -85,7 +85,7 @@ def evrim(W=1000, H=286, ml=62, mb=52, fs=14):
              'font-weight="600" fill="%s">Tahminin hazırlandığı gün</text>'
              % (ml + PW / 2, y(52) + fs * 3, fs + 1, INK))
     o.append('<text transform="translate(13,%.1f) rotate(-90)" text-anchor="middle" '
-             'font-family="PlexSans" font-size="%d" font-weight="600" fill="%s">05 Ağustos '
+             'font-family="PlexSans" font-size="%d" font-weight="600" fill="%s">{{HEDEF_GUN}} '
              'beklentisi [MWh]</text>' % (MT + PH / 2, fs + 1, INK))
     return ('<svg class="fig" viewBox="0 0 %d %d" xmlns="http://www.w3.org/2000/svg" role="img" '
             'aria-label="Ayni gun icin ardisik tahminler">%s</svg>' % (W, H, "".join(o)))
@@ -128,7 +128,7 @@ BODY = """<div class="page"><div class="sheet">
 
   <h2>Aynı gün için ardışık tahminler</h2>
   """ + evrim() + """
-    <div class="figcap"><b>Şekil 14.1</b>&nbsp;&nbsp;05 Ağustos hedef günü için son yedi
+    <div class="figcap"><b>Şekil 14.1</b>&nbsp;&nbsp;{{HEDEF_GUN}} hedef günü için son yedi
       tahmin. Tahminler güncellenmez, üst üste eklenir; böylece aynı gün için verilen her
       beklenti geriye dönük karşılaştırılabilir. Gün yaklaştıkça beklenti 63,2'den 65,8 MWh'e
       yakınsamış, olasılık aralığı ±7,4'ten ±2,8 MWh'e daralmıştır. 3 Ağustos'taki geçici

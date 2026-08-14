@@ -1,7 +1,7 @@
 from pvq import *
 
 # --- tipik gün: saat ortası değerleri [MW]; toplamı 65,8 MWh — BASE_KW'den türetilir
-from veri import BASE_KW, P50_GUN
+from veri import BASE_KW, P50_GUN, GUN_ETIKET, AY_YIL
 BASE = [(5.0, 0.0)] + [(5.5 + i, BASE_KW[i] / 1000) for i in range(len(BASE_KW))] + [(20.0, 0.0)]
 DAILY = P50_GUN[:8]
 MEAN = 64.8 / 65.8
@@ -98,8 +98,9 @@ def multiples(W=1000, H=402, fs=13):
                  'font-size="%d" font-weight="600" fill="%s">[saat]</text>'
                  % (ox + pwd / 2, Y(0) + fs * 3, fs, INK))
         o.append('<text x="%.1f" y="%.1f" font-family="PlexSans" font-size="%d" '
-                 'font-weight="600" fill="%s">%02d Ağustos</text>'
-                 % (ox - padl + 2, oy - 7, fs + 1.5, INK, 5 + k))
+                 'font-weight="600" fill="%s">%s %s</text>'
+                 % (ox - padl + 2, oy - 7, fs + 1.5, INK,
+                    GUN_ETIKET[k], AY_YIL.split()[0]))  # v2.131: veri-güdümlü
         o.append('<text x="%.1f" y="%.1f" text-anchor="end" font-family="PlexSans" '
                  'font-size="%d" font-weight="500" fill="#5B686F">%s MWh</text>'
                  % (ox + pwd, oy - 7, fs, ("%.1f" % DAILY[k]).replace(".", ",")))

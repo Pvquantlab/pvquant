@@ -329,6 +329,11 @@ IKLIM_ARALIK = "%d–%d" % (min(IKLIM), max(IKLIM))   # c2a: matris yıl aralı�
 GUN_YMIN = int(_math.floor(min(v - h for v, h in zip(P50_GUN, HW_GUN)) / 10.0)) * 10
 GUN_YMAX = int(_math.ceil(max(v + h for v, h in zip(P50_GUN, HW_GUN)) / 10.0)) * 10
 
+# v2.131: s06 matris ölçekleyicisi tipik gün TOPLAMINDAN türetilir — gömülü
+# 65,8 sabiti kanonik girdide birebir aynı değeri üretir (md5 korunur);
+# canlı santralde matris sütunları günlük P50'yi tanım gereği tutar (D3).
+MATRIS_OLCEK_MWH = sum(BASE_KW) / 1000.0
+
 
 # ================================================================ görsel doldurma (E.2 Adım 2b)
 def _tr(x, d=1):
@@ -367,6 +372,8 @@ def doldur(s):
         "TEPE_TIPIK": _tr(max(BASE_KW) / 1000 * (sum(P50_GUN) / len(P50_GUN))
                           / (sum(BASE_KW) / 1000)),
         "SEBEKE": dict(SAHA).get("Kurulu güç", "/").split("/")[1].strip(),
+        # v2.131: s14 hedef günü veri-güdümlü — kanonikte '05 Ağustos' birebir
+        "HEDEF_GUN": GUN_ETIKET[0] + " " + AY_YIL.split()[0],
         "TOPLAM_P90": _bin(TOPLAM_P90_MWH),
     }
     for k, v in D.items():

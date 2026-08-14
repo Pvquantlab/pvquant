@@ -1,6 +1,6 @@
 from pvq import *
 
-from veri import BASE_KW, PEAK, P50_GUN as DAILY, GUN_ETIKET as DAYS, DONEM
+from veri import BASE_KW, PEAK, P50_GUN as DAILY, GUN_ETIKET as DAYS, DONEM, MATRIS_OLCEK_MWH
 HOURS = ["%02d–%02d" % (h, h + 1) for h in range(5, 20)]
 
 
@@ -22,7 +22,7 @@ rows += ('<tr><td class="hr">04–05</td>'
 for i, h in enumerate(HOURS):
     cells = ""
     for d in range(16):
-        v = BASE_KW[i] * DAILY[d] / 65.8
+        v = BASE_KW[i] * DAILY[d] / MATRIS_OLCEK_MWH  # v2.131
         t = min(1.0, v / PEAK)
         cells += ('<td style="background:%s">%s</td>'
                   % (mix(t), "{:,}".format(int(round(v))).replace(",", ".")))

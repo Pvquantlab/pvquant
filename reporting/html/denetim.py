@@ -11,7 +11,7 @@ Kontroller
 D1  Σ günlük P50 == dönem toplamı                     tolerans 0,1 MWh
 D2  şelale: fizik + Σ adım == holdout                 tolerans 0,1 puan
 D3  saat×gün matrisi sütun toplamı == günlük P50      tolerans 0,1 MWh
-    (matris build_s06.py:25 ile birebir yeniden kurulur)
+    (matris s06 ile aynı formülle, MATRIS_OLCEK_MWH üzerinden kurulur)
 D4  karne satırı: skill == 1 − wmape/naif             tolerans 0,5 puan
     (naif, build_s07.py:5 gibi türetilir: round(wm/(1−sk), 1))
 D5  kalibrasyon saati <= pencere_gün × 14             (120 gün → 1.680)
@@ -20,8 +20,8 @@ D7  katsayı aralıkları: η_BoS ∈ [0,80–0,98] · bifacial ∈ [%0–12]
     aralık dışı → hata + "şüpheli kalibrasyon" bayrağı (denetim.json)
 D8  saatlik profil tek tepeli: gündüz saatlerinde yerel minimum yok
 D9  gösterilen tarihler ∈ [tahmin başı, tahmin sonu]
-    (s05 panel başlıkları "%02d Ağustos" % (5+k) ve s14 hedef günü
-     "05 Ağustos" sabit metinlerdir; birebir yeniden kurulup sınanır)
+    (v2.131: s05 panelleri ve s14 hedefi GUN_ETIKET + AY_YIL ayından
+     basılır; ay-sınırı aşan dönemde yanlış ay adı burada yakalanır)
 D10 zorunlu-alan varlığı: tükettiği alan yokken gösterge/cümle üretilmez
     (MWe → kapak {{KURULU}}, s05 {{SEBEKE}} cümlesi, kapasite faktörü)
 
@@ -36,14 +36,12 @@ import json as _json
 import re as _re
 
 # ---------------------------------------------------------------- sabitler
-S06_OLCEK_MWH = 65.8      # build_s06.py:25 — matris ölçekleyicisi (motor sabiti)
 PENCERE_GUN = 120         # s09 kartı "…, 120 gün" (build_s09.py:111) + KARNE_PENCERE
 GUNDUZ_SAAT_TAVAN = 14    # gündüz saati üst sınırı (D5: gün × 14)
 ETA_ARALIK = (0.80, 0.98)
 BIF_ARALIK = (0.0, 12.0)
-S05_PANEL = 8             # build_s05: ilk sekiz günün paneli, başlık "%02d Ağustos" % (5+k)
-S05_GUN0 = 5              # build_s05.py:102 sabiti
-S14_HEDEF = (5, 8)        # build_s14: "05 Ağustos" sabit metni (gün, ay)
+S05_PANEL = 8             # build_s05: ilk sekiz günün paneli (v2.131: başlık
+                          # GUN_ETIKET[k] + AY_YIL ayı — veri-güdümlü)
 AYLAR = ["ocak", "şubat", "mart", "nisan", "mayıs", "haziran", "temmuz",
          "ağustos", "eylül", "ekim", "kasım", "aralık"]
 
@@ -159,10 +157,14 @@ def _d3(veri, ekle):
     if not taban or not p50:
         return ekle("D3", "uyari", "saatlik taban ya da günlük seri yok — denetlenemedi",
                     "BASE_KW + P50_GUN", "eksik")
+    # v2.131: ölçek türetilen MATRIS_OLCEK_MWH'den (s06 aynası). Yüzeyde
+    # yoksa aynı tanımla (Σbase/1000) türetilir. Sabit-bölen kusur sınıfı
+    # kurulumla yok edildi; D3 artık yüzeydeki ölçeğin taban eğrisiyle
+    # tutarlılığını bekçiler (bayat/elle ölçek sürülürse yakalar).
+    olcek = _al(veri, "MATRIS_OLCEK_MWH") or (sum(taban) / 1000.0)
     kotu = []
     for d, gun in enumerate(p50):
-        # build_s06.py:25 birebir: v = BASE_KW[i] * DAILY[d] / 65.8  → sütun MWh
-        sutun = sum(v * gun / S06_OLCEK_MWH for v in taban) / 1000.0
+        sutun = sum(v * gun / olcek for v in taban) / 1000.0
         if abs(sutun - gun) > 0.1:
             kotu.append((d, gun, sutun))
     if not kotu:
@@ -295,15 +297,18 @@ def _d9(veri, ekle):
         return ekle("D9", "uyari", "dönem başlangıcı çözümlenemedi", "AY_YIL + GUN_ETIKET[0]",
                     "%s / %s" % (ay_yil, etiket[0]))
     gecerli = {bas + _dt.timedelta(days=i) for i in range(n)}
-    # sayfa 5 panel başlıkları (build_s05.py:102: '%02d Ağustos' % (5+k)) + s14 hedef günü
-    gosterilen = [("s05 panel", S05_GUN0 + k, 8) for k in range(min(S05_PANEL, n))]
-    gosterilen.append(("s14 hedef gün", S14_HEDEF[0], S14_HEDEF[1]))
+    # v2.131 aynası: s05 paneli GUN_ETIKET[k] + AY_YIL ayını, s14 hedefi
+    # GUN_ETIKET[0] + AY_YIL ayını basar. Dönem ay sınırını aşarsa etiket
+    # "01"e döner ama basılan ay adı ilk ay kalır → tarih geçerli kümeden
+    # düşer ve burada yakalanır (kalan gerçek kusur sınıfı budur).
+    gosterilen = [("s05 panel", etiket[k]) for k in range(min(S05_PANEL, n, len(etiket)))]
+    gosterilen.append(("s14 hedef gün", etiket[0]))
     disari = []
-    for yer, gun, ayno in gosterilen:
+    for yer, gun_s in gosterilen:
         try:
-            t = _dt.date(bas.year, ayno, gun)
+            t = _dt.date(bas.year, ay, int(gun_s))
         except ValueError:
-            disari.append((yer, "%02d/%02d geçersiz" % (gun, ayno)))
+            disari.append((yer, "%s/%02d geçersiz" % (gun_s, ay)))
             continue
         if t not in gecerli:
             disari.append((yer, t.isoformat()))
