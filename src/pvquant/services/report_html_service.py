@@ -282,7 +282,12 @@ def _karne_satirlari(k):
         if r.horizon_bucket == "0-24":
             d["wmape_0_24"] = round(float(r.mape), 1)
             if r.skill_vs_naive == r.skill_vs_naive and r.skill_vs_naive is not None:
-                d["skill"] = round(float(r.skill_vs_naive) / 100.0, 2)
+                # v2.138: 2 ondalik saklama (=±0,5 puan nicemleme) D4'un 0,5
+                # puanlik toleransini TEK BASINA tuketiyordu — canli satir 8:
+                # skill 0,79 vs 1−6,0/27,9=0,78495, fark 0,00505 > 0,005.
+                # Cozum esik genisletmek DEGIL, hassasiyeti artirmak: 4 ondalik
+                # → yuvarlama katkisi ~0,2 puan, tolerans gercek tutarsizliga kalir.
+                d["skill"] = round(float(r.skill_vs_naive) / 100.0, 4)
             # v2.137 (Faz B1): naif OLCUMDUR — skill_daily.naive_wmape'ten
             # yayilir; motor artik turetmez (spec #4: gercek alan denetimi).
             if r.naive_wmape == r.naive_wmape and r.naive_wmape is not None:
