@@ -10,7 +10,7 @@ import type { TahminSerisi } from "../../api/types";
 export function FanChart({ seri, yukseklik = 300, acTavaniKw }:
   { seri: TahminSerisi; yukseklik?: number; acTavaniKw?: number | null }) {
   const { n, oku } = useTema();
-  const option = useMemo<EChartsOption>(() => {
+  const { option, simdiEtiket } = useMemo(() => {
     const marka = oku("--marka"), amber = oku("--amber");
     const mr = oku("--marka-r") || "11,122,91";
     const bant = { type: "linear", x: 0, y: 0, x2: 0, y2: 1, colorStops: [
@@ -57,12 +57,12 @@ export function FanChart({ seri, yukseklik = 300, acTavaniKw }:
       if (simdiIdx === null && new Date(h.ts).getTime() > simdiT)
         simdiIdx = Math.max(0, i - 1);
     });
+    const simdiEtiket = simdiIdx !== null
+      ? `şimdi · ${sayiTr(p50[simdiIdx])} kW` : null;
     if (simdiIdx !== null)
-      isaretler.push({ xAxis: simdiIdx, label: {
-        formatter: `şimdi · ${sayiTr(p50[simdiIdx])} kW`, position: "insideEndTop",
-        color: soluk, fontFamily: mono, fontSize: 11 } });
+      isaretler.push({ xAxis: simdiIdx, label: { show: false } });
 
-    return {
+    return { option: {
       grid: { left: 52, right: 16, top: 18, bottom: 30 }, animation: false,
       tooltip: { trigger: "axis", backgroundColor: oku("--kart"),
         borderColor: kenar, borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 12 },
@@ -105,10 +105,13 @@ export function FanChart({ seri, yukseklik = 300, acTavaniKw }:
           symbol: "none" as const, smooth: 0.25, z: 4, connectNulls: false,
           lineStyle: { color: amber, width: 2.4 } }] : []),
       ],
-    } as EChartsOption;
+    } as EChartsOption, simdiEtiket };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seri, n]);
 
-  return <EChart option={option} height={yukseklik}
-    ariaLabel={`${seri.ufuk_saat} saatlik üretim tahmini, P10-P90 bandıyla`} />;
+  return <>
+    {simdiEtiket && <div className="cip" style={{ display: "inline-block", marginBottom: 8 }}>{simdiEtiket}</div>}
+    <EChart option={option} height={yukseklik}
+      ariaLabel={`${seri.ufuk_saat} saatlik üretim tahmini, P10-P90 bandıyla`} />
+  </>;
 }
