@@ -139,6 +139,10 @@ def ctx_to_json(ctx, plant: dict) -> dict:
     if getattr(ctx, "holdout_mape_pct", None) is not None:
         J["calibration"] = {"physics_mape": ctx.holdout_physics_mape_pct,
                             "holdout_mape": ctx.holdout_mape_pct}
+        # v2.133: pencere kayitta varsa iddia veriye girer (yoksa girmez;
+        # veri.py KAL_PENCERE'yi bos birakir, s09 iddiasiz basar).
+        if getattr(ctx, "kal_pencere_gun", None):
+            J["calibration"]["window_days"] = int(ctx.kal_pencere_gun)
     else:
         eksik.append("calibration.holdout (gate)")
 
@@ -476,8 +480,12 @@ def _anlati(ctx, J):
     fd = getattr(ctx, "flag_dagilimi", None)
     if fd and getattr(ctx, "ilk_scada_ts", None) is not None:
         i, so = ctx.ilk_scada_ts, ctx.son_scada_ts
-        n["arsiv_etiket"] = "%d %s – %d %s %d (%s saat)" % (
-            i.day, AY_UZUN[i.month - 1], so.day, AY_UZUN[so.month - 1], so.year,
+        # v2.133: yil-asan arsivde baslangic yili YAZILIR — '30 Nisan –
+        # 10 Agustos 2026' etiketi 2025 baslangicini gizliyordu (D6 vakasi).
+        _by = ("%d %s %d" % (i.day, AY_UZUN[i.month - 1], i.year)
+               if i.year != so.year else "%d %s" % (i.day, AY_UZUN[i.month - 1]))
+        n["arsiv_etiket"] = "%s – %d %s %d (%s saat)" % (
+            _by, so.day, AY_UZUN[so.month - 1], so.year,
             "{:,}".format(sum(fd.values())).replace(",", "."))
     n["lejant_hatali"] = "hatalı kayıtlar"
     n["s14_kapsama"] = "Aylık kırılım ve bayrak dökümü sayfa 10'dadır."

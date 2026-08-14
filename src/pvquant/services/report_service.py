@@ -104,12 +104,26 @@ def rapor_baglami(tenant_id, plant: dict) -> ReportContext | None:
             _pj = cal.params_json or {}
             ctx.eta_bos = (_pj.get("eta_bos") or _pj.get("eta")
                            or _pj.get("sistem_verimi"))
-            _bf = (_pj.get("bifacial_pct") or _pj.get("bifacial")
-                   or _pj.get("bifacial_gain") or _pj.get("bg"))  # c5: gerçek anahtar 'bg' 
-            ctx.bifacial_pct = (_bf * 100 if (_bf is not None and _bf < 1)
-                                else _bf)
+            # v2.133: 'esnek okuma' bg'yi (GEOMETRIK BG) dogrudan %'leyip
+            # 'Bifacial kazanc %18,6' basiyordu — birim hatasi. Rapor NET
+            # kazanci soyler ve tahminle AYNI siniftan hesaplar:
+            # net = bg x bf x albedo (models/bifacial.py, tek kaynak).
+            _bg = _pj.get("bg")
+            if _bg is not None:
+                from pvquant.services.calib_service import _plant_spec as _ps
+                from pvquant.models.bifacial import SimpleBifacialParams as _SBP
+                _sp = _ps(plant)
+                if _sp.bifacial_factor > 0:
+                    ctx.bifacial_pct = 100.0 * _SBP(
+                        bg=float(_bg), bf=_sp.bifacial_factor,
+                        albedo=_sp.albedo).net_gain_fraction
             ctx.kal_saat = cal.n_valid_hours
             ctx.kal_tarih = cal.created_at
+            # v2.133: pencere iddiasi yalniz kayitta varsa (bugun yok —
+            # kok is: kalibrasyon pipeline'i window_days'i quality_json'a
+            # yazmali; yazana dek s09 altyazisi iddiasiz basilir).
+            _qj = cal.quality_json or {}
+            ctx.kal_pencere_gun = _qj.get("window_days")
         trow = s.execute(text("SELECT * FROM tenants WHERE id=:t"),
                          {"t": tenant_id}).first()
         if trow is not None:

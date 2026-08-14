@@ -41,7 +41,11 @@ def uret_ve_kaydet(tenant_id, plant: dict) -> str:
         pr = json.loads(cal.params_json) if isinstance(cal.params_json, str) else cal.params_json
         # kalibre katsayilar spec'e islenir — PlantSpec alan adlarini dogrula
         if pr.get("eta_bos"): spec.eta_bos = pr["eta_bos"]
-        if pr.get("bg") is not None: spec.bifacial_factor = pr["bg"]
+        # v2.133: params_json.bg GEOMETRIK BG'dir (calibration.py BG fit'i
+        # bifacial_gain_geometric icin kosar); BF (bifaciality, 0.7) _plant_spec
+        # kurar. Eski satir bg'yi BF yuvasina yaziyordu -> canli tahmin neti
+        # 0.347(varsayilan BG) x bg x albedo ile kuruyordu (yanlis carpim).
+        if pr.get("bg") is not None: spec.bifacial_gain_geometric = pr["bg"]
     fr = forecast_7day(meteo, spec)
     h = fr.hourly.rename(columns={"p_ac_kw": "p50_kw"})
     h["physics_kw"] = h["p50_kw"]; h["ml_kw"] = None
