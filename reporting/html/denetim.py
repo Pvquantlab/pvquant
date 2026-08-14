@@ -136,8 +136,8 @@ def _d1(veri, ekle):
 
 def _d2(veri, ekle):
     bas, bit = _al(veri, "SELALE_BAS"), _al(veri, "SELALE_BIT")
-    adimlar = _al(veri, "SELALE_ADIM") or []
-    deltalar = [d for (_ad, d, _k) in adimlar if d is not None]
+    adimlar = _al(veri, "SELALE_ADIM")   # v2.134: 'or []' None işaretini yutuyordu
+    deltalar = [d for (_ad, d, _k) in (adimlar or []) if d is not None]
     if adimlar is None:
         # v2.132: adım kırılımı girdide yok → motor şelaleyi BASMAZ
         # ("veri eksik" satırı) — kapanmayan bir şelale basılamıyorsa

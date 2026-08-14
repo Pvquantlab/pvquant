@@ -207,7 +207,8 @@ def test_d2_adimsiz_girdi_engellemez_ama_selale_basilmaz(tmp_path):
     yol.write_text(json.dumps(J, ensure_ascii=False), encoding="utf-8")
     kayitlar, bulgular, _b = denetim.denetle_tam(taze_veri(yol))
     assert "D2" not in {b.kod for b in bulgular if b.seviye == "hata"}
-    assert "D2" in {b.kod for b in bulgular if b.seviye == "uyari"}
+    d2u = [b for b in bulgular if b.kod == "D2" and b.seviye == "uyari"]
+    assert d2u and "basılmaz" in d2u[0].mesaj  # dogru dal: 'selale basilmaz' 
     p = uret_kos(yol, tmp_path / "cikti")
     assert p.returncode == 0, p.stdout + p.stderr
     s09 = next((tmp_path / "cikti").glob("*_s09_*.html")).read_text(encoding="utf-8")

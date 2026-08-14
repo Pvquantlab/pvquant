@@ -219,7 +219,9 @@ def _saha_display(ctx, plant):
     """plant.display — veri.py sözleşmesi: 8 satır; 'Kurulu güç' MUTLAKA
     'X MWp / Y MWe' biçiminde (SEBEKE, '/'ın sağından ayrıştırılır).
     Bilinmeyen alanlar dürüst '—' (sessiz Konya varsayılanı YOK)."""
-    ac_kw = plant.get("capacity_ac_kw")
+    # v2.134: gercek kolon ac_limit_kw (migration 0004) — 'capacity_ac_kw'
+    # hayalet anahtardi, MWe DB'den hicbir zaman okunamiyordu.
+    ac_kw = plant.get("ac_limit_kw")
     guc = "%s MWp / %s MWe" % (_tr(ctx.capacity_kwp / 1000),
                                _tr(ac_kw / 1000) if ac_kw else "—")
     dcac = _tr(ctx.capacity_kwp / ac_kw, 2) if ac_kw else "—"
