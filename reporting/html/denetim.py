@@ -26,7 +26,7 @@ D10 zorunlu-alan varlığı: tükettiği alan yokken gösterge/cümle üretilmez
 D11 iklim: matris son satiri=zarf ortasi (LTA tam-yil ortalamasindan; kismi yil yasak)
 D12 selale iyilesme yuzdesi bas/sondan yeniden uretilebilir
 D13 tepe guc <= kurulu DC guc
-D14 profil surekliligi: ardisik sicrama <= tepenin %30'u (belgeli sezgisel esik)
+D14 profil surekliligi: ardisik sicrama <= kurulu DC'nin %30'u (v2.136 tanim duzeltmesi)
 D15 karne penceresi ∩ SCADA arsiv donemi ≠ ∅
 D16 KPI durum rengi esik yonuyle tutarli + kesintisiz karti alansiz basilamaz
 R1/R2 (render, sayfalar sonrasi): doldurulmamis token yok; s02/s15 sayfa
@@ -429,25 +429,31 @@ def _d13(veri, ekle):
 
 
 def _d14(veri, ekle):
-    """Spec #12 (sureklilik yarisi): ardisik saatler arasi sicrama tepenin
-    %30'unu asamaz. Esik SEZGISELDIR ve belgelidir: gunes yuksekligi kademeli
-    degisir, TIPIK-gun (medyan) profilinde saatte tepenin ucte birini asan
-    degisim fiziksel degildir; kanonik azami adim %20,1 (pay birakildi)."""
+    """Spec #12 (sureklilik yarisi): ardisik saatler arasi sicrama KURULU DC
+    gucun %30'unu asamaz. TANIM DUZELTMESI (v2.136, kayitli): ilk surumde
+    esik gozlenen tepeye oranliydi; AC-kirpmali santralde tepe bastirilinca
+    payda kuculur ve durust sabah rampasi yanlis-pozitif verir (canli vaka:
+    3.600 kW AC sinirli santralde 1.113 kW rampasi = kirpilmis tepenin %31'i
+    ama DC'nin %24,7'si). Rampayi suren isinim DC diziyle olceklenir; kirpma
+    tepeyi degistirir, rampayi degistirmez → dogru payda kurulu DC.
+    Kanonik azami adim DC'nin %14,6'si (genis pay)."""
     taban = _al(veri, "BASE_KW") or []
-    if len(taban) < 2:
-        return ekle("D14", "uyari", "saatlik taban yok/kisa — denetlenemedi",
-                    "BASE_KW", "eksik")
-    tepe = max(taban) or 1.0
-    kotu = [(i, abs(taban[i + 1] - taban[i])) for i in range(len(taban) - 1)
-            if abs(taban[i + 1] - taban[i]) > 0.30 * tepe]
+    saha = dict(_al(veri, "SAHA") or [])
+    m = _re.search(r"([\d.,]+)\s*MWp", saha.get("Kurulu güç", ""))
+    mwp = _sayi(m.group(1)) if m else None
+    if len(taban) < 2 or mwp is None:
+        return ekle("D14", "uyari", "saatlik taban ya da kurulu DC yok — denetlenemedi",
+                    "BASE_KW + 'X MWp'", "eksik")
+    sinir = 0.30 * mwp * 1000.0
+    adim = [abs(taban[i + 1] - taban[i]) for i in range(len(taban) - 1)]
+    kotu = [(i, f) for i, f in enumerate(adim) if f > sinir]
     if not kotu:
-        return ekle("D14", "gecti", "profil surekli: ardisik sicrama tepenin %30'u altinda",
-                    "≤ " + _tr(0.30 * tepe, 0) + " kW/saat", "azami " +
-                    _tr(max(abs(taban[i + 1] - taban[i]) for i in range(len(taban) - 1)), 0) + " kW")
+        return ekle("D14", "gecti", "profil surekli: ardisik sicrama kurulu DC'nin %30'u altinda",
+                    "≤ " + _tr(sinir, 0) + " kW/saat", "azami " + _tr(max(adim), 0) + " kW")
     i, fark = kotu[0]
     ekle("D14", "hata", "profilde fiziksel olmayan sicrama (%02d–%02d → %02d–%02d)"
          % (5 + i, 6 + i, 6 + i, 7 + i),
-         "≤ " + _tr(0.30 * tepe, 0) + " kW/saat", _tr(fark, 0) + " kW")
+         "≤ " + _tr(sinir, 0) + " kW/saat (kurulu DC'nin %30'u)", _tr(fark, 0) + " kW")
 
 
 def _d15(veri, ekle):

@@ -259,6 +259,18 @@ def test_d14_sicrama_yakalanir():
     assert "D14" in {x.kod for x in denetim.denetle(d) if x.seviye == "hata"}
 
 
+def test_d14_kirpilmis_tepede_rampa_gecer():
+    """v2.136 tanim duzeltmesi: AC-kirpmali santralde sicrama kirpilmis
+    tepenin %30'unu asabilir ama DC'nin %30'u altindaysa fizikseldir
+    (canli 3,6 MW AC / 4,5 MWp vakasi)."""
+    d = _yuzey()
+    d["SAHA"] = [("Kurulu güç", "4,5 MWp / 3,6 MWe")]
+    tepe = 3560.0
+    d["BASE_KW"] = [200, 700, 1500, 2613, 3200, 3480, tepe, tepe, 3400,
+                    3000, 2400, 1700, 1000, 500, 180]   # azami adim 1113 = DC'nin %24,7'si
+    assert "D14" not in {x.kod for x in denetim.denetle(d) if x.seviye == "hata"}
+
+
 def test_d15_ayrik_arsiv_duser():
     d = _yuzey()
     d["ARSIV_ETIKET"] = "1 Ocak – 28 Şubat 2024\n    (1.416 saat)"
