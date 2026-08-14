@@ -78,7 +78,7 @@ def test_kanonik_tum_kontrollerden_gecer():
     assert bulgular == [], "kanonik girdi bulgu üretmemeli: %r" % bulgular
     assert bayrak is False
     assert sorted({k["kod"] for k in kayitlar}) == [
-        "D1", "D10", "D11", "D12", "D13", "D14", "D15", "D16",
+        "D1", "D10", "D11", "D12", "D13", "D14", "D15", "D16", "D17",
         "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9"]
     assert all(k["durum"] == "gecti" for k in kayitlar)
 
@@ -94,7 +94,7 @@ def test_kanonik_uret_cikis_0_ve_16_sayfa(tmp_path):
     sayfalar = sorted(tmp_path.glob("*_s??_*.html"))
     assert len(sayfalar) == 16, [s.name for s in sayfalar]
     j = json.loads((tmp_path / "denetim.json").read_text(encoding="utf-8"))
-    assert j["ozet"]["hata"] == 0 and j["ozet"]["gecti"] == 20
+    assert j["ozet"]["hata"] == 0 and j["ozet"]["gecti"] == 21
     assert j["bulgular"] == [] and j["suphe_bayragi"] is False
 
 
@@ -203,7 +203,7 @@ def test_hata_yoksa_bile_denetim_json_yazilir(tmp_path):
     denetim.json_yaz(kayitlar, bayrak, yol)
     j = json.loads(yol.read_text(encoding="utf-8"))
     assert {"zaman", "suphe_bayragi", "ozet", "gecenler", "bulgular"} <= set(j)
-    assert len(j["gecenler"]) == 20
+    assert len(j["gecenler"]) == 21
     assert all({"kod", "mesaj", "beklenen", "bulunan"} <= set(g) for g in j["gecenler"])
 
 
@@ -316,3 +316,18 @@ def test_render_kanonik_temiz(tmp_path):
     p = uret_kos(KANONIK, tmp_path)
     assert p.returncode == 0
     assert denetim.render_denetle(str(tmp_path)) == []
+
+
+def test_d17_bayat_pxx_yakalanir():
+    d = _yuzey(); px = dict(d["PXX_YIL"]); px[90] = px[90] - 150; d["PXX_YIL"] = px
+    assert "D17" in {x.kod for x in denetim.denetle(d) if x.seviye == "hata"}
+
+
+def test_d17_populasyon_sd_kaymasi_yakalanir():
+    """Formul kaymasi: n-1 orneklem boleni populasyona (n) donerse SD kuculur."""
+    import math
+    d = _yuzey()
+    yil = [sum(d["IKLIM"][y]) for y in d["TAM_YILLAR"]]
+    ort = sum(yil) / len(yil)
+    d["YIL_SD"] = math.sqrt(sum((v - ort) ** 2 for v in yil) / len(yil))  # n boleni
+    assert "D17" in {x.kod for x in denetim.denetle(d) if x.seviye == "hata"}

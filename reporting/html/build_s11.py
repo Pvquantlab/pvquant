@@ -22,13 +22,12 @@ def _son12(iklim):
     return out
 SON12 = _son12(IKLIM)
 
-YIL = [sum(IKLIM[y]) for y in TAM_YILLAR]
-ORT = sum(YIL) / len(YIL)
-SD = math.sqrt(sum((v - ORT) ** 2 for v in YIL) / (len(YIL) - 1))
-CV = SD / ORT * 100
+# v2.139: yillik istatistikler veri.py'den (tek kaynak; D17 bekciler)
+from veri import (YIL_TOPLAM as YIL, YIL_ORT as ORT, YIL_SD as SD,
+                  YIL_CV_PCT as CV, PXX_YIL)
 PARLAK = max(TAM_YILLAR, key=lambda y: sum(IKLIM[y]))
 BULUT = min(TAM_YILLAR, key=lambda y: sum(IKLIM[y]))
-p_yil = lambda p: ORT - {50: 0, 75: 0.6745, 90: 1.2816}[p] * SD
+p_yil = lambda p: PXX_YIL[p]
 
 
 # ---------------------------------------------------------------- Şekil 11.1

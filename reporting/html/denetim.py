@@ -29,6 +29,7 @@ D13 tepe guc <= kurulu DC guc
 D14 profil surekliligi: ardisik sicrama <= kurulu DC'nin %30'u (v2.136 tanim duzeltmesi)
 D15 karne penceresi ∩ SCADA arsiv donemi ≠ ∅
 D16 KPI durum rengi esik yonuyle tutarli + kesintisiz karti alansiz basilamaz
+D17 yillik Pxx = ORT - z·SD yeniden uretilebilir (SD orneklem n-1; z sozlesmeli)
 R1/R2 (render, sayfalar sonrasi): doldurulmamis token yok; s02/s15 sayfa
     referanslari 1..16 icinde — render_denetle(cikti_dizin)
     (MWe → kapak {{KURULU}}, s05 {{SEBEKE}} cümlesi, kapasite faktörü)
@@ -528,6 +529,43 @@ def _d16(veri, ekle):
              "sayisal gun", _tr(kes, 0) + " gün")
 
 
+def _d17(veri, ekle):
+    """Spec #5 (v2.139): yillik Pxx, aciklanan sigma ve z ile yeniden
+    uretilebilir. Yuzeydeki YIL_ORT/SD/CV/PXX_YIL, IKLIM'den bagimsizca
+    yeniden hesaplanip karsilastirilir — bayat/elle deger ve formul kaymasi
+    (orn. n-1 orneklem boleninin populasyona donmesi) yakalanir."""
+    iklim = _al(veri, "IKLIM") or {}
+    tam = _al(veri, "TAM_YILLAR") or []
+    ort, sd = _al(veri, "YIL_ORT"), _al(veri, "YIL_SD")
+    cv, pxx = _al(veri, "YIL_CV_PCT"), _al(veri, "PXX_YIL") or {}
+    z = _al(veri, "Z_YIL") or {}
+    if len(tam) < 2 or ort is None or sd is None or cv is None or not pxx:
+        return ekle("D17", "uyari", "yillik istatistik yuzeyi eksik — denetlenemedi",
+                    "IKLIM + YIL_ORT/SD/CV + PXX_YIL", "eksik")
+    if abs(z.get(75, 0) - 0.6745) > 1e-9 or abs(z.get(90, 0) - 1.2816) > 1e-9:
+        return ekle("D17", "hata", "z tablosu sozlesmeden sapmis",
+                    "P75→0,6745 · P90→1,2816", str(z))
+    import math as _m
+    yil = [sum(iklim[y_]) for y_ in tam]
+    b_ort = sum(yil) / len(yil)
+    b_sd = _m.sqrt(sum((v - b_ort) ** 2 for v in yil) / (len(yil) - 1))
+    b_cv = b_sd / b_ort * 100
+    kotu = []
+    if abs(b_ort - ort) > 0.01: kotu.append("ORT: %s≠%s" % (_tr(ort, 0), _tr(b_ort, 0)))
+    if abs(b_sd - sd) > 0.01: kotu.append("SD: %s≠%s" % (_tr(sd, 1), _tr(b_sd, 1)))
+    if abs(b_cv - cv) > 0.01: kotu.append("CV: %s≠%s" % (_tr(cv, 2), _tr(b_cv, 2)))
+    for p, zk in ((75, 0.6745), (90, 1.2816)):
+        b = b_ort - zk * b_sd
+        if p in pxx and abs(pxx[p] - b) > 0.01:
+            kotu.append("P%d: %s≠%s" % (p, _tr(pxx[p], 0), _tr(b, 0)))
+    if not kotu:
+        return ekle("D17", "gecti", "yillik Pxx sigma ve z'den yeniden uretilebilir "
+                    "(SD orneklem, n-1)", "ORT/SD/CV/P75/P90 (±0,01)",
+                    "P90=" + _tr(pxx.get(90), 0) + " MWh")
+    ekle("D17", "hata", "yillik istatistik yeniden hesapla uyusmuyor (bayat/elle deger "
+         "ya da formul kaymasi)", "yeniden hesap (±0,01)", "; ".join(kotu))
+
+
 # ------------------------------------------------- render denetimi (v2.135)
 def render_denetle(cikti_dizin):
     """Sayfalar uretildikten SONRA, birlesim/yayimdan ONCE kosar:
@@ -579,6 +617,7 @@ def denetle_tam(veri):
     _d8(veri, ekle); _d9(veri, ekle); _d10(veri, ekle)
     _d11(veri, ekle); _d12(veri, ekle); _d13(veri, ekle)
     _d14(veri, ekle); _d15(veri, ekle); _d16(veri, ekle)
+    _d17(veri, ekle)
 
     bulgular = [Bulgu(k["kod"], k["durum"], k["mesaj"], k["beklenen"], k["bulunan"])
                 for k in kayitlar if k["durum"] in ("hata", "uyari")]

@@ -361,6 +361,23 @@ MATRIS_OLCEK_MWH = sum(BASE_KW) / 1000.0
 IYILESME_PCT = (round((SELALE_BAS - SELALE_BIT) / SELALE_BAS * 100, 1)
                 if SELALE_BAS else None)
 
+# v2.139 (Faz B2): yillik istatistikler TEK yerde turetilir (spec #5 —
+# yillik Pxx, aciklanan sigma ve z ile yeniden uretilebilir olmali).
+# s11 bunlari tuketir; denetim D17, IKLIM'den yeniden hesaplayip yuzeydeki
+# degerleri bekciler (bayat/elle deger + formul kaymasi: SD ORNEKLEM
+# sapmasidir, n-1 boleni sozlesmedir). Normal varsayimi YALNIZ yillik
+# egride kullanilir (gunluk/saatlik bantlar kantil yontemiyle gelir).
+Z_YIL = {50: 0.0, 75: 0.6745, 90: 1.2816}
+if len(TAM_YILLAR) >= 2:
+    YIL_TOPLAM = [sum(IKLIM[y]) for y in TAM_YILLAR]
+    YIL_ORT = sum(YIL_TOPLAM) / len(YIL_TOPLAM)
+    YIL_SD = _math.sqrt(sum((v - YIL_ORT) ** 2 for v in YIL_TOPLAM)
+                        / (len(YIL_TOPLAM) - 1))
+    YIL_CV_PCT = YIL_SD / YIL_ORT * 100
+    PXX_YIL = {p: YIL_ORT - z * YIL_SD for p, z in Z_YIL.items()}
+else:
+    YIL_TOPLAM, YIL_ORT, YIL_SD, YIL_CV_PCT, PXX_YIL = [], None, None, None, None
+
 # v2.135: KPI durumları elle değil eşikten türetilir (spec #18 — eşik ile
 # değer arasındaki yön tutarlılığı; kopyadaki "hedef %10 altı / %80 üstü"
 # iddialarının makine karşılığı). Kanonikte ok/ok/watch üretir (md5 korunur).
