@@ -150,7 +150,7 @@ def rapor_alanlari(plant, pencere_gun: int = 120):
     """v2.103 (E.3-a, B1+B5 — karar 9 Agu): rapor fotograflari report_stats'a.
     Tek uretici worker; servis yalniz OKUR (v2.96 ilkesi). Pencere 120 gun =
     skill_gecmisi(gun=120) ile AYNI (uc yuzey ayni sayiyi soyler).
-    B1 uninterrupted_days: skill_daily 0-24 kovasinda son gunden geriye
+    B1 uninterrupted_days: DUNDEN geriye ilk olculmemis gune kadar (v2.142)
     kesintisiz gun sayisi (servis karneden TURETMEZ — B1 karari, 8 Agu).
     B5 error_dist: s08 sozlugu — prof_mw[15] (yerel 05-19 medyan gercek MW),
     mae24/mae72[14] (yerel 06-19 saatlik MAE MW), mu/sd/ndays (F-A MWh/gun,
@@ -163,7 +163,12 @@ def rapor_alanlari(plant, pencere_gun: int = 120):
             "SELECT DISTINCT date FROM skill_daily WHERE plant_id=:p "
             "AND horizon_bucket='0-24' ORDER BY date DESC LIMIT 400"),
             {"p": pid})]
-    kesintisiz, beklenen = 0, (gunler[0] if gunler else None)
+    # v2.142: capa DUN'dur, son-veri-gunu degil. Eski hali gunler[0]'a
+    # (skill_daily'deki son gune) capa atiyordu; SCADA kesilince sayac orada
+    # DONUYORDU (canli D18 avi: kuyruk t=0 iken kart 46 diyordu). Sartname:
+    # "bugunden geriye ilk olculmemis gune kadar" — dun olculmemisse 0.
+    kesintisiz = 0
+    beklenen = dt.datetime.now(dt.timezone.utc).date() - dt.timedelta(days=1)
     for g in gunler:
         if g != beklenen:
             break

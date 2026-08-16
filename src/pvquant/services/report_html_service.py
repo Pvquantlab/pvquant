@@ -453,10 +453,23 @@ def _anlati(ctx, J):
         n["exec_2"] = ("<b>Bağımsız test.</b> Bu koşu için kalibrasyon karşılaştırması "
                        "raporlanmıyor; sonuçlar sayfa 9-10'dadır.")
     kg = (J.get("accuracy") or {}).get("uninterrupted_days")
+    # v2.142: anlati VERIYLE CELISEMEZ (metin kurali) — eski cumle "tum
+    # satirlar olculu / olculemeyen karneye katilmaz" diyordu; karar (a)
+    # sonrasi olculemeyen gun karnede '—' ile KALIR ve kesinti varken
+    # "tum satirlar olculu" yalan olur. Uc durum, uc durust cumle.
     if kg is not None:
-        n["exec_3"] = ("<b>Doğrulama %d gündür kesintisiz.</b> 30 günlük karnenin tüm "
-                       "satırları ölçülü günlerden oluşur; ölçülemeyen gün karneye "
-                       "katılmaz.") % kg
+        if kg >= 30:
+            n["exec_3"] = ("<b>Doğrulama %d gündür kesintisiz.</b> 30 günlük "
+                           "karnenin tüm satırları ölçülü günlerdir; ölçülemeyen "
+                           "gün '—' ile gösterilir, hiçbir ortalamaya girmez.") % kg
+        elif kg > 0:
+            n["exec_3"] = ("<b>Doğrulama son %d gündür kesintisiz.</b> Karnede "
+                           "ölçülemeyen günler '—' ile gösterilir ve hiçbir "
+                           "ortalamaya girmez.") % kg
+        else:
+            n["exec_3"] = ("<b>Doğrulama şu an kesintidedir.</b> Son ölçülü günden "
+                           "bu yana veri gelmemiştir; karnede ölçülemeyen günler "
+                           "'—' ile gösterilir ve hiçbir ortalamaya girmez.")
     T = J.get("totals") or {}
     if T.get("p10_mwh") is not None:
         n["exec_4"] = ("<b>Taahhüt için önerilen değer.</b> Dönem toplamının alt sınırı "
