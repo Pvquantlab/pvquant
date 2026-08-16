@@ -373,3 +373,11 @@ def test_d18_olculmemis_gune_24_72_basilamaz():
     d["KESINTISIZ_GUN"] = 2
     # kuyruk 5. satir (indeks 27-23=4) DOLU birakildi -> ihlal
     assert "D18" in {x.kod for x in denetim.denetle(d) if x.seviye == "hata"}
+
+
+def test_s07_uydurma_carpan_kaynakta_yok():
+    """v2.143 gerileme bekçisi: 'hiçbir sayı elle yazılmaz' — s07'de çarpım
+    formulü olarak 1.36 kalmadı (24-72 artık KARNE_H72 ölçümünden)."""
+    kaynak = (MOTOR / "build_s07.py").read_text(encoding="utf-8")
+    assert "* 1.36" not in kaynak and "*1.36" not in kaynak
+    assert "KARNE_H72" in kaynak

@@ -506,7 +506,7 @@
     "date": "2026-07-05",
     "wmape_0_24": 10.4,
     "skill": 0.36,
-    "wmape_24_72": null,
+    "wmape_24_72": 14.1,
     "naif_wmape": 16.2,
     "olculdu": true
    },
@@ -514,7 +514,7 @@
     "date": "2026-07-06",
     "wmape_0_24": 9.1,
     "skill": 0.4,
-    "wmape_24_72": null,
+    "wmape_24_72": 12.4,
     "naif_wmape": 15.2,
     "olculdu": true
    },
@@ -522,7 +522,7 @@
     "date": "2026-07-07",
     "wmape_0_24": 11.2,
     "skill": 0.31,
-    "wmape_24_72": null,
+    "wmape_24_72": 15.2,
     "naif_wmape": 16.2,
     "olculdu": true
    },
@@ -530,7 +530,7 @@
     "date": "2026-07-08",
     "wmape_0_24": 7.8,
     "skill": 0.44,
-    "wmape_24_72": null,
+    "wmape_24_72": 10.6,
     "naif_wmape": 13.9,
     "olculdu": true
    },
@@ -538,7 +538,7 @@
     "date": "2026-07-09",
     "wmape_0_24": 6.2,
     "skill": 0.47,
-    "wmape_24_72": null,
+    "wmape_24_72": 8.4,
     "naif_wmape": 11.7,
     "olculdu": true
    },
@@ -546,7 +546,7 @@
     "date": "2026-07-10",
     "wmape_0_24": 6.4,
     "skill": 0.45,
-    "wmape_24_72": null,
+    "wmape_24_72": 8.7,
     "naif_wmape": 11.6,
     "olculdu": true
    },
@@ -554,7 +554,7 @@
     "date": "2026-07-11",
     "wmape_0_24": 12.9,
     "skill": 0.28,
-    "wmape_24_72": null,
+    "wmape_24_72": 17.5,
     "naif_wmape": 17.9,
     "olculdu": true
    },
@@ -562,7 +562,7 @@
     "date": "2026-07-12",
     "wmape_0_24": 9.3,
     "skill": 0.39,
-    "wmape_24_72": null,
+    "wmape_24_72": 12.6,
     "naif_wmape": 15.2,
     "olculdu": true
    },
@@ -570,7 +570,7 @@
     "date": "2026-07-13",
     "wmape_0_24": 8.6,
     "skill": 0.41,
-    "wmape_24_72": null,
+    "wmape_24_72": 11.7,
     "naif_wmape": 14.6,
     "olculdu": true
    },
@@ -578,7 +578,7 @@
     "date": "2026-07-14",
     "wmape_0_24": 10.2,
     "skill": 0.35,
-    "wmape_24_72": null,
+    "wmape_24_72": 13.9,
     "naif_wmape": 15.7,
     "olculdu": true
    },
@@ -586,7 +586,7 @@
     "date": "2026-07-15",
     "wmape_0_24": 7.1,
     "skill": 0.46,
-    "wmape_24_72": null,
+    "wmape_24_72": 9.7,
     "naif_wmape": 13.1,
     "olculdu": true
    },
@@ -594,7 +594,7 @@
     "date": "2026-07-16",
     "wmape_0_24": 8.4,
     "skill": 0.38,
-    "wmape_24_72": null,
+    "wmape_24_72": 11.4,
     "naif_wmape": 13.5,
     "olculdu": true
    },
@@ -602,7 +602,7 @@
     "date": "2026-07-17",
     "wmape_0_24": 11.0,
     "skill": 0.33,
-    "wmape_24_72": null,
+    "wmape_24_72": 15,
     "naif_wmape": 16.4,
     "olculdu": true
    },
@@ -610,7 +610,7 @@
     "date": "2026-07-18",
     "wmape_0_24": 8.2,
     "skill": 0.42,
-    "wmape_24_72": null,
+    "wmape_24_72": 11.2,
     "naif_wmape": 14.1,
     "olculdu": true
    },
@@ -618,7 +618,7 @@
     "date": "2026-07-19",
     "wmape_0_24": 8.9,
     "skill": 0.37,
-    "wmape_24_72": null,
+    "wmape_24_72": 12.1,
     "naif_wmape": 14.1,
     "olculdu": true
    },
@@ -626,7 +626,7 @@
     "date": "2026-07-20",
     "wmape_0_24": 9.5,
     "skill": 0.36,
-    "wmape_24_72": null,
+    "wmape_24_72": 12.9,
     "naif_wmape": 14.8,
     "olculdu": true
    },
@@ -634,7 +634,7 @@
     "date": "2026-07-21",
     "wmape_0_24": 10.6,
     "skill": 0.34,
-    "wmape_24_72": null,
+    "wmape_24_72": 14.4,
     "naif_wmape": 16.1,
     "olculdu": true
    },
@@ -642,7 +642,7 @@
     "date": "2026-07-22",
     "wmape_0_24": 8.0,
     "skill": 0.43,
-    "wmape_24_72": null,
+    "wmape_24_72": 10.9,
     "naif_wmape": 14.0,
     "olculdu": true
    },
@@ -650,7 +650,7 @@
     "date": "2026-07-23",
     "wmape_0_24": 9.9,
     "skill": 0.35,
-    "wmape_24_72": null,
+    "wmape_24_72": 13.5,
     "naif_wmape": 15.2,
     "olculdu": true
    },
@@ -658,7 +658,7 @@
     "date": "2026-07-24",
     "wmape_0_24": 11.1,
     "skill": 0.32,
-    "wmape_24_72": null,
+    "wmape_24_72": 15.1,
     "naif_wmape": 16.3,
     "olculdu": true
    },
@@ -666,7 +666,7 @@
     "date": "2026-07-25",
     "wmape_0_24": 7.6,
     "skill": 0.44,
-    "wmape_24_72": null,
+    "wmape_24_72": 10.3,
     "naif_wmape": 13.6,
     "olculdu": true
    },
@@ -674,7 +674,7 @@
     "date": "2026-07-26",
     "wmape_0_24": 8.3,
     "skill": 0.4,
-    "wmape_24_72": null,
+    "wmape_24_72": 11.3,
     "naif_wmape": 13.8,
     "olculdu": true
    },
@@ -682,7 +682,7 @@
     "date": "2026-07-27",
     "wmape_0_24": 9.2,
     "skill": 0.38,
-    "wmape_24_72": null,
+    "wmape_24_72": 12.5,
     "naif_wmape": 14.8,
     "olculdu": true
    },

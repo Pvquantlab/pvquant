@@ -1,11 +1,10 @@
 from pvq import *
 
 # --- son 30 günün karnesi (tek kaynak: veri.py) ---------------------------
-from veri import KARNE_WM as wm, KARNE_SK as sk, KARNE_H72_KUYRUK, KARNE_TARIH as TARIH
+from veri import KARNE_WM as wm, KARNE_SK as sk, KARNE_TARIH as TARIH
 from veri import KARNE_NAIF as naif   # v2.137: naif ölçümdür, motor türetmez
 from veri import KARNE_OLCULDU as olc  # v2.140: ölçülmemiş gün '—' ve boşluk
-h72 = [round(w * 1.36, 1) if w is not None else None
-       for w in wm[:23]] + list(KARNE_H72_KUYRUK)
+from veri import KARNE_H72 as h72     # v2.143: 24-72 de ölçümdür — w×1,36 uydurması söküldü
 _sk_olc = [s for s in sk if s is not None]
 ORT_SKILL = sum(_sk_olc) / len(_sk_olc) * 100
 

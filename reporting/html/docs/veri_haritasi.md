@@ -219,4 +219,4 @@ Aşağıdaki değerler gerçek değil, yer tutucudur ve entegrasyonda değiştir
 - `error_dist.*` ← worker `report_stats['error_dist']` (B5; prof_mw[15]=yerel 05-19, mae24/72[14]=yerel 06-19 MW, mu/sd/ndays=F−A MWh/gün)
 - `scada.quality_monthly` ← servis SQL'i, son 6 ay, yüzde; hatalı={yanlis_yil*,gece_uretim,kapasite_ustu,okunamayan} (B2)
 - `report.id` ← `report_service.rapor_id_uret` — PVQ-<tarih>-<mod>-<sıra>, sıra=report_log BIGSERIAL (B6)
-- `accuracy.report_card` SÖZLEŞME: tam 30 satır; hepsi wmape+skill dolu; YALNIZ son 7'de wmape_24_72 (s07 kuyruk)
+- `accuracy.report_card` SÖZLEŞME (v2.143): tam 30 TAKVİM satırı; ölçülen satırda wmape+skill+naif+wmape_24_72 dolu; ölçülmemişte olculdu=false + hepsi null

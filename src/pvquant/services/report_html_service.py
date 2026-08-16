@@ -270,8 +270,7 @@ def _karne_satirlari(k):
     """accuracy.report_card — s07 SÖZLEŞMESİ (motor katı):
     · TAM 30 TAKVİM satırı (v2.140: ölçülmemiş gün olculdu=false + null ile kalır)
     · her satırda wmape_0_24 + skill + naif_wmape dolu (v2.137: naif ölçümdür)
-    · SADECE son 7 satırda wmape_24_72 dolu (KARNE_H72_KUYRUK uzunluğu 7 olmalı;
-      erken günlerde veri olsa da null'lanır — kuyruk şişerse s07 kayar).
+    · wmape_24_72 ölçülen HER satırda dolu (v2.143; ölçülmemişte null)
     skill_daily.skill_vs_naive yüzde (100·(1−m/n)) → rapor 0-1 kesir ister."""
     out = {}
     for r in k.itertuples():
@@ -319,8 +318,8 @@ def _karne_satirlari(k):
     if not any(d["olculdu"] for d in sira):
         raise ValueError("report_card: son 30 günde tek ölçülü gün yok — "
                          "karne tamamen boş, rapor anlamsız")
-    for d in sira[:23]:
-        d["wmape_24_72"] = None          # kuyruk sözleşmesi: yalnız son 7
+    # v2.143: 'yalnız son 7' sözleşmesi bitti — 24-72 hatası ölçülen HER
+    # satır için yayılır (motor w×1,36 uydurmasını söktü, alandan çizer).
     # v2.141: eski "kuyruk eksikse ValueError" korkuluğu KALKTI — olculdu
     # sözleşmesiyle çelişiyordu (v2.140 yaması bloğun devamını okumadan
     # üstünü değiştirmişti; canlı 11-13 Ağu 409 vakası). Eksik 24-72,

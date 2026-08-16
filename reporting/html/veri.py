@@ -107,7 +107,10 @@ KARNE_NAIF = [16.2, 15.2, 16.2, 13.9, 11.7, 11.6, 17.9, 15.2, 14.6, 15.7, 13.1, 
               14.8, 16.1, 14, 15.2, 16.3, 13.6, 13.8, 14.8, 14.6, 15.1, 15.9, 14.7, 13.8, 14.9, 15.4]   # naif WMAPE (v2.137: ÖLÇÜMdür, türetilmez)
 KARNE_NAIF_KAYNAK = "alan"
 KARNE_OLCULDU = [True] * 30                # v2.140: statik kanonikte hepsi ölçülü
-KARNE_H72_KUYRUK = [11.9, 12.4, 16.2, 12.0, 10.8, 12.1, 13.0]   # son 7 günün 24–72 sa hatası
+KARNE_H72 = [14.1, 12.4, 15.2, 10.6, 8.4, 8.7, 17.5, 12.6, 11.7, 13.9, 9.7, 11.4, 15, 11.2, 12.1,
+             12.9, 14.4, 10.9, 13.5, 15.1, 10.3, 11.3, 12.5, 11.9, 12.4, 16.2, 12, 10.8, 12.1, 13]   # 24–72 sa hatası, 30 gün (v2.143: ÖLÇÜMdür —
+# w×1,36 uydurma çarpanı söküldü; kanonik hikâyenin ilk 23 değeri eski
+# türetilmişle birebir donduruldu, kuyruk zaten ölçümdü)
 KARNE_TARIH = ["%02d Tem" % d for d in range(5, 32)] + ["%02d Ağu" % d for d in (1, 2, 3)]
 
 # ---------------------------------------------------------------- hata dağılımı — sayfa 8
@@ -257,9 +260,9 @@ def _json_yukle(path):
                            if (w is not None and s is not None) else None
                            for w, s in zip(g["KARNE_WM"], g["KARNE_SK"])]
         g["KARNE_NAIF_KAYNAK"] = "turetilmis"
-    # v2.140: kuyruk SON 7 satırdır ve None KORUNUR — ölçülmemiş günde
-    # süzme kuyruğu kısaltıp s07 hizalamasını kaydırıyordu.
-    g["KARNE_H72_KUYRUK"] = [x["wmape_24_72"] for x in K[-7:]]
+    # v2.143: 24-72 hatası HER satır için ölçümdür (None geçirgen);
+    # 'yalnız son 7' sözleşmesi ve w×1,36 uydurması bitti.
+    g["KARNE_H72"] = [x.get("wmape_24_72") for x in K]
     g["KARNE_OLCULDU"] = [bool(x.get("olculdu", True)) for x in K]
     g["KARNE_TARIH"] = ["%02d %s" % (_tarih(x["date"])[2], AY_TR[_tarih(x["date"])[1] - 1])
                         for x in K]
