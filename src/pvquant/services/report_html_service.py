@@ -311,17 +311,21 @@ def _karne_satirlari(k):
                   for k in ("wmape_0_24", "skill", "naif_wmape"))
         d["olculdu"] = tam
         if not tam:
+            # v2.141: 24-72 de null'lanir — gercekleseni olmayan gunun
+            # 24-72 hatasi da VAR OLAMAZ (ayni olcumden turerler).
             d["wmape_0_24"] = d["skill"] = d["naif_wmape"] = None
+            d["wmape_24_72"] = None
         sira.append(d)
     if not any(d["olculdu"] for d in sira):
         raise ValueError("report_card: son 30 günde tek ölçülü gün yok — "
                          "karne tamamen boş, rapor anlamsız")
     for d in sira[:23]:
         d["wmape_24_72"] = None          # kuyruk sözleşmesi: yalnız son 7
-    kuyruk_bos = [d["date"] for d in sira[23:] if d["wmape_24_72"] is None]
-    if kuyruk_bos:
-        raise ValueError("report_card kuyruk (son 7 gün) 24-72 eksik: %s"
-                         % ", ".join(kuyruk_bos))
+    # v2.141: eski "kuyruk eksikse ValueError" korkuluğu KALKTI — olculdu
+    # sözleşmesiyle çelişiyordu (v2.140 yaması bloğun devamını okumadan
+    # üstünü değiştirmişti; canlı 11-13 Ağu 409 vakası). Eksik 24-72,
+    # motorda boşluk + '—' olarak akar; kural 3: eksiklik reddedilmez,
+    # gösterilir. D18 false⇒null yönünü bekçiler.
     return sira
 
 

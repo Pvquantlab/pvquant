@@ -599,6 +599,13 @@ def _d18(veri, ekle):
                         "wm+sk+naif dolu", str(uclu))
     if not any(olc):
         return ekle("D18", "hata", "karnede tek ölçülü gün yok", "≥1", "0")
+    kuyruk = _al(veri, "KARNE_H72_KUYRUK") or []
+    if len(kuyruk) == 7:
+        for j, kv in enumerate(kuyruk):       # v2.141: ölçülmemiş günün 24-72'si olamaz
+            if not olc[23 + j] and kv is not None:
+                return ekle("D18", "hata", "ölçülmemiş güne 24-72 hatası basılmış "
+                            "(kuyruk %d. satır) — gerçekleşeni olmayan günün hatası "
+                            "var olamaz" % (j + 1), "null", str(kv))
     t = 0
     for o in reversed(olc):
         if o: t += 1

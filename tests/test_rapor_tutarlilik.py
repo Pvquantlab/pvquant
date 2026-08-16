@@ -341,7 +341,7 @@ def test_d18_olculmemis_gun_durust_gecer(tmp_path):
     J = json.loads(KANONIK.read_text(encoding="utf-8"))
     r = J["accuracy"]["report_card"][27]          # son 7 icinde
     r["olculdu"] = False
-    r["wmape_0_24"] = r["skill"] = r["naif_wmape"] = None
+    r["wmape_0_24"] = r["skill"] = r["naif_wmape"] = r["wmape_24_72"] = None
     J["accuracy"]["uninterrupted_days"] = 2       # kuyruk: 28,29 olculu -> t=2
     yol = tmp_path / "olculmemis.json"
     yol.write_text(json.dumps(J, ensure_ascii=False), encoding="utf-8")
@@ -361,4 +361,15 @@ def test_d18_kesintisiz_celiskisi_yakalanir():
     wm[27] = sk[27] = nf[27] = None
     d["KARNE_WM"], d["KARNE_SK"], d["KARNE_NAIF"] = wm, sk, nf
     d["KESINTISIZ_GUN"] = 87                      # kuyruk t=2 iken 87 iddiasi
+    assert "D18" in {x.kod for x in denetim.denetle(d) if x.seviye == "hata"}
+
+
+def test_d18_olculmemis_gune_24_72_basilamaz():
+    d = _yuzey()
+    olc = [True] * 30; olc[27] = False
+    wm = list(d["KARNE_WM"]); sk = list(d["KARNE_SK"]); nf = list(d["KARNE_NAIF"])
+    wm[27] = sk[27] = nf[27] = None
+    d["KARNE_OLCULDU"], d["KARNE_WM"], d["KARNE_SK"], d["KARNE_NAIF"] = olc, wm, sk, nf
+    d["KESINTISIZ_GUN"] = 2
+    # kuyruk 5. satir (indeks 27-23=4) DOLU birakildi -> ihlal
     assert "D18" in {x.kod for x in denetim.denetle(d) if x.seviye == "hata"}
