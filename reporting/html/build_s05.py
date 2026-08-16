@@ -156,8 +156,7 @@ BODY = """<div class="page"><div class="sheet">
     <div class="legend" style="margin-top:2mm"><span><i class="line"></i>Beklenti (P50)</span>
       <span><i class="fan"></i>%80 olasılık aralığı</span></div>
     <div class="figcap"><b>Şekil 5.2</b>&nbsp;&nbsp;Ufkun ilk sekiz gününün profilleri, ortak
-      eksende. Sağ üstteki değer o günün toplam beklentisidir. 11 ve 12 Ağustos'ta eğri hem
-      alçalıyor hem yayvanlaşıyor: cephe geçişinin saatlik karşılığı budur.</div>
+      eksende. Sağ üstteki değer o günün toplam beklentisidir. {{NARR_S05_FIGCAP}}</div>
 """ + foot(5) + """
 </div></div>"""
 

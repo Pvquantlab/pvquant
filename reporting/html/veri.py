@@ -27,6 +27,9 @@ NARR_IZLEME = "Kalite süzgecini geçen saat oranı tüm arşivde %71'dir; hedef
 NARR_S04_KUYRUK = " Dönemin ilk yarısı istikrarlıdır; 11–13 Ağustos'ta beklenen\n      cephe geçişi hem beklentiyi düşürmekte hem de belirsizliği genişletmektedir. Cephe\n      sonrasında üretim mevsim normaline dönmektedir."
 NARR_S06 = 'Sütunlar arasındaki fark gün kalitesini, satırlar arasındaki fark gün içi seyri verir.\n      11–13 Ağustos sütunlarının öğle saatleri komşularından belirgin biçimde açık: cephe\n      geçişinin en çok vurduğu saatler 10:00–15:00 arasıdır. Sabah ve akşam saatleri ise\n      neredeyse hiç etkilenmemiştir.'
 NARR_S07_BASLIK = "30 Temmuz'da ne oldu?"
+NARR_S05_FIGCAP = "11 ve 12 Ağustos'ta eğri hem\n      alçalıyor hem yayvanlaşıyor: cephe geçişinin saatlik karşılığı budur."  # v2.144: sabit anlatı token'landı — kanonik
+# varsayılan aynı metin (md5); canlıda ctx VERİDEN üretir, anlatı alanı
+# gelirse o kazanır, ikisi de yoksa cümle düşer (kural 4).
 NARR_S07_GOVDE = "O gün hata %12,7'ye çıktı, kazanç %20,1'e düştü — dönemin en zayıf günü. Nedeni ani\n      bulut açılmasıdır: model temkinli kalmış, öğleden sonraki gerçekleşen üretim beklentinin\n      üzerine çıkmıştır. Bu gün karneden çıkarılmadı; zayıf günler de ortalamaya girer."
 NARR_S09_PROSE = "Kalibrasyonun bir modeli veriye uydurup uydurmadığı, bulunan katsayıların fiziksel\n      olarak anlamlı olup olmadığına bakılarak anlaşılır. Sistem verimi 0,942, tipik bir\n      kablolama–inverter–trafo zincirinin beklenen aralığındadır. %7,3'lük bifacial kazanç,\n      sahanın 0,16 olan zemin albedosuyla tutarlıdır."
 NARR_S10_SEKIL = "Aylık geçerli saat payı. Mart–Mayıs\n      döneminde kapsama %49–58'e düşmüştür ve baskın neden tek bir kalemdir: kaynak dosyadaki\n      bozuk yıl bloğu. Haziran'dan itibaren oran %88–92 ile hedefin üzerindedir. Bu, ölçüm\n      sisteminden değil veri aktarımından kaynaklanan, düzeltilebilir bir sorundur."
@@ -323,6 +326,7 @@ def _json_yukle(path):
     g["NARR_EXEC_3"] = _N.get("exec_3", "")
     g["NARR_EXEC_4"] = _N.get("exec_4", "")
     g["NARR_IZLEME"] = _N.get("izleme", "")
+    g["NARR_S05_FIGCAP"] = _N.get("s05_figcap", "")
     g["NARR_S04_KUYRUK"] = _N.get("s04_kuyruk", "")
     g["NARR_S06"] = _N.get("s06", "")
     g["NARR_S07_BASLIK"] = _N.get("s07_baslik", "")
@@ -444,6 +448,7 @@ def doldur(s):
         # v2.131: s14 hedef günü veri-güdümlü — kanonikte '05 Ağustos' birebir
         "HEDEF_GUN": GUN_ETIKET[0] + " " + AY_YIL.split()[0],
         "KAL_PENCERE": KAL_PENCERE,  # v2.132: pencere iddiasi veriden
+        "NARR_S05_FIGCAP": NARR_S05_FIGCAP,
         "TOPLAM_P90": _bin(TOPLAM_P90_MWH),
     }
     for k, v in D.items():

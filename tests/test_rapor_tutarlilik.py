@@ -381,3 +381,33 @@ def test_s07_uydurma_carpan_kaynakta_yok():
     kaynak = (MOTOR / "build_s07.py").read_text(encoding="utf-8")
     assert "* 1.36" not in kaynak and "*1.36" not in kaynak
     assert "KARNE_H72" in kaynak
+
+
+def test_s05_figcap_anlatisiz_cumle_duser(tmp_path):
+    """v2.144: sabit '11-12 Agustos cephe gecisi' cumlesi token'landi.
+    Anlati alani yoksa cumle DUSER (kural 4) — '{{' kalintisi da olmaz (R1)."""
+    J = json.loads(KANONIK.read_text(encoding="utf-8"))
+    del J["narrative"]["s05_figcap"]
+    yol = tmp_path / "figcapsiz.json"
+    yol.write_text(json.dumps(J, ensure_ascii=False), encoding="utf-8")
+    m = taze_veri(yol)
+    assert m.NARR_S05_FIGCAP == ""
+    p = uret_kos(yol, tmp_path / "c")
+    assert p.returncode == 0, p.stdout + p.stderr
+    s05 = next((tmp_path / "c").glob("*_s05_*.html")).read_text(encoding="utf-8")
+    assert "cephe geçişinin" not in s05 and "{{" not in s05
+
+
+def test_s05_figcap_uretici_gercek_semadan():
+    """v2.145: uretici v2.1 semasindan (daily[].half_mwh) okur; en genis
+    bandi ILK SEKIZ gun icinde secer; bant yoksa None (cumle dusulur)."""
+    import sys as _s
+    _s.path.insert(0, str(KOK / "src"))
+    from pvquant.services.report_html_service import _s05_figcap_uret
+    daily = [{"date": "2026-08-%02d" % (16 + i), "half_mwh": hw}
+             for i, hw in enumerate([4.3, 4.2, 9.7, 4.4, 4.5, 4.4, 7.6, 7.4,
+                                     99.0, 99.0])]   # 9-10. gunler pencere DISI
+    c = _s05_figcap_uret(daily)
+    assert c == "İlk sekiz gün içinde en geniş belirsizlik bandı 18 Ağustos günündedir (±9,7 MWh)."
+    assert _s05_figcap_uret([{"date": "2026-08-16", "half_mwh": None}]) is None
+    assert _s05_figcap_uret([]) is None

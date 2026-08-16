@@ -55,6 +55,20 @@ def _mwh(kwh):
     return round(float(kwh) / 1000.0, 1)
 
 
+def _s05_figcap_uret(daily):
+    """v2.145: Sekil 5.2 anlatisi — ilk sekiz gunun en genis belirsizlik
+    bandi, J["daily"][].half_mwh'den (v2.1 semasi). Bant yoksa None (kural 4:
+    cumle basilmaz). Saf fonksiyon: uretim dali birim-testlidir."""
+    bant = [(d.get("half_mwh"), d.get("date")) for d in daily[:8]]
+    bant = [(h_, t) for h_, t in bant if h_ is not None and t]
+    if not bant:
+        return None
+    hw, t = max(bant)
+    d = _dt.date.fromisoformat(str(t))
+    return ("İlk sekiz gün içinde en geniş belirsizlik bandı "
+            "%d %s günündedir (±%s MWh).") % (d.day, AY_UZUN[d.month - 1], _tr(hw, 1))
+
+
 def ctx_to_json(ctx, plant: dict) -> dict:
     eksik = []
 
@@ -469,6 +483,13 @@ def _anlati(ctx, J):
             n["exec_3"] = ("<b>Doğrulama şu an kesintidedir.</b> Son ölçülü günden "
                            "bu yana veri gelmemiştir; karnede ölçülemeyen günler "
                            "'—' ile gösterilir ve hiçbir ortalamaya girmez.")
+    # v2.145: s05 şekil anlatısı VERİDEN. v2.144 üreticisi şartnamenin
+    # HEDEF kontratını (forecast.daily[].p10/p90) sorguluyordu; canlı v2.1
+    # şeması J["daily"][].half_mwh'dir — 'alan adı ezberden' tuzağı, üretici
+    # sessizce boş dönüp cümleyi düşürüyordu. Artık gerçek şemadan okur.
+    _fc = _s05_figcap_uret(J.get("daily") or [])
+    if _fc:
+        n["s05_figcap"] = _fc
     T = J.get("totals") or {}
     if T.get("p10_mwh") is not None:
         n["exec_4"] = ("<b>Taahhüt için önerilen değer.</b> Dönem toplamının alt sınırı "

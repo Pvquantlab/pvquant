@@ -972,6 +972,7 @@
   "kat_saat": "1.487",
   "kat_tarih": "19 Temmuz 2026",
   "s07_sekil": "Gün-öncesi hata dönem boyunca %6–13 bandında\n      kalmış, referansın belirgin altında seyretmiştir.",
-  "s10_sekil1": "Eğitim penceresinde hata %6,8, hiç\n    görülmemiş test döneminde %{{HOLDOUT}}'dur — aradaki fark makul, yani model ezberlememiştir."
+  "s10_sekil1": "Eğitim penceresinde hata %6,8, hiç\n    görülmemiş test döneminde %{{HOLDOUT}}'dur — aradaki fark makul, yani model ezberlememiştir.",
+  "s05_figcap": "11 ve 12 Ağustos'ta eğri hem\n      alçalıyor hem yayvanlaşıyor: cephe geçişinin saatlik karşılığı budur."
  }
 }
