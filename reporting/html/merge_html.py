@@ -72,7 +72,24 @@ hedef = f"{OUT}/PVQuant_Konya_GES_RAPOR_16sayfa.html"
 open(hedef, "w", encoding="utf-8").write(HTML)
 print("yazıldı:", round(len(HTML) / 1024), "KB")
 
-from weasyprint import HTML as WH
-doc = WH(hedef).render()
-print("PDF sayfa sayısı:", len(doc.pages))
-doc.write_pdf(f"{OUT}/PVQuant_Konya_GES_RAPOR_16sayfa.pdf")
+# v2.146: PDF, TEKIL sayfa PDF'lerinin birlesimidir. Birlesik HTML'i
+# WeasyPrint'le yeniden basmak 16 sayfanin CSS'lerini ayni belgede
+# CAKISTIRIYORDU (yalniz .page secicileri kimliklenir; h2/.fig/table gibi
+# kurallar kureseldir, son gelen kazanir) — eski sabit-height bu bulasmayi
+# sessizce KIRPARAK gizliyordu (s05/s08 altliklari aylardir murekkepte
+# yoktu). Tekil render'lar dogru ve bekcili ("sayfa: 1"); teslim edilen
+# PDF onlarin birlesimi olunca cakisma sinifi teslimatta kokten olur.
+# Birlesik HTML onizleme/md5 icin uretilmeye devam eder.
+from pypdf import PdfWriter
+import glob as _g
+parcalar = sorted(_g.glob(f"{OUT}/PVQuant_Konya_GES_s??_*.pdf"))
+assert len(parcalar) == 16, f"16 tekil PDF bekleniyordu, {len(parcalar)} var"
+w = PdfWriter()
+for p in parcalar:
+    w.append(p)
+with open(f"{OUT}/PVQuant_Konya_GES_RAPOR_16sayfa.pdf", "wb") as f:
+    w.write(f)
+from pypdf import PdfReader
+n = len(PdfReader(f"{OUT}/PVQuant_Konya_GES_RAPOR_16sayfa.pdf").pages)
+print("PDF sayfa sayısı:", n)
+assert n == 16, "birlesik PDF 16 sayfa degil"

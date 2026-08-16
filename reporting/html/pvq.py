@@ -43,9 +43,18 @@ BASE = """
 html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 body{background:#E8EBE9;font-family:PlexSans,sans-serif;color:INK;font-feature-settings:"tnum" 1}
 @page{size:A4;margin:0}
-.page{width:210mm;height:297mm;background:#fff;margin:12mm auto;
-  box-shadow:0 2px 24px rgba(0,0,0,.28);overflow:hidden;display:flex;flex-direction:column}
-@media print{body{background:#fff}.page{margin:0;box-shadow:none}}
+.page{width:210mm;min-height:297mm;background:#fff;margin:12mm auto;
+  box-shadow:0 2px 24px rgba(0,0,0,.28);display:flex;flex-direction:column}
+/* v2.146: height+overflow:hidden TASMAYI SESSIZCE KIRPIYORDU — kanonik s05'in
+   figcap+altligi aylardir murekkepte yoktu; 'tek A4' bekcisi sayfa SAYISI
+   saydigi icin kordu. min-height + serbest tasma: fazla icerik artik IKINCI
+   SAYFA uretir, mevcut bekciler aninda yakalar (sessiz kirpilma sinifi oldu). */
+@media print{body{background:#fff}.page{margin:0;box-shadow:none;
+  page-break-inside:avoid;page-break-after:always}}
+/* v2.146: min-height'a gecince birlesik render'da biriken yuvarlama
+   sayfa baslarini kaydirip kirinti sayfalar uretiyordu; break-inside:
+   avoid her blogu temiz sayfa basina oturtur, break-after siradakini
+   ayirir. Sigmayan blok yine bolunur -> bekci yakalar. */
 
 /* --- iç sayfa başlığı ve altbilgisi --- */
 .sheet{padding:14mm 18mm 11mm;flex:1;display:flex;flex-direction:column}

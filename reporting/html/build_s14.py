@@ -97,7 +97,7 @@ sinir = "".join('<div class="sn"><b>%s</b><span>%s</span></div>' % s for s in SI
 
 CSS = """
 h2{font-size:10.5pt;font-weight:600;padding-bottom:2mm;border-bottom:.9pt solid BRAND;
-  margin-top:7mm}
+  margin-top:5mm}  /* v2.146 */
 table{margin-top:3mm}
 th{font-size:7.9pt;padding:1.7mm 2.5mm}
 td{font-size:8.4pt;padding:1.6mm 2.5mm;vertical-align:top}
@@ -106,7 +106,7 @@ td.kn{width:56mm}
 .sn{padding:3mm 0;border-bottom:.6pt solid #E8EDEA}
 .sn b{display:block;font-size:9.2pt;font-weight:600;margin-bottom:1.2mm}
 .sn span{display:block;font-size:8.7pt;line-height:1.5;color:#2B3532}
-.fig{margin-top:5mm}
+.fig{margin-top:2mm}  /* v2.146: altlık A4 içine döndü */
 """.replace("BRAND", BRAND)
 
 BODY = """<div class="page"><div class="sheet">

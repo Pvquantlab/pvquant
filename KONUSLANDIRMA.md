@@ -17,7 +17,7 @@
   Durum bakışı: `docker compose run --rm --entrypoint "" api alembic current`
 - Konteyner-içi rapor kalkanı (imaj değişince):
   `docker compose run --rm --no-deps --entrypoint "" api sh -c 'cd /app/reporting/html && python3 uret.py'`
-  → 16 sayfa + kanonik md5 876455055d54600c83faa675503dc001 beklenir.
+  → 16 sayfa + kanonik md5 f0dbc1401d9674858dd39ba6ca22310c beklenir.
 
 ## İmaj içeriği (v2.109+)
 - Dockerfile: src, apps, alembic, **reporting**, **scripts**; WeasyPrint sistem kütüphaneleri

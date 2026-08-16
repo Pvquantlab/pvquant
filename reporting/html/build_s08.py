@@ -200,7 +200,7 @@ RULES = [
 ]
 
 CSS = """
-.fig{margin-top:5mm}
+.fig{margin-top:2mm}  /* v2.146: altlık A4 içine döndü */
 .legend{margin-top:1.5mm}
 .legend i.s24{display:inline-block;width:3mm;height:3mm;border-radius:50%;background:BRAND;
   margin-right:1.6mm;vertical-align:-.3mm}
