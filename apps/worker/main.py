@@ -146,6 +146,35 @@ def gece_skill(plant, pencere_gun: int = 10):
             " mape=EXCLUDED.mape, rmse=EXCLUDED.rmse,"
             " skill_vs_naive=EXCLUDED.skill_vs_naive,"
             " naive_wmape=EXCLUDED.naive_wmape"), satirlar)
+def karne_kapsama_hesapla(gecerli_ts, tz, bugun=None, gun=30,
+                          bas=None, son=None):
+    """C-3b (v2.152, s08 kuralı 2): son `gun` takvim günü (dünle biter,
+    v2.140 çapa kuralı) için gün içi kapsama yüzdesi. Gün içi = yerel
+    [bas, son] saat aralığı (varsayılan config: 06–19, B5 mae penceresiyle
+    aynı 14 saat — mevsimsel gündoğumu oynaklığı yerine sabit, belirlenimci
+    payda). Saf fonksiyon: DB'siz test edilir (üreticiden beslenen fikstür).
+    → {'YYYY-AA-GG': yüzde_int}; verisiz gün 0 (yokluk gizlenmez)."""
+    from pvquant.config import get_settings
+    ayar = get_settings()
+    bas = ayar.karne_gunduz_bas if bas is None else bas
+    son = ayar.karne_gunduz_son if son is None else son
+    payda = son - bas + 1
+    bugun = bugun or dt.datetime.now(dt.timezone.utc).date()
+    ts = pd.DatetimeIndex(gecerli_ts)
+    if ts.tz is None:
+        ts = ts.tz_localize("UTC")
+    yerel = ts.tz_convert(tz)
+    yerel = yerel[(yerel.hour >= bas) & (yerel.hour <= son)]
+    sayim = pd.Series(1, index=yerel).groupby(
+        [yerel.date, yerel.hour]).first().groupby(level=0).sum()
+    out = {}
+    for g in range(gun, 0, -1):
+        t = bugun - dt.timedelta(days=g)
+        n = int(sayim.get(t, 0))
+        out[str(t)] = int(round(min(n, payda) / payda * 100))
+    return out
+
+
 def rapor_alanlari(plant, pencere_gun: int = 120):
     """v2.103 (E.3-a, B1+B5 — karar 9 Agu): rapor fotograflari report_stats'a.
     Tek uretici worker; servis yalniz OKUR (v2.96 ilkesi). Pencere 120 gun =
@@ -174,6 +203,15 @@ def rapor_alanlari(plant, pencere_gun: int = 120):
             break
         kesintisiz += 1
         beklenen = beklenen - dt.timedelta(days=1)
+    # --- C-3b (v2.152): karne_kapsama — gün içi geçerli saat oranı, son 30
+    # takvim günü. Kaynak scada_hourly flag='valid' TEK BAŞINA (tahmin
+    # eşleşmesinden bağımsız: kapsama SCADA'nın malı, forecast'ın değil).
+    with tenant_baglami(tid) as s:
+        _kts = pd.read_sql(text(
+            "SELECT ts_utc FROM scada_hourly WHERE plant_id=:p "
+            "AND flag='valid' AND ts_utc >= now()-INTERVAL '31 days'"),
+            s.connection(), params={"p": pid}, parse_dates=["ts_utc"]).ts_utc
+    kapsama = karne_kapsama_hesapla(_kts, plant["tz"])
     # --- B5 ---
     with tenant_baglami(tid) as s:
         df = pd.read_sql(text(
@@ -217,7 +255,8 @@ def rapor_alanlari(plant, pencere_gun: int = 120):
                         "ndays": int(len(gs))}
     with tenant_baglami(tid) as s:
         for k, v in [("uninterrupted_days", {"value": int(kesintisiz)}),
-                     ("error_dist", foto)]:
+                     ("error_dist", foto),
+                     ("karne_kapsama", {"days": kapsama})]:
             if v is None:
                 continue
             s.execute(text(

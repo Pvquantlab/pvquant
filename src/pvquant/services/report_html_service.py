@@ -124,7 +124,8 @@ def ctx_to_json(ctx, plant: dict) -> dict:
             "wmape_0_24": round(float(g24.mape.mean()), 1),
             "skill": int(round(float(g24.skill_vs_naive.dropna().mean()))),
             "uninterrupted_days": _zorunlu(ctx, "uninterrupted_days"),  # B1 (worker)
-            "report_card": _karne_satirlari(k),
+            "report_card": _karne_satirlari(
+                k, getattr(ctx, "karne_kapsama", None)),
         }
 
     # hata dağılımı fotoğrafı — B5 (worker, report_stats.error_dist)
@@ -328,11 +329,16 @@ def _tipik_gun(ctx):
             "band_method": "quantile"}
 
 
-def _karne_satirlari(k):
+def _karne_satirlari(k, kapsama=None):
     """accuracy.report_card — s07 SÖZLEŞMESİ (motor katı):
     · TAM 30 TAKVİM satırı (v2.140: ölçülmemiş gün olculdu=false + null ile kalır)
     · her satırda wmape_0_24 + skill + naif_wmape dolu (v2.137: naif ölçümdür)
     · wmape_24_72 ölçülen HER satırda dolu (v2.143; ölçülmemişte null)
+    · C-3b (v2.152, s08 kuralı 2): gün içi kapsaması eşik ALTINDAKİ gün karne
+      DIŞIdır — olculdu=false + null (rapor D19 bekçiler); kapsama_pct her
+      satıra yayılır, harita yoksa null (yokluk gizlenmez, D19 'denetlenemedi'
+      der). skill_daily satırı SİLİNMEZ: ölçüm arşivdir, dışlama karnenin
+      kuralıdır.
     skill_daily.skill_vs_naive yüzde (100·(1−m/n)) → rapor 0-1 kesir ister."""
     out = {}
     for r in k.itertuples():
@@ -363,13 +369,21 @@ def _karne_satirlari(k):
     # (kismi sayi basmak kural 3/4 ihlali olurdu). Eski davranis 409'du
     # (2-4 Agu vakasi); simdi rapor cikar ve boslugu durustce gosterir.
     bugun = _dt.datetime.now(_dt.timezone.utc).date()
+    from pvquant.config import get_settings as _gs
+    _esik = _gs().karne_kapsama_esik_pct
     sira = []
     for g in range(30, 0, -1):
         t = str(bugun - _dt.timedelta(days=g))
         d = out.get(t, {"date": t, "wmape_0_24": None, "skill": None,
                         "wmape_24_72": None, "naif_wmape": None})
+        kap = (kapsama or {}).get(t)
+        d["kapsama_pct"] = int(kap) if kap is not None else None
         tam = all(d.get(k) is not None
                   for k in ("wmape_0_24", "skill", "naif_wmape"))
+        # C-3b (v2.152): kapsama bilinen VE eşik altındaysa gün karne dışı
+        # ('<' kuralın kendisi — tam eşik karne İÇİ, v2.151 testiyle aynı).
+        if kap is not None and kap < _esik:
+            tam = False
         d["olculdu"] = tam
         if not tam:
             # v2.141: 24-72 de null'lanir — gercekleseni olmayan gunun

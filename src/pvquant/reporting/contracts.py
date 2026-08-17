@@ -62,6 +62,9 @@ class ReportContext:
     son12: Optional[pd.DataFrame] = None        # ay(ts), actual_mwh
     flag_dagilimi: Optional[dict] = None        # flag -> satir sayisi
     coverage_pct: Optional[float] = None        # gecerli saat / toplam saat
+    karne_kapsama: Optional[dict] = None        # C-3b (v2.152): {tarih: gun-ici %}
+                                                # worker karne_kapsama yazar; gun
+                                                # esigin altindaysa karne DISI
     son_scada_ts: Optional[datetime] = None
     kosu_evrim: Optional[pd.DataFrame] = None   # run_at, p50_mwh (hedef gun)
     evrim_gunu: Optional[object] = None         # S8 hedef gunu (date)

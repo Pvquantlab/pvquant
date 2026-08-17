@@ -195,6 +195,9 @@ def rapor_baglami(tenant_id, plant: dict) -> ReportContext | None:
                     ctx.uninterrupted_days = v.get("value")
                 elif r.key == "error_dist":
                     ctx.error_dist = v
+                elif r.key == "karne_kapsama":
+                    # C-3b (v2.152): {tarih: gun-ici %} — ham okuma, hesap yok
+                    ctx.karne_kapsama = v.get("days")
         # v2.103 (B2, karar 9 Agu): aylik kalite kirilimi — son 6 ay, yuzde.
         # Siniflama: gecerli=valid; hatali={yanlis_yil*,gece_uretim,
         # kapasite_ustu,okunamayan}; diger=kalan (donmus + yeni bayraklar).

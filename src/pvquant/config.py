@@ -50,6 +50,13 @@ class Settings(BaseSettings):
     guard_capacity_tolerance: float = 0.20  # v2.41 kapasite-celiski bekcisi
     min_valid_hours_calibration: int = 1500 # Mod B icin asgari saglam saat
     skill_naive_ratio_clip: float = 4.0     # v2.55: berrak-gok orani kelepcesi
+    # C-3b (v2.152): s08 butunluk kurallarinin makine esikleri — worker ve
+    # servis TEK kaynaktan okur. reporting/html/veri.py KARNE_ESIK aynasidir
+    # (rapor katmani bagimsizdir; sapma D19/D20 verisinde yakalanir).
+    karne_kapsama_esik_pct: int = 60        # gun ici gecerli saat orani tabani
+    karne_kucuk_orneklem_gun: int = 14      # pencerede asgari gecerli gun
+    karne_gunduz_bas: int = 6               # gun ici tanimi: yerel 06–19
+    karne_gunduz_son: int = 19              # (B5 mae penceresiyle ayni, 14 saat)
     worker_hour_skill: int = 0              # v2.56: gece skill (UTC, dakika 30)
     worker_hour_forecast: int = 2           # v2.56: sabah tahmin (UTC)
     worker_hour_alarm: int = 4              # v2.56: alarm taramasi (UTC)
