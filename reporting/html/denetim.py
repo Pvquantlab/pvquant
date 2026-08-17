@@ -657,6 +657,63 @@ def render_denetle(cikti_dizin):
 
 
 # ---------------------------------------------------------------- API
+def _d19(veri, ekle):
+    """C-3b (v2.151, s08 kuralı 2): gün içi kapsaması eşik altındaki gün
+    karnede SKORLANAMAZ — kapsama_pct < KARNE_ESIK iken olculdu=true hatadır.
+    Alan hiç yoksa (v2.152 öncesi girdi) uyarı: kural denetlenemiyor demektir,
+    sessiz geçmek s08 iddiasını yeniden denetimsiz bırakırdı."""
+    esik = (_al(veri, "KARNE_ESIK") or {}).get("kapsama_pct")
+    kap = _al(veri, "KARNE_KAPSAMA")
+    olc = _al(veri, "KARNE_OLCULDU")
+    if esik is None or olc is None:
+        return ekle("D19", "uyari", "kapsama eşiği/olculdu yüzeyi yok — denetlenemedi",
+                    "KARNE_ESIK + KARNE_OLCULDU", "eksik")
+    if not kap or all(k is None for k in kap):
+        return ekle("D19", "uyari", "gün bazlı kapsama alanı yok — kural 2 "
+                    "denetlenemedi (worker karne_kapsama yazınca dolar)",
+                    "report_card[].kapsama_pct", "eksik")
+    if len(kap) != len(olc):
+        return ekle("D19", "hata", "kapsama serisi karneyle hizasız",
+                    "%d satır" % len(olc), "%d" % len(kap))
+    ihlal = [i + 1 for i, (k, o) in enumerate(zip(kap, olc))
+             if k is not None and k < esik and o]
+    bilinmez = sum(1 for k in kap if k is None)
+    if ihlal:
+        return ekle("D19", "hata", "kapsaması eşik altı gün karnede skorlu "
+                    "(satır %s)" % ihlal[:5],
+                    "kapsama<%s ⇒ olculdu=false" % _tr(float(esik), 0), "%d gün skorlu" % len(ihlal))
+    ekle("D19", "gecti", "kapsama eşiği ↔ karne dışlaması tutarlı"
+         + (" (%d satır kapsaması bilinmiyor)" % bilinmez if bilinmez else ""),
+         "kapsama<%s ⇒ olculdu=false" % _tr(float(esik), 0), "ihlal yok")
+
+
+def _d20(veri, ekle):
+    """C-3b (v2.151, s08 kuralı 4): küçük örneklem uyarısı ↔ geçerli gün
+    sayısı tutarlı — geçerli < eşik ise başlık uyarısı DOLU, değilse BOŞ
+    olmalı. Uyarı veriden türetilir (veri.karne_uyari); bu denetim elle
+    ezme/bayat anlatıya karşı bekçidir."""
+    esik = (_al(veri, "KARNE_ESIK") or {}).get("kucuk_orneklem_gun")
+    olc = _al(veri, "KARNE_OLCULDU")
+    uy = _al(veri, "KARNE_UYARI")
+    if esik is None or olc is None or uy is None:
+        return ekle("D20", "uyari", "küçük örneklem yüzeyi eksik — denetlenemedi",
+                    "KARNE_ESIK + KARNE_OLCULDU + KARNE_UYARI", "eksik")
+    gecerli = sum(1 for o in olc if o)
+    bekle_dolu = gecerli < esik
+    if bool(uy) != bekle_dolu:
+        return ekle("D20", "hata", "küçük örneklem uyarısı ↔ geçerli gün sayısı "
+                    "çelişiyor",
+                    "uyarı %s (geçerli %d, eşik %d)"
+                    % ("dolu" if bekle_dolu else "boş", gecerli, esik),
+                    "uyarı %s" % ("dolu" if uy else "boş"))
+    if bekle_dolu and ("%d" % gecerli) not in uy:
+        return ekle("D20", "hata", "uyarı metni geçerli gün sayısını taşımıyor",
+                    "%d metinde" % gecerli, uy)
+    ekle("D20", "gecti", "küçük örneklem uyarısı geçerli gün sayısıyla tutarlı",
+         "uyarı %s" % ("dolu" if bekle_dolu else "boş"),
+         "geçerli %d / eşik %d" % (gecerli, esik))
+
+
 def denetle_tam(veri):
     """Tüm kontrolleri koşar. → (kayitlar, bulgular, suphe_bayragi)
     kayitlar: geçen+geçmeyen tüm sonuçlar (denetim.json için);
@@ -673,7 +730,7 @@ def denetle_tam(veri):
     _d8(veri, ekle); _d9(veri, ekle); _d10(veri, ekle)
     _d11(veri, ekle); _d12(veri, ekle); _d13(veri, ekle)
     _d14(veri, ekle); _d15(veri, ekle); _d16(veri, ekle)
-    _d17(veri, ekle); _d18(veri, ekle)
+    _d17(veri, ekle); _d18(veri, ekle); _d19(veri, ekle); _d20(veri, ekle)
 
     bulgular = [Bulgu(k["kod"], k["durum"], k["mesaj"], k["beklenen"], k["bulunan"])
                 for k in kayitlar if k["durum"] in ("hata", "uyari")]

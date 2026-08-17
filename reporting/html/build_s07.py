@@ -128,7 +128,7 @@ tr.w td{background:#F6F2E7}
 
 BODY = """<div class="page"><div class="sheet">
 """ + HEAD + """
-  <div class="eyebrow">Doğruluk karnesi</div>
+  <div class="eyebrow">Doğruluk karnesi{{KARNE_UYARI}}</div>
   <h1>Her tahmin ölçülür</h1>
   <p class="lead" style="max-width:162mm">Yayımlanan her tahmin, ertesi gün santralin
   gerçekleşen üretimiyle karşılaştırılır ve sonuç kalıcı olarak saklanır. Bu bölüm o sınavın

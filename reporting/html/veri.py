@@ -110,6 +110,13 @@ KARNE_NAIF = [16.2, 15.2, 16.2, 13.9, 11.7, 11.6, 17.9, 15.2, 14.6, 15.7, 13.1, 
               14.8, 16.1, 14, 15.2, 16.3, 13.6, 13.8, 14.8, 14.6, 15.1, 15.9, 14.7, 13.8, 14.9, 15.4]   # naif WMAPE (v2.137: ÖLÇÜMdür, türetilmez)
 KARNE_NAIF_KAYNAK = "alan"
 KARNE_OLCULDU = [True] * 30                # v2.140: statik kanonikte hepsi ölçülü
+# C-3b (v2.151): s08 "bütünlük kuralları" kopyasının makine karşılığı —
+# eşikler TEK kaynaktan (kullanıcı kararı 17 Ağu: mekanizma eklendi, metin
+# kaldı; şartname bu sayıları tanımlamıyordu, bu sözlük kayıt makamıdır).
+KARNE_ESIK = {"kapsama_pct": 60,           # gün içi geçerli saat oranı tabanı
+              "kucuk_orneklem_gun": 14}    # pencerede en az geçerli gün
+KARNE_KAPSAMA = [100] * 30                 # kanonikte hepsi tam kapsamalı
+                                           # (olculdu=true ile tutarlı dondurma)
 KARNE_H72 = [14.1, 12.4, 15.2, 10.6, 8.4, 8.7, 17.5, 12.6, 11.7, 13.9, 9.7, 11.4, 15, 11.2, 12.1,
              12.9, 14.4, 10.9, 13.5, 15.1, 10.3, 11.3, 12.5, 11.9, 12.4, 16.2, 12, 10.8, 12.1, 13]   # 24–72 sa hatası, 30 gün (v2.143: ÖLÇÜMdür —
 # w×1,36 uydurma çarpanı söküldü; kanonik hikâyenin ilk 23 değeri eski
@@ -267,6 +274,9 @@ def _json_yukle(path):
     # 'yalnız son 7' sözleşmesi ve w×1,36 uydurması bitti.
     g["KARNE_H72"] = [x.get("wmape_24_72") for x in K]
     g["KARNE_OLCULDU"] = [bool(x.get("olculdu", True)) for x in K]
+    # C-3b (v2.151): gün içi kapsama yüzdesi — alan yoksa None (D19
+    # "denetlenemedi" der; v2.152 worker'ı doldurur).
+    g["KARNE_KAPSAMA"] = [x.get("kapsama_pct") for x in K]
     g["KARNE_TARIH"] = ["%02d %s" % (_tarih(x["date"])[2], AY_TR[_tarih(x["date"])[1] - 1])
                         for x in K]
 
@@ -417,6 +427,23 @@ def kpi_hedef(ad, esik=None):
                               "altı" if yon == "alt" else "üstü")
 
 
+def karne_uyari(gecerli, esik=None):
+    """C-3b (v2.151, s08 kuralı 4): "14 günden az geçerli gün → başlığa
+    uyarı" iddiasının makinesi. Anlatı VERİDEN türer: uyarı elle konmaz,
+    KARNE_OLCULDU sayımından çıkar (D20 tutarlılığı bekçiler). Kanonikte
+    30 geçerli gün → boş dize → md5 birebir. Renk pvq.AMBER aynasıdır
+    (#A87519; pvq→veri yönlü import döngü yaratır, değer dondurulmuştur)."""
+    e = (esik or KARNE_ESIK)["kucuk_orneklem_gun"]
+    if gecerli >= e:
+        return ""
+    return (' · <span style="color:#A87519">Uyarı: küçük örneklem — '
+            "%d geçerli gün (eşik %d)</span>" % (gecerli, e))
+
+
+KARNE_GECERLI_GUN = sum(1 for o in KARNE_OLCULDU if o)
+KARNE_UYARI = karne_uyari(KARNE_GECERLI_GUN)
+
+
 # ================================================================ görsel doldurma (E.2 Adım 2b)
 def _tr(x, d=1):
     return ("%.*f" % (d, x)).replace(".", ",")
@@ -461,6 +488,7 @@ def doldur(s):
         # v2.131: s14 hedef günü veri-güdümlü — kanonikte '05 Ağustos' birebir
         "HEDEF_GUN": GUN_ETIKET[0] + " " + AY_YIL.split()[0],
         "KAL_PENCERE": KAL_PENCERE,  # v2.132: pencere iddiasi veriden
+        "KARNE_UYARI": KARNE_UYARI,  # C-3b (v2.151): kanonikte "" — md5 birebir
         "NARR_S05_FIGCAP": NARR_S05_FIGCAP,
         "TOPLAM_P90": _bin(TOPLAM_P90_MWH),
     }
