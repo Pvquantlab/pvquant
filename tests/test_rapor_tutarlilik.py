@@ -415,12 +415,17 @@ def test_s05_figcap_uretici_gercek_semadan():
 
 # ------------------------------------------------- Adim 4 (v2.147)
 def test_bulgu_ayikla_json_dali(tmp_path):
+    """v2.149: fikstur GERCEK ureticiden (denetim.json_yaz) gelir — v2.147'nin
+    testi anahtari elle ('kalanlar') yazdigi icin ayiklayicidaki ayni yanlis
+    varsayimi goremedi (canli 500 vakasi). Sozlesme artik uretici-bagli."""
     import sys as _s; _s.path.insert(0, str(KOK / "src"))
     from pvquant.services.report_html_service import _bulgu_ayikla
-    (tmp_path / "denetim.json").write_text(json.dumps(
-        {"kalanlar": [{"kod": "D18", "seviye": "hata", "mesaj": "m",
-                       "beklenen": "=0", "bulunan": "46 gün"}]},
-        ensure_ascii=False), encoding="utf-8")
+    kayitlar = [
+        {"kod": "D1", "durum": "gecti", "mesaj": "m", "beklenen": "b", "bulunan": "v"},
+        {"kod": "D18", "durum": "hata", "mesaj": "kart celisiyor",
+         "beklenen": "=0", "bulunan": "46 gün"},
+    ]
+    denetim.json_yaz(kayitlar, False, str(tmp_path / "denetim.json"))
     b = _bulgu_ayikla(str(tmp_path), "")
     assert b and b[0]["kod"] == "D18" and b[0]["seviye"] == "hata"
 

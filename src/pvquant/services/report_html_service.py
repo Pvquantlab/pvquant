@@ -248,7 +248,12 @@ def _bulgu_ayikla(cikti_dizin, hata_metni):
     yol = os.path.join(cikti_dizin, "denetim.json")
     try:
         with open(yol, encoding="utf-8") as f:
-            return json.load(f).get("kalanlar") or []
+            # v2.149: dogru anahtar "bulgular" (json_yaz sozlesmesi; "kalanlar"
+            # yalnizca ureticinin yerel degiskeniydi — yanlis anahtar bos liste
+            # dondurup regex yedegini de atliyordu, 422 hicbir zaman dogmuyordu).
+            b = json.load(f).get("bulgular")
+        if b:
+            return b
     except (OSError, ValueError):
         pass
     bulgular = []
