@@ -4,7 +4,7 @@ import { api } from "../../api/client";
 import type { Karne, HataMatrisi, HataDagilimi } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
-import { Kpi, Kart, Sayfa, Lejant, sayiTr } from "./parcalar";
+import { Kpi, Kart, Sayfa, sayiTr } from "./parcalar";
 
 const AY = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran",
             "Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];

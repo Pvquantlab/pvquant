@@ -12,12 +12,9 @@ export function Cubuklar({ etiketler, degerler, birim, vurguIdx, yukseklik = 260
     kapsamPct?: number[] }) {
   const { n, oku } = useTema();
   const option = useMemo<EChartsOption>(() => {
-    const mr = oku("--marka-r") || "14,124,90", ar = oku("--amber-r") || "232,148,10";
+    // v2.148: mr/ar/grad kalıntısı söküldü — üretim derlemesi (tsc -b)
+    // ilk kez koşunca döküldü; dev-Vite tip denetimi yapmıyordu. nr kullanımda.
     const nr = oku("--notr-r") || "100,116,139";
-    const grad = (r: string, ust: number, alt: number) => ({ type: "linear",
-      x: 0, y: 0, x2: 0, y2: 1, colorStops: [
-        { offset: 0, color: `rgba(${r},${ust})` },
-        { offset: 1, color: `rgba(${r},${alt})` }] });
     const izgara = oku("--izgara"), soluk = oku("--soluk"), kenar = oku("--kenar");
     const mono = oku("--mono");  // v2.92: sabit ad degil token
     // v2.118: kapsam <%50 aylar "eksik veri" sayilir — en-dusuk aramasina

@@ -1,0 +1,15 @@
+# PVQuant web imaji (v2.148) — YENI arayuz (web/ SPA), caddy statik servis.
+# VITE_API_URL="." = ayni koken: SPA, kapidaki caddy'nin /v1 rotasina goreli gider.
+FROM node:20-alpine AS derleme
+WORKDIR /app
+COPY web/package.json web/package-lock.json ./
+RUN npm ci
+COPY web ./
+ARG VITE_API_URL=.
+ENV VITE_API_URL=$VITE_API_URL
+RUN npm run build
+
+FROM caddy:2
+COPY Caddyfile.web /etc/caddy/Caddyfile
+COPY --from=derleme /app/dist /srv
+EXPOSE 8080

@@ -410,7 +410,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
   const AY = ["Oca","Şub","Mar","Nis","May","Haz","Tem","Ağu","Eyl","Eki","Kas","Ara"];
   const { n, oku } = useTema();
   const selale = useMemo(() => {
-    const yap = (once: number | null, sonra: number | null, birim: string): EChartsOption | null => {
+    const yap = (once: number | null, sonra: number | null, _birim: string): EChartsOption | null => {
       if (once === null || sonra === null) return null;
       const o = Math.abs(once), so = Math.abs(sonra);
       const d = so - o;

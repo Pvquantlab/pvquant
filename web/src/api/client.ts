@@ -3,7 +3,10 @@ import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
  *  VITE_API_URL tanimliysa GERCEK kapiya gider; degilse ornek veriye duser. */
-const TABAN = import.meta.env.VITE_API_URL as string | undefined;
+const _API_HAM = import.meta.env.VITE_API_URL as string | undefined;
+/** v2.148: "." = AYNI KÖKEN (caddy arkası) — fetch'ler göreli /v1'e gider,
+ *  alan adından bağımsız tek build. Tanımsız = örnek kip (API'siz demo). */
+const TABAN = _API_HAM === "." ? "" : _API_HAM;
 
 /** UI ufuk etiketi -> saat. Kapinin dili saat sayisidir (?hours=N, tavan 384). */
 const UFUK_SAAT = { "24h": 24, "72h": 72, "7d": 168, "16d": 384 } as const;
@@ -66,7 +69,7 @@ function uyarla(g: ForecastYanit): TahminSerisi {
 
 /** v2.73-B: gercek oturum. Ornek kipte (TABAN yok) kapi yoktur, gecis serbest. */
 export async function giris(email: string, sifre: string): Promise<boolean> {
-  if (!TABAN) return true;
+  if (TABAN == null) return true;
   const y = await fetch(`${TABAN}/v1/auth/login`, {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, sifre }) });
@@ -235,7 +238,7 @@ export const api = {
   /** v2.88: SCADA onizleme — dosyayi kapiya tasir, yaniti OLDUGU GIBI doner
    *  (yorum UI'nin isi degil; icat yok). Ornek kipte kapi yok — durust hata. */
   scadaOnizleme: async (p: string, dosya: File): Promise<ScadaOnizleme> => {
-    if (!TABAN) throw new Error(
+    if (TABAN == null) throw new Error(
       "Örnek kipte dosya kapısı yok — VITE_API_URL tanımlı değil.");
     return dosyaGonder<ScadaOnizleme>(`/v1/plants/${p}/scada/preview`, dosya);
   },
@@ -243,7 +246,7 @@ export const api = {
    *  yanitta doner; UI oldugu gibi gosterir (yorum yok, icat yok). */
   scadaYukle: async (p: string, dosya: File, tz: string | null,
                      esleme?: Record<string, string>): Promise<ScadaKayit> => {
-    if (!TABAN) throw new Error(
+    if (TABAN == null) throw new Error(
       "Örnek kipte dosya kapısı yok — VITE_API_URL tanımlı değil.");
     const alanlar: Record<string, string> = {};
     if (tz) alanlar.source_timezone = tz;   // v2.91: bos -> santral tz (sunucu)
@@ -254,7 +257,7 @@ export const api = {
   },
   /** v2.93: taze tahmin kosusu — es zamanli, 10-20 sn surer. */
   tahminKos: async (p: string): Promise<{ run_id: string }> => {
-    if (!TABAN) throw new Error(
+    if (TABAN == null) throw new Error(
       "Örnek kipte koşu tetiklenmez — VITE_API_URL tanımlı değil.");
     const jeton = localStorage.getItem("pvq_token");
     const y = await fetch(`${TABAN}/v1/plants/${p}/forecast/run`, {
@@ -276,7 +279,7 @@ export const api = {
   },
   /** v2.94: gecmis kosular — ornek kipte sayfanin eski sabit listesi doner. */
   kosular: async (p: string): Promise<KosuSatiri[]> => {
-    if (!TABAN) return [
+    if (TABAN == null) return [
       { run_at: "2026-07-30T12:58:00", mode: "C", model: "hybrid_residual" },
       { run_at: "2026-07-30T00:42:00", mode: "C", model: "hybrid_residual" },
       { run_at: "2026-07-30T00:30:00", mode: "C", model: "hybrid_residual" },
@@ -289,7 +292,7 @@ export const api = {
       v2.147 (Adim 4): 422 yapilandirilmis govde (mesaj+bulgular) tipli hataya
       cevrilir; SPA denetim bulgularini kullaniciya gosterir. */
   raporIndir: async (p: string, fmt: "pdf" | "pdf16" | "xlsx" | "json"): Promise<void> => {
-    if (!TABAN) throw new Error(
+    if (TABAN == null) throw new Error(
       "Örnek kipte rapor üretimi yok — VITE_API_URL tanımlı değil.");
     const jeton = localStorage.getItem("pvq_token");
     const y = await fetch(`${TABAN}/v1/plants/${p}/report?fmt=${fmt}`, {
@@ -326,11 +329,11 @@ export const api = {
   /** karne: gercek kapisi HENUZ yok — API tarafiyla birlikte dogana
    *  kadar ornekte kalir; var olmayan URL cagrilmaz (v2.73-A karari). */
   ozet: async (p: string): Promise<SantralOzeti> => {
-    if (!TABAN) return ornekOzet;
+    if (TABAN == null) return ornekOzet;
     return uyarlaOzet(await getir<OzetYanit>(`/v1/plants/${p}/summary`));
   },
   karne: async (p: string): Promise<Karne> => {
-    if (!TABAN) return ornekKarne;
+    if (TABAN == null) return ornekKarne;
     // v2.76: KPI'lar 0-24 kovasindan; grafik karsilastirmasi icin 24-72 de
     // cekilir ve gunluk birlesir (kapi kova basina calisir).
     const [k0, k1] = await Promise.all([
@@ -340,34 +343,34 @@ export const api = {
     return { ...k0, gunluk: [...k0.gunluk, ...k1.gunluk] };
   },
   kalibrasyon: async (p: string): Promise<KalibrasyonOzeti | null> => {
-    if (!TABAN) return null;
+    if (TABAN == null) return null;
     try { return await getir<KalibrasyonOzeti>(`/v1/plants/${p}/kalibrasyon`); }
     catch { return null; }
   },
   saatAyMatrisi: async (p: string): Promise<SaatAyMatrisi> => {
-    if (!TABAN) return { saatler: [], hucreler: [], toplam: [], birim: "kW", tz: "UTC" };
+    if (TABAN == null) return { saatler: [], hucreler: [], toplam: [], birim: "kW", tz: "UTC" };
     return getir<SaatAyMatrisi>(`/v1/plants/${p}/saat-ay-matrisi`);
   },
   gunesYolu: async (p: string): Promise<GunesYolu> => {
-    if (!TABAN) return { lat: 0, lon: 0, tz: "UTC", yil: 2026, egriler: [] };
+    if (TABAN == null) return { lat: 0, lon: 0, tz: "UTC", yil: 2026, egriler: [] };
     return getir<GunesYolu>(`/v1/plants/${p}/gunes-yolu`);
   },
   hataDagilimi: async (p: string, gun = 120): Promise<HataDagilimi> => {
-    if (!TABAN) return { kutular: [], mu: null, sd: null, ndays: 0,
+    if (TABAN == null) return { kutular: [], mu: null, sd: null, ndays: 0,
       p10: null, p50: null, p90: null, birim: "MWh/gun", kova: "0-24", tz: "UTC" };
     return getir<HataDagilimi>(`/v1/plants/${p}/hata-dagilimi?gun=${gun}&kova=0-24`);
   },
   hataMatrisi: async (p: string, gun = 30): Promise<HataMatrisi> => {
-    if (!TABAN) return { gunler: [], saatler: [], hucreler: [],
+    if (TABAN == null) return { gunler: [], saatler: [], hucreler: [],
       metrik: "isaretli_hata", birim: "kW", kova: "0-24", tz: "UTC" };
     return getir<HataMatrisi>(`/v1/plants/${p}/hata-matrisi?gun=${gun}&kova=0-24`);
   },
   aylik: async (p: string): Promise<AylikBeklenti> => {
-    if (!TABAN) return ornekAylik;
+    if (TABAN == null) return ornekAylik;
     return getir<AylikBeklenti>(`/v1/plants/${p}/monthly`);
   },
   tahmin: async (p: string, u: Ufuk): Promise<TahminSerisi> => {
-    if (!TABAN) return ornekTahmin(u);
+    if (TABAN == null) return ornekTahmin(u);
     return uyarla(await getir<ForecastYanit>(
       `/v1/plants/${p}/forecast?hours=${UFUK_SAAT[u]}`));
   },

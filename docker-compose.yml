@@ -62,6 +62,14 @@ services:
         condition: service_healthy
     restart: unless-stopped        # v2.64
 
+  web:
+    # v2.148: YENI arayuz — web/ SPA. Kapidaki caddy / -> web:8080 yonlendirir;
+    # eski Streamlit (frontend) gecis sureci icin 8502'de kalir (emeklilik defterde).
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    restart: unless-stopped
+
   caddy:
     image: caddy:2
     environment:
@@ -74,7 +82,7 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
-      - frontend
+      - web
     restart: unless-stopped        # v2.64
 
 volumes:

@@ -32,7 +32,7 @@ export function Santralim({ plantId }: { plantId: string }) {
       Math.round(a + (durak[i + 1][c] - a) * f)).join(",") + ")";
   };
 
-  const gyOption = useMemo<EChartsOption>(() => {
+  const gyOption = useMemo(() => {
     const soluk = oku("--soluk"), kenar = oku("--kenar"), mono = oku("--mono");
     const izgara = oku("--izgara");
     const renk: Record<string, string> = {
@@ -75,7 +75,7 @@ export function Santralim({ plantId }: { plantId: string }) {
         axisLabel: { color: soluk, fontFamily: mono, fontSize: 10 },
         splitLine: { lineStyle: { color: izgara } }, axisLine: { show: false } },
       series: seriler,
-    };
+    } as EChartsOption;  // v2.148: üretim derlemesi literal daraltması
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gy, n]);
 

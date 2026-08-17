@@ -62,13 +62,12 @@ export function Aylik({ plantId }: { plantId: string }) {
       Math.round(a + (durak[i + 1][c] - a) * f)).join(",") + ")";
   };
 
-  const option = useMemo<EChartsOption>(() => {
+  const option = useMemo(() => {
     const izgara = oku("--izgara"), soluk = oku("--soluk");
     const kenar = oku("--kenar"), mono = oku("--mono");
     const bek = b?.beklenti ?? [];
     // Solargis Fig 4.1 dili: aylik toplam duz-renk sutun; ustune P10-P90
     // hata araligi (bankable "deger + belirsizlik" gelenegi).
-    const marka = oku("--marka");
     return {
       grid: { left: 52, right: 12, top: 28, bottom: 28 }, animation: false,
       tooltip: { trigger: "axis", backgroundColor: oku("--kart"),
@@ -117,8 +116,8 @@ export function Aylik({ plantId }: { plantId: string }) {
           data: bek.map((r, i) => [i, r.p10 ?? NaN, r.p90 ?? NaN]),
           tooltip: { show: false } },
       ],
-    };
-  }, [b, n]);
+    } as EChartsOption;
+  }, [b, n]);  // v2.148
 
   if (birikiyor) return (
     <Sayfa baslik="Aylık beklenti" alt="İklimden gelen ay bazlı üretim zarfı.">

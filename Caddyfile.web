@@ -1,0 +1,6 @@
+:8080 {
+	# SPA yonlendirmesi: bilinmeyen yollar index.html'e duser (history API).
+	root * /srv
+	try_files {path} /index.html
+	file_server
+}
