@@ -470,6 +470,7 @@ def rapor_uret(plant_id: str, fmt: str, claims=Depends(gecerli_kullanici)):
     """v2.94: uret() -> bytes; dosya adi basliga yazilir, tarayici indirir."""
     from fastapi.responses import Response
     from pvquant.services import report_service
+    from pvquant.services.report_html_service import RaporDenetimHatasi
     if fmt not in _RAPOR_MIME:
         raise HTTPException(422, f"bilinmeyen format: {fmt}")
     row = plant_service.getir(claims["tenant_id"], plant_id)
@@ -479,6 +480,13 @@ def rapor_uret(plant_id: str, fmt: str, claims=Depends(gecerli_kullanici)):
         veri, ad, _ts = report_service.uret(claims["tenant_id"], row, fmt)
     except ValueError as e:
         raise HTTPException(409, str(e))   # "once tahmin uretin" durustce doner
+    except RaporDenetimHatasi as e:
+        # v2.147 (Adim 4): kapinin bulgulari artik logda degil KULLANICIDA —
+        # 422 + yapilandirilmis govde; SPA gosterir. Uretim kusurlari 500 kalir.
+        raise HTTPException(422, detail={
+            "mesaj": "Rapor üretilmedi: tutarlılık denetimi geçemedi. "
+                     "Aşağıdaki bulgular giderilmeden rapor yayımlanmaz.",
+            "bulgular": e.bulgular})
     return Response(content=veri, media_type=_RAPOR_MIME[fmt],
                     headers={"Content-Disposition":
                              f'attachment; filename="{ad}"'})

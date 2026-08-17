@@ -411,3 +411,31 @@ def test_s05_figcap_uretici_gercek_semadan():
     assert c == "İlk sekiz gün içinde en geniş belirsizlik bandı 18 Ağustos günündedir (±9,7 MWh)."
     assert _s05_figcap_uret([{"date": "2026-08-16", "half_mwh": None}]) is None
     assert _s05_figcap_uret([]) is None
+
+
+# ------------------------------------------------- Adim 4 (v2.147)
+def test_bulgu_ayikla_json_dali(tmp_path):
+    import sys as _s; _s.path.insert(0, str(KOK / "src"))
+    from pvquant.services.report_html_service import _bulgu_ayikla
+    (tmp_path / "denetim.json").write_text(json.dumps(
+        {"kalanlar": [{"kod": "D18", "seviye": "hata", "mesaj": "m",
+                       "beklenen": "=0", "bulunan": "46 gün"}]},
+        ensure_ascii=False), encoding="utf-8")
+    b = _bulgu_ayikla(str(tmp_path), "")
+    assert b and b[0]["kod"] == "D18" and b[0]["seviye"] == "hata"
+
+
+def test_bulgu_ayikla_regex_yedegi(tmp_path):
+    import sys as _s; _s.path.insert(0, str(KOK / "src"))
+    from pvquant.services.report_html_service import _bulgu_ayikla
+    metin = ("[UYARI] D2 — selale adimsiz — basilmaz | beklenen: calibration.steps | bulunan: yok\n"
+             "[HATA] D18 — kart celisiyor | beklenen: = 0 | bulunan: 46 gün")
+    b = _bulgu_ayikla(str(tmp_path), metin)      # denetim.json YOK -> regex
+    assert [(x["kod"], x["seviye"]) for x in b] == [("D2", "uyari"), ("D18", "hata")]
+
+
+def test_rapor_denetim_hatasi_bulgu_tasir():
+    import sys as _s; _s.path.insert(0, str(KOK / "src"))
+    from pvquant.services.report_html_service import RaporDenetimHatasi
+    e = RaporDenetimHatasi("gecemedi", [{"kod": "D4", "seviye": "hata"}])
+    assert e.bulgular[0]["kod"] == "D4" and isinstance(e, RuntimeError)

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { EChartsOption } from "echarts";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
-import { api, EslemeHatasi, type EslemeVerisi,
+import { api, RaporDenetimHata, type DenetimBulgusu, EslemeHatasi, type EslemeVerisi,
          type ScadaOnizleme, type ScadaKayit,
          type KosuSatiri } from "../../api/client";
 import type { KalibrasyonOzeti } from "../../api/types";
@@ -566,10 +566,16 @@ export function Raporlar({ plantId }: { plantId: string }) {
            d.getFullYear() + " " + iki(d.getHours()) + ":" + iki(d.getMinutes());
   };
 
+  const [bulgular, setBulgular] = useState<DenetimBulgusu[] | null>(null);
   const hazirla = async (fmt: "pdf" | "pdf16" | "xlsx" | "json") => {
-    setUretilen(fmt); setHata(null);
+    setUretilen(fmt); setHata(null); setBulgular(null);
     try { await api.raporIndir(plantId, fmt); }
-    catch (e) { setHata(e instanceof Error ? e.message : String(e)); }
+    catch (e) {
+      // v2.147 (Adim 4): denetim bulgulari artik logda degil ekranda —
+      // kapi neyi neden durdurdu, beklenen/bulunan degerleriyle gorunur.
+      if (e instanceof RaporDenetimHata) { setHata(e.message); setBulgular(e.bulgular); }
+      else setHata(e instanceof Error ? e.message : String(e));
+    }
     finally { setUretilen(null); }
   };
 
@@ -592,6 +598,20 @@ export function Raporlar({ plantId }: { plantId: string }) {
           style={{ width: "100%", marginTop: 14 }}>
           {uretilen === "pdf16" ? "Hazırlanıyor…" : "Hazırla"}
         </button>
+        {bulgular && (
+          <div style={{ marginTop: 12 }}>
+            {bulgular.map((b, i) => (
+              <div key={i} style={{
+                borderLeft: `3px solid ${b.seviye === "hata" ? "var(--kirmizi, #B4232A)" : "var(--amber, #B08C43)"}`,
+                padding: "6px 10px", margin: "6px 0", fontSize: 12.5,
+                background: "var(--zemin2, rgba(0,0,0,.03))", lineHeight: 1.5 }}>
+                <b>{b.kod}</b> · {b.mesaj}
+                {b.beklenen && <div style={{ color: "var(--ikincil)" }}>
+                  beklenen: {b.beklenen}{b.bulunan ? ` · bulunan: ${b.bulunan}` : ""}</div>}
+              </div>
+            ))}
+          </div>
+        )}
       </Kart>
       <div className="ızgara satir-3" style={{ margin: "14px 0 14px" }}>
         {kartlar.map(([ad, fmt, alt]) => (

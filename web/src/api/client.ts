@@ -219,6 +219,18 @@ function uyarlaOzet(g: OzetYanit): SantralOzeti {
   };
 }
 
+/** v2.147: kapinin bulgusu — kod (D1..D18/R1..R2), seviye, mesaj, beklenen/bulunan. */
+export interface DenetimBulgusu {
+  kod: string; seviye: "hata" | "uyari";
+  mesaj: string; beklenen?: string; bulunan?: string;
+}
+export class RaporDenetimHata extends Error {
+  bulgular: DenetimBulgusu[];
+  constructor(mesaj: string, bulgular: DenetimBulgusu[]) {
+    super(mesaj); this.bulgular = bulgular;
+  }
+}
+
 export const api = {
   /** v2.88: SCADA onizleme — dosyayi kapiya tasir, yaniti OLDUGU GIBI doner
    *  (yorum UI'nin isi degil; icat yok). Ornek kipte kapi yok — durust hata. */
@@ -273,7 +285,9 @@ export const api = {
     ];
     return getir<KosuSatiri[]>(`/v1/plants/${p}/runs`);
   },
-  /** v2.94: rapor indir — blob + Content-Disposition adi; 401 sozlesmesi ayni. */
+  /** v2.94: rapor indir — blob + Content-Disposition adi; 401 sozlesmesi ayni.
+      v2.147 (Adim 4): 422 yapilandirilmis govde (mesaj+bulgular) tipli hataya
+      cevrilir; SPA denetim bulgularini kullaniciya gosterir. */
   raporIndir: async (p: string, fmt: "pdf" | "pdf16" | "xlsx" | "json"): Promise<void> => {
     if (!TABAN) throw new Error(
       "Örnek kipte rapor üretimi yok — VITE_API_URL tanımlı değil.");
@@ -289,7 +303,16 @@ export const api = {
       try {
         const g = (await y.json()) as { detail?: unknown };
         if (typeof g.detail === "string") mesaj = g.detail;
-      } catch { /* govde yoksa kod kalir */ }
+        else if (g.detail && typeof g.detail === "object") {
+          const d = g.detail as { mesaj?: string; bulgular?: DenetimBulgusu[] };
+          if (Array.isArray(d.bulgular))
+            throw new RaporDenetimHata(d.mesaj ?? "denetim geçemedi", d.bulgular);
+          if (d.mesaj) mesaj = d.mesaj;
+        }
+      } catch (h) {
+        if (h instanceof RaporDenetimHata) throw h;
+        /* govde yoksa kod kalir */
+      }
       throw new Error(mesaj);
     }
     const cd = y.headers.get("Content-Disposition") ?? "";

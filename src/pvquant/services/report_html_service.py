@@ -210,12 +210,55 @@ def uret_html_pdf(tenant_id, plant: dict, ctx=None) -> bytes:
         # tabanıdır; DB'den beslenen üretim (Konya dahil) onunla uyuşamaz.
         # Yapısal bekçi (16 sayfa / tek A4) köprüde her üretimde koşar;
         # taban denetimi kanonik girdiyle CI'ın işidir.
-        pdf_yolu, _html = json_ile_uret(
-            yol, cikti=os.path.join(tmp, "cikti"), denetim=False)
+        cikti_dizin = os.path.join(tmp, "cikti")
+        try:
+            pdf_yolu, _html = json_ile_uret(yol, cikti=cikti_dizin, denetim=False)
+        except Exception as e:
+            # v2.147 (Adim 4): kopru'ya DOKUNMADAN — gecici cikti dizini bu
+            # katmanin mali; denetim.json dururken okunur (rmtree finally'de).
+            from reporting.kopru import RaporUretimHatasi as _RUH
+            if isinstance(e, _RUH):
+                bulgular = _bulgu_ayikla(cikti_dizin, str(e))
+                if any(b.get("seviye") == "hata" for b in bulgular):
+                    raise RaporDenetimHatasi(
+                        "rapor tutarlilik denetiminden gecemedi", bulgular) from e
+            raise
         with open(pdf_yolu, "rb") as f:
             return f.read()
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+
+
+# ---- Adim 4 (v2.147): denetim bulgulari 500 yerine 422 ile kullaniciya ----
+class RaporDenetimHatasi(RuntimeError):
+    """Rapor, tutarlilik denetiminden gecemedi — VERI kusuru (422 adayi).
+    Uretim kusurlari (sayfa bekcisi, render cokusu) RaporUretimHatasi olarak
+    kalir ve 500 doner; ayrim _bulgu_ayikla ile yapilir."""
+    def __init__(self, mesaj, bulgular):
+        super().__init__(mesaj)
+        self.bulgular = bulgular
+
+
+def _bulgu_ayikla(cikti_dizin, hata_metni):
+    """Dusen uretimden yapilandirilmis bulgu listesi cikarir.
+    Oncelik denetim.json'daki 'kalanlar' (kod/seviye/mesaj/beklenen/bulunan);
+    dosya yoksa/bozuksa hata metnindeki [HATA]/[UYARI] satirlarindan ayiklar.
+    Bos liste = denetim bulgusu yok (uretim kusuru). Saf ve birim-testli."""
+    import re as _re
+    yol = os.path.join(cikti_dizin, "denetim.json")
+    try:
+        with open(yol, encoding="utf-8") as f:
+            return json.load(f).get("kalanlar") or []
+    except (OSError, ValueError):
+        pass
+    bulgular = []
+    for sv, kod, mesaj, beklenen, bulunan in _re.findall(
+            r"\[(HATA|UYARI)\]\s+(\S+)\s+—\s+(.*?)\s+\|\s+beklenen:\s+(.*?)"
+            r"\s+\|\s+bulunan:\s+(.*?)\s*$",
+            hata_metni, _re.MULTILINE):
+        bulgular.append({"kod": kod, "seviye": "hata" if sv == "HATA" else "uyari",
+                         "mesaj": mesaj, "beklenen": beklenen, "bulunan": bulunan})
+    return bulgular
 
 
 # ---- yardımcılar ----
