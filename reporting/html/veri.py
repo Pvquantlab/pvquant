@@ -404,6 +404,19 @@ DURUM_HOLDOUT = "ok" if SELALE_BIT < KPI_ESIK["HOLDOUT"][0] else "watch"
 DURUM_KAPSAMA = "ok" if KAPSAMA_PCT > KPI_ESIK["KAPSAMA"][0] else "watch"
 
 
+def kpi_hedef(ad, esik=None):
+    """C-3 (v2.150): s03 kopya metnindeki hedef iddiası KPI_ESIK'ten türer.
+
+    "hedef %10 altı" / "hedef %80 üstü" — sayı ve yön tek kaynaktan gelir;
+    eşik değişirse kopya kendiliğinden izler (D16 zaten değer↔durum yönünü
+    denetler; bu, kopya↔eşik bacağını kapatır). Kanonikte birebir aynı
+    metni üretir (md5 token tekniği).
+    """
+    e, yon = (esik or KPI_ESIK)[ad]
+    return "hedef %%%s %s" % (("%g" % e).replace(".", ","),
+                              "altı" if yon == "alt" else "üstü")
+
+
 # ================================================================ görsel doldurma (E.2 Adım 2b)
 def _tr(x, d=1):
     return ("%.*f" % (d, x)).replace(".", ",")
