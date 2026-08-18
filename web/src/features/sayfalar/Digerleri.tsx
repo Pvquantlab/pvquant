@@ -567,17 +567,25 @@ export function Raporlar({ plantId }: { plantId: string }) {
   };
 
   const [bulgular, setBulgular] = useState<DenetimBulgusu[] | null>(null);
+  // v2.154: hata, basılan düğmenin KARTINDA görünür — eski hâli her hatayı
+  // format ızgarasının altına düşürüyordu (pdf16 hatası düğmeden kopuktu).
+  const [hataFmt, setHataFmt] = useState<"pdf" | "pdf16" | "xlsx" | "json" | null>(null);
   const hazirla = async (fmt: "pdf" | "pdf16" | "xlsx" | "json") => {
-    setUretilen(fmt); setHata(null); setBulgular(null);
+    setUretilen(fmt); setHata(null); setBulgular(null); setHataFmt(null);
     try { await api.raporIndir(plantId, fmt); }
     catch (e) {
       // v2.147 (Adim 4): denetim bulgulari artik logda degil ekranda —
       // kapi neyi neden durdurdu, beklenen/bulunan degerleriyle gorunur.
+      setHataFmt(fmt);
       if (e instanceof RaporDenetimHata) { setHata(e.message); setBulgular(e.bulgular); }
       else setHata(e instanceof Error ? e.message : String(e));
     }
     finally { setUretilen(null); }
   };
+  const hataSatiri = (
+    <p style={{ fontSize: 13, color: "var(--ikincil)", margin: "12px 0 0",
+                lineHeight: 1.65 }}>{hata}</p>
+  );
 
   const kartlar: [string, "pdf" | "xlsx" | "json", string][] = [
     ["PDF", "pdf", "Yönetici özeti — logo, KPI'lar, holdout kutusu"],
@@ -598,6 +606,7 @@ export function Raporlar({ plantId }: { plantId: string }) {
           style={{ width: "100%", marginTop: 14 }}>
           {uretilen === "pdf16" ? "Hazırlanıyor…" : "Hazırla"}
         </button>
+        {hata && hataFmt === "pdf16" && hataSatiri}
         {bulgular && (
           <div style={{ marginTop: 12 }}>
             {bulgular.map((b, i) => (
@@ -622,13 +631,10 @@ export function Raporlar({ plantId }: { plantId: string }) {
               style={{ width: "100%", marginTop: 14 }}>
               {uretilen === fmt ? "Hazırlanıyor…" : "Hazırla"}
             </button>
+            {hata && hataFmt === fmt && hataSatiri}
           </Kart>
         ))}
       </div>
-      {hata && (
-        <p style={{ fontSize: 13, color: "var(--ikincil)", margin: "0 0 14px",
-                    lineHeight: 1.65 }}>{hata}</p>
-      )}
       <Kart baslik="Geçmiş koşular">
         {kosular.length === 0 ? (
           <p style={{ fontSize: 12.5, color: "var(--soluk)", margin: 0,

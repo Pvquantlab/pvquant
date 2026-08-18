@@ -11,7 +11,11 @@
 ## Ritüeller
 - Yığın aç: `docker compose up -d api worker` (db bağımlılıkla kalkar; caddy/frontend gerekmedikçe kapalı kalabilir)
 - Yığın kapat: `docker compose stop` (db'yi de durdurur; yalnız api/worker için: `docker compose stop api worker`)
-- İmaj yenile (kod değişince): `docker compose build api worker && docker compose up -d api worker`
+- İmaj yenile (kod değişince): `docker compose build api worker && docker compose up -d api worker && until curl -sf http://127.0.0.1:8000/v1/healthz >/dev/null; do sleep 1; done`
+- Açılış beklemesi (v2.154 — zincirlerde `up`'tan sonra, login/istek atmadan ÖNCE):
+  `until curl -sf http://127.0.0.1:8000/v1/healthz >/dev/null; do sleep 1; done`
+  Gerekçe: api hazır olmadan atılan login 401 yakar ve 5/dk sınırını tüketir
+  (taze-kabuk dersi); Caddy üzerinden test için `curl -ksf https://localhost/v1/healthz`.
 - Migration (elle ve bilinçli — otomatik açılış-migration YOK):
   `docker compose run --rm api alembic upgrade head`
   Durum bakışı: `docker compose run --rm --entrypoint "" api alembic current`

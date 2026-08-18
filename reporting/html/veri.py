@@ -498,5 +498,13 @@ def doldur(s):
         "TOPLAM_P90": _bin(TOPLAM_P90_MWH),
     }
     for k, v in D.items():
+        # v2.154: None/yanlış tip sessiz TypeError yerine İSİM söyler —
+        # "replace() argument 2 must be str" hangi token'ın boş olduğunu
+        # gizliyordu; eksik alan ya girdide doldurulur ya '—' basılır.
+        if not isinstance(v, str):
+            raise ValueError(
+                "doldur: {{%s}} token'ı %s — kaynak alan boş/yanlış tipte; "
+                "girdi JSON'ında ilgili alanı doldurun ya da '—' basın"
+                % (k, "None" if v is None else type(v).__name__))
         s = s.replace("{{%s}}" % k, v)
     return s
