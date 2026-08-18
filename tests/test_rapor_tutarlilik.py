@@ -42,6 +42,11 @@ BOZUKLAR = [
 ]
 _sayac = [0]
 
+# v2.157: kayıt makamının sabit kehaneti — TEK yerde (mutasyon bekçisi kalır,
+# aynı sayı iki yerde elle yaşamaz). Yeni denetim eklenince BURASI bilinçli güncellenir.
+BEKLENEN_KODLAR = ["D%d" % i for i in range(1, 22)]   # D1..D21
+BEKLENEN_GECEN_KAYIT = 25                             # kanonik koşuda geçen kayıt sayısı
+
 
 def taze_veri(json_yolu=None):
     """veri.py'yi verilen JSON'la TAZE bir modül olarak yükler.
@@ -78,9 +83,7 @@ def test_kanonik_tum_kontrollerden_gecer():
     kayitlar, bulgular, bayrak = denetim.denetle_tam(taze_veri(KANONIK))
     assert bulgular == [], "kanonik girdi bulgu üretmemeli: %r" % bulgular
     assert bayrak is False
-    assert sorted({k["kod"] for k in kayitlar}) == [
-        "D1", "D10", "D11", "D12", "D13", "D14", "D15", "D16", "D17", "D18",
-        "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9"]
+    assert sorted({k["kod"] for k in kayitlar}) == sorted(BEKLENEN_KODLAR)
     assert all(k["durum"] == "gecti" for k in kayitlar)
 
 
@@ -95,7 +98,7 @@ def test_kanonik_uret_cikis_0_ve_16_sayfa(tmp_path):
     sayfalar = sorted(tmp_path.glob("*_s??_*.html"))
     assert len(sayfalar) == 16, [s.name for s in sayfalar]
     j = json.loads((tmp_path / "denetim.json").read_text(encoding="utf-8"))
-    assert j["ozet"]["hata"] == 0 and j["ozet"]["gecti"] == 22
+    assert j["ozet"]["hata"] == 0 and j["ozet"]["gecti"] == BEKLENEN_GECEN_KAYIT
     assert j["bulgular"] == [] and j["suphe_bayragi"] is False
 
 
@@ -204,7 +207,7 @@ def test_hata_yoksa_bile_denetim_json_yazilir(tmp_path):
     denetim.json_yaz(kayitlar, bayrak, yol)
     j = json.loads(yol.read_text(encoding="utf-8"))
     assert {"zaman", "suphe_bayragi", "ozet", "gecenler", "bulgular"} <= set(j)
-    assert len(j["gecenler"]) == 22
+    assert len(j["gecenler"]) == BEKLENEN_GECEN_KAYIT
     assert all({"kod", "mesaj", "beklenen", "bulunan"} <= set(g) for g in j["gecenler"])
 
 
