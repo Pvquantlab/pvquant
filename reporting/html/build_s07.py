@@ -5,6 +5,7 @@ from veri import KARNE_WM as wm, KARNE_SK as sk, KARNE_TARIH as TARIH
 from veri import KARNE_NAIF as naif   # v2.137: naif ölçümdür, motor türetmez
 from veri import KARNE_OLCULDU as olc  # v2.140: ölçülmemiş gün '—' ve boşluk
 from veri import KARNE_H72 as h72     # v2.143: 24-72 de ölçümdür — w×1,36 uydurması söküldü
+from veri import KPI_ESIK             # C-3b/3 (v2.153): 'izle' eşiği tek kaynaktan
 _sk_olc = [s for s in sk if s is not None]
 ORT_SKILL = sum(_sk_olc) / len(_sk_olc) * 100
 
@@ -88,7 +89,7 @@ for i in range(23, 30):
                  '<td class="num">—</td><td class="num">—</td>'
                  '<td class="st">—</td></tr>' % TARIH[i])
         continue
-    izle = wm[i] > 10
+    izle = wm[i] > KPI_ESIK["WMAPE120"][0]  # C-3b/3 (v2.153): eşik tek kaynaktan
     rows += ('<tr%s><td class="d">%s</td><td class="num b">%%%s</td><td class="num">%%%s</td>'
              '<td class="num">%%%s</td><td class="num b">%%%s</td>'
              '<td class="st">%s</td></tr>'

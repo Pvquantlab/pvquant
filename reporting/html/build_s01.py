@@ -24,7 +24,7 @@ FONTCSS = "".join([
 BRAND, BRAND2, DEEP = "#0D4C68", "#2B7B9B", "#082F42"
 INK, SEC, RULE = "#11171A", "#414B46", "#CDD6D1"
 
-from veri import P50_GUN as p50, HW_GUN as hw, GUN_YMIN, GUN_YMAX, DONEM, GUN_SAYISI, KARNE_PENCERE, AY_YIL, CEPHE
+from veri import P50_GUN as p50, HW_GUN as hw, GUN_YMIN, GUN_YMAX, DONEM, GUN_SAYISI, METRIK_PENCERE, AY_YIL, CEPHE
 days = list(range(5, 21))
 
 
@@ -112,7 +112,7 @@ IMPRINT = """
       <div class="row"><dt>Rapor kimliği</dt><dd class="mono">{{RAPOR_ID}}</dd></div>
       <div class="row"><dt>Hazırlanma</dt><dd>{{HAZIRLANMA}}</dd></div>
       <div class="row"><dt>Tahmin ufku</dt><dd>""" + DONEM + """ (""" + str(GUN_SAYISI) + """ gün)</dd></div>
-      <div class="row"><dt>Karne penceresi</dt><dd>""" + KARNE_PENCERE + """</dd></div>
+      <div class="row"><dt>Metrik penceresi</dt><dd>""" + METRIK_PENCERE + """</dd></div>
     </div>
   </div>"""
 

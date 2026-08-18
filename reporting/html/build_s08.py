@@ -191,12 +191,27 @@ def fig82(W=1000, H=310, fs=13):
             % (W, H, "".join(o)))
 
 
+# C-3b/3 (v2.153): kural metinleri TEK kaynaktan türer (elle sayı yok).
+# 1/2/4 kanonikte v2.152 ile birebir aynı baytları üretir; 3 ve 5 gerçeğe
+# çekildi (md5 kayıtlı yenilendi): 3'te mekanizma tablodaki amber "izle"
+# rozetidir (kırmızı katman YOK — vaat edilmez) ve gün bazlı neden yazılmaz,
+# dönemin en zayıf günü anlatılır; 5'te karne 30 takvim günüdür (karar-a),
+# 120 gün METRİĞİN penceresidir. Ek-alım notu: %d'lı kalıplar Türkçe ek
+# uyumunu taşımaz ("%60'ın" ↔ 65 olsa "65'in" gerekirdi) — eşik değişirse
+# ek elle gözden geçirilir (md5 zaten yenilenir).
+from veri import KARNE_ESIK, KARNE_WM, METRIK_PENCERE_GUN, KPI_ESIK
+_ZAYIF_ESIK = ("%g" % KPI_ESIK["WMAPE120"][0]).replace(".", ",")
 RULES = [
     ("Ölçülmemiş gün", "Karneye katılmaz, ortalamayı seyreltmez; satır “—” olarak basılır."),
-    ("Kapsama eşiği", "Gün içi geçerli saat oranı %60'ın altındaysa o gün karne dışıdır."),
-    ("Zayıf gün", "Gizlenmez. Amber ya da kırmızı basılır ve nedeni yazılır."),
-    ("Küçük örneklem", "Pencerede 14 günden az geçerli gün varsa başlığa uyarı eklenir."),
-    ("Pencere tutarlılığı", "Karne, çevrimiçi rapor ve veri servisi aynı 120 günü kullanır."),
+    ("Kapsama eşiği", "Gün içi geçerli saat oranı %%%d'ın altındaysa o gün karne dışıdır."
+     % KARNE_ESIK["kapsama_pct"]),
+    ("Zayıf gün", "Karneden çıkarılmaz; %%%s üstü gün amber “izle” rozeti alır, en "
+     "zayıfı nedeniyle anlatılır." % _ZAYIF_ESIK),
+    ("Küçük örneklem", "Pencerede %d günden az geçerli gün varsa başlığa uyarı eklenir."
+     % KARNE_ESIK["kucuk_orneklem_gun"]),
+    ("Pencere tutarlılığı", "Karne son %d takvim günüdür; WMAPE ve kazanç her yüzeyde "
+     "aynı %d günlük pencereyi kullanır."
+     % (len(KARNE_WM), METRIK_PENCERE_GUN)),
 ]
 
 CSS = """

@@ -14,7 +14,11 @@ KAPASITE_MWP = 12.4                        # plant.capacity_kwp/1000 (v2.103:
 DONEM = "05–20 Ağustos 2026"               # forecast.horizon
 GUN_SAYISI = 16                            # len(daily)
 AY_YIL = "Ağustos 2026"                    # eksen/başlık ay etiketi
-KARNE_PENCERE = "7 Nisan – 4 Ağustos 2026 (120 gün)"       # prepared−119g → prepared
+# C-3b/3 (v2.153): 120 gün KARNENİN değil METRİĞİN penceresidir (karne 30
+# takvim günü, karar-a) — eski KARNE_PENCERE adı ve s01 "Karne penceresi"
+# etiketi bu karışıklığı taşıyordu. Tek kaynak:
+METRIK_PENCERE_GUN = 120
+METRIK_PENCERE = "7 Nisan – 4 Ağustos 2026 (%d gün)" % METRIK_PENCERE_GUN  # prepared−119g → prepared
 EGITIM_SERIT = "<i>7 Nisan 2026</i><i>11 Temmuz</i><i>4 Ağustos 2026</i>"  # %80/%20 şeridi
 
 # c2b (v2.107): anlatı token'ları — kanonik metinler (statik yol);
@@ -325,10 +329,11 @@ def _json_yukle(path):
     g["AY_YIL"] = "%s %d" % (AY_UZUN[_ilk_m - 1], _ilk_y)
     import datetime as _dtm
     _p = _dtm.date(int(py), int(pm), int(pd_))
-    _b = _p - _dtm.timedelta(days=119)
+    _b = _p - _dtm.timedelta(days=METRIK_PENCERE_GUN - 1)
     _m = _b + _dtm.timedelta(days=95)
-    g["KARNE_PENCERE"] = "%d %s – %d %s %d (120 gün)" % (
-        _b.day, AY_UZUN[_b.month - 1], _p.day, AY_UZUN[_p.month - 1], _p.year)
+    g["METRIK_PENCERE"] = "%d %s – %d %s %d (%d gün)" % (
+        _b.day, AY_UZUN[_b.month - 1], _p.day, AY_UZUN[_p.month - 1], _p.year,
+        METRIK_PENCERE_GUN)
     # c2b (v2.107): anlatılar GİRDİNİN parçası — motor hikâye taşımaz
     _N = J.get("narrative") or {}
     g["NARR_EXEC_1"] = _N.get("exec_1", "")

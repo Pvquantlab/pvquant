@@ -109,3 +109,13 @@ def test_d20_gereksiz_dolu_uyari_hata():
     e = veri.KARNE_ESIK["kucuk_orneklem_gun"]
     y = _y20([True] * e, uyari_gecerli=e - 1)              # 30 günde uyarı
     assert _kos(denetim._d20, y)[0]["durum"] == "hata"
+
+
+# ---------------------------------------------------------------- v2.153
+def test_metrik_penceresi_tek_kaynak():
+    """C-3b/3: 120 gün METRİĞİN penceresidir; sayı tek kaynaktan akar ve
+    eski yanıltıcı KARNE_PENCERE adı geri dönmez (karne 30 takvim günü)."""
+    assert veri.METRIK_PENCERE_GUN == 120
+    assert veri.METRIK_PENCERE.endswith("(%d gün)" % veri.METRIK_PENCERE_GUN)
+    assert not hasattr(veri, "KARNE_PENCERE")
+    assert len(veri.KARNE_WM) == 30                        # kural 5'in payı
