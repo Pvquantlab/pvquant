@@ -25,46 +25,12 @@ BRAND, BRAND2, DEEP = "#0D4C68", "#2B7B9B", "#082F42"
 INK, SEC, RULE = "#11171A", "#414B46", "#CDD6D1"
 
 from veri import P50_GUN as p50, HW_GUN as hw, GUN_YMIN, GUN_YMAX, DONEM, GUN_SAYISI, METRIK_PENCERE, AY_YIL, CEPHE
-days = list(range(5, 21))
+from veri import GUN_ETIKET  # C-5/1 (v2.155): eksen elle range(5,21) idi — canlıda
+                             # taze p50 + bayat 05–20 etiketi bastı (18 Ağu kabul avı)
 
 
-def chart(W=1000, H=286, bar=BRAND2, whisk="#0C3123", grid="#DFE6E2",
-          lab="#414B46", axis="#7C8781", fs=16, ml=58, mb=58):
-    MR, MT = 8, 12
-    PW, PH = W - ml - MR, H - MT - mb
-    slot, ymax = PW / 16, 80
-    bw = slot * 0.58
-    cx = lambda i: ml + slot * (i + .5)
-    y = lambda v: MT + PH * (ymax - v) / ymax
-    o = []
-    for t in range(0, ymax + 1, 20):
-        yy = y(t)
-        o.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1.4"/>'
-                 % (ml, yy, W - MR, yy, grid))
-        o.append('<text x="%.1f" y="%.1f" text-anchor="end" font-family="PlexSans" '
-                 'font-size="%d" fill="%s">%d</text>' % (ml - 10, yy + fs * .34, fs, lab, t))
-    for i, v in enumerate(p50):
-        lo, hi = v - hw[i], v + hw[i]
-        x0 = cx(i) - bw / 2
-        o.append('<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="%s"/>'
-                 % (x0, y(lo), bw, y(0) - y(lo), bar))
-        o.append('<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="#C7E0D2" '
-                 'stroke="#A8CBB8" stroke-width="1"/>' % (x0, y(hi), bw, y(lo) - y(hi)))
-        o.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="2.6"/>'
-                 % (x0 - 2, y(v), x0 + bw + 2, y(v), whisk))
-    o.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1.6"/>'
-             % (ml, y(0), W - MR, y(0), axis))
-    for i, d in enumerate(days):
-        o.append('<text x="%.1f" y="%.1f" text-anchor="middle" font-family="PlexSans" '
-                 'font-size="%d" fill="%s">%02d</text>' % (cx(i), y(0) + fs * 1.4, fs, lab, d))
-    o.append('<text x="%.1f" y="%.1f" text-anchor="middle" font-family="PlexSans" font-size="%d" '
-             'fill="%s">Ağustos 2026 [gün]</text>' % (ml + PW / 2, y(0) + fs * 2.9, fs, lab))
-    o.append('<text transform="translate(%d,%.1f) rotate(-90)" text-anchor="middle" '
-             'font-family="PlexSans" font-size="%d" fill="%s">[MWh/gün]</text>'
-             % (16, MT + PH / 2, fs, lab))
-    return ('<svg class="fig" viewBox="0 0 %d %d" xmlns="http://www.w3.org/2000/svg" role="img" '
-            'aria-label="Gunluk uretim tahmini">%s</svg>' % (W, H, "".join(o)))
-
+# C-5/1 (v2.155): olu chart() SOKULDU — hicbir cagrisi yoktu ve govdesi
+# elle 'Ağustos 2026' + ymax=80 tasiyordu (ayni hastaligin uyuyan kopyasi).
 
 BASE = """
 *{box-sizing:border-box;margin:0;padding:0}
@@ -327,7 +293,7 @@ BODY_C = """<div class="page">
 </div>"""
 
 VARIANTS = [("PVQuant_Konya_GES_s01_kapak", CSS_A, BODY_A,
-             fan_chart(p50, hw, ["%02d" % d for d in days], AY_YIL + " [gün]",
+             fan_chart(p50, hw, GUN_ETIKET, AY_YIL + " [gün]",
                        "[MWh/gün]", ymin=GUN_YMIN, ymax=GUN_YMAX, step=10, H=250, fs=15,
                        highlight=CEPHE, hl_label="cephe geçişi"))]
 

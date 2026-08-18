@@ -94,6 +94,10 @@ P50_GUN = [65.8, 65.0, 66.4, 68.3, 69.4, 67.1, 59.3, 53.6, 58.9,
 HW_GUN = [4.3, 4.2, 4.3, 4.4, 4.5, 4.4, 7.6, 9.7, 7.4,
           4.3, 4.5, 4.5, 4.4, 4.3, 4.2, 4.0]
 GUN_ETIKET = ["%02d" % d for d in range(5, 21)]
+# C-5/1 + D21 (v2.155): ham tarih yüzeyleri — DONEM forecast.start/end'den,
+# eksen daily[].date'ten türer; iki AYRI girdi bloğu birbirini tutmalı.
+GUN_TARIH = ["2026-08-%02d" % d for d in range(5, 21)]
+FORECAST_BASLANGIC, FORECAST_BITIS = GUN_TARIH[0], GUN_TARIH[-1]
 CEPHE = (6, 8)                                # cephe geçişi: vurgulu gün aralığı (11–13 Ağu)
 
 # ---------------------------------------------------------------- saatlik taban eğrisi
@@ -233,6 +237,8 @@ def _json_yukle(path):
     g["MOD_ROZET"] = J["run"]["mode"]
     g["SAYFA_TOPLAM"] = J["run"]["pages"]
     (y1, m1, d1), (y2, m2, d2) = _tarih(J["forecast"]["start"]), _tarih(J["forecast"]["end"])
+    g["FORECAST_BASLANGIC"] = J["forecast"]["start"]   # D21 (v2.155): ham uçlar
+    g["FORECAST_BITIS"] = J["forecast"]["end"]
     g["DONEM"] = ("%02d–%02d %s %d" % (d1, d2, AY_UZUN[m1 - 1], y1) if (y1, m1) == (y2, m2)
                   else "%02d %s – %02d %s %d" % (d1, AY_UZUN[m1 - 1], d2, AY_UZUN[m2 - 1], y2))
 
@@ -248,6 +254,7 @@ def _json_yukle(path):
     g["P50_GUN"] = [x["p50_mwh"] for x in D]
     g["HW_GUN"] = [x["half_mwh"] for x in D]
     g["GUN_ETIKET"] = ["%02d" % _tarih(x["date"])[2] for x in D]
+    g["GUN_TARIH"] = [x["date"] for x in D]            # D21 (v2.155)
     cf = [i for i, x in enumerate(D) if x.get("flag") == "cephe"]
     g["CEPHE"] = (min(cf), max(cf)) if cf else None
 

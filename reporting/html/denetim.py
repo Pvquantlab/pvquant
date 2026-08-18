@@ -714,6 +714,41 @@ def _d20(veri, ekle):
          "geçerli %d / eşik %d" % (gecerli, esik))
 
 
+def _d21(veri, ekle):
+    """D21 (v2.155, 18 Ağu kabul avı): kapak dönemi ↔ günlük seri tutarlılığı.
+    DONEM forecast.start/end'den, eksen/çubuklar daily[].date'ten türer — iki
+    AYRI girdi bloğu. Kural: uçlar birebir eşit, tarihler ARDIŞIK takvim
+    günleri, sayı GUN_SAYISI. (Canlı vaka: taze başlık + bayat eksen aynı
+    kapakta — kök s01'in elle ekseniydi ama girdi-tarafı sapma da mümkün.)"""
+    import datetime as _dt
+    bas, bit = _al(veri, "FORECAST_BASLANGIC"), _al(veri, "FORECAST_BITIS")
+    tarih = _al(veri, "GUN_TARIH")
+    n = _al(veri, "GUN_SAYISI")
+    if not (bas and bit and tarih):
+        return ekle("D21", "uyari", "dönem/tarih yüzeyi yok — denetlenemedi",
+                    "FORECAST_BASLANGIC/BITIS + GUN_TARIH", "eksik")
+    if (bas, bit) != (tarih[0], tarih[-1]):
+        return ekle("D21", "hata", "kapak dönemi günlük seriyle çelişiyor — "
+                    "anlatı veriyle çelişemez",
+                    "%s → %s (daily uçları)" % (tarih[0], tarih[-1]),
+                    "%s → %s (forecast bloğu)" % (bas, bit))
+    try:
+        gunler = [_dt.date.fromisoformat(t) for t in tarih]
+    except ValueError as e:
+        return ekle("D21", "hata", "GUN_TARIH ISO değil", "YYYY-AA-GG", str(e))
+    kirik = [i + 1 for i in range(1, len(gunler))
+             if (gunler[i] - gunler[i - 1]).days != 1]
+    if kirik:
+        return ekle("D21", "hata", "günlük seri ardışık değil (satır %s) — "
+                    "boşluk '—' ile gösterilir, atlanarak değil" % kirik[:5],
+                    "ardışık takvim günleri", "%d kırılma" % len(kirik))
+    if n is not None and len(tarih) != n:
+        return ekle("D21", "hata", "gün sayısı GUN_SAYISI ile çelişiyor",
+                    str(n), str(len(tarih)))
+    ekle("D21", "gecti", "kapak dönemi, günlük seri ve gün sayısı tutarlı",
+         "%s → %s · %d gün" % (bas, bit, len(tarih)), "birebir")
+
+
 def denetle_tam(veri):
     """Tüm kontrolleri koşar. → (kayitlar, bulgular, suphe_bayragi)
     kayitlar: geçen+geçmeyen tüm sonuçlar (denetim.json için);
@@ -731,6 +766,7 @@ def denetle_tam(veri):
     _d11(veri, ekle); _d12(veri, ekle); _d13(veri, ekle)
     _d14(veri, ekle); _d15(veri, ekle); _d16(veri, ekle)
     _d17(veri, ekle); _d18(veri, ekle); _d19(veri, ekle); _d20(veri, ekle)
+    _d21(veri, ekle)
 
     bulgular = [Bulgu(k["kod"], k["durum"], k["mesaj"], k["beklenen"], k["bulunan"])
                 for k in kayitlar if k["durum"] in ("hata", "uyari")]
