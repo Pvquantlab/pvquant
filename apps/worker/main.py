@@ -52,7 +52,7 @@ def sabah_tahmin(plant):
 def kova_etiketle(ufuk_s: "pd.Series") -> "pd.Series":
     """v2.70: ufuk saatini kovaya esle — 16g ufkuyla dorduncu kova dogdu.
     Eski '72+' kovasi 168 saatlik ufukta fiilen 72-168 idi; 16g kosulari
-    baslayinca 3-7g ile 7-16g ayni kovada bulaniklasirdi. Simdi:
+    baslayinca 3-7g ile 7-15g ayni kovada bulaniklasirdi. Simdi:
     (0,24] / (24,72] / (72,168] / (168,999]. Kova-bazli konformal ayarin
     (defter madde b) hakem verisi 168+ kovasinda birikecek."""
     return pd.cut(ufuk_s, [0, 24, 72, 168, 999],

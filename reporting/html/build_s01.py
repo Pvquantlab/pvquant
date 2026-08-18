@@ -98,6 +98,18 @@ def shell(css, body, title):
 
 
 # =================================================================== A · blok
+import textwrap
+
+# v2.158 (C-3): s01'in uc yerlesim varyantina elle kopyalanan "kesintisiz" cumlesi
+# tek kaynak; girinti varyant basina verilir ki HTML BAYT-BIREBIR kalsin (md5 ada7b10b).
+EVI_METIN = ('<div class="evi">Bu tahmin, {{KESINTISIZ}} g\u00fcnd\u00fcr kesintisiz '
+             'olarak ertesi g\u00fcn ger\u00e7ekle\u015fen \u00fcretimle\n'
+             '  kar\u015f\u0131la\u015ft\u0131r\u0131lmaktad\u0131r; sonu\u00e7lar S4 \u00b7 '
+             "Do\u011fruluk Karnesi'ndedir.</div>")
+
+def _evi(n):
+    return textwrap.indent(EVI_METIN, " " * n)
+
 CSS_A = """
 .page{flex-direction:column}
 .band{background:DEEP;color:#fff;padding:13mm 18mm 11mm}
@@ -158,8 +170,7 @@ BODY_A = """<div class="page">
   karşılaştırıldığı doğruluk karnesini bir arada sunar.</p>
   <div class="figwrap">__CHART__""" + LEGCAP + """</div>
   """ + IMPRINT + """
-  <div class="evi">Bu tahmin, {{KESINTISIZ}} gündür kesintisiz olarak ertesi gün gerçekleşen üretimle
-    karşılaştırılmaktadır; sonuçlar S4 · Doğruluk Karnesi'ndedir.</div>
+""" + _evi(2) + """
   <div class="foot"><div><b>MOD C · HİBRİT</b></div><div>Sayfa 1 / 16</div></div>
  </div>
 </div>"""
@@ -217,8 +228,7 @@ BODY_B = """<div class="page">
  <div class="pills"><div class="pill">MOD A · HAM FİZİK</div>
    <div class="pill">MOD B · KALİBRE</div><div class="pill on">MOD C · HİBRİT ✓</div></div>
  """ + IMPRINT + """
- <div class="evi">Bu tahmin, {{KESINTISIZ}} gündür kesintisiz olarak ertesi gün gerçekleşen üretimle
-   karşılaştırılmaktadır; sonuçlar S4 · Doğruluk Karnesi'ndedir.</div>
+""" + _evi(1) + """
  <div class="foot"><div><b>MOD C · HİBRİT</b></div><div>Sayfa 1 / 16</div></div>
 </div>"""
 
@@ -287,8 +297,7 @@ BODY_C = """<div class="page">
    karşılaştırıldığı doğruluk karnesini bir arada sunar.</p>
    <div class="figwrap">__CHART__""" + LEGCAP + """</div>
    """ + IMPRINT + """
-   <div class="evi">Bu tahmin, {{KESINTISIZ}} gündür kesintisiz olarak ertesi gün gerçekleşen üretimle
-     karşılaştırılmaktadır; sonuçlar S4 · Doğruluk Karnesi'ndedir.</div>
+""" + _evi(3) + """
  </div>
 </div>"""
 

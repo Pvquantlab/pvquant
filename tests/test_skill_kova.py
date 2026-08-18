@@ -1,4 +1,4 @@
-"""v2.70: kova_etiketle sinir durusmasi — 7-16g kovasi dogru ayrilir."""
+"""v2.70: kova_etiketle sinir durusmasi — 7-15g kovasi dogru ayrilir."""
 import sys
 from pathlib import Path
 
