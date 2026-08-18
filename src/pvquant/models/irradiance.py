@@ -207,11 +207,18 @@ def transpose_perez(
         model_perez="allsitescomposite1990",
     )
 
+    # v2.156 (uydurma-0 avı, 18 Ağu): fillna(0) iki FARKLI NaN'ı tek fırçayla
+    # boyuyordu — Perez'in gece/geometri NaN'ı (0 doğru) ile GİRDİ-EKSİK NaN'ı
+    # (open-meteo radyasyon ufku ötesi saatler). İkincisini 0'a çevirmek
+    # şartnamenin "veri yoksa '—', asla uydurma 0" kuralının ihlaliydi:
+    # canlıda son ufuk günü 'üretim 0' diye rapora aktı. Girdisi eksik saat
+    # eksik KALIR (NaN); zincir onu None olarak taşır, kimse 0 uydurmaz.
+    _girdili = ghi.notna()
     return POAComponents(
-        global_=poa["poa_global"].fillna(0).clip(lower=0),
-        beam=poa["poa_direct"].fillna(0).clip(lower=0),
-        sky_diffuse=poa["poa_sky_diffuse"].fillna(0).clip(lower=0),
-        ground_diffuse=poa["poa_ground_diffuse"].fillna(0).clip(lower=0),
+        global_=poa["poa_global"].fillna(0).clip(lower=0).where(_girdili),
+        beam=poa["poa_direct"].fillna(0).clip(lower=0).where(_girdili),
+        sky_diffuse=poa["poa_sky_diffuse"].fillna(0).clip(lower=0).where(_girdili),
+        ground_diffuse=poa["poa_ground_diffuse"].fillna(0).clip(lower=0).where(_girdili),
         aoi=aoi.fillna(90),
     )
 

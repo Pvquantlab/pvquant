@@ -1,5 +1,5 @@
 from pvq import *
-from veri import kpi_hedef  # C-3 (v2.150): hedef kopyası KPI_ESIK'ten
+from veri import kpi_hedef, GUN_SAYISI  # C-3 (v2.150): hedef kopyası KPI_ESIK'ten
 
 CSS = """
 .cards{display:flex;flex-wrap:wrap;gap:4mm;margin-top:7mm}
@@ -36,7 +36,7 @@ h2{font-size:11pt;font-weight:600;margin-top:8mm;padding-bottom:2mm;
 
 # (etiket, değer, birim, not, durum, punto)
 KPI = [
-    ("16 günlük toplam beklenti", "{{TOPLAM_P50}}", "MWh", "Aşılma olasılığı %50 olan değer", "", 17),
+    ("%d günlük toplam beklenti" % GUN_SAYISI, "{{TOPLAM_P50}}", "MWh", "Aşılma olasılığı %50 olan değer", "", 17),
     ("%80 olasılık bandı", "{{TOPLAM_BANT}}", "MWh", "Gerçekleşenin bu aralıkta kalma olasılığı %80", "ok", 14),
     ("Kapasite faktörü", "%{{KF}}", "", "Şebeke gücünün dönem boyunca kullanılan oranı", "ok", 17),
     ("Gün-öncesi ortalama hata", "%{{WMAPE120}}", "WMAPE", "Son 120 günün ortalaması · " + kpi_hedef("WMAPE120"), "{{DURUM_WMAPE120}}", 17),
@@ -58,7 +58,7 @@ BODY = """<div class="page"><div class="sheet">
 """ + HEAD + """
   <div class="eyebrow">Yönetici özeti</div>
   <h1>Bu dönemin bulguları</h1>
-  <p class="lead" style="max-width:158mm">Önümüzdeki 16 gün için toplam üretim beklentisi
+  <p class="lead" style="max-width:158mm">Önümüzdeki """ + str(GUN_SAYISI) + """ gün için toplam üretim beklentisi
   <b>{{TOPLAM_P50}} MWh</b>'tir ve %80 olasılıkla {{TOPLAM_BANT}} MWh aralığında gerçekleşecektir.
   Gün-öncesi tahminler son 120 günde ortalama %{{WMAPE120}} hatayla çalışmış, basit bir referans yönteme
   göre %{{SKILL120}} daha isabetli olmuştur. Takip edilmesi gereken tek kalem santral verisinin

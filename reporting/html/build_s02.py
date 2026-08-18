@@ -1,4 +1,5 @@
 from pvq import *
+from veri import GUN_SAYISI  # v2.156: ufuk kopyası tek kaynaktan
 from veri import IKLIM_ARALIK
 
 CSS = """
@@ -73,7 +74,7 @@ BODY = """<div class="page"><div class="sheet">
   <div class="eyebrow">İçindekiler</div>
   <h1>Bu raporda ne var?</h1>
   <p class="lead" style="max-width:150mm">Rapor sekiz bölümden oluşur. İlk üç bölüm önümüzdeki
-  16 günü anlatır; dördüncü bölüm geçmiş tahminlerin ne kadar tuttuğunu gösterir; kalan bölümler
+  """ + str(GUN_SAYISI) + """ günü anlatır; dördüncü bölüm geçmiş tahminlerin ne kadar tuttuğunu gösterir; kalan bölümler
   bu sayıların nasıl üretildiğini ve hangi belirsizlikleri taşıdığını açıklar.</p>
 
   <div class="cols">

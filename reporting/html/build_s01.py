@@ -139,7 +139,7 @@ BODY_A = """<div class="page">
     <div class="r">Üretim Tahmini ve Doğruluk Raporu</div></div>
   <div class="eyeb">{{MUSTERI}} için hazırlanmıştır</div>
   <h1>Konya GES</h1>
-  <div class="sub"><b>""" + DONEM + """</b> · 16 günlük saatlik üretim tahmini
+  <div class="sub"><b>""" + DONEM + """</b> · """ + str(GUN_SAYISI) + """ günlük saatlik üretim tahmini
     ve 120 günlük doğruluk karnesi</div>
   <div class="pills"><div class="pill">MOD A · HAM FİZİK</div>
     <div class="pill">MOD B · KALİBRE</div>
@@ -147,13 +147,13 @@ BODY_A = """<div class="page">
  </div>
  <div class="main">
   <div class="strip">
-    <div class="cell"><div class="k">16 günlük toplam beklenti</div>
+    <div class="cell"><div class="k">""" + str(GUN_SAYISI) + """ günlük toplam beklenti</div>
       <div class="v">{{TOPLAM_P50}}<u>MWh</u></div><div class="n">P50 · en olası senaryo</div></div>
     <div class="cell"><div class="k">%80 olasılık bandı</div>
       <div class="v">{{TOPLAM_BANT}}<u>MWh</u></div>
       <div class="n">taahhüt için önerilen alt sınır {{TOPLAM_P10}} MWh</div></div>
   </div>
-  <p class="lede">Bu rapor önümüzdeki 16 gün için saatlik üretim beklentisini, beklentinin
+  <p class="lede">Bu rapor önümüzdeki """ + str(GUN_SAYISI) + """ gün için saatlik üretim beklentisini, beklentinin
   olasılık bandını ve son 120 günde her tahminin gerçekleşen üretimle gece-gece
   karşılaştırıldığı doğruluk karnesini bir arada sunar.</p>
   <div class="figwrap">__CHART__""" + LEGCAP + """</div>
@@ -204,11 +204,11 @@ BODY_B = """<div class="page">
    <div class="r">Üretim Tahmini ve Doğruluk Raporu</div></div>
  <div class="eyeb">{{MUSTERI}} için hazırlanmıştır</div>
  <div class="hero"><h1>Konya GES</h1>
-   <div class="sub">""" + DONEM + """<br>16 günlük saatlik tahmin ·
+   <div class="sub">""" + DONEM + """<br>""" + str(GUN_SAYISI) + """ günlük saatlik tahmin ·
      120 günlük doğruluk karnesi</div></div>
  <div class="figwrap">__CHART__""" + LEGCAP + """</div>
  <div class="numbers">
-   <div class="cell"><div class="k">16 günlük toplam beklenti</div>
+   <div class="cell"><div class="k">""" + str(GUN_SAYISI) + """ günlük toplam beklenti</div>
      <div class="v">{{TOPLAM_P50}}<u>MWh</u></div><div class="n">P50 · en olası senaryo</div></div>
    <div class="cell"><div class="k">%80 olasılık bandı</div>
      <div class="v">{{TOPLAM_BANT}}<u>MWh</u></div>
@@ -264,7 +264,7 @@ BODY_C = """<div class="page">
    <div class="m">PVQuant</div>
    <div class="tag">Kanıta dayalı<br>üretim tahmini</div>
    <div class="big">
-     <div class="bk">16 günlük toplam beklenti</div>
+     <div class="bk">""" + str(GUN_SAYISI) + """ günlük toplam beklenti</div>
      <div class="bv">{{TOPLAM_P50}}<u>MWh</u></div>
      <div class="bn">P50 · en olası senaryo</div>
      <div class="sep"></div>
@@ -280,9 +280,9 @@ BODY_C = """<div class="page">
    <div class="head">Üretim Tahmini ve Doğruluk Raporu</div>
    <div class="eyeb">{{MUSTERI}} için hazırlanmıştır</div>
    <h1>Konya GES</h1>
-   <div class="sub"><b>""" + DONEM + """</b> · 16 günlük saatlik üretim tahmini
+   <div class="sub"><b>""" + DONEM + """</b> · """ + str(GUN_SAYISI) + """ günlük saatlik üretim tahmini
      ve 120 günlük doğruluk karnesi</div>
-   <p class="lede">Bu rapor önümüzdeki 16 gün için saatlik üretim beklentisini, beklentinin
+   <p class="lede">Bu rapor önümüzdeki """ + str(GUN_SAYISI) + """ gün için saatlik üretim beklentisini, beklentinin
    olasılık bandını ve son 120 günde her tahminin gerçekleşen üretimle gece-gece
    karşılaştırıldığı doğruluk karnesini bir arada sunar.</p>
    <div class="figwrap">__CHART__""" + LEGCAP + """</div>

@@ -1,6 +1,6 @@
 from pvq import *
 
-from veri import P50_GUN as p50, HW_GUN as hw, GUN_ETIKET as days, CEPHE, GUN_YMIN, GUN_YMAX, AY_YIL
+from veri import P50_GUN as p50, HW_GUN as hw, GUN_ETIKET as days, CEPHE, GUN_YMIN, GUN_YMAX, AY_YIL, GUN_SAYISI
 
 tr = lambda x, d=1: ("%.*f" % (d, x)).replace(".", ",")
 
@@ -42,7 +42,7 @@ BODY = """<div class="page"><div class="sheet">
 """ + HEAD + """
   <div class="eyebrow">Tahmin detayı</div>
   <h1>Günlük üretim ve olasılık bandı</h1>
-  <p class="lead" style="max-width:160mm">Bu bölüm 16 günlük ufku üç görünümde sunar: günlük
+  <p class="lead" style="max-width:160mm">Bu bölüm """ + str(GUN_SAYISI) + """ günlük ufku üç görünümde sunar: günlük
   toplamlar ve olasılık bandı, saatlik profiller ve saat × gün matrisi. Üçü de aynı hesaplamadan
   türetilir; aralarında bağımsız bir hesap yoktur. Saat eksenleri yerel saattir
   (Europe/Istanbul, UTC+3).</p>

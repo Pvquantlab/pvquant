@@ -21,7 +21,7 @@ rows += ('<tr><td class="hr">04–05</td>'
          + "".join('<td class="na">–</td>' for _ in DAYS) + "</tr>")
 for i, h in enumerate(HOURS):
     cells = ""
-    for d in range(16):
+    for d in range(len(DAILY)):  # v2.156: sütun sayısı veriden (elle 16 idi)
         v = BASE_KW[i] * DAILY[d] / MATRIS_OLCEK_MWH  # v2.131
         t = min(1.0, v / PEAK)
         cells += ('<td style="background:%s">%s</td>'

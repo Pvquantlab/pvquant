@@ -91,8 +91,12 @@ def ctx_to_json(ctx, plant: dict) -> dict:
     J["run"] = {"mode": _mod_rozet(ctx.mode), "pages": 16,
                 "prepared": ctx.run_at_utc.strftime("%Y-%m-%dT%H:%M")}
 
-    # günlük seri + toplamlar
-    iste(ctx.daily_kwh is not None and len(ctx.daily_kwh) == 16, "daily[16]")
+    # günlük seri + toplamlar — v2.156: gün sayısı ufuk ayarından (16 elle
+    # yazılıydı; ufuk 15'e kırpılınca sözleşme onunla birlikte nefes alır)
+    from pvquant.config import get_settings as _ayar
+    _ufuk = _ayar().forecast_horizon_days
+    iste(ctx.daily_kwh is not None and len(ctx.daily_kwh) == _ufuk,
+         "daily[%d]" % _ufuk)
     gunler = list(ctx.daily_kwh.index)
     J["forecast"] = {"start": str(gunler[0].date()), "end": str(gunler[-1].date())}
     bant = getattr(ctx, "daily_p10", None) is not None
