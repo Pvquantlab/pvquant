@@ -1,7 +1,8 @@
 # PVQuant CI (v2.65) — anayasaya uygun: stil kapisi degil, kanit kapisi.
 # Iskeletten gelen ruff/black/mypy sokuldu (proje disiplini regresyon+smoke).
 # Her push'ta dunku "taze kurulum" durusmasinin otomatigi:
-#   sifir ortam -> pip install -e .[dev] -> alembic upgrade head -> 149 pytest
+#   sifir ortam -> pip install -e .[dev] -> alembic upgrade head
+#   -> TAM grup pytest (v2.157'den beri rapor_tutarlilik dahil) -> rapor md5 kalkani
 name: CI
 
 on:
@@ -48,5 +49,9 @@ jobs:
       - name: Sema (alembic upgrade head — 0001..0005, RLS dahil)
         run: alembic upgrade head
 
-      - name: Regresyon (149 — RLS uclusu servis DB'siyle kosar)
+      - name: Regresyon (tam grup — RLS uclusu servis DB'siyle kosar)
         run: pytest -q
+      - name: Rapor kalkani (kanonik HTML md5 — v2.159)
+        run: |
+          cd reporting/html && rm -rf cikti && python3 uret.py > /dev/null
+          echo "ada7b10b4b328f5dfb8cd7197d4f2d8d  cikti/PVQuant_Konya_GES_RAPOR_16sayfa.html" | md5sum -c -
