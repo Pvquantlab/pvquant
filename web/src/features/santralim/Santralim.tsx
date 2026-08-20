@@ -4,8 +4,9 @@ import { api } from "../../api/client";
 import type { SantralOzeti, TahminSerisi, GunesYolu, SaatAyMatrisi } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
-import { Kpi, Kart, Sayfa, Lejant, sayiTr } from "../sayfalar/parcalar";
-import { FanChart } from "./FanChart";
+import { Kpi, Kart, Sayfa, sayiTr } from "../sayfalar/parcalar";
+import ProductionForecastChart from "../sayfalar/ProductionForecastChart";
+import { t0Hesapla, simdiDegeri, dilimle } from "../sayfalar/tahminPencere";
 import { Cubuklar } from "./Cubuklar";
 
 export function Santralim({ plantId }: { plantId: string }) {
@@ -15,9 +16,14 @@ export function Santralim({ plantId }: { plantId: string }) {
   const [sam, setSam] = useState<SaatAyMatrisi | null>(null);
   const { n, oku } = useTema();
   useEffect(() => { api.ozet(plantId).then(setO); }, [plantId]);
-  useEffect(() => { api.tahmin(plantId, "24h").then(setSeri); }, [plantId]);
+  useEffect(() => { api.tahmin(plantId, "16d").then(setSeri); }, [plantId]); // v2.166: D1 — tam seri cek, istemcide "24h" dilimle (Tahminler kalibi)
   useEffect(() => { api.gunesYolu(plantId).then(setGy).catch(() => {}); }, [plantId]);
   useEffect(() => { api.saatAyMatrisi(plantId).then(setSam).catch(() => {}); }, [plantId]);
+  const t0 = useMemo(() => t0Hesapla(Date.now()), []);
+  const nowVal = useMemo(
+    () => (seri ? simdiDegeri(seri.saatlik, t0) : null), [seri, t0]);
+  const dilim = useMemo(
+    () => (seri ? dilimle(seri.saatlik, t0, "24h") : null), [seri, t0]);
   const AYLAR_K = ["Oca","Şub","Mar","Nis","May","Haz","Tem","Ağu","Eyl","Eki","Kas","Ara"];
   const samAralik = useMemo(() => {
     const v = (sam?.hucreler ?? []).flat().filter((x): x is number => x !== null);
@@ -107,13 +113,22 @@ export function Santralim({ plantId }: { plantId: string }) {
 
       <div className="ızgara" style={{ gridTemplateColumns: "minmax(0,2.1fr) minmax(0,1fr)",
                                        marginBottom: 14 }}>
-        <Kart baslik="Bugün — saatlik üretim"
-          sag={<Lejant ogeler={[{ renk: "var(--marka)", ad: "Tahmin P50" },
-                                ...(seri && seri.saatlik.some((s) =>
-                                    s.p10_kw !== null && s.p90_kw !== null)
-                                  ? [{ renk: "var(--marka-acik)", ad: "P10–P90" }]
-                                  : [])]} />}>
-          {seri && <FanChart seri={seri} yukseklik={300} acTavaniKw={o.ac_tavani_kw} />}
+        <Kart baslik="Bugün — saatlik üretim">
+          {seri && dilim && (
+            <ProductionForecastChart
+              forecast={dilim.saatlik.map((x) => ({
+                ts: x.ts, p10: x.p10_kw, p50: x.p50_kw, p90: x.p90_kw }))}
+              actual={dilim.saatlik
+                .filter((x) => x.gercek_kw !== null)
+                .map((x) => ({ ts: x.ts, kw: x.gercek_kw as number }))}
+              nowMs={t0}
+              nowValue={nowVal}
+              mode="hourly"
+              plant={{ acCapacityKw: seri.ac_tavani_kw ?? o.ac_tavani_kw,
+                       lat: o.lat, lon: o.lon, timezone: o.tz }}
+              height={300}
+            />
+          )}
           <p style={{ fontSize: 12, color: "var(--soluk)", margin: "10px 0 0" }}>
             Gerçekleşen üretimi görmek için bugünün SCADA verisini yükleyin.
           </p>

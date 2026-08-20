@@ -354,7 +354,9 @@ export function buildChartOption(input: BuildInput): EChartsOption {
   const kwPerPx = yMax / Math.max(input.plotHeightPx, 1);
   const minKw = 3 * kwPerPx; // U2: 3px minimum rendered band height
 
-  const acVal = plant.acCapacityKw;
+  // v2.166: undefined 'null degil' tuzagi — acVal'i normalize et; aksi halde
+  // AC markLine yAxis: undefined ile kurulur ve ECharts 'coord' cokusu verir.
+  const acVal = plant.acCapacityKw ?? null;
   const series: SeriesOption[] = [];
   let cats: string[];
   let axisIntervalFn: (i: number, v: string) => boolean;
@@ -371,7 +373,7 @@ export function buildChartOption(input: BuildInput): EChartsOption {
     for (let i = 0; i < cats.length; i++) {
       if (toMs(cats[i]) <= nowMs) boundaryIdx = i;
     }
-    nowCat = boundaryIdx >= 0 ? cats[boundaryIdx] : cats[0];
+    nowCat = boundaryIdx >= 0 ? cats[boundaryIdx] : cats[0]; // bos dizide undefined — asagida bekci var
     dayRuleCats = cats.filter((t) => tzHour(toMs(t), tz) === 0);
     axisIntervalFn = (_i, v) => {
       const h = tzHour(toMs(v), tz);
@@ -655,7 +657,7 @@ export function buildChartOption(input: BuildInput): EChartsOption {
   });
 
   // -------- now divider: its own series, single triangle at the top (V3)
-  series.push({
+  if (nowCat !== undefined) series.push({
     name: "__now",
     type: "line",
     data: [],
@@ -677,7 +679,7 @@ export function buildChartOption(input: BuildInput): EChartsOption {
   });
 
   // -------- D3: filled dot at the series value on the now divider
-  if (nowValue !== null && !daily) {
+  if (nowValue !== null && !daily && nowCat !== undefined) {
     series.push({
       name: "__nowdot",
       type: "scatter",
