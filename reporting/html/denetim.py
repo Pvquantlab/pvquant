@@ -257,8 +257,23 @@ def _d5(veri, ekle):
          _tr(saat, 0) + " saat")
 
 
+def _arsiv_al(veri):
+    """Arşiv uçları: ÖNCE gerçek alanlar (B3b-1 v2.169), alanlar hiç yoksa
+    etiket çözümü (eski JSON yedeği). Alan VAR ama bozuksa etikete
+    DÖNÜLMEZ — bozuk alanı etiketle örtmek hükmü denetimsiz bırakır.
+    Dönüş: (tarih1, tarih2, saat) ya da None."""
+    b = _al(veri, "ARSIV_BAS"); s = _al(veri, "ARSIV_BIT")
+    h = _al(veri, "ARSIV_SAAT")
+    if b is None and s is None and h is None:
+        return _arsiv_coz(_al(veri, "ARSIV_ETIKET"))
+    try:
+        return (_dt.date(*b), _dt.date(*s), float(h))
+    except (TypeError, ValueError):
+        return None
+
+
 def _d6(veri, ekle):
-    coz = _arsiv_coz(_al(veri, "ARSIV_ETIKET"))
+    coz = _arsiv_al(veri)
     if coz is None:
         return ekle("D6", "uyari", "arşiv etiketi yok ya da çözümlenemedi — denetlenemedi",
                     "'G Ay – G Ay YYYY (N saat)'", repr(_al(veri, "ARSIV_ETIKET"))[:60])
@@ -474,7 +489,7 @@ def _d15(veri, ekle):
     """Spec #21: karne penceresi ile SCADA arsiv donemi cakisir."""
     karne = _al(veri, "KARNE_TARIH") or []
     ay_yil = str(_al(veri, "AY_YIL") or "")
-    coz = _arsiv_coz(_al(veri, "ARSIV_ETIKET"))
+    coz = _arsiv_al(veri)
     par = ay_yil.split()
     yil = int(par[1]) if len(par) > 1 and par[1].isdigit() else None
     if not karne or coz is None or yil is None:

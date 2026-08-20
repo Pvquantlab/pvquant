@@ -85,8 +85,12 @@ def ctx_to_json(ctx, plant: dict) -> dict:
     J["report"] = {"customer": musteri,
                    "id": None,
                    "contact": plant.get("contact") or "—"}
+    _ac = plant.get("ac_limit_kw")
     J["plant"] = {"name": ctx.plant_name,
                   "capacity_kwp": float(ctx.capacity_kwp),   # v2.103: s11 özgül üretim
+                  # B3b-1 (v2.169): MWe ALANDIR — veri.py display-split'i öldü;
+                  # ac_limit_kw yoksa None → rapor dürüst "—" basar
+                  "sebeke_ac_mwe": (_ac / 1000.0) if _ac else None,
                   "display": _saha_display(ctx, plant)}
     J["run"] = {"mode": _mod_rozet(ctx.mode), "pages": 16,
                 "prepared": ctx.run_at_utc.strftime("%Y-%m-%dT%H:%M")}
@@ -612,6 +616,13 @@ def _anlati(ctx, J):
         n["arsiv_etiket"] = "%s – %d %s %d (%s saat)" % (
             _by, so.day, AY_UZUN[so.month - 1], so.year,
             "{:,}".format(sum(fd.values())).replace(",", "."))
+        # B3b-1 (v2.169): uçlar GERÇEK ALAN olarak da yazılır — D6/D15
+        # hükmü etiketi regex'le sökmeden buradan verir
+        J["scada"]["arsiv_baslangic"] = (
+            i.date() if isinstance(i, _dt.datetime) else i).isoformat()
+        J["scada"]["arsiv_bitis"] = (
+            so.date() if isinstance(so, _dt.datetime) else so).isoformat()
+        J["scada"]["arsiv_saat"] = int(sum(fd.values()))
     n["lejant_hatali"] = "hatalı kayıtlar"
     n["s14_kapsama"] = "Aylık kırılım ve bayrak dökümü sayfa 10'dadır."
     if zk:

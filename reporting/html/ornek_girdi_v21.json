@@ -8,6 +8,7 @@
   "plant": {
     "name": "Konya GES",
     "capacity_kwp": 12400,
+    "sebeke_ac_mwe": 10.0,
     "display": [
       [
         "Koordinat",
@@ -935,7 +936,10 @@
         "aksiyon": "Ayrıştırılamayan kayıtlar; örnekleri veri ekinde listelenir."
       }
     ],
-    "coverage_pct": 71
+    "coverage_pct": 71,
+    "arsiv_baslangic": "2026-02-01",
+    "arsiv_bitis": "2026-08-04",
+    "arsiv_saat": 4440
   },
   "history": {
     "evolution": [

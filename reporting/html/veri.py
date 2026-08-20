@@ -11,6 +11,8 @@ SANTRAL = "Konya GES"                      # plant.name
 MUSTERI = "Anadolu Enerji A.Ş."            # report.customer (şema v2.1)
 KAPASITE_MWP = 12.4                        # plant.capacity_kwp/1000 (v2.103:
                                            # s11 özgül üretimdeki gömülü 12.4)
+SEBEKE_AC_MWE = 10.0                       # plant.sebeke_ac_mwe (B3b-1 v2.169:
+                                           # MWe ALANDIR — display-split öldü)
 DONEM = "05–20 Ağustos 2026"               # forecast.horizon
 GUN_SAYISI = 16                            # len(daily)
 AY_YIL = "Ağustos 2026"                    # eksen/başlık ay etiketi
@@ -38,6 +40,11 @@ NARR_S07_GOVDE = "O gün hata %12,7'ye çıktı, kazanç %20,1'e düştü — d�
 NARR_S09_PROSE = "Kalibrasyonun bir modeli veriye uydurup uydurmadığı, bulunan katsayıların fiziksel\n      olarak anlamlı olup olmadığına bakılarak anlaşılır. Sistem verimi 0,942, tipik bir\n      kablolama–inverter–trafo zincirinin beklenen aralığındadır. %7,3'lük bifacial kazanç,\n      sahanın 0,16 olan zemin albedosuyla tutarlıdır."
 NARR_S10_SEKIL = "Aylık geçerli saat payı. Mart–Mayıs\n      döneminde kapsama %49–58'e düşmüştür ve baskın neden tek bir kalemdir: kaynak dosyadaki\n      bozuk yıl bloğu. Haziran'dan itibaren oran %88–92 ile hedefin üzerindedir. Bu, ölçüm\n      sisteminden değil veri aktarımından kaynaklanan, düzeltilebilir bir sorundur."
 ARSIV_ETIKET = '1 Şubat – 4 Ağustos 2026\n    (4.440 saat)'
+# B3b-1 (v2.169): arşiv uçları GERÇEK ALANDIR (scada.arsiv_*) — D6/D15
+# hükmü buradan verir, etiket yalnız sunumdur (s10 çizelge başlığı).
+ARSIV_BAS = (2026, 2, 1)                   # scada.arsiv_baslangic (y, a, g)
+ARSIV_BIT = (2026, 8, 4)                   # scada.arsiv_bitis
+ARSIV_SAAT = 4440                          # scada.arsiv_saat
 LEJANT_HATALI = 'Hatalı yıl bloğu'
 NARR_S14_KAPSAMA = 'Kaynak dosyadaki bozuk yıl bloğu düzeltilene kadar kalibrasyon, olması gerekenden az saatle çalışmaktadır (sayfa 10).'
 KAT_ETA = '0,942'
@@ -232,6 +239,7 @@ def _json_yukle(path):
 
     # kimlik
     g["SANTRAL"] = J["plant"]["name"]
+    g["SEBEKE_AC_MWE"] = J["plant"].get("sebeke_ac_mwe")   # yoksa None → "—"
     g["MUSTERI"] = J["report"]["customer"]
     g["KAPASITE_MWP"] = float(J["plant"].get("capacity_kwp", 12400)) / 1000  # v2.103
     g["MOD_ROZET"] = J["run"]["mode"]
@@ -326,6 +334,11 @@ def _json_yukle(path):
     g["SKILL120_PCT"] = J["accuracy"]["skill"]
     g["KESINTISIZ_GUN"] = J["accuracy"]["uninterrupted_days"]
     g["KAPSAMA_PCT"] = J["scada"]["coverage_pct"]
+    # B3b-1: arşiv uçları alandan; alan yoksa None — D6/D15 etiket yedeğine düşer
+    _ab = J["scada"].get("arsiv_baslangic"); _abt = J["scada"].get("arsiv_bitis")
+    g["ARSIV_BAS"] = _tarih(_ab) if _ab else None
+    g["ARSIV_BIT"] = _tarih(_abt) if _abt else None
+    g["ARSIV_SAAT"] = J["scada"].get("arsiv_saat")
     g["RAPOR_ID"] = J["report"]["id"]
     g["EPOSTA"] = J["report"]["contact"]
     py, pm, pd_, ps = J["run"]["prepared"][:4], J["run"]["prepared"][5:7], J["run"]["prepared"][8:10], J["run"]["prepared"][11:16]
@@ -496,7 +509,9 @@ def doldur(s):
         "MIN_P50": _tr(P50_GUN[i_min]), "MIN_HW": _tr(HW_GUN[i_min]),
         "TEPE_TIPIK": _tr(max(BASE_KW) / 1000 * (sum(P50_GUN) / len(P50_GUN))
                           / (sum(BASE_KW) / 1000)),
-        "SEBEKE": dict(SAHA).get("Kurulu güç", "/").split("/")[1].strip(),
+        # B3b-1: alan makamdır; display-split geri-ayrıştırması söküldü
+        "SEBEKE": ("%s MWe" % _tr(SEBEKE_AC_MWE))
+                  if SEBEKE_AC_MWE is not None else "—",
         # v2.131: s14 hedef günü veri-güdümlü — kanonikte '05 Ağustos' birebir
         "HEDEF_GUN": GUN_ETIKET[0] + " " + AY_YIL.split()[0],
         "KAL_PENCERE": KAL_PENCERE,  # v2.132: pencere iddiasi veriden

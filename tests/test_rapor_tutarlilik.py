@@ -239,15 +239,17 @@ def test_d5_pencere_iddiasi_yoksa_uyari():
 
 
 def test_d6_bosluklu_durust_arsiv_gecer():
-    """v2.132 üst-sınır: 468 günlük dönemde 9.419 saat (%84) meşrudur."""
+    """v2.132 üst-sınır: 468 günlük dönemde 9.419 saat (%84) meşrudur.
+    (B3b-1: hüküm artık alandan — mutasyon da alanda.)"""
     d = _yuzey()
-    d["ARSIV_ETIKET"] = "30 Nisan 2025 – 10 Ağustos 2026\n    (9.419 saat)"
+    d["ARSIV_BAS"], d["ARSIV_BIT"] = (2025, 4, 30), (2026, 8, 10)
+    d["ARSIV_SAAT"] = 9419
     assert "D6" not in {x.kod for x in denetim.denetle(d) if x.seviye == "hata"}
 
 
 def test_d6_kapasite_asimi_hala_duser():
-    d = _yuzey()
-    d["ARSIV_ETIKET"] = "1 Şubat – 4 Ağustos 2026\n    (4.600 saat)"
+    d = _yuzey()                      # uçlar kanonik alandan (1 Şub–4 Ağu)
+    d["ARSIV_SAAT"] = 4600            # 184 gün × 24 × 1,01 = 4.460 < 4.600
     assert "D6" in {x.kod for x in denetim.denetle(d) if x.seviye == "hata"}
 
 
@@ -286,8 +288,41 @@ def test_d14_kirpilmis_tepede_rampa_gecer():
 
 def test_d15_ayrik_arsiv_duser():
     d = _yuzey()
-    d["ARSIV_ETIKET"] = "1 Ocak – 28 Şubat 2024\n    (1.416 saat)"
+    d["ARSIV_BAS"], d["ARSIV_BIT"] = (2024, 1, 1), (2024, 2, 28)
+    d["ARSIV_SAAT"] = 1416
     assert "D15" in {x.kod for x in denetim.denetle(d) if x.seviye == "hata"}
+
+
+# ------------------------------------------------- B3b-1 (v2.169)
+def test_d6_alan_oncelik_etiket_hukumsuz():
+    """Alanlar sağlamken etiket çorbaysa D6 GEÇER — etiket artık hüküm
+    makamı değil, sunum süsüdür."""
+    d = _yuzey()
+    d["ARSIV_ETIKET"] = "anlamsız çorba (bozuk etiket)"
+    assert "D6" not in {x.kod for x in denetim.denetle(d) if x.seviye == "hata"}
+
+
+def test_d6_etiket_yedegi_alan_yoksa_yasar():
+    """Eski JSON'lar alan taşımaz — üç alan da yokken etiket çözümü
+    (yedek yol) hükmü verir: 4.600 saat kapasite aşımı yakalanır."""
+    d = _yuzey()
+    d["ARSIV_BAS"] = d["ARSIV_BIT"] = d["ARSIV_SAAT"] = None
+    d["ARSIV_ETIKET"] = "1 Şubat – 4 Ağustos 2026\n    (4.600 saat)"
+    assert "D6" in {x.kod for x in denetim.denetle(d) if x.seviye == "hata"}
+
+
+def test_b3b1_kanonik_alanlar_ve_sebeke_alandan(tmp_path):
+    """Kontrat kanıtı: kanonik alanları taşır; SEBEKE tokenı ALANDAN gelir
+    (display-split öldü — alan değişince display aynı kalsa da token oynar)."""
+    m = taze_veri(KANONIK)
+    assert m.ARSIV_BAS == (2026, 2, 1) and m.ARSIV_BIT == (2026, 8, 4)
+    assert m.ARSIV_SAAT == 4440 and m.SEBEKE_AC_MWE == 10.0
+    assert m.doldur("{{SEBEKE}}") == "10,0 MWe"
+    J = json.loads(KANONIK.read_text(encoding="utf-8"))
+    J["plant"]["sebeke_ac_mwe"] = 3.6          # display'e DOKUNULMADI
+    y = tmp_path / "sebeke36.json"
+    y.write_text(json.dumps(J, ensure_ascii=False), encoding="utf-8")
+    assert taze_veri(y).doldur("{{SEBEKE}}") == "3,6 MWe"
 
 
 def test_d16_celisen_durum_duser():
