@@ -112,6 +112,8 @@ def son_kosu(tenant_id, plant_id) -> pd.DataFrame | None:
     with tenant_baglami(tenant_id) as s:
         run = s.execute(text(
             "SELECT id FROM forecast_runs WHERE plant_id=:p "
+            "AND EXISTS (SELECT 1 FROM forecast_values v "
+            "  WHERE v.run_id = forecast_runs.id) "
             "ORDER BY run_at DESC LIMIT 1"), {"p": plant_id}).first()
         if not run: return None
         return pd.read_sql(text(
