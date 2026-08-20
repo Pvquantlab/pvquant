@@ -101,7 +101,7 @@ def shell(css, body, title):
 import textwrap
 
 # v2.158 (C-3): s01'in uc yerlesim varyantina elle kopyalanan "kesintisiz" cumlesi
-# tek kaynak; girinti varyant basina verilir ki HTML BAYT-BIREBIR kalsin (md5 ada7b10b).
+# tek kaynak; girinti varyant basina verilir ki HTML BAYT-BIREBIR kalsin (kanonik md5).
 EVI_METIN = ('<div class="evi">Bu tahmin, {{KESINTISIZ}} g\u00fcnd\u00fcr kesintisiz '
              'olarak ertesi g\u00fcn ger\u00e7ekle\u015fen \u00fcretimle\n'
              '  kar\u015f\u0131la\u015ft\u0131r\u0131lmaktad\u0131r; sonu\u00e7lar S4 \u00b7 '

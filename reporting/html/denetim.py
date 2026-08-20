@@ -626,7 +626,8 @@ def _d18(veri, ekle):
 def render_denetle(cikti_dizin):
     """Sayfalar uretildikten SONRA, birlesim/yayimdan ONCE kosar:
     (a) hicbir sayfada doldurulmamis '{{' kalmadi;
-    (b) s02 icindekiler + s15 'Nerede' sayfa referanslari 1..16 icinde.
+    (b) s02 icindekiler + s15 'Nerede' sayfa referanslari 1..16 icinde;
+    (c) R3 (v2.167/C-4): s02 TOC basliklari hedef sayfanin h1'i ile birebir.
     -> list[Bulgu] (bos = temiz)."""
     import glob as _glob, os as _os
     bulgular = []
@@ -642,6 +643,27 @@ def render_denetle(cikti_dizin):
             bulgular.append(Bulgu("R1", "hata",
                                   "doldurulmamis token: %s" % _os.path.basename(yol),
                                   "'{{' yok", icerik[i:i + 40]))
+    # ---- R3 (v2.167 / C-4): sayfa-numarali her TOC satiri hedef h1 ile birebir.
+    # "EK-X · " oneki ve <em> kuyrugu soyulur; elle kopya bir daha bayatlayamaz.
+    _s02 = _glob.glob(_os.path.join(cikti_dizin, "*_s02_*.html"))
+    if _s02:
+        _ic = open(_s02[0], encoding="utf-8").read()
+        for _ham, _pg in _re.findall(
+                r'<div class="(?:grp|item)"><div class="t">'
+                r'((?:(?!</div>|<div ).)*?)</div>'
+                r'<div class="pg">(\d+)</div></div>', _ic, _re.S):
+            _b = _re.sub(r"<em>.*?</em>", "", _ham)
+            _b = _re.sub(r"^EK-\w+ · ", "", _b).strip()
+            _hedef = _glob.glob(_os.path.join(
+                cikti_dizin, "*_s%02d_*.html" % int(_pg)))
+            if not _hedef:
+                continue  # aralik disini R2 yakalar
+            _h1 = _re.search(r"<h1>(.*?)</h1>",
+                             open(_hedef[0], encoding="utf-8").read())
+            if _h1 and _h1.group(1).strip() != _b:
+                bulgular.append(Bulgu("R3", "hata",
+                                      "TOC baslik sapmasi: sayfa %s" % _pg,
+                                      _h1.group(1).strip(), _b))
     for etiket, desen in (("s02", "*_s02_*"), ("s15", "*_s15_*")):
         es = _glob.glob(_os.path.join(cikti_dizin, desen + ".html"))
         if not es:

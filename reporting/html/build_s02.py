@@ -39,14 +39,14 @@ CSS = """
 
 # (kod, başlık, kendi sayfası|None, [(alt başlık, açıklama, sayfa)])
 TOC = [
-    ("S2", "Yönetici özeti", 3, []),
+    ("S2", "Bu dönemin bulguları", 3, []),
     ("S3", "Tahmin detayı", None, [
         ("Günlük üretim ve olasılık bandı", None, 4),
         ("Saatlik profiller", "tipik gün ve ilk sekiz gün", 5),
         ("Saat × gün matrisi", "analist görünümü", 6)]),
     ("S4", "Doğruluk karnesi", None, [
-        ("Her tahmin, ertesi gün sınava girer", "naif referans ve skill", 7),
-        ("Saçılım, sapma ve bütünlük kuralları", None, 8)]),
+        ("Her tahmin ölçülür", "naif referans ve skill", 7),
+        ("Hata nerede ve ne kadar?", "saçılım, sapma ve bütünlük", 8)]),
     ("S5", "Kalibrasyon", None, [
         ("Fizikten hibrite: iyileşmenin kanıtı", "katsayılar ve şelale", 9),
         ("Bağımsız test ve veri kalitesi", "holdout ve kapsama", 10)]),
@@ -56,7 +56,7 @@ TOC = [
     ("S7", "Model zinciri ve veri künyesi", 13, []),
     ("S8", "Standartlar, sınırlar ve tahmin evrimi", 14, []),
     ("EK", "Ekler", None, [
-        ("EK-A · Metrikler, belirsizlik bütçesi ve kısaltmalar", None, 15),
+        ("EK-A · Metrikler, belirsizlik ve kısaltmalar", None, 15),
         ("EK-B · Sözlük, referanslar ve yasal bilgi", None, 16)]),
 ]
 
