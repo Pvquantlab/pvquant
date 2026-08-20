@@ -21,7 +21,7 @@
   Durum bakışı: `docker compose run --rm --entrypoint "" api alembic current`
 - Konteyner-içi rapor kalkanı (imaj değişince):
   `docker compose run --rm --no-deps --entrypoint "" api sh -c 'cd /app/reporting/html && python3 uret.py'`
-  → 16 sayfa + kanonik md5 0cec038923665d2e0808dbaed7b3c6bb beklenir.
+  → 16 sayfa + kanonik md5 3e783a4a3ce41b378057cc8d2b5610d6 beklenir.
   (v2.153'te yenilendi — s08 kural 3/5 gerçeğe çekildi + s01 "Metrik
   penceresi" etiketi; önceki f0dbc1401d9674858dd39ba6ca22310c, v2.146–v2.152.)
 

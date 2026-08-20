@@ -6,6 +6,14 @@ BASE = [(5.0, 0.0)] + [(5.5 + i, BASE_KW[i] / 1000) for i in range(len(BASE_KW))
 DAILY = P50_GUN[:8]
 MEAN = 64.8 / 65.8
 
+# c5/3 (v2.168): sabit 10 MW tavan CANLI kirpma yapiyordu — kanonik ust bant
+# tepesi 10,034 MW, min(10,...) sessizce duzlestiriyordu. Tavan artik iki
+# figurun ortak tepesinden turer (paylasilan eksen), 2 MW adima yuvarli;
+# kirpma kalkti — turetilmis tavan tepeyi tanimi geregi kapsar.
+_BANT_UST = 1.13
+_TEPE = max(v for _, v in BASE) * max(MEAN, max(DAILY) / 65.8) * _BANT_UST
+S05_YMAX = int(-(-_TEPE // 2)) * 2
+
 
 def bez(pts, start=True):
     """Catmull-Rom → kübik bezier; yumuşak ama veriye sadık eğri."""
@@ -24,15 +32,15 @@ def profile(W=1000, H=292, ml=54, mb=50, fs=15):
     MR, MT = 30, 14
     PW, PH = W - ml - MR, H - MT - mb
     X = lambda h: ml + PW * h / 24
-    Y = lambda v: MT + PH * (10 - v) / 10
+    Y = lambda v: MT + PH * (S05_YMAX - v) / S05_YMAX
     o = []
-    for t in range(0, 11, 2):
+    for t in range(0, S05_YMAX + 1, 2):
         o.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1.3"/>'
                  % (ml, Y(t), W - MR, Y(t), GRID))
         o.append('<text x="%.1f" y="%.1f" text-anchor="end" font-family="PlexSans" font-size="%d"'
                  ' font-weight="500" fill="#2B3439">%d</text>' % (ml - 9, Y(t) + fs * .34, fs, t))
     mid = [(h, v * MEAN) for h, v in BASE]
-    up = [(X(h), Y(min(10, v * 1.13))) for h, v in mid]
+    up = [(X(h), Y(v * _BANT_UST)) for h, v in mid]
     dn = [(X(h), Y(max(0, v * .87))) for h, v in mid]
     o.append('<path d="%s%s Z" fill="%s"/>' % (bez(up), bez(list(reversed(dn)), False), FAN_AREA))
     for ser in (up, dn):
@@ -74,15 +82,15 @@ def multiples(W=1000, H=402, fs=13):
         oy = 16 + r * (ph + 14 + 44 + gyr) + 14
         sc = DAILY[k] / 65.8
         X = lambda h: ox + pwd * h / 24
-        Y = lambda v: oy + ph * (10 - v) / 10
-        for t in range(0, 11, 2):
+        Y = lambda v: oy + ph * (S05_YMAX - v) / S05_YMAX
+        for t in range(0, S05_YMAX + 1, 2):
             o.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" '
                      'stroke-width="1.1"/>' % (ox, Y(t), ox + pwd, Y(t), GRID))
             o.append('<text x="%.1f" y="%.1f" text-anchor="end" font-family="PlexSans" '
                      'font-size="%d" font-weight="500" fill="#2B3439">%d</text>'
                      % (ox - 7, Y(t) + fs * .34, fs, t))
         pts = [(h, v * sc) for h, v in BASE]
-        up = [(X(h), Y(min(10, v * 1.13))) for h, v in pts]
+        up = [(X(h), Y(v * _BANT_UST)) for h, v in pts]
         dn = [(X(h), Y(max(0, v * .87))) for h, v in pts]
         o.append('<path d="%s%s Z" fill="%s" stroke="%s" stroke-width="1"/>'
                  % (bez(up), bez(list(reversed(dn)), False), FAN_AREA, FAN_EDGE))
