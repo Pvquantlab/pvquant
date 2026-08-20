@@ -143,7 +143,13 @@ def kosu_gecmisi(tenant_id, plant_id, n: int = 10):
     from sqlalchemy import text as _text
     from pvquant.db import tenant_baglami as _tb
     with _tb(tenant_id) as s:
+        # v2.171: bos kosu (values yazilmamis) GIZLIDIR — kullanici karari
+        # 20 Agu; son_kosu ile ayni EXISTS kalibi (v2.164). Silme gecmisi
+        # temizler, suzgec gelecegi: yarim kalan kosular listeye sizmasin.
         return s.execute(_text(
             "SELECT run_at, mode, model FROM forecast_runs "
-            "WHERE plant_id=:p ORDER BY run_at DESC LIMIT :n"),
+            "WHERE plant_id=:p "
+            "AND EXISTS (SELECT 1 FROM forecast_values v "
+            "  WHERE v.run_id = forecast_runs.id) "
+            "ORDER BY run_at DESC LIMIT :n"),
             {"p": plant_id, "n": n}).fetchall()
