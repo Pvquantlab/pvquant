@@ -31,10 +31,12 @@ def uret_ve_kaydet(tenant_id, plant: dict) -> str:
     with tenant_baglami(tenant_id) as s:
         cal = s.execute(text(
             "SELECT mode, params_json FROM calibrations "
-            "WHERE plant_id=:p AND active LIMIT 1"), {"p": plant["id"]}).first()
+            "WHERE plant_id=:p AND active "
+            "ORDER BY created_at DESC LIMIT 1"), {"p": plant["id"]}).first()
         ml = s.execute(text(
             "SELECT artifact_path FROM ml_models "
-            "WHERE plant_id=:p AND active LIMIT 1"), {"p": plant["id"]}).first()
+            "WHERE plant_id=:p AND active "
+            "ORDER BY created_at DESC LIMIT 1"), {"p": plant["id"]}).first()
     mode = cal.mode if cal else "A"
     spec = _plant_spec(plant)
     if cal:

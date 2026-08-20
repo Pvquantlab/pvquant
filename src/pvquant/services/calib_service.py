@@ -214,7 +214,8 @@ def aktif_kalibrasyon(tenant_id, plant_id):
         return s.execute(text(
             "SELECT id, mode, params_json, quality_json, gate_json,"
             " n_valid_hours, created_at FROM calibrations "
-            "WHERE plant_id=:p AND active LIMIT 1"),
+            "WHERE plant_id=:p AND active "
+            "ORDER BY created_at DESC LIMIT 1"),
             {"p": plant_id}).first()
 
 def kalibrasyon_ozeti(tenant_id, plant_id):
