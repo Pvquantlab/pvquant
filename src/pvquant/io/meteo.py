@@ -87,6 +87,12 @@ class OpenMeteoClient:
         "diffuse_radiation",        # DHI'ye yakın, doğrulama için
     )
 
+
+    # B7 (v2.165): istekte models= parametresi GONDERILMIYOR -> Open-Meteo
+    # "best_match" kipinde kosar. Damganin tek kaynagi bu sabit; models=
+    # parametresi eklenirse burasi da birlikte guncellenmeli.
+    NWP_MODEL: str = "best_match"
+
     def __init__(self, base_url: str | None = None, timeout: int | None = None) -> None:
         settings = get_settings()
         self.base_url = base_url or settings.meteo_base_url

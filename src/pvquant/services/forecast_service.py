@@ -68,6 +68,7 @@ def uret_ve_kaydet(tenant_id, plant: dict) -> str:
     with tenant_baglami(tenant_id) as s:
         meteo_ozet = json.dumps({
             "kaynak": "open-meteo",
+            "nwp_model": OpenMeteoClient.NWP_MODEL,
             "cekim_utc": datetime.now(timezone.utc).isoformat(),
             "gunler": [
                 {"tarih": str(g), "t_max": round(t, 1),
