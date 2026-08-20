@@ -325,6 +325,40 @@ def test_b3b1_kanonik_alanlar_ve_sebeke_alandan(tmp_path):
     assert taze_veri(y).doldur("{{SEBEKE}}") == "3,6 MWe"
 
 
+# ------------------------------------------------- B3b-2 (v2.170)
+def test_b3b2_kanonik_katsayilar_ve_turetim():
+    """Kontrat kaniti: kanonik coefficients tasir, token'lar SAYIDAN turetilir
+    ve donmus metinlerle birebir; statik ayna da ayni turetimden gecer."""
+    m = taze_veri(KANONIK)
+    assert (m.KAT_ETA_V, m.KAT_BIF_V, m.KAT_ALBEDO) == (0.942, 7.3, 0.16)
+    assert m.KAT_SAAT_V == 1487 and m.KAT_TARIH_V == (2026, 7, 19)
+    assert m.doldur("{{KAT_ETA}}|{{KAT_BIF}}|{{KAT_SAAT}}|{{KAT_TARIH}}") == \
+        "0,942|%7,3|1.487|19 Temmuz 2026"
+    J = json.loads(KANONIK.read_text(encoding="utf-8"))
+    assert "kat_eta" not in J["narrative"]   # ayni bilgi iki yerde yasamaz
+
+
+def test_d7_sayi_oncelik_metin_hukumsuz():
+    """Sayi alani varken metin corbasi D7'yi oynatamaz; bozuk SAYI ise
+    metin ne derse desin yakalanir — hukum makami sayidir."""
+    d = _yuzey(); d["KAT_ETA"] = d["KAT_BIF"] = "çorba"
+    assert "D7" not in {x.kod for x in denetim.denetle(d) if x.seviye == "hata"}
+    d = _yuzey(); d["KAT_ETA"] = "0,942"; d["KAT_ETA_V"] = 1.50
+    assert "D7" in {x.kod for x in denetim.denetle(d) if x.seviye == "hata"}
+
+
+def test_d7_d5_metin_yedegi_alan_yoksa_yasar():
+    """Eski JSON'lar sayi tasimaz — alanlar None iken metin cozumu hukum
+    verir: aralik disi eta yakalanir, D5 saati metinden okur."""
+    d = _yuzey()
+    d["KAT_ETA_V"] = d["KAT_BIF_V"] = d["KAT_SAAT_V"] = None
+    d["KAT_ETA"] = "0,50"
+    b = denetim.denetle(d)
+    assert "D7" in {x.kod for x in b if x.seviye == "hata"}
+    assert "D5" not in {x.kod for x in b if x.seviye == "uyari"
+                        and "saat" in x.mesaj.lower() and "yok" in x.mesaj.lower()}
+
+
 def test_d16_celisen_durum_duser():
     d = _yuzey(); d["DURUM_KAPSAMA"] = "ok"      # 71 < 80 iken 'ok' basilamaz
     assert "D16" in {x.kod for x in denetim.denetle(d) if x.seviye == "hata"}

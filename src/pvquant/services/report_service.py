@@ -113,6 +113,7 @@ def rapor_baglami(tenant_id, plant: dict) -> ReportContext | None:
                 from pvquant.services.calib_service import _plant_spec as _ps
                 from pvquant.models.bifacial import SimpleBifacialParams as _SBP
                 _sp = _ps(plant)
+                ctx.albedo = _sp.albedo   # B3b-2 (v2.170): kunye + kontrat alani
                 if _sp.bifacial_factor > 0:
                     ctx.bifacial_pct = 100.0 * _SBP(
                         bg=float(_bg), bf=_sp.bifacial_factor,

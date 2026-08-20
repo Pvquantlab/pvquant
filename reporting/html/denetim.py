@@ -230,7 +230,9 @@ def _d4(veri, ekle):
 
 
 def _d5(veri, ekle):
-    saat = _sayi(_al(veri, "KAT_SAAT"))
+    saat = _al(veri, "KAT_SAAT_V")            # B3b-2: once ALAN
+    if saat is None:
+        saat = _sayi(_al(veri, "KAT_SAAT"))   # eski JSON: metin yedegi
     if saat is None:
         return ekle("D5", "uyari", "kalibrasyon saati alanı yok — denetlenemedi "
                     "(kartta '—' basılması dürüst-eksiklik kuralına uygundur)",
@@ -296,7 +298,13 @@ def _d6(veri, ekle):
 
 
 def _d7(veri, ekle):
-    eta, bif = _sayi(_al(veri, "KAT_ETA")), _sayi(_al(veri, "KAT_BIF"))
+    # B3b-2 (v2.170): once SAYI alani (coefficients); yoksa metin yedegi.
+    eta = _al(veri, "KAT_ETA_V")
+    if eta is None:
+        eta = _sayi(_al(veri, "KAT_ETA"))
+    bif = _al(veri, "KAT_BIF_V")
+    if bif is None:
+        bif = _sayi(_al(veri, "KAT_BIF"))
     bayrak = False
     if eta is None:
         ekle("D7", "uyari", "η_BoS alanı yok — aralık denetlenemedi", "kat_eta", "eksik")

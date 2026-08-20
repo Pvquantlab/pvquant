@@ -493,7 +493,10 @@ def _kunye(ctx):
              "15 dakika → saatlik", scada_aralik, "UTC"],
             ["İklim arşivi", "Aylık üretim geçmişi", "aylık", iklim_aralik,
              "yerel ay"],
-            ["Zemin albedosu", "Bifacial kazanç hesabının girdisi (0,16)",
+            ["Zemin albedosu",
+             "Bifacial kazanç hesabının girdisi (%s)" % (
+                 _tr(ctx.albedo, 2)   # B3b-2: elle 0,16 öldü — alan yoksa "—"
+                 if getattr(ctx, "albedo", None) is not None else "—"),
              "sabit", "kurulumda girilir", "—"],
             ["Santral künyesi",
              "Kurulu güç, koordinat, eğim/azimut, panel ve inverter",
@@ -596,16 +599,20 @@ def _anlati(ctx, J):
     n["s09_prose"] = ("Kalibrasyonun bir modeli veriye uydurup uydurmadığı, bulunan "
                       "katsayıların fiziksel olarak anlamlı olup olmadığına bakılarak "
                       "anlaşılır; katsayılar fiziksel aralık denetiminden geçirilir.")
-    _eta = getattr(ctx, "eta_bos", None)
-    n["kat_eta"] = _tr(_eta, 3) if _eta is not None else "—"
-    _bif = getattr(ctx, "bifacial_pct", None)
-    n["kat_bif"] = "%%%s" % _tr(_bif, 1) if _bif is not None else "—"
-    _sa = getattr(ctx, "kal_saat", None)
-    n["kat_saat"] = ("{:,}".format(int(_sa)).replace(",", ".")
-                     if _sa is not None else "—")
+    # B3b-2 (v2.170): katsayilar KONTRAT ALANIDIR (calibration.coefficients)
+    # — narrative.kat_* metin uretimi soküldü, bicimleme veri.py'nin isi;
+    # None alan yazilmaz, veri.py durust "—" basar.
     _ta = getattr(ctx, "kal_tarih", None)
-    n["kat_tarih"] = ("%d %s %d" % (_ta.day, AY_UZUN[_ta.month - 1], _ta.year)
-                      if _ta is not None else "—")
+    _cf = {"eta_bos": getattr(ctx, "eta_bos", None),
+           "bifacial_pct": getattr(ctx, "bifacial_pct", None),
+           "albedo": getattr(ctx, "albedo", None),
+           "saat": (int(ctx.kal_saat)
+                    if getattr(ctx, "kal_saat", None) is not None else None),
+           "tarih": ((_ta.date() if isinstance(_ta, _dt.datetime) else _ta)
+                     .isoformat() if _ta is not None else None)}
+    _cf = {k: v for k, v in _cf.items() if v is not None}
+    if _cf and "calibration" in J:
+        J["calibration"]["coefficients"] = _cf
     fd = getattr(ctx, "flag_dagilimi", None)
     if fd and getattr(ctx, "ilk_scada_ts", None) is not None:
         i, so = ctx.ilk_scada_ts, ctx.son_scada_ts

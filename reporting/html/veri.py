@@ -47,6 +47,12 @@ ARSIV_BIT = (2026, 8, 4)                   # scada.arsiv_bitis
 ARSIV_SAAT = 4440                          # scada.arsiv_saat
 LEJANT_HATALI = 'Hatalı yıl bloğu'
 NARR_S14_KAPSAMA = 'Kaynak dosyadaki bozuk yıl bloğu düzeltilene kadar kalibrasyon, olması gerekenden az saatle çalışmaktadır (sayfa 10).'
+# B3b-2 (v2.170): katsayilar SAYIDIR (calibration.coefficients) — metin
+# token'lari sayidan turetilir; asagidaki donmus metinler kanonik hikayenin
+# birebir aynasidir (test: metin == turetim(sayi), mutasyon bekcili).
+KAT_ETA_V, KAT_BIF_V = 0.942, 7.3          # coefficients.eta_bos / .bifacial_pct
+KAT_ALBEDO = 0.16                          # coefficients.albedo
+KAT_SAAT_V, KAT_TARIH_V = 1487, (2026, 7, 19)   # .saat / .tarih (y, a, g)
 KAT_ETA = '0,942'
 KAT_BIF = '%7,3'
 KAT_SAAT = '1.487'
@@ -227,6 +233,11 @@ AY_UZUN = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz",
            "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"]
 
 
+def _tr(x, d=1):
+    # B3b-2: yukleyici token turetiminde kullanir — tanim cagridan once olmali
+    return ("%.*f" % (d, x)).replace(".", ",")
+
+
 def _tarih(s):
     y, m, d = (int(x) for x in s.split("-"))
     return y, m, d
@@ -371,10 +382,25 @@ def _json_yukle(path):
     g["ARSIV_ETIKET"] = _N.get("arsiv_etiket", "—")
     g["LEJANT_HATALI"] = _N.get("lejant_hatali", "hatalı")
     g["NARR_S14_KAPSAMA"] = _N.get("s14_kapsama", "")
-    g["KAT_ETA"] = _N.get("kat_eta", "—")
-    g["KAT_BIF"] = _N.get("kat_bif", "—")
-    g["KAT_SAAT"] = _N.get("kat_saat", "—")
-    g["KAT_TARIH"] = _N.get("kat_tarih", "—")
+    # B3b-2 (v2.170): katsayilar calibration.coefficients ALANINDAN; alan
+    # yoksa narrative.kat_* yedegi (eski JSON), o da yoksa durust "—".
+    _CF = C.get("coefficients") or {}
+    g["KAT_ETA_V"] = _CF.get("eta_bos")
+    g["KAT_BIF_V"] = _CF.get("bifacial_pct")
+    g["KAT_ALBEDO"] = _CF.get("albedo")
+    g["KAT_SAAT_V"] = _CF.get("saat")
+    _kt = _CF.get("tarih")
+    g["KAT_TARIH_V"] = _tarih(_kt) if _kt else None
+    g["KAT_ETA"] = (_tr(g["KAT_ETA_V"], 3) if g["KAT_ETA_V"] is not None
+                    else _N.get("kat_eta", "—"))
+    g["KAT_BIF"] = ("%" + _tr(g["KAT_BIF_V"], 1) if g["KAT_BIF_V"] is not None
+                    else _N.get("kat_bif", "—"))
+    g["KAT_SAAT"] = ("{:,}".format(int(g["KAT_SAAT_V"])).replace(",", ".")
+                     if g["KAT_SAAT_V"] is not None else _N.get("kat_saat", "—"))
+    g["KAT_TARIH"] = ("%d %s %d" % (g["KAT_TARIH_V"][2],
+                                    AY_UZUN[g["KAT_TARIH_V"][1] - 1],
+                                    g["KAT_TARIH_V"][0])
+                      if g["KAT_TARIH_V"] else _N.get("kat_tarih", "—"))
     g["NARR_S07_SEKIL"] = _N.get("s07_sekil", "")
     g["NARR_S10_SEKIL1"] = _N.get("s10_sekil1", "")
     g["EGITIM_SERIT"] = "<i>%d %s %d</i><i>%d %s</i><i>%d %s %d</i>" % (
@@ -470,10 +496,6 @@ KARNE_UYARI = karne_uyari(KARNE_GECERLI_GUN)
 
 
 # ================================================================ görsel doldurma (E.2 Adım 2b)
-def _tr(x, d=1):
-    return ("%.*f" % (d, x)).replace(".", ",")
-
-
 def _bin(x):
     return "{:,}".format(int(round(x))).replace(",", ".")
 
