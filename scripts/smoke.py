@@ -17,7 +17,6 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "src"))
-sys.path.insert(0, str(REPO / "frontend"))
 
 SMOKE_EPOSTA = "smoke@pvquant.internal"
 SMOKE_FIRMA = "Smoke Test A.Ş."
@@ -142,52 +141,33 @@ def a7():
     return "tarandı"
 
 
-@adim("8. ui_kit grafik dumanı (v2.21 sınıfı)")
-def a8():
-    import pandas as pd
-    import ui_kit
-    saat = [f"{h:02d}:00" for h in range(24)]
-    tahmin = [max(0, 2000 - abs(12 - h) * 260) for h in range(24)]
-    ui_kit.gun_isigi_egrisi(saat, [None] * 24, tahmin, 6)
-    idx = pd.date_range("2026-07-18", periods=48, freq="h",
-                        tz="Europe/Istanbul")
-    ui_kit.tahmin_grafigi(pd.DataFrame(
-        {"p50_kw": 1000.0, "p10_kw": 900.0, "p90_kw": 1100.0},
-        index=idx), "C")
-    ui_kit.skill_grafigi(pd.DataFrame(
-        {"0-24": [45.1]}, index=[pd.Timestamp("2026-04-16").date()]))
-    # v2.31: sayfaya_git kaynak denetimi (D-1 sozlesmesi canli)
-    src = inspect.getsource(ui_kit.sayfaya_git)
-    assert "active_page" in src, "sayfaya_git govdesi active_page kullanmiyor"
-    return "3 grafik + sayfaya_git kaynak"
-
-
-@adim("9. K4 diakritik bekçisi (frontend/)")
+@adim("8. K4 diakritik bekçisi (web/src)")
 def a9():
-    # v2.24: allowlist (içerik-parçası eşleşmesi) — kullanıcı metni ASLA girmez
+    # v2.160: bekci SPA'ya tasindi (Streamlit emekli) — kullanici metni ASCII'ye dusmez.
     allowlist_yolu = REPO / "scripts" / "k4_istisna.txt"
     allowlist = []
     if allowlist_yolu.exists():
         allowlist = [s.strip() for s in
                      allowlist_yolu.read_text(encoding="utf-8").splitlines()
                      if s.strip() and not s.startswith("#")]
+    tsx_istisna = ("import ", "from ", "//", "/*", " * ", "console.")
     kirli = []
-    for py in sorted((REPO / "frontend").glob("*.py")):
-        for i, satir in enumerate(py.read_text(encoding="utf-8")
+    for tsx in sorted((REPO / "web" / "src").rglob("*.tsx")):
+        for i, satir in enumerate(tsx.read_text(encoding="utf-8")
                                   .splitlines(), 1):
-            if any(x in satir for x in K4_ISTISNA):
+            if any(x in satir for x in tsx_istisna):
                 continue
-            if any(p in satir for p in allowlist):
+            if any(pt in satir for pt in allowlist):
                 continue
             if K4_PATTERNS.search(satir):
-                kirli.append(f"{py.name}:{i}")
+                kirli.append(f"{tsx.name}:{i}")
     assert not kirli, f"K4 kalıntı: {kirli[:6]}"
     return "temiz"
 
 
 if __name__ == "__main__":
     print("PVQuant SMOKE GATE başlıyor…")
-    for fn in (a1, a2, a3, a4, a5, a6, a7, a8, a9):
+    for fn in (a1, a2, a3, a4, a5, a6, a7, a9):
         fn()
     _ozet()
     print("\nSMOKE: TÜMÜ YEŞİL ✓")

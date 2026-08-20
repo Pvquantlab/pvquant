@@ -5,7 +5,7 @@ Kullanim (repo kokunden):
 
 Ne yapar:
   1. Ayni ingestion cagrisini yapar (UI ile ayni parametrelerle)
-  2. frontend/veri_yukleme.py:_kopru_scadadata_ve_gec mantigini BIREBIR uygular
+  2. (v2.160'ta emekli) frontend/veri_yukleme.py:_kopru_scadadata_ve_gec mantigini BIREBIR uygular
   3. SCADAData'nin roentgenini basar: tz, aralik, kolon kolon gunduz ortalamalari
   4. --meteo verilirse calibrate_from_scada'yi kosturur (ag gerekir)
 

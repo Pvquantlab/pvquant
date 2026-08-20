@@ -46,25 +46,9 @@ services:
         condition: service_healthy
     restart: unless-stopped        # v2.72
 
-  frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile.frontend
-    environment:
-      PVQ_DB_URL: postgresql+psycopg://pvquant:${DB_PASSWORD:-pvquant_dev}@db:5432/pvquant
-      PVQ_JWT_SECRET: ${PVQ_JWT_SECRET:-}
-    volumes:
-      - ./var:/app/var             # UI'dan kalibrasyon artifact yazar/okur
-    ports:
-      - "8502:8501"                # yerel durusma icin (host'taki 8501 ile catismasin)
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: unless-stopped        # v2.64
-
   web:
-    # v2.148: YENI arayuz — web/ SPA. Kapidaki caddy / -> web:8080 yonlendirir;
-    # eski Streamlit (frontend) gecis sureci icin 8502'de kalir (emeklilik defterde).
+    # v2.148: YENI arayuz — web/ SPA; kapidaki caddy / -> web:8080.
+    # v2.160: eski Streamlit EMEKLI edildi (tarih git'te).
     build:
       context: .
       dockerfile: Dockerfile.web

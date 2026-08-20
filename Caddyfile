@@ -7,6 +7,6 @@
 	route /v1/* {
 		reverse_proxy api:8000
 	}
-	# v2.148: kok artik YENI arayuz (web/ SPA); eski Streamlit dogrudan 8502'de.
+	# v2.148: kok YENI arayuz (web/ SPA). v2.160: Streamlit emekli.
 	reverse_proxy web:8080
 }
