@@ -11,3 +11,5 @@ Mod A (varsayilan): 'SCADA veriniz var mı?'
 # v2.30-Ek5: veri_yukleme docstring (kalip-docstring kesisimi)
 -> "Kalibrasyona gec" butonu aktif
 "Kalibrasyona gec" butonu ingestion sonucunu
+# v2.161: API alan adi (kontrat) — kullanici metni degil
+?.gunluk

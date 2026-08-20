@@ -47,12 +47,12 @@ export function Tahminler({ plantId }: { plantId: string }) {
     () => (seri ? dilimle(seri.saatlik, t0, ufuk) : null),
     [seri, t0, ufuk],
   );
-  const gunluk = useMemo(
+  const gunlukVeri = useMemo(
     () =>
       dilim && ozet ? gunlukToplamlar(dilim.saatlik, ozet.tz) : [],
     [dilim, ozet],
   );
-  const bantVar = gunluk.some((g) => g.p10Kwh !== null);
+  const bantVar = gunlukVeri.some((g) => g.p10Kwh !== null);
 
   return (
     <Sayfa
@@ -133,7 +133,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
                 </tr>
               </thead>
               <tbody className="mono">
-                {gunluk.map((g) => (
+                {gunlukVeri.map((g) => (
                   <tr key={g.etiket}>
                     <td>{g.etiket}{g.kismi ? " *" : ""}</td>
                     <td>{sayiTr(g.p50Kwh)}</td>
@@ -148,7 +148,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
                 ))}
               </tbody>
             </table>
-            {gunluk.some((g) => g.kismi) && (
+            {gunlukVeri.some((g) => g.kismi) && (
               <p style={{ color: "var(--ikincil)", fontSize: 12, marginTop: 8 }}>
                 * pencereye kısmen giren gün
               </p>

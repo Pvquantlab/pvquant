@@ -196,6 +196,18 @@ def fig_iklim_zarf(ctx) -> plt.Figure:
     """S6: 20-yillik aylik GHI zarfi (P10-P90 bant + P50 cizgi)."""
     tema_uygula()
     ik = ctx.iklim
+    gerekli = ("ay", "ghi_p10_kwh_m2", "ghi_p50_kwh_m2", "ghi_p90_kwh_m2")
+    if ik is None or len(ik) == 0 or any(k not in ik for k in gerekli):
+        # v2.161: bos iklimde KeyError yerine durust isaret (pdf.py ilkesi:
+        # "veri yoksa 'veri eksik (gereken: ...)' - asla bos iskelet").
+        fig, ax = plt.subplots(figsize=(3.55, 2.4))
+        ax.axis("off")
+        ax.text(0.5, 0.5,
+                "veri eksik (gereken: iklim zarfi -\nay, ghi_p10/p50/p90_kwh_m2)",
+                ha="center", va="center", fontsize=7)
+        ax.set_title("Aylik GHI zarfi")
+        fig.tight_layout()
+        return fig
     fig, ax = plt.subplots(figsize=(3.55, 2.4))
     ax.fill_between(ik["ay"], ik["ghi_p10_kwh_m2"], ik["ghi_p90_kwh_m2"],
                     color=RENK.MARKA, alpha=0.20, linewidth=0,
