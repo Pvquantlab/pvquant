@@ -31,6 +31,11 @@ D15 karne penceresi ∩ SCADA arsiv donemi ≠ ∅
 D16 KPI durum rengi esik yonuyle tutarli + kesintisiz karti alansiz basilamaz
 D17 yillik Pxx = ORT - z·SD yeniden uretilebilir (SD orneklem n-1; z sozlesmeli)
 D18 karne butunlugu: 30 takvim satiri; olculdu↔null tutarli; KESINTISIZ ↔ kuyruk
+D19 karne skorlama kapisi: kapsama_pct < esik iken olculdu=true yasak
+D20 kucuk-orneklem uyarisi gecerli gun sayisiyla tutarli (elle ezmeye bekci)
+D21 kapak donemi ↔ gunluk seri: uclar birebir, gunler ardisik, sayi GUN_SAYISI
+D22 s09 anlati ↔ katsayi ALANLARI: anlatidaki sayi alandan (goruntu bicimi),
+    alani olmayan katsayi anlatida iddia edilemez (anlati-kosulluluk)
 R1/R2 (render, sayfalar sonrasi): doldurulmamis token yok; s02/s15 sayfa
     referanslari 1..16 icinde — render_denetle(cikti_dizin)
     (MWe → kapak {{KURULU}}, s05 {{SEBEKE}} cümlesi, kapasite faktörü)
@@ -794,6 +799,62 @@ def _d21(veri, ekle):
          "%s → %s · %d gün" % (bas, bit, len(tarih)), "birebir")
 
 
+# D22 çıpaları: (ad, anlatı anahtar kelimeleri, sayı alanı, GÖRÜNTÜ biçimleyicisi)
+# Biçimleyiciler display ile AYNI: KAT_ETA=_tr(v,3), KAT_BIF='%'+_tr(v,1)
+# (veri.py yükleyicisi), albedo=_tr(v,2) (report_html_service künyesi).
+_D22_CIPALAR = (
+    ("η_BoS", ("sistem verimi", "η_bos", "eta_bos"), "KAT_ETA_V",
+     lambda v: _tr(v, 3)),
+    ("bifacial", ("bifacial",), "KAT_BIF_V",
+     lambda v: "%" + _tr(v, 1)),
+    ("albedo", ("albedo",), "KAT_ALBEDO",
+     lambda v: _tr(v, 2)),
+)
+
+
+def _d22(veri, ekle):
+    """D22 (v2.172, B3b kuyruğu): s09 anlatısı ↔ katsayı ALANLARI uyumu +
+    anlatı-koşulluluk. Hüküm makamı alandır (calibration.coefficients);
+    anlatı sunumdur ve DENETLENENDİR — bu, metinden gerçek türetme değil,
+    metni gerçeğe vurmadır (D21 ilkesi: anlatı veriyle çelişemez).
+    Çıpa başına üç durum: (1) anlatı katsayıdan söz etmiyor → iddia yok,
+    kayıt yok; (2) söz ediyor ama alan None → kanıtı olmayan iddia (canlı
+    bifacial'sız santralda anlatı albedo satamaz — künyedeki '—'
+    dürüstlüğünün anlatı ayağı) → hata; (3) söz ediyor + alan var → alanın
+    GÖRÜNTÜ-biçimli tokenı anlatıda rakam-sınırlı birebir geçmeli
+    ((?<!\\d)token(?!\\d): '10,16' içindeki '0,16' sayılmaz) → yoksa
+    bayat/çelişik sayı → hata. Boş anlatı = iddia yok = geçer."""
+    prose = str(_al(veri, "NARR_S09_PROSE") or "")
+    p = prose.casefold()
+    if not p.strip():
+        return ekle("D22", "gecti", "s09 anlatısı boş — sayı iddiası yok",
+                    "iddia yoksa denetim konusu yok", "boş anlatı")
+    soz_var = False
+    for ad, kelimeler, alan, bicim in _D22_CIPALAR:
+        if not any(k in p for k in kelimeler):
+            continue
+        soz_var = True
+        v = _al(veri, alan)
+        if v is None:
+            ekle("D22", "hata",
+                 "anlatı %s katsayısından söz ediyor ama alanı YOK — anlatı, "
+                 "kanıtı olmayan değeri iddia edemez (anlatı koşullu olmalı)"
+                 % ad, "%s dolu ya da anlatıda söz yok" % alan, "alan None")
+            continue
+        token = bicim(v)
+        if _re.search(r"(?<!\d)" + _re.escape(token) + r"(?!\d)", prose):
+            ekle("D22", "gecti", "%s anlatı sayısı alandan doğrulandı" % ad,
+                 "%s (alandan, görüntü biçimi)" % token, "anlatıda birebir")
+        else:
+            ekle("D22", "hata",
+                 "anlatıdaki %s sayısı ALANLA çelişiyor ya da görüntü "
+                 "biçimiyle basılmamış — anlatı veriyle çelişemez" % ad,
+                 "%s (alandan, görüntü biçimi)" % token, "anlatıda yok")
+    if not soz_var:
+        ekle("D22", "gecti", "s09 anlatısı katsayı iddiası içermiyor",
+             "iddia yoksa denetim konusu yok", "sözcük çıpası eşleşmedi")
+
+
 def denetle_tam(veri):
     """Tüm kontrolleri koşar. → (kayitlar, bulgular, suphe_bayragi)
     kayitlar: geçen+geçmeyen tüm sonuçlar (denetim.json için);
@@ -811,7 +872,7 @@ def denetle_tam(veri):
     _d11(veri, ekle); _d12(veri, ekle); _d13(veri, ekle)
     _d14(veri, ekle); _d15(veri, ekle); _d16(veri, ekle)
     _d17(veri, ekle); _d18(veri, ekle); _d19(veri, ekle); _d20(veri, ekle)
-    _d21(veri, ekle)
+    _d21(veri, ekle); _d22(veri, ekle)
 
     bulgular = [Bulgu(k["kod"], k["durum"], k["mesaj"], k["beklenen"], k["bulunan"])
                 for k in kayitlar if k["durum"] in ("hata", "uyari")]

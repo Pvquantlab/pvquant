@@ -44,8 +44,8 @@ _sayac = [0]
 
 # v2.157: kayıt makamının sabit kehaneti — TEK yerde (mutasyon bekçisi kalır,
 # aynı sayı iki yerde elle yaşamaz). Yeni denetim eklenince BURASI bilinçli güncellenir.
-BEKLENEN_KODLAR = ["D%d" % i for i in range(1, 22)]   # D1..D21
-BEKLENEN_GECEN_KAYIT = 25                             # kanonik koşuda geçen kayıt sayısı
+BEKLENEN_KODLAR = ["D%d" % i for i in range(1, 23)]   # D1..D22
+BEKLENEN_GECEN_KAYIT = 28                             # kanonik koşuda geçen kayıt sayısı (D22: +3 çıpa)
 
 
 def taze_veri(json_yolu=None):
@@ -357,6 +357,34 @@ def test_d7_d5_metin_yedegi_alan_yoksa_yasar():
     assert "D7" in {x.kod for x in b if x.seviye == "hata"}
     assert "D5" not in {x.kod for x in b if x.seviye == "uyari"
                         and "saat" in x.mesaj.lower() and "yok" in x.mesaj.lower()}
+
+
+# ------------------------------------------------- D22 (v2.172)
+def test_d22_anlati_bayat_sayi_yakalanir():
+    """Alan oynadı, anlatı eski sayıyı söylüyor → D22 hata. (10 Ağu
+    vakasının anlatı ayağı: taze alan + bayat cümle aynı sayfada olamaz.)"""
+    d = _yuzey(); d["KAT_ETA_V"] = 0.951          # anlatı hâlâ "0,942" der
+    assert "D22" in {b.kod for b in denetim.denetle(d) if b.seviye == "hata"}
+
+
+def test_d22_anlati_kosulluluk_alansiz_iddia_duser():
+    """Alan None iken anlatı o katsayıdan söz edemez — canlı bifacial'sız
+    santral senaryosu: künye '—' derken anlatı '0,16' satamaz."""
+    d = _yuzey(); d["KAT_ALBEDO"] = None
+    b = [x for x in denetim.denetle(d) if x.kod == "D22" and x.seviye == "hata"]
+    assert b and "albedo" in b[0].mesaj
+
+
+def test_d22_iddiasiz_anlati_gecer():
+    """Boş anlatı ve katsayıdan söz etmeyen anlatı iddia taşımaz → D22
+    sesini çıkarmaz; rakam-sınır bekçisi '10,16' içindeki '0,16'yı saymaz."""
+    d = _yuzey(); d["NARR_S09_PROSE"] = ""
+    assert "D22" not in {b.kod for b in denetim.denetle(d)}
+    d = _yuzey(); d["NARR_S09_PROSE"] = "Kalibrasyon dönemi yeterli uzunluktadır."
+    assert "D22" not in {b.kod for b in denetim.denetle(d)}
+    d = _yuzey()
+    d["NARR_S09_PROSE"] = d["NARR_S09_PROSE"].replace("0,16", "10,16")
+    assert "D22" in {b.kod for b in denetim.denetle(d) if b.seviye == "hata"}
 
 
 def test_d16_celisen_durum_duser():
