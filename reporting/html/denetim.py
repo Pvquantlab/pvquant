@@ -285,8 +285,15 @@ def _arsiv_al(veri):
 def _d6(veri, ekle):
     coz = _arsiv_al(veri)
     if coz is None:
-        return ekle("D6", "uyari", "arşiv etiketi yok ya da çözümlenemedi — denetlenemedi",
-                    "'G Ay – G Ay YYYY (N saat)'", repr(_al(veri, "ARSIV_ETIKET"))[:60])
+        # v2.174: uyarı metni ALAN-dilli (v2.169'dan beri hüküm makamı alanlar;
+        # etiket yalnız eski-JSON yedeği — metin, makamı doğru göstermeli).
+        return ekle("D6", "uyari", "arşiv alanları yok, etiket yedeği de "
+                    "çözümlenemedi — denetlenemedi",
+                    "ARSIV_BAS/BIT/SAAT alanları (yedek: 'G Ay – G Ay YYYY (N saat)' etiketi)",
+                    "alanlar: %r · etiket: %s" % (
+                        (_al(veri, "ARSIV_BAS"), _al(veri, "ARSIV_BIT"),
+                         _al(veri, "ARSIV_SAAT")),
+                        repr(_al(veri, "ARSIV_ETIKET"))[:40]))
     t1, t2, saat = coz
     gun = (t2 - t1).days + 1
     kapasite = gun * 24
