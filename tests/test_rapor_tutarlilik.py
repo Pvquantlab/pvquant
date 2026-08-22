@@ -44,8 +44,8 @@ _sayac = [0]
 
 # v2.157: kayıt makamının sabit kehaneti — TEK yerde (mutasyon bekçisi kalır,
 # aynı sayı iki yerde elle yaşamaz). Yeni denetim eklenince BURASI bilinçli güncellenir.
-BEKLENEN_KODLAR = ["D%d" % i for i in range(1, 23)]   # D1..D22
-BEKLENEN_GECEN_KAYIT = 28                             # kanonik koşuda geçen kayıt sayısı (D22: +3 çıpa)
+BEKLENEN_KODLAR = ["D%d" % i for i in range(1, 24)]   # D1..D23
+BEKLENEN_GECEN_KAYIT = 30                             # kanonik koşuda geçen kayıt sayısı (D22 +3, D23 +2)
 
 
 def taze_veri(json_yolu=None):
@@ -385,6 +385,37 @@ def test_d22_iddiasiz_anlati_gecer():
     d = _yuzey()
     d["NARR_S09_PROSE"] = d["NARR_S09_PROSE"].replace("0,16", "10,16")
     assert "D22" in {b.kod for b in denetim.denetle(d) if b.seviye == "hata"}
+
+
+# ------------------------------------------------- D23 (v2.173)
+def test_d23_v2169_senaryosu_bayat_display_yakalanir():
+    """v2.169 kanıt testinin kapattığı deliğin bekçisi: alan oynar, display
+    bayat kalır → {{SEBEKE}} ile SAHA aynı raporda çelişirdi. Artık D23 düşer."""
+    d = _yuzey(); d["SEBEKE_AC_MWE"] = 3.6     # display hâlâ "…/ 10,0 MWe"
+    assert "D23" in {b.kod for b in denetim.denetle(d) if b.seviye == "hata"}
+    d = _yuzey(); d["KAPASITE_MWP"] = 13.0     # MWp bacağı da aynı bekçide
+    assert "D23" in {b.kod for b in denetim.denetle(d) if b.seviye == "hata"}
+
+
+def test_d23_alansiz_mwe_iddiasi_duser():
+    """Koşulluluk aynası: SEBEKE_AC_MWE None iken künye '—' basar — SAHA
+    display'i sayı satamaz."""
+    d = _yuzey(); d["SEBEKE_AC_MWE"] = None
+    b = [x for x in denetim.denetle(d) if x.kod == "D23" and x.seviye == "hata"]
+    assert b and "MWe" in b[0].mesaj
+
+
+def test_d23_durust_sessizlik_ve_tolerans_gecer():
+    """Alan yok + display iddia etmiyor → geçer; ±0,05 değer toleransı
+    biçim kaymasını hata saymaz (bayat sayı avlanır, ondalık değil)."""
+    d = _yuzey(); d["SEBEKE_AC_MWE"] = None
+    d["SAHA"] = [("Kurulu güç", "12,4 MWp")] + [s for s in d["SAHA"]
+                                               if s[0] != "Kurulu güç"]
+    assert "D23" not in {b.kod for b in denetim.denetle(d)}
+    d = _yuzey()
+    d["SAHA"] = [("Kurulu güç", "12,42 MWp / 10,03 MWe")] + \
+        [s for s in d["SAHA"] if s[0] != "Kurulu güç"]
+    assert "D23" not in {b.kod for b in denetim.denetle(d) if b.seviye == "hata"}
 
 
 def test_d16_celisen_durum_duser():

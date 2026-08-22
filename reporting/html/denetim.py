@@ -36,6 +36,9 @@ D20 kucuk-orneklem uyarisi gecerli gun sayisiyla tutarli (elle ezmeye bekci)
 D21 kapak donemi ↔ gunluk seri: uclar birebir, gunler ardisik, sayi GUN_SAYISI
 D22 s09 anlati ↔ katsayi ALANLARI: anlatidaki sayi alandan (goruntu bicimi),
     alani olmayan katsayi anlatida iddia edilemez (anlati-kosulluluk)
+D23 SAHA 'Kurulu guc' display ↔ KAPASITE_MWP + SEBEKE_AC_MWE alanlari:
+    display sayilari alanla degerce eslesir (±0,05); alan None iken display
+    MWe iddia edemez (D22'nin alan↔display aynasi)
 R1/R2 (render, sayfalar sonrasi): doldurulmamis token yok; s02/s15 sayfa
     referanslari 1..16 icinde — render_denetle(cikti_dizin)
     (MWe → kapak {{KURULU}}, s05 {{SEBEKE}} cümlesi, kapasite faktörü)
@@ -855,6 +858,73 @@ def _d22(veri, ekle):
              "iddia yoksa denetim konusu yok", "sözcük çıpası eşleşmedi")
 
 
+def _d23(veri, ekle):
+    """D23 (v2.173, B3b kapanışı): SAHA 'Kurulu güç' DISPLAY'i ↔ alanlar.
+    v2.169'dan beri hüküm makamı plant alanları (KAPASITE_MWP,
+    SEBEKE_AC_MWE); SAHA satırı plant.display'den gelen SERBEST SUNUM
+    metnidir ve alandan bağımsız bayatlayabilir (v2.169 kanıt testi
+    senaryosu: alan 3,6'ya çekilir, display '10,0 MWe' demeye devam eder —
+    aynı raporda {{SEBEKE}} ile SAHA çelişir). Üstelik D10/D13/D14 bu
+    metni kendi girdisi olarak ayrıştırır: bayat display başka bekçileri
+    de yanıltır. Kural: alan varsa display'deki sayı DEĞERCE eşleşmeli
+    (±0,05 — display 1 ondalık; serbest metinde biçim değil bayat sayı
+    avlanır); SEBEKE_AC_MWE None iken display MWe İDDİA EDEMEZ
+    (koşulluluk aynası: künye '—' derken SAHA satamaz). Satır yoksa
+    uyarı (denetlenemedi). Anlatı/display ayrıştırması burada meşrudur:
+    metinden gerçek türetilmiyor, metin gerçeğe vuruluyor."""
+    saha = dict(_al(veri, "SAHA") or [])
+    disp = saha.get("Kurulu güç", "")
+    mwp_alan = _al(veri, "KAPASITE_MWP")
+    mwe_alan = _al(veri, "SEBEKE_AC_MWE")
+    if not disp:
+        return ekle("D23", "uyari", "SAHA 'Kurulu güç' satırı yok — "
+                    "alan↔display uyumu denetlenemedi",
+                    "'X MWp / Y MWe' display satırı", "eksik")
+    m = _re.search(r"([\d.,]+)\s*MWp", disp)
+    disp_mwp = _sayi(m.group(1)) if m else None
+    m = _re.search(r"([\d.,]+)\s*MWe", disp)
+    disp_mwe = _sayi(m.group(1)) if m else None
+    # --- MWp bacağı
+    if mwp_alan is not None:
+        if disp_mwp is None:
+            ekle("D23", "hata", "alan MWp taşıyor ama display'de MWp yok — "
+                 "display alanı yansıtmalı",
+                 _tr(mwp_alan, 1) + " MWp (alandan)", repr(disp)[:60])
+        elif abs(disp_mwp - float(mwp_alan)) <= 0.05:
+            ekle("D23", "gecti", "display MWp alanla değerce eşleşiyor",
+                 _tr(mwp_alan, 1) + " MWp (alandan, ±0,05)",
+                 _tr(disp_mwp, 1) + " MWp (display)")
+        else:
+            ekle("D23", "hata", "display MWp ALANLA çelişiyor — bayat display "
+                 "aynı rapor içinde çelişki basar (D13/D14 girdisi de bu metin)",
+                 _tr(mwp_alan, 1) + " MWp (alandan, ±0,05)",
+                 _tr(disp_mwp, 1) + " MWp (display)")
+    # --- MWe bacağı
+    if mwe_alan is None:
+        if disp_mwe is not None:
+            ekle("D23", "hata", "SEBEKE_AC_MWE alanı YOKKEN display MWe iddia "
+                 "ediyor — {{SEBEKE}} '—' basarken SAHA sayı satamaz "
+                 "(display koşullu olmalı)",
+                 "alan None iken display'de MWe yok",
+                 _tr(disp_mwe, 1) + " MWe (display)")
+        else:
+            ekle("D23", "gecti", "MWe alanı yok, display de iddia etmiyor — "
+                 "dürüst sessizlik", "iddia yok", "iddia yok")
+    elif disp_mwe is None:
+        ekle("D23", "hata", "alan MWe taşıyor ama display'de MWe yok — "
+             "display alanı yansıtmalı",
+             _tr(mwe_alan, 1) + " MWe (alandan)", repr(disp)[:60])
+    elif abs(disp_mwe - float(mwe_alan)) <= 0.05:
+        ekle("D23", "gecti", "display MWe alanla değerce eşleşiyor",
+             _tr(mwe_alan, 1) + " MWe (alandan, ±0,05)",
+             _tr(disp_mwe, 1) + " MWe (display)")
+    else:
+        ekle("D23", "hata", "display MWe ALANLA çelişiyor — v2.169 senaryosu: "
+             "alan oynadı, display bayat kaldı ({{SEBEKE}} ile SAHA çelişir)",
+             _tr(mwe_alan, 1) + " MWe (alandan, ±0,05)",
+             _tr(disp_mwe, 1) + " MWe (display)")
+
+
 def denetle_tam(veri):
     """Tüm kontrolleri koşar. → (kayitlar, bulgular, suphe_bayragi)
     kayitlar: geçen+geçmeyen tüm sonuçlar (denetim.json için);
@@ -872,7 +942,7 @@ def denetle_tam(veri):
     _d11(veri, ekle); _d12(veri, ekle); _d13(veri, ekle)
     _d14(veri, ekle); _d15(veri, ekle); _d16(veri, ekle)
     _d17(veri, ekle); _d18(veri, ekle); _d19(veri, ekle); _d20(veri, ekle)
-    _d21(veri, ekle); _d22(veri, ekle)
+    _d21(veri, ekle); _d22(veri, ekle); _d23(veri, ekle)
 
     bulgular = [Bulgu(k["kod"], k["durum"], k["mesaj"], k["beklenen"], k["bulunan"])
                 for k in kayitlar if k["durum"] in ("hata", "uyari")]
