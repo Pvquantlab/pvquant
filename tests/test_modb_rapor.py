@@ -114,3 +114,49 @@ def test_d2_d16_iddia_yok_gecti():
     assert any(k["durum"] == "gecti" and "HOLDOUT" in k["mesaj"]
                and "iddiasız" in k["mesaj"] for k in d16)
     assert bulgular == []                                # uyarı bile yok
+
+
+# ---------------------------------------------------------------- v2.185 (K-F)
+def test_error_matrix_hesapla_saf():
+    """Worker saf fonksiyonu: sentetik d24 → 30g×14s matris; eşleşmesiz hücre
+    None; boş çerçeve None döner."""
+    import pandas as pd
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "apps" / "worker"))
+    from main import error_matrix_hesapla
+    g1, g2 = dt.date(2026, 8, 20), dt.date(2026, 8, 21)
+    d24 = pd.DataFrame({
+        "gun": [g1, g1, g2], "saat": [10, 11, 10],
+        "p50_kw": [500.0, 600.0, 450.0], "power_kw": [480.0, 630.0, 450.0]})
+    m = error_matrix_hesapla(d24)
+    assert m["days"] == [str(g1), str(g2)] and m["hours"] == list(range(6, 20))
+    i10, i11 = m["hours"].index(10), m["hours"].index(11)
+    assert m["mae_mw"][i10] == [0.02, 0.0]          # |500-480|, |450-450|
+    assert m["mae_mw"][i11] == [0.03, None]          # g2 saat-11 eşleşmesiz → None
+    assert m["mae_mw"][0] == [None, None]            # saat 6 hiç yok
+    assert error_matrix_hesapla(d24.iloc[0:0]) is None
+
+
+def test_kanonik_matris_ve_d25():
+    """Kanonik: matris sentezle dolu, D25 3 kayıtla geçer; s08'de Şekil 8.3."""
+    m = taze_veri(KANONIK)
+    assert m.MATRIS_HATA is not None and len(m.MATRIS_HATA) == 14
+    assert all(len(r) == 30 for r in m.MATRIS_HATA)
+    import denetim
+    kayitlar, bulgular, _ = denetim.denetle_tam(m)
+    d25 = [k for k in kayitlar if k["kod"] == "D25"]
+    assert len(d25) == 3 and all(k["durum"] == "gecti" for k in d25)
+    assert bulgular == []
+
+
+def test_matrissiz_girdi_kosullu(tmp_path):
+    """Mod B fikstürü matrissiz — D25 iddia-yok gecti, Şekil 8.3 basılmaz."""
+    m = taze_veri(MODB)
+    assert m.MATRIS_HATA is None
+    import denetim
+    kayitlar, _, _ = denetim.denetle_tam(m)
+    d25 = [k for k in kayitlar if k["kod"] == "D25"]
+    assert len(d25) == 1 and d25[0]["durum"] == "gecti" and "iddia" in d25[0]["mesaj"]
+    p = uret_kos(MODB, tmp_path)
+    assert p.returncode == 0
+    s08 = next(tmp_path.glob("*_s08_*.html")).read_text(encoding="utf-8")
+    assert "Şekil 8.3" not in s08

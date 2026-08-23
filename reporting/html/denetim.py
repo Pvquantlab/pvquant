@@ -42,6 +42,8 @@ D23 SAHA 'Kurulu guc' display ↔ KAPASITE_MWP + SEBEKE_AC_MWE alanlari:
 D24 bant tutarliligi: half↔totals birlikte yasar (yarim bant girdisi
     celisik); bantliysa P10<P50<P90; blok aynasi — bant varken blok
     basilamaz, bant yokken blok dolu + TAAHHUT_NOT MWh iddia edemez
+D25 hata matrisi: boyut/negatiflik + saat-marjinali↔MAE24 (±0,02) +
+    olculdu=false kolonu bos (karne aynasi); matris yoksa iddia-yok gecti
 R1/R2 (render, sayfalar sonrasi): doldurulmamis token yok; s02/s15 sayfa
     referanslari 1..16 icinde — render_denetle(cikti_dizin)
     (MWe → kapak {{KURULU}}, s05 {{SEBEKE}} cümlesi, kapasite faktörü)
@@ -1022,6 +1024,60 @@ def _d24(veri, ekle):
                  "blok dolu + iddiasız not", "tutarlı")
 
 
+
+def _d25(veri, ekle):
+    """D25 (v2.185, K-F): saat×gün hata matrisi tutarlılığı.
+    (i) boyut/negatiflik: satır sayısı == saat listesi, her satır == gün
+        sayısı, değerler >= 0 (None serbest — ölçümsüz hücre boşluktur);
+    (ii) marjinal↔eğri: her saat satırının DOLU-hücre ortalaması MAE24
+        eğrisiyle ±0,02 tutar — matris ve eğri aynı fotoğraftan gelir,
+        ayrışmaları bayat/uydurma işaretidir;
+    (iii) karne aynası: olculdu=false günün kolonu değer taşıyamaz
+        (karne '—' derken matris sayı satamaz — D23 ailesi).
+    Matris yoksa iddia yok → gecti (D2/D12/D16 kalıbı)."""
+    M = _al(veri, "MATRIS_HATA")
+    if M is None:
+        return ekle("D25", "gecti", "hata matrisi yok — iddia da yok "
+                    "(Şekil 8.3 basılmaz)", "iddia yok", "iddia yok")
+    saatler = _al(veri, "MATRIS_SAAT") or []
+    gunler = _al(veri, "MATRIS_GUN") or []
+    mae = _al(veri, "MAE24") or []
+    if len(M) != len(saatler) or any(len(r) != len(gunler) for r in M):
+        return ekle("D25", "hata", "matris boyutu saat/gün listeleriyle uyumsuz",
+                    "%d satır × %d kolon" % (len(saatler), len(gunler)),
+                    "%d satır; kolonlar %r" % (len(M), sorted({len(r) for r in M})))
+    neg = [v for r in M for v in r if v is not None and v < 0]
+    if neg:
+        return ekle("D25", "hata", "negatif hata hücresi — |hata| negatif olamaz",
+                    ">= 0", repr(neg[:3]))
+    ekle("D25", "gecti", "matris boyutları tutarlı, negatif hücre yok",
+         "%d×%d, >=0" % (len(saatler), len(gunler)), "uyumlu")
+    if len(mae) == len(M):
+        sapmalar = []
+        for si, satir in enumerate(M):
+            dolu = [v for v in satir if v is not None]
+            if dolu:
+                sapmalar.append(abs(sum(dolu) / len(dolu) - mae[si]))
+        if sapmalar and max(sapmalar) > 0.02:
+            ekle("D25", "hata", "matris saat-marjinali MAE24 eğrisiyle çelişiyor "
+                 "— iki yüzey aynı fotoğraftan gelmeli",
+                 "±0,02", "en büyük sapma %.3f" % max(sapmalar))
+        else:
+            ekle("D25", "gecti", "saat-marjinali MAE24 eğrisini tutuyor (±0,02)",
+                 "marjinal == eğri", "en büyük sapma %.3f" % (max(sapmalar) if sapmalar else 0.0))
+    olculdu = _al(veri, "KARNE_OLCULDU")
+    if olculdu is not None and len(olculdu) == len(gunler):
+        ihlal = [gi for gi, ok in enumerate(olculdu) if not ok
+                 and any(M[si][gi] is not None for si in range(len(M)))]
+        if ihlal:
+            ekle("D25", "hata", "ölçülmemiş karne gününün matris kolonu değer "
+                 "taşıyor — karne '—' derken matris sayı satamaz",
+                 "olculdu=false kolonu boş", "kolonlar %r" % ihlal[:4])
+        else:
+            ekle("D25", "gecti", "ölçülmemiş gün kolonları boş — karne aynası tutuyor",
+                 "olculdu=false kolonu boş", "ihlal yok")
+
+
 def denetle_tam(veri):
     """Tüm kontrolleri koşar. → (kayitlar, bulgular, suphe_bayragi)
     kayitlar: geçen+geçmeyen tüm sonuçlar (denetim.json için);
@@ -1040,7 +1096,7 @@ def denetle_tam(veri):
     _d14(veri, ekle); _d15(veri, ekle); _d16(veri, ekle)
     _d17(veri, ekle); _d18(veri, ekle); _d19(veri, ekle); _d20(veri, ekle)
     _d21(veri, ekle); _d22(veri, ekle); _d23(veri, ekle)
-    _d24(veri, ekle)
+    _d24(veri, ekle); _d25(veri, ekle)
 
     bulgular = [Bulgu(k["kod"], k["durum"], k["mesaj"], k["beklenen"], k["bulunan"])
                 for k in kayitlar if k["durum"] in ("hata", "uyari")]

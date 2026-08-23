@@ -147,6 +147,29 @@ KARNE_TARIH = ["%02d Tem" % d for d in range(5, 32)] + ["%02d Ağu" % d for d in
 # ---------------------------------------------------------------- hata dağılımı — sayfa 8
 PROF = [0.5, 1.0, 2.0, 3.4, 5.2, 7.0, 8.4, 9.0, 8.6, 7.3, 5.5, 3.7, 2.3, 1.2, 0.6]
 MAE24 = [.07, .12, .19, .30, .42, .52, .58, .56, .49, .37, .25, .16, .10, .06]
+
+
+def _matris_sentez(mae24, gun_sayisi=30, seed=185):
+    """v2.185 (K-F): kanonik saat×gün hata matrisi — DETERMİNİSTİK sentez.
+    Her saat satırının ortalaması MAE24 eğrisine kilitlidir (D25 bekçisi
+    marjinali eğriye vurur, ±0,02); gün-içi çeşitlilik sabit tohumlu desenle
+    üretilir — rastgelelik yok, md5 kararlı. Kanonik girdi JSON'unu dolduran
+    script de BU fonksiyonu çağırır: aynı sayı iki yerde elle yaşamaz."""
+    mtx = []
+    for hi, m in enumerate(mae24):
+        satir = [m * (1 + (((g * 7 + hi * 3 + seed) % 11 - 5) / 5.0) * 0.35)
+                 for g in range(gun_sayisi)]
+        ort = sum(satir) / len(satir)
+        mtx.append([round(v * (m / ort), 2) if ort else 0.0 for v in satir])
+    return mtx
+
+
+# sayfa 8 · Şekil 8.3 — saat×gün gün-öncesi |hata| [MW]; kolonlar karneyle
+# hizalı (30 gün), satırlar 06–19. error_dist.matrix alanından; kanonikte
+# sentezle birebir.
+MATRIS_HATA = _matris_sentez(MAE24)
+MATRIS_GUN = list(KARNE_TARIH)
+MATRIS_SAAT = list(range(6, 20))
 MAE72 = [.11, .19, .31, .49, .69, .84, .90, .87, .74, .57, .38, .24, .14, .08]
 MU, SD, NDAYS = -0.2, 2.0, 116                # günlük sapma: ortalama · st. sapma · geçerli gün
 
@@ -314,6 +337,18 @@ def _json_yukle(path):
     E = J["error_dist"]
     g["PROF"], g["MAE24"], g["MAE72"] = E["prof_mw"], E["mae24"], E["mae72"]
     g["MU"], g["SD"], g["NDAYS"] = E["mu"], E["sd"], E["ndays"]
+    # v2.185: matris OPSİYONEL — fotoğraf gece yazılır, ilk koşuya dek alan
+    # yoktur (v2.141 ailesi: yokluk raporu öldürmez, Şekil 8.3 basılmaz).
+    _M = E.get("matrix")
+    if _M:
+        g["MATRIS_HATA"] = _M["mae_mw"]
+        g["MATRIS_SAAT"] = _M["hours"]
+        g["MATRIS_GUN"] = ["%02d %s" % (_tarih(d)[2], AY_TR[_tarih(d)[1] - 1])
+                           for d in _M["days"]]
+    else:
+        g["MATRIS_HATA"] = None
+        g["MATRIS_SAAT"] = None
+        g["MATRIS_GUN"] = None
 
     # kalibrasyon şelalesi — v2.183: calibration bloğu OPSİYONEL
     # (Mod B holdout üretmez; blok yok/uçsuz → HOLDOUT_VAR söner, s09/s10

@@ -40,13 +40,14 @@ BOZUKLAR = [
     ("bozuk_8_naif_celisik_d4.json", "D4", False),
     ("bozuk_9_olculdu_sayili_d18.json", "D18", False),
     ("bozuk_10_bant_yarim_d24.json", "D24", False),
+    ("bozuk_11_matris_marjinal_d25.json", "D25", False),
 ]
 _sayac = [0]
 
 # v2.157: kayıt makamının sabit kehaneti — TEK yerde (mutasyon bekçisi kalır,
 # aynı sayı iki yerde elle yaşamaz). Yeni denetim eklenince BURASI bilinçli güncellenir.
-BEKLENEN_KODLAR = ["D%d" % i for i in range(1, 25)]   # D1..D24
-BEKLENEN_GECEN_KAYIT = 33                             # kanonik koşuda geçen kayıt sayısı (D22 +3, D23 +2, D24 +3)
+BEKLENEN_KODLAR = ["D%d" % i for i in range(1, 26)]   # D1..D25
+BEKLENEN_GECEN_KAYIT = 36                             # kanonik koşuda geçen kayıt sayısı (D22 +3, D23 +2, D24 +3, D25 +3)
 
 
 def taze_veri(json_yolu=None):
@@ -474,6 +475,11 @@ def test_d18_olculmemis_gun_durust_gecer(tmp_path):
     r = J["accuracy"]["report_card"][27]          # son 7 icinde
     r["olculdu"] = False
     r["wmape_0_24"] = r["skill"] = r["naif_wmape"] = r["wmape_24_72"] = None
+    # v2.185: karne aynası (D25) — gün ölçülmemişse matris kolonu da boş
+    # olmalı; fikstür senaryosu artık matrisi de kapsar (D25'in ilk avı
+    # bu testti: eski fikstür kolonu dolu bırakıyordu, bekçi haklıydı).
+    for _satir in J["error_dist"]["matrix"]["mae_mw"]:
+        _satir[27] = None
     J["accuracy"]["uninterrupted_days"] = 2       # kuyruk: 28,29 olculu -> t=2
     yol = tmp_path / "olculmemis.json"
     yol.write_text(json.dumps(J, ensure_ascii=False), encoding="utf-8")

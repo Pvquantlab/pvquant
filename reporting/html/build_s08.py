@@ -6,6 +6,7 @@ tr = lambda x, d=1: ("%.*f" % (d, x)).replace(".", ",").replace("-", "\u2212")
 
 # --- saçılım verisi: gerçekleşen ve tahmin çiftleri [MW] (tek kaynak: veri.py)
 from veri import PROF, MAE24 as _MAE24, MAE72 as _MAE72, MU as _MU, SD as _SD, NDAYS as _NDAYS
+from veri import MATRIS_HATA, MATRIS_GUN, MATRIS_SAAT  # v2.185 (K-F)
 pairs24, pairs72 = [], []
 for _ in range(150):
     a = max(0.15, R.choice(PROF) * R.uniform(.72, 1.06))
@@ -130,6 +131,56 @@ def fig81(W=1000, H=326, fs=13):
             % (W, H, "".join(o)))
 
 
+# ---------------------------------------------------------------- Şekil 8.3 (v2.185, K-F)
+def _isi_renk(t01):
+    """0→çok açık kum, 1→VURGU amber (#F59E0B). Hata=dikkat dili amber
+    ailesindendir; kırmızı yalnız eşik aşımına saklıdır (stil ilkesi)."""
+    a = (253, 246, 234)
+    b = (245, 158, 11)
+    return "#%02X%02X%02X" % tuple(int(a[i] + (b[i] - a[i]) * t01) for i in range(3))
+
+
+def fig83(W=1000, H=198, fs=12):
+    """Saat × gün gün-öncesi |hata| ısı haritası — karneyle aynı 30 gün.
+    Boş hücre (None) GECE grisi: ölçüm yok, sıfır sayılmaz (uydurma-0 yasağı)."""
+    ml, mt, mb, mr = 54, 12, 34, 10
+    ng, ns = len(MATRIS_GUN), len(MATRIS_SAAT)
+    pw, ph = W - ml - mr, H - mt - mb
+    cw, ch = pw / ng, ph / ns
+    dolu = [v for row in MATRIS_HATA for v in row if v is not None]
+    mx = max(dolu) if dolu else 1.0
+    o = []
+    for si in range(ns):
+        y = mt + si * ch
+        for gi in range(ng):
+            v = MATRIS_HATA[si][gi]
+            renk = "#F3F4F6" if v is None else _isi_renk(min(v / mx, 1.0) if mx else 0.0)
+            o.append('<rect x="%.1f" y="%.1f" width="%.2f" height="%.2f" fill="%s"/>'
+                     % (ml + gi * cw, y, cw - .6, ch - .6, renk))
+        o.append('<text x="%.1f" y="%.1f" text-anchor="end" font-family="PlexSans" '
+                 'font-size="%d" font-weight="500" fill="#2B3439">%02d</text>'
+                 % (ml - 8, y + ch * .5 + fs * .34, fs - 1, MATRIS_SAAT[si]))
+    for gi in range(0, ng, 2):
+        o.append('<text x="%.1f" y="%.1f" text-anchor="middle" font-family="PlexSans" '
+                 'font-size="%d" font-weight="500" fill="#2B3439">%s</text>'
+                 % (ml + (gi + .5) * cw, mt + ph + fs + 3, fs - 1, MATRIS_GUN[gi][:2]))
+    o.append('<text x="%.1f" y="%.1f" text-anchor="middle" font-family="PlexSans" '
+             'font-size="%d" font-weight="600" fill="%s">%s</text>'
+             % (ml + pw / 2, H - 4, fs, INK, MATRIS_GUN[0][3:] + " – " + MATRIS_GUN[-1][3:] + " [gün]"))
+    o.append('<text transform="translate(13,%.1f) rotate(-90)" text-anchor="middle" '
+             'font-family="PlexSans" font-size="%d" font-weight="600" fill="%s">Yerel saat</text>'
+             % (mt + ph / 2, fs, INK))
+    return ('<svg class="fig" viewBox="0 0 %d %d" xmlns="http://www.w3.org/2000/svg" role="img" '
+            'aria-label="Saat-gün hata matrisi">%s</svg>' % (W, H, "".join(o)))
+
+
+_F83 = "" if MATRIS_HATA is None else ("""
+  """ + fig83() + """
+    <div class="figcap"><b>Şekil 8.3</b>&nbsp;&nbsp;Gün-öncesi mutlak hatanın saat × gün dağılımı
+      [MW] — karneyle aynı 30 gün. Koyu hücre büyük hata; boş (gri) hücre o saat için geçerli
+      ölçüm eşleşmesi olmadığını gösterir ve hiçbir ortalamaya girmez.</div>""")
+
+
 # ---------------------------------------------------------------- Şekil 8.2
 def fig82(W=1000, H=310, fs=13):
     pw, ph = 380, 190
@@ -215,8 +266,8 @@ RULES = [
 ]
 
 CSS = """
-.fig{margin-top:2mm}  /* v2.146: altlık A4 içine döndü */
-.legend{margin-top:1.5mm}
+.fig{margin-top:1.2mm}  /* v2.146: altlık A4 içine döndü */
+.legend{margin-top:1mm}
 .legend i.s24{display:inline-block;width:3mm;height:3mm;border-radius:50%;background:BRAND;
   margin-right:1.6mm;vertical-align:-.3mm}
 .legend i.s72{display:inline-block;width:3mm;height:3mm;border-radius:50%;background:#D9B871;
@@ -228,8 +279,8 @@ CSS = """
 .legend i.unit{display:inline-block;width:5mm;height:1.2mm;background:#8A939A;
   margin-right:1.6mm;vertical-align:-.1mm}
 h2{font-size:10.5pt;font-weight:600;padding-bottom:2mm;border-bottom:.9pt solid BRAND;
-  margin-top:7mm}
-table{margin-top:3mm}
+  margin-top:4mm}
+table{margin-top:2mm}
 th{font-size:7.9pt;padding:1.8mm 2.5mm}
 td{font-size:8.4pt;padding:1.7mm 2.5mm}
 td:first-child{font-weight:600;width:40mm}
@@ -241,29 +292,24 @@ BODY = """<div class="page"><div class="sheet">
 """ + HEAD + """
   <div class="eyebrow">Doğruluk karnesi · devam</div>
   <h1>Hata nerede ve ne kadar?</h1>
-  <p class="lead" style="max-width:162mm">Ortalama hata tek başına yeterli değildir: hatanın
-  hangi saatlerde büyüdüğü, sistematik bir yanlılık taşıyıp taşımadığı ve hangi ufukta ne kadar
-  arttığı ayrıca ölçülür.</p>
+  <p class="lead" style="max-width:162mm">Ortalama hata tek başına yeterli değildir: hatanın hangi
+  saatlerde büyüdüğü, yanlılık taşıyıp taşımadığı ve ufukla artışı ayrıca ölçülür.</p>
 
-  """ + fig81() + """
+  """ + fig81(H=242) + """
     <div class="legend"><span><i class="s24"></i>Gün-öncesi (0–24 s)</span>
       <span><i class="s72"></i>24–72 saat</span>
       <span><i class="kor"></i>±%10 koridoru</span>
       <span><i class="unit"></i>Birim doğru</span></div>
-    <div class="figcap"><b>Şekil 8.1</b>&nbsp;&nbsp;Solda saatlik tahmin–gerçekleşen saçılımı. Kum rengi
-      koridor, tahminin gerçekleşenden ±%10'dan az saptığı bölgedir: gün-öncesi saatlerin
-      %""" + str(round(ORAN24)) + """'i bu koridorda kalırken, 24–72 saatlik tahminlerde oran
-      %""" + str(round(ORAN72)) + """'a düşer — ufuk uzadıkça belirsizlik artar. Sağda hatanın gün içi
-      dağılımı: mutlak hata öğle saatlerinde büyür, çünkü üretim de o saatlerde büyüktür;
-      oransal hata gün boyunca sabit kalır.</div>
+    <div class="figcap"><b>Şekil 8.1</b>&nbsp;&nbsp;Solda saatlik saçılım; kum koridor ±%10 bölgesidir —
+      gün-öncesi saatlerin %""" + str(round(ORAN24)) + """'i koridorda, 24–72 saatte oran
+      %""" + str(round(ORAN72)) + """ (ufuk uzadıkça belirsizlik artar). Sağda hatanın gün içi dağılımı:
+      mutlak hata öğlede büyür çünkü üretim büyüktür; oransal hata gün boyu sabittir.</div>
 
-  """ + fig82() + """
-    <div class="figcap"><b>Şekil 8.2</b>&nbsp;&nbsp;Günlük sapma (tahmin eksi gerçekleşen), 116 geçerli
-      gün. Solda dağılımın kendisi: medyan """ + tr(P50) + """ MWh, yani sıfıra çok yakın —
-      model ne sürekli yüksek ne sürekli düşük tahmin ediyor, sistematik bir yanlılık yok.
-      Sağda aynı dağılımın kümülatif hâli: günlerin %80'i """ + tr(P10) + """ ile +""" + tr(P90) + """ MWh
-      arasında kalıyor. Her iki panel de tek bir dağılımdan türetilir.</div>
-
+  """ + fig82(H=228) + """
+    <div class="figcap"><b>Şekil 8.2</b>&nbsp;&nbsp;Günlük sapma (tahmin eksi gerçekleşen), 116 geçerli gün.
+      Medyan """ + tr(P50) + """ MWh — sıfıra çok yakın, sistematik yanlılık yok; günlerin
+      %80'i """ + tr(P10) + """ ile +""" + tr(P90) + """ MWh arasında. İki panel tek dağılımdan türetilir.</div>
+""" + _F83 + """
   <h2>Karnenin bütünlük kuralları</h2>
   <table>
     <tr><th>Kural</th><th>Uygulama</th></tr>

@@ -146,6 +146,26 @@ def gece_skill(plant, pencere_gun: int = 10):
             " mape=EXCLUDED.mape, rmse=EXCLUDED.rmse,"
             " skill_vs_naive=EXCLUDED.skill_vs_naive,"
             " naive_wmape=EXCLUDED.naive_wmape"), satirlar)
+def error_matrix_hesapla(d24, gun_sayisi=30, saatler=range(6, 20)):
+    """v2.185 (K-F): saat×gün gün-öncesi |hata| matrisi [MW] — B5 fotoğrafının
+    kardeş alanı. d24: dedup'lu 0-24 eşleşmeleri (kolonlar: gun, saat, p50_kw,
+    power_kw). Son gun_sayisi takvim günü × saatler; eşleşmesiz hücre None
+    (uydurma 0 yok). Saf fonksiyon — DB'siz birim-testli."""
+    if d24 is None or len(d24) == 0:
+        return None
+    gunler = sorted(pd.unique(d24["gun"]))[-gun_sayisi:]
+    h = d24[d24["gun"].isin(gunler)].copy()
+    h["mae"] = (h["p50_kw"] - h["power_kw"]).abs() / 1000.0
+    piv = h.pivot_table(index="saat", columns="gun", values="mae", aggfunc="mean")
+    mtx = [[(round(float(piv.loc[s, g]), 2)
+             if s in piv.index and g in piv.columns and pd.notna(piv.loc[s, g])
+             else None) for g in gunler] for s in saatler]
+    if not any(v is not None for r in mtx for v in r):
+        return None
+    return {"days": [str(g) for g in gunler],
+            "hours": list(saatler), "mae_mw": mtx}
+
+
 def karne_kapsama_hesapla(gecerli_ts, tz, bugun=None, gun=30,
                           bas=None, son=None):
     """C-3b (v2.152, s08 kuralı 2): son `gun` takvim günü (dünle biter,
@@ -253,6 +273,12 @@ def rapor_alanlari(plant, pencere_gun: int = 120):
                         "mu": round(float(gs.mean()), 1),
                         "sd": round(float(gs.std(ddof=1)), 1),
                         "ndays": int(len(gs))}
+                # v2.185 (K-F): matris fotoğrafın kardeş alanı — d24'ün
+                # kendisinden (aynı dedup, aynı valid-join); yoksa alan yok,
+                # rapor koşullu davranır (Şekil 8.3 basılmaz).
+                _mtx = error_matrix_hesapla(d24)
+                if _mtx:
+                    foto["error_matrix"] = _mtx
     with tenant_baglami(tid) as s:
         for k, v in [("uninterrupted_days", {"value": int(kesintisiz)}),
                      ("error_dist", foto),
