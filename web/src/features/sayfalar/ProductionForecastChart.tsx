@@ -15,6 +15,12 @@
  *      down-pointing triangle at the plot top.
  *  U2  3px minimum rendered band height in BOTH modes (display-level only;
  *      tooltips keep true values).
+ *  U3  Saturation strip (v2.179, hourly only): hours where the band top
+ *      rests on the AC ceiling (p90 >= limit*(1-1e-9), the client twin of
+ *      backend flag ac_power_band_sature v2.177) get a thin tinted strip
+ *      under the limit line + a tooltip row. The zero-width band there is
+ *      ceiling-truncated, not model certainty; the exceed '>' test never
+ *      fires on clipped data, so saturation was a blind spot.
  *  D7  Daily peak/ribbon aggregate the same clipped series the hourly view
  *      plots: max over the day of P50 (and of P10/P90 for the ribbon).
  *
@@ -98,6 +104,10 @@ export const CHART_TOKENS = (dark: boolean) => ({
   acExceedTint: cssVar(
     "--chart-limit-tint",
     dark ? "rgba(167,139,250,0.10)" : "rgba(124,58,237,0.08)",
+  ),
+  satureTint: cssVar(
+    "--chart-sature-tint",
+    dark ? "rgba(167,139,250,0.28)" : "rgba(124,58,237,0.22)",
   ),
   nowLine: cssVar("--chart-now", dark ? "#E2E8F0" : "#334155"),
   dayBreak: cssVar("--chart-daybreak", dark ? "#334155" : "#E2E8F0"),
@@ -201,6 +211,15 @@ export function splitPastFuture<T>(
     ),
     future: values.map((v, i) => (i >= Math.max(boundaryIdx, 0) ? v : null)),
   };
+}
+
+export function bandSature(
+  p90: number | null | undefined,
+  acVal: number | null,
+): boolean {
+  // U3: v2.177 arka-uç maskesinin birebir istemci karşılığı.
+  return acVal !== null && typeof p90 === "number" &&
+    p90 >= acVal * (1 - 1e-9);
 }
 
 function contiguous(idx: boolean[]): [number, number][] {
@@ -365,6 +384,7 @@ export function buildChartOption(input: BuildInput): EChartsOption {
   let dayRuleCats: string[] = [];
   let tooltipFmt: (c: string) => string;
   let exceedIdx: boolean[] = [];
+  let satureIdx: boolean[] = []; // U3
 
   if (!daily) {
     // -------- hourly (24s / 72s / 7g)
@@ -465,6 +485,11 @@ export function buildChartOption(input: BuildInput): EChartsOption {
       exceedIdx = forecast.map(
         (p) => p.p50 > acVal || (typeof p.p90 === "number" && p.p90 > acVal),
       );
+      // U3: doyma = üst bant tavanda AMA aşım değil (aşım kendi dilini
+      // konuşuyor); kırpık veride p90 > tavan imkânsız, bu yüzden ayrı test.
+      satureIdx = forecast.map(
+        (p, i) => bandSature(p.p90, acVal) && !exceedIdx[i],
+      );
       const over = forecast.map((p) => (p.p50 > acVal ? p.p50 : null));
       if (over.some((v) => v !== null)) {
         series.push({
@@ -496,6 +521,10 @@ export function buildChartOption(input: BuildInput): EChartsOption {
             p.p90 - p.p10,
           )} kW`,
         );
+        if (bandSature(p.p90, acVal)) {
+          // U3: sıfır/ince bant burada kesinlik değil, tavan kesmesi.
+          rows.push(`Bant tavana dayalı — üst sınır AC kırpması`);
+        }
       }
       if (acVal !== null) {
         rows.push(`AC payı&nbsp;&nbsp;&nbsp;${nfKw.format(acVal - p.p50)} kW`);
@@ -640,17 +669,29 @@ export function buildChartOption(input: BuildInput): EChartsOption {
       ] as never,
     },
     markArea:
-      acVal !== null && exceedIdx.some(Boolean)
+      acVal !== null && (exceedIdx.some(Boolean) || satureIdx.some(Boolean))
         ? {
             silent: true,
-            data: contiguous(exceedIdx).map(([a, b]) => [
-              {
-                xAxis: cats[a],
-                yAxis: acVal,
-                itemStyle: { color: T.acExceedTint },
-              },
-              { xAxis: cats[b], yAxis: yMax },
-            ]) as never,
+            data: [
+              ...contiguous(exceedIdx).map(([a, b]) => [
+                {
+                  xAxis: cats[a],
+                  yAxis: acVal,
+                  itemStyle: { color: T.acExceedTint },
+                },
+                { xAxis: cats[b], yAxis: yMax },
+              ]),
+              // U3: tavan altına yapışık ince şerit — kalınlık U2'nin
+              // 3px diliyle (3*kwPerPx), taban 0'ın altına düşmez.
+              ...contiguous(satureIdx).map(([a, b]) => [
+                {
+                  xAxis: cats[a],
+                  yAxis: acVal,
+                  itemStyle: { color: T.satureTint },
+                },
+                { xAxis: cats[b], yAxis: Math.max(0, acVal - 3 * kwPerPx) },
+              ]),
+            ] as never,
           }
         : undefined,
     z: T.z.rules,
