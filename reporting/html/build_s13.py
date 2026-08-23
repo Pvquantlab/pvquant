@@ -9,11 +9,12 @@ HALKA = [
     ("MOD B · KALİBRE", "Santral verisiyle ayar",
      "Sistem verimi ve bifacial kazanç santralin kendi üretiminden bulunur; bayraklı saatler "
      "dışlanır. Olasılık bandı üretmez.", False),
-    ("MOD C · HİBRİT", "Bu raporun modu",
+    (MOD_ROZET, "Bu raporun modu",  # v2.184: tek kaynaktan
      "Makine öğrenmesi kalan hatayı öğrenir ve P10 / P50 / P90 aralıkları üretilir.", True),
 ]
 
 from veri import SAHA, KUNYE
+from veri import MOD_ROZET  # v2.184
 
 halkalar = ""
 for i, (kod, ad, ac, aktif) in enumerate(HALKA):

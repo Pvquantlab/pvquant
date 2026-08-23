@@ -26,6 +26,25 @@ INK, SEC, RULE = "#11171A", "#414B46", "#CDD6D1"
 
 from veri import P50_GUN as p50, HW_GUN as hw, GUN_YMIN, GUN_YMAX, DONEM, GUN_SAYISI, METRIK_PENCERE, AY_YIL, CEPHE, BANT_VAR
 from veri import GUN_ETIKET  # C-5/1 (v2.155): eksen elle range(5,21) idi — canlıda
+from veri import MOD_ROZET  # v2.184: rozet tek kaynaktan
+
+
+# v2.184: mod pill'leri MOD_ROZET'ten türetilir — sabit "MOD C ✓" Mod B
+# render ettiğinden beri CANLI yalandı. Türetim tek kaynaktan olduğu için
+# ayna bekçisi gerekmez (D23 dersi serbest-metin display içindi). Bilinmeyen
+# rozette hiçbir pill yanmaz — dürüst işaretsizlik. Kanonikte baytlar BİREBİR.
+def _pill(etiket):
+    on = (etiket == MOD_ROZET)
+    return '<div class="pill%s">%s%s</div>' % (" on" if on else "", etiket,
+                                               " \u2713" if on else "")
+
+
+_PILLS_A = ('  <div class="pills">' + _pill("MOD A · HAM FİZİK") + '\n    '
+            + _pill("MOD B · KALİBRE") + '\n    '
+            + _pill("MOD C · HİBRİT") + '</div>')
+_PILLS_B = (' <div class="pills">' + _pill("MOD A · HAM FİZİK") + '\n   '
+            + _pill("MOD B · KALİBRE") + _pill("MOD C · HİBRİT") + '</div>')
+
                              # taze p50 + bayat 05–20 etiketi bastı (18 Ağu kabul avı)
 
 
@@ -159,9 +178,7 @@ BODY_A = """<div class="page">
   <h1>Konya GES</h1>
   <div class="sub"><b>""" + DONEM + """</b> · """ + str(GUN_SAYISI) + """ günlük saatlik üretim tahmini
     ve 120 günlük doğruluk karnesi</div>
-  <div class="pills"><div class="pill">MOD A · HAM FİZİK</div>
-    <div class="pill">MOD B · KALİBRE</div>
-    <div class="pill on">MOD C · HİBRİT ✓</div></div>
+""" + _PILLS_A + """
  </div>
  <div class="main">
   <div class="strip">
@@ -176,7 +193,7 @@ BODY_A = """<div class="page">
   <div class="figwrap">__CHART__""" + LEGCAP + """</div>
   """ + IMPRINT + """
 """ + _evi(2) + """
-  <div class="foot"><div><b>MOD C · HİBRİT</b></div><div>Sayfa 1 / 16</div></div>
+  <div class="foot"><div><b>""" + MOD_ROZET + """</b></div><div>Sayfa 1 / 16</div></div>
  </div>
 </div>"""
 
@@ -230,11 +247,10 @@ BODY_B = """<div class="page">
      <div class="v">{{TOPLAM_BANT}}<u>MWh</u></div>
      <div class="n">{{TAAHHUT_NOT}}</div></div>
  </div>
- <div class="pills"><div class="pill">MOD A · HAM FİZİK</div>
-   <div class="pill">MOD B · KALİBRE</div><div class="pill on">MOD C · HİBRİT ✓</div></div>
+""" + _PILLS_B + """
  """ + IMPRINT + """
 """ + _evi(1) + """
- <div class="foot"><div><b>MOD C · HİBRİT</b></div><div>Sayfa 1 / 16</div></div>
+ <div class="foot"><div><b>""" + MOD_ROZET + """</b></div><div>Sayfa 1 / 16</div></div>
 </div>"""
 
 # =================================================================== C · yan ray
@@ -287,7 +303,7 @@ BODY_C = """<div class="page">
      <div class="bv" style="font-size:17.5pt">{{TOPLAM_BANT}}<u>MWh</u></div>
      <div class="bn">{{TAAHHUT_NOT}}</div>
    </div>
-   <div class="pg"><div class="mode">MOD C · HİBRİT ✓</div>
+   <div class="pg"><div class="mode">""" + MOD_ROZET + """ ✓</div>
      <div class="modes">A ham fizik · B kalibre · C hibrit</div>
      <div style="margin-top:6mm">Sayfa 1 / 16</div></div>
  </div>

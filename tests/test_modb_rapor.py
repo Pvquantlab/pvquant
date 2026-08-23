@@ -65,6 +65,13 @@ def test_modb_uret_16_sayfa_durust(tmp_path):
     assert "bu koşuda bağımsız test karşılaştırması yok" in s03
     s07 = next(tmp_path.glob("*_s07_*.html")).read_text(encoding="utf-8")
     assert "MOD B · KALİBRE" in s07                      # foot MOD_ROZET canlı
+    # v2.184: kapak rozetleri tek kaynaktan — "MOD C ✓" yalanı öldü
+    s01 = next(tmp_path.glob("*_s01_*.html")).read_text(encoding="utf-8")
+    assert '<div class="pill on">MOD B · KALİBRE ✓</div>' in s01
+    assert "MOD C · HİBRİT ✓" not in s01
+    assert "<b>MOD B · KALİBRE</b>" in s01               # sayfa-1 foot
+    s13 = next(tmp_path.glob("*_s13_*.html")).read_text(encoding="utf-8")
+    assert "MOD B · KALİBRE" in s13                      # "Bu raporun modu"
 
 
 # ---------------------------------------------------------------- (1) servis
