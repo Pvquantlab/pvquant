@@ -39,6 +39,9 @@ D22 s09 anlati ↔ katsayi ALANLARI: anlatidaki sayi alandan (goruntu bicimi),
 D23 SAHA 'Kurulu guc' display ↔ KAPASITE_MWP + SEBEKE_AC_MWE alanlari:
     display sayilari alanla degerce eslesir (±0,05); alan None iken display
     MWe iddia edemez (D22'nin alan↔display aynasi)
+D24 bant tutarliligi: half↔totals birlikte yasar (yarim bant girdisi
+    celisik); bantliysa P10<P50<P90; blok aynasi — bant varken blok
+    basilamaz, bant yokken blok dolu + TAAHHUT_NOT MWh iddia edemez
 R1/R2 (render, sayfalar sonrasi): doldurulmamis token yok; s02/s15 sayfa
     referanslari 1..16 icinde — render_denetle(cikti_dizin)
     (MWe → kapak {{KURULU}}, s05 {{SEBEKE}} cümlesi, kapasite faktörü)
@@ -932,6 +935,80 @@ def _d23(veri, ekle):
              _tr(disp_mwe, 1) + " MWe (display)")
 
 
+
+def _d24(veri, ekle):
+    """D24 (v2.182): bant tutarlılığı — bant gözlenebilir DURUMDUR (BANT_VAR).
+    (i) girdi bütünlüğü: half listesi ya TAM ya TÜMÜYLE boş; toplam uçları
+        half'le birlikte yaşar — yarım bant girdisi çelişik girdidir
+        (karma half → uyari 'bantsız sayıldı'; half↔totals ayrışması → hata);
+    (ii) bantlıysa aritmetik: TOPLAM_P10 < TOPLAM_P50 < TOPLAM_P90, half ≥ 0;
+    (iii) blok aynası (D22/D23 ailesi): bant VARKEN bantsızlık bloğu
+        basılamaz; bant YOKKEN blok DOLU olmalı ve TAAHHUT_NOT MWh iddia
+        edemez — metin gerçeğe vurulur, gerçek metinden türetilmez."""
+    hw = _al(veri, "HW_GUN") or []
+    p10 = _al(veri, "TOPLAM_P10_MWH")
+    p50 = _al(veri, "TOPLAM_P50_MWH")
+    p90 = _al(veri, "TOPLAM_P90_MWH")
+    bant = bool(_al(veri, "BANT_VAR"))
+    dolu = [h for h in hw if h is not None]
+    # --- (i) girdi bütünlüğü
+    if dolu and len(dolu) < len(hw):
+        ekle("D24", "uyari", "yarım bant girdisi — bazı günler half taşıyor, "
+             "bazıları taşımıyor; motor bantsız saydı (yarım bant çizilmez)",
+             "half ya tam ya boş", "%d/%d dolu" % (len(dolu), len(hw)))
+    elif dolu and (p10 is None or p90 is None):
+        ekle("D24", "hata", "half'ler dolu ama toplam ucu boş — bant yarısı "
+             "eksik girdi (günlük bant iddiası toplam karşılığı olmadan asılı)",
+             "half doluysa totals.p10/p90 dolu",
+             "p10=%r p90=%r" % (p10, p90))
+    elif not dolu and (p10 is not None or p90 is not None):
+        ekle("D24", "hata", "half'ler boş ama toplam ucu dolu — bant yarısı "
+             "eksik girdi", "half boşsa totals.p10/p90 boş",
+             "p10=%r p90=%r" % (p10, p90))
+    else:
+        ekle("D24", "gecti", "bant girdisi bütün: half ve toplam uçları "
+             "birlikte %s" % ("dolu" if bant else "boş"),
+             "tam bant ya da tam bantsızlık",
+             "%d/%d half · toplam uçları %s" % (len(dolu), len(hw),
+                                                "dolu" if p10 is not None else "boş"))
+    # --- (ii) aritmetik (yalnız bantlı)
+    if bant:
+        neg = [h for h in hw if h is not None and h < 0]
+        if neg:
+            ekle("D24", "hata", "negatif half — bant genişliği negatif olamaz",
+                 "half >= 0", repr(neg[:3]))
+        elif not (p10 < p50 < p90):
+            ekle("D24", "hata", "toplam uçları sıralı değil — P10 < P50 < P90 "
+                 "aritmetik zorunluluktur",
+                 "P10 < P50 < P90", "%s / %s / %s" % (p10, p50, p90))
+        else:
+            ekle("D24", "gecti", "toplam uçları sıralı, half'ler negatif değil",
+                 "P10 < P50 < P90", "%s < %s < %s" % (p10, p50, p90))
+    # --- (iii) blok aynası
+    blok = _al(veri, "BANT_ACIKLAMA") or ""
+    taahhut = _al(veri, "TAAHHUT_NOT") or ""
+    if bant:
+        if blok:
+            ekle("D24", "hata", "bant VARKEN bantsızlık bloğu basılamaz — aynı "
+                 "raporda bant görseli + 'bant yok' beyanı çelişkidir",
+                 "BANT_ACIKLAMA boş", repr(blok[:50]))
+        else:
+            ekle("D24", "gecti", "bant varken blok boş — beyan görselle tutarlı",
+                 "BANT_ACIKLAMA boş", "boş")
+    else:
+        if not blok:
+            ekle("D24", "hata", "bant YOKKEN açıklama bloğu boş — bantsızlık "
+                 "sessizce geçiştirilemez (dürüst blok şart)",
+                 "BANT_ACIKLAMA dolu", "boş")
+        elif "MWh" in taahhut:
+            ekle("D24", "hata", "bant yokken taahhüt notu MWh iddia ediyor — "
+                 "değer yokken sayı satılamaz",
+                 "TAAHHUT_NOT sayı iddiasız", repr(taahhut[:60]))
+        else:
+            ekle("D24", "gecti", "bant yokken blok dolu, taahhüt notu iddiasız",
+                 "blok dolu + iddiasız not", "tutarlı")
+
+
 def denetle_tam(veri):
     """Tüm kontrolleri koşar. → (kayitlar, bulgular, suphe_bayragi)
     kayitlar: geçen+geçmeyen tüm sonuçlar (denetim.json için);
@@ -950,6 +1027,7 @@ def denetle_tam(veri):
     _d14(veri, ekle); _d15(veri, ekle); _d16(veri, ekle)
     _d17(veri, ekle); _d18(veri, ekle); _d19(veri, ekle); _d20(veri, ekle)
     _d21(veri, ekle); _d22(veri, ekle); _d23(veri, ekle)
+    _d24(veri, ekle)
 
     bulgular = [Bulgu(k["kod"], k["durum"], k["mesaj"], k["beklenen"], k["bulunan"])
                 for k in kayitlar if k["durum"] in ("hata", "uyari")]

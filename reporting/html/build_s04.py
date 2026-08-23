@@ -2,6 +2,28 @@ from pvq import *
 
 from veri import P50_GUN as p50, HW_GUN as hw, GUN_ETIKET as days, CEPHE, GUN_YMIN, GUN_YMAX, AY_YIL, GUN_SAYISI, BANT_VAR
 
+# v2.182: bant anlatı yüzeyleri koşullu — bantlıda baytlar BİREBİR (md5),
+# bantsızda kural-4 düşürmesi + dürüst blok ({{BANT_ACIKLAMA}} tek kaynak).
+_LEAD_BANT = " ve olasılık bandı," if BANT_VAR else ","
+_FAN_SPAN = ('\n      <span><i class="fan"></i>%80 olasılık aralığı (P10–P90)</span>'
+             if BANT_VAR else "")
+_BANT_CUMLE = (", çevresindeki\n      alan %80 olasılık aralığını gösterir; "
+               "alan ne kadar kalınsa o gün hava o kadar\n      belirsizdir"
+               if BANT_VAR else " gösterir")
+_TOT_BANT = ('\n    <span><b>{{TOPLAM_P10}} MWh</b> alt sınır</span>'
+             '\n    <span><b>{{TOPLAM_P90}} MWh</b> üst sınır</span>'
+             if BANT_VAR else "")
+_IKI_KOLON_BANTLI = '  <div class="two">\n    <div>\n      <h2>Bant nasıl yorumlanır?</h2>\n      <p style="margin-top:4mm">Bandın genişliği havanın belirsizliğinin doğrudan ölçüsüdür.\n      Açık günlerde beklentinin ±%6–8\'i kadardır; cephe geçişi beklenen günlerde ±%15\'e kadar\n      genişler. Bant ne kadar darsa, o gün için verilen sayı o kadar bağlayıcıdır.</p>\n      <p>İşletme planlamasında önerilen okuma, alt sınırın (P10) güvenli taahhüt seviyesi olarak\n      kullanılmasıdır. On raporun sekizinde gerçekleşen üretim bandın içinde kalır; alt sınırın\n      altına düşme olasılığı %10\'dur.</p>\n    </div>\n    <div>\n      <h2>Dönem toplamı neden daha dar?</h2>\n      <p style="margin-top:4mm">Günlük bantlar ±%6–8 iken dönem toplamının bandı ±%3\'tür. Bunun\n      nedeni günlerin birbirinden kısmen bağımsız olmasıdır: bir günün beklenenden düşük gelmesi,\n      başka bir günün yüksek gelmesiyle kısmen dengelenir. Bu yüzden <b>dönem toplamının alt\n      sınırı, günlük alt sınırların toplamı değildir</b> — 948 değil, {{TOPLAM_P10}} MWh\'tir.</p>\n      <p>Tahmin üretilemeyen bir gün olursa o gün için çubuk çizilmez ve eksende boş bırakılır;\n      eksik gün hiçbir toplama dahil edilmez.</p>\n    </div>\n  </div>'
+_IKI_KOLON_BANTSIZ = """  <div class="two">
+    <div>
+      <h2>Bu koşuda bant yok</h2>
+      <p style="margin-top:4mm">{{BANT_ACIKLAMA}}</p>
+      <p>Tahmin üretilemeyen bir gün olursa o gün için çubuk çizilmez ve eksende boş bırakılır;
+      eksik gün hiçbir toplama dahil edilmez.</p>
+    </div>
+  </div>"""
+_IKI_KOLON = _IKI_KOLON_BANTLI if BANT_VAR else _IKI_KOLON_BANTSIZ
+
 tr = lambda x, d=1: ("%.*f" % (d, x)).replace(".", ",")
 
 CHART = fan_chart(p50, hw, days, AY_YIL + " [gün]", "[MWh/gün]",
@@ -51,16 +73,13 @@ BODY = """<div class="page"><div class="sheet">
   <div class="eyebrow">Tahmin detayı</div>
   <h1>Günlük üretim ve olasılık bandı</h1>
   <p class="lead" style="max-width:160mm">Bu bölüm """ + str(GUN_SAYISI) + """ günlük ufku üç görünümde sunar: günlük
-  toplamlar ve olasılık bandı, saatlik profiller ve saat × gün matrisi. Üçü de aynı hesaplamadan
+  toplamlar""" + _LEAD_BANT + """ saatlik profiller ve saat × gün matrisi. Üçü de aynı hesaplamadan
   türetilir; aralarında bağımsız bir hesap yoktur. Saat eksenleri yerel saattir
   (Europe/Istanbul, UTC+3).</p>
 
   """ + CHART + """
-    <div class="legend"><span><i class="line"></i>Beklenti (P50)</span>
-      <span><i class="fan"></i>%80 olasılık aralığı (P10–P90)</span></div>
-    <div class="figcap"><b>Şekil 4.1</b>&nbsp;&nbsp;Günlük üretim tahmini. Çizgi beklentiyi, çevresindeki
-      alan %80 olasılık aralığını gösterir; alan ne kadar kalınsa o gün hava o kadar
-      belirsizdir. Düşey eksen """ + str(GUN_YMIN) + """ MWh'ten başlar.{{NARR_S04_KUYRUK}}</div>
+    <div class="legend"><span><i class="line"></i>Beklenti (P50)</span>""" + _FAN_SPAN + """</div>
+    <div class="figcap"><b>Şekil 4.1</b>&nbsp;&nbsp;Günlük üretim tahmini. Çizgi beklentiyi""" + _BANT_CUMLE + """. Düşey eksen """ + str(GUN_YMIN) + """ MWh'ten başlar.{{NARR_S04_KUYRUK}}</div>
 
   <div class="tcap">Çizelge 4.1 <span>Günlük değerler [MWh]</span></div>
   <table>
@@ -71,31 +90,10 @@ BODY = """<div class="page"><div class="sheet">
   </table>
   <div class="tot">
     <span class="lb">Dönem toplamı:</span>
-    <span><b>{{TOPLAM_P50}} MWh</b> beklenti</span>
-    <span><b>{{TOPLAM_P10}} MWh</b> alt sınır</span>
-    <span><b>{{TOPLAM_P90}} MWh</b> üst sınır</span>
+    <span><b>{{TOPLAM_P50}} MWh</b> beklenti</span>""" + _TOT_BANT + """
   </div>
 
-  <div class="two">
-    <div>
-      <h2>Bant nasıl yorumlanır?</h2>
-      <p style="margin-top:4mm">Bandın genişliği havanın belirsizliğinin doğrudan ölçüsüdür.
-      Açık günlerde beklentinin ±%6–8'i kadardır; cephe geçişi beklenen günlerde ±%15'e kadar
-      genişler. Bant ne kadar darsa, o gün için verilen sayı o kadar bağlayıcıdır.</p>
-      <p>İşletme planlamasında önerilen okuma, alt sınırın (P10) güvenli taahhüt seviyesi olarak
-      kullanılmasıdır. On raporun sekizinde gerçekleşen üretim bandın içinde kalır; alt sınırın
-      altına düşme olasılığı %10'dur.</p>
-    </div>
-    <div>
-      <h2>Dönem toplamı neden daha dar?</h2>
-      <p style="margin-top:4mm">Günlük bantlar ±%6–8 iken dönem toplamının bandı ±%3'tür. Bunun
-      nedeni günlerin birbirinden kısmen bağımsız olmasıdır: bir günün beklenenden düşük gelmesi,
-      başka bir günün yüksek gelmesiyle kısmen dengelenir. Bu yüzden <b>dönem toplamının alt
-      sınırı, günlük alt sınırların toplamı değildir</b> — 948 değil, {{TOPLAM_P10}} MWh'tir.</p>
-      <p>Tahmin üretilemeyen bir gün olursa o gün için çubuk çizilmez ve eksende boş bırakılır;
-      eksik gün hiçbir toplama dahil edilmez.</p>
-    </div>
-  </div>
+""" + _IKI_KOLON + """
 """ + foot(4) + """
 </div></div>"""
 

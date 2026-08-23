@@ -24,7 +24,7 @@ FONTCSS = "".join([
 BRAND, BRAND2, DEEP = "#0D4C68", "#2B7B9B", "#082F42"
 INK, SEC, RULE = "#11171A", "#414B46", "#CDD6D1"
 
-from veri import P50_GUN as p50, HW_GUN as hw, GUN_YMIN, GUN_YMAX, DONEM, GUN_SAYISI, METRIK_PENCERE, AY_YIL, CEPHE
+from veri import P50_GUN as p50, HW_GUN as hw, GUN_YMIN, GUN_YMAX, DONEM, GUN_SAYISI, METRIK_PENCERE, AY_YIL, CEPHE, BANT_VAR
 from veri import GUN_ETIKET  # C-5/1 (v2.155): eksen elle range(5,21) idi — canlıda
                              # taze p50 + bayat 05–20 etiketi bastı (18 Ağu kabul avı)
 
@@ -82,13 +82,19 @@ IMPRINT = """
     </div>
   </div>"""
 
+# v2.182: bantsız koşuda fan lejantı ve bant açıklama cümlesi düşer
+# (kural 4: bant yokken bant anlatılmaz); bantlıda baytlar birebir (md5).
+_FAN_SPAN = ('\n      <span><i style="display:inline-block;width:4.4mm;height:2.8mm;background:#F0E3C9;border:0.4pt solid #DCC79A;margin-right:1.6mm;vertical-align:-0.4mm"></i>%80 olasılık aralığı (P10–P90)</span>') if BANT_VAR else ""
+_BANT_CUMLE = (', çevresindeki alan %80 olasılık aralığını gösterir; alan ne kadar kalınsa hava\n      o kadar belirsizdir') if BANT_VAR else ' gösterir'
+
+_LEDE_BANT_A = ', beklentinin\n  olasılık bandını ve' if BANT_VAR else ' ve'
+_LEDE_BANT_C = ', beklentinin\n   olasılık bandını ve' if BANT_VAR else ' ve'
+
 LEGCAP = """
-    <div class="legend"><span><i style="display:inline-block;width:5mm;height:1.1mm;background:#0D4C68;margin-right:1.6mm;vertical-align:-0.1mm"></i>Beklenti (P50)</span>
-      <span><i style="display:inline-block;width:4.4mm;height:2.8mm;background:#F0E3C9;border:0.4pt solid #DCC79A;margin-right:1.6mm;vertical-align:-0.4mm"></i>%80 olasılık aralığı (P10–P90)</span>
+    <div class="legend"><span><i style="display:inline-block;width:5mm;height:1.1mm;background:#0D4C68;margin-right:1.6mm;vertical-align:-0.1mm"></i>Beklenti (P50)</span>""" + _FAN_SPAN + """
       </div>
     <div class="figcap"><b>Şekil 1.1</b>&nbsp;&nbsp;Günlük üretim tahmini, """ + DONEM + """. Çizgi
-      beklentiyi, çevresindeki alan %80 olasılık aralığını gösterir; alan ne kadar kalınsa hava
-      o kadar belirsizdir. Düşey eksen """ + str(GUN_YMIN) + """ MWh'ten başlar.</div>"""
+      beklentiyi""" + _BANT_CUMLE + """. Düşey eksen """ + str(GUN_YMIN) + """ MWh'ten başlar.</div>"""
 
 
 def shell(css, body, title):
@@ -163,10 +169,9 @@ BODY_A = """<div class="page">
       <div class="v">{{TOPLAM_P50}}<u>MWh</u></div><div class="n">P50 · en olası senaryo</div></div>
     <div class="cell"><div class="k">%80 olasılık bandı</div>
       <div class="v">{{TOPLAM_BANT}}<u>MWh</u></div>
-      <div class="n">taahhüt için önerilen alt sınır {{TOPLAM_P10}} MWh</div></div>
+      <div class="n">{{TAAHHUT_NOT}}</div></div>
   </div>
-  <p class="lede">Bu rapor önümüzdeki """ + str(GUN_SAYISI) + """ gün için saatlik üretim beklentisini, beklentinin
-  olasılık bandını ve son 120 günde her tahminin gerçekleşen üretimle gece-gece
+  <p class="lede">Bu rapor önümüzdeki """ + str(GUN_SAYISI) + """ gün için saatlik üretim beklentisini""" + _LEDE_BANT_A + """ son 120 günde her tahminin gerçekleşen üretimle gece-gece
   karşılaştırıldığı doğruluk karnesini bir arada sunar.</p>
   <div class="figwrap">__CHART__""" + LEGCAP + """</div>
   """ + IMPRINT + """
@@ -223,7 +228,7 @@ BODY_B = """<div class="page">
      <div class="v">{{TOPLAM_P50}}<u>MWh</u></div><div class="n">P50 · en olası senaryo</div></div>
    <div class="cell"><div class="k">%80 olasılık bandı</div>
      <div class="v">{{TOPLAM_BANT}}<u>MWh</u></div>
-     <div class="n">taahhüt için önerilen alt sınır {{TOPLAM_P10}} MWh</div></div>
+     <div class="n">{{TAAHHUT_NOT}}</div></div>
  </div>
  <div class="pills"><div class="pill">MOD A · HAM FİZİK</div>
    <div class="pill">MOD B · KALİBRE</div><div class="pill on">MOD C · HİBRİT ✓</div></div>
@@ -280,7 +285,7 @@ BODY_C = """<div class="page">
      <div class="sep"></div>
      <div class="bk">%80 olasılık bandı</div>
      <div class="bv" style="font-size:17.5pt">{{TOPLAM_BANT}}<u>MWh</u></div>
-     <div class="bn">taahhüt için önerilen alt sınır {{TOPLAM_P10}} MWh</div>
+     <div class="bn">{{TAAHHUT_NOT}}</div>
    </div>
    <div class="pg"><div class="mode">MOD C · HİBRİT ✓</div>
      <div class="modes">A ham fizik · B kalibre · C hibrit</div>
@@ -292,8 +297,7 @@ BODY_C = """<div class="page">
    <h1>Konya GES</h1>
    <div class="sub"><b>""" + DONEM + """</b> · """ + str(GUN_SAYISI) + """ günlük saatlik üretim tahmini
      ve 120 günlük doğruluk karnesi</div>
-   <p class="lede">Bu rapor önümüzdeki """ + str(GUN_SAYISI) + """ gün için saatlik üretim beklentisini, beklentinin
-   olasılık bandını ve son 120 günde her tahminin gerçekleşen üretimle gece-gece
+   <p class="lede">Bu rapor önümüzdeki """ + str(GUN_SAYISI) + """ gün için saatlik üretim beklentisini""" + _LEDE_BANT_C + """ son 120 günde her tahminin gerçekleşen üretimle gece-gece
    karşılaştırıldığı doğruluk karnesini bir arada sunar.</p>
    <div class="figwrap">__CHART__""" + LEGCAP + """</div>
    """ + IMPRINT + """

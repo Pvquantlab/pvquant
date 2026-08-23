@@ -81,6 +81,20 @@ def test_bantsiz_uret_16_sayfa_denetim_temiz(tmp_path):
     assert "<polygon" not in s04          # bant çizilmedi
     assert ">None<" not in s04            # sızıntı yok
     assert s04.count("—") >= 32           # P90+P10 satırları '—' hücreli durur
+    # v2.182: dürüst blok + kural-4 düşürmeleri
+    assert "Bu koşuda olasılık bandı üretilmedi" in s04     # blok metni
+    assert "Bu koşuda bant yok" in s04                      # blok başlığı
+    assert "olasılık aralığı" not in s04                    # fan lejantı düştü
+    assert "948 değil" not in s04                           # kanonik bant prozu düştü
+    s01 = next(tmp_path.glob("*_s01_*.html")).read_text(encoding="utf-8")
+    s03 = next(tmp_path.glob("*_s03_*.html")).read_text(encoding="utf-8")
+    s05 = next(tmp_path.glob("*_s05_*.html")).read_text(encoding="utf-8")
+    assert "bu koşuda olasılık bandı üretilmedi" in s01     # taahhüt notu dürüst
+    assert "bu koşuda olasılık bandı üretilmedi" in s03     # KPI notu dürüst
+    assert "olasılıkla — MWh" not in s03                    # saçma kuyruk düştü
+    for sayfa in (s01, s03, s05):
+        assert "olasılık aralığı" not in sayfa              # bant anlatısı yok
+    assert 'class="fan"' not in s05 or "<path" in s05       # lejant yok (CSS kuralı uyuyabilir)
 
 
 # ---------------------------------------------------------------- (4) servis kapısı
@@ -129,3 +143,35 @@ def test_ctx_to_json_bantsiz_gecer():
     assert all(d["half_mwh"] is None for d in J["daily"])
     assert J["totals"]["p10_mwh"] is None and J["totals"]["p90_mwh"] is None
     assert "exec_1" not in J["narrative"] and "exec_4" not in J["narrative"]
+
+
+# ---------------------------------------------------------------- v2.182
+def test_kanonik_bant_tokenlari():
+    """Bantlıda token'lar kanonik baytları üretir; blok BOŞTUR (D24 aynası)."""
+    m = taze_veri(KANONIK)
+    assert m.BANT_ACIKLAMA == ""
+    assert m.TAAHHUT_NOT == "taahhüt için önerilen alt sınır 1.005 MWh"
+    assert m.OLASILIK_KUYRUK.endswith("1.005–1.068 MWh aralığında gerçekleşecektir")
+    assert m.KPI_BANT_DURUM == "ok"
+
+
+def test_bantsiz_bant_tokenlari():
+    """Bantsızda blok DOLU, taahhüt notu sayı iddia etmez, kuyruk düşer."""
+    m = taze_veri(BANTSIZ)
+    assert m.BANT_ACIKLAMA and "üretilmedi" in m.BANT_ACIKLAMA
+    assert "MWh" not in m.TAAHHUT_NOT
+    assert m.OLASILIK_KUYRUK == "" and m.KPI_BANT_DURUM == ""
+
+
+def test_d24_karma_half_uyari(tmp_path):
+    """Yarım bant girdisi: karma half → D24 'uyari' (bantsız sayıldı), hata yok."""
+    import test_rapor_tutarlilik as trt
+    veri_json = json.loads(Path(KANONIK).read_text(encoding="utf-8"))
+    veri_json["daily"][0]["half_mwh"] = None          # tek gün boş → karma
+    yol = tmp_path / "karma.json"
+    yol.write_text(json.dumps(veri_json, ensure_ascii=False), encoding="utf-8")
+    import denetim
+    kayitlar, bulgular, _ = denetim.denetle_tam(taze_veri(yol))
+    d24 = [k for k in kayitlar if k["kod"] == "D24"]
+    assert any(k["durum"] == "uyari" and "yarım bant" in k["mesaj"] for k in d24)
+    assert not any(k["durum"] == "hata" for k in d24)

@@ -510,6 +510,31 @@ def _bin1(x):
     return ("{:,.1f}".format(x).replace(",", "X").replace(".", ",").replace("X", "."))
 
 
+# ------------------------------------------------- v2.182: bant anlatı token'ları
+# Cümle-içi bant yüzeyleri TEK KAYNAKTAN: bantlıda kanonik baytları birebir
+# üretir (md5 hakem), bantsızda kural-4 düşürmesi / dürüst blok. D24 denetler.
+# Blok metni MOD İDDİASI TAŞIMAZ (bantsız-C eski-artefakt koşusu da var —
+# v2.178); mod rozet/pill dürüstlüğü v2.183 kalemidir.
+if BANT_VAR:
+    TAAHHUT_NOT = "taahhüt için önerilen alt sınır " + _bin(TOPLAM_P10_MWH) + " MWh"
+    OLASILIK_KUYRUK = (" ve %80 olasılıkla " + _bin(TOPLAM_P10_MWH) + "–"
+                       + _bin(TOPLAM_P90_MWH) + " MWh aralığında gerçekleşecektir")
+    KPI_BANT_NOT = "Gerçekleşenin bu aralıkta kalma olasılığı %80"
+    KPI_BANT_DURUM = "ok"
+    BANT_ACIKLAMA = ""
+else:
+    TAAHHUT_NOT = "bu koşuda olasılık bandı üretilmedi"
+    OLASILIK_KUYRUK = ""
+    KPI_BANT_NOT = "bu koşuda olasılık bandı üretilmedi"
+    KPI_BANT_DURUM = ""
+    BANT_ACIKLAMA = ("Bu koşuda olasılık bandı üretilmedi: model çıktısında "
+                     "P10/P90 kuantilleri yok. Beklenti (P50) bundan etkilenmez; "
+                     "çizelgedeki P90/P10 satırları '—' ile boş bırakılmıştır ve "
+                     "dönem toplamı için alt/üst sınır verilmez. Bant yalnız "
+                     "kuantil üreten model koşularında çizilir; bant temelli "
+                     "taahhüt önerisi bu raporda sunulmaz.")
+
+
 def doldur(s):
     """HTML/CSS içindeki {{TOKEN}} yer tutucularını güncel veriyle doldurur.
     pvq.build() her sayfada çağırır; token yoksa metin aynen geçer."""
@@ -551,6 +576,10 @@ def doldur(s):
         "KARNE_UYARI": KARNE_UYARI,  # C-3b (v2.151): kanonikte "" — md5 birebir
         "NARR_S05_FIGCAP": NARR_S05_FIGCAP,
         "TOPLAM_P90": _bin(TOPLAM_P90_MWH) if BANT_VAR else "—",  # v2.181
+        # v2.182: bant anlatı token'ları (yukarıdaki tek-kaynak bloktan)
+        "TAAHHUT_NOT": TAAHHUT_NOT,
+        "OLASILIK_KUYRUK": OLASILIK_KUYRUK,
+        "BANT_ACIKLAMA": BANT_ACIKLAMA,
     }
     for k, v in D.items():
         # v2.154: None/yanlış tip sessiz TypeError yerine İSİM söyler —

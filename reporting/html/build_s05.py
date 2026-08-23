@@ -1,7 +1,18 @@
 from pvq import *
 
 # --- tipik gün: saat ortası değerleri [MW]; toplamı 65,8 MWh — BASE_KW'den türetilir
-from veri import BASE_KW, P50_GUN, GUN_ETIKET, AY_YIL
+from veri import BASE_KW, P50_GUN, GUN_ETIKET, AY_YIL, BANT_VAR
+
+# v2.182: bantsız koşuda temsilî bant, fan lejantları, bant figcap cümlesi ve
+# "Aralık" kolonu düşer — s04 bloğu "bant üretilmedi" derken s05 bant basamaz.
+# Bantlıda baytlar BİREBİR (md5); temsilî-bant sorunu ayrı park kalemidir.
+_FAN_SPAN1 = ('\n      <span><i class="fan"></i>%80 olasılık aralığı (P10–P90)</span>'
+              if BANT_VAR else "")
+_FAN_SPAN2 = ('\n      <span><i class="fan"></i>%80 olasılık aralığı</span>'
+              if BANT_VAR else "")
+_FIGCAP_BANT = (" Kum\n      rengi alan %80 olasılık aralığıdır; gerçekleşen üretim "
+                "on günün sekizinde bu alanın\n      içinde kalır." if BANT_VAR else "")
+_ARALIK_KOLON = '    <div>\n      <h2>Aralık neden öğlen genişliyor?</h2>\n      <p>Mutlak belirsizlik üretimin yüksek olduğu saatlerde büyür; oransal olarak ise gün\n      boyunca benzer kalır. Doğruluk ölçümünde bu yüzden üretimle ağırlıklandırılmış hata\n      kullanılır.</p>\n    </div>\n' if BANT_VAR else ""
 BASE = [(5.0, 0.0)] + [(5.5 + i, BASE_KW[i] / 1000) for i in range(len(BASE_KW))] + [(20.0, 0.0)]
 DAILY = P50_GUN[:8]
 MEAN = 64.8 / 65.8
@@ -40,11 +51,12 @@ def profile(W=1000, H=292, ml=54, mb=50, fs=15):
         o.append('<text x="%.1f" y="%.1f" text-anchor="end" font-family="PlexSans" font-size="%d"'
                  ' font-weight="500" fill="#2B3439">%d</text>' % (ml - 9, Y(t) + fs * .34, fs, t))
     mid = [(h, v * MEAN) for h, v in BASE]
-    up = [(X(h), Y(v * _BANT_UST)) for h, v in mid]
-    dn = [(X(h), Y(max(0, v * .87))) for h, v in mid]
-    o.append('<path d="%s%s Z" fill="%s"/>' % (bez(up), bez(list(reversed(dn)), False), FAN_AREA))
-    for ser in (up, dn):
-        o.append('<path d="%s" fill="none" stroke="%s" stroke-width="1.3"/>' % (bez(ser), FAN_EDGE))
+    if BANT_VAR:  # v2.182: bantsız koşuda temsilî bant da çizilmez (blokla çelişemez)
+        up = [(X(h), Y(v * _BANT_UST)) for h, v in mid]
+        dn = [(X(h), Y(max(0, v * .87))) for h, v in mid]
+        o.append('<path d="%s%s Z" fill="%s"/>' % (bez(up), bez(list(reversed(dn)), False), FAN_AREA))
+        for ser in (up, dn):
+            o.append('<path d="%s" fill="none" stroke="%s" stroke-width="1.3"/>' % (bez(ser), FAN_EDGE))
     o.append('<path d="%s" fill="none" stroke="%s" stroke-width="3.2" stroke-linecap="round"/>'
              % (bez([(X(h), Y(v)) for h, v in mid]), BRAND))
     o.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#7C8781" stroke-width="1.5"/>'
@@ -90,10 +102,11 @@ def multiples(W=1000, H=402, fs=13):
                      'font-size="%d" font-weight="500" fill="#2B3439">%d</text>'
                      % (ox - 7, Y(t) + fs * .34, fs, t))
         pts = [(h, v * sc) for h, v in BASE]
-        up = [(X(h), Y(v * _BANT_UST)) for h, v in pts]
-        dn = [(X(h), Y(max(0, v * .87))) for h, v in pts]
-        o.append('<path d="%s%s Z" fill="%s" stroke="%s" stroke-width="1"/>'
-                 % (bez(up), bez(list(reversed(dn)), False), FAN_AREA, FAN_EDGE))
+        if BANT_VAR:  # v2.182
+            up = [(X(h), Y(v * _BANT_UST)) for h, v in pts]
+            dn = [(X(h), Y(max(0, v * .87))) for h, v in pts]
+            o.append('<path d="%s%s Z" fill="%s" stroke="%s" stroke-width="1"/>'
+                     % (bez(up), bez(list(reversed(dn)), False), FAN_AREA, FAN_EDGE))
         o.append('<path d="%s" fill="none" stroke="%s" stroke-width="2.8" '
                  'stroke-linecap="round"/>' % (bez([(X(h), Y(v)) for h, v in pts]), BRAND))
         o.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#7C8781" '
@@ -138,12 +151,9 @@ BODY = """<div class="page"><div class="sheet">
   verir; dengeleme, bakım planlaması ve saatlik satış kararları bu görünümden okunur.</p>
 
   """ + profile() + """
-    <div class="legend"><span><i class="line"></i>Beklenti (P50)</span>
-      <span><i class="fan"></i>%80 olasılık aralığı (P10–P90)</span></div>
+    <div class="legend"><span><i class="line"></i>Beklenti (P50)</span>""" + _FAN_SPAN1 + """</div>
     <div class="figcap"><b>Şekil 5.1</b>&nbsp;&nbsp;Tipik gün profili. Üretim 05:15 civarında
-      başlar, 12:00–13:00 arasında {{TEPE_TIPIK}} MW tepe değerine ulaşır ve 19:45'te sona erer. Kum
-      rengi alan %80 olasılık aralığıdır; gerçekleşen üretim on günün sekizinde bu alanın
-      içinde kalır.</div>
+      başlar, 12:00–13:00 arasında {{TEPE_TIPIK}} MW tepe değerine ulaşır ve 19:45'te sona erer.""" + _FIGCAP_BANT + """</div>
 
   <div class="two">
     <div>
@@ -152,17 +162,10 @@ BODY = """<div class="page"><div class="sheet">
       yapmıyor, üretilen gücün tamamı şebekeye verilebiliyor. Plato tavana dayansaydı aradaki
       fark kalıcı kayıp olurdu.</p>
     </div>
-    <div>
-      <h2>Aralık neden öğlen genişliyor?</h2>
-      <p>Mutlak belirsizlik üretimin yüksek olduğu saatlerde büyür; oransal olarak ise gün
-      boyunca benzer kalır. Doğruluk ölçümünde bu yüzden üretimle ağırlıklandırılmış hata
-      kullanılır.</p>
-    </div>
-  </div>
+""" + _ARALIK_KOLON + """  </div>
 
   """ + multiples() + """
-    <div class="legend" style="margin-top:2mm"><span><i class="line"></i>Beklenti (P50)</span>
-      <span><i class="fan"></i>%80 olasılık aralığı</span></div>
+    <div class="legend" style="margin-top:2mm"><span><i class="line"></i>Beklenti (P50)</span>""" + _FAN_SPAN2 + """</div>
     <div class="figcap"><b>Şekil 5.2</b>&nbsp;&nbsp;Ufkun ilk sekiz gününün profilleri, ortak
       eksende. Sağ üstteki değer o günün toplam beklentisidir. {{NARR_S05_FIGCAP}}</div>
 """ + foot(5) + """
