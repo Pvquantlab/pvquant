@@ -110,7 +110,14 @@ def a4():
     from pvquant.services import calib_service
     r = calib_service.kalibre_et(TID, PLANT, hibrit=False)
     assert r.get("calibration_id"), "calibrations satırı yok"
-    return f"mode={r['mode']}"
+    # v2.175: window_days artık quality_json'da ÖLÇÜMDEN — yoksa kök iş
+    # geri açılmış demektir, smoke düşsün.
+    cal = calib_service.aktif_kalibrasyon(TID, PID)
+    q = cal.quality_json if (cal is not None and
+                             isinstance(cal.quality_json, dict)) else {}
+    wd = q.get("window_days")
+    assert isinstance(wd, int) and wd >= 1, f"window_days yok/bozuk: {wd!r}"
+    return f"mode={r['mode']} pencere={wd}g"
 
 
 @adim("5. Tahmin + arşiv (ağ: Open-Meteo)")

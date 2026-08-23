@@ -82,8 +82,24 @@ def _plant_spec(plant) -> PlantSpec:
     )
 
 
+def _pencere_gun(index) -> int | None:
+    """v2.175: kalibrasyon penceresi (takvim günü) — kalibrasyonun GERÇEKTEN
+    kullandığı ızgaranın ucundan uca aralığı. Gömülü 120 değil, iddia değil,
+    ÖLÇÜM: rapor kontratındaki calibration.window_days bunu taşır; s09
+    altyazısının ', N gün' iddiası ve D5'in tavan denetimi (saat ≤ gün×14)
+    bu ölçüme dayanır. Boş/tekil indekste None — uydurma pencere yok
+    (dürüst-eksiklik: iddia yoksa kart pencereyi söylemez, D5 uyarır)."""
+    try:
+        if index is None or len(index) < 2:
+            return None
+        return int((index.max() - index.min()).days) + 1
+    except (TypeError, AttributeError, ValueError):
+        return None
+
+
 def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
     scada = _scada_data(tenant_id, plant)
+    pencere_gun = _pencere_gun(scada.power_kw.index)   # v2.175: ölçülü pencere
     meteo = _meteo(plant, scada.power_kw.index)
     cr = calibrate_from_scada(
         scada=scada, historical_meteo=meteo, plant=_plant_spec(plant),
@@ -186,6 +202,9 @@ def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
                  "deviation_pct":       getattr(cr.validation_after,  "total_deviation_pct", None),
                  "deviation_before_pct":getattr(cr.validation_before, "total_deviation_pct", None),
                  "warnings": sonuc["warnings"],
+                 # v2.175: kök iş kapanışı — report_service:127 bu alanı
+                 # okuyordu, pipeline yazmıyordu; artık ölçümden yazılıyor.
+                 "window_days": pencere_gun,
              }, default=str),
              "g": json.dumps(gate) if gate else None,
              "n": cr.n_valid_hours}).scalar()
