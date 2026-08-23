@@ -145,7 +145,7 @@ export function gunlukToplamlar(
   saatlik: Saatlik[],
   tz: string,
 ): GunToplam[] {
-  const rows: (GunToplam & { key: string; qOk: boolean })[] = [];
+  const rows: (GunToplam & { key: string; qOk: boolean; hepsiSifir: boolean })[] = [];
   for (const s of saatlik) {
     const ms = toMs(s.ts);
     const key = tzDayKey(ms, tz);
@@ -160,10 +160,12 @@ export function gunlukToplamlar(
         saat: 0,
         kismi: false,
         qOk: true,
+        hepsiSifir: true, // K1-tablo (v2.180): kuyruk gece kırpığı tespiti
       };
       rows.push(last);
     }
     last.p50Kwh += s.p50_kw;
+    if (s.p50_kw > 0) last.hepsiSifir = false;
     last.saat += 1;
     if (typeof s.p10_kw === "number" && typeof s.p90_kw === "number") {
       (last.p10Kwh as number) += s.p10_kw;
@@ -172,10 +174,21 @@ export function gunlukToplamlar(
       last.qOk = false;
     }
   }
-  return rows.map(({ key: _k, qOk, ...r }) => ({
+  const out = rows.map(({ key: _k, qOk, hepsiSifir, ...r }) => ({
     ...r,
     kismi: r.saat < 24,
     p10Kwh: qOk ? r.p10Kwh : null,
     p90Kwh: qOk ? r.p90Kwh : null,
+    hepsiSifir,
   }));
+  // K1-tablo (v2.180): KUYRUKTAKİ kısmî gün penceredeki TÜM saatlerinde
+  // p50=0 ise düşer — ufkun gece kırpığı (örn. son tahmin saati 2 Eyl
+  // 04:00'te biterse '2 Eyl * → 0' satırı doğar). Satır teknik olarak
+  // doğru ama '0 üretim günü' diye okunur (v2.160 K1 şikâyetinin tablo
+  // yarısı). Tek saati bile >0 olan kuyruk günü KALIR; baştaki kısmî gün
+  // (gerçek değerli) hiç etkilenmez. Grafikle tutarlılık: çizgi de o
+  // kırpıkta sıfırda sürünüyordu, bilgi kaybı yok.
+  const son = out[out.length - 1];
+  if (son && son.kismi && son.hepsiSifir) out.pop();
+  return out.map(({ hepsiSifir: _h, ...r }) => r);
 }
