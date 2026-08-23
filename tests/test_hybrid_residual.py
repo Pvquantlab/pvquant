@@ -210,6 +210,51 @@ def test_save_and_load_ml_layer(calibrated_model, plant, tmp_path):
     assert abs(a - b) < 1e-6
 
 
+# ------------------------------------------------- v2.177 plato bayrağı
+def test_bant_sature_maskesi_tavana_dayali_saatleri_isaretler():
+    """Plato dürüstlüğü (yalnız-bayrak kararı): üst tavana oturan saat
+    işaretli, altında kalan işaretsiz; göreli 1e-9 payı kayan-nokta
+    eşitliğini yutar, 1 kW altını yutmaz."""
+    i = pd.date_range("2026-06-01 04:00", periods=5, freq="1h", tz="UTC")
+    hi = pd.Series([0.0, 3599.0, 3600.0, 3600.0 * (1 - 1e-10), 3600.0], index=i)
+    m = HybridResidualModel.bant_sature_maskesi(hi, 3600.0)
+    assert m.tolist() == [False, False, True, True, True]
+    assert m.index.equals(hi.index)
+
+
+def test_bant_sature_tavansiz_santralda_hic_atesmez():
+    """clip_kw None (AC tavanı tanımsız) → doyma kavramı yok, maske
+    tümden False — bayrak uydurulmaz."""
+    i = pd.date_range("2026-06-01", periods=4, freq="1h")
+    hi = pd.Series([1e9, 0.0, 5.0, 1e12], index=i)
+    assert not HybridResidualModel.bant_sature_maskesi(hi, None).any()
+
+
+def test_predict_band_sature_kolonu_sayilari_degistirmez(calibrated_model):
+    """Bayrak kolonu bant yazılan koşuda var ve boolean; işaretli her
+    saatte p90 tavanda, işaretsiz hiçbir saatte değil (maske ile bant
+    birebir tutarlı). p10 ≤ AC ≤ p90 kucaklaması aynen — sayılar
+    değişmedi, yalnız gerçek görünür oldu (yalnız-bayrak kararı)."""
+    from pvquant.models_v2.contracts import ForecastInput, OperationConfig
+    model, _, meteo = calibrated_model
+    future = meteo.tail(3 * 24).copy()
+    fi = ForecastInput(source="open_meteo", resolution_minutes=60, data=future)
+    res = model.predict(fi, OperationConfig(
+        operation_mode="calibrated", confidence_intervals=True))
+    ts = res.timeseries
+    assert "ac_power_band_sature" in ts.columns
+    assert ts["ac_power_band_sature"].dtype == bool
+    clip = model._base._plant_spec.p_ac_clip_kw
+    assert clip is not None, "test santralında AC tavanı bekleniyordu"
+    esik = float(clip) * (1 - 1e-9)
+    m = ts["ac_power_band_sature"]
+    assert (ts.loc[m, "ac_power_p90_kw"] >= esik).all()
+    assert (ts.loc[~m, "ac_power_p90_kw"] < esik).all()
+    ok = ((ts["ac_power_p10_kw"] <= ts["ac_power_kw"]) &
+          (ts["ac_power_kw"] <= ts["ac_power_p90_kw"]))
+    assert ok.all()
+
+
 def test_negatif_konformal_ofset_kucaklamayi_bozamaz(calibrated_model, plant):
     """v2.58-C: daraltici (negatif) ofset omuz saatlerinde p10 > p50
     uretebiliyordu (16g kosusunda 137/384 satir; ilacsiz bu test 39 satir

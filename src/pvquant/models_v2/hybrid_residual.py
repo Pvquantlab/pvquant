@@ -398,6 +398,9 @@ class HybridResidualModel:
                     _hi = np.maximum(_hi, p_final)
                 out_ts["ac_power_p10_kw"] = _lo.values
                 out_ts["ac_power_p90_kw"] = _hi.values
+                # v2.177: plato doyma bayrağı — p10/p50/p90 DEĞİŞMEZ.
+                out_ts["ac_power_band_sature"] = self.bant_sature_maskesi(
+                    _hi, self._base._plant_spec.p_ac_clip_kw).values
             if 0.5 in _qser:
                 out_ts["ac_power_p50q_kw"] = _qser[0.5].values
             confidence = ConfidenceIntervals(
@@ -842,6 +845,21 @@ class HybridResidualModel:
     # ------------------------------------------------------------------
     # İç yardımcılar
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def bant_sature_maskesi(hi: pd.Series, clip_kw) -> pd.Series:
+        """v2.177 (plato dürüstlüğü, kullanıcı kararı 23 Ağu: YALNIZ bayrak):
+        bandın üstünün AC tavanına DAYALI olduğu saatleri işaretler.
+        Tanım: son _hi ≥ tavan (göreli 1e-9 payla). Ham (kırpılmamış)
+        değeri yeniden kurmak yerine gözlenebilir koşul seçildi: üst,
+        tavana tam oturmuşsa oradaki 'kesinlik' görüntüsü model güveni
+        değil fiziksel sınırdır — kırpmayla mı geldi, tesadüfen mi eşit
+        (ölçü-sıfır), anlam aynıdır. SAYILAR DEĞİŞMEZ; bu maske yalnız
+        gerçeği görünür kılar (s05/K3 'platoda bant yutuluyor' kökü).
+        clip_kw None ise tavan yok → hiçbir saat işaretlenmez."""
+        if clip_kw is None:
+            return pd.Series(False, index=hi.index)
+        return hi >= float(clip_kw) * (1.0 - 1e-9)
 
     def _apply_constraints(
         self, p_kw: pd.Series, poa_global: pd.Series
