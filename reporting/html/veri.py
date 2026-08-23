@@ -315,8 +315,10 @@ def _json_yukle(path):
     g["PROF"], g["MAE24"], g["MAE72"] = E["prof_mw"], E["mae24"], E["mae72"]
     g["MU"], g["SD"], g["NDAYS"] = E["mu"], E["sd"], E["ndays"]
 
-    # kalibrasyon şelalesi
-    C = J["calibration"]
+    # kalibrasyon şelalesi — v2.183: calibration bloğu OPSİYONEL
+    # (Mod B holdout üretmez; blok yok/uçsuz → HOLDOUT_VAR söner, s09/s10
+    # dürüst hâle düşer; katsayılar bloğun içinde bağımsız yaşar)
+    C = J.get("calibration") or {}
     if "steps" in C:
         g["SELALE_ADIM"] = [(s["label"], s["delta"], s["kind"]) for s in C["steps"]]
     else:
@@ -326,7 +328,7 @@ def _json_yukle(path):
         # s09 yerine tek satir "veri eksik" basar (gorev recetesi: yanlis
         # selale, selalesizlikten kotudur). None bu isarettir.
         g["SELALE_ADIM"] = None
-    g["SELALE_BAS"], g["SELALE_BIT"] = C["physics_mape"], C["holdout_mape"]
+    g["SELALE_BAS"], g["SELALE_BIT"] = C.get("physics_mape"), C.get("holdout_mape")  # v2.183
     _wd = C.get("window_days")
     g["KAL_PENCERE"] = (", %d gün" % int(_wd)) if _wd else ""
 
@@ -431,6 +433,9 @@ IKLIM_ARALIK = "%d–%d" % (min(IKLIM), max(IKLIM))   # c2a: matris yıl aralı�
 # Kanonik girdide True → md5 birebir.
 BANT_VAR = (all(h is not None for h in HW_GUN)
             and TOPLAM_P10_MWH is not None and TOPLAM_P90_MWH is not None)
+# v2.183: HOLDOUT gözlenebilir DURUMDUR — iki uç da doluysa karşılaştırma
+# var; değilse (Mod B / bloksuz girdi) karşılaştırma İDDİASI yok. Statikte True.
+HOLDOUT_VAR = SELALE_BAS is not None and SELALE_BIT is not None
 GUN_YMIN = int(_math.floor(min(v - (h or 0) for v, h in zip(P50_GUN, HW_GUN)) / 10.0)) * 10
 GUN_YMAX = int(_math.ceil(max(v + (h or 0) for v, h in zip(P50_GUN, HW_GUN)) / 10.0)) * 10
 
@@ -467,7 +472,8 @@ else:
 KPI_ESIK = {"WMAPE120": (10.0, "alt"), "HOLDOUT": (10.0, "alt"),
             "KAPSAMA": (80.0, "ust")}
 DURUM_WMAPE120 = "ok" if WMAPE120_PCT < KPI_ESIK["WMAPE120"][0] else "watch"
-DURUM_HOLDOUT = "ok" if SELALE_BIT < KPI_ESIK["HOLDOUT"][0] else "watch"
+DURUM_HOLDOUT = (("ok" if SELALE_BIT < KPI_ESIK["HOLDOUT"][0] else "watch")
+                 if HOLDOUT_VAR else "")  # v2.183: iddiasız kart nötr
 DURUM_KAPSAMA = "ok" if KAPSAMA_PCT > KPI_ESIK["KAPSAMA"][0] else "watch"
 
 
@@ -534,6 +540,14 @@ else:
                      "kuantil üreten model koşularında çizilir; bant temelli "
                      "taahhüt önerisi bu raporda sunulmaz.")
 
+# v2.183: holdout anlatı token'ları — aynı kalıp (kanonikte birebir baytlar).
+if HOLDOUT_VAR:
+    KPI_HOLDOUT_DEGER = "%" + _tr(SELALE_BIT)
+    KPI_HOLDOUT_NOT = "Modelin eğitimde görmediği veride · " + kpi_hedef("HOLDOUT")
+else:
+    KPI_HOLDOUT_DEGER = "—"
+    KPI_HOLDOUT_NOT = "bu koşuda bağımsız test karşılaştırması yok"
+
 
 def doldur(s):
     """HTML/CSS içindeki {{TOKEN}} yer tutucularını güncel veriyle doldurur.
@@ -556,7 +570,8 @@ def doldur(s):
         "TOPLAM_P10": _bin(TOPLAM_P10_MWH) if BANT_VAR else "—",
         "KF": _tr(KF_PCT), "WMAPE120": _tr(WMAPE120_PCT),
         "SKILL120": "%d" % SKILL120_PCT,
-        "FIZIK": _tr(SELALE_BAS), "HOLDOUT": _tr(SELALE_BIT),
+        "FIZIK": _tr(SELALE_BAS) if HOLDOUT_VAR else "—",  # v2.183
+        "HOLDOUT": _tr(SELALE_BIT) if HOLDOUT_VAR else "—",
         "IYILESME": _tr(IYILESME_PCT) if IYILESME_PCT is not None else "—",
         "KESINTISIZ": (str(int(KESINTISIZ_GUN)) if KESINTISIZ_GUN is not None
                        else "—"),  # v2.135: s03'teki elle '87' baypası kapandı

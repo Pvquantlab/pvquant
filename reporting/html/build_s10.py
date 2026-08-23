@@ -2,7 +2,25 @@ from pvq import *
 
 tr = lambda x, d=1: ("%.*f" % (d, x)).replace(".", ",").replace("-", "\u2212")
 
-from veri import EGITIM_SERIT
+from veri import EGITIM_SERIT, HOLDOUT_VAR
+
+# v2.183: bağımsız test bölmesi (split+şerit+figcap) yalnız holdout varken
+# basılır — Mod B'de hibrit eğitimi yoktur, %80/%20 bölmesi iddia edilemez.
+# Bantlıda baytlar BİREBİR (md5); şerit GERÇEK birleştirmeyle taşınır
+# (repr tuzağı: kaynak-düzeyi EGITIM_SERIT eki düz metne dönmüştü — ilk
+# denemenin md5 düşüşü buydu). Koşullu satır inline-stil kullanır (s10
+# CSS'ine sınıf eklemek kanonik çıktıyı değiştirirdi).
+_S10_LEAD = ("Bu bölüm iki soruyu yanıtlar: model hiç görmediği veride ne yaptı, ve bu ölçümü\n"
+             "  besleyen santral verisi ne kadar sağlam?" if HOLDOUT_VAR else
+             "Bu koşuda bağımsız test karşılaştırması yoktur (hibrit eğitimi yapılmadı);\n"
+             "  bu bölüm ölçümü besleyen santral verisinin sağlamlığını raporlar.")
+_TEST_BOLMESI = (('  <div class="split">\n    <div class="egitim"><b>EĞİTİM — ilk %80</b>\n      <span>96 gün · katsayılar bu dönemden bulundu</span></div>\n    <div class="test"><b>TEST — son %20</b>\n      <span>24 gün · modelin hiç görmediği</span></div>\n  </div>\n  <div class="tarih">'
+                  + EGITIM_SERIT +
+                  '</div>\n  <div class="figcap" style="margin-top:2.5mm"><b>Şekil 10.1</b>&nbsp;&nbsp;120 günlük pencere\n    kronolojik olarak bölünür. Rastgele bölme bilinçli olarak kullanılmaz: rastgelelik, test\n    dönemine eğitim dönemiyle aynı hava koşullarını sızdırır ve başarımı yapay biçimde şişirir.\n    Kronolojik bölmede test dönemi gerçek bir gelecektir. {{NARR_S10_SEKIL1}}</div>') if HOLDOUT_VAR else
+    '<p style="font-size:9pt;color:#6B7280;border-left:1.6pt solid #E5E7EB;'
+    'padding:2.2mm 0 2.2mm 3.4mm;margin-top:4mm">bu koşuda bağımsız test '
+    'bölmesi yok — hibrit eğitimi (Mod C) yapılmadığından eğitim/test '
+    'kronolojik bölmesi ve Şekil 10.1 üretilmez.</p>')
 from veri import (KALITE_AYLAR as AYLAR, KALITE_GECERLI as GECERLI,
                   KALITE_HATALI as HATALI, KALITE_DIGER as DIGER, BAYRAK)
 
@@ -99,20 +117,9 @@ BODY = """<div class="page"><div class="sheet">
   <div class="eyebrow">Kalibrasyon · devam</div>
   <h1>Bağımsız test ve veri kalitesi</h1>
   <p class="lead" style="max-width:162mm">Bir modelin başarımı, kendisini eğittiği veriyle
-  ölçülemez. Bu bölüm iki soruyu yanıtlar: model hiç görmediği veride ne yaptı, ve bu ölçümü
-  besleyen santral verisi ne kadar sağlam?</p>
+  ölçülemez. """ + _S10_LEAD + """</p>
 
-  <div class="split">
-    <div class="egitim"><b>EĞİTİM — ilk %80</b>
-      <span>96 gün · katsayılar bu dönemden bulundu</span></div>
-    <div class="test"><b>TEST — son %20</b>
-      <span>24 gün · modelin hiç görmediği</span></div>
-  </div>
-  <div class="tarih">""" + EGITIM_SERIT + """</div>
-  <div class="figcap" style="margin-top:2.5mm"><b>Şekil 10.1</b>&nbsp;&nbsp;120 günlük pencere
-    kronolojik olarak bölünür. Rastgele bölme bilinçli olarak kullanılmaz: rastgelelik, test
-    dönemine eğitim dönemiyle aynı hava koşullarını sızdırır ve başarımı yapay biçimde şişirir.
-    Kronolojik bölmede test dönemi gerçek bir gelecektir. {{NARR_S10_SEKIL1}}</div>
+""" + _TEST_BOLMESI + """
 
   """ + kapsama() + """
     <div class="legend"><span><i class="g"></i>Kalite süzgecini geçen saatler</span>

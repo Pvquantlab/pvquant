@@ -1,5 +1,5 @@
 from pvq import *
-from veri import kpi_hedef, GUN_SAYISI, KPI_BANT_NOT, KPI_BANT_DURUM  # C-3 (v2.150): hedef kopyası KPI_ESIK'ten; v2.182: bant kartı tek kaynaktan
+from veri import kpi_hedef, GUN_SAYISI, KPI_BANT_NOT, KPI_BANT_DURUM, KPI_HOLDOUT_DEGER, KPI_HOLDOUT_NOT  # C-3 (v2.150): hedef kopyası KPI_ESIK'ten; v2.182: bant kartı tek kaynaktan
 
 CSS = """
 .cards{display:flex;flex-wrap:wrap;gap:4mm;margin-top:7mm}
@@ -42,7 +42,8 @@ KPI = [
     ("Gün-öncesi ortalama hata", "%{{WMAPE120}}", "WMAPE", "Son 120 günün ortalaması · " + kpi_hedef("WMAPE120"), "{{DURUM_WMAPE120}}", 17),
     ("Basit referansa üstünlük", "%{{SKILL120}}", "skill", "Basit referans yönteme göre kazanılan isabet",
      "ok", 17),
-    ("Bağımsız testte hata", "%{{HOLDOUT}}", "MAPE", "Modelin eğitimde görmediği veride · " + kpi_hedef("HOLDOUT"),
+    # v2.183: değer+not tek kaynaktan (holdout'suz "—"+nötr, D16 aynası)
+    ("Bağımsız testte hata", KPI_HOLDOUT_DEGER, "MAPE", KPI_HOLDOUT_NOT,
      "{{DURUM_HOLDOUT}}", 17),
     ("Kesintisiz doğrulama", "{{KESINTISIZ}}", "gün", "Ara vermeden doğrulanan gün sayısı", "ok", 17),
     ("Santral verisi kapsaması", "%{{KAPSAMA}}", "", "Kalite süzgecini geçen saatlerin oranı · " + kpi_hedef("KAPSAMA"), "{{DURUM_KAPSAMA}}", 17),

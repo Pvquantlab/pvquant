@@ -158,18 +158,38 @@ def ctx_to_json(ctx, plant: dict) -> dict:
 
     # kaynak künyesi (s14) — tarih aralıkları GİRDİDEN, sabit değil
     J["sources"] = _kunye(ctx)
-    J["narrative"] = _anlati(ctx, J)   # c2b: hikâye girdinin parçası
 
     # kalibrasyon uçları — steps opsiyonel (B4 kararı, v2.102)
+    # v2.183: calibration bloğu HER modda kurulur — holdout Mod C hibrit
+    # gate'inin ürünüdür, yokluğu (Mod B) EKSİKLİK DEĞİL yapısal gerçektir
+    # (v2.141/v2.181 ailesi). Katsayılar ve pencere holdout'suz da yaşar;
+    # eski "if holdout" kapısı Mod B'de katsayıları da düşürüyordu.
+    J["calibration"] = {}
     if getattr(ctx, "holdout_mape_pct", None) is not None:
-        J["calibration"] = {"physics_mape": ctx.holdout_physics_mape_pct,
-                            "holdout_mape": ctx.holdout_mape_pct}
-        # v2.133: pencere kayitta varsa iddia veriye girer (yoksa girmez;
-        # veri.py KAL_PENCERE'yi bos birakir, s09 iddiasiz basar).
-        if getattr(ctx, "kal_pencere_gun", None):
-            J["calibration"]["window_days"] = int(ctx.kal_pencere_gun)
-    else:
-        eksik.append("calibration.holdout (gate)")
+        J["calibration"]["physics_mape"] = ctx.holdout_physics_mape_pct
+        J["calibration"]["holdout_mape"] = ctx.holdout_mape_pct
+    # v2.133: pencere kayitta varsa iddia veriye girer (yoksa girmez;
+    # veri.py KAL_PENCERE'yi bos birakir, s09 iddiasiz basar).
+    if getattr(ctx, "kal_pencere_gun", None):
+        J["calibration"]["window_days"] = int(ctx.kal_pencere_gun)
+    # B3b-2 (v2.170): katsayilar KONTRAT ALANIDIR (calibration.coefficients)
+    # — narrative.kat_* metin uretimi soküldü, bicimleme veri.py'nin isi;
+    # None alan yazilmaz, veri.py durust "—" basar.
+    _ta = getattr(ctx, "kal_tarih", None)
+    _cf = {"eta_bos": getattr(ctx, "eta_bos", None),
+           "bifacial_pct": getattr(ctx, "bifacial_pct", None),
+           "albedo": getattr(ctx, "albedo", None),
+           "saat": (int(ctx.kal_saat)
+                    if getattr(ctx, "kal_saat", None) is not None else None),
+           "tarih": ((_ta.date() if isinstance(_ta, _dt.datetime) else _ta)
+                     .isoformat() if _ta is not None else None)}
+    _cf = {k: v for k, v in _cf.items() if v is not None}
+    if _cf:  # v2.183: blok artık hep var — katsayılar holdout'suz da yazılır
+        J["calibration"]["coefficients"] = _cf
+    # c2b: hikâye girdinin parçası — v2.183: çağrı calibration SONRASINA
+    # taşındı; exec_2 artık canlıda gerçek uçları görür (eski sırada
+    # yapısal olarak hiç göremiyordu).
+    J["narrative"] = _anlati(ctx, J)
 
     # evrim — bant koşu p10/p90'dan (v2.103 SQL'i half_mwh verir)
     iste(getattr(ctx, "kosu_evrim", None) is not None, "history.evolution (koşu geçmişi)")
@@ -602,20 +622,10 @@ def _anlati(ctx, J):
     n["s09_prose"] = ("Kalibrasyonun bir modeli veriye uydurup uydurmadığı, bulunan "
                       "katsayıların fiziksel olarak anlamlı olup olmadığına bakılarak "
                       "anlaşılır; katsayılar fiziksel aralık denetiminden geçirilir.")
-    # B3b-2 (v2.170): katsayilar KONTRAT ALANIDIR (calibration.coefficients)
-    # — narrative.kat_* metin uretimi soküldü, bicimleme veri.py'nin isi;
-    # None alan yazilmaz, veri.py durust "—" basar.
-    _ta = getattr(ctx, "kal_tarih", None)
-    _cf = {"eta_bos": getattr(ctx, "eta_bos", None),
-           "bifacial_pct": getattr(ctx, "bifacial_pct", None),
-           "albedo": getattr(ctx, "albedo", None),
-           "saat": (int(ctx.kal_saat)
-                    if getattr(ctx, "kal_saat", None) is not None else None),
-           "tarih": ((_ta.date() if isinstance(_ta, _dt.datetime) else _ta)
-                     .isoformat() if _ta is not None else None)}
-    _cf = {k: v for k, v in _cf.items() if v is not None}
-    if _cf and "calibration" in J:
-        J["calibration"]["coefficients"] = _cf
+    # v2.183: katsayı yazımı buradan ctx_to_json'a TAŞINDI — sıra hatası
+    # kapanışı: _anlati calibration bloğundan ÖNCE koşuyordu, "calibration
+    # in J" bekçisi hep False'tu → canlı yolda coefficients HİÇ yazılmamış,
+    # exec_2 hep fallback basmıştı (v2.170'in gizli ölü yolu).
     fd = getattr(ctx, "flag_dagilimi", None)
     if fd and getattr(ctx, "ilk_scada_ts", None) is not None:
         i, so = ctx.ilk_scada_ts, ctx.son_scada_ts

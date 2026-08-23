@@ -160,6 +160,13 @@ def _d2(veri, ekle):
     adimlar = _al(veri, "SELALE_ADIM")   # v2.134: 'or []' None işaretini yutuyordu
     deltalar = [d for (_ad, d, _k) in (adimlar or []) if d is not None]
     if adimlar is None:
+        # v2.183: uçlar DA yoksa (Mod B / bloksuz girdi) karşılaştırma
+        # İDDİASI yoktur — D12 kalıbı: iddia yok → gecti. Yalnız-adımsız
+        # (uçlar var) hâli v2.132 vakasıdır: gerçek eksiklik, uyarı kalır.
+        if bas is None and bit is None:
+            return ekle("D2", "gecti", "kalibrasyon karşılaştırması yok — şelale "
+                        "iddiası da yok (s09 dürüst satır basar)",
+                        "iddia yok", "iddia yok")
         # v2.132: adım kırılımı girdide yok → motor şelaleyi BASMAZ
         # ("veri eksik" satırı) — kapanmayan bir şelale basılamıyorsa
         # D2'nin engelleyeceği bir iddia da yoktur; kayıt uyarıyla düşer.
@@ -554,6 +561,12 @@ def _d16(veri, ekle):
             ("HOLDOUT", _al(veri, "SELALE_BIT"), _al(veri, "DURUM_HOLDOUT")),
             ("KAPSAMA", _al(veri, "KAPSAMA_PCT"), _al(veri, "DURUM_KAPSAMA"))]
     for ad, deger, durum in uclu:
+        if deger is None and durum in (None, ""):
+            # v2.183 (kural 4 aynası): kart değersiz VE durum nötr —
+            # eşiklenecek iddia yok; D12/D2 kalıbıyla gecti.
+            ekle("D16", "gecti", "%s: kart iddiasız (değer yok, durum nötr) — "
+                 "eşik denetlenecek iddia yok" % ad, "iddia yok", "iddia yok")
+            continue
         if ad not in esik or deger is None or durum is None:
             ekle("D16", "uyari", "%s: esik/deger/durum yuzeyi eksik — denetlenemedi" % ad,
                  "KPI_ESIK + deger + DURUM_*", "eksik")

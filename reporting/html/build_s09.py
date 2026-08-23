@@ -3,7 +3,7 @@ from pvq import *
 tr = lambda x, d=1: ("%.*f" % (d, x)).replace(".", ",").replace("-", "\u2212")
 
 # (etiket, değişim, tür)  tür: bas = başlangıç/bitiş, iyi = iyileştirme, kotu = bedel
-from veri import SELALE_ADIM as ADIM, SELALE_BAS as BAS, SELALE_BIT as BIT
+from veri import SELALE_ADIM as ADIM, SELALE_BAS as BAS, SELALE_BIT as BIT, HOLDOUT_VAR
 
 
 def selale(W=1000, H=352, ml=64, mb=88, fs=14):
@@ -143,7 +143,7 @@ BODY = """<div class="page"><div class="sheet">
   yolun her adımını sayıyla belgeler — hangi düzeltmenin ne kazandırdığı, hangisinin bedel
   ödettiği dâhil.</p>
 
-  """ + (selale() if ADIM is not None else '<p class="veri-eksik">veri eksik (gerekli: kalibrasyon adımları) — şelale, adım kırılımı kayda işlenince basılır; uçlar sağdaki kartlardadır.</p>') + """
+  """ + (selale() if ADIM is not None else ('<p class="veri-eksik">veri eksik (gerekli: kalibrasyon adımları) — şelale, adım kırılımı kayda işlenince basılır; uçlar sağdaki kartlardadır.</p>' if HOLDOUT_VAR else '<p class="veri-eksik">bu koşuda kalibrasyon karşılaştırması yok — hibrit eğitimi (Mod C) yapılmadığından bağımsız test uçları ve şelale üretilmez; katsayılar sağdaki kartlardadır.</p>')) + """
     <div class="figcap"><b>Şekil 9.1</b>&nbsp;&nbsp;Ham fizik modelinden hibrit modele geçişte
       ortalama hatanın adım adım kapanması. Aradaki sütunlar havada durur, çünkü bir seviyeyi
       değil bir değişimi gösterirler; her sütunun altındaki satır o adımdan sonra kalan hatayı
