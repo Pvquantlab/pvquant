@@ -147,6 +147,47 @@ def test_hibrit_pdf_de_kutu_ve_mod_c():
 
 
 # ------------------------------------------------------------------ tahmin adaptörü
+# ------------------------------------------------- v2.178 oransal yedek öldü
+def test_eski_model_ciktisinda_sahte_bant_uretilmez():
+    """Kuantil kolonları olmayan (v2.58 öncesi) model çıktısı → h'de
+    p10/p90 YOK. Eski dünyada oransal yedek sabit-oranlı sahte bant
+    basardı; artık dürüst bantsızlık (yanlış bant, bantsızlıktan kötü).
+    confidence dolu olsa bile uydurma yok — yedeğin öldüğünün kanıtı."""
+    import types
+    import pandas as pd
+    from pvquant.pipeline.hybrid_ui import hybrid_forecast_hourly
+
+    i = pd.date_range("2026-06-01", periods=24, freq="1h", tz="UTC")
+    ts = pd.DataFrame({"timestamp_utc": i, "ac_power_kw": 100.0})
+
+    class _EskiRes:
+        timeseries = ts
+        confidence = types.SimpleNamespace(
+            p50_total_kwh=2400.0, p10_total_kwh=1900.0, p90_total_kwh=2900.0)
+
+    class _EskiModel:
+        def predict(self, fi, cfg):
+            return _EskiRes()
+
+    h = hybrid_forecast_hourly(_EskiModel(), _sentetik_meteo_kucuk())
+    assert h is not None and "p50_kw" in h.columns
+    assert "p10_kw" not in h.columns and "p90_kw" not in h.columns
+
+
+def _sentetik_meteo_kucuk():
+    """Adaptörün beklediği en küçük MeteoData-benzeri nesne: ghi/temp_air/
+    wind_speed_10m Series öznitelikleri (bozuk_girdi testindeki
+    SimpleNamespace kalıbının sağlıklı eşi — üreticiye bak: hybrid_ui
+    ForecastInput'u bu üç öznitelikten kurar)."""
+    import pandas as pd
+    from types import SimpleNamespace
+    i = pd.date_range("2026-06-01", periods=24, freq="1h", tz="UTC")
+    return SimpleNamespace(
+        ghi=pd.Series(400.0, index=i),
+        temp_air=pd.Series(25.0, index=i),
+        wind_speed_10m=pd.Series(2.0, index=i))
+
+
 def test_hibrit_tahmin_adaptorü(egitim):
     res, meteo = egitim
     h = hybrid_forecast_hourly(res.model, meteo)

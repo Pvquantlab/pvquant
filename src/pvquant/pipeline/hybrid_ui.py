@@ -191,8 +191,9 @@ def hybrid_forecast_hourly(model, meteo) -> Optional[pd.DataFrame]:
 
     Kantil notu (v2.58): model saatlik P10/P90 serilerini timeseries'e
     yazar; bant saat-bazlı asimetriyi taşır. Toplam kantiller hâlâ saatlik
-    toplamdan (istatistik şerhi defterde). Eski çıktılar için oran-köprüsü
-    yedek yol olarak korunur.
+    toplamdan (istatistik şerhi defterde). v2.178: oran-köprüsü yedeği
+    ÖLDÜ — kolon yoksa p10/p90 dönmez (dürüst bantsızlık; sahte sabit-oran
+    bandı basılmaz, doğru yol yeniden kalibrasyon).
 
     Adlandırma köprüsü: models_v2 p10=0.10 kantili (DÜŞÜK senaryo).
     Raporlamada p10_kw=alt bant, p90_kw=üst bant olarak eşlenir; IEA
@@ -223,15 +224,18 @@ def hybrid_forecast_hourly(model, meteo) -> Optional[pd.DataFrame]:
         h["temp_cell"] = ts.get("t_cell", pd.Series(25.0, index=ts.index)).values
         h["p_dc_kw"] = ts.get("dc_power_kw", h["p50_kw"] * 1.03).values
         h["energy_kwh"] = h["p50_kw"]          # saatlik çözünürlük
-        # v2.58: model saatlik kuantil serilerini artik kendisi yazar —
-        # dogrudan gecir. Oran-koprusu yalniz eski ciktilar icin yedek yol.
+        # v2.58: model saatlik kuantil serilerini kendisi yazar — dogrudan gecir.
+        # v2.178: ORANSAL YEDEK OLDU. Eski satirlar kolon yoksa p10/p90'i
+        # toplam oranindan uyduruyordu (p10 = p50 x p10_top/p50_top): sabit
+        # oranli SAHTE bant — saatlik belirsizlik bilgisi tasimayan, gorunuste
+        # kuantil olan seri. Ilke: 'yanlis bant, bantsizliktan kotudur'
+        # (v2.132 selale karariyla ayni aile). Kolon yoksa bant YOK:
+        # forecast_values p10/p90 NULL kalir (uret_ve_kaydet varsayilani),
+        # UI/rapor durust bantsizlik cizer; dogru yol yeniden kalibrasyon
+        # (v2.58+ modeller saatlik kuantili kendisi uretir).
         if "ac_power_p10_kw" in ts.columns and "ac_power_p90_kw" in ts.columns:
             h["p10_kw"] = ts["ac_power_p10_kw"].values
             h["p90_kw"] = ts["ac_power_p90_kw"].values
-        elif res.confidence is not None and res.confidence.p50_total_kwh > 0:
-            c = res.confidence
-            h["p10_kw"] = h["p50_kw"] * (c.p10_total_kwh / c.p50_total_kwh)
-            h["p90_kw"] = h["p50_kw"] * (c.p90_total_kwh / c.p50_total_kwh)
         return h
     except Exception:
         logger.exception("Hibrit tahmin başarısız — fiziğe düşülüyor")
