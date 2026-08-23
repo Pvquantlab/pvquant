@@ -9,7 +9,7 @@ from pvquant.db import sistem_baglami, tenant_baglami
 from pvquant.io.meteo import OpenMeteoClient
 from pvquant.pipeline.forecast import forecast_7day
 from pvquant.services.calib_service import _plant_spec, aktif_kalibrasyon
-from pvquant.services.forecast_service import _f
+from pvquant.services.forecast_service import _f, kosu_cercevesi_denetle
 from apps.worker.main import gece_skill
 
 pid, gun = sys.argv[1], dt.date.fromisoformat(sys.argv[2])
@@ -48,6 +48,7 @@ if cal.mode == "C" and ml:
         h["ml_kw"] = h["p50_kw"] - h["physics_kw"]
         kosu_mode = "C"
 
+kosu_cercevesi_denetle(h)   # v2.176: 15 Nis kapanışı — başsız run bırakılmaz
 with tenant_baglami(tid) as s:
     rid = s.execute(text(
         "INSERT INTO forecast_runs(tenant_id,plant_id,run_at,mode,model,"
@@ -60,6 +61,10 @@ with tenant_baglami(tid) as s:
         [{"t": tid, "r": rid, "p": pid, "ts": ts, "v": _f(v["p50_kw"]),
            "px": _f(v.get("physics_kw")), "ml": _f(v.get("ml_kw"))}
          for ts, v in h.iterrows()])
+    _n = s.execute(text("SELECT count(*) FROM forecast_values "
+                        "WHERE run_id=:r"), {"r": rid}).scalar()
+    if _n != len(h):   # v2.176 son-bekçi: eksik koşu commit edilmez
+        raise RuntimeError(f"koşu geri alındı: values {_n}/{len(h)}")
 print(f"[+] Backtest kosu yazildi: run_id={rid}, {len(h)} satir")
 
 gece_skill(plant, pencere_gun=365)

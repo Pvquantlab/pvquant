@@ -24,6 +24,21 @@ def _model_yukle(yol: str):
         return None
 
 
+def kosu_cercevesi_denetle(h) -> None:
+    """v2.176 (backtest kök sebebi): run yazan HER yol önce bunu çağırır.
+    İlke: BAŞSIZ RUN BIRAKILMAZ — values taşımayacak bir koşu için run
+    satırı hiç açılmaz (15 Nis vakasının yapısal kapanışı; v2.164 son_kosu
+    ve v2.171 kosu_gecmisi süzgeçleri belirtiyi gizler, bu kaynağı kapatır).
+    Boş çerçeve ya da p50 tamamı NaN → ValueError, run YAZILMADAN."""
+    if h is None or len(h) == 0:
+        raise ValueError("koşu yazılmadı: saatlik çerçeve boş — "
+                         "başsız run bırakılmaz (meteo kaynağı bu aralık "
+                         "için veri döndürmemiş olabilir)")
+    if "p50_kw" not in h.columns or h["p50_kw"].isna().all():
+        raise ValueError("koşu yazılmadı: p50_kw yok ya da tamamı NaN — "
+                         "değersiz koşu için run açılmaz")
+
+
 def uret_ve_kaydet(tenant_id, plant: dict) -> str:
     meteo = OpenMeteoClient().get_forecast(
         latitude=plant["lat"], longitude=plant["lon"],
@@ -65,6 +80,7 @@ def uret_ve_kaydet(tenant_id, plant: dict) -> str:
             h["ml_kw"] = h["p50_kw"] - h["physics_kw"]
             for k in ("p10_kw", "p90_kw"):
                 if k in hh.columns: h[k] = hh[k].reindex(h.index)
+    kosu_cercevesi_denetle(h)   # v2.176: run açılmadan önce
     with tenant_baglami(tenant_id) as s:
         meteo_ozet = json.dumps({
             "kaynak": "open-meteo",
@@ -91,6 +107,17 @@ def uret_ve_kaydet(tenant_id, plant: dict) -> str:
             "INSERT INTO forecast_values(tenant_id,run_id,plant_id,ts_utc,"
             " p50_kw,p10_kw,p90_kw,physics_kw,ml_kw) "
             "VALUES(:t,:r,:p,:ts,:p50,:p10,:p90,:ph,:ml)"), satirlar)
+        # v2.176 son-bekçi: commit'ten önce, aynı işlemde sayım. Tutmazsa
+        # raise → tenant_baglami rollback → run da values da gitmez. Bu,
+        # mekanizma-bağımsız garanti: hangi yoldan gelirse gelsin (sessiz
+        # no-op, kısmi yazım) başsız/eksik run COMMIT EDİLEMEZ.
+        _n = s.execute(text(
+            "SELECT count(*) FROM forecast_values WHERE run_id=:r"),
+            {"r": run_id}).scalar()
+        if _n != len(satirlar):
+            raise RuntimeError(
+                "koşu geri alındı: values %s/%s yazıldı — eksik koşu "
+                "commit edilmez" % (_n, len(satirlar)))
     return str(run_id)
 
 
