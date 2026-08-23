@@ -234,8 +234,13 @@ def fan_chart(vals, half, labels, xtitle, ytitle, ymin=40, ymax=80, step=10,
     slot = PW / n
     cx = lambda i: ml + slot * (i + .5)
     y = lambda v: MT + PH * (ymax - v) / (ymax - ymin)
-    lo = [a - b for a, b in zip(vals, half)]
-    hi = [a + b for a, b in zip(vals, half)]
+    # v2.181: bantsız koşu — half'ta tek None bile varsa bant çizilmez
+    # (yarım/uydurma bant yok), beklenti çizgisi kalır. Kanonikte half tam
+    # → davranış birebir (md5).
+    bantli = half is not None and all(h is not None for h in half)
+    _hf = half if bantli else [0] * n
+    lo = [a - b for a, b in zip(vals, _hf)]
+    hi = [a + b for a, b in zip(vals, _hf)]
     o = []
 
     if highlight:
@@ -257,12 +262,13 @@ def fan_chart(vals, half, labels, xtitle, ytitle, ymin=40, ymax=80, step=10,
                  ' font-weight="500" fill="#2B3439">%d</text>' % (ml - 9, yy + fs * .34, fs, t))
         t += step
 
-    pts = " ".join("%.1f,%.1f" % (cx(i), y(hi[i])) for i in range(n))
-    pts += " " + " ".join("%.1f,%.1f" % (cx(i), y(lo[i])) for i in reversed(range(n)))
-    o.append('<polygon points="%s" fill="%s"/>' % (pts, FAN_AREA))
-    for series in (hi, lo):
-        o.append('<path d="M %s" fill="none" stroke="%s" stroke-width="1.4"/>'
-                 % (" L ".join("%.1f,%.1f" % (cx(i), y(series[i])) for i in range(n)), FAN_EDGE))
+    if bantli:
+        pts = " ".join("%.1f,%.1f" % (cx(i), y(hi[i])) for i in range(n))
+        pts += " " + " ".join("%.1f,%.1f" % (cx(i), y(lo[i])) for i in reversed(range(n)))
+        o.append('<polygon points="%s" fill="%s"/>' % (pts, FAN_AREA))
+        for series in (hi, lo):
+            o.append('<path d="M %s" fill="none" stroke="%s" stroke-width="1.4"/>'
+                     % (" L ".join("%.1f,%.1f" % (cx(i), y(series[i])) for i in range(n)), FAN_EDGE))
     o.append('<path d="M %s" fill="none" stroke="%s" stroke-width="3.2" stroke-linejoin="round" '
              'stroke-linecap="round"/>'
              % (" L ".join("%.1f,%.1f" % (cx(i), y(vals[i])) for i in range(n)), BRAND))

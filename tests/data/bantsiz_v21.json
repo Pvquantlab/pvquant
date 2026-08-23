@@ -1,0 +1,1011 @@
+{
+ "schema_version": "2.1",
+ "report": {
+  "customer": "Anadolu Enerji A.Ş.",
+  "id": "PVQ-2026-08-04-C-0417",
+  "contact": "rapor@pvquant.example"
+ },
+ "plant": {
+  "name": "Konya GES",
+  "capacity_kwp": 12400,
+  "sebeke_ac_mwe": 10.0,
+  "display": [
+   [
+    "Koordinat",
+    "37,9000°K · 32,5000°D"
+   ],
+   [
+    "Yükseklik",
+    "1.016 m"
+   ],
+   [
+    "Kurulu güç",
+    "12,4 MWp / 10,0 MWe"
+   ],
+   [
+    "DC/AC oranı",
+    "1,24"
+   ],
+   [
+    "Panel eğimi / azimut",
+    "25° / 180° (güney)"
+   ],
+   [
+    "İzleyici",
+    "sabit eğim"
+   ],
+   [
+    "Panel / inverter",
+    "MonoPERC-540B · INV-3125K"
+   ],
+   [
+    "Saat dilimi",
+    "Europe/Istanbul (UTC+3)"
+   ]
+  ]
+ },
+ "run": {
+  "mode": "MOD C · HİBRİT",
+  "pages": 16,
+  "prepared": "2026-08-04T08:00"
+ },
+ "forecast": {
+  "start": "2026-08-05",
+  "end": "2026-08-20"
+ },
+ "sources": {
+  "weather": {
+   "model": "saglayici-en-uygun",
+   "version": "sabitlenmemis",
+   "note": "hangi NWP modelinin dondugu kayda islenmiyor (sayfa 14, sinir 1)"
+  },
+  "display": [
+   [
+    "Hava tahmini",
+    "Saatlik ışınım, bulut, sıcaklık, rüzgâr",
+    "saatlik · ~11 km",
+    "her tahmin için 16 gün",
+    "UTC"
+   ],
+   [
+    "Santral verisi (SCADA)",
+    "Gerçekleşen üretim ve kalite bayrakları",
+    "15 dakika → saatlik",
+    "1 Şubat – 4 Ağustos 2026",
+    "UTC"
+   ],
+   [
+    "İklim arşivi",
+    "Aylık üretim geçmişi",
+    "aylık",
+    "2007–2025 (19 tam yıl) + 2026",
+    "yerel ay"
+   ],
+   [
+    "Zemin albedosu",
+    "Bifacial kazanç hesabının girdisi (0,16)",
+    "sabit",
+    "kurulumda girilir",
+    "—"
+   ],
+   [
+    "Santral künyesi",
+    "Kurulu güç, koordinat, eğim/azimut, panel ve inverter",
+    "—",
+    "kurulumda bir kez",
+    "Europe/Istanbul"
+   ]
+  ]
+ },
+ "climate": {
+  "monthly_history": {
+   "2007": [
+    971,
+    1178,
+    1514,
+    1913,
+    2310,
+    2370,
+    2142,
+    2231,
+    1847,
+    1497,
+    1029,
+    895
+   ],
+   "2008": [
+    1010,
+    1139,
+    1693,
+    1805,
+    2280,
+    2487,
+    2362,
+    2268,
+    1854,
+    1487,
+    1039,
+    917
+   ],
+   "2009": [
+    1068,
+    1031,
+    1580,
+    1781,
+    2082,
+    2472,
+    2381,
+    2022,
+    1743,
+    1437,
+    1033,
+    889
+   ],
+   "2010": [
+    962,
+    1114,
+    1567,
+    1650,
+    2097,
+    2114,
+    2224,
+    1954,
+    1626,
+    1332,
+    1051,
+    877
+   ],
+   "2011": [
+    941,
+    1081,
+    1572,
+    1604,
+    2114,
+    2246,
+    2452,
+    2236,
+    1718,
+    1378,
+    1036,
+    931
+   ],
+   "2012": [
+    942,
+    1059,
+    1482,
+    1694,
+    2050,
+    2037,
+    2202,
+    2026,
+    1769,
+    1387,
+    1002,
+    854
+   ],
+   "2013": [
+    1027,
+    1227,
+    1583,
+    1906,
+    2105,
+    2385,
+    2194,
+    2023,
+    1788,
+    1394,
+    1098,
+    999
+   ],
+   "2014": [
+    1085,
+    1227,
+    1763,
+    2082,
+    2433,
+    2544,
+    2739,
+    2479,
+    1892,
+    1605,
+    1191,
+    945
+   ],
+   "2015": [
+    1027,
+    1085,
+    1611,
+    1814,
+    2191,
+    2209,
+    2311,
+    1970,
+    1663,
+    1442,
+    948,
+    909
+   ],
+   "2016": [
+    907,
+    1150,
+    1440,
+    1827,
+    2150,
+    2056,
+    2419,
+    2288,
+    1720,
+    1367,
+    1028,
+    811
+   ],
+   "2017": [
+    1128,
+    1163,
+    1617,
+    1820,
+    2229,
+    2248,
+    2609,
+    2281,
+    1948,
+    1496,
+    1078,
+    905
+   ],
+   "2018": [
+    1038,
+    1194,
+    1591,
+    1867,
+    2145,
+    2305,
+    2657,
+    2223,
+    1762,
+    1519,
+    1195,
+    853
+   ],
+   "2019": [
+    1048,
+    1147,
+    1466,
+    1947,
+    2278,
+    2388,
+    2341,
+    2327,
+    1794,
+    1470,
+    1046,
+    857
+   ],
+   "2020": [
+    1022,
+    1043,
+    1473,
+    1694,
+    2016,
+    2096,
+    2266,
+    2030,
+    1652,
+    1338,
+    1059,
+    853
+   ],
+   "2021": [
+    1029,
+    1096,
+    1421,
+    1876,
+    2281,
+    2251,
+    2380,
+    2257,
+    1830,
+    1477,
+    1030,
+    937
+   ],
+   "2022": [
+    1001,
+    1246,
+    1662,
+    1977,
+    2520,
+    2581,
+    2308,
+    2103,
+    1936,
+    1417,
+    1115,
+    960
+   ],
+   "2023": [
+    893,
+    974,
+    1489,
+    1723,
+    2064,
+    2183,
+    2130,
+    1938,
+    1673,
+    1291,
+    932,
+    856
+   ],
+   "2024": [
+    1006,
+    1150,
+    1454,
+    1730,
+    2066,
+    2167,
+    2337,
+    2088,
+    1786,
+    1434,
+    1159,
+    808
+   ],
+   "2025": [
+    933,
+    995,
+    1377,
+    1490,
+    1895,
+    2105,
+    2082,
+    1916,
+    1553,
+    1345,
+    938,
+    702
+   ],
+   "2026": [
+    922,
+    965,
+    1238,
+    1420,
+    2205,
+    2173,
+    2105,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  }
+ },
+ "daily": [
+  {
+   "date": "2026-08-05",
+   "p50_mwh": 65.8,
+   "half_mwh": null,
+   "flag": null
+  },
+  {
+   "date": "2026-08-06",
+   "p50_mwh": 65.0,
+   "half_mwh": null,
+   "flag": null
+  },
+  {
+   "date": "2026-08-07",
+   "p50_mwh": 66.4,
+   "half_mwh": null,
+   "flag": null
+  },
+  {
+   "date": "2026-08-08",
+   "p50_mwh": 68.3,
+   "half_mwh": null,
+   "flag": null
+  },
+  {
+   "date": "2026-08-09",
+   "p50_mwh": 69.4,
+   "half_mwh": null,
+   "flag": null
+  },
+  {
+   "date": "2026-08-10",
+   "p50_mwh": 67.1,
+   "half_mwh": null,
+   "flag": null
+  },
+  {
+   "date": "2026-08-11",
+   "p50_mwh": 59.3,
+   "half_mwh": null,
+   "flag": "cephe"
+  },
+  {
+   "date": "2026-08-12",
+   "p50_mwh": 53.6,
+   "half_mwh": null,
+   "flag": "cephe"
+  },
+  {
+   "date": "2026-08-13",
+   "p50_mwh": 58.9,
+   "half_mwh": null,
+   "flag": "cephe"
+  },
+  {
+   "date": "2026-08-14",
+   "p50_mwh": 65.6,
+   "half_mwh": null,
+   "flag": null
+  },
+  {
+   "date": "2026-08-15",
+   "p50_mwh": 68.8,
+   "half_mwh": null,
+   "flag": null
+  },
+  {
+   "date": "2026-08-16",
+   "p50_mwh": 69.6,
+   "half_mwh": null,
+   "flag": null
+  },
+  {
+   "date": "2026-08-17",
+   "p50_mwh": 67.9,
+   "half_mwh": null,
+   "flag": null
+  },
+  {
+   "date": "2026-08-18",
+   "p50_mwh": 66.2,
+   "half_mwh": null,
+   "flag": null
+  },
+  {
+   "date": "2026-08-19",
+   "p50_mwh": 63.5,
+   "half_mwh": null,
+   "flag": null
+  },
+  {
+   "date": "2026-08-20",
+   "p50_mwh": 61.0,
+   "half_mwh": null,
+   "flag": null
+  }
+ ],
+ "hourly_typical": {
+  "base_kw": [
+   489,
+   1048,
+   2004,
+   3412,
+   5175,
+   6991,
+   8413,
+   9017,
+   8610,
+   7322,
+   5547,
+   3743,
+   2250,
+   1205,
+   574
+  ],
+  "peak_kw": 9600.0,
+  "band_method": "quantile"
+ },
+ "accuracy": {
+  "skill_basis": "akilli-sureklilik (EPRI naif referans)",
+  "report_card": [
+   {
+    "date": "2026-07-05",
+    "wmape_0_24": 10.4,
+    "skill": 0.36,
+    "wmape_24_72": 14.1,
+    "naif_wmape": 16.2,
+    "olculdu": true,
+    "kapsama_pct": 100
+   },
+   {
+    "date": "2026-07-06",
+    "wmape_0_24": 9.1,
+    "skill": 0.4,
+    "wmape_24_72": 12.4,
+    "naif_wmape": 15.2,
+    "olculdu": true,
+    "kapsama_pct": 100
+   },
+   {
+    "date": "2026-07-07",
+    "wmape_0_24": 11.2,
+    "skill": 0.31,
+    "wmape_24_72": 15.2,
+    "naif_wmape": 16.2,
+    "olculdu": true,
+    "kapsama_pct": 100
+   },
+   {
+    "date": "2026-07-08",
+    "wmape_0_24": 7.8,
+    "skill": 0.44,
+    "wmape_24_72": 10.6,
+    "naif_wmape": 13.9,
+    "olculdu": true,
+    "kapsama_pct": 100
+   },
+   {
+    "date": "2026-07-09",
+    "wmape_0_24": 6.2,
+    "skill": 0.47,
+    "wmape_24_72": 8.4,
+    "naif_wmape": 11.7,
+    "olculdu": true,
+    "kapsama_pct": 100
+   },
+   {
+    "date": "2026-07-10",
+    "wmape_0_24": 6.4,
+    "skill": 0.45,
+    "wmape_24_72": 8.7,
+    "naif_wmape": 11.6,
+    "olculdu": true,
+    "kapsama_pct": 100
+   },
+   {
+    "date": "2026-07-11",
+    "wmape_0_24": 12.9,
+    "skill": 0.28,
+    "wmape_24_72": 17.5,
+    "naif_wmape": 17.9,
+    "olculdu": true,
+    "kapsama_pct": 100
+   },
+   {
+    "date": "2026-07-12",
+    "wmape_0_24": 9.3,
+    "skill": 0.39,
+    "wmape_24_72": 12.6,
+    "naif_wmape": 15.2,
+    "olculdu": true,
+    "kapsama_pct": 100
+   },
+   {
+    "date": "2026-07-13",
+    "wmape_0_24": 8.6,
+    "skill": 0.41,
+    "wmape_24_72": 11.7,
+    "naif_wmape": 14.6,
+    "olculdu": true,
+    "kapsama_pct": 100
+   },
+   {
+    "date": "2026-07-14",
+    "wmape_0_24": 10.2,
+    "skill": 0.35,
+    "wmape_24_72": 13.9,
+    "naif_wmape": 15.7,
+    "olculdu": true,
+    "kapsama_pct": 100
+   },
+   {
+    "date": "2026-07-15",
+    "wmape_0_24": 7.1,
+    "skill": 0.46,
+    "wmape_24_72": 9.7,
+    "naif_wmape": 13.1,
+    "olculdu": true,
+    "kapsama_pct": 100
+   },
+   {
+    "date": "2026-07-16",
+    "wmape_0_24": 8.4,
+    "skill": 0.38,
+    "wmape_24_72": 11.4,
+    "naif_wmape": 13.5,
+    "olculdu": true,
+    "kapsama_pct": 100
+   },
+   {
+    "date": "2026-07-17",
+    "wmape_0_24": 11.0,
+    "skill": 0.33,
+    "wmape_24_72": 15,
+    "naif_wmape": 16.4,
+    "olculdu": true,
+    "kapsama_pct": 100
+   },
+   {
+    "date": "2026-07-18",
+    "wmape_0_24": 8.2,
+    "skill": 0.42,
+    "wmape_24_72": 11.2,
+    "naif_wmape": 14.1,
+    "olculdu": true,
+    "kapsama_pct": 100
+   },
+   {
+    "date": "2026-07-19",
+    "wmape_0_24": 8.9,
+    "skill": 0.37,
+    "wmape_24_72": 12.1,
+    "naif_wmape": 14.1,
+    "olculdu": true,
+    "kapsama_pct": 100
+   },
+   {
+    "date": "2026-07-20",
+    "wmape_0_24": 9.5,
+    "skill": 0.36,
+    "wmape_24_72": 12.9,
+    "naif_wmape": 14.8,
+    "olculdu": true,
+    "kapsama_pct": 100
+   },
+   {
+    "date": "2026-07-21",
+    "wmape_0_24": 10.6,
+    "skill": 0.34,
+    "wmape_24_72": 14.4,
+    "naif_wmape": 16.1,
+    "olculdu": true,
+    "kapsama_pct": 100
+   },
+   {
+    "date": "2026-07-22",
+    "wmape_0_24": 8.0,
+    "skill": 0.43,
+    "wmape_24_72": 10.9,
+    "naif_wmape": 14.0,
+    "olculdu": true,
+    "kapsama_pct": 100
+   },
+   {
+    "date": "2026-07-23",
+    "wmape_0_24": 9.9,
+    "skill": 0.35,
+    "wmape_24_72": 13.5,
+    "naif_wmape": 15.2,
+    "olculdu": true,
+    "kapsama_pct": 100
+   },
+   {
+    "date": "2026-07-24",
+    "wmape_0_24": 11.1,
+    "skill": 0.32,
+    "wmape_24_72": 15.1,
+    "naif_wmape": 16.3,
+    "olculdu": true,
+    "kapsama_pct": 100
+   },
+   {
+    "date": "2026-07-25",
+    "wmape_0_24": 7.6,
+    "skill": 0.44,
+    "wmape_24_72": 10.3,
+    "naif_wmape": 13.6,
+    "olculdu": true,
+    "kapsama_pct": 100
+   },
+   {
+    "date": "2026-07-26",
+    "wmape_0_24": 8.3,
+    "skill": 0.4,
+    "wmape_24_72": 11.3,
+    "naif_wmape": 13.8,
+    "olculdu": true,
+    "kapsama_pct": 100
+   },
+   {
+    "date": "2026-07-27",
+    "wmape_0_24": 9.2,
+    "skill": 0.38,
+    "wmape_24_72": 12.5,
+    "naif_wmape": 14.8,
+    "olculdu": true,
+    "kapsama_pct": 100
+   },
+   {
+    "date": "2026-07-28",
+    "wmape_0_24": 8.1,
+    "skill": 0.445,
+    "wmape_24_72": 11.9,
+    "naif_wmape": 14.6,
+    "olculdu": true,
+    "kapsama_pct": 100
+   },
+   {
+    "date": "2026-07-29",
+    "wmape_0_24": 9.0,
+    "skill": 0.404,
+    "wmape_24_72": 12.4,
+    "naif_wmape": 15.1,
+    "olculdu": true,
+    "kapsama_pct": 100
+   },
+   {
+    "date": "2026-07-30",
+    "wmape_0_24": 12.7,
+    "skill": 0.201,
+    "wmape_24_72": 16.2,
+    "naif_wmape": 15.9,
+    "olculdu": true,
+    "kapsama_pct": 100
+   },
+   {
+    "date": "2026-07-31",
+    "wmape_0_24": 8.5,
+    "skill": 0.422,
+    "wmape_24_72": 12.0,
+    "naif_wmape": 14.7,
+    "olculdu": true,
+    "kapsama_pct": 100
+   },
+   {
+    "date": "2026-08-01",
+    "wmape_0_24": 7.4,
+    "skill": 0.464,
+    "wmape_24_72": 10.8,
+    "naif_wmape": 13.8,
+    "olculdu": true,
+    "kapsama_pct": 100
+   },
+   {
+    "date": "2026-08-02",
+    "wmape_0_24": 8.8,
+    "skill": 0.409,
+    "wmape_24_72": 12.1,
+    "naif_wmape": 14.9,
+    "olculdu": true,
+    "kapsama_pct": 100
+   },
+   {
+    "date": "2026-08-03",
+    "wmape_0_24": 9.6,
+    "skill": 0.377,
+    "wmape_24_72": 13.0,
+    "naif_wmape": 15.4,
+    "olculdu": true,
+    "kapsama_pct": 100
+   }
+  ],
+  "wmape_0_24": 9.4,
+  "skill": 38,
+  "uninterrupted_days": 87
+ },
+ "error_dist": {
+  "prof_mw": [
+   0.5,
+   1.0,
+   2.0,
+   3.4,
+   5.2,
+   7.0,
+   8.4,
+   9.0,
+   8.6,
+   7.3,
+   5.5,
+   3.7,
+   2.3,
+   1.2,
+   0.6
+  ],
+  "mae24": [
+   0.07,
+   0.12,
+   0.19,
+   0.3,
+   0.42,
+   0.52,
+   0.58,
+   0.56,
+   0.49,
+   0.37,
+   0.25,
+   0.16,
+   0.1,
+   0.06
+  ],
+  "mae72": [
+   0.11,
+   0.19,
+   0.31,
+   0.49,
+   0.69,
+   0.84,
+   0.9,
+   0.87,
+   0.74,
+   0.57,
+   0.38,
+   0.24,
+   0.14,
+   0.08
+  ],
+  "mu": -0.2,
+  "sd": 2.0,
+  "ndays": 116
+ },
+ "calibration": {
+  "coefficients": {
+   "eta_bos": 0.942,
+   "bifacial_pct": 7.3,
+   "albedo": 0.16,
+   "saat": 1487,
+   "tarih": "2026-07-19"
+  },
+  "physics_mape": 13.6,
+  "holdout_mape": 8.9,
+  "steps": [
+   {
+    "label": "Ham fizik",
+    "delta": null,
+    "kind": "bas"
+   },
+   {
+    "label": "Sistem verimi",
+    "delta": -1.8,
+    "kind": "iyi"
+   },
+   {
+    "label": "Bifacial kazanç",
+    "delta": -1.2,
+    "kind": "iyi"
+   },
+   {
+    "label": "Bulut geçişi",
+    "delta": 0.3,
+    "kind": "kotu"
+   },
+   {
+    "label": "ML artık öğrenme",
+    "delta": -2.0,
+    "kind": "iyi"
+   },
+   {
+    "label": "Hibrit model",
+    "delta": null,
+    "kind": "bas"
+   }
+  ],
+  "window_days": 120
+ },
+ "scada": {
+  "quality_monthly": {
+   "aylar": [
+    "Şubat",
+    "Mart",
+    "Nisan",
+    "Mayıs",
+    "Haziran",
+    "Temmuz"
+   ],
+   "gecerli": [
+    84,
+    58,
+    49,
+    55,
+    88,
+    92
+   ],
+   "hatali": [
+    10,
+    36,
+    45,
+    39,
+    6,
+    3
+   ],
+   "diger": [
+    6,
+    6,
+    6,
+    6,
+    6,
+    5
+   ]
+  },
+  "quality_flags": [
+   {
+    "ad": "Hatalı yıl bloğu",
+    "saat": "1.052",
+    "pay": "%23,7",
+    "aksiyon": "Kaynak dosyadaki bozuk yıl etiketi düzeltilip veri yeniden yüklenmeli."
+   },
+   {
+    "ad": "Gece üretimi",
+    "saat": "62",
+    "pay": "%1,4",
+    "aksiyon": "Sayaç ofseti kontrol edilmeli; gece sıfırdan büyük üretim fiziksel değildir."
+   },
+   {
+    "ad": "Donmuş veri",
+    "saat": "76",
+    "pay": "%1,7",
+    "aksiyon": "Telemetri kesintisi; aynı değerin tekrarlandığı bloklar düşürüldü."
+   },
+   {
+    "ad": "Kapasite üstü kayıt",
+    "saat": "22",
+    "pay": "%0,5",
+    "aksiyon": "Ölçek hatası olasılığı; kurulu güç künyesiyle çapraz doğrulanmalı."
+   },
+   {
+    "ad": "Okunamayan satır",
+    "saat": "66",
+    "pay": "%1,5",
+    "aksiyon": "Ayrıştırılamayan kayıtlar; örnekleri veri ekinde listelenir."
+   }
+  ],
+  "coverage_pct": 71,
+  "arsiv_baslangic": "2026-02-01",
+  "arsiv_bitis": "2026-08-04",
+  "arsiv_saat": 4440
+ },
+ "history": {
+  "evolution": [
+   {
+    "date": "29 Tem",
+    "p50": 63.2,
+    "half": 7.4
+   },
+   {
+    "date": "30 Tem",
+    "p50": 63.9,
+    "half": 6.6
+   },
+   {
+    "date": "31 Tem",
+    "p50": 64.6,
+    "half": 5.9
+   },
+   {
+    "date": "01 Ağu",
+    "p50": 66.1,
+    "half": 5.1
+   },
+   {
+    "date": "02 Ağu",
+    "p50": 67.3,
+    "half": 4.3
+   },
+   {
+    "date": "03 Ağu",
+    "p50": 64.5,
+    "half": 3.4
+   },
+   {
+    "date": "04 Ağu",
+    "p50": 65.8,
+    "half": 2.8
+   }
+  ]
+ },
+ "totals": {
+  "p50_mwh": 1036.4,
+  "p10_mwh": null,
+  "p90_mwh": null,
+  "capacity_factor": 27.0
+ },
+ "narrative": {
+  "exec_2": "<b>İyileşme bağımsız veride doğrulandı.</b> Model, santralin kendi üretim verisiyle\n      kalibre edildikten sonra hatayı %13,6'dan %8,9'a indirmiştir — %34,6 iyileşme. Bu ölçüm,\n      modelin eğitimde hiç görmediği son dönem verisi üzerinde yapılmıştır.",
+  "exec_3": "<b>Doğrulama 87 gündür kesintisiz.</b> 120 günlük karne penceresinde yalnızca dört gün\n      (21 ve 29 Nisan, 7–8 Mayıs) ölçüm eksikliği nedeniyle karne dışında kalmıştır. Bu günler\n      hiçbir ortalamaya katılmamış, boş bırakılmıştır.",
+  "izleme": "Kalite süzgecini geçen saat oranı tüm arşivde %71'dir; hedef en az %80. Düşüşün\n    tamamına yakını Mart–Mayıs döneminde kaynak dosyadaki bozuk bir yıl bloğundan\n    kaynaklanmaktadır. Bu blok düzeltilip yeniden yüklendiğinde kapsama hedefin üzerine çıkar;\n    Haziran'dan itibaren oran zaten %88–92 seviyesindedir. Ayrıntı ve aylık kırılım\n    Bağımsız test ve veri kalitesi bölümündedir (sayfa 10).",
+  "s06": "Sütunlar arasındaki fark gün kalitesini, satırlar arasındaki fark gün içi seyri verir.\n      11–13 Ağustos sütunlarının öğle saatleri komşularından belirgin biçimde açık: cephe\n      geçişinin en çok vurduğu saatler 10:00–15:00 arasıdır. Sabah ve akşam saatleri ise\n      neredeyse hiç etkilenmemiştir.",
+  "s07_baslik": "30 Temmuz'da ne oldu?",
+  "s07_govde": "O gün hata %12,7'ye çıktı, kazanç %20,1'e düştü — dönemin en zayıf günü. Nedeni ani\n      bulut açılmasıdır: model temkinli kalmış, öğleden sonraki gerçekleşen üretim beklentinin\n      üzerine çıkmıştır. Bu gün karneden çıkarılmadı; zayıf günler de ortalamaya girer.",
+  "s09_prose": "Kalibrasyonun bir modeli veriye uydurup uydurmadığı, bulunan katsayıların fiziksel\n      olarak anlamlı olup olmadığına bakılarak anlaşılır. Sistem verimi 0,942, tipik bir\n      kablolama–inverter–trafo zincirinin beklenen aralığındadır. %7,3'lük bifacial kazanç,\n      sahanın 0,16 olan zemin albedosuyla tutarlıdır.",
+  "s10_sekil": "Aylık geçerli saat payı. Mart–Mayıs\n      döneminde kapsama %49–58'e düşmüştür ve baskın neden tek bir kalemdir: kaynak dosyadaki\n      bozuk yıl bloğu. Haziran'dan itibaren oran %88–92 ile hedefin üzerindedir. Bu, ölçüm\n      sisteminden değil veri aktarımından kaynaklanan, düzeltilebilir bir sorundur.",
+  "arsiv_etiket": "1 Şubat – 4 Ağustos 2026\n    (4.440 saat)",
+  "lejant_hatali": "Hatalı yıl bloğu",
+  "s14_kapsama": "Kaynak dosyadaki bozuk yıl bloğu düzeltilene kadar kalibrasyon, olması gerekenden az saatle çalışmaktadır (sayfa 10).",
+  "s07_sekil": "Gün-öncesi hata dönem boyunca %6–13 bandında\n      kalmış, referansın belirgin altında seyretmiştir.",
+  "s10_sekil1": "Eğitim penceresinde hata %6,8, hiç\n    görülmemiş test döneminde %{{HOLDOUT}}'dur — aradaki fark makul, yani model ezberlememiştir."
+ }
+}

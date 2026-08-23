@@ -425,8 +425,14 @@ if _J:
 # birebir üretir (min P10=43,9→40; max P90=74,1→80).
 import math as _math
 IKLIM_ARALIK = "%d–%d" % (min(IKLIM), max(IKLIM))   # c2a: matris yıl aralığı
-GUN_YMIN = int(_math.floor(min(v - h for v, h in zip(P50_GUN, HW_GUN)) / 10.0)) * 10
-GUN_YMAX = int(_math.ceil(max(v + h for v, h in zip(P50_GUN, HW_GUN)) / 10.0)) * 10
+# v2.181: BANT gözlenebilir DURUMDUR — half listesi tam ve toplam uçları
+# doluysa bant var; tek None bile bantsız sayılır (yarım bant çizilmez,
+# uydurulmaz — v2.178 'yanlış bant, bantsızlıktan kötüdür' ailesi).
+# Kanonik girdide True → md5 birebir.
+BANT_VAR = (all(h is not None for h in HW_GUN)
+            and TOPLAM_P10_MWH is not None and TOPLAM_P90_MWH is not None)
+GUN_YMIN = int(_math.floor(min(v - (h or 0) for v, h in zip(P50_GUN, HW_GUN)) / 10.0)) * 10
+GUN_YMAX = int(_math.ceil(max(v + (h or 0) for v, h in zip(P50_GUN, HW_GUN)) / 10.0)) * 10
 
 # v2.131: s06 matris ölçekleyicisi tipik gün TOPLAMINDAN türetilir — gömülü
 # 65,8 sabiti kanonik girdide birebir aynı değeri üretir (md5 korunur);
@@ -517,8 +523,12 @@ def doldur(s):
         "KURULU": d.get("Kurulu güç", ""),
         "KOORD_YUK": (d.get("Koordinat", "") + " · " + d.get("Yükseklik", "")),
         "TOPLAM_P50": _bin1(TOPLAM_P50_MWH),
-        "TOPLAM_BANT": _bin(TOPLAM_P10_MWH) + "–" + _bin(TOPLAM_P90_MWH),
-        "TOPLAM_P10": _bin(TOPLAM_P10_MWH),
+        # v2.181: bantsız koşuda bant token'ları '—' (uydurma değer yok).
+        # Cümle-içi yüzeylerin (taahhüt satırı, s04 prozu) kural-4 düşürmesi
+        # bilinçli olarak mühür-2'nin (Mod B bloğu) işi — burada yalnız değer.
+        "TOPLAM_BANT": (_bin(TOPLAM_P10_MWH) + "–" + _bin(TOPLAM_P90_MWH))
+                       if BANT_VAR else "—",
+        "TOPLAM_P10": _bin(TOPLAM_P10_MWH) if BANT_VAR else "—",
         "KF": _tr(KF_PCT), "WMAPE120": _tr(WMAPE120_PCT),
         "SKILL120": "%d" % SKILL120_PCT,
         "FIZIK": _tr(SELALE_BAS), "HOLDOUT": _tr(SELALE_BIT),
@@ -528,7 +538,8 @@ def doldur(s):
         "DURUM_WMAPE120": DURUM_WMAPE120, "DURUM_HOLDOUT": DURUM_HOLDOUT,
         "DURUM_KAPSAMA": DURUM_KAPSAMA,
         "KAPSAMA": "%d" % KAPSAMA_PCT, "KESINTISIZ": "%d" % KESINTISIZ_GUN,
-        "MIN_P50": _tr(P50_GUN[i_min]), "MIN_HW": _tr(HW_GUN[i_min]),
+        "MIN_P50": _tr(P50_GUN[i_min]),
+        "MIN_HW": _tr(HW_GUN[i_min]) if BANT_VAR else "—",  # v2.181
         "TEPE_TIPIK": _tr(max(BASE_KW) / 1000 * (sum(P50_GUN) / len(P50_GUN))
                           / (sum(BASE_KW) / 1000)),
         # B3b-1: alan makamdır; display-split geri-ayrıştırması söküldü
@@ -539,7 +550,7 @@ def doldur(s):
         "KAL_PENCERE": KAL_PENCERE,  # v2.132: pencere iddiasi veriden
         "KARNE_UYARI": KARNE_UYARI,  # C-3b (v2.151): kanonikte "" — md5 birebir
         "NARR_S05_FIGCAP": NARR_S05_FIGCAP,
-        "TOPLAM_P90": _bin(TOPLAM_P90_MWH),
+        "TOPLAM_P90": _bin(TOPLAM_P90_MWH) if BANT_VAR else "—",  # v2.181
     }
     for k, v in D.items():
         # v2.154: None/yanlış tip sessiz TypeError yerine İSİM söyler —

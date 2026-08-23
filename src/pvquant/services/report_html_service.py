@@ -103,8 +103,10 @@ def ctx_to_json(ctx, plant: dict) -> dict:
          "daily[%d]" % _ufuk)
     gunler = list(ctx.daily_kwh.index)
     J["forecast"] = {"start": str(gunler[0].date()), "end": str(gunler[-1].date())}
+    # v2.181: bant EKSİKLİK DEĞİL — Mod B ve eski-artefakt (v2.178) koşuları
+    # bantsızdır; v2.141 ailesi: eksiklik reddedilmez, half_mwh/totals None
+    # olarak dürüstçe akar, sayfalar '—'/bantsız çizer (veri.py BANT_VAR).
     bant = getattr(ctx, "daily_p10", None) is not None
-    iste(bant, "daily[].p10/p90 (Mod C bandı)")
     J["daily"] = [{"date": str(g.date()),
                    "p50_mwh": _mwh(ctx.daily_kwh[g]),
                    "half_mwh": (_mwh((ctx.daily_p90[g] - ctx.daily_p10[g]) / 2) if bant else None),
@@ -320,7 +322,8 @@ def _saha_display(ctx, plant):
 def _tipik_gun(ctx):
     """hourly_typical: medyan günün yerel 05–19 p50 profili [kW].
     Medyan gün = günlük p50 toplamları sıralanınca ortadaki gün; band_method
-    'quantile' (Mod C zorunlu — daily bandı zaten iste() ile şart koşuldu).
+    'quantile' (v2.181: daily bandı artık şart değil — Mod B/eski-artefakt
+    bantsız geçer; alanın bugün tüketicisi yok, uykuda şema etiketi).
     peak_kw: renk ölçeği üst sınırı — tepe·1,065, yüzlüğe yuvarlı (motor kalıbı)."""
     h = ctx.hourly["p50_kw"]
     yerel = h.tz_convert(ctx.plant_tz)

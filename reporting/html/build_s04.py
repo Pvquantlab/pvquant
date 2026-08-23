@@ -1,6 +1,6 @@
 from pvq import *
 
-from veri import P50_GUN as p50, HW_GUN as hw, GUN_ETIKET as days, CEPHE, GUN_YMIN, GUN_YMAX, AY_YIL, GUN_SAYISI
+from veri import P50_GUN as p50, HW_GUN as hw, GUN_ETIKET as days, CEPHE, GUN_YMIN, GUN_YMAX, AY_YIL, GUN_SAYISI, BANT_VAR
 
 tr = lambda x, d=1: ("%.*f" % (d, x)).replace(".", ",")
 
@@ -13,6 +13,14 @@ hdr = "".join("<th class='num'>%s</th>" % d for d in days)
 
 def rowcells(vals, bold=False):
     return "".join("<td class='num%s'>%s</td>" % (" b" if bold else "", tr(v)) for v in vals)
+
+
+# v2.181: bantsız koşuda P90/P10 satırları '—' hücreli KALIR (yapı bozulmaz;
+# karne 'ölçülmemiş gün —' ailesi — hücre boşluğu dürüst, satır silmek değil).
+# Toplama girmeden koşullanır: p50±hw None'da toplanamaz.
+_BOS_SATIR = "".join("<td class='num'>—</td>" for _ in p50)
+UST_SATIR = rowcells([a + b for a, b in zip(p50, hw)]) if BANT_VAR else _BOS_SATIR
+ALT_SATIR = rowcells([a - b for a, b in zip(p50, hw)]) if BANT_VAR else _BOS_SATIR
 
 
 CSS = """
@@ -57,9 +65,9 @@ BODY = """<div class="page"><div class="sheet">
   <div class="tcap">Çizelge 4.1 <span>Günlük değerler [MWh]</span></div>
   <table>
     <tr><th>""" + AY_YIL + """</th>""" + hdr + """</tr>
-    <tr><td>P90 · üst sınır</td>""" + rowcells([a + b for a, b in zip(p50, hw)]) + """</tr>
+    <tr><td>P90 · üst sınır</td>""" + UST_SATIR + """</tr>
     <tr class="mid"><td>P50 · beklenti</td>""" + rowcells(p50, True) + """</tr>
-    <tr><td>P10 · alt sınır</td>""" + rowcells([a - b for a, b in zip(p50, hw)]) + """</tr>
+    <tr><td>P10 · alt sınır</td>""" + ALT_SATIR + """</tr>
   </table>
   <div class="tot">
     <span class="lb">Dönem toplamı:</span>
