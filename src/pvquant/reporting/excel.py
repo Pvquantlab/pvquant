@@ -179,6 +179,9 @@ def build_excel(ctx) -> bytes:
     # spec §4'ün "—" varsayılanından bilinçli sapma — kullanıcı kararı).
     _sayfa_gunluk_ozet(wb, ctx, F)
     _sayfa_karne(wb, ctx, F)
+    # ====== CALIBRATION + CLIMATE (K-C, v2.187 — mühür 2/2) ======
+    _sayfa_kalibrasyon(wb, ctx, F)
+    _sayfa_iklim(wb, ctx, F)
 
     # ================= METADATA =================
     ws_m = wb.add_worksheet("Metadata")
@@ -328,3 +331,116 @@ def _sayfa_karne(wb, ctx, F):
     ws.conditional_format(1, 6, n, 6, {
         "type": "data_bar", "bar_color": RENK.MARKA,
         "bar_border_color": RENK.MARKA, "bar_solid": True})
+
+
+# ------------------------------------------------------- K-C sayfaları (v2.187)
+def _sayfa_kalibrasyon(wb, ctx, F):
+    """Calibration (spec §4.5) — anahtar-değer (alan|deger|birim) + AYRI
+    bayrak tablosu (spec'in kendi tarifi; çok-tablolu sayfa burada meşru).
+    Alan kümesi pdf._kalibrasyon aynası: aynı ctx alanları, aynı yokluk
+    davranışı. BG ham KATSAYI basılır, %'lenmez (v2.133 birim dersi —
+    net bifacial kazancı ancak servis hesaplar; motor türetmez). Yokluk
+    Metadata teamülüyle "—" (anahtar-değer sayfası pivot tablosu değildir).
+    Sayfa yokluk kapısı: kalibrasyona dair HİÇBİR alan yoksa sayfa yok
+    (K-C2; pdf'in eta_bos+flag kapısının genişletilmiş hâli — holdout'lu
+    ama katsayısız koşu teoride düşmesin)."""
+    var = any(getattr(ctx, a, None) is not None for a in
+              ("eta_bos", "bg", "mape_pct", "holdout_mape_pct",
+               "flag_dagilimi", "coverage_pct"))
+    if not var:
+        return
+    ws = wb.add_worksheet("Calibration")
+    for j, ad in enumerate(["alan", "deger", "birim"]):
+        ws.write(0, j, ad, F["th"])
+    satirlar = [
+        ("eta_bos", ctx.eta_bos, "katsayi", "kesir"),
+        ("bifacial_bg", ctx.bg, "katsayi", "kesir"),
+        ("gecerli_saat", ctx.n_valid_hours, "saat", "sayi0"),
+        ("kalibrasyon_tarihi", ctx.calibrated_at, "", "tarih"),
+        ("kalibrasyon_mape_pct", ctx.mape_pct, "%", "sayi1"),
+        ("sapma_pct", ctx.deviation_pct, "%", "sayi1"),
+        ("scada_kapsama_pct", ctx.coverage_pct, "%", "sayi1"),
+        ("holdout_fizik_mape_pct", ctx.holdout_physics_mape_pct, "%", "sayi1"),
+        ("holdout_mape_pct", ctx.holdout_mape_pct, "%", "sayi1"),
+        ("holdout_rmse_kw", ctx.holdout_rmse_kw, "kW", "sayi1"),
+        ("holdout_iyilesme_pct", ctx.holdout_improvement_pct, "%", "sayi1"),
+        ("holdout_test_saati", ctx.holdout_hours, "saat", "sayi0"),
+        ("kapsama_p10_p90_pct", ctx.kapsama_p10_p90, "%", "sayi1"),
+    ]
+    for i, (alan, deger, birim, fmt) in enumerate(satirlar, start=1):
+        ws.write(i, 0, alan, F["alt"])
+        if deger is None:
+            ws.write(i, 1, "\u2014", F["hucre"])
+        elif fmt == "tarih":
+            ws.write_datetime(i, 1, deger.replace(tzinfo=None)
+                              if getattr(deger, "tzinfo", None) else deger,
+                              F["tarih"])
+        else:
+            ws.write_number(i, 1, float(deger), F[fmt])
+        ws.write(i, 2, birim, F["alt"])
+    ws.set_column(0, 0, 24)
+    ws.set_column(1, 2, 14)
+    # ---- ayrı tablo: bayrak dağılımı (S5) ----
+    if ctx.flag_dagilimi:
+        bas = len(satirlar) + 3
+        for j, ad in enumerate(["bayrak", "satir_sayisi"]):
+            ws.write(bas, j, ad, F["th"])
+        sirali = sorted(ctx.flag_dagilimi.items(),
+                        key=lambda kv: -kv[1])
+        for i, (bayrak, n) in enumerate(sirali, start=1):
+            ws.write(bas + i, 0, str(bayrak), F["hucre"])
+            ws.write_number(bas + i, 1, int(n), F["sayi0"])
+        ws.conditional_format(bas + 1, 1, bas + len(sirali), 1, {
+            "type": "data_bar", "bar_color": RENK.MARKA,
+            "bar_border_color": RENK.MARKA, "bar_solid": True})
+
+
+def _sayfa_iklim(wb, ctx, F):
+    """Climate (spec §4.6) — iklim + son 12 ay gerçekleşen, İKİ dürüst biçim:
+    · ctx.iklim BEKLENTİ biçimindeyse (ay, ghi_p10/p50/p90_kwh_m2 —
+      iklim_oku/fig_iklim_zarf sözleşmesi) o kolonlar basılır;
+    · yalnız TARİHÇE biçimindeyse (yil, ay, ghi_kwh_m2 — report_service
+      v2.104) ham tarihçe basılır; motor yüzdelik HESAPLAMAZ ("ham okuma,
+      hesap yok" ilkesi — analist pivotu kendi kurar, spec'in amacı da bu).
+    Tanınmayan biçim tablo basmaz. actual_ghi_last12 spec'te var ama ctx'te
+    kaynağı YOK — uydurulmadı (K-C3 ilkesi), yalnız gercek_mwh basılır.
+    Sayfa kapısı pdf._iklim aynası: iklim da son12 de yoksa sayfa yok."""
+    ik, s12 = ctx.iklim, ctx.son12
+    if ik is None and s12 is None:
+        return
+    beklenti = ("ay", "ghi_p10_kwh_m2", "ghi_p50_kwh_m2", "ghi_p90_kwh_m2")
+    tarihce = ("yil", "ay", "ghi_kwh_m2")
+    ik_bicim = None
+    if ik is not None and all(k in ik.columns for k in beklenti):
+        ik_bicim = beklenti
+    elif ik is not None and all(k in ik.columns for k in tarihce):
+        ik_bicim = tarihce
+    if ik_bicim is None and s12 is None:
+        return
+    ws = wb.add_worksheet("Climate")
+    bas = 0
+    if ik_bicim is not None:
+        for j, ad in enumerate(ik_bicim):
+            ws.write(0, j, ad, F["th"])
+        for i, r in enumerate(ik.itertuples(index=False), start=1):
+            for j, k in enumerate(ik_bicim):
+                v = getattr(r, k)
+                if k in ("ay", "yil"):
+                    ws.write_number(i, j, int(v), F["sayi0"])
+                else:
+                    ws.write_number(i, j, float(v), F["sayi1"])
+        ws.autofilter(0, 0, len(ik), len(ik_bicim) - 1)
+        bas = len(ik) + 3
+    if s12 is not None:
+        for j, ad in enumerate(["ay", "gercek_mwh"]):
+            ws.write(bas, j, ad, F["th"])
+        for i, r in enumerate(s12.itertuples(index=False), start=1):
+            ay = pd.Timestamp(r.ay)
+            ws.write_datetime(bas + i, 0, ay.tz_localize(None)
+                              if ay.tzinfo else ay.to_pydatetime(), F["tarih"])
+            ws.write_number(bas + i, 1, float(r.actual_mwh), F["sayi1"])
+        ws.conditional_format(bas + 1, 1, bas + len(s12), 1, {
+            "type": "data_bar", "bar_color": RENK.MARKA,
+            "bar_border_color": RENK.MARKA, "bar_solid": True})
+    ws.set_column(0, 4, 16)
+    ws.freeze_panes(1, 0)
