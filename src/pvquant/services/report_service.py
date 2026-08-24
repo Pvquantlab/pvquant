@@ -27,7 +27,7 @@ def rapor_baglami(tenant_id, plant: dict) -> ReportContext | None:
         # Onceki hal: artifact-yok gerilemesiyle Mod B kosan kosu raporda
         # "Mod C" etiketi tasiyordu; run_at da rapor ani yaziliyordu.
         kosu = s.execute(text(
-            "SELECT run_at, mode, model FROM forecast_runs "
+            "SELECT run_at, mode, model, meteo_source FROM forecast_runs "
             "WHERE plant_id=:p ORDER BY run_at DESC LIMIT 1"),
             {"p": plant["id"]}).first()
         cal = s.execute(text(
@@ -45,7 +45,11 @@ def rapor_baglami(tenant_id, plant: dict) -> ReportContext | None:
         run_at_utc=(kosu.run_at if kosu else datetime.now(timezone.utc)),
         mode=(kosu.mode if kosu else (cal.mode if cal else "A")),
         model_name=(kosu.model if kosu else "barhdadi_bennis"),
-        meteo_source="open-meteo",
+        # v2.189: sabit söküldü — kaynak forecast_runs.meteo_source (kolon
+        # ilk şemadan beri var, hiç SELECT edilmiyordu); satır yoksa eski
+        # varsayılan korunur.
+        meteo_source=(getattr(kosu, "meteo_source", None) or "open-meteo"
+                      if kosu else "open-meteo"),
         hourly=h,
         daily_kwh=daily,
     )

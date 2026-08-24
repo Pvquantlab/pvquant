@@ -77,7 +77,7 @@ def ctx_to_json(ctx, plant: dict) -> dict:
             eksik.append(ad)
         return kosul
 
-    J = {"schema_version": "2.1"}
+    J = {"schema_version": "2.2"}   # v2.189 (K-B1): matrix + 5 alan deltası
 
     # kimlik / künye — report.id çağıran doldurur (uret_html_pdf → rapor_id_uret)
     musteri = plant.get("customer") or getattr(ctx, "tenant_adi", None)
@@ -91,8 +91,21 @@ def ctx_to_json(ctx, plant: dict) -> dict:
                   # B3b-1 (v2.169): MWe ALANDIR — veri.py display-split'i öldü;
                   # ac_limit_kw yoksa None → rapor dürüst "—" basar
                   "sebeke_ac_mwe": (_ac / 1000.0) if _ac else None,
+                  # v2.189 (K-B2): künyesel konum — kaynak DB plants (NOT
+                  # NULL), ctx kanalıyla; stub/eski çağıranlar için toleranslı
+                  "lat": (float(ctx.latitude)
+                          if getattr(ctx, "latitude", None) is not None else None),
+                  "lon": (float(ctx.longitude)
+                          if getattr(ctx, "longitude", None) is not None else None),
+                  "tz": getattr(ctx, "plant_tz", None),
                   "display": _saha_display(ctx, plant)}
     J["run"] = {"mode": _mod_rozet(ctx.mode), "pages": 16,
+                # v2.189 (K-B2): run.model = GÜÇ modeli (forecast_runs.model,
+                # ctx.model_name); meteo_source = hava SAĞLAYICISI. Hava
+                # MODELİ ayrıdır ve sources.weather.model'de yaşamaya devam
+                # eder — adlandırma ayrımı v2.2 belgesi §4'te sabit.
+                "model": getattr(ctx, "model_name", None),
+                "meteo_source": getattr(ctx, "meteo_source", None),
                 "prepared": ctx.run_at_utc.strftime("%Y-%m-%dT%H:%M")}
 
     # günlük seri + toplamlar — v2.156: gün sayısı ufuk ayarından (16 elle

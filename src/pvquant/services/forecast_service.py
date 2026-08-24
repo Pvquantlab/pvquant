@@ -82,8 +82,9 @@ def uret_ve_kaydet(tenant_id, plant: dict) -> str:
                 if k in hh.columns: h[k] = hh[k].reindex(h.index)
     kosu_cercevesi_denetle(h)   # v2.176: run açılmadan önce
     with tenant_baglami(tenant_id) as s:
+        _kaynak = "open-meteo"   # v2.189: tek literal — özet + INSERT aynı değeri yazar
         meteo_ozet = json.dumps({
-            "kaynak": "open-meteo",
+            "kaynak": _kaynak,
             "nwp_model": OpenMeteoClient.NWP_MODEL,
             "cekim_utc": datetime.now(timezone.utc).isoformat(),
             "gunler": [
@@ -95,9 +96,10 @@ def uret_ve_kaydet(tenant_id, plant: dict) -> str:
         run_id = s.execute(text(
             "INSERT INTO forecast_runs(tenant_id,plant_id,mode,model,"
             " meteo_source,meteo_ozet_json)"
-            " VALUES(:t,:p,:m,:mo,'open-meteo',:oz) RETURNING id"),
+            " VALUES(:t,:p,:m,:mo,:ms,:oz) RETURNING id"),
             {"t": tenant_id, "p": plant["id"], "m": mode,
              "mo": "hybrid_residual" if mode == "C" else "barhdadi_bennis",
+             "ms": _kaynak,
              "oz": meteo_ozet}).scalar()
         satirlar = [{"t": tenant_id, "r": run_id, "p": plant["id"], "ts": ts,
                      "p50": _f(v["p50_kw"]), "p10": _f(v["p10_kw"]),

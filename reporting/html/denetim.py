@@ -44,6 +44,8 @@ D24 bant tutarliligi: half↔totals birlikte yasar (yarim bant girdisi
     basilamaz, bant yokken blok dolu + TAAHHUT_NOT MWh iddia edemez
 D25 hata matrisi: boyut/negatiflik + saat-marjinali↔MAE24 (±0,02) +
     olculdu=false kolonu bos (karne aynasi); matris yoksa iddia-yok gecti
+D26 kunye alanlari (v2.189): plant.lat/lon aralik + tz/run.model bos-degil;
+    alanlar yoksa iddia-yok gecti (v2.1 girdisi tolere)
 R1/R2 (render, sayfalar sonrasi): doldurulmamis token yok; s02/s15 sayfa
     referanslari 1..16 icinde — render_denetle(cikti_dizin)
     (MWe → kapak {{KURULU}}, s05 {{SEBEKE}} cümlesi, kapasite faktörü)
@@ -1078,6 +1080,37 @@ def _d25(veri, ekle):
                  "olculdu=false kolonu boş", "ihlal yok")
 
 
+def _d26(veri, ekle):
+    """D26 (v2.189, K-B2): v2.2 künye alanları — plant.lat/lon aralık,
+    plant.tz ve run.model boş-değil. Alanlar toptan yoksa iddia yok → gecti
+    (D25 kalıbı). Var olan alan yanlışsa hata; her koşulda TEK kayıt
+    (sayım belirlenimciliği). meteo_source biçimce serbest — sağlayıcı
+    adları sözlükle kapılanmaz."""
+    lat = _al(veri, "PLANT_LAT")
+    lon = _al(veri, "PLANT_LON")
+    tz = _al(veri, "PLANT_TZ")
+    model = _al(veri, "RUN_MODEL")
+    if lat is None and lon is None and tz is None and model is None:
+        return ekle("D26", "gecti", "v2.2 künye alanları yok — iddia da yok "
+                    "(v2.1 girdisi tolere)", "iddia yok", "iddia yok")
+    ihlal = []
+    if lat is not None and not (-90.0 <= float(lat) <= 90.0):
+        ihlal.append("lat=%r aralık dışı [-90,90]" % lat)
+    if lon is not None and not (-180.0 <= float(lon) <= 180.0):
+        ihlal.append("lon=%r aralık dışı [-180,180]" % lon)
+    if tz is not None and not str(tz).strip():
+        ihlal.append("tz boş")
+    if model is not None and not str(model).strip():
+        ihlal.append("run.model boş")
+    if ihlal:
+        return ekle("D26", "hata", "künye alanı geçersiz — konum/kimlik "
+                    "uydurma ya da bozuk olamaz", "aralık içi + boş-değil",
+                    "; ".join(ihlal))
+    ekle("D26", "gecti", "künye alanları geçerli",
+         "lat∈[-90,90], lon∈[-180,180], tz+model boş-değil",
+         "lat=%s lon=%s tz=%s model=%s" % (lat, lon, tz, model))
+
+
 def denetle_tam(veri):
     """Tüm kontrolleri koşar. → (kayitlar, bulgular, suphe_bayragi)
     kayitlar: geçen+geçmeyen tüm sonuçlar (denetim.json için);
@@ -1096,7 +1129,7 @@ def denetle_tam(veri):
     _d14(veri, ekle); _d15(veri, ekle); _d16(veri, ekle)
     _d17(veri, ekle); _d18(veri, ekle); _d19(veri, ekle); _d20(veri, ekle)
     _d21(veri, ekle); _d22(veri, ekle); _d23(veri, ekle)
-    _d24(veri, ekle); _d25(veri, ekle)
+    _d24(veri, ekle); _d25(veri, ekle); _d26(veri, ekle)
 
     bulgular = [Bulgu(k["kod"], k["durum"], k["mesaj"], k["beklenen"], k["bulunan"])
                 for k in kayitlar if k["durum"] in ("hata", "uyari")]

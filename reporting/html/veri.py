@@ -8,7 +8,13 @@ dosyaları ve pvq.py veriye dokunmayacak. Alan eşlemesi: docs/veri_haritasi.md
 
 # ---------------------------------------------------------------- kimlik
 SANTRAL = "Konya GES"                      # plant.name
-MUSTERI = "Anadolu Enerji A.Ş."            # report.customer (şema v2.1)
+MUSTERI = "Anadolu Enerji A.Ş."            # report.customer
+SEMA_SURUM = "2.2"                         # schema_version (v2.189, K-B1)
+PLANT_LAT = 37.87                          # plant.lat (v2.189, K-B2 — fikstürle aynı Konya değeri)
+PLANT_LON = 32.49                          # plant.lon
+PLANT_TZ = "Europe/Istanbul"               # plant.tz
+RUN_MODEL = "hybrid_residual"              # run.model (GÜÇ modeli — Mod C; hava modeli DEĞİL)
+RUN_METEO = "open-meteo"                   # run.meteo_source (hava sağlayıcısı)
 KAPASITE_MWP = 12.4                        # plant.capacity_kwp/1000 (v2.103:
                                            # s11 özgül üretimdeki gömülü 12.4)
 SEBEKE_AC_MWE = 10.0                       # plant.sebeke_ac_mwe (B3b-1 v2.169:
@@ -278,6 +284,12 @@ def _json_yukle(path):
     g["KAPASITE_MWP"] = float(J["plant"].get("capacity_kwp", 12400)) / 1000  # v2.103
     g["MOD_ROZET"] = J["run"]["mode"]
     g["SAYFA_TOPLAM"] = J["run"]["pages"]
+    g["SEMA_SURUM"] = J.get("schema_version")
+    g["PLANT_LAT"] = J["plant"].get("lat")
+    g["PLANT_LON"] = J["plant"].get("lon")
+    g["PLANT_TZ"] = J["plant"].get("tz")
+    g["RUN_MODEL"] = J["run"].get("model")
+    g["RUN_METEO"] = J["run"].get("meteo_source")
     (y1, m1, d1), (y2, m2, d2) = _tarih(J["forecast"]["start"]), _tarih(J["forecast"]["end"])
     g["FORECAST_BASLANGIC"] = J["forecast"]["start"]   # D21 (v2.155): ham uçlar
     g["FORECAST_BITIS"] = J["forecast"]["end"]

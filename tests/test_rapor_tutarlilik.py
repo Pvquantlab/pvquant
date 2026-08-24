@@ -41,13 +41,14 @@ BOZUKLAR = [
     ("bozuk_9_olculdu_sayili_d18.json", "D18", False),
     ("bozuk_10_bant_yarim_d24.json", "D24", False),
     ("bozuk_11_matris_marjinal_d25.json", "D25", False),
+    ("bozuk_12_kunye_d26.json", "D26", False),
 ]
 _sayac = [0]
 
 # v2.157: kayıt makamının sabit kehaneti — TEK yerde (mutasyon bekçisi kalır,
 # aynı sayı iki yerde elle yaşamaz). Yeni denetim eklenince BURASI bilinçli güncellenir.
-BEKLENEN_KODLAR = ["D%d" % i for i in range(1, 26)]   # D1..D25
-BEKLENEN_GECEN_KAYIT = 36                             # kanonik koşuda geçen kayıt sayısı (D22 +3, D23 +2, D24 +3, D25 +3)
+BEKLENEN_KODLAR = ["D%d" % i for i in range(1, 27)]   # D1..D26
+BEKLENEN_GECEN_KAYIT = 37                             # kanonik koşuda geçen kayıt sayısı (D22 +3, D23 +2, D24 +3, D25 +3, D26 +1)
 
 
 def taze_veri(json_yolu=None):
