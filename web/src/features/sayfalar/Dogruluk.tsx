@@ -94,8 +94,17 @@ export function Dogruluk({ plantId }: { plantId: string }) {
       visualMap: { min: -tepe || -1, max: tepe || 1, calculable: false,
         orient: "horizontal", left: "center", bottom: 0, itemWidth: 10, itemHeight: 90,
         text: ["fazla tahmin (kW)", "eksik tahmin"], textStyle: { color: soluk, fontSize: 11 },
-        inRange: { color: ["#0D3A6E", "#2166AC", "#67A9CF", "#D1E5F0",
-                           orta, "#FDDBC7", "#EF8A62", "#B2182B", "#7F0A1E"] } },
+        // Mürekkep–Bakır (kullanıcı kararı D, bu oturum): sektör teamülü
+        // korunur (mavi=eksik, sıcak=fazla) ama tonlar uygulama ailesine
+        // (adaçayı↔ten↔yanık kahve kartları) çekilir. Merkez --kart:
+        // sıfıra yakın hata zemin gibi sessizdir. Koyu temada sıralama
+        // TERS kurulur — uçlar parlak, sıfır civarı koyu; yoksa küçük
+        // hata büyükten parlak görünür (algı tersinmesi).
+        inRange: { color: document.documentElement.dataset.tema === "koyu"
+          ? ["#A9C9EA", "#7CA3CE", "#4F76A3", "#2B4560",
+             orta, "#5C3A20", "#8A5730", "#BC7B44", "#E8A96A"]
+          : ["#1E3A5F", "#33628F", "#7FA3C4", "#C7D8E6",
+             orta, "#EFCDB0", "#D08B54", "#A85428", "#6B3410"] } },
       series: [{ type: "heatmap", data: veri,
         itemStyle: { borderColor: oku("--izgara"), borderWidth: 1 },
         emphasis: { itemStyle: { borderColor: soluk } } }],
