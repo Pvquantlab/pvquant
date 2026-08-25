@@ -11,7 +11,7 @@ Her sabah 09:00'dan önce, ~10 dakikada 5 kontrol → tek satır ekle:
 **5 kontrol (sırasıyla):**
 
 1. **Gece fotoğrafı** — jobs_log 24 saatlik özet, 4 iş sıfır error
-2. **Smoke** — PYTHONPATH=src python scripts/smoke.py; echo exit=$? → 9/9 + exit=0
+2. **Smoke** — PYTHONPATH=src python scripts/smoke.py; echo exit=$? → 8/8 + exit=0 (v2.160: eski adım-8/ui_kit gömüldü)
 3. **Yedek log/boyut** — cron koştu mu (elle koşma, denetle)
 4. **Sentry inbox** = 0
 5. **alerts yeni satır** — varsa meşru mu
@@ -50,7 +50,7 @@ Pilot yalnız kendi tenant'ını görür — RLS'in üç aydır taşıdığı s�
 - [ ] 6. KVKK parantezleri = 0 + hukuk onayı
 - [ ] 7. Yedek cron + üç-sayı prod tatbikatı
 - [ ] 8. TLS, curl -I 308
-- [ ] 9. Prod smoke, 9/9 + exit=0 → GO-LIVE BELGESİ
+- [ ] 9. Prod smoke, 8/8 + exit=0 → GO-LIVE BELGESİ
 
 ---
 
