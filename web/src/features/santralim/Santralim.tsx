@@ -155,6 +155,8 @@ export function Santralim({ plantId }: { plantId: string }) {
         } },
       xAxis: { type: "value", min: 45, max: 315, name: "[panel yönü — azimuth]",
         nameLocation: "middle", nameGap: 30,
+        // v2.202: tikler 45'lik adimla — 90/180/270 tam duser, ana yonler okunur
+        interval: 45,
         nameTextStyle: { color: soluk, fontFamily: mono, fontSize: 10.5 },
         axisLabel: { color: soluk, fontFamily: mono, fontSize: 10.5,
           formatter: (v: number) =>
@@ -163,6 +165,7 @@ export function Santralim({ plantId }: { plantId: string }) {
         splitLine: { show: false },
         axisLine: { lineStyle: { color: kenar } } },
       yAxis: { type: "value", min: 0, max: 90, name: "Güneş yüksekliği [°]",
+        interval: 30,
         nameLocation: "middle", nameGap: 36, nameRotate: 90,
         nameTextStyle: { color: soluk, fontFamily: mono, fontSize: 10.5 },
         axisLabel: { color: soluk, fontFamily: mono, fontSize: 10.5 },
