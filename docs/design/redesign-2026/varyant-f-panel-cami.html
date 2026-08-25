@@ -19,9 +19,9 @@
   --amber: #E8940A;            /* YALNIZ grafik veri murekkebi: gerceklesen */
   --uyari: #F87171; --basari: #22C55E;
   --zemin: #0B1424;             /* gece laciverti */
-  --kart: rgba(255,255,255,.045); --yuzey: rgba(255,255,255,.07);
-  --metin: #EDF3FA; --ikincil: #C0CCDA; --soluk: #93A2B4;
-  --kenar: rgba(255,255,255,.10); --izgara: rgba(255,255,255,.07);
+  --kart: rgba(19,31,52,.78); --yuzey: rgba(255,255,255,.06);
+  --metin: #F4F8FD; --ikincil: #D6E0EB; --soluk: #A9B7C9;
+  --kenar: rgba(255,255,255,.13); --izgara: rgba(255,255,255,.09);
   --font: 'Fira Sans', system-ui, sans-serif;
   --mono: 'Fira Code', ui-monospace, monospace;
   --t-buyuk: 22px; --t-govde: 14px; --t-ikincil: 13px; --t-etiket: 11px;
@@ -33,15 +33,15 @@
   --ch-band: rgba(124,177,232,.20); --ch-band2: rgba(124,177,232,.36); --ch-eksen-koyu: #A9B6C6;
   --ch-p50-gecmis: #7CB1E8; --ch-p50-gelecek: #7CB1E8;
   --ch-gercek: #E8940A;
-  --ch-ac: #93A2B4; --ch-simdi: #93A2B4; --ch-simdi-metin: #93A2B4;
+  --ch-ac: #A9B7C9; --ch-simdi: #A9B7C9; --ch-simdi-metin: #A9B7C9;
   --ch-izgara: rgba(255,255,255,.08); --ch-eksen: rgba(255,255,255,.18);
   --ch-cubuk: #34A06A; --ch-vurgu: #86EFAC; --ch-dusuk: #5E6C7E;
   --ch-eksik: rgba(147,162,180,.12);
-  --ch-gy-yaz: #22C55E; --ch-gy-eki: #93A2B4; --ch-gy-kis: #5E6C7E;
+  --ch-gy-yaz: #22C55E; --ch-gy-eki: #A9B7C9; --ch-gy-kis: #5E6C7E;
   --ch-gy-nokta: #E8940A;
   --h0:#101B2C; --h1:#12232F; --h2:#152E33; --h3:#1B3A31; --h4:#274726;
   --h5:#4C531B; --h6:#7D6210; --h7:#A9770A; --h8:#CB8709; --h9:#E8940A;
-  --pi-metin: #EDF3FA;
+  --pi-metin: #F4F8FD;
 }
 
 * { box-sizing: border-box; }
@@ -268,6 +268,21 @@ body { background:
 .pi td { border-color: #0B1424; }
 .pi .pi-tipik td { background: #101B2C; }
 .yan-sec { background: rgba(255,255,255,.06); }
+
+/* ---- F netlik turu (kullanici geri bildirimi: 'yazilar net degil') ---- */
+body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+.portlet-bas h2, .portlet-bas { font-size: 11.5px; letter-spacing: .07em; }
+.ozet-bas { font-size: 11.5px; letter-spacing: .07em; }
+table.veri { font-size: 13px; }
+.liste { font-size: 13px; }
+.telemetri { font-size: 12px; color: var(--ikincil); }
+.ch-t { font-size: 11px; }
+.pi { font-size: 11px; }
+.pi td.h0, .pi td.h1, .pi td.h2, .pi td.h3 { color: var(--soluk); }
+.dipnot, .pi-not { font-size: 12.5px; color: var(--soluk); }
+.lejant { font-size: 11.5px; }
+.mono, .telemetri, .damga { font-weight: 500; }  /* Fira Code ince kaliyordu */
+
 
 </style>
 </head>
