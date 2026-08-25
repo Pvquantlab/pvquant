@@ -26,6 +26,8 @@ def _sahte_df(saat: int = 5, nan_ilk: bool = False) -> pd.DataFrame:
         "p50_kw": np.linspace(0, 400, saat),
         "p10_kw": np.linspace(0, 300, saat),
         "p90_kw": np.linspace(0, 500, saat),
+        "p25_kw": np.linspace(0, 340, saat),   # v2.204: ic bant
+        "p75_kw": np.linspace(0, 460, saat),
         "physics_kw": np.linspace(0, 380, saat),
         "ml_kw": np.linspace(0, 390, saat),
     }, index=ix)
@@ -63,8 +65,20 @@ def test_forecast_200_sekil_ve_saat_kirpma(istemci):
     assert g["plant_id"] == PLANT and g["mode"] == "C"
     assert g["hours"] == 3 and len(g["series"]) == 3  # 5 satirdan ilk 3'u
     ilk = g["series"][0]
-    assert set(ilk) == {"ts_utc", "p10_kw", "p50_kw", "p90_kw"}
+    assert set(ilk) == {"ts_utc", "p10_kw", "p50_kw", "p90_kw",
+                        "p25_kw", "p75_kw"}   # v2.204: ic bant alanlari
     assert ilk["ts_utc"].startswith("2026-07-30T00:00")
+
+
+def test_forecast_ic_bant_kolonu_yoksa_null(istemci):
+    """v2.204 geriye uyum: eski koşu çerçevesinde p25/p75 kolonu YOK —
+    yanıt null döner, uydurma yok, 500 yok."""
+    c, mp = istemci
+    df = _sahte_df(saat=3).drop(columns=["p25_kw", "p75_kw"])
+    _servisleri_tak(mp, df)
+    g = c.get(f"/v1/plants/{PLANT}/forecast").json()
+    assert g["series"][0]["p25_kw"] is None
+    assert g["series"][0]["p75_kw"] is None
 
 
 def test_forecast_nan_json_null_olur(istemci):

@@ -39,6 +39,9 @@ export type ForecastPoint = {
   p10: number | null;
   p50: number;
   p90: number | null;
+  /** v2.204 — ic bant; eski kosular/Mod A-B'de null (durust bantsizlik). */
+  p25?: number | null;
+  p75?: number | null;
 };
 
 export type ActualPoint = { ts: string; kw: number };
@@ -101,6 +104,15 @@ export const CHART_TOKENS = (dark: boolean) => ({
   bandPastEdge: cssVar("--chart-band-past-edge", dark ? "#2DD4BF" : "#0D9488"),
   bandPastEdgeOpacity: dark ? 0.35 : 0.4,
   bandEdgeWidth: 1,
+  // v2.204: ic bant (P25-P75) murekkebi — dis banttan koyu ayni aile
+  bandIcFutFill: cssVar(
+    "--chart-band2-future",
+    dark ? "rgba(124,177,232,0.34)" : "rgba(45,111,181,0.28)",
+  ),
+  bandIcPastFill: cssVar(
+    "--chart-band2-past",
+    dark ? "rgba(124,177,232,0.24)" : "rgba(45,111,181,0.20)",
+  ),
   actualLine: cssVar("--chart-actual", dark ? "#E8ECEF" : "#1A222B"),
   actualWidth: 2.2, // v2.201: D cizim dili — gerceklesen murekkebi bir tik kalin
   acLimit: cssVar("--chart-limit", dark ? "#A78BFA" : "#7C3AED"),
@@ -447,6 +459,30 @@ export function buildChartOption(input: BuildInput): EChartsOption {
           edgeOpacity: T.bandFutEdgeOpacity,
           edgeWidth: T.bandEdgeWidth,
         }, T.z.bandFut),
+      );
+    }
+
+    // v2.204: IC bant (P25-P75) — Solargis'in ic ice yuzdelik dili.
+    // Yalniz TUM noktalar sayisal ise cizilir (eski kosu/Mod A-B: yok).
+    // Backend yuvalamayi garanti eder (p10<=p25, p75<=p90); kenar cizgisi
+    // yok — ic bant dolgusuyla konusur, dis bandin kenari kaliteyi tasir.
+    const hasInner = forecast.every(
+      (p) => typeof p.p25 === "number" && typeof p.p75 === "number",
+    );
+    if (hasInner) {
+      const loIc = splitPastFuture(
+        forecast.map((p) => p.p25 as number), boundaryIdx);
+      const hiIc = splitPastFuture(
+        forecast.map((p) => p.p75 as number), boundaryIdx);
+      series.push(
+        ...buildBandSeries("bandIcPast", loIc.past, hiIc.past, "b_ic_past", {
+          fill: T.bandIcPastFill, edge: T.bandPastEdge,
+          edgeOpacity: 0, edgeWidth: 0,
+        }, T.z.bandPast + 0.5),
+        ...buildBandSeries("bandIcFut", loIc.future, hiIc.future, "b_ic_fut", {
+          fill: T.bandIcFutFill, edge: T.bandFutEdge,
+          edgeOpacity: 0, edgeWidth: 0,
+        }, T.z.bandFut + 0.5),
       );
     }
 
@@ -969,6 +1005,12 @@ export default function ProductionForecastChart({
       (p) => typeof p.p10 === "number" && typeof p.p90 === "number",
     );
   const hasActual = !daily && (actual ?? []).length > 0;
+  // v2.204: ic bant lejanti — veri tam ise gorunur
+  const hasInner =
+    !daily &&
+    forecast.every(
+      (p) => typeof p.p25 === "number" && typeof p.p75 === "number",
+    );
   const plotHeightPx = height - 34 - (features.dataZoom ? 58 : 30);
 
   const option = useMemo(
@@ -1091,6 +1133,17 @@ export default function ProductionForecastChart({
           <LineSample color={T.p50Future} dashed />
           {daily ? "Tahmin tepe" : "Tahmin P50"}
         </span>
+        {hasInner && (
+          <span style={key}>
+            <BandSample
+              pastFill={T.bandIcPastFill}
+              futFill={T.bandIcFutFill}
+              pastEdge="transparent"
+              futEdge="transparent"
+            />
+            P25–P75
+          </span>
+        )}
         {(hasOuter || daily) && (
           <span style={key}>
             <BandSample

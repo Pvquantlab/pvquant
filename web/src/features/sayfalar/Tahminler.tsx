@@ -97,6 +97,8 @@ export function Tahminler({ plantId }: { plantId: string }) {
                 p10: s.p10_kw,
                 p50: s.p50_kw,
                 p90: s.p90_kw,
+                p25: s.p25_kw,
+                p75: s.p75_kw,
               }))}
               actual={dilim.saatlik
                 .filter((s) => s.gercek_kw !== null)

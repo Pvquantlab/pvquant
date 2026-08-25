@@ -170,6 +170,14 @@ def test_predict_calibrated_shapes_and_constraints(calibrated_model, plant):
     c = result.confidence
     assert c is not None and c.p10_total_kwh <= c.p50_total_kwh <= c.p90_total_kwh
     assert result.model_name == "hybrid_residual"
+    # v2.204: iç bant üretilir ve dış banda YUVALANIR — kuantil tekdüzeliği
+    # saat saat: p10 ≤ p25 ≤ merkez ≤ p75 ≤ p90 (küçük sayısal payla).
+    assert {"ac_power_p25_kw", "ac_power_p75_kw"} <= set(ts.columns)
+    e = 1e-6
+    assert (ts["ac_power_p10_kw"] <= ts["ac_power_p25_kw"] + e).all()
+    assert (ts["ac_power_p25_kw"] <= ts["ac_power_kw"] + e).all()
+    assert (ts["ac_power_kw"] <= ts["ac_power_p75_kw"] + e).all()
+    assert (ts["ac_power_p75_kw"] <= ts["ac_power_p90_kw"] + e).all()
 
 
 def test_pure_forecast_without_calibration(plant):

@@ -27,7 +27,10 @@ export interface TahminSerisi {
   /** v2.203 — pencerenin astronomik dogus/batis ciftleri (UTC ISO). */
   gunes: { gun: string; dogus: string; batis: string }[];
   saatlik: { ts: string; p50_kw: number; p10_kw: number | null;
-             p90_kw: number | null; gercek_kw: number | null }[];
+             p90_kw: number | null;
+             /** v2.204 — ic bant; eski kosu/Mod A-B'de null. */
+             p25_kw: number | null; p75_kw: number | null;
+             gercek_kw: number | null }[];
   gunluk: { tarih: string; p50_kwh: number; p10_kwh: number | null; p90_kwh: number | null }[];
 }
 

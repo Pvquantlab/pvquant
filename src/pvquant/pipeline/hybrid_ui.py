@@ -236,6 +236,11 @@ def hybrid_forecast_hourly(model, meteo) -> Optional[pd.DataFrame]:
         if "ac_power_p10_kw" in ts.columns and "ac_power_p90_kw" in ts.columns:
             h["p10_kw"] = ts["ac_power_p10_kw"].values
             h["p90_kw"] = ts["ac_power_p90_kw"].values
+        # v2.204: ic bant (P25-P75) — ayni durustluk kurali: kolon yoksa YOK
+        # (eski artifact 3 boosterli; oran-turetme yasak, dogru yol rekalibrasyon).
+        if "ac_power_p25_kw" in ts.columns and "ac_power_p75_kw" in ts.columns:
+            h["p25_kw"] = ts["ac_power_p25_kw"].values
+            h["p75_kw"] = ts["ac_power_p75_kw"].values
         return h
     except Exception:
         logger.exception("Hibrit tahmin başarısız — fiziğe düşülüyor")

@@ -113,7 +113,10 @@ def forecast(plant_id: str, hours: int = 168,
         "gunes": gunes,
         "series": [
             {"ts_utc": ts.isoformat(), "p10_kw": _kw(r.p10_kw),
-             "p50_kw": _kw(r.p50_kw), "p90_kw": _kw(r.p90_kw)}
+             "p50_kw": _kw(r.p50_kw), "p90_kw": _kw(r.p90_kw),
+             # v2.204: ic bant — eski kosuda/A-B'de null (durust bantsizlik)
+             "p25_kw": _kw(getattr(r, "p25_kw", None)),
+             "p75_kw": _kw(getattr(r, "p75_kw", None))}
             for ts, r in df.iterrows()
         ],
     }

@@ -263,6 +263,9 @@ class HybridResidualModel:
         self._last_calibration_date: Optional[datetime] = None
         self._training_report: dict[str, float] = {}
         self._conformal_offset_kw: Optional[float] = None  # v2.57-B
+        # v2.204: IC bant (P25-P75) icin AYRI konformal ofset — dis bandin
+        # %80-hedefli ofseti ic banda uygulanamaz (yanlis seviye kapsamasi).
+        self._conformal_offset_ic_kw: Optional[float] = None
 
     # ------------------------------------------------------------------
     # Protocol: predict
@@ -401,6 +404,33 @@ class HybridResidualModel:
                 # v2.177: plato doyma bayrağı — p10/p50/p90 DEĞİŞMEZ.
                 out_ts["ac_power_band_sature"] = self.bant_sature_maskesi(
                     _hi, self._base._plant_spec.p_ac_clip_kw).values
+            # v2.204: IC bant (P25-P75) — dis bantla ayni disiplin: gecisme
+            # guvenligi, merkez kucaklama, KENDI konformal ofseti, kisitlar,
+            # yeniden kucaklama; dis bant varsa icine YUVALANIR (p10<=p25,
+            # p75<=p90 — kuantil tekdüzeligi). Eski artifact'larda 0.25/0.75
+            # boosterlari yok -> kolonlar hic yazilmaz (durust bantsizlik).
+            if 0.25 in _qser and 0.75 in _qser:
+                _lo_i = np.minimum(_qser[0.25], _qser[0.75])
+                _hi_i = np.maximum(_qser[0.25], _qser[0.75])
+                _lo_i = np.minimum(_lo_i, p_final)
+                _hi_i = np.maximum(_hi_i, p_final)
+                _ofs_i = float(
+                    getattr(self, "_conformal_offset_ic_kw", None) or 0.0)
+                if _ofs_i != 0.0:
+                    _poa_all = physics_hourly["poa_global"]
+                    _lo_i = self._apply_constraints(_lo_i - _ofs_i, _poa_all)
+                    _hi_i = self._apply_constraints(_hi_i + _ofs_i, _poa_all)
+                    _lo_i = np.minimum(_lo_i, p_final)
+                    _hi_i = np.maximum(_hi_i, p_final)
+                if 0.1 in _qser and 0.9 in _qser:
+                    # dis bandin NIHAI serileri (_lo/_hi) ayni indekste —
+                    # out_ts kolonundan okumak indeks hizalama tuzagi olurdu.
+                    _lo_i = np.maximum(_lo_i, _lo)
+                    _hi_i = np.minimum(_hi_i, _hi)
+                    _lo_i = np.minimum(_lo_i, p_final)
+                    _hi_i = np.maximum(_hi_i, p_final)
+                out_ts["ac_power_p25_kw"] = np.asarray(_lo_i)
+                out_ts["ac_power_p75_kw"] = np.asarray(_hi_i)
             if 0.5 in _qser:
                 out_ts["ac_power_p50q_kw"] = _qser[0.5].values
             confidence = ConfidenceIntervals(
@@ -648,9 +678,11 @@ class HybridResidualModel:
             callbacks=[lgb.early_stopping(50, verbose=False)],
         )
 
-        # ---------- Quantile modelleri (P10/P50/P90) ----------
+        # ---------- Quantile modelleri (P10/P25/P50/P75/P90) ----------
+        # v2.204: ic bant seviyeleri ayni mekanizmadan — oran-turetme YASAK
+        # ('yanlis bant, bantsizliktan kotudur'); her seviye kendi boosteri.
         self._quantile_boosters = {}
-        for q in (0.1, 0.5, 0.9):
+        for q in (0.1, 0.25, 0.5, 0.75, 0.9):
             q_params = dict(self.LGBM_PARAMS)
             q_params.update({"objective": "quantile", "alpha": q})
             booster_q = lgb.LGBMRegressor(**q_params)
@@ -735,6 +767,33 @@ class HybridResidualModel:
             if _s50 > 0:
                 _bw_pct = float((_hi - _lo).sum() / _s50 * 100)
 
+        # ---------- v2.204: IC bant (P25-P75) konformal ofseti ----------
+        # Dis bantla ayni CQR tarifi, hedef NOMINAL kapsama: %50 (25-75
+        # araliginin tanimi). Dis ofset bu banda TASINMAZ.
+        _cov_ic = float("nan")
+        _b25 = self._quantile_boosters.get(0.25)
+        _b75 = self._quantile_boosters.get(0.75)
+        if _b25 is not None and _b75 is not None and len(X_va) > 0:
+            _poa_va = physics_hourly["poa_global"].loc[X_va.index]
+            _p25_va = self._apply_constraints(
+                p_phys_va + pd.Series(_b25.predict(X_va), index=X_va.index),
+                _poa_va,
+            )
+            _p75_va = self._apply_constraints(
+                p_phys_va + pd.Series(_b75.predict(X_va), index=X_va.index),
+                _poa_va,
+            )
+            _lo_i = np.minimum(_p25_va, _p75_va)
+            _hi_i = np.maximum(_p25_va, _p75_va)
+            _lo_i = np.minimum(_lo_i, p_hyb_va)
+            _hi_i = np.maximum(_hi_i, p_hyb_va)
+            _skor_i = np.maximum(_lo_i - actual_va, actual_va - _hi_i)
+            _q_hat_i = float(np.quantile(np.asarray(_skor_i, dtype=float), 0.5))
+            self._conformal_offset_ic_kw = _q_hat_i
+            _lo_i = (_lo_i - _q_hat_i).clip(lower=0.0)
+            _hi_i = _hi_i + _q_hat_i
+            _cov_ic = float(((actual_va >= _lo_i) & (actual_va <= _hi_i)).mean() * 100)
+
         report = {
             "holdout_hours": float(len(X_va)),
             "train_hours": float(len(X_tr)),
@@ -747,7 +806,9 @@ class HybridResidualModel:
             "best_iteration": float(self._booster.best_iteration_ or 0),
             "coverage_p10_p90_holdout_pct": _cov,
             "coverage_p10_p90_raw_pct": _cov_raw,
+            "coverage_p25_p75_holdout_pct": _cov_ic,   # v2.204
             "conformal_offset_kw": float(self._conformal_offset_kw or 0.0),
+            "conformal_offset_ic_kw": float(self._conformal_offset_ic_kw or 0.0),
             "band_width_mean_kw": _bw_mean,
             "band_width_pct_of_p50": _bw_pct,
         }
@@ -809,6 +870,7 @@ class HybridResidualModel:
                 "quantile_boosters": self._quantile_boosters,
                 "training_report": self._training_report,
                 "conformal_offset_kw": self._conformal_offset_kw,
+                "conformal_offset_ic_kw": self._conformal_offset_ic_kw,  # v2.204
                 "feature_columns": FEATURE_COLUMNS,
                 "model_version": self.MODEL_VERSION,
             },
@@ -840,6 +902,8 @@ class HybridResidualModel:
         self._quantile_boosters = payload["quantile_boosters"]
         self._training_report = payload.get("training_report", {})
         self._conformal_offset_kw = payload.get("conformal_offset_kw")
+        # v2.204: eski artifact'ta yok -> None (ic bant zaten uretilmez)
+        self._conformal_offset_ic_kw = payload.get("conformal_offset_ic_kw")
         return True
 
     # ------------------------------------------------------------------

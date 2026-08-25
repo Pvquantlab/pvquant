@@ -21,7 +21,9 @@ interface ForecastYanit {
   /** v2.203 — pencerenin astronomik dogus/batis ciftleri (UTC ISO). */
   gunes?: { gun: string; dogus_utc: string; batis_utc: string }[];
   series: { ts_utc: string; p10_kw: number | null;
-            p50_kw: number | null; p90_kw: number | null }[];
+            p50_kw: number | null; p90_kw: number | null;
+            /* v2.204: ic bant — eski kosu/Mod A-B'de null */
+            p25_kw?: number | null; p75_kw?: number | null }[];
 }
 
 /** v2.73-C: 401'de oturum dusurulur — token 12 saatte olur, SPA sessiz kirilmasin. */
@@ -53,7 +55,9 @@ function uyarla(g: ForecastYanit): TahminSerisi {
     if (simdiIdx === null && new Date(s.ts_utc).getTime() > simdi)
       simdiIdx = Math.max(0, i - 1);
     return { ts: s.ts_utc, p50_kw: s.p50_kw ?? 0,
-             p10_kw: s.p10_kw, p90_kw: s.p90_kw, gercek_kw: null };
+             p10_kw: s.p10_kw, p90_kw: s.p90_kw,
+             p25_kw: s.p25_kw ?? null, p75_kw: s.p75_kw ?? null,  // v2.204
+             gercek_kw: null };
   });
   const gunler = new Map<string, number>();
   for (const s of saatlik) {

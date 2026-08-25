@@ -29,6 +29,8 @@
   --chart-band-future-edge: #2D6FB5;
   --chart-band-past: rgba(45,111,181,.10);
   --chart-band-past-edge: #2D6FB5;
+  --chart-band2-future: rgba(45,111,181,.28);  /* v2.204: ic bant P25-P75 */
+  --chart-band2-past: rgba(45,111,181,.20);
   --chart-actual: #E8940A;
   --chart-limit: #8A8478;
   --chart-limit-tint: rgba(138,132,120,.08);
@@ -62,6 +64,8 @@
   --chart-band-future-edge: #7CB1E8;
   --chart-band-past: rgba(124,177,232,.12);
   --chart-band-past-edge: #7CB1E8;
+  --chart-band2-future: rgba(124,177,232,.34);
+  --chart-band2-past: rgba(124,177,232,.24);
   --chart-limit: #8A9288;
   --chart-limit-tint: rgba(138,146,136,.10);
   --chart-sature-tint: rgba(138,146,136,.26);

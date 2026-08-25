@@ -47,6 +47,8 @@ export function ornekTahmin(ufuk: "24h" | "72h" | "7d" | "16d"): TahminSerisi {
     const p50 = PROFIL[i % 24];
     return { ts: new Date(bas + i * 3600_000).toISOString(), p50_kw: p50,
              p10_kw: Math.round(p50 * 0.958), p90_kw: Math.round(p50 * 1.096),
+             // v2.204: ornek kipte ic bant da temsili — ayni sabit profil ailesi
+             p25_kw: Math.round(p50 * 0.978), p75_kw: Math.round(p50 * 1.049),
              gercek_kw: null };
   });
   const gunluk = Array.from({ length: Math.ceil(saat / 24) }, (_, g) => {

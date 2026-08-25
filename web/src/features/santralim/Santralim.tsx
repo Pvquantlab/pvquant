@@ -257,7 +257,8 @@ export function Santralim({ plantId }: { plantId: string }) {
         {seri && dilim && (
           <ProductionForecastChart
             forecast={dilim.saatlik.map((x) => ({
-              ts: x.ts, p10: x.p10_kw, p50: x.p50_kw, p90: x.p90_kw }))}
+              ts: x.ts, p10: x.p10_kw, p50: x.p50_kw, p90: x.p90_kw,
+              p25: x.p25_kw, p75: x.p75_kw }))}
             actual={dilim.saatlik
               .filter((x) => x.gercek_kw !== null)
               .map((x) => ({ ts: x.ts, kw: x.gercek_kw as number }))}
