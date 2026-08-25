@@ -231,6 +231,42 @@ td.spark { color: var(--ch-cubuk); width: 106px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
+/* ---- SaaS kromu (v2.208) ---- */
+.ust-arac { display: flex; align-items: center; gap: 10px; }
+.arama { display: flex; align-items: center; gap: 8px; padding: 6px 10px; min-width: 190px;
+  border: 1px solid var(--kenar); border-radius: var(--r); background: var(--kart);
+  color: var(--soluk); font-size: 12.5px; cursor: pointer; }
+.arama:hover { border-color: var(--soluk); }
+.arama kbd { margin-left: auto; font-family: var(--mono); font-size: 10px;
+  border: 1px solid var(--kenar); border-radius: 3px; padding: 1px 5px;
+  color: var(--soluk); background: var(--yuzey); }
+.ikon-dugme { position: relative; width: 32px; height: 32px; display: grid;
+  place-items: center; border: 1px solid var(--kenar); border-radius: var(--r);
+  background: var(--kart); color: var(--ikincil); cursor: pointer;
+  font-family: var(--font); font-size: 13px; font-weight: 600; }
+.ikon-dugme:hover { color: var(--metin); border-color: var(--soluk); }
+.nokta-badge { position: absolute; top: 5px; right: 5px; width: 7px; height: 7px;
+  border-radius: 50%; background: var(--uyari); border: 1.5px solid var(--zemin); }
+.avatar { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--kenar);
+  background: var(--marka-zemin); color: var(--marka-koyu); font-weight: 600;
+  font-size: 11px; display: grid; place-items: center; cursor: pointer;
+  font-family: var(--font); flex-shrink: 0; }
+.dugme-ana { background: var(--marka); border: 1px solid var(--marka); color: #fff;
+  border-radius: var(--r); padding: 8px 12px; font-family: var(--font);
+  font-size: 13px; font-weight: 600; cursor: pointer; width: 100%;
+  margin: 12px 0 12px; }
+.dugme-ana:hover { filter: brightness(1.06); }
+.hesap { display: flex; gap: 10px; align-items: center; }
+.plan-rozet { font-size: 9.5px; font-weight: 700; letter-spacing: .05em;
+  text-transform: uppercase; color: var(--marka-koyu); background: var(--marka-zemin);
+  border-radius: 999px; padding: 1px 7px; vertical-align: 1px; }
+.disa { display: flex; gap: 6px; align-items: center; }
+.disa button { font-family: var(--mono); font-size: 10.5px; padding: 3px 9px;
+  cursor: pointer; border: 1px solid var(--kenar); border-radius: var(--r);
+  background: var(--kart); color: var(--ikincil); }
+.disa button:hover { color: var(--metin); border-color: var(--soluk); }
+
+
 /* ---- G kimligi: gunes geometrisi ---- */
 .portlet-bas, .ozet-bas { border-bottom: 3px double var(--kenar); }
 .telemetri .gsunpath { flex-shrink: 0; display: inline-block; }
@@ -266,14 +302,17 @@ td.spark { color: var(--ch-cubuk); width: 106px; }
       <a href="#"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3h12v14H4z"/><path d="M7.5 10l1.8 1.8 3.2-3.6"/></svg>Doğruluk</a>
       <a href="#"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="14" height="13" rx="1.5"/><path d="M3 8h14M7 4V2.5M13 4V2.5"/></svg>Aylık</a>
       <a href="#"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2.5h7L16 6v11.5H5z"/><path d="M12 2.5V6h4"/></svg>Raporlar</a>
+      <a href="#"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="2.6"/><path d="M10 2.5v2.2M10 15.3v2.2M2.5 10h2.2M15.3 10h2.2M4.7 4.7l1.6 1.6M13.7 13.7l1.6 1.6M4.7 15.3l1.6-1.6M13.7 6.3l1.6-1.6"/></svg>Ayarlar</a>
+
     </nav>
-    <div class="yan-alt"><b>Meridyen Enerji</b>operatör hesabı</div>
+    <button class="dugme-ana" type="button">+ Yeni santral bağla</button>
+    <div class="yan-alt"><div class="hesap"><span class="avatar">ME</span><div><div style="font-size:12.5px;color:var(--metin);font-weight:600">Meridyen Enerji <span class="plan-rozet">Pro</span></div><div style="font-size:11px;color:var(--soluk)">Admin · operatör hesabı</div></div></div></div>
   </aside>
 
   <main>
     <div class="ust">
       <div class="yol">Panel <b>· Santralım</b> <span style="color:var(--soluk)">· Meridyen GES, Konya</span></div>
-      <button class="dugme" id="temaDugme" aria-pressed="false">Koyu tema</button>
+      <div class="ust-arac"><div class="arama" role="search" aria-label="Panelde ara"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="9" r="5.5"/><path d="M13.2 13.2 17 17"/></svg><span>Ara…</span><kbd>⌘K</kbd></div><button class="ikon-dugme" aria-label="Bildirimler — 2 açık uyarı"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3a4.5 4.5 0 0 0-4.5 4.5c0 4-1.7 5.3-1.7 5.3h12.4s-1.7-1.3-1.7-5.3A4.5 4.5 0 0 0 10 3Z"/><path d="M8.6 15.8a1.6 1.6 0 0 0 2.8 0"/></svg><i class="nokta-badge"></i></button><button class="ikon-dugme" aria-label="Yardım">?</button><button class="dugme" id="temaDugme" aria-pressed="false">Koyu tema</button><button class="avatar" aria-label="Hesap — Meridyen Enerji, Admin">ME</button></div>
     </div>
     <div class="telemetri">
       <svg class="gsunpath" width="38" height="16" viewBox="0 0 38 16" aria-hidden="true"><path d="M3,14 A16,13 0 0 1 35,14" fill="none" stroke="var(--marka)" stroke-width="1.5"/><circle cx="19" cy="3.6" r="2.4" fill="var(--ch-gy-nokta)"/><line x1="1" y1="14.5" x2="37" y2="14.5" stroke="var(--kenar)" stroke-width="1"/></svg>
@@ -333,7 +372,7 @@ td.spark { color: var(--ch-cubuk); width: 106px; }
       <div class="izgara">
 
         <section class="portlet s12">
-          <div class="portlet-bas"><span class="no">2</span> Bugün — saatlik üretim <span class="sag">15 dk çözünürlük</span></div>
+          <div class="portlet-bas"><span class="no">2</span> Bugün — saatlik üretim <span class="sag disa"><button type="button">PNG</button><button type="button">CSV</button><span>15 dk çözünürlük</span></span></div>
           <svg viewBox="0 0 1080 430" role="img" aria-label="Bugün saatlik üretim: gerçekleşen, iç içe tahmin bantları, doğuş-batış ve AC tavanı" style="width:100%;display:block">
   <line x1="64.0" y1="279" x2="1056.0" y2="279" stroke="var(--ch-izgara)" stroke-width="1" vector-effect="non-scaling-stroke" shape-rendering="crispEdges"/><line x1="64.0" y1="206" x2="1056.0" y2="206" stroke="var(--ch-izgara)" stroke-width="1" vector-effect="non-scaling-stroke" shape-rendering="crispEdges"/><line x1="64.0" y1="132" x2="1056.0" y2="132" stroke="var(--ch-izgara)" stroke-width="1" vector-effect="non-scaling-stroke" shape-rendering="crispEdges"/><line x1="64.0" y1="59" x2="1056.0" y2="59" stroke="var(--ch-izgara)" stroke-width="1" vector-effect="non-scaling-stroke" shape-rendering="crispEdges"/>
   <line x1="64.0" y1="352.0" x2="1056.0" y2="352.0" stroke="var(--ch-eksen-koyu)" stroke-width="1.3" vector-effect="non-scaling-stroke" shape-rendering="crispEdges"/>
