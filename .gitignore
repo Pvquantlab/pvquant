@@ -103,3 +103,7 @@ yedekler/
 *.bak
 reporting/html/cikti/
 __pycache__/
+
+# Mühür artefaktları (patch + mühür scripti) — yerel arşive taşınır, depoya girmez (v2.190)
+0001-*.patch
+muhur_*.sh

@@ -198,7 +198,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
             <EChart option={matrisOption} height={360}
               ariaLabel="Saat ve gün kırılımında işaretli tahmin hatası ısı haritası" />
             <p style={{ fontSize: 12, color: "var(--soluk)", margin: "12px 0 0" }}>
-              Kızıl hücreler fazla, mavi hücreler eksik tahmini gösterir (p50 − gerçek).
+              Bakır hücreler fazla, mavi hücreler eksik tahmini gösterir (p50 − gerçek).
               Aynı saatte üst üste aynı renk, sistematik sapmanın adresidir.
             </p>
           </>
