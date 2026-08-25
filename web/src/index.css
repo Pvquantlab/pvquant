@@ -78,6 +78,8 @@
 }
 
 * { box-sizing: border-box; }
+button:focus-visible, select:focus-visible, a:focus-visible, input:focus-visible {
+  outline: 2px solid var(--marka); outline-offset: 2px; }
 body { margin: 0; background: var(--zemin); color: var(--metin);
        font-family: var(--font); font-size: var(--t-govde); line-height: var(--satir);
        text-rendering: optimizeLegibility;

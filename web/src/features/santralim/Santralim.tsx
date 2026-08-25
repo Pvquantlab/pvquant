@@ -123,7 +123,8 @@ export function Santralim({ plantId }: { plantId: string }) {
               : `Anlık güç ${sayiTr(nowVal)} kilovat`}>
             <path d="M18,88 A62,62 0 0 1 142,88" fill="none"
               stroke="var(--izgara)" strokeWidth="10" strokeLinecap="round" />
-            {anlikPay !== null && (
+            {/* pay ~0 iken cizme: round linecap sifirda bile nokta basiyordu */}
+            {anlikPay !== null && anlikPay > 0.005 && (
               <path d="M18,88 A62,62 0 0 1 142,88" fill="none"
                 stroke="var(--amber)" strokeWidth="10" strokeLinecap="round"
                 strokeDasharray={`${(Math.PI * 62 * anlikPay).toFixed(1)} ${(Math.PI * 62).toFixed(1)}`} />

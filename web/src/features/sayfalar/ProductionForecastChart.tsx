@@ -1018,7 +1018,7 @@ export default function ProductionForecastChart({
           {daily ? "Geçmiş tepe" : "Geçmiş P50"}
         </span>
         <span style={key}>
-          <LineSample color={T.p50Future} />
+          <LineSample color={T.p50Future} dashed />
           {daily ? "Tahmin tepe" : "Tahmin P50"}
         </span>
         {(hasOuter || daily) && (
@@ -1035,7 +1035,7 @@ export default function ProductionForecastChart({
         {plant.acCapacityKw !== null && (
           <span style={key}>
             <LineSample color={T.acLimit} dashed />
-            AC limit
+            AC tavanı
           </span>
         )}
         {hasActual && (
