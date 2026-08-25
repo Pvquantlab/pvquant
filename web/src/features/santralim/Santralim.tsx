@@ -9,6 +9,33 @@ import ProductionForecastChart from "../sayfalar/ProductionForecastChart";
 import { t0Hesapla, simdiDegeri, dilimle } from "../sayfalar/tahminPencere";
 import { Cubuklar } from "./Cubuklar";
 
+/** v2.200 (D imzasi): 7 gunluk gorunum — cubuk yerine profilli tablo.
+ *  Gun-ici profil 16 gunluk saatlik P50'den turetilir (dilimleme istemcide,
+ *  Tahminler kalibi); toplam MWh API'nin kendi gunluk degeridir. Tum gunler
+ *  AYNI olcekle cizilir — profiller karsilastirilabilir kalsin. */
+function gunAnahtari(ms: number, tz: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(new Date(ms));
+}
+
+function GunProfili({ noktalar, tepe, vurgu }:
+  { noktalar: number[]; tepe: number; vurgu?: boolean }) {
+  if (noktalar.length < 2 || tepe <= 0)
+    return <span style={{ color: "var(--soluk)" }}>—</span>;
+  const d = noktalar.map((v, i) =>
+    `${(2 + (i / (noktalar.length - 1)) * 96).toFixed(1)},${(23 - (v / tepe) * 19).toFixed(1)}`)
+    .join(" ");
+  return (
+    <svg viewBox="0 0 100 26" aria-hidden="true"
+      style={{ width: 100, height: 26, display: "block" }}>
+      <polyline points={d} fill="none"
+        stroke={vurgu ? "var(--cubuk-vurgu)" : "var(--ch-cubuk)"}
+        strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function Santralim({ plantId }: { plantId: string }) {
   const [o, setO] = useState<SantralOzeti | null>(null);
   const [seri, setSeri] = useState<TahminSerisi | null>(null);
@@ -24,6 +51,21 @@ export function Santralim({ plantId }: { plantId: string }) {
     () => (seri ? simdiDegeri(seri.saatlik, t0) : null), [seri, t0]);
   const dilim = useMemo(
     () => (seri ? dilimle(seri.saatlik, t0, "24h") : null), [seri, t0]);
+  // v2.200: gun-ici P50 profilleri — gunAnahtari(t0+i gun) ile gruplanir
+  const gunProfilleri = useMemo(() => {
+    if (!seri || !o) return null;
+    const grup = new Map<string, number[]>();
+    for (const x of seri.saatlik) {
+      const k = gunAnahtari(new Date(x.ts).getTime(), o.tz);
+      if (!grup.has(k)) grup.set(k, []);
+      grup.get(k)!.push(x.p50_kw ?? 0);
+    }
+    const gunler = o.gunler.map((_, i) =>
+      grup.get(gunAnahtari(t0 + i * 86_400_000, o.tz)) ?? []);
+    const tepe = Math.max(1, ...gunler.flat());
+    return { gunler, tepe };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seri, o, t0]);
   const AYLAR_K = ["Oca","Şub","Mar","Nis","May","Haz","Tem","Ağu","Eyl","Eki","Kas","Ara"];
   const samAralik = useMemo(() => {
     const v = (sam?.hucreler ?? []).flat().filter((x): x is number => x !== null);
@@ -299,8 +341,34 @@ export function Santralim({ plantId }: { plantId: string }) {
                                        marginBottom: 14, alignItems: "start" }}>
         <Kart no="5" baslik="7 günlük görünüm" sag={<span className="cip mono">
           {sayiTr(o.hafta_mwh ?? 0, 1)} MWh toplam</span>}>
-          <Cubuklar etiketler={o.gunler.map((g) => g.etiket)}
-            degerler={o.gunler.map((g) => g.mwh)} birim="MWh" vurguIdx={0} yukseklik={230} />
+          {/* v2.200 (D imzasi): profilli tablo — profil gun-ici P50 egrisi,
+              tum gunler ayni olcekte; tepe = gunun en yuksek P50 saati */}
+          <table className="veri">
+            <thead><tr>
+              <th>Gün</th><th style={{ textAlign: "left" }}>Profil</th>
+              <th>Tepe kW · P50</th><th>Toplam MWh · P50</th>
+            </tr></thead>
+            <tbody className="mono">
+              {o.gunler.map((g, i) => {
+                const nk = gunProfilleri?.gunler[i] ?? [];
+                const gunTepe = nk.length ? Math.max(...nk) : null;
+                return (
+                  <tr key={g.etiket}>
+                    <td style={{ color: "var(--ikincil)" }}>
+                      {i === 0 ? `Bugün · ${g.etiket}` : g.etiket}</td>
+                    <td style={{ textAlign: "left" }}>
+                      <GunProfili noktalar={nk}
+                        tepe={gunProfilleri?.tepe ?? 1} vurgu={i === 0} /></td>
+                    <td>{gunTepe === null ? "—" : sayiTr(gunTepe)}</td>
+                    <td>{sayiTr(g.mwh, 1)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <p style={{ fontSize: 12, color: "var(--soluk)", margin: "10px 0 0" }}>
+            Profiller aynı ölçekte çizilir — kısa görünen gün, düşük beklenen gündür.
+          </p>
         </Kart>
         <Kart no="6" baslik="Aylık üretim — gerçekleşen"
           sag={<span className="cip">son 12 ay</span>}>
