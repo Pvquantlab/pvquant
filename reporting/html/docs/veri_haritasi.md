@@ -2,7 +2,7 @@
 
 **Dalga E.2 güncellemesi:** sabit veriler tek modülde: `veri.py`. Build betikleri veriyi
 oradan alır (`from veri import …`). **JSON adaptörü çalışır durumda:** `PVQ_VERI_JSON`
-ortam değişkeni bir JSON v2.0/v2.1 dosyası gösterirse `veri.py` içindeki `_json_yukle`
+ortam değişkeni bir JSON v2.0/v2.1/v2.2 dosyası gösterirse `veri.py` içindeki `_json_yukle`
 varsayılanları o dosyadan gelen değerlerle değiştirir; türetilen alanlar (LTA, gün
 etiketleri, dönem metni, cephe aralığı, karne tarihleri) otomatik yeniden hesaplanır.
 **Adım 2b — gömülü sayılar:** metin içi tutarlar artık `{{TOKEN}}` yer tutucularıyla
@@ -220,3 +220,24 @@ Aşağıdaki değerler gerçek değil, yer tutucudur ve entegrasyonda değiştir
 - `scada.quality_monthly` ← servis SQL'i, son 6 ay, yüzde; hatalı={yanlis_yil*,gece_uretim,kapasite_ustu,okunamayan} (B2)
 - `report.id` ← `report_service.rapor_id_uret` — PVQ-<tarih>-<mod>-<sıra>, sıra=report_log BIGSERIAL (B6)
 - `accuracy.report_card` SÖZLEŞME (v2.143): tam 30 TAKVİM satırı; ölçülen satırda wmape+skill+naif+wmape_24_72 dolu; ölçülmemişte olculdu=false + hepsi null
+
+## v2.2 ekleri (K-B, v2.185 + v2.189)
+
+Sözleşme belgesi: `sema_v22_delta.md`. Kural: v2.2 yalnız-ekleme deltasıdır; aşağıdaki
+alanların yokluğu hata değil iddia-yok/geçti'dir (D25/D26 kalıbı), v2.1 girdisi tolere edilir.
+
+- `error_dist.matrix` (v2.185) ← worker `error_matrix_hesapla` (B5 fotoğrafına `error_matrix`):
+  `{days: [30×"YYYY-AA-GG"], hours: [6..19], mae_mw: [14 satır × 30 kolon]}` — saat×gün,
+  gün-öncesi |p50 − gerçek| MW, 2 ondalık (K3); eşleşmesiz hücre `null` (uydurma 0 yok),
+  tüm hücreler boşsa alan HİÇ yazılmaz → s08 Şekil 8.3 koşullu (matris yoksa şekil basılmaz);
+  bekçi D25 (boyut/negatiflik · saat-marjinali↔MAE24 ±0,02 · `olculdu=false` günün kolonu boş)
+- `plant.lat`, `plant.lon`, `plant.tz` (v2.189, K-B2) ← `plants` tablosu (NOT NULL), ctx kanalı
+  toleranslı: lat/lon ondalık derece (WGS84 varsayımı — DB'de CRS alanı yok), tz IANA adı
+  (ör. "Europe/Istanbul"); künyeseldir — ilk mühürde rapor tüketicisi YOK (rapora basma kararı
+  ayrı iş ve pin değişimi getirir); bekçi D26 (lat∈[−90,90], lon∈[−180,180], tz boş değil)
+- `run.model`, `run.meteo_source` (v2.189, K-B2) ← `forecast_runs.model/meteo_source`
+  (v2.189'da 'open-meteo' sabiti söküldü, tek kaynaklı parametre). Adlandırma ayrımı SABİT:
+  `run.model` = GÜÇ/üretim modeli (ör. "hybrid_residual"), `run.meteo_source` = hava verisi
+  SAĞLAYICISI, `sources.weather.model` = hava MODELİNİN adı/sürümü — üçü farklı şeydir.
+  GİZLİLİK: `meteo_source` makine alanıdır; değeri kullanıcı-görünür rapor metnine basılamaz
+  (`docs/design/CLAUDE.md` anayasası — meteo kaynağı metinde yalnız "profesyonel meteoroloji verisi")
