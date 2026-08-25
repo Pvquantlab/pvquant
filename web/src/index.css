@@ -144,6 +144,39 @@ h2 { font-size: 19px; }
           font-weight: 500; color: var(--metin); }
 .kpi-br { font-size: 12px; color: var(--soluk); margin-top: 4px; }
 
+/* ---------- ozet seridi (D): kartsiz, ince cizgiyle bolunmus ---------- */
+.ozet-bas { font-family: var(--mono); font-size: var(--t-etiket); letter-spacing: .1em;
+            text-transform: uppercase; color: var(--soluk); display: flex; gap: 10px;
+            align-items: baseline; border-bottom: 1px solid var(--kenar);
+            padding-bottom: 7px; margin-bottom: 2px; }
+.ozet-bas .no { color: var(--marka-koyu); font-weight: 600; }
+.ozet-bas .sag { margin-left: auto; text-transform: none; letter-spacing: .02em; }
+.ozet { display: grid; grid-template-columns: 1.3fr 1fr 1fr 1fr 1.25fr; margin-bottom: 16px; }
+.ozet > div { padding: 13px 14px 13px 0; border-right: 1px solid var(--kenar); min-width: 0; }
+.ozet > div:last-child { border-right: none; }
+.ozet > div + div { padding-left: 14px; }
+.ozet .et { font-size: 12px; color: var(--soluk); }
+.ozet .dg { font-family: var(--mono); font-size: var(--t-buyuk); font-weight: 500;
+            margin: 2px 0; font-variant-numeric: tabular-nums; }
+.ozet .dg small { font-size: 13px; color: var(--soluk); font-weight: 400; }
+.ozet .alt { font-family: var(--mono); font-size: 11px; color: var(--soluk); }
+.anlik { display: flex; gap: 13px; align-items: center; }
+.anlik svg { flex-shrink: 0; }
+.ch-gauge-deger { font-family: var(--mono); font-size: 20px; font-weight: 600; fill: var(--metin); }
+.ch-t { font-family: var(--mono); font-size: 10.5px; fill: var(--soluk); }
+.md-dizi { display: grid; gap: 6px; margin-top: 5px; }
+.md-dizi > div { display: flex; justify-content: space-between; align-items: baseline;
+                 gap: 8px; border-bottom: 1px solid var(--izgara); padding-bottom: 6px; }
+.md-dizi > div:last-child { border-bottom: none; padding-bottom: 0; }
+.md-dizi .e { font-size: 12px; color: var(--ikincil); }
+.md-dizi .d { font-family: var(--mono); font-size: 14px; font-weight: 600;
+              font-variant-numeric: tabular-nums; }
+.md-dizi .d small { font-size: 11px; color: var(--soluk); font-weight: 400; }
+@media (max-width: 1100px) {
+  .ozet { grid-template-columns: 1fr 1fr; }
+  .ozet > div { border-right: none; border-bottom: 1px solid var(--izgara); padding-left: 0; }
+}
+
 .ızgara { display: grid; gap: 14px; }
 .satir-4 { grid-template-columns: repeat(4, minmax(0,1fr)); }
 .satir-3 { grid-template-columns: repeat(3, minmax(0,1fr)); }

@@ -4,7 +4,7 @@ import { api } from "../../api/client";
 import type { SantralOzeti, TahminSerisi, GunesYolu, SaatAyMatrisi } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
-import { Kpi, Kart, Sayfa, sayiTr } from "../sayfalar/parcalar";
+import { Kart, Sayfa, sayiTr } from "../sayfalar/parcalar";
 import ProductionForecastChart from "../sayfalar/ProductionForecastChart";
 import { t0Hesapla, simdiDegeri, dilimle } from "../sayfalar/tahminPencere";
 import { Cubuklar } from "./Cubuklar";
@@ -98,6 +98,9 @@ export function Santralim({ plantId }: { plantId: string }) {
   if (!o) return <div style={{ color: "var(--soluk)" }}>Yükleniyor…</div>;
 
   const s = o.saglik;
+  // v2.198 (D ozet seridi): anlik guc = simdiDegeri; gece/veri yokken "—".
+  const tavan = seri?.ac_tavani_kw ?? o.ac_tavani_kw ?? null;
+  const anlikPay = nowVal !== null && tavan ? Math.max(0, Math.min(1, nowVal / tavan)) : null;
   return (
     <Sayfa baslik={o.ad}
       alt={o.anlati}
@@ -108,77 +111,133 @@ export function Santralim({ plantId }: { plantId: string }) {
         </span>
       </div>}>
 
-      <div className="ızgara satir-4" style={{ marginBottom: 14 }}>
-        <Kpi etiket="Bugün · P50" deger={sayiTr(o.bugun_kwh ?? 0)} birim="kWh"
-             alt="gün sonu itibarıyla" />
-        <Kpi etiket="Yarın · P50" deger={sayiTr(o.yarin_kwh ?? 0)} birim="kWh"
-             alt={o.hava[1]
-               ? `${sayiTr(o.hava[1].isinim, 1)} kWh/m² ışınım`
-               : "—"} />  {/* v2.90: veri yokken 0,0 uydurma — tire ilkesi */}
-        <Kpi etiket="7 gün · P50" deger={sayiTr(o.hafta_mwh ?? 0, 1)} birim="MWh"
-             alt="kayan 7 gün" />
-        <Kpi etiket="Model durumu" deger={o.model_adi}
-             alt={`yıllık sapma %${sayiTr(o.sapma_pct ?? 0, 2)} · son kalibrasyon ${o.son_kalibrasyon}`} />
-      </div>
-
-      <div className="ızgara" style={{ gridTemplateColumns: "minmax(0,2.1fr) minmax(0,1fr)",
-                                       marginBottom: 14 }}>
-        <Kart baslik="Bugün — saatlik üretim">
-          {seri && dilim && (
-            <ProductionForecastChart
-              forecast={dilim.saatlik.map((x) => ({
-                ts: x.ts, p10: x.p10_kw, p50: x.p50_kw, p90: x.p90_kw }))}
-              actual={dilim.saatlik
-                .filter((x) => x.gercek_kw !== null)
-                .map((x) => ({ ts: x.ts, kw: x.gercek_kw as number }))}
-              nowMs={t0}
-              nowValue={nowVal}
-              mode="hourly"
-              plant={{ acCapacityKw: seri.ac_tavani_kw ?? o.ac_tavani_kw,
-                       lat: o.lat, lon: o.lon, timezone: o.tz }}
-              height={300}
-            />
-          )}
-          <p style={{ fontSize: 12, color: "var(--soluk)", margin: "10px 0 0" }}>
-            Gerçekleşen üretimi görmek için bugünün SCADA verisini yükleyin.
-          </p>
-        </Kart>
-
-        <div style={{ display: "grid", gap: 14, alignContent: "start" }}>
-          <Kart baslik="Hava">
-            {o.hava.length === 0 && (
-              /* v2.90: bos kart sessiz kalmasin — neden bos, soyle */
-              <p style={{ fontSize: 12.5, color: "var(--soluk)", margin: 0,
-                          lineHeight: 1.65 }}>
-                Hava özeti son tahmin koşusundan gelir — bugünü kapsayan
-                koşu yok. Yeni koşuyla bu kart kendiliğinden dolar.
-              </p>
+      {/* v2.198 — D "Rapor Odasi" yerlesimi: 1 Ozet seridi (kartsiz), 2 hero
+          tam genislik, hava+kunye/saglik cifti, 3 parmak izi, 4 gunes yolu,
+          5 yedi gun + 6 aylik. */}
+      <div className="ozet-bas"><span className="no">1</span> Özet
+        <span className="sag">tümü P50 · gece sınavıyla ayarlı</span></div>
+      <div className="ozet">
+        <div className="anlik">
+          <svg viewBox="0 0 160 112" role="img" style={{ width: "100%", maxWidth: 118 }}
+            aria-label={nowVal === null ? "Anlık güç verisi yok"
+              : `Anlık güç ${sayiTr(nowVal)} kilovat`}>
+            <path d="M18,88 A62,62 0 0 1 142,88" fill="none"
+              stroke="var(--izgara)" strokeWidth="10" strokeLinecap="round" />
+            {anlikPay !== null && (
+              <path d="M18,88 A62,62 0 0 1 142,88" fill="none"
+                stroke="var(--amber)" strokeWidth="10" strokeLinecap="round"
+                strokeDasharray={`${(Math.PI * 62 * anlikPay).toFixed(1)} ${(Math.PI * 62).toFixed(1)}`} />
             )}
-            <div className="hava">
-              {o.hava.map((h) => (
-                <div key={h.etiket} className="hava-kart">
-                  <div className="hava-gun">{h.etiket}</div>
-                  <div className="hava-sic mono">{sayiTr(h.sicaklik, 1)}°</div>
-                  <div className="hava-isin mono">{sayiTr(h.isinim, 1)} kWh/m²</div>
-                </div>
-              ))}
-            </div>
-          </Kart>
-          <Kart baslik="Santral künyesi">
-            <table className="veri">
-              <tbody className="mono">
-                <tr><td>DC gücü</td><td>{sayiTr(o.kapasite_kwp)} kWp</td></tr>
-                <tr><td>AC tavanı</td><td>{sayiTr(o.ac_tavani_kw ?? 0)} kW</td></tr>
-                <tr><td>Eğim / azimut</td><td>{o.egim_azimut}</td></tr>
-                <tr><td>Saat dilimi</td><td>{o.tz}</td></tr>
-              </tbody>
-            </table>
-          </Kart>
+            <text x="80" y="66" textAnchor="middle" className="ch-gauge-deger">
+              {nowVal === null ? "—" : sayiTr(nowVal)}</text>
+            <text x="80" y="82" textAnchor="middle" className="ch-t">
+              {nowVal === null ? "veri yok" :
+                anlikPay === null ? "kW" : `kW · %${sayiTr(anlikPay * 100)}`}</text>
+          </svg>
+          <div>
+            <div className="et">Anlık güç</div>
+            <div className="alt">{tavan ? `AC tavanı ${sayiTr(tavan)} kW` : "AC tavanı —"}</div>
+            <div className="alt">{nowVal === null
+              ? "şimdiyi kapsayan koşu yok" : "son tahmin koşusundan"}</div>
+          </div>
+        </div>
+        <div>
+          <div className="et">Bugün — beklenen</div>
+          <div className="dg">{sayiTr(o.bugun_kwh ?? 0)} <small>kWh</small></div>
+          <div className="alt">gün sonu itibarıyla</div>
+        </div>
+        <div>
+          <div className="et">Yarın</div>
+          <div className="dg">{sayiTr(o.yarin_kwh ?? 0)} <small>kWh</small></div>
+          <div className="alt">{o.hava[1]
+            ? `${sayiTr(o.hava[1].isinim, 1)} kWh/m² ışınım` : "—"}</div>
+        </div>
+        <div>
+          <div className="et">Önümüzdeki 7 gün</div>
+          <div className="dg">{sayiTr(o.hafta_mwh ?? 0, 1)} <small>MWh</small></div>
+          <div className="alt">döküm §5'te</div>
+        </div>
+        <div>
+          <div className="et">Model durumu</div>
+          <div className="md-dizi">
+            <div><span className="e">Durum</span>
+              <span className="rozet rozet-ok">{o.model_adi} · Mod {o.mod}</span></div>
+            <div><span className="e">Yıllık sapma</span>
+              <span className="d">%{sayiTr(o.sapma_pct ?? 0, 2)}</span></div>
+            <div><span className="e">Son kalibrasyon</span>
+              <span className="d">{o.son_kalibrasyon}</span></div>
+          </div>
         </div>
       </div>
 
+      <Kart no="2" baslik="Bugün — saatlik üretim"
+        sag={<span className="cip">saatlik çözünürlük</span>}
+        style={{ marginBottom: 14 }}>
+        {seri && dilim && (
+          <ProductionForecastChart
+            forecast={dilim.saatlik.map((x) => ({
+              ts: x.ts, p10: x.p10_kw, p50: x.p50_kw, p90: x.p90_kw }))}
+            actual={dilim.saatlik
+              .filter((x) => x.gercek_kw !== null)
+              .map((x) => ({ ts: x.ts, kw: x.gercek_kw as number }))}
+            nowMs={t0}
+            nowValue={nowVal}
+            mode="hourly"
+            plant={{ acCapacityKw: seri.ac_tavani_kw ?? o.ac_tavani_kw,
+                     lat: o.lat, lon: o.lon, timezone: o.tz }}
+            height={340}
+          />
+        )}
+        <p style={{ fontSize: 12, color: "var(--soluk)", margin: "10px 0 0" }}>
+          Gerçekleşen üretimi görmek için bugünün SCADA verisini yükleyin.
+        </p>
+      </Kart>
+
+      <div className="ızgara" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)",
+                                       marginBottom: 14, alignItems: "start" }}>
+        <Kart baslik="Hava — önümüzdeki günler"
+          sag={<span className="cip">profesyonel meteoroloji verisi</span>}>
+          {o.hava.length === 0 && (
+            /* v2.90: bos kart sessiz kalmasin — neden bos, soyle */
+            <p style={{ fontSize: 12.5, color: "var(--soluk)", margin: 0,
+                        lineHeight: 1.65 }}>
+              Hava özeti son tahmin koşusundan gelir — bugünü kapsayan
+              koşu yok. Yeni koşuyla bu kart kendiliğinden dolar.
+            </p>
+          )}
+          <div className="hava">
+            {o.hava.map((h) => (
+              <div key={h.etiket} className="hava-kart">
+                <div className="hava-gun">{h.etiket}</div>
+                <div className="hava-sic mono">{sayiTr(h.sicaklik, 1)}°</div>
+                <div className="hava-isin mono">{sayiTr(h.isinim, 1)} kWh/m²</div>
+              </div>
+            ))}
+          </div>
+        </Kart>
+        <Kart baslik="Künye & veri sağlığı">
+          <table className="veri">
+            <tbody className="mono">
+              <tr><td>DC gücü</td><td>{sayiTr(o.kapasite_kwp)} kWp</td></tr>
+              <tr><td>AC tavanı</td><td>{sayiTr(o.ac_tavani_kw ?? 0)} kW</td></tr>
+              <tr><td>Eğim / azimut</td><td>{o.egim_azimut}</td></tr>
+              <tr><td>Saat dilimi</td><td>{o.tz}</td></tr>
+              <tr><td>Son veri yüklemesi</td>
+                <td style={{ color: "var(--uyari)" }}>{s.son_scada} · {s.kesinti_gun} gündür yeni veri yok</td></tr>
+              <tr><td>İşlenen veri</td><td>{sayiTr(s.islenen_saat)} saatlik ölçüm</td></tr>
+              <tr><td>Anomali tespiti</td><td>{sayiTr(s.anomali)} işaretlendi — tek satır silinmedi</td></tr>
+            </tbody>
+          </table>
+          <p style={{ fontSize: 12.5, color: "var(--ikincil)", margin: "12px 0 0",
+                      lineHeight: 1.55 }}>
+            Model, en taze verinizle en güçlü hâlindedir. Yeni SCADA dosyanızı
+            yükleyin — tahmin o gece kendini yeniden sınar, karneniz büyür.
+          </p>
+        </Kart>
+      </div>
+
       {sam && sam.saatler.length > 0 && (
-        <Kart baslik="Üretim parmak izi — saat × ay"
+        <Kart no="3" baslik="Üretim parmak izi — saat × ay"
           sag={<span className="cip">tüm geçerli SCADA · kW · {sam.tz}</span>}>
           <div style={{ overflowX: "auto" }}>
             <table style={{ borderCollapse: "collapse", width: "100%",
@@ -224,7 +283,7 @@ export function Santralim({ plantId }: { plantId: string }) {
       )}
 
       {gy && gy.egriler.length > 0 && (
-        <Kart baslik="Güneş yolu — yaz / ekinoks / kış"
+        <Kart no="4" baslik="Güneş yolu — yaz / ekinoks / kış"
           sag={<span className="cip">{gy.lat}°K · {gy.tz}</span>}>
           <EChart option={gyOption} height={300}
             ariaLabel="Azimut ve yükseklik düzleminde yaz gündönümü, ekinoks ve kış gündönümü güneş yolları, saat işaretleriyle" />
@@ -236,59 +295,31 @@ export function Santralim({ plantId }: { plantId: string }) {
       )}
 
       <div className="ızgara" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)",
-                                       marginBottom: 14 }}>
-        <Kart baslik="7 günlük görünüm" sag={<span className="cip mono">
+                                       marginBottom: 14, alignItems: "start" }}>
+        <Kart no="5" baslik="7 günlük görünüm" sag={<span className="cip mono">
           {sayiTr(o.hafta_mwh ?? 0, 1)} MWh toplam</span>}>
           <Cubuklar etiketler={o.gunler.map((g) => g.etiket)}
             degerler={o.gunler.map((g) => g.mwh)} birim="MWh" vurguIdx={0} yukseklik={230} />
         </Kart>
-        <Kart baslik="Veri sağlığı">
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16 }}>
-            <div>
-              <div className="kpi-et">Son veri yüklemesi</div>
-              <div className="mono" style={{ fontSize: 17, color: "var(--uyari)" }}>{s.son_scada}</div>
-              <div style={{ fontSize: 12, color: "var(--uyari)", marginTop: 3, fontWeight: 500 }}>
-                {s.kesinti_gun} gündür yeni veri yok</div>
-            </div>
-            <div>
-              <div className="kpi-et">İşlenen veri</div>
-              <div className="mono" style={{ fontSize: 17 }}>{sayiTr(s.islenen_saat)}</div>
-              <div style={{ fontSize: 12, color: "var(--soluk)", marginTop: 3 }}>
-                saatlik ölçüm, temiz ve hazır</div>
-            </div>
-            <div>
-              <div className="kpi-et">Anomali tespiti</div>
-              <div className="mono" style={{ fontSize: 17 }}>{sayiTr(s.anomali)}</div>
-              <div style={{ fontSize: 12, color: "var(--soluk)", marginTop: 3 }}>
-                işaretlendi — tek satır silinmedi</div>
-            </div>
-          </div>
-          <p style={{ fontSize: 13, color: "var(--ikincil)", margin: "16px 0 0",
-                      lineHeight: 1.55 }}>
-            Model, en taze verinizle en güçlü hâlindedir. Yeni SCADA dosyanızı
-            yükleyin — tahmin o gece kendini yeniden sınar, karneniz büyür.
-          </p>
+        <Kart no="6" baslik="Aylık üretim — gerçekleşen"
+          sag={<span className="cip">son 12 ay</span>}>
+          <Cubuklar etiketler={o.aylik.map((a) => a.ay)} degerler={o.aylik.map((a) => a.mwh)}
+            kapsamPct={o.aylik.map((a) => a.kapsam_pct)}
+            birim="MWh" vurguIdx={o.aylik.length - 1} yukseklik={230} />
+          <table className="veri" style={{ marginTop: 14 }}>
+            <thead><tr><th>Ay</th><th>Üretim MWh</th><th>Sağlam saat</th><th>Kapsam %</th></tr></thead>
+            <tbody className="mono">
+              {[...o.aylik].reverse().slice(0, 6).map((a) => (
+                <tr key={a.ay}>
+                  <td>{a.ay}</td><td>{sayiTr(a.mwh, 1)}</td>
+                  <td>{sayiTr(a.saglam_saat)}</td>
+                  <td style={{ color: "var(--ikincil)" }}>{sayiTr(a.kapsam_pct, 1)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </Kart>
       </div>
-
-      <Kart baslik="Aylık üretim — gerçekleşen"
-        sag={<span className="cip">son 12 ay</span>}>
-        <Cubuklar etiketler={o.aylik.map((a) => a.ay)} degerler={o.aylik.map((a) => a.mwh)}
-          kapsamPct={o.aylik.map((a) => a.kapsam_pct)}
-          birim="MWh" vurguIdx={o.aylik.length - 1} yukseklik={250} />
-        <table className="veri" style={{ marginTop: 18 }}>
-          <thead><tr><th>Ay</th><th>Üretim MWh</th><th>Sağlam saat</th><th>Kapsam %</th></tr></thead>
-          <tbody className="mono">
-            {[...o.aylik].reverse().slice(0, 6).map((a) => (
-              <tr key={a.ay}>
-                <td>{a.ay}</td><td>{sayiTr(a.mwh, 1)}</td>
-                <td>{sayiTr(a.saglam_saat)}</td>
-                <td style={{ color: "var(--ikincil)" }}>{sayiTr(a.kapsam_pct, 1)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Kart>
     </Sayfa>
   );
 }
