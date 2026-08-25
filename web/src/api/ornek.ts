@@ -58,7 +58,9 @@ export function ornekTahmin(ufuk: "24h" | "72h" | "7d" | "16d"): TahminSerisi {
   });
   return { mod: "C", model: "hybrid_residual", kosu_zamani: "2026-07-30T12:58:48Z",
            ufuk_saat: saat, ac_tavani_kw: 3560,
-           simdi_idx: ufuk === "24h" ? 18 : null, saatlik, gunluk };
+           simdi_idx: ufuk === "24h" ? 18 : null,
+           gunes: [],  // v2.203: ornek kip astronomi uydurmaz
+           saatlik, gunluk };
 }
 
 export const ornekKarne: Karne = {

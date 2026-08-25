@@ -42,12 +42,16 @@ def istemci(monkeypatch):
     api_main.app.dependency_overrides.clear()
 
 
-def _servisleri_tak(monkeypatch, df, kosu_var=True):
+def _servisleri_tak(monkeypatch, df, kosu_var=True, gunes=None):
     from pvquant.services import forecast_service as fs
+    from pvquant.services import gunes_service as gs
     monkeypatch.setattr(fs, "son_kosu", lambda t, p: df)
     meta = [SimpleNamespace(run_at=dt.datetime(2026, 7, 30, 2, 0), mode="C",
                             model="hybrid")] if kosu_var else []
     monkeypatch.setattr(fs, "kosu_gecmisi", lambda t, p, n=1: meta)
+    # v2.203: dogus/batis servisini de tak — DB'siz test, sahte cift
+    monkeypatch.setattr(gs, "dogus_batis",
+                        lambda t, p, lo, hi: gunes if gunes is not None else [])
 
 
 def test_forecast_200_sekil_ve_saat_kirpma(istemci):
@@ -69,6 +73,29 @@ def test_forecast_nan_json_null_olur(istemci):
     r = c.get(f"/v1/plants/{PLANT}/forecast")
     assert r.status_code == 200
     assert r.json()["series"][0]["p10_kw"] is None  # NaN JSON'a sizmaz
+
+
+def test_forecast_gunes_alani_gecer(istemci):
+    """v2.203: dogus/batis ciftleri yanita `gunes` olarak biner; servis
+    dusmusse alan bos liste kalir (tahmin serisi OLMEZ)."""
+    c, mp = istemci
+    cift = [{"gun": "2026-07-30",
+             "dogus_utc": "2026-07-30T02:48:00+00:00",
+             "batis_utc": "2026-07-30T17:42:00+00:00"}]
+    _servisleri_tak(mp, _sahte_df(saat=5), gunes=cift)
+    g = c.get(f"/v1/plants/{PLANT}/forecast").json()
+    assert g["gunes"] == cift
+
+
+def test_forecast_gunes_servisi_duserse_seri_olmez(istemci):
+    c, mp = istemci
+    _servisleri_tak(mp, _sahte_df(saat=3))
+    from pvquant.services import gunes_service as gs
+    def patla(t, p, lo, hi):
+        raise RuntimeError("pvlib yok")
+    mp.setattr(gs, "dogus_batis", patla)
+    r = c.get(f"/v1/plants/{PLANT}/forecast")
+    assert r.status_code == 200 and r.json()["gunes"] == []
 
 
 def test_forecast_kosu_yoksa_404(istemci):

@@ -7,10 +7,12 @@ import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
 import { sayiTr } from "../sayfalar/parcalar";
 
-export function Cubuklar({ etiketler, degerler, birim, vurguIdx, yukseklik = 260, ondalik = 1, kapsamPct }:
+export function Cubuklar({ etiketler, degerler, birim, vurguIdx, yukseklik = 260, ondalik = 1, kapsamPct, beklenti }:
   { etiketler: string[]; degerler: number[]; birim: string;
     vurguIdx?: number; yukseklik?: number; ondalik?: number;
-    kapsamPct?: number[] }) {
+    kapsamPct?: number[];
+    /** v2.203 (D bullet imleci): donem basina beklenti-P50; null = imlec yok */
+    beklenti?: (number | null)[] }) {
   const { n, oku } = useTema();
   const option = useMemo<EChartsOption>(() => {
     // v2.148: mr/ar/grad kalıntısı söküldü — üretim derlemesi (tsc -b)
@@ -30,7 +32,10 @@ export function Cubuklar({ etiketler, degerler, birim, vurguIdx, yukseklik = 260
         formatter: (ps: unknown) => {
           const a = ps as { dataIndex: number; value: number }[];
           const i = a[0]?.dataIndex ?? 0;
-          const satir = `${etiketler[i]}: ${sayiTr(Number(a[0]?.value), ondalik)} ${birim}`;
+          let satir = `${etiketler[i]}: ${sayiTr(Number(a[0]?.value), ondalik)} ${birim}`;
+          const b = beklenti?.[i];
+          if (b !== null && b !== undefined)
+            satir += `<br/>beklenti · P50: ${sayiTr(b, ondalik)} ${birim}`;
           return tam(i) ? satir
             : `${satir}<br/><span style="opacity:.75">kapsam %${sayiTr(kapsamPct![i], 1)} — eksik veri</span>`;
         } },
@@ -56,7 +61,17 @@ export function Cubuklar({ etiketler, degerler, birim, vurguIdx, yukseklik = 260
                  fontFamily: mono, fontSize: 11,
                  formatter: (p: unknown) =>
                    sayiTr(Number((p as { value: number }).value), ondalik) },
-      }],
+      },
+      // v2.203: beklenti-P50 imleci — cubugun ustune binen yatay cizgi
+      // (D bullet dili); yalniz degeri olan donemlerde cizilir, uydurma yok.
+      ...(beklenti && beklenti.some((b) => b !== null) ? [{
+        type: "scatter" as const, silent: true, z: 5,
+        symbol: "rect", symbolSize: [40, 2.4],
+        itemStyle: { color: oku("--metin") },
+        tooltip: { show: false },
+        data: beklenti.map((b, i) => (b === null ? null : [i, b])),
+      }] : []),
+      ],
     } as EChartsOption;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [etiketler, degerler, vurguIdx, n]);

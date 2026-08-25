@@ -263,6 +263,7 @@ export function Santralim({ plantId }: { plantId: string }) {
               .map((x) => ({ ts: x.ts, kw: x.gercek_kw as number }))}
             nowMs={t0}
             nowValue={nowVal}
+            gunes={seri.gunes}
             mode="hourly"
             plant={{ acCapacityKw: seri.ac_tavani_kw ?? o.ac_tavani_kw,
                      lat: o.lat, lon: o.lon, timezone: o.tz }}

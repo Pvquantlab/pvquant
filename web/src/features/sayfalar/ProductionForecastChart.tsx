@@ -65,6 +65,9 @@ export type ProductionForecastChartProps = {
   nowValue: number | null;
   mode: "hourly" | "daily";
   actual?: ActualPoint[];
+  /** v2.203 — pencerenin astronomik dogus/batis ciftleri (ISO, UTC).
+   *  Verilmezse isaret cizilmez; istemci saat UYDURMAZ. */
+  gunes?: { dogus: string; batis: string }[];
   dark?: boolean;
   features?: ChartFeatures;
   height?: number;
@@ -135,6 +138,12 @@ export const CHART_TOKENS = (dark: boolean) => ({
 
 const toMs = (ts: string) => new Date(ts).getTime();
 const nfKw = new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 0 });
+
+function fmtClock(ms: number, tz: string): string {
+  return new Intl.DateTimeFormat("tr-TR", {
+    timeZone: tz, hour: "2-digit", minute: "2-digit",
+  }).format(new Date(ms));
+}
 
 function fmtTime(ms: number, tz: string): string {
   return new Intl.DateTimeFormat("tr-TR", {
@@ -343,6 +352,7 @@ export type BuildInput = {
   nowValue: number | null;
   mode: "hourly" | "daily";
   actual?: ActualPoint[];
+  gunes?: { dogus: string; batis: string }[];
   dark: boolean;
   features: ChartFeatures;
   narrow: boolean;
@@ -357,6 +367,7 @@ export function buildChartOption(input: BuildInput): EChartsOption {
     nowValue,
     mode,
     actual,
+    gunes,
     dark,
     features,
     narrow,
@@ -449,6 +460,47 @@ export function buildChartOption(input: BuildInput): EChartsOption {
         connectNulls: false,
         z: T.z.p50Past,
       });
+    }
+
+    // v2.203: dogus/batis isaretleri — taban cizgisinde amber tik + saat
+    // etiketi (D dili). Yalniz API'nin verdigi astronomik ciftler; pencere
+    // disindakiler ve verilmeyenler cizilmez.
+    if (gunes && gunes.length > 0 && cats.length > 1) {
+      const tMin = toMs(cats[0]);
+      const tMax = toMs(cats[cats.length - 1]);
+      const isaretler: { cat: string; text: string }[] = [];
+      for (const g of gunes) {
+        const ciftler: [number, string][] = [
+          [toMs(g.dogus), "doğuş"], [toMs(g.batis), "batış"]];
+        for (const [ms, ad] of ciftler) {
+          if (Number.isFinite(ms) && ms >= tMin && ms <= tMax)
+            isaretler.push({ cat: nearestTs(ms, cats),
+                             text: `${ad} ${fmtClock(ms, tz)}` });
+        }
+      }
+      if (isaretler.length > 0) {
+        series.push({
+          name: "__gunes",
+          type: "scatter",
+          data: [],
+          silent: true,
+          z: T.z.rules,
+          markPoint: {
+            symbol: "rect",
+            symbolSize: [2.4, 10],
+            symbolOffset: [0, 5],
+            itemStyle: { color: T.actualLine },
+            silent: true,
+            label: {
+              show: true, position: "bottom", distance: narrow ? 8 : 14,
+              color: T.mutedText, fontFamily: "monospace",
+              fontSize: narrow ? 9 : 10,
+            },
+            data: isaretler.map((m) => ({
+              coord: [m.cat, 0], label: { formatter: m.text } })),
+          },
+        } as unknown as SeriesOption);
+      }
     }
 
     const p50sp = splitPastFuture(forecast.map((p) => p.p50), boundaryIdx);
@@ -899,6 +951,7 @@ export default function ProductionForecastChart({
   nowValue,
   mode,
   actual,
+  gunes,
   dark,
   features = {},
   height = 360,
@@ -927,6 +980,7 @@ export default function ProductionForecastChart({
         nowValue,
         mode,
         actual,
+        gunes,
         dark: isDark,
         features,
         narrow,
@@ -939,6 +993,7 @@ export default function ProductionForecastChart({
       nowValue,
       mode,
       actual,
+      gunes,
       isDark,
       features,
       narrow,

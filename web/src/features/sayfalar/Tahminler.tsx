@@ -103,6 +103,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
                 .map((s) => ({ ts: s.ts, kw: s.gercek_kw as number }))}
               nowMs={t0}
               nowValue={nowVal}
+              gunes={seri.gunes}
               mode={GUNLUK_MOD[ufuk] ? "daily" : "hourly"}
               plant={{
                 acCapacityKw: seri.ac_tavani_kw ?? ozet.ac_tavani_kw,

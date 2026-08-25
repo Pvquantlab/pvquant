@@ -90,7 +90,7 @@ def forecast(plant_id: str, hours: int = 168,
     bos doner -> 404; veri sizintisi yok. hours varsayilani 168 (7 gun,
     sartname); tavan 384 (16 gun ufku, v2.69).
     """
-    from pvquant.services import forecast_service
+    from pvquant.services import forecast_service, gunes_service
     if not (1 <= hours <= 384):
         raise HTTPException(422, "hours 1-384 araliginda olmali")
     df = forecast_service.son_kosu(claims["tenant_id"], plant_id)
@@ -98,11 +98,19 @@ def forecast(plant_id: str, hours: int = 168,
         raise HTTPException(404, "tahmin kosusu yok")
     kosu = forecast_service.kosu_gecmisi(claims["tenant_id"], plant_id, n=1)
     df = df.iloc[:hours]
+    # v2.203: pencerenin gunleri icin astronomik dogus/batis (pvlib SPA).
+    # Hesap dusmezse seri OLMEZ — gunes bos doner, grafik isaretsiz cizer.
+    try:
+        gunes = gunes_service.dogus_batis(
+            claims["tenant_id"], plant_id, df.index.min(), df.index.max())
+    except Exception:
+        gunes = []
     return {
         "plant_id": plant_id,
         "run_at": kosu[0].run_at.isoformat() if kosu else None,
         "mode": kosu[0].mode if kosu else None,
         "hours": int(len(df)),
+        "gunes": gunes,
         "series": [
             {"ts_utc": ts.isoformat(), "p10_kw": _kw(r.p10_kw),
              "p50_kw": _kw(r.p50_kw), "p90_kw": _kw(r.p90_kw)}

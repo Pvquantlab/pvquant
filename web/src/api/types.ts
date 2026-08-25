@@ -24,6 +24,8 @@ export interface SantralOzeti {
 export interface TahminSerisi {
   mod: Mod | null; model: string; kosu_zamani: string; ufuk_saat: number;
   ac_tavani_kw: number | null; simdi_idx: number | null;
+  /** v2.203 — pencerenin astronomik dogus/batis ciftleri (UTC ISO). */
+  gunes: { gun: string; dogus: string; batis: string }[];
   saatlik: { ts: string; p50_kw: number; p10_kw: number | null;
              p90_kw: number | null; gercek_kw: number | null }[];
   gunluk: { tarih: string; p50_kwh: number; p10_kwh: number | null; p90_kwh: number | null }[];

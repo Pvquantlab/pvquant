@@ -18,6 +18,8 @@ interface ForecastYanit {
   run_at: string | null;
   mode: "A" | "B" | "C" | null;
   hours: number;
+  /** v2.203 — pencerenin astronomik dogus/batis ciftleri (UTC ISO). */
+  gunes?: { gun: string; dogus_utc: string; batis_utc: string }[];
   series: { ts_utc: string; p10_kw: number | null;
             p50_kw: number | null; p90_kw: number | null }[];
 }
@@ -61,6 +63,8 @@ function uyarla(g: ForecastYanit): TahminSerisi {
   return {
     mod: g.mode, model: "", kosu_zamani: g.run_at ?? "",
     ufuk_saat: g.hours, ac_tavani_kw: null, simdi_idx: simdiIdx,
+    gunes: (g.gunes ?? []).map((x) =>
+      ({ gun: x.gun, dogus: x.dogus_utc, batis: x.batis_utc })),
     saatlik,
     gunluk: [...gunler].map(([tarih, p50_kwh]) =>
       ({ tarih, p50_kwh, p10_kwh: null, p90_kwh: null })),
