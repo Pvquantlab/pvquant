@@ -1,7 +1,7 @@
 # CLAUDE.md — PVQuant Faz 2: Streamlit UI *(tarihî belge — v2.194 notu)*
 
 > **Güncellik notu (v2.194):** Streamlit fazı v2.160'ta kapandı (frontend/ silindi);
-> UI artık `web/` (React + Vite + ECharts; tasarım tokenları `web/src/theme/tokens.ts`,
+> UI artık `web/` (React + Vite + ECharts; tasarım tokenları `web/src/index.css` — v2.196 "Rapor Odası" dili, kaynak mockup `docs/design/redesign-2026/varyant-d-rapor-odasi.html`,
 > ısı haritası paleti v2.188'den beri Mürekkep–Bakır). Bu belgeden **bağlayıcı kalanlar:**
 > GİZLİLİK ANAYASASI (aşağıda) ve veri kuralları (gerçek SCADA asla commit'e girmez,
 > commit disiplini). Streamlit'e ve Plotly'ye özgü satırlar tarihîdir.

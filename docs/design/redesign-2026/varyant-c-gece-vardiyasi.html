@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Varyant C — Gece Vardiyası</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@200;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* ============================================================
+   VARYANT C — "GECE VARDIYASI" (AlsoEnergy PowerTrack dili, yalniz koyu)
+   Bu :root blogu kazanan varyantta web/src/index.css :root'una tasinir
+   (koyu-oncelikli; acik tema sonra tureyecek).
+   Tipografi: Archivo (govde/krom; KPI rakamlari 200 agirlik, 44-52px)
+   + JetBrains Mono (TUM veri, damga, tablo). Murekkep zemin, filiz vurgu;
+   amber YALNIZ gerceklesen veri murekkebi.
+   ============================================================ */
+:root {
+  --marka: #3DDC97; --marka-koyu: #2AA974; --marka-zemin: rgba(61,220,151,.10);
+  --amber: #E8940A;            /* YALNIZ grafik veri murekkebi: gerceklesen */
+  --uyari: #E06A4A; --basari: #3DDC97;
+  --zemin: #0A1220;             /* murekkep */
+  --kart: #101B2E; --yuzey: #16233A;
+  --metin: #E8EEF5; --ikincil: #B7C4D4; --soluk: #8494A9;
+  --kenar: #1C2A3E; --izgara: #182539;
+  --font: 'Archivo', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+  --t-buyuk: 22px; --t-govde: 14px; --t-ikincil: 12.5px; --t-etiket: 11px;
+  --t-dev: 48px;               /* ince KPI rakamlari */
+  --b1: 4px; --b2: 8px; --b3: 14px; --b4: 20px; --b5: 28px; --b6: 44px;
+  --r: 6px; --rk: 10px;
+  --govde-genislik: 1400px;
+  /* grafik murekkepleri */
+  --ch-band: rgba(61,220,151,.13); --ch-band2: rgba(61,220,151,.24); --ch-eksen-koyu: #8494A9;
+  --ch-p50-gecmis: #3DDC97; --ch-p50-gelecek: #3DDC97;
+  --ch-gercek: #E8940A;
+  --ch-ac: #8494A9; --ch-simdi: #8494A9; --ch-simdi-metin: #8494A9;
+  --ch-izgara: #182539; --ch-eksen: #2A3A52;
+  --ch-cubuk: #2AA974; --ch-vurgu: #7FEBBF; --ch-dusuk: #566A85;
+  --ch-eksik: rgba(132,148,169,.12);
+  --ch-gy-yaz: #3DDC97; --ch-gy-eki: #8494A9; --ch-gy-kis: #566A85;
+  --ch-gy-nokta: #E8940A;
+  /* parmak izi rampasi: murekkep -> filiz -> amber (koyu; parlaklik degerle buyur) */
+  --h0:#101B2E; --h1:#122433; --h2:#153039; --h3:#1B3E38; --h4:#254D31;
+  --h5:#4A5A1E; --h6:#7D6210; --h7:#A9770A; --h8:#CB8709; --h9:#E8940A;
+  --pi-metin: #E8EEF5;
+}
+.pi td.h0, .pi td.h1, .pi td.h2, .pi td.h3 { color: #8494A9; }
+.pi td.h7, .pi td.h8, .pi td.h9 { color: #140F07; }
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--zemin); color: var(--metin);
+  font-family: var(--font); font-size: var(--t-govde); line-height: 1.55;
+}
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* ---- kabuk ---- */
+.kabuk { display: grid; grid-template-columns: 248px minmax(0,1fr); min-height: 100vh; }
+.yan {
+  background: #081020; border-right: 1px solid var(--kenar);
+  padding: var(--b4) var(--b3); position: sticky; top: 0; height: 100vh;
+  display: flex; flex-direction: column; gap: var(--b4);
+}
+.logo { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 16px; letter-spacing: .01em; }
+
+/* agac menu */
+.agac { font-size: 13px; }
+.agac .kok {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+  border-radius: var(--r); background: var(--marka-zemin);
+  color: var(--metin); font-weight: 600; cursor: pointer;
+}
+.agac .kok .durum { width: 8px; height: 8px; border-radius: 50%; background: var(--basari); flex-shrink: 0; }
+.agac .kok .kwp { margin-left: auto; font-family: var(--mono); font-size: 10.5px; color: var(--soluk); font-weight: 400; }
+.agac ul { list-style: none; margin: 4px 0 0; padding: 0 0 0 14px; border-left: 1px solid var(--kenar); margin-left: 13px; }
+.agac li a {
+  display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+  color: var(--ikincil); text-decoration: none; border-radius: var(--r);
+  font-weight: 500; cursor: pointer;
+}
+.agac li a:hover { background: var(--yuzey); color: var(--metin); }
+.agac li a.aktif { color: var(--marka); background: var(--marka-zemin); }
+.agac li a .no { font-family: var(--mono); font-size: 10px; color: var(--soluk); }
+.agac li a.aktif .no { color: var(--marka-koyu); }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--marka); outline-offset: 2px; }
+.yan-alt { margin-top: auto; border-top: 1px solid var(--kenar); padding-top: var(--b3); font-size: 12px; color: var(--soluk); }
+.yan-alt b { display: block; color: var(--ikincil); font-weight: 600; }
+
+/* ---- ust ---- */
+.ust {
+  height: 56px; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 var(--b5); border-bottom: 1px solid var(--kenar);
+  position: sticky; top: 0; background: rgba(10,18,32,.92); backdrop-filter: blur(6px); z-index: 5;
+}
+.ust h1 { font-size: 16px; font-weight: 600; margin: 0; letter-spacing: .01em; }
+.ust h1 span { color: var(--soluk); font-weight: 400; }
+.damga { font-family: var(--mono); font-size: 11.5px; color: var(--soluk); }
+
+/* ---- icerik ---- */
+.icerik { padding: var(--b5) var(--b5) 0; }
+.sarici { max-width: var(--govde-genislik); margin: 0 auto; }
+
+/* ince rakamli KPI seridi */
+.kpi-serit { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--b3); margin-bottom: var(--b4); }
+.kpi {
+  background: var(--kart); border: 1px solid var(--kenar); border-radius: var(--rk);
+  padding: var(--b4);
+}
+.kpi .et { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--soluk); font-weight: 600; }
+.kpi .dg { font-weight: 200; font-size: var(--t-dev); line-height: 1.05; margin: 6px 0 2px; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.kpi .dg small { font-size: 15px; color: var(--soluk); font-weight: 400; }
+.kpi .alt { font-family: var(--mono); font-size: 11px; color: var(--soluk); }
+.kpi .rozet { display: inline-block; margin: 12px 0 6px; font-size: 12.5px; font-weight: 600; color: var(--marka); background: var(--marka-zemin); border: 1px solid rgba(61,220,151,.25); border-radius: 999px; padding: 4px 12px; }
+
+/* kartlar */
+.kart {
+  background: var(--kart); border: 1px solid var(--kenar); border-radius: var(--rk);
+  padding: var(--b4); margin-bottom: var(--b4); min-width: 0;
+}
+.kart-bas { display: flex; align-items: baseline; gap: var(--b2); margin-bottom: var(--b3); }
+.kart-bas h2 { font-size: 14.5px; font-weight: 600; margin: 0; letter-spacing: .01em; }
+.kart-bas .sag { margin-left: auto; font-family: var(--mono); font-size: 10.5px; color: var(--soluk); }
+.iki { display: grid; grid-template-columns: 1fr 1fr; gap: var(--b4); align-items: start; }
+.iki .kart { margin-bottom: 0; }
+.iki { margin-bottom: var(--b4); }
+
+.lejant { display: flex; flex-wrap: wrap; gap: var(--b3); font-family: var(--mono); font-size: 11px; color: var(--ikincil); margin-top: var(--b2); }
+.lejant span { display: inline-flex; align-items: center; gap: 6px; }
+.lejant i { display: inline-block; width: 18px; height: 0; border-top: 2.4px solid; border-radius: 2px; }
+.dipnot { font-size: 12px; color: var(--soluk); margin: var(--b2) 0 0; max-width: 72ch; }
+
+/* tablolar */
+table.veri { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+table.veri th, table.veri td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--izgara); }
+table.veri thead th { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--soluk); font-weight: 600; }
+table.veri td.sag, table.veri th.sag { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+table.veri td.et { color: var(--ikincil); }
+table.veri tbody tr:hover { background: var(--yuzey); }
+
+/* liste */
+.liste { display: grid; gap: 7px; font-size: 12.5px; }
+.liste > div { display: flex; justify-content: space-between; gap: var(--b2); border-bottom: 1px solid var(--izgara); padding-bottom: 7px; }
+.liste > div:last-child { border-bottom: none; }
+.liste .et { color: var(--ikincil); }
+.liste .dg { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* parmak izi */
+.pi-sar { overflow-x: auto; }
+.pi { border-collapse: collapse; font-family: var(--mono); font-size: 10.5px; width: 100%; min-width: 620px; }
+.pi th { font-weight: 500; color: var(--soluk); padding: 2px 4px; text-align: center; font-size: 10px; }
+.pi tbody th { text-align: right; padding-right: 6px; }
+.pi td { text-align: center; padding: 3px 3px; color: var(--pi-metin); border: 1px solid var(--kart); font-variant-numeric: tabular-nums; }
+.pi td.h0{background:var(--h0)} .pi td.h1{background:var(--h1)} .pi td.h2{background:var(--h2)}
+.pi td.h3{background:var(--h3)} .pi td.h4{background:var(--h4)} .pi td.h5{background:var(--h5)}
+.pi td.h6{background:var(--h6)} .pi td.h7{background:var(--h7)} .pi td.h8{background:var(--h8)}
+.pi td.h9{background:var(--h9)}
+.pi .pi-tipik td { background: var(--zemin); border-top: 2px solid var(--marka-koyu); font-weight: 500; }
+.pi-not { font-size: 11.5px; color: var(--soluk); margin: var(--b2) 0 0; }
+
+/* hava satiri */
+.hava { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--b3); }
+.hava > div { display: flex; gap: 12px; align-items: center; background: var(--yuzey); border-radius: var(--r); padding: 10px 12px; }
+.hava .gun { font-size: 12px; color: var(--ikincil); }
+.hava .sic { font-family: var(--mono); font-size: 17px; }
+.hava .isin { font-family: var(--mono); font-size: 10.5px; color: var(--soluk); }
+.hava svg { color: var(--ikincil); flex-shrink: 0; }
+
+/* alt durum cubugu */
+.durum-cubugu {
+  margin-top: var(--b5);
+  border-top: 1px solid var(--kenar); padding: 10px var(--b5);
+  display: flex; gap: var(--b4); flex-wrap: wrap; justify-content: space-between;
+  font-family: var(--mono); font-size: 11px; color: var(--soluk);
+  background: #081020;
+}
+.durum-cubugu .ok { color: var(--marka); }
+.ch-t { font-family: var(--mono); font-size: 10.5px; fill: var(--soluk); }
+
+@media (max-width: 1100px) { .kpi-serit { grid-template-columns: 1fr 1fr; } .iki { grid-template-columns: 1fr; } }
+@media (max-width: 900px) {
+  .kabuk { grid-template-columns: 1fr; }
+  .yan { position: static; height: auto; }
+  .kpi-serit { grid-template-columns: 1fr; }
+  .icerik { padding: var(--b3) var(--b3) 0; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="kabuk">
+  <aside class="yan">
+    <div class="logo">
+      <svg width="22" height="22" viewBox="0 0 20 20" aria-hidden="true">
+        <circle cx="10" cy="10" r="3.4" fill="none" stroke="var(--marka)" stroke-width="1.5"/>
+        <g stroke="var(--marka)" stroke-width="1.5" stroke-linecap="round">
+          <line x1="10" y1="1.6" x2="10" y2="3.9"/><line x1="10" y1="16.1" x2="10" y2="18.4"/>
+          <line x1="1.6" y1="10" x2="3.9" y2="10"/><line x1="16.1" y1="10" x2="18.4" y2="10"/>
+          <line x1="4.1" y1="4.1" x2="5.7" y2="5.7"/><line x1="14.3" y1="14.3" x2="15.9" y2="15.9"/>
+          <line x1="4.1" y1="15.9" x2="5.7" y2="14.3"/><line x1="14.3" y1="5.7" x2="15.9" y2="4.1"/>
+        </g>
+      </svg>
+      PVQuant
+    </div>
+    <nav class="agac" aria-label="Portföy ve sayfalar">
+      <div class="kok"><span class="durum" aria-label="veri akışı sağlıklı"></span>Meridyen GES<span class="kwp">1.234 kWp</span></div>
+      <ul>
+        <li><a class="aktif" href="#"><span class="no">01</span>Santralım</a></li>
+        <li><a href="#"><span class="no">02</span>Veri Yükleme</a></li>
+        <li><a href="#"><span class="no">03</span>Kalibrasyon</a></li>
+        <li><a href="#"><span class="no">04</span>Tahminler</a></li>
+        <li><a href="#"><span class="no">05</span>Doğruluk</a></li>
+        <li><a href="#"><span class="no">06</span>Aylık</a></li>
+        <li><a href="#"><span class="no">07</span>Raporlar</a></li>
+      </ul>
+    </nav>
+    <div class="yan-alt"><b>Meridyen Enerji</b>operatör hesabı · gece vardiyası</div>
+  </aside>
+
+  <main>
+    <div class="ust">
+      <h1>Santralım <span>· Meridyen GES, Konya</span></h1>
+      <span class="damga">25 Ağu 2026 · 14:02 · veri 5 dk önce</span>
+    </div>
+
+    <div class="icerik"><div class="sarici">
+
+      <div class="kpi-serit">
+        <div class="kpi">
+          <div class="et">Bugün · P50</div>
+          <div class="dg">6.842 <small>kWh</small></div>
+          <div class="alt">P10–P90 · 6.120–7.390</div>
+        </div>
+        <div class="kpi">
+          <div class="et">Yarın · P50</div>
+          <div class="dg">6.510 <small>kWh</small></div>
+          <div class="alt">P10–P90 · 5.480–7.310</div>
+        </div>
+        <div class="kpi">
+          <div class="et">7 gün · P50</div>
+          <div class="dg">44,8 <small>MWh</small></div>
+          <div class="alt">gün gün döküm aşağıda</div>
+        </div>
+        <div class="kpi">
+          <div class="et">Model durumu</div>
+          <div><span class="rozet">Hibrit · sağlıklı</span></div>
+          <div class="alt">kalibrasyon 12 Ağu · sapma %1,84</div>
+        </div>
+      </div>
+
+      <section class="kart">
+        <div class="kart-bas"><h2>Bugün — saatlik üretim</h2><span class="sag">15 dk çözünürlük · şimdi 14:00</span></div>
+        <svg viewBox="0 0 720 330" role="img" aria-label="Bugün saatlik üretim: gerçekleşen, iç içe tahmin bantları, doğuş-batış ve AC tavanı" style="width:100%;display:block">
+  <line x1="56" y1="212.5" x2="704" y2="212.5" stroke="var(--ch-izgara)" stroke-width="1"/><line x1="56" y1="157.1" x2="704" y2="157.1" stroke="var(--ch-izgara)" stroke-width="1"/><line x1="56" y1="101.6" x2="704" y2="101.6" stroke="var(--ch-izgara)" stroke-width="1"/><line x1="56" y1="46.2" x2="704" y2="46.2" stroke="var(--ch-izgara)" stroke-width="1"/>
+  <line x1="56" y1="268" x2="704" y2="268" stroke="var(--ch-eksen-koyu)" stroke-width="1.2"/>
+  <line x1="52" y1="268.0" x2="56" y2="268.0" stroke="var(--ch-eksen)" stroke-width="1"/><line x1="52" y1="212.5" x2="56" y2="212.5" stroke="var(--ch-eksen)" stroke-width="1"/><line x1="52" y1="157.1" x2="56" y2="157.1" stroke="var(--ch-eksen)" stroke-width="1"/><line x1="52" y1="101.6" x2="56" y2="101.6" stroke="var(--ch-eksen)" stroke-width="1"/><line x1="52" y1="46.2" x2="56" y2="46.2" stroke="var(--ch-eksen)" stroke-width="1"/><line x1="96" y1="268" x2="96" y2="272" stroke="var(--ch-eksen)" stroke-width="1"/><line x1="137" y1="268" x2="137" y2="272" stroke="var(--ch-eksen)" stroke-width="1"/><line x1="178" y1="268" x2="178" y2="272" stroke="var(--ch-eksen)" stroke-width="1"/><line x1="218" y1="268" x2="218" y2="272" stroke="var(--ch-eksen)" stroke-width="1"/><line x1="258" y1="268" x2="258" y2="272" stroke="var(--ch-eksen)" stroke-width="1"/><line x1="299" y1="268" x2="299" y2="272" stroke="var(--ch-eksen)" stroke-width="1"/><line x1="340" y1="268" x2="340" y2="272" stroke="var(--ch-eksen)" stroke-width="1"/><line x1="380" y1="268" x2="380" y2="272" stroke="var(--ch-eksen)" stroke-width="1"/><line x1="420" y1="268" x2="420" y2="272" stroke="var(--ch-eksen)" stroke-width="1"/><line x1="461" y1="268" x2="461" y2="272" stroke="var(--ch-eksen)" stroke-width="1"/><line x1="502" y1="268" x2="502" y2="272" stroke="var(--ch-eksen)" stroke-width="1"/><line x1="542" y1="268" x2="542" y2="272" stroke="var(--ch-eksen)" stroke-width="1"/><line x1="582" y1="268" x2="582" y2="272" stroke="var(--ch-eksen)" stroke-width="1"/><line x1="623" y1="268" x2="623" y2="272" stroke="var(--ch-eksen)" stroke-width="1"/><line x1="664" y1="268" x2="664" y2="272" stroke="var(--ch-eksen)" stroke-width="1"/><line x1="704" y1="268" x2="704" y2="272" stroke="var(--ch-eksen)" stroke-width="1"/><line x1="76" y1="268" x2="76" y2="270" stroke="var(--ch-eksen)" stroke-width="0.8"/><line x1="117" y1="268" x2="117" y2="270" stroke="var(--ch-eksen)" stroke-width="0.8"/><line x1="157" y1="268" x2="157" y2="270" stroke="var(--ch-eksen)" stroke-width="0.8"/><line x1="198" y1="268" x2="198" y2="270" stroke="var(--ch-eksen)" stroke-width="0.8"/><line x1="238" y1="268" x2="238" y2="270" stroke="var(--ch-eksen)" stroke-width="0.8"/><line x1="279" y1="268" x2="279" y2="270" stroke="var(--ch-eksen)" stroke-width="0.8"/><line x1="319" y1="268" x2="319" y2="270" stroke="var(--ch-eksen)" stroke-width="0.8"/><line x1="360" y1="268" x2="360" y2="270" stroke="var(--ch-eksen)" stroke-width="0.8"/><line x1="400" y1="268" x2="400" y2="270" stroke="var(--ch-eksen)" stroke-width="0.8"/><line x1="441" y1="268" x2="441" y2="270" stroke="var(--ch-eksen)" stroke-width="0.8"/><line x1="481" y1="268" x2="481" y2="270" stroke="var(--ch-eksen)" stroke-width="0.8"/><line x1="522" y1="268" x2="522" y2="270" stroke="var(--ch-eksen)" stroke-width="0.8"/><line x1="562" y1="268" x2="562" y2="270" stroke="var(--ch-eksen)" stroke-width="0.8"/><line x1="603" y1="268" x2="603" y2="270" stroke="var(--ch-eksen)" stroke-width="0.8"/><line x1="643" y1="268" x2="643" y2="270" stroke="var(--ch-eksen)" stroke-width="0.8"/><line x1="684" y1="268" x2="684" y2="270" stroke="var(--ch-eksen)" stroke-width="0.8"/><text x="48" y="271.5" text-anchor="end" class="ch-t">0</text><text x="48" y="216.0" text-anchor="end" class="ch-t">250</text><text x="48" y="160.6" text-anchor="end" class="ch-t">500</text><text x="48" y="105.1" text-anchor="end" class="ch-t">750</text><text x="48" y="49.7" text-anchor="end" class="ch-t">1.000</text><text x="96" y="286" text-anchor="middle" class="ch-t">06:00</text><text x="218" y="286" text-anchor="middle" class="ch-t">09:00</text><text x="340" y="286" text-anchor="middle" class="ch-t">12:00</text><text x="461" y="286" text-anchor="middle" class="ch-t">15:00</text><text x="582" y="286" text-anchor="middle" class="ch-t">18:00</text><text x="704" y="286" text-anchor="middle" class="ch-t">21:00</text>
+  <text x="16" y="146" class="ch-t" transform="rotate(-90 16 146)" text-anchor="middle">Güç [kW]</text>
+  <text x="380" y="322" text-anchor="middle" class="ch-t">[saat · yerel]</text>
+  <line x1="88" y1="268" x2="88" y2="262" stroke="var(--ch-gy-nokta)" stroke-width="1.6"/>
+  <text x="92" y="298" class="ch-t">doğuş 05:48</text>
+  <line x1="651" y1="268" x2="651" y2="262" stroke="var(--ch-gy-nokta)" stroke-width="1.6"/>
+  <text x="647" y="298" text-anchor="end" class="ch-t">batış 19:42</text>
+  <line x1="56" y1="46.2" x2="704" y2="46.2" stroke="var(--ch-ac)" stroke-width="1.3" stroke-dasharray="7 5"/>
+  <text x="62" y="39.2" class="ch-t" fill="var(--ch-ac)">AC tavanı · 1.000 kW</text>
+  <path d="M420,41.7 L431,41.7 L441,41.7 L451,41.7 L461,41.7 L471,41.7 L481,46.0 L491,57.9 L502,70.5 L512,83.8 L522,97.7 L532,112.1 L542,126.9 L552,142.0 L562,157.2 L572,172.4 L582,187.5 L593,202.2 L603,216.5 L613,230.1 L623,242.7 L633,254.0 L643,263.3 L653,268.0 L664,268.0 L674,268.0 L684,268.0 L694,268.0 L704,268.0 L704,268.0 L694,268.0 L684,268.0 L674,268.0 L664,268.0 L653,268.0 L643,264.7 L633,258.2 L623,250.1 L613,241.0 L603,231.0 L593,220.4 L582,209.3 L572,197.9 L562,186.1 L552,174.2 L542,162.2 L532,150.2 L522,138.4 L512,126.8 L502,115.5 L491,104.6 L481,94.1 L471,84.2 L461,74.9 L451,70.7 L441,69.9 L431,69.2 L420,68.4 Z" fill="var(--ch-band)"/>
+  <path d="M420,41.7 L431,41.7 L441,41.7 L451,41.7 L461,41.7 L471,48.6 L481,59.3 L491,70.7 L502,82.9 L512,95.6 L522,108.9 L532,122.6 L542,136.6 L552,150.8 L562,165.1 L572,179.4 L582,193.5 L593,207.2 L603,220.5 L613,233.1 L623,244.7 L633,255.1 L643,263.7 L653,268.0 L664,268.0 L674,268.0 L684,268.0 L694,268.0 L704,268.0 L704,268.0 L694,268.0 L684,268.0 L674,268.0 L664,268.0 L653,268.0 L643,264.3 L633,257.0 L623,248.1 L613,238.0 L603,227.0 L593,215.4 L582,203.3 L572,190.9 L562,178.1 L552,165.3 L542,152.5 L532,139.8 L522,127.2 L512,115.0 L502,103.1 L491,91.7 L481,80.9 L471,70.7 L461,61.2 L451,57.2 L441,56.9 L431,56.5 L420,56.2 Z" fill="var(--ch-band2)"/>
+  <path d="M420,41.7 L431,41.7 L441,41.7 L451,41.7 L461,41.7 L471,41.7 L481,46.0 L491,57.9 L502,70.5 L512,83.8 L522,97.7 L532,112.1 L542,126.9 L552,142.0 L562,157.2 L572,172.4 L582,187.5 L593,202.2 L603,216.5 L613,230.1 L623,242.7 L633,254.0 L643,263.3 L653,268.0 L664,268.0 L674,268.0 L684,268.0 L694,268.0 L704,268.0" fill="none" stroke="var(--ch-p50-gelecek)" stroke-width="0.9" stroke-opacity="0.4"/>
+  <path d="M420,68.4 L431,69.2 L441,69.9 L451,70.7 L461,74.9 L471,84.2 L481,94.1 L491,104.6 L502,115.5 L512,126.8 L522,138.4 L532,150.2 L542,162.2 L552,174.2 L562,186.1 L572,197.9 L582,209.3 L593,220.4 L603,231.0 L613,241.0 L623,250.1 L633,258.2 L643,264.7 L653,268.0 L664,268.0 L674,268.0 L684,268.0 L694,268.0 L704,268.0" fill="none" stroke="var(--ch-p50-gelecek)" stroke-width="0.9" stroke-opacity="0.4"/>
+  <path d="M56,268.0 L66,268.0 L76,268.0 L86,268.0 L96,264.0 L107,256.1 L117,246.4 L127,235.5 L137,223.8 L147,211.3 L157,198.4 L167,185.1 L178,171.6 L188,158.1 L198,144.6 L208,131.2 L218,118.1 L228,105.3 L238,93.0 L248,81.2 L258,70.1 L269,59.6 L279,49.9 L289,46.2 L299,46.2 L309,46.2 L319,46.2 L329,46.2 L340,46.2 L350,46.2 L360,46.2 L370,46.2 L380,46.2 L390,46.2 L400,46.2 L410,46.2 L420,46.2" fill="none" stroke="var(--ch-p50-gecmis)" stroke-width="2" stroke-linecap="round"/>
+  <path d="M420,46.2 L431,46.2 L441,46.2 L451,46.2 L461,49.9 L471,59.6 L481,70.1 L491,81.2 L502,93.0 L512,105.3 L522,118.1 L532,131.2 L542,144.6 L552,158.1 L562,171.6 L572,185.1 L582,198.4 L593,211.3 L603,223.8 L613,235.5 L623,246.4 L633,256.1 L643,264.0 L653,268.0 L664,268.0 L674,268.0 L684,268.0 L694,268.0 L704,268.0" fill="none" stroke="var(--ch-p50-gelecek)" stroke-width="2.2" stroke-dasharray="1 6" stroke-linecap="round"/>
+  <path d="M96,264.1 L107,255.9 L117,244.9 L127,233.1 L137,222.4 L147,211.7 L157,198.7 L167,185.0 L178,174.3 L188,165.8 L198,153.0 L208,133.3 L218,113.2 L228,99.7 L238,89.8 L248,75.7 L258,58.5 L269,49.1 L279,51.3 L289,58.9 L299,58.6 L309,51.9 L319,50.3 L329,53.9 L340,52.0 L350,63.1 L360,53.7 L370,55.3 L380,64.3 L390,47.1 L400,46.2 L410,46.2 L420,54.9" fill="none" stroke="var(--ch-gercek)" stroke-width="2.4" stroke-linecap="round"/>
+  <line x1="366" y1="45.2" x2="366" y2="27.2" stroke="var(--ch-simdi)" stroke-width="0.9"/>
+  <text x="366" y="21.2" text-anchor="middle" class="ch-t">kısa bulut geçişi</text>
+  <line x1="420" y1="20" x2="420" y2="272" stroke="var(--ch-simdi)" stroke-width="1" stroke-dasharray="3 4"/>
+  <circle cx="420" cy="54.4" r="4.5" fill="var(--ch-gercek)" stroke="var(--kart)" stroke-width="1.6"/>
+  <text x="426" y="30" class="ch-t" fill="var(--ch-simdi-metin)">şimdi · 14:00</text>
+  <text x="426" y="44" class="ch-t" fill="var(--ch-gercek)" font-weight="600">963 kW</text>
+</svg>
+        <div class="lejant">
+          <span><i style="border-color:var(--ch-gercek)"></i>gerçekleşen</span>
+          <span><i style="border-color:var(--ch-p50-gecmis)"></i>geçmiş P50</span>
+          <span><i style="border-color:var(--ch-p50-gelecek);border-top-style:dotted"></i>tahmin P50</span>
+          <span><i style="width:12px;height:12px;border:none;border-radius:2px;background:var(--ch-band2)"></i>P25–P75</span><span><i style="width:12px;height:12px;border:none;border-radius:2px;background:var(--ch-band)"></i>P10–P90</span>
+          <span><i style="border-color:var(--ch-ac);border-top-style:dashed"></i>AC tavanı</span>
+        </div>
+        <p class="dipnot">İç bant P25–P75, dış bant P10–P90 olasılık aralığıdır; bantlar yalnız gelecekte açılır — belirsizlik ileride büyür, geçmişte yoktur. 12:20–13:05 düşüşü kısa bulut geçişidir; nötrdür, uyarı değildir.</p>
+      </section>
+
+      <section class="kart">
+        <div class="kart-bas"><h2>Hava — önümüzdeki üç gün</h2><span class="sag">profesyonel meteoroloji verisi</span></div>
+        <div class="hava">
+          <div>
+            <svg width="26" height="26" viewBox="0 0 24 24" aria-label="açık" role="img" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.2 5.2l1.7 1.7M17.1 17.1l1.7 1.7M5.2 18.8l1.7-1.7M17.1 6.9l1.7-1.7"/></svg>
+            <div><div class="gun">Bugün · açık</div><div class="sic">31°</div><div class="isin">7,42 kWh/m²</div></div>
+          </div>
+          <div>
+            <svg width="26" height="26" viewBox="0 0 24 24" aria-label="parçalı bulutlu" role="img" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="3.4"/><path d="M9 3.2v1.6M3.2 9h1.6M4.9 4.9l1.2 1.2"/><path d="M10.5 18.5h7.6a3 3 0 0 0 .3-6 4.4 4.4 0 0 0-8.5-1.3 3.4 3.4 0 0 0 .6 6.8Z"/></svg>
+            <div><div class="gun">Çarşamba · parçalı</div><div class="sic">29°</div><div class="isin">6,95 kWh/m²</div></div>
+          </div>
+          <div>
+            <svg width="26" height="26" viewBox="0 0 24 24" aria-label="bulutlu" role="img" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 18.5h11a3.4 3.4 0 0 0 .4-6.8 5 5 0 0 0-9.7-1.5 3.9 3.9 0 0 0-1.7 8.3Z"/></svg>
+            <div><div class="gun">Perşembe · bulutlu</div><div class="sic">26°</div><div class="isin">5,48 kWh/m²</div></div>
+          </div>
+        </div>
+      </section>
+
+      <div class="iki">
+        <section class="kart">
+          <div class="kart-bas"><h2>Üretim parmak izi — saat × ay</h2><span class="sag">tipik kWh</span></div>
+          <div class="pi-sar"><table class="pi" aria-label="Üretim parmak izi: saat çarpı ay, tipik kWh">
+<thead><tr><th>Saat</th><th>Eyl</th><th>Eki</th><th>Kas</th><th>Ara</th><th>Oca</th><th>Şub</th><th>Mar</th><th>Nis</th><th>May</th><th>Haz</th><th>Tem</th><th>Ağu</th></tr></thead><tbody><tr><th>05–06</th><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h0">9</td><td class="h0">·</td></tr><tr><th>06–07</th><td class="h0">54</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h0">11</td><td class="h0">61</td><td class="h1">109</td><td class="h1">142</td><td class="h1">162</td><td class="h0">63</td></tr><tr><th>07–08</th><td class="h2">199</td><td class="h0">78</td><td class="h0">33</td><td class="h0">15</td><td class="h0">23</td><td class="h0">51</td><td class="h1">129</td><td class="h2">210</td><td class="h3">274</td><td class="h3">317</td><td class="h3">341</td><td class="h2">212</td></tr><tr><th>08–09</th><td class="h3">352</td><td class="h2">194</td><td class="h1">124</td><td class="h0">90</td><td class="h1">106</td><td class="h1">153</td><td class="h2">265</td><td class="h4">366</td><td class="h4">442</td><td class="h5">492</td><td class="h5">520</td><td class="h4">369</td></tr><tr><th>09–10</th><td class="h5">495</td><td class="h3">308</td><td class="h2">218</td><td class="h1">171</td><td class="h2">193</td><td class="h2">256</td><td class="h4">393</td><td class="h5">510</td><td class="h6">596</td><td class="h7">650</td><td class="h7">681</td><td class="h5">514</td></tr><tr><th>10–11</th><td class="h6">613</td><td class="h4">405</td><td class="h3">299</td><td class="h2">241</td><td class="h2">269</td><td class="h3">345</td><td class="h5">502</td><td class="h6">630</td><td class="h7">721</td><td class="h8">779</td><td class="h8">811</td><td class="h6">634</td></tr><tr><th>11–12</th><td class="h7">696</td><td class="h5">474</td><td class="h3">358</td><td class="h3">293</td><td class="h3">325</td><td class="h4">408</td><td class="h6">578</td><td class="h7">713</td><td class="h8">809</td><td class="h9">869</td><td class="h9">902</td><td class="h7">718</td></tr><tr><th>12–13</th><td class="h8">737</td><td class="h5">509</td><td class="h4">388</td><td class="h3">319</td><td class="h3">352</td><td class="h4">440</td><td class="h6">616</td><td class="h8">755</td><td class="h9">852</td><td class="h9">913</td><td class="h9">947</td><td class="h8">759</td></tr><tr><th>13–14</th><td class="h8">733</td><td class="h5">505</td><td class="h4">385</td><td class="h3">316</td><td class="h3">349</td><td class="h4">437</td><td class="h6">612</td><td class="h8">750</td><td class="h9">847</td><td class="h9">908</td><td class="h9">942</td><td class="h8">755</td></tr><tr><th>14–15</th><td class="h7">683</td><td class="h5">463</td><td class="h3">349</td><td class="h3">285</td><td class="h3">316</td><td class="h4">398</td><td class="h6">566</td><td class="h7">700</td><td class="h8">795</td><td class="h9">855</td><td class="h9">887</td><td class="h7">704</td></tr><tr><th>15–16</th><td class="h6">592</td><td class="h4">388</td><td class="h3">285</td><td class="h2">229</td><td class="h2">256</td><td class="h3">329</td><td class="h5">482</td><td class="h6">608</td><td class="h7">699</td><td class="h8">756</td><td class="h8">788</td><td class="h6">612</td></tr><tr><th>16–17</th><td class="h5">468</td><td class="h3">286</td><td class="h2">200</td><td class="h1">155</td><td class="h1">176</td><td class="h2">236</td><td class="h4">369</td><td class="h5">483</td><td class="h6">567</td><td class="h6">621</td><td class="h7">651</td><td class="h5">487</td></tr><tr><th>17–18</th><td class="h3">322</td><td class="h1">170</td><td class="h1">105</td><td class="h0">74</td><td class="h0">89</td><td class="h1">132</td><td class="h2">237</td><td class="h3">335</td><td class="h4">409</td><td class="h5">458</td><td class="h5">485</td><td class="h3">338</td></tr><tr><th>18–19</th><td class="h1">168</td><td class="h0">56</td><td class="h0">17</td><td class="h0">3</td><td class="h0">9</td><td class="h0">32</td><td class="h1">103</td><td class="h1">179</td><td class="h2">240</td><td class="h3">281</td><td class="h3">305</td><td class="h1">181</td></tr><tr><th>19–20</th><td class="h0">29</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h0">36</td><td class="h0">78</td><td class="h1">109</td><td class="h1">128</td><td class="h0">37</td></tr><tr><th>20–21</th><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td></tr><tr class='pi-tipik'><th>Σ</th><td>4.940</td><td>3.413</td><td>2.603</td><td>2.143</td><td>2.367</td><td>2.953</td><td>4.130</td><td>5.057</td><td>5.707</td><td>6.113</td><td>6.337</td><td>5.087</td></tr></tbody></table></div>
+<p class="pi-not">Hücreler tipik saatlik üretimi (kWh) gösterir; Σ satırı tipik günü özetler. Ağustos sütunu süren ayın kısmi verisiyle hesaplanır.</p>
+        </section>
+        <section class="kart">
+          <div class="kart-bas"><h2>Güneş yolu</h2><span class="sag">yaz / ekinoks / kış</span></div>
+          <svg viewBox="0 0 720 300" role="img" aria-label="Güneş yolu: yaz, ekinoks ve kış yayları; saat çizgileri üç yayı keser" style="width:100%;display:block">
+  <line x1="56" y1="171.3" x2="704" y2="171.3" stroke="var(--ch-izgara)" stroke-width="1"/><line x1="52" y1="171.3" x2="56" y2="171.3" stroke="var(--ch-eksen)" stroke-width="1"/><text x="48" y="174.8" text-anchor="end" class="ch-t">30</text><line x1="56" y1="98.7" x2="704" y2="98.7" stroke="var(--ch-izgara)" stroke-width="1"/><line x1="52" y1="98.7" x2="56" y2="98.7" stroke="var(--ch-eksen)" stroke-width="1"/><text x="48" y="102.2" text-anchor="end" class="ch-t">60</text><line x1="56" y1="26.0" x2="704" y2="26.0" stroke="var(--ch-izgara)" stroke-width="1"/><line x1="52" y1="26.0" x2="56" y2="26.0" stroke="var(--ch-eksen)" stroke-width="1"/><text x="48" y="29.5" text-anchor="end" class="ch-t">90</text>
+  <line x1="56" y1="244" x2="704" y2="244" stroke="var(--ch-eksen-koyu)" stroke-width="1.2"/>
+  <line x1="147" y1="244" x2="147" y2="248" stroke="var(--ch-eksen)" stroke-width="1"/><line x1="263" y1="244" x2="263" y2="248" stroke="var(--ch-eksen)" stroke-width="1"/><line x1="380" y1="244" x2="380" y2="248" stroke="var(--ch-eksen)" stroke-width="1"/><line x1="497" y1="244" x2="497" y2="248" stroke="var(--ch-eksen)" stroke-width="1"/><line x1="613" y1="244" x2="613" y2="248" stroke="var(--ch-eksen)" stroke-width="1"/>
+  <text x="16" y="135" class="ch-t" transform="rotate(-90 16 135)" text-anchor="middle">Güneş yüksekliği [°]</text>
+  <text x="147" y="262" text-anchor="middle" class="ch-t">Doğu · 90°</text>
+  <text x="380" y="262" text-anchor="middle" class="ch-t">Güney · 180°</text>
+  <text x="613" y="262" text-anchor="middle" class="ch-t">Batı · 270°</text>
+  <text x="380" y="292" text-anchor="middle" class="ch-t">[panel yönü — azimuth]</text>
+  <path d="M162,165.2 L195,189.3 L247,214.6" fill="none" stroke="var(--ch-eksen)" stroke-width="0.9" stroke-dasharray="2 3"/><path d="M249,102.0 L269,145.5 L300,191.0" fill="none" stroke="var(--ch-eksen)" stroke-width="0.9" stroke-dasharray="2 3"/><path d="M336,66.9 L343,121.2 L353,177.9" fill="none" stroke="var(--ch-eksen)" stroke-width="0.9" stroke-dasharray="2 3"/><path d="M424,66.9 L417,121.2 L407,177.9" fill="none" stroke="var(--ch-eksen)" stroke-width="0.9" stroke-dasharray="2 3"/><path d="M511,102.0 L491,145.5 L460,191.0" fill="none" stroke="var(--ch-eksen)" stroke-width="0.9" stroke-dasharray="2 3"/>
+  <path d="M74,244.0 L91,228.2 L108,212.5 L125,197.0 L142,181.9 L159,167.2 L176,153.2 L193,139.8 L210,127.2 L227,115.5 L244,104.8 L261,95.2 L278,86.7 L295,79.4 L312,73.3 L329,68.5 L346,65.1 L363,63.0 L380,62.3 L397,63.0 L414,65.1 L431,68.5 L448,73.3 L465,79.4 L482,86.7 L499,95.2 L516,104.8 L533,115.5 L550,127.2 L567,139.8 L584,153.2 L601,167.2 L618,181.9 L635,197.0 L652,212.5 L669,228.2 L686,244.0" fill="none" stroke="var(--ch-gy-yaz)" stroke-width="2.2"/>
+  <path d="M121,244.0 L135,233.0 L150,222.1 L164,211.4 L178,200.9 L193,190.8 L207,181.0 L222,171.8 L236,163.0 L250,154.9 L265,147.5 L279,140.8 L294,134.9 L308,129.8 L322,125.6 L337,122.3 L351,120.0 L366,118.5 L380,118.0 L394,118.5 L409,120.0 L423,122.3 L438,125.6 L452,129.8 L466,134.9 L481,140.8 L495,147.5 L510,154.9 L524,163.0 L538,171.8 L553,181.0 L567,190.8 L582,200.9 L596,211.4 L610,222.1 L625,233.0 L639,244.0" fill="none" stroke="var(--ch-gy-eki)" stroke-width="2" stroke-dasharray="6 4"/>
+  <path d="M193,244.0 L204,238.1 L214,232.2 L224,226.4 L235,220.8 L245,215.3 L256,210.1 L266,205.1 L276,200.4 L287,196.0 L297,192.0 L307,188.4 L318,185.3 L328,182.5 L339,180.3 L349,178.5 L359,177.2 L370,176.4 L380,176.2 L390,176.4 L401,177.2 L411,178.5 L421,180.3 L432,182.5 L442,185.3 L453,188.4 L463,192.0 L473,196.0 L484,200.4 L494,205.1 L504,210.1 L515,215.3 L525,220.8 L536,226.4 L546,232.2 L556,238.1 L567,244.0" fill="none" stroke="var(--ch-gy-kis)" stroke-width="2" stroke-dasharray="2 5"/>
+  <circle cx="162" cy="165.2" r="3" fill="var(--ch-gy-nokta)"/><circle cx="195" cy="189.3" r="2.2" fill="var(--ch-gy-eki)"/><circle cx="247" cy="214.6" r="2.2" fill="var(--ch-gy-kis)"/><text x="162" y="156.2" text-anchor="middle" class="ch-t">08</text><circle cx="249" cy="102.0" r="3" fill="var(--ch-gy-nokta)"/><circle cx="269" cy="145.5" r="2.2" fill="var(--ch-gy-eki)"/><circle cx="300" cy="191.0" r="2.2" fill="var(--ch-gy-kis)"/><text x="249" y="93.0" text-anchor="middle" class="ch-t">10</text><circle cx="336" cy="66.9" r="3" fill="var(--ch-gy-nokta)"/><circle cx="343" cy="121.2" r="2.2" fill="var(--ch-gy-eki)"/><circle cx="353" cy="177.9" r="2.2" fill="var(--ch-gy-kis)"/><text x="336" y="57.9" text-anchor="middle" class="ch-t">12</text><circle cx="424" cy="66.9" r="3" fill="var(--ch-gy-nokta)"/><circle cx="417" cy="121.2" r="2.2" fill="var(--ch-gy-eki)"/><circle cx="407" cy="177.9" r="2.2" fill="var(--ch-gy-kis)"/><text x="424" y="57.9" text-anchor="middle" class="ch-t">14</text><circle cx="511" cy="102.0" r="3" fill="var(--ch-gy-nokta)"/><circle cx="491" cy="145.5" r="2.2" fill="var(--ch-gy-eki)"/><circle cx="460" cy="191.0" r="2.2" fill="var(--ch-gy-kis)"/><text x="511" y="93.0" text-anchor="middle" class="ch-t">16</text>
+  <text x="380" y="84.3" text-anchor="middle" class="ch-t" fill="var(--ch-gy-yaz)">yaz gündönümü · 75°</text>
+  <text x="517" y="155.1" class="ch-t" fill="var(--ch-gy-eki)">ekinoks · 52°</text>
+  <text x="380" y="198.2" text-anchor="middle" class="ch-t" fill="var(--ch-gy-kis)">kış gündönümü · 28°</text>
+  <circle cx="66" cy="24" r="3" fill="var(--ch-gy-nokta)"/>
+  <text x="74" y="28" class="ch-t">temsili güneş saati — kesikli dikmeler aynı saati mevsimler arasında izler</text>
+</svg>
+          <div class="kart-bas" style="margin:18px 0 10px"><h2>Santral künyesi</h2></div>
+          <div class="liste">
+            <div><span class="et">Kurulu güç</span><span class="dg">1.234,0 kWp / 1.000 kW</span></div>
+            <div><span class="et">Eğim / yön</span><span class="dg">26° / 180° güney</span></div>
+            <div><span class="et">Devreye giriş</span><span class="dg">14 Mar 2024</span></div>
+            <div><span class="et">Konum</span><span class="dg">37,95°K · 32,49°D · 1.016 m</span></div>
+          </div>
+        </section>
+      </div>
+
+      <div class="iki">
+        <section class="kart">
+          <div class="kart-bas"><h2>7 günlük görünüm</h2><span class="sag">P50 · kWh/gün</span></div>
+          <svg viewBox="0 0 720 320" role="img" aria-label="7 günlük üretim beklentisi: P50 çubukları, P10–P90 bıyıkları, 30 gün ortalaması ve bugünkü gerçekleşen" style="width:100%;display:block">
+  <line x1="56" y1="180.0" x2="704" y2="180.0" stroke="var(--ch-izgara)" stroke-width="1"/><line x1="52" y1="180.0" x2="56" y2="180.0" stroke="var(--ch-eksen)" stroke-width="1"/><text x="48" y="183.5" text-anchor="end" class="ch-t">2.000</text><line x1="56" y1="128.0" x2="704" y2="128.0" stroke="var(--ch-izgara)" stroke-width="1"/><line x1="52" y1="128.0" x2="56" y2="128.0" stroke="var(--ch-eksen)" stroke-width="1"/><text x="48" y="131.5" text-anchor="end" class="ch-t">4.000</text><line x1="56" y1="76.0" x2="704" y2="76.0" stroke="var(--ch-izgara)" stroke-width="1"/><line x1="52" y1="76.0" x2="56" y2="76.0" stroke="var(--ch-eksen)" stroke-width="1"/><text x="48" y="79.5" text-anchor="end" class="ch-t">6.000</text><line x1="56" y1="24.0" x2="704" y2="24.0" stroke="var(--ch-izgara)" stroke-width="1"/><line x1="52" y1="24.0" x2="56" y2="24.0" stroke="var(--ch-eksen)" stroke-width="1"/><text x="48" y="27.5" text-anchor="end" class="ch-t">8.000</text>
+  <line x1="56" y1="232" x2="704" y2="232" stroke="var(--ch-eksen-koyu)" stroke-width="1.2"/>
+  <text x="16" y="128" class="ch-t" transform="rotate(-90 16 128)" text-anchor="middle">Üretim [kWh/gün]</text>
+  <line x1="56" y1="65.3" x2="704" y2="65.3" stroke="var(--ch-simdi)" stroke-width="1.1" stroke-dasharray="6 4"/>
+  <text x="704" y="59.3" text-anchor="end" class="ch-t">30 gün ort. · 6.412</text>
+  <rect x="72" y="54.1" width="66" height="177.9" rx="2" fill="var(--ch-vurgu)"/><rect x="86" y="102.5" width="38" height="129.5" rx="2" fill="var(--ch-gercek)"/><text x="105" y="116.5" text-anchor="middle" class="ch-t" fill="#14100A">4.980</text><line x1="105" y1="72.9" x2="105" y2="39.9" stroke="var(--ikincil)" stroke-width="1.4"/><line x1="98" y1="39.9" x2="112" y2="39.9" stroke="var(--ikincil)" stroke-width="1.4"/><line x1="98" y1="72.9" x2="112" y2="72.9" stroke="var(--ikincil)" stroke-width="1.4"/><text x="105" y="32.9" text-anchor="middle" class="ch-t">6.842</text><text x="105" y="250" text-anchor="middle" class="ch-t">Bugün</text><rect x="164" y="62.7" width="66" height="169.3" rx="2" fill="var(--ch-cubuk)"/><line x1="197" y1="89.5" x2="197" y2="41.9" stroke="var(--ikincil)" stroke-width="1.4"/><line x1="190" y1="41.9" x2="204" y2="41.9" stroke="var(--ikincil)" stroke-width="1.4"/><line x1="190" y1="89.5" x2="204" y2="89.5" stroke="var(--ikincil)" stroke-width="1.4"/><text x="197" y="34.9" text-anchor="middle" class="ch-t">6.510</text><text x="197" y="250" text-anchor="middle" class="ch-t">Çar</text><rect x="256" y="57.7" width="66" height="174.3" rx="2" fill="var(--ch-cubuk)"/><line x1="289" y1="86.1" x2="289" y2="37.5" stroke="var(--ikincil)" stroke-width="1.4"/><line x1="282" y1="37.5" x2="296" y2="37.5" stroke="var(--ikincil)" stroke-width="1.4"/><line x1="282" y1="86.1" x2="296" y2="86.1" stroke="var(--ikincil)" stroke-width="1.4"/><text x="289" y="30.5" text-anchor="middle" class="ch-t">6.705</text><text x="289" y="250" text-anchor="middle" class="ch-t">Per</text><rect x="348" y="97.7" width="66" height="134.3" rx="2" fill="var(--ch-dusuk)"/><line x1="381" y1="128.5" x2="381" y2="69.8" stroke="var(--ikincil)" stroke-width="1.4"/><line x1="374" y1="69.8" x2="388" y2="69.8" stroke="var(--ikincil)" stroke-width="1.4"/><line x1="374" y1="128.5" x2="388" y2="128.5" stroke="var(--ikincil)" stroke-width="1.4"/><text x="381" y="62.8" text-anchor="middle" class="ch-t">5.164</text><text x="381" y="250" text-anchor="middle" class="ch-t">Cum</text><rect x="440" y="65.9" width="66" height="166.1" rx="2" fill="var(--ch-cubuk)"/><line x1="473" y1="93.9" x2="473" y2="45.6" stroke="var(--ikincil)" stroke-width="1.4"/><line x1="466" y1="45.6" x2="480" y2="45.6" stroke="var(--ikincil)" stroke-width="1.4"/><line x1="466" y1="93.9" x2="480" y2="93.9" stroke="var(--ikincil)" stroke-width="1.4"/><text x="473" y="38.6" text-anchor="middle" class="ch-t">6.388</text><text x="473" y="250" text-anchor="middle" class="ch-t">Cmt</text><rect x="532" y="60.1" width="66" height="171.9" rx="2" fill="var(--ch-cubuk)"/><line x1="565" y1="89.0" x2="565" y2="39.6" stroke="var(--ikincil)" stroke-width="1.4"/><line x1="558" y1="39.6" x2="572" y2="39.6" stroke="var(--ikincil)" stroke-width="1.4"/><line x1="558" y1="89.0" x2="572" y2="89.0" stroke="var(--ikincil)" stroke-width="1.4"/><text x="565" y="32.6" text-anchor="middle" class="ch-t">6.612</text><text x="565" y="250" text-anchor="middle" class="ch-t">Paz</text><rect x="624" y="60.9" width="66" height="171.1" rx="2" fill="var(--ch-cubuk)"/><line x1="657" y1="90.3" x2="657" y2="40.1" stroke="var(--ikincil)" stroke-width="1.4"/><line x1="650" y1="40.1" x2="664" y2="40.1" stroke="var(--ikincil)" stroke-width="1.4"/><line x1="650" y1="90.3" x2="664" y2="90.3" stroke="var(--ikincil)" stroke-width="1.4"/><text x="657" y="33.1" text-anchor="middle" class="ch-t">6.579</text><text x="657" y="250" text-anchor="middle" class="ch-t">Pzt</text>
+  <g>
+    <rect x="56" y="272" width="11" height="11" rx="2" fill="var(--ch-cubuk)"/>
+    <text x="73" y="281" class="ch-t">günlük beklenti · P50</text>
+    <line x1="242" y1="277.5" x2="262" y2="277.5" stroke="var(--ikincil)" stroke-width="1.4"/>
+    <line x1="242" y1="273" x2="242" y2="282" stroke="var(--ikincil)" stroke-width="1.4"/>
+    <line x1="262" y1="273" x2="262" y2="282" stroke="var(--ikincil)" stroke-width="1.4"/>
+    <text x="269" y="281" class="ch-t">P10–P90 aralığı</text>
+    <rect x="56" y="292" width="11" height="11" rx="2" fill="var(--ch-gercek)"/>
+    <text x="73" y="301" class="ch-t">bugün 14:00'e dek gerçekleşen</text>
+    <line x1="322" y1="297.5" x2="342" y2="297.5" stroke="var(--ch-simdi)" stroke-width="1.1" stroke-dasharray="6 4"/>
+    <text x="349" y="301" class="ch-t">son 30 gün ortalaması</text>
+  </g>
+</svg>
+          <p class="dipnot">Cuma günkü düşüş bulutlu cepheden — nötr bilgidir, uyarı değildir.</p>
+        </section>
+        <section class="kart">
+          <div class="kart-bas"><h2>Veri sağlığı</h2></div>
+          <div class="liste" style="font-size:13px">
+            <div><span class="et">Son veri</span><span class="dg">14:00 · 5 dk önce, akış sağlıklı</span></div>
+            <div><span class="et">Kapsama — son 30 gün</span><span class="dg">%99,2 · 23 aralık dolduruldu</span></div>
+            <div><span class="et">Gece sınavı</span><span class="dg">412 gündür kesintisiz</span></div>
+            <div><span class="et">Son kalibrasyon</span><span class="dg">12 Ağu 2026</span></div>
+          </div>
+          <p class="dipnot">Her gece tahmin, gerçekleşen üretimle yüzleşir; sonuç saklanmaz, süslenmez. Karnenin tamamı Doğruluk sayfasındadır.</p>
+        </section>
+      </div>
+
+      <section class="kart">
+        <div class="kart-bas"><h2>Aylık üretim — gerçekleşen</h2><span class="sag">son 12 ay · MWh</span></div>
+        <svg viewBox="0 0 720 330" role="img" aria-label="Aylık gerçekleşen üretim, beklenti P50 imleçleri ve yıl ayraçları, MWh" style="width:100%;display:block">
+  <line x1="56" y1="178.4" x2="704" y2="178.4" stroke="var(--ch-izgara)" stroke-width="1"/><line x1="52" y1="178.4" x2="56" y2="178.4" stroke="var(--ch-eksen)" stroke-width="1"/><text x="48" y="181.9" text-anchor="end" class="ch-t">50</text><line x1="56" y1="130.8" x2="704" y2="130.8" stroke="var(--ch-izgara)" stroke-width="1"/><line x1="52" y1="130.8" x2="56" y2="130.8" stroke="var(--ch-eksen)" stroke-width="1"/><text x="48" y="134.3" text-anchor="end" class="ch-t">100</text><line x1="56" y1="83.1" x2="704" y2="83.1" stroke="var(--ch-izgara)" stroke-width="1"/><line x1="52" y1="83.1" x2="56" y2="83.1" stroke="var(--ch-eksen)" stroke-width="1"/><text x="48" y="86.6" text-anchor="end" class="ch-t">150</text><line x1="56" y1="35.5" x2="704" y2="35.5" stroke="var(--ch-izgara)" stroke-width="1"/><line x1="52" y1="35.5" x2="56" y2="35.5" stroke="var(--ch-eksen)" stroke-width="1"/><text x="48" y="39.0" text-anchor="end" class="ch-t">200</text>
+  <line x1="56" y1="226" x2="704" y2="226" stroke="var(--ch-eksen-koyu)" stroke-width="1.2"/>
+  <text x="16" y="126" class="ch-t" transform="rotate(-90 16 126)" text-anchor="middle">Üretim [MWh/ay]</text>
+  <rect x="68" y="84.9" width="40" height="141.1" rx="2" fill="var(--ch-cubuk)"/><line x1="64" y1="86.9" x2="112" y2="86.9" stroke="var(--metin)" stroke-width="1.8"/><text x="88" y="77.9" text-anchor="middle" class="ch-t">148</text><text x="88" y="244" text-anchor="middle" class="ch-t">Eyl</text><rect x="122" y="128.5" width="40" height="97.5" rx="2" fill="var(--ch-cubuk)"/><line x1="118" y1="129.9" x2="166" y2="129.9" stroke="var(--metin)" stroke-width="1.8"/><text x="142" y="121.5" text-anchor="middle" class="ch-t">102</text><text x="142" y="244" text-anchor="middle" class="ch-t">Eki</text><rect x="176" y="151.6" width="40" height="74.4" rx="2" fill="var(--ch-cubuk)"/><line x1="172" y1="152.5" x2="220" y2="152.5" stroke="var(--metin)" stroke-width="1.8"/><text x="196" y="144.6" text-anchor="middle" class="ch-t">78</text><text x="196" y="244" text-anchor="middle" class="ch-t">Kas</text><rect x="230" y="164.8" width="40" height="61.2" rx="2" fill="var(--ch-dusuk)"/><line x1="226" y1="165.5" x2="274" y2="165.5" stroke="var(--metin)" stroke-width="1.8"/><text x="250" y="157.8" text-anchor="middle" class="ch-t">64</text><text x="250" y="244" text-anchor="middle" class="ch-t">Ara</text><rect x="284" y="158.4" width="40" height="67.6" rx="2" fill="var(--ch-cubuk)"/><line x1="280" y1="159.1" x2="328" y2="159.1" stroke="var(--metin)" stroke-width="1.8"/><text x="304" y="151.4" text-anchor="middle" class="ch-t">71</text><text x="304" y="244" text-anchor="middle" class="ch-t">Oca</text><rect x="338" y="141.6" width="40" height="84.4" rx="2" fill="var(--ch-cubuk)"/><line x1="334" y1="142.8" x2="382" y2="142.8" stroke="var(--metin)" stroke-width="1.8"/><text x="358" y="134.6" text-anchor="middle" class="ch-t">89</text><text x="358" y="244" text-anchor="middle" class="ch-t">Şub</text><rect x="392" y="108.0" width="40" height="118.0" rx="2" fill="var(--ch-cubuk)"/><line x1="388" y1="110.4" x2="436" y2="110.4" stroke="var(--metin)" stroke-width="1.8"/><text x="412" y="101.0" text-anchor="middle" class="ch-t">124</text><text x="412" y="244" text-anchor="middle" class="ch-t">Mar</text><rect x="446" y="81.5" width="40" height="144.5" rx="2" fill="var(--ch-cubuk)"/><line x1="442" y1="84.1" x2="490" y2="84.1" stroke="var(--metin)" stroke-width="1.8"/><text x="466" y="74.5" text-anchor="middle" class="ch-t">152</text><text x="466" y="244" text-anchor="middle" class="ch-t">Nis</text><rect x="500" y="63.0" width="40" height="163.0" rx="2" fill="var(--ch-cubuk)"/><line x1="496" y1="60.5" x2="544" y2="60.5" stroke="var(--metin)" stroke-width="1.8"/><text x="520" y="56.0" text-anchor="middle" class="ch-t">171</text><text x="520" y="244" text-anchor="middle" class="ch-t">May</text><rect x="554" y="51.3" width="40" height="174.7" rx="2" fill="var(--ch-cubuk)"/><line x1="550" y1="53.5" x2="598" y2="53.5" stroke="var(--metin)" stroke-width="1.8"/><text x="574" y="44.3" text-anchor="middle" class="ch-t">183</text><text x="574" y="244" text-anchor="middle" class="ch-t">Haz</text><rect x="608" y="45.0" width="40" height="181.0" rx="2" fill="var(--ch-cubuk)"/><line x1="604" y1="47.0" x2="652" y2="47.0" stroke="var(--metin)" stroke-width="1.8"/><text x="628" y="38.0" text-anchor="middle" class="ch-t">190</text><text x="628" y="244" text-anchor="middle" class="ch-t">Tem</text><rect x="662" y="80.7" width="40" height="145.3" rx="2" fill="var(--ch-vurgu)"/><text x="682" y="73.7" text-anchor="middle" class="ch-t">153</text><text x="682" y="244" text-anchor="middle" class="ch-t">Ağu</text>
+  <line x1="66" y1="256" x2="272" y2="256" stroke="var(--ch-eksen)" stroke-width="1"/><line x1="66" y1="252" x2="66" y2="256" stroke="var(--ch-eksen)" stroke-width="1"/><line x1="272" y1="252" x2="272" y2="256" stroke="var(--ch-eksen)" stroke-width="1"/><text x="169" y="269" text-anchor="middle" class="ch-t">2025</text><line x1="282" y1="256" x2="704" y2="256" stroke="var(--ch-eksen)" stroke-width="1"/><line x1="282" y1="252" x2="282" y2="256" stroke="var(--ch-eksen)" stroke-width="1"/><line x1="704" y1="252" x2="704" y2="256" stroke="var(--ch-eksen)" stroke-width="1"/><text x="493" y="269" text-anchor="middle" class="ch-t">2026</text>
+  <g>
+    <rect x="56" y="298" width="11" height="11" rx="2" fill="var(--ch-cubuk)"/>
+    <text x="73" y="307" class="ch-t">gerçekleşen</text>
+    <line x1="182" y1="303.5" x2="202" y2="303.5" stroke="var(--metin)" stroke-width="1.8"/>
+    <text x="209" y="307" class="ch-t">beklenti · P50</text>
+    <rect x="342" y="298" width="11" height="11" rx="2" fill="var(--ch-eksik)" stroke="var(--ch-eksen)" stroke-dasharray="3 3"/>
+    <text x="359" y="307" class="ch-t">kapsama düşük</text>
+    <text x="704" y="307" text-anchor="end" class="ch-t">Ağu: ay sürüyor — imleç yok, kapsama %81</text>
+  </g>
+</svg>
+        <table class="veri" style="margin-top:14px">
+          <thead><tr><th>Ay</th><th class="sag">Gerçekleşen</th><th class="sag">Beklenti (P50)</th><th class="sag">Sapma</th><th class="sag">Kapsama</th></tr></thead>
+          <tbody>
+            <tr><td class="et">Nisan 2026</td><td class="sag">151,7 MWh</td><td class="sag">149,0 MWh</td><td class="sag">+%1,8</td><td class="sag">%100</td></tr>
+            <tr><td class="et">Mayıs 2026</td><td class="sag">171,2 MWh</td><td class="sag">173,8 MWh</td><td class="sag">−%1,5</td><td class="sag">%100</td></tr>
+            <tr><td class="et">Haziran 2026</td><td class="sag">183,4 MWh</td><td class="sag">181,1 MWh</td><td class="sag">+%1,3</td><td class="sag">%100</td></tr>
+            <tr><td class="et">Temmuz 2026</td><td class="sag">190,1 MWh</td><td class="sag">187,9 MWh</td><td class="sag">+%1,2</td><td class="sag">%100</td></tr>
+            <tr><td class="et">Ağustos 2026 · sürüyor</td><td class="sag">152,6 MWh</td><td class="sag">—</td><td class="sag">—</td><td class="sag">%81</td></tr>
+          </tbody>
+        </table>
+        <p class="dipnot">Ağustos satırında beklenti ve sapma "—": ay bitmeden kıyas yapılmaz, uydurma sayı basılmaz.</p>
+      </section>
+
+    </div></div>
+
+    <div class="durum-cubugu">
+      <span><span class="ok" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--basari);margin-right:6px"></span>veri akışı sağlıklı · son paket 14:00</span>
+      <span>meteoroloji: profesyonel meteoroloji verisi</span>
+      <span>sayılar bu taslakta temsilidir · PVQuant · 25 Ağu 2026 14:02</span>
+    </div>
+  </main>
+</div>
+</body>
+</html>

@@ -29,20 +29,30 @@ export function Santralim({ plantId }: { plantId: string }) {
     const v = (sam?.hucreler ?? []).flat().filter((x): x is number => x !== null);
     return v.length ? { lo: Math.min(...v), hi: Math.max(...v) } : { lo: 0, hi: 1 };
   }, [sam]);
+  // v2.196 (D): iki temali rampa — acikta kagit->yesil->amber, koyuda
+  // murekkep->filiz->amber (parlaklik degerle buyur; Murekkep-Bakir dersi).
+  const koyuTema = typeof document !== "undefined" &&
+    document.documentElement.dataset.tema === "koyu";
   const solargisTon = (t: number) => {
-    const durak: [number, number, number][] = [
-      [233, 244, 238], [199, 227, 212], [240, 226, 189], [232, 148, 10], [178, 106, 8]];
+    const durak: [number, number, number][] = koyuTema
+      ? [[23, 28, 22], [31, 44, 35], [59, 61, 30], [131, 96, 14], [232, 148, 10]]
+      : [[233, 244, 238], [199, 227, 212], [240, 226, 189], [232, 148, 10], [178, 106, 8]];
     const k = Math.min(0.999, Math.max(0, t)) * (durak.length - 1);
     const i = Math.floor(k), f = k - i;
     return "rgb(" + durak[i].map((a, c) =>
       Math.round(a + (durak[i + 1][c] - a) * f)).join(",") + ")";
   };
+  // parlak amber hucrelerde koyu metin (4.5:1); digerlerinde tema metni
+  const piMetin = (t: number) =>
+    (koyuTema ? t > 0.55 : t > 0.62) ? "#14100A" : "var(--pi-metin)";
 
   const gyOption = useMemo(() => {
     const soluk = oku("--soluk"), kenar = oku("--kenar"), mono = oku("--mono");
     const izgara = oku("--izgara");
-    const renk: Record<string, string> = {
-      yaz: oku("--marka"), ekinoks: "#B08A3E", kis: "#4A6FA5" };
+    const renk: Record<string, string> = {  // v2.196: sabit hex -> D tokenlari
+      yaz: oku("--ch-gy-yaz") || oku("--marka"),
+      ekinoks: oku("--ch-gy-eki") || "#6B7570",
+      kis: oku("--ch-gy-kis") || "#8A8478" };
     const ad: Record<string, string> = {
       yaz: "Yaz gündönümü", ekinoks: "Ekinoks", kis: "Kış gündönümü" };
     const seriler = (gy?.egriler ?? []).flatMap((e) => [
@@ -186,7 +196,9 @@ export function Santralim({ plantId }: { plantId: string }) {
                     <td style={{ padding: "2px 6px", color: "var(--soluk)" }}>{st}</td>
                     {sam.hucreler[si].map((v, mi) => (
                       <td key={mi} style={{ padding: "2px 2px", textAlign: "center",
-                        border: "1px solid var(--kart)", color: "#26303A",
+                        border: "1px solid var(--kart)",
+                        color: v === null ? "var(--pi-metin)"
+                          : piMetin((v - samAralik.lo) / (samAralik.hi - samAralik.lo)),
                         background: v === null ? "transparent"
                           : solargisTon((v - samAralik.lo) / (samAralik.hi - samAralik.lo)) }}>
                         {v === null ? <span style={{ color: "var(--soluk)" }}>–</span> : v}

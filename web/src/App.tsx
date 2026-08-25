@@ -32,7 +32,7 @@ export default function App() {
     return <Giris onGiris={() => setGirdi(true)} />;
   }
   return (
-    <Kabuk sayfa={sayfa} setSayfa={setSayfa} santral="Konya GES"
+    <Kabuk sayfa={sayfa} setSayfa={setSayfa} santral="Konya GES" plantId={PLANT}
            onCikis={() => { cikis(); setGirdi(false);
                             setGorunum("vitrin"); }}>  {/* gonullu cikis -> vitrin */}
       {sayfa === "santralim" && <Santralim plantId={PLANT} />}

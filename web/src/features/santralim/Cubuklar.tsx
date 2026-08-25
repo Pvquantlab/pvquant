@@ -1,5 +1,6 @@
 /** Deger etiketli cubuk grafik — 7 gunluk gorunum ve aylik uretim icin.
- *  En dusuk gun amber, secili/son gun koyu (Streamlit'teki K7 kurali). */
+ *  v2.196 (D karari): en dusuk donem NOTR koyulasir — amber artik yalniz
+ *  "gerceklesen" grafik murekkebi (anayasa); eski K7 amber'i kaldirildi. */
 import { useMemo } from "react";
 import type { EChartsOption } from "echarts";
 import { EChart } from "../../lib/EChart";
@@ -45,9 +46,9 @@ export function Cubuklar({ etiketler, degerler, birim, vurguIdx, yukseklik = 260
         data: degerler.map((v, i) => ({ value: v, itemStyle: {
           borderRadius: [2, 2, 0, 0],
           color: !tam(i) ? `rgba(${nr},.18)`
-               : i === enDusuk ? "#E8940A"
+               : i === enDusuk ? (oku("--ch-dusuk") || "#A8A296")
                : i === vurguIdx ? oku("--cubuk-vurgu")
-               : "#4E9B72",
+               : (oku("--ch-cubuk") || "#6FA98A"),
           borderType: !tam(i) ? "dashed" as const : "solid" as const,
           borderColor: !tam(i) ? `rgba(${nr},.5)` : "transparent",
           borderWidth: !tam(i) ? 1 : 0 } })),

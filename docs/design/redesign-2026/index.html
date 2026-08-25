@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Santralım Yeniden Tasarım Seçkisi</title>
+<style>
+:root { --metin:#1B211E; --soluk:#5A625C; --kenar:#DEDAD2; --zemin:#FBFAF7; --marka:#2E8555; }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--zemin); color:var(--metin); font-family:system-ui,sans-serif; line-height:1.6; }
+main { max-width:820px; margin:0 auto; padding:56px 24px 96px; }
+h1 { font-size:28px; letter-spacing:-0.02em; margin:0 0 6px; }
+.alt { color:var(--soluk); font-size:14px; margin-bottom:40px; }
+a.varyant { display:block; text-decoration:none; color:inherit; border:1px solid var(--kenar); border-radius:6px; padding:20px 24px; margin-bottom:16px; background:#fff; }
+a.varyant:hover { border-color:var(--marka); }
+a.varyant:focus-visible { outline:2px solid var(--marka); outline-offset:2px; }
+.ad { font-weight:700; font-size:17px; }
+.ad span { color:var(--marka); font-family:ui-monospace,monospace; font-size:12px; margin-right:10px; }
+.g { color:var(--soluk); font-size:13.5px; margin-top:6px; }
+.font { font-family:ui-monospace,monospace; font-size:12px; color:var(--soluk); margin-top:8px; }
+.not { font-size:12.5px; color:var(--soluk); border-top:1px solid var(--kenar); padding-top:16px; margin-top:32px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Santralım — yeniden tasarım seçkisi</h1>
+  <p class="alt">Üç varyant da aynı sentetik veriyi gösterir (Meridyen GES, Konya · 25 Ağu 2026); seçim yalnız tasarımla ilgilidir. Kabuk (sol menü + üst şerit) dahildir.</p>
+
+  <a class="varyant" href="https://claude.ai/code/artifact/a5790cb9-2bc9-42f4-807d-d8633014f7fd" style="border-width:2px;border-color:var(--marka)">
+    <div class="ad"><span>D</span>Rapor Odası — sentez</div>
+    <div class="g">B'nin kontrol odası ızgarası × A'nın bankable rapor dili: kağıt zemin, gri krom yerine ince çizgili numaralı portletler, üstte gömülü göstergeli çizgili özet şeridi, sparkline'lı 7 gün tablosu + Solargis kalitesinde grafikler. Açık + koyu tema.</div>
+    <div class="font">IBM Plex Sans + IBM Plex Mono</div>
+  </a>
+
+  <a class="varyant" href="https://claude.ai/code/artifact/fb113053-417e-40c8-bf61-9f6b421afe75">
+    <div class="ad"><span>A</span>Bankable Rapor</div>
+    <div class="g">Solargis dilinden: editoryal, tek kolon, numaralı bölümler, yalnız yatay ince çizgili tablolar, kağıt zemin. Panel bir "yaşayan bankable rapor" gibi okunur — yatırımcıya/bankaya gösterilecek yüzle günlük operasyon aynı dili konuşur. Açık + koyu tema.</div>
+    <div class="font">IBM Plex Sans + IBM Plex Mono</div>
+  </a>
+
+  <a class="varyant" href="https://claude.ai/code/artifact/f44a526c-a1b7-4fc1-9475-1f401ebdb2e2">
+    <div class="ad"><span>B</span>Kontrol Odası</div>
+    <div class="g">meteocontrol VCOM dilinden: yoğun portlet ızgarası, durum-önce (anlık güç + gösterge), tazeleme damgası şeridi, satır içi mini profilli 7 gün tablosu. Ekran başında yaşayan operatör için en çok bilgiyi en az kaydırmayla verir. Açık + koyu tema.</div>
+    <div class="font">Inter + IBM Plex Mono</div>
+  </a>
+
+  <a class="varyant" href="https://claude.ai/code/artifact/d94266b8-900e-45b2-bf61-fd15c00e8240">
+    <div class="ad"><span>C</span>Gece Vardiyası</div>
+    <div class="g">AlsoEnergy PowerTrack dilinden: mürekkep zemin, ince (200 ağırlık) büyük KPI rakamları, ağaç tipi portföy menüsü, alt durum çubuğu. Operasyon odası havası; çoklu santral portföyüne en doğal büyüyen yön. Yalnız koyu doğar; açık tema sonra türetilir.</div>
+    <div class="font">Archivo + JetBrains Mono</div>
+  </a>
+
+  <p class="not">Ortak kurallar üçünde de geçerli: amber yalnız "gerçekleşen" veri mürekkebi; veri yoksa "—" ve nedeni; sayılar Türkçe biçimde; ikonlar 1.5px çizgi SVG; kontrast ≥ 4.5:1. Sayılar temsilidir.</p>
+</main>
+</body>
+</html>

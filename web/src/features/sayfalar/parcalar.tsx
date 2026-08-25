@@ -23,18 +23,20 @@ export function Kpi({ etiket, deger, birim, alt, ton }:
     <div className="kpi" style={st}>
       <div className="kpi-et">{etiket}</div>
       <div className="kpi-dg mono"
-           style={ton === "amber" ? { color: "#B26E07" } : undefined}>{deger}{birim &&
+           style={ton === "amber" ? { color: "var(--amber-metin)" } : undefined}>{deger}{birim &&
         <span style={{ fontSize: 13, color: "var(--soluk)", marginLeft: 5 }}>{birim}</span>}</div>
       {alt && <div className="kpi-br">{alt}</div>}
     </div>
   );
 }
 
-export function Kart({ baslik, sag, children, ...rest }:
-  { baslik?: string; sag?: ReactNode; children: ReactNode } & { style?: React.CSSProperties }) {
+export function Kart({ baslik, no, sag, children, ...rest }:
+  { baslik?: string; no?: string; sag?: ReactNode; children: ReactNode } & { style?: React.CSSProperties }) {
+  // v2.196: opsiyonel "no" — D dilinin numarali bolum basligi ("2 · BUGÜN...")
   return (
     <section className="kart" {...rest}>
-      {(baslik || sag) && <div className="kart-bas"><h3>{baslik}</h3>{sag}</div>}
+      {(baslik || sag) && <div className="kart-bas">
+        <h3>{no && <span className="kart-no">{no}</span>}{baslik}</h3>{sag}</div>}
       {children}
     </section>
   );
