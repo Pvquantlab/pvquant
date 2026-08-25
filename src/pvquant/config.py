@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     # ----- Cache -----
     cache_ttl_seconds: int = 3600
 
+    # ----- Rapor künyesi (v2.195) -----
+    # s16 "İletişim" satırı — OPERATÖR (rapor üreticisi) adresidir, kiracıya
+    # göre değişmez (kullanıcı kararı). Boşsa rapor dürüst "—" basar (kural 3).
+    rapor_iletisim: str = ""
+
     # ----- Kapi ve bekci esikleri (v2.53 — Sozlesme 9) -----
     gate_wmape_ceiling: float = 25.0        # hibrit mutlak taban (birincil, WMAPE)
     gate_mape_ceiling: float = 35.0         # eski MAPE tavani — yedek yol

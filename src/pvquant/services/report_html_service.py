@@ -82,11 +82,15 @@ def ctx_to_json(ctx, plant: dict) -> dict:
     J = {"schema_version": "2.2"}   # v2.189 (K-B1): matrix + 5 alan deltası
 
     # kimlik / künye — report.id çağıran doldurur (uret_html_pdf → rapor_id_uret)
+    from pvquant.config import get_settings as _ayar
     musteri = plant.get("customer") or getattr(ctx, "tenant_adi", None)
     iste(musteri, "report.customer")
     J["report"] = {"customer": musteri,
                    "id": None,
-                   "contact": plant.get("contact") or "—"}
+                   # v2.195: İletişim OPERATÖR adresidir (kullanıcı kararı) —
+                   # kaynak config rapor_iletisim; boşsa dürüst "—" (kural 3)
+                   "contact": (plant.get("contact")
+                               or _ayar().rapor_iletisim or "—")}
     _ac = plant.get("ac_limit_kw")
     J["plant"] = {"name": ctx.plant_name,
                   "capacity_kwp": float(ctx.capacity_kwp),   # v2.103: s11 özgül üretim
@@ -112,7 +116,6 @@ def ctx_to_json(ctx, plant: dict) -> dict:
 
     # günlük seri + toplamlar — v2.156: gün sayısı ufuk ayarından (16 elle
     # yazılıydı; ufuk 15'e kırpılınca sözleşme onunla birlikte nefes alır)
-    from pvquant.config import get_settings as _ayar
     _ufuk = _ayar().forecast_horizon_days
     iste(ctx.daily_kwh is not None and len(ctx.daily_kwh) == _ufuk,
          "daily[%d]" % _ufuk)

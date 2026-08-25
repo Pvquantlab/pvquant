@@ -127,3 +127,24 @@ def test_d26_bos_tz_ve_model_hata():
     kod, durum, _m, _b, bulunan = _d26_kayit({"PLANT_TZ": "  ", "RUN_MODEL": ""})
     assert (kod, durum) == ("D26", "hata")
     assert "tz" in bulunan and "model" in bulunan
+
+
+# ------------------------------------------ v2.195: report.contact operatörden
+def test_report_contact_configten(monkeypatch):
+    from pvquant.config import get_settings
+    monkeypatch.setenv("PVQUANT_RAPOR_ILETISIM", "destek@ornek.example")
+    get_settings.cache_clear()
+    try:
+        assert _J()["report"]["contact"] == "destek@ornek.example"
+    finally:
+        get_settings.cache_clear()
+
+
+def test_report_contact_bos_config_durust_tire(monkeypatch):
+    from pvquant.config import get_settings
+    monkeypatch.delenv("PVQUANT_RAPOR_ILETISIM", raising=False)
+    get_settings.cache_clear()
+    try:
+        assert _J()["report"]["contact"] == "—"
+    finally:
+        get_settings.cache_clear()
