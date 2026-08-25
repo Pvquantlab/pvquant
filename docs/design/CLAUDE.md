@@ -1,6 +1,12 @@
-# CLAUDE.md — PVQuant Faz 2: Streamlit UI
+# CLAUDE.md — PVQuant Faz 2: Streamlit UI *(tarihî belge — v2.194 notu)*
 
-Bu repo, PV santraller için 7 günlük saatlik üretim tahmini yapan PVQuant ürününün kodudur. Backend (fizik modeli + kalibrasyon) tamamlanmıştır; bu fazın işi, onaylanmış tasarım prototipini Streamlit uygulaması olarak inşa edip backend'e bağlamaktır.
+> **Güncellik notu (v2.194):** Streamlit fazı v2.160'ta kapandı (frontend/ silindi);
+> UI artık `web/` (React + Vite + ECharts; tasarım tokenları `web/src/theme/tokens.ts`,
+> ısı haritası paleti v2.188'den beri Mürekkep–Bakır). Bu belgeden **bağlayıcı kalanlar:**
+> GİZLİLİK ANAYASASI (aşağıda) ve veri kuralları (gerçek SCADA asla commit'e girmez,
+> commit disiplini). Streamlit'e ve Plotly'ye özgü satırlar tarihîdir.
+
+Bu repo, PV santraller için saatlik üretim tahmini yapan PVQuant ürününün kodudur (tahmin ufku bugün 15 gündür). Backend (fizik modeli + kalibrasyon) tamamlanmıştır; bu fazın işi, onaylanmış tasarım prototipini Streamlit uygulaması olarak inşa edip backend'e bağlamaktı.
 
 ## Kaynaklar
 

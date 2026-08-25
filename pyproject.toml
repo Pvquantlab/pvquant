@@ -68,10 +68,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/YOUR_USERNAME/pvquant"
-Documentation = "https://github.com/YOUR_USERNAME/pvquant#readme"
-Repository = "https://github.com/YOUR_USERNAME/pvquant.git"
-Issues = "https://github.com/YOUR_USERNAME/pvquant/issues"
+Homepage = "https://github.com/Pvquantlab/pvquant"
+Documentation = "https://github.com/Pvquantlab/pvquant#readme"
+Repository = "https://github.com/Pvquantlab/pvquant.git"
+Issues = "https://github.com/Pvquantlab/pvquant/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

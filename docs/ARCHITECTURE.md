@@ -3,6 +3,15 @@
 Bu doküman PVQuant'ın mimari kararlarını ve veri akışını açıklar. Matematiksel model
 detayları için bkz. `PVQuant_Matematiksel_Modeller.docx`.
 
+> **Güncellik notu (v2.194):** Bu belge Faz-1 çekirdeğini (fizik zinciri, kalibrasyon
+> stratejisi, eski `/forecast` · `/calibration` uçları) anlatır ve o katmanda doğrudur.
+> Bugünkü üretim yüzeyi `/v1/*` uçlarıyla `apps/api/main.py`'dedir; servis katmanı
+> (`src/pvquant/services/`), worker (`apps/worker/`), hibrit model (`models_v2/`),
+> çok kiracılılık/RLS (`alembic/`, `db.py`) ve 16 sayfalık denetimli rapor motoru
+> (`reporting/html/`) bu belgede yoktur. Güncel gerçeğin adresleri: dağıtım için
+> `KONUSLANDIRMA.md`, rapor sözleşmesi için `reporting/html/docs/`, zorunlu sözleşme
+> için `.github/workflows/ci.yml`.
+
 ## Temel Tasarım Prensibi
 
 PVQuant, **iki ayrı kullanıcı senaryosu** için **tek bir matematiksel model katmanı**
@@ -147,4 +156,4 @@ Tez yaklaşımı: kapasite faktörü (CF) ile bifacial gain'i ters-çöz.
 - **Yeni meteo kaynağı:** `io/` altına yeni client ekle, aynı `MeteoData` dataclass'ını döndür.
 - **Yeni termal model:** `models/temperature.py`'ye fonksiyon ekle, `cell_temperature()` dispatcher'a kaydet.
 - **Yeni güç modeli:** `models/power.py`'ye fonksiyon ekle, `calculate_dc_power()` dispatcher'a kaydet.
-- **Frontend:** `frontend/` dizini React + Vite ile ayrı bir paket olarak gelir; backend ile CORS üzerinden konuşur.
+- **Frontend:** `web/` dizini React + Vite ile ayrı bir paket olarak gelir; üretimde Caddy aynı kökenden servis eder (`/v1/*` → api), geliştirmede CORS üzerinden konuşur.

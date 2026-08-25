@@ -1,6 +1,6 @@
 # PVQuant
 
-> **Saha-kalibre PV Performans Analitiği** — SCADA verisinden modeli sahaya özel kalibre eden, canlı meteoroloji ile 7 günlük üretim tahmini yapan kaynağı-açık (source-available) Python kütüphanesi ve REST API.
+> **Saha-kalibre PV Performans Analitiği** — SCADA verisinden modeli sahaya özel kalibre eden, canlı meteoroloji ile 15 günlük üretim tahmini yapan kaynağı-açık (source-available) Python kütüphanesi ve REST API.
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: Elastic 2.0](https://img.shields.io/badge/License-Elastic%202.0-blue.svg)](LICENSE)
@@ -10,7 +10,7 @@
 
 PVQuant iki tür kullanıcıya hizmet eder:
 
-1. **Operasyonel saha sahibi** (SCADA verisi var) — Geçmiş üretim verisini yükle, model parametrelerini sahaya kalibre et, ardından 7 günlük canlı tahmin al.
+1. **Operasyonel saha sahibi** (SCADA verisi var) — Geçmiş üretim verisini yükle, model parametrelerini sahaya kalibre et, ardından 15 günlük canlı tahmin al.
 2. **Yeni proje geliştirici** (sadece koordinat ve sistem bilgisi) — Datasheet parametreleriyle ön fizibilite tahmini al.
 
 Her iki durumda da arka planda aynı fiziksel model zinciri çalışır:
@@ -25,12 +25,19 @@ GHI → DHI/DNI (Erbs)
 
 Tüm matematiksel modeller orijinal akademik kaynaklarına karşı doğrulanmıştır — bkz. [`docs/PVQuant_Matematiksel_Modeller.docx`](docs/PVQuant_Matematiksel_Modeller.docx).
 
+**Bugünkü bütün (v2.19x):** bu çekirdeğin çevresinde çok kiracılı bir servis yaşar —
+FastAPI uygulaması (`apps/api`, JWT + satır düzeyi güvenlik/RLS), zamanlanmış worker
+(`apps/worker`: gece skill, rapor istatistikleri, aylık kalibrasyon), React SPA (`web/`),
+LightGBM hibrit artık modeli (`models_v2/`, Mod A/B/C + holdout kapısı) ve 26 tutarlılık
+denetimli, bayt-pinli 16 sayfalık rapor motoru (`reporting/html/`). Dağıtım gerçeği için
+`KONUSLANDIRMA.md`, rapor sözleşmesi için `reporting/html/docs/` başvuru noktasıdır.
+
 ## Hızlı Başlangıç
 
 ### Kurulum
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/pvquant.git
+git clone https://github.com/Pvquantlab/pvquant.git
 cd pvquant
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
@@ -40,23 +47,26 @@ pip install -e ".[dev]"
 ### Python kütüphanesi olarak kullanım
 
 ```python
-from pvquant.pipeline.forecast import forecast_7day
+from pvquant.pipeline.forecast import PlantSpec, forecast_7day
 from pvquant.io.meteo import OpenMeteoClient
 
-# 5 MWp bir santralin 7 günlük tahmini
-meteo = OpenMeteoClient().get_forecast(latitude=37.87, longitude=32.49)
+# 5 MWp bir santralin 15 günlük tahmini
+# (fonksiyon adı tarihîdir; ufuk config'ten gelir, bugün 15 gün)
+meteo = OpenMeteoClient().get_forecast(latitude=37.87, longitude=32.49, days=15)
 
-result = forecast_7day(
-    meteo=meteo,
+plant = PlantSpec(
     p_nom_kwp=5000,
+    latitude=37.87,
+    longitude=32.49,
     tilt=30,
     azimuth=180,
     module_tech="mono_si",
     bifacial_factor=0.70,
     albedo=0.25,
 )
+result = forecast_7day(meteo=meteo, plant=plant)
 
-print(result.daily_energy_kwh)  # 7 günlük günlük üretim
+print(result.daily_energy_kwh)  # günlük üretim dizisi
 print(result.total_kwh)         # toplam
 ```
 
@@ -64,28 +74,36 @@ print(result.total_kwh)         # toplam
 
 ```python
 from pvquant.pipeline.calibration import calibrate_from_scada
+from pvquant.pipeline.forecast import PlantSpec
 from pvquant.io.scada import load_fusionsolar_csv
+from pvquant.io.meteo import OpenMeteoClient
 
 scada = load_fusionsolar_csv("refplant_2025.csv")
+historical_meteo = OpenMeteoClient().get_historical(
+    latitude=38.76, longitude=30.54,
+    start_date="2025-06-01", end_date="2025-06-30",
+)
+plant = PlantSpec(p_nom_kwp=4514, latitude=38.76, longitude=30.54,
+                  tilt=25, azimuth=180)
 calibration = calibrate_from_scada(
     scada=scada,
-    p_nom_kwp=4514,
-    latitude=38.76,
-    longitude=30.54,
-    tilt=25,
-    azimuth=180,
+    historical_meteo=historical_meteo,
+    plant=plant,
 )
 
-print(calibration.bg)          # BG = 0.347 (geri hesaplanmış)
-print(calibration.eta_bos)     # 0.931
-print(calibration.mape_pct)    # validasyon hatası
+print(calibration.bg)                # BG (geri hesaplanmış)
+print(calibration.eta_bos)           # BoS verimi
+print(calibration.validation_after)  # kalibrasyon sonrası doğrulama raporu
 ```
 
 ### REST API olarak çalıştırma
 
 ```bash
-uvicorn pvquant.api.main:app --reload
+# Üretim yüzeyi (compose'un koştuğu uygulama — /v1/* uçları):
+uvicorn apps.api.main:app --reload
 # → http://localhost:8000/docs (Swagger UI otomatik)
+# Not: `pvquant.api.main:app` eski Faz-1 uygulamasıdır (/forecast, /calibration);
+# üretim yığını apps.api.main'i koşar (bkz. docker-compose.yml).
 ```
 
 ## Matematiksel Modeller
@@ -107,10 +125,17 @@ Tam denklemler, parametre tabloları ve uygulama kılavuzu için [matematiksel m
 ```
 src/pvquant/
 ├── models/          ← Matematiksel modeller (saf fonksiyonlar)
-├── pipeline/        ← Modelleri birleştiren akış (forecast, calibration)
-├── io/              ← Veri girişi (SCADA CSV, Open-Meteo)
+├── models_v2/       ← Model protokolü + hibrit LightGBM artık modeli
+├── pipeline/        ← Modelleri birleştiren akış (forecast, calibration, hybrid_ui)
+├── io/              ← Veri girişi (SCADA CSV + ingestion hattı, meteoroloji istemcisi)
+├── services/        ← Uygulama katmanı (13 modül: forecast, calib, report, auth, …)
 ├── validation/      ← MAPE, RMSE, PR metrikleri
-└── api/             ← FastAPI REST endpoint'leri
+├── reporting/       ← Hızlı PDF/Excel/JSON motoru (operasyonel çıktılar)
+├── db.py            ← Tenant bağlamı (RLS) + oturum yönetimi
+└── api/             ← Eski Faz-1 REST uçları (üretim yüzeyi apps/api'dir)
+
+Kökte: apps/ (api + worker) · alembic/ (şema, RLS) · reporting/ (16 sayfalık
+denetimli rapor motoru) · web/ (React SPA) · docker-compose.yml + Caddyfile
 ```
 
 ## Geliştirme
@@ -125,7 +150,7 @@ mypy src/                        # Type check
 
 ## Frontend
 
-React + Vite + TypeScript frontend için bkz. [`frontend/README.md`](frontend/README.md).
+React + Vite + TypeScript frontend için bkz. [`web/README.md`](web/README.md).
 
 ## Dokümantasyon
 

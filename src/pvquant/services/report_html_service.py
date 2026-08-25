@@ -14,7 +14,9 @@ BOŞLUK DURUMU (E.3-a kapanışı, 9 Ağu kararları):
   B4 calibration.steps            ⏳ opsiyonel (v2.102) — yoksa sayfa 9 motor sabitleri
   B5 error_dist                   ✔ worker fotoğrafı (report_stats.error_dist)
   B6 report.id                    ✔ report_service.rapor_id_uret (report_log)
-  B7 sources.weather.model        ⏳ io/meteo damgası gelene dek dürüst 'sabitlenmemiş'
+  B7 sources.weather.model        ⏳ v2.165 damgası KİP kaydeder (nwp_model=best_match,
+                                    okuyanı yok); somut model edinimi + ctx teli açık —
+                                    'sabitlenmemiş' dürüst sürer (kullanıcı kararı v2.194)
 """
 from __future__ import annotations
 import datetime as _dt
