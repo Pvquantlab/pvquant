@@ -97,22 +97,55 @@ export function Santralim({ plantId }: { plantId: string }) {
       kis: oku("--ch-gy-kis") || "#8A8478" };
     const ad: Record<string, string> = {
       yaz: "Yaz gündönümü", ekinoks: "Ekinoks", kis: "Kış gündönümü" };
-    const seriler = (gy?.egriler ?? []).flatMap((e) => [
-      { name: ad[e.ad] ?? e.ad, type: "line" as const, symbol: "none",
-        smooth: true, lineStyle: { color: renk[e.ad], width: 2 },
-        itemStyle: { color: renk[e.ad] }, data: e.nokta },
-      { name: ad[e.ad] ?? e.ad, type: "scatter" as const, symbolSize: 5,
-        itemStyle: { color: renk[e.ad] }, tooltip: { show: true },
-        label: { show: e.ad === "yaz", position: "top" as const,
-          color: soluk, fontSize: 9, fontFamily: mono,
-          formatter: (pr: { value: [number, number, number] }) =>
-            `${pr.value[2]}:00` },
-        data: e.saat },
-    ]);
+    // v2.201: D cizim dili — yay karakterleri ayrisir (yaz duz, ekinoks
+    // kesikli, kis noktali); ayni saati mevsimler arasinda izleyen soluk
+    // dikmeler; tepe noktasina mevsim etiketi (veriden: en yuksek el.)
+    const cizgiTip: Record<string, "solid" | "dashed" | "dotted"> = {
+      yaz: "solid", ekinoks: "dashed", kis: "dotted" };
+    const egriler = gy?.egriler ?? [];
+    const saatDikmeleri: object[] = [];
+    const saatler = [...new Set(egriler.flatMap((e) => e.saat.map((p) => p[2])))];
+    for (const h of saatler) {
+      const pts = egriler
+        .map((e) => e.saat.find((p) => p[2] === h))
+        .filter((p): p is [number, number, number] => !!p)
+        .map((p) => [p[0], p[1]]);
+      if (pts.length >= 2)
+        saatDikmeleri.push({ type: "line" as const, silent: true, symbol: "none",
+          z: 1, tooltip: { show: false },
+          lineStyle: { color: izgara, width: 1, type: [2, 3] }, data: pts });
+    }
+    const tepeEtiketleri = egriler.map((e) => {
+      const apex = e.nokta.reduce((a, b) => (b[1] > a[1] ? b : a), e.nokta[0]);
+      return { type: "scatter" as const, silent: true, symbolSize: 0.1, z: 5,
+        tooltip: { show: false }, itemStyle: { color: "transparent" },
+        label: { show: true, position: "bottom" as const, distance: 10,
+          color: renk[e.ad], fontFamily: mono, fontSize: 11,
+          formatter: `${(ad[e.ad] ?? e.ad).toLowerCase()} · ${Math.round(apex[1])}°` },
+        data: [apex] };
+    });
+    const seriler = [
+      ...saatDikmeleri,
+      ...egriler.flatMap((e) => [
+        { name: ad[e.ad] ?? e.ad, type: "line" as const, symbol: "none",
+          smooth: true, z: 3,
+          lineStyle: { color: renk[e.ad], width: e.ad === "yaz" ? 2.2 : 2,
+            type: cizgiTip[e.ad] ?? "solid" },
+          itemStyle: { color: renk[e.ad] }, data: e.nokta },
+        { name: ad[e.ad] ?? e.ad, type: "scatter" as const,
+          symbolSize: e.ad === "yaz" ? 5 : 4, z: 4,
+          itemStyle: { color: e.ad === "yaz" ? oku("--amber") : renk[e.ad] },
+          tooltip: { show: true },
+          label: { show: e.ad === "yaz", position: "top" as const,
+            color: soluk, fontSize: 9.5, fontFamily: mono,
+            formatter: (pr: { value: [number, number, number] }) =>
+              `${pr.value[2]}:00` },
+          data: e.saat },
+      ]),
+      ...tepeEtiketleri,
+    ];
     return {
-      grid: { left: 44, right: 12, top: 30, bottom: 30 }, animation: false,
-      legend: { top: 0, right: 0, textStyle: { color: soluk, fontSize: 11 },
-        itemWidth: 14, data: Object.values(ad) },
+      grid: { left: 60, right: 16, top: 26, bottom: 46 }, animation: false,
       tooltip: { backgroundColor: oku("--kart"), borderColor: kenar,
         borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 12 },
         formatter: (p0: unknown) => {
@@ -120,17 +153,19 @@ export function Santralim({ plantId }: { plantId: string }) {
           const saat = p1.value.length > 2 ? ` · ${p1.value[2]}:00` : "";
           return `${p1.seriesName}${saat}<br/>azimut ${Math.round(p1.value[0])}° · yükseklik ${Math.round(p1.value[1])}°`;
         } },
-      xAxis: { type: "value", min: 45, max: 315, name: "azimut °",
-        nameLocation: "middle", nameGap: 22,
-        nameTextStyle: { color: soluk, fontSize: 10 },
-        axisLabel: { color: soluk, fontFamily: mono, fontSize: 10,
+      xAxis: { type: "value", min: 45, max: 315, name: "[panel yönü — azimuth]",
+        nameLocation: "middle", nameGap: 30,
+        nameTextStyle: { color: soluk, fontFamily: mono, fontSize: 10.5 },
+        axisLabel: { color: soluk, fontFamily: mono, fontSize: 10.5,
           formatter: (v: number) =>
-            ({ 90: "D", 180: "G", 270: "B" } as Record<number, string>)[v] ?? `${v}°` },
-        splitLine: { lineStyle: { color: izgara } },
+            ({ 90: "Doğu · 90°", 180: "Güney · 180°", 270: "Batı · 270°"
+             } as Record<number, string>)[v] ?? `${v}°` },
+        splitLine: { show: false },
         axisLine: { lineStyle: { color: kenar } } },
-      yAxis: { type: "value", min: 0, max: 90, name: "yükseklik °",
-        nameTextStyle: { color: soluk, fontSize: 10 },
-        axisLabel: { color: soluk, fontFamily: mono, fontSize: 10 },
+      yAxis: { type: "value", min: 0, max: 90, name: "Güneş yüksekliği [°]",
+        nameLocation: "middle", nameGap: 36, nameRotate: 90,
+        nameTextStyle: { color: soluk, fontFamily: mono, fontSize: 10.5 },
+        axisLabel: { color: soluk, fontFamily: mono, fontSize: 10.5 },
         splitLine: { lineStyle: { color: izgara } }, axisLine: { show: false } },
       series: seriler,
     } as EChartsOption;  // v2.148: üretim derlemesi literal daraltması

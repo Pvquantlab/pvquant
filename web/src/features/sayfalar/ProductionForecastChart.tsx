@@ -99,7 +99,7 @@ export const CHART_TOKENS = (dark: boolean) => ({
   bandPastEdgeOpacity: dark ? 0.35 : 0.4,
   bandEdgeWidth: 1,
   actualLine: cssVar("--chart-actual", dark ? "#E8ECEF" : "#1A222B"),
-  actualWidth: 1.8,
+  actualWidth: 2.2, // v2.201: D cizim dili — gerceklesen murekkebi bir tik kalin
   acLimit: cssVar("--chart-limit", dark ? "#A78BFA" : "#7C3AED"),
   acExceedTint: cssVar(
     "--chart-limit-tint",
@@ -741,10 +741,11 @@ export function buildChartOption(input: BuildInput): EChartsOption {
     backgroundColor: "transparent",
     legend: { show: false }, // legend is the component's HTML layer
     grid: {
-      left: narrow ? 48 : 60,
+      // v2.201: D cizim dili — dondurulmus eksen basligi + alt eksen notu payi
+      left: narrow ? 52 : 76,
       right: narrow ? 12 : 16,
       top: 34,
-      bottom: features.dataZoom ? 58 : 30,
+      bottom: features.dataZoom ? 58 : narrow ? 32 : 48,
     },
     graphic:
       acVal !== null
@@ -778,6 +779,13 @@ export function buildChartOption(input: BuildInput): EChartsOption {
       axisLine: { lineStyle: { color: T.gridLine } },
       axisTick: { show: false },
       splitLine: { show: false },
+      // v2.201: D cizim dili — Solargis'in koseli parantezli eksen notu
+      ...(narrow ? {} : {
+        name: daily ? "[gün · yerel]" : "[saat · yerel]",
+        nameLocation: "middle" as const,
+        nameGap: 30,
+        nameTextStyle: { color: T.unitText, fontFamily: "monospace", fontSize: 10.5 },
+      }),
     },
     yAxis: {
       type: "value",
@@ -791,6 +799,13 @@ export function buildChartOption(input: BuildInput): EChartsOption {
         formatter: (v: number) => nfKw.format(v),
       },
       splitLine: { lineStyle: { color: T.gridLine, width: 1 } },
+      ...(narrow ? {} : {
+        name: "Güç [kW]",
+        nameLocation: "middle" as const,
+        nameGap: 56,
+        nameRotate: 90,
+        nameTextStyle: { color: T.unitText, fontFamily: "monospace", fontSize: 10.5 },
+      }),
     },
     ...(features.dataZoom
       ? {
