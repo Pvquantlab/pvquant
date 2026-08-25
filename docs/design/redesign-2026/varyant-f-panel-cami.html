@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="tr">
+<html lang="tr" data-tema="koyu">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -291,6 +291,47 @@ table.veri thead th, .pi th { font-size: 11px; }
   .ust { flex-wrap: wrap; height: auto; padding: 8px 16px; gap: 8px; }
 }
 
+/* parlak amber hucrelerde koyu metin — acik pi-metin 2:1'de kaliyordu */
+.pi td.h6, .pi td.h7, .pi td.h8, .pi td.h9 { color: #14100A; }
+
+/* ---- ACIK TEMA: gunduz cami (v2.211) ---- */
+[data-tema="acik"] {
+  --marka: #16A34A; --marka-koyu: #166534; --marka-zemin: rgba(22,163,74,.10);
+  --uyari: #C9502E; --basari: #15803D;
+  --zemin: #EAF0F7;
+  --kart: rgba(255,255,255,.74); --yuzey: rgba(22,36,58,.05);
+  --metin: #16243A; --ikincil: #3E5068; --soluk: #52657E;
+  --kenar: rgba(22,36,58,.14); --izgara: rgba(22,36,58,.09);
+  --ch-band: rgba(45,111,181,.14); --ch-band2: rgba(45,111,181,.28); --ch-eksen-koyu: #3E5068;
+  --ch-p50-gecmis: #2D6FB5; --ch-p50-gelecek: #2D6FB5;
+  --ch-ac: #7A8698; --ch-simdi: #7A8698; --ch-simdi-metin: #52657E;
+  --ch-izgara: rgba(22,36,58,.10); --ch-eksen: rgba(22,36,58,.24);
+  --ch-cubuk: #4C9A6E; --ch-vurgu: #166534; --ch-dusuk: #9AA6B5;
+  --ch-eksik: rgba(94,112,137,.14);
+  --ch-gy-yaz: #16A34A; --ch-gy-eki: #7A8698; --ch-gy-kis: #9AA6B5;
+  --h0:#EDF3FA; --h1:#E0EDF2; --h2:#D4E7E3; --h3:#D9E5CF; --h4:#E8E3C2;
+  --h5:#EED095; --h6:#EBAD45; --h7:#E28F0A; --h8:#CA7D09; --h9:#B26A08;
+  --pi-metin: #22303F;
+}
+[data-tema="acik"] body { background:
+  linear-gradient(rgba(22,36,58,.05) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(22,36,58,.05) 1px, transparent 1px),
+  radial-gradient(1400px 700px at 72% -12%, #FFFFFF 0%, #EAF0F7 58%);
+  background-size: 46px 46px, 46px 46px, auto; background-attachment: fixed; }
+[data-tema="acik"] .yan { background: rgba(255,255,255,.78); }
+[data-tema="acik"] .ust { background: rgba(255,255,255,.86); }
+[data-tema="acik"] .pi td { border-color: #EAF0F7; }
+[data-tema="acik"] .pi .pi-tipik td { background: #FFFFFF; }
+[data-tema="acik"] .yan-sec { background: rgba(255,255,255,.8); }
+[data-tema="acik"] .dugme-ana { background: #15803D; border-color: #15803D; color: #fff; }
+[data-tema="acik"] .nokta-badge { border-color: #EAF0F7; }
+[data-tema="acik"] .pi td.h0, [data-tema="acik"] .pi td.h1,
+[data-tema="acik"] .pi td.h2, [data-tema="acik"] .pi td.h3 { color: var(--pi-metin); }
+@supports not ((backdrop-filter: blur(8px)) or (-webkit-backdrop-filter: blur(8px))) {
+  [data-tema="acik"] .portlet, [data-tema="acik"] .yan-ozet > div { background: #FFFFFF; }
+}
+
+
 
 
 </style>
@@ -333,7 +374,7 @@ table.veri thead th, .pi th { font-size: 11px; }
   <main>
     <div class="ust">
       <div class="yol">Panel <b>· Santralım</b> <span style="color:var(--soluk)">· Meridyen GES, Konya</span></div>
-      <div class="ust-arac"><div class="arama" role="search" aria-label="Panelde ara"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="9" r="5.5"/><path d="M13.2 13.2 17 17"/></svg><span>Ara…</span><kbd>⌘K</kbd></div><button class="ikon-dugme" aria-label="Bildirimler — 2 açık uyarı"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3a4.5 4.5 0 0 0-4.5 4.5c0 4-1.7 5.3-1.7 5.3h12.4s-1.7-1.3-1.7-5.3A4.5 4.5 0 0 0 10 3Z"/><path d="M8.6 15.8a1.6 1.6 0 0 0 2.8 0"/></svg><i class="nokta-badge"></i></button><button class="ikon-dugme" aria-label="Yardım">?</button><button class="avatar" aria-label="Hesap — Meridyen Enerji, Admin">ME</button></div>
+      <div class="ust-arac"><div class="arama" role="search" aria-label="Panelde ara"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="9" r="5.5"/><path d="M13.2 13.2 17 17"/></svg><span>Ara…</span><kbd>⌘K</kbd></div><button class="ikon-dugme" aria-label="Bildirimler — 2 açık uyarı"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3a4.5 4.5 0 0 0-4.5 4.5c0 4-1.7 5.3-1.7 5.3h12.4s-1.7-1.3-1.7-5.3A4.5 4.5 0 0 0 10 3Z"/><path d="M8.6 15.8a1.6 1.6 0 0 0 2.8 0"/></svg><i class="nokta-badge"></i></button><button class="ikon-dugme" aria-label="Yardım">?</button><button class="dugme" id="temaDugme" aria-pressed="false">Açık tema</button><button class="avatar" aria-label="Hesap — Meridyen Enerji, Admin">ME</button></div>
     </div>
     <div class="telemetri">
       <span class="nokta"><i></i>veri akışı sağlıklı</span>
@@ -550,5 +591,14 @@ table.veri thead th, .pi th { font-size: 11px; }
     </div></div>
   </main>
 </div>
+<script>
+  var d = document.getElementById("temaDugme");
+  d.addEventListener("click", function () {
+    var acik = document.documentElement.dataset.tema === "acik";
+    document.documentElement.dataset.tema = acik ? "koyu" : "acik";
+    d.textContent = acik ? "Açık tema" : "Koyu tema";
+    d.setAttribute("aria-pressed", String(!acik));
+  });
+</script>
 </body>
 </html>
