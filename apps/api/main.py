@@ -135,7 +135,8 @@ def summary(plant_id: str, claims=Depends(gecerli_kullanici)):
     -> gunun_ozeti -> aylik_uretim. Alan adlari GununOzeti + kunye ile
     birebir; olmayan/dolmayan alan null (icat yok, sahte deger yok).
     """
-    from pvquant.services import plant_service, ozet_service, ingest_service
+    from pvquant.services import (plant_service, ozet_service, ingest_service,
+                                  forecast_service)
     row = plant_service.getir(claims["tenant_id"], plant_id)
     if row is None:
         raise HTTPException(404, "santral yok")
@@ -151,11 +152,28 @@ def summary(plant_id: str, claims=Depends(gecerli_kullanici)):
     }
     o = ozet_service.gunun_ozeti(claims["tenant_id"], santral)
     ay = ingest_service.aylik_uretim(claims["tenant_id"], plant_id)
+    # v2.205: aylik beklenti (forecast_daily) — servis/tablo dusmusse ozet
+    # OLMEZ, beklenti alanlari null kalir (durust yokluk).
+    try:
+        bek = forecast_service.aylik_beklenti(claims["tenant_id"], plant_id)
+    except Exception:
+        bek = {}
+
+    def _beklenti(ay_str):
+        """Ay TAM kapsanmadan beklenti gosterilmez (kismi toplam yaniltir)."""
+        import calendar
+        b = bek.get(ay_str)
+        if not b:
+            return None
+        y, m = int(ay_str[:4]), int(ay_str[5:7])
+        return _kw(b["mwh"]) if b["gun_sayisi"] >= calendar.monthrange(y, m)[1] else None
+
     aylik = [] if ay.empty else [
         {"ay": r["ay"], "mwh": _kw(r["uretim_mwh"]),
          # aylik_ozet kolonu 'saat' (v2.68) — 'saglam_saat' degil (canli ders #2)
          "saglam_saat": int(r["saat"]) if "saat" in r else None,
-         "kapsam_pct": _kw(r["kapsam_pct"]) if "kapsam_pct" in r else None}
+         "kapsam_pct": _kw(r["kapsam_pct"]) if "kapsam_pct" in r else None,
+         "beklenti_mwh": _beklenti(r["ay"])}
         for _, r in ay.tail(12).iterrows()]
     return {
         "plant": {**santral,

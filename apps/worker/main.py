@@ -146,6 +146,73 @@ def gece_skill(plant, pencere_gun: int = 10):
             " mape=EXCLUDED.mape, rmse=EXCLUDED.rmse,"
             " skill_vs_naive=EXCLUDED.skill_vs_naive,"
             " naive_wmape=EXCLUDED.naive_wmape"), satirlar)
+def gunluk_toplam(df, tz, gun):
+    """v2.205 — saatlik kosu cercevesinden TEK yerel gunun kWh toplamlari.
+    Saf fonksiyon (DB'siz, birim-testli). Kurallar:
+    - <20 saat kapsama -> None (kismi gunle beklenti YAZILMAZ, uydurma yok)
+    - p50_kwh her zaman; p10/p90_kwh ANCAK gunun tum saatlerinde doluysa
+      (kismi bant toplami yaniltir — tire ilkesinin toplam hali)
+    df: ts_utc indexli p50_kw/p10_kw/p90_kw cercevesi (saatlik kW ~ kWh)."""
+    d0 = pd.Timestamp(gun).tz_localize(tz)
+    d1 = d0 + pd.Timedelta(days=1)
+    ix = df.index.tz_convert(tz)
+    win = df[(ix >= d0) & (ix < d1)]
+    if len(win) < 20:
+        return None
+    out = {"p50_kwh": float(win["p50_kw"].sum()), "saat_sayisi": int(len(win))}
+    for k in ("p10", "p90"):
+        col = win[f"{k}_kw"]
+        out[f"{k}_kwh"] = float(col.sum()) if col.notna().all() else None
+    return out
+
+
+def gunluk_beklenti(plant, geriye_gun: int = 120):
+    """v2.205 — GUNLUK BEKLENTI ARSIVI: her kapanmis yerel gun icin, GUN
+    BASLAMADAN verilmis en taze kosunun toplamlari forecast_daily'ye yazilir.
+    ON CONFLICT DO NOTHING: 'gecmis sonuc degistirilmez; yenisi eklenir' —
+    bir kez yazilan beklenti sabittir (kiyasin hakemi oynak olamaz)."""
+    tid, pid = plant["tenant_id"], plant["id"]
+    tz = plant.get("tz") or "UTC"
+    bugun = pd.Timestamp.now(tz).date()   # santral yerel bugunu
+    with tenant_baglami(tid) as s:
+        var = {r.gun for r in s.execute(text(
+            "SELECT gun FROM forecast_daily WHERE plant_id=:p "
+            "AND gun >= :g0"), {"p": pid,
+            "g0": bugun - dt.timedelta(days=geriye_gun)})}
+        for i in range(1, geriye_gun + 1):
+            gun = bugun - dt.timedelta(days=i)
+            if gun in var:
+                continue
+            d0_utc = pd.Timestamp(gun).tz_localize(tz).tz_convert("UTC")
+            run = s.execute(text(
+                "SELECT id FROM forecast_runs WHERE plant_id=:p "
+                "AND run_at < :d0 "
+                "AND EXISTS (SELECT 1 FROM forecast_values v"
+                "  WHERE v.run_id = forecast_runs.id) "
+                "ORDER BY run_at DESC LIMIT 1"),
+                {"p": pid, "d0": d0_utc}).first()
+            if not run:
+                continue
+            df = pd.read_sql(text(
+                "SELECT ts_utc,p50_kw,p10_kw,p90_kw FROM forecast_values "
+                "WHERE run_id=:r AND ts_utc >= :a AND ts_utc < :b "
+                "ORDER BY ts_utc"), s.connection(),
+                params={"r": run.id, "a": d0_utc,
+                        "b": d0_utc + pd.Timedelta(days=1)},
+                index_col="ts_utc", parse_dates=["ts_utc"])
+            t = gunluk_toplam(df, tz, gun)
+            if t is None:
+                continue
+            s.execute(text(
+                "INSERT INTO forecast_daily(tenant_id,plant_id,gun,"
+                " p50_kwh,p10_kwh,p90_kwh,run_id,saat_sayisi)"
+                " VALUES(:t,:p,:g,:p50,:p10,:p90,:r,:n)"
+                " ON CONFLICT (plant_id,gun) DO NOTHING"),
+                {"t": tid, "p": pid, "g": gun, "p50": t["p50_kwh"],
+                 "p10": t["p10_kwh"], "p90": t["p90_kwh"],
+                 "r": run.id, "n": t["saat_sayisi"]})
+
+
 def error_matrix_hesapla(d24, gun_sayisi=30, saatler=range(6, 20)):
     """v2.185 (K-F): saat×gün gün-öncesi |hata| matrisi [MW] — B5 fotoğrafının
     kardeş alanı. d24: dedup'lu 0-24 eşleşmeleri (kolonlar: gun, saat, p50_kw,
@@ -316,6 +383,7 @@ if __name__ == "__main__":
         # BILEREK haric (durum degistiren agir is; takvimin/kullanicinin isi).
         print("PVQuant worker --once: tam tur basliyor…")
         _logla("gece_skill", gece_skill)()
+        _logla("gunluk_beklenti", gunluk_beklenti)()        # v2.205
         _logla("rapor_alanlari", rapor_alanlari)()          # v2.103 (B1+B5)
         _logla("sabah_tahmin", sabah_tahmin)()
         _logla("alarm", alarm_tara)()
@@ -324,6 +392,8 @@ if __name__ == "__main__":
     sch = BlockingScheduler(timezone="UTC", job_defaults=dict(coalesce=True, misfire_grace_time=3600, max_instances=1))
     sch.add_job(_logla("sabah_tahmin", sabah_tahmin), "cron", hour=cfg.worker_hour_forecast, minute=0)
     sch.add_job(_logla("gece_skill", gece_skill), "cron", hour=cfg.worker_hour_skill, minute=30)
+    sch.add_job(_logla("gunluk_beklenti", gunluk_beklenti),              # v2.205
+                "cron", hour=cfg.worker_hour_skill, minute=40)
     sch.add_job(_logla("rapor_alanlari", rapor_alanlari),                # v2.103 (B1+B5)
                 "cron", hour=cfg.worker_hour_skill, minute=45)
     sch.add_job(_logla("alarm", alarm_tara), "cron", hour=cfg.worker_hour_alarm, minute=0)

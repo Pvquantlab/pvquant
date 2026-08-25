@@ -16,7 +16,9 @@ export interface SantralOzeti {
   anlati: string;
   hava: HavaGun[];
   gunler: { etiket: string; mwh: number }[];   // v2.71-A: tam 7
-  aylik: { ay: string; mwh: number; saglam_saat: number; kapsam_pct: number }[];
+  aylik: { ay: string; mwh: number; saglam_saat: number; kapsam_pct: number;
+           /** v2.205 — ay tam kapsanmadan null (kismi toplam yaniltir). */
+           beklenti_mwh: number | null }[];
   saglik: { son_scada: string | null; kesinti_gun: number | null;
             islenen_saat: number; anomali: number };
 }

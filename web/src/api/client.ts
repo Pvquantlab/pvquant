@@ -182,7 +182,9 @@ interface OzetYanit {
   gunler: { etiket: string; mwh: number | null }[];
   saglik: { son_scada: string | null; islenen_saat: number; anomali: number };
   aylik: { ay: string; mwh: number | null; saglam_saat: number | null;
-           kapsam_pct: number | null }[];
+           kapsam_pct: number | null;
+           /* v2.205: ay TAM kapsanmadan API null gonderir */
+           beklenti_mwh?: number | null }[];
 }
 
 const AYLAR_KISA_TR = ["Oca", "Şub", "Mar", "Nis", "May", "Haz",
@@ -224,7 +226,9 @@ function uyarlaOzet(g: OzetYanit): SantralOzeti {
                                isinim: h.kwhm2 })),
     gunler: g.gunler.map((x) => ({ etiket: x.etiket, mwh: x.mwh ?? 0 })),
     aylik: g.aylik.map((a) => ({ ay: ayEtiketi(a.ay), mwh: a.mwh ?? 0,
-      saglam_saat: a.saglam_saat ?? 0, kapsam_pct: a.kapsam_pct ?? 0 })),
+      saglam_saat: a.saglam_saat ?? 0, kapsam_pct: a.kapsam_pct ?? 0,
+      // v2.205: beklenti 0'a INDIRGENMEZ — null durust yokluktur (imlec yok)
+      beklenti_mwh: a.beklenti_mwh ?? null })),
     saglik: { son_scada: trTarih(sonScada), kesinti_gun: kesintiGun,
               islenen_saat: g.saglik.islenen_saat, anomali: g.saglik.anomali },
   };

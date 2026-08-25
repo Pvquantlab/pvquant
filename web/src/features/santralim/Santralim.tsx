@@ -412,21 +412,31 @@ export function Santralim({ plantId }: { plantId: string }) {
         </Kart>
         <Kart no="6" baslik="Aylık üretim — gerçekleşen"
           sag={<span className="cip">son 12 ay</span>}>
+          {/* v2.205: beklenti-P50 imleci (D bullet dili) — yalniz TAM
+              kapsanmis aylarda; imlecin hakemi gun-oncesi arsiv */}
           <Cubuklar etiketler={o.aylik.map((a) => a.ay)} degerler={o.aylik.map((a) => a.mwh)}
             kapsamPct={o.aylik.map((a) => a.kapsam_pct)}
+            beklenti={o.aylik.map((a) => a.beklenti_mwh)}
             birim="MWh" vurguIdx={o.aylik.length - 1} yukseklik={230} />
           <table className="veri" style={{ marginTop: 14 }}>
-            <thead><tr><th>Ay</th><th>Üretim MWh</th><th>Sağlam saat</th><th>Kapsam %</th></tr></thead>
+            <thead><tr><th>Ay</th><th>Üretim MWh</th><th>Beklenti MWh</th><th>Sapma</th><th>Kapsam %</th></tr></thead>
             <tbody className="mono">
               {[...o.aylik].reverse().slice(0, 6).map((a) => (
                 <tr key={a.ay}>
                   <td>{a.ay}</td><td>{sayiTr(a.mwh, 1)}</td>
-                  <td>{sayiTr(a.saglam_saat)}</td>
+                  <td>{a.beklenti_mwh === null ? "—" : sayiTr(a.beklenti_mwh, 1)}</td>
+                  <td>{a.beklenti_mwh === null || a.beklenti_mwh === 0 ? "—"
+                    : `${a.mwh >= a.beklenti_mwh ? "+" : "−"}%${sayiTr(
+                        Math.abs((a.mwh - a.beklenti_mwh) / a.beklenti_mwh) * 100, 1)}`}</td>
                   <td style={{ color: "var(--ikincil)" }}>{sayiTr(a.kapsam_pct, 1)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+          <p style={{ fontSize: 12, color: "var(--soluk)", margin: "8px 0 0" }}>
+            Beklenti, her gün için gün başlamadan verilmiş en taze tahminin
+            toplamıdır; ay tam kapsanmadan gösterilmez.
+          </p>
         </Kart>
       </div>
     </Sayfa>

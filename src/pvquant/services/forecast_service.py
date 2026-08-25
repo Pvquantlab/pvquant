@@ -156,6 +156,21 @@ def son_kosu(tenant_id, plant_id) -> pd.DataFrame | None:
             s.connection(), params={"r": run.id},
             index_col="ts_utc", parse_dates=["ts_utc"])
 
+def aylik_beklenti(tenant_id, plant_id) -> dict:
+    """v2.205 — forecast_daily'den ay bazli beklenti toplami.
+    Doner: {"YYYY-MM": {"mwh": float, "gun_sayisi": int}}. Sunum kurali
+    cagiranin: ay TAM kapsanmadan (gun_sayisi < ayin gunu) beklenti
+    gosterilmez — kismi toplam yaniltir."""
+    with tenant_baglami(tenant_id) as s:
+        rows = s.execute(text(
+            "SELECT to_char(gun,'YYYY-MM') AS ay,"
+            " SUM(p50_kwh)/1000.0 AS mwh, COUNT(*) AS gun_sayisi "
+            "FROM forecast_daily WHERE plant_id=:p "
+            "GROUP BY 1 ORDER BY 1"), {"p": plant_id}).fetchall()
+    return {r.ay: {"mwh": float(r.mwh), "gun_sayisi": int(r.gun_sayisi)}
+            for r in rows}
+
+
 def skill_gecmisi(tenant_id, plant_id, gun: int = 30):
     """skill_daily'den son N gunun karnesi. SUNUM icin ham okuma;
     hesap yok (gece skill hesabini worker yapar — tek uretici o)."""

@@ -41,6 +41,12 @@ def istemci(monkeypatch):
     monkeypatch.setattr(ingest_service, "aylik_uretim", lambda t, p: pd.DataFrame(
         {"ay": ["2026-06", "2026-07"], "uretim_mwh": [870.1, 812.5],
          "saat": [710, 700], "kapsam_pct": [98.6, 94.0]}))
+    # v2.205: aylik beklenti — Haziran TAM (30 gun), Temmuz KISMI (20 gun);
+    # kismi ay beklentisi sunulmaz (yaniltici toplam), null beklenir.
+    from pvquant.services import forecast_service
+    monkeypatch.setattr(forecast_service, "aylik_beklenti", lambda t, p: {
+        "2026-06": {"mwh": 858.4, "gun_sayisi": 30},
+        "2026-07": {"mwh": 540.0, "gun_sayisi": 20}})
     yield TestClient(api_main.app)
     api_main.app.dependency_overrides.clear()
 
@@ -54,7 +60,9 @@ def test_summary_200_sekil(istemci):
     assert g["gunler"] == [{"etiket": "BUGÜN", "mwh": 30.4},
                            {"etiket": "YARIN", "mwh": 30.6}]
     assert g["aylik"][0] == {"ay": "2026-06", "mwh": 870.1,
-                             "saglam_saat": 710, "kapsam_pct": 98.6}
+                             "saglam_saat": 710, "kapsam_pct": 98.6,
+                             "beklenti_mwh": 858.4}   # v2.205: tam ay -> deger
+    assert g["aylik"][1]["beklenti_mwh"] is None      # kismi ay -> null
     assert g["saglik"]["anomali"] == 3297
     assert g["kalibrasyon_tarihi"] == "2026-07-22"  # datetime JSON'a ISO gecer
 
@@ -63,6 +71,18 @@ def test_summary_santral_yoksa_404(istemci, monkeypatch):
     from pvquant.services import plant_service
     monkeypatch.setattr(plant_service, "getir", lambda t, p: None)
     assert istemci.get(f"/v1/plants/{PLANT}/summary").status_code == 404
+
+
+def test_summary_beklenti_servisi_duserse_ozet_olmez(istemci, monkeypatch):
+    """v2.205: forecast_daily heniz yoksa (migration oncesi) ozet 500 yemez —
+    beklenti alanlari null kalir."""
+    from pvquant.services import forecast_service
+    def patla(t, p):
+        raise RuntimeError("tablo yok")
+    monkeypatch.setattr(forecast_service, "aylik_beklenti", patla)
+    r = istemci.get(f"/v1/plants/{PLANT}/summary")
+    assert r.status_code == 200
+    assert all(a["beklenti_mwh"] is None for a in r.json()["aylik"])
 
 
 def test_summary_bos_aylik_bos_liste(istemci, monkeypatch):
