@@ -1,35 +1,54 @@
-/** v2.81 — Vitrin (halka acik yuz). Tasarim plani:
- *  Palet: kanit yesili #0E7C5A, filiz #3FB489, serin beyaz #F7FAF8,
- *         gece #0A1F19, gunes amberi #E39A3B, sis #64766F.
- *  Tip: Space Grotesk (display) + JetBrains Mono (eyebrow/veri).
- *  Imza: tavana yaslanan gun egrisi (hero) + gercek katman yigini.
- *  Durustluk vitrine de girer: egri 'temsili' diye etiketli.
- *  v2.82: sade dil (jargon kose etiketine indi) + grafik imzalar. */
+/** Vitrin (halka acik yuz) — solar yeniden tasarim.
+ *  Anlatı: sayfa bir gün yayıdır — şafak (hero), gündüz (dört adım),
+ *  gece (karne: "her gece sınanır" yıldızlı gökte geçer).
+ *  Palet: kanıt yeşili #0E7C5A, güneş altını #E39A3B, şafak kremi #FFF8EC,
+ *         gece göğü #081A24→#0A1F19, sis #64766F.
+ *  Tip: gövde sistem yığını, veri/etiket IBM Plex Mono (index.css'te yüklü).
+ *  Dürüstlük vitrine de girer: eğri 'temsili' etiketli, sayılar vaat edilmez. */
 
-const M = "'JetBrains Mono', monospace";
+const M = "'IBM Plex Mono', ui-monospace, monospace";
+
+const YESIL = "#0E7C5A";
+const FILIZ = "#3FB489";
+const ALTIN = "#E39A3B";
+const ALTIN_KOYU = "#8A5A20";
+const METIN = "#10201B";
+const METIN_IKINCIL = "#3F4B58";
+const SIS = "#64766F";
+const KREM = "#FFF8EC";
+const BEYAZ = "#F7FAF8";
+const GECE = "#081A24";
+const GECE_YESIL = "#0A1F19";
 
 function Egri() {
   // Temsili gun egrisi: gece sifirlari, safak tirmanisi, AC tavaninda plato.
   // 'simdi'ye kadar duz cizgi = gerceklesen (kesin); sonrasi noktali = tahmin,
   // aralik bandi YALNIZ gelecekte — belirsizlik ileride buyur, gecmiste yoktur.
+  // Solar imza: platonun altinda yumusak gunes diski.
   return (
     <svg viewBox="0 0 720 240" style={{ width: "100%", display: "block" }}
          role="img" aria-label="Temsili günlük üretim eğrisi, tahmin aralığı ve AC tavanı">
       <defs>
         <linearGradient id="alan" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#0E7C5A" stopOpacity="0.16" />
-          <stop offset="1" stopColor="#0E7C5A" stopOpacity="0" />
+          <stop offset="0" stopColor={YESIL} stopOpacity="0.18" />
+          <stop offset="1" stopColor={ALTIN} stopOpacity="0.02" />
         </linearGradient>
+        <radialGradient id="gunes" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0" stopColor={ALTIN} stopOpacity="0.5" />
+          <stop offset="0.55" stopColor={ALTIN} stopOpacity="0.18" />
+          <stop offset="1" stopColor={ALTIN} stopOpacity="0" />
+        </radialGradient>
       </defs>
-      <line x1="40" y1="104" x2="700" y2="104" stroke="#10201B"
+      <circle cx="330" cy="70" r="72" fill="url(#gunes)" />
+      <line x1="40" y1="104" x2="700" y2="104" stroke={METIN}
             strokeWidth="1" opacity="0.05" />
-      <line x1="40" y1="156" x2="700" y2="156" stroke="#10201B"
+      <line x1="40" y1="156" x2="700" y2="156" stroke={METIN}
             strokeWidth="1" opacity="0.05" />
-      <line x1="40" y1="208" x2="700" y2="208" stroke="#10201B"
+      <line x1="40" y1="208" x2="700" y2="208" stroke={METIN}
             strokeWidth="1" opacity="0.12" />
-      <line x1="40" y1="52" x2="700" y2="52" stroke="#E39A3B"
+      <line x1="40" y1="52" x2="700" y2="52" stroke={ALTIN}
             strokeWidth="1.4" strokeDasharray="7 5" opacity="0.85" />
-      <text x="44" y="44" fontFamily={M} fontSize="11" fill="#B4763B">
+      <text x="44" y="44" fontFamily={M} fontSize="11" fill={ALTIN_KOYU}>
         AC tavanı</text>
       <path d="M40,208 L120,208 C 190,202 226,116 268,70
                C 292,54 330,52 378,52 C 424,52 452,55 472,62
@@ -37,24 +56,24 @@ function Egri() {
             fill="url(#alan)" stroke="none" />
       <path d="M40,208 L120,208 C 190,202 226,116 268,70
                C 292,54 330,52 378,52 C 424,52 452,55 472,62"
-            fill="none" stroke="#0E7C5A" strokeWidth="2.5"
+            fill="none" stroke={YESIL} strokeWidth="2.5"
             strokeLinecap="round" />
       <path d="M472,55 C 502,62 528,78 552,102 C 585,134 632,164 700,178
                L 700,207 C 618,206 566,190 536,144
                C 516,112 496,86 472,69 Z"
-            fill="#3FB489" opacity="0.16" />
+            fill={FILIZ} opacity="0.16" />
       <path d="M472,62 C 498,74 520,94 542,120 C 572,156 616,192 700,203"
-            fill="none" stroke="#0E7C5A" strokeWidth="2.5"
+            fill="none" stroke={YESIL} strokeWidth="2.5"
             strokeDasharray="1 8" strokeLinecap="round" opacity="0.9" />
       <text x="200" y="150" fontFamily={M} fontSize="10" fill="#4E6F62"
             textAnchor="middle">gerçekleşen</text>
       <text x="608" y="126" fontFamily={M} fontSize="10" fill="#5F8F7C"
             textAnchor="middle">tahmin aralığı</text>
-      <line x1="472" y1="40" x2="472" y2="216" stroke="#64766F"
+      <line x1="472" y1="40" x2="472" y2="216" stroke={SIS}
             strokeWidth="1" strokeDasharray="3 4" />
-      <circle cx="472" cy="62" r="4.5" fill="#E39A3B" stroke="#F7FAF8"
+      <circle cx="472" cy="62" r="4.5" fill={ALTIN} stroke={BEYAZ}
               strokeWidth="1.6" />
-      <text x="478" y="50" fontFamily={M} fontSize="10" fill="#64766F">şimdi</text>
+      <text x="478" y="50" fontFamily={M} fontSize="10" fill={SIS}>şimdi</text>
       <text x="150" y="228" fontFamily={M} fontSize="9.5" fill="#8A968F"
             textAnchor="middle">06:00</text>
       <text x="385" y="228" fontFamily={M} fontSize="9.5" fill="#8A968F"
@@ -67,6 +86,27 @@ function Egri() {
   );
 }
 
+/** Marka isareti: yesil zeminde 1.5px stroke gunes (emoji yasak — SVG). */
+function Marka({ boy = 26 }: { boy?: number }) {
+  return (
+    <span aria-hidden="true" style={{ width: boy, height: boy,
+      borderRadius: boy * 0.28, background: YESIL, display: "grid",
+      placeItems: "center", flexShrink: 0 }}>
+      <svg width={boy * 0.62} height={boy * 0.62} viewBox="0 0 20 20">
+        <circle cx="10" cy="10" r="3.6" fill="none" stroke="#fff"
+                strokeWidth="1.6" />
+        {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => {
+          const k = (a * Math.PI) / 180;
+          return <line key={a}
+            x1={10 + 5.8 * Math.cos(k)} y1={10 + 5.8 * Math.sin(k)}
+            x2={10 + 7.8 * Math.cos(k)} y2={10 + 7.8 * Math.sin(k)}
+            stroke="#fff" strokeWidth="1.6" strokeLinecap="round" />;
+        })}
+      </svg>
+    </span>
+  );
+}
+
 const KATMANLAR = [
   ["Fizik modeli", "Santralın geometrisinden yola çıkar — panel eğimi, tavan, kayıplar."],
   ["Öğrenen model", "Fiziğin gözden kaçırdığını santralın kendi geçmişinden öğrenir."],
@@ -75,11 +115,11 @@ const KATMANLAR = [
 ] as const;
 
 function KatmanIkon({ i }: { i: number }) {
-  const renk = i === 3 ? "#E39A3B" : "#0E7C5A";
+  const renk = i === 3 ? ALTIN_KOYU : YESIL;
   const ort = { fill: "none", stroke: renk, strokeWidth: 1.7,
     strokeLinecap: "round" } as const;
   return (
-    <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+    <svg width="22" height="22" viewBox="0 0 20 20" aria-hidden="true">
       {i === 0 && (<>
         <circle cx="10" cy="10" r="3.4" {...ort} />
         {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => {
@@ -109,135 +149,201 @@ function KatmanIkon({ i }: { i: number }) {
   );
 }
 
+/** Organik dalga: gunduzden geceye kavisli gecis (sert kesim yerine). */
+function Dalga() {
+  return (
+    <svg viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true"
+         style={{ display: "block", width: "100%", height: 90,
+                  marginBottom: -1 }}>
+      <path d="M0,90 L0,58 C 240,10 480,0 760,26 C 1020,50 1260,44 1440,14
+               L1440,90 Z" fill={GECE} />
+    </svg>
+  );
+}
+
+/** Sabit yildiz alani — her gece bir sinav; gok temsili, sayilar panelde. */
+const YILDIZLAR: ReadonlyArray<readonly [number, number, number]> = [
+  [40, 30, 1.2], [120, 70, 0.9], [210, 24, 1.4], [300, 90, 0.8],
+  [390, 40, 1.1], [470, 110, 0.9], [560, 20, 1.3], [650, 66, 0.8],
+  [740, 36, 1.5], [830, 96, 0.9], [920, 50, 1.1], [1010, 18, 0.8],
+  [1100, 78, 1.3], [1190, 34, 0.9], [1280, 100, 1.1], [1370, 56, 1.4],
+  [90, 130, 0.7], [520, 148, 0.8], [980, 132, 0.7], [1330, 146, 0.8],
+];
+
+function YildizAlani() {
+  return (
+    <svg viewBox="0 0 1440 160" preserveAspectRatio="xMidYMin slice"
+         aria-hidden="true" style={{ position: "absolute", inset: 0,
+         width: "100%", height: 220, opacity: 0.8, pointerEvents: "none" }}>
+      {YILDIZLAR.map(([x, y, r], j) => (
+        <circle key={j} cx={x} cy={y} r={r} fill="#D8E6DE"
+                opacity={0.35 + (j % 3) * 0.2} />
+      ))}
+    </svg>
+  );
+}
+
 export function Vitrin({ onPanel }: { onPanel: () => void }) {
   const dugme = {
-    padding: "13px 26px", borderRadius: 10, fontSize: 15, fontWeight: 600,
+    padding: "13px 26px", borderRadius: 12, fontSize: 15, fontWeight: 600,
     cursor: "pointer", border: "1.5px solid transparent",
-    fontFamily: "inherit",
+    fontFamily: "inherit", transition: "filter .2s ease, transform .2s ease",
   } as const;
-  const kart = { background: "rgba(255,255,255,0.045)",
-    border: "1px solid rgba(255,255,255,0.09)", borderRadius: 14,
-    padding: "20px 18px", textAlign: "left" } as const;
+  const kart = { background: "rgba(255,255,255,0.05)",
+    border: "1px solid rgba(255,255,255,0.1)", borderRadius: 18,
+    padding: "22px 20px", textAlign: "left" } as const;
   const kartBas = { display: "flex", justifyContent: "space-between",
     alignItems: "baseline", gap: 8 } as const;
   const kartEtiket = { fontFamily: M, fontSize: 10, color: "#5F8F7C",
     letterSpacing: "0.08em" } as const;
   const kartAlt = { fontSize: 12.5, color: "#9DB3A9", lineHeight: 1.5 } as const;
   return (
-    <div style={{ background: "#F7FAF8", color: "#10201B", minHeight: "100vh" }}>
-      {/* ---- ust serit ---- */}
-      <header style={{ display: "flex", justifyContent: "space-between",
-        alignItems: "center", padding: "22px 6vw" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10,
-                      fontWeight: 700, fontSize: 18 }}>
-          <span style={{ width: 26, height: 26, borderRadius: 7,
-            background: "#0E7C5A", color: "#fff", display: "grid",
-            placeItems: "center", fontSize: 14 }}>P</span>
-          PVQuant
-        </div>
-        <button onClick={onPanel} style={{ ...dugme, padding: "9px 20px",
-          background: "transparent", border: "1.5px solid #0E7C5A",
-          color: "#0E7C5A" }}>Panele giriş</button>
-      </header>
+    <div style={{ background: BEYAZ, color: METIN, minHeight: "100vh" }}>
+      <style>{`
+        .vt-dugme:hover { filter: brightness(1.08); }
+        .vt-dugme:active { transform: translateY(1px); }
+        .vt-dugme:focus-visible, .vt-baglanti:focus-visible {
+          outline: 2.5px solid ${YESIL}; outline-offset: 2.5px; }
+        .vt-kart { transition: transform .25s ease, box-shadow .25s ease; }
+        .vt-kart:hover { transform: translateY(-3px);
+          box-shadow: 0 14px 34px rgba(14,124,90,0.13); }
+        @media (prefers-reduced-motion: reduce) {
+          .vt-dugme, .vt-kart { transition: none !important; }
+          .vt-kart:hover { transform: none; }
+        }
+      `}</style>
 
-      {/* ---- hero ---- */}
-      <section style={{ maxWidth: 880, margin: "0 auto",
-        padding: "48px 6vw 0", textAlign: "center" }}>
-        <div style={{ fontFamily: M, fontSize: 12, letterSpacing: "0.14em",
-          color: "#0E7C5A" }}>GÜNEŞ ÜRETİM TAHMİNİ · HER GECE SINANIR</div>
-        <h1 style={{ fontSize: "clamp(38px, 6vw, 64px)", lineHeight: 1.05,
-          margin: "18px 0 0", letterSpacing: "-0.03em" }}>
-          <span style={{ color: "#0E7C5A" }}>Kanıtla</span> konuşan<br />üretim tahmini.
-        </h1>
-        <p style={{ fontSize: 18, color: "#3F4B58", maxWidth: 560,
-          margin: "22px auto 0", lineHeight: 1.6 }}>
-          Saatlik tahmin aralığı, aylık iklim beklentisi ve her gece
-          kendini sınayan bir karne — pembe vaat değil, ölçülmüş dürüstlük.
-        </p>
-        <div style={{ display: "flex", gap: 14, justifyContent: "center",
-          margin: "30px 0 8px", flexWrap: "wrap" }}>
-          <button onClick={onPanel} style={{ ...dugme, background: "#0E7C5A",
-            color: "#fff" }}>Panele giriş</button>
-          <a href="#karne" style={{ ...dugme, textDecoration: "none",
-            border: "1.5px solid #C9D6D0", color: "#10201B",
-            display: "inline-block" }}>Karneyi gör</a>
-        </div>
-        <div style={{ maxWidth: 760, margin: "26px auto 0" }}><Egri /></div>
-      </section>
+      {/* ---- ust serit (safak zemininde baslar) ---- */}
+      <div style={{ background:
+        `linear-gradient(180deg, ${KREM} 0%, #FDF3DF 62%, ${BEYAZ} 100%)` }}>
+        <header style={{ display: "flex", justifyContent: "space-between",
+          alignItems: "center", padding: "22px 6vw" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10,
+                        fontWeight: 700, fontSize: 18 }}>
+            <Marka />
+            PVQuant
+          </div>
+          <button onClick={onPanel} className="vt-dugme"
+            style={{ ...dugme, padding: "9px 20px",
+            background: "rgba(255,255,255,0.55)",
+            border: `1.5px solid ${YESIL}`,
+            color: YESIL }}>Panele giriş</button>
+        </header>
 
-      {/* ---- katmanlar ---- */}
+        {/* ---- hero: safak ---- */}
+        <section style={{ maxWidth: 880, margin: "0 auto",
+          padding: "48px 6vw 0", textAlign: "center" }}>
+          <div style={{ fontFamily: M, fontSize: 12, letterSpacing: "0.14em",
+            color: ALTIN_KOYU }}>
+            GÜNEŞ ÜRETİM TAHMİNİ · HER GECE SINANIR</div>
+          <h1 style={{ fontSize: "clamp(38px, 6vw, 64px)", lineHeight: 1.05,
+            margin: "18px 0 0", letterSpacing: "-0.03em" }}>
+            <span style={{ color: YESIL }}>Kanıtla</span> konuşan<br />
+            üretim tahmini.
+          </h1>
+          <p style={{ fontSize: 18, color: METIN_IKINCIL, maxWidth: 560,
+            margin: "22px auto 0", lineHeight: 1.6 }}>
+            Saatlik tahmin aralığı, aylık iklim beklentisi ve her gece
+            kendini sınayan bir karne — pembe vaat değil, ölçülmüş dürüstlük.
+          </p>
+          <div style={{ display: "flex", gap: 14, justifyContent: "center",
+            margin: "30px 0 8px", flexWrap: "wrap" }}>
+            <button onClick={onPanel} className="vt-dugme"
+              style={{ ...dugme, background: YESIL,
+              color: "#fff" }}>Panele giriş</button>
+            <a href="#karne" className="vt-dugme vt-baglanti"
+              style={{ ...dugme, textDecoration: "none",
+              border: "1.5px solid #D8CBAE", color: METIN,
+              display: "inline-block" }}>Karneyi gör</a>
+          </div>
+          <div style={{ maxWidth: 760, margin: "26px auto 0" }}><Egri /></div>
+        </section>
+      </div>
+
+      {/* ---- katmanlar: gunduz ---- */}
       <section id="katmanlar" style={{ maxWidth: 980, margin: "0 auto",
         padding: "72px 6vw 96px" }}>
         <div style={{ fontFamily: M, fontSize: 12, letterSpacing: "0.14em",
-          color: "#0E7C5A", textAlign: "center" }}>DÖRT ADIM, TEK DÜRÜSTLÜK</div>
+          color: YESIL, textAlign: "center" }}>DÖRT ADIM, TEK DÜRÜSTLÜK</div>
         <h2 style={{ fontSize: "clamp(26px, 3.6vw, 38px)", textAlign: "center",
           margin: "14px 0 44px" }}>
-          Tahmin dört <span style={{ color: "#0E7C5A" }}>adımda</span> doğar —
+          Tahmin dört <span style={{ color: YESIL }}>adımda</span> doğar —
           her adımı panelde görünür.
         </h2>
-        <div style={{ display: "grid", gap: 14,
-          gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))" }}>
+        <div style={{ display: "grid", gap: 16,
+          gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))" }}>
           {KATMANLAR.map(([ad, cumle], i) => (
-            <div key={ad} style={{ background: "#fff",
-              border: "1px solid #E2EAE6", borderRadius: 14,
-              padding: "20px 18px",
-              borderTop: `3px solid ${i === 3 ? "#E39A3B" : "#0E7C5A"}` }}>
+            <div key={ad} className="vt-kart" style={{ background: "#fff",
+              border: "1px solid #E2EAE6", borderRadius: 18,
+              padding: "22px 20px",
+              borderTop: `3px solid ${i === 3 ? ALTIN : YESIL}` }}>
               <div style={{ display: "flex", justifyContent: "space-between",
                 alignItems: "center" }}>
                 <div style={{ fontFamily: M, fontSize: 11, color: "#8A968F" }}>
                   {String(i + 1).padStart(2, "0")} →</div>
-                <KatmanIkon i={i} />
+                <span style={{ width: 38, height: 38, borderRadius: 12,
+                  display: "grid", placeItems: "center",
+                  background: i === 3 ? "#FBF1E1" : "#E9F4EF" }}>
+                  <KatmanIkon i={i} />
+                </span>
               </div>
-              <div style={{ fontWeight: 700, fontSize: 17, margin: "8px 0 6px" }}>
+              <div style={{ fontWeight: 700, fontSize: 17, margin: "10px 0 6px" }}>
                 {ad}</div>
-              <div style={{ fontSize: 13.5, color: "#3F4B58", lineHeight: 1.55 }}>
-                {cumle}</div>
+              <div style={{ fontSize: 13.5, color: METIN_IKINCIL,
+                lineHeight: 1.55 }}>{cumle}</div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* ---- capraz gecis + koyu karne ---- */}
-      <section id="karne" style={{
-        background: "linear-gradient(168deg, #F7FAF8 0%, #F7FAF8 5%, #0A1F19 5.2%)",
-        padding: "230px 6vw 90px", color: "#F2F7F4" }}>
-        <div style={{ maxWidth: 880, margin: "0 auto", textAlign: "center" }}>
-          <div style={{ background: "#F7FAF8", color: "#10201B",
-            borderRadius: 16, padding: "26px 28px", textAlign: "left",
+      {/* ---- organik gecis + gece karnesi ---- */}
+      <Dalga />
+      <section id="karne" style={{ position: "relative",
+        background: `linear-gradient(180deg, ${GECE} 0%, ${GECE_YESIL} 72%)`,
+        padding: "34px 6vw 90px", color: "#F2F7F4" }}>
+        <YildizAlani />
+        <div style={{ maxWidth: 880, margin: "0 auto", textAlign: "center",
+          position: "relative" }}>
+          <div style={{ background: BEYAZ, color: METIN,
+            borderRadius: 20, padding: "26px 28px", textAlign: "left",
             display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap",
-            justifyContent: "space-between", margin: "-190px 0 84px",
-            boxShadow: "0 24px 60px rgba(4,18,13,0.35)" }}>
+            justifyContent: "space-between", margin: "0 0 84px",
+            boxShadow: "0 24px 60px rgba(3,14,20,0.45)" }}>
             <div style={{ maxWidth: 480 }}>
               <div style={{ fontWeight: 700, fontSize: 17 }}>
                 Derine inmek ister misiniz?</div>
-              <div style={{ fontSize: 14, color: "#3F4B58", marginTop: 6,
+              <div style={{ fontSize: 14, color: METIN_IKINCIL, marginTop: 6,
                 lineHeight: 1.55 }}>
                 Bant, karne ve iklim zarfının tamamı panelde canlıdır —
                 vitrin özettir, kanıt içeridedir.</div>
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <a href="#katmanlar" style={{ padding: "11px 20px",
-                borderRadius: 10, fontSize: 14, fontWeight: 600,
-                textDecoration: "none", color: "#10201B",
-                border: "1.5px solid #C9D6D0" }}>Adımları gör</a>
-              <button onClick={onPanel} style={{ padding: "11px 20px",
-                borderRadius: 10, fontSize: 14, fontWeight: 600,
+              <a href="#katmanlar" className="vt-dugme vt-baglanti"
+                style={{ padding: "11px 20px",
+                borderRadius: 12, fontSize: 14, fontWeight: 600,
+                textDecoration: "none", color: METIN,
+                border: "1.5px solid #C9D6D0",
+                transition: "filter .2s ease" }}>Adımları gör</a>
+              <button onClick={onPanel} className="vt-dugme"
+                style={{ padding: "11px 20px",
+                borderRadius: 12, fontSize: 14, fontWeight: 600,
                 cursor: "pointer", border: "none", fontFamily: "inherit",
-                background: "#0E7C5A", color: "#fff" }}>Panele giriş</button>
+                background: YESIL, color: "#fff",
+                transition: "filter .2s ease" }}>Panele giriş</button>
             </div>
           </div>
           <div style={{ fontFamily: M, fontSize: 12, letterSpacing: "0.14em",
-            color: "#3FB489" }}>HER GECE, OTOMATİK</div>
+            color: FILIZ }}>HER GECE, OTOMATİK</div>
           <h2 style={{ fontSize: "clamp(26px, 4vw, 42px)", color: "#F2F7F4",
             margin: "14px 0 12px" }}>
-            Sözümüze değil, <span style={{ color: "#E39A3B" }}>karneye</span> bakın.
+            Sözümüze değil, <span style={{ color: ALTIN }}>karneye</span> bakın.
           </h2>
           <p style={{ color: "#9DB3A9", maxWidth: 540, margin: "0 auto 40px",
             fontSize: 16, lineHeight: 1.6 }}>
             Sistem her gece tahminini gerçekleşen üretimle karşılaştırır.
             Sonuç saklanmaz, süslenmez — panelde gün gün birikir.
           </p>
-          <div style={{ display: "grid", gap: 14,
+          <div style={{ display: "grid", gap: 16,
             gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
             <div style={kart}>
               <div style={kartBas}>
@@ -249,7 +355,7 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
                    style={{ width: "100%", margin: "12px 0 8px", display: "block" }}>
                 {[32, 26, 21, 16, 12, 9].map((h, j) => (
                   <rect key={j} x={8 + j * 25} y={44 - h} width="17" height={h}
-                        rx="2.5" fill="#3FB489" opacity={0.45 + j * 0.11} />
+                        rx="2.5" fill={FILIZ} opacity={0.45 + j * 0.11} />
                 ))}
                 <line x1="4" y1="44.5" x2="156" y2="44.5"
                       stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
@@ -266,9 +372,9 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
               <svg viewBox="0 0 160 52" aria-hidden="true"
                    style={{ width: "100%", margin: "12px 0 8px", display: "block" }}>
                 <rect x="34" y="8" width="28" height="28" rx="2.5"
-                      fill="#64766F" opacity="0.8" />
+                      fill={SIS} opacity="0.8" />
                 <rect x="98" y="23" width="28" height="13" rx="2.5"
-                      fill="#3FB489" />
+                      fill={FILIZ} />
                 <line x1="4" y1="36.5" x2="156" y2="36.5"
                       stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
                 <text x="48" y="47" fontFamily={M} fontSize="8.5"
@@ -289,9 +395,9 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
                    style={{ width: "100%", margin: "12px 0 8px", display: "block" }}>
                 {Array.from({ length: 13 }, (_, j) => (
                   <rect key={j} x={6 + j * 11} y="20" width="8" height="8"
-                        rx="2" fill="#3FB489" opacity={0.5 + (j % 3) * 0.17} />
+                        rx="2" fill={FILIZ} opacity={0.5 + (j % 3) * 0.17} />
                 ))}
-                <rect x="149" y="20" width="8" height="8" rx="2" fill="#E39A3B" />
+                <rect x="149" y="20" width="8" height="8" rx="2" fill={ALTIN} />
               </svg>
               <div style={kartAlt}>
                 her gece bir sınav; sayaç kesintisiz büyür</div>
@@ -299,12 +405,13 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
           </div>
           <div style={{ fontFamily: M, fontSize: 11, color: "#6E827A",
             marginTop: 14 }}>sayılar panelde canlı — vitrin vaat etmez</div>
-          <button onClick={onPanel} style={{ ...dugme, marginTop: 36,
-            background: "#E39A3B", color: "#10201B" }}>Kendi karneni başlat</button>
+          <button onClick={onPanel} className="vt-dugme"
+            style={{ ...dugme, marginTop: 36,
+            background: ALTIN, color: METIN }}>Kendi karneni başlat</button>
         </div>
       </section>
 
-      <footer style={{ background: "#0A1F19", color: "#9DB3A9",
+      <footer style={{ background: GECE_YESIL, color: "#9DB3A9",
         padding: "70px 6vw 30px" }}>
         <div style={{ maxWidth: 980, margin: "0 auto", display: "grid",
           gap: 36, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
@@ -312,9 +419,7 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 9,
               fontWeight: 700, fontSize: 16, color: "#F2F7F4" }}>
-              <span style={{ width: 24, height: 24, borderRadius: 6,
-                background: "#0E7C5A", color: "#fff", display: "grid",
-                placeItems: "center", fontSize: 13 }}>P</span>
+              <Marka boy={24} />
               PVQuant
             </div>
             <p style={{ fontSize: 13, lineHeight: 1.6, margin: "12px 0 0",
@@ -329,7 +434,8 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
               marginBottom: 14 }}>PANEL</div>
             {["Santralım", "Tahminler", "Doğruluk karnesi",
               "Aylık beklenti"].map((s) => (
-              <button key={s} onClick={onPanel} style={{ display: "block",
+              <button key={s} onClick={onPanel} className="vt-baglanti"
+                style={{ display: "block",
                 background: "none", border: "none", padding: "5px 0",
                 cursor: "pointer", fontFamily: "inherit", fontSize: 14,
                 color: "#C7D6CE", textAlign: "left" }}>{s}</button>
