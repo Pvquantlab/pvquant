@@ -64,4 +64,4 @@ Fiilen çıkmış ilk delta alanı; sözleşmesi burada arşivlenir.
 ## 7. Açık noktalar
 
 - ~~D26 kapsamı ve `contracts.SCHEMA_VERSION`~~ — ikisi de karara bağlandı (D26 dahil edildi; 1.1.0 dokunulmadı). §6 planı v2.189'da uygulandı, pin kapısı GEÇTİ (md5 8a405d0d korundu, denetim 37/0).
-- "Rapor Motoru Spesifikasyonu" (D maddelerinin asıl belgesi) hâlâ kullanıcıda; geldiğinde bu belgenin D25/D26 satırları oraya işlenir.
+- ~~"Rapor Motoru Spesifikasyonu" (D maddelerinin asıl belgesi) hâlâ kullanıcıda; geldiğinde bu belgenin D25/D26 satırları oraya işlenir~~ — R1 revizyonu (25 Ağu 2026) teslim edildi ve `rapor_motoru_spec_r1.md` olarak arşivlendi; D19–D26 ek envanteri (D25/D26 dahil) R1'e zaten işlenmiş geldi. Bu belgenin açık kalemi kalmadı.
