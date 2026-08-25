@@ -34,7 +34,7 @@
   --ch-p50-gecmis: #7CB1E8; --ch-p50-gelecek: #7CB1E8;
   --ch-gercek: #E8940A;
   --ch-ac: #A9B7C9; --ch-simdi: #A9B7C9; --ch-simdi-metin: #A9B7C9;
-  --ch-izgara: rgba(255,255,255,.08); --ch-eksen: rgba(255,255,255,.18);
+  --ch-izgara: rgba(255,255,255,.10); --ch-eksen: rgba(255,255,255,.18);
   --ch-cubuk: #34A06A; --ch-vurgu: #86EFAC; --ch-dusuk: #5E6C7E;
   --ch-eksik: rgba(147,162,180,.12);
   --ch-gy-yaz: #22C55E; --ch-gy-eki: #A9B7C9; --ch-gy-kis: #5E6C7E;
@@ -282,6 +282,15 @@ table.veri { font-size: 13px; }
 .dipnot, .pi-not { font-size: 12.5px; color: var(--soluk); }
 .lejant { font-size: 11.5px; }
 .mono, .telemetri, .damga { font-weight: 500; }  /* Fira Code ince kaliyordu */
+table.veri thead th, .pi th { font-size: 11px; }
+.yan-ozet .et { font-size: 10.5px; }
+.plan-rozet { font-size: 10px; }
+.disa button { font-size: 11px; }
+@media (max-width: 900px) {
+  .arama { display: none; }                  /* dar ekranda tasma kaynagi */
+  .ust { flex-wrap: wrap; height: auto; padding: 8px 16px; gap: 8px; }
+}
+
 
 
 </style>
