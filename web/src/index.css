@@ -382,3 +382,12 @@ body { background:
   .arama { display: none; }
   .ust { flex-wrap: wrap; height: auto; padding: 8px 16px; gap: 8px; }
 }
+
+/* v2.225 — Doğruluk (H "Rapor Dili"): KPI delta çipi — yalnız türetilebilir
+   kıyas varsa görünür (son 30 gün vs önceki 30 gün, günlük karneden). */
+.kpi-delta { display: inline-flex; align-items: center; gap: 4px;
+  font-family: var(--mono); font-size: 10.5px; font-weight: 600;
+  padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+.kpi-delta svg { flex-shrink: 0; }
+.kpi-delta.iyi { color: var(--marka-koyu); background: var(--marka-zemin); }
+.kpi-delta.notr { color: var(--ikincil); background: var(--yuzey); }
