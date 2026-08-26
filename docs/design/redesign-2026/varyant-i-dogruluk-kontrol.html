@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="tr" data-tema="koyu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Doğruluk — Varyant İ · Kontrol Masası</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* ============================================================
+   VARYANT F — "PANEL CAMI" (D yerlesimi SABIT; kimlik: gece laciverti
+   ustune fotovoltaik hucre dokusu + buzlu cam portletler; YALNIZ koyu)
+   Bu :root blogu kazanan varyantta web/src/index.css :root'una tasinir.
+   Imza: portlet yogunlugu ama gri krom yok — kagit zemin, ince cizgi,
+   numarali mono basliklar; ustte kartsiz cizgili ozet seridi (gauge gomulu).
+   Tipografi: IBM Plex Sans + IBM Plex Mono (TUM sayilar/damgalar).
+   ============================================================ */
+:root {
+  --marka: #22C55E; --marka-koyu: #86EFAC; --marka-zemin: rgba(34,197,94,.12);
+  --amber: #E8940A;            /* YALNIZ grafik veri murekkebi: gerceklesen */
+  --uyari: #F87171; --basari: #22C55E;
+  --zemin: #0B1424;             /* gece laciverti */
+  --kart: rgba(19,31,52,.78); --yuzey: rgba(255,255,255,.06);
+  --metin: #F4F8FD; --ikincil: #D6E0EB; --soluk: #A9B7C9;
+  --kenar: rgba(255,255,255,.13); --izgara: rgba(255,255,255,.09);
+  --font: 'IBM Plex Sans', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --t-buyuk: 22px; --t-govde: 14px; --t-ikincil: 13px; --t-etiket: 11px;
+  --t-dev: 27px;
+  --b1: 4px; --b2: 8px; --b3: 14px; --b4: 18px; --b5: 32px; --b6: 44px;
+  --r: 6px; --rk: 12px;
+  --govde-genislik: 1460px;
+  /* grafik murekkepleri */
+  --ch-band: rgba(124,177,232,.20); --ch-band2: rgba(124,177,232,.36); --ch-eksen-koyu: #A9B6C6;
+  --ch-p50-gecmis: #7CB1E8; --ch-p50-gelecek: #7CB1E8;
+  --ch-gercek: #E8940A;
+  --ch-ac: #A9B7C9; --ch-simdi: #A9B7C9; --ch-simdi-metin: #A9B7C9;
+  --ch-izgara: rgba(255,255,255,.10); --ch-eksen: rgba(255,255,255,.18);
+  --ch-cubuk: #34A06A; --ch-vurgu: #86EFAC; --ch-dusuk: #5E6C7E;
+  --ch-eksik: rgba(147,162,180,.12);
+  --ch-gy-yaz: #22C55E; --ch-gy-eki: #A9B7C9; --ch-gy-kis: #8290A3;
+  --ch-gy-nokta: #E8940A;
+  --h0:#101B2C; --h1:#12232F; --h2:#152E33; --h3:#1B3A31; --h4:#274726;
+  --h5:#4C531B; --h6:#7D6210; --h7:#A9770A; --h8:#CB8709; --h9:#E8940A;
+  --pi-metin: #F4F8FD;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--zemin); color: var(--metin);
+  font-family: var(--font); font-size: var(--t-govde); line-height: 1.55;
+  text-rendering: optimizeLegibility;
+}
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* ---- kabuk: A'nin kagit yan menusu ---- */
+.kabuk { display: grid; grid-template-columns: 224px minmax(0,1fr); min-height: 100vh; }
+.yan {
+  border-right: 1px solid var(--kenar); padding: var(--b4) var(--b3);
+  position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column;
+  background: var(--zemin);
+}
+.logo { display: flex; align-items: center; gap: 9px; font-weight: 600; font-size: 16px; letter-spacing: -0.01em; }
+.yan-sec {
+  margin: var(--b4) 0 6px; font-family: var(--mono); font-size: 12.5px;
+  padding: 7px 9px; border: 1px solid var(--kenar); border-radius: var(--r);
+  background: var(--kart); color: var(--metin); width: 100%;
+}
+.yan-ozet { display: grid; grid-template-columns: 1fr 1fr; gap: var(--b2);
+  border-bottom: 1px solid var(--kenar); padding-bottom: var(--b3); margin-bottom: var(--b3); }
+.yan-ozet > div { background: var(--kart); border: 1px solid var(--kenar); border-radius: var(--r); padding: 6px 8px; }
+.yan-ozet .et { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--soluk); font-weight: 600; }
+.yan-ozet .dg { font-family: var(--mono); font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.nav { display: grid; gap: 2px; }
+.nav a {
+  display: flex; align-items: center; gap: 10px; padding: 8px 9px;
+  text-decoration: none; color: var(--ikincil); font-size: 13.5px; font-weight: 500;
+  border-radius: var(--r); cursor: pointer;
+}
+.nav a svg { flex-shrink: 0; color: var(--soluk); }
+.nav a:hover { background: var(--yuzey); }
+.nav a.aktif { background: var(--marka-zemin); color: var(--marka-koyu); font-weight: 600; }
+.nav a.aktif svg { color: var(--marka); }
+.nav a:focus-visible, button:focus-visible, select:focus-visible { outline: 2px solid var(--marka); outline-offset: 2px; }
+.yan-alt { margin-top: auto; padding-top: var(--b3); border-top: 1px solid var(--kenar); font-size: 12.5px; color: var(--soluk); }
+.yan-alt b { display: block; color: var(--ikincil); font-weight: 600; }
+
+/* ---- ust serit + telemetri satiri (B'nin seridi, A'nin diliyle) ---- */
+.ust {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 var(--b5); height: 52px; border-bottom: 1px solid var(--kenar);
+  position: sticky; top: 0; background: var(--zemin); z-index: 5;
+}
+.ust .yol { font-size: 13.5px; color: var(--soluk); }
+.ust .yol b { color: var(--metin); font-weight: 600; }
+.dugme {
+  font-family: var(--font); font-size: 13px; font-weight: 500; cursor: pointer;
+  padding: 6px 12px; border: 1px solid var(--kenar); border-radius: var(--r);
+  background: var(--kart); color: var(--metin); transition: border-color .15s ease;
+}
+.dugme:hover { border-color: var(--soluk); }
+.telemetri {
+  display: flex; gap: var(--b4); flex-wrap: wrap; align-items: center;
+  padding: 6px var(--b5); border-bottom: 1px solid var(--kenar);
+  background: var(--yuzey); font-family: var(--mono); font-size: 11.5px; color: var(--ikincil);
+}
+.telemetri .nokta { display: inline-flex; align-items: center; gap: 6px; }
+.telemetri .nokta i { width: 7px; height: 7px; border-radius: 50%; background: var(--basari); display: inline-block; }
+
+/* ---- ozet seridi: A'nin cizgili dili, B'nin icerigi (gauge gomulu) ---- */
+.icerik { padding: var(--b4) var(--b5) var(--b6); }
+.sarici { max-width: var(--govde-genislik); margin: 0 auto; }
+.ozet-bas {
+  font-family: var(--mono); font-size: var(--t-etiket); letter-spacing: .1em;
+  text-transform: uppercase; color: var(--soluk); display: flex; gap: 10px;
+  align-items: baseline; border-bottom: 1px solid var(--kenar);
+  padding-bottom: 7px; margin-bottom: 2px;
+}
+.ozet-bas .no { color: var(--marka-koyu); font-weight: 600; }
+.ozet-bas .sag { margin-left: auto; text-transform: none; letter-spacing: .02em; }
+.ozet { display: grid; grid-template-columns: 1.35fr 1fr 1fr 1fr 1.15fr; margin-bottom: var(--b4); }
+.ozet > div { padding: var(--b3) var(--b3) var(--b3) 0; border-right: 1px solid var(--kenar); min-width: 0; }
+.ozet > div:last-child { border-right: none; }
+.ozet > div + div { padding-left: var(--b3); }
+.ozet .et { font-size: 12px; color: var(--soluk); }
+.ozet .dg { font-family: var(--mono); font-size: var(--t-dev); font-weight: 500; margin: 2px 0; font-variant-numeric: tabular-nums; }
+.ozet .dg small { font-size: 13px; color: var(--soluk); font-weight: 400; }
+.ozet .alt { font-family: var(--mono); font-size: 11px; color: var(--soluk); }
+.md-dizi { display: grid; gap: 6px; margin-top: 5px; }
+.md-dizi > div { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; border-bottom: 1px solid var(--izgara); padding-bottom: 6px; }
+.md-dizi > div:last-child { border-bottom: none; padding-bottom: 0; }
+.md-dizi .e { font-size: 12px; color: var(--ikincil); }
+.md-dizi .d { font-family: var(--mono); font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.md-dizi .d small { font-size: 11px; color: var(--soluk); font-weight: 400; }
+.ozet .rozet { display: inline-block; margin: 4px 0 3px; font-size: 12px; font-weight: 600; color: var(--marka-koyu); background: var(--marka-zemin); border-radius: var(--r); padding: 2px 8px; }
+.anlik { display: flex; gap: var(--b3); align-items: center; }
+.anlik svg { flex-shrink: 0; }
+.ch-gauge-deger { font-family: var(--mono); font-size: 21px; font-weight: 600; fill: var(--metin); }
+
+/* ---- portlet izgarasi: B'nin topolojisi, cerceve A'nin ---- */
+.izgara { display: grid; gap: var(--b3); grid-template-columns: repeat(12, 1fr); }
+.portlet { background: var(--kart); border: 1px solid var(--kenar); border-radius: var(--rk); padding: var(--b4); min-width: 0; }
+.portlet-bas {
+  font-family: var(--mono); font-size: var(--t-etiket); letter-spacing: .1em;
+  text-transform: uppercase; color: var(--soluk); display: flex; gap: 10px;
+  align-items: baseline; border-bottom: 1px solid var(--izgara);
+  padding-bottom: 8px; margin-bottom: var(--b3);
+}
+.portlet-bas .no { color: var(--marka-koyu); font-weight: 600; }
+.portlet-bas .sag { margin-left: auto; text-transform: none; letter-spacing: .02em; }
+.s4 { grid-column: span 4; } .s6 { grid-column: span 6; } .s8 { grid-column: span 8; } .s12 { grid-column: span 12; }
+.sag-sutun { grid-column: span 4; display: grid; gap: var(--b3); align-content: start; }
+
+.lejant { display: flex; flex-wrap: wrap; gap: var(--b3); font-family: var(--mono); font-size: 11px; color: var(--ikincil); margin-top: var(--b2); }
+.lejant span { display: inline-flex; align-items: center; gap: 6px; }
+.lejant i { display: inline-block; width: 18px; height: 0; border-top: 2.4px solid; border-radius: 2px; }
+.dipnot { font-size: 12px; color: var(--soluk); margin: var(--b2) 0 0; max-width: 72ch; }
+
+/* hava kompakt (B) */
+.hava { display: grid; gap: var(--b2); }
+.hava > div { display: grid; grid-template-columns: 26px 1fr auto auto; gap: var(--b2); align-items: center; border-bottom: 1px solid var(--izgara); padding-bottom: var(--b2); }
+.hava > div:last-child { border-bottom: none; padding-bottom: 0; }
+.hava .gun { font-size: 12.5px; color: var(--ikincil); }
+.hava .sic { font-family: var(--mono); font-size: 15px; font-weight: 600; }
+.hava .isin { font-family: var(--mono); font-size: 11px; color: var(--soluk); }
+.hava svg { color: var(--ikincil); }
+
+/* listeler ve tablolar */
+.liste { display: grid; gap: 7px; font-size: 12.5px; }
+.liste > div { display: flex; justify-content: space-between; gap: var(--b2); border-bottom: 1px solid var(--izgara); padding-bottom: 7px; }
+.liste > div:last-child { border-bottom: none; }
+.liste .et { color: var(--ikincil); }
+.liste .dg { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+table.veri { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+table.veri th, table.veri td { text-align: left; padding: 7px 5px; border-bottom: 1px solid var(--izgara); }
+table.veri thead th { font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--soluk); font-weight: 500; border-bottom: 1px solid var(--kenar); }
+table.veri td.sag, table.veri th.sag { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+table.veri td.et { color: var(--ikincil); }
+table.veri tbody tr:hover { background: var(--yuzey); }
+td.spark { color: var(--ch-cubuk); width: 106px; }
+.rozet { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+.rozet-ok { color: var(--marka-koyu); background: var(--marka-zemin); }
+.rozet-notr { color: var(--ikincil); background: var(--yuzey); }
+
+/* parmak izi */
+.pi-sar { overflow-x: auto; }
+.pi { border-collapse: collapse; font-family: var(--mono); font-size: 11.5px; width: 100%; min-width: 720px; }
+.pi th { font-weight: 500; color: var(--soluk); padding: 3px 5px; text-align: center; font-size: 10.5px; }
+.pi tbody th { text-align: right; padding-right: 6px; }
+.pi td { text-align: center; padding: 4px 4px; color: var(--pi-metin); border: 1px solid var(--kart); font-variant-numeric: tabular-nums; }
+.pi td.h0{background:var(--h0)} .pi td.h1{background:var(--h1)} .pi td.h2{background:var(--h2)}
+.pi td.h3{background:var(--h3)} .pi td.h4{background:var(--h4)} .pi td.h5{background:var(--h5)}
+.pi td.h6{background:var(--h6)} .pi td.h7{background:var(--h7)} .pi td.h8{background:var(--h8)}
+.pi td.h9{background:var(--h9)}
+.pi .pi-tipik td { background: var(--zemin); border-top: 2px solid var(--marka); font-weight: 600; }
+.pi-not { font-size: 11.5px; color: var(--soluk); margin: var(--b2) 0 0; }
+
+.ch-t { font-family: var(--mono); font-size: 10.5px; fill: var(--soluk); }
+.alt-dip { max-width: var(--govde-genislik); margin: var(--b4) auto 0; font-size: 11.5px; color: var(--soluk); display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--b2); border-top: 1px solid var(--kenar); padding-top: var(--b3); }
+
+@media (max-width: 1100px) {
+  .s4, .s6, .s8, .sag-sutun { grid-column: span 12; }
+  .ozet { grid-template-columns: 1fr 1fr; }
+  .ozet > div { border-right: none; border-bottom: 1px solid var(--izgara); padding-left: 0; }
+}
+@media (max-width: 900px) {
+  .kabuk { grid-template-columns: 1fr; }
+  .yan { position: static; height: auto; }
+  .icerik { padding: var(--b3); }
+  .ozet { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* ---- SaaS kromu (v2.208) ---- */
+.ust-arac { display: flex; align-items: center; gap: 10px; }
+.arama { display: flex; align-items: center; gap: 8px; padding: 6px 10px; min-width: 190px;
+  border: 1px solid var(--kenar); border-radius: var(--r); background: var(--kart);
+  color: var(--soluk); font-size: 12.5px; cursor: pointer; }
+.arama:hover { border-color: var(--soluk); }
+.arama kbd { margin-left: auto; font-family: var(--mono); font-size: 10px;
+  border: 1px solid var(--kenar); border-radius: 3px; padding: 1px 5px;
+  color: var(--soluk); background: var(--yuzey); }
+.ikon-dugme { position: relative; width: 32px; height: 32px; display: grid;
+  place-items: center; border: 1px solid var(--kenar); border-radius: var(--r);
+  background: var(--kart); color: var(--ikincil); cursor: pointer;
+  font-family: var(--font); font-size: 13px; font-weight: 600; }
+.ikon-dugme:hover { color: var(--metin); border-color: var(--soluk); }
+.nokta-badge { position: absolute; top: 5px; right: 5px; width: 7px; height: 7px;
+  border-radius: 50%; background: var(--uyari); border: 1.5px solid var(--zemin); }
+.avatar { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--kenar);
+  background: var(--marka-zemin); color: var(--marka-koyu); font-weight: 600;
+  font-size: 11px; display: grid; place-items: center; cursor: pointer;
+  font-family: var(--font); flex-shrink: 0; }
+.dugme-ana { background: var(--marka); border: 1px solid var(--marka); color: #fff;
+  border-radius: var(--r); padding: 8px 12px; font-family: var(--font);
+  font-size: 13px; font-weight: 600; cursor: pointer; width: 100%;
+  margin: 12px 0 12px; }
+.dugme-ana:hover { filter: brightness(1.06); }
+.hesap { display: flex; gap: 10px; align-items: center; }
+.plan-rozet { font-size: 9.5px; font-weight: 700; letter-spacing: .05em;
+  text-transform: uppercase; color: var(--marka-koyu); background: var(--marka-zemin);
+  border-radius: 999px; padding: 1px 7px; vertical-align: 1px; }
+.disa { display: flex; gap: 6px; align-items: center; }
+.disa button { font-family: var(--mono); font-size: 10.5px; padding: 3px 9px;
+  cursor: pointer; border: 1px solid var(--kenar); border-radius: var(--r);
+  background: var(--kart); color: var(--ikincil); }
+.disa button:hover { color: var(--metin); border-color: var(--soluk); }
+
+.dugme-ana { color: #0B1424; }
+.nokta-badge { border-color: #0B1424; }
+
+
+/* ---- F kimligi: panel cami ---- */
+body { background:
+  linear-gradient(rgba(255,255,255,.028) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(255,255,255,.028) 1px, transparent 1px),
+  radial-gradient(1400px 700px at 72% -12%, #152A47 0%, #0B1424 58%);
+  background-size: 46px 46px, 46px 46px, auto; background-attachment: fixed; }
+.portlet, .yan-ozet > div, .hava-kart {
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+@supports not ((backdrop-filter: blur(8px)) or (-webkit-backdrop-filter: blur(8px))) {
+  .portlet, .yan-ozet > div { background: #121E31; }
+}
+.yan { background: rgba(11,20,36,.72); backdrop-filter: blur(10px);
+       -webkit-backdrop-filter: blur(10px); }
+.ust { background: rgba(11,20,36,.82); backdrop-filter: blur(10px);
+       -webkit-backdrop-filter: blur(10px); }
+.pi td { border-color: #0B1424; }
+.pi .pi-tipik td { background: #101B2C; }
+.yan-sec { background: rgba(255,255,255,.06); }
+
+/* ---- F netlik turu (kullanici geri bildirimi: 'yazilar net degil') ---- */
+[data-tema="koyu"] body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+.portlet-bas h2, .portlet-bas { font-size: 11.5px; letter-spacing: .07em; }
+.ozet-bas { font-size: 11.5px; letter-spacing: .07em; }
+table.veri { font-size: 13px; }
+.liste { font-size: 13px; }
+.telemetri { font-size: 12px; color: var(--ikincil); }
+.ch-t { font-size: 11px; }
+.pi { font-size: 11px; }
+.pi td.h0, .pi td.h1, .pi td.h2, .pi td.h3 { color: var(--soluk); }
+.dipnot, .pi-not { font-size: 12.5px; color: var(--soluk); }
+.lejant { font-size: 11.5px; }
+.mono, .telemetri, .damga { font-weight: 500; }  /* Fira Code ince kaliyordu */
+table.veri thead th, .pi th { font-size: 11px; }
+.yan-ozet .et { font-size: 10.5px; }
+.plan-rozet { font-size: 10px; }
+.disa button { font-size: 11px; }
+@media (max-width: 900px) {
+  .arama { display: none; }                  /* dar ekranda tasma kaynagi */
+  .ust { flex-wrap: wrap; height: auto; padding: 8px 16px; gap: 8px; }
+}
+
+
+/* ciddi SaaS hiyerarsisi: basliklar murekkep, meta soluk */
+.portlet-bas, .ozet-bas { color: var(--ikincil); }
+.portlet-bas .sag, .ozet-bas .sag { color: var(--soluk); }
+.ozet .dg { font-weight: 600; }
+
+/* parlak amber hucrelerde koyu metin — acik pi-metin 2:1'de kaliyordu */
+.pi td.h6, .pi td.h7, .pi td.h8, .pi td.h9 { color: #14100A; }
+
+/* ---- ACIK TEMA: gunduz cami (v2.211) ---- */
+[data-tema="acik"] {
+  --marka: #16A34A; --marka-koyu: #166534; --marka-zemin: rgba(22,163,74,.10);
+  --uyari: #C9502E; --basari: #15803D;
+  --zemin: #EAF0F7;
+  --kart: rgba(255,255,255,.74); --yuzey: rgba(22,36,58,.05);
+  --metin: #101D30; --ikincil: #2C3E57; --soluk: #45586F;
+  --kenar: rgba(16,29,48,.18); --izgara: rgba(16,29,48,.11);
+  --ch-band: rgba(45,111,181,.14); --ch-band2: rgba(45,111,181,.28); --ch-eksen-koyu: #2C3E57;
+  --ch-p50-gecmis: #2D6FB5; --ch-p50-gelecek: #2D6FB5;
+  --ch-ac: #5C6880; --ch-simdi: #6B7789; --ch-simdi-metin: #45586F;
+  --ch-gercek-metin: #9A5C07;
+  --ch-izgara: rgba(16,29,48,.11); --ch-eksen: rgba(16,29,48,.30);
+  --ch-cubuk: #4C9A6E; --ch-vurgu: #166534; --ch-dusuk: #9AA6B5;
+  --ch-eksik: rgba(94,112,137,.14);
+  --ch-gy-yaz: #16A34A; --ch-gy-eki: #5C6880; --ch-gy-kis: #66738A;
+  --h0:#EDF3FA; --h1:#E0EDF2; --h2:#D4E7E3; --h3:#D9E5CF; --h4:#E8E3C2;
+  --h5:#EED095; --h6:#EBAD45; --h7:#E28F0A; --h8:#CA7D09; --h9:#B26A08;
+  --pi-metin: #1B2939;
+}
+[data-tema="acik"] body { background:
+  linear-gradient(rgba(22,36,58,.05) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(22,36,58,.05) 1px, transparent 1px),
+  radial-gradient(1400px 700px at 72% -12%, #FFFFFF 0%, #EAF0F7 58%);
+  background-size: 46px 46px, 46px 46px, auto; background-attachment: fixed; }
+[data-tema="acik"] .yan { background: rgba(255,255,255,.78); }
+[data-tema="acik"] .ust { background: rgba(255,255,255,.86); }
+[data-tema="acik"] .pi td { border-color: #EAF0F7; }
+[data-tema="acik"] .pi .pi-tipik td { background: #FFFFFF; }
+[data-tema="acik"] .yan-sec { background: rgba(255,255,255,.8); }
+[data-tema="acik"] .dugme-ana { background: #15803D; border-color: #15803D; color: #fff; }
+[data-tema="acik"] .nokta-badge { border-color: #EAF0F7; }
+[data-tema="acik"] .pi td.h0, [data-tema="acik"] .pi td.h1,
+[data-tema="acik"] .pi td.h2, [data-tema="acik"] .pi td.h3 { color: var(--pi-metin); }
+@supports not ((backdrop-filter: blur(8px)) or (-webkit-backdrop-filter: blur(8px))) {
+  [data-tema="acik"] .portlet, [data-tema="acik"] .yan-ozet > div { background: #FFFFFF; }
+}
+
+
+
+
+</style>
+</head>
+<body>
+<div class="kabuk">
+  <aside class="yan">
+    <div class="logo">
+      <svg width="22" height="22" viewBox="0 0 20 20" aria-hidden="true">
+        <circle cx="10" cy="10" r="3.4" fill="none" stroke="var(--marka)" stroke-width="1.5"/>
+        <g stroke="var(--marka)" stroke-width="1.5" stroke-linecap="round">
+          <line x1="10" y1="1.6" x2="10" y2="3.9"/><line x1="10" y1="16.1" x2="10" y2="18.4"/>
+          <line x1="1.6" y1="10" x2="3.9" y2="10"/><line x1="16.1" y1="10" x2="18.4" y2="10"/>
+          <line x1="4.1" y1="4.1" x2="5.7" y2="5.7"/><line x1="14.3" y1="14.3" x2="15.9" y2="15.9"/>
+          <line x1="4.1" y1="15.9" x2="5.7" y2="14.3"/><line x1="14.3" y1="5.7" x2="15.9" y2="4.1"/>
+        </g>
+      </svg>
+      PVQuant
+    </div>
+    <select class="yan-sec" aria-label="Santral seç"><option>Meridyen GES — Konya</option></select>
+    <div class="yan-ozet">
+      <div><div class="et">Santral</div><div class="dg">1</div></div>
+      <div><div class="et">Kurulu güç</div><div class="dg">1.234 kWp</div></div>
+    </div>
+    <nav class="nav" aria-label="Panel sayfaları">
+      <a href="#"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="11" y="3" width="6" height="6" rx="1"/><rect x="3" y="11" width="6" height="6" rx="1"/><rect x="11" y="11" width="6" height="6" rx="1"/></svg>Santralım</a>
+      <a href="#"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v9M6.5 8.5 10 12l3.5-3.5"/><path d="M4 14v2.5h12V14"/></svg>Veri Yükleme</a>
+      <a href="#"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="6.5"/><path d="M10 6.5V10l2.5 1.5"/></svg>Kalibrasyon</a>
+      <a href="#"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15l4-5 3 3 4-6 3 4"/></svg>Tahminler</a>
+      <a class="aktif" href="#"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3h12v14H4z"/><path d="M7.5 10l1.8 1.8 3.2-3.6"/></svg>Doğruluk</a>
+      <a href="#"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="14" height="13" rx="1.5"/><path d="M3 8h14M7 4V2.5M13 4V2.5"/></svg>Aylık</a>
+      <a href="#"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2.5h7L16 6v11.5H5z"/><path d="M12 2.5V6h4"/></svg>Raporlar</a>
+      <a href="#"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="2.6"/><path d="M10 2.5v2.2M10 15.3v2.2M2.5 10h2.2M15.3 10h2.2M4.7 4.7l1.6 1.6M13.7 13.7l1.6 1.6M4.7 15.3l1.6-1.6M13.7 6.3l1.6-1.6"/></svg>Ayarlar</a>
+
+    </nav>
+    <button class="dugme-ana" type="button">+ Yeni santral bağla</button>
+    <div class="yan-alt"><div class="hesap"><span class="avatar">ME</span><div><div style="font-size:12.5px;color:var(--metin);font-weight:600">Meridyen Enerji <span class="plan-rozet">Pro</span></div><div style="font-size:11px;color:var(--soluk)">Admin · operatör hesabı</div></div></div></div>
+  </aside>
+
+  <main>
+    <div class="ust">
+      <div class="yol">Panel <b>· Doğruluk</b> <span style="color:var(--soluk)">· Meridyen GES, Konya</span></div>
+      <div class="ust-arac"><div class="arama" role="search" aria-label="Panelde ara"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="9" r="5.5"/><path d="M13.2 13.2 17 17"/></svg><span>Ara…</span><kbd>⌘K</kbd></div><button class="ikon-dugme" aria-label="Bildirimler — 2 açık uyarı"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3a4.5 4.5 0 0 0-4.5 4.5c0 4-1.7 5.3-1.7 5.3h12.4s-1.7-1.3-1.7-5.3A4.5 4.5 0 0 0 10 3Z"/><path d="M8.6 15.8a1.6 1.6 0 0 0 2.8 0"/></svg><i class="nokta-badge"></i></button><button class="ikon-dugme" aria-label="Yardım">?</button><button class="dugme" id="temaDugme" aria-pressed="false">Açık tema</button><button class="avatar" aria-label="Hesap — Meridyen Enerji, Admin">ME</button></div>
+    </div>
+    <div class="telemetri">
+      <span class="nokta"><i></i>veri akışı sağlıklı</span>
+      <span>son güncelleme 25 Ağu 2026 · 14:02</span>
+      <span>5 dk'da bir tazelenir</span>
+      <span style="margin-left:auto">model: Hibrit · son kalibrasyon 12 Ağu · sapma %1,84</span>
+    </div>
+
+    <div class="icerik"><div class="sarici">
+<style>
+/* Doğruluk mockup ekleri */
+.kpi-dizi { display:grid; grid-template-columns:repeat(4,1fr); gap:1px;
+  background:var(--izgara); border:1px solid var(--kenar); border-radius:var(--rk);
+  overflow:hidden; margin-bottom:var(--b3); }
+.kpi-dizi > div { background:var(--kart); padding:14px 16px; }
+.kpi-dizi .et { font-family:var(--mono); font-size:10px; letter-spacing:.07em;
+  text-transform:uppercase; color:var(--soluk); font-weight:500; }
+.kpi-dizi .dg { font-family:var(--mono); font-size:23px; font-weight:600;
+  margin-top:4px; font-variant-numeric:tabular-nums; }
+.kpi-dizi .alt { font-size:11.5px; color:var(--soluk); margin-top:2px; }
+.kpi-dizi .spark { color:var(--ch-cubuk); }
+/* hata rampası e0..e8 — Mürekkep–Bakır (canlı ısı haritası kararının aynısı) */
+[data-tema="koyu"] .e0{fill:#A9C9EA}[data-tema="koyu"] .e1{fill:#7CA3CE}
+[data-tema="koyu"] .e2{fill:#4F76A3}[data-tema="koyu"] .e3{fill:#2B4560}
+[data-tema="koyu"] .e4{fill:#182337}[data-tema="koyu"] .e5{fill:#5C3A20}
+[data-tema="koyu"] .e6{fill:#8A5730}[data-tema="koyu"] .e7{fill:#BC7B44}
+[data-tema="koyu"] .e8{fill:#E8A96A}
+[data-tema="acik"] .e0{fill:#1E3A5F}[data-tema="acik"] .e1{fill:#33628F}
+[data-tema="acik"] .e2{fill:#7FA3C4}[data-tema="acik"] .e3{fill:#C7D8E6}
+[data-tema="acik"] .e4{fill:#FFFFFF}[data-tema="acik"] .e5{fill:#EFCDB0}
+[data-tema="acik"] .e6{fill:#D08B54}[data-tema="acik"] .e7{fill:#A85428}
+[data-tema="acik"] .e8{fill:#6B3410}
+.mini-tablo td, .mini-tablo th { padding:6px 5px; }
+</style>
+
+      <div class="ozet-bas"><span class="no">1</span> Doğruluk karnesi — özet <span class="sag">kapsanan dönem: 27 Haz – 25 Ağu 2026 · tümü 0-24s</span></div>
+      
+      <div class="kpi-dizi">
+        <div><div class="et">WMAPE · 0–24s · 60 gün ort.</div><div class="dg">%6,8</div><div class="alt">gündüz saatleri, valid veriyle</div></div>
+        <div><div class="et">Naife göre üstünlük</div><div class="dg">%69</div><div class="alt">referans: dün-aynı-saat, gök açıklığı ölçekli</div></div>
+        <div><div class="et">Karne günü</div><div class="dg">112 <span style="font-size:13px;color:var(--soluk)">gün</span></div><div class="alt">kesintisiz kanıt geçmişi</div></div>
+        <div><div class="et">Günlük sapma <span style="text-transform:none">μ · σ</span></div><div class="dg">-0,24 · 1,58</div><div class="alt">MWh — sıfır merkezli dar dağılım hedef · son 14 gün <svg viewBox="0 0 98 18" width="98" height="18" class="spark" style="vertical-align:-3px"><rect x="0" y="12.5" width="5" height="5.5" fill="currentColor" rx="1"/><rect x="7" y="10.6" width="5" height="7.4" fill="currentColor" rx="1"/><rect x="14" y="12.9" width="5" height="5.1" fill="currentColor" rx="1"/><rect x="21" y="10.8" width="5" height="7.2" fill="currentColor" rx="1"/><rect x="28" y="13.1" width="5" height="4.9" fill="currentColor" rx="1"/><rect x="35" y="9.5" width="5" height="8.5" fill="currentColor" rx="1"/><rect x="42" y="4.0" width="5" height="14.0" fill="currentColor" rx="1"/><rect x="49" y="10.9" width="5" height="7.1" fill="currentColor" rx="1"/><rect x="56" y="9.9" width="5" height="8.1" fill="currentColor" rx="1"/><rect x="63" y="11.5" width="5" height="6.5" fill="currentColor" rx="1"/><rect x="70" y="10.2" width="5" height="7.8" fill="currentColor" rx="1"/><rect x="77" y="13.0" width="5" height="5.0" fill="currentColor" rx="1"/><rect x="84" y="9.7" width="5" height="8.3" fill="currentColor" rx="1"/><rect x="91" y="11.5" width="5" height="6.5" fill="currentColor" rx="1"/></svg></div></div>
+      </div>
+
+      <section class="portlet s12">
+        <div class="portlet-bas"><span class="no">2</span> Günlük WMAPE — iki ufuk tek eksende <span class="sag">gri zemin: naif · kesikli: 24–72s</span></div>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:var(--b4)">
+          <div><svg viewBox="0 0 760 262" style="width:100%;display:block" role="img"><line x1="40" y1="232.0" x2="746" y2="232.0" stroke="var(--izgara)"/><text x="34" y="235.5" text-anchor="end" class="ch-t">%0</text><line x1="40" y1="183.1" x2="746" y2="183.1" stroke="var(--izgara)"/><text x="34" y="186.6" text-anchor="end" class="ch-t">%10</text><line x1="40" y1="134.2" x2="746" y2="134.2" stroke="var(--izgara)"/><text x="34" y="137.7" text-anchor="end" class="ch-t">%20</text><line x1="40" y1="85.3" x2="746" y2="85.3" stroke="var(--izgara)"/><text x="34" y="88.8" text-anchor="end" class="ch-t">%30</text><line x1="40" y1="36.4" x2="746" y2="36.4" stroke="var(--izgara)"/><text x="34" y="39.9" text-anchor="end" class="ch-t">%40</text><line x1="87.9" y1="12" x2="87.9" y2="232" stroke="var(--izgara)" stroke-dasharray="2 4"/><text x="91.9" y="248" class="ch-t">Tem</text><line x1="458.8" y1="12" x2="458.8" y2="232" stroke="var(--izgara)" stroke-dasharray="2 4"/><text x="462.8" y="248" class="ch-t">Ağu</text><text x="40" y="248" class="ch-t">27 Haz</text><text x="746" y="248" text-anchor="end" class="ch-t">25 Ağu</text><path d="M40,232 L40.0,143.9 L52.0,122.3 L63.9,136.0 L75.9,131.5 L87.9,123.7 L99.8,127.0 L111.8,115.3 L123.8,150.3 L135.7,153.7 L147.7,54.7 L159.7,65.5 L171.6,127.6 L183.6,146.4 L195.6,146.1 L207.5,124.5 L219.5,147.4 L231.5,123.8 L243.4,119.5 L255.4,105.5 L267.4,121.8 L279.3,146.3 L291.3,144.3 L303.3,111.5 L315.2,56.9 L327.2,128.5 L339.2,110.4 L351.1,105.0 L363.1,156.1 L375.1,116.1 L387.0,138.1 L399.0,106.4 L410.9,119.9 L422.9,144.3 L434.9,135.3 L446.8,111.6 L458.8,149.1 L470.8,142.6 L482.7,150.4 L494.7,91.0 L506.7,47.9 L518.6,111.4 L530.6,132.5 L542.6,117.5 L554.5,129.1 L566.5,135.9 L578.5,119.4 L590.4,105.1 L602.4,130.8 L614.4,140.5 L626.3,146.8 L638.3,146.4 L650.3,154.9 L662.2,85.0 L674.2,116.5 L686.2,153.5 L698.1,133.6 L710.1,105.7 L722.1,140.4 L734.0,148.4 L746.0,143.7 L746,232 Z" fill="var(--ch-dusuk)" opacity=".22"/><polyline points="40.0,199.0 52.0,207.1 63.9,194.0 75.9,210.9 87.9,210.9 99.8,200.8 111.8,195.6 123.8,197.8 135.7,192.7 147.7,168.6 159.7,157.5 171.6,199.4 183.6,197.7 195.6,205.8 207.5,209.5 219.5,204.3 231.5,206.2 243.4,199.6 255.4,208.3 267.4,199.0 279.3,195.0 291.3,210.8 303.3,207.3 315.2,168.1 327.2,206.3 339.2,206.3 351.1,203.7 363.1,201.5 375.1,209.3 387.0,203.2 399.0,192.0 410.9,194.6 422.9,198.1 434.9,198.9 446.8,202.6 458.8,206.3 470.8,193.6 482.7,199.0 494.7,161.6 506.7,180.3 518.6,205.5 530.6,192.9 542.6,210.1 554.5,209.0 566.5,206.3 578.5,207.3 590.4,207.5 602.4,198.8 614.4,209.1 626.3,200.0 638.3,210.1 650.3,193.8 662.2,169.3 674.2,200.3 686.2,195.7 698.1,203.0 710.1,197.2 722.1,209.5 734.0,194.6 746.0,202.7" fill="none" stroke="var(--marka)" stroke-width="2"/><polyline points="40.0,191.8 52.0,192.3 63.9,186.2 75.9,201.7 87.9,202.0 99.8,191.6 111.8,188.7 123.8,187.3 135.7,182.3 147.7,155.2 159.7,146.6 171.6,183.3 183.6,190.4 195.6,198.1 207.5,199.7 219.5,193.5 231.5,189.3 243.4,190.9 255.4,197.3 267.4,186.1 279.3,179.8 291.3,200.6 303.3,190.4 315.2,157.0 327.2,196.8 339.2,193.2 351.1,194.5 363.1,193.7 375.1,195.7 387.0,195.7 399.0,179.5 410.9,187.7 422.9,185.5 434.9,190.9 446.8,185.5 458.8,194.1 470.8,177.4 482.7,185.6 494.7,146.3 506.7,163.5 518.6,198.0 530.6,185.2 542.6,195.1 554.5,197.0 566.5,190.1 578.5,194.7 590.4,197.3 602.4,187.2 614.4,199.8 626.3,190.6 638.3,196.4 650.3,177.7 662.2,160.1 674.2,188.4 686.2,186.8 698.1,191.6 710.1,183.1 722.1,198.4 734.0,185.1 746.0,191.3" fill="none" stroke="var(--ch-p50)" stroke-width="1.8" stroke-dasharray="5 4"/><circle cx="746.0" cy="202.7" r="3" fill="var(--marka)"/><text x="740.0" y="195.7" text-anchor="end" class="ch-t" style="fill:var(--marka-koyu);font-weight:600">%6,0</text><line x1="40" y1="232" x2="746" y2="232" stroke="var(--ch-eksen-koyu,var(--soluk))" stroke-width="1"/></svg></div>
+          <div>
+            <table class="veri mini-tablo">
+              <thead><tr><th>ufuk</th><th class="sag">ort.</th><th class="sag">medyan</th><th class="sag">en kötü</th></tr></thead>
+              <tbody><tr><td class="et">0–24s</td><td class="sag">%6,8</td><td class="sag">%6,5</td><td class="sag">%15,2</td></tr><tr><td class="et">24–72s</td><td class="sag">%9,1</td><td class="sag">%8,5</td><td class="sag">%17,5</td></tr><tr><td class="et">naif</td><td class="sag">%21,9</td><td class="sag">%21,2</td><td class="sag">%37,7</td></tr></tbody>
+            </table>
+            <p class="pi-not" style="margin-top:10px">En kötü günler bulutlu geçişlerdir; naif aynı günlerde iki katından fazla şaşar. Kesikli 24–72s çizgisi düz 0–24s'nin üstünde ama ona paralel seyreder — ufuk büyüdükçe hata kontrollü büyür.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="portlet s12">
+        <div class="portlet-bas"><span class="no">3</span> Saat × gün hata matrisi <span class="sag">son 30 gün · üst şerit: günlük toplam |hata| · hafta sonu koyu</span></div>
+        <svg viewBox="0 0 956 342" style="width:100%;display:block" role="img"><rect x="49" y="28.7" width="20" height="5.3" fill="var(--ch-dusuk)"/><rect x="79" y="29.0" width="20" height="5.0" fill="var(--ch-dusuk)"/><rect x="109" y="29.5" width="20" height="4.5" fill="var(--ch-dusuk)"/><rect x="139" y="28.7" width="20" height="5.3" fill="var(--ch-dusuk)"/><rect x="169" y="28.4" width="20" height="5.6" fill="var(--ch-dusuk)"/><rect x="199" y="29.1" width="20" height="4.9" fill="var(--ch-dusuk)"/><rect x="229" y="29.5" width="20" height="4.5" fill="var(--ch-dusuk)"/><rect x="259" y="28.3" width="20" height="5.7" fill="var(--ch-dusuk)"/><rect x="289" y="12.0" width="20" height="22.0" fill="var(--ch-dusuk)"/><rect x="319" y="13.3" width="20" height="20.7" fill="var(--ch-dusuk)"/><rect x="349" y="29.1" width="20" height="4.9" fill="var(--ch-dusuk)"/><rect x="379" y="29.4" width="20" height="4.6" fill="var(--ch-dusuk)"/><rect x="409" y="29.4" width="20" height="4.6" fill="var(--ch-dusuk)"/><rect x="439" y="29.3" width="20" height="4.7" fill="var(--ch-dusuk)"/><rect x="469" y="29.5" width="20" height="4.5" fill="var(--ch-dusuk)"/><rect x="499" y="28.7" width="20" height="5.3" fill="var(--ch-dusuk)"/><rect x="529" y="29.0" width="20" height="5.0" fill="var(--ch-dusuk)"/><rect x="559" y="29.0" width="20" height="5.0" fill="var(--ch-dusuk)"/><rect x="589" y="28.5" width="20" height="5.5" fill="var(--ch-dusuk)"/><rect x="619" y="29.4" width="20" height="4.6" fill="var(--ch-dusuk)"/><rect x="649" y="28.7" width="20" height="5.3" fill="var(--ch-dusuk)"/><rect x="679" y="28.8" width="20" height="5.2" fill="var(--ch-dusuk)"/><rect x="709" y="13.3" width="20" height="20.7" fill="var(--ch-dusuk)"/><rect x="739" y="30.0" width="20" height="4.0" fill="var(--ch-dusuk)"/><rect x="769" y="29.5" width="20" height="4.5" fill="var(--ch-dusuk)"/><rect x="799" y="30.1" width="20" height="3.9" fill="var(--ch-dusuk)"/><rect x="829" y="29.9" width="20" height="4.1" fill="var(--ch-dusuk)"/><rect x="859" y="29.4" width="20" height="4.6" fill="var(--ch-dusuk)"/><rect x="889" y="30.0" width="20" height="4.0" fill="var(--ch-dusuk)"/><rect x="919" y="30.1" width="20" height="3.9" fill="var(--ch-dusuk)"/><text x="44" y="10" class="ch-t">günlük toplam |hata| (MWh)</text><rect x="44" y="40" width="29" height="15" class="e4"/><rect x="74" y="40" width="29" height="15" class="e4"/><rect x="104" y="40" width="29" height="15" class="e4"/><rect x="134" y="40" width="29" height="15" class="e4"/><rect x="164" y="40" width="29" height="15" class="e4"/><rect x="194" y="40" width="29" height="15" class="e4"/><rect x="224" y="40" width="29" height="15" class="e4"/><rect x="254" y="40" width="29" height="15" class="e4"/><rect x="284" y="40" width="29" height="15" class="e4"/><rect x="314" y="40" width="29" height="15" class="e4"/><rect x="344" y="40" width="29" height="15" class="e4"/><rect x="374" y="40" width="29" height="15" class="e4"/><rect x="404" y="40" width="29" height="15" class="e4"/><rect x="434" y="40" width="29" height="15" class="e4"/><rect x="464" y="40" width="29" height="15" class="e4"/><rect x="494" y="40" width="29" height="15" class="e4"/><rect x="524" y="40" width="29" height="15" class="e4"/><rect x="554" y="40" width="29" height="15" class="e4"/><rect x="584" y="40" width="29" height="15" class="e4"/><rect x="614" y="40" width="29" height="15" class="e4"/><rect x="644" y="40" width="29" height="15" class="e4"/><rect x="674" y="40" width="29" height="15" class="e4"/><rect x="704" y="40" width="29" height="15" class="e4"/><rect x="734" y="40" width="29" height="15" class="e4"/><rect x="764" y="40" width="29" height="15" class="e4"/><rect x="794" y="40" width="29" height="15" class="e4"/><rect x="824" y="40" width="29" height="15" class="e4"/><rect x="854" y="40" width="29" height="15" class="e4"/><rect x="884" y="40" width="29" height="15" class="e4"/><rect x="914" y="40" width="29" height="15" class="e4"/><text x="38" y="67.5" text-anchor="end" class="ch-t">06</text><rect x="44" y="56" width="29" height="15" class="e6"/><rect x="74" y="56" width="29" height="15" class="e6"/><rect x="104" y="56" width="29" height="15" class="e4"/><rect x="134" y="56" width="29" height="15" class="e4"/><rect x="164" y="56" width="29" height="15" class="e4"/><rect x="194" y="56" width="29" height="15" class="e2"/><rect x="224" y="56" width="29" height="15" class="e4"/><rect x="254" y="56" width="29" height="15" class="e4"/><rect x="284" y="56" width="29" height="15" class="e0"/><rect x="314" y="56" width="29" height="15" class="e1"/><rect x="344" y="56" width="29" height="15" class="e4"/><rect x="374" y="56" width="29" height="15" class="e4"/><rect x="404" y="56" width="29" height="15" class="e4"/><rect x="434" y="56" width="29" height="15" class="e6"/><rect x="464" y="56" width="29" height="15" class="e4"/><rect x="494" y="56" width="29" height="15" class="e4"/><rect x="524" y="56" width="29" height="15" class="e4"/><rect x="554" y="56" width="29" height="15" class="e4"/><rect x="584" y="56" width="29" height="15" class="e4"/><rect x="614" y="56" width="29" height="15" class="e4"/><rect x="644" y="56" width="29" height="15" class="e4"/><rect x="674" y="56" width="29" height="15" class="e4"/><rect x="704" y="56" width="29" height="15" class="e0"/><rect x="734" y="56" width="29" height="15" class="e4"/><rect x="764" y="56" width="29" height="15" class="e4"/><rect x="794" y="56" width="29" height="15" class="e4"/><rect x="824" y="56" width="29" height="15" class="e4"/><rect x="854" y="56" width="29" height="15" class="e4"/><rect x="884" y="56" width="29" height="15" class="e4"/><rect x="914" y="56" width="29" height="15" class="e4"/><rect x="44" y="72" width="29" height="15" class="e2"/><rect x="74" y="72" width="29" height="15" class="e4"/><rect x="104" y="72" width="29" height="15" class="e2"/><rect x="134" y="72" width="29" height="15" class="e2"/><rect x="164" y="72" width="29" height="15" class="e4"/><rect x="194" y="72" width="29" height="15" class="e4"/><rect x="224" y="72" width="29" height="15" class="e6"/><rect x="254" y="72" width="29" height="15" class="e4"/><rect x="284" y="72" width="29" height="15" class="e0"/><rect x="314" y="72" width="29" height="15" class="e1"/><rect x="344" y="72" width="29" height="15" class="e4"/><rect x="374" y="72" width="29" height="15" class="e2"/><rect x="404" y="72" width="29" height="15" class="e4"/><rect x="434" y="72" width="29" height="15" class="e4"/><rect x="464" y="72" width="29" height="15" class="e6"/><rect x="494" y="72" width="29" height="15" class="e4"/><rect x="524" y="72" width="29" height="15" class="e4"/><rect x="554" y="72" width="29" height="15" class="e4"/><rect x="584" y="72" width="29" height="15" class="e4"/><rect x="614" y="72" width="29" height="15" class="e4"/><rect x="644" y="72" width="29" height="15" class="e4"/><rect x="674" y="72" width="29" height="15" class="e4"/><rect x="704" y="72" width="29" height="15" class="e0"/><rect x="734" y="72" width="29" height="15" class="e4"/><rect x="764" y="72" width="29" height="15" class="e4"/><rect x="794" y="72" width="29" height="15" class="e4"/><rect x="824" y="72" width="29" height="15" class="e4"/><rect x="854" y="72" width="29" height="15" class="e4"/><rect x="884" y="72" width="29" height="15" class="e4"/><rect x="914" y="72" width="29" height="15" class="e4"/><rect x="44" y="88" width="29" height="15" class="e4"/><rect x="74" y="88" width="29" height="15" class="e6"/><rect x="104" y="88" width="29" height="15" class="e4"/><rect x="134" y="88" width="29" height="15" class="e4"/><rect x="164" y="88" width="29" height="15" class="e7"/><rect x="194" y="88" width="29" height="15" class="e4"/><rect x="224" y="88" width="29" height="15" class="e4"/><rect x="254" y="88" width="29" height="15" class="e6"/><rect x="284" y="88" width="29" height="15" class="e0"/><rect x="314" y="88" width="29" height="15" class="e0"/><rect x="344" y="88" width="29" height="15" class="e4"/><rect x="374" y="88" width="29" height="15" class="e4"/><rect x="404" y="88" width="29" height="15" class="e4"/><rect x="434" y="88" width="29" height="15" class="e4"/><rect x="464" y="88" width="29" height="15" class="e2"/><rect x="494" y="88" width="29" height="15" class="e6"/><rect x="524" y="88" width="29" height="15" class="e6"/><rect x="554" y="88" width="29" height="15" class="e4"/><rect x="584" y="88" width="29" height="15" class="e2"/><rect x="614" y="88" width="29" height="15" class="e6"/><rect x="644" y="88" width="29" height="15" class="e4"/><rect x="674" y="88" width="29" height="15" class="e4"/><rect x="704" y="88" width="29" height="15" class="e1"/><rect x="734" y="88" width="29" height="15" class="e4"/><rect x="764" y="88" width="29" height="15" class="e4"/><rect x="794" y="88" width="29" height="15" class="e4"/><rect x="824" y="88" width="29" height="15" class="e4"/><rect x="854" y="88" width="29" height="15" class="e4"/><rect x="884" y="88" width="29" height="15" class="e2"/><rect x="914" y="88" width="29" height="15" class="e2"/><text x="38" y="115.5" text-anchor="end" class="ch-t">09</text><rect x="44" y="104" width="29" height="15" class="e4"/><rect x="74" y="104" width="29" height="15" class="e2"/><rect x="104" y="104" width="29" height="15" class="e6"/><rect x="134" y="104" width="29" height="15" class="e4"/><rect x="164" y="104" width="29" height="15" class="e6"/><rect x="194" y="104" width="29" height="15" class="e6"/><rect x="224" y="104" width="29" height="15" class="e4"/><rect x="254" y="104" width="29" height="15" class="e4"/><rect x="284" y="104" width="29" height="15" class="e0"/><rect x="314" y="104" width="29" height="15" class="e0"/><rect x="344" y="104" width="29" height="15" class="e6"/><rect x="374" y="104" width="29" height="15" class="e4"/><rect x="404" y="104" width="29" height="15" class="e2"/><rect x="434" y="104" width="29" height="15" class="e4"/><rect x="464" y="104" width="29" height="15" class="e4"/><rect x="494" y="104" width="29" height="15" class="e4"/><rect x="524" y="104" width="29" height="15" class="e6"/><rect x="554" y="104" width="29" height="15" class="e4"/><rect x="584" y="104" width="29" height="15" class="e4"/><rect x="614" y="104" width="29" height="15" class="e4"/><rect x="644" y="104" width="29" height="15" class="e4"/><rect x="674" y="104" width="29" height="15" class="e6"/><rect x="704" y="104" width="29" height="15" class="e0"/><rect x="734" y="104" width="29" height="15" class="e2"/><rect x="764" y="104" width="29" height="15" class="e2"/><rect x="794" y="104" width="29" height="15" class="e4"/><rect x="824" y="104" width="29" height="15" class="e4"/><rect x="854" y="104" width="29" height="15" class="e4"/><rect x="884" y="104" width="29" height="15" class="e2"/><rect x="914" y="104" width="29" height="15" class="e4"/><rect x="44" y="120" width="29" height="15" class="e4"/><rect x="74" y="120" width="29" height="15" class="e4"/><rect x="104" y="120" width="29" height="15" class="e7"/><rect x="134" y="120" width="29" height="15" class="e6"/><rect x="164" y="120" width="29" height="15" class="e2"/><rect x="194" y="120" width="29" height="15" class="e6"/><rect x="224" y="120" width="29" height="15" class="e4"/><rect x="254" y="120" width="29" height="15" class="e1"/><rect x="284" y="120" width="29" height="15" class="e0"/><rect x="314" y="120" width="29" height="15" class="e0"/><rect x="344" y="120" width="29" height="15" class="e4"/><rect x="374" y="120" width="29" height="15" class="e4"/><rect x="404" y="120" width="29" height="15" class="e4"/><rect x="434" y="120" width="29" height="15" class="e7"/><rect x="464" y="120" width="29" height="15" class="e4"/><rect x="494" y="120" width="29" height="15" class="e4"/><rect x="524" y="120" width="29" height="15" class="e1"/><rect x="554" y="120" width="29" height="15" class="e4"/><rect x="584" y="120" width="29" height="15" class="e4"/><rect x="614" y="120" width="29" height="15" class="e4"/><rect x="644" y="120" width="29" height="15" class="e4"/><rect x="674" y="120" width="29" height="15" class="e2"/><rect x="704" y="120" width="29" height="15" class="e0"/><rect x="734" y="120" width="29" height="15" class="e4"/><rect x="764" y="120" width="29" height="15" class="e4"/><rect x="794" y="120" width="29" height="15" class="e2"/><rect x="824" y="120" width="29" height="15" class="e4"/><rect x="854" y="120" width="29" height="15" class="e0"/><rect x="884" y="120" width="29" height="15" class="e1"/><rect x="914" y="120" width="29" height="15" class="e4"/><rect x="44" y="136" width="29" height="15" class="e7"/><rect x="74" y="136" width="29" height="15" class="e8"/><rect x="104" y="136" width="29" height="15" class="e4"/><rect x="134" y="136" width="29" height="15" class="e4"/><rect x="164" y="136" width="29" height="15" class="e4"/><rect x="194" y="136" width="29" height="15" class="e4"/><rect x="224" y="136" width="29" height="15" class="e4"/><rect x="254" y="136" width="29" height="15" class="e4"/><rect x="284" y="136" width="29" height="15" class="e0"/><rect x="314" y="136" width="29" height="15" class="e0"/><rect x="344" y="136" width="29" height="15" class="e6"/><rect x="374" y="136" width="29" height="15" class="e6"/><rect x="404" y="136" width="29" height="15" class="e4"/><rect x="434" y="136" width="29" height="15" class="e1"/><rect x="464" y="136" width="29" height="15" class="e4"/><rect x="494" y="136" width="29" height="15" class="e2"/><rect x="524" y="136" width="29" height="15" class="e1"/><rect x="554" y="136" width="29" height="15" class="e2"/><rect x="584" y="136" width="29" height="15" class="e6"/><rect x="614" y="136" width="29" height="15" class="e4"/><rect x="644" y="136" width="29" height="15" class="e4"/><rect x="674" y="136" width="29" height="15" class="e7"/><rect x="704" y="136" width="29" height="15" class="e0"/><rect x="734" y="136" width="29" height="15" class="e2"/><rect x="764" y="136" width="29" height="15" class="e6"/><rect x="794" y="136" width="29" height="15" class="e6"/><rect x="824" y="136" width="29" height="15" class="e4"/><rect x="854" y="136" width="29" height="15" class="e4"/><rect x="884" y="136" width="29" height="15" class="e4"/><rect x="914" y="136" width="29" height="15" class="e4"/><text x="38" y="163.5" text-anchor="end" class="ch-t">12</text><rect x="44" y="152" width="29" height="15" class="e8"/><rect x="74" y="152" width="29" height="15" class="e8"/><rect x="104" y="152" width="29" height="15" class="e8"/><rect x="134" y="152" width="29" height="15" class="e8"/><rect x="164" y="152" width="29" height="15" class="e8"/><rect x="194" y="152" width="29" height="15" class="e8"/><rect x="224" y="152" width="29" height="15" class="e7"/><rect x="254" y="152" width="29" height="15" class="e8"/><rect x="284" y="152" width="29" height="15" class="e0"/><rect x="314" y="152" width="29" height="15" class="e0"/><rect x="344" y="152" width="29" height="15" class="e8"/><rect x="374" y="152" width="29" height="15" class="e8"/><rect x="404" y="152" width="29" height="15" class="e8"/><rect x="434" y="152" width="29" height="15" class="e8"/><rect x="464" y="152" width="29" height="15" class="e8"/><rect x="494" y="152" width="29" height="15" class="e8"/><rect x="524" y="152" width="29" height="15" class="e8"/><rect x="554" y="152" width="29" height="15" class="e8"/><rect x="584" y="152" width="29" height="15" class="e8"/><rect x="614" y="152" width="29" height="15" class="e7"/><rect x="644" y="152" width="29" height="15" class="e7"/><rect x="674" y="152" width="29" height="15" class="e8"/><rect x="704" y="152" width="29" height="15" class="e0"/><rect x="734" y="152" width="29" height="15" class="e8"/><rect x="764" y="152" width="29" height="15" class="e8"/><rect x="794" y="152" width="29" height="15" class="e8"/><rect x="824" y="152" width="29" height="15" class="e8"/><rect x="854" y="152" width="29" height="15" class="e8"/><rect x="884" y="152" width="29" height="15" class="e7"/><rect x="914" y="152" width="29" height="15" class="e7"/><rect x="44" y="168" width="29" height="15" class="e8"/><rect x="74" y="168" width="29" height="15" class="e7"/><rect x="104" y="168" width="29" height="15" class="e7"/><rect x="134" y="168" width="29" height="15" class="e8"/><rect x="164" y="168" width="29" height="15" class="e8"/><rect x="194" y="168" width="29" height="15" class="e8"/><rect x="224" y="168" width="29" height="15" class="e8"/><rect x="254" y="168" width="29" height="15" class="e8"/><rect x="284" y="168" width="29" height="15" class="e0"/><rect x="314" y="168" width="29" height="15" class="e0"/><rect x="344" y="168" width="29" height="15" class="e8"/><rect x="374" y="168" width="29" height="15" class="e8"/><rect x="404" y="168" width="29" height="15" class="e8"/><rect x="434" y="168" width="29" height="15" class="e7"/><rect x="464" y="168" width="29" height="15" class="e8"/><rect x="494" y="168" width="29" height="15" class="e8"/><rect x="524" y="168" width="29" height="15" class="e7"/><rect x="554" y="168" width="29" height="15" class="e8"/><rect x="584" y="168" width="29" height="15" class="e8"/><rect x="614" y="168" width="29" height="15" class="e8"/><rect x="644" y="168" width="29" height="15" class="e8"/><rect x="674" y="168" width="29" height="15" class="e7"/><rect x="704" y="168" width="29" height="15" class="e0"/><rect x="734" y="168" width="29" height="15" class="e8"/><rect x="764" y="168" width="29" height="15" class="e8"/><rect x="794" y="168" width="29" height="15" class="e8"/><rect x="824" y="168" width="29" height="15" class="e8"/><rect x="854" y="168" width="29" height="15" class="e8"/><rect x="884" y="168" width="29" height="15" class="e7"/><rect x="914" y="168" width="29" height="15" class="e8"/><rect x="44" y="184" width="29" height="15" class="e8"/><rect x="74" y="184" width="29" height="15" class="e8"/><rect x="104" y="184" width="29" height="15" class="e8"/><rect x="134" y="184" width="29" height="15" class="e8"/><rect x="164" y="184" width="29" height="15" class="e7"/><rect x="194" y="184" width="29" height="15" class="e8"/><rect x="224" y="184" width="29" height="15" class="e8"/><rect x="254" y="184" width="29" height="15" class="e8"/><rect x="284" y="184" width="29" height="15" class="e1"/><rect x="314" y="184" width="29" height="15" class="e0"/><rect x="344" y="184" width="29" height="15" class="e8"/><rect x="374" y="184" width="29" height="15" class="e8"/><rect x="404" y="184" width="29" height="15" class="e8"/><rect x="434" y="184" width="29" height="15" class="e4"/><rect x="464" y="184" width="29" height="15" class="e7"/><rect x="494" y="184" width="29" height="15" class="e8"/><rect x="524" y="184" width="29" height="15" class="e8"/><rect x="554" y="184" width="29" height="15" class="e8"/><rect x="584" y="184" width="29" height="15" class="e8"/><rect x="614" y="184" width="29" height="15" class="e8"/><rect x="644" y="184" width="29" height="15" class="e8"/><rect x="674" y="184" width="29" height="15" class="e7"/><rect x="704" y="184" width="29" height="15" class="e0"/><rect x="734" y="184" width="29" height="15" class="e8"/><rect x="764" y="184" width="29" height="15" class="e8"/><rect x="794" y="184" width="29" height="15" class="e8"/><rect x="824" y="184" width="29" height="15" class="e7"/><rect x="854" y="184" width="29" height="15" class="e8"/><rect x="884" y="184" width="29" height="15" class="e6"/><rect x="914" y="184" width="29" height="15" class="e8"/><text x="38" y="211.5" text-anchor="end" class="ch-t">15</text><rect x="44" y="200" width="29" height="15" class="e4"/><rect x="74" y="200" width="29" height="15" class="e4"/><rect x="104" y="200" width="29" height="15" class="e4"/><rect x="134" y="200" width="29" height="15" class="e4"/><rect x="164" y="200" width="29" height="15" class="e1"/><rect x="194" y="200" width="29" height="15" class="e4"/><rect x="224" y="200" width="29" height="15" class="e7"/><rect x="254" y="200" width="29" height="15" class="e4"/><rect x="284" y="200" width="29" height="15" class="e0"/><rect x="314" y="200" width="29" height="15" class="e0"/><rect x="344" y="200" width="29" height="15" class="e6"/><rect x="374" y="200" width="29" height="15" class="e4"/><rect x="404" y="200" width="29" height="15" class="e4"/><rect x="434" y="200" width="29" height="15" class="e1"/><rect x="464" y="200" width="29" height="15" class="e4"/><rect x="494" y="200" width="29" height="15" class="e1"/><rect x="524" y="200" width="29" height="15" class="e4"/><rect x="554" y="200" width="29" height="15" class="e4"/><rect x="584" y="200" width="29" height="15" class="e2"/><rect x="614" y="200" width="29" height="15" class="e4"/><rect x="644" y="200" width="29" height="15" class="e6"/><rect x="674" y="200" width="29" height="15" class="e4"/><rect x="704" y="200" width="29" height="15" class="e0"/><rect x="734" y="200" width="29" height="15" class="e4"/><rect x="764" y="200" width="29" height="15" class="e4"/><rect x="794" y="200" width="29" height="15" class="e4"/><rect x="824" y="200" width="29" height="15" class="e4"/><rect x="854" y="200" width="29" height="15" class="e4"/><rect x="884" y="200" width="29" height="15" class="e2"/><rect x="914" y="200" width="29" height="15" class="e4"/><rect x="44" y="216" width="29" height="15" class="e4"/><rect x="74" y="216" width="29" height="15" class="e4"/><rect x="104" y="216" width="29" height="15" class="e4"/><rect x="134" y="216" width="29" height="15" class="e6"/><rect x="164" y="216" width="29" height="15" class="e1"/><rect x="194" y="216" width="29" height="15" class="e4"/><rect x="224" y="216" width="29" height="15" class="e6"/><rect x="254" y="216" width="29" height="15" class="e1"/><rect x="284" y="216" width="29" height="15" class="e0"/><rect x="314" y="216" width="29" height="15" class="e0"/><rect x="344" y="216" width="29" height="15" class="e4"/><rect x="374" y="216" width="29" height="15" class="e2"/><rect x="404" y="216" width="29" height="15" class="e4"/><rect x="434" y="216" width="29" height="15" class="e2"/><rect x="464" y="216" width="29" height="15" class="e4"/><rect x="494" y="216" width="29" height="15" class="e6"/><rect x="524" y="216" width="29" height="15" class="e4"/><rect x="554" y="216" width="29" height="15" class="e4"/><rect x="584" y="216" width="29" height="15" class="e2"/><rect x="614" y="216" width="29" height="15" class="e4"/><rect x="644" y="216" width="29" height="15" class="e2"/><rect x="674" y="216" width="29" height="15" class="e2"/><rect x="704" y="216" width="29" height="15" class="e0"/><rect x="734" y="216" width="29" height="15" class="e4"/><rect x="764" y="216" width="29" height="15" class="e4"/><rect x="794" y="216" width="29" height="15" class="e4"/><rect x="824" y="216" width="29" height="15" class="e4"/><rect x="854" y="216" width="29" height="15" class="e4"/><rect x="884" y="216" width="29" height="15" class="e4"/><rect x="914" y="216" width="29" height="15" class="e4"/><rect x="44" y="232" width="29" height="15" class="e4"/><rect x="74" y="232" width="29" height="15" class="e6"/><rect x="104" y="232" width="29" height="15" class="e4"/><rect x="134" y="232" width="29" height="15" class="e6"/><rect x="164" y="232" width="29" height="15" class="e4"/><rect x="194" y="232" width="29" height="15" class="e1"/><rect x="224" y="232" width="29" height="15" class="e6"/><rect x="254" y="232" width="29" height="15" class="e2"/><rect x="284" y="232" width="29" height="15" class="e0"/><rect x="314" y="232" width="29" height="15" class="e0"/><rect x="344" y="232" width="29" height="15" class="e2"/><rect x="374" y="232" width="29" height="15" class="e4"/><rect x="404" y="232" width="29" height="15" class="e4"/><rect x="434" y="232" width="29" height="15" class="e6"/><rect x="464" y="232" width="29" height="15" class="e4"/><rect x="494" y="232" width="29" height="15" class="e2"/><rect x="524" y="232" width="29" height="15" class="e4"/><rect x="554" y="232" width="29" height="15" class="e4"/><rect x="584" y="232" width="29" height="15" class="e4"/><rect x="614" y="232" width="29" height="15" class="e6"/><rect x="644" y="232" width="29" height="15" class="e7"/><rect x="674" y="232" width="29" height="15" class="e4"/><rect x="704" y="232" width="29" height="15" class="e0"/><rect x="734" y="232" width="29" height="15" class="e4"/><rect x="764" y="232" width="29" height="15" class="e4"/><rect x="794" y="232" width="29" height="15" class="e6"/><rect x="824" y="232" width="29" height="15" class="e2"/><rect x="854" y="232" width="29" height="15" class="e6"/><rect x="884" y="232" width="29" height="15" class="e2"/><rect x="914" y="232" width="29" height="15" class="e6"/><text x="38" y="259.5" text-anchor="end" class="ch-t">18</text><rect x="44" y="248" width="29" height="15" class="e4"/><rect x="74" y="248" width="29" height="15" class="e4"/><rect x="104" y="248" width="29" height="15" class="e4"/><rect x="134" y="248" width="29" height="15" class="e4"/><rect x="164" y="248" width="29" height="15" class="e4"/><rect x="194" y="248" width="29" height="15" class="e4"/><rect x="224" y="248" width="29" height="15" class="e4"/><rect x="254" y="248" width="29" height="15" class="e4"/><rect x="284" y="248" width="29" height="15" class="e1"/><rect x="314" y="248" width="29" height="15" class="e0"/><rect x="344" y="248" width="29" height="15" class="e4"/><rect x="374" y="248" width="29" height="15" class="e4"/><rect x="404" y="248" width="29" height="15" class="e2"/><rect x="434" y="248" width="29" height="15" class="e4"/><rect x="464" y="248" width="29" height="15" class="e4"/><rect x="494" y="248" width="29" height="15" class="e4"/><rect x="524" y="248" width="29" height="15" class="e4"/><rect x="554" y="248" width="29" height="15" class="e4"/><rect x="584" y="248" width="29" height="15" class="e2"/><rect x="614" y="248" width="29" height="15" class="e2"/><rect x="644" y="248" width="29" height="15" class="e6"/><rect x="674" y="248" width="29" height="15" class="e1"/><rect x="704" y="248" width="29" height="15" class="e0"/><rect x="734" y="248" width="29" height="15" class="e4"/><rect x="764" y="248" width="29" height="15" class="e4"/><rect x="794" y="248" width="29" height="15" class="e4"/><rect x="824" y="248" width="29" height="15" class="e4"/><rect x="854" y="248" width="29" height="15" class="e4"/><rect x="884" y="248" width="29" height="15" class="e2"/><rect x="914" y="248" width="29" height="15" class="e4"/><rect x="44" y="264" width="29" height="15" class="e4"/><rect x="74" y="264" width="29" height="15" class="e4"/><rect x="104" y="264" width="29" height="15" class="e4"/><rect x="134" y="264" width="29" height="15" class="e6"/><rect x="164" y="264" width="29" height="15" class="e4"/><rect x="194" y="264" width="29" height="15" class="e4"/><rect x="224" y="264" width="29" height="15" class="e4"/><rect x="254" y="264" width="29" height="15" class="e4"/><rect x="284" y="264" width="29" height="15" class="e0"/><rect x="314" y="264" width="29" height="15" class="e1"/><rect x="344" y="264" width="29" height="15" class="e4"/><rect x="374" y="264" width="29" height="15" class="e4"/><rect x="404" y="264" width="29" height="15" class="e4"/><rect x="434" y="264" width="29" height="15" class="e4"/><rect x="464" y="264" width="29" height="15" class="e4"/><rect x="494" y="264" width="29" height="15" class="e4"/><rect x="524" y="264" width="29" height="15" class="e4"/><rect x="554" y="264" width="29" height="15" class="e4"/><rect x="584" y="264" width="29" height="15" class="e4"/><rect x="614" y="264" width="29" height="15" class="e4"/><rect x="644" y="264" width="29" height="15" class="e4"/><rect x="674" y="264" width="29" height="15" class="e4"/><rect x="704" y="264" width="29" height="15" class="e1"/><rect x="734" y="264" width="29" height="15" class="e4"/><rect x="764" y="264" width="29" height="15" class="e4"/><rect x="794" y="264" width="29" height="15" class="e4"/><rect x="824" y="264" width="29" height="15" class="e2"/><rect x="854" y="264" width="29" height="15" class="e4"/><rect x="884" y="264" width="29" height="15" class="e4"/><rect x="914" y="264" width="29" height="15" class="e4"/><rect x="44" y="280" width="29" height="15" class="e4"/><rect x="74" y="280" width="29" height="15" class="e4"/><rect x="104" y="280" width="29" height="15" class="e4"/><rect x="134" y="280" width="29" height="15" class="e4"/><rect x="164" y="280" width="29" height="15" class="e4"/><rect x="194" y="280" width="29" height="15" class="e4"/><rect x="224" y="280" width="29" height="15" class="e4"/><rect x="254" y="280" width="29" height="15" class="e4"/><rect x="284" y="280" width="29" height="15" class="e4"/><rect x="314" y="280" width="29" height="15" class="e4"/><rect x="344" y="280" width="29" height="15" class="e4"/><rect x="374" y="280" width="29" height="15" class="e4"/><rect x="404" y="280" width="29" height="15" class="e4"/><rect x="434" y="280" width="29" height="15" class="e4"/><rect x="464" y="280" width="29" height="15" class="e4"/><rect x="494" y="280" width="29" height="15" class="e4"/><rect x="524" y="280" width="29" height="15" class="e4"/><rect x="554" y="280" width="29" height="15" class="e4"/><rect x="584" y="280" width="29" height="15" class="e4"/><rect x="614" y="280" width="29" height="15" class="e4"/><rect x="644" y="280" width="29" height="15" class="e4"/><rect x="674" y="280" width="29" height="15" class="e4"/><rect x="704" y="280" width="29" height="15" class="e4"/><rect x="734" y="280" width="29" height="15" class="e4"/><rect x="764" y="280" width="29" height="15" class="e4"/><rect x="794" y="280" width="29" height="15" class="e4"/><rect x="824" y="280" width="29" height="15" class="e4"/><rect x="854" y="280" width="29" height="15" class="e4"/><rect x="884" y="280" width="29" height="15" class="e4"/><rect x="914" y="280" width="29" height="15" class="e4"/><text x="59.0" y="310" text-anchor="middle" class="ch-t" >27 Tem</text><text x="209.0" y="310" text-anchor="middle" class="ch-t" style="fill:var(--metin);font-weight:600">1 Ağu</text><text x="359.0" y="310" text-anchor="middle" class="ch-t" >6 Ağu</text><text x="509.0" y="310" text-anchor="middle" class="ch-t" >11 Ağu</text><text x="659.0" y="310" text-anchor="middle" class="ch-t" style="fill:var(--metin);font-weight:600">16 Ağu</text><text x="809.0" y="310" text-anchor="middle" class="ch-t" >21 Ağu</text><rect x="44" y="322" width="19" height="9" class="e0"/><rect x="64" y="322" width="19" height="9" class="e1"/><rect x="84" y="322" width="19" height="9" class="e2"/><rect x="104" y="322" width="19" height="9" class="e3"/><rect x="124" y="322" width="19" height="9" class="e4"/><rect x="144" y="322" width="19" height="9" class="e5"/><rect x="164" y="322" width="19" height="9" class="e6"/><rect x="184" y="322" width="19" height="9" class="e7"/><rect x="204" y="322" width="19" height="9" class="e8"/><text x="38" y="330" text-anchor="end" class="ch-t">eksik</text><text x="230" y="330" class="ch-t">fazla · ±35 kW ve ötesi kırpılır</text></svg>
+        <p class="pi-not">Bakır fazla, mavi eksik tahmindir (p50 − gerçek); gece saatleri (21–04) kapsanmaz. Üst şerit hangi GÜNÜN sorunlu olduğunu, matris hangi SAATİN sorunlu olduğunu söyler.</p>
+      </section>
+
+      <section class="portlet s12">
+        <div class="portlet-bas"><span class="no">4</span> Günlük sapma dağılımı <span class="sag">112 geçerli gün · gölge: μ ± 1σ</span></div>
+        <svg viewBox="0 0 1080 290" style="width:100%;display:block" role="img"><rect x="349.3" y="18" width="356.4" height="232" fill="var(--ch-dusuk)" opacity=".18"/><line x1="46" y1="250.0" x2="1064" y2="250.0" stroke="var(--izgara)"/><text x="40" y="253.5" text-anchor="end" class="ch-t">0</text><line x1="46" y1="192.0" x2="1064" y2="192.0" stroke="var(--izgara)"/><text x="40" y="195.5" text-anchor="end" class="ch-t">5</text><line x1="46" y1="134.0" x2="1064" y2="134.0" stroke="var(--izgara)"/><text x="40" y="137.5" text-anchor="end" class="ch-t">10</text><line x1="46" y1="76.0" x2="1064" y2="76.0" stroke="var(--izgara)"/><text x="40" y="79.5" text-anchor="end" class="ch-t">15</text><line x1="46" y1="18.0" x2="1064" y2="18.0" stroke="var(--izgara)"/><text x="40" y="21.5" text-anchor="end" class="ch-t">20</text><rect x="48.0" y="238.4" width="52.6" height="11.6" fill="var(--ch-cubuk)" rx="1.5"/><rect x="161.1" y="238.4" width="52.6" height="11.6" fill="var(--ch-cubuk)" rx="1.5"/><rect x="217.7" y="203.6" width="52.6" height="46.4" fill="var(--ch-cubuk)" rx="1.5"/><rect x="274.2" y="168.8" width="52.6" height="81.2" fill="var(--ch-cubuk)" rx="1.5"/><rect x="330.8" y="145.6" width="52.6" height="104.4" fill="var(--ch-cubuk)" rx="1.5"/><rect x="387.3" y="64.4" width="52.6" height="185.6" fill="var(--ch-cubuk)" rx="1.5"/><rect x="443.9" y="52.8" width="52.6" height="197.2" fill="var(--ch-cubuk)" rx="1.5"/><rect x="500.4" y="64.4" width="52.6" height="185.6" fill="var(--ch-cubuk)" rx="1.5"/><rect x="557.0" y="157.2" width="52.6" height="92.8" fill="var(--ch-cubuk)" rx="1.5"/><rect x="613.6" y="122.4" width="52.6" height="127.6" fill="var(--ch-cubuk)" rx="1.5"/><rect x="670.1" y="180.4" width="52.6" height="69.6" fill="var(--ch-cubuk)" rx="1.5"/><rect x="726.7" y="180.4" width="52.6" height="69.6" fill="var(--ch-cubuk)" rx="1.5"/><rect x="783.2" y="203.6" width="52.6" height="46.4" fill="var(--ch-cubuk)" rx="1.5"/><rect x="839.8" y="215.2" width="52.6" height="34.8" fill="var(--ch-cubuk)" rx="1.5"/><rect x="896.3" y="226.8" width="52.6" height="23.2" fill="var(--ch-cubuk)" rx="1.5"/><line x1="555.0" y1="18" x2="555.0" y2="250" stroke="var(--ch-eksen-koyu,var(--soluk))" stroke-width="1.2"/><line x1="323.3" y1="18" x2="323.3" y2="250" stroke="var(--soluk)" stroke-dasharray="4 4"/><text x="326.3" y="29" class="ch-t">P10</text><line x1="500.7" y1="18" x2="500.7" y2="250" stroke="var(--soluk)" stroke-dasharray="4 4"/><text x="503.7" y="29" class="ch-t">P50</text><line x1="767.6" y1="18" x2="767.6" y2="250" stroke="var(--soluk)" stroke-dasharray="4 4"/><text x="770.6" y="29" class="ch-t">P90</text><text x="102.6" y="266" text-anchor="middle" class="ch-t">-4</text><text x="215.7" y="266" text-anchor="middle" class="ch-t">-3</text><text x="328.8" y="266" text-anchor="middle" class="ch-t">-2</text><text x="441.9" y="266" text-anchor="middle" class="ch-t">-1</text><text x="555.0" y="266" text-anchor="middle" class="ch-t">0</text><text x="668.1" y="266" text-anchor="middle" class="ch-t">+1</text><text x="781.2" y="266" text-anchor="middle" class="ch-t">+2</text><text x="894.3" y="266" text-anchor="middle" class="ch-t">+3</text><text x="1007.4" y="266" text-anchor="middle" class="ch-t">+4</text><text x="555.0" y="284" text-anchor="middle" class="ch-t">[MWh/gün · tahmin − gerçekleşen]</text><line x1="46" y1="250" x2="1064" y2="250" stroke="var(--ch-eksen-koyu,var(--soluk))"/></svg>
+        <p class="pi-not">Sıfırın solu eksik, sağı fazla tahmindir; kesikli çizgiler P10 / P50 / P90. Günlerin %68'i gölgeli μ±σ kuşağında kalır — kuşak daralıyorsa model oturuyordur.</p>
+      </section>
+<div class="alt-dip">
+        <span>Meteoroloji: profesyonel meteoroloji verisi · Sayılar bu taslakta temsilidir</span>
+        <span class="mono">PVQuant · 25 Ağu 2026 · 14:02</span>
+      </div>
+
+    </div></div>
+  </main>
+</div>
+<script>
+  var d = document.getElementById("temaDugme");
+  d.addEventListener("click", function () {
+    var acik = document.documentElement.dataset.tema === "acik";
+    document.documentElement.dataset.tema = acik ? "koyu" : "acik";
+    d.textContent = acik ? "Açık tema" : "Koyu tema";
+    d.setAttribute("aria-pressed", String(!acik));
+  });
+</script>
+</body>
+</html>
