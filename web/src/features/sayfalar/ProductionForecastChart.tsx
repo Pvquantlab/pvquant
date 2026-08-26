@@ -541,7 +541,19 @@ export function buildChartOption(input: BuildInput): EChartsOption {
             geceler.push([Math.max(evs[i].b, pMin), Math.min(sonraki, pMax)]);
         }
       }
-      const gecerli = geceler.filter(([a, b]) => b > a);
+      // v2.219: kenarlar gece tarafina ICE yaslanir (ceil/floor) — "en yakin"
+      // yuvarlama golgeyi batistan once baslatip dogustan once bitiriyordu ve
+      // golge kalinti gibi okunuyordu; ustune kucuk "gece" etiketi.
+      const iceSnap = ([a, b]: [number, number]): [string, string] | null => {
+        const bas = cats.find((t) => toMs(t) >= a);
+        const son = [...cats].reverse().find((t) => toMs(t) <= b);
+        if (!bas || !son || toMs(bas) >= toMs(son)) return null;
+        return [bas, son];
+      };
+      const gecerli = geceler
+        .filter(([a, b]) => b > a)
+        .map(iceSnap)
+        .filter((r): r is [string, string] => r !== null);
       if (gecerli.length > 0) {
         series.push({
           name: "__gece",
@@ -550,9 +562,19 @@ export function buildChartOption(input: BuildInput): EChartsOption {
           silent: true,
           markArea: {
             silent: true,
-            data: gecerli.map(([a, b]) => [
-              { xAxis: nearestTs(a, cats), itemStyle: { color: T.nightTint } },
-              { xAxis: nearestTs(b, cats) },
+            label: {
+              show: true, position: "insideTop", distance: 6,
+              color: T.mutedText, fontFamily: "monospace",
+              fontSize: narrow ? 9 : 10,
+            },
+            data: gecerli.map(([bas, son]) => [
+              {
+                // dar kirpintilarda (pencere kenari) etiket sigmaz — yazilmaz
+                name: toMs(son) - toMs(bas) >= 3 * 3600_000 ? "gece" : "",
+                xAxis: bas,
+                itemStyle: { color: T.nightTint },
+              },
+              { xAxis: son },
             ]) as never,
           },
           z: T.z.night,

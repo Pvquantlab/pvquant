@@ -41,7 +41,7 @@
   --chart-daybreak: rgba(16,29,48,.16);
   --chart-grid: rgba(16,29,48,.11);
   --chart-baseline: rgba(22,32,45,.38);  /* v2.218: taban cizgisi izgaradan koyu */
-  --chart-night: rgba(16,29,48,.05);     /* v2.218: gece golgesi (batis→dogus) */
+  --chart-night: rgba(16,29,48,.04);     /* v2.218: gece golgesi (batis→dogus) */
   --chart-axis-text: #45586F;
   --chart-unit: #45586F;
   --chart-surface: #FFFFFF;
@@ -77,7 +77,7 @@
   --chart-daybreak: rgba(255,255,255,.16);
   --chart-grid: rgba(255,255,255,.10);
   --chart-baseline: rgba(255,255,255,.34);
-  --chart-night: rgba(0,0,0,.16);
+  --chart-night: rgba(0,0,0,.14);
   --chart-axis-text: #A9B7C9;
   --chart-unit: #A9B7C9;
   --chart-surface: #121E31;
