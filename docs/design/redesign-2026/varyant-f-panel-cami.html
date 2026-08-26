@@ -291,6 +291,12 @@ table.veri thead th, .pi th { font-size: 11px; }
   .ust { flex-wrap: wrap; height: auto; padding: 8px 16px; gap: 8px; }
 }
 
+
+/* ciddi SaaS hiyerarsisi: basliklar murekkep, meta soluk */
+.portlet-bas, .ozet-bas { color: var(--ikincil); }
+.portlet-bas .sag, .ozet-bas .sag { color: var(--soluk); }
+.ozet .dg { font-weight: 600; }
+
 /* parlak amber hucrelerde koyu metin — acik pi-metin 2:1'de kaliyordu */
 .pi td.h6, .pi td.h7, .pi td.h8, .pi td.h9 { color: #14100A; }
 
@@ -300,19 +306,19 @@ table.veri thead th, .pi th { font-size: 11px; }
   --uyari: #C9502E; --basari: #15803D;
   --zemin: #EAF0F7;
   --kart: rgba(255,255,255,.74); --yuzey: rgba(22,36,58,.05);
-  --metin: #16243A; --ikincil: #3E5068; --soluk: #52657E;
-  --kenar: rgba(22,36,58,.14); --izgara: rgba(22,36,58,.09);
-  --ch-band: rgba(45,111,181,.14); --ch-band2: rgba(45,111,181,.28); --ch-eksen-koyu: #3E5068;
+  --metin: #101D30; --ikincil: #2C3E57; --soluk: #45586F;
+  --kenar: rgba(16,29,48,.18); --izgara: rgba(16,29,48,.11);
+  --ch-band: rgba(45,111,181,.14); --ch-band2: rgba(45,111,181,.28); --ch-eksen-koyu: #2C3E57;
   --ch-p50-gecmis: #2D6FB5; --ch-p50-gelecek: #2D6FB5;
-  --ch-ac: #66718A; --ch-simdi: #7A8698; --ch-simdi-metin: #52657E;
+  --ch-ac: #5C6880; --ch-simdi: #6B7789; --ch-simdi-metin: #45586F;
   --ch-gercek-metin: #9A5C07;
-  --ch-izgara: rgba(22,36,58,.10); --ch-eksen: rgba(22,36,58,.24);
+  --ch-izgara: rgba(16,29,48,.11); --ch-eksen: rgba(16,29,48,.30);
   --ch-cubuk: #4C9A6E; --ch-vurgu: #166534; --ch-dusuk: #9AA6B5;
   --ch-eksik: rgba(94,112,137,.14);
   --ch-gy-yaz: #16A34A; --ch-gy-eki: #7A8698; --ch-gy-kis: #9AA6B5;
   --h0:#EDF3FA; --h1:#E0EDF2; --h2:#D4E7E3; --h3:#D9E5CF; --h4:#E8E3C2;
   --h5:#EED095; --h6:#EBAD45; --h7:#E28F0A; --h8:#CA7D09; --h9:#B26A08;
-  --pi-metin: #22303F;
+  --pi-metin: #1B2939;
 }
 [data-tema="acik"] body { background:
   linear-gradient(rgba(22,36,58,.05) 1px, transparent 1px),
