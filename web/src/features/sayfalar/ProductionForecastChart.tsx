@@ -127,6 +127,11 @@ export const CHART_TOKENS = (dark: boolean) => ({
   nowLine: cssVar("--chart-now", dark ? "#E2E8F0" : "#334155"),
   dayBreak: cssVar("--chart-daybreak", dark ? "#334155" : "#E2E8F0"),
   gridLine: cssVar("--chart-grid", dark ? "#1E293B" : "#EFF3F7"),
+  // v2.218: Solargis cizim dili — taban cizgisi izgaradan koyu, gece golgesi
+  baseLine: cssVar("--chart-baseline",
+    dark ? "rgba(255,255,255,0.34)" : "rgba(22,32,45,0.38)"),
+  nightTint: cssVar("--chart-night",
+    dark ? "rgba(0,0,0,0.16)" : "rgba(16,29,48,0.05)"),
   axisText: cssVar("--chart-axis-text", dark ? "#94A3B8" : "#475569"),
   unitText: cssVar("--chart-unit", dark ? "#94A3B8" : "#64748B"),
   surface: cssVar("--chart-surface", dark ? "#0F172A" : "#FFFFFF"),
@@ -134,6 +139,7 @@ export const CHART_TOKENS = (dark: boolean) => ({
   mutedText: cssVar("--chart-muted", dark ? "#94A3B8" : "#64748B"),
   btnBorder: cssVar("--chart-btn-border", "rgba(100,116,139,0.4)"),
   z: {
+    night: 0,
     rules: 0,
     exceedTint: 1,
     bandPast: 2,
@@ -275,6 +281,9 @@ export function buildBandSeries(
     u === null || lower[i] === null ? null : u - (lower[i] as number),
   );
   const edge = { color: st.edge, opacity: st.edgeOpacity, width: st.edgeWidth };
+  // v2.218: monoton yumusatma — Solargis profil dili; smoothMonotone "x"
+  // tepe asma/tasma yapmaz, veri degerleri degismez (yalniz ara cizim).
+  const puruzsuz = { smooth: 0.3, smoothMonotone: "x" as const };
   return [
     {
       name,
@@ -285,6 +294,7 @@ export function buildBandSeries(
       symbol: "none",
       silent: true,
       z,
+      ...puruzsuz,
     },
     {
       name,
@@ -296,6 +306,7 @@ export function buildBandSeries(
       silent: true,
       z,
       areaStyle: { color: st.fill },
+      ...puruzsuz,
     },
   ];
 }
@@ -409,6 +420,17 @@ export function buildChartOption(input: BuildInput): EChartsOption {
   let exceedIdx: boolean[] = [];
   let satureIdx: boolean[] = []; // U3
 
+  // v2.218: tooltip rapor-tablosu dili — sol etiket soluk, sag deger tabular
+  // hizali, seri murekkebi kucuk kare rozetle (Solargis lejant dili).
+  const nokta = (renk: string) =>
+    `<span style="display:inline-block;width:8px;height:8px;border-radius:2px;` +
+    `background:${renk};margin-right:6px;vertical-align:baseline"></span>`;
+  const satir = (etiket: string, deger: string, rozet = "") =>
+    `<tr><td style="padding:1px 14px 1px 0;color:${T.mutedText};` +
+    `white-space:nowrap">${rozet}${etiket}</td>` +
+    `<td style="text-align:right;font-variant-numeric:tabular-nums;` +
+    `white-space:nowrap">${deger}</td></tr>`;
+
   if (!daily) {
     // -------- hourly (24s / 72s / 7g)
     cats = forecast.map((p) => p.ts);
@@ -495,7 +517,47 @@ export function buildChartOption(input: BuildInput): EChartsOption {
         symbol: "none",
         connectNulls: false,
         z: T.z.p50Past,
+        smooth: 0.3,
+        smoothMonotone: "x",
       });
+    }
+
+    // v2.218: gece golgesi — Solargis diurnal dili: batis→dogus araliklari
+    // cok soluk tonla golgelenir. Yalniz API'nin astronomik ciftleri; cift
+    // verilmeyen gunlerde golge yok (tire ilkesinin alan hali).
+    if (gunes && gunes.length > 0 && cats.length > 1) {
+      const pMin = toMs(cats[0]);
+      const pMax = toMs(cats[cats.length - 1]);
+      const evs = gunes
+        .map((g) => ({ d: toMs(g.dogus), b: toMs(g.batis) }))
+        .filter((e) => Number.isFinite(e.d) && Number.isFinite(e.b))
+        .sort((a, b) => a.d - b.d);
+      const geceler: [number, number][] = [];
+      if (evs.length > 0) {
+        if (evs[0].d > pMin) geceler.push([pMin, Math.min(evs[0].d, pMax)]);
+        for (let i = 0; i < evs.length; i++) {
+          const sonraki = i + 1 < evs.length ? evs[i + 1].d : pMax;
+          if (evs[i].b < pMax && sonraki > evs[i].b)
+            geceler.push([Math.max(evs[i].b, pMin), Math.min(sonraki, pMax)]);
+        }
+      }
+      const gecerli = geceler.filter(([a, b]) => b > a);
+      if (gecerli.length > 0) {
+        series.push({
+          name: "__gece",
+          type: "line",
+          data: [],
+          silent: true,
+          markArea: {
+            silent: true,
+            data: gecerli.map(([a, b]) => [
+              { xAxis: nearestTs(a, cats), itemStyle: { color: T.nightTint } },
+              { xAxis: nearestTs(b, cats) },
+            ]) as never,
+          },
+          z: T.z.night,
+        } as SeriesOption);
+      }
     }
 
     // v2.203: dogus/batis isaretleri — taban cizgisinde amber tik + saat
@@ -553,6 +615,8 @@ export function buildChartOption(input: BuildInput): EChartsOption {
         },
         symbol: "none",
         z: T.z.p50Past,
+        smooth: 0.3,
+        smoothMonotone: "x",
       },
       {
         name: "p50fut",
@@ -566,6 +630,8 @@ export function buildChartOption(input: BuildInput): EChartsOption {
         },
         symbol: "none",
         z: T.z.p50Fut,
+        smooth: 0.3,
+        smoothMonotone: "x",
       },
     );
 
@@ -588,6 +654,8 @@ export function buildChartOption(input: BuildInput): EChartsOption {
           symbol: "none",
           silent: true,
           z: T.z.exceed,
+          smooth: 0.3,
+          smoothMonotone: "x",
         });
       }
     }
@@ -596,32 +664,38 @@ export function buildChartOption(input: BuildInput): EChartsOption {
       const p = byTs.get(ts);
       if (!p) return "";
       const isPast = toMs(ts) <= nowMs;
-      const rows = [
-        `<b>${fmtTime(toMs(ts), tz)} · ${isPast ? "Geçmiş" : "Tahmin"}</b>`,
-        `P50&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${nfKw.format(p.p50)} kW`,
+      const rows: string[] = [
+        satir("P50", `${nfKw.format(p.p50)} kW`,
+          nokta(isPast ? T.p50Past : T.p50Future)),
       ];
       if (typeof p.p10 === "number" && typeof p.p90 === "number") {
         rows.push(
-          `P10–P90&nbsp;&nbsp;${nfKw.format(p.p10)} – ${nfKw.format(
-            p.p90,
-          )} kW`,
-          `Bant&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${nfKw.format(
-            p.p90 - p.p10,
-          )} kW`,
+          satir("P10–P90",
+            `${nfKw.format(p.p10)} – ${nfKw.format(p.p90)} kW`,
+            nokta(isPast ? T.bandPastFill : T.bandFutFill)),
+          satir("Bant", `${nfKw.format(p.p90 - p.p10)} kW`),
         );
-        if (bandSature(p.p90, acVal)) {
-          // U3: sıfır/ince bant burada kesinlik değil, tavan kesmesi.
-          rows.push(`Bant tavana dayalı — üst sınır AC kırpması`);
-        }
       }
       if (acVal !== null) {
-        rows.push(`AC payı&nbsp;&nbsp;&nbsp;${nfKw.format(acVal - p.p50)} kW`);
+        rows.push(satir("AC payı", `${nfKw.format(acVal - p.p50)} kW`,
+          nokta(T.acLimit)));
       }
       const a = actualByTs.get(ts);
       if (typeof a === "number") {
-        rows.push(`Gerçekleşen&nbsp;${nfKw.format(a)} kW`);
+        rows.push(satir("Gerçekleşen", `${nfKw.format(a)} kW`,
+          nokta(T.actualLine)));
       }
-      return rows.join("<br/>");
+      const notlar: string[] = [];
+      if (typeof p.p90 === "number" && bandSature(p.p90, acVal)) {
+        // U3: sıfır/ince bant burada kesinlik değil, tavan kesmesi.
+        notlar.push(`<div style="margin-top:4px;color:${T.mutedText};` +
+          `font-size:11px">Bant tavana dayalı — üst sınır AC kırpması</div>`);
+      }
+      return (
+        `<b>${fmtTime(toMs(ts), tz)} · ${isPast ? "Geçmiş" : "Tahmin"}</b>` +
+        `<table style="border-collapse:collapse;margin-top:4px">` +
+        rows.join("") + `</table>` + notlar.join("")
+      );
     };
   } else {
     // -------- daily envelope (>7g) — V1 ribbon around the peak, D7 max(P50)
@@ -710,23 +784,24 @@ export function buildChartOption(input: BuildInput): EChartsOption {
       const d = byLabel.get(label);
       if (!d) return "";
       const isPast = d.lastMs <= nowMs;
-      const rows = [
-        `<b>${label} · ${isPast ? "Geçmiş" : "Tahmin"}</b>`,
-        `Tepe P50&nbsp;&nbsp;${nfKw.format(d.maxP50)} kW`,
+      const rows: string[] = [
+        satir("Tepe P50", `${nfKw.format(d.maxP50)} kW`,
+          nokta(isPast ? T.p50Past : T.p50Future)),
       ];
       if (d.maxP10 !== null && d.maxP90 !== null) {
-        rows.push(
-          `Tepe P10–P90&nbsp;&nbsp;${nfKw.format(d.maxP10)} – ${nfKw.format(
-            d.maxP90,
-          )} kW`,
-        );
+        rows.push(satir("Tepe P10–P90",
+          `${nfKw.format(d.maxP10)} – ${nfKw.format(d.maxP90)} kW`,
+          nokta(isPast ? T.bandPastFill : T.bandFutFill)));
       }
       if (acVal !== null) {
-        rows.push(
-          `AC payı&nbsp;&nbsp;&nbsp;${nfKw.format(acVal - d.maxP50)} kW`,
-        );
+        rows.push(satir("AC payı", `${nfKw.format(acVal - d.maxP50)} kW`,
+          nokta(T.acLimit)));
       }
-      return rows.join("<br/>");
+      return (
+        `<b>${label} · ${isPast ? "Geçmiş" : "Tahmin"}</b>` +
+        `<table style="border-collapse:collapse;margin-top:4px">` +
+        rows.join("") + `</table>`
+      );
     };
   }
 
@@ -843,7 +918,7 @@ export function buildChartOption(input: BuildInput): EChartsOption {
               left: 4,
               top: 34 + input.plotHeightPx * (1 - acVal / yMax) - 6,
               style: {
-                text: nfKw.format(acVal),
+                text: `AC ${nfKw.format(acVal)}`,
                 fill: T.acLimit,
                 font: "10px monospace",
               },
@@ -864,8 +939,15 @@ export function buildChartOption(input: BuildInput): EChartsOption {
         fontFamily: "monospace",
         fontSize: narrow ? 9 : 11,
       },
-      axisLine: { lineStyle: { color: T.gridLine } },
-      axisTick: { show: false },
+      // v2.218: Solargis cizim dili — taban cizgisi izgaradan belirgin,
+      // etiketli saatlerde kisa dis tik (Fig 7.3/7.6 eksen grameri).
+      axisLine: { lineStyle: { color: T.baseLine } },
+      axisTick: {
+        show: true,
+        interval: axisIntervalFn as never,
+        length: 4,
+        lineStyle: { color: T.baseLine },
+      },
       splitLine: { show: false },
       // v2.201: D cizim dili — Solargis'in koseli parantezli eksen notu
       ...(narrow ? {} : {
@@ -879,7 +961,12 @@ export function buildChartOption(input: BuildInput): EChartsOption {
       type: "value",
       min: 0,
       max: yMax,
-      interval: 1000,
+      // v2.218: "guzel" aralik — 4-6 cizgi hedefi (kucuk santralde 1000'lik
+      // sabit aralik 1-2 cizgi birakiyordu, buyukte kalabalik yapiyordu).
+      interval:
+        [250, 500, 1000, 2000, 2500, 5000, 10000, 20000, 25000, 50000].find(
+          (iv) => yMax % iv === 0 && yMax / iv <= 6,
+        ) ?? yMax / 4,
       axisLabel: {
         color: T.axisText,
         fontFamily: "monospace",
