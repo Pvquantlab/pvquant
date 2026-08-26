@@ -127,11 +127,9 @@ export const CHART_TOKENS = (dark: boolean) => ({
   nowLine: cssVar("--chart-now", dark ? "#E2E8F0" : "#334155"),
   dayBreak: cssVar("--chart-daybreak", dark ? "#334155" : "#E2E8F0"),
   gridLine: cssVar("--chart-grid", dark ? "#1E293B" : "#EFF3F7"),
-  // v2.218: Solargis cizim dili — taban cizgisi izgaradan koyu, gece golgesi
+  // v2.218: Solargis cizim dili — taban cizgisi izgaradan koyu
   baseLine: cssVar("--chart-baseline",
     dark ? "rgba(255,255,255,0.34)" : "rgba(22,32,45,0.38)"),
-  nightTint: cssVar("--chart-night",
-    dark ? "rgba(0,0,0,0.16)" : "rgba(16,29,48,0.05)"),
   axisText: cssVar("--chart-axis-text", dark ? "#94A3B8" : "#475569"),
   unitText: cssVar("--chart-unit", dark ? "#94A3B8" : "#64748B"),
   surface: cssVar("--chart-surface", dark ? "#0F172A" : "#FFFFFF"),
@@ -139,7 +137,6 @@ export const CHART_TOKENS = (dark: boolean) => ({
   mutedText: cssVar("--chart-muted", dark ? "#94A3B8" : "#64748B"),
   btnBorder: cssVar("--chart-btn-border", "rgba(100,116,139,0.4)"),
   z: {
-    night: 0,
     rules: 0,
     exceedTint: 1,
     bandPast: 2,
@@ -520,66 +517,6 @@ export function buildChartOption(input: BuildInput): EChartsOption {
         smooth: 0.3,
         smoothMonotone: "x",
       });
-    }
-
-    // v2.218: gece golgesi — Solargis diurnal dili: batis→dogus araliklari
-    // cok soluk tonla golgelenir. Yalniz API'nin astronomik ciftleri; cift
-    // verilmeyen gunlerde golge yok (tire ilkesinin alan hali).
-    if (gunes && gunes.length > 0 && cats.length > 1) {
-      const pMin = toMs(cats[0]);
-      const pMax = toMs(cats[cats.length - 1]);
-      const evs = gunes
-        .map((g) => ({ d: toMs(g.dogus), b: toMs(g.batis) }))
-        .filter((e) => Number.isFinite(e.d) && Number.isFinite(e.b))
-        .sort((a, b) => a.d - b.d);
-      const geceler: [number, number][] = [];
-      if (evs.length > 0) {
-        if (evs[0].d > pMin) geceler.push([pMin, Math.min(evs[0].d, pMax)]);
-        for (let i = 0; i < evs.length; i++) {
-          const sonraki = i + 1 < evs.length ? evs[i + 1].d : pMax;
-          if (evs[i].b < pMax && sonraki > evs[i].b)
-            geceler.push([Math.max(evs[i].b, pMin), Math.min(sonraki, pMax)]);
-        }
-      }
-      // v2.219: kenarlar gece tarafina ICE yaslanir (ceil/floor) — "en yakin"
-      // yuvarlama golgeyi batistan once baslatip dogustan once bitiriyordu ve
-      // golge kalinti gibi okunuyordu; ustune kucuk "gece" etiketi.
-      const iceSnap = ([a, b]: [number, number]): [string, string] | null => {
-        const bas = cats.find((t) => toMs(t) >= a);
-        const son = [...cats].reverse().find((t) => toMs(t) <= b);
-        if (!bas || !son || toMs(bas) >= toMs(son)) return null;
-        return [bas, son];
-      };
-      const gecerli = geceler
-        .filter(([a, b]) => b > a)
-        .map(iceSnap)
-        .filter((r): r is [string, string] => r !== null);
-      if (gecerli.length > 0) {
-        series.push({
-          name: "__gece",
-          type: "line",
-          data: [],
-          silent: true,
-          markArea: {
-            silent: true,
-            label: {
-              show: true, position: "insideTop", distance: 6,
-              color: T.mutedText, fontFamily: "monospace",
-              fontSize: narrow ? 9 : 10,
-            },
-            data: gecerli.map(([bas, son]) => [
-              {
-                // dar kirpintilarda (pencere kenari) etiket sigmaz — yazilmaz
-                name: toMs(son) - toMs(bas) >= 3 * 3600_000 ? "gece" : "",
-                xAxis: bas,
-                itemStyle: { color: T.nightTint },
-              },
-              { xAxis: son },
-            ]) as never,
-          },
-          z: T.z.night,
-        } as SeriesOption);
-      }
     }
 
     // v2.203: dogus/batis isaretleri — taban cizgisinde amber tik + saat
