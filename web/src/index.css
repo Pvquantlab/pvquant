@@ -1,22 +1,24 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap');
 
 :root {
-  /* v2.196 — "Rapor Odasi" dili (docs/design/redesign-2026/varyant-d):
-     kagit zemin + ince cizgi + IBM Plex; kaynak mockup'in :root blogu. */
-  --marka: #2E8555; --marka-acik: #33925D; --marka-koyu: #205D3B; --marka-zemin: #E9F4EE;
-  --marka-r: 46,133,85;
+  /* v2.215 — "Panel Cami" kimligi (docs/design/redesign-2026/varyant-f):
+     D "Rapor Odasi" YERLESIMI korunur; kimlik F — gunduz/gece cami,
+     fotovoltaik hucre dokusu, buzlu cam yuzeyler, Fira Sans + Fira Code.
+     Grafik sozlesmesi degismedi: MAVI = tahmin, AMBER = yalniz gerceklesen. */
+  --marka: #16A34A; --marka-acik: #22C55E; --marka-koyu: #166534; --marka-zemin: rgba(22,163,74,.10);
+  --marka-r: 22,163,74;
   --notr: #64748B; --notr-acik: #94A3B8; --notr-r: 100,116,139;
   --amber: #E8940A; --amber-zemin: #FDF1DE; --amber-r: 232,148,10;
-  --amber-metin: #8A5A20;   /* amber ailesinin METIN icin okunur tonu (4.5:1) */
+  --amber-metin: #9A5C07;   /* amber ailesinin METIN icin okunur tonu (4.5:1) */
   --uyari: #C9502E; --uyari-zemin: #FBEEEA;
-  --basari: #1E9E6A;
-  --zemin: #FBFAF7; --kart: #FFFFFF; --yuzey: #F4F2EB; --yuzey2: #ECE8E0;
-  --metin: #1B211E; --ikincil: #454D48; --soluk: #5A625C;
-  --cubuk-vurgu: #205D3B;
-  --kenar: #DEDAD2; --izgara: #ECE8E0;
-  --yan: #FBFAF7; --yan-metin: #454D48; --yan-aktif: #E9F4EE; --yan-cizgi: #DEDAD2;
-  --font: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
-  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --basari: #15803D;
+  --zemin: #EAF0F7; --kart: rgba(255,255,255,.74); --yuzey: rgba(16,29,48,.05); --yuzey2: rgba(16,29,48,.09);
+  --metin: #101D30; --ikincil: #2C3E57; --soluk: #45586F;
+  --cubuk-vurgu: #166534;
+  --kenar: rgba(16,29,48,.18); --izgara: rgba(16,29,48,.11);
+  --yan: rgba(255,255,255,.78); --yan-metin: #2C3E57; --yan-aktif: rgba(22,163,74,.10); --yan-cizgi: rgba(16,29,48,.14);
+  --font: 'Fira Sans', system-ui, -apple-system, sans-serif;
+  --mono: 'Fira Code', ui-monospace, monospace;
   --t-buyuk: 27px; --t-govde: 14px; --t-ikincil: 13px; --t-etiket: 11px;
   --satir: 1.55;
   --r: 4px; --rk: 6px;
@@ -32,32 +34,32 @@
   --chart-band2-future: rgba(45,111,181,.28);  /* v2.204: ic bant P25-P75 */
   --chart-band2-past: rgba(45,111,181,.20);
   --chart-actual: #E8940A;
-  --chart-limit: #8A8478;
-  --chart-limit-tint: rgba(138,132,120,.08);
-  --chart-sature-tint: rgba(138,132,120,.22);
-  --chart-now: #6B7570;
-  --chart-daybreak: #E4DFD6;
-  --chart-grid: #ECE8E0;
-  --chart-axis-text: #5A625C;
-  --chart-unit: #5A625C;
+  --chart-limit: #5C6880;
+  --chart-limit-tint: rgba(92,104,128,.10);
+  --chart-sature-tint: rgba(92,104,128,.24);
+  --chart-now: #6B7789;
+  --chart-daybreak: rgba(16,29,48,.16);
+  --chart-grid: rgba(16,29,48,.11);
+  --chart-axis-text: #45586F;
+  --chart-unit: #45586F;
   --chart-surface: #FFFFFF;
-  --chart-muted: #5A625C;
+  --chart-muted: #45586F;
   /* ECharts (Cubuklar, gunes yolu) murekkepleri */
-  --ch-cubuk: #6FA98A; --ch-dusuk: #A8A296;
-  --ch-gy-yaz: #2E8555; --ch-gy-eki: #6B7570; --ch-gy-kis: #8A8478;
+  --ch-cubuk: #4C9A6E; --ch-dusuk: #9AA6B5;
+  --ch-gy-yaz: #16A34A; --ch-gy-eki: #5C6880; --ch-gy-kis: #66738A;
   /* parmak izi hucre metni */
-  --pi-metin: #23281F;
+  --pi-metin: #1B2939;
 }
 [data-tema="koyu"] {
-  --marka: #3FA97D; --marka-acik: #7FCBA8; --marka-koyu: #7FCBA8; --marka-r: 63,169,125;
+  --marka: #22C55E; --marka-acik: #4ADE80; --marka-koyu: #86EFAC; --marka-r: 34,197,94;
   --notr: #7C8BA1; --notr-acik: #94A3B8; --notr-r: 124,139,161;
   --amber-metin: #ECB35C;
-  --zemin: #101410; --kart: #171C16; --yuzey: #1C221B; --yuzey2: #222822;
-  --marka-zemin: #14251C; --amber-zemin: #2A2013; --uyari-zemin: #2B1813;
-  --metin: #EEF2EA; --ikincil: #C2CCC0; --soluk: #97A29A;
-  --cubuk-vurgu: #7FCBA8;
-  --kenar: #2A3028; --izgara: #222822;
-  --yan: #101410; --yan-metin: #C2CCC0; --yan-aktif: #14251C; --yan-cizgi: #2A3028;
+  --zemin: #0B1424; --kart: rgba(19,31,52,.78); --yuzey: rgba(255,255,255,.06); --yuzey2: rgba(255,255,255,.09);
+  --marka-zemin: rgba(34,197,94,.12); --amber-zemin: #2A2013; --uyari-zemin: #2B1813;
+  --metin: #F4F8FD; --ikincil: #D6E0EB; --soluk: #A9B7C9;
+  --cubuk-vurgu: #86EFAC;
+  --kenar: rgba(255,255,255,.13); --izgara: rgba(255,255,255,.09);
+  --yan: rgba(11,20,36,.72); --yan-metin: #D6E0EB; --yan-aktif: rgba(34,197,94,.12); --yan-cizgi: rgba(255,255,255,.12);
   --chart-p50-future: #7CB1E8;
   --chart-p50-past: #7CB1E8;
   --chart-band-future: rgba(124,177,232,.18);
@@ -66,19 +68,19 @@
   --chart-band-past-edge: #7CB1E8;
   --chart-band2-future: rgba(124,177,232,.34);
   --chart-band2-past: rgba(124,177,232,.24);
-  --chart-limit: #8A9288;
-  --chart-limit-tint: rgba(138,146,136,.10);
-  --chart-sature-tint: rgba(138,146,136,.26);
-  --chart-now: #97A29A;
-  --chart-daybreak: #39413A;
-  --chart-grid: #222822;
-  --chart-axis-text: #97A29A;
-  --chart-unit: #97A29A;
-  --chart-surface: #171C16;
-  --chart-muted: #97A29A;
-  --ch-cubuk: #3E7B5F; --ch-dusuk: #5A625C;
-  --ch-gy-yaz: #3FA97D; --ch-gy-eki: #97A29A; --ch-gy-kis: #7C867E;
-  --pi-metin: #EEF2EA;
+  --chart-limit: #93A2B4;
+  --chart-limit-tint: rgba(147,162,180,.10);
+  --chart-sature-tint: rgba(147,162,180,.26);
+  --chart-now: #A9B7C9;
+  --chart-daybreak: rgba(255,255,255,.16);
+  --chart-grid: rgba(255,255,255,.10);
+  --chart-axis-text: #A9B7C9;
+  --chart-unit: #A9B7C9;
+  --chart-surface: #121E31;
+  --chart-muted: #A9B7C9;
+  --ch-cubuk: #34A06A; --ch-dusuk: #5E6C7E;
+  --ch-gy-yaz: #22C55E; --ch-gy-eki: #A9B7C9; --ch-gy-kis: #8290A3;
+  --pi-metin: #F4F8FD;
 }
 
 * { box-sizing: border-box; }
@@ -235,8 +237,8 @@ table.veri tbody tr:hover td { background: var(--yuzey); }
 
 /* v2.92: koyu tema kontrast cilasi (v2.196'da D paletiyle korundu) */
 [data-tema="koyu"] .rozet-ok { color: var(--marka); }
-[data-tema="koyu"] .dugme-ana { color: #101410; }
-[data-tema="koyu"] .dugme-ana:hover { color: #EEF2EA; }
+[data-tema="koyu"] .dugme-ana { color: #0B1424; }
+[data-tema="koyu"] .dugme-ana:hover { color: #0B1424; }
 
 .dugme-ana:hover { background: var(--marka-koyu); border-color: var(--marka-koyu); color: #fff; }
 [data-tema="koyu"] .dugme-ana:hover { background: var(--marka-acik); border-color: var(--marka-acik); }
@@ -291,3 +293,31 @@ table.veri tbody tr:hover td { background: var(--yuzey); }
 .giris-girdi:focus { border-color: var(--marka);
   box-shadow: 0 0 0 3px rgba(var(--marka-r), .14); }
 .giris-girdi::placeholder { color: var(--soluk); }
+
+
+/* ============================================================
+   v2.215 — F "PANEL CAMI" kimligi: fotovoltaik hucre dokusu +
+   buzlu cam yuzeyler. Kaynak mockup:
+   docs/design/redesign-2026/varyant-f-panel-cami.html
+   ============================================================ */
+body { background:
+  linear-gradient(rgba(16,29,48,.05) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(16,29,48,.05) 1px, transparent 1px),
+  radial-gradient(1400px 700px at 72% -12%, #FFFFFF 0%, var(--zemin) 58%);
+  background-size: 46px 46px, 46px 46px, auto; background-attachment: fixed; }
+[data-tema="koyu"] body { background:
+  linear-gradient(rgba(255,255,255,.028) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(255,255,255,.028) 1px, transparent 1px),
+  radial-gradient(1400px 700px at 72% -12%, #152A47 0%, var(--zemin) 58%);
+  background-size: 46px 46px, 46px 46px, auto; background-attachment: fixed;
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+.kart, .kpi { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.yan { backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.ust { background: rgba(255,255,255,.86);
+       backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+[data-tema="koyu"] .ust { background: rgba(11,20,36,.82); }
+/* blur desteklemeyen tarayici: duz karta dus — cam olmadan da okunur */
+@supports not ((backdrop-filter: blur(8px)) or (-webkit-backdrop-filter: blur(8px))) {
+  .kart, .kpi { background: #FFFFFF; }
+  [data-tema="koyu"] .kart, [data-tema="koyu"] .kpi { background: #121E31; }
+}

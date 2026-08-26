@@ -71,14 +71,14 @@ export function Santralim({ plantId }: { plantId: string }) {
     const v = (sam?.hucreler ?? []).flat().filter((x): x is number => x !== null);
     return v.length ? { lo: Math.min(...v), hi: Math.max(...v) } : { lo: 0, hi: 1 };
   }, [sam]);
-  // v2.196 (D): iki temali rampa — acikta kagit->yesil->amber, koyuda
-  // murekkep->filiz->amber (parlaklik degerle buyur; Murekkep-Bakir dersi).
+  // v2.215 (F "Panel Cami"): iki temali rampa — acikta gok->yesil->amber,
+  // koyuda gece laciverti->filiz->amber (parlaklik degerle buyur).
   const koyuTema = typeof document !== "undefined" &&
     document.documentElement.dataset.tema === "koyu";
   const solargisTon = (t: number) => {
     const durak: [number, number, number][] = koyuTema
-      ? [[23, 28, 22], [31, 44, 35], [59, 61, 30], [131, 96, 14], [232, 148, 10]]
-      : [[233, 244, 238], [199, 227, 212], [240, 226, 189], [232, 148, 10], [178, 106, 8]];
+      ? [[16, 27, 44], [27, 58, 49], [76, 83, 27], [169, 119, 10], [232, 148, 10]]
+      : [[237, 243, 250], [212, 231, 227], [232, 227, 194], [232, 148, 10], [178, 106, 8]];
     const k = Math.min(0.999, Math.max(0, t)) * (durak.length - 1);
     const i = Math.floor(k), f = k - i;
     return "rgb(" + durak[i].map((a, c) =>
@@ -268,6 +268,7 @@ export function Santralim({ plantId }: { plantId: string }) {
             mode="hourly"
             plant={{ acCapacityKw: seri.ac_tavani_kw ?? o.ac_tavani_kw,
                      lat: o.lat, lon: o.lon, timezone: o.tz }}
+            features={{ exportButtons: true }}  // v2.215: PNG/CSV — SaaS eylemi
             height={340}
           />
         )}
