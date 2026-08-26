@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { api } from "../api/client";
 import { sayiTr } from "../features/sayfalar/parcalar";
 
@@ -50,7 +50,31 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children }:
   const [koyu, setKoyu] = useState(false);
   // v2.196: yan-ozet kutulari — kurulu guc gercek veriden; gelene dek "—"
   const [kwp, setKwp] = useState<number | null>(null);
+  // v2.216: sayfa-atlama paleti (⌘K) — SaaS kromunun tek "canli" parcasi;
+  // arkasinda gercek islev olmayan krom (zil, ayarlar) bilerek yok.
+  const [paletAcik, setPaletAcik] = useState(false);
+  const [sorgu, setSorgu] = useState("");
+  const [secili, setSecili] = useState(0);
   useEffect(() => { document.documentElement.dataset.tema = koyu ? "koyu" : "acik"; }, [koyu]);
+  useEffect(() => {
+    const f = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault(); setPaletAcik((a) => !a); setSorgu(""); setSecili(0);
+      } else if (e.key === "Escape") setPaletAcik(false);
+    };
+    window.addEventListener("keydown", f);
+    return () => window.removeEventListener("keydown", f);
+  }, []);
+  // TR katlama: "dog" da "Doğruluk"u bulsun (ğ→g, ı→i, ş→s, ç→c, ö→o, ü→u)
+  const katla = (m: string) => m.toLocaleLowerCase("tr")
+    .replace(/ğ/g, "g").replace(/ı/g, "i").replace(/ş/g, "s")
+    .replace(/ç/g, "c").replace(/ö/g, "o").replace(/ü/g, "u");
+  const bulunan = useMemo(() => {
+    const q = katla(sorgu.trim());
+    return q ? SAYFALAR.filter((s) => katla(s.ad).includes(q)) : [...SAYFALAR];
+  }, [sorgu]);
+  const paletSec = (id: SayfaId) => { setSayfa(id); setPaletAcik(false); };
+  const mac = typeof navigator !== "undefined" && /Mac/.test(navigator.platform);
   useEffect(() => {
     if (plantId) api.ozet(plantId).then((o) => setKwp(o.kapasite_kwp)).catch(() => {});
   }, [plantId]);
@@ -65,6 +89,10 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children }:
         <select className="yan-secim" defaultValue={santral}>
           <option>{santral}</option><option>Smoke GES</option>
         </select>
+        {/* v2.216: islev henuz yok — dugme durur ama durust bicimde kapali */}
+        <button className="yan-yeni" disabled title="Yakında">
+          + Yeni santral bağla<span className="yakinda">Yakında</span>
+        </button>
         <div className="yan-ozet">
           <div><div className="et">Santral</div><div className="dg">1</div></div>
           <div><div className="et">Kurulu güç</div>
@@ -77,8 +105,13 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children }:
           </button>
         ))}
         <div className="yan-alt">
-          <div style={{ fontSize: 12.5, color: "var(--metin)", fontWeight: 600 }}>Meridyen Enerji</div>
-          <div style={{ fontSize: 11.5, color: "var(--yan-metin)" }}>Admin</div>
+          <div className="hesap">
+            <div className="avatar" aria-hidden="true">ME</div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 12.5, color: "var(--metin)", fontWeight: 600 }}>Meridyen Enerji</div>
+              <div style={{ fontSize: 11.5, color: "var(--yan-metin)" }}>Admin</div>
+            </div>
+          </div>
           {onCikis && (
             <button onClick={onCikis}
               style={{ marginTop: 8, background: "none", border: "none", padding: 0,
@@ -95,12 +128,50 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children }:
             Panel <b style={{ color: "var(--metin)" }}>· {santral}</b>
             <span className="mono" style={{ color: "var(--soluk)", marginLeft: 14 }}>{bugun}</span>
           </div>
-          <button className="dugme" onClick={() => setKoyu(!koyu)}>
-            {koyu ? "Açık tema" : "Koyu tema"}
-          </button>
+          <div className="ust-arac">
+            <button className="arama"
+              onClick={() => { setPaletAcik(true); setSorgu(""); setSecili(0); }}>
+              <svg {...IKON_ORTAK}><circle cx="9" cy="9" r="5.5"/><path d="m13.2 13.2 3.3 3.3"/></svg>
+              Sayfa ara<kbd>{mac ? "⌘K" : "Ctrl K"}</kbd>
+            </button>
+            <button className="dugme" onClick={() => setKoyu(!koyu)}>
+              {koyu ? "Açık tema" : "Koyu tema"}
+            </button>
+          </div>
         </header>
         <div className="icerik">{children}</div>
       </main>
+      {paletAcik && (
+        <div className="palet-ort" onClick={() => setPaletAcik(false)}>
+          <div className="palet" role="dialog" aria-label="Sayfa arama"
+               onClick={(e) => e.stopPropagation()}>
+            <input className="palet-girdi" autoFocus
+              placeholder="Sayfa ara… (Esc kapatır)"
+              value={sorgu}
+              onChange={(e) => { setSorgu(e.target.value); setSecili(0); }}
+              onKeyDown={(e) => {
+                if (e.key === "ArrowDown") { e.preventDefault();
+                  setSecili((i) => Math.min(i + 1, bulunan.length - 1)); }
+                else if (e.key === "ArrowUp") { e.preventDefault();
+                  setSecili((i) => Math.max(i - 1, 0)); }
+                else if (e.key === "Enter" && bulunan[secili]) paletSec(bulunan[secili].id);
+              }} />
+            <div className="palet-liste">
+              {bulunan.length === 0
+                ? <div className="palet-bos">Eşleşen sayfa yok</div>
+                : bulunan.map((s, i) => (
+                  <button key={s.id} className="palet-satir"
+                    aria-selected={i === secili}
+                    onMouseEnter={() => setSecili(i)}
+                    onClick={() => paletSec(s.id)}>
+                    {IKONLAR[s.id]}{s.ad}
+                    {sayfa === s.id && <span className="palet-not">şu an</span>}
+                  </button>
+                ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
