@@ -65,7 +65,10 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           valueFormatter: (v: unknown) => (v == null ? "—" : `%${sayiTr(Number(v), 1)}`) },
         xAxis: { type: "category", data: tarihler, axisTick: { show: false },
           axisLine: { lineStyle: { color: kenar } },
-          axisLabel: { color: soluk, fontFamily: mono, fontSize: 10, interval: 13 } },
+          // v2.231: sabit 13 araligi 30g penceresinde tek etiket birakiyordu —
+          // hedef ~4 etiket, pencereye gore olceklenir
+          axisLabel: { color: soluk, fontFamily: mono, fontSize: 10,
+            interval: Math.max(1, Math.ceil(tarihler.length / 4) - 1) } },
         yAxis: { type: "value", max: ymax, splitLine: { lineStyle: { color: izgara } },
           axisLine: { show: false },
           axisLabel: { color: soluk, fontFamily: mono, fontSize: 10,
