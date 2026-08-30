@@ -53,6 +53,11 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children }:
   // v2.237: ayni ozet istegi telemetri seridini de besler (yeni cagri yok)
   const [ozet, setOzet] = useState<SantralOzeti | null>(null);
   const kwp = ozet?.kapasite_kwp ?? null;
+  // v2.238: ozet.son_kosu API'de yok (uyarlayici sabit null basiyor) —
+  // "henuz kosu yok" her zaman yaniyordu, OYSA kosular vardi. Gercek kaynak
+  // forecast_runs kapisi: undefined=yuklenmedi (segment gizli), null=liste
+  // gercekten bos, string=son kosunun zamani. Ag hatasi "kosu yok" DEGILDIR.
+  const [sonKosu, setSonKosu] = useState<string | null | undefined>(undefined);
   // v2.216: sayfa-atlama paleti (⌘K) — SaaS kromunun tek "canli" parcasi;
   // arkasinda gercek islev olmayan krom (zil, ayarlar) bilerek yok.
   const [paletAcik, setPaletAcik] = useState(false);
@@ -81,7 +86,12 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children }:
   const paletSec = (id: SayfaId) => { setSayfa(id); setPaletAcik(false); };
   const mac = typeof navigator !== "undefined" && /Mac/.test(navigator.platform);
   useEffect(() => {
-    if (plantId) api.ozet(plantId).then(setOzet).catch(() => {});
+    if (plantId) {
+      api.ozet(plantId).then(setOzet).catch(() => {});
+      api.kosular(plantId)
+        .then((k) => setSonKosu(k[0]?.run_at ?? null))
+        .catch(() => {});
+    }
   }, [plantId]);
   useEffect(() => {
     document.body.style.overflow = menuAcik ? "hidden" : "";
@@ -185,8 +195,10 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children }:
                     ? `son yükleme ${sg.son_scada} · ${sg.kesinti_gun} gündür yeni veri yok`
                     : `veri akışı sağlıklı · son yükleme ${sg.son_scada}`}
               </span>
-              <span>{ozet.son_kosu
-                ? `son koşu ${trKosu(ozet.son_kosu)}` : "henüz koşu yok"}</span>
+              {sonKosu !== undefined && (
+                <span>{sonKosu
+                  ? `son koşu ${trKosu(sonKosu)}` : "henüz koşu yok"}</span>
+              )}
               <span className="tele-sag">
                 model {ozet.model_adi}{ozet.mod ? ` · Mod ${ozet.mod}` : ""}
                 {ozet.son_kalibrasyon ? ` · kalibrasyon ${ozet.son_kalibrasyon}` : ""}
