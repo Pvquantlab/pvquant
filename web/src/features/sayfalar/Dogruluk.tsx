@@ -200,13 +200,6 @@ export function Dogruluk({ plantId }: { plantId: string }) {
       birikim += b.adet;
       return toplam ? Math.round((1000 * birikim) / toplam) / 10 : 0;
     });
-    const bant = hd?.p10 != null && hd?.p90 != null
-      ? [[{ xAxis: xi(hd.p10), name: "P10\u2013P90",
-            itemStyle: { color: soluk, opacity: 0.12 },
-            label: { show: true, position: "insideTopLeft" as const, distance: 6,
-                     color: soluk, fontSize: 10, fontFamily: mono } },
-          { xAxis: xi(hd.p90) }]]
-      : [];
     return {
       grid: { left: 46, right: 46, top: 24, bottom: 44 }, animation: false,
       tooltip: { trigger: "axis", backgroundColor: oku("--kart"), borderColor: kenar,
@@ -238,9 +231,6 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           data: kutular.map((b) => b.adet),
           itemStyle: { color: mavi, opacity: 0.88, borderRadius: [2, 2, 0, 0] },
           z: 2,
-          markArea: bant.length
-            ? { silent: true, data: bant as never }
-            : undefined,
           markLine: hd?.p50 != null
             // v2.232: medyan etiketi dikeyken cubugun icinde kayboluyordu —
             // yatay, cizginin tepesinde (rotate 0, position end)
@@ -251,6 +241,18 @@ export function Dogruluk({ plantId }: { plantId: string }) {
                     position: "end" as const, distance: 6, rotate: 0,
                     formatter: () => `medyan ${sayiTr(hd.p50 as number, 2)}` } }] as never }
             : undefined },
+        // v2.235: P10/P90 sinirlari — gri BANT zemini ikiye boluyordu
+        // (kullanici karari: zemin tek renk); ince kesikli cizgilere cevrildi,
+        // degerler baslik cipinde. Sinir-koordinat dersi geregi deger ekseninde.
+        ...(hd?.p10 != null && hd?.p90 != null
+          ? [hd.p10, hd.p90].map((v) => ({
+              name: "__sinir", type: "line" as const,
+              xAxisIndex: 1, yAxisIndex: 1, z: 1,
+              silent: true, symbol: "none",
+              data: [[xi(v), 0], [xi(v), 100]],
+              lineStyle: { color: soluk, type: [4, 4] as never, width: 1 },
+              tooltip: { show: false } }))
+          : []),
         // v2.234: sifir cizgisi — markLine kutu SINIRINDAKI kesirli koordinati
         // cizmedi (medyan kutu icinde cizilirken sinirdaki 2.5 sessizce dustu);
         // gizli deger ekseninde iki noktali seri kesin cizilir. Yalniz 0
@@ -402,6 +404,8 @@ export function Dogruluk({ plantId }: { plantId: string }) {
       <Kart baslik="Günlük sapma dağılımı (tahmin − gerçekleşen)"
         sag={<span className="cip">
           {hd?.ndays ?? 0} geçerli gün · μ {hd?.mu ?? "—"} · σ {hd?.sd ?? "—"} MWh
+          {hd?.p10 != null && hd?.p90 != null
+            ? ` · P10–P90: ${sayiTr(hd.p10, 2)} – ${sayiTr(hd.p90, 2)}` : ""}
         </span>}>
         {hd && hd.kutular.length > 0 ? (
           <>
@@ -410,9 +414,9 @@ export function Dogruluk({ plantId }: { plantId: string }) {
             <p style={{ fontSize: 12, color: "var(--soluk)", margin: "12px 0 0" }}>
               <b style={{ color: "var(--ikincil)" }}>Bu grafik günlük enerji sapmasının dağılımıdır:</b>{" "}
               her mavi çubuk, günlük toplam sapması (tahmin − gerçekleşen, MWh) o aralığa
-              düşen gün sayısını verir; sıfırın solu eksik, sağı fazla tahmindir. Gri bant
-              günlerin %80'inin düştüğü P10–P90 aralığı, düz çizgi medyan, yeşil eğri
-              kümülatif paydır (sağ eksen).{" "}
+              düşen gün sayısını verir; sıfırın solu eksik, sağı fazla tahmindir. Kesikli
+              çizgiler günlerin %80'inin arasında kaldığı P10 ve P90 sınırları, düz
+              çizgi medyan, yeşil eğri kümülatif paydır (sağ eksen).{" "}
               <b style={{ color: "var(--ikincil)" }}>Neye bakmalı:</b> gövde sıfır
               çevresinde ne kadar dar toplanırsa model o kadar güvenilirdir; gövdenin
               sola/sağa kayması sistematik eksik/fazla tahminin işaretidir.
