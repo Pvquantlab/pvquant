@@ -536,6 +536,10 @@ export function buildChartOption(input: BuildInput): EChartsOption {
         }
       }
       if (isaretler.length > 0) {
+        // v2.229: cok gunlu pencerede (72s+) saat etiketleri birbirine ve
+        // "[saat · yerel]" eksen adina biniyordu — 48 saatten uzun dilimde
+        // yalniz amber tikler kalir; tam etiket 24s gorunumunde.
+        const cokGun = cats.length > 48;
         series.push({
           name: "__gunes",
           type: "scatter",
@@ -549,7 +553,7 @@ export function buildChartOption(input: BuildInput): EChartsOption {
             itemStyle: { color: T.actualLine },
             silent: true,
             label: {
-              show: true, position: "bottom", distance: narrow ? 8 : 14,
+              show: !cokGun, position: "bottom", distance: narrow ? 8 : 14,
               color: T.mutedText, fontFamily: "monospace",
               fontSize: narrow ? 9 : 10,
             },
