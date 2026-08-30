@@ -199,6 +199,7 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children }:
                    aria-hidden="true" />
               <div className="zil-panel" role="dialog" aria-label="Alarmlar">
                 <div className="zil-bas">Alarmlar</div>
+                <div className="zil-govde">
                 {alarmlar === undefined || alarmlar === null ? (
                   <p className="zil-bos">{alarmlar === null
                     ? "Alarm listesi alınamadı — bağlantıyı kontrol edin."
@@ -224,6 +225,7 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children }:
                     </div>
                   ))
                 )}
+                </div>
               </div>
             </>
           )}
