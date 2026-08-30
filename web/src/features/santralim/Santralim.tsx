@@ -4,7 +4,7 @@ import { api } from "../../api/client";
 import type { SantralOzeti, TahminSerisi, GunesYolu, SaatAyMatrisi } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
-import { Kart, Sayfa, sayiTr } from "../sayfalar/parcalar";
+import { Kart, Sayfa, sayiTr, isiTonu, isiMetni } from "../sayfalar/parcalar";
 import ProductionForecastChart from "../sayfalar/ProductionForecastChart";
 import { t0Hesapla, simdiDegeri, dilimle } from "../sayfalar/tahminPencere";
 import { Cubuklar } from "./Cubuklar";
@@ -75,18 +75,9 @@ export function Santralim({ plantId }: { plantId: string }) {
   // koyuda gece laciverti->filiz->amber (parlaklik degerle buyur).
   const koyuTema = typeof document !== "undefined" &&
     document.documentElement.dataset.tema === "koyu";
-  const solargisTon = (t: number) => {
-    const durak: [number, number, number][] = koyuTema
-      ? [[16, 27, 44], [27, 58, 49], [76, 83, 27], [169, 119, 10], [232, 148, 10]]
-      : [[237, 243, 250], [212, 231, 227], [232, 227, 194], [232, 148, 10], [178, 106, 8]];
-    const k = Math.min(0.999, Math.max(0, t)) * (durak.length - 1);
-    const i = Math.floor(k), f = k - i;
-    return "rgb(" + durak[i].map((a, c) =>
-      Math.round(a + (durak[i + 1][c] - a) * f)).join(",") + ")";
-  };
-  // parlak amber hucrelerde koyu metin (4.5:1); digerlerinde tema metni
-  const piMetin = (t: number) =>
-    (koyuTema ? t > 0.55 : t > 0.62) ? "#14100A" : "var(--pi-metin)";
+  // v2.226: duraklar parcalar.tsx'e ortaklandi (Aylik ayni dili konusur)
+  const solargisTon = (t: number) => isiTonu(t, koyuTema);
+  const piMetin = (t: number) => isiMetni(t, koyuTema);
 
   const gyOption = useMemo(() => {
     const soluk = oku("--soluk"), kenar = oku("--kenar"), mono = oku("--mono");

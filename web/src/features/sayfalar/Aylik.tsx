@@ -5,7 +5,7 @@ import type { AylikBeklenti, SantralOzeti } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
 import { Cubuklar } from "../santralim/Cubuklar";
-import { Kart, Kpi, Sayfa, sayiTr } from "./parcalar";
+import { Kart, Kpi, Sayfa, sayiTr, isiTonu, isiMetni } from "./parcalar";
 
 const AYLAR = ["Oca", "Şub", "Mar", "Nis", "May", "Haz",
                "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
@@ -52,15 +52,12 @@ export function Aylik({ plantId }: { plantId: string }) {
              yilHi: tamYillar.length ? Math.max(...tamYillar) : 1 };
   }, [b]);
 
-  // Solargis paleti: acik yesil -> sari -> turuncu -> kizil (deger arka plani)
-  const solargisTon = (t: number) => {
-    const durak: [number, number, number][] = [
-      [233, 244, 238], [199, 227, 212], [240, 226, 189], [232, 148, 10], [178, 106, 8]];
-    const k = Math.min(0.999, Math.max(0, t)) * (durak.length - 1);
-    const i = Math.floor(k), f = k - i;
-    return "rgb(" + durak[i].map((a, c) =>
-      Math.round(a + (durak[i + 1][c] - a) * f)).join(",") + ")";
-  };
+  // v2.226: rampa parcalar.tsx'ten — Santralim'in parmak iziyle AYNI dil
+  // (F duraklari, iki temali); metin rengi de ayni yardimcidan.
+  const koyuTema = typeof document !== "undefined" &&
+    document.documentElement.dataset.tema === "koyu";
+  const solargisTon = (t: number) => isiTonu(t, koyuTema);
+  const tonMetni = (t: number) => isiMetni(t, koyuTema);
 
   const option = useMemo(() => {
     const izgara = oku("--izgara"), soluk = oku("--soluk");
@@ -81,8 +78,10 @@ export function Aylik({ plantId }: { plantId: string }) {
           return `${AYLAR[r.ay - 1]}<br/>P50: ${f(r.p50)} kWh/m²<br/>` +
                  `P10–P90: ${f(r.p10)} – ${f(r.p90)}`;
         } },
-      xAxis: { type: "category", data: AYLAR, axisTick: { show: false },
-        axisLine: { lineStyle: { color: kenar } },
+      xAxis: { type: "category", data: AYLAR,
+        axisTick: { show: true, length: 4,
+          lineStyle: { color: oku("--chart-baseline") || kenar } },
+        axisLine: { lineStyle: { color: oku("--chart-baseline") || kenar } },
         axisLabel: { color: soluk, fontFamily: mono, fontSize: 11 } },
       yAxis: { type: "value", name: "kWh/m²",
         nameTextStyle: { color: soluk, fontFamily: mono, fontSize: 10 },
@@ -90,7 +89,7 @@ export function Aylik({ plantId }: { plantId: string }) {
         axisLabel: { color: soluk, fontFamily: mono, fontSize: 11 } },
       series: [
         { name: "P50", type: "bar", barMaxWidth: 34, z: 1,
-          itemStyle: { borderRadius: [2, 2, 0, 0], color: "#4E9B72" },
+          itemStyle: { borderRadius: [2, 2, 0, 0], color: oku("--ch-cubuk") },
           label: { show: true, position: "top", distance: 16,
             color: oku("--metin"), fontFamily: mono, fontSize: 10.5,
             formatter: (pr: { value: number }) => `${Math.round(pr.value)}` },
@@ -106,7 +105,7 @@ export function Aylik({ plantId }: { plantId: string }) {
             const [x, yLo] = api.coord([xi, lo]);
             const yHi = api.coord([xi, hi])[1];
             const w = 7;
-            const cizgi = { stroke: "#26303A", lineWidth: 1.4 };
+            const cizgi = { stroke: oku("--metin"), lineWidth: 1.4 };
             return { type: "group", children: [
               { type: "line", shape: { x1: x, y1: yLo, x2: x, y2: yHi }, style: cizgi },
               { type: "line", shape: { x1: x - w, y1: yLo, x2: x + w, y2: yLo }, style: cizgi },
@@ -139,7 +138,7 @@ export function Aylik({ plantId }: { plantId: string }) {
     <Sayfa baslik="Aylık beklenti"
       alt="İklimden gelen ay bazlı üretim zarfı — kısa ufuk tahmini değildir; NWP aya uzatılmaz."
       sag={<span className="cip">Kaynak: 20 yıl arşiv · hesap {hesap}</span>}>
-      <div className="kpi-satir">
+      <div className="ızgara satir-3" style={{ marginBottom: 14 }}>
         <Kpi etiket={`${AYLAR[buAy - 1]} · P10`}
              deger={k?.p10 !== null && k ? sayiTr(k.p10) : "—"}
              birim="kWh/m²" alt="kötümser zarf (10/100 yıl altında)" />
@@ -153,6 +152,14 @@ export function Aylik({ plantId }: { plantId: string }) {
       <Kart baslik="Aylık GHI — uzun dönem P50 ve P10–P90 aralığı">
         <EChart option={option} height={320}
           ariaLabel="12 ay için 20 yıllık GHI serpilisi, P10-P90 bandı ve P50 çizgisi" />
+        <p style={{ fontSize: 12, color: "var(--soluk)", margin: "12px 0 0" }}>
+          <b style={{ color: "var(--ikincil)" }}>Bu grafik ayın iklim zarfıdır:</b>{" "}
+          yeşil sütun 20 yıllık arşivin medyan (P50) ışınımı, çentikli çizgi
+          P10–P90 aralığıdır — yılların %80'i bu bandın içinde kalır.{" "}
+          <b style={{ color: "var(--ikincil)" }}>Nasıl okunur:</b> bu bir kısa
+          ufuk tahmini değildir; "bu ay normalde ne getirir" sorusunun cevabıdır.
+          Bant genişse o ay iklimsel olarak oynaktır — plana pay bırakın.
+        </p>
       </Kart>
       <Kart baslik="Yıl × ay GHI matrisi"
         sag={<span className="cip">kWh/m² · renk: değer skalası</span>}>
@@ -176,14 +183,19 @@ export function Aylik({ plantId }: { plantId: string }) {
                   <td style={{ padding: "2.5px 6px", color: "var(--soluk)" }}>{r.ad}</td>
                   {r.aylar.map((v, i) => (
                     <td key={i} style={{ padding: "2.5px 2px", textAlign: "center",
-                      border: "1px solid var(--kart)", color: "#26303A",
+                      border: "1px solid var(--kart)",
+                      color: v === null ? "var(--pi-metin)"
+                        : tonMetni((v - matris.lo) / (matris.hi - matris.lo)),
                       background: v === null ? "transparent"
                         : solargisTon((v - matris.lo) / (matris.hi - matris.lo)) }}>
                       {v === null ? <span style={{ color: "var(--soluk)" }}>–</span>
                         : Math.round(v)}
                     </td>))}
                   <td style={{ padding: "2.5px 6px", textAlign: "right", fontWeight: 600,
-                    border: "1px solid var(--kart)", color: "#26303A",
+                    border: "1px solid var(--kart)",
+                    color: r.yil === null ? "var(--pi-metin)"
+                      : tonMetni((r.yil - matris.yilLo) /
+                          Math.max(1, matris.yilHi - matris.yilLo)),
                     background: r.yil === null ? "transparent"
                       : solargisTon((r.yil - matris.yilLo) /
                           Math.max(1, matris.yilHi - matris.yilLo)) }}>
@@ -196,13 +208,18 @@ export function Aylik({ plantId }: { plantId: string }) {
                              fontWeight: 600 }}>Ort.</td>
                 {matris.ort.map((v, i) => (
                   <td key={i} style={{ padding: "3px 2px", textAlign: "center",
-                    fontWeight: 600, border: "1px solid var(--kart)", color: "#26303A",
+                    fontWeight: 600, border: "1px solid var(--kart)",
+                    color: v === null ? "var(--pi-metin)"
+                      : tonMetni((v - matris.lo) / (matris.hi - matris.lo)),
                     background: v === null ? "transparent"
                       : solargisTon((v - matris.lo) / (matris.hi - matris.lo)) }}>
                     {v === null ? "–" : Math.round(v)}
                   </td>))}
                 <td style={{ padding: "3px 6px", textAlign: "right", fontWeight: 700,
-                  border: "1px solid var(--kart)", color: "#26303A",
+                  border: "1px solid var(--kart)",
+                  color: matris.ortYil === null ? "var(--pi-metin)"
+                    : tonMetni((matris.ortYil - matris.yilLo) /
+                        Math.max(1, matris.yilHi - matris.yilLo)),
                   background: matris.ortYil === null ? "transparent"
                     : solargisTon((matris.ortYil - matris.yilLo) /
                         Math.max(1, matris.yilHi - matris.yilLo)) }}>
@@ -213,8 +230,13 @@ export function Aylik({ plantId }: { plantId: string }) {
           </table>
         </div>
         <p style={{ fontSize: 12, color: "var(--soluk)", margin: "12px 0 0" }}>
-          Aylık GHI toplamları (kWh/m²) — sıcak tonlar yüksek ışınımı gösterir.
-          Yıl sütunu tam yılların toplamıdır; Ort. satırı uzun dönem ortalamasıdır.
+          <b style={{ color: "var(--ikincil)" }}>Her hücre bir yılın o ayki GHI
+          toplamıdır</b> (kWh/m²); sıcak tonlar yüksek ışınımı gösterir, skala
+          tüm tabloda ortaktır.{" "}
+          <b style={{ color: "var(--ikincil)" }}>Neye bakmalı:</b> bir sütunda
+          yukarıdan aşağı renk oynaklığı, o ayın yıldan yıla ne kadar değiştiğini
+          söyler. Yıl sütunu tam yılların toplamı, Ort. satırı uzun dönem
+          ortalamasıdır.
         </p>
       </Kart>
       {o && o.aylik.length > 0 && (

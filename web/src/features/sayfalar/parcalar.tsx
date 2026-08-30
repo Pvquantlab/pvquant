@@ -73,3 +73,22 @@ export function Lejant({ ogeler }: { ogeler: { renk: string; ad: string; kesik?:
     </div>
   );
 }
+
+/* v2.226 — ISI RAMPASI (F "Panel Cami", v2.215 duraklari): Santralim'in
+ * parmak-izi matrisiyle Aylik'in yil×ay matrisi AYNI dili konussun diye
+ * ortaklandi. Acikta gok→amber, koyuda gece laciverti→filiz→amber
+ * (parlaklik degerle buyur). t: 0..1 normalize deger. */
+export function isiTonu(t: number, koyu: boolean): string {
+  const durak: [number, number, number][] = koyu
+    ? [[16, 27, 44], [27, 58, 49], [76, 83, 27], [169, 119, 10], [232, 148, 10]]
+    : [[237, 243, 250], [212, 231, 227], [232, 227, 194], [232, 148, 10], [178, 106, 8]];
+  const k = Math.min(0.999, Math.max(0, t)) * (durak.length - 1);
+  const i = Math.floor(k), f = k - i;
+  return "rgb(" + durak[i].map((a, c) =>
+    Math.round(a + (durak[i + 1][c] - a) * f)).join(",") + ")";
+}
+
+/** Parlak amber hucrelerde koyu metin (4.5:1); digerlerinde tema metni. */
+export function isiMetni(t: number, koyu: boolean): string {
+  return (koyu ? t > 0.55 : t > 0.62) ? "#14100A" : "var(--pi-metin)";
+}
