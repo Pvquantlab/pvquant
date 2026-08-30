@@ -241,26 +241,30 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           markArea: bant.length
             ? { silent: true, data: bant as never }
             : undefined,
-          markLine: { symbol: "none", animation: false, silent: true,
-            data: [
-              // v2.232: sifir cizgisi vurgusu (mockup H'de vardi, canliya gelmemisti)
-              ...(kutular.length && kutular[0].lo <= 0 &&
-                  kutular[kutular.length - 1].hi >= 0
-                ? [{ xAxis: xi(0),
-                     lineStyle: { color: oku("--chart-baseline") || kenar,
-                                  type: "solid" as const, width: 1.6 },
-                     label: { show: false } }]
-                : []),
-              // v2.232: medyan etiketi dikeyken cubugun icinde kayboluyordu —
-              // yatay, cizginin tepesinde (rotate 0, position end)
-              ...(hd?.p50 != null
-                ? [{ name: "medyan", xAxis: xi(hd.p50),
-                     lineStyle: { color: soluk, type: "solid" as const, width: 1.4 },
-                     label: { color: soluk, fontSize: 10, fontFamily: mono,
-                       position: "end" as const, distance: 6, rotate: 0,
-                       formatter: () => `medyan ${sayiTr(hd.p50 as number, 2)}` } }]
-                : []),
-            ] as never } },
+          markLine: hd?.p50 != null
+            // v2.232: medyan etiketi dikeyken cubugun icinde kayboluyordu —
+            // yatay, cizginin tepesinde (rotate 0, position end)
+            ? { symbol: "none", animation: false, silent: true,
+                data: [{ name: "medyan", xAxis: xi(hd.p50),
+                  lineStyle: { color: soluk, type: "solid" as const, width: 1.4 },
+                  label: { color: soluk, fontSize: 10, fontFamily: mono,
+                    position: "end" as const, distance: 6, rotate: 0,
+                    formatter: () => `medyan ${sayiTr(hd.p50 as number, 2)}` } }] as never }
+            : undefined },
+        // v2.234: sifir cizgisi — markLine kutu SINIRINDAKI kesirli koordinati
+        // cizmedi (medyan kutu icinde cizilirken sinirdaki 2.5 sessizce dustu);
+        // gizli deger ekseninde iki noktali seri kesin cizilir. Yalniz 0
+        // pencere icindeyse.
+        ...(kutular.length && kutular[0].lo <= 0 &&
+            kutular[kutular.length - 1].hi >= 0
+          ? [{ name: "__sifir", type: "line" as const,
+               xAxisIndex: 1, yAxisIndex: 1, z: 1,
+               silent: true, symbol: "none",
+               data: [[xi(0), 0], [xi(0), 100]],
+               lineStyle: { color: oku("--chart-baseline") || kenar,
+                            type: "solid" as const, width: 1.6 },
+               tooltip: { show: false } }]
+          : []),
         { name: "K\u00fcm\u00fclatif pay", type: "line", xAxisIndex: 1, yAxisIndex: 1, z: 3,
           symbol: "none",
           data: [[-0.5, 0], ...kdf.map((v, i) => [i + 0.5, v])],
