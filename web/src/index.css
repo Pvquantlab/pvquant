@@ -462,3 +462,36 @@ body { background:
   .telemetri { padding: 7px 14px; gap: 8px 14px; }
   .telemetri .tele-sag { margin-left: 0; }
 }
+
+/* v2.240 — zil (alarm) düğmesi + paneli. Rozet yalnız SON 7 GÜNDE alarm
+   varsa yanar; okundu-yönetimi backend'de olmadığından iddia edilmez. */
+.ikon-dugme { position: relative; width: 36px; height: 36px; display: grid;
+  place-items: center; border: 1px solid var(--kenar); border-radius: var(--r);
+  background: var(--kart); color: var(--ikincil); cursor: pointer; }
+.ikon-dugme:hover { color: var(--metin); border-color: var(--soluk); }
+.nokta-badge { position: absolute; top: 6px; right: 6px; width: 7px; height: 7px;
+  border-radius: 50%; background: var(--uyari);
+  border: 1.5px solid var(--zemin); }
+.zil-ort { position: fixed; inset: 0; z-index: 39; }
+.zil-panel { position: absolute; top: 46px; right: 0; z-index: 40;
+  width: min(360px, calc(100vw - 24px));
+  background: var(--kart); border: 1px solid var(--kenar);
+  border-radius: var(--rk); overflow: hidden;
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 18px 48px rgba(3, 8, 16, .28); }
+.zil-bas { font-family: var(--mono); font-size: 10.5px; font-weight: 600;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--ikincil);
+  padding: 12px 14px 10px; border-bottom: 1px solid var(--izgara); }
+.zil-bos { font-size: 12.5px; color: var(--soluk); padding: 14px;
+  margin: 0; line-height: 1.55; }
+.zil-satir { padding: 11px 14px; border-bottom: 1px solid var(--izgara); }
+.zil-satir:last-child { border-bottom: none; }
+.zil-ust { display: flex; justify-content: space-between; gap: 10px;
+  font-size: 12.5px; margin-bottom: 3px; }
+.zil-ust .mono { font-size: 10.5px; color: var(--soluk); }
+.zil-satir p { margin: 0; font-size: 12px; color: var(--ikincil);
+  line-height: 1.5; }
+@supports not ((backdrop-filter: blur(8px)) or (-webkit-backdrop-filter: blur(8px))) {
+  .zil-panel { background: #FFFFFF; }
+  [data-tema="koyu"] .zil-panel { background: #121E31; }
+}

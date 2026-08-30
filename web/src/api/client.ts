@@ -135,6 +135,10 @@ export class EslemeHatasi extends Error {
 
 /** v2.94: gecmis kosu satiri — /runs ucu ile birebir. */
 export interface KosuSatiri { run_at: string; mode: string; model: string; }
+/** v2.240 — zil kapısı satırı (apps/api alarmlar ile birebir). */
+export interface AlarmSatiri {
+  id: string; kural: string; siddet: string; mesaj: string; zaman: string;
+}
 
 /** v2.88: dosyali POST — getir'in 401 sozlesmesinin aynisi. 4xx'te sunucunun
  *  detail mesaji Error olur (422 esleme reddi UI'da durustce okunur). */
@@ -355,6 +359,10 @@ export const api = {
       getir<Karne>(`/v1/plants/${p}/skill?bucket=24-72&gun=${gun}`),
     ]);
     return { ...k0, gunluk: [...k0.gunluk, ...k1.gunluk] };
+  },
+  alarmlar: async (p: string, n = 20): Promise<AlarmSatiri[]> => {
+    if (TABAN == null) return [];
+    return getir<AlarmSatiri[]>(`/v1/plants/${p}/alarmlar?n=${n}`);
   },
   kalibrasyon: async (p: string): Promise<KalibrasyonOzeti | null> => {
     if (TABAN == null) return null;

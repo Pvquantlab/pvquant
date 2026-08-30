@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { api } from "../api/client";
+import { api, type AlarmSatiri } from "../api/client";
 import type { SantralOzeti } from "../api/types";
 import { sayiTr } from "../features/sayfalar/parcalar";
 
@@ -58,6 +58,10 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children }:
   // forecast_runs kapisi: undefined=yuklenmedi (segment gizli), null=liste
   // gercekten bos, string=son kosunun zamani. Ag hatasi "kosu yok" DEGILDIR.
   const [sonKosu, setSonKosu] = useState<string | null | undefined>(undefined);
+  // v2.240: zil — undefined=yuklenmedi, null=istek dustu (hata != alarm yok),
+  // dizi=gercek liste. Rozet: son 7 gunde alarm varsa.
+  const [alarmlar, setAlarmlar] = useState<AlarmSatiri[] | null | undefined>(undefined);
+  const [zilAcik, setZilAcik] = useState(false);
   // v2.216: sayfa-atlama paleti (⌘K) — SaaS kromunun tek "canli" parcasi;
   // arkasinda gercek islev olmayan krom (zil, ayarlar) bilerek yok.
   const [paletAcik, setPaletAcik] = useState(false);
@@ -70,7 +74,9 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children }:
     const f = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault(); setPaletAcik((a) => !a); setSorgu(""); setSecili(0);
-      } else if (e.key === "Escape") { setPaletAcik(false); setMenuAcik(false); }
+      } else if (e.key === "Escape") {
+        setPaletAcik(false); setMenuAcik(false); setZilAcik(false);
+      }
     };
     window.addEventListener("keydown", f);
     return () => window.removeEventListener("keydown", f);
@@ -91,6 +97,7 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children }:
       api.kosular(plantId)
         .then((k) => setSonKosu(k[0]?.run_at ?? null))
         .catch(() => {});
+      api.alarmlar(plantId).then(setAlarmlar).catch(() => setAlarmlar(null));
     }
   }, [plantId]);
   useEffect(() => {
@@ -166,10 +173,60 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children }:
               <svg {...IKON_ORTAK}><circle cx="9" cy="9" r="5.5"/><path d="m13.2 13.2 3.3 3.3"/></svg>
               Sayfa ara<kbd>{mac ? "⌘K" : "Ctrl K"}</kbd>
             </button>
+            <button className="ikon-dugme" aria-label={`Alarmlar${
+                Array.isArray(alarmlar) && alarmlar.length
+                  ? ` — son kayıt ${alarmlar.length >= 20 ? "20+" : alarmlar.length}` : ""}`}
+              aria-expanded={zilAcik}
+              onClick={() => setZilAcik((a) => !a)}>
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none"
+                stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
+                strokeLinejoin="round" aria-hidden="true">
+                <path d="M10 3a4.5 4.5 0 0 0-4.5 4.5c0 4-1.7 5.3-1.7 5.3h12.4s-1.7-1.3-1.7-5.3A4.5 4.5 0 0 0 10 3Z"/>
+                <path d="M8.6 15.8a1.6 1.6 0 0 0 2.8 0"/>
+              </svg>
+              {Array.isArray(alarmlar) && alarmlar.some((x) =>
+                Date.now() - new Date(x.zaman).getTime() < 7 * 86400000) && (
+                <i className="nokta-badge" aria-hidden="true" />
+              )}
+            </button>
             <button className="dugme" onClick={() => setKoyu(!koyu)}>
               {koyu ? "Açık tema" : "Koyu tema"}
             </button>
           </div>
+          {zilAcik && (
+            <>
+              <div className="zil-ort" onClick={() => setZilAcik(false)}
+                   aria-hidden="true" />
+              <div className="zil-panel" role="dialog" aria-label="Alarmlar">
+                <div className="zil-bas">Alarmlar</div>
+                {alarmlar === undefined || alarmlar === null ? (
+                  <p className="zil-bos">{alarmlar === null
+                    ? "Alarm listesi alınamadı — bağlantıyı kontrol edin."
+                    : "Yükleniyor…"}</p>
+                ) : alarmlar.length === 0 ? (
+                  <p className="zil-bos">Alarm yok — kurallar her gece tarar
+                    (veri kesintisi ve isabet düşüşü).</p>
+                ) : (
+                  alarmlar.map((x) => (
+                    <div key={x.id} className="zil-satir">
+                      <div className="zil-ust">
+                        <b>{{ veri_gelmedi: "Veri gelmedi",
+                              skill_dustu: "İsabet düştü" }[x.kural] ?? "Alarm"}</b>
+                        <span className="mono">{(() => {
+                          const d = new Date(x.zaman);
+                          return isNaN(+d) ? "—" : d.toLocaleDateString("tr-TR",
+                            { day: "numeric", month: "short" }) + " " +
+                            d.toLocaleTimeString("tr-TR",
+                            { hour: "2-digit", minute: "2-digit" });
+                        })()}</span>
+                      </div>
+                      <p>{x.mesaj}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
+          )}
         </header>
         {/* v2.237 — TELEMETRI SERIDI (F mockup'inin durust hali): yalniz
             GERCEK veri konusur — tazeleme kadansi gibi dogru olmayan
