@@ -189,7 +189,9 @@ export function Dogruluk({ plantId }: { plantId: string }) {
     const marka = oku("--marka"), markaKoyu = oku("--marka-koyu");
     const mavi = oku("--chart-p50-future");
     const kutular = hd?.kutular ?? [];
-    const etiket = kutular.map((b) => `${b.lo}\u2013${b.hi}`);
+    // v2.232: TR sayi bicimi + bosluklu ayrac — "-1.5-–1" yigilmasi biter
+    const ond = kutular.some((x) => !Number.isInteger(x.lo) || !Number.isInteger(x.hi)) ? 1 : 0;
+    const etiket = kutular.map((x) => `${sayiTr(x.lo, ond)} \u2013 ${sayiTr(x.hi, ond)}`);
     const kutuGen = kutular.length ? kutular[0].hi - kutular[0].lo : 1;
     const xi = (v: number) => (v - (kutular[0]?.lo ?? 0)) / kutuGen - 0.5;
     const toplam = kutular.reduce((a, b) => a + b.adet, 0);
@@ -201,8 +203,8 @@ export function Dogruluk({ plantId }: { plantId: string }) {
     const bant = hd?.p10 != null && hd?.p90 != null
       ? [[{ xAxis: xi(hd.p10), name: "P10\u2013P90",
             itemStyle: { color: soluk, opacity: 0.12 },
-            label: { show: true, position: "insideTop" as const, color: soluk,
-                     fontSize: 10, fontFamily: mono } },
+            label: { show: true, position: "insideTopLeft" as const, distance: 6,
+                     color: soluk, fontSize: 10, fontFamily: mono } },
           { xAxis: xi(hd.p90) }]]
       : [];
     return {
@@ -210,13 +212,21 @@ export function Dogruluk({ plantId }: { plantId: string }) {
       tooltip: { trigger: "axis", backgroundColor: oku("--kart"), borderColor: kenar,
         borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 12 },
         valueFormatter: (v: unknown) => `${v}` },
-      xAxis: { type: "category", data: etiket, name: "MWh/g\u00fcn (tahmin \u2212 ger\u00e7ekle\u015fen)",
-        nameLocation: "middle", nameGap: 26,
-        nameTextStyle: { color: soluk, fontSize: 11 },
-        axisTick: { show: false }, axisLine: { lineStyle: { color: kenar } },
-        axisLabel: { color: soluk, fontFamily: mono, fontSize: 11 } },
+      xAxis: [
+        { type: "category", data: etiket, name: "MWh/g\u00fcn (tahmin \u2212 ger\u00e7ekle\u015fen)",
+          nameLocation: "middle", nameGap: 26,
+          nameTextStyle: { color: soluk, fontSize: 11 },
+          axisTick: { show: false }, axisLine: { lineStyle: { color: kenar } },
+          axisLabel: { color: soluk, fontFamily: mono, fontSize: 11 } },
+        // v2.232: KDF icin gizli deger ekseni — kutu KENARLARI (kumulatif pay
+        // kutunun SONUNDA birikir; Solargis Fig 7.5 egriyi kenardan gecirir)
+        { type: "value", min: -0.5, max: Math.max(0.5, kutular.length - 0.5),
+          show: false },
+      ],
       yAxis: [
-        { type: "value", splitLine: { lineStyle: { color: oku("--izgara") } },
+        { type: "value", name: "g\u00fcn", nameGap: 10,
+          nameTextStyle: { color: soluk, fontFamily: mono, fontSize: 10 },
+          splitLine: { lineStyle: { color: oku("--izgara") } },
           axisLine: { show: false },
           axisLabel: { color: soluk, fontFamily: mono, fontSize: 11 } },
         { type: "value", min: 0, max: 100, splitLine: { show: false },
@@ -232,15 +242,29 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           markArea: bant.length
             ? { silent: true, data: bant as never }
             : undefined,
-          markLine: hd?.p50 != null
-            ? { symbol: "none", animation: false, silent: true,
-                lineStyle: { color: soluk, type: "solid", width: 1.4 },
-                data: [{ name: "medyan", xAxis: xi(hd.p50),
-                  label: { color: soluk, fontSize: 10, position: "insideEndTop" as const,
-                    formatter: () => `medyan ${sayiTr(hd.p50 as number, 2)}` } }] as never }
-            : undefined },
-        { name: "K\u00fcm\u00fclatif pay", type: "line", yAxisIndex: 1, z: 3,
-          symbol: "none", data: kdf,
+          markLine: { symbol: "none", animation: false, silent: true,
+            data: [
+              // v2.232: sifir cizgisi vurgusu (mockup H'de vardi, canliya gelmemisti)
+              ...(kutular.length && kutular[0].lo <= 0 &&
+                  kutular[kutular.length - 1].hi >= 0
+                ? [{ xAxis: xi(0),
+                     lineStyle: { color: oku("--chart-baseline") || kenar,
+                                  type: "solid" as const, width: 1.2 },
+                     label: { show: false } }]
+                : []),
+              // v2.232: medyan etiketi dikeyken cubugun icinde kayboluyordu —
+              // yatay, cizginin tepesinde (rotate 0, position end)
+              ...(hd?.p50 != null
+                ? [{ name: "medyan", xAxis: xi(hd.p50),
+                     lineStyle: { color: soluk, type: "solid" as const, width: 1.4 },
+                     label: { color: soluk, fontSize: 10, fontFamily: mono,
+                       position: "end" as const, distance: 6, rotate: 0,
+                       formatter: () => `medyan ${sayiTr(hd.p50 as number, 2)}` } }]
+                : []),
+            ] as never } },
+        { name: "K\u00fcm\u00fclatif pay", type: "line", xAxisIndex: 1, yAxisIndex: 1, z: 3,
+          symbol: "none",
+          data: [[-0.5, 0], ...kdf.map((v, i) => [i + 0.5, v])],
           lineStyle: { color: marka, width: 2.2 } },
       ],
     };
@@ -372,7 +396,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           </p>
         )}
       </Kart>
-      <Kart baslik="Günlük sapma dağılımı (F − A)"
+      <Kart baslik="Günlük sapma dağılımı (tahmin − gerçekleşen)"
         sag={<span className="cip">
           {hd?.ndays ?? 0} geçerli gün · μ {hd?.mu ?? "—"} · σ {hd?.sd ?? "—"} MWh
         </span>}>
