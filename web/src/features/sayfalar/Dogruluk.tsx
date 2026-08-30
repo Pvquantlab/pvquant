@@ -216,7 +216,8 @@ export function Dogruluk({ plantId }: { plantId: string }) {
         { type: "category", data: etiket, name: "MWh/g\u00fcn (tahmin \u2212 ger\u00e7ekle\u015fen)",
           nameLocation: "middle", nameGap: 26,
           nameTextStyle: { color: soluk, fontSize: 11 },
-          axisTick: { show: false }, axisLine: { lineStyle: { color: kenar } },
+          axisTick: { show: false },
+          axisLine: { lineStyle: { color: oku("--chart-baseline") || kenar } },
           axisLabel: { color: soluk, fontFamily: mono, fontSize: 11 } },
         // v2.232: KDF icin gizli deger ekseni — kutu KENARLARI (kumulatif pay
         // kutunun SONUNDA birikir; Solargis Fig 7.5 egriyi kenardan gecirir)
@@ -224,10 +225,8 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           show: false },
       ],
       yAxis: [
-        { type: "value", name: "g\u00fcn", nameGap: 10,
-          nameTextStyle: { color: soluk, fontFamily: mono, fontSize: 10 },
-          splitLine: { lineStyle: { color: oku("--izgara") } },
-          axisLine: { show: false },
+        { type: "value", splitLine: { lineStyle: { color: oku("--izgara") } },
+          axisLine: { show: false }, axisTick: { show: false },
           axisLabel: { color: soluk, fontFamily: mono, fontSize: 11 } },
         { type: "value", min: 0, max: 100, splitLine: { show: false },
           axisLine: { show: false }, axisTick: { show: false },
@@ -235,7 +234,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
                        formatter: (v: number) => `%${v}` } },
       ],
       series: [
-        { name: "G\u00fcn say\u0131s\u0131", type: "bar", barMaxWidth: 40,
+        { name: "G\u00fcn say\u0131s\u0131", type: "bar", barWidth: "58%",
           data: kutular.map((b) => b.adet),
           itemStyle: { color: mavi, opacity: 0.88, borderRadius: [2, 2, 0, 0] },
           z: 2,
@@ -249,7 +248,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
                   kutular[kutular.length - 1].hi >= 0
                 ? [{ xAxis: xi(0),
                      lineStyle: { color: oku("--chart-baseline") || kenar,
-                                  type: "solid" as const, width: 1.2 },
+                                  type: "solid" as const, width: 1.6 },
                      label: { show: false } }]
                 : []),
               // v2.232: medyan etiketi dikeyken cubugun icinde kayboluyordu —
