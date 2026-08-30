@@ -391,3 +391,14 @@ body { background:
 .kpi-delta svg { flex-shrink: 0; }
 .kpi-delta.iyi { color: var(--marka-koyu); background: var(--marka-zemin); }
 .kpi-delta.notr { color: var(--ikincil); background: var(--yuzey); }
+
+/* v2.230 — Doğruluk dönem segmenti (mockup H kromu; API gun'u zaten
+   destekliyordu, ölü düğme değil gerçek işlev). */
+.seg { display: inline-flex; border: 1px solid var(--kenar);
+  border-radius: var(--r); overflow: hidden; background: var(--kart);
+  vertical-align: middle; }
+.seg button { font-family: var(--mono); font-size: 10.5px; padding: 4px 11px;
+  border: 0; background: none; color: var(--soluk); cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--izgara); }
+.seg button[aria-pressed="true"] { background: var(--marka-zemin);
+  color: var(--marka-koyu); font-weight: 600; }

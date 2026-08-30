@@ -8,7 +8,7 @@ import { Kpi, Kart, Sayfa, sayiTr } from "./parcalar";
 
 const AY = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran",
             "Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
-const donem = (a: string | null, b: string | null) => {
+const donemYaz = (a: string | null, b: string | null) => {
   if (!a || !b) return "—";
   const x = new Date(a), y = new Date(b);
   return x.getMonth() === y.getMonth()
@@ -20,8 +20,13 @@ export function Dogruluk({ plantId }: { plantId: string }) {
   const [k, setK] = useState<Karne | null>(null);
   const [hm, setHm] = useState<HataMatrisi | null>(null);
   const [hd, setHd] = useState<HataDagilimi | null>(null);
+  // v2.230: donem segmenti (mockup H'den; API gun'u zaten destekliyordu).
+  // Yalniz KARNEYI (KPI'lar + WMAPE panelleri) surer — matris/dagilim kendi
+  // pencerelerini ciplerinde soyler. Gecis sirasinda eski veri tutulur
+  // (k null'a dusmez), sayfa titremez.
+  const [donem, setDonem] = useState<30 | 60 | 90>(60);
   const { n, oku } = useTema();
-  useEffect(() => { api.karne(plantId).then(setK); }, [plantId]);
+  useEffect(() => { api.karne(plantId, donem).then(setK); }, [plantId, donem]);
   useEffect(() => { api.hataMatrisi(plantId).then(setHm); }, [plantId]);
   useEffect(() => { api.hataDagilimi(plantId).then(setHd); }, [plantId]);
 
@@ -289,7 +294,15 @@ export function Dogruluk({ plantId }: { plantId: string }) {
   return (
     <Sayfa baslik="Doğruluk karnesi"
       alt="Tahminlerimiz gerçekleşenle her gece karşılaştırılır — kanıt burada birikir."
-      sag={<span className="cip">Kapsanan dönem: {donem(donemIlk, donemSon)}</span>}>
+      sag={<>
+        <span className="seg" role="group" aria-label="Karne dönemi">
+          {([30, 60, 90] as const).map((g) => (
+            <button key={g} aria-pressed={donem === g}
+              onClick={() => setDonem(g)}>{g}g</button>
+          ))}
+        </span>
+        <span className="cip">Kapsanan dönem: {donemYaz(donemIlk, donemSon)}</span>
+      </>}>
       <div className="ızgara satir-4" style={{ marginBottom: 14 }}>
         <Kpi etiket={`WMAPE · 0-24s · ${k.gun_sayisi} gün ort.`}
              deger={`%${sayiTr(k.wmape_ort ?? 0, 1)}`} alt={deltaCip} />

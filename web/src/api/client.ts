@@ -344,13 +344,15 @@ export const api = {
     if (TABAN == null) return ornekOzet;
     return uyarlaOzet(await getir<OzetYanit>(`/v1/plants/${p}/summary`));
   },
-  karne: async (p: string): Promise<Karne> => {
+  karne: async (p: string, gun = 60): Promise<Karne> => {
     if (TABAN == null) return ornekKarne;
     // v2.76: KPI'lar 0-24 kovasindan; grafik karsilastirmasi icin 24-72 de
     // cekilir ve gunluk birlesir (kapi kova basina calisir).
+    // v2.230: gun parametresi kapida ZATEN vardi (1-365) — donem segmenti
+    // icin istemciden gecirilir; varsayilan 60 (mockup H karari).
     const [k0, k1] = await Promise.all([
-      getir<Karne>(`/v1/plants/${p}/skill?bucket=0-24`),
-      getir<Karne>(`/v1/plants/${p}/skill?bucket=24-72`),
+      getir<Karne>(`/v1/plants/${p}/skill?bucket=0-24&gun=${gun}`),
+      getir<Karne>(`/v1/plants/${p}/skill?bucket=24-72&gun=${gun}`),
     ]);
     return { ...k0, gunluk: [...k0.gunluk, ...k1.gunluk] };
   },
