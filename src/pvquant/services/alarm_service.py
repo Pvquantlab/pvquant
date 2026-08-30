@@ -68,3 +68,17 @@ def tara(plant: dict) -> None:
                     f"{plant['name']}: 0-24s MAPE 7 gündür 30 günlük "
                     f"ortalamanın (%{ort:.0f}) 1.5 katının üzerinde — "
                     "kalibrasyon/sensör kontrolü önerilir.")
+
+
+def listele(tenant_id, plant_id, n: int = 20):
+    """Alarm listesi — SUNUM için ham okuma (yeni→eski); hesap yok,
+    üretici worker'daki tara()'dır. RLS tenant_baglami'nda."""
+    with tenant_baglami(tenant_id) as s:
+        rows = s.execute(text(
+            "SELECT id, rule, severity, message, created_at "
+            "FROM alerts WHERE plant_id=:p "
+            "ORDER BY created_at DESC LIMIT :n"),
+            {"p": plant_id, "n": n}).fetchall()
+        return [{"id": str(r.id), "kural": r.rule, "siddet": r.severity,
+                 "mesaj": r.message,
+                 "zaman": r.created_at.isoformat()} for r in rows]

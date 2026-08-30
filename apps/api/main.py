@@ -268,6 +268,18 @@ def hata_matrisi_uc(plant_id: str, gun: int = 30, kova: str = "0-24",
         raise HTTPException(422, str(e))
 
 
+@app.get("/v1/plants/{plant_id}/alarmlar")
+def alarmlar(plant_id: str, n: int = 20,
+             claims=Depends(gecerli_kullanici)):
+    """v2.239 — zil kapısı. Ham okuma (alarm_service.listele); üretici
+    worker'daki günlük taramadır (El Kitabı P4 §3, iki kural). Boş liste
+    200 döner — 'alarm yok' durumunu istemci anlatır."""
+    from pvquant.services import alarm_service
+    if not (1 <= n <= 100):
+        raise HTTPException(422, "n 1-100 araliginda olmali")
+    return alarm_service.listele(claims["tenant_id"], plant_id, n=n)
+
+
 @app.get("/v1/plants/{plant_id}/skill")
 def skill(plant_id: str, bucket: str = "0-24", gun: int = 120,
           claims=Depends(gecerli_kullanici)):
