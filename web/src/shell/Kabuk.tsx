@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { api } from "../api/client";
+import type { SantralOzeti } from "../api/types";
 import { sayiTr } from "../features/sayfalar/parcalar";
 
 export const SAYFALAR = [
@@ -49,7 +50,9 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children }:
     plantId?: string; onCikis?: () => void; children: ReactNode }) {
   const [koyu, setKoyu] = useState(false);
   // v2.196: yan-ozet kutulari — kurulu guc gercek veriden; gelene dek "—"
-  const [kwp, setKwp] = useState<number | null>(null);
+  // v2.237: ayni ozet istegi telemetri seridini de besler (yeni cagri yok)
+  const [ozet, setOzet] = useState<SantralOzeti | null>(null);
+  const kwp = ozet?.kapasite_kwp ?? null;
   // v2.216: sayfa-atlama paleti (⌘K) — SaaS kromunun tek "canli" parcasi;
   // arkasinda gercek islev olmayan krom (zil, ayarlar) bilerek yok.
   const [paletAcik, setPaletAcik] = useState(false);
@@ -78,7 +81,7 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children }:
   const paletSec = (id: SayfaId) => { setSayfa(id); setPaletAcik(false); };
   const mac = typeof navigator !== "undefined" && /Mac/.test(navigator.platform);
   useEffect(() => {
-    if (plantId) api.ozet(plantId).then((o) => setKwp(o.kapasite_kwp)).catch(() => {});
+    if (plantId) api.ozet(plantId).then(setOzet).catch(() => {});
   }, [plantId]);
   useEffect(() => {
     document.body.style.overflow = menuAcik ? "hidden" : "";
@@ -158,6 +161,40 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children }:
             </button>
           </div>
         </header>
+        {/* v2.237 — TELEMETRI SERIDI (F mockup'inin durust hali): yalniz
+            GERCEK veri konusur — tazeleme kadansi gibi dogru olmayan
+            iddialar bilerek yok. Ozet gelmeden serit hic cizilmez. */}
+        {ozet && (() => {
+          const sg = ozet.saglik;
+          const gecikti = sg.kesinti_gun !== null && sg.kesinti_gun > 2;
+          const trKosu = (x: string) => {
+            const d = new Date(x);
+            return isNaN(+d) ? x : d.toLocaleDateString("tr-TR",
+              { day: "numeric", month: "short" }) + " " +
+              d.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+          };
+          return (
+            <div className="telemetri">
+              <span>
+                <i className="nokta-isik" aria-hidden="true"
+                   style={{ background: sg.son_scada === null
+                     ? "var(--soluk)" : gecikti ? "var(--uyari)" : "var(--basari)" }} />
+                {sg.son_scada === null
+                  ? "SCADA verisi henüz yüklenmedi"
+                  : gecikti
+                    ? `son yükleme ${sg.son_scada} · ${sg.kesinti_gun} gündür yeni veri yok`
+                    : `veri akışı sağlıklı · son yükleme ${sg.son_scada}`}
+              </span>
+              <span>{ozet.son_kosu
+                ? `son koşu ${trKosu(ozet.son_kosu)}` : "henüz koşu yok"}</span>
+              <span className="tele-sag">
+                model {ozet.model_adi}{ozet.mod ? ` · Mod ${ozet.mod}` : ""}
+                {ozet.son_kalibrasyon ? ` · kalibrasyon ${ozet.son_kalibrasyon}` : ""}
+                {ozet.sapma_pct !== null ? ` · sapma %${sayiTr(ozet.sapma_pct, 2)}` : ""}
+              </span>
+            </div>
+          );
+        })()}
         <div className="icerik">{children}</div>
       </main>
       {paletAcik && (
