@@ -441,7 +441,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
             itemStyle: { borderRadius: [2, 2, 0, 0] },
             data: [
               { value: o, itemStyle: { color: marka } },
-              { value: Math.abs(d), itemStyle: { color: iyi ? "#2B7B9B" : "#E8940A" } },
+              { value: Math.abs(d), itemStyle: { color: iyi ? oku("--chart-p50-future") : oku("--uyari") } },
               { value: so, itemStyle: { color: marka } },
             ] },
         ],
@@ -474,7 +474,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
       )}
       {k && (<>
       {k.uyarilar.length > 0 && (
-        <div style={{ background: "var(--amber-zemin)", border: "1px solid var(--amber)",
+        <div style={{ background: "var(--uyari-zemin)", border: "1px solid var(--uyari)",
                       borderRadius: "var(--rk)", padding: "12px 16px", marginBottom: 14,
                       fontSize: 13, color: "var(--metin)" }}>
           <b>Kalibrasyon uyarısı:</b> {k.uyarilar.join(" · ")}
@@ -494,8 +494,8 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
       <div className="ızgara" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)" }}>
         <Kart baslik="Bulduklarımız">
           <table className="veri"><tbody>
-            {sr("η_BoS", k.eta_bos === null ? "\u2014" : sayiTr(k.eta_bos, 3))}
-            {sr("BG (bifasyal kazanç)", k.bg === null ? "\u2014" : sayiTr(k.bg, 3))}
+            {sr("Sistem verim katsayısı", k.eta_bos === null ? "\u2014" : sayiTr(k.eta_bos, 3))}
+            {sr("Çift yüzlü panel kazancı", k.bg === null ? "\u2014" : sayiTr(k.bg, 3))}
             {sr("Geçerli saat", k.gecerli_saat === null ? "\u2014" : sayiTr(k.gecerli_saat))}
             {sr("Kalibrasyon tarihi", trTarih(k.tarih))}
           </tbody></table>
@@ -514,7 +514,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
       </div>
       {(selale.mape || selale.sapma) && (
         <Kart baslik="Kalibrasyonun etkisi — fizikten kalibre modele"
-          sag={<span className="cip">mavi: iyileşme · amber: bedel</span>}>
+          sag={<span className="cip">mavi: iyileşme · kızıl: bedel</span>}>
           <div className="ızgara" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)" }}>
             {selale.mape && (
               <div>
@@ -535,7 +535,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
           </div>
           <p style={{ fontSize: 12, color: "var(--soluk)", margin: "12px 0 0" }}>
             Orta basamak kalibrasyonun katkısıdır — aşağı inen mavi basamak iyileşmeyi,
-            yukarı çıkan amber basamak bedeli gösterir.
+            yukarı çıkan kızıl basamak bedeli gösterir.
           </p>
         </Kart>
       )}
@@ -611,9 +611,9 @@ export function Raporlar({ plantId }: { plantId: string }) {
           <div style={{ marginTop: 12 }}>
             {bulgular.map((b, i) => (
               <div key={i} style={{
-                borderLeft: `3px solid ${b.seviye === "hata" ? "var(--kirmizi, #B4232A)" : "var(--amber, #B08C43)"}`,
+                borderLeft: `3px solid ${b.seviye === "hata" ? "var(--uyari)" : "var(--soluk)"}`,
                 padding: "6px 10px", margin: "6px 0", fontSize: 12.5,
-                background: "var(--zemin2, rgba(0,0,0,.03))", lineHeight: 1.5 }}>
+                background: "var(--yuzey)", lineHeight: 1.5 }}>
                 <b>{b.kod}</b> · {b.mesaj}
                 {b.beklenen && <div style={{ color: "var(--ikincil)" }}>
                   beklenen: {b.beklenen}{b.bulunan ? ` · bulunan: ${b.bulunan}` : ""}</div>}
@@ -649,7 +649,7 @@ export function Raporlar({ plantId }: { plantId: string }) {
                 <tr key={r.run_at}>
                   <td>{tarihTr(r.run_at)}</td>
                   <td>{r.mode}</td>
-                  <td>{MODEL_AD[r.model] ?? r.model}</td>
+                  <td>{MODEL_AD[r.model] ?? "Model"}</td>
                 </tr>
               ))}
             </tbody>
