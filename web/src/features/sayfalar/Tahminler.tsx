@@ -113,6 +113,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
                 lon: ozet.lon,
                 timezone: ozet.tz,
               }}
+              features={{ exportButtons: true }}  // v2.228: PNG/CSV — SaaS eylemi
               height={360}
             />
             <p
@@ -122,8 +123,12 @@ export function Tahminler({ plantId }: { plantId: string }) {
                 margin: "12px 0 0",
               }}
             >
-              Son koşu Mod {seri.mod ?? "—"} · kaynak: tahmin arşivi — koşular
-              güncellenmez, yenisi eklenir.
+              <b style={{ color: "var(--ikincil)" }}>Bu grafik son koşunun
+              saatlik üretim tahminidir:</b> mavi çizgi P50 (medyan senaryo),
+              bant P10–P90 aralığı — saatlerin %80'inin içinde kalması beklenen
+              koridor; amber çizgi varsa gerçekleşen üretimdir. Son koşu Mod{" "}
+              {seri.mod ?? "—"} · kaynak: tahmin arşivi — koşular güncellenmez,
+              yenisi eklenir.
             </p>
           </Kart>
           <Kart baslik="Günlük toplamlar">
