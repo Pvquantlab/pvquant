@@ -402,3 +402,49 @@ body { background:
 .seg button + button { border-left: 1px solid var(--izgara); }
 .seg button[aria-pressed="true"] { background: var(--marka-zemin);
   color: var(--marka-koyu); font-weight: 600; }
+
+/* ============================================================
+   v2.236 — MOBİL KABUK: dar ekranda (≤900px) sabit kenar menü
+   kalkar; hamburger ile soldan çekmece açılır. Masaüstü davranışı
+   birebir korunur (kurallar yalnız media bloğunda).
+   ============================================================ */
+.menu-dugme { display: none; }
+.yan-ort { display: none; }
+@media (max-width: 900px) {
+  .kabuk { grid-template-columns: minmax(0, 1fr); }
+  .yan { position: fixed; inset: 0 auto 0 0; width: min(300px, 82vw);
+         z-index: 30; height: 100dvh;
+         transform: translateX(-105%); transition: transform .22s ease;
+         box-shadow: 0 0 42px rgba(3, 8, 16, .35); }
+  .yan.is-acik { transform: none; }
+  .yan-ort { display: block; position: fixed; inset: 0; z-index: 29;
+             background: rgba(3, 8, 16, .45); opacity: 0;
+             pointer-events: none; transition: opacity .2s ease; }
+  .yan-ort.is-acik { opacity: 1; pointer-events: auto; }
+  .menu-dugme { display: grid; place-items: center; width: 40px; height: 40px;
+    border: 1px solid var(--kenar); border-radius: var(--r);
+    background: var(--kart); color: var(--metin); cursor: pointer;
+    flex-shrink: 0; }
+  .ust { padding: 0 14px; gap: 10px; }
+  .icerik { padding: 16px 12px 56px; }
+}
+@media (max-width: 700px) {
+  .satir-3, .satir-4 { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .yan, .yan-ort { transition: none; }
+}
+
+/* v2.237 — mobil içerik: satır-içi stillenmiş sayfa ızgaraları dar ekranda
+   tek kolona düşer (satır-içi stili yalnız media içinde !important ezer);
+   geniş grafikler kendi kutusunda yatay kaydırır — gövde asla yana taşmaz. */
+@media (max-width: 900px) {
+  .ızgara[style] { grid-template-columns: minmax(0, 1fr) !important; }
+}
+.grafik-kaydir { overflow-x: auto; }
+.grafik-kaydir > div { min-width: 620px; }
+@media (max-width: 900px) {
+  /* v2.236: ust serit tek satirda kalir — tarih gizlenir, yukseklik esner */
+  .ust { height: auto; min-height: 52px; flex-wrap: nowrap; }
+  .ust-tarih { display: none; }
+}

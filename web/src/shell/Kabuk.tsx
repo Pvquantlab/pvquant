@@ -53,6 +53,8 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children }:
   // v2.216: sayfa-atlama paleti (⌘K) — SaaS kromunun tek "canli" parcasi;
   // arkasinda gercek islev olmayan krom (zil, ayarlar) bilerek yok.
   const [paletAcik, setPaletAcik] = useState(false);
+  // v2.236: mobil cekmece — ≤900px'te kenar menu hamburger'la acilir
+  const [menuAcik, setMenuAcik] = useState(false);
   const [sorgu, setSorgu] = useState("");
   const [secili, setSecili] = useState(0);
   useEffect(() => { document.documentElement.dataset.tema = koyu ? "koyu" : "acik"; }, [koyu]);
@@ -60,7 +62,7 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children }:
     const f = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault(); setPaletAcik((a) => !a); setSorgu(""); setSecili(0);
-      } else if (e.key === "Escape") setPaletAcik(false);
+      } else if (e.key === "Escape") { setPaletAcik(false); setMenuAcik(false); }
     };
     window.addEventListener("keydown", f);
     return () => window.removeEventListener("keydown", f);
@@ -78,12 +80,18 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children }:
   useEffect(() => {
     if (plantId) api.ozet(plantId).then((o) => setKwp(o.kapasite_kwp)).catch(() => {});
   }, [plantId]);
+  useEffect(() => {
+    document.body.style.overflow = menuAcik ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [menuAcik]);
   const bugun = new Date().toLocaleDateString("tr-TR",
     { day: "numeric", month: "short", year: "numeric", weekday: "short" });
 
   return (
     <div className="kabuk">
-      <nav className="yan">
+      <div className={`yan-ort${menuAcik ? " is-acik" : ""}`}
+           onClick={() => setMenuAcik(false)} aria-hidden="true" />
+      <nav className={`yan${menuAcik ? " is-acik" : ""}`}>
         <div className="logo"><GunesLogo />PVQuant</div>
         <div className="yan-etiket">Santral</div>
         <select className="yan-secim" defaultValue={santral}>
@@ -99,7 +107,8 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children }:
             <div className="dg">{kwp === null ? "—" : `${sayiTr(kwp)} kWp`}</div></div>
         </div>
         {SAYFALAR.map((s) => (
-          <button key={s.id} className="nav-btn" onClick={() => setSayfa(s.id)}
+          <button key={s.id} className="nav-btn"
+            onClick={() => { setSayfa(s.id); setMenuAcik(false); }}
             aria-current={sayfa === s.id ? "page" : undefined}>
             {IKONLAR[s.id]}{s.ad}
           </button>
@@ -124,9 +133,19 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children }:
       </nav>
       <main>
         <header className="ust">
-          <div style={{ fontSize: 13, color: "var(--ikincil)" }}>
+          <button className="menu-dugme" aria-label="Menüyü aç"
+            aria-expanded={menuAcik} onClick={() => setMenuAcik(true)}>
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none"
+              stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
+              aria-hidden="true">
+              <path d="M3 5.5h14M3 10h14M3 14.5h14" />
+            </svg>
+          </button>
+          <div style={{ fontSize: 13, color: "var(--ikincil)", minWidth: 0,
+                        overflow: "hidden", textOverflow: "ellipsis",
+                        whiteSpace: "nowrap" }}>
             Panel <b style={{ color: "var(--metin)" }}>· {santral}</b>
-            <span className="mono" style={{ color: "var(--soluk)", marginLeft: 14 }}>{bugun}</span>
+            <span className="mono ust-tarih" style={{ color: "var(--soluk)", marginLeft: 14 }}>{bugun}</span>
           </div>
           <div className="ust-arac">
             <button className="arama"

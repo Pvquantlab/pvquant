@@ -380,8 +380,10 @@ export function Dogruluk({ plantId }: { plantId: string }) {
         sag={<span className="cip">son 30 gün · 0-24s · {hm?.tz ?? "—"}</span>}>
         {hm && hm.gunler.length > 0 ? (
           <>
-            <EChart option={matrisOption} height={360}
-              ariaLabel="Saat ve gün kırılımında işaretli tahmin hatası ısı haritası" />
+            <div className="grafik-kaydir"><div>
+              <EChart option={matrisOption} height={360}
+                ariaLabel="Saat ve gün kırılımında işaretli tahmin hatası ısı haritası" />
+            </div></div>
             <p style={{ fontSize: 12, color: "var(--soluk)", margin: "12px 0 0" }}>
               <b style={{ color: "var(--ikincil)" }}>Her hücre bir gün × saat kutusudur</b>{" "}
               ve o saatteki işaretli hatayı gösterir: altın tonlar fazla tahmin
