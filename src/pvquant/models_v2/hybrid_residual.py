@@ -161,6 +161,18 @@ def build_features(
     # Açıklık endeksi kt = GHI / (I0 · cos(zenith)); gece → 0.
     cos_z = np.cos(np.radians(solpos["zenith"])).clip(lower=0.0)
     ghi_clear_top = (dni_extra * cos_z).clip(lower=1.0)  # bölme güvenliği
+    # v2.255 (★): kt_referans='ineichen' → payda açık gök GHI (Ineichen, pvlib Linke tablosu); atmosferik
+    # zayıflama çıkarıldığından kt, bulutluluğu daha temiz ölçer (rezidüele temiz hedef). Varsayılan 'toa'
+    # eski davranış; ayar eğitim ve serviste aynı olmalı (config.kt_referans notu).
+    try:
+        from pvquant.config import get_settings as _gs
+        _kt_ref = _gs().kt_referans
+    except Exception:  # pragma: no cover
+        _kt_ref = "toa"
+    if _kt_ref == "ineichen":
+        import pvlib as _pvlib
+        _cs = _pvlib.location.Location(latitude, longitude, altitude=altitude_m, tz="UTC").get_clearsky(times, model="ineichen")
+        ghi_clear_top = _cs["ghi"].reindex(times).clip(lower=1.0)
     kt = (physics_hourly["ghi"] / ghi_clear_top).clip(0.0, 1.2)
     kt = kt.where(cos_z > 0.01, 0.0)
 

@@ -79,6 +79,11 @@ class PlantSpec:
     module_height_m: float = 2.0
     thermal_model: Literal["noct", "faiman"] = "faiman"
     power_model: Literal["barhdadi_bennis", "pvwatts", "skoplaki_palyvos"] = "barhdadi_bennis"
+    # v2.255 (Dalga 3.10, ★): fizik terimleri — VARSAYILAN KAPALI ("none"): açılmadıkça zincir birebir eski.
+    # iam_model: geliş açısı kaybı (beam × IAM(aoi), difüz Marion integrali); spectral_model: hava kütlesi +
+    # yağışa su ile spektral uyumsuzluk çarpanı (First Solar; nem yoksa uygulanmaz). Santral params_json ile açılır.
+    iam_model: Literal["none", "physical", "ashrae", "martin_ruiz"] = "none"
+    spectral_model: Literal["none", "first_solar"] = "none"
 
     @property
     def effective_gamma(self) -> float:
@@ -177,6 +182,30 @@ def _apply_poa_correction(
         aoi=poa.aoi,
     )
 
+
+
+def _apply_fizik_terimleri(poa, plant, meteo, times):
+    """v2.255 — POA bileşenlerine IAM ve spektral çarpanları (pvquant.ext.tahmin.fizik_terimler).
+    beam × IAM_b(aoi); sky × IAM_sky(tilt); ground × IAM_gnd(tilt); global = toplam × M_spektral.
+    Spektral için nem gerekir (Gueymard94 yağışa su); meteo.relative_humidity yoksa spektral ATLANIR (uydurma yok).
+    Döner (POAComponents, meta sözlüğü)."""
+    from pvquant.ext.tahmin import fizik_terimler as ft
+    beam, sky, gnd = poa.beam, poa.sky_diffuse, poa.ground_diffuse
+    meta = {"iam": plant.iam_model, "spektral": "none"}
+    if plant.iam_model != "none":
+        iam_b = ft.iam_katsayilari(poa.aoi.astype(float).fillna(90.0), plant.iam_model).fillna(0.0)
+        iam_sky, iam_gnd = ft.iam_difuz(plant.tilt, plant.iam_model)
+        beam = (beam * iam_b.reindex(beam.index)).clip(lower=0.0)
+        sky = sky * iam_sky; gnd = gnd * iam_gnd
+    M = 1.0
+    if plant.spectral_model == "first_solar" and meteo.relative_humidity is not None:
+        modul = {"mono_si": "monosi", "perc": "monosi", "topcon": "monosi", "hjt": "monosi", "multi_si": "multisi",
+                 "poly_si": "multisi", "cdte": "cdte", "cigs": "cigs", "a_si": "asi"}.get(plant.module_tech, "monosi")
+        M = ft.spektral_duzeltme(times, meteo.latitude, meteo.longitude, meteo.temp_air, meteo.relative_humidity, modul=modul)
+        meta["spektral"] = "first_solar"
+    yeni_global = ((beam + sky + gnd) * M).clip(lower=0.0)
+    yeni_global.name = poa.global_.name
+    return irradiance.POAComponents(global_=yeni_global, beam=beam, sky_diffuse=sky, ground_diffuse=gnd, aoi=poa.aoi), meta
 
 
 # --- measured_poa akil kontrolu esikleri (config'e tasinabilir) ---
@@ -289,6 +318,10 @@ def forecast_7day(
         poa = _apply_poa_correction(poa, ghi_bias_bins, ghi_bias_corrections)
 
     # --- 4. Bifacial katkı (basit çarpan, ön yüze uygulanır) ---
+    # --- 3.5. Fizik terimleri (v2.255, ★): IAM ve spektral — varsayılan kapalı ---
+    fizik_meta = None
+    if plant.iam_model != "none" or plant.spectral_model != "none":
+        poa, fizik_meta = _apply_fizik_terimleri(poa, plant, meteo, times)
     if plant.is_bifacial:
         bf_params = bifacial.SimpleBifacialParams(
             bg=plant.bifacial_gain_geometric,

@@ -85,6 +85,8 @@ export interface Karne {
 /** /kalibrasyon yaniti — apps/api/main.py v2.122 ile birebir. */
 export interface KalibrasyonOzeti {
   mode: string; eta_bos: number | null; bg: number | null;
+  /** v2.255: fizik terimleri — 'none' kapalı; kt_referans 'toa' | 'ineichen'. */
+  fizik_terimleri?: { iam: string; spektral: string; kt_referans: string };
   gecerli_saat: number | null; tarih: string | null;
   mape_once: number | null; mape_sonra: number | null;
   wmape_once: number | null; wmape_sonra: number | null;

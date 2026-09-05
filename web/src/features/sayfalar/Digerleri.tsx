@@ -501,6 +501,10 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
             {sr("Sistem verim katsayısı", k.eta_bos === null ? "\u2014" : sayiTr(k.eta_bos, 3))}
             {sr("Çift yüzlü panel kazancı", k.bg === null ? "\u2014" : sayiTr(k.bg, 3))}
             {sr("Geçerli saat", k.gecerli_saat === null ? "\u2014" : sayiTr(k.gecerli_saat))}
+            {/* v2.255: fizik terimleri — yöntem adı değil, açık/kapalı dili */}
+            {sr("Geliş açısı düzeltmesi", k.fizik_terimleri ? (k.fizik_terimleri.iam === "none" ? "kapalı" : "açık") : "\u2014")}
+            {sr("Spektral düzeltme", k.fizik_terimleri ? (k.fizik_terimleri.spektral === "none" ? "kapalı" : "açık") : "\u2014")}
+            {sr("Gök açıklığı referansı", k.fizik_terimleri ? (k.fizik_terimleri.kt_referans === "ineichen" ? "açık gök modeli" : "atmosfer üstü") : "\u2014")}
             {sr("Kalibrasyon tarihi", trTarih(k.tarih))}
           </tbody></table>
         </Kart>

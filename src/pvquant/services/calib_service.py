@@ -85,7 +85,33 @@ def _plant_spec(plant) -> PlantSpec:
         bifacial_factor=0.7 if plant.get("panel_tech") == "bifacial" else 0.0,
         # B-1 Adım 3: AC kırpma köprüsü (None = kırpma yok, mevcut davranış)
         p_ac_clip_kw=plant.get("ac_limit_kw"),
+        # v2.255: santral params_json ile açılan fizik terimleri (varsayılan kapalı)
+        iam_model=_pj(plant).get("iam_model") or "none",
+        spectral_model=_pj(plant).get("spectral_model") or "none",
     )
+
+
+def _pj(plant) -> dict:
+    """plants.params_json — dict ya da JSON metni ya da None."""
+    pj = plant.get("params_json") if hasattr(plant, "get") else None
+    if isinstance(pj, str):
+        try:
+            return json.loads(pj)
+        except Exception:
+            return {}
+    return pj or {}
+
+
+def fizik_terimleri(tenant_id, plant_id) -> dict:
+    """v2.255 — UI sözlüğü: IAM/spektral (santral) + kt referansı (ayar)."""
+    from sqlalchemy import text
+    from pvquant.db import tenant_baglami
+    from pvquant.config import get_settings
+    with tenant_baglami(tenant_id) as s:
+        pj = s.execute(text("SELECT params_json FROM plants WHERE id=:p"), {"p": plant_id}).scalar()
+    pj = _pj({"params_json": pj})
+    return {"iam": pj.get("iam_model") or "none", "spektral": pj.get("spectral_model") or "none",
+            "kt_referans": get_settings().kt_referans}
 
 
 def _pencere_gun(index) -> int | None:
@@ -253,6 +279,7 @@ def kalibrasyon_ozeti(tenant_id, plant_id):
     pj = r.params_json or {}
     return {
         "mode": r.mode,
+        "fizik_terimleri": fizik_terimleri(tenant_id, plant_id),   # v2.255
         "eta_bos": pj.get("eta_bos"), "bg": pj.get("bg"),
         "gecerli_saat": r.n_valid_hours,
         "tarih": r.created_at.isoformat() if r.created_at else None,

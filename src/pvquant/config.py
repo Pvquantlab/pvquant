@@ -55,6 +55,10 @@ class Settings(BaseSettings):
     guard_capacity_tolerance: float = 0.20  # v2.41 kapasite-celiski bekcisi
     min_valid_hours_calibration: int = 1500 # Mod B icin asgari saglam saat
     skill_naive_ratio_clip: float = 4.0     # v2.55: berrak-gok orani kelepcesi
+    # v2.255 (Dalga 3.10, ★): rezidüel modelin gök açıklığı endeksi referansı — 'toa' (atmosfer üstü,
+    # eski/varsayılan) ya da 'ineichen' (açık gök modeli: kt bulutluluğu daha temiz ölçer). DİKKAT:
+    # eğitim ve servis AYNI ayarla çalışmalı; değiştirmek YENİDEN KALİBRASYON gerektirir (ml_models eski kt ile eğitildi).
+    kt_referans: str = "toa"
     # C-3b (v2.152): s08 butunluk kurallarinin makine esikleri — worker ve
     # servis TEK kaynaktan okur. reporting/html/veri.py KARNE_ESIK aynasidir
     # (rapor katmani bagimsizdir; sapma D19/D20 verisinde yakalanir).
