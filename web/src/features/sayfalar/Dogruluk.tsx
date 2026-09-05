@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { EChartsOption } from "echarts";
 import { api } from "../../api/client";
-import type { Karne, HataMatrisi, HataDagilimi, KonformalAyar, Backtest } from "../../api/types";
+import type { Karne, HataMatrisi, HataDagilimi, KonformalAyar, Backtest, Dengesizlik } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
 import { Kpi, Kart, Sayfa, sayiTr } from "./parcalar";
@@ -30,6 +30,8 @@ export function Dogruluk({ plantId }: { plantId: string }) {
   const [kf, setKf] = useState<KonformalAyar>({ aktif: false });   // v2.252
   useEffect(() => { api.konformal(plantId).then(setKf).catch(() => {}); }, [plantId]);
   const [bt, setBt] = useState<Backtest | null>(null);   // v2.253
+  const [dz, setDz] = useState<Dengesizlik | null>(null);   // v2.259
+  useEffect(() => { api.dengesizlik(plantId).then(setDz).catch(() => {}); }, [plantId]);
   useEffect(() => { api.backtest(plantId).then(setBt).catch(() => {}); }, [plantId]);
   useEffect(() => { api.hataMatrisi(plantId).then(setHm); }, [plantId]);
   useEffect(() => { api.hataDagilimi(plantId).then(setHd); }, [plantId]);
@@ -452,6 +454,49 @@ export function Dogruluk({ plantId }: { plantId: string }) {
               </tbody>
             </table>
           </div>
+        )}
+      </Kart>
+      {/* v2.259 (Dalga 4.12): karnenin TL dili — DUY dengesizlik formülüyle PVQuant programı vs naif program.
+          Fiyat kaynağı (EPİAŞ / senaryo) ve segment (dengesizliği kim taşır) açıkça söylenir. */}
+      <Kart baslik="Tahmin hatasının TL karşılığı — dengesizlik maliyeti"
+        sag={<>
+          <span className="cip">{dz && dz.gun_sayisi ? `${sayiTr(dz.gun_sayisi)} gün · KGÜP = D-1 15:30 öncesi P50` : "henüz eşleşen gün yok"}</span>
+          {dz && <span className="cip" title={dz.not}>{dz.fiyat.senaryo_saat > 0 ? "fiyat: senaryo (EPİAŞ kimliği yok)" : "fiyat: EPİAŞ"}</span>}
+        </>}>
+        {dz && dz.toplam ? (
+          <>
+            <div className="ızgara satir-3" style={{ gap: 12 }}>
+              <div className="kpi"><div className="kpi-et">PVQuant programıyla maliyet</div>
+                <div className="kpi-dg mono">{sayiTr(dz.toplam.pvquant_tl / 1000, 1)} <small>bin TL</small></div>
+                <div className="kpi-alt">{dz.toplam.gelir_oran_pct != null ? `gelirin %${sayiTr(dz.toplam.gelir_oran_pct, 2)}'i` : "—"}</div></div>
+              <div className="kpi"><div className="kpi-et">Naif programla maliyet</div>
+                <div className="kpi-dg mono">{dz.toplam.naif_tl != null ? <>{sayiTr(dz.toplam.naif_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div>
+                <div className="kpi-alt">dün-aynı-saat programı</div></div>
+              <div className="kpi"><div className="kpi-et">PVQuant'ın kurtardığı</div>
+                <div className="kpi-dg mono" style={{ color: (dz.toplam.kurtarilan_tl ?? 0) > 0 ? "var(--basari)" : undefined }}>
+                  {dz.toplam.kurtarilan_tl != null ? <>{sayiTr(dz.toplam.kurtarilan_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div>
+                <div className="kpi-alt">{dz.segment.santral_tasir === false ? `dengesizliği ${dz.segment.dengesizlik_sahibi} taşır` : dz.segment.segment ? "dengesizlik santralde" : "segment belirtilmedi (Santralım › künye)"}</div></div>
+            </div>
+            <div className="grafik-kaydir" style={{ marginTop: 12 }}>
+              <table className="veri" style={{ fontSize: 12.5 }}>
+                <thead><tr><th>Ay</th><th>Üretim (MWh)</th><th>|Sapma| (MWh)</th><th>PVQuant (TL)</th><th>Naif (TL)</th><th>Kurtarılan (TL)</th><th>Gelirin %'si</th><th>TL/MWh</th></tr></thead>
+                <tbody className="mono">
+                  {dz.aylar.map((a) => (
+                    <tr key={a.ay}><td>{a.ay}</td><td>{sayiTr(a.uretim_mwh, 1)}</td><td>{sayiTr(a.sapma_mwh, 1)}</td><td>{sayiTr(a.pvquant_tl)}</td>
+                      <td>{a.naif_tl != null ? sayiTr(a.naif_tl) : "—"}</td><td>{a.kurtarilan_tl != null ? sayiTr(a.kurtarilan_tl) : "—"}</td>
+                      <td>{a.gelir_oran_pct != null ? `%${sayiTr(a.gelir_oran_pct, 2)}` : "—"}</td><td>{a.tl_per_mwh != null ? sayiTr(a.tl_per_mwh, 1) : "—"}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="soluk" style={{ marginTop: 10, marginBottom: 0, fontSize: 12.5 }}>
+              Ne gösterir: saatlik program ile gerçekleşen arasındaki farkın piyasa kurallarıyla (pozitif sapma min(PTF,SMF)×0,97,
+              negatif sapma max(PTF,SMF)×1,03) TL karşılığı; "kusursuz program" gelirine göre kayıp. Nasıl okunur: PVQuant sütunu
+              naif sütunundan ne kadar küçükse tahminin parasal değeri o kadar büyüktür. {dz.fiyat.senaryo_saat > 0 && "Senaryo fiyatı EPDK 2025 yıllık ortalamasıdır; EPİAŞ kimliği tanımlanınca gerçek saatlik fiyatlarla hesaplanır."}
+            </p>
+          </>
+        ) : (
+          <p className="soluk" style={{ margin: 0 }}>D-1 15:30 öncesi verilmiş koşu ile gerçekleşenin eşleştiği gün henüz yok; koşular ve ölçüm biriktikçe burada görünür.</p>
         )}
       </Kart>
       <Kart baslik="Saat × gün hata ısı haritası"

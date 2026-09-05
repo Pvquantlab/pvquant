@@ -38,6 +38,15 @@ export interface KonformalAyar {
   ort_q_kw?: number | null; q_hat?: Record<string, number>;
 }
 
+/** /dengesizlik — v2.259: karnenin TL dili. */
+export interface Dengesizlik {
+  gun_sayisi: number; pencere_gun: number; not: string;
+  aylar: { ay: string; uretim_mwh: number; sapma_mwh: number; referans_gelir_tl: number; pvquant_tl: number; naif_tl: number | null;
+           kurtarilan_tl: number | null; gelir_oran_pct: number | null; tl_per_mwh: number | null }[];
+  toplam: { pvquant_tl: number; naif_tl: number | null; kurtarilan_tl: number | null; gelir_oran_pct: number | null; referans_gelir_tl: number } | null;
+  fiyat: { epias_saat: number; senaryo_saat: number };
+  segment: { segment: string | null; kgup_yukumlu: boolean | null; dengesizlik_sahibi: string | null; santral_tasir: boolean | null };
+}
 /** /saglik — v2.256: bozunma ve performans eğilimi. */
 export interface Saglik {
   gun: number; ay: number; indeks_ort: number | null; bozunma_yuzde_yil: number | null; bozunma_ga: number[] | null;

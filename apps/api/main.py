@@ -280,6 +280,18 @@ def alarmlar(plant_id: str, n: int = 20,
     return alarm_service.listele(claims["tenant_id"], plant_id, n=n)
 
 
+@app.get("/v1/plants/{plant_id}/dengesizlik")
+def dengesizlik(plant_id: str, gun: int = 90, claims=Depends(gecerli_kullanici)):
+    """v2.259 — karnenin TL dili: PVQuant programı vs naif program dengesizlik maliyeti (DUY), aylık + toplam."""
+    from pvquant.services import dengesizlik_service, plant_service
+    if not (14 <= gun <= 365):
+        raise HTTPException(422, "gun 14-365 araliginda olmali")
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    return dengesizlik_service.simulasyon(claims["tenant_id"], {"id": str(row["id"]), "params_json": row.get("params_json")}, gun=gun)
+
+
 @app.get("/v1/piyasa/durum")
 def piyasa_durum(claims=Depends(gecerli_kullanici)):
     """v2.258 — EPİAŞ entegrasyonunun durumu: kimlik var mı, son fiyat saati, senaryo değerleri."""
