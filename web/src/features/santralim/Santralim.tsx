@@ -308,7 +308,7 @@ export function Santralim({ plantId }: { plantId: string }) {
               <tr><td>Performans oranı (30 g)</td>
                 <td>{pr?.durum === "ok" && pr.PR != null
                   ? <>%{sayiTr(pr.PR * 100, 1)}{pr.PR_sicaklik != null && ` · sıcaklık düzeltmeli %${sayiTr(pr.PR_sicaklik * 100, 1)}`}
-                      <span style={{ color: "var(--soluk)" }}> · {sayiTr(pr.gun)} gün</span></>
+                      <span style={{ color: "var(--soluk)" }}> · {sayiTr(pr.gun)} gün{pr.son_olcum ? `, son ölçüm ${pr.son_olcum}` : ""}</span></>
                   : pr?.durum === "poa_yok"
                     ? <span style={{ color: "var(--soluk)" }}>— düzlem ışınımı (POA) ölçümü {pr.poa_orani != null ? `saatlerin %${sayiTr(pr.poa_orani * 100, 0)}'inde` : "yok"}; PR için en az %95 gerekir</span>
                     : <span style={{ color: "var(--soluk)" }}>— ölçüm birikmedi</span>}</td></tr>

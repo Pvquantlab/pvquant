@@ -28,6 +28,8 @@ export interface PrKarti {
   durum: "ok" | "poa_yok" | "veri_yok"; gun: number; saat: number; poa_orani: number | null;
   Y_r: number | null; Y_f: number | null; PR: number | null; PR_sicaklik: number | null;
   CF: number | null; t_ref: number | null; pencere_gun: number;
+  /** v2.251: pencerenin bitisi = son gecerli olcum gunu (takvim degil). */
+  son_olcum?: string | null;
 }
 
 export interface TahminSerisi {

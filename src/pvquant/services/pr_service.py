@@ -48,12 +48,17 @@ def pr_hesapla(df: pd.DataFrame, capacity_kwp: float, min_poa_orani: float = 0.9
 def pr_karti(tenant_id, plant_id, gun: int = 30) -> dict:
     from sqlalchemy import text
     from pvquant.db import tenant_baglami
+    # v2.251: pencere takvime degil SON OLCUME baglanir — SCADA yuklemesi gecikmis santralde
+    # "son 30 gun" bos kalip PR'i sessizce tireye dusuruyordu; simdi son olcum gununden geriye
+    # N gun okunur ve bitis tarihi (son_olcum) yanitta soylenir.
     with tenant_baglami(tenant_id) as s:
         cap = s.execute(text("SELECT capacity_kwp FROM plants WHERE id=:p"), {"p": plant_id}).scalar()
+        son = s.execute(text("SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p AND flag='valid'"), {"p": plant_id}).scalar()
         df = pd.read_sql(text(
             "SELECT ts_utc, power_kw, poa_wm2, t_module FROM scada_hourly "
-            "WHERE plant_id=:p AND flag='valid' AND ts_utc >= now() - (:g * INTERVAL '1 day') ORDER BY ts_utc"),
-            s.connection(), params={"p": plant_id, "g": gun}, parse_dates=["ts_utc"])
+            "WHERE plant_id=:p AND flag='valid' AND ts_utc >= :son - (:g * INTERVAL '1 day') AND ts_utc <= :son ORDER BY ts_utc"),
+            s.connection(), params={"p": plant_id, "g": gun, "son": son}, parse_dates=["ts_utc"]) if son is not None else pd.DataFrame()
     out = pr_hesapla(df, float(cap) if cap is not None else 0.0)
     out["pencere_gun"] = gun
+    out["son_olcum"] = son.date().isoformat() if son is not None else None
     return out

@@ -319,8 +319,11 @@ export function Dogruluk({ plantId }: { plantId: string }) {
 
   const ol = k.olasiliksal;   // v2.248: bant sinavi (undefined = eski API)
   // v2.247: normalize olcut yazimi — null → "—"; nMBE isaretli (+ fazla tahmin).
-  const sfaYaz = (v: number | null | undefined, isaret = false) =>
-    v == null ? "—" : `%${isaret && v > 0 ? "+" : ""}${sayiTr(v, 1)}`;
+  const sfaYaz = (v: number | null | undefined, isaret = false) => {
+    if (v == null) return "—";
+    const y = Math.round(v * 10) / 10;                 // canlı teyit: -0,09 → "+0,0" yazıyordu
+    return `%${isaret && y > 0 ? "+" : ""}${sayiTr(y, 1)}`;
+  };
 
   // v2.76: karne gunu + kapsanan donem TUM kovalardan (Streamlit tanimi:
   // sk["date"].nunique() ve sk min/max — kova filtresiz).
