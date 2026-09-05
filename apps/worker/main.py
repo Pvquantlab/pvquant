@@ -59,6 +59,43 @@ def kova_etiketle(ufuk_s: "pd.Series") -> "pd.Series":
                   labels=["0-24", "24-72", "72-168", "168+"])
 
 
+def kova_skorlari(df: "pd.DataFrame", capacity_kwp: float, tid, pid) -> list[dict]:
+    """v2.247 — gun+kova skorlarinin SAF hesabi (DB'siz, birim-testli). df kolonlari:
+    gun, kova, power_kw, p50_kw, naif (NaN olabilir). Mevcut tanimlar AYNEN korunur
+    (mape = gunluk WMAPE %, rmse kW, naif WMAPE %, skill %); yanina Solar Forecast
+    Arbiter sozlugu eklenir: nmae/nrmse/nmbe = kapasiteye normalize yuzde
+    (pvquant.ext.standart.sfa_metrik — Yang 2020 konsensusu). Kapasite <= 0 ise
+    normalize kolonlar None (tire ilkesi: uydurma payda yok)."""
+    from pvquant.ext.standart import sfa_metrik as _sfa
+    satirlar = []
+    for (gun, kova), g in df.groupby(["gun", "kova"], observed=True):
+        if len(g) < 3:
+            continue
+        toplam = float(g.power_kw.sum())
+        if toplam <= 0:
+            continue
+        mape = float(abs(g.p50_kw - g.power_kw).sum() / toplam * 100)  # WMAPE
+        rmse = float(((g.p50_kw - g.power_kw) ** 2).mean() ** 0.5)
+        gn = g.dropna(subset=["naif"])
+        skill, nm = None, None
+        if len(gn) >= 3 and float(gn.power_kw.sum()) > 0:
+            nm = float(abs(gn.naif - gn.power_kw).sum()
+                       / float(gn.power_kw.sum()) * 100)               # WMAPE
+            if nm > 0:
+                skill = float(100 * (1 - mape / nm))
+        nmae = nrmse = nmbe = None
+        if capacity_kwp and capacity_kwp > 0:
+            obs, fx = g.power_kw, g.p50_kw
+            nmae = _sfa.nmae(obs, fx, capacity_kwp)
+            nrmse = _sfa.nrmse(obs, fx, capacity_kwp)
+            nmbe = _sfa.nmbe(obs, fx, capacity_kwp)
+        # v2.95 (sartname S4): naif olcumdur, saklanir — turetme donemi bitti.
+        satirlar.append({"t": tid, "p": pid, "g": gun, "k": str(kova),
+                         "m": mape, "r": rmse, "s": skill, "n": nm,
+                         "na": nmae, "nr": nrmse, "nb": nmbe})
+    return satirlar
+
+
 def gece_skill(plant, pencere_gun: int = 10):
     """Yeni gerceklesmeleri gecmis kosularla esle, gun+kova skoru yaz.
     v2.16 P1: mape = gunluk WMAPE = sum(|p50-gercek|)/sum(gercek)*100
@@ -116,36 +153,19 @@ def gece_skill(plant, pencere_gun: int = 10):
     df["_cs_d"] = (df.ts_utc - pd.Timedelta(hours=24)).map(_cs)
     df["naif"] = df.naif_ham * (df._cs_t / df._cs_d).clip(1.0 / _clip, _clip)
     df.loc[(df._cs_d <= 5.0) | df.naif_ham.isna(), "naif"] = float("nan")
-    satirlar = []
-    for (gun, kova), g in df.groupby(["gun", "kova"], observed=True):
-        if len(g) < 3:
-            continue
-        toplam = float(g.power_kw.sum())
-        if toplam <= 0:
-            continue
-        mape = float(abs(g.p50_kw - g.power_kw).sum() / toplam * 100)  # WMAPE
-        rmse = float(((g.p50_kw - g.power_kw) ** 2).mean() ** 0.5)
-        gn = g.dropna(subset=["naif"])
-        skill, nm = None, None
-        if len(gn) >= 3 and float(gn.power_kw.sum()) > 0:
-            nm = float(abs(gn.naif - gn.power_kw).sum()
-                       / float(gn.power_kw.sum()) * 100)               # WMAPE
-            if nm > 0:
-                skill = float(100 * (1 - mape / nm))
-        # v2.95 (sartname S4): naif olcumdur, saklanir — turetme donemi bitti.
-        satirlar.append({"t": tid, "p": pid, "g": gun, "k": str(kova),
-                         "m": mape, "r": rmse, "s": skill, "n": nm})
+    satirlar = kova_skorlari(df, float(plant["capacity_kwp"]), tid, pid)  # v2.247
     if not satirlar:
         return
     with tenant_baglami(tid) as s:
         s.execute(text(
             "INSERT INTO skill_daily(tenant_id,plant_id,date,horizon_bucket,"
-            " mape,rmse,skill_vs_naive,naive_wmape)"
-            " VALUES(:t,:p,:g,:k,:m,:r,:s,:n) "
+            " mape,rmse,skill_vs_naive,naive_wmape,nmae,nrmse,nmbe)"
+            " VALUES(:t,:p,:g,:k,:m,:r,:s,:n,:na,:nr,:nb) "
             "ON CONFLICT (plant_id,date,horizon_bucket) DO UPDATE SET "
             " mape=EXCLUDED.mape, rmse=EXCLUDED.rmse,"
             " skill_vs_naive=EXCLUDED.skill_vs_naive,"
-            " naive_wmape=EXCLUDED.naive_wmape"), satirlar)
+            " naive_wmape=EXCLUDED.naive_wmape,"
+            " nmae=EXCLUDED.nmae, nrmse=EXCLUDED.nrmse, nmbe=EXCLUDED.nmbe"), satirlar)
 def gunluk_toplam(df, tz, gun):
     """v2.205 — saatlik kosu cercevesinden TEK yerel gunun kWh toplamlari.
     Saf fonksiyon (DB'siz, birim-testli). Kurallar:

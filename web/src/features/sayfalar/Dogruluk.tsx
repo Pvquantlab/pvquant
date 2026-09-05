@@ -317,6 +317,10 @@ export function Dogruluk({ plantId }: { plantId: string }) {
       </span>
     );
 
+  // v2.247: normalize olcut yazimi — null → "—"; nMBE isaretli (+ fazla tahmin).
+  const sfaYaz = (v: number | null | undefined, isaret = false) =>
+    v == null ? "—" : `%${isaret && v > 0 ? "+" : ""}${sayiTr(v, 1)}`;
+
   // v2.76: karne gunu + kapsanan donem TUM kovalardan (Streamlit tanimi:
   // sk["date"].nunique() ve sk min/max — kova filtresiz).
   const tumTarihler = [...new Set(k.gunluk.map((r) => r.tarih))].sort();
@@ -349,6 +353,13 @@ export function Dogruluk({ plantId }: { plantId: string }) {
              alt={hd?.mu != null
                ? "sıfır merkezli dar dağılım hedef"
                : "yeterli eşleşmiş gün birikmedi"} />
+      </div>
+      {/* v2.247 (Dalga 1.2): kapasiteye normalize standart ölçütler — WMAPE'nin
+          yanına, yerine değil. Eski kayıtlarda kolon boş → tire + neden. */}
+      <div className="cip" style={{ display: "inline-block", marginBottom: 14 }}>
+        Kapasiteye normalize (sektör standardı) · 0-24s ·{" "}
+        nMAE {sfaYaz(k.nmae_ort)} · nRMSE {sfaYaz(k.nrmse_ort)} · nMBE {sfaYaz(k.nmbe_ort, true)}
+        {k.nmae_ort == null && " — bu ölçütler gece karnesinde yeni birikiyor"}
       </div>
       <Kart baslik="Günlük WMAPE — naif referansla karşılaştırma"
         sag={<span className="cip">nokta: günlük · kalın: 7 gün eğilimi · ince gri: naif</span>}>

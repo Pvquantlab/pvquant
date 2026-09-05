@@ -40,7 +40,10 @@ export interface Karne {
   kova: string; gun_sayisi: number;       // v2.71-E
   wmape_ort: number | null; naife_ustunluk_pct: number | null;
   ilk_tarih: string | null; son_tarih: string | null;
-  gunluk: { tarih: string; kova: string; wmape: number; naif_wmape: number | null }[];
+  /** v2.247: SFA sozlugu — kapasiteye normalize yuzdeler (eski kayitlarda null). */
+  nmae_ort?: number | null; nrmse_ort?: number | null; nmbe_ort?: number | null;
+  gunluk: { tarih: string; kova: string; wmape: number; naif_wmape: number | null;
+            nmae?: number | null; nrmse?: number | null; nmbe?: number | null }[];
 }
 
 /** /kalibrasyon yaniti — apps/api/main.py v2.122 ile birebir. */

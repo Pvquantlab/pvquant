@@ -179,7 +179,8 @@ def skill_gecmisi(tenant_id, plant_id, gun: int = 30):
     from pvquant.db import tenant_baglami
     with tenant_baglami(tenant_id) as s:
         return pd.read_sql(text(
-            "SELECT date, horizon_bucket, mape, naive_wmape, skill_vs_naive "
+            "SELECT date, horizon_bucket, mape, naive_wmape, skill_vs_naive, "
+            "nmae, nrmse, nmbe "
             "FROM skill_daily WHERE plant_id=:p "
             "AND date >= current_date - (:g * INTERVAL '1 day') "
             "ORDER BY date"),

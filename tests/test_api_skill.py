@@ -21,6 +21,10 @@ def _sahte_sk():
         "mape": [8.2, 14.1, 7.4, 9.0],
         "naive_wmape": [11.9, None, None, 13.5],
         "skill_vs_naive": [31.0, None, 27.0, 35.0],
+        # v2.247: SFA kolonlari — 29 Tem satiri migration-oncesi (None)
+        "nmae": [4.1, 6.0, None, 4.5],
+        "nrmse": [6.2, 9.1, None, 6.8],
+        "nmbe": [-0.4, 1.2, None, 0.6],
     })
 
 
@@ -45,11 +49,15 @@ def test_skill_200_toplulastirma_streamlit_kopyasi(istemci):
     assert len(g["gunluk"]) == 3
     # v2.95: SAKLANAN naif oncelikli — 11.9 (turetme 11.884 DEGIL).
     assert g["gunluk"][0] == {"tarih": "2026-07-28", "kova": "0-24",
-                              "wmape": 8.2, "naif_wmape": 11.9}
+                              "wmape": 8.2, "naif_wmape": 11.9,
+                              "nmae": 4.1, "nrmse": 6.2, "nmbe": -0.4}
+    # v2.247: SFA ortalamalari yalniz dolu satirlardan (29 Tem None atlanir)
+    assert g["nmae_ort"] == 4.3 and g["nrmse_ort"] == 6.5 and g["nmbe_ort"] == 0.1
     # Eski satir (naive_wmape=None): v2.76 turetmesi yedek —
     # 7.4/(1-0.27) = 10.137.
     assert g["gunluk"][1] == {"tarih": "2026-07-29", "kova": "0-24",
-                              "wmape": 7.4, "naif_wmape": 10.137}
+                              "wmape": 7.4, "naif_wmape": 10.137,
+                              "nmae": None, "nrmse": None, "nmbe": None}
 
 
 def test_skill_bos_kova_durust_bos(istemci):
@@ -57,6 +65,7 @@ def test_skill_bos_kova_durust_bos(istemci):
     assert r.status_code == 200
     g = r.json()
     assert g["gun_sayisi"] == 0 and g["wmape_ort"] is None
+    assert g["nmae_ort"] is None and g["nrmse_ort"] is None
     assert g["gunluk"] == []
 
 

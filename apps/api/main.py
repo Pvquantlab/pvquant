@@ -296,8 +296,19 @@ def skill(plant_id: str, bucket: str = "0-24", gun: int = 120,
     sk = forecast_service.skill_gecmisi(claims["tenant_id"], plant_id, gun=gun)
     kova = sk[sk["horizon_bucket"] == bucket] if not sk.empty else sk
     sv = kova["skill_vs_naive"].dropna() if len(kova) else []
+    # v2.247 (Dalga 1.2): SFA sozlugu — kapasiteye normalize ortalamalar; kolon
+    # yoksa (eski sahte df / migration oncesi) ya da tum satirlar NULL ise None.
+    def _ort(kol):
+        if not len(kova) or kol not in kova:
+            return None
+        v = kova[kol].dropna()
+        return _kw(v.mean()) if len(v) else None
+    def _opt(r, kol):
+        v = r.get(kol) if hasattr(r, "get") else None
+        return None if v is None or pd.isna(v) else _kw(v)
     return {
         "kova": bucket,
+        "nmae_ort": _ort("nmae"), "nrmse_ort": _ort("nrmse"), "nmbe_ort": _ort("nmbe"),
         "gun_sayisi": int(kova["date"].nunique()) if len(kova) else 0,
         "wmape_ort": _kw(kova["mape"].mean()) if len(kova) else None,
         "naife_ustunluk_pct": _kw(sv.mean()) if len(sv) else None,
@@ -309,7 +320,8 @@ def skill(plant_id: str, bucket: str = "0-24", gun: int = 120,
              # v2.95: SAKLANAN naif oncelikli (sartname S4). Eski satirlar
              # icin v2.76 turetmesi yedek — ayni ozdeslik: skill=100*(1-mape/
              # naif) => naif = mape/(1-skill/100). Ikisi de yoksa null.
-             "naif_wmape": _naif_wmape(r)}
+             "naif_wmape": _naif_wmape(r),
+             "nmae": _opt(r, "nmae"), "nrmse": _opt(r, "nrmse"), "nmbe": _opt(r, "nmbe")}
             for _, r in kova.iterrows()],
     }
 
