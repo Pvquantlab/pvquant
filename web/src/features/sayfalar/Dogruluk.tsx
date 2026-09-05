@@ -317,6 +317,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
       </span>
     );
 
+  const ol = k.olasiliksal;   // v2.248: bant sinavi (undefined = eski API)
   // v2.247: normalize olcut yazimi — null → "—"; nMBE isaretli (+ fazla tahmin).
   const sfaYaz = (v: number | null | undefined, isaret = false) =>
     v == null ? "—" : `%${isaret && v > 0 ? "+" : ""}${sayiTr(v, 1)}`;
@@ -385,6 +386,39 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           çizginin ne kadar altındaysa modelin kattığı değer o kadar büyüktür;
           sağ panelde hatanın bir miktar yüksek olması doğaldır — 3 güne kadar bakan
           tahmin daha fazla belirsizlik taşır, önemli olan aradaki farkın kontrollü kalmasıdır.
+        </p>
+      </Kart>
+      {/* v2.248 (Dalga 1.3): P10–P90 bandının sınavı — bant genişliği değil, bandın
+          TUTUP TUTMADIĞI. Üç çubuk: hedef işareti (%10 / %80 / %90) ile gözlenen oran. */}
+      <Kart baslik="P10–P90 bandı sınavı — bant gerçekten tutuyor mu?"
+        sag={<span className="cip">{ol?.gun_sayisi ? `${sayiTr(ol.gun_sayisi)} gün · 0-24s` : "henüz birikmedi"}</span>}>
+        {ol?.gun_sayisi ? (
+          <div className="ızgara satir-3" style={{ gap: 12 }}>
+            {([
+              ["Bant kapsaması (P10–P90)", ol.picp80, 0.80, "günlerin %80'ini tutmalı"],
+              ["P10'un altında kalan", ol.kapsama_p10, 0.10, "hedef %10 — azsa bant tabanı fazla temkinli"],
+              ["P90'ın altında kalan", ol.kapsama_p90, 0.90, "hedef %90 — fazlaysa tavan fazla temkinli"],
+            ] as [string, number | null, number, string][]).map(([et, v, hedef, not_]) => (
+              <div key={et} className="kpi">
+                <div className="kpi-et">{et}</div>
+                <div className="kpi-dg mono">{v == null ? "—" : `%${sayiTr(v * 100, 0)}`}
+                  <span style={{ fontSize: 12, color: "var(--soluk)", marginLeft: 6 }}>hedef %{sayiTr(hedef * 100, 0)}</span></div>
+                <div style={{ position: "relative", height: 6, background: "var(--yuzey2)", borderRadius: 3, margin: "8px 0 6px" }}>
+                  <div style={{ width: `${Math.min(100, (v ?? 0) * 100)}%`, height: "100%", borderRadius: 3,
+                    background: v != null && Math.abs(v - hedef) <= 0.05 ? "var(--basari)" : "var(--chart-p50-future)" }} />
+                  <div style={{ position: "absolute", left: `${hedef * 100}%`, top: -3, width: 2, height: 12, background: "var(--metin)" }} />
+                </div>
+                <div className="kpi-alt">{not_}</div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="soluk" style={{ margin: 0 }}>Bant sınavı, P10–P90 saklanan koşularla gece karnesinde birikir; ilk gün dolunca burada görünür.</p>
+        )}
+        <p className="soluk" style={{ marginTop: 10, marginBottom: 0, fontSize: 12.5 }}>
+          Ne gösterir: gerçekleşen üretimin, önceden söylenen P10–P90 bandının içinde kaldığı günlerin oranı.
+          Nasıl okunur: yeşil çubuk hedefe ±5 puan yakın demektir; düşükse bant dar (fazla iddialı), yüksekse bant geniş (fazla temkinli).
+          {ol?.crps != null && ` Bant kalitesi (CRPS): ${sayiTr(ol.crps, 0)} kW · ortalama bant genişliği kapasitenin %${sayiTr((ol.bant_n ?? 0) * 100, 0)}'i.`}
         </p>
       </Kart>
       <Kart baslik="Saat × gün hata ısı haritası"

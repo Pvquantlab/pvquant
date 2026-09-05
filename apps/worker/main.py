@@ -89,11 +89,36 @@ def kova_skorlari(df: "pd.DataFrame", capacity_kwp: float, tid, pid) -> list[dic
             nmae = _sfa.nmae(obs, fx, capacity_kwp)
             nrmse = _sfa.nrmse(obs, fx, capacity_kwp)
             nmbe = _sfa.nmbe(obs, fx, capacity_kwp)
+        # v2.248 (Dalga 1.3): P10-P90 bandinin sinavi — yalniz bant dolu saatlerde
+        # (p10/p90 NULL olan eski kosular atlanir; <3 saat ise None = '—').
+        ol = olasiliksal_skorlar(g, capacity_kwp)
         # v2.95 (sartname S4): naif olcumdur, saklanir — turetme donemi bitti.
         satirlar.append({"t": tid, "p": pid, "g": gun, "k": str(kova),
                          "m": mape, "r": rmse, "s": skill, "n": nm,
-                         "na": nmae, "nr": nrmse, "nb": nmbe})
+                         "na": nmae, "nr": nrmse, "nb": nmbe, **ol})
     return satirlar
+
+
+_OL_BOS = {"q10": None, "q50": None, "q90": None, "cr": None, "pc": None, "k10": None, "k90": None, "bn": None}
+
+
+def olasiliksal_skorlar(g: "pd.DataFrame", capacity_kwp: float) -> dict:
+    """v2.248 — gun+kova icin kantil sinavi (pvquant.ext.tahmin.dogrulama):
+    pinball P10/P50/P90 (kW), CRPS (kW, kantillerden), PICP80 (P10<=y<=P90 orani),
+    kapsama_p10/p90 (P(y<=q) — reliability uclari), bant_n (ort. genislik/kapasite).
+    p10/p90 kolonu yok ya da <3 dolu saat ise hepsi None."""
+    if "p10_kw" not in g or "p90_kw" not in g:
+        return dict(_OL_BOS)
+    d = g.dropna(subset=["p10_kw", "p90_kw"])
+    if len(d) < 3:
+        return dict(_OL_BOS)
+    from pvquant.ext.tahmin import dogrulama as _dg
+    y = d.power_kw.astype(float); q = pd.DataFrame({"p10": d.p10_kw, "p50": d.p50_kw, "p90": d.p90_kw}, index=d.index).astype(float)
+    kaps = _dg.reliability(y, q).set_index("tau")["gozlenen"]
+    return {"q10": _dg.pinball(y, q.p10, 0.1), "q50": _dg.pinball(y, q.p50, 0.5), "q90": _dg.pinball(y, q.p90, 0.9),
+            "cr": _dg.crps_kantillerden(y, q), "pc": _dg.picp(y, q.p10, q.p90),
+            "k10": float(kaps.loc[0.1]), "k90": float(kaps.loc[0.9]),
+            "bn": (_dg.bant_genisligi(q.p10, q.p90, capacity_kwp) if capacity_kwp and capacity_kwp > 0 else None)}
 
 
 def gece_skill(plant, pencere_gun: int = 10):
@@ -104,7 +129,7 @@ def gece_skill(plant, pencere_gun: int = 10):
     tid, pid = plant["tenant_id"], plant["id"]
     with tenant_baglami(tid) as s:
         df = pd.read_sql(text(
-            "SELECT f.ts_utc, f.p50_kw, r.run_at, s.power_kw "
+            "SELECT f.ts_utc, f.p50_kw, f.p10_kw, f.p90_kw, r.run_at, s.power_kw "
             "FROM forecast_values f "
             "JOIN forecast_runs r ON r.id=f.run_id "
             "JOIN scada_hourly s ON s.plant_id=f.plant_id AND s.ts_utc=f.ts_utc"
@@ -159,13 +184,18 @@ def gece_skill(plant, pencere_gun: int = 10):
     with tenant_baglami(tid) as s:
         s.execute(text(
             "INSERT INTO skill_daily(tenant_id,plant_id,date,horizon_bucket,"
-            " mape,rmse,skill_vs_naive,naive_wmape,nmae,nrmse,nmbe)"
-            " VALUES(:t,:p,:g,:k,:m,:r,:s,:n,:na,:nr,:nb) "
+            " mape,rmse,skill_vs_naive,naive_wmape,nmae,nrmse,nmbe,"
+            " pinball_p10,pinball_p50,pinball_p90,crps,picp80,kapsama_p10,kapsama_p90,bant_n)"
+            " VALUES(:t,:p,:g,:k,:m,:r,:s,:n,:na,:nr,:nb,:q10,:q50,:q90,:cr,:pc,:k10,:k90,:bn) "
             "ON CONFLICT (plant_id,date,horizon_bucket) DO UPDATE SET "
             " mape=EXCLUDED.mape, rmse=EXCLUDED.rmse,"
             " skill_vs_naive=EXCLUDED.skill_vs_naive,"
             " naive_wmape=EXCLUDED.naive_wmape,"
-            " nmae=EXCLUDED.nmae, nrmse=EXCLUDED.nrmse, nmbe=EXCLUDED.nmbe"), satirlar)
+            " nmae=EXCLUDED.nmae, nrmse=EXCLUDED.nrmse, nmbe=EXCLUDED.nmbe,"
+            " pinball_p10=EXCLUDED.pinball_p10, pinball_p50=EXCLUDED.pinball_p50,"
+            " pinball_p90=EXCLUDED.pinball_p90, crps=EXCLUDED.crps, picp80=EXCLUDED.picp80,"
+            " kapsama_p10=EXCLUDED.kapsama_p10, kapsama_p90=EXCLUDED.kapsama_p90,"
+            " bant_n=EXCLUDED.bant_n"), satirlar)
 def gunluk_toplam(df, tz, gun):
     """v2.205 — saatlik kosu cercevesinden TEK yerel gunun kWh toplamlari.
     Saf fonksiyon (DB'siz, birim-testli). Kurallar:

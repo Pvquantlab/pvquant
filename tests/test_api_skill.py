@@ -25,6 +25,11 @@ def _sahte_sk():
         "nmae": [4.1, 6.0, None, 4.5],
         "nrmse": [6.2, 9.1, None, 6.8],
         "nmbe": [-0.4, 1.2, None, 0.6],
+        # v2.248: bant sinavi — yalniz 28 ve 30 Tem dolu
+        "pinball_p10": [12.0, None, None, 14.0], "pinball_p50": [30.0, None, None, 34.0],
+        "pinball_p90": [11.0, None, None, 13.0], "crps": [40.0, None, None, 44.0],
+        "picp80": [0.70, None, None, 0.78], "kapsama_p10": [0.20, None, None, 0.16],
+        "kapsama_p90": [0.88, None, None, 0.92], "bant_n": [0.30, None, None, 0.34],
     })
 
 
@@ -53,6 +58,10 @@ def test_skill_200_toplulastirma_streamlit_kopyasi(istemci):
                               "nmae": 4.1, "nrmse": 6.2, "nmbe": -0.4}
     # v2.247: SFA ortalamalari yalniz dolu satirlardan (29 Tem None atlanir)
     assert g["nmae_ort"] == 4.3 and g["nrmse_ort"] == 6.5 and g["nmbe_ort"] == 0.1
+    # v2.248: bant sinavi ortalamalari yalniz dolu gunlerden (2 gun)
+    o = g["olasiliksal"]
+    assert o["gun_sayisi"] == 2 and o["picp80"] == 0.74 and o["kapsama_p10"] == 0.18
+    assert o["kapsama_p90"] == 0.9 and o["crps"] == 42.0 and o["bant_n"] == 0.32
     # Eski satir (naive_wmape=None): v2.76 turetmesi yedek —
     # 7.4/(1-0.27) = 10.137.
     assert g["gunluk"][1] == {"tarih": "2026-07-29", "kova": "0-24",
@@ -66,6 +75,7 @@ def test_skill_bos_kova_durust_bos(istemci):
     g = r.json()
     assert g["gun_sayisi"] == 0 and g["wmape_ort"] is None
     assert g["nmae_ort"] is None and g["nrmse_ort"] is None
+    assert g["olasiliksal"]["gun_sayisi"] == 0 and g["olasiliksal"]["picp80"] is None
     assert g["gunluk"] == []
 
 

@@ -42,6 +42,10 @@ export interface Karne {
   ilk_tarih: string | null; son_tarih: string | null;
   /** v2.247: SFA sozlugu — kapasiteye normalize yuzdeler (eski kayitlarda null). */
   nmae_ort?: number | null; nrmse_ort?: number | null; nmbe_ort?: number | null;
+  /** v2.248: P10–P90 bandinin gece sinavi (gun ortalamalari; dolu gun yoksa null). */
+  olasiliksal?: { gun_sayisi: number; pinball_p10: number | null; pinball_p50: number | null; pinball_p90: number | null;
+                  crps: number | null; picp80: number | null; kapsama_p10: number | null; kapsama_p90: number | null;
+                  bant_n: number | null };
   gunluk: { tarih: string; kova: string; wmape: number; naif_wmape: number | null;
             nmae?: number | null; nrmse?: number | null; nmbe?: number | null }[];
 }

@@ -306,9 +306,17 @@ def skill(plant_id: str, bucket: str = "0-24", gun: int = 120,
     def _opt(r, kol):
         v = r.get(kol) if hasattr(r, "get") else None
         return None if v is None or pd.isna(v) else _kw(v)
+    # v2.248 (Dalga 1.3): bant sinavi ozeti — gun ortalamalari; hicbir gun dolu
+    # degilse None (UI tire + 'birikiyor'). crps_n = crps/kapasite degil: kapasite bu
+    # kapida yok, kW olarak verilir; bant_n zaten kapasiteye normalize.
+    def _ol():
+        d = {k: _ort(k) for k in ("pinball_p10", "pinball_p50", "pinball_p90", "crps", "picp80", "kapsama_p10", "kapsama_p90", "bant_n")}
+        d["gun_sayisi"] = int(kova["picp80"].notna().sum()) if len(kova) and "picp80" in kova else 0
+        return d
     return {
         "kova": bucket,
         "nmae_ort": _ort("nmae"), "nrmse_ort": _ort("nrmse"), "nmbe_ort": _ort("nmbe"),
+        "olasiliksal": _ol(),
         "gun_sayisi": int(kova["date"].nunique()) if len(kova) else 0,
         "wmape_ort": _kw(kova["mape"].mean()) if len(kova) else None,
         "naife_ustunluk_pct": _kw(sv.mean()) if len(sv) else None,

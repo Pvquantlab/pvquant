@@ -21,7 +21,7 @@ def _df():
 def test_eski_tanimlar_ve_sfa_kolonlari():
     df = _df()
     satirlar = kova_skorlari(df, CAP, "t", "p")
-    assert len(satirlar) == 2 and set(satirlar[0]) == {"t", "p", "g", "k", "m", "r", "s", "n", "na", "nr", "nb"}
+    assert len(satirlar) == 2 and {"t", "p", "g", "k", "m", "r", "s", "n", "na", "nr", "nb"} <= set(satirlar[0])   # v2.248 bant anahtarlari da gelir
     r = satirlar[0]; g = df[df.gun == r["g"]]
     assert r["m"] == float(abs(g.p50_kw - g.power_kw).sum() / g.power_kw.sum() * 100)   # WMAPE aynen
     assert abs(r["r"] - 40.0) < 1e-9                                                       # sabit sapma → rmse 40 kW
