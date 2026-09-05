@@ -32,6 +32,12 @@ export interface PrKarti {
   son_olcum?: string | null;
 }
 
+/** /konformal yaniti — v2.252 (bant kalibrasyon ayarı özeti). */
+export interface KonformalAyar {
+  aktif: boolean; alpha?: number; n?: number; pencere_gun?: number; hesap_zamani?: string;
+  ort_q_kw?: number | null; q_hat?: Record<string, number>;
+}
+
 export interface TahminSerisi {
   mod: Mod | null; model: string; kosu_zamani: string; ufuk_saat: number;
   ac_tavani_kw: number | null; simdi_idx: number | null;

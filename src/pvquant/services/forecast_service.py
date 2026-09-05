@@ -81,6 +81,11 @@ def uret_ve_kaydet(tenant_id, plant: dict) -> str:
             h["ml_kw"] = h["p50_kw"] - h["physics_kw"]
             for k in ("p10_kw", "p25_kw", "p75_kw", "p90_kw"):  # v2.204: +ic bant
                 if k in hh.columns: h[k] = hh[k].reindex(h.index)
+    # v2.252 (Dalga 2.7, ★ onaylı): konformal bant kalibrasyonu — ham kantiller saklanır,
+    # servis edilen bant q̂ ile düzeltilir; ayar yoksa ham = servis. Çekirdek dokunulmadı.
+    from pvquant.services import konformal_service as _kf
+    _ayar = _kf.ayar_getir(tenant_id, plant["id"]) if mode == "C" else None
+    h = _kf.uygula_df(h, _ayar, plant.get("ac_limit_kw") or plant.get("capacity_kwp"))
     kosu_cercevesi_denetle(h)   # v2.176: run açılmadan önce
     with tenant_baglami(tenant_id) as s:
         _kaynak = "open-meteo"   # v2.189: tek literal — özet + INSERT aynı değeri yazar
@@ -106,12 +111,13 @@ def uret_ve_kaydet(tenant_id, plant: dict) -> str:
                      "p50": _f(v["p50_kw"]), "p10": _f(v["p10_kw"]),
                      "p90": _f(v["p90_kw"]),
                      "p25": _f(v["p25_kw"]), "p75": _f(v["p75_kw"]),  # v2.204
+                     "p10h": _f(v["p10_ham_kw"]), "p90h": _f(v["p90_ham_kw"]),  # v2.252
                      "ph": _f(v["physics_kw"]),
                      "ml": _f(v["ml_kw"])} for ts, v in h.iterrows()]
         s.execute(text(
             "INSERT INTO forecast_values(tenant_id,run_id,plant_id,ts_utc,"
-            " p50_kw,p10_kw,p90_kw,p25_kw,p75_kw,physics_kw,ml_kw) "
-            "VALUES(:t,:r,:p,:ts,:p50,:p10,:p90,:p25,:p75,:ph,:ml)"), satirlar)
+            " p50_kw,p10_kw,p90_kw,p25_kw,p75_kw,physics_kw,ml_kw,p10_ham_kw,p90_ham_kw) "
+            "VALUES(:t,:r,:p,:ts,:p50,:p10,:p90,:p25,:p75,:ph,:ml,:p10h,:p90h)"), satirlar)
         # v2.176 son-bekçi: commit'ten önce, aynı işlemde sayım. Tutmazsa
         # raise → tenant_baglami rollback → run da values da gitmez. Bu,
         # mekanizma-bağımsız garanti: hangi yoldan gelirse gelsin (sessiz

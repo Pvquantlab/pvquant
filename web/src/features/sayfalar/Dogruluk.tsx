@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { EChartsOption } from "echarts";
 import { api } from "../../api/client";
-import type { Karne, HataMatrisi, HataDagilimi } from "../../api/types";
+import type { Karne, HataMatrisi, HataDagilimi, KonformalAyar } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
 import { Kpi, Kart, Sayfa, sayiTr } from "./parcalar";
@@ -27,6 +27,8 @@ export function Dogruluk({ plantId }: { plantId: string }) {
   const [donem, setDonem] = useState<30 | 60 | 90>(60);
   const { n, oku } = useTema();
   useEffect(() => { api.karne(plantId, donem).then(setK); }, [plantId, donem]);
+  const [kf, setKf] = useState<KonformalAyar>({ aktif: false });   // v2.252
+  useEffect(() => { api.konformal(plantId).then(setKf).catch(() => {}); }, [plantId]);
   useEffect(() => { api.hataMatrisi(plantId).then(setHm); }, [plantId]);
   useEffect(() => { api.hataDagilimi(plantId).then(setHd); }, [plantId]);
 
@@ -394,7 +396,15 @@ export function Dogruluk({ plantId }: { plantId: string }) {
       {/* v2.248 (Dalga 1.3): P10–P90 bandının sınavı — bant genişliği değil, bandın
           TUTUP TUTMADIĞI. Üç çubuk: hedef işareti (%10 / %80 / %90) ile gözlenen oran. */}
       <Kart baslik="P10–P90 bandı sınavı — bant gerçekten tutuyor mu?"
-        sag={<span className="cip">{ol?.gun_sayisi ? `${sayiTr(ol.gun_sayisi)} gün · 0-24s` : "henüz birikmedi"}</span>}>
+        sag={<>
+          <span className="cip">{ol?.gun_sayisi ? `${sayiTr(ol.gun_sayisi)} gün · 0-24s` : "henüz birikmedi"}</span>
+          {/* v2.252: bant kalibrasyonu durumu — q̂ negatifse bant daraltılıyor, pozitifse genişletiliyor */}
+          <span className="cip" title="Servis edilen P10–P90, son pencerenin ham bant sınavından öğrenilen düzeltmeyle kalibre edilir">
+            {kf.aktif
+              ? `bant kalibrasyonu: ${kf.ort_q_kw != null && kf.ort_q_kw < 0 ? "daraltıyor" : "genişletiyor"} · ort. ${sayiTr(Math.abs(kf.ort_q_kw ?? 0), 0)} kW · ${sayiTr(kf.pencere_gun ?? 0)} gün`
+              : "bant kalibrasyonu: henüz yok"}
+          </span>
+        </>}>
         {ol?.gun_sayisi ? (
           <div className="ızgara satir-3" style={{ gap: 12 }}>
             {([

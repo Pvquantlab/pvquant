@@ -280,6 +280,18 @@ def alarmlar(plant_id: str, n: int = 20,
     return alarm_service.listele(claims["tenant_id"], plant_id, n=n)
 
 
+@app.get("/v1/plants/{plant_id}/konformal")
+def konformal(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """v2.252 — bant kalibrasyon ayarı (q̂ özeti). Yoksa {'aktif': False} — UI 'düzeltme yok' der."""
+    from pvquant.services import konformal_service
+    ayar = konformal_service.ayar_getir(claims["tenant_id"], plant_id)
+    if ayar is None:
+        return {"aktif": False}
+    return {"aktif": True, "alpha": ayar["alpha"], "n": ayar["n"], "pencere_gun": ayar["pencere_gun"],
+            "hesap_zamani": ayar["hesap_zamani"], "ort_q_kw": ayar["ort_q"],
+            "q_hat": {k: v for k, v in ayar["q_hat"].items() if k != "_genel"}}
+
+
 @app.get("/v1/plants/{plant_id}/pr")
 def pr(plant_id: str, gun: int = 30, claims=Depends(gecerli_kullanici)):
     """v2.249 — Dalga 1.4: IEC 61724-1 performans orani (olcumden). POA olcumu

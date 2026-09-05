@@ -196,6 +196,16 @@ def gece_skill(plant, pencere_gun: int = 10):
             " pinball_p90=EXCLUDED.pinball_p90, crps=EXCLUDED.crps, picp80=EXCLUDED.picp80,"
             " kapsama_p10=EXCLUDED.kapsama_p10, kapsama_p90=EXCLUDED.kapsama_p90,"
             " bant_n=EXCLUDED.bant_n"), satirlar)
+def gece_konformal(plant, pencere_gun: int = 60):
+    """v2.252 — gece skill'den sonra: son 60 günün HAM bandı + gerçekleşenden q̂ (CQR) öğren,
+    konformal_ayar'a yaz; sabah tahmini bu ayarla servis bandını düzeltir. Yalnız Mod C
+    (kantil üreten) santraller; yetersiz veri → eski ayar kalır, log 'yetersiz'."""
+    from pvquant.services import konformal_service
+    ayar = konformal_service.q_hat_hesapla(plant["tenant_id"], plant, gun=pencere_gun)
+    if ayar is None:
+        raise RuntimeError("konformal: yetersiz gündüz/bant verisi (ayar değişmedi)")
+
+
 def gunluk_toplam(df, tz, gun):
     """v2.205 — saatlik kosu cercevesinden TEK yerel gunun kWh toplamlari.
     Saf fonksiyon (DB'siz, birim-testli). Kurallar:
@@ -433,6 +443,7 @@ if __name__ == "__main__":
         # BILEREK haric (durum degistiren agir is; takvimin/kullanicinin isi).
         print("PVQuant worker --once: tam tur basliyor…")
         _logla("gece_skill", gece_skill)()
+        _logla("gece_konformal", gece_konformal)()          # v2.252
         _logla("gunluk_beklenti", gunluk_beklenti)()        # v2.205
         _logla("rapor_alanlari", rapor_alanlari)()          # v2.103 (B1+B5)
         _logla("sabah_tahmin", sabah_tahmin)()
@@ -442,6 +453,8 @@ if __name__ == "__main__":
     sch = BlockingScheduler(timezone="UTC", job_defaults=dict(coalesce=True, misfire_grace_time=3600, max_instances=1))
     sch.add_job(_logla("sabah_tahmin", sabah_tahmin), "cron", hour=cfg.worker_hour_forecast, minute=0)
     sch.add_job(_logla("gece_skill", gece_skill), "cron", hour=cfg.worker_hour_skill, minute=30)
+    sch.add_job(_logla("gece_konformal", gece_konformal),                # v2.252
+                "cron", hour=cfg.worker_hour_skill, minute=35)
     sch.add_job(_logla("gunluk_beklenti", gunluk_beklenti),              # v2.205
                 "cron", hour=cfg.worker_hour_skill, minute=40)
     sch.add_job(_logla("rapor_alanlari", rapor_alanlari),                # v2.103 (B1+B5)
