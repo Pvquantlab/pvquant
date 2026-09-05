@@ -58,6 +58,16 @@ def guncelle(tenant_id, plant_id, **alanlar):
     with tenant_baglami(tenant_id) as s:
         s.execute(text(f"UPDATE plants SET {sset} WHERE id=:_p"),
                   {**kume, "_p": plant_id})
+def params_birlestir(tenant_id, plant_id, **anahtarlar) -> dict:
+    """v2.260 — params_json'a anahtar ekle/güncelle (jsonb ||); öteki anahtarlar korunur."""
+    import json as _json
+    with tenant_baglami(tenant_id) as s:
+        s.execute(text("UPDATE plants SET params_json = COALESCE(params_json, '{}'::jsonb) || CAST(:j AS jsonb) WHERE id=:p"),
+                  {"j": _json.dumps(anahtarlar), "p": plant_id})
+        r = s.execute(text("SELECT params_json FROM plants WHERE id=:p"), {"p": plant_id}).scalar()
+    return r if isinstance(r, dict) else (_json.loads(r) if r else {})
+
+
 def sil(tenant_id, plant_id) -> dict:
     """v2.54 (Sozlesme 4): SILMEZ, ARSIVLER. Tarih yerinde kalir.
     Santral listelerden ve koşulardan cekilir; olcum/kalibrasyon/tahmin

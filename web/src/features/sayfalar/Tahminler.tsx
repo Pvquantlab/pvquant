@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api/client";
-import type { SantralOzeti, TahminSerisi } from "../../api/types";
+import type { SantralOzeti, TahminSerisi, KgupOnizleme } from "../../api/types";
 import { Kart, Sayfa, sayiTr } from "./parcalar";
 import ProductionForecastChart from "./ProductionForecastChart";
 import {
@@ -31,6 +31,9 @@ export function Tahminler({ plantId }: { plantId: string }) {
   const [ufuk, setUfuk] = useState<Ufuk>("7d");
   const [seri, setSeri] = useState<TahminSerisi | null>(null);
   const [ozet, setOzet] = useState<SantralOzeti | null>(null);
+  const [kgup, setKgup] = useState<KgupOnizleme | null>(null);   // v2.260
+  const [kgupHata, setKgupHata] = useState<string | null>(null);
+  useEffect(() => { api.kgupOnizleme(plantId).then(setKgup).catch(() => setKgup(null)); }, [plantId]);
   useEffect(() => {
     api.tahmin(plantId, "16d").then(setSeri); // single fetch — D1/D2
   }, [plantId]);
@@ -164,6 +167,26 @@ export function Tahminler({ plantId }: { plantId: string }) {
           </Kart>
         </div>
       )}
+      {/* v2.260 (Dalga 4.13): KGÜP bildirim dosyası — D-1 15:30 öncesi koşudan saatlik program (TPYS CSV) */}
+      <Kart baslik="KGÜP bildirimi — yarının saatlik programı"
+        sag={<span className="cip">{kgup ? `${kgup.teslim.hedef_gun} · pencere ${kgup.teslim.durum === "pencere_acik" ? "açık" : kgup.teslim.durum === "erken" ? "henüz açılmadı" : "kapandı"} (14:00–15:30) · teyit ${kgup.teslim.teyit_saati.slice(0, 5)}` : "koşu bekleniyor"}</span>}>
+        {kgup ? (
+          <>
+            <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+              <span className="mono">{sayiTr(kgup.toplam_mwh, 1)} MWh · {kgup.kantil.toUpperCase()} · koşu {kgup.kosu.run_at ? new Date(kgup.kosu.run_at).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }) : "—"}</span>
+              <button className="dugme" onClick={() => { setKgupHata(null); api.kgupIndir(plantId).catch((e) => setKgupHata(String(e.message ?? e))); }}>CSV indir (TPYS)</button>
+              <button className="dugme" onClick={() => { setKgupHata(null); api.kgupIndir(plantId, undefined, "p10").catch((e) => setKgupHata(String(e.message ?? e))); }}>Temkinli (P10) indir</button>
+              {kgupHata && <span style={{ color: "var(--uyari)", fontSize: 12.5 }}>{kgupHata}</span>}
+            </div>
+            {kgup.uyarilar.length > 0 && <p style={{ color: "var(--uyari)", fontSize: 12.5, margin: "8px 0 0" }}>{kgup.uyarilar.join(" · ")}</p>}
+            {kgup.sicrama_saatleri.length > 0 && <p style={{ fontSize: 12.5, margin: "8px 0 0" }}>≥200 MWh sıçrama: saat {kgup.sicrama_saatleri.join(", ")} — dosyada 15 dakikalık dilimler.</p>}
+            <p className="soluk" style={{ fontSize: 12.5, margin: "10px 0 0" }}>
+              Program, teslim kesiminden (D-1 15:30) önce verilmiş son koşunun saatlik P50'sidir; KGÜP ≤ emre amade kapasite ≤ kurulu güç
+              kuralı uygulanır. CSV kolon adları TPYS şablonuyla eşlenmelidir (resmi şablon teyit edilemedi); dosya bir öneridir, bildirim TPYS'de yapılır.
+            </p>
+          </>
+        ) : <p className="soluk" style={{ margin: 0 }}>Yarın için teslim kesiminden önce verilmiş koşu yok — sabah koşusu geldiğinde burada görünür.</p>}
+      </Kart>
     </Sayfa>
   );
 }

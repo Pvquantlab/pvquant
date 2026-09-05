@@ -1,4 +1,4 @@
-import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik } from "./types";
+import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -363,6 +363,27 @@ export const api = {
   alarmlar: async (p: string, n = 20): Promise<AlarmSatiri[]> => {
     if (TABAN == null) return [];
     return getir<AlarmSatiri[]>(`/v1/plants/${p}/alarmlar?n=${n}`);
+  },
+  /** v2.260: KGÜP önizleme (json) ve dosya indirme (csv, rapor kalıbı). */
+  kgupOnizleme: async (p: string, gun?: string, kantil = "p50"): Promise<KgupOnizleme | null> => {
+    if (TABAN == null) return null;
+    try { return await getir<KgupOnizleme>(`/v1/plants/${p}/kgup?fmt=json&kantil=${kantil}${gun ? `&gun=${gun}` : ""}`); } catch { return null; }
+  },
+  kgupIndir: async (p: string, gun?: string, kantil = "p50"): Promise<void> => {
+    if (TABAN == null) throw new Error("Örnek kipte KGÜP dosyası yok.");
+    const jeton = localStorage.getItem("pvq_token");
+    const y = await fetch(`${TABAN}/v1/plants/${p}/kgup?kantil=${kantil}${gun ? `&gun=${gun}` : ""}`, { headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
+    if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise<void>(() => {}); }
+    if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
+    const cd = y.headers.get("Content-Disposition") ?? ""; const es = /filename="([^"]+)"/.exec(cd);
+    const url = URL.createObjectURL(await y.blob()); const a = document.createElement("a");
+    a.href = url; a.download = es ? es[1] : "KGUP.csv"; a.click(); URL.revokeObjectURL(url);
+  },
+  segmentAyarla: async (p: string, segment: string, uevcb?: string): Promise<{ segment: string | null; dengesizlik_sahibi: string | null; kgup_yukumlu: boolean | null }> => {
+    const jeton = localStorage.getItem("pvq_token");
+    const y = await fetch(`${TABAN}/v1/plants/${p}/segment`, { method: "PUT", headers: { "Content-Type": "application/json", ...(jeton ? { Authorization: `Bearer ${jeton}` } : {}) }, body: JSON.stringify({ segment, uevcb }) });
+    if (!y.ok) throw new Error(`${y.status} segment`);
+    return y.json();
   },
   /** v2.259: dengesizlik simülatörü — kapı yok/hata → null. */
   dengesizlik: async (p: string, gun = 90): Promise<Dengesizlik | null> => {

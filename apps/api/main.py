@@ -280,6 +280,50 @@ def alarmlar(plant_id: str, n: int = 20,
     return alarm_service.listele(claims["tenant_id"], plant_id, n=n)
 
 
+@app.get("/v1/plants/{plant_id}/kgup")
+def kgup_dosyasi(plant_id: str, gun: str | None = None, kantil: str = "p50", fmt: str = "csv", claims=Depends(gecerli_kullanici)):
+    """v2.260 — KGÜP saatlik program (D-1 15:30 öncesi koşudan). fmt=csv → TPYS CSV eki; fmt=json → önizleme."""
+    from datetime import date, timedelta
+    from pvquant.services import kgup_service, plant_service
+    if kantil not in ("p10", "p50", "p90"):
+        raise HTTPException(422, "kantil p10|p50|p90")
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    g = date.fromisoformat(gun) if gun else (date.today() + timedelta(days=1))
+    pj = row.get("params_json") or {}
+    if isinstance(pj, str):
+        import json as _j; pj = _j.loads(pj)
+    r = kgup_service.uret(claims["tenant_id"], {"id": str(row["id"]), "capacity_kwp": float(row["capacity_kwp"]), "ac_limit_kw": row.get("ac_limit_kw"), "uevcb": pj.get("uevcb")}, g, kantil)
+    if "hata" in r:
+        raise HTTPException(409, r["hata"])
+    if fmt == "json":
+        return {k: v for k, v in r.items() if k != "csv"}
+    return Response(content=r["csv"].encode("utf-8-sig"), media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="{r["dosya_adi"]}"'})
+
+
+class SegmentIstek(BaseModel):
+    segment: str
+    uevcb: str | None = None
+
+
+@app.put("/v1/plants/{plant_id}/segment")
+def segment_ayarla(plant_id: str, p: SegmentIstek, claims=Depends(yazma_yetkisi())):
+    """v2.260 — piyasa segmenti (YEKDEM / serbest / lisanssız …) ve UEVÇB kodu; params_json'a yazılır."""
+    from pvquant.ext.turkiye.segment import Segment
+    from pvquant.services import plant_service, dengesizlik_service
+    try:
+        seg = Segment(p.segment)
+    except ValueError:
+        raise HTTPException(422, f"segment: {[s.value for s in Segment]}")
+    anahtarlar = {"segment": seg.value}
+    if p.uevcb:
+        anahtarlar["uevcb"] = p.uevcb.strip()[:32]
+    pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **anahtarlar)
+    return {"params_json": {k: v for k, v in pj.items() if k in ("segment", "uevcb")}, **dengesizlik_service.segment_bilgisi(pj)}
+
+
 @app.get("/v1/plants/{plant_id}/dengesizlik")
 def dengesizlik(plant_id: str, gun: int = 90, claims=Depends(gecerli_kullanici)):
     """v2.259 — karnenin TL dili: PVQuant programı vs naif program dengesizlik maliyeti (DUY), aylık + toplam."""

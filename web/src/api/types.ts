@@ -38,6 +38,17 @@ export interface KonformalAyar {
   ort_q_kw?: number | null; q_hat?: Record<string, number>;
 }
 
+/** /kgup?fmt=json — v2.260 önizleme; /segment — v2.260. */
+export interface KgupOnizleme {
+  gun: string; kantil: string; kosu: { run_at?: string; mode?: string }; uyarilar: string[]; sicrama_saatleri: number[];
+  toplam_mwh: number; satirlar: { saat: number; kgup_mwh: number; eak_mwh: number }[]; dosya_adi: string;
+  teslim: { hedef_gun: string; durum: string; dakika_kaldi: number; teyit_saati: string };
+}
+export const SEGMENTLER: { deger: string; etiket: string }[] = [
+  { deger: "lisansli_serbest", etiket: "Lisanslı · serbest piyasa" }, { deger: "lisansli_yekdem", etiket: "Lisanslı · YEKDEM" },
+  { deger: "yeka", etiket: "YEKA" }, { deger: "lisanssiz_iletim", etiket: "Lisanssız · iletim bağlantılı" },
+  { deger: "lisanssiz_dagitim", etiket: "Lisanssız · dağıtım (GTŞ/toplayıcı)" }, { deger: "oz_tuketim_saatlik", etiket: "Öz tüketim · saatlik mahsup" },
+];
 /** /dengesizlik — v2.259: karnenin TL dili. */
 export interface Dengesizlik {
   gun_sayisi: number; pencere_gun: number; not: string;
