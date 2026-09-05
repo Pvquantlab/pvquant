@@ -38,6 +38,11 @@ export interface KonformalAyar {
   ort_q_kw?: number | null; q_hat?: Record<string, number>;
 }
 
+/** /hijyen — v2.254: kırpma/kısıntı sayımı ve kısıtsız senaryo kaybı. */
+export interface Hijyen {
+  pencere_gun: number; saat: number; kirpma_saat: number; kirpma_gun: number; kisinti_saat: number; kisinti_gun: number;
+  kisinti_kayip_kwh: number; beklenen_kapsama: number | null; kisinti_aranabildi: boolean;
+}
 /** /backtest — v2.253: konformal katmanın kayan-başlangıç sınavı. */
 export interface Backtest {
   pencere: number; picp_ham_ort: number | null; picp_kal_ort: number | null; hedef: number; hukum: string;

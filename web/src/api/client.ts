@@ -1,4 +1,4 @@
-import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma } from "./types";
+import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -363,6 +363,11 @@ export const api = {
   alarmlar: async (p: string, n = 20): Promise<AlarmSatiri[]> => {
     if (TABAN == null) return [];
     return getir<AlarmSatiri[]>(`/v1/plants/${p}/alarmlar?n=${n}`);
+  },
+  /** v2.254: veri hijyeni — kapı yok/hata → null. */
+  hijyen: async (p: string, gun = 30): Promise<Hijyen | null> => {
+    if (TABAN == null) return null;
+    try { return await getir<Hijyen>(`/v1/plants/${p}/hijyen?gun=${gun}`); } catch { return null; }
   },
   /** v2.253: geriye dönük sınav ve kayma denetimi — hata/kapı yok → null. */
   backtest: async (p: string, gun = 90): Promise<Backtest | null> => {

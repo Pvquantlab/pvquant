@@ -5,7 +5,7 @@ import { useTema } from "../../lib/useTema";
 import { api, RaporDenetimHata, type DenetimBulgusu, EslemeHatasi, type EslemeVerisi,
          type ScadaOnizleme, type ScadaKayit,
          type KosuSatiri } from "../../api/client";
-import type { KalibrasyonOzeti, Kayma } from "../../api/types";
+import type { KalibrasyonOzeti, Kayma, Hijyen } from "../../api/types";
 import { Kart, Sayfa, Kpi, sayiTr } from "./parcalar";
 
 export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
@@ -404,6 +404,8 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
     api.kalibrasyon(plantId).then((v) => { setK(v); setYuklendi(true); });
   }, [plantId]);
   const [ky, setKy] = useState<Kayma | null>(null);   // v2.253
+  const [hj, setHj] = useState<Hijyen | null>(null);  // v2.254
+  useEffect(() => { api.hijyen(plantId).then(setHj).catch(() => {}); }, [plantId]);
   useEffect(() => { api.kayma(plantId).then(setKy).catch(() => {}); }, [plantId]);
   const sr = (a: string, b: string) => <tr key={a}><td>{a}</td><td className="mono">{b}</td></tr>;
   const yzd = (v: number | null) => v === null ? "\u2014" : `%${sayiTr(v, 1)}`;
@@ -542,6 +544,32 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
         </Kart>
       )}
       </>)}
+      {/* v2.254 (Dalga 3.9): kırpma (AC tavanı) ve şebeke kısıntısı — ölçüm silinmez, bayraklanır;
+          kısıntı karne ve kalibrasyon dışı, kırpma yalnız kalibrasyon dışı. */}
+      <Kart baslik="Veri hijyeni — kırpma ve şebeke kısıntısı"
+        sag={<span className="cip">{hj ? `son ${sayiTr(hj.pencere_gun)} gün · ${sayiTr(hj.saat)} saat` : "hesaplanıyor"}</span>}>
+        {hj ? (
+          <>
+            <div className="ızgara satir-3" style={{ gap: 12 }}>
+              <div className="kpi"><div className="kpi-et">AC tavanında kırpılan</div>
+                <div className="kpi-dg mono">{sayiTr(hj.kirpma_saat)} <small>saat</small></div>
+                <div className="kpi-alt">{sayiTr(hj.kirpma_gun)} gün · karnede sayılır, kalibrasyona girmez</div></div>
+              <div className="kpi"><div className="kpi-et">Şebeke kısıntısı</div>
+                <div className="kpi-dg mono">{hj.kisinti_aranabildi ? <>{sayiTr(hj.kisinti_saat)} <small>saat</small></> : "—"}</div>
+                <div className="kpi-alt">{hj.kisinti_aranabildi ? `${sayiTr(hj.kisinti_gun)} gün · karne ve kalibrasyon dışı` : "beklenen üretim (koşu) olmadan aranmaz"}</div></div>
+              <div className="kpi"><div className="kpi-et">Kısıtlama olmasaydı</div>
+                <div className="kpi-dg mono">{hj.kisinti_aranabildi ? <>+{sayiTr(hj.kisinti_kayip_kwh / 1000, 2)} <small>MWh</small></> : "—"}</div>
+                <div className="kpi-alt">{hj.kisinti_aranabildi ? "kısıntı saatlerinde beklenen − gerçekleşen" : "—"}</div></div>
+            </div>
+            <p style={{ fontSize: 12.5, color: "var(--ikincil)", margin: "10px 0 0", lineHeight: 1.55 }}>
+              Kırpma: üretimin AC tavanına yapıştığı saatler — gerçek üretimdir, tahmin de tavanı bilir; ama tavanlı güç
+              panel fiziğini yansıtmadığından kalibrasyon bu saatleri kullanmaz. Kısıntı: beklenenin çok altında ve
+              düz giden bloklar — şebekenin imzası; bulut düşüşü düz değildir. Her gece yeniden değerlendirilir; hiçbir
+              ölçüm silinmez. {hj.beklenen_kapsama != null && `Beklenen üretim saatlerin %${sayiTr(hj.beklenen_kapsama * 100, 0)}'inde vardı.`}
+            </p>
+          </>
+        ) : <p className="soluk" style={{ margin: 0 }}>Hesaplanıyor…</p>}
+      </Kart>
       {/* v2.253 (Dalga 2.8b): eğitim/servis kayması — kalibrasyon arşiv meteosuyla, tahmin servisi tahmin
           meteosuyla çalışır; aynı saatlerde dağılım/sapma farkı bant sapmasının olası adresidir. */}
       <Kart baslik="Eğitim / servis uyumu — model hangi meteoyu gördü?"

@@ -196,6 +196,13 @@ def gece_skill(plant, pencere_gun: int = 10):
             " pinball_p90=EXCLUDED.pinball_p90, crps=EXCLUDED.crps, picp80=EXCLUDED.picp80,"
             " kapsama_p10=EXCLUDED.kapsama_p10, kapsama_p90=EXCLUDED.kapsama_p90,"
             " bant_n=EXCLUDED.bant_n"), satirlar)
+def gece_hijyen(plant, pencere_gun: int = 10):
+    """v2.254 — gece skill'den ÖNCE: son 10 günün kırpma/kısıntı bayrakları yeniden değerlendirilir
+    (kısıntı flag='kisinti' → karne ve kalibrasyon dışı; kırpma yalnız kalibrasyon dışı)."""
+    from pvquant.services import hijyen_service
+    hijyen_service.gece_hijyen(plant["tenant_id"], plant, gun=pencere_gun)
+
+
 def gece_konformal(plant, pencere_gun: int = 60):
     """v2.252 — gece skill'den sonra: son 60 günün HAM bandı + gerçekleşenden q̂ (CQR) öğren,
     konformal_ayar'a yaz; sabah tahmini bu ayarla servis bandını düzeltir. Yalnız Mod C
@@ -442,6 +449,7 @@ if __name__ == "__main__":
         # v2.56: elle tam tur — scheduler'siz, sirayla. Aylik kalibrasyon
         # BILEREK haric (durum degistiren agir is; takvimin/kullanicinin isi).
         print("PVQuant worker --once: tam tur basliyor…")
+        _logla("gece_hijyen", gece_hijyen)()                # v2.254 (skill'den once)
         _logla("gece_skill", gece_skill)()
         _logla("gece_konformal", gece_konformal)()          # v2.252
         _logla("gunluk_beklenti", gunluk_beklenti)()        # v2.205
@@ -452,6 +460,7 @@ if __name__ == "__main__":
         raise SystemExit(0)
     sch = BlockingScheduler(timezone="UTC", job_defaults=dict(coalesce=True, misfire_grace_time=3600, max_instances=1))
     sch.add_job(_logla("sabah_tahmin", sabah_tahmin), "cron", hour=cfg.worker_hour_forecast, minute=0)
+    sch.add_job(_logla("gece_hijyen", gece_hijyen), "cron", hour=cfg.worker_hour_skill, minute=20)   # v2.254
     sch.add_job(_logla("gece_skill", gece_skill), "cron", hour=cfg.worker_hour_skill, minute=30)
     sch.add_job(_logla("gece_konformal", gece_konformal),                # v2.252
                 "cron", hour=cfg.worker_hour_skill, minute=35)

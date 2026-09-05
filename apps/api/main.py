@@ -280,6 +280,15 @@ def alarmlar(plant_id: str, n: int = 20,
     return alarm_service.listele(claims["tenant_id"], plant_id, n=n)
 
 
+@app.get("/v1/plants/{plant_id}/hijyen")
+def hijyen(plant_id: str, gun: int = 30, claims=Depends(gecerli_kullanici)):
+    """v2.254 — kırpma/kısıntı sayımı ve 'kısıtlama olmasaydı' kaybı (beklenen = son koşu fiziği)."""
+    from pvquant.services import hijyen_service
+    if not (7 <= gun <= 365):
+        raise HTTPException(422, "gun 7-365 araliginda olmali")
+    return hijyen_service.ozet(claims["tenant_id"], plant_id, gun=gun)
+
+
 @app.get("/v1/plants/{plant_id}/backtest")
 def backtest(plant_id: str, gun: int = 90, claims=Depends(gecerli_kullanici)):
     """v2.253 — konformal katmanın kayan-başlangıç geriye dönük sınavı (sızıntısız)."""

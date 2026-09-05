@@ -67,7 +67,7 @@ def scada_oku(tenant_id, plant_id) -> pd.DataFrame:
     with tenant_baglami(tenant_id) as s:
         df = pd.read_sql(text(
             "SELECT ts_utc, power_kw, energy_kwh, poa_wm2, t_air,"
-            " t_module, wind_ms FROM scada_hourly "
+            " t_module, wind_ms, kirpma FROM scada_hourly "
             "WHERE plant_id=:p AND flag='valid' ORDER BY ts_utc"),
             s.connection(), params={"p": plant_id},
             index_col="ts_utc", parse_dates=["ts_utc"])

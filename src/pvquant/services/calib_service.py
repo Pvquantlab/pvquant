@@ -51,7 +51,13 @@ def _kalibrasyon_izgarasi(df: pd.DataFrame, plant: dict) -> pd.DataFrame:
 
 
 def _scada_data(tenant_id, plant) -> SCADAData:
-    df = _kalibrasyon_izgarasi(scada_oku(tenant_id, plant["id"]), plant)
+    df = scada_oku(tenant_id, plant["id"])
+    # v2.254 (Dalga 3.9): AC tavanında kırpılmış saatler kalibrasyona GİRMEZ — tavanlı güç DC fiziğini
+    # yansıtmaz, eta_bos/BG uydurmasını aşağı çeker. Ölçüm silinmez; yalnız bu uydurmada NaN (gündüz NaN
+    # → motor düşer). Karne bu saatleri saymaya devam eder (tahmin de tavanı modellemeli).
+    if "kirpma" in df.columns:
+        df.loc[df["kirpma"].fillna(False).astype(bool), "power_kw"] = float("nan")
+    df = _kalibrasyon_izgarasi(df, plant)
     def _o(k):
         return df[k] if k in df.columns and df[k].notna().any() else None
     return SCADAData(
