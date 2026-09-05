@@ -59,6 +59,10 @@ class Settings(BaseSettings):
     # eski/varsayılan) ya da 'ineichen' (açık gök modeli: kt bulutluluğu daha temiz ölçer). DİKKAT:
     # eğitim ve servis AYNI ayarla çalışmalı; değiştirmek YENİDEN KALİBRASYON gerektirir (ml_models eski kt ile eğitildi).
     kt_referans: str = "toa"
+    # v2.258 (Dalga 4.14): EPİAŞ Şeffaflık kimliği (PVQUANT_EPIAS_KULLANICI / PVQUANT_EPIAS_SIFRE). Yoksa
+    # fiyatlar 'senaryo' (EPDK 2025 yıllık ortalamaları) — UI bunu açıkça söyler. Şifre asla loglanmaz.
+    epias_kullanici: str | None = None
+    epias_sifre: str | None = None
     # C-3b (v2.152): s08 butunluk kurallarinin makine esikleri — worker ve
     # servis TEK kaynaktan okur. reporting/html/veri.py KARNE_ESIK aynasidir
     # (rapor katmani bagimsizdir; sapma D19/D20 verisinde yakalanir).

@@ -280,6 +280,25 @@ def alarmlar(plant_id: str, n: int = 20,
     return alarm_service.listele(claims["tenant_id"], plant_id, n=n)
 
 
+@app.get("/v1/piyasa/durum")
+def piyasa_durum(claims=Depends(gecerli_kullanici)):
+    """v2.258 — EPİAŞ entegrasyonunun durumu: kimlik var mı, son fiyat saati, senaryo değerleri."""
+    from pvquant.services import piyasa_service
+    return piyasa_service.durum()
+
+
+@app.get("/v1/piyasa/fiyat")
+def piyasa_fiyat(bas: str, bitis: str, claims=Depends(gecerli_kullanici)):
+    """v2.258 — saatlik PTF/SMF/yön (UTC); eksik saatler 'senaryo' kaynaklı döner."""
+    from pvquant.services import piyasa_service
+    idx = pd.date_range(pd.Timestamp(bas, tz="Europe/Istanbul"), pd.Timestamp(bitis, tz="Europe/Istanbul") + pd.Timedelta(hours=23), freq="h").tz_convert("UTC")
+    if len(idx) > 24 * 400:
+        raise HTTPException(422, "en fazla 400 gun")
+    f = piyasa_service.fiyatlar(idx)
+    return {"satirlar": [{"ts": ts.isoformat(), "ptf": _kw(r.ptf), "smf": _kw(r.smf), "yon": r.yon, "kaynak": r.kaynak} for ts, r in f.iterrows()],
+            "epias_saat": int((f.kaynak == "epias").sum()), "senaryo_saat": int((f.kaynak == "senaryo").sum())}
+
+
 @app.get("/v1/plants/{plant_id}/saglik")
 def saglik(plant_id: str, gun: int = 800, claims=Depends(gecerli_kullanici)):
     """v2.256 — bozunma (%/yıl, YoY) ve performans eğilimi; POA yoksa model-normalize verimle."""
