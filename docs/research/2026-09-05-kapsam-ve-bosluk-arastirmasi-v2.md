@@ -360,3 +360,10 @@ Diğer adaylar: Visual Crossing Corporate $150/ay (ticari ✔, ensemble ✗), Op
 - Tedarik: Open-Meteo pricing · Meteomatics · meteoblue · Solcast · Solargis · Tomorrow.io · Visual Crossing · OpenWeatherMap · Weatherbit · Pirate Weather · Xweather · Meteostat.
 - Oyuncular: Steadysun · Reuniwatt · DNV Forecaster · UL Solutions · ENFOR · Meteologica · emsys · Whiffle · Amperon · OCF Quartz (api.quartz.solar/openapi.json) · Dexter · Rebase · Sunairio · WindBorne · Jua · Silurian · Sprixin · REConnect · Overspeed · Xweather · Volue.
 - Türkiye: DUY (mevzuat.gov.tr 7.5.12985, RG 29/12/2025) · EPDK Elektrik Piyasası Aylık Sektör Raporları 2025 + 2025 Piyasa Gelişim Raporu (epdk.gov.tr) · EPİAŞ SMF hesaplanması (k,l=0,03) · EPİAŞ DGP süreci (TPYS) · EPİAŞ dengesizlik teminatı esasları · RG 02.04.2026/33212 (LÜY toplayıcı) · Global Solar Atlas PVOUT (Konya 1.635 kWh/kWp) · Ember Türkiye Electricity Review 2026 · EPİAŞ KGÜP sayfası · EPİAŞ Şeffaflık teknik doküman + swagger · CAS limit duyurusu (23 Tem 2025) · eptr2 (github.com/Tideseed/eptr2) · GİP genel esaslar · RİTM Yönetmeliği RG 6/2/2026 · MGM MEVBİS · GEPA · EPDK lisans sorgu · Solarify · Solar8 · SolarTools · Enoptimal · GESmetrik · UrClimate · APLUS · VTC · Corius · smartPulse · Limak · Zeros · Enerjisa Üretim · TEİAŞ Güneş Üretim Tahmin Sistemi haberi (Tem 2026).
+
+
+---
+
+## KARAR NOTU (5 Eylül 2026, akşam)
+
+Open-Meteo Professional yıllık aboneliği kullanıcı tarafından **onaylanmadı**. Dalga 0, ücretli plan yerine ticari kullanıma açık ücretsiz kaynaklara geçiş olarak yeniden tanımlandı: ECMWF Open Data (IFS/AIFS, CC BY 4.0, ssrd, ENS 50+1) + DWD ICON-EU (CC BY 4.0, direkt/difüz ışınım, Türkiye tamamen kapsamda) + NOAA GFS/GEFS (kamu malı); arşiv/iklim için PVGIS-SARAH3 + CAMS ışınım serisi + NASA POWER. Veri maliyeti sıfır; bedel mühendislik (io/meteo.py'ye GRIB2 okuyucu, koşu arşivleme, atıf) — backend dalgası, onay ister. Ücretsiz Open-Meteo katmanı geçiş bitene kadar açık uyumluluk borcudur. Bekleyen kararlar: anayasa atıf istisnası; başlangıç dalgası (Dalga 0 backend / Dalga 1 çekirdeğe dokunmaz; paralel yürüyebilir).
