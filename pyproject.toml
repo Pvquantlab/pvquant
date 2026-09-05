@@ -54,6 +54,7 @@ dependencies = [
     "rapidfuzz>=3.0",
     "weasyprint>=61",
     "pypdf>=4",   # v2.146: teslim PDF'i tekil sayfalarin birlesimi
+    "tabulate>=0.9",   # v2.246: ext.platform.rapor_sablon Markdown tablosu
 ]
 
 [project.optional-dependencies]
