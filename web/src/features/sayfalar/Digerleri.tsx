@@ -5,7 +5,7 @@ import { useTema } from "../../lib/useTema";
 import { api, RaporDenetimHata, type DenetimBulgusu, EslemeHatasi, type EslemeVerisi,
          type ScadaOnizleme, type ScadaKayit,
          type KosuSatiri } from "../../api/client";
-import type { KalibrasyonOzeti } from "../../api/types";
+import type { KalibrasyonOzeti, Kayma } from "../../api/types";
 import { Kart, Sayfa, Kpi, sayiTr } from "./parcalar";
 
 export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
@@ -403,6 +403,8 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
   useEffect(() => {
     api.kalibrasyon(plantId).then((v) => { setK(v); setYuklendi(true); });
   }, [plantId]);
+  const [ky, setKy] = useState<Kayma | null>(null);   // v2.253
+  useEffect(() => { api.kayma(plantId).then(setKy).catch(() => {}); }, [plantId]);
   const sr = (a: string, b: string) => <tr key={a}><td>{a}</td><td className="mono">{b}</td></tr>;
   const yzd = (v: number | null) => v === null ? "\u2014" : `%${sayiTr(v, 1)}`;
   const iyilesme = k && k.mape_once && k.mape_sonra
@@ -540,6 +542,33 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
         </Kart>
       )}
       </>)}
+      {/* v2.253 (Dalga 2.8b): eğitim/servis kayması — kalibrasyon arşiv meteosuyla, tahmin servisi tahmin
+          meteosuyla çalışır; aynı saatlerde dağılım/sapma farkı bant sapmasının olası adresidir. */}
+      <Kart baslik="Eğitim / servis uyumu — model hangi meteoyu gördü?"
+        sag={<span className="cip">{ky ? `${sayiTr(ky.n_saat)} saat · ${ky.hukum}` : "hesaplanıyor"}</span>}>
+        {ky && ky.ozellikler.length > 0 ? (
+          <>
+            <div className="grafik-kaydir">
+              <table className="veri" style={{ fontSize: 12.5 }}>
+                <thead><tr><th>Girdi</th><th>Saat</th><th>Dağılım farkı (PSI)</th><th>KS</th><th>Servis − eğitim</th><th>Hüküm</th></tr></thead>
+                <tbody className="mono">
+                  {ky.ozellikler.map((o) => (
+                    <tr key={o.ad}><td>{o.etiket}</td><td>{sayiTr(o.n)}</td><td>{sayiTr(o.psi, 3)}</td><td>{sayiTr(o.ks, 3)}</td>
+                      <td>{sayiTr(o.sapma, 2)}{o.sapma_pct != null ? ` (%${sayiTr(o.sapma_pct, 1)})` : ""}</td>
+                      <td style={{ color: o.hukum === "KAYMA" ? "var(--uyari)" : o.hukum === "dikkat" ? "var(--soluk)" : "var(--basari)" }}>{o.hukum}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p style={{ fontSize: 12.5, color: "var(--ikincil)", margin: "10px 0 0", lineHeight: 1.55 }}>
+              Eğitim: {ky.kaynak.egitim} · Servis: {ky.kaynak.servis}. {ky.kaynak.not}. PSI &lt; 0,10 uyumlu, 0,10–0,25 dikkat, &gt; 0,25 kayma.
+              Kayma varsa bant sınavındaki sapmanın adresi büyük olasılıkla buradadır — düzeltme model kararıdır, bu kart yalnız ölçer.
+            </p>
+          </>
+        ) : (
+          <p className="soluk" style={{ margin: 0 }}>{ky ? "Ortak saat yetersiz — en az 48 saat gerekir." : "Arşiv ve tahmin meteosu aynı pencerede karşılaştırılıyor…"}</p>
+        )}
+      </Kart>
     </Sayfa>
   );
 }

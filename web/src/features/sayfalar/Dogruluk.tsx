@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { EChartsOption } from "echarts";
 import { api } from "../../api/client";
-import type { Karne, HataMatrisi, HataDagilimi, KonformalAyar } from "../../api/types";
+import type { Karne, HataMatrisi, HataDagilimi, KonformalAyar, Backtest } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
 import { Kpi, Kart, Sayfa, sayiTr } from "./parcalar";
@@ -29,6 +29,8 @@ export function Dogruluk({ plantId }: { plantId: string }) {
   useEffect(() => { api.karne(plantId, donem).then(setK); }, [plantId, donem]);
   const [kf, setKf] = useState<KonformalAyar>({ aktif: false });   // v2.252
   useEffect(() => { api.konformal(plantId).then(setKf).catch(() => {}); }, [plantId]);
+  const [bt, setBt] = useState<Backtest | null>(null);   // v2.253
+  useEffect(() => { api.backtest(plantId).then(setBt).catch(() => {}); }, [plantId]);
   useEffect(() => { api.hataMatrisi(plantId).then(setHm); }, [plantId]);
   useEffect(() => { api.hataDagilimi(plantId).then(setHd); }, [plantId]);
 
@@ -433,6 +435,24 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           Nasıl okunur: yeşil çubuk hedefe ±5 puan yakın demektir; düşükse bant dar (fazla iddialı), yüksekse bant geniş (fazla temkinli).
           {ol?.crps != null && ` Bant kalitesi (CRPS): ${sayiTr(ol.crps, 0)} kW · ortalama bant genişliği kapasitenin %${sayiTr((ol.bant_n ?? 0) * 100, 0)}'i.`}
         </p>
+        {/* v2.253: kayan-başlangıç geriye dönük sınav — q̂ yalnız önceki günlerden, sonraki haftaya uygulanır (sızıntı yok) */}
+        {bt && bt.pencere > 0 && (
+          <div className="grafik-kaydir" style={{ marginTop: 12 }}>
+            <div className="cip" style={{ display: "inline-block", marginBottom: 6 }}>
+              Geriye dönük sınav · {sayiTr(bt.pencere)} pencere · ham %{sayiTr((bt.picp_ham_ort ?? 0) * 100, 0)} → kalibre %{sayiTr((bt.picp_kal_ort ?? 0) * 100, 0)} (hedef %80) · {bt.hukum}
+            </div>
+            <table className="veri" style={{ fontSize: 12.5 }}>
+              <thead><tr><th>Başlangıç</th><th>Test saati</th><th>Ham kapsama</th><th>Kalibre kapsama</th><th>Bant (ham → kalibre)</th></tr></thead>
+              <tbody className="mono">
+                {bt.satirlar.map((r) => (
+                  <tr key={r.baslangic}><td>{r.baslangic}</td><td>{sayiTr(r.n_test)}</td>
+                    <td>%{sayiTr(r.picp_ham * 100, 0)}</td><td>%{sayiTr(r.picp_kal * 100, 0)}</td>
+                    <td>%{sayiTr(r.bant_ham_n * 100, 0)} → %{sayiTr(r.bant_kal_n * 100, 0)}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Kart>
       <Kart baslik="Saat × gün hata ısı haritası"
         sag={<span className="cip">son 30 gün · 0-24s · {hm?.tz ?? "—"}</span>}>

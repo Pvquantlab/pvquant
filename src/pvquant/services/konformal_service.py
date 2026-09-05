@@ -59,20 +59,29 @@ def uygula_df(h: pd.DataFrame, ayar: dict | None, tavan_kw: float | None) -> pd.
     return h
 
 
-def q_hat_hesapla(tenant_id, plant: dict, gun: int = 60) -> dict | None:
-    """DB: son `gun` günün HAM bandı (p10_ham_kw yoksa p10_kw — migration öncesi koşular ham demektir)
-    + gerçekleşen → q̂; konformal_ayar'a yazar (UPSERT). Yetersizse ayar SİLİNMEZ, eski kalır; None döner."""
+def gecmis_band_df(tenant_id, plant_id, gun: int = 60) -> pd.DataFrame:
+    """DB: son `gun` günün 0–24 s ufuklu HAM bandı (p10_ham_kw yoksa p10_kw — migration öncesi koşular
+    ham demektir) + p50 + gerçekleşen. q̂ öğrenimi ve geriye dönük sınav (v2.253) aynı çerçeveyi okur."""
     from sqlalchemy import text
     from pvquant.db import tenant_baglami
-    pid = plant["id"]
     with tenant_baglami(tenant_id) as s:
-        df = pd.read_sql(text(
-            "SELECT f.ts_utc, s.power_kw, COALESCE(f.p10_ham_kw, f.p10_kw) AS p10, COALESCE(f.p90_ham_kw, f.p90_kw) AS p90 "
+        return pd.read_sql(text(
+            "SELECT f.ts_utc, s.power_kw, f.p50_kw AS p50, COALESCE(f.p10_ham_kw, f.p10_kw) AS p10, "
+            "COALESCE(f.p90_ham_kw, f.p90_kw) AS p90 "
             "FROM forecast_values f JOIN forecast_runs r ON r.id=f.run_id "
             "JOIN scada_hourly s ON s.plant_id=f.plant_id AND s.ts_utc=f.ts_utc AND s.flag='valid' "
             "WHERE f.plant_id=:p AND f.ts_utc >= now()-(:g * INTERVAL '1 day') "
-            "AND f.ts_utc - r.run_at BETWEEN INTERVAL '0 hour' AND INTERVAL '24 hour'"),
-            s.connection(), params={"p": pid, "g": gun}, parse_dates=["ts_utc"])
+            "AND f.ts_utc - r.run_at BETWEEN INTERVAL '0 hour' AND INTERVAL '24 hour' ORDER BY f.ts_utc"),
+            s.connection(), params={"p": plant_id, "g": gun}, parse_dates=["ts_utc"])
+
+
+def q_hat_hesapla(tenant_id, plant: dict, gun: int = 60) -> dict | None:
+    """DB: son `gun` günün HAM bandı + gerçekleşen → q̂; konformal_ayar'a yazar (UPSERT).
+    Yetersizse ayar SİLİNMEZ, eski kalır; None döner."""
+    from sqlalchemy import text
+    from pvquant.db import tenant_baglami
+    pid = plant["id"]
+    df = gecmis_band_df(tenant_id, pid, gun)
     ayar = q_hat_hesapla_df(df, float(plant["capacity_kwp"]))
     if ayar is None:
         return None

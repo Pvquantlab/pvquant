@@ -127,8 +127,12 @@ class OpenMeteoClient:
         longitude: float,
         days: int = 7,
         timezone: str = "UTC",
+        past_days: int = 0,
     ) -> MeteoData:
         """Verilen koordinat için saatlik 7 günlük forecast getirir.
+        v2.253: past_days (0–92) verilirse aynı modelin GEÇMİŞ günleri de döner —
+        eğitim/servis kayma denetiminin 'servis tarafı' örneği (tahmin modelinin
+        kısa ufuklu çıktısı; arşiv/analiz DEĞİL).
 
         Args:
             latitude: Enlem, derece (-90 ila 90).
@@ -157,6 +161,10 @@ class OpenMeteoClient:
             "forecast_days": days,
             "timezone": timezone,
         }
+        if not 0 <= past_days <= 92:
+            raise ValueError(f"past_days {past_days} aralık dışı (0..92)")
+        if past_days:
+            params["past_days"] = past_days   # v2.253: kayma denetimi (servis tarafı örneği)
 
         url = f"{self.base_url}/forecast"
         try:

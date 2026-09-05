@@ -1,4 +1,4 @@
-import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar } from "./types";
+import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -363,6 +363,15 @@ export const api = {
   alarmlar: async (p: string, n = 20): Promise<AlarmSatiri[]> => {
     if (TABAN == null) return [];
     return getir<AlarmSatiri[]>(`/v1/plants/${p}/alarmlar?n=${n}`);
+  },
+  /** v2.253: geriye dönük sınav ve kayma denetimi — hata/kapı yok → null. */
+  backtest: async (p: string, gun = 90): Promise<Backtest | null> => {
+    if (TABAN == null) return null;
+    try { return await getir<Backtest>(`/v1/plants/${p}/backtest?gun=${gun}`); } catch { return null; }
+  },
+  kayma: async (p: string, gun = 30): Promise<Kayma | null> => {
+    if (TABAN == null) return null;
+    try { return await getir<Kayma>(`/v1/plants/${p}/kayma?gun=${gun}`); } catch { return null; }
   },
   /** v2.252: bant kalibrasyon ayarı — kapı yoksa/hata {aktif:false}. */
   konformal: async (p: string): Promise<KonformalAyar> => {

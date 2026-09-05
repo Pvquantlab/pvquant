@@ -38,6 +38,18 @@ export interface KonformalAyar {
   ort_q_kw?: number | null; q_hat?: Record<string, number>;
 }
 
+/** /backtest — v2.253: konformal katmanın kayan-başlangıç sınavı. */
+export interface Backtest {
+  pencere: number; picp_ham_ort: number | null; picp_kal_ort: number | null; hedef: number; hukum: string;
+  satirlar: { baslangic: string; n_test: number; picp_ham: number; picp_kal: number; bant_ham_n: number; bant_kal_n: number; q_ort: number }[];
+}
+/** /kayma — v2.253: eğitim (arşiv) / servis (tahmin) meteo kayması. */
+export interface Kayma {
+  n_saat: number; hukum: string; gun?: number; baslangic?: string; bitis?: string;
+  kaynak: { egitim: string; servis: string; not: string };
+  ozellikler: { ad: string; etiket: string; n: number; psi: number; ks: number; sapma: number; sapma_pct: number | null; hukum: string }[];
+}
+
 export interface TahminSerisi {
   mod: Mod | null; model: string; kosu_zamani: string; ufuk_saat: number;
   ac_tavani_kw: number | null; simdi_idx: number | null;

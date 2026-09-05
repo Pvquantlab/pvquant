@@ -280,6 +280,30 @@ def alarmlar(plant_id: str, n: int = 20,
     return alarm_service.listele(claims["tenant_id"], plant_id, n=n)
 
 
+@app.get("/v1/plants/{plant_id}/backtest")
+def backtest(plant_id: str, gun: int = 90, claims=Depends(gecerli_kullanici)):
+    """v2.253 — konformal katmanın kayan-başlangıç geriye dönük sınavı (sızıntısız)."""
+    from pvquant.services import backtest_service, plant_service
+    if not (30 <= gun <= 180):
+        raise HTTPException(422, "gun 30-180 araliginda olmali")
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    return backtest_service.konformal_backtest(claims["tenant_id"], {"id": str(row["id"]), "capacity_kwp": float(row["capacity_kwp"])}, gun=gun)
+
+
+@app.get("/v1/plants/{plant_id}/kayma")
+def kayma(plant_id: str, gun: int = 30, claims=Depends(gecerli_kullanici)):
+    """v2.253 — eğitim (arşiv) / servis (tahmin) meteo kayması: PSI/KS/sapma; 24 s önbellek."""
+    from pvquant.services import kayma_service, plant_service
+    if not (7 <= gun <= 60):
+        raise HTTPException(422, "gun 7-60 araliginda olmali")
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    return kayma_service.kayma_denetimi({"id": str(row["id"]), "lat": row["lat"], "lon": row["lon"]}, gun=gun)
+
+
 @app.get("/v1/plants/{plant_id}/konformal")
 def konformal(plant_id: str, claims=Depends(gecerli_kullanici)):
     """v2.252 — bant kalibrasyon ayarı (q̂ özeti). Yoksa {'aktif': False} — UI 'düzeltme yok' der."""
