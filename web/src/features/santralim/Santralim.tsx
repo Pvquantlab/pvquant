@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import type { PrKarti } from "../../api/types";
 import type { EChartsOption } from "echarts";
 import { api } from "../../api/client";
 import type { SantralOzeti, TahminSerisi, GunesYolu, SaatAyMatrisi } from "../../api/types";
@@ -38,6 +39,7 @@ function GunProfili({ noktalar, tepe, vurgu }:
 
 export function Santralim({ plantId }: { plantId: string }) {
   const [o, setO] = useState<SantralOzeti | null>(null);
+  const [pr, setPr] = useState<PrKarti | null>(null);   // v2.249
   const [seri, setSeri] = useState<TahminSerisi | null>(null);
   const [gy, setGy] = useState<GunesYolu | null>(null);
   const [sam, setSam] = useState<SaatAyMatrisi | null>(null);
@@ -46,6 +48,7 @@ export function Santralim({ plantId }: { plantId: string }) {
   useEffect(() => { api.tahmin(plantId, "16d").then(setSeri); }, [plantId]); // v2.166: D1 — tam seri cek, istemcide "24h" dilimle (Tahminler kalibi)
   useEffect(() => { api.gunesYolu(plantId).then(setGy).catch(() => {}); }, [plantId]);
   useEffect(() => { api.saatAyMatrisi(plantId).then(setSam).catch(() => {}); }, [plantId]);
+  useEffect(() => { api.pr(plantId).then(setPr).catch(() => {}); }, [plantId]);   // v2.249
   const t0 = useMemo(() => t0Hesapla(Date.now()), []);
   const nowVal = useMemo(
     () => (seri ? simdiDegeri(seri.saatlik, t0) : null), [seri, t0]);
@@ -301,6 +304,14 @@ export function Santralim({ plantId }: { plantId: string }) {
                 <td style={{ color: "var(--uyari)" }}>{s.son_scada} · {s.kesinti_gun} gündür yeni veri yok</td></tr>
               <tr><td>İşlenen veri</td><td>{sayiTr(s.islenen_saat)} saatlik ölçüm</td></tr>
               <tr><td>Anomali tespiti</td><td>{sayiTr(s.anomali)} işaretlendi — tek satır silinmedi</td></tr>
+              {/* v2.249 (Dalga 1.4): IEC 61724-1 performans orani — olcumden, POA yoksa tire + neden */}
+              <tr><td>Performans oranı (30 g)</td>
+                <td>{pr?.durum === "ok" && pr.PR != null
+                  ? <>%{sayiTr(pr.PR * 100, 1)}{pr.PR_sicaklik != null && ` · sıcaklık düzeltmeli %${sayiTr(pr.PR_sicaklik * 100, 1)}`}
+                      <span style={{ color: "var(--soluk)" }}> · {sayiTr(pr.gun)} gün</span></>
+                  : pr?.durum === "poa_yok"
+                    ? <span style={{ color: "var(--soluk)" }}>— düzlem ışınımı (POA) ölçümü {pr.poa_orani != null ? `saatlerin %${sayiTr(pr.poa_orani * 100, 0)}'inde` : "yok"}; PR için en az %95 gerekir</span>
+                    : <span style={{ color: "var(--soluk)" }}>— ölçüm birikmedi</span>}</td></tr>
             </tbody>
           </table>
           <p style={{ fontSize: 12.5, color: "var(--ikincil)", margin: "12px 0 0",

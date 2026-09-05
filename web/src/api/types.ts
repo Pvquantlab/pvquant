@@ -23,6 +23,13 @@ export interface SantralOzeti {
             islenen_saat: number; anomali: number };
 }
 
+/** /pr yaniti — v2.249 (IEC 61724-1, olcumden; POA yoksa 'poa_yok'). */
+export interface PrKarti {
+  durum: "ok" | "poa_yok" | "veri_yok"; gun: number; saat: number; poa_orani: number | null;
+  Y_r: number | null; Y_f: number | null; PR: number | null; PR_sicaklik: number | null;
+  CF: number | null; t_ref: number | null; pencere_gun: number;
+}
+
 export interface TahminSerisi {
   mod: Mod | null; model: string; kosu_zamani: string; ufuk_saat: number;
   ac_tavani_kw: number | null; simdi_idx: number | null;

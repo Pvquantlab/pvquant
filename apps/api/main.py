@@ -280,6 +280,16 @@ def alarmlar(plant_id: str, n: int = 20,
     return alarm_service.listele(claims["tenant_id"], plant_id, n=n)
 
 
+@app.get("/v1/plants/{plant_id}/pr")
+def pr(plant_id: str, gun: int = 30, claims=Depends(gecerli_kullanici)):
+    """v2.249 — Dalga 1.4: IEC 61724-1 performans orani (olcumden). POA olcumu
+    yoksa 'poa_yok' — GHI ile uydurulmaz (tire ilkesi)."""
+    from pvquant.services import pr_service
+    if not (7 <= gun <= 365):
+        raise HTTPException(422, "gun 7-365 araliginda olmali")
+    return pr_service.pr_karti(claims["tenant_id"], plant_id, gun=gun)
+
+
 @app.get("/v1/plants/{plant_id}/skill")
 def skill(plant_id: str, bucket: str = "0-24", gun: int = 120,
           claims=Depends(gecerli_kullanici)):

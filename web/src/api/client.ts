@@ -1,4 +1,4 @@
-import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti } from "./types";
+import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -363,6 +363,12 @@ export const api = {
   alarmlar: async (p: string, n = 20): Promise<AlarmSatiri[]> => {
     if (TABAN == null) return [];
     return getir<AlarmSatiri[]>(`/v1/plants/${p}/alarmlar?n=${n}`);
+  },
+  /** v2.249: performans orani (IEC 61724-1) — kapi yoksa/hata null (kunye tire yazar). */
+  pr: async (p: string, gun = 30): Promise<PrKarti | null> => {
+    if (TABAN == null) return null;
+    try { return await getir<PrKarti>(`/v1/plants/${p}/pr?gun=${gun}`); }
+    catch { return null; }
   },
   kalibrasyon: async (p: string): Promise<KalibrasyonOzeti | null> => {
     if (TABAN == null) return null;
