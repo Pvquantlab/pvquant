@@ -291,7 +291,9 @@ def kgup_dosyasi(plant_id: str, gun: str | None = None, kantil: str = "p50", fmt
     row = plant_service.getir(claims["tenant_id"], plant_id)
     if row is None:
         raise HTTPException(404, "santral yok")
-    g = date.fromisoformat(gun) if gun else (date.today() + timedelta(days=1))
+    # v2.262: 'yarın' santralin piyasa gününe göre (İstanbul), sunucunun UTC takvimine göre değil —
+    # 21:00 UTC sonrası UTC 'bugün' hâlâ dünkü piyasa günüdür; canlı kontrolde KGÜP kartı bu yüzden boş kaldı.
+    g = date.fromisoformat(gun) if gun else (pd.Timestamp.now(tz="Europe/Istanbul").date() + timedelta(days=1))
     pj = row.get("params_json") or {}
     if isinstance(pj, str):
         import json as _j; pj = _j.loads(pj)
