@@ -38,6 +38,12 @@ export interface KonformalAyar {
   ort_q_kw?: number | null; q_hat?: Record<string, number>;
 }
 
+/** /saglik — v2.256: bozunma ve performans eğilimi. */
+export interface Saglik {
+  gun: number; ay: number; indeks_ort: number | null; bozunma_yuzde_yil: number | null; bozunma_ga: number[] | null;
+  egim_yuzde_yil: number | null; son3_vs_onceki12_pct: number | null; pr_egim_yuzde_yil: number | null; not: string;
+  pencere_gun: number; kaynak: string;
+}
 /** /hijyen — v2.254: kırpma/kısıntı sayımı ve kısıtsız senaryo kaybı. */
 export interface Hijyen {
   pencere_gun: number; saat: number; kirpma_saat: number; kirpma_gun: number; kisinti_saat: number; kisinti_gun: number;
@@ -86,7 +92,7 @@ export interface Karne {
 export interface KalibrasyonOzeti {
   mode: string; eta_bos: number | null; bg: number | null;
   /** v2.255: fizik terimleri — 'none' kapalı; kt_referans 'toa' | 'ineichen'. */
-  fizik_terimleri?: { iam: string; spektral: string; kt_referans: string };
+  fizik_terimleri?: { iam: string; spektral: string; kt_referans: string; kirlenme?: string; kar?: string };
   gecerli_saat: number | null; tarih: string | null;
   mape_once: number | null; mape_sonra: number | null;
   wmape_once: number | null; wmape_sonra: number | null;

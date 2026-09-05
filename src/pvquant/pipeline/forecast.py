@@ -84,6 +84,14 @@ class PlantSpec:
     # yağışa su ile spektral uyumsuzluk çarpanı (First Solar; nem yoksa uygulanmaz). Santral params_json ile açılır.
     iam_model: Literal["none", "physical", "ashrae", "martin_ruiz"] = "none"
     spectral_model: Literal["none", "first_solar"] = "none"
+    # v2.256 (Dalga 3.11, ★): kirlenme ve kar — saha profiline göre açılır, varsayılan kapalı.
+    # soiling_model 'kimber': günlük birikim (soiling_gunluk_kayip), yağış ≥ soiling_temizleme_mm sıfırlar,
+    # pencere başı birikimi soiling_baslangic (0–0,3). kar_model 'nrel': kar yağışı ≥ eşik → örtü, ışınım+sıcaklıkla erime.
+    soiling_model: Literal["none", "kimber"] = "none"
+    soiling_gunluk_kayip: float = 0.0015
+    soiling_temizleme_mm: float = 6.0
+    soiling_baslangic: float = 0.0
+    kar_model: Literal["none", "nrel"] = "none"
 
     @property
     def effective_gamma(self) -> float:
@@ -208,6 +216,28 @@ def _apply_fizik_terimleri(poa, plant, meteo, times):
     return irradiance.POAComponents(global_=yeni_global, beam=beam, sky_diffuse=sky, ground_diffuse=gnd, aoi=poa.aoi), meta
 
 
+def _apply_kirlenme(poa, plant, meteo):
+    """v2.256 — kirlenme (Kimber) ve kar (NREL) çarpanı (pvquant.ext.tahmin.kirlenme). Yağış/kar serisi
+    meteoda yoksa ilgili terim ATLANIR (uydurma yok); çarpan yalnız POA global'e uygulanır."""
+    from pvquant.ext.tahmin import kirlenme as kr
+    idx = poa.global_.index
+    carpan = pd.Series(1.0, index=idx)
+    if plant.soiling_model == "kimber" and getattr(meteo, "precipitation", None) is not None:
+        yagis = meteo.precipitation.reindex(idx).fillna(0.0).astype(float)
+        import pvlib as _pv
+        kayip = _pv.soiling.kimber(yagis, cleaning_threshold=plant.soiling_temizleme_mm, soiling_loss_rate=plant.soiling_gunluk_kayip,
+                                   grace_period=0, max_soiling=0.30, initial_soiling=float(np.clip(plant.soiling_baslangic, 0, 0.3)),
+                                   rain_accum_period=24)
+        carpan = carpan * (1.0 - kayip.reindex(idx).fillna(0.0)).clip(0.7, 1.0)
+    if plant.kar_model == "nrel" and getattr(meteo, "snowfall", None) is not None:
+        kar = meteo.snowfall.reindex(idx).fillna(0.0).astype(float)
+        if (kar > 0).any():
+            ortu = kr.kar_ortusu(kar, poa.global_, meteo.temp_air.reindex(idx), plant.tilt)
+            carpan = carpan * (1.0 - ortu["kayip_orani"].reindex(idx).fillna(0.0).clip(0, 1))
+    yeni = (poa.global_ * carpan).clip(lower=0.0); yeni.name = poa.global_.name
+    return irradiance.POAComponents(global_=yeni, beam=poa.beam, sky_diffuse=poa.sky_diffuse, ground_diffuse=poa.ground_diffuse, aoi=poa.aoi)
+
+
 # --- measured_poa akil kontrolu esikleri (config'e tasinabilir) ---
 MEASURED_POA_SANITY_RATIO = 0.20      # olculen/Perez alt siniri
 MEASURED_POA_SANITY_DAY_WM2 = 200.0   # 'gunduz' esigi (Perez POA)
@@ -322,6 +352,9 @@ def forecast_7day(
     fizik_meta = None
     if plant.iam_model != "none" or plant.spectral_model != "none":
         poa, fizik_meta = _apply_fizik_terimleri(poa, plant, meteo, times)
+    # --- 3.6. Kirlenme / kar (v2.256, ★): POA global çarpanı — varsayılan kapalı ---
+    if plant.soiling_model != "none" or plant.kar_model != "none":
+        poa = _apply_kirlenme(poa, plant, meteo)
     if plant.is_bifacial:
         bf_params = bifacial.SimpleBifacialParams(
             bg=plant.bifacial_gain_geometric,

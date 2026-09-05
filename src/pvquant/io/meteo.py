@@ -48,6 +48,8 @@ class MeteoData:
     latitude: float
     longitude: float
     timezone: str
+    precipitation: pd.Series | None = None   # v2.256 mm/saat
+    snowfall: pd.Series | None = None        # v2.256 cm/saat
 
     def to_dataframe(self) -> pd.DataFrame:
         """Tüm seriler tek bir DataFrame'de döner."""
@@ -60,6 +62,10 @@ class MeteoData:
             data["relative_humidity"] = self.relative_humidity
         if self.cloud_cover is not None:
             data["cloud_cover"] = self.cloud_cover
+        if self.precipitation is not None:
+            data["precipitation"] = self.precipitation
+        if self.snowfall is not None:
+            data["snowfall"] = self.snowfall
         return pd.DataFrame(data)
 
 
@@ -85,6 +91,8 @@ class OpenMeteoClient:
         "cloud_cover",              # %
         "direct_radiation",         # DNI'ye yakın, doğrulama için
         "diffuse_radiation",        # DHI'ye yakın, doğrulama için
+        "precipitation",            # v2.256: mm/saat — kirlenme (Kimber) temizleme yağışı
+        "snowfall",                 # v2.256: cm/saat — kar örtüsü (NREL)
     )
 
 
@@ -279,4 +287,6 @@ class OpenMeteoClient:
             latitude=float(data["latitude"]),
             longitude=float(data["longitude"]),
             timezone=data.get("timezone", "UTC"),
+            precipitation=series_or_none("precipitation"),
+            snowfall=series_or_none("snowfall"),
         )

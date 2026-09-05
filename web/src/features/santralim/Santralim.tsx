@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { PrKarti } from "../../api/types";
+import type { PrKarti, Saglik } from "../../api/types";
 import type { EChartsOption } from "echarts";
 import { api } from "../../api/client";
 import type { SantralOzeti, TahminSerisi, GunesYolu, SaatAyMatrisi } from "../../api/types";
@@ -49,6 +49,8 @@ export function Santralim({ plantId }: { plantId: string }) {
   useEffect(() => { api.gunesYolu(plantId).then(setGy).catch(() => {}); }, [plantId]);
   useEffect(() => { api.saatAyMatrisi(plantId).then(setSam).catch(() => {}); }, [plantId]);
   useEffect(() => { api.pr(plantId).then(setPr).catch(() => {}); }, [plantId]);   // v2.249
+  const [sg, setSg] = useState<Saglik | null>(null);   // v2.256
+  useEffect(() => { api.saglik(plantId).then(setSg).catch(() => {}); }, [plantId]);
   const t0 = useMemo(() => t0Hesapla(Date.now()), []);
   const nowVal = useMemo(
     () => (seri ? simdiDegeri(seri.saatlik, t0) : null), [seri, t0]);
@@ -312,6 +314,14 @@ export function Santralim({ plantId }: { plantId: string }) {
                   : pr?.durum === "poa_yok"
                     ? <span style={{ color: "var(--soluk)" }}>— düzlem ışınımı (POA) ölçümü {pr.poa_orani != null ? `saatlerin %${sayiTr(pr.poa_orani * 100, 0)}'inde` : "yok"}; PR için en az %95 gerekir</span>
                     : <span style={{ color: "var(--soluk)" }}>— ölçüm birikmedi</span>}</td></tr>
+              {/* v2.256 (Dalga 3.11): bozunma ve eğilim — POA yoksa model-normalize verimle; yetersizse neden */}
+              <tr><td>Bozunma eğilimi</td>
+                <td>{sg?.bozunma_yuzde_yil != null
+                  ? <>%{sayiTr(sg.bozunma_yuzde_yil, 2)}/yıl{sg.bozunma_ga && ` (±${sayiTr(Math.abs(sg.bozunma_ga[1] - sg.bozunma_ga[0]) / 2, 2)})`}
+                      <span style={{ color: "var(--soluk)" }}> · {sayiTr(sg.ay)} ay</span></>
+                  : sg?.egim_yuzde_yil != null
+                    ? <>eğilim %{sayiTr(sg.egim_yuzde_yil, 1)}/yıl<span style={{ color: "var(--soluk)" }}> · {sayiTr(sg.gun)} gün · {sg.not || "bozunma için ≥13 ay"}</span></>
+                    : <span style={{ color: "var(--soluk)" }}>— {sg?.not || "ölçüm birikmedi"}</span>}</td></tr>
             </tbody>
           </table>
           <p style={{ fontSize: 12.5, color: "var(--ikincil)", margin: "12px 0 0",

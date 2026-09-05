@@ -280,6 +280,18 @@ def alarmlar(plant_id: str, n: int = 20,
     return alarm_service.listele(claims["tenant_id"], plant_id, n=n)
 
 
+@app.get("/v1/plants/{plant_id}/saglik")
+def saglik(plant_id: str, gun: int = 800, claims=Depends(gecerli_kullanici)):
+    """v2.256 — bozunma (%/yıl, YoY) ve performans eğilimi; POA yoksa model-normalize verimle."""
+    from pvquant.services import saglik_service, plant_service
+    if not (60 <= gun <= 2000):
+        raise HTTPException(422, "gun 60-2000 araliginda olmali")
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    return saglik_service.saglik(claims["tenant_id"], {"id": str(row["id"]), "capacity_kwp": float(row["capacity_kwp"])}, gun=gun)
+
+
 @app.get("/v1/plants/{plant_id}/hijyen")
 def hijyen(plant_id: str, gun: int = 30, claims=Depends(gecerli_kullanici)):
     """v2.254 — kırpma/kısıntı sayımı ve 'kısıtlama olmasaydı' kaybı (beklenen = son koşu fiziği)."""

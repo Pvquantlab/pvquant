@@ -505,6 +505,8 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
             {sr("Geliş açısı düzeltmesi", k.fizik_terimleri ? (k.fizik_terimleri.iam === "none" ? "kapalı" : "açık") : "\u2014")}
             {sr("Spektral düzeltme", k.fizik_terimleri ? (k.fizik_terimleri.spektral === "none" ? "kapalı" : "açık") : "\u2014")}
             {sr("Gök açıklığı referansı", k.fizik_terimleri ? (k.fizik_terimleri.kt_referans === "ineichen" ? "açık gök modeli" : "atmosfer üstü") : "\u2014")}
+            {sr("Kirlenme modeli", k.fizik_terimleri ? (k.fizik_terimleri.kirlenme && k.fizik_terimleri.kirlenme !== "none" ? "açık" : "kapalı") : "\u2014")}
+            {sr("Kar örtüsü modeli", k.fizik_terimleri ? (k.fizik_terimleri.kar && k.fizik_terimleri.kar !== "none" ? "açık" : "kapalı") : "\u2014")}
             {sr("Kalibrasyon tarihi", trTarih(k.tarih))}
           </tbody></table>
         </Kart>

@@ -88,6 +88,12 @@ def _plant_spec(plant) -> PlantSpec:
         # v2.255: santral params_json ile açılan fizik terimleri (varsayılan kapalı)
         iam_model=_pj(plant).get("iam_model") or "none",
         spectral_model=_pj(plant).get("spectral_model") or "none",
+        # v2.256: kirlenme/kar — saha profili
+        soiling_model=_pj(plant).get("soiling_model") or "none",
+        soiling_gunluk_kayip=float(_pj(plant).get("soiling_gunluk_kayip") or 0.0015),
+        soiling_temizleme_mm=float(_pj(plant).get("soiling_temizleme_mm") or 6.0),
+        soiling_baslangic=float(_pj(plant).get("soiling_baslangic") or 0.0),
+        kar_model=_pj(plant).get("kar_model") or "none",
     )
 
 
@@ -111,6 +117,7 @@ def fizik_terimleri(tenant_id, plant_id) -> dict:
         pj = s.execute(text("SELECT params_json FROM plants WHERE id=:p"), {"p": plant_id}).scalar()
     pj = _pj({"params_json": pj})
     return {"iam": pj.get("iam_model") or "none", "spektral": pj.get("spectral_model") or "none",
+            "kirlenme": pj.get("soiling_model") or "none", "kar": pj.get("kar_model") or "none",
             "kt_referans": get_settings().kt_referans}
 
 
