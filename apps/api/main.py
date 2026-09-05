@@ -1,6 +1,7 @@
 """PVQuant API — ince katman: HTTP -> services -> HTTP."""
 import pandas as pd
 from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi.responses import Response   # v2.261: /kgup CSV eki modül düzeyinde kullanır
 from pydantic import BaseModel
 from apps.api.deps import gecerli_kullanici, yazma_yetkisi
 from pvquant.services import auth_service, plant_service
