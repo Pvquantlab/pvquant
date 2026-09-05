@@ -1,0 +1,525 @@
+<title>PVQuant Kapsam ve Boşluk Araştırması</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --zemin: #EAF0F7; --kart: #FFFFFF; --yuzey: rgba(16,29,48,.05); --yuzey2: rgba(16,29,48,.09);
+    --metin: #101D30; --ikincil: #2C3E57; --soluk: #45586F;
+    --kenar: rgba(16,29,48,.18); --izgara: rgba(16,29,48,.11);
+    --mavi: #2D6FB5; --mavi-zemin: rgba(45,111,181,.10); --mavi-acik: rgba(45,111,181,.45);
+    --marka: #16A34A; --marka-zemin: rgba(22,163,74,.10);
+    --uyari: #C9502E; --uyari-zemin: #FBEEEA;
+    --notr: #64748B; --notr-zemin: rgba(100,116,139,.12);
+    --taban: rgba(22,32,45,.38);
+    --font: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+    --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --zemin: #0B1424; --kart: #121E31; --yuzey: rgba(255,255,255,.06); --yuzey2: rgba(255,255,255,.09);
+      --metin: #F4F8FD; --ikincil: #D6E0EB; --soluk: #A9B7C9;
+      --kenar: rgba(255,255,255,.13); --izgara: rgba(255,255,255,.09);
+      --mavi: #7CB1E8; --mavi-zemin: rgba(124,177,232,.14); --mavi-acik: rgba(124,177,232,.45);
+      --marka: #4ADE80; --marka-zemin: rgba(34,197,94,.12);
+      --uyari: #E8785A; --uyari-zemin: #2B1813;
+      --notr: #94A3B8; --notr-zemin: rgba(148,163,184,.14);
+      --taban: rgba(255,255,255,.34);
+    }
+  }
+  :root[data-theme="dark"] {
+    --zemin: #0B1424; --kart: #121E31; --yuzey: rgba(255,255,255,.06); --yuzey2: rgba(255,255,255,.09);
+    --metin: #F4F8FD; --ikincil: #D6E0EB; --soluk: #A9B7C9;
+    --kenar: rgba(255,255,255,.13); --izgara: rgba(255,255,255,.09);
+    --mavi: #7CB1E8; --mavi-zemin: rgba(124,177,232,.14); --mavi-acik: rgba(124,177,232,.45);
+    --marka: #4ADE80; --marka-zemin: rgba(34,197,94,.12);
+    --uyari: #E8785A; --uyari-zemin: #2B1813;
+    --notr: #94A3B8; --notr-zemin: rgba(148,163,184,.14);
+    --taban: rgba(255,255,255,.34);
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--zemin); color: var(--metin); font-family: var(--font); font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  a { color: var(--mavi); text-decoration: none; border-bottom: 1px solid var(--mavi-acik); }
+  a:hover, a:focus-visible { border-bottom-color: var(--mavi); outline: none; }
+  :focus-visible { outline: 2px solid var(--mavi); outline-offset: 2px; }
+
+  .sayfa { display: grid; grid-template-columns: 236px minmax(0, 1fr); gap: 40px; max-width: 1180px; margin: 0 auto; padding: 32px 28px 80px; }
+  @media (max-width: 1000px) { .sayfa { grid-template-columns: minmax(0,1fr); gap: 24px; padding: 20px 16px 64px; } .toc { position: static !important; } }
+
+  .toc { position: sticky; top: 24px; align-self: start; font-size: 13px; }
+  .toc .marka { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--soluk); margin-bottom: 12px; }
+  .toc ol { list-style: none; margin: 0; padding: 0; border-left: 1px solid var(--kenar); }
+  .toc li a { display: block; padding: 5px 12px; color: var(--ikincil); border: 0; border-left: 2px solid transparent; margin-left: -1px; }
+  .toc li a:hover { color: var(--metin); background: var(--yuzey); }
+  .toc li a.aktif { color: var(--mavi); border-left-color: var(--mavi); font-weight: 500; }
+  .toc .num { font-family: var(--mono); font-size: 11px; color: var(--soluk); margin-right: 8px; }
+  .toc .kunye { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--kenar); color: var(--soluk); font-size: 12px; line-height: 1.5; }
+  .toc .kunye b { color: var(--ikincil); font-weight: 500; }
+
+  main { min-width: 0; max-width: 76ch; }
+  .mast { padding-bottom: 24px; border-bottom: 1px solid var(--kenar); margin-bottom: 28px; }
+  .eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--soluk); }
+  h1 { font-size: 30px; line-height: 1.2; font-weight: 600; letter-spacing: -.01em; margin: 10px 0 12px; text-wrap: balance; }
+  .standfirst { font-size: 16px; color: var(--ikincil); margin: 0; max-width: 64ch; }
+  .yontem { margin-top: 18px; display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; }
+  @media (max-width: 640px) { .yontem { grid-template-columns: minmax(0,1fr); } }
+  .yontem div { background: var(--yuzey); border-radius: 6px; padding: 10px 12px; font-size: 13px; color: var(--ikincil); }
+  .yontem b { display: block; font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--soluk); font-weight: 500; margin-bottom: 3px; }
+
+  section { padding: 8px 0 28px; }
+  section + section { border-top: 1px solid var(--kenar); padding-top: 26px; }
+  h2 { font-size: 21px; font-weight: 600; margin: 0 0 6px; line-height: 1.3; text-wrap: balance; }
+  h2 .num { font-family: var(--mono); font-weight: 400; font-size: 13px; color: var(--mavi); margin-right: 10px; vertical-align: 2px; }
+  h3 { font-size: 16px; font-weight: 600; margin: 22px 0 6px; }
+  p { margin: 8px 0; }
+  .oku { color: var(--ikincil); }
+  ul, ol { padding-left: 22px; margin: 8px 0; }
+  li { margin: 4px 0; }
+  li::marker { color: var(--soluk); font-family: var(--mono); font-size: 13px; }
+  code, .mono { font-family: var(--mono); font-size: .92em; }
+  code { background: var(--yuzey); padding: 1px 5px; border-radius: 3px; }
+
+  .tezler { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 8px; counter-reset: tez; }
+  .tezler li { counter-increment: tez; display: grid; grid-template-columns: 34px minmax(0,1fr); gap: 10px; background: var(--kart); border: 1px solid var(--kenar); border-radius: 6px; padding: 12px 14px; }
+  .tezler li::before { content: counter(tez, decimal-leading-zero); font-family: var(--mono); font-size: 13px; color: var(--mavi); padding-top: 2px; }
+  .tezler b { font-weight: 600; }
+
+  .tablo-kap { overflow-x: auto; border: 1px solid var(--kenar); border-radius: 6px; background: var(--kart); margin: 12px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--izgara); vertical-align: top; }
+  th { font-family: var(--mono); font-weight: 500; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--soluk); background: var(--yuzey); white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.n { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+  th.n { text-align: right; }
+  td.ad { font-weight: 500; white-space: nowrap; }
+  .matris td, .matris th { white-space: nowrap; }
+  .matris td:first-child { white-space: normal; min-width: 180px; }
+  .matris td.biz { background: var(--mavi-zemin); font-weight: 500; }
+  .matris th.biz { color: var(--mavi); }
+
+  .durum { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11px; letter-spacing: .04em; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .durum::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .durum.var { color: var(--marka); background: var(--marka-zemin); }
+  .durum.kismi { color: var(--notr); background: var(--notr-zemin); }
+  .durum.yok { color: var(--uyari); background: var(--uyari-zemin); }
+  .etki { font-family: var(--mono); font-size: 11px; letter-spacing: .04em; }
+  .etki.k { color: var(--uyari); font-weight: 500; }
+  .yildiz { color: var(--mavi); font-weight: 600; }
+
+  figure { margin: 16px 0; background: var(--kart); border: 1px solid var(--kenar); border-radius: 6px; padding: 14px 14px 10px; }
+  figure svg { width: 100%; height: auto; display: block; }
+  figcaption { font-size: 12.5px; color: var(--soluk); margin-top: 8px; line-height: 1.5; }
+  .lejant { display: flex; gap: 16px; font-family: var(--mono); font-size: 11px; color: var(--soluk); margin-bottom: 6px; }
+  .lejant span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+  .lejant .da::before { background: var(--mavi); }
+  .lejant .ha::before { background: var(--mavi-acik); }
+
+  .not { border-left: 3px solid var(--mavi); background: var(--mavi-zemin); padding: 10px 14px; border-radius: 0 6px 6px 0; margin: 14px 0; font-size: 14px; }
+  .not.kritik { border-left-color: var(--uyari); background: var(--uyari-zemin); }
+  .not b { font-weight: 600; }
+
+  .dalga { margin: 18px 0 0; border: 1px solid var(--kenar); border-radius: 6px; background: var(--kart); overflow: hidden; }
+  .dalga header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 14px; background: var(--yuzey); border-bottom: 1px solid var(--izgara); }
+  .dalga header b { font-weight: 600; }
+  .dalga header .mono { color: var(--soluk); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+  .dalga ol { margin: 0; padding: 6px 14px 10px 36px; }
+  .dalga li { padding: 5px 0; border-bottom: 1px dashed var(--izgara); }
+  .dalga li:last-child { border-bottom: 0; }
+  .dalga li b { font-weight: 600; }
+  .dalga .neden { display: block; color: var(--soluk); font-size: 13px; margin-top: 2px; }
+
+  .kaynak { font-size: 13px; color: var(--ikincil); }
+  .kaynak li { margin: 3px 0; }
+  .son { margin-top: 26px; padding: 16px 18px; border: 1px solid var(--kenar); border-radius: 6px; background: var(--kart); }
+  .son h2 { margin-bottom: 8px; }
+  @media (prefers-reduced-motion: no-preference) { .toc li a { transition: color .15s, border-color .15s; } }
+  @media print { .toc { display: none; } .sayfa { grid-template-columns: minmax(0,1fr); } }
+</style>
+
+<div class="sayfa">
+  <nav class="toc" aria-label="İçindekiler">
+    <div class="marka">PVQuant · Araştırma raporu</div>
+    <ol>
+      <li><a href="#ozet"><span class="num">00</span>Yönetici özeti</a></li>
+      <li><a href="#klasor"><span class="num">01</span>Referans klasörü</a></li>
+      <li><a href="#envanter"><span class="num">02</span>PVQuant bugün</a></li>
+      <li><a href="#bosluk"><span class="num">03</span>Boşluk analizi</a></li>
+      <li><a href="#rakip"><span class="num">04</span>Rakip matrisi</a></li>
+      <li><a href="#yol"><span class="num">05</span>Yol haritası</a></li>
+      <li><a href="#disi"><span class="num">06</span>Kapsam dışı</a></li>
+      <li><a href="#kaynak"><span class="num">07</span>Kaynaklar</a></li>
+    </ol>
+    <div class="kunye"><b>5 Eylül 2026</b><br>Depo: Pvquantlab/pvquant · v2.241<br>Girdi: <code>~/Desktop/pvquant_ult</code><br>Kırmızı çizgi korunur: yalnız öneri, çekirdeğe dokunulmadı.</div>
+  </nav>
+
+  <main>
+    <header class="mast">
+      <div class="eyebrow">Araştırma raporu · Eylül 2026</div>
+      <h1>PVQuant Kapsam ve Boşluk Araştırması</h1>
+      <p class="standfirst">Referans klasörü (NREL hakem seti + üç sektör belgesi), dış kaynaklar (11 rakip ürün, iklim veri setleri, standartlar, tahmin bilimi literatürü) ve deponun kendisi üzerinden PVQuant'ın nerede sektör standardında, nerede ileride, nerede eksik olduğu; profesyonel seviye için önceliklendirilmiş yol haritası.</p>
+      <div class="yontem">
+        <div><b>Yerel</b>52 NREL zip'i açıldı; 7 eyalet / 1.468 santral-tahmin çifti üzerinde kıyas hesabı; üç PDF metne çevrilip okundu.</div>
+        <div><b>Depo</b>models_v2, services, io, pipeline, worker, API kapıları, 47 test dosyası, ARCHITECTURE ve faz notları koddan envanterlendi.</div>
+        <div><b>Dış</b>Üç paralel araştırma hattı: rakipler · veri/standartlar · tahmin bilimi. Lisans bulgusu birincil kaynaktan teyit edildi.</div>
+      </div>
+    </header>
+
+    <section id="ozet">
+      <h2><span class="num">00</span>Yönetici özeti — beş cümle</h2>
+      <ol class="tezler">
+        <li><span><b>Çekirdek doğru sınıfta.</b> Fizik-öncelikli hibrit (Barhdadi-Bennis + LightGBM rezidüel) 2023–2025 literatürünün "gray-box" konsensüsüyle örtüşüyor; çift yüzlü paneli açıkça modelleyen ve 60 günlük gece sınavıyla kendini ölçen bir ürün ticari araçların çoğundan ileride.</span></li>
+        <li><span><b>En acil iş bir özellik değil, bir lisans.</b> Ürün tüm meteorolojiyi Open-Meteo'nun ücretsiz (ticari kullanım dışı) katmanından çekiyor; 20 yıllık iklim arşivi de ticari plan gerektiren "Historical" uç noktasından. Bir SaaS için profesyonelleşmenin birinci maddesi budur.</span></li>
+        <li><span><b>Manşet çıktımız denetimsiz.</b> P10/P50/P90 üretiyoruz ama kalibrasyonunu ölçmüyoruz (reliability, pinball, CRPS yok) ve belirsizliğin ana kaynağı olan hava tahmini tek deterministik kaynaktan geliyor — ensemble/harman yok.</span></li>
+        <li><span><b>Türkiye'de ticari değerin adı dengesizlik.</b> KGÜP/DUY mekanizmasında saatlik tahmin hatası doğrudan paradır; ürün bunu henüz TL cinsinden göstermiyor — en güçlü satış argümanı ve en büyük farklılaşma fırsatı burada.</span></li>
+        <li><span><b>Referans hakem seti elimizde.</b> NREL setinde gün-öncesi tahmin hatası eyaletlere göre WMAPE %19–30 (nMAE %8,5–12,4); canlı karnemiz (0–24 s, %5,4) güçlü bir banda düşüyor — ama elma-elma kıyas için metrikleri Solar Forecast Arbiter standardına oturtmamız şart.</span></li>
+      </ol>
+    </section>
+
+    <section id="klasor">
+      <h2><span class="num">01</span>Referans klasörünün envanteri ve okunuşu</h2>
+
+      <h3>1.1 <code>büyükveri</code> — NREL "Solar Power Data for Integration Studies" (2006)</h3>
+      <p>52 zip, ~2,3 GB. Her eyalet için sentetik PV santralleri (dağıtık DPV ve şebeke ölçeği UPV; kapasite 7–100 MW, medyan 38 MW). Her santral üçlü gelir: <b>Actual</b> (5 dakikalık gerçekleşen), <b>DA</b> (gün-öncesi saatlik tahmin), <b>HA4</b> (4 saat öncesi saatlik tahmin).</p>
+      <p><b>Değeri:</b> bağımsız, herkese açık, tahmin ile gerçekleşen bir arada — karne motorumuzun dış doğrulaması ve referans tahmin kalibrasyonu için hazır hakem. <b>Sınırı:</b> 2006 yılı, o dönemin hava tahmini kalitesi, ABD iklimi; mutlak sayılar bugünün Türkiye santrallerine taşınmaz, metrik disiplini taşınır.</p>
+
+      <figure>
+        <div class="lejant"><span class="da">Gün-öncesi (DA)</span><span class="ha">4 saat öncesi (HA4)</span></div>
+        <svg viewBox="0 0 720 290" role="img" aria-label="NREL setinde eyalet başına WMAPE: gün-öncesi ve 4 saat öncesi tahmin">
+          <g font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--soluk)">
+            <line x1="44" y1="250" x2="704" y2="250" stroke="var(--taban)" stroke-width="1"/>
+            <line x1="44" y1="187.1" x2="704" y2="187.1" stroke="var(--izgara)" stroke-width="1"/>
+            <line x1="44" y1="124.3" x2="704" y2="124.3" stroke="var(--izgara)" stroke-width="1"/>
+            <line x1="44" y1="61.4" x2="704" y2="61.4" stroke="var(--izgara)" stroke-width="1"/>
+            <text x="38" y="254" text-anchor="end">%0</text>
+            <text x="38" y="191" text-anchor="end">%10</text>
+            <text x="38" y="128" text-anchor="end">%20</text>
+            <text x="38" y="65" text-anchor="end">%30</text>
+          </g>
+          <g fill="var(--mavi)">
+            <rect x="58" y="128.1" width="30" height="121.9"/>
+            <rect x="152" y="96.0" width="30" height="154.0"/>
+            <rect x="246" y="62.7" width="30" height="187.3"/>
+            <rect x="340" y="75.3" width="30" height="174.7"/>
+            <rect x="434" y="106.1" width="30" height="143.9"/>
+            <rect x="528" y="58.9" width="30" height="191.1"/>
+            <rect x="622" y="109.8" width="30" height="140.2"/>
+          </g>
+          <g fill="var(--mavi-acik)">
+            <rect x="94" y="155.7" width="30" height="94.3"/>
+            <rect x="188" y="143.1" width="30" height="106.9"/>
+            <rect x="282" y="118.0" width="30" height="132.0"/>
+            <rect x="376" y="84.1" width="30" height="165.9"/>
+            <rect x="470" y="114.2" width="30" height="135.8"/>
+            <rect x="564" y="69.6" width="30" height="180.4"/>
+            <rect x="658" y="103.5" width="30" height="146.5"/>
+          </g>
+          <g font-family="IBM Plex Mono, monospace" font-size="10" fill="var(--ikincil)" text-anchor="middle">
+            <text x="73" y="123">19,4</text><text x="109" y="151">15,0</text>
+            <text x="167" y="91">24,5</text><text x="203" y="138">17,0</text>
+            <text x="261" y="58">29,8</text><text x="297" y="113">21,0</text>
+            <text x="355" y="70">27,8</text><text x="391" y="79">26,4</text>
+            <text x="449" y="101">22,9</text><text x="485" y="109">21,6</text>
+            <text x="543" y="54">30,4</text><text x="579" y="65">28,7</text>
+            <text x="637" y="105">22,3</text><text x="673" y="99">23,3</text>
+          </g>
+          <g font-family="IBM Plex Sans, sans-serif" font-size="12" fill="var(--metin)" text-anchor="middle">
+            <text x="91" y="272">Arizona</text>
+            <text x="185" y="272">California</text>
+            <text x="279" y="272">Colorado</text>
+            <text x="373" y="272">Connecticut</text>
+            <text x="467" y="272">Florida</text>
+            <text x="561" y="272">New York</text>
+            <text x="655" y="272">Texas</text>
+          </g>
+        </svg>
+        <figcaption>NREL seti, gündüz saatleri (gerçekleşen ya da tahmin kapasitenin %1'ini aşan saatler), 5 dakikalık gerçekleşen saatlik ortalamaya indirgenmiş; eyalet başına tüm santrallerin toplamı. Kuru/açık iklimde (Arizona) hata düşük, bulutlu/kıtasal iklimde (Colorado, New York) yüksek — coğrafya hatayı yönetir. 4 saat öncesi tahmin gün-öncesinden tutarlı biçimde iyi: kısa ufuk katmanının değeri burada nicel.</figcaption>
+      </figure>
+
+      <div class="tablo-kap">
+        <table>
+          <thead><tr><th>Eyalet</th><th>Ufuk</th><th class="n">Santral</th><th class="n">WMAPE %</th><th class="n">nMAE %</th><th class="n">nRMSE %</th><th class="n">nMBE %</th></tr></thead>
+          <tbody>
+            <tr><td class="ad">Arizona</td><td>DA</td><td class="n">171</td><td class="n">19,4</td><td class="n">8,8</td><td class="n">14,0</td><td class="n">+1,6</td></tr>
+            <tr><td class="ad">Arizona</td><td>HA4</td><td class="n">171</td><td class="n">15,0</td><td class="n">6,8</td><td class="n">10,2</td><td class="n">−0,5</td></tr>
+            <tr><td class="ad">California</td><td>DA</td><td class="n">405</td><td class="n">24,5</td><td class="n">9,9</td><td class="n">15,1</td><td class="n">+2,6</td></tr>
+            <tr><td class="ad">California</td><td>HA4</td><td class="n">405</td><td class="n">17,0</td><td class="n">7,0</td><td class="n">10,1</td><td class="n">−0,3</td></tr>
+            <tr><td class="ad">Colorado</td><td>DA</td><td class="n">88</td><td class="n">29,8</td><td class="n">12,4</td><td class="n">18,6</td><td class="n">+2,8</td></tr>
+            <tr><td class="ad">Colorado</td><td>HA4</td><td class="n">88</td><td class="n">21,0</td><td class="n">8,7</td><td class="n">12,7</td><td class="n">+0,3</td></tr>
+            <tr><td class="ad">Connecticut</td><td>DA</td><td class="n">29</td><td class="n">27,8</td><td class="n">8,8</td><td class="n">12,8</td><td class="n">+0,2</td></tr>
+            <tr><td class="ad">Connecticut</td><td>HA4</td><td class="n">29</td><td class="n">26,4</td><td class="n">8,4</td><td class="n">12,8</td><td class="n">+0,8</td></tr>
+            <tr><td class="ad">Florida</td><td>DA</td><td class="n">593</td><td class="n">22,9</td><td class="n">8,5</td><td class="n">12,3</td><td class="n">+0,4</td></tr>
+            <tr><td class="ad">Florida</td><td>HA4</td><td class="n">593</td><td class="n">21,6</td><td class="n">8,1</td><td class="n">12,2</td><td class="n">+1,6</td></tr>
+            <tr><td class="ad">New York</td><td>DA</td><td class="n">129</td><td class="n">30,4</td><td class="n">9,3</td><td class="n">12,9</td><td class="n">0,0</td></tr>
+            <tr><td class="ad">New York</td><td>HA4</td><td class="n">129</td><td class="n">28,7</td><td class="n">8,9</td><td class="n">13,3</td><td class="n">+0,5</td></tr>
+            <tr><td class="ad">Texas</td><td>DA</td><td class="n">53</td><td class="n">22,3</td><td class="n">9,0</td><td class="n">13,6</td><td class="n">+0,5</td></tr>
+            <tr><td class="ad">Texas</td><td>HA4</td><td class="n">55</td><td class="n">23,3</td><td class="n">9,6</td><td class="n">14,5</td><td class="n">−0,9</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="oku">Kapasiteye normalize nMAE/nRMSE, WMAPE'den çok daha kararlı bir kıyas dili — karnemizin ikinci dili olmalı. Canlı Konya karnesinin 0–24 s WMAPE'si (~%5,4) bu tabloyla doğrudan kıyaslanmaz: farklı yıl, iklim ve hava tahmini nesli; aynı metrik sözlüğü kurulunca kıyas anlamlı olur.</p>
+
+      <h3>1.2 Solar Forecast Arbiter (AMS 2021 posteri)</h3>
+      <p>DOE'nin açık kaynak, tarafsız tahmin değerlendirme çerçevesi. Öğrettiği ilkeler: metadata-önce kayıt (site / gözlem / tahmin nesneleri), <b>referans tahminler</b> (persistence + NWP), veri doğrulama ve filtreleme raporu, <b>standart metrik raporu</b> (HTML/PDF, CSV/JSON dışa aktarım), utility ile vendor arasında rol tabanlı veri paylaşımı, anonim operasyonel tahmin yarışmaları. PVQuant'ın "karne" fikri aynı kültürden; eksik olan, metrik setinin ve rapor biçiminin bu standarda birebir oturması.</p>
+
+      <h3>1.3 meteocontrol VCOM kullanıcı kılavuzu</h3>
+      <p>Portföy seviyesi (kontrol odası) ile santral seviyesi (kokpit) ayrımı; 5 dakikada bir otomatik tazeleme; taşınabilir portletler; turuncu/kırmızı alarm şiddeti ve kokpite inme; Excel dışa aktarımı; tarife/gelir yapılandırması (sabit ya da zaman bağımlı); mobil uygulama. İzleme SaaS'larının "hijyen" seviyesi bu.</p>
+
+      <h3>1.4 AlsoEnergy PowerTrack broşürü</h3>
+      <p>Tek uygulamada izleme + kontrol (PPC yapılandırma, uzaktan kumanda, BESS), portföy toplama, CMMS/BI entegrasyonu, 12+ şablon rapor (finansal, kapasite testi, beklenen-gerçekleşen, kayıp uyarıları, fatura), cihaz sağlığı ve iletişim teşhisi, API ile veri alma-verme. Pazarın "her şey dahil" ucu; PVQuant'ın kapsamı değil ama entegrasyon ve rapor çeşitliliği dersleri var.</p>
+    </section>
+
+    <section id="envanter">
+      <h2><span class="num">02</span>PVQuant bugün ne? — kod temelli envanter</h2>
+      <div class="tablo-kap">
+        <table>
+          <thead><tr><th>Katman</th><th>Durum (depo, v2.241)</th></tr></thead>
+          <tbody>
+            <tr><td class="ad">Fizik zinciri</td><td>Işınım ayrıştırma → düzleme aktarma → hücre sıcaklığı (üç model) → çift yüzlü revize → DC → AC; PVWatts, SAPM, De Soto, görüş faktörü modelleri katalogda</td></tr>
+            <tr><td class="ad">Hibrit</td><td>Fizik + gradyan artırmalı rezidüel (saat/mevsim/POA/hücre sıcaklığı/gök açıklığı), Mod A/B/C, holdout kapısı, zaman bazlı ayrım</td></tr>
+            <tr><td class="ad">Model seçimi</td><td>Karar matrisi: çift yüzlü → bifacial fizik; tek yüzlü &lt;300 kWp → basit; ≥300 → detaylı; 3+ ay SCADA → kalibre</td></tr>
+            <tr><td class="ad">Meteoroloji</td><td><b>Tek kaynak</b>: Open-Meteo (tahmin + arşiv uç noktaları), atıf yok</td></tr>
+            <tr><td class="ad">Ufuk / çıktı</td><td>15 gün saatlik P10/P50/P90; günlük toplamlar; aylık iklim beklentisi (20 yıl GHI → yıl-ay P10/50/90)</td></tr>
+            <tr><td class="ad">Doğruluk</td><td>Gece skill işi: WMAPE, RMSE, <b>naif referans = dün-aynı-saat × gök açıklığı (akıllı persistans)</b>, skill; saat×gün hata matrisi; günlük sapma dağılımı</td></tr>
+            <tr><td class="ad">Veri alımı</td><td>Akıllı SCADA parser (Türkiye formatları, 30 santral testi), bayraklama (silme yok), kalibrasyon ızgarası</td></tr>
+            <tr><td class="ad">Worker</td><td>Sabah tahmin, gece skill, günlük beklenti, rapor alanları, alarm (2 kural: veri gelmedi 48 s, isabet düştü)</td></tr>
+            <tr><td class="ad">Raporlama</td><td>16 sayfa PDF (26 tutarlılık denetimi), Excel, JSON (şema 1.1.0)</td></tr>
+            <tr><td class="ad">Platform</td><td>FastAPI + JWT + <b>satır düzeyi güvenlikle çok kiracılı</b> Postgres (3 rol), React SPA (F kimliği, mobil, ⌘K, zil), Docker/Caddy, CI</td></tr>
+            <tr><td class="ad">Doğrulama geçmişi</td><td>NREL PVDAQ 2107 (Arbuckle CA, 893 kWp) 15 dakikalık gerçek veriyle Faz 1.7–1.9; frekans-agnostik kalibrasyon Faz 1.6</td></tr>
+            <tr><td class="ad">Satış tezi</td><td>"Model sizin santralınız olur" + "60 gün karne, fiyat karneye göre"</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="not"><b>Bizi ayıran (GitHub'dan okunan):</b> (1) saha-kalibre fizik + rezidüel — çoğu SaaS ya saf istatistik ya saf simülasyon; (2) gece sınavı kültürü — her gece kendini ölçen, naif referansla dürüst kıyaslanan karne; (3) çift yüzlü panelin açık modellenmesi; (4) Türkçe SCADA formatlarına özel parser; (5) veri silmeyen bayraklama ve "tire ilkesi" — dürüstlük ürünün diline işlemiş; (6) gerçek çok kiracılılık; (7) 16 sayfalık bankable üsluplu rapor.</div>
+    </section>
+
+    <section id="bosluk">
+      <h2><span class="num">03</span>Boşluk analizi — sektör standardı ile PVQuant</h2>
+      <p class="oku">Durum: <span class="durum var">Var</span> <span class="durum kismi">Kısmi</span> <span class="durum yok">Yok</span>. Etki: ürünün ticari/bilimsel değerine katkı. Zorluk: mühendislik eforu. Çekirdeğe dokunan maddeler <span class="yildiz">★</span> ile işaretli — açık onay ister.</p>
+
+      <h3>3.1 Meteoroloji ve veri kaynakları</h3>
+      <div class="tablo-kap">
+        <table>
+          <thead><tr><th>Yetenek</th><th>Durum</th><th>Etki</th><th>Zorluk</th><th>Not</th></tr></thead>
+          <tbody>
+            <tr><td>Ticari kullanıma uygun meteo lisansı</td><td><span class="durum yok">Yok</span></td><td><span class="etki k">Kritik</span></td><td>Kolay</td><td>Open-Meteo ücretsiz katman "ticari ❌"; Historical/Ensemble/Satellite → Professional plan</td></tr>
+            <tr><td>Çoklu NWP harmanı (ECMWF + GFS + ICON)</td><td><span class="durum yok">Yok</span></td><td class="etki">Yüksek</td><td>Orta</td><td>Open-Meteo <code>models=</code> ve Ensemble API zaten var — aynı bağımlılık</td></tr>
+            <tr><td>Uydu türevli ışınım (CAMS / PVGIS-SARAH)</td><td><span class="durum yok">Yok</span></td><td class="etki">Yüksek</td><td>Orta</td><td>Türkiye Meteosat görüş alanında; ölçüm-kalibreli GHI/DNI/DHI</td></tr>
+            <tr><td>Uydu nowcasting (0–6 s, bulut hareketi)</td><td><span class="durum yok">Yok</span></td><td class="etki">Orta</td><td>Zor</td><td>NREL setinde HA4'ün DA'ya üstünlüğü bu değerin kanıtı</td></tr>
+            <tr><td>Uzun homojen iklim arşivi (ERA5)</td><td><span class="durum kismi">Kısmi</span></td><td class="etki">Orta</td><td>Kolay</td><td>Mevcut 20 yıl arşiv Open-Meteo Historical'dan; ERA5 doğrudan + belirsizlik bütçesi</td></tr>
+            <tr><td>Bankable TMY/P90 (Solargis / Meteonorm)</td><td><span class="durum yok">Yok</span></td><td class="etki">Orta</td><td>Kolay (ücretli)</td><td>Finans segmenti için premium katman</td></tr>
+            <tr><td>EPİAŞ Şeffaflık gerçekleşen üretim</td><td><span class="durum yok">Yok</span></td><td class="etki">Yüksek</td><td>Orta</td><td>Ücretsiz API; SCADA yüklenmeyen santrallerde gerçekleşen kaynağı</td></tr>
+            <tr><td>Kaynak atfı (attribution)</td><td><span class="durum yok">Yok</span></td><td><span class="etki k">Kritik</span></td><td>Kolay</td><td>UI'da "profesyonel meteoroloji verisi" kalır; atıf yükümlülüğü README + rapor künyesinde yerine getirilir</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>3.2 Tahmin bilimi (çekirdek — <span class="yildiz">★</span> onaylı)</h3>
+      <div class="tablo-kap">
+        <table>
+          <thead><tr><th>Yetenek</th><th>Durum</th><th>Etki</th><th>Zorluk</th></tr></thead>
+          <tbody>
+            <tr><td>Olasılıksal kalibrasyon <b>doğrulaması</b> (reliability/PIT, pinball, CRPS, PICP)</td><td><span class="durum yok">Yok</span></td><td class="etki">Yüksek</td><td>Kolay–Orta</td></tr>
+            <tr><td>Conformal / kantil regresyonla P10–P90 kalibrasyonu <span class="yildiz">★</span></td><td><span class="durum yok">Yok</span></td><td class="etki">Yüksek</td><td>Orta</td></tr>
+            <tr><td>Ensemble yayılımı → ufukla büyüyen belirsizlik <span class="yildiz">★</span></td><td><span class="durum yok">Yok</span></td><td class="etki">Yüksek</td><td>Orta</td></tr>
+            <tr><td>Curtailment / clipping tespiti ve kalibrasyon maskesi <span class="yildiz">★</span></td><td><span class="durum yok">Yok</span></td><td class="etki">Yüksek</td><td>Orta</td></tr>
+            <tr><td>Rolling-origin backtest + eğitim/servis kayması denetimi <span class="yildiz">★</span></td><td><span class="durum kismi">Kısmi</span></td><td class="etki">Yüksek</td><td>Kolay</td></tr>
+            <tr><td>İklimsel referans + akıllı persistansla optimal konveks birleşim (Yang 2019)</td><td><span class="durum kismi">Kısmi</span></td><td class="etki">Orta</td><td>Kolay</td></tr>
+            <tr><td>Clear-sky McClear + IAM + spektral terimler <span class="yildiz">★</span></td><td><span class="durum kismi">Kısmi</span></td><td class="etki">Orta</td><td>Kolay (pvlib)</td></tr>
+            <tr><td>Soiling / kar modeli <span class="yildiz">★</span></td><td><span class="durum yok">Yok</span></td><td class="etki">Orta (saha bağımlı)</td><td>Orta</td></tr>
+            <tr><td>Degradasyon (%/yıl) + PR trendi</td><td><span class="durum yok">Yok</span></td><td class="etki">Orta (sağlık)</td><td>Kolay–Orta</td></tr>
+            <tr><td>Alt-saatlik (15 dk) tahmin</td><td><span class="durum kismi">Kısmi</span></td><td class="etki">Orta</td><td>Orta</td></tr>
+            <tr><td>Portföy / hiyerarşik uzlaştırma</td><td><span class="durum yok">Yok</span></td><td class="etki">Stratejik</td><td>Orta–Zor</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>3.3 Standartlar ve metrik dili</h3>
+      <div class="tablo-kap">
+        <table>
+          <thead><tr><th>Yetenek</th><th>Durum</th><th>Etki</th><th>Zorluk</th></tr></thead>
+          <tbody>
+            <tr><td>IEC 61724-1 Performance Ratio (PR, sıcaklık düzeltmeli PR′, Y<sub>r</sub>/Y<sub>f</sub>)</td><td><span class="durum yok">Yok</span></td><td class="etki">Yüksek</td><td>Kolay</td></tr>
+            <tr><td>Kapasiteye normalize nMAE/nRMSE/nMBE + skill (SFA sözlüğü)</td><td><span class="durum kismi">Kısmi</span></td><td class="etki">Yüksek</td><td>Kolay</td></tr>
+            <tr><td>P50/P90/P99 belirsizlik bütçesi (yıllar arası + kaynak + model σ)</td><td><span class="durum kismi">Kısmi</span></td><td class="etki">Yüksek (bankability)</td><td>Orta</td></tr>
+            <tr><td>PVsyst kayıp ağacı (transpozisyon → IAM → soiling → gölge → sıcaklık → … → availability)</td><td><span class="durum yok">Yok</span></td><td class="etki">Yüksek (rapor dili)</td><td>Orta</td></tr>
+            <tr><td>IEC 61853 güç matrisi ile modül davranışı</td><td><span class="durum yok">Yok</span></td><td class="etki">Orta</td><td>Orta</td></tr>
+            <tr><td>Availability (kullanılabilirlik) metriği</td><td><span class="durum yok">Yok</span></td><td class="etki">Orta</td><td>Kolay</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>3.4 Türkiye pazarı</h3>
+      <div class="tablo-kap">
+        <table>
+          <thead><tr><th>Yetenek</th><th>Durum</th><th>Etki</th><th>Zorluk</th></tr></thead>
+          <tbody>
+            <tr><td>KGÜP/DUY dengesizlik maliyeti simülasyonu (PTF/SMF, ±%3)</td><td><span class="durum yok">Yok</span></td><td><span class="etki k">Kritik (satış tezi)</span></td><td>Orta</td></tr>
+            <tr><td>YEKDEM içi / serbest piyasa segmentasyonu</td><td><span class="durum yok">Yok</span></td><td class="etki">Yüksek</td><td>Kolay</td></tr>
+            <tr><td>EPİAŞ Şeffaflık entegrasyonu (gerçekleşen, PTF/SMF)</td><td><span class="durum yok">Yok</span></td><td class="etki">Yüksek</td><td>Orta</td></tr>
+            <tr><td>KGÜP bildirim dosyası üretimi (saatlik program)</td><td><span class="durum yok">Yok</span></td><td class="etki">Yüksek</td><td>Kolay</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>3.5 Ürün / platform (izleme SaaS hijyeni)</h3>
+      <div class="tablo-kap">
+        <table>
+          <thead><tr><th>Yetenek</th><th>Durum</th><th>Etki</th><th>Zorluk</th></tr></thead>
+          <tbody>
+            <tr><td>Portföy (çok santral) görünümü ve toplama</td><td><span class="durum yok">Yok</span> (tek santral)</td><td class="etki">Yüksek</td><td>Orta</td></tr>
+            <tr><td>Otomatik tazeleme / canlı veri</td><td><span class="durum yok">Yok</span> (yenileme elle)</td><td class="etki">Orta</td><td>Kolay</td></tr>
+            <tr><td>Alarm kural çeşitliliği + şiddet + okundu yönetimi</td><td><span class="durum kismi">Kısmi</span> (2 kural)</td><td class="etki">Orta</td><td>Kolay–Orta</td></tr>
+            <tr><td>Şablon rapor çeşitliliği (kapasite testi, beklenen-gerçekleşen, fatura)</td><td><span class="durum kismi">Kısmi</span> (16 sayfa + 3 format)</td><td class="etki">Orta</td><td>Orta</td></tr>
+            <tr><td>Dışa dönük API + API anahtarları (tablo var, kapı yok)</td><td><span class="durum kismi">Kısmi</span></td><td class="etki">Yüksek (entegrasyon)</td><td>Kolay</td></tr>
+            <tr><td>Rol tabanlı veri paylaşımı (utility ↔ vendor, SFA kalıbı)</td><td><span class="durum kismi">Kısmi</span> (3 rol)</td><td class="etki">Orta</td><td>Orta</td></tr>
+            <tr><td>Tarife / gelir yapılandırması</td><td><span class="durum yok">Yok</span></td><td class="etki">Orta</td><td>Kolay</td></tr>
+            <tr><td>BESS / kontrol</td><td><span class="durum yok">Yok</span></td><td class="etki">Kapsam dışı (bilinçli)</td><td>—</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="rakip">
+      <h2><span class="num">04</span>Rakip kapsam matrisi</h2>
+      <p>On bir ürün dört kümeye ayrılıyor: <b>tahmin/veri sağlayıcılar</b> (Solargis, Solcast), <b>tasarım/simülasyon</b> (PVsyst, pvlib/PVPMC), <b>izleme/O&amp;M platformları</b> (meteocontrol VCOM, AlsoEnergy PowerTrack — artık GE Vernova, Power Factors Unity — GreenPowerMonitor aynı grup, QOS Qantum, Raptor Maps) ve <b>tarafsız değerlendirme</b> (Solar Forecast Arbiter — kamu paneli 2022'de emekli, metrik kütüphanesi açık kaynak).</p>
+      <div class="tablo-kap">
+        <table class="matris">
+          <thead><tr><th>Yetenek</th><th>Solargis</th><th>Solcast</th><th>PVsyst</th><th>SFA</th><th>VCOM</th><th>PowerTrack</th><th>Power Factors</th><th>QOS</th><th>Raptor</th><th>pvlib</th><th class="biz">PVQuant</th></tr></thead>
+          <tbody>
+            <tr><td>Olasılıksal tahmin P10/50/90</td><td>Yok (deterministik)</td><td><b>Var</b> (doğrulanmış)</td><td>Yıllık P50/P90</td><td>Tanımlar</td><td>Yok</td><td>Yok</td><td>Yok</td><td>Yok</td><td>Yok</td><td>—</td><td class="biz">Var</td></tr>
+            <tr><td>Uydu nowcasting 0–3 s</td><td>Var</td><td>Var</td><td>—</td><td>—</td><td>Yok</td><td>Yok</td><td>Yok</td><td>Yok</td><td>Yok</td><td>—</td><td class="biz">Yok</td></tr>
+            <tr><td>NWP çoklu model / ensemble</td><td>Var (consensus)</td><td>Var</td><td>—</td><td>—</td><td>Yok</td><td>Yok</td><td>Yok</td><td>Yok</td><td>Yok</td><td>—</td><td class="biz">Yok (tek kaynak)</td></tr>
+            <tr><td>14–15 gün saatlik ufuk</td><td>Var</td><td>Var</td><td>—</td><td>—</td><td>Yok</td><td>Yok</td><td>Yok</td><td>Yok</td><td>Yok</td><td>—</td><td class="biz">Var</td></tr>
+            <tr><td>Uzun dönem iklim / TMY / bankable P90</td><td>Var (30+ yıl)</td><td>Var (2007→)</td><td>Girdi</td><td>—</td><td>Yok</td><td>Yok</td><td>Yok</td><td>Yok</td><td>Yok</td><td>—</td><td class="biz">Kısmi (20 yıl, tek kaynak)</td></tr>
+            <tr><td>Resmi doğrulama / skill çerçevesi</td><td>Yayımlıyor</td><td>Yayımlıyor (EPRI)</td><td>—</td><td><b>Standart</b></td><td>Yok</td><td>Yok</td><td>Yok</td><td>Yok</td><td>Yok</td><td>—</td><td class="biz">Var — SFA dışı sözlük</td></tr>
+            <tr><td>Gerçek zamanlı izleme / SCADA</td><td>Monitor</td><td>Yok</td><td>—</td><td>—</td><td>Var</td><td>Var</td><td>Var</td><td>Var</td><td>Yok</td><td>—</td><td class="biz">Kısmi (kalibrasyon için)</td></tr>
+            <tr><td>Alarm + CMMS / iş emri</td><td>Yok</td><td>Yok</td><td>—</td><td>—</td><td>Var</td><td>Var</td><td>Var</td><td>Var</td><td>Var</td><td>—</td><td class="biz">Kısmi (2 kural)</td></tr>
+            <tr><td>Kayıp ağacı / kök neden</td><td>Yok</td><td>Yok</td><td><b>Var</b></td><td>—</td><td>Kısmi</td><td>Var</td><td>Var</td><td>Kısmi</td><td>Var</td><td>Zincir</td><td class="biz">Yok</td></tr>
+            <tr><td>BESS / dispatch</td><td>Var</td><td>Kısmi</td><td>Var</td><td>—</td><td>Var</td><td>Var</td><td>Var</td><td>Yok</td><td>Yok</td><td>—</td><td class="biz">Kapsam dışı</td></tr>
+            <tr><td>Curtailment kotalama + finans / fatura</td><td>Yok</td><td>Yok</td><td>Ekonomi</td><td>—</td><td>Var</td><td>Var</td><td>Var</td><td>Var</td><td>Yok</td><td>—</td><td class="biz">Yok</td></tr>
+            <tr><td>Portföy + üretim sınıfı API</td><td>Var</td><td><b>Var</b> (26M/gün)</td><td>—</td><td>Var</td><td>Var</td><td>Var</td><td>Var</td><td>Var</td><td>Var</td><td>—</td><td class="biz">Yok (tek santral, PDF öncelikli)</td></tr>
+            <tr><td>Soiling modeli</td><td>Var</td><td>Var (PM2.5/10)</td><td>Var</td><td>—</td><td>Kısmi</td><td>Kısmi</td><td>Kısmi</td><td>Kısmi</td><td>Var (termal)</td><td>Var</td><td class="biz">Yok</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><b>Okunuş:</b> PVQuant, olasılıksal + 15 günlük ufukta Solcast ile aynı sınıfta ve Solargis'in <em>reklam ettiği</em> çıktının üstünde; buna karşılık (i) NWP çeşitliliği ve uydu katmanında tahmincilerin, (ii) izleme hijyeninde (portföy, API, alarm çeşitliliği, kayıp ağacı) izleyicilerin gerisinde.</p>
+      <div class="not"><b>Boş kesişim:</b> tahminciler arıza atfı yapmaz, izleyiciler olasılıksal tahmin yapmaz — "az üretim hava mı, arıza mı?" sorusunu tek üründe yanıtlayan yok. Türkiye'ye ayarlı (EPİAŞ / KGÜP / dengesizlik) küresel oyuncu da yok.</div>
+      <h3>Farklılaşma fırsatları</h3>
+      <ol>
+        <li>Türkiye piyasasına gömülü olasılıksal tahmin — dengesizlik maliyetini minimize eden teklif katmanı.</li>
+        <li>Tasarım zamanı (20 yıl P50/P90) + operasyon zamanı (15 gün P10/P90) <b>aynı saha-kalibreli modelden</b>; rakipler bu ikisini ayırır.</li>
+        <li>SFA hizalı, müşteriye açık <b>skill karnesi</b> — rakipler doğruluğu övgüyle geçiştirir, biz ölçüyle hesap veririz.</li>
+        <li>Kreditör formatında otomatik 16 sayfa rapor — Solcast/Solargis ham API verir.</li>
+        <li><b>Tahmin ↔ arıza mutabakatı:</b> SCADA kalibrasyonunun üstüne hafif PR/availability + kayıp atfı katmanı.</li>
+      </ol>
+    </section>
+
+    <section id="yol">
+      <h2><span class="num">05</span>Öncelikli yol haritası — "kesinlikle eklenmeli"</h2>
+      <p class="oku">Sıralama etki × aciliyet × zorluk'a göre; her madde ayrı mühür(ler). <span class="yildiz">★</span> işaretli olanlar çekirdeğe dokunur, açık onay ister.</p>
+
+      <div class="dalga">
+        <header><b>Dalga 0 — Lisans ve atıf</b><span class="mono">Bu hafta · çekirdeğe dokunmaz</span></header>
+        <ol>
+          <li><b>Open-Meteo ticari plan</b> (Professional: tahmin + geçmiş + ensemble + uydu tek pakette) <b>ya da</b> PVGIS/CAMS'e geçiş; ne seçilirse seçilsin atıf README + rapor künyesi + UI "veri kaynağı" satırına.<span class="neden">Gerekçe: SaaS gelirine dokunan tek yasal risk. Yan kazanç: Ensemble API aynı planla açılır → Dalga 2'nin veri ihtiyacı çözülür.</span></li>
+        </ol>
+      </div>
+
+      <div class="dalga">
+        <header><b>Dalga 1 — Ölçüm dilini standarda oturt</b><span class="mono">Çekirdeğe dokunmaz</span></header>
+        <ol start="2">
+          <li><b>Karneye SFA metrik seti:</b> nMAE / nRMSE / nMBE (kapasiteye normalize) + skill; mevcut WMAPE kalır.</li>
+          <li><b>Olasılıksal doğrulama paneli:</b> reliability diyagramı, PICP ("P10–P90 bandı gerçekten günlerin %80'ini tutuyor mu?"), pinball, CRPS — Doğruluk sayfasına yeni kart, gece skill işine yeni kolonlar.</li>
+          <li><b>IEC 61724-1 PR kartı:</b> Y<sub>r</sub>/Y<sub>f</sub>/PR/PR′ — Santralım'a; kayıp ağacının tepesi.</li>
+          <li><b>NREL hakem seti ile CI regresyonu:</b> <code>büyükveri</code>den 3–5 santral test fikstürüne; karne motoru her mühürde bilinen DA/HA4 hatasını yeniden üretmeli (sayıların bağımsız kanıtı).</li>
+        </ol>
+      </div>
+
+      <div class="dalga">
+        <header><b>Dalga 2 — Belirsizlik gerçek olsun</b><span class="mono"><span class="yildiz">★</span> onay</span></header>
+        <ol start="6">
+          <li><b>Çoklu model NWP + ensemble üyeleri</b> → üye başına fizik koşusu → ampirik kantiller; MOS / kantil harmanı.</li>
+          <li><b>Conformal (CQR/ACI) ile P10–P90 kalibrasyonu</b>, reliability ile kapatılan döngü.</li>
+          <li><b>Rolling-origin backtest + eğitim/servis kayması denetimi</b> (rezidüel özellikleri tahmin türevli mi, ölçüm türevli mi?).</li>
+        </ol>
+      </div>
+
+      <div class="dalga">
+        <header><b>Dalga 3 — Veri hijyeni ve fizik terimleri</b><span class="mono"><span class="yildiz">★</span> onay</span></header>
+        <ol start="9">
+          <li><b>Curtailment / clipping maskesi</b> (pvanalytics / RdTools) — kalibrasyon ve metrikler sessizce sapmasın; "kısıtlama olmasaydı" senaryosu.</li>
+          <li><b>McClear clear-sky + IAM + spektral</b> (pvlib, mevcut bağımlılık) — gök açıklığını yeniden tanımla, rezidüele temiz hedef.</li>
+          <li><b>Soiling/kar + degradasyon/PR trendi</b> — saha profiline göre açılır.</li>
+        </ol>
+      </div>
+
+      <div class="dalga">
+        <header><b>Dalga 4 — Türkiye'de para diline çevir</b><span class="mono">Servis + UI</span></header>
+        <ol start="12">
+          <li><b>Dengesizlik maliyeti simülatörü:</b> KGÜP = P50, gerçekleşen = SCADA/EPİAŞ; PTF/SMF ile ±%3 kuralı; "bu ay tahmin hatası size X TL'ye mal oldu / PVQuant Y TL kurtardı" — karnenin TL dili.</li>
+          <li><b>KGÜP bildirim çıktısı</b> (saatlik program dosyası) + <b>YEKDEM / serbest</b> segment bayrağı santral kartında.</li>
+          <li><b>EPİAŞ Şeffaflık</b> entegrasyonu (gerçekleşen üretim + fiyatlar).</li>
+        </ol>
+      </div>
+
+      <div class="dalga">
+        <header><b>Dalga 5 — Platform genişlemesi</b><span class="mono">Servis + UI</span></header>
+        <ol start="15">
+          <li><b>Portföy görünümü</b> (santral listesi, toplam güç, alarm özeti; ileride hiyerarşik uzlaştırma).</li>
+          <li><b>Dışa dönük API anahtarları</b> (tablo hazır) + OpenAPI belgesi + webhook — SFA / CMMS kalıbında entegrasyon.</li>
+          <li><b>Otomatik tazeleme</b>, alarm kural kütüphanesi (PR düşüşü, clipping oranı, iletişim kesintisi), okundu / atama.</li>
+          <li><b>Uydu nowcasting</b> (0–6 s) — gün içi / dengeleme ürünü olarak ayrı paket.</li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="disi">
+      <h2><span class="num">06</span>Bilinçli kapsam dışı</h2>
+      <ul>
+        <li>Uzaktan kontrol / PPC / BESS (PowerTrack sınıfı) — PVQuant tahmin ve kanıt ürünü; donanım kontrolü ayrı bir sorumluluk alanı.</li>
+        <li>MGM verisi — açık API yok, ücretli; EPİAŞ + uydu kaynakları yeterli.</li>
+        <li>Alarm kural sayısını şişirmek — "iki kural, fazlası yasak" ilkesi (El Kitabı P4 §3) korunur; yeni kurallar ancak dengesizlik / PR gibi ölçülebilir zararla gelir.</li>
+      </ul>
+    </section>
+
+    <section id="kaynak">
+      <h2><span class="num">07</span>Kaynaklar</h2>
+      <ul class="kaynak">
+        <li>NREL Solar Power Data for Integration Studies — <a href="https://www.nrel.gov/grid/solar-power-data.html">nrel.gov/grid/solar-power-data</a></li>
+        <li>Solar Forecast Arbiter — <a href="https://solarforecastarbiter.org">solarforecastarbiter.org</a> · <a href="https://solarforecastarbiter-core.readthedocs.io/">core docs</a> · <a href="https://github.com/SolarArbiter">github.com/SolarArbiter</a></li>
+        <li>pvlib-python — <a href="https://pvlib-python.readthedocs.io/">docs</a> · pvanalytics — <a href="https://github.com/pvlib/pvanalytics">github</a> · RdTools — <a href="https://github.com/NREL/rdtools">github</a></li>
+        <li>Open-Meteo lisans ve planlar — <a href="https://open-meteo.com/en/pricing">open-meteo.com/en/pricing</a> (teyit: ücretsiz katman ticari kullanım dışı; Historical/Climate/Ensemble/Satellite → Professional)</li>
+        <li>PVGIS — <a href="https://joint-research-centre.ec.europa.eu/photovoltaic-geographical-information-system-pvgis_en">JRC</a> · CAMS Radiation — <a href="https://ads.atmosphere.copernicus.eu/datasets/cams-solar-radiation-timeseries">ADS</a> · ERA5 — <a href="https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels">CDS</a> · NSRDB PSM3 — <a href="https://developer.nrel.gov/docs/solar/nsrdb/">NREL</a></li>
+        <li>Solargis — <a href="https://solargis.com/products/forecast">forecast</a> · <a href="https://solargis.com/technology/accuracy-and-validation-forecast">doğrulama</a> · Solcast — <a href="https://docs.solcast.com.au/">docs</a> (P10/P90 alanları OpenAPI'de teyitli) · Meteonorm — <a href="https://meteonorm.com">meteonorm.com</a></li>
+        <li>PVsyst yardım — <a href="https://www.pvsyst.com/help/index.html">pvsyst.com/help</a> · Sandia PVPMC — <a href="https://pvpmc.sandia.gov/">pvpmc.sandia.gov</a></li>
+        <li>meteocontrol — <a href="https://www.meteocontrol.com/en/">site</a> · AlsoEnergy — <a href="https://home.alsoenergy.com/">site</a> · Power Factors — <a href="https://powerfactors.com/">site</a> · GreenPowerMonitor — <a href="https://greenpowermonitor.com/">site</a> · Raptor Maps — <a href="https://raptormaps.com/">site</a></li>
+        <li>EPİAŞ Şeffaflık — <a href="https://seffaflik.epias.com.tr">seffaflik.epias.com.tr</a> · MGM ürünler — <a href="https://www.mgm.gov.tr/site/urunler.aspx">mgm.gov.tr</a></li>
+        <li>IEC 61724-1, IEC 61853-1..4 — <a href="https://webstore.iec.ch">webstore.iec.ch</a></li>
+        <li>Literatür: Yang 2019 (referans tahminler); Lauret, David &amp; Pinson 2019 (olasılıksal doğrulama); Gneiting &amp; Raftery 2007 (CRPS); Romano, Patterson &amp; Candès 2019 (CQR); Gibbs &amp; Candès 2021 (ACI); Coello &amp; Boyle 2019 (soiling); Deceglie 2018, Jordan 2018 (degradasyon); Wickramasuriya, Athanasopoulos &amp; Hyndman 2019 (MinT); Ineichen &amp; Perez 2002, Lefèvre 2013 (McClear).</li>
+      </ul>
+    </section>
+
+    <div class="son">
+      <h2>Sonraki adım</h2>
+      <p>Dalga 0 (lisans + atıf) bir ürün kararı, Dalga 1 çekirdeğe dokunmadan bugün başlanabilecek dört mühür. Dalga 2–3'ün her maddesi model çekirdeğine girer ve kırmızı çizgi gereği ayrı ayrı onay bekler. Hangi dalgayla başlayacağımız kararı sizin.</p>
+    </div>
+  </main>
+</div>
+
+<script>
+  (function () {
+    var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+    var secs = links.map(function (a) { return document.querySelector(a.getAttribute('href')); }).filter(Boolean);
+    if (!('IntersectionObserver' in window) || !secs.length) return;
+    var aktif = null;
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) {
+          var id = '#' + e.target.id;
+          links.forEach(function (a) { a.classList.toggle('aktif', a.getAttribute('href') === id); });
+        }
+      });
+    }, { rootMargin: '-10% 0px -75% 0px', threshold: 0 });
+    secs.forEach(function (s) { io.observe(s); });
+  })();
+</script>
