@@ -553,7 +553,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
       {/* v2.254 (Dalga 3.9): kırpma (AC tavanı) ve şebeke kısıntısı — ölçüm silinmez, bayraklanır;
           kısıntı karne ve kalibrasyon dışı, kırpma yalnız kalibrasyon dışı. */}
       <Kart baslik="Veri hijyeni — kırpma ve şebeke kısıntısı"
-        sag={<span className="cip">{hj ? `son ${sayiTr(hj.pencere_gun)} gün · ${sayiTr(hj.saat)} saat` : "hesaplanıyor"}</span>}>
+        sag={<span className="cip">{hj ? `son ${sayiTr(hj.pencere_gun)} ölçüm günü${hj.son_olcum ? ` (bitiş ${hj.son_olcum})` : ""} · ${sayiTr(hj.saat)} saat` : "hesaplanıyor"}</span>}>
         {hj ? (
           <>
             <div className="ızgara satir-3" style={{ gap: 12 }}>

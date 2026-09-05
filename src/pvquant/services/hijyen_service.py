@@ -46,7 +46,9 @@ def _oku(tenant_id, plant_id, gun: int) -> pd.DataFrame:
             "LEFT JOIN LATERAL (SELECT f.physics_kw FROM forecast_values f JOIN forecast_runs r ON r.id=f.run_id "
             "  WHERE f.plant_id=s.plant_id AND f.ts_utc=s.ts_utc AND f.ts_utc - r.run_at BETWEEN INTERVAL '0 hour' AND INTERVAL '24 hour' "
             "  ORDER BY r.run_at DESC LIMIT 1) b ON true "
-            "WHERE s.plant_id=:p AND s.flag IN ('valid','kisinti') AND s.ts_utc >= now() - (:g * INTERVAL '1 day') ORDER BY s.ts_utc"),
+            "WHERE s.plant_id=:p AND s.flag IN ('valid','kisinti') "
+            "AND s.ts_utc >= (SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p AND flag IN ('valid','kisinti')) - (:g * INTERVAL '1 day') "
+            "ORDER BY s.ts_utc"),   # v2.257: pencere son ölçüme bağlı (takvim değil) — PR kartıyla aynı kural
             s.connection(), params={"p": plant_id, "g": gun}, parse_dates=["ts_utc"])
 
 
@@ -83,10 +85,13 @@ def ozet(tenant_id, plant_id, gun: int = 30) -> dict:
             "FROM scada_hourly s LEFT JOIN LATERAL (SELECT f.physics_kw FROM forecast_values f JOIN forecast_runs r ON r.id=f.run_id "
             "  WHERE f.plant_id=s.plant_id AND f.ts_utc=s.ts_utc AND f.ts_utc - r.run_at BETWEEN INTERVAL '0 hour' AND INTERVAL '24 hour' "
             "  ORDER BY r.run_at DESC LIMIT 1) b ON true "
-            "WHERE s.plant_id=:p AND s.flag IN ('valid','kisinti') AND s.ts_utc >= now() - (:g * INTERVAL '1 day')"),
-            {"p": plant_id, "g": gun}).mappings().first()
+            "WHERE s.plant_id=:p AND s.flag IN ('valid','kisinti') "
+            "AND s.ts_utc >= (SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p AND flag IN ('valid','kisinti')) - (:g * INTERVAL '1 day')"),
+            {"p": plant_id, "g": gun}).mappings().first()   # v2.257: son ölçüme bağlı pencere
     saat = int(r["saat"] or 0)
-    return {"pencere_gun": gun, "saat": saat, "kirpma_saat": int(r["kirpma"] or 0), "kirpma_gun": int(r["kirpma_gun"] or 0),
+    with tenant_baglami(tenant_id) as s2:
+        son = s2.execute(text("SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p AND flag IN ('valid','kisinti')"), {"p": plant_id}).scalar()
+    return {"pencere_gun": gun, "son_olcum": son.date().isoformat() if son is not None else None, "saat": saat, "kirpma_saat": int(r["kirpma"] or 0), "kirpma_gun": int(r["kirpma_gun"] or 0),
             "kisinti_saat": int(r["kisinti"] or 0), "kisinti_gun": int(r["kisinti_gun"] or 0),
             "kisinti_kayip_kwh": round(float(r["kayip_kwh"] or 0), 1),
             "beklenen_kapsama": round(int(r["beklenen_saat"] or 0) / saat, 3) if saat else None,

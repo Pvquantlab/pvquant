@@ -46,7 +46,7 @@ export interface Saglik {
 }
 /** /hijyen — v2.254: kırpma/kısıntı sayımı ve kısıtsız senaryo kaybı. */
 export interface Hijyen {
-  pencere_gun: number; saat: number; kirpma_saat: number; kirpma_gun: number; kisinti_saat: number; kisinti_gun: number;
+  pencere_gun: number; son_olcum?: string | null; saat: number; kirpma_saat: number; kirpma_gun: number; kisinti_saat: number; kisinti_gun: number;
   kisinti_kayip_kwh: number; beklenen_kapsama: number | null; kisinti_aranabildi: boolean;
 }
 /** /backtest — v2.253: konformal katmanın kayan-başlangıç sınavı. */
