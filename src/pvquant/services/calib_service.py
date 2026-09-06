@@ -234,6 +234,7 @@ def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
             {"t": tenant_id, "p": plant["id"], "m": sonuc["mode"],
              "pa": json.dumps({"eta_bos": cr.eta_bos, "bg": cr.bg}),
              "q": json.dumps({
+                 "meteo_kaynak":        getattr(meteo, "kaynak", "open-meteo"),   # v2.269: künye gerçek kullanımı okur
                  "mape_pct":            getattr(cr.validation_after,  "mape_pct", None),
                  "mape_before_pct":     getattr(cr.validation_before, "mape_pct", None),
                  "wmape_pct":           getattr(cr.validation_after,  "wmape_pct", None),

@@ -36,7 +36,14 @@ class Settings(BaseSettings):
     api_port: int = 8000
     cors_origins: str = "http://localhost:3000,http://localhost:5173"
 
-    # ----- Open-Meteo -----
+    # ----- Meteoroloji kaynağı (v2.268, Dalga 0) -----
+    # 'acik' (varsayılan): ECMWF Open Data IFS + DWD ICON-EU (CC BY 4.0) — koşu arşivi meteo_arsiv tablosunda.
+    # 'open_meteo': eski ücretsiz katman — ticari kullanımda uyumluluk borcu; yalnız geliştirme/geriye dönük kıyas.
+    meteo_kaynak: Literal["acik", "open_meteo"] = "acik"
+    nwp_dizin: str = "var/nwp"              # GRIB önbelleği (worker ./var bağlı hacmi); arşiv DB'de
+    nwp_kosu_tut: int = 2                   # kaynak başına diskte tutulan koşu sayısı
+    cams_email: str | None = None           # v2.269: CAMS Radiation (SoDa) kayıtlı e-posta — kalibrasyon geçmişi için
+    # ----- Open-Meteo (yalnız meteo_kaynak='open_meteo') -----
     meteo_base_url: str = "https://api.open-meteo.com/v1"
     meteo_timeout: int = 30
 

@@ -88,10 +88,10 @@ def uret_ve_kaydet(tenant_id, plant: dict) -> str:
     h = _kf.uygula_df(h, _ayar, plant.get("ac_limit_kw") or plant.get("capacity_kwp"))
     kosu_cercevesi_denetle(h)   # v2.176: run açılmadan önce
     with tenant_baglami(tenant_id) as s:
-        _kaynak = "open-meteo"   # v2.189: tek literal — özet + INSERT aynı değeri yazar
+        _kaynak = meteo.kaynak   # v2.189: tek değer — özet + INSERT aynı; v2.268: veriden ('acik-nwp' | 'open-meteo')
         meteo_ozet = json.dumps({
             "kaynak": _kaynak,
-            "nwp_model": OpenMeteoClient.NWP_MODEL,
+            "nwp_model": meteo.nwp_model,   # v2.268
             "cekim_utc": datetime.now(timezone.utc).isoformat(),
             "gunler": [
                 {"tarih": str(g), "t_max": round(t, 1),

@@ -204,7 +204,8 @@ def hybrid_forecast_hourly(model, meteo) -> Optional[pd.DataFrame]:
         from pvquant.models_v2.contracts import ForecastInput, OperationConfig
 
         fi = ForecastInput(
-            source="open_meteo", resolution_minutes=60,
+            source=("ecmwf" if getattr(meteo, "kaynak", "") == "acik-nwp" else "open_meteo"),   # v2.269: etiket veriden
+            resolution_minutes=60,
             data=pd.DataFrame({
                 "timestamp": meteo.ghi.index,
                 "ghi": meteo.ghi.values,

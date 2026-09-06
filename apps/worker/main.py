@@ -199,6 +199,25 @@ def gece_skill(plant, pencere_gun: int = 10):
             " pinball_p90=EXCLUDED.pinball_p90, crps=EXCLUDED.crps, picp80=EXCLUDED.picp80,"
             " kapsama_p10=EXCLUDED.kapsama_p10, kapsama_p90=EXCLUDED.kapsama_p90,"
             " bant_n=EXCLUDED.bant_n"), satirlar)
+def gece_meteo(_plant=None):
+    """v2.268 (Dalga 0) — açık NWP koşularını (ECMWF IFS + ICON-EU) indirip TÜM santrallerin noktalarını
+    meteo_arsiv'e yazar; günde bir kez (gece_piyasa kalıbı). sabah_tahmin arşivden okur — API'ye çıkmaz."""
+    from pvquant.config import get_settings as _gs
+    if _gs().meteo_kaynak != "acik":
+        return
+    import datetime as _dt
+    bugun = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d")
+    if getattr(gece_meteo, "_son", None) == bugun:
+        return
+    from pvquant.io import acik_nwp
+    noktalar = [(float(p["lat"]), float(p["lon"])) for p in _tum_santraller()]
+    if not noktalar:
+        return
+    rapor = acik_nwp.kosu_cek_ve_arsivle(noktalar)
+    print("gece_meteo:", rapor)
+    gece_meteo._son = bugun
+
+
 def gece_piyasa(_plant=None):
     """v2.258 — EPİAŞ fiyatları (tenant'sız, günde bir kez yeter; _logla santral döngüsünden çağırır,
     ikinci santralde tekrar çekmemek için 'bugün çekildi' bayrağı)."""
@@ -467,6 +486,7 @@ if __name__ == "__main__":
         # v2.56: elle tam tur — scheduler'siz, sirayla. Aylik kalibrasyon
         # BILEREK haric (durum degistiren agir is; takvimin/kullanicinin isi).
         print("PVQuant worker --once: tam tur basliyor…")
+        _logla("gece_meteo", gece_meteo)()                  # v2.268 (Dalga 0): NWP arşivi önce
         _logla("gece_piyasa", gece_piyasa)()                # v2.258 (kimlik yoksa atlar)
         _logla("gece_hijyen", gece_hijyen)()                # v2.254 (skill'den once)
         _logla("gece_skill", gece_skill)()
@@ -478,6 +498,8 @@ if __name__ == "__main__":
         print("Tam tur bitti — kanit jobs_log'da.")
         raise SystemExit(0)
     sch = BlockingScheduler(timezone="UTC", job_defaults=dict(coalesce=True, misfire_grace_time=3600, max_instances=1))
+    sch.add_job(_logla("gece_meteo", gece_meteo), "cron",                # v2.268: tahminden 1 saat önce
+                hour=(cfg.worker_hour_forecast - 1) % 24, minute=0)
     sch.add_job(_logla("sabah_tahmin", sabah_tahmin), "cron", hour=cfg.worker_hour_forecast, minute=0)
     sch.add_job(_logla("gece_piyasa", gece_piyasa), "cron", hour=cfg.worker_hour_skill, minute=15)   # v2.258
     sch.add_job(_logla("gece_hijyen", gece_hijyen), "cron", hour=cfg.worker_hour_skill, minute=20)   # v2.254

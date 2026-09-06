@@ -460,7 +460,7 @@ def forecast_7day(
             "is_bifacial": plant.is_bifacial,
             "bifacial_gain_pct": bifacial_gain_fraction * 100,
             "gamma_used": plant.effective_gamma,
-            "meteo_source": "open-meteo",
+            "meteo_source": getattr(meteo, "kaynak", "open-meteo"),   # v2.268: etiket veriden
             "decomposition_model": "erbs",
             "transposition_model": "perez_1990",
         },

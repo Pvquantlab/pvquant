@@ -186,6 +186,7 @@ def _align_meteo_to_scada(
         latitude=meteo.latitude,
         longitude=meteo.longitude,
         timezone=meteo.timezone,
+        kaynak=meteo.kaynak, nwp_model=meteo.nwp_model,   # v2.268: etiket kaybolmasın
     )
 # --- Faz 1.6 Adim 3.1: Meteo Alignment [END] ---
 

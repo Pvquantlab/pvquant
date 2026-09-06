@@ -65,6 +65,13 @@ def iklim_hesapla(lat: float, lon: float, yil_sayisi: int = 20,
 
     from pvquant.io.meteo import OpenMeteoClient
 
+    from pvquant.config import get_settings as _gs
+    if _gs().meteo_kaynak == "acik":
+        # v2.269 (Dalga 0): uydu türevli SARAH-3 (2005–2023) — Open-Meteo/ERA5 arşivi yerine
+        from pvquant.io.arsiv_isinim import iklim_serisi
+        df, ilk_yil, son_tam_yil = iklim_serisi(lat, lon, yil_sayisi)
+        t = tam_yillar(aylik_toplamlar(df, tz=tz), ilk_yil, son_tam_yil)
+        return t, aylik_beklenti(t)
     son_tam_yil = dt.date.today().year - 1
     baslangic = f"{son_tam_yil - yil_sayisi + 1}-01-01"
     bitis = f"{son_tam_yil}-12-31"

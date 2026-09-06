@@ -41,6 +41,8 @@ services:
       PVQ_SENTRY_DSN: ${PVQ_SENTRY_DSN:-}
     ports:
       - "8000:8000"                # yerel durusma: curl ile dogrudan
+    volumes:
+      - ./var:/app/var             # v2.268: NWP önbelleği (var/nwp) ve model artifact'leri worker ile ortak
     depends_on:
       db:
         condition: service_healthy

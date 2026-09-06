@@ -50,6 +50,8 @@ class MeteoData:
     timezone: str
     precipitation: pd.Series | None = None   # v2.256 mm/saat
     snowfall: pd.Series | None = None        # v2.256 cm/saat
+    kaynak: str = "open-meteo"               # v2.268: forecast_runs.meteo_source / künye
+    nwp_model: str = "best_match"            # v2.268: 'ECMWF IFS + ICON-EU' ya da Open-Meteo best_match
 
     def to_dataframe(self) -> pd.DataFrame:
         """Tüm seriler tek bir DataFrame'de döner."""
@@ -74,7 +76,12 @@ class OpenMeteoError(Exception):
 
 
 class OpenMeteoClient:
-    """Open-Meteo Forecast API istemcisi.
+    """Meteoroloji istemcisi — v2.268 (Dalga 0) fasadı.
+
+    Ayar `meteo_kaynak='acik'` (varsayılan) iken get_forecast/get_historical açık NWP arşivinden
+    (pvquant.io.acik_nwp: ECMWF IFS + ICON-EU) beslenir; 'open_meteo' iken eski Open-Meteo yolu çalışır.
+    Sınıf adı geriye uyum için korunur (çekirdek model dosyaları bu adı içe aktarır — KIRMIZI ÇİZGİ'ye
+    dokunmadan kaynak değişir). `MeteoIstemcisi` takma adı yeni koddur.
 
     Args:
         base_url: API kök adresi. Varsayılan yapılandırmadan okur.
@@ -161,6 +168,10 @@ class OpenMeteoClient:
             raise ValueError(f"longitude {longitude} aralık dışı (-180..180)")
         if not 1 <= days <= 16:
             raise ValueError(f"days {days} aralık dışı (1..16)")
+        if not 0 <= past_days <= 92:
+            raise ValueError(f"past_days {past_days} aralık dışı (0..92)")
+        if get_settings().meteo_kaynak == "acik":
+            return self._acik_tahmin(latitude, longitude, days, past_days)
 
         params = {
             "latitude": latitude,
@@ -169,8 +180,6 @@ class OpenMeteoClient:
             "forecast_days": days,
             "timezone": timezone,
         }
-        if not 0 <= past_days <= 92:
-            raise ValueError(f"past_days {past_days} aralık dışı (0..92)")
         if past_days:
             params["past_days"] = past_days   # v2.253: kayma denetimi (servis tarafı örneği)
 
@@ -209,6 +218,13 @@ class OpenMeteoClient:
         Returns:
             MeteoData nesnesi.
         """
+        if get_settings().meteo_kaynak == "acik":
+            md = self._acik_gecmis(latitude, longitude, start_date, end_date)
+            if md is not None:
+                return md
+            # v2.268 GEÇİŞ: arşiv bu aralığı kapsamıyorsa (kurulumdan önceki dönem) eski arşiv yolu; v2.269 bunu
+            # CAMS/PVGIS-SARAH3 ile değiştirir. Uyarı loglanır ki üründe sessiz kalmasın.
+            print(f"[meteo][uyari] acik NWP arsivi {start_date}..{end_date} araligini kapsamiyor — gecici olarak Open-Meteo arsivi")
         # Arşiv API'si farklı domain'de
         archive_url = "https://archive-api.open-meteo.com/v1/archive"
         params = {
@@ -229,6 +245,23 @@ class OpenMeteoClient:
             raise OpenMeteoError(f"Bağlantı hatası: {e}") from e
 
         return self._parse_response(data)
+
+    # ----- v2.268: açık NWP yolu -----
+    def _acik_tahmin(self, latitude: float, longitude: float, days: int, past_days: int) -> MeteoData:
+        """Arşivdeki taze koşu; yoksa indirip arşivler (senkron, dakikalar sürebilir), sonra okur."""
+        from pvquant.io import acik_nwp
+        md = acik_nwp.arsivden_tahmin(latitude, longitude, days, past_days)
+        if md is None:
+            acik_nwp.kosu_cek_ve_arsivle([(latitude, longitude)])
+            md = acik_nwp.arsivden_tahmin(latitude, longitude, days, past_days)
+        if md is None:
+            raise OpenMeteoError("açık NWP arşivi bu nokta için koşu vermedi")
+        return md
+
+    def _acik_gecmis(self, latitude: float, longitude: float, start_date: str, end_date: str) -> MeteoData | None:
+        """v2.269 sırası: kendi NWP arşivi → CAMS (e-posta varsa) → PVGIS-SARAH3 (≤2023) → NASA POWER (eski dönem)."""
+        from pvquant.io import arsiv_isinim
+        return arsiv_isinim.gecmis(latitude, longitude, start_date, end_date)
 
     def _parse_response(self, data: dict) -> MeteoData:
         """API JSON yanıtını MeteoData'ya dönüştürür."""
@@ -290,3 +323,7 @@ class OpenMeteoClient:
             precipitation=series_or_none("precipitation"),
             snowfall=series_or_none("snowfall"),
         )
+
+
+# v2.268: yeni kodun kullanacağı ad; OpenMeteoClient geriye uyum takma adı olarak kalır.
+MeteoIstemcisi = OpenMeteoClient
