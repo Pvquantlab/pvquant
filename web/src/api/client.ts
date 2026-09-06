@@ -1,4 +1,4 @@
-import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme } from "./types";
+import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -488,6 +488,31 @@ export const api = {
     const cd = y.headers.get("Content-Disposition") ?? ""; const es = /filename="([^"]+)"/.exec(cd);
     const url = URL.createObjectURL(await y.blob()); const a = document.createElement("a");
     a.href = url; a.download = es ? es[1] : `TOPLAYICI.${fmt}`; a.click(); URL.revokeObjectURL(url);
+  },
+  /** v2.281: kullanılabilirlik, kayıp ağacı, tarife, şablon raporlar. */
+  kullanilabilirlik: async (p: string, gun = 30): Promise<Kullanilabilirlik | null> => {
+    if (TABAN == null) return null;
+    try { return await getir<Kullanilabilirlik>(`/v1/plants/${p}/kullanilabilirlik?gun=${gun}`); } catch { return null; }
+  },
+  kayipAgaci: async (p: string): Promise<KayipAgaci | null> => {
+    if (TABAN == null) return null;
+    try { return await getir<KayipAgaci>(`/v1/plants/${p}/kayip-agaci`); } catch { return null; }
+  },
+  kayipAgaciHesapla: (p: string): Promise<KayipAgaci> => gonder(`/v1/plants/${p}/kayip-agaci/hesapla`, "POST"),
+  tarife: async (p: string): Promise<Tarife | null> => {
+    if (TABAN == null) return null;
+    try { return (await getir<{ tarife: Tarife | null }>(`/v1/plants/${p}/tarife`)).tarife; } catch { return null; }
+  },
+  tarifeAyarla: (p: string, tarife: Tarife | null): Promise<{ tarife: Tarife | null }> => gonder(`/v1/plants/${p}/tarife`, "PUT", { tarife }),
+  raporSablonIndir: async (p: string, ad: "kapasite-testi" | "fatura" | "kullanilabilirlik"): Promise<void> => {
+    if (TABAN == null) throw new Error("Örnek kipte şablon rapor yok.");
+    const jeton = localStorage.getItem("pvq_token");
+    const y = await fetch(`${TABAN}/v1/plants/${p}/rapor-sablon/${ad}`, { headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
+    if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise<void>(() => {}); }
+    if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
+    const cd = y.headers.get("Content-Disposition") ?? ""; const es = /filename="([^"]+)"/.exec(cd);
+    const url = URL.createObjectURL(await y.blob()); const a = document.createElement("a");
+    a.href = url; a.download = es ? es[1] : `${ad}.html`; a.click(); URL.revokeObjectURL(url);
   },
   /** v2.278: bankable yıllık beklenti (saklı sonuç; 404 → null) ve yeniden hesaplama (1–2 dk). */
   bankable: async (p: string): Promise<Bankable | null> => {

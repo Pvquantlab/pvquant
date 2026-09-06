@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { PrKarti, Saglik, AlarmKurallari, FizikTerimleri, FizikOnizleme } from "../../api/types";
+import type { PrKarti, Saglik, AlarmKurallari, FizikTerimleri, FizikOnizleme, Kullanilabilirlik, Tarife } from "../../api/types";
 import { SEGMENTLER } from "../../api/types";
 import type { EChartsOption } from "echarts";
 import { api } from "../../api/client";
@@ -77,6 +77,18 @@ export function Santralim({ plantId }: { plantId: string }) {
       .then((r) => setEakMesaj(`Kaydedildi · bugün EAK ${sayiTr(r.eak_bugun.eak_mw, 2)} MW (${r.eak_bugun.kaynak})`))
       .catch((e) => setEakMesaj(String((e as Error).message ?? e)));
   };
+  // v2.281: kullanılabilirlik (otomatik tespit) + tarife/gelir yapılandırması
+  const [ku, setKu] = useState<Kullanilabilirlik | null>(null);
+  useEffect(() => { api.kullanilabilirlik(plantId).then(setKu).catch(() => {}); }, [plantId]);
+  const [tarife, setTarife] = useState<Tarife>({ tip: "sabit" });
+  const [tarifeMesaj, setTarifeMesaj] = useState<string | null>(null);
+  useEffect(() => { api.tarife(plantId).then((t) => { if (t) setTarife(t); }).catch(() => {}); }, [plantId]);
+  const tarifeKaydet = () => {
+    setTarifeMesaj(null);
+    api.tarifeAyarla(plantId, tarife).then((r) => setTarifeMesaj(r.tarife ? "Kaydedildi — fatura şablonu ve yıllık gelir bunu kullanır." : "Kaldırıldı."))
+      .catch((e) => setTarifeMesaj(String((e as Error).message ?? e)));
+  };
+  const girdi = { fontSize: 12, padding: "3px 6px", border: "1px solid var(--kenar)", borderRadius: 4, background: "var(--yuzey)", color: "var(--metin)" } as const;
   const [ak, setAk] = useState<AlarmKurallari | null>(null);   // v2.265: ek alarm kuralları (opt-in)
   useEffect(() => { api.alarmKurallari(plantId).then(setAk).catch(() => {}); }, [plantId]);
   const akDegistir = (kural: string, acik: boolean) => {
@@ -363,6 +375,27 @@ export function Santralim({ plantId }: { plantId: string }) {
                   : sg?.egim_yuzde_yil != null
                     ? <>eğilim %{sayiTr(sg.egim_yuzde_yil, 1)}/yıl<span style={{ color: "var(--soluk)" }}> · {sayiTr(sg.gun)} gün · {sg.not || "bozunma için ≥13 ay"}</span></>
                     : <span style={{ color: "var(--soluk)" }}>— {sg?.not || "ölçüm birikmedi"}</span>}</td></tr>
+              {/* v2.281: kullanılabilirlik — otomatik arıza tespiti (olay günlüğü yok; dürüst not) */}
+              <tr><td>Kullanılabilirlik (30 g)</td>
+                <td>{ku?.durum === "ok" && ku.A_t != null
+                  ? <>%{sayiTr(ku.A_t * 100, 1)} zaman · {ku.A_e != null ? `%${sayiTr(ku.A_e * 100, 1)} enerji` : "—"}
+                      <span style={{ color: "var(--soluk)" }}> · {sayiTr(ku.ariza_saat ?? 0)} arıza saati · veri %{sayiTr((ku.veri_orani ?? 0) * 100, 0)} · otomatik tespit</span></>
+                  : <span style={{ color: "var(--soluk)" }}>— {ku?.durum === "yetersiz" ? "üretim mümkün saat yetersiz" : "ölçüm/beklenti birikmedi"}</span>}</td></tr>
+              {/* v2.281: tarife / gelir yapılandırması */}
+              <tr><td>Tarife</td>
+                <td><span style={{ display: "inline-flex", gap: 6, alignItems: "center", flexWrap: "wrap", fontSize: 12.5 }}>
+                  <select className="mono" value={tarife.tip} style={{ fontSize: 12 }} onChange={(e) => setTarife({ ...tarife, tip: e.target.value as Tarife["tip"] })}>
+                    <option value="sabit">sabit fiyat</option><option value="ptf">piyasa (PTF) endeksli</option><option value="yekdem">YEKDEM (döviz endeksli)</option>
+                  </select>
+                  {tarife.tip === "sabit" && <input className="mono" style={{ ...girdi, width: 110 }} placeholder="TL/MWh" value={tarife.tl_mwh ?? ""} onChange={(e) => setTarife({ ...tarife, tl_mwh: Number(e.target.value) })} />}
+                  {tarife.tip === "ptf" && <><input className="mono" style={{ ...girdi, width: 90 }} placeholder="prim (0,05)" value={tarife.prim_oran ?? ""} onChange={(e) => setTarife({ ...tarife, prim_oran: Number(e.target.value) })} />
+                    <input className="mono" style={{ ...girdi, width: 100 }} placeholder="+TL/MWh" value={tarife.sabit_ek_tl_mwh ?? ""} onChange={(e) => setTarife({ ...tarife, sabit_ek_tl_mwh: Number(e.target.value) })} /></>}
+                  {tarife.tip === "yekdem" && <><input className="mono" style={{ ...girdi, width: 100 }} placeholder="USD cent/kWh" value={tarife.usd_cent_kwh ?? ""} onChange={(e) => setTarife({ ...tarife, usd_cent_kwh: Number(e.target.value) })} />
+                    <input className="mono" style={{ ...girdi, width: 90 }} placeholder="kur TL/USD" value={tarife.kur_tl_usd ?? ""} onChange={(e) => setTarife({ ...tarife, kur_tl_usd: Number(e.target.value) })} /></>}
+                  <button className="dugme" style={{ fontSize: 11.5 }} onClick={tarifeKaydet}>Kaydet</button>
+                  <button className="dugme" style={{ fontSize: 11.5 }} onClick={() => api.tarifeAyarla(plantId, null).then(() => setTarifeMesaj("Kaldırıldı.")).catch(() => {})}>Kaldır</button>
+                  {tarifeMesaj && <span className="soluk">{tarifeMesaj}</span>}
+                </span></td></tr>
               {/* v2.275 (Dalga 4): EAK alanı — emre amade kapasite; geçici kısıt bakım/arıza için (bitiş tarihine kadar) */}
               <tr><td>Emre amade kapasite (EAK)</td>
                 <td><span style={{ display: "inline-flex", gap: 6, alignItems: "center", flexWrap: "wrap", fontSize: 12.5 }}>

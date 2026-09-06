@@ -73,6 +73,13 @@ export interface ApiAnahtar { id: string; ad: string | null; prefix: string; kap
 export interface ApiAnahtarYeni extends Omit<ApiAnahtar, "iptal" | "son_kullanim" | "olusturma"> { anahtar: string }
 export interface Webhook { id: string; plant_id: string | null; santral: string | null; url: string; olaylar: string[]; aktif: boolean;
   son_gonderim: string | null; son_durum: number | null; hata_sayisi: number }
+/** v2.281 — kullanılabilirlik, kayıp ağacı, tarife. */
+export interface Kullanilabilirlik { durum: string; mumkun_saat?: number; veri_orani?: number; haric_saat?: number; ariza_saat?: number;
+  A_t?: number | null; A_e?: number | null; kayip_kwh?: number; not?: string; pencere_gun?: number }
+export interface KayipAgaci { durum: string; yil?: number; kaynak?: string; ghi_kwh_m2?: number; poa_kwh_m2?: number; nominal_dc_kwh?: number; sebeke_kwh?: number;
+  pr?: number | null; ozgul_kwh_kwp?: number; hesap_zamani?: string;
+  satirlar?: { adim: string; etiket: string; giren_kwh: number; cikan_kwh: number; kayip_kwh: number; kayip_pct: number; kaynak: string }[] }
+export interface Tarife { tip: "sabit" | "ptf" | "yekdem"; tl_mwh?: number; prim_oran?: number; sabit_ek_tl_mwh?: number; usd_cent_kwh?: number; kur_tl_usd?: number; eskalasyon_yillik?: number }
 /** /bankable — v2.278: yıllık P50/P90 (1 ve 10 yıl), belirsizlik bütçesi, TMY. */
 export interface Bankable {
   durum: string; hesap_zamani?: string; kaynak?: string; donem?: string; mod?: string; not?: string;
@@ -81,6 +88,8 @@ export interface Bankable {
   ghi?: { p50_kwh_m2: number; p90_kwh_m2_1yil: number; sigma_yillar_arasi: number };
   yillar?: { yil: number; kwh: number; ghi_kwh_m2: number }[];
   tmy?: { secilen_yillar?: Record<string, number>; p90_yili?: number; p90_yili_ghi?: number; tmy_ghi_kwh_m2?: number; hata?: string };
+  /** v2.281: tarife tanımlıysa yıllık gelir */
+  gelir?: { tip: string; fiyat_tl_mwh: number; p50_tl: number; p90_1yil_tl: number; p90_nyil_tl: number; not?: string | null };
 }
 /** /epias-uretim — v2.278: EPİAŞ gerçekleşen üretim akışı durumu. */
 export interface EpiasUretim { uygun: boolean; neden: string; epias_santral_id: number | null; n_saat: number; son: string | null }

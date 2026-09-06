@@ -5,8 +5,61 @@ import { useTema } from "../../lib/useTema";
 import { api, RaporDenetimHata, type DenetimBulgusu, EslemeHatasi, type EslemeVerisi,
          type ScadaOnizleme, type ScadaKayit,
          type KosuSatiri } from "../../api/client";
-import type { KalibrasyonOzeti, Kayma, Hijyen, EpiasUretim } from "../../api/types";
+import type { KalibrasyonOzeti, Kayma, Hijyen, EpiasUretim, KayipAgaci } from "../../api/types";
 import { Kart, Sayfa, Kpi, sayiTr } from "./parcalar";
+
+function SablonDugmeleri({ plantId }: { plantId: string }) {
+  const [hata, setHata] = useState<string | null>(null);
+  const indir = (ad: "kapasite-testi" | "fatura" | "kullanilabilirlik") => { setHata(null); api.raporSablonIndir(plantId, ad).catch((e) => setHata(String((e as Error).message ?? e))); };
+  return (
+    <>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <button className="dugme" onClick={() => indir("kapasite-testi")}>Kapasite testi</button>
+        <button className="dugme" onClick={() => indir("fatura")}>Fatura / uzlaştırma özeti (son ay)</button>
+        <button className="dugme" onClick={() => indir("kullanilabilirlik")}>Kullanılabilirlik (30 gün)</button>
+      </div>
+      {hata && <p style={{ color: "var(--uyari)", fontSize: 12.5, margin: "8px 0 0" }}>{hata}</p>}
+      <p className="soluk" style={{ fontSize: 12.5, margin: "8px 0 0" }}>
+        Kapasite testi ölçülen düzlem ışınımı ister; fatura özeti künyedeki tarifeyi ve simülatörün dengesizlik kalemini kullanır; kullanılabilirlik otomatik arıza tespitidir.
+      </p>
+    </>
+  );
+}
+
+/** v2.281 (Tablo 3.3 satır 4) — kayıp ağacı: tipik yıl ışınımından şebekeye adım adım; her satır kaynağını söyler. */
+function KayipAgaciKarti({ plantId }: { plantId: string }) {
+  const [k, setK] = useState<KayipAgaci | null | undefined>(undefined);
+  const [mesaj, setMesaj] = useState<string | null>(null);
+  useEffect(() => { api.kayipAgaci(plantId).then(setK).catch(() => setK(null)); }, [plantId]);
+  const hesapla = () => { setMesaj("Hesaplanıyor (tipik yıl ışınımı, ~10 s)…"); api.kayipAgaciHesapla(plantId).then((r) => { setK(r); setMesaj(null); }).catch((e) => setMesaj(String((e as Error).message ?? e))); };
+  return (
+    <Kart baslik="Kayıp ağacı — yatay ışınımdan şebekeye" sag={<span style={{ display: "flex", gap: 6 }}>
+      {k?.durum === "ok" && <span className="cip">tipik yıl {k.yil} · PR {sayiTr((k.pr ?? 0) * 100, 0)}% · {sayiTr(k.ozgul_kwh_kwp ?? 0, 0)} kWh/kWp</span>}
+      <button className="dugme" style={{ fontSize: 11.5 }} onClick={hesapla}>{k?.durum === "ok" ? "Yenile" : "Hesapla"}</button></span>}>
+      {k === undefined ? <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p>
+       : !k || k.durum !== "ok" ? <p className="soluk" style={{ margin: 0 }}>{mesaj ?? "Henüz hesaplanmadı — 'Hesapla' tipik yıl ışınımından adım adım kayıp zincirini üretir."}</p>
+       : (
+        <>
+          <div className="grafik-kaydir">
+            <table className="veri" style={{ fontSize: 12 }}>
+              <thead><tr><th style={{ textAlign: "left" }}>Adım</th><th>Giren (MWh)</th><th>Kayıp (%)</th><th>Çıkan (MWh)</th><th style={{ textAlign: "left" }}>Kaynak</th></tr></thead>
+              <tbody className="mono">
+                {(k.satirlar ?? []).map((r) => (
+                  <tr key={r.adim}><td style={{ textAlign: "left", fontFamily: "var(--font)" }}>{r.etiket}</td><td>{sayiTr(r.giren_kwh / 1000, 0)}</td>
+                    <td style={{ color: r.kayip_pct < 0 ? "var(--basari)" : r.kayip_pct > 3 ? "var(--uyari)" : undefined }}>{r.kayip_pct === 0 ? "—" : `%${sayiTr(r.kayip_pct, 1)}`}</td>
+                    <td>{sayiTr(r.cikan_kwh / 1000, 0)}</td><td style={{ textAlign: "left", fontFamily: "var(--font)", color: "var(--soluk)" }}>{r.kaynak}</td></tr>))}
+              </tbody>
+            </table>
+          </div>
+          <p className="soluk" style={{ fontSize: 12.5, margin: "10px 0 0" }}>
+            Yatay ışınım {sayiTr(k.ghi_kwh_m2 ?? 0, 0)} → düzlem {sayiTr(k.poa_kwh_m2 ?? 0, 0)} kWh/m²; nominal {sayiTr((k.nominal_dc_kwh ?? 0) / 1000, 0)} MWh → şebeke {sayiTr((k.sebeke_kwh ?? 0) / 1000, 0)} MWh.
+            "Varsayılan" satırlar sektör tipik değerleridir (gölge, uyumsuzluk, kablo, evirici); ölçümle değişmez. {mesaj ?? ""}
+          </p>
+        </>
+      )}
+    </Kart>
+  );
+}
 
 /** v2.278 (Tablo 3.1 satır 7) — SCADA yüklenmeyen lisanslı santralda EPİAŞ gerçekleşen üretimi gerçekleşen kaynağı olur. */
 function EpiasUretimKarti({ plantId }: { plantId: string }) {
@@ -639,6 +692,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
           <p className="soluk" style={{ margin: 0 }}>{ky ? "Ortak saat yetersiz — en az 48 saat gerekir." : "Arşiv ve tahmin meteosu aynı pencerede karşılaştırılıyor…"}</p>
         )}
       </Kart>
+      <KayipAgaciKarti plantId={plantId} />
     </Sayfa>
   );
 }
@@ -754,6 +808,10 @@ export function Raporlar({ plantId }: { plantId: string }) {
             </tbody>
           </table>
         )}
+      </Kart>
+      {/* v2.281 (Tablo 3.5 satır 4): şablon raporlar — kısa, tek amaçlı HTML belgeler */}
+      <Kart baslik="Şablon raporlar" sag={<span className="cip">HTML · tek sayfa</span>}>
+        <SablonDugmeleri plantId={plantId} />
       </Kart>
     </Sayfa>
   );

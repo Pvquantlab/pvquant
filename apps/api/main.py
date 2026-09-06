@@ -881,6 +881,84 @@ def skill(plant_id: str, bucket: str = "0-24", gun: int = 120,
     }
 
 
+class TarifeIstek(BaseModel):
+    tarife: dict | None = None      # None → kaldır
+
+
+@app.get("/v1/plants/{plant_id}/kullanilabilirlik")
+def kullanilabilirlik_uc(plant_id: str, gun: int = 30, claims=Depends(gecerli_kullanici)):
+    """v2.281 — kullanılabilirlik (zaman/enerji tabanlı, otomatik arıza tespiti; olay günlüğü yok)."""
+    from pvquant.services import kullanilabilirlik_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    return kullanilabilirlik_service.hesapla(claims["tenant_id"], row, gun=max(7, min(gun, 365)))
+
+
+@app.get("/v1/plants/{plant_id}/kayip-agaci")
+def kayip_agaci_uc(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """v2.281 — kayıp ağacı (saklı sonuç; yoksa 404)."""
+    from pvquant.services.calib_service import _pj
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    r = _pj(row).get("kayip_agaci")
+    if not r:
+        raise HTTPException(404, "henüz hesaplanmadı")
+    return r
+
+
+@app.post("/v1/plants/{plant_id}/kayip-agaci/hesapla")
+def kayip_agaci_hesapla(plant_id: str, claims=Depends(yazma_yetkisi())):
+    """v2.281 — kayıp ağacını hesapla/yenile (tipik yıl ışınımı, ~10 s)."""
+    from pvquant.services import kayip_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    return kayip_service.hesapla(claims["tenant_id"], row)
+
+
+@app.get("/v1/plants/{plant_id}/tarife")
+def tarife_getir_uc(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """v2.281 — mevcut tarife yapılandırması (yoksa null)."""
+    from pvquant.services import tarife_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    return {"tarife": tarife_service.tarife_getir(row)}
+
+
+@app.put("/v1/plants/{plant_id}/tarife")
+def tarife_ayarla(plant_id: str, p: TarifeIstek, claims=Depends(yazma_yetkisi())):
+    """v2.281 — tarife/gelir yapılandırması (sabit | PTF-endeksli | YEKDEM döviz endeksli); null → kaldır."""
+    from pvquant.services import tarife_service
+    if plant_service.getir(claims["tenant_id"], plant_id) is None:
+        raise HTTPException(404, "santral yok")
+    try:
+        t = tarife_service.dogrula(p.tarife) if p.tarife else None
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, tarife=t)
+    return {"tarife": pj.get("tarife")}
+
+
+@app.get("/v1/plants/{plant_id}/rapor-sablon/{ad}")
+def rapor_sablon_uc(plant_id: str, ad: str, ay: str | None = None, gun: int = 30, claims=Depends(gecerli_kullanici)):
+    """v2.281 — şablon raporlar (HTML): kapasite-testi | fatura | kullanilabilirlik."""
+    from pvquant.services import sablon_rapor_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    try:
+        p = {"ay": ay} if ad == "fatura" else {"gun": gun}
+        icerik, dosya = sablon_rapor_service.uret(claims["tenant_id"], row, ad, **p)
+    except KeyError:
+        raise HTTPException(422, f"şablon: {sablon_rapor_service.SABLONLAR}")
+    except ValueError as e:
+        raise HTTPException(409, str(e))
+    return Response(content=icerik, media_type="text/html; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{dosya}"'})
+
+
 @app.get("/v1/plants/{plant_id}/bankable")
 def bankable(plant_id: str, claims=Depends(gecerli_kullanici)):
     """v2.278 — bankable yıllık beklenti (P50/P90, 1 ve 10 yıl), belirsizlik bütçesi, TMY; hesaplanmadıysa 404."""

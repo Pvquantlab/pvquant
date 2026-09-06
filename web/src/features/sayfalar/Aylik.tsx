@@ -184,6 +184,7 @@ export function Aylik({ plantId }: { plantId: string }) {
             <p className="soluk" style={{ fontSize: 12.5, margin: "10px 0 0" }}>
               {bk.mod}. Işınım P50 {sayiTr(bk.ghi?.p50_kwh_m2 ?? 0, 0)} kWh/m² (tek yıl P90 {sayiTr(bk.ghi?.p90_kwh_m2_1yil ?? 0, 0)}).
               {bk.tmy?.p90_yili ? ` P90 senaryo yılı: ${bk.tmy.p90_yili} (${sayiTr(bk.tmy.p90_yili_ghi ?? 0, 0)} kWh/m²); tipik meteorolojik yıl ${sayiTr(bk.tmy.tmy_ghi_kwh_m2 ?? 0, 0)} kWh/m².` : ""}
+              {bk.gelir ? ` Gelir (tarife: ${bk.gelir.tip}, ${sayiTr(bk.gelir.fiyat_tl_mwh, 0)} TL/MWh): P50 ${sayiTr(bk.gelir.p50_tl / 1e6, 2)} milyon TL/yıl · P90 tek yıl ${sayiTr(bk.gelir.p90_1yil_tl / 1e6, 2)} · P90 10 yıl ${sayiTr(bk.gelir.p90_nyil_tl / 1e6, 2)} milyon TL.${bk.gelir.not ? " " + bk.gelir.not + "." : ""}` : ""}
               {" "}{bk.not}
             </p>
             {bkMesaj && <p className="soluk" style={{ fontSize: 12.5, margin: "6px 0 0" }}>{bkMesaj}</p>}

@@ -20,10 +20,11 @@ from pvquant.db import tenant_baglami
 from pvquant.ext.platform.alarm import KUTUPHANE
 
 # v2.265: seçilebilir ek kurallar (ürün kararı: yalnız bu üçü; ping/KGÜP/dengesizlik kuralları veri kaynağı olmadan açılmaz)
-EK_KURALLAR = ("pr_dustu", "clipping_orani_yuksek", "iletisim_kesintisi")
-ESIK_VARSAYILAN = {"pr_esik": 0.70, "clipping_esik": 0.15, "iletisim_esik_saat": 6}
+EK_KURALLAR = ("pr_dustu", "clipping_orani_yuksek", "iletisim_kesintisi", "kullanilabilirlik_dustu")   # v2.281: +kullanılabilirlik
+ESIK_VARSAYILAN = {"pr_esik": 0.70, "clipping_esik": 0.15, "iletisim_esik_saat": 6, "kullanilabilirlik_esik": 0.97}
 KURAL_ETIKET = {"veri_gelmedi": "Veri gelmedi", "skill_dustu": "İsabet düştü", "pr_dustu": "Performans oranı düştü",
-                "clipping_orani_yuksek": "Kırpma oranı yüksek", "iletisim_kesintisi": "İletişim kesintisi"}
+                "clipping_orani_yuksek": "Kırpma oranı yüksek", "iletisim_kesintisi": "İletişim kesintisi",
+                "kullanilabilirlik_dustu": "Kullanılabilirlik düştü"}
 
 
 def _pj(plant: dict) -> dict:
@@ -70,6 +71,10 @@ def _baglam(tenant_id, plant: dict, secili: list[str]) -> dict:
         from pvquant.services import hijyen_service
         h = hijyen_service.ozet(tenant_id, pid, 7)
         b["clipping_orani_7g"] = (h["kirpma_saat"] / h["saat"]) if h.get("saat") else 0.0
+    if "kullanilabilirlik_dustu" in secili:
+        from pvquant.services import kullanilabilirlik_service
+        k = kullanilabilirlik_service.hesapla(tenant_id, plant, 30)
+        b["kullanilabilirlik_30g"] = k.get("A_t")
     if "iletisim_kesintisi" in secili:
         with tenant_baglami(tenant_id) as s:
             saat = s.execute(text("SELECT EXTRACT(EPOCH FROM (now() - max(ts_utc)))/3600 FROM scada_hourly WHERE plant_id=:p"), {"p": pid}).scalar()
@@ -198,5 +203,7 @@ def kural_ayarla(tenant_id, plant_id, kurallar: list[str], esik: dict | None = N
         raise ValueError("clipping_esik 0–1")
     if "iletisim_esik_saat" in e and not (1 <= e["iletisim_esik_saat"] <= 48):
         raise ValueError("iletisim_esik_saat 1–48")
+    if "kullanilabilirlik_esik" in e and not (0.5 <= e["kullanilabilirlik_esik"] <= 1.0):
+        raise ValueError("kullanilabilirlik_esik 0,5–1,0")
     pj = plant_service.params_birlestir(tenant_id, plant_id, alarm_kurallari=k, alarm_esik=e)
     return kural_durumu({"params_json": pj})

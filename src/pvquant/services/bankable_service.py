@@ -74,6 +74,18 @@ def hesapla(tenant_id, plant: dict, kaydet: bool = True) -> dict:
            **but, "ghi": {"p50_kwh_m2": round(ghi_b.p50, 1), "p90_kwh_m2_1yil": round(ghi_b.olasiliklar[90], 1), "sigma_yillar_arasi": round(ghi_b.bilesenler["yillar_arasi"], 4)},
            "yillar": [{"yil": int(i), "kwh": float(r["kwh"]), "ghi_kwh_m2": float(r["ghi_kwh_m2"])} for i, r in y.iterrows()], "tmy": tmy_bilgi,
            "not": "Kaynak belirsizliği %4 ve model belirsizliği %3 varsayılan (uydu türevli GHI için tipik); ölçüm kalibresi olan sahada düşer. Ölçüm kalibreli finans raporu için bağımsız doğrulama gerekir."}
+    try:   # v2.281: tarife tanımlıysa yıllık gelir P50/P90 (TL); PTF tipi için senaryo/EPİAŞ yıllık ortalama
+        from pvquant.services import tarife_service, piyasa_service
+        t = tarife_service.tarife_getir(plant)
+        if t:
+            ptf_ort = piyasa_service.SENARYO_PTF if t["tip"] == "ptf" else None
+            f = tarife_service.ortalama_fiyat_tl_mwh(t, ptf_ort)
+            if f:
+                out["gelir"] = {"tip": t["tip"], "fiyat_tl_mwh": round(f, 1), "p50_tl": round(but["p50_kwh"] / 1000 * f, 0),
+                                "p90_1yil_tl": round(but["bir_yil"]["p90"] / 1000 * f, 0), "p90_nyil_tl": round(but["n_yil"]["p90"] / 1000 * f, 0),
+                                "not": "PTF tipi için senaryo yıllık ortalama; eskalasyon uygulanmadı" if t["tip"] == "ptf" else None}
+    except Exception:   # noqa: BLE001
+        pass
     if kaydet:
         from pvquant.services import plant_service
         plant_service.params_birlestir(tenant_id, plant["id"], bankable=json.loads(json.dumps(out)))
