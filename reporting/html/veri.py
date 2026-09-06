@@ -14,7 +14,7 @@ PLANT_LAT = 37.87                          # plant.lat (v2.189, K-B2 — fikstü
 PLANT_LON = 32.49                          # plant.lon
 PLANT_TZ = "Europe/Istanbul"               # plant.tz
 RUN_MODEL = "hybrid_residual"              # run.model (GÜÇ modeli — Mod C; hava modeli DEĞİL)
-RUN_METEO = "open-meteo"                   # run.meteo_source (hava sağlayıcısı)
+RUN_METEO = "acik-nwp"                     # run.meteo_source (hava sağlayıcısı; v2.270: açık NWP)
 KAPASITE_MWP = 12.4                        # plant.capacity_kwp/1000 (v2.103:
                                            # s11 özgül üretimdeki gömülü 12.4)
 SEBEKE_AC_MWE = 10.0                       # plant.sebeke_ac_mwe (B3b-1 v2.169:

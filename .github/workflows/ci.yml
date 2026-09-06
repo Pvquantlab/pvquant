@@ -54,4 +54,4 @@ jobs:
       - name: Rapor kalkani (kanonik HTML md5 — v2.159)
         run: |
           cd reporting/html && rm -rf cikti && python3 uret.py > /dev/null
-          echo "8a405d0d01168309d8e073e45c82b54d  cikti/PVQuant_Konya_GES_RAPOR_16sayfa.html" | md5sum -c -
+          echo "239843c79fbfbcb2ce9d09b21d9a038e  cikti/PVQuant_Konya_GES_RAPOR_16sayfa.html" | md5sum -c -   # v2.269 künye

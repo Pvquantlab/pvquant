@@ -9,6 +9,7 @@ import { Dogruluk } from "./features/sayfalar/Dogruluk";
 import { Aylik } from "./features/sayfalar/Aylik";
 import { VeriYukleme, Kalibrasyon, Raporlar } from "./features/sayfalar/Digerleri";
 import { Portfoy } from "./features/sayfalar/Portfoy";
+import { Hakkinda } from "./features/sayfalar/Hakkinda";
 import { api } from "./api/client";
 import type { SantralKisa } from "./api/types";
 
@@ -61,6 +62,7 @@ export default function App() {
       {sayfa === "dogruluk" && <Dogruluk plantId={plantId} />}
       {sayfa === "aylik" && <Aylik plantId={plantId} />}
       {sayfa === "raporlar" && <Raporlar plantId={plantId} />}
+      {sayfa === "hakkinda" && <Hakkinda />}
     </Kabuk>
   );
 }

@@ -1,4 +1,4 @@
-import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast } from "./types";
+import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -399,6 +399,11 @@ export const api = {
   portfoy: async (): Promise<Portfoy | null> => {
     if (TABAN == null) return null;
     try { return await getir<Portfoy>(`/v1/portfoy`); } catch { return null; }
+  },
+  /** v2.270: Hakkında — veri kaynakları ve lisanslar. */
+  hakkinda: async (): Promise<Hakkinda | null> => {
+    if (TABAN == null) return null;
+    try { return await getir<Hakkinda>(`/v1/hakkinda`); } catch { return null; }
   },
   /** v2.266: kısa ufuk persistansı. */
   nowcast: async (p: string): Promise<Nowcast | null> => {

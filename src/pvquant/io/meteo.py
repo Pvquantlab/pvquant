@@ -222,9 +222,11 @@ class OpenMeteoClient:
             md = self._acik_gecmis(latitude, longitude, start_date, end_date)
             if md is not None:
                 return md
-            # v2.268 GEÇİŞ: arşiv bu aralığı kapsamıyorsa (kurulumdan önceki dönem) eski arşiv yolu; v2.269 bunu
-            # CAMS/PVGIS-SARAH3 ile değiştirir. Uyarı loglanır ki üründe sessiz kalmasın.
-            print(f"[meteo][uyari] acik NWP arsivi {start_date}..{end_date} araligini kapsamiyor — gecici olarak Open-Meteo arsivi")
+            # v2.269: Open-Meteo KAPALI — sessiz geri dönüş yok; ne yapılacağı açıkça söylenir.
+            raise OpenMeteoError(
+                f"{start_date}..{end_date} için açık arşiv meteosu yok: kendi NWP arşivi bu dönemi kapsamıyor, "
+                "CAMS e-postası tanımlı değil (PVQUANT_CAMS_EMAIL) ve dönem PVGIS-SARAH3 kapsamının (≤2023) dışında. "
+                "CAMS kaydı ücretsizdir; ya da arşivin birikmesini bekleyin. (Open-Meteo yalnız PVQUANT_METEO_KAYNAK=open_meteo ile.)")
         # Arşiv API'si farklı domain'de
         archive_url = "https://archive-api.open-meteo.com/v1/archive"
         params = {

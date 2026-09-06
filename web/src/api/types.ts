@@ -48,6 +48,13 @@ export interface Portfoy {
   toplam: { santral: number; kapasite_kwp: number; bugun_kwh: number | null; yarin_kwh: number | null; wmape_agirlikli: number | null;
             wmape_kapsanan_kwp: number; acik_alarm: number; veri_gecikmis: number } | null;
 }
+/** v2.270 — Hakkında: veri kaynakları ve lisanslar (Anayasa v2.245 istisnası — yalnız bu sayfa, rapor künyesi, README). */
+export interface Hakkinda {
+  urun: string; meteo_kaynak: string;
+  kaynaklar: { kimlik: string; ad: string; kurum: string; lisans: string; lisans_url: string; veri_url: string; not: string }[];
+  kunye: string; uyarilar: string[]; yontem: string;
+  arsiv: Record<string, { son: string | null; nokta: number; satir: number; ilk: string | null; son_ts: string | null }>;
+}
 /** v2.266 — kısa ufuk (0–6 s), ölçüm persistansı; uydu değil. */
 export interface Nowcast {
   durum: "ok" | "gece" | "scada_bayat" | "tahmin_yok" | "olcum_yok"; uydu: boolean; yontem?: string; ufuk_saat?: number;

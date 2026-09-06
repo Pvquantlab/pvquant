@@ -370,6 +370,13 @@ def nowcast(plant_id: str, claims=Depends(gecerli_kullanici)):
     return nowcast_service.hesapla(claims["tenant_id"], row)
 
 
+@app.get("/v1/hakkinda")
+def hakkinda(claims=Depends(gecerli_kullanici)):
+    """v2.270 — Veri kaynakları ve lisanslar (Gizlilik Anayasası v2.245 istisnası: atıf yalnız burada, rapor künyesinde, README'de)."""
+    from pvquant.services import kaynak_service
+    return kaynak_service.hakkinda()
+
+
 @app.get("/v1/portfoy")
 def portfoy(claims=Depends(gecerli_kullanici)):
     """v2.263 — kiracının tüm santralleri: kapasite, son ölçüm, 30g WMAPE, bugün/yarın beklenen, açık alarm; toplamlar."""

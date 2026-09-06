@@ -163,6 +163,18 @@ Elastic License 2.0 (ELv2) — bkz. [LICENSE](LICENSE). Kaynak açıktır;
 kullanım, kopyalama ve türev çalışma serbesttir. Yazılımın üçüncü taraflara
 barındırılan/yönetilen servis (SaaS) olarak sunulması lisansça yasaktır.
 
+## Veri kaynakları
+
+- **ECMWF Open Data (IFS / AIFS)** — ECMWF · [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) · [veri](https://www.ecmwf.int/en/forecasts/datasets/open-data) · 0.25°, 15 gün; ssrd/2t/10u/10v/tcc; ENS 50+1 üye; yalnız son ~2–3 gün koşu tutulur
+- **ICON-EU (DWD Open Data)** — Deutscher Wetterdienst · [CC BY 4.0](https://www.dwd.de/EN/service/legal_notice/legal_notice.html) · [veri](https://opendata.dwd.de/weather/nwp/) · 0.0625° (~7 km), +120 s, 8 koşu/gün; aswdir_s/aswdifd_s; alan 23,5°B–45°D, Türkiye içinde
+- **CAMS Solar Radiation Time-Series** — Copernicus / ECMWF · [CC BY 4.0](https://ads.atmosphere.copernicus.eu/) · [veri](https://ads.atmosphere.copernicus.eu/datasets/cams-solar-radiation-timeseries) · 2004→, 1 dk–1 saat; GHI/BHI/DHI/BNI + açık gök; Meteosat alanı (Türkiye dâhil); ~2 gün gecikme
+- **PVGIS v5.3 (SARAH-3, ERA5)** — Avrupa Komisyonu JRC · [CC BY 4.0](https://commission.europa.eu/legal-notice_en) · [veri](https://re.jrc.ec.europa.eu/pvg_tools/en/) · SARAH-3 2005–2023 saatlik; TMY; 30 çağrı/sn/IP
+- **EPİAŞ Şeffaflık Platformu** — EPİAŞ · [Kullanım şartları (kayıtlı erişim)](https://seffaflik.epias.com.tr/) · [veri](https://seffaflik.epias.com.tr/electricity-service/technical/tr/index.html) · PTF/SMF/KGÜP/gerçek zamanlı üretim/dengesizlik; TGT kimlik; CAS limitleri
+
+Veriler PVQuant tarafından işlenmiştir; kaynak kurumlar bu ürünü desteklemez.
+
+Meteoroloji girdisi varsayılan olarak açık verilerden gelir (`PVQUANT_METEO_KAYNAK=acik`); Open-Meteo ücretsiz katmanı ticari kullanıma kapalı olduğu için v2.270 ile devre dışıdır. Kalibrasyon geçmişi için CAMS e-postası: `PVQUANT_CAMS_EMAIL`.
+
 ## Atıflar
 
 PVQuant'ı akademik bir çalışmada kullanırsanız, lütfen kullanılan matematiksel modellerin orijinal kaynaklarına atıf yapın (tam liste docs içinde).

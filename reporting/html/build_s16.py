@@ -34,7 +34,8 @@ REFERANS = [
     ("EPRI Solar Forecast Arbiter", "Güneş üretim tahminlerinin doğrulanması ve kazanç "
      "puanının tanımı."),
     ("pvlib", "Fotovoltaik sistem modellemesi için açık kaynaklı hesap kütüphanesi."),
-    ("open-meteo", "Saatlik hava tahmini kaynağı."),
+    ("ECMWF Open Data · ICON-EU (DWD)", "Saatlik hava tahmini kaynakları (CC BY 4.0); veriler PVQuant tarafından işlenmiştir."),
+    ("PVGIS-SARAH3 (JRC)", "Uydu türevli ışınım arşivi — iklim zarfı ve kalibrasyon geçmişi (CC BY 4.0)."),
 ]
 
 soz = "".join('<tr><td class="tr">%s</td><td>%s</td></tr>' % s for s in SOZLUK)

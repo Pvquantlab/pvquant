@@ -13,6 +13,7 @@ export const SAYFALAR = [
   { id: "dogruluk", ad: "Doğruluk" },
   { id: "aylik", ad: "Aylık beklenti" },
   { id: "raporlar", ad: "Raporlar" },
+  { id: "hakkinda", ad: "Hakkında" },      // v2.270
 ] as const;
 export type SayfaId = (typeof SAYFALAR)[number]["id"];
 
@@ -29,6 +30,7 @@ const IKONLAR: Record<SayfaId, ReactNode> = {
   dogruluk: <svg {...IKON_ORTAK}><path d="M4 3h12v14H4z"/><path d="M7.5 10l1.8 1.8 3.2-3.6"/></svg>,
   aylik: <svg {...IKON_ORTAK}><rect x="3" y="4" width="14" height="13" rx="1.5"/><path d="M3 8h14M7 4V2.5M13 4V2.5"/></svg>,
   raporlar: <svg {...IKON_ORTAK}><path d="M5 2.5h7L16 6v11.5H5z"/><path d="M12 2.5V6h4"/></svg>,
+  hakkinda: <svg {...IKON_ORTAK}><circle cx="10" cy="10" r="7"/><path d="M10 9v5M10 6.5v.5"/></svg>,
 };
 
 /** Marka isareti: 1.5px stroke gunes (Vitrin'dekiyle ayni dil). */

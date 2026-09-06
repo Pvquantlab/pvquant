@@ -35,6 +35,16 @@ def _y(mm_ustten: float) -> float:
     return SAYFA_H - mm_ustten * mm
 
 
+def _kunye_satiri() -> str:
+    """v2.270 — rapor künyesindeki kaynak/lisans satırı; DB yoksa (test) sabit açık kaynak listesi."""
+    try:
+        from pvquant.services.kaynak_service import rapor_kunye_satiri
+        return rapor_kunye_satiri()
+    except Exception:   # noqa: BLE001
+        return ("Hava verisi: ECMWF Open Data (CC BY 4.0) · ICON-EU, DWD (CC BY 4.0) · PVGIS-SARAH3, JRC (CC BY 4.0) · "
+                "Gerçekleşme: santral SCADA'sı · Fizik modeli: pvlib. Veriler PVQuant tarafından işlenmiştir; kaynaklar bu ürünü desteklemez.")
+
+
 def _hex(c, hexrenk: str):
     c.setFillColor(hexrenk)
     c.setStrokeColor(hexrenk)
@@ -569,7 +579,7 @@ def _iklim(c, ctx, F, FB):
     c.setFont(F, 8.2)
     notlar = [
         "Zarf, santral konumu için son 20 yılın aylık GHI dağılımıdır "
-        "(open-meteo arşivi): P50 tipik yıl, bant yıllar-arası değişkenlik.",
+        "(uydu türevli ışınım arşivi): P50 tipik yıl, bant yıllar-arası değişkenlik.",
         "Bu ayın aktüel GHI konumu: — (aylık aktüel ışınım arşivi "
         "tutulmuyor; üretim karşılaştırması sağdaki grafiktedir).",
         "Sağdaki barlar yalnız \u2018geçerli\u2019 bayraklı SCADA "
@@ -589,7 +599,7 @@ def _iklim(c, ctx, F, FB):
 def _metodoloji(c, ctx, F, FB):
     _sayfa_ustu(c, ctx, F, FB, "Metodoloji ve Künye", ctx.plant_name)
     # model zinciri diyagramı — 4 kutu + oklar
-    kutular = ["open-meteo\nhava tahmini", "pvlib fizik\nPOA + güç",
+    kutular = ["profesyonel\nhava tahmini", "pvlib fizik\nPOA + güç",
                "SCADA\nkalibrasyon", "ML hibrit\nartık düzeltme"]
     kw, kh, bosluk = 38 * mm, 14 * mm, 8 * mm
     x0 = KENAR + (IC_W - (4 * kw + 3 * bosluk)) / 2
@@ -628,7 +638,7 @@ def _metodoloji(c, ctx, F, FB):
 
     y = bolum(72, "STANDARTLAR VE KAYNAKLAR", [
         "IEC 61724-1 (PV sistem performansı: özgül verim, kapasite faktörü, veri erişilebilirliği) · IEA-PVPS T13 (P50/P90 aşılma olasılıkları).",
-        "Hava verisi: open-meteo (tahmin + 20 yıllık arşiv) · Gerçekleşme: santral SCADA'sı · Fizik modeli: pvlib (POA transpozisyonu, hücre sıcaklığı).",
+        _kunye_satiri(),   # v2.270: künye sayfası — kaynak adı + lisans (Anayasa v2.245 istisnası)
         "Naif referans: akıllı persistans — dün-aynı-saat üretimi, berrak-gök oranıyla (Haurwitz) ölçeklenir.",
     ])
     y = bolum(y + 3, "KISA SÖZLÜK", [
