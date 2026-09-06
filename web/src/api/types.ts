@@ -48,6 +48,12 @@ export interface Portfoy {
   toplam: { santral: number; kapasite_kwp: number; bugun_kwh: number | null; yarin_kwh: number | null; wmape_agirlikli: number | null;
             wmape_kapsanan_kwp: number; acik_alarm: number; veri_gecikmis: number } | null;
 }
+/** v2.266 — kısa ufuk (0–6 s), ölçüm persistansı; uydu değil. */
+export interface Nowcast {
+  durum: "ok" | "gece" | "scada_bayat" | "tahmin_yok" | "olcum_yok"; uydu: boolean; yontem?: string; ufuk_saat?: number;
+  son_olcum?: string | null; tazelik_saat?: number | null; oran: number | null; n_saat: number; not?: string;
+  ufuk: { ts: string; p50_kw: number; nowcast_kw: number; agirlik: number }[];
+}
 /** v2.265 — alarm okundu/atama, kural seçimi, değişim damgası. */
 export interface Kullanici { id: string; email: string; rol: string }
 export interface AlarmKurallari { secili: string[]; secilebilir: string[]; esik: Record<string, number>;

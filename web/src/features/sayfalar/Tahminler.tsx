@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api/client";
-import type { SantralOzeti, TahminSerisi, KgupOnizleme } from "../../api/types";
+import type { SantralOzeti, TahminSerisi, KgupOnizleme, Nowcast } from "../../api/types";
 import { Kart, Sayfa, sayiTr } from "./parcalar";
 import ProductionForecastChart from "./ProductionForecastChart";
 import {
@@ -34,6 +34,8 @@ export function Tahminler({ plantId }: { plantId: string }) {
   const [kgup, setKgup] = useState<KgupOnizleme | null>(null);   // v2.260
   const [kgupHata, setKgupHata] = useState<string | null>(null);
   useEffect(() => { api.kgupOnizleme(plantId).then(setKgup).catch(() => setKgup(null)); }, [plantId]);
+  const [nc, setNc] = useState<Nowcast | null | undefined>(undefined);   // v2.266
+  useEffect(() => { api.nowcast(plantId).then(setNc).catch(() => setNc(null)); }, [plantId]);
   useEffect(() => {
     api.tahmin(plantId, "16d").then(setSeri); // single fetch — D1/D2
   }, [plantId]);
@@ -186,6 +188,34 @@ export function Tahminler({ plantId }: { plantId: string }) {
             </p>
           </>
         ) : <p className="soluk" style={{ margin: 0 }}>Yarın için teslim kesiminden önce verilmiş koşu yok — sabah koşusu geldiğinde burada görünür.</p>}
+      </Kart>
+      {/* v2.266 (Dalga 5.18): kısa ufuk — ölçüm persistansı; uydu değil. Canlı SCADA yoksa dürüstçe tire. */}
+      <Kart baslik="Kısa ufuk (0–6 saat) — ölçüm persistansı"
+        sag={<span className="cip">{nc?.durum === "ok" ? `oran ${sayiTr(nc.oran ?? 0, 2)} · ${sayiTr(nc.n_saat)} saatten` : nc?.durum === "gece" ? "gece · P50" : "uydu değil"}</span>}>
+        {nc === undefined ? <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p>
+         : !nc || nc.durum === "scada_bayat" || nc.durum === "olcum_yok" || nc.durum === "tahmin_yok" ? (
+          <p className="soluk" style={{ margin: 0 }}>
+            — {nc?.not ?? "hesaplanamadı"}{nc?.tazelik_saat != null ? ` (son ölçüm ${nc.tazelik_saat >= 48 ? `${sayiTr(nc.tazelik_saat / 24, 0)} gün` : `${sayiTr(nc.tazelik_saat, 0)} saat`} önce)` : ""}.
+            Bu katman son 3 saatin ölçüm/tahmin oranını ileri taşır; dosya yüklemeli santralde çalışmaz.
+          </p>
+        ) : (
+          <>
+            <div className="grafik-kaydir">
+              <table className="veri" style={{ fontSize: 12.5 }}>
+                <thead><tr><th>Saat</th><th>P50</th><th>Kısa ufuk</th><th>Persistans ağırlığı</th></tr></thead>
+                <tbody className="mono">
+                  {nc.ufuk.map((u) => (
+                    <tr key={u.ts}><td>{new Date(u.ts).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</td>
+                      <td>{sayiTr(u.p50_kw)} kW</td><td>{sayiTr(u.nowcast_kw)} kW</td><td>%{sayiTr(u.agirlik * 100, 0)}</td></tr>))}
+                </tbody>
+              </table>
+            </div>
+            <p className="soluk" style={{ fontSize: 12.5, margin: "10px 0 0" }}>
+              Uydu bulut-hareket tahmini değil: son {sayiTr(nc.n_saat)} saatin ölçüm/tahmin oranı ({sayiTr(nc.oran ?? 0, 2)}) ufuk boyunca üstel sönümle
+              (τ = 2 saat) P50'ye harmanlanır; 6 saat sonrası P50'dir. Gün içi KGÜP güncellemesi (GİP kapanış + 30 dk) için yol göstericidir, kayıt yazmaz.
+            </p>
+          </>
+        )}
       </Kart>
     </Sayfa>
   );

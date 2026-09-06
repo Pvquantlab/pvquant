@@ -360,6 +360,16 @@ def damga(plant_id: str, request: Request, claims=Depends(gecerli_kullanici)):
     return JSONResponse(d, headers={"ETag": et, "Cache-Control": "no-cache"})
 
 
+@app.get("/v1/plants/{plant_id}/nowcast")
+def nowcast(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """v2.266 — kısa ufuk (0–6 s): ölçüm persistansı ile P50 harmanı. Uydu DEĞİL; SCADA tazeliği >3 s ise devre dışı ('—')."""
+    from pvquant.services import nowcast_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    return nowcast_service.hesapla(claims["tenant_id"], row)
+
+
 @app.get("/v1/portfoy")
 def portfoy(claims=Depends(gecerli_kullanici)):
     """v2.263 — kiracının tüm santralleri: kapasite, son ölçüm, 30g WMAPE, bugün/yarın beklenen, açık alarm; toplamlar."""
