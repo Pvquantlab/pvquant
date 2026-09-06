@@ -10,13 +10,14 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {
   useEffect(() => { api.portfoy().then(setP).catch(() => setP(null)); }, []);
   const t = p?.toplam ?? null;
   const kwhYaz = (v: number | null | undefined) => v == null ? "—" : `${sayiTr(v / 1000, 1)} MWh`;
+  const mwh = (v: number | null | undefined) => v == null ? "—" : sayiTr(v / 1000, 1);
   const tarih = (s: string | null) => s ? new Date(s).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }) : "—";
   return (
     <Sayfa baslik="Portföy" alt="Tüm santraller bir bakışta — sayılar kapasite ile ağırlıklı, eksikler tire."
       sag={<span className="cip">{p ? `${sayiTr(p.santraller.length)} santral · ${new Date(p.gun + "T12:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}` : "yükleniyor"}</span>}>
       <div className="ızgara satir-4" style={{ marginBottom: 14 }}>
         <Kpi etiket="Toplam kurulu güç" deger={t ? sayiTr(t.kapasite_kwp / 1000, 2) : "—"} birim="MWp" alt={t ? `${sayiTr(t.santral)} santral` : ""} />
-        <Kpi etiket="Bugün beklenen · yarın" deger={t ? `${kwhYaz(t.bugun_kwh)} · ${kwhYaz(t.yarin_kwh)}` : "—"}
+        <Kpi etiket="Bugün beklenen · yarın" deger={t ? `${mwh(t.bugun_kwh)} · ${mwh(t.yarin_kwh)}` : "—"} birim="MWh"
              alt={t && (t.bugun_kwh == null || t.yarin_kwh == null) ? "bir santralde beklenti yok → toplam yazılmaz" : "tüm santrallerin P50 toplamı"} />
         <Kpi etiket="30 günlük WMAPE (ağırlıklı)" deger={t?.wmape_agirlikli != null ? `%${sayiTr(t.wmape_agirlikli, 1)}` : "—"}
              alt={t ? `${sayiTr(t.wmape_kapsanan_kwp / 1000, 2)} MWp karneli` : ""} />
@@ -74,8 +75,9 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
   const dene = async (fn: () => Promise<unknown>) => { setHata(null); setMesaj(null); try { await fn(); yenile(); } catch (e) { setHata(String((e as Error).message ?? e)); } };
   const docs = api.docsAdresi();
   return (
-    <Kart baslik="Dış erişim" no="yönetici"
-          sag={docs ? <a className="cip" href={docs} target="_blank" rel="noreferrer">OpenAPI şeması ↗</a> : <span className="cip">örnek kip</span>}>
+    <Kart baslik="Dış erişim"
+          sag={<span style={{ display: "flex", gap: 6 }}><span className="cip">yalnız yönetici</span>
+                {docs ? <a className="cip" href={docs} target="_blank" rel="noreferrer">OpenAPI şeması ↗</a> : <span className="cip">örnek kip</span>}</span>}>
       <p className="soluk" style={{ margin: "0 0 10px", fontSize: 12.5 }}>
         Müşteri sistemleri tahmini <span className="mono">X-API-Key</span> başlığıyla çeker; sabah koşusundan sonra webhook alıcılarına imzalı bildirim gider.
         Anahtar ve sır yalnız üretildiği anda görünür — sunucu yalnız özetini saklar.
