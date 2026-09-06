@@ -494,6 +494,10 @@ body { background:
 .zil-ust { display: flex; justify-content: space-between; gap: 10px;
   font-size: 12.5px; margin-bottom: 3px; }
 .zil-ust .mono { font-size: 10.5px; color: var(--soluk); }
+/* v2.265 — okundu/atama satırı */
+.zil-eylem { display: flex; gap: 8px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
+.zil-eylem .mono { font-size: 10.5px; color: var(--soluk); }
+.zil-eylem select { padding: 2px 4px; border: 1px solid var(--kenar); border-radius: var(--r); background: var(--yuzey); color: var(--metin); }
 .zil-satir p { margin: 0; font-size: 12px; color: var(--ikincil);
   line-height: 1.5; }
 

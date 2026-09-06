@@ -1,4 +1,4 @@
-import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , ApiAnahtar , ApiAnahtarYeni , Webhook } from "./types";
+import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -163,6 +163,8 @@ export interface KosuSatiri { run_at: string; mode: string; model: string; }
 /** v2.240 — zil kapısı satırı (apps/api alarmlar ile birebir). */
 export interface AlarmSatiri {
   id: string; kural: string; siddet: string; mesaj: string; zaman: string;
+  /** v2.265: okundu/atama */
+  okundu?: boolean; okuyan?: string | null; okunma?: string | null; atanan_id?: string | null; atanan?: string | null;
 }
 
 /** v2.88: dosyali POST — getir'in 401 sozlesmesinin aynisi. 4xx'te sunucunun
@@ -397,6 +399,26 @@ export const api = {
   portfoy: async (): Promise<Portfoy | null> => {
     if (TABAN == null) return null;
     try { return await getir<Portfoy>(`/v1/portfoy`); } catch { return null; }
+  },
+  /** v2.265: alarm okundu/atama, kullanıcılar, kural seçimi, damga. */
+  alarmOkundu: (p: string, id: string): Promise<{ okundu: boolean }> => gonder(`/v1/plants/${p}/alarmlar/${id}/okundu`, "POST"),
+  alarmAta: (p: string, id: string, kime: string | null): Promise<{ atandi: string | null }> => gonder(`/v1/plants/${p}/alarmlar/${id}/ata`, "POST", { kime }),
+  kullanicilar: async (): Promise<Kullanici[]> => { if (TABAN == null) return []; try { return await getir<Kullanici[]>(`/v1/kullanicilar`); } catch { return []; } },
+  alarmKurallari: async (p: string): Promise<AlarmKurallari | null> => {
+    if (TABAN == null) return null;
+    try { return await getir<AlarmKurallari>(`/v1/plants/${p}/alarm-kurallari`); } catch { return null; }
+  },
+  alarmKurallariAyarla: (p: string, kurallar: string[], esik: Record<string, number>): Promise<AlarmKurallari> =>
+    gonder(`/v1/plants/${p}/alarm-kurallari`, "PUT", { kurallar, esik }),
+  /** Damga: 304 → değişmedi (veri null). Ağ hatası fırlatır (çağıran geri çekilir). */
+  damga: async (p: string, etag: string | null): Promise<{ etag: string | null; veri: Damga | null; degisti: boolean }> => {
+    if (TABAN == null) return { etag: null, veri: null, degisti: false };
+    const jeton = localStorage.getItem("pvq_token");
+    const y = await fetch(`${TABAN}/v1/plants/${p}/damga`, { headers: { ...(jeton ? { Authorization: `Bearer ${jeton}` } : {}), ...(etag ? { "If-None-Match": etag } : {}) } });
+    if (y.status === 304) return { etag, veri: null, degisti: false };
+    if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise(() => {}); }
+    if (!y.ok) throw new Error(`${y.status} damga`);
+    return { etag: y.headers.get("ETag"), veri: (await y.json()) as Damga, degisti: true };
   },
   /** v2.264: dış erişim yönetimi (admin). */
   apiAnahtarlari: async (): Promise<{ anahtarlar: ApiAnahtar[]; kapsamlar: string[] }> => {

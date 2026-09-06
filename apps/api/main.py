@@ -286,6 +286,80 @@ def alarmlar(plant_id: str, n: int = 20,
     return alarm_service.listele(claims["tenant_id"], plant_id, n=n)
 
 
+# ------------------------------------------------------------------ v2.265: alarm okundu/atama/kurallar + damga --------
+class AtaIstek(BaseModel):
+    kime: str | None = None
+
+
+class KuralIstek(BaseModel):
+    kurallar: list[str]
+    esik: dict[str, float] | None = None
+
+
+@app.post("/v1/plants/{plant_id}/alarmlar/{alarm_id}/okundu")
+def alarm_okundu(plant_id: str, alarm_id: str, claims=Depends(gecerli_kullanici)):
+    """v2.265 — okundu (kim/ne zaman). Her oturum kullanıcısı işaretleyebilir."""
+    from pvquant.services import alarm_service
+    if not alarm_service.okundu(claims["tenant_id"], plant_id, alarm_id, claims["sub"]):
+        raise HTTPException(404, "alarm yok")
+    return {"okundu": True}
+
+
+@app.post("/v1/plants/{plant_id}/alarmlar/{alarm_id}/ata")
+def alarm_ata(plant_id: str, alarm_id: str, p: AtaIstek, claims=Depends(yazma_yetkisi())):
+    """v2.265 — atama (kime=null kaldırır); editor/admin."""
+    from pvquant.services import alarm_service
+    try:
+        ok = alarm_service.ata(claims["tenant_id"], plant_id, alarm_id, p.kime)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    if not ok:
+        raise HTTPException(404, "alarm yok")
+    return {"atandi": p.kime}
+
+
+@app.get("/v1/kullanicilar")
+def kullanici_listesi(claims=Depends(gecerli_kullanici)):
+    """v2.265 — atama için kiracının kullanıcıları (id, e-posta, rol)."""
+    from pvquant.services import alarm_service
+    return alarm_service.kullanicilar(claims["tenant_id"])
+
+
+@app.get("/v1/plants/{plant_id}/alarm-kurallari")
+def alarm_kurallari(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """v2.265 — varsayılan iki kural + santral bazında seçilmiş ek kurallar ve eşikleri."""
+    from pvquant.services import alarm_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    return alarm_service.kural_durumu(row)
+
+
+@app.put("/v1/plants/{plant_id}/alarm-kurallari")
+def alarm_kurallari_ayarla(plant_id: str, p: KuralIstek, claims=Depends(yazma_yetkisi())):
+    """v2.265 — ek kural seçimi (opt-in) ve eşikler; editor/admin. Varsayılan iki kural kapatılamaz."""
+    from pvquant.services import alarm_service
+    if plant_service.getir(claims["tenant_id"], plant_id) is None:
+        raise HTTPException(404, "santral yok")
+    try:
+        return alarm_service.kural_ayarla(claims["tenant_id"], plant_id, p.kurallar, p.esik)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+
+
+@app.get("/v1/plants/{plant_id}/damga")
+def damga(plant_id: str, request: Request, claims=Depends(gecerli_kullanici)):
+    """v2.265 — değişim damgası: son SCADA/koşu/alarm/skill/kalibrasyon zamanları; ETag ile If-None-Match → 304.
+    İstemci yalnız damga değişince veri çeker (60 s görünür / 5 dk arka plan)."""
+    from pvquant.services import damga_service
+    from fastapi.responses import JSONResponse
+    d = damga_service.hesapla(claims["tenant_id"], plant_id)
+    et = damga_service.etag_uret(d)
+    if request.headers.get("if-none-match") == et:
+        return Response(status_code=304, headers={"ETag": et, "Cache-Control": "no-cache"})
+    return JSONResponse(d, headers={"ETag": et, "Cache-Control": "no-cache"})
+
+
 @app.get("/v1/portfoy")
 def portfoy(claims=Depends(gecerli_kullanici)):
     """v2.263 — kiracının tüm santralleri: kapasite, son ölçüm, 30g WMAPE, bugün/yarın beklenen, açık alarm; toplamlar."""

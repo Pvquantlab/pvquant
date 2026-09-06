@@ -48,6 +48,12 @@ export interface Portfoy {
   toplam: { santral: number; kapasite_kwp: number; bugun_kwh: number | null; yarin_kwh: number | null; wmape_agirlikli: number | null;
             wmape_kapsanan_kwp: number; acik_alarm: number; veri_gecikmis: number } | null;
 }
+/** v2.265 — alarm okundu/atama, kural seçimi, değişim damgası. */
+export interface Kullanici { id: string; email: string; rol: string }
+export interface AlarmKurallari { secili: string[]; secilebilir: string[]; esik: Record<string, number>;
+  etiket: Record<string, string>; varsayilan: string[] }
+export interface Damga { son_scada: string | null; son_kosu: string | null; son_alarm: string | null; acik_alarm: number;
+  son_skill: string | null; son_kalibrasyon: string | null }
 /** v2.264 — dış erişim (yönetici). */
 export interface ApiAnahtar { id: string; ad: string | null; prefix: string; kapsamlar: string[]; iptal: boolean;
   expires_at: string | null; rpm: number; son_kullanim: string | null; olusturma: string | null }

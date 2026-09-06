@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { api, type AlarmSatiri } from "../api/client";
-import type { SantralOzeti } from "../api/types";
+import { api, type AlarmSatiri, rolum } from "../api/client";
+import type { SantralOzeti, Kullanici } from "../api/types";
+import { useDamga } from "./useDamga";
 import { sayiTr } from "../features/sayfalar/parcalar";
 
 export const SAYFALAR = [
@@ -66,6 +67,10 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
   // dizi=gercek liste. Rozet: son 7 gunde alarm varsa.
   const [alarmlar, setAlarmlar] = useState<AlarmSatiri[] | null | undefined>(undefined);
   const [zilAcik, setZilAcik] = useState(false);
+  // v2.265: otomatik tazeleme — damga değişince özet/koşu/alarm yeniden çekilir; kullanıcı listesi zil açılınca
+  const { surum, sonYoklama } = useDamga(plantId);
+  const [kullanicilar, setKullanicilar] = useState<Kullanici[] | null>(null);
+  const yazabilir = rolum() === "admin" || rolum() === "editor";
   // v2.216: sayfa-atlama paleti (⌘K) — SaaS kromunun tek "canli" parcasi;
   // arkasinda gercek islev olmayan krom (zil, ayarlar) bilerek yok.
   const [paletAcik, setPaletAcik] = useState(false);
@@ -103,7 +108,9 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
         .catch(() => {});
       api.alarmlar(plantId).then(setAlarmlar).catch(() => setAlarmlar(null));
     }
-  }, [plantId]);
+  }, [plantId, surum]);   // v2.265: surum → damga değişti
+  useEffect(() => { if (zilAcik && kullanicilar === null) api.kullanicilar().then(setKullanicilar); }, [zilAcik, kullanicilar]);
+  const alarmYenile = () => { if (plantId) api.alarmlar(plantId).then(setAlarmlar).catch(() => {}); };
   useEffect(() => {
     document.body.style.overflow = menuAcik ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
@@ -192,7 +199,7 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
                 <path d="M8.6 15.8a1.6 1.6 0 0 0 2.8 0"/>
               </svg>
               {Array.isArray(alarmlar) && alarmlar.some((x) =>
-                Date.now() - new Date(x.zaman).getTime() < 7 * 86400000) && (
+                !x.okundu && Date.now() - new Date(x.zaman).getTime() < 7 * 86400000) && (
                 <i className="nokta-badge" aria-hidden="true" />
               )}
             </button>
@@ -213,13 +220,16 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
                     : "Yükleniyor…"}</p>
                 ) : alarmlar.length === 0 ? (
                   <p className="zil-bos">Alarm yok — kurallar her gece tarar
-                    (veri kesintisi ve isabet düşüşü).</p>
+                    (veri kesintisi ve isabet düşüşü; ek kurallar Santralim › künyeden açılır).</p>
                 ) : (
                   alarmlar.map((x) => (
                     <div key={x.id} className="zil-satir">
                       <div className="zil-ust">
                         <b>{{ veri_gelmedi: "Veri gelmedi",
-                              skill_dustu: "İsabet düştü" }[x.kural] ?? "Alarm"}</b>
+                              skill_dustu: "İsabet düştü",
+                              pr_dustu: "Performans oranı düştü",           // v2.265
+                              clipping_orani_yuksek: "Kırpma oranı yüksek",
+                              iletisim_kesintisi: "İletişim kesintisi" }[x.kural] ?? "Alarm"}</b>
                         <span className="mono">{(() => {
                           const d = new Date(x.zaman);
                           return isNaN(+d) ? "—" : d.toLocaleDateString("tr-TR",
@@ -229,6 +239,20 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
                         })()}</span>
                       </div>
                       <p>{x.mesaj}</p>
+                      {/* v2.265: okundu / atama — nokta rozeti yalnız okunmamışlar için yanar */}
+                      <div className="zil-eylem">
+                        {x.okundu
+                          ? <span className="mono">okundu{x.okuyan ? ` · ${x.okuyan}` : ""}</span>
+                          : <button className="dugme" style={{ fontSize: 11 }}
+                              onClick={() => plantId && api.alarmOkundu(plantId, x.id).then(alarmYenile).catch(() => {})}>Okundu</button>}
+                        {yazabilir && kullanicilar && kullanicilar.length > 0 && (
+                          <select className="mono" value={x.atanan_id ?? ""} aria-label="Ata" style={{ fontSize: 11 }}
+                                  onChange={(e) => plantId && api.alarmAta(plantId, x.id, e.target.value || null).then(alarmYenile).catch(() => {})}>
+                            <option value="">atanmadı</option>
+                            {kullanicilar.map((u) => <option key={u.id} value={u.id}>{u.email}</option>)}
+                          </select>)}
+                        {!yazabilir && x.atanan && <span className="mono">→ {x.atanan}</span>}
+                      </div>
                     </div>
                   ))
                 )}
@@ -269,6 +293,8 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
                 model {ozet.model_adi}{ozet.mod ? ` · Mod ${ozet.mod}` : ""}
                 {ozet.son_kalibrasyon ? ` · kalibrasyon ${ozet.son_kalibrasyon}` : ""}
                 {ozet.sapma_pct !== null ? ` · sapma %${sayiTr(ozet.sapma_pct, 2)}` : ""}
+                {/* v2.265: 'tazelenir' iddiası ancak damga yoklaması gerçekten çalışıyorsa yazılır */}
+                {sonYoklama && ` · yoklandı ${sonYoklama.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}`}
               </span>
             </div>
           );

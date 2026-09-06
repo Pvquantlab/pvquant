@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { PrKarti, Saglik } from "../../api/types";
+import type { PrKarti, Saglik, AlarmKurallari } from "../../api/types";
 import { SEGMENTLER } from "../../api/types";
 import type { EChartsOption } from "echarts";
 import { api } from "../../api/client";
@@ -54,6 +54,13 @@ export function Santralim({ plantId }: { plantId: string }) {
   const [seg, setSeg] = useState<{ segment: string | null; dengesizlik_sahibi: string | null } | null>(null);   // v2.260
   useEffect(() => { api.dengesizlik(plantId, 14).then((d) => d && setSeg({ segment: d.segment.segment, dengesizlik_sahibi: d.segment.dengesizlik_sahibi })).catch(() => {}); }, [plantId]);
   useEffect(() => { api.saglik(plantId).then(setSg).catch(() => {}); }, [plantId]);
+  const [ak, setAk] = useState<AlarmKurallari | null>(null);   // v2.265: ek alarm kuralları (opt-in)
+  useEffect(() => { api.alarmKurallari(plantId).then(setAk).catch(() => {}); }, [plantId]);
+  const akDegistir = (kural: string, acik: boolean) => {
+    if (!ak) return;
+    const k = acik ? [...ak.secili, kural] : ak.secili.filter((x) => x !== kural);
+    api.alarmKurallariAyarla(plantId, k, ak.esik).then(setAk).catch(() => {});
+  };
   const t0 = useMemo(() => t0Hesapla(Date.now()), []);
   const nowVal = useMemo(
     () => (seri ? simdiDegeri(seri.saatlik, t0) : null), [seri, t0]);
@@ -333,6 +340,19 @@ export function Santralim({ plantId }: { plantId: string }) {
                   : sg?.egim_yuzde_yil != null
                     ? <>eğilim %{sayiTr(sg.egim_yuzde_yil, 1)}/yıl<span style={{ color: "var(--soluk)" }}> · {sayiTr(sg.gun)} gün · {sg.not || "bozunma için ≥13 ay"}</span></>
                     : <span style={{ color: "var(--soluk)" }}>— {sg?.not || "ölçüm birikmedi"}</span>}</td></tr>
+              {/* v2.265 (Dalga 5.17): ek alarm kuralları — varsayılan iki kural sabit; üçü santral bazında açılır */}
+              <tr><td>Alarm kuralları</td>
+                <td>{ak ? <>
+                  <span style={{ color: "var(--soluk)" }}>veri gelmedi · isabet düştü (sabit)</span>
+                  {ak.secilebilir.map((k) => (
+                    <label key={k} style={{ display: "inline-flex", gap: 4, alignItems: "center", marginLeft: 10, fontSize: 12.5 }}>
+                      <input type="checkbox" checked={ak.secili.includes(k)} onChange={(e) => akDegistir(k, e.target.checked)} />
+                      {ak.etiket[k] ?? k}
+                      <span style={{ color: "var(--soluk)" }} className="mono">
+                        {k === "pr_dustu" ? `<${sayiTr(ak.esik.pr_esik, 2)}` : k === "clipping_orani_yuksek" ? `>%${sayiTr(ak.esik.clipping_esik * 100, 0)}` : `>${sayiTr(ak.esik.iletisim_esik_saat, 0)} s`}
+                      </span>
+                    </label>))}
+                  </> : <span style={{ color: "var(--soluk)" }}>—</span>}</td></tr>
             </tbody>
           </table>
           <p style={{ fontSize: 12.5, color: "var(--ikincil)", margin: "12px 0 0",
