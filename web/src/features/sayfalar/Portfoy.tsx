@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { api } from "../../api/client";
-import type { Portfoy as PortfoyT } from "../../api/types";
+import { api, rolum } from "../../api/client";
+import type { Portfoy as PortfoyT, ApiAnahtar, Webhook } from "../../api/types";
 import { Kart, Kpi, Sayfa, sayiTr } from "./parcalar";
 
 /** v2.263 (Dalga 5.15) — Portföy: kiracının tüm santralleri tek tabloda; toplamlar dürüst
@@ -13,7 +13,7 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {
   const tarih = (s: string | null) => s ? new Date(s).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }) : "—";
   return (
     <Sayfa baslik="Portföy" alt="Tüm santraller bir bakışta — sayılar kapasite ile ağırlıklı, eksikler tire."
-      sag={<span className="cip">{p ? `${sayiTr(p.santraller.length)} santral · ${p.gun}` : "yükleniyor"}</span>}>
+      sag={<span className="cip">{p ? `${sayiTr(p.santraller.length)} santral · ${new Date(p.gun + "T12:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}` : "yükleniyor"}</span>}>
       <div className="ızgara satir-4" style={{ marginBottom: 14 }}>
         <Kpi etiket="Toplam kurulu güç" deger={t ? sayiTr(t.kapasite_kwp / 1000, 2) : "—"} birim="MWp" alt={t ? `${sayiTr(t.santral)} santral` : ""} />
         <Kpi etiket="Bugün beklenen · yarın" deger={t ? `${kwhYaz(t.bugun_kwh)} · ${kwhYaz(t.yarin_kwh)}` : "—"}
@@ -21,7 +21,7 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {
         <Kpi etiket="30 günlük WMAPE (ağırlıklı)" deger={t?.wmape_agirlikli != null ? `%${sayiTr(t.wmape_agirlikli, 1)}` : "—"}
              alt={t ? `${sayiTr(t.wmape_kapsanan_kwp / 1000, 2)} MWp karneli` : ""} />
         <Kpi etiket="Açık alarm · veri gecikmiş" deger={t ? `${sayiTr(t.acik_alarm)} · ${sayiTr(t.veri_gecikmis)}` : "—"}
-             alt="son 7 gün okunmamış · 2 günden eski ölçüm" ton={t && (t.acik_alarm > 0 || t.veri_gecikmis > 0) ? "amber" : undefined} />
+             alt="son 7 gün okunmamış · 2 günden eski ölçüm" ton={t && (t.acik_alarm > 0 || t.veri_gecikmis > 0) ? "uyari" : undefined} />
       </div>
       <Kart baslik="Santraller" sag={<span className="cip">satıra tıkla → santral</span>}>
         {p === undefined ? <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p>
@@ -45,10 +45,117 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {
           </div>
         )}
         <p className="soluk" style={{ fontSize: 12.5, margin: "10px 0 0" }}>
-          Bugün/yarın = gün başlamadan verilmiş koşunun günlük P50 toplamı (forecast_daily); WMAPE = son 30 günün 0–24 saat karnesi;
+          Bugün/yarın = son koşunun yerel-gün P50 toplamı (20 saatten az kapsanan gün yazılmaz); WMAPE = son 30 günün 0–24 saat karnesi;
           alarm = son 7 günde okunmamış kayıt. Hiyerarşik uzlaştırma (portföy toplamının santral tahminleriyle tutarlı hale getirilmesi) sonraki dalga.
         </p>
       </Kart>
+      {rolum() === "admin" && <DisErisim santraller={p?.santraller.map((s) => ({ id: s.id, ad: s.ad })) ?? []} />}
     </Sayfa>
+  );
+}
+
+/** v2.264 (Dalga 5.16) — Dış erişim: API anahtarları + webhook alıcıları. Yalnız admin görür.
+ *  Anahtar ve webhook sırrı YALNIZ üretildiği anda gösterilir; sunucu sırrı geri veremez. */
+function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] }) {
+  const [anahtarlar, setAnahtarlar] = useState<ApiAnahtar[]>([]);
+  const [kapsamlar, setKapsamlar] = useState<string[]>([]);
+  const [webhooklar, setWebhooklar] = useState<Webhook[]>([]);
+  const [ad, setAd] = useState(""); const [secili, setSecili] = useState<string[]>(["tahmin:oku"]);
+  const [yeniAnahtar, setYeniAnahtar] = useState<string | null>(null);
+  const [url, setUrl] = useState(""); const [whSantral, setWhSantral] = useState<string>("");
+  const [yeniSir, setYeniSir] = useState<string | null>(null);
+  const [hata, setHata] = useState<string | null>(null); const [mesaj, setMesaj] = useState<string | null>(null);
+  const yenile = () => {
+    api.apiAnahtarlari().then((r) => { setAnahtarlar(r.anahtarlar); setKapsamlar(r.kapsamlar); }).catch((e) => setHata(String(e.message ?? e)));
+    api.webhooklar().then((r) => setWebhooklar(r.webhooklar)).catch(() => {});
+  };
+  useEffect(yenile, []);
+  const tarih = (s: string | null) => s ? new Date(s).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }) : "—";
+  const dene = async (fn: () => Promise<unknown>) => { setHata(null); setMesaj(null); try { await fn(); yenile(); } catch (e) { setHata(String((e as Error).message ?? e)); } };
+  const docs = api.docsAdresi();
+  return (
+    <Kart baslik="Dış erişim" no="yönetici"
+          sag={docs ? <a className="cip" href={docs} target="_blank" rel="noreferrer">OpenAPI şeması ↗</a> : <span className="cip">örnek kip</span>}>
+      <p className="soluk" style={{ margin: "0 0 10px", fontSize: 12.5 }}>
+        Müşteri sistemleri tahmini <span className="mono">X-API-Key</span> başlığıyla çeker; sabah koşusundan sonra webhook alıcılarına imzalı bildirim gider.
+        Anahtar ve sır yalnız üretildiği anda görünür — sunucu yalnız özetini saklar.
+      </p>
+      {hata && <p style={{ color: "var(--uyari)", fontSize: 12.5, margin: "0 0 8px" }}>{hata}</p>}
+      {mesaj && <p className="soluk" style={{ fontSize: 12.5, margin: "0 0 8px" }}>{mesaj}</p>}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 16 }}>
+        <div>
+          <div className="mono" style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--soluk)", marginBottom: 6 }}>API anahtarları</div>
+          {anahtarlar.length === 0 ? <p className="soluk" style={{ fontSize: 12.5, margin: 0 }}>Henüz anahtar yok.</p> : (
+            <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 12 }}>
+              <thead><tr><th>Ad</th><th>Önek</th><th>Kapsam</th><th>Son kullanım</th><th>Durum</th><th></th></tr></thead>
+              <tbody className="mono">{anahtarlar.map((k) => (
+                <tr key={k.id} style={{ opacity: k.iptal ? 0.5 : 1 }}>
+                  <td>{k.ad ?? "—"}</td><td>pvq_{k.prefix}…</td><td>{k.kapsamlar.join(", ")}</td><td>{tarih(k.son_kullanim)}</td>
+                  <td>{k.iptal ? "iptal" : k.expires_at && new Date(k.expires_at) < new Date() ? "süresi doldu" : "etkin"}</td>
+                  <td>{!k.iptal && <button className="dugme" style={{ fontSize: 11.5 }} onClick={() => dene(() => api.apiAnahtarIptal(k.id))}>İptal et</button>}</td>
+                </tr>))}</tbody>
+            </table></div>
+          )}
+          <form style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 10 }}
+                onSubmit={(e) => { e.preventDefault(); dene(async () => { const r = await api.apiAnahtarUret(ad, secili, null); setYeniAnahtar(r.anahtar); setAd(""); }); }}>
+            <input value={ad} onChange={(e) => setAd(e.target.value)} placeholder="ad (ör. ticaret masası)" aria-label="Anahtar adı"
+                   style={{ fontSize: 12.5, padding: "5px 8px", border: "1px solid var(--kenar)", borderRadius: 6, background: "var(--yuzey)", color: "var(--metin)" }} />
+            {kapsamlar.map((k) => (
+              <label key={k} style={{ fontSize: 12.5, display: "flex", gap: 4, alignItems: "center" }}>
+                <input type="checkbox" checked={secili.includes(k)} onChange={(e) => setSecili(e.target.checked ? [...secili, k] : secili.filter((x) => x !== k))} />
+                <span className="mono">{k}</span>
+              </label>))}
+            <button className="dugme" type="submit" disabled={secili.length === 0}>Anahtar üret</button>
+          </form>
+          {yeniAnahtar && (
+            <div style={{ marginTop: 10, padding: 10, border: "1px solid var(--kenar)", borderRadius: 8, background: "var(--yuzey2)" }}>
+              <div style={{ fontSize: 12, marginBottom: 4 }}>Yeni anahtar — <strong>bir daha gösterilmez</strong>, şimdi kopyalayın:</div>
+              <code className="mono" style={{ fontSize: 12.5, wordBreak: "break-all", userSelect: "all" }}>{yeniAnahtar}</code>
+              <div style={{ marginTop: 6 }}><button className="dugme" style={{ fontSize: 11.5 }} onClick={() => { navigator.clipboard?.writeText(yeniAnahtar).then(() => setMesaj("Anahtar panoya kopyalandı.")).catch(() => {}); }}>Kopyala</button>
+                <button className="dugme" style={{ fontSize: 11.5, marginLeft: 6 }} onClick={() => setYeniAnahtar(null)}>Kapat</button></div>
+            </div>)}
+        </div>
+        <div>
+          <div className="mono" style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--soluk)", marginBottom: 6 }}>Webhook alıcıları <span className="soluk">(tahmin.yeni)</span></div>
+          {webhooklar.length === 0 ? <p className="soluk" style={{ fontSize: 12.5, margin: 0 }}>Henüz alıcı yok.</p> : (
+            <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 12 }}>
+              <thead><tr><th>Adres</th><th>Santral</th><th>Son gönderim</th><th>Durum</th><th></th></tr></thead>
+              <tbody className="mono">{webhooklar.map((w) => (
+                <tr key={w.id}>
+                  <td style={{ maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={w.url}>{w.url}</td>
+                  <td>{w.santral ?? "tümü"}</td><td>{tarih(w.son_gonderim)}</td>
+                  <td style={{ color: w.son_durum != null && !(w.son_durum >= 200 && w.son_durum < 300) ? "var(--uyari)" : undefined }}>
+                    {w.son_durum == null ? "—" : w.son_durum === 0 ? "ulaşılamadı" : `HTTP ${w.son_durum}`}{w.hata_sayisi > 0 ? ` · ${sayiTr(w.hata_sayisi)} hata` : ""}</td>
+                  <td style={{ whiteSpace: "nowrap" }}>
+                    <button className="dugme" style={{ fontSize: 11.5 }} onClick={() => dene(async () => { const r = await api.webhookDene(w.id); setMesaj(r.ok ? `Deneme ulaştı (HTTP ${r.durum}).` : `Deneme başarısız (${r.durum === 0 ? "ulaşılamadı" : "HTTP " + r.durum}).`); })}>Dene</button>
+                    <button className="dugme" style={{ fontSize: 11.5, marginLeft: 4 }} onClick={() => dene(() => api.webhookSil(w.id))}>Sil</button>
+                  </td>
+                </tr>))}</tbody>
+            </table></div>
+          )}
+          <form style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 10 }}
+                onSubmit={(e) => { e.preventDefault(); dene(async () => { const r = await api.webhookEkle(url, whSantral || null); setYeniSir(r.secret); setUrl(""); }); }}>
+            <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…/pvquant-webhook" aria-label="Webhook adresi" required
+                   style={{ fontSize: 12.5, padding: "5px 8px", border: "1px solid var(--kenar)", borderRadius: 6, background: "var(--yuzey)", color: "var(--metin)", minWidth: 220 }} />
+            <select value={whSantral} onChange={(e) => setWhSantral(e.target.value)} aria-label="Webhook santrali"
+                    style={{ fontSize: 12.5, padding: "5px 8px", border: "1px solid var(--kenar)", borderRadius: 6, background: "var(--yuzey)", color: "var(--metin)" }}>
+              <option value="">tüm santraller</option>
+              {santraller.map((s) => <option key={s.id} value={s.id}>{s.ad}</option>)}
+            </select>
+            <button className="dugme" type="submit">Alıcı ekle</button>
+          </form>
+          {yeniSir && (
+            <div style={{ marginTop: 10, padding: 10, border: "1px solid var(--kenar)", borderRadius: 8 }}>
+              <div style={{ fontSize: 12, marginBottom: 4 }}>İmza sırrı — <strong>bir daha gösterilmez</strong>; alıcı <span className="mono">X-PVQ-Signature</span> başlığını bununla doğrular:</div>
+              <code className="mono" style={{ fontSize: 12.5, wordBreak: "break-all", userSelect: "all" }}>{yeniSir}</code>
+              <div style={{ marginTop: 6 }}><button className="dugme" style={{ fontSize: 11.5 }} onClick={() => setYeniSir(null)}>Kapat</button></div>
+            </div>)}
+        </div>
+      </div>
+      <p className="soluk" style={{ fontSize: 12, margin: "10px 0 0" }}>
+        Uçlar: <span className="mono">/v1/dis/santraller</span>, <span className="mono">/v1/dis/santral/{"{id}"}/tahmin</span> (ETag ile 304),
+        <span className="mono"> /v1/dis/santral/{"{id}"}/kgup</span>. Oran sınırı dakikada 120 istek. Ayrıntı: docs/api/dis-api.md.
+      </p>
+    </Kart>
   );
 }

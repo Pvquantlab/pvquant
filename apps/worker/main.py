@@ -46,7 +46,10 @@ def _logla(job, fn):
 
 
 def sabah_tahmin(plant):
-    forecast_service.uret_ve_kaydet(plant["tenant_id"], plant)
+    kosu_id = forecast_service.uret_ve_kaydet(plant["tenant_id"], plant)
+    # v2.264: koşu kaydedildikten SONRA webhook (tahmin.yeni); alıcı hatası koşuyu düşürmez
+    from pvquant.services import webhook_service
+    webhook_service.sabah_sonrasi(plant, str(kosu_id) if kosu_id else None)
 
 
 def kova_etiketle(ufuk_s: "pd.Series") -> "pd.Series":
@@ -234,7 +237,10 @@ def gunluk_toplam(df, tz, gun):
     df: ts_utc indexli p50_kw/p10_kw/p90_kw cercevesi (saatlik kW ~ kWh)."""
     d0 = pd.Timestamp(gun).tz_localize(tz)
     d1 = d0 + pd.Timedelta(days=1)
-    ix = df.index.tz_convert(tz)
+    ix = pd.DatetimeIndex(df.index)
+    if ix.tz is None:          # v2.264: boş/naive okuma (parse_dates boş sonuçta naive döner) → UTC varsay, patlama
+        ix = ix.tz_localize("UTC")
+    ix = ix.tz_convert(tz)
     win = df[(ix >= d0) & (ix < d1)]
     if len(win) < 20:
         return None

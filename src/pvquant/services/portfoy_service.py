@@ -22,6 +22,39 @@ def _toplam(v: list) -> float | None:
     return float(sum(v))
 
 
+def gunluk_toplamlar(df: pd.DataFrame, tz: str, min_saat: int = 20) -> dict[str, dict]:
+    """Saatlik koşu çerçevesi → yerel gün toplamları {gun: {p50_kwh, p10_kwh, p90_kwh, saat}}.
+    <min_saat kapsamalı gün yazılmaz; P10/P90 ancak günün tüm saatleri doluysa (tire ilkesinin toplam hâli)."""
+    if df is None or df.empty:
+        return {}
+    ix = pd.DatetimeIndex(df.index)
+    if ix.tz is None:
+        ix = ix.tz_localize("UTC")
+    yerel = ix.tz_convert(tz)
+    out: dict[str, dict] = {}
+    for gun, g in df.groupby(yerel.date):
+        if len(g) < min_saat:
+            continue
+        r = {"p50_kwh": round(float(g["p50_kw"].sum()), 1), "saat": int(len(g))}
+        for k in ("p10", "p90"):
+            col = g[f"{k}_kw"] if f"{k}_kw" in g else None
+            r[f"{k}_kwh"] = round(float(col.sum()), 1) if col is not None and col.notna().all() else None
+        out[gun.isoformat()] = r
+    return out
+
+
+def _son_kosu_gunleri(s, plant_id: str, tz: str) -> dict[str, dict]:
+    from sqlalchemy import text
+    run = s.execute(text(
+        "SELECT id FROM forecast_runs WHERE plant_id=:p AND EXISTS (SELECT 1 FROM forecast_values v WHERE v.run_id=forecast_runs.id) "
+        "ORDER BY run_at DESC LIMIT 1"), {"p": plant_id}).first()
+    if not run:
+        return {}
+    df = pd.read_sql(text("SELECT ts_utc, p50_kw, p10_kw, p90_kw FROM forecast_values WHERE run_id=:r ORDER BY ts_utc"),
+                     s.connection(), params={"r": run.id}, index_col="ts_utc", parse_dates=["ts_utc"])
+    return gunluk_toplamlar(df, tz)
+
+
 def ozet(tenant_id) -> dict:
     from sqlalchemy import text
     from pvquant.db import tenant_baglami
@@ -36,10 +69,10 @@ def ozet(tenant_id) -> dict:
         wmape = {str(r.plant_id): (float(r.w) if r.w is not None else None) for r in s.execute(text(
             "SELECT plant_id, avg(mape) AS w FROM skill_daily WHERE horizon_bucket='0-24' "
             "AND date >= current_date - 30 GROUP BY plant_id"))}
-        bugun = date.today(); yarin = bugun + timedelta(days=1)
-        bek = {}
-        for r in s.execute(text("SELECT plant_id, gun, p50_kwh FROM forecast_daily WHERE gun IN (:a, :b)"), {"a": bugun, "b": yarin}):
-            bek.setdefault(str(r.plant_id), {})[r.gun] = float(r.p50_kwh)
+        # v2.264: bugün/yarın SON KOŞUDAN (forecast_daily yalnız kapanmış günlerin arşividir — canlı kontrolde tire kaldı);
+        # 'bugün' santralin yerel günü (İstanbul), sunucunun UTC takvimi değil (v2.262 dersi).
+        bugun = pd.Timestamp.now(tz=santraller[0].get("tz") or "Europe/Istanbul").date(); yarin = bugun + timedelta(days=1)
+        bek = {str(p["id"]): _son_kosu_gunleri(s, str(p["id"]), p.get("tz") or "UTC") for p in santraller}
         alarm = {str(r.plant_id): int(r.n) for r in s.execute(text(
             "SELECT plant_id, count(*) AS n FROM alerts WHERE created_at >= now() - interval '7 days' AND acked_by IS NULL GROUP BY plant_id"))}
         kosu = {str(r.plant_id): r.son for r in s.execute(text(
@@ -53,7 +86,8 @@ def ozet(tenant_id) -> dict:
             "son_olcum": son_scada.get(pid).isoformat() if son_scada.get(pid) else None,
             "kesinti_gun": (int((pd.Timestamp.now(tz="UTC") - pd.Timestamp(son_scada[pid])).days) if son_scada.get(pid) else None),
             "wmape_30g": (round(wmape[pid], 2) if wmape.get(pid) is not None else None),
-            "bugun_kwh": bek.get(pid, {}).get(bugun), "yarin_kwh": bek.get(pid, {}).get(yarin),
+            "bugun_kwh": (bek.get(pid, {}).get(bugun.isoformat()) or {}).get("p50_kwh"),
+            "yarin_kwh": (bek.get(pid, {}).get(yarin.isoformat()) or {}).get("p50_kwh"),
             "acik_alarm": alarm.get(pid, 0),
             "son_kosu": kosu.get(pid).isoformat() if kosu.get(pid) else None,
         })

@@ -3,7 +3,7 @@ import pandas as pd
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.responses import Response   # v2.261: /kgup CSV eki modül düzeyinde kullanır
 from pydantic import BaseModel
-from apps.api.deps import gecerli_kullanici, yazma_yetkisi
+from apps.api.deps import gecerli_kullanici, yazma_yetkisi, yonetici_yetkisi, api_anahtari
 from pvquant.services import auth_service, plant_service
 
 import os as _os
@@ -15,7 +15,12 @@ try:
 except ImportError:
     pass  # sentry-sdk kurulu değilse sessiz geç (dev ortamı)
 
-app = FastAPI(title="PVQuant API", version="0.1")
+app = FastAPI(title="PVQuant API", version="0.1",
+              description="Panel uçları Bearer oturumla; **Dış API** uçları `X-API-Key` başlığıyla (yönetici panelden üretir). "
+                          "Dış uçlar kapsam ister (tahmin:oku, kgup:oku), dakikalık oran sınırı uygular ve ETag/If-None-Match destekler.",
+              openapi_tags=[{"name": "Dış API", "description": "Müşteri entegrasyonu: saatlik P10/P50/P90 tahmin ve KGÜP programı. "
+                                                                "Kimlik: `X-API-Key: pvq_…`. Değişmemişse 304."},
+                            {"name": "Yönetim", "description": "API anahtarları ve webhook alıcıları (yalnız admin)."}])
 
 # v2.73-B: dev SPA (vite, :5173) tarayici kapisi. Prod'da SPA ayni alan
 # adindan (Caddy /v1) sunulur — oraya CORS gerekmez; liste env ile dar tutulur.
@@ -24,8 +29,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=_os.environ.get(
         "PVQ_CORS_ORIGINS", "http://localhost:5173").split(","),
-    allow_methods=["GET", "POST"], allow_headers=["Authorization",
-                                                  "Content-Type"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],   # v2.264: PUT (segment) + DELETE (anahtar/webhook)
+    allow_headers=["Authorization", "Content-Type", "X-API-Key"],
     # v2.94: rapor dosya adi — tarayici bu basligi ancak expose ile gorur
     expose_headers=["Content-Disposition"])
 
@@ -288,14 +293,13 @@ def portfoy(claims=Depends(gecerli_kullanici)):
     return portfoy_service.ozet(claims["tenant_id"])
 
 
-@app.get("/v1/plants/{plant_id}/kgup")
-def kgup_dosyasi(plant_id: str, gun: str | None = None, kantil: str = "p50", fmt: str = "csv", claims=Depends(gecerli_kullanici)):
-    """v2.260 — KGÜP saatlik program (D-1 15:30 öncesi koşudan). fmt=csv → TPYS CSV eki; fmt=json → önizleme."""
+def _kgup_yaniti(tenant_id: str, plant_id: str, gun: str | None, kantil: str, fmt: str):
+    """v2.260/v2.264 — panel ve dış API'nin ortak KGÜP gövdesi."""
     from datetime import date, timedelta
     from pvquant.services import kgup_service, plant_service
     if kantil not in ("p10", "p50", "p90"):
         raise HTTPException(422, "kantil p10|p50|p90")
-    row = plant_service.getir(claims["tenant_id"], plant_id)
+    row = plant_service.getir(tenant_id, plant_id)
     if row is None:
         raise HTTPException(404, "santral yok")
     # v2.262: 'yarın' santralin piyasa gününe göre (İstanbul), sunucunun UTC takvimine göre değil —
@@ -304,13 +308,140 @@ def kgup_dosyasi(plant_id: str, gun: str | None = None, kantil: str = "p50", fmt
     pj = row.get("params_json") or {}
     if isinstance(pj, str):
         import json as _j; pj = _j.loads(pj)
-    r = kgup_service.uret(claims["tenant_id"], {"id": str(row["id"]), "capacity_kwp": float(row["capacity_kwp"]), "ac_limit_kw": row.get("ac_limit_kw"), "uevcb": pj.get("uevcb")}, g, kantil)
+    r = kgup_service.uret(tenant_id, {"id": str(row["id"]), "capacity_kwp": float(row["capacity_kwp"]), "ac_limit_kw": row.get("ac_limit_kw"), "uevcb": pj.get("uevcb")}, g, kantil)
     if "hata" in r:
         raise HTTPException(409, r["hata"])
     if fmt == "json":
         return {k: v for k, v in r.items() if k != "csv"}
     return Response(content=r["csv"].encode("utf-8-sig"), media_type="text/csv; charset=utf-8",
                     headers={"Content-Disposition": f'attachment; filename="{r["dosya_adi"]}"'})
+
+
+@app.get("/v1/plants/{plant_id}/kgup")
+def kgup_dosyasi(plant_id: str, gun: str | None = None, kantil: str = "p50", fmt: str = "csv", claims=Depends(gecerli_kullanici)):
+    """v2.260 — KGÜP saatlik program (D-1 15:30 öncesi koşudan). fmt=csv → TPYS CSV eki; fmt=json → önizleme."""
+    return _kgup_yaniti(claims["tenant_id"], plant_id, gun, kantil, fmt)
+
+
+# ------------------------------------------------------------------ v2.264: Dış API (X-API-Key) --------------
+def _son_kosu_kimligi(tenant_id: str, plant_id: str):
+    from sqlalchemy import text as _t
+    from pvquant.db import tenant_baglami as _tb
+    with _tb(tenant_id) as s:
+        return s.execute(_t(
+            "SELECT id, run_at, mode FROM forecast_runs WHERE plant_id=:p "
+            "AND EXISTS (SELECT 1 FROM forecast_values v WHERE v.run_id=forecast_runs.id) ORDER BY run_at DESC LIMIT 1"),
+            {"p": plant_id}).first()
+
+
+@app.get("/v1/dis/santraller", tags=["Dış API"])
+def dis_santraller(anahtar=Depends(api_anahtari("tahmin:oku"))):
+    """Anahtarın kiracısındaki santraller (kimlik, ad, kurulu güç, saat dilimi)."""
+    return [{"id": str(p["id"]), "ad": p["name"], "kapasite_kwp": float(p["capacity_kwp"]), "tz": p["tz"]}
+            for p in plant_service.listele(anahtar["tenant_id"])]
+
+
+@app.get("/v1/dis/santral/{plant_id}/tahmin", tags=["Dış API"])
+def dis_tahmin(plant_id: str, request: Request, anahtar=Depends(api_anahtari("tahmin:oku"))):
+    """Son koşunun saatlik P10/P50/P90 (kW, UTC). ETag = koşu kimliği; `If-None-Match` eşleşirse 304 (gövde yok).
+    Bant yoksa alan null gelir — istemci uydurmasın."""
+    from pvquant.services import forecast_service
+    row = plant_service.getir(anahtar["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    kosu = _son_kosu_kimligi(anahtar["tenant_id"], plant_id)
+    if kosu is None:
+        raise HTTPException(409, "bu santral için henüz koşu yok")
+    etag = f'W/"{kosu.id}"'
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=304, headers={"ETag": etag})
+    df = forecast_service.son_kosu(anahtar["tenant_id"], plant_id)
+    def _f(v):
+        return None if v is None or pd.isna(v) else round(float(v), 2)
+    saatlik = [{"ts": ts.isoformat(), "p10_kw": _f(r.p10_kw), "p50_kw": _f(r.p50_kw), "p90_kw": _f(r.p90_kw)} for ts, r in df.iterrows()]
+    govde = {"santral_id": str(row["id"]), "santral": row["name"], "birim": "kW",
+             "kosu": {"id": str(kosu.id), "zaman": kosu.run_at.isoformat(), "mod": kosu.mode},
+             "saatlik": saatlik}
+    from fastapi.responses import JSONResponse
+    return JSONResponse(govde, headers={"ETag": etag, "Cache-Control": "private, max-age=60"})
+
+
+@app.get("/v1/dis/santral/{plant_id}/kgup", tags=["Dış API"])
+def dis_kgup(plant_id: str, gun: str | None = None, kantil: str = "p50", fmt: str = "json", anahtar=Depends(api_anahtari("kgup:oku"))):
+    """KGÜP saatlik program (D-1 15:30 öncesi koşudan); gün verilmezse İstanbul yarını. fmt=csv → TPYS CSV."""
+    return _kgup_yaniti(anahtar["tenant_id"], plant_id, gun, kantil, fmt)
+
+
+# ------------------------------------------------------------------ v2.264: Yönetim (admin) -----------------
+class AnahtarIstek(BaseModel):
+    ad: str = ""
+    kapsamlar: list[str]
+    gecerlilik_gun: int | None = None
+    rpm: int = 120
+
+
+class WebhookIstek(BaseModel):
+    url: str
+    plant_id: str | None = None
+    olaylar: list[str] = ["tahmin.yeni"]
+
+
+@app.get("/v1/api-anahtarlari", tags=["Yönetim"])
+def anahtar_listesi(claims=Depends(yonetici_yetkisi())):
+    from pvquant.services import api_anahtar_service
+    return {"anahtarlar": api_anahtar_service.listele(claims["tenant_id"]), "kapsamlar": list(api_anahtar_service.CANLI_KAPSAMLAR)}
+
+
+@app.post("/v1/api-anahtarlari", tags=["Yönetim"], status_code=201)
+def anahtar_uret(p: AnahtarIstek, claims=Depends(yonetici_yetkisi())):
+    """Düz anahtar YALNIZ bu yanıtta; sunucu sha256 dışında hiçbir şey saklamaz."""
+    from pvquant.services import api_anahtar_service
+    try:
+        return api_anahtar_service.uret(claims["tenant_id"], p.ad, p.kapsamlar, p.gecerlilik_gun, p.rpm)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+
+
+@app.delete("/v1/api-anahtarlari/{anahtar_id}", tags=["Yönetim"])
+def anahtar_iptal(anahtar_id: str, claims=Depends(yonetici_yetkisi())):
+    from pvquant.services import api_anahtar_service
+    if not api_anahtar_service.iptal(claims["tenant_id"], anahtar_id):
+        raise HTTPException(404, "anahtar yok ya da zaten iptal")
+    return {"iptal": True}
+
+
+@app.get("/v1/webhooklar", tags=["Yönetim"])
+def webhook_listesi(claims=Depends(yonetici_yetkisi())):
+    from pvquant.services import webhook_service
+    return {"webhooklar": webhook_service.listele(claims["tenant_id"]), "olaylar": ["tahmin.yeni"]}
+
+
+@app.post("/v1/webhooklar", tags=["Yönetim"], status_code=201)
+def webhook_ekle(p: WebhookIstek, claims=Depends(yonetici_yetkisi())):
+    """`secret` YALNIZ bu yanıtta gösterilir; alıcı imzayı onunla doğrular."""
+    from pvquant.services import webhook_service
+    try:
+        return webhook_service.ekle(claims["tenant_id"], p.url, p.plant_id, p.olaylar)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+
+
+@app.delete("/v1/webhooklar/{webhook_id}", tags=["Yönetim"])
+def webhook_sil(webhook_id: str, claims=Depends(yonetici_yetkisi())):
+    from pvquant.services import webhook_service
+    if not webhook_service.sil(claims["tenant_id"], webhook_id):
+        raise HTTPException(404, "webhook yok")
+    return {"silindi": True}
+
+
+@app.post("/v1/webhooklar/{webhook_id}/dene", tags=["Yönetim"])
+def webhook_dene(webhook_id: str, claims=Depends(yonetici_yetkisi())):
+    """'deneme' olayı gönderir; alıcının döndürdüğü HTTP durumunu geri verir (0 = ulaşılamadı)."""
+    from pvquant.services import webhook_service
+    r = webhook_service.gonder(claims["tenant_id"], "deneme", {"olay": "deneme", "mesaj": "PVQuant webhook denemesi"}, webhook_id=webhook_id)
+    if not r:
+        raise HTTPException(404, "webhook yok ya da pasif")
+    return r[0]
 
 
 class SegmentIstek(BaseModel):

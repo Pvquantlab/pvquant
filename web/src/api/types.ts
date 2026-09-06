@@ -48,6 +48,12 @@ export interface Portfoy {
   toplam: { santral: number; kapasite_kwp: number; bugun_kwh: number | null; yarin_kwh: number | null; wmape_agirlikli: number | null;
             wmape_kapsanan_kwp: number; acik_alarm: number; veri_gecikmis: number } | null;
 }
+/** v2.264 — dış erişim (yönetici). */
+export interface ApiAnahtar { id: string; ad: string | null; prefix: string; kapsamlar: string[]; iptal: boolean;
+  expires_at: string | null; rpm: number; son_kullanim: string | null; olusturma: string | null }
+export interface ApiAnahtarYeni extends Omit<ApiAnahtar, "iptal" | "son_kullanim" | "olusturma"> { anahtar: string }
+export interface Webhook { id: string; plant_id: string | null; santral: string | null; url: string; olaylar: string[]; aktif: boolean;
+  son_gonderim: string | null; son_durum: number | null; hata_sayisi: number }
 /** /kgup?fmt=json — v2.260 önizleme; /segment — v2.260. */
 export interface KgupOnizleme {
   gun: string; kantil: string; kosu: { run_at?: string; mode?: string }; uyarilar: string[]; sicrama_saatleri: number[];

@@ -1,4 +1,4 @@
-import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy } from "./types";
+import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , ApiAnahtar , ApiAnahtarYeni , Webhook } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -44,6 +44,31 @@ async function getir<T>(yol: string): Promise<T> {
   }
   if (!y.ok) throw new Error(`${y.status} ${yol}`);
   return (await y.json()) as T;
+}
+
+/** v2.264: JSON gövdeli POST/DELETE — getir'in 401 sözleşmesi; 4xx'te sunucunun detail'i Error olur. */
+async function gonder<T>(yol: string, method: "POST" | "DELETE" | "PUT", govde?: unknown): Promise<T> {
+  const jeton = localStorage.getItem("pvq_token");
+  const y = await fetch(`${TABAN}${yol}`, {
+    method, body: govde === undefined ? undefined : JSON.stringify(govde),
+    headers: { ...(jeton ? { Authorization: `Bearer ${jeton}` } : {}), ...(govde === undefined ? {} : { "Content-Type": "application/json" }) } });
+  if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise<T>(() => {}); }
+  if (!y.ok) {
+    let mesaj = `${y.status} ${yol}`;
+    try { const g = (await y.json()) as { detail?: unknown }; if (typeof g.detail === "string") mesaj = g.detail; } catch { /* gövde yok */ }
+    throw new Error(mesaj);
+  }
+  return (await y.json()) as T;
+}
+
+/** v2.264: oturum rolü — JWT gövdesinden (imza sunucuda doğrulanır; burada yalnız görünürlük kararı). */
+export function rolum(): string {
+  if (TABAN == null) return "admin";
+  try {
+    const t = localStorage.getItem("pvq_token"); if (!t) return "";
+    const g = JSON.parse(atob(t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))) as { role?: string };
+    return g.role ?? "";
+  } catch { return ""; }
 }
 
 /** Gercek yaniti UI sekline tasi. API'nin vermedigi alanlar null kalir
@@ -373,6 +398,24 @@ export const api = {
     if (TABAN == null) return null;
     try { return await getir<Portfoy>(`/v1/portfoy`); } catch { return null; }
   },
+  /** v2.264: dış erişim yönetimi (admin). */
+  apiAnahtarlari: async (): Promise<{ anahtarlar: ApiAnahtar[]; kapsamlar: string[] }> => {
+    if (TABAN == null) return { anahtarlar: [], kapsamlar: ["tahmin:oku", "kgup:oku"] };
+    return getir(`/v1/api-anahtarlari`);
+  },
+  apiAnahtarUret: (ad: string, kapsamlar: string[], gecerlilik_gun: number | null): Promise<ApiAnahtarYeni> =>
+    gonder(`/v1/api-anahtarlari`, "POST", { ad, kapsamlar, gecerlilik_gun }),
+  apiAnahtarIptal: (id: string): Promise<{ iptal: boolean }> => gonder(`/v1/api-anahtarlari/${id}`, "DELETE"),
+  webhooklar: async (): Promise<{ webhooklar: Webhook[] }> => {
+    if (TABAN == null) return { webhooklar: [] };
+    return getir(`/v1/webhooklar`);
+  },
+  webhookEkle: (url: string, plant_id: string | null): Promise<Webhook & { secret: string }> =>
+    gonder(`/v1/webhooklar`, "POST", { url, plant_id, olaylar: ["tahmin.yeni"] }),
+  webhookSil: (id: string): Promise<{ silindi: boolean }> => gonder(`/v1/webhooklar/${id}`, "DELETE"),
+  webhookDene: (id: string): Promise<{ durum: number; ok: boolean }> => gonder(`/v1/webhooklar/${id}/dene`, "POST"),
+  /** OpenAPI sayfası adresi (gerçek kipte). */
+  docsAdresi: (): string | null => (TABAN == null ? null : `${TABAN || ""}/docs`),
   /** v2.260: KGÜP önizleme (json) ve dosya indirme (csv, rapor kalıbı). */
   kgupOnizleme: async (p: string, gun?: string, kantil = "p50"): Promise<KgupOnizleme | null> => {
     if (TABAN == null) return null;

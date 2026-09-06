@@ -12,18 +12,23 @@ export const sayiTr = (x: number, ondalik = 0): string =>
 
 export function Kpi({ etiket, deger, birim, alt, ton }:
   { etiket: string; deger: string; birim?: string; alt?: ReactNode;
-    ton?: "amber" }) {
+    ton?: "amber" | "uyari" }) {
   // v2.124: opsiyonel uyari tonu — negatif iyilesme gibi "dikkat" KPI'lari
   // icin; verilmezse davranis birebir eski hali (geriye uyumlu).
+  // v2.264: "uyari" tonu — amber gerçekleşen mürekkebi olduğundan, açık alarm/gecikme gibi
+  // dikkat KPI'ları kırmızı --uyari ailesini kullanır.
   const st = ton === "amber"
     ? { borderColor: "var(--amber)",
         background: "linear-gradient(180deg, var(--amber-zemin) 0%, var(--kart) 72%)" }
+    : ton === "uyari"
+    ? { borderColor: "var(--uyari)",
+        background: "linear-gradient(180deg, var(--uyari-zemin) 0%, var(--kart) 72%)" }
     : undefined;
   return (
     <div className="kpi" style={st}>
       <div className="kpi-et">{etiket}</div>
       <div className="kpi-dg mono"
-           style={ton === "amber" ? { color: "var(--amber-metin)" } : undefined}>{deger}{birim &&
+           style={ton === "amber" ? { color: "var(--amber-metin)" } : ton === "uyari" ? { color: "var(--uyari)" } : undefined}>{deger}{birim &&
         <span style={{ fontSize: 13, color: "var(--soluk)", marginLeft: 5 }}>{birim}</span>}</div>
       {alt && <div className="kpi-br">{alt}</div>}
     </div>
