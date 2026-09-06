@@ -360,6 +360,45 @@ def damga(plant_id: str, request: Request, claims=Depends(gecerli_kullanici)):
     return JSONResponse(d, headers={"ETag": et, "Cache-Control": "no-cache"})
 
 
+class FizikIstek(BaseModel):
+    ayar: dict
+
+
+@app.get("/v1/plants/{plant_id}/fizik-terimleri")
+def fizik_terimleri_uc(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """v2.274 — santralın fizik terimleri (geliş açısı, spektral, kirlenme, kar) ve seçenekleri."""
+    from pvquant.services import fizik_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    return fizik_service.durum(row)
+
+
+@app.put("/v1/plants/{plant_id}/fizik-terimleri")
+def fizik_terimleri_ayarla(plant_id: str, p: FizikIstek, claims=Depends(yazma_yetkisi())):
+    """v2.274 — terimleri aç/kapa; bir sonraki koşudan itibaren geçerli (koşular güncellenmez, yenisi eklenir)."""
+    from pvquant.services import fizik_service
+    if plant_service.getir(claims["tenant_id"], plant_id) is None:
+        raise HTTPException(404, "santral yok")
+    try:
+        return fizik_service.ayar_yaz(claims["tenant_id"], plant_id, p.ayar)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+
+
+@app.post("/v1/plants/{plant_id}/fizik-terimleri/onizle")
+def fizik_terimleri_onizle(plant_id: str, p: FizikIstek, claims=Depends(gecerli_kullanici)):
+    """v2.274 — 'açsam ne değişir?': arşivdeki koşu meteosuyla salt fizik, mevcut ↔ aday, 7 günlük enerji farkı."""
+    from pvquant.services import fizik_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    try:
+        return fizik_service.onizle(claims["tenant_id"], row, p.ayar)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+
+
 @app.get("/v1/plants/{plant_id}/nowcast")
 def nowcast(plant_id: str, claims=Depends(gecerli_kullanici)):
     """v2.266 — kısa ufuk (0–6 s): ölçüm persistansı ile P50 harmanı. Uydu DEĞİL; SCADA tazeliği >3 s ise devre dışı ('—')."""

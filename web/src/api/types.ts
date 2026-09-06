@@ -109,6 +109,17 @@ export interface Backtest {
   pencere: number; picp_ham_ort: number | null; picp_kal_ort: number | null; hedef: number; hukum: string;
   satirlar: { baslangic: string; n_test: number; picp_ham: number; picp_kal: number; bant_ham_n: number; bant_kal_n: number; q_ort: number }[];
 }
+/** /fizik-terimleri — v2.274: santral bazında fizik terimleri (aç/kapa) + önizleme. */
+export interface FizikTerimleri {
+  iam_model: string; spectral_model: string; soiling_model: string; kar_model: string;
+  soiling_gunluk_kayip: number | null; soiling_temizleme_mm: number | null; soiling_baslangic: number | null;
+  secenekler: Record<string, string[]>; etiket: Record<string, string>; not: Record<string, string>;
+}
+export interface FizikOnizleme {
+  gun: { tarih: string; mevcut_kwh: number; aday_kwh: number; fark_pct: number | null }[];
+  toplam_mevcut_kwh: number; toplam_aday_kwh: number; toplam_fark_pct: number | null;
+  nem_var: boolean; kar_var: boolean; yagis_var: boolean; kaynak: string;
+}
 /** /guvenilirlik — v2.271: kantil güvenilirliği, PIT, keskinlik (ham ↔ kalibre). */
 export interface Guvenilirlik {
   durum: "ok" | "yetersiz" | "veri_yok"; n_saat: number; gun_sayisi?: number; min_saat?: number; pencere_gun?: number;

@@ -1,4 +1,4 @@
-import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik } from "./types";
+import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -494,6 +494,13 @@ export const api = {
     if (TABAN == null) return null;
     try { return await getir<Backtest>(`/v1/plants/${p}/backtest?gun=${gun}`); } catch { return null; }
   },
+  /** v2.274: fizik terimleri — durum / yazma / önizleme. */
+  fizikTerimleri: async (p: string): Promise<FizikTerimleri | null> => {
+    if (TABAN == null) return null;
+    try { return await getir<FizikTerimleri>(`/v1/plants/${p}/fizik-terimleri`); } catch { return null; }
+  },
+  fizikAyarla: (p: string, ayar: Record<string, string | number>): Promise<FizikTerimleri> => gonder(`/v1/plants/${p}/fizik-terimleri`, "PUT", { ayar }),
+  fizikOnizle: (p: string, ayar: Record<string, string | number>): Promise<FizikOnizleme> => gonder(`/v1/plants/${p}/fizik-terimleri/onizle`, "POST", { ayar }),
   guvenilirlik: async (p: string, gun = 60): Promise<Guvenilirlik | null> => {
     if (TABAN == null) return null;
     try { return await getir<Guvenilirlik>(`/v1/plants/${p}/guvenilirlik?gun=${gun}`); } catch { return null; }

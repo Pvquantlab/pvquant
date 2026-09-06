@@ -25,9 +25,15 @@ from pvquant.config import get_settings
 
 KAYNAK = "acik-nwp"                      # forecast_runs.meteo_source metni
 KAYNAK_ETIKET = "ECMWF IFS + ICON-EU"   # nwp_model alanı (künye/atıf bu ikisini sayar)
-ECMWF_PARAM = ["ssrd", "2t", "10u", "10v", "tcc", "tp"]
+ECMWF_PARAM = ["ssrd", "2t", "2d", "10u", "10v", "tcc", "tp"]   # v2.274: 2d → bağıl nem (spektral terim)
 ECMWF_ADIMLAR = list(range(0, 145, 3)) + list(range(150, 361, 6))
-KOLONLAR = ["ghi", "dni", "dhi", "temp_air", "wind_speed_10m", "cloud_cover", "precipitation"]
+KOLONLAR = ["ghi", "dni", "dhi", "temp_air", "wind_speed_10m", "cloud_cover", "precipitation", "relative_humidity"]
+
+
+def bagil_nem(t_c, td_c):
+    """Magnus (Alduchov-Eskridge): T ve çiy noktası (°C) → bağıl nem (%), 0–100."""
+    e = lambda x: np.exp(17.625 * x / (243.04 + x))
+    return np.clip(100.0 * e(np.asarray(td_c, dtype=float)) / e(np.asarray(t_c, dtype=float)), 0.0, 100.0)
 
 
 def _nokta_anahtar(lat: float, lon: float) -> tuple[float, float]:
@@ -99,6 +105,9 @@ def ecmwf_noktalar(dosya: Path, noktalar: list[tuple[float, float]]) -> dict[tup
         df["temp_air"] = (seri("t2m") - 273.15).reindex(hedef).interpolate(limit_direction="both")
         df["wind_speed_10m"] = ruzgar_hizi(seri("u10"), seri("v10")).reindex(hedef).interpolate(limit_direction="both")
         df["cloud_cover"] = (seri("tcc") * 100.0).reindex(hedef).interpolate(limit_direction="both")
+        if "d2m" in degisken:   # v2.274: nem — ECMWF 2d (çiy noktası, K)
+            t = seri("t2m") - 273.15; td = seri("d2m") - 273.15
+            df["relative_humidity"] = pd.Series(bagil_nem(t.values, td.values), index=t.index).reindex(hedef).interpolate(limit_direction="both")
         if "tp" in degisken:
             tp = seri("tp"); fark = tp.diff(); fark.iloc[0] = tp.iloc[0]
             mm_saat = (fark * 1000.0 / adim).clip(lower=0.0)          # m/adım → mm/saat
@@ -161,13 +170,15 @@ def harmanla(ecmwf: pd.DataFrame | None, icon: pd.DataFrame | None, lat: float, 
         raise ValueError("harmanlanacak NWP yok")
     if ecmwf is None or icon is None or ecmwf.index.intersection(icon.index).empty:
         tek = ecmwf if icon is None else icon
-        c = MeteoCerceve(tek[[k for k in tek.columns if k != "precipitation"]].copy(), lat, lon,
+        c = MeteoCerceve(tek[[k for k in tek.columns if k not in ("precipitation", "relative_humidity")]].copy(), lat, lon,
                          KAYNAKLAR["ecmwf" if tek is ecmwf else "icon"])
         df = c.df
-        if ecmwf is not None and "precipitation" in ecmwf:
-            df["precipitation"] = ecmwf["precipitation"].reindex(df.index)
+        if ecmwf is not None:
+            for kol in ("precipitation", "relative_humidity"):
+                if kol in ecmwf:
+                    df[kol] = ecmwf[kol].reindex(df.index)
         return df
-    ce = MeteoCerceve(ecmwf[[k for k in ecmwf.columns if k != "precipitation"]].copy(), lat, lon, KAYNAKLAR["ecmwf"])
+    ce = MeteoCerceve(ecmwf[[k for k in ecmwf.columns if k not in ("precipitation", "relative_humidity")]].copy(), lat, lon, KAYNAKLAR["ecmwf"])
     # ICON'da eksik adım (DWD'de bazı dosyalar 404) → o saatlerde ECMWF değeri; harman NaN üretmesin
     icon = icon.copy()
     for kol in ("ghi", "temp_air", "wind_speed_10m", "cloud_cover"):
@@ -180,8 +191,9 @@ def harmanla(ecmwf: pd.DataFrame | None, icon: pd.DataFrame | None, lat: float, 
     bas = ce.df.loc[ce.df.index < ortak.index.min()]
     kuyruk = ce.df.loc[ce.df.index > ortak.index.max()]
     df = pd.concat([bas, ortak, kuyruk]).sort_index()
-    if "precipitation" in ecmwf:
-        df["precipitation"] = ecmwf["precipitation"].reindex(df.index)
+    for kol in ("precipitation", "relative_humidity"):
+        if kol in ecmwf:
+            df[kol] = ecmwf[kol].reindex(df.index)
     for kol in ("temp_air", "wind_speed_10m", "cloud_cover"):      # son bekçi: zorunlu kolonlarda NaN kalmasın
         if kol in df:
             df[kol] = df[kol].fillna(ecmwf[kol].reindex(df.index) if kol in ecmwf else np.nan).interpolate(limit_direction="both")
@@ -207,8 +219,8 @@ def _arsive_yaz(satirlar: list[dict]) -> int:
         return 0
     with sistem_baglami() as s:
         s.execute(text(
-            "INSERT INTO meteo_arsiv(kaynak,kosu_zamani,lat,lon,ts_utc,ghi,dni,dhi,temp_air,wind_speed_10m,cloud_cover,precipitation) "
-            "VALUES(:k,:z,:la,:lo,:ts,:ghi,:dni,:dhi,:temp_air,:wind_speed_10m,:cloud_cover,:precipitation) "
+            "INSERT INTO meteo_arsiv(kaynak,kosu_zamani,lat,lon,ts_utc,ghi,dni,dhi,temp_air,wind_speed_10m,cloud_cover,precipitation,relative_humidity) "
+            "VALUES(:k,:z,:la,:lo,:ts,:ghi,:dni,:dhi,:temp_air,:wind_speed_10m,:cloud_cover,:precipitation,:relative_humidity) "
             "ON CONFLICT (kaynak,kosu_zamani,lat,lon,ts_utc) DO NOTHING"), satirlar)
     return len(satirlar)
 
@@ -269,7 +281,8 @@ def _cerceve_to_meteodata(df: pd.DataFrame, lat: float, lon: float, nwp_model: s
     from pvquant.io.meteo import MeteoData
     df = df.sort_index()
     return MeteoData(ghi=df["ghi"], temp_air=df["temp_air"], wind_speed_10m=df["wind_speed_10m"],
-                     relative_humidity=None, cloud_cover=df["cloud_cover"] if "cloud_cover" in df else None,
+                     relative_humidity=(df["relative_humidity"] if "relative_humidity" in df and df["relative_humidity"].notna().any() else None),
+                     cloud_cover=df["cloud_cover"] if "cloud_cover" in df else None,
                      latitude=float(lat), longitude=float(lon), timezone="UTC",
                      precipitation=df["precipitation"] if "precipitation" in df else None, snowfall=None,
                      kaynak=KAYNAK, nwp_model=nwp_model)
@@ -289,14 +302,14 @@ def arsivden_tahmin(lat: float, lon: float, days: int, past_days: int = 0, azami
             return None
         bas = simdi.floor("D")
         ileri = pd.read_sql(text(
-            "SELECT ts_utc, ghi, dni, dhi, temp_air, wind_speed_10m, cloud_cover, precipitation FROM meteo_arsiv "
+            "SELECT ts_utc, ghi, dni, dhi, temp_air, wind_speed_10m, cloud_cover, precipitation, relative_humidity FROM meteo_arsiv "
             "WHERE kaynak=:k AND lat=:la AND lon=:lo AND kosu_zamani=:z AND ts_utc >= :a AND ts_utc < :b ORDER BY ts_utc"),
             s.connection(), params={"k": KAYNAK, "la": la, "lo": lo, "z": kosu, "a": bas, "b": bas + pd.Timedelta(days=days)},
             index_col="ts_utc", parse_dates=["ts_utc"])
         gecmis = pd.DataFrame()
         if past_days:
             gecmis = pd.read_sql(text(
-                "SELECT DISTINCT ON (ts_utc) ts_utc, ghi, dni, dhi, temp_air, wind_speed_10m, cloud_cover, precipitation "
+                "SELECT DISTINCT ON (ts_utc) ts_utc, ghi, dni, dhi, temp_air, wind_speed_10m, cloud_cover, precipitation, relative_humidity "
                 "FROM meteo_arsiv WHERE kaynak=:k AND lat=:la AND lon=:lo AND ts_utc >= :a AND ts_utc < :b "
                 "AND ts_utc - kosu_zamani BETWEEN INTERVAL '0 hour' AND INTERVAL '24 hour' ORDER BY ts_utc, kosu_zamani DESC"),
                 s.connection(), params={"k": KAYNAK, "la": la, "lo": lo, "a": bas - pd.Timedelta(days=past_days), "b": bas},
@@ -317,7 +330,7 @@ def arsivden_gecmis(lat: float, lon: float, start_date: str, end_date: str, asga
     a = pd.Timestamp(start_date, tz="UTC"); b = pd.Timestamp(end_date, tz="UTC") + pd.Timedelta(days=1)
     with sistem_baglami() as s:
         df = pd.read_sql(text(
-            "SELECT DISTINCT ON (ts_utc) ts_utc, ghi, dni, dhi, temp_air, wind_speed_10m, cloud_cover, precipitation "
+            "SELECT DISTINCT ON (ts_utc) ts_utc, ghi, dni, dhi, temp_air, wind_speed_10m, cloud_cover, precipitation, relative_humidity "
             "FROM meteo_arsiv WHERE kaynak=:k AND lat=:la AND lon=:lo AND ts_utc >= :a AND ts_utc < :b "
             "AND ts_utc - kosu_zamani BETWEEN INTERVAL '0 hour' AND INTERVAL '24 hour' ORDER BY ts_utc, kosu_zamani DESC"),
             s.connection(), params={"k": KAYNAK, "la": la, "lo": lo, "a": a, "b": b}, index_col="ts_utc", parse_dates=["ts_utc"])

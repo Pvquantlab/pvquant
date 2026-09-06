@@ -44,7 +44,8 @@ def uye_meteodata(uye_df: pd.DataFrame, temel, lat: float, lon: float):
             s = yedek.reindex(idx).interpolate(limit_direction="both")
         return s
     return MeteoData(ghi=uye_df["ghi"].astype(float), temp_air=kol("temp_air", temel.temp_air), wind_speed_10m=kol("wind_speed_10m", temel.wind_speed_10m),
-                     relative_humidity=None, cloud_cover=kol("cloud_cover", temel.cloud_cover), latitude=lat, longitude=lon, timezone="UTC",
+                     relative_humidity=(temel.relative_humidity.reindex(idx).interpolate(limit_direction="both") if getattr(temel, "relative_humidity", None) is not None else None),
+                     cloud_cover=kol("cloud_cover", temel.cloud_cover), latitude=lat, longitude=lon, timezone="UTC",
                      precipitation=(temel.precipitation.reindex(idx) if temel.precipitation is not None else None), snowfall=None,
                      kaynak="gefs", nwp_model="GEFS üye")
 

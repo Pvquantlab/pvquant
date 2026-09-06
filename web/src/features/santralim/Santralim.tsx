@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { PrKarti, Saglik, AlarmKurallari } from "../../api/types";
+import type { PrKarti, Saglik, AlarmKurallari, FizikTerimleri, FizikOnizleme } from "../../api/types";
 import { SEGMENTLER } from "../../api/types";
 import type { EChartsOption } from "echarts";
 import { api } from "../../api/client";
@@ -54,6 +54,20 @@ export function Santralim({ plantId }: { plantId: string }) {
   const [seg, setSeg] = useState<{ segment: string | null; dengesizlik_sahibi: string | null } | null>(null);   // v2.260
   useEffect(() => { api.dengesizlik(plantId, 14).then((d) => d && setSeg({ segment: d.segment.segment, dengesizlik_sahibi: d.segment.dengesizlik_sahibi })).catch(() => {}); }, [plantId]);
   useEffect(() => { api.saglik(plantId).then(setSg).catch(() => {}); }, [plantId]);
+  // v2.274 (Dalga 3 tamamlayıcısı): fizik terimleri — santral bazında aç/kapa + "açsam ne değişir?" önizlemesi
+  const [ft, setFt] = useState<FizikTerimleri | null>(null);
+  const [ftOn, setFtOn] = useState<FizikOnizleme | null>(null);
+  const [ftMesaj, setFtMesaj] = useState<string | null>(null);
+  useEffect(() => { api.fizikTerimleri(plantId).then(setFt).catch(() => {}); }, [plantId]);
+  const [ftSon, setFtSon] = useState<Record<string, string>>({});
+  const ftDegistir = (k: string, v: string) => {
+    setFtMesaj(null); setFtOn(null); setFtSon({ [k]: v });
+    api.fizikOnizle(plantId, { [k]: v }).then(setFtOn).catch((e) => setFtMesaj(String((e as Error).message ?? e)));
+  };
+  const ftUygula = (k: string, v: string) => {
+    api.fizikAyarla(plantId, { [k]: v }).then((r) => { setFt(r); setFtOn(null); setFtSon({}); setFtMesaj("Kaydedildi — bir sonraki koşudan itibaren geçerli."); })
+      .catch((e) => setFtMesaj(String((e as Error).message ?? e)));
+  };
   const [ak, setAk] = useState<AlarmKurallari | null>(null);   // v2.265: ek alarm kuralları (opt-in)
   useEffect(() => { api.alarmKurallari(plantId).then(setAk).catch(() => {}); }, [plantId]);
   const akDegistir = (kural: string, acik: boolean) => {
@@ -340,6 +354,24 @@ export function Santralim({ plantId }: { plantId: string }) {
                   : sg?.egim_yuzde_yil != null
                     ? <>eğilim %{sayiTr(sg.egim_yuzde_yil, 1)}/yıl<span style={{ color: "var(--soluk)" }}> · {sayiTr(sg.gun)} gün · {sg.not || "bozunma için ≥13 ay"}</span></>
                     : <span style={{ color: "var(--soluk)" }}>— {sg?.not || "ölçüm birikmedi"}</span>}</td></tr>
+              {/* v2.274 (Dalga 3): fizik terimleri — seçim önce önizlenir (salt fizik, arşiv meteosu), sonra uygulanır */}
+              <tr><td>Fizik terimleri</td>
+                <td>{ft ? <>
+                  {(["iam_model", "spectral_model", "soiling_model", "kar_model"] as const).map((k) => (
+                    <label key={k} style={{ display: "inline-flex", gap: 4, alignItems: "center", marginRight: 12, fontSize: 12.5 }} title={ft.not[k] ?? ""}>
+                      {ft.etiket[k]}
+                      <select className="mono" value={ftSon[k] ?? ft[k]} style={{ fontSize: 12 }} onChange={(e) => ftDegistir(k, e.target.value)}>
+                        {ft.secenekler[k].map((s) => <option key={s} value={s}>{s === "none" ? "kapalı" : "açık" + (ft.secenekler[k].length > 2 ? ` (${s.replace("_", " ")})` : "")}</option>)}
+                      </select>
+                    </label>))}
+                  {ftOn && <div style={{ marginTop: 6, fontSize: 12.5 }}>
+                    <span className="cip">önizleme · 7 gün salt fizik · {ftOn.toplam_fark_pct == null ? "—" : `%${sayiTr(ftOn.toplam_fark_pct, 2)}`} enerji farkı ({sayiTr(ftOn.toplam_mevcut_kwh / 1000, 1)} → {sayiTr(ftOn.toplam_aday_kwh / 1000, 1)} MWh)</span>
+                    {!ftOn.nem_var && <span className="cip" style={{ marginLeft: 6 }}>nem verisi yok → spektral etkisiz</span>}
+                    {!ftOn.kar_var && <span className="cip" style={{ marginLeft: 6 }}>kar verisi yok → kar örtüsü etkisiz</span>}
+                    <button className="dugme" style={{ marginLeft: 8, fontSize: 11.5 }} onClick={() => { const [k, v] = Object.entries(ftSon)[0] ?? []; if (k) ftUygula(k, String(v)); }}>Uygula</button>
+                  </div>}
+                  {ftMesaj && <div className="soluk" style={{ marginTop: 4, fontSize: 12.5 }}>{ftMesaj}</div>}
+                  </> : <span style={{ color: "var(--soluk)" }}>—</span>}</td></tr>
               {/* v2.265 (Dalga 5.17): ek alarm kuralları — varsayılan iki kural sabit; üçü santral bazında açılır */}
               <tr><td>Alarm kuralları</td>
                 <td>{ak ? <>
