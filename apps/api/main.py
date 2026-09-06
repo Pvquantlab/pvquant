@@ -608,6 +608,18 @@ def hijyen(plant_id: str, gun: int = 30, claims=Depends(gecerli_kullanici)):
     return hijyen_service.ozet(claims["tenant_id"], plant_id, gun=gun)
 
 
+@app.get("/v1/plants/{plant_id}/guvenilirlik")
+def guvenilirlik(plant_id: str, gun: int = 60, claims=Depends(gecerli_kullanici)):
+    """v2.271 — kantil güvenilirliği (P10/P50/P90 gözlenen vs nominal), PIT histogramı, keskinlik ve aralık skoru; ham ↔ kalibre."""
+    from pvquant.services import guvenilirlik_service, plant_service
+    if not (14 <= gun <= 180):
+        raise HTTPException(422, "gun 14-180 araliginda olmali")
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    return guvenilirlik_service.hesapla(claims["tenant_id"], {"id": str(row["id"]), "capacity_kwp": float(row["capacity_kwp"])}, gun=gun)
+
+
 @app.get("/v1/plants/{plant_id}/backtest")
 def backtest(plant_id: str, gun: int = 90, claims=Depends(gecerli_kullanici)):
     """v2.253 — konformal katmanın kayan-başlangıç geriye dönük sınavı (sızıntısız)."""

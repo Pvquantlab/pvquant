@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { EChartsOption } from "echarts";
 import { api } from "../../api/client";
-import type { Karne, HataMatrisi, HataDagilimi, KonformalAyar, Backtest, Dengesizlik } from "../../api/types";
+import type { Karne, HataMatrisi, HataDagilimi, KonformalAyar, Backtest, Dengesizlik, Guvenilirlik } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
 import { Kpi, Kart, Sayfa, sayiTr } from "./parcalar";
@@ -33,6 +33,44 @@ export function Dogruluk({ plantId }: { plantId: string }) {
   const [dz, setDz] = useState<Dengesizlik | null>(null);   // v2.259
   useEffect(() => { api.dengesizlik(plantId).then(setDz).catch(() => {}); }, [plantId]);
   useEffect(() => { api.backtest(plantId).then(setBt).catch(() => {}); }, [plantId]);
+  const [gv, setGv] = useState<Guvenilirlik | null>(null);   // v2.271
+  useEffect(() => { api.guvenilirlik(plantId).then(setGv).catch(() => {}); }, [plantId]);
+  // v2.271: güvenilirlik diyagramı — x nominal τ, y gözlenen P(y ≤ q_τ); köşegen ideal. Ham ince/soluk, kalibre kalın mavi.
+  const gvOption = useMemo<EChartsOption | null>(() => {
+    if (!gv || gv.durum !== "ok" || !gv.guvenilirlik) return null;
+    const kenar = oku("--kenar"), soluk = oku("--soluk"), mono = oku("--mono"), mavi = oku("--chart-p50-future");
+    const seri = (ad: string, rows: { tau: number; gozlenen: number }[], renk: string, kalin: number) => ({
+      name: ad, type: "line" as const, data: rows.map((r) => [r.tau, r.gozlenen]), symbol: "circle", symbolSize: 8,
+      lineStyle: { color: renk, width: kalin }, itemStyle: { color: renk } });
+    return {
+      animation: false, grid: { left: 44, right: 12, top: 26, bottom: 34 },
+      legend: { top: 0, right: 0, textStyle: { color: soluk, fontSize: 11 }, itemWidth: 14 },
+      tooltip: { trigger: "axis", backgroundColor: oku("--kart"), borderColor: kenar, borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 12 },
+        valueFormatter: (v: unknown) => `%${sayiTr(Number(v) * 100, 0)}` },
+      xAxis: { type: "value", min: 0, max: 1, name: "nominal", nameTextStyle: { color: soluk, fontSize: 10 },
+        axisLabel: { color: soluk, fontFamily: mono, fontSize: 10, formatter: (v: number) => `P${Math.round(v * 100)}` }, splitLine: { lineStyle: { color: oku("--izgara") } } },
+      yAxis: { type: "value", min: 0, max: 1, name: "gözlenen", nameTextStyle: { color: soluk, fontSize: 10 },
+        axisLabel: { color: soluk, fontFamily: mono, fontSize: 10, formatter: (v: number) => `%${Math.round(v * 100)}` }, splitLine: { lineStyle: { color: oku("--izgara") } } },
+      series: [
+        { name: "ideal", type: "line", data: [[0, 0], [1, 1]], symbol: "none", lineStyle: { color: soluk, type: "dashed", width: 1 }, silent: true },
+        seri("ham bant", gv.guvenilirlik.ham, oku("--ch-dusuk"), 1.5),
+        seri("kalibre bant", gv.guvenilirlik.kalibre, mavi, 2.5),
+      ],
+    };
+  }, [gv, n, oku]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const pitOption = useMemo<EChartsOption | null>(() => {
+    if (!gv || gv.durum !== "ok" || !gv.pit) return null;
+    const soluk = oku("--soluk"), mono = oku("--mono");
+    return {
+      animation: false, grid: { left: 40, right: 12, top: 18, bottom: 30 },
+      tooltip: { trigger: "axis", backgroundColor: oku("--kart"), borderColor: oku("--kenar"), borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 12 },
+        valueFormatter: (v: unknown) => `%${sayiTr(Number(v) * 100, 0)}` },
+      xAxis: { type: "category", data: gv.pit.map((p) => p.kutu), axisLabel: { color: soluk, fontFamily: mono, fontSize: 9, interval: 1 }, axisTick: { show: false } },
+      yAxis: { type: "value", min: 0, axisLabel: { color: soluk, fontFamily: mono, fontSize: 10, formatter: (v: number) => `%${Math.round(v * 100)}` }, splitLine: { lineStyle: { color: oku("--izgara") } } },
+      series: [{ type: "bar", data: gv.pit.map((p) => p.oran), itemStyle: { color: oku("--ch-cubuk") }, barMaxWidth: 26,
+        markLine: { silent: true, symbol: "none", lineStyle: { color: soluk, type: "dashed" }, data: [{ yAxis: 0.1 }], label: { show: false } } }],
+    };
+  }, [gv, n, oku]);   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { api.hataMatrisi(plantId).then(setHm); }, [plantId]);
   useEffect(() => { api.hataDagilimi(plantId).then(setHd); }, [plantId]);
 
@@ -455,6 +493,31 @@ export function Dogruluk({ plantId }: { plantId: string }) {
             </table>
           </div>
         )}
+        {/* v2.271 (Dalga 1 tamamlayıcısı): kantil güvenilirliği + PIT + keskinlik — ham ↔ kalibre */}
+        {gv && (gv.durum === "ok" && gvOption && pitOption ? (
+          <div style={{ marginTop: 14 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+              <span className="cip">güvenilirlik · {sayiTr(gv.n_saat)} gündüz saati · {sayiTr(gv.gun_sayisi ?? 0)} gün</span>
+              <span className="cip">bant genişliği: ham %{sayiTr((gv.keskinlik?.ham ?? 0) * 100, 0)} → kalibre %{sayiTr((gv.keskinlik?.kalibre ?? 0) * 100, 0)} (kapasitenin)</span>
+              <span className="cip">aralık skoru: ham {sayiTr((gv.aralik_skoru_n?.ham ?? 0) * 100, 1)} → kalibre {sayiTr((gv.aralik_skoru_n?.kalibre ?? 0) * 100, 1)} (küçük iyi)</span>
+              <span className="cip">PIT en büyük sapma {sayiTr((gv.pit_max_sapma ?? 0) * 100, 0)} puan</span>
+            </div>
+            <div className="ızgara satir-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 14 }}>
+              <div><div className="mono" style={{ fontSize: 11, color: "var(--soluk)", marginBottom: 4 }}>GÜVENİLİRLİK DİYAGRAMI — gözlenen kapsama vs nominal</div>
+                <EChart option={gvOption} height={220} /></div>
+              <div><div className="mono" style={{ fontSize: 11, color: "var(--soluk)", marginBottom: 4 }}>PIT HİSTOGRAMI — gerçekleşenin bant içindeki yüzdeliği (düz = kalibre)</div>
+                <EChart option={pitOption} height={220} /></div>
+            </div>
+            <p className="soluk" style={{ marginTop: 8, marginBottom: 0, fontSize: 12.5 }}>
+              Nasıl okunur: noktalar köşegenin üstündeyse o kantil fazla temkinli (gerçekleşen daha sık altında kalıyor), altındaysa fazla iddialı.
+              PIT sütunları %10 çizgisine yakın olmalı; ortada tepe = bant fazla geniş, kenarlarda tepe = bant fazla dar. Aralık skoru genişlik + kapsam dışı cezasıdır.
+            </p>
+          </div>
+        ) : gv.durum !== "ok" ? (
+          <p className="soluk" style={{ marginTop: 10, marginBottom: 0, fontSize: 12.5 }}>
+            Güvenilirlik diyagramı için en az {sayiTr(gv.min_saat ?? 72)} gündüz saati gerekir (şu an {sayiTr(gv.n_saat)}).
+          </p>
+        ) : null)}
       </Kart>
       {/* v2.259 (Dalga 4.12): karnenin TL dili — DUY dengesizlik formülüyle PVQuant programı vs naif program.
           Fiyat kaynağı (EPİAŞ / senaryo) ve segment (dengesizliği kim taşır) açıkça söylenir. */}

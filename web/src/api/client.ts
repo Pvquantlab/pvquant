@@ -1,4 +1,4 @@
-import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda } from "./types";
+import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -488,6 +488,10 @@ export const api = {
   backtest: async (p: string, gun = 90): Promise<Backtest | null> => {
     if (TABAN == null) return null;
     try { return await getir<Backtest>(`/v1/plants/${p}/backtest?gun=${gun}`); } catch { return null; }
+  },
+  guvenilirlik: async (p: string, gun = 60): Promise<Guvenilirlik | null> => {
+    if (TABAN == null) return null;
+    try { return await getir<Guvenilirlik>(`/v1/plants/${p}/guvenilirlik?gun=${gun}`); } catch { return null; }
   },
   kayma: async (p: string, gun = 30): Promise<Kayma | null> => {
     if (TABAN == null) return null;

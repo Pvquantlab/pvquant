@@ -109,6 +109,13 @@ export interface Backtest {
   pencere: number; picp_ham_ort: number | null; picp_kal_ort: number | null; hedef: number; hukum: string;
   satirlar: { baslangic: string; n_test: number; picp_ham: number; picp_kal: number; bant_ham_n: number; bant_kal_n: number; q_ort: number }[];
 }
+/** /guvenilirlik — v2.271: kantil güvenilirliği, PIT, keskinlik (ham ↔ kalibre). */
+export interface Guvenilirlik {
+  durum: "ok" | "yetersiz" | "veri_yok"; n_saat: number; gun_sayisi?: number; min_saat?: number; pencere_gun?: number;
+  guvenilirlik?: { ham: { tau: number; gozlenen: number; sapma: number; n: number }[]; kalibre: { tau: number; gozlenen: number; sapma: number; n: number }[] };
+  pit?: { kutu: string; oran: number }[]; pit_max_sapma?: number;
+  keskinlik?: { ham: number; kalibre: number }; aralik_skoru_n?: { ham: number; kalibre: number }; picp80?: { ham: number; kalibre: number };
+}
 /** /kayma — v2.253: eğitim (arşiv) / servis (tahmin) meteo kayması. */
 export interface Kayma {
   n_saat: number; hukum: string; gun?: number; baslangic?: string; bitis?: string;
