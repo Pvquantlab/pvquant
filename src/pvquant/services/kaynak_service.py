@@ -9,6 +9,20 @@ from __future__ import annotations
 from pvquant.config import get_settings
 from pvquant.ext.kaynak import atif
 
+# Panel için okunur açıklama (ext not_ alanı README/teknik künye içindir; UI'da parametre adı geçmez)
+ACIKLAMA = {
+    "ecmwf": "Küresel sayısal hava tahmini; 0,25° ızgara, 15 gün ufuk, günde 2 koşu.",
+    "icon": "Avrupa bölgesel modeli; ~7 km ızgara, 5 gün ufuk, günde 8 koşu; Türkiye alan içinde.",
+    "gfs": "Küresel model (NOAA); 0,25° ızgara, 16 gün ufuk.",
+    "cams": "Uydu türevli ışınım serisi; ~2 gün gecikme — kalibrasyon geçmişi.",
+    "pvgis": "Uydu türevli ışınım arşivi 2005–2023 — iklim zarfı ve kalibrasyon geçmişi.",
+    "era5": "Yeniden analiz arşivi; 0,25°, saatlik.",
+    "nasa_power": "Kaba (1°) ışınım arşivi; yalnız eski dönem ve kıyas.",
+    "epias": "Piyasa fiyatları (PTF/SMF) — dengesizlik hesabı.",
+    "open_meteo": "Ücretsiz katman; ticari kullanıma kapalı.",
+}
+ARSIV_ETIKET = {"acik-nwp": "Açık NWP harmanı (ECMWF IFS + ICON-EU)"}
+
 ESLEME = {"acik-nwp": ["ecmwf", "icon"], "cams": ["cams"], "pvgis-sarah3": ["pvgis"], "nasa-power": ["nasa_power"],
           "open-meteo": ["open_meteo"], "epias": ["epias"]}
 
@@ -42,9 +56,11 @@ def hakkinda() -> dict:
     return {
         "urun": "PVQuant", "meteo_kaynak": get_settings().meteo_kaynak,
         "kaynaklar": [{"kimlik": k, "ad": atif.KAYNAKLAR[k].ad, "kurum": atif.KAYNAKLAR[k].kurum, "lisans": atif.KAYNAKLAR[k].lisans,
-                       "lisans_url": atif.KAYNAKLAR[k].lisans_url, "veri_url": atif.KAYNAKLAR[k].veri_url, "not": atif.KAYNAKLAR[k].not_}
+                       "lisans_url": atif.KAYNAKLAR[k].lisans_url, "veri_url": atif.KAYNAKLAR[k].veri_url,
+                       "not": ACIKLAMA.get(k, atif.KAYNAKLAR[k].not_)}
                       for k in kull],
-        "kunye": atif.kunye(kull), "uyarilar": atif.uyumluluk_denetimi(kull), "arsiv": arsiv,
+        "kunye": atif.kunye(kull), "uyarilar": atif.uyumluluk_denetimi(kull),
+        "arsiv": {ARSIV_ETIKET.get(k, k): v for k, v in arsiv.items()},
         "yontem": "Veriler PVQuant tarafından indirilmiş, birleştirilmiş ve işlenmiştir; kaynak kurumlar bu ürünü desteklemez ve sonuçlardan sorumlu değildir.",
     }
 

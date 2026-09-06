@@ -9,7 +9,9 @@ import { Kart, Sayfa, sayiTr } from "./parcalar";
 export function Hakkinda() {
   const [h, setH] = useState<HakkindaT | null | undefined>(undefined);
   useEffect(() => { api.hakkinda().then(setH).catch(() => setH(null)); }, []);
-  const tarih = (s: string | null | undefined) => s ? new Date(s).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }) : "—";
+  const tarih = (s: string | null | undefined) => s ? new Date(s).toLocaleString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—";
+  const sol = { textAlign: "left" as const };
+  const bag = { color: "var(--ikincil)", textDecoration: "underline", textUnderlineOffset: 2 };
   return (
     <Sayfa baslik="Hakkında" alt="Veri kaynakları, lisanslar ve işleme notu.">
       <Kart baslik="Veri kaynakları ve lisanslar">
@@ -19,14 +21,14 @@ export function Hakkinda() {
             {h.uyarilar.length > 0 && <p style={{ color: "var(--uyari)", fontSize: 12.5, margin: "0 0 10px" }}>{h.uyarilar.join(" · ")}</p>}
             <div className="grafik-kaydir">
               <table className="veri" style={{ fontSize: 12.5 }}>
-                <thead><tr><th>Kaynak</th><th>Kurum</th><th>Lisans</th><th>Not</th></tr></thead>
+                <thead><tr><th style={sol}>Kaynak</th><th style={sol}>Kurum</th><th style={sol}>Lisans</th><th style={sol}>Ne için</th></tr></thead>
                 <tbody>
                   {h.kaynaklar.map((k) => (
                     <tr key={k.kimlik}>
-                      <td style={{ fontWeight: 600 }}><a href={k.veri_url} target="_blank" rel="noreferrer">{k.ad}</a></td>
-                      <td>{k.kurum}</td>
-                      <td><a href={k.lisans_url} target="_blank" rel="noreferrer">{k.lisans}</a></td>
-                      <td className="soluk">{k.not}</td>
+                      <td style={{ ...sol, fontWeight: 600 }}><a href={k.veri_url} target="_blank" rel="noreferrer" style={bag}>{k.ad}</a></td>
+                      <td style={sol}>{k.kurum}</td>
+                      <td style={sol}><a href={k.lisans_url} target="_blank" rel="noreferrer" style={bag}>{k.lisans}</a></td>
+                      <td className="soluk" style={sol}>{k.not}</td>
                     </tr>))}
                 </tbody>
               </table>
@@ -39,11 +41,11 @@ export function Hakkinda() {
         <Kart baslik="Meteoroloji arşivi" sag={<span className="cip">koşu başına nokta serileri</span>}>
           <div className="grafik-kaydir">
             <table className="veri" style={{ fontSize: 12.5 }}>
-              <thead><tr><th>Kaynak</th><th>Son koşu</th><th>Nokta</th><th>Satır</th><th>Kapsam</th></tr></thead>
-              <tbody className="mono">
+              <thead><tr><th style={sol}>Kaynak</th><th style={sol}>Son koşu</th><th>Nokta</th><th>Satır</th><th style={sol}>Kapsam</th></tr></thead>
+              <tbody>
                 {Object.entries(h.arsiv).map(([k, v]) => (
-                  <tr key={k}><td>{k}</td><td>{tarih(v.son)}</td><td>{sayiTr(v.nokta)}</td><td>{sayiTr(v.satir)}</td>
-                    <td>{tarih(v.ilk)} → {tarih(v.son_ts)}</td></tr>))}
+                  <tr key={k}><td style={sol}>{k}</td><td className="mono" style={sol}>{tarih(v.son)}</td><td className="mono">{sayiTr(v.nokta)}</td><td className="mono">{sayiTr(v.satir)}</td>
+                    <td className="mono" style={sol}>{tarih(v.ilk)} → {tarih(v.son_ts)}</td></tr>))}
               </tbody>
             </table>
           </div>
