@@ -5,8 +5,42 @@ import { useTema } from "../../lib/useTema";
 import { api, RaporDenetimHata, type DenetimBulgusu, EslemeHatasi, type EslemeVerisi,
          type ScadaOnizleme, type ScadaKayit,
          type KosuSatiri } from "../../api/client";
-import type { KalibrasyonOzeti, Kayma, Hijyen } from "../../api/types";
+import type { KalibrasyonOzeti, Kayma, Hijyen, EpiasUretim } from "../../api/types";
 import { Kart, Sayfa, Kpi, sayiTr } from "./parcalar";
+
+/** v2.278 (Tablo 3.1 satır 7) — SCADA yüklenmeyen lisanslı santralda EPİAŞ gerçekleşen üretimi gerçekleşen kaynağı olur. */
+function EpiasUretimKarti({ plantId }: { plantId: string }) {
+  const [d, setD] = useState<EpiasUretim | null | undefined>(undefined);
+  const [kimlik, setKimlik] = useState<string>("");
+  const [mesaj, setMesaj] = useState<string | null>(null);
+  useEffect(() => { api.epiasUretim(plantId).then((r) => { setD(r); setKimlik(r?.epias_santral_id ? String(r.epias_santral_id) : ""); }).catch(() => setD(null)); }, [plantId]);
+  const kaydet = () => {
+    setMesaj(null);
+    api.epiasUretimAyarla(plantId, kimlik ? Number(kimlik) : null).then((r) => { setD(r); setMesaj("Kaydedildi — gece işi 7 günü çeker, SCADA olan saatlere dokunmaz."); })
+      .catch((e) => setMesaj(String((e as Error).message ?? e)));
+  };
+  if (d === undefined) return null;
+  return (
+    <Kart baslik="Gerçekleşen üretim kaynağı — piyasa şeffaflık akışı" sag={<span className="cip">{d?.uygun ? "hazır" : "devre dışı"}</span>}>
+      {d === null ? <p className="soluk" style={{ margin: 0 }}>Örnek kip.</p> : (
+        <>
+          <p style={{ margin: "0 0 8px", fontSize: 12.5 }}>
+            SCADA dosyası yüklenmeyen lisanslı santralda gerçekleşen üretim, EPİAŞ Şeffaflık Platformu'ndan saatlik olarak alınır ve
+            karne, alarm ve dengesizlik hesapları bunu kullanır. Yüklenen SCADA her zaman önceliklidir.
+          </p>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", fontSize: 12.5 }}>
+            <span className="soluk">Şeffaflık santral kimliği:</span>
+            <input className="mono" value={kimlik} onChange={(e) => setKimlik(e.target.value)} placeholder="powerPlantId" aria-label="Şeffaflık santral kimliği"
+                   style={{ width: 120, fontSize: 12, padding: "3px 6px", border: "1px solid var(--kenar)", borderRadius: 4, background: "var(--yuzey)", color: "var(--metin)" }} />
+            <button className="dugme" style={{ fontSize: 11.5 }} onClick={kaydet}>Kaydet</button>
+            <span className="cip">{d.uygun ? `${sayiTr(d.n_saat)} saat yazıldı${d.son ? ` · son ${new Date(d.son).toLocaleDateString("tr-TR")}` : ""}` : d.neden}</span>
+          </div>
+          {mesaj && <p className="soluk" style={{ margin: "8px 0 0", fontSize: 12.5 }}>{mesaj}</p>}
+        </>
+      )}
+    </Kart>
+  );
+}
 
 export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
   { plantId: string; santralimeGit?: () => void;
@@ -393,6 +427,7 @@ export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
         Veriniz azsa endişelenmeyin: 3 aydan kısa veri bulursak sizi engellemeyiz,
         hızlı tahminle başlatıp sonra yükseltmenizi öneririz.
       </p>
+      <EpiasUretimKarti plantId={plantId} />
     </Sayfa>
   );
 }

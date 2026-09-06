@@ -73,6 +73,17 @@ export interface ApiAnahtar { id: string; ad: string | null; prefix: string; kap
 export interface ApiAnahtarYeni extends Omit<ApiAnahtar, "iptal" | "son_kullanim" | "olusturma"> { anahtar: string }
 export interface Webhook { id: string; plant_id: string | null; santral: string | null; url: string; olaylar: string[]; aktif: boolean;
   son_gonderim: string | null; son_durum: number | null; hata_sayisi: number }
+/** /bankable — v2.278: yıllık P50/P90 (1 ve 10 yıl), belirsizlik bütçesi, TMY. */
+export interface Bankable {
+  durum: string; hesap_zamani?: string; kaynak?: string; donem?: string; mod?: string; not?: string;
+  p50_kwh?: number; ozgul_verim_kwh_kwp?: number; sigma_toplam?: number; yil_sayisi?: number; N_yil?: number;
+  bilesenler?: Record<string, number>; bir_yil?: Record<string, number>; n_yil?: Record<string, number>;
+  ghi?: { p50_kwh_m2: number; p90_kwh_m2_1yil: number; sigma_yillar_arasi: number };
+  yillar?: { yil: number; kwh: number; ghi_kwh_m2: number }[];
+  tmy?: { secilen_yillar?: Record<string, number>; p90_yili?: number; p90_yili_ghi?: number; tmy_ghi_kwh_m2?: number; hata?: string };
+}
+/** /epias-uretim — v2.278: EPİAŞ gerçekleşen üretim akışı durumu. */
+export interface EpiasUretim { uygun: boolean; neden: string; epias_santral_id: number | null; n_saat: number; son: string | null }
 /** /portfoy/dsg — v2.276: DSG netleştirmesi. */
 export interface PortfoyDsg {
   santral: number; n_saat: number; ayri_tl: number | null; net_tl: number | null; kazanc_tl: number | null; kazanc_pct?: number | null;

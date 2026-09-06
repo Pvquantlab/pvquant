@@ -1,4 +1,4 @@
-import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme } from "./types";
+import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , EpiasUretim , Bankable , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -485,6 +485,18 @@ export const api = {
     const url = URL.createObjectURL(await y.blob()); const a = document.createElement("a");
     a.href = url; a.download = es ? es[1] : `TOPLAYICI.${fmt}`; a.click(); URL.revokeObjectURL(url);
   },
+  /** v2.278: bankable yıllık beklenti (saklı sonuç; 404 → null) ve yeniden hesaplama (1–2 dk). */
+  bankable: async (p: string): Promise<Bankable | null> => {
+    if (TABAN == null) return null;
+    try { return await getir<Bankable>(`/v1/plants/${p}/bankable`); } catch { return null; }
+  },
+  bankableHesapla: (p: string): Promise<Bankable> => gonder(`/v1/plants/${p}/bankable/hesapla`, "POST"),
+  /** v2.278: EPİAŞ gerçekleşen üretim — durum ve santral eşlemesi. */
+  epiasUretim: async (p: string): Promise<EpiasUretim | null> => {
+    if (TABAN == null) return null;
+    try { return await getir<EpiasUretim>(`/v1/plants/${p}/epias-uretim`); } catch { return null; }
+  },
+  epiasUretimAyarla: (p: string, epias_santral_id: number | null): Promise<EpiasUretim> => gonder(`/v1/plants/${p}/epias-uretim`, "PUT", { epias_santral_id }),
   /** v2.275: EAK alanı / geçici kısıt / KÜPST katsayıları. */
   eakAyarla: (p: string, g: { eak_kw?: number | null; gecici_kw?: number | null; gecici_bitis?: string | null; kupst_n?: number | null; kupst_tolerans?: number | null }):
     Promise<{ eak_bugun: { eak_mw: number; kaynak: string; bitis?: string }; eak_kw: number | null; eak_gecici: { kw: number; bitis: string } | null; kupst_n: number | null; kupst_tolerans: number | null }> =>

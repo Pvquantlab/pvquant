@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { EChartsOption } from "echarts";
 import { api } from "../../api/client";
-import type { AylikBeklenti, SantralOzeti } from "../../api/types";
+import type { AylikBeklenti, SantralOzeti, Bankable } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
 import { Cubuklar } from "../santralim/Cubuklar";
@@ -17,6 +17,11 @@ export function Aylik({ plantId }: { plantId: string }) {
   const [b, setB] = useState<AylikBeklenti | null>(null);
   const [o, setO] = useState<SantralOzeti | null>(null);
   const [birikiyor, setBirikiyor] = useState(false);
+  // v2.278: bankable yıllık beklenti — saklı sonuç; "yenile" 1–2 dk sürer (19 yıl × fizik koşusu)
+  const [bk, setBk] = useState<Bankable | null | undefined>(undefined);
+  const [bkMesaj, setBkMesaj] = useState<string | null>(null);
+  useEffect(() => { api.bankable(plantId).then(setBk).catch(() => setBk(null)); }, [plantId]);
+  const bkYenile = () => { setBkMesaj("Hesaplanıyor — 19 yıl × fizik koşusu, 1–2 dakika…"); api.bankableHesapla(plantId).then((r) => { setBk(r); setBkMesaj(null); }).catch((e) => setBkMesaj(String((e as Error).message ?? e))); };
   const { n, oku } = useTema();
 
   useEffect(() => {
@@ -149,6 +154,42 @@ export function Aylik({ plantId }: { plantId: string }) {
              deger={k?.p90 !== null && k ? sayiTr(k.p90) : "—"}
              birim="kWh/m²" alt="iyimser zarf (10/100 yıl üstünde)" />
       </div>
+      {/* v2.278 (Tablo 3.1 satır 6): bankable yıllık beklenti — ücretsiz uydu türevli arşiv + fizik + belirsizlik bütçesi */}
+      <Kart baslik="Yıllık beklenti — P50 / P90 ve belirsizlik bütçesi"
+        sag={<span style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          {bk?.durum === "ok" && <span className="cip">{bk.donem} · {sayiTr(bk.yil_sayisi ?? 0)} yıl</span>}
+          <button className="dugme" style={{ fontSize: 11.5 }} onClick={bkYenile}>{bk?.durum === "ok" ? "Yenile" : "Hesapla"}</button>
+        </span>}>
+        {bk === undefined ? <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p>
+         : !bk || bk.durum !== "ok" ? (
+          <p className="soluk" style={{ margin: 0 }}>{bkMesaj ?? (bk?.not ?? "Henüz hesaplanmadı — 'Hesapla' ile uzun dönem ışınım arşivinden yıllık dağılım üretilir (ayda bir kendiliğinden yenilenir).")}</p>
+        ) : (
+          <>
+            <div className="ızgara satir-4" style={{ marginBottom: 10 }}>
+              <Kpi etiket="P50 (yıllık)" deger={sayiTr((bk.p50_kwh ?? 0) / 1000, 0)} birim="MWh" alt={`${sayiTr(bk.ozgul_verim_kwh_kwp ?? 0, 0)} kWh/kWp özgül verim`} />
+              <Kpi etiket="P90 · tek yıl" deger={sayiTr((bk.bir_yil?.p90 ?? 0) / 1000, 0)} birim="MWh" alt={`P99 ${sayiTr((bk.bir_yil?.p99 ?? 0) / 1000, 0)} MWh`} />
+              <Kpi etiket={`P90 · ${sayiTr(bk.N_yil ?? 10)} yıl ortalaması`} deger={sayiTr((bk.n_yil?.p90 ?? 0) / 1000, 0)} birim="MWh" alt="finansman ufku (yıllar arası bileşen küçülür)" />
+              <Kpi etiket="Toplam belirsizlik (σ)" deger={`%${sayiTr((bk.sigma_toplam ?? 0) * 100, 1)}`}
+                   alt={bk.bilesenler ? `yıllar arası %${sayiTr(bk.bilesenler.yillar_arasi * 100, 1)} · kaynak %${sayiTr(bk.bilesenler.kaynak * 100, 0)} · model %${sayiTr(bk.bilesenler.model * 100, 0)}` : ""} />
+            </div>
+            <div className="grafik-kaydir">
+              <table className="veri" style={{ fontSize: 12 }}>
+                <thead><tr><th>Yıl</th>{(bk.yillar ?? []).map((y) => <th key={y.yil}>{y.yil}</th>)}</tr></thead>
+                <tbody className="mono">
+                  <tr><td>Üretim (MWh)</td>{(bk.yillar ?? []).map((y) => <td key={y.yil}>{sayiTr(y.kwh / 1000, 0)}</td>)}</tr>
+                  <tr><td>Işınım (kWh/m²)</td>{(bk.yillar ?? []).map((y) => <td key={y.yil}>{sayiTr(y.ghi_kwh_m2, 0)}</td>)}</tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="soluk" style={{ fontSize: 12.5, margin: "10px 0 0" }}>
+              {bk.mod}. Işınım P50 {sayiTr(bk.ghi?.p50_kwh_m2 ?? 0, 0)} kWh/m² (tek yıl P90 {sayiTr(bk.ghi?.p90_kwh_m2_1yil ?? 0, 0)}).
+              {bk.tmy?.p90_yili ? ` P90 senaryo yılı: ${bk.tmy.p90_yili} (${sayiTr(bk.tmy.p90_yili_ghi ?? 0, 0)} kWh/m²); tipik meteorolojik yıl ${sayiTr(bk.tmy.tmy_ghi_kwh_m2 ?? 0, 0)} kWh/m².` : ""}
+              {" "}{bk.not}
+            </p>
+            {bkMesaj && <p className="soluk" style={{ fontSize: 12.5, margin: "6px 0 0" }}>{bkMesaj}</p>}
+          </>
+        )}
+      </Kart>
       <Kart baslik="Aylık GHI — uzun dönem P50 ve P10–P90 aralığı">
         <EChart option={option} height={320}
           ariaLabel="12 ay için 20 yıllık GHI serpilisi, P10-P90 bandı ve P50 çizgisi" />

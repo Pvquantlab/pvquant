@@ -65,7 +65,7 @@ def test_satirlar_ve_meteodata():
     s = acik_nwp.satirlar_uret(df, "acik-nwp", pd.Timestamp("2026-09-06", tz="UTC"), 37.8712, 32.4891)
     assert len(s) == 2 and s[0]["la"] == 37.871 and s[0]["lo"] == 32.489 and s[1]["ghi"] == 50.0   # NaN saat yazılmaz
     md = acik_nwp._cerceve_to_meteodata(df.dropna(), LAT, LON)
-    assert isinstance(md, MeteoData) and md.kaynak == "acik-nwp" and md.nwp_model == "ECMWF IFS + ICON-EU" and md.snowfall is None
+    assert isinstance(md, MeteoData) and md.kaynak == "acik-nwp" and md.nwp_model == "ECMWF IFS + ICON-EU + GFS" and md.snowfall is None
 
 
 def test_eski_temizle(tmp_path):
@@ -93,3 +93,20 @@ def test_fasad_acik_yolu(monkeypatch):
     monkeypatch.setattr(acik_nwp, "arsivden_gecmis", lambda *a, **k: md)
     assert OpenMeteoClient().get_historical(LAT, LON, "2026-09-06", "2026-09-06").kaynak == "acik-nwp"
     config.get_settings.cache_clear()
+
+
+def test_harmanla_uc_model():
+    """v2.277: ECMWF (15 g) + ICON (5 g) + GFS kontrol (10 g) — örtüşen aralıklar kademeli harmanlanır, ufuk ECMWF'den."""
+    ix = pd.date_range("2026-09-06", periods=15 * 24, freq="h", tz="UTC")
+    cs = pd.Series(np.clip(800 * np.sin(np.pi * (ix.hour - 3) / 12), 0, None), index=ix)
+    e = pd.DataFrame({"ghi": cs * 0.6, "temp_air": 20.0, "wind_speed_10m": 3.0, "cloud_cover": 40.0, "precipitation": 0.0, "relative_humidity": 50.0})
+    i = pd.DataFrame({"ghi": cs.iloc[:120] * 0.8, "dni": 0.0, "dhi": cs.iloc[:120] * 0.8, "temp_air": 26.0, "wind_speed_10m": 5.0, "cloud_cover": 20.0})
+    g = pd.DataFrame({"ghi": cs.iloc[:240] * 0.7, "temp_air": 23.0, "wind_speed_10m": 4.0, "cloud_cover": 30.0})
+    h = acik_nwp.harmanla(e, i, LAT, LON, gfs=g)
+    assert len(h) == 360 and h.index.is_unique and "relative_humidity" in h
+    assert abs(h["temp_air"].iloc[10] - 23.0) < 1e-6     # üç model: (20+26+23)/3
+    assert abs(h["temp_air"].iloc[150] - 21.5) < 1e-6    # ICON bitti: (20+23)/2
+    assert abs(h["temp_air"].iloc[300] - 20.0) < 1e-6    # yalnız ECMWF
+    h2 = acik_nwp.harmanla(e, None, LAT, LON, gfs=g)
+    assert abs(h2["temp_air"].iloc[10] - 21.5) < 1e-6 and len(h2) == 360
+    assert not h[["ghi", "temp_air", "wind_speed_10m", "cloud_cover"]].isna().any().any()

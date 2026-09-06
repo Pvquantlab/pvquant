@@ -614,6 +614,32 @@ class EakIstek(BaseModel):
     kupst_tolerans: float | None = None         # KGÜP oranı (0–0,5)
 
 
+class EpiasIstek(BaseModel):
+    epias_santral_id: int | None = None
+
+
+@app.get("/v1/plants/{plant_id}/epias-uretim")
+def epias_uretim_durum(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """v2.278 — EPİAŞ gerçekleşen üretim akışının durumu (kimlik, santral eşlemesi, yazılan saat sayısı)."""
+    from pvquant.services import epias_uretim_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    return epias_uretim_service.durum(claims["tenant_id"], row)
+
+
+@app.put("/v1/plants/{plant_id}/epias-uretim")
+def epias_uretim_ayarla(plant_id: str, p: EpiasIstek, claims=Depends(yazma_yetkisi())):
+    """v2.278 — Şeffaflık santral kimliğini (powerPlantId) eşle; null → eşlemeyi kaldır."""
+    from pvquant.services import epias_uretim_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, epias_santral_id=p.epias_santral_id)
+    row["params_json"] = pj
+    return epias_uretim_service.durum(claims["tenant_id"], row)
+
+
 @app.put("/v1/plants/{plant_id}/eak")
 def eak_ayarla(plant_id: str, p: EakIstek, claims=Depends(yazma_yetkisi())):
     """v2.275 — EAK alanı (emre amade kapasite) + geçici kısıt + KÜPST katsayıları; params_json'a yazılır, KGÜP/toplayıcı çıktısı ve simülatör okur."""
@@ -843,6 +869,29 @@ def skill(plant_id: str, bucket: str = "0-24", gun: int = 120,
              "nmae": _opt(r, "nmae"), "nrmse": _opt(r, "nrmse"), "nmbe": _opt(r, "nmbe")}
             for _, r in kova.iterrows()],
     }
+
+
+@app.get("/v1/plants/{plant_id}/bankable")
+def bankable(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """v2.278 — bankable yıllık beklenti (P50/P90, 1 ve 10 yıl), belirsizlik bütçesi, TMY; hesaplanmadıysa 404."""
+    from pvquant.services import bankable_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    r = bankable_service.getir(row)
+    if not r:
+        raise HTTPException(404, "henüz hesaplanmadı")
+    return r
+
+
+@app.post("/v1/plants/{plant_id}/bankable/hesapla")
+def bankable_hesapla(plant_id: str, claims=Depends(yazma_yetkisi())):
+    """v2.278 — hesapla/yenile (1–2 dk: 19 yıl × fizik koşusu); sonuç saklanır."""
+    from pvquant.services import bankable_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    return bankable_service.hesapla(claims["tenant_id"], row)
 
 
 @app.get("/v1/plants/{plant_id}/monthly")

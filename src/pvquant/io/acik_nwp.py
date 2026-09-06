@@ -24,7 +24,7 @@ import pandas as pd
 from pvquant.config import get_settings
 
 KAYNAK = "acik-nwp"                      # forecast_runs.meteo_source metni
-KAYNAK_ETIKET = "ECMWF IFS + ICON-EU"   # nwp_model alanı (künye/atıf bu ikisini sayar)
+KAYNAK_ETIKET = "ECMWF IFS + ICON-EU + GFS"   # nwp_model alanı (v2.277: üç model, kt-uzayında eşit ağırlık)
 ECMWF_PARAM = ["ssrd", "2t", "2d", "10u", "10v", "tcc", "tp"]   # v2.274: 2d → bağıl nem (spektral terim)
 ECMWF_ADIMLAR = list(range(0, 145, 3)) + list(range(150, 361, 6))
 KOLONLAR = ["ghi", "dni", "dhi", "temp_air", "wind_speed_10m", "cloud_cover", "precipitation", "relative_humidity"]
@@ -161,15 +161,21 @@ def icon_noktalar(kosu_dizini: Path, noktalar: list[tuple[float, float]]) -> dic
 
 
 # ----------------------------------------------------------------------------- Harman --------------------------
-def harmanla(ecmwf: pd.DataFrame | None, icon: pd.DataFrame | None, lat: float, lon: float) -> pd.DataFrame:
-    """Örtüşen saatlerde kt-uzayında eşit ağırlıklı harman; ICON bitince ECMWF; tek kaynak varsa o."""
+def harmanla(ecmwf: pd.DataFrame | None, icon: pd.DataFrame | None, lat: float, lon: float,
+             gfs: pd.DataFrame | None = None, agirliklar: dict[str, float] | None = None) -> pd.DataFrame:
+    """Örtüşen saatlerde kt-uzayında harman (v2.277: ECMWF + ICON + GFS/GEFS-kontrol; ağırlık verilmezse eşit —
+    ölçülen ışınım olmadan beceri ağırlığı üretilmez, uydurma yok); ICON/GFS bitince ECMWF; tek kaynak varsa o."""
     from pvquant.ext.kaynak.atif import KAYNAKLAR
     from pvquant.ext.kaynak.harman import harmanla as _h
     from pvquant.ext.kaynak.ortak import MeteoCerceve
-    if ecmwf is None and icon is None:
+    if ecmwf is None and icon is None and gfs is None:
         raise ValueError("harmanlanacak NWP yok")
-    if ecmwf is None or icon is None or ecmwf.index.intersection(icon.index).empty:
-        tek = ecmwf if icon is None else icon
+    if ecmwf is not None and icon is None and gfs is not None and not ecmwf.index.intersection(gfs.index).empty:
+        icon = None   # aşağıdaki çoklu yol ECMWF+GFS ile çalışır
+    if ecmwf is None and icon is None:
+        icon = gfs; gfs = None
+    if ecmwf is None or (icon is None and gfs is None) or (icon is not None and ecmwf.index.intersection(icon.index).empty and gfs is None):
+        tek = ecmwf if (icon is None and gfs is None) else (icon if icon is not None else gfs)
         c = MeteoCerceve(tek[[k for k in tek.columns if k not in ("precipitation", "relative_humidity")]].copy(), lat, lon,
                          KAYNAKLAR["ecmwf" if tek is ecmwf else "icon"])
         df = c.df
@@ -179,18 +185,44 @@ def harmanla(ecmwf: pd.DataFrame | None, icon: pd.DataFrame | None, lat: float, 
                     df[kol] = ecmwf[kol].reindex(df.index)
         return df
     ce = MeteoCerceve(ecmwf[[k for k in ecmwf.columns if k not in ("precipitation", "relative_humidity")]].copy(), lat, lon, KAYNAKLAR["ecmwf"])
-    # ICON'da eksik adım (DWD'de bazı dosyalar 404) → o saatlerde ECMWF değeri; harman NaN üretmesin
-    icon = icon.copy()
-    for kol in ("ghi", "temp_air", "wind_speed_10m", "cloud_cover"):
-        if kol in icon and kol in ecmwf:
-            icon[kol] = icon[kol].fillna(ecmwf[kol].reindex(icon.index))
-    icon = icon.dropna(subset=["ghi"])
-    ci = MeteoCerceve(icon, lat, lon, KAYNAKLAR["icon"])
-    ortak = _h({"ecmwf": ce, "icon": ci}).df
-    # ICON koşusu ECMWF'den geç başlayabilir (06z vs 00z): baştaki ve sondaki saatler yalnız ECMWF'den
+    modeller = {"ecmwf": ce}
+    for ad, df_m in (("icon", icon), ("gfs", gfs)):
+        if df_m is None:
+            continue
+        m = df_m.copy()
+        for kol in ("ghi", "temp_air", "wind_speed_10m", "cloud_cover"):   # eksik adım (404) → ECMWF değeri; harman NaN üretmesin
+            if kol in m and kol in ecmwf:
+                m[kol] = m[kol].fillna(ecmwf[kol].reindex(m.index))
+            elif kol not in m and kol in ecmwf:
+                m[kol] = ecmwf[kol].reindex(m.index)
+        m = m.dropna(subset=["ghi"])
+        if not m.empty and not ce.df.index.intersection(m.index).empty:
+            modeller[ad] = MeteoCerceve(m, lat, lon, KAYNAKLAR[ad])
+    if len(modeller) == 1:
+        df = ce.df
+        for kol in ("precipitation", "relative_humidity"):
+            if kol in ecmwf:
+                df[kol] = ecmwf[kol].reindex(df.index)
+        return df[[k for k in KOLONLAR if k in df.columns]]
+    # modeller farklı ufuklarda biter (ICON 5 g, GFS 10 g): ortak aralık bütün modellerle, sonrası kalanlarla, en son yalnız ECMWF
+    parcalar = []
+    kalan = dict(modeller)
+    while len(kalan) > 1:
+        h = _h(kalan, {a: (agirliklar or {}).get(a, 1.0) for a in kalan}).df
+        parcalar.append(h)
+        en_kisa = min((a for a in kalan if a != "ecmwf"), key=lambda a: kalan[a].df.index.max())
+        sinir = kalan[en_kisa].df.index.max()
+        kalan = {a: c.kes(sinir + pd.Timedelta(hours=1)) for a, c in kalan.items() if a != en_kisa and len(c.df.loc[sinir + pd.Timedelta(hours=1):]) > 0}
+        kalan = {a: c for a, c in kalan.items() if not c.df.empty}
+        if "ecmwf" not in kalan:
+            break
+    ortak = pd.concat(parcalar).sort_index()
+    ortak = ortak[~ortak.index.duplicated(keep="first")]
+    # bölgesel koşu ECMWF'den geç başlayabilir (06z vs 00z): baştaki ve sondaki saatler yalnız ECMWF'den
     bas = ce.df.loc[ce.df.index < ortak.index.min()]
     kuyruk = ce.df.loc[ce.df.index > ortak.index.max()]
     df = pd.concat([bas, ortak, kuyruk]).sort_index()
+    df = df[~df.index.duplicated(keep="first")]
     for kol in ("precipitation", "relative_humidity"):
         if kol in ecmwf:
             df[kol] = ecmwf[kol].reindex(df.index)
@@ -246,21 +278,25 @@ def kosu_cek_ve_arsivle(noktalar: list[tuple[float, float]], dizin: Path | None 
     if e_df is None and i_df is None:
         raise RuntimeError("açık NWP: iki kaynak da alınamadı — " + "; ".join(rapor["hata"]))
     kosu = max(k for k in (e_kosu, i_kosu) if k is not None)
+    g_kontrol: dict = {}
+    if gefs:   # v2.273: üye verisi (bant) — düşerse ana koşu etkilenmez; v2.277: kontrol üyesi harmana üçüncü model
+        rapor["gefs"] = {}
+        for lat, lon in noktalar:
+            try:
+                rp = gefs_cek_ve_arsivle(lat, lon, dizin)
+                rapor["gefs"][f"{lat},{lon}"] = {k: v for k, v in rp.items() if k != "kontrol"}
+                if rp.get("kontrol") is not None:
+                    g_kontrol[(lat, lon)] = rp["kontrol"]
+            except Exception as ex:   # noqa: BLE001
+                rapor["hata"].append(f"gefs {lat},{lon}: {type(ex).__name__}: {ex}")
     satirlar = []
     for lat, lon in noktalar:
         e = e_df.get((lat, lon)) if e_df else None
         i = i_df.get((lat, lon)) if i_df else None
         if e is None and i is None:
             continue
-        satirlar += satirlar_uret(harmanla(e, i, lat, lon), KAYNAK, kosu, lat, lon)
-    rapor["satir"] = _arsive_yaz(satirlar); rapor["kosu"] = kosu.isoformat()
-    if gefs:   # v2.273: üye verisi — düşerse ana koşu etkilenmez (bant model yolundan gelir)
-        rapor["gefs"] = {}
-        for lat, lon in noktalar:
-            try:
-                rapor["gefs"][f"{lat},{lon}"] = gefs_cek_ve_arsivle(lat, lon, dizin)
-            except Exception as ex:   # noqa: BLE001
-                rapor["hata"].append(f"gefs {lat},{lon}: {type(ex).__name__}: {ex}")
+        satirlar += satirlar_uret(harmanla(e, i, lat, lon, gfs=g_kontrol.get((lat, lon))), KAYNAK, kosu, lat, lon)
+    rapor["satir"] = _arsive_yaz(satirlar); rapor["kosu"] = kosu.isoformat(); rapor["modeller"] = 2 + (1 if g_kontrol else 0)
     eski_temizle(dizin, get_settings().nwp_kosu_tut)
     return rapor
 
@@ -463,7 +499,7 @@ def gefs_cek_ve_arsivle(lat: float, lon: float, dizin: Path | None = None) -> di
     kd, kosu = gefs_indir(lat, lon, dizin)
     uyeler = gefs_uye_noktalar(kd, *_nokta_anahtar(lat, lon))
     n = _uyeleri_yaz(uye_satirlari(uyeler, kosu, lat, lon))
-    return {"kosu": kosu.isoformat(), "uye": len(uyeler), "satir": n}
+    return {"kosu": kosu.isoformat(), "uye": len(uyeler), "satir": n, "kontrol": uyeler.get(0)}   # v2.277: kontrol üyesi harman için
 
 
 def arsivden_uyeler(lat: float, lon: float, days: int, azami_yas_saat: float = 36.0) -> dict[int, "pd.DataFrame"] | None:

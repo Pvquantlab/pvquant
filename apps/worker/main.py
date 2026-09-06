@@ -234,6 +234,14 @@ def gun_ici_tahmin(plant):
     forecast_service.uret_ve_kaydet(plant["tenant_id"], plant, etiket="gun_ici")
 
 
+def gece_epias_uretim(plant):
+    """v2.278 — SCADA yüklenmeyen lisanslı santralda EPİAŞ gerçek zamanlı üretimi gerçekleşen olarak yazar (kimlik/eşleme yoksa atlar)."""
+    from pvquant.services import epias_uretim_service
+    r = epias_uretim_service.yukle(plant["tenant_id"], plant, gun=7)
+    if r.get("durum") != "atlandi":
+        print("gece_epias_uretim:", plant.get("name"), r)
+
+
 def gece_piyasa(_plant=None):
     """v2.258 — EPİAŞ fiyatları (tenant'sız, günde bir kez yeter; _logla santral döngüsünden çağırır,
     ikinci santralde tekrar çekmemek için 'bugün çekildi' bayrağı)."""
@@ -484,6 +492,13 @@ def aylik_kalibrasyon(plant):
     calib_service.kalibre_et(plant["tenant_id"], plant, hibrit=True)
 
 
+def aylik_bankable(plant):
+    """v2.278 — ayda bir: PVGIS-SARAH3 19 yıl × fizik → bankable P50/P90 + belirsizlik bütçesi (params_json.bankable)."""
+    from pvquant.services import bankable_service
+    r = bankable_service.hesapla(plant["tenant_id"], plant)
+    print("aylik_bankable:", plant.get("name"), r.get("durum"), r.get("p50_kwh"))
+
+
 def aylik_iklim(plant):
     """v2.77-C: iklim beklentisi ayda bir tazelenir (KUTU-2 hesaplayan yol).
     Arsiv probu olcumu: 20 yil tek cagri ~3 sn — santral basina ucuz."""
@@ -504,6 +519,7 @@ if __name__ == "__main__":
         print("PVQuant worker --once: tam tur basliyor…")
         _logla("gece_meteo", gece_meteo)()                  # v2.268 (Dalga 0): NWP arşivi önce
         _logla("gece_piyasa", gece_piyasa)()                # v2.258 (kimlik yoksa atlar)
+        _logla("gece_epias_uretim", gece_epias_uretim)()    # v2.278 (kimlik/eşleme yoksa atlar)
         _logla("gece_hijyen", gece_hijyen)()                # v2.254 (skill'den once)
         _logla("gece_skill", gece_skill)()
         _logla("gece_konformal", gece_konformal)()          # v2.252
@@ -520,6 +536,7 @@ if __name__ == "__main__":
     if cfg.gun_ici_guncelleme:                                              # v2.276: gün içi koşular (ICON taze)
         sch.add_job(_logla("gun_ici_tahmin", gun_ici_tahmin), "cron", hour=cfg.gun_ici_saatler, minute=30)
     sch.add_job(_logla("gece_piyasa", gece_piyasa), "cron", hour=cfg.worker_hour_skill, minute=15)   # v2.258
+    sch.add_job(_logla("gece_epias_uretim", gece_epias_uretim), "cron", hour=cfg.worker_hour_skill, minute=18)   # v2.278
     sch.add_job(_logla("gece_hijyen", gece_hijyen), "cron", hour=cfg.worker_hour_skill, minute=20)   # v2.254
     sch.add_job(_logla("gece_skill", gece_skill), "cron", hour=cfg.worker_hour_skill, minute=30)
     sch.add_job(_logla("gece_konformal", gece_konformal),                # v2.252
@@ -533,6 +550,8 @@ if __name__ == "__main__":
                 "cron", day=cfg.worker_day_calibration, hour=cfg.worker_hour_calibration, minute=0)
     sch.add_job(_logla("aylik_iklim", aylik_iklim),                      # v2.77-C
                 "cron", day=cfg.worker_day_calibration, hour=cfg.worker_hour_calibration, minute=30)
+    sch.add_job(_logla("aylik_bankable", aylik_bankable),                # v2.278
+                "cron", day=cfg.worker_day_calibration, hour=(cfg.worker_hour_calibration + 1) % 24, minute=0)
     print(f"PVQuant worker basladi (UTC cron: {cfg.worker_hour_skill:02d}:30 skill /"
           f" {cfg.worker_hour_forecast:02d}:00 tahmin / {cfg.worker_hour_alarm:02d}:00 alarm /"
           f" ay-{cfg.worker_day_calibration} {cfg.worker_hour_calibration:02d}:00 kal.)")

@@ -21,7 +21,7 @@ ACIKLAMA = {
     "epias": "Piyasa fiyatları (PTF/SMF) — dengesizlik hesabı.",
     "open_meteo": "Ücretsiz katman; ticari kullanıma kapalı.",
 }
-ARSIV_ETIKET = {"acik-nwp": "Açık NWP harmanı (ECMWF IFS + ICON-EU)"}
+ARSIV_ETIKET = {"acik-nwp": "Açık NWP harmanı (ECMWF IFS + ICON-EU + GFS)", "gefs": "GEFS üyeleri (31)"}
 
 ESLEME = {"acik-nwp": ["ecmwf", "icon"], "cams": ["cams"], "pvgis-sarah3": ["pvgis"], "nasa-power": ["nasa_power"],
           "open-meteo": ["open_meteo"], "epias": ["epias"]}
@@ -29,7 +29,7 @@ ESLEME = {"acik-nwp": ["ecmwf", "icon"], "cams": ["cams"], "pvgis-sarah3": ["pvg
 
 def kullanilan_kaynaklar() -> list[str]:
     cfg = get_settings()
-    k: list[str] = ["ecmwf", "icon", "pvgis"] if cfg.meteo_kaynak == "acik" else ["open_meteo"]
+    k: list[str] = ["ecmwf", "icon", "gfs", "pvgis"] if cfg.meteo_kaynak == "acik" else ["open_meteo"]
     try:
         from sqlalchemy import text
         from pvquant.db import sistem_baglami
@@ -38,7 +38,8 @@ def kullanilan_kaynaklar() -> list[str]:
                 k += ESLEME.get(ad, [])
             for (q,) in s.execute(text("SELECT DISTINCT quality_json->>'meteo_kaynak' FROM calibrations WHERE quality_json ? 'meteo_kaynak'")):
                 k += ESLEME.get(q, [])
-            if s.execute(text("SELECT 1 FROM piyasa_fiyat WHERE kaynak='epias' LIMIT 1")).first():
+            if s.execute(text("SELECT 1 FROM piyasa_fiyat WHERE kaynak='epias' LIMIT 1")).first() or \
+               s.execute(text("SELECT 1 FROM ingestion_batches WHERE filename='epias_realtime' LIMIT 1")).first():
                 k.append("epias")
     except Exception:   # noqa: BLE001 — DB yoksa (test/örnek kip) ayar listesi yeter
         pass
