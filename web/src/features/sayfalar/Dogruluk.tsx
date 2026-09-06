@@ -545,10 +545,11 @@ export function Dogruluk({ plantId }: { plantId: string }) {
             </div>
             <div className="grafik-kaydir" style={{ marginTop: 12 }}>
               <table className="veri" style={{ fontSize: 12.5 }}>
-                <thead><tr><th>Ay</th><th>Üretim (MWh)</th><th>|Sapma| (MWh)</th><th>PVQuant (TL)</th><th>Naif (TL)</th><th>Kurtarılan (TL)</th><th>Gelirin %'si</th><th>TL/MWh</th></tr></thead>
+                <thead><tr><th>Ay</th><th>Üretim (MWh)</th><th>|Sapma| (MWh)</th><th>PVQuant (TL)</th><th>KÜPST (TL)</th><th>Naif (TL)</th><th>Kurtarılan (TL)</th><th>Gelirin %'si</th><th>TL/MWh</th></tr></thead>
                 <tbody className="mono">
                   {dz.aylar.map((a) => (
                     <tr key={a.ay}><td>{a.ay}</td><td>{sayiTr(a.uretim_mwh, 1)}</td><td>{sayiTr(a.sapma_mwh, 1)}</td><td>{sayiTr(a.pvquant_tl)}</td>
+                      <td>{a.kupst_tl != null ? (dz.katsayilar && dz.katsayilar.kupst_n > 0 ? sayiTr(a.kupst_tl) : "—") : "—"}</td>
                       <td>{a.naif_tl != null ? sayiTr(a.naif_tl) : "—"}</td><td>{a.kurtarilan_tl != null ? sayiTr(a.kurtarilan_tl) : "—"}</td>
                       <td>{a.gelir_oran_pct != null ? `%${sayiTr(a.gelir_oran_pct, 2)}` : "—"}</td><td>{a.tl_per_mwh != null ? sayiTr(a.tl_per_mwh, 1) : "—"}</td></tr>
                   ))}

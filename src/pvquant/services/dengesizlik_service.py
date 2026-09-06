@@ -71,6 +71,7 @@ def hesapla_df(df: pd.DataFrame, fiyat: pd.DataFrame, kat: d.Katsayilar = d.Kats
     for ay, r in ay_pv.iterrows():
         kn = float(ay_naif.loc[ay, "toplam_maliyet"]) if ay_naif is not None and ay in ay_naif.index else None
         out_ay.append({"ay": ay.strftime("%Y-%m"), "uretim_mwh": round(float(r["gerceklesen"]), 1), "sapma_mwh": round(float(r["sapma"]), 1),
+                       "kupst_tl": round(float(r["kupst"]), 0), "dengesizlik_tl": round(float(r["dengesizlik_maliyeti"]), 0),   # v2.275
                        "referans_gelir_tl": round(float(r["referans_gelir"]), 0), "pvquant_tl": round(float(r["toplam_maliyet"]), 0),
                        "naif_tl": (round(kn, 0) if kn is not None else None), "kurtarilan_tl": (round(kn - float(r["toplam_maliyet"]), 0) if kn is not None else None),
                        "gelir_oran_pct": round(float(r["maliyet_gelir_orani"]) * 100, 2) if pd.notna(r["maliyet_gelir_orani"]) else None,
@@ -78,11 +79,12 @@ def hesapla_df(df: pd.DataFrame, fiyat: pd.DataFrame, kat: d.Katsayilar = d.Kats
     top_pv = float(pv["toplam_maliyet"].sum()); top_ref = float(pv["referans_gelir"].sum())
     top_naif = float(ay_naif["toplam_maliyet"].sum()) if ay_naif is not None else None
     return {"gun_sayisi": int(pd.Series(x.index.tz_convert(IST).date).nunique()), "aylar": out_ay,
-            "toplam": {"pvquant_tl": round(top_pv, 0), "naif_tl": (round(top_naif, 0) if top_naif is not None else None),
+            "toplam": {"pvquant_tl": round(top_pv, 0), "kupst_tl": round(float(pv["kupst"].sum()), 0),   # v2.275
+                       "naif_tl": (round(top_naif, 0) if top_naif is not None else None),
                        "kurtarilan_tl": (round(top_naif - top_pv, 0) if top_naif is not None else None),
                        "gelir_oran_pct": round(top_pv / top_ref * 100, 2) if top_ref else None, "referans_gelir_tl": round(top_ref, 0)},
             "fiyat": {"epias_saat": int((f["kaynak"] == "epias").sum()), "senaryo_saat": int((f["kaynak"] == "senaryo").sum())},
-            "katsayilar": {"k": kat.k, "l": kat.l, "kupst_n": kat.kupst_n}}
+            "katsayilar": {"k": kat.k, "l": kat.l, "kupst_n": kat.kupst_n, "kupst_tolerans": kat.kupst_tolerans}}
 
 
 def segment_bilgisi(params_json) -> dict:
@@ -98,14 +100,35 @@ def segment_bilgisi(params_json) -> dict:
     return {"segment": seg.value, "kgup_yukumlu": bool(k["kgup_yukumlu"]), "dengesizlik_sahibi": str(k["dengesizlik_sahibi"]), "santral_tasir": st.dengesizlik_tasir_mi()}
 
 
+KUPST_VARSAYILAN_N = 0.03        # KÜPST katsayısı (Kurul kararı; santral bazında params_json.kupst_n ile değişir)
+KUPST_VARSAYILAN_TOLERANS = 0.10  # KGÜP'ün %10'u (güneş/rüzgar toleransı; params_json.kupst_tolerans)
+
+
+def katsayilar(params_json) -> d.Katsayilar:
+    """v2.275 — KÜPST yalnız KGÜP yükümlü segmentlerde (KURALLAR.kupst); katsayı/tolerans santral bazında değiştirilebilir."""
+    pj = _pj(params_json)
+    seg = segment_bilgisi(params_json)
+    kupst_var = False
+    if seg["segment"]:
+        try:
+            kupst_var = bool(sg.KURALLAR.loc[sg.Segment(seg["segment"]), "kupst"])
+        except (KeyError, ValueError):
+            kupst_var = False
+    n = float(pj.get("kupst_n", KUPST_VARSAYILAN_N)) if kupst_var else 0.0
+    tol = float(pj.get("kupst_tolerans", KUPST_VARSAYILAN_TOLERANS))
+    return d.Katsayilar(kupst_n=n, kupst_tolerans=tol, kupst_kgup_yukumlu=bool(seg["kgup_yukumlu"]))
+
+
 def simulasyon(tenant_id, plant: dict, gun: int = 90) -> dict:
     from pvquant.services import piyasa_service
     df = program_df(tenant_id, plant["id"], gun)
     idx = pd.DatetimeIndex(df["ts_utc"]) if not df.empty else pd.DatetimeIndex([], tz="UTC")
     fiyat = piyasa_service.fiyatlar(idx)
-    out = hesapla_df(df, fiyat)
+    kat = katsayilar(plant.get("params_json"))
+    out = hesapla_df(df, fiyat, kat)
     out["pencere_gun"] = gun
     out["segment"] = segment_bilgisi(plant.get("params_json"))
     out["not"] = ("KGÜP = D-1 15:30 öncesi son koşunun P50'si; naif = dün-aynı-saat; DUY md. 110–111, k=l=0,03; "
+                  + (f"KÜPST: tolerans %{kat.kupst_tolerans*100:.0f} üstü × max(PTF,SMF) × {kat.kupst_n:g}; " if kat.kupst_n > 0 else "KÜPST: bu segmentte uygulanmaz; ")
                   + ("fiyat: EPİAŞ" if out["fiyat"]["senaryo_saat"] == 0 and out["fiyat"]["epias_saat"] > 0 else f"fiyat: {piyasa_service.SENARYO_AD} (EPİAŞ kimliği yok)"))
     return out

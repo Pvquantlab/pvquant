@@ -438,7 +438,9 @@ def _kgup_yaniti(tenant_id: str, plant_id: str, gun: str | None, kantil: str, fm
     pj = row.get("params_json") or {}
     if isinstance(pj, str):
         import json as _j; pj = _j.loads(pj)
-    r = kgup_service.uret(tenant_id, {"id": str(row["id"]), "capacity_kwp": float(row["capacity_kwp"]), "ac_limit_kw": row.get("ac_limit_kw"), "uevcb": pj.get("uevcb")}, g, kantil)
+    r = kgup_service.uret(tenant_id, {"id": str(row["id"]), "capacity_kwp": float(row["capacity_kwp"]), "ac_limit_kw": row.get("ac_limit_kw"), "uevcb": pj.get("uevcb"),
+                                      "params_json": pj},   # v2.275: EAK alanı / geçici kısıt params_json'dan
+                          g, kantil)
     if "hata" in r:
         raise HTTPException(409, r["hata"])
     if fmt == "json":
@@ -593,6 +595,81 @@ def segment_ayarla(plant_id: str, p: SegmentIstek, claims=Depends(yazma_yetkisi(
         anahtarlar["uevcb"] = p.uevcb.strip()[:32]
     pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **anahtarlar)
     return {"params_json": {k: v for k, v in pj.items() if k in ("segment", "uevcb")}, **dengesizlik_service.segment_bilgisi(pj)}
+
+
+class EakIstek(BaseModel):
+    eak_kw: float | None = None                 # kalıcı EAK alanı (kW); None → AC tavanı/kurulu güç
+    gecici_kw: float | None = None              # geçici kısıt (bakım/arıza), kW
+    gecici_bitis: str | None = None             # YYYY-MM-DD (dâhil)
+    kupst_n: float | None = None                # KÜPST katsayısı (Kurul kararı)
+    kupst_tolerans: float | None = None         # KGÜP oranı (0–0,5)
+
+
+@app.put("/v1/plants/{plant_id}/eak")
+def eak_ayarla(plant_id: str, p: EakIstek, claims=Depends(yazma_yetkisi())):
+    """v2.275 — EAK alanı (emre amade kapasite) + geçici kısıt + KÜPST katsayıları; params_json'a yazılır, KGÜP/toplayıcı çıktısı ve simülatör okur."""
+    from datetime import date as _d
+    from pvquant.services import kgup_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    kap = float(row["capacity_kwp"])
+    an: dict = {}
+    verilen = p.model_fields_set   # yalnız istekte GEÇEN alanlar değişir; null = temizle
+    if "eak_kw" in verilen:
+        if p.eak_kw is not None and not (0 < p.eak_kw <= kap):
+            raise HTTPException(422, f"eak_kw 0–{kap:g} kW aralığında olmalı")
+        an["eak_kw"] = float(p.eak_kw) if p.eak_kw is not None else None
+    if "gecici_kw" in verilen or "gecici_bitis" in verilen:
+        if p.gecici_kw and p.gecici_bitis:
+            try:
+                _d.fromisoformat(p.gecici_bitis)
+            except ValueError:
+                raise HTTPException(422, "gecici_bitis YYYY-MM-DD olmalı")
+            if not (0 < p.gecici_kw <= kap):
+                raise HTTPException(422, "gecici_kw aralık dışı")
+            an["eak_gecici"] = {"kw": float(p.gecici_kw), "bitis": p.gecici_bitis}
+        else:
+            an["eak_gecici"] = None
+    if p.kupst_n is not None:
+        if not (0 <= p.kupst_n <= 0.2):
+            raise HTTPException(422, "kupst_n 0–0,2")
+        an["kupst_n"] = float(p.kupst_n)
+    if p.kupst_tolerans is not None:
+        if not (0 <= p.kupst_tolerans <= 0.5):
+            raise HTTPException(422, "kupst_tolerans 0–0,5")
+        an["kupst_tolerans"] = float(p.kupst_tolerans)
+    pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **an)
+    row["params_json"] = pj
+    return {"eak_bugun": kgup_service.eak_etkin(row, pd.Timestamp.now(tz="Europe/Istanbul").date()),
+            "eak_kw": pj.get("eak_kw"), "eak_gecici": pj.get("eak_gecici"), "kupst_n": pj.get("kupst_n"), "kupst_tolerans": pj.get("kupst_tolerans")}
+
+
+def _toplayici_yaniti(tenant_id: str, plant_id: str, gun: str | None, fmt: str, adim: int):
+    from datetime import date, timedelta
+    from pvquant.services import toplayici_service
+    if fmt not in ("csv", "xlsx", "json") or adim not in (60, 15):
+        raise HTTPException(422, "fmt csv|xlsx|json, adim 60|15")
+    row = plant_service.getir(tenant_id, plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    g = date.fromisoformat(gun) if gun else (pd.Timestamp.now(tz="Europe/Istanbul").date() + timedelta(days=1))
+    r = toplayici_service.uret(tenant_id, row, g, fmt, adim)
+    if "hata" in r:
+        raise HTTPException(409, r["hata"])
+    return Response(content=r["icerik"], media_type=r["mime"], headers={"Content-Disposition": f'attachment; filename="{r["dosya_adi"]}"', "X-PVQ-Not": "toplayici sablonu"})
+
+
+@app.get("/v1/plants/{plant_id}/toplayici")
+def toplayici(plant_id: str, gun: str | None = None, fmt: str = "csv", adim: int = 60, claims=Depends(gecerli_kullanici)):
+    """v2.275 — toplayıcı/DSG çıktısı (saatlik ya da 15 dk P10/P50/P90 MW + EAK); teslim kesimi öncesi koşudan."""
+    return _toplayici_yaniti(claims["tenant_id"], plant_id, gun, fmt, adim)
+
+
+@app.get("/v1/dis/santral/{plant_id}/toplayici", tags=["Dış API"])
+def dis_toplayici(plant_id: str, gun: str | None = None, fmt: str = "csv", adim: int = 60, anahtar=Depends(api_anahtari("kgup:oku"))):
+    """Toplayıcı/DSG program dosyası (P10/P50/P90 MW, EAK); adim=15 ile çeyrek saatlik. Gün verilmezse İstanbul yarını."""
+    return _toplayici_yaniti(anahtar["tenant_id"], plant_id, gun, fmt, adim)
 
 
 @app.get("/v1/plants/{plant_id}/dengesizlik")

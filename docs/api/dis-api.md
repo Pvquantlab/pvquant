@@ -18,6 +18,7 @@ Müşteri sistemlerinin (SCADA/EMS, ticaret masası, portföy yazılımı) PVQua
 | `GET /v1/dis/santraller` | tahmin:oku | Kiracının santralleri (id, ad, kWp, saat dilimi) |
 | `GET /v1/dis/santral/{id}/tahmin` | tahmin:oku | Son koşunun saatlik P10/P50/P90 (kW, UTC) + koşu kimliği |
 | `GET /v1/dis/santral/{id}/kgup?gun=YYYY-MM-DD&kantil=p50&fmt=json|csv` | kgup:oku | KGÜP saatlik program (TPYS CSV ya da JSON); gün verilmezse İstanbul yarını |
+| `GET /v1/dis/santral/{id}/toplayici?gun=YYYY-MM-DD&fmt=csv|xlsx|json&adim=60|15` | kgup:oku | Toplayıcı/DSG program dosyası: P10/P50/P90 MW + EAK; `adim=15` ile çeyrek saatlik (2027 hazırlığı). Kolon adları santralın `toplayici_sablon` eşlemesiyle değiştirilebilir |
 
 `tahmin` yanıtı `ETag: W/"<koşu id>"` taşır. `If-None-Match` ile aynı değeri gönderirseniz koşu değişmediyse
 **304** döner (gövde yok) — 60 saniyede bir yoklamak ucuzdur. Bant yoksa `p10_kw`/`p90_kw` `null` gelir.

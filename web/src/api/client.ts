@@ -468,6 +468,21 @@ export const api = {
     const url = URL.createObjectURL(await y.blob()); const a = document.createElement("a");
     a.href = url; a.download = es ? es[1] : "KGUP.csv"; a.click(); URL.revokeObjectURL(url);
   },
+  /** v2.275: toplayıcı/DSG çıktısı (csv|xlsx, saatlik|15 dk) — KGÜP indirme kalıbı. */
+  toplayiciIndir: async (p: string, fmt: "csv" | "xlsx" = "csv", adim: 60 | 15 = 60, gun?: string): Promise<void> => {
+    if (TABAN == null) throw new Error("Örnek kipte toplayıcı dosyası yok.");
+    const jeton = localStorage.getItem("pvq_token");
+    const y = await fetch(`${TABAN}/v1/plants/${p}/toplayici?fmt=${fmt}&adim=${adim}${gun ? `&gun=${gun}` : ""}`, { headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
+    if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise<void>(() => {}); }
+    if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
+    const cd = y.headers.get("Content-Disposition") ?? ""; const es = /filename="([^"]+)"/.exec(cd);
+    const url = URL.createObjectURL(await y.blob()); const a = document.createElement("a");
+    a.href = url; a.download = es ? es[1] : `TOPLAYICI.${fmt}`; a.click(); URL.revokeObjectURL(url);
+  },
+  /** v2.275: EAK alanı / geçici kısıt / KÜPST katsayıları. */
+  eakAyarla: (p: string, g: { eak_kw?: number | null; gecici_kw?: number | null; gecici_bitis?: string | null; kupst_n?: number | null; kupst_tolerans?: number | null }):
+    Promise<{ eak_bugun: { eak_mw: number; kaynak: string; bitis?: string }; eak_kw: number | null; eak_gecici: { kw: number; bitis: string } | null; kupst_n: number | null; kupst_tolerans: number | null }> =>
+    gonder(`/v1/plants/${p}/eak`, "PUT", g),
   segmentAyarla: async (p: string, segment: string, uevcb?: string): Promise<{ segment: string | null; dengesizlik_sahibi: string | null; kgup_yukumlu: boolean | null }> => {
     const jeton = localStorage.getItem("pvq_token");
     const y = await fetch(`${TABAN}/v1/plants/${p}/segment`, { method: "PUT", headers: { "Content-Type": "application/json", ...(jeton ? { Authorization: `Bearer ${jeton}` } : {}) }, body: JSON.stringify({ segment, uevcb }) });

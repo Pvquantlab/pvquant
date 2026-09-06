@@ -68,6 +68,15 @@ export function Santralim({ plantId }: { plantId: string }) {
     api.fizikAyarla(plantId, { [k]: v }).then((r) => { setFt(r); setFtOn(null); setFtSon({}); setFtMesaj("Kaydedildi — bir sonraki koşudan itibaren geçerli."); })
       .catch((e) => setFtMesaj(String((e as Error).message ?? e)));
   };
+  // v2.275 (Dalga 4 tamamlayıcısı): EAK alanı + geçici kısıt — KGÜP ve toplayıcı çıktısı bunu okur
+  const [eakKw, setEakKw] = useState<string>(""); const [gecKw, setGecKw] = useState<string>(""); const [gecBitis, setGecBitis] = useState<string>("");
+  const [eakMesaj, setEakMesaj] = useState<string | null>(null);
+  const eakKaydet = () => {
+    setEakMesaj(null);
+    api.eakAyarla(plantId, { eak_kw: eakKw ? Number(eakKw) : null, gecici_kw: gecKw ? Number(gecKw) : null, gecici_bitis: gecBitis || null })
+      .then((r) => setEakMesaj(`Kaydedildi · bugün EAK ${sayiTr(r.eak_bugun.eak_mw, 2)} MW (${r.eak_bugun.kaynak})`))
+      .catch((e) => setEakMesaj(String((e as Error).message ?? e)));
+  };
   const [ak, setAk] = useState<AlarmKurallari | null>(null);   // v2.265: ek alarm kuralları (opt-in)
   useEffect(() => { api.alarmKurallari(plantId).then(setAk).catch(() => {}); }, [plantId]);
   const akDegistir = (kural: string, acik: boolean) => {
@@ -354,6 +363,19 @@ export function Santralim({ plantId }: { plantId: string }) {
                   : sg?.egim_yuzde_yil != null
                     ? <>eğilim %{sayiTr(sg.egim_yuzde_yil, 1)}/yıl<span style={{ color: "var(--soluk)" }}> · {sayiTr(sg.gun)} gün · {sg.not || "bozunma için ≥13 ay"}</span></>
                     : <span style={{ color: "var(--soluk)" }}>— {sg?.not || "ölçüm birikmedi"}</span>}</td></tr>
+              {/* v2.275 (Dalga 4): EAK alanı — emre amade kapasite; geçici kısıt bakım/arıza için (bitiş tarihine kadar) */}
+              <tr><td>Emre amade kapasite (EAK)</td>
+                <td><span style={{ display: "inline-flex", gap: 6, alignItems: "center", flexWrap: "wrap", fontSize: 12.5 }}>
+                  <input className="mono" value={eakKw} onChange={(e) => setEakKw(e.target.value)} placeholder="EAK kW (boş = AC tavanı)" aria-label="EAK kW"
+                         style={{ width: 150, fontSize: 12, padding: "3px 6px", border: "1px solid var(--kenar)", borderRadius: 4, background: "var(--yuzey)", color: "var(--metin)" }} />
+                  <span className="soluk">geçici kısıt:</span>
+                  <input className="mono" value={gecKw} onChange={(e) => setGecKw(e.target.value)} placeholder="kW" aria-label="Geçici kısıt kW"
+                         style={{ width: 80, fontSize: 12, padding: "3px 6px", border: "1px solid var(--kenar)", borderRadius: 4, background: "var(--yuzey)", color: "var(--metin)" }} />
+                  <input className="mono" type="date" value={gecBitis} onChange={(e) => setGecBitis(e.target.value)} aria-label="Geçici kısıt bitiş"
+                         style={{ fontSize: 12, padding: "3px 6px", border: "1px solid var(--kenar)", borderRadius: 4, background: "var(--yuzey)", color: "var(--metin)" }} />
+                  <button className="dugme" style={{ fontSize: 11.5 }} onClick={eakKaydet}>Kaydet</button>
+                  {eakMesaj && <span className="soluk">{eakMesaj}</span>}
+                </span></td></tr>
               {/* v2.274 (Dalga 3): fizik terimleri — seçim önce önizlenir (salt fizik, arşiv meteosu), sonra uygulanır */}
               <tr><td>Fizik terimleri</td>
                 <td>{ft ? <>

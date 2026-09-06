@@ -188,6 +188,10 @@ export function Tahminler({ plantId }: { plantId: string }) {
               <span className="mono">{sayiTr(kgup.toplam_mwh, 1)} MWh · {kgup.kantil.toUpperCase()} · koşu {kgup.kosu.run_at ? new Date(kgup.kosu.run_at).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }) : "—"}</span>
               <button className="dugme" onClick={() => { setKgupHata(null); api.kgupIndir(plantId).catch((e) => setKgupHata(String(e.message ?? e))); }}>CSV indir (TPYS)</button>
               <button className="dugme" onClick={() => { setKgupHata(null); api.kgupIndir(plantId, undefined, "p10").catch((e) => setKgupHata(String(e.message ?? e))); }}>Temkinli (P10) indir</button>
+              {/* v2.275: toplayıcı/DSG çıktısı — bantlı saatlik ve 15 dk (2027 hazırlığı) */}
+              <button className="dugme" onClick={() => { setKgupHata(null); api.toplayiciIndir(plantId, "xlsx", 60).catch((e) => setKgupHata(String(e.message ?? e))); }}>Toplayıcı (Excel, saatlik)</button>
+              <button className="dugme" onClick={() => { setKgupHata(null); api.toplayiciIndir(plantId, "csv", 15).catch((e) => setKgupHata(String(e.message ?? e))); }}>Toplayıcı (CSV, 15 dk)</button>
+              {kgup.eak && <span className="cip" title="Emre amade kapasite — künyeden değiştirilir">EAK {sayiTr(kgup.eak.eak_mw, 2)} MW · {({ gecici: "geçici kısıt", eak_alani: "EAK alanı", ac_tavani: "AC tavanı", kurulu_guc: "kurulu güç" } as Record<string, string>)[kgup.eak.kaynak] ?? kgup.eak.kaynak}</span>}
               {kgupHata && <span style={{ color: "var(--uyari)", fontSize: 12.5 }}>{kgupHata}</span>}
             </div>
             {kgup.uyarilar.length > 0 && <p style={{ color: "var(--uyari)", fontSize: 12.5, margin: "8px 0 0" }}>{kgup.uyarilar.join(" · ")}</p>}

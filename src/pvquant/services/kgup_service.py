@@ -17,7 +17,7 @@ from pvquant.ext.turkiye import kgup as kg
 IST = "Europe/Istanbul"
 
 
-def kaynak_kosu_df(tenant_id, plant_id, gun: date, kantil: str = "p50") -> tuple[pd.DataFrame, dict | None]:
+def kaynak_kosu_df(tenant_id, plant_id, gun: date, kantil: str = "p50", tum_kantiller: bool = False) -> tuple[pd.DataFrame, dict | None]:
     """DB: D-1 15:30 IST öncesi son koşunun D günü saatleri (UTC). Döner (df[ts_utc, kw], koşu bilgisi)."""
     from sqlalchemy import text
     from pvquant.db import tenant_baglami
@@ -34,10 +34,33 @@ def kaynak_kosu_df(tenant_id, plant_id, gun: date, kantil: str = "p50") -> tuple
                       {"p": plant_id, "k": kesim.to_pydatetime(), "a": d0.tz_convert("UTC").to_pydatetime(), "b": d1.tz_convert("UTC").to_pydatetime()}).first()
         if r is None:
             return pd.DataFrame(columns=["ts_utc", "kw"]), None
-        df = pd.read_sql(text(f"SELECT ts_utc, {kol} AS kw FROM forecast_values WHERE run_id=:r AND plant_id=:p AND ts_utc >= :a AND ts_utc < :b ORDER BY ts_utc"),
+        secim = "ts_utc, p50_kw, p10_kw, p90_kw" if tum_kantiller else f"ts_utc, {kol} AS kw"   # v2.275: toplayıcı çıktısı bandı da ister
+        df = pd.read_sql(text(f"SELECT {secim} FROM forecast_values WHERE run_id=:r AND plant_id=:p AND ts_utc >= :a AND ts_utc < :b ORDER BY ts_utc"),
                          s.connection(), params={"r": r.id, "p": plant_id, "a": d0.tz_convert("UTC").to_pydatetime(), "b": d1.tz_convert("UTC").to_pydatetime()}, parse_dates=["ts_utc"])
     df["ts_utc"] = pd.to_datetime(df["ts_utc"], utc=True)
     return df, {"run_id": str(r.id), "run_at": r.run_at.isoformat(), "mode": r.mode, "kesim": kesim.isoformat()}
+
+
+def eak_etkin(plant: dict, gun: date) -> dict:
+    """v2.275 — EAK (emre amade kapasite, MW) o gün için: geçici kısıt (bakım/arıza, bitiş tarihine kadar) > kalıcı EAK alanı
+    > AC tavanı > kurulu güç. Kaynak açıkça söylenir."""
+    import json as _j
+    pj = plant.get("params_json") or {}
+    if isinstance(pj, str):
+        pj = _j.loads(pj)
+    kap = float(plant["capacity_kwp"]) / 1000.0
+    ac = (float(plant["ac_limit_kw"]) / 1000.0) if plant.get("ac_limit_kw") else None
+    g = pj.get("eak_gecici") or {}
+    try:
+        if g.get("kw") and g.get("bitis") and date.fromisoformat(str(g["bitis"])) >= gun and float(g["kw"]) > 0:
+            return {"eak_mw": round(min(float(g["kw"]) / 1000.0, ac or kap), 3), "kaynak": "gecici", "bitis": str(g["bitis"])}
+    except (TypeError, ValueError):
+        pass
+    if pj.get("eak_kw"):
+        return {"eak_mw": round(min(float(pj["eak_kw"]) / 1000.0, kap), 3), "kaynak": "eak_alani"}
+    if ac:
+        return {"eak_mw": round(ac, 3), "kaynak": "ac_tavani"}
+    return {"eak_mw": round(kap, 3), "kaynak": "kurulu_guc"}
 
 
 def uret(tenant_id, plant: dict, gun: date, kantil: str = "p50", uevcb: str | None = None) -> dict:
@@ -47,7 +70,7 @@ def uret(tenant_id, plant: dict, gun: date, kantil: str = "p50", uevcb: str | No
         return {"hata": "bu gün için teslim penceresi öncesinde verilmiş koşu yok", "gun": gun.isoformat()}
     seri = pd.Series(df["kw"].values, index=pd.DatetimeIndex(df["ts_utc"])) / 1000.0   # kW → MW
     kap = float(plant["capacity_kwp"]) / 1000.0
-    eak = (float(plant["ac_limit_kw"]) / 1000.0) if plant.get("ac_limit_kw") else kap
+    eak_bilgi = eak_etkin(plant, gun); eak = eak_bilgi["eak_mw"]   # v2.275: EAK alanı / geçici kısıt
     son = kg.program_uret(seri, gun.isoformat(), uevcb or plant.get("uevcb") or str(plant["id"])[:8].upper(), kap, eak_mw=eak, kantil=None)
     hatalar = kg.dogrula(son, kap)
     tablo = kg.ceyrek_dilimle(son) if son.sicrama_saatleri else son.tablo
@@ -59,7 +82,7 @@ def uret(tenant_id, plant: dict, gun: date, kantil: str = "p50", uevcb: str | No
         csv_df[sab.ceyrek] = tablo["ceyrek"].astype("Int64")
     csv_df.to_csv(buf, sep=sab.ayrac, decimal=sab.ondalik, index=False)
     return {"gun": gun.isoformat(), "kantil": kantil, "kosu": kosu, "uyarilar": son.uyarilar + hatalar, "sicrama_saatleri": son.sicrama_saatleri,
-            "toplam_mwh": round(float(son.tablo["kgup_mwh"].sum()), 3),
+            "toplam_mwh": round(float(son.tablo["kgup_mwh"].sum()), 3), "eak": eak_bilgi,   # v2.275
             "satirlar": [{"saat": int(r.saat), "kgup_mwh": float(r.kgup_mwh), "eak_mwh": float(r.eak_mwh)} for r in son.tablo.itertuples()],
             "csv": buf.getvalue(), "dosya_adi": f"KGUP_{(uevcb or 'UEVCB')}_{gun.isoformat()}_{kantil}.csv",
             "teslim": kg.teslim_durumu()}
