@@ -1,4 +1,4 @@
-import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme } from "./types";
+import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -363,6 +363,15 @@ export const api = {
   alarmlar: async (p: string, n = 20): Promise<AlarmSatiri[]> => {
     if (TABAN == null) return [];
     return getir<AlarmSatiri[]>(`/v1/plants/${p}/alarmlar?n=${n}`);
+  },
+  /** v2.263: santral listesi ve portföy özeti. */
+  santraller: async (): Promise<SantralKisa[]> => {
+    if (TABAN == null) return [{ id: "ornek", name: "Konya GES", capacity_kwp: 4514, tz: "Europe/Istanbul" }];
+    try { return await getir<SantralKisa[]>(`/v1/plants`); } catch { return []; }
+  },
+  portfoy: async (): Promise<Portfoy | null> => {
+    if (TABAN == null) return null;
+    try { return await getir<Portfoy>(`/v1/portfoy`); } catch { return null; }
   },
   /** v2.260: KGÜP önizleme (json) ve dosya indirme (csv, rapor kalıbı). */
   kgupOnizleme: async (p: string, gun?: string, kantil = "p50"): Promise<KgupOnizleme | null> => {

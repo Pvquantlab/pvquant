@@ -4,6 +4,7 @@ import type { SantralOzeti } from "../api/types";
 import { sayiTr } from "../features/sayfalar/parcalar";
 
 export const SAYFALAR = [
+  { id: "portfoy", ad: "Portföy" },        // v2.263
   { id: "santralim", ad: "Santralim" },
   { id: "veri", ad: "Veri yükleme" },
   { id: "kalibrasyon", ad: "Kalibrasyon" },
@@ -19,6 +20,7 @@ const IKON_ORTAK = { width: 15, height: 15, viewBox: "0 0 20 20", fill: "none",
   stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round" as const,
   strokeLinejoin: "round" as const, "aria-hidden": true as const };
 const IKONLAR: Record<SayfaId, ReactNode> = {
+  portfoy: <svg {...IKON_ORTAK}><path d="M3 16h14"/><path d="M5 16V9M9 16V5M13 16v-6M17 16V7"/></svg>,
   santralim: <svg {...IKON_ORTAK}><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="11" y="3" width="6" height="6" rx="1"/><rect x="3" y="11" width="6" height="6" rx="1"/><rect x="11" y="11" width="6" height="6" rx="1"/></svg>,
   veri: <svg {...IKON_ORTAK}><path d="M10 3v9M6.5 8.5 10 12l3.5-3.5"/><path d="M4 14v2.5h12V14"/></svg>,
   kalibrasyon: <svg {...IKON_ORTAK}><circle cx="10" cy="10" r="6.5"/><path d="M10 6.5V10l2.5 1.5"/></svg>,
@@ -45,9 +47,11 @@ function GunesLogo() {
   );
 }
 
-export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children }:
+export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, santraller, onSantral }:
   { sayfa: SayfaId; setSayfa: (s: SayfaId) => void; santral: string;
-    plantId?: string; onCikis?: () => void; children: ReactNode }) {
+    plantId?: string; onCikis?: () => void; children: ReactNode;
+    /** v2.263: gerçek santral seçici — liste ve seçim geri çağrısı (yoksa tek santral). */
+    santraller?: { id: string; name: string }[]; onSantral?: (id: string) => void }) {
   const [koyu, setKoyu] = useState(false);
   // v2.196: yan-ozet kutulari — kurulu guc gercek veriden; gelene dek "—"
   // v2.237: ayni ozet istegi telemetri seridini de besler (yeni cagri yok)
@@ -114,8 +118,11 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children }:
       <nav className={`yan${menuAcik ? " is-acik" : ""}`}>
         <div className="logo"><GunesLogo />PVQuant</div>
         <div className="yan-etiket">Santral</div>
-        <select className="yan-secim" defaultValue={santral}>
-          <option>{santral}</option><option>Smoke GES</option>
+        {/* v2.263: seçici artık gerçek — liste /v1/plants'ten, seçim App'e döner */}
+        <select className="yan-secim" value={plantId ?? ""} aria-label="Santral seç"
+                onChange={(e) => onSantral?.(e.target.value)}>
+          {(santraller && santraller.length ? santraller : [{ id: plantId ?? "", name: santral }]).map((s) => (
+            <option key={s.id} value={s.id}>{s.name}</option>))}
         </select>
         {/* v2.216: islev henuz yok — dugme durur ama durust bicimde kapali */}
         <button className="yan-yeni" disabled title="Yakında">

@@ -38,6 +38,16 @@ export interface KonformalAyar {
   ort_q_kw?: number | null; q_hat?: Record<string, number>;
 }
 
+/** /v1/plants — v2.263 (kabuk santral seçici). */
+export interface SantralKisa { id: string; name: string; capacity_kwp: number; tz: string }
+/** /v1/portfoy — v2.263. */
+export interface Portfoy {
+  gun: string;
+  santraller: { id: string; ad: string; kapasite_kwp: number; tz: string; segment: string | null; son_olcum: string | null; kesinti_gun: number | null;
+                wmape_30g: number | null; bugun_kwh: number | null; yarin_kwh: number | null; acik_alarm: number; son_kosu: string | null }[];
+  toplam: { santral: number; kapasite_kwp: number; bugun_kwh: number | null; yarin_kwh: number | null; wmape_agirlikli: number | null;
+            wmape_kapsanan_kwp: number; acik_alarm: number; veri_gecikmis: number } | null;
+}
 /** /kgup?fmt=json — v2.260 önizleme; /segment — v2.260. */
 export interface KgupOnizleme {
   gun: string; kantil: string; kosu: { run_at?: string; mode?: string }; uyarilar: string[]; sicrama_saatleri: number[];

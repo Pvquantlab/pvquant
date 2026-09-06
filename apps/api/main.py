@@ -281,6 +281,13 @@ def alarmlar(plant_id: str, n: int = 20,
     return alarm_service.listele(claims["tenant_id"], plant_id, n=n)
 
 
+@app.get("/v1/portfoy")
+def portfoy(claims=Depends(gecerli_kullanici)):
+    """v2.263 — kiracının tüm santralleri: kapasite, son ölçüm, 30g WMAPE, bugün/yarın beklenen, açık alarm; toplamlar."""
+    from pvquant.services import portfoy_service
+    return portfoy_service.ozet(claims["tenant_id"])
+
+
 @app.get("/v1/plants/{plant_id}/kgup")
 def kgup_dosyasi(plant_id: str, gun: str | None = None, kantil: str = "p50", fmt: str = "csv", claims=Depends(gecerli_kullanici)):
     """v2.260 — KGÜP saatlik program (D-1 15:30 öncesi koşudan). fmt=csv → TPYS CSV eki; fmt=json → önizleme."""
