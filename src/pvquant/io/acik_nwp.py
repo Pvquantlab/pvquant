@@ -492,3 +492,46 @@ def arsivden_uyeler(lat: float, lon: float, days: int, azami_yas_saat: float = 3
             g.index = g.index.tz_localize("UTC")
         out[int(u)] = g
     return out
+
+
+# ----------------------------------------------------------------------------- v2.276: gün içi güncelleme --------
+def _arsivden_son_kosu_df(lat: float, lon: float) -> tuple[pd.DataFrame | None, pd.Timestamp | None]:
+    """Arşivdeki en taze koşunun tüm ufku (ECMWF+ICON harmanı) — gün içi ICON tazelemesinde ECMWF 'omurgası' olarak kullanılır."""
+    from sqlalchemy import text
+    from pvquant.db import sistem_baglami
+    la, lo = _nokta_anahtar(lat, lon)
+    with sistem_baglami() as s:
+        kosu = s.execute(text("SELECT max(kosu_zamani) FROM meteo_arsiv WHERE kaynak=:k AND lat=:la AND lon=:lo"),
+                         {"k": KAYNAK, "la": la, "lo": lo}).scalar()
+        if kosu is None:
+            return None, None
+        df = pd.read_sql(text(
+            "SELECT ts_utc, ghi, dni, dhi, temp_air, wind_speed_10m, cloud_cover, precipitation, relative_humidity FROM meteo_arsiv "
+            "WHERE kaynak=:k AND lat=:la AND lon=:lo AND kosu_zamani=:z ORDER BY ts_utc"),
+            s.connection(), params={"k": KAYNAK, "la": la, "lo": lo, "z": kosu}, index_col="ts_utc", parse_dates=["ts_utc"])
+    if df.index.tz is None:
+        df.index = df.index.tz_localize("UTC")
+    return df, pd.Timestamp(kosu).tz_convert("UTC")
+
+
+def gun_ici_tazele(noktalar: list[tuple[float, float]], dizin: Path | None = None) -> dict:
+    """Gün içi (GİP revizyonu için): yalnız ICON-EU'nun en taze koşusu indirilir (~5 dk), arşivdeki son harmanın
+    ECMWF omurgasıyla yeniden harmanlanır ve ICON koşu zamanıyla yeni arşiv satırları yazılır. ECMWF indirilmez.
+    Arşivde omurga yoksa ICON tek başına (5 gün) yazılır — dürüst: ufuk kısalır."""
+    dizin = dizin or _dizin()
+    noktalar = sorted({_nokta_anahtar(*n) for n in noktalar})
+    kd, i_kosu = icon_indir(dizin)
+    i_df = icon_noktalar(kd, noktalar)
+    rapor: dict = {"icon": i_kosu.isoformat(), "noktalar": len(noktalar), "satir": 0, "hata": []}
+    satirlar = []
+    for lat, lon in noktalar:
+        i = i_df.get((lat, lon))
+        if i is None:
+            rapor["hata"].append(f"{lat},{lon}: ICON noktası yok"); continue
+        e, e_kosu = _arsivden_son_kosu_df(lat, lon)
+        if e_kosu is not None and e_kosu >= i_kosu:
+            rapor["hata"].append(f"{lat},{lon}: arşiv zaten {e_kosu.isoformat()} — ICON {i_kosu.isoformat()} daha eski/aynı, atlandı"); continue
+        satirlar += satirlar_uret(harmanla(e, i, lat, lon), KAYNAK, i_kosu, lat, lon)
+    rapor["satir"] = _arsive_yaz(satirlar)
+    eski_temizle(dizin, get_settings().nwp_kosu_tut)
+    return rapor

@@ -49,6 +49,9 @@ class Settings(BaseSettings):
     ensemble_min_uye: int = 20
     # v2.274 (Dalga 2, ★): trend/sapma düzeltme katmanı — 'otomatik' (taze SCADA + anlamlı sapma varsa) | 'kapali'
     sapma_katmani: Literal["otomatik", "kapali"] = "otomatik"
+    # v2.276 (Dalga 5): gün içi güncelleme — ICON-EU taze koşusuyla öğle/ikindi koşuları (GİP revizyonu için); UTC saatleri
+    gun_ici_guncelleme: bool = True
+    gun_ici_saatler: str = "9,15"
     # ----- Open-Meteo (yalnız meteo_kaynak='open_meteo') -----
     meteo_base_url: str = "https://api.open-meteo.com/v1"
     meteo_timeout: int = 30

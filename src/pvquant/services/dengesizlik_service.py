@@ -132,3 +132,58 @@ def simulasyon(tenant_id, plant: dict, gun: int = 90) -> dict:
                   + (f"KÜPST: tolerans %{kat.kupst_tolerans*100:.0f} üstü × max(PTF,SMF) × {kat.kupst_n:g}; " if kat.kupst_n > 0 else "KÜPST: bu segmentte uygulanmaz; ")
                   + ("fiyat: EPİAŞ" if out["fiyat"]["senaryo_saat"] == 0 and out["fiyat"]["epias_saat"] > 0 else f"fiyat: {piyasa_service.SENARYO_AD} (EPİAŞ kimliği yok)"))
     return out
+
+
+# ----------------------------------------------------------------------------- v2.276: DSG portföy netleştirmesi ----
+def dsg_hesapla_df(programlar: dict[str, pd.DataFrame], fiyat: pd.DataFrame, kat: d.Katsayilar = d.Katsayilar()) -> dict:
+    """SAF. programlar[santral] = program_df çıktısı (ts_utc, gercek_kw, kgup_kw). Santral başına ayrı dengesizlik maliyeti
+    toplamı ↔ portföyün NETLEŞMİŞ (KGÜP toplamı vs gerçekleşen toplamı) maliyeti; fark = DSG netleşme kazancı."""
+    K: dict[str, pd.Series] = {}; G: dict[str, pd.Series] = {}; ayri = {}
+    for ad, df in programlar.items():
+        if df is None or df.empty:
+            continue
+        x = df.dropna(subset=["gercek_kw", "kgup_kw"]).set_index("ts_utc")
+        if x.empty:
+            continue
+        K[ad] = x["kgup_kw"].astype(float) / 1000.0; G[ad] = x["gercek_kw"].astype(float) / 1000.0
+    if not K:
+        return {"santral": 0, "n_saat": 0, "ayri_tl": None, "net_tl": None, "kazanc_tl": None}
+    idx = None
+    for ad in K:
+        idx = K[ad].index if idx is None else idx.intersection(K[ad].index)
+    if idx is None or len(idx) < 24:
+        return {"santral": len(K), "n_saat": int(len(idx) if idx is not None else 0), "ayri_tl": None, "net_tl": None, "kazanc_tl": None,
+                "not": "ortak saat yetersiz"}
+    f = fiyat.reindex(idx); ptf = f["ptf"].astype(float); smf = f["smf"].astype(float)
+    ayri_tl = 0.0
+    for ad in K:
+        ayri[ad] = float(d.saatlik(K[ad].loc[idx], G[ad].loc[idx], ptf, smf, kat)["toplam_maliyet"].sum())
+        ayri_tl += ayri[ad]
+    Kn, Gn = d.dsg_netlestir({a: K[a].loc[idx] for a in K}, {a: G[a].loc[idx] for a in G})
+    net_tl = float(d.saatlik(Kn, Gn, ptf, smf, kat)["toplam_maliyet"].sum())
+    return {"santral": len(K), "n_saat": int(len(idx)), "ayri_tl": round(ayri_tl, 0), "net_tl": round(net_tl, 0),
+            "kazanc_tl": round(ayri_tl - net_tl, 0), "kazanc_pct": (round(100 * (ayri_tl - net_tl) / ayri_tl, 1) if ayri_tl > 0 else None),
+            "santral_tl": {a: round(v, 0) for a, v in ayri.items()},
+            "uretim_mwh": round(float(Gn.sum()), 1), "sapma_net_mwh": round(float((Gn - Kn).abs().sum()), 1),
+            "sapma_ayri_mwh": round(float(sum((G[a].loc[idx] - K[a].loc[idx]).abs().sum() for a in K)), 1)}
+
+
+def dsg_ozet(tenant_id, gun: int = 30) -> dict:
+    """Kiracının tüm santralleri: DSG (dengeleme sorumlusu grup) netleşmesi — portföy tek dengesizlik hesabına girerse ne kazanılır."""
+    from sqlalchemy import text
+    from pvquant.db import tenant_baglami
+    from pvquant.services import piyasa_service
+    with tenant_baglami(tenant_id) as s:
+        santraller = [dict(r._mapping) for r in s.execute(text("SELECT id, name, params_json FROM plants WHERE NOT archived ORDER BY name"))]
+    programlar = {p["name"]: program_df(tenant_id, str(p["id"]), gun) for p in santraller}
+    idx = pd.DatetimeIndex([], tz="UTC")
+    for df in programlar.values():
+        if df is not None and not df.empty:
+            idx = idx.union(pd.DatetimeIndex(df["ts_utc"]))
+    fiyat = piyasa_service.fiyatlar(idx) if len(idx) else pd.DataFrame(columns=["ptf", "smf", "kaynak"])
+    out = dsg_hesapla_df(programlar, fiyat)
+    out["pencere_gun"] = gun
+    out["fiyat"] = {"epias_saat": int((fiyat["kaynak"] == "epias").sum()) if len(fiyat) else 0, "senaryo_saat": int((fiyat["kaynak"] == "senaryo").sum()) if len(fiyat) else 0}
+    out["not"] = ("Tek santral: netleşme yok (kazanç 0) — ikinci santral bağlanınca burada görünür." if out["santral"] <= 1
+                  else "Netleşme: aynı saatte bir santralin fazlası ötekinin açığını kapatır; DSG/toplayıcı portföyünde dengesizlik net üzerinden hesaplanır.")
+    return out

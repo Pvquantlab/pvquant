@@ -1,4 +1,4 @@
-import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme } from "./types";
+import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -164,6 +164,8 @@ export interface KosuSatiri { run_at: string; mode: string; model: string;
   bant?: { kaynak: string; uye?: number; not?: string } | null;
   /** v2.274: sapma katmanı — aktifse oran_genel (ör. 0,95 = tahmin %5 yüksek kalıyordu) */
   sapma?: { aktif: boolean; neden?: string | null; oran_genel?: number; n_gun?: number } | null;
+  /** v2.276: koşu türü — 'gun_ici' (öğle/ikindi güncellemesi) | null (sabah) */
+  etiket?: string | null;
 }
 /** v2.240 — zil kapısı satırı (apps/api alarmlar ile birebir). */
 export interface AlarmSatiri {
@@ -400,6 +402,10 @@ export const api = {
   santraller: async (): Promise<SantralKisa[]> => {
     if (TABAN == null) return [{ id: "ornek", name: "Konya GES", capacity_kwp: 4514, tz: "Europe/Istanbul" }];
     try { return await getir<SantralKisa[]>(`/v1/plants`); } catch { return []; }
+  },
+  portfoyDsg: async (gun = 30): Promise<PortfoyDsg | null> => {
+    if (TABAN == null) return null;
+    try { return await getir<PortfoyDsg>(`/v1/portfoy/dsg?gun=${gun}`); } catch { return null; }
   },
   portfoy: async (): Promise<Portfoy | null> => {
     if (TABAN == null) return null;

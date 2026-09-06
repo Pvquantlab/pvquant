@@ -73,6 +73,12 @@ export interface ApiAnahtar { id: string; ad: string | null; prefix: string; kap
 export interface ApiAnahtarYeni extends Omit<ApiAnahtar, "iptal" | "son_kullanim" | "olusturma"> { anahtar: string }
 export interface Webhook { id: string; plant_id: string | null; santral: string | null; url: string; olaylar: string[]; aktif: boolean;
   son_gonderim: string | null; son_durum: number | null; hata_sayisi: number }
+/** /portfoy/dsg — v2.276: DSG netleştirmesi. */
+export interface PortfoyDsg {
+  santral: number; n_saat: number; ayri_tl: number | null; net_tl: number | null; kazanc_tl: number | null; kazanc_pct?: number | null;
+  santral_tl?: Record<string, number>; uretim_mwh?: number; sapma_net_mwh?: number; sapma_ayri_mwh?: number;
+  pencere_gun: number; fiyat: { epias_saat: number; senaryo_saat: number }; not: string;
+}
 /** /kgup?fmt=json — v2.260 önizleme; /segment — v2.260. */
 export interface KgupOnizleme {
   gun: string; kantil: string; kosu: { run_at?: string; mode?: string }; uyarilar: string[]; sicrama_saatleri: number[];

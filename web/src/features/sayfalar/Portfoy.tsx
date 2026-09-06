@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, rolum } from "../../api/client";
-import type { Portfoy as PortfoyT, ApiAnahtar, Webhook } from "../../api/types";
+import type { Portfoy as PortfoyT, PortfoyDsg, ApiAnahtar, Webhook } from "../../api/types";
 import { Kart, Kpi, Sayfa, sayiTr } from "./parcalar";
 
 /** v2.263 (Dalga 5.15) — Portföy: kiracının tüm santralleri tek tabloda; toplamlar dürüst
@@ -8,6 +8,8 @@ import { Kart, Kpi, Sayfa, sayiTr } from "./parcalar";
 export function Portfoy({ onSec }: { onSec: (id: string) => void }) {
   const [p, setP] = useState<PortfoyT | null | undefined>(undefined);
   useEffect(() => { api.portfoy().then(setP).catch(() => setP(null)); }, []);
+  const [dsg, setDsg] = useState<PortfoyDsg | null>(null);   // v2.276
+  useEffect(() => { api.portfoyDsg().then(setDsg).catch(() => {}); }, []);
   const t = p?.toplam ?? null;
   const kwhYaz = (v: number | null | undefined) => v == null ? "—" : `${sayiTr(v / 1000, 1)} MWh`;
   const mwh = (v: number | null | undefined) => v == null ? "—" : sayiTr(v / 1000, 1);
@@ -49,6 +51,21 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {
           Bugün/yarın = son koşunun yerel-gün P50 toplamı (20 saatten az kapsanan gün yazılmaz); WMAPE = son 30 günün 0–24 saat karnesi;
           alarm = son 7 günde okunmamış kayıt. Hiyerarşik uzlaştırma (portföy toplamının santral tahminleriyle tutarlı hale getirilmesi) sonraki dalga.
         </p>
+      </Kart>
+      {/* v2.276 (Dalga 5): DSG/toplayıcı netleştirmesi — portföy tek dengesizlik hesabına girerse ne kazanılır */}
+      <Kart baslik="DSG netleştirmesi — portföy dengesizliği" sag={<span className="cip">{dsg ? `${sayiTr(dsg.pencere_gun)} gün · ${dsg.fiyat.senaryo_saat > 0 ? "senaryo fiyat" : "EPİAŞ fiyat"}` : "—"}</span>}>
+        {!dsg ? <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p> : dsg.ayri_tl == null ? (
+          <p className="soluk" style={{ margin: 0 }}>— {dsg.not ?? "ortak saat yetersiz"}</p>
+        ) : (
+          <>
+            <div className="ızgara satir-3" style={{ marginBottom: 10 }}>
+              <Kpi etiket="Santraller ayrı ayrı" deger={sayiTr(dsg.ayri_tl / 1000, 1)} birim="bin TL" alt={`${sayiTr(dsg.santral)} santral · ${sayiTr(dsg.sapma_ayri_mwh ?? 0, 1)} MWh sapma`} />
+              <Kpi etiket="Portföy netleşmiş" deger={sayiTr((dsg.net_tl ?? 0) / 1000, 1)} birim="bin TL" alt={`${sayiTr(dsg.sapma_net_mwh ?? 0, 1)} MWh net sapma`} />
+              <Kpi etiket="Netleşme kazancı" deger={sayiTr((dsg.kazanc_tl ?? 0) / 1000, 1)} birim="bin TL" alt={dsg.kazanc_pct != null ? `ayrı maliyetin %${sayiTr(dsg.kazanc_pct, 1)}'i` : "—"} />
+            </div>
+            <p className="soluk" style={{ fontSize: 12.5, margin: 0 }}>{dsg.not}</p>
+          </>
+        )}
       </Kart>
       {rolum() === "admin" && <DisErisim santraller={p?.santraller.map((s) => ({ id: s.id, ad: s.ad })) ?? []} />}
     </Sayfa>

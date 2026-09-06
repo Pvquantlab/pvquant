@@ -416,6 +416,15 @@ def hakkinda(claims=Depends(gecerli_kullanici)):
     return kaynak_service.hakkinda()
 
 
+@app.get("/v1/portfoy/dsg")
+def portfoy_dsg(gun: int = 30, claims=Depends(gecerli_kullanici)):
+    """v2.276 — DSG/toplayıcı portföy netleştirmesi: santral başına ayrı dengesizlik ↔ portföyün netleşmiş dengesizliği."""
+    from pvquant.services import dengesizlik_service
+    if not (14 <= gun <= 365):
+        raise HTTPException(422, "gun 14-365")
+    return dengesizlik_service.dsg_ozet(claims["tenant_id"], gun=gun)
+
+
 @app.get("/v1/portfoy")
 def portfoy(claims=Depends(gecerli_kullanici)):
     """v2.263 — kiracının tüm santralleri: kapasite, son ölçüm, 30g WMAPE, bugün/yarın beklenen, açık alarm; toplamlar."""
@@ -1025,7 +1034,7 @@ def kosu_listesi(plant_id: str, claims=Depends(gecerli_kullanici)):
     if row is None:
         raise HTTPException(404, "santral yok")
     return [{"run_at": r.run_at.isoformat(), "mode": r.mode, "model": r.model, "bant": getattr(r, "bant", None),   # v2.273
-             "sapma": getattr(r, "sapma", None)}   # v2.274
+             "sapma": getattr(r, "sapma", None), "etiket": getattr(r, "etiket", None)}   # v2.274 / v2.276
             for r in kosu_gecmisi(claims["tenant_id"], plant_id, n=10)]
 
 

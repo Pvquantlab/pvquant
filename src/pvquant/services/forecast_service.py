@@ -39,7 +39,8 @@ def kosu_cercevesi_denetle(h) -> None:
                          "değersiz koşu için run açılmaz")
 
 
-def uret_ve_kaydet(tenant_id, plant: dict) -> str:
+def uret_ve_kaydet(tenant_id, plant: dict, etiket: str | None = None) -> str:
+    """etiket (v2.276): 'gun_ici' gibi koşu türü — meteo_ozet_json'a yazılır; koşular güncellenmez, yenisi eklenir."""
     meteo = OpenMeteoClient().get_forecast(
         latitude=plant["lat"], longitude=plant["lon"],
         days=get_settings().forecast_horizon_days)  # v2.69: 7g -> 16g
@@ -108,6 +109,7 @@ def uret_ve_kaydet(tenant_id, plant: dict) -> str:
             "nwp_model": meteo.nwp_model,   # v2.268
             "bant": _bant,                   # v2.273: {'kaynak': 'gefs', 'uye': n} | {'kaynak': 'model'}
             "sapma": {k: v for k, v in _sapma.items() if k != "oran_saat"},   # v2.274: aktif/neden/oran_genel
+            "etiket": etiket,                # v2.276: 'gun_ici' | None
             "cekim_utc": datetime.now(timezone.utc).isoformat(),
             "gunler": [
                 {"tarih": str(g), "t_max": round(t, 1),
@@ -219,7 +221,8 @@ def kosu_gecmisi(tenant_id, plant_id, n: int = 10):
         # 20 Agu; son_kosu ile ayni EXISTS kalibi (v2.164). Silme gecmisi
         # temizler, suzgec gelecegi: yarim kalan kosular listeye sizmasin.
         return s.execute(_text(
-            "SELECT run_at, mode, model, meteo_ozet_json->'bant' AS bant, meteo_ozet_json->'sapma' AS sapma FROM forecast_runs "
+            "SELECT run_at, mode, model, meteo_ozet_json->'bant' AS bant, meteo_ozet_json->'sapma' AS sapma, "
+            "meteo_ozet_json->>'etiket' AS etiket FROM forecast_runs "
             "WHERE plant_id=:p "
             "AND EXISTS (SELECT 1 FROM forecast_values v "
             "  WHERE v.run_id = forecast_runs.id) "

@@ -218,6 +218,22 @@ def gece_meteo(_plant=None):
     gece_meteo._son = bugun
 
 
+def gun_ici_tahmin(plant):
+    """v2.276 (Dalga 5) — gün içi güncelleme: ICON-EU taze koşusu (ECMWF omurgası arşivden) → tüm santraller için yeni koşu.
+    GİP revizyonu (kapanış+30 dk) için; KGÜP kuralı D-1 15:30 kesimini kullandığından etkilenmez."""
+    from pvquant.config import get_settings as _gs
+    if _gs().meteo_kaynak != "acik" or not _gs().gun_ici_guncelleme:
+        return
+    import datetime as _dt
+    from pvquant.io import acik_nwp
+    damga = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H")
+    if getattr(gun_ici_tahmin, "_son", None) != damga:   # ICON tazeleme saatte bir, santral döngüsünde tek sefer
+        noktalar = [(float(p["lat"]), float(p["lon"])) for p in _tum_santraller()]
+        print("gun_ici_tazele:", acik_nwp.gun_ici_tazele(noktalar))
+        gun_ici_tahmin._son = damga
+    forecast_service.uret_ve_kaydet(plant["tenant_id"], plant, etiket="gun_ici")
+
+
 def gece_piyasa(_plant=None):
     """v2.258 — EPİAŞ fiyatları (tenant'sız, günde bir kez yeter; _logla santral döngüsünden çağırır,
     ikinci santralde tekrar çekmemek için 'bugün çekildi' bayrağı)."""
@@ -501,6 +517,8 @@ if __name__ == "__main__":
     sch.add_job(_logla("gece_meteo", gece_meteo), "cron",                # v2.268: tahminden 1 saat önce
                 hour=(cfg.worker_hour_forecast - 1) % 24, minute=0)
     sch.add_job(_logla("sabah_tahmin", sabah_tahmin), "cron", hour=cfg.worker_hour_forecast, minute=0)
+    if cfg.gun_ici_guncelleme:                                              # v2.276: gün içi koşular (ICON taze)
+        sch.add_job(_logla("gun_ici_tahmin", gun_ici_tahmin), "cron", hour=cfg.gun_ici_saatler, minute=30)
     sch.add_job(_logla("gece_piyasa", gece_piyasa), "cron", hour=cfg.worker_hour_skill, minute=15)   # v2.258
     sch.add_job(_logla("gece_hijyen", gece_hijyen), "cron", hour=cfg.worker_hour_skill, minute=20)   # v2.254
     sch.add_job(_logla("gece_skill", gece_skill), "cron", hour=cfg.worker_hour_skill, minute=30)
