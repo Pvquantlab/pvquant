@@ -86,6 +86,14 @@ def kova_skorlari(df: "pd.DataFrame", capacity_kwp: float, tid, pid) -> list[dic
                        / float(gn.power_kw.sum()) * 100)               # WMAPE
             if nm > 0:
                 skill = float(100 * (1 - mape / nm))
+        # v2.279 (Tablo 3.2 satır 6): Yang 2019 referansı — iklimsel + akıllı persistans optimal konveks birleşimi
+        cliper_w, skill_c = None, None
+        if "cliper" in g:
+            gc = g.dropna(subset=["cliper"])
+            if len(gc) >= 3 and float(gc.power_kw.sum()) > 0:
+                cliper_w = float(abs(gc.cliper - gc.power_kw).sum() / float(gc.power_kw.sum()) * 100)
+                if cliper_w > 0:
+                    skill_c = float(100 * (1 - mape / cliper_w))
         nmae = nrmse = nmbe = None
         if capacity_kwp and capacity_kwp > 0:
             obs, fx = g.power_kw, g.p50_kw
@@ -98,7 +106,7 @@ def kova_skorlari(df: "pd.DataFrame", capacity_kwp: float, tid, pid) -> list[dic
         # v2.95 (sartname S4): naif olcumdur, saklanir — turetme donemi bitti.
         satirlar.append({"t": tid, "p": pid, "g": gun, "k": str(kova),
                          "m": mape, "r": rmse, "s": skill, "n": nm,
-                         "na": nmae, "nr": nrmse, "nb": nmbe, **ol})
+                         "na": nmae, "nr": nrmse, "nb": nmbe, "cw": cliper_w, "sc": skill_c, **ol})
     return satirlar
 
 
@@ -181,6 +189,18 @@ def gece_skill(plant, pencere_gun: int = 10):
     df["_cs_d"] = (df.ts_utc - pd.Timedelta(hours=24)).map(_cs)
     df["naif"] = df.naif_ham * (df._cs_t / df._cs_d).clip(1.0 / _clip, _clip)
     df.loc[(df._cs_d <= 5.0) | df.naif_ham.isna(), "naif"] = float("nan")
+    # v2.279: CLIPER referansı (Yang 2019) — iklimsel (ay×saat ortalaması, ≥20 gün) ile persistansın kova başına
+    # optimal konveks birleşimi; ağırlık pencerenin kendi geçmişinden (kapalı form). Yetersizse NaN → tire.
+    try:
+        from pvquant.ext.tahmin import referans as _ref
+        _ikl = _ref.iklimsel(_act, pd.DatetimeIndex(df.ts_utc), min_gun=20)
+        df["_iklim"] = _ikl.values
+        _kova_ufuk = (df.ufuk_s // 24).clip(upper=14).astype(int)
+        _cl, _W = _ref.optimal_birlesim(df.power_kw, df.naif, df["_iklim"], df.naif, df["_iklim"], _kova_ufuk, _kova_ufuk)
+        df["cliper"] = _cl.values
+        df.loc[df.naif.isna() | df["_iklim"].isna(), "cliper"] = float("nan")
+    except Exception as _e:   # noqa: BLE001 — referans hesabı skoru düşürmez
+        print("cliper atlandı:", type(_e).__name__, _e)
     satirlar = kova_skorlari(df, float(plant["capacity_kwp"]), tid, pid)  # v2.247
     if not satirlar:
         return
@@ -188,8 +208,8 @@ def gece_skill(plant, pencere_gun: int = 10):
         s.execute(text(
             "INSERT INTO skill_daily(tenant_id,plant_id,date,horizon_bucket,"
             " mape,rmse,skill_vs_naive,naive_wmape,nmae,nrmse,nmbe,"
-            " pinball_p10,pinball_p50,pinball_p90,crps,picp80,kapsama_p10,kapsama_p90,bant_n)"
-            " VALUES(:t,:p,:g,:k,:m,:r,:s,:n,:na,:nr,:nb,:q10,:q50,:q90,:cr,:pc,:k10,:k90,:bn) "
+            " pinball_p10,pinball_p50,pinball_p90,crps,picp80,kapsama_p10,kapsama_p90,bant_n,cliper_wmape,skill_vs_cliper)"
+            " VALUES(:t,:p,:g,:k,:m,:r,:s,:n,:na,:nr,:nb,:q10,:q50,:q90,:cr,:pc,:k10,:k90,:bn,:cw,:sc) "
             "ON CONFLICT (plant_id,date,horizon_bucket) DO UPDATE SET "
             " mape=EXCLUDED.mape, rmse=EXCLUDED.rmse,"
             " skill_vs_naive=EXCLUDED.skill_vs_naive,"
@@ -198,7 +218,15 @@ def gece_skill(plant, pencere_gun: int = 10):
             " pinball_p10=EXCLUDED.pinball_p10, pinball_p50=EXCLUDED.pinball_p50,"
             " pinball_p90=EXCLUDED.pinball_p90, crps=EXCLUDED.crps, picp80=EXCLUDED.picp80,"
             " kapsama_p10=EXCLUDED.kapsama_p10, kapsama_p90=EXCLUDED.kapsama_p90,"
-            " bant_n=EXCLUDED.bant_n"), satirlar)
+            " bant_n=EXCLUDED.bant_n, cliper_wmape=EXCLUDED.cliper_wmape, skill_vs_cliper=EXCLUDED.skill_vs_cliper"), satirlar)
+
+
+def gece_ufuk_sigma(plant, pencere_gun: int = 60):
+    """v2.279 — ufukla büyüyen belirsizlik: geçmiş artıklardan kova başına σ(h) (params_json.ufuk_sigma)."""
+    from pvquant.services import ufuk_service
+    r = ufuk_service.gece_ufuk_sigma(plant["tenant_id"], plant, gun=pencere_gun)
+    if r:
+        print("gece_ufuk_sigma:", plant.get("name"), {k: r["sigma_kw"][k] for k in list(r["sigma_kw"])[:3]}, "…", r["n"], "saat")
 def gece_meteo(_plant=None):
     """v2.268 (Dalga 0) — açık NWP koşularını (ECMWF IFS + ICON-EU) indirip TÜM santrallerin noktalarını
     meteo_arsiv'e yazar; günde bir kez (gece_piyasa kalıbı). sabah_tahmin arşivden okur — API'ye çıkmaz."""
@@ -522,6 +550,7 @@ if __name__ == "__main__":
         _logla("gece_epias_uretim", gece_epias_uretim)()    # v2.278 (kimlik/eşleme yoksa atlar)
         _logla("gece_hijyen", gece_hijyen)()                # v2.254 (skill'den once)
         _logla("gece_skill", gece_skill)()
+        _logla("gece_ufuk_sigma", gece_ufuk_sigma)()        # v2.279 (konformaldan önce)
         _logla("gece_konformal", gece_konformal)()          # v2.252
         _logla("gunluk_beklenti", gunluk_beklenti)()        # v2.205
         _logla("rapor_alanlari", rapor_alanlari)()          # v2.103 (B1+B5)
@@ -539,6 +568,8 @@ if __name__ == "__main__":
     sch.add_job(_logla("gece_epias_uretim", gece_epias_uretim), "cron", hour=cfg.worker_hour_skill, minute=18)   # v2.278
     sch.add_job(_logla("gece_hijyen", gece_hijyen), "cron", hour=cfg.worker_hour_skill, minute=20)   # v2.254
     sch.add_job(_logla("gece_skill", gece_skill), "cron", hour=cfg.worker_hour_skill, minute=30)
+    sch.add_job(_logla("gece_ufuk_sigma", gece_ufuk_sigma),              # v2.279
+                "cron", hour=cfg.worker_hour_skill, minute=33)
     sch.add_job(_logla("gece_konformal", gece_konformal),                # v2.252
                 "cron", hour=cfg.worker_hour_skill, minute=35)
     sch.add_job(_logla("gunluk_beklenti", gunluk_beklenti),              # v2.205

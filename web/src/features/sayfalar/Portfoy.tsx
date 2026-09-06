@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, rolum } from "../../api/client";
-import type { Portfoy as PortfoyT, PortfoyDsg, ApiAnahtar, Webhook } from "../../api/types";
+import type { Portfoy as PortfoyT, PortfoyDsg, PortfoyTahmin, ApiAnahtar, Webhook } from "../../api/types";
 import { Kart, Kpi, Sayfa, sayiTr } from "./parcalar";
 
 /** v2.263 (Dalga 5.15) — Portföy: kiracının tüm santralleri tek tabloda; toplamlar dürüst
@@ -9,6 +9,8 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {
   const [p, setP] = useState<PortfoyT | null | undefined>(undefined);
   useEffect(() => { api.portfoy().then(setP).catch(() => setP(null)); }, []);
   const [dsg, setDsg] = useState<PortfoyDsg | null>(null);   // v2.276
+  const [pt, setPt] = useState<PortfoyTahmin | null>(null);   // v2.280
+  useEffect(() => { api.portfoyTahmin().then(setPt).catch(() => {}); }, []);
   useEffect(() => { api.portfoyDsg().then(setDsg).catch(() => {}); }, []);
   const t = p?.toplam ?? null;
   const kwhYaz = (v: number | null | undefined) => v == null ? "—" : `${sayiTr(v / 1000, 1)} MWh`;
@@ -51,6 +53,24 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {
           Bugün/yarın = son koşunun yerel-gün P50 toplamı (20 saatten az kapsanan gün yazılmaz); WMAPE = son 30 günün 0–24 saat karnesi;
           alarm = son 7 günde okunmamış kayıt. Hiyerarşik uzlaştırma (portföy toplamının santral tahminleriyle tutarlı hale getirilmesi) sonraki dalga.
         </p>
+      </Kart>
+      {/* v2.280 (Tablo 3.2 satır 11): hiyerarşik uzlaştırılmış portföy tahmini — toplam santral tahminleriyle tutarlı */}
+      <Kart baslik="Portföy tahmini — uzlaştırılmış günlük toplamlar" sag={<span className="cip">{pt?.durum === "ok" ? `${pt.yontem}${pt.tutarli === false ? " · tutarsız!" : ""}` : "—"}</span>}>
+        {!pt ? <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p> : pt.durum !== "ok" ? <p className="soluk" style={{ margin: 0 }}>— koşu yok</p> : (
+          <>
+            <div className="grafik-kaydir">
+              <table className="veri" style={{ fontSize: 12.5 }}>
+                <thead><tr><th>Gün</th><th>P10 (MWh)</th><th>P50 (MWh)</th><th>P90 (MWh)</th><th>Saat</th></tr></thead>
+                <tbody className="mono">
+                  {(pt.gunler ?? []).map((g) => (
+                    <tr key={g.gun}><td>{new Date(g.gun + "T12:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}</td>
+                      <td>{sayiTr(g.p10_mwh, 1)}</td><td style={{ fontWeight: 600 }}>{sayiTr(g.p50_mwh, 1)}</td><td>{sayiTr(g.p90_mwh, 1)}</td><td>{sayiTr(g.saat)}</td></tr>))}
+                </tbody>
+              </table>
+            </div>
+            <p className="soluk" style={{ fontSize: 12.5, margin: "10px 0 0" }}>{pt.not}{pt.artik_gun ? ` Artık geçmişi ${sayiTr(pt.artik_gun)} gün.` : ""}</p>
+          </>
+        )}
       </Kart>
       {/* v2.276 (Dalga 5): DSG/toplayıcı netleştirmesi — portföy tek dengesizlik hesabına girerse ne kazanılır */}
       <Kart baslik="DSG netleştirmesi — portföy dengesizliği" sag={<span className="cip">{dsg ? `${sayiTr(dsg.pencere_gun)} gün · ${dsg.fiyat.senaryo_saat > 0 ? "senaryo fiyat" : "EPİAŞ fiyat"}` : "—"}</span>}>

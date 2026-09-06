@@ -410,6 +410,12 @@ export function Dogruluk({ plantId }: { plantId: string }) {
         nMAE {sfaYaz(k.nmae_ort)} · nRMSE {sfaYaz(k.nrmse_ort)} · nMBE {sfaYaz(k.nmbe_ort, true)}
         {k.nmae_ort == null && " — bu ölçütler gece karnesinde yeni birikiyor"}
       </div>
+      {/* v2.279: sıkı referans — iklim + persistans optimal birleşimi; naiften daha zor geçilir */}
+      <div className="cip" style={{ display: "inline-block", marginBottom: 14, marginLeft: 8 }} title="Referans: iklimsel ortalama ile akıllı persistansın geçmişte en iyi ağırlıkla birleşimi; sektörde 'beceri' iddiasının çıtası">
+        Sıkı referansa üstünlük{" "}
+        {k.cliper_ustunluk_pct == null ? "— (gece karnesinde birikiyor)" : `%${sayiTr(k.cliper_ustunluk_pct, 1)}`}
+        {k.cliper_wmape_ort != null && ` · referans WMAPE %${sayiTr(k.cliper_wmape_ort, 1)}`}
+      </div>
       <Kart baslik="Günlük WMAPE — naif referansla karşılaştırma"
         sag={<span className="cip">nokta: günlük · kalın: 7 gün eğilimi · ince gri: naif</span>}>
         <div className="ızgara" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)" }}>

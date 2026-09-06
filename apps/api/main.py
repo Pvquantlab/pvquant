@@ -416,6 +416,15 @@ def hakkinda(claims=Depends(gecerli_kullanici)):
     return kaynak_service.hakkinda()
 
 
+@app.get("/v1/portfoy/tahmin")
+def portfoy_tahmin(gun: int = 7, claims=Depends(gecerli_kullanici)):
+    """v2.280 — hiyerarşik uzlaştırılmış portföy tahmini (bottom-up; ≥2 santral + artık geçmişiyle MinT)."""
+    from pvquant.services import uzlastirma_service
+    if not (1 <= gun <= 15):
+        raise HTTPException(422, "gun 1-15")
+    return uzlastirma_service.portfoy_tahmini(claims["tenant_id"], gun=gun)
+
+
 @app.get("/v1/portfoy/dsg")
 def portfoy_dsg(gun: int = 30, claims=Depends(gecerli_kullanici)):
     """v2.276 — DSG/toplayıcı portföy netleştirmesi: santral başına ayrı dengesizlik ↔ portföyün netleşmiş dengesizliği."""
@@ -853,6 +862,7 @@ def skill(plant_id: str, bucket: str = "0-24", gun: int = 120,
     return {
         "kova": bucket,
         "nmae_ort": _ort("nmae"), "nrmse_ort": _ort("nrmse"), "nmbe_ort": _ort("nmbe"),
+        "cliper_wmape_ort": _ort("cliper_wmape"), "cliper_ustunluk_pct": _ort("skill_vs_cliper"),   # v2.279 (Yang 2019 referansı)
         "olasiliksal": _ol(),
         "gun_sayisi": int(kova["date"].nunique()) if len(kova) else 0,
         "wmape_ort": _kw(kova["mape"].mean()) if len(kova) else None,

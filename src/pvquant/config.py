@@ -52,6 +52,8 @@ class Settings(BaseSettings):
     # v2.276 (Dalga 5): gün içi güncelleme — ICON-EU taze koşusuyla öğle/ikindi koşuları (GİP revizyonu için); UTC saatleri
     gun_ici_guncelleme: bool = True
     gun_ici_saatler: str = "9,15"
+    # v2.279 (Tablo 3.2 satır 3, ★): ufukla büyüyen belirsizlik tabanı — geçmiş hatadan σ(h); yalnız genişletir
+    ufuk_sigma_katmani: Literal["otomatik", "kapali"] = "otomatik"
     # ----- Open-Meteo (yalnız meteo_kaynak='open_meteo') -----
     meteo_base_url: str = "https://api.open-meteo.com/v1"
     meteo_timeout: int = 30

@@ -84,6 +84,12 @@ export interface Bankable {
 }
 /** /epias-uretim — v2.278: EPİAŞ gerçekleşen üretim akışı durumu. */
 export interface EpiasUretim { uygun: boolean; neden: string; epias_santral_id: number | null; n_saat: number; son: string | null }
+/** /portfoy/tahmin — v2.280: hiyerarşik uzlaştırılmış portföy tahmini. */
+export interface PortfoyTahmin {
+  durum: string; santral?: number; yontem?: string; tutarli?: boolean; n_saat?: number; kapasite_kwp?: number; artik_gun?: number; not?: string;
+  gunler?: { gun: string; p50_mwh: number; p10_mwh: number; p90_mwh: number; saat: number }[];
+  santral_bugun_mwh?: Record<string, number>;
+}
 /** /portfoy/dsg — v2.276: DSG netleştirmesi. */
 export interface PortfoyDsg {
   santral: number; n_saat: number; ayri_tl: number | null; net_tl: number | null; kazanc_tl: number | null; kazanc_pct?: number | null;
@@ -173,6 +179,8 @@ export interface Karne {
   ilk_tarih: string | null; son_tarih: string | null;
   /** v2.247: SFA sozlugu — kapasiteye normalize yuzdeler (eski kayitlarda null). */
   nmae_ort?: number | null; nrmse_ort?: number | null; nmbe_ort?: number | null;
+  /** v2.279: iklimsel + persistans optimal birleşim referansı (Yang 2019) — bu referansı geçemeyen model beceri iddia edemez. */
+  cliper_wmape_ort?: number | null; cliper_ustunluk_pct?: number | null;
   /** v2.248: P10–P90 bandinin gece sinavi (gun ortalamalari; dolu gun yoksa null). */
   olasiliksal?: { gun_sayisi: number; pinball_p10: number | null; pinball_p50: number | null; pinball_p90: number | null;
                   crps: number | null; picp80: number | null; kapsama_p10: number | null; kapsama_p90: number | null;

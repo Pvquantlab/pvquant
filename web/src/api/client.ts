@@ -1,4 +1,4 @@
-import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , EpiasUretim , Bankable , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme } from "./types";
+import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -402,6 +402,10 @@ export const api = {
   santraller: async (): Promise<SantralKisa[]> => {
     if (TABAN == null) return [{ id: "ornek", name: "Konya GES", capacity_kwp: 4514, tz: "Europe/Istanbul" }];
     try { return await getir<SantralKisa[]>(`/v1/plants`); } catch { return []; }
+  },
+  portfoyTahmin: async (gun = 7): Promise<PortfoyTahmin | null> => {
+    if (TABAN == null) return null;
+    try { return await getir<PortfoyTahmin>(`/v1/portfoy/tahmin?gun=${gun}`); } catch { return null; }
   },
   portfoyDsg: async (gun = 30): Promise<PortfoyDsg | null> => {
     if (TABAN == null) return null;

@@ -91,6 +91,11 @@ def uret_ve_kaydet(tenant_id, plant: dict, etiket: str | None = None) -> str:
             # üye ufku dışındaki saatler (GEFS koşu+3 s öncesi ve +240 s sonrası) model bandında kalır — NaN bant yazılmaz
             _yeni = _q[k].reindex(h.index)
             h[f"{k}_kw"] = _yeni.where(_yeni.notna(), h[f"{k}_kw"]) if h[f"{k}_kw"].notna().any() else _yeni
+    # v2.279 (★): ufukla büyüyen belirsizlik — yarı genişlik ≥ z·σ(ufuk kovası); yalnız genişletir (açık gök haftasında
+    # üyeler hemfikirken bant ufukla büyümüyordu). Konformal bundan sonra gelir.
+    from pvquant.services import ufuk_service as _uf
+    _ufuk = _uf.ayar_getir(plant)
+    h = _uf.uygula_df(h, _ufuk, pd.Timestamp.now(tz="UTC"), plant.get("ac_limit_kw") or plant.get("capacity_kwp"))
     # v2.274 (Dalga 2, ★ onaylı): trend/sapma katmanı — son 7 günün saat-bazlı ölçüm/tahmin oranı; yalnız taze SCADA ve
     # anlamlı sapma varsa (aksi hâlde dokunmaz). Konformal bundan SONRA gelir.
     from pvquant.services import sapma_service as _sp
@@ -110,6 +115,8 @@ def uret_ve_kaydet(tenant_id, plant: dict, etiket: str | None = None) -> str:
             "bant": _bant,                   # v2.273: {'kaynak': 'gefs', 'uye': n} | {'kaynak': 'model'}
             "sapma": {k: v for k, v in _sapma.items() if k != "oran_saat"},   # v2.274: aktif/neden/oran_genel
             "etiket": etiket,                # v2.276: 'gun_ici' | None
+            "ufuk_sigma": ({"n": _ufuk.get("n"), "kova_saat": _ufuk.get("kova_saat"), "sigma_ilk_kw": list(_ufuk["sigma_kw"].values())[0],
+                            "sigma_son_kw": list(_ufuk["sigma_kw"].values())[-1]} if _ufuk else None),   # v2.279
             "cekim_utc": datetime.now(timezone.utc).isoformat(),
             "gunler": [
                 {"tarih": str(g), "t_max": round(t, 1),
@@ -205,7 +212,7 @@ def skill_gecmisi(tenant_id, plant_id, gun: int = 30):
         return pd.read_sql(text(
             "SELECT date, horizon_bucket, mape, naive_wmape, skill_vs_naive, "
             "nmae, nrmse, nmbe, pinball_p10, pinball_p50, pinball_p90, crps, picp80, "
-            "kapsama_p10, kapsama_p90, bant_n "
+            "kapsama_p10, kapsama_p90, bant_n, cliper_wmape, skill_vs_cliper "
             "FROM skill_daily WHERE plant_id=:p "
             "AND date >= current_date - (:g * INTERVAL '1 day') "
             "ORDER BY date"),
