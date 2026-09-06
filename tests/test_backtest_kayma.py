@@ -57,3 +57,16 @@ def test_kapilar(istemci):
     assert istemci.get(f"/v1/plants/{PLANT}/backtest?gun=10").status_code == 422
     assert istemci.get(f"/v1/plants/{PLANT}/kayma?gun=14").json()["gun"] == 14
     assert istemci.get(f"/v1/plants/{PLANT}/kayma?gun=99").status_code == 422
+
+
+def test_kayma_arsiv_yoksa_durust(monkeypatch):
+    """v2.282: açık arşiv pencereyi kapsamıyorsa 500 değil boş/nedenli sonuç."""
+    from pvquant.services import kayma_service as ky
+    from pvquant.io import meteo as mio
+    from pvquant.io.meteo import OpenMeteoError
+    ky._ONBELLEK.clear()
+    def patla(self, *a, **k): raise OpenMeteoError("2026-08-05..2026-09-04 için açık arşiv meteosu yok")
+    monkeypatch.setattr(mio.OpenMeteoClient, "get_historical", patla)
+    r = ky.kayma_denetimi({"id": "p-test", "lat": 37.87, "lon": 32.49}, gun=30)
+    assert r["n_saat"] == 0 and r["ozellikler"] == [] and r["hukum"] == "—" and "birikiyor" in r["not"] and "PVQUANT" not in r["not"]
+    ky._ONBELLEK.clear()

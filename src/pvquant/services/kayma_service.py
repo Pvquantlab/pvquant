@@ -59,8 +59,17 @@ def kayma_denetimi(plant: dict, gun: int = 30) -> dict:
         return _ONBELLEK[anahtar]
     c = OpenMeteoClient()
     bitis = date.today() - timedelta(days=2); bas = bitis - timedelta(days=gun)
-    ars = c.get_historical(plant["lat"], plant["lon"], bas.isoformat(), bitis.isoformat()).to_dataframe()
-    tah = c.get_forecast(plant["lat"], plant["lon"], days=1, past_days=min(gun + 2, 92)).to_dataframe()
+    from pvquant.io.meteo import OpenMeteoError
+    try:
+        ars = c.get_historical(plant["lat"], plant["lon"], bas.isoformat(), bitis.isoformat()).to_dataframe()
+        tah = c.get_forecast(plant["lat"], plant["lon"], days=1, past_days=min(gun + 2, 92)).to_dataframe()
+    except OpenMeteoError as e:
+        # v2.282: açık arşiv bu pencereyi kapsamıyorsa (kurulumdan önceki dönem / CAMS yok) 500 değil dürüst boş sonuç
+        out = {"n_saat": 0, "ozellikler": [], "hukum": "—", "kaynak": _kaynak(), "gun": gun, "baslangic": bas.isoformat(), "bitis": bitis.isoformat(),
+               "not": "eğitim meteosu bu pencere için henüz yok — açık arşiv kurulumdan sonra birikiyor (uydu ışınım kaydı operatör ayarıdır)"}
+        print(f"[kayma] eğitim meteosu alınamadı: {e}")   # ayrıntı yalnız günlükte (ortam değişkeni adları panelde görünmez)
+        _ONBELLEK[anahtar] = out
+        return out
     for df in (ars, tah):
         if df.index.tz is None:
             df.index = df.index.tz_localize("UTC")

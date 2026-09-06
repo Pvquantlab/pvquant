@@ -165,6 +165,8 @@ export interface Guvenilirlik {
 /** /kayma — v2.253: eğitim (arşiv) / servis (tahmin) meteo kayması. */
 export interface Kayma {
   n_saat: number; hukum: string; gun?: number; baslangic?: string; bitis?: string;
+  /** v2.282: eğitim meteosu alınamadıysa neden (dürüst boş sonuç) */
+  not?: string;
   kaynak: { egitim: string; servis: string; not: string };
   ozellikler: { ad: string; etiket: string; n: number; psi: number; ks: number; sapma: number; sapma_pct: number | null; hukum: string }[];
 }

@@ -689,7 +689,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
             </p>
           </>
         ) : (
-          <p className="soluk" style={{ margin: 0 }}>{ky ? "Ortak saat yetersiz — en az 48 saat gerekir." : "Arşiv ve tahmin meteosu aynı pencerede karşılaştırılıyor…"}</p>
+          <p className="soluk" style={{ margin: 0 }}>{ky ? (ky.not ? `— ${ky.not}` : "Ortak saat yetersiz — en az 48 saat gerekir.") : "Arşiv ve tahmin meteosu aynı pencerede karşılaştırılıyor…"}</p>
         )}
       </Kart>
       <KayipAgaciKarti plantId={plantId} />
