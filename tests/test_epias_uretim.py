@@ -20,7 +20,7 @@ def test_satirlar_uret():
 def test_uygunluk(monkeypatch):
     config.get_settings.cache_clear(); monkeypatch.delenv("PVQUANT_EPIAS_KULLANICI", raising=False)
     ok, neden = eu.uygun_mu({"params_json": {"epias_santral_id": 123}})
-    assert not ok and "kimliği yok" in neden
+    assert not ok and "kimliği tanımlı değil" in neden
     monkeypatch.setenv("PVQUANT_EPIAS_KULLANICI", "u"); monkeypatch.setenv("PVQUANT_EPIAS_SIFRE", "p"); config.get_settings.cache_clear()
     assert eu.uygun_mu({"params_json": {}})[0] is False and eu.uygun_mu({"params_json": {"epias_santral_id": 123}})[0] is True
     config.get_settings.cache_clear()

@@ -21,7 +21,8 @@ function EpiasUretimKarti({ plantId }: { plantId: string }) {
   };
   if (d === undefined) return null;
   return (
-    <Kart baslik="Gerçekleşen üretim kaynağı — piyasa şeffaflık akışı" sag={<span className="cip">{d?.uygun ? "hazır" : "devre dışı"}</span>}>
+    <Kart baslik="Gerçekleşen üretim kaynağı — piyasa şeffaflık akışı" sag={<span className="cip">{d?.uygun ? "hazır" : "devre dışı"}</span>}
+          style={{ maxWidth: 900 }}>
       {d === null ? <p className="soluk" style={{ margin: 0 }}>Örnek kip.</p> : (
         <>
           <p style={{ margin: "0 0 8px", fontSize: 12.5 }}>
@@ -29,8 +30,8 @@ function EpiasUretimKarti({ plantId }: { plantId: string }) {
             karne, alarm ve dengesizlik hesapları bunu kullanır. Yüklenen SCADA her zaman önceliklidir.
           </p>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", fontSize: 12.5 }}>
-            <span className="soluk">Şeffaflık santral kimliği:</span>
-            <input className="mono" value={kimlik} onChange={(e) => setKimlik(e.target.value)} placeholder="powerPlantId" aria-label="Şeffaflık santral kimliği"
+            <span className="soluk">Santralın şeffaflık numarası:</span>
+            <input className="mono" value={kimlik} onChange={(e) => setKimlik(e.target.value)} placeholder="örn. 1234" inputMode="numeric" aria-label="Santralın şeffaflık numarası"
                    style={{ width: 120, fontSize: 12, padding: "3px 6px", border: "1px solid var(--kenar)", borderRadius: 4, background: "var(--yuzey)", color: "var(--metin)" }} />
             <button className="dugme" style={{ fontSize: 11.5 }} onClick={kaydet}>Kaydet</button>
             <span className="cip">{d.uygun ? `${sayiTr(d.n_saat)} saat yazıldı${d.son ? ` · son ${new Date(d.son).toLocaleDateString("tr-TR")}` : ""}` : d.neden}</span>

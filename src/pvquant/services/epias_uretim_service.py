@@ -26,9 +26,9 @@ def _pj(plant: dict) -> dict:
 def uygun_mu(plant: dict) -> tuple[bool, str]:
     s = get_settings()
     if not (s.epias_kullanici and s.epias_sifre):
-        return False, "EPİAŞ kimliği yok (PVQUANT_EPIAS_KULLANICI / PVQUANT_EPIAS_SIFRE)"
+        return False, "piyasa şeffaflık kimliği tanımlı değil — operatör ayarı (kurulumda verilir)"
     if not _pj(plant).get("epias_santral_id"):
-        return False, "Şeffaflık santral kimliği (epias_santral_id) tanımlı değil"
+        return False, "santralın şeffaflık numarası girilmedi"
     return True, "hazır"
 
 
