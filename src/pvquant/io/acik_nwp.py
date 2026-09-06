@@ -214,7 +214,7 @@ def _arsive_yaz(satirlar: list[dict]) -> int:
 
 
 def kosu_cek_ve_arsivle(noktalar: list[tuple[float, float]], dizin: Path | None = None,
-                        ecmwf: bool = True, icon: bool = True) -> dict:
+                        ecmwf: bool = True, icon: bool = True, gefs: bool = False) -> dict:
     """Gecelik iş: iki koşuyu indir, noktaları çıkar, harmanı arşive yaz, eski GRIB'leri temizle.
     Kaynaklardan biri düşerse öteki yeter; ikisi de düşerse yükseltir (koşu meteosuz kalmaz — 'başsız run' ilkesi)."""
     dizin = dizin or _dizin()
@@ -242,6 +242,13 @@ def kosu_cek_ve_arsivle(noktalar: list[tuple[float, float]], dizin: Path | None 
             continue
         satirlar += satirlar_uret(harmanla(e, i, lat, lon), KAYNAK, kosu, lat, lon)
     rapor["satir"] = _arsive_yaz(satirlar); rapor["kosu"] = kosu.isoformat()
+    if gefs:   # v2.273: üye verisi — düşerse ana koşu etkilenmez (bant model yolundan gelir)
+        rapor["gefs"] = {}
+        for lat, lon in noktalar:
+            try:
+                rapor["gefs"][f"{lat},{lon}"] = gefs_cek_ve_arsivle(lat, lon, dizin)
+            except Exception as ex:   # noqa: BLE001
+                rapor["hata"].append(f"gefs {lat},{lon}: {type(ex).__name__}: {ex}")
     eski_temizle(dizin, get_settings().nwp_kosu_tut)
     return rapor
 
@@ -249,7 +256,7 @@ def kosu_cek_ve_arsivle(noktalar: list[tuple[float, float]], dizin: Path | None 
 def eski_temizle(dizin: Path, tut: int = 2) -> list[str]:
     """Kaynak başına son `tut` koşu kalır; gerisi silinir (GRIB'ler büyüktür; arşiv DB'dedir)."""
     silinen = []
-    for kalip in ("ecmwf_ifs_*.grib2", "icon_eu_*"):
+    for kalip in ("ecmwf_ifs_*.grib2", "icon_eu_*", "gefs_*"):
         adaylar = sorted(dizin.glob(kalip), key=lambda p: p.name)
         for p in adaylar[:-tut] if tut > 0 else adaylar:
             shutil.rmtree(p, ignore_errors=True) if p.is_dir() else p.unlink(missing_ok=True); silinen.append(p.name)
@@ -329,3 +336,146 @@ def arsiv_durumu() -> dict:
         r = s.execute(text("SELECT kaynak, max(kosu_zamani) AS son, count(DISTINCT (lat,lon)) AS nokta, count(*) AS satir, "
                            "min(ts_utc) AS ilk, max(ts_utc) AS son_ts FROM meteo_arsiv GROUP BY kaynak")).mappings().all()
     return {x["kaynak"]: {k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in dict(x).items() if k != "kaynak"} for x in r}
+
+
+# ----------------------------------------------------------------------------- v2.273: GEFS üyeleri ------------
+# NOAA GEFS 0.25° (kamu malı): 30 karışık üye + kontrol; NOMADS süzgeciyle nokta çevresi ±0,5° kutu → dosya başına ~1 KB.
+# Mayer & Yang 2022 kalıbı: üye başına fizik koşusu → ampirik kantiller (ensemble_service). ECMWF ENS 'enfo' akışı
+# (50+1 üye, koşu başına GB'lar, 503 Slow Down) bilerek ertelendi; GEFS aynı işi 2.500 küçük istekle görür.
+GEFS_KAYNAK = "gefs"
+GEFS_ADIMLAR = list(range(3, 241, 3))          # 3 s çözünürlük, 10 gün
+GEFS_UYELER = list(range(0, 31))               # 0 = kontrol
+GEFS_ISTEK_ARASI_SN = 0.35                     # NOMADS ~120 istek/dk sınırı
+
+
+def gefs_indir(lat: float, lon: float, dizin: Path | None = None, kosu: pd.Timestamp | None = None,
+               uyeler: list[int] | None = None, adimlar: list[int] | None = None) -> tuple[Path, pd.Timestamp]:
+    """Üye × adım dosyaları (var olanı atlar); 429/503'te üstel bekleme. Döner (koşu dizini, koşu zamanı)."""
+    import time
+    from pvquant.ext.kaynak import nwp_gfs
+    dizin = dizin or _dizin()
+    kosu = kosu or nwp_gfs.son_kosu()
+    la, lo = _nokta_anahtar(lat, lon)
+    kd = dizin / f"gefs_{kosu.strftime('%Y%m%d%H')}_{la}_{lo}"
+    for u in (uyeler or GEFS_UYELER):
+        bekle = 2.0
+        for deneme in range(6):
+            try:
+                nwp_gfs.indir(kd, la, lo, kosu=kosu, adimlar=adimlar or GEFS_ADIMLAR, uye=u, timeout=60.0)
+                break
+            except Exception as e:   # noqa: BLE001 — httpx durum/ağ hataları
+                if deneme == 5:
+                    raise
+                time.sleep(bekle); bekle = min(bekle * 2, 60.0)
+        time.sleep(GEFS_ISTEK_ARASI_SN)
+    return kd, kosu
+
+
+def _gefs_uye_oku(dosyalar: list[Path], lat: float, lon: float) -> pd.DataFrame | None:
+    """Bir üyenin adım dosyaları → saatlik çerçeve (ghi/temp_air/wind_speed_10m/cloud_cover)."""
+    import cfgrib
+    from pvquant.ext.kaynak.ortak import kaba_adimi_saatlige_indir, ruzgar_hizi, saatlik_utc_index
+    kayit: dict[pd.Timestamp, dict[str, float]] = {}
+    for f in sorted(dosyalar):
+        try:
+            dss = cfgrib.open_datasets(str(f), backend_kwargs={"indexpath": ""})
+        except Exception:   # noqa: BLE001 — bozuk/boş dosya atlanır
+            continue
+        for ds in dss:
+            n = ds.sel(latitude=lat, longitude=lon % 360 if float(ds.longitude.max()) > 180 else lon, method="nearest")
+            gecerli = pd.Timestamp(n.valid_time.values).tz_localize("UTC")
+            for v in ds.data_vars:
+                ad = {"sdswrf": "ghi_kaba", "dswrf": "ghi_kaba", "t2m": "temp_air", "u10": "u", "v10": "v", "tcc": "cloud_cover"}.get(v)
+                if ad:
+                    kayit.setdefault(gecerli, {})[ad] = float(n[v].values)
+    if not kayit:
+        return None
+    ham = pd.DataFrame(kayit).T.sort_index()
+    if "ghi_kaba" not in ham or ham["ghi_kaba"].dropna().empty:
+        return None
+    hedef = saatlik_utc_index(ham.index[0] - pd.Timedelta(hours=3), int((ham.index[-1] - ham.index[0]) / pd.Timedelta(hours=1)) + 3)
+    df = pd.DataFrame(index=hedef)
+    df["ghi"] = kaba_adimi_saatlige_indir(ham["ghi_kaba"], lat, lon, hedef)     # 3 s ortalama → saatlik (kt sabit)
+    df["temp_air"] = (ham["temp_air"] - 273.15).reindex(hedef).interpolate(limit_direction="both") if "temp_air" in ham else np.nan
+    df["wind_speed_10m"] = (ruzgar_hizi(ham["u"], ham["v"]).reindex(hedef).interpolate(limit_direction="both") if "u" in ham and "v" in ham else np.nan)
+    df["cloud_cover"] = ham["cloud_cover"].reindex(hedef).interpolate(limit_direction="both") if "cloud_cover" in ham else np.nan
+    return df.dropna(subset=["ghi"])
+
+
+def gefs_uye_noktalar(kosu_dizini: Path, lat: float, lon: float) -> dict[int, pd.DataFrame]:
+    """Koşu dizinindeki üye dosyalarını üye numarasına göre gruplayıp okur."""
+    kd = Path(kosu_dizini)
+    out = {}
+    for u in GEFS_UYELER:
+        on_ek = "gec00" if u == 0 else f"gep{u:02d}"
+        dosyalar = sorted(kd.rglob(f"{on_ek}.t*"))   # ext.nwp_gfs.indir kendi alt dizinini (gefs_<koşu>) açar → özyinelemeli
+        if len(dosyalar) < 0.8 * len(GEFS_ADIMLAR):     # eksik üye (NOMADS 404'leri) alınmaz — kantil çarpılmasın
+            continue
+        df = _gefs_uye_oku(dosyalar, lat, lon)
+        if df is not None:
+            out[u] = df
+    return out
+
+
+def uye_satirlari(uyeler: dict[int, pd.DataFrame], kosu: pd.Timestamp, lat: float, lon: float) -> list[dict]:
+    la, lo = _nokta_anahtar(lat, lon)
+    rows = []
+    for u, df in uyeler.items():
+        for ts, r in df.iterrows():
+            if pd.isna(r.get("ghi")):
+                continue
+            rows.append({"k": GEFS_KAYNAK, "z": kosu.to_pydatetime(), "la": la, "lo": lo, "u": int(u), "ts": ts.to_pydatetime(),
+                         "ghi": float(r["ghi"]), "temp_air": None if pd.isna(r.get("temp_air")) else float(r["temp_air"]),
+                         "wind_speed_10m": None if pd.isna(r.get("wind_speed_10m")) else float(r["wind_speed_10m"]),
+                         "cloud_cover": None if pd.isna(r.get("cloud_cover")) else float(r["cloud_cover"])})
+    return rows
+
+
+def _uyeleri_yaz(rows: list[dict]) -> int:
+    from sqlalchemy import text
+    from pvquant.db import sistem_baglami
+    if not rows:
+        return 0
+    with sistem_baglami() as s:
+        for i in range(0, len(rows), 5000):
+            s.execute(text(
+                "INSERT INTO meteo_uye(kaynak,kosu_zamani,lat,lon,uye,ts_utc,ghi,temp_air,wind_speed_10m,cloud_cover) "
+                "VALUES(:k,:z,:la,:lo,:u,:ts,:ghi,:temp_air,:wind_speed_10m,:cloud_cover) "
+                "ON CONFLICT (kaynak,kosu_zamani,lat,lon,uye,ts_utc) DO NOTHING"), rows[i:i + 5000])
+        s.execute(text("DELETE FROM meteo_uye WHERE kosu_zamani < now() - interval '45 days'"))   # üye arşivi kısa ömürlü
+    return len(rows)
+
+
+def gefs_cek_ve_arsivle(lat: float, lon: float, dizin: Path | None = None) -> dict:
+    kd, kosu = gefs_indir(lat, lon, dizin)
+    uyeler = gefs_uye_noktalar(kd, *_nokta_anahtar(lat, lon))
+    n = _uyeleri_yaz(uye_satirlari(uyeler, kosu, lat, lon))
+    return {"kosu": kosu.isoformat(), "uye": len(uyeler), "satir": n}
+
+
+def arsivden_uyeler(lat: float, lon: float, days: int, azami_yas_saat: float = 36.0) -> dict[int, "pd.DataFrame"] | None:
+    """En taze GEFS koşusunun üyeleri (uye → saatlik df); yoksa/bayatsa None."""
+    from sqlalchemy import text
+    from pvquant.db import sistem_baglami
+    la, lo = _nokta_anahtar(lat, lon)
+    simdi = pd.Timestamp.now(tz="UTC")
+    with sistem_baglami() as s:
+        kosu = s.execute(text("SELECT max(kosu_zamani) FROM meteo_uye WHERE kaynak=:k AND lat=:la AND lon=:lo"),
+                         {"k": GEFS_KAYNAK, "la": la, "lo": lo}).scalar()
+        if kosu is None or (simdi - pd.Timestamp(kosu).tz_convert("UTC")) > pd.Timedelta(hours=azami_yas_saat):
+            return None
+        bas = simdi.floor("D")
+        df = pd.read_sql(text(
+            "SELECT uye, ts_utc, ghi, temp_air, wind_speed_10m, cloud_cover FROM meteo_uye "
+            "WHERE kaynak=:k AND lat=:la AND lon=:lo AND kosu_zamani=:z AND ts_utc >= :a AND ts_utc < :b ORDER BY uye, ts_utc"),
+            s.connection(), params={"k": GEFS_KAYNAK, "la": la, "lo": lo, "z": kosu, "a": bas, "b": bas + pd.Timedelta(days=days)},
+            parse_dates=["ts_utc"])
+    if df.empty:
+        return None
+    out = {}
+    for u, g in df.groupby("uye"):
+        g = g.set_index(pd.DatetimeIndex(g["ts_utc"])).drop(columns=["uye", "ts_utc"])
+        if g.index.tz is None:
+            g.index = g.index.tz_localize("UTC")
+        out[int(u)] = g
+    return out

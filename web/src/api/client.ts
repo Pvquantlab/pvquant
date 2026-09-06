@@ -159,7 +159,12 @@ export class EslemeHatasi extends Error {
 }
 
 /** v2.94: gecmis kosu satiri — /runs ucu ile birebir. */
-export interface KosuSatiri { run_at: string; mode: string; model: string; }
+export interface KosuSatiri { run_at: string; mode: string; model: string;
+  /** v2.273: bant kaynağı — gefs (n üye) ya da model */
+  bant?: { kaynak: string; uye?: number; not?: string } | null;
+  /** v2.274: sapma katmanı — aktifse oran_genel (ör. 0,95 = tahmin %5 yüksek kalıyordu) */
+  sapma?: { aktif: boolean; neden?: string | null; oran_genel?: number; n_gun?: number } | null;
+}
 /** v2.240 — zil kapısı satırı (apps/api alarmlar ile birebir). */
 export interface AlarmSatiri {
   id: string; kural: string; siddet: string; mesaj: string; zaman: string;

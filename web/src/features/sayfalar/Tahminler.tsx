@@ -35,6 +35,16 @@ export function Tahminler({ plantId }: { plantId: string }) {
   const [kgupHata, setKgupHata] = useState<string | null>(null);
   useEffect(() => { api.kgupOnizleme(plantId).then(setKgup).catch(() => setKgup(null)); }, [plantId]);
   const [nc, setNc] = useState<Nowcast | null | undefined>(undefined);   // v2.266
+  // v2.273: son koşunun bant kaynağı (ensemble üyeleri / model) — dip notta dürüstçe söylenir
+  const [bantYazisi, setBantYazisi] = useState<string | null>(null);
+  useEffect(() => {
+    api.kosular(plantId).then((k) => {
+      const b = k[0]?.bant;
+      const s = k[0]?.sapma;
+      const sy = s?.aktif ? ` · son ${sayiTr(s.n_gun ?? 0)} günün ölçümüyle %${sayiTr(((s.oran_genel ?? 1) - 1) * 100, 1)} düzeltildi` : "";
+      setBantYazisi((!b ? "" : b.kaynak === "gefs" ? `${sayiTr(b.uye ?? 0)} üyeli hava topluluğundan ampirik kantil` : "model bandı") + sy || null);
+    }).catch(() => setBantYazisi(null));
+  }, [plantId]);
   useEffect(() => { api.nowcast(plantId).then(setNc).catch(() => setNc(null)); }, [plantId]);
   useEffect(() => {
     api.tahmin(plantId, "16d").then(setSeri); // single fetch — D1/D2
@@ -132,7 +142,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
               saatlik üretim tahminidir:</b> mavi çizgi P50 (medyan senaryo),
               bant P10–P90 aralığı — saatlerin %80'inin içinde kalması beklenen
               koridor; amber çizgi varsa gerçekleşen üretimdir. Son koşu Mod{" "}
-              {seri.mod ?? "—"} · kaynak: tahmin arşivi — koşular güncellenmez,
+              {seri.mod ?? "—"}{bantYazisi ? ` · bant: ${bantYazisi}` : ""} · kaynak: tahmin arşivi — koşular güncellenmez,
               yenisi eklenir.
             </p>
           </Kart>

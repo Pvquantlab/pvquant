@@ -908,7 +908,8 @@ def kosu_listesi(plant_id: str, claims=Depends(gecerli_kullanici)):
     row = plant_service.getir(claims["tenant_id"], plant_id)
     if row is None:
         raise HTTPException(404, "santral yok")
-    return [{"run_at": r.run_at.isoformat(), "mode": r.mode, "model": r.model}
+    return [{"run_at": r.run_at.isoformat(), "mode": r.mode, "model": r.model, "bant": getattr(r, "bant", None),   # v2.273
+             "sapma": getattr(r, "sapma", None)}   # v2.274
             for r in kosu_gecmisi(claims["tenant_id"], plant_id, n=10)]
 
 

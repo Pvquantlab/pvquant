@@ -81,6 +81,20 @@ def uret_ve_kaydet(tenant_id, plant: dict) -> str:
             h["ml_kw"] = h["p50_kw"] - h["physics_kw"]
             for k in ("p10_kw", "p25_kw", "p75_kw", "p90_kw"):  # v2.204: +ic bant
                 if k in hh.columns: h[k] = hh[k].reindex(h.index)
+    # v2.273 (Dalga 2, ★ onaylı): ensemble bandı — taze GEFS üyeleri varsa üye başına fizik koşusundan ampirik kantiller
+    # HAM bandı verir (P50 hibrit kalır); üye yoksa yukarıdaki model bandı. Konformal bunun üstüne uygulanır.
+    from pvquant.services import ensemble_service as _es
+    _q, _bant = _es.bant_uret(plant, spec, meteo, h, get_settings().forecast_horizon_days)
+    if _q is not None:
+        for k in ("p10", "p25", "p75", "p90"):
+            # üye ufku dışındaki saatler (GEFS koşu+3 s öncesi ve +240 s sonrası) model bandında kalır — NaN bant yazılmaz
+            _yeni = _q[k].reindex(h.index)
+            h[f"{k}_kw"] = _yeni.where(_yeni.notna(), h[f"{k}_kw"]) if h[f"{k}_kw"].notna().any() else _yeni
+    # v2.274 (Dalga 2, ★ onaylı): trend/sapma katmanı — son 7 günün saat-bazlı ölçüm/tahmin oranı; yalnız taze SCADA ve
+    # anlamlı sapma varsa (aksi hâlde dokunmaz). Konformal bundan SONRA gelir.
+    from pvquant.services import sapma_service as _sp
+    _sapma = _sp.ayar_getir(tenant_id, plant)
+    h = _sp.uygula_df(h, _sapma, plant.get("tz") or "UTC")
     # v2.252 (Dalga 2.7, ★ onaylı): konformal bant kalibrasyonu — ham kantiller saklanır,
     # servis edilen bant q̂ ile düzeltilir; ayar yoksa ham = servis. Çekirdek dokunulmadı.
     from pvquant.services import konformal_service as _kf
@@ -92,6 +106,8 @@ def uret_ve_kaydet(tenant_id, plant: dict) -> str:
         meteo_ozet = json.dumps({
             "kaynak": _kaynak,
             "nwp_model": meteo.nwp_model,   # v2.268
+            "bant": _bant,                   # v2.273: {'kaynak': 'gefs', 'uye': n} | {'kaynak': 'model'}
+            "sapma": {k: v for k, v in _sapma.items() if k != "oran_saat"},   # v2.274: aktif/neden/oran_genel
             "cekim_utc": datetime.now(timezone.utc).isoformat(),
             "gunler": [
                 {"tarih": str(g), "t_max": round(t, 1),
@@ -203,7 +219,7 @@ def kosu_gecmisi(tenant_id, plant_id, n: int = 10):
         # 20 Agu; son_kosu ile ayni EXISTS kalibi (v2.164). Silme gecmisi
         # temizler, suzgec gelecegi: yarim kalan kosular listeye sizmasin.
         return s.execute(_text(
-            "SELECT run_at, mode, model FROM forecast_runs "
+            "SELECT run_at, mode, model, meteo_ozet_json->'bant' AS bant, meteo_ozet_json->'sapma' AS sapma FROM forecast_runs "
             "WHERE plant_id=:p "
             "AND EXISTS (SELECT 1 FROM forecast_values v "
             "  WHERE v.run_id = forecast_runs.id) "

@@ -43,6 +43,12 @@ class Settings(BaseSettings):
     nwp_dizin: str = "var/nwp"              # GRIB önbelleği (worker ./var bağlı hacmi); arşiv DB'de
     nwp_kosu_tut: int = 2                   # kaynak başına diskte tutulan koşu sayısı
     cams_email: str | None = None           # v2.269: CAMS Radiation (SoDa) kayıtlı e-posta — kalibrasyon geçmişi için
+    # v2.273 (Dalga 2, ★): P10–P90 bandının kaynağı — 'otomatik': taze GEFS üyeleri (≥ensemble_min_uye) varsa üye başına
+    # fizik koşusundan ampirik kantil, yoksa model bandı; 'model': eski yol; 'ensemble': üye yoksa bant yok (None).
+    bant_kaynagi: Literal["otomatik", "model", "ensemble"] = "otomatik"
+    ensemble_min_uye: int = 20
+    # v2.274 (Dalga 2, ★): trend/sapma düzeltme katmanı — 'otomatik' (taze SCADA + anlamlı sapma varsa) | 'kapali'
+    sapma_katmani: Literal["otomatik", "kapali"] = "otomatik"
     # ----- Open-Meteo (yalnız meteo_kaynak='open_meteo') -----
     meteo_base_url: str = "https://api.open-meteo.com/v1"
     meteo_timeout: int = 30

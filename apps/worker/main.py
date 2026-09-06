@@ -213,7 +213,7 @@ def gece_meteo(_plant=None):
     noktalar = [(float(p["lat"]), float(p["lon"])) for p in _tum_santraller()]
     if not noktalar:
         return
-    rapor = acik_nwp.kosu_cek_ve_arsivle(noktalar)
+    rapor = acik_nwp.kosu_cek_ve_arsivle(noktalar, gefs=True)   # v2.273: üyeler de
     print("gece_meteo:", rapor)
     gece_meteo._son = bugun
 
