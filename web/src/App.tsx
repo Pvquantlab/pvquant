@@ -33,13 +33,13 @@ export default function App() {
     return () => oturumDusunce_kaydet(null);
   }, []);
 
-  useEffect(() => {
-    if (!girdi) return;
+  const santralYenile = () => {
     api.santraller().then((l) => {
       setSantraller(l);
       if (l.length && !l.some((x) => x.id === plantId)) setPlantId(l[0].id);
     }).catch(() => {});
-  }, [girdi]);   // eslint-disable-line react-hooks/exhaustive-deps
+  };
+  useEffect(() => { if (girdi) santralYenile(); }, [girdi]);   // eslint-disable-line react-hooks/exhaustive-deps
   const santralSec = (id: string) => { setPlantId(id); localStorage.setItem("pvq_plant", id); };
   const santralAd = santraller.find((x) => x.id === plantId)?.name ?? "Konya GES";
   // v2.293: ?vitrin — oturum açıkken de vitrini görme kapısı (pazarlama sayfasını
@@ -53,7 +53,7 @@ export default function App() {
   }
   return (
     <Kabuk sayfa={sayfa} setSayfa={setSayfa} santral={santralAd} plantId={plantId}
-           santraller={santraller} onSantral={santralSec}
+           santraller={santraller} onSantral={santralSec} santralYenile={santralYenile}
            onCikis={() => { cikis(); setGirdi(false);
                             setGorunum("vitrin"); }}>  {/* gonullu cikis -> vitrin */}
       {sayfa === "portfoy" && <Portfoy onSec={(id) => { santralSec(id); setSayfa("santralim"); }} />}

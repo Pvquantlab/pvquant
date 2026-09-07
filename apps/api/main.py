@@ -71,11 +71,17 @@ class PlantIstek(BaseModel):
     tilt: float | None = None
     azimuth: float | None = None
     panel_tech: str = "bifacial"
+    ac_limit_kw: float | None = None   # v2.302: kabuk formu AC tavanını da alır
 
 
 @app.post("/v1/plants")
 def plant_ekle(p: PlantIstek, claims=Depends(yazma_yetkisi())):
-    return {"id": plant_service.olustur(claims["tenant_id"], **p.model_dump())}
+    if not (-90 <= p.lat <= 90 and -180 <= p.lon <= 180) or p.capacity_kwp <= 0:
+        raise HTTPException(422, "konum ya da kurulu güç geçersiz")
+    try:
+        return {"id": plant_service.olustur(claims["tenant_id"], **p.model_dump())}
+    except ValueError as e:   # v2.302: yinelenen ad insan diliyle döner (500 değil)
+        raise HTTPException(422, str(e))
 
 
 def _kw(x):

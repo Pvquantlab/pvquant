@@ -54,11 +54,12 @@ function GunesLogo() {
   );
 }
 
-export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, santraller, onSantral }:
+export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, santraller, onSantral, santralYenile }:
   { sayfa: SayfaId; setSayfa: (s: SayfaId) => void; santral: string;
     plantId?: string; onCikis?: () => void; children: ReactNode;
     /** v2.263: gerçek santral seçici — liste ve seçim geri çağrısı (yoksa tek santral). */
-    santraller?: { id: string; name: string }[]; onSantral?: (id: string) => void }) {
+    santraller?: { id: string; name: string }[]; onSantral?: (id: string) => void;
+    /** v2.302: yeni santral eklenince liste tazelensin */ santralYenile?: () => void }) {
   // v2.290: tema kipi — "oto" (varsayılan) sayfanın yüzünü izler; Açık/Koyu kalıcı seçimdir.
   const [temaKipi, setTemaKipi] = useState<"oto" | "acik" | "koyu">(() => {
     try { const k = localStorage.getItem("pvq_tema"); return k === "acik" || k === "koyu" ? k : "oto"; }
@@ -92,6 +93,8 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
   const [paletAcik, setPaletAcik] = useState(false);
   // v2.236: mobil cekmece — ≤900px'te kenar menu hamburger'la acilir
   const [menuAcik, setMenuAcik] = useState(false);
+  // v2.302: yeni santral formu — "Yakında" çipi gerçek oldu (yazma yetkisi: admin+editör)
+  const [santralFormu, setSantralFormu] = useState(false);
   const [sorgu, setSorgu] = useState("");
   const [secili, setSecili] = useState(0);
   useEffect(() => { document.documentElement.dataset.tema = koyu ? "koyu" : "acik"; }, [koyu]);
@@ -154,12 +157,18 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
           {(santraller && santraller.length ? santraller : [{ id: plantId ?? "", name: santral }]).map((s) => (
             <option key={s.id} value={s.id}>{s.name}</option>))}
         </select>
-        {/* v2.216: islev henuz yok — dugme durur ama durust bicimde kapali */}
-        <button className="yan-yeni" disabled title="Yakında">
-          + Yeni santral bağla<span className="yakinda">Yakında</span>
-        </button>
+        {/* v2.302: "Yakında" çipi gerçek oldu — form yazma yetkisine açık */}
+        {yazabilir ? (
+          <button className="yan-yeni" onClick={() => { setSantralFormu(true); setMenuAcik(false); }}>
+            + Yeni santral bağla
+          </button>
+        ) : (
+          <button className="yan-yeni" disabled title="Yalnız yönetici ve editör">
+            + Yeni santral bağla
+          </button>
+        )}
         <div className="yan-ozet">
-          <div><div className="et">Santral</div><div className="dg">1</div></div>
+          <div><div className="et">Santral</div><div className="dg">{sayiTr(Math.max(1, santraller?.length ?? 1))}</div></div>
           <div><div className="et">Kurulu güç</div>
             <div className="dg">{kwp === null ? "—" : `${sayiTr(kwp)} kWp`}</div></div>
         </div>
@@ -233,7 +242,11 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
               <button aria-pressed={temaKipi === "koyu"} onClick={() => kipSec("koyu")}>Koyu</button>
             </div>
           </div>
-          {zilAcik && (
+          {santralFormu && (
+        <YeniSantral kapat={() => setSantralFormu(false)}
+                     eklendi={(id) => { setSantralFormu(false); santralYenile?.(); onSantral?.(id); }} />
+      )}
+      {zilAcik && (
             <>
               <div className="zil-ort" onClick={() => setZilAcik(false)}
                    aria-hidden="true" />
@@ -362,5 +375,67 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
         </div>
       )}
     </div>
+  );
+}
+
+
+/** v2.302 — yeni santral formu: künyenin zorunlu çekirdeği (ad, konum, kurulu güç) + isteğe bağlı
+ *  eğim/azimut/AC tavanı. Panel tipi müşteri diliyle (tek/çift yüzlü); ayrıntılar sonra Santralım'dan. */
+function YeniSantral({ kapat, eklendi }: { kapat: () => void; eklendi: (id: string) => void }) {
+  const [g, setG] = useState({ name: "", lat: "", lon: "", capacity_kwp: "", tilt: "", azimuth: "", ac_limit_kw: "", panel_tech: "bifacial" });
+  const [hata, setHata] = useState<string | null>(null);
+  const [mesgul, setMesgul] = useState(false);
+  const al = (k: keyof typeof g) => (e: { target: { value: string } }) => setG({ ...g, [k]: e.target.value });
+  const say = (v: string) => (v.trim() === "" ? null : Number(v.replace(",", ".")));
+  const gonderF = async () => {
+    setHata(null); setMesgul(true);
+    try {
+      const r = await api.santralEkle({
+        name: g.name.trim(), lat: Number(g.lat.replace(",", ".")), lon: Number(g.lon.replace(",", ".")),
+        capacity_kwp: Number(g.capacity_kwp.replace(",", ".")), tilt: say(g.tilt), azimuth: say(g.azimuth),
+        ac_limit_kw: say(g.ac_limit_kw), panel_tech: g.panel_tech });
+      eklendi(r.id);
+    } catch (e) { setHata(String((e as Error).message ?? e)); } finally { setMesgul(false); }
+  };
+  const tamam = g.name.trim() && g.lat && g.lon && g.capacity_kwp;
+  return (
+    <>
+      <div className="palet-ort" onClick={kapat} aria-hidden="true" />
+      <div className="palet" role="dialog" aria-label="Yeni santral bağla" style={{ maxWidth: 460 }}>
+        <div style={{ padding: "16px 18px" }}>
+          <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Yeni santral bağla</div>
+          <p className="soluk" style={{ fontSize: 12.5, margin: "0 0 12px" }}>
+            Çekirdek künye yeter — eğim, tavan ve diğer ayarlar sonra Santralım'dan düzenlenir.
+            Tahmin, SCADA yüklenmeden salt fizikle başlar.</p>
+          {hata && <p className="ayar-durum hata" style={{ margin: "0 0 8px" }}>{hata}</p>}
+          <div className="ayar-kontrol" style={{ flexWrap: "wrap", gap: 10 }}>
+            <label className="girdi-etiket">Santral adı
+              <input className="girdi" style={{ width: 200 }} value={g.name} onChange={al("name")} placeholder="ör. Karapınar GES" /></label>
+            <label className="girdi-etiket">Enlem
+              <input className="girdi" style={{ width: 90 }} inputMode="decimal" value={g.lat} onChange={al("lat")} placeholder="37,87" /></label>
+            <label className="girdi-etiket">Boylam
+              <input className="girdi" style={{ width: 90 }} inputMode="decimal" value={g.lon} onChange={al("lon")} placeholder="32,49" /></label>
+            <label className="girdi-etiket">Kurulu güç (kWp)
+              <input className="girdi" style={{ width: 110 }} inputMode="decimal" value={g.capacity_kwp} onChange={al("capacity_kwp")} /></label>
+            <label className="girdi-etiket">Panel tipi
+              <select className="girdi" value={g.panel_tech} onChange={al("panel_tech")}>
+                <option value="bifacial">çift yüzlü</option>
+                <option value="monofacial">tek yüzlü</option>
+              </select></label>
+            <label className="girdi-etiket">Eğim ° (isteğe bağlı)
+              <input className="girdi" style={{ width: 90 }} inputMode="decimal" value={g.tilt} onChange={al("tilt")} /></label>
+            <label className="girdi-etiket">Azimut ° (isteğe bağlı)
+              <input className="girdi" style={{ width: 90 }} inputMode="decimal" value={g.azimuth} onChange={al("azimuth")} /></label>
+            <label className="girdi-etiket">AC tavanı kW (isteğe bağlı)
+              <input className="girdi" style={{ width: 110 }} inputMode="decimal" value={g.ac_limit_kw} onChange={al("ac_limit_kw")} /></label>
+          </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 14, justifyContent: "flex-end" }}>
+            <button className="dugme" onClick={kapat}>Vazgeç</button>
+            <button className="dugme dugme-ana" disabled={!tamam || mesgul} onClick={gonderF}>
+              {mesgul ? "Bağlanıyor…" : "Santralı bağla"}</button>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

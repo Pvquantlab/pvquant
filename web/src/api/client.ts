@@ -485,6 +485,10 @@ export const api = {
   },
   scadaSil: (p: string, baslangic: string, bitis: string): Promise<{ silinen_satir: number }> =>
     gonder(`/v1/plants/${p}/scada?baslangic=${baslangic}&bitis=${bitis}`, "DELETE"),
+  /** v2.302: yeni santral bağlama — "Yakında" çipi gerçek oldu. */
+  santralEkle: (g: { name: string; lat: number; lon: number; capacity_kwp: number;
+    tilt?: number | null; azimuth?: number | null; panel_tech?: string; ac_limit_kw?: number | null }): Promise<{ id: string }> =>
+    gonder(`/v1/plants`, "POST", g),
   /** v2.301: gece işleri görünürlüğü. */
   isler: async (): Promise<Isler | null> => {
     if (TABAN == null) return null;
