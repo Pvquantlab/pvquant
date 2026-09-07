@@ -178,3 +178,9 @@ def karne_donem_metni(ilk, son) -> str:
     if ilk == son:
         return f"{ilk.day} {AYLAR_TR[ilk.month - 1]} {ilk.year}"
     return donem_tr(ilk, son)
+
+
+def model_gorunur_adi(ham: str) -> str:
+    """v2.292 — müşteri yüzünde ham model adı geçmez (tasarım anayasası): PDF/Excel
+    künyesi operatör diliyle yazar; JSON dışa aktarımı makine adını korur."""
+    return {"barhdadi_bennis": "PVQuant fizik boru hattı"}.get(ham, ham)

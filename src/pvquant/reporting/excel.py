@@ -11,7 +11,7 @@ from io import BytesIO
 import pandas as pd
 import xlsxwriter
 
-from .styles import RENK
+from .styles import RENK, model_gorunur_adi
 
 IEC_KOLONLAR = [
     ("timestamp_local", "Zaman (yerel)"),
@@ -193,7 +193,7 @@ def build_excel(ctx) -> bytes:
         ("Eğim / Azimut", f"{ctx.tilt_deg:.0f}° / {ctx.azimuth_deg:.0f}°"),
         ("Saat dilimi", ctx.plant_tz),
         ("Mod", ctx.mode),
-        ("Model", f"{ctx.model_name} ({ctx.model_version})"),
+        ("Model", f"{model_gorunur_adi(ctx.model_name)} ({ctx.model_version})"),
         ("Meteo kaynağı", ctx.meteo_source),
         ("η_BoS", ctx.eta_bos if ctx.eta_bos is not None else "—"),
         ("BG", ctx.bg if ctx.bg is not None else "—"),

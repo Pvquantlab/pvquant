@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from io import BytesIO
 
+from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
@@ -23,7 +24,7 @@ from .charts import (fig_flags, fig_gunluk_barlar, fig_iklim_zarf,
                      fig_kalib, fig_karne, fig_kosu_evrim, fig_son12,
                      fig_tipik_gun, fig_to_png, gun_tr)
 from .styles import (RENK, TIPO, karne_donem_metni, pdf_fontlarini_kaydet,
-                     sayi_tr, wmape_baslik)
+                     sayi_tr, wmape_baslik, model_gorunur_adi)
 
 SAYFA_W, SAYFA_H = A4          # pt
 KENAR = 12 * mm
@@ -196,7 +197,7 @@ def _kapak(c, ctx, F, FB):
         ("Koşu", f"{ctx.run_at_utc:%d.%m.%Y %H:%M} UTC"),
         ("Mod", {"A": "A — saf fizik", "B": "B — kalibre fizik",
                  "C": "C — hibrit"}.get(ctx.mode, ctx.mode)),
-        ("Model", f"{ctx.model_name} ({ctx.model_version})"),
+        ("Model", f"{model_gorunur_adi(ctx.model_name)} ({ctx.model_version})"),
         ("Konum", f"{ctx.latitude:.2f}, {ctx.longitude:.2f}"
                   f" · {sayi_tr(ctx.capacity_kwp, 0)} kWp"),
     ]
@@ -214,7 +215,68 @@ def _kapak(c, ctx, F, FB):
     c.drawCentredString(SAYFA_W / 2, _y(212),
                         "Rapor Spesifikasyonu v2.0 · her sayı koşu "
                         "verisinden — veri yoksa \u201c—\u201d, asla uydurma 0")
+    _imza_bandi(c, F, x_mm=(SAYFA_W / mm - 118) / 2, ust_mm=224, w_mm=118, h_mm=30)
 
+
+def _imza_bandi(c, F, x_mm: float, ust_mm: float, w_mm: float, h_mm: float):
+    """v2.292 — Çift Yüz imza motifi (panel BandImza.tsx ile AYNI kontrol noktaları):
+    P10–P90 bandı + P50 (rapor ailesinin mavisi) ve güne kadar gelen gerçekleşen (amber).
+    Yalnız kapakta — iç sayfalar şartname §6 paletinde kalır (yeşil/amber)."""
+    MAVI = "#2D6FB5"; AMBER = "#E8940A"
+    x0, w, h = x_mm * mm, w_mm * mm, h_mm * mm
+    taban = _y(ust_mm + h_mm)              # kutunun alt kenarının nokta-y'si
+
+    def N(sx: float, sy: float) -> tuple[float, float]:
+        return (x0 + sx / 420.0 * w, taban + (100.0 - sy) / 100.0 * h)
+
+    def yol(noktalar):
+        pth = c.beginPath()
+        pth.moveTo(*N(*noktalar[0]))
+        for (c1, c2, uc) in noktalar[1:]:
+            pth.curveTo(*N(*c1), *N(*c2), *N(*uc))
+        return pth
+
+    P90 = [(8, 92), ((70, 88), (105, 18), (160, 10)),
+           ((215, 2), (250, 4), (300, 16)), ((348, 27), (385, 86), (412, 92))]
+    P10_TERS = [(412, 92), ((384, 88), (350, 42), (300, 32)),
+                ((252, 23), (214, 20), (160, 27)), ((108, 34), (72, 90), (8, 92))]
+    P50 = [(8, 92), ((71, 89), (106, 26), (160, 18)),
+           ((214, 11), (251, 13), (300, 24)), ((349, 34), (384, 86), (412, 92))]
+    GER = [(8, 92), ((70, 90), (108, 30), (160, 21)), ((196, 15), (216, 14), (232, 16))]
+
+    # bant dolgusu: P90 ileri + P10 geri (kapalı)
+    bant = c.beginPath()
+    bant.moveTo(*N(*P90[0]))
+    for (c1, c2, uc) in P90[1:]:
+        bant.curveTo(*N(*c1), *N(*c2), *N(*uc))
+    for (c1, c2, uc) in P10_TERS[1:]:
+        bant.curveTo(*N(*c1), *N(*c2), *N(*uc))
+    bant.close()
+    c.saveState()
+    _hex(c, MAVI); c.setFillAlpha(0.16)
+    c.drawPath(bant, stroke=0, fill=1)
+    c.setFillAlpha(1)
+    c.setLineWidth(0.9); c.setStrokeAlpha(0.55)
+    c.setStrokeColor(colors.HexColor(MAVI))
+    c.drawPath(yol(P90), stroke=1, fill=0)
+    c.drawPath(yol([(8, 92), ((72, 90), (108, 34), (160, 27)),
+                    ((214, 20), (252, 23), (300, 32)), ((350, 42), (384, 88), (412, 92))]),
+               stroke=1, fill=0)
+    c.setStrokeAlpha(1); c.setLineWidth(1.6)
+    c.drawPath(yol(P50), stroke=1, fill=0)
+    c.setStrokeColor(colors.HexColor(AMBER))
+    c.drawPath(yol(GER), stroke=1, fill=0)
+    gx, gy = N(232, 16)
+    c.setFillColor(colors.HexColor(AMBER))
+    c.circle(gx, gy, 1.9, stroke=0, fill=1)
+    c.setLineWidth(0.7); c.setStrokeAlpha(0.5); c.setDash(1.6, 3)
+    ax_, ay_ = N(232, 24); _bx, by_ = N(232, 94)
+    c.line(gx, ay_, gx, by_)
+    c.restoreState()
+    _hex(c, RENK.IKINCIL)
+    c.setFont(F, 7)
+    c.drawCentredString(x0 + w / 2, taban - 3.6 * mm,
+                        "Mavi bant: P10–P90 tahmin aralığı  ·  amber: şu ana dek gerçekleşen")
 
 # --------------------------------------------------- S2: Yönetici Özeti
 def _yonetici_ozeti(c, ctx, F, FB):
@@ -661,7 +723,7 @@ def _metodoloji(c, ctx, F, FB):
         ("Saat dilimi", ctx.plant_tz),
     ]
     sag = [
-        ("Model", f"{ctx.model_name} ({ctx.model_version})"),
+        ("Model", f"{model_gorunur_adi(ctx.model_name)} ({ctx.model_version})"),
         ("Meteo kaynağı", ctx.meteo_source),
         ("η_BoS / BG",
          f"{ctx.eta_bos:.3f} / {ctx.bg:.3f}"
