@@ -614,7 +614,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
         <Kpi etiket="Fizik · aynı sınav" deger={yzd(k.mape_once)}
              alt="karşılaştırma tabanı" />
         <Kpi etiket="İyileşme" deger={iyilesme === null ? "\u2014" : `%${iyilesme}`}
-             ton={iyilesme !== null && iyilesme < 0 ? "amber" : undefined}
+             ton={iyilesme !== null && iyilesme < 0 ? "uyari" : undefined}
              alt={iyilesme === null ? "\u2014"
                : iyilesme > 0 ? "kalibrasyon kazancı"
                : "MAPE kazancı yok — sapma düzeltmesi için Mod C aktif"} />

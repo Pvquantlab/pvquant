@@ -307,6 +307,11 @@ body { background:
   linear-gradient(90deg, rgba(16,29,48,.05) 1px, transparent 1px),
   radial-gradient(1400px 700px at 72% -12%, #FFFFFF 0%, var(--zemin) 58%);
   background-size: 46px 46px, 46px 46px, auto; background-attachment: fixed; }
+/* v2.291 — Çift Yüz geçişi: Oto kipinde sayfa değişince zemin yumuşak döner
+   (yalnız body; kartlar/grafikler anında — karışık ara kare olmasın). */
+body { transition: background-color .15s ease, color .15s ease; }
+@media (prefers-reduced-motion: reduce) { body { transition: none; } }
+
 [data-tema="koyu"] body { background:
   linear-gradient(rgba(255,255,255,.028) 1px, transparent 1px),
   linear-gradient(90deg, rgba(255,255,255,.028) 1px, transparent 1px),

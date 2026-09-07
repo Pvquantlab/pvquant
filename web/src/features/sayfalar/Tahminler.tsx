@@ -182,7 +182,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
       )}
       {/* v2.260 (Dalga 4.13): KGÜP bildirim dosyası — D-1 15:30 öncesi koşudan saatlik program (TPYS CSV) */}
       <Kart baslik="KGÜP bildirimi — yarının saatlik programı"
-        sag={<span className="cip">{kgup ? `${kgup.teslim.hedef_gun} · pencere ${kgup.teslim.durum === "pencere_acik" ? "açık" : kgup.teslim.durum === "erken" ? "henüz açılmadı" : "kapandı"} (14:00–15:30) · teyit ${kgup.teslim.teyit_saati.slice(0, 5)}` : "koşu bekleniyor"}</span>}>
+        sag={<span className="cip">{kgup ? `${new Date(kgup.teslim.hedef_gun + "T12:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" })} · pencere ${kgup.teslim.durum === "pencere_acik" ? "açık" : kgup.teslim.durum === "erken" ? "henüz açılmadı" : "kapandı"} (14:00–15:30) · teyit ${kgup.teslim.teyit_saati.slice(0, 5)}` : "koşu bekleniyor"}</span>}>
         {kgup ? (
           <>
             <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
