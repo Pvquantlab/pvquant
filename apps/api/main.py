@@ -594,7 +594,58 @@ def webhook_dene(webhook_id: str, claims=Depends(yonetici_yetkisi())):
     return r[0]
 
 
+# ---- v2.289: kuruluşlar arası veri paylaşımı (Tablo 3.5 satır 6) ----
+
+class PaylasimIstek(BaseModel):
+    plant_id: str
+    hedef_eposta: str
+    izinler: list[str]
+    bitis: str | None = None      # "YYYY-MM-DD" (o gün dâhil)
+    takma_ad: str | None = None
+
+
+@app.get("/v1/paylasimlar", tags=["Yönetim"])
+def paylasim_listesi(claims=Depends(gecerli_kullanici)):
+    from pvquant.services import paylasim_service
+    return paylasim_service.listele(claims["tenant_id"])
+
+
+@app.post("/v1/paylasimlar", tags=["Yönetim"], status_code=201)
+def paylasim_ekle(p: PaylasimIstek, claims=Depends(yonetici_yetkisi())):
+    from pvquant.services import paylasim_service
+    if plant_service.getir(claims["tenant_id"], p.plant_id) is None:
+        raise HTTPException(404, "santral yok")
+    try:
+        return paylasim_service.paylas(claims["tenant_id"], claims["sub"], {"id": p.plant_id},
+                                       p.hedef_eposta, p.izinler, p.bitis, p.takma_ad)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+
+
+@app.delete("/v1/paylasimlar/{paylasim_id}", tags=["Yönetim"])
+def paylasim_iptal(paylasim_id: str, claims=Depends(yonetici_yetkisi())):
+    from pvquant.services import paylasim_service
+    if not paylasim_service.iptal(claims["tenant_id"], claims["sub"], paylasim_id):
+        raise HTTPException(404, "paylaşım yok ya da zaten iptal")
+    return {"iptal": True}
+
+
+@app.get("/v1/paylasimlar/{paylasim_id}/veri", tags=["Yönetim"])
+def paylasim_veri(paylasim_id: str, tur: str, claims=Depends(gecerli_kullanici)):
+    """Alınan paylaşımın verisi (tur: tahmin | karne | gerceklesen). Yalnız izin verilen kapsam."""
+    from pvquant.services import paylasim_service
+    f = {"tahmin": paylasim_service.paylasilan_tahmin, "karne": paylasim_service.paylasilan_karne,
+         "gerceklesen": paylasim_service.paylasilan_gerceklesen}.get(tur)
+    if f is None:
+        raise HTTPException(422, "tur: tahmin | karne | gerceklesen")
+    try:
+        return f(claims["tenant_id"], paylasim_id)
+    except PermissionError as e:
+        raise HTTPException(403, str(e))
+
+
 class SegmentIstek(BaseModel):
+
     segment: str
     uevcb: str | None = None
 

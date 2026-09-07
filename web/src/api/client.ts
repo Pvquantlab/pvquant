@@ -1,4 +1,4 @@
-import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme } from "./types";
+import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -461,6 +461,15 @@ export const api = {
     gonder(`/v1/webhooklar`, "POST", { url, plant_id, olaylar: ["tahmin.yeni"] }),
   webhookSil: (id: string): Promise<{ silindi: boolean }> => gonder(`/v1/webhooklar/${id}`, "DELETE"),
   webhookDene: (id: string): Promise<{ durum: number; ok: boolean }> => gonder(`/v1/webhooklar/${id}/dene`, "POST"),
+  /** v2.289: kuruluşlar arası paylaşım (kurmak admin; alınanları görmek herkese açık). */
+  paylasimlar: async (): Promise<PaylasimListesi> => {
+    if (TABAN == null) return { verilenler: [], alinanlar: [], izin_secenekleri: [] };
+    return getir(`/v1/paylasimlar`);
+  },
+  paylasimEkle: (g: { plant_id: string; hedef_eposta: string; izinler: string[]; bitis: string | null; takma_ad: string | null }): Promise<{ id: string; hedef_kurulus: string }> =>
+    gonder(`/v1/paylasimlar`, "POST", g),
+  paylasimIptal: (id: string): Promise<{ iptal: boolean }> => gonder(`/v1/paylasimlar/${id}`, "DELETE"),
+  paylasimVeri: (id: string, tur: string): Promise<PaylasilanVeri> => getir(`/v1/paylasimlar/${id}/veri?tur=${tur}`),
   /** OpenAPI sayfası adresi (gerçek kipte). */
   docsAdresi: (): string | null => (TABAN == null ? null : `${TABAN || ""}/docs`),
   /** v2.260: KGÜP önizleme (json) ve dosya indirme (csv, rapor kalıbı). */

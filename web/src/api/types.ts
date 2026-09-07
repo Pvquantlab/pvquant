@@ -265,3 +265,12 @@ export interface AylikBeklenti {
               p90: number | null; yil_sayisi: number }[];
   yillik: { yil: number; ay: number; ghi_kwh_m2: number | null }[];
 }
+
+/** v2.289: kuruluşlar arası veri paylaşımı. */
+export interface Paylasim { id: string; santral: string; takma_ad: string | null; kapasite_kwp: number | null;
+  karsi_kurulus: string; izinler: string[]; bitis: string | null; iptal: boolean; aktif: boolean; }
+export interface PaylasimListesi { verilenler: Paylasim[]; alinanlar: Paylasim[];
+  izin_secenekleri: { deger: string; etiket: string }[]; }
+export interface PaylasilanVeri { santral: string; kapasite_kwp?: number | null; not?: string;
+  gunler?: { gun: string; p50_kwh?: number | null; p10_kwh?: number | null; p90_kwh?: number | null; kwh?: number }[];
+  gun?: number; wmape_pct?: number | null; nmae_pct?: number | null; picp80?: number | null; }
