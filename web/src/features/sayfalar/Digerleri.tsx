@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { EChartsOption } from "echarts";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
-import { api, RaporDenetimHata, type DenetimBulgusu, EslemeHatasi, type EslemeVerisi,
+import { api, rolum, RaporDenetimHata, type DenetimBulgusu, EslemeHatasi, type EslemeVerisi,
          type ScadaOnizleme, type ScadaKayit,
          type KosuSatiri } from "../../api/client";
 import type { KalibrasyonOzeti, Kayma, Hijyen, EpiasUretim, KayipAgaci, GucMatrisi } from "../../api/types";
@@ -517,6 +517,7 @@ export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
         hızlı tahminle başlatıp sonra yükseltmenizi öneririz.
       </p>
       <EpiasUretimKarti plantId={plantId} />
+      <VerinizSizindirKarti plantId={plantId} />
     </Sayfa>
   );
 }
@@ -850,5 +851,51 @@ export function Raporlar({ plantId }: { plantId: string }) {
         <SablonDugmeleri plantId={plantId} />
       </Kart>
     </Sayfa>
+  );
+}
+
+
+/** v2.298 — giriş ekranındaki söz burada ödenir: yüklenen ham seri geri alınır, istenirse silinir. */
+function VerinizSizindirKarti({ plantId }: { plantId: string }) {
+  const [b1, setB1] = useState(""); const [b2, setB2] = useState("");
+  const [mesaj, setMesaj] = useState<string | null>(null); const [hata, setHata] = useState<string | null>(null);
+  const [onay, setOnay] = useState(false); const [mesgul, setMesgul] = useState(false);
+  const dene = async (fn: () => Promise<void>) => {
+    setMesaj(null); setHata(null); setMesgul(true);
+    try { await fn(); } catch (e) { setHata(String((e as Error).message ?? e)); } finally { setMesgul(false); }
+  };
+  return (
+    <Kart baslik="Veriniz sizindir" sag={<span className="cip">dışa aktarma her role açık · silme yalnız yönetici</span>}>
+      <p className="soluk" style={{ margin: "0 0 10px", fontSize: 12.5, maxWidth: 900 }}>
+        Yüklediğiniz ham seri istediğiniz an yorumsuz CSV olarak geri alınır; istenirse bir tarih aralığı
+        kalıcı olarak silinir. Silme ham veriyi kaldırır — geçmiş karne sonuçları yeniden yazılmaz,
+        kalibrasyon bir sonraki koşuda kalan veriyle öğrenir.
+      </p>
+      {hata && <p className="ayar-durum hata" style={{ margin: "0 0 8px" }}>{hata}</p>}
+      {mesaj && <p className="ayar-durum ok" style={{ margin: "0 0 8px" }}>{mesaj}</p>}
+      <div className="ayar-kontrol" style={{ flexWrap: "wrap" }}>
+        <label className="girdi-etiket">Başlangıç (isteğe bağlı)
+          <input className="girdi" type="date" value={b1} onChange={(e) => { setB1(e.target.value); setOnay(false); }} /></label>
+        <label className="girdi-etiket">Bitiş (isteğe bağlı)
+          <input className="girdi" type="date" value={b2} onChange={(e) => { setB2(e.target.value); setOnay(false); }} /></label>
+        <button className="dugme" disabled={mesgul}
+                onClick={() => dene(async () => { await api.scadaDisa(plantId, b1 || undefined, b2 || undefined); setMesaj("CSV indirildi."); })}>
+          CSV olarak dışa aktar</button>
+        {rolum() === "admin" && (b1 && b2 ? (
+          !onay ? (
+            <button className="dugme" disabled={mesgul} style={{ color: "var(--uyari)" }}
+                    onClick={() => setOnay(true)}>Aralığı sil…</button>
+          ) : (
+            <button className="dugme" disabled={mesgul} style={{ color: "var(--uyari)", fontWeight: 600 }}
+                    onClick={() => dene(async () => {
+                      const r = await api.scadaSil(plantId, b1, b2); setOnay(false);
+                      setMesaj(`${sayiTr(r.silinen_satir)} satır kalıcı olarak silindi.`);
+                    })}>Eminim — {b1} → {b2} aralığını kalıcı sil</button>
+          )
+        ) : (
+          <span className="soluk" style={{ fontSize: 12 }}>silmek için iki tarih de gerekli</span>
+        ))}
+      </div>
+    </Kart>
   );
 }

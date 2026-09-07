@@ -1130,6 +1130,34 @@ def _ornek_satirlar(df):
                      for r in df.head(10).itertuples(index=False, name=None)]}
 
 
+@app.get("/v1/plants/{plant_id}/scada/disa")
+def scada_disa(plant_id: str, baslangic: str | None = None, bitis: str | None = None, claims=Depends(gecerli_kullanici)):
+    """v2.298 — yüklenen ham serinin CSV dökümü ("veriniz sizindir" sözünün karşılığı; her role açık)."""
+    from fastapi.responses import Response
+    from pvquant.services import ingest_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    csv = ingest_service.scada_disa_csv(claims["tenant_id"], plant_id, baslangic, bitis)
+    ad = f"pvquant_scada_{row['name'].replace(' ', '_')}.csv"
+    return Response(csv, media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="{ad}"'})
+
+
+@app.delete("/v1/plants/{plant_id}/scada")
+def scada_sil(plant_id: str, baslangic: str, bitis: str, claims=Depends(yonetici_yetkisi())):
+    """v2.298 — ham SCADA aralığını siler (yalnız yönetici; bitiş günü dâhil). Karne arşivi korunur —
+    geçmiş sınav sonuçları yeniden yazılmaz; kalibrasyon sonraki koşuda kalan veriyle öğrenir."""
+    from pvquant.services import ingest_service
+    if plant_service.getir(claims["tenant_id"], plant_id) is None:
+        raise HTTPException(404, "santral yok")
+    try:
+        n = ingest_service.scada_sil(claims["tenant_id"], plant_id, baslangic, bitis)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    return {"silinen_satir": n}
+
+
 @app.post("/v1/plants/{plant_id}/scada/preview")
 def scada_preview(plant_id: str, dosya: UploadFile = File(...),
                   claims=Depends(gecerli_kullanici)):

@@ -470,6 +470,21 @@ export const api = {
     gonder(`/v1/paylasimlar`, "POST", g),
   paylasimIptal: (id: string): Promise<{ iptal: boolean }> => gonder(`/v1/paylasimlar/${id}`, "DELETE"),
   paylasimVeri: (id: string, tur: string): Promise<PaylasilanVeri> => getir(`/v1/paylasimlar/${id}/veri?tur=${tur}`),
+  /** v2.298: "veriniz sizindir" — ham SCADA CSV dökümü (blob indirme, rapor kalıbı). */
+  scadaDisa: async (p: string, baslangic?: string, bitis?: string): Promise<void> => {
+    if (TABAN == null) throw new Error("Örnek kipte dışa aktarma yok.");
+    const jeton = localStorage.getItem("pvq_token");
+    const q = [baslangic ? `baslangic=${baslangic}` : "", bitis ? `bitis=${bitis}` : ""].filter(Boolean).join("&");
+    const y = await fetch(`${TABAN}/v1/plants/${p}/scada/disa${q ? `?${q}` : ""}`,
+      { headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
+    if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise<void>(() => {}); }
+    if (!y.ok) throw new Error(`${y.status} dışa aktarma`);
+    const es = /filename="([^"]+)"/.exec(y.headers.get("Content-Disposition") ?? "");
+    const url = URL.createObjectURL(await y.blob()); const a = document.createElement("a");
+    a.href = url; a.download = es ? es[1] : "pvquant_scada.csv"; a.click(); URL.revokeObjectURL(url);
+  },
+  scadaSil: (p: string, baslangic: string, bitis: string): Promise<{ silinen_satir: number }> =>
+    gonder(`/v1/plants/${p}/scada?baslangic=${baslangic}&bitis=${bitis}`, "DELETE"),
   /** v2.294: kamuya açık doğrulama karnesi — kimliksiz uç, jeton eklenmez (401 yönlendirmesi tetiklenmesin). */
   dogrulama: async (): Promise<Dogrulama | null> => {
     if (TABAN == null) return null;

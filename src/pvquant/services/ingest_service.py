@@ -116,3 +116,45 @@ def veri_ozeti(tenant_id, plant_id) -> dict:
             " max(ts_utc) AS son_ts FROM scada_hourly WHERE plant_id=:p"),
             {"p": plant_id}).first()
     return {"valid_saat": int(r.valid_saat or 0), "son_ts": r.son_ts}
+
+
+# ---------------- v2.298: "Veriniz sizindir" — dışa aktarma ve silme ----------------
+DISA_KOLONLAR = ("ts_utc", "power_kw", "energy_kwh", "poa_wm2", "t_air", "t_module", "wind_ms", "flag", "kirpma")
+
+
+def scada_disa_csv(tenant_id, plant_id, baslangic=None, bitis=None) -> str:
+    """Müşterinin YÜKLEDİĞİ ham serinin tamamı, yorumsuz CSV (UTC damga; bayrak ve kırpma işaretiyle).
+    Giriş ekranındaki söz burada ödenir: dışa aktarım her role açıktır, filtre yalnız tarihtir."""
+    from io import StringIO
+    from sqlalchemy import text
+    import pandas as pd
+    from pvquant.db import tenant_baglami
+    kosul = "plant_id=:p"
+    par: dict = {"p": plant_id}
+    if baslangic:
+        kosul += " AND ts_utc >= :b"; par["b"] = baslangic
+    if bitis:
+        kosul += " AND ts_utc < CAST(:e AS timestamptz) + INTERVAL '1 day'"; par["e"] = bitis   # bitiş günü dâhil
+    with tenant_baglami(tenant_id) as s:
+        df = pd.read_sql(text(f"SELECT {', '.join(DISA_KOLONLAR)} FROM scada_hourly WHERE {kosul} ORDER BY ts_utc"),
+                         s.connection(), params=par)
+    buf = StringIO()
+    df.to_csv(buf, index=False, date_format="%Y-%m-%dT%H:%M:%SZ")
+    return buf.getvalue()
+
+
+def scada_sil(tenant_id, plant_id, baslangic: str, bitis: str) -> int:
+    """Ham SCADA satırlarını tarih aralığında siler (bitiş günü dâhil); silinen satır sayısını döner.
+    Karne arşivi (skill_daily) BİLEREK korunur: geçmiş sonuç değiştirilmez, yenisi eklenir — silme
+    ham veriyi kaldırır, geçmiş sınav sonuçlarını yeniden yazmaz. Kalibrasyon bir sonraki koşuda
+    kalan veriyle yeniden öğrenir."""
+    from sqlalchemy import text
+    from pvquant.db import tenant_baglami
+    if not baslangic or not bitis:
+        raise ValueError("silme için başlangıç ve bitiş günü zorunlu")
+    with tenant_baglami(tenant_id) as s:
+        n = s.execute(text(
+            "DELETE FROM scada_hourly WHERE plant_id=:p AND ts_utc >= :b "
+            "AND ts_utc < CAST(:e AS timestamptz) + INTERVAL '1 day'"),
+            {"p": plant_id, "b": baslangic, "e": bitis}).rowcount
+    return int(n)
