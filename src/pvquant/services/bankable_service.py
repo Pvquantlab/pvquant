@@ -95,7 +95,7 @@ def hesapla(tenant_id, plant: dict, kaydet: bool = True) -> dict:
     except Exception as e:   # noqa: BLE001 — TMY başarısızlığı bütçeyi düşürmez
         tmy_bilgi = {"hata": f"{type(e).__name__}: {e}"}
     out = {"durum": "ok", "hesap_zamani": datetime.now(timezone.utc).isoformat(), "kaynak": "PVGIS-SARAH3 (JRC), CC BY 4.0",
-           "donem": f"{int(y.index.min())}–{int(y.index.max())}", "mod": "fizik (kalibre katsayılar; hibrit düzeltme yıllık ölçekte uygulanmaz)",
+           "donem": f"{int(y.index.min())}–{int(y.index.max())}", "mod": "Fizik boru hattı (kalibre katsayılar; hibrit düzeltme yıllık ölçekte uygulanmaz)",
            **but, "ghi": {"p50_kwh_m2": round(ghi_b.p50, 1), "p90_kwh_m2_1yil": round(ghi_b.p(90), 1), "sigma_yillar_arasi": round(ghi_b.bilesenler["yillar_arasi"], 4)},
            "yillar": [{"yil": int(i), "kwh": float(r["kwh"]), "ghi_kwh_m2": float(r["ghi_kwh_m2"])} for i, r in y.iterrows()], "tmy": tmy_bilgi,
            "not": ("Bileşenler: yıllar arası (ölçülen) + kaynak + düzleme aktarma + model zinciri" + (" + ölçüm (kalibre saha)" if olcumle else "")

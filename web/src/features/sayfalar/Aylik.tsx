@@ -169,9 +169,9 @@ export function Aylik({ plantId }: { plantId: string }) {
               <Kpi etiket="P50 (yıllık)" deger={sayiTr((bk.p50_kwh ?? 0) / 1000, 0)} birim="MWh" alt={`${sayiTr(bk.ozgul_verim_kwh_kwp ?? 0, 0)} kWh/kWp özgül verim`} />
               <Kpi etiket="P90 · tek yıl" deger={sayiTr((bk.bir_yil?.p90 ?? 0) / 1000, 0)} birim="MWh" alt={`P99 ${sayiTr((bk.bir_yil?.p99 ?? 0) / 1000, 0)} MWh`} />
               <Kpi etiket={`P90 · ${sayiTr(bk.N_yil ?? 10)} yıl ortalaması`} deger={sayiTr((bk.n_yil?.p90 ?? 0) / 1000, 0)} birim="MWh" alt="finansman ufku (yıllar arası bileşen küçülür)" />
-              <Kpi etiket="Toplam belirsizlik (σ)" deger={`%${sayiTr((bk.sigma_toplam ?? 0) * 100, 1)}${bk.olcumle_kalibre ? " · kalibre" : ""}`}
+              <Kpi etiket="Toplam belirsizlik (σ)" deger={`%${sayiTr((bk.sigma_toplam ?? 0) * 100, 1)}`}
                    alt={bk.katki_pct
-                     ? "katkı: " + Object.entries(bk.katki_pct).sort((x, y) => y[1] - x[1]).slice(0, 3)   /* jsonb anahtar sırası korumaz — değere göre */.map(([k, v]) => `${({ yillar_arasi: "yıllar arası", kaynak: "kaynak", transpozisyon: "düzleme aktarma", model_zinciri: "model", olcum: "ölçüm", degradasyon: "bozunma", kullanilabilirlik: "kullanılabilirlik" } as Record<string, string>)[k] ?? k} %${sayiTr(v, 0)}`).join(" · ")
+                     ? (bk.olcumle_kalibre ? "ölçümle kalibre · " : "") + "katkı: " + Object.entries(bk.katki_pct).sort((x, y) => y[1] - x[1]).slice(0, 3)   /* jsonb anahtar sırası korumaz — değere göre */.map(([k, v]) => `${({ yillar_arasi: "yıllar arası", kaynak: "kaynak", transpozisyon: "düzleme aktarma", model_zinciri: "model", olcum: "ölçüm", degradasyon: "bozunma", kullanilabilirlik: "kullanılabilirlik" } as Record<string, string>)[k] ?? k} %${sayiTr(v, 0)}`).join(" · ")
                      : bk.bilesenler ? `yıllar arası %${sayiTr((bk.bilesenler.yillar_arasi ?? 0) * 100, 1)} · kaynak %${sayiTr((bk.bilesenler.kaynak ?? 0) * 100, 0)} · model %${sayiTr((bk.bilesenler.model_zinciri ?? bk.bilesenler.model ?? 0) * 100, 1)}` : ""} />
             </div>
             <div className="grafik-kaydir">

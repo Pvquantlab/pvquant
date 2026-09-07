@@ -34,7 +34,7 @@ function GucMatrisiKarti({ plantId }: { plantId: string }) {
   const hesapla = () => { setMesaj("Hesaplanıyor (tipik yıl, ~10 s)…"); api.gucMatrisiHesapla(plantId).then((r) => { setG(r); setMesaj(null); }).catch((e) => setMesaj(String((e as Error).message ?? e))); };
   return (
     <Kart baslik="Modül davranışı — güç matrisi" sag={<span style={{ display: "flex", gap: 6 }}>
-      {g?.durum === "ok" && <span className="cip">tipik yıl {g.yil} · iklim-özgü verim oranı {sayiTr((g.cser ?? 0) * 100, 1)}%</span>}
+      {g?.durum === "ok" && <span className="cip">tipik yıl {g.yil} · iklim-özgü verim oranı %{sayiTr((g.cser ?? 0) * 100, 1)}</span>}
       <button className="dugme" style={{ fontSize: 11.5 }} onClick={hesapla}>{g?.durum === "ok" ? "Yenile" : "Hesapla"}</button></span>}>
       {g === undefined ? <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p>
        : !g || g.durum !== "ok" ? <p className="soluk" style={{ margin: 0 }}>{mesaj ?? "Henüz hesaplanmadı — 'Hesapla' modülün ışınım/sıcaklık davranışını tipik yıl iklimiyle değerlendirir."}</p>
