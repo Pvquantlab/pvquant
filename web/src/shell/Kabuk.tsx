@@ -95,6 +95,13 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
   const [sorgu, setSorgu] = useState("");
   const [secili, setSecili] = useState(0);
   useEffect(() => { document.documentElement.dataset.tema = koyu ? "koyu" : "acik"; }, [koyu]);
+  // v2.300: kayan oturum — panel açıkken jeton 30 dk'da bir sessizce tazelenir (gece yarısı girişe düşme biter);
+  // tarayıcı kapalıyken 12 saatlik ömür değişmez. Pasifleştirilen kullanıcının tazelemesi 401 ile girişe düşer.
+  useEffect(() => {
+    api.oturumYenile();
+    const z = setInterval(() => api.oturumYenile(), 30 * 60 * 1000);
+    return () => clearInterval(z);
+  }, []);
   useEffect(() => {
     const f = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {

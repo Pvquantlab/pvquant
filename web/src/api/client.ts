@@ -485,6 +485,15 @@ export const api = {
   },
   scadaSil: (p: string, baslangic: string, bitis: string): Promise<{ silinen_satir: number }> =>
     gonder(`/v1/plants/${p}/scada?baslangic=${baslangic}&bitis=${bitis}`, "DELETE"),
+  /** v2.300: kayan oturum — geçerli jetonla yenisi (rol/durum sunucudan taze). Sessiz: hata yutulur,
+      401 zaten genel sözleşmeyle girişe düşürür. */
+  oturumYenile: async (): Promise<void> => {
+    if (TABAN == null) return;
+    try {
+      const y = await gonder<{ token: string }>(`/v1/oturum/yenile`, "POST");
+      if (y?.token) localStorage.setItem("pvq_token", y.token);
+    } catch { /* ağ hatası: mevcut jetonla devam */ }
+  },
   /** v2.299: ekip yönetimi (yalnız yönetici) + kendi parolası (herkes). */
   takim: async (): Promise<{ uyeler: TakimUyesi[]; roller: string[] }> => {
     if (TABAN == null) return { uyeler: [], roller: [] };

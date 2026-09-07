@@ -318,6 +318,15 @@ def alarm_ata(plant_id: str, alarm_id: str, p: AtaIstek, claims=Depends(yazma_ye
     return {"atandi": p.kime}
 
 
+@app.post("/v1/oturum/yenile")
+def oturum_yenile(claims=Depends(gecerli_kullanici)):
+    """v2.300 — kayan oturum: geçerli jetonla yenisi alınır (rol/durum DB'den taze). Pasif hesap 401."""
+    y = auth_service.oturum_yenile(claims["sub"])
+    if y is None:
+        raise HTTPException(401, "hesap etkin değil")
+    return y
+
+
 # ---- v2.299: ekip yönetimi ----
 
 class UyeIstek(BaseModel):

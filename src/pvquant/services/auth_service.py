@@ -136,3 +136,17 @@ def parola_degistir(user_id, eski: str, yeni: str) -> None:
         if r is None or not bcrypt.verify(eski or "", r.pw_hash):
             raise ValueError("mevcut parola hatalı")
         s.execute(text("UPDATE users SET pw_hash=:h WHERE id=:i"), {"i": user_id, "h": bcrypt.hash(yeni)})
+
+
+def oturum_yenile(user_id) -> dict | None:
+    """v2.300 — geçerli oturumdan yeni jeton. Rol/durum DB'den TAZE okunur: pasifleştirilen kullanıcı
+    tazeleyemez, rolü değişen yeni rolüyle devam eder. Panel açıkken oturum kayarak uzar;
+    kapalı tarayıcıda 12 saatlik ömür aynen geçerlidir."""
+    with sistem_baglami() as s:
+        row = s.execute(text("SELECT id, tenant_id, role, aktif FROM users WHERE id=:i"), {"i": user_id}).first()
+    if row is None or not row.aktif:
+        return None
+    token = jwt.encode({
+        "sub": str(row.id), "tenant_id": str(row.tenant_id), "role": row.role,
+        "exp": dt.datetime.utcnow() + dt.timedelta(hours=JWT_SAAT)}, _sir(), algorithm="HS256")
+    return {"token": token, "role": row.role}
