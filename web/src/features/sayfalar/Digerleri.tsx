@@ -117,14 +117,13 @@ function EpiasUretimKarti({ plantId }: { plantId: string }) {
             SCADA dosyası yüklenmeyen lisanslı santralda gerçekleşen üretim, EPİAŞ Şeffaflık Platformu'ndan saatlik olarak alınır ve
             karne, alarm ve dengesizlik hesapları bunu kullanır. Yüklenen SCADA her zaman önceliklidir.
           </p>
-          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", fontSize: 12.5 }}>
-            <span className="soluk">Santralın şeffaflık numarası:</span>
-            <input className="mono" value={kimlik} onChange={(e) => setKimlik(e.target.value)} placeholder="örn. 1234" inputMode="numeric" aria-label="Santralın şeffaflık numarası"
-                   style={{ width: 120, fontSize: 12, padding: "3px 6px", border: "1px solid var(--kenar)", borderRadius: 4, background: "var(--yuzey)", color: "var(--metin)" }} />
-            <button className="dugme" style={{ fontSize: 11.5 }} onClick={kaydet}>Kaydet</button>
-            <span className="cip">{d.uygun ? `${sayiTr(d.n_saat)} saat yazıldı${d.son ? ` · son ${new Date(d.son).toLocaleDateString("tr-TR")}` : ""}` : d.neden}</span>
+          <div className="ayar-kontrol">
+            <label className="girdi-etiket">Santralın şeffaflık numarası
+              <input className="girdi mono" style={{ width: 130 }} value={kimlik} onChange={(e) => setKimlik(e.target.value)} placeholder="örn. 1234" inputMode="numeric" /></label>
+            <button className="dugme" onClick={kaydet}>Kaydet</button>
+            <span className="ayar-durum">{d.uygun ? `${sayiTr(d.n_saat)} saat yazıldı${d.son ? ` · son ${new Date(d.son).toLocaleDateString("tr-TR")}` : ""}` : d.neden}</span>
           </div>
-          {mesaj && <p className="soluk" style={{ margin: "8px 0 0", fontSize: 12.5 }}>{mesaj}</p>}
+          {mesaj && <p className={`ayar-durum ${mesaj.startsWith("Kayded") ? "ok" : ""}`} style={{ margin: "8px 0 0" }}>{mesaj}</p>}
         </>
       )}
     </Kart>

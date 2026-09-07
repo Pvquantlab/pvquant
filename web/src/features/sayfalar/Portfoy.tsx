@@ -119,8 +119,8 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
         Müşteri sistemleri tahmini <span className="mono">X-API-Key</span> başlığıyla çeker; sabah koşusundan sonra webhook alıcılarına imzalı bildirim gider.
         Anahtar ve sır yalnız üretildiği anda görünür — sunucu yalnız özetini saklar.
       </p>
-      {hata && <p style={{ color: "var(--uyari)", fontSize: 12.5, margin: "0 0 8px" }}>{hata}</p>}
-      {mesaj && <p className="soluk" style={{ fontSize: 12.5, margin: "0 0 8px" }}>{mesaj}</p>}
+      {hata && <p className="ayar-durum hata" style={{ margin: "0 0 8px" }}>{hata}</p>}
+      {mesaj && <p className="ayar-durum ok" style={{ margin: "0 0 8px" }}>{mesaj}</p>}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 16 }}>
         <div>
           <div className="mono" style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--soluk)", marginBottom: 6 }}>API anahtarları</div>
@@ -135,12 +135,12 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
                 </tr>))}</tbody>
             </table></div>
           )}
-          <form style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 10 }}
+          <form className="ayar-kontrol" style={{ marginTop: 10 }}
                 onSubmit={(e) => { e.preventDefault(); dene(async () => { const r = await api.apiAnahtarUret(ad, secili, null); setYeniAnahtar(r.anahtar); setAd(""); }); }}>
-            <input value={ad} onChange={(e) => setAd(e.target.value)} placeholder="ad (ör. ticaret masası)" aria-label="Anahtar adı"
-                   style={{ fontSize: 12.5, padding: "5px 8px", border: "1px solid var(--kenar)", borderRadius: 6, background: "var(--yuzey)", color: "var(--metin)" }} />
+            <label className="girdi-etiket">Anahtar adı
+              <input className="girdi" style={{ width: 170 }} value={ad} onChange={(e) => setAd(e.target.value)} placeholder="ör. ticaret masası" /></label>
             {kapsamlar.map((k) => (
-              <label key={k} style={{ fontSize: 12.5, display: "flex", gap: 4, alignItems: "center" }}>
+              <label key={k} className="ayar-onay">
                 <input type="checkbox" checked={secili.includes(k)} onChange={(e) => setSecili(e.target.checked ? [...secili, k] : secili.filter((x) => x !== k))} />
                 <span className="mono">{k}</span>
               </label>))}
@@ -172,15 +172,15 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
                 </tr>))}</tbody>
             </table></div>
           )}
-          <form style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 10 }}
+          <form className="ayar-kontrol" style={{ marginTop: 10 }}
                 onSubmit={(e) => { e.preventDefault(); dene(async () => { const r = await api.webhookEkle(url, whSantral || null); setYeniSir(r.secret); setUrl(""); }); }}>
-            <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…/pvquant-webhook" aria-label="Webhook adresi" required
-                   style={{ fontSize: 12.5, padding: "5px 8px", border: "1px solid var(--kenar)", borderRadius: 6, background: "var(--yuzey)", color: "var(--metin)", minWidth: 220 }} />
-            <select value={whSantral} onChange={(e) => setWhSantral(e.target.value)} aria-label="Webhook santrali"
-                    style={{ fontSize: 12.5, padding: "5px 8px", border: "1px solid var(--kenar)", borderRadius: 6, background: "var(--yuzey)", color: "var(--metin)" }}>
-              <option value="">tüm santraller</option>
-              {santraller.map((s) => <option key={s.id} value={s.id}>{s.ad}</option>)}
-            </select>
+            <label className="girdi-etiket">Alıcı adresi
+              <input className="girdi mono" style={{ minWidth: 230 }} value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…/pvquant-webhook" required /></label>
+            <label className="girdi-etiket">Kapsam
+              <select className="girdi" value={whSantral} onChange={(e) => setWhSantral(e.target.value)}>
+                <option value="">tüm santraller</option>
+                {santraller.map((s) => <option key={s.id} value={s.id}>{s.ad}</option>)}
+              </select></label>
             <button className="dugme" type="submit">Alıcı ekle</button>
           </form>
           {yeniSir && (
