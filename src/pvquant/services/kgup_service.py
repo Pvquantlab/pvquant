@@ -81,7 +81,19 @@ def uret(tenant_id, plant: dict, gun: date, kantil: str = "p50", uevcb: str | No
     if "ceyrek" in tablo and tablo["ceyrek"].notna().any():
         csv_df[sab.ceyrek] = tablo["ceyrek"].astype("Int64")
     csv_df.to_csv(buf, sep=sab.ayrac, decimal=sab.ondalik, index=False)
+    # v2.287: gün içi revizyon kapısı (md. 69(1)) — öğlen örneğiyle; öneri kantili dengesizlik servisinden
+    ogle = kg.gun_ici_revizyon_penceresi(pd.Timestamp(gun).tz_localize("Europe/Istanbul") + pd.Timedelta(hours=12))
+    gip = {"kural": "Her teslimat saatinin gün içi piyasa kapısı 1 saat önce kapanır; KGÜP revizyonu kapanış + 30 dakikaya kadar.",
+           "ornek_teslimat": "12:00", "ornek_kapi": str(ogle["gip_kapi_kapanis"].time())[:5], "ornek_revizyon_son": str(ogle["kgup_revizyon_son"].time())[:5]}
+    oneri = None
+    try:
+        from pvquant.services import dengesizlik_service, piyasa_service
+        idx = pd.date_range(pd.Timestamp.now(tz="UTC") - pd.Timedelta(days=30), periods=30 * 24, freq="h")
+        oneri = dengesizlik_service.oneri_kantili(piyasa_service.fiyatlar(idx), dengesizlik_service.katsayilar(plant.get("params_json")))
+    except Exception:   # noqa: BLE001 — öneri süsleme; KGÜP üretimi düşmez
+        oneri = None
     return {"gun": gun.isoformat(), "kantil": kantil, "kosu": kosu, "uyarilar": son.uyarilar + hatalar, "sicrama_saatleri": son.sicrama_saatleri,
+            "gip": gip, "oneri": oneri,
             "toplam_mwh": round(float(son.tablo["kgup_mwh"].sum()), 3), "eak": eak_bilgi,   # v2.275
             "satirlar": [{"saat": int(r.saat), "kgup_mwh": float(r.kgup_mwh), "eak_mwh": float(r.eak_mwh)} for r in son.tablo.itertuples()],
             "csv": buf.getvalue(), "dosya_adi": f"KGUP_{(uevcb or 'UEVCB')}_{gun.isoformat()}_{kantil}.csv",

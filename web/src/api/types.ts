@@ -121,6 +121,9 @@ export interface KgupOnizleme {
   toplam_mwh: number; satirlar: { saat: number; kgup_mwh: number; eak_mwh: number }[]; dosya_adi: string;
   /** v2.275: o gün için etkin EAK ve kaynağı (gecici | eak_alani | ac_tavani | kurulu_guc) */
   eak?: { eak_mw: number; kaynak: string; bitis?: string };
+  /** v2.287: GİP revizyon kapısı + önerilen kantil */
+  gip?: { kural: string; ornek_teslimat: string; ornek_kapi: string; ornek_revizyon_son: string };
+  oneri?: { durum: string; kantil: string | null; tau?: number; not?: string } | null;
   teslim: { hedef_gun: string; durum: string; dakika_kaldi: number; teyit_saati: string };
 }
 export const SEGMENTLER: { deger: string; etiket: string }[] = [
@@ -133,7 +136,9 @@ export interface Dengesizlik {
   gun_sayisi: number; pencere_gun: number; not: string;
   aylar: { ay: string; uretim_mwh: number; sapma_mwh: number; referans_gelir_tl: number; pvquant_tl: number; naif_tl: number | null;
            kurtarilan_tl: number | null; gelir_oran_pct: number | null; tl_per_mwh: number | null; kupst_tl?: number; dengesizlik_tl?: number }[];
-  toplam: { pvquant_tl: number; naif_tl: number | null; kurtarilan_tl: number | null; gelir_oran_pct: number | null; referans_gelir_tl: number; kupst_tl?: number } | null;
+  toplam: { pvquant_tl: number; naif_tl: number | null; kurtarilan_tl: number | null; gelir_oran_pct: number | null; referans_gelir_tl: number; kupst_tl?: number; teminat_tl?: number } | null;
+  /** v2.287: önerilen bildirim kantili (senaryo fiyatta null + not) */
+  oneri?: { durum: string; kantil: string | null; tau?: number; n_saat?: number; acik_saat_orani?: number; not?: string };
   katsayilar?: { k: number; l: number; kupst_n: number; kupst_tolerans?: number };
   fiyat: { epias_saat: number; senaryo_saat: number };
   segment: { segment: string | null; kgup_yukumlu: boolean | null; dengesizlik_sahibi: string | null; santral_tasir: boolean | null };

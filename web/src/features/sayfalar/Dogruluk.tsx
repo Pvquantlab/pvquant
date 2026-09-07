@@ -562,7 +562,15 @@ export function Dogruluk({ plantId }: { plantId: string }) {
                 </tbody>
               </table>
             </div>
-            <p className="soluk" style={{ marginTop: 10, marginBottom: 0, fontSize: 12.5 }}>
+            <p style={{ marginTop: 10, marginBottom: 0, fontSize: 12.5 }}>
+              {dz.toplam?.teminat_tl != null && <>Teminat tahmini: <b>{sayiTr(dz.toplam.teminat_tl / 1000, 1)} bin TL</b> — son 3 ayın en
+              yüksek aylık negatif dengesizlik gideri (sadeleştirilmiş esas). </>}
+              {dz.oneri && (dz.oneri.durum === "ok" && dz.oneri.kantil
+                ? <>Önerilen bildirim kantili: <b>{dz.oneri.kantil.toUpperCase()}</b> (τ={sayiTr((dz.oneri.tau ?? 0) * 100, 0)}/100;
+                    saatlerin %{sayiTr((dz.oneri.acik_saat_orani ?? 0) * 100, 0)}'inde enerji açığı) — eksik üretim cezası ile fazla üretim kaybının dengesi.</>
+                : <span className="soluk">Önerilen bildirim kantili: — {dz.oneri.not}</span>)}
+            </p>
+            <p className="soluk" style={{ marginTop: 8, marginBottom: 0, fontSize: 12.5 }}>
               Ne gösterir: saatlik program ile gerçekleşen arasındaki farkın piyasa kurallarıyla (pozitif sapma min(PTF,SMF)×0,97,
               negatif sapma max(PTF,SMF)×1,03) TL karşılığı; "kusursuz program" gelirine göre kayıp. Nasıl okunur: PVQuant sütunu
               naif sütunundan ne kadar küçükse tahminin parasal değeri o kadar büyüktür. {dz.fiyat.senaryo_saat > 0 && "Senaryo fiyatı EPDK 2025 yıllık ortalamasıdır; EPİAŞ kimliği tanımlanınca gerçek saatlik fiyatlarla hesaplanır."}

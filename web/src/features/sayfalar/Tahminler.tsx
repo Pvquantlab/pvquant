@@ -192,12 +192,15 @@ export function Tahminler({ plantId }: { plantId: string }) {
               {/* v2.275: toplayıcı/DSG çıktısı — bantlı saatlik ve 15 dk (2027 hazırlığı) */}
               <button className="dugme" onClick={() => { setKgupHata(null); api.toplayiciIndir(plantId, "xlsx", 60).catch((e) => setKgupHata(String(e.message ?? e))); }}>Toplayıcı (Excel, saatlik)</button>
               <button className="dugme" onClick={() => { setKgupHata(null); api.toplayiciIndir(plantId, "csv", 15).catch((e) => setKgupHata(String(e.message ?? e))); }}>Toplayıcı (CSV, 15 dk)</button>
-              {kgup.eak && <span className="cip" title="Emre amade kapasite — künyeden değiştirilir">EAK {sayiTr(kgup.eak.eak_mw, 2)} MW · {({ gecici: "geçici kısıt", eak_alani: "EAK alanı", ac_tavani: "AC tavanı", kurulu_guc: "kurulu güç" } as Record<string, string>)[kgup.eak.kaynak] ?? kgup.eak.kaynak}</span>}
+              {kgup.oneri && kgup.oneri.durum === "ok" && kgup.oneri.kantil &&
+                <span className="cip" title={kgup.oneri.not ?? ""}>önerilen kantil {kgup.oneri.kantil.toUpperCase()}</span>}
+              {kgup.eak && <span className="cip" title="Emre amade kapasite — ayarlardan değiştirilir">EAK {sayiTr(kgup.eak.eak_mw, 2)} MW · {({ gecici: "geçici kısıt", eak_alani: "EAK alanı", ac_tavani: "AC tavanı", kurulu_guc: "kurulu güç" } as Record<string, string>)[kgup.eak.kaynak] ?? kgup.eak.kaynak}</span>}
               {kgupHata && <span style={{ color: "var(--uyari)", fontSize: 12.5 }}>{kgupHata}</span>}
             </div>
             {kgup.uyarilar.length > 0 && <p style={{ color: "var(--uyari)", fontSize: 12.5, margin: "8px 0 0" }}>{kgup.uyarilar.join(" · ")}</p>}
             {kgup.sicrama_saatleri.length > 0 && <p style={{ fontSize: 12.5, margin: "8px 0 0" }}>≥200 MWh sıçrama: saat {kgup.sicrama_saatleri.join(", ")} — dosyada 15 dakikalık dilimler.</p>}
             <p className="soluk" style={{ fontSize: 12.5, margin: "10px 0 0" }}>
+              {kgup.gip && `${kgup.gip.kural} Örnek: ${kgup.gip.ornek_teslimat} teslimatı için kapı ${kgup.gip.ornek_kapi}, revizyon son ${kgup.gip.ornek_revizyon_son}. `}
               Program, teslim kesiminden (D-1 15:30) önce verilmiş son koşunun saatlik P50'sidir; KGÜP ≤ emre amade kapasite ≤ kurulu güç
               kuralı uygulanır. CSV kolon adları TPYS şablonuyla eşlenmelidir (resmi şablon teyit edilemedi); dosya bir öneridir, bildirim TPYS'de yapılır.
             </p>

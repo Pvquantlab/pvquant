@@ -77,9 +77,11 @@ def hesapla_df(df: pd.DataFrame, fiyat: pd.DataFrame, kat: d.Katsayilar = d.Kats
                        "gelir_oran_pct": round(float(r["maliyet_gelir_orani"]) * 100, 2) if pd.notna(r["maliyet_gelir_orani"]) else None,
                        "tl_per_mwh": round(float(r["tl_per_mwh"]), 1) if pd.notna(r["tl_per_mwh"]) else None})
     top_pv = float(pv["toplam_maliyet"].sum()); top_ref = float(pv["referans_gelir"].sum())
+    teminat_tl = round(d.teminat(pv), 0)   # v2.287: son 3 ayın en yüksek aylık negatif dengesizlik gideri (sadeleştirilmiş esas)
     top_naif = float(ay_naif["toplam_maliyet"].sum()) if ay_naif is not None else None
     return {"gun_sayisi": int(pd.Series(x.index.tz_convert(IST).date).nunique()), "aylar": out_ay,
             "toplam": {"pvquant_tl": round(top_pv, 0), "kupst_tl": round(float(pv["kupst"].sum()), 0),   # v2.275
+                       "teminat_tl": teminat_tl,   # v2.287
                        "naif_tl": (round(top_naif, 0) if top_naif is not None else None),
                        "kurtarilan_tl": (round(top_naif - top_pv, 0) if top_naif is not None else None),
                        "gelir_oran_pct": round(top_pv / top_ref * 100, 2) if top_ref else None, "referans_gelir_tl": round(top_ref, 0)},
@@ -126,6 +128,7 @@ def simulasyon(tenant_id, plant: dict, gun: int = 90) -> dict:
     fiyat = piyasa_service.fiyatlar(idx)
     kat = katsayilar(plant.get("params_json"))
     out = hesapla_df(df, fiyat, kat)
+    out["oneri"] = oneri_kantili(fiyat, kat)   # v2.287
     out["pencere_gun"] = gun
     out["segment"] = segment_bilgisi(plant.get("params_json"))
     out["not"] = ("KGÜP = D-1 15:30 öncesi son koşunun P50'si; naif = dün-aynı-saat; DUY md. 110–111, k=l=0,03; "
@@ -135,6 +138,32 @@ def simulasyon(tenant_id, plant: dict, gun: int = 90) -> dict:
 
 
 # ----------------------------------------------------------------------------- v2.276: DSG portföy netleştirmesi ----
+KANTIL_SECENEK = {"p10": 0.10, "p25": 0.25, "p50": 0.50, "p75": 0.75, "p90": 0.90}
+
+
+def oneri_kantili(fiyat: pd.DataFrame, kat: d.Katsayilar = d.Katsayilar()) -> dict:
+    """v2.287 — SAF: hangi kantili bildirmeli? Gazeteci-çocuk kuralı (ext.optimal_teklif_kantili):
+    τ* = c_fazla / (c_eksik + c_fazla); eksik cezası ağırsa düşük kantil. Yön istatistiği saatlik PTF/SMF'den
+    (SMF>PTF saatleri 'enerji açığı'). Senaryo fiyatta yön dağılımı temsili değildir → dürüst tire."""
+    if fiyat is None or fiyat.empty or not {"ptf", "smf"} <= set(fiyat.columns):
+        return {"durum": "veri_yok", "kantil": None}
+    f = fiyat.dropna(subset=["ptf", "smf"])
+    if f.empty:
+        return {"durum": "veri_yok", "kantil": None}
+    if "kaynak" in f and (f["kaynak"] == "senaryo").all():
+        return {"durum": "senaryo", "kantil": None,
+                "not": "Senaryo fiyatta sistem yönü dağılımı temsili değildir; öneri gerçek fiyat akışıyla (piyasa kimliği) anlamlanır."}
+    ptf = float(f["ptf"].mean())
+    acik = f.loc[f["smf"] > f["ptf"], "smf"]; fazla = f.loc[f["smf"] <= f["ptf"], "smf"]
+    smf_acik = float(acik.mean()) if len(acik) else ptf
+    smf_fazla = float(fazla.mean()) if len(fazla) else ptf
+    tau = d.optimal_teklif_kantili(ptf, smf_acik, smf_fazla, kat)
+    kantil = min(KANTIL_SECENEK, key=lambda k2: abs(KANTIL_SECENEK[k2] - tau))
+    return {"durum": "ok", "tau": round(tau, 3), "kantil": kantil, "n_saat": int(len(f)),
+            "acik_saat_orani": round(float(len(acik)) / len(f), 3),
+            "not": f"Eksik üretim cezası ile fazla üretim kaybının dengesi; son {len(f)} saatin fiyatlarından."}
+
+
 def dsg_hesapla_df(programlar: dict[str, pd.DataFrame], fiyat: pd.DataFrame, kat: d.Katsayilar = d.Katsayilar()) -> dict:
     """SAF. programlar[santral] = program_df çıktısı (ts_utc, gercek_kw, kgup_kw). Santral başına ayrı dengesizlik maliyeti
     toplamı ↔ portföyün NETLEŞMİŞ (KGÜP toplamı vs gerçekleşen toplamı) maliyeti; fark = DSG netleşme kazancı."""
