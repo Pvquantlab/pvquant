@@ -378,6 +378,13 @@ def parola(p: ParolaIstek, claims=Depends(gecerli_kullanici)):
     return {"tamam": True}
 
 
+@app.get("/v1/isler")
+def isler(claims=Depends(gecerli_kullanici)):
+    """v2.301 — gece işlerinin görünürlüğü (son 48 saat; hata ayrıntısı yalnız günlükte)."""
+    from pvquant.services import isler_service
+    return isler_service.ozet(claims["tenant_id"])
+
+
 @app.get("/v1/kullanicilar")
 def kullanici_listesi(claims=Depends(gecerli_kullanici)):
     """v2.265 — atama için kiracının kullanıcıları (id, e-posta, rol)."""

@@ -5,7 +5,7 @@ import { useTema } from "../../lib/useTema";
 import { api, rolum, RaporDenetimHata, type DenetimBulgusu, EslemeHatasi, type EslemeVerisi,
          type ScadaOnizleme, type ScadaKayit,
          type KosuSatiri } from "../../api/client";
-import type { KalibrasyonOzeti, Kayma, Hijyen, EpiasUretim, KayipAgaci, GucMatrisi } from "../../api/types";
+import type { KalibrasyonOzeti, Kayma, Hijyen, EpiasUretim, KayipAgaci, GucMatrisi, Isler } from "../../api/types";
 import { Kart, Sayfa, Kpi, sayiTr } from "./parcalar";
 
 function SablonDugmeleri({ plantId }: { plantId: string }) {
@@ -517,6 +517,7 @@ export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
         hızlı tahminle başlatıp sonra yükseltmenizi öneririz.
       </p>
       <EpiasUretimKarti plantId={plantId} />
+      <GeceIsleriKarti />
       <VerinizSizindirKarti plantId={plantId} />
     </Sayfa>
   );
@@ -896,6 +897,38 @@ function VerinizSizindirKarti({ plantId }: { plantId: string }) {
           <span className="soluk" style={{ fontSize: 12 }}>silmek için iki tarih de gerekli</span>
         ))}
       </div>
+    </Kart>
+  );
+}
+
+
+/** v2.301 — gece işlerinin görünürlüğü: "dün gece ne oldu?" panelden yanıtlanır.
+ *  Hata ayrıntısı bilerek yok (yalnız günlükte); hüküm tamam/düştü. */
+function GeceIsleriKarti() {
+  const [j, setJ] = useState<Isler | null>(null);
+  useEffect(() => { api.isler().then(setJ).catch(() => {}); }, []);
+  if (!j) return null;
+  const zaman = (t: string) => new Date(t).toLocaleString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  return (
+    <Kart baslik="Gece işleri" sag={<span className="cip">{`son ${sayiTr(j.pencere_saat)} saat · ayrıntı günlükte`}</span>}>
+      {j.not && <p className="ayar-durum hata" style={{ margin: "0 0 10px" }}>{j.not}</p>}
+      {j.isler.length === 0 ? (
+        <p className="soluk" style={{ margin: 0, fontSize: 12.5 }}>Bu pencerede kayıtlı iş yok.</p>
+      ) : (
+        <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 12.5 }}>
+          <thead><tr><th style={{ textAlign: "left" }}>İş</th><th style={{ textAlign: "left" }}>Zaman</th><th>Süre</th><th>Durum</th></tr></thead>
+          <tbody>{j.isler.slice(0, 14).map((x, i) => (
+            <tr key={i}>
+              <td style={{ textAlign: "left" }}>{x.is}</td>
+              <td className="mono" style={{ textAlign: "left" }}>{zaman(x.zaman)}</td>
+              <td className="mono">{x.sure_sn == null ? "—" : x.sure_sn >= 60 ? `${sayiTr(x.sure_sn / 60, 1)} dk` : `${sayiTr(x.sure_sn, 1)} sn`}</td>
+              <td style={{ color: x.tamam ? undefined : "var(--uyari)", fontWeight: x.tamam ? undefined : 600 }}>{x.tamam ? "tamam" : "düştü"}</td>
+            </tr>))}</tbody>
+        </table></div>
+      )}
+      <p className="soluk" style={{ fontSize: 12, margin: "10px 0 0" }}>
+        Hava indirme, tahmin, karne ve kalibrasyon her gece otomatik koşar; düşen işin ayrıntısı sunucu günlüğündedir.
+      </p>
     </Kart>
   );
 }
