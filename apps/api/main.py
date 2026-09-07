@@ -409,6 +409,15 @@ def nowcast(plant_id: str, claims=Depends(gecerli_kullanici)):
     return nowcast_service.hesapla(claims["tenant_id"], row)
 
 
+@app.get("/v1/dogrulama")
+def dogrulama():
+    """v2.294 — kamuya açık doğrulama karnesi (kimliksiz). Yayın operatör bayrağına bağlı;
+    yalnız toplulaştırılmış sayılar çıkar, santral kimliği çıkmaz. 60 sn önbellek başlığı."""
+    from fastapi.responses import JSONResponse
+    from pvquant.services import dogrulama_service
+    return JSONResponse(dogrulama_service.ozet(), headers={"Cache-Control": "public, max-age=60"})
+
+
 @app.get("/v1/hakkinda")
 def hakkinda(claims=Depends(gecerli_kullanici)):
     """v2.270 — Veri kaynakları ve lisanslar (Gizlilik Anayasası v2.245 istisnası: atıf yalnız burada, rapor künyesinde, README'de)."""

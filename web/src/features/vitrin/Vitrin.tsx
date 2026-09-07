@@ -1,3 +1,7 @@
+import { useEffect, useState } from "react";
+import { api } from "../../api/client";
+import type { Dogrulama } from "../../api/types";
+
 /** Vitrin (halka acik yuz) — solar yeniden tasarim.
  *  Anlatı: sayfa bir gün yayıdır — şafak (hero), gündüz (dört adım),
  *  gece (karne: "her gece sınanır" yıldızlı gökte geçer).
@@ -184,6 +188,9 @@ function YildizAlani() {
 }
 
 export function Vitrin({ onPanel }: { onPanel: () => void }) {
+  // v2.294 — S4: kamuya açık doğrulama karnesi; uç kapalıysa/ulaşılamazsa bölüm hiç çizilmez (uydurma yok).
+  const [dg, setDg] = useState<Dogrulama | null>(null);
+  useEffect(() => { api.dogrulama().then((d) => { if (d?.durum === "acik") setDg(d); }).catch(() => {}); }, []);
   const dugme = {
     padding: "13px 26px", borderRadius: 12, fontSize: 15, fontWeight: 600,
     cursor: "pointer", border: "1.5px solid transparent",
@@ -449,8 +456,41 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
                 her gece bir sınav; sayaç kesintisiz büyür</div>
             </div>
           </div>
-          <div style={{ fontFamily: M, fontSize: 11, color: "#6E827A",
-            marginTop: 14 }}>sayılar panelde canlı — vitrin vaat etmez</div>
+          {dg ? (
+            <div style={{ marginTop: 26, textAlign: "left", background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.12)", borderRadius: 18, padding: "20px 22px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline",
+                gap: 10, flexWrap: "wrap" }}>
+                <div style={{ fontWeight: 700, fontSize: 16.5 }}>Açık karne — {dg.santral_etiketi}</div>
+                <div style={{ fontFamily: M, fontSize: 10.5, color: "#8AA79B" }}>
+                  son {dg.pencere_gun} gün · güncelleme {dg.son_gun ? new Date(dg.son_gun + "T12:00:00")
+                    .toLocaleDateString("tr-TR", { day: "numeric", month: "short" }) : "—"}</div>
+              </div>
+              <div style={{ display: "grid", gap: 12, margin: "16px 0 6px",
+                gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
+                {([
+                  ["PVQuant", dg.wmape_pct, "saatlik ortalama sapma"],
+                  ["Basit yöntem", dg.naif_wmape_pct, "dünü tekrarlar"],
+                  ["Sıkı referans", dg.siki_referans_wmape_pct, "iklim + akıllı süreklilik"],
+                  ["Bant kapsaması", dg.bant_kapsama_pct, `hedef %${dg.bant_hedef_pct ?? 80}`],
+                ] as const).map(([ad, deger, alt]) => (
+                  <div key={ad}>
+                    <div style={{ fontFamily: M, fontSize: 10, letterSpacing: "0.08em",
+                      color: "#8AA79B" }}>{ad}</div>
+                    <div style={{ fontFamily: M, fontSize: 26, fontWeight: 600, color: "#F2F7F4",
+                      fontVariantNumeric: "tabular-nums" }}>
+                      {deger == null ? "—" : `%${deger.toLocaleString("tr-TR")}`}</div>
+                    <div style={{ fontSize: 11.5, color: "#9DB3A9" }}>{alt}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontFamily: M, fontSize: 10.5, color: "#6E827A", lineHeight: 1.6 }}>
+                {dg.not} Sapma yüzdeleri üretime ağırlıklı ortalamadır — küçük olan iyidir.</div>
+            </div>
+          ) : (
+            <div style={{ fontFamily: M, fontSize: 11, color: "#6E827A",
+              marginTop: 14 }}>sayılar panelde canlı — vitrin vaat etmez</div>
+          )}
           <button onClick={onPanel} className="vt-dugme"
             style={{ ...dugme, marginTop: 36,
             background: ALTIN, color: METIN }}>Kendi karneni başlat</button>

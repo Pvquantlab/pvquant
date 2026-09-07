@@ -274,3 +274,11 @@ export interface PaylasimListesi { verilenler: Paylasim[]; alinanlar: Paylasim[]
 export interface PaylasilanVeri { santral: string; kapasite_kwp?: number | null; not?: string;
   gunler?: { gun: string; p50_kwh?: number | null; p10_kwh?: number | null; p90_kwh?: number | null; kwh?: number }[];
   gun?: number; wmape_pct?: number | null; nmae_pct?: number | null; picp80?: number | null; }
+
+/** v2.294: kamuya açık doğrulama karnesi. */
+export interface Dogrulama { durum: "acik" | "kapali"; santral_etiketi?: string; pencere_gun?: number;
+  son_gun?: string; wmape_pct?: number | null; naif_wmape_pct?: number | null;
+  siki_referans_wmape_pct?: number | null; nmae_pct?: number | null; beceri_naif_pct?: number | null;
+  beceri_siki_pct?: number | null; bant_kapsama_pct?: number | null; bant_hedef_pct?: number;
+  aylar?: { ay: string; gun: number; wmape_pct: number | null; naif_wmape_pct: number | null;
+            bant_kapsama_pct: number | null }[]; not?: string; }

@@ -1,4 +1,4 @@
-import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri } from "./types";
+import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -470,6 +470,12 @@ export const api = {
     gonder(`/v1/paylasimlar`, "POST", g),
   paylasimIptal: (id: string): Promise<{ iptal: boolean }> => gonder(`/v1/paylasimlar/${id}`, "DELETE"),
   paylasimVeri: (id: string, tur: string): Promise<PaylasilanVeri> => getir(`/v1/paylasimlar/${id}/veri?tur=${tur}`),
+  /** v2.294: kamuya açık doğrulama karnesi — kimliksiz uç, jeton eklenmez (401 yönlendirmesi tetiklenmesin). */
+  dogrulama: async (): Promise<Dogrulama | null> => {
+    if (TABAN == null) return null;
+    try { const y = await fetch(`${TABAN}/v1/dogrulama`); return y.ok ? (await y.json()) as Dogrulama : null; }
+    catch { return null; }
+  },
   /** OpenAPI sayfası adresi (gerçek kipte). */
   docsAdresi: (): string | null => (TABAN == null ? null : `${TABAN || ""}/docs`),
   /** v2.260: KGÜP önizleme (json) ve dosya indirme (csv, rapor kalıbı). */
