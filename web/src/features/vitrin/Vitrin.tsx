@@ -296,6 +296,50 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
         </div>
       </section>
 
+      {/* ---- ikindi: Türkiye'de tahmin = para (v2.293, rakip araştırması bulgusu:
+           Amperon/Dexter doğruluğu para diliyle satar; bizde kanıtlı hâli var) ---- */}
+      <section id="para" style={{ background: "#FDFBF5",
+        borderTop: "1px solid #EFE7D2", borderBottom: "1px solid #EFE7D2",
+        padding: "64px 6vw 72px" }}>
+        <div style={{ maxWidth: 980, margin: "0 auto" }}>
+          <div style={{ fontFamily: M, fontSize: 12, letterSpacing: "0.14em",
+            color: ALTIN_KOYU, textAlign: "center" }}>
+            TÜRKİYE PİYASASINDA · TAHMİN HATASI = DENGESİZLİK FATURASI</div>
+          <h2 style={{ fontSize: "clamp(26px, 3.6vw, 38px)", textAlign: "center",
+            margin: "14px 0 10px" }}>
+            Sapma burada soyut değil — <span style={{ color: ALTIN_KOYU }}>TL</span> yazar.
+          </h2>
+          <p style={{ fontSize: 16, color: METIN_IKINCIL, maxWidth: 620,
+            margin: "0 auto 38px", textAlign: "center", lineHeight: 1.6 }}>
+            Üretim programı her gün öğleden sonra bildirilir; gerçekleşen saparsa
+            fark dengesizlik mekanizmasıyla faturalanır. PVQuant programı üretir,
+            revizyon kapısını izler ve sapmanın TL karşılığını gün gün hesaplar.
+          </p>
+          <div style={{ display: "grid", gap: 16,
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+            {([
+              ["Program hazır", "Saatlik üretim programı ve emre amadelik, teslim penceresi kapanmadan dosya olarak elinizde — gecikirse alarm çalar."],
+              ["Sapmanın TL kartı", "Tahmin hatasının aylık TL karşılığı ve basit yönteme göre kurtarılan tutar panelde gün gün birikir; teminat etkisiyle birlikte."],
+              ["Toplayıcıya tek tık", "Tahmin aralığı toplayıcı/DSG şablonlarında (saatlik ya da 15 dakikalık) dışa verilir; API anahtarıyla sistemden sisteme akar."],
+            ] as const).map(([ad, cumle]) => (
+              <div key={ad} className="vt-kart" style={{ background: "#fff",
+                border: "1px solid #EAE1CC", borderRadius: 18,
+                padding: "22px 20px", borderTop: `3px solid ${ALTIN}` }}>
+                <div style={{ fontWeight: 700, fontSize: 17 }}>{ad}</div>
+                <div style={{ fontSize: 13.5, color: METIN_IKINCIL,
+                  lineHeight: 1.55, marginTop: 6 }}>{cumle}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontFamily: M, fontSize: 12, color: "#8A7A54",
+            marginTop: 18, textAlign: "center", lineHeight: 1.7 }}>
+            Sahadan ölçüm: 4,5 MW referans santralda 45 günde, basit yönteme karşı
+            kurtarılan dengesizlik maliyeti <b>25,4 bin TL</b> ölçüldü
+            (senaryo fiyatlarıyla; kendi rakamınız panelde hesaplanır).
+          </div>
+        </div>
+      </section>
+
       {/* ---- organik gecis + gece karnesi ---- */}
       <Dalga />
       <section id="karne" style={{ position: "relative",
@@ -341,7 +385,9 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
           <p style={{ color: "#9DB3A9", maxWidth: 540, margin: "0 auto 40px",
             fontSize: 16, lineHeight: 1.6 }}>
             Sistem her gece tahminini gerçekleşen üretimle karşılaştırır.
-            Sonuç saklanmaz, süslenmez — panelde gün gün birikir.
+            Sonuç saklanmaz, süslenmez — panelde gün gün birikir. Panel de bu
+            ritmi giyer: operasyon sayfaları koyu terminal, kanıt sayfaları
+            açık rapor yüzüyle açılır.
           </p>
           <div style={{ display: "grid", gap: 16,
             gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
@@ -432,8 +478,8 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
             <div style={{ fontFamily: M, fontSize: 11.5,
               letterSpacing: "0.12em", color: "#6E827A",
               marginBottom: 14 }}>PANEL</div>
-            {["Santralım", "Tahminler", "Doğruluk karnesi",
-              "Aylık beklenti"].map((s) => (
+            {["Portföy", "Santralım", "Tahminler", "Doğruluk karnesi",
+              "Aylık beklenti", "Raporlar"].map((s) => (
               <button key={s} onClick={onPanel} className="vt-baglanti"
                 style={{ display: "block",
                 background: "none", border: "none", padding: "5px 0",

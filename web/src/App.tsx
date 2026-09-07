@@ -42,6 +42,10 @@ export default function App() {
   }, [girdi]);   // eslint-disable-line react-hooks/exhaustive-deps
   const santralSec = (id: string) => { setPlantId(id); localStorage.setItem("pvq_plant", id); };
   const santralAd = santraller.find((x) => x.id === plantId)?.name ?? "Konya GES";
+  // v2.293: ?vitrin — oturum açıkken de vitrini görme kapısı (pazarlama sayfasını
+  // müşteriye göstermeden önce kendi gözünle denetle; "Panele giriş" adresi temizler).
+  if (new URLSearchParams(window.location.search).has("vitrin"))
+    return <Vitrin onPanel={() => { window.location.search = ""; }} />;
   if (!girdi) {
     if (gorunum === "vitrin")
       return <Vitrin onPanel={() => setGorunum("giris")} />;   // v2.81
