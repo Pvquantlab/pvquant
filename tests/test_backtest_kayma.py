@@ -47,6 +47,7 @@ def istemci(monkeypatch):
     from pvquant.services import plant_service, backtest_service, kayma_service
     monkeypatch.setattr(plant_service, "getir", lambda t, p: {"id": p, "capacity_kwp": 1000.0, "lat": 37.9, "lon": 32.5})
     monkeypatch.setattr(backtest_service, "konformal_backtest", lambda t, pl, gun=90: {"pencere": 3, "picp_ham_ort": 0.95, "picp_kal_ort": 0.81, "hedef": 0.8, "hukum": "ok", "satirlar": []})
+    monkeypatch.setattr(backtest_service, "ufuk_kova_sinavi", lambda t, pl, gun=90: {"pencere": 0, "kovalar": [], "hukum": "yetersiz"})   # v2.297
     monkeypatch.setattr(kayma_service, "kayma_denetimi", lambda pl, gun=30: {"n_saat": 700, "ozellikler": [], "hukum": "uyumlu", "gun": gun})
     yield TestClient(api_main.app)
     api_main.app.dependency_overrides.clear()
@@ -70,3 +71,34 @@ def test_kayma_arsiv_yoksa_durust(monkeypatch):
     r = ky.kayma_denetimi({"id": "p-test", "lat": 37.87, "lon": 32.49}, gun=30)
     assert r["n_saat"] == 0 and r["ozellikler"] == [] and r["hukum"] == "—" and "birikiyor" in r["not"] and "PVQUANT" not in r["not"]
     ky._ONBELLEK.clear()
+
+
+# ---------------- v2.297: ufuk kovası sınavı ----------------
+def test_ufuk_kova_sinavi_kova_kazanir():
+    """Sentetik: uzak ufukta artık büyük — tek q̂ (0-24'ten) uzak bandı az düzeltir, kova q̂ hedefe yaklaşır."""
+    import numpy as np
+    import pandas as pd
+    from pvquant.services.backtest_service import ufuk_kova_sinavi_df
+    rng = np.random.default_rng(11)
+    saatler = pd.date_range("2026-05-01", periods=70 * 24, freq="h", tz="UTC")
+    kayit = []
+    for u0, sapma in ((6.0, 60.0), (48.0, 420.0)):
+        for ts in saatler:
+            if not (6 <= ts.hour <= 16):
+                continue
+            kayit.append({"ts_utc": ts, "power_kw": 3000.0 + rng.normal(0, sapma),
+                          "p50": 3000.0, "p10": 2950.0, "p90": 3050.0, "ufuk_saat": u0})
+    r = ufuk_kova_sinavi_df(pd.DataFrame(kayit), capacity_kwp=4514.0)
+    assert r["pencere"] > 0 and len(r["kovalar"]) == 2
+    uzak = next(k for k in r["kovalar"] if k["kova"] == "24-72")
+    # kova q̂ uzak ufukta hedefe tek q̂'dan yakın olmalı (tek q̂ dar kalır → kapsama düşük)
+    assert abs(uzak["picp_kova"] - 0.80) < abs(uzak["picp_tek"] - 0.80)
+    assert uzak["picp_kova"] > uzak["picp_tek"]
+    assert "yaklaştırıyor" in r["hukum"]
+
+
+def test_ufuk_kova_sinavi_ufuksuz_df_bos():
+    import pandas as pd
+    from pvquant.services.backtest_service import ufuk_kova_sinavi_df
+    r = ufuk_kova_sinavi_df(pd.DataFrame({"ts_utc": [], "power_kw": [], "p10": [], "p90": []}), 4514.0)
+    assert r == {"pencere": 0, "kovalar": [], "hukum": "yetersiz"}

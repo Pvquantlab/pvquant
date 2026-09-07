@@ -62,6 +62,30 @@ def q_hat_hesapla_df(df: pd.DataFrame, capacity_kwp: float, alpha: float = ALPHA
             "ort_q": round(float(np.mean([v for k, v in yakin.items() if k != "_genel"])), 3)}
 
 
+def q_dizisi(ayar: dict, saatler, ufuklar=None) -> np.ndarray:
+    """SAF (v2.297): satır başına q̂ seçimi — uygula_df ile geriye dönük sınav AYNI mantığı kullansın.
+    'saat' ayarı: saat sözlüğü; 'saat_ufuk': kova(saat) sözlüğü, öğrenilmemiş kova en yakınına düşer."""
+    q = ayar["q_hat"]; genel = float(q.get("_genel", 0.0))
+    if ayar.get("grup") != "saat_ufuk" or ufuklar is None:
+        return np.array([float(q.get(str(int(s_)), genel)) for s_ in saatler])
+    sirali = [ad for ad, _, _ in KOVALAR if ad in q]
+
+    def _kova_adi(u: float) -> str | None:
+        for ad, u0, u1 in KOVALAR:
+            if u0 <= u < u1 and ad in q:
+                return ad
+        if not sirali:
+            return None
+        return sirali[-1] if u >= 24 else sirali[0]
+
+    out = []
+    for u, s_ in zip(ufuklar, saatler):
+        ad = _kova_adi(float(u))
+        kd = q.get(ad) if ad else None
+        out.append(float(kd.get(str(int(s_)), kd.get("_genel", genel))) if isinstance(kd, dict) else genel)
+    return np.array(out)
+
+
 def uygula_df(h: pd.DataFrame, ayar: dict | None, tavan_kw: float | None, run_at: pd.Timestamp | None = None) -> pd.DataFrame:
     """SAF. h: ts_utc indexli çerçeve, p10_kw/p90_kw HAM. Ham kopyaları p10_ham_kw/p90_ham_kw'ya alır;
     ayar varsa servis bandını yazar (p10 ≥ 0, p90 ≤ tavan, p10 ≤ p50 ≤ p90 korunur). Ayar yoksa ham = servis.
@@ -76,18 +100,9 @@ def uygula_df(h: pd.DataFrame, ayar: dict | None, tavan_kw: float | None, run_at
     saat = ix.tz_convert("UTC").hour if ix.tz is not None else ix.hour
     if ayar.get("grup") == "saat_ufuk":
         t0 = run_at if run_at is not None else ix[0]
-        ufuk = (ix - t0).total_seconds() / 3600.0
-        sirali = [ad for ad, _, _ in KOVALAR if ad in q]
-        def _kova_adi(u: float) -> str:
-            for ad, u0, u1 in KOVALAR:
-                if u0 <= u < u1 and ad in q:
-                    return ad
-            # öğrenilmemiş/aralık dışı ufuk → en yakın öğrenilmiş kova (uzun ufukta sonuncusu)
-            return sirali[-1] if u >= 24 and sirali else (sirali[0] if sirali else "_genel")
-        qs = np.array([float(q.get(_kova_adi(float(u)), {}).get(str(int(s_)), genel)) if _kova_adi(float(u)) != "_genel" else genel
-                       for u, s_ in zip(ufuk, saat)])
+        qs = q_dizisi(ayar, saat, (ix - t0).total_seconds() / 3600.0)
     else:
-        qs = np.array([float(q.get(str(int(s_)), genel)) for s_ in saat])
+        qs = q_dizisi(ayar, saat)
     p10 = pd.to_numeric(h["p10_ham_kw"], errors="coerce"); p90 = pd.to_numeric(h["p90_ham_kw"], errors="coerce")
     p50 = pd.to_numeric(h["p50_kw"], errors="coerce")
     yeni10 = (p10 - qs).clip(lower=0.0); yeni90 = p90 + qs

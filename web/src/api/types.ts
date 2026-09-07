@@ -163,6 +163,9 @@ export interface Hijyen {
 export interface Backtest {
   pencere: number; picp_ham_ort: number | null; picp_kal_ort: number | null; hedef: number; hukum: string;
   satirlar: { baslangic: string; n_test: number; picp_ham: number; picp_kal: number; bant_ham_n: number; bant_kal_n: number; q_ort: number }[];
+  /** v2.297: ufuk kovası sınavı — ham / tek q̂ / kova q̂ kapsaması kova başına. */
+  kova_sinav?: { pencere: number; hedef?: number; hukum: string;
+    kovalar: { kova: string; n: number; picp_ham: number; picp_tek: number; picp_kova: number; bant_kova_n: number }[] };
 }
 /** /fizik-terimleri — v2.274: santral bazında fizik terimleri (aç/kapa) + önizleme. */
 export interface FizikTerimleri {

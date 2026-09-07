@@ -849,7 +849,10 @@ def backtest(plant_id: str, gun: int = 90, claims=Depends(gecerli_kullanici)):
     row = plant_service.getir(claims["tenant_id"], plant_id)
     if row is None:
         raise HTTPException(404, "santral yok")
-    return backtest_service.konformal_backtest(claims["tenant_id"], {"id": str(row["id"]), "capacity_kwp": float(row["capacity_kwp"])}, gun=gun)
+    st = {"id": str(row["id"]), "capacity_kwp": float(row["capacity_kwp"])}
+    r = backtest_service.konformal_backtest(claims["tenant_id"], st, gun=gun)
+    r["kova_sinav"] = backtest_service.ufuk_kova_sinavi(claims["tenant_id"], st, gun=gun)   # v2.297
+    return r
 
 
 @app.get("/v1/plants/{plant_id}/kayma")

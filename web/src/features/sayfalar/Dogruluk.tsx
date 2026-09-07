@@ -502,6 +502,28 @@ export function Dogruluk({ plantId }: { plantId: string }) {
                 ))}
               </tbody>
             </table>
+            {/* v2.297: ufuk kovası sınavı — kova q̂ uzak ufkun kapsamasını hedefe yaklaştırıyor mu? */}
+            {bt.kova_sinav && bt.kova_sinav.pencere > 0 && bt.kova_sinav.kovalar.length > 0 && (
+              <>
+                <div className="cip" style={{ display: "inline-block", margin: "12px 0 6px" }}>
+                  Ufuk kovası sınavı · {sayiTr(bt.kova_sinav.pencere)} pencere · {bt.kova_sinav.hukum}
+                </div>
+                <table className="veri" style={{ fontSize: 12.5 }}>
+                  <thead><tr><th>Ufuk</th><th>Test saati</th><th>Ham</th><th>Tek düzeltme</th><th>Ufka göre düzeltme</th></tr></thead>
+                  <tbody className="mono">
+                    {bt.kova_sinav.kovalar.map((k) => (
+                      <tr key={k.kova}><td>{k.kova} s</td><td>{sayiTr(k.n)}</td>
+                        <td>%{sayiTr(k.picp_ham * 100, 0)}</td><td>%{sayiTr(k.picp_tek * 100, 0)}</td>
+                        <td>%{sayiTr(k.picp_kova * 100, 0)}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="soluk" style={{ fontSize: 12, margin: "6px 0 0" }}>
+                  Hedef %80 kapsama. "Tek düzeltme" eski düzendir (ilk günün düzeltmesi her ufka);
+                  "ufka göre" her ufuk diliminin kendi sınavından öğrenilir — hedefe yakın olan iyidir.
+                </p>
+              </>
+            )}
           </div>
         )}
         {/* v2.271 (Dalga 1 tamamlayıcısı): kantil güvenilirliği + PIT + keskinlik — ham ↔ kalibre */}
