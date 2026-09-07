@@ -169,8 +169,10 @@ export function Aylik({ plantId }: { plantId: string }) {
               <Kpi etiket="P50 (yıllık)" deger={sayiTr((bk.p50_kwh ?? 0) / 1000, 0)} birim="MWh" alt={`${sayiTr(bk.ozgul_verim_kwh_kwp ?? 0, 0)} kWh/kWp özgül verim`} />
               <Kpi etiket="P90 · tek yıl" deger={sayiTr((bk.bir_yil?.p90 ?? 0) / 1000, 0)} birim="MWh" alt={`P99 ${sayiTr((bk.bir_yil?.p99 ?? 0) / 1000, 0)} MWh`} />
               <Kpi etiket={`P90 · ${sayiTr(bk.N_yil ?? 10)} yıl ortalaması`} deger={sayiTr((bk.n_yil?.p90 ?? 0) / 1000, 0)} birim="MWh" alt="finansman ufku (yıllar arası bileşen küçülür)" />
-              <Kpi etiket="Toplam belirsizlik (σ)" deger={`%${sayiTr((bk.sigma_toplam ?? 0) * 100, 1)}`}
-                   alt={bk.bilesenler ? `yıllar arası %${sayiTr(bk.bilesenler.yillar_arasi * 100, 1)} · kaynak %${sayiTr(bk.bilesenler.kaynak * 100, 0)} · model %${sayiTr(bk.bilesenler.model * 100, 0)}` : ""} />
+              <Kpi etiket="Toplam belirsizlik (σ)" deger={`%${sayiTr((bk.sigma_toplam ?? 0) * 100, 1)}${bk.olcumle_kalibre ? " · kalibre" : ""}`}
+                   alt={bk.katki_pct
+                     ? "katkı: " + Object.entries(bk.katki_pct).sort((x, y) => y[1] - x[1]).slice(0, 3)   /* jsonb anahtar sırası korumaz — değere göre */.map(([k, v]) => `${({ yillar_arasi: "yıllar arası", kaynak: "kaynak", transpozisyon: "düzleme aktarma", model_zinciri: "model", olcum: "ölçüm", degradasyon: "bozunma", kullanilabilirlik: "kullanılabilirlik" } as Record<string, string>)[k] ?? k} %${sayiTr(v, 0)}`).join(" · ")
+                     : bk.bilesenler ? `yıllar arası %${sayiTr((bk.bilesenler.yillar_arasi ?? 0) * 100, 1)} · kaynak %${sayiTr((bk.bilesenler.kaynak ?? 0) * 100, 0)} · model %${sayiTr((bk.bilesenler.model_zinciri ?? bk.bilesenler.model ?? 0) * 100, 1)}` : ""} />
             </div>
             <div className="grafik-kaydir">
               <table className="veri" style={{ fontSize: 12 }}>
@@ -184,6 +186,7 @@ export function Aylik({ plantId }: { plantId: string }) {
             <p className="soluk" style={{ fontSize: 12.5, margin: "10px 0 0" }}>
               {bk.mod}. Işınım P50 {sayiTr(bk.ghi?.p50_kwh_m2 ?? 0, 0)} kWh/m² (tek yıl P90 {sayiTr(bk.ghi?.p90_kwh_m2_1yil ?? 0, 0)}).
               {bk.tmy?.p90_yili ? ` P90 senaryo yılı: ${bk.tmy.p90_yili} (${sayiTr(bk.tmy.p90_yili_ghi ?? 0, 0)} kWh/m²); tipik meteorolojik yıl ${sayiTr(bk.tmy.tmy_ghi_kwh_m2 ?? 0, 0)} kWh/m².` : ""}
+              {bk.monte_carlo ? ` Çarpımsal sınama (asimetri korunur): P90 ${sayiTr(bk.monte_carlo.p90_1yil / 1000, 0)} · P99 ${sayiTr(bk.monte_carlo.p99_1yil / 1000, 0)} MWh — normal varsayımla ${Math.abs((bk.monte_carlo.p90_1yil - (bk.bir_yil?.p90 ?? 0)) / (bk.bir_yil?.p90 || 1) * 100) < 1 ? "uyumlu" : "farklı"}.` : ""}
               {bk.gelir ? ` Gelir (tarife: ${bk.gelir.tip}, ${sayiTr(bk.gelir.fiyat_tl_mwh, 0)} TL/MWh): P50 ${sayiTr(bk.gelir.p50_tl / 1e6, 2)} milyon TL/yıl · P90 tek yıl ${sayiTr(bk.gelir.p90_1yil_tl / 1e6, 2)} · P90 10 yıl ${sayiTr(bk.gelir.p90_nyil_tl / 1e6, 2)} milyon TL.${bk.gelir.not ? " " + bk.gelir.not + "." : ""}` : ""}
               {" "}{bk.not}
             </p>

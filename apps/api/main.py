@@ -959,6 +959,29 @@ def rapor_sablon_uc(plant_id: str, ad: str, ay: str | None = None, gun: int = 30
     return Response(content=icerik, media_type="text/html; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{dosya}"'})
 
 
+@app.get("/v1/plants/{plant_id}/guc-matrisi")
+def guc_matrisi_uc(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """v2.283 — modül davranışı (güç matrisi): saklı sonuç; yoksa 404."""
+    from pvquant.services import guc_matrisi_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    r = guc_matrisi_service.getir(row)
+    if not r:
+        raise HTTPException(404, "henüz hesaplanmadı")
+    return r
+
+
+@app.post("/v1/plants/{plant_id}/guc-matrisi/hesapla")
+def guc_matrisi_hesapla(plant_id: str, claims=Depends(yazma_yetkisi())):
+    """v2.283 — güç matrisi davranışını hesapla/yenile (tipik yıl, ~10 s)."""
+    from pvquant.services import guc_matrisi_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    return guc_matrisi_service.hesapla(claims["tenant_id"], row)
+
+
 @app.get("/v1/plants/{plant_id}/bankable")
 def bankable(plant_id: str, claims=Depends(gecerli_kullanici)):
     """v2.278 — bankable yıllık beklenti (P50/P90, 1 ve 10 yıl), belirsizlik bütçesi, TMY; hesaplanmadıysa 404."""

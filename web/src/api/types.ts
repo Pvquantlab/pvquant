@@ -80,11 +80,21 @@ export interface KayipAgaci { durum: string; yil?: number; kaynak?: string; ghi_
   pr?: number | null; ozgul_kwh_kwp?: number; hesap_zamani?: string;
   satirlar?: { adim: string; etiket: string; giren_kwh: number; cikan_kwh: number; kayip_kwh: number; kayip_pct: number; kaynak: string }[] }
 export interface Tarife { tip: "sabit" | "ptf" | "yekdem"; tl_mwh?: number; prim_oran?: number; sabit_ek_tl_mwh?: number; usd_cent_kwh?: number; kur_tl_usd?: number; eskalasyon_yillik?: number }
+/** /guc-matrisi — v2.283: IEC 61853 kalıbıyla modül davranışı. */
+export interface GucMatrisi {
+  durum: string; kaynak?: string; gamma?: number; yil?: number; hesap_zamani?: string; not?: string;
+  tablo?: { g_wm2: number; verim_25_pct: number; verim_50_pct: number }[];
+  cser?: number | null; e_dc_kwh_kwp?: number; h_poa_kwh_m2?: number;
+  dusuk_isinim_kayip_pct?: number; sicaklik_50_kayip_pct?: number;
+}
 /** /bankable — v2.278: yıllık P50/P90 (1 ve 10 yıl), belirsizlik bütçesi, TMY. */
 export interface Bankable {
   durum: string; hesap_zamani?: string; kaynak?: string; donem?: string; mod?: string; not?: string;
   p50_kwh?: number; ozgul_verim_kwh_kwp?: number; sigma_toplam?: number; yil_sayisi?: number; N_yil?: number;
   bilesenler?: Record<string, number>; bir_yil?: Record<string, number>; n_yil?: Record<string, number>;
+  /** v2.283: bileşen katkıları (%), çarpımsal sınama ve ölçüm kalibresi bilgisi */
+  katki_pct?: Record<string, number>; olcumle_kalibre?: boolean;
+  monte_carlo?: { p90_1yil: number; p99_1yil: number; not?: string };
   ghi?: { p50_kwh_m2: number; p90_kwh_m2_1yil: number; sigma_yillar_arasi: number };
   yillar?: { yil: number; kwh: number; ghi_kwh_m2: number }[];
   tmy?: { secilen_yillar?: Record<string, number>; p90_yili?: number; p90_yili_ghi?: number; tmy_ghi_kwh_m2?: number; hata?: string };

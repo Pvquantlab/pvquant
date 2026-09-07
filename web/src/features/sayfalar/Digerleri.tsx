@@ -5,7 +5,7 @@ import { useTema } from "../../lib/useTema";
 import { api, RaporDenetimHata, type DenetimBulgusu, EslemeHatasi, type EslemeVerisi,
          type ScadaOnizleme, type ScadaKayit,
          type KosuSatiri } from "../../api/client";
-import type { KalibrasyonOzeti, Kayma, Hijyen, EpiasUretim, KayipAgaci } from "../../api/types";
+import type { KalibrasyonOzeti, Kayma, Hijyen, EpiasUretim, KayipAgaci, GucMatrisi } from "../../api/types";
 import { Kart, Sayfa, Kpi, sayiTr } from "./parcalar";
 
 function SablonDugmeleri({ plantId }: { plantId: string }) {
@@ -23,6 +23,41 @@ function SablonDugmeleri({ plantId }: { plantId: string }) {
         Kapasite testi ölçülen düzlem ışınımı ister; fatura özeti künyedeki tarifeyi ve simülatörün dengesizlik kalemini kullanır; kullanılabilirlik otomatik arıza tespitidir.
       </p>
     </>
+  );
+}
+
+/** v2.283 (Tablo 3.3 satır 5) — modül davranışı: güç matrisi kalıbıyla ışınım/sıcaklık verimi ve iklim-özgü verim oranı. */
+function GucMatrisiKarti({ plantId }: { plantId: string }) {
+  const [g, setG] = useState<GucMatrisi | null | undefined>(undefined);
+  const [mesaj, setMesaj] = useState<string | null>(null);
+  useEffect(() => { api.gucMatrisi(plantId).then(setG).catch(() => setG(null)); }, [plantId]);
+  const hesapla = () => { setMesaj("Hesaplanıyor (tipik yıl, ~10 s)…"); api.gucMatrisiHesapla(plantId).then((r) => { setG(r); setMesaj(null); }).catch((e) => setMesaj(String((e as Error).message ?? e))); };
+  return (
+    <Kart baslik="Modül davranışı — güç matrisi" sag={<span style={{ display: "flex", gap: 6 }}>
+      {g?.durum === "ok" && <span className="cip">tipik yıl {g.yil} · iklim-özgü verim oranı {sayiTr((g.cser ?? 0) * 100, 1)}%</span>}
+      <button className="dugme" style={{ fontSize: 11.5 }} onClick={hesapla}>{g?.durum === "ok" ? "Yenile" : "Hesapla"}</button></span>}>
+      {g === undefined ? <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p>
+       : !g || g.durum !== "ok" ? <p className="soluk" style={{ margin: 0 }}>{mesaj ?? "Henüz hesaplanmadı — 'Hesapla' modülün ışınım/sıcaklık davranışını tipik yıl iklimiyle değerlendirir."}</p>
+       : (
+        <>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+            <span className="cip">düşük ışınım (200 W/m²) verim kaybı %{sayiTr(g.dusuk_isinim_kayip_pct ?? 0, 1)}</span>
+            <span className="cip">sıcak hücre (50 °C) kaybı %{sayiTr(g.sicaklik_50_kayip_pct ?? 0, 1)}</span>
+            <span className="cip">tipik yıl DC {sayiTr(g.e_dc_kwh_kwp ?? 0, 0)} kWh/kWp · düzlem {sayiTr(g.h_poa_kwh_m2 ?? 0, 0)} kWh/m²</span>
+          </div>
+          <div className="grafik-kaydir">
+            <table className="veri" style={{ fontSize: 12 }}>
+              <thead><tr><th style={{ textAlign: "left" }}>Işınım (W/m²)</th>{(g.tablo ?? []).map((r) => <th key={r.g_wm2}>{sayiTr(r.g_wm2)}</th>)}</tr></thead>
+              <tbody className="mono">
+                <tr><td style={{ textAlign: "left", fontFamily: "var(--font)" }}>Verim oranı · 25 °C</td>{(g.tablo ?? []).map((r) => <td key={r.g_wm2}>%{sayiTr(r.verim_25_pct, 1)}</td>)}</tr>
+                <tr><td style={{ textAlign: "left", fontFamily: "var(--font)" }}>Verim oranı · 50 °C</td>{(g.tablo ?? []).map((r) => <td key={r.g_wm2}>%{sayiTr(r.verim_50_pct, 1)}</td>)}</tr>
+              </tbody>
+            </table>
+          </div>
+          <p className="soluk" style={{ fontSize: 12.5, margin: "10px 0 0" }}>Kaynak: {g.kaynak}. {g.not}</p>
+        </>
+      )}
+    </Kart>
   );
 }
 
@@ -693,6 +728,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
         )}
       </Kart>
       <KayipAgaciKarti plantId={plantId} />
+      <GucMatrisiKarti plantId={plantId} />
     </Sayfa>
   );
 }

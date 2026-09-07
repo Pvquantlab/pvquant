@@ -1,4 +1,4 @@
-import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme } from "./types";
+import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -499,6 +499,12 @@ export const api = {
     try { return await getir<KayipAgaci>(`/v1/plants/${p}/kayip-agaci`); } catch { return null; }
   },
   kayipAgaciHesapla: (p: string): Promise<KayipAgaci> => gonder(`/v1/plants/${p}/kayip-agaci/hesapla`, "POST"),
+  /** v2.283: modül davranışı (güç matrisi). */
+  gucMatrisi: async (p: string): Promise<GucMatrisi | null> => {
+    if (TABAN == null) return null;
+    try { return await getir<GucMatrisi>(`/v1/plants/${p}/guc-matrisi`); } catch { return null; }
+  },
+  gucMatrisiHesapla: (p: string): Promise<GucMatrisi> => gonder(`/v1/plants/${p}/guc-matrisi/hesapla`, "POST"),
   tarife: async (p: string): Promise<Tarife | null> => {
     if (TABAN == null) return null;
     try { return (await getir<{ tarife: Tarife | null }>(`/v1/plants/${p}/tarife`)).tarife; } catch { return null; }

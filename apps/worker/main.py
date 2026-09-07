@@ -521,10 +521,16 @@ def aylik_kalibrasyon(plant):
 
 
 def aylik_bankable(plant):
-    """v2.278 — ayda bir: PVGIS-SARAH3 19 yıl × fizik → bankable P50/P90 + belirsizlik bütçesi (params_json.bankable)."""
-    from pvquant.services import bankable_service
+    """v2.278 — ayda bir: PVGIS-SARAH3 19 yıl × fizik → bankable P50/P90 + belirsizlik bütçesi (params_json.bankable).
+    v2.283: modül davranışı (güç matrisi) da aynı işte tazelenir."""
+    from pvquant.services import bankable_service, guc_matrisi_service
     r = bankable_service.hesapla(plant["tenant_id"], plant)
     print("aylik_bankable:", plant.get("name"), r.get("durum"), r.get("p50_kwh"))
+    try:
+        g = guc_matrisi_service.hesapla(plant["tenant_id"], plant)
+        print("aylik_guc_matrisi:", plant.get("name"), g.get("durum"), g.get("cser"))
+    except Exception as e:   # noqa: BLE001 — matris hesabı bankable'ı düşürmez
+        print("aylik_guc_matrisi atlandı:", type(e).__name__, e)
 
 
 def aylik_iklim(plant):

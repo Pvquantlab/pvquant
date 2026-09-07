@@ -14,11 +14,10 @@ from datetime import datetime, timezone
 import numpy as np
 import pandas as pd
 
-from pvquant.ext.kaynak import belirsizlik as bz
 from pvquant.ext.kaynak import tmy as tmy_mod
+from pvquant.ext.standart import belirsizlik_butcesi as bb   # v2.283: 7 bileşenli bütçe + Monte Carlo (Solargis/DNV kalıbı)
 
-SIGMA_KAYNAK = 0.04   # uydu türevli GHI (SARAH-3) tipik kaynak belirsizliği
-SIGMA_MODEL = 0.03    # fizik zinciri (transpozisyon + sıcaklık + sistem)
+SIGMA_KAYNAK = 0.04   # uydu türevli GHI (SARAH-3) tipik kaynak belirsizliği (ölçümle kalibre sahada 0,02)
 
 
 def _meteodata(df_yil: pd.DataFrame, lat: float, lon: float):
@@ -40,14 +39,23 @@ def yillik_enerji(df: pd.DataFrame, plant: dict, spec, tam_yil_esik: float = 0.9
     return pd.DataFrame(rows).set_index("yil") if rows else pd.DataFrame(columns=["kwh", "ghi_kwh_m2", "saat"])
 
 
-def butce_uygula(yillik_kwh: pd.Series, capacity_kwp: float, sigma_kaynak: float = SIGMA_KAYNAK, sigma_model: float = SIGMA_MODEL,
-                 sigma_olcum: float = 0.0, N_yil: int = 10) -> dict:
-    """SAF. Yıllık kWh → P-değerleri (1 yıl / N yıl), özgül verim, bileşenler."""
-    b = bz.butce(yillik_kwh, sigma_kaynak, sigma_model, sigma_olcum, N_yil)
+def butce_uygula(yillik_kwh: pd.Series, capacity_kwp: float, N_yil: int = 10, olcumle_kalibre: bool = False,
+                 degradasyon_sigma_yil: float = 0.0) -> dict:
+    """SAF. Yıllık kWh → 7 bileşenli bütçe (yıllar arası + kaynak + transpozisyon + model zinciri + ölçüm + degradasyon +
+    kullanılabilirlik; RSS) → P-değerleri (1/N yıl), bileşen katkıları ve Monte Carlo (lognormal) çapraz sınaması."""
+    y = yillik_kwh.dropna()
+    b = bb.butce_kur(float(y.mean()), y, N_yil, olcumle_kalibre, degradasyon_sigma_yil)
+    Z = sorted(bb.Z)
+    mc = bb.monte_carlo(b.p50, b.bilesenler, N_yil=1)
     return {"p50_kwh": round(b.p50, 0), "ozgul_verim_kwh_kwp": round(b.p50 / capacity_kwp, 1),
-            "sigma_toplam": round(b.sigma_goreli, 4), "bilesenler": {k: round(v, 4) for k, v in b.bilesenler.items()},
-            "bir_yil": {f"p{p}": round(v, 0) for p, v in b.olasiliklar.items()},
-            "n_yil": {f"p{p}": round(v, 0) for p, v in b.olasiliklar_N_yil.items()}, "N_yil": N_yil, "yil_sayisi": int(yillik_kwh.dropna().shape[0])}
+            "sigma_toplam": round(b._s1, 4), "olcumle_kalibre": olcumle_kalibre,
+            "bilesenler": {k: round(v, 4) for k, v in b.bilesenler.items() if v > 0},
+            "katki_pct": {k: round(v * 100, 1) for k, v in b.katki().items() if v >= 0.005},
+            "bir_yil": {f"p{q}": round(b.p(q), 0) for q in Z},
+            "n_yil": {f"p{q}": round(b.p(q, True), 0) for q in Z},
+            "monte_carlo": {"p90_1yil": round(float(mc["P90"]), 0), "p99_1yil": round(float(mc["P99"]), 0),
+                            "not": "çarpımsal (lognormal) sınama — normal varsayımın P90/P99'u ile kıyas"},
+            "N_yil": N_yil, "yil_sayisi": int(len(y))}
 
 
 def hesapla(tenant_id, plant: dict, kaydet: bool = True) -> dict:
@@ -60,8 +68,25 @@ def hesapla(tenant_id, plant: dict, kaydet: bool = True) -> dict:
     y = yillik_enerji(df, plant, spec)
     if len(y) < 5:
         return {"durum": "yetersiz", "yil_sayisi": int(len(y)), "not": "en az 5 tam yıl gerekir"}
-    but = butce_uygula(y["kwh"], float(plant["capacity_kwp"]))
-    ghi_b = bz.butce(y["ghi_kwh_m2"], SIGMA_KAYNAK, 0.0, 0.0, 10)
+    # v2.283: ölçümle kalibre santral (aktif kalibrasyon) → kaynak σ düşer, ölçüm σ eklenir; bozunma aralığı biliniyorsa bileşen olur
+    olcumle = False; deg_sigma = 0.0
+    try:
+        from sqlalchemy import text as _t
+        from pvquant.db import tenant_baglami as _tb
+        with _tb(tenant_id) as s:
+            olcumle = bool(s.execute(_t("SELECT 1 FROM calibrations WHERE plant_id=:p AND active LIMIT 1"), {"p": plant["id"]}).first())
+    except Exception:   # noqa: BLE001
+        olcumle = False
+    try:
+        from pvquant.services import saglik_service
+        sg = saglik_service.hesapla(tenant_id, plant)
+        ga = sg.get("bozunma_ga")
+        if ga and len(ga) == 2:
+            deg_sigma = abs(float(ga[1]) - float(ga[0])) / 2.0 / 100.0
+    except Exception:   # noqa: BLE001
+        deg_sigma = 0.0
+    but = butce_uygula(y["kwh"], float(plant["capacity_kwp"]), olcumle_kalibre=olcumle, degradasyon_sigma_yil=deg_sigma)
+    ghi_b = bb.Butce(float(y["ghi_kwh_m2"].mean()), {"yillar_arasi": bb.yillar_arasi_sigma(y["ghi_kwh_m2"]), "kaynak": SIGMA_KAYNAK}, 10)
     try:
         tmy, secim = tmy_mod.tmy_uret(df[["ghi", "temp_air", "wind_speed_10m"]])
         p90_yil, p90_ghi, _ = tmy_mod.pxx_yili(df, 90)
@@ -71,9 +96,12 @@ def hesapla(tenant_id, plant: dict, kaydet: bool = True) -> dict:
         tmy_bilgi = {"hata": f"{type(e).__name__}: {e}"}
     out = {"durum": "ok", "hesap_zamani": datetime.now(timezone.utc).isoformat(), "kaynak": "PVGIS-SARAH3 (JRC), CC BY 4.0",
            "donem": f"{int(y.index.min())}–{int(y.index.max())}", "mod": "fizik (kalibre katsayılar; hibrit düzeltme yıllık ölçekte uygulanmaz)",
-           **but, "ghi": {"p50_kwh_m2": round(ghi_b.p50, 1), "p90_kwh_m2_1yil": round(ghi_b.olasiliklar[90], 1), "sigma_yillar_arasi": round(ghi_b.bilesenler["yillar_arasi"], 4)},
+           **but, "ghi": {"p50_kwh_m2": round(ghi_b.p50, 1), "p90_kwh_m2_1yil": round(ghi_b.p(90), 1), "sigma_yillar_arasi": round(ghi_b.bilesenler["yillar_arasi"], 4)},
            "yillar": [{"yil": int(i), "kwh": float(r["kwh"]), "ghi_kwh_m2": float(r["ghi_kwh_m2"])} for i, r in y.iterrows()], "tmy": tmy_bilgi,
-           "not": "Kaynak belirsizliği %4 ve model belirsizliği %3 varsayılan (uydu türevli GHI için tipik); ölçüm kalibresi olan sahada düşer. Ölçüm kalibreli finans raporu için bağımsız doğrulama gerekir."}
+           "not": ("Bileşenler: yıllar arası (ölçülen) + kaynak + düzleme aktarma + model zinciri" + (" + ölçüm (kalibre saha)" if olcumle else "")
+                   + (" + bozunma" if deg_sigma > 0 else "") + " + kullanılabilirlik; kare toplamının kökü. "
+                   + ("Işınım kaynağı belirsizliği ölçümle kalibre değeriyle (%2) alındı. " if olcumle else "Işınım kaynağı belirsizliği uydu türevli tipik değer (%4). ")
+                   + "Finans raporu için bağımsız doğrulama gerekir.")}
     try:   # v2.281: tarife tanımlıysa yıllık gelir P50/P90 (TL); PTF tipi için senaryo/EPİAŞ yıllık ortalama
         from pvquant.services import tarife_service, piyasa_service
         t = tarife_service.tarife_getir(plant)

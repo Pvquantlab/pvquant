@@ -14,7 +14,12 @@ def test_butce_uygula():
     r = bs.butce_uygula(y, 4.0)
     assert r["p50_kwh"] == 7043 and r["ozgul_verim_kwh_kwp"] == 1760.7 and r["bir_yil"]["p90"] < r["p50_kwh"] < r["bir_yil"]["p50"] + 1
     assert r["n_yil"]["p90"] > r["bir_yil"]["p90"]                      # 10 yıl ortalamasında yıllar arası bileşen küçülür
-    assert set(r["bilesenler"]) == {"yillar_arasi", "kaynak", "model", "olcum"}
+    # v2.283: 7 bileşenli bütçe (sıfır bileşenler gizli) + katkılar + Monte Carlo çapraz sınama
+    assert set(r["bilesenler"]) == {"yillar_arasi", "kaynak", "transpozisyon", "model_zinciri", "kullanilabilirlik"}
+    assert abs(sum(r["katki_pct"].values()) - 100) < 2
+    assert abs(r["monte_carlo"]["p90_1yil"] - r["bir_yil"]["p90"]) / r["bir_yil"]["p90"] < 0.02   # lognormal ≈ normal (küçük σ)
+    k = bs.butce_uygula(y, 4.0, olcumle_kalibre=True, degradasyon_sigma_yil=0.004)
+    assert k["bilesenler"]["kaynak"] == 0.02 and "olcum" in k["bilesenler"] and "degradasyon" in k["bilesenler"] and k["olcumle_kalibre"]
     with pytest.raises(ValueError):
         bs.butce_uygula(y.iloc[:3], 4.0)
 
