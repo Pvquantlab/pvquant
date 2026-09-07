@@ -53,6 +53,8 @@ export interface Hakkinda {
   urun: string; meteo_kaynak: string;
   kaynaklar: { kimlik: string; ad: string; kurum: string; lisans: string; lisans_url: string; veri_url: string; not: string }[];
   kunye: string; uyarilar: string[]; yontem: string;
+  /** v2.295: mevzuat/standart dayanağı — madde referansları tek yerde. */
+  mevzuat?: { ad: string; kapsam: string; not: string }[];
   arsiv: Record<string, { son: string | null; nokta: number; satir: number; ilk: string | null; son_ts: string | null }>;
 }
 /** v2.266 — kısa ufuk (0–6 s), ölçüm persistansı; uydu değil. */

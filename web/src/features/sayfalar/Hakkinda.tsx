@@ -37,6 +37,27 @@ export function Hakkinda() {
           </>
         )}
       </Kart>
+      {h && (h.mevzuat?.length ?? 0) > 0 && (
+        <Kart baslik="Mevzuat ve standart dayanağı" sag={<span className="cip">katsayılar ayarlardan değişir</span>}>
+          <div className="grafik-kaydir">
+            <table className="veri" style={{ fontSize: 12.5 }}>
+              <thead><tr><th style={sol}>Dayanak</th><th style={sol}>Kapsam</th><th style={sol}>Not</th></tr></thead>
+              <tbody>
+                {h.mevzuat!.map((m) => (
+                  <tr key={m.ad}>
+                    <td style={{ ...sol, fontWeight: 600, whiteSpace: "nowrap" }}>{m.ad}</td>
+                    <td style={sol}>{m.kapsam}</td>
+                    <td className="soluk" style={sol}>{m.not}</td>
+                  </tr>))}
+              </tbody>
+            </table>
+          </div>
+          <p className="soluk" style={{ fontSize: 12.5, margin: "10px 0 0" }}>
+            Ürün bu çerçevenin tanımlarını uygular; madde numaraları yürürlükteki metne işaret eder.
+            Mevzuat değişirse katsayılar koda gömülü olmadığından santral ayarından güncellenir.
+          </p>
+        </Kart>
+      )}
       {h && Object.keys(h.arsiv).length > 0 && (
         <Kart baslik="Meteoroloji arşivi" sag={<span className="cip">koşu başına nokta serileri</span>}>
           <div className="grafik-kaydir">

@@ -484,6 +484,25 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
                   </div>
                 ))}
               </div>
+              {(dg.aylar?.length ?? 0) > 0 && (
+                <table style={{ width: "100%", borderCollapse: "collapse", margin: "10px 0 12px",
+                  fontFamily: M, fontSize: 11.5, color: "#C7D6CE" }}>
+                  <thead><tr>
+                    {["ay", "sınav günü", "PVQuant", "basit yöntem", "bant kapsaması"].map((b, j) => (
+                      <th key={b} style={{ textAlign: j === 0 ? "left" : "right", fontWeight: 400,
+                        fontSize: 9.5, letterSpacing: "0.08em", color: "#6E827A", padding: "4px 6px",
+                        borderBottom: "1px solid rgba(255,255,255,0.14)" }}>{b.toUpperCase()}</th>))}
+                  </tr></thead>
+                  <tbody>{dg.aylar!.map((a) => (
+                    <tr key={a.ay}>
+                      <td style={{ padding: "5px 6px" }}>{new Date(a.ay + "-15").toLocaleDateString("tr-TR", { month: "long", year: "numeric" })}</td>
+                      {[a.gun, a.wmape_pct, a.naif_wmape_pct, a.bant_kapsama_pct].map((v, j) => (
+                        <td key={j} style={{ padding: "5px 6px", textAlign: "right",
+                          fontVariantNumeric: "tabular-nums" }}>
+                          {v == null ? "—" : j === 0 ? v.toLocaleString("tr-TR") : `%${v.toLocaleString("tr-TR")}`}</td>))}
+                    </tr>))}</tbody>
+                </table>
+              )}
               <div style={{ fontFamily: M, fontSize: 10.5, color: "#6E827A", lineHeight: 1.6 }}>
                 {dg.not} Sapma yüzdeleri üretime ağırlıklı ortalamadır — küçük olan iyidir.</div>
             </div>

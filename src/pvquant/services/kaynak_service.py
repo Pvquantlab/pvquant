@@ -47,6 +47,26 @@ def kullanilan_kaynaklar() -> list[str]:
     return sorted(set(k), key=sira.index)
 
 
+
+# v2.295 — Tablo 3.4 "yasal metin kütüphanesi": madde referansları tek yerde, panelde görünür.
+# Katsayılar burada YAZILMAZ (sabitlenmesin) — kod parametriktir, burası yalnız dayanağı gösterir.
+MEVZUAT = [
+    {"ad": "DUY — Dengeleme ve Uzlaştırma Yönetmeliği", "kapsam": "KGÜP bildirimi (md. 69, 69/A) · dengesizlik fiyatlandırması (md. 110–111)",
+     "not": "Pozitif/negatif dengesizlik katsayıları parametredir; santral ayarından değiştirilebilir."},
+    {"ad": "DUY geçici md. 40", "kapsam": "15 dakikalık uzlaştırma dönemi",
+     "not": "Altyapı en geç 1 Ocak 2027; 15 dakikalık program çıktısı üründe hazırdır."},
+    {"ad": "KÜPST — Kurul kararı", "kapsam": "KGÜP bildirmekle yükümlü birimlerde ayrı sapma kalemi",
+     "not": "Katsayı ve tolerans santral ayarından değiştirilebilir; yalnız yükümlü segmentlerde işler."},
+    {"ad": "LÜY — Lisanssız Üretim Yönetmeliği", "kapsam": "Dağıtım bağlı lisanssız üretici",
+     "not": "Dengesizlik sorumluluğu görevli tedarik şirketi ya da toplayıcı portföyündedir; segment seçimi bu kuralları uygular."},
+    {"ad": "Piyasa takvimi", "kapsam": "Günlük program akışı",
+     "not": "Program bildirimi 14:00–15:30 · sistem işletmecisi teyidi 17:00 · gün içi revizyon kapı kapanışı + 30 dk."},
+    {"ad": "IEC 61724-1 · IEC 61853 · ISO 15927-4 · ASTM E2848", "kapsam": "PR, güç matrisi, tipik yıl, kapasite testi",
+     "not": "Sağlık ve rapor hesapları bu standartların tanımlarını izler."},
+    {"ad": "Solar Forecast Arbiter metrik sözlüğü", "kapsam": "Karne metrikleri (nMAE, nRMSE, beceri, bant sınavı)",
+     "not": "Doğruluk sayfasındaki tüm ölçüler bu ortak sözlükle hesaplanır — kıyas elma-elma olsun diye."},
+]
+
 def hakkinda() -> dict:
     from pvquant.io import acik_nwp
     kull = kullanilan_kaynaklar()
@@ -62,6 +82,7 @@ def hakkinda() -> dict:
                       for k in kull],
         "kunye": atif.kunye(kull), "uyarilar": atif.uyumluluk_denetimi(kull),
         "arsiv": {ARSIV_ETIKET.get(k, k): v for k, v in arsiv.items()},
+        "mevzuat": MEVZUAT,
         "yontem": "Veriler PVQuant tarafından indirilmiş, birleştirilmiş ve işlenmiştir; kaynak kurumlar bu ürünü desteklemez ve sonuçlardan sorumlu değildir.",
     }
 
