@@ -4,16 +4,20 @@ import type { SantralOzeti, Kullanici } from "../api/types";
 import { useDamga } from "./useDamga";
 import { sayiTr } from "../features/sayfalar/parcalar";
 
+/* v2.290 — "Çift Yüz": her sayfanın varsayılan yüzü. Operasyon sayfaları (portföy,
+   santral, veri, tahmin) koyu terminal; kanıt sayfaları (kalibrasyon, doğruluk,
+   aylık, raporlar, hakkında) açık rapor dili. Yalnız "otomatik" tema kipinde
+   devrededir; kullanıcı Açık/Koyu seçtiyse seçimi her sayfada geçerlidir. */
 export const SAYFALAR = [
-  { id: "portfoy", ad: "Portföy" },        // v2.263
-  { id: "santralim", ad: "Santralim" },
-  { id: "veri", ad: "Veri yükleme" },
-  { id: "kalibrasyon", ad: "Kalibrasyon" },
-  { id: "tahminler", ad: "Tahminler" },
-  { id: "dogruluk", ad: "Doğruluk" },
-  { id: "aylik", ad: "Aylık beklenti" },
-  { id: "raporlar", ad: "Raporlar" },
-  { id: "hakkinda", ad: "Hakkında" },      // v2.270
+  { id: "portfoy", ad: "Portföy", yuz: "koyu" },        // v2.263
+  { id: "santralim", ad: "Santralim", yuz: "koyu" },
+  { id: "veri", ad: "Veri yükleme", yuz: "koyu" },
+  { id: "kalibrasyon", ad: "Kalibrasyon", yuz: "acik" },
+  { id: "tahminler", ad: "Tahminler", yuz: "koyu" },
+  { id: "dogruluk", ad: "Doğruluk", yuz: "acik" },
+  { id: "aylik", ad: "Aylık beklenti", yuz: "acik" },
+  { id: "raporlar", ad: "Raporlar", yuz: "acik" },
+  { id: "hakkinda", ad: "Hakkında", yuz: "acik" },      // v2.270
 ] as const;
 export type SayfaId = (typeof SAYFALAR)[number]["id"];
 
@@ -55,7 +59,17 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
     plantId?: string; onCikis?: () => void; children: ReactNode;
     /** v2.263: gerçek santral seçici — liste ve seçim geri çağrısı (yoksa tek santral). */
     santraller?: { id: string; name: string }[]; onSantral?: (id: string) => void }) {
-  const [koyu, setKoyu] = useState(false);
+  // v2.290: tema kipi — "oto" (varsayılan) sayfanın yüzünü izler; Açık/Koyu kalıcı seçimdir.
+  const [temaKipi, setTemaKipi] = useState<"oto" | "acik" | "koyu">(() => {
+    try { const k = localStorage.getItem("pvq_tema"); return k === "acik" || k === "koyu" ? k : "oto"; }
+    catch { return "oto"; }
+  });
+  const sayfaYuzu = SAYFALAR.find((s) => s.id === sayfa)?.yuz ?? "acik";
+  const koyu = temaKipi === "koyu" || (temaKipi === "oto" && sayfaYuzu === "koyu");
+  const kipSec = (k: "oto" | "acik" | "koyu") => {
+    setTemaKipi(k);
+    try { if (k === "oto") localStorage.removeItem("pvq_tema"); else localStorage.setItem("pvq_tema", k); } catch { /* gizli pencere */ }
+  };
   // v2.196: yan-ozet kutulari — kurulu guc gercek veriden; gelene dek "—"
   // v2.237: ayni ozet istegi telemetri seridini de besler (yeni cagri yok)
   const [ozet, setOzet] = useState<SantralOzeti | null>(null);
@@ -205,9 +219,12 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
                 <i className="nokta-badge" aria-hidden="true" />
               )}
             </button>
-            <button className="dugme" onClick={() => setKoyu(!koyu)}>
-              {koyu ? "Açık tema" : "Koyu tema"}
-            </button>
+            <div className="seg" role="group" aria-label="Tema">
+              <button aria-pressed={temaKipi === "oto"} onClick={() => kipSec("oto")}
+                      title="Sayfaya göre: operasyon sayfaları koyu, kanıt sayfaları açık">Oto</button>
+              <button aria-pressed={temaKipi === "acik"} onClick={() => kipSec("acik")}>Açık</button>
+              <button aria-pressed={temaKipi === "koyu"} onClick={() => kipSec("koyu")}>Koyu</button>
+            </div>
           </div>
           {zilAcik && (
             <>

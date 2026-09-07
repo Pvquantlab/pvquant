@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { giris } from "../../api/client";
+import { BandImza } from "../sayfalar/BandImza";
 
 /** Giris ekrani — urunun ilk yuzu. Pano sakin; burasi iddiali olabilir. */
 export function Giris({ onGiris }: { onGiris: () => void }) {
@@ -50,19 +51,10 @@ export function Giris({ onGiris }: { onGiris: () => void }) {
             ))}
           </div>
 
-          <svg className="giris-egri" viewBox="0 0 420 90" preserveAspectRatio="none" aria-hidden="true">
-            <defs>
-              <linearGradient id="bant" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#3FB489" stopOpacity=".45" />
-                <stop offset="100%" stopColor="#3FB489" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-            <path d="M0,88 C60,86 90,30 140,16 C190,2 230,4 280,18 C330,32 360,84 420,88 L420,90 L0,90 Z"
-                  fill="url(#bant)" />
-            <path d="M0,88 C60,86 92,36 140,23 C190,10 230,12 280,25 C330,38 360,85 420,88"
-                  fill="none" stroke="#3FB489" strokeWidth="2" />
-          </svg>
-          <div className="giris-etiket">P10 – P90 tahmin aralığı</div>
+          {/* v2.290: imza motifi — grafik anayasası (mavi bant = tahmin, amber = gerçekleşen)
+              giriş ekranından itibaren tek çizimdir */}
+          <div className="giris-egri"><BandImza yukseklik={90} /></div>
+          <div className="giris-etiket">Mavi bant: P10–P90 tahmin aralığı · amber: gerçekleşen</div>
         </div>
       </div>
 
