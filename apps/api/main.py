@@ -84,6 +84,34 @@ def plant_ekle(p: PlantIstek, claims=Depends(yazma_yetkisi())):
         raise HTTPException(422, str(e))
 
 
+@app.delete("/v1/plants/{plant_id}")
+def plant_arsivle(plant_id: str, claims=Depends(yonetici_yetkisi())):
+    """v2.303 — silmez, ARŞİVLER (v2.54 sözleşmesi): veri denetim için durur, santral listeden çekilir."""
+    if plant_service.getir(claims["tenant_id"], plant_id) is None:
+        raise HTTPException(404, "santral yok")
+    try:
+        r = plant_service.arsivle(claims["tenant_id"], plant_id)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    if not r["arsivlendi"]:
+        raise HTTPException(404, "santral yok ya da zaten arşivde")
+    return r
+
+
+@app.get("/v1/plants-arsiv")
+def plant_arsiv_listesi(claims=Depends(yonetici_yetkisi())):
+    return {"santraller": [{"id": str(x["id"]), "name": x["name"], "capacity_kwp": float(x["capacity_kwp"])}
+                           for x in plant_service.arsivli_listele(claims["tenant_id"])]}
+
+
+@app.post("/v1/plants/{plant_id}/geri-al")
+def plant_geri_al(plant_id: str, claims=Depends(yonetici_yetkisi())):
+    r = plant_service.geri_al(claims["tenant_id"], plant_id)
+    if not r["geri_alindi"]:
+        raise HTTPException(404, "arşivde böyle bir santral yok")
+    return r
+
+
 def _kw(x):
     """JSON NaN tasiyamaz — NaN/None -> null, sayi -> 3 hane (kW)."""
     import math

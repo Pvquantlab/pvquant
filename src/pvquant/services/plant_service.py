@@ -77,3 +77,33 @@ def sil(tenant_id, plant_id) -> dict:
             "UPDATE plants SET archived=true WHERE id=:p AND NOT archived"),
             {"p": plant_id})
     return {"archived": r.rowcount}
+
+# ---------------- v2.303: yaşam döngüsünün öbür ucu ----------------
+def arsivli_listele(tenant_id):
+    from sqlalchemy import text
+    from pvquant.db import tenant_baglami
+    with tenant_baglami(tenant_id) as s:
+        return [dict(r._mapping) for r in s.execute(text(
+            "SELECT id, name, capacity_kwp FROM plants WHERE archived ORDER BY name"))]
+
+
+def arsivle(tenant_id, plant_id) -> dict:
+    """v2.54 sözleşmesi uçtan erişilir oldu: SİLMEZ, arşivler — veri denetim için yerinde kalır,
+    santral listelerden ve gece koşularından çekilir. Koruma: son etkin santral arşivlenemez
+    (panel santralsız kalmasın; önce yenisini bağlayın)."""
+    from sqlalchemy import text
+    from pvquant.db import tenant_baglami
+    with tenant_baglami(tenant_id) as s:
+        etkin = s.execute(text("SELECT count(*) FROM plants WHERE NOT archived")).scalar()
+        if int(etkin) <= 1:
+            raise ValueError("son etkin santral arşivlenemez — önce yeni bir santral bağlayın")
+        n = s.execute(text("UPDATE plants SET archived=true WHERE id=:p AND NOT archived"), {"p": plant_id}).rowcount
+    return {"arsivlendi": n > 0}
+
+
+def geri_al(tenant_id, plant_id) -> dict:
+    from sqlalchemy import text
+    from pvquant.db import tenant_baglami
+    with tenant_baglami(tenant_id) as s:
+        n = s.execute(text("UPDATE plants SET archived=false WHERE id=:p AND archived"), {"p": plant_id}).rowcount
+    return {"geri_alindi": n > 0}

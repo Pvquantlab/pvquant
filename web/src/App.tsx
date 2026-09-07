@@ -56,7 +56,7 @@ export default function App() {
            santraller={santraller} onSantral={santralSec} santralYenile={santralYenile}
            onCikis={() => { cikis(); setGirdi(false);
                             setGorunum("vitrin"); }}>  {/* gonullu cikis -> vitrin */}
-      {sayfa === "portfoy" && <Portfoy onSec={(id) => { santralSec(id); setSayfa("santralim"); }} />}
+      {sayfa === "portfoy" && <Portfoy onSec={(id) => { santralSec(id); setSayfa("santralim"); }} santralYenile={santralYenile} />}
       {sayfa === "santralim" && <Santralim plantId={plantId} />}
       {sayfa === "veri" && <VeriYukleme plantId={plantId}
         santralimeGit={() => setSayfa("santralim")}

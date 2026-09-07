@@ -5,7 +5,8 @@ import { Kart, Kpi, Sayfa, sayiTr } from "./parcalar";
 
 /** v2.263 (Dalga 5.15) — Portföy: kiracının tüm santralleri tek tabloda; toplamlar dürüst
  *  (bir santralin beklentisi yoksa toplam da yok). Satıra tıklayınca o santrala geçilir. */
-export function Portfoy({ onSec }: { onSec: (id: string) => void }) {
+export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
+  /** v2.303: arşivleme/geri alma sonrası üst listeyi tazele */ santralYenile?: () => void }) {
   const [p, setP] = useState<PortfoyT | null | undefined>(undefined);
   useEffect(() => { api.portfoy().then(setP).catch(() => setP(null)); }, []);
   const [dsg, setDsg] = useState<PortfoyDsg | null>(null);   // v2.276
@@ -88,6 +89,7 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {
         )}
       </Kart>
       {rolum() === "admin" && <DisErisim santraller={p?.santraller.map((s) => ({ id: s.id, ad: s.ad })) ?? []} />}
+      {rolum() === "admin" && <SantralArsivi santralYenile={santralYenile} />}
       <Paylasimlar santraller={p?.santraller.map((s) => ({ id: s.id, ad: s.ad })) ?? []} />
       <HesapVeEkip />
     </Sayfa>
@@ -394,6 +396,59 @@ function HesapVeEkip() {
             Pasif üye oturum açamaz; kaydı ve geçmiş atamaları silinmez. Son etkin yönetici düşürülemez.
           </p>
         </div>
+      )}
+    </Kart>
+  );
+}
+
+
+/** v2.303 — santral yaşam döngüsünün öbür ucu: arşivle (v2.54 sözleşmesi: SİLMEZ) ve geri al.
+ *  Son etkin santral arşivlenemez — sunucu korur, panel dürüstçe iletir. */
+function SantralArsivi({ santralYenile }: { santralYenile?: () => void }) {
+  const [arsiv, setArsiv] = useState<{ id: string; name: string; capacity_kwp: number }[]>([]);
+  const [etkin, setEtkin] = useState<{ id: string; name: string }[]>([]);
+  const [onayId, setOnayId] = useState<string | null>(null);
+  const [hata, setHata] = useState<string | null>(null); const [mesaj, setMesaj] = useState<string | null>(null);
+  const yenile = () => {
+    api.santralArsivi().then((r) => setArsiv(r.santraller)).catch(() => {});
+    api.santraller().then((l) => setEtkin(l.map((x) => ({ id: x.id, name: x.name })))).catch(() => {});
+  };
+  useEffect(yenile, []);
+  const dene = async (fn: () => Promise<void>) => {
+    setHata(null); setMesaj(null);
+    try { await fn(); yenile(); santralYenile?.(); } catch (e) { setHata(String((e as Error).message ?? e)); }
+  };
+  if (etkin.length < 2 && arsiv.length === 0) return null;   // tek santral + boş arşiv: kart gereksiz
+  return (
+    <Kart baslik="Santral arşivi" sag={<span className="cip">silmez — veri denetim için durur</span>}>
+      <p className="soluk" style={{ margin: "0 0 10px", fontSize: 12.5 }}>
+        Arşivlenen santral listelerden ve gece koşularından çekilir; ölçüm, kalibrasyon ve tahmin geçmişi
+        yerinde kalır ve geri alınabilir. Son etkin santral arşivlenemez.
+      </p>
+      {hata && <p className="ayar-durum hata" style={{ margin: "0 0 8px" }}>{hata}</p>}
+      {mesaj && <p className="ayar-durum ok" style={{ margin: "0 0 8px" }}>{mesaj}</p>}
+      {etkin.length > 1 && (
+        <div className="ayar-kontrol" style={{ flexWrap: "wrap" }}>
+          {etkin.map((x) => onayId === x.id ? (
+            <button key={x.id} className="dugme" style={{ color: "var(--uyari)", fontWeight: 600 }}
+                    onClick={() => dene(async () => { await api.santralArsivle(x.id); setOnayId(null); setMesaj(`${x.name} arşive alındı.`); })}>
+              Eminim — {x.name} arşive alınsın</button>
+          ) : (
+            <button key={x.id} className="dugme" onClick={() => setOnayId(x.id)}>{x.name} — arşivle…</button>
+          ))}
+        </div>
+      )}
+      {arsiv.length > 0 && (
+        <div className="grafik-kaydir" style={{ marginTop: 10 }}><table className="veri" style={{ fontSize: 12.5 }}>
+          <thead><tr><th style={{ textAlign: "left" }}>Arşivdeki santral</th><th>Kurulu güç</th><th></th></tr></thead>
+          <tbody>{arsiv.map((x) => (
+            <tr key={x.id}>
+              <td style={{ textAlign: "left" }}>{x.name}</td>
+              <td className="mono">{sayiTr(x.capacity_kwp)} kWp</td>
+              <td><button className="dugme" style={{ fontSize: 11.5 }}
+                    onClick={() => dene(async () => { await api.santralGeriAl(x.id); setMesaj(`${x.name} geri alındı.`); })}>Geri al</button></td>
+            </tr>))}</tbody>
+        </table></div>
       )}
     </Kart>
   );

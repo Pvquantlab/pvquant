@@ -489,6 +489,13 @@ export const api = {
   santralEkle: (g: { name: string; lat: number; lon: number; capacity_kwp: number;
     tilt?: number | null; azimuth?: number | null; panel_tech?: string; ac_limit_kw?: number | null }): Promise<{ id: string }> =>
     gonder(`/v1/plants`, "POST", g),
+  /** v2.303: santral yaşam döngüsü — arşivle (silmez), arşivi listele, geri al (yalnız yönetici). */
+  santralArsivle: (id: string): Promise<{ arsivlendi: boolean }> => gonder(`/v1/plants/${id}`, "DELETE"),
+  santralArsivi: async (): Promise<{ santraller: { id: string; name: string; capacity_kwp: number }[] }> => {
+    if (TABAN == null) return { santraller: [] };
+    return getir(`/v1/plants-arsiv`);
+  },
+  santralGeriAl: (id: string): Promise<{ geri_alindi: boolean }> => gonder(`/v1/plants/${id}/geri-al`, "POST"),
   /** v2.301: gece işleri görünürlüğü. */
   isler: async (): Promise<Isler | null> => {
     if (TABAN == null) return null;
