@@ -13,7 +13,7 @@ import pandas as pd
 
 from pvquant.ext.platform import rapor_sablon as rs
 
-SABLONLAR = ("kapasite-testi", "fatura", "kullanilabilirlik")
+SABLONLAR = ("kapasite-testi", "fatura", "kullanilabilirlik", "beklenen-gerceklesen")
 
 
 def _kunye() -> str:
@@ -98,10 +98,32 @@ def kullanilabilirlik(tenant_id, plant: dict, gun: int = 30) -> rs.Rapor:
     return rapor
 
 
+def beklenen_gerceklesen(tenant_id, plant: dict, gun: int = 180) -> rs.Rapor:
+    """v2.288 — aylık beklenen (gün başında verilmiş koşuların günlük P50 arşivi) vs gerçekleşen (SCADA)."""
+    from sqlalchemy import text
+    from pvquant.db import tenant_baglami
+    with tenant_baglami(tenant_id) as s:
+        b = pd.read_sql(text("SELECT gun, p50_kwh FROM forecast_daily WHERE plant_id=:p AND gun >= current_date - :g ORDER BY gun"),
+                        s.connection(), params={"p": plant["id"], "g": gun}, parse_dates=["gun"])
+        g = pd.read_sql(text(
+            "SELECT date_trunc('day', ts_utc AT TIME ZONE 'Europe/Istanbul') AS gun, sum(power_kw) AS kwh FROM scada_hourly "
+            "WHERE plant_id=:p AND flag='valid' AND ts_utc >= now() - (:g * INTERVAL '1 day') GROUP BY 1 ORDER BY 1"),
+            s.connection(), params={"p": plant["id"], "g": gun}, parse_dates=["gun"])
+    if b.empty or g.empty:
+        raise ValueError("beklenen–gerçekleşen için günlük beklenti arşivi ve ölçüm gerekir (her gece birikir)")
+    bek = pd.Series(b["p50_kwh"].values, index=pd.DatetimeIndex(b["gun"]).tz_localize("Europe/Istanbul"))
+    ger = pd.Series(g["kwh"].values, index=pd.DatetimeIndex(g["gun"]).tz_localize("Europe/Istanbul"))
+    rapor, _ = rs.beklenen_gerceklesen(bek, ger, santral=plant["name"], donem=f"son {gun} gün", tz="Europe/Istanbul")
+    rapor.bolumler.append(("Not", "Beklenen = gün başlamadan verilmiş koşunun günlük P50 toplamı (arşiv; geriye dönük değişmez)."))
+    rapor.kunye = _kunye()
+    return rapor
+
+
 def uret(tenant_id, plant: dict, ad: str, **p) -> tuple[bytes, str]:
     if ad not in SABLONLAR:
         raise KeyError(ad)
-    r = {"kapasite-testi": kapasite_testi, "fatura": fatura, "kullanilabilirlik": kullanilabilirlik}[ad](tenant_id, plant, **p)
+    r = {"kapasite-testi": kapasite_testi, "fatura": fatura, "kullanilabilirlik": kullanilabilirlik,
+         "beklenen-gerceklesen": beklenen_gerceklesen}[ad](tenant_id, plant, **p)
     html = ("<!doctype html><html lang='tr'><head><meta charset='utf-8'><title>" + r.baslik + "</title>"
             "<style>body{font-family:'IBM Plex Sans',system-ui,sans-serif;max-width:860px;margin:32px auto;color:#101D30}"
             "table{border-collapse:collapse;font-size:13px}td,th{padding:6px 10px;border-bottom:1px solid #DDE3EA;text-align:right}"

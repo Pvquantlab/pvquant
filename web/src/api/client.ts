@@ -510,7 +510,7 @@ export const api = {
     try { return (await getir<{ tarife: Tarife | null }>(`/v1/plants/${p}/tarife`)).tarife; } catch { return null; }
   },
   tarifeAyarla: (p: string, tarife: Tarife | null): Promise<{ tarife: Tarife | null }> => gonder(`/v1/plants/${p}/tarife`, "PUT", { tarife }),
-  raporSablonIndir: async (p: string, ad: "kapasite-testi" | "fatura" | "kullanilabilirlik"): Promise<void> => {
+  raporSablonIndir: async (p: string, ad: "kapasite-testi" | "fatura" | "kullanilabilirlik" | "beklenen-gerceklesen"): Promise<void> => {
     if (TABAN == null) throw new Error("Örnek kipte şablon rapor yok.");
     const jeton = localStorage.getItem("pvq_token");
     const y = await fetch(`${TABAN}/v1/plants/${p}/rapor-sablon/${ad}`, { headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });

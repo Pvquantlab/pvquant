@@ -61,3 +61,17 @@ def test_okundu_ata_kurallar(istemci):
     assert j["secili"] == ["pr_dustu"] and j["varsayilan"] == ["veri_gelmedi", "skill_dustu"] and j["esik"]["pr_esik"] == 0.70
     j2 = c.put("/v1/plants/p1/alarm-kurallari", json={"kurallar": ["clipping_orani_yuksek", "yok"], "esik": {"clipping_esik": 0.2}}).json()
     assert j2["secili"] == ["clipping_orani_yuksek"] and j2["esik"]["clipping_esik"] == 0.2
+
+
+def test_yeni_kurallar_v2288():
+    """v2.288: KGÜP gecikti (bool bağlam) ve dengesizlik aşımı (oran) — kütüphane koşulları + eşik doğrulama."""
+    p = {"name": "K", "params_json": {"alarm_kurallari": ["kgup_teslim_gecikti", "dengesizlik_asimi"]}}
+    r = al.ek_alarmlar(p, {"kgup_gecikti": True, "dengesizlik_gelir_orani_ay": 0.05})
+    adlar = {x[0]: x for x in r}
+    assert adlar["kgup_teslim_gecikti"][1] == "kritik" and "15:30" in adlar["kgup_teslim_gecikti"][2]
+    assert "%5,0" in adlar["dengesizlik_asimi"][2].replace("5.0", "5,0") or "%5" in adlar["dengesizlik_asimi"][2]
+    assert al.ek_alarmlar(p, {"kgup_gecikti": False, "dengesizlik_gelir_orani_ay": None}) == []      # None → tetiklenmez
+    assert al.ek_alarmlar({"name": "K", "params_json": {"alarm_kurallari": ["dengesizlik_asimi"], "alarm_esik": {"dengesizlik_esik": 0.10}}},
+                          {"dengesizlik_gelir_orani_ay": 0.05}) == []                                 # eşik santral bazında
+    with pytest.raises(ValueError):   # doğrulama DB'ye dokunmadan yükselir
+        al.kural_ayarla("t", "p", ["dengesizlik_asimi"], {"dengesizlik_esik": 0.9})

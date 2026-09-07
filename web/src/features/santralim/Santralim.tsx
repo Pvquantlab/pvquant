@@ -412,7 +412,7 @@ export function Santralim({ plantId }: { plantId: string }) {
           <div className="ayar-kontrol">
             <label className="girdi-etiket">Tarife tipi
               <select className="girdi" value={tarife.tip} onChange={(e) => setTarife({ ...tarife, tip: e.target.value as Tarife["tip"] })}>
-                <option value="sabit">sabit fiyat</option><option value="ptf">piyasa (PTF) endeksli</option><option value="yekdem">YEKDEM (döviz endeksli)</option>
+                <option value="sabit">sabit fiyat</option><option value="cok_zamanli">çok zamanlı (gündüz/puant/gece)</option><option value="ptf">piyasa (PTF) endeksli</option><option value="yekdem">YEKDEM (döviz endeksli)</option>
               </select>
             </label>
             {tarife.tip === "sabit" &&
@@ -423,6 +423,13 @@ export function Santralim({ plantId }: { plantId: string }) {
                 <input className="girdi" style={{ width: 90 }} inputMode="decimal" placeholder="0,05" value={tarife.prim_oran ?? ""} onChange={(e) => setTarife({ ...tarife, prim_oran: Number(e.target.value) })} /></label>
               <label className="girdi-etiket">Sabit ek (TL/MWh)
                 <input className="girdi" style={{ width: 110 }} inputMode="decimal" value={tarife.sabit_ek_tl_mwh ?? ""} onChange={(e) => setTarife({ ...tarife, sabit_ek_tl_mwh: Number(e.target.value) })} /></label></>}
+            {tarife.tip === "cok_zamanli" && <>
+              <label className="girdi-etiket">Gündüz 06–17 (TL/MWh)
+                <input className="girdi" style={{ width: 110 }} inputMode="decimal" value={tarife.gunduz_tl_mwh ?? ""} onChange={(e) => setTarife({ ...tarife, gunduz_tl_mwh: Number(e.target.value) })} /></label>
+              <label className="girdi-etiket">Puant 17–22 (TL/MWh)
+                <input className="girdi" style={{ width: 110 }} inputMode="decimal" value={tarife.puant_tl_mwh ?? ""} onChange={(e) => setTarife({ ...tarife, puant_tl_mwh: Number(e.target.value) })} /></label>
+              <label className="girdi-etiket">Gece 22–06 (TL/MWh)
+                <input className="girdi" style={{ width: 110 }} inputMode="decimal" value={tarife.gece_tl_mwh ?? ""} onChange={(e) => setTarife({ ...tarife, gece_tl_mwh: Number(e.target.value) })} /></label></>}
             {tarife.tip === "yekdem" && <>
               <label className="girdi-etiket">USD cent/kWh
                 <input className="girdi" style={{ width: 100 }} inputMode="decimal" value={tarife.usd_cent_kwh ?? ""} onChange={(e) => setTarife({ ...tarife, usd_cent_kwh: Number(e.target.value) })} /></label>
@@ -477,7 +484,12 @@ export function Santralim({ plantId }: { plantId: string }) {
                 <label key={k} className="ayar-onay">
                   <input type="checkbox" checked={ak.secili.includes(k)} onChange={(e) => akDegistir(k, e.target.checked)} />
                   {ak.etiket[k] ?? k}
-                  <span className="mono">{k === "pr_dustu" ? `<${sayiTr(ak.esik.pr_esik, 2)}` : k === "clipping_orani_yuksek" ? `>%${sayiTr(ak.esik.clipping_esik * 100, 0)}` : k === "kullanilabilirlik_dustu" ? `<%${sayiTr((ak.esik.kullanilabilirlik_esik ?? 0.97) * 100, 0)}` : `>${sayiTr(ak.esik.iletisim_esik_saat, 0)} s`}</span>
+                  <span className="mono">{k === "pr_dustu" ? `<${sayiTr(ak.esik.pr_esik, 2)}`
+                    : k === "clipping_orani_yuksek" ? `>%${sayiTr(ak.esik.clipping_esik * 100, 0)}`
+                    : k === "kullanilabilirlik_dustu" ? `<%${sayiTr((ak.esik.kullanilabilirlik_esik ?? 0.97) * 100, 0)}`
+                    : k === "kgup_teslim_gecikti" ? "15:30"
+                    : k === "dengesizlik_asimi" ? `>%${sayiTr((ak.esik.dengesizlik_esik ?? 0.03) * 100, 0)} gelir`
+                    : `>${sayiTr(ak.esik.iletisim_esik_saat, 0)} s`}</span>
                 </label>))}
             </> : <span className="ayar-durum">—</span>}
           </div>

@@ -79,7 +79,8 @@ export interface Kullanilabilirlik { durum: string; mumkun_saat?: number; veri_o
 export interface KayipAgaci { durum: string; yil?: number; kaynak?: string; ghi_kwh_m2?: number; poa_kwh_m2?: number; nominal_dc_kwh?: number; sebeke_kwh?: number;
   pr?: number | null; ozgul_kwh_kwp?: number; hesap_zamani?: string;
   satirlar?: { adim: string; etiket: string; giren_kwh: number; cikan_kwh: number; kayip_kwh: number; kayip_pct: number; kaynak: string }[] }
-export interface Tarife { tip: "sabit" | "ptf" | "yekdem"; tl_mwh?: number; prim_oran?: number; sabit_ek_tl_mwh?: number; usd_cent_kwh?: number; kur_tl_usd?: number; eskalasyon_yillik?: number }
+export interface Tarife { tip: "sabit" | "ptf" | "yekdem" | "cok_zamanli"; tl_mwh?: number; prim_oran?: number; sabit_ek_tl_mwh?: number; usd_cent_kwh?: number; kur_tl_usd?: number;
+  gunduz_tl_mwh?: number; puant_tl_mwh?: number; gece_tl_mwh?: number; eskalasyon_yillik?: number }
 /** /guc-matrisi — v2.283: IEC 61853 kalıbıyla modül davranışı. */
 export interface GucMatrisi {
   durum: string; kaynak?: string; gamma?: number; yil?: number; hesap_zamani?: string; not?: string;

@@ -80,3 +80,17 @@ def test_kapilar(istemci):
     assert istemci.get("/v1/plants/p1/kayip-agaci").status_code == 404
     y = istemci.get("/v1/plants/p1/rapor-sablon/fatura"); assert y.status_code == 200 and "x.html" in y.headers["content-disposition"]
     assert istemci.get("/v1/plants/p1/rapor-sablon/yok").status_code == 422
+
+
+def test_cok_zamanli_tarife_ve_beklenen_sablon(monkeypatch):
+    """v2.288: ToU tarife doğrulama + saatlik gelir dilimleri; beklenen-gerçekleşen şablonu SABLONLAR'da."""
+    t = tsv.dogrula({"tip": "cok_zamanli", "gunduz_tl_mwh": 2000, "puant_tl_mwh": 3000, "gece_tl_mwh": 1500})
+    assert t["puant_tl_mwh"] == 3000.0
+    with pytest.raises(ValueError):
+        tsv.dogrula({"tip": "cok_zamanli", "gunduz_tl_mwh": 2000, "puant_tl_mwh": 0, "gece_tl_mwh": 1500})
+    assert tsv.ortalama_fiyat_tl_mwh(t) is None                                   # dürüst: kaba yıllık gelir yok
+    ix = pd.date_range("2026-08-01", periods=24, freq="h", tz="Europe/Istanbul").tz_convert("UTC")
+    g = tsv.gelir_df(pd.Series(1000.0, index=ix), t)
+    fi = pd.Series(g["fiyat_tl_mwh"].values, index=ix.tz_convert("Europe/Istanbul").hour)
+    assert fi[12] == 2000.0 and fi[19] == 3000.0 and fi[2] == 1500.0
+    assert "beklenen-gerceklesen" in srs.SABLONLAR

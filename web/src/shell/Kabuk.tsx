@@ -231,7 +231,10 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
                               skill_dustu: "İsabet düştü",
                               pr_dustu: "Performans oranı düştü",           // v2.265
                               clipping_orani_yuksek: "Kırpma oranı yüksek",
-                              iletisim_kesintisi: "İletişim kesintisi" }[x.kural] ?? "Alarm"}</b>
+                              iletisim_kesintisi: "İletişim kesintisi",
+                              kullanilabilirlik_dustu: "Kullanılabilirlik düştü",           // v2.288
+                              kgup_teslim_gecikti: "Program bildirimi hazırlanamadı",
+                              dengesizlik_asimi: "Dengesizlik maliyeti yüksek" }[x.kural] ?? "Alarm"}</b>
                         <span className="mono">{(() => {
                           const d = new Date(x.zaman);
                           return isNaN(+d) ? "—" : d.toLocaleDateString("tr-TR",

@@ -12,7 +12,7 @@ import pandas as pd
 
 from pvquant.ext.platform import tarife as tf
 
-TIPLER = ("sabit", "ptf", "yekdem")
+TIPLER = ("sabit", "ptf", "yekdem", "cok_zamanli")
 
 
 def dogrula(t: dict) -> dict:
@@ -29,11 +29,17 @@ def dogrula(t: dict) -> dict:
         out["prim_oran"] = float(t.get("prim_oran") or 0.0); out["sabit_ek_tl_mwh"] = float(t.get("sabit_ek_tl_mwh") or 0.0)
         if not (-0.5 <= out["prim_oran"] <= 1.0):
             raise ValueError("prim_oran −0,5–1,0")
-    else:
+    elif tip == "yekdem":
         c = float(t.get("usd_cent_kwh") or 0); k = float(t.get("kur_tl_usd") or 0)
         if not (0 < c < 100 and 0 < k < 1000):
             raise ValueError("usd_cent_kwh / kur_tl_usd aralık dışı")
         out["usd_cent_kwh"] = c; out["kur_tl_usd"] = k
+    else:   # cok_zamanli — gündüz 06–17 / puant 17–22 / gece 22–06 (İstanbul)
+        for ad2 in ("gunduz_tl_mwh", "puant_tl_mwh", "gece_tl_mwh"):
+            v = float(t.get(ad2) or 0)
+            if not (0 < v < 100000):
+                raise ValueError(f"{ad2} 0–100.000")
+            out[ad2] = v
     e = float(t.get("eskalasyon_yillik") or 0.0)
     if not (0 <= e <= 1):
         raise ValueError("eskalasyon_yillik 0–1")
@@ -45,6 +51,8 @@ def yapi(t: dict) -> tf.TarifeYapisi:
     tip = t["tip"]
     if tip == "sabit":
         tar = tf.Sabit(float(t["tl_mwh"]))
+    elif tip == "cok_zamanli":
+        tar = tf.CokZamanli(fiyatlar={"gunduz": float(t["gunduz_tl_mwh"]), "puant": float(t["puant_tl_mwh"]), "gece": float(t["gece_tl_mwh"])})
     elif tip == "ptf":
         tar = tf.PtfEndeksli(float(t.get("prim_oran", 0.0)), float(t.get("sabit_ek_tl_mwh", 0.0)))
     else:
@@ -66,6 +74,8 @@ def ortalama_fiyat_tl_mwh(t: dict, ptf_ort: float | None = None) -> float | None
         return float(t["tl_mwh"])
     if t["tip"] == "yekdem":
         return float(t["usd_cent_kwh"]) * 10.0 * float(t["kur_tl_usd"])
+    if t["tip"] == "cok_zamanli":
+        return None   # dürüst: yıllık kaba gelir için üretim profili gerekir; fatura saatlik hesapla tam çalışır
     if ptf_ort is None:
         return None
     return float(ptf_ort) * (1 + float(t.get("prim_oran", 0.0))) + float(t.get("sabit_ek_tl_mwh", 0.0))

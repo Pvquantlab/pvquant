@@ -10,13 +10,14 @@ import { Kart, Sayfa, Kpi, sayiTr } from "./parcalar";
 
 function SablonDugmeleri({ plantId }: { plantId: string }) {
   const [hata, setHata] = useState<string | null>(null);
-  const indir = (ad: "kapasite-testi" | "fatura" | "kullanilabilirlik") => { setHata(null); api.raporSablonIndir(plantId, ad).catch((e) => setHata(String((e as Error).message ?? e))); };
+  const indir = (ad: "kapasite-testi" | "fatura" | "kullanilabilirlik" | "beklenen-gerceklesen") => { setHata(null); api.raporSablonIndir(plantId, ad).catch((e) => setHata(String((e as Error).message ?? e))); };
   return (
     <>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button className="dugme" onClick={() => indir("kapasite-testi")}>Kapasite testi</button>
         <button className="dugme" onClick={() => indir("fatura")}>Fatura / uzlaştırma özeti (son ay)</button>
         <button className="dugme" onClick={() => indir("kullanilabilirlik")}>Kullanılabilirlik (30 gün)</button>
+        <button className="dugme" onClick={() => indir("beklenen-gerceklesen")}>Beklenen – gerçekleşen (aylık)</button>
       </div>
       {hata && <p style={{ color: "var(--uyari)", fontSize: 12.5, margin: "8px 0 0" }}>{hata}</p>}
       <p className="soluk" style={{ fontSize: 12.5, margin: "8px 0 0" }}>

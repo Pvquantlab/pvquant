@@ -20,11 +20,14 @@ from pvquant.db import tenant_baglami
 from pvquant.ext.platform.alarm import KUTUPHANE
 
 # v2.265: seçilebilir ek kurallar (ürün kararı: yalnız bu üçü; ping/KGÜP/dengesizlik kuralları veri kaynağı olmadan açılmaz)
-EK_KURALLAR = ("pr_dustu", "clipping_orani_yuksek", "iletisim_kesintisi", "kullanilabilirlik_dustu")   # v2.281: +kullanılabilirlik
-ESIK_VARSAYILAN = {"pr_esik": 0.70, "clipping_esik": 0.15, "iletisim_esik_saat": 6, "kullanilabilirlik_esik": 0.97}
+EK_KURALLAR = ("pr_dustu", "clipping_orani_yuksek", "iletisim_kesintisi", "kullanilabilirlik_dustu",
+               "kgup_teslim_gecikti", "dengesizlik_asimi")   # v2.288: kütüphanenin tamamı seçilebilir
+ESIK_VARSAYILAN = {"pr_esik": 0.70, "clipping_esik": 0.15, "iletisim_esik_saat": 6, "kullanilabilirlik_esik": 0.97,
+                   "dengesizlik_esik": 0.03}
 KURAL_ETIKET = {"veri_gelmedi": "Veri gelmedi", "skill_dustu": "İsabet düştü", "pr_dustu": "Performans oranı düştü",
                 "clipping_orani_yuksek": "Kırpma oranı yüksek", "iletisim_kesintisi": "İletişim kesintisi",
-                "kullanilabilirlik_dustu": "Kullanılabilirlik düştü"}
+                "kullanilabilirlik_dustu": "Kullanılabilirlik düştü",
+                "kgup_teslim_gecikti": "Program bildirimi hazırlanamadı", "dengesizlik_asimi": "Dengesizlik maliyeti yüksek"}
 
 
 def _pj(plant: dict) -> dict:
@@ -53,8 +56,14 @@ def ek_alarmlar(plant: dict, baglam: dict) -> list[tuple[str, str, str]]:
         # iletisim_kesintisi kütüphanede 'ping dakikası' ister; üründe canlı ping yok → SCADA tazeliği saat cinsinden
         kosul = ((b.get("son_scada_saat_once") or 0) > b["iletisim_esik_saat"]) if ad == "iletisim_kesintisi" else k.kosul(b)
         if kosul:
-            msg = (f"son ölçüm {float(b.get('son_scada_saat_once') or 0):.0f} saat önce (eşik {float(b['iletisim_esik_saat']):.0f} s) — canlı bağlantı kesilmiş olabilir"
-                   if ad == "iletisim_kesintisi" else k.mesaj(b))
+            if ad == "iletisim_kesintisi":
+                msg = f"son ölçüm {float(b.get('son_scada_saat_once') or 0):.0f} saat önce (eşik {float(b['iletisim_esik_saat']):.0f} s) — canlı bağlantı kesilmiş olabilir"
+            elif ad == "kgup_teslim_gecikti":
+                msg = "yarın için teslim penceresi (14:00–15:30) kapandı ve pencere öncesinde verilmiş koşu yok — program dosyası üretilemez"
+            elif ad == "dengesizlik_asimi":
+                msg = f"son 30 günün dengesizlik maliyeti gelirin %{100 * float(b.get('dengesizlik_gelir_orani_ay') or 0):.1f}'i (eşik %{100 * float(b['dengesizlik_esik']):.0f})"
+            else:
+                msg = k.mesaj(b)
             out.append((ad, k.siddet, f"{plant.get('name', '')}: {msg}"))
     return out
 
@@ -75,6 +84,27 @@ def _baglam(tenant_id, plant: dict, secili: list[str]) -> dict:
         from pvquant.services import kullanilabilirlik_service
         k = kullanilabilirlik_service.hesapla(tenant_id, plant, 30)
         b["kullanilabilirlik_30g"] = k.get("A_t")
+    if "kgup_teslim_gecikti" in secili:
+        b["kgup_gecikti"] = False
+        try:
+            import pandas as _pd
+            from pvquant.services import kgup_service, dengesizlik_service
+            simdi = _pd.Timestamp.now(tz="Europe/Istanbul")
+            seg = dengesizlik_service.segment_bilgisi(plant.get("params_json"))
+            if seg.get("kgup_yukumlu") and simdi.hour * 60 + simdi.minute >= 15 * 60 + 30:
+                yarin = (simdi + _pd.Timedelta(days=1)).date()
+                _, kosu = kgup_service.kaynak_kosu_df(tenant_id, plant["id"], yarin)
+                b["kgup_gecikti"] = kosu is None
+        except Exception:   # noqa: BLE001
+            b["kgup_gecikti"] = False
+    if "dengesizlik_asimi" in secili:
+        try:
+            from pvquant.services import dengesizlik_service
+            sim = dengesizlik_service.simulasyon(tenant_id, {"id": pid, "params_json": plant.get("params_json")}, gun=30)
+            oran = (sim.get("toplam") or {}).get("gelir_oran_pct")
+            b["dengesizlik_gelir_orani_ay"] = (float(oran) / 100.0) if oran is not None else None
+        except Exception:   # noqa: BLE001
+            b["dengesizlik_gelir_orani_ay"] = None
     if "iletisim_kesintisi" in secili:
         with tenant_baglami(tenant_id) as s:
             saat = s.execute(text("SELECT EXTRACT(EPOCH FROM (now() - max(ts_utc)))/3600 FROM scada_hourly WHERE plant_id=:p"), {"p": pid}).scalar()
@@ -205,5 +235,7 @@ def kural_ayarla(tenant_id, plant_id, kurallar: list[str], esik: dict | None = N
         raise ValueError("iletisim_esik_saat 1–48")
     if "kullanilabilirlik_esik" in e and not (0.5 <= e["kullanilabilirlik_esik"] <= 1.0):
         raise ValueError("kullanilabilirlik_esik 0,5–1,0")
+    if "dengesizlik_esik" in e and not (0.0 < e["dengesizlik_esik"] <= 0.5):
+        raise ValueError("dengesizlik_esik 0–0,5")
     pj = plant_service.params_birlestir(tenant_id, plant_id, alarm_kurallari=k, alarm_esik=e)
     return kural_durumu({"params_json": pj})
