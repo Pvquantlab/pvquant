@@ -35,7 +35,9 @@ export interface PrKarti {
 /** /konformal yaniti — v2.252 (bant kalibrasyon ayarı özeti). */
 export interface KonformalAyar {
   aktif: boolean; alpha?: number; n?: number; pencere_gun?: number; hesap_zamani?: string;
-  ort_q_kw?: number | null; q_hat?: Record<string, number>;
+  ort_q_kw?: number | null; q_hat?: Record<string, number | Record<string, number>>;
+  /** v2.296: ufuk kovası başına ortalama q̂ (kW) — yalnız kova öğrenildiyse. */
+  kova_ort_q_kw?: Record<string, number> | null;
 }
 
 /** /v1/plants — v2.263 (kabuk santral seçici). */

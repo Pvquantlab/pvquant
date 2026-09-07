@@ -70,3 +70,64 @@ def test_konformal_kapisi(istemci, monkeypatch):
     from pvquant.services import konformal_service as ks
     monkeypatch.setattr(ks, "ayar_getir", lambda t, p: None)
     assert istemci.get(f"/v1/plants/{PLANT}/konformal").json() == {"aktif": False}
+
+
+# ---------------- v2.296: ufuk kovaları ----------------
+def _ufuklu_df(n_gun=40):
+    """Sentetik: yakın ufukta dar, uzak ufukta geniş artık — kovalar farklı q̂ öğrenmeli."""
+    import numpy as np
+    import pandas as pd
+    saatler = pd.date_range("2026-06-01", periods=n_gun * 24, freq="h", tz="UTC")
+    kayit = []
+    rng = np.random.default_rng(7)
+    for u0, sapma in ((6.0, 50.0), (48.0, 300.0), (120.0, 700.0)):
+        for ts in saatler:
+            if not (6 <= ts.hour <= 16):
+                continue
+            y = 3000.0 + rng.normal(0, sapma)
+            kayit.append({"ts_utc": ts, "power_kw": y, "p10": 2900.0, "p90": 3100.0, "ufuk_saat": u0})
+    return pd.DataFrame(kayit)
+
+
+def test_ufuk_kovalari_ogrenilir_ve_buyur():
+    a = q_hat_hesapla_df(_ufuklu_df(), capacity_kwp=4514.0)
+    assert a is not None and a["grup"] == "saat_ufuk"
+    q = a["q_hat"]
+    assert set(q) >= {"0-24", "24-72", "72-168", "_genel"}
+    # uzak ufkun q̂'sı yakından büyük olmalı (artık büyüdü)
+    o = {k: sum(v for s, v in q[k].items() if s != "_genel") / max(1, len(q[k]) - 1)
+         for k in ("0-24", "24-72", "72-168")}
+    assert o["0-24"] < o["24-72"] < o["72-168"]
+    assert a["kova_n"]["0-24"] > 0 and a["ort_q"] == pytest.approx(o["0-24"], abs=0.5)
+
+
+def test_uygula_kovaya_gore_ve_eski_ayar_bozulmaz():
+    import numpy as np
+    import pandas as pd
+    a = q_hat_hesapla_df(_ufuklu_df(), capacity_kwp=4514.0)
+    run_at = pd.Timestamp("2026-09-01 00:00", tz="UTC")
+    ix = pd.date_range(run_at, periods=168, freq="h")
+    h = pd.DataFrame({"p50_kw": 3000.0, "p10_kw": 2900.0, "p90_kw": 3100.0}, index=ix)
+    y = uygula_df(h, a, tavan_kw=None, run_at=run_at)
+    gun1 = (y["p90_kw"] - y["p10_kw"]).iloc[12]           # ufuk ~12 s
+    gun5 = (y["p90_kw"] - y["p10_kw"]).iloc[110]          # ufuk ~110 s
+    assert gun5 > gun1, "uzak ufkun bandı genişlemeli"
+    assert (y["p10_ham_kw"] == 2900.0).all() and (y["p10_kw"] <= y["p50_kw"]).all()
+    # eski biçim ('saat') aynen: kovasız ayar her ufka aynı düzeltme
+    eski = {"alpha": 0.2, "grup": "saat", "q_hat": {str(s): 40.0 for s in range(24)} | {"_genel": 40.0}}
+    ye = uygula_df(h, eski, tavan_kw=None)
+    assert float((ye["p90_kw"] - ye["p10_kw"]).iloc[12]) == pytest.approx(float((ye["p90_kw"] - ye["p10_kw"]).iloc[110]))
+
+
+def test_ogrenilmemis_kova_yakina_duser():
+    """Yalnız 0-24 öğrenildiyse 5. günün saati de o kovadan düzeltilir (uydurma q̂ yok)."""
+    import pandas as pd
+    df = _ufuklu_df()
+    a = q_hat_hesapla_df(df[df.ufuk_saat < 24.0], capacity_kwp=4514.0)
+    assert a["grup"] == "saat_ufuk" and set(a["q_hat"]) & {"24-72", "72-168"} == set()
+    run_at = pd.Timestamp("2026-09-01 00:00", tz="UTC")
+    ix = pd.date_range(run_at, periods=168, freq="h")
+    h = pd.DataFrame({"p50_kw": 3000.0, "p10_kw": 2900.0, "p90_kw": 3100.0}, index=ix)
+    y = uygula_df(h, a, tavan_kw=None, run_at=run_at)
+    # AYNI UTC saati, farklı ufuk (12 s vs 108 s): kova öğrenilmediğinden aynı q̂ uygulanmalı
+    assert float((y["p90_kw"] - y["p10_kw"]).iloc[108]) == pytest.approx(float((y["p90_kw"] - y["p10_kw"]).iloc[12]))

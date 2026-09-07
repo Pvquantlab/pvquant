@@ -450,7 +450,11 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           {/* v2.252: bant kalibrasyonu durumu — q̂ negatifse bant daraltılıyor, pozitifse genişletiliyor */}
           <span className="cip" title="Servis edilen P10–P90, son pencerenin ham bant sınavından öğrenilen düzeltmeyle kalibre edilir">
             {kf.aktif
-              ? `bant kalibrasyonu: ${kf.ort_q_kw != null && kf.ort_q_kw < 0 ? "daraltıyor" : "genişletiyor"} · ort. ${sayiTr(Math.abs(kf.ort_q_kw ?? 0), 0)} kW · ${sayiTr(kf.pencere_gun ?? 0)} gün`
+              ? kf.kova_ort_q_kw && Object.keys(kf.kova_ort_q_kw).length > 0
+                /* v2.296: q̂ artık ufka göre — kova başına yön ve büyüklük tek çipte */
+                ? `bant kalibrasyonu ufka göre · ${Object.entries(kf.kova_ort_q_kw)
+                    .map(([k, v]) => `${k} s ${v < 0 ? "−" : "+"}${sayiTr(Math.abs(v), 0)} kW`).join(" · ")}`
+                : `bant kalibrasyonu: ${kf.ort_q_kw != null && kf.ort_q_kw < 0 ? "daraltıyor" : "genişletiyor"} · ort. ${sayiTr(Math.abs(kf.ort_q_kw ?? 0), 0)} kW · ${sayiTr(kf.pencere_gun ?? 0)} gün`
               : "bant kalibrasyonu: henüz yok"}
           </span>
         </>}>

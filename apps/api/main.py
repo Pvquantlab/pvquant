@@ -873,6 +873,7 @@ def konformal(plant_id: str, claims=Depends(gecerli_kullanici)):
         return {"aktif": False}
     return {"aktif": True, "alpha": ayar["alpha"], "n": ayar["n"], "pencere_gun": ayar["pencere_gun"],
             "hesap_zamani": ayar["hesap_zamani"], "ort_q_kw": ayar["ort_q"],
+            "kova_ort_q_kw": ayar.get("kova_ort_q"),   # v2.296: ufuk kovası başına ortalama q̂
             "q_hat": {k: v for k, v in ayar["q_hat"].items() if k != "_genel"}}
 
 

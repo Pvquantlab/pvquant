@@ -105,7 +105,8 @@ def uret_ve_kaydet(tenant_id, plant: dict, etiket: str | None = None) -> str:
     # servis edilen bant q̂ ile düzeltilir; ayar yoksa ham = servis. Çekirdek dokunulmadı.
     from pvquant.services import konformal_service as _kf
     _ayar = _kf.ayar_getir(tenant_id, plant["id"]) if mode == "C" else None
-    h = _kf.uygula_df(h, _ayar, plant.get("ac_limit_kw") or plant.get("capacity_kwp"))
+    h = _kf.uygula_df(h, _ayar, plant.get("ac_limit_kw") or plant.get("capacity_kwp"),
+                      run_at=pd.Timestamp.now(tz="UTC"))   # v2.296: kova = koşu anına göre ufuk
     kosu_cercevesi_denetle(h)   # v2.176: run açılmadan önce
     with tenant_baglami(tenant_id) as s:
         _kaynak = meteo.kaynak   # v2.189: tek değer — özet + INSERT aynı; v2.268: veriden ('acik-nwp' | 'open-meteo')
