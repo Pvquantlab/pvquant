@@ -1,4 +1,4 @@
-import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama } from "./types";
+import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -485,6 +485,17 @@ export const api = {
   },
   scadaSil: (p: string, baslangic: string, bitis: string): Promise<{ silinen_satir: number }> =>
     gonder(`/v1/plants/${p}/scada?baslangic=${baslangic}&bitis=${bitis}`, "DELETE"),
+  /** v2.299: ekip yönetimi (yalnız yönetici) + kendi parolası (herkes). */
+  takim: async (): Promise<{ uyeler: TakimUyesi[]; roller: string[] }> => {
+    if (TABAN == null) return { uyeler: [], roller: [] };
+    return getir(`/v1/takim`);
+  },
+  takimEkle: (email: string, rol: string): Promise<{ id: string; email: string; rol: string; gecici_parola: string }> =>
+    gonder(`/v1/takim`, "POST", { email, rol }),
+  takimGuncelle: (id: string, g: { rol?: string; aktif?: boolean }): Promise<{ tamam: boolean }> =>
+    gonder(`/v1/takim/${id}`, "PUT", g),
+  parolaDegistir: (eski: string, yeni: string): Promise<{ tamam: boolean }> =>
+    gonder(`/v1/parola`, "POST", { eski, yeni }),
   /** v2.294: kamuya açık doğrulama karnesi — kimliksiz uç, jeton eklenmez (401 yönlendirmesi tetiklenmesin). */
   dogrulama: async (): Promise<Dogrulama | null> => {
     if (TABAN == null) return null;

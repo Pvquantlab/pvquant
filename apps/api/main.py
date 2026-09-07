@@ -318,6 +318,57 @@ def alarm_ata(plant_id: str, alarm_id: str, p: AtaIstek, claims=Depends(yazma_ye
     return {"atandi": p.kime}
 
 
+# ---- v2.299: ekip yönetimi ----
+
+class UyeIstek(BaseModel):
+    email: str
+    rol: str
+
+
+class UyeGuncelle(BaseModel):
+    rol: str | None = None
+    aktif: bool | None = None
+
+
+class ParolaIstek(BaseModel):
+    eski: str
+    yeni: str
+
+
+@app.get("/v1/takim", tags=["Yönetim"])
+def takim(claims=Depends(yonetici_yetkisi())):
+    return {"uyeler": auth_service.takim_listesi(claims["tenant_id"]), "roller": list(auth_service.ROLLER)}
+
+
+@app.post("/v1/takim", tags=["Yönetim"], status_code=201)
+def takim_ekle(p: UyeIstek, claims=Depends(yonetici_yetkisi())):
+    """Geçici parola YALNIZ bu yanıtta görünür; üye ilk girişte kendi parolasını değiştirir."""
+    try:
+        return auth_service.kullanici_ekle(claims["tenant_id"], p.email, p.rol)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+
+
+@app.put("/v1/takim/{uye_id}", tags=["Yönetim"])
+def takim_guncelle(uye_id: str, p: UyeGuncelle, claims=Depends(yonetici_yetkisi())):
+    try:
+        if not auth_service.kullanici_guncelle(claims["tenant_id"], uye_id, p.rol, p.aktif):
+            raise HTTPException(404, "üye yok")
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    return {"tamam": True}
+
+
+@app.post("/v1/parola")
+def parola(p: ParolaIstek, claims=Depends(gecerli_kullanici)):
+    """Kullanıcının kendi parolası — sunucu yalnız özet saklar."""
+    try:
+        auth_service.parola_degistir(claims["sub"], p.eski, p.yeni)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    return {"tamam": True}
+
+
 @app.get("/v1/kullanicilar")
 def kullanici_listesi(claims=Depends(gecerli_kullanici)):
     """v2.265 — atama için kiracının kullanıcıları (id, e-posta, rol)."""

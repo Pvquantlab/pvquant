@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, rolum } from "../../api/client";
-import type { PaylasimListesi, PaylasilanVeri, Portfoy as PortfoyT, PortfoyDsg, PortfoyTahmin, ApiAnahtar, Webhook } from "../../api/types";
+import type { PaylasimListesi, PaylasilanVeri, TakimUyesi, Portfoy as PortfoyT, PortfoyDsg, PortfoyTahmin, ApiAnahtar, Webhook } from "../../api/types";
 import { Kart, Kpi, Sayfa, sayiTr } from "./parcalar";
 
 /** v2.263 (Dalga 5.15) — Portföy: kiracının tüm santralleri tek tabloda; toplamlar dürüst
@@ -89,6 +89,7 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {
       </Kart>
       {rolum() === "admin" && <DisErisim santraller={p?.santraller.map((s) => ({ id: s.id, ad: s.ad })) ?? []} />}
       <Paylasimlar santraller={p?.santraller.map((s) => ({ id: s.id, ad: s.ad })) ?? []} />
+      <HesapVeEkip />
     </Sayfa>
   );
 }
@@ -316,6 +317,84 @@ function Paylasimlar({ santraller }: { santraller: { id: string; ad: string }[] 
           )}
         </div>
       </div>
+    </Kart>
+  );
+}
+
+
+/** v2.299 — hesap ve ekip: parola değişimi herkese, ekip yönetimi yalnız yöneticiye.
+ *  Geçici parola API anahtarı kalıbıyla YALNIZ bir kez gösterilir; sunucu özet saklar. */
+function HesapVeEkip() {
+  const [uyeler, setUyeler] = useState<TakimUyesi[]>([]);
+  const [roller, setRoller] = useState<string[]>([]);
+  const [eposta, setEposta] = useState(""); const [rol, setRol] = useState("viewer");
+  const [gecici, setGecici] = useState<{ email: string; parola: string } | null>(null);
+  const [eski, setEski] = useState(""); const [yeni, setYeni] = useState("");
+  const [hata, setHata] = useState<string | null>(null); const [mesaj, setMesaj] = useState<string | null>(null);
+  const yonetici = rolum() === "admin";
+  const yenile = () => { if (yonetici) api.takim().then((r) => { setUyeler(r.uyeler); setRoller(r.roller); }).catch(() => {}); };
+  useEffect(yenile, []);   // eslint-disable-line react-hooks/exhaustive-deps
+  const dene = async (fn: () => Promise<void>) => {
+    setHata(null); setMesaj(null);
+    try { await fn(); yenile(); } catch (e) { setHata(String((e as Error).message ?? e)); }
+  };
+  const tarih = (t: string | null) => t ? new Date(t).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }) : "—";
+  return (
+    <Kart baslik="Hesap ve ekip" sag={<span className="cip">parola herkese · üye yönetimi yalnız yönetici</span>}>
+      {hata && <p className="ayar-durum hata" style={{ margin: "0 0 8px" }}>{hata}</p>}
+      {mesaj && <p className="ayar-durum ok" style={{ margin: "0 0 8px" }}>{mesaj}</p>}
+      <div className="mono" style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--soluk)", marginBottom: 6 }}>Parolamı değiştir</div>
+      <form className="ayar-kontrol" onSubmit={(e) => { e.preventDefault();
+              dene(async () => { await api.parolaDegistir(eski, yeni); setEski(""); setYeni(""); setMesaj("Parolanız değiştirildi."); }); }}>
+        <label className="girdi-etiket">Mevcut parola
+          <input className="girdi" type="password" autoComplete="current-password" value={eski} onChange={(e) => setEski(e.target.value)} required /></label>
+        <label className="girdi-etiket">Yeni parola (en az 10 karakter)
+          <input className="girdi" type="password" autoComplete="new-password" minLength={10} value={yeni} onChange={(e) => setYeni(e.target.value)} required /></label>
+        <button className="dugme" type="submit">Değiştir</button>
+      </form>
+      {yonetici && (
+        <div style={{ marginTop: 16 }}>
+          <div className="mono" style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--soluk)", marginBottom: 6 }}>Ekip</div>
+          {uyeler.length > 0 && (
+            <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 12 }}>
+              <thead><tr><th>E-posta</th><th>Rol</th><th>Son giriş</th><th>Durum</th><th></th></tr></thead>
+              <tbody>{uyeler.map((u) => (
+                <tr key={u.id} style={{ opacity: u.aktif ? 1 : 0.5 }}>
+                  <td className="mono">{u.email}</td>
+                  <td><select className="girdi" style={{ padding: "3px 6px", fontSize: 12 }} value={u.rol}
+                        onChange={(e) => dene(async () => { await api.takimGuncelle(u.id, { rol: e.target.value }); setMesaj("Rol güncellendi."); })}>
+                        {roller.map((r) => <option key={r} value={r}>{r === "admin" ? "yönetici" : r === "editor" ? "editör" : "izleyici"}</option>)}
+                      </select></td>
+                  <td className="mono">{tarih(u.son_giris)}</td>
+                  <td>{u.aktif ? "etkin" : "pasif"}</td>
+                  <td><button className="dugme" style={{ fontSize: 11.5 }}
+                        onClick={() => dene(async () => { await api.takimGuncelle(u.id, { aktif: !u.aktif }); setMesaj(u.aktif ? "Üye pasifleştirildi — oturum açamaz." : "Üye yeniden etkin."); })}>
+                        {u.aktif ? "Pasifleştir" : "Etkinleştir"}</button></td>
+                </tr>))}</tbody>
+            </table></div>
+          )}
+          <form className="ayar-kontrol" style={{ marginTop: 10 }} onSubmit={(e) => { e.preventDefault();
+                  dene(async () => { const r = await api.takimEkle(eposta, rol); setGecici({ email: r.email, parola: r.gecici_parola }); setEposta(""); }); }}>
+            <label className="girdi-etiket">E-posta
+              <input className="girdi" type="email" style={{ minWidth: 190 }} value={eposta} onChange={(e) => setEposta(e.target.value)} required /></label>
+            <label className="girdi-etiket">Rol
+              <select className="girdi" value={rol} onChange={(e) => setRol(e.target.value)}>
+                <option value="viewer">izleyici</option><option value="editor">editör</option><option value="admin">yönetici</option>
+              </select></label>
+            <button className="dugme" type="submit">Üye ekle</button>
+          </form>
+          {gecici && (
+            <div style={{ marginTop: 10, padding: 10, border: "1px solid var(--kenar)", borderRadius: 8, background: "var(--yuzey2)" }}>
+              <div style={{ fontSize: 12, marginBottom: 4 }}>
+                <span className="mono">{gecici.email}</span> için geçici parola — <strong>bir daha gösterilmez</strong>, güvenli kanaldan iletin; üye girişte kendi parolasını değiştirsin:</div>
+              <code className="mono" style={{ fontSize: 13, userSelect: "all" }}>{gecici.parola}</code>
+              <div style={{ marginTop: 6 }}><button className="dugme" style={{ fontSize: 11.5 }} onClick={() => setGecici(null)}>Kapat</button></div>
+            </div>)}
+          <p className="soluk" style={{ fontSize: 12, margin: "10px 0 0" }}>
+            Pasif üye oturum açamaz; kaydı ve geçmiş atamaları silinmez. Son etkin yönetici düşürülemez.
+          </p>
+        </div>
+      )}
     </Kart>
   );
 }

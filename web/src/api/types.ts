@@ -289,3 +289,7 @@ export interface Dogrulama { durum: "acik" | "kapali"; santral_etiketi?: string;
   beceri_siki_pct?: number | null; bant_kapsama_pct?: number | null; bant_hedef_pct?: number;
   aylar?: { ay: string; gun: number; wmape_pct: number | null; naif_wmape_pct: number | null;
             bant_kapsama_pct: number | null }[]; not?: string; }
+
+/** v2.299: ekip yönetimi. */
+export interface TakimUyesi { id: string; email: string; rol: string; aktif: boolean;
+  son_giris: string | null; olusturma: string | null; }
