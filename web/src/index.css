@@ -167,7 +167,11 @@ h2 { font-size: 19px; }
             border-bottom: 1px solid var(--izgara); padding-bottom: 8px; }
 .kart-bas h3 { font-family: var(--mono); font-size: var(--t-etiket); font-weight: 600;
                color: var(--ikincil); letter-spacing: .1em; text-transform: uppercase; }
+/* v2.310: ayirici orta nokta — parcalar.tsx serhi bu dili "2 · BUGUN…" diye
+   tanimliyor ama nokta hic basilmiyordu. Rakamla baslayan tek baslik (6 "7 gunluk
+   gorunum") ekranda "6 7" olarak okunuyordu; bolum metni degistirilmeden ayrilir. */
 .kart-no { color: var(--marka-koyu); margin-right: 10px; }
+.kart-no::after { content: "·"; margin-left: 10px; color: var(--soluk); font-weight: 400; }
 
 .kpi { background: var(--kart); border: 1px solid var(--kenar);
        border-radius: var(--rk); padding: 14px 16px; }

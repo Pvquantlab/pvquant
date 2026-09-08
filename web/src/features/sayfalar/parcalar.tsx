@@ -10,6 +10,11 @@ export const sayiTr = (x: number, ondalik = 0): string =>
                                    maximumFractionDigits: ondalik })
     .format(Number(x.toFixed(ondalik)));
 
+/** v2.310 — null-bilen kardeş: veri yoksa tire, sıfır UYDURULMAZ (anayasa).
+ *  Kural: tire yanına birim basılmaz — "— kWh" yanlış, birim yalnız sayı varken çıkar. */
+export const sayiTrN = (x: number | null | undefined, ondalik = 0): string =>
+  x == null ? "—" : sayiTr(x, ondalik);
+
 export function Kpi({ etiket, deger, birim, alt, ton }:
   { etiket: string; deger: string; birim?: string; alt?: ReactNode;
     ton?: "amber" | "uyari" }) {
@@ -28,7 +33,11 @@ export function Kpi({ etiket, deger, birim, alt, ton }:
     <div className="kpi" style={st}>
       <div className="kpi-et">{etiket}</div>
       <div className="kpi-dg mono"
-           style={ton === "amber" ? { color: "var(--amber-metin)" } : ton === "uyari" ? { color: "var(--uyari-metin)" } : undefined}>{deger}{birim &&
+           style={ton === "amber" ? { color: "var(--amber-metin)" } : ton === "uyari" ? { color: "var(--uyari-metin)" } : undefined}>
+        {/* v2.310: değer kendi içinde BÖLÜNMESİN. Dar ızgarada (1180px pencerede
+            KPI kutusu 209px) "27,3 · 26,9" ikiye ayrılıp birinci satırda yalnız
+            "27,3 ·" kalıyordu. Kırılma artık yalnız birimden önce olabilir. */}
+        <span style={{ whiteSpace: "nowrap" }}>{deger}</span>{birim &&
         <span style={{ fontSize: 13, color: "var(--soluk)", marginLeft: 5 }}>{birim}</span>}</div>
       {alt && <div className="kpi-br">{alt}</div>}
     </div>

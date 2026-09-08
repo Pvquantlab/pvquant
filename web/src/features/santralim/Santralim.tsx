@@ -239,14 +239,14 @@ export function Santralim({ plantId }: { plantId: string }) {
       <div className="ozet">
         <div className="anlik">
           <svg viewBox="0 0 160 112" role="img" style={{ width: "100%", maxWidth: 118 }}
-            aria-label={nowVal === null ? "Anlık güç verisi yok"
-              : `Anlık güç ${sayiTr(nowVal)} kilovat`}>
+            aria-label={nowVal === null ? "Şimdi beklenen güç verisi yok"
+              : `Şimdi beklenen güç ${sayiTr(nowVal)} kilovat — tahmin`}>
             <path d="M18,88 A62,62 0 0 1 142,88" fill="none"
               stroke="var(--izgara)" strokeWidth="10" strokeLinecap="round" />
             {/* pay ~0 iken cizme: round linecap sifirda bile nokta basiyordu */}
             {anlikPay !== null && anlikPay > 0.005 && (
               <path d="M18,88 A62,62 0 0 1 142,88" fill="none"
-                stroke="var(--amber)" strokeWidth="10" strokeLinecap="round"
+                stroke="var(--chart-p50-future)" strokeWidth="10" strokeLinecap="round"
                 strokeDasharray={`${(Math.PI * 62 * anlikPay).toFixed(1)} ${(Math.PI * 62).toFixed(1)}`} />
             )}
             <text x="80" y="66" textAnchor="middle" className="ch-gauge-deger">
@@ -264,29 +264,34 @@ export function Santralim({ plantId }: { plantId: string }) {
         </div>
         <div>
           <div className="et">Bugün — beklenen</div>
-          <div className="dg">{sayiTr(o.bugun_kwh ?? 0)} <small>kWh</small></div>
+          <div className="dg">{o.bugun_kwh == null ? <span style={{ color: "var(--soluk)" }}>—</span>
+                                : <>{sayiTr(o.bugun_kwh)} <small>kWh</small></>}</div>
           <div className="alt">gün sonu itibarıyla</div>
         </div>
         <div>
           <div className="et">Yarın</div>
-          <div className="dg">{sayiTr(o.yarin_kwh ?? 0)} <small>kWh</small></div>
+          <div className="dg">{o.yarin_kwh == null ? <span style={{ color: "var(--soluk)" }}>—</span>
+                                : <>{sayiTr(o.yarin_kwh)} <small>kWh</small></>}</div>
           <div className="alt">{o.hava[1]
             ? `${sayiTr(o.hava[1].isinim, 1)} kWh/m² ışınım` : "—"}</div>
         </div>
         <div>
           <div className="et">Önümüzdeki 7 gün</div>
-          <div className="dg">{sayiTr(o.hafta_mwh ?? 0, 1)} <small>MWh</small></div>
+          <div className="dg">{o.hafta_mwh == null ? <span style={{ color: "var(--soluk)" }}>—</span>
+                                : <>{sayiTr(o.hafta_mwh, 1)} <small>MWh</small></>}</div>
           <div className="alt">döküm §5'te</div>
         </div>
         <div>
           <div className="et">Model durumu</div>
           <div className="md-dizi">
             <div><span className="e">Durum</span>
-              <span className="rozet rozet-ok">{o.model_adi} · Mod {o.mod}</span></div>
+              {o.mod
+                ? <span className="rozet rozet-ok">{o.model_adi} · Mod {o.mod}</span>
+                : <span className="cip">{o.model_adi} · kalibrasyon bekliyor</span>}</div>
             <div><span className="e">Yıllık sapma</span>
-              <span className="d">%{sayiTr(o.sapma_pct ?? 0, 2)}</span></div>
+              <span className="d">{o.sapma_pct == null ? "—" : `%${sayiTr(o.sapma_pct, 2)}`}</span></div>
             <div><span className="e">Son kalibrasyon</span>
-              <span className="d">{o.son_kalibrasyon}</span></div>
+              <span className="d">{o.son_kalibrasyon ?? "—"}</span></div>
           </div>
         </div>
       </div>
@@ -343,11 +348,17 @@ export function Santralim({ plantId }: { plantId: string }) {
           <table className="veri">
             <tbody className="mono">
               <tr><td>DC gücü</td><td>{sayiTr(o.kapasite_kwp)} kWp</td></tr>
-              <tr><td>AC tavanı</td><td>{sayiTr(o.ac_tavani_kw ?? 0)} kW</td></tr>
+              <tr><td>AC tavanı</td><td>{o.ac_tavani_kw == null
+                ? <span style={{ color: "var(--soluk)" }}>— künyede tanımlı değil; santral ayarlarından girilir</span>
+                : `${sayiTr(o.ac_tavani_kw)} kW`}</td></tr>
               <tr><td>Eğim / azimut</td><td>{o.egim_azimut}</td></tr>
               <tr><td>Saat dilimi</td><td>{o.tz}</td></tr>
               <tr><td>Son veri yüklemesi</td>
-                <td style={{ color: "var(--uyari-metin)" }}>{s.son_scada} · {s.kesinti_gun} gündür yeni veri yok</td></tr>
+                <td>{s.son_scada == null
+                  ? <span style={{ color: "var(--soluk)" }}>— SCADA verisi henüz yüklenmedi</span>
+                  : (s.kesinti_gun ?? 0) > 2
+                    ? <span style={{ color: "var(--uyari-metin)" }}>{s.son_scada} · {sayiTr(s.kesinti_gun!)} gündür yeni veri yok</span>
+                    : s.son_scada}</td></tr>
               <tr><td>İşlenen veri</td><td>{sayiTr(s.islenen_saat)} saatlik ölçüm</td></tr>
               <tr><td>Anomali tespiti</td><td>{sayiTr(s.anomali)} işaretlendi — tek satır silinmedi</td></tr>
               {/* v2.249 (Dalga 1.4): IEC 61724-1 performans orani — olcumden, POA yoksa tire + neden */}
@@ -557,7 +568,7 @@ export function Santralim({ plantId }: { plantId: string }) {
       <div className="ızgara" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)",
                                        marginBottom: 14, alignItems: "start" }}>
         <Kart no="6" baslik="7 günlük görünüm" sag={<span className="cip mono">
-          {sayiTr(o.hafta_mwh ?? 0, 1)} MWh toplam</span>}>
+          {o.hafta_mwh == null ? "—" : `${sayiTr(o.hafta_mwh, 1)} MWh toplam`}</span>}>
           {/* v2.200 (D imzasi): profilli tablo — profil gun-ici P50 egrisi,
               tum gunler ayni olcekte; tepe = gunun en yuksek P50 saati */}
           <table className="veri">
@@ -566,16 +577,23 @@ export function Santralim({ plantId }: { plantId: string }) {
               <th>Tepe kW · P50</th><th>Toplam MWh · P50</th>
             </tr></thead>
             <tbody className="mono">
+              {/* v2.310: "bugün" satırı DİZİN 0 DEĞİL. Pencere son koşunun gününden
+                  başlıyor; koşu dünse (9 Eyl'de görüldü: SAL · BUGÜN · YARIN · CUM…)
+                  0. satır dünü gösteriyor. Eski kod 0. satırı koşulsuz "Bugün · " diye
+                  etiketliyor ve profili orada vurguluyordu — dünü bugün diye yazıyordu.
+                  Artık etiketin kendisi söylüyor; vurgu da onu izliyor. */}
               {o.gunler.map((g, i) => {
                 const nk = gunProfilleri?.gunler[i] ?? [];
                 const gunTepe = nk.length ? Math.max(...nk) : null;
+                const bugunMu = g.etiket.toLocaleUpperCase("tr-TR") === "BUGÜN";
                 return (
                   <tr key={g.etiket}>
-                    <td style={{ color: "var(--ikincil)" }}>
-                      {i === 0 ? `Bugün · ${g.etiket}` : g.etiket}</td>
+                    <td style={{ color: bugunMu ? "var(--metin)" : "var(--ikincil)",
+                                 fontWeight: bugunMu ? 600 : undefined }}>
+                      {g.etiket}</td>
                     <td style={{ textAlign: "left" }}>
                       <GunProfili noktalar={nk}
-                        tepe={gunProfilleri?.tepe ?? 1} vurgu={i === 0} /></td>
+                        tepe={gunProfilleri?.tepe ?? 1} vurgu={bugunMu} /></td>
                     <td>{gunTepe === null ? "—" : sayiTr(gunTepe)}</td>
                     <td>{sayiTr(g.mwh, 1)}</td>
                   </tr>
