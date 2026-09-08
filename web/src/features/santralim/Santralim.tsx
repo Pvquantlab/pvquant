@@ -347,7 +347,7 @@ export function Santralim({ plantId }: { plantId: string }) {
               <tr><td>Eğim / azimut</td><td>{o.egim_azimut}</td></tr>
               <tr><td>Saat dilimi</td><td>{o.tz}</td></tr>
               <tr><td>Son veri yüklemesi</td>
-                <td style={{ color: "var(--uyari)" }}>{s.son_scada} · {s.kesinti_gun} gündür yeni veri yok</td></tr>
+                <td style={{ color: "var(--uyari-metin)" }}>{s.son_scada} · {s.kesinti_gun} gündür yeni veri yok</td></tr>
               <tr><td>İşlenen veri</td><td>{sayiTr(s.islenen_saat)} saatlik ölçüm</td></tr>
               <tr><td>Anomali tespiti</td><td>{sayiTr(s.anomali)} işaretlendi — tek satır silinmedi</td></tr>
               {/* v2.249 (Dalga 1.4): IEC 61724-1 performans orani — olcumden, POA yoksa tire + neden */}

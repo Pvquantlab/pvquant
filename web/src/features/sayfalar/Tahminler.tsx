@@ -195,9 +195,9 @@ export function Tahminler({ plantId }: { plantId: string }) {
               {kgup.oneri && kgup.oneri.durum === "ok" && kgup.oneri.kantil &&
                 <span className="cip" title={kgup.oneri.not ?? ""}>önerilen kantil {kgup.oneri.kantil.toUpperCase()}</span>}
               {kgup.eak && <span className="cip" title="Emre amade kapasite — ayarlardan değiştirilir">EAK {sayiTr(kgup.eak.eak_mw, 2)} MW · {({ gecici: "geçici kısıt", eak_alani: "EAK alanı", ac_tavani: "AC tavanı", kurulu_guc: "kurulu güç" } as Record<string, string>)[kgup.eak.kaynak] ?? kgup.eak.kaynak}</span>}
-              {kgupHata && <span style={{ color: "var(--uyari)", fontSize: 12.5 }}>{kgupHata}</span>}
+              {kgupHata && <span style={{ color: "var(--uyari-metin)", fontSize: 12.5 }}>{kgupHata}</span>}
             </div>
-            {kgup.uyarilar.length > 0 && <p style={{ color: "var(--uyari)", fontSize: 12.5, margin: "8px 0 0" }}>{kgup.uyarilar.join(" · ")}</p>}
+            {kgup.uyarilar.length > 0 && <p style={{ color: "var(--uyari-metin)", fontSize: 12.5, margin: "8px 0 0" }}>{kgup.uyarilar.join(" · ")}</p>}
             {kgup.sicrama_saatleri.length > 0 && <p style={{ fontSize: 12.5, margin: "8px 0 0" }}>≥200 MWh sıçrama: saat {kgup.sicrama_saatleri.join(", ")} — dosyada 15 dakikalık dilimler.</p>}
             <p className="soluk" style={{ fontSize: 12.5, margin: "10px 0 0" }}>
               {kgup.gip && `${kgup.gip.kural} Örnek: ${kgup.gip.ornek_teslimat} teslimatı için kapı ${kgup.gip.ornek_kapi}, revizyon son ${kgup.gip.ornek_revizyon_son}. `}

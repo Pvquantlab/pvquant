@@ -41,9 +41,9 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
                   <tr key={r.id} style={{ cursor: "pointer" }} onClick={() => onSec(r.id)} tabIndex={0}
                       onKeyDown={(e) => { if (e.key === "Enter") onSec(r.id); }}>
                     <td style={{ fontWeight: 600 }}>{r.ad}</td><td>{sayiTr(r.kapasite_kwp)}</td><td>{r.segment ?? "—"}</td>
-                    <td style={{ color: r.kesinti_gun != null && r.kesinti_gun > 2 ? "var(--uyari)" : undefined }}>{tarih(r.son_olcum)}{r.kesinti_gun != null && r.kesinti_gun > 2 ? ` (${sayiTr(r.kesinti_gun)} g)` : ""}</td>
+                    <td style={{ color: r.kesinti_gun != null && r.kesinti_gun > 2 ? "var(--uyari-metin)" : undefined }}>{tarih(r.son_olcum)}{r.kesinti_gun != null && r.kesinti_gun > 2 ? ` (${sayiTr(r.kesinti_gun)} g)` : ""}</td>
                     <td>{r.wmape_30g != null ? `%${sayiTr(r.wmape_30g, 1)}` : "—"}</td><td>{kwhYaz(r.bugun_kwh)}</td><td>{kwhYaz(r.yarin_kwh)}</td>
-                    <td style={{ color: r.acik_alarm > 0 ? "var(--uyari)" : undefined }}>{sayiTr(r.acik_alarm)}</td><td>{tarih(r.son_kosu)}</td>
+                    <td style={{ color: r.acik_alarm > 0 ? "var(--uyari-metin)" : undefined }}>{sayiTr(r.acik_alarm)}</td><td>{tarih(r.son_kosu)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -167,7 +167,7 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
                 <tr key={w.id}>
                   <td style={{ maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={w.url}>{w.url}</td>
                   <td>{w.santral ?? "tümü"}</td><td>{tarih(w.son_gonderim)}</td>
-                  <td style={{ color: w.son_durum != null && !(w.son_durum >= 200 && w.son_durum < 300) ? "var(--uyari)" : undefined }}>
+                  <td style={{ color: w.son_durum != null && !(w.son_durum >= 200 && w.son_durum < 300) ? "var(--uyari-metin)" : undefined }}>
                     {w.son_durum == null ? "—" : w.son_durum === 0 ? "ulaşılamadı" : `HTTP ${w.son_durum}`}{w.hata_sayisi > 0 ? ` · ${sayiTr(w.hata_sayisi)} hata` : ""}</td>
                   <td style={{ whiteSpace: "nowrap" }}>
                     <button className="dugme" style={{ fontSize: 11.5 }} onClick={() => dene(async () => { const r = await api.webhookDene(w.id); setMesaj(r.ok ? `Deneme ulaştı (HTTP ${r.durum}).` : `Deneme başarısız (${r.durum === 0 ? "ulaşılamadı" : "HTTP " + r.durum}).`); })}>Dene</button>
@@ -430,7 +430,7 @@ function SantralArsivi({ santralYenile }: { santralYenile?: () => void }) {
       {etkin.length > 1 && (
         <div className="ayar-kontrol" style={{ flexWrap: "wrap" }}>
           {etkin.map((x) => onayId === x.id ? (
-            <button key={x.id} className="dugme" style={{ color: "var(--uyari)", fontWeight: 600 }}
+            <button key={x.id} className="dugme" style={{ color: "var(--uyari-metin)", fontWeight: 600 }}
                     onClick={() => dene(async () => { await api.santralArsivle(x.id); setOnayId(null); setMesaj(`${x.name} arşive alındı.`); })}>
               Eminim — {x.name} arşive alınsın</button>
           ) : (

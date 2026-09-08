@@ -19,7 +19,7 @@ function SablonDugmeleri({ plantId }: { plantId: string }) {
         <button className="dugme" onClick={() => indir("kullanilabilirlik")}>Kullanılabilirlik (30 gün)</button>
         <button className="dugme" onClick={() => indir("beklenen-gerceklesen")}>Beklenen – gerçekleşen (aylık)</button>
       </div>
-      {hata && <p style={{ color: "var(--uyari)", fontSize: 12.5, margin: "8px 0 0" }}>{hata}</p>}
+      {hata && <p style={{ color: "var(--uyari-metin)", fontSize: 12.5, margin: "8px 0 0" }}>{hata}</p>}
       <p className="soluk" style={{ fontSize: 12.5, margin: "8px 0 0" }}>
         Kapasite testi ölçülen düzlem ışınımı ister; fatura özeti künyedeki tarifeyi ve simülatörün dengesizlik kalemini kullanır; kullanılabilirlik otomatik arıza tespitidir.
       </p>
@@ -82,7 +82,7 @@ function KayipAgaciKarti({ plantId }: { plantId: string }) {
               <tbody className="mono">
                 {(k.satirlar ?? []).map((r) => (
                   <tr key={r.adim}><td style={{ textAlign: "left", fontFamily: "var(--font)" }}>{r.etiket}</td><td>{sayiTr(r.giren_kwh / 1000, 0)}</td>
-                    <td style={{ color: r.kayip_pct < 0 ? "var(--basari)" : r.kayip_pct > 3 ? "var(--uyari)" : undefined }}>{r.kayip_pct === 0 ? "—" : `%${sayiTr(r.kayip_pct, 1)}`}</td>
+                    <td style={{ color: r.kayip_pct < 0 ? "var(--basari-metin)" : r.kayip_pct > 3 ? "var(--uyari-metin)" : undefined }}>{r.kayip_pct === 0 ? "—" : `%${sayiTr(r.kayip_pct, 1)}`}</td>
                     <td>{sayiTr(r.cikan_kwh / 1000, 0)}</td><td style={{ textAlign: "left", fontFamily: "var(--font)", color: "var(--soluk)" }}>{r.kaynak}</td></tr>))}
               </tbody>
             </table>
@@ -715,7 +715,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
                   {ky.ozellikler.map((o) => (
                     <tr key={o.ad}><td>{o.etiket}</td><td>{sayiTr(o.n)}</td><td>{sayiTr(o.psi, 3)}</td><td>{sayiTr(o.ks, 3)}</td>
                       <td>{sayiTr(o.sapma, 2)}{o.sapma_pct != null ? ` (%${sayiTr(o.sapma_pct, 1)})` : ""}</td>
-                      <td style={{ color: o.hukum === "KAYMA" ? "var(--uyari)" : o.hukum === "dikkat" ? "var(--soluk)" : "var(--basari)" }}>{o.hukum}</td></tr>
+                      <td style={{ color: o.hukum === "KAYMA" ? "var(--uyari-metin)" : o.hukum === "dikkat" ? "var(--soluk)" : "var(--basari-metin)" }}>{o.hukum}</td></tr>
                   ))}
                 </tbody>
               </table>
@@ -884,10 +884,10 @@ function VerinizSizindirKarti({ plantId }: { plantId: string }) {
           CSV olarak dışa aktar</button>
         {rolum() === "admin" && (b1 && b2 ? (
           !onay ? (
-            <button className="dugme" disabled={mesgul} style={{ color: "var(--uyari)" }}
+            <button className="dugme" disabled={mesgul} style={{ color: "var(--uyari-metin)" }}
                     onClick={() => setOnay(true)}>Aralığı sil…</button>
           ) : (
-            <button className="dugme" disabled={mesgul} style={{ color: "var(--uyari)", fontWeight: 600 }}
+            <button className="dugme" disabled={mesgul} style={{ color: "var(--uyari-metin)", fontWeight: 600 }}
                     onClick={() => dene(async () => {
                       const r = await api.scadaSil(plantId, b1, b2); setOnay(false);
                       setMesaj(`${sayiTr(r.silinen_satir)} satır kalıcı olarak silindi.`);
@@ -922,7 +922,7 @@ function GeceIsleriKarti() {
               <td style={{ textAlign: "left" }}>{x.is}</td>
               <td className="mono" style={{ textAlign: "left" }}>{zaman(x.zaman)}</td>
               <td className="mono">{x.sure_sn == null ? "—" : x.sure_sn >= 60 ? `${sayiTr(x.sure_sn / 60, 1)} dk` : `${sayiTr(x.sure_sn, 1)} sn`}</td>
-              <td style={{ color: x.tamam ? undefined : "var(--uyari)", fontWeight: x.tamam ? undefined : 600 }}>{x.tamam ? "tamam" : "düştü"}</td>
+              <td style={{ color: x.tamam ? undefined : "var(--uyari-metin)", fontWeight: x.tamam ? undefined : 600 }}>{x.tamam ? "tamam" : "düştü"}</td>
             </tr>))}</tbody>
         </table></div>
       )}

@@ -28,7 +28,7 @@ export function Kpi({ etiket, deger, birim, alt, ton }:
     <div className="kpi" style={st}>
       <div className="kpi-et">{etiket}</div>
       <div className="kpi-dg mono"
-           style={ton === "amber" ? { color: "var(--amber-metin)" } : ton === "uyari" ? { color: "var(--uyari)" } : undefined}>{deger}{birim &&
+           style={ton === "amber" ? { color: "var(--amber-metin)" } : ton === "uyari" ? { color: "var(--uyari-metin)" } : undefined}>{deger}{birim &&
         <span style={{ fontSize: 13, color: "var(--soluk)", marginLeft: 5 }}>{birim}</span>}</div>
       {alt && <div className="kpi-br">{alt}</div>}
     </div>

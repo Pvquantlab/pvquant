@@ -18,7 +18,7 @@ export function Hakkinda() {
         {h === undefined ? <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p>
          : !h ? <p className="soluk" style={{ margin: 0 }}>Örnek kip — kaynak listesi sunucudan gelir.</p> : (
           <>
-            {h.uyarilar.length > 0 && <p style={{ color: "var(--uyari)", fontSize: 12.5, margin: "0 0 10px" }}>{h.uyarilar.join(" · ")}</p>}
+            {h.uyarilar.length > 0 && <p style={{ color: "var(--uyari-metin)", fontSize: 12.5, margin: "0 0 10px" }}>{h.uyarilar.join(" · ")}</p>}
             <div className="grafik-kaydir">
               <table className="veri" style={{ fontSize: 12.5 }}>
                 <thead><tr><th style={sol}>Kaynak</th><th style={sol}>Kurum</th><th style={sol}>Lisans</th><th style={sol}>Ne için</th></tr></thead>
