@@ -242,11 +242,7 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
               <button aria-pressed={temaKipi === "koyu"} onClick={() => kipSec("koyu")}>Koyu</button>
             </div>
           </div>
-          {santralFormu && (
-        <YeniSantral kapat={() => setSantralFormu(false)}
-                     eklendi={(id) => { setSantralFormu(false); santralYenile?.(); onSantral?.(id); }} />
-      )}
-      {zilAcik && (
+          {zilAcik && (
             <>
               <div className="zil-ort" onClick={() => setZilAcik(false)}
                    aria-hidden="true" />
@@ -343,6 +339,13 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
         })()}
         <div className="icerik">{children}</div>
       </main>
+      {/* v2.308: form üst şeridin İÇİNDE çiziliyordu — kendi karartma katmanının
+          altında kalıp ekranın 224px yukarısına taşıyordu; her tıklama örtüye
+          gidip diyaloğu kapatıyordu. Artık ⌘K paletiyle aynı seviyede. */}
+      {santralFormu && (
+        <YeniSantral kapat={() => setSantralFormu(false)}
+                     eklendi={(id) => { setSantralFormu(false); santralYenile?.(); onSantral?.(id); }} />
+      )}
       {paletAcik && (
         <div className="palet-ort" onClick={() => setPaletAcik(false)}>
           <div className="palet" role="dialog" aria-label="Sayfa arama"
@@ -399,10 +402,12 @@ function YeniSantral({ kapat, eklendi }: { kapat: () => void; eklendi: (id: stri
   };
   const tamam = g.name.trim() && g.lat && g.lon && g.capacity_kwp;
   return (
-    <>
-      <div className="palet-ort" onClick={kapat} aria-hidden="true" />
-      <div className="palet" role="dialog" aria-label="Yeni santral bağla" style={{ maxWidth: 460 }}>
-        <div style={{ padding: "16px 18px" }}>
+    <div className="palet-ort" onClick={kapat}>
+      {/* v2.308: kart örtünün ÇOCUĞU (⌘K emsali) — kardeş çizilince örtü
+          formun üstüne boyanıyor ve her tıklama diyaloğu kapatıyordu. */}
+      <div className="palet palet-genis" role="dialog" aria-label="Yeni santral bağla"
+           onClick={(e) => e.stopPropagation()}>
+        <div className="palet-govde" style={{ padding: "16px 18px" }}>
           <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Yeni santral bağla</div>
           <p className="soluk" style={{ fontSize: 12.5, margin: "0 0 12px" }}>
             Çekirdek künye yeter — eğim, tavan ve diğer ayarlar sonra Santralım'dan düzenlenir.
@@ -436,6 +441,6 @@ function YeniSantral({ kapat, eklendi }: { kapat: () => void; eklendi: (id: stri
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
