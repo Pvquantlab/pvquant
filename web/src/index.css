@@ -55,12 +55,14 @@
   --marka: #22C55E; --marka-acik: #4ADE80; --marka-koyu: #86EFAC; --marka-r: 34,197,94;
   --notr: #7C8BA1; --notr-acik: #94A3B8; --notr-r: 124,139,161;
   --amber-metin: #ECB35C;
-  --zemin: #0B1424; --kart: rgba(19,31,52,.78); --yuzey: rgba(255,255,255,.06); --yuzey2: rgba(255,255,255,.09);
+  /* v2.304 D1 — 'Düz lacivert': mavi kimlik AYNEN korunur (#0B1424); netlik renkten değil
+     opak karttan gelir. Cam kart ayrımı 1,09 ile hedefin (1,15) altındaydı → opak kart 1,19. */
+  --zemin: #0B1424; --kart: #17243C; --yuzey: rgba(255,255,255,.06); --yuzey2: rgba(255,255,255,.09);
   --marka-zemin: rgba(34,197,94,.12); --amber-zemin: #2A2013; --uyari-zemin: #2B1813;
   --metin: #F4F8FD; --ikincil: #D6E0EB; --soluk: #A9B7C9;
   --cubuk-vurgu: #86EFAC;
-  --kenar: rgba(255,255,255,.13); --izgara: rgba(255,255,255,.09);
-  --yan: rgba(11,20,36,.72); --yan-metin: #D6E0EB; --yan-aktif: rgba(34,197,94,.12); --yan-cizgi: rgba(255,255,255,.12);
+  --kenar: rgba(255,255,255,.15); --izgara: rgba(255,255,255,.09);
+  --yan: #0B1424; --yan-metin: #D6E0EB; --yan-aktif: rgba(34,197,94,.12); --yan-cizgi: rgba(255,255,255,.12);
   --chart-p50-future: #7CB1E8;
   --chart-p50-past: #7CB1E8;
   --chart-band-future: rgba(124,177,232,.18);
@@ -78,7 +80,7 @@
   --chart-baseline: rgba(255,255,255,.34);
   --chart-axis-text: #A9B7C9;
   --chart-unit: #A9B7C9;
-  --chart-surface: #121E31;
+  --chart-surface: #17243C;
   --chart-muted: #A9B7C9;
   --ch-cubuk: #34A06A; --ch-dusuk: #5E6C7E;
   --ch-gy-yaz: #22C55E; --ch-gy-eki: #A9B7C9; --ch-gy-kis: #8290A3;
@@ -312,21 +314,23 @@ body { background:
 body { transition: background-color .15s ease, color .15s ease; }
 @media (prefers-reduced-motion: reduce) { body { transition: none; } }
 
-[data-tema="koyu"] body { background:
-  linear-gradient(rgba(255,255,255,.028) 1px, transparent 1px),
-  linear-gradient(90deg, rgba(255,255,255,.028) 1px, transparent 1px),
-  radial-gradient(1400px 700px at 72% -12%, #152A47 0%, var(--zemin) 58%);
-  background-size: 46px 46px, 46px 46px, auto; background-attachment: fixed;
+/* v2.304 D1: koyu yüzde hücre dokusu ve cam degrade kalktı — zemin düz, netlik kartta.
+   Açık yüz bilerek dokunulmadı (ayrı adım). */
+[data-tema="koyu"] body { background: var(--zemin);
   -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 .kart, .kpi { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
 .yan { backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
 .ust { background: rgba(255,255,255,.86);
        backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
-[data-tema="koyu"] .ust { background: rgba(11,20,36,.82); }
+[data-tema="koyu"] .ust { background: var(--zemin); }
+/* v2.304 D1: koyu yüzde bulanıklık yok — yüzeyler opak, kenarlar keskin */
+[data-tema="koyu"] .kart, [data-tema="koyu"] .kpi, [data-tema="koyu"] .yan,
+[data-tema="koyu"] .ust, [data-tema="koyu"] .palet {
+  backdrop-filter: none; -webkit-backdrop-filter: none; }
 /* blur desteklemeyen tarayici: duz karta dus — cam olmadan da okunur */
 @supports not ((backdrop-filter: blur(8px)) or (-webkit-backdrop-filter: blur(8px))) {
   .kart, .kpi { background: #FFFFFF; }
-  [data-tema="koyu"] .kart, [data-tema="koyu"] .kpi { background: #121E31; }
+  [data-tema="koyu"] .kart, [data-tema="koyu"] .kpi { background: #17243C; }
 }
 
 /* ============================================================
@@ -381,7 +385,7 @@ body { transition: background-color .15s ease, color .15s ease; }
   flex-shrink: 0; }
 @supports not ((backdrop-filter: blur(8px)) or (-webkit-backdrop-filter: blur(8px))) {
   .palet { background: #FFFFFF; }
-  [data-tema="koyu"] .palet { background: #121E31; }
+  [data-tema="koyu"] .palet { background: #17243C; }
 }
 @media (max-width: 900px) {
   .arama { display: none; }
