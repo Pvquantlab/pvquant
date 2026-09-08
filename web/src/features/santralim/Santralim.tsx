@@ -82,10 +82,42 @@ export function Santralim({ plantId }: { plantId: string }) {
   useEffect(() => { api.kullanilabilirlik(plantId).then(setKu).catch(() => {}); }, [plantId]);
   const [tarife, setTarife] = useState<Tarife>({ tip: "sabit" });
   const [tarifeMesaj, setTarifeMesaj] = useState<string | null>(null);
-  useEffect(() => { api.tarife(plantId).then((t) => { if (t) setTarife(t); }).catch(() => {}); }, [plantId]);
+  // v2.312: sayı alanları METİN olarak yaşar. Doğrudan Number(e.target.value) yazmak
+  // iki kusur üretiyordu: (a) Türkçe yazım "1250,5" → NaN, `?? ""` NaN'ı yakalamadığı
+  // için kutuda "NaN" görünüyordu; (b) alan silinince Number("")=0 → kutu 0'a atlıyor
+  // ve Kaydet'e basılırsa 0 TL/MWh KAYDEDİLİYORDU.
+  const [tarifeMetin, setTarifeMetin] = useState<Record<string, string>>({});
+  useEffect(() => { api.tarife(plantId).then((t) => { if (t) { setTarife(t); setTarifeMetin({}); } }).catch(() => {}); }, [plantId]);
+  /** "1250,5" ve "1.250,5" Türkçe yazımlarını okur; boş/bozuk girdi undefined döner (0 uydurmaz). */
+  const sayiOku = (s: string): number | undefined => {
+    const t = s.trim().replace(/\s/g, "");
+    if (t === "") return undefined;
+    const n = Number(t.includes(",") ? t.replace(/\./g, "").replace(",", ".") : t);
+    return Number.isFinite(n) ? n : undefined;
+  };
+  const sayiYaz = (x: number | null | undefined) => (x == null ? "" : String(x).replace(".", ","));
+  type TarifeSayiAlani = "tl_mwh" | "prim_oran" | "sabit_ek_tl_mwh" | "usd_cent_kwh"
+    | "kur_tl_usd" | "gunduz_tl_mwh" | "puant_tl_mwh" | "gece_tl_mwh";
+  const tarifeSayi = (alan: TarifeSayiAlani) => ({
+    value: tarifeMetin[alan] ?? sayiYaz(tarife[alan]),
+    onChange: (e: { target: { value: string } }) => {
+      setTarifeMetin({ ...tarifeMetin, [alan]: e.target.value });
+      setTarife({ ...tarife, [alan]: sayiOku(e.target.value) });
+      setTarifeMesaj(null);
+    },
+  });
   const tarifeKaydet = () => {
     setTarifeMesaj(null);
-    api.tarifeAyarla(plantId, tarife).then((r) => setTarifeMesaj(r.tarife ? "Kaydedildi — fatura şablonu ve yıllık gelir bunu kullanır." : "Kaldırıldı."))
+    // Zorunlu alan bozuk/boşken isteği ağa hiç çıkarma — evin "yol gösteren hata" kuralı.
+    const eksik = tarife.tip === "sabit" && tarife.tl_mwh == null
+      ? "Fiyat (TL/MWh) boş ya da okunamadı — ör. 2650 veya 2650,5 yazın."
+      : tarife.tip === "cok_zamanli"
+        && (tarife.gunduz_tl_mwh == null || tarife.puant_tl_mwh == null || tarife.gece_tl_mwh == null)
+        ? "Çok zamanlı tarifede gündüz, puant ve gece fiyatlarının üçü de gerekir."
+        : null;
+    if (eksik) { setTarifeMesaj(eksik); return; }
+    api.tarifeAyarla(plantId, tarife).then((r) => { setTarifeMetin({});
+        setTarifeMesaj(r.tarife ? "Kaydedildi — fatura şablonu ve yıllık gelir bunu kullanır." : "Kaldırıldı."); })
       .catch((e) => setTarifeMesaj(String((e as Error).message ?? e)));
   };
   const [ak, setAk] = useState<AlarmKurallari | null>(null);   // v2.265: ek alarm kuralları (opt-in)
@@ -428,24 +460,24 @@ export function Santralim({ plantId }: { plantId: string }) {
             </label>
             {tarife.tip === "sabit" &&
               <label className="girdi-etiket">Fiyat (TL/MWh)
-                <input className="girdi" style={{ width: 110 }} inputMode="decimal" value={tarife.tl_mwh ?? ""} onChange={(e) => setTarife({ ...tarife, tl_mwh: Number(e.target.value) })} /></label>}
+                <input className="girdi" style={{ width: 110 }} inputMode="decimal" {...tarifeSayi("tl_mwh")} /></label>}
             {tarife.tip === "ptf" && <>
               <label className="girdi-etiket">Prim oranı
-                <input className="girdi" style={{ width: 90 }} inputMode="decimal" placeholder="0,05" value={tarife.prim_oran ?? ""} onChange={(e) => setTarife({ ...tarife, prim_oran: Number(e.target.value) })} /></label>
+                <input className="girdi" style={{ width: 90 }} inputMode="decimal" placeholder="0,05" {...tarifeSayi("prim_oran")} /></label>
               <label className="girdi-etiket">Sabit ek (TL/MWh)
-                <input className="girdi" style={{ width: 110 }} inputMode="decimal" value={tarife.sabit_ek_tl_mwh ?? ""} onChange={(e) => setTarife({ ...tarife, sabit_ek_tl_mwh: Number(e.target.value) })} /></label></>}
+                <input className="girdi" style={{ width: 110 }} inputMode="decimal" {...tarifeSayi("sabit_ek_tl_mwh")} /></label></>}
             {tarife.tip === "cok_zamanli" && <>
               <label className="girdi-etiket">Gündüz 06–17 (TL/MWh)
-                <input className="girdi" style={{ width: 110 }} inputMode="decimal" value={tarife.gunduz_tl_mwh ?? ""} onChange={(e) => setTarife({ ...tarife, gunduz_tl_mwh: Number(e.target.value) })} /></label>
+                <input className="girdi" style={{ width: 110 }} inputMode="decimal" {...tarifeSayi("gunduz_tl_mwh")} /></label>
               <label className="girdi-etiket">Puant 17–22 (TL/MWh)
-                <input className="girdi" style={{ width: 110 }} inputMode="decimal" value={tarife.puant_tl_mwh ?? ""} onChange={(e) => setTarife({ ...tarife, puant_tl_mwh: Number(e.target.value) })} /></label>
+                <input className="girdi" style={{ width: 110 }} inputMode="decimal" {...tarifeSayi("puant_tl_mwh")} /></label>
               <label className="girdi-etiket">Gece 22–06 (TL/MWh)
-                <input className="girdi" style={{ width: 110 }} inputMode="decimal" value={tarife.gece_tl_mwh ?? ""} onChange={(e) => setTarife({ ...tarife, gece_tl_mwh: Number(e.target.value) })} /></label></>}
+                <input className="girdi" style={{ width: 110 }} inputMode="decimal" {...tarifeSayi("gece_tl_mwh")} /></label></>}
             {tarife.tip === "yekdem" && <>
               <label className="girdi-etiket">USD cent/kWh
-                <input className="girdi" style={{ width: 100 }} inputMode="decimal" value={tarife.usd_cent_kwh ?? ""} onChange={(e) => setTarife({ ...tarife, usd_cent_kwh: Number(e.target.value) })} /></label>
+                <input className="girdi" style={{ width: 100 }} inputMode="decimal" {...tarifeSayi("usd_cent_kwh")} /></label>
               <label className="girdi-etiket">Kur (TL/USD)
-                <input className="girdi" style={{ width: 90 }} inputMode="decimal" value={tarife.kur_tl_usd ?? ""} onChange={(e) => setTarife({ ...tarife, kur_tl_usd: Number(e.target.value) })} /></label></>}
+                <input className="girdi" style={{ width: 90 }} inputMode="decimal" {...tarifeSayi("kur_tl_usd")} /></label></>}
             <button className="dugme" onClick={tarifeKaydet}>Kaydet</button>
             <button className="dugme" onClick={() => api.tarifeAyarla(plantId, null).then(() => setTarifeMesaj("Kaldırıldı.")).catch(() => {})}>Kaldır</button>
             {tarifeMesaj && <span className={`ayar-durum ${tarifeMesaj.startsWith("Kayded") || tarifeMesaj.startsWith("Kald") ? "ok" : "hata"}`}>{tarifeMesaj}</span>}
