@@ -56,7 +56,10 @@ export function Cubuklar({ etiketler, degerler, birim, vurguIdx, yukseklik = 260
                : (oku("--ch-cubuk") || "#6FA98A"),
           borderType: !tam(i) ? "dashed" as const : "solid" as const,
           borderColor: !tam(i) ? `rgba(${nr},.5)` : "transparent",
-          borderWidth: !tam(i) ? 1 : 0 } })),
+          borderWidth: !tam(i) ? 1 : 0 },
+          // v2.311: eksik-veri cubugunun degeri tam agirlikta basiliyordu —
+          // hayalet cubugun rakami kendinden emin okunuyordu.
+          label: tam(i) ? undefined : { color: oku("--soluk") } })),
         label: { show: true, position: "top", color: oku("--ikincil"),
                  fontFamily: mono, fontSize: 11,
                  formatter: (p: unknown) =>
@@ -74,7 +77,9 @@ export function Cubuklar({ etiketler, degerler, birim, vurguIdx, yukseklik = 260
       ],
     } as EChartsOption;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [etiketler, degerler, vurguIdx, n]);
+  // v2.311: kapsamPct/beklenti deps'te yoktu; Aylik ilk kez kapsamPct gecirmeye
+  // basladigi icin veri tazelendiginde bayat option riski dogardi.
+  }, [etiketler, degerler, kapsamPct, beklenti, vurguIdx, n]);
 
   return <EChart option={option} height={yukseklik}
     ariaLabel={`${etiketler.length} sütunlu üretim grafiği, ${birim}`} />;

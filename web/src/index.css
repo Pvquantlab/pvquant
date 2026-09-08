@@ -257,6 +257,11 @@ table.veri td:first-child { white-space: nowrap; }
    "9.086hesaplanan". Aynı kök dış erişimde başlığı eziyordu ("Son kullanımDurum").
    border-collapse:collapse yüzünden border-spacing geçersiz — dolgu tek yol. */
 table.veri th + th, table.veri td + td { padding-left: 14px; }
+/* v2.311: çok sütunlu yoğun dizi tabloları (19 yıllık beklenti, 20 sütun) — TÜM
+   sütunları sağa dayalı olduğu için çakışma riski yok; oluk orada yalnız taşma
+   üretiyordu (ölçüldü: 850px kaba 1058px tablo, 208px taşma). Bu tablolar
+   otomatik yerleşimin kendi payına bırakılır. */
+table.veri.sik th + th, table.veri.sik td + td { padding-left: 0; }
 table.veri td:not(:first-child) { white-space: normal; }
 @media (max-width: 560px) { table.veri td:first-child { white-space: normal; } }
 table.veri tbody tr:hover td { background: var(--yuzey); }

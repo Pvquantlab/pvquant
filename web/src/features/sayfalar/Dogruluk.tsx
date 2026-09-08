@@ -182,8 +182,15 @@ export function Dogruluk({ plantId }: { plantId: string }) {
       xAxis: [
         { type: "category", data: gunler, gridIndex: 0, axisTick: { show: false },
           axisLine: { lineStyle: { color: kenar } },
+          /* v2.311: yalnız gün numarası basılıyordu ("09", "10") — hangi ay
+             olduğu okunmuyordu. Ay, ilk sütunda ve ay değişiminde yazılır;
+             kalabalık 30 sütunlu pencerede yine sade kalır. */
           axisLabel: { color: soluk, fontFamily: mono, fontSize: 10,
-            formatter: (t: string) => t.slice(8) } },
+            formatter: (t: string, i: number) => {
+              const oncekiAy = i > 0 ? gunler[i - 1]?.slice(5, 7) : null;
+              return oncekiAy === t.slice(5, 7)
+                ? t.slice(8) : `${t.slice(8)}.${t.slice(5, 7)}`;
+            } } },
         { type: "value", gridIndex: 1, splitLine: { show: false },
           axisLine: { show: false }, axisTick: { show: false },
           axisLabel: { show: false },
@@ -389,10 +396,19 @@ export function Dogruluk({ plantId }: { plantId: string }) {
         <span className="cip">Kapsanan dönem: {donemYaz(donemIlk, donemSon)}</span>
       </>}>
       <div className="ızgara satir-4" style={{ marginBottom: 14 }}>
-        <Kpi etiket={`WMAPE · 0-24s · ${k.gun_sayisi} gün ort.`}
-             deger={`%${sayiTr(k.wmape_ort ?? 0, 1)}`} alt={deltaCip} />
-        <Kpi etiket="Naife göre üstünlük" deger={`%${sayiTr(k.naife_ustunluk_pct ?? 0)}`}
-             alt="referans: dün-aynı-saat, gök açıklığıyla ölçekli" />
+        {/* v2.311: ?? 0 yokluğu ÖLÇÜME çeviriyordu — eşleşmiş gün yokken kanıt
+            sayfasının en tepesi "%0,0 WMAPE" ile kusursuzluk ilan ediyordu.
+            İki KPI ayrı denetlenir: backend kova ve skill_vs_naive'i bağımsız
+            hesaplıyor, tek bayrak dolu-WMAPE + null-naif vakasını kaçırır. */}
+        <Kpi etiket={k.wmape_ort == null ? "WMAPE · 0-24s" : `WMAPE · 0-24s · ${k.gun_sayisi} gün ort.`}
+             deger={k.wmape_ort == null ? "—" : `%${sayiTr(k.wmape_ort, 1)}`}
+             alt={k.wmape_ort == null
+               ? "henüz eşleşmiş gün yok — gece karnesinde birikiyor" : deltaCip} />
+        <Kpi etiket="Naife göre üstünlük"
+             deger={k.naife_ustunluk_pct == null ? "—" : `%${sayiTr(k.naife_ustunluk_pct)}`}
+             alt={k.naife_ustunluk_pct == null
+               ? "referans karşılaştırması için eşleşmiş gün birikmedi"
+               : "referans: dün-aynı-saat, gök açıklığıyla ölçekli"} />
         <Kpi etiket="Karne günü" deger={sayiTr(new Set(k.gunluk.map((g) => g.tarih)).size)}
              birim="gün" alt="kesintisiz kanıt geçmişi" />
         <Kpi etiket="Günlük sapma μ · σ"
@@ -606,8 +622,15 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           <p className="soluk" style={{ margin: 0 }}>D-1 15:30 öncesi verilmiş koşu ile gerçekleşenin eşleştiği gün henüz yok; koşular ve ölçüm biriktikçe burada görünür.</p>
         )}
       </Kart>
+      {/* v2.311: rozet "son 30 gün" diyordu ama pencerede yalnız EŞLEŞMİŞ günler
+          var (canlıda 2 gün); rozet gerçekten çizileni söylesin. */}
       <Kart baslik="Saat × gün hata ısı haritası"
-        sag={<span className="cip">son 30 gün · 0-24s · {hm?.tz ?? "—"}</span>}>
+        sag={<span className="cip">
+          {hm && hm.gunler.length > 1
+            ? `${sayiTr(hm.gunler.length)} gün · ${donemYaz(hm.gunler[0], hm.gunler[hm.gunler.length - 1])}`
+            : hm && hm.gunler.length === 1
+              ? `tek gün · ${donemYaz(hm.gunler[0], hm.gunler[0]).replace(/^\d+ – /, "")}`
+              : "son 30 gün"} · 0-24s · {hm?.tz ?? "—"}</span>}>
         {hm && hm.gunler.length > 0 ? (
           <>
             <div className="grafik-kaydir"><div>
@@ -635,7 +658,10 @@ export function Dogruluk({ plantId }: { plantId: string }) {
       </Kart>
       <Kart baslik="Günlük sapma dağılımı (tahmin − gerçekleşen)"
         sag={<span className="cip">
-          {hd?.ndays ?? 0} geçerli gün · μ {hd?.mu ?? "—"} · σ {hd?.sd ?? "—"} MWh
+          {/* v2.311: μ ve σ burada sayiTr'siz basılıyordu — aynı sayı KPI'da
+              "-0,03", çipte "-0.03". Türkçe ondalık ayracı kaybolup panel iki
+              farklı sayı yazımı gösteriyordu. */}
+          {hd ? sayiTr(hd.ndays) : "—"} geçerli gün · μ {hd?.mu != null ? sayiTr(hd.mu, 2) : "—"} · σ {hd?.sd != null ? sayiTr(hd.sd, 2) : "—"} MWh
           {hd?.p10 != null && hd?.p90 != null
             ? ` · P10–P90: ${sayiTr(hd.p10, 2)} – ${sayiTr(hd.p90, 2)}` : ""}
         </span>}>

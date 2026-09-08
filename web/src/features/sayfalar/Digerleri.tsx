@@ -82,7 +82,12 @@ function KayipAgaciKarti({ plantId }: { plantId: string }) {
               <tbody className="mono">
                 {(k.satirlar ?? []).map((r) => (
                   <tr key={r.adim}><td style={{ textAlign: "left", fontFamily: "var(--font)" }}>{r.etiket}</td><td>{sayiTr(r.giren_kwh / 1000, 0)}</td>
-                    <td style={{ color: r.kayip_pct < 0 ? "var(--basari-metin)" : r.kayip_pct > 3 ? "var(--uyari-metin)" : undefined }}>{r.kayip_pct === 0 ? "—" : `%${sayiTr(r.kayip_pct, 1)}`}</td>
+                    {/* v2.311: renk BÜYÜKLÜKLE tetikleniyordu (kayıp > %3 kırmızı,
+                        kazanç yeşil). "Sıcaklık %4,5" normal yaz fizigi iken kırmızı
+                        yanıyor, "%-13,8" düzleme aktarma kazancı yeşil yanıyordu.
+                        Anayasa: kırmızı/amber YALNIZ durum bildirir. Büyüklük sırası
+                        zaten okunuyor — sütun sağa dayalı, mono ve tabular-nums. */}
+                    <td>{r.kayip_pct === 0 ? "—" : `%${sayiTr(r.kayip_pct, 1)}`}</td>
                     <td>{sayiTr(r.cikan_kwh / 1000, 0)}</td><td style={{ textAlign: "left", fontFamily: "var(--font)", color: "var(--soluk)" }}>{r.kaynak}</td></tr>))}
               </tbody>
             </table>

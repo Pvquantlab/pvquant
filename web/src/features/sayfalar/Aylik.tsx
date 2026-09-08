@@ -175,7 +175,7 @@ export function Aylik({ plantId }: { plantId: string }) {
                      : bk.bilesenler ? `yıllar arası %${sayiTr((bk.bilesenler.yillar_arasi ?? 0) * 100, 1)} · kaynak %${sayiTr((bk.bilesenler.kaynak ?? 0) * 100, 0)} · model %${sayiTr((bk.bilesenler.model_zinciri ?? bk.bilesenler.model ?? 0) * 100, 1)}` : ""} />
             </div>
             <div className="grafik-kaydir">
-              <table className="veri" style={{ fontSize: 12 }}>
+              <table className="veri sik" style={{ fontSize: 12 }}>
                 <thead><tr><th>Yıl</th>{(bk.yillar ?? []).map((y) => <th key={y.yil}>{y.yil}</th>)}</tr></thead>
                 <tbody className="mono">
                   <tr><td>Üretim (MWh)</td>{(bk.yillar ?? []).map((y) => <td key={y.yil}>{sayiTr(y.kwh / 1000, 0)}</td>)}</tr>
@@ -286,8 +286,14 @@ export function Aylik({ plantId }: { plantId: string }) {
       </Kart>
       {o && o.aylik.length > 0 && (
         <Kart baslik="Gerçekleşen üretim — son 12 ay (SCADA)">
+          {/* v2.311: kapsamPct GEÇİLMİYORDU — Cubuklar'daki `!kapsamPct` kısa devresi
+              her ayı "tam" sayıyor, yarım ay (canlıda 10 günlük Ağustos) tam aylarla
+              aynı solid çubukla çiziliyor ve "en düşük ay" seçilebiliyordu. Aynı veri
+              Santralim'de dürüst çiziliyor (Santralim.tsx:594) — iki sayfa artık aynı
+              dili konuşuyor: eksik kapsam kesikli/soluk, tooltip kapsamı söylüyor. */}
           <Cubuklar etiketler={o.aylik.map((a) => a.ay)}
                     degerler={o.aylik.map((a) => a.mwh)}
+                    kapsamPct={o.aylik.map((a) => a.kapsam_pct)}
                     birim="MWh" vurguIdx={o.aylik.length - 1} yukseklik={220} />
         </Kart>
       )}
