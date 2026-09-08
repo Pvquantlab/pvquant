@@ -12,11 +12,13 @@
   --amber-metin: #9A5C07;   /* amber ailesinin METIN icin okunur tonu (4.5:1) */
   --uyari: #C9502E; --uyari-zemin: #FBEEEA;
   --basari: #15803D;
-  --zemin: #EAF0F7; --kart: rgba(255,255,255,.74); --yuzey: rgba(16,29,48,.05); --yuzey2: rgba(16,29,48,.09);
+  /* v2.305 E2 — 'Derin mavi kâğıt': mavi-gri kimlik korunur, zemin bir tık koyulaşır ki
+     opak beyaz kart üstünde net yüzsün (cam kart ayrımı 1,11 → opak beyaz 1,22). */
+  --zemin: #E3E9F2; --kart: #FFFFFF; --yuzey: rgba(16,29,48,.05); --yuzey2: rgba(16,29,48,.09);
   --metin: #101D30; --ikincil: #2C3E57; --soluk: #45586F;
   --cubuk-vurgu: #166534;
-  --kenar: rgba(16,29,48,.18); --izgara: rgba(16,29,48,.11);
-  --yan: rgba(255,255,255,.78); --yan-metin: #2C3E57; --yan-aktif: rgba(22,163,74,.10); --yan-cizgi: rgba(16,29,48,.14);
+  --kenar: #D2DBE7; --izgara: rgba(16,29,48,.11);
+  --yan: #E3E9F2; --yan-metin: #2C3E57; --yan-aktif: rgba(22,163,74,.10); --yan-cizgi: rgba(16,29,48,.14);
   --font: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
   --mono: 'IBM Plex Mono', ui-monospace, monospace;
   --t-buyuk: 27px; --t-govde: 14px; --t-ikincil: 13px; --t-etiket: 11px;
@@ -304,11 +306,8 @@ table.veri tbody tr:hover td { background: var(--yuzey); }
    buzlu cam yuzeyler. Kaynak mockup:
    docs/design/redesign-2026/varyant-f-panel-cami.html
    ============================================================ */
-body { background:
-  linear-gradient(rgba(16,29,48,.05) 1px, transparent 1px),
-  linear-gradient(90deg, rgba(16,29,48,.05) 1px, transparent 1px),
-  radial-gradient(1400px 700px at 72% -12%, #FFFFFF 0%, var(--zemin) 58%);
-  background-size: 46px 46px, 46px 46px, auto; background-attachment: fixed; }
+/* v2.305 E2: açık yüzde de hücre dokusu ve cam degrade kalktı — iki yüz artık aynı dilde. */
+body { background: var(--zemin); }
 /* v2.291 — Çift Yüz geçişi: Oto kipinde sayfa değişince zemin yumuşak döner
    (yalnız body; kartlar/grafikler anında — karışık ara kare olmasın). */
 body { transition: background-color .15s ease, color .15s ease; }
@@ -318,20 +317,8 @@ body { transition: background-color .15s ease, color .15s ease; }
    Açık yüz bilerek dokunulmadı (ayrı adım). */
 [data-tema="koyu"] body { background: var(--zemin);
   -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-.kart, .kpi { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
-.yan { backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
-.ust { background: rgba(255,255,255,.86);
-       backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
-[data-tema="koyu"] .ust { background: var(--zemin); }
-/* v2.304 D1: koyu yüzde bulanıklık yok — yüzeyler opak, kenarlar keskin */
-[data-tema="koyu"] .kart, [data-tema="koyu"] .kpi, [data-tema="koyu"] .yan,
-[data-tema="koyu"] .ust, [data-tema="koyu"] .palet {
-  backdrop-filter: none; -webkit-backdrop-filter: none; }
-/* blur desteklemeyen tarayici: duz karta dus — cam olmadan da okunur */
-@supports not ((backdrop-filter: blur(8px)) or (-webkit-backdrop-filter: blur(8px))) {
-  .kart, .kpi { background: #FFFFFF; }
-  [data-tema="koyu"] .kart, [data-tema="koyu"] .kpi { background: #17243C; }
-}
+/* v2.305: yüzeyler iki yüzde de opak — bulanıklık katmanı tamamen kalktı */
+.ust { background: var(--zemin); }
 
 /* ============================================================
    v2.216 — SaaS kromu (durustluk suzgeciyle): yalniz gercek
@@ -354,7 +341,6 @@ body { transition: background-color .15s ease, color .15s ease; }
 [data-tema="koyu"] .palet-ort { background: rgba(3,8,16,.55); }
 .palet { width: min(440px, calc(100vw - 32px)); background: var(--kart);
   border: 1px solid var(--kenar); border-radius: var(--rk); overflow: hidden;
-  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   box-shadow: 0 18px 48px rgba(3,8,16,.28); }
 .palet-girdi { width: 100%; border: 0; border-bottom: 1px solid var(--izgara);
   background: transparent; padding: 12px 14px; font: inherit;
@@ -383,10 +369,6 @@ body { transition: background-color .15s ease, color .15s ease; }
   background: var(--marka-zemin); color: var(--marka-koyu); font-weight: 600;
   font-size: 11px; display: grid; place-items: center; font-family: var(--font);
   flex-shrink: 0; }
-@supports not ((backdrop-filter: blur(8px)) or (-webkit-backdrop-filter: blur(8px))) {
-  .palet { background: #FFFFFF; }
-  [data-tema="koyu"] .palet { background: #17243C; }
-}
 @media (max-width: 900px) {
   .arama { display: none; }
   .ust { flex-wrap: wrap; height: auto; padding: 8px 16px; gap: 8px; }
