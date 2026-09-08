@@ -553,7 +553,9 @@ export function buildChartOption(input: BuildInput): EChartsOption {
             itemStyle: { color: T.actualLine },
             silent: true,
             label: {
-              show: !cokGun, position: "bottom", distance: narrow ? 8 : 14,
+              // v2.307: "doğuş 06:26" etiketi "[saat · yerel]" eksen adına biniyordu;
+              // etiket tikin ÜSTÜNE alındı (grafik içine), eksen adı altta serbest kaldı.
+              show: !cokGun, position: "top", distance: narrow ? 6 : 8,
               color: T.mutedText, fontFamily: "monospace",
               fontSize: narrow ? 9 : 10,
             },

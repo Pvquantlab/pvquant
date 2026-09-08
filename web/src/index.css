@@ -222,13 +222,19 @@ h2 { font-size: 19px; }
 
 /* ---------- tablo: Solargis dili — yalniz yatay ince cizgiler ---------- */
 table.veri { width: 100%; border-collapse: collapse; font-size: 13px; }
-table.veri th { text-align: right; font-weight: 500; color: var(--soluk);
-                font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em;
-                text-transform: uppercase;
+/* v2.307: büyük harf dönüşümü KALDIRILDI — birimleri eziyordu (kWp→KWP, MWh→MWH).
+   Başlıklar kodda zaten doğru yazılı; punto bir tık büyüdü, aralık kısıldı. */
+table.veri th { text-align: right; font-weight: 600; color: var(--soluk);
+                font-family: var(--mono); font-size: 11px; letter-spacing: .02em;
                 padding: 0 0 8px; border-bottom: 1px solid var(--kenar); }
 table.veri th:first-child, table.veri td:first-child { text-align: left; }
 table.veri td { text-align: right; padding: 7px 0; border-bottom: 1px solid var(--izgara); }
 table.veri tbody tr:last-child td { border-bottom: 0; }
+/* v2.307: etiket sütunu bölünmesin — "Performans oranı (30 g)" gibi parantezli
+   etiketler dar ızgarada ikiye ayrılıp değerin altına düşüyordu. Değer sütunu esner. */
+table.veri td:first-child { white-space: nowrap; padding-right: 14px; }
+table.veri td:not(:first-child) { white-space: normal; }
+@media (max-width: 560px) { table.veri td:first-child { white-space: normal; } }
 table.veri tbody tr:hover td { background: var(--yuzey); }
 
 /* ---------- kontroller ---------- */
