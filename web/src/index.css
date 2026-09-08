@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
 :root {
   /* v2.215 — "Panel Cami" kimligi (docs/design/redesign-2026/varyant-f):
@@ -19,7 +19,9 @@
   --cubuk-vurgu: #166534;
   --kenar: #D2DBE7; --izgara: rgba(16,29,48,.11);
   --yan: #E3E9F2; --yan-metin: #2C3E57; --yan-aktif: rgba(22,163,74,.10); --yan-cizgi: rgba(16,29,48,.14);
-  --font: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  /* v2.306: gövde ailesi Inter — küçük punto okunurluğunda ölçülen en dolgun aile
+     (x-yüksekliği 0,546 · x/cap 0,750). Mono eşi ayrı karar; şimdilik Plex Mono. */
+  --font: 'Inter', system-ui, -apple-system, sans-serif;
   --mono: 'IBM Plex Mono', ui-monospace, monospace;
   --t-buyuk: 27px; --t-govde: 14px; --t-ikincil: 13px; --t-etiket: 11px;
   --satir: 1.55;
@@ -95,7 +97,11 @@ button:focus-visible, select:focus-visible, a:focus-visible, input:focus-visible
 body { margin: 0; background: var(--zemin); color: var(--metin);
        font-family: var(--font); font-size: var(--t-govde); line-height: var(--satir);
        text-rendering: optimizeLegibility;
-       font-feature-settings: 'ss03'; }
+       /* v2.306: Inter değişken sürümü — optik boyut ekseni küçük puntoda harfleri
+          otomatik açar. NOT: 1/l/I ayrımını güçlendiren cv01/cv05 karakter varyantları
+          Google Fonts sürümünde YOK (ölçüldü, etkisi 0); gerekirse font self-host edilip
+          açılır. Mono eşi ayrı karar — şimdilik Plex Mono. */
+       font-optical-sizing: auto; }
 .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -0.025em; color: var(--metin); }
 h1 { font-size: 26px; letter-spacing: -0.03em; }
