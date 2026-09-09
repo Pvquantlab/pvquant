@@ -655,7 +655,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
       </div>
       {(selale.mape || selale.sapma) && (
         <Kart baslik="Kalibrasyonun etkisi — fizikten kalibre modele"
-          sag={<span className="cip">mavi: iyileşme · kızıl: bedel</span>}>
+          sag={<span className="cip">mavi: iyileşme · kızıl: bedel · eksen kırpılmış</span>}>
           <div className="ızgara" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)" }}>
             {selale.mape && (
               <div>

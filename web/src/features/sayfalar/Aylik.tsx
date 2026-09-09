@@ -128,7 +128,7 @@ export function Aylik({ plantId }: { plantId: string }) {
       <Kart baslik="Beklenti birikiyor">
         <p style={{ fontSize: 13, color: "var(--ikincil)", margin: 0 }}>
           İklim beklentisi henüz hesaplanmadı — worker her ayın 1'inde
-          20 yıllık arşivden tazeler. İlk hesap sonrası bu sayfa dolar.
+          uzun dönem arşivden tazeler. İlk hesap sonrası bu sayfa dolar.
         </p>
       </Kart>
     </Sayfa>);
@@ -139,10 +139,13 @@ export function Aylik({ plantId }: { plantId: string }) {
   const hesap = new Date(b.hesap_zamani).toLocaleDateString("tr-TR",
     { day: "numeric", month: "short", year: "numeric" });
 
+  // v2.314: üst çipteki "20 yıl" sabit metindi ve verisiyle çelişiyordu — gerçek
+  // pencere PVGIS 2005–2023 = 19 yıl; sayıyı yalnız kendi verisini bilen çipler
+  // söyler (GHI kartı yil_sayisi, bankable donem). Dönem API'den gelince buraya döner.
   return (
     <Sayfa baslik="Aylık beklenti"
       alt="İklimden gelen ay bazlı üretim zarfı — kısa ufuk tahmini değildir; NWP aya uzatılmaz."
-      sag={<span className="cip">Kaynak: 20 yıl arşiv · hesap {hesap}</span>}>
+      sag={<span className="cip">Kaynak: uzun dönem arşiv · hesap {hesap}</span>}>
       <div className="ızgara satir-3" style={{ marginBottom: 14 }}>
         <Kpi etiket={`${AYLAR[buAy - 1]} · P10`}
              deger={k?.p10 !== null && k ? sayiTr(k.p10) : "—"}
@@ -196,10 +199,10 @@ export function Aylik({ plantId }: { plantId: string }) {
       </Kart>
       <Kart baslik="Aylık GHI — uzun dönem P50 ve P10–P90 aralığı">
         <EChart option={option} height={320}
-          ariaLabel="12 ay için 20 yıllık GHI serpilisi, P10-P90 bandı ve P50 çizgisi" />
+          ariaLabel="12 ay için uzun dönem GHI serpilisi, P10-P90 bandı ve P50 çizgisi" />
         <p style={{ fontSize: 12, color: "var(--soluk)", margin: "12px 0 0" }}>
           <b style={{ color: "var(--ikincil)" }}>Bu grafik ayın iklim zarfıdır:</b>{" "}
-          yeşil sütun 20 yıllık arşivin medyan (P50) ışınımı, çentikli çizgi
+          yeşil sütun arşivin medyan (P50) ışınımı, çentikli çizgi
           P10–P90 aralığıdır — yılların %80'i bu bandın içinde kalır.{" "}
           <b style={{ color: "var(--ikincil)" }}>Nasıl okunur:</b> bu bir kısa
           ufuk tahmini değildir; "bu ay normalde ne getirir" sorusunun cevabıdır.
@@ -285,7 +288,9 @@ export function Aylik({ plantId }: { plantId: string }) {
         </p>
       </Kart>
       {o && o.aylik.length > 0 && (
-        <Kart baslik="Gerçekleşen üretim — son 12 ay (SCADA)">
+        <Kart baslik="Gerçekleşen üretim — verisi olan son 12 ay (SCADA)">
+          {/* v2.314: eksik takvim ayı (canlıda Mayıs 2026) eksenden sessizce düşüyor —
+              başlık iddiayı veriye uydurur; iç boşluk API'de doldurulunca geri döner. */}
           {/* v2.311: kapsamPct GEÇİLMİYORDU — Cubuklar'daki `!kapsamPct` kısa devresi
               her ayı "tam" sayıyor, yarım ay (canlıda 10 günlük Ağustos) tam aylarla
               aynı solid çubukla çiziliyor ve "en düşük ay" seçilebiliyordu. Aynı veri
