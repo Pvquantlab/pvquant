@@ -102,7 +102,12 @@ export function isiTonu(t: number, koyu: boolean): string {
     Math.round(a + (durak[i + 1][c] - a) * f)).join(",") + ")";
 }
 
-/** Parlak amber hucrelerde koyu metin (4.5:1); digerlerinde tema metni. */
+/** Hucre metni murekkebi — 0,001 adimli rampa taramasiyla OLCULDU (v2.313):
+ *  koyu yuzde eski cift (#F4F8FD/#14100A, esik 0,55) en kotu hucrede 2,67:1
+ *  veriyordu ve o ciftle HICBIR esik 4,5'i gecmiyor (en iyi 4,23 @ 0,705) —
+ *  uc murekkep + esik 0,698 ile min 4,61. Acik yuzde koyu murekkep #000000'a
+ *  cekilince min 4,47 -> 4,96 (esik 0,62 degismedi). */
 export function isiMetni(t: number, koyu: boolean): string {
-  return (koyu ? t > 0.55 : t > 0.62) ? "#14100A" : "var(--pi-metin)";
+  return koyu ? (t > 0.698 ? "#000000" : "#FFFFFF")
+              : (t > 0.62 ? "#000000" : "var(--pi-metin)");
 }
