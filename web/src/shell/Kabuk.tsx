@@ -97,7 +97,15 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
   const [santralFormu, setSantralFormu] = useState(false);
   const [sorgu, setSorgu] = useState("");
   const [secili, setSecili] = useState(0);
-  useEffect(() => { document.documentElement.dataset.tema = koyu ? "koyu" : "acik"; }, [koyu]);
+  // v2.320: tema degisimi ATOMIK — sinif ~120ms tum transition'lari susturur ki
+  // dugme/cip gibi .12s yumusatmali ogeler de zeminle AYNI karede donsun.
+  useEffect(() => {
+    const kok = document.documentElement;
+    kok.classList.add("tema-gecisi");
+    kok.dataset.tema = koyu ? "koyu" : "acik";
+    const id = window.setTimeout(() => kok.classList.remove("tema-gecisi"), 120);
+    return () => window.clearTimeout(id);
+  }, [koyu]);
   // v2.300: kayan oturum — panel açıkken jeton 30 dk'da bir sessizce tazelenir (gece yarısı girişe düşme biter);
   // tarayıcı kapalıyken 12 saatlik ömür değişmez. Pasifleştirilen kullanıcının tazelemesi 401 ile girişe düşer.
   useEffect(() => {

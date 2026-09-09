@@ -351,10 +351,15 @@ table.veri tbody tr:hover td { background: var(--yuzey); }
    ============================================================ */
 /* v2.305 E2: açık yüzde de hücre dokusu ve cam degrade kalktı — iki yüz artık aynı dilde. */
 body { background: var(--zemin); }
-/* v2.291 — Çift Yüz geçişi: Oto kipinde sayfa değişince zemin yumuşak döner
-   (yalnız body; kartlar/grafikler anında — karışık ara kare olmasın). */
-body { transition: background-color .15s ease, color .15s ease; }
-@media (prefers-reduced-motion: reduce) { body { transition: none; } }
+/* v2.320 — v2.291'in 150ms zemin yumuşatması KALDIRILDI: yalnız body'ye
+   uygulandığı için tam da kaçınmak istediği karışık ara kareyi üretiyordu —
+   kartlar/grafikler anında dönerken zemin+metin 150ms geriden geliyordu
+   (ölçüldü: kartlar ~152ms'de tek karede, zemin 269ms'de). Kanvas grafikler
+   CSS ile solamayacağından tema geçişinin dürüst tek yolu ATOMİK olması:
+   geçiş anında Kabuk bu sınıfı ~120ms takıp tüm transition'ları susturur;
+   hover/odak yumuşatmaları günlük kullanımda aynen kalır. */
+.tema-gecisi, .tema-gecisi *, .tema-gecisi *::before, .tema-gecisi *::after {
+  transition: none !important; }
 
 /* v2.304 D1: koyu yüzde hücre dokusu ve cam degrade kalktı — zemin düz, netlik kartta.
    Açık yüz bilerek dokunulmadı (ayrı adım). */
