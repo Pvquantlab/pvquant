@@ -139,13 +139,16 @@ export function Aylik({ plantId }: { plantId: string }) {
   const hesap = new Date(b.hesap_zamani).toLocaleDateString("tr-TR",
     { day: "numeric", month: "short", year: "numeric" });
 
-  // v2.314: üst çipteki "20 yıl" sabit metindi ve verisiyle çelişiyordu — gerçek
-  // pencere PVGIS 2005–2023 = 19 yıl; sayıyı yalnız kendi verisini bilen çipler
-  // söyler (GHI kartı yil_sayisi, bankable donem). Dönem API'den gelince buraya döner.
+  // v2.317 (K2a): pencere artık VERIDEN — /monthly donem+yil_sayisi döndürüyor
+  // (kaynak iklim_yil: matrisle aynı satırlar, çip ile matris tutarlı). API eski
+  // sürümse ya da hesap yoksa v2.314'ün nötr metnine düşülür — sayı uydurulmaz.
   return (
     <Sayfa baslik="Aylık beklenti"
       alt="İklimden gelen ay bazlı üretim zarfı — kısa ufuk tahmini değildir; NWP aya uzatılmaz."
-      sag={<span className="cip">Kaynak: uzun dönem arşiv · hesap {hesap}</span>}>
+      sag={<span className="cip">
+        {b.donem != null && b.yil_sayisi != null
+          ? `Kaynak: ${b.donem} arşivi · ${sayiTr(b.yil_sayisi)} yıl · hesap ${hesap}`
+          : `Kaynak: uzun dönem arşiv · hesap ${hesap}`}</span>}>
       <div className="ızgara satir-3" style={{ marginBottom: 14 }}>
         <Kpi etiket={`${AYLAR[buAy - 1]} · P10`}
              deger={k?.p10 !== null && k ? sayiTr(k.p10) : "—"}

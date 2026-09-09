@@ -269,6 +269,9 @@ export interface HataMatrisi {
 export interface AylikBeklenti {
   plant_id: string;
   hesap_zamani: string;
+  /** v2.317 — iklim penceresi veriden ("2006\u20132025"); hesaplanmadiysa null. */
+  donem?: string | null;
+  yil_sayisi?: number | null;
   beklenti: { ay: number; p10: number | null; p50: number | null;
               p90: number | null; yil_sayisi: number }[];
   yillik: { yil: number; ay: number; ghi_kwh_m2: number | null }[];

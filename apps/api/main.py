@@ -1183,9 +1183,15 @@ def monthly(plant_id: str, claims=Depends(gecerli_kullanici)):
     if b.empty:
         raise HTTPException(404, "iklim beklentisi henuz hesaplanmadi")
     y = iklim_service.iklim_yil_oku(claims["tenant_id"], plant_id)
+    # v2.317 (K2a): pencereyi VERI soyler — ust rozetteki sabit "20 yil" iddiasi
+    # kendi kartlariyla celisiyordu. Kaynak iklim_yil: matrisle ayni satirlar,
+    # yani cip ile matris insa geregi tutarli kalir. Bos ise durust null.
     return {
         "plant_id": plant_id,
         "hesap_zamani": b["hesap_zamani"].max().isoformat(),
+        "donem": (f"{int(y['yil'].min())}\u2013{int(y['yil'].max())}"
+                  if not y.empty else None),
+        "yil_sayisi": int(y["yil"].nunique()) if not y.empty else None,
         "beklenti": [
             {"ay": int(r.ay), "p10": _kw(r.ghi_p10_kwh_m2),
              "p50": _kw(r.ghi_p50_kwh_m2), "p90": _kw(r.ghi_p90_kwh_m2),
