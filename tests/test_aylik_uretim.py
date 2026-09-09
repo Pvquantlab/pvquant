@@ -32,3 +32,19 @@ def test_energy_kwh_bos_power_kw_yedegi():
 def test_bos_girdi_bos_cikti():
     o = aylik_ozet(pd.DataFrame())
     assert o.empty and list(o.columns) == ["ay", "uretim_mwh", "saat", "kapsam_pct"]
+
+
+def test_ic_bosluk_ayi_satir_olarak_dogar():
+    """v2.316: gozlenen ilk->son ay arasindaki bos takvim ayi listeden DUSMEZ —
+    uretim NaN (API null basar), saat 0, kapsam 0. Bastaki aylar uretilmez."""
+    mart = _df(n_saat=24 * 10)                                   # 2025-03
+    mayis = pd.DataFrame({"energy_kwh": 100.0, "power_kw": 100.0},
+                         index=pd.date_range("2025-05-01", periods=24 * 10,
+                                             freq="h", tz="UTC"))
+    o = aylik_ozet(pd.concat([mart, mayis]))
+    assert list(o["ay"]) == ["2025-03", "2025-04", "2025-05"]    # Nisan atlanmadi
+    nisan = o[o["ay"] == "2025-04"].iloc[0]
+    assert np.isnan(nisan["uretim_mwh"])                          # 0 uydurulmadi
+    assert nisan["saat"] == 0 and nisan["kapsam_pct"] == 0.0
+    # onceki davranis korunur: bastaki aylara dolgu yok
+    assert o.iloc[0]["ay"] == "2025-03"

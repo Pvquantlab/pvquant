@@ -6,7 +6,7 @@ import { api } from "../../api/client";
 import type { SantralOzeti, TahminSerisi, GunesYolu, SaatAyMatrisi } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
-import { Kart, Sayfa, sayiTr, isiTonu, isiMetni } from "../sayfalar/parcalar";
+import { Kart, Sayfa, sayiTr, sayiTrN, isiTonu, isiMetni } from "../sayfalar/parcalar";
 import ProductionForecastChart from "../sayfalar/ProductionForecastChart";
 import { t0Hesapla, simdiDegeri, dilimle } from "../sayfalar/tahminPencere";
 import { Cubuklar } from "./Cubuklar";
@@ -650,9 +650,9 @@ export function Santralim({ plantId }: { plantId: string }) {
             <tbody className="mono">
               {[...o.aylik].reverse().slice(0, 6).map((a) => (
                 <tr key={a.ay}>
-                  <td>{a.ay}</td><td>{sayiTr(a.mwh, 1)}</td>
+                  <td>{a.ay}</td><td>{sayiTrN(a.mwh, 1)}</td>
                   <td>{a.beklenti_mwh === null ? "—" : sayiTr(a.beklenti_mwh, 1)}</td>
-                  <td>{a.beklenti_mwh === null || a.beklenti_mwh === 0 ? "—"
+                  <td>{a.mwh === null || a.beklenti_mwh === null || a.beklenti_mwh === 0 ? "—"
                     : `${a.mwh >= a.beklenti_mwh ? "+" : "−"}%${sayiTr(
                         Math.abs((a.mwh - a.beklenti_mwh) / a.beklenti_mwh) * 100, 1)}`}</td>
                   <td style={{ color: "var(--ikincil)" }}>{sayiTr(a.kapsam_pct, 1)}</td>

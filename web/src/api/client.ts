@@ -263,7 +263,9 @@ function uyarlaOzet(g: OzetYanit): SantralOzeti {
     hava: g.hava.map((h) => ({ etiket: h.gun, sicaklik: h.derece,
                                isinim: h.kwhm2 })),
     gunler: g.gunler.map((x) => ({ etiket: x.etiket, mwh: x.mwh ?? 0 })),
-    aylik: g.aylik.map((a) => ({ ay: ayEtiketi(a.ay), mwh: a.mwh ?? 0,
+    // v2.316: mwh null GEÇİRİLİR — rapor doğrulaması dersi: buradaki ?? 0,
+    // API dürüst boşluk gönderse bile onu "0,0 MWh" ölçümüne çeviriyordu.
+    aylik: g.aylik.map((a) => ({ ay: ayEtiketi(a.ay), mwh: a.mwh,
       saglam_saat: a.saglam_saat ?? 0, kapsam_pct: a.kapsam_pct ?? 0,
       // v2.205: beklenti 0'a INDIRGENMEZ — null durust yokluktur (imlec yok)
       beklenti_mwh: a.beklenti_mwh ?? null })),

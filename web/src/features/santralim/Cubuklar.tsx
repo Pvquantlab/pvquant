@@ -8,7 +8,9 @@ import { useTema } from "../../lib/useTema";
 import { Lejant, sayiTr } from "../sayfalar/parcalar";
 
 export function Cubuklar({ etiketler, degerler, birim, vurguIdx, yukseklik = 260, ondalik = 1, kapsamPct, beklenti }:
-  { etiketler: string[]; degerler: number[]; birim: string;
+  { etiketler: string[];
+    /** v2.316 — null: takvimde var ama verisi yok; çubuk çizilmez, sıfır uydurulmaz. */
+    degerler: (number | null)[]; birim: string;
     vurguIdx?: number; yukseklik?: number; ondalik?: number;
     kapsamPct?: number[];
     /** v2.203 (D bullet imleci): donem basina beklenti-P50; null = imlec yok */
@@ -23,7 +25,7 @@ export function Cubuklar({ etiketler, degerler, birim, vurguIdx, yukseklik = 260
     // v2.118: kapsam <%50 aylar "eksik veri" sayilir — en-dusuk aramasina
     // girmez (Solargis: olculmemis donem, kotu donemle karistirilmaz)
     const tam = (i: number) => !kapsamPct || (kapsamPct[i] ?? 100) >= 50;
-    const adaylar = degerler.map((v, i) => tam(i) ? v : Infinity);
+    const adaylar = degerler.map((v, i) => (tam(i) && v != null ? v : Infinity));
     const enDusuk = adaylar.indexOf(Math.min(...adaylar));
     return {
       grid: { left: 46, right: 10, top: 26, bottom: 26 }, animation: false,
@@ -32,6 +34,7 @@ export function Cubuklar({ etiketler, degerler, birim, vurguIdx, yukseklik = 260
         formatter: (ps: unknown) => {
           const a = ps as { dataIndex: number; value: number }[];
           const i = a[0]?.dataIndex ?? 0;
+          if (degerler[i] == null) return `${etiketler[i]}: — veri yok`;
           let satir = `${etiketler[i]}: ${sayiTr(Number(a[0]?.value), ondalik)} ${birim}`;
           const b = beklenti?.[i];
           if (b !== null && b !== undefined)
@@ -87,14 +90,14 @@ export function Cubuklar({ etiketler, degerler, birim, vurguIdx, yukseklik = 260
   // için ayrıca yazılmaz. Öncelik zinciri (eksik > en düşük > vurgu) korunur —
   // vurgu ayı aynı zamanda en düşükse "son ay" öğesi de basılmaz (renk görünmüyor).
   const tamMi = (i: number) => !kapsamPct || (kapsamPct[i] ?? 100) >= 50;
-  const tamSayisi = degerler.filter((_, i) => tamMi(i)).length;
-  const adaylar2 = degerler.map((v, i) => (tamMi(i) ? v : Infinity));
+  const tamSayisi = degerler.filter((v, i) => v != null && tamMi(i)).length;
+  const adaylar2 = degerler.map((v, i) => (tamMi(i) && v != null ? v : Infinity));
   const enDusukIdx = adaylar2.indexOf(Math.min(...adaylar2));
   const ogeler = [
     ...(vurguIdx != null && vurguIdx >= 0 && tamMi(vurguIdx) && vurguIdx !== enDusukIdx
       ? [{ renk: "var(--cubuk-vurgu)", ad: "son ay" }] : []),
     ...(tamSayisi >= 2 ? [{ renk: "var(--ch-dusuk)", ad: "en düşük ay" }] : []),
-    ...(kapsamPct && degerler.some((_, i) => !tamMi(i))
+    ...(kapsamPct && degerler.some((v, i) => v != null && !tamMi(i))
       ? [{ renk: "var(--notr)", ad: "eksik veri · kapsam <%50", kesik: true }] : []),
     ...(beklenti && beklenti.some((b) => b != null)
       ? [{ renk: "var(--metin)", ad: "beklenti · P50", cizgi: true }] : []),

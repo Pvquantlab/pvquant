@@ -93,6 +93,14 @@ def aylik_ozet(df: pd.DataFrame, tz: str | None = None) -> pd.DataFrame:
     })
     ay_saat = out.index.to_timestamp().days_in_month * 24
     out["kapsam_pct"] = (out["saat"] / ay_saat * 100).round(1)
+    # v2.316: gozlenen ILK->SON ay arasindaki IC bosluklar satir olarak dogar —
+    # verisi olmayan takvim ayi eksenden sessizce dusuyordu (canlida Mayis 2026:
+    # 13 aylik aralik 12 cubukla ciziliyordu). uretim_mwh NaN kalir (API katmani
+    # _kw ile null basar: durust yokluk, 0 uydurulmaz), saat 0, kapsam 0.
+    # BASTAKI aylar uretilmez: 3 aylik verisi olan santral 9 bos yuva gormesin.
+    out = out.reindex(pd.period_range(out.index.min(), out.index.max(), freq="M"))
+    out["saat"] = out["saat"].fillna(0).astype(int)
+    out["kapsam_pct"] = out["kapsam_pct"].fillna(0.0)
     out.insert(0, "ay", out.index.astype(str))
     return out.reset_index(drop=True)
 

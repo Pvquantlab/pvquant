@@ -288,9 +288,9 @@ export function Aylik({ plantId }: { plantId: string }) {
         </p>
       </Kart>
       {o && o.aylik.length > 0 && (
-        <Kart baslik="Gerçekleşen üretim — verisi olan son 12 ay (SCADA)">
-          {/* v2.314: eksik takvim ayı (canlıda Mayıs 2026) eksenden sessizce düşüyor —
-              başlık iddiayı veriye uydurur; iç boşluk API'de doldurulunca geri döner. */}
+        <Kart baslik="Gerçekleşen üretim — son 12 ay (SCADA)">
+          {/* v2.316: iç boşluk ayı artık API'den null-mwh satırı olarak gelir (eksen
+              atlamaz, çubuk çizilmez) — v2.314'ün "verisi olan" başlığı geri döndü. */}
           {/* v2.311: kapsamPct GEÇİLMİYORDU — Cubuklar'daki `!kapsamPct` kısa devresi
               her ayı "tam" sayıyor, yarım ay (canlıda 10 günlük Ağustos) tam aylarla
               aynı solid çubukla çiziliyor ve "en düşük ay" seçilebiliyordu. Aynı veri
