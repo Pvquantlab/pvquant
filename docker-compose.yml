@@ -34,7 +34,11 @@ services:
 
   api:
     build: .                       # v2.72: worker ile ayni imaj, komut farkli
-    command: ["uvicorn", "apps.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    # v2.321: tek işçi, sayfa açılışının ~20 eşzamanlı isteğini kuyrukluyordu
+    # (ölçüldü: /summary tek başına 224ms, sayfa yükünde 1116ms). 4 süreç gerçek
+    # paralellik verir (pandas GIL'i aşılır). Not: API-anahtarı hız sınırı süreç
+    # başına sayar — 120/dk pratikte gevşer; sınır faturalama değil emniyettir.
+    command: ["uvicorn", "apps.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
     environment:
       PVQ_DB_URL: postgresql+psycopg://pvquant:${DB_PASSWORD:-pvquant_dev}@db:5432/pvquant
       PVQ_JWT_SECRET: ${PVQ_JWT_SECRET:-}

@@ -32,18 +32,33 @@ export function oturumDusunce_kaydet(fn: (() => void) | null): void {
   oturumDusunce = fn;
 }
 
-async function getir<T>(yol: string): Promise<T> {
-  const jeton = localStorage.getItem("pvq_token");
-  const y = await fetch(`${TABAN}${yol}`, {
-    headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
-  if (y.status === 401) {
-    cikis(); oturumDusunce?.();
-    // v2.84: uygulama zaten girise dusuyor — bekleyen cagri ne cozulur ne
-    // reddedilir; "Uncaught (in promise)" gurultusu konsola dusmez.
-    return new Promise<T>(() => {});
-  }
-  if (!y.ok) throw new Error(`${y.status} ${yol}`);
-  return (await y.json()) as T;
+/** v2.321: UÇUŞTAKİ GET birleştirici. Geliştirmede StrictMode her effect'i iki
+ *  kez koşturur; sayfa açılışının ~11 isteği 22'ye katlanıp az sayıda işçiyi
+ *  dolduruyordu (ölçüldü: /portfoy tek başına 340ms, sayfa yükünde 1289ms —
+ *  ağır uçların kopyaları sırayı tıkıyor). Aynı yola İKİNCİ istek uçuş
+ *  bitmeden gelirse aynı söz paylaşılır; StrictMode korunur, ağ yükü yarıya
+ *  iner. Yalnız GET — mutasyonlar (gonder) asla birleştirilmez. Söz çözülünce
+ *  kayıt düşer: sonraki ziyaret her zaman taze veri çeker (önbellek DEĞİL). */
+const ucustakiler = new Map<string, Promise<unknown>>();
+function getir<T>(yol: string): Promise<T> {
+  const eldeki = ucustakiler.get(yol);
+  if (eldeki) return eldeki as Promise<T>;
+  const soz = (async () => {
+    const jeton = localStorage.getItem("pvq_token");
+    const y = await fetch(`${TABAN}${yol}`, {
+      headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
+    if (y.status === 401) {
+      cikis(); oturumDusunce?.();
+      // v2.84: uygulama zaten girise dusuyor — bekleyen cagri ne cozulur ne
+      // reddedilir; "Uncaught (in promise)" gurultusu konsola dusmez.
+      return new Promise<T>(() => {});
+    }
+    if (!y.ok) throw new Error(`${y.status} ${yol}`);
+    return (await y.json()) as T;
+  })();
+  ucustakiler.set(yol, soz);
+  soz.finally(() => ucustakiler.delete(yol)).catch(() => {});
+  return soz;
 }
 
 /** v2.264: JSON gövdeli POST/DELETE — getir'in 401 sözleşmesi; 4xx'te sunucunun detail'i Error olur. */
