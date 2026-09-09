@@ -366,8 +366,14 @@ export function Santralim({ plantId }: { plantId: string }) {
         </p>
       </Kart>
 
-      <div className="ızgara" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)",
-                                       marginBottom: 14, alignItems: "start" }}>
+      {/* v2.319 (K5, kullanıcı seçimi A): "Santral ayarları" bu bölgeye çıktı —
+          hava 190px / künye 715px yan yana solda 525px boşluk bırakıyordu.
+          ÖLÇÜLEREK dizildi: sol = Hava+Künye (~759px), sağ = Ayarlar (~848px);
+          ayarları havayla eşlemek boşluğu sağa taşıyordu (ölçüldü: 481px).
+          ≤1340px'te üçlü tam genişlik dizilir (eski okuma sırası korunur);
+          bölüm numarası 3 yerinde. */}
+      <div className="ızgara-cift">
+        <div className="kart-sutunu">
         <Kart baslik="Hava — önümüzdeki günler"
           sag={<span className="cip">profesyonel meteoroloji verisi</span>}>
           {o.hava.length === 0 && (
@@ -441,115 +447,114 @@ export function Santralim({ plantId }: { plantId: string }) {
             yükleyin — tahmin o gece kendini yeniden sınar, karneniz büyür.
           </p>
         </Kart>
+        </div>
+        {/* v2.285 (tasarım çıtası): ayarlar veri tablosundan çıktı — her ayar ad + açıklama solda, kontroller sağda. */}
+        <Kart no="3" baslik="Santral ayarları"
+            sag={<span className="cip">değişiklikler bir sonraki koşudan itibaren geçerli</span>}>
+          <div className="ayar">
+            <div><div className="ayar-ad">Piyasa segmenti</div>
+              <div className="ayar-aciklama">Dengesizliği kimin taşıdığını, KGÜP yükümlülüğünü ve KÜPST'ü belirler.</div></div>
+            <div className="ayar-kontrol">
+              <label className="girdi-etiket">Segment
+                <select className="girdi" value={seg?.segment ?? ""}
+                  onChange={(e) => api.segmentAyarla(plantId, e.target.value).then((r) => setSeg({ segment: r.segment, dengesizlik_sahibi: r.dengesizlik_sahibi })).catch(() => {})}>
+                  <option value="" disabled>seçiniz</option>
+                  {SEGMENTLER.map((x) => <option key={x.deger} value={x.deger}>{x.etiket}</option>)}
+                </select>
+              </label>
+              {seg?.dengesizlik_sahibi && <span className="ayar-durum">dengesizlik: {seg.dengesizlik_sahibi}</span>}
+            </div>
+          </div>
+          <div className="ayar">
+            <div><div className="ayar-ad">Tarife</div>
+              <div className="ayar-aciklama">Fatura özeti ve yıllık gelir beklentisi bu tarifeyle hesaplanır; dengesizlik hesabını değiştirmez.</div></div>
+            <div className="ayar-kontrol">
+              <label className="girdi-etiket">Tarife tipi
+                <select className="girdi" value={tarife.tip} onChange={(e) => setTarife({ ...tarife, tip: e.target.value as Tarife["tip"] })}>
+                  <option value="sabit">sabit fiyat</option><option value="cok_zamanli">çok zamanlı (gündüz/puant/gece)</option><option value="ptf">piyasa (PTF) endeksli</option><option value="yekdem">YEKDEM (döviz endeksli)</option>
+                </select>
+              </label>
+              {tarife.tip === "sabit" &&
+                <label className="girdi-etiket">Fiyat (TL/MWh)
+                  <input className="girdi" style={{ width: 110 }} inputMode="decimal" {...tarifeSayi("tl_mwh")} /></label>}
+              {tarife.tip === "ptf" && <>
+                <label className="girdi-etiket">Prim oranı
+                  <input className="girdi" style={{ width: 90 }} inputMode="decimal" placeholder="0,05" {...tarifeSayi("prim_oran")} /></label>
+                <label className="girdi-etiket">Sabit ek (TL/MWh)
+                  <input className="girdi" style={{ width: 110 }} inputMode="decimal" {...tarifeSayi("sabit_ek_tl_mwh")} /></label></>}
+              {tarife.tip === "cok_zamanli" && <>
+                <label className="girdi-etiket">Gündüz 06–17 (TL/MWh)
+                  <input className="girdi" style={{ width: 110 }} inputMode="decimal" {...tarifeSayi("gunduz_tl_mwh")} /></label>
+                <label className="girdi-etiket">Puant 17–22 (TL/MWh)
+                  <input className="girdi" style={{ width: 110 }} inputMode="decimal" {...tarifeSayi("puant_tl_mwh")} /></label>
+                <label className="girdi-etiket">Gece 22–06 (TL/MWh)
+                  <input className="girdi" style={{ width: 110 }} inputMode="decimal" {...tarifeSayi("gece_tl_mwh")} /></label></>}
+              {tarife.tip === "yekdem" && <>
+                <label className="girdi-etiket">USD cent/kWh
+                  <input className="girdi" style={{ width: 100 }} inputMode="decimal" {...tarifeSayi("usd_cent_kwh")} /></label>
+                <label className="girdi-etiket">Kur (TL/USD)
+                  <input className="girdi" style={{ width: 90 }} inputMode="decimal" {...tarifeSayi("kur_tl_usd")} /></label></>}
+              <button className="dugme" onClick={tarifeKaydet}>Kaydet</button>
+              <button className="dugme" onClick={() => api.tarifeAyarla(plantId, null).then(() => setTarifeMesaj("Kaldırıldı.")).catch(() => {})}>Kaldır</button>
+              {tarifeMesaj && <span className={`ayar-durum ${tarifeMesaj.startsWith("Kayded") || tarifeMesaj.startsWith("Kald") ? "ok" : "hata"}`}>{tarifeMesaj}</span>}
+            </div>
+          </div>
+          <div className="ayar">
+            <div><div className="ayar-ad">Emre amade kapasite</div>
+              <div className="ayar-aciklama">Program dosyaları üretimi bu tavanla sınırlar. Geçici kısıt bakım/arıza içindir ve bitiş gününe kadar geçerlidir.</div></div>
+            <div className="ayar-kontrol">
+              <label className="girdi-etiket">EAK (kW) — boş: AC tavanı
+                <input className="girdi" style={{ width: 140 }} inputMode="numeric" value={eakKw} onChange={(e) => setEakKw(e.target.value)} /></label>
+              <label className="girdi-etiket">Geçici kısıt (kW)
+                <input className="girdi" style={{ width: 100 }} inputMode="numeric" value={gecKw} onChange={(e) => setGecKw(e.target.value)} /></label>
+              <label className="girdi-etiket">Kısıt bitişi
+                <input className="girdi" type="date" value={gecBitis} onChange={(e) => setGecBitis(e.target.value)} /></label>
+              <button className="dugme" onClick={eakKaydet}>Kaydet</button>
+              {eakMesaj && <span className={`ayar-durum ${eakMesaj.startsWith("Kayded") ? "ok" : "hata"}`}>{eakMesaj}</span>}
+            </div>
+          </div>
+          <div className="ayar">
+            <div><div className="ayar-ad">Fizik terimleri</div>
+              <div className="ayar-aciklama">Işınımın geliş açısı, spektrum, kirlenme ve kar etkileri. Seçim önce tipik haftada önizlenir, "Uygula" ile kaydedilir.</div></div>
+            <div className="ayar-kontrol">
+              {ft ? <>
+                {(["iam_model", "spectral_model", "soiling_model", "kar_model"] as const).map((k) => (
+                  <label key={k} className="girdi-etiket" title={ft.not[k] ?? ""}>{ft.etiket[k]}
+                    <select className="girdi" value={ftSon[k] ?? ft[k]} onChange={(e) => ftDegistir(k, e.target.value)}>
+                      {ft.secenekler[k].map((sc) => <option key={sc} value={sc}>{sc === "none" ? "kapalı" : "açık" + (ft.secenekler[k].length > 2 ? ` (${sc.replace("_", " ")})` : "")}</option>)}
+                    </select>
+                  </label>))}
+                {ftOn && <div className="ayar-panel">
+                  <span>Önizleme · 7 gün salt fizik: <b>{ftOn.toplam_fark_pct == null ? "—" : `%${sayiTr(ftOn.toplam_fark_pct, 2)}`}</b> enerji farkı ({sayiTr(ftOn.toplam_mevcut_kwh / 1000, 1)} → {sayiTr(ftOn.toplam_aday_kwh / 1000, 1)} MWh)</span>
+                  {!ftOn.nem_var && <span className="soluk">nem verisi yok → spektral etkisiz</span>}
+                  {!ftOn.kar_var && <span className="soluk">kar verisi yok → kar örtüsü etkisiz</span>}
+                  <button className="dugme" onClick={() => { const [k, v] = Object.entries(ftSon)[0] ?? []; if (k) ftUygula(k, String(v)); }}>Uygula</button>
+                </div>}
+                {ftMesaj && <span className={`ayar-durum ${ftMesaj.startsWith("Kayded") ? "ok" : "hata"}`}>{ftMesaj}</span>}
+              </> : <span className="ayar-durum">—</span>}
+            </div>
+          </div>
+          <div className="ayar">
+            <div><div className="ayar-ad">Alarm kuralları</div>
+              <div className="ayar-aciklama">Veri kesintisi ve isabet düşüşü her santralda sabittir; ek kurallar seçime bağlıdır ve gece taramasında çalışır.</div></div>
+            <div className="ayar-kontrol">
+              {ak ? <>
+                {ak.secilebilir.map((k) => (
+                  <label key={k} className="ayar-onay">
+                    <input type="checkbox" checked={ak.secili.includes(k)} onChange={(e) => akDegistir(k, e.target.checked)} />
+                    {ak.etiket[k] ?? k}
+                    <span className="mono">{k === "pr_dustu" ? `<${sayiTr(ak.esik.pr_esik, 2)}`
+                      : k === "clipping_orani_yuksek" ? `>%${sayiTr(ak.esik.clipping_esik * 100, 0)}`
+                      : k === "kullanilabilirlik_dustu" ? `<%${sayiTr((ak.esik.kullanilabilirlik_esik ?? 0.97) * 100, 0)}`
+                      : k === "kgup_teslim_gecikti" ? "15:30"
+                      : k === "dengesizlik_asimi" ? `>%${sayiTr((ak.esik.dengesizlik_esik ?? 0.03) * 100, 0)} gelir`
+                      : `>${sayiTr(ak.esik.iletisim_esik_saat, 0)} s`}</span>
+                  </label>))}
+              </> : <span className="ayar-durum">—</span>}
+            </div>
+          </div>
+        </Kart>
       </div>
-
-      {/* v2.285 (tasarım çıtası): ayarlar veri tablosundan çıktı — her ayar ad + açıklama solda, kontroller sağda. */}
-      <Kart no="3" baslik="Santral ayarları"
-        sag={<span className="cip">değişiklikler bir sonraki koşudan itibaren geçerli</span>}
-        style={{ marginBottom: 14 }}>
-        <div className="ayar">
-          <div><div className="ayar-ad">Piyasa segmenti</div>
-            <div className="ayar-aciklama">Dengesizliği kimin taşıdığını, KGÜP yükümlülüğünü ve KÜPST'ü belirler.</div></div>
-          <div className="ayar-kontrol">
-            <label className="girdi-etiket">Segment
-              <select className="girdi" value={seg?.segment ?? ""}
-                onChange={(e) => api.segmentAyarla(plantId, e.target.value).then((r) => setSeg({ segment: r.segment, dengesizlik_sahibi: r.dengesizlik_sahibi })).catch(() => {})}>
-                <option value="" disabled>seçiniz</option>
-                {SEGMENTLER.map((x) => <option key={x.deger} value={x.deger}>{x.etiket}</option>)}
-              </select>
-            </label>
-            {seg?.dengesizlik_sahibi && <span className="ayar-durum">dengesizlik: {seg.dengesizlik_sahibi}</span>}
-          </div>
-        </div>
-        <div className="ayar">
-          <div><div className="ayar-ad">Tarife</div>
-            <div className="ayar-aciklama">Fatura özeti ve yıllık gelir beklentisi bu tarifeyle hesaplanır; dengesizlik hesabını değiştirmez.</div></div>
-          <div className="ayar-kontrol">
-            <label className="girdi-etiket">Tarife tipi
-              <select className="girdi" value={tarife.tip} onChange={(e) => setTarife({ ...tarife, tip: e.target.value as Tarife["tip"] })}>
-                <option value="sabit">sabit fiyat</option><option value="cok_zamanli">çok zamanlı (gündüz/puant/gece)</option><option value="ptf">piyasa (PTF) endeksli</option><option value="yekdem">YEKDEM (döviz endeksli)</option>
-              </select>
-            </label>
-            {tarife.tip === "sabit" &&
-              <label className="girdi-etiket">Fiyat (TL/MWh)
-                <input className="girdi" style={{ width: 110 }} inputMode="decimal" {...tarifeSayi("tl_mwh")} /></label>}
-            {tarife.tip === "ptf" && <>
-              <label className="girdi-etiket">Prim oranı
-                <input className="girdi" style={{ width: 90 }} inputMode="decimal" placeholder="0,05" {...tarifeSayi("prim_oran")} /></label>
-              <label className="girdi-etiket">Sabit ek (TL/MWh)
-                <input className="girdi" style={{ width: 110 }} inputMode="decimal" {...tarifeSayi("sabit_ek_tl_mwh")} /></label></>}
-            {tarife.tip === "cok_zamanli" && <>
-              <label className="girdi-etiket">Gündüz 06–17 (TL/MWh)
-                <input className="girdi" style={{ width: 110 }} inputMode="decimal" {...tarifeSayi("gunduz_tl_mwh")} /></label>
-              <label className="girdi-etiket">Puant 17–22 (TL/MWh)
-                <input className="girdi" style={{ width: 110 }} inputMode="decimal" {...tarifeSayi("puant_tl_mwh")} /></label>
-              <label className="girdi-etiket">Gece 22–06 (TL/MWh)
-                <input className="girdi" style={{ width: 110 }} inputMode="decimal" {...tarifeSayi("gece_tl_mwh")} /></label></>}
-            {tarife.tip === "yekdem" && <>
-              <label className="girdi-etiket">USD cent/kWh
-                <input className="girdi" style={{ width: 100 }} inputMode="decimal" {...tarifeSayi("usd_cent_kwh")} /></label>
-              <label className="girdi-etiket">Kur (TL/USD)
-                <input className="girdi" style={{ width: 90 }} inputMode="decimal" {...tarifeSayi("kur_tl_usd")} /></label></>}
-            <button className="dugme" onClick={tarifeKaydet}>Kaydet</button>
-            <button className="dugme" onClick={() => api.tarifeAyarla(plantId, null).then(() => setTarifeMesaj("Kaldırıldı.")).catch(() => {})}>Kaldır</button>
-            {tarifeMesaj && <span className={`ayar-durum ${tarifeMesaj.startsWith("Kayded") || tarifeMesaj.startsWith("Kald") ? "ok" : "hata"}`}>{tarifeMesaj}</span>}
-          </div>
-        </div>
-        <div className="ayar">
-          <div><div className="ayar-ad">Emre amade kapasite</div>
-            <div className="ayar-aciklama">Program dosyaları üretimi bu tavanla sınırlar. Geçici kısıt bakım/arıza içindir ve bitiş gününe kadar geçerlidir.</div></div>
-          <div className="ayar-kontrol">
-            <label className="girdi-etiket">EAK (kW) — boş: AC tavanı
-              <input className="girdi" style={{ width: 140 }} inputMode="numeric" value={eakKw} onChange={(e) => setEakKw(e.target.value)} /></label>
-            <label className="girdi-etiket">Geçici kısıt (kW)
-              <input className="girdi" style={{ width: 100 }} inputMode="numeric" value={gecKw} onChange={(e) => setGecKw(e.target.value)} /></label>
-            <label className="girdi-etiket">Kısıt bitişi
-              <input className="girdi" type="date" value={gecBitis} onChange={(e) => setGecBitis(e.target.value)} /></label>
-            <button className="dugme" onClick={eakKaydet}>Kaydet</button>
-            {eakMesaj && <span className={`ayar-durum ${eakMesaj.startsWith("Kayded") ? "ok" : "hata"}`}>{eakMesaj}</span>}
-          </div>
-        </div>
-        <div className="ayar">
-          <div><div className="ayar-ad">Fizik terimleri</div>
-            <div className="ayar-aciklama">Işınımın geliş açısı, spektrum, kirlenme ve kar etkileri. Seçim önce tipik haftada önizlenir, "Uygula" ile kaydedilir.</div></div>
-          <div className="ayar-kontrol">
-            {ft ? <>
-              {(["iam_model", "spectral_model", "soiling_model", "kar_model"] as const).map((k) => (
-                <label key={k} className="girdi-etiket" title={ft.not[k] ?? ""}>{ft.etiket[k]}
-                  <select className="girdi" value={ftSon[k] ?? ft[k]} onChange={(e) => ftDegistir(k, e.target.value)}>
-                    {ft.secenekler[k].map((sc) => <option key={sc} value={sc}>{sc === "none" ? "kapalı" : "açık" + (ft.secenekler[k].length > 2 ? ` (${sc.replace("_", " ")})` : "")}</option>)}
-                  </select>
-                </label>))}
-              {ftOn && <div className="ayar-panel">
-                <span>Önizleme · 7 gün salt fizik: <b>{ftOn.toplam_fark_pct == null ? "—" : `%${sayiTr(ftOn.toplam_fark_pct, 2)}`}</b> enerji farkı ({sayiTr(ftOn.toplam_mevcut_kwh / 1000, 1)} → {sayiTr(ftOn.toplam_aday_kwh / 1000, 1)} MWh)</span>
-                {!ftOn.nem_var && <span className="soluk">nem verisi yok → spektral etkisiz</span>}
-                {!ftOn.kar_var && <span className="soluk">kar verisi yok → kar örtüsü etkisiz</span>}
-                <button className="dugme" onClick={() => { const [k, v] = Object.entries(ftSon)[0] ?? []; if (k) ftUygula(k, String(v)); }}>Uygula</button>
-              </div>}
-              {ftMesaj && <span className={`ayar-durum ${ftMesaj.startsWith("Kayded") ? "ok" : "hata"}`}>{ftMesaj}</span>}
-            </> : <span className="ayar-durum">—</span>}
-          </div>
-        </div>
-        <div className="ayar">
-          <div><div className="ayar-ad">Alarm kuralları</div>
-            <div className="ayar-aciklama">Veri kesintisi ve isabet düşüşü her santralda sabittir; ek kurallar seçime bağlıdır ve gece taramasında çalışır.</div></div>
-          <div className="ayar-kontrol">
-            {ak ? <>
-              {ak.secilebilir.map((k) => (
-                <label key={k} className="ayar-onay">
-                  <input type="checkbox" checked={ak.secili.includes(k)} onChange={(e) => akDegistir(k, e.target.checked)} />
-                  {ak.etiket[k] ?? k}
-                  <span className="mono">{k === "pr_dustu" ? `<${sayiTr(ak.esik.pr_esik, 2)}`
-                    : k === "clipping_orani_yuksek" ? `>%${sayiTr(ak.esik.clipping_esik * 100, 0)}`
-                    : k === "kullanilabilirlik_dustu" ? `<%${sayiTr((ak.esik.kullanilabilirlik_esik ?? 0.97) * 100, 0)}`
-                    : k === "kgup_teslim_gecikti" ? "15:30"
-                    : k === "dengesizlik_asimi" ? `>%${sayiTr((ak.esik.dengesizlik_esik ?? 0.03) * 100, 0)} gelir`
-                    : `>${sayiTr(ak.esik.iletisim_esik_saat, 0)} s`}</span>
-                </label>))}
-            </> : <span className="ayar-durum">—</span>}
-          </div>
-        </div>
-      </Kart>
 
       {sam && sam.saatler.length > 0 && (
         <Kart no="4" baslik="Üretim parmak izi — saat × ay"

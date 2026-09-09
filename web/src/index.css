@@ -570,3 +570,17 @@ select.girdi { font-family: var(--font); }
               padding: 10px 12px; font-size: 12.5px; display: flex; flex-wrap: wrap;
               gap: 8px 14px; align-items: center; }
 @media (max-width: 900px) { .ayar { grid-template-columns: minmax(0, 1fr); } }
+/* v2.319 (K5-A): yan yana kart dizisi + yarım sütuna giren ayar satırları.
+   .ayar tam genişlik için 250px etiket kolonu kurar; yarım sütunda kontrollere
+   ~150px kalıyordu. ÖLÇÜLDÜ: tek kolona düşürmek kartı 868px'e şişirip boşluğu
+   sağa taşıdı — dar etiket kolonu (170px) satırları kompakt tutuyor. */
+.kart-sutunu { display: grid; gap: 14px; align-content: start; min-width: 0; }
+/* dar etiket YALNIZ çift sütun etkinken — tam genişlikte 170px kolon
+   açıklamaları 4 satıra katlıyordu, orada evin 250px kuralı geçerli. */
+@media (min-width: 1341px) { .kart-sutunu .ayar { grid-template-columns: 170px minmax(0, 1fr); } }
+/* Ayar kartının kontrolleri ~430px yarım sütuna sığmıyor (ÖLÇÜLDÜ: 1180px
+   pencerede kart 1167px'e uzayıp 2 kontrol taştı) — çift sütun yalnız yer
+   varken; sıkışınca üçlü tam genişlik dizilir (boşluk da doğmaz). */
+.ızgara-cift { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+               gap: 14px; align-items: start; margin-bottom: 14px; }
+@media (max-width: 1340px) { .ızgara-cift { grid-template-columns: minmax(0,1fr); } }
