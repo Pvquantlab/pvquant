@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import type { EChartsOption } from "echarts";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
-import { sayiTr } from "../sayfalar/parcalar";
+import { Lejant, sayiTr } from "../sayfalar/parcalar";
 
 export function Cubuklar({ etiketler, degerler, birim, vurguIdx, yukseklik = 260, ondalik = 1, kapsamPct, beklenti }:
   { etiketler: string[]; degerler: number[]; birim: string;
@@ -50,7 +50,7 @@ export function Cubuklar({ etiketler, degerler, birim, vurguIdx, yukseklik = 260
         type: "bar", barMaxWidth: 34,
         data: degerler.map((v, i) => ({ value: v, itemStyle: {
           borderRadius: [2, 2, 0, 0],
-          color: !tam(i) ? `rgba(${nr},.18)`
+          color: !tam(i) ? (oku("--ch-eksik") || `rgba(${nr},.18)`)
                : i === enDusuk ? (oku("--ch-dusuk") || "#A8A296")
                : i === vurguIdx ? oku("--cubuk-vurgu")
                : (oku("--ch-cubuk") || "#6FA98A"),
@@ -81,6 +81,29 @@ export function Cubuklar({ etiketler, degerler, birim, vurguIdx, yukseklik = 260
   // basladigi icin veri tazelendiginde bayat option riski dogardi.
   }, [etiketler, degerler, kapsamPct, beklenti, vurguIdx, n]);
 
-  return <EChart option={option} height={yukseklik}
-    ariaLabel={`${etiketler.length} sütunlu üretim grafiği, ${birim}`} />;
+  // v2.315 (K4): grafikte dört ISTISNAI kodlama var ama bugüne dek yalnız tooltip
+  // söylüyordu — fare kullanmayan icin bilgi yoktu. Lejant KOŞULLU: yalnız o örnekte
+  // gerçekten görünen kodlamalar listelenir; olağan yeşil çubuk varsayılan olduğu
+  // için ayrıca yazılmaz. Öncelik zinciri (eksik > en düşük > vurgu) korunur —
+  // vurgu ayı aynı zamanda en düşükse "son ay" öğesi de basılmaz (renk görünmüyor).
+  const tamMi = (i: number) => !kapsamPct || (kapsamPct[i] ?? 100) >= 50;
+  const tamSayisi = degerler.filter((_, i) => tamMi(i)).length;
+  const adaylar2 = degerler.map((v, i) => (tamMi(i) ? v : Infinity));
+  const enDusukIdx = adaylar2.indexOf(Math.min(...adaylar2));
+  const ogeler = [
+    ...(vurguIdx != null && vurguIdx >= 0 && tamMi(vurguIdx) && vurguIdx !== enDusukIdx
+      ? [{ renk: "var(--cubuk-vurgu)", ad: "son ay" }] : []),
+    ...(tamSayisi >= 2 ? [{ renk: "var(--ch-dusuk)", ad: "en düşük ay" }] : []),
+    ...(kapsamPct && degerler.some((_, i) => !tamMi(i))
+      ? [{ renk: "var(--notr)", ad: "eksik veri · kapsam <%50", kesik: true }] : []),
+    ...(beklenti && beklenti.some((b) => b != null)
+      ? [{ renk: "var(--metin)", ad: "beklenti · P50", cizgi: true }] : []),
+  ];
+  return (
+    <>
+      <EChart option={option} height={yukseklik}
+        ariaLabel={`${etiketler.length} sütunlu üretim grafiği, ${birim}`} />
+      {ogeler.length > 0 && <div style={{ marginTop: 8 }}><Lejant ogeler={ogeler} /></div>}
+    </>
+  );
 }

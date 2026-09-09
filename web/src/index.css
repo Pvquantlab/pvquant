@@ -57,6 +57,7 @@
   --chart-muted: #45586F;
   /* ECharts (Cubuklar, gunes yolu) murekkepleri */
   --ch-cubuk: #4C9A6E; --ch-dusuk: #9AA6B5;
+  --ch-eksik: rgba(100,116,139,.18);  /* v2.315: eksik-kapsam dolgusu — gri iki anlama gelmesin */
   --ch-gy-yaz: #16A34A; --ch-gy-eki: #5C6880; --ch-gy-kis: #66738A;
   /* parmak izi hucre metni */
   --pi-metin: #1B2939;
@@ -100,6 +101,7 @@
   --chart-surface: #17243C;
   --chart-muted: #A9B7C9;
   --ch-cubuk: #34A06A; --ch-dusuk: #5E6C7E;
+  --ch-eksik: rgba(124,139,161,.18);
   --ch-gy-yaz: #22C55E; --ch-gy-eki: #A9B7C9; --ch-gy-kis: #8290A3;
   --pi-metin: #F4F8FD;
 }

@@ -73,14 +73,18 @@ export function Sayfa({ baslik, alt, sag, children }:
   );
 }
 
-export function Lejant({ ogeler }: { ogeler: { renk: string; ad: string; kesik?: boolean }[] }) {
+/** v2.315: "cizgi" varyantı eklendi (beklenti imleci gibi düz çizgi örnekleri) ve
+ *  bileşen ilk kez gerçekten kullanılıyor (Cubuklar) — bugüne dek ölü koddu. */
+export function Lejant({ ogeler }: { ogeler: { renk: string; ad: string; kesik?: boolean; cizgi?: boolean }[] }) {
   return (
     <div className="lejant">
       {ogeler.map((o) => (
         <span key={o.ad}>
           {o.kesik
             ? <span style={{ width: 14, borderTop: `2px dashed ${o.renk}` }} />
-            : <span className="nokta" style={{ background: o.renk }} />}
+            : o.cizgi
+              ? <span style={{ width: 14, borderTop: `2.4px solid ${o.renk}` }} />
+              : <span className="nokta" style={{ background: o.renk }} />}
           {o.ad}
         </span>
       ))}
