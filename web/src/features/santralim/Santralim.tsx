@@ -8,7 +8,7 @@ import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
 import { Kart, Sayfa, sayiTr, sayiTrN, isiTonu, isiMetni } from "../sayfalar/parcalar";
 import ProductionForecastChart from "../sayfalar/ProductionForecastChart";
-import { t0Hesapla, simdiDegeri, dilimle } from "../sayfalar/tahminPencere";
+import { t0Hesapla, simdiDegeri, simdiGercegi, dilimle } from "../sayfalar/tahminPencere";
 import { Cubuklar } from "./Cubuklar";
 
 /** v2.200 (D imzasi): 7 gunluk gorunum — cubuk yerine profilli tablo.
@@ -130,6 +130,12 @@ export function Santralim({ plantId }: { plantId: string }) {
   const t0 = useMemo(() => t0Hesapla(Date.now()), []);
   const nowVal = useMemo(
     () => (seri ? simdiDegeri(seri.saatlik, t0) : null), [seri, t0]);
+  // v2.318 (K7): SCADA taze ise kadran GERÇEK ölçümü gösterir — o zaman yay amber
+  // (gerçekleşen mürekkebi HAK EDİLİR); yoksa P50 tahmini, yay mavi. DERS: bu memo
+  // ilk denemede `if (!o) return` guard'ının ALTINA kondu → kanca sırası bozuldu
+  // (Rendered more hooks) — kancalar erken dönüşten önce yaşar.
+  const nowGercek = useMemo(
+    () => (seri ? simdiGercegi(seri.saatlik, t0) : null), [seri, t0]);
   const dilim = useMemo(
     () => (seri ? dilimle(seri.saatlik, t0, "24h") : null), [seri, t0]);
   // v2.200: gun-ici P50 profilleri — gunAnahtari(t0+i gun) ile gruplanir
@@ -252,7 +258,10 @@ export function Santralim({ plantId }: { plantId: string }) {
   const s = o.saglik;
   // v2.198 (D ozet seridi): anlik guc = simdiDegeri; gece/veri yokken "—".
   const tavan = seri?.ac_tavani_kw ?? o.ac_tavani_kw ?? null;
-  const anlikPay = nowVal !== null && tavan ? Math.max(0, Math.min(1, nowVal / tavan)) : null;
+  // v2.318: gercek_kw=0 da ölçümdür (gece) — ?? sıfırı korur, yalnız null'da düşer.
+  const gosterilen = nowGercek ?? nowVal;
+  const olcumMu = nowGercek !== null;
+  const anlikPay = gosterilen !== null && tavan ? Math.max(0, Math.min(1, gosterilen / tavan)) : null;
   return (
     <Sayfa baslik={o.ad}
       alt={o.anlati}
@@ -271,27 +280,30 @@ export function Santralim({ plantId }: { plantId: string }) {
       <div className="ozet">
         <div className="anlik">
           <svg viewBox="0 0 160 112" role="img" style={{ width: "100%", maxWidth: 118 }}
-            aria-label={nowVal === null ? "Şimdi beklenen güç verisi yok"
-              : `Şimdi beklenen güç ${sayiTr(nowVal)} kilovat — tahmin`}>
+            aria-label={gosterilen === null ? "Şimdi beklenen güç verisi yok"
+              : olcumMu ? `Anlık güç ${sayiTr(gosterilen)} kilovat — ölçüm`
+              : `Şimdi beklenen güç ${sayiTr(gosterilen)} kilovat — tahmin`}>
             <path d="M18,88 A62,62 0 0 1 142,88" fill="none"
               stroke="var(--izgara)" strokeWidth="10" strokeLinecap="round" />
             {/* pay ~0 iken cizme: round linecap sifirda bile nokta basiyordu */}
             {anlikPay !== null && anlikPay > 0.005 && (
               <path d="M18,88 A62,62 0 0 1 142,88" fill="none"
-                stroke="var(--chart-p50-future)" strokeWidth="10" strokeLinecap="round"
+                stroke={olcumMu ? "var(--chart-actual)" : "var(--chart-p50-future)"}
+                strokeWidth="10" strokeLinecap="round"
                 strokeDasharray={`${(Math.PI * 62 * anlikPay).toFixed(1)} ${(Math.PI * 62).toFixed(1)}`} />
             )}
             <text x="80" y="66" textAnchor="middle" className="ch-gauge-deger">
-              {nowVal === null ? "—" : sayiTr(nowVal)}</text>
+              {gosterilen === null ? "—" : sayiTr(gosterilen)}</text>
             <text x="80" y="82" textAnchor="middle" className="ch-t">
-              {nowVal === null ? "veri yok" :
+              {gosterilen === null ? "veri yok" :
                 anlikPay === null ? "kW" : `kW · %${sayiTr(anlikPay * 100)}`}</text>
           </svg>
           <div>
             <div className="et">Anlık güç</div>
             <div className="alt">{tavan ? `AC tavanı ${sayiTr(tavan)} kW` : "AC tavanı —"}</div>
-            <div className="alt">{nowVal === null
-              ? "şimdiyi kapsayan koşu yok" : "son tahmin koşusundan"}</div>
+            <div className="alt">{gosterilen === null
+              ? "şimdiyi kapsayan koşu yok"
+              : olcumMu ? "SCADA'dan — ölçüm" : "son tahmin koşusundan"}</div>
           </div>
         </div>
         <div>

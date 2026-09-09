@@ -56,6 +56,23 @@ export function simdiDegeri(
   saatlik: Saatlik[],
   t0Ms: number,
 ): number | null {
+  const i = enYakinIdx(saatlik, t0Ms);
+  return i === null ? null : saatlik[i].p50_kw;
+}
+
+/** v2.318 (K7): t0'a en yakın örneğin GERÇEK ölçümü (gercek_kw) — yoksa null.
+ *  simdiDegeri ile aynı ≤1 saat penceresi; adı, döndürdüğünün ÖLÇÜM olduğunu
+ *  söyler (simdiDegeri'nin p50 döndürdüğü adından okunmuyordu — kadran bu
+ *  yüzden bir kez tahmini "anlık güç" diye çizmişti, v2.310). */
+export function simdiGercegi(
+  saatlik: Saatlik[],
+  t0Ms: number,
+): number | null {
+  const i = enYakinIdx(saatlik, t0Ms);
+  return i === null ? null : saatlik[i].gercek_kw;
+}
+
+function enYakinIdx(saatlik: Saatlik[], t0Ms: number): number | null {
   if (saatlik.length === 0) return null;
   let best = 0;
   let bestD = Infinity;
@@ -67,7 +84,7 @@ export function simdiDegeri(
     }
   }
   // > 1h away means t0 is outside the archive entirely — no honest now-value.
-  return bestD <= 3_600_000 ? saatlik[best].p50_kw : null;
+  return bestD <= 3_600_000 ? best : null;
 }
 
 export type Dilim = {
