@@ -57,7 +57,7 @@ def test_kayip_agaci():
 
 
 def test_iec61853_matris_adr():
-    M = iec61853.matris_uret(400.0, gamma_p=-0.0035, dusuk_isinim_k=0.02)
+    M = iec61853.matris_uret(400.0, gamma_p=-0.0035)
     assert np.isnan(M.loc[100.0, 75.0]) and abs(M.loc[1000.0, 25.0] - 400) < 1e-9
     adr = iec61853.matris_uydur(M, 400.0)
     eta = iec61853.verim(np.array([1000.0, 200.0, 0.0]), np.array([25.0, 25.0, 25.0]), adr)

@@ -35,8 +35,12 @@ def matris_getir(plant: dict) -> tuple[pd.DataFrame, dict, str, float]:
         M = pd.DataFrame(np.array(m["P"], float), index=[float(g) for g in m["G"]], columns=[float(t) for t in m["T"]])
         kaynak = "veri sayfası matrisi"
     else:
-        M = gm.matris_uret(1000.0, gamma_p=gamma)   # W / kWp
-        kaynak = "sentetik — kalibre sıcaklık katsayısından (veri sayfası matrisi girilirse onu kullanır)"
+        # v2.322: düşük-ışınım eğrisi MOTORDAN — kart, zincirin gerçekten varsaydığını söylesin
+        # (önce kart %3,4 derken motor %7,7 varsayıyordu; tek kaynak: BarhdadiBennisParams).
+        from pvquant.models.power import BarhdadiBennisParams
+        bb = BarhdadiBennisParams()
+        M = gm.matris_uret(1000.0, gamma_p=gamma, c1=bb.c1, c2=bb.c2)   # W / kWp
+        kaynak = "sentetik — motorun verim eğrisi + kalibre sıcaklık katsayısı (veri sayfası matrisi girilirse onu kullanır)"
     adr = gm.matris_uydur(M, p_stc=1000.0)
     return M, adr, kaynak, gamma
 

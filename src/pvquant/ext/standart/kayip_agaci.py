@@ -55,11 +55,15 @@ def sicaklik_kaybi(poa: pd.Series, temp_air: pd.Series, wind: pd.Series, gamma: 
     return float(1 - (w * (1 + gamma * (tc - 25))).sum() / max(w.sum(), 1e-9))
 
 
-def isinim_seviyesi_kaybi(poa: pd.Series, k: float = 0.02) -> float:
-    """Düşük ışınımda verim düşüşü: η(G)/η_STC ≈ 1 + k·ln(G/1000) (basit PVsyst benzeri), ağırlıklı."""
+def isinim_seviyesi_kaybi(poa: pd.Series, c1: float = 0.033, c2: float = -0.0092) -> float:
+    """Düşük ışınımda verim düşüşü, ışınım-ağırlıklı: η(G)/η_STC = 1 + c1·ln(G/G0) + c2·ln²(G/G0).
+    v2.322: eski tek terimli k=0,02 motorun eğrisinden farklıydı — c1/c2 varsayılanları
+    MOTORUN sabitleri (pvquant.models.power.BarhdadiBennisParams); ağaç artık tahmin
+    zincirinin gerçekten varsaydığı düşük-ışınım kaybını raporlar."""
     w = poa.clip(lower=1.0)
-    eta = 1 + k * np.log(w / 1000.0)
-    return float(1 - (w * eta.clip(0.5, 1.05)).sum() / w.sum())
+    lg = np.log(w / 1000.0)
+    eta = 1 + c1 * lg + c2 * lg ** 2
+    return float(1 - (w * eta.clip(0.0, 1.05)).sum() / w.sum())
 
 
 def agac(ghi_kwh_m2: float, poa_kwh_m2: float, alan_m2: float, eta_stc: float, oranlar: dict[str, float],

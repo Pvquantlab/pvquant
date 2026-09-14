@@ -4,7 +4,7 @@ IEC 61853-1 matrisi: G ∈ {100,200,400,600,800,1000,1100} W/m², T ∈ {15,25,5
 Fonksiyonlar:
   matris_uydur   : matristen ADR verim modeli (pvlib.pvarray.fit_pvefficiency_adr) — ölçüm noktaları dışına düzgün uzatma
   verim          : (G,T) → η/η_STC (ADR) ya da iki-doğrusal interpolasyon (yalnız ızgara içinde)
-  matris_uret    : veri sayfası parametrelerinden (γ_P, düşük ışınım katsayısı) sentetik matris (matris yoksa)
+  matris_uret    : veri sayfası parametrelerinden sentetik matris (matris yoksa) — düşük ışınım eğrisi MOTORLA AYNI
   enerji_derecesi: saatlik (POA, T_cell) ile yıllık DC enerji (kWh/kWp) — IEC 61853-3 CSER'in sadeleşmiş hali
 Modül davranışını fizik zincirine 'η(G,T) çarpanı' olarak vermek için tasarlanmıştır.
 """
@@ -51,15 +51,23 @@ def interpolasyon(matris: pd.DataFrame, g: float, t: float) -> float:
     return float((1 - fg) * (1 - ft) * M[i, j] + fg * (1 - ft) * M[i + 1, j] + (1 - fg) * ft * M[i, j + 1] + fg * ft * M[i + 1, j + 1])
 
 
-def matris_uret(p_stc: float, gamma_p: float = -0.0035, dusuk_isinim_k: float = 0.02) -> pd.DataFrame:
-    """Veri sayfasından sentetik IEC 61853-1 matrisi: P = P_stc·(G/1000)·(1+k·ln(G/1000))·(1+γ(T−25)).
+def matris_uret(p_stc: float, gamma_p: float = -0.0035,
+                c1: float = 0.033, c2: float = -0.0092) -> pd.DataFrame:
+    """Veri sayfasından sentetik IEC 61853-1 matrisi:
+    P = P_stc·(G/1000)·(1 + c1·ln(G/G0) + c2·ln²(G/G0))·(1 + γ(T−25)).
+
+    v2.322: Eski tek terimli k=0,02 eğrisi tahmin motorunun eğrisinden farklıydı —
+    kart 200 W/m²'de %3,2 kayıp derken motor %7,7 varsayıyordu (aynı santral, iki ses).
+    c1/c2 varsayılanları MOTORUN sabitleri (pvquant.models.power.BarhdadiBennisParams);
+    eşitlik test_guc_matrisi'ndeki tutarlılık sınavıyla kilitli.
     IEC'nin tanımsız hücreleri (100 W/m² @ 75 °C, 1100 @ 15 °C) NaN bırakılır."""
     M = pd.DataFrame(index=G_IEC, columns=T_IEC, dtype=float)
     for g in G_IEC:
         for t in T_IEC:
             if (g == 100 and t == 75) or (g == 1100 and t == 15) or (g == 100 and t == 50) or (g == 200 and t == 75):
                 M.loc[g, t] = np.nan; continue
-            M.loc[g, t] = p_stc * (g / 1000) * (1 + dusuk_isinim_k * np.log(g / 1000)) * (1 + gamma_p * (t - 25))
+            lg = np.log(g / 1000)
+            M.loc[g, t] = p_stc * (g / 1000) * (1 + c1 * lg + c2 * lg ** 2) * (1 + gamma_p * (t - 25))
     return M
 
 

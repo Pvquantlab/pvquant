@@ -61,3 +61,28 @@ def istemci(monkeypatch):
 def test_kapilar(istemci):
     assert istemci.get("/v1/plants/p1/guc-matrisi").status_code == 404
     assert istemci.post("/v1/plants/p1/guc-matrisi/hesapla").json()["cser"] == 0.95
+
+
+def test_sentetik_matris_motorun_egrisiyle_ayni():
+    """v2.322: kart, kayıp ağacı ve tahmin motoru AYNI düşük-ışınım eğrisini
+    konuşmalı. Önce kart %3,4 derken motor %7,7 varsayıyordu (200 W/m², 25 °C) —
+    aynı santral için iki ses. Bu sınav üç yeri motorun sabitlerine kilitler."""
+    import inspect
+
+    import pandas as pd
+
+    from pvquant.ext.standart import iec61853, kayip_agaci
+    from pvquant.models.power import BarhdadiBennisParams, eta_rel_barhdadi_bennis
+
+    bb = BarhdadiBennisParams()
+    # 1) sentetik matris hücresi = motorun η_rel'i (25 °C satırı, birebir)
+    M = iec61853.matris_uret(1000.0, gamma_p=bb.gamma)
+    for g in (200.0, 400.0, 800.0):
+        eta_motor = float(eta_rel_barhdadi_bennis(
+            pd.Series([g]), pd.Series([25.0]), bb).iloc[0])
+        eta_matris = float(M.loc[g, 25.0]) / (1000.0 * g / 1000.0)
+        assert abs(eta_matris - eta_motor) < 1e-9, (g, eta_matris, eta_motor)
+    # 2) ext imza varsayılanları motor sabitleriyle eş (sürüklenme bekçisi)
+    for f in (iec61853.matris_uret, kayip_agaci.isinim_seviyesi_kaybi):
+        p = inspect.signature(f).parameters
+        assert p["c1"].default == bb.c1 and p["c2"].default == bb.c2, f.__name__
