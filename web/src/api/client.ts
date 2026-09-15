@@ -561,6 +561,22 @@ export const api = {
   parolaDegistir: (eski: string, yeni: string): Promise<{ tamam: boolean }> =>
     gonder(`/v1/parola`, "POST", { eski, yeni }),
   /** v2.294: kamuya açık doğrulama karnesi — kimliksiz uç, jeton eklenmez (401 yönlendirmesi tetiklenmesin). */
+  /** v2.328: vitrin "Karneni başlat" başvurusu — kamuya açık, jetonsuz. */
+  vitrinBasvuru: async (g: { eposta: string; santral_adi?: string; kurulu_guc_kwp?: number }): Promise<{ tamam: boolean; neden?: string }> => {
+    if (TABAN == null) return { tamam: true };
+    try {
+      const y = await fetch(`${TABAN}/v1/vitrin/basvuru`, { method: "POST",
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify(g) });
+      if (y.ok) return { tamam: true };
+      const d = (await y.json().catch(() => null)) as { detail?: unknown } | null;
+      return { tamam: false, neden: typeof d?.detail === "string" ? d.detail : "Gönderilemedi — yeniden deneyin." };
+    } catch { return { tamam: false, neden: "Ağ hatası — yeniden deneyin." }; }
+  },
+  /** v2.328: başvuru listesi (yalnız yönetici) + okundu işareti. */
+  basvurular: async (): Promise<{ basvurular: { id: string; eposta: string; santral_adi: string | null; kurulu_guc_kwp: number | null; okundu: boolean; created_at: string }[] }> =>
+    getir(`/v1/vitrin/basvurular`),
+  basvuruOkundu: (id: string): Promise<{ tamam: boolean }> =>
+    gonder(`/v1/vitrin/basvurular/${id}/okundu`, "POST"),
   dogrulama: async (): Promise<Dogrulama | null> => {
     if (TABAN == null) return null;
     try { const y = await fetch(`${TABAN}/v1/dogrulama`); return y.ok ? (await y.json()) as Dogrulama : null; }

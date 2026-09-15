@@ -519,6 +519,41 @@ def dogrulama():
     return JSONResponse(dogrulama_service.ozet(), headers={"Cache-Control": "public, max-age=60"})
 
 
+class BasvuruIstek(BaseModel):
+    eposta: str
+    santral_adi: str | None = None
+    kurulu_guc_kwp: float | None = None
+    web: str | None = None   # bal küpü — insanlar görmez, botlar doldurur
+
+
+@app.post("/v1/vitrin/basvuru")
+@limiter.limit("10/hour")
+def vitrin_basvuru(request: Request, g: BasvuruIstek):
+    """v2.328 — kamuya açık 'Karneni başlat' formu. Başvuru tabloya düşer,
+    panelde yönetici görür; e-posta altyapısı bilerek yok (insan döner)."""
+    from pvquant.services import basvuru_service
+    r = basvuru_service.kaydet(g.eposta, g.santral_adi, g.kurulu_guc_kwp, g.web)
+    if not r["tamam"]:
+        raise HTTPException(422, r.get("neden") or "geçersiz")
+    return {"tamam": True}
+
+
+@app.get("/v1/vitrin/basvurular")
+def vitrin_basvurular(claims=Depends(yonetici_yetkisi())):
+    """v2.328 — başvuru listesi. Bugünkü tek-kiracılı kurulumda platform sahibi =
+    hesabın yöneticisi; gerçek çok kiracılılıkta platform-sahibi rolüne taşınacak."""
+    from pvquant.services import basvuru_service
+    return {"basvurular": basvuru_service.listele()}
+
+
+@app.post("/v1/vitrin/basvurular/{basvuru_id}/okundu")
+def vitrin_basvuru_okundu(basvuru_id: str, claims=Depends(yonetici_yetkisi())):
+    from pvquant.services import basvuru_service
+    if not basvuru_service.okundu_isaretle(basvuru_id):
+        raise HTTPException(404, "başvuru yok")
+    return {"tamam": True}
+
+
 @app.get("/v1/hakkinda")
 def hakkinda(claims=Depends(gecerli_kullanici)):
     """v2.270 — Veri kaynakları ve lisanslar (Gizlilik Anayasası v2.245 istisnası: atıf yalnız burada, rapor künyesinde, README'de)."""

@@ -187,6 +187,66 @@ function YildizAlani() {
   );
 }
 
+/** v2.328 — "Karneni başlat" formu: 3 alan (kısa form kalıbı), bal küpü gizli.
+ *  Başvuru panele düşer; e-posta altyapısı yok — dönüş insan elinden gelir. */
+function BasvuruFormu() {
+  const [eposta, setEposta] = useState("");
+  const [ad, setAd] = useState("");
+  const [guc, setGuc] = useState("");
+  const [web, setWeb] = useState("");            // bal küpü — görünmez
+  const [durum, setDurum] = useState<"bos" | "gidiyor" | "tamam" | string>("bos");
+  const kutu = { padding: "12px 14px", borderRadius: 11, fontSize: 14.5,
+    fontFamily: "inherit", border: "1.5px solid rgba(255,255,255,0.18)",
+    background: "rgba(255,255,255,0.06)", color: "#F2F7F4", minWidth: 0 } as const;
+  const gonderildi = durum === "tamam";
+  return gonderildi ? (
+    <div style={{ background: "rgba(122,199,160,0.12)", border: "1px solid rgba(122,199,160,0.4)",
+      borderRadius: 14, padding: "18px 20px", fontSize: 15, lineHeight: 1.6 }}>
+      Başvurunuz alındı — panel yöneticisi e-posta ile dönecek.
+      Kurulum ve ilk gece sınavı sonrası karneniz birikmeye başlar.
+    </div>
+  ) : (
+    <form onSubmit={(e) => {
+      e.preventDefault();
+      if (durum === "gidiyor") return;
+      setDurum("gidiyor");
+      const kwp = guc.trim() === "" ? undefined : Number(guc.replace(",", ".")) * 1000; // MW → kWp
+      void (async () => {
+        const r = await api.vitrinBasvuru({ eposta, santral_adi: ad.trim() || undefined,
+          kurulu_guc_kwp: Number.isFinite(kwp as number) ? kwp : undefined,
+          ...(web ? { web } : {}) } as Parameters<typeof api.vitrinBasvuru>[0]);
+        setDurum(r.tamam ? "tamam" : (r.neden ?? "Gönderilemedi — yeniden deneyin."));
+      })();
+    }}>
+      <div style={{ display: "grid", gap: 10,
+        gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+        <input style={kutu} type="email" required placeholder="E-posta *"
+          aria-label="E-posta" value={eposta} onChange={(e) => setEposta(e.target.value)} />
+        <input style={kutu} placeholder="Santral adı" aria-label="Santral adı"
+          value={ad} onChange={(e) => setAd(e.target.value)} maxLength={120} />
+        <input style={kutu} placeholder="Kurulu güç (MW)" aria-label="Kurulu güç (MW)"
+          inputMode="decimal" value={guc} onChange={(e) => setGuc(e.target.value)} maxLength={10} />
+      </div>
+      {/* bal küpü: ekran okuyucudan ve gözden gizli, botlar doldurur */}
+      <input style={{ position: "absolute", left: -9999, width: 1, height: 1, opacity: 0 }}
+        tabIndex={-1} aria-hidden="true" autoComplete="off" placeholder="web"
+        value={web} onChange={(e) => setWeb(e.target.value)} />
+      <button type="submit" className="vt-dugme" disabled={durum === "gidiyor"}
+        style={{ marginTop: 14, padding: "13px 30px", borderRadius: 12, fontSize: 15,
+        fontWeight: 600, cursor: "pointer", border: "none", fontFamily: "inherit",
+        background: ALTIN, color: METIN, opacity: durum === "gidiyor" ? 0.7 : 1 }}>
+        {durum === "gidiyor" ? "Gönderiliyor…" : "Karnemi başlat"}
+      </button>
+      {durum !== "bos" && durum !== "gidiyor" && durum !== "tamam" && (
+        <div role="alert" style={{ marginTop: 10, fontSize: 13.5, color: "#E8B98A" }}>{durum}</div>
+      )}
+      <div style={{ fontFamily: M, fontSize: 11, color: "#6E827A", marginTop: 12 }}>
+        Veri yüklemeniz gerekmez; e-postanız yalnız dönüş için kullanılır.
+      </div>
+    </form>
+  );
+}
+
 export function Vitrin({ onPanel }: { onPanel: () => void }) {
   // v2.294 — S4: kamuya açık doğrulama karnesi; uç kapalıysa/ulaşılamazsa bölüm hiç çizilmez (uydurma yok).
   const [dg, setDg] = useState<Dogrulama | null>(null);
@@ -338,6 +398,23 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
               </div>
             ))}
           </div>
+          {/* v2.329: persona şeridi — aynı panel, iki masa (rakip analizi #9) */}
+          <div style={{ display: "grid", gap: 14, marginTop: 22,
+            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
+            {([
+              ["OPERATÖR MASASI", "Program teslim penceresi, emre amadelik, veri gecikince çalan alarm, aylık bakım penceresine iklim beklentisi."],
+              ["TİCARET MASASI", "İyimser–kötümser bant, sapmanın gün gün TL karşılığı, gün içi revizyon izi, API ile kendi sisteminize akış."],
+            ] as const).map(([ad, cumle]) => (
+              <div key={ad} style={{ background: "rgba(184,134,44,0.06)",
+                border: "1px dashed #DFCFA8", borderRadius: 14, padding: "14px 18px",
+                textAlign: "left" }}>
+                <div style={{ fontFamily: M, fontSize: 10.5, letterSpacing: "0.1em",
+                  color: ALTIN_KOYU }}>{ad}</div>
+                <div style={{ fontSize: 13.5, color: METIN_IKINCIL, lineHeight: 1.6,
+                  marginTop: 6 }}>{cumle}</div>
+              </div>
+            ))}
+          </div>
           <div style={{ fontFamily: M, fontSize: 12, color: "#8A7A54",
             marginTop: 18, textAlign: "center", lineHeight: 1.7 }}>
             Sahadan ölçüm: 4,5 MW referans santralda 45 günde, basit yönteme karşı
@@ -456,6 +533,24 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
                 her gece bir sınav; sayaç kesintisiz büyür</div>
             </div>
           </div>
+          {/* v2.328: GERÇEK panel ekranları — temsilî çizim değil (rakip analizi #4).
+              Kimlik köşeleri kırpılmıştır; vitrindeki anonimlikle tutarlı. */}
+          <div style={{ marginTop: 26, textAlign: "left" }}>
+            <div style={{ fontFamily: M, fontSize: 10.5, letterSpacing: "0.1em",
+              color: "#8AA79B", marginBottom: 10 }}>
+              PANELDEN — GERÇEK EKRAN, GERÇEK SAYILAR</div>
+            <img src="/vitrin/panel-dogruluk.png" width={1560} height={1421}
+              loading="lazy" alt="Doğruluk karnesi sayfası: WMAPE kartları, naif referansla günlük karşılaştırma panelleri ve P10–P90 bant sınavı"
+              style={{ width: "100%", height: "auto", borderRadius: 14,
+                border: "1px solid rgba(255,255,255,0.14)", display: "block" }} />
+            <img src="/vitrin/panel-santral.png" width={1560} height={1065}
+              loading="lazy" alt="Santral sayfası: günün saatlik üretim eğrisi, P10–P90 bandı ve AC tavanı"
+              style={{ width: "100%", height: "auto", borderRadius: 14, marginTop: 14,
+                border: "1px solid rgba(255,255,255,0.14)", display: "block" }} />
+            <div style={{ fontFamily: M, fontSize: 10.5, color: "#6E827A", marginTop: 8 }}>
+              referans santralın gerçek karne ve üretim ekranları — kimlik kırpılmıştır
+            </div>
+          </div>
           {dg ? (
             <div style={{ marginTop: 26, textAlign: "left", background: "rgba(255,255,255,0.04)",
               border: "1px solid rgba(255,255,255,0.12)", borderRadius: 18, padding: "20px 22px" }}>
@@ -510,9 +605,44 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
             <div style={{ fontFamily: M, fontSize: 11, color: "#6E827A",
               marginTop: 14 }}>sayılar panelde canlı — vitrin vaat etmez</div>
           )}
-          <button onClick={onPanel} className="vt-dugme"
-            style={{ ...dugme, marginTop: 36,
-            background: ALTIN, color: METIN }}>Kendi karneni başlat</button>
+          {/* v2.329: yöntem notu — sayılar tanımsız kalmasın (beyan değil, tarif) */}
+          <div style={{ marginTop: 22, textAlign: "left", fontSize: 12.5, lineHeight: 1.7,
+            color: "#9DB3A9", background: "rgba(255,255,255,0.03)",
+            border: "1px solid rgba(255,255,255,0.09)", borderRadius: 14, padding: "14px 18px" }}>
+            <span style={{ fontFamily: M, fontSize: 10.5, letterSpacing: "0.1em",
+              color: "#8AA79B" }}>YÖNTEM — SAYILAR NE DEMEK? </span>
+            <b style={{ color: "#C7D6CE" }}>Ortalama sapma</b>: her gündüz saatinde
+            |tahmin − gerçekleşen| toplanır, gerçekleşen üretime bölünür (üretime ağırlıklı;
+            bulutlu saat açık saatten çok sayılmaz). <b style={{ color: "#C7D6CE" }}>Basit
+            yöntem</b>: "yarın = dün aynı saat" — sektörün sıfır maliyetli tabanı.
+            <b style={{ color: "#C7D6CE" }}> Sıkı referans</b>: iklim beklentisi + akıllı
+            süreklilik — geçilmesi zor, dürüst kıyas çıtası.
+            <b style={{ color: "#C7D6CE" }}> Bant kapsaması</b>: gerçekleşen üretimin,
+            önceden söylenen iyimser–kötümser aralıkta kaldığı günlerin oranı.
+            Hepsi her gece aynı kuralla, otomatik hesaplanır; geçmiş değiştirilmez.
+          </div>
+          <a href="#basla" className="vt-dugme vt-baglanti"
+            style={{ ...dugme, marginTop: 36, display: "inline-block", textDecoration: "none",
+            background: ALTIN, color: METIN }}>Kendi karneni başlat</a>
+        </div>
+      </section>
+
+      {/* ---- v2.328: başvuru — kurulum yok, veri yüklemek yok (Grentis kalıbı, dürüst hâli) ---- */}
+      <section id="basla" style={{ background: GECE_YESIL, padding: "26px 6vw 84px",
+        color: "#F2F7F4" }}>
+        <div style={{ maxWidth: 620, margin: "0 auto", textAlign: "center" }}>
+          <div style={{ fontFamily: M, fontSize: 12, letterSpacing: "0.14em",
+            color: FILIZ }}>KURULUM GEREKTİRMEZ</div>
+          <h2 style={{ fontSize: "clamp(24px, 3.2vw, 34px)", margin: "12px 0 10px",
+            color: "#F2F7F4" }}>
+            Kendi karnenizi başlatın.
+          </h2>
+          <p style={{ color: "#9DB3A9", fontSize: 15, lineHeight: 1.6, margin: "0 0 26px" }}>
+            E-postanızı bırakın; hesabınızı kuralım, ilk gece sınavından itibaren
+            karneniz birikmeye başlasın. Fiyatlandırma kurulu güç başına aylık
+            aboneliktir, santral sayısına göre şekillenir — teklif başvuruyla gelir.
+          </p>
+          <BasvuruFormu />
         </div>
       </section>
 
@@ -550,8 +680,9 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
             <div style={{ fontFamily: M, fontSize: 11.5,
               letterSpacing: "0.12em", color: "#6E827A",
               marginBottom: 14 }}>İLKELER</div>
-            {["Veriniz sizindir — dilediğiniz an dışa aktarılır",
+            {["Veriniz sizindir — dilediğiniz an dışa aktarır ya da silersiniz",
               "Geçmiş sonuç değiştirilmez; yenisi eklenir",
+              "Kurumlar arası paylaşım yalnız sizin izninizle açılır ve denetim iziyle kayda geçer",
               "Hava tahmini bir aya uzatılmaz — aylık beklenti iklim geçmişinden gelir",
               "Vitrin vaat etmez; karne panelde canlıdır"].map((s) => (
               <div key={s} style={{ fontSize: 13, lineHeight: 1.55,
