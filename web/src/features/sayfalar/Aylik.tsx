@@ -20,13 +20,23 @@ export function Aylik({ plantId }: { plantId: string }) {
   // v2.278: bankable yıllık beklenti — saklı sonuç; "yenile" 1–2 dk sürer (19 yıl × fizik koşusu)
   const [bk, setBk] = useState<Bankable | null | undefined>(undefined);
   const [bkMesaj, setBkMesaj] = useState<string | null>(null);
-  useEffect(() => { api.bankable(plantId).then(setBk).catch(() => setBk(null)); }, [plantId]);
   const bkYenile = () => { setBkMesaj("Hesaplanıyor — 19 yıl × fizik koşusu, 1–2 dakika…"); api.bankableHesapla(plantId).then((r) => { setBk(r); setBkMesaj(null); }).catch((e) => setBkMesaj(String((e as Error).message ?? e))); };
   const { n, oku } = useTema();
 
+  // v2.327: TEK KAPI (Portföy kalıbı) — üç kaynak paralel, sayfa bütün belirir.
+  const [hazir, setHazir] = useState(false);
   useEffect(() => {
-    api.aylik(plantId).then(setB).catch(() => setBirikiyor(true));
-    api.ozet(plantId).then(setO).catch(() => {});
+    let acik = true;
+    setHazir(false);
+    Promise.allSettled([api.aylik(plantId), api.ozet(plantId), api.bankable(plantId)])
+      .then(([ra, ro, rb]) => {
+        if (!acik) return;
+        if (ra.status === "fulfilled") setB(ra.value); else setBirikiyor(true);
+        if (ro.status === "fulfilled") setO(ro.value);
+        setBk(rb.status === "fulfilled" ? rb.value : null);
+        setHazir(true);
+      });
+    return () => { acik = false; };
   }, [plantId]);
 
   // Solargis Tablo 4.3/5.2 formati: sayi + isi-skalasi arka plan (v2.115)
@@ -123,6 +133,7 @@ export function Aylik({ plantId }: { plantId: string }) {
     } as EChartsOption;
   }, [b, n]);  // v2.148
 
+  if (!hazir) return <div style={{ color: "var(--soluk)" }}>Yükleniyor…</div>;
   if (birikiyor) return (
     <Sayfa baslik="Aylık beklenti" alt="İklimden gelen ay bazlı üretim zarfı.">
       <Kart baslik="Beklenti birikiyor">

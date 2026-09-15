@@ -28,17 +28,17 @@ function SablonDugmeleri({ plantId }: { plantId: string }) {
 }
 
 /** v2.283 (Tablo 3.3 satır 5) — modül davranışı: güç matrisi kalıbıyla ışınım/sıcaklık verimi ve iklim-özgü verim oranı. */
-function GucMatrisiKarti({ plantId }: { plantId: string }) {
-  const [g, setG] = useState<GucMatrisi | null | undefined>(undefined);
+function GucMatrisiKarti({ plantId, ilkVeri }: { plantId: string; ilkVeri: GucMatrisi | null }) {
+  // v2.327: ilk veri ebeveynin tek kapısından gelir (kart kendi Yükleniyor'unu göstermez);
+  // "Hesapla/Yenile" kartın kendi işi olarak kalır.
+  const [g, setG] = useState<GucMatrisi | null>(ilkVeri);
   const [mesaj, setMesaj] = useState<string | null>(null);
-  useEffect(() => { api.gucMatrisi(plantId).then(setG).catch(() => setG(null)); }, [plantId]);
   const hesapla = () => { setMesaj("Hesaplanıyor (tipik yıl, ~10 s)…"); api.gucMatrisiHesapla(plantId).then((r) => { setG(r); setMesaj(null); }).catch((e) => setMesaj(String((e as Error).message ?? e))); };
   return (
     <Kart baslik="Modül davranışı — güç matrisi" sag={<span style={{ display: "flex", gap: 6 }}>
       {g?.durum === "ok" && <span className="cip">tipik yıl {g.yil} · iklim-özgü verim oranı %{sayiTr((g.cser ?? 0) * 100, 1)}</span>}
       <button className="dugme" style={{ fontSize: 11.5 }} onClick={hesapla}>{g?.durum === "ok" ? "Yenile" : "Hesapla"}</button></span>}>
-      {g === undefined ? <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p>
-       : !g || g.durum !== "ok" ? <p className="soluk" style={{ margin: 0 }}>{mesaj ?? "Henüz hesaplanmadı — 'Hesapla' modülün ışınım/sıcaklık davranışını tipik yıl iklimiyle değerlendirir."}</p>
+      {!g || g.durum !== "ok" ? <p className="soluk" style={{ margin: 0 }}>{mesaj ?? "Henüz hesaplanmadı — 'Hesapla' modülün ışınım/sıcaklık davranışını tipik yıl iklimiyle değerlendirir."}</p>
        : (
         <>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
@@ -63,17 +63,16 @@ function GucMatrisiKarti({ plantId }: { plantId: string }) {
 }
 
 /** v2.281 (Tablo 3.3 satır 4) — kayıp ağacı: tipik yıl ışınımından şebekeye adım adım; her satır kaynağını söyler. */
-function KayipAgaciKarti({ plantId }: { plantId: string }) {
-  const [k, setK] = useState<KayipAgaci | null | undefined>(undefined);
+function KayipAgaciKarti({ plantId, ilkVeri }: { plantId: string; ilkVeri: KayipAgaci | null }) {
+  // v2.327: ilk veri ebeveynin tek kapısından (bkz. GucMatrisiKarti notu).
+  const [k, setK] = useState<KayipAgaci | null>(ilkVeri);
   const [mesaj, setMesaj] = useState<string | null>(null);
-  useEffect(() => { api.kayipAgaci(plantId).then(setK).catch(() => setK(null)); }, [plantId]);
   const hesapla = () => { setMesaj("Hesaplanıyor (tipik yıl ışınımı, ~10 s)…"); api.kayipAgaciHesapla(plantId).then((r) => { setK(r); setMesaj(null); }).catch((e) => setMesaj(String((e as Error).message ?? e))); };
   return (
     <Kart baslik="Kayıp ağacı — yatay ışınımdan şebekeye" sag={<span style={{ display: "flex", gap: 6 }}>
       {k?.durum === "ok" && <span className="cip">tipik yıl {k.yil} · PR {sayiTr((k.pr ?? 0) * 100, 0)}% · {sayiTr(k.ozgul_kwh_kwp ?? 0, 0)} kWh/kWp</span>}
       <button className="dugme" style={{ fontSize: 11.5 }} onClick={hesapla}>{k?.durum === "ok" ? "Yenile" : "Hesapla"}</button></span>}>
-      {k === undefined ? <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p>
-       : !k || k.durum !== "ok" ? <p className="soluk" style={{ margin: 0 }}>{mesaj ?? "Henüz hesaplanmadı — 'Hesapla' tipik yıl ışınımından adım adım kayıp zincirini üretir."}</p>
+      {!k || k.durum !== "ok" ? <p className="soluk" style={{ margin: 0 }}>{mesaj ?? "Henüz hesaplanmadı — 'Hesapla' tipik yıl ışınımından adım adım kayıp zincirini üretir."}</p>
        : (
         <>
           <div className="grafik-kaydir">
@@ -531,13 +530,29 @@ export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
 export function Kalibrasyon({ plantId }: { plantId: string }) {
   const [k, setK] = useState<KalibrasyonOzeti | null>(null);
   const [yuklendi, setYuklendi] = useState(false);
-  useEffect(() => {
-    api.kalibrasyon(plantId).then((v) => { setK(v); setYuklendi(true); });
-  }, [plantId]);
   const [ky, setKy] = useState<Kayma | null>(null);   // v2.253
   const [hj, setHj] = useState<Hijyen | null>(null);  // v2.254
-  useEffect(() => { api.hijyen(plantId).then(setHj).catch(() => {}); }, [plantId]);
-  useEffect(() => { api.kayma(plantId).then(setKy).catch(() => {}); }, [plantId]);
+  // v2.327: TEK KAPI (Portföy kalıbı) — beş kaynak (özet, hijyen, kayma,
+  // kayıp ağacı, güç matrisi) paralel; sayfa bütün belirir. Alt kartların ilk
+  // verisi prop'la iner; "Hesapla/Yenile" kartlarda kalır.
+  const [ka, setKa] = useState<KayipAgaci | null>(null);
+  const [gm, setGm] = useState<GucMatrisi | null>(null);
+  useEffect(() => {
+    let acik = true;
+    setYuklendi(false);
+    Promise.allSettled([api.kalibrasyon(plantId), api.hijyen(plantId), api.kayma(plantId),
+      api.kayipAgaci(plantId), api.gucMatrisi(plantId)])
+      .then(([rk, rhj, rky, rka, rgm]) => {
+        if (!acik) return;
+        if (rk.status === "fulfilled") setK(rk.value);
+        if (rhj.status === "fulfilled") setHj(rhj.value);
+        if (rky.status === "fulfilled") setKy(rky.value);
+        setKa(rka.status === "fulfilled" ? rka.value : null);
+        setGm(rgm.status === "fulfilled" ? rgm.value : null);
+        setYuklendi(true);
+      });
+    return () => { acik = false; };
+  }, [plantId]);
   const sr = (a: string, b: string) => <tr key={a}><td>{a}</td><td className="mono">{b}</td></tr>;
   const yzd = (v: number | null) => v === null ? "\u2014" : `%${sayiTr(v, 1)}`;
   const iyilesme = k && k.mape_once && k.mape_sonra
@@ -593,6 +608,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
     const d = new Date(iso);
     return `${d.getDate()} ${AY[d.getMonth()]} ${d.getFullYear()}`;
   };
+  if (!yuklendi) return <div style={{ color: "var(--soluk)" }}>Y\u00fckleniyor\u2026</div>;
   return (
     <Sayfa baslik="Kalibrasyon"
       alt="Model, santralinizin kendi verisiyle uyarlanır — kanıtı bu sayfada görürsünüz."
@@ -734,8 +750,8 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
           <p className="soluk" style={{ margin: 0 }}>{ky ? (ky.not ? `— ${ky.not}` : "Ortak saat yetersiz — en az 48 saat gerekir.") : "Arşiv ve tahmin meteosu aynı pencerede karşılaştırılıyor…"}</p>
         )}
       </Kart>
-      <KayipAgaciKarti plantId={plantId} />
-      <GucMatrisiKarti plantId={plantId} />
+      <KayipAgaciKarti plantId={plantId} ilkVeri={ka} />
+      <GucMatrisiKarti plantId={plantId} ilkVeri={gm} />
     </Sayfa>
   );
 }

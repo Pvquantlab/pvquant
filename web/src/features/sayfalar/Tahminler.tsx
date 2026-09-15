@@ -33,25 +33,34 @@ export function Tahminler({ plantId }: { plantId: string }) {
   const [ozet, setOzet] = useState<SantralOzeti | null>(null);
   const [kgup, setKgup] = useState<KgupOnizleme | null>(null);   // v2.260
   const [kgupHata, setKgupHata] = useState<string | null>(null);
-  useEffect(() => { api.kgupOnizleme(plantId).then(setKgup).catch(() => setKgup(null)); }, [plantId]);
   const [nc, setNc] = useState<Nowcast | null | undefined>(undefined);   // v2.266
   // v2.273: son koşunun bant kaynağı (ensemble üyeleri / model) — dip notta dürüstçe söylenir
   const [bantYazisi, setBantYazisi] = useState<string | null>(null);
+  // v2.327: TEK KAPI (Portföy kalıbı) — beş kaynak paralel, hepsi yerleşince
+  // sayfa bütün belirir. ufuk seçici kapıya girmez (istemci tarafı dilimleme).
+  const [hazir, setHazir] = useState(false);
   useEffect(() => {
-    api.kosular(plantId).then((k) => {
-      const b = k[0]?.bant;
-      const s = k[0]?.sapma;
-      const sy = s?.aktif ? ` · son ${sayiTr(s.n_gun ?? 0)} günün ölçümüyle %${sayiTr(((s.oran_genel ?? 1) - 1) * 100, 1)} düzeltildi` : "";
-      const gi = k[0]?.etiket === "gun_ici" ? " · gün içi güncelleme (taze bölgesel koşu)" : "";
-      setBantYazisi((!b ? "" : b.kaynak === "gefs" ? `${sayiTr(b.uye ?? 0)} üyeli hava topluluğundan ampirik kantil` : "model bandı") + sy + gi || null);
-    }).catch(() => setBantYazisi(null));
-  }, [plantId]);
-  useEffect(() => { api.nowcast(plantId).then(setNc).catch(() => setNc(null)); }, [plantId]);
-  useEffect(() => {
-    api.tahmin(plantId, "16d").then(setSeri); // single fetch — D1/D2
-  }, [plantId]);
-  useEffect(() => {
-    api.ozet(plantId).then(setOzet);
+    let acik = true;
+    setHazir(false);
+    Promise.allSettled([api.tahmin(plantId, "16d"), api.ozet(plantId),
+      api.kgupOnizleme(plantId), api.nowcast(plantId), api.kosular(plantId)])
+      .then(([rs, ro, rk, rn, rko]) => {
+        if (!acik) return;
+        if (rs.status === "fulfilled") setSeri(rs.value);
+        if (ro.status === "fulfilled") setOzet(ro.value);
+        setKgup(rk.status === "fulfilled" ? rk.value : null);
+        setNc(rn.status === "fulfilled" ? rn.value : null);
+        if (rko.status === "fulfilled") {
+          const k = rko.value;
+          const b = k[0]?.bant;
+          const s = k[0]?.sapma;
+          const sy = s?.aktif ? ` · son ${sayiTr(s.n_gun ?? 0)} günün ölçümüyle %${sayiTr(((s.oran_genel ?? 1) - 1) * 100, 1)} düzeltildi` : "";
+          const gi = k[0]?.etiket === "gun_ici" ? " · gün içi güncelleme (taze bölgesel koşu)" : "";
+          setBantYazisi((!b ? "" : b.kaynak === "gefs" ? `${sayiTr(b.uye ?? 0)} üyeli hava topluluğundan ampirik kantil` : "model bandı") + sy + gi || null);
+        } else setBantYazisi(null);
+        setHazir(true);
+      });
+    return () => { acik = false; };
   }, [plantId]);
 
   const t0 = useMemo(() => t0Hesapla(Date.now()), []);
@@ -70,6 +79,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
   );
   const bantVar = gunlukVeri.some((g) => g.p10Kwh !== null);
 
+  if (!hazir) return <div style={{ color: "var(--soluk)" }}>Yükleniyor…</div>;
   return (
     <Sayfa
       baslik="Tahminler"
