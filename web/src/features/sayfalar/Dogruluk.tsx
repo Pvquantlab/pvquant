@@ -26,15 +26,40 @@ export function Dogruluk({ plantId }: { plantId: string }) {
   // (k null'a dusmez), sayfa titremez.
   const [donem, setDonem] = useState<30 | 60 | 90>(60);
   const { n, oku } = useTema();
-  useEffect(() => { api.karne(plantId, donem).then(setK); }, [plantId, donem]);
   const [kf, setKf] = useState<KonformalAyar>({ aktif: false });   // v2.252
-  useEffect(() => { api.konformal(plantId).then(setKf).catch(() => {}); }, [plantId]);
   const [bt, setBt] = useState<Backtest | null>(null);   // v2.253
   const [dz, setDz] = useState<Dengesizlik | null>(null);   // v2.259
-  useEffect(() => { api.dengesizlik(plantId).then(setDz).catch(() => {}); }, [plantId]);
-  useEffect(() => { api.backtest(plantId).then(setBt).catch(() => {}); }, [plantId]);
   const [gv, setGv] = useState<Guvenilirlik | null>(null);   // v2.271
-  useEffect(() => { api.guvenilirlik(plantId).then(setGv).catch(() => {}); }, [plantId]);
+  // v2.326: TEK KAPI (Portföy kalıbı) — yedi kaynak paralel gider, hepsi
+  // yerleşince sayfa bütün belirir. Dönem segmenti kapıya GİRMEZ: yalnız
+  // karneyi tazeler, eski veri tutulur, sayfa titremez (v2.230 kararı korunur).
+  const [hazir, setHazir] = useState(false);
+  useEffect(() => {
+    let acik = true;
+    setHazir(false);
+    Promise.allSettled([api.karne(plantId, donem), api.konformal(plantId),
+      api.dengesizlik(plantId), api.backtest(plantId), api.guvenilirlik(plantId),
+      api.hataMatrisi(plantId), api.hataDagilimi(plantId)])
+      .then(([rk, rkf, rdz, rbt, rgv, rhm, rhd]) => {
+        if (!acik) return;
+        if (rk.status === "fulfilled") setK(rk.value);
+        if (rkf.status === "fulfilled") setKf(rkf.value);
+        if (rdz.status === "fulfilled") setDz(rdz.value);
+        if (rbt.status === "fulfilled") setBt(rbt.value);
+        if (rgv.status === "fulfilled") setGv(rgv.value);
+        if (rhm.status === "fulfilled") setHm(rhm.value);
+        if (rhd.status === "fulfilled") setHd(rhd.value);
+        setHazir(true);
+      });
+    return () => { acik = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- donem bilerek dışarıda: kapı yalnız santral değişince kurulur
+  }, [plantId]);
+  const [ilkDonem, setIlkDonem] = useState(true);
+  useEffect(() => {
+    if (ilkDonem) { setIlkDonem(false); return; }   // ilk değer kapıda çekildi
+    api.karne(plantId, donem).then(setK);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [donem]);
   // v2.271: güvenilirlik diyagramı — x nominal τ, y gözlenen P(y ≤ q_τ); köşegen ideal. Ham ince/soluk, kalibre kalın mavi.
   const gvOption = useMemo<EChartsOption | null>(() => {
     if (!gv || gv.durum !== "ok" || !gv.guvenilirlik) return null;
@@ -72,8 +97,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
         markLine: { silent: true, symbol: "none", lineStyle: { color: soluk, type: "dashed" }, data: [{ yAxis: 0.1 }], label: { show: false } } }],
     };
   }, [gv, n, oku]);   // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { api.hataMatrisi(plantId).then(setHm); }, [plantId]);
-  useEffect(() => { api.hataDagilimi(plantId).then(setHd); }, [plantId]);
+  // v2.326: hataMatrisi/hataDagilimi artık tek kapının içinde çekiliyor (yukarıda).
 
   // v2.225 (H "Rapor Dili"): Solargis grameri — gunluk degerler NOKTA,
   // 7 gun egilimi TEK kalin cizgi, naif INCE gri cizgi (alan degil).
@@ -348,7 +372,8 @@ export function Dogruluk({ plantId }: { plantId: string }) {
     return son - once;
   }, [k]);
 
-  if (!k) return <div style={{ color: "var(--soluk)" }}>Yükleniyor…</div>;
+  if (!hazir) return <div style={{ color: "var(--soluk)" }}>Yükleniyor…</div>;
+  if (!k) return <div style={{ color: "var(--soluk)" }}>Karne verisi alınamadı — sayfayı yenileyin.</div>;
 
   const OK = ({ yukari }: { yukari: boolean }) => (
     <svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true">
