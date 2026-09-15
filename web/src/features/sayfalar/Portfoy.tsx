@@ -8,18 +8,38 @@ import { Kart, Kpi, Sayfa, sayiTr } from "./parcalar";
 export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
   /** v2.303: arşivleme/geri alma sonrası üst listeyi tazele */ santralYenile?: () => void }) {
   const [p, setP] = useState<PortfoyT | null | undefined>(undefined);
-  useEffect(() => { api.portfoy().then(setP).catch(() => setP(null)); }, []);
   const [dsg, setDsg] = useState<PortfoyDsg | null>(null);   // v2.276
   const [pt, setPt] = useState<PortfoyTahmin | null>(null);   // v2.280
-  useEffect(() => { api.portfoyTahmin().then(setPt).catch(() => {}); }, []);
-  useEffect(() => { api.portfoyDsg().then(setDsg).catch(() => {}); }, []);
+  // v2.324: TEK KAPI — üç çekirdek istek paralel gider, ÜÇÜ DE yerleşince sayfa
+  // bir bütün olarak belirir. Önceki hâlde her bölüm kendi anında doluyordu
+  // ("parça parça" şikâyeti); API v2.323 ile ~60-130 ms olduğundan hepsini
+  // beklemek en yavaş isteğin bedeli kadardır. null artık "yok" demektir,
+  // "bekliyor" değil — bölümlerin boş dalları buna göre dürüstleştirildi.
+  const [hazir, setHazir] = useState(false);
+  useEffect(() => {
+    let acik = true;
+    Promise.allSettled([api.portfoy(), api.portfoyTahmin(), api.portfoyDsg()])
+      .then(([rp, rpt, rdsg]) => {
+        if (!acik) return;
+        setP(rp.status === "fulfilled" ? rp.value : null);
+        setPt(rpt.status === "fulfilled" ? rpt.value : null);
+        setDsg(rdsg.status === "fulfilled" ? rdsg.value : null);
+        setHazir(true);
+      });
+    return () => { acik = false; };
+  }, []);
   const t = p?.toplam ?? null;
   const kwhYaz = (v: number | null | undefined) => v == null ? "—" : `${sayiTr(v / 1000, 1)} MWh`;
   const mwh = (v: number | null | undefined) => v == null ? "—" : sayiTr(v / 1000, 1);
   const tarih = (s: string | null) => s ? new Date(s).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }) : "—";
+  if (!hazir) return (
+    <Sayfa baslik="Portföy" alt="Tüm santraller bir bakışta — sayılar kapasite ile ağırlıklı, eksikler tire.">
+      <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p>
+    </Sayfa>
+  );
   return (
     <Sayfa baslik="Portföy" alt="Tüm santraller bir bakışta — sayılar kapasite ile ağırlıklı, eksikler tire."
-      sag={<span className="cip">{p ? `${sayiTr(p.santraller.length)} santral · ${new Date(p.gun + "T12:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}` : "yükleniyor"}</span>}>
+      sag={<span className="cip">{p ? `${sayiTr(p.santraller.length)} santral · ${new Date(p.gun + "T12:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}` : "—"}</span>}>
       <div className="ızgara satir-4" style={{ marginBottom: 14 }}>
         <Kpi etiket="Toplam kurulu güç" deger={t ? sayiTr(t.kapasite_kwp / 1000, 2) : "—"} birim="MWp" alt={t ? `${sayiTr(t.santral)} santral` : ""} />
         <Kpi etiket="Bugün beklenen · yarın" deger={t ? `${mwh(t.bugun_kwh)} · ${mwh(t.yarin_kwh)}` : "—"} birim="MWh"
@@ -30,8 +50,7 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
              alt="son 7 gün okunmamış · 2 günden eski ölçüm" ton={t && (t.acik_alarm > 0 || t.veri_gecikmis > 0) ? "uyari" : undefined} />
       </div>
       <Kart baslik="Santraller" sag={<span className="cip">satıra tıkla → santral</span>}>
-        {p === undefined ? <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p>
-         : !p || p.santraller.length === 0 ? <p className="soluk" style={{ margin: 0 }}>Bu hesapta santral yok.</p>
+        {!p || p.santraller.length === 0 ? <p className="soluk" style={{ margin: 0 }}>Bu hesapta santral yok.</p>
          : (
           <div className="grafik-kaydir">
             <table className="veri" style={{ fontSize: 12.5 }}>
@@ -57,7 +76,7 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
       </Kart>
       {/* v2.280 (Tablo 3.2 satır 11): hiyerarşik uzlaştırılmış portföy tahmini — toplam santral tahminleriyle tutarlı */}
       <Kart baslik="Portföy tahmini — uzlaştırılmış günlük toplamlar" sag={<span className="cip">{pt?.durum === "ok" ? `${pt.yontem}${pt.tutarli === false ? " · tutarsız!" : ""}` : "—"}</span>}>
-        {!pt ? <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p> : pt.durum !== "ok" ? <p className="soluk" style={{ margin: 0 }}>— koşu yok</p> : (
+        {!pt || pt.durum !== "ok" ? <p className="soluk" style={{ margin: 0 }}>— koşu yok</p> : (
           <>
             <div className="grafik-kaydir">
               <table className="veri" style={{ fontSize: 12.5 }}>
@@ -75,7 +94,7 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
       </Kart>
       {/* v2.276 (Dalga 5): DSG/toplayıcı netleştirmesi — portföy tek dengesizlik hesabına girerse ne kazanılır */}
       <Kart baslik="DSG netleştirmesi — portföy dengesizliği" sag={<span className="cip">{dsg ? `${sayiTr(dsg.pencere_gun)} gün · ${dsg.fiyat.senaryo_saat > 0 ? "senaryo fiyat" : "EPİAŞ fiyat"}` : "—"}</span>}>
-        {!dsg ? <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p> : dsg.ayri_tl == null ? (
+        {!dsg ? <p className="soluk" style={{ margin: 0 }}>— veri yok</p> : dsg.ayri_tl == null ? (
           <p className="soluk" style={{ margin: 0 }}>— {dsg.not ?? "ortak saat yetersiz"}</p>
         ) : (
           <>

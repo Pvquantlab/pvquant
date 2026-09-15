@@ -2,5 +2,12 @@
 	# SPA yonlendirmesi: bilinmeyen yollar index.html'e duser (history API).
 	root * /srv
 	try_files {path} /index.html
+	# v2.324: onbellek sozlesmesi — index.html HER ZAMAN dogrulanir (yoksa
+	# tarayici sezgisel onbellekle ESKI paketi calistirir; Safari'de yakalandi),
+	# hash'li assets/* ise icerik-adresli oldugundan 1 yil dokunulmaz.
+	@varliklar path /assets/*
+	header @varliklar Cache-Control "public, max-age=31536000, immutable"
+	@sayfa not path /assets/*
+	header @sayfa Cache-Control "no-cache"
 	file_server
 }
