@@ -40,7 +40,19 @@ export function oturumDusunce_kaydet(fn: (() => void) | null): void {
  *  iner. Yalnız GET — mutasyonlar (gonder) asla birleştirilmez. Söz çözülünce
  *  kayıt düşer: sonraki ziyaret her zaman taze veri çeker (önbellek DEĞİL). */
 const ucustakiler = new Map<string, Promise<unknown>>();
+/** v2.325: KISA ÖMÜRLÜ GET BELLEĞİ — sayfa geçişleri "hemen" olsun diye.
+ *  60 sn içinde aynı yola dönüş ağa çıkmadan bellekten döner (kapılı sayfalar
+ *  anında belirir); süre dolunca her zamanki taze çekim. Görünen değerler
+ *  arkadan sessizce DEĞİŞMEZ (SWR değil) ve her yazma işlemi (gonder) belleği
+ *  tümden boşaltır — kullanıcı kendi değişikliğini daima taze görür.
+ *  damga yoklaması getir kullanmaz (kendi ETag fetch'i) → tazelik sinyali
+ *  önbelleğe takılmaz. */
+const bellekte = new Map<string, { veri: unknown; zaman: number }>();
+const BELLEK_MS = 60_000;
 function getir<T>(yol: string): Promise<T> {
+  const anilan = bellekte.get(yol);
+  if (anilan && Date.now() - anilan.zaman < BELLEK_MS)
+    return Promise.resolve(anilan.veri as T);
   const eldeki = ucustakiler.get(yol);
   if (eldeki) return eldeki as Promise<T>;
   const soz = (async () => {
@@ -54,7 +66,9 @@ function getir<T>(yol: string): Promise<T> {
       return new Promise<T>(() => {});
     }
     if (!y.ok) throw new Error(`${y.status} ${yol}`);
-    return (await y.json()) as T;
+    const veri = (await y.json()) as T;
+    bellekte.set(yol, { veri, zaman: Date.now() });
+    return veri;
   })();
   ucustakiler.set(yol, soz);
   soz.finally(() => ucustakiler.delete(yol)).catch(() => {});
@@ -73,6 +87,11 @@ async function gonder<T>(yol: string, method: "POST" | "DELETE" | "PUT", govde?:
     try { const g = (await y.json()) as { detail?: unknown }; if (typeof g.detail === "string") mesaj = g.detail; } catch { /* gövde yok */ }
     throw new Error(mesaj);
   }
+  // v2.325: her başarılı yazmadan sonra GET belleği düşer — kullanıcı kendi
+  // değişikliğini taze görür. Tek istisna oturum yenileme: veri değiştirmez ve
+  // her sayfa geçişinde koştuğundan belleği silseydi önbellek hiç işlemezdi
+  // (ilk ölçümde yakalandı: dönüş yine 393 ms'ydi).
+  if (yol !== "/v1/oturum/yenile") bellekte.clear();
   return (await y.json()) as T;
 }
 
@@ -127,7 +146,10 @@ export async function giris(email: string, sifre: string): Promise<boolean> {
   return true;
 }
 
-export function cikis(): void { localStorage.removeItem("pvq_token"); }
+export function cikis(): void {
+  localStorage.removeItem("pvq_token");
+  bellekte.clear();   // v2.325: hesap sınırı — sonraki oturum önceki hesabın verisini bellekte bulmasın
+}
 
 /** v2.88: SCADA onizleme yaniti — apps/api/main.py v2.87 ile birebir. */
 export interface ScadaOnizleme {
