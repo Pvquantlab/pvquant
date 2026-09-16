@@ -589,15 +589,19 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
               <div style={{ display: "grid", gap: 12, margin: "16px 0 6px",
                 gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
                 {([
-                  ["PVQuant", dg.wmape_pct, "saatlik ortalama sapma"],
-                  ["Basit yöntem", dg.naif_wmape_pct, "dünü tekrarlar"],
-                  ["Sıkı referans", dg.siki_referans_wmape_pct, "iklim + akıllı süreklilik"],
-                  ["Bant kapsaması", dg.bant_kapsama_pct, `hedef %${dg.bant_hedef_pct ?? 80}`],
-                ] as const).map(([ad, deger, alt]) => (
+                  // v2.330 (rapor m.8): vurgu disiplini — bizim sonuçlarımız (PVQuant,
+                  // bant) parlak, referanslar (naif, sıkı) sis grisinde geri planda.
+                  ["PVQuant", dg.wmape_pct, "saatlik ortalama sapma", "biz"],
+                  ["Basit yöntem", dg.naif_wmape_pct, "dünü tekrarlar", "referans"],
+                  ["Sıkı referans", dg.siki_referans_wmape_pct, "iklim + akıllı süreklilik", "referans"],
+                  ["Bant kapsaması", dg.bant_kapsama_pct, `hedef %${dg.bant_hedef_pct ?? 80}`, "biz"],
+                ] as const).map(([ad, deger, alt, kim]) => (
                   <div key={ad}>
                     <div style={{ fontFamily: M, fontSize: 10, letterSpacing: "0.08em",
-                      color: "#8AA79B" }}>{ad}</div>
-                    <div style={{ fontFamily: M, fontSize: 26, fontWeight: 600, color: "#F2F7F4",
+                      color: kim === "biz" ? "#8FD4B4" : "#8AA79B" }}>{ad}</div>
+                    <div style={{ fontFamily: M, fontWeight: kim === "biz" ? 600 : 500,
+                      fontSize: kim === "biz" ? 28 : 24,
+                      color: kim === "biz" ? (ad === "PVQuant" ? FILIZ : "#F2F7F4") : "#8FA89E",
                       fontVariantNumeric: "tabular-nums" }}>
                       {deger == null ? "—" : `%${deger.toLocaleString("tr-TR")}`}</div>
                     <div style={{ fontSize: 11.5, color: "#9DB3A9" }}>{alt}</div>
@@ -618,7 +622,10 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
                       <td style={{ padding: "5px 6px" }}>{new Date(a.ay + "-15").toLocaleDateString("tr-TR", { month: "long", year: "numeric" })}</td>
                       {[a.gun, a.wmape_pct, a.naif_wmape_pct, a.bant_kapsama_pct].map((v, j) => (
                         <td key={j} style={{ padding: "5px 6px", textAlign: "right",
-                          fontVariantNumeric: "tabular-nums" }}>
+                          fontVariantNumeric: "tabular-nums",
+                          // v2.330 (rapor m.8): PVQuant sütunu vurgulu, naif sütunu siste
+                          color: j === 1 ? FILIZ : j === 2 ? "#8FA89E" : "#C7D6CE",
+                          fontWeight: j === 1 ? 600 : 400 }}>
                           {v == null ? "—" : j === 0 ? v.toLocaleString("tr-TR") : `%${v.toLocaleString("tr-TR")}`}</td>))}
                     </tr>))}</tbody>
                 </table>
