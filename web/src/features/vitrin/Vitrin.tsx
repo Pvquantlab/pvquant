@@ -11,6 +11,14 @@ import type { Dogrulama } from "../../api/types";
  *  Dürüstlük vitrine de girer: eğri 'temsili' etiketli, sayılar vaat edilmez. */
 
 const M = "'IBM Plex Mono', ui-monospace, monospace";
+// v2.329 (tasarım araştırması): başlıklar karakterli display fontuna geçti —
+// Space Grotesk (Space Mono'dan türetilmiş: "ölçüm aletine yakışan" sans).
+// Gövde Inter'de kalır (index.css --font), veri IBM Plex Mono'da.
+const D = "'Space Grotesk', 'Inter', system-ui, sans-serif";
+// Yüzey/gölge tokenları (Stripe yumuşak gölge + Vercel hairline kalıbı):
+const KENAR_GUNDUZ = "1px solid rgba(16,32,27,0.08)";
+const GOLGE_GUNDUZ = "0 1px 2px rgba(16,32,27,.04), 0 8px 24px rgba(16,32,27,.06)";
+const KENAR_GECE = "1px solid rgba(255,255,255,0.07)";
 
 const YESIL = "#0E7C5A";
 const FILIZ = "#3FB489";
@@ -30,12 +38,16 @@ function Egri() {
   // aralik bandi YALNIZ gelecekte — belirsizlik ileride buyur, gecmiste yoktur.
   // Solar imza: platonun altinda yumusak gunes diski.
   return (
-    <svg viewBox="0 0 720 240" style={{ width: "100%", display: "block" }}
+    <svg viewBox="0 0 720 256" style={{ width: "100%", display: "block" }}
          role="img" aria-label="Temsili günlük üretim eğrisi, tahmin aralığı ve AC tavanı">
       <defs>
         <linearGradient id="alan" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor={YESIL} stopOpacity="0.18" />
           <stop offset="1" stopColor={ALTIN} stopOpacity="0.02" />
+        </linearGradient>
+        <linearGradient id="bant" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={FILIZ} stopOpacity="0.16" />
+          <stop offset="1" stopColor={FILIZ} stopOpacity="0" />
         </linearGradient>
         <radialGradient id="gunes" cx="0.5" cy="0.5" r="0.5">
           <stop offset="0" stopColor={ALTIN} stopOpacity="0.5" />
@@ -51,7 +63,7 @@ function Egri() {
       <line x1="40" y1="208" x2="700" y2="208" stroke={METIN}
             strokeWidth="1" opacity="0.12" />
       <line x1="40" y1="52" x2="700" y2="52" stroke={ALTIN}
-            strokeWidth="1.4" strokeDasharray="7 5" opacity="0.85" />
+            strokeWidth="1.25" strokeDasharray="6 6" opacity="0.7" />
       <text x="44" y="44" fontFamily={M} fontSize="11" fill={ALTIN_KOYU}>
         AC tavanı</text>
       <path d="M40,208 L120,208 C 190,202 226,116 268,70
@@ -65,11 +77,13 @@ function Egri() {
       <path d="M472,55 C 502,62 528,78 552,102 C 585,134 632,164 700,178
                L 700,207 C 618,206 566,190 536,144
                C 516,112 496,86 472,69 Z"
-            fill={FILIZ} opacity="0.16" />
+            fill="url(#bant)" />
       <path d="M472,62 C 498,74 520,94 542,120 C 572,156 616,192 700,203"
             fill="none" stroke={YESIL} strokeWidth="2.5"
-            strokeDasharray="1 8" strokeLinecap="round" opacity="0.9" />
-      <text x="200" y="150" fontFamily={M} fontSize="10" fill="#4E6F62"
+            strokeDasharray="0.1 7" strokeLinecap="round" opacity="0.9" />
+      <line x1="228" y1="141" x2="256" y2="96" stroke={SIS} strokeWidth="0.6" />
+      <rect x="158" y="138" width="86" height="15" rx="3" fill={KREM} opacity="0.9" />
+      <text x="201" y="149" fontFamily={M} fontSize="10" fill="#4E6F62"
             textAnchor="middle">gerçekleşen</text>
       <text x="608" y="126" fontFamily={M} fontSize="10" fill="#5F8F7C"
             textAnchor="middle">tahmin aralığı</text>
@@ -84,8 +98,8 @@ function Egri() {
             textAnchor="middle">12:00</text>
       <text x="590" y="228" fontFamily={M} fontSize="9.5" fill="#8A968F"
             textAnchor="middle">18:00</text>
-      <text x="700" y="238" fontFamily={M} fontSize="10" fill="#8A968F"
-            textAnchor="end">temsili eğri — gerçeği panelde</text>
+      <text x="370" y="252" fontFamily={M} fontSize="10" fill="#8A968F"
+            textAnchor="middle">temsili eğri — gerçeği panelde</text>
     </svg>
   );
 }
@@ -256,8 +270,8 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
     cursor: "pointer", border: "1.5px solid transparent",
     fontFamily: "inherit", transition: "filter .2s ease, transform .2s ease",
   } as const;
-  const kart = { background: "rgba(255,255,255,0.05)",
-    border: "1px solid rgba(255,255,255,0.1)", borderRadius: 18,
+  const kart = { background: "rgba(255,255,255,0.03)",
+    border: KENAR_GECE, borderRadius: 18,
     padding: "22px 20px", textAlign: "left" } as const;
   const kartBas = { display: "flex", justifyContent: "space-between",
     alignItems: "baseline", gap: 8 } as const;
@@ -303,7 +317,7 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
           <div style={{ fontFamily: M, fontSize: 12, letterSpacing: "0.14em",
             color: ALTIN_KOYU }}>
             GÜNEŞ ÜRETİM TAHMİNİ · HER GECE SINANIR</div>
-          <h1 style={{ fontSize: "clamp(38px, 6vw, 64px)", lineHeight: 1.05,
+          <h1 style={{ fontFamily: D, fontSize: "clamp(38px, 6vw, 64px)", lineHeight: 1.05,
             margin: "18px 0 0", letterSpacing: "-0.03em" }}>
             <span style={{ color: YESIL }}>Kanıtla</span> konuşan<br />
             üretim tahmini.
@@ -332,7 +346,7 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
         padding: "72px 6vw 96px" }}>
         <div style={{ fontFamily: M, fontSize: 12, letterSpacing: "0.14em",
           color: YESIL, textAlign: "center" }}>DÖRT ADIM, TEK DÜRÜSTLÜK</div>
-        <h2 style={{ fontSize: "clamp(26px, 3.6vw, 38px)", textAlign: "center",
+        <h2 style={{ fontFamily: D, letterSpacing: "-0.018em", fontSize: "clamp(26px, 3.6vw, 38px)", textAlign: "center",
           margin: "14px 0 44px" }}>
           Tahmin dört <span style={{ color: YESIL }}>adımda</span> doğar —
           her adımı panelde görünür.
@@ -341,7 +355,7 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
           gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))" }}>
           {KATMANLAR.map(([ad, cumle], i) => (
             <div key={ad} className="vt-kart" style={{ background: "#fff",
-              border: "1px solid #E2EAE6", borderRadius: 18,
+              border: KENAR_GUNDUZ, boxShadow: GOLGE_GUNDUZ, borderRadius: 18,
               padding: "22px 20px",
               borderTop: `3px solid ${i === 3 ? ALTIN : YESIL}` }}>
               <div style={{ display: "flex", justifyContent: "space-between",
@@ -372,7 +386,7 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
           <div style={{ fontFamily: M, fontSize: 12, letterSpacing: "0.14em",
             color: ALTIN_KOYU, textAlign: "center" }}>
             TÜRKİYE PİYASASINDA · TAHMİN HATASI = DENGESİZLİK FATURASI</div>
-          <h2 style={{ fontSize: "clamp(26px, 3.6vw, 38px)", textAlign: "center",
+          <h2 style={{ fontFamily: D, letterSpacing: "-0.018em", fontSize: "clamp(26px, 3.6vw, 38px)", textAlign: "center",
             margin: "14px 0 10px" }}>
             Sapma burada soyut değil — <span style={{ color: ALTIN_KOYU }}>TL</span> yazar.
           </h2>
@@ -390,7 +404,7 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
               ["Toplayıcıya tek tık", "Tahmin aralığı toplayıcı/DSG şablonlarında (saatlik ya da 15 dakikalık) dışa verilir; API anahtarıyla sistemden sisteme akar."],
             ] as const).map(([ad, cumle]) => (
               <div key={ad} className="vt-kart" style={{ background: "#fff",
-                border: "1px solid #EAE1CC", borderRadius: 18,
+                border: KENAR_GUNDUZ, boxShadow: GOLGE_GUNDUZ, borderRadius: 18,
                 padding: "22px 20px", borderTop: `3px solid ${ALTIN}` }}>
                 <div style={{ fontWeight: 700, fontSize: 17 }}>{ad}</div>
                 <div style={{ fontSize: 13.5, color: METIN_IKINCIL,
@@ -432,15 +446,16 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
         <YildizAlani />
         <div style={{ maxWidth: 880, margin: "0 auto", textAlign: "center",
           position: "relative" }}>
-          <div style={{ background: BEYAZ, color: METIN,
+          <div style={{ background: "rgba(255,255,255,0.04)", color: "#E8F0EC",
+            border: "1px solid rgba(255,255,255,0.09)",
+            backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
             borderRadius: 20, padding: "26px 28px", textAlign: "left",
             display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap",
-            justifyContent: "space-between", margin: "0 0 84px",
-            boxShadow: "0 24px 60px rgba(3,14,20,0.45)" }}>
+            justifyContent: "space-between", margin: "0 0 84px" }}>
             <div style={{ maxWidth: 480 }}>
-              <div style={{ fontWeight: 700, fontSize: 17 }}>
+              <div style={{ fontWeight: 700, fontSize: 17, color: "#F1F6F3" }}>
                 Derine inmek ister misiniz?</div>
-              <div style={{ fontSize: 14, color: METIN_IKINCIL, marginTop: 6,
+              <div style={{ fontSize: 14, color: "#9DB3A9", marginTop: 6,
                 lineHeight: 1.55 }}>
                 Bant, karne ve iklim zarfının tamamı panelde canlıdır —
                 vitrin özettir, kanıt içeridedir.</div>
@@ -449,8 +464,8 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
               <a href="#katmanlar" className="vt-dugme vt-baglanti"
                 style={{ padding: "11px 20px",
                 borderRadius: 12, fontSize: 14, fontWeight: 600,
-                textDecoration: "none", color: METIN,
-                border: "1.5px solid #C9D6D0",
+                textDecoration: "none", color: "#E8F0EC",
+                border: "1.5px solid rgba(255,255,255,0.25)",
                 transition: "filter .2s ease" }}>Adımları gör</a>
               <button onClick={onPanel} className="vt-dugme"
                 style={{ padding: "11px 20px",
@@ -462,7 +477,7 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
           </div>
           <div style={{ fontFamily: M, fontSize: 12, letterSpacing: "0.14em",
             color: FILIZ }}>HER GECE, OTOMATİK</div>
-          <h2 style={{ fontSize: "clamp(26px, 4vw, 42px)", color: "#F2F7F4",
+          <h2 style={{ fontFamily: D, letterSpacing: "-0.018em", fontSize: "clamp(26px, 4vw, 42px)", color: "#F2F7F4",
             margin: "14px 0 12px" }}>
             Sözümüze değil, <span style={{ color: ALTIN }}>karneye</span> bakın.
           </h2>
@@ -539,14 +554,24 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
             <div style={{ fontFamily: M, fontSize: 10.5, letterSpacing: "0.1em",
               color: "#8AA79B", marginBottom: 10 }}>
               PANELDEN — GERÇEK EKRAN, GERÇEK SAYILAR</div>
-            <img src="/vitrin/panel-dogruluk.png" width={1560} height={1421}
-              loading="lazy" alt="Doğruluk karnesi sayfası: WMAPE kartları, naif referansla günlük karşılaştırma panelleri ve P10–P90 bant sınavı"
-              style={{ width: "100%", height: "auto", borderRadius: 14,
-                border: "1px solid rgba(255,255,255,0.14)", display: "block" }} />
-            <img src="/vitrin/panel-santral.png" width={1560} height={1065}
-              loading="lazy" alt="Santral sayfası: günün saatlik üretim eğrisi, P10–P90 bandı ve AC tavanı"
-              style={{ width: "100%", height: "auto", borderRadius: 14, marginTop: 14,
-                border: "1px solid rgba(255,255,255,0.14)", display: "block" }} />
+            {([
+              ["/vitrin/panel-dogruluk.png", 1421, "Doğruluk karnesi sayfası: WMAPE kartları, naif referansla günlük karşılaştırma panelleri ve P10–P90 bant sınavı"],
+              ["/vitrin/panel-santral.png", 1065, "Santral sayfası: günün saatlik üretim eğrisi, P10–P90 bandı ve AC tavanı"],
+            ] as const).map(([src, h, alt], i) => (
+              <div key={src} style={{ background: "#0C1E1A", borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.08)", padding: 10,
+                marginTop: i === 0 ? 0 : 16,
+                boxShadow: "0 2px 4px rgba(0,0,0,.3), 0 24px 80px rgba(14,124,90,.18)" }}>
+                <div style={{ height: 26, display: "flex", alignItems: "center",
+                  margin: "-10px -10px 10px", padding: "0 12px",
+                  background: "rgba(255,255,255,.03)",
+                  borderBottom: "1px solid rgba(255,255,255,.06)",
+                  borderRadius: "12px 12px 0 0",
+                  fontFamily: M, fontSize: 10.5, color: "#7E9A8F" }}>panel.pvquant</div>
+                <img src={src} width={1560} height={h} loading="lazy" alt={alt}
+                  style={{ width: "100%", height: "auto", borderRadius: 6, display: "block" }} />
+              </div>
+            ))}
             <div style={{ fontFamily: M, fontSize: 10.5, color: "#6E827A", marginTop: 8 }}>
               referans santralın gerçek karne ve üretim ekranları — kimlik kırpılmıştır
             </div>
@@ -623,7 +648,8 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
           </div>
           <a href="#basla" className="vt-dugme vt-baglanti"
             style={{ ...dugme, marginTop: 36, display: "inline-block", textDecoration: "none",
-            background: ALTIN, color: METIN }}>Kendi karneni başlat</a>
+            background: "transparent", border: `1.5px solid ${ALTIN}`,
+            color: "#F2D9AE" }}>Kendi karneni başlat</a>
         </div>
       </section>
 
@@ -633,7 +659,7 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
         <div style={{ maxWidth: 620, margin: "0 auto", textAlign: "center" }}>
           <div style={{ fontFamily: M, fontSize: 12, letterSpacing: "0.14em",
             color: FILIZ }}>KURULUM GEREKTİRMEZ</div>
-          <h2 style={{ fontSize: "clamp(24px, 3.2vw, 34px)", margin: "12px 0 10px",
+          <h2 style={{ fontFamily: D, letterSpacing: "-0.018em", fontSize: "clamp(24px, 3.2vw, 34px)", margin: "12px 0 10px",
             color: "#F2F7F4" }}>
             Kendi karnenizi başlatın.
           </h2>
@@ -643,6 +669,9 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
             aboneliktir, santral sayısına göre şekillenir — teklif başvuruyla gelir.
           </p>
           <BasvuruFormu />
+          {/* v2.329 bonus: gün yayı kapanışı — footer'dan önce ince şafak çizgisi */}
+          <div aria-hidden="true" style={{ marginTop: 72, height: 2, borderRadius: 1,
+            background: "linear-gradient(90deg, transparent 0%, rgba(63,180,137,0.25) 30%, rgba(227,154,59,0.45) 50%, rgba(63,180,137,0.25) 70%, transparent 100%)" }} />
         </div>
       </section>
 
