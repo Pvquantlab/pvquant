@@ -554,6 +554,32 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
             <div style={{ fontFamily: M, fontSize: 10.5, letterSpacing: "0.1em",
               color: "#8AA79B", marginBottom: 10 }}>
               PANELDEN — GERÇEK EKRAN, GERÇEK SAYILAR</div>
+            {/* v2.331 (rapor m.10): panelin KPI kutuları, panel görünümüyle ama
+                CANLI ve VEKTÖR — ekran kırpımı piksel sınırına takılıyordu
+                (kullanıcı: "çözünürlük daha iyi olsun"); HTML kopya her
+                çözünürlükte net, sayılar /v1/dogrulama'dan taze. */}
+            {dg && (
+              <div style={{ display: "grid", gap: 10, marginBottom: 14,
+                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+                {([
+                  [`WMAPE · 0–24s · son ${dg.pencere_gun ?? "—"} gün`, dg.wmape_pct, "gündüz saatleri, valid veriyle"],
+                  ["Naife göre üstünlük", dg.beceri_naif_pct, "referans: dün-aynı-saat, gök açıklığıyla ölçekli"],
+                  [`Bant kapsaması · hedef %${dg.bant_hedef_pct ?? 80}`, dg.bant_kapsama_pct, "gerçekleşen, söylenen aralıkta kaldı"],
+                ] as const).map(([etiket, deger, alt], i) => (
+                  <div key={etiket} style={{ background: "rgba(255,255,255,0.03)",
+                    border: KENAR_GECE, borderRadius: 14, padding: "18px 20px" }}>
+                    <div style={{ fontFamily: M, fontSize: 11, letterSpacing: "0.06em",
+                      color: "#8AA79B", lineHeight: 1.45 }}>{etiket.toUpperCase()}</div>
+                    <div style={{ fontFamily: M, fontSize: "clamp(28px, 2.8vw, 36px)",
+                      fontWeight: 600, color: i === 0 ? FILIZ : "#F2F7F4",
+                      margin: "8px 0 5px", fontVariantNumeric: "tabular-nums" }}>
+                      {deger == null ? "—" : `%${deger.toLocaleString("tr-TR")}`}</div>
+                    <div style={{ fontSize: 12.5, color: "#9DB3A9",
+                      lineHeight: 1.45 }}>{alt}</div>
+                  </div>
+                ))}
+              </div>
+            )}
             {([
               ["/vitrin/panel-dogruluk.png", 1421, "Doğruluk karnesi sayfası: WMAPE kartları, naif referansla günlük karşılaştırma panelleri ve P10–P90 bant sınavı"],
               ["/vitrin/panel-santral.png", 1065, "Santral sayfası: günün saatlik üretim eğrisi, P10–P90 bandı ve AC tavanı"],

@@ -36,9 +36,12 @@ export function Kpi({ etiket, deger, birim, alt, ton }:
            style={ton === "amber" ? { color: "var(--amber-metin)" } : ton === "uyari" ? { color: "var(--uyari-metin)" } : undefined}>
         {/* v2.310: değer kendi içinde BÖLÜNMESİN. Dar ızgarada (1180px pencerede
             KPI kutusu 209px) "27,3 · 26,9" ikiye ayrılıp birinci satırda yalnız
-            "27,3 ·" kalıyordu. Kırılma artık yalnız birimden önce olabilir. */}
-        <span style={{ whiteSpace: "nowrap" }}>{deger}</span>{birim &&
-        <span style={{ fontSize: 13, color: "var(--soluk)", marginLeft: 5 }}>{birim}</span>}</div>
+            "27,3 ·" kalıyordu. Kırılma artık yalnız birimden önce olabilir.
+            v2.331 (rapor m.10): span'lar arasında BOŞLUK yoktu — tarayıcı
+            boşluksuz bitişik inline'ları kıramaz, "0,54MWh" taşıyordu
+            (karne ekranında "MWh" kırpılması). Araya gerçek boşluk kondu. */}
+        <span style={{ whiteSpace: "nowrap" }}>{deger}</span>{birim && <>{" "}
+        <span style={{ fontSize: 13, color: "var(--soluk)", whiteSpace: "nowrap" }}>{birim}</span></>}</div>
       {alt && <div className="kpi-br">{alt}</div>}
     </div>
   );
