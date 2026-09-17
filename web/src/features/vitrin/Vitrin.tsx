@@ -211,6 +211,7 @@ function BasvuruFormu() {
   const [guc, setGuc] = useState("");
   const [web, setWeb] = useState("");            // bal küpü — görünmez
   const [durum, setDurum] = useState<"bos" | "gidiyor" | "tamam" | string>("bos");
+  const [teyit, setTeyit] = useState(false);   // v2.334: onay e-postası gitti mi
   const kutu = { padding: "12px 14px", borderRadius: 11, fontSize: 14.5,
     fontFamily: "inherit", border: "1.5px solid rgba(255,255,255,0.18)",
     background: "rgba(255,255,255,0.06)", color: "#F2F7F4", minWidth: 0 } as const;
@@ -218,7 +219,9 @@ function BasvuruFormu() {
   return gonderildi ? (
     <div style={{ background: "rgba(122,199,160,0.12)", border: "1px solid rgba(122,199,160,0.4)",
       borderRadius: 14, padding: "18px 20px", fontSize: 15, lineHeight: 1.6 }}>
-      Başvurunuz alındı — panel yöneticisi e-posta ile dönecek.
+      {teyit
+        ? "Başvurunuz alındı; onay e-postası adresinize gönderildi. "
+        : "Başvurunuz alındı — panel yöneticisi e-posta ile dönecek. "}
       Kurulum ve ilk gece sınavı sonrası karneniz birikmeye başlar.
     </div>
   ) : (
@@ -231,6 +234,7 @@ function BasvuruFormu() {
         const r = await api.vitrinBasvuru({ eposta, santral_adi: ad.trim() || undefined,
           kurulu_guc_kwp: Number.isFinite(kwp as number) ? kwp : undefined,
           ...(web ? { web } : {}) } as Parameters<typeof api.vitrinBasvuru>[0]);
+        setTeyit(!!r.teyit);
         setDurum(r.tamam ? "tamam" : (r.neden ?? "Gönderilemedi — yeniden deneyin."));
       })();
     }}>

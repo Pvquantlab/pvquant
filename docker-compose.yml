@@ -24,6 +24,7 @@ services:
       PVQ_SMTP_USER: ${PVQ_SMTP_USER:-}
       PVQ_SMTP_PASS: ${PVQ_SMTP_PASS:-}
       PVQ_SMTP_FROM: ${PVQ_SMTP_FROM:-}
+      PVQ_SMTP_TLS: ${PVQ_SMTP_TLS:-}
       PVQ_ALARM_TO: ${PVQ_ALARM_TO:-}
     volumes:
       - ./var:/app/var             # model artifact'leri (hyb_*.pkl) — imaja gomulmez, paylasilir
@@ -43,6 +44,14 @@ services:
       PVQ_DB_URL: postgresql+psycopg://pvquant:${DB_PASSWORD:-pvquant_dev}@db:5432/pvquant
       PVQ_JWT_SECRET: ${PVQ_JWT_SECRET:-}
       PVQ_SENTRY_DSN: ${PVQ_SENTRY_DSN:-}
+      # v2.334: başvuru teyidi/bildirimi api'den çıkar — worker'daki SMTP seti buraya da
+      PVQ_SMTP_HOST: ${PVQ_SMTP_HOST:-}
+      PVQ_SMTP_PORT: ${PVQ_SMTP_PORT:-}
+      PVQ_SMTP_USER: ${PVQ_SMTP_USER:-}
+      PVQ_SMTP_PASS: ${PVQ_SMTP_PASS:-}
+      PVQ_SMTP_FROM: ${PVQ_SMTP_FROM:-}
+      PVQ_SMTP_TLS: ${PVQ_SMTP_TLS:-}
+      PVQ_BILDIRIM_EPOSTA: ${PVQ_BILDIRIM_EPOSTA:-}
     ports:
       - "8000:8000"                # yerel durusma: curl ile dogrudan
     volumes:

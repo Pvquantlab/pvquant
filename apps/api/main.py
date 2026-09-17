@@ -535,7 +535,9 @@ def vitrin_basvuru(request: Request, g: BasvuruIstek):
     r = basvuru_service.kaydet(g.eposta, g.santral_adi, g.kurulu_guc_kwp, g.web)
     if not r["tamam"]:
         raise HTTPException(422, r.get("neden") or "geçersiz")
-    return {"tamam": True}
+    # v2.334: teyit = başvurana onay e-postası gerçekten gönderildi mi (SMTP
+    # yapılandırılmamışsa False — istemci "e-posta gönderildi" DEMEZ).
+    return {"tamam": True, "teyit": bool(r.get("teyit"))}
 
 
 @app.get("/v1/vitrin/basvurular")

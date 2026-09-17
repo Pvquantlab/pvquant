@@ -11,8 +11,6 @@ clipping_orani_yuksek, iletisim_kesintisi). Eşikler params_json.alarm_esik'ten.
 from __future__ import annotations
 
 import os
-import smtplib
-from email.mime.text import MIMEText
 
 from sqlalchemy import text
 
@@ -113,18 +111,11 @@ def _baglam(tenant_id, plant: dict, secili: list[str]) -> dict:
 
 
 def _mail(konu: str, govde: str) -> None:
-    host = os.environ.get("PVQ_SMTP_HOST")
-    if not host:
+    # v2.334: gövde posta_service'e taşındı (başvuru/parola ile ortak tek kapı);
+    # davranış aynı — SMTP yoksa sessiz atlanır, alıcı PVQ_ALARM_TO.
+    from pvquant.services import posta_service
+    if not posta_service.gonder(os.environ.get("PVQ_ALARM_TO", ""), konu, govde):
         print("[alarm][mail yok]", konu)
-        return
-    m = MIMEText(govde, "plain", "utf-8")
-    m["Subject"] = konu
-    m["From"] = os.environ["PVQ_SMTP_FROM"]
-    m["To"] = os.environ["PVQ_ALARM_TO"]
-    with smtplib.SMTP(host, int(os.environ.get("PVQ_SMTP_PORT", 587))) as srv:
-        srv.starttls()
-        srv.login(os.environ["PVQ_SMTP_USER"], os.environ["PVQ_SMTP_PASS"])
-        srv.send_message(m)
 
 
 def _kaydet_ve_gonder(s, tid, pid, rule: str, msg: str, severity: str = "warning") -> None:

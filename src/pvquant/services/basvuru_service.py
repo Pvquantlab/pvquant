@@ -2,16 +2,22 @@
 
 Kamuya açık uç olduğundan koruma katmanları: uçtaki hız sınırı (main.py'deki
 limiter — giriş ucuyla aynı idiom), alan uzunluk tavanları ve bal küpü alanı
-(dolduran bot sayılır, sessizce yutulur). E-posta altyapısı BİLEREK yok:
-başvuru panele düşer, yönetici elle döner.
+(dolduran bot sayılır, sessizce yutulur).
+
+v2.334: e-posta katmanı bağlandı (posta_service) — başvurana teyit, sahibe
+(PVQ_BILDIRIM_EPOSTA) bildirim gider. SMTP yapılandırılmamışsa ikisi de
+sessizce atlanır ve başvuru ESKİSİ GİBİ yalnız panele düşer; teyit alanı
+istemciye dürüstçe False döner (gönderilmemiş mektup "gönderildi" denmez).
 """
 from __future__ import annotations
 
+import os
 import re
 
 from sqlalchemy import text
 
 from pvquant.db import sistem_baglami
+from pvquant.services import posta_service
 
 _EPOSTA = re.compile(r"^[^@\s]{1,64}@[^@\s]{1,190}\.[^@\s]{2,24}$")
 
@@ -38,7 +44,23 @@ def kaydet(eposta: str, santral_adi: str | None, kurulu_guc_kwp: float | None,
         s.execute(text(
             "INSERT INTO vitrin_basvurulari (eposta, santral_adi, kurulu_guc_kwp) "
             "VALUES (:e, :a, :k)"), {"e": eposta, "a": ad, "k": kwp})
-    return {"tamam": True}
+    teyit = posta_service.gonder(
+        eposta, "PVQuant — başvurunuz alındı",
+        "Merhaba,\n\n"
+        "PVQuant başvurunuz bize ulaştı. Başvurunuz değerlendirilip teklifimiz "
+        "bu e-posta adresinize iletilecektir.\n\n"
+        + (f"Santral: {ad}\n" if ad else "")
+        + (f"Kurulu güç: {kwp/1000:.1f} MW\n" if kwp else "")
+        + "\nBu iletiye yanıt vermenize gerek yoktur.\n\nPVQuant")
+    sahip = os.environ.get("PVQ_BILDIRIM_EPOSTA")
+    if sahip:
+        posta_service.gonder(
+            sahip, "[PVQuant] Yeni vitrin başvurusu",
+            f"E-posta: {eposta}\n"
+            f"Santral: {ad or '—'}\n"
+            f"Kurulu güç (kWp): {kwp if kwp is not None else '—'}\n\n"
+            "Ayrıntı: panel → Portföy → Gelen talepler")
+    return {"tamam": True, "teyit": teyit}
 
 
 def listele(n: int = 100) -> list[dict]:

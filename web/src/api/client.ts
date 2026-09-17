@@ -562,7 +562,7 @@ export const api = {
     gonder(`/v1/parola`, "POST", { eski, yeni }),
   /** v2.294: kamuya açık doğrulama karnesi — kimliksiz uç, jeton eklenmez (401 yönlendirmesi tetiklenmesin). */
   /** v2.328: vitrin "Karneni başlat" başvurusu — kamuya açık, jetonsuz. */
-  vitrinBasvuru: async (g: { eposta: string; santral_adi?: string; kurulu_guc_kwp?: number }): Promise<{ tamam: boolean; neden?: string }> => {
+  vitrinBasvuru: async (g: { eposta: string; santral_adi?: string; kurulu_guc_kwp?: number }): Promise<{ tamam: boolean; neden?: string; teyit?: boolean }> => {
     if (TABAN == null) return { tamam: true };
     try {
       const y = await fetch(`${TABAN}/v1/vitrin/basvuru`, { method: "POST",
