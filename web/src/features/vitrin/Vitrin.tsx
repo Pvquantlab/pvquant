@@ -286,6 +286,23 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
         .vt-dugme:focus-visible, .vt-baglanti:focus-visible {
           outline: 2.5px solid ${YESIL}; outline-offset: 2.5px; }
         .vt-kart { transition: transform .25s ease, box-shadow .25s ease; }
+        .vt-nav { display: flex; gap: 24px; align-items: center; }
+        .vt-nav a { color: #3F4B58; text-decoration: none; font-size: 14.5px;
+          font-weight: 500; }
+        .vt-nav a:hover { color: #0E7C5A; }
+        @media (max-width: 780px) { .vt-nav { display: none; } }
+        .vt-sss { background: rgba(255,255,255,0.03);
+          border: 1px solid rgba(255,255,255,0.07); border-radius: 14px;
+          margin-bottom: 10px; }
+        .vt-sss summary { cursor: pointer; list-style: none; padding: 16px 20px;
+          font-weight: 600; font-size: 15.5px; color: #F1F6F3;
+          display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+        .vt-sss summary::-webkit-details-marker { display: none; }
+        .vt-sss summary::after { content: "+"; font-family: 'IBM Plex Mono', monospace;
+          color: #8AA79B; font-size: 18px; flex-shrink: 0; }
+        .vt-sss[open] summary::after { content: "−"; }
+        .vt-sss div { padding: 0 20px 16px; font-size: 14.5px; line-height: 1.65;
+          color: #9DB3A9; max-width: 68ch; }
         .vt-kart:hover { transform: translateY(-3px);
           box-shadow: 0 14px 34px rgba(14,124,90,0.13); }
         @media (prefers-reduced-motion: reduce) {
@@ -304,6 +321,13 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
             <Marka />
             PVQuant
           </div>
+          {/* v2.332 (rapor m.3): anchor-nav — tek sayfa ama keşfedilebilir */}
+          <nav className="vt-nav" aria-label="Sayfa içi">
+            <a href="#katmanlar">Nasıl çalışır</a>
+            <a href="#karne">Açık karne</a>
+            <a href="#sss">SSS</a>
+            <a href="#basla">Başvuru</a>
+          </nav>
           <button onClick={onPanel} className="vt-dugme"
             style={{ ...dugme, padding: "9px 20px",
             background: "rgba(255,255,255,0.55)",
@@ -686,8 +710,37 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
         </div>
       </section>
 
+      {/* ---- v2.332 (rapor m.4): SSS — itirazlar dürüst cevaplarla; güvenlik özeti (m.6) içinde ---- */}
+      <section id="sss" style={{ background: GECE_YESIL, padding: "8px 6vw 56px",
+        color: "#F2F7F4" }}>
+        <div style={{ maxWidth: 720, margin: "0 auto" }}>
+          <div style={{ fontFamily: M, fontSize: 12, letterSpacing: "0.14em",
+            color: FILIZ, textAlign: "center" }}>SSS</div>
+          <h2 style={{ fontFamily: D, letterSpacing: "-0.018em", color: "#F2F7F4",
+            fontSize: "clamp(24px, 3.2vw, 34px)", textAlign: "center",
+            margin: "12px 0 28px" }}>Sık sorulan sorular</h2>
+          {([
+            ["Kurulum gerekir mi?",
+             "Gerekmez. Hesabınız oluşturulduktan sonra tahmin üretimi başlar; sahada donanım kurulumu yapılmaz ve mevcut sistemlerinize müdahale edilmez. Üretim (SCADA) verilerinizi dilediğiniz zaman panel üzerinden yükleyebilirsiniz."],
+            ["SCADA verisi olmadan çalışır mı?",
+             "Evet. Santralın temel bilgileriyle (konum, kurulu güç, panel yerleşimi) tahmin üretilir. Üretim verileriniz yüklendikçe model santralınıza özel olarak kalibre edilir ve doğruluk karneniz oluşmaya başlar."],
+            ["Fiyatlandırma nasıl belirleniyor?",
+             "Fiyatlandırma, kurulu güç başına aylık abonelik modeline dayanır ve santral sayısına göre belirlenir. Başvuru formunu doldurmanızın ardından teklifimiz e-posta ile iletilir."],
+            ["Doğruluk değerleri neye dayanıyor?",
+             "Tüm doğruluk değerleri ölçüme dayanır: tahminler her gece, gerçekleşen üretimle aynı yöntemle karşılaştırılır; sonuçlar panelde birikir ve geçmiş kayıtlar değiştirilemez. Bu sayfadaki Açık karne, aynı hesaplamanın kamuya açık örneğidir; yöntem tanımları karne bloğunun hemen altında yer alır."],
+            ["Verilerimizin güvenliği nasıl sağlanıyor?",
+             "Verileriniz kurumunuza aittir; dilediğiniz zaman tamamını dışa aktarabilir veya silebilirsiniz. Hesaplar birbirinden yalıtılmıştır; kurumlar arası paylaşım yalnızca sizin onayınızla açılır ve tüm erişimler denetim kaydına işlenir. Veri iletimi TLS ile şifrelenir."],
+          ] as const).map(([soru, cevap]) => (
+            <details key={soru} className="vt-sss">
+              <summary>{soru}</summary>
+              <div>{cevap}</div>
+            </details>
+          ))}
+        </div>
+      </section>
+
       {/* ---- v2.328: başvuru — kurulum yok, veri yüklemek yok (Grentis kalıbı, dürüst hâli) ---- */}
-      <section id="basla" style={{ background: GECE_YESIL, padding: "26px 6vw 84px",
+      <section id="basla" style={{ background: GECE_YESIL, padding: "16px 6vw 84px",
         color: "#F2F7F4" }}>
         <div style={{ maxWidth: 620, margin: "0 auto", textAlign: "center" }}>
           <div style={{ fontFamily: M, fontSize: 12, letterSpacing: "0.14em",
