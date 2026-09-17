@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { cikis, oturumDusunce_kaydet } from "./api/client";
 import { Giris } from "./features/giris/Giris";
 import { Vitrin } from "./features/vitrin/Vitrin";
+import { Yontem } from "./features/vitrin/Yontem";
 import { Kabuk, type SayfaId } from "./shell/Kabuk";
 import { Santralim } from "./features/santralim/Santralim";
 import { Tahminler } from "./features/sayfalar/Tahminler";
@@ -42,6 +43,10 @@ export default function App() {
   useEffect(() => { if (girdi) santralYenile(); }, [girdi]);   // eslint-disable-line react-hooks/exhaustive-deps
   const santralSec = (id: string) => { setPlantId(id); localStorage.setItem("pvq_plant", id); };
   const santralAd = santraller.find((x) => x.id === plantId)?.name ?? "Konya GES";
+  // v2.333 (rapor m.5): /yontem — kamuya açık yöntem/doğrulama alt sayfası.
+  // Caddyfile.web try_files ile her yol index.html'e düştüğünden ek sunucu işi yok.
+  if (window.location.pathname === "/yontem")
+    return <Yontem />;
   // v2.293: ?vitrin — oturum açıkken de vitrini görme kapısı (pazarlama sayfasını
   // müşteriye göstermeden önce kendi gözünle denetle; "Panele giriş" adresi temizler).
   if (new URLSearchParams(window.location.search).has("vitrin"))

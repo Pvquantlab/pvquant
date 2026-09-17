@@ -10,27 +10,29 @@ import type { Dogrulama } from "../../api/types";
  *  Tip: gövde sistem yığını, veri/etiket IBM Plex Mono (index.css'te yüklü).
  *  Dürüstlük vitrine de girer: eğri 'temsili' etiketli, sayılar vaat edilmez. */
 
-const M = "'IBM Plex Mono', ui-monospace, monospace";
+// v2.333 (rapor m.5): jetonlar ve Marka dışa açıldı — /yontem alt sayfası
+// (Yontem.tsx) aynı tasarım dilini paylaşır, kopya sabit tutulmaz.
+export const M = "'IBM Plex Mono', ui-monospace, monospace";
 // v2.329 (tasarım araştırması): başlıklar karakterli display fontuna geçti —
 // Space Grotesk (Space Mono'dan türetilmiş: "ölçüm aletine yakışan" sans).
 // Gövde Inter'de kalır (index.css --font), veri IBM Plex Mono'da.
-const D = "'Space Grotesk', 'Inter', system-ui, sans-serif";
+export const D = "'Space Grotesk', 'Inter', system-ui, sans-serif";
 // Yüzey/gölge tokenları (Stripe yumuşak gölge + Vercel hairline kalıbı):
-const KENAR_GUNDUZ = "1px solid rgba(16,32,27,0.08)";
-const GOLGE_GUNDUZ = "0 1px 2px rgba(16,32,27,.04), 0 8px 24px rgba(16,32,27,.06)";
-const KENAR_GECE = "1px solid rgba(255,255,255,0.07)";
+export const KENAR_GUNDUZ = "1px solid rgba(16,32,27,0.08)";
+export const GOLGE_GUNDUZ = "0 1px 2px rgba(16,32,27,.04), 0 8px 24px rgba(16,32,27,.06)";
+export const KENAR_GECE = "1px solid rgba(255,255,255,0.07)";
 
-const YESIL = "#0E7C5A";
-const FILIZ = "#3FB489";
-const ALTIN = "#E39A3B";
-const ALTIN_KOYU = "#8A5A20";
-const METIN = "#10201B";
-const METIN_IKINCIL = "#3F4B58";
+export const YESIL = "#0E7C5A";
+export const FILIZ = "#3FB489";
+export const ALTIN = "#E39A3B";
+export const ALTIN_KOYU = "#8A5A20";
+export const METIN = "#10201B";
+export const METIN_IKINCIL = "#3F4B58";
 const SIS = "#64766F";
-const KREM = "#FFF8EC";
-const BEYAZ = "#F7FAF8";
+export const KREM = "#FFF8EC";
+export const BEYAZ = "#F7FAF8";
 const GECE = "#081A24";
-const GECE_YESIL = "#0A1F19";
+export const GECE_YESIL = "#0A1F19";
 
 function Egri() {
   // Temsili gun egrisi: gece sifirlari, safak tirmanisi, AC tavaninda plato.
@@ -105,7 +107,7 @@ function Egri() {
 }
 
 /** Marka isareti: yesil zeminde 1.5px stroke gunes (emoji yasak — SVG). */
-function Marka({ boy = 26 }: { boy?: number }) {
+export function Marka({ boy = 26 }: { boy?: number }) {
   return (
     <span aria-hidden="true" style={{ width: boy, height: boy,
       borderRadius: boy * 0.28, background: YESIL, display: "grid",
@@ -702,6 +704,9 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
             <b style={{ color: "#C7D6CE" }}> Bant kapsaması</b>: gerçekleşen üretimin,
             önceden söylenen iyimser–kötümser aralıkta kaldığı günlerin oranı.
             Hepsi her gece aynı kuralla, otomatik hesaplanır; geçmiş değiştirilmez.
+            {/* v2.333 (rapor m.5): tam metodoloji ayrı sayfada */}
+            {" "}<a href="/yontem" className="vt-baglanti"
+              style={{ color: "#8FD4B4", fontWeight: 600 }}>Yöntemin tamamı →</a>
           </div>
           <a href="#basla" className="vt-dugme vt-baglanti"
             style={{ ...dugme, marginTop: 36, display: "inline-block", textDecoration: "none",
@@ -809,6 +814,10 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
           fontSize: 11, color: "#5C6F66", display: "flex",
           justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
           <span>© PVQuant 2026</span>
+          {/* v2.333 (rapor m.5): metodoloji sayfası footer'dan da bulunur */}
+          <a href="/yontem" className="vt-baglanti"
+            style={{ color: "#8AA79B", textDecoration: "none" }}>
+            Yöntem ve doğrulama</a>
         </div>
       </footer>
     </div>
