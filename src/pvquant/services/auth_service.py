@@ -150,3 +150,68 @@ def oturum_yenile(user_id) -> dict | None:
         "sub": str(row.id), "tenant_id": str(row.tenant_id), "role": row.role,
         "exp": dt.datetime.utcnow() + dt.timedelta(hours=JWT_SAAT)}, _sir(), algorithm="HS256")
     return {"token": token, "role": row.role}
+
+
+# ---- v2.335: "şifremi unuttum" — tek kullanımlık sıfırlama jetonu ----------
+# Jeton yalnız SHA-256 özetiyle saklanır (API anahtarı kalıbı); ömür 30 dk.
+# İstek ucu HER e-posta için sessizce "tamam" der — hesap varlığı sızdırılmaz.
+
+_SIFIRLAMA_DK = 30
+
+
+def _jeton_ozet(jeton: str) -> str:
+    import hashlib
+    return hashlib.sha256((jeton or "").encode()).hexdigest()
+
+
+def parola_sifirlama_istek(eposta: str) -> bool:
+    """Kayıtlı ve etkin hesap varsa sıfırlama bağlantısını e-postalar.
+    Dönüş yalnız log/test içindir; UÇ bu değeri istemciye SIZDIRMAZ."""
+    from pvquant.services import posta_service
+    eposta = (eposta or "").strip().lower()[:255]
+    if not eposta:
+        return False
+    with sistem_baglami() as s:
+        row = s.execute(text(
+            "SELECT id, email FROM users WHERE email=:e AND aktif"),
+            {"e": eposta}).first()
+        if row is None:
+            return False
+        import secrets
+        jeton = secrets.token_urlsafe(32)
+        # kullanıcının önceki açık jetonları düşer: aynı anda tek geçerli bağlantı
+        s.execute(text("DELETE FROM parola_sifirlama WHERE user_id=:u AND used_at IS NULL"),
+                  {"u": row.id})
+        s.execute(text(
+            "INSERT INTO parola_sifirlama(user_id, token_hash, expires_at) "
+            "VALUES(:u, :h, now() + make_interval(mins => :dk))"),
+            {"u": row.id, "h": _jeton_ozet(jeton), "dk": _SIFIRLAMA_DK})
+    taban = os.environ.get("PVQ_TABAN_URL") or f"https://{os.environ.get('PVQ_DOMAIN') or 'localhost'}"
+    return posta_service.gonder(
+        row.email, "PVQuant — parola sıfırlama",
+        "Merhaba,\n\n"
+        "PVQuant hesabınız için parola sıfırlama isteği aldık. Yeni parolanızı "
+        "belirlemek için aşağıdaki bağlantıyı kullanın; bağlantı "
+        f"{_SIFIRLAMA_DK} dakika geçerlidir ve tek kez kullanılabilir:\n\n"
+        f"{taban}/parola-yenile?jeton={jeton}\n\n"
+        "Bu isteği siz yapmadıysanız bu iletiyi yok sayabilirsiniz; "
+        "parolanız değişmedi.\n\nPVQuant")
+
+
+def parola_sifirla(jeton: str, yeni: str) -> None:
+    """Jeton geçerliyse parolayı değiştirir; jeton kullanılmış sayılır.
+    Hatalar ValueError — uç 422'ye çevirir."""
+    if len(yeni or "") < 10:
+        raise ValueError("yeni parola en az 10 karakter olmalı")
+    with sistem_baglami() as s:
+        row = s.execute(text(
+            "SELECT ps.id, ps.user_id FROM parola_sifirlama ps "
+            "JOIN users u ON u.id = ps.user_id AND u.aktif "
+            "WHERE ps.token_hash=:h AND ps.used_at IS NULL AND ps.expires_at > now()"),
+            {"h": _jeton_ozet(jeton)}).first()
+        if row is None:
+            raise ValueError("bağlantı geçersiz ya da süresi dolmuş")
+        s.execute(text("UPDATE users SET pw_hash=:p WHERE id=:u"),
+                  {"u": row.user_id, "p": bcrypt.hash(yeni)})
+        s.execute(text("UPDATE parola_sifirlama SET used_at=now() WHERE id=:i"),
+                  {"i": row.id})

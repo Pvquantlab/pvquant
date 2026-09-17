@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { cikis, oturumDusunce_kaydet } from "./api/client";
 import { Giris } from "./features/giris/Giris";
+import { ParolaYenile } from "./features/giris/ParolaYenile";
 import { Vitrin } from "./features/vitrin/Vitrin";
 import { Yontem } from "./features/vitrin/Yontem";
 import { Kabuk, type SayfaId } from "./shell/Kabuk";
@@ -47,6 +48,9 @@ export default function App() {
   // Caddyfile.web try_files ile her yol index.html'e düştüğünden ek sunucu işi yok.
   if (window.location.pathname === "/yontem")
     return <Yontem />;
+  // v2.335: e-postadaki sıfırlama bağlantısı — kimliksiz kamu sayfası
+  if (window.location.pathname === "/parola-yenile")
+    return <ParolaYenile />;
   // v2.293: ?vitrin — oturum açıkken de vitrini görme kapısı (pazarlama sayfasını
   // müşteriye göstermeden önce kendi gözünle denetle; "Panele giriş" adresi temizler).
   if (new URLSearchParams(window.location.search).has("vitrin"))

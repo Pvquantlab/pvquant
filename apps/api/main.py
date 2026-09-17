@@ -540,6 +540,37 @@ def vitrin_basvuru(request: Request, g: BasvuruIstek):
     return {"tamam": True, "teyit": bool(r.get("teyit"))}
 
 
+class ParolaSifirlamaIstek(BaseModel):
+    eposta: str
+
+
+class ParolaSifirlamaGovde(BaseModel):
+    jeton: str
+    parola: str
+
+
+@app.post("/v1/parola-sifirla-istek")
+@limiter.limit("5/hour")
+def parola_sifirla_istek(request: Request, g: ParolaSifirlamaIstek):
+    """v2.335 — "şifremi unuttum": kayıtlı hesaba tek kullanımlık bağlantı
+    e-postalanır. Yanıt HER durumda aynı — hesap varlığı sızdırılmaz."""
+    from pvquant.services import auth_service
+    auth_service.parola_sifirlama_istek(g.eposta)
+    return {"tamam": True}
+
+
+@app.post("/v1/parola-sifirla")
+@limiter.limit("10/hour")
+def parola_sifirla(request: Request, g: ParolaSifirlamaGovde):
+    """v2.335 — bağlantıdaki jetonla yeni parola. Jeton tek kullanımlıktır."""
+    from pvquant.services import auth_service
+    try:
+        auth_service.parola_sifirla(g.jeton, g.parola)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    return {"tamam": True}
+
+
 @app.get("/v1/vitrin/basvurular")
 def vitrin_basvurular(claims=Depends(yonetici_yetkisi())):
     """v2.328 — başvuru listesi. Bugünkü tek-kiracılı kurulumda platform sahibi =

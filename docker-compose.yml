@@ -52,6 +52,7 @@ services:
       PVQ_SMTP_FROM: ${PVQ_SMTP_FROM:-}
       PVQ_SMTP_TLS: ${PVQ_SMTP_TLS:-}
       PVQ_BILDIRIM_EPOSTA: ${PVQ_BILDIRIM_EPOSTA:-}
+      PVQ_DOMAIN: ${PVQ_DOMAIN:-localhost}   # v2.335: sıfırlama bağlantısı tabanı
     ports:
       - "8000:8000"                # yerel durusma: curl ile dogrudan
     volumes:

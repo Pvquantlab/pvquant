@@ -562,6 +562,25 @@ export const api = {
     gonder(`/v1/parola`, "POST", { eski, yeni }),
   /** v2.294: kamuya açık doğrulama karnesi — kimliksiz uç, jeton eklenmez (401 yönlendirmesi tetiklenmesin). */
   /** v2.328: vitrin "Karneni başlat" başvurusu — kamuya açık, jetonsuz. */
+  /** v2.335: "şifremi unuttum" — jetonsuz kamu uçları; yanıt hesap varlığı sızdırmaz. */
+  parolaSifirlaIstek: async (eposta: string): Promise<boolean> => {
+    if (TABAN == null) return true;
+    try {
+      const y = await fetch(`${TABAN}/v1/parola-sifirla-istek`, { method: "POST",
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eposta }) });
+      return y.ok;
+    } catch { return false; }
+  },
+  parolaSifirla: async (jeton: string, parola: string): Promise<{ tamam: boolean; neden?: string }> => {
+    if (TABAN == null) return { tamam: true };
+    try {
+      const y = await fetch(`${TABAN}/v1/parola-sifirla`, { method: "POST",
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ jeton, parola }) });
+      if (y.ok) return { tamam: true };
+      const j = await y.json().catch(() => null);
+      return { tamam: false, neden: typeof j?.detail === "string" ? j.detail : undefined };
+    } catch { return { tamam: false, neden: "Sunucuya ulaşılamadı." }; }
+  },
   vitrinBasvuru: async (g: { eposta: string; santral_adi?: string; kurulu_guc_kwp?: number }): Promise<{ tamam: boolean; neden?: string; teyit?: boolean }> => {
     if (TABAN == null) return { tamam: true };
     try {

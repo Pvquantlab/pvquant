@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { giris } from "../../api/client";
+import { api, giris } from "../../api/client";
 import { BandImza } from "../sayfalar/BandImza";
 
 /** Giris ekrani — urunun ilk yuzu. Pano sakin; burasi iddiali olabilir. */
@@ -8,6 +8,15 @@ export function Giris({ onGiris }: { onGiris: () => void }) {
   const [sifre, setSifre] = useState("");
   const [hata, setHata] = useState<string | null>(null);
   const [bekliyor, setBekliyor] = useState(false);
+  // v2.335: "parolamı unuttum" kipi — aynı form alanı, iki görünüm
+  const [unuttum, setUnuttum] = useState(false);
+  const [istekGitti, setIstekGitti] = useState(false);
+
+  async function sifirlamaIste() {
+    setHata(null); setBekliyor(true);
+    await api.parolaSifirlaIstek(email);
+    setBekliyor(false); setIstekGitti(true);   // yanıt her durumda aynı — hesap varlığı sızdırılmaz
+  }
 
   async function gonder() {
     setHata(null); setBekliyor(true);
@@ -60,21 +69,39 @@ export function Giris({ onGiris }: { onGiris: () => void }) {
 
       <div className="giris-form-alan">
         <div className="giris-form">
-          <h2 style={{ fontSize: 20, marginBottom: 6 }}>Oturum açın</h2>
+          <h2 style={{ fontSize: 20, marginBottom: 6 }}>
+            {unuttum ? "Parola sıfırlama" : "Oturum açın"}</h2>
           <p style={{ fontSize: 13, color: "var(--ikincil)", margin: "0 0 26px" }}>
-            Hesabınızla devam edin.
+            {unuttum
+              ? "E-postanızı yazın; kayıtlıysa sıfırlama bağlantısı gönderilir."
+              : "Hesabınızla devam edin."}
           </p>
           <label className="giris-et">E-posta</label>
           <input className="giris-girdi" type="email" value={email} autoComplete="username"
                  onChange={(e) => setEmail(e.target.value)} placeholder="ad@sirket.com" />
-          <label className="giris-et">Parola</label>
-          <input className="giris-girdi" type="password" value={sifre} autoComplete="current-password"
-                 onChange={(e) => setSifre(e.target.value)} placeholder="••••••••" />
+          {!unuttum && (<>
+            <label className="giris-et">Parola</label>
+            <input className="giris-girdi" type="password" value={sifre} autoComplete="current-password"
+                   onChange={(e) => setSifre(e.target.value)} placeholder="••••••••" />
+          </>)}
           {hata && <p role="alert" style={{ fontSize: 13, color: "var(--negatif)",
                      margin: "12px 0 0" }}>{hata}</p>}
+          {unuttum && istekGitti && (
+            <p style={{ fontSize: 13, color: "var(--ikincil)", margin: "12px 0 0",
+              lineHeight: 1.6 }}>
+              Bu adrese kayıtlı bir hesap varsa sıfırlama bağlantısı gönderildi;
+              gelen kutunuzu kontrol edin. Bağlantı 30 dakika geçerlidir.
+            </p>
+          )}
           <button className="dugme dugme-ana" style={{ width: "100%", marginTop: 20, padding: "10px" }}
-                  onClick={gonder} disabled={bekliyor}>
-            {bekliyor ? "Denetleniyor…" : "Giriş yap"}</button>
+                  onClick={unuttum ? sifirlamaIste : gonder} disabled={bekliyor}>
+            {bekliyor ? "Denetleniyor…" : unuttum ? "Bağlantı gönder" : "Giriş yap"}</button>
+          <button type="button"
+            onClick={() => { setUnuttum(!unuttum); setHata(null); setIstekGitti(false); }}
+            style={{ background: "none", border: "none", cursor: "pointer",
+              fontFamily: "inherit", fontSize: 12.5, color: "var(--ikincil)",
+              padding: 0, marginTop: 14, textDecoration: "underline" }}>
+            {unuttum ? "← Girişe dön" : "Parolamı unuttum"}</button>
           <p style={{ fontSize: 12, color: "var(--soluk)", marginTop: 22, lineHeight: 1.7 }}>
             Verinizin sahibi sizsiniz. Yalnızca sizin hesabınızda tutulur;
             dilediğiniz an dışa aktarır ya da silersiniz.
