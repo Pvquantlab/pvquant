@@ -19,6 +19,8 @@ ISIM_TR = {
     "rapor_alanlari": "Rapor alanları", "alarm": "Alarm taraması",
     "aylik_kalibrasyon": "Aylık kalibrasyon", "aylik_iklim": "Aylık iklim beklentisi",
     "aylik_bankable": "Aylık üretim beklentisi",
+    "acilis_yakalama": "Açılış yakalama turu",   # v2.336
+    "gece_yedek": "Veritabanı yedeği",           # v2.337
 }
 # her gece koşması beklenen çekirdek grup — hiçbiri son 24 saatte yoksa işçi uyarısı verilir
 GECE_GRUBU = ("gece_meteo", "sabah_tahmin", "gece_skill", "gunluk_beklenti")

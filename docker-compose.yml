@@ -26,8 +26,10 @@ services:
       PVQ_SMTP_FROM: ${PVQ_SMTP_FROM:-}
       PVQ_SMTP_TLS: ${PVQ_SMTP_TLS:-}
       PVQ_ALARM_TO: ${PVQ_ALARM_TO:-}
+      PVQ_YEDEK_KAPALI: ${PVQ_YEDEK_KAPALI:-}   # v2.337: gece yedegini kapatmak icin
     volumes:
       - ./var:/app/var             # model artifact'leri (hyb_*.pkl) — imaja gomulmez, paylasilir
+      - ./yedekler:/app/yedekler   # v2.337: gece veritabani yedekleri ana makinede tutulur
     depends_on:
       db:
         condition: service_healthy

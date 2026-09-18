@@ -543,25 +543,113 @@ def aylik_iklim(plant):
     iklim_service.iklim_yil_kaydet(plant["tenant_id"], plant["id"], t)  # v2.78-A
 
 
+def tam_tur():
+    """v2.56 sırası — aylık kalibrasyon BİLEREK hariç (durum değiştiren ağır iş;
+    takvimin/kullanıcının işi). --once ve açılış yakalaması (v2.336) ortak kullanır."""
+    _logla("gece_meteo", gece_meteo)()                  # v2.268 (Dalga 0): NWP arşivi önce
+    _logla("gece_piyasa", gece_piyasa)()                # v2.258 (kimlik yoksa atlar)
+    _logla("gece_epias_uretim", gece_epias_uretim)()    # v2.278 (kimlik/eşleme yoksa atlar)
+    _logla("gece_hijyen", gece_hijyen)()                # v2.254 (skill'den once)
+    _logla("gece_skill", gece_skill)()
+    _logla("gece_ufuk_sigma", gece_ufuk_sigma)()        # v2.279 (konformaldan önce)
+    _logla("gece_konformal", gece_konformal)()          # v2.252
+    _logla("gunluk_beklenti", gunluk_beklenti)()        # v2.205
+    _logla("rapor_alanlari", rapor_alanlari)()          # v2.103 (B1+B5)
+    _logla("sabah_tahmin", sabah_tahmin)()
+    _logla("alarm", alarm_tara)()
+
+
+def _logla_tek(job, fn):
+    """v2.336 — _logla'nın tek koşumluk kardeşi: santral döngüsü YOK, iş bir kez
+    koşar ve jobs_log'a tenant'sız tek satır düşer (acilis_yakalama gibi küresel
+    işler için — _logla ile sarılsaydı santral sayısı kadar tur atardı)."""
+    def ic():
+        bas = dt.datetime.now(dt.timezone.utc)
+        durum, det = "ok", ""
+        try:
+            fn()
+        except Exception as e:
+            durum, det = "error", f"{type(e).__name__}: {e}"
+            traceback.print_exc()
+        with sistem_baglami() as s:
+            s.execute(text(
+                "INSERT INTO jobs_log(job,tenant_id,plant_id,started,"
+                " finished,status,detail) VALUES(:j,NULL,NULL,:b,now(),:s,:d)"),
+                {"j": job, "b": bas, "s": durum, "d": det[:500]})
+    return ic
+
+
+def acilis_yakalama():
+    """v2.336 — tazelik yakalaması: işçi gece kapalıysa cron'lar hiç koşmaz ve
+    tahmin/karne sessizce eskir (31 Ağu ve 10 Eyl'de yaşandı). Açılışta gece
+    grubunun son BAŞARILI izi 30 saatten eskiyse tam tur BİR KEZ koşar; tazeyse
+    dokunulmaz. Zamanlayıcının işi olarak koşar: uzun NWP indirmesi diğer
+    cron'ları bloklamaz.
+    Tazelik ölçütü status='ok' ister: hatayla düşen tek bir gece_meteo (bu geliştirme
+    ortamında NWP ağ hatası olağan) grubu 'taze' göstermemeli — yoksa asıl bayat
+    işler (sabah_tahmin, karne) yakalanmadan maskelenir (17 Eyl'de ölçüldü)."""
+    from pvquant.services.isler_service import GECE_GRUBU
+    with sistem_baglami() as s:
+        son = s.execute(text("SELECT max(started) FROM jobs_log "
+                             "WHERE job = ANY(:g) AND status = 'ok'"),
+                        {"g": list(GECE_GRUBU)}).scalar()
+    if son is not None and (dt.datetime.now(dt.timezone.utc) - son) < dt.timedelta(hours=30):
+        print(f"[yakalama] gece grubu taze ({son:%d.%m %H:%M} UTC) — tur gerekmiyor")
+        return
+    print("[yakalama] gece grubu bayat — tam tur başlıyor")
+    tam_tur()
+
+
+def gece_yedek():
+    """v2.337 — gece veritabanı yedeği: scripts/yedek.sh'in birebir işi (pg_dump
+    → gzip, en yeni N tutulur) ama artık ZAMANLAYICIYA bağlı ve jobs_log'da
+    görünür. Dış değerlendirme turunun 5. bulgusu: betik vardı, hiçbir cron
+    onu çağırmıyordu. pg_dump çıktısı Python gzip'inden akıtılır (kabuk yok,
+    sabit bellek); dosya boşsa hata verir (sessiz boş yedek yalanı olmaz).
+    PVQ_YEDEK_KAPALI ile kapatılabilir."""
+    import glob
+    import gzip
+    import subprocess
+    from sqlalchemy.engine import make_url
+    from pvquant.config import get_settings
+    cfg = get_settings()
+    if _os.environ.get("PVQ_YEDEK_KAPALI"):
+        print("[yedek] kapalı (PVQ_YEDEK_KAPALI)")
+        return
+    _os.makedirs(cfg.yedek_dizin, exist_ok=True)
+    url = make_url(_os.environ["PVQ_DB_URL"])
+    ts = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%d_%H%M")
+    hedef = _os.path.join(cfg.yedek_dizin, f"pvq_{ts}.sql.gz")
+    ortam = {**_os.environ, "PGPASSWORD": url.password or ""}
+    with gzip.open(hedef, "wb") as f:
+        p = subprocess.Popen(
+            ["pg_dump", "-h", url.host or "db", "-p", str(url.port or 5432),
+             "-U", url.username or "pvquant", "-d", url.database or "pvquant"],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=ortam)
+        for parca in iter(lambda: p.stdout.read(65536), b""):
+            f.write(parca)
+        hata = p.stderr.read()
+        p.wait()
+    if p.returncode != 0:
+        _os.remove(hedef)                       # yarım dosya bırakma
+        raise RuntimeError(f"pg_dump {p.returncode}: {hata.decode(errors='replace')[:200]}")
+    boyut = _os.path.getsize(hedef)
+    if boyut < 100:                             # boş/bozuk yedek yalanı olmasın
+        _os.remove(hedef)
+        raise RuntimeError("yedek dosyası boş")
+    tumu = sorted(glob.glob(_os.path.join(cfg.yedek_dizin, "pvq_*.sql.gz")), reverse=True)
+    for eski in tumu[cfg.yedek_sayisi:]:        # en yeni N kalır, gerisi silinir
+        _os.remove(eski)
+    print(f"[yedek] OK: {hedef} ({boyut} bayt), {min(len(tumu), cfg.yedek_sayisi)} yedek tutuluyor")
+
+
 if __name__ == "__main__":
     import sys
     from pvquant.config import get_settings
     cfg = get_settings()
     if "--once" in sys.argv:
-        # v2.56: elle tam tur — scheduler'siz, sirayla. Aylik kalibrasyon
-        # BILEREK haric (durum degistiren agir is; takvimin/kullanicinin isi).
         print("PVQuant worker --once: tam tur basliyor…")
-        _logla("gece_meteo", gece_meteo)()                  # v2.268 (Dalga 0): NWP arşivi önce
-        _logla("gece_piyasa", gece_piyasa)()                # v2.258 (kimlik yoksa atlar)
-        _logla("gece_epias_uretim", gece_epias_uretim)()    # v2.278 (kimlik/eşleme yoksa atlar)
-        _logla("gece_hijyen", gece_hijyen)()                # v2.254 (skill'den once)
-        _logla("gece_skill", gece_skill)()
-        _logla("gece_ufuk_sigma", gece_ufuk_sigma)()        # v2.279 (konformaldan önce)
-        _logla("gece_konformal", gece_konformal)()          # v2.252
-        _logla("gunluk_beklenti", gunluk_beklenti)()        # v2.205
-        _logla("rapor_alanlari", rapor_alanlari)()          # v2.103 (B1+B5)
-        _logla("sabah_tahmin", sabah_tahmin)()
-        _logla("alarm", alarm_tara)()
+        tam_tur()
         print("Tam tur bitti — kanit jobs_log'da.")
         raise SystemExit(0)
     sch = BlockingScheduler(timezone="UTC", job_defaults=dict(coalesce=True, misfire_grace_time=3600, max_instances=1))
@@ -589,6 +677,10 @@ if __name__ == "__main__":
                 "cron", day=cfg.worker_day_calibration, hour=cfg.worker_hour_calibration, minute=30)
     sch.add_job(_logla("aylik_bankable", aylik_bankable),                # v2.278
                 "cron", day=cfg.worker_day_calibration, hour=(cfg.worker_hour_calibration + 1) % 24, minute=0)
+    sch.add_job(_logla_tek("gece_yedek", gece_yedek),                    # v2.337: gece veritabanı yedeği
+                "cron", hour=cfg.yedek_saat, minute=15)
+    sch.add_job(_logla_tek("acilis_yakalama", acilis_yakalama), "date",  # v2.336: tazelik yakalaması
+                run_date=dt.datetime.now(dt.timezone.utc) + dt.timedelta(seconds=20))
     print(f"PVQuant worker basladi (UTC cron: {cfg.worker_hour_skill:02d}:30 skill /"
           f" {cfg.worker_hour_forecast:02d}:00 tahmin / {cfg.worker_hour_alarm:02d}:00 alarm /"
           f" ay-{cfg.worker_day_calibration} {cfg.worker_hour_calibration:02d}:00 kal.)")

@@ -26,3 +26,37 @@ def test_isim_haritasi_tam():
     kayitli = set(re.findall(r'_logla\("([a-z_]+)"', src))
     eksik = kayitli - set(js.ISIM_TR)
     assert not eksik, f"ISIM_TR eksik: {eksik}"
+
+
+def test_acilis_yakalama_esigi(monkeypatch):
+    """v2.336 — taze (son BAŞARILI iz <30s) izde tur koşulmaz, bayat/boş izde koşulur."""
+    import datetime as dt
+    import apps.worker.main as wm
+
+    kosulan = []
+    monkeypatch.setattr(wm, "tam_tur", lambda: kosulan.append(1))
+
+    class _S:
+        def __init__(self, son):
+            self._son = son
+
+        def execute(self, *a, **k):
+            class _R:
+                def __init__(self, v): self._v = v
+                def scalar(self): return self._v
+            return _R(self._son)
+
+        def __enter__(self): return self
+
+        def __exit__(self, *a): return False
+
+    simdi = dt.datetime.now(dt.timezone.utc)
+    monkeypatch.setattr(wm, "sistem_baglami", lambda: _S(simdi - dt.timedelta(hours=2)))
+    wm.acilis_yakalama()
+    assert kosulan == []                       # taze — dokunmadı
+
+    monkeypatch.setattr(wm, "sistem_baglami", lambda: _S(simdi - dt.timedelta(hours=31)))
+    wm.acilis_yakalama()
+    monkeypatch.setattr(wm, "sistem_baglami", lambda: _S(None))
+    wm.acilis_yakalama()
+    assert kosulan == [1, 1]                   # bayat ve hiç-yok: birer tur

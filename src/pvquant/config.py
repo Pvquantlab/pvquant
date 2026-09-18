@@ -93,6 +93,9 @@ class Settings(BaseSettings):
     worker_hour_alarm: int = 4              # v2.56: alarm taramasi (UTC)
     worker_day_calibration: int = 1         # v2.56: aylik kalibrasyon gunu
     worker_hour_calibration: int = 3        # v2.56: aylik kalibrasyon saati (UTC)
+    yedek_saat: int = 1                     # v2.337: gece veritabani yedegi (UTC)
+    yedek_sayisi: int = 14                  # v2.337: saklanan yedek adedi (host betigiyle ayni)
+    yedek_dizin: str = "/app/yedekler"      # v2.337: worker'a bagli ana makine klasoru
     forecast_horizon_days: int = 15         # v2.156 (kullanıcı kararı 18 Ağu):
                                             # open-meteo RADYASYON ufku ~15 gündür;
                                             # 16. gün NaN dönüyor ve eski fillna(0)
