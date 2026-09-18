@@ -66,6 +66,15 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
     catch { return "oto"; }
   });
   const sayfaYuzu = SAYFALAR.find((s) => s.id === sayfa)?.yuz ?? "acik";
+  // v2.340 (#8): sekme başlığı sayfayı ve santralı yansıtsın — panel sekmeleri
+  // arasında gezerken hepsi aynı başlığı taşıyordu, açık sekmeler ayırt edilemiyordu.
+  useEffect(() => {
+    const ad = SAYFALAR.find((s) => s.id === sayfa)?.ad ?? "Panel";
+    document.title = `${ad} · ${santral} — PVQuant`;
+    // temizleme şart: çıkışta Kabuk sökülür ama başlık kalırdı — giriş/vitrin
+    // ekranındaki ziyaretçi sekmede santral adını görmeye devam ederdi.
+    return () => { document.title = "PVQuant — Kanıtla konuşan üretim tahmini"; };
+  }, [sayfa, santral]);
   const koyu = temaKipi === "koyu" || (temaKipi === "oto" && sayfaYuzu === "koyu");
   const kipSec = (k: "oto" | "acik" | "koyu") => {
     setTemaKipi(k);
