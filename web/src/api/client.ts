@@ -561,6 +561,9 @@ export const api = {
   },
   takimEkle: (email: string, rol: string): Promise<{ id: string; email: string; rol: string; gecici_parola: string }> =>
     gonder(`/v1/takim`, "POST", { email, rol }),
+  /** v2.339: üyenin 2FA'sını yönetici sıfırlar (telefon+kurtarma kodu kaybı çıkışı). */
+  takimIkiAdimSifirla: (id: string): Promise<{ tamam: boolean }> =>
+    gonder(`/v1/takim/${id}/iki-adim-sifirla`, "POST"),
   takimGuncelle: (id: string, g: { rol?: string; aktif?: boolean }): Promise<{ tamam: boolean }> =>
     gonder(`/v1/takim/${id}`, "PUT", g),
   parolaDegistir: (eski: string, yeni: string): Promise<{ tamam: boolean }> =>
@@ -580,13 +583,17 @@ export const api = {
   /** v2.294: kamuya açık doğrulama karnesi — kimliksiz uç, jeton eklenmez (401 yönlendirmesi tetiklenmesin). */
   /** v2.328: vitrin "Karneni başlat" başvurusu — kamuya açık, jetonsuz. */
   /** v2.335: "şifremi unuttum" — jetonsuz kamu uçları; yanıt hesap varlığı sızdırmaz. */
-  parolaSifirlaIstek: async (eposta: string): Promise<boolean> => {
-    if (TABAN == null) return true;
+  /** v2.339: postaAcik = sunucu mektup gönderebiliyor mu (hesap varlığı DEĞİL).
+   *  false ise arayüz "gönderildi" DEMEZ — yoksa kullanıcı olmayan postayı bekler. */
+  parolaSifirlaIstek: async (eposta: string): Promise<{ ok: boolean; postaAcik: boolean }> => {
+    if (TABAN == null) return { ok: true, postaAcik: true };
     try {
       const y = await fetch(`${TABAN}/v1/parola-sifirla-istek`, { method: "POST",
         headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eposta }) });
-      return y.ok;
-    } catch { return false; }
+      if (!y.ok) return { ok: false, postaAcik: false };
+      const g = (await y.json()) as { posta_acik?: boolean };
+      return { ok: true, postaAcik: g.posta_acik !== false };
+    } catch { return { ok: false, postaAcik: false }; }
   },
   parolaSifirla: async (jeton: string, parola: string): Promise<{ tamam: boolean; neden?: string }> => {
     if (TABAN == null) return { tamam: true };

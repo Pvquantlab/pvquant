@@ -405,6 +405,16 @@ def takim_guncelle(uye_id: str, p: UyeGuncelle, claims=Depends(yonetici_yetkisi(
     return {"tamam": True}
 
 
+@app.post("/v1/takim/{uye_id}/iki-adim-sifirla", tags=["Yönetim"])
+def takim_iki_adim_sifirla(uye_id: str, claims=Depends(yonetici_yetkisi())):
+    """v2.339 — üyenin iki adımlı doğrulamasını yönetici kapatır (kilitlenme çıkışı).
+    Kendi hesabı için normal /v1/iki-adim/kapat kullanılır; bu uç BAŞKA üye içindir."""
+    from pvquant.services import iki_adim_service
+    if not iki_adim_service.yonetici_sifirla(claims["tenant_id"], uye_id):
+        raise HTTPException(404, "üye yok")
+    return {"tamam": True}
+
+
 @app.post("/v1/parola")
 def parola(p: ParolaIstek, claims=Depends(gecerli_kullanici)):
     """Kullanıcının kendi parolası — sunucu yalnız özet saklar."""
@@ -605,10 +615,15 @@ class ParolaSifirlamaGovde(BaseModel):
 @limiter.limit("5/hour")
 def parola_sifirla_istek(request: Request, g: ParolaSifirlamaIstek):
     """v2.335 — "şifremi unuttum": kayıtlı hesaba tek kullanımlık bağlantı
-    e-postalanır. Yanıt HER durumda aynı — hesap varlığı sızdırılmaz."""
-    from pvquant.services import auth_service
+    e-postalanır. Yanıt HER durumda aynı — hesap varlığı sızdırılmaz.
+    v2.339: yanıta "posta_acik" eklendi — bu SUNUCUNUN mektup gönderebilme
+    yeteneğidir, bu isteğin sonucu DEĞİL; dolayısıyla hesap varlığını yine
+    sızdırmaz. Gerekçe: SMTP yapılandırılmamışken arayüz "bağlantı gönderildi"
+    diyor ve kullanıcı asla gelmeyecek postayı bekliyordu (18 Eyl'de canlıda
+    ölçüldü: jeton yazıldı, mektup çıkmadı)."""
+    from pvquant.services import auth_service, posta_service
     auth_service.parola_sifirlama_istek(g.eposta)
-    return {"tamam": True}
+    return {"tamam": True, "posta_acik": posta_service.yapilandirildi()}
 
 
 @app.post("/v1/parola-sifirla")

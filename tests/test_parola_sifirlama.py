@@ -16,7 +16,12 @@ def test_istek_ucu_varlik_sizdirmaz(monkeypatch):
     y1 = c.post("/v1/parola-sifirla-istek", json={"eposta": "var@ges.com"})
     y2 = c.post("/v1/parola-sifirla-istek", json={"eposta": "yok@ges.com"})
     assert y1.status_code == y2.status_code == 200
-    assert y1.json() == y2.json() == {"tamam": True}
+    # ASIL değişmez: iki yanıt BİRBİRİNİN AYNI olmalı (hesap var/yok ayrımı sızmasın).
+    # Sabit sözlüğe bağlamıyoruz — v2.339'da "posta_acik" eklendi ve bu alan
+    # SUNUCU yeteneğidir, isteğe özel değildir; sızıntı ölçütü eşitliktir.
+    assert y1.json() == y2.json()
+    assert y1.json()["tamam"] is True
+    assert "posta_acik" in y1.json()      # v2.339: arayüz "gönderildi" yalanını kurmasın
 
 
 def test_sifirla_ucu_422_cevirisi(monkeypatch):

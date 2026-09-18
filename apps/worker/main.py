@@ -587,17 +587,33 @@ def acilis_yakalama():
     cron'ları bloklamaz.
     Tazelik ölçütü status='ok' ister: hatayla düşen tek bir gece_meteo (bu geliştirme
     ortamında NWP ağ hatası olağan) grubu 'taze' göstermemeli — yoksa asıl bayat
-    işler (sabah_tahmin, karne) yakalanmadan maskelenir (17 Eyl'de ölçüldü)."""
-    from pvquant.services.isler_service import GECE_GRUBU
+    işler (sabah_tahmin, karne) yakalanmadan maskelenir (17 Eyl'de ölçüldü).
+    v2.339: ölçüt İŞ BAZINA indi (isler_service.bayat_isler) — "grubun biri koştu"
+    demek yetmiyordu: 18 Eyl'de gece_skill koştuğu için grup taze sayıldı ve
+    sabah_tahmin'in 10 gündür koşmadığı gözden kaçtı."""
+    from pvquant.services.isler_service import bayat_isler
+    bayat = bayat_isler(30)
+    if not bayat:
+        print("[yakalama] üretici gece işleri taze — tur gerekmiyor")
+        return
+    print(f"[yakalama] bayat iş(ler): {', '.join(bayat)} — tam tur başlıyor")
+    tam_tur()
+
+
+def acilis_yedek():
+    """v2.339 — YEDEĞİN yakalaması. Gece yedeği 01:15 UTC'ye (04:15 İstanbul)
+    kurulu; bu kurulumda makine o saatte kapalı olduğundan cron hiç ateşlemiyordu
+    (kanıt: aynı ölü bölgedeki sabah_tahmin 10 gün koşmadı). Yani "otomatik yedek"
+    fiilen yedeksizlikti. Açılışta son BAŞARILI yedek 24 saatten eskiyse bir yedek
+    alınır; her yeniden başlatmada tekrar almaz."""
     with sistem_baglami() as s:
         son = s.execute(text("SELECT max(started) FROM jobs_log "
-                             "WHERE job = ANY(:g) AND status = 'ok'"),
-                        {"g": list(GECE_GRUBU)}).scalar()
-    if son is not None and (dt.datetime.now(dt.timezone.utc) - son) < dt.timedelta(hours=30):
-        print(f"[yakalama] gece grubu taze ({son:%d.%m %H:%M} UTC) — tur gerekmiyor")
+                             "WHERE job = 'gece_yedek' AND status = 'ok'")).scalar()
+    if son is not None and (dt.datetime.now(dt.timezone.utc) - son) < dt.timedelta(hours=24):
+        print(f"[yedek] son yedek taze ({son:%d.%m %H:%M} UTC) — gerekmiyor")
         return
-    print("[yakalama] gece grubu bayat — tam tur başlıyor")
-    tam_tur()
+    print("[yedek] son 24 saatte yedek yok — açılışta alınıyor")
+    gece_yedek()
 
 
 def gece_yedek():
@@ -681,6 +697,8 @@ if __name__ == "__main__":
                 "cron", hour=cfg.yedek_saat, minute=15)
     sch.add_job(_logla_tek("acilis_yakalama", acilis_yakalama), "date",  # v2.336: tazelik yakalaması
                 run_date=dt.datetime.now(dt.timezone.utc) + dt.timedelta(seconds=20))
+    sch.add_job(_logla_tek("acilis_yedek", acilis_yedek), "date",        # v2.339: yedek yakalaması
+                run_date=dt.datetime.now(dt.timezone.utc) + dt.timedelta(seconds=45))
     print(f"PVQuant worker basladi (UTC cron: {cfg.worker_hour_skill:02d}:30 skill /"
           f" {cfg.worker_hour_forecast:02d}:00 tahmin / {cfg.worker_hour_alarm:02d}:00 alarm /"
           f" ay-{cfg.worker_day_calibration} {cfg.worker_hour_calibration:02d}:00 kal.)")

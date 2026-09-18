@@ -296,8 +296,9 @@ export interface Dogrulama { durum: "acik" | "kapali"; santral_etiketi?: string;
 
 /** v2.299: ekip yönetimi. */
 export interface TakimUyesi { id: string; email: string; rol: string; aktif: boolean;
-  son_giris: string | null; olusturma: string | null; }
+  son_giris: string | null; olusturma: string | null; iki_adim?: boolean; }
 
 /** v2.301: gece işleri görünürlüğü. */
 export interface Isler { isler: { is: string; zaman: string; sure_sn: number | null; tamam: boolean }[];
-  pencere_saat: number; gece_calisiyor: boolean; son_gece_isi: string | null; not: string | null; }
+  pencere_saat: number; gece_calisiyor: boolean; son_gece_isi: string | null; not: string | null;
+  bayat_isler?: string[]; }

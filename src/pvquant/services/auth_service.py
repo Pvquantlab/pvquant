@@ -96,10 +96,11 @@ ROLLER = ("viewer", "editor", "admin")
 def takim_listesi(tenant_id) -> list[dict]:
     with sistem_baglami() as s:
         rows = s.execute(text(
-            "SELECT id, email, role, aktif, last_login, created_at FROM users "
+            "SELECT id, email, role, aktif, last_login, created_at, totp_aktif FROM users "
             "WHERE tenant_id=:t ORDER BY created_at"), {"t": tenant_id}).mappings().all()
     return [{"id": str(r["id"]), "email": r["email"], "rol": r["role"], "aktif": bool(r["aktif"]),
              "son_giris": r["last_login"].isoformat() if r["last_login"] else None,
+             "iki_adim": bool(r["totp_aktif"]),   # v2.339: yönetici kimin 2FA'lı olduğunu görür
              "olusturma": r["created_at"].isoformat() if r["created_at"] else None} for r in rows]
 
 

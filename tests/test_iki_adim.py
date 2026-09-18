@@ -122,3 +122,25 @@ def test_kurtarma_kodu_uretimi_ve_tuketimi():
     from passlib.hash import bcrypt
     ham = kodlar[0].replace("-", "")
     assert bcrypt.verify(ham, yazilan[0])
+
+
+def test_yonetici_sifirlama_kapisi(monkeypatch):
+    """v2.339 — kilitlenme çıkışı: uç YALNIZ yöneticiye açık, üye yoksa 404."""
+    from apps.api.deps import gecerli_kullanici as gk
+
+    # editör → 403 (yonetici_yetkisi kapısı)
+    api_main.app.dependency_overrides[gk] = \
+        lambda: {"sub": "u1", "tenant_id": "t1", "role": "editor", "exp": 0}
+    try:
+        c = TestClient(api_main.app)
+        assert c.post("/v1/takim/u2/iki-adim-sifirla").status_code == 403
+
+        api_main.app.dependency_overrides[gk] = \
+            lambda: {"sub": "u1", "tenant_id": "t1", "role": "admin", "exp": 0}
+        c = TestClient(api_main.app)
+        monkeypatch.setattr(ia, "yonetici_sifirla", lambda t, u: False)   # üye yok
+        assert c.post("/v1/takim/u2/iki-adim-sifirla").status_code == 404
+        monkeypatch.setattr(ia, "yonetici_sifirla", lambda t, u: True)
+        assert c.post("/v1/takim/u2/iki-adim-sifirla").json() == {"tamam": True}
+    finally:
+        api_main.app.dependency_overrides.clear()

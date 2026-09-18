@@ -515,7 +515,7 @@ function HesapVeEkip() {
           <div className="mono" style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--soluk)", marginBottom: 6 }}>Ekip</div>
           {uyeler.length > 0 && (
             <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 12 }}>
-              <thead><tr><th>E-posta</th><th>Rol</th><th>Son giriş</th><th>Durum</th><th></th></tr></thead>
+              <thead><tr><th>E-posta</th><th>Rol</th><th>Son giriş</th><th>Durum</th><th>2FA</th><th></th></tr></thead>
               <tbody>{uyeler.map((u) => (
                 <tr key={u.id} style={{ opacity: u.aktif ? 1 : 0.5 }}>
                   <td className="mono">{u.email}</td>
@@ -525,6 +525,14 @@ function HesapVeEkip() {
                       </select></td>
                   <td className="mono">{tarih(u.son_giris)}</td>
                   <td>{u.aktif ? "etkin" : "pasif"}</td>
+                  {/* v2.339: kilitlenme çıkışı — telefonunu ve kurtarma kodlarını
+                      birlikte kaybeden üyenin 2FA'sını yönetici kapatabilir */}
+                  <td>{u.iki_adim ? (
+                    <button className="dugme" style={{ fontSize: 11.5 }}
+                      onClick={() => { if (confirm(`${u.email} için iki adımlı doğrulama kapatılsın mı? Üye girişte yalnız parolasını kullanır ve dilerse yeniden kurar.`))
+                        dene(async () => { await api.takimIkiAdimSifirla(u.id); setMesaj("Üyenin iki adımlı doğrulaması kapatıldı."); }); }}>
+                      açık · sıfırla</button>
+                  ) : <span className="soluk">kapalı</span>}</td>
                   <td><button className="dugme" style={{ fontSize: 11.5 }}
                         onClick={() => dene(async () => { await api.takimGuncelle(u.id, { aktif: !u.aktif }); setMesaj(u.aktif ? "Üye pasifleştirildi — oturum açamaz." : "Üye yeniden etkin."); })}>
                         {u.aktif ? "Pasifleştir" : "Etkinleştir"}</button></td>

@@ -116,6 +116,22 @@ def giris_dogrula(user_id, kod: str) -> bool:
     return False
 
 
+def yonetici_sifirla(tenant_id, user_id) -> bool:
+    """v2.339 — KİLİTLENME ÇIKIŞI: telefonunu ve kurtarma kodlarını birlikte
+    kaybeden üyenin 2FA'sını yöneticisi kapatır (kullanıcı sonra yeniden kurar).
+    Bu olmadan tek çare hesabı pasifleştirip sıfırdan açmaktı — geçmiş kopardı.
+    Kapsam AYNI KİRACI ile sınırlıdır: yönetici başka kurumun üyesine dokunamaz.
+    Dönüş False = o kiracıda böyle bir üye yok."""
+    with sistem_baglami() as s:
+        r = s.execute(text(
+            "UPDATE users SET totp_secret=NULL, totp_aktif=false "
+            "WHERE id=:u AND tenant_id=:t"), {"u": user_id, "t": tenant_id})
+        if r.rowcount == 0:
+            return False
+        s.execute(text("DELETE FROM kurtarma_kodlari WHERE user_id=:u"), {"u": user_id})
+    return True
+
+
 # ---- yardımcılar --------------------------------------------------------
 def _temiz(kod: str) -> str:
     return (kod or "").strip().replace(" ", "")

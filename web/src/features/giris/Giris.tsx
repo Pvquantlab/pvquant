@@ -11,13 +11,15 @@ export function Giris({ onGiris }: { onGiris: () => void }) {
   // v2.335: "parolamı unuttum" kipi — aynı form alanı, iki görünüm
   const [unuttum, setUnuttum] = useState(false);
   const [istekGitti, setIstekGitti] = useState(false);
+  const [postaAcik, setPostaAcik] = useState(true);   // v2.339: sunucu mektup atabiliyor mu
   // v2.338: iki adımlı doğrulama — parola geçince kod alanı açılır
   const [ikiAdim, setIkiAdim] = useState(false);
   const [kod, setKod] = useState("");
 
   async function sifirlamaIste() {
     setHata(null); setBekliyor(true);
-    await api.parolaSifirlaIstek(email);
+    const r = await api.parolaSifirlaIstek(email);
+    setPostaAcik(r.postaAcik);
     setBekliyor(false); setIstekGitti(true);   // yanıt her durumda aynı — hesap varlığı sızdırılmaz
   }
 
@@ -105,11 +107,21 @@ export function Giris({ onGiris }: { onGiris: () => void }) {
           {hata && <p role="alert" style={{ fontSize: 13, color: "var(--negatif)",
                      margin: "12px 0 0" }}>{hata}</p>}
           {unuttum && istekGitti && (
-            <p style={{ fontSize: 13, color: "var(--ikincil)", margin: "12px 0 0",
-              lineHeight: 1.6 }}>
-              Bu adrese kayıtlı bir hesap varsa sıfırlama bağlantısı gönderildi;
-              gelen kutunuzu kontrol edin. Bağlantı 30 dakika geçerlidir.
-            </p>
+            postaAcik ? (
+              <p style={{ fontSize: 13, color: "var(--ikincil)", margin: "12px 0 0",
+                lineHeight: 1.6 }}>
+                Bu adrese kayıtlı bir hesap varsa sıfırlama bağlantısı gönderildi;
+                gelen kutunuzu kontrol edin. Bağlantı 30 dakika geçerlidir.
+              </p>
+            ) : (
+              /* v2.339: sunucuda e-posta yapılandırılmamış — "gönderildi" DEMEYİZ */
+              <p role="alert" style={{ fontSize: 13, color: "var(--negatif)",
+                margin: "12px 0 0", lineHeight: 1.6 }}>
+                Bu sunucuda e-posta gönderimi yapılandırılmamış, bu yüzden
+                sıfırlama bağlantısı iletilemiyor. Lütfen hesap yöneticinizle
+                iletişime geçin.
+              </p>
+            )
           )}
           <button className="dugme dugme-ana" style={{ width: "100%", marginTop: 20, padding: "10px" }}
                   onClick={unuttum ? sifirlamaIste : gonder} disabled={bekliyor}>
