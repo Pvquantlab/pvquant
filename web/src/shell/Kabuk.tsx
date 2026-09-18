@@ -38,7 +38,7 @@ const IKONLAR: Record<SayfaId, ReactNode> = {
 };
 
 /** Marka isareti: 1.5px stroke gunes (Vitrin'dekiyle ayni dil). */
-function GunesLogo() {
+export function GunesLogo() {   // v2.341: Giris de kullanır — tek marka işareti
   return (
     <svg width="22" height="22" viewBox="0 0 20 20" aria-hidden="true">
       <circle cx="10" cy="10" r="3.4" fill="none" stroke="var(--marka)" strokeWidth="1.5" />

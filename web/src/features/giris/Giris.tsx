@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api, giris } from "../../api/client";
 import { BandImza } from "../sayfalar/BandImza";
+import { GunesLogo } from "../../shell/Kabuk";
 
 /** Giris ekrani — urunun ilk yuzu. Pano sakin; burasi iddiali olabilir. */
 export function Giris({ onGiris }: { onGiris: () => void }) {
@@ -47,8 +48,11 @@ export function Giris({ onGiris }: { onGiris: () => void }) {
       <div className="giris-marka">
         <div className="giris-izgara" aria-hidden="true" />
         <div className="giris-marka-ic">
+          {/* v2.341: ".logo-kare" CSS'i bir tasarım turunda silinmiş, span stilsiz
+              kalıp çıplak "P" harfi olarak görünüyordu (kullanıcı yakaladı).
+              Paneldeki marka işaretinin aynısı kullanılır — kopya yok. */}
           <div className="giris-logo">
-            <span className="logo-kare" style={{ width: 30, height: 30, fontSize: 16 }}>P</span>
+            <GunesLogo />
             PVQuant
           </div>
           <h1 className="giris-baslik">

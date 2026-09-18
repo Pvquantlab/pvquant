@@ -309,7 +309,10 @@ table.veri tbody tr:hover td { background: var(--yuzey); }
 /* ---------- giris ekrani ---------- */
 .giris { display: grid; grid-template-columns: 1.15fr 1fr; min-height: 100vh; }
 @media (max-width: 900px) { .giris { grid-template-columns: 1fr; }
-                            .giris-marka { min-height: 380px; } }
+                            .giris-marka { min-height: 380px;   /* v2.341: bu yüz HER temada koyudur — güneş işareti tema ne olursa
+     olsun filiz tonda kalsın (koyu yeşil burada 3,0 sınırında sönük) */
+  --marka: #3FB489;
+} }
 
 .giris-marka { position: relative; overflow: hidden; display: flex; align-items: center;
   background:
