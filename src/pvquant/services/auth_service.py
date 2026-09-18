@@ -45,13 +45,32 @@ def kullanici_davet(tenant_id, email, sifre, role):
              "h": bcrypt.hash(sifre), "r": role}).scalar())
 
 
-def giris(email, sifre) -> dict | None:
+def eposta_getir(user_id) -> str:
+    """v2.338 — kullanıcının e-postası (2FA otpauth etiketi için; JWT'de yok)."""
+    with sistem_baglami() as s:
+        row = s.execute(text("SELECT email FROM users WHERE id=:i"), {"i": user_id}).first()
+    if row is None:
+        raise ValueError("kullanıcı yok")
+    return row.email
+
+
+def giris(email, sifre, kod=None) -> dict | None:
     with sistem_baglami() as s:
         row = s.execute(text(
-            "SELECT id, tenant_id, pw_hash, role, aktif FROM users "
+            "SELECT id, tenant_id, pw_hash, role, aktif, totp_aktif FROM users "
             "WHERE email=:e"), {"e": email.lower()}).first()
         if not row or not row.aktif or not bcrypt.verify(sifre, row.pw_hash):
             return None   # v2.299: pasif hesap da 'hatalı' der — hesap varlığı sızdırılmaz
+    # v2.338: parola doğru; iki adımlı doğrulama açıksa ikinci adım şart.
+    # Kod yoksa TOKEN ÜRETİLMEZ; istemciye "kod iste" işareti döner (parola
+    # doğrulaması geçildi ama oturum henüz açılmadı — last_login de yazılmaz).
+    if row.totp_aktif:
+        if not kod:
+            return {"iki_adim_gerekli": True}
+        from pvquant.services import iki_adim_service
+        if not iki_adim_service.giris_dogrula(row.id, kod):
+            return None   # yanlış kod da 'hatalı' — deneme sızdırılmaz
+    with sistem_baglami() as s:
         s.execute(text("UPDATE users SET last_login=now() WHERE id=:i"),
                   {"i": row.id})
     token = jwt.encode({

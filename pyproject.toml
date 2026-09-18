@@ -59,6 +59,8 @@ dependencies = [
     "cfgrib>=0.9.14",        # v2.268
     "eccodes>=2.37",         # v2.268: wheel kütüphaneyi bindirir (apt gerekmez)
     "tabulate>=0.9",   # v2.246: ext.platform.rapor_sablon Markdown tablosu
+    "pyotp>=2.9",      # v2.338: TOTP iki adımlı doğrulama (saf python)
+    "qrcode>=7.4",     # v2.338: kayıt QR'ı SVG olarak (Pillow'suz, saf python)
 ]
 
 [project.optional-dependencies]

@@ -388,6 +388,99 @@ function Paylasimlar({ santraller }: { santraller: { id: string; ad: string }[] 
 
 /** v2.299 — hesap ve ekip: parola değişimi herkese, ekip yönetimi yalnız yöneticiye.
  *  Geçici parola API anahtarı kalıbıyla YALNIZ bir kez gösterilir; sunucu özet saklar. */
+function IkiAdimBolumu() {
+  // v2.338: kullanıcının kendi 2FA'sı — kur/onayla, kapat, kurtarma yenile.
+  const [durum, setDurum] = useState<{ aktif: boolean; kalan_kurtarma: number } | null>(null);
+  const [kurulum, setKurulum] = useState<{ secret: string; qr_svg: string } | null>(null);
+  const [kod, setKod] = useState("");
+  const [kurtarma, setKurtarma] = useState<string[] | null>(null);
+  const [hata, setHata] = useState<string | null>(null);
+  const [mesaj, setMesaj] = useState<string | null>(null);
+  const [kapatKod, setKapatKod] = useState(""); const [kapatAcik, setKapatAcik] = useState(false);
+  const yenile = () => api.ikiAdimDurum().then(setDurum).catch(() => {});
+  useEffect(() => { yenile(); }, []);
+  const dene = async (fn: () => Promise<void>) => {
+    setHata(null); setMesaj(null);
+    try { await fn(); } catch (e) { setHata(String((e as Error).message ?? e)); }
+  };
+  const etiket = { fontSize: 11, fontWeight: 600, letterSpacing: ".04em",
+    textTransform: "uppercase", color: "var(--soluk)", marginBottom: 6 } as const;
+  return (
+    <div style={{ marginTop: 18, paddingTop: 14, borderTop: "1px solid var(--kenar)" }}>
+      <div className="mono" style={etiket}>İki adımlı doğrulama</div>
+      {hata && <p className="ayar-durum hata" style={{ margin: "0 0 8px" }}>{hata}</p>}
+      {mesaj && <p className="ayar-durum ok" style={{ margin: "0 0 8px" }}>{mesaj}</p>}
+
+      {kurtarma ? (
+        <div style={{ padding: 12, border: "1px solid var(--kenar)", borderRadius: 8, background: "var(--yuzey2)" }}>
+          <p style={{ fontSize: 12.5, margin: "0 0 8px", lineHeight: 1.6 }}>
+            <strong>Kurtarma kodları — bir daha gösterilmez.</strong> Telefonunuzu
+            kaybederseniz her biri bir kez giriş sağlar. Güvenli bir yere kaydedin:</p>
+          <div className="mono" style={{ display: "grid", gridTemplateColumns: "1fr 1fr",
+            gap: "4px 16px", fontSize: 13, userSelect: "all" }}>
+            {kurtarma.map((k) => <span key={k}>{k}</span>)}
+          </div>
+          <button className="dugme" style={{ marginTop: 10, fontSize: 11.5 }}
+            onClick={() => { setKurtarma(null); setKod(""); yenile(); }}>Kaydettim, kapat</button>
+        </div>
+      ) : kurulum ? (
+        <div>
+          <p style={{ fontSize: 12.5, margin: "0 0 10px", lineHeight: 1.6 }}>
+            Authenticator uygulamanızla (Google Authenticator, 1Password, Authy…)
+            QR'ı okutun ya da anahtarı elle girin, sonra üretilen 6 haneli kodu yazın:</p>
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
+            <div style={{ width: 160, height: 160, background: "#fff", padding: 8, borderRadius: 8 }}
+              dangerouslySetInnerHTML={{ __html: kurulum.qr_svg }} />
+            <div>
+              <div style={{ fontSize: 11.5, color: "var(--soluk)" }}>Elle giriş anahtarı</div>
+              <code className="mono" style={{ fontSize: 12.5, userSelect: "all", wordBreak: "break-all" }}>{kurulum.secret}</code>
+            </div>
+          </div>
+          <form className="ayar-kontrol" style={{ marginTop: 10 }} onSubmit={(e) => { e.preventDefault();
+            dene(async () => { const r = await api.ikiAdimDogrula(kod); setKurtarma(r.kurtarma_kodlari); setKurulum(null); }); }}>
+            <label className="girdi-etiket">Uygulamadaki kod
+              <input className="girdi" inputMode="numeric" value={kod} onChange={(e) => setKod(e.target.value)} required /></label>
+            <button className="dugme" type="submit">Doğrula ve aç</button>
+            <button className="dugme" type="button" onClick={() => { setKurulum(null); setKod(""); }}>Vazgeç</button>
+          </form>
+        </div>
+      ) : durum?.aktif ? (
+        <div>
+          <p style={{ fontSize: 12.5, margin: "0 0 8px" }}>
+            Açık · kalan kurtarma kodu: <strong>{durum.kalan_kurtarma}</strong></p>
+          {!kapatAcik ? (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button className="dugme" style={{ fontSize: 11.5 }} onClick={() => setKapatAcik(true)}>Kapat</button>
+              <button className="dugme" style={{ fontSize: 11.5 }}
+                onClick={() => dene(async () => { const r = await api.ikiAdimKurtarmaYenile(
+                  prompt("Yenilemek için uygulamadaki 6 haneli kodu ya da bir kurtarma kodunu girin:") || "");
+                  setKurtarma(r.kurtarma_kodlari); })}>Kurtarma kodlarını yenile</button>
+            </div>
+          ) : (
+            <form className="ayar-kontrol" onSubmit={(e) => { e.preventDefault();
+              dene(async () => { await api.ikiAdimKapat(kapatKod); setKapatAcik(false); setKapatKod("");
+                setMesaj("İki adımlı doğrulama kapatıldı."); yenile(); }); }}>
+              <label className="girdi-etiket">Kapatmak için kod
+                <input className="girdi" value={kapatKod} onChange={(e) => setKapatKod(e.target.value)} required /></label>
+              <button className="dugme" type="submit">Kapat</button>
+              <button className="dugme" type="button" onClick={() => { setKapatAcik(false); setKapatKod(""); }}>Vazgeç</button>
+            </form>
+          )}
+        </div>
+      ) : (
+        <div>
+          <p style={{ fontSize: 12.5, margin: "0 0 8px", color: "var(--ikincil)", lineHeight: 1.6 }}>
+            Kapalı. Açtığınızda girişte parolanıza ek olarak authenticator
+            uygulamanızdaki 6 haneli kod istenir.</p>
+          <button className="dugme" onClick={() => dene(async () => {
+            const r = await api.ikiAdimBaslat(); setKurulum({ secret: r.secret, qr_svg: r.qr_svg }); })}>
+            İki adımlı doğrulamayı aç</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function HesapVeEkip() {
   const [uyeler, setUyeler] = useState<TakimUyesi[]>([]);
   const [roller, setRoller] = useState<string[]>([]);
@@ -416,6 +509,7 @@ function HesapVeEkip() {
           <input className="girdi" type="password" autoComplete="new-password" minLength={10} value={yeni} onChange={(e) => setYeni(e.target.value)} required /></label>
         <button className="dugme" type="submit">Değiştir</button>
       </form>
+      <IkiAdimBolumu />
       {yonetici && (
         <div style={{ marginTop: 16 }}>
           <div className="mono" style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--soluk)", marginBottom: 6 }}>Ekip</div>

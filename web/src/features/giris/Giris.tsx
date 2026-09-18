@@ -11,6 +11,9 @@ export function Giris({ onGiris }: { onGiris: () => void }) {
   // v2.335: "parolamı unuttum" kipi — aynı form alanı, iki görünüm
   const [unuttum, setUnuttum] = useState(false);
   const [istekGitti, setIstekGitti] = useState(false);
+  // v2.338: iki adımlı doğrulama — parola geçince kod alanı açılır
+  const [ikiAdim, setIkiAdim] = useState(false);
+  const [kod, setKod] = useState("");
 
   async function sifirlamaIste() {
     setHata(null); setBekliyor(true);
@@ -21,8 +24,12 @@ export function Giris({ onGiris }: { onGiris: () => void }) {
   async function gonder() {
     setHata(null); setBekliyor(true);
     try {
-      if (await giris(email, sifre)) onGiris();
-      else setHata("E-posta ya da parola hatalı.");
+      const r = await giris(email, sifre, ikiAdim ? kod : undefined);
+      if (r === "ok") onGiris();
+      else if (r === "iki_adim") { setIkiAdim(true); setHata(null); }   // kod alanını aç
+      else setHata(ikiAdim
+        ? "Doğrulama kodu hatalı — uygulamadaki 6 haneyi ya da bir kurtarma kodunu girin."
+        : "E-posta ya da parola hatalı.");
     } catch {
       setHata("Sunucuya ulaşılamadı — API ayakta mı?");
     } finally { setBekliyor(false); }
@@ -82,7 +89,18 @@ export function Giris({ onGiris }: { onGiris: () => void }) {
           {!unuttum && (<>
             <label className="giris-et">Parola</label>
             <input className="giris-girdi" type="password" value={sifre} autoComplete="current-password"
+                   disabled={ikiAdim}
                    onChange={(e) => setSifre(e.target.value)} placeholder="••••••••" />
+          </>)}
+          {ikiAdim && (<>
+            <label className="giris-et">Doğrulama kodu</label>
+            <input className="giris-girdi" inputMode="numeric" autoComplete="one-time-code"
+                   value={kod} autoFocus
+                   onChange={(e) => setKod(e.target.value)} placeholder="6 haneli kod" />
+            <p style={{ fontSize: 12, color: "var(--soluk)", margin: "6px 0 0", lineHeight: 1.6 }}>
+              Authenticator uygulamanızdaki 6 haneli kodu girin. Telefonunuz
+              yoksa bir kurtarma kodu da kullanabilirsiniz.
+            </p>
           </>)}
           {hata && <p role="alert" style={{ fontSize: 13, color: "var(--negatif)",
                      margin: "12px 0 0" }}>{hata}</p>}
@@ -95,13 +113,18 @@ export function Giris({ onGiris }: { onGiris: () => void }) {
           )}
           <button className="dugme dugme-ana" style={{ width: "100%", marginTop: 20, padding: "10px" }}
                   onClick={unuttum ? sifirlamaIste : gonder} disabled={bekliyor}>
-            {bekliyor ? "Denetleniyor…" : unuttum ? "Bağlantı gönder" : "Giriş yap"}</button>
+            {bekliyor ? "Denetleniyor…" : unuttum ? "Bağlantı gönder"
+              : ikiAdim ? "Doğrula ve gir" : "Giriş yap"}</button>
           <button type="button"
-            onClick={() => { setUnuttum(!unuttum); setHata(null); setIstekGitti(false); }}
+            onClick={() => {
+              setHata(null); setIstekGitti(false); setKod("");
+              if (ikiAdim) setIkiAdim(false);          // 2FA'dan parola adımına dön
+              else setUnuttum(!unuttum);
+            }}
             style={{ background: "none", border: "none", cursor: "pointer",
               fontFamily: "inherit", fontSize: 12.5, color: "var(--ikincil)",
               padding: 0, marginTop: 14, textDecoration: "underline" }}>
-            {unuttum ? "← Girişe dön" : "Parolamı unuttum"}</button>
+            {unuttum || ikiAdim ? "← Girişe dön" : "Parolamı unuttum"}</button>
           <p style={{ fontSize: 12, color: "var(--soluk)", marginTop: 22, lineHeight: 1.7 }}>
             Verinizin sahibi sizsiniz. Yalnızca sizin hesabınızda tutulur;
             dilediğiniz an dışa aktarır ya da silersiniz.

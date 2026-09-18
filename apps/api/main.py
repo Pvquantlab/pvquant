@@ -46,14 +46,17 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 class GirisIstek(BaseModel):
     email: str
     sifre: str
+    kod: str | None = None          # v2.338: iki adımlı doğrulama kodu (varsa)
 
 
 @app.post("/v1/auth/login")
 @limiter.limit("5/minute")
 def login(request: Request, g: GirisIstek):
-    r = auth_service.giris(g.email, g.sifre)
+    r = auth_service.giris(g.email, g.sifre, g.kod)
     if r is None:
         raise HTTPException(401, "hatali")
+    # v2.338: parola doğru ama 2FA kodu gerekiyor — token YOK, istemci kod ister.
+    # 200 döner (401 değil): "yanlış parola" ile "kod gerekli" ayrışsın.
     return r
 
 
@@ -410,6 +413,55 @@ def parola(p: ParolaIstek, claims=Depends(gecerli_kullanici)):
     except ValueError as e:
         raise HTTPException(422, str(e))
     return {"tamam": True}
+
+
+# ---- v2.338: iki adımlı doğrulama (kullanıcının kendi hesabı) --------------
+class IkiAdimKod(BaseModel):
+    kod: str
+
+
+@app.get("/v1/iki-adim")
+def iki_adim_durum(claims=Depends(gecerli_kullanici)):
+    from pvquant.services import iki_adim_service
+    return iki_adim_service.durum(claims["sub"])
+
+
+@app.post("/v1/iki-adim/baslat")
+def iki_adim_baslat(claims=Depends(gecerli_kullanici)):
+    """Sır + QR üretir (henüz aktif değil). E-posta claims'te yok → DB'den."""
+    from pvquant.services import iki_adim_service, auth_service as au
+    try:
+        return iki_adim_service.baslat(claims["sub"], au.eposta_getir(claims["sub"]))
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+
+
+@app.post("/v1/iki-adim/dogrula")
+def iki_adim_dogrula(g: IkiAdimKod, claims=Depends(gecerli_kullanici)):
+    from pvquant.services import iki_adim_service
+    try:
+        return iki_adim_service.dogrula_ve_ac(claims["sub"], g.kod)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+
+
+@app.post("/v1/iki-adim/kapat")
+def iki_adim_kapat(g: IkiAdimKod, claims=Depends(gecerli_kullanici)):
+    from pvquant.services import iki_adim_service
+    try:
+        iki_adim_service.kapat(claims["sub"], g.kod)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    return {"tamam": True}
+
+
+@app.post("/v1/iki-adim/kurtarma-yenile")
+def iki_adim_kurtarma(g: IkiAdimKod, claims=Depends(gecerli_kullanici)):
+    from pvquant.services import iki_adim_service
+    try:
+        return iki_adim_service.kurtarma_yenile(claims["sub"], g.kod)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
 
 
 @app.get("/v1/isler")

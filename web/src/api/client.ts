@@ -134,16 +134,21 @@ function uyarla(g: ForecastYanit): TahminSerisi {
   };
 }
 
-/** v2.73-B: gercek oturum. Ornek kipte (TABAN yok) kapi yoktur, gecis serbest. */
-export async function giris(email: string, sifre: string): Promise<boolean> {
-  if (TABAN == null) return true;
+/** v2.73-B: gercek oturum. Ornek kipte (TABAN yok) kapi yoktur, gecis serbest.
+ *  v2.338: iki adımlı doğrulama — parola doğru ama kod gerekiyorsa "iki_adim"
+ *  döner (token yok); istemci kod alanını açar ve kodla yeniden çağırır. */
+export async function giris(email: string, sifre: string, kod?: string):
+    Promise<"ok" | "iki_adim" | "hata"> {
+  if (TABAN == null) return "ok";
   const y = await fetch(`${TABAN}/v1/auth/login`, {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, sifre }) });
-  if (!y.ok) return false;
-  const g = (await y.json()) as { token: string };
+    body: JSON.stringify({ email, sifre, ...(kod ? { kod } : {}) }) });
+  if (!y.ok) return "hata";
+  const g = (await y.json()) as { token?: string; iki_adim_gerekli?: boolean };
+  if (g.iki_adim_gerekli) return "iki_adim";
+  if (!g.token) return "hata";
   localStorage.setItem("pvq_token", g.token);
-  return true;
+  return "ok";
 }
 
 export function cikis(): void {
@@ -560,6 +565,18 @@ export const api = {
     gonder(`/v1/takim/${id}`, "PUT", g),
   parolaDegistir: (eski: string, yeni: string): Promise<{ tamam: boolean }> =>
     gonder(`/v1/parola`, "POST", { eski, yeni }),
+
+  // v2.338: iki adımlı doğrulama (kullanıcının kendi hesabı)
+  ikiAdimDurum: (): Promise<{ aktif: boolean; kalan_kurtarma: number }> =>
+    getir(`/v1/iki-adim`),
+  ikiAdimBaslat: (): Promise<{ secret: string; otpauth_uri: string; qr_svg: string }> =>
+    gonder(`/v1/iki-adim/baslat`, "POST"),
+  ikiAdimDogrula: (kod: string): Promise<{ kurtarma_kodlari: string[] }> =>
+    gonder(`/v1/iki-adim/dogrula`, "POST", { kod }),
+  ikiAdimKapat: (kod: string): Promise<{ tamam: boolean }> =>
+    gonder(`/v1/iki-adim/kapat`, "POST", { kod }),
+  ikiAdimKurtarmaYenile: (kod: string): Promise<{ kurtarma_kodlari: string[] }> =>
+    gonder(`/v1/iki-adim/kurtarma-yenile`, "POST", { kod }),
   /** v2.294: kamuya açık doğrulama karnesi — kimliksiz uç, jeton eklenmez (401 yönlendirmesi tetiklenmesin). */
   /** v2.328: vitrin "Karneni başlat" başvurusu — kamuya açık, jetonsuz. */
   /** v2.335: "şifremi unuttum" — jetonsuz kamu uçları; yanıt hesap varlığı sızdırmaz. */
