@@ -4,9 +4,13 @@ services:
     image: timescale/timescaledb:latest-pg16
     environment:
       POSTGRES_USER: pvquant
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-pvquant_dev}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?.env'de DB_PASSWORD tanimli olmali}
       POSTGRES_DB: pvquant
-    ports: ["5432:5432"]
+    # v2.342: veritabani YALNIZ yerel — genel IP'li sunucuda 5432 internete
+    # acik olsaydi musteri verisi dogrudan hedef olurdu. Konteynerler
+    # birbirine zaten ic agdan (db:5432) ulasir; bu port yalniz ana
+    # makineden psql ile bakmak icin.
+    ports: ["127.0.0.1:5432:5432"]
     volumes: [pgdata:/var/lib/postgresql/data]
     restart: unless-stopped        # v2.63 (GUN 0): elle dokunmadan ayaga kalkis
     healthcheck:
@@ -17,7 +21,7 @@ services:
   worker:
     build: .
     environment:
-      PVQ_DB_URL: postgresql+psycopg://pvquant:${DB_PASSWORD:-pvquant_dev}@db:5432/pvquant
+      PVQ_DB_URL: postgresql+psycopg://pvquant:${DB_PASSWORD:?.env'de DB_PASSWORD tanimli olmali}@db:5432/pvquant
       PVQ_SENTRY_DSN: ${PVQ_SENTRY_DSN:-}
       PVQ_SMTP_HOST: ${PVQ_SMTP_HOST:-}
       PVQ_SMTP_PORT: ${PVQ_SMTP_PORT:-}
@@ -43,7 +47,7 @@ services:
     # başına sayar — 120/dk pratikte gevşer; sınır faturalama değil emniyettir.
     command: ["uvicorn", "apps.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
     environment:
-      PVQ_DB_URL: postgresql+psycopg://pvquant:${DB_PASSWORD:-pvquant_dev}@db:5432/pvquant
+      PVQ_DB_URL: postgresql+psycopg://pvquant:${DB_PASSWORD:?.env'de DB_PASSWORD tanimli olmali}@db:5432/pvquant
       PVQ_JWT_SECRET: ${PVQ_JWT_SECRET:-}
       PVQ_SENTRY_DSN: ${PVQ_SENTRY_DSN:-}
       # v2.334: başvuru teyidi/bildirimi api'den çıkar — worker'daki SMTP seti buraya da
@@ -56,7 +60,10 @@ services:
       PVQ_BILDIRIM_EPOSTA: ${PVQ_BILDIRIM_EPOSTA:-}
       PVQ_DOMAIN: ${PVQ_DOMAIN:-localhost}   # v2.335: sıfırlama bağlantısı tabanı
     ports:
-      - "8000:8000"                # yerel durusma: curl ile dogrudan
+      # v2.342: yalniz 127.0.0.1 — yerel curl calisir, genel IP'li sunucuda
+      # disaridan ERISILEMEZ (aksi halde API, Caddy/TLS baypas edilerek
+      # duz HTTP uzerinden internete acilirdi).
+      - "127.0.0.1:8000:8000"
     volumes:
       - ./var:/app/var             # v2.268: NWP önbelleği (var/nwp) ve model artifact'leri worker ile ortak
     depends_on:
