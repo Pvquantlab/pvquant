@@ -136,14 +136,9 @@ def test_apply_hybrid_session_hibrit_yokken_dokunmaz():
     assert ctx.holdout_mape_pct is None         # kutu görünmez
 
 
-def test_hibrit_pdf_de_kutu_ve_mod_c():
-    from pvquant.reporting import build_pdf
-    ctx = from_results(_sentetik_forecast(), None, plant_name="Test")
-    ctx = apply_hybrid_session(ctx, {
-        "hybrid_active": True,
-        "hybrid_report": {"holdout_mape_pct": 18.5, "holdout_rmse_kw": 48.6}})
-    pdf = build_pdf(ctx)
-    assert pdf[:4] == b"%PDF"
+# v2.344 (E.4): test_hibrit_pdf_de_kutu_ve_mod_c SİLİNDİ — reportlab build_pdf
+# emekli; ctx sözleşmesini (mod C + holdout alanları) yukarıdaki iki test zaten
+# kilitler, PDF üretimi artık 16 sayfalık motorda bekçili (test_rapor_tutarlilik).
 
 
 # ------------------------------------------------------------------ tahmin adaptörü

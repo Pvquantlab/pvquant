@@ -1,5 +1,5 @@
 import base64, os
-from pvq import fan_chart
+from pvq import fan_chart, foot  # E.4 (v2.344): altlık seçki-farkındalıklı tek kaynaktan
 
 import os as _os
 _BURASI = _os.path.dirname(_os.path.abspath(__file__))
@@ -193,7 +193,7 @@ BODY_A = """<div class="page">
   <div class="figwrap">__CHART__""" + LEGCAP + """</div>
   """ + IMPRINT + """
 """ + _evi(2) + """
-  <div class="foot"><div><b>""" + MOD_ROZET + """</b></div><div>Sayfa 1 / 16</div></div>
+  """ + foot(1) + """
  </div>
 </div>"""
 

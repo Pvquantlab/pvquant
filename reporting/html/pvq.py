@@ -13,6 +13,12 @@ FONTS = _os.environ.get("PVQ_FONTLAR", _os.path.join(_BURASI, "fontlar"))
 OUT = _os.environ.get("PVQ_CIKTI", _os.path.join(_BURASI, "cikti"))
 _os.makedirs(OUT, exist_ok=True)
 
+# E.4 (v2.344): sayfa seçkisi — PVQ_SAYFA_SECKISI ("1,3,4,7,9,16") verilirse
+# altlık numarası seçki İÇİNDEKİ konuma göre basılır ("Sayfa 2 / 6"); boşsa
+# tam rapor davranışı bire bir korunur (md5 kalkanı bu yola bakar).
+SECKI = ([int(x) for x in _os.environ["PVQ_SAYFA_SECKISI"].split(",")]
+         if _os.environ.get("PVQ_SAYFA_SECKISI") else None)
+
 # ---------------------------------------------------------------- renk paleti
 BRAND, BRAND2, DEEP = "#0D4C68", "#2B7B9B", "#082F42"
 FAN_AREA, FAN_EDGE = "#F0E3C9", "#DCC79A"
@@ -119,6 +125,12 @@ HEAD = ('<div class="head"><div class="m">PVQuant<span>Kanıta dayalı üretim t
 
 
 def foot(page):
+    # E.4: seçkide numara KONUMDUR — "Sayfa 2 / 6"; orijinal numarayı basmak
+    # (7/16 gibi) 6 sayfalık belgede yalan olurdu. Seçki yokken eski yol.
+    if SECKI:
+        return ('<div class="foot"><div><b>%s</b></div>'
+                '<div>Sayfa %d / %d</div></div>'
+                % (MOD_ROZET, SECKI.index(page) + 1, len(SECKI)))
     return ('<div class="foot"><div><b>%s</b></div>'
             '<div>Sayfa %d / %d</div></div>' % (MOD_ROZET, page, SAYFA_TOPLAM))
 

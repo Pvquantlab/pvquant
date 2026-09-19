@@ -134,6 +134,10 @@ tr:nth-child(even) td{background:none}
 .note{margin-top:6mm}
 """.replace("BRAND", BRAND).replace("SEC", SEC)
 
+# v2.344: Şekil 9.1 başlığı ŞELALEYE bağlandı — şelale basılmazken var olmayan
+# grafiği sayıyla anlatan başlık basılıyordu (canlı vaka, yönetici özeti seçkisi
+# 19 Eyl 2026; kural 3/4 ihlali). NOT: başlıktaki adım sayıları hâlâ kanonik
+# örnektendir; verinden türetilmesi ayrı iş (E.3 çok-santral dalgası).
 BODY = """<div class="page"><div class="sheet">
 """ + HEAD + """
   <div class="eyebrow">Kalibrasyon</div>
@@ -143,14 +147,14 @@ BODY = """<div class="page"><div class="sheet">
   yolun her adımını sayıyla belgeler — hangi düzeltmenin ne kazandırdığı, hangisinin bedel
   ödettiği dâhil.</p>
 
-  """ + (selale() if ADIM is not None else ('<p class="veri-eksik">veri eksik (gerekli: kalibrasyon adımları) — şelale, adım kırılımı kayda işlenince basılır; uçlar sağdaki kartlardadır.</p>' if HOLDOUT_VAR else '<p class="veri-eksik">bu koşuda kalibrasyon karşılaştırması yok — hibrit eğitimi (Mod C) yapılmadığından bağımsız test uçları ve şelale üretilmez; katsayılar sağdaki kartlardadır.</p>')) + """
+  """ + ((selale() + """
     <div class="figcap"><b>Şekil 9.1</b>&nbsp;&nbsp;Ham fizik modelinden hibrit modele geçişte
       ortalama hatanın adım adım kapanması. Aradaki sütunlar havada durur, çünkü bir seviyeyi
       değil bir değişimi gösterirler; her sütunun altındaki satır o adımdan sonra kalan hatayı
       verir. Değişimler yüzde puanı cinsindendir. En büyük iki katkı sistem verimi düzeltmesi
       (−1,8 puan) ve makine öğrenmesinin artık hatayı öğrenmesinden (−2,0 puan) geliyor. Bulut
       geçişi düzeltmesi bu pencerede küçük bir bedel ödetti (+0,3 puan) ve iyileştirme
-      listesinde tutuluyor.</div>
+      listesinde tutuluyor.</div>""") if ADIM is not None else ('<p class="veri-eksik">veri eksik (gerekli: kalibrasyon adımları) — şelale, adım kırılımı kayda işlenince basılır; uçlar sağdaki kartlardadır.</p>' if HOLDOUT_VAR else '<p class="veri-eksik">bu koşuda kalibrasyon karşılaştırması yok — hibrit eğitimi (Mod C) yapılmadığından bağımsız test uçları ve şelale üretilmez; katsayılar sağdaki kartlardadır.</p>')) + """
 
   <div class="two">
     <div>

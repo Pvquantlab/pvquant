@@ -112,3 +112,22 @@ def test_kapsama_pct_her_satirda_yayilir():
     s = _karne_satirlari(k, {str(b - dt.timedelta(days=1)): 90})
     assert all("kapsama_pct" in r for r in s)
     assert s[-1]["kapsama_pct"] == 90 and s[0]["kapsama_pct"] is None
+
+
+# ------------------------------------------------- E.4 (v2.344): boş karne kapısı
+def test_bos_karne_varsayilan_reddeder():
+    """Tam 16 sayfalık rapor hep-ya-hiç kalır: 30 günde ölçüm yoksa 409."""
+    import pytest
+    k, _ = _karne_df([45])                 # tek ölçüm, 30 gün penceresinin DIŞINDA
+    with pytest.raises(ValueError, match="karne tamamen boş"):
+        _karne_satirlari(k, None)
+
+
+def test_bos_karne_bos_kabul_ile_durust_satirlar():
+    """Seçki yolu (yönetici özeti): boş karne reddedilmez — 30 dürüst satır
+    döner (hepsi olculdu=False + null), s07'yi düşürmek çağıranın işi."""
+    k, _ = _karne_df([45])
+    s = _karne_satirlari(k, None, bos_kabul=True)
+    assert len(s) == 30
+    assert not any(r["olculdu"] for r in s)
+    assert all(r["wmape_0_24"] is None for r in s)

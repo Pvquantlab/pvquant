@@ -12,7 +12,7 @@ Sözleşme:
 - Girdi: JSON v2.0/v2.1 (şema: html/docs/veri_haritasi.md, örnek: html/ornek_girdi_v21.json).
 - Eksik alan SESSİZCE varsayılana düşmez — adaptör KeyError ile gürültüyle durur.
 - Üretim sonrası iki bekçi koşar; ikisi de geçmeden yol dönmez:
-    (1) sayfa sayısı == 16 (tek A4 taşma yok),
+    (1) sayfa sayısı == beklenen (tam rapor 16; seçkide len(sayfalar)) — tek A4 taşma yok,
     (2) denetim_uygulama.py çıkış kodu 0 (taban ile çapraz tutarlılık).
 - Dönüş: (pdf_yolu, html_yolu). Bekçi düşerse RaporUretimHatasi.
 """
@@ -32,12 +32,32 @@ class RaporUretimHatasi(RuntimeError):
     pass
 
 
-def json_ile_uret(json_yolu, cikti=None, denetim=True):
-    """JSON girdisinden 16 sayfalık raporu üretir, bekçilerden geçirir, yolları döner."""
+def json_ile_uret(json_yolu, cikti=None, denetim=True, sayfalar=None):
+    """JSON girdisinden raporu üretir, bekçilerden geçirir, yolları döner.
+
+    sayfalar (E.4, v2.344): 1..16 arası sayfa numarası listesi — yalnız o
+    sayfalar üretilir ve birleşir (yönetici özeti: [1,3,4,7,9,16]). None =
+    tam 16 sayfa, davranış bire bir eski (md5 kalkanı bu yola bakar).
+    Seçki, taban çapraz denetimiyle BİRLİKTE kullanılamaz: taban_d.json
+    16 sayfalık kanonik rapora aittir."""
     json_yolu = os.path.abspath(json_yolu)
     if not os.path.exists(json_yolu):
         raise RaporUretimHatasi("girdi yok: %s" % json_yolu)
+    if sayfalar is not None:
+        sayfalar = sorted({int(s) for s in sayfalar})
+        if not sayfalar or sayfalar[0] < 1 or sayfalar[-1] > 16:
+            raise RaporUretimHatasi("geçersiz sayfa seçkisi: %r" % (sayfalar,))
+        if sayfalar == list(range(1, 17)):
+            sayfalar = None                      # tam liste = seçki yok
+    if sayfalar and denetim:
+        raise RaporUretimHatasi(
+            "sayfa seçkisi taban denetimiyle birlikte kullanılamaz — "
+            "denetim=False geçin (taban 16 sayfalık kanonik rapora aittir)")
     env = dict(os.environ, PVQ_VERI_JSON=json_yolu)
+    if sayfalar:
+        env["PVQ_SAYFA_SECKISI"] = ",".join(map(str, sayfalar))
+    else:
+        env.pop("PVQ_SAYFA_SECKISI", None)       # kalıntı env sızmasın
     if cikti:
         cikti = os.path.abspath(cikti)
         os.makedirs(cikti, exist_ok=True)
@@ -50,14 +70,17 @@ def json_ile_uret(json_yolu, cikti=None, denetim=True):
     if p.returncode != 0:
         raise RaporUretimHatasi("uret.py düştü:\n" + p.stdout[-2000:] + p.stderr[-2000:])
 
-    # Bekçi 1 — 16 sayfa, taşma yok (uret çıktısından sayılır)
+    # Bekçi 1 — beklenen sayfa sayısı, taşma yok (uret çıktısından sayılır)
+    beklenen = len(sayfalar) if sayfalar else 16
     tek = len(re.findall(r": 1 sayfa|sayfa: 1", p.stdout))
-    if tek != 16 or "Tüm sayfalar tek A4'e sığdı." not in p.stdout:
-        raise RaporUretimHatasi("sayfa bekçisi düştü: %d/16 tek sayfa\n%s"
-                                % (tek, p.stdout[-1500:]))
+    if tek != beklenen or "Tüm sayfalar tek A4'e sığdı." not in p.stdout:
+        raise RaporUretimHatasi("sayfa bekçisi düştü: %d/%d tek sayfa\n%s"
+                                % (tek, beklenen, p.stdout[-1500:]))
 
-    pdf = os.path.join(cikti, _RAPOR_AD + ".pdf")
-    html = os.path.join(cikti, _RAPOR_AD + ".html")
+    # ad türetimi merge_html.py ile AYNI sözleşme (değişirse birlikte değişir)
+    ad = _RAPOR_AD if not sayfalar else "PVQuant_Konya_GES_OZET_%dsayfa" % beklenen
+    pdf = os.path.join(cikti, ad + ".pdf")
+    html = os.path.join(cikti, ad + ".html")
 
     # Bekçi 2 — çapraz denetim (çıkış kodu 0 şart)
     # NOT: taban_d.json Konya kanonik tabanıdır; farklı santral girdisinde

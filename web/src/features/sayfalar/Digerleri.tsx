@@ -800,7 +800,9 @@ export function Raporlar({ plantId }: { plantId: string }) {
   );
 
   const kartlar: [string, "pdf" | "xlsx" | "json", string][] = [
-    ["PDF", "pdf", "Yönetici özeti — logo, KPI'lar, holdout kutusu"],
+    // v2.344: yönetici özeti artık 16 sayfalık motorun seçkisi (eski
+    // reportlab PDF'i emekli) — karne verisi yoksa karne sayfası düşer.
+    ["PDF", "pdf", "Yönetici özeti — müşteri raporunun 6 sayfalık seçkisi: kapak, bulgular, tahmin, karne, kanıt, künye"],
     ["Excel", "xlsx", "Tam veri — saatlik tablo, özet ve metadata"],
     ["JSON", "json", "API formatı — şema 1.1.0, entegrasyona hazır"],
   ];

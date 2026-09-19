@@ -71,7 +71,14 @@ def _s05_figcap_uret(daily):
             "%d %s günündedir (±%s MWh).") % (d.day, AY_UZUN[d.month - 1], _tr(hw, 1))
 
 
-def ctx_to_json(ctx, plant: dict) -> dict:
+# E.4 (v2.344): yönetici özeti = 16 sayfalık motorun SEÇKİSİ (kullanıcı
+# kararı, 19 Eyl 2026): kapak (s01), dönem bulguları (s03), günlük tahmin +
+# olasılık bandı (s04), doğruluk karnesi (s07), fizik→hibrit kanıtı (s09),
+# sözlük/künye/yasal çerçeve (s16). reportlab hattı (eski build_pdf) emekli.
+OZET_SECKISI = (1, 3, 4, 7, 9, 16)
+
+
+def ctx_to_json(ctx, plant: dict, karne_bos_kabul=False) -> dict:
     eksik = []
 
     def iste(kosul, ad):
@@ -153,7 +160,8 @@ def ctx_to_json(ctx, plant: dict) -> dict:
             "skill": int(round(float(g24.skill_vs_naive.dropna().mean()))),
             "uninterrupted_days": _zorunlu(ctx, "uninterrupted_days"),  # B1 (worker)
             "report_card": _karne_satirlari(
-                k, getattr(ctx, "karne_kapsama", None)),
+                k, getattr(ctx, "karne_kapsama", None),
+                bos_kabul=karne_bos_kabul),
         }
 
     # hata dağılımı fotoğrafı — B5 (worker, report_stats.error_dist)
@@ -236,11 +244,18 @@ def _depo_koku_yola_ekle():
         sys.path.insert(0, str(kok))
 
 
-def uret_html_pdf(tenant_id, plant: dict, ctx=None) -> bytes:
-    """Tek üretim kapısı — report_service.uret("pdf16") buradan geçer.
+def uret_html_pdf(tenant_id, plant: dict, ctx=None, sayfalar=None) -> bytes:
+    """Tek üretim kapısı — report_service.uret("pdf16" ve "pdf") buradan geçer.
     Her çağrı KENDİ geçici klasöründe üretir: ortak cikti/ klasörü yok,
     iki eşzamanlı istek çakışmaz. ctx verilirse (uret zaten kurduysa)
-    rapor_baglami İKİNCİ KEZ koşmaz."""
+    rapor_baglami İKİNCİ KEZ koşmaz.
+
+    sayfalar (E.4, v2.344): sayfa seçkisi (yönetici özeti: OZET_SECKISI).
+    Seçki yolunda karne kapısı SAYFA BAZLIDIR: son 30 günde ölçülü gün yoksa
+    s07 seçkiden düşer, kalan sayfalar üretilir (kural 3: eksiklik
+    reddedilmez, gösterilir — s03 120 günlük pencereden KPI basmayı sürdürür).
+    Tam 16 sayfa (sayfalar=None) hep-ya-hiç kalır: içindekiler (s02) ve
+    sayfa referansları (s15) s07'siz yalan söylerdi."""
     from pvquant.services.report_service import rapor_baglami, rapor_id_uret
     _depo_koku_yola_ekle()
     from reporting.kopru import json_ile_uret
@@ -248,7 +263,12 @@ def uret_html_pdf(tenant_id, plant: dict, ctx=None) -> bytes:
         ctx = rapor_baglami(tenant_id, plant)
     if ctx is None:
         raise ValueError("rapor bağlamı kurulamadı — önce tahmin üretin")
-    J = ctx_to_json(ctx, plant)
+    J = ctx_to_json(ctx, plant, karne_bos_kabul=sayfalar is not None)
+    if sayfalar is not None:
+        sayfalar = sorted({int(s) for s in sayfalar})
+        rc = (J.get("accuracy") or {}).get("report_card") or []
+        if 7 in sayfalar and not any(d["olculdu"] for d in rc):
+            sayfalar.remove(7)   # karne boş → karne sayfası düşer, rapor çıkar
     J["report"]["id"] = rapor_id_uret(tenant_id, plant, ctx.mode)   # B6
     tmp = tempfile.mkdtemp(prefix="pvq16_")
     try:
@@ -261,7 +281,8 @@ def uret_html_pdf(tenant_id, plant: dict, ctx=None) -> bytes:
         # taban denetimi kanonik girdiyle CI'ın işidir.
         cikti_dizin = os.path.join(tmp, "cikti")
         try:
-            pdf_yolu, _html = json_ile_uret(yol, cikti=cikti_dizin, denetim=False)
+            pdf_yolu, _html = json_ile_uret(yol, cikti=cikti_dizin,
+                                            denetim=False, sayfalar=sayfalar)
         except Exception as e:
             # v2.147 (Adim 4): kopru'ya DOKUNMADAN — gecici cikti dizini bu
             # katmanin mali; denetim.json dururken okunur (rmtree finally'de).
@@ -378,7 +399,7 @@ def _tipik_gun(ctx):
             "band_method": "quantile"}
 
 
-def _karne_satirlari(k, kapsama=None):
+def _karne_satirlari(k, kapsama=None, bos_kabul=False):
     """accuracy.report_card — s07 SÖZLEŞMESİ (motor katı):
     · TAM 30 TAKVİM satırı (v2.140: ölçülmemiş gün olculdu=false + null ile kalır)
     · her satırda wmape_0_24 + skill + naif_wmape dolu (v2.137: naif ölçümdür)
@@ -440,7 +461,11 @@ def _karne_satirlari(k, kapsama=None):
             d["wmape_0_24"] = d["skill"] = d["naif_wmape"] = None
             d["wmape_24_72"] = None
         sira.append(d)
-    if not any(d["olculdu"] for d in sira):
+    # E.4 (v2.344): kapı SAYFA BAZLI oldu — bos_kabul=True (seçki yolu)
+    # boş karneyi dürüst satırlarla döndürür, s07'yi düşürmek çağıranın işi
+    # (uret_html_pdf). Tam 16 sayfalık rapor hep-ya-hiç kalır: s02 içindekiler
+    # ve s15 sayfa referansları s07'siz yalan söylerdi.
+    if not bos_kabul and not any(d["olculdu"] for d in sira):
         raise ValueError("report_card: son 30 günde tek ölçülü gün yok — "
                          "karne tamamen boş, rapor anlamsız")
     # v2.143: 'yalnız son 7' sözleşmesi bitti — 24-72 hatası ölçülen HER

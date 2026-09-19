@@ -6,8 +6,19 @@ taşıyan kurallar (h2, table, td …) birbirini ezmez. Yazı tipleri belgeye bi
 import glob, os, re
 
 from pvq import OUT
-files = sorted(glob.glob(f"{OUT}/PVQuant_Konya_GES_s*.html"))
-assert len(files) == 16, len(files)
+
+# E.4 (v2.344): sayfa seçkisi — kopru.py ile AYNI sözleşme (env + ad türetimi;
+# değişirse ikisi birlikte değişir). Boş env = tam 16 sayfa, eski davranış.
+_SECKI = ([int(x) for x in os.environ["PVQ_SAYFA_SECKISI"].split(",")]
+          if os.environ.get("PVQ_SAYFA_SECKISI") else list(range(1, 17)))
+_TAM = _SECKI == list(range(1, 17))
+RAPOR_AD = ("PVQuant_Konya_GES_RAPOR_16sayfa" if _TAM
+            else "PVQuant_Konya_GES_OZET_%dsayfa" % len(_SECKI))
+
+files = sorted(glob.glob(f"{OUT}/PVQuant_Konya_GES_s??_*.html"))
+files = [f for f in files
+         if int(re.search(r"_s(\d\d)_", os.path.basename(f)).group(1)) in _SECKI]
+assert len(files) == len(_SECKI), (len(files), _SECKI)
 
 
 def bloklar(css):
@@ -68,7 +79,7 @@ HTML = ("<!doctype html>\n<html lang=\"tr\">\n<head>\n<meta charset=\"utf-8\">\n
         "<style>\n%s\n%s\n%s\n</style>\n</head>\n<body>\n%s\n</body>\n</html>\n"
         % (fontlar, "\n".join(genel), "\n".join(kapsamli), "\n\n".join(govdeler)))
 
-hedef = f"{OUT}/PVQuant_Konya_GES_RAPOR_16sayfa.html"
+hedef = f"{OUT}/{RAPOR_AD}.html"
 open(hedef, "w", encoding="utf-8").write(HTML)
 print("yazıldı:", round(len(HTML) / 1024), "KB")
 
@@ -83,13 +94,16 @@ print("yazıldı:", round(len(HTML) / 1024), "KB")
 from pypdf import PdfWriter
 import glob as _g
 parcalar = sorted(_g.glob(f"{OUT}/PVQuant_Konya_GES_s??_*.pdf"))
-assert len(parcalar) == 16, f"16 tekil PDF bekleniyordu, {len(parcalar)} var"
+parcalar = [p for p in parcalar
+            if int(re.search(r"_s(\d\d)_", os.path.basename(p)).group(1)) in _SECKI]
+assert len(parcalar) == len(_SECKI), \
+    f"{len(_SECKI)} tekil PDF bekleniyordu, {len(parcalar)} var"
 w = PdfWriter()
 for p in parcalar:
     w.append(p)
-with open(f"{OUT}/PVQuant_Konya_GES_RAPOR_16sayfa.pdf", "wb") as f:
+with open(f"{OUT}/{RAPOR_AD}.pdf", "wb") as f:
     w.write(f)
 from pypdf import PdfReader
-n = len(PdfReader(f"{OUT}/PVQuant_Konya_GES_RAPOR_16sayfa.pdf").pages)
+n = len(PdfReader(f"{OUT}/{RAPOR_AD}.pdf").pages)
 print("PDF sayfa sayısı:", n)
-assert n == 16, "birlesik PDF 16 sayfa degil"
+assert n == len(_SECKI), "birlesik PDF %d sayfa degil" % len(_SECKI)

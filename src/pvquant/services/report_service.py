@@ -6,7 +6,7 @@ import json
 from datetime import datetime, timezone
 from sqlalchemy import text
 from pvquant.db import tenant_baglami
-from pvquant.reporting import ReportContext, build_pdf, build_excel, build_json
+from pvquant.reporting import ReportContext, build_excel, build_json
 from pvquant.services.forecast_service import son_kosu
 
 
@@ -238,7 +238,7 @@ def rapor_baglami(tenant_id, plant: dict) -> ReportContext | None:
 
 # --------------------------------------------------------------- Adim 6
 import datetime as _dt
-from pvquant.reporting import build_pdf, build_excel, build_json
+from pvquant.reporting import build_excel, build_json
 
 
 def uret(tenant_id, plant: dict, fmt: str):
@@ -251,7 +251,14 @@ def uret(tenant_id, plant: dict, fmt: str):
     ad_kok = plant["name"].replace(" ", "_")
     gun = _dt.date.today().strftime("%Y%m%d")
     if fmt == "pdf":
-        veri, uzanti = build_pdf(ctx), "pdf"
+        # v2.344 (E.4): yönetici özeti artık 16 sayfalık motorun SEÇKİSİDİR —
+        # reportlab hattı (eski build_pdf) EMEKLİ edildi (tarih git'te).
+        # Karne boşsa s07 seçkiden düşer, kalan sayfalar çıkar (sayfa bazlı
+        # kapı report_html_service.uret_html_pdf içinde).
+        from pvquant.services.report_html_service import uret_html_pdf, OZET_SECKISI
+        veri, uzanti = uret_html_pdf(tenant_id, plant, ctx=ctx,
+                                     sayfalar=OZET_SECKISI), "pdf"
+        ad_kok += "_yonetici_ozeti"
     elif fmt == "pdf16":
         # v2.104 (E.3-b): 16 sayfalik musteri raporu — HTML/WeasyPrint hatti.
         # Hazir ctx gecirilir — rapor_baglami ikinci kez kosMAZ; B6 kimligi

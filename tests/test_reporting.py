@@ -13,7 +13,7 @@ import pandas as pd
 import pytest
 
 from pvquant.reporting import (
-    ReportContext, from_results, build_pdf, build_excel, build_json,
+    ReportContext, from_results, build_excel, build_json,
 )
 
 
@@ -128,15 +128,9 @@ def test_mod_b_de_band_yok():
 
 
 # ----------------------------------------------------------------- format üretimi
-def test_pdf_uretiliyor():
-    fr = _sentetik_forecast()
-    cr = _sentetik_calibration(warnings=["Test uyarısı."])
-    ctx = from_results(fr, cr, plant_name="Test GES")
-    pdf = build_pdf(ctx)
-    assert pdf[:4] == b"%PDF"
-    assert len(pdf) > 5000
-
-
+# v2.344 (E.4): test_pdf_uretiliyor / test_holdout_kutusu_pdf_de SİLİNDİ —
+# reportlab build_pdf emekli; PDF üretimi artık 16 sayfalık motorun işi ve
+# tests/test_rapor_tutarlilik.py orada hem tam raporu hem seçkiyi bekçiliyor.
 def test_excel_uretiliyor():
     fr = _sentetik_forecast()
     ctx = from_results(fr, _sentetik_calibration(), plant_name="Test")
@@ -191,22 +185,12 @@ def test_fallback_ad_normalize_ediliyor():
     assert ctx.plant_name == "SANTRAL GES"
 
 
-def test_holdout_kutusu_pdf_de():
-    fr = _sentetik_forecast()
-    cr = _sentetik_calibration()
-    ctx = from_results(fr, cr, plant_name="Test")
-    ctx.holdout_mape_pct = 18.5
-    pdf = build_pdf(ctx)
-    assert pdf[:4] == b"%PDF" and len(pdf) > 5000
-
-
 def test_pozitif_not_n_valid_ile():
     fr = _sentetik_forecast()
     cr = _sentetik_calibration()
     cr.n_valid_hours = 4162
     ctx = from_results(fr, cr, plant_name="Test")
     assert ctx.n_valid_hours == 4162
-    assert build_pdf(ctx)[:4] == b"%PDF"
 
 
 # ----------------------------------------------------------------- Tur 6

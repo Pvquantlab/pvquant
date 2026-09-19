@@ -13,7 +13,14 @@ import runpy, sys, io, contextlib, os
 import veri, denetim
 from pvq import OUT
 
-_kayitlar, _bulgular, _bayrak = denetim.denetle_tam(veri)
+# E.4 (v2.344): sayfa seçkisi — PVQ_SAYFA_SECKISI ("1,3,4,7,9,16") yalnız
+# seçilen sayfaları üretir (yönetici özeti bu yoldan çıkar). Boşsa 16 sayfa.
+# Denetim seçkiyi BİLİR: s07 seçkide değilse boş-karne durdurucuları uyarıya
+# iner (sayfa bazlı kapı) — diğer tüm kurallar aynen koşar.
+_SECKI = ([int(x) for x in os.environ["PVQ_SAYFA_SECKISI"].split(",")]
+          if os.environ.get("PVQ_SAYFA_SECKISI") else list(range(1, 17)))
+
+_kayitlar, _bulgular, _bayrak = denetim.denetle_tam(veri, sayfalar=_SECKI)
 denetim.json_yaz(_kayitlar, _bayrak, os.path.join(OUT, "denetim.json"))
 for _b in _bulgular:
     print("[%s] %s — %s | beklenen: %s | bulunan: %s"
@@ -29,7 +36,7 @@ print("Denetim: %d kontrol geçti (%d uyarı). Sayfa üretimi başlıyor."
       % (sum(1 for k in _kayitlar if k["durum"] == "gecti"),
          sum(1 for k in _kayitlar if k["durum"] == "uyari")))
 
-SAYFALAR = ["build_s%02d" % i for i in range(1, 17)]
+SAYFALAR = ["build_s%02d" % i for i in _SECKI]
 sorunlu = []
 
 for mod in SAYFALAR:
@@ -44,7 +51,7 @@ for mod in SAYFALAR:
 print("-" * 60)
 # ---- Render denetimi (v2.135): birlesimden ONCE — doldurulmamis token,
 # s02/s15 sayfa referanslari. Ihlal -> birlesim yok, rc=1.
-_rb = denetim.render_denetle(OUT)
+_rb = denetim.render_denetle(OUT, beklenen=len(_SECKI))
 for _b in _rb:
     print("[%s] %s — %s | beklenen: %s | bulunan: %s"
           % (_b.seviye.upper(), _b.kod, _b.mesaj, _b.beklenen, _b.bulunan))

@@ -105,6 +105,34 @@ def test_kanonik_uret_cikis_0_ve_16_sayfa(tmp_path):
     assert j["bulgular"] == [] and j["suphe_bayragi"] is False
 
 
+# ---------------------------------------------------------------- E.4: seçki
+def test_yonetici_ozeti_seckisi_6_sayfa(tmp_path):
+    """E.4 (v2.344): seçki [1,3,4,7,9,16] → yalnız o sayfalar üretilir,
+    6 sayfalık ÖZET PDF'i birleşir, altlık numarası seçkideki KONUMDUR."""
+    sys.path.insert(0, str(KOK))
+    from reporting.kopru import json_ile_uret
+    pdf, html = json_ile_uret(str(KANONIK), cikti=str(tmp_path),
+                              denetim=False, sayfalar=[1, 3, 4, 7, 9, 16])
+    assert Path(pdf).name == "PVQuant_Konya_GES_OZET_6sayfa.pdf"
+    from pypdf import PdfReader
+    assert len(PdfReader(pdf).pages) == 6
+    sayfalar = sorted(tmp_path.glob("*_s??_*.html"))
+    assert [int(s.name.split("_s")[1][:2]) for s in sayfalar] == [1, 3, 4, 7, 9, 16]
+    s03 = next(s for s in sayfalar if "_s03_" in s.name).read_text(encoding="utf-8")
+    assert "Sayfa 2 / 6" in s03
+    s16 = next(s for s in sayfalar if "_s16_" in s.name).read_text(encoding="utf-8")
+    assert "Sayfa 6 / 6" in s16
+
+
+def test_secki_taban_denetimiyle_reddedilir():
+    """taban_d.json 16 sayfalık kanonik rapora aittir — seçkiyle çapraz
+    denetim istemek sözleşme hatasıdır, üretim başlamadan durur."""
+    sys.path.insert(0, str(KOK))
+    from reporting.kopru import json_ile_uret, RaporUretimHatasi
+    with pytest.raises(RaporUretimHatasi, match="taban denetimiyle"):
+        json_ile_uret(str(KANONIK), sayfalar=[1, 3], denetim=True)
+
+
 # ---------------------------------------------------------------- bozuklar
 @pytest.mark.parametrize("dosya,kod,bayrak_bekle", BOZUKLAR,
                          ids=[b[0].replace("bozuk_", "").replace(".json", "")
@@ -273,8 +301,17 @@ def test_d13_tepe_dc_ustunde_duser():
 
 
 def test_d14_sicrama_yakalanir():
-    d = _yuzey(); b = list(d["BASE_KW"]); b[6] = b[5] + 0.5 * max(b); d["BASE_KW"] = b
+    # v2.344: eşik %30 → %50 (ölçümden — Konya arşivi p99.9); sıçrama artık
+    # DC'nin %50'sini aşacak şekilde kurulur (kanonik DC 12,4 MWp).
+    d = _yuzey(); b = list(d["BASE_KW"]); b[6] = b[5] + 0.55 * 12400; d["BASE_KW"] = b
     assert "D14" in {x.kod for x in denetim.denetle(d) if x.seviye == "hata"}
+
+
+def test_d14_olculmus_bulut_rampasi_gecer():
+    """v2.344 canlı vakası: DC'nin %31'i büyüklüğünde bulut-açılması rampası
+    ölçülmüş gerçektir (arşivde 154 örnek) — artık yanlış-pozitif vermez."""
+    d = _yuzey(); b = list(d["BASE_KW"]); b[6] = b[5] + 0.35 * 12400; d["BASE_KW"] = b
+    assert "D14" not in {x.kod for x in denetim.denetle(d) if x.seviye == "hata"}
 
 
 def test_d14_kirpilmis_tepede_rampa_gecer():

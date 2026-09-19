@@ -26,7 +26,7 @@ D10 zorunlu-alan varlığı: tükettiği alan yokken gösterge/cümle üretilmez
 D11 iklim: matris son satiri=zarf ortasi (LTA tam-yil ortalamasindan; kismi yil yasak)
 D12 selale iyilesme yuzdesi bas/sondan yeniden uretilebilir
 D13 tepe guc <= kurulu DC guc
-D14 profil surekliligi: ardisik sicrama <= kurulu DC'nin %30'u (v2.136 tanim duzeltmesi)
+D14 profil surekliligi: ardisik sicrama <= kurulu DC'nin %50'si (v2.136 payda, v2.344 esik — olculdu)
 D15 karne penceresi ∩ SCADA arsiv donemi ≠ ∅
 D16 KPI durum rengi esik yonuyle tutarli + kesintisiz karti alansiz basilamaz
 D17 yillik Pxx = ORT - z·SD yeniden uretilebilir (SD orneklem n-1; z sozlesmeli)
@@ -496,13 +496,19 @@ def _d13(veri, ekle):
 
 def _d14(veri, ekle):
     """Spec #12 (sureklilik yarisi): ardisik saatler arasi sicrama KURULU DC
-    gucun %30'unu asamaz. TANIM DUZELTMESI (v2.136, kayitli): ilk surumde
+    gucun %50'sini asamaz. TANIM DUZELTMESI (v2.136, kayitli): ilk surumde
     esik gozlenen tepeye oranliydi; AC-kirpmali santralde tepe bastirilinca
     payda kuculur ve durust sabah rampasi yanlis-pozitif verir (canli vaka:
     3.600 kW AC sinirli santralde 1.113 kW rampasi = kirpilmis tepenin %31'i
     ama DC'nin %24,7'si). Rampayi suren isinim DC diziyle olceklenir; kirpma
     tepeyi degistirir, rampayi degistirmez → dogru payda kurulu DC.
-    Kanonik azami adim DC'nin %14,6'si (genis pay)."""
+    ESIK DUZELTMESI (v2.344, olculdu): %30 siniri OLCULMUS gercekle celisiyordu
+    — Konya arsivinde 5.479 gecerli saat gecisinin 154'u %30'u asiyor (azami
+    %71, p99.9 = %50; bulut cephesi bir saatte tam isinim degistirir). Canli
+    yanlis-pozitif: 26 Eyl 2026 medyan gununde 10-11 gecisi 1.415 kW = DC'nin
+    %31,3'u — durust bulut acilmasi, rapor uretimi bosuna duruyordu. Sinir
+    olcumden: p99.9 = %50 (ustu tipik gunde hala suphelidir — birim hatasi,
+    veri boslugu artifaktlari %50'yi de asar). Kanonik azami adim %14,6."""
     taban = _al(veri, "BASE_KW") or []
     saha = dict(_al(veri, "SAHA") or [])
     m = _re.search(r"([\d.,]+)\s*MWp", saha.get("Kurulu güç", ""))
@@ -510,20 +516,22 @@ def _d14(veri, ekle):
     if len(taban) < 2 or mwp is None:
         return ekle("D14", "uyari", "saatlik taban ya da kurulu DC yok — denetlenemedi",
                     "BASE_KW + 'X MWp'", "eksik")
-    sinir = 0.30 * mwp * 1000.0
+    sinir = 0.50 * mwp * 1000.0   # v2.344: olcumden (arsiv p99.9), %30 degil
     adim = [abs(taban[i + 1] - taban[i]) for i in range(len(taban) - 1)]
     kotu = [(i, f) for i, f in enumerate(adim) if f > sinir]
     if not kotu:
-        return ekle("D14", "gecti", "profil surekli: ardisik sicrama kurulu DC'nin %30'u altinda",
+        return ekle("D14", "gecti", "profil surekli: ardisik sicrama kurulu DC'nin %50'si altinda",
                     "≤ " + _tr(sinir, 0) + " kW/saat", "azami " + _tr(max(adim), 0) + " kW")
     i, fark = kotu[0]
     ekle("D14", "hata", "profilde fiziksel olmayan sicrama (%02d–%02d → %02d–%02d)"
          % (5 + i, 6 + i, 6 + i, 7 + i),
-         "≤ " + _tr(sinir, 0) + " kW/saat (kurulu DC'nin %30'u)", _tr(fark, 0) + " kW")
+         "≤ " + _tr(sinir, 0) + " kW/saat (kurulu DC'nin %50'si)", _tr(fark, 0) + " kW")
 
 
-def _d15(veri, ekle):
-    """Spec #21: karne penceresi ile SCADA arsiv donemi cakisir."""
+def _d15(veri, ekle, s07=True):
+    """Spec #21: karne penceresi ile SCADA arsiv donemi cakisir.
+    E.4 (v2.344): s07 seckide degilse ihlal uyariya iner — karne sayfasi
+    basilmiyorken pencere iddiasi murekkebe girmez, uretim durmaz."""
     karne = _al(veri, "KARNE_TARIH") or []
     ay_yil = str(_al(veri, "AY_YIL") or "")
     coz = _arsiv_al(veri)
@@ -551,8 +559,10 @@ def _d15(veri, ekle):
         return ekle("D15", "gecti", "karne penceresi arsiv donemiyle cakisiyor",
                     "[%s, %s] ∩ arsiv ≠ ∅" % (kb.isoformat(), ks.isoformat()),
                     "arsiv [%s, %s]" % (t1.isoformat(), t2.isoformat()))
-    ekle("D15", "hata", "karne penceresi arsiv doneminin TAMAMEN disinda — karne "
-         "arsivde olmayan gunleri puanlayamaz",
+    ekle("D15", "hata" if s07 else "uyari",
+         "karne penceresi arsiv doneminin TAMAMEN disinda — karne "
+         "arsivde olmayan gunleri puanlayamaz"
+         + ("" if s07 else " (s07 seckide degil, sayfa basilmiyor)"),
          "kesisim ≠ ∅", "karne [%s, %s] / arsiv [%s, %s]"
          % (kb.isoformat(), ks.isoformat(), t1.isoformat(), t2.isoformat()))
 
@@ -630,7 +640,7 @@ def _d17(veri, ekle):
          "ya da formul kaymasi)", "yeniden hesap (±0,01)", "; ".join(kotu))
 
 
-def _d18(veri, ekle):
+def _d18(veri, ekle, s07=True):
     """v2.140 (karar a): karne butunlugu — 30 takvim satiri; olculdu=false
     ise TUM degerler null (olculmemis gune sayi basilamaz, kural 3);
     olculdu=true ise tum degerler dolu; en az bir olculu gun; ve KESINTISIZ
@@ -656,6 +666,12 @@ def _d18(veri, ekle):
             return ekle("D18", "hata", "ölçülü günde değer boş (%d. satır)" % (i + 1),
                         "wm+sk+naif dolu", str(uclu))
     if not any(olc):
+        # E.4 (v2.344): s07 seckide degilse bos karne DURDURUCU degildir —
+        # sayfa basilmiyor, kalan sayfalar dogrulugu 120 gunluk pencereden
+        # soyler (sayfa bazli kapi; hep-ya-hic yalniz tam 16'da yasar).
+        if not s07:
+            return ekle("D18", "uyari", "karnede olculu gun yok — s07 seckide "
+                        "degil, karne sayfasi basilmiyor", "≥1 ya da s07 disi", "0")
         return ekle("D18", "hata", "karnede tek ölçülü gün yok", "≥1", "0")
     h72 = _al(veri, "KARNE_H72") or []
     if len(h72) == 30:
@@ -681,18 +697,20 @@ def _d18(veri, ekle):
 
 
 # ------------------------------------------------- render denetimi (v2.135)
-def render_denetle(cikti_dizin):
+def render_denetle(cikti_dizin, beklenen=16):
     """Sayfalar uretildikten SONRA, birlesim/yayimdan ONCE kosar:
     (a) hicbir sayfada doldurulmamis '{{' kalmadi;
     (b) s02 icindekiler + s15 'Nerede' sayfa referanslari 1..16 icinde;
     (c) R3 (v2.167/C-4): s02 TOC basliklari hedef sayfanin h1'i ile birebir.
+    E.4 (v2.344): beklenen = seckideki sayfa sayisi (tam rapor: 16); s02/s15
+    kontrolleri dosya yoksa zaten atlanir — secki onlari icermez.
     -> list[Bulgu] (bos = temiz)."""
     import glob as _glob, os as _os
     bulgular = []
     sayfalar = sorted(_glob.glob(_os.path.join(cikti_dizin, "*_s??_*.html")))
-    if len(sayfalar) != 16:
-        bulgular.append(Bulgu("R1", "hata", "16 sayfa bulunamadi",
-                              "16 html", str(len(sayfalar))))
+    if len(sayfalar) != beklenen:
+        bulgular.append(Bulgu("R1", "hata", "%d sayfa bulunamadi" % beklenen,
+                              "%d html" % beklenen, str(len(sayfalar))))
         return bulgular
     for yol in sayfalar:
         icerik = open(yol, encoding="utf-8").read()
@@ -1111,23 +1129,28 @@ def _d26(veri, ekle):
          "lat=%s lon=%s tz=%s model=%s" % (lat, lon, tz, model))
 
 
-def denetle_tam(veri):
+def denetle_tam(veri, sayfalar=None):
     """Tüm kontrolleri koşar. → (kayitlar, bulgular, suphe_bayragi)
     kayitlar: geçen+geçmeyen tüm sonuçlar (denetim.json için);
-    bulgular: yalnız hata/uyari (denetle() sözleşmesi)."""
+    bulgular: yalnız hata/uyari (denetle() sözleşmesi).
+    sayfalar (E.4, v2.344): sayfa seçkisi — s07 (doğruluk karnesi) seçkide
+    DEĞİLSE, boş karneden doğan D15/D18 durdurucuları uyarıya iner: basılmayan
+    sayfanın boşluğu üretimi durduramaz (sayfa bazlı kapı). Karne DOLUYSA
+    kurallar seçkiden bağımsız aynen koşar."""
     kayitlar = []
 
     def ekle(kod, durum, mesaj, beklenen, bulunan):
         kayitlar.append({"kod": kod, "durum": durum, "mesaj": mesaj,
                          "beklenen": str(beklenen), "bulunan": str(bulunan)})
 
+    s07 = sayfalar is None or 7 in sayfalar
     _d1(veri, ekle); _d2(veri, ekle); _d3(veri, ekle); _d4(veri, ekle)
     _d5(veri, ekle); _d6(veri, ekle)
     bayrak = bool(_d7(veri, ekle))
     _d8(veri, ekle); _d9(veri, ekle); _d10(veri, ekle)
     _d11(veri, ekle); _d12(veri, ekle); _d13(veri, ekle)
-    _d14(veri, ekle); _d15(veri, ekle); _d16(veri, ekle)
-    _d17(veri, ekle); _d18(veri, ekle); _d19(veri, ekle); _d20(veri, ekle)
+    _d14(veri, ekle); _d15(veri, ekle, s07=s07); _d16(veri, ekle)
+    _d17(veri, ekle); _d18(veri, ekle, s07=s07); _d19(veri, ekle); _d20(veri, ekle)
     _d21(veri, ekle); _d22(veri, ekle); _d23(veri, ekle)
     _d24(veri, ekle); _d25(veri, ekle); _d26(veri, ekle)
 
