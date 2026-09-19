@@ -137,12 +137,27 @@ yere günlük kopyala; örnek (kendi makinene):
 rsync -avz --delete root@SUNUCU_IP:/opt/pvquant/yedekler/ ~/pvquant-yedek/
 ```
 
-Geri dönüş sınaması (yılda bir kez gerçekten dene):
+Geri dönüş sınaması (yılda bir kez gerçekten dene). **Dolu veritabanına
+basma** — mevcut nesnelerle çakışıp yarıda kalır; geçici boş bir veritabanına
+aç ve içeriğine bak:
 
 ```bash
+docker compose exec -T db createdb -U pvquant geri_test
 gunzip -c yedekler/pvq_YYYYAAGG_SSDD.sql.gz | \
-  docker compose exec -T db psql -U pvquant -d pvquant
+  docker compose exec -T db psql -U pvquant -d geri_test
+docker compose exec -T db psql -U pvquant -d geri_test -c "SELECT count(*) FROM users;"
+docker compose exec -T db psql -U pvquant -d geri_test -c \
+  "SELECT count(*) FROM scada_hourly;"   # asıl DB'deki sayıyla karşılaştır
+docker compose exec -T db dropdb -U pvquant geri_test
 ```
+
+Geri yükleme sırasında **3–4 hata satırı görmek NORMALDİR** ve veri kaybı
+anlamına gelmez (19 Eyl 2026'da ölçüldü: satır sayıları birebir geri geldi,
+iki hypertable yapısıyla kuruldu). Bilinen zararsız hatalar: "ONLY option
+not supported on hypertable", "is not a hypertable" (dump'ın sıralama
+artıkları — TimescaleDB katalogu tabloları sonradan hypertable'a çevirir)
+ve "unrecognized parameter transaction_timeout" (pg_dump 17 istemcisi,
+PG16 sunucu). Ölçüt hata sayısı değil, yukarıdaki SATIR SAYISI kıyasıdır.
 
 ---
 
@@ -185,5 +200,6 @@ verisi santral başına ayrı indiriliyor (`kosu_cek_ve_arsivle` içindeki
 indirme, çok nokta çıkarımı) — GEFS de aynısına çevrilmeli.
 
 **Disk büyümesi.** Ölçüldü: `forecast_values` 685 bayt/satır, `meteo_uye`
-220 bayt/satır. 150 santralde budama ve TimescaleDB sıkıştırması olmadan
-~100 GB/yıl; ikisiyle 10–15 GB/yıl.
+220 bayt/satır. `meteo_uye` zaten 45 günle budanıyor (her yazımda; 150
+santralde ~8 GB'da sabitlenir). Sınırsız büyüyen tek tablo `forecast_values`:
+150 santralde ~40 GB/yıl — TimescaleDB sıkıştırması açılınca birkaç GB/yıl.
