@@ -578,17 +578,19 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
                 her gece bir sınav; sayaç kesintisiz büyür</div>
             </div>
           </div>
-          {/* v2.328: GERÇEK panel ekranları — temsilî çizim değil (rakip analizi #4).
-              Kimlik köşeleri kırpılmıştır; vitrindeki anonimlikle tutarlı. */}
+          {/* v2.347: v2.328'in ekran görüntüleri KALDIRILDI (kullanıcı kararı,
+              20 Eyl) — donmuş PNG'ler "sayılar panelde canlı" iddiasıyla
+              çelişiyordu (karne penceresi 10 Ağu'da biten tarih basıyor,
+              üretim ekranı "0 kW" boş-durumu sergiliyordu) ve her tasarım
+              turunda sessizce bayatlıyordu. "Gerçek sayı" işi CANLI bölümlere
+              kaldı: aşağıdaki KPI kartları + Açık karne (/v1/dogrulama). */}
+          {dg && (
           <div style={{ marginTop: 26, textAlign: "left" }}>
             <div style={{ fontFamily: M, fontSize: 10.5, letterSpacing: "0.1em",
               color: "#8AA79B", marginBottom: 10 }}>
-              PANELDEN — GERÇEK EKRAN, GERÇEK SAYILAR</div>
+              PANELDEN — CANLI SAYILAR</div>
             {/* v2.331 (rapor m.10): panelin KPI kutuları, panel görünümüyle ama
-                CANLI ve VEKTÖR — ekran kırpımı piksel sınırına takılıyordu
-                (kullanıcı: "çözünürlük daha iyi olsun"); HTML kopya her
-                çözünürlükte net, sayılar /v1/dogrulama'dan taze. */}
-            {dg && (
+                CANLI ve VEKTÖR — sayılar /v1/dogrulama'dan taze. */}
               <div style={{ display: "grid", gap: 10, marginBottom: 14,
                 gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
                 {([
@@ -609,29 +611,8 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
                   </div>
                 ))}
               </div>
-            )}
-            {([
-              ["/vitrin/panel-dogruluk.png", 1421, "Doğruluk karnesi sayfası: WMAPE kartları, naif referansla günlük karşılaştırma panelleri ve P10–P90 bant sınavı"],
-              ["/vitrin/panel-santral.png", 1065, "Santral sayfası: günün saatlik üretim eğrisi, P10–P90 bandı ve AC tavanı"],
-            ] as const).map(([src, h, alt], i) => (
-              <div key={src} style={{ background: "#0C1E1A", borderRadius: 12,
-                border: "1px solid rgba(255,255,255,0.08)", padding: 10,
-                marginTop: i === 0 ? 0 : 16,
-                boxShadow: "0 2px 4px rgba(0,0,0,.3), 0 24px 80px rgba(14,124,90,.18)" }}>
-                <div style={{ height: 26, display: "flex", alignItems: "center",
-                  margin: "-10px -10px 10px", padding: "0 12px",
-                  background: "rgba(255,255,255,.03)",
-                  borderBottom: "1px solid rgba(255,255,255,.06)",
-                  borderRadius: "12px 12px 0 0",
-                  fontFamily: M, fontSize: 10.5, color: "#7E9A8F" }}>panel.pvquant</div>
-                <img src={src} width={1560} height={h} loading="lazy" alt={alt}
-                  style={{ width: "100%", height: "auto", borderRadius: 6, display: "block" }} />
-              </div>
-            ))}
-            <div style={{ fontFamily: M, fontSize: 10.5, color: "#6E827A", marginTop: 8 }}>
-              referans santralın gerçek karne ve üretim ekranları — kimlik kırpılmıştır
-            </div>
           </div>
+          )}
           {dg ? (
             <div style={{ marginTop: 26, textAlign: "left", background: "rgba(255,255,255,0.04)",
               border: "1px solid rgba(255,255,255,0.12)", borderRadius: 18, padding: "20px 22px" }}>
