@@ -122,10 +122,14 @@ def ctx_to_json(ctx, plant: dict, karne_bos_kabul=False) -> dict:
                 "prepared": ctx.run_at_utc.strftime("%Y-%m-%dT%H:%M")}
 
     # günlük seri + toplamlar — v2.156: gün sayısı ufuk ayarından (16 elle
-    # yazılıydı; ufuk 15'e kırpılınca sözleşme onunla birlikte nefes alır)
+    # yazılıydı; ufuk 15'e kırpılınca sözleşme onunla birlikte nefes alır).
+    # v2.345: sözleşme "1..ufuk TAM gün" oldu — rapor_baglami kısmî uç
+    # günleri artık kırpıyor (337 saatlik koşu = 14 tam gün; eski '== ufuk'
+    # bekçisi sahte 0,0'lı artık günü 15. gün sayarak GEÇİRİYORDU). Motor
+    # GUN_SAYISI'nı len(daily)'den türetir, dönem başlığı diziden yazılır.
     _ufuk = _ayar().forecast_horizon_days
-    iste(ctx.daily_kwh is not None and len(ctx.daily_kwh) == _ufuk,
-         "daily[%d]" % _ufuk)
+    iste(ctx.daily_kwh is not None and 1 <= len(ctx.daily_kwh) <= _ufuk,
+         "daily[1..%d]" % _ufuk)
     gunler = list(ctx.daily_kwh.index)
     J["forecast"] = {"start": str(gunler[0].date()), "end": str(gunler[-1].date())}
     # v2.181: bant EKSİKLİK DEĞİL — Mod B ve eski-artefakt (v2.178) koşuları

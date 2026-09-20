@@ -108,7 +108,10 @@ def _bantsiz_ctx(ufuk):
     p50h = (pd.Series([0] * 6 + [50, 200, 400, 500, 520, 480, 300, 100] + [0] * 10,
                       index=saat[:24]).reindex(saat, fill_value=0.0).astype(float))
     karne = pd.DataFrame({
-        "date": [gunler[0].date()] * 2, "horizon_bucket": ["0-24", "24-72"],
+        # v2.345: sabit tarih takvim bombasıydı (bkz. test_sema_v22 notu) —
+        # karne günü "dün" olmalı ki son-30-gün penceresinde kalsın.
+        "date": [dt.date.today() - dt.timedelta(days=1)] * 2,
+        "horizon_bucket": ["0-24", "24-72"],
         "mape": [8.0, 11.0], "rmse": [1.0, 1.5],
         "skill_vs_naive": [30.0, 20.0], "naive_wmape": [12.0, 14.0]})
     return NS(

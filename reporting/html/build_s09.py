@@ -169,13 +169,13 @@ BODY = """<div class="page"><div class="sheet">
     </div>
   </div>
 
-  <div class="note">
+""" + ("""  <div class="note">
     <h3>Neden bedel ödeten adım da gösteriliyor?</h3>
     <p>Bulut geçişi düzeltmesi bu 120 günlük pencerede hatayı 0,3 puan artırdı. Adımı gizleyip
     yalnızca net iyileşmeyi yazmak daha iyi görünürdü, ama o zaman şelale bir kanıt olmaktan
     çıkıp bir sunuma dönüşürdü. Modelin hangi parçasının çalışmadığını bilmek, çalıştığını
     bilmek kadar değerlidir.</p>
-  </div>
+  </div>""" if ADIM is not None else "") + """
 """ + foot(9) + """
 </div></div>"""
 

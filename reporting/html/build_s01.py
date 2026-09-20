@@ -127,10 +127,21 @@ import textwrap
 
 # v2.158 (C-3): s01'in uc yerlesim varyantina elle kopyalanan "kesintisiz" cumlesi
 # tek kaynak; girinti varyant basina verilir ki HTML BAYT-BIREBIR kalsin (kanonik md5).
-EVI_METIN = ('<div class="evi">Bu tahmin, {{KESINTISIZ}} g\u00fcnd\u00fcr kesintisiz '
-             'olarak ertesi g\u00fcn ger\u00e7ekle\u015fen \u00fcretimle\n'
-             '  kar\u015f\u0131la\u015ft\u0131r\u0131lmaktad\u0131r; sonu\u00e7lar S4 \u00b7 '
-             "Do\u011fruluk Karnesi'ndedir.</div>")
+# v2.345: karne BOSKEN (secki yolunda s07 dusmus olur) cumle karneye isaret
+# EDEMEZ \u2014 "sonuclar S4'tedir" hem kirik referans hem yalan olurdu. Karne
+# doluyken metin bayt-birebir eskisi (kanonik md5 bu daldan gecer).
+from veri import KARNE_OLCULDU as _KO
+KARNE_VAR = any(_KO)
+if KARNE_VAR:
+    EVI_METIN = ('<div class="evi">Bu tahmin, {{KESINTISIZ}} g\u00fcnd\u00fcr kesintisiz '
+                 'olarak ertesi g\u00fcn ger\u00e7ekle\u015fen \u00fcretimle\n'
+                 '  kar\u015f\u0131la\u015ft\u0131r\u0131lmaktad\u0131r; sonu\u00e7lar S4 \u00b7 '
+                 "Do\u011fruluk Karnesi'ndedir.</div>")
+else:
+    EVI_METIN = ('<div class="evi">Gece-gece do\u011fruluk kar\u015f\u0131la\u015ft\u0131rmas\u0131 '
+                 '\u015fu an kesintidedir \u2014 son \u00f6l\u00e7\u00fcl\u00fc g\u00fcnden bu yana\n'
+                 '  santral verisi gelmemi\u015ftir; veri ak\u0131\u015f\u0131 yeniden ba\u015flay\u0131nca '
+                 'karne kald\u0131\u011f\u0131 yerden s\u00fcrer.</div>')
 
 def _evi(n):
     return textwrap.indent(EVI_METIN, " " * n)
@@ -176,8 +187,9 @@ BODY_A = """<div class="page">
     <div class="r">Üretim Tahmini ve Doğruluk Raporu</div></div>
   <div class="eyeb">{{MUSTERI}} için hazırlanmıştır</div>
   <h1>Konya GES</h1>
-  <div class="sub"><b>""" + DONEM + """</b> · """ + str(GUN_SAYISI) + """ günlük saatlik üretim tahmini
-    ve 120 günlük doğruluk karnesi</div>
+  <div class="sub"><b>""" + DONEM + """</b> · """ + str(GUN_SAYISI) + (""" günlük saatlik üretim tahmini
+    ve 120 günlük doğruluk karnesi</div>""" if KARNE_VAR else """ günlük saatlik üretim tahmini
+    ve kalibrasyon kanıtı</div>""") + """
 """ + _PILLS_A + """
  </div>
  <div class="main">
@@ -188,8 +200,9 @@ BODY_A = """<div class="page">
       <div class="v">{{TOPLAM_BANT}}<u>MWh</u></div>
       <div class="n">{{TAAHHUT_NOT}}</div></div>
   </div>
-  <p class="lede">Bu rapor önümüzdeki """ + str(GUN_SAYISI) + """ gün için saatlik üretim beklentisini""" + _LEDE_BANT_A + """ son 120 günde her tahminin gerçekleşen üretimle gece-gece
-  karşılaştırıldığı doğruluk karnesini bir arada sunar.</p>
+  <p class="lede">Bu rapor önümüzdeki """ + str(GUN_SAYISI) + """ gün için saatlik üretim beklentisini""" + _LEDE_BANT_A + (""" son 120 günde her tahminin gerçekleşen üretimle gece-gece
+  karşılaştırıldığı doğruluk karnesini bir arada sunar.</p>""" if KARNE_VAR else """ kalibrasyonun
+  bağımsız test kanıtını bir arada sunar.</p>""") + """
   <div class="figwrap">__CHART__""" + LEGCAP + """</div>
   """ + IMPRINT + """
 """ + _evi(2) + """

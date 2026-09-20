@@ -29,7 +29,11 @@ def _ctx(ufuk=15, **ez):
     p50h = (pd.Series([0] * 6 + [50, 200, 400, 500, 520, 480, 300, 100] + [0] * 10,
                       index=saat[:24]).reindex(saat, fill_value=0.0).astype(float))
     karne = pd.DataFrame({
-        "date": [gunler[0].date()] * 2, "horizon_bucket": ["0-24", "24-72"],
+        # v2.345: TAKVİM BOMBASI düzeltildi — sabit 2026-08-20, _karne_satirlari'nin
+        # "bugünle biten son 30 gün" penceresinden 20 Eyl 2026'da düştü ve tüm
+        # dosya kendiliğinden kırıldı. Karne günü artık hep pencere içinde.
+        "date": [dt.date.today() - dt.timedelta(days=1)] * 2,
+        "horizon_bucket": ["0-24", "24-72"],
         "mape": [8.0, 11.0], "rmse": [1.0, 1.5],
         "skill_vs_naive": [30.0, 20.0], "naive_wmape": [12.0, 14.0]})
     n = NS(
@@ -84,6 +88,22 @@ def test_run_model_ve_meteo_ayrimi():
     # üretici sources bloğunu ctx'ten ayrı kurar; burada yalnız run
     # bloğunun hava-modeli taşımadığını kilitliyoruz.
     assert "weather" not in J["run"]
+
+
+def test_daily_sozlesmesi_1_ufuk_arasi():
+    """v2.345: sözleşme '1..ufuk TAM gün' — 337 saatlik koşu (14 tam gün +
+    1 artık gece saati) raporda '0,0 MWh'lik sahte 15. gün üretiyordu;
+    rapor_baglami kısmî uç günü artık kırpar, üretici 14 günü KABUL eder.
+    Ufku AŞAN dizi ise hâlâ reddedilir (fazla gün sızamaz)."""
+    from pvquant.config import get_settings
+    ufuk = get_settings().forecast_horizon_days
+    J = ctx_to_json(_ctx(ufuk - 1),
+                    {"customer": "Stub AŞ", "capacity_kwp": 1000.0})
+    assert len(J["daily"]) == ufuk - 1          # kırpılmış dönem dürüstçe akar
+    import pytest as _pt
+    with _pt.raises(ValueError, match=r"daily\[1\.\.%d\]" % ufuk):
+        ctx_to_json(_ctx(ufuk + 1),
+                    {"customer": "Stub AŞ", "capacity_kwp": 1000.0})
 
 
 def test_eski_stub_toleransi_meteo_yoksa_null():

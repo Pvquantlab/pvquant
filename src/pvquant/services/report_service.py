@@ -19,7 +19,16 @@ def rapor_baglami(tenant_id, plant: dict) -> ReportContext | None:
     h["poa"] = 0.0
     h["temp_cell"] = 25.0
     yerel = h.tz_convert(plant["tz"])
-    daily = h["energy_kwh"].groupby(h.index.tz_convert("UTC").date).sum()
+    # v2.345: yalnız 24 saati TAM olan günler rapora girer — 19 Eyl 15:32
+    # koşusu 337 saatti (14 tam gün + 1 artık gece saati) ve UTC artığı
+    # raporda "3 Eki 0,0 MWh" SAHTE günü üretti (kapak grafiği 0'a çakılıyor,
+    # çizelge 0,0 basıyordu). Kısmî uç gün bir gün değildir; atılır, dönem
+    # başlığı kalan tam günlerden yazılır. (Üretim saatleri UTC ve yerel gün
+    # tanımında aynı güne düşer — kırpma yalnız üretimsiz gece artıklarını yer.)
+    _gr = h.index.tz_convert("UTC").date
+    _sayim = h["energy_kwh"].groupby(_gr).size()
+    _tam = _sayim[_sayim == 24].index
+    daily = h["energy_kwh"].groupby(_gr).sum().loc[_tam]
     import pandas as pd
     daily.index = pd.to_datetime(daily.index)
     with tenant_baglami(tenant_id) as s:
@@ -57,8 +66,9 @@ def rapor_baglami(tenant_id, plant: dict) -> ReportContext | None:
     # p10/p90'i ZATEN tasiyor, baglanmiyordu. Varsa gunluk banda cevir.
     if "p10_kw" in h.columns and h["p10_kw"].notna().any():
         gr = h.index.tz_convert("UTC").date
-        ctx.daily_p10 = h["p10_kw"].groupby(gr).sum()
-        ctx.daily_p90 = h["p90_kw"].groupby(gr).sum()
+        # v2.345: bant da AYNI tam-gün kırpmasından geçer — daily ile hizalı
+        ctx.daily_p10 = h["p10_kw"].groupby(gr).sum().loc[_tam]
+        ctx.daily_p90 = h["p90_kw"].groupby(gr).sum().loc[_tam]
         ctx.daily_p10.index = pd.to_datetime(ctx.daily_p10.index)
         ctx.daily_p90.index = pd.to_datetime(ctx.daily_p90.index)
     if cal:
