@@ -11,7 +11,7 @@ from io import BytesIO
 import pandas as pd
 import xlsxwriter
 
-from .styles import RENK, model_gorunur_adi
+from .styles import RENK, meteo_gorunur_adi, model_gorunur_adi, sayi_tr
 
 IEC_KOLONLAR = [
     ("timestamp_local", "Zaman (yerel)"),
@@ -66,13 +66,21 @@ def build_excel(ctx) -> bytes:
     ws_s = wb.add_worksheet("Saatlik")
     for j, (_, ad) in enumerate(IEC_KOLONLAR):
         ws_s.write(0, j, ad, F["th"])
+    # v2.346: opsiyonel kolonlar YALNIZ ctx gerçekten taşıyorsa basılır —
+    # eski get(..., 0.0) yedeği, rapor_baglami'nin sabit dolgularıyla birleşip
+    # 337 satır "POA=0 W/m² · hücre=25,0 °C" SAHTE ölçüm tablosu üretiyordu.
+    # Kolon yoksa hücre boş: eksiklik uydurulmaz, gösterilir (kural 3).
+    _kolon_var = {ad: ad in h.columns for ad in ("poa", "temp_cell", "p_dc_kw")}
     for i, (ts, row) in enumerate(h.iterrows(), start=1):
         ws_s.write_datetime(i, 0, ts.tz_localize(None), F["zaman"])
         ws_s.write_datetime(i, 1, ts.tz_localize(None).replace(
             hour=0, minute=0), F["tarih"])
-        ws_s.write_number(i, 2, float(row.get("poa", 0.0)), F["sayi0"])
-        ws_s.write_number(i, 3, float(row.get("temp_cell", 0.0)), F["sayi1"])
-        ws_s.write_number(i, 4, float(row.get("p_dc_kw", 0.0)), F["sayi1"])
+        for j, (ad, fmt) in enumerate((("poa", "sayi0"), ("temp_cell", "sayi1"),
+                                       ("p_dc_kw", "sayi1")), start=2):
+            if _kolon_var[ad]:
+                ws_s.write_number(i, j, float(row[ad]), F[fmt])
+            else:
+                ws_s.write_blank(i, j, None, F["hucre"])
         ws_s.write_number(i, 5, float(row["p50_kw"]), F["sayi1"])
         ws_s.write_number(i, 6, float(row["energy_kwh"]), F["sayi1"])
         ws_s.write_blank(i, 7, None, F["hucre"])
@@ -95,16 +103,19 @@ def build_excel(ctx) -> bytes:
     wb.worksheets().insert(0, wb.worksheets().pop())  # Ozet ilk sekme
     ws.hide_gridlines(2)
     ws.write("B2", f"PVQuant — {ctx.plant_name}", F["baslik"])
-    ws.write("B3", f"7 Günlük Üretim Tahmini · {ctx.period_str} · "
-                   f"Mod {ctx.mode}", F["alt"])
+    # v2.346: "7 Günlük" SABİTTİ — ufuk v2.156'dan beri ayarla nefes alıyor
+    # (canlıda 14-15 gün); gün sayısı artık diziden (wmape_baslik dersinin eşi)
+    ws.write("B3", f"{len(ctx.daily_kwh)} Günlük Üretim Tahmini · "
+                   f"{ctx.period_str} · Mod {ctx.mode}", F["alt"])
 
-    # KPI blokları (B5:E7)
+    # KPI blokları (B5:E7) — v2.346: metin KPI'ları Türkçe sayı biçiminde
+    # (316.2 → 316,2; eski replace binliği çevirip ondalığı NOKTA bırakıyordu)
     kpis = [
-        ("TOPLAM (P50)", f"{ctx.total_mwh:,.1f} MWh".replace(",", ".")),
-        ("KAPASİTE FAKTÖRÜ", f"%{ctx.capacity_factor_pct:.1f}"),
-        ("ÖZGÜL VERİM", f"{ctx.specific_yield:.1f} kWh/kWp"),
+        ("TOPLAM (P50)", f"{sayi_tr(ctx.total_mwh, 1)} MWh"),
+        ("KAPASİTE FAKTÖRÜ", f"%{sayi_tr(ctx.capacity_factor_pct, 1)}"),
+        ("ÖZGÜL VERİM", f"{sayi_tr(ctx.specific_yield, 1)} kWh/kWp"),
         ("MAPE (kalibrasyon)",
-         f"%{ctx.mape_pct:.1f}" if ctx.mape_pct is not None else "—"),
+         f"%{sayi_tr(ctx.mape_pct, 1)}" if ctx.mape_pct is not None else "—"),
     ]
     for k, (et, dg) in enumerate(kpis):
         col = 1 + k * 2
@@ -121,11 +132,12 @@ def build_excel(ctx) -> bytes:
     _hibrit_var = ctx.mode == "C" and ctx.holdout_mape_pct is not None
     if _hibrit_var:
         ws.write(7, 1, "HOLDOUT (Mod C)", F["kpi_et"])
-        ws.write(7, 2, f"MAPE %{ctx.holdout_mape_pct:.1f}", F["iyi"])
+        ws.write(7, 2, f"MAPE %{sayi_tr(ctx.holdout_mape_pct, 1)}", F["iyi"])
         if ctx.holdout_rmse_kw is not None:
-            ws.write(7, 3, f"RMSE {ctx.holdout_rmse_kw:,.0f} kW", F["hucre"])
+            ws.write(7, 3, f"RMSE {sayi_tr(ctx.holdout_rmse_kw, 0)} kW",
+                     F["hucre"])
         if ctx.holdout_improvement_pct is not None:
-            ws.write(7, 4, f"iyileşme %{ctx.holdout_improvement_pct:.0f}",
+            ws.write(7, 4, f"iyileşme %{sayi_tr(ctx.holdout_improvement_pct, 0)}",
                      F["hucre"])
         if ctx.holdout_hours is not None:
             ws.write(7, 5, f"{ctx.holdout_hours} test saati", F["alt"])
@@ -187,6 +199,9 @@ def build_excel(ctx) -> bytes:
     ws_m = wb.add_worksheet("Metadata")
     ws_m.hide_gridlines(2)
     satirlar = [
+        # v2.346: rapor kimliği künyeye girdi (PDF ile aynı izlenebilirlik —
+        # report_log'dan; eski üretimlerde/sentetikte yoksa dürüst "—")
+        ("Rapor kimliği", getattr(ctx, "report_id", None) or "—"),
         ("Santral", ctx.plant_name),
         ("Kurulu güç (kWp)", ctx.capacity_kwp),
         ("Konum", f"{ctx.latitude:.4f}, {ctx.longitude:.4f}"),
@@ -194,10 +209,15 @@ def build_excel(ctx) -> bytes:
         ("Saat dilimi", ctx.plant_tz),
         ("Mod", ctx.mode),
         ("Model", f"{model_gorunur_adi(ctx.model_name)} ({ctx.model_version})"),
-        ("Meteo kaynağı", ctx.meteo_source),
-        ("η_BoS", ctx.eta_bos if ctx.eta_bos is not None else "—"),
-        ("BG", ctx.bg if ctx.bg is not None else "—"),
-        ("MAPE (%)", ctx.mape_pct if ctx.mape_pct is not None else "—"),
+        # v2.346: iç kod adı ("acik-nwp") müşteri künyesinde görünür ada
+        # çevrilir; kaynak adları künye istisnasıdır (anayasa) ama kripto
+        # kısaltma değil, PDF s16'daki açık adlandırma esas alınır.
+        ("Meteo kaynağı", meteo_gorunur_adi(ctx.meteo_source)),
+        # v2.346: 16 haneli ham float künyede okunmaz — katsayı 3, yüzde 1
+        # ondalığa yuvarlanır (değerin kendisi Calibration sayfasında ham).
+        ("η_BoS", round(ctx.eta_bos, 3) if ctx.eta_bos is not None else "—"),
+        ("BG", round(ctx.bg, 3) if ctx.bg is not None else "—"),
+        ("MAPE (%)", round(ctx.mape_pct, 1) if ctx.mape_pct is not None else "—"),
         ("Üretim zamanı (UTC)", f"{ctx.run_at_utc:%Y-%m-%dT%H:%M:%SZ}"),
         ("Şema sürümü", ctx.schema_version),
         ("Adlandırma", "IEC 61724-1 uyumlu"),

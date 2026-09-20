@@ -117,5 +117,16 @@ def karne_donem_metni(ilk, son) -> str:
 
 def model_gorunur_adi(ham: str) -> str:
     """v2.292 — müşteri yüzünde ham model adı geçmez (tasarım anayasası): PDF/Excel
-    künyesi operatör diliyle yazar; JSON dışa aktarımı makine adını korur."""
-    return {"barhdadi_bennis": "PVQuant fizik boru hattı"}.get(ham, ham)
+    künyesi operatör diliyle yazar; JSON dışa aktarımı makine adını korur.
+    v2.346: hybrid_residual eşlemede YOKTU — canlı Mod C künyesi ham adı
+    basıyordu (v2.292'nin yarım kalmış işi)."""
+    return {"barhdadi_bennis": "PVQuant fizik boru hattı",
+            "hybrid_residual": "PVQuant hibrit modeli"}.get(ham, ham)
+
+
+def meteo_gorunur_adi(ham) -> str:
+    """v2.346 — meteo kaynağının künye adı: iç kod adı ("acik-nwp") müşteri
+    yüzünde açık adla yazılır (PDF s16 adlandırmasıyla aynı hiza); JSON
+    makine adını korur. Tanınmayan değer olduğu gibi geçer."""
+    return {"acik-nwp": "Açık NWP birleşimi (ECMWF · ICON-EU · GEFS)",
+            "open-meteo": "Open-Meteo"}.get(ham or "", ham or "—")

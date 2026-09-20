@@ -16,8 +16,11 @@ def rapor_baglami(tenant_id, plant: dict) -> ReportContext | None:
         return None
     h = h.rename(columns={"physics_kw": "p_dc_kw"})  # gecici: dc yoksa fizik
     h["energy_kwh"] = h["p50_kw"]
-    h["poa"] = 0.0
-    h["temp_cell"] = 25.0
+    # v2.346: poa=0.0 / temp_cell=25.0 SABİT dolguları KALDIRILDI — Excel'in
+    # Saatlik ve Daily-Summary sayfalarına "ölçüm" görünümüyle sızıyordu
+    # (337 satır POA=0 W/m², hücre sıcaklığı=25,0 °C; IEC etiketli sahte
+    # kolon). Koşu bu alanları taşımıyorsa kolon YOKTUR; tüketici boş bırakır
+    # (kural 3: eksiklik uydurulmaz, gösterilir).
     yerel = h.tz_convert(plant["tz"])
     # v2.345: yalnız 24 saati TAM olan günler rapora girer — 19 Eyl 15:32
     # koşusu 337 saatti (14 tam gün + 1 artık gece saati) ve UTC artığı
@@ -277,6 +280,9 @@ def uret(tenant_id, plant: dict, fmt: str):
         veri, uzanti = uret_html_pdf(tenant_id, plant, ctx=ctx), "pdf"
         ad_kok += "_16sayfa"
     elif fmt == "xlsx":
+        # v2.346: Excel künyesi de rapor kimliği taşır — PDF'le aynı
+        # izlenebilirlik (report_log'a düşer, B6 deseninin devamı).
+        ctx.report_id = rapor_id_uret(tenant_id, plant, ctx.mode)
         veri, uzanti = build_excel(ctx), "xlsx"
     elif fmt == "json":
         j = build_json(ctx)

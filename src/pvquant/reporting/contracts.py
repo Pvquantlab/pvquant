@@ -106,7 +106,14 @@ class ReportContext:
 
     @property
     def period_str(self) -> str:
+        # v2.346: dönem GÜNLÜK diziden (rapor_baglami v2.345'te kısmî uç
+        # günleri kırpar) — hourly uçları artık gece saati taşabilir ve
+        # "3 Ekim" gibi raporda OLMAYAN bir günü dönem sonu gösteriyordu.
+        # daily yoksa eski hourly yolu (sentetik/eski çağıranlar) korunur.
         from .styles import donem_tr
+        if self.daily_kwh is not None and len(self.daily_kwh) > 0:
+            d = self.daily_kwh.index
+            return donem_tr(d[0], d[-1])
         h = self.hourly.tz_convert(self.plant_tz)
         return donem_tr(h.index[0], h.index[-1])
 

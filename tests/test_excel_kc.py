@@ -277,3 +277,53 @@ def test_iklim_taninmayan_bicim_tablo_basmaz_son12_kalir():
     # tanınmayan biçim TEK başınaysa sayfa da yok
     wb2 = _wb(_ctx(iklim=pd.DataFrame({"garip_kolon": [1]})))
     assert "Climate" not in wb2.sheetnames
+
+
+# ------------------------------------------------------------ v2.346: dürüstlük
+def test_saatlik_opsiyonel_kolon_yoksa_bos():
+    """v2.346: poa/temp_cell/p_dc ctx'te YOKSA hücre BOŞ kalır — eski
+    get(...,0.0) yedeği, rapor_baglami dolgularıyla birleşip 'POA=0 W/m² ·
+    25,0 °C' sahte ölçüm tablosu basıyordu (canlı vaka, 20 Eyl 2026)."""
+    ctx = _ctx()
+    ctx.hourly = ctx.hourly.drop(columns=["poa", "temp_cell", "p_dc_kw"])
+    ws = _wb(ctx)["Saatlik"]
+    assert ws.cell(2, 3).value is None          # POA
+    assert ws.cell(2, 4).value is None          # hücre sıcaklığı
+    assert ws.cell(2, 5).value is None          # DC güç
+    assert ws.cell(2, 6).value is not None      # P50 her koşuda var
+
+
+def test_ozet_baslik_gun_sayisi_diziden():
+    """v2.346: '7 Günlük' sabiti öldü — başlık daily uzunluğunu söyler ve
+    dönem KIRPILMIŞ diziden gelir (hourly kuyruğu sarkık olsa bile)."""
+    ctx = _ctx()
+    b3 = _wb(ctx)["Ozet"]["B3"].value
+    assert b3.startswith(f"{len(ctx.daily_kwh)} Günlük")
+    assert "7 Günlük" not in b3 or len(ctx.daily_kwh) == 7
+    # dönem daily'den: son günü diziden düşür, başlık da onu izlemeli
+    ctx2 = _ctx()
+    ctx2.daily_kwh = ctx2.daily_kwh.iloc[:-1]
+    b3k = _wb(ctx2)["Ozet"]["B3"].value
+    assert b3k.startswith(f"{len(ctx2.daily_kwh)} Günlük")
+    son_gun = ctx2.daily_kwh.index[-1]
+    assert str(son_gun.day) in b3k
+
+
+def test_metadata_kunye_okunur_ve_kimlikli():
+    """v2.346: künye 16 haneli ham float basmaz; model görünür adla yazılır;
+    rapor kimliği alanı vardır (yokken dürüst '—')."""
+    ctx = _ctx(eta_bos=0.9267636211205322, mape_pct=25.90218749994147,
+               model_name="hybrid_residual")
+    m = _wb(ctx)["Metadata"]
+    kv = {m.cell(r, 2).value: m.cell(r, 3).value
+          for r in range(1, 30) if m.cell(r, 2).value}
+    assert kv["η_BoS"] == 0.927
+    assert kv["MAPE (%)"] == 25.9
+    assert kv["Model"].startswith("PVQuant hibrit modeli")
+    assert "hybrid_residual" not in kv["Model"]
+    assert kv["Rapor kimliği"] == "—"          # sentetikte üretilmez
+    ctx.report_id = "PVQ-2026-09-20-C-0001"
+    m2 = _wb(ctx)["Metadata"]
+    kv2 = {m2.cell(r, 2).value: m2.cell(r, 3).value
+           for r in range(1, 30) if m2.cell(r, 2).value}
+    assert kv2["Rapor kimliği"] == "PVQ-2026-09-20-C-0001"
