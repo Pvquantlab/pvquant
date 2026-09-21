@@ -142,8 +142,37 @@ def build_excel(ctx) -> bytes:
         if ctx.holdout_hours is not None:
             ws.write(7, 5, f"{ctx.holdout_hours} test saati", F["alt"])
 
-    # Günlük tablo (B10'dan) — kWh kolonu SUMIFS ile Saatlik'ten DİNAMİK
-    bas = 9
+    # ---- v2.348 (rakip analizi): panelin yayımladığı doğruluk özeti Ozet'e ----
+    # Kaynak dogrulama_service.santral_karne_ozeti — vitrinle AYNI hesap
+    # ("üç yüzey aynı sayıyı söyler"). Ölçüm yoksa blok HİÇ basılmaz (K-C2);
+    # rakip taramasında (21 Eyl 2026) gece güncellenen doğruluk karnesini
+    # müşteri Excel'ine koyan başka ürün bulunamadı — savunulan fark budur.
+    dg = getattr(ctx, "dogrulama", None)
+    if dg:
+        ws.write(8, 1, f"DOĞRULUK · SON {dg['gun']} GÜN (0–24s) · "
+                       f"son ölçüm {dg['son_gun']}", F["bolum"])
+        dortlu = [
+            ("WMAPE", f"%{sayi_tr(dg['wmape_pct'], 1)}"
+                if dg.get("wmape_pct") is not None else "—"),
+            ("nMAE (KAPASİTEYE NORMALİZE)", f"%{sayi_tr(dg['nmae_pct'], 1)}"
+                if dg.get("nmae_pct") is not None else "—"),
+            ("NAİFE ÜSTÜNLÜK", f"%{sayi_tr(dg['beceri_naif_pct'], 0)}"
+                if dg.get("beceri_naif_pct") is not None else "—"),
+            (f"BANT KAPSAMASI · HEDEF %{dg['bant_hedef_pct']:.0f}",
+                f"%{sayi_tr(dg['bant_kapsama_pct'], 1)}"
+                if dg.get("bant_kapsama_pct") is not None else "—"),
+            ("VERİ KAPSAMASI", f"%{sayi_tr(ctx.coverage_pct, 0)}"
+                if getattr(ctx, "coverage_pct", None) is not None else "—"),
+        ]
+        for k, (et, deger) in enumerate(dortlu):
+            col = 1 + k * 2
+            ws.write(9, col, et, F["kpi_et"])
+            ws.write(10, col, deger, F["iyi"] if k == 0 else F["hucre"])
+        bas = 12
+    else:
+        bas = 9
+
+    # Günlük tablo — kWh kolonu SUMIFS ile Saatlik'ten DİNAMİK
     for j, ad in enumerate(["Tarih", "Tahmin (kWh)", "Kümülatif (MWh)"]):
         ws.write(bas, 1 + j, ad, F["th"])
     for i, (gun, _kwh) in enumerate(ctx.daily_kwh.items(), start=1):
@@ -161,6 +190,15 @@ def build_excel(ctx) -> bytes:
     ws.write_formula(son + 1, 2, f"=SUM($C${bas+2}:$C${son+1})",
                      F["th"], float(ctx.total_kwh))
     ws.set_column("B:D", 15)
+    # v2.348: eksik-veri politikası GÖRÜNÜR beyan (rakip kıyası: Solargis -9
+    # basar ama belgeler; meteocontrol boşluğu doldurur; biz boş bırakırız —
+    # ilke uygulanıyordu, raporun kendisi söylemiyordu) + yöntem sözlüğü.
+    ws.write(son + 3, 1, "Boş hücre 'ölçüm yok' demektir — eksik veri "
+             "uydurulmaz, sıfırla ya da tahminle doldurulmaz.", F["alt"])
+    ws.write(son + 4, 1, "WMAPE: üretime ağırlıklı mutlak hata · naif: "
+             "dün-aynı-saat referansı · nMAE: kurulu güce normalize hata · "
+             "bant kapsaması: gerçekleşenin P10–P90 aralığında kaldığı "
+             "günlerin oranı.", F["alt"])
 
     # Gömülü sütun grafiği (native Excel chart)
     ch = wb.add_chart({"type": "column"})
@@ -184,7 +222,7 @@ def build_excel(ctx) -> bytes:
     ws.set_landscape()
     ws.set_paper(9)                       # A4
     ws.fit_to_pages(1, 1)
-    ws.print_area(0, 0, son + 3, 9)
+    ws.print_area(0, 0, son + 4, 9)   # v2.348: beyan + yöntem satırları dahil
 
     # ====== DAILY-SUMMARY + ACCURACY-REPORTCARD (K-C, v2.186) ======
     # K-C2 kararı: beslenecek veri yoksa sayfa HİÇ eklenmez (dürüst yokluk;

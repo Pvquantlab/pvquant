@@ -283,6 +283,13 @@ def uret(tenant_id, plant: dict, fmt: str):
         # v2.346: Excel künyesi de rapor kimliği taşır — PDF'le aynı
         # izlenebilirlik (report_log'a düşer, B6 deseninin devamı).
         ctx.report_id = rapor_id_uret(tenant_id, plant, ctx.mode)
+        # v2.348 (rakip analizi bulgusu): panelin YAYIMLADIĞI doğruluk özeti
+        # (WMAPE/nMAE/naife üstünlük/bant kapsaması) Excel'in Ozet sayfasına
+        # da girer — sayı dogrulama_service'ten, vitrinle AYNI hesap; ölçüm
+        # yoksa None kalır ve blok hiç basılmaz (uydurma yok).
+        from pvquant.services.dogrulama_service import santral_karne_ozeti
+        with tenant_baglami(tenant_id) as s:
+            ctx.dogrulama = santral_karne_ozeti(s, plant["id"])
         veri, uzanti = build_excel(ctx), "xlsx"
     elif fmt == "json":
         j = build_json(ctx)

@@ -327,3 +327,30 @@ def test_metadata_kunye_okunur_ve_kimlikli():
     kv2 = {m2.cell(r, 2).value: m2.cell(r, 3).value
            for r in range(1, 30) if m2.cell(r, 2).value}
     assert kv2["Rapor kimliği"] == "PVQ-2026-09-20-C-0001"
+
+
+# ------------------------------------------------------------ v2.348: doğruluk şeridi
+def test_dogrulama_seridi_varsa_basilir_tablo_kayar():
+    """v2.348: panelin yayımladığı doğruluk özeti (WMAPE/nMAE/naife üstünlük/
+    bant kapsaması) Ozet'e girer; günlük tablo 3 satır aşağı kayar ve SUMIFS
+    toplamı bozulmaz."""
+    dg = {"gun": 46, "son_gun": "2026-08-10", "wmape_pct": 5.5,
+          "naif_wmape_pct": 29.6, "nmae_pct": 2.2, "beceri_naif_pct": 81,
+          "bant_kapsama_pct": 91.4, "bant_hedef_pct": 80.0}
+    ws = _wb(_ctx(dogrulama=dg, coverage_pct=66.0))["Ozet"]
+    assert "SON 46 GÜN" in ws.cell(9, 2).value          # blok başlığı (satır 9)
+    assert ws.cell(11, 2).value == "%5,5"               # WMAPE Türkçe biçim
+    assert ws.cell(11, 4).value == "%2,2"               # nMAE
+    assert ws.cell(11, 10).value == "%66"               # veri kapsaması
+    assert ws.cell(13, 2).value == "Tarih"              # tablo başlığı kaydı
+
+
+def test_dogrulama_yoksa_blok_yok_eski_duzen():
+    """Ölçüm yoksa şerit HİÇ basılmaz (K-C2) — tablo eski yerinde (B10),
+    beyan ve yöntem satırları yine vardır."""
+    ws = _wb(_ctx())["Ozet"]
+    assert ws.cell(10, 2).value == "Tarih"
+    metinler = [ws.cell(r, 2).value for r in range(10, 40)
+                if isinstance(ws.cell(r, 2).value, str)]
+    assert any("uydurulmaz" in m for m in metinler)     # eksik-veri beyanı
+    assert any("WMAPE" in m and "naif" in m for m in metinler)  # yöntem sözlüğü

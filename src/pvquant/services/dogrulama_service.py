@@ -18,6 +18,36 @@ def _yuvarla(x, n=1):
     return None if x is None else round(float(x), n)
 
 
+def santral_karne_ozeti(s, plant_id, gun: int = PENCERE_GUN) -> dict | None:
+    """v2.348 — TEK santralın son `gun` günlük doğruluk özeti (0-24 kovası).
+
+    Excel raporunun Ozet sayfası buradan beslenir: hesap `ozet()` ile AYNI
+    (avg over skill_daily) — "üç yüzey aynı sayıyı söyler" ilkesi; kopya SQL
+    yaşamasın diye vitrin sorgusunun santral-parametreli eşi. `s` çağıranın
+    oturumudur (rapor üretimi tenant bağlamında koşar, RLS orada kurulur).
+    Ölçülü gün yoksa None — sayı uydurulmaz, blok hiç basılmaz (K-C2)."""
+    from sqlalchemy import text
+    k = s.execute(text(
+        "SELECT count(*) AS gun, max(date) AS son,"
+        " avg(mape) AS wmape, avg(naive_wmape) AS naif,"
+        " avg(nmae) AS nmae, avg(picp80) AS picp "
+        "FROM skill_daily WHERE plant_id=:p AND horizon_bucket='0-24' "
+        "AND date >= current_date - :g"), {"p": plant_id, "g": gun}
+    ).mappings().first()
+    if not k or not k["gun"] or k["wmape"] is None:
+        return None
+    beceri = (None if k["naif"] in (None, 0)
+              else _yuvarla((1 - float(k["wmape"]) / float(k["naif"])) * 100, 0))
+    return {
+        "gun": int(k["gun"]), "son_gun": k["son"].isoformat(),
+        "wmape_pct": _yuvarla(k["wmape"]), "naif_wmape_pct": _yuvarla(k["naif"]),
+        "nmae_pct": _yuvarla(k["nmae"]), "beceri_naif_pct": beceri,
+        "bant_kapsama_pct": (_yuvarla(float(k["picp"]) * 100)
+                             if k["picp"] is not None else None),
+        "bant_hedef_pct": 80.0,
+    }
+
+
 def ozet() -> dict:
     """Kimliksiz uç için toplulaştırılmış karne. Sistem bağlamı; yalnız yayın bayraklı santral."""
     from sqlalchemy import text
