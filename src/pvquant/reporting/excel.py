@@ -108,14 +108,23 @@ def build_excel(ctx) -> bytes:
     ws.write("B3", f"{len(ctx.daily_kwh)} Günlük Üretim Tahmini · "
                    f"{ctx.period_str} · Mod {ctx.mode}", F["alt"])
 
-    # KPI blokları (B5:E7) — v2.346: metin KPI'ları Türkçe sayı biçiminde
-    # (316.2 → 316,2; eski replace binliği çevirip ondalığı NOKTA bırakıyordu)
+    # KPI blokları — v2.346: metin KPI'ları Türkçe sayı biçiminde.
+    # v2.349 (rakip paritesi): BEKLENEN GELİR (tarife künyeden; tanımsızsa "—")
+    # ve CO₂ TASARRUFU eklendi. CO₂ faktörü BELGELİ VARSAYIMDIR ve etikette
+    # açıkça gösterilir: Türkiye şebeke üretim karması için yaygın kullanılan
+    # yaklaşık değer; kesin faktör yıla/karmaya göre değişir (dürüst kaba hesap).
+    _CO2_T_MWH = 0.44
+    gelir = getattr(ctx, "gelir", None)
     kpis = [
         ("TOPLAM (P50)", f"{sayi_tr(ctx.total_mwh, 1)} MWh"),
         ("KAPASİTE FAKTÖRÜ", f"%{sayi_tr(ctx.capacity_factor_pct, 1)}"),
         ("ÖZGÜL VERİM", f"{sayi_tr(ctx.specific_yield, 1)} kWh/kWp"),
         ("MAPE (kalibrasyon)",
          f"%{sayi_tr(ctx.mape_pct, 1)}" if ctx.mape_pct is not None else "—"),
+        ("BEKLENEN GELİR (DÖNEM)",
+         f"{sayi_tr(gelir['toplam_tl'] / 1000.0, 1)} bin TL" if gelir else "—"),
+        (f"CO₂ TASARRUFU · {sayi_tr(_CO2_T_MWH, 2)} t/MWh",
+         f"{sayi_tr(ctx.total_mwh * _CO2_T_MWH, 1)} t"),
     ]
     for k, (et, dg) in enumerate(kpis):
         col = 1 + k * 2
@@ -222,7 +231,7 @@ def build_excel(ctx) -> bytes:
     ws.set_landscape()
     ws.set_paper(9)                       # A4
     ws.fit_to_pages(1, 1)
-    ws.print_area(0, 0, son + 4, 9)   # v2.348: beyan + yöntem satırları dahil
+    ws.print_area(0, 0, son + 4, 11)  # v2.348 beyan satırları + v2.349 6'lı KPI
 
     # ====== DAILY-SUMMARY + ACCURACY-REPORTCARD (K-C, v2.186) ======
     # K-C2 kararı: beslenecek veri yoksa sayfa HİÇ eklenmez (dürüst yokluk;
@@ -232,6 +241,8 @@ def build_excel(ctx) -> bytes:
     # ====== CALIBRATION + CLIMATE (K-C, v2.187 — mühür 2/2) ======
     _sayfa_kalibrasyon(wb, ctx, F)
     _sayfa_iklim(wb, ctx, F)
+    # ====== PERFORMANCE — PR + kullanılabilirlik (v2.349, rakip paritesi) ======
+    _sayfa_performans(wb, ctx, F)
 
     # ================= METADATA =================
     ws_m = wb.add_worksheet("Metadata")
@@ -251,6 +262,10 @@ def build_excel(ctx) -> bytes:
         # çevrilir; kaynak adları künye istisnasıdır (anayasa) ama kripto
         # kısaltma değil, PDF s16'daki açık adlandırma esas alınır.
         ("Meteo kaynağı", meteo_gorunur_adi(ctx.meteo_source)),
+        # v2.349: gelir şeffaflığı — tarife tanımlıysa tip + ortalama fiyat
+        ("Tarife", (f"{ctx.gelir['tip']} · ort. "
+                    f"{sayi_tr(ctx.gelir['ort_fiyat_tl_mwh'], 0)} TL/MWh"
+                    if getattr(ctx, "gelir", None) else "—")),
         # v2.346: 16 haneli ham float künyede okunmaz — katsayı 3, yüzde 1
         # ondalığa yuvarlanır (değerin kendisi Calibration sayfasında ham).
         ("η_BoS", round(ctx.eta_bos, 3) if ctx.eta_bos is not None else "—"),
@@ -451,6 +466,78 @@ def _sayfa_kalibrasyon(wb, ctx, F):
         ws.conditional_format(bas + 1, 1, bas + len(sirali), 1, {
             "type": "data_bar", "bar_color": RENK.MARKA,
             "bar_border_color": RENK.MARKA, "bar_solid": True})
+
+
+def _sayfa_performans(wb, ctx, F):
+    """Performance (v2.349) — rakip taramasında (21 Eyl 2026) PR "neredeyse
+    evrensel" tek KPI'ydı (Solargis/AlsoEnergy/meteocontrol/Solarify/PVsyst…)
+    ve bizde hiçbir kanalda yoktu. İki tablo (Climate'in iki-tablo deseni):
+
+    · Aylık PR: ölçülü SCADA'dan — PR = (E/kWp) ÷ H_poa (IEC 61724-1
+      final/reference yield oranı, G_STC = 1 kW/m²). POA kapsaması cılız
+      ayda pr HÜCRESI BOŞ (uydurma yok). Kaynak report_service SQL'i.
+    · Kullanılabilirlik: kullanilabilirlik_service (şablon raporla AYNI
+      hesap) — A_t zaman bazlı, A_e enerji bazlı; pencere son SCADA gününe
+      göre son 30 gün.
+
+    Tanımlar tablo altına yazılır — Solargis örneğindeki "başlık sözleşmesi"
+    dersi: sayı, tanımı yanında taşımalı. Veri yoksa sayfa HİÇ eklenmez."""
+    pa = getattr(ctx, "performans_aylik", None)
+    ku = getattr(ctx, "kullanilabilirlik", None)
+    if not pa and not ku:
+        return
+    ws = wb.add_worksheet("Performance")
+    satir = 0
+    if pa:
+        basliklar = ["ay", "uretim_mwh", "poa_kwh_m2", "pr", "olculu_saat"]
+        for j, ad in enumerate(basliklar):
+            ws.write(0, j, ad, F["th"])
+        for i, r in enumerate(pa, start=1):
+            ws.write(i, 0, r["ay"], F["hucre"])
+            ws.write_number(i, 1, float(r["uretim_mwh"]), F["sayi1"])
+            if r.get("poa_kwh_m2") is None:
+                ws.write_blank(i, 2, None, F["hucre"])
+            else:
+                ws.write_number(i, 2, float(r["poa_kwh_m2"]), F["sayi1"])
+            if r.get("pr") is None:
+                ws.write_blank(i, 3, None, F["hucre"])
+            else:
+                ws.write_number(i, 3, float(r["pr"]), F["kesir"])
+            ws.write_number(i, 4, int(r["olculu_saat"]), F["sayi0"])
+        n = len(pa)
+        ws.autofilter(0, 0, n, len(basliklar) - 1)
+        ws.conditional_format(1, 3, n, 3, {
+            "type": "data_bar", "bar_color": RENK.MARKA,
+            "bar_border_color": RENK.MARKA, "bar_solid": True})
+        satir = n + 2
+    if ku:
+        for j, ad in enumerate(["kullanilabilirlik", "deger"]):
+            ws.write(satir, j, ad, F["th"])
+        kalemler = [
+            ("A_t (zaman bazli)", ku.get("A_t"), "kesir"),
+            ("A_e (enerji bazli)", ku.get("A_e"), "kesir"),
+            ("ariza_saat", ku.get("ariza_saat"), "sayi0"),
+            ("kayip_kwh", ku.get("kayip_kwh"), "sayi1"),
+            ("veri_orani", ku.get("veri_orani"), "kesir"),
+            ("pencere_gun", ku.get("pencere_gun"), "sayi0"),
+        ]
+        for i, (ad, v, fmt) in enumerate(kalemler, start=1):
+            ws.write(satir + i, 0, ad, F["alt"])
+            if v is None:
+                ws.write(satir + i, 1, "—", F["hucre"])
+            else:
+                ws.write_number(satir + i, 1, float(v), F[fmt])
+        satir += len(kalemler) + 2
+    ws.write(satir + 1, 0, "PR = (üretim/kWp) ÷ düzlem ışınımı [kWh/m²] — "
+             "IEC 61724-1; POA ölçümü cılız ayda hücre boştur, PR iddia "
+             "edilmez.", F["alt"])
+    ws.write(satir + 2, 0, "Kullanılabilirlik: fizik beklentisi >%10 iken "
+             "üretim ≈0 olan saatler arıza sayılır; şebeke kesintisi olay "
+             "günlüğü olmadan ayrılamaz. Pencere: son ölçüm gününe göre.",
+             F["alt"])
+    ws.set_column(0, 0, 22)
+    ws.set_column(1, 4, 14)
+    ws.freeze_panes(1, 0)
 
 
 def _sayfa_iklim(wb, ctx, F):

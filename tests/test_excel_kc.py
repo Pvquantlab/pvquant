@@ -354,3 +354,42 @@ def test_dogrulama_yoksa_blok_yok_eski_duzen():
                 if isinstance(ws.cell(r, 2).value, str)]
     assert any("uydurulmaz" in m for m in metinler)     # eksik-veri beyanı
     assert any("WMAPE" in m and "naif" in m for m in metinler)  # yöntem sözlüğü
+
+
+# ------------------------------------------------------------ v2.349: rakip paritesi
+def test_gelir_co2_kpi_ve_tarife_kunyesi():
+    """v2.349: gelir tarife tanımlıysa basılır, tanımsızsa '—'; CO₂ faktörü
+    etikette AÇIKÇA gösterilir (belgeli varsayım); künyede Tarife satırı."""
+    ws = _wb(_ctx())["Ozet"]
+    assert ws.cell(5, 10).value == "BEKLENEN GELİR (DÖNEM)"
+    assert ws.cell(6, 10).value == "—"                    # tarife yok → dürüst
+    assert "0,44 t/MWh" in ws.cell(5, 12).value           # faktör etikette
+    ctx = _ctx(gelir={"tip": "sabit", "toplam_tl": 97400, "ort_fiyat_tl_mwh": 2450})
+    wb = _wb(ctx)
+    assert wb["Ozet"].cell(6, 10).value == "97,4 bin TL"
+    m = wb["Metadata"]
+    kv = {m.cell(r, 2).value: m.cell(r, 3).value for r in range(1, 32) if m.cell(r, 2).value}
+    assert kv["Tarife"] == "sabit · ort. 2.450 TL/MWh"
+
+
+def test_performance_sekmesi_pr_ve_kullanilabilirlik():
+    """v2.349: aylık PR tablosu + kullanılabilirlik bloğu; POA'sız ayda pr
+    hücresi BOŞ (uydurma yok); veri yokken sekme HİÇ eklenmez."""
+    pa = [{"ay": "2026-07", "uretim_mwh": 620.4, "poa_kwh_m2": 182.3,
+           "pr": 0.842, "olculu_saat": 744},
+          {"ay": "2026-08", "uretim_mwh": 201.0, "poa_kwh_m2": None,
+           "pr": None, "olculu_saat": 240}]
+    ku = {"durum": "ok", "A_t": 0.996, "A_e": 0.994, "ariza_saat": 3,
+          "kayip_kwh": 410.0, "veri_orani": 0.93, "pencere_gun": 30}
+    ws = _wb(_ctx(performans_aylik=pa, kullanilabilirlik=ku))["Performance"]
+    assert [ws.cell(1, c).value for c in range(1, 6)] == \
+        ["ay", "uretim_mwh", "poa_kwh_m2", "pr", "olculu_saat"]
+    assert abs(ws.cell(2, 4).value - 0.842) < 1e-9
+    assert ws.cell(3, 4).value is None                    # POA'sız ay → boş
+    kalemler = {ws.cell(r, 1).value: ws.cell(r, 2).value for r in range(5, 12)
+                if ws.cell(r, 1).value}
+    assert abs(kalemler["A_t (zaman bazli)"] - 0.996) < 1e-9
+    metin = " ".join(str(ws.cell(r, 1).value) for r in range(12, 16)
+                     if ws.cell(r, 1).value)
+    assert "IEC 61724-1" in metin and "arıza" in metin    # tanımlar sayfada
+    assert "Performance" not in _wb(_ctx()).sheetnames    # veri yok → sekme yok

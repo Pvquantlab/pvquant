@@ -254,6 +254,70 @@ import datetime as _dt
 from pvquant.reporting import build_excel, build_json
 
 
+def _excel_zenginlestir(tenant_id, plant: dict, ctx) -> None:
+    """Excel raporunun rakip-paritesi verileri — HEPSİ mevcut hesap
+    makinelerinden, ikinci gerçek yaratılmaz ("üç yüzey aynı sayıyı söyler"):
+
+    · dogrulama (v2.348): vitrin karnesinin santral-parametreli eşi
+    · kullanilabilirlik (v2.349): kullanilabilirlik_service — pencere son
+      SCADA gününe görelidir, arşiv bayatken de dürüst hesap verir
+    · tarife + gelir (v2.349): tarife_service/piyasa_service — fatura
+      şablonuyla aynı desen; tarife tanımsızsa None (rapor "—" basar)
+    · performans_aylik (v2.349): ölçülü POA'dan aylık PR (IEC 61724-1
+      final/reference yield oranı); POA'sız ay pr=None, uydurma yok.
+
+    Her kalem bağımsız: biri yoksa diğerleri yaşar, hata sayfayı düşürmez
+    sadece o kalemi None bırakır (K-C2 dürüst yokluk deseni)."""
+    from pvquant.services.dogrulama_service import santral_karne_ozeti
+    with tenant_baglami(tenant_id) as s:
+        ctx.dogrulama = santral_karne_ozeti(s, plant["id"])
+        # --- aylık PR: E_ay/kWp ÷ H_poa_ay (G_STC=1 kW/m² ile boyutsuz) ---
+        tz = plant.get("tz") or "Europe/Istanbul"
+        pa = s.execute(text(
+            "SELECT to_char(date_trunc('month', ts_utc AT TIME ZONE :tz), 'YYYY-MM') AS ay,"
+            " sum(power_kw) AS kwh, sum(poa_wm2)/1000.0 AS poa_kwh_m2,"
+            " count(poa_wm2) AS poa_saat, count(*) AS saat "
+            "FROM scada_hourly WHERE plant_id=:p AND flag='valid' "
+            "GROUP BY 1 ORDER BY 1"), {"p": plant["id"], "tz": tz}).mappings().all()
+    kwp = float(plant["capacity_kwp"])
+    ctx.performans_aylik = [{
+        "ay": r["ay"], "uretim_mwh": round(float(r["kwh"] or 0) / 1000.0, 1),
+        "poa_kwh_m2": (round(float(r["poa_kwh_m2"]), 1)
+                       if r["poa_kwh_m2"] is not None else None),
+        # POA kapsaması cılızsa PR İDDİA EDİLMEZ (10 kWh/m² ≈ birkaç gün)
+        "pr": (round((float(r["kwh"]) / kwp) / float(r["poa_kwh_m2"]), 3)
+               if r["kwh"] and r["poa_kwh_m2"] and float(r["poa_kwh_m2"]) > 10.0
+               else None),
+        "olculu_saat": int(r["saat"]),
+    } for r in pa] or None
+    # --- kullanılabilirlik (son 30 arşiv günü) ---
+    try:
+        from pvquant.services import kullanilabilirlik_service
+        k = kullanilabilirlik_service.hesapla(tenant_id, plant, 30)
+        ctx.kullanilabilirlik = k if k.get("durum") == "ok" else None
+    except Exception:   # noqa: BLE001 — kalem düşer, rapor düşmez
+        ctx.kullanilabilirlik = None
+    # --- beklenen gelir (tahmin dönemi, P50 + bant) ---
+    ctx.tarife = None
+    ctx.gelir = None
+    try:
+        from pvquant.services import tarife_service, piyasa_service
+        t = tarife_service.tarife_getir(plant)
+        ctx.tarife = t
+        if t:
+            import pandas as pd
+            h = ctx.hourly["p50_kw"]
+            idx = pd.DatetimeIndex(h.index)
+            idx = idx.tz_localize("UTC") if idx.tz is None else idx
+            ptf = piyasa_service.fiyatlar(idx)["ptf"] if t["tip"] == "ptf" else None
+            g = tarife_service.gelir_df(pd.Series(h.values, index=idx), t, ptf=ptf)
+            ctx.gelir = {"tip": t["tip"],
+                         "toplam_tl": round(float(g["gelir_tl"].sum())),
+                         "ort_fiyat_tl_mwh": round(float(g["fiyat_tl_mwh"].mean()))}
+    except Exception:   # noqa: BLE001 — fiyat çekilemezse gelir iddia edilmez
+        ctx.gelir = None
+
+
 def uret(tenant_id, plant: dict, fmt: str):
     """Tek uretim kapisi (KURAL 2 — sayfada build_* cagrisi olmaz).
     Donus: (bytes, dosya_adi, uretim_ts). ctx None ise ValueError —
@@ -283,13 +347,7 @@ def uret(tenant_id, plant: dict, fmt: str):
         # v2.346: Excel künyesi de rapor kimliği taşır — PDF'le aynı
         # izlenebilirlik (report_log'a düşer, B6 deseninin devamı).
         ctx.report_id = rapor_id_uret(tenant_id, plant, ctx.mode)
-        # v2.348 (rakip analizi bulgusu): panelin YAYIMLADIĞI doğruluk özeti
-        # (WMAPE/nMAE/naife üstünlük/bant kapsaması) Excel'in Ozet sayfasına
-        # da girer — sayı dogrulama_service'ten, vitrinle AYNI hesap; ölçüm
-        # yoksa None kalır ve blok hiç basılmaz (uydurma yok).
-        from pvquant.services.dogrulama_service import santral_karne_ozeti
-        with tenant_baglami(tenant_id) as s:
-            ctx.dogrulama = santral_karne_ozeti(s, plant["id"])
+        _excel_zenginlestir(tenant_id, plant, ctx)   # v2.348 + v2.349
         veri, uzanti = build_excel(ctx), "xlsx"
     elif fmt == "json":
         j = build_json(ctx)
