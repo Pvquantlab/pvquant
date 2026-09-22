@@ -185,7 +185,9 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
           </button>
         )}
         <div className="yan-ozet">
-          <div><div className="et">Santral</div><div className="dg">{sayiTr(Math.max(1, santraller?.length ?? 1))}</div></div>
+          {/* v2.353: Math.max(1, …) tabanı kaldırıldı — sıfır santralde "1"
+              yazıyordu (canlı kurulumda yakalandı). Sayaç gerçeği söyler. */}
+          <div><div className="et">Santral</div><div className="dg">{sayiTr(santraller?.length ?? 0)}</div></div>
           <div><div className="et">Kurulu güç</div>
             <div className="dg">{kwp === null ? "—" : `${sayiTr(kwp)} kWp`}</div></div>
         </div>
