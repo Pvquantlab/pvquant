@@ -350,6 +350,12 @@ def uret(tenant_id, plant: dict, fmt: str):
         _excel_zenginlestir(tenant_id, plant, ctx)   # v2.348 + v2.349
         veri, uzanti = build_excel(ctx), "xlsx"
     elif fmt == "json":
+        # v2.350 (şema 1.2.0): JSON da rapor kimliği taşır (report_log izi) ve
+        # gece karnesinin özetini vitrin/Excel ile AYNI hesaptan alır.
+        ctx.report_id = rapor_id_uret(tenant_id, plant, ctx.mode)
+        from pvquant.services.dogrulama_service import santral_karne_ozeti
+        with tenant_baglami(tenant_id) as s:
+            ctx.dogrulama = santral_karne_ozeti(s, plant["id"])
         j = build_json(ctx)
         veri = j.encode("utf-8") if isinstance(j, str) else j
         uzanti = "json"

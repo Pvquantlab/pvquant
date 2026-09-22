@@ -804,7 +804,9 @@ export function Raporlar({ plantId }: { plantId: string }) {
     // reportlab PDF'i emekli) — karne verisi yoksa karne sayfası düşer.
     ["PDF", "pdf", "Yönetici özeti — müşteri raporunun 6 sayfalık seçkisi: kapak, bulgular, tahmin, karne, kanıt, künye"],
     ["Excel", "xlsx", "Tam veri — saatlik tablo, özet ve metadata"],
-    ["JSON", "json", "API formatı — şema 1.1.0, entegrasyona hazır"],
+    // v2.350: şema 1.2.0 — P10/P90 bantları, doğruluk karnesi, birim/sözleşme
+    // blokları ve yayımlı JSON Schema (/v1/report/json-schema)
+    ["JSON", "json", "API formatı — şema 1.2.0: P10/P90 bantları, doğruluk karnesi, yayımlı JSON Schema"],
   ];
   return (
     <Sayfa baslik="Raporlar"

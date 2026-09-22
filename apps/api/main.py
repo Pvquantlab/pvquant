@@ -1342,6 +1342,16 @@ def healthz():
     return {"ok": True}
 
 
+@app.get("/v1/report/json-schema", tags=["Dış API"])
+def rapor_json_semasi():
+    """v2.350: JSON raporunun yayımlı sözleşmesi (JSON Schema, Pydantic'ten).
+    Kimliksiz — sözleşme sır değildir; entegratör Postman/kod üreticiyle
+    dakikalar içinde bağlanır (rakip taraması: ≥6 sağlayıcı şema yayımlıyor).
+    Raporun kendisi `schema_url` ile buraya işaret eder."""
+    from pvquant.reporting.schemas import ForecastReport
+    return ForecastReport.model_json_schema()
+
+
 # ---------------------------------------------------------------- v2.87
 # SCADA yukleme kapilari — SPA'nin veri isi. Cekirdek boru hatti
 # (preview_file / ingest_file / yukle_ve_kaydet) DEGISMEZ; buradaki

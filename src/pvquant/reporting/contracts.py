@@ -15,7 +15,7 @@ import pandas as pd
 
 # Sema surumu: alan EKLEME minor, kaldirma/yeniden adlandirma major (pratikte
 # yapilmaz — alan 'deprecated' isaretlenir). Tur 6: quality.hybrid blogu -> 1.1.0
-SCHEMA_VERSION = "1.1.0"
+SCHEMA_VERSION = "1.2.0"   # v2.350: bant + sözleşme + birim + karne + kimlik (EKLEME; yalnız quality yuvarlandı)
 
 
 @dataclass

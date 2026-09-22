@@ -144,7 +144,7 @@ def test_json_semasi_ve_gun_sayisi():
     fr = _sentetik_forecast()
     ctx = from_results(fr, _sentetik_calibration(), plant_name="Test")
     d = json.loads(build_json(ctx))
-    assert d["schema_version"] == "1.1.0"   # Tur 6: quality.hybrid eklendi (minor)
+    assert d["schema_version"] == "1.2.0"   # v2.350: bant+sözleşme+karne+kimlik (minor, ekleme)
     assert len(d["daily"]) == 7           # düzeltme 2+3 JSON'da da geçerli
     assert len(d["hourly"]) == 168
     assert d["plant"]["name"] == "Test"
@@ -208,7 +208,7 @@ def _mod_c_ctx():
 def test_json_hybrid_block_when_mode_c():
     import json
     d = json.loads(build_json(_mod_c_ctx()))
-    assert d["schema_version"] == "1.1.0"
+    assert d["schema_version"] == "1.2.0"   # v2.350
     hy = d["quality"]["hybrid"]
     assert hy["holdout_mape_pct"] == 17.6
     assert hy["holdout_rmse_kw"] == 260.0
@@ -251,3 +251,90 @@ def test_json_marjinal_iyilesme_notu():
     import json
     d = json.loads(build_json(ctx))
     assert "marjinal" in d["quality"]["hybrid"]["note"]
+
+
+# ----------------------------------------------------------------- v2.350 · şema 1.2.0
+def _karne_bugune_gore(gun_geri=(3, 2, 1)):
+    """skill_daily fotoğrafı, bugüne göreli (takvim bombası dersi v2.345)."""
+    import datetime as _dt
+    b = _dt.datetime.now(_dt.timezone.utc).date()
+    rows = []
+    for g in gun_geri:
+        t = str(b - _dt.timedelta(days=g))
+        rows.append(dict(date=t, horizon_bucket="0-24", mape=9.0,
+                         skill_vs_naive=40.0, naive_wmape=15.0))
+        rows.append(dict(date=t, horizon_bucket="24-72", mape=12.0,
+                         skill_vs_naive=None, naive_wmape=None))
+    return pd.DataFrame(rows)
+
+
+def test_json_120_sozlesme_bloklari_ve_yuvarlama():
+    """v2.350: sözleşme (damga=aralık başı, PT1H, UTC, eksik=null), birim
+    bloğu, schema_url, report_id (yoksa null) ve quality yuvarlaması."""
+    import json
+    ctx = from_results(_sentetik_forecast(), _sentetik_calibration(), plant_name="Test")
+    ctx.mape_pct = 25.902187499941466
+    ctx.eta_bos = 0.9267636211205322
+    d = json.loads(build_json(ctx))
+    assert d["conventions"] == {"timestamp": "interval_start", "period": "PT1H",
+                                "timezone": "UTC", "missing": "null"}
+    assert d["units"]["p50_kw"] == "kW" and d["units"]["p10_mwh"] == "MWh"
+    assert d["schema_url"] == "/v1/report/json-schema"
+    assert d["report_id"] is None                         # servis iliştirmedi → dürüst null
+    assert d["quality"]["mape_pct"] == 25.9 and d["quality"]["eta_bos"] == 0.927
+    assert d["accuracy"] is None                          # ölçüm özeti yok → null
+    ctx.report_id = "PVQ-2026-09-22-C-0001"
+    assert json.loads(build_json(ctx))["report_id"] == "PVQ-2026-09-22-C-0001"
+
+
+def test_json_bant_yoksa_null_varsa_deger():
+    """Bantsız koşu: p10/p90 alanları VAR ama null (yokluk uydurulmaz);
+    bantlı koşu: saatlik/günlük/toplam üçünde de değer."""
+    import json
+    ctx = from_results(_sentetik_forecast(), None, plant_name="Test")
+    d = json.loads(build_json(ctx))
+    assert d["hourly"][12]["p10_kw"] is None and d["daily"][0]["p90_kwh"] is None
+    assert d["totals"]["p10_mwh"] is None
+    # bant tak: saatlik kolonlar + günlük seriler
+    ctx.hourly["p10_kw"] = ctx.hourly["p50_kw"] * 0.8
+    ctx.hourly["p90_kw"] = ctx.hourly["p50_kw"] * 1.2
+    ctx.daily_p10 = ctx.daily_kwh * 0.8
+    ctx.daily_p90 = ctx.daily_kwh * 1.2
+    d = json.loads(build_json(ctx))
+    h = d["hourly"][12]
+    assert h["p10_kw"] is not None and h["p10_kw"] <= h["p50_kw"] <= h["p90_kw"]
+    g = d["daily"][0]
+    assert abs(g["p10_kwh"] - g["p50_kwh"] * 0.8) < 0.2
+    assert abs(d["totals"]["p10_mwh"] - d["totals"]["p50_mwh"] * 0.8) < 0.05
+
+
+def test_json_dogruluk_karnesi_gunluk_satirlarla():
+    """v2.350: ctx.dogrulama (servis iliştirir) → accuracy özeti + karne günlük
+    satırları; ölçülmeyen gün measured=False + null ile DURUR."""
+    import json
+    ctx = from_results(_sentetik_forecast(), None, plant_name="Test")
+    ctx.dogrulama = {"gun": 46, "son_gun": "2026-08-10", "wmape_pct": 5.5,
+                     "naif_wmape_pct": 29.6, "nmae_pct": 2.2, "beceri_naif_pct": 81,
+                     "bant_kapsama_pct": 91.4, "bant_hedef_pct": 80.0}
+    ctx.karne = _karne_bugune_gore()
+    ctx.karne_kapsama = None
+    a = json.loads(build_json(ctx))["accuracy"]
+    assert a["window_days"] == 46 and a["nmae_pct"] == 2.2
+    assert a["skill_vs_naive_pct"] == 81 and a["band_target_pct"] == 80.0
+    assert len(a["daily"]) == 30                          # 30 takvim satırı sözleşmesi
+    olculu = [r for r in a["daily"] if r["measured"]]
+    bos = [r for r in a["daily"] if not r["measured"]]
+    assert len(olculu) == 3 and olculu[-1]["wmape_0_24"] == 9.0
+    assert bos and bos[0]["wmape_0_24"] is None and bos[0]["skill"] is None
+
+
+def test_json_schema_yayini_ve_ucu():
+    """Pydantic'ten JSON Schema: yeni bloklar tanımlı; kimliksiz uç 200 döner."""
+    from fastapi.testclient import TestClient
+    import apps.api.main as api_main
+    from pvquant.reporting.schemas import ForecastReport
+    s = ForecastReport.model_json_schema()
+    assert {"accuracy", "conventions", "units", "report_id"} <= set(s["properties"])
+    assert "AccuracyDay" in s["$defs"] and "Conventions" in s["$defs"]
+    r = TestClient(api_main.app).get("/v1/report/json-schema")
+    assert r.status_code == 200 and r.json()["properties"]["schema_url"]
