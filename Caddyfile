@@ -1,6 +1,14 @@
 # PVQuant TLS kapisi (v2.64)
 # PVQ_DOMAIN bos/localhost ise: Caddy kendi yerel CA'siyla https://localhost (Mac durusmasi).
 # Sunucuda .env'e PVQ_DOMAIN=app.alanadi.com yazilinca: Let's Encrypt otomatik.
+# v2.352: www DA karsilanir. Runbook DNS adiminda "www" kaydi istiyordu ama
+# Caddy yalniz apex'i taniyordu — ziyaretci www.alanadi.com'a gidince ne
+# sertifika ne yonlendirme vardi (canli kurulumda 22 Eyl 2026'da yakalandi).
+# Kalici yonlendirme apex'e: tek kanonik adres, oturum cerezi bolunmez.
+www.{$PVQ_DOMAIN:localhost} {
+	redir https://{$PVQ_DOMAIN:localhost}{uri} permanent
+}
+
 {$PVQ_DOMAIN:localhost} {
 	# v2.72: API ayni alan adinin /v1/* yolunda — SPA'da CORS derdi dogmaz.
 	# Uc yollari zaten /v1 onekli; soyma (strip) gerekmez.

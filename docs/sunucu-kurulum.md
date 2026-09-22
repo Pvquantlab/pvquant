@@ -12,13 +12,17 @@ Tahmini süre: ~30 dakika (ilk imaj derlemesi dahil).
 
 | Ne | Gereken |
 |---|---|
-| Sunucu | 4+ vCPU, **16 GB RAM** (8 GB asgari), 320 GB SSD, bol/ölçümsüz trafik |
-| İşletim sistemi | Ubuntu 24.04 LTS (veya Debian 12) |
+| Sunucu | 4+ vCPU, **16 GB RAM** (8 GB asgari), 300 GB SSD, bol/ölçümsüz trafik |
+| İşletim sistemi | Ubuntu 22.04 LTS ya da 24.04 LTS (veya Debian 12) |
 | Erişim | root ya da sudo yetkili kullanıcı, SSH anahtarı |
 | Alan adı | pvquant.com — DNS yönetimi Turhost panelinde |
 
 RAM gerekçesi ölçümdür, tahmin değil: worker gece NWP GRIB dosyalarını açarken
 ve LightGBM eğitirken sıçrar; 150 santral hedefi varsa 16 GB'ı düşürme.
+
+**Sanallaştırma KVM olmalı.** Satın almadan önce sağlayıcıya sor; OpenVZ/LXC'de
+Docker çalışmaz. Sunucu gelince ilk komut `systemd-detect-virt` — `kvm` demeli.
+İlk kurulumda (22 Eyl 2026, EclitGO VPS ProMax) doğrulandı.
 
 ---
 
@@ -60,30 +64,79 @@ ufw status
 ```bash
 git clone https://github.com/Pvquantlab/pvquant.git /opt/pvquant
 cd /opt/pvquant
-
 cp .env.ornek .env
-# Sırları ÜRET (kopyalama, üret):
-echo "DB_PASSWORD=$(openssl rand -base64 24)"
-echo "PVQ_JWT_SECRET=$(openssl rand -hex 32)"
-nano .env          # üretilen değerleri ve PVQ_DOMAIN=pvquant.com yaz
 ```
+
+Sırlar **doğrudan dosyaya** üretilir — ekrana basılmaz (v2.352: eski hâli
+`echo` ile yazdırıp elle kopyalatıyordu; sır terminal geçmişine, ekran
+görüntüsüne ve kaydırma tamponuna düşüyordu):
+
+```bash
+sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=$(openssl rand -hex 24)|; \
+        s|^PVQ_JWT_SECRET=.*|PVQ_JWT_SECRET=$(openssl rand -hex 32)|" .env
+chmod 600 .env
+nano .env          # yalnız PVQ_DOMAIN ve (varsa) SMTP alanlarını düzenle
+```
+
+`hex` bilinçli: base64'ün `/` ve `+` karakterleri veritabanı bağlantı
+adresini parçalar (bkz. `.env.ornek` şerhi).
 
 Yayın öncesi kontrol — **0 dönmeli**:
 
 ```bash
-grep -c "DEGISTIR\|pvquant_dev\|dev-secret" .env
+grep -v '^#' .env | grep -c "DEGISTIR\|pvquant_dev\|dev-secret"
+```
+
+`grep -v '^#'` şart: yer tutucu kontrolünün kendisi `.env.ornek`'te yorum
+satırı olarak duruyor ve onu da sayıyordu — eski komut asla 0 dönemezdi.
+
+Sırların yazıldığını **içeriğini göstermeden** doğrula:
+
+```bash
+awk -F= '/^DB_PASSWORD=|^PVQ_JWT_SECRET=/{print $1": "length($2)" karakter"}' .env
+# DB_PASSWORD: 48 karakter · PVQ_JWT_SECRET: 64 karakter
 ```
 
 ---
 
 ## 3. DNS kayıtlarını gir
 
+### ÖNCE isim sunucusu, SONRA kayıt (v2.352 — canlı kurulumda düşülen tuzak)
+
+Turhost iki isim sunucusu ailesi işletir ve **DNS Yönetimi ekranı yalnız
+ikincisine yazar**:
+
+| Aile | Ne zaman |
+|---|---|
+| `cpns1/cpns2.turhost.com` | Turhost'ta **barındırma** hizmeti varsa |
+| `dns1/dns2.turhost.com` | Alan adı **başka sunucuya** yönlendirilecekse ← bizim durum |
+
+Alan adı varsayılan olarak `cpns*` ile gelir. Bu hâldeyken DNS Yönetimi
+ekranına kayıt girersen ekran kabul eder ama **hiçbir yere yayılmaz** —
+`cpns*` o bölgeyi tanımaz, dışarıdan sorgu bomboş döner (SOA bile yok).
+
+**Sıra:** Alan Adı Yönetimi → pvquant.com → **İsim Sunucuları / NS** →
+`dns1.turhost.com` + `dns2.turhost.com` → Güncelle. *Sonra* DNS Yönetimi.
+
+Bölgeyi görebildiğini doğrula (bu komut boş dönerse kayıt girmenin anlamı yok):
+
+```bash
+dig @dns1.turhost.com pvquant.com SOA +short
+```
+
+### Kayıtlar
+
 Turhost panelinde: **Alan Adı Yönetimi → pvquant.com → DNS Yönetimi**
 
 | Tip | Ad | Değer | TTL |
 |---|---|---|---|
 | A | `@` | sunucunun IP'si | 3600 |
-| A | `www` | sunucunun IP'si | 3600 |
+| CNAME | `www` | `pvquant.com` | 3600 |
+
+`www` için A yerine CNAME yeterli; Caddy `www`'yu apex'e kalıcı olarak
+yönlendirir (v2.352 Caddyfile). Hazır gelen park kayıtlarından `mail`/`ftp`
+CNAME ve MX, posta sunucusu kurulana kadar zararsızdır — sunucuda 25/587
+kapalı olduğu için gelen posta gönderene geri döner.
 
 Yayılmayı bekle ve **doğrula** (kendi makinenden):
 
@@ -94,16 +147,45 @@ dig +short pvquant.com A        # sunucu IP'sini döndürmeli
 Bu komut IP'yi döndürmeden sonraki adıma geçme; Caddy sertifika isteğinde
 başarısız olur ve Let's Encrypt hız sınırına takılabilirsin.
 
+**İsim sunucusu değişikliği saatler sürebilir** (kayıt kuruluşu seviyesi);
+A kaydı değişikliği ise dakikalar. Önce NS'i değiştir, beklerken kurulumun
+geri kalanını (imaj derleme, şema, ilk yönetici) bitir — hepsi DNS'siz koşar.
+
 ---
 
 ## 4. İlk yayın
 
+DNS yayılmasını beklerken **Caddy dışındaki her şey kurulabilir** — sertifika
+isteyen tek servis Caddy'dir:
+
 ```bash
 cd /opt/pvquant
-docker compose build            # ilk derleme birkaç dakika sürer
-docker compose up -d
-docker compose exec api python -m alembic upgrade head   # şema
-docker compose ps               # hepsi Up olmalı
+docker compose build                                     # birkaç dakika
+docker compose up -d --wait db                           # şemadan önce sağlıklı olsun
+docker compose run --rm api python -m alembic upgrade head   # şema
+docker compose up -d api web worker                      # Caddy HARİÇ
+docker compose ps                                        # hepsi Up
+curl -s http://127.0.0.1:8000/v1/healthz                 # {"ok":true}
+```
+
+### TLS kapısını DNS'siz sına (v2.352)
+
+Caddy'yi gerçek alan adıyla ilk kez başlatmak, aynı anda hem yönlendirmeyi
+hem sertifikayı sınamak demektir. Yönlendirmede bir kusur varsa Let's
+Encrypt denemeleri boşa gider (saatlik hata kotası vardır). Önce yerel CA
+ile prova et — komut satırındaki değişken `.env`'i geçici olarak ezer,
+dosyaya dokunmaz:
+
+```bash
+PVQ_DOMAIN=localhost docker compose up -d caddy
+curl -sk https://localhost/v1/healthz    # {"ok":true}  → API yolu sağlam
+curl -sk https://localhost/ | head -c 80 # <!doctype html> → panel yolu sağlam
+```
+
+DNS hazır olunca gerçek alan adıyla yeniden oluştur:
+
+```bash
+docker compose up -d          # .env'deki PVQ_DOMAIN ile Caddy'yi tazeler
 ```
 
 Sertifikayı izle (ilk istekte alınır):
@@ -115,11 +197,11 @@ curl -I https://pvquant.com     # 200 dönmeli, sertifika uyarısı OLMAMALI
 
 ### İlk yönetici hesabı
 
+Parola komut satırına YAZILMAZ (v2.352: kabuk geçmişine ve ekran görüntüsüne
+düşerdi) — gizli girdiyle sorulur:
+
 ```bash
-docker compose exec api python -c "
-from pvquant.services import auth_service as au
-tid, uid = au.tenant_ve_admin_olustur('ŞİRKET ADI', 'siz@sirketiniz.com', 'GÜÇLÜ-PAROLA')
-print('kiracı:', tid, 'yönetici:', uid)"
+docker compose exec -it api python -c "import getpass; from pvquant.services import auth_service as au; p=getpass.getpass('Parola: '); tid,uid=au.tenant_ve_admin_olustur('ŞİRKET ADI','siz@sirketiniz.com',p); print('kiraci:',tid,'yonetici:',uid)"
 ```
 
 Girişten sonra panelden **iki adımlı doğrulamayı aç** (Portföy → Hesap ve ekip).
