@@ -302,3 +302,34 @@ export interface TakimUyesi { id: string; email: string; rol: string; aktif: boo
 export interface Isler { isler: { is: string; zaman: string; sure_sn: number | null; tamam: boolean }[];
   pencere_saat: number; gece_calisiyor: boolean; son_gece_isi: string | null; not: string | null;
   bayat_isler?: string[]; }
+
+/** v2.351: JSON raporu (şema 1.2.0) — panel önizlemesi için tip. Alan adları
+ *  dosyayla birebir; makine adları (run.model vb.) burada da ham kalır, görünür
+ *  ad eşlemesi bileşende yapılır. */
+export interface RaporJson {
+  schema_version: string;
+  schema_url: string;
+  report_id: string | null;
+  generated_at: string;
+  conventions: { timestamp: string; period: string; timezone: string; missing: string };
+  units: Record<string, string>;
+  plant: { name: string; capacity_kwp: number; latitude: number; longitude: number; timezone: string };
+  run: { model: string; model_version: string; mode: string; meteo_source: string; run_at: string };
+  totals: { p50_mwh: number; p10_mwh: number | null; p90_mwh: number | null;
+            capacity_factor_pct: number; specific_yield_kwh_kwp: number };
+  daily: { date: string; p50_kwh: number; p10_kwh: number | null; p90_kwh: number | null }[];
+  hourly: { ts: string; p50_kw: number; p10_kw: number | null; p90_kw: number | null; energy_kwh: number }[];
+  accuracy: {
+    window_days: number; last_measured_date: string;
+    wmape_pct: number | null; nmae_pct: number | null; naive_wmape_pct: number | null;
+    skill_vs_naive_pct: number | null; band_coverage_pct: number | null; band_target_pct: number;
+    daily: { date: string; measured: boolean; wmape_0_24: number | null; wmape_24_72: number | null;
+             naive_wmape: number | null; skill: number | null; coverage_pct: number | null }[];
+  } | null;
+  quality: {
+    mape_pct: number | null; deviation_pct: number | null; eta_bos: number | null; bg: number | null;
+    hybrid?: { holdout_mape_pct: number; holdout_rmse_kw: number | null; physics_mape_pct: number | null;
+               improvement_pct: number | null; holdout_hours: number | null; note: string | null };
+    warnings: string[];
+  };
+}

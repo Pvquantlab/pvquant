@@ -7,6 +7,8 @@ import { api, rolum, RaporDenetimHata, type DenetimBulgusu, EslemeHatasi, type E
          type KosuSatiri } from "../../api/client";
 import type { KalibrasyonOzeti, Kayma, Hijyen, EpiasUretim, KayipAgaci, GucMatrisi, Isler } from "../../api/types";
 import { Kart, Sayfa, Kpi, sayiTr } from "./parcalar";
+import { JsonOnizleme } from "./JsonOnizleme";   // v2.351: JSON panel içi önizleme
+import type { RaporJson } from "../../api/types";
 
 function SablonDugmeleri({ plantId }: { plantId: string }) {
   const [hata, setHata] = useState<string | null>(null);
@@ -782,6 +784,14 @@ export function Raporlar({ plantId }: { plantId: string }) {
   // v2.154: hata, basılan düğmenin KARTINDA görünür — eski hâli her hatayı
   // format ızgarasının altına düşürüyordu (pdf16 hatası düğmeden kopuktu).
   const [hataFmt, setHataFmt] = useState<"pdf" | "pdf16" | "xlsx" | "json" | null>(null);
+  // v2.351: JSON önizleme — indirme ham kalır, okunur görünüm panelde açılır
+  const [onizleme, setOnizleme] = useState<RaporJson | null>(null);
+  const onizle = async () => {
+    setUretilen("json-onizle"); setHata(null); setHataFmt(null);
+    try { setOnizleme(await api.raporJson(plantId)); }
+    catch (e) { setHataFmt("json"); setHata(e instanceof Error ? e.message : String(e)); }
+    finally { setUretilen(null); }
+  };
   const hazirla = async (fmt: "pdf" | "pdf16" | "xlsx" | "json") => {
     setUretilen(fmt); setHata(null); setBulgular(null); setHataFmt(null);
     try { await api.raporIndir(plantId, fmt); }
@@ -802,11 +812,12 @@ export function Raporlar({ plantId }: { plantId: string }) {
   const kartlar: [string, "pdf" | "xlsx" | "json", string][] = [
     // v2.344: yönetici özeti artık 16 sayfalık motorun seçkisi (eski
     // reportlab PDF'i emekli) — karne verisi yoksa karne sayfası düşer.
-    ["PDF", "pdf", "Yönetici özeti — müşteri raporunun 6 sayfalık seçkisi: kapak, bulgular, tahmin, karne, kanıt, künye"],
-    ["Excel", "xlsx", "Tam veri — saatlik tablo, özet ve metadata"],
-    // v2.350: şema 1.2.0 — P10/P90 bantları, doğruluk karnesi, birim/sözleşme
-    // blokları ve yayımlı JSON Schema (/v1/report/json-schema)
-    ["JSON", "json", "API formatı — şema 1.2.0: P10/P90 bantları, doğruluk karnesi, yayımlı JSON Schema"],
+    // v2.351: kurumsal ton (kullanıcı geri bildirimi) — sürüm numarası ve şema
+    // jargonu kartta yok; her kart tek cümlede ne işe yaradığını söyler.
+    // Teknik ayrıntı (şema sürümü, sözleşme ucu) dosyanın kendi künyesindedir.
+    ["PDF", "pdf", "Yönetici özeti — dönem beklentisi, olasılık bandı, doğruluk karnesi ve kalibrasyon kanıtı tek belgede."],
+    ["Excel", "xlsx", "Çalışma dosyası — saatlik seri, günlük özet, doğruluk karnesi, performans ve künye; formüller kaynağını gösterir."],
+    ["JSON", "json", "Sistem entegrasyonu — saatlik ve günlük tahmin, olasılık bandı ve doğruluk özeti; sürümlü, belgelenmiş veri sözleşmesi."],
   ];
   return (
     <Sayfa baslik="Raporlar"
@@ -847,10 +858,21 @@ export function Raporlar({ plantId }: { plantId: string }) {
               style={{ width: "100%", marginTop: 14 }}>
               {uretilen === fmt ? "Hazırlanıyor…" : "Hazırla"}
             </button>
+            {fmt === "json" && (
+              <button className="dugme" disabled={uretilen !== null} onClick={onizle}
+                style={{ width: "100%", marginTop: 8 }}>
+                {uretilen === "json-onizle" ? "Yükleniyor…" : "Önizle"}
+              </button>
+            )}
             {hata && hataFmt === fmt && hataSatiri}
           </Kart>
         ))}
       </div>
+      {onizleme && (
+        <Kart baslik="JSON önizleme" style={{ marginBottom: 14 }}>
+          <JsonOnizleme veri={onizleme} onKapat={() => setOnizleme(null)} />
+        </Kart>
+      )}
       <Kart baslik="Geçmiş koşular">
         {kosular.length === 0 ? (
           <p style={{ fontSize: 12.5, color: "var(--soluk)", margin: 0,
@@ -873,7 +895,7 @@ export function Raporlar({ plantId }: { plantId: string }) {
         )}
       </Kart>
       {/* v2.281 (Tablo 3.5 satır 4): şablon raporlar — kısa, tek amaçlı HTML belgeler */}
-      <Kart baslik="Şablon raporlar" sag={<span className="cip">HTML · tek sayfa</span>}>
+      <Kart baslik="Şablon raporlar">
         <SablonDugmeleri plantId={plantId} />
       </Kart>
     </Sayfa>

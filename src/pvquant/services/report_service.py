@@ -34,6 +34,11 @@ def rapor_baglami(tenant_id, plant: dict) -> ReportContext | None:
     daily = h["energy_kwh"].groupby(_gr).sum().loc[_tam]
     import pandas as pd
     daily.index = pd.to_datetime(daily.index)
+    # v2.351: SAATLİK seri de aynı tam-gün penceresine kırpılır — v2.345 yalnız
+    # günlüğü kırpmıştı; JSON/Excel saatlikte 14 gün + 1 artık gece saati (337)
+    # kalıyordu. Şimdi hourly ⊆ tam günler: 336 satır, toplamlar üç kanalda özdeş.
+    _tam_kume = set(_tam)
+    h = h[[d in _tam_kume for d in _gr]]
     with tenant_baglami(tenant_id) as s:
         # v2.94: rapor kimligi KOSUDAN gelir, kalibrasyondan degil.
         # Onceki hal: artifact-yok gerilemesiyle Mod B kosan kosu raporda

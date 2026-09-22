@@ -1,4 +1,4 @@
-import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler } from "./types";
+import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -419,6 +419,34 @@ export const api = {
     const a = document.createElement("a");
     a.href = url; a.download = ad; a.click();
     URL.revokeObjectURL(url);
+  },
+  /** v2.351: JSON raporunu indirmeden panelde önizlemek için — aynı uç
+      (?fmt=json), aynı 401 sözleşmesi; blob yerine çözümlenmiş gövde döner.
+      Her çağrı sunucuda yeni rapor kimliği üretir (report_log izi) — bilinçli:
+      önizleme de bir üretimdir. */
+  raporJson: async (p: string): Promise<RaporJson> => {
+    if (TABAN == null) throw new Error(
+      "Örnek kipte rapor üretimi yok — VITE_API_URL tanımlı değil.");
+    const jeton = localStorage.getItem("pvq_token");
+    const y = await fetch(`${TABAN}/v1/plants/${p}/report?fmt=json`, {
+      headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
+    if (y.status === 401) {
+      cikis(); oturumDusunce?.();
+      return new Promise<RaporJson>(() => {});
+    }
+    if (!y.ok) {
+      let mesaj = `${y.status} rapor`;
+      try {
+        const g = (await y.json()) as { detail?: unknown };
+        if (typeof g.detail === "string") mesaj = g.detail;
+        else if (g.detail && typeof g.detail === "object") {
+          const d = g.detail as { mesaj?: string };
+          if (d.mesaj) mesaj = d.mesaj;
+        }
+      } catch { /* govde yoksa kod kalir */ }
+      throw new Error(mesaj);
+    }
+    return (await y.json()) as RaporJson;
   },
   /** karne: gercek kapisi HENUZ yok — API tarafiyla birlikte dogana
    *  kadar ornekte kalir; var olmayan URL cagrilmaz (v2.73-A karari). */
