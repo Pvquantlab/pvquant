@@ -98,3 +98,20 @@ def test_ambient_kolonu_hala_bulunur():
     m, _ = suggest_mapping(_df(**{"Active Power": 1500.0, "ambient_temp__589": 20.3, "Wind Speed": 3.1}))
     assert m.temp_ambient == "ambient_temp__589"
     assert m.wind_speed == "Wind Speed"
+
+
+def test_kendi_disa_aktarimimiz_kayipsiz_geri_okunur():
+    """v2.357 — yuvarlak yolculuk: "Veriniz sizindir" CSV'sinin başlıkları
+    (ingest_service.DISA_KOLONLAR) eksiksiz eşlenmeli. Canlıda yakalandı:
+    t_air listede yoktu, ortam sıcaklığı sessizce düşüyordu."""
+    m, rapor = suggest_mapping(pd.DataFrame({
+        "ts_utc": ZAMAN, "power_kw": [1.8] * 6, "energy_kwh": [1.8] * 6,
+        "poa_wm2": [850.0] * 6, "t_air": [24.5] * 6, "t_module": [41.2] * 6,
+        "wind_ms": [2.7] * 6}))
+    assert m.timestamp == "ts_utc"
+    assert m.power == "power_kw"
+    assert m.energy == "energy_kwh"
+    assert m.poa_irradiance == "poa_wm2"
+    assert m.temp_ambient == "t_air"
+    assert m.temp_module == "t_module"
+    assert m.wind_speed == "wind_ms"

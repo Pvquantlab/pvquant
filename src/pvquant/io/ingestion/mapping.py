@@ -41,6 +41,9 @@ SYNONYMS: dict[str, list[str]] = {
         "date_time", "log date", "record time",
         # NREL PVDAQ (1853 sistem, tüm dosyalar): 'measured_at' değil 'measured_on'
         "measured_on",
+        # v2.357: KENDİ dışa aktarımımız (ingest_service.DISA_KOLONLAR) geri
+        # okunabilmeli — "Veriniz sizindir" CSV'si yuvarlak yolculukta kayıpsız.
+        "ts_utc",
         # REFPLANT / Türkçe yıllık üretim raporları
         "dönem", "donem", "istatistiksel donem", "istatistiksel dönem",
     ],
@@ -64,6 +67,8 @@ SYNONYMS: dict[str, list[str]] = {
         "wh lifetime", "lifetime energy", "cumulative energy",
         "energyreal_wac_sum_produced", "day_energy", "energy_today",
         "eday", "e_day", "ac_energy", "total_energy_generated",
+        # v2.357: kendi dışa aktarım adı (yuvarlak yolculuk)
+        "energy_kwh",
         # REFPLANT / Türkçe yıllık üretim raporları
         "kazanç", "kazanc", "inverter kazanç", "inverter kazanc",
         "inverter kazancı", "inverter kazanci",
@@ -76,6 +81,8 @@ SYNONYMS: dict[str, list[str]] = {
         # Marka referansı
         "irradiation", "irradiance_poa", "gti", "g_tilted",
         "poa_global", "poa global", "irradiance tilted",
+        # v2.357: kendi dışa aktarım adı (yuvarlak yolculuk)
+        "poa_wm2",
         # REFPLANT Türkçe - "işıma" genel PV konteksinde POA/tilted
         # anlamında kullanılır; kullanıcı onay ekranında düzeltebilir
         "işıma", "isima", "toplam işıma", "toplam isima",
@@ -99,6 +106,10 @@ SYNONYMS: dict[str, list[str]] = {
         # Marka referansı
         "ambient_temperature", "outdoor_temp", "environment temp",
         "t_ambient", "air_temp",
+        # v2.357: kendi dışa aktarım adı 't_air' LİSTEDE YOKTU — "Veriniz
+        # sizindir" CSV'si geri yüklenince ortam sıcaklığı sessizce düşüyordu
+        # (24 Eyl canlı önizlemede yakalandı: "Eşlenmeyen kolonlar: t_air").
+        "t_air",
         # REFPLANT
         "ortalama sicaklik", "ortalama sıcaklık",
     ],
