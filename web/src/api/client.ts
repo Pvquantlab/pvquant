@@ -574,13 +574,15 @@ export const api = {
     try { return await getir<Isler>(`/v1/isler`); } catch { return null; }
   },
   /** v2.300: kayan oturum — geçerli jetonla yenisi (rol/durum sunucudan taze). Sessiz: hata yutulur,
-      401 zaten genel sözleşmeyle girişe düşürür. */
-  oturumYenile: async (): Promise<void> => {
-    if (TABAN == null) return;
+      401 zaten genel sözleşmeyle girişe düşürür.
+      v2.355: yanıt artık hesap kimliğini de taşır (firma/rol/e-posta) — kabuk bunu çizer. */
+  oturumYenile: async (): Promise<{ role: string; firma: string; email: string } | null> => {
+    if (TABAN == null) return null;
     try {
-      const y = await gonder<{ token: string }>(`/v1/oturum/yenile`, "POST");
+      const y = await gonder<{ token: string; role: string; firma: string; email: string }>(`/v1/oturum/yenile`, "POST");
       if (y?.token) localStorage.setItem("pvq_token", y.token);
-    } catch { /* ağ hatası: mevcut jetonla devam */ }
+      return y ? { role: y.role, firma: y.firma, email: y.email } : null;
+    } catch { return null; /* ağ hatası: mevcut jetonla devam */ }
   },
   /** v2.299: ekip yönetimi (yalnız yönetici) + kendi parolası (herkes). */
   takim: async (): Promise<{ uyeler: TakimUyesi[]; roller: string[] }> => {

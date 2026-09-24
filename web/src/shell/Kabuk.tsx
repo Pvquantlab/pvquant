@@ -117,9 +117,15 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
   }, [koyu]);
   // v2.300: kayan oturum — panel açıkken jeton 30 dk'da bir sessizce tazelenir (gece yarısı girişe düşme biter);
   // tarayıcı kapalıyken 12 saatlik ömür değişmez. Pasifleştirilen kullanıcının tazelemesi 401 ile girişe düşer.
+  // v2.355: aynı yanıt hesap kutusunu da doldurur — firma adı KODA GÖMÜLÜ DEĞİL,
+  // sunucudan gelir (gömülü "Meridyen Enerji" her müşterinin panelinde görünüyordu).
+  const [hesap, setHesap] = useState<{ firma: string; rol: string } | null>(null);
   useEffect(() => {
-    api.oturumYenile();
-    const z = setInterval(() => api.oturumYenile(), 30 * 60 * 1000);
+    const tazele = () => api.oturumYenile().then((h) => {
+      if (h) setHesap({ firma: h.firma, rol: h.role });
+    });
+    tazele();
+    const z = setInterval(tazele, 30 * 60 * 1000);
     return () => clearInterval(z);
   }, []);
   useEffect(() => {
@@ -200,10 +206,15 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
         ))}
         <div className="yan-alt">
           <div className="hesap">
-            <div className="avatar" aria-hidden="true">ME</div>
+            {/* v2.355: gerçek kiracı — yüklenene dek sessiz tire, asla başka firmanın adı değil */}
+            <div className="avatar" aria-hidden="true">
+              {(hesap?.firma ?? "").split(/\s+/).slice(0, 2).map((k) => k[0] ?? "").join("").toUpperCase() || "·"}
+            </div>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 12.5, color: "var(--metin)", fontWeight: 600 }}>Meridyen Enerji</div>
-              <div style={{ fontSize: 11.5, color: "var(--yan-metin)" }}>Admin</div>
+              <div style={{ fontSize: 12.5, color: "var(--metin)", fontWeight: 600 }}>{hesap?.firma ?? "—"}</div>
+              <div style={{ fontSize: 11.5, color: "var(--yan-metin)" }}>
+                {hesap ? ({ admin: "Yönetici", editor: "Editör", viewer: "İzleyici" }[hesap.rol] ?? hesap.rol) : "—"}
+              </div>
             </div>
           </div>
           {onCikis && (

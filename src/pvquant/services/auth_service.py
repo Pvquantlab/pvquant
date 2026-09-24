@@ -163,13 +163,18 @@ def oturum_yenile(user_id) -> dict | None:
     tazeleyemez, rolü değişen yeni rolüyle devam eder. Panel açıkken oturum kayarak uzar;
     kapalı tarayıcıda 12 saatlik ömür aynen geçerlidir."""
     with sistem_baglami() as s:
-        row = s.execute(text("SELECT id, tenant_id, role, aktif FROM users WHERE id=:i"), {"i": user_id}).first()
+        # v2.355: firma adı da döner — kabuğun hesap kutusu gerçek kiracıyı yazar
+        # (koda gömülü "Meridyen Enerji" sabiti canlıda Deneme Lab girişiyle yakalandı).
+        row = s.execute(text(
+            "SELECT u.id, u.tenant_id, u.role, u.aktif, u.email, t.name AS firma "
+            "FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.id=:i"),
+            {"i": user_id}).first()
     if row is None or not row.aktif:
         return None
     token = jwt.encode({
         "sub": str(row.id), "tenant_id": str(row.tenant_id), "role": row.role,
         "exp": dt.datetime.utcnow() + dt.timedelta(hours=JWT_SAAT)}, _sir(), algorithm="HS256")
-    return {"token": token, "role": row.role}
+    return {"token": token, "role": row.role, "firma": row.firma, "email": row.email}
 
 
 # ---- v2.335: "şifremi unuttum" — tek kullanımlık sıfırlama jetonu ----------
