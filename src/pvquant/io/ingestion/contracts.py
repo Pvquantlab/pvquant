@@ -94,6 +94,15 @@ class TransformSpec:
         energy_cumulative: Kaynak enerji kolonu kümülatif (ömür) sayaç
             mıydı? True ise diff alınarak aralık enerjisine çevrildi
             (SolarEdge Etotal, Enphase whLifetime deseni).
+        duplicate_policy: Zaman damgası başına birden çok satır (cihaz/
+            invertör bazlı dosya) nasıl birleştirildi: "error" (varsayılan —
+            sessiz karar yok, kullanıcıya sorulur), "sum" (güç/enerji toplanır,
+            ölçümler ortalanır = santral toplamı), "mean" (hepsi ortalanır).
+        rows_per_timestamp: Kaynakta zaman damgası başına ortalama satır.
+            1.0 = santral düzeyi; 22.0 = 22 invertörlü dosya.
+        source_timestep_minutes: KAYNAK verinin adımı. `timestep_minutes`
+            saatliğe indirgeme sonrası ÇIKTI adımıdır (60'a ezilir); kaynak
+            adımı burada korunur.
     """
 
     source_timezone: Optional[str] = None
@@ -104,6 +113,10 @@ class TransformSpec:
     timestep_minutes: int = 60
     energy_to_power: bool = False
     energy_cumulative: bool = False
+    # --- 20 Eyl 2026: cihaz bazlı satırlar (Bulgu 1) ve kaynak adımı (Bulgu 2) ---
+    duplicate_policy: str = "error"                # "error"|"sum"|"mean"
+    rows_per_timestamp: float = 1.0
+    source_timestep_minutes: Optional[int] = None
 
     def to_dict(self) -> dict:
         return asdict(self)

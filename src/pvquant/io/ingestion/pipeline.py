@@ -287,6 +287,7 @@ def ingest_file(
     source_timezone: str,
     file_format: FileFormat | None = None,
     mapping: ColumnMapping | None = None,
+    duplicate_policy: str = "error",
 ) -> IngestionResult:
     """Faz 2: onaylanmış kararlarla dönüştür + doğrula.
 
@@ -300,6 +301,9 @@ def ingest_file(
         file_format, mapping: Preview'dan gelen (gerekirse kullanıcı
             tarafından düzeltilmiş) kararlar. None ise otomatik
             (self-healing dahil).
+        duplicate_policy: Zaman damgası başına birden çok satır varsa
+            (invertör bazlı dosya): "error" durur ve sorar (varsayılan),
+            "sum" santral toplamı, "mean" ortalama. Bkz. transform.
 
     Returns:
         IngestionResult — data, karar izleri ve kalite karnesi.
@@ -307,6 +311,7 @@ def ingest_file(
     Raises:
         MappingFailedError: file_format/mapping None ve otomatik
             eşleme kurulamazsa
+        ValueError: çift zaman damgası varken duplicate_policy="error" ise
     """
     path = Path(path)
 
@@ -325,6 +330,7 @@ def ingest_file(
         capacity_kwp=capacity_kwp,
         source_timezone=source_timezone,
         decimal=fmt.decimal,
+        duplicate_policy=duplicate_policy,
     )
     flagged, report = validate(
         canonical,
@@ -333,6 +339,14 @@ def ingest_file(
         longitude=longitude,
         dst_flags=dst_flags,
     )
+    # Cihaz bazlı satırlar birleştirildiyse bu SESSİZ kalmamalı: kullanıcı
+    # santral serisinin nasıl kurulduğunu karnede görmeli (Bulgu 1).
+    if spec.rows_per_timestamp > 1.0:
+        report.warnings.append(
+            f"Zaman damgası başına {spec.rows_per_timestamp:.1f} satır bulundu "
+            f"(cihaz/invertör bazlı dosya); satırlar '{spec.duplicate_policy}' "
+            "politikasıyla santral serisine birleştirildi."
+        )
     return IngestionResult(
         data=flagged, file_format=fmt, mapping=mapping,
         transform=spec, report=report,

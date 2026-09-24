@@ -39,6 +39,8 @@ SYNONYMS: dict[str, list[str]] = {
         # Marka referansı
         "reading_time", "measured_at", "sample time", "log time",
         "date_time", "log date", "record time",
+        # NREL PVDAQ (1853 sistem, tüm dosyalar): 'measured_at' değil 'measured_on'
+        "measured_on",
         # REFPLANT / Türkçe yıllık üretim raporları
         "dönem", "donem", "istatistiksel donem", "istatistiksel dönem",
     ],
@@ -84,11 +86,16 @@ SYNONYMS: dict[str, list[str]] = {
         "yatay isinim", "global isinim", "pyranometer horizontal",
         "g_horizontal", "horizontal_irradiance", "irradiance_ghi",
         "solar_ghi", "shortwave_radiation",
+        # Sungrow iSolarCloud: 'Transient/Daily/Total Horizontal Irradiation' —
+        # '-ation' eki yüzünden yukarıdakilerin hiçbiri eşleşmiyor, POA'ya kayıyordu (Bulgu 8A)
+        "horizontal irradiation", "global horizontal irradiation",
     ],
     "temp_ambient": [
         "ambient", "ambient temperature", "air temperature", "t_amb",
         "tamb", "ortam sicakligi", "hava sicakligi", "dis sicaklik",
-        "umgebungstemperatur", "temperatura ambiente", "temp",
+        "umgebungstemperatur", "temperatura ambiente",
+        # DİKKAT: çıplak 'temp' BURAYA EKLENMEZ — her sıcaklık kolonunu
+        # (CellTemp, pv_temperature, ModuleTemperature…) ortam sanıyordu (Bulgu 8C)
         # Marka referansı
         "ambient_temperature", "outdoor_temp", "environment temp",
         "t_ambient", "air_temp",
@@ -102,17 +109,62 @@ SYNONYMS: dict[str, list[str]] = {
         # Marka referansı
         "module_temp", "panel_temp", "t_module", "temp_module",
         "backsheet_temp", "cell_temp", "pv_temp",
+        # skytron PVGuard (Almanca)
+        "modultemperatur", "modul temperatur",
     ],
     "wind_speed": [
-        "wind", "wind speed", "ws", "ruzgar", "ruzgar hizi",
+        # DİKKAT: çıplak 'wind' BURAYA EKLENMEZ — üretim dosyalarında 'wind'
+        # rüzgâr SANTRALİ üretimidir (MW), hız değil (Bulgu 8C, Türkiye ülke geneli)
+        "wind speed", "ws", "ruzgar", "ruzgar hizi",
         "windgeschwindigkeit", "velocidad del viento",
         # Marka referansı
         "wind_speed", "windspeed", "ws_10m", "wind_ms",
     ],
 }
 
-#: Birim/parantez eklerini soyan desen: "Active Power(kW)" → "active power"
-_UNIT_SUFFIX = re.compile(r"[\(\[\{].*?[\)\]\}]")
+#: Alan bazlı DIŞLAMA: kolon adı bunlardan birini içeriyorsa o alana aday
+#: olamaz. Hepsi envanterde ölçülmüş gerçek çarpışmalar (Bulgu 7, 8A, 8C):
+#: power_factor → power (2000x hata), Horizontal Irradiation → poa,
+#: CellTemp → temp_ambient, wind (santral üretimi) → wind_speed.
+_EXCLUDE: dict[str, list[str]] = {
+    "power": ["power factor", "reactive", "apparent", "radiation", "irradia",
+              "cos phi", "derating", "reduction"],
+    "energy": ["radiation", "irradia", "einstrahlung"],
+    "poa_irradiance": ["horizontal", "ghi", "diffuse", "direct normal", "dni", "dhi"],
+    "ghi": ["tilt", "poa", "plane of array"],
+    "temp_ambient": ["module", "modul", "cell", "panel", "pv", "bom", "inverter",
+                     "internal", "cabinet", "heat sink", "battery"],
+    "temp_module": ["ambient", "air", "ortam", "inverter", "internal", "cabinet",
+                    "battery"],
+    "wind_speed": ["power", "energy", "generation", "direction", "dir", "guc",
+                   "uretim"],
+}
+
+#: Parantez/köşeli ayraç içi yalnızca BİRİM gibi görünüyorsa soyulur
+#: ("(kW)", "[W/m2]", "(°C)"); sözcük taşıyorsa korunur ("(PV module)",
+#: "(reactive)"). Koşulsuz silmek 'Temp. (PV module)' → 'temp' yapıp modül
+#: sıcaklığını 1.0 güvenle ortam sıcaklığı olarak eşliyordu (Bulgu 8B).
+_BRACKET = re.compile(r"[\(\[\{]([^\)\]\}]*)[\)\]\}]")
+_UNIT_LIKE = re.compile(
+    r"^\s*[kMGmµ]?(w|wh|va|var|v|a|hz|°?c|%|m/s|w/m[²2]|k?wh/m[²2]|mj/m[²2]|ms|s|min|h)\s*$",
+    re.IGNORECASE,
+)
+
+
+def _strip_units(s: str) -> str:
+    """Birim parantezlerini atar, anlam taşıyan parantez içini sözcük olarak bırakır."""
+    def _repl(m: re.Match) -> str:
+        inner = m.group(1)
+        return " " if _UNIT_LIKE.match(inner) else f" {inner} "
+    return _BRACKET.sub(_repl, s)
+
+
+def _excluded(col_norm: str, field: str) -> bool:
+    """Normalize edilmiş kolon adı bu alan için dışlanmış mı?"""
+    for x in _EXCLUDE.get(field, ()):
+        if re.search(rf"\b{re.escape(x)}\b", col_norm) or (len(x) >= 6 and x in col_norm):
+            return True
+    return False
 
 #: Fuzzy eşleşme eşiği (0-100). Marka biçim varyantlarını yakalar
 #: ("AC_POWER" ↔ "ac power"), anlamsal çeviri yapmaz.
@@ -135,8 +187,7 @@ def normalize_name(name: str) -> str:
     Küçük harf, Türkçe/aksanlı karakterler sadeleştirilir (İ→i, ş→s),
     birim ekleri ve fazla boşluklar atılır, alt çizgi boşluğa çevrilir.
     """
-    s = str(name)
-    s = _UNIT_SUFFIX.sub(" ", s)
+    s = _strip_units(str(name))
     s = s.replace("_", " ").replace("-", " ").replace(".", " ")
     # Türkçe özel: 'ı' aksan ayrıştırmasında kaybolur, önce elle çevir
     s = s.replace("ı", "i").replace("İ", "i")
@@ -145,18 +196,60 @@ def normalize_name(name: str) -> str:
     return re.sub(r"\s+", " ", s).strip().lower()
 
 
-def _match_score(col_norm: str, synonyms: list[str]) -> float:
-    """Eşleşme gücü: tam=1.0, kelime sınırlı içerme=0.8, düz içerme=0.6,
-    fuzzy yedek=0.5 (biçim varyantı yakalar)."""
+#: SYNONYMS'in normalize edilmiş kopyası (alt çizgi → boşluk, aksan atılır).
+#: Kolon adı normalize edilip eşanlamlı HAM bırakılınca "module_temp" ile
+#: "module temp" hiçbir aşamada tutmuyor, yalnız fuzzy yedeğine (0.5)
+#: düşüyordu — 'measured_on' dahil. Sözlük burada bir kez normalize edilir.
+_SYNONYMS_NORM: dict[object, list[str]] = {}
+
+
+def _syn_norm(field: str | None, synonyms: list[str]) -> list[str]:
+    """Alanın eşanlamlılarını normalize edilmiş hâliyle döner (önbellekli)."""
+    key = field if field is not None else id(synonyms)
+    cached = _SYNONYMS_NORM.get(key)
+    if cached is None:
+        cached = list(dict.fromkeys(normalize_name(s) for s in synonyms))
+        _SYNONYMS_NORM[key] = cached
+    return cached
+
+
+def _match_detail(col_norm: str, synonyms: list[str],
+                  field: str | None = None) -> tuple[float, int]:
+    """(skor, özgüllük) döner.
+
+    Skor: tam=1.0, kelime sınırlı içerme=0.8, sırasız token eşleşmesi=0.7
+    ("module temp" ⊂ "temp pv module"), düz içerme=0.6, fuzzy yedek=0.5.
+    Özgüllük = eşleşen eşanlamlının uzunluğu: eşit skorda daha uzun (daha
+    özgül) eşanlamlı kazanır. Eskiden eşitlik alfabetik kolon adına düşüyor,
+    'power_factor__596' > 'ac_power__584' olduğu için güç faktörü güç
+    seçiliyordu (Bulgu 7).
+    `field` verilirse _EXCLUDE uygulanır; dışlanan ad o alana aday olamaz.
+    """
+    if field is not None and _excluded(col_norm, field):
+        return 0.0, 0
+    synonyms = _syn_norm(field, synonyms)
     for syn in synonyms:
         if col_norm == syn:
-            return 1.0
+            return 1.0, len(syn)
+    best: tuple[float, int] = (0.0, 0)
     for syn in synonyms:
         if re.search(rf"\b{re.escape(syn)}\b", col_norm):
-            return 0.8
+            best = max(best, (0.8, len(syn)))
+    if best[0]:
+        return best
+    # Sırasız token eşleşmesi — parantez içi sözcükler korununca sıra bozulur
+    tokens = set(col_norm.split())
+    for syn in synonyms:
+        parts = syn.split()
+        if len(parts) >= 2 and all(len(p) >= 3 for p in parts) and set(parts) <= tokens:
+            best = max(best, (0.7, len(syn)))
+    if best[0]:
+        return best
     for syn in synonyms:
         if syn in col_norm and len(syn) >= 4:
-            return 0.6
+            best = max(best, (0.6, len(syn)))
+    if best[0]:
+        return best
     # Fuzzy yedek — sadece biçim varyantları için (case, underscore, birim)
     best_fuzzy = 0.0
     for syn in synonyms:
@@ -165,7 +258,12 @@ def _match_score(col_norm: str, synonyms: list[str]) -> float:
         s = _fuzzy_score(col_norm, syn)
         if s > best_fuzzy:
             best_fuzzy = s
-    return 0.5 if best_fuzzy >= _FUZZY_THRESHOLD else 0.0
+    return (0.5, 0) if best_fuzzy >= _FUZZY_THRESHOLD else (0.0, 0)
+
+
+def _match_score(col_norm: str, synonyms: list[str]) -> float:
+    """Eşleşme gücü (0-1). Geriye dönük uyumlu sarmalayıcı; dışlama uygulamaz."""
+    return _match_detail(col_norm, synonyms)[0]
 
 
 def _content_check(series: pd.Series, field: str) -> float:
@@ -197,22 +295,25 @@ def suggest_mapping(df: pd.DataFrame) -> tuple[ColumnMapping, list[str]]:
         ValueError: timestamp veya güç/enerji kaynağı bulunamazsa —
             bu durumda UI kullanıcıdan manuel eşleme istemelidir.
     """
-    candidates: list[tuple[float, str, str]] = []  # (skor, alan, kolon)
-    for col in df.columns:
+    # (skor, özgüllük, -kolon sırası, alan, kolon): eşit skorda daha özgül
+    # eşanlamlı, o da eşitse dosyada ÖNCE gelen kolon kazanır. Alan ve kolon
+    # adı sıralamaya etki etmez — alfabetik şansa bırakılmaz (Bulgu 7).
+    candidates: list[tuple[float, int, int, str, str]] = []
+    for idx, col in enumerate(df.columns):
         col_norm = normalize_name(col)
         for field, syns in SYNONYMS.items():
-            name_score = _match_score(col_norm, syns)
+            name_score, specificity = _match_detail(col_norm, syns, field)
             if name_score == 0.0:
                 continue
             score = name_score * max(_content_check(df[col], field), 0.1)
             if score > 0.10:  # fuzzy yedeğine izin vermek için eşiği düşürdük
-                candidates.append((score, field, str(col)))
+                candidates.append((score, specificity, -idx, field, str(col)))
 
     # Güçlü iddialar önce; her alan ve her kolon en fazla bir kez
     candidates.sort(reverse=True)
     assigned_fields: dict[str, tuple[str, float]] = {}
     used_columns: set[str] = set()
-    for score, field, col in candidates:
+    for score, _specificity, _neg_idx, field, col in candidates:
         if field in assigned_fields or col in used_columns:
             continue
         assigned_fields[field] = (col, round(score, 2))

@@ -212,28 +212,75 @@ def normalize_irradiance_wm2(
     return s, "W/m2", "varsayilan"
 
 
+#: Zaman damgası başına birden çok satır için izin verilen politikalar.
+DUPLICATE_POLICIES = ("error", "sum", "mean")
+
+
+def _collapse_duplicate_timestamps(
+    raw: pd.DataFrame, dst_series: pd.Series, policy: str
+) -> tuple[pd.DataFrame, pd.Series]:
+    """Aynı zaman damgasındaki satırları tek satıra indirger.
+
+    "sum": güç ve enerji TOPLANIR (cihaz → santral), ölçümler ortalanır.
+    "mean": hepsi ortalanır (eski örtük davranış; artık yalnız açıkça).
+    Tamamı NaN olan bir zaman damgası NaN kalır (min_count=1) — 0 uydurulmaz.
+    """
+    if policy == "sum":
+        sum_cols = [c for c in ("power_raw", "energy_raw") if c in raw.columns]
+        mean_cols = [c for c in raw.columns if c not in sum_cols]
+        parts = []
+        if sum_cols:
+            parts.append(raw[sum_cols].groupby(level=0).sum(min_count=1))
+        if mean_cols:
+            parts.append(raw[mean_cols].groupby(level=0).mean())
+        raw = pd.concat(parts, axis=1)[list(raw.columns)]
+    else:  # "mean"
+        raw = raw.groupby(level=0).mean()
+    return raw, dst_series.groupby(level=0).max()
+
+
 def transform_to_canonical(
     df: pd.DataFrame,
     mapping: ColumnMapping,
     capacity_kwp: float,
     source_timezone: str,
     decimal: str = ".",
+    duplicate_policy: str = "error",
 ) -> tuple[pd.DataFrame, TransformSpec, pd.Series]:
     """Eşlenmiş ham frame'i kanonik saatlik UTC frame'e dönüştürür.
 
     Kanonik kolonlar: power_kw (+ opsiyonel energy_kwh, poa_global,
     t_air, t_module, wind_speed, ghi). Index: saatlik, UTC, tz-aware.
 
+    Args:
+        duplicate_policy: Zaman damgası başına birden çok satır varsa
+            (cihaz/invertör bazlı dosya) ne yapılacağı. "error" (varsayılan):
+            durur ve kullanıcıya sorar — hiçbir aşama sessiz karar vermez.
+            "sum": güç/enerji toplanır (santral toplamı). "mean": ortalanır.
+
     Returns:
         (canonical_df, TransformSpec, dst_flag_hourly)
+
+    Raises:
+        ValueError: duplicate_policy="error" iken çift zaman damgası varsa.
 
     Not: Bu fonksiyon satır SİLMEZ; çevrilemeyenler NaN kalır ve
     doğrulama aşaması bayraklar. Tek istisna zamanı çözülemeyen
     satırlardır (index'siz satır var olamaz).
-    """
-    utc_index, dst_flag = parse_timestamps(df[mapping.timestamp], source_timezone)
 
-    work = pd.DataFrame(index=utc_index)
+    Sıra ÖNEMLİDİR (20 Eyl 2026, Bulgu 1): cihaz satırları önce santral
+    serisine birleştirilir, birim ve kümülatif tespiti ONDAN SONRA yapılır.
+    Eskiden 22 invertörlü bir dosya resample'da sessizce ORTALANIYOR,
+    santral 23x küçük çıkıyor, iç içe geçmiş sayaçlar kümülatif tespitini
+    bozuyor ve tepe/kapasite oranı birimi yanlış seçtiriyordu — sıfır uyarıyla.
+    """
+    if duplicate_policy not in DUPLICATE_POLICIES:
+        raise ValueError(
+            f"duplicate_policy {duplicate_policy!r} tanınmıyor; "
+            f"seçenekler: {DUPLICATE_POLICIES}"
+        )
+
+    utc_index, dst_flag = parse_timestamps(df[mapping.timestamp], source_timezone)
     opt_map = {
         "poa_global": mapping.poa_irradiance,
         "t_air": mapping.temp_ambient,
@@ -241,19 +288,46 @@ def transform_to_canonical(
         "wind_speed": mapping.wind_speed,
         "ghi": mapping.ghi,
     }
+    spec = TransformSpec(source_timezone=source_timezone,
+                         duplicate_policy=duplicate_policy)
 
-    spec = TransformSpec(source_timezone=source_timezone)
-
-    # --- Güç kaynağı: doğrudan güç mü, enerjiden türetme mi? ---
+    # --- 1. Ham sayısal seriler: henüz birim/kümülatif kararı YOK ---
+    raw = pd.DataFrame(index=utc_index)
     if mapping.power is not None:
-        power_raw = coerce_numeric(df[mapping.power], decimal)
-        power_raw.index = utc_index
-        unit = detect_power_unit(power_raw, capacity_kwp, mapping.power)
-        work["power_kw"] = power_raw * _UNIT_FACTORS[unit]
+        raw["power_raw"] = coerce_numeric(df[mapping.power], decimal).values
+    if mapping.energy is not None:
+        raw["energy_raw"] = coerce_numeric(df[mapping.energy], decimal).values
+    for canon, src in opt_map.items():
+        if src is not None:
+            raw[canon] = coerce_numeric(df[src], decimal).values
+    dst_series = pd.Series(dst_flag.values, index=utc_index)
+
+    # Zamanı çözülemeyen satırlar index'lenemez → düş (rapora yazılır)
+    valid_time = raw.index.notna()
+    raw = raw[valid_time].sort_index(kind="stable")
+    dst_series = dst_series[valid_time].sort_index(kind="stable")
+
+    # --- 2. Zaman damgası başına birden çok satır? (cihaz/invertör bazlı) ---
+    n_rows, n_ts = len(raw), raw.index.nunique()
+    spec.rows_per_timestamp = round(n_rows / n_ts, 3) if n_ts else 1.0
+    if n_rows > n_ts:
+        if duplicate_policy == "error":
+            raise ValueError(
+                f"Zaman damgası başına {spec.rows_per_timestamp:.1f} satır var "
+                f"({n_rows} satır, {n_ts} zaman damgası): dosya cihaz/invertör "
+                "bazlı görünüyor. Sessizce birleştirilmez — santral toplamı için "
+                "duplicate_policy='sum', ortalama için 'mean' verin."
+            )
+        raw, dst_series = _collapse_duplicate_timestamps(raw, dst_series, duplicate_policy)
+
+    # --- 3. Güç kaynağı: artık SANTRAL düzeyinde seri ---
+    work = pd.DataFrame(index=raw.index)
+    if "power_raw" in raw.columns:
+        unit = detect_power_unit(raw["power_raw"], capacity_kwp, mapping.power)
+        work["power_kw"] = raw["power_raw"] * _UNIT_FACTORS[unit]
         spec.power_unit = unit
-        if mapping.energy is not None:
-            e_raw = coerce_numeric(df[mapping.energy], decimal)
-            e_raw.index = utc_index
+        if "energy_raw" in raw.columns:
+            e_raw = raw["energy_raw"]
             # Kümülatif tespiti güç varken de kayda geçer (denetim izi)
             if _is_cumulative_energy(e_raw, mapping.energy):
                 spec.energy_cumulative = True
@@ -262,49 +336,37 @@ def transform_to_canonical(
                 work["energy_kwh"] = e_raw
     else:
         # Yalnız enerji var: kümülatif mi kontrol et
-        energy_raw = coerce_numeric(df[mapping.energy], decimal)
-        energy_raw.index = utc_index
-
+        energy_raw = raw["energy_raw"]
         if _is_cumulative_energy(energy_raw, mapping.energy):
-            # Ömür sayacı: aralık enerjisine çevir
             spec.energy_cumulative = True
-            interval_energy = energy_raw.diff().clip(lower=0)
-            work["energy_kwh"] = interval_energy
+            interval_energy = energy_raw.diff().clip(lower=0)   # ömür sayacı → aralık
         else:
             interval_energy = energy_raw
-            work["energy_kwh"] = interval_energy
-
-        step_min = detect_timestep_minutes(utc_index.dropna())
+        work["energy_kwh"] = interval_energy
+        step_min = detect_timestep_minutes(raw.index)
         work["power_kw"] = energy_to_power_kw(interval_energy, step_min)
         spec.energy_to_power = True
         spec.power_unit = "kW"
 
-    for canon, src in opt_map.items():
-        if src is not None:
-            s = coerce_numeric(df[src], decimal)
-            s.index = utc_index
+    for canon in opt_map:
+        if canon in raw.columns:
+            s = raw[canon]
             # --- 14 Tem 2026: isinim birim normalizasyonu (B1) ---
             if canon in ("poa_global", "ghi"):
-                _step_irr = detect_timestep_minutes(
-                    pd.DatetimeIndex(utc_index).dropna()
-                )
-                s, _iu, _isrc = normalize_irradiance_wm2(s, src, _step_irr)
+                _step_irr = detect_timestep_minutes(raw.index)
+                s, _iu, _isrc = normalize_irradiance_wm2(s, mapping.poa_irradiance
+                                                         if canon == "poa_global" else mapping.ghi,
+                                                         _step_irr)
                 if canon == "poa_global":
                     spec.irradiance_unit = _iu
                     spec.irradiance_unit_source = _isrc
             work[canon] = s
 
-    # DST bayrağını index'e taşı (NaT'ler birazdan düşecek)
-    dst_series = pd.Series(dst_flag.values, index=utc_index)
-
-    # Zamanı çözülemeyen satırlar index'lenemez → düş (rapora yazılır)
-    valid_time = work.index.notna()
-    work = work[valid_time].sort_index()
-    dst_series = dst_series[valid_time].sort_index()
-
-    # --- Saatliğe indirgeme ---
-    spec.timestep_minutes = detect_timestep_minutes(work.index)
-    if spec.timestep_minutes < 60:
+    # --- 4. Saatliğe indirgeme — KAYNAK adımı kaybolmasın (Bulgu 2) ---
+    source_step = detect_timestep_minutes(work.index)
+    spec.source_timestep_minutes = source_step
+    spec.timestep_minutes = source_step
+    if source_step < 60:
         agg = {c: "mean" for c in work.columns}
         if "energy_kwh" in work.columns:
             agg["energy_kwh"] = "sum"           # enerji TOPLANIR

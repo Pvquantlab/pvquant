@@ -53,6 +53,12 @@ def detect_encoding(path: Path, sample_bytes: int = 65536) -> str:
     güvenilirdir. latin-1 asla hata vermez, o yüzden en sonda durur.
     """
     raw = path.read_bytes()[:sample_bytes]
+    # UTF-16 BOM (SMA Sunny Explorer dışa aktarımı): cp1254 ve latin-1 tek
+    # baytlı olduğu için bu baytları HATASIZ "çözer" ve her harfin arasına
+    # sıfır bayt girmiş tek kolonlu çöp üretir. Deneme-yanılma bunu yakalayamaz;
+    # BOM'a bakılır. "utf-16" codec'i BOM'u yutar ve bayt sırasını kendi seçer.
+    if raw[:2] in (b"\xff\xfe", b"\xfe\xff"):
+        return "utf-16"
     for enc in ENCODING_CANDIDATES:
         try:
             raw.decode(enc)

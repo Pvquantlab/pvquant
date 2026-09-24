@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "web", "run", "dev"],
+      "autoPort": true
+    },
+    {
+      "name": "tasarim-mockup",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8710", "--directory", "docs/design/redesign-2026"],
+      "port": 8710,
+      "autoPort": false
+    }
+  ]
+}
