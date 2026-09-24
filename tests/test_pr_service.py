@@ -56,3 +56,25 @@ def istemci(monkeypatch):
 def test_pr_kapisi(istemci):
     r = istemci.get(f"/v1/plants/{PLANT}/pr?gun=60"); assert r.status_code == 200 and r.json()["PR"] == 0.81 and r.json()["pencere_gun"] == 60
     assert istemci.get(f"/v1/plants/{PLANT}/pr?gun=3").status_code == 422
+
+
+def test_yil_sinirini_kesen_pencere_dejenere_grup_uretmez():
+    """v2.358 — canlıda yakalandı (PVDAQ Golden 33): son ölçüme bağlı 30 günlük
+    pencere yıl sınırını kesince donem="YE" pencereyi ikiye böler; ikinci grup
+    1 Ocak'ın birkaç gece saatinden ibaret kalır (Y_r≈0) ve iloc[-1] oradan
+    PR_sicaklik %1.088 okuyordu. Özet artık toplam-ağırlıklı."""
+    ts = pd.date_range("2026-12-04", "2027-01-01 06:00", freq="h", tz="UTC")
+    g = np.clip(np.sin((ts.hour - 6) / 12 * np.pi), 0, None)
+    poa_s = 700 * g
+    tm = 5 + 25 * g                                     # kış: gece 5°, öğle 30°
+    guc = CAP * poa_s / 1000 * 0.85 * (1 - 0.0035 * (tm - 25))
+    # yıl dönümünden sonraki kuyruk: yalnız gece saatleri, kırıntı güç
+    kuyruk = ts >= pd.Timestamp("2027-01-01", tz="UTC")
+    poa_s = np.where(kuyruk, 0.3, poa_s)
+    guc = np.where(kuyruk, 0.02, guc)
+    r = pr_hesapla(pd.DataFrame({
+        "ts_utc": ts, "power_kw": guc, "poa_wm2": poa_s, "t_module": tm}), CAP)
+    assert r["durum"] == "ok"
+    assert 0.7 < r["PR"] < 0.95
+    # hatalı hâlinde burası 10'un üstünde çıkıyordu
+    assert r["PR_sicaklik"] is not None and 0.7 < r["PR_sicaklik"] < 1.0

@@ -39,7 +39,11 @@ def pr_hesapla(df: pd.DataFrame, capacity_kwp: float, min_poa_orani: float = 0.9
     y = iec61724.yillik_ozet(k)
     def _f(v):
         return None if v is None or (isinstance(v, float) and np.isnan(v)) else round(float(v), 3)
-    pr_w = k["PR_yillik_agirlikli"].iloc[-1] if t_cell is not None and "PR_yillik_agirlikli" in k else None
+    # v2.358: SON SATIR DEĞİL, toplam-ağırlıklı özet. Kayan 30 günlük pencere
+    # yıl sınırını kesince donem="YE" pencereyi böler ve son grup 1 Ocak'ın
+    # birkaç gece saatinden ibaret kalır (Y_r≈0.0015) — iloc[-1] o dejenere
+    # gruptan PR %1.088 okuyordu (24 Eyl canlı, PVDAQ Golden 33'te yakalandı).
+    pr_w = y.get("PR_yillik_agirlikli") if t_cell is not None else None
     return {"durum": "ok", "gun": gun, "saat": int(len(kesit)), "poa_orani": round(oran, 3),
             "Y_r": _f(y["Y_r"]), "Y_f": _f(y["Y_f"]), "PR": _f(y["PR"]),
             "PR_sicaklik": _f(pr_w), "CF": _f(y["CF"]), "t_ref": _f(k.attrs.get("t_ref"))}

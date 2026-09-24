@@ -91,6 +91,17 @@ def yillik_ozet(kpi_aylik: pd.DataFrame) -> pd.Series:
     Y_f = kpi_aylik["Y_f"].sum(); Y_r = kpi_aylik["Y_r"].sum()
     out = {"Y_r": Y_r, "Y_f": Y_f, "PR": Y_f / Y_r if Y_r else np.nan, "CF": kpi_aylik["CF"].mean(),
            "veri_orani": kpi_aylik["veri_orani"].mean()}
+    # v2.358: sıcaklık düzeltmeli PR'ler de TOPLAM-ağırlıklı özetlenir. Dönem
+    # satırının paydası tam olarak Y_f/PR olduğundan geri kurulur; birkaç gece
+    # saatinden ibaret dejenere bir grup (yıl sınırını kesen kayan pencere)
+    # tek başına sonucu 14 katına savuramaz — canlıda %1.088 PR üretmişti.
+    for alan in ("PR_stc", "PR_yillik_agirlikli"):
+        if alan in kpi_aylik:
+            v = kpi_aylik[alan].astype(float)
+            gecerli = v.notna() & (v > 0) & kpi_aylik["Y_f"].notna()
+            if gecerli.any():
+                payda = float((kpi_aylik.loc[gecerli, "Y_f"] / v[gecerli]).sum())
+                out[alan] = float(kpi_aylik.loc[gecerli, "Y_f"].sum() / payda) if payda > 0 else np.nan
     if "Y_a" in kpi_aylik and kpi_aylik["Y_a"].notna().any():
         Y_a = kpi_aylik["Y_a"].sum(); out.update({"Y_a": Y_a, "L_c": Y_r - Y_a, "L_s": Y_a - Y_f})
     return pd.Series(out)
