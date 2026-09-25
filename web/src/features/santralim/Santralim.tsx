@@ -38,6 +38,14 @@ function GunProfili({ noktalar, tepe, vurgu }:
   );
 }
 
+/** v2.368 — yöntem adları ÖZEL ADDIR (kurum/kişi/şirket), çevrilmez;
+ *  görünür etikette doğru yazım kullanılır. Sözlükte olmayan ham değer
+ *  alt-çizgisiz aynen basılır (yeni yöntem eklenince etiket bozulmaz). */
+const YONTEM_ADI: Record<string, string> = {
+  physical: "physical", ashrae: "ASHRAE", martin_ruiz: "Martin–Ruiz",
+  first_solar: "First Solar", kimber: "Kimber", nrel: "NREL",
+};
+
 export function Santralim({ plantId }: { plantId: string }) {
   const [o, setO] = useState<SantralOzeti | null>(null);
   const [pr, setPr] = useState<PrKarti | null>(null);   // v2.249
@@ -525,7 +533,10 @@ export function Santralim({ plantId }: { plantId: string }) {
                 {(["iam_model", "spectral_model", "soiling_model", "kar_model"] as const).map((k) => (
                   <label key={k} className="girdi-etiket" title={ft.not[k] ?? ""}>{ft.etiket[k]}
                     <select className="girdi" value={ftSon[k] ?? ft[k]} onChange={(e) => ftDegistir(k, e.target.value)}>
-                      {ft.secenekler[k].map((sc) => <option key={sc} value={sc}>{sc === "none" ? "kapalı" : "açık" + (ft.secenekler[k].length > 2 ? ` (${sc.replace("_", " ")})` : "")}</option>)}
+                      {/* v2.368 (bulgu 7 kararı): yöntem adları sektörün adlarıdır,
+                          çevrilmez — ama ÖZEL AD yazımıyla basılır (imla, çeviri
+                          değil); ne yaptıkları title ipucunda anlatılır. */}
+                      {ft.secenekler[k].map((sc) => <option key={sc} value={sc}>{sc === "none" ? "kapalı" : "açık" + (ft.secenekler[k].length > 2 ? ` (${YONTEM_ADI[sc] ?? sc.replace("_", " ")})` : "")}</option>)}
                     </select>
                   </label>))}
                 {ftOn && <div className="ayar-panel">

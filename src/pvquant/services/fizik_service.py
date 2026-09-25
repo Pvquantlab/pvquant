@@ -47,9 +47,24 @@ def durum(plant: dict) -> dict:
     pj = _pj(plant)
     return {**{k: pj.get(k) or "none" for k in SECENEK}, **{k: pj.get(k) for k in SAYISAL},
             "secenekler": {k: list(v) for k, v in SECENEK.items()}, "etiket": ETIKET,
-            "not": {"spectral_model": "nem verisi gerekir; meteoroloji kaynağında nem yoksa etkisizdir (uydurma yok)",
-                    "soiling_model": "yağış verisiyle çalışır; günlük kayıp ve temizleme eşiği santrale göre ayarlanır",
-                    "kar_model": "kar yağışı verisi gerekir; açık veri kaynağında kar alanı yoksa etkisizdir"}}
+            "not": {
+                # v2.368 (bulgu 7): yöntem adları SEKTÖRÜN adlarıdır — Türkçe
+                # oturmuş karşılıkları araştırıldı, YOK (ASHRAE/NREL kurum,
+                # Martin–Ruiz/Kimber kişi, First Solar şirket adı; TR literatürü
+                # de İngilizce anıyor). Adlar menüde kalır; ne yaptıkları
+                # fareyle-üstüne ipucunda bir cümleyle anlatılır.
+                "iam_model": ("cam yüzeyinden yansıma kaybı — physical: cam "
+                              "fiziğinden hesap · ASHRAE: tek katsayılı basit "
+                              "eğri · Martin–Ruiz: ölçüme dayalı ampirik eğri"),
+                "spectral_model": ("nem verisi gerekir; meteoroloji kaynağında nem "
+                                   "yoksa etkisizdir (uydurma yok) — First Solar: "
+                                   "hava kütlesi + nemle spektrum düzeltmesi"),
+                "soiling_model": ("yağış verisiyle çalışır; günlük kayıp ve temizleme "
+                                  "eşiği santrale göre ayarlanır — Kimber: yağmurla "
+                                  "sıfırlanan birikimli toz kaybı"),
+                "kar_model": ("kar yağışı verisi gerekir; açık veri kaynağında kar "
+                              "alanı yoksa etkisizdir — NREL: kar örtüsünün kayarak "
+                              "erime modeli")}}
 
 
 def ayar_yaz(tenant_id, plant_id, ayar: dict) -> dict:
