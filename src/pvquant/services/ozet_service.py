@@ -262,6 +262,13 @@ def saat_ay_matrisi(tenant_id: str, plant_id: str):
     df = df.assign(ay=yerel.dt.month, saat=yerel.dt.hour)
     piv = df.pivot_table(index="saat", columns="ay",
                          values="power_kw", aggfunc="mean")
+    # v2.365: SCADA satırları var ama güç kolonu TÜMÜYLE boş olabilir (yalnız
+    # enerji eşlenmiş günlük dosya — 25 Eyl canlı, Format Lab). pivot_table
+    # all-NaN grupları düşürüp BOŞ tablo döndürür; boş index'in min'i NaN ve
+    # int(NaN) ile uç 500 atıyordu. Dürüst boş iskelet dönülür.
+    if piv.empty:
+        return {"saatler": [], "hucreler": [], "toplam": [None] * 12,
+                "birim": "kW", "tz": tz}
     # gunduz iskeleti: ortalamasi anlamli (>=1 kW) ilk/son saat arasi —
     # gece sifir satirlari panelde yer kaplamasin (rapor 0-24 verir, panel vermez)
     anlamli = piv.index[piv.mean(axis=1, skipna=True) >= 1]

@@ -113,6 +113,11 @@ export function Lejant({ ogeler }: { ogeler: { renk: string; ad: string; kesik?:
  * ortaklandi. Acikta gok→amber, koyuda gece laciverti→filiz→amber
  * (parlaklik degerle buyur). t: 0..1 normalize deger. */
 export function isiTonu(t: number, koyu: boolean): string {
+  // v2.365: NaN ZIRHI — tum hucreler esitken (hi===lo) oran NaN geliyordu;
+  // Math.floor(NaN) -> durak[NaN] undefined -> .map cokusu TUM SAYFAYI
+  // karartiyordu (25 Eyl canli, Format Lab tek hucreli matris). Renk
+  // fonksiyonu hicbir girdiyle patlamaz: sonlu degilse orta ton.
+  if (!Number.isFinite(t)) t = 0.5;
   const durak: [number, number, number][] = koyu
     ? [[16, 27, 44], [27, 58, 49], [76, 83, 27], [169, 119, 10], [232, 148, 10]]
     : [[237, 243, 250], [212, 231, 227], [232, 227, 194], [232, 148, 10], [178, 106, 8]];
@@ -128,6 +133,7 @@ export function isiTonu(t: number, koyu: boolean): string {
  *  uc murekkep + esik 0,698 ile min 4,61. Acik yuzde koyu murekkep #000000'a
  *  cekilince min 4,47 -> 4,96 (esik 0,62 degismedi). */
 export function isiMetni(t: number, koyu: boolean): string {
+  if (!Number.isFinite(t)) t = 0.5;   // v2.365: isiTonu ile ayni zirh
   return koyu ? (t > 0.698 ? "#000000" : "#FFFFFF")
               : (t > 0.62 ? "#000000" : "var(--pi-metin)");
 }

@@ -46,7 +46,7 @@ export function Santralim({ plantId }: { plantId: string }) {
   const [sam, setSam] = useState<SaatAyMatrisi | null>(null);
   const { n, oku } = useTema();
   useEffect(() => { api.ozet(plantId).then(setO); }, [plantId]);
-  useEffect(() => { api.tahmin(plantId, "16d").then(setSeri); }, [plantId]); // v2.166: D1 — tam seri cek, istemcide "24h" dilimle (Tahminler kalibi)
+  useEffect(() => { api.tahmin(plantId, "16d").then(setSeri).catch(() => {}); }, [plantId]);   // v2.365: kosusuz santralda 404 gurultusuz // v2.166: D1 — tam seri cek, istemcide "24h" dilimle (Tahminler kalibi)
   useEffect(() => { api.gunesYolu(plantId).then(setGy).catch(() => {}); }, [plantId]);
   useEffect(() => { api.saatAyMatrisi(plantId).then(setSam).catch(() => {}); }, [plantId]);
   useEffect(() => { api.pr(plantId).then(setPr).catch(() => {}); }, [plantId]);   // v2.249
@@ -156,7 +156,9 @@ export function Santralim({ plantId }: { plantId: string }) {
   const AYLAR_K = ["Oca","Şub","Mar","Nis","May","Haz","Tem","Ağu","Eyl","Eki","Kas","Ara"];
   const samAralik = useMemo(() => {
     const v = (sam?.hucreler ?? []).flat().filter((x): x is number => x !== null);
-    return v.length ? { lo: Math.min(...v), hi: Math.max(...v) } : { lo: 0, hi: 1 };
+    const lo = v.length ? Math.min(...v) : 0, hi = v.length ? Math.max(...v) : 1;
+    // v2.365: tum hucreler esitken payda sifirlaniyordu (NaN -> renk cokusu)
+    return { lo, hi: hi > lo ? hi : lo + 1 };
   }, [sam]);
   // v2.215 (F "Panel Cami"): iki temali rampa — acikta gok->yesil->amber,
   // koyuda gece laciverti->filiz->amber (parlaklik degerle buyur).
