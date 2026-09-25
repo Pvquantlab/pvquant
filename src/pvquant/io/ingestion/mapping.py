@@ -353,7 +353,11 @@ def suggest_mapping(df: pd.DataFrame) -> tuple[ColumnMapping, list[str]]:
             desen_orani = ornek.str.match(_desen).mean()
             if desen_orani < 0.9:
                 continue
-            cozulen = pd.to_datetime(ornek, errors="coerce", dayfirst=True)
+            # v2.370: dayfirst=True ISO tarihleri (2024-01-13) yıl-GÜN-ay diye
+            # okuyup ayın 13'ünden sonrasını NaT yapıyordu (Growatt PVDAQ,
+            # T9 ön-sınavı). transform'un iki-adaylı sağlam çözücüsü kullanılır.
+            from .transform import _parse_datetime_robust
+            cozulen = _parse_datetime_robust(ornek)
             if cozulen.notna().mean() >= 0.9:
                 assigned_fields["timestamp"] = (str(col), 0.7)
                 used_columns.add(str(col))

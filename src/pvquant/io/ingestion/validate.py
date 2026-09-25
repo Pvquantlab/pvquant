@@ -112,12 +112,16 @@ def validate(
         flags[night_prod & (flags == RowFlag.VALID.value)] = RowFlag.NIGHT_PRODUCTION.value
 
     # --- 6. Donmuş değer ---
-    nonzero = power.fillna(0) > 0.01 * capacity_kwp
-    same_as_prev = power.diff().abs() < 1e-9
-    run_id = (~(same_as_prev & nonzero)).cumsum()
-    run_len = run_id.groupby(run_id).transform("size")
-    frozen = same_as_prev & nonzero & (run_len >= FROZEN_RUN_HOURS)
-    flags[frozen & (flags == RowFlag.VALID.value)] = RowFlag.FROZEN_VALUE.value
+    # v2.370: günlük özette bu kural da KOŞMAZ — 'aynı değer saatlerce' saatlik
+    # iletişim arızası imzasıdır; günlük tepe değerlerin birkaç gün eşit çıkması
+    # arıza değildir (T9 ön-sınavı: 8 gün 'donmuş' sanılmıştı).
+    if not gunluk_ozet:
+        nonzero = power.fillna(0) > 0.01 * capacity_kwp
+        same_as_prev = power.diff().abs() < 1e-9
+        run_id = (~(same_as_prev & nonzero)).cumsum()
+        run_len = run_id.groupby(run_id).transform("size")
+        frozen = same_as_prev & nonzero & (run_len >= FROZEN_RUN_HOURS)
+        flags[frozen & (flags == RowFlag.VALID.value)] = RowFlag.FROZEN_VALUE.value
 
     # --- 7. DST belirsizliği ---
     if dst_flags is not None:

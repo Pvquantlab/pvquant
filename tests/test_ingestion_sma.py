@@ -115,3 +115,21 @@ def test_json_onizleme_ucu_422_mesajla(tmp_path, monkeypatch):
         assert "JSON görünüyor" in r.json()["detail"]
     finally:
         api_main.app.dependency_overrides.clear()
+
+
+def test_iso_tarihli_adsiz_kolon_gunfirst_tuzagina_dusmez(tmp_path):
+    """v2.370 — Growatt PVDAQ (T9 ön-sınavı): ISO tarihli adsız zaman kolonu
+    dayfirst=True ile ayın 13'ünden sonrası NaT olup yedeği düşürüyordu;
+    çözüm transform'un iki-adaylı sağlam çözücüsü. Günlük özette donmuş-değer
+    kuralı da koşmaz (eşit günlük tepeler arıza değildir)."""
+    satirlar = [",ac_power_inv_1_daily_max,ac_energy_inv_1_daily_sum"]
+    for g in range(1, 29):
+        satirlar.append(f"2024-01-{g:02d},{2.0},{8.0}")   # eşit tepeler: frozen tetiklemesin
+    y = tmp_path / "growatt.csv"
+    y.write_text("\n".join(satirlar), encoding="utf-8")
+    r = ingest_file(y, capacity_kwp=4.0, latitude=34.0, longitude=-118.0,
+                    source_timezone="America/Los_Angeles")
+    assert r.mapping.timestamp == "Unnamed: 0"
+    assert len(r.data) == 28                      # ayın 13'ünden sonrası da çözüldü
+    bayraklar = set(r.data["flag"])
+    assert bayraklar == {"gunluk_ozet"}           # frozen/night yok
