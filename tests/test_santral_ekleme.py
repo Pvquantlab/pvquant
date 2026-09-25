@@ -37,3 +37,20 @@ def test_yinelenen_ad_422(monkeypatch):
         assert y.status_code == 422 and "zaten var" in y.json()["detail"]
     finally:
         api_main.app.dependency_overrides.clear()
+
+
+def test_saat_dilimi_dogrulanir(monkeypatch):
+    """v2.361 — tz formdan gelebiliyor; çöp dilim gün pencerelerini sessizce
+    bozardı. Geçersiz IANA adı 422, geçerli olan servise aynen iner."""
+    alinan = {}
+    monkeypatch.setattr(plant_service, "olustur",
+                        lambda t, **k: alinan.update(k) or "yeni-id")
+    _rol("admin")
+    try:
+        c = TestClient(api_main.app)
+        y = c.post("/v1/plants", json={**GOVDE, "tz": "Mars/Olympus"})
+        assert y.status_code == 422 and "saat dilimi" in y.json()["detail"]
+        y = c.post("/v1/plants", json={**GOVDE, "tz": "Etc/GMT+7"})
+        assert y.status_code == 200 and alinan["tz"] == "Etc/GMT+7"
+    finally:
+        api_main.app.dependency_overrides.clear()

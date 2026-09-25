@@ -415,7 +415,7 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
 /** v2.302 — yeni santral formu: künyenin zorunlu çekirdeği (ad, konum, kurulu güç) + isteğe bağlı
  *  eğim/azimut/AC tavanı. Panel tipi müşteri diliyle (tek/çift yüzlü); ayrıntılar sonra Santralım'dan. */
 function YeniSantral({ kapat, eklendi }: { kapat: () => void; eklendi: (id: string) => void }) {
-  const [g, setG] = useState({ name: "", lat: "", lon: "", capacity_kwp: "", tilt: "", azimuth: "", ac_limit_kw: "", panel_tech: "bifacial" });
+  const [g, setG] = useState({ name: "", lat: "", lon: "", capacity_kwp: "", tilt: "", azimuth: "", ac_limit_kw: "", panel_tech: "bifacial", tz: "Europe/Istanbul" });
   const [hata, setHata] = useState<string | null>(null);
   const [mesgul, setMesgul] = useState(false);
   const al = (k: keyof typeof g) => (e: { target: { value: string } }) => setG({ ...g, [k]: e.target.value });
@@ -426,7 +426,7 @@ function YeniSantral({ kapat, eklendi }: { kapat: () => void; eklendi: (id: stri
       const r = await api.santralEkle({
         name: g.name.trim(), lat: Number(g.lat.replace(",", ".")), lon: Number(g.lon.replace(",", ".")),
         capacity_kwp: Number(g.capacity_kwp.replace(",", ".")), tilt: say(g.tilt), azimuth: say(g.azimuth),
-        ac_limit_kw: say(g.ac_limit_kw), panel_tech: g.panel_tech });
+        ac_limit_kw: say(g.ac_limit_kw), panel_tech: g.panel_tech, tz: g.tz });
       eklendi(r.id);
     } catch (e) { setHata(String((e as Error).message ?? e)); } finally { setMesgul(false); }
   };
@@ -456,6 +456,19 @@ function YeniSantral({ kapat, eklendi }: { kapat: () => void; eklendi: (id: stri
               <select className="girdi" value={g.panel_tech} onChange={al("panel_tech")}>
                 <option value="bifacial">çift yüzlü</option>
                 <option value="monofacial">tek yüzlü</option>
+              </select></label>
+            {/* v2.361: saat dilimi formda — Istanbul varsayımı Colorado test
+                santralında güneşi 22:00'ye taşımıştı (24 Eyl canlı bulgusu). */}
+            <label className="girdi-etiket">Saat dilimi
+              <select className="girdi" value={g.tz} onChange={al("tz")}>
+                <option value="Europe/Istanbul">Türkiye (Europe/Istanbul)</option>
+                <option value="UTC">UTC</option>
+                <option value="Europe/Berlin">Orta Avrupa (Berlin)</option>
+                <option value="Europe/Athens">Doğu Avrupa (Atina)</option>
+                <option value="Asia/Baku">Azerbaycan (Bakü)</option>
+                <option value="Asia/Riyadh">Körfez (Riyad)</option>
+                <option value="America/Denver">ABD Dağ (Denver)</option>
+                <option value="Etc/GMT+7">Sabit UTC−7 (yaz saati yok)</option>
               </select></label>
             <label className="girdi-etiket">Eğim ° (isteğe bağlı)
               <input className="girdi" style={{ width: 90 }} inputMode="decimal" value={g.tilt} onChange={al("tilt")} /></label>

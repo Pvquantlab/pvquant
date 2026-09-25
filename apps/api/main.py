@@ -81,6 +81,13 @@ class PlantIstek(BaseModel):
 def plant_ekle(p: PlantIstek, claims=Depends(yazma_yetkisi())):
     if not (-90 <= p.lat <= 90 and -180 <= p.lon <= 180) or p.capacity_kwp <= 0:
         raise HTTPException(422, "konum ya da kurulu güç geçersiz")
+    # v2.361: tz artık formdan gelebiliyor — çöp dilim tüm gün pencerelerini
+    # sessizce bozardı; burada IANA adıyla doğrulanır.
+    from zoneinfo import ZoneInfo
+    try:
+        ZoneInfo(p.tz)
+    except Exception:
+        raise HTTPException(422, "saat dilimi geçersiz (IANA adı bekleniyor, ör. Europe/Istanbul)")
     try:
         return {"id": plant_service.olustur(claims["tenant_id"], **p.model_dump())}
     except ValueError as e:   # v2.302: yinelenen ad insan diliyle döner (500 değil)

@@ -559,7 +559,8 @@ export const api = {
     gonder(`/v1/plants/${p}/scada?baslangic=${baslangic}&bitis=${bitis}`, "DELETE"),
   /** v2.302: yeni santral bağlama — "Yakında" çipi gerçek oldu. */
   santralEkle: (g: { name: string; lat: number; lon: number; capacity_kwp: number;
-    tilt?: number | null; azimuth?: number | null; panel_tech?: string; ac_limit_kw?: number | null }): Promise<{ id: string }> =>
+    tilt?: number | null; azimuth?: number | null; panel_tech?: string; ac_limit_kw?: number | null;
+    tz?: string /* v2.361: saat dilimi formdan — varsayılan sunucuda Europe/Istanbul */ }): Promise<{ id: string }> =>
     gonder(`/v1/plants`, "POST", g),
   /** v2.303: santral yaşam döngüsü — arşivle (silmez), arşivi listele, geri al (yalnız yönetici). */
   santralArsivle: (id: string): Promise<{ arsivlendi: boolean }> => gonder(`/v1/plants/${id}`, "DELETE"),
