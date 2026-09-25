@@ -6,6 +6,14 @@ from pydantic import BaseModel
 from apps.api.deps import gecerli_kullanici, yazma_yetkisi, yonetici_yetkisi, api_anahtari
 from pvquant.services import auth_service, plant_service
 
+# v2.364: İTHALAT ISINDIRMASI — FastAPI'nin sync uçları iş parçacığı havuzunda
+# koşar; ağır pipeline zinciri taze işçide İKİ istek tarafından aynı anda İLK
+# KEZ tembel-import edilince Python "partially initialized module" /
+# KeyError('pvquant.pipeline') yarışı doğuyordu (25 Eyl canlı: dağıtım sonrası
+# /forecast ve /fizik-terimleri aralıklı 500 — panel "gelip gidiyor"). Zincir
+# burada, açılışta tek iş parçacığıyla bir kez yüklenir; istekler hazır bulur.
+import pvquant.pipeline.calibration  # noqa: F401,E402  (forecast+utils+validation zincirini kökten yükler)
+
 import os as _os
 try:
     import sentry_sdk
