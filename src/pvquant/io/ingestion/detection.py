@@ -300,6 +300,16 @@ def detect_file_format(path: str | Path) -> FileFormat:
     with io.open(path, "r", encoding=encoding, errors="replace") as f:
         sample_lines = [f.readline().rstrip("\n\r") for _ in range(50)]
     sample_lines = [l for l in sample_lines if l is not None]
+    # v2.369 (bulgu 20, T8 canlı): Huawei FusionSolar gibi sistemlerin doğal
+    # çıktısı JSON'dur ve müşteri onu .csv uzantısıyla da yükler. Eskiden
+    # sihirbaz BOŞ kolon listesiyle açılıyordu — çıkışsız sokak. Tablo
+    # olmayan dosya erken ve İNSAN DİLİYLE reddedilir.
+    ilk_metin = "".join(sample_lines)[:200].lstrip("﻿ \t")
+    if ilk_metin[:1] in ("{", "["):
+        raise ValueError(
+            "Bu dosya JSON görünüyor — panel CSV ya da Excel bekler. "
+            "İzleme sisteminizin (ör. FusionSolar) dışa aktarımını CSV "
+            "biçiminde alın; JSON okuyucu yol haritamızda.")
     # v2.366: pandas read_csv skip_blank_lines=True ile okur — header_row o
     # numaralandırmaya göre olmalı. Örneklemde boş satır bırakmak SMA'daki
     # boş 3. satırla tüm indeksleri kaydırıyordu (bulgu 15'in ikinci yarısı).

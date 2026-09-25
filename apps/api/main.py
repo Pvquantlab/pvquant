@@ -1436,6 +1436,10 @@ def scada_preview(plant_id: str, dosya: UploadFile = File(...),
     yol = _gecici_dosya(dosya)
     try:
         pv = preview_file(yol)
+    except ValueError as e:
+        # v2.369 (bulgu 20): tablo olmayan dosya (JSON vb.) sihirbaza değil
+        # insan diliyle redde gider — boş kolonlu çıkışsız sihirbaz bitti.
+        raise HTTPException(422, str(e))
     except MappingFailedError as e:
         # v2.91: duz metin degil YAPILANDIRILMIS red — SPA sihirbazi bu
         # govdeyle kurulur (hata zaten kolonlari + ornekleri tasiyor).

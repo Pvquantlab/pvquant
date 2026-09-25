@@ -81,3 +81,37 @@ def test_gunluk_ozet_aylik_toplama_girer():
     df = pd.DataFrame({"power_kw": [None] * 30, "energy_kwh": [10.0] * 30}, index=idx)
     out = aylik_ozet(df, tz="Europe/Istanbul")
     assert abs(float(out[out.ay == "2016-05"]["uretim_mwh"].iloc[0]) - 0.29) < 0.02
+
+
+def test_json_dosya_insan_diliyle_reddedilir(tmp_path):
+    """v2.369 — bulgu 20 (T8 canlı): FusionSolar JSON'u (.csv kılığında bile)
+    boş kolonlu çıkışsız sihirbaza değil, açık Türkçe redde gider."""
+    import pytest
+
+    y = tmp_path / "huawei.csv"
+    y.write_text('{"success": true, "data": [{"dataItemMap": {"inverter_power": 18330}}]}',
+                 encoding="utf-8")
+    with pytest.raises(ValueError, match="JSON görünüyor"):
+        detect_file_format(y)
+
+
+def test_json_onizleme_ucu_422_mesajla(tmp_path, monkeypatch):
+    """Önizleme ucu JSON'da yapılandırılmış sihirbaz değil düz 422 mesaj döner."""
+    from fastapi.testclient import TestClient
+
+    import apps.api.main as api_main
+    from apps.api.deps import gecerli_kullanici
+
+    api_main.app.dependency_overrides[gecerli_kullanici] = (
+        lambda: {"sub": "u", "tenant_id": "t", "role": "admin", "exp": 0})
+    monkeypatch.setattr(api_main.plant_service, "getir",
+                        lambda t, p: {"tz": "Europe/Istanbul", "capacity_kwp": 1000.0,
+                                      "lat": 37.0, "lon": 35.0})
+    try:
+        y = c_dosya = {"dosya": ("h.csv", b'{"success": true, "data": []}', "text/csv")}
+        c = TestClient(api_main.app)
+        r = c.post("/v1/plants/p1/scada/preview", files=c_dosya)
+        assert r.status_code == 422
+        assert "JSON görünüyor" in r.json()["detail"]
+    finally:
+        api_main.app.dependency_overrides.clear()
