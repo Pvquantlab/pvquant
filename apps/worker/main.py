@@ -26,13 +26,18 @@ def _tum_santraller():
 
 
 def _logla(job, fn):
-    """Her isi jobs_log'a yazan sarmal — 'dun gece ne oldu' cevabi."""
+    """Her isi jobs_log'a yazan sarmal — 'dun gece ne oldu' cevabi.
+    v2.359: is metni DONDUREBILIR — "yetersiz veri, atlandi" gibi beklenen
+    durumlar artik status=ok + detail olarak yazilir; error yalniz GERCEK
+    istisnalara kalir (yeni santralin ilk geceleri kirmizi dusmesin)."""
     def ic():
         for plant in _tum_santraller():
             bas = dt.datetime.now(dt.timezone.utc)
             durum, det = "ok", ""
             try:
-                fn(plant)
+                sonuc = fn(plant)
+                if sonuc:
+                    det = str(sonuc)
             except Exception as e:
                 durum, det = "error", f"{type(e).__name__}: {e}"
                 traceback.print_exc()
@@ -296,7 +301,10 @@ def gece_konformal(plant, pencere_gun: int = 60):
     from pvquant.services import konformal_service
     ayar = konformal_service.q_hat_hesapla(plant["tenant_id"], plant, gun=pencere_gun)
     if ayar is None:
-        raise RuntimeError("konformal: yetersiz gündüz/bant verisi (ayar değişmedi)")
+        # v2.359: bu HATA değil — taze santralda bant/gerçekleşen geçmişi yoktur
+        # (24 Eyl canlı: yeni santralin ilk gecesi kart kırmızı düştü). Docstring
+        # zaten "yetersiz veri → eski ayar kalır" diyordu; kod artık uyuyor.
+        return "yetersiz gündüz/bant verisi — ayar değişmedi (taze santralda beklenen)"
 
 
 def gunluk_toplam(df, tz, gun):
@@ -533,6 +541,17 @@ def aylik_bankable(plant):
         print("aylik_guc_matrisi atlandı:", type(e).__name__, e)
 
 
+def iklim_yakalama(plant):
+    """v2.359 — yeni santral aylık iklim beklentisi için AYIN 1'İNİ BEKLEMEZ:
+    beklentisi hiç olmayan santral ilk gece turunda hesaplanır (24 Eyl canlı
+    bulgusu: taze santralda Aylık beklenti sayfası bir aya dek boş kalıyordu).
+    Aylık cron tazeleme görevini aynen korur; bu yalnız İLK doldurmadır."""
+    from pvquant.services import iklim_service
+    if not iklim_service.iklim_oku(plant["tenant_id"], plant["id"]).empty:
+        return "beklenti zaten var — atlandı"
+    aylik_iklim(plant)
+
+
 def aylik_iklim(plant):
     """v2.77-C: iklim beklentisi ayda bir tazelenir (KUTU-2 hesaplayan yol).
     Arsiv probu olcumu: 20 yil tek cagri ~3 sn — santral basina ucuz."""
@@ -554,6 +573,7 @@ def tam_tur():
     _logla("gece_ufuk_sigma", gece_ufuk_sigma)()        # v2.279 (konformaldan önce)
     _logla("gece_konformal", gece_konformal)()          # v2.252
     _logla("gunluk_beklenti", gunluk_beklenti)()        # v2.205
+    _logla("iklim_yakalama", iklim_yakalama)()          # v2.359 (yalnız beklentisi olmayan santral)
     _logla("rapor_alanlari", rapor_alanlari)()          # v2.103 (B1+B5)
     _logla("sabah_tahmin", sabah_tahmin)()
     _logla("alarm", alarm_tara)()

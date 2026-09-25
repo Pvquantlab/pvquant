@@ -958,7 +958,10 @@ function GeceIsleriKarti() {
   const zaman = (t: string) => new Date(t).toLocaleString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   return (
     <Kart baslik="Gece işleri" sag={<span className="cip">{`son ${sayiTr(j.pencere_saat)} saat · ayrıntı günlükte`}</span>}>
-      {j.not && <p className="ayar-durum hata" style={{ margin: "0 0 10px" }}>{j.not}</p>}
+      {/* v2.359: "santral yok / ilk gece" bilgi tonudur — turuncu yalnız gerçek bayatlıkta */}
+      {j.not && (j.seviye === "bilgi"
+        ? <p className="soluk" style={{ margin: "0 0 10px", fontSize: 12.5 }}>{j.not}</p>
+        : <p className="ayar-durum hata" style={{ margin: "0 0 10px" }}>{j.not}</p>)}
       {j.isler.length === 0 ? (
         <p className="soluk" style={{ margin: 0, fontSize: 12.5 }}>Bu pencerede kayıtlı iş yok.</p>
       ) : (

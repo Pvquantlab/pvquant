@@ -113,3 +113,40 @@ def test_acilis_yedek_esigi(monkeypatch):
     monkeypatch.setattr(wm, "sistem_baglami", lambda: _S(None))
     wm.acilis_yedek()
     assert alindi == [1, 1]                              # eski ve hiç-yok: birer yedek
+
+
+def test_hukum_taze_kurulum_yalan_soylemez():
+    """v2.359 — 24 Eyl canlı bulgusu: 0 santralde ve ilk gecede 'sunucu kapalı
+    olabilir' uyarısı YANLIŞ ALARM; ton bilgiye düşer, gerçek bayatlık uyarı kalır."""
+    import pandas as pd
+
+    # 0 santral: uyarı yok, sakin bilgi
+    calisiyor, bayat, seviye, not_ = js.hukum(0, None, ["sabah_tahmin"], None)
+    assert calisiyor is True and bayat == [] and seviye == "bilgi"
+    assert "santral yok" in not_
+
+    # yeni kiracı (santral < 36 saat, hiç gece izi yok): bilgi tonu
+    yeni = pd.Timestamp.now(tz="UTC") - pd.Timedelta(hours=2)
+    _, _, seviye, not_ = js.hukum(1, yeni, ["sabah_tahmin"], None)
+    assert seviye == "bilgi" and "İlk gece koşusu" in not_
+
+    # eski santral + bayat işler: gerçek uyarı aynen
+    eski = pd.Timestamp.now(tz="UTC") - pd.Timedelta(days=30)
+    _, _, seviye, not_ = js.hukum(1, eski, ["sabah_tahmin"], None)
+    assert seviye == "uyari" and "koşmayan gece işi" in not_
+
+    # her şey taze: mesaj yok
+    calisiyor, _, seviye, not_ = js.hukum(1, eski, [], pd.Timestamp.now(tz="UTC"))
+    assert calisiyor is True and seviye is None and not_ is None
+
+
+def test_konformal_yetersiz_veri_hata_degil(monkeypatch):
+    """v2.359 — taze santralda konformal 'yetersiz veri' HATA sayılmaz: iş metin
+    döndürür, _logla bunu status=ok + detail olarak yazar (raise → kart kırmızıydı)."""
+    import apps.worker.main as wm
+    from pvquant.services import konformal_service
+
+    monkeypatch.setattr(konformal_service, "q_hat_hesapla",
+                        lambda t, p, gun=60: None)
+    sonuc = wm.gece_konformal({"tenant_id": "t", "id": "p"})
+    assert isinstance(sonuc, str) and "yetersiz" in sonuc

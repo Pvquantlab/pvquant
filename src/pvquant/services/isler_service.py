@@ -22,6 +22,7 @@ ISIM_TR = {
     "acilis_yakalama": "Açılış yakalama turu",   # v2.336
     "gece_yedek": "Veritabanı yedeği",           # v2.337
     "acilis_yedek": "Açılış yedek yakalaması",   # v2.339
+    "iklim_yakalama": "İklim beklentisi ilk doldurma",  # v2.359
 }
 # her gece koşması beklenen çekirdek grup — hiçbiri son 24 saatte yoksa işçi uyarısı verilir
 GECE_GRUBU = ("gece_meteo", "sabah_tahmin", "gece_skill", "gunluk_beklenti")
@@ -69,6 +70,10 @@ def ozet(tenant_id, saat: int = 48) -> dict:
         son_gece = s.execute(text(
             "SELECT max(started) FROM jobs_log WHERE (tenant_id = :t OR tenant_id IS NULL) "
             "AND job = ANY(:g)"), {"t": tenant_id, "g": list(GECE_GRUBU)}).scalar()
+        # v2.359: kiracının santral durumu — 0 santralde iş beklenmez, uyarı YALAN olur
+        n_santral, en_yeni_santral = s.execute(text(
+            "SELECT count(*), max(created_at) FROM plants "
+            "WHERE tenant_id = :t AND NOT archived"), {"t": tenant_id}).first()
     isler = []
     for r in rows:
         sure = None
@@ -78,12 +83,34 @@ def ozet(tenant_id, saat: int = 48) -> dict:
                       "sure_sn": sure, "tamam": r["status"] == "ok"})
     # v2.339: hüküm artık iş bazında — "biri koştu" yetmez, HER üretici iş taze olmalı.
     bayat = bayat_isler(30, tenant_id)
-    gece_calisiyor = not bayat
+    gece_calisiyor, bayat, seviye, not_ = hukum(int(n_santral), en_yeni_santral, bayat, son_gece)
     return {"isler": isler, "pencere_saat": saat,
             "gece_calisiyor": bool(gece_calisiyor),
             "son_gece_isi": son_gece.isoformat() if son_gece else None,
             "bayat_isler": [ISIM_TR.get(b, b) for b in bayat],
-            "not": None if gece_calisiyor else
-            "Son 30 saatte koşmayan gece işi var (" + ", ".join(ISIM_TR.get(b, b) for b in bayat)
-            + ") — sunucu kapalı ya da zamanlayıcı durmuş olabilir. "
-            "Tahmin ve karne, işler yeniden koşana dek eskimeye başlar."}
+            "seviye": seviye, "not": not_}
+
+
+def hukum(n_santral: int, en_yeni_santral, bayat: list[str], son_gece):
+    """v2.359 — SAF hüküm: taze kurulumda "sunucu kapalı olabilir" YANLIŞ ALARMDI
+    (24 Eyl canlı: Deneme Lab ilk gününde kart turuncuydu, oysa zamanlayıcı
+    sapasağlamdı — işler 0 santralde iz bırakmıyordu). Üç durum, üç dürüst ton."""
+    if n_santral == 0:
+        # santral yokken gece grubu KOŞMAZ — bayatlık hükmü anlamsız, uyarı yok
+        return True, [], "bilgi", (
+            "Bu hesapta santral yok — tahmin, karne ve beklenti işleri "
+            "ilk santral bağlanınca başlar ve burada listelenir.")
+    if not bayat:
+        return True, [], None, None
+    simdi = pd.Timestamp.now(tz="UTC")
+    yeni_kiraci = (en_yeni_santral is not None and son_gece is None
+                   and (simdi - pd.Timestamp(en_yeni_santral)) < pd.Timedelta(hours=36))
+    if yeni_kiraci:
+        return False, bayat, "bilgi", (
+            "İlk gece koşusu bu gece — tahmin ve karne işleri UTC gece "
+            "yarısından sonra koşar ve burada listelenir.")
+    return False, bayat, "uyari", (
+        "Son 30 saatte koşmayan gece işi var ("
+        + ", ".join(ISIM_TR.get(b, b) for b in bayat)
+        + ") — sunucu kapalı ya da zamanlayıcı durmuş olabilir. "
+        "Tahmin ve karne, işler yeniden koşana dek eskimeye başlar.")
