@@ -133,3 +133,18 @@ def test_iso_tarihli_adsiz_kolon_gunfirst_tuzagina_dusmez(tmp_path):
     assert len(r.data) == 28                      # ayın 13'ünden sonrası da çözüldü
     bayraklar = set(r.data["flag"])
     assert bayraklar == {"gunluk_ozet"}           # frozen/night yok
+
+
+def test_oran_sezgisi_birim_donusumu_karnede_soylenir(tmp_path):
+    """v2.371 — bulgu 21 (T9 canlı): kapasite yanlış girilince MW varsayımı
+    sessizce zinciri şişiriyordu; oran-sezgisi dönüşümü artık karneye yazılır."""
+    satirlar = ["time,ac_power"]
+    for g in range(1, 11):
+        for h in (9, 12, 15):
+            satirlar.append(f"2024-06-{g:02d} {h:02d}:00,2.1")   # ~2 kW ama kapasite 1000
+    y = tmp_path / "sisik.csv"
+    y.write_text("\n".join(satirlar), encoding="utf-8")
+    r = ingest_file(y, capacity_kwp=1000.0, latitude=37.0, longitude=35.0,
+                    source_timezone="Europe/Istanbul")
+    assert r.transform.power_unit == "MW" and r.transform.power_unit_source == "oran"
+    assert any("MW varsayılıp" in u for u in r.report.warnings)

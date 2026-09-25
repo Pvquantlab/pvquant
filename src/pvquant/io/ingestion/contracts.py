@@ -108,6 +108,9 @@ class TransformSpec:
 
     source_timezone: Optional[str] = None
     power_unit: str = "kW"
+    #: v2.371: birim nereden bilindi — "ad" (kolon adı), "oran" (tepe/kapasite
+    #: sezgisi) ya da "varsayilan". Oran sezgisi karneye uyarı düşürür.
+    power_unit_source: str = "varsayilan"
     # --- isinim birim karari (B1): W/m2'ye nasil normalize edildi? ---
     irradiance_unit: Optional[str] = None          # "kWh/m2"|"Wh/m2"|"W/m2"
     irradiance_unit_source: Optional[str] = None   # "ad"|"icerik"|"varsayilan"

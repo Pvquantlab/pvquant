@@ -345,6 +345,14 @@ def ingest_file(
         dst_flags=dst_flags,
         source_timestep_minutes=spec.source_timestep_minutes,   # v2.367
     )
+    # v2.371 (bulgu 21, T9 canlı): birim ORAN sezgisiyle çevrildiyse SESSİZ
+    # kalmaz — kobayın şişkin kapasitesi ~2 kW'lik değerleri MW sanıp 1000×
+    # çarptırdı, 319 satır 'kapasite üstü' oldu ve karne sebebini söylemedi.
+    if spec.power_unit != "kW" and spec.power_unit_source == "oran":
+        report.warnings.append(
+            f"Güç değerleri {spec.power_unit} varsayılıp kW'a çevrildi — bu, "
+            "tepe/kapasite ORANINDAN çıkarımdır (kolon adında birim yok). "
+            "Birim ya da kurulu güç girişini doğrulayın.")
     # Cihaz bazlı satırlar birleştirildiyse bu SESSİZ kalmamalı: kullanıcı
     # santral serisinin nasıl kurulduğunu karnede görmeli (Bulgu 1).
     if spec.rows_per_timestamp > 1.0:

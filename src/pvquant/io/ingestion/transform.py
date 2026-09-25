@@ -111,29 +111,32 @@ def coerce_numeric(series: pd.Series, decimal: str) -> pd.Series:
 
 
 def detect_power_unit(power: pd.Series, capacity_kwp: float,
-                      column_name: str = "") -> str:
+                      column_name: str = "", return_source: bool = False):
     """Güç birimini tespit eder: önce kolon adı, sonra büyüklük oranı.
 
     Kolon adında açık birim varsa ("(MW)") o kazanır; yoksa serinin
     tepe değeri kurulu güçle oranlanır.
     """
+    def _don(unit, kaynak):
+        return (unit, kaynak) if return_source else unit
+
     name = column_name.lower()
     if "mw" in name and "kw" not in name:
-        return "MW"
+        return _don("MW", "ad")
     if "(w)" in name or "[w]" in name or re.search(r"\bw\b", name):
-        return "W"
+        return _don("W", "ad")
     if "kw" in name:
-        return "kW"
+        return _don("kW", "ad")
 
     peak = float(power.dropna().quantile(0.999)) if power.notna().any() else 0.0
     if capacity_kwp <= 0 or peak <= 0:
-        return "kW"
+        return _don("kW", "varsayilan")
     ratio = peak / capacity_kwp
     if ratio < _MW_RATIO_MAX:
-        return "MW"
+        return _don("MW", "oran")
     if ratio > _W_RATIO_MIN:
-        return "W"
-    return "kW"
+        return _don("W", "oran")
+    return _don("kW", "oran")
 
 
 _UNIT_FACTORS = {"kW": 1.0, "MW": 1000.0, "W": 0.001}
@@ -338,9 +341,11 @@ def transform_to_canonical(
     # --- 3. Güç kaynağı: artık SANTRAL düzeyinde seri ---
     work = pd.DataFrame(index=raw.index)
     if "power_raw" in raw.columns:
-        unit = detect_power_unit(raw["power_raw"], capacity_kwp, mapping.power)
+        unit, birim_kaynak = detect_power_unit(
+            raw["power_raw"], capacity_kwp, mapping.power, return_source=True)
         work["power_kw"] = raw["power_raw"] * _UNIT_FACTORS[unit]
         spec.power_unit = unit
+        spec.power_unit_source = birim_kaynak
         if "energy_raw" in raw.columns:
             e_raw = raw["energy_raw"]
             # Kümülatif tespiti güç varken de kayda geçer (denetim izi)
