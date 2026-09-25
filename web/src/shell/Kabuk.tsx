@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { api, type AlarmSatiri, rolum } from "../api/client";
 import type { SantralOzeti, Kullanici } from "../api/types";
 import { useDamga } from "./useDamga";
-import { sayiTr } from "../features/sayfalar/parcalar";
+import { sayiTr, gucTr } from "../features/sayfalar/parcalar";
 
 /* v2.290 — "Çift Yüz": her sayfanın varsayılan yüzü. Operasyon sayfaları (portföy,
    santral, veri, tahmin) koyu terminal; kanıt sayfaları (kalibrasyon, doğruluk,
@@ -195,7 +195,7 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
               yazıyordu (canlı kurulumda yakalandı). Sayaç gerçeği söyler. */}
           <div><div className="et">Santral</div><div className="dg">{sayiTr(santraller?.length ?? 0)}</div></div>
           <div><div className="et">Kurulu güç</div>
-            <div className="dg">{kwp === null ? "—" : `${sayiTr(kwp)} kWp`}</div></div>
+            <div className="dg">{kwp === null ? "—" : `${gucTr(kwp)} kWp`}</div></div>
         </div>
         {SAYFALAR.map((s) => (
           <button key={s.id} className="nav-btn"

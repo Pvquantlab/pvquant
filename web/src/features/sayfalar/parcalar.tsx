@@ -15,6 +15,19 @@ export const sayiTr = (x: number, ondalik = 0): string =>
 export const sayiTrN = (x: number | null | undefined, ondalik = 0): string =>
   x == null ? "—" : sayiTr(x, ondalik);
 
+/** v2.360 — kurulu güç: 2.4 kWp'lik santral "2 kWp" diye YALAN okunuyordu
+ *  (24 Eyl canlı bulgusu). Küçük güçte ondalık korunur, tam sayıda basılmaz. */
+export const gucTr = (kwp: number): string =>
+  sayiTr(kwp, Number.isInteger(kwp) || kwp >= 100 ? 0 : 1);
+
+/** v2.360 — enerji, santralın ölçeğine göre konuşur: MWh'de "0,0" okunacak
+ *  küçük toplamlar kWh'ye düşer (2,4 kWp santralda her şey "0,0 MWh" görünüyordu).
+ *  Kural: |kwh| < 10 MWh → kWh (ondalıksız), üstü → MWh (1 ondalık). */
+export const enerjiTr = (kwh: number | null | undefined): string => {
+  if (kwh == null) return "—";
+  return Math.abs(kwh) < 10_000 ? `${sayiTr(kwh, 0)} kWh` : `${sayiTr(kwh / 1000, 1)} MWh`;
+};
+
 export function Kpi({ etiket, deger, birim, alt, ton }:
   { etiket: string; deger: string; birim?: string; alt?: ReactNode;
     ton?: "amber" | "uyari" }) {

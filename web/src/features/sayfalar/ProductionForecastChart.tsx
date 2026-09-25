@@ -400,7 +400,17 @@ export function buildChartOption(input: BuildInput): EChartsOption {
     plant.acCapacityKw ?? 0,
     ...forecast.map((p) => Math.max(p.p50, p.p90 ?? p.p50)),
   );
-  const yMax = Math.max(1000, Math.ceil((rawMax * 1.05) / 1000) * 1000);
+  // v2.360: eksen tavanı SANTRALIN ölçeğinden türer (1/2/5 merdiveni) — sabit
+  // 1.000 kW tabanı 2,4 kWp santralın çizgisini dipte okunmaz bırakıyordu
+  // (24 Eyl canlı bulgusu). Büyük santralde davranış eskiyle aynı sınıfta.
+  const hedef = Math.max(rawMax * 1.05, 1e-3);
+  const kat = Math.pow(10, Math.floor(Math.log10(hedef)));
+  const mant = hedef / kat;
+  const yMax = (mant <= 1 ? 1 : mant <= 2 ? 2 : mant <= 5 ? 5 : 10) * kat;
+  // 4-6 çizgi hedefi merdivenle birlikte: 1→5, 2→4, 5→5 dilim.
+  const yAralik = yMax / (Math.abs(yMax / kat - 2) < 1e-9 ? 4 : 5);
+  const nfEksen = new Intl.NumberFormat("tr-TR", {
+    maximumFractionDigits: yAralik >= 1 ? 0 : yAralik >= 0.1 ? 1 : 2 });
   const kwPerPx = yMax / Math.max(input.plotHeightPx, 1);
   const minKw = 3 * kwPerPx; // U2: 3px minimum rendered band height
 
@@ -926,17 +936,15 @@ export function buildChartOption(input: BuildInput): EChartsOption {
       type: "value",
       min: 0,
       max: yMax,
-      // v2.218: "guzel" aralik — 4-6 cizgi hedefi (kucuk santralde 1000'lik
-      // sabit aralik 1-2 cizgi birakiyordu, buyukte kalabalik yapiyordu).
-      interval:
-        [250, 500, 1000, 2000, 2500, 5000, 10000, 20000, 25000, 50000].find(
-          (iv) => yMax % iv === 0 && yMax / iv <= 6,
-        ) ?? yMax / 4,
+      // v2.218 → v2.360: aralık artık merdivenden türer (küçük santral dahil).
+      interval: yAralik,
       axisLabel: {
         color: T.axisText,
         fontFamily: "monospace",
         fontSize: narrow ? 9 : 11,
-        formatter: (v: number) => nfKw.format(v),
+        // v2.360: küçük eksende ondalık korunur — 0,4/0,8 etiketleri "0" diye
+        // yuvarlanıp merdiven boyunca "0 0 1 1 2" okunuyordu.
+        formatter: (v: number) => nfEksen.format(v),
       },
       splitLine: { lineStyle: { color: T.gridLine, width: 1 } },
       ...(narrow ? {} : {

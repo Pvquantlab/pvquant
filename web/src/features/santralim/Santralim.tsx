@@ -6,7 +6,7 @@ import { api } from "../../api/client";
 import type { SantralOzeti, TahminSerisi, GunesYolu, SaatAyMatrisi } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
-import { Kart, Sayfa, sayiTr, sayiTrN, isiTonu, isiMetni } from "../sayfalar/parcalar";
+import { Kart, Sayfa, sayiTr, sayiTrN, gucTr, enerjiTr, isiTonu, isiMetni } from "../sayfalar/parcalar";
 import ProductionForecastChart from "../sayfalar/ProductionForecastChart";
 import { t0Hesapla, simdiDegeri, simdiGercegi, dilimle } from "../sayfalar/tahminPencere";
 import { Cubuklar } from "./Cubuklar";
@@ -268,7 +268,7 @@ export function Santralim({ plantId }: { plantId: string }) {
       sag={<div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         <span className="rozet rozet-ok">{o.model_adi} · Mod {o.mod}</span>
         <span className="mono" style={{ fontSize: 12.5, color: "var(--soluk)" }}>
-          {sayiTr(o.kapasite_kwp)} kWp · {o.lat}, {o.lon}
+          {gucTr(o.kapasite_kwp)} kWp · {o.lat}, {o.lon}
         </span>
       </div>}>
 
@@ -321,8 +321,10 @@ export function Santralim({ plantId }: { plantId: string }) {
         </div>
         <div>
           <div className="et">Önümüzdeki 7 gün</div>
+          {/* v2.360: birim santral ölçeğine uyar — 2,4 kWp'te "0,0 MWh" okunuyordu */}
           <div className="dg">{o.hafta_mwh == null ? <span style={{ color: "var(--soluk)" }}>—</span>
-                                : <>{sayiTr(o.hafta_mwh, 1)} <small>MWh</small></>}</div>
+                                : (() => { const [d, b] = enerjiTr(o.hafta_mwh * 1000).split(" ");
+                                           return <>{d} <small>{b}</small></>; })()}</div>
           <div className="alt">döküm §5'te</div>
         </div>
         <div>
@@ -397,7 +399,7 @@ export function Santralim({ plantId }: { plantId: string }) {
         <Kart baslik="Künye & veri sağlığı">
           <table className="veri">
             <tbody className="mono">
-              <tr><td>DC gücü</td><td>{sayiTr(o.kapasite_kwp)} kWp</td></tr>
+              <tr><td>DC gücü</td><td>{gucTr(o.kapasite_kwp)} kWp</td></tr>
               <tr><td>AC tavanı</td><td>{o.ac_tavani_kw == null
                 ? <span style={{ color: "var(--soluk)" }}>— künyede tanımlı değil; santral ayarlarından girilir</span>
                 : `${sayiTr(o.ac_tavani_kw)} kW`}</td></tr>
@@ -589,7 +591,7 @@ export function Santralim({ plantId }: { plantId: string }) {
                   {sam.toplam.map((v, mi) => (
                     <td key={mi} style={{ padding: "3px 2px", textAlign: "center",
                       fontWeight: 600, color: "var(--metin)" }}>
-                      {v === null ? "–" : `${sayiTr(Math.round(v / 100) / 10, 1)}`}
+                      {v === null ? "–" : enerjiTr(v)}
                     </td>))}
                 </tr>
               </tbody>
@@ -597,7 +599,7 @@ export function Santralim({ plantId }: { plantId: string }) {
           </div>
           <p style={{ fontSize: 12, color: "var(--soluk)", margin: "12px 0 0" }}>
             Hücreler saat×ay çok-yıllı ortalama güç (kW); Tipik gün satırı, o ayın
-            karakteristik günlük üretimidir (MWh).
+            karakteristik günlük üretimidir.
           </p>
         </Kart>
       )}
@@ -617,13 +619,13 @@ export function Santralim({ plantId }: { plantId: string }) {
       <div className="ızgara" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)",
                                        marginBottom: 14, alignItems: "start" }}>
         <Kart no="6" baslik="7 günlük görünüm" sag={<span className="cip mono">
-          {o.hafta_mwh == null ? "—" : `${sayiTr(o.hafta_mwh, 1)} MWh toplam`}</span>}>
+          {o.hafta_mwh == null ? "—" : `${enerjiTr(o.hafta_mwh * 1000)} toplam`}</span>}>
           {/* v2.200 (D imzasi): profilli tablo — profil gun-ici P50 egrisi,
               tum gunler ayni olcekte; tepe = gunun en yuksek P50 saati */}
           <table className="veri">
             <thead><tr>
               <th>Gün</th><th style={{ textAlign: "left" }}>Profil</th>
-              <th>Tepe kW · P50</th><th>Toplam MWh · P50</th>
+              <th>Tepe kW · P50</th><th>Toplam · P50</th>
             </tr></thead>
             <tbody className="mono">
               {/* v2.310: "bugün" satırı DİZİN 0 DEĞİL. Pencere son koşunun gününden
@@ -644,7 +646,7 @@ export function Santralim({ plantId }: { plantId: string }) {
                       <GunProfili noktalar={nk}
                         tepe={gunProfilleri?.tepe ?? 1} vurgu={bugunMu} /></td>
                     <td>{gunTepe === null ? "—" : sayiTr(gunTepe)}</td>
-                    <td>{sayiTr(g.mwh, 1)}</td>
+                    <td>{enerjiTr(g.mwh == null ? null : g.mwh * 1000)}</td>
                   </tr>
                 );
               })}
@@ -658,17 +660,24 @@ export function Santralim({ plantId }: { plantId: string }) {
           sag={<span className="cip">son 12 ay</span>}>
           {/* v2.205: beklenti-P50 imleci (D bullet dili) — yalniz TAM
               kapsanmis aylarda; imlecin hakemi gun-oncesi arsiv */}
-          <Cubuklar etiketler={o.aylik.map((a) => a.ay)} degerler={o.aylik.map((a) => a.mwh)}
+          {/* v2.360: küçük santralda aylar kWh konuşur — MWh'de 0,2/0,0
+              etiketleri hem kaba hem eksende hep "0" okunuyordu */}
+          {(() => { const kucuk = !o.aylik.some((a) =>
+              Math.max(a.mwh ?? 0, a.beklenti_mwh ?? 0) >= 10);
+            const olcek = (v: number | null) => (v == null ? null : kucuk ? v * 1000 : v);
+            return (<>
+          <Cubuklar etiketler={o.aylik.map((a) => a.ay)} degerler={o.aylik.map((a) => olcek(a.mwh))}
             kapsamPct={o.aylik.map((a) => a.kapsam_pct)}
-            beklenti={o.aylik.map((a) => a.beklenti_mwh)}
-            birim="MWh" vurguIdx={o.aylik.length - 1} yukseklik={230} />
+            beklenti={o.aylik.map((a) => olcek(a.beklenti_mwh))}
+            birim={kucuk ? "kWh" : "MWh"} ondalik={kucuk ? 0 : 1}
+            vurguIdx={o.aylik.length - 1} yukseklik={230} />
           <table className="veri" style={{ marginTop: 14 }}>
-            <thead><tr><th>Ay</th><th>Üretim MWh</th><th>Beklenti MWh</th><th>Sapma</th><th>Kapsam %</th></tr></thead>
+            <thead><tr><th>Ay</th><th>Üretim {kucuk ? "kWh" : "MWh"}</th><th>Beklenti {kucuk ? "kWh" : "MWh"}</th><th>Sapma</th><th>Kapsam %</th></tr></thead>
             <tbody className="mono">
               {[...o.aylik].reverse().slice(0, 6).map((a) => (
                 <tr key={a.ay}>
-                  <td>{a.ay}</td><td>{sayiTrN(a.mwh, 1)}</td>
-                  <td>{a.beklenti_mwh === null ? "—" : sayiTr(a.beklenti_mwh, 1)}</td>
+                  <td>{a.ay}</td><td>{sayiTrN(olcek(a.mwh), kucuk ? 0 : 1)}</td>
+                  <td>{a.beklenti_mwh === null ? "—" : sayiTr(olcek(a.beklenti_mwh) as number, kucuk ? 0 : 1)}</td>
                   <td>{a.mwh === null || a.beklenti_mwh === null || a.beklenti_mwh === 0 ? "—"
                     : `${a.mwh >= a.beklenti_mwh ? "+" : "−"}%${sayiTr(
                         Math.abs((a.mwh - a.beklenti_mwh) / a.beklenti_mwh) * 100, 1)}`}</td>
@@ -681,6 +690,7 @@ export function Santralim({ plantId }: { plantId: string }) {
             Beklenti, her gün için gün başlamadan verilmiş en taze tahminin
             toplamıdır; ay tam kapsanmadan gösterilmez.
           </p>
+          </>); })()}
         </Kart>
       </div>
     </Sayfa>

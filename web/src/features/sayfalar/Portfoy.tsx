@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, rolum } from "../../api/client";
 import type { PaylasimListesi, PaylasilanVeri, TakimUyesi, Portfoy as PortfoyT, PortfoyDsg, PortfoyTahmin, ApiAnahtar, Webhook } from "../../api/types";
-import { Kart, Kpi, Sayfa, sayiTr } from "./parcalar";
+import { Kart, Kpi, Sayfa, sayiTr, gucTr, enerjiTr } from "./parcalar";
 
 /** v2.263 (Dalga 5.15) — Portföy: kiracının tüm santralleri tek tabloda; toplamlar dürüst
  *  (bir santralin beklentisi yoksa toplam da yok). Satıra tıklayınca o santrala geçilir. */
@@ -30,7 +30,8 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
   }, []);
   const t = p?.toplam ?? null;
   const kwhYaz = (v: number | null | undefined) => v == null ? "—" : `${sayiTr(v / 1000, 1)} MWh`;
-  const mwh = (v: number | null | undefined) => v == null ? "—" : sayiTr(v / 1000, 1);
+  // v2.360: KPI'da birim değerin yanında ölçekle gelir (küçükte kWh, büyükte MWh)
+  const enj = (v: number | null | undefined) => v == null ? "—" : enerjiTr(v);
   const tarih = (s: string | null) => s ? new Date(s).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }) : "—";
   if (!hazir) return (
     <Sayfa baslik="Portföy" alt="Tüm santraller bir bakışta — sayılar kapasite ile ağırlıklı, eksikler tire.">
@@ -41,13 +42,16 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
     <Sayfa baslik="Portföy" alt="Tüm santraller bir bakışta — sayılar kapasite ile ağırlıklı, eksikler tire."
       sag={<span className="cip">{p ? `${sayiTr(p.santraller.length)} santral · ${new Date(p.gun + "T12:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}` : "—"}</span>}>
       <div className="ızgara satir-4" style={{ marginBottom: 14 }}>
-        <Kpi etiket="Toplam kurulu güç" deger={t ? sayiTr(t.kapasite_kwp / 1000, 2) : "—"} birim="MWp" alt={t ? `${sayiTr(t.santral)} santral` : ""} />
-        <Kpi etiket="Bugün beklenen · yarın" deger={t ? `${mwh(t.bugun_kwh)} · ${mwh(t.yarin_kwh)}` : "—"} birim="MWh"
+        {/* v2.360: küçük portföyde MWp "0,00" okunuyordu — birim ölçekle gelir */}
+        <Kpi etiket="Toplam kurulu güç"
+             deger={t ? (t.kapasite_kwp < 100 ? gucTr(t.kapasite_kwp) : sayiTr(t.kapasite_kwp / 1000, 2)) : "—"}
+             birim={t && t.kapasite_kwp < 100 ? "kWp" : "MWp"} alt={t ? `${sayiTr(t.santral)} santral` : ""} />
+        <Kpi etiket="Bugün beklenen · yarın" deger={t ? `${enj(t.bugun_kwh)} · ${enj(t.yarin_kwh)}` : "—"}
              alt={t && (t.bugun_kwh == null || t.yarin_kwh == null) ? "bir santralde beklenti yok → toplam yazılmaz" : "tüm santrallerin P50 toplamı"} />
         <Kpi etiket="30 günlük WMAPE (ağırlıklı)" deger={t?.wmape_agirlikli != null ? `%${sayiTr(t.wmape_agirlikli, 1)}` : "—"}
              alt={t ? `${sayiTr(t.wmape_kapsanan_kwp / 1000, 2)} MWp karneli` : ""} />
         <Kpi etiket="Açık alarm · veri gecikmiş" deger={t ? `${sayiTr(t.acik_alarm)} · ${sayiTr(t.veri_gecikmis)}` : "—"}
-             alt="son 7 gün okunmamış · 2 günden eski ölçüm" ton={t && (t.acik_alarm > 0 || t.veri_gecikmis > 0) ? "uyari" : undefined} />
+             alt={t && t.santral > 0 ? "son 7 gün okunmamış · 2 günden eski ölçüm" : ""} ton={t && (t.acik_alarm > 0 || t.veri_gecikmis > 0) ? "uyari" : undefined} />
       </div>
       <Kart baslik="Santraller" sag={<span className="cip">satıra tıkla → santral</span>}>
         {!p || p.santraller.length === 0 ? <p className="soluk" style={{ margin: 0 }}>Bu hesapta santral yok.</p>
@@ -608,7 +612,7 @@ function SantralArsivi({ santralYenile }: { santralYenile?: () => void }) {
           <tbody>{arsiv.map((x) => (
             <tr key={x.id}>
               <td style={{ textAlign: "left" }}>{x.name}</td>
-              <td className="mono">{sayiTr(x.capacity_kwp)} kWp</td>
+              <td className="mono">{gucTr(x.capacity_kwp)} kWp</td>
               <td><button className="dugme" style={{ fontSize: 11.5 }}
                     onClick={() => dene(async () => { await api.santralGeriAl(x.id); setMesaj(`${x.name} geri alındı.`); })}>Geri al</button></td>
             </tr>))}</tbody>
