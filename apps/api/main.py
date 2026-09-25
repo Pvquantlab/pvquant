@@ -1459,15 +1459,22 @@ def scada_yukle(plant_id: str, dosya: UploadFile = File(...),
                 map_temp_module: str | None = Form(None),
                 map_wind_speed: str | None = Form(None),
                 map_ghi: str | None = Form(None),
+                duplicate_policy: str | None = Form(None),   # v2.363: sum|mean
                 claims=Depends(yazma_yetkisi())):
     """v2.87 Faz 2: onayli kararla dogrula + kalicilastir. Kapasite/konum
     santral KAYDINDAN okunur (kunye tek gercek, formda tekrar yok).
     Karne (QualityReport) cevapta doner — SPA yorumsuz gosterir."""
     from pvquant.io.ingestion.pipeline import MappingFailedError, ingest_file
+    from pvquant.io.ingestion.transform import DuplicateTimestampsError
     from pvquant.services import ingest_service
     row = plant_service.getir(claims["tenant_id"], plant_id)
     if row is None:
         raise HTTPException(404, "santral yok")
+    # v2.363: cihaz/invertör bazlı dosyada panel "Topla/Ortala" seçimini bu
+    # alanla yollar; çöp değer sessizce 'error'a düşmez, açıkça reddedilir.
+    if duplicate_policy is not None and duplicate_policy not in ("sum", "mean"):
+        raise HTTPException(422, "duplicate_policy yalnız 'sum' ya da 'mean' olabilir")
+    tekrar = duplicate_policy or "error"
     tz = source_timezone or row["tz"]   # v2.91: bos ise santral kaydi konusur
     esleme = None
     if map_timestamp:
@@ -1488,11 +1495,11 @@ def scada_yukle(plant_id: str, dosya: UploadFile = File(...),
                               latitude=row["lat"], longitude=row["lon"],
                               source_timezone=tz,
                               file_format=detect_file_format(yol),
-                              mapping=esleme)
+                              mapping=esleme, duplicate_policy=tekrar)
         else:
             res = ingest_file(yol, capacity_kwp=float(row["capacity_kwp"]),
                               latitude=row["lat"], longitude=row["lon"],
-                              source_timezone=tz)
+                              source_timezone=tz, duplicate_policy=tekrar)
         out = ingest_service.yukle_ve_kaydet(
             claims["tenant_id"], plant_id, dosya.filename or yol,
             capacity_kwp=float(row["capacity_kwp"]),
@@ -1501,6 +1508,20 @@ def scada_yukle(plant_id: str, dosya: UploadFile = File(...),
     except MappingFailedError as e:
         raise HTTPException(422, "otomatik esleme kurulamadi: "
                             f"{e} — simdilik Streamlit sihirbazini kullanin")
+    except DuplicateTimestampsError as e:
+        # v2.363: fren mesajı 500'ün içinde kaybolmaz — panel bu yapıyla
+        # "Santral toplamı / Ortalama" seçimi sunup aynı dosyayı yeniden yollar.
+        raise HTTPException(422, {
+            "tur": "cihaz_bazli", "satir": e.rows, "damga": e.timestamps,
+            "oran": e.ratio,
+            "mesaj": (f"Bu dosya cihaz/invertör bazlı görünüyor: zaman damgası "
+                      f"başına ortalama {e.ratio:.1f} satır ({e.rows} satır, "
+                      f"{e.timestamps} damga). Satırlar sessizce birleştirilmez — "
+                      "nasıl birleştirileceğini siz seçin.")})
+    except ValueError as e:
+        # v2.363: hattın diğer doğrulama hataları da müşteriye 500 değil
+        # insan diliyle 422 döner.
+        raise HTTPException(422, str(e))
     finally:
         _os.unlink(yol)
     return {**out, "report": res.report.to_dict(),

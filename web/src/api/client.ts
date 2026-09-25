@@ -200,6 +200,13 @@ export class EslemeHatasi extends Error {
   constructor(veri: EslemeVerisi) { super("esleme reddi"); this.veri = veri; }
 }
 
+/** v2.363: cihaz/invertör bazlı dosya freni — panel "Topla/Ortala" seçimi sunar. */
+export interface CihazBazliVerisi { tur: "cihaz_bazli"; satir: number; damga: number; oran: number; mesaj: string }
+export class CihazBazliHatasi extends Error {
+  veri: CihazBazliVerisi;
+  constructor(veri: CihazBazliVerisi) { super(veri.mesaj); this.veri = veri; }
+}
+
 /** v2.94: gecmis kosu satiri — /runs ucu ile birebir. */
 export interface KosuSatiri { run_at: string; mode: string; model: string;
   /** v2.273: bant kaynağı — gefs (n üye) ya da model */
@@ -234,12 +241,14 @@ async function dosyaGonder<T>(yol: string, dosya: File,
   }
   if (!y.ok) {
     let mesaj = `${y.status} ${yol}`;
-    let esleme: EslemeHatasi | null = null;
+    let esleme: EslemeHatasi | CihazBazliHatasi | null = null;
     try {
       const g = (await y.json()) as { detail?: unknown };
       const d = g.detail;
       if (d && typeof d === "object" && (d as { tur?: string }).tur === "esleme")
         esleme = new EslemeHatasi(d as EslemeVerisi);   // v2.91
+      else if (d && typeof d === "object" && (d as { tur?: string }).tur === "cihaz_bazli")
+        esleme = new CihazBazliHatasi(d as CihazBazliVerisi);   // v2.363
       else if (typeof d === "string") mesaj = d;
     } catch { /* govde yoksa durum kodu kalir */ }
     if (esleme) throw esleme;
@@ -339,11 +348,13 @@ export const api = {
   /** v2.89: onayli kayit — dosya + santral kaydindan gelen tz. Karne
    *  yanitta doner; UI oldugu gibi gosterir (yorum yok, icat yok). */
   scadaYukle: async (p: string, dosya: File, tz: string | null,
-                     esleme?: Record<string, string>): Promise<ScadaKayit> => {
+                     esleme?: Record<string, string>,
+                     tekrar?: "sum" | "mean" /* v2.363: cihaz bazlı dosyada birleşim */): Promise<ScadaKayit> => {
     if (TABAN == null) throw new Error(
       "Örnek kipte dosya kapısı yok — VITE_API_URL tanımlı değil.");
     const alanlar: Record<string, string> = {};
     if (tz) alanlar.source_timezone = tz;   // v2.91: bos -> santral tz (sunucu)
+    if (tekrar) alanlar.duplicate_policy = tekrar;
     if (esleme)
       for (const [k, v] of Object.entries(esleme))
         if (v) alanlar["map_" + k] = v;     // v2.91: sihirbaz kararlari

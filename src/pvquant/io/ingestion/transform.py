@@ -37,6 +37,23 @@ _W_RATIO_MIN = 200.0
 _CUMULATIVE_MONOTONE_FRACTION = 0.90
 
 
+class DuplicateTimestampsError(ValueError):
+    """v2.363 — cihaz/invertör bazlı dosya freni, TİPLİ.
+
+    v2.356 freni düz ValueError'dı; API onu yakalamayıp 500'e çeviriyordu ve
+    kusursuz Türkçe mesaj müşteriye hiç ulaşmıyordu (25 Eyl canlı, Kaggle 22
+    invertör dosyası). Alanlar API'nin yapılandırılmış 422'sini ve panelin
+    "Topla / Ortala" seçimini besler; ValueError mirası eski except'leri kırmaz."""
+
+    def __init__(self, *, rows: int, timestamps: int, ratio: float):
+        self.rows, self.timestamps, self.ratio = rows, timestamps, ratio
+        super().__init__(
+            f"Zaman damgası başına {ratio:.1f} satır var ({rows} satır, "
+            f"{timestamps} zaman damgası): dosya cihaz/invertör bazlı görünüyor. "
+            "Sessizce birleştirilmez — santral toplamı için duplicate_policy='sum', "
+            "ortalama için 'mean' verin.")
+
+
 def _parse_datetime_robust(raw: pd.Series) -> pd.Series:
     """Tarih parse stratejisi: önce ISO, sonra gün-önce (TR/EU).
 
@@ -312,12 +329,10 @@ def transform_to_canonical(
     spec.rows_per_timestamp = round(n_rows / n_ts, 3) if n_ts else 1.0
     if n_rows > n_ts:
         if duplicate_policy == "error":
-            raise ValueError(
-                f"Zaman damgası başına {spec.rows_per_timestamp:.1f} satır var "
-                f"({n_rows} satır, {n_ts} zaman damgası): dosya cihaz/invertör "
-                "bazlı görünüyor. Sessizce birleştirilmez — santral toplamı için "
-                "duplicate_policy='sum', ortalama için 'mean' verin."
-            )
+            # v2.363: tipli hata — API 422 + panel "Topla/Ortala" seçimi bu
+            # alanlardan beslenir (25 Eyl canlı: mesaj 500'ün içinde kayboluyordu).
+            raise DuplicateTimestampsError(
+                rows=n_rows, timestamps=n_ts, ratio=spec.rows_per_timestamp)
         raw, dst_series = _collapse_duplicate_timestamps(raw, dst_series, duplicate_policy)
 
     # --- 3. Güç kaynağı: artık SANTRAL düzeyinde seri ---

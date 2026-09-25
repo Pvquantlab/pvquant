@@ -4,7 +4,7 @@ import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
 import { api, rolum, RaporDenetimHata, type DenetimBulgusu, EslemeHatasi, type EslemeVerisi,
          type ScadaOnizleme, type ScadaKayit,
-         type KosuSatiri } from "../../api/client";
+         type KosuSatiri , CihazBazliHatasi} from "../../api/client";
 import type { KalibrasyonOzeti, Kayma, Hijyen, EpiasUretim, KayipAgaci, GucMatrisi, Isler } from "../../api/types";
 import { Kart, Sayfa, Kpi, sayiTr } from "./parcalar";
 import { JsonOnizleme } from "./JsonOnizleme";   // v2.351: JSON panel içi önizleme
@@ -160,10 +160,12 @@ export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
   const [kosuyor, setKosuyor] = useState(false);
   const [kosuHata, setKosuHata] = useState<string | null>(null);
 
+  // v2.363: cihaz/invertör bazlı dosya — fren mesajı + Topla/Ortala seçimi
+  const [cihaz, setCihaz] = useState<CihazBazliHatasi["veri"] | null>(null);
   const sec = async (d: File) => {
     setYukleniyor(true); setHata(null); setOn(null); setDosyaAdi(d.name);
     setKarne(null); setKayitHata(null); setDosya(d);
-    setSihirbaz(null); setSecimler({});
+    setSihirbaz(null); setSecimler({}); setCihaz(null);
     try { setOn(await api.scadaOnizleme(plantId, d)); }
     catch (e) {
       if (e instanceof EslemeHatasi) setSihirbaz(e.veri);   // v2.91
@@ -183,6 +185,21 @@ export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
     try {
       setKarne(await api.scadaYukle(plantId, dosya, on.onerilen_tz));
       setOn(null);   // onizleme gorevini tamamladi — yerini karne alir
+    } catch (e) {
+      if (e instanceof CihazBazliHatasi) setCihaz(e.veri);   // v2.363
+      else setKayitHata(e instanceof Error ? e.message : String(e));
+    }
+    finally { setKayitta(false); }
+  };
+  // v2.363: kullanıcı birleşimi seçti — aynı dosya, aynı kararlar + politika
+  const cihazlaYukle = async (tekrar: "sum" | "mean") => {
+    if (!dosya) return;
+    setKayitta(true); setKayitHata(null);
+    try {
+      const secildi = Object.keys(secimler).length ? secimler : undefined;
+      setKarne(await api.scadaYukle(plantId, dosya,
+        on?.onerilen_tz ?? null, secildi, tekrar));
+      setOn(null); setSihirbaz(null); setCihaz(null);
     } catch (e) { setKayitHata(e instanceof Error ? e.message : String(e)); }
     finally { setKayitta(false); }
   };
@@ -194,7 +211,10 @@ export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
       // tz null: santral kaydi sunucuda konusur (onizleme yok ki onersin)
       setKarne(await api.scadaYukle(plantId, dosya, null, secimler));
       setSihirbaz(null);
-    } catch (e) { setKayitHata(e instanceof Error ? e.message : String(e)); }
+    } catch (e) {
+      if (e instanceof CihazBazliHatasi) setCihaz(e.veri);   // v2.363
+      else setKayitHata(e instanceof Error ? e.message : String(e));
+    }
     finally { setKayitta(false); }
   };
   const sihirbazGecerli = !!secimler.timestamp &&
@@ -367,6 +387,36 @@ export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
             )}
           </Kart>
         </div>
+      )}
+
+      {/* v2.363: cihaz/invertör bazlı dosya — fren artık 500 değil, seçim.
+          25 Eyl canlı (Kaggle 22 invertör): mesaj sunucuda kusursuzdu ama
+          müşteri yalnız "500 /v1/…/scada" görüyordu. */}
+      {cihaz && dosya && (
+        <Kart baslik="Bu dosya cihaz bazlı görünüyor"
+          sag={<span className="cip mono">{`damga başına ~${sayiTr(cihaz.oran, 1)} satır`}</span>}>
+          <p style={{ fontSize: 13.5, margin: "0 0 6px", lineHeight: 1.7 }}>{cihaz.mesaj}</p>
+          <p className="soluk" style={{ fontSize: 12.5, margin: "0 0 12px", lineHeight: 1.65 }}>
+            Aynı andaki satırlar tek santral serisine indirgenecek. <b>Santral toplamı</b> güç ve
+            enerjiyi toplar (cihazlar → santral; önerilen), sıcaklık gibi ölçümleri ortalar.
+            <b> Ortalama</b> her kolonu ortalar — yalnız satırlar aynı ölçümün kopyalarıysa doğrudur.
+          </p>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button className="dugme dugme-ana" disabled={kayitta}
+              onClick={() => cihazlaYukle("sum")}>
+              {kayitta ? "Yükleniyor…" : "Santral toplamı (önerilen)"}
+            </button>
+            <button className="dugme" disabled={kayitta}
+              onClick={() => cihazlaYukle("mean")}>Ortalama</button>
+            <button className="dugme" disabled={kayitta}
+              onClick={() => { setCihaz(null); setOn(null); setSihirbaz(null);
+                               setDosyaAdi(null); setDosya(null); }}>Vazgeç</button>
+          </div>
+          {kayitHata && (
+            <p style={{ fontSize: 13, color: "var(--ikincil)",
+                        margin: "12px 0 0", lineHeight: 1.65 }}>{kayitHata}</p>
+          )}
+        </Kart>
       )}
 
       {on && (

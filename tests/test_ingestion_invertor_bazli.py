@@ -138,3 +138,35 @@ def test_utf16_bom_taninir(tmp_path):
     fmt = detect_file_format(yol)
     assert fmt.encoding == "utf-16"
     assert fmt.delimiter == ";"
+
+
+def test_cihaz_bazli_fren_422_yapili_detayla(monkeypatch, tmp_path):
+    """v2.363 — fren mesajı 500'ün içinde kaybolmaz: /scada ucu tipli hatayı
+    yakalar, panelin Topla/Ortala seçimini besleyen yapılı 422 döner; geçersiz
+    duplicate_policy de açıkça reddedilir (25 Eyl canlı, Kaggle 22 invertör)."""
+    from fastapi.testclient import TestClient
+
+    import apps.api.main as api_main
+    from apps.api.deps import gecerli_kullanici
+    from pvquant.io.ingestion.transform import DuplicateTimestampsError
+
+    api_main.app.dependency_overrides[gecerli_kullanici] = (
+        lambda: {"sub": "u", "tenant_id": "t", "role": "admin", "exp": 0})
+    monkeypatch.setattr(api_main.plant_service, "getir",
+                        lambda t, p: {"tz": "Europe/Istanbul", "capacity_kwp": 1000.0,
+                                      "lat": 37.0, "lon": 35.0})
+    import pvquant.io.ingestion.pipeline as pl
+    def patlat(*a, **k):
+        raise DuplicateTimestampsError(rows=68778, timestamps=3158, ratio=21.8)
+    monkeypatch.setattr(pl, "ingest_file", patlat)
+    try:
+        c = TestClient(api_main.app)
+        dosya = {"dosya": ("t.csv", b"a,b\n1,2\n", "text/csv")}
+        y = c.post("/v1/plants/p1/scada", files=dosya)
+        assert y.status_code == 422
+        d = y.json()["detail"]
+        assert d["tur"] == "cihaz_bazli" and d["damga"] == 3158 and "birleştirilmez" in d["mesaj"]
+        y = c.post("/v1/plants/p1/scada", files=dosya, data={"duplicate_policy": "ortala"})
+        assert y.status_code == 422 and "sum" in y.json()["detail"]
+    finally:
+        api_main.app.dependency_overrides.clear()
