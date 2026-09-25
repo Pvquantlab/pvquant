@@ -343,6 +343,7 @@ def ingest_file(
         latitude=latitude,
         longitude=longitude,
         dst_flags=dst_flags,
+        source_timestep_minutes=spec.source_timestep_minutes,   # v2.367
     )
     # Cihaz bazlı satırlar birleştirildiyse bu SESSİZ kalmamalı: kullanıcı
     # santral serisinin nasıl kurulduğunu karnede görmeli (Bulgu 1).

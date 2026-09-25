@@ -62,13 +62,18 @@ def _j(res, alan):
     return json.dumps(d, default=str, ensure_ascii=False) if d else None
 
 
-def scada_oku(tenant_id, plant_id) -> pd.DataFrame:
-    """Kalibrasyonun kullanacagi temiz okuma: valid satirlar, UTC index."""
+def scada_oku(tenant_id, plant_id, *, gunluk_dahil: bool = False) -> pd.DataFrame:
+    """Kalibrasyonun kullanacagi temiz okuma: valid satirlar, UTC index.
+    v2.367: gunluk_dahil=True aylik/enerji toplamlari icindir — 'gunluk_ozet'
+    bayrakli satirlar (gunluk ozet dosyalari) da okunur; kalibrasyon ve saatlik
+    isler varsayilanda onlari GORMEZ."""
+    kosul = ("flag IN ('valid','gunluk_ozet')" if gunluk_dahil
+             else "flag='valid'")
     with tenant_baglami(tenant_id) as s:
         df = pd.read_sql(text(
             "SELECT ts_utc, power_kw, energy_kwh, poa_wm2, t_air,"
             " t_module, wind_ms, kirpma FROM scada_hourly "
-            "WHERE plant_id=:p AND flag='valid' ORDER BY ts_utc"),
+            "WHERE plant_id=:p AND " + kosul + " ORDER BY ts_utc"),
             s.connection(), params={"p": plant_id},
             index_col="ts_utc", parse_dates=["ts_utc"])
     return df
@@ -110,7 +115,7 @@ def aylik_uretim(tenant_id, plant_id) -> pd.DataFrame:
     with tenant_baglami(tenant_id) as s:
         tz = s.execute(text("SELECT tz FROM plants WHERE id=:p"),
                        {"p": plant_id}).scalar()
-    return aylik_ozet(scada_oku(tenant_id, plant_id), tz=tz)
+    return aylik_ozet(scada_oku(tenant_id, plant_id, gunluk_dahil=True), tz=tz)   # v2.367
 
 
 def veri_ozeti(tenant_id, plant_id) -> dict:

@@ -56,3 +56,28 @@ def test_uctan_uca_ilk_gun_yutulmaz_sayac_farklanir(tmp_path):
     # kümülatif sayaç farklandı: 2-4 Mayıs = Day yield ile birebir
     assert abs(float(d["energy_kwh"].iloc[1]) - 13.349) < 0.01
     assert abs(float(d["energy_kwh"].sum()) - (13.349 + 6.733 + 11.292)) < 0.05
+
+
+def test_gunluk_ozet_bayragi_ve_uyarisi(tmp_path):
+    """v2.367 — bulgu 16: günlük-adımlı dosya saatlik karneye 'geçerli' diye
+    sızmaz. Satırlar 'gunluk_ozet' bayrağını alır, gece-üretimi kuralı bu
+    dosyada koşmaz (gün toplamı gece damgasında tz iması yanlış olur), karne
+    açık uyarı taşır."""
+    r = ingest_file(_yaz(tmp_path), capacity_kwp=4.0, latitude=41.0,
+                    longitude=29.0, source_timezone="Europe/Istanbul")
+    bayraklar = set(r.data["flag"])
+    assert "gunluk_ozet" in bayraklar and "valid" not in bayraklar
+    assert "night_production" not in bayraklar
+    assert any("günlük ÖZET" in u for u in r.report.warnings)
+    assert r.report.n_rows_valid == 0            # saatlik anlamda geçerli yok
+
+
+def test_gunluk_ozet_aylik_toplama_girer():
+    """scada_oku(gunluk_dahil=True) → aylik_ozet zinciri günlük satırları sayar."""
+    import pandas as pd
+
+    from pvquant.services.ingest_service import aylik_ozet
+    idx = pd.date_range("2016-05-01 21:00", periods=30, freq="D", tz="UTC")
+    df = pd.DataFrame({"power_kw": [None] * 30, "energy_kwh": [10.0] * 30}, index=idx)
+    out = aylik_ozet(df, tz="Europe/Istanbul")
+    assert abs(float(out[out.ay == "2016-05"]["uretim_mwh"].iloc[0]) - 0.29) < 0.02

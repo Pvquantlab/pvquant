@@ -57,6 +57,7 @@ def validate(
     latitude: float,
     longitude: float,
     dst_flags: pd.Series | None = None,
+    source_timestep_minutes: int | None = None,
 ) -> tuple[pd.DataFrame, QualityReport]:
     """Kanonik frame'i bayraklar ve kalite karnesi üretir.
 
@@ -65,6 +66,11 @@ def validate(
         capacity_kwp: DC kurulu güç — kapasite/negatif eşikler için.
         latitude, longitude: gece tespiti (güneş pozisyonu) için.
         dst_flags: transform'dan gelen DST belirsizlik işaretleri.
+        source_timestep_minutes: KAYNAK verinin adımı (v2.367). ≥1440 dk =
+            günlük özet dosyası: satırlar gece-üretimi kuralına sokulmaz
+            (gün toplamı gece damgasında görünür, tz iması yanlış olur) ve
+            'gunluk_ozet' bayrağını alır — saatlik karne/kalibrasyon dışı,
+            aylık toplamlar içi.
 
     Returns:
         (flag kolonu eklenmiş df, QualityReport)
@@ -94,10 +100,16 @@ def validate(
     flags[over & (flags == RowFlag.VALID.value)] = RowFlag.OVER_CAPACITY.value
 
     # --- 5. Gece üretimi (saat dilimi hatası dedektörü) ---
-    elevation = _solar_elevation(out.index, latitude, longitude)
-    night = elevation < NIGHT_ELEVATION_DEG
-    night_prod = night & (power > NIGHT_POWER_FRACTION * capacity_kwp)
-    flags[night_prod & (flags == RowFlag.VALID.value)] = RowFlag.NIGHT_PRODUCTION.value
+    # v2.367: GÜNLÜK ÖZET dosyasında bu kural KOŞMAZ — gün toplamı gece
+    # yarısı damgasında görünür ve tz iması yanlış olur (T6 canlı: 13 kWh
+    # gece damgasıyla 30/30 'geçerli' sayılmıştı, bulgu 16).
+    gunluk_ozet = (source_timestep_minutes is not None
+                   and source_timestep_minutes >= 1440)
+    if not gunluk_ozet:
+        elevation = _solar_elevation(out.index, latitude, longitude)
+        night = elevation < NIGHT_ELEVATION_DEG
+        night_prod = night & (power > NIGHT_POWER_FRACTION * capacity_kwp)
+        flags[night_prod & (flags == RowFlag.VALID.value)] = RowFlag.NIGHT_PRODUCTION.value
 
     # --- 6. Donmuş değer ---
     nonzero = power.fillna(0) > 0.01 * capacity_kwp
@@ -111,6 +123,10 @@ def validate(
     if dst_flags is not None:
         dst_aligned = dst_flags.reindex(out.index).fillna(False).astype(bool)
         flags[dst_aligned & (flags == RowFlag.VALID.value)] = RowFlag.DST_AMBIGUOUS.value
+
+    # --- 8. v2.367: günlük özet — kalan geçerliler açıkça damgalanır ---
+    if gunluk_ozet:
+        flags[flags == RowFlag.VALID.value] = RowFlag.DAILY_SUMMARY.value
 
     out["flag"] = flags
 
@@ -129,6 +145,13 @@ def validate(
     )
 
     # --- Akıllı uyarılar ---
+    if gunluk_ozet and n_read > 0:
+        report.warnings.append(
+            f"Kaynak adımı günlük (~{source_timestep_minutes} dk): bu dosya "
+            "günlük ÖZETTİR. Enerji aylık toplamlara ve raporlara girer; "
+            "saatlik karne ve kalibrasyon bu satırları kullanmaz — onlar için "
+            "saatlik (ya da daha sık) SCADA yükleyin."
+        )
     n_night = int(counts.get(RowFlag.NIGHT_PRODUCTION.value, 0))
     if n_read > 0 and n_night > 0.02 * n_read:
         report.warnings.append(

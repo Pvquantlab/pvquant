@@ -30,6 +30,7 @@ class RowFlag(str, Enum):
     DUPLICATE_TIME = "duplicate_time"        # tekrarlanan timestamp
     DST_AMBIGUOUS = "dst_ambiguous"          # yaz saati geçişinde belirsiz/eksik saat
     UNPARSEABLE = "unparseable"              # sayıya/tarihe çevrilemedi
+    DAILY_SUMMARY = "gunluk_ozet"            # v2.367: kaynak adımı ≥1 gün — saatlik karneye girmez
 
 
 @dataclass
@@ -159,6 +160,7 @@ class QualityReport:
                 label = {
                     "negative_power": "negatif güç",
                     "night_production": "gece üretimi (saat dilimi hatası olabilir!)",
+                    "gunluk_ozet": "günlük özet — aylık toplamlara girer, saatlik karneye girmez",
                     "over_capacity": "kapasite üstü değer",
                     "frozen_value": "donmuş değer (iletişim arızası olabilir)",
                     "duplicate_time": "tekrarlanan zaman damgası",
