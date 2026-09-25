@@ -39,7 +39,7 @@ import pandas as pd
 from .contracts import (
     ColumnMapping, FileFormat, IngestionResult, TransformSpec,
 )
-from .detection import DELIMITER_CANDIDATES, detect_file_format
+from .detection import DELIMITER_CANDIDATES, _ad_disi_satir_mi, detect_file_format
 from .mapping import suggest_mapping
 from .templates import TemplateStore
 from .transform import transform_to_canonical
@@ -172,6 +172,11 @@ def _try_mapping_variants(
             except Exception as e:
                 last_error = e
                 continue
+        # v2.366: birim/kanal-tipi satırı BAŞLIK DEĞİLDİR — 'kWh;kWh' başlıklı
+        # varyant 'kwh' birebir eşleşmesiyle ad satırını isim güveninde
+        # yenebiliyordu (SMA Sunny Explorer, T6 canlı). Böyle varyant elenir.
+        if _ad_disi_satir_mi([str(c).strip().lower() for c in df.columns]):
+            continue
 
         try:
             mapping, unmapped = suggest_mapping(df)

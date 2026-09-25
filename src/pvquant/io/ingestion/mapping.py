@@ -62,6 +62,8 @@ SYNONYMS: dict[str, list[str]] = {
         "uretim", "gunluk uretim", "toplam uretim", "ertrag",
         "energia", "total yield", "daily yield", "inverter yield",
         "feed-in energy", "on-grid energy", "kwh",
+        # v2.366: SMA Sunny Explorer ad satırı (T6 canlı)
+        "day yield",
         # Marka referansı (SolarEdge, Enphase, Fronius, Sungrow)
         "etotal", "e_total", "e-total", "whlifetime", "wh_lifetime",
         "wh lifetime", "lifetime energy", "cumulative energy",
@@ -330,6 +332,32 @@ def suggest_mapping(df: pd.DataFrame) -> tuple[ColumnMapping, list[str]]:
         assigned_fields[field] = (col, round(score, 2))
         used_columns.add(col)
 
+    if "timestamp" not in assigned_fields:
+        # v2.366 — İÇERİK YEDEĞİ: adı boş/anlamsız ("Unnamed: 0") zaman kolonu
+        # ad eşleşmesiyle bulunamaz. SMA Sunny Explorer'ın adsız tarih kolonu
+        # (T6 canlı) ve PVDAQ boş-başlık ailesi (Growatt/FIMER/KACO/Delta/Chint,
+        # envanter 'başlık onarıcı') böyle. Atanmamış kolonlar arasında örneklemi
+        # hem tarih desenine uyan hem tarihe çözülen İLK kolon zaman sayılır.
+        import re as _re
+        _desen = _re.compile(r"^\s*\d{1,4}[-/.:]\d{1,2}[-/.]\d{2,4}")
+        for col in df.columns:
+            if str(col) in used_columns:
+                continue
+            ornek = df[col].dropna().astype(str).head(20)
+            # çok satırlı başlığın veri tarafına sızan tip/birim artıkları
+            # ('dd/MM/yyyy', 'Counter') oranı bozmasın — sözlükle elenir
+            from .detection import _AD_DISI_HUCRELER
+            ornek = ornek[~ornek.str.strip().str.lower().isin(_AD_DISI_HUCRELER)]
+            if len(ornek) < 3:
+                continue
+            desen_orani = ornek.str.match(_desen).mean()
+            if desen_orani < 0.9:
+                continue
+            cozulen = pd.to_datetime(ornek, errors="coerce", dayfirst=True)
+            if cozulen.notna().mean() >= 0.9:
+                assigned_fields["timestamp"] = (str(col), 0.7)
+                used_columns.add(str(col))
+                break
     if "timestamp" not in assigned_fields:
         raise ValueError(
             "Zaman kolonu otomatik bulunamadı. "

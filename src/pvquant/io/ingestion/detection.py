@@ -17,6 +17,7 @@ tasarlandı:
 from __future__ import annotations
 
 import io
+import re
 from pathlib import Path
 
 import pandas as pd
@@ -152,6 +153,84 @@ def detect_header_row(sample_lines: list[str], delimiter: str) -> tuple[int, flo
     return best_row, confidence
 
 
+# ---- v2.366: çok satırlı cihaz başlığı (SMA Sunny Explorer ailesi) ----------
+
+_TARIH_BASI = re.compile(r"^\s*\d{1,4}[-/.]\d{1,2}[-/.]\d{2,4}([ T]|$)")
+
+#: Ad satırı OLMAYAN başlık-bloğu satırları: birimler, kanal tipleri ve
+#: tarih-biçimi ilanları. Tamamı bu sözlükten oluşan satır ad satırı sayılmaz.
+_AD_DISI_HUCRELER = {
+    "kwh", "kw", "w", "wh", "mwh", "a", "v", "c", "°c", "hz", "%", "var",
+    "kvar", "counter", "analog", "digital", "dd/mm/yyyy", "mm/dd/yyyy",
+    "yyyy-mm-dd", "dd.mm.yyyy", "hh:mm", "hh:mm:ss",
+}
+
+
+def _veri_satiri_mi(line: str, delimiter: str) -> bool:
+    """İlk hücresi tarihle başlayan satır VERİDİR — asla başlık adayı olamaz.
+    (25 Eyl canlı, bulgu 15: SMA dosyasında ilk veri satırı başlık seçilip
+    1 Mayıs sessizce yutuluyordu.)"""
+    return bool(_TARIH_BASI.match(line.split(delimiter)[0]))
+
+
+def _ad_disi_satir_mi(cells: list[str]) -> bool:
+    # pandas yinelenen adları 'kWh.1' yapar — ek soyulur (pipeline varyant eleği)
+    dolu = [re.sub(r"\.\d+$", "", c) for c in cells if c.strip()]
+    return bool(dolu) and all(c in _AD_DISI_HUCRELER for c in dolu)
+
+
+def ilan_edilen_bicim(sample_lines: list[str]) -> tuple[str, str] | None:
+    """v2.366 — dosya kendi biçimini İLAN ediyorsa tespit değil okuma yapılır.
+
+    İki gelenek tanınır: Excel'in `sep=X` ön satırı ve SMA Sunny Explorer
+    künyesi ('…|Delimiter semicolon|Decimalpoint dot|…'). Envanterin hükmü:
+    'tespit etmeye bile gerek yok, okumak yeter'. Döner: (ayraç, ondalık)
+    ya da None."""
+    ayrac = ondalik = None
+    sozluk = {"semicolon": ";", "comma": ",", "tab": "\t",
+              "dot": ".", "point": ".", "period": "."}
+    for line in sample_lines[:3]:
+        duz = line.strip().lower()
+        if duz.startswith("sep=") and len(duz) == 5:
+            ayrac = line.strip()[4]
+        m = re.search(r"delimiter\s+(\w+)", duz)
+        if m and m.group(1) in sozluk:
+            ayrac = sozluk[m.group(1)]
+        m = re.search(r"decimalpoint\s+(\w+)", duz)
+        if m and m.group(1) in sozluk:
+            ondalik = sozluk[m.group(1)]
+    if ayrac is None:
+        return None
+    # Ondalık ilan edilmediyse None — sep= yalnız ayracı söyler; ondalık
+    # veriden tespit edilmeli (Alman biçimli SMA dosyaları virgül kullanır).
+    return ayrac, ondalik
+
+
+def detect_header_row_v2(sample_lines: list[str], delimiter: str) -> tuple[int, float]:
+    """v2.366 — bulgu 15'in başlık algılayıcısı:
+
+    1. VERİ satırları (ilk hücre tarih) aday DEĞİLDİR ve ilk veri satırında
+       arama durur — başlık veriden önce gelir.
+    2. Birim/kanal-tipi satırları ('kWh;kWh', 'Counter;Analog',
+       'dd/MM/yyyy;…') ad satırı sayılmaz.
+    3. Kalanlardan en iyi skorlu satır seçilir; hiç aday yoksa eski
+       davranışa düşülür (geriye uyum)."""
+    best_row, best_score = None, -1.0
+    for i, line in enumerate(sample_lines[:MAX_HEADER_SEARCH_ROWS]):
+        if _veri_satiri_mi(line, delimiter):
+            break
+        cells = [c.strip().lower() for c in line.split(delimiter)]
+        if _ad_disi_satir_mi(cells):
+            continue
+        score = _row_header_score(cells)
+        if score > best_score:
+            best_row, best_score = i, score
+    if best_row is None:
+        return detect_header_row(sample_lines, delimiter)
+    confidence = 0.9 if best_score >= 2 else 0.5
+    return best_row, confidence
+
+
 def _is_numeric_like(cell: str) -> bool:
     c = cell.replace(",", ".").replace("-", "").replace(":", "").replace(" ", "")
     return c.replace(".", "").isdigit() and len(c) > 0
@@ -221,11 +300,20 @@ def detect_file_format(path: str | Path) -> FileFormat:
     with io.open(path, "r", encoding=encoding, errors="replace") as f:
         sample_lines = [f.readline().rstrip("\n\r") for _ in range(50)]
     sample_lines = [l for l in sample_lines if l is not None]
+    # v2.366: pandas read_csv skip_blank_lines=True ile okur — header_row o
+    # numaralandırmaya göre olmalı. Örneklemde boş satır bırakmak SMA'daki
+    # boş 3. satırla tüm indeksleri kaydırıyordu (bulgu 15'in ikinci yarısı).
+    sample_lines = [l for l in sample_lines if l.strip() != ""]
 
-    delimiter, delim_conf = detect_delimiter(sample_lines)
-    header_row, header_conf = detect_header_row(sample_lines, delimiter)
-    # Ondalık tespiti başlık SONRASI (veri) satırlarından yapılmalı
-    decimal = detect_decimal(sample_lines[header_row + 1:], delimiter)
+    ilan = ilan_edilen_bicim(sample_lines)
+    if ilan is not None:
+        delimiter, delim_conf = ilan[0], 0.98
+    else:
+        delimiter, delim_conf = detect_delimiter(sample_lines)
+    header_row, header_conf = detect_header_row_v2(sample_lines, delimiter)
+    # Ondalık: açıkça ilan edildiyse o; yoksa başlık SONRASI veriden tespit
+    decimal = (ilan[1] if ilan is not None and ilan[1] is not None
+               else detect_decimal(sample_lines[header_row + 1:], delimiter))
 
     return FileFormat(
         encoding=encoding,
