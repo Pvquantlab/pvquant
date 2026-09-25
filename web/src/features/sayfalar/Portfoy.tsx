@@ -29,7 +29,8 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
     return () => { acik = false; };
   }, []);
   const t = p?.toplam ?? null;
-  const kwhYaz = (v: number | null | undefined) => v == null ? "—" : `${sayiTr(v / 1000, 1)} MWh`;
+  // v2.362: santraller listesi de ölçekle konuşur (bulgu 14 — 0,0 MWh kalıntısı)
+  const kwhYaz = (v: number | null | undefined) => v == null ? "—" : enerjiTr(v);
   // v2.360: KPI'da birim değerin yanında ölçekle gelir (küçükte kWh, büyükte MWh)
   const enj = (v: number | null | undefined) => v == null ? "—" : enerjiTr(v);
   const tarih = (s: string | null) => s ? new Date(s).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }) : "—";
@@ -84,12 +85,18 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
           <>
             <div className="grafik-kaydir">
               <table className="veri" style={{ fontSize: 12.5 }}>
-                <thead><tr><th>Gün</th><th>P10 (MWh)</th><th>P50 (MWh)</th><th>P90 (MWh)</th><th>Saat</th></tr></thead>
+                {/* v2.362: küçük portföyde günlük toplamlar kWh konuşur (bulgu 14) */}
+                {(() => { const kucukP = !(pt.gunler ?? []).some((g) => (g.p90_mwh ?? 0) >= 10);
+                  const b = kucukP ? "kWh" : "MWh";
+                  const yaz = (v: number) => kucukP ? sayiTr(v * 1000, 0) : sayiTr(v, 1);
+                  return (<>
+                <thead><tr><th>Gün</th><th>P10 ({b})</th><th>P50 ({b})</th><th>P90 ({b})</th><th>Saat</th></tr></thead>
                 <tbody className="mono">
                   {(pt.gunler ?? []).map((g) => (
                     <tr key={g.gun}><td>{new Date(g.gun + "T12:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}</td>
-                      <td>{sayiTr(g.p10_mwh, 1)}</td><td style={{ fontWeight: 600 }}>{sayiTr(g.p50_mwh, 1)}</td><td>{sayiTr(g.p90_mwh, 1)}</td><td>{sayiTr(g.saat)}</td></tr>))}
+                      <td>{yaz(g.p10_mwh)}</td><td style={{ fontWeight: 600 }}>{yaz(g.p50_mwh)}</td><td>{yaz(g.p90_mwh)}</td><td>{sayiTr(g.saat)}</td></tr>))}
                 </tbody>
+                  </>); })()}
               </table>
             </div>
             <p className="soluk" style={{ fontSize: 12.5, margin: "10px 0 0" }}>{pt.not}{pt.artik_gun ? ` Artık geçmişi ${sayiTr(pt.artik_gun)} gün.` : ""}</p>
