@@ -148,3 +148,22 @@ def test_oran_sezgisi_birim_donusumu_karnede_soylenir(tmp_path):
                     source_timezone="Europe/Istanbul")
     assert r.transform.power_unit == "MW" and r.transform.power_unit_source == "oran"
     assert any("MW varsayılıp" in u for u in r.report.warnings)
+
+
+def test_tarih_ve_saat_ayri_kolonlar_birlesir(tmp_path):
+    """v2.374 (E7a): `date,hour,production` — TR santral dosyalarının yaygın
+    deseni. Eskiden yalnız date eşlenip 24 saat tek damgaya yığılıyor,
+    'sum' günlük toplama dönüştürüyordu. Artık tek boğazda birleşir."""
+    satirlar = ["date,hour,production"]
+    for g in (1, 2):
+        for h in range(24):
+            satirlar.append(f"2023-06-{g:02d},{h},{5.0 + h * 0.1}")
+    y = tmp_path / "kivanc.csv"
+    y.write_text("\n".join(satirlar), encoding="utf-8")
+    r = ingest_file(y, capacity_kwp=35000.0, latitude=36.8, longitude=34.6,
+                    source_timezone="Europe/Istanbul")
+    assert r.mapping.timestamp == "timestamp"
+    assert len(r.data) == 48                       # 24 saat tek damgaya yığılmadı
+    d = r.data.reset_index()
+    assert d["timestamp"].dt.hour.nunique() == 24  # saatler gerçekten dağıldı
+    assert r.transform.rows_per_timestamp == 1.0   # mükerrer freni tetiklenmedi

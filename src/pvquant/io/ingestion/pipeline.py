@@ -34,6 +34,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
+import re
+
 import pandas as pd
 
 from .contracts import (
@@ -88,15 +90,58 @@ class IngestionPreview:
     notes: list[str] = field(default_factory=list)
 
 
+_TARIH_YALIN = re.compile(r"^\s*\d{1,4}[-/.]\d{1,2}[-/.]\d{2,4}\s*$")
+_SAAT_ADLARI = {"hour", "saat", "hr", "he", "hour ending", "hour_ending"}
+
+
+def _tarih_saat_birlestir(df: pd.DataFrame) -> pd.DataFrame:
+    """v2.374 (E7a, veri avcısı teslimi): `date,hour,production` deseni —
+    Türk santral dosyalarının yaygın biçimi (Kıvanç 2, Edikli). Otomatik
+    eşleme yalnız `date`'i alıyor, `hour` eşlenmiyordu → günün 24 saati tek
+    damgaya yığılıyor, 'sum' seçilirse saatlik seri GÜNLÜK TOPLAMA dönüşüyordu.
+    Salt-tarih kolonu + 0-24 aralıklı saat kolonu birlikte görülünce burada
+    (tek boğaz: her okuma yolu) `timestamp` olarak birleştirilir; parçalar
+    `…__tarih` / `…__saat` diye yeniden adlanır — izleri örnek satırlarda ve
+    eşlenmeyenler listesinde görünür, sessiz değildir."""
+    if "timestamp" in (str(c).strip().lower() for c in df.columns):
+        return df
+    tarih_kolonu = saat_kolonu = None
+    for c in df.columns:
+        ornek = df[c].dropna().astype(str).head(30)
+        if len(ornek) < 3:
+            continue
+        if tarih_kolonu is None and ornek.str.match(_TARIH_YALIN).mean() >= 0.9:
+            tarih_kolonu = c
+            continue
+        if saat_kolonu is None:
+            ad = str(c).strip().lower().replace("_", " ")
+            if ad in _SAAT_ADLARI:
+                say = pd.to_numeric(ornek, errors="coerce")
+                if say.notna().mean() >= 0.9 and say.between(0, 24).all():
+                    saat_kolonu = c
+    if tarih_kolonu is None or saat_kolonu is None:
+        return df
+    df = df.copy()
+    saat = (pd.to_numeric(df[saat_kolonu], errors="coerce")
+            .fillna(0).astype(int).mod(24).map("{:02d}:00".format))
+    birlesik = df[tarih_kolonu].astype(str).str.strip() + " " + saat
+    df = df.rename(columns={tarih_kolonu: f"{tarih_kolonu}__tarih",
+                            saat_kolonu: f"{saat_kolonu}__saat"})
+    df.insert(0, "timestamp", birlesik)
+    return df
+
+
 def _read_raw(path: Path, fmt: FileFormat) -> pd.DataFrame:
     """Formata göre ham DataFrame okur (dönüşümsüz, her şey string)."""
     if path.suffix.lower() in (".xlsx", ".xls"):
-        return pd.read_excel(path, sheet_name=fmt.sheet_name or 0,
-                             header=fmt.header_row, dtype=str)
-    return pd.read_csv(
-        path, encoding=fmt.encoding, delimiter=fmt.delimiter,
-        header=fmt.header_row, dtype=str, skip_blank_lines=True,
-    )
+        df = pd.read_excel(path, sheet_name=fmt.sheet_name or 0,
+                           header=fmt.header_row, dtype=str)
+    else:
+        df = pd.read_csv(
+            path, encoding=fmt.encoding, delimiter=fmt.delimiter,
+            header=fmt.header_row, dtype=str, skip_blank_lines=True,
+        )
+    return _tarih_saat_birlestir(df)
 
 
 def _try_mapping_variants(
