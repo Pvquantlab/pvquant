@@ -201,7 +201,7 @@ export class EslemeHatasi extends Error {
 }
 
 /** v2.363: cihaz/invertör bazlı dosya freni — panel "Topla/Ortala" seçimi sunar. */
-export interface CihazBazliVerisi { tur: "cihaz_bazli"; satir: number; damga: number; oran: number; mesaj: string }
+export interface CihazBazliVerisi { tur: "cihaz_bazli"; satir: number; damga: number; oran: number; mesaj: string; oneri?: "sum" | "mean" /* v2.373: kopya mükerrerde mean */ }
 export class CihazBazliHatasi extends Error {
   veri: CihazBazliVerisi;
   constructor(veri: CihazBazliVerisi) { super(veri.mesaj); this.veri = veri; }

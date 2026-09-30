@@ -170,3 +170,38 @@ def test_cihaz_bazli_fren_422_yapili_detayla(monkeypatch, tmp_path):
         assert y.status_code == 422 and "sum" in y.json()["detail"]
     finally:
         api_main.app.dependency_overrides.clear()
+
+
+def test_kopya_mukerrerde_oneri_mean(tmp_path):
+    """v2.373 (E6): Edikli deseni — 1 Ocak bütün gün birebir İKİ KEZ. Eski
+    mesaj 'sum' öneriyordu; uyan kullanıcı günü 2 katına çıkarırdı. Tipli
+    hata artık kopyayı ölçer, öneri 'mean' olur; cihaz bazlı farklı-değerli
+    dosyada öneri 'sum' kalır."""
+    import pytest
+
+    from pvquant.io.ingestion.transform import DuplicateTimestampsError
+
+    def _icerik(deger2):
+        satirlar = ["timestamp,power_kw"]
+        for h in range(24):
+            satirlar.append(f"2023-01-01 {h:02d}:00,5.0")
+            satirlar.append(f"2023-01-01 {h:02d}:00,{deger2}")
+        return "\n".join(satirlar)
+
+    (tmp_path / "kopya.csv").write_text(_icerik("5.0"), encoding="utf-8")
+    with pytest.raises(DuplicateTimestampsError) as e1:
+        ingest_file(tmp_path / "kopya.csv", capacity_kwp=10.0, latitude=38.0,
+                    longitude=34.5, source_timezone="Europe/Istanbul")
+    assert e1.value.identical is True and "KOPYA" in str(e1.value)
+
+    (tmp_path / "cihaz.csv").write_text(_icerik("7.0"), encoding="utf-8")
+    with pytest.raises(DuplicateTimestampsError) as e2:
+        ingest_file(tmp_path / "cihaz.csv", capacity_kwp=10.0, latitude=38.0,
+                    longitude=34.5, source_timezone="Europe/Istanbul")
+    assert e2.value.identical is False
+
+
+def test_xls_bagimliligi_kurulu():
+    """v2.373: .xls yolu (GoodWe SEMS, Freesun) koddaydı ama xlrd bağımlılığı
+    yoktu — ImportError. Bekçi: bağımlılık düşerse bu test kırmızı."""
+    import xlrd  # noqa: F401

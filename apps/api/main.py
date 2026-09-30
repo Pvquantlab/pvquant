@@ -1523,13 +1523,18 @@ def scada_yukle(plant_id: str, dosya: UploadFile = File(...),
     except DuplicateTimestampsError as e:
         # v2.363: fren mesajı 500'ün içinde kaybolmaz — panel bu yapıyla
         # "Santral toplamı / Ortalama" seçimi sunup aynı dosyayı yeniden yollar.
+        # v2.373 (E6): kopya mükerrerde önerilen 'mean' — panel rozeti buna göre
         raise HTTPException(422, {
             "tur": "cihaz_bazli", "satir": e.rows, "damga": e.timestamps,
-            "oran": e.ratio,
-            "mesaj": (f"Bu dosya cihaz/invertör bazlı görünüyor: zaman damgası "
-                      f"başına ortalama {e.ratio:.1f} satır ({e.rows} satır, "
-                      f"{e.timestamps} damga). Satırlar sessizce birleştirilmez — "
-                      "nasıl birleştirileceğini siz seçin.")})
+            "oran": e.ratio, "oneri": "mean" if e.identical else "sum",
+            "mesaj": ((f"Mükerrer satırlar birebir KOPYA görünüyor (damga başına "
+                       f"{e.ratio:.1f} satır). 'Ortalama' doğru seçimdir; "
+                       "'Santral toplamı' değerleri katlar.")
+                      if e.identical else
+                      (f"Bu dosya cihaz/invertör bazlı görünüyor: zaman damgası "
+                       f"başına ortalama {e.ratio:.1f} satır ({e.rows} satır, "
+                       f"{e.timestamps} damga). Satırlar sessizce birleştirilmez — "
+                       "nasıl birleştirileceğini siz seçin."))})
     except ValueError as e:
         # v2.363: hattın diğer doğrulama hataları da müşteriye 500 değil
         # insan diliyle 422 döner.

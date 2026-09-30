@@ -45,13 +45,24 @@ class DuplicateTimestampsError(ValueError):
     invertör dosyası). Alanlar API'nin yapılandırılmış 422'sini ve panelin
     "Topla / Ortala" seçimini besler; ValueError mirası eski except'leri kırmaz."""
 
-    def __init__(self, *, rows: int, timestamps: int, ratio: float):
+    def __init__(self, *, rows: int, timestamps: int, ratio: float,
+                 identical: bool = False):
         self.rows, self.timestamps, self.ratio = rows, timestamps, ratio
-        super().__init__(
-            f"Zaman damgası başına {ratio:.1f} satır var ({rows} satır, "
-            f"{timestamps} zaman damgası): dosya cihaz/invertör bazlı görünüyor. "
-            "Sessizce birleştirilmez — santral toplamı için duplicate_policy='sum', "
-            "ortalama için 'mean' verin.")
+        # v2.373 (E6): mükerrerler birebir KOPYA ise (Edikli GES: 1 Ocak
+        # blokları iki kez) 'sum' önerisi değerleri 2 katına çıkarır —
+        # doğru öneri 'mean'. Cihaz bazlı dosyada ise 'sum' doğrudur.
+        self.identical = identical
+        if identical:
+            mesaj = (f"Zaman damgası başına {ratio:.1f} satır var ({rows} satır, "
+                     f"{timestamps} damga) ve mükerrer satırlar birebir KOPYA "
+                     "görünüyor. Sessizce birleştirilmez — kopyalar için doğru "
+                     "seçim duplicate_policy='mean'; 'sum' değerleri katlar.")
+        else:
+            mesaj = (f"Zaman damgası başına {ratio:.1f} satır var ({rows} satır, "
+                     f"{timestamps} zaman damgası): dosya cihaz/invertör bazlı "
+                     "görünüyor. Sessizce birleştirilmez — santral toplamı için "
+                     "duplicate_policy='sum', ortalama için 'mean' verin.")
+        super().__init__(mesaj)
 
 
 def _parse_datetime_robust(raw: pd.Series) -> pd.Series:
@@ -333,9 +344,13 @@ def transform_to_canonical(
     if n_rows > n_ts:
         if duplicate_policy == "error":
             # v2.363: tipli hata — API 422 + panel "Topla/Ortala" seçimi bu
-            # alanlardan beslenir (25 Eyl canlı: mesaj 500'ün içinde kayboluyordu).
+            # alanlardan beslenir. v2.373: mükerrerler birebir kopya mı ölçülür
+            # (yalnız mükerrer damgalar üzerinde, ucuz) — öneri ona göre değişir.
+            cift = raw.index.duplicated(keep=False)
+            kopya = bool(cift.any() and raw[cift].groupby(level=0).nunique().max().max() <= 1)
             raise DuplicateTimestampsError(
-                rows=n_rows, timestamps=n_ts, ratio=spec.rows_per_timestamp)
+                rows=n_rows, timestamps=n_ts, ratio=spec.rows_per_timestamp,
+                identical=kopya)
         raw, dst_series = _collapse_duplicate_timestamps(raw, dst_series, duplicate_policy)
 
     # --- 3. Güç kaynağı: artık SANTRAL düzeyinde seri ---

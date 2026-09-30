@@ -401,13 +401,16 @@ export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
             enerjiyi toplar (cihazlar → santral; önerilen), sıcaklık gibi ölçümleri ortalar.
             <b> Ortalama</b> her kolonu ortalar — yalnız satırlar aynı ölçümün kopyalarıysa doğrudur.
           </p>
+          {/* v2.373 (E6): önerilen rozet sunucudan — kopya mükerrerde 'sum'
+              değerleri katlar, doğru öneri 'Ortalama'. */}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button className="dugme dugme-ana" disabled={kayitta}
+            <button className={cihaz.oneri === "mean" ? "dugme" : "dugme dugme-ana"} disabled={kayitta}
               onClick={() => cihazlaYukle("sum")}>
-              {kayitta ? "Yükleniyor…" : "Santral toplamı (önerilen)"}
+              {kayitta ? "Yükleniyor…" : cihaz.oneri === "mean" ? "Santral toplamı" : "Santral toplamı (önerilen)"}
             </button>
-            <button className="dugme" disabled={kayitta}
-              onClick={() => cihazlaYukle("mean")}>Ortalama</button>
+            <button className={cihaz.oneri === "mean" ? "dugme dugme-ana" : "dugme"} disabled={kayitta}
+              onClick={() => cihazlaYukle("mean")}>
+              {cihaz.oneri === "mean" ? "Ortalama (önerilen)" : "Ortalama"}</button>
             <button className="dugme" disabled={kayitta}
               onClick={() => { setCihaz(null); setOn(null); setSihirbaz(null);
                                setDosyaAdi(null); setDosya(null); }}>Vazgeç</button>
