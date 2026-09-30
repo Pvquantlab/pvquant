@@ -31,6 +31,9 @@ services:
       PVQ_SMTP_TLS: ${PVQ_SMTP_TLS:-}
       PVQ_ALARM_TO: ${PVQ_ALARM_TO:-}
       PVQ_YEDEK_KAPALI: ${PVQ_YEDEK_KAPALI:-}   # v2.337: gece yedegini kapatmak icin
+      # v2.377: EPİAŞ Şeffaflık kimliği — gece_epias_uretim (gerçekleşen akışı) bunu okur
+      PVQUANT_EPIAS_KULLANICI: ${PVQUANT_EPIAS_KULLANICI:-}
+      PVQUANT_EPIAS_SIFRE: ${PVQUANT_EPIAS_SIFRE:-}
     volumes:
       - ./var:/app/var             # model artifact'leri (hyb_*.pkl) — imaja gomulmez, paylasilir
       - ./yedekler:/app/yedekler   # v2.337: gece veritabani yedekleri ana makinede tutulur
@@ -59,6 +62,9 @@ services:
       PVQ_SMTP_TLS: ${PVQ_SMTP_TLS:-}
       PVQ_BILDIRIM_EPOSTA: ${PVQ_BILDIRIM_EPOSTA:-}
       PVQ_DOMAIN: ${PVQ_DOMAIN:-localhost}   # v2.335: sıfırlama bağlantısı tabanı
+      # v2.377: EPİAŞ Şeffaflık kimliği — /epias-uretim durum ucu uygun_mu ile bunu okur
+      PVQUANT_EPIAS_KULLANICI: ${PVQUANT_EPIAS_KULLANICI:-}
+      PVQUANT_EPIAS_SIFRE: ${PVQUANT_EPIAS_SIFRE:-}
     ports:
       # v2.342: yalniz 127.0.0.1 — yerel curl calisir, genel IP'li sunucuda
       # disaridan ERISILEMEZ (aksi halde API, Caddy/TLS baypas edilerek
