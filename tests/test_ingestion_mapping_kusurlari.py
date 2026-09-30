@@ -115,3 +115,20 @@ def test_kendi_disa_aktarimimiz_kayipsiz_geri_okunur():
     assert m.temp_ambient == "t_air"
     assert m.temp_module == "t_module"
     assert m.wind_speed == "wind_ms"
+
+
+def test_genis_tabloda_tek_invertor_kolonu_sessizce_secilmez():
+    """v2.372 (E8, veri avcısı teslimi): 24 invertör kolonlu geniş tabloda
+    otomatik eşleme tek (bazen bozuk) kolonu 'güç' seçiyordu — 2107=24,
+    9068=10, 7333=112 aday gerçek dosyalarla ölçüldü. Fren: ≥3 yakın-skorlu
+    aday → alan atanmaz, zorunluysa elle eşlemeye düşer. İki adaylı meşru
+    durum (SMA Total/Day yield) frene takılmaz."""
+    import pytest
+
+    genis = {f"inv_{i:02d}_ac_power": 42.0 for i in range(1, 25)}
+    with pytest.raises(ValueError, match="GENİŞ tablo"):
+        suggest_mapping(_df(**genis))
+
+    # tek güç kolonlu klasik dosya etkilenmez
+    m, _ = suggest_mapping(_df(**{"ac_power": 42.0, "poa": 800.0}))
+    assert m.power == "ac_power"

@@ -324,9 +324,29 @@ def suggest_mapping(df: pd.DataFrame) -> tuple[ColumnMapping, list[str]]:
 
     # Güçlü iddialar önce; her alan ve her kolon en fazla bir kez
     candidates.sort(reverse=True)
+
+    # v2.372 (E8, veri avcısı teslimi): GENİŞ TABLO FRENİ — aynı KRİTİK alana
+    # yüksek skorlu ≥3 aday kolon varsa o alan otomatik ATANMAZ. 24 invertörlü
+    # dosyada inv_01 sessizce "güç" seçiliyordu; seçim bozuk sayaca/ölü
+    # invertöre bile düşebiliyordu (2107=24, 9068=10, 7333=112 aday — gerçek
+    # dosyalarla ölçüldü). İki adaylı meşru durumlar (SMA Total/Day yield)
+    # frene takılmaz.
+    _COKLU_ESIK = 3
+    coklu_aday: dict[str, int] = {}
+    for _alan in ("power", "energy"):
+        alan_adaylari = [(s, c) for s, _sp, _i, f, c in candidates if f == _alan]
+        if not alan_adaylari:
+            continue
+        tepe = max(s for s, _ in alan_adaylari)
+        yakin_kolonlar = {c for s, c in alan_adaylari if s >= 0.8 * tepe}
+        if len(yakin_kolonlar) >= _COKLU_ESIK:
+            coklu_aday[_alan] = len(yakin_kolonlar)
+
     assigned_fields: dict[str, tuple[str, float]] = {}
     used_columns: set[str] = set()
     for score, _specificity, _neg_idx, field, col in candidates:
+        if field in coklu_aday:
+            continue   # v2.372: sessiz tek-kolon seçimi yok
         if field in assigned_fields or col in used_columns:
             continue
         assigned_fields[field] = (col, round(score, 2))
@@ -368,6 +388,14 @@ def suggest_mapping(df: pd.DataFrame) -> tuple[ColumnMapping, list[str]]:
             f"Mevcut kolonlar: {list(df.columns)}"
         )
     if "power" not in assigned_fields and "energy" not in assigned_fields:
+        if coklu_aday:
+            det = ", ".join(f"{a} için {n} aday" for a, n in coklu_aday.items())
+            raise ValueError(
+                f"Aynı alana birden çok yüksek skorlu kolon var ({det}) — dosya "
+                "cihaz/invertör bazlı GENİŞ tablo görünüyor. Tek kolon sessizce "
+                "seçilmez: santral TOPLAM kolonu varsa elle onu işaretleyin; "
+                "yoksa cihaz kolonları toplanmalıdır."
+            )
         raise ValueError(
             "Güç veya enerji kolonu otomatik bulunamadı. "
             f"Mevcut kolonlar: {list(df.columns)}"
