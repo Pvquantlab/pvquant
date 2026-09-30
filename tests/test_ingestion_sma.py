@@ -167,3 +167,29 @@ def test_tarih_ve_saat_ayri_kolonlar_birlesir(tmp_path):
     d = r.data.reset_index()
     assert d["timestamp"].dt.hour.nunique() == 24  # saatler gerçekten dağıldı
     assert r.transform.rows_per_timestamp == 1.0   # mükerrer freni tetiklenmedi
+
+
+def test_enerji_birimi_mwh_ad_ve_orandan(tmp_path):
+    """v2.375 (bulgu 25, EPİAŞ 2579): 'production_mwh' kWh sanılıp 205 MW
+    santral 1000× küçülüyordu. Ad 'mwh' → MWh ×1000 uyarısız; adsızda oran
+    sezgisi + karne uyarısı."""
+    satirlar = ["timestamp,production_mwh"]
+    for h in range(24):
+        satirlar.append(f"2026-06-01 {h:02d}:00,{150.0 if 8 <= h <= 16 else 0.0}")
+    y = tmp_path / "epias.csv"
+    y.write_text("\n".join(satirlar), encoding="utf-8")
+    r = ingest_file(y, capacity_kwp=250000.0, latitude=37.75, longitude=33.6,
+                    source_timezone="Europe/Istanbul")
+    assert r.transform.energy_unit == "MWh" and r.transform.energy_unit_source == "ad"
+    d = r.data.reset_index()
+    assert abs(float(d.energy_kwh.max()) - 150000.0) < 1
+    assert not any("Enerji değerleri" in u for u in r.report.warnings)
+
+    # adsız kolonda oran sezgisi + uyarı
+    y2 = tmp_path / "adsiz.csv"
+    y2.write_text("\n".join(s.replace("production_mwh", "uretim") for s in satirlar),
+                  encoding="utf-8")
+    r2 = ingest_file(y2, capacity_kwp=250000.0, latitude=37.75, longitude=33.6,
+                     source_timezone="Europe/Istanbul")
+    assert r2.transform.energy_unit == "MWh" and r2.transform.energy_unit_source == "oran"
+    assert any("Enerji değerleri MWh" in u for u in r2.report.warnings)

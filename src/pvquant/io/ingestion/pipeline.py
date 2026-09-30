@@ -398,6 +398,11 @@ def ingest_file(
             f"Güç değerleri {spec.power_unit} varsayılıp kW'a çevrildi — bu, "
             "tepe/kapasite ORANINDAN çıkarımdır (kolon adında birim yok). "
             "Birim ya da kurulu güç girişini doğrulayın.")
+    # v2.375: enerji için aynı dürüstlük
+    if spec.energy_unit != "kWh" and spec.energy_unit_source == "oran":
+        report.warnings.append(
+            f"Enerji değerleri {spec.energy_unit} varsayılıp kWh'e çevrildi — "
+            "orandan çıkarım; birim ya da kurulu güç girişini doğrulayın.")
     # Cihaz bazlı satırlar birleştirildiyse bu SESSİZ kalmamalı: kullanıcı
     # santral serisinin nasıl kurulduğunu karnede görmeli (Bulgu 1).
     if spec.rows_per_timestamp > 1.0:

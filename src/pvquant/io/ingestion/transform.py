@@ -153,6 +153,27 @@ def detect_power_unit(power: pd.Series, capacity_kwp: float,
 _UNIT_FACTORS = {"kW": 1.0, "MW": 1000.0, "W": 0.001}
 
 
+def _enerji_birim(seri: pd.Series, capacity_kwp: float, kolon_adi, spec) -> float:
+    """v2.375 (bulgu 25, EPİAŞ 2579 ön-sınavı): 'production_mwh' adındaki kolon
+    kWh sanılıp 630 günlük 205 MW'lık santrali 1000× küçültüyordu — enerji
+    tarafında birim tespiti HİÇ yoktu. Saatlik enerji (kWh) sayıca güçle (kW)
+    aynı ölçekte olduğundan detect_power_unit mantığı birebir uyar: ad 'mwh'
+    diyorsa MWh (×1000), Wh ölçeğiyse ÷1000; ad yoksa tepe/kapasite oranı.
+    Kümülatif sayaçta çarpan fark'tan önce/sonra aynıdır (doğrusal)."""
+    sayisal = pd.to_numeric(seri, errors="coerce")
+    # Oran sezgisi KÜMÜLATİF sayaçta mutlak değere bakamaz (SMA 'Total yield'
+    # 7.541 kWh ÷ 4 kWp = 1885 → W sanılıp bölünüyordu): ölçek FARK üzerinden.
+    if _is_cumulative_energy(sayisal, str(kolon_adi or "")):
+        olcum = sayisal.diff().clip(lower=0)
+    else:
+        olcum = sayisal
+    birim, kaynak = detect_power_unit(
+        olcum, capacity_kwp, str(kolon_adi or ""), return_source=True)
+    spec.energy_unit = {"kW": "kWh", "MW": "MWh", "W": "Wh"}[birim]
+    spec.energy_unit_source = kaynak
+    return _UNIT_FACTORS[birim]
+
+
 def detect_timestep_minutes(index: pd.DatetimeIndex) -> int:
     """Zaman adımı: ardışık farkların medyanı (io/scada.py ile aynı mantık)."""
     if len(index) < 2:
@@ -362,7 +383,8 @@ def transform_to_canonical(
         spec.power_unit = unit
         spec.power_unit_source = birim_kaynak
         if "energy_raw" in raw.columns:
-            e_raw = raw["energy_raw"]
+            e_raw = raw["energy_raw"] * _enerji_birim(raw["energy_raw"],
+                                                      capacity_kwp, mapping.energy, spec)
             # Kümülatif tespiti güç varken de kayda geçer (denetim izi)
             if _is_cumulative_energy(e_raw, mapping.energy):
                 spec.energy_cumulative = True
@@ -371,7 +393,8 @@ def transform_to_canonical(
                 work["energy_kwh"] = e_raw
     else:
         # Yalnız enerji var: kümülatif mi kontrol et
-        energy_raw = raw["energy_raw"]
+        energy_raw = raw["energy_raw"] * _enerji_birim(raw["energy_raw"],
+                                                       capacity_kwp, mapping.energy, spec)
         if _is_cumulative_energy(energy_raw, mapping.energy):
             spec.energy_cumulative = True
             interval_energy = energy_raw.diff().clip(lower=0)   # ömür sayacı → aralık
