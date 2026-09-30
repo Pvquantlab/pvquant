@@ -1507,11 +1507,13 @@ def scada_yukle(plant_id: str, dosya: UploadFile = File(...),
                               latitude=row["lat"], longitude=row["lon"],
                               source_timezone=tz,
                               file_format=detect_file_format(yol),
-                              mapping=esleme, duplicate_policy=tekrar)
+                              mapping=esleme, duplicate_policy=tekrar,
+                              ac_limit_kw=row.get("ac_limit_kw"))   # v2.376
         else:
             res = ingest_file(yol, capacity_kwp=float(row["capacity_kwp"]),
                               latitude=row["lat"], longitude=row["lon"],
-                              source_timezone=tz, duplicate_policy=tekrar)
+                              source_timezone=tz, duplicate_policy=tekrar,
+                              ac_limit_kw=row.get("ac_limit_kw"))   # v2.376
         out = ingest_service.yukle_ve_kaydet(
             claims["tenant_id"], plant_id, dosya.filename or yol,
             capacity_kwp=float(row["capacity_kwp"]),

@@ -338,6 +338,7 @@ def ingest_file(
     file_format: FileFormat | None = None,
     mapping: ColumnMapping | None = None,
     duplicate_policy: str = "error",
+    ac_limit_kw: float | None = None,
 ) -> IngestionResult:
     """Faz 2: onaylanmış kararlarla dönüştür + doğrula.
 
@@ -354,6 +355,8 @@ def ingest_file(
         duplicate_policy: Zaman damgası başına birden çok satır varsa
             (invertör bazlı dosya): "error" durur ve sorar (varsayılan),
             "sum" santral toplamı, "mean" ortalama. Bkz. transform.
+        ac_limit_kw: İnverter AC tavanı (santral kaydından, varsa) —
+            donmuş-değer kuralının kırpma muafiyeti için (v2.376).
 
     Returns:
         IngestionResult — data, karar izleri ve kalite karnesi.
@@ -389,6 +392,7 @@ def ingest_file(
         longitude=longitude,
         dst_flags=dst_flags,
         source_timestep_minutes=spec.source_timestep_minutes,   # v2.367
+        ac_limit_kw=ac_limit_kw,                                # v2.376
     )
     # v2.371 (bulgu 21, T9 canlı): birim ORAN sezgisiyle çevrildiyse SESSİZ
     # kalmaz — kobayın şişkin kapasitesi ~2 kW'lik değerleri MW sanıp 1000×

@@ -41,6 +41,12 @@ OVER_CAPACITY_FACTOR = 1.05
 #: Donmuş değer: aynı sıfır-dışı değerin ardışık tekrar eşiği (saat).
 FROZEN_RUN_HOURS = 4
 
+#: Kırpma platosu muafiyeti: güç AC tavanının bu oranı ve üstündeyse
+#: 'saatlerce sabit değer' arıza değil KIRPMADIR — inverter AC limitine
+#: dayanmış santral öğle boyunca aynı değeri basar (v2.376, Karapınar:
+#: 519 gerçek öğle saati 199,9 MW platosunda 'donmuş' sayılmıştı).
+CLIPPING_PLATEAU_FRACTION = 0.95
+
 
 def _solar_elevation(index: pd.DatetimeIndex, latitude: float,
                      longitude: float) -> pd.Series:
@@ -58,6 +64,7 @@ def validate(
     longitude: float,
     dst_flags: pd.Series | None = None,
     source_timestep_minutes: int | None = None,
+    ac_limit_kw: float | None = None,
 ) -> tuple[pd.DataFrame, QualityReport]:
     """Kanonik frame'i bayraklar ve kalite karnesi üretir.
 
@@ -71,6 +78,9 @@ def validate(
             (gün toplamı gece damgasında görünür, tz iması yanlış olur) ve
             'gunluk_ozet' bayrağını alır — saatlik karne/kalibrasyon dışı,
             aylık toplamlar içi.
+        ac_limit_kw: İnverter AC tavanı (varsa). Verilirse tavanın %95'i
+            üstündeki sabit koşular donmuş sayılmaz — kırpma platosudur
+            (v2.376). None ise eski davranış aynen sürer.
 
     Returns:
         (flag kolonu eklenmiş df, QualityReport)
@@ -115,12 +125,21 @@ def validate(
     # v2.370: günlük özette bu kural da KOŞMAZ — 'aynı değer saatlerce' saatlik
     # iletişim arızası imzasıdır; günlük tepe değerlerin birkaç gün eşit çıkması
     # arıza değildir (T9 ön-sınavı: 8 gün 'donmuş' sanılmıştı).
+    n_kirpma_muaf = 0
     if not gunluk_ozet:
         nonzero = power.fillna(0) > 0.01 * capacity_kwp
         same_as_prev = power.diff().abs() < 1e-9
         run_id = (~(same_as_prev & nonzero)).cumsum()
         run_len = run_id.groupby(run_id).transform("size")
         frozen = same_as_prev & nonzero & (run_len >= FROZEN_RUN_HOURS)
+        # v2.376 (Karapınar canlı, bulgu 27): AC tavanına dayanmış santral
+        # öğle boyunca AYNI değeri basar — bu kırpma platosudur, iletişim
+        # arızası değil. 519 gerçek öğle saati (en değerli veri!) 'donmuş'
+        # sayılıp kalibrasyon dışı kalıyordu. Tavan bilinmiyorsa muafiyet yok.
+        if ac_limit_kw is not None and ac_limit_kw > 0:
+            plato = power >= CLIPPING_PLATEAU_FRACTION * ac_limit_kw
+            n_kirpma_muaf = int((frozen & plato).sum())
+            frozen &= ~plato
         flags[frozen & (flags == RowFlag.VALID.value)] = RowFlag.FROZEN_VALUE.value
 
     # --- 7. DST belirsizliği ---
@@ -155,6 +174,11 @@ def validate(
             "günlük ÖZETTİR. Enerji aylık toplamlara ve raporlara girer; "
             "saatlik karne ve kalibrasyon bu satırları kullanmaz — onlar için "
             "saatlik (ya da daha sık) SCADA yükleyin."
+        )
+    if n_kirpma_muaf > 0:
+        report.warnings.append(
+            f"{n_kirpma_muaf} saat AC tavanı platosunda (kırpma): sabit "
+            "değerler arıza değil inverter limitidir, geçerli sayıldı."
         )
     n_night = int(counts.get(RowFlag.NIGHT_PRODUCTION.value, 0))
     if n_read > 0 and n_night > 0.02 * n_read:

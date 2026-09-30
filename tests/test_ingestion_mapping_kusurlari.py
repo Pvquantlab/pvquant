@@ -132,3 +132,17 @@ def test_genis_tabloda_tek_invertor_kolonu_sessizce_secilmez():
     # tek güç kolonlu klasik dosya etkilenmez
     m, _ = suggest_mapping(_df(**{"ac_power": 42.0, "poa": 800.0}))
     assert m.power == "ac_power"
+
+
+def test_temp_c_guvenli_varyanti_ortama_eslenir():
+    """v2.376 (Karapınar canlı, bulgu 26): EPİAŞ hazırlığındaki 'temp_c'
+    kolonu eşlenmiyordu ("Eşlenmeyen kolonlar: temp_c") — çıplak 'temp'
+    yasağı doğru ama tam ad 'temp c' güvenlidir. Modül önekleri
+    (_EXCLUDE) bu alandan dışlanmaya devam eder."""
+    m, _ = suggest_mapping(_df(**{"production_mwh": 120.0, "temp_c": 21.5}))
+    assert m.temp_ambient == "temp_c"
+
+    # çıplak-temp yasağı ve modül dışlaması bozulmadı
+    m2, _ = suggest_mapping(_df(**{"ac_power": 42.0, "module_temp_c": 45.0}))
+    assert m2.temp_ambient is None
+    assert m2.temp_module == "module_temp_c"

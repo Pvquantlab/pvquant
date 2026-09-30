@@ -114,6 +114,11 @@ SYNONYMS: dict[str, list[str]] = {
         "t_air",
         # REFPLANT
         "ortalama sicaklik", "ortalama sıcaklık",
+        # v2.376 (Karapınar canlı): 'temp_c' güvenli varyantı da yoktu —
+        # önizlemede "Eşlenmeyen kolonlar: temp_c" (bulgu 26). Çıplak 'temp'
+        # yasağı SÜRÜYOR; 'temp c' tam addır ve module/cell önekleri zaten
+        # _EXCLUDE ile bu alandan dışlanır.
+        "temp_c",
     ],
     "temp_module": [
         "module temperature", "panel temperature", "cell temperature",

@@ -366,3 +366,49 @@ def test_unrelated_file_raises_mapping_failed(tmp_path):
     # taşıması ve UI'ın manuel eşleme kurabilmesi.
     assert len(err.columns) > 0
     assert err.file_format is not None
+
+# ---------------------------------------------------------------------------
+# Senaryo: Kırpma platosu donmuş sayılmaz (v2.376, Karapınar bulgu 27)
+# ---------------------------------------------------------------------------
+
+def test_kirpma_platosu_donmus_sayilmaz(tmp_path):
+    """AC tavanına dayanmış santral öğle boyunca AYNI değeri basar — bu
+    kırpmadır, iletişim arızası değil. Karapınar canlı: 519 gerçek öğle
+    saati (199,9 MW platosu) 'donmuş' bayrağıyla kalibrasyon dışı kalmıştı.
+    Tavan bilinmiyorsa eski davranış aynen sürer (dürüst geriye uyum)."""
+    ac_limit = 3700.0
+    p = _hourly_power_profile(10, "UTC")
+    vals = p.values.copy()
+    vals[32:38] = 3650.0          # gün 2, 08–14 UTC: 6 saat plato (>%95 AC)
+    df = pd.DataFrame({
+        "Time": p.index.tz_localize(None).strftime("%Y-%m-%d %H:%M"),
+        "Power(kW)": vals.round(1),
+    })
+    path = tmp_path / "kirpma.csv"
+    df.to_csv(path, index=False)
+
+    # Tavan verilince: plato geçerli kalır, karne sebebini söyler
+    res = ingest_file(path, capacity_kwp=CAP_KWP, latitude=LAT,
+                      longitude=LON, source_timezone="UTC",
+                      ac_limit_kw=ac_limit)
+    assert res.report.flag_counts.get(RowFlag.FROZEN_VALUE.value, 0) == 0
+    assert any("kırpma" in w.lower() for w in res.report.warnings)
+
+    # Tavan verilmeyince: aynı plato eskisi gibi donmuş bayraklanır
+    res2 = ingest_file(path, capacity_kwp=CAP_KWP, latitude=LAT,
+                       longitude=LON, source_timezone="UTC")
+    assert res2.report.flag_counts.get(RowFlag.FROZEN_VALUE.value, 0) >= 4
+
+    # Tavanın ALTINDAKİ plato (gerçek arıza imzası) tavan verilse de yakalanır
+    vals2 = p.values.copy()
+    vals2[32:38] = 1234.5
+    df2 = pd.DataFrame({
+        "Time": p.index.tz_localize(None).strftime("%Y-%m-%d %H:%M"),
+        "Power(kW)": vals2.round(1),
+    })
+    path2 = tmp_path / "ariza.csv"
+    df2.to_csv(path2, index=False)
+    res3 = ingest_file(path2, capacity_kwp=CAP_KWP, latitude=LAT,
+                       longitude=LON, source_timezone="UTC",
+                       ac_limit_kw=ac_limit)
+    assert res3.report.flag_counts.get(RowFlag.FROZEN_VALUE.value, 0) >= 4
