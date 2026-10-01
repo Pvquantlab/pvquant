@@ -94,6 +94,10 @@ def _plant_spec(plant) -> PlantSpec:
         soiling_temizleme_mm=float(_pj(plant).get("soiling_temizleme_mm") or 6.0),
         soiling_baslangic=float(_pj(plant).get("soiling_baslangic") or 0.0),
         kar_model=_pj(plant).get("kar_model") or "none",
+        # v2.381: izleyici — params_json.izleyici = "tek_eksen" ile açılır
+        izleyici=_pj(plant).get("izleyici") or "sabit",
+        izleyici_max_aci=float(_pj(plant).get("izleyici_max_aci") or 60.0),
+        izleyici_gcr=float(_pj(plant).get("izleyici_gcr") or 0.35),
     )
 
 

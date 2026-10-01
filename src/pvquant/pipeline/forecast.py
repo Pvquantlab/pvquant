@@ -92,6 +92,15 @@ class PlantSpec:
     soiling_temizleme_mm: float = 6.0
     soiling_baslangic: float = 0.0
     kar_model: Literal["none", "nrel"] = "none"
+    # v2.381 (yol haritası B4, Kıvanç 2 canlı sınavı): tek eksenli izleyici.
+    # VARSAYILAN SABİT — açılmadıkça zincir birebir eski (v2.255 deseni).
+    # "tek_eksen": yatay K–G eksen, D–B takip, geri-izlemeli (pvlib);
+    # POA/AOI açıları güneşten türer — tilt/azimuth alanları POA'da yok
+    # sayılır. SINIR: varsayılan-kapalı IAM-difüz ve kar-kayma terimleri
+    # izleyicide de nominal tilt'i kullanır (bilinçli yaklaşıklık).
+    izleyici: Literal["sabit", "tek_eksen"] = "sabit"
+    izleyici_max_aci: float = 60.0   # dönme sınırı (Karapınar ÇSED: 50–60°)
+    izleyici_gcr: float = 0.35       # sıra kaplama oranı (backtracking)
 
     @property
     def effective_gamma(self) -> float:
@@ -294,9 +303,17 @@ def forecast_7day(
 
     # --- 3. POA (Perez) ---
     dni_extra, airmass = irradiance.extra_radiation_and_airmass(times, solpos["apparent_zenith"])
+    # v2.381: izleyicide yüzey açıları sabit değil, güneşten türer (saatlik
+    # seri); pvlib Perez/AOI serileri olduğu gibi kabul eder. Sabitte eski yol.
+    if plant.izleyici == "tek_eksen":
+        _tilt, _azimut = irradiance.tek_eksen_izleyici_acilari(
+            solpos["apparent_zenith"], solpos["azimuth"],
+            max_aci=plant.izleyici_max_aci, gcr=plant.izleyici_gcr)
+    else:
+        _tilt, _azimut = plant.tilt, plant.azimuth
     poa = irradiance.transpose_perez(
-        surface_tilt=plant.tilt,
-        surface_azimuth=plant.azimuth,
+        surface_tilt=_tilt,
+        surface_azimuth=_azimut,
         solar_zenith=solpos["apparent_zenith"],
         solar_azimuth=solpos["azimuth"],
         dni=decomposed["dni"],

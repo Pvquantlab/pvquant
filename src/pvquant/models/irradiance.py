@@ -258,3 +258,36 @@ def extra_radiation_and_airmass(
     dni_extra = pvlib.irradiance.get_extra_radiation(times)
     airmass_rel = pvlib.atmosphere.get_relative_airmass(solar_zenith)
     return dni_extra, airmass_rel
+
+
+def tek_eksen_izleyici_acilari(
+    solar_zenith: pd.Series,
+    solar_azimuth: pd.Series,
+    max_aci: float = 60.0,
+    gcr: float = 0.35,
+) -> tuple[pd.Series, pd.Series]:
+    """v2.381 — yatay tek eksenli izleyicinin anlık yüzey açıları.
+
+    Eksen kuzey–güney (axis_azimuth=0), paneller gün boyu doğudan batıya
+    döner — TR katalogundaki izleyicili santrallerin tamamı bu düzen
+    (Karapınar: "doğu/batı eksenli tracker", Van Arısu: Nextracker, sıralar
+    K–G). Geri-izleme (backtracking) AÇIK: sabah/akşam sıra gölgelemesini
+    önlemek için panel geri yatar — gerçek santral davranışı budur ve omuz
+    saatlerini düzleştirir.
+
+    Args:
+        solar_zenith / solar_azimuth: güneş pozisyonu (derece).
+        max_aci: dönme sınırı, derece (Karapınar ÇSED: 50–60°).
+        gcr: sıra kaplama oranı (backtracking geometrisi).
+
+    Returns:
+        (surface_tilt, surface_azimuth) zaman serileri, derece. Güneş ufkun
+        altındayken pvlib NaN döner; tilt 0 / azimuth 90 ile doldurulur
+        (gece POA zaten 0 — değerin önemi yok, NaN zinciri kirletmesin).
+    """
+    tr = pvlib.tracking.singleaxis(
+        apparent_zenith=solar_zenith, apparent_azimuth=solar_azimuth,
+        axis_tilt=0.0, axis_azimuth=0.0,
+        max_angle=max_aci, backtrack=True, gcr=gcr,
+    )
+    return tr["surface_tilt"].fillna(0.0), tr["surface_azimuth"].fillna(90.0)
