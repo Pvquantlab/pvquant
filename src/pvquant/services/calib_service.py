@@ -136,6 +136,29 @@ def _pencere_gun(index) -> int | None:
         return None
 
 
+#: v2.380 (bulgu 31): AYLIK (cron) kalibrasyonun tazelik eşiği — son ölçüm
+#: bundan eskiyse yeniden kalibrasyon koşmaz, MEVCUT ayar korunur. 1 Eki
+#: canlı: 639 gündür veri gelmeyen kobay ay-başı cron'uyla Mod B'ye geçip
+#: %98,6 sapmalı karne üretti. Sapma katmanının 3 günlük tazelik bekçisi
+#: vardı (v2.274), kalibrasyonun HİÇ yoktu. Panelden ELLE kalibrasyon bu
+#: eşiğe takılmaz — kullanıcı elindeki veriyle bilinçli kalibre edebilir.
+KALIBRASYON_TAZELIK_GUN = 60
+
+
+def kalibrasyon_bayat_mi(son_ts, simdi=None) -> tuple[bool, str]:
+    """SAF: cron kalibrasyonu için tazelik hükmü. (bayat_mi, neden) döner."""
+    if son_ts is None:
+        return True, "hiç ölçüm yok"
+    simdi = simdi or pd.Timestamp.now(tz="UTC")
+    son = pd.Timestamp(son_ts)
+    if son.tzinfo is None:
+        son = son.tz_localize("UTC")
+    yas = (simdi - son).days
+    if yas > KALIBRASYON_TAZELIK_GUN:
+        return True, f"son ölçüm {yas} gün önce (>{KALIBRASYON_TAZELIK_GUN})"
+    return False, f"son ölçüm {yas} gün önce"
+
+
 def kalibre_et(tenant_id, plant: dict, hibrit: bool = False) -> dict:
     scada = _scada_data(tenant_id, plant)
     pencere_gun = _pencere_gun(scada.power_kw.index)   # v2.175: ölçülü pencere

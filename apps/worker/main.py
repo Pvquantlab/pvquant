@@ -525,6 +525,14 @@ def rapor_alanlari(plant, pencere_gun: int = 120):
 
 
 def aylik_kalibrasyon(plant):
+    # v2.380 (bulgu 31): bayat veriyle cron kalibrasyonu koşmaz — mevcut ayar
+    # korunur, sebep günlüğe. Elle (panel) kalibrasyon bu eşiğe takılmaz.
+    from pvquant.services import ingest_service
+    oz = ingest_service.veri_ozeti(plant["tenant_id"], plant["id"])
+    bayat, neden = calib_service.kalibrasyon_bayat_mi(oz.get("son_ts"))
+    if bayat:
+        print(f"aylik_kalibrasyon atlandı: {plant.get('name')} — {neden}; mevcut ayar korunur")
+        return
     calib_service.kalibre_et(plant["tenant_id"], plant, hibrit=True)
 
 
