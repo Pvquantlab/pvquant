@@ -58,10 +58,15 @@ def kaydet(df: pd.DataFrame) -> int:
 
 
 def gece_piyasa(gun: int = 3) -> dict:
-    """Worker: son `gun` günün fiyatlarını çek/yaz. Kimlik yoksa atlar (hata değil)."""
+    """Worker: son `gun` günün fiyatlarını çek/yaz. Kimlik yoksa atlar (hata değil).
+
+    v2.378 (bulgu 29, ilk gerçek koşu): bitiş DÜNDÜR. EPİAŞ, günün MCP'sini
+    öğleden önce sorgulatmıyor (SEF1124: "...saat 14 öncesinde mevcut değil")
+    — bitis=bugün olunca gece 02:00 koşusu 400 yiyip hiç fiyat yazamıyordu.
+    Dengesizlik/karne geçmişe bakar; dünün sonu yeterli ve her saatte geçerli."""
     if not kimlik_var():
         return {"durum": "kimlik_yok", "yazilan": 0}
-    bitis = date.today(); bas = bitis - timedelta(days=gun)
+    bitis = date.today() - timedelta(days=1); bas = bitis - timedelta(days=gun)
     n = kaydet(fiyat_cek(bas.isoformat(), bitis.isoformat()))
     return {"durum": "ok", "yazilan": n}
 

@@ -24,6 +24,24 @@ def _model_yukle(yol: str):
         return None
 
 
+def eksik_saatleri_kirp(h) -> tuple["pd.DataFrame", int]:
+    """v2.378 (bulgu 28, Karapınar ilk gece): p50'si NaN saatler DÜRÜSTÇE
+    kırpılır — satır yazılmaz, sayısı döner (künyeye işlenir).
+
+    NaN p50, taze eklenen santralın ilk gecelerinde meteo ufkunun kuyruğu
+    henüz inmemişken doğar. Eskiden bekçi kısmî NaN'ı geçiriyor, _f(NaN)→
+    None p50_kw NOT NULL'a çarpıyor ve BÜTÜN koşu ölüyordu: santral o gece
+    tahminsiz kalıyordu (rollback başsız run bırakmadı — v2.176 sağlam —
+    ama 519 gerçek saat gibi değerli kısmî ufuk da çöpe gidiyordu).
+    Tamamı NaN ise boş çerçeve döner; bekçi onu zaten keser."""
+    if h is None or len(h) == 0 or "p50_kw" not in h.columns:
+        return h, 0
+    n_eksik = int(h["p50_kw"].isna().sum())
+    if n_eksik:
+        h = h[h["p50_kw"].notna()]
+    return h, n_eksik
+
+
 def kosu_cercevesi_denetle(h) -> None:
     """v2.176 (backtest kök sebebi): run yazan HER yol önce bunu çağırır.
     İlke: BAŞSIZ RUN BIRAKILMAZ — values taşımayacak bir koşu için run
@@ -107,6 +125,7 @@ def uret_ve_kaydet(tenant_id, plant: dict, etiket: str | None = None) -> str:
     _ayar = _kf.ayar_getir(tenant_id, plant["id"]) if mode == "C" else None
     h = _kf.uygula_df(h, _ayar, plant.get("ac_limit_kw") or plant.get("capacity_kwp"),
                       run_at=pd.Timestamp.now(tz="UTC"))   # v2.296: kova = koşu anına göre ufuk
+    h, _n_eksik = eksik_saatleri_kirp(h)   # v2.378: NaN ufuk kuyruğu koşuyu öldürmez
     kosu_cercevesi_denetle(h)   # v2.176: run açılmadan önce
     with tenant_baglami(tenant_id) as s:
         _kaynak = meteo.kaynak   # v2.189: tek değer — özet + INSERT aynı; v2.268: veriden ('acik-nwp' | 'open-meteo')
@@ -118,6 +137,7 @@ def uret_ve_kaydet(tenant_id, plant: dict, etiket: str | None = None) -> str:
             "etiket": etiket,                # v2.276: 'gun_ici' | None
             "ufuk_sigma": ({"n": _ufuk.get("n"), "kova_saat": _ufuk.get("kova_saat"), "sigma_ilk_kw": list(_ufuk["sigma_kw"].values())[0],
                             "sigma_son_kw": list(_ufuk["sigma_kw"].values())[-1]} if _ufuk else None),   # v2.279
+            "eksik_saat": _n_eksik or None,   # v2.378: kırpılan NaN-ufuk saati sayısı
             "cekim_utc": datetime.now(timezone.utc).isoformat(),
             "gunler": [
                 {"tarih": str(g), "t_max": round(t, 1),

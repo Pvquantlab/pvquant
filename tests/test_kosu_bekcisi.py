@@ -45,3 +45,29 @@ def test_saglikli_ve_kismi_nan_gecer():
     d = _saglikli()
     d.loc[d.index[:10], "p50_kw"] = float("nan")
     kosu_cercevesi_denetle(d)
+
+
+def test_nan_ufuk_kuyrugu_kirpilir_kosu_olmez():
+    """v2.378 (bulgu 28, Karapınar ilk gece canlı): taze santralın meteo
+    ufku kuyruğu NaN p50 üretince bekçi geçiriyor, p50_kw NOT NULL bütün
+    koşuyu öldürüyordu — santral o gece tahminsiz kalıyordu. Artık NaN
+    saatler dürüstçe kırpılır, sayısı künyeye döner."""
+    from pvquant.services.forecast_service import eksik_saatleri_kirp
+
+    d = _saglikli(48)
+    d.loc[d.index[-10:], "p50_kw"] = float("nan")
+    kirpik, n = eksik_saatleri_kirp(d)
+    assert n == 10 and len(kirpik) == 38
+    assert not kirpik["p50_kw"].isna().any()
+    kosu_cercevesi_denetle(kirpik)   # kırpılmış çerçeve bekçiden geçer
+
+    # NaN'sız çerçeve dokunulmadan döner
+    saglam, n0 = eksik_saatleri_kirp(_saglikli(24))
+    assert n0 == 0 and len(saglam) == 24
+
+    # tamamı NaN → boş döner, bekçi keser (başsız run ilkesi korunur)
+    hepsi = _saglikli(12); hepsi["p50_kw"] = float("nan")
+    bos, n12 = eksik_saatleri_kirp(hepsi)
+    assert n12 == 12 and len(bos) == 0
+    with pytest.raises(ValueError, match="başsız run"):
+        kosu_cercevesi_denetle(bos)
