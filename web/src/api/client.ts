@@ -61,8 +61,13 @@ function getir<T>(yol: string): Promise<T> {
       headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
     if (y.status === 401) {
       cikis(); oturumDusunce?.();
-      // v2.84: uygulama zaten girise dusuyor — bekleyen cagri ne cozulur ne
-      // reddedilir; "Uncaught (in promise)" gurultusu konsola dusmez.
+      // v2.379 (bulgu 30, Chrome canlı): asla-çözülmeyen söz finally'ye
+      // ULAŞMAZ → yol uçuştaki haritasında sonsuza dek kalıyordu. Yeniden
+      // girişten sonraki aynı-yol çağrısı ölü sözü bulup ağa hiç çıkmıyor,
+      // panel "Yükleniyor..."da asılıyordu (oturumu dolan HER müşteri,
+      // yeniden girişte). Kayıt burada elle düşer; söz yine çözülmez —
+      // v2.84'ün "konsol gürültüsü yok" sözleşmesi aynen.
+      ucustakiler.delete(yol);
       return new Promise<T>(() => {});
     }
     if (!y.ok) throw new Error(`${y.status} ${yol}`);
