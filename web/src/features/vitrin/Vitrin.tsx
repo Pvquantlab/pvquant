@@ -476,9 +476,12 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
         <YildizAlani />
         <div style={{ maxWidth: 880, margin: "0 auto", textAlign: "center",
           position: "relative" }}>
-          <div style={{ background: "rgba(255,255,255,0.04)", color: "#E8F0EC",
+          {/* v2.383: backdrop-filter KALDIRILDI — koyu degrade + yıldız katmanı
+              üstündeki cam efekti, Chrome birleştiricisinde kaydırma sırasında
+              kartı metinsiz gri bir blok olarak çizebiliyordu (1-2 Eki canlıda
+              iki kez görüldü). Görsel katkısı yoktu; sabit yarı saydam zemin. */}
+          <div style={{ background: "rgba(255,255,255,0.055)", color: "#E8F0EC",
             border: "1px solid rgba(255,255,255,0.09)",
-            backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
             borderRadius: 20, padding: "26px 28px", textAlign: "left",
             display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap",
             justifyContent: "space-between", margin: "0 0 84px" }}>
