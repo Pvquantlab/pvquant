@@ -115,3 +115,41 @@ def test_atif_kunye_ve_uyumluluk():
     assert "CC BY 4.0" in k and "işlenmiştir" in k and "ECMWF" in k
     assert atif.uyumluluk_denetimi(["ecmwf", "icon"]) == []
     assert atif.uyumluluk_denetimi(["open_meteo"])
+
+
+def _acik_gok_birikim(adim_saat: int):
+    """Sentetik NWP: 1 dk açık gökten koşu başından birikim (J/m²); doğru [h, h+1) ortalamaları."""
+    import pvlib
+    kosu = pd.Timestamp("2026-09-25 00:00", tz="UTC")
+    dk = pd.date_range(kosu, kosu + pd.Timedelta(hours=24), freq="1min", tz="UTC")
+    cs = pvlib.location.Location(LAT, LON).get_clearsky(dk, model="ineichen")["ghi"]
+    kum = pd.Series(np.concatenate([[0.0], np.cumsum(cs.to_numpy()[:-1]) * 60.0]), index=dk)
+    hedef = pd.date_range(kosu, periods=24, freq="h", tz="UTC")
+    dogru = pd.Series([cs[(dk >= h) & (dk < h + pd.Timedelta(hours=1))].mean() for h in hedef], index=hedef)
+    gecerli = pd.date_range(kosu + pd.Timedelta(hours=adim_saat), kosu + pd.Timedelta(hours=24), freq=f"{adim_saat}h", tz="UTC")
+    return kosu, kum, gecerli, hedef, dogru
+
+
+def test_kaba_adim_saat_basi_damgasi():
+    """v2.382: aralık sonu damgalı NWP ortalaması → saat başı [h, h+1) — eski maske bir saat geç atıyordu."""
+    for adim in (1, 3):
+        _, kum, gecerli, hedef, dogru = _acik_gok_birikim(adim)
+        W = biriktirilmisten_saatlik(kum.reindex(gecerli), pd.Series(float(adim), index=gecerli))
+        s = kaba_adimi_saatlige_indir(W, LAT, LON, hedef)
+        assert float((s - dogru).abs().sum() / dogru.sum()) < 0.02, adim
+        sabah = dogru.idxmax() - pd.Timedelta(hours=4)      # öğleden 4 saat önce: gecikme burada en büyük
+        assert abs(s[sabah] - dogru[sabah]) < 0.05 * dogru[sabah]
+
+
+def test_gfs_sifirlamali_ortalama_saat_basi():
+    """v2.382: GFS/GEFS DSWRF son 6 sa sıfırlamadan bu yana ortalama (stepRange 0-5, 6-7 …) → aralık → saat başı."""
+    from pvquant.ext.kaynak.ortak import sifirlamali_ortalamadan_aralik
+    kosu, kum, _, hedef, dogru = _acik_gok_birikim(1)
+    def ort(s):   # sıfırlamadan bu yana ortalama (W/m²)
+        bas = 6 * ((s - 1) // 6)
+        return (kum[kosu + pd.Timedelta(hours=s)] - kum[kosu + pd.Timedelta(hours=bas)]) / ((s - bas) * 3600.0)
+    for adimlar in (list(range(1, 25)), list(range(3, 25, 3))):
+        gec = pd.DatetimeIndex([kosu + pd.Timedelta(hours=s) for s in adimlar])
+        ham = pd.Series([ort(s) for s in adimlar], index=gec)
+        s = kaba_adimi_saatlige_indir(sifirlamali_ortalamadan_aralik(ham, kosu), LAT, LON, hedef)
+        assert float((s - dogru).abs().sum() / dogru.sum()) < 0.02, adimlar[:2]

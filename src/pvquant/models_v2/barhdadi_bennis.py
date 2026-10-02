@@ -98,12 +98,18 @@ class BarhdadiBennisModel:
         if not isinstance(times, pd.DatetimeIndex):
             times = pd.to_datetime(times)
 
+        # v2.382: forecast_7day ile aynı geometri — güneş aralığın ortasında
+        # (damga = aralığın başı); POA sapma kutuları tahminle tutarlı kalır.
+        _adim = pd.Series(times).diff().median() if len(times) > 1 else pd.Timedelta(hours=1)
+        if pd.isna(_adim) or _adim <= pd.Timedelta(0):
+            _adim = pd.Timedelta(hours=1)
         solpos = irradiance.solar_position(
-            times=times,
+            times=times + _adim / 2,
             latitude=meteo.latitude,
             longitude=meteo.longitude,
             altitude=self._plant_spec.altitude_m,
         )
+        solpos.index = times
         decomposed = irradiance.decompose_ghi_erbs(
             ghi=meteo.ghi,
             solar_zenith=solpos["zenith"],

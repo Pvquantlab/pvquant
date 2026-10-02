@@ -21,7 +21,8 @@ def test_pvgis_df_kolonlar(monkeypatch):
     df = arsiv_isinim.pvgis_df(LAT, LON, 2023, 2023)
     assert df.index[0] == pd.Timestamp("2023-06-01 00:00", tz="UTC") and set(df.columns) >= {"ghi", "dni", "dhi", "temp_air", "wind_speed_10m"}
     ogle = df.loc["2023-06-01 09:00"]
-    assert ogle["ghi"] == 600.0 and ogle["dhi"] == 100.0 and ogle["dni"] > 500.0 and df["ghi"].min() == 0.0
+    # v2.382: değerler artık anlık değil saat ortalaması (kt'nin çeyreklere taşınması) → yaklaşık eşitlik
+    assert abs(ogle["ghi"] - 600.0) < 15.0 and abs(ogle["dhi"] - 100.0) < 5.0 and ogle["dni"] > 500.0 and df["ghi"].min() == 0.0
     assert arsiv_isinim.pvgis_df(LAT, LON, 2024, 2026).empty                  # SARAH-3 kapsamı 2005–2023
 
 

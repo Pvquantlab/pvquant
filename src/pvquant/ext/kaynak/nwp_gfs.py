@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 
 from .atif import KAYNAKLAR
-from .ortak import MeteoCerceve, kaba_adimi_saatlige_indir, ruzgar_hizi, saatlik_utc_index
+from .ortak import MeteoCerceve, kaba_adimi_saatlige_indir, ruzgar_hizi, saatlik_utc_index, sifirlamali_ortalamadan_aralik
 
 GFS_FILTRE = "https://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_0p25.pl"
 GEFS_FILTRE = "https://nomads.ncep.noaa.gov/cgi-bin/filter_gefs_atmos_0p25s.pl"
@@ -89,7 +89,7 @@ def oku(dizin: str | Path, lat: float, lon: float) -> MeteoCerceve:
     ham = pd.DataFrame(kayit).T.sort_index()
     hedef_idx = saatlik_utc_index(ham.index[0], int((ham.index[-1] - ham.index[0]) / pd.Timedelta(hours=1)) + 1)
     df = pd.DataFrame(index=hedef_idx)
-    df["ghi"] = kaba_adimi_saatlige_indir(ham["ghi_kaba"], lat, lon, hedef_idx)
+    df["ghi"] = kaba_adimi_saatlige_indir(sifirlamali_ortalamadan_aralik(ham["ghi_kaba"], kosu), lat, lon, hedef_idx)   # v2.382
     df["temp_air"] = (ham["temp_air"] - 273.15).reindex(hedef_idx).interpolate()
     df["wind_speed_10m"] = ruzgar_hizi(ham["u"], ham["v"]).reindex(hedef_idx).interpolate()
     df["cloud_cover"] = ham["cloud_cover"].reindex(hedef_idx).interpolate()

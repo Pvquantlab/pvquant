@@ -265,6 +265,7 @@ def tek_eksen_izleyici_acilari(
     solar_azimuth: pd.Series,
     max_aci: float = 60.0,
     gcr: float = 0.35,
+    capraz_egim: float = 0.0,
 ) -> tuple[pd.Series, pd.Series]:
     """v2.381 — yatay tek eksenli izleyicinin anlık yüzey açıları.
 
@@ -279,6 +280,9 @@ def tek_eksen_izleyici_acilari(
         solar_zenith / solar_azimuth: güneş pozisyonu (derece).
         max_aci: dönme sınırı, derece (Karapınar ÇSED: 50–60°).
         gcr: sıra kaplama oranı (backtracking geometrisi).
+        capraz_egim: v2.382 — eksene dik arazi eğimi (pvlib cross_axis_tilt,
+            derece; axis_azimuth=0'da doğuya inen yamaç pozitif). Geri-izleme
+            eğimli zeminde komşu sıranın gölgesini buna göre hesaplar.
 
     Returns:
         (surface_tilt, surface_azimuth) zaman serileri, derece. Güneş ufkun
@@ -289,5 +293,6 @@ def tek_eksen_izleyici_acilari(
         apparent_zenith=solar_zenith, apparent_azimuth=solar_azimuth,
         axis_tilt=0.0, axis_azimuth=0.0,
         max_angle=max_aci, backtrack=True, gcr=gcr,
+        cross_axis_tilt=capraz_egim,
     )
     return tr["surface_tilt"].fillna(0.0), tr["surface_azimuth"].fillna(90.0)

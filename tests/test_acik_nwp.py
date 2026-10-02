@@ -110,3 +110,24 @@ def test_harmanla_uc_model():
     h2 = acik_nwp.harmanla(e, None, LAT, LON, gfs=g)
     assert abs(h2["temp_air"].iloc[10] - 21.5) < 1e-6 and len(h2) == 360
     assert not h[["ghi", "temp_air", "wind_speed_10m", "cloud_cover"]].isna().any().any()
+
+
+def test_icon_aralik_saatlik_saat_basi():
+    """v2.382: ICON 'koşu başından ortalama' → aralık ortalaması → saat başı damgalı ghi/dhi/dni."""
+    import numpy as np, pandas as pd, pvlib
+    from pvquant.ext.kaynak.nwp_icon import ortalamadan_aralik
+    from pvquant.io.acik_nwp import icon_aralik_saatlik
+    lat, lon = 36.5334, 33.2602
+    kosu = pd.Timestamp("2026-09-25 00:00", tz="UTC")
+    dk = pd.date_range(kosu, kosu + pd.Timedelta(hours=24), freq="1min", tz="UTC")
+    cs = pvlib.location.Location(lat, lon).get_clearsky(dk, model="ineichen")["ghi"]
+    kum = np.concatenate([[0.0], np.cumsum(cs.to_numpy()[:-1]) * 60.0])
+    gec = pd.date_range(kosu, kosu + pd.Timedelta(hours=24), freq="h", tz="UTC")
+    ort = pd.Series([0.0] + [kum[i * 60] / (i * 3600.0) for i in range(1, 25)], index=gec)
+    a = ortalamadan_aralik(ort)
+    df = icon_aralik_saatlik(a * 0.8, a * 0.2, lat, lon)
+    hedef = pd.date_range(kosu, periods=24, freq="h", tz="UTC")
+    dogru = pd.Series([cs[(dk >= h) & (dk < h + pd.Timedelta(hours=1))].mean() for h in hedef], index=hedef)
+    assert df.index[0] == kosu and len(df) == 24
+    assert float((df["ghi"] - dogru).abs().sum() / dogru.sum()) < 0.02
+    assert (df["dhi"] <= df["ghi"] + 1e-9).all() and (df["dni"] >= 0).all()

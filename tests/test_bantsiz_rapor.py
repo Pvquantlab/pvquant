@@ -110,7 +110,10 @@ def _bantsiz_ctx(ufuk):
     karne = pd.DataFrame({
         # v2.345: sabit tarih takvim bombasıydı (bkz. test_sema_v22 notu) —
         # karne günü "dün" olmalı ki son-30-gün penceresinde kalsın.
-        "date": [dt.date.today() - dt.timedelta(days=1)] * 2,
+        # "Dün" UTC'dir — _karne_satirlari penceresi UTC bugüne bağlı; yerel
+        # date.today() TR'de 00:00-03:00 arası UTC bugünü verip pencereden
+        # düşüyordu (2 Eki 2026 gece vakası).
+        "date": [dt.datetime.now(dt.timezone.utc).date() - dt.timedelta(days=1)] * 2,
         "horizon_bucket": ["0-24", "24-72"],
         "mape": [8.0, 11.0], "rmse": [1.0, 1.5],
         "skill_vs_naive": [30.0, 20.0], "naive_wmape": [12.0, 14.0]})

@@ -14,9 +14,16 @@ from pvquant.services.calib_service import _plant_spec
 
 
 def _meteo(n_gun=2):
+    # v2.382: fikstür sözleşmeye uyar — damga = saatin başı, GHI = o saatin
+    # açık-gök ortalaması (Ineichen, 4 × 15 dk). Eski sinüs fikstürü UTC 11:00'de
+    # tepe yapıyordu; bu konumda güneş öğlesi ~09:50 UTC, yani güneşten ~1.2 sa kaymıştı.
+    import pvlib
     idx = pd.date_range("2026-06-10", periods=24 * n_gun, freq="h", tz="UTC")
-    g = np.clip(np.sin((np.asarray(idx.hour) - 4) / 14 * np.pi), 0, None)
-    return MeteoData(ghi=pd.Series(900 * g, index=idx),
+    alt = pd.date_range(idx[0] + pd.Timedelta(minutes=7.5), periods=len(idx) * 4, freq="15min")
+    cs = pvlib.location.Location(37.87, 32.49).get_clearsky(alt, model="ineichen")["ghi"]
+    ghi = cs.to_numpy().reshape(len(idx), 4).mean(axis=1)
+    g = ghi / ghi.max()
+    return MeteoData(ghi=pd.Series(ghi, index=idx),
                      temp_air=pd.Series(25.0 + 8 * g, index=idx),
                      wind_speed_10m=pd.Series(2.0, index=idx),
                      relative_humidity=None, cloud_cover=None,
@@ -53,8 +60,9 @@ def test_izleyici_enerjiyi_artirir_ve_omuzlari_yukseltir():
     s_k = forecast_7day(m, _spec(p_ac_clip_kw=750.0)).hourly["p_ac_kw"].fillna(0)
     i_k = forecast_7day(m, _spec(izleyici="tek_eksen", p_ac_clip_kw=750.0)).hourly["p_ac_kw"].fillna(0)
     assert (i_k >= 0.95 * 750).sum() > (s_k >= 0.95 * 750).sum()
-    # gece ikisi de sıfır
-    gece = izl.index.hour.isin([0, 1, 2, 22, 23])
+    # gece ikisi de sıfır — 10 Haziran'da doğuş ~02:28, batış ~17:11 UTC; doğuşu içeren
+    # 02:00–03:00 saati gündüzdür (aralık ortası güneşi, v2.382)
+    gece = izl.index.hour.isin([0, 1, 18, 19, 20, 21, 22, 23])
     assert izl[gece].abs().max() < 1e-6
 
 
@@ -76,3 +84,25 @@ def test_izleyici_acilari_sinirlar_icinde():
     ogle = tilt[idx.hour == 10].mean()      # Konya güneş öğlesi ~09:50 UTC
     sabah = tilt[idx.hour == 5].mean()
     assert sabah > ogle
+
+
+def test_capraz_egim_varsayilan_birebir_ve_yonu():
+    """v2.382 — eksene dik eğim: 0 birebir eski; doğuya inen yamaç (pozitif)
+    sabahı artırır, akşamı azaltır (geri-izleme komşu sıranın alçakta olduğunu bilir)."""
+    m = _meteo()
+    duz = forecast_7day(m, _spec(izleyici="tek_eksen")).hourly["p_ac_kw"].fillna(0)
+    sifir = forecast_7day(m, _spec(izleyici="tek_eksen", izleyici_capraz_egim=0.0)).hourly["p_ac_kw"].fillna(0)
+    assert np.allclose(duz, sifir)
+    dogu = forecast_7day(m, _spec(izleyici="tek_eksen", izleyici_capraz_egim=5.0)).hourly["p_ac_kw"].fillna(0)
+    sabah = duz.index.hour.isin([3, 4])      # UTC; yerel 06–08
+    aksam = duz.index.hour.isin([15, 16])    # UTC; yerel 18–20
+    assert dogu[sabah].sum() > duz[sabah].sum()
+    assert dogu[aksam].sum() < duz[aksam].sum()
+
+
+def test_capraz_egim_params_json_eslemesi():
+    plant = {"capacity_kwp": 1000.0, "lat": 37.87, "lon": 32.49, "ac_limit_kw": None,
+             "params_json": {"izleyici": "tek_eksen", "izleyici_capraz_egim": 4.0}}
+    assert _plant_spec(plant).izleyici_capraz_egim == 4.0
+    plant["params_json"] = {"izleyici": "tek_eksen"}
+    assert _plant_spec(plant).izleyici_capraz_egim == 0.0

@@ -33,25 +33,44 @@ def _md(df: pd.DataFrame, lat: float, lon: float, kaynak: str, etiket: str):
 
 def pvgis_df(lat: float, lon: float, yil_bas: int, yil_son: int) -> pd.DataFrame:
     """PVGIS-SARAH3 saatlik, yatay düzlem (pvlib 0.15 kolonları: poa_direct = yatay direkt, poa_sky_diffuse = DHI).
-    Damgalar :09/:10 (uydu tarama anı) → saat başına yuvarlanır."""
+
+    v2.382: PVGIS değerleri :09/:10 damgalı ANLIK değerlerdir (uydu tarama anı; Kıvanç 2'de 110 berrak günde
+    açık-gök oranının saçılımı ofset 0'da en küçük, ±10 dk'da iki katı). Sözleşmemiz "damga = saatin başı,
+    değer = [t, t+1 sa) ortalaması" olduğundan açık-gök endeksi (kt) ve yayılı oran dört çeyrek ortasına
+    doğrusal taşınır, açık gökle (Ineichen) çarpılıp ortalanır; DNI saat ortası güneşinden türetilir.
+    Eski yol anlık değeri saat başına yuvarlıyordu: güneşi saat ortasında hesaplayan tüketicilerle
+    (forecast_7day v2.382, kayip_agaci) ~20 dk uyumsuzdu."""
     import pvlib
     yil_bas = max(yil_bas, PVGIS_ILK_YIL); yil_son = min(yil_son, PVGIS_SON_YIL)
     if yil_bas > yil_son:
         return pd.DataFrame()
     df, _ = pvlib.iotools.get_pvgis_hourly(lat, lon, start=yil_bas, end=yil_son, raddatabase="PVGIS-SARAH3", components=True,
                                            surface_tilt=0, surface_azimuth=180, outputformat="json", map_variables=True)
-    idx = pd.DatetimeIndex(df.index).round("h")
-    out = pd.DataFrame(index=idx)
+    an = pd.DatetimeIndex(df.index)
+    if an.tz is None:
+        an = an.tz_localize("UTC")
     bhi = df["poa_direct"].values.astype(float); dhi = df["poa_sky_diffuse"].values.astype(float)
     zemin = df["poa_ground_diffuse"].values.astype(float) if "poa_ground_diffuse" in df else 0.0
-    out["ghi"] = np.clip(bhi + dhi + zemin, 0.0, None)     # .values: :09 damgalı Series yuvarlanmış indekse hizalanmaz
-    out["dhi"] = dhi
-    z = np.radians(90.0 - df["solar_elevation"].values.astype(float))
-    cosz = np.clip(np.cos(z), 0.0872, None)
-    out["dni"] = np.where(df["solar_elevation"].values > 2.0, bhi / cosz, 0.0)
-    out["temp_air"] = df["temp_air"].values.astype(float)
-    out["wind_speed_10m"] = df["wind_speed"].values.astype(float)
-    return out[~out.index.duplicated(keep="first")]
+    ghi_an = np.clip(bhi + dhi + zemin, 0.0, None)
+    konum = pvlib.location.Location(lat, lon)
+    cs_an = konum.get_clearsky(an, model="ineichen")["ghi"].values
+    kt = np.where(cs_an > 20.0, np.clip(ghi_an / np.where(cs_an > 20.0, cs_an, 1.0), 0.0, 1.3), 0.0)
+    fd = np.where(ghi_an > 1.0, np.clip(dhi / np.where(ghi_an > 1.0, ghi_an, 1.0), 0.0, 1.0), 1.0)   # yayılı oran
+    idx = pd.DatetimeIndex(an.floor("h").unique())
+    q = idx.repeat(4) + pd.to_timedelta(np.tile([7.5, 22.5, 37.5, 52.5], len(idx)), unit="min")
+    ns = lambda ix: pd.DatetimeIndex(ix).as_unit("ns").asi8      # pandas 2/3: birim us/s olabilir — ns'ye sabitle
+    ktq = np.interp(ns(q), ns(an), kt); fdq = np.interp(ns(q), ns(an), fd)
+    ghiq = ktq * konum.get_clearsky(q, model="ineichen")["ghi"].values
+    out = pd.DataFrame(index=idx)
+    out["ghi"] = np.clip(ghiq.reshape(-1, 4).mean(axis=1), 0.0, None)
+    out["dhi"] = np.minimum((fdq * ghiq).reshape(-1, 4).mean(axis=1), out["ghi"].values)
+    orta = idx + pd.Timedelta(minutes=30)
+    sp = konum.get_solarposition(orta)
+    cosz = np.clip(np.cos(np.radians(sp["apparent_zenith"].values)), 0.0872, None)
+    out["dni"] = np.where(sp["apparent_elevation"].values > 2.0, (out["ghi"].values - out["dhi"].values) / cosz, 0.0)
+    out["temp_air"] = np.interp(ns(orta), ns(an), df["temp_air"].values.astype(float))
+    out["wind_speed_10m"] = np.interp(ns(orta), ns(an), df["wind_speed"].values.astype(float))
+    return out
 
 
 def cams_df(lat: float, lon: float, start: str, end: str, email: str) -> pd.DataFrame:

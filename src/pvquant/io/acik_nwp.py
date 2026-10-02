@@ -125,6 +125,25 @@ def icon_indir(dizin: Path | None = None, kosu: pd.Timestamp | None = None) -> t
     return dizin / f"icon_eu_{kosu.strftime('%Y%m%d%H')}", kosu
 
 
+def icon_aralik_saatlik(dir_son: pd.Series, dif_son: pd.Series, lat: float, lon: float) -> pd.DataFrame:
+    """v2.382 — ICON aralık ortalamaları (ortalamadan_aralik çıktısı; t_i değeri (t_{i-1}, t_i] ortalaması,
+    ARALIK SONU damgalı) → saat başı damgalı [h, h+1) ortalamaları (ghi/dhi/dni). 1 ve 3 saatlik adımlar
+    aynı yoldan (kaba_adimi_saatlige_indir) geçer; eskiden aralık sonu damgası olduğu gibi kullanılıyordu
+    (GHI bir saat gecikmeli)."""
+    from pvquant.ext.kaynak.ortak import gunes_konumu, kaba_adimi_saatlige_indir, saatlik_utc_index
+    idx = dir_son.index
+    hedef = saatlik_utc_index(idx[0], max(int((idx[-1] - idx[0]) / pd.Timedelta(hours=1)), 1))
+    ghi_son = (dir_son + dif_son.reindex(idx).fillna(0.0)).clip(lower=0.0).iloc[1:]   # ilk değer koşu anı (aralık yok)
+    out = pd.DataFrame(index=hedef)
+    out["ghi"] = kaba_adimi_saatlige_indir(ghi_son, lat, lon, hedef)
+    out["dhi"] = np.minimum(kaba_adimi_saatlige_indir(dif_son.reindex(idx).fillna(0.0).iloc[1:], lat, lon, hedef).values,
+                            out["ghi"].values)
+    z = np.radians(gunes_konumu(hedef, lat, lon)["apparent_zenith"].values)          # saat ortası
+    cosz = np.clip(np.cos(z), 0.0872, None)
+    out["dni"] = np.where(np.degrees(z) < 88, (out["ghi"].values - out["dhi"].values) / cosz, 0.0)
+    return out
+
+
 def icon_noktalar(kosu_dizini: Path, noktalar: list[tuple[float, float]]) -> dict[tuple[float, float], pd.DataFrame]:
     """Her GRIB dosyasını BİR kez açıp tüm noktaları çıkarır (santral başına 558 açılış yerine 558 toplam)."""
     import xarray as xr
@@ -146,16 +165,14 @@ def icon_noktalar(kosu_dizini: Path, noktalar: list[tuple[float, float]]) -> dic
         if S["aswdir_s"].empty:
             continue
         idx = S["aswdir_s"].index
-        df = pd.DataFrame(index=idx)
         dir_ = ortalamadan_aralik(S["aswdir_s"]); dif = ortalamadan_aralik(S["aswdifd_s"].reindex(idx).ffill())
-        df["ghi"] = (dir_ + dif).clip(lower=0.0); df["dhi"] = dif
-        z = np.radians(gunes_konumu(idx, lat, lon)["apparent_zenith"].values)
-        cosz = np.clip(np.cos(z), 0.0872, None)
-        df["dni"] = np.where(np.degrees(z) < 88, dir_.values / cosz, 0.0)
-        df["temp_air"] = S["t_2m"].reindex(idx) - 273.15
-        df["wind_speed_10m"] = ruzgar_hizi(S["u_10m"].reindex(idx), S["v_10m"].reindex(idx))
-        df["cloud_cover"] = S["clct"].reindex(idx)
-        df = df.resample("h").interpolate(limit=3)
+        df = icon_aralik_saatlik(dir_, dif, lat, lon)                     # v2.382: saat başı damgası
+        anlik = pd.DataFrame({"temp_air": S["t_2m"].reindex(idx) - 273.15,
+                              "wind_speed_10m": ruzgar_hizi(S["u_10m"].reindex(idx), S["v_10m"].reindex(idx)),
+                              "cloud_cover": S["clct"].reindex(idx)})
+        anlik = anlik.reindex(anlik.index.union(df.index)).interpolate(method="time", limit=3).reindex(df.index)
+        for kol in anlik.columns:
+            df[kol] = anlik[kol]
         out[(lat, lon)] = df
     return out
 
@@ -358,6 +375,17 @@ def arsivden_tahmin(lat: float, lon: float, days: int, past_days: int = 0, azami
     return _cerceve_to_meteodata(df, la, lo)
 
 
+#: v2.382 (zaman sözleşmesi mühürü): bu andan ÖNCEKİ koşularla yazılmış arşiv
+#: satırlarının ışınımı 1 saat geçti (yama 07/08 öncesi dağıtımların ürünü) —
+#: o veriyle kalibrasyon bifacial kazancını alt sınıra çökertiyordu (BG 0,05;
+#: doğru girdiyle 0,35). Kaydırma göçü yaklaşık ve riskli (teslim BENIOKU
+#: uyarısı: kesim koşu zamanıyla sessizce taze satır da kaydırır, denetimi
+#: kendini doğrular); DÜRÜST yol eski arşivi kalibrasyondan dışlamak — zincir
+#: CAMS/PVGIS/NASA POWER'a düşer. Servis tahminleri etkilenmez (onlar taze
+#: koşudan çalışır); yalnız geçmiş-meteo okuyan kalibrasyon/kayma yolları.
+ARSIV_KESIM_UTC = pd.Timestamp("2026-10-02 06:00", tz="UTC")
+
+
 def arsivden_gecmis(lat: float, lon: float, start_date: str, end_date: str, asgari_kapsama: float = 0.9):
     """Kalibrasyon için 'servis meteosu' geçmişi: her saat en taze ≤24 s öncülü koşudan. Kapsama yetersizse None."""
     from sqlalchemy import text
@@ -368,8 +396,9 @@ def arsivden_gecmis(lat: float, lon: float, start_date: str, end_date: str, asga
         df = pd.read_sql(text(
             "SELECT DISTINCT ON (ts_utc) ts_utc, ghi, dni, dhi, temp_air, wind_speed_10m, cloud_cover, precipitation, relative_humidity "
             "FROM meteo_arsiv WHERE kaynak=:k AND lat=:la AND lon=:lo AND ts_utc >= :a AND ts_utc < :b "
+            "AND kosu_zamani >= :kesim "   # v2.382: 1 sa geç damgalı eski arşiv kalibrasyona girmez
             "AND ts_utc - kosu_zamani BETWEEN INTERVAL '0 hour' AND INTERVAL '24 hour' ORDER BY ts_utc, kosu_zamani DESC"),
-            s.connection(), params={"k": KAYNAK, "la": la, "lo": lo, "a": a, "b": b}, index_col="ts_utc", parse_dates=["ts_utc"])
+            s.connection(), params={"k": KAYNAK, "la": la, "lo": lo, "a": a, "b": b, "kesim": ARSIV_KESIM_UTC}, index_col="ts_utc", parse_dates=["ts_utc"])
     beklenen = int((b - a) / pd.Timedelta(hours=1))
     if df.empty or len(df) < asgari_kapsama * beklenen:
         return None
@@ -423,8 +452,9 @@ def gefs_indir(lat: float, lon: float, dizin: Path | None = None, kosu: pd.Times
 def _gefs_uye_oku(dosyalar: list[Path], lat: float, lon: float) -> pd.DataFrame | None:
     """Bir üyenin adım dosyaları → saatlik çerçeve (ghi/temp_air/wind_speed_10m/cloud_cover)."""
     import cfgrib
-    from pvquant.ext.kaynak.ortak import kaba_adimi_saatlige_indir, ruzgar_hizi, saatlik_utc_index
+    from pvquant.ext.kaynak.ortak import kaba_adimi_saatlige_indir, ruzgar_hizi, saatlik_utc_index, sifirlamali_ortalamadan_aralik
     kayit: dict[pd.Timestamp, dict[str, float]] = {}
+    kosu = None
     for f in sorted(dosyalar):
         try:
             dss = cfgrib.open_datasets(str(f), backend_kwargs={"indexpath": ""})
@@ -433,6 +463,7 @@ def _gefs_uye_oku(dosyalar: list[Path], lat: float, lon: float) -> pd.DataFrame 
         for ds in dss:
             n = ds.sel(latitude=lat, longitude=lon % 360 if float(ds.longitude.max()) > 180 else lon, method="nearest")
             gecerli = pd.Timestamp(n.valid_time.values).tz_localize("UTC")
+            kosu = kosu or pd.Timestamp(n.time.values).tz_localize("UTC")
             for v in ds.data_vars:
                 ad = {"sdswrf": "ghi_kaba", "dswrf": "ghi_kaba", "t2m": "temp_air", "u10": "u", "v10": "v", "tcc": "cloud_cover"}.get(v)
                 if ad:
@@ -444,7 +475,9 @@ def _gefs_uye_oku(dosyalar: list[Path], lat: float, lon: float) -> pd.DataFrame 
         return None
     hedef = saatlik_utc_index(ham.index[0] - pd.Timedelta(hours=3), int((ham.index[-1] - ham.index[0]) / pd.Timedelta(hours=1)) + 3)
     df = pd.DataFrame(index=hedef)
-    df["ghi"] = kaba_adimi_saatlige_indir(ham["ghi_kaba"], lat, lon, hedef)     # 3 s ortalama → saatlik (kt sabit)
+    # v2.382: GEFS DSWRF 6 s sıfırlamalı ortalama (0-3, 0-6, 6-9 …) → 3 s aralık ortalaması → saatlik (kt sabit)
+    df["ghi"] = kaba_adimi_saatlige_indir(sifirlamali_ortalamadan_aralik(ham["ghi_kaba"], kosu or ham.index[0] - pd.Timedelta(hours=3)),
+                                          lat, lon, hedef)
     df["temp_air"] = (ham["temp_air"] - 273.15).reindex(hedef).interpolate(limit_direction="both") if "temp_air" in ham else np.nan
     df["wind_speed_10m"] = (ruzgar_hizi(ham["u"], ham["v"]).reindex(hedef).interpolate(limit_direction="both") if "u" in ham and "v" in ham else np.nan)
     df["cloud_cover"] = ham["cloud_cover"].reindex(hedef).interpolate(limit_direction="both") if "cloud_cover" in ham else np.nan

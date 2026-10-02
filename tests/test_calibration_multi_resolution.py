@@ -39,7 +39,7 @@ SCADA_NOISE_STD = 0.02
 # Baseline degerleri (scripts/adim3_3_baseline.py cikitisi)
 # Adim 3.3 kod degisikliginden SONRA ayni testin ayni sonuclari uretmesi lazim
 # ---------------------------------------------------------------------------
-BASELINE_BG_1H = 0.146871
+BASELINE_BG_1H = 0.146453  # v2.382: güneş aralık ortasında → 0.146871'den %-0.28 (bilinçli fizik değişikliği)
 BASELINE_ETA_BOS_1H = 0.808436
 BASELINE_N_VALID_HOURS_1H = 330
 BASELINE_TOTAL_DEV_AFTER_1H = -0.0459  # yuzde

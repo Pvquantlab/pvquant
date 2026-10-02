@@ -101,6 +101,11 @@ class PlantSpec:
     izleyici: Literal["sabit", "tek_eksen"] = "sabit"
     izleyici_max_aci: float = 60.0   # dönme sınırı (Karapınar ÇSED: 50–60°)
     izleyici_gcr: float = 0.35       # sıra kaplama oranı (backtracking)
+    # v2.382: eksene dik arazi eğimi (pvlib cross_axis_tilt, derece). Eksen
+    # azimutu 0 (K) olduğundan DOĞUYA inen yamaç POZİTİF; değer
+    # pvlib.tracking.calc_cross_axis_tilt(yamaç_azimutu, yamaç_eğimi, 0, 0) ile
+    # bulunur. Varsayılan 0 — zincir birebir eski.
+    izleyici_capraz_egim: float = 0.0
 
     @property
     def effective_gamma(self) -> float:
@@ -286,12 +291,21 @@ def forecast_7day(
         meteo.ghi.index = times
 
     # --- 1. Güneş pozisyonu ---
+    # v2.382: sözleşme "damga = aralığın başı, ışınım = [t, t+adım) ortalaması"
+    # (ext/kaynak/era5.py, ext/kaynak/ortak.gunes_konumu). Güneş geometrisi bu
+    # yüzden aralığın ORTASINDA hesaplanır; damga anında hesaplamak yarım adımlık
+    # kayma doğurur (Kıvanç 2, 25.09.2026 berrak gün: izleyicide sabah omzu
+    # 0.47 → 0.78, MAE 3.00 → 0.67 MW). Etiketler değişmez: solpos damgaya geri yazılır.
+    _adim = pd.Series(times).diff().median() if len(times) > 1 else pd.Timedelta(hours=1)
+    if pd.isna(_adim) or _adim <= pd.Timedelta(0):
+        _adim = pd.Timedelta(hours=1)
     solpos = irradiance.solar_position(
-        times=times,
+        times=times + _adim / 2,
         latitude=meteo.latitude,
         longitude=meteo.longitude,
         altitude=plant.altitude_m,
     )
+    solpos.index = times
 
     # --- 2. GHI → DHI/DNI (Erbs) ---
     decomposed = irradiance.decompose_ghi_erbs(
@@ -308,7 +322,8 @@ def forecast_7day(
     if plant.izleyici == "tek_eksen":
         _tilt, _azimut = irradiance.tek_eksen_izleyici_acilari(
             solpos["apparent_zenith"], solpos["azimuth"],
-            max_aci=plant.izleyici_max_aci, gcr=plant.izleyici_gcr)
+            max_aci=plant.izleyici_max_aci, gcr=plant.izleyici_gcr,
+            capraz_egim=plant.izleyici_capraz_egim)
     else:
         _tilt, _azimut = plant.tilt, plant.azimuth
     poa = irradiance.transpose_perez(

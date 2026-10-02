@@ -32,7 +32,9 @@ def _ctx(ufuk=15, **ez):
         # v2.345: TAKVİM BOMBASI düzeltildi — sabit 2026-08-20, _karne_satirlari'nin
         # "bugünle biten son 30 gün" penceresinden 20 Eyl 2026'da düştü ve tüm
         # dosya kendiliğinden kırıldı. Karne günü artık hep pencere içinde.
-        "date": [dt.date.today() - dt.timedelta(days=1)] * 2,
+        # Pencere UTC bugüne bağlı — yerel date.today() TR'de 00:00-03:00
+        # arası UTC bugünü verip pencereden düşüyordu; "dün" UTC'den alınır.
+        "date": [dt.datetime.now(dt.timezone.utc).date() - dt.timedelta(days=1)] * 2,
         "horizon_bucket": ["0-24", "24-72"],
         "mape": [8.0, 11.0], "rmse": [1.0, 1.5],
         "skill_vs_naive": [30.0, 20.0], "naive_wmape": [12.0, 14.0]})

@@ -121,9 +121,36 @@ def biriktirilmisten_saatlik(deger_J: pd.Series, adim_saat: pd.Series | int) -> 
     return (fark / (adim_saat * 3600.0)).clip(lower=0.0)
 
 
+def sifirlamali_ortalamadan_aralik(ort: pd.Series, kosu: pd.Timestamp, pencere_saat: int = 6) -> pd.Series:
+    """v2.382 — GFS/GEFS DSWRF: değer, son `pencere_saat`'lik sıfırlamadan bu yana ortalamadır
+    (GRIB stepRange 0-4, 0-5, 0-6, 6-7, 6-8 …; NOMADS gfs.pgrb2.0p25 ve gefs pgrb2s, 01.10.2026'da okundu).
+    Ardışık adımlardan (önceki, t] aralık ortalamasına çevrilir; sonuç ARALIK SONU damgalıdır
+    (kaba_adimi_saatlige_indir'in beklediği biçim). Eski yol değeri doğrudan (önceki, t] ortalaması sayıyordu:
+    pencerenin ikinci yarısında sabah/akşam rampası düzleşiyordu."""
+    ort = ort.dropna().sort_index()
+    if ort.empty:
+        return ort
+    adim = np.asarray((ort.index - kosu) / pd.Timedelta(hours=1), dtype=float)
+    deg = ort.to_numpy(dtype=float)
+    out = np.empty_like(deg)
+    for i, (s, v) in enumerate(zip(adim, deg)):
+        bas = pencere_saat * np.floor((s - 1e-9) / pencere_saat)          # bu adımın sıfırlama başlangıcı
+        onceki = adim[i - 1] if i > 0 else bas
+        if i == 0 or onceki <= bas + 1e-9:                                  # pencerenin ilk adımı: (bas, s]
+            out[i] = v
+        else:                                                               # aynı pencere: farktan aralık
+            out[i] = (v * (s - bas) - deg[i - 1] * (onceki - bas)) / (s - onceki)
+    return pd.Series(np.clip(out, 0.0, None), index=ort.index)
+
+
 def kaba_adimi_saatlige_indir(seri: pd.Series, lat: float, lon: float, hedef_index: pd.DatetimeIndex) -> pd.Series:
     """3–6 saatlik ortalama GHI'yı saatliğe indirir: gök açıklığı endeksini sabit tutup
-    açık gök profiliyle çarpar (sabah/akşam eğriliği korunur, enerji korunur)."""
+    açık gök profiliyle çarpar (sabah/akşam eğriliği korunur, enerji korunur).
+
+    v2.382: `seri` ARALIK SONU damgalıdır (NWP birikimi: t_i değeri (t_{i-1}, t_i] ortalaması);
+    `hedef_index` sözleşme gereği SAAT BAŞI damgalıdır ([h, h+1) ortalaması). (t_{i-1}, t_i]
+    aralığının saatleri h ∈ [t_{i-1}, t_i) olur. Eski maske (t_{i-1} < h ≤ t_i) aralığı bir
+    saat ileri atıyordu: ECMWF/ICON/GFS GHI'si bir saat gecikmeliydi (sabah eksik, akşam fazla)."""
     seri = seri.dropna()
     if seri.empty:
         return pd.Series(np.nan, index=hedef_index)
@@ -134,7 +161,7 @@ def kaba_adimi_saatlige_indir(seri: pd.Series, lat: float, lon: float, hedef_ind
     for t, v in seri.items():
         if onceki is None:
             onceki = t - (seri.index[1] - seri.index[0] if len(seri) > 1 else pd.Timedelta(hours=1))
-        maske = (hedef_index > onceki) & (hedef_index <= t)
+        maske = (hedef_index >= onceki) & (hedef_index < t)
         cs_ort = cs_h[maske].mean()
         kt = (v / cs_ort) if cs_ort and cs_ort > 20 else 0.0
         kt_saat[maske] = min(max(kt, 0.0), 1.3)

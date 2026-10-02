@@ -307,6 +307,12 @@ class OpenMeteoClient:
             return pd.Series(values, index=times, name=key)
 
         ghi = series_or_none("shortwave_radiation")
+        # v2.382: Open-Meteo ışınımı "Preceding hour mean" (open-meteo.com/en/docs) —
+        # t damgalı değer [t-1s, t) ortalaması. Sözleşmemiz "damga = aralığın başı"
+        # (era5.py ile aynı) → değer bir saat geri alınır. Son damganın ardındaki saat
+        # bilinmez; ufuk sonu UTC/yerel gece yarısı olduğundan 0 ile kapatılır.
+        if ghi is not None and len(ghi) > 1:
+            ghi = ghi.shift(-1).fillna(0.0)
         temp_air = series_or_none("temperature_2m")
         wind_speed = series_or_none("wind_speed_10m")
 

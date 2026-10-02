@@ -98,6 +98,7 @@ def _plant_spec(plant) -> PlantSpec:
         izleyici=_pj(plant).get("izleyici") or "sabit",
         izleyici_max_aci=float(_pj(plant).get("izleyici_max_aci") or 60.0),
         izleyici_gcr=float(_pj(plant).get("izleyici_gcr") or 0.35),
+        izleyici_capraz_egim=float(_pj(plant).get("izleyici_capraz_egim") or 0.0),
     )
 
 
