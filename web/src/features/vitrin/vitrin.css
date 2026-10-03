@@ -816,3 +816,33 @@
 .vt-nav__bag:hover::after, .vt-nav__acilir:hover::after,
 .vt-nav__bag:focus-visible::after, .vt-nav__acilir:focus-visible::after,
 .vt-nav__acilir[aria-expanded="true"]::after { opacity: 1; transform: none; }
+
+/* ═══ CİLA-ek 5: sıra dışı tur (R26–R29) ═══ */
+/* canlı gök satırı: kartuş içinde ikinci nefes; gündüz/gece metni aynı tonda */
+.vt-gok-canli { display: block; margin-top: 3px; opacity: 0.92; }
+/* kartuş canlı satırla yükseldi: geniş ekranda pencere kartına binmesin (inceleme Önemli-2) */
+@media (min-width: 1081px) {
+  .vt-hero--a .vt-hero__kunye { max-width: 392px; }
+  .vt-hero--a .vt-hero__ic { padding-block: 88px 152px; }
+}
+/* grafik crosshair (R28): yalnız görsel yardım; imleç ince artı */
+.vt-egri { cursor: crosshair; touch-action: pan-y; }
+.vt-egri__im-cizgi { stroke: var(--vt-metin); stroke-width: 1; stroke-dasharray: 3 3; opacity: 0.55; }
+.vt-egri__im-nokta { fill: var(--vt-zemin); stroke-width: 2.2; }
+.vt-egri__im-nokta--tahmin { stroke: var(--vt-veri-tahmin); }
+.vt-egri__im-nokta--gercek { stroke: var(--vt-veri-gerceklesen); }
+.vt-egri__im-et { font-weight: 500; fill: var(--vt-metin); }
+/* disiplin bandı (R27): gece bandının altında ince, beyaz, çift çizgili kanıt şeridi */
+.vt-disiplin { padding-block: 56px; background: var(--vt-zemin); border-bottom: 1px solid var(--vt-kenar-soguk); }
+.vt-disiplin .vt-h3 { max-width: 28ch; }
+.vt-disiplin__izgara { margin-top: 24px; gap: 32px; }
+.vt-disiplin__deger { font: 500 40px/44px var(--vt-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.vt-disiplin__etiket { margin-top: 6px; font-weight: 600; font-size: 15px; line-height: 21px; }
+.vt-disiplin__alt { margin-top: 2px; color: var(--vt-ikincil); font-size: 13.5px; line-height: 19px; }
+.vt-disiplin__kunye { margin-top: 26px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.vt-disiplin__bag { min-height: 0; font-size: 12px; }
+@media (max-width: 600px) {
+  .vt-disiplin { padding-block: 44px; }
+  .vt-disiplin__izgara { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 20px; }
+  .vt-disiplin__deger { font-size: 30px; line-height: 34px; }
+}

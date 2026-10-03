@@ -55,3 +55,30 @@ jobs:
         run: |
           cd reporting/html && rm -rf cikti && python3 uret.py > /dev/null
           echo "239843c79fbfbcb2ce9d09b21d9a038e  cikti/PVQuant_Konya_GES_RAPOR_16sayfa.html" | md5sum -c -   # v2.269 künye
+
+  # Vitrin bandının "700 otomatik test · her mühürde tamamı koşar" sözünün web yarısı (v2.388):
+  # python takımı üstteki iş, 18 arayüz testi + build + lint bu iş. Söz, CI olmadan desteksizdi.
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node 24 (yerelle aynı: node --test .ts dosyalarını tip-soymayla koşar)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Kurulum
+        run: npm ci
+        working-directory: web
+
+      - name: Arayüz testleri
+        run: npm test
+        working-directory: web
+
+      - name: Derleme + lint
+        run: npm run build && npm run lint
+        working-directory: web

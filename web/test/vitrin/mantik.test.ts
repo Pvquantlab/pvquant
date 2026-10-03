@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { dogrulamaDurumu } from "../../src/features/vitrin/dogrulamaDurumu.ts";
 import { yuzdeTr, kisaTarihTr, ayTr } from "../../src/features/vitrin/bicim.ts";
 import { numuneGun, NUMUNE_TARIH } from "../../src/features/vitrin/numuneGun.ts";
+import { gunesYuksekligi, dogusBatisTrt, gokDurumu } from "../../src/features/vitrin/gunesSaati.ts";
 import { ADIMLAR, METRIKLER, KISA_TANIMLAR, YONTEM_KAPANIS } from "../../src/features/vitrin/yontem-metni.ts";
 
 test("doğrulama yanıtı dört duruma eşlenir", () => {
@@ -41,6 +42,42 @@ test("numune gün (01.10 koşusu) tutarlı: P10 ≤ P50 ≤ P90 < AC tavanı, sa
     const n = gun.find((p) => p.saat === s)!;
     assert.ok(n.gercek < n.p10, `saat ${s}: gerçekleşen aralığın altında olmalı`);
   }
+});
+
+test("canlı gök hesabı (R26) gündönümlerinde gök mekaniğiyle eşleşir", () => {
+  // 38°K öğle yükseklikleri: 21 Haz ≈ 90−38+23,44 = 75,4° · 21 Ara ≈ 90−38−23,44 = 28,6° (±0,8 tolerans)
+  const oglenMaks = (gun: string) => {
+    let maks = -90;
+    for (let dk = 0; dk < 240; dk += 5) {
+      const t = new Date(`${gun}T08:00:00Z`);          // TRT 11:00–15:00 taraması
+      t.setUTCMinutes(t.getUTCMinutes() + dk);
+      maks = Math.max(maks, gunesYuksekligi(t));
+    }
+    return maks;
+  };
+  assert.ok(Math.abs(oglenMaks("2026-06-21") - 75.4) < 0.8, `yaz: ${oglenMaks("2026-06-21")}`);
+  assert.ok(Math.abs(oglenMaks("2026-12-21") - 28.6) < 0.8, `kış: ${oglenMaks("2026-12-21")}`);
+  const { dogus, batis } = dogusBatisTrt(new Date("2026-06-21T09:00:00Z"));
+  assert.ok(dogus > 4 && dogus < 6.5 && batis > 19 && batis < 21, `yaz doğuş/batış: ${dogus}/${batis}`);
+  const ogle = gokDurumu(new Date("2026-06-21T09:00:00Z"));     // TRT 12:00
+  assert.equal(ogle.gunduz, true);
+  assert.ok(ogle.kalanDk > 0 && ogle.kalanDk < 10 * 60);
+  const gece = gokDurumu(new Date("2026-06-21T22:00:00Z"));     // TRT 01:00 (22 Haz gecesi)
+  assert.equal(gece.gunduz, false);
+  assert.ok(gece.kalanDk > 0 && gece.kalanDk < 8 * 60, `gece doğuşa kalan: ${gece.kalanDk}`);
+});
+
+test("gece yarısı geçişinde geri sayım sürekli (TRT 23:xx yarının doğuşunu kullanır)", () => {
+  // Ekinoks gecesi: TRT 23:30 (yarin+24 dalı) ve TRT 00:00 — ikisi de pozitif, fark ≈ 30 dk.
+  const oncesi = gokDurumu(new Date("2026-03-20T20:30:00Z"));   // TRT 23:30
+  const sonrasi = gokDurumu(new Date("2026-03-20T21:00:00Z"));  // TRT 00:00 (21 Mar)
+  assert.equal(oncesi.gunduz, false);
+  assert.equal(sonrasi.gunduz, false);
+  assert.ok(oncesi.kalanDk > 0 && sonrasi.kalanDk > 0);
+  assert.ok(Math.abs(oncesi.kalanDk - 30 - sonrasi.kalanDk) <= 2,
+    `sıçrama: 23:30'da ${oncesi.kalanDk} dk, 00:00'da ${sonrasi.kalanDk} dk`);
+  const gunduzOrnek = gokDurumu(new Date("2026-03-21T09:00:00Z"));   // TRT 12:00
+  assert.equal(gunduzOrnek.gunduz, true);
 });
 
 test("yöntem metni hesapla eşleşir ve tek kaynaktan gelir", () => {

@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState } from "react";
 import { numuneGun, NUMUNE_TARIH, type EgriNoktasi } from "./numuneGun";
 
 /** Tablo yüzdesi: tek ondalık, Türkçe virgül (araştırmadaki yuzde() ile aynı hassasiyet). */
@@ -61,11 +62,35 @@ const GEOMETRI: Record<CizimKipi, { W: number; H: number; SOL: number; SAG: numb
   dar: { W: 360, H: 258, SOL: 40, SAG: 10, UST: 46, ALT: 30 },
 };
 
+/** Crosshair (R28): imleç/parmak altındaki saatin GERÇEK gömülü değerlerini okur — yeni veri yok,
+ *  görsel yardımdır (aria-hidden); erişilebilir muadili Tablo görünümü. Odak almaz. */
 function Cizim({ noktalar, kip }: { noktalar: readonly EgriNoktasi[]; kip: CizimKipi }) {
   const dar = kip === "dar";
   const { W, H, SOL, SAG, UST, ALT } = GEOMETRI[kip];
+  const svgKutu = useRef<SVGSVGElement>(null);
+  const imYazi = useRef<SVGTextElement>(null);
+  const [aktif, setAktif] = useState<EgriNoktasi | null>(null);
+  const [imX, setImX] = useState<number | null>(null);
+  const saatSec = (clientX: number) => {
+    const kutu = svgKutu.current?.getBoundingClientRect();
+    if (!kutu || kutu.width === 0) return;
+    const vx = ((clientX - kutu.left) / kutu.width) * W;
+    const saat = Math.round(((vx - SOL) / (W - SOL - SAG)) * (X1 - X0) + X0 - 0.5);
+    const nokta = noktalar.find((n) => n.saat === Math.max(5, Math.min(19, saat)));
+    setAktif(nokta ?? null);
+  };
   const X0 = 5, X1 = 20;                                    // 19:00 değeri saat ortasında (19,5) biter
   const x = (saat: number) => SOL + ((saat - X0) / (X1 - X0)) * (W - SOL - SAG);
+  // Okuma metni ölçülerek sığdırılır (inceleme Önemli-1): sabit 90 birimlik pay dar/orta kiplerde
+  // gerçek genişliği (~265–300 birim) karşılamıyordu, kenar saatlerde sayılar kırpılıyordu.
+  useLayoutEffect(() => {
+    if (!aktif || !imYazi.current) { setImX(null); return; }
+    let genislik = 0;
+    try { genislik = imYazi.current.getComputedTextLength(); } catch { /* gizli kipte ölçüm yok */ }
+    const merkez = SOL + ((aktif.saat + 0.5 - X0) / (X1 - X0)) * (W - SOL - SAG);
+    setImX(Math.max(4, Math.min(W - 4 - genislik, merkez - genislik / 2)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aktif]);
   const y = (oran: number) => UST + (1 - oran / 1.05) * (H - UST - ALT);
   const nokta = (saat: number, oran: number) => `${x(saat + 0.5).toFixed(1)},${y(oran).toFixed(1)}`;
   const cizgi = (alan: "p50" | "gercek") => "M" + noktalar.map((p) => nokta(p.saat, p[alan])).join(" L");
@@ -76,8 +101,10 @@ function Cizim({ noktalar, kip }: { noktalar: readonly EgriNoktasi[]; kip: Cizim
   const xEtiket = dar ? [6, 12, 18] : [6, 9, 12, 15, 18];
   const ek = kip;
   return (
-    <svg className={`vt-egri vt-egri--${ek}`} viewBox={`0 0 ${W} ${H}`} role="img"
-      aria-labelledby={`vt-egri-baslik-${ek}`} aria-describedby={`vt-egri-aciklama-${ek}`}>
+    <svg ref={svgKutu} className={`vt-egri vt-egri--${ek}`} viewBox={`0 0 ${W} ${H}`} role="img"
+      aria-labelledby={`vt-egri-baslik-${ek}`} aria-describedby={`vt-egri-aciklama-${ek}`}
+      onPointerMove={(e) => saatSec(e.clientX)} onPointerDown={(e) => saatSec(e.clientX)}
+      onPointerLeave={(e) => { if (e.pointerType !== "touch") setAktif(null); }}>
       <title id={`vt-egri-baslik-${ek}`}>1 Ekim 2026 tahmini ve gerçekleşen üretim</title>
       <desc id={`vt-egri-aciklama-${ek}`}>Araştırma koşusu; canlı panel çıktısı değildir. Mavi bant tahmin aralığını, mavi çizgi tahmini, amber çizgi gerçekleşen üretimi gösterir; her değer saat ortalamasıdır ve saat ortasında çizilir. 08:00–12:00 arasında gerçekleşen, söylenen aralığın altında kalıyor; öğleden sonra aralığın içinde. Saatlik sayılar tablo görünümünde.</desc>
       {yIzgara.map((o) => (
@@ -90,7 +117,7 @@ function Cizim({ noktalar, kip }: { noktalar: readonly EgriNoktasi[]; kip: Cizim
         <text key={s} className="vt-egri__et" x={x(s)} y={H - 10} textAnchor="middle">{`${String(s).padStart(2, "0")}:00`}</text>
       ))}
       <line className="vt-egri__esik" x1={SOL} x2={W - SAG} y1={y(1)} y2={y(1)} />
-      <text className="vt-egri__et" x={W - SAG} y={y(1) - 7} textAnchor="end">AC tavanı</text>
+      {!aktif && <text className="vt-egri__et" x={W - SAG} y={y(1) - 7} textAnchor="end">AC tavanı</text>}
       <line className="vt-egri__kilavuz" x1={x(8)} x2={x(8)} y1={UST - 22} y2={y(0)} />
       <line className="vt-egri__kilavuz" x1={x(12)} x2={x(12)} y1={UST - 22} y2={y(0)} />
       <text className="vt-egri__et vt-egri__et--vurgu" x={x(10)} y={UST - 30} textAnchor="middle">
@@ -102,6 +129,17 @@ function Cizim({ noktalar, kip }: { noktalar: readonly EgriNoktasi[]; kip: Cizim
       {noktalar.filter((p) => p.gercek > 0).map((p) => (
         <circle key={p.saat} className="vt-egri__nokta" cx={x(p.saat + 0.5)} cy={y(p.gercek)} r={dar ? 2.4 : 3} />
       ))}
+      {aktif && (
+        <g className="vt-egri__im" aria-hidden="true">
+          <line className="vt-egri__im-cizgi" x1={x(aktif.saat + 0.5)} x2={x(aktif.saat + 0.5)} y1={UST - 2} y2={y(0)} />
+          <circle className="vt-egri__im-nokta vt-egri__im-nokta--tahmin" cx={x(aktif.saat + 0.5)} cy={y(aktif.p50)} r={dar ? 3.4 : 4.2} />
+          {aktif.gercek > 0 && <circle className="vt-egri__im-nokta vt-egri__im-nokta--gercek" cx={x(aktif.saat + 0.5)} cy={y(aktif.gercek)} r={dar ? 3.4 : 4.2} />}
+          <text ref={imYazi} className="vt-egri__et vt-egri__et--halo vt-egri__im-et"
+            x={imX ?? SOL} y={UST - 8} textAnchor="start">
+            {`${String(aktif.saat).padStart(2, "0")}:00 · tahmin %${(aktif.p50 * 100).toFixed(1).replace(".", ",")} · gerçekleşen %${(aktif.gercek * 100).toFixed(1).replace(".", ",")}`}
+          </text>
+        </g>
+      )}
       {!dar && <text className="vt-egri__et vt-egri__et--halo" x={x(kip === "orta" ? 10.6 : 9.9)} y={y(0.3)} textAnchor="middle">gerçekleşen</text>}
       {!dar && <text className="vt-egri__et vt-egri__et--halo" x={x(kip === "orta" ? 13.2 : 14.1)} y={y(kip === "orta" ? 0.4 : 0.45)} textAnchor="middle">tahmin aralığı</text>}
     </svg>
