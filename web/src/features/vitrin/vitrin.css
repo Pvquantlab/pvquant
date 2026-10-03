@@ -143,7 +143,7 @@
 .vt-ust { position: sticky; top: 0; z-index: 20; background: var(--vt-zemin); border-bottom: 1px solid var(--vt-kenar); }
 .vt-ust__ic { display: flex; align-items: center; gap: 28px; height: calc(var(--vt-ust-y) - 1px); }   /* +1 px alt kenar = 64 px */
 .vt-logo { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; font: 600 18px/1 var(--vt-sans); color: var(--vt-metin); text-decoration: none; }
-.vt-logo__isaret { display: inline-flex; flex-shrink: 0; width: 26px; height: 26px; }   /* V1 işareti kendi çizgisini taşır; renkli kutu yok */
+.vt-logo__isaret { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 26px; height: 26px; }   /* amblem: çizgili güneş, kutu yok (panel girişiyle aynı) */
 .vt-nav { display: flex; gap: 4px; flex: 1; }
 .vt-nav__bag, .vt-nav__acilir {
   display: inline-flex; align-items: center; gap: 5px; min-height: 44px; padding: 0 10px; border: 0;

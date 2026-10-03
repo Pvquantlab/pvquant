@@ -140,7 +140,9 @@ Tipografi ve kalıp farkları:
   koyu bantta bağlantı metni beyaz, yalnız ok ve odak halkası gül.
 - Hero'nun üstünde `GokSeridi` (statik güneş-yükseklik yayları, 38° K; aria-hidden + mono künye;
   masaüstü/mobil SVG CSS ile seçilir). Tek sayısal içerik ilkesine aykırı değil: eksen/sayı yok.
-- Marka işareti: ahududu kare yerine V1'in ufuk+yay+güneş diski işareti (mürekkep çizgi + `--vt-gunes` disk).
+- Marka işareti: **çizgili güneş amblemi olduğu gibi kalır** (panel giriş ekranıyla aynı; kullanıcı kararı
+  03.10 "amblem olduğu gibi kalsın" — v2.385). V1 taslağının ufuk+yay+güneş diski işareti kullanılmaz;
+  v2.384'te kısa süre denendi ve geri alındı. Ahududu kutu da yok; işaret currentColor çizgidir.
 
 ### 2.2-ek-2 — R18/R19: V1 yapısal genişleme (03.10.2026, kullanıcı kararı)
 
