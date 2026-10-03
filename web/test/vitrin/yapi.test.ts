@@ -22,7 +22,7 @@ function ustDuzeyBol(liste: string): string[] {
 test("vitrin.css'teki her seçici .vt ile başlar", () => {
   const css = oku("../../src/features/vitrin/vitrin.css")
     .replace(/\/\*[\s\S]*?\*\//g, "")       // yorumlar
-    .replace(/@media[^{]*\{/g, "");         // medya başlıkları (kapanış parantezi seçici üretmez)
+    .replace(/@(media|starting-style|supports)[^{]*\{/g, "");   // at-rule başlıkları (kapanış parantezi seçici üretmez)
   const seciciler = [...css.matchAll(/([^{}]+)\{/g)].flatMap((m) => ustDuzeyBol(m[1]));
   assert.ok(seciciler.length > 40, `seçici sayısı ${seciciler.length}`);
   for (const s of seciciler) assert.ok(s.startsWith(".vt"), `kapsam dışı seçici: ${s}`);
@@ -35,9 +35,9 @@ test("/yontem artık eski Vitrin sabitlerini kullanmıyor ve tek yöntem kaynağ
   assert.doesNotMatch(yontem, /style=\{/);
 });
 
-test("vitrin bileşenlerinde satır içi stil yok", () => {
+test("vitrin bileşenlerinde satır içi stil yok (Rozet.tsx hariç: <use> gölge ağacında sembol vurgusu motor uyumu için satır içi stil ister — BENIOKU §6.3)", () => {
   const kok = new URL("../../src/features/vitrin/", import.meta.url);
-  for (const ad of readdirSync(kok).filter((a) => a.endsWith(".tsx"))) {
+  for (const ad of readdirSync(kok).filter((a) => a.endsWith(".tsx") && a !== "Rozet.tsx")) {
     assert.doesNotMatch(readFileSync(new URL(ad, kok), "utf8"), /style=\{/, ad);
   }
 });
@@ -79,8 +79,10 @@ test("başvuru: hitap 'siz', bal küpü yerinde, uç aynı; SSS beş soru", () =
   assert.match(basvuru, /className="vt-bal" tabIndex=\{-1\} aria-hidden="true"/);
   assert.match(basvuru, /api\.vitrinBasvuru\(/);
   assert.match(basvuru, /id="basla"/);
-  const tum = readdirSync(new URL("../../src/features/vitrin/", import.meta.url))
-    .map((a) => readFileSync(new URL(`../../src/features/vitrin/${a}`, import.meta.url), "utf8")).join("\n");
+  const vitrinKok = new URL("../../src/features/vitrin/", import.meta.url);
+  const tum = readdirSync(vitrinKok, { withFileTypes: true })
+    .filter((g) => g.isFile())
+    .map((g) => readFileSync(new URL(g.name, vitrinKok), "utf8")).join("\n");
   assert.doesNotMatch(tum, /Kendi karneni başlat/);
   assert.equal((oku("../../src/features/vitrin/Sss.tsx").match(/^\s*\["/gm) ?? []).length, 5);
 });

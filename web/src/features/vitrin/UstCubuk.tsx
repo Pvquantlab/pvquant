@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { GunesLogo } from "./GunesLogo";
-import { MenuIkon, type IkonAdi } from "./MenuIkon";
+import { MenuIkon } from "./MenuIkon";
+import { Rozet, RozetTanimlari, type RozetGrubu, type RozetIkonu } from "./Rozet";
 
-type Yaprak = { ad: string; aciklama: string; hedef?: string; ikon?: IkonAdi };
-type Grup = { ad: string; ogeler: readonly Yaprak[] };
+type Yaprak = { ad: string; aciklama: string; hedef?: string; ikon?: RozetIkonu };
+type Grup = { ad: string; rozet?: RozetGrubu; ogeler: readonly Yaprak[] };
 type Panel = { ad: string; genis?: boolean; alt?: readonly [string, string]; gruplar: readonly Grup[] };
 
 /** Mega menü içeriği (IA §3 + R18 dürüst bağlantı kuralı): `hedef`i olan yaprak bugün var olan bir
@@ -12,21 +13,21 @@ type Panel = { ad: string; genis?: boolean; alt?: readonly [string, string]; gru
 const PANELLER: readonly Panel[] = [
   {
     ad: "Ürün", genis: true, alt: ["Nasıl çalışır", "#katmanlar"], gruplar: [
-      { ad: "Tahmin", ogeler: [
+      { ad: "Tahmin", rozet: "tahmin", ogeler: [
         { ad: "Saatlik tahmin ve aralık", aciklama: "Her saat için tahmin ve iyimser–kötümser aralığı, 15 gün ileriye", ikon: "band" },
         { ad: "Santralım", aciklama: "Dün, bugün, yarın: anlık güç ve günün eğrisi tek ekranda", ikon: "santral" },
         { ad: "Aylık beklenti", aciklama: "İklim geçmişinden aylık üretim zarfı ve yıllık P50–P99", ikon: "aylik" },
       ] },
-      { ad: "Kanıt", ogeler: [
+      { ad: "Kanıt", rozet: "kanit", ogeler: [
         { ad: "Doğruluk karnesi", aciklama: "Tahmin her gece gerçekleşenle karşılaştırılır; sonuç değiştirilmez", ikon: "karne" },
         { ad: "Kalibrasyon", aciklama: "Üretim verinizle santralınıza özgü model; kayıp ağacı ve güç matrisi", ikon: "kalibrasyon" },
       ] },
-      { ad: "Operasyon", ogeler: [
+      { ad: "Operasyon", rozet: "operasyon", ogeler: [
         { ad: "Portföy", aciklama: "Bütün santralleriniz tek tabloda; sapma ve uyarı öne çıkar", ikon: "portfoy" },
         { ad: "Alarmlar", aciklama: "Veri gelmedi, isabet düştü, KGÜP penceresi kaçtı… sekiz kural", ikon: "alarm" },
         { ad: "Raporlar", aciklama: "16 sayfalık PDF, Excel doğruluk şeridi, şemalı JSON", ikon: "rapor" },
       ] },
-      { ad: "Veri", ogeler: [
+      { ad: "Veri", rozet: "veri", ogeler: [
         { ad: "Dosyasız santral bağlama", aciklama: "EPİAŞ Şeffaflık kimliğiyle gerçekleşen üretim kendiliğinden akar", ikon: "baglanti" },
         { ad: "SCADA yükleme", aciklama: "Dosyanızı yükleyin; ön izleme, eşleme ve kalite denetimi", ikon: "yukleme" },
       ] },
@@ -34,11 +35,11 @@ const PANELLER: readonly Panel[] = [
   },
   {
     ad: "Doğruluk", alt: ["Açık karneye git", "#karne"], gruplar: [
-      { ad: "Kanıt", ogeler: [
+      { ad: "Kanıt", rozet: "kanit", ogeler: [
         { ad: "Açık karne", aciklama: "Referans santralın son sınav günleri: ortalama sapma, basit yönteme fark, bant kapsaması", hedef: "#karne" },
         { ad: "Yöntem ve doğrulama", aciklama: "Sayılar nasıl hesaplanır; her gece aynı kural", hedef: "/yontem" },
       ] },
-      { ad: "Okuma", ogeler: [
+      { ad: "Okuma", rozet: "kanit", ogeler: [
         { ad: "Metrik sözlüğü", aciklama: "Ortalama sapma, basit yöntem, sıkı referans, bant kapsaması", hedef: "/yontem#yt-tanimlar" },
         { ad: "Aralık ve yayın disiplini", aciklama: "Bant nasıl kurulur, yayın kapısı ne zaman açılır", hedef: "/yontem#yt-disiplin" },
       ] },
@@ -46,11 +47,11 @@ const PANELLER: readonly Panel[] = [
   },
   {
     ad: "Türkiye piyasası", alt: ["Türkiye piyasası bölümü", "#para"], gruplar: [
-      { ad: "Program", ogeler: [
+      { ad: "Program", rozet: "tahmin", ogeler: [
         { ad: "Üretim programı (KGÜP)", aciklama: "Program her gün hazır; teslim penceresi ve revizyon kapısı izlenir", hedef: "#para" },
         { ad: "Dengesizlik maliyeti (TL)", aciklama: "Tahmin hatasının gün gün TL karşılığı, basit yöntemle kıyaslı", hedef: "#para" },
       ] },
-      { ad: "Bağlantı", ogeler: [
+      { ad: "Bağlantı", rozet: "veri", ogeler: [
         { ad: "Toplayıcı / DSG şablonları", aciklama: "Saatlik ya da 15 dakikalık şablona tek tıkla dışa aktarım", hedef: "#para" },
         { ad: "EPİAŞ Şeffaflık bağlantısı", aciklama: "Dosya yüklemeden gerçekleşen üretim akışı", hedef: "#para" },
       ] },
@@ -129,6 +130,8 @@ export function UstCubuk({ onPanel, kip }: { onPanel?: () => void; kip: "ana" | 
     const kok = document.documentElement;
     const oncekiTasma = kok.style.overflow;
     kok.style.overflow = "hidden";
+    const arkaPlan = Array.from(document.querySelectorAll<HTMLElement>("main, footer, .vt-atla"));
+    arkaPlan.forEach((e) => { e.inert = true; });              // çekmece açıkken Tab arkaya geçmez (QA M1)
     const odaklar = () => [dugme.current, ...Array.from(cekmece.current?.querySelectorAll<HTMLElement>("a, button") ?? [])]
       .filter((e): e is HTMLElement => e !== null);
     odaklar()[1]?.focus();
@@ -142,18 +145,23 @@ export function UstCubuk({ onPanel, kip }: { onPanel?: () => void; kip: "ana" | 
       else if (!e.shiftKey && document.activeElement === son) { e.preventDefault(); ilk.focus(); }
     };
     const genislik = () => { if (window.innerWidth > 1080) setAcik(false); };
+    const kapat = () => setAcik(false);                        // üst çubuk çapası tıklanınca çekmece kapanır (QA M2)
     document.addEventListener("keydown", tus);
     window.addEventListener("resize", genislik);
+    window.addEventListener("hashchange", kapat);
     return () => {
       document.removeEventListener("keydown", tus);
       window.removeEventListener("resize", genislik);
+      window.removeEventListener("hashchange", kapat);
       kok.style.overflow = oncekiTasma;
+      arkaPlan.forEach((e) => { e.inert = false; });
     };
   }, [acik]);
 
   return (
     <header className="vt-ust">
-      {panel !== null && <div className="vt-mega-ortu" aria-hidden="true" onClick={() => setPanel(null)} />}
+      <RozetTanimlari />
+      {panel !== null && <div className="vt-mega-ortu is-acik" aria-hidden="true" onClick={() => setPanel(null)} />}
       <div className="vt-kap vt-ust__ic">
         <a className="vt-logo" href="/"><GunesLogo />PVQuant</a>
         <nav className="vt-nav" aria-label="Ana menü" ref={navKutu}>
@@ -222,21 +230,21 @@ function MegaPanel({ panel, adres, simdiki, kapat }: {
   kapat: () => void;
 }) {
   return (
-    <div className="vt-mega" id={`vt-mega-${panel.ad.replace(/\s+/g, "-")}`} role="region" aria-label={`${panel.ad} menüsü`}>
+    <div className="vt-mega is-acik" id={`vt-mega-${panel.ad.replace(/\s+/g, "-")}`} role="region" aria-label={`${panel.ad} menüsü`}>
       <div className="vt-kap">
         <div className={panel.genis ? "vt-mega__govde vt-mega__govde--genis" : "vt-mega__govde"}>
           {panel.gruplar.map((grup) => (
             <div key={grup.ad} className="vt-mega__grup">
-              <div className="vt-mega__grup-ad">{grup.ad}</div>
+              <div className="vt-mega__grup-ad">{grup.rozet && <i className={`vt-g-${grup.rozet}`} />}{grup.ad}</div>
               {grup.ogeler.map((oge) =>
                 oge.hedef ? (
                   <a key={oge.ad} className="vt-mega__oge" href={adres(oge.hedef)} aria-current={simdiki(oge.hedef)} onClick={kapat}>
-                    {oge.ikon && <span className="vt-mega__ik"><MenuIkon ad={oge.ikon} /></span>}
+                    {oge.ikon && grup.rozet && <Rozet grup={grup.rozet} ikon={oge.ikon} />}
                     <span className="vt-mega__metin"><b>{oge.ad}</b><span>{oge.aciklama}</span></span>
                   </a>
                 ) : (
                   <div key={oge.ad} className="vt-mega__oge vt-mega__oge--tanim">
-                    {oge.ikon && <span className="vt-mega__ik"><MenuIkon ad={oge.ikon} /></span>}
+                    {oge.ikon && grup.rozet && <Rozet grup={grup.rozet} ikon={oge.ikon} />}
                     <span className="vt-mega__metin">
                       <b>{oge.ad}</b><span>{oge.aciklama}</span>
                       <span className="vt-kunye">Panelde</span>

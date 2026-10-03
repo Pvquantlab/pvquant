@@ -3,7 +3,7 @@ import type { DogrulamaDurumu } from "./dogrulamaDurumu";
 import { yuzdeTr, kisaTarihTr, ayTr } from "./bicim";
 import { KISA_TANIMLAR, YONTEM_KAPANIS } from "./yontem-metni";
 import { MenuIkon } from "./MenuIkon";
-import { GeceSusleri } from "./GeceSusleri";
+import geceSanat from "./varlik/gece-sanat.svg";
 
 /** Açık karne — sayfadaki tek koyu bant (v2.384, spec §3.6 + V1 kilitli kart). Açık: karne kutusu
  *  + aylık tablo. Kapalı: kilitli kart, dört metrik tanımı kartın içinde (tek kaynak: yontem-metni).
@@ -11,7 +11,7 @@ import { GeceSusleri } from "./GeceSusleri";
 export function AcikKarne({ durum }: { durum: DogrulamaDurumu }) {
   return (
     <section className="vt-bolum vt-bolum--gece" id="karne" aria-labelledby="vt-karne-baslik">
-      <GeceSusleri />
+      <div className="vt-gece-sanat" aria-hidden="true"><img src={geceSanat} alt="" loading="lazy" decoding="async" /></div>
       <div className="vt-kap">
         <div className="vt-bolum-bas">
           <h2 className="vt-h2" id="vt-karne-baslik">Sözümüze değil, karneye bakın.</h2>

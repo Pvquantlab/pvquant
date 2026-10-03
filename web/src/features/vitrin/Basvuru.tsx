@@ -6,10 +6,14 @@ import { api } from "../../api/client";
 export function Basvuru() {
   return (
     <section className="vt-bolum vt-bolum--bant" id="basla" aria-labelledby="vt-basla-baslik">
-      <div className="vt-kap vt-dar">
-        <h2 className="vt-h2" id="vt-basla-baslik">Kendi karnenizi başlatın.</h2>
-        <p className="vt-giris vt-basla__giris">E-postanızı bırakın; hesabınızı kuralım, ilk gece sınavından itibaren karneniz birikmeye başlasın. Fiyatlandırma kurulu güç başına aylık aboneliktir, santral sayısına göre şekillenir — teklif başvuruyla gelir.</p>
-        <BasvuruFormu />
+      <div className="vt-kap">
+        <div className="vt-basla-yer">
+          <div>
+            <h2 className="vt-h2" id="vt-basla-baslik">Kendi karnenizi başlatın.</h2>
+            <p className="vt-giris vt-basla__giris">E-postanızı bırakın; hesabınızı kuralım, ilk gece sınavından itibaren karneniz birikmeye başlasın. Fiyatlandırma kurulu güç başına aylık aboneliktir, santral sayısına göre şekillenir — teklif başvuruyla gelir.</p>
+          </div>
+          <div className="vt-form-kart"><BasvuruFormu /></div>
+        </div>
       </div>
     </section>
   );

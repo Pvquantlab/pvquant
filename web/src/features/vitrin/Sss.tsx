@@ -15,14 +15,18 @@ const SORULAR = [
 export function Sss() {
   return (
     <section className="vt-bolum" id="sss" aria-labelledby="vt-sss-baslik">
-      <div className="vt-kap vt-dar">
-        <h2 className="vt-h2 vt-bolum-bas" id="vt-sss-baslik">Sık sorulan sorular</h2>
-        {SORULAR.map(([soru, cevap]) => (
-          <details key={soru} className="vt-sss">
-            <summary>{soru}</summary>
-            <p>{cevap}</p>
-          </details>
-        ))}
+      <div className="vt-kap">
+        <div className="vt-sss-yer">
+          <div className="vt-bolum-bas"><h2 className="vt-h2" id="vt-sss-baslik">Sık sorulan sorular</h2></div>
+          <div>
+            {SORULAR.map(([soru, cevap]) => (
+              <details key={soru} className="vt-sss">
+                <summary>{soru}</summary>
+                <p>{cevap}</p>
+              </details>
+            ))}
+          </div>
+        </div>
       </div>
     </section>
   );

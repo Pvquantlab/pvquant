@@ -33,7 +33,7 @@ function Sayilar({ veri }: { veri: Dogrulama }) {
       <div className="vt-izgara vt-izgara--4">
         {kutular.map((k) => (
           <div key={k.et} className="vt-sayi">
-            <div className="vt-sayi__et">{k.et}</div>
+            <div className="vt-sayi__ust"><div className="vt-sayi__et">{k.et}</div></div>
             <div className="vt-sayi__deger">{k.deger}</div>
             <div className="vt-sayi__alt">{k.alt}</div>
           </div>

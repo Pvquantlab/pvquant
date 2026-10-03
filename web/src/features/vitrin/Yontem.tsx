@@ -21,7 +21,7 @@ export function Yontem() {
   }, []);
   const dg = durum.tur === "acik" ? durum.veri : null;
   return (
-    <div className="vt">
+    <div className="vt vt--a">
       <a className="vt-atla" href="#icerik">İçeriğe geç</a>
       <UstCubuk kip="yontem" />
       <main id="icerik">

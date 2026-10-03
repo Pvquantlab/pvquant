@@ -11,22 +11,26 @@ const yz = (v: number) => "%" + (v * 100).toFixed(1).replace(".", ",");
 export function ReferansEgri({ veri }: { veri: null }) {
   const noktalar = veri ?? numuneGun();
   return (
-    <figure className="vt-pencere">
-      <div className="vt-pencere__bas">Referans santral · 10 MW üzeri · İç Anadolu</div>
+    <div className="vt-pencere">
+      <figure className="vt-pencere__fig">
+      <div className="vt-pencere__bas">Referans santral · 10{" "}MW üzeri · İç{" "}Anadolu</div>
       <p className="vt-kunye vt-pencere__tarih">{NUMUNE_TARIH} · kapasiteye oran</p>
-      <ul className="vt-lejant" aria-label="Lejant">
+      <ul className="vt-lejant" role="list" aria-label="Lejant">
         <li><span className="vt-lejant__cizgi vt-lejant__cizgi--tahmin" aria-hidden="true" />Tahmin (P50)</li>
         <li><span className="vt-lejant__bant" aria-hidden="true" />İyimser–kötümser aralık (P10–P90)</li>
         <li><span className="vt-lejant__cizgi vt-lejant__cizgi--gerceklesen" aria-hidden="true" />Gerçekleşen</li>
         <li><span className="vt-lejant__esik" aria-hidden="true" />AC tavanı</li>
       </ul>
-      <Cizim noktalar={noktalar} dar={false} />
-      <Cizim noktalar={noktalar} dar />
+      <Cizim noktalar={noktalar} kip="genis" />
+      <Cizim noktalar={noktalar} kip="orta" />
+      <Cizim noktalar={noktalar} kip="dar" />
       <figcaption className="vt-kunye vt-pencere__kunye">
         gerçekleşen: EPİAŞ Şeffaflık · tahmin: 01.10 gece koşusu, PVQuant fizik modeli · araştırma koşusu, canlı panel çıktısı değil
       </figcaption>
+      </figure>
       <details className="vt-pencere__tablo">
         <summary>Tablo görünümü</summary>
+        <div className="vt-tablo-kay" tabIndex={0} role="region" aria-label="Saatlik değerler tablosu">
         <table>
           <thead>
             <tr><th scope="col">Saat</th><th scope="col">P10</th><th scope="col">Tahmin (P50)</th><th scope="col">P90</th><th scope="col">Gerçekleşen</th></tr>
@@ -43,18 +47,23 @@ export function ReferansEgri({ veri }: { veri: null }) {
             ))}
           </tbody>
         </table>
+        </div>
       </details>
-    </figure>
+    </div>
   );
 }
 
-function Cizim({ noktalar, dar }: { noktalar: readonly EgriNoktasi[]; dar: boolean }) {
-  const W = dar ? 360 : 720;
-  const H = dar ? 258 : 332;
-  const SOL = dar ? 40 : 48;
-  const SAG = dar ? 10 : 18;
-  const UST = dar ? 46 : 56;
-  const ALT = dar ? 30 : 34;
+type CizimKipi = "genis" | "orta" | "dar";
+/* Geometriler cila-a ile birebir: hero--a pencerede "orta" (520 px), ≥1241 dışı dar/orta CSS seçer. */
+const GEOMETRI: Record<CizimKipi, { W: number; H: number; SOL: number; SAG: number; UST: number; ALT: number }> = {
+  genis: { W: 720, H: 332, SOL: 48, SAG: 18, UST: 56, ALT: 34 },
+  orta: { W: 520, H: 276, SOL: 44, SAG: 14, UST: 52, ALT: 32 },
+  dar: { W: 360, H: 258, SOL: 40, SAG: 10, UST: 46, ALT: 30 },
+};
+
+function Cizim({ noktalar, kip }: { noktalar: readonly EgriNoktasi[]; kip: CizimKipi }) {
+  const dar = kip === "dar";
+  const { W, H, SOL, SAG, UST, ALT } = GEOMETRI[kip];
   const X0 = 5, X1 = 20;                                    // 19:00 değeri saat ortasında (19,5) biter
   const x = (saat: number) => SOL + ((saat - X0) / (X1 - X0)) * (W - SOL - SAG);
   const y = (oran: number) => UST + (1 - oran / 1.05) * (H - UST - ALT);
@@ -65,10 +74,10 @@ function Cizim({ noktalar, dar }: { noktalar: readonly EgriNoktasi[]; dar: boole
     + " L" + [...noktalar].reverse().map((p) => nokta(p.saat, p.p10)).join(" L") + " Z";
   const yIzgara = dar ? [0, 0.5, 1] : [0, 0.25, 0.5, 0.75, 1];
   const xEtiket = dar ? [6, 12, 18] : [6, 9, 12, 15, 18];
-  const ek = dar ? "dar" : "genis";
+  const ek = kip;
   return (
     <svg className={`vt-egri vt-egri--${ek}`} viewBox={`0 0 ${W} ${H}`} role="img"
-      aria-labelledby={`vt-egri-baslik-${ek} vt-egri-aciklama-${ek}`}>
+      aria-labelledby={`vt-egri-baslik-${ek}`} aria-describedby={`vt-egri-aciklama-${ek}`}>
       <title id={`vt-egri-baslik-${ek}`}>1 Ekim 2026 tahmini ve gerçekleşen üretim</title>
       <desc id={`vt-egri-aciklama-${ek}`}>Araştırma koşusu; canlı panel çıktısı değildir. Mavi bant tahmin aralığını, mavi çizgi tahmini, amber çizgi gerçekleşen üretimi gösterir; her değer saat ortalamasıdır ve saat ortasında çizilir. 08:00–12:00 arasında gerçekleşen, söylenen aralığın altında kalıyor; öğleden sonra aralığın içinde. Saatlik sayılar tablo görünümünde.</desc>
       {yIzgara.map((o) => (
@@ -93,8 +102,8 @@ function Cizim({ noktalar, dar }: { noktalar: readonly EgriNoktasi[]; dar: boole
       {noktalar.filter((p) => p.gercek > 0).map((p) => (
         <circle key={p.saat} className="vt-egri__nokta" cx={x(p.saat + 0.5)} cy={y(p.gercek)} r={dar ? 2.4 : 3} />
       ))}
-      {!dar && <text className="vt-egri__et" x={x(9.9)} y={y(0.3)} textAnchor="middle">gerçekleşen</text>}
-      {!dar && <text className="vt-egri__et" x={x(14.1)} y={y(0.45)} textAnchor="middle">tahmin aralığı</text>}
+      {!dar && <text className="vt-egri__et vt-egri__et--halo" x={x(kip === "orta" ? 10.6 : 9.9)} y={y(0.3)} textAnchor="middle">gerçekleşen</text>}
+      {!dar && <text className="vt-egri__et vt-egri__et--halo" x={x(kip === "orta" ? 13.2 : 14.1)} y={y(kip === "orta" ? 0.4 : 0.45)} textAnchor="middle">tahmin aralığı</text>}
     </svg>
   );
 }

@@ -19,7 +19,7 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
   const durum = useDogrulama();
   useCapaKaydir(durum.tur);
   return (
-    <div className="vt">
+    <div className="vt vt--a">
       <a className="vt-atla" href="#icerik">İçeriğe geç</a>
       <UstCubuk onPanel={onPanel} kip="ana" />
       <main id="icerik">
