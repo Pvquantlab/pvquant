@@ -11,6 +11,7 @@ import { Basvuru } from "./Basvuru";
 import { Altbilgi } from "./Altbilgi";
 import { useDogrulama } from "./useDogrulama";
 import { useCapaKaydir } from "./useCapaKaydir";
+import { useCanlandir } from "./useCanlandir";
 
 /** Vitrin (halka açık yüz) — v2.384 Yön A, V1 "Mürekkep & Güneş" kimliğiyle (tasarım §2.2-ek R16).
  *  Tasarım: docs/design/vitrin-yon-a/2026-10-02-muhur1-tasarim.md. Bu dosya yalnız bölümleri dizer.
@@ -18,6 +19,7 @@ import { useCapaKaydir } from "./useCapaKaydir";
 export function Vitrin({ onPanel }: { onPanel: () => void }) {
   const durum = useDogrulama();
   useCapaKaydir(durum.tur);
+  useCanlandir(durum.tur);
   return (
     <div className="vt vt--a">
       <a className="vt-atla" href="#icerik">İçeriğe geç</a>

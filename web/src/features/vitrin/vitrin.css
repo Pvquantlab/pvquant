@@ -778,3 +778,41 @@
   .vt-mega.is-acik { opacity: 0; transform: translateY(-8px); }
   .vt-mega-ortu.is-acik { opacity: 0; }
 }
+
+/* ═══ CİLA-ek 4: kaydırma canlılığı (R25) + h1 vurgusu (R24) + nav göstergesi ═══ */
+/* yalnız is-bekliyor alanlar gizlenir (IO kurulduysa); azaltılmış harekette blok tamamen devre dışı.
+   Dönüşüm BÖLÜMDE değil çocuklarında: bölüm kutusu yerinde durur ki çapa inişleri (scroll-margin)
+   sapmaz — inceleme bulgusu 2. */
+.vt [data-canlan].is-bekliyor { opacity: 0; }
+.vt [data-canlan].is-bekliyor > * { transform: translateY(24px); }
+.vt [data-canlan].is-acildi { opacity: 1; transition: opacity 500ms var(--vt-ease-cik); }
+.vt [data-canlan].is-acildi > * { transform: none; transition: transform 500ms var(--vt-ease-cik); }
+/* kart kademesi (ızgara .vt-kap içinde: alt seçici); kanıt şeridi hariç — veri gelince ızgara
+   yeniden kurulur, kademe ikinci kez oynardı (inceleme bulgusu 1) */
+.vt [data-canlan].is-acildi:not(.vt-serit) .vt-izgara > * { animation: vt-canlan 520ms var(--vt-ease-cik) backwards; }
+.vt [data-canlan].is-acildi:not(.vt-serit) .vt-izgara > :nth-child(2) { animation-delay: 60ms; }
+.vt [data-canlan].is-acildi:not(.vt-serit) .vt-izgara > :nth-child(3) { animation-delay: 120ms; }
+.vt [data-canlan].is-acildi:not(.vt-serit) .vt-izgara > :nth-child(4) { animation-delay: 180ms; }
+.vt [data-canlan].is-acildi:not(.vt-serit) .vt-izgara > :nth-child(n+5) { animation-delay: 240ms; }
+@keyframes vt-canlan { from { opacity: 0; transform: translateY(18px); } }
+@media (prefers-reduced-motion: reduce) {
+  .vt [data-canlan].is-bekliyor { opacity: 1; }
+  .vt [data-canlan].is-bekliyor > * { transform: none; }
+  .vt [data-canlan].is-acildi:not(.vt-serit) .vt-izgara > * { animation: none; }
+}
+@media print {
+  .vt [data-canlan].is-bekliyor { opacity: 1; }
+  .vt [data-canlan].is-bekliyor > * { transform: none; }
+}
+/* R24 — hero h1 tek vurgu istisnası (yalnız burada; beyazda 6,65) */
+.vt-h1__vurgu { font-style: normal; color: var(--vt-eylem); }
+/* açık/üzerine gelinen üst sekmede ahududu alt çizgi (Solargis dersi; eylem rengi = etkileşim durumu) */
+.vt-nav__bag, .vt-nav__acilir { position: relative; }
+.vt-nav__bag::after, .vt-nav__acilir::after {
+  content: ""; position: absolute; left: 10px; right: 10px; bottom: 2px; height: 2px; border-radius: 1px;
+  background: var(--vt-eylem); opacity: 0; transform: scaleX(0.6); transform-origin: left;
+  transition: opacity var(--vt-sure-hizli) var(--vt-ease), transform var(--vt-sure) var(--vt-ease-cik);
+}
+.vt-nav__bag:hover::after, .vt-nav__acilir:hover::after,
+.vt-nav__bag:focus-visible::after, .vt-nav__acilir:focus-visible::after,
+.vt-nav__acilir[aria-expanded="true"]::after { opacity: 1; transform: none; }

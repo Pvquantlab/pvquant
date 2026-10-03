@@ -24,7 +24,7 @@ const MASALAR: readonly (readonly [string, string, Vinyet, Vinyet])[] = [
 
 export function TurkiyePiyasasi() {
   return (
-    <section className="vt-bolum vt-bolum--bant" id="para" aria-labelledby="vt-para-baslik">
+    <section className="vt-bolum vt-bolum--bant" id="para" aria-labelledby="vt-para-baslik" data-canlan="">
       <div className="vt-kap">
         <div className="vt-para-ust">
           <div className="vt-bolum-bas">
@@ -32,7 +32,7 @@ export function TurkiyePiyasasi() {
             <p className="vt-giris">Üretim programı her gün öğleden sonra bildirilir; gerçekleşen saparsa fark dengesizlik mekanizmasıyla faturalanır. PVQuant programı üretir, revizyon kapısını izler ve sapmanın TL karşılığını gün gün hesaplar.</p>
           </div>
           <div className="vt-sahne">
-            <div className="vt-sahne__zemin" aria-hidden="true"><img src={sahneZemin} alt="" loading="lazy" decoding="async" /></div>
+            <div className="vt-sahne__zemin" aria-hidden="true"><img src={sahneZemin} alt="" width="700" height="460" loading="lazy" decoding="async" /></div>
             <div className="vt-pnc vt-pnc--ana" role="img" aria-label="Panel penceresi örneği: Sapmanın TL kartı (çizim; gerçek ekran görüntüsü yuvası)">
               <div className="vt-pnc__serit" aria-hidden="true"><span>panel.pvquant</span></div>
               <div className="vt-pnc__ekran">
@@ -50,7 +50,7 @@ export function TurkiyePiyasasi() {
           {KARTLAR.map(([baslik, metin, vinyet]) => (
             <article key={baslik} className="vt-kart vt-vin-kart">
               <div className="vt-levha" aria-hidden="true">
-                {typeof vinyet === "string" ? <img src={vinyet} alt="" loading="lazy" decoding="async" /> : vinyet()}
+                {typeof vinyet === "string" ? <img src={vinyet} alt="" width="384" height="176" loading="lazy" decoding="async" /> : vinyet()}
               </div>
               <div className="vt-kart__govde"><h3 className="vt-h3">{baslik}</h3><p className="vt-kart__metin">{metin}</p></div>
             </article>
@@ -60,8 +60,8 @@ export function TurkiyePiyasasi() {
           {MASALAR.map(([baslik, metin, genis, dar]) => (
             <article key={baslik} className="vt-kart vt-vin-kart">
               <div className="vt-levha" aria-hidden="true">
-                {typeof genis === "string" ? <img className="vt-v-genis" src={genis} alt="" loading="lazy" decoding="async" /> : genis()}
-                {typeof dar === "string" ? <img className="vt-v-dar" src={dar} alt="" loading="lazy" decoding="async" /> : dar()}
+                {typeof genis === "string" ? <img className="vt-v-genis" src={genis} alt="" width="588" height="176" loading="lazy" decoding="async" /> : genis()}
+                {typeof dar === "string" ? <img className="vt-v-dar" src={dar} alt="" width="384" height="176" loading="lazy" decoding="async" /> : dar()}
               </div>
               <div className="vt-kart__govde"><h3 className="vt-h3">{baslik}</h3><p className="vt-kart__metin">{metin}</p></div>
             </article>

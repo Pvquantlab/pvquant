@@ -14,7 +14,7 @@ const SORULAR = [
 
 export function Sss() {
   return (
-    <section className="vt-bolum" id="sss" aria-labelledby="vt-sss-baslik">
+    <section className="vt-bolum" id="sss" aria-labelledby="vt-sss-baslik" data-canlan="">
       <div className="vt-kap">
         <div className="vt-sss-yer">
           <div className="vt-bolum-bas"><h2 className="vt-h2" id="vt-sss-baslik">Sık sorulan sorular</h2></div>

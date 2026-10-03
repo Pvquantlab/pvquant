@@ -10,8 +10,8 @@ import geceSanat from "./varlik/gece-sanat.svg";
  *  Hata: tek satır. Yöntem paragrafı kapalı dışındaki durumlarda (kapalıda kartta — yinelenmez). */
 export function AcikKarne({ durum }: { durum: DogrulamaDurumu }) {
   return (
-    <section className="vt-bolum vt-bolum--gece" id="karne" aria-labelledby="vt-karne-baslik">
-      <div className="vt-gece-sanat" aria-hidden="true"><img src={geceSanat} alt="" loading="lazy" decoding="async" /></div>
+    <section className="vt-bolum vt-bolum--gece" id="karne" aria-labelledby="vt-karne-baslik" data-canlan="">
+      <div className="vt-gece-sanat" aria-hidden="true"><img src={geceSanat} alt="" width="920" height="300" loading="lazy" decoding="async" /></div>
       <div className="vt-kap">
         <div className="vt-bolum-bas">
           <h2 className="vt-h2" id="vt-karne-baslik">Sözümüze değil, karneye bakın.</h2>

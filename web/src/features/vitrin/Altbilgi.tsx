@@ -60,7 +60,7 @@ export function Altbilgi({ onPanel }: { onPanel?: () => void }) {
         </div>
         <p className="vt-alt__son vt-kunye">© PVQuant 2026</p>
       </div>
-      <div className="vt-alt__ufuk" aria-hidden="true"><img src={altUfuk} alt="" loading="lazy" decoding="async" /></div>
+      <div className="vt-alt__ufuk" aria-hidden="true"><img src={altUfuk} alt="" width="1440" height="72" loading="lazy" decoding="async" /></div>
     </footer>
   );
 }

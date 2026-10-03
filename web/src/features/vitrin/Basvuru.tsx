@@ -5,7 +5,7 @@ import { api } from "../../api/client";
  *  Görünür e-posta adresi yok; dönüş formdan. */
 export function Basvuru() {
   return (
-    <section className="vt-bolum vt-bolum--bant" id="basla" aria-labelledby="vt-basla-baslik">
+    <section className="vt-bolum vt-bolum--bant" id="basla" aria-labelledby="vt-basla-baslik" data-canlan="">
       <div className="vt-kap">
         <div className="vt-basla-yer">
           <div>

@@ -22,6 +22,7 @@ function ustDuzeyBol(liste: string): string[] {
 test("vitrin.css'teki her seçici .vt ile başlar", () => {
   const css = oku("../../src/features/vitrin/vitrin.css")
     .replace(/\/\*[\s\S]*?\*\//g, "")       // yorumlar
+    .replace(/@keyframes[^{]*\{(?:[^{}]*\{[^}]*\})*[^{}]*\}/g, "")   // keyframes blokları (from/to seçici değildir)
     .replace(/@(media|starting-style|supports)[^{]*\{/g, "");   // at-rule başlıkları (kapanış parantezi seçici üretmez)
   const seciciler = [...css.matchAll(/([^{}]+)\{/g)].flatMap((m) => ustDuzeyBol(m[1]));
   assert.ok(seciciler.length > 40, `seçici sayısı ${seciciler.length}`);

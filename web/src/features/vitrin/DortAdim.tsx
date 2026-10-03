@@ -20,7 +20,7 @@ const ADIM: readonly {
 
 export function DortAdim({ onPanel }: { onPanel?: () => void }) {
   return (
-    <section className="vt-bolum" id="katmanlar" aria-labelledby="vt-adim-baslik">
+    <section className="vt-bolum" id="katmanlar" aria-labelledby="vt-adim-baslik" data-canlan="">
       <div className="vt-kap">
         <div className="vt-bolum-bas">
           <h2 className="vt-h2" id="vt-adim-baslik">Tahmin dört adımda doğar — her adımı panelde görünür.</h2>
@@ -28,7 +28,7 @@ export function DortAdim({ onPanel }: { onPanel?: () => void }) {
         <div className="vt-izgara vt-izgara--2 vt-adimlar">
           {ADIM.map((a) => (
             <article key={a.no} className={onPanel ? "vt-kart vt-kart--bag vt-adim" : "vt-kart vt-adim"}>
-              <div className="vt-levha" aria-hidden="true"><img src={a.levha} alt="" loading="lazy" decoding="async" /></div>
+              <div className="vt-levha" aria-hidden="true"><img src={a.levha} alt="" width="420" height="150" loading="lazy" decoding="async" /></div>
               <div className="vt-kart__govde">
                 <span className="vt-kart__no">{a.no}</span>
                 <h3 className="vt-h3">{a.baslik}</h3>

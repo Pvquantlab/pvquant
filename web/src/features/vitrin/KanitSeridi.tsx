@@ -7,7 +7,7 @@ const ALANLAR = ["Ortalama sapma", "Basit yönteme göre", "Bant kapsaması", "S
 /** Canlı kanıt şeridi (v2.384, spec §3.3). Açık: dört canlı sayı. Kapalı/hata: tek satır; kutu ve tire çizilmez. */
 export function KanitSeridi({ durum }: { durum: DogrulamaDurumu }) {
   return (
-    <section className="vt-serit" aria-label="Canlı kanıt şeridi">
+    <section className="vt-serit" aria-label="Canlı kanıt şeridi" data-canlan="">
       <div className="vt-kap">
         {durum.tur === "acik" ? <Sayilar veri={durum.veri} /> : <DurumSatiri tur={durum.tur} />}
       </div>
