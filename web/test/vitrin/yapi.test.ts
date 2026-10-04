@@ -2,6 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
+import { BOLUMLER } from "../../src/features/vitrin/bolumler.ts";
 
 const oku = (yol: string) => readFileSync(new URL(yol, import.meta.url), "utf8");
 
@@ -45,10 +46,39 @@ test("vitrin bileşenlerinde satır içi stil yok (Rozet.tsx hariç: <use> gölg
 
 test("ana sayfa yeni bileşenlerden kurulur; eski süsler kalktı", () => {
   const vitrin = oku("../../src/features/vitrin/Vitrin.tsx");
-  for (const parca of ["<UstCubuk", "<Hero", "<KanitSeridi", "<DortAdim", "<TurkiyePiyasasi", "<AcikKarne durum={durum}", "<Sss", "<Basvuru", "<Altbilgi", "useDogrulama"]) {
+  for (const parca of ["<UstCubuk", "<Hero", "<BolumCubugu", "<KanitSeridi", "<DortAdim", "<TurkiyePiyasasi", "<IsIzgarasi", "<AcikKarne durum={durum}", "<Sss", "<Basvuru", "<Altbilgi", "useDogrulama"]) {
     assert.ok(vitrin.includes(parca), parca);
   }
   assert.doesNotMatch(vitrin, /YildizAlani|Dalga|KatmanIkon|export const/);
+});
+
+test("bölüm çubuğu çapaları gerçek bölümlere, sayfadaki sırayla işaret eder (R30)", () => {
+  // Kaynak-metin regex'i yerine modül içe aktarımı: biçim değişse de çapalar sessizce kaçamaz.
+  const dosyaE: Record<string, string> = {
+    katmanlar: "DortAdim.tsx", para: "TurkiyePiyasasi.tsx", isler: "IsIzgarasi.tsx",
+    karne: "AcikKarne.tsx", rakamlar: "DisiplinBandi.tsx", sss: "Sss.tsx", basla: "Basvuru.tsx",
+  };
+  assert.equal(BOLUMLER.length, 7);
+  const vitrin = oku("../../src/features/vitrin/Vitrin.tsx");
+  let son = -1;
+  for (const [id] of BOLUMLER) {
+    const dosya = dosyaE[id];
+    assert.ok(dosya, `#${id} için kaynak dosya eşlemesi tanımsız`);
+    assert.ok(oku(`../../src/features/vitrin/${dosya}`).includes(`id="${id}"`), `#${id} hedefi ${dosya} içinde yok`);
+    const bilesen = "<" + dosya.replace(".tsx", "");
+    const yer = vitrin.indexOf(bilesen);
+    assert.ok(yer > son, `${bilesen} çubuk sırasıyla sayfa sırası uyuşmuyor (spy "sonuncu kazanır" buna dayanır)`);
+    son = yer;
+  }
+});
+
+test("iş ızgarası: rakamlı vaat ve müşteri iması yok; bağlantılar kanıta gider (R31)", () => {
+  const is = oku("../../src/features/vitrin/IsIzgarasi.tsx");
+  assert.doesNotMatch(is, /%\d|\d+ (bin|milyon) TL|\d+\+? (müşteri|kuruluş|proje)|1200|9 ?000/i);
+  assert.match(is, /#para/);
+  assert.match(is, /#karne/);
+  assert.match(is, /\/yontem/);
+  assert.match(is, /bugün paneldedir — yol haritası değil/);
 });
 
 test("kanıt şeridi: uydurma hedef yok; 'yayın açılınca' yalnız kapalı durumda", () => {

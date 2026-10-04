@@ -846,3 +846,49 @@
   .vt-disiplin__izgara { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 20px; }
   .vt-disiplin__deger { font-size: 30px; line-height: 34px; }
 }
+
+/* ═══ CİLA-ek 6: Solargis turu 2 — yön bulma, iş ızgarası, kanıt bağlantıları (R30–R32) ═══ */
+.vt { --vt-cubuk-y: 45px; }   /* bölüm çubuğu boyu (44px bağ + 1px kenar); payları tek yerden türet */
+/* R32 — gövde içi kanıt bağlantısı: akan metinde alt çizgili, ok'suz, boyut/kalınlık kalıtır.
+   z-index: kart içinde "Panelde:" düğmesinin kartı kaplayan ::before katmanının ÜSTÜNDE kalsın
+   (inceleme C1: 3. adım kartındaki bağlantıya tıklanamıyordu, tık panele gidiyordu). */
+.vt-bag--metin { display: inline; min-height: 0; font-weight: inherit; position: relative; z-index: 1;
+  text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.vt-bag--metin::after { content: none; }
+.vt-bag--metin:hover { text-decoration-thickness: 2px; }
+/* R30 — bölüm çubuğu: üst çubuğun altına yapışan ince yol göstergesi (nav çizgi diliyle) */
+.vt-bolumcubuk { position: sticky; top: var(--vt-ust-y); z-index: 14;
+  background: var(--vt-bant); border-bottom: 1px solid var(--vt-kenar-soguk); }
+.vt-bolumcubuk__ic { display: flex; align-items: center; gap: 16px; overflow-x: auto; scrollbar-width: none;
+  scroll-padding-inline: var(--vt-yan); }
+.vt-bolumcubuk__ic::-webkit-scrollbar { display: none; }
+.vt-bolumcubuk__et { flex: none; font: 500 11px/1 var(--vt-mono); letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--vt-ucuncul); }
+.vt-bolumcubuk__liste { display: flex; gap: 2px; list-style: none; margin: 0; padding: 0; }
+.vt-bolumcubuk__bag { position: relative; display: inline-flex; align-items: center; height: 44px;
+  padding: 0 10px; font-size: 13.5px; font-weight: 500; color: var(--vt-ikincil);
+  text-decoration: none; white-space: nowrap; scroll-margin: 0; }   /* 80px odak payı şeridi dikey zıplatmasın (C2) */
+.vt-bolumcubuk__bag:focus-visible { outline-offset: -2px; }        /* overflow şeridi halkayı kırpmasın */
+.vt-bolumcubuk__bag::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: 6px;
+  height: 2px; border-radius: 1px; background: var(--vt-eylem); opacity: 0;
+  transform: scaleX(0.6); transform-origin: left;
+  transition: opacity var(--vt-sure-hizli) var(--vt-ease), transform var(--vt-sure) var(--vt-ease-cik); }
+.vt-bolumcubuk__bag:hover, .vt-bolumcubuk__bag:focus-visible,
+.vt-bolumcubuk__bag[aria-current="true"] { color: var(--vt-metin); }
+.vt-bolumcubuk__bag:hover::after, .vt-bolumcubuk__bag:focus-visible::after,
+.vt-bolumcubuk__bag[aria-current="true"]::after { opacity: 1; transform: none; }
+/* çubuk varken çapa inişleri ikinci yapışkan şeridi de hesaba katar (yalnız ana sayfa; /yontem'de çubuk yok) */
+.vt:has(.vt-bolumcubuk) [id] { scroll-margin-top: calc(var(--vt-ust-y) + var(--vt-cubuk-y) + 13px); }
+/* SSS'in yapışkan başlığı çubuğun altına girmesin (inceleme I4) */
+.vt:has(.vt-bolumcubuk) .vt-sss-yer .vt-bolum-bas { top: calc(var(--vt-ust-y) + var(--vt-cubuk-y) + 24px); }
+/* R31 — iş ızgarası: rozetli üç kart; bağlantı satırı nefes alır, odak halkası metin kadar (tam satır değil) */
+.vt-is .vt-kart__govde > .vt-rz { margin-bottom: 2px; }
+.vt-is__bag { margin-top: 2px; align-self: flex-start; }
+/* 601–1080: tek kalan kartı iki sütuna yayan vinyet kuralı iş kartında metni yarıya sıkıştırıyordu (I3) */
+@media (min-width: 601px) and (max-width: 1080px) {
+  .vt-isler > .vt-kart:last-child:nth-child(odd) { display: flex; }
+  .vt-isler > .vt-kart:last-child:nth-child(odd) .vt-kart__govde { align-self: auto; max-width: 62ch; padding-block: 0; }
+}
+@media (max-width: 600px) {
+  .vt-bolumcubuk__et { display: none; }
+}

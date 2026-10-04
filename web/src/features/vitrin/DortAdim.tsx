@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Rozet, type RozetGrubu, type RozetIkonu } from "./Rozet";
 import levhaFizik from "./varlik/levha-fizik.svg";
 import levhaOgrenen from "./varlik/levha-ogrenen.svg";
@@ -9,12 +10,12 @@ import levhaKarne from "./varlik/levha-karne.svg";
  *  rozetli satırı panel girişini açar (R18: var olmayan alt sayfaya bağlantı verilmez).
  *  Cümleler v2.383 vitrinindeki KATMANLAR'dan aynen. */
 const ADIM: readonly {
-  no: string; baslik: string; cumle: string; etiket: string;
+  no: string; baslik: string; cumle: ReactNode; etiket: string;
   levha: string; grup: RozetGrubu; ikon: RozetIkonu;
 }[] = [
   { no: "01 / 04", baslik: "Fizik modeli", cumle: "Santralın geometrisinden yola çıkar — panel eğimi, tavan, kayıplar.", etiket: "Panelde: Kalibrasyon", levha: levhaFizik, grup: "kanit", ikon: "kalibrasyon" },
   { no: "02 / 04", baslik: "Öğrenen model", cumle: "Fiziğin gözden kaçırdığını santralın kendi geçmişinden öğrenir.", etiket: "Panelde: Kalibrasyon", levha: levhaOgrenen, grup: "kanit", ikon: "kalibrasyon" },
-  { no: "03 / 04", baslik: "Dürüst aralık", cumle: "Tek sayı değil, gerçek hatayla ayarlanmış iyimser–kötümser bandı verir.", etiket: "Panelde: Tahminler", levha: levhaAralik, grup: "tahmin", ikon: "band" },
+  { no: "03 / 04", baslik: "Dürüst aralık", cumle: <>Tek sayı değil, gerçek hatayla ayarlanmış <a className="vt-bag vt-bag--metin" href="/yontem#yt-tanimlar">iyimser–kötümser bandı</a> verir.</>, etiket: "Panelde: Tahminler", levha: levhaAralik, grup: "tahmin", ikon: "band" },
   { no: "04 / 04", baslik: "Gece karnesi", cumle: "Her gece tahmin gerçekleşenle yüzleşir; kanıt birikir.", etiket: "Panelde: Doğruluk", levha: levhaKarne, grup: "kanit", ikon: "karne" },
 ];
 

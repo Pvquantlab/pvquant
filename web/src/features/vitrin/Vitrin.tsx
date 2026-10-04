@@ -2,9 +2,11 @@ import "./fontlar";
 import "./vitrin.css";
 import { UstCubuk } from "./UstCubuk";
 import { Hero } from "./Hero";
+import { BolumCubugu } from "./BolumCubugu";
 import { KanitSeridi } from "./KanitSeridi";
 import { DortAdim } from "./DortAdim";
 import { TurkiyePiyasasi } from "./TurkiyePiyasasi";
+import { IsIzgarasi } from "./IsIzgarasi";
 import { AcikKarne } from "./AcikKarne";
 import { DisiplinBandi } from "./DisiplinBandi";
 import { Sss } from "./Sss";
@@ -27,9 +29,11 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
       <UstCubuk onPanel={onPanel} kip="ana" />
       <main id="icerik">
         <Hero />
+        <BolumCubugu />
         <KanitSeridi durum={durum} />
         <DortAdim onPanel={onPanel} />
         <TurkiyePiyasasi />
+        <IsIzgarasi />
         <AcikKarne durum={durum} />
         <DisiplinBandi />
         <Sss />

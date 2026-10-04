@@ -12,7 +12,7 @@ const RAKAMLAR = [
 
 export function DisiplinBandi() {
   return (
-    <section className="vt-disiplin" aria-labelledby="vt-disiplin-baslik" data-canlan="">
+    <section className="vt-disiplin" id="rakamlar" aria-labelledby="vt-disiplin-baslik" data-canlan="">
       <div className="vt-kap">
         <h2 className="vt-h3" id="vt-disiplin-baslik">Vitrinde logo duvarı yok; disiplin var.</h2>
         <div className="vt-izgara vt-izgara--4 vt-disiplin__izgara">
