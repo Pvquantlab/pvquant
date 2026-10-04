@@ -64,7 +64,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Node 24 (yerelle aynı: node --test .ts dosyalarını tip-soymayla koşar)
+      - name: "Node 24 — yerelle aynı: node --test .ts dosyalarını tip-soymayla koşar"
         uses: actions/setup-node@v4
         with:
           node-version: "24"
