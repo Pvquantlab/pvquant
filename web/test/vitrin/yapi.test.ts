@@ -72,13 +72,17 @@ test("bölüm çubuğu çapaları gerçek bölümlere, sayfadaki sırayla işare
   }
 });
 
-test("iş ızgarası: rakamlı vaat ve müşteri iması yok; bağlantılar kanıta gider (R31)", () => {
+test("iş ızgarası: rakamlı vaat ve müşteri iması yok; dört masa fayda kalıbında (R31+Ö8)", () => {
   const is = oku("../../src/features/vitrin/IsIzgarasi.tsx");
   assert.doesNotMatch(is, /%\d|\d+ (bin|milyon) TL|\d+\+? (müşteri|kuruluş|proje)|1200|9 ?000/i);
   assert.match(is, /#para/);
   assert.match(is, /#karne/);
   assert.match(is, /\/yontem/);
-  assert.match(is, /bugün paneldedir — yol haritası değil/);
+  assert.match(is, /Dördü de bugün panelde\./);        // Ö14: olumlu kurgu, «yol haritası değil» kalktı
+  for (const masa of ["Program teslimi", "Ticaret masası", "Operasyon nöbeti", "Finansman dosyası"]) {
+    assert.ok(is.includes(masa), masa);
+  }
+  assert.match(is, /vt-is__kunye/);                    // etiket–değer künyesi kalıbın parçası
 });
 
 test("kanıt şeridi: uydurma hedef yok; 'yayın açılınca' yalnız kapalı durumda", () => {
@@ -105,7 +109,11 @@ test("Açık karne: yöntem kutusu tek kaynaktan; yinelenen KPI kutusu yok", () 
 
 test("başvuru: hitap 'siz', bal küpü yerinde, uç aynı; SSS beş soru", () => {
   const basvuru = oku("../../src/features/vitrin/Basvuru.tsx");
-  assert.match(basvuru, /Kendi karnenizi başlatın\./);
+  assert.match(basvuru, /Karnenizi başlatın\./);       // eylem sözlüğü (Ö2): her yüzeyde tek ad
+  // eski eylem adı hiçbir vitrin yüzeyine geri dönmesin (inceleme: /yontem'de atlanmıştı)
+  for (const d of readdirSync(new URL("../../src/features/vitrin", import.meta.url)))
+    if (/\.(tsx?|css)$/.test(d))
+      assert.doesNotMatch(oku(`../../src/features/vitrin/${d}`), /Kendi karnenizi/, d);
   assert.match(basvuru, /Karnemi başlat/);
   assert.match(basvuru, /className="vt-bal" tabIndex=\{-1\} aria-hidden="true"/);
   assert.match(basvuru, /api\.vitrinBasvuru\(/);

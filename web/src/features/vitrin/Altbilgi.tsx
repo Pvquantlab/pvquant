@@ -6,7 +6,7 @@ const SAYFA = [
   ["Nasıl çalışır", "#katmanlar"],
   ["Türkiye piyasası", "#para"],
   ["SSS", "#sss"],
-  ["Başvuru", "#basla"],
+  ["Karnenizi başlatın", "#basla"],
 ] as const;
 
 const DOGRULUK = [

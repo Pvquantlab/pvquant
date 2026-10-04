@@ -28,7 +28,7 @@ const PANELLER: readonly Panel[] = [
         { ad: "Raporlar", aciklama: "16 sayfalık PDF, Excel doğruluk şeridi, şemalı JSON", ikon: "rapor" },
       ] },
       { ad: "Veri", rozet: "veri", ogeler: [
-        { ad: "Dosyasız santral bağlama", aciklama: "EPİAŞ Şeffaflık kimliğiyle gerçekleşen üretim kendiliğinden akar", ikon: "baglanti" },
+        { ad: "Dosyasız santral bağlama", aciklama: "Kamuya açık üretim kaydı kimliğiyle gerçekleşen üretim kendiliğinden akar", ikon: "baglanti" },
         { ad: "SCADA yükleme", aciklama: "Dosyanızı yükleyin; ön izleme, eşleme ve kalite denetimi", ikon: "yukleme" },
       ] },
     ],
@@ -53,7 +53,7 @@ const PANELLER: readonly Panel[] = [
       ] },
       { ad: "Bağlantı", rozet: "veri", ogeler: [
         { ad: "Toplayıcı / DSG şablonları", aciklama: "Saatlik ya da 15 dakikalık şablona tek tıkla dışa aktarım", hedef: "#para" },
-        { ad: "EPİAŞ Şeffaflık bağlantısı", aciklama: "Dosya yüklemeden gerçekleşen üretim akışı", hedef: "#para" },
+        { ad: "Kamuya açık üretim kaydı bağlantısı", aciklama: "Dosya yüklemeden gerçekleşen üretim akışı", hedef: "#para" },
       ] },
     ],
   },
@@ -187,7 +187,7 @@ export function UstCubuk({ onPanel, kip }: { onPanel?: () => void; kip: "ana" | 
           {onPanel
             ? <button type="button" className="vt-dugme vt-dugme--cizgi vt-ust__giris" onClick={onPanel}>Panele giriş</button>
             : <a className="vt-dugme vt-dugme--cizgi vt-ust__giris" href="/">← Ana sayfa</a>}
-          <a className="vt-dugme vt-dugme--dolu" href={adres("#basla")}>Başvuru</a>
+          <a className="vt-dugme vt-dugme--dolu" href={adres("#basla")}>Karnenizi başlatın</a>
           <button type="button" ref={dugme} className="vt-dugme vt-dugme--cizgi vt-menu-dugme"
             aria-expanded={acik} aria-controls="vt-cekmece" onClick={() => setAcik((a) => !a)}>
             {acik ? "Kapat" : "Menü"}

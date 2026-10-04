@@ -1,5 +1,5 @@
 /** Hero'daki 01.10.2026 numune günü (R19). GERÇEK araştırma koşusu verisi: gerçekleşen üretim
- *  EPİAŞ Şeffaflık'tan (açık ayna), bant ve P50 o gecenin koşusundan (v2.382 fiziği); değerler
+ *  kamuya açık üretim kaydından (açık ayna), bant ve P50 o gecenin koşusundan (v2.382 fiziği); değerler
  *  kurulu güce oran (0–1). Canlı panel çıktısı DEĞİLDİR ve künyede böyle söylenir. Sayılar elle
  *  değiştirilmez; tutarlılığı mantik.test.ts tarar. Kaynak: vitrin tasarım araştırması, 01.10 koşusu. */
 export interface EgriNoktasi { saat: number; p10: number; p50: number; p90: number; gercek: number }

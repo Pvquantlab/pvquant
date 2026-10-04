@@ -37,11 +37,12 @@ export function Hero() {
       </div>
       <div className="vt-kap vt-hero__ic">
         <div className="vt-hero__sol">
-          <h1 className="vt-h1 vt-hero__baslik" id="vt-hero-baslik"><span className="vt-h1__vurgu">Kanıtla konuşan</span> üretim tahmini.</h1>
-          <p className="vt-giris vt-hero__giris">Her saat için bir aralık, her ay için bir iklim beklentisi, <a className="vt-bag vt-bag--metin" href="#karne">her gece gerçekleşenle karşılaştırılan bir karne</a>. Vaat değil, ölçüm.</p>
+          <h1 className="vt-h1 vt-hero__baslik" id="vt-hero-baslik"><span className="vt-h1__vurgu">Programı zamanında verin;</span> sapmanın TL&#39;sini gün&nbsp;gün görün.</h1>
+          <p className="vt-giris vt-hero__giris">Türkiye&#39;deki güneş santralları için iyimser–kötümser aralığıyla saatlik üretim tahmini. Program dosyanız teslim penceresi kapanmadan hazır; sapmanın TL karşılığı, basit yönteme göre farkıyla birlikte panelde gün gün. Tahmin <a className="vt-bag vt-bag--metin" href="#karne">her gece gerçekleşenle sınanır</a>.</p>
           <div className="vt-eylemler vt-hero__eylem">
             <a className="vt-dugme vt-dugme--dolu vt-dugme--ok" href="#basla">Karnenizi başlatın</a>
-            <a className="vt-bag" href="#karne">Açık karneyi inceleyin</a>
+            <p className="vt-hero__mikro">başvuru · hesabınızı biz kurarız · veri yüklemeniz gerekmez · karneniz ilk gece sınavından itibaren birikir</p>
+            <a className="vt-bag" href="#para">TL karşılığı nasıl hesaplanır</a>
           </div>
         </div>
         <div className="vt-hero__pencere">

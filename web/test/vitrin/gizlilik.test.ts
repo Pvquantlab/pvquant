@@ -7,7 +7,17 @@ import { pathToFileURL, fileURLToPath } from "node:url";
 
 const YASAK = [/erbs/i, /perez/i, /faiman/i, /barhdadi/i, /modelselector/i, /calibrate\(\)/i, /predict\(\)/i,
   /eta_bos/i, /bifacial/i, /BG=/, /η=/, /open-?meteo/i, /literatür katsayı/i, /pvlib/i,
-  /gefs/i, /ecmwf/i, /sarah/i, /pvgis/i, /nasa/i, /\bnwp\b/i];
+  /gefs/i, /ecmwf/i, /sarah/i, /pvgis/i, /nasa/i, /\bnwp\b/i,
+  // kaynak adı görünür yüzeyde geçmez (rakip analizi hijyen 3; künye «kamuya açık üretim kaydı»).
+  // JS /i Türkçe İ'yi i'ye katlamaz — sınıflar büyük biçimleri açıkça taşır; aşağıdaki öz-sınama bekçiler.
+  /ep[iİı]a[şs]/i, /[şs]effaf/i];
+
+test("kaynak adı desenleri Türkçe büyük harfi gerçekten yakalar (öz-sınama)", () => {
+  for (const desen of [/ep[iİı]a[şs]/i, /[şs]effaf/i]) {
+    assert.match("EPİAŞ ŞEFFAFLIK", desen, String(desen));
+    assert.match("Epiaş Şeffaflık", desen, String(desen));
+  }
+});
 
 test("vitrin dosyalarında ve index.html'de yasaklı terim yok", () => {
   const kok = fileURLToPath(new URL("../../src/features/vitrin/", import.meta.url));

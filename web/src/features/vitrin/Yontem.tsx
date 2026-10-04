@@ -81,7 +81,7 @@ export function Yontem() {
             </div>
             <div className="vt-eylemler vt-ust-bosluk">
               <a className="vt-dugme vt-dugme--gece" href="/#karne">Açık karneyi görün</a>
-              <a className="vt-dugme vt-dugme--gece-cizgi" href="/#basla">Kendi karnenizi başlatın</a>
+              <a className="vt-dugme vt-dugme--gece-cizgi" href="/#basla">Karnenizi başlatın</a>
             </div>
           </div>
         </section>

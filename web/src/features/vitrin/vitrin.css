@@ -892,3 +892,42 @@
 @media (max-width: 600px) {
   .vt-bolumcubuk__et { display: none; }
 }
+
+/* ═══ CİLA-ek 7: rakip analizi dalga 1 — Ö1/Ö2/Ö8 + hijyen ═══ */
+/* Ö2(b) — hero mikro metni: eylemin dürüst sınırı birincil düğmenin altında */
+.vt-hero__mikro { margin: 10px 0 0; font: 400 12px/18px var(--vt-mono); color: var(--vt-ikincil); max-width: 52ch; }
+/* Ö8 — iş kartı kalıbı: masa etiketi, iş sonucu başlığı, etiket–değer künyesi */
+.vt-is__ust { display: flex; align-items: center; gap: 10px; margin-bottom: 2px; }
+.vt-is__masa { font: 500 11.5px/1 var(--vt-mono); letter-spacing: 0.07em; text-transform: uppercase; color: var(--vt-ucuncul); }
+.vt-is__kunye { margin: 10px 0 0; display: grid; gap: 4px; }
+.vt-is__satir { display: flex; gap: 8px; font-size: 13px; line-height: 19px; }
+.vt-is__satir dt { flex: none; min-width: 86px; color: var(--vt-ikincil); }
+.vt-is__satir dd { margin: 0; font-family: var(--vt-mono); color: var(--vt-metin); }
+/* dört iş kartı: 1241+ dörtlü; 601–1240 ikişerli (metin yoğun kartlar daralmasın) */
+@media (min-width: 601px) and (max-width: 1240px) {
+  .vt-isler { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+/* gece bölümünün dibinde ilkeler satırı (altbilgiden öne taşındı; Ö8) */
+.vt-karne__ilkeler { margin-top: 18px; color: var(--vt-gece-ikincil); }
+/* 320px: «Karnenizi başlatın» düğmesi üst çubuğu 4px taşırıyordu; dar ekranda dolgu kısılır */
+@media (max-width: 359px) {
+  .vt-ust .vt-dugme { padding-inline: 8px; font-size: 13px; }
+  .vt-ust__ic { gap: 2px; }
+}
+/* inceleme dalgası (M6): nav sekmeleri sarmaz; 1081–1120'de geniş eylem düğmesine yer açılır (I3) */
+.vt-nav__bag, .vt-nav__acilir { white-space: nowrap; }
+@media (min-width: 1081px) and (max-width: 1120px) {
+  .vt-ust__ic { gap: 14px; }
+  .vt-nav { gap: 2px; }
+}
+/* I4: Set A'nın uzun başlığı grafiği katlanma çizgisinin altına itiyordu — hero başlığı bir kademe iner,
+   giriş sütun genişliğini kullanır; pencere sahnede yukarı biner */
+@media (min-width: 1081px) {
+  .vt-hero--a .vt-hero__baslik { font-size: 48px; line-height: 54px; }
+  .vt-hero--a .vt-hero__giris { max-width: none; }
+  .vt-hero--a .vt-hero__ic { padding-block: 64px 152px; }
+}
+/* I6: mikro metin HER düzende birincil düğmenin hemen altında (Ö2) — eylemler dikey akar,
+   DOM sırası (düğme → mikro → TL bağı) geçerli olur; 440px sütunda yan yana zaten sığmıyordu */
+.vt-hero__eylem { flex-direction: column; align-items: flex-start; gap: 14px; }
+.vt-hero__mikro { margin-top: -2px; }

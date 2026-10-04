@@ -26,7 +26,7 @@ export function ReferansEgri({ veri }: { veri: null }) {
       <Cizim noktalar={noktalar} kip="orta" />
       <Cizim noktalar={noktalar} kip="dar" />
       <figcaption className="vt-kunye vt-pencere__kunye">
-        gerçekleşen: EPİAŞ Şeffaflık · tahmin: 01.10 gece koşusu, PVQuant fizik modeli · araştırma koşusu, canlı panel çıktısı değil
+        gerçekleşen: kamuya açık üretim kaydı · tahmin: 01.10 gece koşusu, PVQuant fizik modeli · araştırma koşusu, canlı panel çıktısı değil
       </figcaption>
       </figure>
       <details className="vt-pencere__tablo">
@@ -106,7 +106,7 @@ function Cizim({ noktalar, kip }: { noktalar: readonly EgriNoktasi[]; kip: Cizim
       onPointerMove={(e) => saatSec(e.clientX)} onPointerDown={(e) => saatSec(e.clientX)}
       onPointerLeave={(e) => { if (e.pointerType !== "touch") setAktif(null); }}>
       <title id={`vt-egri-baslik-${ek}`}>1 Ekim 2026 tahmini ve gerçekleşen üretim</title>
-      <desc id={`vt-egri-aciklama-${ek}`}>Araştırma koşusu; canlı panel çıktısı değildir. Mavi bant tahmin aralığını, mavi çizgi tahmini, amber çizgi gerçekleşen üretimi gösterir; her değer saat ortalamasıdır ve saat ortasında çizilir. 08:00–12:00 arasında gerçekleşen, söylenen aralığın altında kalıyor; öğleden sonra aralığın içinde. Saatlik sayılar tablo görünümünde.</desc>
+      <desc id={`vt-egri-aciklama-${ek}`}>Araştırma koşusu; canlı panel çıktısı değildir. Mavi bant tahmin aralığını, mavi çizgi tahmini, amber çizgi gerçekleşen üretimi gösterir; her değer saat ortalamasıdır ve saat ortasında çizilir. Sabah saatlerinde bu koşunun P90 değeri P50 ile çakışır; bandın üst kenarı çizgiyle örtüşür. 08:00–12:00 arasında gerçekleşen, söylenen aralığın altında kalıyor; öğleden sonra aralığın içinde. Saatlik sayılar tablo görünümünde.</desc>
       {yIzgara.map((o) => (
         <g key={o}>
           <line className={o === 0 ? "vt-egri__taban" : "vt-egri__izgara"} x1={SOL} x2={W - SAG} y1={y(o)} y2={y(o)} />

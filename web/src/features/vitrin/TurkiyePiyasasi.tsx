@@ -33,11 +33,11 @@ export function TurkiyePiyasasi() {
           </div>
           <div className="vt-sahne">
             <div className="vt-sahne__zemin" aria-hidden="true"><img src={sahneZemin} alt="" width="700" height="460" loading="lazy" decoding="async" /></div>
-            <div className="vt-pnc vt-pnc--ana" role="img" aria-label="Panel penceresi örneği: Sapmanın TL kartı (çizim; gerçek ekran görüntüsü yuvası)">
+            <div className="vt-pnc vt-pnc--ana" role="img" aria-label="Panel penceresi örneği: Sapmanın TL kartı — temsili görünüm, sonuç değil">
               <div className="vt-pnc__serit" aria-hidden="true"><span>panel.pvquant</span></div>
               <div className="vt-pnc__ekran">
                 <PncEkranAna />
-                <span className="vt-pnc__etiket">{"{EKRAN}"}</span>
+                <span className="vt-pnc__etiket">temsili görünüm · sonuç değil</span>
               </div>
             </div>
             <div className="vt-pnc vt-pnc--ikinci" aria-hidden="true">

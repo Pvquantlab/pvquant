@@ -1,30 +1,46 @@
 import { Rozet, type RozetGrubu, type RozetIkonu } from "./Rozet";
 
-/** "Hangi iş için?" ızgarası (R31): Solargis'in use-case ızgarasının dürüst karşılığı —
- *  üç İŞ, üçü de panelde bugün var olan yetilerle anlatılır. İnceleme sonrası sözler kapsama
- *  kırpıldı: TPYS dosyası "öneri CSV"dir (resmî şablon teyitsiz), 15 dk dilimli CSV/XLSX
- *  toplayıcı çıktısıdır; dış API bugün tahmini okur, webhook sabah koşusunu haber verir;
- *  belirsizlik bütçesi bileşen sayısı santrala göre değişir (kalibre değilse bazıları 0).
- *  Müşteri/proje sayısı, rakamlı kazanç vaadi yok; bağlantılar kanıta ya da yönteme gider. */
+/** "Hangi iş için?" ızgarası (R31 + rakip analizi Ö8): dört masa, Aurora'nın fayda kalıbında —
+ *  üst etiket (masa adı) → h3 (İŞ SONUCU) → tek fayda cümlesi → etiket–değer künyesi.
+ *  Jargon (D-1, TPYS, kantil) künyeye ve bağlantılı sayfaya indi; her değer sitede zaten
+ *  yazılı ürün gerçeği (Amperon'un etiket–değer BİÇİMİ alındı, kaynaksız rakamları alınmadı).
+ *  Ticaret masası dördüncü kart: kitle listesi artık TEK (TL bölümündeki pencere kartları
+ *  işlev gösterimidir, kitle listesi değil). Rakam vaadi ve müşteri iması yok. */
 const ISLER: readonly {
-  baslik: string; metin: string; bag: [string, string];
+  masa: string; sonuc: string; fayda: string;
+  kunye: readonly (readonly [string, string])[];
+  bag: readonly [string, string];
   grup: RozetGrubu; ikon: RozetIkonu;
 }[] = [
   {
-    baslik: "Program teslimi",
-    metin: "Program yükümlüsü üretici için: D-1 öğleden sonra program dosyası hazırdır — TPYS'ye öneri CSV, toplayıcıya 15 dakikalık dilimli CSV/XLSX, teklif kantili önerisi ve revizyon kuralları bir arada.",
-    bag: ["#para", "Sapmanın TL hesabı"],
+    masa: "Program teslimi",
+    sonuc: "Programı teslim penceresi kapanmadan verin",
+    fayda: "Program dosyanız TPYS'ye öneri CSV, toplayıcıya CSV/XLSX olarak panelden iner; gün içi revizyon penceresi izlenir.",
+    kunye: [["Dosya", "D‑1 öğleden sonra"], ["Dilim", "saatlik ya da 15 dk"]],
+    bag: ["#para", "Panelde nasıl görünür"],
     grup: "tahmin", ikon: "band",
   },
   {
-    baslik: "Operasyon nöbeti",
-    metin: "Saha ve portföy ekibi için: sekiz kurallık alarm kütüphanesi veri, teslim ve performans nöbeti tutar; gece karnesi her sabah hazırdır — tahmin REST API ile çekilir, sabah koşusu webhook ile haber verir.",
+    masa: "Ticaret masası",
+    sonuc: "Teklifi önerilen kantille verin",
+    fayda: "Gün öncesi teklif için önerilen kantil panelde; sapmanın TL karşılığı gün gün.",
+    kunye: [["Teklif", "önerilen kantil"], ["Sapma", "TL · gün gün"]],
+    bag: ["#para", "Sapmanın TL hesabı"],
+    grup: "tahmin", ikon: "aylik",
+  },
+  {
+    masa: "Operasyon nöbeti",
+    sonuc: "Nöbeti kurallar tutsun, sabah karne hazır olsun",
+    fayda: "Alarm kütüphanesi veri, teslim ve performans nöbetini tutar; gece karnesi her sabah hazırdır.",
+    kunye: [["Alarm kuralı", "8"], ["Akış", "REST API · sabah webhook'u"]],
     bag: ["#karne", "Gece karnesine bakın"],
     grup: "operasyon", ikon: "alarm",
   },
   {
-    baslik: "Finansman dosyası",
-    metin: "Banka ve yatırımcı masası için: P50/P90 üretim beklentisi bileşenlerine ayrılmış belirsizlik bütçesiyle hesaplanır; performans oranı IEC 61724, kapasite testi ASTM E2848 ölçütleriyle raporlanır — dosya bağımsız doğrulamaya hazır biçimde.",
+    masa: "Finansman dosyası",
+    sonuc: "Beklentiyi bileşenleriyle raporlayın",
+    fayda: "P50/P90 üretim beklentisi bileşenlerine ayrılmış belirsizlik bütçesiyle hesaplanır — dosya bağımsız doğrulamaya hazır biçimde.",
+    kunye: [["Beklenti", "P50/P90"], ["Ölçüt", "IEC 61724 · ASTM E2848"]],
     bag: ["/yontem", "Yöntemin tamamı"],
     grup: "kanit", ikon: "rapor",
   },
@@ -36,15 +52,23 @@ export function IsIzgarasi() {
       <div className="vt-kap">
         <div className="vt-bolum-bas">
           <h2 className="vt-h2" id="vt-isler-baslik">Hangi iş için?</h2>
-          <p className="vt-giris">Aynı tahmin hattı üç masaya üç ayrı dille hizmet eder. Üçü de bugün paneldedir — yol haritası değil.</p>
+          <p className="vt-giris">Aynı tahmin hattı dört masaya dört ayrı dille hizmet eder. Dördü de bugün panelde.</p>
         </div>
-        <div className="vt-izgara vt-izgara--3 vt-isler">
+        <div className="vt-izgara vt-izgara--4 vt-isler">
           {ISLER.map((is) => (
-            <article key={is.baslik} className="vt-kart vt-is">
+            <article key={is.masa} className="vt-kart vt-is">
               <div className="vt-kart__govde">
-                <Rozet grup={is.grup} ikon={is.ikon} />
-                <h3 className="vt-h3">{is.baslik}</h3>
-                <p className="vt-kart__metin">{is.metin}</p>
+                <div className="vt-is__ust">
+                  <Rozet grup={is.grup} ikon={is.ikon} />
+                  <span className="vt-is__masa">{is.masa}</span>
+                </div>
+                <h3 className="vt-h3">{is.sonuc}</h3>
+                <p className="vt-kart__metin">{is.fayda}</p>
+                <dl className="vt-is__kunye">
+                  {is.kunye.map(([et, deger]) => (
+                    <div key={et} className="vt-is__satir"><dt>{et}</dt><dd>{deger}</dd></div>
+                  ))}
+                </dl>
                 <a className="vt-bag vt-is__bag" href={is.bag[0]}>{is.bag[1]}</a>
               </div>
             </article>
