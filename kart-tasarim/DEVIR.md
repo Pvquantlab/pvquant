@@ -1,8 +1,9 @@
 # Devir notu — TL bölümü kartları (sonraki oturum / başka bir asistan için)
 
 Bu klasör, pvquant.com ana sayfasındaki TL bölümünün («Tahmin hatasının maliyetini TL olarak görün.»)
-beş kartını yeniden tasarlama işinin **tamamlanmış** çıktısıdır. Kararların hepsi verildi; geriye
-yalnız depoya uygulama ve canlıya çıkarma kaldı.
+beş kartını yeniden tasarlama işinin **tamamlanmış** çıktısıdır. Kararların hepsi verildi.
+**Durum: depoya henüz UYGULANMADI.** Kullanıcı önce bu notu Fable'a danışacak ve onun yönlendirmesiyle
+ilerleyecek; uygulama, değişiklik ya da canlıya çıkış kararı o görüşmeden sonra verilecek.
 
 ## Kısa özet
 
@@ -37,10 +38,20 @@ ayrı bir kopyada doğrulandı: test 24/24, lint'te yeni uyarı yok, build geçt
 4. İsteğe bağlı temizlik: `vitrin.css`'te artık kullanılmayan eski kart stilleri
    (`.vt-vin-kart`, `.vt-masalar`, `.vt-v-genis`, `.vt-v-dar`, `.vt-sss-yer .vt-vin`).
 
+## Fable'a sorulabilecek açık konular
+
+1. Yama bu hâliyle uygulanmalı mı, yoksa önce bir değişiklik mi istenir? (tasarım, ad, metin)
+2. Açıklama tonu kullanıcıca açıkça seçilmedi; Ton 1 (Alarm kütüphanesi için Ton 3) uygun mu?
+   25 seçeneğin tamamı `secenekler/3-aciklamalar.md` içinde.
+3. Maket penceresinin başlığı «Sapmanın TL kartı» → «Sapma maliyeti» yapılsın mı (ayrı küçük iş)?
+4. Kullanılmayan eski kart CSS'i aynı commit'te mi, ayrı temizlik commit'inde mi silinsin?
+5. Sürüm numarası ve canlıya çıkış zamanı (web imajının yeniden kurulması).
+
 ## Bilinen sınırlar
 
-- Rakip araştırması, ortamın ağ politikası siteleri engellediği için web aramasıyla yapıldı;
-  rakiplerin ekran görüntüsü yok (`arastirma.md` başındaki not).
+- Rakip araştırması: 13 sitenin hepsi ve canlı pvquant.com tarayıcıyla gezildi, ekran görüntüleri
+  `arastirma-ekran/` içinde (Vercel'in alt yarısı geç yüklendiği için boş; Kpler'de çerez penceresi
+  kartların bir kısmını örtüyor). Bulgular tasarım C'yi doğruluyor (`arastirma.md` §2.2).
 - Açıklama tonu kullanıcı tarafından açıkça seçilmedi («Sırayla devam et» dendi); öneri uygulandı.
   Değiştirmek için `onizleme/_uret/aciklamalar.mjs › SECIM`, ardından
   `node kart-tasarim/onizleme/_uret/kod-uret.mjs`.
