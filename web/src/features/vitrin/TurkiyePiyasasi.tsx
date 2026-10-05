@@ -28,8 +28,8 @@ export function TurkiyePiyasasi() {
       <div className="vt-kap">
         <div className="vt-para-ust">
           <div className="vt-bolum-bas">
-            <h2 className="vt-h2" id="vt-para-baslik">Sapma burada TL yazar.</h2>
-            <p className="vt-giris">Üretim programı her gün öğleden sonra bildirilir; gerçekleşen saparsa fark dengesizlik mekanizmasıyla faturalanır. PVQuant programı üretir, gün içi revizyon penceresini izler ve sapmanın TL karşılığını gün gün hesaplar.</p>
+            <h2 className="vt-h2" id="vt-para-baslik">Tahmin hatasının maliyetini TL olarak görün.</h2>
+            <p className="vt-giris">Elektrik piyasasında her santral, ertesi gün ne üreteceğini önceden bildirmekle yükümlüdür; gerçekleşen üretim bu programdan saptığında aradaki fark santrale fatura edilir. PVQuant üretim programınızı hazırlar, gün içi güncelleme fırsatlarını izler ve sapmanın size maliyetini her gün TL olarak raporlar.</p>
           </div>
           <div className="vt-sahne">
             <div className="vt-sahne__zemin" aria-hidden="true"><img src={sahneZemin} alt="" width="700" height="460" loading="lazy" decoding="async" /></div>
