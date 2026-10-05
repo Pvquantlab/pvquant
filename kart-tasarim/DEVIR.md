@@ -10,7 +10,7 @@ ilerleyecek; uygulama, değişiklik ya da canlıya çıkış kararı o görüşm
 - **Depo:** `Pvquantlab/pvquant` · vitrin kodu `web/src/features/vitrin/`
 - **Seçilen tasarım:** C · Panel kesiti (beş kart tek beyaz yüzeyin 1 px çizgiyle bölünmüş hücreleri)
 - **Kart adları (küme A):** Teslim programı · Sapma maliyeti · Şablonlu dışa verim · Alarm kütüphanesi · Gün içi aralık
-- **Açıklamalar:** Ton 1 («fayda önce»), Alarm kütüphanesi için Ton 3
+- **Açıklamalar:** Ton 1 («fayda önce»), Alarm kütüphanesi için Ton 3 — kullanıcının açık seçimi
 - **Kapsam:** her kart tek bir ürün yetisini anlatır, tekrar yok; yalnız bu beş kart değişir
 - **Kurallar:** mavi = tahmin, amber = yalnız gerçekleşen üretim; uydurma sayı, müşteri iması,
   yöntem/kaynak adı yok (vitrin testleri bunu zorlar)
@@ -41,20 +41,19 @@ ayrı bir kopyada doğrulandı: test 24/24, lint'te yeni uyarı yok, build geçt
 ## Fable'a sorulabilecek açık konular
 
 1. Yama bu hâliyle uygulanmalı mı, yoksa önce bir değişiklik mi istenir? (tasarım, ad, metin)
-2. Açıklama tonu kullanıcıca açıkça seçilmedi; Ton 1 (Alarm kütüphanesi için Ton 3) uygun mu?
-   25 seçeneğin tamamı `secenekler/3-aciklamalar.md` içinde.
-3. Maket penceresinin başlığı «Sapmanın TL kartı» → «Sapma maliyeti» yapılsın mı (ayrı küçük iş)?
-4. Kullanılmayan eski kart CSS'i aynı commit'te mi, ayrı temizlik commit'inde mi silinsin?
-5. Sürüm numarası ve canlıya çıkış zamanı (web imajının yeniden kurulması).
+2. Maket penceresinin başlığı «Sapmanın TL kartı» → «Sapma maliyeti» yapılsın mı (ayrı küçük iş)?
+3. Kullanılmayan eski kart CSS'i aynı commit'te mi, ayrı temizlik commit'inde mi silinsin?
+4. Sürüm numarası ve canlıya çıkış zamanı (web imajının yeniden kurulması).
 
 ## Bilinen sınırlar
 
 - Rakip araştırması: 13 sitenin hepsi ve canlı pvquant.com tarayıcıyla gezildi, ekran görüntüleri
   `arastirma-ekran/` içinde (Vercel'in alt yarısı geç yüklendiği için boş; Kpler'de çerez penceresi
   kartların bir kısmını örtüyor). Bulgular tasarım C'yi doğruluyor (`arastirma.md` §2.2).
-- Açıklama tonu kullanıcı tarafından açıkça seçilmedi («Sırayla devam et» dendi); öneri uygulandı.
-  Değiştirmek için `onizleme/_uret/aciklamalar.mjs › SECIM`, ardından
-  `node kart-tasarim/onizleme/_uret/kod-uret.mjs`.
+- Klasör görev dosyasının istediği `~/Desktop/kart-tasarim/` yerinde değil (bulut ortamı masaüstüne
+  yazamıyor); depo dalında ve zip olarak teslim edildi.
+- Açıklama ya da ad değiştirilmek istenirse: `onizleme/_uret/aciklamalar.mjs › SECIM` /
+  `onizleme/_uret/uret.mjs › KARTLAR[].ad`, ardından `node kart-tasarim/onizleme/_uret/kod-uret.mjs`.
 
 ## Klasör haritası
 

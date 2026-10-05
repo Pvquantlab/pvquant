@@ -12,7 +12,7 @@ Görev dosyası: `05addac8-kart-tasarim-gorev.md` (karar kapılı akış, §0 s�
 | 2 · Sektör araştırması | ✅ bitti — 13 rakibin hepsi + canlı pvquant.com tarayıcıyla gezildi | `arastirma.md` |
 | 3 · İsim turu | ✅ A seçildi (son adımda) | `secenekler/1-isimler.md` |
 | 4 · Tasarım turu | ✅ C seçildi | `onizleme/tasarim-A..E.html`, `secenekler/2-tasarimlar.md` |
-| 5 · Açıklama turu | ✅ Ton 1, K4 Ton 3 (öneri, «Sırayla devam et») | `secenekler/3-aciklamalar.md`, `onizleme/aciklama-C.html` |
+| 5 · Açıklama turu | ✅ Ton 1, K4 Ton 3 (kullanıcı açıkça seçti) | `secenekler/3-aciklamalar.md`, `onizleme/aciklama-C.html` |
 | 6 · Uygulama | ✅ bitti, doğrulandı | `onizleme/final.html`, `kod/`, `kod/UYGULAMA.md` |
 
 ## Karar günlüğü
@@ -31,6 +31,7 @@ Görev dosyası: `05addac8-kart-tasarim-gorev.md` (karar kapılı akış, §0 s�
 | 2026-10-05 | 2 | Kullanıcı rakip sitelerin gerçekten gezilmesini istedi. Tarayıcıyla 13 site denendi: yalnız datadoghq.com açık (ana sayfa + `/product/`, ekran görüntüleri `arastirma-ekran/10-datadog-*.jpg`, görseller engelli alan adı yüzünden yüklenmedi); 12 site ve web arşivleri ağ politikasıyla engelli. `arastirma.md` Datadog bölümü [Z] gözlemiyle yeniden yazıldı; bulgular tasarım C ve «tek cümle + künye» kararını destekliyor, karar değişmedi. | kullanıcı → Claude |
 | 2026-10-05 | 2 | Kullanıcı ortamın ağ erişimini açtı. 13 rakip sitenin hepsi ve canlı pvquant.com Chromium ile gezildi (form gönderilmedi, çerez onayı verilmedi); tam sayfa + kart kırpımları `arastirma-ekran/01, 10–22`. `arastirma.md` baştan [Z] gözlemleriyle yazıldı. Sonuç: Linear/Stripe (1 px ayraçlı kutusuz ızgara, mono etiket), Modo (görsel = ürünün verisi), Amperon (etiket–değer künye) tasarım C'yi doğruluyor; kod ve yama değişmedi. Canlı site v2.392 ile aynı. | kullanıcı → Claude |
 | 2026-10-05 | 1–3 | Görev dosyasına göre eksikler tamamlandı: `analiz.md`'ye canlı site doğrulaması; `arastirma.md`'ye 13 marka × 5 boyut (isimlendirme · ikon/şekil · hiyerarşi · tipografi/boşluk · renk) tablosu; `secenekler/1-isimler.md`'de 25 adın her birine ayrı «kaynak ders» sütunu ([Z]/[A]). Açık kalan: 5. aşama tonunun kullanıcıca açık seçimi. | kullanıcı → Claude |
+| 2026-10-05 | 5 | Kullanıcı açıklama tonunu açıkça seçti: **Ton 1, K4 için Ton 3** (önceden uygulanan öneriyle aynı). 5. aşama kapısı usulüne uygun kapandı; kod ve yama değişmedi. | kullanıcı |
 
 ## Önizlemeleri yeniden üretmek
 
