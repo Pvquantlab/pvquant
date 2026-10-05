@@ -112,5 +112,5 @@ istemezseniz yalın Ton 1.
 
 ## Seçim (kullanıcı dolduracak)
 
-- Ton: ☐ 1 ☐ 2 ☐ 3 ☐ 4 ☐ 5 — ya da kart kart: K1 … · K2 … · K3 … · K4 … · K5 …
-- Metinde değişiklik: …
+- Uygulanan: **Ton 1, K4 için Ton 3** (öneri; kullanıcı ton seçmeden «Sırayla devam et» dedi, 2026-10-05). Değiştirmek için `onizleme/_uret/aciklamalar.mjs › SECIM`.
+- Metinde değişiklik: yok

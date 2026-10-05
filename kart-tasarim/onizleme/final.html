@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Son hâl · Tasarım C</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--zemin:#FFFFFF;--metin:#0B1B3C;--ikincil:#4A5974;--ucuncul:#56647F;--eylem:#B11F47;--bant:#E8EDF8;--bant-2:#DCE3F2;
+--kenar:#D5DDED;--kenar-guclu:#BDC9E0;--kenar-soguk:#E3E8F0;--levha:#F3F6FC;--tahmin:#2D6FB5;--gercek:#C27803;
+--baslik:'Bricolage Grotesque','IBM Plex Sans',system-ui,sans-serif;--sans:'IBM Plex Sans',system-ui,-apple-system,sans-serif;--mono:'IBM Plex Mono',ui-monospace,monospace;--yan:32px}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--zemin);color:var(--metin);font:400 17px/27px var(--sans);-webkit-font-smoothing:antialiased}
+h1,h2,h3,p,dl,dd,ol{margin:0}
+h2,h3{font-family:var(--baslik);font-weight:600}
+.kap{max-width:calc(1200px + 2*var(--yan));margin:0 auto;padding-inline:var(--yan)}
+.onz{border-bottom:1px solid var(--kenar-soguk);padding:18px 0;font-size:14px;line-height:20px}
+.onz .kap{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:baseline;justify-content:space-between}
+.onz b{font-family:var(--baslik);font-size:17px}
+.onz span{color:var(--ikincil)}
+.onz nav{display:flex;gap:6px;flex-wrap:wrap}
+.onz nav a{font:500 12.5px/1 var(--mono);color:var(--metin);text-decoration:none;padding:7px 10px;border:1px solid var(--kenar);border-radius:6px}
+.onz nav a[aria-current]{background:var(--metin);color:#fff;border-color:var(--metin)}
+.onz .uyari{flex-basis:100%;font:400 12.5px/18px var(--mono);color:var(--ucuncul)}
+.bolum{background:var(--bant);padding-block:96px}
+.ust{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:48px;align-items:center;margin-bottom:56px}
+.ust h2{font-size:36px;line-height:44px;letter-spacing:-.005em}
+.ust .giris{margin-top:14px;font-size:20px;line-height:30px;color:var(--ikincil)}
+.maket{height:280px;border:1.5px dashed var(--kenar-guclu);border-radius:16px;display:grid;place-items:center;text-align:center;padding:16px;font:400 12.5px/18px var(--mono);color:var(--ucuncul)}
+.not{margin-top:24px;color:var(--ikincil);font-size:15px;line-height:24px}
+.cz{display:block;width:100%;height:auto}
+.cz *{vector-effect:non-scaling-stroke}
+.an{font:500 11.5px/16px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--ucuncul)}
+.kunye{display:grid;gap:4px}
+.kunye div{display:flex;gap:8px;font-size:13px;line-height:19px}
+.kunye dt{flex:none;min-width:78px;color:var(--ikincil)}
+.kunye dd{font-family:var(--mono);color:var(--metin)}
+.kural{padding-block:64px 96px}
+.kural h2{font-size:28px;line-height:36px}
+.kural .ozet{margin-top:10px;max-width:72ch;color:var(--ikincil)}
+.kural dl{margin-top:28px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 40px}
+.kural dl div{border-top:1px solid var(--kenar-soguk);padding-top:12px}
+.kural dt{font:500 11.5px/16px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--ucuncul)}
+.kural dd{margin-top:6px;font-size:15px;line-height:24px;color:var(--metin)}
+@media (max-width:1080px){.ust{grid-template-columns:1fr;gap:28px}.maket{height:180px}}
+@media (max-width:600px){:root{--yan:16px}.bolum{padding-block:64px}.ust h2{font-size:28px;line-height:36px}.ust .giris{font-size:17px;line-height:27px}.kural dl{grid-template-columns:1fr}}
+
+/* ── Tasarım C ── */
+
+.c-yuzey{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1px;background:var(--kenar);border:1px solid var(--kenar);border-radius:16px;overflow:hidden}
+.c-hucre{grid-column:span 2;display:flex;flex-direction:column;background:var(--zemin);padding:24px 28px 26px}
+.c-hucre--genis{grid-column:span 3;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto 1fr auto;column-gap:28px}
+.c-bas{display:flex;flex-direction:column-reverse;gap:6px}
+.c-bas h3{font-size:19px;line-height:26px}
+.c-cizim{margin:18px 0 16px}
+.c-hucre--genis .c-cizim{grid-column:2;grid-row:1/4;margin:0;align-self:center}
+.c-hucre .metin{flex:1;color:var(--ikincil);font-size:15px;line-height:23px}
+.c-hucre--genis .metin{margin-top:10px}
+.c-kunye{margin-top:14px;display:flex;flex-wrap:wrap;gap:6px}
+.c-kunye span{font:400 12px/1 var(--mono);color:var(--metin);padding:6px 8px;border:1px solid var(--kenar);border-radius:4px}
+@media (max-width:1080px){.c-yuzey{grid-template-columns:repeat(2,minmax(0,1fr))}.c-hucre,.c-hucre--genis{grid-column:span 1}.c-hucre--genis{display:flex}.c-hucre--genis .c-cizim{margin:18px 0 16px}
+.c-yuzey>:last-child{grid-column:1/-1}}
+@media (max-width:600px){.c-yuzey{grid-template-columns:1fr}.c-hucre{padding:20px 18px 22px}}</style>
+</head>
+<body>
+<header class="onz"><div class="kap"><div><b>Son hâl · Tasarım C</b> &nbsp;<span>Beş kartın son hâli: tasarım C, seçilen açıklamalar, gerçek «Ufuk» jetonları ve satır içi SVG'ler.</span></div><nav aria-label="Tasarımlar"><a href="tasarim-A.html">A</a><a href="tasarim-B.html">B</a><a href="tasarim-C.html" aria-current="page">C</a><a href="tasarim-D.html">D</a><a href="tasarim-E.html">E</a></nav>
+<p class="uyari">Kart adları çalışma adıdır (isim kümesi A, seçim en sonda). Diyagramlar temsilîdir, sonuç değildir.</p></div></header>
+<main>
+<section class="bolum" aria-labelledby="baslik">
+<div class="kap">
+<div class="ust"><div><h2 id="baslik">Tahmin hatasının maliyetini TL olarak görün.</h2><p class="giris">PVQuant üretim programınızı hazırlar, gün içi güncelleme fırsatlarını izler ve sapmanın size maliyetini her gün TL olarak raporlar.</p></div>
+<div class="maket" aria-hidden="true">maket penceresi — bu işin kapsamı dışında, olduğu gibi kalır</div></div>
+<div class="c-yuzey"><article class="c-hucre">
+<header class="c-bas"><h3>Teslim programı</h3><p class="an">D‑1 · teslim penceresi</p></header>
+<div class="c-cizim"><svg class="cz" viewBox="0 0 320 140" aria-hidden="true" focusable="false" data-cizim="program"><defs>
+<filter id="k1-1-gr" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="3" result="t"/><feColorMatrix in="t" type="matrix" values="0.333 0.333 0.333 0 0  0.333 0.333 0.333 0 0  0.333 0.333 0.333 0 0  0 0 0 0 1" result="gri"/><feComposite in="SourceGraphic" in2="gri" operator="arithmetic" k1="0" k2="1" k3="0.16" k4="-0.080" result="k"/><feComposite in="k" in2="SourceGraphic" operator="in"/></filter>
+<pattern id="k1-1-benek" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="4" fill="#2D6FB5" fill-opacity=".2"/><circle cx="1" cy="1" r=".8" fill="#2D6FB5" fill-opacity=".6"/><circle cx="3" cy="3" r=".55" fill="#2D6FB5" fill-opacity=".38"/></pattern>
+<pattern id="k1-1-tarama" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="#0B1B3C" stroke-opacity=".5" stroke-width="1.1"/></pattern>
+</defs>
+<text x="20" y="14" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="9" font-weight="500" fill="#0B1B3C" text-anchor="start">yarının programı · saatlik</text>
+<g filter="url(#k1-1-gr)"><rect x="21.5" y="86.5" width="8.7" height="1.5" fill="#2D6FB5" fill-opacity=".35"/><rect x="33.2" y="86.5" width="8.7" height="1.5" fill="#2D6FB5" fill-opacity=".35"/><rect x="44.8" y="86.5" width="8.7" height="1.5" fill="#2D6FB5" fill-opacity=".35"/><rect x="56.5" y="86.5" width="8.7" height="1.5" fill="#2D6FB5" fill-opacity=".35"/><rect x="68.2" y="86.5" width="8.7" height="1.5" fill="#2D6FB5" fill-opacity=".35"/><rect x="79.8" y="86.5" width="8.7" height="1.5" fill="#2D6FB5" fill-opacity=".35"/><rect x="91.5" y="81" width="8.7" height="7" rx="1.5" fill="#2D6FB5" fill-opacity="0.6"/><rect x="103.2" y="67.4" width="8.7" height="20.6" rx="1.5" fill="#2D6FB5" fill-opacity="0.7"/><rect x="114.8" y="55.1" width="8.7" height="32.9" rx="1.5" fill="#2D6FB5" fill-opacity="0.8"/><rect x="126.5" y="44.6" width="8.7" height="43.4" rx="1.5" fill="#2D6FB5" fill-opacity="0.8"/><rect x="138.2" y="36.6" width="8.7" height="51.4" rx="1.5" fill="#2D6FB5" fill-opacity="0.9"/><rect x="149.8" y="31.7" width="8.7" height="56.3" rx="1.5" fill="#2D6FB5" fill-opacity="0.9"/><rect x="161.5" y="30" width="8.7" height="58" rx="1.5" fill="#2D6FB5" fill-opacity="1"/><rect x="173.2" y="31.7" width="8.7" height="56.3" rx="1.5" fill="#2D6FB5" fill-opacity="0.9"/><rect x="184.8" y="36.6" width="8.7" height="51.4" rx="1.5" fill="#2D6FB5" fill-opacity="0.9"/><rect x="196.5" y="44.6" width="8.7" height="43.4" rx="1.5" fill="#2D6FB5" fill-opacity="0.8"/><rect x="208.2" y="55.1" width="8.7" height="32.9" rx="1.5" fill="#2D6FB5" fill-opacity="0.8"/><rect x="219.8" y="67.4" width="8.7" height="20.6" rx="1.5" fill="#2D6FB5" fill-opacity="0.7"/><rect x="231.5" y="81" width="8.7" height="7" rx="1.5" fill="#2D6FB5" fill-opacity="0.6"/><rect x="243.2" y="86.5" width="8.7" height="1.5" fill="#2D6FB5" fill-opacity=".35"/><rect x="254.8" y="86.5" width="8.7" height="1.5" fill="#2D6FB5" fill-opacity=".35"/><rect x="266.5" y="86.5" width="8.7" height="1.5" fill="#2D6FB5" fill-opacity=".35"/><rect x="278.2" y="86.5" width="8.7" height="1.5" fill="#2D6FB5" fill-opacity=".35"/><rect x="289.8" y="86.5" width="8.7" height="1.5" fill="#2D6FB5" fill-opacity=".35"/></g>
+<path d="M20 88H300" stroke="#0B1B3C" stroke-opacity=".28" stroke-width="1"/>
+<text class="ik" x="20" y="99" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="8" font-weight="400" fill="#56647F" text-anchor="start">00</text><text class="ik" x="90" y="99" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="8" font-weight="400" fill="#56647F" text-anchor="middle">06</text><text class="ik" x="160" y="99" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="8" font-weight="400" fill="#56647F" text-anchor="middle">12</text><text class="ik" x="230" y="99" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="8" font-weight="400" fill="#56647F" text-anchor="middle">18</text><text class="ik" x="300" y="99" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="8" font-weight="400" fill="#56647F" text-anchor="end">24</text>
+<text class="ik" x="20" y="116" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="8" font-weight="400" fill="#56647F" text-anchor="start">bugün</text>
+<path d="M20 122H300" stroke="#BDC9E0" stroke-width="1"/>
+<rect x="183.3" y="116" width="17.5" height="12" rx="2" fill="#DCE3F2" stroke="#0B1B3C" stroke-opacity=".35" stroke-width="1"/>
+<circle cx="189.8" cy="122" r="3" fill="#0B1B3C"/>
+<text x="206.8" y="125" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="8.5" font-weight="400" fill="#4A5974" text-anchor="start">teslim penceresi</text></svg></div>
+<p class="metin">Yarının saatlik programı ve emre amadelik bildirimi teslim penceresi kapanmadan hazırdır; bir gecikme olursa alarm sizi uyarır.</p>
+<p class="c-kunye"><span>saatlik</span><span>emre amadelik</span><span>alarm çalar</span></p></article><article class="c-hucre">
+<header class="c-bas"><h3>Sapma maliyeti</h3><p class="an">Ay boyunca · gün gün</p></header>
+<div class="c-cizim"><svg class="cz" viewBox="0 0 320 140" aria-hidden="true" focusable="false" data-cizim="sapma"><defs>
+<filter id="k2-2-gr" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="3" result="t"/><feColorMatrix in="t" type="matrix" values="0.333 0.333 0.333 0 0  0.333 0.333 0.333 0 0  0.333 0.333 0.333 0 0  0 0 0 0 1" result="gri"/><feComposite in="SourceGraphic" in2="gri" operator="arithmetic" k1="0" k2="1" k3="0.16" k4="-0.080" result="k"/><feComposite in="k" in2="SourceGraphic" operator="in"/></filter>
+<pattern id="k2-2-benek" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="4" fill="#2D6FB5" fill-opacity=".2"/><circle cx="1" cy="1" r=".8" fill="#2D6FB5" fill-opacity=".6"/><circle cx="3" cy="3" r=".55" fill="#2D6FB5" fill-opacity=".38"/></pattern>
+<pattern id="k2-2-tarama" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="#0B1B3C" stroke-opacity=".5" stroke-width="1.1"/></pattern>
+</defs>
+<path d="M170 9h12" stroke="#2D6FB5" stroke-width="1.6" stroke-dasharray="3 2"/><text x="186" y="12" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="8" font-weight="400" fill="#56647F" text-anchor="start">tahmin</text>
+<path d="M226 9h12" stroke="#C27803" stroke-width="1.8"/><text x="242" y="12" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="8" font-weight="400" fill="#56647F" text-anchor="start">gerçekleşen</text>
+<path d="M20 60 L25 60 L30 60 L35 60 L40 59.9 L45 59.9 L50 59.8 L55 59.7 L60 59.5 L65 59.3 L70 58.9 L75 58.4 L80 57.6 L85 56.7 L90 55.4 L95 53.8 L100 51.8 L105 49.5 L110 46.7 L115 43.6 L120 40.3 L125 36.7 L130 33.1 L135 29.6 L140 26.5 L145 23.8 L150 21.7 L155 20.4 L160 20 L165 20.4 L170 21.7 L175 23.8 L180 26.5 L185 29.6 L190 33.1 L195 36.7 L200 40.3 L205 43.6 L210 46.7 L215 49.5 L220 51.8 L225 53.8 L230 55.4 L235 56.7 L240 57.6 L245 58.4 L250 58.9 L255 59.3 L260 59.5 L265 59.7 L270 59.8 L275 59.9 L280 59.9 L285 60 L290 60 L295 60 L300 60 L300 60 L295 60 L290 60 L285 60 L280 59.9 L275 59.9 L270 59.8 L265 59.7 L260 59.5 L255 59.3 L250 58.9 L245 58.4 L240 57.6 L235 56.7 L230 55.4 L225 53.8 L220 52 L215 50.2 L210 48.8 L205 47.9 L200 46.5 L195 43.3 L190 38 L185 31.9 L180 26.4 L175 21.8 L170 18.3 L165 16.5 L160 16.6 L155 18.5 L150 21.6 L145 26 L140 31.8 L135 38.4 L130 43.7 L125 46.4 L120 47 L115 47.2 L110 48.1 L105 49.9 L100 51.9 L95 53.8 L90 55.4 L85 56.7 L80 57.6 L75 58.4 L70 58.9 L65 59.3 L60 59.5 L55 59.7 L50 59.8 L45 59.9 L40 59.9 L35 60 L30 60 L25 60 L20 60 Z" fill="url(#k2-2-tarama)"/>
+<path d="M20 60H300" stroke="#0B1B3C" stroke-opacity=".25"/>
+<path d="M20 60 L25 60 L30 60 L35 60 L40 59.9 L45 59.9 L50 59.8 L55 59.7 L60 59.5 L65 59.3 L70 58.9 L75 58.4 L80 57.6 L85 56.7 L90 55.4 L95 53.8 L100 51.9 L105 49.9 L110 48.1 L115 47.2 L120 47 L125 46.4 L130 43.7 L135 38.4 L140 31.8 L145 26 L150 21.6 L155 18.5 L160 16.6 L165 16.5 L170 18.3 L175 21.8 L180 26.4 L185 31.9 L190 38 L195 43.3 L200 46.5 L205 47.9 L210 48.8 L215 50.2 L220 52 L225 53.8 L230 55.4 L235 56.7 L240 57.6 L245 58.4 L250 58.9 L255 59.3 L260 59.5 L265 59.7 L270 59.8 L275 59.9 L280 59.9 L285 60 L290 60 L295 60 L300 60" fill="none" stroke="#C27803" stroke-width="1.8" stroke-linejoin="round"/>
+<path d="M20 60 L25 60 L30 60 L35 60 L40 59.9 L45 59.9 L50 59.8 L55 59.7 L60 59.5 L65 59.3 L70 58.9 L75 58.4 L80 57.6 L85 56.7 L90 55.4 L95 53.8 L100 51.8 L105 49.5 L110 46.7 L115 43.6 L120 40.3 L125 36.7 L130 33.1 L135 29.6 L140 26.5 L145 23.8 L150 21.7 L155 20.4 L160 20 L165 20.4 L170 21.7 L175 23.8 L180 26.5 L185 29.6 L190 33.1 L195 36.7 L200 40.3 L205 43.6 L210 46.7 L215 49.5 L220 51.8 L225 53.8 L230 55.4 L235 56.7 L240 57.6 L245 58.4 L250 58.9 L255 59.3 L260 59.5 L265 59.7 L270 59.8 L275 59.9 L280 59.9 L285 60 L290 60 L295 60 L300 60" fill="none" stroke="#2D6FB5" stroke-width="1.6" stroke-dasharray="4 3"/>
+<text class="ik" x="300" y="80" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="8" font-weight="400" fill="#56647F" text-anchor="end">TL · aylık</text>
+<g filter="url(#k2-2-gr)">
+<text x="20" y="91" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="8.5" font-weight="400" fill="#56647F" text-anchor="start">PVQuant sapması</text><rect x="118" y="84" width="64" height="8" rx="2" fill="#0B1B3C" fill-opacity=".85"/>
+<text x="20" y="109" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="8.5" font-weight="400" fill="#56647F" text-anchor="start">basit yöntem</text><rect x="118" y="102" width="150" height="8" rx="2" fill="#0B1B3C" fill-opacity=".3"/>
+</g>
+<text x="20" y="127" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="8.5" font-weight="400" fill="#56647F" text-anchor="start">teminat etkisi</text><rect x="118" y="120" width="46" height="8" rx="2" fill="none" stroke="#0B1B3C" stroke-opacity=".55" stroke-dasharray="3 2"/>
+<path d="M182 95v-3M182 93.5H268M268 95v-3" stroke="#0B1B3C" stroke-opacity=".6" fill="none"/>
+<text x="274" y="97" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="8.5" font-weight="500" fill="#0B1B3C" text-anchor="start">fark</text></svg></div>
+<p class="metin">Tahmin hatasının size aylık kaç TL'ye mal olduğunu, basit yönteme göre farkı ve teminata etkisini tek yerde görürsünüz.</p>
+<p class="c-kunye"><span>TL · aylık</span><span>basit yönteme karşı</span><span>teminat etkisi</span></p></article><article class="c-hucre">
+<header class="c-bas"><h3>Şablonlu dışa verim</h3><p class="an">Teslimle birlikte</p></header>
+<div class="c-cizim"><svg class="cz" viewBox="0 0 320 140" aria-hidden="true" focusable="false" data-cizim="aktarim"><defs>
+<filter id="k3-3-gr" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="3" result="t"/><feColorMatrix in="t" type="matrix" values="0.333 0.333 0.333 0 0  0.333 0.333 0.333 0 0  0.333 0.333 0.333 0 0  0 0 0 0 1" result="gri"/><feComposite in="SourceGraphic" in2="gri" operator="arithmetic" k1="0" k2="1" k3="0.16" k4="-0.080" result="k"/><feComposite in="k" in2="SourceGraphic" operator="in"/></filter>
+<pattern id="k3-3-benek" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="4" fill="#2D6FB5" fill-opacity=".2"/><circle cx="1" cy="1" r=".8" fill="#2D6FB5" fill-opacity=".6"/><circle cx="3" cy="3" r=".55" fill="#2D6FB5" fill-opacity=".38"/></pattern>
+<pattern id="k3-3-tarama" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="#0B1B3C" stroke-opacity=".5" stroke-width="1.1"/></pattern>
+</defs>
+<text x="16" y="20" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="9" font-weight="500" fill="#0B1B3C" text-anchor="start">tahmin aralığı</text>
+<rect x="16" y="30" width="92" height="82" rx="6" fill="#FFFFFF" stroke="#BDC9E0"/>
+<g filter="url(#k3-3-gr)"><path d="M24 98 L27.2 98 L30.3 97.8 L33.5 97.5 L36.7 96.7 L39.8 94.8 L43 91 L46.2 84.4 L49.3 74.7 L52.5 62.5 L55.7 50 L58.8 40.6 L62 37 L65.2 40.6 L68.3 50 L71.5 62.5 L74.7 74.7 L77.8 84.4 L81 91 L84.2 94.8 L87.3 96.7 L90.5 97.5 L93.7 97.8 L96.8 98 L100 98 L100 102 L96.8 102 L93.7 102 L90.5 102 L87.3 102 L84.2 102 L81 99.8 L77.8 95 L74.7 87.8 L71.5 78.8 L68.3 69.6 L65.2 62.6 L62 60 L58.8 62.6 L55.7 69.6 L52.5 78.8 L49.3 87.8 L46.2 95 L43 99.8 L39.8 102 L36.7 102 L33.5 102 L30.3 102 L27.2 102 L24 102 Z" fill="url(#k3-3-benek)"/></g>
+<path d="M24 102 L27.2 102 L30.3 101.9 L33.5 101.6 L36.7 100.9 L39.8 99.3 L43 96 L46.2 90.4 L49.3 82.1 L52.5 71.7 L55.7 61.1 L58.8 53 L62 50 L65.2 53 L68.3 61.1 L71.5 71.7 L74.7 82.1 L77.8 90.4 L81 96 L84.2 99.3 L87.3 100.9 L90.5 101.6 L93.7 101.9 L96.8 102 L100 102" fill="none" stroke="#2D6FB5" stroke-width="1.6"/>
+<path d="M24 102H100" stroke="#0B1B3C" stroke-opacity=".25"/>
+<path d="M108 71C156 71 150 46 196 46" fill="none" stroke="#0B1B3C" stroke-opacity=".5" stroke-width="1.1"/><path d="M191 43l5 3-5 3" fill="none" stroke="#0B1B3C" stroke-opacity=".6"/><path d="M108 71C156 71 150 76 196 76" fill="none" stroke="#0B1B3C" stroke-opacity=".5" stroke-width="1.1"/><path d="M191 73l5 3-5 3" fill="none" stroke="#0B1B3C" stroke-opacity=".6"/><path d="M108 71C156 71 150 106 196 106" fill="none" stroke="#0B1B3C" stroke-opacity=".5" stroke-width="1.1"/><path d="M191 103l5 3-5 3" fill="none" stroke="#0B1B3C" stroke-opacity=".6"/><rect x="198" y="36" width="106" height="20" rx="4" fill="#FFFFFF" stroke="#0B1B3C" stroke-opacity=".8"/><text x="206" y="49.2" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="9" font-weight="400" fill="#0B1B3C" text-anchor="start">CSV · şablon</text><rect x="198" y="66" width="106" height="20" rx="4" fill="#FFFFFF" stroke="#0B1B3C" stroke-opacity=".8"/><text x="206" y="79.2" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="9" font-weight="400" fill="#0B1B3C" text-anchor="start">XLSX · şablon</text><rect x="198" y="96" width="106" height="20" rx="4" fill="#FFFFFF" stroke="#0B1B3C" stroke-opacity=".8"/><text x="206" y="109.2" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="9" font-weight="400" fill="#0B1B3C" text-anchor="start">API anahtarı</text>
+<rect x="198" y="8" width="106" height="16" rx="8" fill="#FFFFFF" stroke="#BDC9E0"/>
+<rect x="251" y="8" width="53" height="16" rx="8" fill="#0B1B3C"/>
+<text x="224.5" y="19" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="8.5" font-weight="400" fill="#4A5974" text-anchor="middle">saatlik</text><text x="277.5" y="19" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="8.5" font-weight="400" fill="#FFFFFF" text-anchor="middle">15 dk</text>
+<text class="ik" x="198" y="132" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="8" font-weight="400" fill="#56647F" text-anchor="start">toplayıcı / DSG biçiminde</text></svg></div>
+<p class="metin">Tahmin aralığını toplayıcınızın ya da DSG'nin şablonunda indirirsiniz; biçimi elle düzeltmeniz gerekmez. İsterseniz API anahtarıyla doğrudan sisteminize akar.</p>
+<p class="c-kunye"><span>CSV · XLSX</span><span>saatlik ya da 15 dk</span><span>API anahtarı</span></p></article><article class="c-hucre c-hucre--genis">
+<header class="c-bas"><h3>Alarm kütüphanesi</h3><p class="an">Gece ve gündüz</p></header>
+<div class="c-cizim"><svg class="cz" viewBox="0 0 320 140" aria-hidden="true" focusable="false" data-cizim="alarm"><defs>
+<filter id="k4-4-gr" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="3" result="t"/><feColorMatrix in="t" type="matrix" values="0.333 0.333 0.333 0 0  0.333 0.333 0.333 0 0  0.333 0.333 0.333 0 0  0 0 0 0 1" result="gri"/><feComposite in="SourceGraphic" in2="gri" operator="arithmetic" k1="0" k2="1" k3="0.16" k4="-0.080" result="k"/><feComposite in="k" in2="SourceGraphic" operator="in"/></filter>
+<pattern id="k4-4-benek" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="4" fill="#2D6FB5" fill-opacity=".2"/><circle cx="1" cy="1" r=".8" fill="#2D6FB5" fill-opacity=".6"/><circle cx="3" cy="3" r=".55" fill="#2D6FB5" fill-opacity=".38"/></pattern>
+<pattern id="k4-4-tarama" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="#0B1B3C" stroke-opacity=".5" stroke-width="1.1"/></pattern>
+</defs>
+<text x="20" y="14" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="8.5" font-weight="400" fill="#56647F" text-anchor="start">gelen ölçüm</text>
+<circle cx="20" cy="32" r="2.5" fill="#C27803"/><circle cx="30" cy="34.4" r="2.5" fill="#C27803"/><circle cx="40" cy="31.4" r="2.5" fill="#C27803"/><circle cx="50" cy="29.8" r="2.5" fill="#C27803"/><circle cx="60" cy="33.2" r="2.5" fill="#C27803"/><circle cx="70" cy="33.9" r="2.5" fill="#C27803"/><circle cx="80" cy="30.3" r="2.5" fill="#C27803"/><circle cx="90" cy="30.5" r="2.5" fill="#C27803"/><circle cx="100" cy="34.1" r="2.5" fill="#C27803"/><circle cx="110" cy="33" r="2.5" fill="#C27803"/><circle cx="120" cy="29.7" r="2.5" fill="#C27803"/><circle cx="130" cy="31.6" r="2.5" fill="#C27803"/><circle cx="140" cy="34.4" r="2.5" fill="#C27803"/><circle cx="150" cy="31.7" r="2.5" fill="#C27803"/><circle cx="166" cy="32" r="2.5" fill="none" stroke="#56647F" stroke-opacity=".7" stroke-dasharray="1.6 1.4"/><circle cx="179" cy="32" r="2.5" fill="none" stroke="#56647F" stroke-opacity=".7" stroke-dasharray="1.6 1.4"/><circle cx="192" cy="32" r="2.5" fill="none" stroke="#56647F" stroke-opacity=".7" stroke-dasharray="1.6 1.4"/><circle cx="205" cy="32" r="2.5" fill="none" stroke="#56647F" stroke-opacity=".7" stroke-dasharray="1.6 1.4"/><circle cx="218" cy="32" r="2.5" fill="none" stroke="#56647F" stroke-opacity=".7" stroke-dasharray="1.6 1.4"/>
+<path d="M222 32H234" stroke="#0B1B3C" stroke-opacity=".5"/>
+<rect x="234" y="23" width="70" height="18" rx="9" fill="#0B1B3C"/><text x="269" y="35" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="8.5" font-weight="400" fill="#FFFFFF" text-anchor="middle">veri gecikti</text>
+<text x="300" y="60" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="8.5" font-weight="500" fill="#0B1B3C" text-anchor="end">8 kural</text>
+<text x="20" y="60" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="8.5" font-weight="400" fill="#56647F" text-anchor="start">veri</text><rect x="20" y="65" width="26" height="14" rx="3" fill="#FFFFFF" stroke="#0B1B3C" stroke-opacity="0.5"/><rect x="51" y="65" width="26" height="14" rx="3" fill="#0B1B3C" stroke="#0B1B3C" stroke-opacity="1"/><rect x="82" y="65" width="26" height="14" rx="3" fill="#FFFFFF" stroke="#0B1B3C" stroke-opacity="0.5"/><text x="124" y="60" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="8.5" font-weight="400" fill="#56647F" text-anchor="start">teslim</text><rect x="124" y="65" width="26" height="14" rx="3" fill="#FFFFFF" stroke="#0B1B3C" stroke-opacity="0.5"/><rect x="155" y="65" width="26" height="14" rx="3" fill="#FFFFFF" stroke="#0B1B3C" stroke-opacity="0.5"/><text x="192" y="60" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="8.5" font-weight="400" fill="#56647F" text-anchor="start">performans</text><rect x="192" y="65" width="26" height="14" rx="3" fill="#FFFFFF" stroke="#0B1B3C" stroke-opacity="0.5"/><rect x="223" y="65" width="26" height="14" rx="3" fill="#FFFFFF" stroke="#0B1B3C" stroke-opacity="0.5"/><rect x="254" y="65" width="26" height="14" rx="3" fill="#FFFFFF" stroke="#0B1B3C" stroke-opacity="0.5"/>
+<path d="M64 65V50H269V41" fill="none" stroke="#0B1B3C" stroke-opacity=".35" stroke-dasharray="2 2"/>
+<text x="20" y="99" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="8.5" font-weight="400" fill="#56647F" text-anchor="start">gece karnesi</text>
+<g filter="url(#k4-4-gr)"><rect x="20" y="104" width="14" height="14" rx="2.5" fill="#DCE3F2" stroke="#BDC9E0" stroke-width="1"/><rect x="40" y="104" width="14" height="14" rx="2.5" fill="#DCE3F2" stroke="#BDC9E0" stroke-width="1"/><rect x="60" y="104" width="14" height="14" rx="2.5" fill="#DCE3F2" stroke="#BDC9E0" stroke-width="1"/><rect x="80" y="104" width="14" height="14" rx="2.5" fill="#DCE3F2" stroke="#BDC9E0" stroke-width="1"/><rect x="100" y="104" width="14" height="14" rx="2.5" fill="#DCE3F2" stroke="#BDC9E0" stroke-width="1"/><rect x="120" y="104" width="14" height="14" rx="2.5" fill="#DCE3F2" stroke="#BDC9E0" stroke-width="1"/><rect x="140" y="104" width="14" height="14" rx="2.5" fill="#DCE3F2" stroke="#BDC9E0" stroke-width="1"/><rect x="160" y="104" width="14" height="14" rx="2.5" fill="#DCE3F2" stroke="#BDC9E0" stroke-width="1"/><rect x="180" y="104" width="14" height="14" rx="2.5" fill="#DCE3F2" stroke="#BDC9E0" stroke-width="1"/><rect x="200" y="104" width="14" height="14" rx="2.5" fill="#DCE3F2" stroke="#BDC9E0" stroke-width="1"/><rect x="220" y="104" width="14" height="14" rx="2.5" fill="#DCE3F2" stroke="#BDC9E0" stroke-width="1"/><rect x="240" y="104" width="14" height="14" rx="2.5" fill="#DCE3F2" stroke="#BDC9E0" stroke-width="1"/><rect x="260" y="104" width="14" height="14" rx="2.5" fill="#DCE3F2" stroke="#BDC9E0" stroke-width="1"/><rect x="280" y="104" width="14" height="14" rx="2.5" fill="#FFFFFF" stroke="#0B1B3C" stroke-width="1.4"/></g>
+<text class="ik" x="294" y="132" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="8" font-weight="400" fill="#0B1B3C" text-anchor="end">bu sabah</text></svg></div>
+<p class="metin">Gece ekrana kimse bakmazken kurallar bakar. Sabah ilk iş gece karnesini ve açık alarmları görürsünüz.</p>
+<p class="c-kunye"><span>8 kural</span><span>veri · teslim · performans</span><span>gece karnesi</span></p></article><article class="c-hucre c-hucre--genis">
+<header class="c-bas"><h3>Gün içi aralık</h3><p class="an">Sabah koşusundan itibaren</p></header>
+<div class="c-cizim"><svg class="cz" viewBox="0 0 320 140" aria-hidden="true" focusable="false" data-cizim="aralik"><defs>
+<filter id="k5-5-gr" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="3" result="t"/><feColorMatrix in="t" type="matrix" values="0.333 0.333 0.333 0 0  0.333 0.333 0.333 0 0  0.333 0.333 0.333 0 0  0 0 0 0 1" result="gri"/><feComposite in="SourceGraphic" in2="gri" operator="arithmetic" k1="0" k2="1" k3="0.16" k4="-0.080" result="k"/><feComposite in="k" in2="SourceGraphic" operator="in"/></filter>
+<pattern id="k5-5-benek" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="4" fill="#2D6FB5" fill-opacity=".2"/><circle cx="1" cy="1" r=".8" fill="#2D6FB5" fill-opacity=".6"/><circle cx="3" cy="3" r=".55" fill="#2D6FB5" fill-opacity=".38"/></pattern>
+<pattern id="k5-5-tarama" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="#0B1B3C" stroke-opacity=".5" stroke-width="1.1"/></pattern>
+</defs>
+<g filter="url(#k5-5-gr)"><path d="M20 105 L25 105 L30 105 L35 104.9 L40 104.9 L45 104.8 L50 104.6 L55 104.4 L60 104 L65 103.5 L70 102.7 L75 101.7 L80 100.2 L85 98.2 L90 95.7 L95 92.4 L100 88.5 L105 83.7 L110 78.1 L115 71.9 L120 65 L125 57.8 L130 50.6 L135 43.5 L140 37.1 L145 31.7 L150 27.5 L155 24.9 L160 24 L165 24.9 L170 27.5 L175 31.7 L180 37.1 L185 43.5 L190 50.6 L195 57.8 L200 65 L205 71.9 L210 78.1 L215 83.7 L220 88.5 L225 92.4 L230 95.7 L235 98.2 L240 100.2 L245 101.7 L250 102.7 L255 103.5 L260 104 L265 104.4 L270 104.6 L275 104.8 L280 104.9 L285 104.9 L290 105 L295 105 L300 105 L300 108 L295 108 L290 108 L285 108 L280 108 L275 108 L270 108 L265 108 L260 108 L255 108 L250 108 L245 108 L240 107.8 L235 106.5 L230 104.8 L225 102.6 L220 100 L215 96.8 L210 93.1 L205 88.9 L200 84.3 L195 79.6 L190 74.7 L185 70 L180 65.7 L175 62.1 L170 59.3 L165 57.6 L160 57 L155 57.6 L150 59.3 L145 62.1 L140 65.7 L135 70 L130 74.7 L125 79.6 L120 84.3 L115 88.9 L110 93.1 L105 96.8 L100 100 L95 102.6 L90 104.8 L85 106.5 L80 107.8 L75 108 L70 108 L65 108 L60 108 L55 108 L50 108 L45 108 L40 108 L35 108 L30 108 L25 108 L20 108 Z" fill="url(#k5-5-benek)"/></g>
+<path d="M20 108 L25 108 L30 108 L35 107.9 L40 107.9 L45 107.8 L50 107.7 L55 107.6 L60 107.3 L65 107 L70 106.4 L75 105.7 L80 104.7 L85 103.4 L90 101.6 L95 99.4 L100 96.7 L105 93.4 L110 89.6 L115 85.3 L120 80.6 L125 75.7 L130 70.7 L135 65.9 L140 61.5 L145 57.8 L150 55 L155 53.2 L160 52.6 L165 53.2 L170 55 L175 57.8 L180 61.5 L185 65.9 L190 70.7 L195 75.7 L200 80.6 L205 85.3 L210 89.6 L215 93.4 L220 96.7 L225 99.4 L230 101.6 L235 103.4 L240 104.7 L245 105.7 L250 106.4 L255 107 L260 107.3 L265 107.6 L270 107.7 L275 107.8 L280 107.9 L285 107.9 L290 108 L295 108 L300 108" fill="none" stroke="#2D6FB5" stroke-opacity=".38" stroke-width="1.1" stroke-dasharray="2 2.5"/>
+<path d="M20 108 L25 108 L30 108 L35 107.9 L40 107.9 L45 107.8 L50 107.7 L55 107.5 L60 107.3 L65 106.9 L70 106.3 L75 105.5 L80 104.4 L85 102.9 L90 101 L95 98.6 L100 95.6 L105 92 L110 87.9 L115 83.2 L120 78 L125 72.6 L130 67.2 L135 61.9 L140 57.1 L145 53 L150 49.9 L155 47.9 L160 47.3 L165 47.9 L170 49.9 L175 53 L180 57.1 L185 61.9 L190 67.2 L195 72.6 L200 78 L205 83.2 L210 87.9 L215 92 L220 95.6 L225 98.6 L230 101 L235 102.9 L240 104.4 L245 105.5 L250 106.3 L255 106.9 L260 107.3 L265 107.5 L270 107.7 L275 107.8 L280 107.9 L285 107.9 L290 108 L295 108 L300 108" fill="none" stroke="#2D6FB5" stroke-opacity=".55" stroke-width="1.1" stroke-dasharray="2 2.5"/>
+<path d="M20 108 L25 108 L30 108 L35 107.9 L40 107.9 L45 107.8 L50 107.7 L55 107.5 L60 107.2 L65 106.8 L70 106.2 L75 105.3 L80 104.1 L85 102.5 L90 100.4 L95 97.8 L100 94.5 L105 90.6 L110 86.1 L115 81 L120 75.4 L125 69.6 L130 63.6 L135 57.9 L140 52.7 L145 48.2 L150 44.8 L155 42.7 L160 42 L165 42.7 L170 44.8 L175 48.2 L180 52.7 L185 57.9 L190 63.6 L195 69.6 L200 75.4 L205 81 L210 86.1 L215 90.6 L220 94.5 L225 97.8 L230 100.4 L235 102.5 L240 104.1 L245 105.3 L250 106.2 L255 106.8 L260 107.2 L265 107.5 L270 107.7 L275 107.8 L280 107.9 L285 107.9 L290 108 L295 108 L300 108" fill="none" stroke="#2D6FB5" stroke-width="1.8"/>
+<path d="M20 108H300" stroke="#0B1B3C" stroke-opacity=".28"/>
+<path d="M142.5 20V108" stroke="#0B1B3C" stroke-opacity=".55" stroke-width="1"/>
+<text x="142.5" y="15" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="8.5" font-weight="400" fill="#0B1B3C" text-anchor="middle">şimdi</text>
+<path d="M236 70l14 -22" stroke="#0B1B3C" stroke-opacity=".4"/>
+<text x="252" y="44" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="8.5" font-weight="400" fill="#4A5974" text-anchor="start">revizyon izi</text>
+<text class="ik" x="300" y="15" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="8" font-weight="400" fill="#56647F" text-anchor="end">iyimser–kötümser</text>
+<circle cx="90" cy="108" r="3" fill="#FFFFFF" stroke="#0B1B3C" stroke-width="1.4"/>
+<text class="ik" x="86" y="130" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="8.5" font-weight="400" fill="#4A5974" text-anchor="start">06:00 sabah koşusu → webhook</text>
+<text class="ik" x="20" y="118" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="8" font-weight="400" fill="#56647F" text-anchor="start">00</text><text class="ik" x="160" y="118" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="8" font-weight="400" fill="#56647F" text-anchor="middle">12</text><text class="ik" x="300" y="118" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="8" font-weight="400" fill="#56647F" text-anchor="end">24</text></svg></div>
+<p class="metin">İyimser–kötümser bant gün içinde güncellendikçe önceki hâlleri izde kalır; sabah koşusu bitince webhook sisteminize haber verir.</p>
+<p class="c-kunye"><span>iyimser–kötümser</span><span>gün içi revizyon</span><span>sabah webhook’u</span></p></article></div>
+<p class="not">Sapmanın TL karşılığı panelde, kendi santralinizin verisiyle hesaplanır.</p>
+</div>
+</section>
+<section class="kural"><div class="kap"><h2>Sistem kuralları</h2><p class="ozet">Beş kartın son hâli: tasarım C, seçilen açıklamalar, gerçek «Ufuk» jetonları ve satır içi SVG'ler.</p>
+<dl><div><dt>Tasarım</dt><dd>C · Panel kesiti (kullanıcı seçimi).</dd></div><div><dt>Açıklamalar</dt><dd>Teslim programı: Ton 1 · Fayda önce · Sapma maliyeti: Ton 1 · Fayda önce · Şablonlu dışa verim: Ton 1 · Fayda önce · Alarm kütüphanesi: Ton 3 · Gününüzden bir an · Gün içi aralık: Ton 1 · Fayda önce</dd></div><div><dt>Adlar</dt><dd>Çalışma adı (isim kümesi A). İsim seçimi en sonda yapılacak; kod tarafında adlar tek veri alanında.</dd></div><div><dt>Depo karşılığı</dt><dd>kod/ altındaki dosyalar bu sayfayla aynı veriden üretilir; bkz. kod/UYGULAMA.md.</dd></div></dl></div></section>
+</main>
+</body>
+</html>

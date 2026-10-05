@@ -62,3 +62,8 @@ export const ACIKLAMALAR = {
     ],
   },
 };
+
+/** Uygulanan seçim (ton numarası, 1–5). 2026-10-05: kullanıcı ton seçmeden «Sırayla devam et» dedi →
+ *  öneri uygulandı (Ton 1, K4 için Ton 3); değiştirmek için yalnız bu satırı düzenleyip üreteçleri çalıştırın. */
+export const SECIM = { k1: 1, k2: 1, k3: 1, k4: 3, k5: 1 };
+export const secilenMetin = (id) => ACIKLAMALAR[id].metin[SECIM[id] - 1];

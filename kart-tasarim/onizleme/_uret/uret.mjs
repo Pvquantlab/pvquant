@@ -1,7 +1,7 @@
 // 4. aşama önizleme üreteci: node kart-tasarim/onizleme/_uret/uret.mjs
 // Her tasarım tek dosyalık HTML olarak onizleme/ altına yazılır (dış bağımlılık: yalnız Google Fonts).
 import { writeFileSync } from "node:fs";
-import { ACIKLAMALAR, TONLAR } from "./aciklamalar.mjs";
+import { ACIKLAMALAR, TONLAR, SECIM, secilenMetin } from "./aciklamalar.mjs";
 import { cProgram, cSapma, cSapmaBuyuk, cAktarim, cAlarm, cAralik } from "./cizimler.mjs";
 
 const CIKIS = new URL("../", import.meta.url);
@@ -310,6 +310,26 @@ ${TONLAR.map(([n]) => `body:has(#ton-${n}:checked) .c-hucre .metin[data-ton="${n
   });
 }
 
+// ── 6. aşama: son hâl (C + seçilen metinler) ──
+function finalC() {
+  const hucre = (k, genis) => `<article class="c-hucre${genis ? " c-hucre--genis" : ""}">
+<header class="c-bas"><h3>${k.ad}</h3><p class="an">${k.an}</p></header>
+<div class="c-cizim">${cz(k)}</div>
+<p class="metin">${secilenMetin(k.id)}</p>
+<p class="c-kunye">${ACIKLAMALAR[k.id].kunye.map((d) => `<span>${d}</span>`).join("")}</p></article>`;
+  const html = `<div class="c-yuzey">${["k1", "k2", "k3"].map((i) => hucre(K[i], false)).join("")}${["k4", "k5"].map((i) => hucre(K[i], true)).join("")}</div>`;
+  const ton = Object.entries(SECIM).map(([id, n]) => `${K[id].ad}: Ton ${n} · ${TONLAR[n - 1][1]}`);
+  return sayfa("C", "Panel kesiti", "Beş kartın son hâli: tasarım C, seçilen açıklamalar, gerçek «Ufuk» jetonları ve satır içi SVG'ler.", C_CSS, html, [
+    ["Tasarım", "C · Panel kesiti (kullanıcı seçimi)."],
+    ["Açıklamalar", ton.join(" · ")],
+    ["Adlar", "Çalışma adı (isim kümesi A). İsim seçimi en sonda yapılacak; kod tarafında adlar tek veri alanında."],
+    ["Depo karşılığı", "kod/ altındaki dosyalar bu sayfayla aynı veriden üretilir; bkz. kod/UYGULAMA.md."],
+  ], {
+    baslik: "Son hâl · Tasarım C",
+    uyari: "Kart adları çalışma adıdır (isim kümesi A, seçim en sonda). Diyagramlar temsilîdir, sonuç değildir.",
+  });
+}
+
 const URET = { A: tasarimA, B: tasarimB, C: tasarimC, D: tasarimD, E: tasarimE };
 for (const [h, f] of Object.entries(URET)) {
   sayac = 0;
@@ -317,4 +337,6 @@ for (const [h, f] of Object.entries(URET)) {
 }
 sayac = 0;
 writeFileSync(new URL("aciklama-C.html", CIKIS), aciklamaC());
+sayac = 0;
+writeFileSync(new URL("final.html", CIKIS), finalC());
 console.log("yazıldı (+ aciklama-C.html):", Object.keys(URET).map((h) => `tasarim-${h}.html`).join(", "));

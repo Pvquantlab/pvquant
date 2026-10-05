@@ -4,16 +4,16 @@ Görev dosyası: `05addac8-kart-tasarim-gorev.md` (karar kapılı akış, §0 s�
 
 ## Durum
 
-**Şu an:** 5. AŞAMA — Açıklama turu ⛔ DUR · kullanıcının açıklama seçimi bekleniyor (`secenekler/3-aciklamalar.md`, `onizleme/aciklama-C.html`). Seçilen tasarım: **C · Panel kesiti**. İsim seçimi (3. aşama) en sona ertelendi.
+**Şu an:** SON ADIM — İsim turu (ertelenen 3. aşama) ⛔ DUR · kullanıcının isim seçimi bekleniyor (`secenekler/1-isimler.md`). 6. aşama bitti: `onizleme/final.html`, `kod/` (yama dahil) çalışma adlarıyla hazır; isim seçilince yalnız `KARTLAR[].ad` değişir.
 
 | Aşama | Durum | Çıktı |
 |---|---|---|
 | 1 · Mevcut durum analizi | ✅ bitti | `analiz.md`, `arastirma-ekran/00–04` |
 | 2 · Sektör araştırması | ✅ bitti (sınırlı: bkz. not) | `arastirma.md` |
-| 3 · İsim turu | ⏸ ertelendi (en sonda seçilecek) | `secenekler/1-isimler.md` |
+| 3 · İsim turu | ⛔ son adım — seçim bekleniyor | `secenekler/1-isimler.md` |
 | 4 · Tasarım turu | ✅ C seçildi | `onizleme/tasarim-A..E.html`, `secenekler/2-tasarimlar.md` |
-| 5 · Açıklama turu | ⛔ seçim bekleniyor | `secenekler/3-aciklamalar.md`, `onizleme/aciklama-C.html` |
-| 6 · Uygulama | — | `onizleme/final.html`, `kod/`, `kod/UYGULAMA.md` |
+| 5 · Açıklama turu | ✅ Ton 1, K4 Ton 3 (öneri, «Sırayla devam et») | `secenekler/3-aciklamalar.md`, `onizleme/aciklama-C.html` |
+| 6 · Uygulama | ✅ bitti, doğrulandı | `onizleme/final.html`, `kod/`, `kod/UYGULAMA.md` |
 
 ## Karar günlüğü
 
@@ -25,11 +25,14 @@ Görev dosyası: `05addac8-kart-tasarim-gorev.md` (karar kapılı akış, §0 s�
 | 2026-10-05 | 4 | Beş sistem üretildi (A Künye kartı · B Gün şeridi · C Panel kesiti · D Ana kart + dört · E Satır listesi); 1440/900/390 px denetlendi. Öneri: C. | Claude |
 | 2026-10-05 | 4 | Tasarım **C · Panel kesiti** seçildi («C ile devam et»). | kullanıcı |
 | 2026-10-05 | 5 | Beş ton × beş kart = 25 açıklama (`_uret/aciklamalar.mjs`); C içinde ton seçicili önizleme; anayasa süzgeci betikle tarandı. Öneri: Ton 1, K4 için Ton 3. | Claude |
+| 2026-10-05 | 5 | Kullanıcı beş seçeneği tam metin istedi («5 seçenek sun»), ardından ton seçmeden «Sırayla devam et» dedi → öneri (Ton 1, K4 için Ton 3) uygulandı; `aciklamalar.mjs › SECIM` tek satırla değiştirilebilir. | kullanıcı → Claude |
+| 2026-10-05 | 6 | `final.html` + `kod/` (KartCizimleri.tsx, TurkiyePiyasasi.tsx, TextliCizimler.tsx, vitrin-ek.css, yapi.test.ek.ts, degisiklik.patch, UYGULAMA.md). Geçici worktree'de: test 24/24, lint uyarısı değişmedi (16=16), build geçti, gerçek sayfada 1440/900/390 px ekran görüntüsü, konsol temiz, taşma yok. Depo değişmedi. | Claude |
 
 ## Önizlemeleri yeniden üretmek
 
 `node kart-tasarim/onizleme/_uret/uret.mjs` → `onizleme/tasarim-A..E.html` (diyagramlar `_uret/cizimler.mjs`).
-Açıklama turu: aynı komut `aciklama-C.html`'i de yazar; `node kart-tasarim/onizleme/_uret/aciklama-md.mjs` → `secenekler/3-aciklamalar.md`.
+Kod: `node kart-tasarim/onizleme/_uret/kod-uret.mjs` (önizlemeleri de yeniler) → `kod/KartCizimleri.tsx`, `kod/TurkiyePiyasasi.tsx`; ayrıntı `kod/UYGULAMA.md` §6.
+Açıklama turu: `uret.mjs` `aciklama-C.html`'i de yazar; `node kart-tasarim/onizleme/_uret/aciklama-md.mjs` → `secenekler/3-aciklamalar.md`.
 Dosyalar tek başına açılır; yazı tipleri Google Fonts'tan gelir (çevrimdışıyken sistem yazı tipine düşer).
 
 ## Yeniden başlarken
