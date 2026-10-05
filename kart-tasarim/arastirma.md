@@ -2,16 +2,20 @@
 
 ## Yöntem ve sınır — önce bunu okuyun
 
-Bu oturumun ağ politikası pvquant.com'u ve incelenecek bütün rakip sitelerini (stripe.com,
-linear.app, modoenergy.com, amperon.co, solcast.com …) **engelledi** (proxy 403). Bu nedenle:
+Bu oturumun ağ politikası pvquant.com'u ve incelenecek rakip sitelerinin 13'ünden 12'sini
+(stripe.com, linear.app, vercel.com, databricks.com, hex.tech, modoenergy.com, kpler.com,
+solargis.com, solcast.com, amperon.co, aurorasolar.com, dexterenergy.ai) **engelledi**; web arşivi
+(archive.org, archive.ph) de kapalı. 2026-10-05'te tarayıcıyla yeniden denendi: hepsi
+`ERR_TUNNEL_CONNECTION_FAILED`. Bu nedenle:
 
-- **Rakip ekran görüntüsü yok.** `arastirma-ekran/` yalnız PVQuant'ın yerelde çalıştırılan
-  vitrinini içerir (00–04).
-- Kanıt iki kaynaktan: **[A]** bu oturumda yapılan web aramalarının döndürdüğü sayfa metinleri
-  (aşağıda kaynak bağlantısıyla), **[G]** bu markaların sitelerine dair önceki gözlemim. [G]
-  işaretli satırlar tarihli değildir ve sitelerin bugünkü hâlinden farklı olabilir. Tasarım
-  turundan önce siteleri gerçekten açmamı isterseniz ortamın ağ erişimini genişletmeniz
-  gerekir (bkz. BENIOKU).
+- **Gerçekten gezilen tek rakip Datadog** (datadoghq.com açık). Ekran görüntüleri
+  `arastirma-ekran/10-datadog-*.jpg`. Sayfanın görselleri gelmedi (görsel alan adı
+  `corp.dd-static.net` engelli); düzen, metin ve tipografi görünüyor.
+- Diğer 12 marka için kanıt iki kaynaktan: **[A]** bu oturumda yapılan web aramalarının döndürdüğü
+  sayfa metinleri (aşağıda kaynak bağlantısıyla), **[G]** bu markaların sitelerine dair önceki
+  gözlemim. [G] işaretli satırlar tarihli değildir ve sitelerin bugünkü hâlinden farklı olabilir.
+  **[Z]** = bu oturumda tarayıcıyla ziyaret edilip görüntüsü alınan gözlem.
+- Kalan siteleri gezmek için ortamın ağ erişiminin genişletilmesi gerekir (bkz. BENIOKU).
 - Rakip alıntıları özgün dilinde bırakıldı.
 
 ## 2.1 Marka marka kart dersleri
@@ -40,10 +44,21 @@ bölünmüş ızgara (hairline grid), mono etiketler, siyah-beyaz.
 **Ders →** «Ad + tek satır somut sonuç» kalıbı. Kutusuz, çizgiyle bölünmüş ızgara, eşit kart
 yığını görünümünü kırar.
 
-**Datadog** — *ad kalıbı:* düz ürün adı («Infrastructure», «Log Management», «APM»), alt satırda
-ne yaptığı. [A] *Görsel:* [G] gerçek gösterge paneli görüntüleri, yoğun.
-**Ders →** Teknik değer künyede yaşar. *Kaçınılacak:* yoğunluk ve mor zemin üstüne çok renkli
-ekran görüntüsü, PVQuant'ın sakin «Ufuk» diline uymaz.
+**Datadog** [Z, 2026-10-05: ana sayfa ve `/product/`] — *ad kalıbı:* ana sayfadaki ürün
+akordeonunda düz ürün adı + tek satır sonuç: «Infrastructure — From overview to deep details, fast»,
+ardından «Learn more ›». `/product/` sayfasında ise bölüm başlıkları **fayda cümlesi**: «See across
+systems, apps, and services», «Analyze and explore log data in context», «Get alerted on critical
+issues»; ürün adı yalnız üstteki alt menüde. Her başlığın altında tek giriş cümlesi, sonra 4–5
+maddelik somut özellik listesi, sonra «LEARN MORE»; görsel sağ/sol dönüşümlü. Etiketli kartlarda
+hiyerarşi: büyük harfli küçük etiket («READ THE REPORT», «CAREERS») → başlık («State of Postgres»)
+→ 3–4 satır gövde → «LEARN MORE ›». Tipografi sans; mono yok. Renk: mor yalnız eylemde ve bağlantıda.
+*Görsel:* [G] gerçek gösterge paneli görüntüleri (bu ziyarette görseller yüklenmedi).
+**Ders →** (1) Başlık fayda, teknik ayrıntı altındaki listede: bizim «tek cümle + künye çipleri»
+kalıbımızı doğruluyor. (2) Etiket → başlık → gövde → bağlantı dört katı burada da var.
+*Kaçınılacak (bu ziyarette görüldü):* «AI-Powered Observability and Security» manşeti ve «empowers
+organizations to decode runtime execution… with agentic speed» gibi süslü gövde; «Thousands of
+customers love & trust Datadog» logo duvarı (anayasa madde 2); camgöbeğinden yeşile gradyan zeminli
+kart («State of Postgres»); yoğun mor gradyan bantlar. PVQuant'ın sakin «Ufuk» diline uymaz.
 
 ### Data / Analytics
 
@@ -126,7 +141,11 @@ gün içi revizyon → dengesizlik maliyeti → dışa verim → gece nöbeti/ka
 - Uydurma alt marka adları (Databricks dersi).
 - Aynı yetinin birden çok kartta tekrarı (bugün «TL gün gün» üç yerde geçiyor).
 
-## 2.4 Kaynaklar (bu oturumda okunan arama sonuçları)
+## 2.4 Kaynaklar
+
+Ziyaret edilen [Z]: https://www.datadoghq.com/ · https://www.datadoghq.com/product/ (2026-10-05, ekran görüntüleri `arastirma-ekran/10-datadog-*.jpg`).
+
+Arama sonuçları [A]:
 
 - Stripe: https://stripe.com/payments · https://stripe.com/payments/elements
 - Linear: https://linear.app/features · https://linear.app/docs/insights · https://linear.app/now/how-we-redesigned-the-linear-ui
