@@ -50,5 +50,5 @@ C'nin mono çip künyesi A'ya da taşınabilir.
 
 ## Seçim (kullanıcı dolduracak)
 
-- Tasarım sistemi: ☐ A ☐ B ☐ C ☐ D ☐ E
-- Başka bir sistemden alınacak öğe (ör. «C + B'nin zaman etiketleri»): …
+- Tasarım sistemi: **C · Panel kesiti** (kullanıcı, 2026-10-05)
+- Başka bir sistemden alınacak öğe: yok

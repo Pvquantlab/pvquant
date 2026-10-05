@@ -1,6 +1,7 @@
 // 4. aşama önizleme üreteci: node kart-tasarim/onizleme/_uret/uret.mjs
 // Her tasarım tek dosyalık HTML olarak onizleme/ altına yazılır (dış bağımlılık: yalnız Google Fonts).
 import { writeFileSync } from "node:fs";
+import { ACIKLAMALAR, TONLAR } from "./aciklamalar.mjs";
 import { cProgram, cSapma, cSapmaBuyuk, cAktarim, cAlarm, cAralik } from "./cizimler.mjs";
 
 const CIKIS = new URL("../", import.meta.url);
@@ -72,14 +73,14 @@ h2,h3{font-family:var(--baslik);font-weight:600}
 @media (max-width:600px){:root{--yan:16px}.bolum{padding-block:64px}.ust h2{font-size:28px;line-height:36px}.ust .giris{font-size:17px;line-height:27px}.kural dl{grid-template-columns:1fr}}
 `;
 
-function sayfa(harf, ad, ozet, css, kartlarHtml, kurallar) {
+function sayfa(harf, ad, ozet, css, kartlarHtml, kurallar, { baslik = `Tasarım ${harf} · ${ad}`, uyari = "Kart adları çalışma adıdır (isim kümesi A); gövde metinleri çalışma metnidir — ikisi de sonraki aşamalarda seçilecek. Diyagramlar temsilîdir, sonuç değildir.", ekUst = "" } = {}) {
   const nav = ["A", "B", "C", "D", "E"].map((h) => `<a href="tasarim-${h}.html"${h === harf ? ' aria-current="page"' : ""}>${h}</a>`).join("");
   return `<!doctype html>
 <html lang="tr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tasarım ${harf} · ${ad}</title>
+<title>${baslik}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>${TABAN}
@@ -87,8 +88,8 @@ function sayfa(harf, ad, ozet, css, kartlarHtml, kurallar) {
 ${css}</style>
 </head>
 <body>
-<header class="onz"><div class="kap"><div><b>Tasarım ${harf} · ${ad}</b> &nbsp;<span>${ozet}</span></div><nav aria-label="Tasarımlar">${nav}</nav>
-<p class="uyari">Kart adları çalışma adıdır (isim kümesi A); gövde metinleri çalışma metnidir — ikisi de sonraki aşamalarda seçilecek. Diyagramlar temsilîdir, sonuç değildir.</p></div></header>
+<header class="onz"><div class="kap"><div><b>${baslik}</b> &nbsp;<span>${ozet}</span></div><nav aria-label="Tasarımlar">${nav}</nav>
+${ekUst}<p class="uyari">${uyari}</p></div></header>
 <main>
 <section class="bolum" aria-labelledby="baslik">
 <div class="kap">
@@ -184,14 +185,7 @@ function tasarimB() {
 }
 
 // ── C · Panel kesiti (çizgili ızgara) ─────────────────────────────
-function tasarimC() {
-  const hucre = (k, genis) => `<article class="c-hucre${genis ? " c-hucre--genis" : ""}">
-<header class="c-bas"><h3>${k.ad}</h3><p class="an">${k.an}</p></header>
-<div class="c-cizim">${cz(k)}</div>
-<p class="metin">${k.govde}</p>
-<p class="c-kunye">${k.kunye.map(([, d]) => `<span>${d}</span>`).join("")}</p></article>`;
-  const html = `<div class="c-yuzey">${["k1", "k2", "k3"].map((i) => hucre(K[i], false)).join("")}${["k4", "k5"].map((i) => hucre(K[i], true)).join("")}</div>`;
-  const css = `
+const C_CSS = `
 .c-yuzey{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1px;background:var(--kenar);border:1px solid var(--kenar);border-radius:16px;overflow:hidden}
 .c-hucre{grid-column:span 2;display:flex;flex-direction:column;background:var(--zemin);padding:24px 28px 26px}
 .c-hucre--genis{grid-column:span 3;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto 1fr auto;column-gap:28px}
@@ -206,6 +200,14 @@ function tasarimC() {
 @media (max-width:1080px){.c-yuzey{grid-template-columns:repeat(2,minmax(0,1fr))}.c-hucre,.c-hucre--genis{grid-column:span 1}.c-hucre--genis{display:flex}.c-hucre--genis .c-cizim{margin:18px 0 16px}
 .c-yuzey>:last-child{grid-column:1/-1}}
 @media (max-width:600px){.c-yuzey{grid-template-columns:1fr}.c-hucre{padding:20px 18px 22px}}`;
+function tasarimC() {
+  const hucre = (k, genis) => `<article class="c-hucre${genis ? " c-hucre--genis" : ""}">
+<header class="c-bas"><h3>${k.ad}</h3><p class="an">${k.an}</p></header>
+<div class="c-cizim">${cz(k)}</div>
+<p class="metin">${k.govde}</p>
+<p class="c-kunye">${k.kunye.map(([, d]) => `<span>${d}</span>`).join("")}</p></article>`;
+  const html = `<div class="c-yuzey">${["k1", "k2", "k3"].map((i) => hucre(K[i], false)).join("")}${["k4", "k5"].map((i) => hucre(K[i], true)).join("")}</div>`;
+  const css = C_CSS;
   return sayfa("C", "Panel kesiti", "Beş kart ayrı kutular değil, tek beyaz yüzeyin 1 px çizgiyle bölünmüş hücreleri. Her hücre panelden kesilmiş bir modül gibi okunur.", css, html, [
     ["Yerleşim", "Tek yüzey, altı birimlik ızgara: üst sırada üç hücre, alt sırada iki geniş hücre (geniş hücrede diyagram sağda). Hücreler arası boşluk değil 1 px çizgi."],
     ["Hiyerarşi", "Modül başlığı gibi: üstte mono etiket, altında ad → diyagram → tek cümle → künye «çipleri» (yalnız değerler, mono, ince kenarlı)."],
@@ -282,9 +284,37 @@ ${kunye(k, "kunye e-kunye")}
   ]);
 }
 
+// ── 5. aşama: C içinde beş açıklama tonu (CSS :has ile seçici, betik yok) ──
+function aciklamaC() {
+  const hucre = (k, genis) => {
+    const a = ACIKLAMALAR[k.id];
+    return `<article class="c-hucre${genis ? " c-hucre--genis" : ""}">
+<header class="c-bas"><h3>${k.ad}</h3><p class="an">${k.an}</p></header>
+<div class="c-cizim">${cz(k)}</div>
+${a.metin.map((m, n) => `<p class="metin" data-ton="${n + 1}">${m}</p>`).join("")}
+<p class="c-kunye">${a.kunye.map((d) => `<span>${d}</span>`).join("")}</p></article>`;
+  };
+  const html = `<div class="c-yuzey">${["k1", "k2", "k3"].map((i) => hucre(K[i], false)).join("")}${["k4", "k5"].map((i) => hucre(K[i], true)).join("")}</div>`;
+  const secici = `<fieldset class="ton"><legend>Açıklama tonu</legend>${TONLAR.map(([n, ad]) => `<label><input type="radio" name="ton" id="ton-${n}"${n === "1" ? " checked" : ""}> ${n} · ${ad}</label>`).join("")}</fieldset>`;
+  const css = C_CSS + `
+.c-hucre .metin[data-ton]{display:none}
+${TONLAR.map(([n]) => `body:has(#ton-${n}:checked) .c-hucre .metin[data-ton="${n}"]{display:block}`).join("\n")}
+.ton{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px 14px;border:0;padding:0;margin:0}
+.ton legend{float:left;margin-right:6px;font:500 11.5px/28px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--ucuncul)}
+.ton label{display:inline-flex;align-items:center;gap:6px;min-height:28px;font-size:14px;cursor:pointer}
+.ton input{accent-color:var(--metin);margin:0}`;
+  return sayfa("C", "Panel kesiti", "Seçilen tasarım C içinde beş açıklama tonu. Üstteki seçiciyle tonlar arasında geçin; künye çipleri sabittir.", css, html, TONLAR.map(([n, ad, d]) => [`Ton ${n} · ${ad}`, d]), {
+    baslik: "Açıklama turu · Tasarım C",
+    uyari: "Kart adları çalışma adıdır (isim kümesi A, seçim en sonda). Metinler 5. aşamanın 25 alternatifidir; tek tek karttan da seçilebilir — bkz. secenekler/3-aciklamalar.md.",
+    ekUst: secici,
+  });
+}
+
 const URET = { A: tasarimA, B: tasarimB, C: tasarimC, D: tasarimD, E: tasarimE };
 for (const [h, f] of Object.entries(URET)) {
   sayac = 0;
   writeFileSync(new URL(`tasarim-${h}.html`, CIKIS), f());
 }
-console.log("yazıldı:", Object.keys(URET).map((h) => `tasarim-${h}.html`).join(", "));
+sayac = 0;
+writeFileSync(new URL("aciklama-C.html", CIKIS), aciklamaC());
+console.log("yazıldı (+ aciklama-C.html):", Object.keys(URET).map((h) => `tasarim-${h}.html`).join(", "));
