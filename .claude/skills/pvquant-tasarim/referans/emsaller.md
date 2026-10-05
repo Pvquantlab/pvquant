@@ -31,6 +31,8 @@ Her satır: kalıp → dosya → kritik kural. Yeni mühürde yeni kalıp çıka
 | Üç kipli tema | `Kabuk` temaKipi oto\|acik\|koyu | pvq_tema localStorage; oto varsayılan |
 | Palet/modal kalıbı | Kabuk ⌘K + YeniSantral | kart örtünün ÇOCUĞU + stopPropagation (v2.308 dersi: kardeş çizim örtü altında kalır) |
 
+| Görsel baseline + değişmezler | `web/tests/visual/` + `playwright.config.ts` | `npm run gorsel`; dondur.ts (sabit saat 12:00 TRT + dogrulama stub); baseline azdır (6 PNG); güncelleme `--update-snapshots` + GÖZLE onay + commit'te «görsel baseline güncellendi: <sebep>»; eşik gevşetme yasak |
+
 ## Süreç emsalleri
 
 - Metin seçimi: blok başına 5 kurumsal-anlaşılır seçenek sun, kullanıcı seçer (v2.392).

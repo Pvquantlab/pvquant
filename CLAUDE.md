@@ -22,7 +22,8 @@ gerçek gönderilmez. Ayrıntı: `.claude/skills/pvquant-tasarim/referans/anti-s
 Uygulama → python `.venv/bin/python3 -m pytest` (RLS için `docker compose up -d db`) →
 web `npm test` / `npm run build` (tip kapısı BUDUR — kök tsconfig dosyasız olduğundan
 çıplak `tsc --noEmit` hiçbir şeyi denetlemez, Mühür B dersi) / `npx oxlint src/...`
-(AYRI çıkış kodları; `grep -c` zincir kırar) → CDP doğrulama (`tarama.mjs`; panel için
+(AYRI çıkış kodları; `grep -c` zincir kırar) → görsel regresyon `npm run gorsel`
+(vitrin dokunulduysa; baseline diff'i gözle onaylanır) → CDP doğrulama (`tarama.mjs`; panel için
 dev JWT yerel konteynerde basılır — CANLIDA müşteri kiracısında gezinilmez) → önizleme →
 AÇIK kullanıcı onayı → Türkçe NE/NEDEN/KANIT commit (`git add -A` YASAK) → push → CI
 TARAYICIDAN izlenir (anonim API kota yakar) → sunucu
