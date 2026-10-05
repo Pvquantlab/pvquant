@@ -4,13 +4,13 @@ Görev dosyası: `05addac8-kart-tasarim-gorev.md` (karar kapılı akış, §0 s�
 
 ## Durum
 
-**Şu an:** SON ADIM — İsim turu (ertelenen 3. aşama) ⛔ DUR · kullanıcının isim seçimi bekleniyor (`secenekler/1-isimler.md`). 6. aşama bitti: `onizleme/final.html`, `kod/` (yama dahil) çalışma adlarıyla hazır; isim seçilince yalnız `KARTLAR[].ad` değişir.
+**Şu an:** ✅ TAMAMLANDI — tüm kararlar verildi (tasarım C, isim kümesi A, açıklamalar Ton 1 / K4 Ton 3). Depoya uygulamak için `kod/UYGULAMA.md` (tek komut: `git apply kart-tasarim/kod/degisiklik.patch`).
 
 | Aşama | Durum | Çıktı |
 |---|---|---|
 | 1 · Mevcut durum analizi | ✅ bitti | `analiz.md`, `arastirma-ekran/00–04` |
 | 2 · Sektör araştırması | ✅ bitti (sınırlı: bkz. not) | `arastirma.md` |
-| 3 · İsim turu | ⛔ son adım — seçim bekleniyor | `secenekler/1-isimler.md` |
+| 3 · İsim turu | ✅ A seçildi (son adımda) | `secenekler/1-isimler.md` |
 | 4 · Tasarım turu | ✅ C seçildi | `onizleme/tasarim-A..E.html`, `secenekler/2-tasarimlar.md` |
 | 5 · Açıklama turu | ✅ Ton 1, K4 Ton 3 (öneri, «Sırayla devam et») | `secenekler/3-aciklamalar.md`, `onizleme/aciklama-C.html` |
 | 6 · Uygulama | ✅ bitti, doğrulandı | `onizleme/final.html`, `kod/`, `kod/UYGULAMA.md` |
@@ -27,6 +27,7 @@ Görev dosyası: `05addac8-kart-tasarim-gorev.md` (karar kapılı akış, §0 s�
 | 2026-10-05 | 5 | Beş ton × beş kart = 25 açıklama (`_uret/aciklamalar.mjs`); C içinde ton seçicili önizleme; anayasa süzgeci betikle tarandı. Öneri: Ton 1, K4 için Ton 3. | Claude |
 | 2026-10-05 | 5 | Kullanıcı beş seçeneği tam metin istedi («5 seçenek sun»), ardından ton seçmeden «Sırayla devam et» dedi → öneri (Ton 1, K4 için Ton 3) uygulandı; `aciklamalar.mjs › SECIM` tek satırla değiştirilebilir. | kullanıcı → Claude |
 | 2026-10-05 | 6 | `final.html` + `kod/` (KartCizimleri.tsx, TurkiyePiyasasi.tsx, TextliCizimler.tsx, vitrin-ek.css, yapi.test.ek.ts, degisiklik.patch, UYGULAMA.md). Geçici worktree'de: test 24/24, lint uyarısı değişmedi (16=16), build geçti, gerçek sayfada 1440/900/390 px ekran görüntüsü, konsol temiz, taşma yok. Depo değişmedi. | Claude |
+| 2026-10-05 | 3 | İsim kümesi **A · Ürün nesnesi** seçildi («A ile devam et»); kapsam önerisi §3.0 kesinleşti. Önizleme ve kod zaten A adlarıyla üretildiği için yalnız etiket metinleri güncellendi; `kod/` ve yama içerikçe aynı kaldı (yeniden üretilip karşılaştırıldı). Açık uç: maket penceresinin başlığı «Sapmanın TL kartı» → ayrı iş. | kullanıcı |
 
 ## Önizlemeleri yeniden üretmek
 

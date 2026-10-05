@@ -108,6 +108,6 @@ etiket ile künyeye daha çok yük biniyor).
 
 ## Seçim (kullanıcı dolduracak)
 
-- Kapsam önerisi 3.0: ☐ kabul ☐ değişiklikle kabul: …
-- İsim kümesi: ☐ A ☐ B ☐ C ☐ D ☐ E
-- Tek tek değiştirmek istediğiniz ad (aynı küme dilinde kalarak): …
+- Kapsam önerisi 3.0: kabul (çalışma varsayımı olarak tüm aşamalarda uygulandı; kullanıcı itiraz etmedi)
+- İsim kümesi: **A · Ürün nesnesi** (kullanıcı, 2026-10-05: «A ile devam et») — Teslim programı · Sapma maliyeti · Şablonlu dışa verim · Alarm kütüphanesi · Gün içi aralık
+- Tek tek değişiklik: yok

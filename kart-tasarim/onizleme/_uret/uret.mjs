@@ -6,7 +6,7 @@ import { cProgram, cSapma, cSapmaBuyuk, cAktarim, cAlarm, cAralik } from "./cizi
 
 const CIKIS = new URL("../", import.meta.url);
 
-/** Beş kart — ADLAR ÇALIŞMA ADIDIR (Set A), METİNLER ÇALIŞMA METNİDİR (5. aşamada seçilecek).
+/** Beş kart — ADLAR: isim kümesi A, kullanıcı seçimi (kesin). «govde» 4. aşamanın çalışma metnidir; son metinler aciklamalar.mjs › SECIM.
  *  Her iddia görev §0 yeti listesinden; rakam yalnız «8 kural» (üründe var olan sayı). */
 export const KARTLAR = [
   { id: "k1", ad: "Teslim programı", an: "D‑1 · teslim penceresi", zaman: "Öğleden sonra", cz: cProgram,
@@ -310,7 +310,7 @@ ${TONLAR.map(([n]) => `body:has(#ton-${n}:checked) .c-hucre .metin[data-ton="${n
   });
 }
 
-// ── 6. aşama: son hâl (C + seçilen metinler) ──
+// ── 6. aşama: son hâl (C + seçilen metinler + isim kümesi A, kesin) ──
 function finalC() {
   const hucre = (k, genis) => `<article class="c-hucre${genis ? " c-hucre--genis" : ""}">
 <header class="c-bas"><h3>${k.ad}</h3><p class="an">${k.an}</p></header>
@@ -322,11 +322,11 @@ function finalC() {
   return sayfa("C", "Panel kesiti", "Beş kartın son hâli: tasarım C, seçilen açıklamalar, gerçek «Ufuk» jetonları ve satır içi SVG'ler.", C_CSS, html, [
     ["Tasarım", "C · Panel kesiti (kullanıcı seçimi)."],
     ["Açıklamalar", ton.join(" · ")],
-    ["Adlar", "Çalışma adı (isim kümesi A). İsim seçimi en sonda yapılacak; kod tarafında adlar tek veri alanında."],
+    ["Adlar", "İsim kümesi A · Ürün nesnesi (kullanıcı seçimi): Teslim programı · Sapma maliyeti · Şablonlu dışa verim · Alarm kütüphanesi · Gün içi aralık."],
     ["Depo karşılığı", "kod/ altındaki dosyalar bu sayfayla aynı veriden üretilir; bkz. kod/UYGULAMA.md."],
   ], {
     baslik: "Son hâl · Tasarım C",
-    uyari: "Kart adları çalışma adıdır (isim kümesi A, seçim en sonda). Diyagramlar temsilîdir, sonuç değildir.",
+    uyari: "Son hâl: adlar isim kümesi A (kesin), tasarım C, açıklamalar Ton 1 (K4 için Ton 3). Diyagramlar temsilîdir, sonuç değildir.",
   });
 }
 

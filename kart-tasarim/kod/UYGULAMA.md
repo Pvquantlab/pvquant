@@ -3,9 +3,9 @@
 Bu klasördeki dosyalar depoya **birebir** uygulanır. Depoda değişiklik bu oturumda yapılmadı;
 her şey geçici bir git worktree'sinde uygulanıp doğrulandı (aşağıda §4).
 
-> **Adlar henüz çalışma adıdır** (isim kümesi A: Teslim programı · Sapma maliyeti · Şablonlu dışa
-> verim · Alarm kütüphanesi · Gün içi aralık). İsim seçimi en sona bırakıldı. Seçilince yalnız
-> `TurkiyePiyasasi.tsx` içindeki `KARTLAR[].ad` alanları değişir; başka hiçbir dosya ad taşımaz.
+> **Son seçimler:** tasarım **C · Panel kesiti** · adlar **isim kümesi A** (Teslim programı · Sapma
+> maliyeti · Şablonlu dışa verim · Alarm kütüphanesi · Gün içi aralık) · açıklamalar **Ton 1, K4 için
+> Ton 3**. Adlar yalnız `TurkiyePiyasasi.tsx › KARTLAR[].ad` alanında yaşar.
 
 ## 1. En kısa yol: yama
 
@@ -59,7 +59,8 @@ Böylece veri renk sözleşmesi testle korunur.
 ## 5. Notlar ve açık uçlar
 
 - **Maket penceresi dokunulmadı** (kapsam dışı). İçindeki başlık ve `aria-label` hâlâ «Sapmanın TL
-  kartı» diyor; K2'nin son adı farklı olursa pencere başlığı ile kart adı ayrışır → ayrı işte ele alınmalı.
+  kartı» diyor; K2'nin kesin adı «Sapma maliyeti» olduğundan pencere başlığı ile kart adı ayrışıyor →
+  maket penceresi işinde pencere başlığının da «Sapma maliyeti» yapılması önerilir (bu yamada yok).
 - **Kullanılmayan eski CSS** (`.vt-vin-kart`, `.vt-masalar`, `.vt-v-genis`, `.vt-v-dar`, `.vt-sss-yer .vt-vin`)
   `vitrin.css`'te kaldı; yamaya bilerek alınmadı (kapsam: yalnız beş kart). İsterseniz ayrı bir temizlik
   commit'iyle silinebilir; hiçbir bileşen kullanmıyor.
