@@ -5,11 +5,14 @@ ham veri gezgini ekranları için **uPlot** (lazy-load). visx/D3 yeniden yazım�
 Plotly, AG Charts, Vega-Lite, Lightweight Charts REDDEDİLDİ (gerekçeler:
 `~/Desktop/ges-tasarim-zekasi/03-grafik-kutuphaneleri.md`).
 
-## Sözleşme (Mühür B'de `web/src/lib/grafikTema.ts` olarak gerçekleşir)
+## Sözleşme (`web/src/lib/grafikTema.ts`, Mühür B v2.396'da gerçekleşti)
 
-1. **Tek kayıtlı tema:** koyu + açık iki tema `registerTheme` ile, değerler CSS
-   `--chart-*` jetonlarından okunarak üretilir; geçiş dispose'suz `setTheme`.
-2. **Option fabrikaları:** `eksenX()/eksenY()/izgara()/tooltipSablonu()/disLegend()` —
+1. **Tema = jeton okuyan fabrika katmanı.** `registerTheme`/`setTheme` BİLİNÇLİ kullanılmaz
+   (Mühür B kararı): değerler CSS jetonlarından `renkler(oku)` ile okunur, koyu/açık geçişini
+   `useTema().n` yeniden kurulumu yapar; kayıtlı ECharts teması çifte kaynak olurdu.
+   Bekçi testi `registerTheme(` çağrısını yasaklar (web/test/grafik-tema.test.ts).
+2. **Option fabrikaları:** `renkler(oku)` + `eksenDeger/eksenKategori/eksenYazi` +
+   `tooltipTemel/tooltipEksen` + `TEMEL` —
    her grafik option'ı BUNLARDAN kurulur. Grafik kodunda elle `axisLabel`, `splitLine`,
    `tooltip.backgroundColor`, seri rengi yazmak YASAK (bekçi: grep testi, Mühür B).
 3. **Kapatılan varsayılanlar:** `toolbox` tamamen; varsayılan `color` paleti (bizim
@@ -20,9 +23,10 @@ Plotly, AG Charts, Vega-Lite, Lightweight Charts REDDEDİLDİ (gerekçeler:
    kez yazılır, her grafikte aynı dil (v6 yeniden kullanılabilir custom series).
 5. **Boyut:** `echarts/core` + yalnız kullanılan chart/bileşen importu; tam paket yüklenmez.
 6. **Sarmalayıcı sözleşmesi** (`web/src/lib/EChart.tsx`): init bir kez (dpr≥2);
-   güncelleme `setOption(option, {notMerge:false, lazyUpdate:true})`; resize
-   ResizeObserver (border-box ölçer!); unmount dispose; senkron için `group` prop +
-   `echarts.connect(group)`; tema adı context'ten.
+   güncelleme `setOption(option, {notMerge:true, lazyUpdate:true})` — notMerge:true KALDI
+   (option'lar fabrikalardan tam kurulur, merge eski seriyi sızdırır); resize
+   ResizeObserver (border-box ölçer!); unmount dispose; senkron için `grup` prop +
+   `echarts.connect(grup)`; tema geçişi useTema().n yeniden kurulumuyla.
 
 ## uPlot kuralları
 
