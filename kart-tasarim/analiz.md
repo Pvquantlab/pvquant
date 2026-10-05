@@ -3,8 +3,10 @@
 Kaynak: `web/src/features/vitrin/TurkiyePiyasasi.tsx`, `TextliCizimler.tsx`, `varlik/vinyet-*.svg`,
 `vitrin.css` (satır 500–512, 582–587, 640–700), komşu bölümler `DortAdim.tsx` ve `IsIzgarasi.tsx`.
 Ekran görüntüleri: depodaki vitrin yerelde çalıştırılarak alındı (`?vitrin`, 1440 px ve 390 px):
-`arastirma-ekran/00–04`. Canlı pvquant.com'a bu oturumun ağ politikası izin vermedi; depo
-`main` ile aynı içerikte (v2.392) olduğu için yerel görüntü canlıyla eşdeğer kabul edildi.
+`arastirma-ekran/00–04`. **Canlı site doğrulaması (2026-10-05):** ağ erişimi açıldıktan sonra
+pvquant.com tarayıcıyla gezildi (`arastirma-ekran/01-pvquant-canli-*.jpg`). Canlı TL bölümü, yerelde
+incelenen v2.392 ile birebir aynı: aynı beş ad, aynı metinler, aynı vinyetler (₺ jetonu, `</>`,
+imleç, zil), aynı 3+2 ızgara. Bu analizin tüm tespitleri canlı sayfa için de geçerli.
 
 ## 1.1 Bugünkü beş kart
 

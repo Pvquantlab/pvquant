@@ -141,6 +141,27 @@ zaman çizelgesi dili.
 **Ders →** Tahmin eğrisini ikon yapmak doğru yönde ama süs düzeyinde kalıyor; bizde eğri gerçek
 diyagram. *Kaçınılacak:* aşırı yuvarlak köşe, kademeli yerleşim, «advanced AI stack» dili.
 
+### Beş boyutta karşılaştırma [Z]
+
+Görevin istediği beş boyut (isimlendirme · ikon/şekil · hiyerarşi · tipografi/boşluk · renk), her
+marka için ekran görüntülerinden okunduğu hâliyle. Son sütun: PVQuant için çıkan karar.
+
+| Marka | İsimlendirme | İkon / şekil dili | Bilgi hiyerarşisi | Tipografi / boşluk | Renk disiplini | PVQuant'a |
+|---|---|---|---|---|---|---|
+| Stripe | ürün adı + fayda cümlesi | gerçek arayüz parçası; süs ikon yok | iki tonlu başlık → görsel → etiket–değer dizisi | geniş beyaz alan, ince çerçeve çizgileri | mor yalnız eylemde; gradyan yalnız hero'da | ✅ çizgili ızgara, ürün parçası |
+| Linear | ürün kavramı (Intake, Planning) | tek renkli izometrik çizgi çizim, arayüz kesiti | mono «FIG 0.x» → ad → 2 satır | koyu zemin, sütunlar 1 px ayraçlı, kutusuz | neredeyse tek renk | ✅ C'nin doğrudan örneği |
+| Vercel | sonuç cümlesi + «Features» listesi | gerçek ürün penceresi | başlık → müşteri sonucu → düz özellik listesi | siyah-beyaz, bol boşluk | renk yok | ✅ teknik ayrıntı listede/künyede |
+| Datadog | ürün adı; ürün sayfasında fayda başlığı | gösterge paneli görüntüsü; bantlarda fotoğraf | etiket → başlık → gövde → «LEARN MORE» | kalın sans, sıkı | mor gradyan bantlar | ⚠️ hiyerarşi iyi, gradyan/«AI-Powered» kaçın |
+| Databricks | uydurma alt marka (Lakebase, Genie) | renkli marka ikonları (süs) | mono büyük harf etiket → ad + ok → tek cümle | koyu kart, sıkı ızgara | mercan aksan ikonlarda | ⚠️ mono etiket al, alt marka/ikon alma |
+| Hex | sorunla açılan başlık | benekli zeminde ürün parçası, logolar, izometrik çizim | renkli mono etiket → başlık → gövde → düğme | sıkı grotesk başlık, çerçeveli sayfa | her etikete ayrı renk (anlamsız) | ⚠️ benek zemini akraba; renkli etiket alma |
+| Modo | ürün nesnesi (Bankable Forecasts) | **ürünün verisi**: tahmin grafiği, endeks satırları | veri parçası → ad + ↗ → tek cümle | serif gövde, sakin, bol boşluk | renk yalnız değişim oklarında (veri anlamı) | ✅ en güçlü örnek: görsel = veri |
+| Kpler | fiil etiketi + fayda başlığı | koyu veri görüntüsü zeminde | fiil (Monitor/Understand/Act) → başlık | yuvarlak sans, iki tonlu başlık | mercan yalnız eylemde | ✅ iş akışı etiketleri (bizde zaman) |
+| Solargis | iş sonucu başlığı | kırmızı süs çizgi ikon | ikon + başlık → gövde → «Explore» | eşit altılı ızgara, sıkı | kırmızı ikon ve bağlantıda | ❌ eski kartlarımızın kalıbı |
+| Solcast | kategori adı | stok fotoğraf | fotoğraf → ortalanmış başlık → gövde | ortalanmış metin, gölgeli kutu | yeşil eylemde | ❌ stok fotoğraf, ortalama, gölge |
+| Amperon | iş alanı adı (Power markets trading) | stok fotoğraf | ad → gövde → **etiket–değer satırları** → bağlantı | ince ayraçlı satırlar | mavi değerlerde | ✅ künye kalıbı; ❌ kaynaksız sayılar |
+| Aurora | «X, not Y» fayda başlığı | kare çerçeveli küçük çizgi ikon | ikon → başlık → somut gövde | koyu, noktalı zemin | mor eylemde | ⚠️ somut gövde al; ikon alma |
+| Dexter | yetenek adı (Scalable API) | ince çizgi ikon (tahmin eğrisi) | ikon → serif başlık → gövde | ≈32 px köşe, kademeli kartlar | açık camgöbeği kart zemini | ❌ aşırı yuvarlak, «AI stack» dili |
+
 ## 2.2 Sentez — beş ders (ziyaretlerle güncellendi)
 
 1. **Ad = ürünün nesnesi ya da yaptığı iş; slogan değil.** Modo («Bankable Forecasts»), Databricks,
