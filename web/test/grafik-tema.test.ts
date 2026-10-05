@@ -7,8 +7,14 @@ import { readFileSync } from "node:fs";
 
 const oku = (yol: string) => readFileSync(new URL(yol, import.meta.url), "utf8");
 
-// fabrikalara geçmiş dosyalar (Mühür C adayları: Santralim, Cubuklar, Aylik, Digerleri)
-const GECENLER = ["../src/features/sayfalar/Dogruluk.tsx"];
+// fabrikalara geçmiş dosyalar — ECharts kullanan TÜM dosyalar geçti (Mühür C, v2.397)
+const GECENLER = [
+  "../src/features/sayfalar/Dogruluk.tsx",
+  "../src/features/sayfalar/Aylik.tsx",
+  "../src/features/sayfalar/Digerleri.tsx",
+  "../src/features/santralim/Cubuklar.tsx",
+  "../src/features/santralim/Santralim.tsx",
+];
 
 // elle görünüm kurmanın imzaları — fabrika varken bunları yazmak yasak
 const YASAK: [RegExp, string][] = [

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { EChartsOption } from "echarts";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
+import { renkler, eksenYazi, eksenDeger, eksenKategori, TEMEL } from "../../lib/grafikTema";
 import { api, rolum, RaporDenetimHata, type DenetimBulgusu, EslemeHatasi, type EslemeVerisi,
          type ScadaOnizleme, type ScadaKayit,
          type KosuSatiri , CihazBazliHatasi} from "../../api/client";
@@ -620,34 +621,31 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
       const o = Math.abs(once), so = Math.abs(sonra);
       const d = so - o;
       const iyi = d < 0;
-      const soluk = oku("--soluk"), mono = oku("--mono"), izgara = oku("--izgara");
-      const marka = oku("--marka");
+      const r = renkler(oku);
       const et = (v: number) => `%${sayiTr(v, 1)}`;
       return {
-        grid: { left: 44, right: 10, top: 30, bottom: 26 }, animation: false,
-        xAxis: { type: "category", data: ["Fizik", "Kalibrasyon", "Kalibre"],
-          axisTick: { show: false }, axisLine: { show: false },
-          axisLabel: { color: oku("--ikincil"), fontFamily: mono, fontSize: 12.5 } },
-        yAxis: { type: "value", splitLine: { lineStyle: { color: izgara } },
+        ...TEMEL, grid: { left: 44, right: 10, top: 30, bottom: 26 },
+        xAxis: eksenKategori(r, ["Fizik", "Kalibrasyon", "Kalibre"], {
           axisLine: { show: false },
+          axisLabel: eksenYazi(r, 12.5, { color: r.ikincil }) }),
+        yAxis: eksenDeger(r, { axisLine: { show: false },
           min: +(Math.min(o, so) * 0.9).toFixed(1),
           max: +(Math.max(o, so) * 1.12).toFixed(1),
-          axisLabel: { color: soluk, fontFamily: mono, fontSize: 11,
-                       formatter: (v: number) => `%${sayiTr(v, 1)}` } },
+          axisLabel: eksenYazi(r, 11, { formatter: (v: number) => `%${sayiTr(v, 1)}` }) }),
         series: [
           { type: "bar", stack: "s", barMaxWidth: 44, silent: true,
             itemStyle: { color: "transparent" },
             data: [0, Math.min(o, so), 0] },
           { type: "bar", stack: "s", barMaxWidth: 44,
-            label: { show: true, position: "top", fontFamily: mono,
-              fontSize: 13, fontWeight: 600, color: oku("--metin"),
+            label: { show: true, position: "top", fontFamily: r.mono,
+              fontSize: 13, fontWeight: 600, color: r.metin,
               formatter: (pr: { dataIndex: number }) =>
                 [et(o), `${d >= 0 ? "+" : ""}${sayiTr(d, 1)} puan`, et(so)][pr.dataIndex] },
             itemStyle: { borderRadius: [2, 2, 0, 0] },
             data: [
-              { value: o, itemStyle: { color: marka } },
-              { value: Math.abs(d), itemStyle: { color: iyi ? oku("--chart-p50-future") : oku("--uyari") } },
-              { value: so, itemStyle: { color: marka } },
+              { value: o, itemStyle: { color: r.marka } },
+              { value: Math.abs(d), itemStyle: { color: iyi ? r.tahmin : r.uyari } },
+              { value: so, itemStyle: { color: r.marka } },
             ] },
         ],
       };

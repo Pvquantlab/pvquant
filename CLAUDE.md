@@ -20,8 +20,10 @@ gerçek gönderilmez. Ayrıntı: `.claude/skills/pvquant-tasarim/referans/anti-s
 ## Mühür ritüeli (özet)
 
 Uygulama → python `.venv/bin/python3 -m pytest` (RLS için `docker compose up -d db`) →
-web `npm test` / `npx tsc --noEmit` / `npm run build` / `npx oxlint src/features/...`
-(AYRI çıkış kodları; `grep -c` zincir kırar) → CDP doğrulama (`tarama.mjs`) → önizleme →
+web `npm test` / `npm run build` (tip kapısı BUDUR — kök tsconfig dosyasız olduğundan
+çıplak `tsc --noEmit` hiçbir şeyi denetlemez, Mühür B dersi) / `npx oxlint src/...`
+(AYRI çıkış kodları; `grep -c` zincir kırar) → CDP doğrulama (`tarama.mjs`; panel için
+dev JWT yerel konteynerde basılır — CANLIDA müşteri kiracısında gezinilmez) → önizleme →
 AÇIK kullanıcı onayı → Türkçe NE/NEDEN/KANIT commit (`git add -A` YASAK) → push → CI
 TARAYICIDAN izlenir (anonim API kota yakar) → sunucu
 `ssh root@178.18.206.130 "cd /opt/pvquant && git pull && docker compose build web && docker compose up -d"`

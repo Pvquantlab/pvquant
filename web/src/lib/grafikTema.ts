@@ -29,6 +29,11 @@ export function renkler(oku: Oku) {
     tahmin: oku("--chart-p50-future"),      // mavi = tahmin (sözleşme)
     gercek: oku("--chart-actual"),          // amber = YALNIZ gerçekleşen
     taban: oku("--chart-baseline"),
+    uyari: oku("--uyari"),                  // kötüleşme/uyarı — amber DEĞİL
+    // çubuk dili (Cubuklar/Aylik): vurgu ayı, eksik-kapsam hayaleti
+    vurgu: oku("--cubuk-vurgu"), eksik: oku("--ch-eksik"), notrR: oku("--notr-r"),
+    // güneş geometrisi mevsim mürekkepleri (Santralim gy)
+    gyYaz: oku("--ch-gy-yaz"), gyEkinoks: oku("--ch-gy-eki"), gyKis: oku("--ch-gy-kis"),
   };
 }
 export type Renkler = ReturnType<typeof renkler>;

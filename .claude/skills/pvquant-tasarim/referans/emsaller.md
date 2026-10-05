@@ -23,7 +23,8 @@ Her satır: kalıp → dosya → kritik kural. Yeni mühürde yeni kalıp çıka
 |---|---|---|
 | Hero tahmin grafiği (utility-grade) | `sayfalar/ProductionForecastChart.tsx` | D2 tek-kaynak pencere; D3 now-noktası; V1 dar bant (sıfıra demirli dağ YASAK); V2 AC limiti düz kesik |
 | İmza bant motifi | `lib/BandImza.tsx` + `pdf.py _imza_bandi` | AYNI kontrol noktaları iki ortamda; renkler var(--chart-*) |
-| İnce EChart sarmalayıcı | `lib/EChart.tsx` | sözleşme grafik-tema.md'de; tema fabrikaları Mühür B'de |
+| İnce EChart sarmalayıcı | `lib/EChart.tsx` | sözleşme grafik-tema.md'de; lazyUpdate + grup/connect |
+| Grafik tema fabrikaları | `lib/grafikTema.ts` | TÜM ECharts dosyaları geçti (v2.396-397); bekçi web/test/grafik-tema.test.ts; yeni grafik fabrikasız yazılamaz |
 | KPI/çip dili | `santralim/*`, Kpi bileşeni | uyari tonu amber DEĞİL; değer nowrap; tire disiplini (`?? 0` yasak) |
 | Ayar/form dili | `index.css .ayar/.girdi` | etikette uppercase yok (birim bozulur) |
 | Tablo oluğu | `table.veri` | `th+th/td+td{padding-left}` — oluk ilk sütun dolgusuyla OLMAZ (v2.309) |

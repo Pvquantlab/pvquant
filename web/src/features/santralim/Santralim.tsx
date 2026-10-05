@@ -6,6 +6,7 @@ import { api } from "../../api/client";
 import type { SantralOzeti, TahminSerisi, GunesYolu, SaatAyMatrisi } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
+import { renkler, eksenYazi, eksenDeger, tooltipTemel, TEMEL } from "../../lib/grafikTema";
 import { Kart, Sayfa, sayiTr, sayiTrN, gucTr, enerjiTr, isiTonu, isiMetni } from "../sayfalar/parcalar";
 import ProductionForecastChart from "../sayfalar/ProductionForecastChart";
 import { t0Hesapla, simdiDegeri, simdiGercegi, dilimle } from "../sayfalar/tahminPencere";
@@ -177,12 +178,11 @@ export function Santralim({ plantId }: { plantId: string }) {
   const piMetin = (t: number) => isiMetni(t, koyuTema);
 
   const gyOption = useMemo(() => {
-    const soluk = oku("--soluk"), kenar = oku("--kenar"), mono = oku("--mono");
-    const izgara = oku("--izgara");
+    const r = renkler(oku);
     const renk: Record<string, string> = {  // v2.196: sabit hex -> D tokenlari
-      yaz: oku("--ch-gy-yaz") || oku("--marka"),
-      ekinoks: oku("--ch-gy-eki") || "#6B7570",
-      kis: oku("--ch-gy-kis") || "#8A8478" };
+      yaz: r.gyYaz || r.marka,
+      ekinoks: r.gyEkinoks || "#6B7570",
+      kis: r.gyKis || "#8A8478" };
     const ad: Record<string, string> = {
       yaz: "Yaz gündönümü", ekinoks: "Ekinoks", kis: "Kış gündönümü" };
     // v2.201: D cizim dili — yay karakterleri ayrisir (yaz duz, ekinoks
@@ -201,14 +201,14 @@ export function Santralim({ plantId }: { plantId: string }) {
       if (pts.length >= 2)
         saatDikmeleri.push({ type: "line" as const, silent: true, symbol: "none",
           z: 1, tooltip: { show: false },
-          lineStyle: { color: izgara, width: 1, type: [2, 3] }, data: pts });
+          lineStyle: { color: r.izgara, width: 1, type: [2, 3] }, data: pts });
     }
     const tepeEtiketleri = egriler.map((e) => {
       const apex = e.nokta.reduce((a, b) => (b[1] > a[1] ? b : a), e.nokta[0]);
       return { type: "scatter" as const, silent: true, symbolSize: 0.1, z: 5,
         tooltip: { show: false }, itemStyle: { color: "transparent" },
         label: { show: true, position: "bottom" as const, distance: 10,
-          color: renk[e.ad], fontFamily: mono, fontSize: 11,
+          color: renk[e.ad], fontFamily: r.mono, fontSize: 11,
           formatter: `${(ad[e.ad] ?? e.ad).toLowerCase()} · ${Math.round(apex[1])}°` },
         data: [apex] };
     });
@@ -222,10 +222,10 @@ export function Santralim({ plantId }: { plantId: string }) {
           itemStyle: { color: renk[e.ad] }, data: e.nokta },
         { name: ad[e.ad] ?? e.ad, type: "scatter" as const,
           symbolSize: e.ad === "yaz" ? 5 : 4, z: 4,
-          itemStyle: { color: e.ad === "yaz" ? oku("--amber") : renk[e.ad] },
+          itemStyle: { color: renk[e.ad] },   // v2.397: amber kalktı — amber YALNIZ gerçekleşen (sözleşme)
           tooltip: { show: true },
           label: { show: e.ad === "yaz", position: "top" as const,
-            color: soluk, fontSize: 9.5, fontFamily: mono,
+            color: r.soluk, fontSize: 9.5, fontFamily: r.mono,
             formatter: (pr: { value: [number, number, number] }) =>
               `${pr.value[2]}:00` },
           data: e.saat },
@@ -233,31 +233,29 @@ export function Santralim({ plantId }: { plantId: string }) {
       ...tepeEtiketleri,
     ];
     return {
-      grid: { left: 60, right: 16, top: 26, bottom: 46 }, animation: false,
-      tooltip: { backgroundColor: oku("--kart"), borderColor: kenar,
-        borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 12 },
+      ...TEMEL, grid: { left: 60, right: 16, top: 26, bottom: 46 },
+      tooltip: tooltipTemel(r, {
         formatter: (p0: unknown) => {
           const p1 = p0 as { seriesName: string; value: number[] };
           const saat = p1.value.length > 2 ? ` · ${p1.value[2]}:00` : "";
           return `${p1.seriesName}${saat}<br/>azimut ${Math.round(p1.value[0])}° · yükseklik ${Math.round(p1.value[1])}°`;
-        } },
-      xAxis: { type: "value", min: 45, max: 315, name: "[panel yönü — azimuth]",
+        } }),
+      xAxis: eksenDeger(r, { min: 45, max: 315, name: "[panel yönü — azimuth]",
         nameLocation: "middle", nameGap: 30,
         // v2.202: tikler 45'lik adimla — 90/180/270 tam duser, ana yonler okunur
         interval: 45,
-        nameTextStyle: { color: soluk, fontFamily: mono, fontSize: 10.5 },
-        axisLabel: { color: soluk, fontFamily: mono, fontSize: 10.5,
+        nameTextStyle: { color: r.soluk, fontFamily: r.mono, fontSize: 10.5 },
+        axisLabel: eksenYazi(r, 10.5, {
           formatter: (v: number) =>
             ({ 90: "Doğu · 90°", 180: "Güney · 180°", 270: "Batı · 270°"
-             } as Record<number, string>)[v] ?? `${v}°` },
+             } as Record<number, string>)[v] ?? `${v}°` }),
         splitLine: { show: false },
-        axisLine: { lineStyle: { color: kenar } } },
-      yAxis: { type: "value", min: 0, max: 90, name: "Güneş yüksekliği [°]",
+        axisLine: { lineStyle: { color: r.kenar } } }),
+      yAxis: eksenDeger(r, { min: 0, max: 90, name: "Güneş yüksekliği [°]",
         interval: 30,
         nameLocation: "middle", nameGap: 36, nameRotate: 90,
-        nameTextStyle: { color: soluk, fontFamily: mono, fontSize: 10.5 },
-        axisLabel: { color: soluk, fontFamily: mono, fontSize: 10.5 },
-        splitLine: { lineStyle: { color: izgara } }, axisLine: { show: false } },
+        nameTextStyle: { color: r.soluk, fontFamily: r.mono, fontSize: 10.5 },
+        axisLabel: eksenYazi(r, 10.5), axisLine: { show: false } }),
       series: seriler,
     } as EChartsOption;  // v2.148: üretim derlemesi literal daraltması
   // eslint-disable-next-line react-hooks/exhaustive-deps
