@@ -998,15 +998,18 @@
 /* DOM'da ad önce (başlık sırası), görselde etiket üstte */
 .vt-kesit__bas { display: flex; flex-direction: column-reverse; gap: 6px; }
 .vt-kesit__bas .vt-h3 { font-size: 19px; line-height: 26px; }
-.vt-kesit__etiket { font: 500 11.5px/16px var(--vt-mono); letter-spacing: 0.07em; text-transform: uppercase; color: var(--vt-ucuncul); }
+.vt-kesit__etiket { display: flex; align-items: center; gap: 7px; font: 500 11.5px/16px var(--vt-mono); letter-spacing: 0.07em; text-transform: uppercase; color: var(--vt-ucuncul); }
+/* durum noktası: modül «panelde canlı» dili — mürekkep, veri renklerine dokunmaz */
+.vt-kesit__etiket::before { content: ""; flex: none; width: 5px; height: 5px; border-radius: 50%; background: var(--vt-metin); opacity: .38; }
 .vt-kesit__cizim { margin: 18px 0 16px; line-height: 0; }
 .vt-kesit__cizim svg { display: block; width: 100%; height: auto; }
 .vt-kesit__cizim svg * { vector-effect: non-scaling-stroke; }
 .vt-kesit__hucre--genis .vt-kesit__cizim { grid-column: 2; grid-row: 1 / 4; margin: 0; align-self: center; }
 .vt-kesit__hucre .vt-kart__metin { font-size: 15px; line-height: 23px; }
 .vt-kesit__hucre--genis .vt-kart__metin { margin-top: 10px; }
-.vt-kesit__kunye { margin: 14px 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
-.vt-kesit__kunye li { font: 400 12px/1 var(--vt-mono); color: var(--vt-metin); padding: 6px 8px; border: 1px solid var(--vt-kenar); border-radius: 4px; }
+/* künye hücre tabanına yaslanır: kısa kartta boşluk metin altında değil çipler üstünde toplanır */
+.vt-kesit__kunye { margin: auto 0 0; padding: 14px 0 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+.vt-kesit__kunye li { font: 400 12px/1 var(--vt-mono); color: var(--vt-metin); padding: 6px 8px; background: rgba(11, 27, 60, .035); border: 1px solid var(--vt-kenar); border-radius: 4px; }
 @media (max-width: 1080px) {
   .vt-kesit { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .vt-kesit__hucre, .vt-kesit__hucre--genis { grid-column: span 1; }
