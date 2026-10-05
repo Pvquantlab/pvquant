@@ -56,8 +56,8 @@ jobs:
           cd reporting/html && rm -rf cikti && python3 uret.py > /dev/null
           echo "239843c79fbfbcb2ce9d09b21d9a038e  cikti/PVQuant_Konya_GES_RAPOR_16sayfa.html" | md5sum -c -   # v2.269 künye
 
-  # Vitrin bandının "700 otomatik test · her mühürde tamamı koşar" sözünün web yarısı (v2.388):
-  # python takımı üstteki iş, 18 arayüz testi + build + lint bu iş. Söz, CI olmadan desteksizdi.
+  # Vitrin bandının "700 otomatik test · her sürümde tamamı koşar" sözünün web yarısı (v2.388):
+  # python takımı üstteki iş, arayüz test takımı + build + lint bu iş (sayı web/test altında yaşar).
   web:
     runs-on: ubuntu-latest
     steps:

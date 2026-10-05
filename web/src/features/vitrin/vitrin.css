@@ -834,13 +834,12 @@
 .vt-egri__im-et { font-weight: 500; fill: var(--vt-metin); }
 /* disiplin bandı (R27): gece bandının altında ince, beyaz, çift çizgili kanıt şeridi */
 .vt-disiplin { padding-block: 56px; background: var(--vt-zemin); border-bottom: 1px solid var(--vt-kenar-soguk); }
-.vt-disiplin .vt-h3 { max-width: 28ch; }
 .vt-disiplin__izgara { margin-top: 24px; gap: 32px; }
 .vt-disiplin__deger { font: 500 40px/44px var(--vt-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
 .vt-disiplin__etiket { margin-top: 6px; font-weight: 600; font-size: 15px; line-height: 21px; }
 .vt-disiplin__alt { margin-top: 2px; color: var(--vt-ikincil); font-size: 13.5px; line-height: 19px; }
 .vt-disiplin__kunye { margin-top: 26px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
-.vt-disiplin__bag { min-height: 0; font-size: 12px; }
+.vt-disiplin__bag { min-height: 0; font-size: 12.5px; align-self: flex-start; }
 @media (max-width: 600px) {
   .vt-disiplin { padding-block: 44px; }
   .vt-disiplin__izgara { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 20px; }
@@ -931,3 +930,70 @@
    DOM sırası (düğme → mikro → TL bağı) geçerli olur; 440px sütunda yan yana zaten sığmıyordu */
 .vt-hero__eylem { flex-direction: column; align-items: flex-start; gap: 14px; }
 .vt-hero__mikro { margin-top: -2px; }
+
+/* ═══ CİLA-ek 8: rakip analizi dalga 2 — Ö5b/Ö6/Ö7/Ö9/Ö10/Ö11/Ö13/Ö14 ═══ */
+/* Ö7+Ö14 — disiplin bandı: başlık hiyerarşisi onarıldı (20px h2 kırıktı — bağımsız puanlayıcı),
+   rakam başına anlam cümlesi + kanıt bağlantısı + dipnot */
+.vt-disiplin__baslik { margin: 0; font: 600 26px/32px var(--vt-baslik); letter-spacing: -0.4px; color: var(--vt-metin); max-width: 30ch; }
+.vt-disiplin__oge { display: flex; flex-direction: column; align-items: flex-start; }
+.vt-disiplin__dip { font: 500 11px/1 var(--vt-mono); color: var(--vt-ikincil); margin-left: 2px; }
+.vt-disiplin__dipnot { color: var(--vt-ucuncul); }
+/* Ö9 — ayna tablosu: sol sütun soru (gri), sağ sütun ürün gerçeği (mürekkep); kart dili değil ince satırlar */
+.vt-ayna { margin-top: 40px; border-top: 1px solid var(--vt-kenar-soguk); }
+.vt-ayna__bas, .vt-ayna__satir { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 24px; padding: 13px 0; border-bottom: 1px solid var(--vt-kenar-soguk); }
+.vt-ayna__bas { font: 500 11.5px/1.4 var(--vt-mono); letter-spacing: 0.07em; text-transform: uppercase; color: var(--vt-ucuncul); }
+.vt-ayna__soru { color: var(--vt-ikincil); font-size: 15px; line-height: 22px; }
+.vt-ayna__cevap { color: var(--vt-metin); font-size: 15px; line-height: 22px; font-weight: 500; }
+.vt-ayna__cevap::before { content: "✓\00a0\00a0" / ""; color: var(--vt-metin); }
+@media (max-width: 600px) {
+  .vt-ayna__bas, .vt-ayna__satir { grid-template-columns: 1fr; gap: 4px; }
+}
+/* Ö11 — dört adım zinciri: ≥1241 tek sıra, kartlar arasında mürekkep ok; geri dönen ok bilerek yok */
+.vt-adim__ok { display: none; }
+@media (min-width: 1241px) {
+  .vt-adimlar { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr); gap: 18px; }
+  .vt-adim__ok { display: block; align-self: center; font: 500 22px/1 var(--vt-mono); color: var(--vt-ikincil); }
+}
+.vt-adim__cikis { max-width: 72ch; }
+/* Ö10 — grafikte «tahmin → gerçekleşen» anı: amber çizgi, noktalar ve ıskalama notu BİR KEZ sonradan
+   çizilir (sınıf eklenmezse her şey baştan görünür; hareket azaltmada sınıf hiç eklenmez) */
+.vt-egri__gercek { stroke-dasharray: 1; }   /* pathLength=1 ile tek parça; dashoffset doğal 0 = tam çizgi */
+.vt-egri--oynat .vt-egri__gercek { animation: vt-egri-ciz 1.1s var(--vt-ease-cik) 0.25s backwards; }
+.vt-egri--oynat .vt-egri__nokta { animation: vt-egri-bel 0.4s ease-out 1.15s backwards; }
+.vt-egri--oynat .vt-egri__et--vurgu,
+.vt-egri--oynat .vt-egri__kilavuz { animation: vt-egri-bel 0.45s ease-out 1.45s backwards; }
+@keyframes vt-egri-ciz { from { stroke-dashoffset: 1; } }
+@keyframes vt-egri-bel { from { opacity: 0; } }
+@media print { .vt-egri--oynat .vt-egri__gercek, .vt-egri--oynat .vt-egri__nokta,
+  .vt-egri--oynat .vt-egri__et--vurgu, .vt-egri--oynat .vt-egri__kilavuz { animation: none !important; } }
+/* Ö6 — 375'te grafik ilk ekrana: sol → GRAFİK → sahne → künye; sahne grafiğin arkasına üstten girer */
+@media (max-width: 1080px) {
+  .vt-hero--a .vt-hero__pencere { order: 2; margin: 14px auto 0; }
+  .vt-hero--a .vt-hero__sol { padding-top: 24px; }
+  .vt-hero--a .vt-hero__sahne { order: 3; margin-top: -148px; }
+  .vt-hero--a .vt-hero__kunye { order: 4; padding-top: 10px; }
+}
+/* zincir kipinde kart etiketi tek satır kalsın */
+@media (min-width: 1241px) {
+  .vt-adimlar .vt-panelde .vt-bag, .vt-adimlar .vt-panelde__et { font-size: 13.5px; white-space: nowrap; }
+}
+/* inceleme dalgası (M7): dar ekranda TL bağı grafiğin ALTINDA (fold kazancı ~54px); ≥601'de alttaki kopya gizli */
+.vt-hero__tl-alt { display: none; }
+@media (max-width: 600px) {
+  .vt-hero__eylem > .vt-bag { display: none; }
+  .vt-hero__tl-alt { display: inline-flex; margin: 10px var(--vt-yan) 0; }
+}
+/* ayna: onay imi SR'a okunmaz; dar ekranda ikinci sütun başlığı yalnız GÖRSEL gizlenir */
+.vt-srgizli { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+/* zincir ok'ları belirme sırasını kaydırmasın: kart gecikmeleri yeniden kurulur */
+.vt .vt-adim__ok { animation: none !important; }
+.vt [data-canlan].is-acildi:not(.vt-serit) .vt-adimlar > .vt-adim:nth-of-type(2) { animation-delay: 60ms; }
+.vt [data-canlan].is-acildi:not(.vt-serit) .vt-adimlar > .vt-adim:nth-of-type(3) { animation-delay: 120ms; }
+.vt [data-canlan].is-acildi:not(.vt-serit) .vt-adimlar > .vt-adim:nth-of-type(4) { animation-delay: 180ms; }
+/* disiplin: bağlar sütunlar arasında aynı hizada; dipnot ayrı satır */
+.vt-disiplin__bag { margin-top: auto; padding-top: 8px; }
+/* ayna: dar ekranda ikinci sütun başlığı yalnız görsel gizlenir (SR başlığı korur) */
+@media (max-width: 600px) {
+  .vt-ayna__bas > :last-child { position: absolute; width: 1px; height: 1px; clip: rect(0 0 0 0); overflow: hidden; }
+}

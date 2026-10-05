@@ -64,7 +64,7 @@ export function Yontem() {
             <div className="vt-izgara">
               <div className="vt-gece-kart">
                 <h3 className="vt-h3">Aralık gerçek hatayla ayarlanır</h3>
-                <p>İyimser–kötümser bandın genişliği varsayımla değil, santralın geçmiş sınav sonuçlarıyla kalibre edilir ve tahmin ufkuna göre değişir: yarın için dar, üç gün sonrası için daha geniştir. Kapsama hedeften saparsa bant otomatik olarak daraltılır ya da genişletilir.</p>
+                <p>İyimser–kötümser bandın genişliği varsayımla değil, santralin geçmiş sınav sonuçlarıyla kalibre edilir ve tahmin ufkuna göre değişir: yarın için dar, üç gün sonrası için daha geniştir. Kapsama hedeften saparsa bant otomatik olarak daraltılır ya da genişletilir.</p>
               </div>
               <div className="vt-gece-kart">
                 <h3 className="vt-h3">Yetersiz veriyle karne yayımlanmaz</h3>

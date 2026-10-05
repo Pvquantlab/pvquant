@@ -107,7 +107,7 @@ test("Açık karne: yöntem kutusu tek kaynaktan; yinelenen KPI kutusu yok", () 
   assert.doesNotMatch(karne, /\?\? 80/);
 });
 
-test("başvuru: hitap 'siz', bal küpü yerinde, uç aynı; SSS beş soru", () => {
+test("başvuru: hitap 'siz', bal küpü yerinde, uç aynı; SSS altı soru (Ö13 güven sorusu dahil)", () => {
   const basvuru = oku("../../src/features/vitrin/Basvuru.tsx");
   assert.match(basvuru, /Karnenizi başlatın\./);       // eylem sözlüğü (Ö2): her yüzeyde tek ad
   // eski eylem adı hiçbir vitrin yüzeyine geri dönmesin (inceleme: /yontem'de atlanmıştı)
@@ -123,5 +123,14 @@ test("başvuru: hitap 'siz', bal küpü yerinde, uç aynı; SSS beş soru", () =
     .filter((g) => g.isFile())
     .map((g) => readFileSync(new URL(g.name, vitrinKok), "utf8")).join("\n");
   assert.doesNotMatch(tum, /Kendi karneni başlat/);
-  assert.equal((oku("../../src/features/vitrin/Sss.tsx").match(/^\s*\["/gm) ?? []).length, 5);
+  assert.equal((oku("../../src/features/vitrin/Sss.tsx").match(/^\s*\["/gm) ?? []).length, 6);
+  assert.match(oku("../../src/features/vitrin/Sss.tsx"), /Modelinize neden güvenelim\?/);
+});
+
+test("disiplin dipnotu otomasyon iddia etmez; sayım kuralını açıkça söyler (inceleme C1)", () => {
+  const db = oku("../../src/features/vitrin/DisiplinBandi.tsx");
+  assert.doesNotMatch(db, /elle yazılmaz|koşusundan okunur|CI'dan okunur/);
+  assert.match(db, /aşağı yuvarlanmış/);
+  assert.match(db, /id="vt-dipnot-1"/);
+  assert.match(db, /href=\{hedef\}|#vt-dipnot-1/);
 });

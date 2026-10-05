@@ -20,7 +20,7 @@ const PANELLER: readonly Panel[] = [
       ] },
       { ad: "Kanıt", rozet: "kanit", ogeler: [
         { ad: "Doğruluk karnesi", aciklama: "Tahmin her gece gerçekleşenle karşılaştırılır; sonuç değiştirilmez", ikon: "karne" },
-        { ad: "Kalibrasyon", aciklama: "Üretim verinizle santralınıza özgü model; kayıp ağacı ve güç matrisi", ikon: "kalibrasyon" },
+        { ad: "Kalibrasyon", aciklama: "Üretim verinizle santralinize özgü model; kayıp ağacı ve güç matrisi", ikon: "kalibrasyon" },
       ] },
       { ad: "Operasyon", rozet: "operasyon", ogeler: [
         { ad: "Portföy", aciklama: "Bütün santralleriniz tek tabloda; sapma ve uyarı öne çıkar", ikon: "portfoy" },
@@ -36,7 +36,7 @@ const PANELLER: readonly Panel[] = [
   {
     ad: "Doğruluk", alt: ["Açık karneye git", "#karne"], gruplar: [
       { ad: "Kanıt", rozet: "kanit", ogeler: [
-        { ad: "Açık karne", aciklama: "Referans santralın son sınav günleri: ortalama sapma, basit yönteme fark, bant kapsaması", hedef: "#karne" },
+        { ad: "Açık karne", aciklama: "Referans santralin son sınav günleri: ortalama sapma, basit yönteme fark, bant kapsaması", hedef: "#karne" },
         { ad: "Yöntem ve doğrulama", aciklama: "Sayılar nasıl hesaplanır; her gece aynı kural", hedef: "/yontem" },
       ] },
       { ad: "Okuma", rozet: "kanit", ogeler: [

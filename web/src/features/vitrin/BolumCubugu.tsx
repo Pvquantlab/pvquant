@@ -26,6 +26,8 @@ export function BolumCubugu() {
         }
         const sirali = BOLUMLER.map(([bolumId]) => bolumId).filter((bolumId) => bantta.has(bolumId));
         if (sirali.length > 0) setAktif(sirali[sirali.length - 1]);
+        // sayfa başına dönüldüyse (hiçbir bölüm bantta değil) eski işaret asılı kalmasın (analiz hijyen 6)
+        else if (window.scrollY < 300) setAktif(null);
       },
       { rootMargin: "-124px 0px -55% 0px", threshold: 0 },   // 64px üst çubuk + 45px çubuk + pay
     );

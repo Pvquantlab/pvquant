@@ -34,7 +34,7 @@ export function Altbilgi({ onPanel }: { onPanel?: () => void }) {
         <div className="vt-alt__izgara">
           <div>
             <a className="vt-logo" href="/"><GunesLogo />PVQuant</a>
-            <p className="vt-alt__tanim">Güneş santralları için saatlik üretim tahmini — fizikten başlar, geçmişinizden öğrenir, her gece kendini sınar.</p>
+            <p className="vt-alt__tanim">Güneş santralleri için saatlik üretim tahmini — fizikten başlar, geçmişinizden öğrenir, her gece kendini sınar.</p>
           </div>
           <nav aria-label="Sayfa">
             <h2 className="vt-alt__baslik"><Rozet grup="notr" ikon="gunes" />Sayfa</h2>

@@ -55,10 +55,10 @@ function DurumSatiri({ tur }: { tur: "yukleniyor" | "kapali" | "hata" }) {
   return (
     <div className="vt-durum">
       <div>
-        <span className="vt-cip">{tur === "kapali" ? "yayın kapalı" : "alınamadı"}</span>
+        <span className="vt-cip">{tur === "kapali" ? "30 sınav günü kuralı" : "alınamadı"}</span>
         <p className="vt-durum__cumle">
           {tur === "kapali"
-            ? "Açık karne yayını kapalı. Referans santral 30 sınav gününü doldurunca sayılar burada kendiliğinden görünür."
+            ? "Referans santral 30 sınav gününü doldurunca sayılar burada kendiliğinden görünür; kural herkese açık, geçmiş değiştirilmez."
             : "Karne şu an alınamadı; sayfa yenilenince yeniden denenir."}
         </p>
         {tur === "kapali" && (

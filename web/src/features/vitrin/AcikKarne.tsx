@@ -53,7 +53,7 @@ function KilitliKarne() {
       <div className="vt-kilitli">
         <div className="vt-kilitli__sol">
           <span className="vt-kilitli__kilit"><MenuIkon ad="kilit" /></span>
-          <p className="vt-kilitli__baslik">Yayın kapısı kapalı.</p>
+          <p className="vt-kilitli__baslik">Yayın, 30. sınav gününde açılır.</p>
           <p className="vt-kilitli__cumle">30 sınav günü dolunca dört değer — PVQuant, basit yöntem, sıkı referans, bant kapsaması — ve aylık tablo burada görünür.</p>
         </div>
         <dl className="vt-kilitli__tanimlar">

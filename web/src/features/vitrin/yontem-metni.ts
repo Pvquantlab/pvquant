@@ -12,7 +12,7 @@ export const ADIMLAR = [
   ["Gerçekleşen üretim toplanır",
    "Üretim (SCADA/sayaç) verisi geldikçe saatlik seriye işlenir. Ölçüm gelmeyen saatler karneye dâhil edilmez; eksik veri sıfır sayılmaz."],
   ["Her gece otomatik karşılaştırma",
-   "Kapanan günün tahmini ile gerçekleşen üretimi, tüm santrallar için aynı kuralla karşılaştırılır. Hesap kişiye ve güne göre değişmez."],
+   "Kapanan günün tahmini ile gerçekleşen üretimi, tüm santraller için aynı kuralla karşılaştırılır. Hesap kişiye ve güne göre değişmez."],
   ["Sonuç birikir, geçmiş değişmez",
    "Karne satırları yalnızca eklenir; kötü geçen gün silinmez, yeniden hesaplanmaz. Doğruluk değerleri bu birikimin penceresidir."],
 ] as const;

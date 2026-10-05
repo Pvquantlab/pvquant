@@ -38,7 +38,7 @@ export function Hero() {
       <div className="vt-kap vt-hero__ic">
         <div className="vt-hero__sol">
           <h1 className="vt-h1 vt-hero__baslik" id="vt-hero-baslik"><span className="vt-h1__vurgu">Programı zamanında verin;</span> sapmanın TL&#39;sini gün&nbsp;gün görün.</h1>
-          <p className="vt-giris vt-hero__giris">Türkiye&#39;deki güneş santralları için iyimser–kötümser aralığıyla saatlik üretim tahmini. Program dosyanız teslim penceresi kapanmadan hazır; sapmanın TL karşılığı, basit yönteme göre farkıyla birlikte panelde gün gün. Tahmin <a className="vt-bag vt-bag--metin" href="#karne">her gece gerçekleşenle sınanır</a>.</p>
+          <p className="vt-giris vt-hero__giris">Türkiye&#39;deki güneş santralleri için iyimser–kötümser aralığıyla saatlik üretim tahmini. Program dosyanız teslim penceresi kapanmadan hazır; sapmanın TL karşılığı, basit yönteme göre farkıyla birlikte panelde gün gün. Tahmin <a className="vt-bag vt-bag--metin" href="#karne">her gece gerçekleşenle sınanır</a>.</p>
           <div className="vt-eylemler vt-hero__eylem">
             <a className="vt-dugme vt-dugme--dolu vt-dugme--ok" href="#basla">Karnenizi başlatın</a>
             <p className="vt-hero__mikro">başvuru · hesabınızı biz kurarız · veri yüklemeniz gerekmez · karneniz ilk gece sınavından itibaren birikir</p>
@@ -47,6 +47,7 @@ export function Hero() {
         </div>
         <div className="vt-hero__pencere">
           <ReferansEgri veri={null} />
+          <a className="vt-bag vt-hero__tl-alt" href="#para">TL karşılığı nasıl hesaplanır</a>
         </div>
       </div>
       <p className="vt-kunye vt-hero__kunye">güneş yükseklik yayları · 21{" "}Haziran’dan 21{" "}Aralık’a on beş günde bir · İç{" "}Anadolu enlemi (38°{" "}K) · manzara temsili<GokyuzuCanli /></p>

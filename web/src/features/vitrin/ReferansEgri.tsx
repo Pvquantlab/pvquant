@@ -19,14 +19,14 @@ export function ReferansEgri({ veri }: { veri: null }) {
       <ul className="vt-lejant" role="list" aria-label="Lejant">
         <li><span className="vt-lejant__cizgi vt-lejant__cizgi--tahmin" aria-hidden="true" />Tahmin (P50)</li>
         <li><span className="vt-lejant__bant" aria-hidden="true" />İyimser–kötümser aralık (P10–P90)</li>
-        <li><span className="vt-lejant__cizgi vt-lejant__cizgi--gerceklesen" aria-hidden="true" />Gerçekleşen</li>
+        <li><span className="vt-lejant__cizgi vt-lejant__cizgi--gerceklesen" aria-hidden="true" />Gerçekleşen · her gece karşılaştırılır</li>
         <li><span className="vt-lejant__esik" aria-hidden="true" />AC tavanı</li>
       </ul>
       <Cizim noktalar={noktalar} kip="genis" />
       <Cizim noktalar={noktalar} kip="orta" />
       <Cizim noktalar={noktalar} kip="dar" />
       <figcaption className="vt-kunye vt-pencere__kunye">
-        gerçekleşen: kamuya açık üretim kaydı · tahmin: 01.10 gece koşusu, PVQuant fizik modeli · araştırma koşusu, canlı panel çıktısı değil
+        gerçekleşen: kamuya açık üretim kaydı · tahmin: 01.10 gece koşusu, PVQuant fizik modeli — öğrenen katman panelde · araştırma koşusu, canlı panel çıktısı değil
       </figcaption>
       </figure>
       <details className="vt-pencere__tablo">
@@ -68,6 +68,12 @@ function Cizim({ noktalar, kip }: { noktalar: readonly EgriNoktasi[]; kip: Cizim
   const dar = kip === "dar";
   const { W, H, SOL, SAG, UST, ALT } = GEOMETRI[kip];
   const svgKutu = useRef<SVGSVGElement>(null);
+  // Ö10(b): «tahmin → gerçekleşen» anı BİR KEZ oynar — amber çizgi ve ıskalama notu tahminin
+  // üzerine sonradan çizilir. Gizleme YALNIZ animasyonun `from` karesinde yaşar (fill: backwards);
+  // sınıf gelmezse, yazdırmada ya da animasyon kesilirse her şey doğal hâliyle GÖRÜNÜR (inceleme I2).
+  // Sınıf ilk render'da konur (flaş yok) ve son belirme bitince DÜŞÜRÜLÜR ki kip değişiminde
+  // (display none→block) animasyon yeniden oynamasın.
+  const [oynat, setOynat] = useState(() => !window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const imYazi = useRef<SVGTextElement>(null);
   const [aktif, setAktif] = useState<EgriNoktasi | null>(null);
   const [imX, setImX] = useState<number | null>(null);
@@ -101,10 +107,11 @@ function Cizim({ noktalar, kip }: { noktalar: readonly EgriNoktasi[]; kip: Cizim
   const xEtiket = dar ? [6, 12, 18] : [6, 9, 12, 15, 18];
   const ek = kip;
   return (
-    <svg ref={svgKutu} className={`vt-egri vt-egri--${ek}`} viewBox={`0 0 ${W} ${H}`} role="img"
+    <svg ref={svgKutu} className={`vt-egri vt-egri--${ek}${oynat ? " vt-egri--oynat" : ""}`} viewBox={`0 0 ${W} ${H}`} role="img"
       aria-labelledby={`vt-egri-baslik-${ek}`} aria-describedby={`vt-egri-aciklama-${ek}`}
       onPointerMove={(e) => saatSec(e.clientX)} onPointerDown={(e) => saatSec(e.clientX)}
-      onPointerLeave={(e) => { if (e.pointerType !== "touch") setAktif(null); }}>
+      onPointerLeave={(e) => { if (e.pointerType !== "touch") setAktif(null); }}
+      onAnimationEnd={(e) => { if ((e.target as Element).classList?.contains("vt-egri__et--vurgu")) setOynat(false); }}>
       <title id={`vt-egri-baslik-${ek}`}>1 Ekim 2026 tahmini ve gerçekleşen üretim</title>
       <desc id={`vt-egri-aciklama-${ek}`}>Araştırma koşusu; canlı panel çıktısı değildir. Mavi bant tahmin aralığını, mavi çizgi tahmini, amber çizgi gerçekleşen üretimi gösterir; her değer saat ortalamasıdır ve saat ortasında çizilir. Sabah saatlerinde bu koşunun P90 değeri P50 ile çakışır; bandın üst kenarı çizgiyle örtüşür. 08:00–12:00 arasında gerçekleşen, söylenen aralığın altında kalıyor; öğleden sonra aralığın içinde. Saatlik sayılar tablo görünümünde.</desc>
       {yIzgara.map((o) => (
@@ -125,7 +132,7 @@ function Cizim({ noktalar, kip }: { noktalar: readonly EgriNoktasi[]; kip: Cizim
       </text>
       <path className="vt-egri__bant" d={bant()} />
       <path className="vt-egri__p50" d={cizgi("p50")} />
-      <path className="vt-egri__gercek" d={cizgi("gercek")} />
+      <path className="vt-egri__gercek" d={cizgi("gercek")} pathLength={1} />
       {noktalar.filter((p) => p.gercek > 0).map((p) => (
         <circle key={p.saat} className="vt-egri__nokta" cx={x(p.saat + 0.5)} cy={y(p.gercek)} r={dar ? 2.4 : 3} />
       ))}
