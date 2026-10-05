@@ -34,3 +34,12 @@
 15. Eksen/lejant hijyeni: binişen etiket, ≤9 px eksen yazısı, formatlanmamış değer
     (0.0000123), birimsiz eksen = KALDI.
 16. KPI'da bağlam (Δ, sparkline, önceki dönem) var mı? Çıplak sayı duvarı = slop.
+
+## Kayıtlı istisnalar (yargıç bunları KALDI saymaz)
+
+- Madde 4, vitrin: nav'daki sabit CTA + hero CTA aynı anda görünür — bilinçli pazarlama
+  kalıbı (v2.399 turu kararı).
+- Madde 12: satır içi bağlar (p/li/td/dd) WCAG 2.5.8 istisnası; `::before inset:0` taşıyan
+  eleman «kartın tamamı tıklanabilir» hilesidir, kendi kutusu ölçülmez (tarama.mjs bilir).
+
+## İlk tam tur: v2.399 (06.10.2026) — bulgular ornekler/sayfa-iyi-kotu.md'de

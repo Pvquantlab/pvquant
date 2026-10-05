@@ -47,10 +47,21 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
         <Kpi etiket="Toplam kurulu güç"
              deger={t ? (t.kapasite_kwp < 100 ? gucTr(t.kapasite_kwp) : sayiTr(t.kapasite_kwp / 1000, 2)) : "—"}
              birim={t && t.kapasite_kwp < 100 ? "kWp" : "MWp"} alt={t ? `${sayiTr(t.santral)} santral` : ""} />
-        <Kpi etiket="Bugün beklenen · yarın" deger={t ? `${enj(t.bugun_kwh)} · ${enj(t.yarin_kwh)}` : "—"}
+        {/* v2.399 (rubrik turu): "24,5 MWh · 27,0 MWh" 1440'ta bile kesiliyordu —
+            iki değer aynı ölçekteyse birim TEK kez sonda yazılır: "24,5 · 27,0 MWh". */}
+        <Kpi etiket="Bugün beklenen · yarın"
+             deger={(() => {
+               if (!t || t.bugun_kwh == null || t.yarin_kwh == null) return "—";
+               const [ya, yb] = [enj(t.bugun_kwh), enj(t.yarin_kwh)];
+               const [ba, bb] = [ya.split(" ").pop(), yb.split(" ").pop()];
+               return ba === bb ? `${ya.slice(0, -(` ${ba}`.length))} · ${yb}` : `${ya} · ${yb}`;
+             })()}
              alt={t && (t.bugun_kwh == null || t.yarin_kwh == null) ? "bir santralde beklenti yok → toplam yazılmaz" : "tüm santrallerin P50 toplamı"} />
+        {/* v2.399: değer "—" iken alt "0,00 MWp karneli" çelişkili okunuyordu — dürüst dil */}
         <Kpi etiket="30 günlük WMAPE (ağırlıklı)" deger={t?.wmape_agirlikli != null ? `%${sayiTr(t.wmape_agirlikli, 1)}` : "—"}
-             alt={t ? `${sayiTr(t.wmape_kapsanan_kwp / 1000, 2)} MWp karneli` : ""} />
+             alt={t?.wmape_agirlikli != null
+               ? `${sayiTr(t.wmape_kapsanan_kwp / 1000, 2)} MWp karneli`
+               : "karne birikmedi — eşleşmiş gün yok"} />
         <Kpi etiket="Açık alarm · veri gecikmiş" deger={t ? `${sayiTr(t.acik_alarm)} · ${sayiTr(t.veri_gecikmis)}` : "—"}
              alt={t && t.santral > 0 ? "son 7 gün okunmamış · 2 günden eski ölçüm" : ""} ton={t && (t.acik_alarm > 0 || t.veri_gecikmis > 0) ? "uyari" : undefined} />
       </div>

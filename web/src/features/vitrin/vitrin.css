@@ -830,7 +830,8 @@
 .vt-disiplin__etiket { margin-top: 6px; font-weight: 600; font-size: 15px; line-height: 21px; }
 .vt-disiplin__alt { margin-top: 2px; color: var(--vt-ikincil); font-size: 13.5px; line-height: 19px; }
 .vt-disiplin__kunye { margin-top: 26px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
-.vt-disiplin__bag { min-height: 0; font-size: 12.5px; align-self: flex-start; }
+/* v2.399 (rubrik): min-height:0 tabanın 44px dokunma hedefini eziyordu — geri alındı */
+.vt-disiplin__bag { font-size: 12.5px; align-self: flex-start; }
 @media (max-width: 600px) {
   .vt-disiplin { padding-block: 44px; }
   .vt-disiplin__izgara { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 20px; }

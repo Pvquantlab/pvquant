@@ -49,7 +49,16 @@ const DENETIM = `(() => {
     const ad = (e.getAttribute("aria-label") || e.textContent || "").trim();
     if (!ad) S.ihlaller.push("isimsiz etkileşimli: <" + e.tagName.toLowerCase() + "> " + (e.className + "").slice(0, 40));
     const k = e.getBoundingClientRect();
-    if (innerWidth < 768 && k.width > 0 && (k.width < 44 || k.height < 44) && getComputedStyle(e).display !== "inline")
+    // WCAG 2.5.8 satır içi istisnası: metin akışındaki bağlantı (p/li/td/dd/figcaption
+    // içindeki <a>) hedef boyutu kuralından muaftır — rubrik turu v2.399 düzeltmesi.
+    const satirIci = getComputedStyle(e).display === "inline" ||
+      (e.tagName === "A" && e.closest("p, li, td, dd, figcaption"));
+    // ::before inset:0 absolute = «kartın tamamı tıklanabilir» hilesi (vt-panelde
+    // kalıbı) — gerçek hedef kart; eleman kutusu ölçüte girmez.
+    const ob = getComputedStyle(e, "::before");
+    const genisHedef = ob.content !== "none" && ob.position === "absolute" &&
+      ob.top === "0px" && ob.bottom === "0px" && ob.left === "0px" && ob.right === "0px";
+    if (innerWidth < 768 && k.width > 0 && (k.width < 44 || k.height < 44) && !satirIci && !genisHedef)
       S.kucukHedef = (S.kucukHedef ?? 0) + 1;
   }
   let onceki = 0;
