@@ -60,9 +60,9 @@ export function DortAdim({ onPanel }: { onPanel?: () => void }) {
           </Fragment>))}
         </div>
         <p className="vt-not vt-adim__cikis">Zincirin çıkışı teslim kanallarıdır — TPYS&#39;ye öneri CSV, toplayıcıya CSV/XLSX, REST API ve sabah webhook&#39;u; <a className="vt-bag vt-bag--metin" href="#isler">masanıza göre ayrıntısı iş kartlarında</a>.</p>
-        <div className="vt-ayna" role="table" aria-label="Tahmini kendiniz işlerseniz ve PVQuant ile karşılaştırması">
+        <div className="vt-ayna" role="table" aria-label="Masanızda kalan sorular ve PVQuant ile karşılaştırması">
           <div className="vt-ayna__bas" role="row">
-            <span role="columnheader">Tahmini kendiniz işlerseniz</span>
+            <span role="columnheader">Masanızda kalan sorular</span>
             <span role="columnheader">PVQuant ile</span>
           </div>
           {AYNA.map(([soru, cevap]) => (
