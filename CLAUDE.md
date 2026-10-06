@@ -11,6 +11,13 @@ nihai seçim `frontend-design` ilkeleriyle gerekçelendirilir ve `pvquant-tasari
 jetonlarına bağlanır; üretim sonrası `web-design-guidelines` denetiminden geçer.
 İki skill'e birden «stili sen seç» dedirtilmez.
 
+Eklenti rolleri (07.10.2026 kurulumu): **Data** = SQL/veri keşfi/istatistik/doğrulama
+(EPİAŞ CSV'leri, SCADA arşivleri) — görselleştirme/dashboard tarafı ÜRÜN yüzeyine girerse
+pvquant-tasarim veto eder; **Test Coverage Intelligence** = kapsama boşluğu analizi (çıktısı
+test yazımında kullanılır, ritüeli değiştirmez); **finecomb** = dönemsel salt-okunur derin
+güvenlik denetimi (hızlı diff incelemesi security-review'da kalır). dataink/review-council
+tarzı çakışan eklentiler BİLİNÇLİ kurulmadı.
+
 ## Dürüstlük anayasası (testle zorlanır)
 
 Sayı uydurulmaz; logo duvarı/müşteri alıntısı/yıldız yok; görünür yüzeyde yöntem/kaynak adı
