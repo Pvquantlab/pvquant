@@ -509,6 +509,7 @@
 .vt-levha { display: block; width: 100%; line-height: 0; }
 .vt-levha svg, .vt-levha img { display: block; width: 100%; height: auto; }
 .vt-levha svg * { vector-effect: non-scaling-stroke; }
+.vt-levha svg text { text-rendering: geometricPrecision; }
 .vt-panelde { display: flex; align-items: center; gap: 10px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--vt-kenar); }
 .vt-panelde .vt-rz { --rz-boy: 30px; --rz-yaricap: 9px; }
 .vt-panelde .vt-bag { min-height: 32px; font-size: 15px; }
