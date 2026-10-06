@@ -26,7 +26,8 @@ Kaynak dosyalar (gerçek değerler HER ZAMAN oradan okunur, burası harita):
 |---|---|---|
 | Display/başlık | `--display` | Bricolage Grotesque |
 | Gövde | Inter (`--font`) | IBM Plex Sans |
-| VERİ/eksen/künye | IBM Plex Mono + `tabular-nums` — sayı asla gövde fontuyla dizilmez | IBM Plex Mono |
+| VERİ/eksen/grafik içi | IBM Plex Mono + `tabular-nums` — sayı asla gövde fontuyla dizilmez | IBM Plex Mono |
+| Eyebrow etiketi + künye ÇİPİ | — | **Plex Sans** 600/500 (v2.406 kullanıcı turu: etiket veri değil kategori işaretidir; mono yalnız gerçek veri yüzeylerinde — eksen, tablo, pencere şeridi) |
 
 - Etikette `text-transform: uppercase` birimleri bozar (kWp→KWP) — birim taşıyan metne asla.
 - Türkçe büyük harf: `lang="tr"` şart; JS `/i` bayrağı İ'yi KATLAMAZ (regex'te sınıf kullan).
