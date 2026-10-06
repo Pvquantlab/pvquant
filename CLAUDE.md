@@ -19,7 +19,9 @@ gerçek gönderilmez. Ayrıntı: `.claude/skills/pvquant-tasarim/referans/anti-s
 
 ## Mühür ritüeli (özet)
 
-Uygulama → python `.venv/bin/python3 -m pytest` (RLS için `docker compose up -d db`) →
+Uygulama → python `.venv/bin/python3 -m pytest` (RLS için `docker compose up -d db`;
+DİKKAT: `pytest | tail` pipe'ı çıkış kodunu YUTAR — ya ayrı komutla `$?` oku ya
+`set -o pipefail`; v2.400'de 3 ERROR'lu koşu böyle sessiz geçti) →
 web `npm test` / `npm run build` (tip kapısı BUDUR — kök tsconfig dosyasız olduğundan
 çıplak `tsc --noEmit` hiçbir şeyi denetlemez, Mühür B dersi) / `npx oxlint src/...`
 (AYRI çıkış kodları; `grep -c` zincir kırar) → görsel regresyon `npm run gorsel`
