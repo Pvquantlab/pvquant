@@ -87,7 +87,7 @@
 .vt-h2 { font-size: 36px; line-height: 44px; letter-spacing: -0.005em; }
 .vt-h3 { font-size: 20px; line-height: 28px; }
 .vt-giris { font-size: 20px; line-height: 30px; color: var(--vt-ikincil); }
-.vt-kunye { font: 400 12px/16px var(--vt-mono); color: var(--vt-ikincil); }
+.vt-kunye { font: 400 12.5px/17px var(--vt-sans); color: var(--vt-ikincil); }
 
 /* düzen */
 .vt-kap { max-width: calc(1200px + 2 * var(--vt-yan)); margin: 0 auto; padding-inline: var(--vt-yan); }
@@ -229,6 +229,7 @@
 .vt-tanim dd { color: var(--vt-ikincil); }
 .vt-gece-kart { padding: 22px 24px; border-radius: 10px; background: var(--vt-gece-kart); border: 1px solid var(--vt-gece-kenar); }
 .vt-gece-kart p { margin-top: 6px; color: var(--vt-gece-ikincil); }
+.vt-kod-ic { font-family: var(--vt-mono); font-size: .95em; }
 .vt-kod {
   display: block; margin-top: 12px; padding: 10px 14px; overflow-x: auto; white-space: nowrap; border-radius: 6px;
   background: rgba(0, 0, 0, 0.25); border: 1px solid var(--vt-gece-kenar); font: 400 13px/18px var(--vt-mono); color: var(--vt-gece-metin);
@@ -418,7 +419,8 @@
 .vt-h2 { font-size: 40px; line-height: 46px; letter-spacing: -.014em; font-variation-settings: "opsz" 56; }
 .vt-h3 { font-size: 20px; line-height: 28px; letter-spacing: -.002em; }
 .vt-giris { font-size: 20px; line-height: 30px; color: var(--vt-ikincil); }
-.vt-kunye { font: 400 12px/16px var(--vt-mono); color: var(--vt-ikincil); letter-spacing: .005em; }
+/* v2.407: künye/dipnot CÜMLEDİR — sans; kod parçaları .vt-kod-ic ile mono (jetonlar.md) */
+.vt-kunye { font: 400 12.5px/17px var(--vt-sans); color: var(--vt-ikincil); }
 .vt-kap { max-width: calc(1200px + 2 * var(--vt-yan)); margin: 0 auto; padding-inline: var(--vt-yan); }
 .vt-dar { max-width: calc(760px + 2 * var(--vt-yan)); }
 .vt-bolum { padding-block: 96px; position: relative; }
@@ -514,7 +516,7 @@
 .vt-panelde .vt-rz { --rz-boy: 30px; --rz-yaricap: 9px; }
 .vt-panelde .vt-bag { min-height: 32px; font-size: 15px; }
 .vt-panelde .vt-bag::before { content: ""; position: absolute; inset: 0; }
-.vt-panelde__et { font: 400 12px/16px var(--vt-mono); color: var(--vt-ikincil); }
+.vt-panelde__et { font: 500 12.5px/16px var(--vt-sans); color: var(--vt-ikincil); }
 .vt-hero { position: relative; }
 .vt-hero__baslik { text-wrap: balance; }
 .vt-hero__giris { max-width: 34ch; margin-top: 20px; }
@@ -854,7 +856,7 @@
 .vt-bolumcubuk__ic { display: flex; align-items: center; gap: 16px; overflow-x: auto; scrollbar-width: none;
   scroll-padding-inline: var(--vt-yan); }
 .vt-bolumcubuk__ic::-webkit-scrollbar { display: none; }
-.vt-bolumcubuk__et { flex: none; font: 500 11px/1 var(--vt-mono); letter-spacing: 0.08em;
+.vt-bolumcubuk__et { flex: none; font: 600 11px/1 var(--vt-sans); letter-spacing: 0.08em;
   text-transform: uppercase; color: var(--vt-ucuncul); }
 .vt-bolumcubuk__liste { display: flex; gap: 2px; list-style: none; margin: 0; padding: 0; }
 .vt-bolumcubuk__bag { position: relative; display: inline-flex; align-items: center; height: 44px;
@@ -887,14 +889,14 @@
 
 /* ═══ CİLA-ek 7: rakip analizi dalga 1 — Ö1/Ö2/Ö8 + hijyen ═══ */
 /* Ö2(b) — hero mikro metni: eylemin dürüst sınırı birincil düğmenin altında */
-.vt-hero__mikro { margin: 10px 0 0; font: 400 12px/18px var(--vt-mono); color: var(--vt-ikincil); max-width: 52ch; }
+.vt-hero__mikro { margin: 10px 0 0; font: 400 12.5px/18px var(--vt-sans); color: var(--vt-ikincil); max-width: 52ch; }
 /* Ö8 — iş kartı kalıbı: masa etiketi, iş sonucu başlığı, etiket–değer künyesi */
 .vt-is__ust { display: flex; align-items: center; gap: 10px; margin-bottom: 2px; }
-.vt-is__masa { font: 500 11.5px/1 var(--vt-mono); letter-spacing: 0.07em; text-transform: uppercase; color: var(--vt-ucuncul); }
+.vt-is__masa { font: 600 11px/1 var(--vt-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--vt-ucuncul); }
 .vt-is__kunye { margin: 10px 0 0; display: grid; gap: 4px; }
 .vt-is__satir { display: flex; gap: 8px; font-size: 13px; line-height: 19px; }
 .vt-is__satir dt { flex: none; min-width: 86px; color: var(--vt-ikincil); }
-.vt-is__satir dd { margin: 0; font-family: var(--vt-mono); color: var(--vt-metin); }
+.vt-is__satir dd { margin: 0; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--vt-metin); }
 /* dört iş kartı: 1241+ dörtlü; 601–1240 ikişerli (metin yoğun kartlar daralmasın) */
 @media (min-width: 601px) and (max-width: 1240px) {
   .vt-isler { grid-template-columns: repeat(2, minmax(0, 1fr)); }

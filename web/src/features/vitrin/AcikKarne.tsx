@@ -22,7 +22,7 @@ export function AcikKarne({ durum }: { durum: DogrulamaDurumu }) {
         {durum.tur === "hata" && (
           <div className="vt-karne vt-karne--kapali">
             <p>Karne şu an alınamadı; sayfa yenilenince yeniden denenir.</p>
-            <span className="vt-kunye">GET /v1/dogrulama</span>
+            <span className="vt-kunye"><code className="vt-kod-ic">GET /v1/dogrulama</code></span>
           </div>
         )}
         {durum.tur !== "kapali" && (
@@ -62,7 +62,7 @@ function KilitliKarne() {
           ))}
         </dl>
       </div>
-      <p className="vt-kunye vt-kilitli__kapanis">{YONTEM_KAPANIS} · GET /v1/dogrulama</p>
+      <p className="vt-kunye vt-kilitli__kapanis">{YONTEM_KAPANIS} · <code className="vt-kod-ic">GET /v1/dogrulama</code></p>
     </div>
   );
 }

@@ -39,7 +39,7 @@ function Sayilar({ veri }: { veri: Dogrulama }) {
           </div>
         ))}
       </div>
-      <p className="vt-kunye vt-serit__kunye">GET /v1/dogrulama · güncelleme {kisaTarihTr(veri.son_gun)}</p>
+      <p className="vt-kunye vt-serit__kunye"><code className="vt-kod-ic">GET /v1/dogrulama</code> · güncelleme {kisaTarihTr(veri.son_gun)}</p>
     </>
   );
 }
