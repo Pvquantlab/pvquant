@@ -1005,6 +1005,8 @@
 .vt-kesit__cizim { margin: 18px 0 16px; line-height: 0; }
 .vt-kesit__cizim svg { display: block; width: 100%; height: auto; }
 .vt-kesit__cizim svg * { vector-effect: non-scaling-stroke; }
+/* v2.401 mikro-netlik: mono eksen/künye yazıları ölçeklenirken piksele oturur */
+.vt-kesit__cizim svg text, .vt-pnc__cizim text { text-rendering: geometricPrecision; }
 .vt-kesit__hucre--genis .vt-kesit__cizim { grid-column: 2; grid-row: 1 / 4; margin: 0; align-self: center; }
 .vt-kesit__hucre .vt-kart__metin { font-size: 15px; line-height: 23px; }
 .vt-kesit__hucre--genis .vt-kart__metin { margin-top: 10px; }
