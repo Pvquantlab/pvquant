@@ -36,7 +36,7 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
   const tarih = (s: string | null) => s ? new Date(s).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }) : "—";
   if (!hazir) return (
     <Sayfa baslik="Portföy" alt="Tüm santraller bir bakışta — sayılar kapasite ile ağırlıklı, eksikler tire.">
-      <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p>
+      <span className="durum-notu"><span className="durum-doner" aria-hidden="true" />Yükleniyor…</span>
     </Sayfa>
   );
   return (

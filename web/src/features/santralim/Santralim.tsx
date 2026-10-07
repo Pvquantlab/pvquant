@@ -6,6 +6,7 @@ import { api } from "../../api/client";
 import type { SantralOzeti, TahminSerisi, GunesYolu, SaatAyMatrisi } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
+import { Yukleniyor } from "../../lib/Durum";
 import { renkler, eksenYazi, eksenDeger, tooltipTemel, TEMEL } from "../../lib/grafikTema";
 import { Kart, Sayfa, sayiTr, sayiTrN, gucTr, enerjiTr, isiTonu, isiMetni } from "../sayfalar/parcalar";
 import ProductionForecastChart from "../sayfalar/ProductionForecastChart";
@@ -261,7 +262,7 @@ export function Santralim({ plantId }: { plantId: string }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gy, n]);
 
-  if (!o) return <div style={{ color: "var(--soluk)" }}>Yükleniyor…</div>;
+  if (!o) return <Yukleniyor iskelet />;
 
   const s = o.saglik;
   // v2.198 (D ozet seridi): anlik guc = simdiDegeri; gece/veri yokken "—".

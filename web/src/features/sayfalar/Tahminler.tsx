@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api/client";
+import { Yukleniyor } from "../../lib/Durum";
 import type { SantralOzeti, TahminSerisi, KgupOnizleme, Nowcast } from "../../api/types";
 import { Kart, Sayfa, sayiTr } from "./parcalar";
 import ProductionForecastChart from "./ProductionForecastChart";
@@ -79,7 +80,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
   );
   const bantVar = gunlukVeri.some((g) => g.p10Kwh !== null);
 
-  if (!hazir) return <div style={{ color: "var(--soluk)" }}>Yükleniyor…</div>;
+  if (!hazir) return <Yukleniyor iskelet />;
   return (
     <Sayfa
       baslik="Tahminler"
@@ -220,7 +221,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
       {/* v2.266 (Dalga 5.18): kısa ufuk — ölçüm persistansı; uydu değil. Canlı SCADA yoksa dürüstçe tire. */}
       <Kart baslik="Kısa ufuk (0–6 saat) — ölçüm persistansı"
         sag={<span className="cip">{nc?.durum === "ok" ? `oran ${sayiTr(nc.oran ?? 0, 2)} · ${sayiTr(nc.n_saat)} saatten` : nc?.durum === "gece" ? "gece · P50" : "uydu değil"}</span>}>
-        {nc === undefined ? <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p>
+        {nc === undefined ? <span className="durum-notu"><span className="durum-doner" aria-hidden="true" />Yükleniyor…</span>
          : !nc || nc.durum === "scada_bayat" || nc.durum === "olcum_yok" || nc.durum === "tahmin_yok" ? (
           <p className="soluk" style={{ margin: 0 }}>
             — {nc?.not ?? "hesaplanamadı"}{nc?.tazelik_saat != null ? ` (son ölçüm ${nc.tazelik_saat >= 48 ? `${sayiTr(nc.tazelik_saat / 24, 0)} gün` : `${sayiTr(nc.tazelik_saat, 0)} saat`} önce)` : ""}.

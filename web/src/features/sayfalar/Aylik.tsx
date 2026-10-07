@@ -4,6 +4,7 @@ import { api } from "../../api/client";
 import type { AylikBeklenti, SantralOzeti, Bankable } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
+import { Yukleniyor } from "../../lib/Durum";
 import { renkler, eksenYazi, eksenDeger, eksenKategori, tooltipEksen, TEMEL } from "../../lib/grafikTema";
 import { Cubuklar } from "../santralim/Cubuklar";
 import { Kart, Kpi, Sayfa, sayiTr, isiTonu, isiMetni } from "./parcalar";
@@ -130,7 +131,7 @@ export function Aylik({ plantId }: { plantId: string }) {
     } as EChartsOption;
   }, [b, n]);  // v2.148
 
-  if (!hazir) return <div style={{ color: "var(--soluk)" }}>Yükleniyor…</div>;
+  if (!hazir) return <Yukleniyor iskelet />;
   if (birikiyor) return (
     <Sayfa baslik="Aylık beklenti" alt="İklimden gelen ay bazlı üretim zarfı.">
       <Kart baslik="Beklenti birikiyor">
@@ -140,7 +141,7 @@ export function Aylik({ plantId }: { plantId: string }) {
         </p>
       </Kart>
     </Sayfa>);
-  if (!b) return <div style={{ color: "var(--soluk)" }}>Yükleniyor…</div>;
+  if (!b) return <Yukleniyor iskelet />;
 
   const buAy = new Date().getMonth() + 1;
   const k = b.beklenti.find((r) => r.ay === buAy);
@@ -174,7 +175,7 @@ export function Aylik({ plantId }: { plantId: string }) {
           {bk?.durum === "ok" && <span className="cip">{bk.donem} · {sayiTr(bk.yil_sayisi ?? 0)} yıl</span>}
           <button className="dugme" style={{ fontSize: 11.5 }} onClick={bkYenile}>{bk?.durum === "ok" ? "Yenile" : "Hesapla"}</button>
         </span>}>
-        {bk === undefined ? <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p>
+        {bk === undefined ? <span className="durum-notu"><span className="durum-doner" aria-hidden="true" />Yükleniyor…</span>
          : !bk || bk.durum !== "ok" ? (
           <p className="soluk" style={{ margin: 0 }}>{bkMesaj ?? (bk?.not ?? "Henüz hesaplanmadı — 'Hesapla' ile uzun dönem ışınım arşivinden yıllık dağılım üretilir (ayda bir kendiliğinden yenilenir).")}</p>
         ) : (

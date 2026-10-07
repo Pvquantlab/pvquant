@@ -4,6 +4,7 @@ import { api } from "../../api/client";
 import type { Karne, HataMatrisi, HataDagilimi, KonformalAyar, Backtest, Dengesizlik, Guvenilirlik } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
+import { Yukleniyor, HataDurumu } from "../../lib/Durum";
 import { renkler, eksenYazi, eksenDeger, eksenKategori, tooltipEksen, tooltipTemel, TEMEL } from "../../lib/grafikTema";
 import { Kpi, Kart, Sayfa, sayiTr } from "./parcalar";
 
@@ -35,6 +36,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
   // yerleşince sayfa bütün belirir. Dönem segmenti kapıya GİRMEZ: yalnız
   // karneyi tazeler, eski veri tutulur, sayfa titremez (v2.230 kararı korunur).
   const [hazir, setHazir] = useState(false);
+  const [deneme, setDeneme] = useState(0);          // HataDurumu «Yeniden dene» kapıyı yeniden kurar
   useEffect(() => {
     let acik = true;
     setHazir(false);
@@ -54,7 +56,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
       });
     return () => { acik = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- donem bilerek dışarıda: kapı yalnız santral değişince kurulur
-  }, [plantId]);
+  }, [plantId, deneme]);
   const [ilkDonem, setIlkDonem] = useState(true);
   useEffect(() => {
     if (ilkDonem) { setIlkDonem(false); return; }   // ilk değer kapıda çekildi
@@ -356,8 +358,8 @@ export function Dogruluk({ plantId }: { plantId: string }) {
     return son - once;
   }, [k]);
 
-  if (!hazir) return <div style={{ color: "var(--soluk)" }}>Yükleniyor…</div>;
-  if (!k) return <div style={{ color: "var(--soluk)" }}>Karne verisi alınamadı — sayfayı yenileyin.</div>;
+  if (!hazir) return <Yukleniyor iskelet />;
+  if (!k) return <HataDurumu mesaj="Karne verisi alınamadı." tekrar={() => setDeneme((d) => d + 1)} />;
 
   const OK = ({ yukari }: { yukari: boolean }) => (
     <svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true">
