@@ -1502,3 +1502,16 @@
   .vt-pencere--canli .vt-gsahne__kip--orta { display: none; }
   .vt-pencere--canli .vt-gsahne__kip--dar { display: block; }
 }
+
+/* ── v2.414 · günün işleyen görünümü: salt-okunur bağlam, şimdi işareti, gelecek bölgesi ── */
+.vt-pencere__baglam { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; }
+.vt-pencere__baglam-tarih { font: 500 12.5px/18px var(--vt-mono); font-variant-numeric: tabular-nums; color: var(--vt-metin); }
+.vt-pencere__baglam-durum { display: inline-flex; align-items: center; gap: 6px; font: 400 11.5px/16px var(--vt-sans); color: var(--vt-ucuncul); }
+.vt-pencere__baglam-durum::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--vt-veri-tahmin); opacity: .55; }
+.vt-egri__gelecek { fill: rgba(11, 27, 60, .016); }
+.vt-egri__simdi { stroke: var(--vt-metin); stroke-width: 1; opacity: .38; }
+.vt-gsahne__simdi { position: absolute; transform: translateX(-50%); white-space: nowrap; padding: 2px 8px;
+  border-radius: var(--vt-r-xs); font: 500 11px/15px var(--vt-mono); font-variant-numeric: tabular-nums; color: var(--vt-ikincil); }
+@media (max-width: 600px) {
+  .vt-pencere__baglam { align-items: flex-start; text-align: left; }
+}

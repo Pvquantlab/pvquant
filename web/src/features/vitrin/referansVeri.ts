@@ -160,8 +160,8 @@ export function yilSerisi(gun: KosuGunu): { seri: CFNoktasi[]; kapsam: string } 
 /** VERİDEN türetilmiş bulgu: gündüz penceresinde gerçekleşenin bandın (P10) altında kaldığı
  *  en uzun ardışık blok (≥3 saat; yarım puanlık gürültü eşiğiyle). Yoksa null — rozet
  *  çizilmez, uydurulmaz. 01.10 için sonuç araştırma vurgusuyla birebir: «08:00–12:00». */
-export function bulgu(gun: KosuGunu): { bas: number; son: number; metin: string } | null {
-  const seri = GUNLER[gun];
+export function bulgu(gun: KosuGunu, ustSaat?: number): { bas: number; son: number; metin: string } | null {
+  const seri = ustSaat === undefined ? GUNLER[gun] : GUNLER[gun].filter((n) => n.saat + 0.5 <= ustSaat);
   let enIyi: { bas: number; son: number } | null = null;
   let bas: number | null = null;
   for (const n of seri) {

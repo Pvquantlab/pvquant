@@ -17,25 +17,27 @@ const GEOMETRI: Record<CizimKipi, { W: number; H: number; SOL: number; SAG: numb
 
 interface SaatImleci { saat: number; p10: number; p50: number; p90: number; gercek: number | null }
 
-export function GrafikSahnesi({ gun, noktalar, katmanlar }: {
+export function GrafikSahnesi({ gun, noktalar, katmanlar, simdi }: {
   gun: KosuGunu;
   noktalar: readonly EgriNoktasi[];
   katmanlar: KatmanDurumu;
+  /** TRT ondalık saat; null = gün tamamlandı görünümü (tam karşılaştırma). */
+  simdi: number | null;
 }) {
   return (
     <div className="vt-gsahne">
-      {/* key={gun}: tarih değişince imleç/balon durumu sıfırlanır — eski günün değeri yeni güne taşınmaz */}
-      <Cizim key={gun + "g"} gun={gun} noktalar={noktalar} katmanlar={katmanlar} kip="genis" />
-      <Cizim key={gun + "o"} gun={gun} noktalar={noktalar} katmanlar={katmanlar} kip="orta" />
-      <Cizim key={gun + "d"} gun={gun} noktalar={noktalar} katmanlar={katmanlar} kip="dar" />
+      {/* key={gun}: gün değişirse imleç/balon durumu sıfırlanır — eski günün değeri taşınmaz */}
+      <Cizim key={gun + "g"} gun={gun} noktalar={noktalar} katmanlar={katmanlar} simdi={simdi} kip="genis" />
+      <Cizim key={gun + "o"} gun={gun} noktalar={noktalar} katmanlar={katmanlar} simdi={simdi} kip="orta" />
+      <Cizim key={gun + "d"} gun={gun} noktalar={noktalar} katmanlar={katmanlar} simdi={simdi} kip="dar" />
     </div>
   );
 }
 
 /* ── GÜN KİPİ: saatlik eğri ─────────────────────────────────────────────── */
 
-function Cizim({ gun, noktalar, katmanlar, kip }: {
-  gun: KosuGunu; noktalar: readonly EgriNoktasi[]; katmanlar: KatmanDurumu; kip: CizimKipi;
+function Cizim({ gun, noktalar, katmanlar, simdi, kip }: {
+  gun: KosuGunu; noktalar: readonly EgriNoktasi[]; katmanlar: KatmanDurumu; simdi: number | null; kip: CizimKipi;
 }) {
   const dar = kip === "dar";
   const { W, H, SOL, SAG, UST, ALT } = GEOMETRI[kip];
@@ -47,7 +49,13 @@ function Cizim({ gun, noktalar, katmanlar, kip }: {
   const x = (saat: number) => SOL + ((saat - X0) / (X1 - X0)) * (W - SOL - SAG);
   const y = (oran: number) => UST + (1 - oran / 1.05) * (H - UST - ALT);
   const nokta = (saat: number, oran: number) => `${x(saat + 0.5).toFixed(1)},${y(oran).toFixed(1)}`;
-  const cizgi = (alan: "p50" | "gercek") => "M" + noktalar.map((p) => nokta(p.saat, p[alan] ?? 0)).join(" L");
+  // GERÇEKLEŞEN yalnız şimdiye kadar: damga sözleşmesi gereği son çizilen nokta, saat ortası
+  // «şimdi»yi geçmeyen son saat damgasıdır — geleceğe gerçekleşen uydurulmaz (v2.414).
+  const gecmis = simdi === null ? noktalar : noktalar.filter((p) => p.saat + 0.5 <= simdi);
+  const cizgi = (alan: "p50" | "gercek") => {
+    const kaynak = alan === "gercek" ? gecmis : noktalar;
+    return kaynak.length ? "M" + kaynak.map((p) => nokta(p.saat, p[alan] ?? 0)).join(" L") : "";
+  };
   const bant = () =>
     "M" + noktalar.map((p) => nokta(p.saat, p.p90)).join(" L")
     + " L" + [...noktalar].reverse().map((p) => nokta(p.saat, p.p10)).join(" L") + " Z";
@@ -67,7 +75,7 @@ function Cizim({ gun, noktalar, katmanlar, kip }: {
     setBalonSol(Math.max(6, Math.min(sw - bw - 6, merkez - bw / 2)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aktif, katmanlar]);
-  const b = bulgu(gun);
+  const b = simdi === null ? bulgu(gun) : bulgu(gun, simdi);
   const yIzgara = dar ? [0, 0.5, 1] : [0, 0.25, 0.5, 0.75, 1];
   const xEtiket = dar ? [6, 12, 18] : [6, 9, 12, 15, 18];
   const yuzde = (v: number) => "%" + (v * 100).toFixed(1).replace(".", ",").replace(",0", "");
@@ -78,7 +86,7 @@ function Cizim({ gun, noktalar, katmanlar, kip }: {
         onPointerMove={(e) => saatSec(e.clientX)} onPointerDown={(e) => saatSec(e.clientX)}
         onPointerLeave={(e) => { if (e.pointerType !== "touch") setAktif(null); }}>
         <title id={`vt-egri-baslik-${kip}`}>Seçili günün tahmini ve gerçekleşen üretimi</title>
-        <desc id={`vt-egri-aciklama-${kip}`}>Araştırma koşusu; canlı panel çıktısı değildir. Mavi bant tahmin aralığını, mavi çizgi tahmini, amber çizgi gerçekleşen üretimi gösterir; her değer saat ortalamasıdır ve saat ortasında çizilir. Katmanlar üstteki kontrollerle açılıp kapanır; saatlik sayılar tablo görünümünde.</desc>
+        <desc id={`vt-egri-aciklama-${kip}`}>Araştırma koşusu; canlı panel çıktısı değildir. Mavi bant tahmin aralığını, mavi çizgi tahmini, amber çizgi gerçekleşen üretimi gösterir; her değer saat ortalamasıdır ve saat ortasında çizilir. Gerçekleşen üretim yalnız şu ana kadar çizilir; tahmin ve aralık gün sonuna sürer; ince dikey çizgi şimdiyi gösterir. Katmanlar üstteki kontrollerle açılıp kapanır; saatlik sayılar tablo görünümünde.</desc>
         {yIzgara.map((o) => (
           <g key={o}>
             <line className={o === 0 ? "vt-egri__taban" : "vt-egri__izgara"} x1={SOL} x2={W - SAG} y1={y(o)} y2={y(o)} />
@@ -94,13 +102,19 @@ function Cizim({ gun, noktalar, katmanlar, kip }: {
             <line className="vt-egri__kilavuz" x1={x(b.son)} x2={x(b.son)} y1={UST - 10} y2={y(0)} />
           </g>
         )}
+        {simdi !== null && simdi > X0 && simdi < X1 && (
+          <rect className="vt-egri__gelecek" x={x(simdi)} y={UST - 2} width={W - SAG - x(simdi)} height={y(0) - UST + 2} aria-hidden="true" />
+        )}
         {katmanlar.tavan && <line className="vt-egri__esik" x1={SOL} x2={W - SAG} y1={y(1)} y2={y(1)} />}
         {katmanlar.bant && <path className="vt-egri__bant" d={bant()} />}
         {katmanlar.tahmin && <path className="vt-egri__p50" d={cizgi("p50")} />}
-        {katmanlar.gercek && <path className="vt-egri__gercek" d={cizgi("gercek")} />}
-        {katmanlar.gercek && noktalar.filter((p) => (p.gercek ?? 0) > 0).map((p) => (
+        {katmanlar.gercek && cizgi("gercek") && <path className="vt-egri__gercek" d={cizgi("gercek")} />}
+        {katmanlar.gercek && gecmis.filter((p) => (p.gercek ?? 0) > 0).map((p) => (
           <circle key={p.saat} className="vt-egri__nokta" cx={x(p.saat + 0.5)} cy={y(p.gercek ?? 0)} r={dar ? 2.4 : 3} />
         ))}
+        {simdi !== null && simdi > X0 && simdi < X1 && (
+          <line className="vt-egri__simdi" x1={x(simdi)} x2={x(simdi)} y1={UST - 2} y2={y(0)} aria-hidden="true" />
+        )}
         {aktif && (
           <g className="vt-egri__im" aria-hidden="true">
             <line className="vt-egri__im-cizgi" x1={x(aktif.saat + 0.5)} x2={x(aktif.saat + 0.5)} y1={UST - 2} y2={y(0)} />
@@ -118,12 +132,17 @@ function Cizim({ gun, noktalar, katmanlar, kip }: {
         {b && katmanlar.gercek && katmanlar.bant && !dar && (
           <span className="vt-nesne vt-gsahne__bulgu" style={{ left: `${((x(b.bas) + x(b.son)) / 2 / W) * 100}%` }}>{b.metin}</span>
         )}
+        {simdi !== null && simdi > X0 && simdi < X1 && (
+          <span className="vt-nesne vt-gsahne__simdi" style={{ left: `${(x(simdi) / W) * 100}%`, bottom: `${((ALT + 2) / H) * 100}%` }}>
+            Şimdi · {`${String(Math.floor(simdi)).padStart(2, "0")}:${String(Math.round((simdi % 1) * 60)).padStart(2, "0")}`}
+          </span>
+        )}
         {aktif && (
           <div ref={balon} className="vt-nesne vt-balon" style={{ left: balonSol }}>
             <div className="vt-balon__saat">{String(aktif.saat).padStart(2, "0")}:00</div>
             {katmanlar.tahmin && <div className="vt-balon__satir"><span className="vt-balon__anahtar vt-balon__anahtar--tahmin" />Tahmin (P50)<b>{yuzde(aktif.p50)}</b></div>}
             {katmanlar.bant && <div className="vt-balon__satir"><span className="vt-balon__anahtar vt-balon__anahtar--bant" />P10–P90<b>{yuzde(aktif.p10)}–{yuzde(aktif.p90)}</b></div>}
-            {katmanlar.gercek && <div className="vt-balon__satir"><span className="vt-balon__anahtar vt-balon__anahtar--gercek" />Gerçekleşen<b>{aktif.gercek === null ? "—" : yuzde(aktif.gercek)}</b></div>}
+            {katmanlar.gercek && (simdi === null || aktif.saat + 0.5 <= simdi) && <div className="vt-balon__satir"><span className="vt-balon__anahtar vt-balon__anahtar--gercek" />Gerçekleşen<b>{aktif.gercek === null ? "—" : yuzde(aktif.gercek)}</b></div>}
             {katmanlar.tavan && <div className="vt-balon__satir"><span className="vt-balon__anahtar vt-balon__anahtar--tavan" />AC tavanı<b>%100</b></div>}
           </div>
         )}
