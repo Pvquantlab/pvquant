@@ -1124,3 +1124,45 @@
 @media (pointer: coarse), (max-width: 359px) {
   .vt-ust .vt-dugme, .vt-cekmece__alt .vt-dugme { min-height: var(--vt-hedef); }
 }
+
+
+/* ─── P2 · TİPOGRAFİ SKALASI ─── */
+.vt { font-size: var(--vt-govde-b); line-height: var(--vt-govde-sy); }
+.vt-h1, .vt-hero--a .vt-hero__baslik { font-size: var(--vt-h1-b); line-height: var(--vt-h1-sy); letter-spacing: var(--vt-h1-ha); max-width: var(--vt-olcu-h1); }
+.vt-h1__vurgu { white-space: nowrap; }                       /* vurgu ifadesi satır ortasında renk değiştirmez */
+.vt-h2, .vt-disiplin__baslik { font-size: var(--vt-h2-b); line-height: var(--vt-h2-sy); letter-spacing: var(--vt-h2-ha); max-width: var(--vt-olcu-h2); font-variation-settings: "opsz" 56; }
+.vt-h3, .vt-kesit__bas .vt-h3 { font-size: var(--vt-h3-b); line-height: var(--vt-h3-sy); letter-spacing: var(--vt-h3-ha); }
+.vt-karne__bas .vt-h3 { font-size: var(--vt-pb-b); line-height: var(--vt-pb-sy); letter-spacing: 0; }
+.vt-kilitli__baslik { font-size: var(--vt-bs-b); line-height: var(--vt-bs-sy); letter-spacing: var(--vt-bs-ha); }
+.vt-pencere__bas { font-size: var(--vt-pb-b); line-height: var(--vt-pb-sy); }
+.vt-giris { font-size: var(--vt-giris-b); line-height: var(--vt-giris-sy); }
+.vt-bolum-bas .vt-giris, .vt-hero__giris, .vt-hero--a .vt-hero__giris { max-width: var(--vt-olcu-giris); }
+.vt-durum__cumle, .vt-kilitli__cumle { font-size: var(--vt-govde-b); line-height: var(--vt-govde-sy); }
+.vt-durum__cumle, .vt-sss p { max-width: var(--vt-olcu-govde); }
+.vt-kilitli__cumle { max-width: 40ch; }
+.vt-kart__metin, .vt-kesit__hucre .vt-kart__metin, .vt-ayna__soru, .vt-ayna__cevap, .vt-not, .vt-kilitli__tanim dt, .vt-disiplin__etiket { font-size: var(--vt-km-b); line-height: var(--vt-km-sy); }
+.vt-yontem { font-size: var(--vt-km-b); line-height: var(--vt-km-sy); }   /* açık-karne yöntem açıklaması: canlıda yayın kapalıyken Opus listesinden kaçtı (dev'de ölçüldü) */
+.vt-disiplin__alt, .vt-is__satir, .vt-kilitli__tanim dd, .vt-alt__liste, .vt-alt__ilke, .vt-alt__tanim, .vt-etiket, .vt-bolumcubuk__bag, .vt-sayi__et, .vt-sayi__alt { font-size: var(--vt-kucuk-b); line-height: var(--vt-kucuk-sy); letter-spacing: var(--vt-kucuk-ha); }
+.vt-nav__bag, .vt-nav__acilir, .vt-alt__baslik { font-size: var(--vt-kucuk-b); line-height: var(--vt-kucuk-sy); }
+.vt-kunye, .vt-hero__mikro, .vt-pencere__kunye, .vt-hero--a .vt-pencere__kunye, .vt-lejant, .vt-hero--a .vt-lejant, .vt-karne__alt, .vt-panelde__et, .vt-alanlar__et { font-size: var(--vt-mikro-b); line-height: var(--vt-mikro-sy); letter-spacing: var(--vt-mikro-ha); }
+/* Sans/Mono kuralının tamamlanması (v2.406–407): etiket ve künye cümlesi Sans */
+.vt-alanlar__et, .vt-mega__grup-ad { font-family: var(--vt-sans); }
+.vt-kesit__etiket, .vt-is__masa, .vt-bolumcubuk__et, .vt-ayna__bas { font-family: var(--vt-sans); font-size: var(--vt-mikro-b); line-height: var(--vt-mikro-sy); font-weight: 600; letter-spacing: var(--vt-eyebrow-ha); }
+.vt-ayna__bas { text-transform: uppercase; }
+.vt-kesit__kunye li, .vt-cip, .vt-alan, .vt-pnc__serit, .vt-pnc__etiket, .vt-kart__no { font-size: var(--vt-mikro-b); line-height: var(--vt-mikro-sy); }
+/* bağlar: bağımsız = gövde · kart içi = küçük */
+.vt-bag { line-height: var(--vt-ui-sy); }
+.vt-panelde .vt-bag, .vt-adimlar .vt-panelde .vt-bag, .vt-adimlar .vt-panelde__et, .vt-disiplin__bag, .vt-is__bag { font-size: var(--vt-kucuk-b); line-height: var(--vt-kucuk-sy); }
+.vt-pencere__tablo summary { font-size: var(--vt-t3); line-height: var(--vt-ui-sy); }
+.vt-sss summary { font-size: var(--vt-govde-b); line-height: var(--vt-ui-sy); }
+/* tablolar: mono veri 14/20, başlık Sans 12/16 */
+.vt-pencere__tablo table, .vt-karne__tablo { font-size: var(--vt-kucuk-b); line-height: var(--vt-kucuk-sy); }
+.vt-pencere__tablo thead th, .vt-karne__tablo thead th { font-size: var(--vt-mikro-b); line-height: var(--vt-mikro-sy); }
+/* mono değerler */
+.vt-disiplin__deger { font-size: var(--vt-dx-b); line-height: var(--vt-dx-sy); word-spacing: -0.3em; }   /* «15 gün»: mono boşluk 0,6em → 0,3em */
+.vt-sayi__deger, .vt-karne__sayi { font-size: var(--vt-dl-b); line-height: var(--vt-dl-sy); }
+.vt-karne__deger--referans .vt-karne__sayi { font-size: var(--vt-dm-b); line-height: var(--vt-dm-sy); }
+.vt-adim__ok { font-size: var(--vt-t5); line-height: 1; }
+@media (max-width: 600px) {
+  .vt-sayi__et, .vt-sayi__alt { font-size: var(--vt-mikro-b); line-height: var(--vt-mikro-sy); }
+}
