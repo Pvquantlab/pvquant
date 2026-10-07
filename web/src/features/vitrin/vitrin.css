@@ -1209,3 +1209,44 @@
   .vt-alt__izgara > :first-child { grid-column: 1 / -1; }
 }
 .vt-alt__izgara { row-gap: var(--vt-s7); }
+
+
+/* ─── P4 · DİKEY RİTİM ─── */
+.vt-bolum { padding-block: var(--vt-bolum-y); }
+.vt-serit, .vt-disiplin { padding-block: var(--vt-bant-y); }
+.vt-disiplin + .vt-bolum { padding-top: var(--vt-bant-y); }        /* aynı zemin ardılı: 1 px ayraç + kısa dolgu */
+.vt-bolum-bas, .vt-para-ust { margin-bottom: var(--vt-bas-alt); }
+.vt-para-ust .vt-bolum-bas, .vt-sss-yer .vt-bolum-bas { margin-bottom: 0; }
+.vt-bolum-bas .vt-giris, .vt-basla__giris { margin-top: var(--vt-s4); }
+.vt-ayna { margin-top: var(--vt-modul); }
+.vt-not { margin-top: var(--vt-s5); }
+.vt-karne__son { margin-top: var(--vt-s6); gap: var(--vt-s5); }
+.vt-karne__ilkeler { margin-top: var(--vt-s4); }
+.vt-disiplin__izgara { margin-top: var(--vt-s6); }
+.vt-disiplin__kunye { margin-top: var(--vt-s5); }
+.vt-disiplin__dipnot { margin-top: var(--vt-s1); }
+.vt-serit__kunye { margin-top: var(--vt-s4); }
+@media (min-width: 1081px) {
+  .vt-hero--a .vt-hero__ic { padding-block: var(--vt-s9) var(--vt-s12); }
+  .vt-hero--a .vt-hero__sol { padding-bottom: 0; }
+}
+.vt-hero__giris, .vt-hero--a .vt-hero__giris { margin-top: var(--vt-s4); }
+.vt-hero__eylem { margin-top: var(--vt-s6); gap: var(--vt-s2); }
+.vt-hero__mikro { margin-top: 0; }
+.vt-hero__eylem > .vt-bag { margin-top: var(--vt-s2); }
+.vt-hero--a .vt-hero__kunye { bottom: var(--vt-s3); }
+@media (max-width: 1080px) {
+  .vt-hero--a .vt-hero__sol { padding-top: var(--vt-s5); padding-bottom: var(--vt-s4); }
+  .vt-hero--a .vt-hero__pencere { margin-top: var(--vt-s4); }
+  .vt-hero--a .vt-hero__kunye { padding-top: var(--vt-s3); }
+}
+@media (max-width: 600px) {
+  .vt-hero__eylem { margin-top: var(--vt-s5); }
+  .vt-hero__tl-alt { margin: var(--vt-s2) var(--vt-yan) 0; }
+  .vt-hero--a .vt-hero__sahne { margin-top: -112px; }   /* B03: TL bağı ile güneş diski çakışmasın */
+}
+@media (min-width: 601px) and (max-width: 1080px) {
+  .vt-gece-sanat { max-width: 360px; margin-bottom: -40px; }   /* B21: başlığı 175 px itmesin */
+}
+.vt-alt__son { margin-top: var(--vt-s7); padding-top: var(--vt-s5); }
+.vt-alt__ufuk { margin-top: var(--vt-s7); }
