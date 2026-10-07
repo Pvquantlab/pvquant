@@ -42,6 +42,22 @@ Kaynak dosyalar (gerçek değerler HER ZAMAN oradan okunur, burası harita):
 - Köşe ölçeği: vitrin `--vt-r-xs..l/tam`; yeni köşe değeri icat edilmez.
 - Boşluk ritmi 4/8 px; süre `--vt-sure*` (120/200/320 ms), reduced-motion her animasyonu keser.
 
+## Ölçü sistemi (v2.408+, Mühür 1; tam gerekçe ~/Desktop/vitrin-olcu-sistemi)
+
+Vitrin ölçüleri `vitrin.css` sonundaki «ÖLÇÜ SİSTEMİ» bloğundaki jetonlardan gelir;
+yeni ölçü değeri icat edilmez, jeton tüketilir:
+
+- **Boşluk:** `--vt-s1…s12` = 4·8·12·16·24·32·40·48·64·80·96·128. Anlamsal türevler:
+  `--vt-bolum-y` (bölüm dolgusu), `--vt-bant-y` (ince bant + aynı-zemin ardılı),
+  `--vt-bas-alt`, `--vt-modul`, `--vt-kart-ic`(-l).
+- **Tip:** `--vt-t1…t9` = 12·14·16·17·20·24·30·36·42 (oran 1,2; taban 17; t3=16 tek
+  yarım adım — yalnız metin kademesinde). Roller `--vt-h1-b/-sy/-ha` kalıbıyla;
+  kırılımda kademeli (clamp değil), ≤600'de bir kademe iner.
+- **Bileşen:** düğme L 48 / S 40 (`pointer: coarse`'ta 44), girdi 48, hedef tabanı 44.
+- **Izgara:** 12/8/4 kolon, oluk `--vt-oluk` 24/24/16; kap 1200; mobil yan 16.
+- QA notu: telefon genişliği taraması dokunma emülasyonuyla yapılır (tarama.mjs bunu
+  kendisi açar) — yoksa coarse-pointer kuralları uygulanmaz, 40px S düğme yanlış bayrak alır.
+
 ## Jeton-dışı değer yasağı
 
 Bileşen kodunda ham hex/px (jeton karşılığı varken) inceleme kapısına takılır;

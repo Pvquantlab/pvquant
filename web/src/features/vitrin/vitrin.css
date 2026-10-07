@@ -1042,3 +1042,85 @@
 @media (forced-colors: active) {
   .vt-kesit__hucre { border: 1px solid CanvasText; }
 }
+
+
+/* ═══ ÖLÇÜ SİSTEMİ (v2.408+; kaynak: ~/Desktop/vitrin-olcu-sistemi, 07.10.2026 denetimi) ═══ */
+
+/* ─── P1 · JETON KATMANI — görünmez: hiçbir mevcut seçici bu adları tüketmez ─── */
+.vt {
+  /* ızgara: 12/8/4 kolon, oluk 24/24/16 (--vt-yan mevcut; mobil değeri P3'te) */
+  --vt-kap: 1200px;
+  --vt-oluk: 24px;
+  --vt-kolon: 12;
+  /* boşluk ölçeği — 4/8 tabanlı, 12 adım */
+  --vt-s1: 4px;  --vt-s2: 8px;  --vt-s3: 12px; --vt-s4: 16px;
+  --vt-s5: 24px; --vt-s6: 32px; --vt-s7: 40px; --vt-s8: 48px;
+  --vt-s9: 64px; --vt-s10: 80px; --vt-s11: 96px; --vt-s12: 128px;
+  /* anlamsal boşluk */
+  --vt-bolum-y: var(--vt-s11);   /* tam bölüm dikey dolgusu */
+  --vt-bant-y: var(--vt-s9);     /* ince bant: kanıt şeridi, disiplin; aynı zemin ardılı */
+  --vt-bas-alt: var(--vt-s8);    /* bölüm başı → içerik */
+  --vt-modul: var(--vt-s8);      /* bölüm içi bağımsız modül → modül */
+  --vt-kart-ic: var(--vt-s5);    /* kart iç dolgusu */
+  --vt-kart-ic-l: var(--vt-s6);  /* büyük kart: karne, form, durum */
+  /* tip ölçeği — oran 1,2 (minor third), taban 17; t3 tek yarım adım (17/√1,2 = 15,5 → 16) */
+  --vt-t1: 12px; --vt-t2: 14px; --vt-t3: 16px; --vt-t4: 17px; --vt-t5: 20px;
+  --vt-t6: 24px; --vt-t7: 30px; --vt-t8: 36px; --vt-t9: 42px;
+  /* roller: -b boyut · -sy satır yüksekliği (4 px katı) · -ha harf aralığı */
+  --vt-h1-b: var(--vt-t9); --vt-h1-sy: 48px; --vt-h1-ha: -0.022em;
+  --vt-h2-b: var(--vt-t7); --vt-h2-sy: 36px; --vt-h2-ha: -0.016em;
+  --vt-bs-b: var(--vt-t6); --vt-bs-sy: 28px; --vt-bs-ha: -0.012em;   /* başlık-s (kilit mesajı) */
+  --vt-h3-b: var(--vt-t5); --vt-h3-sy: 28px; --vt-h3-ha: -0.004em;
+  --vt-pb-b: var(--vt-t4); --vt-pb-sy: 24px;                          /* pencere/kart başlığı */
+  --vt-giris-b: var(--vt-t5); --vt-giris-sy: 28px;
+  --vt-govde-b: var(--vt-t4); --vt-govde-sy: 28px;
+  --vt-ui-sy: 24px;                                                   /* tek satırlık gövde öğesi */
+  --vt-km-b: var(--vt-t3); --vt-km-sy: 24px;                          /* kart metni */
+  --vt-kucuk-b: var(--vt-t2); --vt-kucuk-sy: 20px; --vt-kucuk-ha: 0.16px;
+  --vt-mikro-b: var(--vt-t1); --vt-mikro-sy: 16px; --vt-mikro-ha: 0.32px;
+  --vt-eyebrow-ha: 0.08em;
+  --vt-dx-b: var(--vt-t8); --vt-dx-sy: 40px;                          /* mono değer XL */
+  --vt-dl-b: var(--vt-t7); --vt-dl-sy: 36px;                          /* mono değer L */
+  --vt-dm-b: var(--vt-t6); --vt-dm-sy: 28px;                          /* mono değer M */
+  /* satır uzunluğu */
+  --vt-olcu-h1: 17ch; --vt-olcu-h2: 28ch; --vt-olcu-giris: 48ch; --vt-olcu-govde: 60ch;
+  /* bileşen */
+  --vt-dugme-y: 48px; --vt-dugme-s-y: 40px; --vt-kontrol-y: 48px; --vt-hedef: 44px;
+}
+@media (max-width: 1080px) {
+  .vt { --vt-kolon: 8; --vt-bolum-y: var(--vt-s9); --vt-bas-alt: var(--vt-s7); --vt-modul: var(--vt-s7); }
+}
+@media (max-width: 600px) {
+  .vt {
+    --vt-oluk: 16px; --vt-kolon: 4;
+    --vt-bolum-y: var(--vt-s8); --vt-bant-y: var(--vt-s8); --vt-bas-alt: var(--vt-s6); --vt-modul: var(--vt-s6);
+    --vt-kart-ic-l: var(--vt-s5);
+    --vt-h1-b: var(--vt-t7); --vt-h1-sy: 36px;
+    --vt-h2-b: var(--vt-t6); --vt-h2-sy: 28px; --vt-h2-ha: -0.012em;
+    --vt-bs-b: var(--vt-t5); --vt-bs-sy: 28px; --vt-bs-ha: -0.004em;
+    --vt-pb-b: var(--vt-t3);
+    --vt-giris-b: var(--vt-t4);
+    --vt-govde-b: var(--vt-t3); --vt-govde-sy: 24px;
+    --vt-dx-b: var(--vt-t7); --vt-dx-sy: 36px;
+    --vt-dl-b: var(--vt-t6); --vt-dl-sy: 28px;
+    --vt-dm-b: var(--vt-t5); --vt-dm-sy: 28px;
+  }
+}
+
+/* ─── P3a · ÜST ÇUBUK VE MOBİL YAN — B04 (K1): 360 px'te menü düğmesinin sağ payı 2,7 px ─── */
+/* mobil yan boşluk ve üst çubuk sığması (B04: 360'ta sağ pay 2,7 px) */
+@media (max-width: 600px) {
+  .vt { --vt-yan: 16px; }
+  .vt-serit .vt-izgara--4 { gap: var(--vt-oluk); }
+}
+/* ≥601 üst çubuk gap kuralı P3'e ertelendi (masaüstüne dokunmamak için) */
+@media (min-width: 360px) and (max-width: 600px) {
+  .vt-ust .vt-dugme, .vt-cekmece__alt .vt-dugme { min-height: var(--vt-dugme-s-y); padding-inline: var(--vt-s4); font-size: var(--vt-t2); line-height: 20px; }
+}
+@media (min-width: 360px) and (max-width: 600px) {
+  .vt-ust .vt-dugme { padding-inline: var(--vt-s3); }
+  .vt-ust__eylem { gap: var(--vt-s1); }
+}
+@media (pointer: coarse), (max-width: 359px) {
+  .vt-ust .vt-dugme, .vt-cekmece__alt .vt-dugme { min-height: var(--vt-hedef); }
+}

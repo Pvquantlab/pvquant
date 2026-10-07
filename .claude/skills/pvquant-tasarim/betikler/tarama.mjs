@@ -83,6 +83,9 @@ const rapor = { url, zaman: new Date().toISOString(), genislikler: {} };
 let ihlalVar = false;
 for (const g of GENISLIKLER) {
   await cdp("Emulation.setDeviceMetricsOverride", { width: g, height: 900, deviceScaleFactor: 1, mobile: g < 768 });
+  // telefon genişliği = dokunmatik aygıt: pointer:coarse medya kuralları (ör. 44px hedef
+  // tabanı) gerçekte uygulanır; emülasyonsuz ölçüm yanlış pozitif verir (Mühür 1, v2.408).
+  await cdp("Emulation.setTouchEmulationEnabled", { enabled: g < 768, maxTouchPoints: 5 }).catch(() => {});
   await cdp("Page.navigate", { url });
   await uyut(2500);
   const s = await js(DENETIM);
