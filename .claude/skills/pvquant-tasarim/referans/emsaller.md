@@ -46,3 +46,8 @@ Her satır: kalıp → dosya → kritik kural. Yeni mühürde yeni kalıp çıka
   1440'ta **x=630** tek hattında. Yeni iki sütunlu bölüm bu kalıbı kullanır; üçüncü
   çocuk eklenecekse grid-column kuralları güncellenir (vitrin.css P3b).
 - 4'lü kart ızgaraları tek oluk (24); dört adım zinciri istisnası: 264 kart + 48 ok şeridi.
+- **Subgrid kart hizası (v2.412):** iş kartları 5 satır (rozet/h3/metin/künye/bağ), dört
+  adım zinciri 2 satır subgrid — künye ve bağ satırları kartlar arasında hizalı; desteklemeyen
+  motorda zarif bozulma (bugünkü akış). Kesit çizim kutusu 16:7 sabit en-boy.
+- **Köşe istisnaları (belgeli):** rozet = boyutun ≈%30'u (44→13, 32→10, 24→7); lejant renk
+  örneği kutusu 2px (mini yüzey — jeton ölçeği 10×10 kutuya oransız kalır).

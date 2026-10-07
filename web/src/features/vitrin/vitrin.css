@@ -1250,3 +1250,113 @@
 }
 .vt-alt__son { margin-top: var(--vt-s7); padding-top: var(--vt-s5); }
 .vt-alt__ufuk { margin-top: var(--vt-s7); }
+
+
+/* ─── P5 · BİLEŞEN ÖLÇÜLERİ VE HİZALAR ─── */
+/* düğme L (gövde eylemi) ve girdi — üst çubuk S düğmesi P3'te (özgüllük 0,2,0 → L kuralı onu ezmez) */
+.vt-dugme { min-height: var(--vt-dugme-y); padding-inline: var(--vt-s5); font-size: var(--vt-t3); line-height: 20px; }
+.vt-girdi { min-height: var(--vt-kontrol-y); padding: var(--vt-s3) var(--vt-s4); font-size: var(--vt-t3); line-height: 24px; }
+/* köşe: yalnız 6/10/16/24/999 */
+.vt-dugme, .vt-mega__oge, .vt-hero--a .vt-hero__kunye { border-radius: var(--vt-r-s); }
+.vt-nav__bag, .vt-nav__acilir, .vt-pnc__etiket, .vt-kesit__kunye li { border-radius: var(--vt-r-xs); }
+.vt-durum { border-radius: var(--vt-r-m); }
+/* rozet: L 44 / M 32 / S 24 — köşe boyutun ≈%30'u (belgelenmiş istisna) */
+.vt-panelde .vt-rz, .vt-sayi .vt-rz { --rz-boy: 32px; --rz-yaricap: 10px; }
+.vt-alt__baslik .vt-rz { --rz-boy: 24px; --rz-yaricap: 7px; }
+/* kart iç dolgusu ve iç ritim */
+.vt-kart__govde, .vt-kesit__hucre, .vt-sayi { padding: var(--vt-kart-ic); }
+@media (max-width: 600px) { .vt-sayi { padding: var(--vt-s4); } }   /* 2'li mobil ızgarada 164 px hücre */
+.vt-karne, .vt-form-kart { padding: var(--vt-kart-ic-l); }
+.vt-durum { padding: var(--vt-kart-ic) var(--vt-kart-ic-l); gap: var(--vt-s5); }
+.vt-kart__govde .vt-h3, .vt-kart__govde .vt-kart__metin { margin-top: var(--vt-s2); }
+.vt-panelde { margin-top: var(--vt-s4); padding-top: var(--vt-s4); gap: var(--vt-s3); }
+.vt-hero--a .vt-hero__kunye { padding: var(--vt-s2) var(--vt-s3); }
+/* kesit: başlık ritmi, sabit en-boy çizim kutusu (16:7), geniş hücrede künye iki sütuna */
+.vt-kesit__bas { gap: var(--vt-s2); }
+.vt-kesit__cizim { margin: var(--vt-s4) 0; }
+.vt-kesit__cizim svg { aspect-ratio: 16 / 7; height: auto; }
+.vt-kesit__kunye { padding-top: var(--vt-s4); gap: var(--vt-s2); }
+.vt-kesit__kunye li { padding: var(--vt-s1) var(--vt-s2); }
+@media (max-width: 1080px) {
+  .vt-kesit__hucre--genis .vt-kesit__cizim { margin: var(--vt-s4) 0; align-self: stretch; }   /* B25 */
+  .vt-kesit__hucre--genis .vt-kart__metin { margin-top: 0; }
+}
+@media (min-width: 1081px) {
+  .vt-kesit__hucre--genis { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); column-gap: var(--vt-s5); }
+  .vt-kesit__hucre--genis .vt-kesit__cizim { grid-row: 1 / 3; }
+  .vt-kesit__hucre--genis .vt-kesit__kunye { grid-column: 1 / -1; }
+  .vt-kesit__hucre--genis .vt-kart__metin { margin-top: var(--vt-s3); }
+}
+/* 601–1080: tam satıra yayılan son geniş hücre masaüstü düzenini kullanır (çizim 670 px'e büyümesin) */
+@media (min-width: 601px) and (max-width: 1080px) {
+  .vt-kesit > .vt-kesit__hucre--genis:last-child { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); grid-template-rows: auto 1fr auto; column-gap: var(--vt-s5); }
+  .vt-kesit > .vt-kesit__hucre--genis:last-child .vt-kesit__cizim { grid-column: 2; grid-row: 1 / 3; margin: 0; align-self: center; }
+  .vt-kesit > .vt-kesit__hucre--genis:last-child .vt-kart__metin { margin-top: var(--vt-s3); }
+  .vt-kesit > .vt-kesit__hucre--genis:last-child .vt-kesit__kunye { grid-column: 1 / -1; }
+}
+/* iş kartları: subgrid — rozet / h3 / metin / künye / bağ satırları kartlar arasında hizalı (B08) */
+@media (min-width: 601px) {
+  .vt-is { display: grid; grid-row: span 5; grid-template-rows: subgrid; row-gap: 0; }
+  .vt-is .vt-kart__govde { display: grid; grid-row: 1 / -1; grid-template-rows: subgrid; row-gap: 0; }
+  .vt-is .vt-h3 { margin-top: var(--vt-s3); }
+  .vt-is .vt-kart__metin { margin-top: var(--vt-s2); }
+  .vt-is__kunye { margin-top: var(--vt-s4); align-self: start; }
+  .vt-is__bag { margin-top: var(--vt-s2); align-self: start; justify-self: start; }
+}
+/* dört adım zinciri ≥1241: oklar levha satırının ortasında — kural, tesadüf değil (B20) */
+@media (min-width: 1241px) {
+  .vt-adim { display: grid; grid-row: span 2; grid-template-rows: subgrid; row-gap: 0; }
+  .vt-adim__ok { grid-row: 1; align-self: center; }
+  .vt-adim__ok:nth-child(2) { grid-column: 2; }
+  .vt-adim__ok:nth-child(4) { grid-column: 4; }
+  .vt-adim__ok:nth-child(6) { grid-column: 6; }
+}
+/* disiplin: hücre ayraçları (panel kesiti 1 px dili) + 8/4/12 ritim (B11) */
+.vt-disiplin__etiket { margin-top: var(--vt-s2); }
+.vt-disiplin__alt { margin-top: var(--vt-s1); }
+.vt-disiplin__bag { padding-top: var(--vt-s3); }
+@media (min-width: 1081px) {
+  .vt-disiplin__oge:not(:nth-child(4n + 1)) { border-left: 1px solid var(--vt-kenar-soguk); padding-left: var(--vt-s5); }
+}
+@media (min-width: 601px) and (max-width: 1080px) {
+  .vt-disiplin__oge:nth-child(even) { border-left: 1px solid var(--vt-kenar-soguk); padding-left: var(--vt-s5); }
+}
+/* karne (kilitli kart) */
+.vt-kilitli { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--vt-s6) var(--vt-s8); margin-top: var(--vt-s5); }
+@media (max-width: 1080px) { .vt-kilitli { grid-template-columns: 1fr; } }
+.vt-kilitli__kilit .vt-ik { width: 24px; height: 24px; }
+.vt-kilitli__baslik { margin-top: var(--vt-s4); }
+.vt-kilitli__cumle { margin-top: var(--vt-s2); }
+.vt-kilitli__tanimlar { column-gap: var(--vt-s7); }
+.vt-kilitli__tanim { padding-block: var(--vt-s4); }
+.vt-kilitli__tanim dd { margin-top: var(--vt-s1); }
+.vt-kilitli__kapanis { margin-top: var(--vt-s4); padding-top: var(--vt-s3); }
+/* kanıt şeridi */
+.vt-cip, .vt-alan { padding: var(--vt-s1) var(--vt-s2); }
+.vt-alanlar { margin-top: var(--vt-s4); gap: var(--vt-s2); }
+/* SSS */
+.vt-sss summary { min-height: 56px; padding-block: var(--vt-s4); }
+.vt-sss p { padding-bottom: var(--vt-s5); }
+/* form */
+.vt-etiket { gap: var(--vt-s2); }
+.vt-form__gonder { margin-top: var(--vt-s5); }
+.vt-form__not { margin-top: var(--vt-s3); }
+/* pencere (hero grafiği) */
+.vt-pencere__bas { padding: var(--vt-s4) var(--vt-s4) 0; }
+.vt-pencere__tarih { padding: var(--vt-s1) var(--vt-s4) 0; }
+.vt-lejant, .vt-hero--a .vt-lejant { padding: var(--vt-s2) var(--vt-s4) 0; gap: var(--vt-s1) var(--vt-s4); }
+.vt-pencere__kunye { padding: var(--vt-s2) var(--vt-s4) var(--vt-s4); }
+.vt-pencere__tablo { padding: 0 var(--vt-s4) var(--vt-s4); }
+/* üst çubuk iç payları, bölüm çubuğu */
+.vt-logo { gap: var(--vt-s2); }
+.vt-nav__bag, .vt-nav__acilir { padding-inline: var(--vt-s2); }
+.vt-nav__bag::after, .vt-nav__acilir::after { left: var(--vt-s2); right: var(--vt-s2); }
+.vt-bolumcubuk__bag { padding-inline: var(--vt-s3); }
+.vt-bolumcubuk__bag::after { left: var(--vt-s3); right: var(--vt-s3); }
+/* altbilgi: başlık satırı logo satırıyla aynı (44); ince imleçte liste bağı 32 (B19) */
+.vt-alt__baslik { min-height: var(--vt-hedef); margin-bottom: var(--vt-s2); }
+.vt-alt__liste { gap: var(--vt-s2); }
+.vt-alt__liste--bag { gap: 0; }
+@media (pointer: fine) {
+  .vt-alt__liste a { min-height: var(--vt-s6); }
+}
