@@ -66,3 +66,15 @@ Her satır: kalıp → dosya → kritik kural. Yeni mühürde yeni kalıp çıka
 - **Dürüstlük:** takvimde yalnız koşusu olan günler etkin; bulgu rozeti VERİDEN türetilir
   (gercek < p10 − 0,005, ≥3 saat blok); pazarlama kartında gün-üstü kip yok (seyrek veri
   ürünü zayıf gösterir — toplulaştırma referansVeri'de panel için durur).
+
+## Referans dizini (masaüstü araştırma klasörleri — «gerçek SaaS referansı» sorusunun adresi)
+
+| Klasör | Ne için bakılır |
+|---|---|
+| `~/Desktop/vitrin-rakip-analizi/markalar` | Rakip vitrin ekran kanıtları; Ö1–Ö15 uyarlanabilir öneriler (açık: Ö4 TL vakası, Ö5, Ö12, Ö15) |
+| `~/Desktop/vitrin-tasarim-arastirmasi/referans_tokens.json` | Gerçek sitelerden ölçülmüş token kümeleri; YON_ONERILERI yön belgeleri |
+| `~/Desktop/vitrin-olcu-sistemi/` | Ölçü sistemi denetimi + Opus teslim CSS'i (v2.408–412'nin kaynağı); 01-denetim/betikler/cdp.mjs test yardımcıları |
+| `~/Desktop/ges-tasarim-zekasi/` | Yığının kuruluş gerekçeleri (skill retleri, grafik kütüphane kararı, QA döngüsü) |
+| `~/Desktop/rakip-excel-raporlari/` | Solargis/Vaisala/DNV/SolarEdge/Raptor/NREL rapor BİÇİMLERİ — panel Raporlar/dışa verim tasarımında kıyas |
+| `~/Desktop/scada-markalari/` | 23 SCADA markasının ekran dili + gerçek üretim arşivleri — panel entegrasyon/izleme ekranlarında kıyas |
+| `~/Desktop/kart-tasarim/` · `vitrin-cila-kesif/` · `vitrin-gorsel-kesif/` | Geçmiş tur arşivleri (panel kesiti, Ufuk cilası, palet varyantları) — tekrar keşfetme |

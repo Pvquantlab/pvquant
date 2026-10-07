@@ -50,3 +50,24 @@ kısma emsali); fold üstü gerçek veri alanı / krom ≥ %50.
 Tek orkestrasyon anı (bölüm belirmesi R25: keyframe `from` ile gizleme + fill:backwards,
 statik opacity-0 YASAK — v2.391 Ö10 dersi); durum geçişi ≤200 ms; print'te animation:none;
 reduced-motion her şeyi keser.
+
+## Durum matrisi (v2.415 — koddan ölçüldü; «boşluk» satırları panel-SaaS hattının iş listesidir)
+
+Kaynaklar: panel `web/src/index.css`, vitrin `vitrin.css`. Yeni durum stili icat etmeden önce bu tablo.
+
+| Bileşen | hover | focus | disabled | hata | yükleniyor | boş |
+|---|---|---|---|---|---|---|
+| Düğme (panel `.dugme`/`.dugme-ana`) | kenar/zemin koyulaşır, parlamaz (V1) | global `:focus-visible` (118) | `opacity:.55 + not-allowed` (293) | — | **BOŞLUK** (dönen imleç/kilitleme yok) | — |
+| Düğme (vitrin `.vt-dugme`) | dolu koyulaşır, çizgili `--vt-bant` zemini | `.vt :focus-visible` halka | **BOŞLUK** (tek form, bugün gerekmedi) | — | **BOŞLUK** | — |
+| Girdi (panel `.girdi`) | — | odak halkası (577) | **BOŞLUK** | **BOŞLUK** (alan kenarı yok; yalnız `.ayar-durum.hata` metni) | — | yer tutucu |
+| Girdi (vitrin `.vt-girdi`) | — | halka + offset 1px (402) | — | form üstü durum satırı | — | yer tutucu |
+| Tablo (`table.veri`) | satır `tr:hover td` zemin (277) | — | — | — | **BOŞLUK** (iskelet yok) | hücre tiresi `—` (tire disiplini: `?? 0` YASAK) |
+| Ayar bloğu (`.ayar-*`) | — | select/input halkası | — | `.ayar-durum.hata` (`--uyari-metin`) | `.ayar-durum` «kaydediliyor…» | `.ayar-durum.ok` onay |
+| Sayfa yüklemesi | — | — | — | **BOŞLUK** (API düşerse çoğu sayfa sessiz) | **BOŞLUK:** bugün 2 yerde satır içi stilli «Yükleniyor…» div'i (Santralim 264, Dogruluk 359) — kalıp yok, iskelet yok | «— veri yok» `.soluk`, «henüz …» cümleleri, çip «koşu bekleniyor» (Portfoy 119/153, Dogruluk 415/474) |
+| Modal/palet | — | odak içeride | — | — | — | — (emsal: örtünün ÇOCUĞU + stopPropagation, v2.308) |
+| Onboarding (yeni kiracı ilk açılış) | | | | | | **BOŞLUK** (hiç tasarlanmadı) |
+
+Kurallar: yükleme metni/iskeleti HER ZAMAN aynı kalıptan gelir (satır içi stil yasak —
+yapi.test ruhuna panel tarafında da uyulur); hata durumu alan KENARINDA değil durum
+SATIRINDA konuşur (`--uyari-metin`; amber değil); boş durum dürüsttür: tire, «yayın
+açılınca / henüz birikmedi», asla sahte eğri/iskelet-süsü (anti-slop §Veri 5).
