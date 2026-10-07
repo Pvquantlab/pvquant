@@ -1113,8 +1113,8 @@
   .vt { --vt-yan: 16px; }
   .vt-serit .vt-izgara--4 { gap: var(--vt-oluk); }
 }
-/* ≥601 üst çubuk gap kuralı P3'e ertelendi (masaüstüne dokunmamak için) */
-@media (min-width: 360px) and (max-width: 600px) {
+@media (min-width: 601px) { .vt-ust__ic { gap: var(--vt-s5); } }
+@media (min-width: 360px) {
   .vt-ust .vt-dugme, .vt-cekmece__alt .vt-dugme { min-height: var(--vt-dugme-s-y); padding-inline: var(--vt-s4); font-size: var(--vt-t2); line-height: 20px; }
 }
 @media (min-width: 360px) and (max-width: 600px) {
@@ -1166,3 +1166,46 @@
 @media (max-width: 600px) {
   .vt-sayi__et, .vt-sayi__alt { font-size: var(--vt-mikro-b); line-height: var(--vt-mikro-sy); }
 }
+
+/* ─── P3b · IZGARA VE SPLIT (P3'ün kalanı) ─── */
+/* split: metin kolon 1–5 (+1 oluk iç pay → görsel aralık 48), medya kolon 6–12; bütün sağ sütunlar tek hatta */
+@media (min-width: 1081px) {
+  .vt-para-ust, .vt-sss-yer, .vt-basla-yer { grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--vt-oluk); }
+  .vt-para-ust > :first-child, .vt-sss-yer > :first-child, .vt-basla-yer > :first-child { grid-column: 1 / span 5; padding-inline-end: var(--vt-oluk); }
+  .vt-para-ust > :last-child, .vt-sss-yer > :last-child, .vt-basla-yer > :last-child { grid-column: 6 / -1; }
+}
+@media (min-width: 601px) {
+  .vt-ayna__bas, .vt-ayna__satir { grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--vt-oluk); }
+  .vt-ayna__bas > :first-child, .vt-ayna__satir > :first-child { grid-column: 1 / span 5; padding-inline-end: var(--vt-oluk); }
+  .vt-ayna__bas > :last-child, .vt-ayna__satir > :last-child { grid-column: 6 / -1; }
+  .vt-form__alanlar { grid-template-columns: minmax(0, 5fr) minmax(0, 4fr) minmax(0, 3fr); }
+}
+/* hero ≥1241: sol = kolon 1–5; pencere 6. kolon çizgisinden, genişliği grafik geometrisi (540) */
+@media (min-width: 1241px) {
+  .vt-hero--a .vt-hero__ic { grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--vt-oluk); }
+  .vt-hero--a .vt-hero__sol { grid-column: 1 / span 5; padding-inline-end: var(--vt-oluk); }
+  .vt-hero--a .vt-hero__pencere { grid-column: 6 / -1; width: 540px; }
+}
+@media (min-width: 1081px) and (max-width: 1240px) {
+  .vt-hero--a .vt-hero__ic { grid-template-columns: minmax(0, 1fr) 424px 64px; column-gap: var(--vt-s6); }
+}
+/* kart ızgaraları: tek oluk; disiplin aynı ızgarada */
+.vt-izgara, .vt-adimlar, .vt-disiplin__izgara { gap: var(--vt-oluk); }
+@media (max-width: 600px) {
+  .vt-disiplin__izgara { gap: var(--vt-s5) var(--vt-oluk); }
+}
+/* dört adım zinciri ≥1241: 4 kart + 3 ok şeridi (48) → kart 264 (belgelenmiş istisna) */
+@media (min-width: 1241px) {
+  .vt-adimlar { grid-template-columns: minmax(0, 1fr) var(--vt-s8) minmax(0, 1fr) var(--vt-s8) minmax(0, 1fr) var(--vt-s8) minmax(0, 1fr); gap: 0; }
+  .vt-adim__ok { justify-self: center; }
+}
+/* altbilgi: 4|2|2|4 kolon; 601–1080: logo tam, Sayfa|Doğruluk, İlkeler tam */
+@media (min-width: 1081px) {
+  .vt-alt__izgara { grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--vt-oluk); }
+  .vt-alt__izgara > :nth-child(1), .vt-alt__izgara > :nth-child(4) { grid-column: span 4; }
+  .vt-alt__izgara > :nth-child(2), .vt-alt__izgara > :nth-child(3) { grid-column: span 2; }
+}
+@media (min-width: 601px) and (max-width: 1080px) {
+  .vt-alt__izgara > :first-child { grid-column: 1 / -1; }
+}
+.vt-alt__izgara { row-gap: var(--vt-s7); }

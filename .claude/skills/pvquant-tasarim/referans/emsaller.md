@@ -38,3 +38,11 @@ Her satır: kalıp → dosya → kritik kural. Yeni mühürde yeni kalıp çıka
 - Metin seçimi: blok başına 5 kurumsal-anlaşılır seçenek sun, kullanıcı seçer (v2.392).
 - Tasarım adımı: 3 aday + gerçek içerikli önizleme → kullanıcı seçer → uygula (v2.304-307).
 - Bulut teslimi devralma: DEVIR.md + temiz patch kalıbı (v2.393).
+
+## Split hattı ve kart subgrid (ölçü sistemi, v2.410+)
+
+- **Split kalıbı:** iki sütunlu bölümlerde (hero, TL üstü, SSS, başvuru, ayna) metin
+  1–5. kolonlarda (+1 oluk iç pay), medya/cevap 6–12. kolonlarda → bütün sağ sütunlar
+  1440'ta **x=630** tek hattında. Yeni iki sütunlu bölüm bu kalıbı kullanır; üçüncü
+  çocuk eklenecekse grid-column kuralları güncellenir (vitrin.css P3b).
+- 4'lü kart ızgaraları tek oluk (24); dört adım zinciri istisnası: 264 kart + 48 ok şeridi.
