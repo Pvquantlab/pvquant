@@ -96,3 +96,53 @@ test("yöntem metni hesapla eşleşir ve tek kaynaktan gelir", () => {
   assert.match(birlesik(METRIKLER), /“Yarın = dün aynı saat”/);
   assert.match(birlesik(KISA_TANIMLAR), /“yarın = dün aynı saat”/);
 });
+
+/* ── v2.413: referans kartı veri modülü — dört günlük koşu seti ── */
+import {
+  bulgu, gunSerisi, gunlukCF, haftaSerisi, yilSerisi,
+  KOSU_GUNLERI, VARSAYILAN_GUN,
+} from "../../src/features/vitrin/referansVeri.ts";
+
+test("dört koşu günü tutarlı: p10 ≤ p90, oranlar 0..1, saatler artan (p50 kontrol üyesidir — banda kelepçeli değil, 29.09 07:00 örneği)", () => {
+  assert.equal(KOSU_GUNLERI.length, 4);
+  for (const g of KOSU_GUNLERI) {
+    const seri = gunSerisi(g);
+    assert.equal(seri.length, 15, g);
+    seri.forEach((n, i) => {
+      assert.ok(0 <= n.p10 && n.p10 <= n.p90 + 1e-9 && n.p90 <= 1, `${g} saat ${n.saat}`);   // 30.09 15:00 tam AC kelepçesi: p90 = 1
+      assert.ok(0 <= n.p50 && n.p50 <= 1, `${g} saat ${n.saat} p50`);
+      if (n.gercek !== null) assert.ok(0 <= n.gercek && n.gercek <= 1, `${g} saat ${n.saat}`);
+      if (i > 0) assert.ok(n.saat > seri[i - 1].saat, `${g} saat ${n.saat}`);
+    });
+  }
+});
+
+test("varsayılan gün (01.10) numuneGun ile bayt-aynı — kartın bugünkü hâli korunur", () => {
+  const eski = numuneGun();
+  const yeni = gunSerisi(VARSAYILAN_GUN);
+  assert.equal(yeni.length, eski.length);
+  eski.forEach((n, i) => {
+    for (const alan of ["saat", "p10", "p50", "p90", "gercek"] as const)
+      assert.equal(yeni[i][alan], n[alan], `saat ${n.saat} ${alan}`);
+  });
+});
+
+test("türetilmiş bulgu 01.10'da araştırma vurgusuyla birebir", () => {
+  assert.equal(bulgu(VARSAYILAN_GUN)?.metin, "08:00–12:00 · gerçekleşen aralığın altında");
+});
+
+test("günlük CF ve aralık serileri: enerji anlamı korunur, veri uydurulmaz", () => {
+  for (const g of KOSU_GUNLERI) {
+    const { cf50, cfGercek } = gunlukCF(g);
+    assert.ok(cf50 > 0.1 && cf50 < 0.5, `${g} cf50 ${cf50}`);
+    assert.ok(cfGercek > 0.05 && cfGercek < 0.5, `${g} cfGercek ${cfGercek}`);
+  }
+  const hafta = haftaSerisi(VARSAYILAN_GUN);          // 28.09 Pzt – 04.10 Paz
+  assert.equal(hafta.length, 7);
+  assert.equal(hafta.filter((s) => s.cf50 !== null).length, 4);
+  assert.ok(hafta.slice(4).every((s) => s.cf50 === null), "koşusu olmayan günler null kalır");
+  const yil = yilSerisi(VARSAYILAN_GUN);
+  assert.equal(yil.seri.length, 12);
+  assert.equal(yil.seri.filter((s) => s.cf50 !== null).length, 2);  // Eyl + Eki
+  assert.ok(yil.kapsam.includes("4 koşu günü"));
+});

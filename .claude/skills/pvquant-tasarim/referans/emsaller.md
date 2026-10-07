@@ -51,3 +51,18 @@ Her satır: kalıp → dosya → kritik kural. Yeni mühürde yeni kalıp çıka
   motorda zarif bozulma (bugünkü akış). Kesit çizim kutusu 16:7 sabit en-boy.
 - **Köşe istisnaları (belgeli):** rozet = boyutun ≈%30'u (44→13, 32→10, 24→7); lejant renk
   örneği kutusu 2px (mini yüzey — jeton ölçeği 10×10 kutuya oransız kalır).
+
+## Yaşayan kart dili (v2.413 — Referans kartı emsali)
+
+- **Görünümün tek kaynağı uygulama durumu** (seçili gün + katman görünürlükleri); CSS asla
+  durum kaynağı değildir. Katmanlar koşullu render edilir — gizleme CSS'le yapılmaz.
+- **SVG/HTML ayrımı:** eksen/ızgara/seri SVG'de; tooltip balonu, bulgu ve AC etiketi,
+  kontroller GERÇEK DOM nesneleri (`.vt-nesne` dili: beyaz .96 zemin + 1px mürekkep-alfa
+  kenar + yumuşak gölge; cam/blur yok).
+- **Katman kontrolü** = `button aria-pressed` + onay kutusu + renk anahtarı; hover ≤1px
+  kalkma. Takvim açılırı araç düğmesinin SAĞINA hizalanır (kart overflow:hidden kırpar;
+  ≤600'de düğme solda olduğundan sola). Tarih değişiminde çizim `key={gun}` ile sıfırlanır
+  — açık balon eski günün değerini taşımaz.
+- **Dürüstlük:** takvimde yalnız koşusu olan günler etkin; bulgu rozeti VERİDEN türetilir
+  (gercek < p10 − 0,005, ≥3 saat blok); pazarlama kartında gün-üstü kip yok (seyrek veri
+  ürünü zayıf gösterir — toplulaştırma referansVeri'de panel için durur).

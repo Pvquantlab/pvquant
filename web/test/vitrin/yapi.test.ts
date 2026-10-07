@@ -37,9 +37,9 @@ test("/yontem artık eski Vitrin sabitlerini kullanmıyor ve tek yöntem kaynağ
   assert.doesNotMatch(yontem, /style=\{/);
 });
 
-test("vitrin bileşenlerinde satır içi stil yok (Rozet.tsx hariç: <use> gölge ağacında sembol vurgusu motor uyumu için satır içi stil ister — BENIOKU §6.3)", () => {
+test("vitrin bileşenlerinde satır içi stil yok (Rozet.tsx hariç — BENIOKU §6.3; ReferansEgri.tsx hariç — yüzen balon/rozet konumları çalışma anında ÖLÇÜLÜR, v2.413)", () => {
   const kok = new URL("../../src/features/vitrin/", import.meta.url);
-  for (const ad of readdirSync(kok).filter((a) => a.endsWith(".tsx") && a !== "Rozet.tsx")) {
+  for (const ad of readdirSync(kok).filter((a) => a.endsWith(".tsx") && a !== "Rozet.tsx" && a !== "ReferansEgri.tsx")) {
     assert.doesNotMatch(readFileSync(new URL(ad, kok), "utf8"), /style=\{/, ad);
   }
 });
