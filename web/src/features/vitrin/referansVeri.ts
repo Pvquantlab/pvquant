@@ -177,3 +177,23 @@ export function bulgu(gun: KosuGunu, ustSaat?: number): { bas: number; son: numb
   const ss = (s: number) => `${String(s).padStart(2, "0")}:00`;
   return { ...enIyi, metin: `${ss(enIyi.bas)}–${ss(enIyi.son)} · gerçekleşen aralığın altında` };
 }
+
+/* ── Ö4 vakası (v2.416): 01.10 koşusunun 15 dk teslim dilimleri ──
+ * ÜRETİM: depodaki ext/tahmin/alt_saatlik.saatlikten_15dk ile, kaynak CSV'den
+ * (tur7/gun4_01_10, vitrin reçetesi ÷200 → kapasiteye oran), 11:00–12:45 TRT penceresi.
+ * Saat içi şekil açık-gök profilinden gelir; HER SAATİN 4-DİLİM ORTALAMASI SAATLİK
+ * DEĞERE EŞİTTİR (enerji koruma — mantik.test tarar, gunSerisi ile bağlar).
+ * Elle değer yazılmaz; yeniden üretim: pytest ortamında saatlikten_15dk(seri, 37.716, 33.55). */
+export interface VakaDilimi { saat: string; p10: number; p50: number; p90: number; gercek: number }
+export const VAKA_PENCERESI = "11:00–12:45" as const;
+export const VAKA_SAATI = 12 as const;                 // saat kartının gösterdiği teslim saati
+export const VAKA_15DK: readonly VakaDilimi[] = [
+  { saat: "11:00", p10: 0.615, p50: 0.873, p90: 0.873, gercek: 0.4858 },
+  { saat: "11:15", p10: 0.633, p50: 0.8985, p90: 0.8985, gercek: 0.5 },
+  { saat: "11:30", p10: 0.6477, p50: 0.9195, p90: 0.9195, gercek: 0.5117 },
+  { saat: "11:45", p10: 0.6592, p50: 0.9357, p90: 0.9357, gercek: 0.5207 },
+  { saat: "12:00", p10: 0.2049, p50: 0.7206, p90: 0.8537, gercek: 0.7311 },
+  { saat: "12:15", p10: 0.2064, p50: 0.7256, p90: 0.8596, gercek: 0.7362 },
+  { saat: "12:30", p10: 0.2067, p50: 0.7269, p90: 0.8612, gercek: 0.7375 },
+  { saat: "12:45", p10: 0.2061, p50: 0.7245, p90: 0.8583, gercek: 0.7351 },
+];

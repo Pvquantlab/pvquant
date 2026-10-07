@@ -146,3 +146,28 @@ test("günlük CF ve aralık serileri: enerji anlamı korunur, veri uydurulmaz",
   assert.equal(yil.seri.filter((s) => s.cf50 !== null).length, 2);  // Eyl + Eki
   assert.ok(yil.kapsam.includes("4 koşu günü"));
 });
+
+/* ── v2.416: Ö4 vakası — 15 dk dilimleri saatlik koşuya bağlıdır ── */
+import { VAKA_15DK, VAKA_SAATI } from "../../src/features/vitrin/referansVeri.ts";
+
+test("vaka 15 dk dilimleri: 8 satır, 15 dk adım, sınırlar tutarlı; HER SAATİN ORTALAMASI saatlik değere eşit (enerji koruma)", () => {
+  assert.equal(VAKA_15DK.length, 8);
+  VAKA_15DK.forEach((d, i) => {
+    assert.ok(0 <= d.p10 && d.p10 <= d.p90 + 1e-9 && d.p90 <= 1, d.saat);
+    assert.ok(0 <= d.p50 && d.p50 <= 1 && 0 <= d.gercek && d.gercek <= 1, d.saat);
+    if (i > 0) {
+      const [a, b] = [VAKA_15DK[i - 1].saat, d.saat].map((s) => +s.slice(0, 2) * 60 + +s.slice(3));
+      assert.equal(b - a, 15, d.saat);
+    }
+  });
+  const saatlik = gunSerisi(VARSAYILAN_GUN);
+  for (const h of [VAKA_SAATI - 1, VAKA_SAATI]) {
+    const grup = VAKA_15DK.filter((d) => +d.saat.slice(0, 2) === h);
+    assert.equal(grup.length, 4, `saat ${h}`);
+    const ref = saatlik.find((n) => n.saat === h)!;
+    for (const alan of ["p10", "p50", "p90", "gercek"] as const) {
+      const ort = grup.reduce((t2, d) => t2 + d[alan], 0) / 4;
+      assert.ok(Math.abs(ort - (ref[alan] as number)) < 2e-4, `saat ${h} ${alan}: ${ort} ↔ ${ref[alan]}`);
+    }
+  }
+});

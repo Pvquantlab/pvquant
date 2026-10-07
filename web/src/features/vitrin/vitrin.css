@@ -993,55 +993,9 @@
   .vt-ayna__bas > :last-child { position: absolute; width: 1px; height: 1px; clip: rect(0 0 0 0); overflow: hidden; }
 }
 
-/* kart-tasarim — TL bölümü «panel kesiti» (tasarım C). CİLA katmanı: vitrin.css'in SONUNA eklenir
-   (yapi.test «her seçici .vt ile başlar» kuralı bu kuralları da tarar). Beş kart tek beyaz yüzeyin
-   1 px çizgiyle bölünmüş hücreleridir: çizgi = ızgara boşluğundan görünen --vt-kenar zemini. */
-.vt-kesit { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1px; background: var(--vt-kenar); border: 1px solid var(--vt-kenar); border-radius: var(--vt-r-m); overflow: hidden; }
-.vt-kesit__hucre { grid-column: span 2; display: flex; flex-direction: column; background: var(--vt-zemin); padding: 24px 28px 26px; }
-.vt-kesit__hucre--genis { grid-column: span 3; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto 1fr auto; column-gap: 28px; }
-/* DOM'da ad önce (başlık sırası), görselde etiket üstte */
-.vt-kesit__bas { display: flex; flex-direction: column-reverse; gap: 6px; }
-.vt-kesit__bas .vt-h3 { font-size: 19px; line-height: 26px; }
-/* v2.406: etiket VERİ değil kategori işareti — mono yerine gövde ailesi (kullanıcı turu);
-   mono, gerçek veri yüzeylerinde (eksen/tablo/şerit) kalır */
-.vt-kesit__etiket { display: flex; align-items: center; gap: 7px; font: 600 11px/16px var(--vt-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--vt-ucuncul); }
-/* durum noktası: modül «panelde canlı» dili — mürekkep, veri renklerine dokunmaz */
-.vt-kesit__etiket::before { content: ""; flex: none; width: 5px; height: 5px; border-radius: 50%; background: var(--vt-metin); opacity: .38; }
-.vt-kesit__cizim { margin: 18px 0 16px; line-height: 0; }
-.vt-kesit__cizim svg { display: block; width: 100%; height: auto; }
-.vt-kesit__cizim svg * { vector-effect: non-scaling-stroke; }
-/* v2.401 mikro-netlik: mono eksen/künye yazıları ölçeklenirken piksele oturur */
-.vt-kesit__cizim svg text, .vt-pnc__cizim text { text-rendering: geometricPrecision; }
-.vt-kesit__hucre--genis .vt-kesit__cizim { grid-column: 2; grid-row: 1 / 4; margin: 0; align-self: center; }
-.vt-kesit__hucre .vt-kart__metin { font-size: 15px; line-height: 23px; }
-.vt-kesit__hucre--genis .vt-kart__metin { margin-top: 10px; }
-/* künye hücre tabanına yaslanır: kısa kartta boşluk metin altında değil çipler üstünde toplanır */
-.vt-kesit__kunye { margin: auto 0 0; padding: 14px 0 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
-.vt-kesit__kunye li { font: 500 12px/1 var(--vt-sans); font-variant-numeric: tabular-nums; color: var(--vt-metin); padding: 6px 9px; background: rgba(11, 27, 60, .035); border: 1px solid var(--vt-kenar); border-radius: 4px; }
-@media (max-width: 1080px) {
-  .vt-kesit { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .vt-kesit__hucre, .vt-kesit__hucre--genis { grid-column: span 1; }
-  .vt-kesit__hucre--genis { display: flex; }
-  .vt-kesit__hucre--genis .vt-kesit__cizim { margin: 18px 0 16px; }
-  .vt-kesit > :last-child { grid-column: 1 / -1; }
-}
-@media (max-width: 600px) {
-  .vt-kesit { grid-template-columns: 1fr; }
-  .vt-kesit__hucre { padding: 20px 18px 22px; }
-}
-/* giriş kademesi: .vt-izgara kartlarıyla aynı ritim */
-.vt [data-canlan].is-acildi .vt-kesit > * { animation: vt-canlan 520ms var(--vt-ease-cik) backwards; }
-.vt [data-canlan].is-acildi .vt-kesit > :nth-child(2) { animation-delay: 60ms; }
-.vt [data-canlan].is-acildi .vt-kesit > :nth-child(3) { animation-delay: 120ms; }
-.vt [data-canlan].is-acildi .vt-kesit > :nth-child(4) { animation-delay: 180ms; }
-.vt [data-canlan].is-acildi .vt-kesit > :nth-child(n+5) { animation-delay: 240ms; }
-@media (prefers-reduced-motion: reduce) {
-  .vt [data-canlan].is-acildi .vt-kesit > * { animation: none; }
-}
-/* zorlanmış renklerde zemin çizgileri kaybolur: hücre kenarı geri gelir */
-@media (forced-colors: active) {
-  .vt-kesit__hucre { border: 1px solid CanvasText; }
-}
+/* TL bölümü: v2.416'da «panel kesiti» ızgarası ve pnc maketleri kalktı (Ö4 vakası) —
+   vaka blokları dosya sonundadır; cila bloklarındaki .vt-pnc/.vt-sahne satırları mühür
+   bütünlüğü için yerinde durur, ölüdür. */
 
 
 /* ═══ ÖLÇÜ SİSTEMİ (v2.408+; kaynak: ~/Desktop/vitrin-olcu-sistemi, 07.10.2026 denetimi) ═══ */
@@ -1514,4 +1468,79 @@
   border-radius: var(--vt-r-xs); font: 500 11px/15px var(--vt-mono); font-variant-numeric: tabular-nums; color: var(--vt-ikincil); }
 @media (max-width: 600px) {
   .vt-pencere__baglam { align-items: flex-start; text-align: left; }
+}
+
+/* ═══ v2.416 · TL BÖLÜMÜ — Ö4 VAKASI: 01.10 koşusunun teslim sahnesi ═══
+   Rakip analizi Ö4: maketlerin yerini aynı araştırma koşusunun GERÇEK çıktıları aldı.
+   Saat kartı (yüzen .vt-nesne, Aurora usulü sol kenardan hafif taşar) kesik MÜREKKEP
+   çizgisiyle 15 dk toplayıcı satırlarına bağlanır (Raptor emsali; eylem rengi değil).
+   Tahmin değerleri mavi, gerçekleşen YALNIZ amber; her sahnede mono vaka künyesi.
+   Yetiler kart değil, tek yüzeysiz çizgili satır dizisidir. */
+.vt-para-kopru { margin-top: 10px; }
+.vt-vaka { margin: 0; background: var(--vt-zemin); border-radius: 10px;
+  box-shadow: 0 24px 64px -32px rgba(11, 27, 60, .25); padding: var(--vt-s4) var(--vt-s5) var(--vt-s5); }
+.vt-vaka__kunye { font: 500 12px/17px var(--vt-mono); color: var(--vt-ucuncul); }
+.vt-vaka__govde { display: grid; grid-template-columns: minmax(0, 4fr) var(--vt-s6) minmax(0, 7fr);
+  align-items: center; margin-top: var(--vt-s4); }
+.vt-vaka__bag { align-self: center; height: 0; border-top: 1.5px dashed rgba(11, 27, 60, .45); }
+
+/* saat kartı: bağımsız nesne, sol kenardan taşar */
+.vt-vaka__saat { padding: var(--vt-s4); margin-left: calc(-1 * var(--vt-s7)); }
+.vt-vaka__saat-bas { font: 600 26px/30px var(--vt-mono); font-variant-numeric: tabular-nums; color: var(--vt-metin); }
+.vt-vaka__saat-bas span { display: block; font: 500 11px/15px var(--vt-sans); letter-spacing: .04em; color: var(--vt-ucuncul); }
+.vt-vaka__degerler { margin: var(--vt-s3) 0 0; display: grid; gap: 6px; }
+.vt-vaka__degerler > div { display: flex; justify-content: space-between; gap: var(--vt-s3);
+  font: 400 13px/18px var(--vt-sans); color: var(--vt-ikincil); }
+.vt-vaka__degerler dt { margin: 0; }
+.vt-vaka__degerler dd { margin: 0; font: 500 13px/18px var(--vt-mono); font-variant-numeric: tabular-nums; color: var(--vt-veri-tahmin); }
+.vt-vaka__gercek { padding-top: 6px; border-top: 1px solid var(--vt-kenar-soguk); }
+.vt-vaka__gercek dd { color: var(--vt-veri-gerceklesen); font-weight: 600; }
+.vt-vaka__saat-not { margin: var(--vt-s3) 0 0; font: 400 11.5px/16px var(--vt-sans); color: var(--vt-ucuncul); max-width: 24ch; }
+
+/* 15 dk toplayıcı tablosu */
+.vt-vaka__tablo-bas { display: flex; justify-content: space-between; align-items: baseline; gap: var(--vt-s3); margin-bottom: var(--vt-s2); }
+.vt-vaka__tablo-bas b { font: 600 13.5px/19px var(--vt-sans); color: var(--vt-metin); }
+.vt-vaka__tablo-bas > span { font: 500 11.5px/16px var(--vt-mono); font-variant-numeric: tabular-nums; color: var(--vt-ucuncul); }
+.vt-vaka__tablo table { width: 100%; border-collapse: collapse;
+  font: 400 12.5px/18px var(--vt-mono); font-variant-numeric: tabular-nums; color: var(--vt-metin); }
+.vt-vaka__tablo thead th { font: 500 11.5px/16px var(--vt-sans); color: var(--vt-ucuncul); }
+.vt-vaka__tablo th, .vt-vaka__tablo td { padding: 4px 8px; text-align: right; border-bottom: 1px solid var(--vt-kenar-soguk); }
+.vt-vaka__tablo th[scope="row"], .vt-vaka__tablo thead th:first-child { text-align: left; font-weight: 400; }
+.vt-vaka__tablo tbody tr:last-child th, .vt-vaka__tablo tbody tr:last-child td { border-bottom: none; }
+.vt-vaka__kapsam th, .vt-vaka__kapsam td { background: rgba(45, 111, 181, .07); }
+.vt-vaka__amber { color: var(--vt-veri-gerceklesen); }
+.vt-vaka__tablo-not { margin: var(--vt-s2) 0 0; font: 400 11.5px/16px var(--vt-sans); color: var(--vt-ucuncul); }
+
+/* yeti satırları: kart değil — üst çizgi + kolon ayraçları */
+.vt-yetiler { list-style: none; margin: var(--vt-s7) 0 0; padding: var(--vt-s5) 0 0;
+  border-top: 1px solid var(--vt-kenar); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--vt-s5); }
+.vt-yeti + .vt-yeti { border-left: 1px solid var(--vt-kenar); padding-left: var(--vt-s5); }
+.vt-yeti .vt-kart__metin { margin-top: var(--vt-s2); }
+.vt-yeti__kunye { margin: var(--vt-s2) 0 0; font: 500 11.5px/16px var(--vt-mono); color: var(--vt-ucuncul); }
+
+/* giriş ritmi (R25 ailesi) */
+.vt [data-canlan].is-acildi .vt-vaka { animation: vt-canlan 520ms var(--vt-ease-cik) backwards; }
+.vt [data-canlan].is-acildi .vt-yetiler > li { animation: vt-canlan 520ms var(--vt-ease-cik) backwards; }
+.vt [data-canlan].is-acildi .vt-yetiler > li:nth-child(2) { animation-delay: 60ms; }
+.vt [data-canlan].is-acildi .vt-yetiler > li:nth-child(3) { animation-delay: 120ms; }
+
+@media (max-width: 1080px) {
+  .vt-vaka__saat { margin-left: 0; }
+}
+@media (max-width: 900px) {
+  .vt-vaka__govde { grid-template-columns: 1fr; gap: var(--vt-s3); }
+  .vt-vaka__bag { width: 0; height: var(--vt-s4); border-top: none; border-left: 1.5px dashed rgba(11, 27, 60, .45); justify-self: start; margin-left: var(--vt-s5); }
+  .vt-yetiler { grid-template-columns: 1fr; }
+  .vt-yeti + .vt-yeti { border-left: none; border-top: 1px solid var(--vt-kenar); padding-left: 0; padding-top: var(--vt-s4); }
+}
+@media (max-width: 600px) {
+  .vt-vaka { padding: var(--vt-s4); }
+  .vt-vaka__tablo table { font-size: 11.5px; }
+  .vt-vaka__tablo th, .vt-vaka__tablo td { padding: 4px 6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vt [data-canlan].is-acildi .vt-vaka, .vt [data-canlan].is-acildi .vt-yetiler > li { animation: none; }
+}
+@media (forced-colors: active) {
+  .vt-vaka, .vt-vaka__saat { border: 1px solid CanvasText; }
 }

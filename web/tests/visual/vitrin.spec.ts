@@ -23,11 +23,12 @@ test("vitrin hero", async ({ page }) => {
   await expect(page).toHaveScreenshot("vitrin-hero.png");
 });
 
-test("vitrin panel kesiti (#para)", async ({ page }) => {
+test("vitrin TL vakası (#para)", async ({ page }) => {
+  // v2.416: «panel kesiti» yerini Ö4 vakasına bıraktı; baseline adı korunur
   await ac(page, "/");
-  await page.locator(".vt-kesit").scrollIntoViewIfNeeded();
+  await page.locator("#para").scrollIntoViewIfNeeded();
   await page.waitForTimeout(250);
-  await expect(page.locator(".vt-kesit")).toHaveScreenshot("vitrin-kesit.png");
+  await expect(page.locator("#para")).toHaveScreenshot("vitrin-kesit.png");
 });
 
 test("yöntem sayfası başı", async ({ page }) => {
