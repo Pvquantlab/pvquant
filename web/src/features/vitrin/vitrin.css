@@ -1544,3 +1544,11 @@
 @media (forced-colors: active) {
   .vt-vaka, .vt-vaka__saat { border: 1px solid CanvasText; }
 }
+
+/* ── v2.417 · teklif netliği: başvuru formuna «Santral sayısı» eklendi ──
+   P3b'nin 5:4:3 form oranı dört alana genişler (5:4:3:3 — e-posta en geniş, sayı en dar);
+   ≤900 tek kolon kuralı aynen. SSS «santral sayısına göre belirlenir» ile form artık tutarlı. */
+.vt-form__alanlar { grid-template-columns: minmax(0, 5fr) minmax(0, 4fr) minmax(0, 3fr) minmax(0, 3fr); }
+@media (max-width: 900px) {
+  .vt-form__alanlar { grid-template-columns: 1fr; }
+}

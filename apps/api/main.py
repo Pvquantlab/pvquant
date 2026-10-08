@@ -600,6 +600,7 @@ class BasvuruIstek(BaseModel):
     eposta: str
     santral_adi: str | None = None
     kurulu_guc_kwp: float | None = None
+    santral_sayisi: int | None = None   # v2.417: teklifin ikinci parametresi (SSS ile tutarlı)
     web: str | None = None   # bal küpü — insanlar görmez, botlar doldurur
 
 
@@ -609,7 +610,7 @@ def vitrin_basvuru(request: Request, g: BasvuruIstek):
     """v2.328 — kamuya açık 'Karneni başlat' formu. Başvuru tabloya düşer,
     panelde yönetici görür; e-posta altyapısı bilerek yok (insan döner)."""
     from pvquant.services import basvuru_service
-    r = basvuru_service.kaydet(g.eposta, g.santral_adi, g.kurulu_guc_kwp, g.web)
+    r = basvuru_service.kaydet(g.eposta, g.santral_adi, g.kurulu_guc_kwp, g.web, g.santral_sayisi)
     if not r["tamam"]:
         raise HTTPException(422, r.get("neden") or "geçersiz")
     # v2.334: teyit = başvurana onay e-postası gerçekten gönderildi mi (SMTP

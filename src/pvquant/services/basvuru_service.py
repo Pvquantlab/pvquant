@@ -23,7 +23,7 @@ _EPOSTA = re.compile(r"^[^@\s]{1,64}@[^@\s]{1,190}\.[^@\s]{2,24}$")
 
 
 def kaydet(eposta: str, santral_adi: str | None, kurulu_guc_kwp: float | None,
-           balkupu: str | None = None) -> dict:
+           balkupu: str | None = None, santral_sayisi: int | None = None) -> dict:
     """dönen: {"tamam": bool, "neden": str|None}. Bot reddi de 'tamam' görünür —
     saldırgana sinyal verilmez; yalnız gerçek doğrulama hatası kullanıcıya söylenir."""
     if balkupu:                        # bal küpü dolduysa bot: sessizce yut
@@ -40,10 +40,18 @@ def kaydet(eposta: str, santral_adi: str | None, kurulu_guc_kwp: float | None,
                 kwp = None
         except (TypeError, ValueError):
             kwp = None
+    adet = None
+    if santral_sayisi is not None:                       # saçma değer sessizce null (kurulu güç kalıbı)
+        try:
+            adet = int(santral_sayisi)
+            if not (1 <= adet <= 500):
+                adet = None
+        except (TypeError, ValueError):
+            adet = None
     with sistem_baglami() as s:
         s.execute(text(
-            "INSERT INTO vitrin_basvurulari (eposta, santral_adi, kurulu_guc_kwp) "
-            "VALUES (:e, :a, :k)"), {"e": eposta, "a": ad, "k": kwp})
+            "INSERT INTO vitrin_basvurulari (eposta, santral_adi, kurulu_guc_kwp, santral_sayisi) "
+            "VALUES (:e, :a, :k, :n)"), {"e": eposta, "a": ad, "k": kwp, "n": adet})
     teyit = posta_service.gonder(
         eposta, "PVQuant — başvurunuz alındı",
         "Merhaba,\n\n"
@@ -51,6 +59,7 @@ def kaydet(eposta: str, santral_adi: str | None, kurulu_guc_kwp: float | None,
         "bu e-posta adresinize iletilecektir.\n\n"
         + (f"Santral: {ad}\n" if ad else "")
         + (f"Kurulu güç: {kwp/1000:.1f} MW\n" if kwp else "")
+        + (f"Santral sayısı: {adet}\n" if adet else "")
         + "\nBu iletiye yanıt vermenize gerek yoktur.\n\nPVQuant")
     sahip = os.environ.get("PVQ_BILDIRIM_EPOSTA")
     if sahip:
@@ -58,7 +67,8 @@ def kaydet(eposta: str, santral_adi: str | None, kurulu_guc_kwp: float | None,
             sahip, "[PVQuant] Yeni vitrin başvurusu",
             f"E-posta: {eposta}\n"
             f"Santral: {ad or '—'}\n"
-            f"Kurulu güç (kWp): {kwp if kwp is not None else '—'}\n\n"
+            f"Kurulu güç (kWp): {kwp if kwp is not None else '—'}\n"
+            f"Santral sayısı: {adet if adet is not None else '—'}\n\n"
             "Ayrıntı: panel → Portföy → Gelen talepler")
     return {"tamam": True, "teyit": teyit}
 
@@ -66,9 +76,9 @@ def kaydet(eposta: str, santral_adi: str | None, kurulu_guc_kwp: float | None,
 def listele(n: int = 100) -> list[dict]:
     with sistem_baglami() as s:
         return [{"id": str(r.id), "eposta": r.eposta, "santral_adi": r.santral_adi,
-                 "kurulu_guc_kwp": r.kurulu_guc_kwp, "okundu": r.okundu,
+                 "kurulu_guc_kwp": r.kurulu_guc_kwp, "santral_sayisi": r.santral_sayisi, "okundu": r.okundu,
                  "created_at": r.created_at.isoformat()} for r in s.execute(text(
-            "SELECT id, eposta, santral_adi, kurulu_guc_kwp, okundu, created_at "
+            "SELECT id, eposta, santral_adi, kurulu_guc_kwp, santral_sayisi, okundu, created_at "
             "FROM vitrin_basvurulari ORDER BY created_at DESC LIMIT :n"), {"n": min(int(n), 500)})]
 
 

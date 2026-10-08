@@ -23,6 +23,7 @@ function BasvuruFormu() {
   const [eposta, setEposta] = useState("");
   const [ad, setAd] = useState("");
   const [guc, setGuc] = useState("");
+  const [adet, setAdet] = useState("");          // v2.417: teklifin ikinci parametresi (SSS ile tutarlı)
   const [web, setWeb] = useState("");            // bal küpü — görünmez
   const [durum, setDurum] = useState<"bos" | "gidiyor" | "tamam" | string>("bos");
   const [teyit, setTeyit] = useState(false);     // v2.334: onay e-postası gitti mi
@@ -43,8 +44,10 @@ function BasvuruFormu() {
       setDurum("gidiyor");
       const kwp = guc.trim() === "" ? undefined : Number(guc.replace(",", ".")) * 1000; // MW → kWp
       void (async () => {
+        const n = adet.trim() === "" ? undefined : Number(adet);
         const r = await api.vitrinBasvuru({ eposta, santral_adi: ad.trim() || undefined,
           kurulu_guc_kwp: Number.isFinite(kwp as number) ? kwp : undefined,
+          santral_sayisi: Number.isInteger(n) ? n : undefined,
           ...(web ? { web } : {}) } as Parameters<typeof api.vitrinBasvuru>[0]);
         setTeyit(!!r.teyit);
         setDurum(r.tamam ? "tamam" : (r.neden ?? "Gönderilemedi — yeniden deneyin."));
@@ -63,6 +66,10 @@ function BasvuruFormu() {
           <input className="vt-girdi" inputMode="decimal" maxLength={10}
             value={guc} onChange={(e) => setGuc(e.target.value)} />
         </label>
+        <label className="vt-etiket">Santral sayısı
+          <input className="vt-girdi" inputMode="numeric" maxLength={3}
+            value={adet} onChange={(e) => setAdet(e.target.value)} />
+        </label>
       </div>
       {/* bal küpü: ekran okuyucudan ve gözden gizli, botlar doldurur */}
       <input className="vt-bal" tabIndex={-1} aria-hidden="true" autoComplete="off" placeholder="web"
@@ -71,7 +78,7 @@ function BasvuruFormu() {
         {durum === "gidiyor" ? "Gönderiliyor…" : "Karnemi başlat"}
       </button>
       {durum !== "bos" && durum !== "gidiyor" && <p className="vt-uyari" role="alert">{durum}</p>}
-      <p className="vt-kunye vt-form__not">Veri yüklemeniz gerekmez; e-postanız yalnız dönüş için kullanılır.</p>
+      <p className="vt-kunye vt-form__not">Teklifiniz başvurunuza e-postayla döner. Veri yüklemeniz gerekmez; e-postanız yalnız dönüş için kullanılır.</p>
     </form>
   );
 }

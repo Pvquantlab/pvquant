@@ -142,7 +142,7 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
  *  altyapısı bilerek yok — dönüş buradaki adrese elle yapılır, sonra "okundu". */
 function GelenTalepler() {
   const [liste, setListe] = useState<{ id: string; eposta: string; santral_adi: string | null;
-    kurulu_guc_kwp: number | null; okundu: boolean; created_at: string }[] | null>(null);
+    kurulu_guc_kwp: number | null; santral_sayisi: number | null; okundu: boolean; created_at: string }[] | null>(null);
   const yenile = () => { api.basvurular().then((r) => setListe(r.basvurular)).catch(() => setListe([])); };
   useEffect(yenile, []);
   const acik = (liste ?? []).filter((b) => !b.okundu).length;
@@ -154,13 +154,14 @@ function GelenTalepler() {
         <div className="grafik-kaydir">
           <table className="veri" style={{ fontSize: 12.5 }}>
             <thead><tr><th style={{ textAlign: "left" }}>E-posta</th><th style={{ textAlign: "left" }}>Santral</th>
-              <th>Kurulu güç</th><th style={{ textAlign: "left" }}>Tarih</th><th>Durum</th></tr></thead>
+              <th>Kurulu güç</th><th>Santral sayısı</th><th style={{ textAlign: "left" }}>Tarih</th><th>Durum</th></tr></thead>
             <tbody className="mono">
               {liste.map((b) => (
                 <tr key={b.id} style={{ opacity: b.okundu ? 0.55 : 1 }}>
                   <td style={{ fontWeight: b.okundu ? 400 : 600 }}>{b.eposta}</td>
                   <td>{b.santral_adi ?? "—"}</td>
                   <td>{b.kurulu_guc_kwp != null ? `${sayiTr(b.kurulu_guc_kwp / 1000, 1)} MW` : "—"}</td>
+                  <td>{b.santral_sayisi ?? "—"}</td>
                   <td>{new Date(b.created_at).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" })}</td>
                   <td>{b.okundu ? "okundu" : (
                     <button className="dugme" style={{ fontSize: 11.5 }}

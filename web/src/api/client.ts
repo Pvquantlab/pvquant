@@ -652,7 +652,7 @@ export const api = {
       return { tamam: false, neden: typeof j?.detail === "string" ? j.detail : undefined };
     } catch { return { tamam: false, neden: "Sunucuya ulaşılamadı." }; }
   },
-  vitrinBasvuru: async (g: { eposta: string; santral_adi?: string; kurulu_guc_kwp?: number }): Promise<{ tamam: boolean; neden?: string; teyit?: boolean }> => {
+  vitrinBasvuru: async (g: { eposta: string; santral_adi?: string; kurulu_guc_kwp?: number; santral_sayisi?: number }): Promise<{ tamam: boolean; neden?: string; teyit?: boolean }> => {
     if (TABAN == null) return { tamam: true };
     try {
       const y = await fetch(`${TABAN}/v1/vitrin/basvuru`, { method: "POST",
@@ -663,7 +663,7 @@ export const api = {
     } catch { return { tamam: false, neden: "Ağ hatası — yeniden deneyin." }; }
   },
   /** v2.328: başvuru listesi (yalnız yönetici) + okundu işareti. */
-  basvurular: async (): Promise<{ basvurular: { id: string; eposta: string; santral_adi: string | null; kurulu_guc_kwp: number | null; okundu: boolean; created_at: string }[] }> =>
+  basvurular: async (): Promise<{ basvurular: { id: string; eposta: string; santral_adi: string | null; kurulu_guc_kwp: number | null; santral_sayisi: number | null; okundu: boolean; created_at: string }[] }> =>
     getir(`/v1/vitrin/basvurular`),
   basvuruOkundu: (id: string): Promise<{ tamam: boolean }> =>
     gonder(`/v1/vitrin/basvurular/${id}/okundu`, "POST"),
