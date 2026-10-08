@@ -1,6 +1,6 @@
 import { GunesLogo } from "./GunesLogo";
 import { Rozet } from "./Rozet";
-import altUfuk from "./varlik/alt-ufuk.svg";
+import altUfuk from "./varlik/alt-ufuk-gece.svg";
 
 const SAYFA = [
   ["Nasıl çalışır", "#katmanlar"],
