@@ -78,3 +78,14 @@ Her satır: kalıp → dosya → kritik kural. Yeni mühürde yeni kalıp çıka
 | `~/Desktop/rakip-excel-raporlari/` | Solargis/Vaisala/DNV/SolarEdge/Raptor/NREL rapor BİÇİMLERİ — panel Raporlar/dışa verim tasarımında kıyas |
 | `~/Desktop/scada-markalari/` | 23 SCADA markasının ekran dili + gerçek üretim arşivleri — panel entegrasyon/izleme ekranlarında kıyas |
 | `~/Desktop/kart-tasarim/` · `vitrin-cila-kesif/` · `vitrin-gorsel-kesif/` | Geçmiş tur arşivleri (panel kesiti, Ufuk cilası, palet varyantları) — tekrar keşfetme |
+
+## Vaka dili (v2.416 — Ö4, TL bölümü emsali)
+
+- Pazarlama bölümü bir yetiyi MAKETLE değil, hero'daki araştırma koşusunun GERÇEK
+  çıktısıyla anlatır; her sahnede mono künye: «GG.AA araştırma koşusu · … · teslim edilmedi».
+- Türetilmiş çıktılar depodaki gerçek fonksiyonla üretilir (15 dk: ext.alt_saatlik),
+  kapasiteye ORANLA gösterilir (mutlak MW santral ölçeğini sızdırır) ve tutarlılığı test
+  tarar (her saatin dilim ortalaması saatlik değere eşit).
+- Depoda hesaplanmamış değer (TL) GÖSTERİLMEZ; tek-gün performans kıyası yapılmaz —
+  köprü cümle çok-günlük açık karneye. Çalıştırılmamış yeti açıkça söylenir (Ö4-c).
+- Bağ dili: kenardan taşan .vt-nesne saat kartı + kesik MÜREKKEP çizgisi (eylem rengi değil).
