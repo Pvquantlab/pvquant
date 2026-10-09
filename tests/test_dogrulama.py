@@ -10,6 +10,7 @@ ACIK_ORNEK = {
     "siki_referans_wmape_pct": 20.1, "nmae_pct": 2.1, "beceri_naif_pct": 80.0,
     "beceri_siki_pct": 72.0, "bant_kapsama_pct": 90.7, "bant_hedef_pct": 80.0,
     "aylar": [{"ay": "2026-09", "gun": 6, "wmape_pct": 5.2, "naif_wmape_pct": 27.0, "bant_kapsama_pct": 91.0}],
+    "d1": {"gun": 58, "wmape_pct": 6.9, "nmae_pct": 2.6, "bant_kapsama_pct": 88.0},
     "not": "0–24 saat ufku.",
 }
 

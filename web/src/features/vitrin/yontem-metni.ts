@@ -30,6 +30,8 @@ export const METRIKLER = [
    "Referansa göre iyileşme oranı: (referans sapması − PVQuant sapması) / referans sapması. Sıfırın üstü, tahminin referanstan iyi olduğu anlamına gelir."],
   ["Bant kapsaması",
    "Gerçekleşen üretimin, önceden ilan edilen iyimser–kötümser aralık içinde kaldığı gündüz saatlerinin oranı; her gün ayrı hesaplanır, pencere boyunca ortalanır. Hedef %80'dir — %100 değil: her zaman tutan bant, karar için fazla geniş demektir."],
+  ["D-1 teslim kesiti",
+   "Karnenin ana değerleri gün içi güncellemeleri de içerir; bu kesit ise her gün için yalnız önceki gün 15:30'dan (İstanbul) önce verilmiş son tahminle hesaplanır — piyasaya verilen üretim programının tabi olduğu gerçek ufuk budur. Sistemler arası «gün öncesi» kıyası bu kesitten okunur."],
 ] as const;
 
 export const KISA_TANIMLAR = [

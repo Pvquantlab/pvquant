@@ -67,6 +67,26 @@ def kova_etiketle(ufuk_s: "pd.Series") -> "pd.Series":
                   labels=["0-24", "24-72", "72-168", "168+"])
 
 
+def d1_kesiti(df: "pd.DataFrame") -> "pd.DataFrame":
+    """v2.422 (A2) — gerçek D-1 teslim kesiti. Her İstanbul günü D için yalnız
+    D-1 15:30 (İstanbul) ÖNCESİNDE verilmiş SON koşunun saatleri kalır —
+    kgup_service.kaynak_kosu_df ile AYNI kural (kesim = D 00:00 IST − 8s30dk,
+    run_at <= kesim). 0-24 kovası gün içi koşuları da içerdiğinden «day-ahead»
+    kıyası oradan okunamaz; KGÜP'ün tabi olduğu gerçek ufuk (~10–34 sa) budur.
+    Dönen df'te gun = İSTANBUL günü (KGÜP günü; 0-24 kovasının UTC günü
+    tarihî davranıştır, dokunulmaz), kova = 'd1'; kova_skorlari aynen çalışır."""
+    d = df.copy()
+    ist = d.ts_utc.dt.tz_convert("Europe/Istanbul")
+    d["gun"] = ist.dt.date
+    kesim = ist.dt.normalize() - pd.Timedelta(hours=8, minutes=30)
+    d = d[d.run_at <= kesim]
+    if d.empty:
+        return d
+    d = d[d.run_at == d.groupby("gun").run_at.transform("max")]
+    d["kova"] = "d1"
+    return d
+
+
 def kova_skorlari(df: "pd.DataFrame", capacity_kwp: float, tid, pid) -> list[dict]:
     """v2.247 — gun+kova skorlarinin SAF hesabi (DB'siz, birim-testli). df kolonlari:
     gun, kova, power_kw, p50_kw, naif (NaN olabilir). Mevcut tanimlar AYNEN korunur
@@ -207,6 +227,9 @@ def gece_skill(plant, pencere_gun: int = 10):
     except Exception as _e:   # noqa: BLE001 — referans hesabı skoru düşürmez
         print("cliper atlandı:", type(_e).__name__, _e)
     satirlar = kova_skorlari(df, float(plant["capacity_kwp"]), tid, pid)  # v2.247
+    d1 = d1_kesiti(df)                                                    # v2.422 (A2)
+    if not d1.empty:
+        satirlar += kova_skorlari(d1, float(plant["capacity_kwp"]), tid, pid)
     if not satirlar:
         return
     with tenant_baglami(tid) as s:

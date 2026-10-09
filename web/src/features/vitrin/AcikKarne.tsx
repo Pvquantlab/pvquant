@@ -108,6 +108,12 @@ function KarneKutusu({ veri }: { veri: Dogrulama }) {
           </tbody>
         </table>
       )}
+      {veri.d1 && (
+        <p className="vt-kunye vt-karne__not">
+          <b>D-1 teslim kesiti</b> — yalnız önceki gün 15:30'dan (İstanbul) önce verilmiş son tahminle, {veri.d1.gun.toLocaleString("tr-TR")} sınav günü:
+          ortalama sapma {yuzdeTr(veri.d1.wmape_pct)} · bant kapsaması {yuzdeTr(veri.d1.bant_kapsama_pct)}. Piyasa beyanının tabi olduğu gerçek ufuk budur; yukarıdaki değerler gün içi güncellemeleri de içerir.
+        </p>
+      )}
       <p className="vt-kunye vt-karne__not">{veri.not ? `${veri.not} ` : ""}Sapma yüzdeleri gün içinde üretime ağırlıklıdır, günler ortalanır — küçük olan iyidir.</p>
     </div>
   );

@@ -65,6 +65,14 @@ def ozet() -> dict:
             " avg(nmae) AS nmae, avg(picp80) AS picp "
             "FROM skill_daily WHERE plant_id=:p AND horizon_bucket='0-24' "
             "AND date >= current_date - :g"), {"p": st.id, "g": PENCERE_GUN}).mappings().first()
+        # v2.422 (A2): gerçek D-1 teslim kesiti — worker d1_kesiti satırları
+        # (yalnız D-1 15:30 İst öncesi son koşu). Ana karneyle AYNI pencere;
+        # EN_AZ_GUN altındaysa dürüstçe verilmez (None → vitrinde çizilmez).
+        k1 = s.execute(text(
+            "SELECT count(*) AS gun, avg(mape) AS wmape, avg(nmae) AS nmae,"
+            " avg(picp80) AS picp "
+            "FROM skill_daily WHERE plant_id=:p AND horizon_bucket='d1' "
+            "AND date >= current_date - :g"), {"p": st.id, "g": PENCERE_GUN}).mappings().first()
         aylar = s.execute(text(
             "SELECT to_char(date_trunc('month', date), 'YYYY-MM') AS ay, count(*) AS gun,"
             " avg(mape) AS wmape, avg(naive_wmape) AS naif, avg(picp80) AS picp "
@@ -85,6 +93,12 @@ def ozet() -> dict:
         "beceri_naif_pct": beceri(k["naif"]), "beceri_siki_pct": beceri(k["siki"]),
         "bant_kapsama_pct": _yuvarla(float(k["picp"]) * 100) if k["picp"] is not None else None,
         "bant_hedef_pct": 80.0,
+        "d1": (None if not k1 or (k1["gun"] or 0) < EN_AZ_GUN or k1["wmape"] is None else {
+            "gun": int(k1["gun"]), "wmape_pct": _yuvarla(k1["wmape"]),
+            "nmae_pct": _yuvarla(k1["nmae"]),
+            "bant_kapsama_pct": (_yuvarla(float(k1["picp"]) * 100)
+                                 if k1["picp"] is not None else None),
+        }),
         "aylar": [{"ay": a["ay"], "gun": int(a["gun"]), "wmape_pct": _yuvarla(a["wmape"]),
                    "naif_wmape_pct": _yuvarla(a["naif"]),
                    "bant_kapsama_pct": _yuvarla(float(a["picp"]) * 100) if a["picp"] is not None else None}
