@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { GunesLogo } from "./GunesLogo";
 import { MenuIkon } from "./MenuIkon";
-import { Rozet, RozetTanimlari, type RozetGrubu, type RozetIkonu } from "./Rozet";
+import { Rozet, type RozetGrubu, type RozetIkonu } from "./Rozet";
 
 type Yaprak = { ad: string; aciklama: string; hedef?: string; ikon?: RozetIkonu };
 type Grup = { ad: string; rozet?: RozetGrubu; ogeler: readonly Yaprak[] };
@@ -160,7 +160,6 @@ export function UstCubuk({ onPanel, kip }: { onPanel?: () => void; kip: "ana" | 
 
   return (
     <header className="vt-ust">
-      <RozetTanimlari />
       {panel !== null && <div className="vt-mega-ortu is-acik" aria-hidden="true" onClick={() => setPanel(null)} />}
       <div className="vt-kap vt-ust__ic">
         <a className="vt-logo" href="/"><GunesLogo />PVQuant</a>

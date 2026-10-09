@@ -5,7 +5,10 @@ import { Rozet, type RozetGrubu, type RozetIkonu } from "./Rozet";
  *  Jargon (D-1, TPYS, kantil) künyeye ve bağlantılı sayfaya indi; her değer sitede zaten
  *  yazılı ürün gerçeği (Amperon'un etiket–değer BİÇİMİ alındı, kaynaksız rakamları alınmadı).
  *  Ticaret masası dördüncü kart: kitle listesi artık TEK (TL bölümündeki pencere kartları
- *  işlev gösterimidir, kitle listesi değil). Rakam vaadi ve müşteri iması yok. */
+ *  işlev gösterimidir, kitle listesi değil). Rakam vaadi ve müşteri iması yok.
+ *  v2.423: kart zemini kullanıcının verdiği lacivert (--vt-is-zemin); panel kırpıntıları
+ *  DENENDİ VE GERİ ALINDI (kullanıcı: «güven vermiyor») — kırpıntı şeridi geri gelecekse
+ *  önce defterdeki v2.423 kaydına bak. */
 const ISLER: readonly {
   masa: string; sonuc: string; fayda: string;
   kunye: readonly (readonly [string, string])[];
@@ -26,7 +29,7 @@ const ISLER: readonly {
     fayda: "Gün öncesi teklif için önerilen kantil panelde; sapmanın TL karşılığı gün gün.",
     kunye: [["Teklif", "önerilen kantil"], ["Sapma", "TL · gün gün"]],
     bag: ["#para", "Sapmanın TL hesabı"],
-    grup: "tahmin", ikon: "aylik",
+    grup: "tahmin", ikon: "piyasa",
   },
   {
     masa: "Operasyon nöbeti",

@@ -41,6 +41,7 @@
   --vt-kenar: #D5DDED;           /* bant üstünde ince ayraç */
   --vt-kenar-guclu: #BDC9E0;
   --vt-kenar-soguk: #E3E8F0;     /* beyaz yüz üstünde ince ayraç (V1) */
+  --vt-is-zemin: #10204B;        /* iş kartı laciverti — kullanıcının verdiği düz renk, olduğu gibi (v2.423, 10.10) */
 
   /* ── P5 · derinlik, doku, yarıçap, hareket ── */
   --vt-golge-kaldir: 0 22px 40px -24px rgba(11, 27, 60, .38), 0 2px 8px rgba(11, 27, 60, .06);
@@ -1582,3 +1583,27 @@
 /* v2.420: «© PVQuant 2026» satırı ve ufuk motifi kullanıcı isteğiyle kalktı —
    __son/__ufuk/__kunye kuralları ölü kaldı, tarihi bloklara dokunulmadı. */
 .vt .vt-alt :focus-visible { outline-color: var(--vt-gece-eylem); }
+
+/* ── v2.423 İŞ KARTI LACİVERTİ (kullanıcının verdiği renk, olduğu gibi) ──────
+   Panel kırpıntı şeridi DENENDİ VE GERİ ALINDI (kullanıcı: «güven vermiyor»);
+   kalan: kart zemini --vt-is-zemin, içerik renkleri mevcut «gece» ailesinden
+   (emsal .vt-bolum--gece ve v2.418 altbilgi — yeni renk icat edilmez). */
+.vt-is { background: var(--vt-is-zemin); color: var(--vt-gece-metin); border: 1px solid var(--vt-gece-kenar); }
+/* Okunurluk (kullanıcı isteği 10.10 + rubrik): fayda cümlesi kartın ana içeriği —
+   tam mürekkep; ikincil yalnız eyebrow ve künye etiketinde (hiyerarşi oradan okunur). */
+.vt-is .vt-kart__metin { color: var(--vt-gece-metin); }
+.vt-is .vt-is__masa { color: var(--vt-gece-ikincil); }
+.vt-is .vt-is__satir dt { color: var(--vt-gece-ikincil); }
+.vt-is .vt-is__satir dd { color: var(--vt-gece-metin); }
+.vt-is .vt-bag { color: var(--vt-gece-metin); }
+.vt-is .vt-bag::after { color: var(--vt-gece-eylem); }
+.vt .vt-is :focus-visible { outline-color: var(--vt-gece-eylem); }
+/* Rozet netliği (kullanıcı 10.10; anti-slop: pastel ikon-çipi ızgarası AI-imzasıdır):
+   koyu kartta pastel kutu kalkar — kartla aynı aileden çip (--vt-gece-kart) + ince
+   gece-kenar, ikon beyaz mürekkep; grup kimliği TEK vurgu dolgusunda (grubun açık
+   tonu --g-ust, koyuda görünür). Açık yüzeylerdeki rozetlere dokunulmaz. */
+.vt-is .vt-rz {
+  background: var(--vt-gece-kart);
+  box-shadow: inset 0 0 0 1px var(--vt-gece-kenar);
+  color: var(--vt-gece-metin);
+}
