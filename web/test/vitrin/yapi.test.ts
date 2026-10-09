@@ -46,7 +46,7 @@ test("vitrin bileşenlerinde satır içi stil yok (Rozet.tsx hariç — BENIOKU 
 
 test("ana sayfa yeni bileşenlerden kurulur; eski süsler kalktı", () => {
   const vitrin = oku("../../src/features/vitrin/Vitrin.tsx");
-  for (const parca of ["<UstCubuk", "<Hero", "<BolumCubugu", "<KanitSeridi", "<DortAdim", "<TurkiyePiyasasi", "<IsIzgarasi", "<AcikKarne durum={durum}", "<Sss", "<Basvuru", "<Altbilgi", "useDogrulama"]) {
+  for (const parca of ["<UstCubuk", "<Hero", "<BolumCubugu", "<KanitSeridi", "<DortAdim", "<TurkiyePiyasasi", "<IsIzgarasi", "<ApiBandi", "<AcikKarne durum={durum}", "<Sss", "<Basvuru", "<Altbilgi", "useDogrulama"]) {
     assert.ok(vitrin.includes(parca), parca);
   }
   assert.doesNotMatch(vitrin, /YildizAlani|Dalga|KatmanIkon|export const/);

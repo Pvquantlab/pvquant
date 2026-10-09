@@ -29,8 +29,8 @@
   --vt-veri-gerceklesen: #C27803;
   --vt-veri-sinir: #56647F;
   --vt-alan-kenar: #56647F;
-  --vt-baslik: 'Bricolage Grotesque Variable', 'IBM Plex Sans', system-ui, sans-serif;
-  --vt-sans: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --vt-baslik: 'Gantari Variable', system-ui, sans-serif;   /* v2.425: Solcast ailesi (OFL) */
+  --vt-sans: 'Gantari Variable', system-ui, -apple-system, sans-serif;
   --vt-mono: 'IBM Plex Mono', ui-monospace, monospace;
   --vt-yan: 32px;
   --vt-ust-y: 64px;
@@ -1606,4 +1606,46 @@
   background: var(--vt-gece-kart);
   box-shadow: inset 0 0 0 1px var(--vt-gece-kenar);
   color: var(--vt-gece-metin);
+}
+
+/* ── v2.424 API BANDI (Solcast emsali C: gerçek JSON + yanında grafiği) ──────
+   Gece bölümü kalıbında ikinci koyu bant (Açık karne artık «tek koyu bant»
+   değil — bilinçli: ikisi de kanıt yüzeyi). Sol: dış API sözleşmesinin alan
+   düzeni, değerler referans koşudan çalışma anında; sağ: aynı serinin bant+P50
+   resmi (bu uçta gerçekleşen yok → amber bilerek yok). */
+/* Solcast son kıyası (10.10): SOL metin+CTA sütunu, SAĞDA tek «cihaz» kartı —
+   üstte istek şeridi (URL çubuğu eşi), altında kod|grafik ikiz panel. */
+.vt-api-split { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: var(--vt-s7); align-items: center; }
+.vt-api__sol .vt-giris { margin-top: var(--vt-s3); }
+.vt-api__cihaz {
+  margin: 0; min-width: 0; padding: var(--vt-s3);
+  background: rgba(0, 0, 0, .25); border: 1px solid var(--vt-gece-kenar); border-radius: var(--vt-r-m);
+}
+.vt-api__uc {
+  padding: 10px 16px; margin-bottom: var(--vt-s3); color: var(--vt-gece-ikincil);
+  background: rgba(0, 0, 0, .35); border: 1px solid var(--vt-gece-kenar); border-radius: var(--vt-r-tam);
+}
+.vt-api__paneller { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--vt-s3); align-items: stretch; }
+.vt-api__kod { margin: 0; max-height: none; white-space: pre; padding: 14px 12px; font-size: 12px; }
+.vt-api__kod code { display: block; }
+.vt-api__deger { font-weight: 600; color: var(--chart-p50-future); }
+.vt-api__grafikcerceve {
+  position: relative; display: flex; min-width: 0;
+  background: rgba(0, 0, 0, .25); border: 1px solid var(--vt-gece-kenar); border-radius: var(--vt-r-s);
+}
+.vt-api__etiket {
+  position: absolute; top: 10px; right: 12px; padding: 3px 9px;
+  border: 1px solid var(--vt-gece-kenar); border-radius: var(--vt-r-tam);
+  font: 500 11px/16px var(--vt-mono); color: var(--vt-gece-ikincil);
+}
+.vt-api__grafik { display: block; width: 100%; height: 100%; min-height: 200px; }
+.vt-api__tik { font: 400 11px var(--vt-mono); fill: var(--vt-gece-ikincil); }
+.vt-api__kunye { margin: var(--vt-s2) 4px 0; }
+.vt-api__not { margin-top: var(--vt-s5); max-width: 52ch; }
+.vt-api__eylem { margin-top: var(--vt-s5); }
+@media (max-width: 1080px) {
+  .vt-api-split { grid-template-columns: minmax(0, 1fr); gap: var(--vt-s6); }
+}
+@media (max-width: 900px) {
+  .vt-api__paneller { grid-template-columns: minmax(0, 1fr); }
 }

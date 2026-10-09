@@ -7,6 +7,7 @@ import { KanitSeridi } from "./KanitSeridi";
 import { DortAdim } from "./DortAdim";
 import { TurkiyePiyasasi } from "./TurkiyePiyasasi";
 import { IsIzgarasi } from "./IsIzgarasi";
+import { ApiBandi } from "./ApiBandi";
 import { AcikKarne } from "./AcikKarne";
 import { DisiplinBandi } from "./DisiplinBandi";
 import { Sss } from "./Sss";
@@ -34,6 +35,7 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
         <DortAdim onPanel={onPanel} />
         <TurkiyePiyasasi />
         <IsIzgarasi />
+        <ApiBandi />
         <AcikKarne durum={durum} />
         <DisiplinBandi />
         <Sss />
