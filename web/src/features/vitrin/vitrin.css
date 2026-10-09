@@ -1579,6 +1579,6 @@
 .vt-alt__tanim, .vt-alt__ilke { color: var(--vt-gece-ikincil); }
 .vt-alt .vt-alt__liste a, .vt-alt .vt-alt__liste button { color: var(--vt-gece-ikincil); }
 .vt-alt .vt-alt__liste a:hover, .vt-alt .vt-alt__liste button:hover { color: var(--vt-gece-metin); }
-.vt-alt .vt-kunye { color: var(--vt-gece-ikincil); }
-.vt-alt__son { border-top-color: var(--vt-gece-kenar); }
+/* v2.420: «© PVQuant 2026» satırı ve ufuk motifi kullanıcı isteğiyle kalktı —
+   __son/__ufuk/__kunye kuralları ölü kaldı, tarihi bloklara dokunulmadı. */
 .vt .vt-alt :focus-visible { outline-color: var(--vt-gece-eylem); }

@@ -1,6 +1,5 @@
 import { GunesLogo } from "./GunesLogo";
 import { Rozet } from "./Rozet";
-import altUfuk from "./varlik/alt-ufuk-gece.svg";
 
 const SAYFA = [
   ["Nasıl çalışır", "#katmanlar"],
@@ -58,9 +57,7 @@ export function Altbilgi({ onPanel }: { onPanel?: () => void }) {
             </ul>
           </div>
         </div>
-        <p className="vt-alt__son vt-kunye">© PVQuant 2026</p>
       </div>
-      <div className="vt-alt__ufuk" aria-hidden="true"><img src={altUfuk} alt="" width="1440" height="72" loading="lazy" decoding="async" /></div>
     </footer>
   );
 }
