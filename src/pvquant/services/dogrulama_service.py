@@ -89,5 +89,7 @@ def ozet() -> dict:
                    "naif_wmape_pct": _yuvarla(a["naif"]),
                    "bant_kapsama_pct": _yuvarla(float(a["picp"]) * 100) if a["picp"] is not None else None}
                   for a in aylar],
-        "not": "0–24 saat ufku, saatlik karşılaştırma; her gece otomatik hesaplanır, geçmiş değiştirilmez.",
+        "not": ("0–24 saat ufku, saatlik karşılaştırma; yalnız gündüz saatleri sayılır "
+                "(üretim kurulu gücün %2'sini aşan saatler), sapma üretime oranlıdır. "
+                "Her gece otomatik hesaplanır, geçmiş değiştirilmez."),
     }

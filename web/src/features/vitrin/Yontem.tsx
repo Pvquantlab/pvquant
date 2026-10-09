@@ -71,6 +71,10 @@ export function Yontem() {
                 <p>Kamuya açık karne, en az 30 günlük gece sınavı birikmeden yayımlanmaz; doğruluk değerleri kaç günlük pencereden hesaplandıysa o pencere karnenin üzerinde yazar. Ölçüm olmayan dönem için değer üretilmez — eksik veri tire ile gösterilir.</p>
               </div>
               <div className="vt-gece-kart">
+                <h3 className="vt-h3">En doğru tahmin, en kârlı beyan değildir</h3>
+                <p>Dengesizlik cezası iki yönde eşit değilse, piyasaya beyan için en kârlı değer tahminin ortası değil, ceza dengesine göre aralıktan seçilen bir değerdir. PVQuant bu öneriyi panelde ayrıca raporlar; karne ise daima tahminin kendisiyle sınanır — beyan tercihi doğruluk değerlerini değiştirmez.</p>
+              </div>
+              <div className="vt-gece-kart">
                 <h3 className="vt-h3">Denetlenebilirlik</h3>
                 <p>Vitrindeki Açık karne elle yazılmış değildir; kimlik doğrulaması gerektirmeyen bir uçtan canlı okunur. Aynı sayıları herkes, herhangi bir anda kendisi çekebilir:</p>
                 <code className="vt-kod">GET /v1/dogrulama</code>

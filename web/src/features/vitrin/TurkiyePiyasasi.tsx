@@ -30,7 +30,7 @@ export function TurkiyePiyasasi() {
         <div className="vt-para-ust">
           <div className="vt-bolum-bas">
             <h2 className="vt-h2" id="vt-para-baslik">Tahmin hatasının maliyetini TL olarak görün.</h2>
-            <p className="vt-giris">Elektrik piyasasında her santral, ertesi gün ne üreteceğini önceden bildirmekle yükümlüdür; gerçekleşen üretim bu programdan saptığında aradaki fark santrale fatura edilir. PVQuant üretim programınızı hazırlar, gün içi güncelleme fırsatlarını izler ve sapmanın size maliyetini her gün TL olarak raporlar.</p>
+            <p className="vt-giris">Elektrik piyasasında her santral, ertesi gün ne üreteceğini önceden bildirmekle yükümlüdür; gerçekleşen üretim bu programdan saptığında aradaki fark santrale fatura edilir. PVQuant üretim programınızı hazırlar, gün içi güncelleme fırsatlarını izler ve sapmanın size maliyetini her gün TL olarak raporlar. En doğru tahmin ile en kârlı beyan aynı şey değildir: ceza dengesi asimetrikse beyan için tahmin aralığından ona göre seçilen bir değer önerilir — karne ise daima tahminin kendisiyle sınanır.</p>
             <p className="vt-giris vt-para-kopru">Aşağıdaki sahne, yukarıdaki grafikle aynı araştırma koşusunun teslim biçimidir — tek bir gündür; 46 günlük isabet, <a href="#karne">açık karne</a> bölümündedir.</p>
           </div>
 

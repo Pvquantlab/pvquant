@@ -20,6 +20,8 @@ export const ADIMLAR = [
 export const METRIKLER = [
   ["Ortalama sapma (WMAPE)",
    "Gündüz saatlerinde |tahmin − gerçekleşen| toplanır ve o günün toplam gerçekleşen üretimine bölünür; pencere değeri, günlük değerlerin ortalamasıdır. Üretime ağırlıklıdır: düşük üretimli saatlerdeki küçük mutlak farkların yüzdeyi şişirmesine izin verilmez. Küçük değer iyidir. Gündüz saati: gerçekleşen üretimin kurulu gücün %2'sini aştığı saat."],
+  ["Kapasiteye oranlı sapma (nMAE)",
+   "Gündüz saatlerindeki |tahmin − gerçekleşen| ortalaması kurulu güce bölünür. Üretime değil kapasiteye oranlandığı için mevsimden ve santral büyüklüğünden daha az etkilenir; farklı santralleri ve sistemleri kıyaslamanın ortak dilidir. Ortalama sapma (WMAPE) ile aynı saatlerden hesaplanır ama paydası farklıdır — iki değer birbirinin yerine okunmaz."],
   ["Basit yöntem (referans)",
    "“Yarın = dün aynı saat” kuralı; değer, güneşin iki gün arasındaki konum farkına göre (açık-gök ışınımı oranıyla) ölçeklenir. Maliyeti sıfır olduğu için sektörde taban kabul edilir; her doğruluk değeri bu tabanla yan yana yayımlanır. Tabanı geçemeyen tahminin değeri yoktur."],
   ["Sıkı referans",
