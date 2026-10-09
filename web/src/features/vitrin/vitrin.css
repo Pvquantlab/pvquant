@@ -1553,29 +1553,27 @@
   .vt-form__alanlar { grid-template-columns: 1fr; }
 }
 
-/* ── v2.418 ALTBİLGİ DALGASI ─────────────────────────────────────────────────
-   Kullanıcının verdiği gerçek dalga deseni (varlik/alt-dalga.jpg, 520×260)
-   olduğu gibi altbilginin arkasına serilir; metin/ayraç/odak renkleri yeni
-   değer icat edilmeden mevcut «gece» jeton ailesine geçer (emsal:
+/* ── v2.418/v2.419 ALTBİLGİ DALGASI ──────────────────────────────────────────
+   Kullanıcının verdiği gerçek desen (varlik/alt-dalga.jpg; v2.419'da noktalı
+   dalga, kaynak 5000×3542 → 2560'a indirildi) altbilginin arkasına olduğu
+   gibi serilir — süzgeç yok, kontrast görselin kendisinden. Metin/ayraç/odak
+   renkleri yeni değer icat edilmeden mevcut «gece» jeton ailesinde (emsal:
    .vt-bolum--gece). Ufuk motifi aynı çizim, açık mürekkepli eşiyle
-   (alt-ufuk-gece.svg). Yedek zemin rengi desenin kendi lacivertidir —
+   (alt-ufuk-gece.svg). Yedek zemin rengi desenin üst bandının lacivertidir —
    görsel yüklenene dek aynı ton görünür. */
 .vt-alt {
   position: relative;
   isolation: isolate;
-  background: #221E5B;
+  background: #0E2133;
   border-top: 0;
   color: var(--vt-gece-metin);
 }
-/* Desen ayrı katmanda: dosya değişmeden kontrastı süzgeçle yükseltilir
-   (kullanıcı isteği «arkadaki kontrastı artır», 09.10). */
 .vt-alt::before {
   content: "";
   position: absolute;
   inset: 0;
   z-index: -1;
   background: url("./varlik/alt-dalga.jpg") center / cover no-repeat;
-  filter: brightness(1.75) saturate(1.45) contrast(1.15);
 }
 .vt-alt .vt-logo { color: var(--vt-gece-metin); }
 .vt-alt__tanim, .vt-alt__ilke { color: var(--vt-gece-ikincil); }
