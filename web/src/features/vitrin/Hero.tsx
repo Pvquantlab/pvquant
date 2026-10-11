@@ -1,39 +1,41 @@
 import { useEffect, useRef } from "react";
 import { ReferansEgri } from "./ReferansEgri";
-import sahne from "./varlik/hero-ufuk-sahne.svg";
-import { GokyuzuCanli } from "./GokyuzuCanli";
+import santral1080 from "./varlik/santral-1080.mp4";
+import santral720 from "./varlik/santral-720.mp4";
+import santralPoster from "./varlik/santral-poster.webp";
 
-/** Hero «Ufuk» (v2.386, cila-a): dokulu ufuk sahnesi — 21 Haziran'dan 21 Aralık'a on beş günde bir,
- *  gerçek güneş geometrisinden hesaplanmış 13 yükseklik yayı + benekli güneş + santral tarlası.
- *  Sahne salt süs (aria-hidden, <img>); dürüst künye sağ altta koyu kartuşta. Ürün penceresi
- *  (gerçek 01.10 koşusu grafiği) sahnenin önünde durur. Yükseklik clamp'i ve uç genişlik kuralları
- *  vitrin.css CİLA katmanında (QA dersi: 1081–1240 ve ≥1920 ayrıca sınanır). */
+/** Hero (11.10): sahne bir santral üzerinde yavaş drone çekimi — 12 sn dikişsiz döngü (son 1,2 sn
+ *  baştakiyle çapraz geçer), sessiz, 1080p (dar ekranda 720p). Sahne salt süs (aria-hidden); gece
+ *  örtüsü metni okunur tutar. Hareket azaltma tercihinde yalnız ilk kare (poster) durur; ekran
+ *  dışında ya da sekme gizliyken oynatma bekler. Ürün penceresi (gerçek 01.10 koşusu grafiği)
+ *  sahnenin önünde. Künye kartuşu kullanıcı isteğiyle kaldırıldı (11.10). */
 export function Hero() {
-  const sahneImg = useRef<HTMLImageElement>(null);
-  useEffect(() => {                                            // paralaks fısıltısı (R29)
+  const video = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const v = video.current;
+    if (!v) return;
+    v.muted = true;                                            // tarayıcılar otomatik oynatmayı yalnız sessiz videoya verir
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    let kare = 0;
-    const kaydir = () => {
-      if (kare) return;
-      kare = requestAnimationFrame(() => {
-        kare = 0;
-        const el = sahneImg.current;
-        if (el) el.style.transform = `translateY(${Math.min(28, window.scrollY * 0.05).toFixed(1)}px)`;
-      });
-    };
+    let gorunur = true;
     const uygula = () => {                                     // tercih oturum içinde değişirse de uyulur
-      window.removeEventListener("scroll", kaydir);
-      if (mq.matches) { const el = sahneImg.current; if (el) el.style.transform = ""; return; }
-      window.addEventListener("scroll", kaydir, { passive: true });
+      if (!mq.matches && gorunur && document.visibilityState === "visible") v.play().catch(() => {});
+      else v.pause();
     };
-    uygula();
+    const io = typeof IntersectionObserver === "undefined" ? null
+      : new IntersectionObserver(([g]) => { gorunur = g.isIntersecting; uygula(); });
+    io?.observe(v);
     mq.addEventListener("change", uygula);
-    return () => { mq.removeEventListener("change", uygula); window.removeEventListener("scroll", kaydir); if (kare) cancelAnimationFrame(kare); };
+    document.addEventListener("visibilitychange", uygula);
+    uygula();
+    return () => { io?.disconnect(); mq.removeEventListener("change", uygula); document.removeEventListener("visibilitychange", uygula); };
   }, []);
   return (
-    <section className="vt-hero vt-hero--a" aria-labelledby="vt-hero-baslik">
+    <section className="vt-hero vt-hero--a vt-hero--video" aria-labelledby="vt-hero-baslik">
       <div className="vt-hero__sahne" aria-hidden="true">
-        <img ref={sahneImg} src={sahne} alt="" width="1000" height="720" />
+        <video ref={video} className="vt-hero__video" poster={santralPoster} muted loop playsInline disablePictureInPicture preload="metadata" width="1920" height="1080" tabIndex={-1}>
+          <source src={santral720} type="video/mp4" media="(max-width: 760px)" />
+          <source src={santral1080} type="video/mp4" />
+        </video>
       </div>
       <div className="vt-kap vt-hero__ic">
         <div className="vt-hero__sol">
@@ -50,7 +52,6 @@ export function Hero() {
           <a className="vt-bag vt-hero__tl-alt" href="#para">TL karşılığı nasıl hesaplanır</a>
         </div>
       </div>
-      <p className="vt-kunye vt-hero__kunye">güneş yükseklik yayları · 21{" "}Haziran’dan 21{" "}Aralık’a on beş günde bir · İç{" "}Anadolu enlemi (38°{" "}K) · manzara temsili<GokyuzuCanli /></p>
     </section>
   );
 }

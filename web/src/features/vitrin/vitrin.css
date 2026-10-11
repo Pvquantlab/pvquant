@@ -1034,3 +1034,28 @@
 @media (forced-colors: active) {
   .vt-kesit__hucre { border: 1px solid CanvasText; }
 }
+
+/* ═══ Hero video (11.10): santral drone çekimi + gece örtüsü ═══
+   Sahne tüm hero'yu kaplar; örtü solda koyu (metin), sağa doğru açılır (santral görünür).
+   Koyu yüzey renkleri yalnız sol sütuna ve kartuşa uygulanır — beyaz ürün penceresi kendi
+   açık temasında kalır (vt-bolum--gece BİLEREK kullanılmadı: kartın içine sızardı). */
+.vt-hero--video { background: var(--vt-gece-ust); }
+.vt-hero--video .vt-hero__sahne { inset: 0; width: auto; }
+.vt-hero--video .vt-hero__video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 58%; display: block; }
+.vt-hero--video .vt-hero__sahne::after { content: ""; position: absolute; inset: 0;
+  background:
+    linear-gradient(90deg, rgba(9, 21, 47, .90) 0%, rgba(9, 21, 47, .78) 30%, rgba(9, 21, 47, .34) 60%, rgba(9, 21, 47, .10) 100%),
+    linear-gradient(180deg, rgba(9, 21, 47, .40) 0%, rgba(9, 21, 47, 0) 26%, rgba(9, 21, 47, 0) 66%, rgba(9, 21, 47, .55) 100%); }
+.vt-hero--video .vt-hero__sol, .vt-hero--video .vt-hero__sol .vt-h1 { color: var(--vt-gece-metin); }
+.vt-hero--video .vt-h1__vurgu { color: var(--vt-gece-eylem); }
+.vt-hero--video .vt-hero__sol .vt-giris, .vt-hero--video .vt-hero__mikro { color: var(--vt-gece-ikincil); }
+.vt-hero--video .vt-hero__sol .vt-bag, .vt-hero--video .vt-hero__tl-alt { color: var(--vt-gece-metin); }
+.vt-hero--video .vt-hero__sol .vt-bag::after, .vt-hero--video .vt-hero__tl-alt::after { color: var(--vt-gece-eylem); }
+.vt .vt-hero--video .vt-hero__sol :focus-visible, .vt .vt-hero--video .vt-hero__tl-alt:focus-visible { outline-color: var(--vt-gece-eylem); }
+.vt-hero--video .vt-pencere { box-shadow: 0 0 0 1px rgba(255, 255, 255, .14), 0 36px 90px -28px rgba(0, 0, 0, .60); }
+@media (max-width: 1080px) {
+  .vt-hero--video .vt-hero__sahne { position: absolute; inset: 0 0 auto 0; height: min(100%, 780px); order: 0; margin: 0; width: auto; aspect-ratio: auto; -webkit-mask-image: none; mask-image: none; }
+  .vt-hero--video .vt-hero__sahne::after { background: linear-gradient(180deg, rgba(9, 21, 47, .74) 0%, rgba(9, 21, 47, .66) 55%, var(--vt-gece-ust) 100%); }
+  .vt-hero--video .vt-hero__sol, .vt-hero--video .vt-hero__pencere, .vt-hero--video .vt-hero__kunye { position: relative; z-index: 1; }
+  .vt-hero--video .vt-hero__kunye { right: auto; bottom: auto; color: var(--vt-gece-ikincil); padding-bottom: 20px; }
+}

@@ -23,6 +23,7 @@ test("vitrin dosyalarında ve index.html'de yasaklı terim yok", () => {
   const kok = fileURLToPath(new URL("../../src/features/vitrin/", import.meta.url));
   const dosyalar = readdirSync(kok, { withFileTypes: true, recursive: true })
     .filter((g) => g.isFile())
+    .filter((g) => !/\.(mp4|webm|webp|avif|png|jpe?g)$/i.test(g.name))   // ikili medya metin taşımaz; bayt dizisi rastgele «BG=» tutturur
     .map((g) => pathToFileURL(join(g.parentPath, g.name)));   // varlik/ SVG'leri dahil
   dosyalar.push(new URL("../../index.html", import.meta.url));
   for (const dosya of dosyalar) {
