@@ -628,8 +628,6 @@
 .vt-alt__liste a:hover { color: var(--vt-metin); text-decoration: underline; text-underline-offset: 3px; }
 .vt-alt__ilke { color: var(--vt-ikincil); font-size: 14.5px; }
 .vt-alt__son { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--vt-kenar-soguk); }
-.vt-alt__ufuk { margin-top: 36px; line-height: 0; }
-.vt-alt__ufuk svg, .vt-alt__ufuk img { display: block; width: 100%; height: 72px; }
 .vt-cekmece { position: fixed; top: var(--vt-ust-y); left: 0; right: 0; bottom: 0; overflow-y: auto; overscroll-behavior: contain; padding: 8px var(--vt-yan) 32px; background: var(--vt-zemin); border-top: 1px solid var(--vt-kenar-soguk); z-index: 19; }
 .vt-cekmece[hidden] { display: none; }
 .vt-cekmece__bag { display: flex; align-items: center; min-height: 52px; border-bottom: 1px solid var(--vt-kenar-soguk); font-size: 17px; font-weight: 500; color: var(--vt-metin); text-decoration: none; }
@@ -1088,3 +1086,51 @@
 .vt-pencere__tarih { padding-top: 4px; font-size: 14px; line-height: 20px; color: var(--vt-metin); }
 /* hero mikro metni (11.10): daktilo (mono) yerine gövde yazısı — düğmenin altında sakin, okunur not */
 .vt-hero--video .vt-hero__mikro { font: 400 14px/21px var(--vt-sans); letter-spacing: 0; max-width: 46ch; }
+
+/* ═══ «Tek gök» (11.10) — üç zemin, tek dünya ═══
+   Solargis dersi: uyum kısıtlamadan gelir. Zemin yalnız beyaz / buz / lacivert; buz videodaki ufuk
+   tonundan (#D7E6F6 → açılmış). Lavanta bant ve gren dokusu kalktı; şeftali–mor–mavi çizim/rozet
+   aileleri TEK buz ailesine indi (çizgi lacivert kalır). Fotoğraflar (3) bulutların üstünden, aynı dünya;
+   dosyalar Pexels'ten indirildiği gibi, örtüler burada. Sıcak renk yalnız eylem (kırmızı) ve amber (veri). */
+.vt {
+  --vt-bant: #EEF3FA; --vt-bant-2: #DCE7F6; --vt-kenar: #D3DDEC; --vt-kenar-guclu: #B9C8DE;
+  --rz-tahmin-ust: #E6EEF9; --rz-tahmin-alt: #D3E1F4; --rz-tahmin-vurgu: #F7FAFD;
+  --rz-kanit-ust: #E6EEF9; --rz-kanit-alt: #D3E1F4; --rz-kanit-vurgu: #F7FAFD;
+  --rz-operasyon-ust: #E6EEF9; --rz-operasyon-alt: #D3E1F4; --rz-operasyon-vurgu: #F7FAFD;
+  --rz-veri-vurgu: #EEF3FA;
+  --vt-gradyan-gun: linear-gradient(200deg, #F7FAFD 0%, #E6EEF9 42%, #D3E1F4 100%);
+}
+.vt-bolum--bant, .vt-serit { background-image: none; }
+.vt-bolum--gece::before { content: none; }
+.vt-alt { background: var(--vt-bant); }
+/* şerit — hero'nun hemen altı: bulutların üstü, açık */
+.vt-serit--gok {
+  background:
+    linear-gradient(180deg, rgba(238, 243, 250, .40) 0%, rgba(238, 243, 250, .62) 100%),
+    url("./varlik/bulut-ustu-9890018.jpg") center 55% / cover no-repeat,
+    var(--vt-bant);
+}
+/* karne — aynı bulutlar, lacivert örtü altında */
+.vt-bolum--karne-bulut {
+  background:
+    linear-gradient(180deg, rgba(9, 21, 47, .74) 0%, rgba(11, 27, 60, .64) 45%, rgba(11, 27, 60, .82) 100%),
+    url("./varlik/bulut-katman-6623685.jpg") center 40% / cover no-repeat,
+    var(--vt-gece);
+}
+/* başvuru — bulut denizi; sol metin tarafı örtülü, form kartının arkası açık */
+.vt-bolum--basvuru-bulut {
+  background:
+    linear-gradient(90deg, rgba(238, 243, 250, .92) 0%, rgba(238, 243, 250, .82) 40%, rgba(238, 243, 250, .42) 70%, rgba(238, 243, 250, .30) 100%),
+    url("./varlik/bulut-deniz-38351373.jpg") center / cover no-repeat,
+    var(--vt-bant);
+}
+@media (max-width: 1080px) {
+  .vt-bolum--karne-bulut { background:
+    linear-gradient(180deg, rgba(9, 21, 47, .80) 0%, rgba(11, 27, 60, .74) 50%, rgba(11, 27, 60, .86) 100%),
+    url("./varlik/bulut-katman-6623685.jpg") center 40% / cover no-repeat, var(--vt-gece); }
+  .vt-bolum--basvuru-bulut { background:
+    linear-gradient(180deg, rgba(238, 243, 250, .92) 0%, rgba(238, 243, 250, .78) 55%, rgba(238, 243, 250, .60) 100%),
+    url("./varlik/bulut-deniz-38351373.jpg") center / cover no-repeat, var(--vt-bant); }
+}
+/* TL panel kartı buz bant üstünde eriyordu (bütünlük turu): öteki kaldırılmış kartlarla aynı gölge + ince kenar */
+.vt-sahne { box-shadow: 0 0 0 1px rgba(11, 27, 60, .08), var(--vt-golge-kaldir); }

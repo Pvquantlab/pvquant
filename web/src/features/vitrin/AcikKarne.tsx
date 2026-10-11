@@ -3,15 +3,14 @@ import type { DogrulamaDurumu } from "./dogrulamaDurumu";
 import { yuzdeTr, kisaTarihTr, ayTr } from "./bicim";
 import { KISA_TANIMLAR, YONTEM_KAPANIS } from "./yontem-metni";
 import { MenuIkon } from "./MenuIkon";
-import geceSanat from "./varlik/gece-sanat.svg";
 
-/** Açık karne — sayfadaki tek koyu bant (v2.384, spec §3.6 + V1 kilitli kart). Açık: karne kutusu
+/** Açık karne — sayfadaki tek koyu bant (v2.384, spec §3.6 + V1 kilitli kart). 11.10 «Tek gök»: zemin
+ *  bulutların üstünden çekilmiş gök (Pexels 6623685, dosya değiştirilmeden) + CSS lacivert örtü; güneş yayı çizimi kalktı. Açık: karne kutusu
  *  + aylık tablo. Kapalı: kilitli kart, dört metrik tanımı kartın içinde (tek kaynak: yontem-metni).
  *  Hata: tek satır. Yöntem paragrafı kapalı dışındaki durumlarda (kapalıda kartta — yinelenmez). */
 export function AcikKarne({ durum }: { durum: DogrulamaDurumu }) {
   return (
-    <section className="vt-bolum vt-bolum--gece" id="karne" aria-labelledby="vt-karne-baslik" data-canlan="">
-      <div className="vt-gece-sanat" aria-hidden="true"><img src={geceSanat} alt="" width="920" height="300" loading="lazy" decoding="async" /></div>
+    <section className="vt-bolum vt-bolum--gece vt-bolum--karne-bulut" id="karne" aria-labelledby="vt-karne-baslik" data-canlan="">
       <div className="vt-kap">
         <div className="vt-bolum-bas">
           <h2 className="vt-h2" id="vt-karne-baslik">Sözümüze değil, karneye bakın.</h2>

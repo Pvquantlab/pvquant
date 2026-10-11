@@ -2,10 +2,11 @@ import { useState } from "react";
 import { api } from "../../api/client";
 
 /** Başvuru (v2.328 formu; v2.384'te yalnız görünüm değişti — uç, bal küpü ve durumlar aynı).
+ *  11.10: zemin bulut denizi (Pexels 38351373, dosya değiştirilmeden) + CSS buz örtüsü.
  *  Görünür e-posta adresi yok; dönüş formdan. */
 export function Basvuru() {
   return (
-    <section className="vt-bolum vt-bolum--bant" id="basla" aria-labelledby="vt-basla-baslik" data-canlan="">
+    <section className="vt-bolum vt-bolum--bant vt-bolum--basvuru-bulut" id="basla" aria-labelledby="vt-basla-baslik" data-canlan="">
       <div className="vt-kap">
         <div className="vt-basla-yer">
           <div>
