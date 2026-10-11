@@ -1,14 +1,15 @@
 import { useEffect, useRef } from "react";
 import { ReferansEgri } from "./ReferansEgri";
+import santral1440 from "./varlik/santral-1440.mp4";
 import santral1080 from "./varlik/santral-1080.mp4";
-import santral720 from "./varlik/santral-720.mp4";
 import santralPoster from "./varlik/santral-poster.webp";
 
-/** Hero (11.10): sahne bir santral üzerinde yavaş drone çekimi — 12 sn dikişsiz döngü (son 1,2 sn
- *  baştakiyle çapraz geçer), sessiz, 1080p (dar ekranda 720p). Sahne salt süs (aria-hidden); gece
- *  örtüsü metni okunur tutar. Hareket azaltma tercihinde yalnız ilk kare (poster) durur; ekran
- *  dışında ya da sekme gizliyken oynatma bekler. Ürün penceresi (gerçek 01.10 koşusu grafiği)
- *  sahnenin önünde. Künye kartuşu kullanıcı isteğiyle kaldırıldı (11.10). */
+/** Hero (11.10): sahne bir santral üzerinde yavaş drone çekimi, sessiz. Geniş ekranda kaynak dosyanın
+ *  KENDİSİ — yeniden kodlanmadan 6,07 sn anahtar karesinden kesildi (ilk saniyelerdeki şirket tabelası
+ *  dışarıda; 2560×1440, 19,7 sn, kaynakla piksel piksel aynı); döngü sonunda başa döner. ≤760 px'te
+ *  12 sn dikişsiz 1080p döngü. Sahne salt süs (aria-hidden); gece örtüsü metni okunur tutar. Hareket
+ *  azaltma tercihinde yalnız ilk kare (poster) durur; ekran dışında ya da sekme gizliyken oynatma bekler.
+ *  Ürün penceresi (gerçek 01.10 koşusu grafiği) sahnenin önünde. Künye kartuşu kullanıcı isteğiyle kaldırıldı. */
 export function Hero() {
   const video = useRef<HTMLVideoElement>(null);
   useEffect(() => {
@@ -32,9 +33,9 @@ export function Hero() {
   return (
     <section className="vt-hero vt-hero--a vt-hero--video" aria-labelledby="vt-hero-baslik">
       <div className="vt-hero__sahne" aria-hidden="true">
-        <video ref={video} className="vt-hero__video" poster={santralPoster} muted loop playsInline disablePictureInPicture preload="metadata" width="1920" height="1080" tabIndex={-1}>
-          <source src={santral720} type="video/mp4" media="(max-width: 760px)" />
-          <source src={santral1080} type="video/mp4" />
+        <video ref={video} className="vt-hero__video" poster={santralPoster} muted loop playsInline disablePictureInPicture preload="metadata" width="2560" height="1440" tabIndex={-1}>
+          <source src={santral1080} type="video/mp4" media="(max-width: 760px)" />
+          <source src={santral1440} type="video/mp4" />
         </video>
       </div>
       <div className="vt-kap vt-hero__ic">
