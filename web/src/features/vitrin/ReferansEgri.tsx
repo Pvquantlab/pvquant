@@ -15,18 +15,17 @@ export function ReferansEgri({ veri }: { veri: null }) {
     <div className="vt-pencere">
       <figure className="vt-pencere__fig">
       <div className="vt-pencere__bas">Referans santral · 10{" "}MW üzeri · İç{" "}Anadolu</div>
-      <p className="vt-kunye vt-pencere__tarih">{NUMUNE_TARIH} · kapasiteye oran</p>
+      <p className="vt-pencere__tarih">{NUMUNE_TARIH} · saatlik üretim, kurulu güce oran</p>
       <ul className="vt-lejant" role="list" aria-label="Lejant">
         <li><span className="vt-lejant__cizgi vt-lejant__cizgi--tahmin" aria-hidden="true" />Tahmin (P50)</li>
-        <li><span className="vt-lejant__bant" aria-hidden="true" />İyimser–kötümser aralık (P10–P90)</li>
-        <li><span className="vt-lejant__cizgi vt-lejant__cizgi--gerceklesen" aria-hidden="true" />Gerçekleşen · her gece karşılaştırılır</li>
-        <li><span className="vt-lejant__esik" aria-hidden="true" />AC tavanı</li>
+        <li><span className="vt-lejant__bant" aria-hidden="true" />Tahmin aralığı (P10–P90)</li>
+        <li><span className="vt-lejant__cizgi vt-lejant__cizgi--gerceklesen" aria-hidden="true" />Gerçekleşen</li>
       </ul>
       <Cizim noktalar={noktalar} kip="genis" />
       <Cizim noktalar={noktalar} kip="orta" />
       <Cizim noktalar={noktalar} kip="dar" />
       <figcaption className="vt-kunye vt-pencere__kunye">
-        gerçekleşen: kamuya açık üretim kaydı · tahmin: 01.10 gece koşusu, PVQuant fizik modeli — öğrenen katman panelde · araştırma koşusu, canlı panel çıktısı değil
+        <strong>Örnek gün:</strong> 1 Ekim 2026 · <strong>Kaynak:</strong> kamuya açık üretim verisi ve PVQuant tahmini
       </figcaption>
       </figure>
       <details className="vt-pencere__tablo">
@@ -54,12 +53,32 @@ export function ReferansEgri({ veri }: { veri: null }) {
   );
 }
 
+/** Monoton kübik eğri (Fritsch–Carlson) — noktalar arasında aşma üretmez, yalnız köşeleri
+ *  yumuşatır; değerler saat noktalarından AYNEN geçer. İlk noktadan sonraki C komutlarını döner. */
+function monotonC(d: readonly (readonly [number, number])[]): string {
+  const n = d.length;
+  if (n < 2) return "";
+  const m = d.slice(0, -1).map((p, i) => (d[i + 1][1] - p[1]) / (d[i + 1][0] - p[0]));
+  const t = d.map((_, i) => (i === 0 ? m[0] : i === n - 1 ? m[n - 2] : m[i - 1] * m[i] <= 0 ? 0 : (m[i - 1] + m[i]) / 2));
+  for (let i = 0; i < n - 1; i++) {
+    if (m[i] === 0) { t[i] = 0; t[i + 1] = 0; continue; }
+    const a = t[i] / m[i], b = t[i + 1] / m[i], s2 = a * a + b * b;
+    if (s2 > 9) { const k = 3 / Math.sqrt(s2); t[i] = k * a * m[i]; t[i + 1] = k * b * m[i]; }
+  }
+  let yol = "";
+  for (let i = 0; i < n - 1; i++) {
+    const h = (d[i + 1][0] - d[i][0]) / 3;
+    yol += ` C${(d[i][0] + h).toFixed(1)},${(d[i][1] + t[i] * h).toFixed(1)} ${(d[i + 1][0] - h).toFixed(1)},${(d[i + 1][1] - t[i + 1] * h).toFixed(1)} ${d[i + 1][0].toFixed(1)},${d[i + 1][1].toFixed(1)}`;
+  }
+  return yol;
+}
+
 type CizimKipi = "genis" | "orta" | "dar";
 /* Geometriler cila-a ile birebir: hero--a pencerede "orta" (520 px), ≥1241 dışı dar/orta CSS seçer. */
 const GEOMETRI: Record<CizimKipi, { W: number; H: number; SOL: number; SAG: number; UST: number; ALT: number }> = {
-  genis: { W: 720, H: 332, SOL: 48, SAG: 18, UST: 56, ALT: 34 },
-  orta: { W: 520, H: 276, SOL: 44, SAG: 14, UST: 52, ALT: 32 },
-  dar: { W: 360, H: 258, SOL: 40, SAG: 10, UST: 46, ALT: 30 },
+  genis: { W: 720, H: 314, SOL: 64, SAG: 18, UST: 24, ALT: 34 },
+  orta: { W: 520, H: 262, SOL: 60, SAG: 14, UST: 22, ALT: 32 },
+  dar: { W: 360, H: 244, SOL: 54, SAG: 10, UST: 20, ALT: 30 },
 };
 
 /** Crosshair (R28): imleç/parmak altındaki saatin GERÇEK gömülü değerlerini okur — yeni veri yok,
@@ -98,11 +117,13 @@ function Cizim({ noktalar, kip }: { noktalar: readonly EgriNoktasi[]; kip: Cizim
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aktif]);
   const y = (oran: number) => UST + (1 - oran / 1.05) * (H - UST - ALT);
-  const nokta = (saat: number, oran: number) => `${x(saat + 0.5).toFixed(1)},${y(oran).toFixed(1)}`;
-  const cizgi = (alan: "p50" | "gercek") => "M" + noktalar.map((p) => nokta(p.saat, p[alan])).join(" L");
-  const bant = () =>
-    "M" + noktalar.map((p) => nokta(p.saat, p.p90)).join(" L")
-    + " L" + [...noktalar].reverse().map((p) => nokta(p.saat, p.p10)).join(" L") + " Z";
+  const dizi = (alan: "p10" | "p50" | "p90" | "gercek") => noktalar.map((p) => [x(p.saat + 0.5), y(p[alan])] as const);
+  const cizgi = (alan: "p50" | "gercek") => { const d = dizi(alan); return `M${d[0][0].toFixed(1)},${d[0][1].toFixed(1)}` + monotonC(d); };
+  const bant = () => {
+    const ust = dizi("p90"), alt = [...dizi("p10")].reverse();
+    return `M${ust[0][0].toFixed(1)},${ust[0][1].toFixed(1)}` + monotonC(ust)
+      + ` L${alt[0][0].toFixed(1)},${alt[0][1].toFixed(1)}` + monotonC(alt) + " Z";
+  };
   const yIzgara = dar ? [0, 0.5, 1] : [0, 0.25, 0.5, 0.75, 1];
   const xEtiket = dar ? [6, 12, 18] : [6, 9, 12, 15, 18];
   const ek = kip;
@@ -111,44 +132,40 @@ function Cizim({ noktalar, kip }: { noktalar: readonly EgriNoktasi[]; kip: Cizim
       aria-labelledby={`vt-egri-baslik-${ek}`} aria-describedby={`vt-egri-aciklama-${ek}`}
       onPointerMove={(e) => saatSec(e.clientX)} onPointerDown={(e) => saatSec(e.clientX)}
       onPointerLeave={(e) => { if (e.pointerType !== "touch") setAktif(null); }}
-      onAnimationEnd={(e) => { if ((e.target as Element).classList?.contains("vt-egri__et--vurgu")) setOynat(false); }}>
+      onAnimationEnd={(e) => { if ((e.target as Element).classList?.contains("vt-egri__gercek")) setOynat(false); }}>
       <title id={`vt-egri-baslik-${ek}`}>1 Ekim 2026 tahmini ve gerçekleşen üretim</title>
       <desc id={`vt-egri-aciklama-${ek}`}>Araştırma koşusu; canlı panel çıktısı değildir. Mavi bant tahmin aralığını, mavi çizgi tahmini, amber çizgi gerçekleşen üretimi gösterir; her değer saat ortalamasıdır ve saat ortasında çizilir. Sabah saatlerinde bu koşunun P90 değeri P50 ile çakışır; bandın üst kenarı çizgiyle örtüşür. 08:00–12:00 arasında gerçekleşen, söylenen aralığın altında kalıyor; öğleden sonra aralığın içinde. Saatlik sayılar tablo görünümünde.</desc>
-      {yIzgara.map((o) => (
-        <g key={o}>
-          <line className={o === 0 ? "vt-egri__taban" : "vt-egri__izgara"} x1={SOL} x2={W - SAG} y1={y(o)} y2={y(o)} />
-          <text className="vt-egri__et" x={SOL - 8} y={y(o) + 4} textAnchor="end">{`%${o * 100}`}</text>
-        </g>
+      {yIzgara.filter((o) => o > 0).map((o) => (
+        <line key={o} className="vt-egri__izgara" x1={SOL} x2={W - SAG} y1={y(o)} y2={y(o)} />
       ))}
       {xEtiket.map((s) => (
-        <text key={s} className="vt-egri__et" x={x(s)} y={H - 10} textAnchor="middle">{`${String(s).padStart(2, "0")}:00`}</text>
+        <line key={s} className="vt-egri__izgara" x1={x(s)} x2={x(s)} y1={y(1.05)} y2={y(0)} />
       ))}
+      {yIzgara.map((o) => (
+        <text key={o} className="vt-egri__et" x={SOL - 9} y={y(o) + 4} textAnchor="end">{o * 100}</text>
+      ))}
+      {xEtiket.map((s) => (
+        <text key={s} className="vt-egri__et" x={x(s)} y={H - 9} textAnchor="middle">{`${String(s).padStart(2, "0")}:00`}</text>
+      ))}
+      <text className="vt-egri__eksen-baslik" transform={`translate(${dar ? 13 : 15} ${(UST + H - ALT) / 2}) rotate(-90)`} textAnchor="middle">Kurulu güce oran (%)</text>
       <line className="vt-egri__esik" x1={SOL} x2={W - SAG} y1={y(1)} y2={y(1)} />
-      {!aktif && <text className="vt-egri__et" x={W - SAG} y={y(1) - 7} textAnchor="end">AC tavanı</text>}
-      <line className="vt-egri__kilavuz" x1={x(8)} x2={x(8)} y1={UST - 22} y2={y(0)} />
-      <line className="vt-egri__kilavuz" x1={x(12)} x2={x(12)} y1={UST - 22} y2={y(0)} />
-      <text className="vt-egri__et vt-egri__et--vurgu" x={x(10)} y={UST - 30} textAnchor="middle">
-        {dar ? "08–12 · aralığın altında" : "08:00–12:00 · gerçekleşen aralığın altında"}
-      </text>
+      {!aktif && <text className="vt-egri__et vt-egri__et--halo" x={W - SAG - 2} y={y(1) - 6} textAnchor="end">AC tavanı</text>}
       <path className="vt-egri__bant" d={bant()} />
       <path className="vt-egri__p50" d={cizgi("p50")} />
       <path className="vt-egri__gercek" d={cizgi("gercek")} pathLength={1} />
-      {noktalar.filter((p) => p.gercek > 0).map((p) => (
-        <circle key={p.saat} className="vt-egri__nokta" cx={x(p.saat + 0.5)} cy={y(p.gercek)} r={dar ? 2.4 : 3} />
-      ))}
+      <line className="vt-egri__eksen" x1={SOL} x2={SOL} y1={y(1.05)} y2={y(0)} />
+      <line className="vt-egri__eksen" x1={SOL} x2={W - SAG} y1={y(0)} y2={y(0)} />
       {aktif && (
         <g className="vt-egri__im" aria-hidden="true">
-          <line className="vt-egri__im-cizgi" x1={x(aktif.saat + 0.5)} x2={x(aktif.saat + 0.5)} y1={UST - 2} y2={y(0)} />
+          <line className="vt-egri__im-cizgi" x1={x(aktif.saat + 0.5)} x2={x(aktif.saat + 0.5)} y1={y(1.05)} y2={y(0)} />
           <circle className="vt-egri__im-nokta vt-egri__im-nokta--tahmin" cx={x(aktif.saat + 0.5)} cy={y(aktif.p50)} r={dar ? 3.4 : 4.2} />
           {aktif.gercek > 0 && <circle className="vt-egri__im-nokta vt-egri__im-nokta--gercek" cx={x(aktif.saat + 0.5)} cy={y(aktif.gercek)} r={dar ? 3.4 : 4.2} />}
           <text ref={imYazi} className="vt-egri__et vt-egri__et--halo vt-egri__im-et"
-            x={imX ?? SOL} y={UST - 8} textAnchor="start">
+            x={imX ?? SOL} y={UST - 6} textAnchor="start">
             {`${String(aktif.saat).padStart(2, "0")}:00 · tahmin %${(aktif.p50 * 100).toFixed(1).replace(".", ",")} · gerçekleşen %${(aktif.gercek * 100).toFixed(1).replace(".", ",")}`}
           </text>
         </g>
       )}
-      {!dar && <text className="vt-egri__et vt-egri__et--halo" x={x(kip === "orta" ? 10.6 : 9.9)} y={y(0.3)} textAnchor="middle">gerçekleşen</text>}
-      {!dar && <text className="vt-egri__et vt-egri__et--halo" x={x(kip === "orta" ? 13.2 : 14.1)} y={y(kip === "orta" ? 0.4 : 0.45)} textAnchor="middle">tahmin aralığı</text>}
     </svg>
   );
 }

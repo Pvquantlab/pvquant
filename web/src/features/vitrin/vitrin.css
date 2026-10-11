@@ -1059,3 +1059,32 @@
   .vt-hero--video .vt-hero__sol, .vt-hero--video .vt-hero__pencere, .vt-hero--video .vt-hero__kunye { position: relative; z-index: 1; }
   .vt-hero--video .vt-hero__kunye { right: auto; bottom: auto; color: var(--vt-gece-ikincil); padding-bottom: 20px; }
 }
+
+/* ═══ Grafik cilası (11.10): referans grafiklerin dili — düz yazı, kesikli ızgara, koyu eksen ═══
+   Mono etiketler, kılavuz çizgileri, ıskalama notu ve noktalar kalktı; eğriler monoton kübik.
+   Veri aynı (01.10 koşusu); mavi=tahmin / amber=gerçekleşen sözleşmesi korunur. */
+.vt-pencere__bas { padding: 18px 20px 0; font: 700 17px/22px var(--vt-baslik); letter-spacing: -0.01em; color: var(--vt-metin); }
+.vt-pencere__tarih { margin: 0; padding: 3px 20px 0; font: 400 13px/18px var(--vt-sans); color: var(--vt-ikincil); }
+.vt-lejant, .vt-hero--a .vt-lejant { gap: 6px 18px; padding: 12px 20px 2px; font: 500 13px/18px var(--vt-sans); color: var(--vt-metin); }
+.vt-lejant__cizgi { position: relative; width: 22px; height: 2px; }
+.vt-lejant__cizgi::after { content: ""; position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%; background: var(--vt-zemin); border: 2px solid; box-sizing: border-box; }
+.vt-lejant__cizgi--tahmin { color: var(--vt-veri-tahmin); }
+.vt-lejant__cizgi--gerceklesen { color: var(--vt-veri-gerceklesen); }
+.vt-lejant__bant { width: 16px; height: 10px; opacity: .2; }
+.vt-egri__izgara { stroke: #E3E6EC; stroke-width: 1; stroke-dasharray: 3 4; }
+.vt-egri__eksen { stroke: var(--vt-metin); stroke-width: 1.25; }
+.vt-egri__esik { stroke: var(--vt-veri-sinir); stroke-width: 1.25; stroke-dasharray: 5 4; opacity: .8; }
+.vt-egri__bant { fill-opacity: .13; }
+.vt-egri__p50, .vt-egri__gercek { stroke-width: 2.25; }
+.vt-egri__et { font: 400 12px var(--vt-sans); fill: var(--vt-ikincil); font-variant-numeric: tabular-nums; }
+.vt-egri--dar .vt-egri__et { font-size: 13px; }
+.vt-egri__eksen-baslik { font: 600 11.5px var(--vt-sans); fill: var(--vt-metin); letter-spacing: .01em; }
+.vt-egri--dar .vt-egri__eksen-baslik { font-size: 12.5px; }
+.vt-pencere__kunye, .vt-hero--a .vt-pencere__kunye { margin: 0; padding: 10px 20px 14px; font: 400 11.5px/16px var(--vt-sans); color: var(--vt-ucuncul); }
+/* dipnot okunur ağırlıkta (11.10 «sönük» geri bildirimi): ikincil ton, 12.5px; etiketler mürekkep */
+.vt-pencere__kunye, .vt-hero--a .vt-pencere__kunye { font-size: 12.5px; line-height: 18px; color: var(--vt-ikincil); }
+.vt-pencere__kunye strong { font-weight: 600; color: var(--vt-metin); }
+/* alt başlık okunur ağırlıkta (11.10 «sönük» geri bildirimi): mürekkep, 14px — hiyerarşi boyut/kalınlıkla */
+.vt-pencere__tarih { padding-top: 4px; font-size: 14px; line-height: 20px; color: var(--vt-metin); }
+/* hero mikro metni (11.10): daktilo (mono) yerine gövde yazısı — düğmenin altında sakin, okunur not */
+.vt-hero--video .vt-hero__mikro { font: 400 14px/21px var(--vt-sans); letter-spacing: 0; max-width: 46ch; }
