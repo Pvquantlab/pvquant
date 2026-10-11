@@ -26,8 +26,7 @@ Kaynak dosyalar (gerçek değerler HER ZAMAN oradan okunur, burası harita):
 |---|---|---|
 | Display/başlık | `--display` | Bricolage Grotesque |
 | Gövde | Inter (`--font`) | IBM Plex Sans |
-| VERİ/eksen/grafik içi | IBM Plex Mono + `tabular-nums` — sayı asla gövde fontuyla dizilmez | IBM Plex Mono |
-| Eyebrow etiketi + künye ÇİPİ | — | **Plex Sans** 600/500 (v2.406 kullanıcı turu: etiket veri değil kategori işaretidir; mono yalnız gerçek veri yüzeylerinde — eksen, tablo, pencere şeridi) |
+| VERİ/eksen/künye | IBM Plex Mono + `tabular-nums` — sayı asla gövde fontuyla dizilmez | IBM Plex Mono |
 
 - Etikette `text-transform: uppercase` birimleri bozar (kWp→KWP) — birim taşıyan metne asla.
 - Türkçe büyük harf: `lang="tr"` şart; JS `/i` bayrağı İ'yi KATLAMAZ (regex'te sınıf kullan).
@@ -41,22 +40,6 @@ Kaynak dosyalar (gerçek değerler HER ZAMAN oradan okunur, burası harita):
   yalnız yükselme anlamında (menü/pencere).
 - Köşe ölçeği: vitrin `--vt-r-xs..l/tam`; yeni köşe değeri icat edilmez.
 - Boşluk ritmi 4/8 px; süre `--vt-sure*` (120/200/320 ms), reduced-motion her animasyonu keser.
-
-## Ölçü sistemi (v2.408+, Mühür 1; tam gerekçe ~/Desktop/vitrin-olcu-sistemi)
-
-Vitrin ölçüleri `vitrin.css` sonundaki «ÖLÇÜ SİSTEMİ» bloğundaki jetonlardan gelir;
-yeni ölçü değeri icat edilmez, jeton tüketilir:
-
-- **Boşluk:** `--vt-s1…s12` = 4·8·12·16·24·32·40·48·64·80·96·128. Anlamsal türevler:
-  `--vt-bolum-y` (bölüm dolgusu), `--vt-bant-y` (ince bant + aynı-zemin ardılı),
-  `--vt-bas-alt`, `--vt-modul`, `--vt-kart-ic`(-l).
-- **Tip:** `--vt-t1…t9` = 12·14·16·17·20·24·30·36·42 (oran 1,2; taban 17; t3=16 tek
-  yarım adım — yalnız metin kademesinde). Roller `--vt-h1-b/-sy/-ha` kalıbıyla;
-  kırılımda kademeli (clamp değil), ≤600'de bir kademe iner.
-- **Bileşen:** düğme L 48 / S 40 (`pointer: coarse`'ta 44), girdi 48, hedef tabanı 44.
-- **Izgara:** 12/8/4 kolon, oluk `--vt-oluk` 24/24/16; kap 1200; mobil yan 16.
-- QA notu: telefon genişliği taraması dokunma emülasyonuyla yapılır (tarama.mjs bunu
-  kendisi açar) — yoksa coarse-pointer kuralları uygulanmaz, 40px S düğme yanlış bayrak alır.
 
 ## Jeton-dışı değer yasağı
 

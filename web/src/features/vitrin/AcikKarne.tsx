@@ -22,7 +22,7 @@ export function AcikKarne({ durum }: { durum: DogrulamaDurumu }) {
         {durum.tur === "hata" && (
           <div className="vt-karne vt-karne--kapali">
             <p>Karne şu an alınamadı; sayfa yenilenince yeniden denenir.</p>
-            <span className="vt-kunye"><code className="vt-kod-ic">GET /v1/dogrulama</code></span>
+            <span className="vt-kunye">GET /v1/dogrulama</span>
           </div>
         )}
         {durum.tur !== "kapali" && (
@@ -62,7 +62,7 @@ function KilitliKarne() {
           ))}
         </dl>
       </div>
-      <p className="vt-kunye vt-kilitli__kapanis">{YONTEM_KAPANIS} · <code className="vt-kod-ic">GET /v1/dogrulama</code></p>
+      <p className="vt-kunye vt-kilitli__kapanis">{YONTEM_KAPANIS} · GET /v1/dogrulama</p>
     </div>
   );
 }
@@ -107,12 +107,6 @@ function KarneKutusu({ veri }: { veri: Dogrulama }) {
             ))}
           </tbody>
         </table>
-      )}
-      {veri.d1 && (
-        <p className="vt-kunye vt-karne__not">
-          <b>D-1 teslim kesiti</b> — yalnız önceki gün 15:30'dan (İstanbul) önce verilmiş son tahminle, {veri.d1.gun.toLocaleString("tr-TR")} sınav günü:
-          ortalama sapma {yuzdeTr(veri.d1.wmape_pct)} · bant kapsaması {yuzdeTr(veri.d1.bant_kapsama_pct)}. Piyasa beyanının tabi olduğu gerçek ufuk budur; yukarıdaki değerler gün içi güncellemeleri de içerir.
-        </p>
       )}
       <p className="vt-kunye vt-karne__not">{veri.not ? `${veri.not} ` : ""}Sapma yüzdeleri gün içinde üretime ağırlıklıdır, günler ortalanır — küçük olan iyidir.</p>
     </div>

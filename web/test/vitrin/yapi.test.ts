@@ -37,16 +37,16 @@ test("/yontem artık eski Vitrin sabitlerini kullanmıyor ve tek yöntem kaynağ
   assert.doesNotMatch(yontem, /style=\{/);
 });
 
-test("vitrin bileşenlerinde satır içi stil yok (Rozet.tsx hariç — BENIOKU §6.3; ReferansEgri.tsx hariç — yüzen balon/rozet konumları çalışma anında ÖLÇÜLÜR, v2.413)", () => {
+test("vitrin bileşenlerinde satır içi stil yok (Rozet.tsx hariç: <use> gölge ağacında sembol vurgusu motor uyumu için satır içi stil ister — BENIOKU §6.3)", () => {
   const kok = new URL("../../src/features/vitrin/", import.meta.url);
-  for (const ad of readdirSync(kok).filter((a) => a.endsWith(".tsx") && a !== "Rozet.tsx" && a !== "ReferansEgri.tsx")) {
+  for (const ad of readdirSync(kok).filter((a) => a.endsWith(".tsx") && a !== "Rozet.tsx")) {
     assert.doesNotMatch(readFileSync(new URL(ad, kok), "utf8"), /style=\{/, ad);
   }
 });
 
 test("ana sayfa yeni bileşenlerden kurulur; eski süsler kalktı", () => {
   const vitrin = oku("../../src/features/vitrin/Vitrin.tsx");
-  for (const parca of ["<UstCubuk", "<Hero", "<BolumCubugu", "<KanitSeridi", "<DortAdim", "<TurkiyePiyasasi", "<IsIzgarasi", "<ApiBandi", "<AcikKarne durum={durum}", "<Sss", "<Basvuru", "<Altbilgi", "useDogrulama"]) {
+  for (const parca of ["<UstCubuk", "<Hero", "<BolumCubugu", "<KanitSeridi", "<DortAdim", "<TurkiyePiyasasi", "<IsIzgarasi", "<AcikKarne durum={durum}", "<Sss", "<Basvuru", "<Altbilgi", "useDogrulama"]) {
     assert.ok(vitrin.includes(parca), parca);
   }
   assert.doesNotMatch(vitrin, /YildizAlani|Dalga|KatmanIkon|export const/);
@@ -135,20 +135,15 @@ test("disiplin dipnotu otomasyon iddia etmez; sayım kuralını açıkça söyle
   assert.match(db, /href=\{hedef\}|#vt-dipnot-1/);
 });
 
-test("TL bölümü «Ö4 vakası» (v2.416): maket yok, koşunun gerçek 15 dk çıktısı var; amber yalnız gerçekleşen", () => {
+test("TL kartları «panel kesiti»: tek yüzey, beş kart, eski vinyet ve sembol ikon yok; amber yalnız gerçekleşen çiziminde (kart-tasarim)", () => {
   const piyasa = oku("../../src/features/vitrin/TurkiyePiyasasi.tsx");
-  // maketler ve kart ızgarası geri dönmez
-  assert.doesNotMatch(piyasa, /vt-kesit|vt-pnc|vt-sahne|KartCizimleri|TextliCizimler|panel\.pvquant/);
-  assert.doesNotMatch(piyasa, /vinyet-|VinyetTl|vt-vin-kart|tek tık/i);
-  // vaka dili: mono künye + gerçek 15 dk dilimleri (depoda ext.alt_saatlik ile üretildi)
-  assert.match(piyasa, /araştırma koşusu · hero'daki referans santral · teslim edilmedi/);
-  assert.match(piyasa, /VAKA_15DK/);
-  assert.match(piyasa, /açık karne/);                      // tek-gün → 46 günlük karne köprüsü
-  assert.match(piyasa, /alarm kütüphanesi çalıştırılmadı/); // Ö4(c) dürüst künye
-  // Ö4(b): TL rakamı gösterilmez (depoda hesaplanmadı); renkler yalnız CSS jetonundan
-  assert.doesNotMatch(piyasa, /\d[.,]?\d*\s*(bin\s*)?TL/);
-  assert.doesNotMatch(piyasa, /#C27803|#2D6FB5/);
-  const css = oku("../../src/features/vitrin/vitrin.css");
-  assert.match(css, /vt-vaka__gercek dd \{ color: var\(--vt-veri-gerceklesen\)/);
-  assert.match(css, /vt-vaka__degerler dd \{[^}]*var\(--vt-veri-tahmin\)/);
+  assert.match(piyasa, /className="vt-kesit"/);
+  assert.equal((piyasa.match(/^\s*\{ ad: "/gm) ?? []).length, 5);
+  assert.doesNotMatch(piyasa, /vinyet-|VinyetTl|VinyetTicaret|vt-vin-kart|tek tık/i);
+  const cizim = oku("../../src/features/vitrin/KartCizimleri.tsx");
+  // veri renk sözleşmesi: amber (#C27803) yalnız sapma (gerçekleşen eğrisi) ve alarm (gelen ölçüm) çizimlerinde
+  const amberli = [...cizim.matchAll(/export function (\w+)\(\)[\s\S]*?(?=export function|$)/g)]
+    .filter((m) => m[0].includes("#C27803")).map((m) => m[1]);
+  assert.deepEqual(amberli, ["CizimSapma", "CizimAlarm"]);
+  assert.doesNotMatch(cizim, /#FFB4A2|#B11F47/i);   // şeftali ve eylem rengi kart çizimlerinde yok
 });

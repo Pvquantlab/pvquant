@@ -49,16 +49,7 @@ const DENETIM = `(() => {
     const ad = (e.getAttribute("aria-label") || e.textContent || "").trim();
     if (!ad) S.ihlaller.push("isimsiz etkileşimli: <" + e.tagName.toLowerCase() + "> " + (e.className + "").slice(0, 40));
     const k = e.getBoundingClientRect();
-    // WCAG 2.5.8 satır içi istisnası: metin akışındaki bağlantı (p/li/td/dd/figcaption
-    // içindeki <a>) hedef boyutu kuralından muaftır — rubrik turu v2.399 düzeltmesi.
-    const satirIci = getComputedStyle(e).display === "inline" ||
-      (e.tagName === "A" && e.closest("p, li, td, dd, figcaption"));
-    // ::before inset:0 absolute = «kartın tamamı tıklanabilir» hilesi (vt-panelde
-    // kalıbı) — gerçek hedef kart; eleman kutusu ölçüte girmez.
-    const ob = getComputedStyle(e, "::before");
-    const genisHedef = ob.content !== "none" && ob.position === "absolute" &&
-      ob.top === "0px" && ob.bottom === "0px" && ob.left === "0px" && ob.right === "0px";
-    if (innerWidth < 768 && k.width > 0 && (k.width < 44 || k.height < 44) && !satirIci && !genisHedef)
+    if (innerWidth < 768 && k.width > 0 && (k.width < 44 || k.height < 44) && getComputedStyle(e).display !== "inline")
       S.kucukHedef = (S.kucukHedef ?? 0) + 1;
   }
   let onceki = 0;
@@ -83,9 +74,6 @@ const rapor = { url, zaman: new Date().toISOString(), genislikler: {} };
 let ihlalVar = false;
 for (const g of GENISLIKLER) {
   await cdp("Emulation.setDeviceMetricsOverride", { width: g, height: 900, deviceScaleFactor: 1, mobile: g < 768 });
-  // telefon genişliği = dokunmatik aygıt: pointer:coarse medya kuralları (ör. 44px hedef
-  // tabanı) gerçekte uygulanır; emülasyonsuz ölçüm yanlış pozitif verir (Mühür 1, v2.408).
-  await cdp("Emulation.setTouchEmulationEnabled", { enabled: g < 768, maxTouchPoints: 5 }).catch(() => {});
   await cdp("Page.navigate", { url });
   await uyut(2500);
   const s = await js(DENETIM);

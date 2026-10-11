@@ -11,12 +11,13 @@ test("hiçbir giriş dosyası Google Fonts'a istek atmaz", () => {
   }
 });
 
-test("vitrin ailesi @fontsource'tan: Gantari (v2.425 — Solcast kıyası, kullanıcı seçimi)", () => {
+test("vitrin aileleri @fontsource'tan: başlık Bricolage, gövde IBM Plex Sans", () => {
   const vitrin = oku("../src/features/vitrin/fontlar.ts");
   assert.doesNotMatch(vitrin, /fonts\.(googleapis|gstatic)\.com/);
-  assert.ok(vitrin.includes("@fontsource-variable/gantari"), "@fontsource-variable/gantari");
-  assert.match(oku("../src/features/vitrin/vitrin.css"), /--vt-baslik: 'Gantari Variable'/);
-  assert.match(oku("../src/features/vitrin/vitrin.css"), /--vt-sans: 'Gantari Variable'/);
+  for (const paket of ["@fontsource-variable/bricolage-grotesque/", "@fontsource/ibm-plex-sans/"]) {
+    assert.ok(vitrin.includes(paket), paket);
+  }
+  assert.match(oku("../src/features/vitrin/vitrin.css"), /--vt-baslik: 'Bricolage Grotesque Variable'/);
 });
 
 test("panel aileleri @fontsource'tan yüklenir; yığın 'Inter Variable' ile başlar", () => {

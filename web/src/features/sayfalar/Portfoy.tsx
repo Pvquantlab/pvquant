@@ -36,7 +36,7 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
   const tarih = (s: string | null) => s ? new Date(s).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }) : "—";
   if (!hazir) return (
     <Sayfa baslik="Portföy" alt="Tüm santraller bir bakışta — sayılar kapasite ile ağırlıklı, eksikler tire.">
-      <span className="durum-notu"><span className="durum-doner" aria-hidden="true" />Yükleniyor…</span>
+      <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p>
     </Sayfa>
   );
   return (
@@ -47,21 +47,10 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
         <Kpi etiket="Toplam kurulu güç"
              deger={t ? (t.kapasite_kwp < 100 ? gucTr(t.kapasite_kwp) : sayiTr(t.kapasite_kwp / 1000, 2)) : "—"}
              birim={t && t.kapasite_kwp < 100 ? "kWp" : "MWp"} alt={t ? `${sayiTr(t.santral)} santral` : ""} />
-        {/* v2.399 (rubrik turu): "24,5 MWh · 27,0 MWh" 1440'ta bile kesiliyordu —
-            iki değer aynı ölçekteyse birim TEK kez sonda yazılır: "24,5 · 27,0 MWh". */}
-        <Kpi etiket="Bugün beklenen · yarın"
-             deger={(() => {
-               if (!t || t.bugun_kwh == null || t.yarin_kwh == null) return "—";
-               const [ya, yb] = [enj(t.bugun_kwh), enj(t.yarin_kwh)];
-               const [ba, bb] = [ya.split(" ").pop(), yb.split(" ").pop()];
-               return ba === bb ? `${ya.slice(0, -(` ${ba}`.length))} · ${yb}` : `${ya} · ${yb}`;
-             })()}
+        <Kpi etiket="Bugün beklenen · yarın" deger={t ? `${enj(t.bugun_kwh)} · ${enj(t.yarin_kwh)}` : "—"}
              alt={t && (t.bugun_kwh == null || t.yarin_kwh == null) ? "bir santralde beklenti yok → toplam yazılmaz" : "tüm santrallerin P50 toplamı"} />
-        {/* v2.399: değer "—" iken alt "0,00 MWp karneli" çelişkili okunuyordu — dürüst dil */}
         <Kpi etiket="30 günlük WMAPE (ağırlıklı)" deger={t?.wmape_agirlikli != null ? `%${sayiTr(t.wmape_agirlikli, 1)}` : "—"}
-             alt={t?.wmape_agirlikli != null
-               ? `${sayiTr(t.wmape_kapsanan_kwp / 1000, 2)} MWp karneli`
-               : "karne birikmedi — eşleşmiş gün yok"} />
+             alt={t ? `${sayiTr(t.wmape_kapsanan_kwp / 1000, 2)} MWp karneli` : ""} />
         <Kpi etiket="Açık alarm · veri gecikmiş" deger={t ? `${sayiTr(t.acik_alarm)} · ${sayiTr(t.veri_gecikmis)}` : "—"}
              alt={t && t.santral > 0 ? "son 7 gün okunmamış · 2 günden eski ölçüm" : ""} ton={t && (t.acik_alarm > 0 || t.veri_gecikmis > 0) ? "uyari" : undefined} />
       </div>
@@ -142,7 +131,7 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
  *  altyapısı bilerek yok — dönüş buradaki adrese elle yapılır, sonra "okundu". */
 function GelenTalepler() {
   const [liste, setListe] = useState<{ id: string; eposta: string; santral_adi: string | null;
-    kurulu_guc_kwp: number | null; santral_sayisi: number | null; okundu: boolean; created_at: string }[] | null>(null);
+    kurulu_guc_kwp: number | null; okundu: boolean; created_at: string }[] | null>(null);
   const yenile = () => { api.basvurular().then((r) => setListe(r.basvurular)).catch(() => setListe([])); };
   useEffect(yenile, []);
   const acik = (liste ?? []).filter((b) => !b.okundu).length;
@@ -154,14 +143,13 @@ function GelenTalepler() {
         <div className="grafik-kaydir">
           <table className="veri" style={{ fontSize: 12.5 }}>
             <thead><tr><th style={{ textAlign: "left" }}>E-posta</th><th style={{ textAlign: "left" }}>Santral</th>
-              <th>Kurulu güç</th><th>Santral sayısı</th><th style={{ textAlign: "left" }}>Tarih</th><th>Durum</th></tr></thead>
+              <th>Kurulu güç</th><th style={{ textAlign: "left" }}>Tarih</th><th>Durum</th></tr></thead>
             <tbody className="mono">
               {liste.map((b) => (
                 <tr key={b.id} style={{ opacity: b.okundu ? 0.55 : 1 }}>
                   <td style={{ fontWeight: b.okundu ? 400 : 600 }}>{b.eposta}</td>
                   <td>{b.santral_adi ?? "—"}</td>
                   <td>{b.kurulu_guc_kwp != null ? `${sayiTr(b.kurulu_guc_kwp / 1000, 1)} MW` : "—"}</td>
-                  <td>{b.santral_sayisi ?? "—"}</td>
                   <td>{new Date(b.created_at).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" })}</td>
                   <td>{b.okundu ? "okundu" : (
                     <button className="dugme" style={{ fontSize: 11.5 }}

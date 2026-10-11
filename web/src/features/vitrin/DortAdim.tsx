@@ -1,12 +1,9 @@
 import { Fragment, type ReactNode } from "react";
 import { Rozet, type RozetGrubu, type RozetIkonu } from "./Rozet";
-/* v2.403: levhalar <img> yerine SATIR İÇİ (?raw) — img içindeki SVG sayfanın fontlarına
- * erişemez (Plex Mono yerine jenerik monospace) ve gren filtresi bazı motorlarda CSS
- * pikselinde rasterize olur; satır içi SVG ikisini de çözer (kullanıcı «çözünürlük» turu). */
-import levhaFizik from "./varlik/levha-fizik.svg?raw";
-import levhaOgrenen from "./varlik/levha-ogrenen.svg?raw";
-import levhaAralik from "./varlik/levha-aralik.svg?raw";
-import levhaKarne from "./varlik/levha-karne.svg?raw";
+import levhaFizik from "./varlik/levha-fizik.svg";
+import levhaOgrenen from "./varlik/levha-ogrenen.svg";
+import levhaAralik from "./varlik/levha-aralik.svg";
+import levhaKarne from "./varlik/levha-karne.svg";
 
 /** Dört adım (v2.386 cila-a + rakip analizi Ö9/Ö11): V1 kartları levha illüstrasyonlarıyla.
  *  Ö11: ≥1241'de dört kart TEK SIRA numaralı zincirdir (oklar grid hücresi — ::after kartın overflow'una kırpılıyordu);
@@ -42,7 +39,7 @@ export function DortAdim({ onPanel }: { onPanel?: () => void }) {
           {ADIM.map((a, i) => (<Fragment key={a.no}>
             {i > 0 && <span className="vt-adim__ok" aria-hidden="true">→</span>}
             <article className={onPanel ? "vt-kart vt-kart--bag vt-adim" : "vt-kart vt-adim"}>
-              <div className="vt-levha" aria-hidden="true" dangerouslySetInnerHTML={{ __html: a.levha }} />
+              <div className="vt-levha" aria-hidden="true"><img src={a.levha} alt="" width="420" height="150" loading="lazy" decoding="async" /></div>
               <div className="vt-kart__govde">
                 <span className="vt-kart__no">{a.no}</span>
                 <h3 className="vt-h3">{a.baslik}</h3>
@@ -63,9 +60,9 @@ export function DortAdim({ onPanel }: { onPanel?: () => void }) {
           </Fragment>))}
         </div>
         <p className="vt-not vt-adim__cikis">Zincirin çıkışı teslim kanallarıdır — TPYS&#39;ye öneri CSV, toplayıcıya CSV/XLSX, REST API ve sabah webhook&#39;u; <a className="vt-bag vt-bag--metin" href="#isler">masanıza göre ayrıntısı iş kartlarında</a>.</p>
-        <div className="vt-ayna" role="table" aria-label="Masanızda kalan sorular ve PVQuant ile karşılaştırması">
+        <div className="vt-ayna" role="table" aria-label="Tahmini kendiniz işlerseniz ve PVQuant ile karşılaştırması">
           <div className="vt-ayna__bas" role="row">
-            <span role="columnheader">Masanızda kalan sorular</span>
+            <span role="columnheader">Tahmini kendiniz işlerseniz</span>
             <span role="columnheader">PVQuant ile</span>
           </div>
           {AYNA.map(([soru, cevap]) => (

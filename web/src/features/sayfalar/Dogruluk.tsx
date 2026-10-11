@@ -4,8 +4,6 @@ import { api } from "../../api/client";
 import type { Karne, HataMatrisi, HataDagilimi, KonformalAyar, Backtest, Dengesizlik, Guvenilirlik } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
-import { Yukleniyor, HataDurumu } from "../../lib/Durum";
-import { renkler, eksenYazi, eksenDeger, eksenKategori, tooltipEksen, tooltipTemel, TEMEL } from "../../lib/grafikTema";
 import { Kpi, Kart, Sayfa, sayiTr } from "./parcalar";
 
 const AY = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran",
@@ -36,7 +34,6 @@ export function Dogruluk({ plantId }: { plantId: string }) {
   // yerleşince sayfa bütün belirir. Dönem segmenti kapıya GİRMEZ: yalnız
   // karneyi tazeler, eski veri tutulur, sayfa titremez (v2.230 kararı korunur).
   const [hazir, setHazir] = useState(false);
-  const [deneme, setDeneme] = useState(0);          // HataDurumu «Yeniden dene» kapıyı yeniden kurar
   useEffect(() => {
     let acik = true;
     setHazir(false);
@@ -56,7 +53,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
       });
     return () => { acik = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- donem bilerek dışarıda: kapı yalnız santral değişince kurulur
-  }, [plantId, deneme]);
+  }, [plantId]);
   const [ilkDonem, setIlkDonem] = useState(true);
   useEffect(() => {
     if (ilkDonem) { setIlkDonem(false); return; }   // ilk değer kapıda çekildi
@@ -66,36 +63,38 @@ export function Dogruluk({ plantId }: { plantId: string }) {
   // v2.271: güvenilirlik diyagramı — x nominal τ, y gözlenen P(y ≤ q_τ); köşegen ideal. Ham ince/soluk, kalibre kalın mavi.
   const gvOption = useMemo<EChartsOption | null>(() => {
     if (!gv || gv.durum !== "ok" || !gv.guvenilirlik) return null;
-    const r = renkler(oku);
+    const kenar = oku("--kenar"), soluk = oku("--soluk"), mono = oku("--mono"), mavi = oku("--chart-p50-future");
     const seri = (ad: string, rows: { tau: number; gozlenen: number }[], renk: string, kalin: number) => ({
-      name: ad, type: "line" as const, data: rows.map((rw) => [rw.tau, rw.gozlenen]), symbol: "circle", symbolSize: 8,
+      name: ad, type: "line" as const, data: rows.map((r) => [r.tau, r.gozlenen]), symbol: "circle", symbolSize: 8,
       lineStyle: { color: renk, width: kalin }, itemStyle: { color: renk } });
     return {
-      ...TEMEL, grid: { left: 44, right: 12, top: 26, bottom: 34 },
-      legend: { top: 0, right: 0, textStyle: { color: r.soluk, fontSize: 11 }, itemWidth: 14 },
-      tooltip: tooltipEksen(r, { valueFormatter: (v: unknown) => `%${sayiTr(Number(v) * 100, 0)}` }),
-      xAxis: eksenDeger(r, { min: 0, max: 1, name: "nominal", nameTextStyle: { color: r.soluk, fontSize: 10 },
-        axisLabel: eksenYazi(r, 10, { formatter: (v: number) => `P${Math.round(v * 100)}` }) }),
-      yAxis: eksenDeger(r, { min: 0, max: 1, name: "gözlenen", nameTextStyle: { color: r.soluk, fontSize: 10 },
-        axisLabel: eksenYazi(r, 10, { formatter: (v: number) => `%${Math.round(v * 100)}` }) }),
+      animation: false, grid: { left: 44, right: 12, top: 26, bottom: 34 },
+      legend: { top: 0, right: 0, textStyle: { color: soluk, fontSize: 11 }, itemWidth: 14 },
+      tooltip: { trigger: "axis", backgroundColor: oku("--kart"), borderColor: kenar, borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 12 },
+        valueFormatter: (v: unknown) => `%${sayiTr(Number(v) * 100, 0)}` },
+      xAxis: { type: "value", min: 0, max: 1, name: "nominal", nameTextStyle: { color: soluk, fontSize: 10 },
+        axisLabel: { color: soluk, fontFamily: mono, fontSize: 10, formatter: (v: number) => `P${Math.round(v * 100)}` }, splitLine: { lineStyle: { color: oku("--izgara") } } },
+      yAxis: { type: "value", min: 0, max: 1, name: "gözlenen", nameTextStyle: { color: soluk, fontSize: 10 },
+        axisLabel: { color: soluk, fontFamily: mono, fontSize: 10, formatter: (v: number) => `%${Math.round(v * 100)}` }, splitLine: { lineStyle: { color: oku("--izgara") } } },
       series: [
-        { name: "ideal", type: "line", data: [[0, 0], [1, 1]], symbol: "none", showSymbol: false, itemStyle: { color: r.soluk },
-          lineStyle: { color: r.soluk, type: "dashed", width: 1 }, silent: true },
-        seri("ham bant", gv.guvenilirlik.ham, r.dusuk, 1.5),
-        seri("kalibre bant", gv.guvenilirlik.kalibre, r.tahmin, 2.5),
+        { name: "ideal", type: "line", data: [[0, 0], [1, 1]], symbol: "none", showSymbol: false, itemStyle: { color: soluk },
+          lineStyle: { color: soluk, type: "dashed", width: 1 }, silent: true },
+        seri("ham bant", gv.guvenilirlik.ham, oku("--ch-dusuk"), 1.5),
+        seri("kalibre bant", gv.guvenilirlik.kalibre, mavi, 2.5),
       ],
     };
   }, [gv, n, oku]);   // eslint-disable-line react-hooks/exhaustive-deps
   const pitOption = useMemo<EChartsOption | null>(() => {
     if (!gv || gv.durum !== "ok" || !gv.pit) return null;
-    const r = renkler(oku);
+    const soluk = oku("--soluk"), mono = oku("--mono");
     return {
-      ...TEMEL, grid: { left: 40, right: 12, top: 18, bottom: 30 },
-      tooltip: tooltipEksen(r, { valueFormatter: (v: unknown) => `%${sayiTr(Number(v) * 100, 0)}` }),
-      xAxis: eksenKategori(r, gv.pit.map((p) => p.kutu), { axisLabel: eksenYazi(r, 9, { interval: 1 }) }),
-      yAxis: eksenDeger(r, { min: 0, axisLabel: eksenYazi(r, 10, { formatter: (v: number) => `%${Math.round(v * 100)}` }) }),
-      series: [{ type: "bar", data: gv.pit.map((p) => p.oran), itemStyle: { color: r.cubuk }, barMaxWidth: 26,
-        markLine: { silent: true, symbol: "none", lineStyle: { color: r.soluk, type: "dashed" }, data: [{ yAxis: 0.1 }], label: { show: false } } }],
+      animation: false, grid: { left: 40, right: 12, top: 18, bottom: 30 },
+      tooltip: { trigger: "axis", backgroundColor: oku("--kart"), borderColor: oku("--kenar"), borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 12 },
+        valueFormatter: (v: unknown) => `%${sayiTr(Number(v) * 100, 0)}` },
+      xAxis: { type: "category", data: gv.pit.map((p) => p.kutu), axisLabel: { color: soluk, fontFamily: mono, fontSize: 9, interval: 1 }, axisTick: { show: false } },
+      yAxis: { type: "value", min: 0, axisLabel: { color: soluk, fontFamily: mono, fontSize: 10, formatter: (v: number) => `%${Math.round(v * 100)}` }, splitLine: { lineStyle: { color: oku("--izgara") } } },
+      series: [{ type: "bar", data: gv.pit.map((p) => p.oran), itemStyle: { color: oku("--ch-cubuk") }, barMaxWidth: 26,
+        markLine: { silent: true, symbol: "none", lineStyle: { color: soluk, type: "dashed" }, data: [{ yAxis: 0.1 }], label: { show: false } } }],
     };
   }, [gv, n, oku]);   // eslint-disable-line react-hooks/exhaustive-deps
   // v2.326: hataMatrisi/hataDagilimi artık tek kapının içinde çekiliyor (yukarıda).
@@ -104,7 +103,10 @@ export function Dogruluk({ plantId }: { plantId: string }) {
   // 7 gun egilimi TEK kalin cizgi, naif INCE gri cizgi (alan degil).
   // Hiyerarsi: nokta < gri cizgi < egilim; ic ice cizgi karmasasi biter.
   const wmapePanel = useMemo(() => {
-    const r = renkler(oku);
+    const izgara = oku("--izgara"), soluk = oku("--soluk");
+    const kenar = oku("--kenar"), mono = oku("--mono");
+    const marka = oku("--marka"), dusuk = oku("--ch-dusuk");
+    const markaKoyu = oku("--marka-koyu");
     const g = k?.gunluk ?? [];
     const tarihler = [...new Set(g.map((r) => r.tarih))].sort();
     const bul = (t: string, kova: string) =>
@@ -126,31 +128,34 @@ export function Dogruluk({ plantId }: { plantId: string }) {
       let si = -1;
       egilim.forEach((v, i) => { if (v !== null) si = i; });
       return {
-        ...TEMEL, grid: { left: 40, right: 14, top: 18, bottom: 26 },
-        tooltip: tooltipEksen(r, {
-          valueFormatter: (v: unknown) => (v == null ? "—" : `%${sayiTr(Number(v), 1)}`) }),
-        xAxis: eksenKategori(r, tarihler, {
-          axisLine: { lineStyle: { color: r.kenar } },
+        grid: { left: 40, right: 14, top: 18, bottom: 26 }, animation: false,
+        tooltip: { trigger: "axis", backgroundColor: oku("--kart"), borderColor: kenar,
+          borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 12 },
+          valueFormatter: (v: unknown) => (v == null ? "—" : `%${sayiTr(Number(v), 1)}`) },
+        xAxis: { type: "category", data: tarihler, axisTick: { show: false },
+          axisLine: { lineStyle: { color: kenar } },
           // v2.231: sabit 13 araligi 30g penceresinde tek etiket birakiyordu —
           // hedef ~4 etiket, pencereye gore olceklenir
-          axisLabel: eksenYazi(r, 10, {
-            interval: Math.max(1, Math.ceil(tarihler.length / 4) - 1) }) }),
-        yAxis: eksenDeger(r, { max: ymax, axisLine: { show: false },
-          axisLabel: eksenYazi(r, 10, { formatter: (v: number) => `%${v}` }) }),
+          axisLabel: { color: soluk, fontFamily: mono, fontSize: 10,
+            interval: Math.max(1, Math.ceil(tarihler.length / 4) - 1) } },
+        yAxis: { type: "value", max: ymax, splitLine: { lineStyle: { color: izgara } },
+          axisLine: { show: false },
+          axisLabel: { color: soluk, fontFamily: mono, fontSize: 10,
+                       formatter: (v: number) => `%${v}` } },
         series: [
           { name: "Naif referans", type: "line", symbol: "none", z: 1,
-            lineStyle: { color: r.dusuk, width: 1.4 },
+            lineStyle: { color: dusuk, width: 1.4 },
             data: naif, connectNulls: true },
           { name: "Günlük", type: "scatter", z: 2, symbolSize: 4.5,
-            itemStyle: { color: r.marka, opacity: 0.42 }, data: gunluk },
+            itemStyle: { color: marka, opacity: 0.42 }, data: gunluk },
           {
             name: "7 gün eğilimi", type: "line", symbol: "none", z: 3,
-            lineStyle: { color: r.marka, width: 2.6, cap: "round", join: "round" },
+            lineStyle: { color: marka, width: 2.6, cap: "round", join: "round" },
             data: egilim, connectNulls: true,
             ...(si >= 0 ? { markPoint: {
               silent: true, symbol: "circle", symbolSize: 7,
-              itemStyle: { color: r.marka, borderColor: r.kart, borderWidth: 1.5 },
-              label: { show: true, position: "top", distance: 6, color: r.markaKoyu,
+              itemStyle: { color: marka, borderColor: oku("--kart"), borderWidth: 1.5 },
+              label: { show: true, position: "top", distance: 6, color: markaKoyu,
                 fontFamily: "monospace", fontSize: 10, fontWeight: "bold",
                 formatter: () => `%${sayiTr(egilim[si] as number, 1)}` },
               data: [{ coord: [tarihler[si], egilim[si]] }],
@@ -163,7 +168,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
   }, [k, n]);
 
   const matrisOption = useMemo<EChartsOption>(() => {
-    const r = renkler(oku);
+    const kenar = oku("--kenar"), soluk = oku("--soluk"), mono = oku("--mono");
     const gunler = hm?.gunler ?? [], saatler = hm?.saatler ?? [];
     const veri: [number, number, number][] = [];
     let tepe = 0;
@@ -186,8 +191,9 @@ export function Dogruluk({ plantId }: { plantId: string }) {
         { left: 56, right: 168, top: 26, bottom: 64 },
         { right: 12, width: 128, top: 26, bottom: 64 },
       ],
-      ...TEMEL,
-      tooltip: tooltipTemel(r, {
+      animation: false,
+      tooltip: { backgroundColor: oku("--kart"), borderColor: kenar,
+        borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 12 },
         formatter: (p0: unknown) => {
           const p1 = p0 as { seriesType: string; value: unknown; name: string };
           if (p1.seriesType === "bar") {
@@ -196,29 +202,31 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           const [gi, si, v] = p1.value as [number, number, number];
           const yon = v >= 0 ? "fazla tahmin" : "eksik tahmin";
           return `${gunler[gi]} · ${saatler[si]}<br/>${v >= 0 ? "+" : ""}${sayiTr(v, 1)} kW (${yon})`;
-        } }),
+        } },
       xAxis: [
-        eksenKategori(r, gunler, { gridIndex: 0,
-          axisLine: { lineStyle: { color: r.kenar } },
+        { type: "category", data: gunler, gridIndex: 0, axisTick: { show: false },
+          axisLine: { lineStyle: { color: kenar } },
           /* v2.311: yalnız gün numarası basılıyordu ("09", "10") — hangi ay
              olduğu okunmuyordu. Ay, ilk sütunda ve ay değişiminde yazılır;
              kalabalık 30 sütunlu pencerede yine sade kalır. */
-          axisLabel: eksenYazi(r, 10, {
+          axisLabel: { color: soluk, fontFamily: mono, fontSize: 10,
             formatter: (t: string, i: number) => {
               const oncekiAy = i > 0 ? gunler[i - 1]?.slice(5, 7) : null;
               return oncekiAy === t.slice(5, 7)
                 ? t.slice(8) : `${t.slice(8)}.${t.slice(5, 7)}`;
-            } }) }),
+            } } },
         { type: "value", gridIndex: 1, splitLine: { show: false },
           axisLine: { show: false }, axisTick: { show: false },
           axisLabel: { show: false },
           name: "ort. |hata| (kW)", nameLocation: "end" as const, nameGap: 6,
-          nameTextStyle: { color: r.soluk, fontFamily: r.mono, fontSize: 10,
+          nameTextStyle: { color: soluk, fontFamily: mono, fontSize: 10,
                            align: "right" as const, verticalAlign: "bottom" as const,
                            padding: [0, 0, -34, 0] } },
       ],
       yAxis: [
-        eksenKategori(r, saatler, { gridIndex: 0, axisLine: { show: false } }),
+        { type: "category", data: saatler, gridIndex: 0, axisTick: { show: false },
+          axisLine: { show: false },
+          axisLabel: { color: soluk, fontFamily: mono, fontSize: 10 } },
         { type: "category", data: saatler, gridIndex: 1, show: false },
       ],
       // v2.225 (H): rampa "alacakaranlik" — celik mavi ↔ sicak altin,
@@ -230,7 +238,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
         orient: "horizontal", left: "center", bottom: 0, itemWidth: 10, itemHeight: 90,
         seriesIndex: 0,
         text: [`fazla · +${sayiTr(tepe, 0)} kW`, `eksik · −${sayiTr(tepe, 0)} kW`],
-        textStyle: { color: r.soluk, fontSize: 11 },
+        textStyle: { color: soluk, fontSize: 11 },
         inRange: { color: document.documentElement.dataset.tema === "koyu"
           ? ["#7FB0DE", "#5A87B4", "#3D608A", "#263D5C",
              "#14213A", "#4A3418", "#755324", "#A47334", "#D49A4C"]
@@ -238,11 +246,11 @@ export function Dogruluk({ plantId }: { plantId: string }) {
              "#FBFCFE", "#F0DDBE", "#D3A15D", "#A06E33", "#6E4A1E"] } },
       series: [
         { type: "heatmap", data: veri, xAxisIndex: 0, yAxisIndex: 0,
-          itemStyle: { borderColor: r.izgara, borderWidth: 1 },
-          emphasis: { itemStyle: { borderColor: r.soluk } } },
+          itemStyle: { borderColor: oku("--izgara"), borderWidth: 1 },
+          emphasis: { itemStyle: { borderColor: soluk } } },
         { type: "bar", data: profil, xAxisIndex: 1, yAxisIndex: 1,
-          barWidth: "62%", itemStyle: { color: r.dusuk },
-          emphasis: { itemStyle: { color: r.soluk } } },
+          barWidth: "62%", itemStyle: { color: oku("--ch-dusuk") },
+          emphasis: { itemStyle: { color: soluk } } },
       ],
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -253,7 +261,9 @@ export function Dogruluk({ plantId }: { plantId: string }) {
   // P10-P90 acik bant + duz medyan cizgisi (Solargis Fig 7.5 dili).
   // API p25/p75 vermez \u2014 ic bant cizilmez (tire ilkesinin alan hali).
   const dagOption = useMemo<EChartsOption>(() => {
-    const r = renkler(oku);
+    const kenar = oku("--kenar"), soluk = oku("--soluk"), mono = oku("--mono");
+    const marka = oku("--marka"), markaKoyu = oku("--marka-koyu");
+    const mavi = oku("--chart-p50-future");
     const kutular = hd?.kutular ?? [];
     // v2.232: TR sayi bicimi + bosluklu ayrac — "-1.5-–1" yigilmasi biter
     const ond = kutular.some((x) => !Number.isInteger(x.lo) || !Number.isInteger(x.hi)) ? 1 : 0;
@@ -267,39 +277,43 @@ export function Dogruluk({ plantId }: { plantId: string }) {
       return toplam ? Math.round((1000 * birikim) / toplam) / 10 : 0;
     });
     return {
-      ...TEMEL, grid: { left: 46, right: 46, top: 24, bottom: 44 },
-      tooltip: tooltipEksen(r, { valueFormatter: (v: unknown) => `${v}` }),
+      grid: { left: 46, right: 46, top: 24, bottom: 44 }, animation: false,
+      tooltip: { trigger: "axis", backgroundColor: oku("--kart"), borderColor: kenar,
+        borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 12 },
+        valueFormatter: (v: unknown) => `${v}` },
       xAxis: [
-        eksenKategori(r, etiket, { name: "MWh/g\u00fcn (tahmin \u2212 ger\u00e7ekle\u015fen)",
+        { type: "category", data: etiket, name: "MWh/g\u00fcn (tahmin \u2212 ger\u00e7ekle\u015fen)",
           nameLocation: "middle", nameGap: 26,
-          nameTextStyle: { color: r.soluk, fontSize: 11 },
-          axisLine: { lineStyle: { color: r.taban || r.kenar } },
-          axisLabel: eksenYazi(r, 11) }),
+          nameTextStyle: { color: soluk, fontSize: 11 },
+          axisTick: { show: false },
+          axisLine: { lineStyle: { color: oku("--chart-baseline") || kenar } },
+          axisLabel: { color: soluk, fontFamily: mono, fontSize: 11 } },
         // v2.232: KDF icin gizli deger ekseni — kutu KENARLARI (kumulatif pay
         // kutunun SONUNDA birikir; Solargis Fig 7.5 egriyi kenardan gecirir)
         { type: "value", min: -0.5, max: Math.max(0.5, kutular.length - 0.5),
           show: false },
       ],
       yAxis: [
-        eksenDeger(r, { axisLine: { show: false }, axisTick: { show: false },
-          axisLabel: eksenYazi(r, 11) }),
+        { type: "value", splitLine: { lineStyle: { color: oku("--izgara") } },
+          axisLine: { show: false }, axisTick: { show: false },
+          axisLabel: { color: soluk, fontFamily: mono, fontSize: 11 } },
         { type: "value", min: 0, max: 100, splitLine: { show: false },
           axisLine: { show: false }, axisTick: { show: false },
-          axisLabel: eksenYazi(r, 11, { color: r.markaKoyu,
-                       formatter: (v: number) => `%${v}` }) },
+          axisLabel: { color: markaKoyu, fontFamily: mono, fontSize: 11,
+                       formatter: (v: number) => `%${v}` } },
       ],
       series: [
         { name: "G\u00fcn say\u0131s\u0131", type: "bar", barWidth: "58%",
           data: kutular.map((b) => b.adet),
-          itemStyle: { color: r.tahmin, opacity: 0.88, borderRadius: [2, 2, 0, 0] },
+          itemStyle: { color: mavi, opacity: 0.88, borderRadius: [2, 2, 0, 0] },
           z: 2,
           markLine: hd?.p50 != null
             // v2.232: medyan etiketi dikeyken cubugun icinde kayboluyordu —
             // yatay, cizginin tepesinde (rotate 0, position end)
-            ? { symbol: "none", silent: true,   // animation kökte kapalı (TEMEL)
+            ? { symbol: "none", animation: false, silent: true,
                 data: [{ name: "medyan", xAxis: xi(hd.p50),
-                  lineStyle: { color: r.soluk, type: "solid" as const, width: 1.4 },
-                  label: { color: r.soluk, fontSize: 10, fontFamily: r.mono,
+                  lineStyle: { color: soluk, type: "solid" as const, width: 1.4 },
+                  label: { color: soluk, fontSize: 10, fontFamily: mono,
                     position: "end" as const, distance: 6, rotate: 0,
                     formatter: () => `medyan ${sayiTr(hd.p50 as number, 2)}` } }] as never }
             : undefined },
@@ -312,7 +326,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
               xAxisIndex: 1, yAxisIndex: 1, z: 1,
               silent: true, symbol: "none",
               data: [[xi(v), 0], [xi(v), 100]],
-              lineStyle: { color: r.soluk, type: [4, 4] as never, width: 1 },
+              lineStyle: { color: soluk, type: [4, 4] as never, width: 1 },
               tooltip: { show: false } }))
           : []),
         // v2.234: sifir cizgisi — markLine kutu SINIRINDAKI kesirli koordinati
@@ -325,14 +339,14 @@ export function Dogruluk({ plantId }: { plantId: string }) {
                xAxisIndex: 1, yAxisIndex: 1, z: 1,
                silent: true, symbol: "none",
                data: [[xi(0), 0], [xi(0), 100]],
-               lineStyle: { color: r.taban || r.kenar,
+               lineStyle: { color: oku("--chart-baseline") || kenar,
                             type: "solid" as const, width: 1.6 },
                tooltip: { show: false } }]
           : []),
         { name: "K\u00fcm\u00fclatif pay", type: "line", xAxisIndex: 1, yAxisIndex: 1, z: 3,
           symbol: "none",
           data: [[-0.5, 0], ...kdf.map((v, i) => [i + 0.5, v])],
-          lineStyle: { color: r.marka, width: 2.2 } },
+          lineStyle: { color: marka, width: 2.2 } },
       ],
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -358,8 +372,8 @@ export function Dogruluk({ plantId }: { plantId: string }) {
     return son - once;
   }, [k]);
 
-  if (!hazir) return <Yukleniyor iskelet />;
-  if (!k) return <HataDurumu mesaj="Karne verisi alınamadı." tekrar={() => setDeneme((d) => d + 1)} />;
+  if (!hazir) return <div style={{ color: "var(--soluk)" }}>Yükleniyor…</div>;
+  if (!k) return <div style={{ color: "var(--soluk)" }}>Karne verisi alınamadı — sayfayı yenileyin.</div>;
 
   const OK = ({ yukari }: { yukari: boolean }) => (
     <svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true">

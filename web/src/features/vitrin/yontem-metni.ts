@@ -20,8 +20,6 @@ export const ADIMLAR = [
 export const METRIKLER = [
   ["Ortalama sapma (WMAPE)",
    "Gündüz saatlerinde |tahmin − gerçekleşen| toplanır ve o günün toplam gerçekleşen üretimine bölünür; pencere değeri, günlük değerlerin ortalamasıdır. Üretime ağırlıklıdır: düşük üretimli saatlerdeki küçük mutlak farkların yüzdeyi şişirmesine izin verilmez. Küçük değer iyidir. Gündüz saati: gerçekleşen üretimin kurulu gücün %2'sini aştığı saat."],
-  ["Kapasiteye oranlı sapma (nMAE)",
-   "Gündüz saatlerindeki |tahmin − gerçekleşen| ortalaması kurulu güce bölünür. Üretime değil kapasiteye oranlandığı için mevsimden ve santral büyüklüğünden daha az etkilenir; farklı santralleri ve sistemleri kıyaslamanın ortak dilidir. Ortalama sapma (WMAPE) ile aynı saatlerden hesaplanır ama paydası farklıdır — iki değer birbirinin yerine okunmaz."],
   ["Basit yöntem (referans)",
    "“Yarın = dün aynı saat” kuralı; değer, güneşin iki gün arasındaki konum farkına göre (açık-gök ışınımı oranıyla) ölçeklenir. Maliyeti sıfır olduğu için sektörde taban kabul edilir; her doğruluk değeri bu tabanla yan yana yayımlanır. Tabanı geçemeyen tahminin değeri yoktur."],
   ["Sıkı referans",
@@ -30,8 +28,6 @@ export const METRIKLER = [
    "Referansa göre iyileşme oranı: (referans sapması − PVQuant sapması) / referans sapması. Sıfırın üstü, tahminin referanstan iyi olduğu anlamına gelir."],
   ["Bant kapsaması",
    "Gerçekleşen üretimin, önceden ilan edilen iyimser–kötümser aralık içinde kaldığı gündüz saatlerinin oranı; her gün ayrı hesaplanır, pencere boyunca ortalanır. Hedef %80'dir — %100 değil: her zaman tutan bant, karar için fazla geniş demektir."],
-  ["D-1 teslim kesiti",
-   "Karnenin ana değerleri gün içi güncellemeleri de içerir; bu kesit ise her gün için yalnız önceki gün 15:30'dan (İstanbul) önce verilmiş son tahminle hesaplanır — piyasaya verilen üretim programının tabi olduğu gerçek ufuk budur. Sistemler arası «gün öncesi» kıyası bu kesitten okunur."],
 ] as const;
 
 export const KISA_TANIMLAR = [

@@ -4,8 +4,6 @@ import { api } from "../../api/client";
 import type { AylikBeklenti, SantralOzeti, Bankable } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
-import { Yukleniyor } from "../../lib/Durum";
-import { renkler, eksenYazi, eksenDeger, eksenKategori, tooltipEksen, TEMEL } from "../../lib/grafikTema";
 import { Cubuklar } from "../santralim/Cubuklar";
 import { Kart, Kpi, Sayfa, sayiTr, isiTonu, isiMetni } from "./parcalar";
 
@@ -77,34 +75,38 @@ export function Aylik({ plantId }: { plantId: string }) {
   const tonMetni = (t: number) => isiMetni(t, koyuTema);
 
   const option = useMemo(() => {
-    const r = renkler(oku);
+    const izgara = oku("--izgara"), soluk = oku("--soluk");
+    const kenar = oku("--kenar"), mono = oku("--mono");
     const bek = b?.beklenti ?? [];
     // Solargis Fig 4.1 dili: aylik toplam duz-renk sutun; ustune P10-P90
     // hata araligi (bankable "deger + belirsizlik" gelenegi).
     return {
-      ...TEMEL, grid: { left: 52, right: 12, top: 28, bottom: 28 },
-      tooltip: tooltipEksen(r, {
+      grid: { left: 52, right: 12, top: 28, bottom: 28 }, animation: false,
+      tooltip: { trigger: "axis", backgroundColor: oku("--kart"),
+        borderColor: kenar, borderWidth: 0.5,
+        textStyle: { color: oku("--metin"), fontSize: 12 },
         formatter: (ps: unknown) => {
           const arr = ps as { dataIndex: number }[];
-          const sat = bek[arr[0]?.dataIndex];
-          if (!sat) return "";
+          const r = bek[arr[0]?.dataIndex];
+          if (!r) return "";
           const f = (v: number | null) => v === null ? "—" : sayiTr(v);
-          return `${AYLAR[sat.ay - 1]}<br/>P50: ${f(sat.p50)} kWh/m²<br/>` +
-                 `P10–P90: ${f(sat.p10)} – ${f(sat.p90)}`;
-        } }),
-      xAxis: eksenKategori(r, AYLAR, {
+          return `${AYLAR[r.ay - 1]}<br/>P50: ${f(r.p50)} kWh/m²<br/>` +
+                 `P10–P90: ${f(r.p10)} – ${f(r.p90)}`;
+        } },
+      xAxis: { type: "category", data: AYLAR,
         axisTick: { show: true, length: 4,
-          lineStyle: { color: r.taban || r.kenar } },
-        axisLine: { lineStyle: { color: r.taban || r.kenar } },
-        axisLabel: eksenYazi(r, 11) }),
-      yAxis: eksenDeger(r, { name: "kWh/m²",
-        nameTextStyle: { color: r.soluk, fontFamily: r.mono, fontSize: 10 },
-        axisLine: { show: false }, axisLabel: eksenYazi(r, 11) }),
+          lineStyle: { color: oku("--chart-baseline") || kenar } },
+        axisLine: { lineStyle: { color: oku("--chart-baseline") || kenar } },
+        axisLabel: { color: soluk, fontFamily: mono, fontSize: 11 } },
+      yAxis: { type: "value", name: "kWh/m²",
+        nameTextStyle: { color: soluk, fontFamily: mono, fontSize: 10 },
+        splitLine: { lineStyle: { color: izgara } }, axisLine: { show: false },
+        axisLabel: { color: soluk, fontFamily: mono, fontSize: 11 } },
       series: [
         { name: "P50", type: "bar", barMaxWidth: 34, z: 1,
-          itemStyle: { borderRadius: [2, 2, 0, 0], color: r.cubuk },
+          itemStyle: { borderRadius: [2, 2, 0, 0], color: oku("--ch-cubuk") },
           label: { show: true, position: "top", distance: 16,
-            color: r.metin, fontFamily: r.mono, fontSize: 10.5,
+            color: oku("--metin"), fontFamily: mono, fontSize: 10.5,
             formatter: (pr: { value: number }) => `${Math.round(pr.value)}` },
           data: bek.map((r) => r.p50) },
         { name: "P10–P90", type: "custom", z: 2,
@@ -118,7 +120,7 @@ export function Aylik({ plantId }: { plantId: string }) {
             const [x, yLo] = api.coord([xi, lo]);
             const yHi = api.coord([xi, hi])[1];
             const w = 7;
-            const cizgi = { stroke: r.metin, lineWidth: 1.4 };
+            const cizgi = { stroke: oku("--metin"), lineWidth: 1.4 };
             return { type: "group", children: [
               { type: "line", shape: { x1: x, y1: yLo, x2: x, y2: yHi }, style: cizgi },
               { type: "line", shape: { x1: x - w, y1: yLo, x2: x + w, y2: yLo }, style: cizgi },
@@ -131,7 +133,7 @@ export function Aylik({ plantId }: { plantId: string }) {
     } as EChartsOption;
   }, [b, n]);  // v2.148
 
-  if (!hazir) return <Yukleniyor iskelet />;
+  if (!hazir) return <div style={{ color: "var(--soluk)" }}>Yükleniyor…</div>;
   if (birikiyor) return (
     <Sayfa baslik="Aylık beklenti" alt="İklimden gelen ay bazlı üretim zarfı.">
       <Kart baslik="Beklenti birikiyor">
@@ -141,7 +143,7 @@ export function Aylik({ plantId }: { plantId: string }) {
         </p>
       </Kart>
     </Sayfa>);
-  if (!b) return <Yukleniyor iskelet />;
+  if (!b) return <div style={{ color: "var(--soluk)" }}>Yükleniyor…</div>;
 
   const buAy = new Date().getMonth() + 1;
   const k = b.beklenti.find((r) => r.ay === buAy);
@@ -175,7 +177,7 @@ export function Aylik({ plantId }: { plantId: string }) {
           {bk?.durum === "ok" && <span className="cip">{bk.donem} · {sayiTr(bk.yil_sayisi ?? 0)} yıl</span>}
           <button className="dugme" style={{ fontSize: 11.5 }} onClick={bkYenile}>{bk?.durum === "ok" ? "Yenile" : "Hesapla"}</button>
         </span>}>
-        {bk === undefined ? <span className="durum-notu"><span className="durum-doner" aria-hidden="true" />Yükleniyor…</span>
+        {bk === undefined ? <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p>
          : !bk || bk.durum !== "ok" ? (
           <p className="soluk" style={{ margin: 0 }}>{bkMesaj ?? (bk?.not ?? "Henüz hesaplanmadı — 'Hesapla' ile uzun dönem ışınım arşivinden yıllık dağılım üretilir (ayda bir kendiliğinden yenilenir).")}</p>
         ) : (

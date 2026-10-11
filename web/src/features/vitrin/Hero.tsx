@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { ReferansKart } from "./ReferansKart";
+import { ReferansEgri } from "./ReferansEgri";
 import sahne from "./varlik/hero-ufuk-sahne.svg";
 import { GokyuzuCanli } from "./GokyuzuCanli";
 
@@ -46,7 +46,7 @@ export function Hero() {
           </div>
         </div>
         <div className="vt-hero__pencere">
-          <ReferansKart />
+          <ReferansEgri veri={null} />
           <a className="vt-bag vt-hero__tl-alt" href="#para">TL karşılığı nasıl hesaplanır</a>
         </div>
       </div>
