@@ -1,6 +1,9 @@
-import sahneZemin from "./varlik/sahne-zemin.svg";
-import { PncEkranAna, PncEkranIkinci } from "./TextliCizimler";
-import { CizimProgram, CizimSapma, CizimAktarim, CizimAlarm, CizimAralik } from "./KartCizimleri";
+import tlSahne from "./varlik/tl-sahne.png";
+import tlTeslim from "./varlik/tl-teslim.png";
+import tlSapma from "./varlik/tl-sapma.png";
+import tlSablon from "./varlik/tl-sablon.png";
+import tlAlarm from "./varlik/tl-alarm.png";
+import tlAralik from "./varlik/tl-aralik.png";
 
 /** Türkiye piyasası (v2.386 cila-a + kart-tasarim «panel kesiti»): solda bölüm başı, sağda SAHNELENMİŞ
  *  panel penceresi (dokunulmadı; {EKRAN} yuvası gerçek ekran görüntüsüne/canlı bileşene açık, R22).
@@ -9,23 +12,25 @@ import { CizimProgram, CizimSapma, CizimAktarim, CizimAlarm, CizimAralik } from 
  *  Her kart TEK yeti grubu anlatır (tekrar yok); roller «Hangi iş için?» bölümünde kalır.
  *  Diyagramlarda mavi = tahmin, amber = yalnız gerçekleşen; sembol ikon (₺, zil, </>) yok.
  *  Kartlar eylemsizdir (kalkmaz, R21). Adlar ve metinler tek veri alanında (aşağıda). */
+/** resim: Storyset (Amico) levhası — kullanıcının «tl» klasöründen bayt bayt, dosyaya dokunulmaz.
+ *  Görsel ağırlık dengesi CSS sınıflarında (--lv-olcek), satır içi stil evin kuralına aykırı. */
 const KARTLAR: readonly {
   ad: string; etiket: string; metin: string; kunye: readonly string[];
-  Cizim: () => React.JSX.Element; genis?: true;
+  resim: string; genis?: true;
 }[] = [
-  { ad: "Teslim programı", etiket: "D‑1 · teslim penceresi", Cizim: CizimProgram,
+  { ad: "Teslim programı", etiket: "D‑1 · teslim penceresi", resim: tlTeslim,
     metin: "Yarının saatlik programı ve emre amadelik bildirimi teslim penceresi kapanmadan hazırdır; bir gecikme olursa alarm sizi uyarır.",
     kunye: ["saatlik", "emre amadelik", "alarm çalar"] },
-  { ad: "Sapma maliyeti", etiket: "Ay boyunca · gün gün", Cizim: CizimSapma,
+  { ad: "Sapma maliyeti", etiket: "Ay boyunca · gün gün", resim: tlSapma,
     metin: "Tahmin hatasının size aylık kaç TL'ye mal olduğunu, basit yönteme göre farkı ve teminata etkisini tek yerde görürsünüz.",
     kunye: ["TL · aylık", "basit yönteme karşı", "teminat etkisi"] },
-  { ad: "Şablonlu dışa verim", etiket: "Teslimle birlikte", Cizim: CizimAktarim,
+  { ad: "Şablonlu dışa verim", etiket: "Teslimle birlikte", resim: tlSablon,
     metin: "Tahmin aralığını toplayıcınızın ya da DSG'nin şablonunda indirirsiniz; biçimi elle düzeltmeniz gerekmez. İsterseniz API anahtarıyla doğrudan sisteminize akar.",
     kunye: ["CSV · XLSX", "saatlik ya da 15 dk", "API anahtarı"] },
-  { ad: "Alarm kütüphanesi", etiket: "Gece ve gündüz", Cizim: CizimAlarm, genis: true,
+  { ad: "Alarm kütüphanesi", etiket: "Gece ve gündüz", resim: tlAlarm, genis: true,
     metin: "Gece ekrana kimse bakmazken kurallar bakar. Sabah ilk iş gece karnesini ve açık alarmları görürsünüz.",
     kunye: ["8 kural", "veri · teslim · performans", "gece karnesi"] },
-  { ad: "Gün içi aralık", etiket: "Sabah koşusundan itibaren", Cizim: CizimAralik, genis: true,
+  { ad: "Gün içi aralık", etiket: "Sabah koşusundan itibaren", resim: tlAralik, genis: true,
     metin: "İyimser–kötümser bant gün içinde güncellendikçe önceki hâlleri izde kalır; sabah koşusu bitince webhook sisteminize haber verir.",
     kunye: ["iyimser–kötümser", "gün içi revizyon", "sabah webhook’u"] },
 ];
@@ -39,26 +44,15 @@ export function TurkiyePiyasasi() {
             <h2 className="vt-h2" id="vt-para-baslik">Tahmin hatasının maliyetini TL olarak görün.</h2>
             <p className="vt-giris">Elektrik piyasasında her santral, ertesi gün ne üreteceğini önceden bildirmekle yükümlüdür; gerçekleşen üretim bu programdan saptığında aradaki fark santrale fatura edilir. PVQuant üretim programınızı hazırlar, gün içi güncelleme fırsatlarını izler ve sapmanın size maliyetini her gün TL olarak raporlar.</p>
           </div>
-          <div className="vt-sahne">
-            <div className="vt-sahne__zemin" aria-hidden="true"><img src={sahneZemin} alt="" width="700" height="460" loading="lazy" decoding="async" /></div>
-            <div className="vt-pnc vt-pnc--ana" role="img" aria-label="Panel penceresi örneği: Sapma maliyeti — temsili görünüm, sonuç değil">
-              <div className="vt-pnc__serit" aria-hidden="true"><span>panel.pvquant</span></div>
-              <div className="vt-pnc__ekran">
-                <PncEkranAna />
-                <span className="vt-pnc__etiket">temsili görünüm · sonuç değil</span>
-              </div>
-            </div>
-            <div className="vt-pnc vt-pnc--ikinci" aria-hidden="true">
-              <div className="vt-pnc__serit"><span>panel.pvquant</span></div>
-              <div className="vt-pnc__ekran"><PncEkranIkinci /></div>
-            </div>
+          <div className="vt-sahne vt-sahne--resim" aria-hidden="true">
+            <img src={tlSahne} alt="" width="2000" height="2000" loading="lazy" decoding="async" />
           </div>
         </div>
         <div className="vt-kesit">
-          {KARTLAR.map(({ ad, etiket, metin, kunye, Cizim, genis }) => (
+          {KARTLAR.map(({ ad, etiket, metin, kunye, resim, genis }, i) => (
             <article key={ad} className={genis ? "vt-kesit__hucre vt-kesit__hucre--genis" : "vt-kesit__hucre"}>
               <header className="vt-kesit__bas"><h3 className="vt-h3">{ad}</h3><p className="vt-kesit__etiket">{etiket}</p></header>
-              <div className="vt-kesit__cizim" aria-hidden="true"><Cizim /></div>
+              <div className={`vt-kesit__cizim vt-kesit__cizim--resim vt-kesit__cizim--r${i + 1}`} aria-hidden="true"><img src={resim} alt="" width="2000" height="2000" loading="lazy" decoding="async" /></div>
               <p className="vt-kart__metin">{metin}</p>
               <ul className="vt-kesit__kunye">{kunye.map((d) => <li key={d}>{d}</li>)}</ul>
             </article>

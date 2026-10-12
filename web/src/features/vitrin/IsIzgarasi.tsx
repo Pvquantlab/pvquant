@@ -1,4 +1,8 @@
 import { Rozet, type RozetGrubu, type RozetIkonu } from "./Rozet";
+import isTeslim from "./varlik/is-teslim.png";
+import isTicaret from "./varlik/is-ticaret.png";
+import isNobet from "./varlik/is-nobet.png";
+import isFinansman from "./varlik/is-finansman.png";
 
 /** "Hangi iş için?" ızgarası (R31 + rakip analizi Ö8): dört masa, Aurora'nın fayda kalıbında —
  *  üst etiket (masa adı) → h3 (İŞ SONUCU) → tek fayda cümlesi → etiket–değer künyesi.
@@ -6,11 +10,12 @@ import { Rozet, type RozetGrubu, type RozetIkonu } from "./Rozet";
  *  yazılı ürün gerçeği (Amperon'un etiket–değer BİÇİMİ alındı, kaynaksız rakamları alınmadı).
  *  Ticaret masası dördüncü kart: kitle listesi artık TEK (TL bölümündeki pencere kartları
  *  işlev gösterimidir, kitle listesi değil). Rakam vaadi ve müşteri iması yok. */
+/** resim: Storyset levhası (12.10) — kullanıcının masaüstünden bayt bayt; ölçek dengesi CSS sınıfında. */
 const ISLER: readonly {
   masa: string; sonuc: string; fayda: string;
   kunye: readonly (readonly [string, string])[];
   bag: readonly [string, string];
-  grup: RozetGrubu; ikon: RozetIkonu;
+  grup: RozetGrubu; ikon: RozetIkonu; resim: string;
 }[] = [
   {
     masa: "Program teslimi",
@@ -18,7 +23,7 @@ const ISLER: readonly {
     fayda: "Program dosyanız TPYS'ye öneri CSV, toplayıcıya CSV/XLSX olarak panelden iner; gün içi revizyon penceresi izlenir.",
     kunye: [["Dosya", "D‑1 öğleden sonra"], ["Dilim", "saatlik ya da 15 dk"]],
     bag: ["#para", "Panelde nasıl görünür"],
-    grup: "tahmin", ikon: "band",
+    grup: "tahmin", ikon: "band", resim: isTeslim,
   },
   {
     masa: "Ticaret masası",
@@ -26,7 +31,7 @@ const ISLER: readonly {
     fayda: "Gün öncesi teklif için önerilen kantil panelde; sapmanın TL karşılığı gün gün.",
     kunye: [["Teklif", "önerilen kantil"], ["Sapma", "TL · gün gün"]],
     bag: ["#para", "Sapmanın TL hesabı"],
-    grup: "tahmin", ikon: "aylik",
+    grup: "tahmin", ikon: "aylik", resim: isTicaret,
   },
   {
     masa: "Operasyon nöbeti",
@@ -34,7 +39,7 @@ const ISLER: readonly {
     fayda: "Alarm kütüphanesi veri, teslim ve performans nöbetini tutar; gece karnesi her sabah hazırdır.",
     kunye: [["Alarm kuralı", "8"], ["Akış", "REST API · sabah webhook'u"]],
     bag: ["#karne", "Gece karnesine bakın"],
-    grup: "operasyon", ikon: "alarm",
+    grup: "operasyon", ikon: "alarm", resim: isNobet,
   },
   {
     masa: "Finansman dosyası",
@@ -42,7 +47,7 @@ const ISLER: readonly {
     fayda: "P50/P90 üretim beklentisi bileşenlerine ayrılmış belirsizlik bütçesiyle hesaplanır — dosya bağımsız doğrulamaya hazır biçimde.",
     kunye: [["Beklenti", "P50/P90"], ["Ölçüt", "IEC 61724 · ASTM E2848"]],
     bag: ["/yontem", "Yöntemin tamamı"],
-    grup: "kanit", ikon: "rapor",
+    grup: "kanit", ikon: "rapor", resim: isFinansman,
   },
 ];
 
@@ -55,8 +60,9 @@ export function IsIzgarasi() {
           <p className="vt-giris">Aynı tahmin hattı dört masaya dört ayrı dille hizmet eder. Dördü de bugün panelde.</p>
         </div>
         <div className="vt-izgara vt-izgara--4 vt-isler">
-          {ISLER.map((is) => (
+          {ISLER.map((is, i) => (
             <article key={is.masa} className="vt-kart vt-is">
+              <div className={`vt-levha vt-levha--resim vt-is__levha vt-is__levha--${i + 1}`} aria-hidden="true"><img src={is.resim} alt="" width="2000" height="2000" loading="lazy" decoding="async" /></div>
               <div className="vt-kart__govde">
                 <div className="vt-is__ust">
                   <Rozet grup={is.grup} ikon={is.ikon} />

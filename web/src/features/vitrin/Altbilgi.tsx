@@ -57,7 +57,7 @@ export function Altbilgi({ onPanel }: { onPanel?: () => void }) {
             </ul>
           </div>
         </div>
-        <p className="vt-alt__son vt-kunye">© PVQuant 2026</p>
+        <p className="vt-alt__son vt-kunye">© PVQuant 2026 · İllüstrasyonlar: <a href="https://storyset.com" rel="noopener noreferrer" target="_blank">Storyset</a></p>
       </div>
     </footer>
   );

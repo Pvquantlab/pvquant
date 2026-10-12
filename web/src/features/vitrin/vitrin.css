@@ -575,6 +575,7 @@
 .vt-sahne { position: relative; border-radius: var(--vt-r-l); overflow: hidden; isolation: isolate; aspect-ratio: 7 / 4.6; background: var(--vt-gradyan-gun); }
 .vt-sahne__zemin { position: absolute; inset: 0; z-index: -1; }
 .vt-sahne__zemin svg, .vt-sahne__zemin img { display: block; width: 100%; height: 100%; }
+.vt-sahne--resim img { position: absolute; inset: 3%; width: 94%; height: 94%; object-fit: contain; }
 .vt-sahne .vt-pnc--ana { position: absolute; left: 6%; top: 10%; width: 74%; }
 .vt-sahne .vt-pnc--ikinci { position: absolute; right: -3%; bottom: 7%; width: 45%; }
 .vt-pnc svg.vt-pnc__cizim, .vt-pnc img.vt-pnc__cizim { display: block; width: 100%; height: auto; }
@@ -871,7 +872,7 @@
 .vt:has(.vt-bolumcubuk) .vt-sss-yer .vt-bolum-bas { top: calc(var(--vt-ust-y) + var(--vt-cubuk-y) + 24px); }
 /* R31 — iş ızgarası: rozetli üç kart; bağlantı satırı nefes alır, odak halkası metin kadar (tam satır değil) */
 .vt-is .vt-kart__govde > .vt-rz { margin-bottom: 2px; }
-.vt-is__bag { margin-top: 2px; align-self: flex-start; }
+.vt-is__bag { margin-top: 8px; align-self: flex-start; }
 /* 601–1080: tek kalan kartı iki sütuna yayan vinyet kuralı iş kartında metni yarıya sıkıştırıyordu (I3) */
 @media (min-width: 601px) and (max-width: 1080px) {
   .vt-isler > .vt-kart:last-child:nth-child(odd) { display: flex; }
@@ -887,7 +888,7 @@
 /* Ö8 — iş kartı kalıbı: masa etiketi, iş sonucu başlığı, etiket–değer künyesi */
 .vt-is__ust { display: flex; align-items: center; gap: 10px; margin-bottom: 2px; }
 .vt-is__masa { font: 500 11.5px/1 var(--vt-mono); letter-spacing: 0.07em; text-transform: uppercase; color: var(--vt-ucuncul); }
-.vt-is__kunye { margin: 10px 0 0; display: grid; gap: 4px; }
+.vt-is__kunye { margin: auto 0 0; padding-top: 14px; display: grid; gap: 4px; }
 .vt-is__satir { display: flex; gap: 8px; font-size: 13px; line-height: 19px; }
 .vt-is__satir dt { flex: none; min-width: 86px; color: var(--vt-ikincil); }
 .vt-is__satir dd { margin: 0; font-family: var(--vt-mono); color: var(--vt-metin); }
@@ -1000,9 +1001,21 @@
 /* durum noktası: modül «panelde canlı» dili — mürekkep, veri renklerine dokunmaz */
 .vt-kesit__etiket::before { content: ""; flex: none; width: 5px; height: 5px; border-radius: 50%; background: var(--vt-metin); opacity: .38; }
 .vt-kesit__cizim { margin: 18px 0 16px; line-height: 0; }
+.vt-kesit__cizim--resim { position: relative; height: 300px; overflow: hidden; }
+.vt-kesit__cizim--resim img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; transform: scale(var(--lv-olcek, 1)); }
+.vt-kesit__cizim--r1 { --lv-olcek: 0.97; }
+.vt-kesit__cizim--r2 { --lv-olcek: 0.93; }
+.vt-kesit__cizim--r3 { --lv-olcek: 0.90; }
+.vt-kesit__cizim--r4 { --lv-olcek: 1.04; }
+.vt-kesit__cizim--r5 { --lv-olcek: 0.95; }
 .vt-kesit__cizim svg { display: block; width: 100%; height: auto; }
 .vt-kesit__cizim svg * { vector-effect: non-scaling-stroke; }
 .vt-kesit__hucre--genis .vt-kesit__cizim { grid-column: 2; grid-row: 1 / 4; margin: 0; align-self: center; }
+@media (min-width: 1081px) {
+  /* Geniş hücrede resim sütunu dar kaldığından band oranı değil sütun yüksekliği esas alınır;
+     böylece çizim üstteki üç kartla aynı görsel büyüklüğe çıkar. */
+  .vt-kesit__hucre--genis .vt-kesit__cizim--resim { aspect-ratio: auto; align-self: stretch; height: 100%; min-height: 0; }
+}
 .vt-kesit__hucre .vt-kart__metin { font-size: 15px; line-height: 23px; }
 .vt-kesit__hucre--genis .vt-kart__metin { margin-top: 10px; }
 /* künye hücre tabanına yaslanır: kısa kartta boşluk metin altında değil çipler üstünde toplanır */
@@ -1134,3 +1147,19 @@
 }
 /* TL panel kartı buz bant üstünde eriyordu (bütünlük turu): öteki kaldırılmış kartlarla aynı gölge + ince kenar */
 .vt-sahne { box-shadow: 0 0 0 1px rgba(11, 27, 60, .08), var(--vt-golge-kaldir); }
+
+/* ── Dört adım: Storyset levhaları (12.10) ─────────────────────────────────────
+   Kaynak PNG'ler 2000×2000 ve dokunulmadan kullanılır; içerik yükseklikleri
+   farklı olduğundan (%57–%97) görsel ağırlık CSS ölçeğiyle dengelenir —
+   dosyaya dokunulmaz, büyütme kart genişliğinin çok altında kaldığı için
+   çözünürlük kaybı yoktur. */
+.vt-levha--resim { position: relative; aspect-ratio: 10 / 8; overflow: hidden; }
+.vt-levha--resim img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; transform: scale(var(--lv-olcek, 1)); }
+.vt-levha--resim-1 { --lv-olcek: 0.93; }
+.vt-levha--resim-2 { --lv-olcek: 0.90; }
+.vt-levha--resim-3 { --lv-olcek: 1.04; }
+.vt-levha--resim-4 { --lv-olcek: 0.80; }
+.vt-is__levha--1 { --lv-olcek: 0.92; }
+.vt-is__levha--2 { --lv-olcek: 0.94; }
+.vt-is__levha--3 { --lv-olcek: 0.95; }
+.vt-is__levha--4 { --lv-olcek: 0.97; }

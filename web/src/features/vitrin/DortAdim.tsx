@@ -1,9 +1,9 @@
 import { Fragment, type ReactNode } from "react";
 import { Rozet, type RozetGrubu, type RozetIkonu } from "./Rozet";
-import levhaFizik from "./varlik/levha-fizik.svg";
-import levhaOgrenen from "./varlik/levha-ogrenen.svg";
-import levhaAralik from "./varlik/levha-aralik.svg";
-import levhaKarne from "./varlik/levha-karne.svg";
+import levhaFizik from "./varlik/adim-fizik.png";
+import levhaOgrenen from "./varlik/adim-ogrenen.png";
+import levhaAralik from "./varlik/adim-aralik.png";
+import levhaKarne from "./varlik/adim-karne.png";
 
 /** Dört adım (v2.386 cila-a + rakip analizi Ö9/Ö11): V1 kartları levha illüstrasyonlarıyla.
  *  Ö11: ≥1241'de dört kart TEK SIRA numaralı zincirdir (oklar grid hücresi — ::after kartın overflow'una kırpılıyordu);
@@ -39,7 +39,7 @@ export function DortAdim({ onPanel }: { onPanel?: () => void }) {
           {ADIM.map((a, i) => (<Fragment key={a.no}>
             {i > 0 && <span className="vt-adim__ok" aria-hidden="true">→</span>}
             <article className={onPanel ? "vt-kart vt-kart--bag vt-adim" : "vt-kart vt-adim"}>
-              <div className="vt-levha" aria-hidden="true"><img src={a.levha} alt="" width="420" height="150" loading="lazy" decoding="async" /></div>
+              <div className={`vt-levha vt-levha--resim vt-levha--resim-${i + 1}`} aria-hidden="true"><img src={a.levha} alt="" width="2000" height="2000" loading="lazy" decoding="async" /></div>
               <div className="vt-kart__govde">
                 <span className="vt-kart__no">{a.no}</span>
                 <h3 className="vt-h3">{a.baslik}</h3>
