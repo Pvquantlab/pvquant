@@ -41,7 +41,7 @@ export function Hero() {
       </div>
       <div className="vt-kap vt-hero__ic">
         <div className="vt-hero__sol">
-          <h1 className="vt-h1 vt-hero__baslik" id="vt-hero-baslik">Güneş santraliniz için saatlik üretim tahmini ve <span className="vt-h1__vurgu">günlük doğruluk karnesi.</span></h1>
+          <h1 className="vt-h1 vt-hero__baslik" id="vt-hero-baslik"><span className="vt-h1__vurgu">Güneş santraliniz için</span> saatlik üretim tahmini ve günlük doğruluk karnesi.</h1>
           <p className="vt-giris vt-hero__giris">PVQuant, güneş santralinizin saatlik üretimini 15 güne kadar tahmin eder ve her tahmine bir güven aralığı ekler. Günlük üretim programınız bildirim saatinden önce hazır olur; tahmin ile gerçekleşen üretim arasındaki farkın size maliyeti panelde günlük olarak raporlanır. Her tahmin, <a className="vt-bag vt-bag--metin" href="#karne">ertesi gün gerçekleşen üretimle karşılaştırılır</a>.</p>
           <div className="vt-eylemler vt-hero__eylem">
             <a className="vt-dugme vt-dugme--dolu vt-dugme--ok vt-dugme--buyuk" href="#basla">Karnenizi başlatın</a>
