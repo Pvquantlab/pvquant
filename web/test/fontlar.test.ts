@@ -11,13 +11,21 @@ test("hiçbir giriş dosyası Google Fonts'a istek atmaz", () => {
   }
 });
 
-test("vitrin aileleri @fontsource'tan: başlık Bricolage, gövde IBM Plex Sans", () => {
+test("vitrin TEK aile Inter Tight (13.10 jua katmanı): 300/400/500/600 @fontsource'tan; eski aileler yüklenmez", () => {
   const vitrin = oku("../src/features/vitrin/fontlar.ts");
   assert.doesNotMatch(vitrin, /fonts\.(googleapis|gstatic)\.com/);
-  for (const paket of ["@fontsource-variable/bricolage-grotesque/", "@fontsource/ibm-plex-sans/"]) {
-    assert.ok(vitrin.includes(paket), paket);
+  for (const agirlik of ["300", "400", "500", "600"]) {
+    assert.ok(vitrin.includes(`@fontsource/inter-tight/${agirlik}.css`), `Inter Tight ${agirlik}`);
   }
-  assert.match(oku("../src/features/vitrin/vitrin.css"), /--vt-baslik: 'Bricolage Grotesque Variable'/);
+  // Bricolage/Plex Sans bayt yükü olarak geri gelmesin (gövde+başlık tek aile; Plex Mono genel yığından)
+  assert.doesNotMatch(vitrin, /bricolage|ibm-plex-sans/);
+  const css = oku("../src/features/vitrin/vitrin.css");
+  // Jua katmanı kök jetonu ezer: son tanım kazanır → son --vt-baslik satırı Inter Tight olmalı
+  const basliklar = [...css.matchAll(/--vt-baslik: ([^;]+);/g)].map((m) => m[1]);
+  assert.match(basliklar[basliklar.length - 1], /^'Inter Tight'/);
+  const sanslar = [...css.matchAll(/--vt-sans: ([^;]+);/g)].map((m) => m[1]);
+  assert.match(sanslar[sanslar.length - 1], /^'Inter Tight'/);
+  assert.match(css, /--vt-mono: 'IBM Plex Mono'/);   // sayı/künye gövde fontuyla dizilmez (jetonlar.md)
 });
 
 test("panel aileleri @fontsource'tan yüklenir; yığın 'Inter Variable' ile başlar", () => {

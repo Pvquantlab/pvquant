@@ -10,6 +10,7 @@ export function Basvuru() {
       <div className="vt-kap">
         <div className="vt-basla-yer">
           <div>
+            <p className="vt-eyebrow">Başvuru</p>
             <h2 className="vt-h2" id="vt-basla-baslik">Karnenizi başlatın.</h2>
             <p className="vt-giris vt-basla__giris">E-postanızı bırakın; hesabınızı kuralım, ilk gece sınavından itibaren karneniz birikmeye başlasın. Fiyatlandırma kurulu güç başına aylık aboneliktir, santral sayısına göre şekillenir — teklif başvuruyla gelir.</p>
           </div>

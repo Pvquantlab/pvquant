@@ -1,10 +1,11 @@
 import { useEffect, useRef } from "react";
-import { ReferansEgri } from "./ReferansEgri";
 import santral1440 from "./varlik/santral-1440.mp4";
 import santral1080 from "./varlik/santral-1080.mp4";
 import santralPoster from "./varlik/santral-poster.webp";
 
-/** Hero (11.10): sahne bir santral üzerinde yavaş drone çekimi, sessiz. Geniş ekranda kaynak dosyanın
+/** Hero (13.10 jua katmanı: tam yükseklik, dikey perde, tek sütun metin; ürün penceresi Açık karne bölümüne taşındı; vurgu sona taşındı,
+ *  TL bağı ikincil hap düğme oldu — görünüm vitrin.css «Jua katmanı»nda).
+ *  Hero (11.10): sahne bir santral üzerinde yavaş drone çekimi, sessiz. Geniş ekranda kaynak dosyanın
  *  KENDİSİ — yeniden kodlanmadan 6,07 sn anahtar karesinden kesildi (ilk saniyelerdeki şirket tabelası
  *  dışarıda; 2560×1440, 19,7 sn, kaynakla piksel piksel aynı); döngü sonunda başa döner. ≤760 px'te
  *  12 sn dikişsiz 1080p döngü. Sahne salt süs (aria-hidden); gece örtüsü metni okunur tutar. Hareket
@@ -40,17 +41,13 @@ export function Hero() {
       </div>
       <div className="vt-kap vt-hero__ic">
         <div className="vt-hero__sol">
-          <h1 className="vt-h1 vt-hero__baslik" id="vt-hero-baslik"><span className="vt-h1__vurgu">Güneş santraliniz için</span> saatlik üretim tahmini ve günlük doğruluk karnesi.</h1>
+          <h1 className="vt-h1 vt-hero__baslik" id="vt-hero-baslik">Güneş santraliniz için saatlik üretim tahmini ve <span className="vt-h1__vurgu">günlük doğruluk karnesi.</span></h1>
           <p className="vt-giris vt-hero__giris">PVQuant, güneş santralinizin saatlik üretimini 15 güne kadar tahmin eder ve her tahmine bir güven aralığı ekler. Günlük üretim programınız bildirim saatinden önce hazır olur; tahmin ile gerçekleşen üretim arasındaki farkın size maliyeti panelde günlük olarak raporlanır. Her tahmin, <a className="vt-bag vt-bag--metin" href="#karne">ertesi gün gerçekleşen üretimle karşılaştırılır</a>.</p>
           <div className="vt-eylemler vt-hero__eylem">
-            <a className="vt-dugme vt-dugme--dolu vt-dugme--ok" href="#basla">Karnenizi başlatın</a>
+            <a className="vt-dugme vt-dugme--dolu vt-dugme--ok vt-dugme--buyuk" href="#basla">Karnenizi başlatın</a>
+            <a className="vt-dugme vt-dugme--gece-cizgi vt-dugme--buyuk" href="/yontem#para">TL karşılığı nasıl hesaplanır</a>
             <p className="vt-hero__mikro">başvuru · hesabınızı biz kurarız · veri yüklemeniz gerekmez · karneniz ilk gece sınavından itibaren birikir</p>
-            <a className="vt-bag" href="/yontem#para">TL karşılığı nasıl hesaplanır</a>
           </div>
-        </div>
-        <div className="vt-hero__pencere">
-          <ReferansEgri veri={null} />
-          <a className="vt-bag vt-hero__tl-alt" href="/yontem#para">TL karşılığı nasıl hesaplanır</a>
         </div>
       </div>
     </section>

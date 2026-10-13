@@ -3,28 +3,33 @@ import type { DogrulamaDurumu } from "./dogrulamaDurumu";
 import { yuzdeTr, kisaTarihTr, ayTr } from "./bicim";
 import { KISA_TANIMLAR, YONTEM_KAPANIS } from "./yontem-metni";
 import { MenuIkon } from "./MenuIkon";
+import { ReferansEgri } from "./ReferansEgri";
 
 /** Açık karne — sayfadaki tek koyu bant (v2.384, spec §3.6 + V1 kilitli kart). 11.10 «Tek gök»: zemin
  *  bulutların üstünden çekilmiş gök (Pexels 6623685, dosya değiştirilmeden) + CSS lacivert örtü; güneş yayı çizimi kalktı. Açık: karne kutusu
  *  + aylık tablo. Kapalı: kilitli kart, dört metrik tanımı kartın içinde (tek kaynak: yontem-metni).
- *  Hata: tek satır. Yöntem paragrafı kapalı dışındaki durumlarda (kapalıda kartta — yinelenmez). */
+ *  Hata: kilitli kartla aynı (13.10). Yöntem paragrafı yalnız açık durumda (kilitli kartta tanımlar zaten var — yinelenmez). */
 export function AcikKarne({ durum }: { durum: DogrulamaDurumu }) {
   return (
     <section className="vt-bolum vt-bolum--gece vt-bolum--karne-bulut" id="karne" aria-labelledby="vt-karne-baslik" data-canlan="">
       <div className="vt-kap">
-        <div className="vt-bolum-bas">
-          <h2 className="vt-h2" id="vt-karne-baslik">Sözümüze değil, karneye bakın.</h2>
-          <p className="vt-giris">Sistem her gece tahminini gerçekleşen üretimle karşılaştırır. Sonuç saklanmaz, süslenmez — panelde gün gün birikir.</p>
+        {/* 13.10: örnek gün grafiği hero'dan buraya — tahmin/gerçekleşen karşılaştırması bu bölümün konusu;
+            jua kalıbı: solda başlık, sağda ürün kartı; kilitli/açık karne altta tam genişlik */}
+        <div className="vt-karne-ust">
+          <div className="vt-bolum-bas">
+            <p className="vt-eyebrow">Doğruluk</p>
+            <h2 className="vt-h2" id="vt-karne-baslik"><span className="vt-h2__soluk">Sözümüze değil,</span> karneye bakın.</h2>
+            <p className="vt-giris">Sistem her gece tahminini gerçekleşen üretimle karşılaştırır. Sonuç saklanmaz, süslenmez — panelde gün gün birikir.</p>
+          </div>
+          <div className="vt-karne-pencere">
+            <ReferansEgri veri={null} />
+          </div>
         </div>
         {durum.tur === "acik" && <KarneKutusu veri={durum.veri} />}
-        {durum.tur === "kapali" && <KilitliKarne />}
-        {durum.tur === "hata" && (
-          <div className="vt-karne vt-karne--kapali">
-            <p>Karne şu an alınamadı; sayfa yenilenince yeniden denenir.</p>
-            <span className="vt-kunye">GET /v1/dogrulama</span>
-          </div>
-        )}
-        {durum.tur !== "kapali" && (
+        {/* 13.10: hata durumu da kilitli kartı gösterir — vitrin zayıf durum cümlesi taşımaz (KanitSeridi ile aynı karar);
+            kapı cümlesi her iki durumda da doğru, uç yeniden erişilince sayılar kendiliğinden gelir */}
+        {(durum.tur === "kapali" || durum.tur === "hata") && <KilitliKarne />}
+        {durum.tur === "acik" && (
           <p className="vt-yontem">
             {KISA_TANIMLAR.map(([ad, tanim]) => <span key={ad}><b>{ad}</b>: {tanim} </span>)}
             {YONTEM_KAPANIS}

@@ -1,9 +1,9 @@
-/* v2.384 — Vitrin ve /yontem yazısı (SIL OFL-1.1, kendi sunucumuzdan):
-   başlıklar Bricolage Grotesque Variable (V1 "Mürekkep & Güneş" kimliği, opsz ekseniyle),
-   gövde IBM Plex Sans 400/500/600. IBM Plex Mono genel src/fontlar.ts'te yüklü.
-   Plex birleşik css (unicode-range'li; latin dışı alt küme indirilmez — alt-küme dosyaları
-   unicode-range taşımadığından 'ch' birimi 0,5em'e düşüyordu, inceleme bulgusu 11). */
-import "@fontsource-variable/bricolage-grotesque/opsz.css";
-import "@fontsource/ibm-plex-sans/400.css";
-import "@fontsource/ibm-plex-sans/500.css";
-import "@fontsource/ibm-plex-sans/600.css";
+/* v2.431 — Vitrin ve /yontem yazısı (SIL OFL-1.1, kendi sunucumuzdan; Fontsource):
+   TEK AİLE Inter Tight 300/400/500/600 — başlık 300 (ince, sıkı), gövde 400, etiket/düğme 500,
+   kart başlığı 600 (jua.ai envanteri 13.10, Desktop/jua/jua-tasarim-envanteri.md §3).
+   IBM Plex Mono genel src/fontlar.ts'te yüklü: SAYI/künye asla gövde fontuyla dizilmez (jetonlar.md).
+   latin-ext ŞART: ş/ğ/İ latin alt kümesinde yok; Fontsource css'i unicode-range ile ikisini de yükler. */
+import "@fontsource/inter-tight/300.css";
+import "@fontsource/inter-tight/400.css";
+import "@fontsource/inter-tight/500.css";
+import "@fontsource/inter-tight/600.css";

@@ -23,7 +23,7 @@ export function Sss() {
     <section className="vt-bolum" id="sss" aria-labelledby="vt-sss-baslik" data-canlan="">
       <div className="vt-kap">
         <div className="vt-sss-yer">
-          <div className="vt-bolum-bas"><h2 className="vt-h2" id="vt-sss-baslik">Sık sorulan sorular</h2></div>
+          <div className="vt-bolum-bas"><p className="vt-eyebrow">Sorular</p><h2 className="vt-h2" id="vt-sss-baslik">Sık sorulan sorular</h2></div>
           <div>
             {SORULAR.map(([soru, cevap]) => (
               <details key={soru} className="vt-sss">

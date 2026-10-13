@@ -56,6 +56,7 @@ export function IsIzgarasi() {
     <section className="vt-bolum" id="isler" aria-labelledby="vt-isler-baslik" data-canlan="">
       <div className="vt-kap">
         <div className="vt-bolum-bas">
+          <p className="vt-eyebrow">Kimin için</p>
           <h2 className="vt-h2" id="vt-isler-baslik">Hangi iş için?</h2>
           <p className="vt-giris">Aynı tahmin hattı dört masaya dört ayrı dille hizmet eder. Dördü de bugün panelde.</p>
         </div>

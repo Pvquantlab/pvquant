@@ -33,7 +33,8 @@ export function DortAdim({ onPanel }: { onPanel?: () => void }) {
     <section className="vt-bolum" id="katmanlar" aria-labelledby="vt-adim-baslik" data-canlan="">
       <div className="vt-kap">
         <div className="vt-bolum-bas">
-          <h2 className="vt-h2" id="vt-adim-baslik">Tahmin dört adımda doğar — her adımı panelde görünür.</h2>
+          <p className="vt-eyebrow">Nasıl çalışır</p>
+          <h2 className="vt-h2" id="vt-adim-baslik">Tahmin dört adımda doğar. <span className="vt-h2__soluk">Her adımı panelde görünür.</span></h2>
         </div>
         <div className="vt-izgara vt-izgara--2 vt-adimlar">
           {ADIM.map((a, i) => (<Fragment key={a.no}>

@@ -8,10 +8,10 @@ Amaç tuhaflık değil: kasıtlı, olgun, teknik, ölçülü. ✓ = testle zorla
 |---|---|
 | Her metriğe kart; eş boyutlu kart ızgarası | **Kart bir karar birimidir.** Karar ettirmiyorsa: satır içi değer, tablo özeti, grafik anotasyonu, künye çipi. Emsal: TL «panel kesiti» — kartlar tek yüzeyin 1 px çizgili hücreleri. |
 | Bağlamsız dev KPI sayısı | KPI = değer + çapa (hedef/dün/bant) + pencere etiketi + birim. |
-| Aşırı radius, cam (glassmorphism), dekoratif gölge | Köşe ölçeği sabit; cam KALKTI (v2.304-305) — geri gelmez; gölge yalnız yükselme anlamında. |
-| Mor/mavi gradyan, gökkuşağı paleti | Mürekkep merdiveni + iki veri rengi (mavi=tahmin, amber=gerçekleşen ✓). 3. seri gerekiyorsa önce «grafik ikiye bölünür mü?» |
+| Aşırı radius, cam (glassmorphism), dekoratif gölge | Köşe ölçeği sabit; PANELDE cam KALKTI (v2.304-305) — geri gelmez. **Vitrin istisnası (13.10, kullanıcı kararı, jua referansı):** yalnız yüzen üst çubuk hapı + mega menü camdır (`--vt-cam-*`); başka yüzeye yayılmaz. Gölge yalnız yükselme anlamında. |
+| Mor/mavi gradyan, gökkuşağı paleti | Mürekkep merdiveni + iki veri rengi (mavi=tahmin, amber=gerçekleşen ✓). 3. seri gerekiyorsa önce «grafik ikiye bölünür mü?» **Vitrin istisnası (13.10):** pembe→lavanta→camgöbeği gradyanı YALNIZ h1 vurgusu, birincil düğme halesi ve koyu zemin radyal ışığında; grafik/veri yüzeyine asla; şeftali tonu yok (amber çakışması). |
 | Dekoratif ikon/emoji; stok görsel | İkon yalnız işlevsel; vitrin çizimlerinde sembol ikon yasak ✓; illüstrasyon = benekli SVG. |
-| «Inter everywhere» | Üç rol: display / Inter gövde / Plex Mono veri (tabular-nums). |
+| «Inter everywhere» | Panel: üç rol display / Inter gövde / Plex Mono veri. Vitrin (13.10): Inter Tight tek aile ama ÜÇ AĞIRLIK ROLÜ (300 başlık / 400 gövde / 500 etiket-düğme) + Plex Mono veri (tabular-nums) — sayı asla gövde fontuyla dizilmez. |
 | Her elemana fade-slide | Hareket tek orkestrasyon anında (R25); durum geçişi ≤200 ms; reduced-motion keser ✓. |
 | Aşırı beyaz boşluk | Mühendis yoğunluğu: boşluk hiyerarşi anlatmıyorsa yoğunluk kazanır. |
 | Pill/çip enflasyonu | Çip yalnız künye (etiket–değer) ve durum için. |

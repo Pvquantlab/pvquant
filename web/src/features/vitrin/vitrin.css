@@ -1165,3 +1165,358 @@
 .vt-is__levha--2 { --lv-olcek: 0.94; }
 .vt-is__levha--3 { --lv-olcek: 0.95; }
 .vt-is__levha--4 { --lv-olcek: 0.97; }
+
+/* ═══ JUA KATMANI (13.10.2026) — arka plan sistemi + tipografi, jua.ai envanterinden birebir ═══
+   Kaynak: Desktop/jua/jua-tasarim-envanteri.md (değerler jua.ai'nin derlenmiş paketlerinden okundu).
+   Kural: bu blok üstteki her katmanı EZER; sonradan gelen hiçbir cila buradan önce yazılmaz.
+   Sözleşmeyle çatışan dört kalıp BİLEREK alınmadı (envanter §5.2): logo duvarı yok; gradyanlardaki
+   şeftali (#FABD8F) düştü — amber yalnız gerçekleşen üretim; kart üst etiketi pembe değil nötr;
+   sayı/künye Plex Mono'da kaldı. Cam (nav hapı) kullanıcı kararıyla GERİ geldi — anti-slop.md'ye not. */
+.vt {
+  /* zemin ve mürekkep */
+  --vt-zemin: #FFFFFF; --vt-metin: #0B0E15; --vt-ikincil: #404551; --vt-ucuncul: #6B7280;
+  --vt-gece-ust: #05070C; --vt-gece: #0B0E15; --vt-gece-alt: #0B0E15;
+  --vt-gece-kart: rgba(255, 255, 255, .02); --vt-gece-kenar: rgba(255, 255, 255, .10);
+  --vt-gece-metin: #FFFFFF; --vt-gece-ikincil: rgba(255, 255, 255, .74); --vt-gece-eylem: #AA85FF;
+  --vt-bant: #FEF0E6; --vt-bant-2: #F8E2D2; --vt-kenar: #EBDBCC; --vt-kenar-guclu: #D8C3B0; --vt-kenar-soguk: #E5E6EA;
+  --vt-gradyan-gece: linear-gradient(180deg, #0B0E15 0%, #0B0E15 100%);
+  /* marka ışıkları (yalnız koyu zemin radyalleri, metin vurgusu, düğme halesi) */
+  /* 13.10 renk uyumu: pembe (jua E34290) santral videosunun gök/çayır/lacivert dünyasıyla çatışıyordu —
+     üçlü artık açık gök → lavanta → camgöbeği; pembe hiçbir yüzeyde kalmadı */
+  --vt-jua-gok: #8FD3FF; --vt-jua-lavanta: #AA85FF; --vt-jua-camgobegi: #0AB8DC;
+  --vt-jua-metin: linear-gradient(100deg, #8FD3FF 0%, #AA85FF 50%, #0AB8DC 100%);
+  --vt-jua-hale: linear-gradient(135deg, #AA85FF 0%, #0AB8DC 60%, #8FD3FF 100%);
+  --vt-jua-isik: radial-gradient(900px 500px at 20% 20%, rgba(170, 133, 255, .24), transparent 60%),
+                 radial-gradient(900px 500px at 90% 80%, rgba(10, 184, 220, .18), transparent 60%);
+  --vt-jua-isik-alt: radial-gradient(1100px 500px at 85% 0%, rgba(170, 133, 255, .22), transparent 60%),
+                     radial-gradient(900px 500px at 10% 100%, rgba(10, 184, 220, .16), transparent 60%),
+                     radial-gradient(700px 420px at 50% 60%, rgba(143, 211, 255, .10), transparent 65%);
+  --vt-jua-perde: linear-gradient(180deg, rgba(5, 7, 12, .55) 0%, rgba(5, 7, 12, .30) 40%, rgba(5, 7, 12, .70) 100%);
+  --vt-jua-perde-mobil: linear-gradient(180deg, rgba(5, 7, 12, .78) 0%, rgba(5, 7, 12, .62) 38%, rgba(5, 7, 12, .28) 58%, rgba(5, 7, 12, .80) 78%, rgba(5, 7, 12, .88) 100%);
+  /* cam nav hapı */
+  --vt-cam-zemin: rgba(11, 14, 21, .62); --vt-cam-kenar: rgba(255, 255, 255, .08);
+  --vt-cam-golge: 0 1px 0 rgba(255, 255, 255, .06) inset, 0 12px 40px rgba(0, 0, 0, .28), 0 2px 8px rgba(0, 0, 0, .18);
+  /* tipografi: tek aile */
+  --vt-baslik: 'Inter Tight', ui-sans-serif, system-ui, sans-serif;
+  --vt-sans: 'Inter Tight', ui-sans-serif, system-ui, sans-serif;
+  /* ölçüler */
+  --vt-yan: 40px; --vt-ust-y: 89px;               /* 16 üst + 57 hap + 16 */
+  --vt-r-m: 24px; --vt-r-l: 28px;
+  --vt-golge-menu: var(--vt-cam-golge);
+  font: 400 16px/24px var(--vt-sans); letter-spacing: 0;
+  background: var(--vt-zemin); color: var(--vt-metin);
+}
+.vt-kap { max-width: calc(1360px + 2 * var(--vt-yan)); }
+
+/* ── tipografi ───────────────────────────────────────────── */
+.vt :where(h1, h2, h3) { font-family: var(--vt-baslik); font-weight: 300; font-variation-settings: normal; }
+.vt-h1 { font-size: clamp(52px, 6.4vw, 104px); line-height: .96; letter-spacing: -.035em; font-variation-settings: normal; }
+.vt-h2 { font-size: clamp(42px, 5.2vw, 80px); line-height: 1.02; letter-spacing: -.028em; font-variation-settings: normal; }
+.vt-bolum--bant .vt-h2 { font-size: clamp(40px, 4.8vw, 72px); }
+.vt-bolum--gece .vt-h2 { font-size: clamp(42px, 5.4vw, 88px); line-height: 1; letter-spacing: -.03em; }
+.vt-h3 { font-size: 24px; line-height: 1.2; font-weight: 600; letter-spacing: -.015em; }
+.vt-giris { font-size: 19px; line-height: 1.5; color: var(--vt-ikincil); }
+.vt-bolum--gece .vt-giris { color: rgba(255, 255, 255, .75); }
+.vt-bolum-bas { max-width: 1000px; margin-bottom: 64px; }
+.vt-bolum-bas .vt-giris { margin-top: 24px; max-width: 740px; }
+.vt-kart__metin { font-size: 15px; line-height: 1.58; }
+.vt-durum__baslik { font: 300 clamp(28px, 2.8vw, 40px)/1.08 var(--vt-baslik); letter-spacing: -.028em; font-variation-settings: normal; }
+.vt-disiplin__baslik { font: 300 clamp(28px, 2.6vw, 36px)/1.1 var(--vt-baslik); letter-spacing: -.02em; }
+.vt-kilitli__baslik { font: 600 24px/1.2 var(--vt-baslik); letter-spacing: -.015em; }
+.vt-pencere__bas { font: 600 17px/22px var(--vt-baslik); letter-spacing: -.01em; }
+.vt-is__masa { font: 500 12px/18px var(--vt-sans); letter-spacing: .14em; color: var(--vt-ucuncul); }   /* jua eyebrow; nötr — pembe üst etiket alınmadı */
+.vt-h1__vurgu, .vt-hero--video .vt-h1__vurgu {
+  display: inline-block; font-style: italic; font-weight: 300; color: transparent;
+  background: var(--vt-jua-metin); -webkit-background-clip: text; background-clip: text;
+  padding-right: .12em; margin-right: -.04em; padding-bottom: .18em; margin-bottom: -.18em;
+}
+/* gündüz gökyüzü videoda gradyan kelime soluk kalıyordu: jua gölgesine ince ikinci gölge eklendi */
+.vt-hero--video .vt-h1__vurgu { filter: drop-shadow(0 2px 14px rgba(5, 7, 12, .65)) drop-shadow(0 1px 3px rgba(5, 7, 12, .5)); }
+
+/* ── düğme ve bağlantı: 999px hap ───────────────────────── */
+.vt-dugme {
+  position: relative; isolation: isolate; min-height: 0; padding: 13px 26px; border-radius: 999px; border-width: 1.2px;
+  font: 500 15px/1.2 var(--vt-sans); letter-spacing: -.005em;
+}
+.vt-dugme--buyuk { padding: 17px 34px; font-size: 17px; }
+.vt-dugme--dolu, .vt-dugme--gece { background: #0B0E15; color: rgba(255, 255, 255, .96); border-color: transparent; box-shadow: none; }
+.vt-dugme--dolu:hover, .vt-dugme--gece:hover { background: #151A26; }
+.vt-dugme--dolu::before, .vt-dugme--gece::before {
+  content: ""; position: absolute; inset: -8px; z-index: -1; border-radius: 999px;
+  background: var(--vt-jua-hale); filter: blur(14px); opacity: .65; transition: opacity var(--vt-sure) var(--vt-ease);
+}
+.vt-dugme--dolu:hover::before, .vt-dugme--gece:hover::before { opacity: .85; }
+.vt-dugme--cizgi { background: transparent; color: #111827; border-color: #111827; }
+.vt-dugme--cizgi:hover { background: rgba(11, 14, 21, .06); }
+.vt-dugme--gece-cizgi { background: transparent; color: #FFFFFF; border-color: rgba(255, 255, 255, .35); }
+.vt-dugme--gece-cizgi:hover { background: rgba(255, 255, 255, .08); border-color: rgba(255, 255, 255, .6); }
+.vt-bag { color: var(--vt-metin); font-weight: 500; }
+.vt-bolum--gece .vt-bag { color: #FFFFFF; }
+
+/* ── üst çubuk: yüzen cam hap ───────────────────────────── */
+.vt-ust { position: fixed; top: 16px; left: 0; right: 0; z-index: 20; padding: 0 24px; background: transparent; border: 0; pointer-events: none; }
+.vt-ust__ic {
+  pointer-events: auto; max-width: 1180px; height: auto; min-height: 57px; padding: 8px 12px 8px 22px; gap: 16px;
+  background: var(--vt-cam-zemin); -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--vt-cam-kenar); border-radius: 999px; box-shadow: var(--vt-cam-golge);
+}
+.vt-ust .vt-logo { color: #FFFFFF; font-weight: 500; }
+.vt-nav { gap: 2px; justify-content: center; }
+.vt-nav__bag, .vt-nav__acilir { min-height: 37px; padding: 8px 14px; border-radius: 999px; font: 500 14px/1 var(--vt-sans); color: rgba(255, 255, 255, .72); }
+.vt-nav__bag:hover, .vt-nav__acilir:hover, .vt-nav__acilir[aria-expanded="true"] { background: rgba(255, 255, 255, .08); color: #FFFFFF; }
+.vt-nav__bag::after, .vt-nav__acilir::after { content: none; }
+.vt-ust__eylem { gap: 6px; }
+.vt-ust__eylem .vt-dugme { padding: 9px 18px; font-size: 14px; }
+.vt-ust__eylem .vt-dugme--dolu { background: #FFFFFF; color: #0B0E15; box-shadow: 0 1px 2px rgba(0, 0, 0, .06); }
+.vt-ust__eylem .vt-dugme--dolu:hover { background: #F2F2F4; }
+.vt-ust__eylem .vt-dugme--dolu::before { content: none; }
+.vt-ust__eylem .vt-dugme--cizgi { border-color: transparent; color: rgba(255, 255, 255, .78); }
+.vt-ust__eylem .vt-dugme--cizgi:hover { background: rgba(255, 255, 255, .08); color: #FFFFFF; }
+.vt-menu-dugme, .vt-ust__eylem .vt-menu-dugme { min-height: 40px; padding: 0 14px; border: 1px solid rgba(255, 255, 255, .12); background: rgba(255, 255, 255, .06); color: #FFFFFF; }
+.vt-mega-ortu { inset: 0; background: rgba(5, 7, 12, .4); }
+.vt-mega {
+  --vt-zemin: #0B0E15; --vt-metin: #FFFFFF; --vt-ikincil: rgba(255, 255, 255, .72); --vt-ucuncul: rgba(255, 255, 255, .45);
+  --vt-kenar-soguk: rgba(255, 255, 255, .08); --vt-kenar: rgba(255, 255, 255, .08); --vt-bant: rgba(255, 255, 255, .08);
+  top: calc(100% + 8px); max-width: 1180px; margin: 0 auto; padding: 14px 10px 12px; border-radius: 18px; color: #FFFFFF;
+  background: var(--vt-cam-zemin); -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--vt-cam-kenar); box-shadow: var(--vt-cam-golge); max-height: calc(100vh - var(--vt-ust-y) - 16px);
+}
+.vt-mega .vt-kap { padding-inline: 14px; }
+.vt-mega__oge { border-radius: 12px; }
+.vt-cekmece {
+  --vt-metin: #FFFFFF; --vt-kenar-soguk: rgba(255, 255, 255, .08);
+  top: var(--vt-ust-y); background: #0B0E15; color: #FFFFFF; border-top: 0;
+}
+.vt-cekmece__bag { color: rgba(255, 255, 255, .78); font-size: 16px; }
+.vt-cekmece .vt-dugme--cizgi { border-color: rgba(255, 255, 255, .35); color: #FFFFFF; }
+/* çubuk üstten sıfıra yapışır ve hapın altına kadar uzar: hap ile çubuk arasından içerik sızmaz (tek beyaz şerit) */
+.vt-bolumcubuk { top: 0; padding-top: var(--vt-ust-y); background: rgba(255, 255, 255, .88); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-bottom: 1px solid var(--vt-kenar-soguk); }
+.vt :where(a, button, input, select, textarea, summary, [tabindex]) { scroll-margin-top: 140px; }
+.vt-yontem-giris { padding-block: calc(var(--vt-ust-y) + 72px) 72px; }
+.vt-yontem-giris .vt-giris { font-size: 22px; line-height: 1.45; max-width: 640px; margin-top: 32px; }
+
+/* ── hero: zemin → video → dikey perde → içerik ───────────── */
+.vt-hero--video { display: block; position: relative; overflow: hidden; min-height: 100dvh; padding: 0; background: var(--vt-gece-ust); color: #FFFFFF; }
+.vt-hero--video .vt-hero__sahne { position: absolute; inset: 0; width: auto; height: auto; aspect-ratio: auto; order: 0; margin: 0; z-index: 0; -webkit-mask-image: none; mask-image: none; }
+.vt-hero--video .vt-hero__video { object-position: 50% 50%; }
+/* 13.10 okunurluk: gündüz gökyüzü videosunda jua'nın dikey perdesi tek başına yetmiyor — metin tarafı (sol %60)
+   yatay ikinci perdeyle koyulaşır, sağ yarı santrali gösterir; mobilde dikey ağır perde zaten yeter */
+.vt-hero--video .vt-hero__sahne::after {
+  background:
+    linear-gradient(90deg, rgba(5, 7, 12, .78) 0%, rgba(5, 7, 12, .62) 38%, rgba(5, 7, 12, .22) 68%, rgba(5, 7, 12, .06) 100%),
+    var(--vt-jua-perde);
+}
+.vt-hero--video .vt-hero__ic {
+  position: relative; z-index: 1; display: flex; flex-direction: column; justify-content: center; gap: 0;
+  min-height: 100dvh; padding-block: calc(var(--vt-ust-y) + 32px) 80px;
+}
+.vt-hero--video .vt-hero__sol { order: 1; align-self: auto; width: 100%; max-width: 1180px; margin: 0; padding: 0; }
+.vt-hero--video .vt-hero__sol .vt-h1 { color: #FFFFFF; max-width: 1180px; }
+.vt-hero--video .vt-hero__sol .vt-giris { max-width: 640px; margin-top: 52px; font-size: 22px; line-height: 1.45; color: rgba(255, 255, 255, .9); }
+.vt-hero--video .vt-hero__sol .vt-bag--metin { color: #FFFFFF; }
+.vt-hero--video .vt-hero__eylem { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 16px; margin-top: 56px; }
+.vt-hero--video .vt-hero__mikro { flex-basis: 100%; margin: 4px 0 0; font: 400 14px/21px var(--vt-sans); color: rgba(255, 255, 255, .78); max-width: 52ch; }
+.vt-hero--video .vt-hero__kunye { display: none; }
+/* ürün penceresi (13.10, üçüncü karar): Açık karne bölümünde, başlığın yanında — jua «Forecast skill» kalıbı
+   (sol başlık, sağ ürün kartı, 1fr 1.1fr). Kart koyu bölümün içinde cam panel: rgba beyaz .03 + kenar .10 */
+.vt-karne-ust { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 56px 80px; align-items: center; margin-bottom: 64px; }
+.vt-karne-ust .vt-bolum-bas { margin-bottom: 0; }
+.vt-karne-pencere { position: relative; width: 100%; min-width: 0; }
+.vt-karne-pencere .vt-egri--orta { display: block; }
+.vt-karne-pencere .vt-egri--genis, .vt-karne-pencere .vt-egri--dar { display: none; }
+
+/* ── bölüm zeminleri: beyaz / krem / koyu + radyal ışık ──── */
+.vt-bolum { padding-block: 160px 120px; }
+.vt-bolum--bant { padding-block: 140px; background: var(--vt-bant); background-image: none; }
+.vt-bolum--gece { padding-block: 160px; background: var(--vt-gece); }
+.vt-bolum--gece::before { content: ""; position: absolute; inset: 0; z-index: -1; opacity: .35; background: var(--vt-jua-isik); pointer-events: none; }
+.vt-bolum--karne-bulut { background: var(--vt-gece); }
+.vt-bolum--basvuru-bulut { background: var(--vt-bant); }
+.vt-serit, .vt-serit--gok { padding-block: 72px 64px; background: var(--vt-zemin); background-image: none; }
+.vt-disiplin { padding-block: 96px; background: var(--vt-zemin); border-bottom: 1px solid var(--vt-kenar-soguk); }
+.vt-kart { border-radius: var(--vt-r-l); background: #FAFAFA; border: 1px solid var(--vt-kenar-soguk); }
+.vt-bolum--bant .vt-kart, .vt-serit .vt-kart { background: var(--vt-zemin); }
+.vt-kart__govde { padding: 32px 36px 36px; }
+.vt-sayi, .vt-durum { border-radius: var(--vt-r-m); background: #FAFAFA; border: 1px solid var(--vt-kenar-soguk); }
+.vt-durum { padding: 32px 36px; }
+.vt-karne { padding: 32px 32px 24px; border-radius: var(--vt-r-m); background: var(--vt-gece-kart); border: 1px solid var(--vt-gece-kenar); box-shadow: none; }
+.vt-form-kart { padding: 40px 36px; border-radius: var(--vt-r-l); background: var(--vt-zemin); border: 1px solid var(--vt-kenar-soguk); }
+.vt-pencere, .vt-pnc { border-radius: var(--vt-r-m); }
+.vt-sahne { border-radius: var(--vt-r-l); }
+
+/* ── altbilgi: koyu zemin, üst köşeler 50px, radyal ışık ──── */
+.vt-alt {
+  --vt-metin: #FFFFFF; --vt-ikincil: rgba(255, 255, 255, .62); --vt-ucuncul: rgba(255, 255, 255, .45);
+  --vt-kenar: rgba(255, 255, 255, .08); --vt-kenar-soguk: rgba(255, 255, 255, .08); --vt-eylem: #FFFFFF;
+  position: relative; overflow: hidden; isolation: isolate; padding-block: 96px 40px;
+  background: var(--vt-gece); color: rgba(255, 255, 255, .7); border-top: 0; border-radius: 50px 50px 0 0;
+}
+.vt-alt::before { content: ""; position: absolute; inset: 0; z-index: -1; background: var(--vt-jua-isik-alt); pointer-events: none; }
+.vt-alt .vt-logo { color: #FFFFFF; }
+.vt-alt a, .vt-alt button { color: rgba(255, 255, 255, .62); transition: color var(--vt-sure-hizli) var(--vt-ease); }
+.vt-alt a:hover, .vt-alt button:hover { color: #FFFFFF; }
+.vt-alt__tanim { max-width: 360px; margin-top: 16px; font: 300 24px/1.2 var(--vt-baslik); letter-spacing: -.015em; color: rgba(255, 255, 255, .92); }
+.vt-alt__baslik { font: 500 12px/18px var(--vt-sans); letter-spacing: .14em; text-transform: uppercase; color: rgba(255, 255, 255, .55); }
+.vt-alt__liste { font-size: 14px; line-height: 22px; }
+.vt-alt__ilke { color: rgba(255, 255, 255, .5); font-size: 13px; line-height: 1.5; }
+.vt-alt__son { border-top: 1px solid rgba(255, 255, 255, .08); color: rgba(255, 255, 255, .45); }
+
+/* ── kırılımlar: jua tek kırılım 767px; mevcut 1080/600 kuralları boşluk ve ızgara için sürer ── */
+/* ── ikinci tur (13.10): eyebrow + soluk yarım, kalan eylem rengi, odak halkası koyu yüzeyde ── */
+.vt-eyebrow { margin: 0; font: 500 12px/18px var(--vt-sans); letter-spacing: .14em; text-transform: uppercase; color: var(--vt-ucuncul); }
+.vt-eyebrow + .vt-h2 { margin-top: 22px; }
+.vt-bolum--gece .vt-eyebrow { color: rgba(255, 255, 255, .5); }
+.vt-h2__soluk { color: #9AA0AB; }
+.vt-bolum--gece .vt-h2__soluk { color: rgba(255, 255, 255, .5); }
+.vt-pencere__tablo summary { color: var(--vt-metin); font-weight: 500; }
+.vt .vt-ust :focus-visible, .vt .vt-cekmece :focus-visible, .vt .vt-alt :focus-visible, .vt .vt-mega :focus-visible { outline-color: var(--vt-gece-eylem); }
+/* mikro not düğme satırının ALTINA iner: max-width esnek taban boyutunu kısıyor, satıra sığıyordu */
+.vt-hero--video .vt-hero__mikro { max-width: none; flex-basis: 100%; }
+
+/* ── üçüncü tur (13.10): künye/sayı yazısı vitrinde Inter Tight (kullanıcı kararı: «bu kısmı da o tarzda»);
+   Plex Mono panelde sürer. tabular-nums korunur; birim taşıyan metin büyük harfe çevrilmez. ── */
+.vt-kunye { font: 400 13px/1.5 var(--vt-sans); letter-spacing: 0; color: var(--vt-ucuncul); }
+.vt-kart__no { font: 500 12px/18px var(--vt-sans); letter-spacing: .14em; color: var(--vt-ucuncul); }
+.vt-panelde { border-top-color: var(--vt-kenar-soguk); }
+.vt-panelde__et { font: 400 13px/18px var(--vt-sans); color: var(--vt-ucuncul); }
+.vt-is__satir { font-size: 14px; line-height: 20px; }
+.vt-is__satir dt { color: var(--vt-ucuncul); }
+.vt-is__satir dd { font: 500 14px/20px var(--vt-sans); font-variant-numeric: tabular-nums; color: var(--vt-metin); }
+.vt-ayna__bas { font: 500 12px/18px var(--vt-sans); letter-spacing: .14em; }
+.vt-cip { font: 500 12px/1 var(--vt-sans); letter-spacing: .02em; }
+.vt-alan { padding: 8px 12px; border-radius: 999px; font: 500 13px/1 var(--vt-sans); }
+.vt-alanlar__et { font: 400 13px/18px var(--vt-sans); color: var(--vt-ucuncul); }
+.vt-mega__grup-ad, .vt-bolumcubuk__et, .vt-kesit__etiket, .vt-is__masa { font-family: var(--vt-sans); letter-spacing: .14em; }
+.vt-kesit__kunye li, .vt-adim__ok, .vt-sss summary::after, .vt-pencere__tablo table, .vt-karne__tablo { font-family: var(--vt-sans); }
+.vt-pencere__tablo table, .vt-karne__tablo { font-variant-numeric: tabular-nums; }
+.vt-disiplin__deger { font: 300 clamp(44px, 4vw, 64px)/1 var(--vt-baslik); letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
+.vt-disiplin__dip { font: 400 14px/1 var(--vt-sans); color: var(--vt-ucuncul); }
+.vt-disiplin__etiket { margin-top: 14px; }
+.vt-karne__sayi { font: 300 40px/1 var(--vt-baslik); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.vt-karne__deger dt { font: 500 12px/18px var(--vt-sans); letter-spacing: .04em; }
+/* grafik kartı koyu bölümde cam panel (jua benchmark paneli); jetonlar kart içinde koyu yüze geçer;
+   amber koyu zeminde #E8940A (iki-amber kararı), mavi aynı */
+.vt-karne-pencere .vt-pencere {
+  --vt-zemin: #0B0E15; --vt-metin: #FFFFFF; --vt-ikincil: rgba(255, 255, 255, .74); --vt-ucuncul: rgba(255, 255, 255, .5);
+  --vt-kenar-soguk: rgba(255, 255, 255, .10); --vt-kenar: rgba(255, 255, 255, .10);
+  --vt-veri-gerceklesen: #E8940A; --vt-veri-sinir: rgba(255, 255, 255, .55);
+  position: relative; overflow: hidden; padding: 12px 8px 4px; border-radius: var(--vt-r-m);
+  background: rgba(255, 255, 255, .03); border: 1px solid rgba(255, 255, 255, .10); color: #FFFFFF; box-shadow: none;
+}
+.vt-karne-pencere .vt-pencere__bas { font: 500 15px/20px var(--vt-sans); letter-spacing: 0; color: rgba(255, 255, 255, .85); }
+.vt-karne-pencere .vt-pencere__tarih { color: rgba(255, 255, 255, .5); }
+.vt-karne-pencere .vt-lejant { color: rgba(255, 255, 255, .85); }
+.vt-karne-pencere .vt-egri__izgara { stroke: rgba(255, 255, 255, .12); }
+.vt-karne-pencere .vt-egri__eksen { stroke: rgba(255, 255, 255, .7); }
+.vt-karne-pencere .vt-egri__bant { fill-opacity: .22; }
+.vt-karne-pencere .vt-lejant__bant { opacity: .3; }
+.vt-karne-pencere .vt-egri__et--halo { stroke: #0B0E15; }
+.vt-karne-pencere .vt-pencere__kunye { color: rgba(255, 255, 255, .5); }
+.vt-karne-pencere .vt-pencere__kunye strong { color: rgba(255, 255, 255, .85); }
+
+/* ── dördüncü tur (13.10): ölçek bir kademe yukarı — Türkçe metin İngilizceden uzun, geniş ekranda 15/12 px küçük kalıyordu.
+   jua tabanı 16/24 · 15 kart · 12 eyebrow → bizde 17/26 · 16 kart · 13 eyebrow. Mobil tabanı 16/25 (aşağıda). ── */
+.vt { font-size: 17px; line-height: 26px; }
+.vt-giris { font-size: 20px; }
+.vt-kart__metin { font-size: 16px; line-height: 1.6; }
+.vt-eyebrow, .vt-kart__no, .vt-is__masa, .vt-ayna__bas, .vt-alt__baslik, .vt-kesit__etiket, .vt-mega__grup-ad { font-size: 13px; }
+.vt-nav__bag, .vt-nav__acilir { font-size: 15px; }
+.vt-ust__eylem .vt-dugme { font-size: 15px; }
+.vt-kunye { font-size: 14px; }
+.vt-panelde__et { font-size: 14px; }
+.vt-panelde .vt-bag { font-size: 16px; }
+.vt-is__satir { font-size: 15px; line-height: 22px; }
+.vt-is__satir dd { font-size: 15px; line-height: 22px; }
+.vt-is__bag, .vt-kart .vt-bag { font-size: 16px; }
+.vt-ayna__soru, .vt-ayna__cevap { font-size: 16px; line-height: 24px; }
+.vt-sss summary { font-size: 19px; line-height: 26px; }
+.vt-alt__liste { font-size: 15px; line-height: 24px; }
+.vt-alt__ilke { font-size: 14px; line-height: 1.55; }
+.vt-alt__tanim { font-size: 26px; }
+.vt-bolumcubuk__bag { font-size: 14px; }
+.vt-hero--video .vt-hero__mikro { font-size: 15px; line-height: 22px; }
+.vt-alan { font-size: 14px; }
+.vt-durum__cumle { font-size: 17px; }
+.vt-disiplin__baslik { font-size: clamp(32px, 3vw, 48px); margin-bottom: 8px; }
+.vt-disiplin__etiket { font-size: 16px; line-height: 22px; }
+.vt-disiplin__alt { font-size: 15px; line-height: 22px; }
+.vt-disiplin__bag { font-size: 14px; }
+.vt-yontem { font-size: 16px; line-height: 1.6; max-width: 900px; }
+.vt-tanim { font-size: 16px; line-height: 1.55; }
+.vt-kilitli__tanim dd { font-size: 15px; line-height: 23px; }
+.vt-karne__tablo, .vt-pencere__tablo table { font-size: 14px; line-height: 20px; }
+.vt-pencere__bas, .vt-karne-pencere .vt-pencere__bas { font-size: 17px; line-height: 22px; }
+.vt-pencere__tarih { font-size: 14px; }
+.vt-lejant, .vt-hero--a .vt-lejant { font-size: 14px; line-height: 20px; }
+.vt-egri__et { font-size: 13px; }
+.vt-egri--dar .vt-egri__et { font-size: 14px; }
+.vt-egri__eksen-baslik { font-size: 12.5px; }
+.vt-pencere__kunye, .vt-hero--a .vt-pencere__kunye { font-size: 13.5px; line-height: 19px; }
+.vt-pencere__tablo summary { font-size: 16px; }
+.vt-form__not, .vt-form .vt-kunye { font-size: 14px; }
+.vt-etiket { font-size: 15px; }
+
+/* ── beşinci tur (13.10): çip/alan kenarları krem-kahveden nötr griye — beyaz ve #FAFAFA üstünde şeftali gibi duruyordu ── */
+.vt { --vt-kenar-guclu: #D1D1D1; }
+.vt-cip, .vt-alan { border-color: var(--vt-kenar-soguk); background: var(--vt-zemin); }
+.vt-cip { color: var(--vt-ucuncul); }
+.vt-alan { color: var(--vt-metin); }
+.vt-is__satir dt { min-width: 96px; }
+
+/* ── altbilgi, jua kalıbı (13.10): ikonsuz eyebrow başlıklar, slogan 28/300 + gradyan vurgu, 4 sütun 1.3/0.9/1/1.5 ── */
+.vt-alt__izgara { grid-template-columns: 1.3fr .9fr 1fr 1.5fr; gap: 48px 56px; }
+.vt-alt .vt-logo { font-size: 20px; }
+.vt-alt__tanim { max-width: 340px; margin-top: 22px; font: 300 30px/1.12 var(--vt-baslik); letter-spacing: -.025em; color: rgba(255, 255, 255, .92); text-wrap: pretty; }
+.vt-alt__alt { max-width: 340px; margin-top: 14px; font: 400 14px/1.5 var(--vt-sans); color: rgba(255, 255, 255, .5); }
+.vt-alt__vurgu { display: block; width: fit-content; font-style: italic; font-weight: 300; color: transparent; background: var(--vt-jua-metin); -webkit-background-clip: text; background-clip: text; padding-right: .08em; }
+.vt-alt__baslik { display: block; margin-bottom: 18px; font: 500 13px/18px var(--vt-sans); letter-spacing: .14em; text-transform: uppercase; color: rgba(255, 255, 255, .55); }
+.vt-alt__liste { gap: 12px; font-size: 15px; line-height: 22px; }
+.vt-alt__liste--bag { gap: 0; }
+.vt-alt__liste a, .vt-alt__liste button { display: inline-block; padding: 7px 0; font: inherit; color: rgba(255, 255, 255, .62); }
+.vt-alt__ilke { max-width: 44ch; font-size: 14px; line-height: 1.5; color: rgba(255, 255, 255, .5); }
+@media (forced-colors: active) { .vt-alt__vurgu { color: CanvasText; background: none; } }
+
+@media (max-width: 1080px) {
+  .vt { --vt-yan: 20px; }
+  .vt-karne-ust { grid-template-columns: minmax(0, 1fr); gap: 40px; margin-bottom: 40px; }
+  .vt-mega-ortu { inset: 0; }
+}
+@media (max-width: 767px) {
+  .vt { font-size: 16px; line-height: 25px; }
+  .vt-giris { font-size: 18px; }
+  .vt-kart__metin { font-size: 15px; }
+  .vt-sss summary { font-size: 17px; line-height: 24px; }
+  .vt-h1 { font-size: clamp(40px, 11vw, 56px); }
+  .vt-bolum, .vt-bolum--bant, .vt-bolum--gece { padding-block: 80px; }
+  .vt-serit, .vt-serit--gok { padding-block: 48px 40px; }
+  .vt-disiplin { padding-block: 64px; }
+  .vt-bolum-bas { margin-bottom: 40px; }
+  .vt-kart__govde { padding: 28px 24px; }
+  .vt-kart { border-radius: 22px; }
+  .vt-form-kart { padding: 28px 22px; }
+  .vt-alt { padding-block: 64px 32px; border-radius: 32px 32px 0 0; }
+  .vt-alt__izgara { gap: 36px; }
+  .vt-alt__tanim { font-size: 26px; }
+  .vt-hero--video .vt-hero__sahne::after { background: var(--vt-jua-perde-mobil); }
+  .vt-hero--video .vt-hero__ic { justify-content: flex-start; padding-block: 110px 40px; }
+  .vt-hero--video .vt-hero__sol .vt-giris { margin-top: 28px; font-size: 15px; line-height: 1.45; color: rgba(255, 255, 255, .78); }
+  .vt-hero--video .vt-hero__eylem { margin-top: 22px; gap: 10px; }
+  .vt-hero--video .vt-hero__eylem .vt-dugme--buyuk { padding: 13px 26px; font-size: 15px; }
+  .vt-karne-pencere .vt-pencere { padding: 8px 0 4px; border-radius: 22px; }
+  .vt-ust { top: 12px; padding: 0 12px; }
+  .vt-ust__ic { padding: 8px 8px 8px 16px; }
+  .vt { --vt-ust-y: 81px; }
+  /* dokunmatik hedef 44 px (QA kuralı; jua 39/40 — 4 px bilinçli sapma) */
+  .vt-ust__eylem .vt-dugme, .vt-menu-dugme { min-height: 44px; }
+}
+@media (max-width: 600px) {
+  .vt-karne-pencere .vt-egri--orta { display: none; }
+  .vt-karne-pencere .vt-egri--dar { display: block; }
+}
+@media (forced-colors: active) {
+  .vt-h1__vurgu, .vt-hero--video .vt-h1__vurgu { color: CanvasText; background: none; filter: none; }
+  .vt-ust__ic, .vt-mega { border: 1px solid CanvasText; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vt-dugme--dolu::before, .vt-dugme--gece::before { transition: none; }
+}
