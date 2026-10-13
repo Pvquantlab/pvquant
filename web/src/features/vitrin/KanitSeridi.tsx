@@ -52,21 +52,18 @@ function DurumSatiri({ tur }: { tur: "yukleniyor" | "kapali" | "hata" }) {
       </div>
     );
   }
+  /* Kapalı ve hata TEK güçlü dilde (13.10, kullanıcı isteği): vitrin zayıf durum cümlesi
+     taşımaz; eski zayıf hata tonu kalktı. Kural cümlesi her iki durumda da
+     doğrudur; uç yeniden erişilir olduğunda sayılar zaten kendiliğinden gelir. */
   return (
     <div className="vt-durum">
       <div>
-        <span className="vt-cip">{tur === "kapali" ? "30 sınav günü kuralı" : "alınamadı"}</span>
-        <p className="vt-durum__cumle">
-          {tur === "kapali"
-            ? "Referans santral 30 sınav gününü doldurunca sayılar burada kendiliğinden görünür; kural herkese açık, geçmiş değiştirilmez."
-            : "Karne şu an alınamadı; sayfa yenilenince yeniden denenir."}
-        </p>
-        {tur === "kapali" && (
-          <div className="vt-alanlar">
-            <span className="vt-alanlar__et">yayın açılınca</span>
-            {ALANLAR.map((a) => <span key={a} className="vt-alan">{a}</span>)}
-          </div>
-        )}
+        <span className="vt-cip">karne disiplini</span>
+        <p className="vt-durum__baslik">Her gece bir sınav, her sabah bir karne.</p>
+        <div className="vt-alanlar">
+          <span className="vt-alanlar__et">yayın açılınca</span>
+          {ALANLAR.map((a) => <span key={a} className="vt-alan">{a}</span>)}
+        </div>
       </div>
       <a className="vt-bag" href="/yontem">Yöntemi okuyun</a>
     </div>

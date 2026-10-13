@@ -4,7 +4,6 @@
  *  (inceleme bulgusu). */
 export const BOLUMLER = [
   ["katmanlar", "Dört adım"],
-  ["para", "TL karşılığı"],
   ["isler", "Hangi iş için"],
   ["karne", "Açık karne"],
   ["rakamlar", "Rakamlar"],

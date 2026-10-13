@@ -3,7 +3,7 @@ import { Rozet } from "./Rozet";
 
 const SAYFA = [
   ["Nasıl çalışır", "#katmanlar"],
-  ["Türkiye piyasası", "#para"],
+  ["Türkiye piyasası", "/yontem#para"],
   ["SSS", "#sss"],
   ["Karnenizi başlatın", "#basla"],
 ] as const;
@@ -38,7 +38,7 @@ export function Altbilgi({ onPanel }: { onPanel?: () => void }) {
           <nav aria-label="Sayfa">
             <h2 className="vt-alt__baslik"><Rozet grup="notr" ikon="gunes" />Sayfa</h2>
             <ul className="vt-alt__liste vt-alt__liste--bag">
-              {SAYFA.map(([ad, hedef]) => <li key={ad}><a href={on + hedef}>{ad}</a></li>)}
+              {SAYFA.map(([ad, hedef]) => <li key={ad}><a href={hedef.startsWith("#") ? on + hedef : hedef}>{ad}</a></li>)}
               {onPanel && <li><button type="button" onClick={onPanel}>Panele giriş</button></li>}
             </ul>
           </nav>

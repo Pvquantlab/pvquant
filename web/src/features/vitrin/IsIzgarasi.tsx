@@ -22,7 +22,7 @@ const ISLER: readonly {
     sonuc: "Programı teslim penceresi kapanmadan verin",
     fayda: "Program dosyanız TPYS'ye öneri CSV, toplayıcıya CSV/XLSX olarak panelden iner; gün içi revizyon penceresi izlenir.",
     kunye: [["Dosya", "D‑1 öğleden sonra"], ["Dilim", "saatlik ya da 15 dk"]],
-    bag: ["#para", "Panelde nasıl görünür"],
+    bag: ["/yontem#para", "Panelde nasıl görünür"],
     grup: "tahmin", ikon: "band", resim: isTeslim,
   },
   {
@@ -30,7 +30,7 @@ const ISLER: readonly {
     sonuc: "Teklifi önerilen kantille verin",
     fayda: "Gün öncesi teklif için önerilen kantil panelde; sapmanın TL karşılığı gün gün.",
     kunye: [["Teklif", "önerilen kantil"], ["Sapma", "TL · gün gün"]],
-    bag: ["#para", "Sapmanın TL hesabı"],
+    bag: ["/yontem#para", "Sapmanın TL hesabı"],
     grup: "tahmin", ikon: "aylik", resim: isTicaret,
   },
   {

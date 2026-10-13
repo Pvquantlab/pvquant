@@ -5,7 +5,6 @@ import { Hero } from "./Hero";
 import { BolumCubugu } from "./BolumCubugu";
 import { KanitSeridi } from "./KanitSeridi";
 import { DortAdim } from "./DortAdim";
-import { TurkiyePiyasasi } from "./TurkiyePiyasasi";
 import { IsIzgarasi } from "./IsIzgarasi";
 import { AcikKarne } from "./AcikKarne";
 import { DisiplinBandi } from "./DisiplinBandi";
@@ -32,7 +31,6 @@ export function Vitrin({ onPanel }: { onPanel: () => void }) {
         <BolumCubugu />
         <KanitSeridi durum={durum} />
         <DortAdim onPanel={onPanel} />
-        <TurkiyePiyasasi />
         <IsIzgarasi />
         <AcikKarne durum={durum} />
         <DisiplinBandi />

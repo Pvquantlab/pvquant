@@ -46,14 +46,14 @@ const PANELLER: readonly Panel[] = [
     ],
   },
   {
-    ad: "Türkiye piyasası", alt: ["Türkiye piyasası bölümü", "#para"], gruplar: [
+    ad: "Türkiye piyasası", alt: ["Türkiye piyasası bölümü", "/yontem#para"], gruplar: [
       { ad: "Program", rozet: "tahmin", ogeler: [
-        { ad: "Üretim programı (KGÜP)", aciklama: "Program her gün hazır; teslim penceresi ve revizyon kapısı izlenir", hedef: "#para" },
-        { ad: "Dengesizlik maliyeti (TL)", aciklama: "Tahmin hatasının gün gün TL karşılığı, basit yöntemle kıyaslı", hedef: "#para" },
+        { ad: "Üretim programı (KGÜP)", aciklama: "Program her gün hazır; teslim penceresi ve revizyon kapısı izlenir", hedef: "/yontem#para" },
+        { ad: "Dengesizlik maliyeti (TL)", aciklama: "Tahmin hatasının gün gün TL karşılığı, basit yöntemle kıyaslı", hedef: "/yontem#para" },
       ] },
       { ad: "Bağlantı", rozet: "veri", ogeler: [
-        { ad: "Toplayıcı / DSG şablonları", aciklama: "Saatlik ya da 15 dakikalık şablona tek tıkla dışa aktarım", hedef: "#para" },
-        { ad: "Kamuya açık üretim kaydı bağlantısı", aciklama: "Dosya yüklemeden gerçekleşen üretim akışı", hedef: "#para" },
+        { ad: "Toplayıcı / DSG şablonları", aciklama: "Saatlik ya da 15 dakikalık şablona tek tıkla dışa aktarım", hedef: "/yontem#para" },
+        { ad: "Kamuya açık üretim kaydı bağlantısı", aciklama: "Dosya yüklemeden gerçekleşen üretim akışı", hedef: "/yontem#para" },
       ] },
     ],
   },
@@ -77,7 +77,7 @@ const SIRA: readonly (Panel | readonly [string, string])[] = [
 
 const CEKMECE = [
   ["Nasıl çalışır", "#katmanlar"],
-  ["Türkiye piyasası", "#para"],
+  ["Türkiye piyasası", "/yontem#para"],
   ["Açık karne", "#karne"],
   ["Fiyatlandırma", "#basla"],
   ["SSS", "#sss"],

@@ -5,6 +5,8 @@ import { UstCubuk } from "./UstCubuk";
 import { Altbilgi } from "./Altbilgi";
 import { useDogrulama } from "./useDogrulama";
 import { useCapaKaydir } from "./useCapaKaydir";
+import { useCanlandir } from "./useCanlandir";
+import { TurkiyePiyasasi } from "./TurkiyePiyasasi";
 import { ADIMLAR, METRIKLER } from "./yontem-metni";
 import { yuzdeTr } from "./bicim";
 
@@ -14,6 +16,7 @@ import { yuzdeTr } from "./bicim";
 export function Yontem() {
   const durum = useDogrulama();
   useCapaKaydir(durum.tur);
+  useCanlandir(durum.tur);
   useEffect(() => {
     const eski = document.title;
     document.title = "PVQuant — Yöntem ve doğrulama";
@@ -85,6 +88,9 @@ export function Yontem() {
             </div>
           </div>
         </section>
+
+        {/* 13.10: «Türkiye piyasası / TL karşılığı» bölümü kullanıcı isteğiyle ana sayfadan buraya taşındı */}
+        <TurkiyePiyasasi />
       </main>
       <Altbilgi />
     </div>

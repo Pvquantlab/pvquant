@@ -45,12 +45,12 @@ export function Hero() {
           <div className="vt-eylemler vt-hero__eylem">
             <a className="vt-dugme vt-dugme--dolu vt-dugme--ok" href="#basla">Karnenizi başlatın</a>
             <p className="vt-hero__mikro">başvuru · hesabınızı biz kurarız · veri yüklemeniz gerekmez · karneniz ilk gece sınavından itibaren birikir</p>
-            <a className="vt-bag" href="#para">TL karşılığı nasıl hesaplanır</a>
+            <a className="vt-bag" href="/yontem#para">TL karşılığı nasıl hesaplanır</a>
           </div>
         </div>
         <div className="vt-hero__pencere">
           <ReferansEgri veri={null} />
-          <a className="vt-bag vt-hero__tl-alt" href="#para">TL karşılığı nasıl hesaplanır</a>
+          <a className="vt-bag vt-hero__tl-alt" href="/yontem#para">TL karşılığı nasıl hesaplanır</a>
         </div>
       </div>
     </section>

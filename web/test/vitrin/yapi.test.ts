@@ -46,19 +46,22 @@ test("vitrin bileşenlerinde satır içi stil yok (Rozet.tsx hariç: <use> gölg
 
 test("ana sayfa yeni bileşenlerden kurulur; eski süsler kalktı", () => {
   const vitrin = oku("../../src/features/vitrin/Vitrin.tsx");
-  for (const parca of ["<UstCubuk", "<Hero", "<BolumCubugu", "<KanitSeridi", "<DortAdim", "<TurkiyePiyasasi", "<IsIzgarasi", "<AcikKarne durum={durum}", "<Sss", "<Basvuru", "<Altbilgi", "useDogrulama"]) {
+  for (const parca of ["<UstCubuk", "<Hero", "<BolumCubugu", "<KanitSeridi", "<DortAdim", "<IsIzgarasi", "<AcikKarne durum={durum}", "<Sss", "<Basvuru", "<Altbilgi", "useDogrulama"]) {
     assert.ok(vitrin.includes(parca), parca);
   }
   assert.doesNotMatch(vitrin, /YildizAlani|Dalga|KatmanIkon|export const/);
+  // 13.10: TL bölümü kullanıcı isteğiyle /yontem'e taşındı — ana sayfada değil, yöntem sayfasında
+  assert.ok(!vitrin.includes("<TurkiyePiyasasi"), "TurkiyePiyasasi ana sayfada kalmamalı");
+  assert.ok(oku("../../src/features/vitrin/Yontem.tsx").includes("<TurkiyePiyasasi"), "TurkiyePiyasasi /yontem'de olmalı");
 });
 
 test("bölüm çubuğu çapaları gerçek bölümlere, sayfadaki sırayla işaret eder (R30)", () => {
   // Kaynak-metin regex'i yerine modül içe aktarımı: biçim değişse de çapalar sessizce kaçamaz.
   const dosyaE: Record<string, string> = {
-    katmanlar: "DortAdim.tsx", para: "TurkiyePiyasasi.tsx", isler: "IsIzgarasi.tsx",
+    katmanlar: "DortAdim.tsx", isler: "IsIzgarasi.tsx",
     karne: "AcikKarne.tsx", rakamlar: "DisiplinBandi.tsx", sss: "Sss.tsx", basla: "Basvuru.tsx",
   };
-  assert.equal(BOLUMLER.length, 7);
+  assert.equal(BOLUMLER.length, 6);   // 13.10: "para" çapası bölümle birlikte /yontem'e gitti
   const vitrin = oku("../../src/features/vitrin/Vitrin.tsx");
   let son = -1;
   for (const [id] of BOLUMLER) {
@@ -85,11 +88,12 @@ test("iş ızgarası: rakamlı vaat ve müşteri iması yok; dört masa fayda ka
   assert.match(is, /vt-is__kunye/);                    // etiket–değer künyesi kalıbın parçası
 });
 
-test("kanıt şeridi: uydurma hedef yok; 'yayın açılınca' yalnız kapalı durumda", () => {
+test("kanıt şeridi: uydurma hedef yok; kapalı/hata tek güçlü dilde, zayıf durum cümlesi yok (13.10)", () => {
   const kanit = oku("../../src/features/vitrin/KanitSeridi.tsx");
   assert.doesNotMatch(kanit, /\?\? 80/);
   assert.match(kanit, /hedef \$\{yuzdeTr\(veri\.bant_hedef_pct\)\}/);
-  assert.match(kanit, /\{tur === "kapali" && \(\s*<div className="vt-alanlar">/);
+  assert.doesNotMatch(kanit, /alınamadı|yeniden denenir/);   // vitrin zayıf durum cümlesi taşımaz
+  assert.match(kanit, /vt-alanlar/);                         // «yayın açılınca» alanları kartın parçası
 });
 
 test("Türkiye piyasası: elle yazılmış TL ve kurulu güç dipnotu yok", () => {
