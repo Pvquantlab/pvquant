@@ -24,8 +24,10 @@ export function Hero() {
     if (!v) return;
     v.muted = true;                                            // tarayıcılar otomatik oynatmayı yalnız sessiz videoya verir
     v.playbackRate = OYNATMA_HIZI;
-    const basaSar = () => { v.currentTime = DONGU_BAS; };
-    const aralik = () => { if (v.currentTime >= DONGU_SON || v.currentTime < DONGU_BAS - 0.25) basaSar(); };
+    // aralık yalnız 25,8 s'lik orijinal için; ≤760 px'teki 12 s'lik 1080p döngü zaten iyi bölümden kesilmiş — olduğu gibi döner
+    const araliksiz = () => !(v.duration > DONGU_SON + 1);
+    const basaSar = () => { if (!araliksiz()) v.currentTime = DONGU_BAS; };
+    const aralik = () => { if (araliksiz()) return; if (v.currentTime >= DONGU_SON || v.currentTime < DONGU_BAS - 0.25) basaSar(); };
     if (v.readyState >= 1) basaSar(); else v.addEventListener("loadedmetadata", basaSar, { once: true });
     v.addEventListener("timeupdate", aralik);
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
