@@ -1823,3 +1823,23 @@
 @media (max-width: 767px) and (prefers-reduced-motion: no-preference) {
   .vt-hero--video .vt-hero__video { object-position: 50% 100%; }
 }
+
+/* ── Karne şeridi: lacivert bant (15.10) ───────────────────────────────────────
+   Kullanıcı üç seçenekten A'yı seçti: beyaz sayfada kart değil, kenardan kenara koyu
+   «statement» bandı. Açık (dört canlı sayı) ve kapalı (manşet) durumların ikisi de
+   bantta beyaz konuşur. Rengi hero'nun mürekkebi (#0B1B3C) — ayrı bir ton açılmaz. */
+.vt .vt-serit--gok { padding-block: 64px; background: #0B1B3C; background-image: none; color: #fff; }
+.vt .vt-serit--gok .vt-durum { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; color: #fff; }
+.vt .vt-serit--gok .vt-durum__baslik { color: #fff; font-size: clamp(30px, 3.2vw, 44px); }
+.vt .vt-serit--gok .vt-cip { color: rgba(255, 255, 255, .85); background: transparent; border: 1px solid rgba(255, 255, 255, .4); }
+.vt .vt-serit--gok .vt-alanlar__et { color: rgba(255, 255, 255, .65); }
+.vt .vt-serit--gok .vt-alan { color: #fff; border-color: rgba(255, 255, 255, .4); background: rgba(255, 255, 255, .08); }
+.vt .vt-serit--gok .vt-bag { color: #fff; }
+.vt .vt-serit--gok .vt-bag:hover, .vt .vt-serit--gok .vt-bag:focus-visible { color: #fff; outline-color: #fff; }
+/* yayın açılınca: sayı kutuları da bantta — saydam zemin, beyaz rakam */
+.vt .vt-serit--gok .vt-sayi { background: rgba(255, 255, 255, .06); border-color: rgba(255, 255, 255, .18); color: #fff; }
+.vt .vt-serit--gok .vt-sayi__et, .vt .vt-serit--gok .vt-sayi__alt, .vt .vt-serit--gok .vt-serit__kunye { color: rgba(255, 255, 255, .72); }
+.vt .vt-serit--gok .vt-sayi__deger { color: #fff; }
+@media (max-width: 600px) {
+  .vt .vt-serit--gok { padding-block: 48px; }
+}
