@@ -1853,3 +1853,10 @@
 .vt #katmanlar .vt-levha--resim { background: #F4F7FB; }
 .vt #katmanlar .vt-adim__ok { color: #0B1B3C; }
 .vt #katmanlar .vt-kart__no { font-weight: 600; color: #0B1B3C; }
+
+/* ── Hangi iş için: buz kartlar, beyaz tepsi (15.10) ───────────────────────────
+   Kullanıcı A/B/C panosundan A'yı seçti. Dört adımın tersi katman: bölüm beyaz kalır,
+   kartlar kenarsız buz, illüstrasyon kartın içinde beyaz yuvarlak tepside. Sayfa ritmi:
+   buz bölüm (dört adım) → beyaz bölüm/buz kart → koyu açık karne. */
+.vt #isler .vt-is { background: #EEF3FA; border: 0; box-shadow: none; }
+.vt #isler .vt-is .vt-levha--resim { background: #fff; margin: 12px 12px 0; border-radius: 14px; }
