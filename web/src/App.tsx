@@ -1,19 +1,27 @@
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { cikis, oturumDusunce_kaydet } from "./api/client";
-import { Giris } from "./features/giris/Giris";
-import { ParolaYenile } from "./features/giris/ParolaYenile";
 import { Vitrin } from "./features/vitrin/Vitrin";
 import { Yontem } from "./features/vitrin/Yontem";
-import { Kabuk, type SayfaId } from "./shell/Kabuk";
-import { Santralim } from "./features/santralim/Santralim";
-import { Tahminler } from "./features/sayfalar/Tahminler";
-import { Dogruluk } from "./features/sayfalar/Dogruluk";
-import { Aylik } from "./features/sayfalar/Aylik";
-import { VeriYukleme, Kalibrasyon, Raporlar } from "./features/sayfalar/Digerleri";
-import { Portfoy } from "./features/sayfalar/Portfoy";
-import { Hakkinda } from "./features/sayfalar/Hakkinda";
+import type { SayfaId } from "./shell/Kabuk";
 import { api } from "./api/client";
 import type { SantralKisa } from "./api/types";
+
+/** Performans (14.10): panel, giriş ve ECharts vitrin ziyaretçisine İNMEZ.
+ *  Paket tek parçayken 1,6 MB'tı ve ilk boyama onu bekliyordu (3G'de ~11 sn);
+ *  rota bazlı tembel yükleme vitrin paketini panelden ayırır. Panel parçaları
+ *  girişten sonra, ekrana gelmeden hemen önce iner. */
+const Giris = lazy(() => import("./features/giris/Giris").then((m) => ({ default: m.Giris })));
+const ParolaYenile = lazy(() => import("./features/giris/ParolaYenile").then((m) => ({ default: m.ParolaYenile })));
+const Kabuk = lazy(() => import("./shell/Kabuk").then((m) => ({ default: m.Kabuk })));
+const Santralim = lazy(() => import("./features/santralim/Santralim").then((m) => ({ default: m.Santralim })));
+const Tahminler = lazy(() => import("./features/sayfalar/Tahminler").then((m) => ({ default: m.Tahminler })));
+const Dogruluk = lazy(() => import("./features/sayfalar/Dogruluk").then((m) => ({ default: m.Dogruluk })));
+const Aylik = lazy(() => import("./features/sayfalar/Aylik").then((m) => ({ default: m.Aylik })));
+const VeriYukleme = lazy(() => import("./features/sayfalar/Digerleri").then((m) => ({ default: m.VeriYukleme })));
+const Kalibrasyon = lazy(() => import("./features/sayfalar/Digerleri").then((m) => ({ default: m.Kalibrasyon })));
+const Raporlar = lazy(() => import("./features/sayfalar/Digerleri").then((m) => ({ default: m.Raporlar })));
+const Portfoy = lazy(() => import("./features/sayfalar/Portfoy").then((m) => ({ default: m.Portfoy })));
+const Hakkinda = lazy(() => import("./features/sayfalar/Hakkinda").then((m) => ({ default: m.Hakkinda })));
 
 /** v2.353: kiracının hiç santrali yokken sayfalar çizilmez — hepsi plantId ister
  *  ve boş/yabancı kimlikle 404 üretir. Kabuk (dolayısıyla "+ Yeni santral bağla")
@@ -82,7 +90,7 @@ export default function App() {
     return <Yontem />;
   // v2.335: e-postadaki sıfırlama bağlantısı — kimliksiz kamu sayfası
   if (window.location.pathname === "/parola-yenile")
-    return <ParolaYenile />;
+    return <Suspense fallback={null}><ParolaYenile /></Suspense>;
   // v2.293: ?vitrin — oturum açıkken de vitrini görme kapısı (pazarlama sayfasını
   // müşteriye göstermeden önce kendi gözünle denetle; "Panele giriş" adresi temizler).
   if (new URLSearchParams(window.location.search).has("vitrin"))
@@ -90,9 +98,10 @@ export default function App() {
   if (!girdi) {
     if (gorunum === "vitrin")
       return <Vitrin onPanel={() => setGorunum("giris")} />;   // v2.81
-    return <Giris onGiris={() => setGirdi(true)} />;
+    return <Suspense fallback={null}><Giris onGiris={() => setGirdi(true)} /></Suspense>;
   }
   return (
+    <Suspense fallback={null}>
     <Kabuk sayfa={sayfa} setSayfa={setSayfa} santral={santralAd} plantId={plantId}
            santraller={santraller} onSantral={santralSec} santralYenile={santralYenile}
            onCikis={() => { cikis(); setGirdi(false);
@@ -113,5 +122,6 @@ export default function App() {
       {plantId && sayfa === "raporlar" && <Raporlar plantId={plantId} />}
       {sayfa === "hakkinda" && <Hakkinda />}
     </Kabuk>
+    </Suspense>
   );
 }

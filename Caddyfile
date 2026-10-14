@@ -10,6 +10,10 @@ www.{$PVQ_DOMAIN:localhost} {
 }
 
 {$PVQ_DOMAIN:localhost} {
+	# v2.431 (14.10): metin varliklar sikistirilmadan gidiyordu — 512 KB'lik gzip'li
+	# JS teli 1,6 MB ham olarak gecti, mobil 3G'de ilk boyama ~11 sn olctu. zstd/gzip
+	# muzakeresi tarayiciya gore; gorsel/video zaten sikisik, Caddy onlari atlar.
+	encode zstd gzip
 	# v2.72: API ayni alan adinin /v1/* yolunda — SPA'da CORS derdi dogmaz.
 	# Uc yollari zaten /v1 onekli; soyma (strip) gerekmez.
 	route /v1/* {

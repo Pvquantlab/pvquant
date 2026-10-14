@@ -1,4 +1,6 @@
 :8080 {
+	# v2.431 (14.10): kenar Caddy'siz dogrudan erisimde de sikistirma olsun
+	encode zstd gzip
 	# SPA yonlendirmesi: bilinmeyen yollar index.html'e duser (history API).
 	root * /srv
 	try_files {path} /index.html
