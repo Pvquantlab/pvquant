@@ -1362,11 +1362,14 @@
 /* 14.10 «bir tık daha net, arka planla uyumlu»: lacivert mürekkep (gök/panel ailesi) + harf kenarında 1 px'den ince beyaz halka —
    bulutlu bölgede kenar tanımı artar, yazı koyulaşmaz */
 /* 14.10 kullanıcı: tanıtım paragrafı en önemli metin — buzlu beyaz levha üstünde, 22 px / 600; levha metinle hizalı (negatif kenar) */
+/* 15.10 kullanıcı üç seçenekten C'yi seçti: «ince cam kart» — ağır 600 yerine sakin 500, daha opak buz,
+   ince beyaz kenar, metinle hizalı (negatif kenar yok); paneller üstüne düşen satırlar da net okunur */
 .vt-hero--video .vt-hero__sol .vt-giris {
-  font-weight: 600; font-size: 22px; line-height: 1.45; color: #0B1B3C; letter-spacing: -.005em; text-shadow: none;
-  max-width: 700px; margin-top: 26px; margin-left: -22px; padding: 18px 22px; border-radius: 18px;
-  background: rgba(255, 255, 255, .66); -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, .6) inset, 0 10px 30px -18px rgba(11, 27, 60, .35);
+  font-weight: 500; font-size: 19px; line-height: 1.55; color: #0B1B3C; letter-spacing: 0; text-shadow: none;
+  max-width: 560px; margin-top: 26px; margin-left: 0; padding: 20px 24px; border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, .95);
+  background: rgba(255, 255, 255, .84); -webkit-backdrop-filter: blur(20px) saturate(150%); backdrop-filter: blur(20px) saturate(150%);
+  box-shadow: 0 14px 34px -18px rgba(11, 27, 60, .4);
 }
 .vt-hero--video .vt-hero__sol .vt-h1 { text-shadow: 0 0 1px rgba(255, 255, 255, .7), 0 0 2px rgba(255, 255, 255, .35); }
 .vt-hero--video .vt-hero__sol .vt-bag--metin { color: #0B1B3C; }
@@ -1709,7 +1712,7 @@
   .vt-hero--video .vt-hero__video { object-position: 50% 22%; }
   .vt-hero--video .vt-hero__sol { max-width: 760px; }
   .vt-hero--video .vt-hero__sol .vt-h1 { font-size: clamp(56px, 3.2vw, 80px); max-width: 760px; }
-  .vt-hero--video .vt-hero__sol .vt-giris { max-width: 720px; margin-top: 22px; font-size: 22px; line-height: 1.45; }
+  .vt-hero--video .vt-hero__sol .vt-giris { max-width: 640px; margin-top: 22px; font-size: 20px; line-height: 1.55; }
   .vt-hero--video .vt-hero__eylem { margin-top: 22px; }
   .vt-hero--video .vt-hero__mikro { font-size: 15px; }
   .vt-alt__tanim { font-size: 32px; }
@@ -1742,7 +1745,7 @@
   .vt-hero--video .vt-hero__ic { min-height: 100dvh; justify-content: flex-start; padding-block: 110px 40px; }
   /* mobilde uzun metin panellere taşar: yalnız üstte hafif AÇIK örtü (koyu yazı okunsun), altta video olduğu gibi */
   .vt-hero--video .vt-hero__sahne::after { content: ""; background: linear-gradient(180deg, rgba(255, 255, 255, .62) 0%, rgba(255, 255, 255, .52) 45%, rgba(255, 255, 255, .25) 68%, rgba(255, 255, 255, 0) 85%); }
-  .vt-hero--video .vt-hero__sol .vt-giris { margin-top: 22px; margin-left: 0; padding: 14px 16px; font-size: 16px; line-height: 1.45; color: #0B1B3C; }
+  .vt-hero--video .vt-hero__sol .vt-giris { margin-top: 22px; margin-left: 0; padding: 16px 18px; font-size: 16px; line-height: 1.5; color: #0B1B3C; }
   .vt-hero--video .vt-hero__eylem { margin-top: 22px; gap: 10px; }
   .vt-hero--video .vt-hero__eylem .vt-dugme--buyuk { padding: 13px 26px; font-size: 15px; }
   .vt-karne-pencere .vt-pencere { padding: 8px 0 4px; border-radius: 22px; }
@@ -1776,7 +1779,7 @@
   .vt-hero--video .vt-hero__ic { padding-block: 104px 36px; justify-content: flex-start; }
   .vt-hero--video .vt-hero__sol { max-width: none; }
   .vt-hero--video .vt-hero__sol .vt-h1 { font-size: clamp(38px, 10.4vw, 48px); line-height: 1.02; letter-spacing: -.035em; font-weight: 600; text-shadow: none; text-wrap: balance; }
-  .vt-hero--video .vt-hero__sol .vt-giris { margin: 18px 0 0; padding: 14px 16px; font-size: 16px; line-height: 1.5; border-radius: 16px; max-width: none; background: rgba(255, 255, 255, .78); }
+  .vt-hero--video .vt-hero__sol .vt-giris { margin: 18px 0 0; padding: 16px 18px; font-size: 16px; line-height: 1.55; border-radius: 14px; max-width: none; background: rgba(255, 255, 255, .84); }
   .vt-hero--video .vt-hero__eylem { margin-top: 18px; gap: 10px; }
   .vt-hero--video .vt-hero__eylem .vt-dugme { width: 100%; justify-content: center; padding: 15px 22px; font-size: 16px; }
   .vt-hero--video .vt-hero__eylem .vt-dugme--dolu::before { opacity: .55; }
