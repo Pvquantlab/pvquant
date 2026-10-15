@@ -1891,7 +1891,25 @@
 .vt .vt-mega { background: var(--vt-ust-murekkep); border-color: rgba(255, 255, 255, .14); box-shadow: 0 1px 0 rgba(255, 255, 255, .08) inset, 0 24px 64px rgba(11, 27, 60, .45), 0 2px 8px rgba(11, 27, 60, .25); }
 .vt .vt-cekmece { background: var(--vt-ust-murekkep); }
 @media (max-width: 767px) {
+  /* 15.10 kullanıcı (iPhone): Menü hapın dışına taşmıştı — üstteki masaüstü dolgu/boşluk kuralları
+     (20 px dolgu, 18 px boşluk) mobilin dar kurallarını özgüllükle ezmişti. Dar ölçüler burada yeniden. */
   .vt { --vt-ust-y: 88px; }   /* 12 üst + 64 hap + 12 */
-  .vt .vt-ust__ic { padding: 8px 8px 8px 18px; }
-  .vt .vt-ust__eylem .vt-menu-dugme { min-height: 44px; }   /* dokunmatik hedef 44 px korunur */
+  .vt .vt-ust__ic { padding: 8px 8px 8px 16px; gap: 8px; }
+  .vt .vt-ust__eylem { gap: 6px; }
+  .vt .vt-ust__eylem .vt-dugme { padding: 0 12px; font-size: 15px; }
+  .vt .vt-ust__eylem .vt-menu-dugme { min-height: 44px; padding: 0 12px; }   /* dokunmatik hedef 44 px korunur */
+}
+@media (max-width: 400px) {
+  .vt .vt-ust__ic { padding-left: 14px; gap: 6px; }
+  .vt .vt-ust .vt-logo { gap: 6px; font-size: 17px; }
+  .vt .vt-ust__eylem { gap: 4px; }
+  .vt .vt-ust__eylem .vt-dugme { padding: 0 11px; font-size: 14px; }
+  .vt .vt-ust__eylem .vt-menu-dugme { padding: 0 10px; }
+}
+@media (max-width: 340px) {
+  .vt .vt-ust__ic { padding-left: 9px; padding-right: 6px; gap: 3px; }
+  .vt .vt-ust .vt-logo { font-size: 16px; gap: 4px; }
+  .vt .vt-ust__eylem { gap: 3px; }
+  .vt .vt-ust__eylem .vt-dugme { padding: 0 8px; }
+  .vt .vt-ust__eylem .vt-menu-dugme { padding: 0 6px; }
 }
