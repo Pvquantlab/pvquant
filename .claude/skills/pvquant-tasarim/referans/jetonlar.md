@@ -53,3 +53,4 @@ Kaynak dosyalar (gerçek değerler HER ZAMAN oradan okunur, burası harita):
 Bileşen kodunda ham hex/px (jeton karşılığı varken) inceleme kapısına takılır;
 `betikler/tarama.mjs` computed-style taramasında set-dışı değerleri raporlar.
 - **Üst çubuk «Buz cam» (15.10.2026, kullanıcı B seçti; C «derin gök» iki sekmede denendi, «daha az göz yoruyor» ile B):** `--vt-ust-buz: rgba(255,255,255,.80)` + blur(24px) saturate(160%), `--vt-ust-murekkep: #0B1B3C` (yazı/CTA/açılır panel/çekmece), hap 64 px, `--vt-ust-y` 96/88. Siyah hap (#0F131B) kalktı; amber/eylem rengine dokunmaz.
+- **Amblem «dolu disk» (15.10.2026, kullanıcı M2 + S4 seçti):** disk radyal altın #FFD866→#F5A300 (`gradientUnits=userSpaceOnUse`, cx 14 cy 13 r 9 @32), 8 ışın 2,7 px currentColor (vitrin) / `--marka` (panel); `.vt-logo__isaret` 30 px; favicon mürekkep kare + aynı işaret. Altın ≠ grafik amberleri (anti-slop istisnası).
