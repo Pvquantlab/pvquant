@@ -1865,3 +1865,33 @@
    buz bölüm (dört adım) → beyaz bölüm/buz kart → koyu açık karne. */
 .vt #isler .vt-is { background: #EEF3FA; border: 0; box-shadow: none; }
 .vt #isler .vt-is .vt-levha--resim { background: #fff; margin: 12px 12px 0; border-radius: 14px; }
+
+/* ── 15.10 üst çubuk «Buz cam», 64 px (üç seçenekten B; kullanıcı iki sekmede C ile karşılaştırıp
+   «daha az göz yoruyor» dedi) ───────────────────────────────────────────────────────────────
+   Sayfa taraması: hero düğmesi 56 px, başlık 92 px @1440 → hap 57→64 px düğmeyle akraba, başlığı
+   ezmiyor. Renk: siyah (#0F131B) yerine hero paragrafındaki ince cam kartla aynı dil — beyaz-buz cam,
+   mürekkep yazı, lacivert CTA. Beyaz bölüm üstünde ince beyaz kenar + yumuşak lacivert gölge ayrımı
+   verir. Açılır panel ve mobil çekmece CTA laciverti: hap açık, panel siyah kalmasın. */
+.vt { --vt-ust-buz: rgba(255, 255, 255, .80); --vt-ust-murekkep: #0B1B3C; --vt-ust-y: 96px; }   /* 16 üst + 64 hap + 16 */
+.vt .vt-ust__ic {
+  min-height: 64px; padding: 9px 14px 9px 24px; gap: 18px;   /* 9 + 44 (düğme) + 9 + 2 kenar = 64 */
+  background: var(--vt-ust-buz); -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%);
+  border-color: rgba(255, 255, 255, .95);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .9) inset, 0 10px 30px rgba(11, 27, 60, .12), 0 2px 6px rgba(11, 27, 60, .06);
+}
+.vt .vt-ust .vt-logo { color: var(--vt-ust-murekkep); }
+.vt .vt-nav__bag, .vt .vt-nav__acilir { min-height: 40px; padding: 9px 16px; color: rgba(11, 27, 60, .82); }
+.vt .vt-nav__bag:hover, .vt .vt-nav__acilir:hover, .vt .vt-nav__acilir[aria-expanded="true"] { color: var(--vt-ust-murekkep); background: rgba(11, 27, 60, .06); }
+.vt .vt-ust__eylem .vt-dugme { padding: 9px 20px; }
+.vt .vt-ust__eylem .vt-dugme--dolu { background: var(--vt-ust-murekkep); color: #FFFFFF; box-shadow: none; }
+.vt .vt-ust__eylem .vt-dugme--dolu:hover { background: #12305F; }
+.vt .vt-ust__eylem .vt-dugme--cizgi { color: var(--vt-ust-murekkep); }
+.vt .vt-ust__eylem .vt-dugme--cizgi:hover { background: rgba(11, 27, 60, .06); color: var(--vt-ust-murekkep); }
+.vt .vt-ust__eylem .vt-menu-dugme { min-height: 42px; background: rgba(11, 27, 60, .05); border-color: rgba(11, 27, 60, .14); color: var(--vt-ust-murekkep); }
+.vt .vt-mega { background: var(--vt-ust-murekkep); border-color: rgba(255, 255, 255, .14); box-shadow: 0 1px 0 rgba(255, 255, 255, .08) inset, 0 24px 64px rgba(11, 27, 60, .45), 0 2px 8px rgba(11, 27, 60, .25); }
+.vt .vt-cekmece { background: var(--vt-ust-murekkep); }
+@media (max-width: 767px) {
+  .vt { --vt-ust-y: 88px; }   /* 12 üst + 64 hap + 12 */
+  .vt .vt-ust__ic { padding: 8px 8px 8px 18px; }
+  .vt .vt-ust__eylem .vt-menu-dugme { min-height: 44px; }   /* dokunmatik hedef 44 px korunur */
+}
