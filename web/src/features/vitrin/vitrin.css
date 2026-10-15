@@ -1913,3 +1913,39 @@
   .vt .vt-ust__eylem .vt-dugme { padding: 0 8px; }
   .vt .vt-ust__eylem .vt-menu-dugme { padding: 0 6px; }
 }
+
+/* ── 16.10 Mega menü düzeni ve hiyerarşisi (kullanıcı brifi: «kolay taranan, hizalı, anlamı açık menü») ──
+   Satır hizası: her grup ortak 4 satırlı ızgaraya subgrid ile bağlanır (başlık + en çok 3 öğe); «Veri»
+   sütunundaki uzun açıklama artık komşu sütunları itmez, aynı sıradaki öğeler aynı çizgiden başlar.
+   Satır aralığı 0 + öğe iç dolgusu: 3. öğesi olmayan sütunda boş satır yüksekliksiz kalır (doğal boşluk).
+   Hiyerarşi (#0B1B3C zeminde): kategori 12 px .66 (8:1) < açıklama 14 px .80 (11:1) < ad 16 px #fff (17:1);
+   «Panelde» 12 px .58 (6:1) açıklamanın altında ikincil. İkon üstten ada hizalı, ikon–metin aralığı 14 px. */
+.vt .vt-mega__govde { row-gap: 0; }
+.vt .vt-mega__govde--genis { column-gap: 24px; }
+.vt .vt-mega__grup { display: grid; grid-row: span 4; grid-template-rows: subgrid; align-items: start; gap: 0; }
+.vt .vt-mega__grup-ad { margin-bottom: 8px; padding: 0 10px 10px; font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: .14em;
+  color: rgba(255, 255, 255, .66); border-bottom-color: rgba(255, 255, 255, .14); }
+.vt .vt-mega__grup-ad i { background: rgba(255, 255, 255, .66); }
+.vt .vt-mega__oge { align-items: flex-start; gap: 14px; padding: 12px 10px; border-radius: 12px; }
+.vt .vt-mega__metin { gap: 4px; padding-top: 1px; min-width: 0; }
+.vt .vt-mega__metin b { font-size: 16px; line-height: 22px; font-weight: 600; color: #FFFFFF; }
+.vt .vt-mega__metin > span:not(.vt-kunye) { font-size: 14px; line-height: 20px; color: rgba(255, 255, 255, .80); max-width: 34ch; }
+.vt .vt-mega__metin .vt-kunye { margin-top: 2px; font: 500 12px/16px var(--vt-sans); letter-spacing: .02em; color: rgba(255, 255, 255, .58); }
+.vt .vt-mega .vt-rz { background: rgba(255, 255, 255, .08); color: #FFFFFF; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .20); }
+/* tıklanabilir öğe (bağlantı) — hafif, tutarlı tepki; tanım öğeleri (Panelde) tepki vermez */
+.vt .vt-mega__oge[href] { transition: background-color var(--vt-sure-hizli, 120ms) ease; }
+.vt .vt-mega__oge[href]:hover { background: rgba(255, 255, 255, .08); }
+.vt .vt-mega__oge[href]:hover .vt-rz { transform: none; background: rgba(255, 255, 255, .14); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .32); }
+.vt .vt-mega__oge[href]:hover b { text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+.vt .vt-mega a:focus-visible { outline: 2px solid var(--vt-gece-eylem); outline-offset: 2px; border-radius: 12px; }
+/* alt bağlantı: öğe ikonlarıyla aynı sol çizgide, ad hiyerarşisinde */
+.vt .vt-mega__alt { margin-top: 12px; padding: 14px 10px 4px; border-top-color: rgba(255, 255, 255, .14); }
+.vt .vt-mega__alt .vt-bag { min-height: 40px; font-size: 15px; font-weight: 600; color: #FFFFFF; }
+.vt .vt-mega__alt .vt-bag:hover { text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+
+/* ── 16.10 Rozet ikon ailesi: ikon kutuya göre TAM piksel boyda (eskiden kutunun %60'ı → 26,4 px,
+   küsurat kenarları bulanıklaştırıyordu); tek çizgi kalınlığı 2 birim. Kutular (boy, köşe, zemin) aynı. */
+.vt .vt-rz svg { width: var(--rz-ikon, 24px); height: var(--rz-ikon, 24px); stroke-width: 2; }
+.vt .vt-panelde .vt-rz { --rz-ikon: 18px; }
+.vt .vt-sayi .vt-rz { --rz-ikon: 20px; }
+.vt .vt-alt__baslik .vt-rz { --rz-ikon: 16px; }

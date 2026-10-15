@@ -16,7 +16,7 @@ const PANELLER: readonly Panel[] = [
       { ad: "Tahmin", rozet: "tahmin", ogeler: [
         { ad: "Saatlik tahmin ve aralık", aciklama: "Her saat için tahmin ve iyimser–kötümser aralığı, 15 gün ileriye", ikon: "band" },
         { ad: "Santralım", aciklama: "Dün, bugün, yarın: anlık güç ve günün eğrisi tek ekranda", ikon: "santral" },
-        { ad: "Aylık beklenti", aciklama: "İklim geçmişinden aylık üretim zarfı ve yıllık P50–P99", ikon: "aylik" },
+        { ad: "Aylık beklenti", aciklama: "İklim geçmişinden aylık üretim zarfı ve yıllık P50\u2060–\u2060P99", ikon: "aylik" },
       ] },
       { ad: "Kanıt", rozet: "kanit", ogeler: [
         { ad: "Doğruluk karnesi", aciklama: "Tahmin her gece gerçekleşenle karşılaştırılır; sonuç değiştirilmez", ikon: "karne" },

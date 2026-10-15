@@ -1,5 +1,11 @@
 /** Rozet sistemi (P3, cila-a): ürün kimliği renk rozetleri — zemin gradyanı grup değişkenlerinden
- *  (.vt-g-*), ikon çizgisi currentColor, vurgu dolgusu <symbol> İÇİNDE satır içi stil + --g-vurgu
+ *  (.vt-g-*), ikon çizgisi currentColor. 16.10.2026 ikon ailesi yeniden çizildi: 24 birim tuval, 2 birim
+ *  çizgi (CSS), yuvarlak uç/köşe, Lucide'in anahtar çizgileri (kare 18, daire 20, dosya 16×20); çizgiler
+ *  tam birime oturur → 24 px'te keskin. Dolgu bilinçli ve az: aralık bandı (eğrinin kendisinden 7 birim kalın, TAM OPAK kurdele; ana eğri kurdeleye
+ *  maskeyle oyulmuş 2 birimlik yiv — 16.10 kullanıcı: «netlik ve kontrast daha da artsın»; yarı saydam
+ *  bant + ayrı çizgi küçükte gölge/üç çizgi gibi okunuyordu), panel üstündeki güneş ve
+ *  sürgü düğmeleri (tam). Eski --g-vurgu çift-ton dolgusu kalktı — koyu menüde çizgiyle
+ *  aynı beyaza düşüp ikonları lekeye çeviriyordu. Yumuşak dolgu <symbol> İÇİNDE satır içi stil
  *  (BENIOKU §6.3: <use> gölge ağacında sayfa CSS seçicisi motorlar arası tutarsız; bu dosya yapi.test
  *  satır içi stil kuralından bu gerekçeyle muaftır). Renk tek başına anlam taşımaz: grup adı metinde. */
 
@@ -8,17 +14,18 @@ export function RozetTanimlari() {
   return (
     <svg width="0" height="0" aria-hidden="true" focusable="false" className="vt-rz-tanimlar">
       <defs>
-      <symbol id="gl-band" viewBox="0 0 24 24"><g><path style={{fill: 'none', stroke: 'var(--g-vurgu)', strokeLinecap: 'butt'}} d="M3 15C6 15 6.4 9.5 9.5 9.5S12.5 13 15.5 13 18 10.8 21 10.8" strokeWidth="8" opacity=".9"/></g><g><path d="M3 11C6 11 6.4 5.5 9.5 5.5S12.5 9 15.5 9 18 6.5 21 6.5" opacity=".6"/><path d="M3 19C6 19 6.4 13.5 9.5 13.5S12.5 17.5 15.5 17.5 18 15 21 15" opacity=".6"/><path d="M3 15C6 15 6.4 9.5 9.5 9.5S12.5 13 15.5 13 18 10.8 21 10.8"/><path d="M3 21.5h18"/></g></symbol>
-      <symbol id="gl-santral" viewBox="0 0 24 24"><g><path style={{fill: 'var(--g-vurgu)', stroke: 'none'}} d="M6.5 19a5.5 5.5 0 0 1 11 0z"/></g><g><path d="M6.5 19a5.5 5.5 0 0 1 11 0"/><path d="M2.5 19h19M12 4.5V7M5.1 8.6l1.7 1.7M18.9 8.6l-1.7 1.7M2.8 13.5h2M19.2 13.5h2"/></g></symbol>
-      <symbol id="gl-aylik" viewBox="0 0 24 24"><g><path style={{fill: 'var(--g-vurgu)', stroke: 'none'}} d="M3 8a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v2H3z"/></g><g><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M6.5 17.2c1.3-3 2.7-3.4 4-1.6s2.8 1.4 4-1.2c.5-1 1.4-1.4 2.5-.9"/></g></symbol>
-      <symbol id="gl-karne" viewBox="0 0 24 24"><g><rect style={{fill: 'var(--g-vurgu)', stroke: 'none'}} x="3.5" y="15.5" width="5" height="5" rx="1.2"/><rect style={{fill: 'var(--g-vurgu)', stroke: 'none'}} x="9.5" y="15.5" width="5" height="5" rx="1.2"/><rect style={{fill: 'var(--g-vurgu)', stroke: 'none'}} x="9.5" y="9.5" width="5" height="5" rx="1.2"/><rect style={{fill: 'var(--g-vurgu)', stroke: 'none'}} x="15.5" y="15.5" width="5" height="5" rx="1.2"/><rect style={{fill: 'var(--g-vurgu)', stroke: 'none'}} x="15.5" y="9.5" width="5" height="5" rx="1.2"/><rect style={{fill: 'var(--g-vurgu)', stroke: 'none'}} x="15.5" y="3.5" width="5" height="5" rx="1.2"/></g><g><rect x="3.5" y="3.5" width="5" height="5" rx="1.2"/><rect x="9.5" y="3.5" width="5" height="5" rx="1.2"/><rect x="15.5" y="3.5" width="5" height="5" rx="1.2"/><rect x="3.5" y="9.5" width="5" height="5" rx="1.2"/><rect x="9.5" y="9.5" width="5" height="5" rx="1.2"/><rect x="15.5" y="9.5" width="5" height="5" rx="1.2"/><rect x="3.5" y="15.5" width="5" height="5" rx="1.2"/><rect x="9.5" y="15.5" width="5" height="5" rx="1.2"/><rect x="15.5" y="15.5" width="5" height="5" rx="1.2"/></g></symbol>
-      <symbol id="gl-kalibrasyon" viewBox="0 0 24 24"><g><circle style={{fill: 'var(--g-vurgu)', stroke: 'none'}} cx="12" cy="6.5" r="2.4"/><circle style={{fill: 'var(--g-vurgu)', stroke: 'none'}} cx="7.5" cy="12" r="2.4"/><circle style={{fill: 'var(--g-vurgu)', stroke: 'none'}} cx="15.5" cy="17.5" r="2.4"/></g><g><path d="M3.5 6.5h6.1M14.4 6.5h6.1M3.5 12h2M9.9 12h10.6M3.5 17.5h9.6M17.9 17.5h2.6"/><circle cx="12" cy="6.5" r="2.4"/><circle cx="7.5" cy="12" r="2.4"/><circle cx="15.5" cy="17.5" r="2.4"/></g></symbol>
-      <symbol id="gl-portfoy" viewBox="0 0 24 24"><g><path style={{fill: 'var(--g-vurgu)', stroke: 'none'}} d="M3 7a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v2.4H3z"/></g><g><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9.4h18M3 14.7h18M9 4v16"/></g></symbol>
-      <symbol id="gl-alarm" viewBox="0 0 24 24"><g><path style={{fill: 'var(--g-vurgu)', stroke: 'none'}} d="M12 3.5a5.5 5.5 0 0 0-5.5 5.5v3.4L5 15.4V17h14v-1.6l-1.5-3V9A5.5 5.5 0 0 0 12 3.5z"/></g><g><path d="M12 3.5a5.5 5.5 0 0 0-5.5 5.5v3.4L5 15.4V17h14v-1.6l-1.5-3V9A5.5 5.5 0 0 0 12 3.5z"/><path d="M9.8 20.2h4.4"/></g></symbol>
-      <symbol id="gl-rapor" viewBox="0 0 24 24"><g><path style={{fill: 'var(--g-vurgu)', stroke: 'none'}} d="M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/></g><g><path d="M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M14 3v5h5M9 17v-3M12 17v-5.5M15 17v-2"/></g></symbol>
-      <symbol id="gl-baglanti" viewBox="0 0 24 24"><g><path style={{fill: 'var(--g-vurgu)', stroke: 'none'}} d="M6.5 7h11v3.5a5.5 5.5 0 0 1-11 0z"/></g><g><path d="M6.5 7h11v3.5a5.5 5.5 0 0 1-11 0z"/><path d="M9 3v4M15 3v4M12 16v5"/></g></symbol>
-      <symbol id="gl-yukleme" viewBox="0 0 24 24"><g><path style={{fill: 'var(--g-vurgu)', stroke: 'none'}} d="M4 15h16v3.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5z"/></g><g><path d="M12 15.5V4.5M7.5 9 12 4.5 16.5 9M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15"/></g></symbol>
-      <symbol id="gl-gunes" viewBox="0 0 24 24"><g><circle style={{fill: 'var(--g-vurgu)', stroke: 'none'}} cx="12" cy="12" r="4.3"/></g><g><circle cx="12" cy="12" r="4.3"/><path d="M19.00,12.00L21.60,12.00M16.95,16.95L18.79,18.79M12.00,19.00L12.00,21.60M7.05,16.95L5.21,18.79M5.00,12.00L2.40,12.00M7.05,7.05L5.21,5.21M12.00,5.00L12.00,2.40M16.95,7.05L18.79,5.21"/></g></symbol>
+      <mask id="gl-band-bosluk" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24"><rect width="24" height="24" fill="#fff"/><path d="M8.5 15C11 15 11.5 10.5 14 10.5S17 9.5 19 7" fill="none" stroke="#000" strokeWidth="2" strokeLinecap="round"/></mask>
+      <symbol id="gl-band" viewBox="0 0 24 24"><path d="M3 3V18A3 3 0 0 0 6 21H21"/><path mask="url(#gl-band-bosluk)" style={{strokeWidth: 7}} d="M8.5 15C11 15 11.5 10.5 14 10.5S17 9.5 19 7"/></symbol>
+      <symbol id="gl-santral" viewBox="0 0 24 24"><circle style={{fill: 'currentColor'}} cx="7" cy="5" r="2"/><path d="M6 10H21L18 20H3Z"/><path d="M4.5 15H19.5M13.5 10L10.5 20"/></symbol>
+      <symbol id="gl-aylik" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2.5"/><path d="M8 2V6M16 2V6M3 10H21"/><path d="M7 18C9 18 10 13.5 12 13.5S15 18 17 18"/></symbol>
+      <symbol id="gl-karne" viewBox="0 0 24 24"><path d="M16 4H18A2 2 0 0 1 20 6V20A2 2 0 0 1 18 22H6A2 2 0 0 1 4 20V6A2 2 0 0 1 6 4H8"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M8.5 14L11 16.5L15.5 12"/></symbol>
+      <symbol id="gl-kalibrasyon" viewBox="0 0 24 24"><path d="M3 6H12M18 6H21M3 12H5M11 12H21M3 18H10M16 18H21"/><circle style={{fill: 'currentColor'}} cx="15" cy="6" r="2"/><circle style={{fill: 'currentColor'}} cx="8" cy="12" r="2"/><circle style={{fill: 'currentColor'}} cx="13" cy="18" r="2"/></symbol>
+      <symbol id="gl-portfoy" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2.5"/><path d="M3 9H21M3 15H21M9 9V21"/></symbol>
+      <symbol id="gl-alarm" viewBox="0 0 24 24"><path d="M6 9A6 6 0 0 1 18 9C18 14.5 20 17 20 17H4S6 14.5 6 9"/><path d="M10 21H14"/></symbol>
+      <symbol id="gl-rapor" viewBox="0 0 24 24"><path d="M14 2H6A2 2 0 0 0 4 4V20A2 2 0 0 0 6 22H18A2 2 0 0 0 20 20V8Z"/><path d="M14 2V8H20"/><path d="M8 18V16M12 18V12M16 18V14"/></symbol>
+      <symbol id="gl-baglanti" viewBox="0 0 24 24"><g transform="rotate(-45 12 12)"><path d="M9 8H7.5A4 4 0 0 0 7.5 16H9"/><path d="M15 8H16.5A4 4 0 0 1 16.5 16H15"/><path d="M8.5 12H15.5"/></g></symbol>
+      <symbol id="gl-yukleme" viewBox="0 0 24 24"><path d="M12 14V3M7 8L12 3L17 8"/><path d="M3 15V19A2 2 0 0 0 5 21H19A2 2 0 0 0 21 19V15"/></symbol>
+      <symbol id="gl-gunes" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M19.00 12.00L21.50 12.00M16.95 16.95L18.72 18.72M12.00 19.00L12.00 21.50M7.05 16.95L5.28 18.72M5.00 12.00L2.50 12.00M7.05 7.05L5.28 5.28M12.00 5.00L12.00 2.50M16.95 7.05L18.72 5.28"/></symbol>
       </defs>
     </svg>
   );
