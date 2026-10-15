@@ -25,27 +25,27 @@ export function useCanlandir(tetik?: unknown) {
       else { e.classList.remove("is-bekliyor"); e.classList.add("is-acildi"); continue; }
       io.observe(e);
     }
-    // 15.10 hız turu 2: tembel levhalar görünür alana bir buçuk ekran kala istenir — ama ancak
-    // sayfa ve fontlar indikten sonra. Ölçüm (mobil 3G): erken istek fontlarla aynı anda başlayınca
-    // 1 MB levha 177 KB fontu 2,4 sn geciktiriyordu. Yavaş bağlantı/veri tasarrufunda tarayıcının
-    // kendi tembel eşiği yeter; erken tetik kurulmaz.
-    let erken: IntersectionObserver | null = null;
+    // 15.10 hız turu 2: tembel levhalar sayfa ve fontlar indikten sonra DOM sırasıyla, ikişer ikişer
+    // önden indirilir — kaydırınca önbellekten anında açılırlar (kullanıcı: «kartlar hemen açılsın»).
+    // Yavaş bağlantı/veri tasarrufunda tarayıcının kendi tembel eşiği yeter; önden indirme yapılmaz.
     const baglanti = (navigator as Navigator & { connection?: { effectiveType?: string; saveData?: boolean } }).connection;
     const yavas = !!baglanti && (baglanti.saveData === true || /(^|-)2g$|^3g$/.test(baglanti.effectiveType ?? ""));
     let iptal = false;
     const kur = () => {
       if (iptal || yavas) return;
-      erken = new IntersectionObserver((girdiler) => {
-        for (const g of girdiler) {
-          if (!g.isIntersecting) continue;
-          (g.target as HTMLImageElement).loading = "eager";
-          erken?.unobserve(g.target);
-        }
-      }, { rootMargin: "150% 0px" });
-      for (const img of document.querySelectorAll<HTMLImageElement>('img[loading="lazy"]')) erken.observe(img);
+      const sira = [...document.querySelectorAll<HTMLImageElement>('img[loading="lazy"]')];
+      const yukle = (i: number) => {
+        if (iptal || i >= sira.length) return;
+        const img = sira[i];
+        const sonraki = () => yukle(i + 2);
+        img.loading = "eager";
+        if (img.complete) sonraki();
+        else { img.addEventListener("load", sonraki, { once: true }); img.addEventListener("error", sonraki, { once: true }); }
+      };
+      yukle(0); yukle(1); // iki paralel kuyruk: 0,2,4… ve 1,3,5…
     };
     const hazir = () => { document.fonts.ready.then(kur); };
     if (document.readyState === "complete") hazir(); else window.addEventListener("load", hazir, { once: true });
-    return () => { iptal = true; window.removeEventListener("load", hazir); io.disconnect(); erken?.disconnect(); };
+    return () => { iptal = true; window.removeEventListener("load", hazir); io.disconnect(); };
   }, [tetik]);
 }

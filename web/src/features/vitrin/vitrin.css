@@ -1030,7 +1030,9 @@
   .vt-kesit { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .vt-kesit__hucre, .vt-kesit__hucre--genis { grid-column: span 1; }
   .vt-kesit__hucre--genis { display: flex; }
-  .vt-kesit__hucre--genis .vt-kesit__cizim { margin: 18px 0 16px; }
+  /* 15.10: geniş hücre dar ekranda sütun flex'e döner; masaüstünden kalan align-self:center
+     mutlak konumlu resmin kutusunu 0 px genişliğe düşürüyordu (iPhone'da iki levha boş). */
+  .vt-kesit__hucre--genis .vt-kesit__cizim { margin: 18px 0 16px; align-self: stretch; }
   .vt-kesit > :last-child { grid-column: 1 / -1; }
 }
 @media (max-width: 600px) {
