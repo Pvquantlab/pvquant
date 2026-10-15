@@ -76,15 +76,15 @@ export function Giris({ onGiris }: { onGiris: () => void }) {
           {/* v2.290: imza motifi — grafik anayasası (mavi bant = tahmin, amber = gerçekleşen)
               giriş ekranından itibaren tek çizimdir */}
           <div className="giris-egri"><BandImza yukseklik={90} /></div>
-          <div className="giris-etiket">Mavi bant: P10–P90 tahmin aralığı · amber: gerçekleşen</div>
+          <div className="giris-etiket">Mavi bant: P10–P90 tahmin aralığı{"\u00a0"}· amber: gerçekleşen</div>
         </div>
       </div>
 
       <div className="giris-form-alan">
         <div className="giris-form">
-          <h2 style={{ fontSize: 20, marginBottom: 6 }}>
+          <h2 className="giris-h2">
             {unuttum ? "Parola sıfırlama" : "Oturum açın"}</h2>
-          <p style={{ fontSize: 13, color: "var(--ikincil)", margin: "0 0 26px" }}>
+          <p className="giris-aciklama">
             {unuttum
               ? "E-postanızı yazın; kayıtlıysa sıfırlama bağlantısı gönderilir."
               : "Hesabınızla devam edin."}
@@ -103,45 +103,39 @@ export function Giris({ onGiris }: { onGiris: () => void }) {
             <input className="giris-girdi" inputMode="numeric" autoComplete="one-time-code"
                    value={kod} autoFocus
                    onChange={(e) => setKod(e.target.value)} placeholder="6 haneli kod" />
-            <p style={{ fontSize: 12, color: "var(--soluk)", margin: "6px 0 0", lineHeight: 1.6 }}>
+            <p className="giris-yardim">
               Authenticator uygulamanızdaki 6 haneli kodu girin. Telefonunuz
               yoksa bir kurtarma kodu da kullanabilirsiniz.
             </p>
           </>)}
-          {hata && <p role="alert" style={{ fontSize: 13, color: "var(--negatif)",
-                     margin: "12px 0 0" }}>{hata}</p>}
+          {hata && <p role="alert" className="giris-hata">{hata}</p>}
           {unuttum && istekGitti && (
             postaAcik ? (
-              <p style={{ fontSize: 13, color: "var(--ikincil)", margin: "12px 0 0",
-                lineHeight: 1.6 }}>
+              <p className="giris-bilgi">
                 Bu adrese kayıtlı bir hesap varsa sıfırlama bağlantısı gönderildi;
                 gelen kutunuzu kontrol edin. Bağlantı 30 dakika geçerlidir.
               </p>
             ) : (
               /* v2.339: sunucuda e-posta yapılandırılmamış — "gönderildi" DEMEYİZ */
-              <p role="alert" style={{ fontSize: 13, color: "var(--negatif)",
-                margin: "12px 0 0", lineHeight: 1.6 }}>
+              <p role="alert" className="giris-hata">
                 Bu sunucuda e-posta gönderimi yapılandırılmamış, bu yüzden
                 sıfırlama bağlantısı iletilemiyor. Lütfen hesap yöneticinizle
                 iletişime geçin.
               </p>
             )
           )}
-          <button className="dugme dugme-ana" style={{ width: "100%", marginTop: 20, padding: "10px" }}
+          <button className="dugme dugme-ana giris-dugme"
                   onClick={unuttum ? sifirlamaIste : gonder} disabled={bekliyor}>
             {bekliyor ? "Denetleniyor…" : unuttum ? "Bağlantı gönder"
               : ikiAdim ? "Doğrula ve gir" : "Giriş yap"}</button>
-          <button type="button"
+          <button type="button" className="giris-bag"
             onClick={() => {
               setHata(null); setIstekGitti(false); setKod("");
               if (ikiAdim) setIkiAdim(false);          // 2FA'dan parola adımına dön
               else setUnuttum(!unuttum);
-            }}
-            style={{ background: "none", border: "none", cursor: "pointer",
-              fontFamily: "inherit", fontSize: 12.5, color: "var(--ikincil)",
-              padding: 0, marginTop: 14, textDecoration: "underline" }}>
+            }}>
             {unuttum || ikiAdim ? "← Girişe dön" : "Parolamı unuttum"}</button>
-          <p style={{ fontSize: 12, color: "var(--soluk)", marginTop: 22, lineHeight: 1.7 }}>
+          <p className="giris-not">
             Verinizin sahibi sizsiniz. Yalnızca sizin hesabınızda tutulur;
             dilediğiniz an dışa aktarır ya da silersiniz.
           </p>

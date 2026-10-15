@@ -305,7 +305,15 @@ table.veri tbody tr:hover td { background: var(--yuzey); }
 .nokta { width: 9px; height: 9px; border-radius: 2px; }
 
 /* ---------- giris ekrani ---------- */
+/* 15.10.2026 okunurluk turu (kullanıcı: «tüm yazılar büyüsün, netlik/kontrast korunsun, taşma olmasın»):
+   başlık 56→64, paragraf 15,5→18, mono etiketler 10,5→12,5, form metni 13–14→16 px (16 px girdi iOS'ta
+   odakta yakınlaştırmayı da önler). Satır içi boyutlar sınıflara taşındı — ekran boyutuna göre ölçek
+   yalnız CSS'te yapılabilir. Soluk mono tonlar bir kademe açıldı (kontrast ≥ 7:1). */
 .giris { display: grid; grid-template-columns: 1.15fr 1fr; min-height: 100vh; }
+.giris--tek { grid-template-columns: 1fr; }
+/* form kenarı: genel --kenar beyazda 1,4:1 (alan sınırı seçilmiyordu) → WCAG 1.4.11 için ≥ 3:1 */
+.giris, .giris--tek { --giris-kenar: #7D8CA1; }
+[data-tema="koyu"] .giris { --giris-kenar: rgba(255,255,255,.42); }
 @media (max-width: 900px) { .giris { grid-template-columns: 1fr; }
                             .giris-marka { min-height: 380px;   /* v2.341: bu yüz HER temada koyudur — güneş işareti tema ne olursa
      olsun filiz tonda kalsın (koyu yeşil burada 3,0 sınırında sönük) */
@@ -313,6 +321,7 @@ table.veri tbody tr:hover td { background: var(--yuzey); }
 } }
 
 .giris-marka { position: relative; overflow: hidden; display: flex; align-items: center;
+  container: giris-marka / inline-size;   /* zincir 4'lü sığmazsa 2×2'ye geçer (aşağıda) */
   background:
     radial-gradient(900px 520px at 8% 8%, rgba(63,180,137,.30), transparent 62%),
     radial-gradient(760px 620px at 88% 92%, rgba(37,99,235,.24), transparent 60%),
@@ -322,37 +331,74 @@ table.veri tbody tr:hover td { background: var(--yuzey); }
                     linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
   background-size: 56px 56px;
   mask-image: radial-gradient(760px 560px at 30% 40%, #000, transparent 78%); }
-.giris-marka-ic { position: relative; padding: 64px 60px; max-width: 620px; }
-.giris-logo { display: flex; align-items: center; gap: 11px; color: #fff;
-  font-size: 19px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 44px; }
-.giris-baslik { font-size: 56px; line-height: 1.04; letter-spacing: -0.04em; color: #fff;
-  font-weight: 700; margin-bottom: 20px; }
+.giris-marka-ic { position: relative; width: 100%; padding: 64px 60px; max-width: 680px; }
+.giris-logo { display: flex; align-items: center; gap: 12px; color: #fff;
+  font-size: 22px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 48px; }
+.giris-baslik { font-size: 64px; line-height: 1.04; letter-spacing: -0.04em; color: #fff;
+  font-weight: 700; margin-bottom: 24px; }
 .giris-vurgu { background: linear-gradient(96deg, #3FB489 0%, #5FD3A8 44%, #7CC5F0 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent; }
-.giris-alt { font-size: 15.5px; line-height: 1.65; color: #A9BBCB; max-width: 460px; margin: 0 0 40px; }
+.giris-alt { font-size: 18px; line-height: 1.6; color: #B4C4D3; max-width: 500px; margin: 0 0 44px; }
 
-.giris-zincir { display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap; margin-bottom: 46px; }
-.giris-halka { position: relative; padding: 9px 13px; border-radius: 5px;
-  background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.09); }
-.giris-halka-k { font-family: var(--mono); font-size: 13px; color: #E6EEF5; font-weight: 500; }
-.giris-halka-a { font-size: 10.5px; color: #8FA3B5; margin-top: 2px; }
-.giris-ok { position: absolute; right: -15px; top: 12px; color: #52697D; font-size: 12px; }
+.giris-zincir { display: grid; grid-template-columns: repeat(4, max-content); gap: 10px 22px; margin-bottom: 48px; }
+.giris-halka { position: relative; padding: 11px 15px; border-radius: 6px;
+  background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.10); }
+.giris-halka-k { font-family: var(--mono); font-size: 15px; color: #E6EEF5; font-weight: 500; }
+.giris-halka-a { font-size: 13px; line-height: 1.35; color: #A6B8C9; margin-top: 3px; }
+.giris-ok { position: absolute; right: -17px; top: 50%; transform: translateY(-50%); color: #6E8597; font-size: 14px; }
+/* sütun 4 kutuya yetmezse 2×2: satır sonundaki ok boşluğa bakmasın */
+@container giris-marka (max-width: 640px) {
+  .giris-zincir { grid-template-columns: repeat(2, max-content); }
+  .giris-halka:nth-child(2) .giris-ok { display: none; }
+}
 
-.giris-egri { width: 100%; max-width: 420px; height: 90px; display: block; }
-.giris-etiket { font-family: var(--mono); font-size: 10.5px; color: #7E93A6;
-  letter-spacing: .06em; text-transform: uppercase; margin-top: 8px; }
+.giris-egri { width: 100%; max-width: 460px; height: 90px; display: block; }
+.giris-etiket { font-family: var(--mono); font-size: 12.5px; line-height: 1.5; color: #98ACBE;
+  letter-spacing: .06em; text-transform: uppercase; margin-top: 10px; max-width: 460px; }
 
 .giris-form-alan { display: flex; align-items: center; justify-content: center;
-  background: var(--kart); padding: 40px; }
-.giris-form { width: 100%; max-width: 340px; }
-.giris-et { display: block; font-family: var(--mono); font-size: 10.5px; color: var(--soluk);
-  letter-spacing: .06em; text-transform: uppercase; margin: 16px 0 6px; }
-.giris-girdi { width: 100%; padding: 9px 11px; font-size: 14px; font-family: var(--font);
-  color: var(--metin); background: var(--kart); border: 1px solid var(--kenar);
+  background: var(--kart); padding: 48px 40px; }
+.giris-form { width: 100%; max-width: 400px; }
+.giris-h2 { font-size: 28px; line-height: 1.2; margin-bottom: 8px; font-weight: 750; letter-spacing: -0.025em; color: var(--metin); }
+.giris-aciklama { font-size: 16px; line-height: 1.55; font-weight: 450; color: var(--metin); margin: 0 0 28px; }
+.giris-et { display: block; font-family: var(--mono); font-size: 12.5px; font-weight: 600; color: var(--ikincil);
+  letter-spacing: .08em; text-transform: uppercase; margin: 20px 0 8px; }
+.giris-girdi { width: 100%; padding: 12px 14px; font-size: 16px; font-weight: 500; font-family: var(--font);
+  color: var(--metin); background: var(--kart); border: 1.5px solid var(--giris-kenar);
   border-radius: var(--r); outline: none; transition: border-color .12s, box-shadow .12s; }
 .giris-girdi:focus { border-color: var(--marka);
-  box-shadow: 0 0 0 3px rgba(var(--marka-r), .14); }
+  box-shadow: 0 0 0 3px rgba(var(--marka-r), .28); }
 .giris-girdi::placeholder { color: var(--soluk); }
+.giris-yardim { font-size: 14px; line-height: 1.6; color: var(--ikincil); margin: 8px 0 0; }
+.giris-hata, .giris-bilgi { font-size: 15px; line-height: 1.6; margin: 14px 0 0; }
+.giris-hata { color: var(--uyari-metin); font-weight: 500; }   /* --negatif hiç tanımlı değildi: hata düz metin renginde görünüyordu */
+.giris-bilgi { color: var(--metin); }
+.dugme.giris-dugme { display: block; width: 100%; min-height: 48px; margin-top: 24px; padding: 13px 16px;
+  font-size: 16px; font-weight: 600; text-align: center; text-decoration: none; }
+/* açık yüzde düğme bir ton koyu: beyaz yazı 5,2 → 8,0:1 (koyu yüzün kendi kuralı aynen kalır) */
+:root:not([data-tema="koyu"]) .dugme-ana.giris-dugme { background: var(--marka-koyu); border-color: var(--marka-koyu); }
+:root:not([data-tema="koyu"]) .dugme-ana.giris-dugme:hover { background: #084A36; border-color: #084A36; }
+.giris-bag { display: inline-block; background: none; border: none; cursor: pointer; font-family: inherit;
+  font-size: 15px; font-weight: 500; color: var(--metin); padding: 8px 0; margin-top: 8px; text-decoration: underline;
+  text-decoration-thickness: 1.5px; text-underline-offset: 4px; }
+.giris-bag:hover { color: var(--metin); }
+.giris-not { font-size: 14px; line-height: 1.65; color: var(--ikincil); margin-top: 20px; }
+
+@media (max-width: 900px) {
+  .giris-marka-ic { padding: 52px 24px 48px; }
+  .giris-logo { margin-bottom: 36px; }
+  /* başlık sütuna göre: 320'de 46, 390'da 56, 440+ 64 px — «Santralinizin» her genişlikte sığar */
+  .giris-baslik { font-size: clamp(40px, 14.5vw, 64px); }
+  .giris-alt { font-size: 17px; margin-bottom: 36px; }
+  .giris-zincir { margin-bottom: 40px; }
+  .giris-form-alan { padding: 44px 24px 56px; }
+}
+@media (max-width: 360px) {
+  .giris-marka-ic { padding-inline: 20px; }
+  .giris-form-alan { padding-inline: 20px; }
+  .giris-zincir { column-gap: 18px; }
+  .giris-ok { right: -15px; }
+}
 
 
 /* ============================================================

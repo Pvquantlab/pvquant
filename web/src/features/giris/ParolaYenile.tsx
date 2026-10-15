@@ -20,30 +20,26 @@ export function ParolaYenile() {
   }
 
   return (
-    <div className="giris" style={{ gridTemplateColumns: "1fr" }}>
+    <div className="giris giris--tek">
       <div className="giris-form-alan">
         <div className="giris-form">
-          <h2 style={{ fontSize: 20, marginBottom: 6 }}>Yeni parola belirleyin</h2>
+          <h2 className="giris-h2">Yeni parola belirleyin</h2>
           {durum === "tamam" ? (
             <>
-              <p style={{ fontSize: 13.5, color: "var(--ikincil)", margin: "10px 0 18px",
-                lineHeight: 1.6 }}>
+              <p className="giris-bilgi">
                 Parolanız güncellendi. Yeni parolanızla oturum açabilirsiniz.
               </p>
-              <a className="dugme dugme-ana" href="/"
-                style={{ display: "block", textAlign: "center", padding: 10,
-                  textDecoration: "none" }}>Girişe dön</a>
+              <a className="dugme dugme-ana giris-dugme" href="/">Girişe dön</a>
             </>
           ) : !jeton ? (
-            <p style={{ fontSize: 13.5, color: "var(--ikincil)", margin: "10px 0 0",
-              lineHeight: 1.6 }}>
+            <p className="giris-bilgi">
               Bu sayfa, e-postayla gönderilen sıfırlama bağlantısıyla açılır.
               Bağlantınız yoksa giriş ekranındaki "Parolamı unuttum"
               adımını kullanın.
             </p>
           ) : (
             <>
-              <p style={{ fontSize: 13, color: "var(--ikincil)", margin: "0 0 22px" }}>
+              <p className="giris-aciklama">
                 En az 10 karakter.
               </p>
               <label className="giris-et">Yeni parola</label>
@@ -55,11 +51,9 @@ export function ParolaYenile() {
                 autoComplete="new-password"
                 onChange={(e) => setP2(e.target.value)} placeholder="••••••••••" />
               {durum !== "bos" && durum !== "gidiyor" && (
-                <p role="alert" style={{ fontSize: 13, color: "var(--negatif)",
-                  margin: "12px 0 0" }}>{durum}</p>
+                <p role="alert" className="giris-hata">{durum}</p>
               )}
-              <button className="dugme dugme-ana"
-                style={{ width: "100%", marginTop: 20, padding: 10 }}
+              <button className="dugme dugme-ana giris-dugme"
                 onClick={gonder} disabled={durum === "gidiyor"}>
                 {durum === "gidiyor" ? "Kaydediliyor…" : "Parolayı güncelle"}
               </button>
