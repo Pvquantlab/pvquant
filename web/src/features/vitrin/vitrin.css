@@ -1949,3 +1949,19 @@
 .vt .vt-panelde .vt-rz { --rz-ikon: 18px; }
 .vt .vt-sayi .vt-rz { --rz-ikon: 20px; }
 .vt .vt-alt__baslik .vt-rz { --rz-ikon: 16px; }
+
+/* ── 16.10 Mobil çekmece netlik turu (kullanıcı: «mobil menünün netliğini ve kontrastını artır») ──
+   Ölçüm (#0B1B3C, WebKit iPhone): bağlantı 16 px .78 (10,6:1), ayraç .08 (görünmez), 320 px'te «Panele
+   giriş» üst çubuğun dar kuralıyla 13 px'e düşüyordu. Sonra: bağlantı 18 px 600 #fff (17:1), sağda
+   yön oku (.6), ayraç .18, 56 px dokunma satırı, basılı/odak tepkisi; düğme tam genişlik 16 px. */
+.vt .vt-cekmece__bag { min-height: 56px; justify-content: space-between; gap: 12px; padding-inline: 4px;
+  font-size: 18px; line-height: 24px; font-weight: 600; color: #FFFFFF; border-bottom-color: rgba(255, 255, 255, .18); }
+.vt .vt-cekmece__bag::after { content: "\2192"; content: "\2192" / ""; flex: none; font-weight: 500; color: rgba(255, 255, 255, .6); }
+.vt .vt-cekmece__bag:active, .vt .vt-cekmece__bag:hover { background: rgba(255, 255, 255, .06); }
+.vt .vt-cekmece__bag[aria-current="page"] { color: #FFFFFF; }
+.vt .vt-cekmece__bag[aria-current="page"]::after { color: #FFFFFF; }
+.vt .vt-cekmece__bag:focus-visible { outline: 2px solid var(--vt-gece-eylem); outline-offset: -2px; border-radius: 8px; }
+.vt .vt-cekmece__alt { margin-top: 28px; }
+.vt .vt-cekmece__alt .vt-dugme { width: 100%; justify-content: center; min-height: 52px; padding: 0 20px; font-size: 16px; font-weight: 600;
+  color: #FFFFFF; border: 1.5px solid rgba(255, 255, 255, .6); }
+.vt .vt-cekmece__alt .vt-dugme:hover, .vt .vt-cekmece__alt .vt-dugme:active { background: rgba(255, 255, 255, .08); border-color: #FFFFFF; }
