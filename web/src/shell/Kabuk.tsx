@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode, useId } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { api, type AlarmSatiri, rolum } from "../api/client";
 import type { SantralOzeti, Kullanici } from "../api/types";
 import { useDamga } from "./useDamga";
@@ -37,24 +37,17 @@ const IKONLAR: Record<SayfaId, ReactNode> = {
   hakkinda: <svg {...IKON_ORTAK}><circle cx="10" cy="10" r="7"/><path d="M10 9v5M10 6.5v.5"/></svg>,
 };
 
-/** Marka işareti: vitrindekiyle aynı «dolu disk» güneş (15.10) — altın disk + ışınlar --marka. */
+/** Marka isareti: 1.5px stroke gunes (Vitrin'dekiyle ayni dil). */
 export function GunesLogo() {   // v2.341: Giris de kullanır — tek marka işareti
-  const id = useId();
-  const g = `gunes-${id}`;
   return (
-    <svg width="24" height="24" viewBox="0 0 32 32" aria-hidden="true">
-      <defs>
-        <radialGradient id={g} gradientUnits="userSpaceOnUse" cx="14" cy="13" r="9">
-          <stop offset="0" stopColor="#FFD866" /><stop offset="1" stopColor="#F5A300" />
-        </radialGradient>
-      </defs>
-      <circle cx="16" cy="16" r="6.4" fill={`url(#${g})`} />
-      <g stroke="var(--marka)" strokeWidth="2.7" strokeLinecap="round">
+    <svg width="22" height="22" viewBox="0 0 20 20" aria-hidden="true">
+      <circle cx="10" cy="10" r="3.4" fill="none" stroke="var(--marka)" strokeWidth="1.5" />
+      <g stroke="var(--marka)" strokeWidth="1.5" strokeLinecap="round">
         {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => {
           const k = (a * Math.PI) / 180;
           return <line key={a}
-            x1={(16 + 9.6 * Math.cos(k)).toFixed(2)} y1={(16 + 9.6 * Math.sin(k)).toFixed(2)}
-            x2={(16 + 13 * Math.cos(k)).toFixed(2)} y2={(16 + 13 * Math.sin(k)).toFixed(2)} />;
+            x1={10 + 5.8 * Math.cos(k)} y1={10 + 5.8 * Math.sin(k)}
+            x2={10 + 7.8 * Math.cos(k)} y2={10 + 7.8 * Math.sin(k)} />;
         })}
       </g>
     </svg>

@@ -32,5 +32,3 @@ Amaç tuhaflık değil: kasıtlı, olgun, teknik, ölçülü. ✓ = testle zorla
   olabilir mi?» Evet'se konuya özgü en az bir gerçek ayrıntı (birim, terim, eşik) ekleninceye
   kadar bitmemiştir.
 - Yeni renk/font/köşe değeri icat etmek yasak — önce jeton tartışması (jetonlar.md).
-
-**Amblem istisnası (15.10.2026, kullanıcı kararı):** marka işaretinin diski altın radyal (#FFD866→#F5A300), ışınlar mürekkep/beyaz. Bu altın, grafik amberlerinden (#E8940A panel, #C27803 vitrin) bilerek farklı tondur ve yalnız amblem + favicon'da kullanılır; grafik/metin/uyarı yüzeylerine taşınmaz. «Amber = yalnız gerçekleşen» kuralı veri yüzeyleri için aynen geçerli.
