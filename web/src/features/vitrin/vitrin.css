@@ -775,17 +775,20 @@
 /* yalnız is-bekliyor alanlar gizlenir (IO kurulduysa); azaltılmış harekette blok tamamen devre dışı.
    Dönüşüm BÖLÜMDE değil çocuklarında: bölüm kutusu yerinde durur ki çapa inişleri (scroll-margin)
    sapmaz — inceleme bulgusu 2. */
-.vt [data-canlan].is-bekliyor { opacity: 0; }
-.vt [data-canlan].is-bekliyor > * { transform: translateY(24px); }
-.vt [data-canlan].is-acildi { opacity: 1; transition: opacity 500ms var(--vt-ease-cik); }
-.vt [data-canlan].is-acildi > * { transform: none; transition: transform 500ms var(--vt-ease-cik); }
+/* 15.10 hız turu 2 (kullanıcı: «öğeler parça parça, farklı zamanlarda görünüyor»): bekleyen bölüm
+   artık GİZLENMEZ — %85 görünür + 10 px kayma; açılış 360 ms. İçerik sayfa dinlenmedeyken de okunur,
+   canlılık yalnız hafif vurgu olarak kalır. */
+.vt [data-canlan].is-bekliyor { opacity: .85; }
+.vt [data-canlan].is-bekliyor > * { transform: translateY(10px); }
+.vt [data-canlan].is-acildi { opacity: 1; transition: opacity 360ms var(--vt-ease-cik); }
+.vt [data-canlan].is-acildi > * { transform: none; transition: transform 360ms var(--vt-ease-cik); }
 /* kart kademesi (ızgara .vt-kap içinde: alt seçici); kanıt şeridi hariç — veri gelince ızgara
    yeniden kurulur, kademe ikinci kez oynardı (inceleme bulgusu 1) */
-.vt [data-canlan].is-acildi:not(.vt-serit) .vt-izgara > * { animation: vt-canlan 520ms var(--vt-ease-cik) backwards; }
-.vt [data-canlan].is-acildi:not(.vt-serit) .vt-izgara > :nth-child(2) { animation-delay: 60ms; }
-.vt [data-canlan].is-acildi:not(.vt-serit) .vt-izgara > :nth-child(3) { animation-delay: 120ms; }
-.vt [data-canlan].is-acildi:not(.vt-serit) .vt-izgara > :nth-child(4) { animation-delay: 180ms; }
-.vt [data-canlan].is-acildi:not(.vt-serit) .vt-izgara > :nth-child(n+5) { animation-delay: 240ms; }
+.vt [data-canlan].is-acildi:not(.vt-serit) .vt-izgara > * { animation: vt-canlan 360ms var(--vt-ease-cik) backwards; }
+.vt [data-canlan].is-acildi:not(.vt-serit) .vt-izgara > :nth-child(2) { animation-delay: 40ms; }
+.vt [data-canlan].is-acildi:not(.vt-serit) .vt-izgara > :nth-child(3) { animation-delay: 80ms; }
+.vt [data-canlan].is-acildi:not(.vt-serit) .vt-izgara > :nth-child(4) { animation-delay: 120ms; }
+.vt [data-canlan].is-acildi:not(.vt-serit) .vt-izgara > :nth-child(n+5) { animation-delay: 160ms; }
 @keyframes vt-canlan { from { opacity: 0; transform: translateY(18px); } }
 @media (prefers-reduced-motion: reduce) {
   .vt [data-canlan].is-bekliyor { opacity: 1; }

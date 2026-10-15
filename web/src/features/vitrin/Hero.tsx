@@ -41,8 +41,12 @@ export function Hero() {
     io?.observe(v);
     mq.addEventListener("change", uygula);
     document.addEventListener("visibilitychange", uygula);
-    uygula();
-    return () => { io?.disconnect(); mq.removeEventListener("change", uygula); document.removeEventListener("visibilitychange", uygula); v.removeEventListener("timeupdate", aralik); };
+    // 15.10 hız turu 2: video indirmesi sayfanın geri kalanı (font, CSS, ilk görseller) inene dek
+    // başlamaz — poster zaten ilk kare olduğundan geçiş görünmez; mobil 3G'de fontlar 1,9 sn
+    // önce geliyor. preload="none" HTML'de; burada açılıp yükleme tetiklenir.
+    const basla = () => { v.preload = "auto"; v.load(); v.playbackRate = OYNATMA_HIZI; uygula(); };
+    if (document.readyState === "complete") basla(); else window.addEventListener("load", basla, { once: true });
+    return () => { window.removeEventListener("load", basla); io?.disconnect(); mq.removeEventListener("change", uygula); document.removeEventListener("visibilitychange", uygula); v.removeEventListener("timeupdate", aralik); };
   }, []);
   return (
     <section className="vt-hero vt-hero--a vt-hero--video" aria-labelledby="vt-hero-baslik">
@@ -53,7 +57,7 @@ export function Hero() {
         </filter>
       </svg>
       <div className="vt-hero__sahne" aria-hidden="true">
-        <video ref={video} className="vt-hero__video" poster={santralPoster} muted loop playsInline disablePictureInPicture preload="metadata" width="2560" height="1440" tabIndex={-1}>
+        <video ref={video} className="vt-hero__video" poster={santralPoster} muted loop playsInline disablePictureInPicture preload="none" width="2560" height="1440" tabIndex={-1}>
           <source src={santral1080} type="video/mp4" media="(max-width: 760px)" />
           <source src={santral1440} type="video/mp4" />
         </video>

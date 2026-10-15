@@ -25,6 +25,27 @@ export function useCanlandir(tetik?: unknown) {
       else { e.classList.remove("is-bekliyor"); e.classList.add("is-acildi"); continue; }
       io.observe(e);
     }
-    return () => io.disconnect();
+    // 15.10 hız turu 2: tembel levhalar görünür alana bir buçuk ekran kala istenir — ama ancak
+    // sayfa ve fontlar indikten sonra. Ölçüm (mobil 3G): erken istek fontlarla aynı anda başlayınca
+    // 1 MB levha 177 KB fontu 2,4 sn geciktiriyordu. Yavaş bağlantı/veri tasarrufunda tarayıcının
+    // kendi tembel eşiği yeter; erken tetik kurulmaz.
+    let erken: IntersectionObserver | null = null;
+    const baglanti = (navigator as Navigator & { connection?: { effectiveType?: string; saveData?: boolean } }).connection;
+    const yavas = !!baglanti && (baglanti.saveData === true || /(^|-)2g$|^3g$/.test(baglanti.effectiveType ?? ""));
+    let iptal = false;
+    const kur = () => {
+      if (iptal || yavas) return;
+      erken = new IntersectionObserver((girdiler) => {
+        for (const g of girdiler) {
+          if (!g.isIntersecting) continue;
+          (g.target as HTMLImageElement).loading = "eager";
+          erken?.unobserve(g.target);
+        }
+      }, { rootMargin: "150% 0px" });
+      for (const img of document.querySelectorAll<HTMLImageElement>('img[loading="lazy"]')) erken.observe(img);
+    };
+    const hazir = () => { document.fonts.ready.then(kur); };
+    if (document.readyState === "complete") hazir(); else window.addEventListener("load", hazir, { once: true });
+    return () => { iptal = true; window.removeEventListener("load", hazir); io.disconnect(); erken?.disconnect(); };
   }, [tetik]);
 }
