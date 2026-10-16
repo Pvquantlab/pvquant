@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, type SyntheticEvent } from "react";
+import { heroBekle, heroHazirOldu } from "./heroHazir";
 import santral1440 from "./varlik/santral-1440.mp4";
 import santral1080 from "./varlik/santral-1080.mp4";
 import santralPoster from "./varlik/santral-poster.webp";
@@ -17,37 +18,61 @@ const DONGU_BAS = 7.5;
 const DONGU_SON = 19.0;
 const OYNATMA_HIZI = 0.7;   // 14.10 kullanıcı: arka plan göze batmasın — %70 hız (11,5 s'lik aralık ~16 s sürer)
 
-export function Hero() {
+/** Açılış sırası (16.10 hız turu 3 — film ölçümü: hero ilk boyamada siyah zeminle açılıyor, poster
+ *  levhalar/videoyla yarışıp mobil 3G'de 11 sn'de iniyor, video poster gelmeden ve farklı kareden başlıyordu):
+ *  1) zemin: posterin kendi renklerinden gradyan (vitrin.css «Hız turu 3»; fotoğrafa dokunulmaz);
+ *  2) poster: aynı dosya, yüksek öncelikli <img>; tamamen çözülünce 450 ms'de belirir (yarım çizim görünmez);
+ *  3) video: YALNIZ poster + sayfa yüklendikten sonra iner; ilk karesi oynayınca 900 ms'lik geçişle görünür
+ *     (poster 6,07 sn karesi, döngü 7,5'ten başlar — sıçrama yerine erime). Veri tasarrufu, 2G/3G ve
+ *     hareket azaltma tercihinde video hiç indirilmez, poster kalır.
+ *  Önceki kusur: görünürlük gözlemcisi ilk çağrısında play() diyordu; preload="none" videoda play() indirmeyi
+ *  başlatır — «load sonrası» kuralı hiç işlemiyordu (mobil 4G'de video 0,98 sn'de inmeye başlıyordu). */
+export function Hero({ kabuk = false }: { kabuk?: boolean } = {}) {
+  heroBekle();
   const video = useRef<HTMLVideoElement>(null);
+  const [posterHazir, setPosterHazir] = useState(false);
+  const [videoGorunur, setVideoGorunur] = useState(false);
+  const posterYuklendi = (e: SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    (typeof img.decode === "function" ? img.decode() : Promise.resolve()).catch(() => {}).then(() => { setPosterHazir(true); heroHazirOldu(); });
+  };
+  const posterHata = () => { setPosterHazir(true); heroHazirOldu(); };
+  // poster çok gecikirse (çok yavaş hat) levhalar en geç 5 sn sonra serbest
+  useEffect(() => { const t = window.setTimeout(heroHazirOldu, 5000); return () => window.clearTimeout(t); }, []);
   useEffect(() => {
     const v = video.current;
-    if (!v) return;
+    if (!v || !posterHazir) return;
+    const baglanti = (navigator as Navigator & { connection?: { effectiveType?: string; saveData?: boolean } }).connection;
+    const kisit = !!baglanti && (baglanti.saveData === true || /(^|-)2g$|^3g$/.test(baglanti.effectiveType ?? ""));
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (kisit || mq.matches) return;                           // video hiç inmez; poster sahnede kalır
     v.muted = true;                                            // tarayıcılar otomatik oynatmayı yalnız sessiz videoya verir
-    v.playbackRate = OYNATMA_HIZI;
     // aralık yalnız 25,8 s'lik orijinal için; ≤760 px'teki 12 s'lik 1080p döngü zaten iyi bölümden kesilmiş — olduğu gibi döner
     const araliksiz = () => !(v.duration > DONGU_SON + 1);
     const basaSar = () => { if (!araliksiz()) v.currentTime = DONGU_BAS; };
     const aralik = () => { if (araliksiz()) return; if (v.currentTime >= DONGU_SON || v.currentTime < DONGU_BAS - 0.25) basaSar(); };
-    if (v.readyState >= 1) basaSar(); else v.addEventListener("loadedmetadata", basaSar, { once: true });
+    v.addEventListener("loadedmetadata", basaSar);
     v.addEventListener("timeupdate", aralik);
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const oynuyor = () => setVideoGorunur(true);
+    v.addEventListener("playing", oynuyor);
+    let izin = false;                                          // yükleme başlamadan play() ÇAĞRILMAZ (indirmeyi tetikler)
     let gorunur = true;
-    const uygula = () => {                                     // tercih oturum içinde değişirse de uyulur
-      if (!mq.matches && gorunur && document.visibilityState === "visible") v.play().catch(() => {});
+    const uygula = () => {
+      if (!izin) return;
+      if (gorunur && document.visibilityState === "visible") v.play().catch(() => {});
       else v.pause();
     };
     const io = typeof IntersectionObserver === "undefined" ? null
-      : new IntersectionObserver(([g]) => { gorunur = g.isIntersecting; uygula(); });
+      : new IntersectionObserver(([g]) => { gorunur = !!g?.isIntersecting; uygula(); });
     io?.observe(v);
-    mq.addEventListener("change", uygula);
     document.addEventListener("visibilitychange", uygula);
-    // 15.10 hız turu 2: video indirmesi sayfanın geri kalanı (font, CSS, ilk görseller) inene dek
-    // başlamaz — poster zaten ilk kare olduğundan geçiş görünmez; mobil 3G'de fontlar 1,9 sn
-    // önce geliyor. preload="none" HTML'de; burada açılıp yükleme tetiklenir.
-    const basla = () => { v.preload = "auto"; v.load(); v.playbackRate = OYNATMA_HIZI; uygula(); };
+    const basla = () => { izin = true; v.preload = "auto"; v.load(); v.playbackRate = OYNATMA_HIZI; uygula(); };
     if (document.readyState === "complete") basla(); else window.addEventListener("load", basla, { once: true });
-    return () => { window.removeEventListener("load", basla); io?.disconnect(); mq.removeEventListener("change", uygula); document.removeEventListener("visibilitychange", uygula); v.removeEventListener("timeupdate", aralik); };
-  }, []);
+    return () => {
+      window.removeEventListener("load", basla); io?.disconnect(); document.removeEventListener("visibilitychange", uygula);
+      v.removeEventListener("loadedmetadata", basaSar); v.removeEventListener("timeupdate", aralik); v.removeEventListener("playing", oynuyor);
+    };
+  }, [posterHazir]);
   return (
     <section className="vt-hero vt-hero--a vt-hero--video" aria-labelledby="vt-hero-baslik">
       {/* 14.10: videoya hafif keskinleştirme (SVG unsharp çekirdeği) — uzak panel sıraları 1440p'de yumuşak kalıyordu */}
@@ -57,10 +82,15 @@ export function Hero() {
         </filter>
       </svg>
       <div className="vt-hero__sahne" aria-hidden="true">
-        <video ref={video} className="vt-hero__video" poster={santralPoster} muted loop playsInline disablePictureInPicture preload="none" width="2560" height="1440" tabIndex={-1}>
+        {/* kabuk (derlemede HTML'e dökülen ilk ekran) poster ve videoyu içermez: ilk boyamayı geciktirmesinler */}
+        {!kabuk && <img className={posterHazir ? "vt-hero__poster is-hazir" : "vt-hero__poster"} src={santralPoster} alt="" width="2560" height="1440"
+          fetchPriority="high" decoding="async" onLoad={posterYuklendi} onError={posterHata} />}
+        {!kabuk && (
+        <video ref={video} className={videoGorunur ? "vt-hero__video is-oynuyor" : "vt-hero__video"} muted loop playsInline disablePictureInPicture preload="none" width="2560" height="1440" tabIndex={-1}>
           <source src={santral1080} type="video/mp4" media="(max-width: 760px)" />
           <source src={santral1440} type="video/mp4" />
         </video>
+        )}
       </div>
       <div className="vt-kap vt-hero__ic">
         <div className="vt-hero__sol">

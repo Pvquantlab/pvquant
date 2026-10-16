@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { heroHazirSoz } from "./heroHazir";
 
 /** Kaydırma canlılığı (R25): [data-canlan] taşıyan bölümler görünür olunca `is-acildi` alır;
  *  CSS yalnız opacity+translateY geçirir (vitrin.css CİLA-ek 4). Kurallar: hero reveal almaz
@@ -33,7 +34,7 @@ export function useCanlandir(tetik?: unknown) {
     let iptal = false;
     const kur = () => {
       if (iptal || yavas) return;
-      const sira = [...document.querySelectorAll<HTMLImageElement>('img[loading="lazy"]')];
+      const sira = [...document.querySelectorAll<HTMLImageElement>('img[loading="lazy"][src]')];
       const yukle = (i: number) => {
         if (iptal || i >= sira.length) return;
         const img = sira[i];
@@ -44,7 +45,9 @@ export function useCanlandir(tetik?: unknown) {
       };
       yukle(0); yukle(1); // iki paralel kuyruk: 0,2,4… ve 1,3,5…
     };
-    const hazir = () => { document.fonts.ready.then(kur); };
+    // 16.10 hız turu 3: önden indirme hero posteri inene dek bekler (levhalar posterle yarışmasın);
+    // poster sinyalinden sonra React'in levhalara src vermesi için bir görev beklenir.
+    const hazir = () => { Promise.all([document.fonts.ready, heroHazirSoz()]).then(() => { window.setTimeout(kur, 0); }); };
     if (document.readyState === "complete") hazir(); else window.addEventListener("load", hazir, { once: true });
     return () => { iptal = true; window.removeEventListener("load", hazir); io.disconnect(); };
   }, [tetik]);

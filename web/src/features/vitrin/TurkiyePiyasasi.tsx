@@ -4,6 +4,7 @@ import tlSapma from "./varlik/tl-sapma.png";
 import tlSablon from "./varlik/tl-sablon.png";
 import tlAlarm from "./varlik/tl-alarm.png";
 import tlAralik from "./varlik/tl-aralik.png";
+import { Levha } from "./Levha";
 
 /** Türkiye piyasası (v2.386 cila-a + kart-tasarim «panel kesiti»): solda bölüm başı, sağda SAHNELENMİŞ
  *  panel penceresi (dokunulmadı; {EKRAN} yuvası gerçek ekran görüntüsüne/canlı bileşene açık, R22).
@@ -45,14 +46,14 @@ export function TurkiyePiyasasi() {
             <p className="vt-giris">Elektrik piyasasında her santral, ertesi gün ne üreteceğini önceden bildirmekle yükümlüdür; gerçekleşen üretim bu programdan saptığında aradaki fark santrale fatura edilir. PVQuant üretim programınızı hazırlar, gün içi güncelleme fırsatlarını izler ve sapmanın size maliyetini her gün TL olarak raporlar.</p>
           </div>
           <div className="vt-sahne vt-sahne--resim" aria-hidden="true">
-            <img src={tlSahne} alt="" width="2000" height="2000" loading="lazy" decoding="async" />
+            <Levha src={tlSahne} alt="" width="2000" height="2000" loading="lazy" decoding="async" />
           </div>
         </div>
         <div className="vt-kesit">
           {KARTLAR.map(({ ad, etiket, metin, kunye, resim, genis }, i) => (
             <article key={ad} className={genis ? "vt-kesit__hucre vt-kesit__hucre--genis" : "vt-kesit__hucre"}>
               <header className="vt-kesit__bas"><h3 className="vt-h3">{ad}</h3><p className="vt-kesit__etiket">{etiket}</p></header>
-              <div className={`vt-kesit__cizim vt-kesit__cizim--resim vt-kesit__cizim--r${i + 1}`} aria-hidden="true"><img src={resim} alt="" width="2000" height="2000" loading="lazy" decoding="async" /></div>
+              <div className={`vt-kesit__cizim vt-kesit__cizim--resim vt-kesit__cizim--r${i + 1}`} aria-hidden="true"><Levha src={resim} alt="" width="2000" height="2000" loading="lazy" decoding="async" /></div>
               <p className="vt-kart__metin">{metin}</p>
               <ul className="vt-kesit__kunye">{kunye.map((d) => <li key={d}>{d}</li>)}</ul>
             </article>

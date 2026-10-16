@@ -3,6 +3,7 @@ import isTeslim from "./varlik/is-teslim.png";
 import isTicaret from "./varlik/is-ticaret.png";
 import isNobet from "./varlik/is-nobet.png";
 import isFinansman from "./varlik/is-finansman.png";
+import { Levha } from "./Levha";
 
 /** "Hangi iş için?" ızgarası (R31 + rakip analizi Ö8): dört masa, Aurora'nın fayda kalıbında —
  *  üst etiket (masa adı) → h3 (İŞ SONUCU) → tek fayda cümlesi → etiket–değer künyesi.
@@ -63,7 +64,7 @@ export function IsIzgarasi() {
         <div className="vt-izgara vt-izgara--4 vt-isler">
           {ISLER.map((is, i) => (
             <article key={is.masa} className="vt-kart vt-is">
-              <div className={`vt-levha vt-levha--resim vt-is__levha vt-is__levha--${i + 1}`} aria-hidden="true"><img src={is.resim} alt="" width="2000" height="2000" loading="lazy" decoding="async" /></div>
+              <div className={`vt-levha vt-levha--resim vt-is__levha vt-is__levha--${i + 1}`} aria-hidden="true"><Levha src={is.resim} alt="" width="2000" height="2000" loading="lazy" decoding="async" /></div>
               <div className="vt-kart__govde">
                 <div className="vt-is__ust">
                   <Rozet grup={is.grup} ikon={is.ikon} />
