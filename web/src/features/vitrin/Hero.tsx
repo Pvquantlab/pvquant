@@ -21,10 +21,14 @@ const OYNATMA_HIZI = 0.7;   // 14.10 kullanıcı: arka plan göze batmasın — 
 /** Açılış sırası (16.10 hız turu 3 — film ölçümü: hero ilk boyamada siyah zeminle açılıyor, poster
  *  levhalar/videoyla yarışıp mobil 3G'de 11 sn'de iniyor, video poster gelmeden ve farklı kareden başlıyordu):
  *  1) zemin: posterin kendi renklerinden gradyan (vitrin.css «Hız turu 3»; fotoğrafa dokunulmaz);
- *  2) poster: aynı dosya, yüksek öncelikli <img>; tamamen çözülünce 450 ms'de belirir (yarım çizim görünmez);
- *  3) video: YALNIZ poster + sayfa yüklendikten sonra iner; ilk karesi oynayınca 900 ms'lik geçişle görünür
- *     (poster 6,07 sn karesi, döngü 7,5'ten başlar — sıçrama yerine erime). Veri tasarrufu, 2G/3G ve
+ *  2) poster: aynı dosya, yüksek öncelikli <img> + videonun kendi posteri; üstteki örtü poster tamamen
+ *     çözülünce 450 ms'de solar (yarım çizim görünmez);
+ *  3) video: YALNIZ poster + sayfa yüklendikten sonra iner; oynamaya başlayınca üstteki poster resmi 900 ms'de
+ *     solar (poster 6,07 sn karesi, döngü 7,5'ten başlar — sıçrama yerine erime). Veri tasarrufu, 2G/3G ve
  *     hareket azaltma tercihinde video hiç indirilmez, poster kalır.
+ *  LCP (canlı ölçüm v2.451): saydamdan görünüre geçen video ilk karesinde yeni LCP adayı oluyordu (masaüstü 4G
+ *  6,0 sn). Video baştan görünür ve posterli olunca yalnız poster anında bir kez sayılır; örtü ve zemin düşük
+ *  bilgili SVG olduğundan aday değildir.
  *  Önceki kusur: görünürlük gözlemcisi ilk çağrısında play() diyordu; preload="none" videoda play() indirmeyi
  *  başlatır — «load sonrası» kuralı hiç işlemiyordu (mobil 4G'de video 0,98 sn'de inmeye başlıyordu). */
 export function Hero({ kabuk = false }: { kabuk?: boolean } = {}) {
@@ -53,7 +57,7 @@ export function Hero({ kabuk = false }: { kabuk?: boolean } = {}) {
     const aralik = () => { if (araliksiz()) return; if (v.currentTime >= DONGU_SON || v.currentTime < DONGU_BAS - 0.25) basaSar(); };
     v.addEventListener("loadedmetadata", basaSar);
     v.addEventListener("timeupdate", aralik);
-    const oynuyor = () => setVideoGorunur(true);
+    const oynuyor = () => { requestAnimationFrame(() => setVideoGorunur(true)); };
     v.addEventListener("playing", oynuyor);
     let izin = false;                                          // yükleme başlamadan play() ÇAĞRILMAZ (indirmeyi tetikler)
     let gorunur = true;
@@ -82,15 +86,18 @@ export function Hero({ kabuk = false }: { kabuk?: boolean } = {}) {
         </filter>
       </svg>
       <div className="vt-hero__sahne" aria-hidden="true">
-        {/* kabuk (derlemede HTML'e dökülen ilk ekran) poster ve videoyu içermez: ilk boyamayı geciktirmesinler */}
-        {!kabuk && <img className={posterHazir ? "vt-hero__poster is-hazir" : "vt-hero__poster"} src={santralPoster} alt="" width="2560" height="1440"
-          fetchPriority="high" decoding="async" onLoad={posterYuklendi} onError={posterHata} />}
+        {/* Katmanlar (alttan üste): video (posterini kendi çizer, baştan görünür) → poster resmi (aynı dosya; video
+            oynayınca solar — sıçrama yerine erime) → örtü (zeminle aynı gradyan; poster tamamen çözülünce solar —
+            yarım çizim görünmez). Kabuk (derlemede HTML'e dökülen ilk ekran) video ve posteri içermez. */}
         {!kabuk && (
-        <video ref={video} className={videoGorunur ? "vt-hero__video is-oynuyor" : "vt-hero__video"} muted loop playsInline disablePictureInPicture preload="none" width="2560" height="1440" tabIndex={-1}>
+        <video ref={video} className="vt-hero__video" poster={santralPoster} muted loop playsInline disablePictureInPicture preload="none" width="2560" height="1440" tabIndex={-1}>
           <source src={santral1080} type="video/mp4" media="(max-width: 760px)" />
           <source src={santral1440} type="video/mp4" />
         </video>
         )}
+        {!kabuk && <img className={videoGorunur ? "vt-hero__poster is-gecti" : "vt-hero__poster"} src={santralPoster} alt="" width="2560" height="1440"
+          fetchPriority="high" decoding="async" onLoad={posterYuklendi} onError={posterHata} />}
+        <div className={posterHazir ? "vt-hero__ortu is-acik" : "vt-hero__ortu"} />
       </div>
       <div className="vt-kap vt-hero__ic">
         <div className="vt-hero__sol">
