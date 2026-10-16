@@ -28,14 +28,17 @@ export function Giris({ onGiris }: { onGiris: () => void }) {
     setHata(null); setBekliyor(true);
     try {
       const r = await giris(email, sifre, ikiAdim ? kod : undefined);
-      if (r === "ok") onGiris();
-      else if (r === "iki_adim") { setIkiAdim(true); setHata(null); }   // kod alanını aç
+      // 16.10 hız turu 4: başarıda düğme «bekliyor»da kalır — panel parçaları inerken bu ekran yerinde durur
+      // (App geçişi); önceden düğme yeniden açılıp ekran boşalıyordu.
+      if (r === "ok") { onGiris(); return; }
+      if (r === "iki_adim") { setIkiAdim(true); setHata(null); }   // kod alanını aç
       else setHata(ikiAdim
         ? "Doğrulama kodu hatalı — uygulamadaki 6 haneyi ya da bir kurtarma kodunu girin."
         : "E-posta ya da parola hatalı.");
     } catch {
       setHata("Sunucuya ulaşılamadı — API ayakta mı?");
-    } finally { setBekliyor(false); }
+    }
+    setBekliyor(false);
   }
 
   const zincir = [

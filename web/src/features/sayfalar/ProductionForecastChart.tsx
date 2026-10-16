@@ -29,7 +29,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import * as echarts from "echarts";
+import * as echarts from "../../lib/echarts";
 import type { EChartsOption, SeriesOption } from "echarts";
 
 // ---------------------------------------------------------------- types

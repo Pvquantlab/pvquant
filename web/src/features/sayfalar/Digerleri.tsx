@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import type { EChartsOption } from "echarts";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
@@ -224,9 +224,15 @@ export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
     // v2.93: Streamlit'teki tek satirin SPA hali — kosu biter bitmez
     // Tahminler'e gecilir (sonuc orada, soz degil kanit).
     setKosuyor(true); setKosuHata(null);
-    try { await api.tahminKos(plantId); tahminlereGit?.(); }
+    try {
+      await api.tahminKos(plantId);
+      // 16.10: Tahminler'e geçiş artık «geçiş» — sayfa parçası inerken bu ekran kalır; düğme yeniden açılırsa
+      // ikinci bir 10-20 sn'lik koşu tetiklenebilirdi. Geçiş varsa düğme «üretiliyor»da kalır; sıfırlama aynı geçiş
+      // şeridinde — sayfa değişirse bileşen zaten sökülür, geçiş başka bir seçimle ezilirse düğme yeniden açılır.
+      if (tahminlereGit) { tahminlereGit(); startTransition(() => setKosuyor(false)); return; }
+    }
     catch (e) { setKosuHata(e instanceof Error ? e.message : String(e)); }
-    finally { setKosuyor(false); }
+    setKosuyor(false);
   };
 
   const BAYRAK_ADI: Record<string, string> = {

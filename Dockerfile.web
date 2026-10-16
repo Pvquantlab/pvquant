@@ -7,7 +7,8 @@ RUN npm ci
 COPY web ./
 ARG VITE_API_URL=.
 ENV VITE_API_URL=$VITE_API_URL
-RUN npm run build
+# v2.453: derleme sonrası metin dosyalarının .br/.gz eşleri (Caddyfile.web «precompressed»)
+RUN npm run build && node scripts/onsikistir.mjs dist
 
 FROM caddy:2
 COPY Caddyfile.web /etc/caddy/Caddyfile

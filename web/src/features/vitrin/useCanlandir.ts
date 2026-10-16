@@ -20,12 +20,20 @@ export function useCanlandir(tetik?: unknown) {
         io.unobserve(g.target);
       }
     }, { threshold: 0.05, rootMargin: "0px 0px -24px 0px" });
-    for (const e of hedefler) {
-      // gizleme sınıfı IO kurulduktan sonra eklenir: IO yoksa içerik hiç gizlenmez
-      if (e.getBoundingClientRect().top > window.innerHeight) e.classList.add("is-bekliyor");
-      else { e.classList.remove("is-bekliyor"); e.classList.add("is-acildi"); continue; }
-      io.observe(e);
-    }
+    const siniflandir = () => {
+      for (const e of hedefler) {
+        // gizleme sınıfı IO kurulduktan sonra eklenir: IO yoksa içerik hiç gizlenmez
+        if (e.getBoundingClientRect().top > window.innerHeight) e.classList.add("is-bekliyor");
+        else { e.classList.remove("is-bekliyor"); e.classList.add("is-acildi"); continue; }
+        io.observe(e);
+      }
+    };
+    // 16.10 hız turu 4: çapalı açılışta (/#karne, /yontem#para …) sınıflama, useCapaKaydir'in aynı karedeki
+    // kaydırmasından SONRA yapılır — yoksa hedef bölüm sayfa başına göre «ekran dışı» sayılıp soluk bekleme
+    // hâliyle açılıyor, sonra koyulaşıyordu. «Açılışta görünen bölüm canlanmaz» kuralı derin bağlantıya da uyar.
+    // (useCapaKaydir bileşende ÖNCE çağrılır; rAF geri çağrıları kayıt sırasıyla çalışır.)
+    let kare = 0;
+    if (window.location.hash) kare = requestAnimationFrame(siniflandir); else siniflandir();
     // 15.10 hız turu 2: tembel levhalar sayfa ve fontlar indikten sonra DOM sırasıyla, ikişer ikişer
     // önden indirilir — kaydırınca önbellekten anında açılırlar (kullanıcı: «kartlar hemen açılsın»).
     // Yavaş bağlantı/veri tasarrufunda tarayıcının kendi tembel eşiği yeter; önden indirme yapılmaz.
@@ -49,6 +57,6 @@ export function useCanlandir(tetik?: unknown) {
     // poster sinyalinden sonra React'in levhalara src vermesi için bir görev beklenir.
     const hazir = () => { Promise.all([document.fonts.ready, heroHazirSoz()]).then(() => { window.setTimeout(kur, 0); }); };
     if (document.readyState === "complete") hazir(); else window.addEventListener("load", hazir, { once: true });
-    return () => { iptal = true; window.removeEventListener("load", hazir); io.disconnect(); };
+    return () => { iptal = true; cancelAnimationFrame(kare); window.removeEventListener("load", hazir); io.disconnect(); };
   }, [tetik]);
 }

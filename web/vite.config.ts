@@ -3,12 +3,13 @@ import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 
 /** Font ön yükleme (15.10 hız turu 2): ilk ekranın yazısı yalnız Inter Tight 500 (giriş
- *  paragrafı) ve 600 (başlık, logo, düğmeler); latin + latin-ext (Türkçe ğ/ş/ı latin-ext'te,
- *  ikisi birlikte iner). Ölçüm (mobil 3G): tarayıcı fontları ancak CSS+JS indikten sonra,
+ *  paragrafı) ve 600 (başlık, logo, düğmeler). Ölçüm (mobil 3G): tarayıcı fontları ancak CSS+JS indikten sonra,
  *  1,1 sn'de keşfedip istiyordu; 3,6 sn'de gelince metin yedek fonttan gerçeğine atlıyordu.
- *  Preload ile istek HTML'le başlar; 4 dosya 117 KB. 400 (gövde) ve 300 ekranın altında
- *  kalır, CSS keşfiyle her zamanki gibi iner — açılışta görünmez. */
-const KRITIK_FONT = /^inter-tight-(latin|latin-ext)-(500|600)-normal-[\w-]+\.woff2$/
+ *  Preload ile istek HTML'le başlar. 400 (gövde) ve 300 ekranın altında kalır, CSS keşfiyle her zamanki gibi iner.
+ *  16.10 hız turu 4: latin-ext ön yüklemesi kalktı — Türkçe ğ/ş/İ artık ~1,5 KB'lık alt kümeden
+ *  (features/vitrin/font/inter-tight-tr.css); iki 37 KB'lık latin-ext dosyası ilk boyamayı kendi bitişlerine
+ *  bağlıyordu (mobil 3G'de 8/8 koşu). Ön yükleme 4 dosya 118 KB → 4 dosya 47 KB (latin 500/600 + tr 500/600). */
+const KRITIK_FONT = /^inter-tight-(latin-(500|600)-normal|tr-(500|600))-[\w-]+\.woff2$/
 function fontOnYukle(): Plugin {
   const dosyalar = new Set<string>()
   return {
@@ -32,15 +33,18 @@ function fontOnYukle(): Plugin {
  *  Derlemede üst çubuk + hero (src/features/vitrin/VitrinKabugu.tsx, kabukHtml.ts) statik HTML'e dökülür ve #root'a
  *  konur; tarayıcı CSS ve fontlar gelince çizer, React aynı görünümü tek işlemde devralır. Kabuk yalnız
  *  vitrinin açılacağı durumda kalır (ana sayfa + oturum yok, ya da ?vitrin); aksi hâlde satır içi betik
- *  ilk boyamadan ÖNCE siler (panel ve /yontem ziyaretçisi vitrin görmez). Yapılandırma dosyası yüklenmez
+ *  ilk boyamadan ÖNCE siler (panel ve /yontem ziyaretçisi vitrin görmez; /yontem'de html'e .vt-sayfa konur — zemin
+ *  React çizene dek panel grisi değil vitrin beyazı). Yapılandırma dosyası yüklenmez
  *  (configFile: false) — eklenti kendini yeniden çağırmaz. */
 function vitrinKabugu(): Plugin {
+  let ayniKoken = false
   return {
     name: 'pvq-vitrin-kabugu',
     apply: 'build',
+    configResolved(c) { ayniKoken = c.env.VITE_API_URL === '.' },
     transformIndexHtml: {
       order: 'post',
-      async handler(html) {
+      async handler(html, ctx) {
         const sunucu = await createServer({
           configFile: false, root: fileURLToPath(new URL('.', import.meta.url)), logLevel: 'error',
           appType: 'custom', server: { middlewareMode: true, hmr: false, ws: false }, plugins: [react()],
@@ -48,10 +52,28 @@ function vitrinKabugu(): Plugin {
         try {
           const modul = await sunucu.ssrLoadModule('/src/features/vitrin/kabukHtml.ts')
           const govde = (modul.kabukHtml as () => string)()
-          const betik = '<script>(function(){try{var t=localStorage.getItem("pvq_token"),v=/[?&]vitrin(=|&|$)/.test(location.search);' +
-            'if(!(location.pathname==="/"&&(!t||v))){var r=document.getElementById("root");if(r)r.textContent=""}}catch(e){}})()</script>'
+          // 16.10 hız turu 4 — poster isteği kabuğun kaldığı dalda (vitrin) bu betikten başlar. Betik gövde sonunda,
+          // CSS'i bekleyerek çalışır: istek CSS'le yarışmaz (v2.451 denemesinde <head>'deki statik ön yükleme 3G'de ilk
+          // boyamayı ~0,9 sn geciktirmişti), ama React'in çizip <img>'i koymasını da beklemez (canlı v2.452: poster
+          // isteği m3g 1,76 sn, m4g 0,62 sn'de başlıyordu; tek koşu). crossorigin YOK — <img> ve video posteri no-cors ister.
+          const poster = Object.keys(ctx.bundle ?? {}).find((k) => /^assets\/santral-poster-[\w-]+\.webp$/.test(k))
+          if (!poster) throw new Error('derleme: santral-poster varlığı bulunamadı')
+          const betik = '<script>(function(){try{var p=location.pathname,t=localStorage.getItem("pvq_token"),v=/[?&]vitrin(=|&|$)/.test(location.search);' +
+            'if(!(p==="/"&&(!t||v))){var r=document.getElementById("root");if(r)r.textContent="";if(p==="/yontem")document.documentElement.classList.add("vt-sayfa")}' +
+            `else{var l=document.createElement("link");l.rel="preload";l.as="image";l.href="/${poster}";l.fetchPriority="high";document.head.appendChild(l)}}catch(e){}})()</script>`
           if (!html.includes('<div id="root"></div>')) throw new Error('index.html: boş #root bulunamadı')
-          return html.replace('<div id="root"></div>', `<div id="root">${govde}</div>\n    ${betik}`)
+          let sonuc = html.replace('<div id="root"></div>', `<div id="root">${govde}</div>\n    ${betik}`)
+          // 16.10 hız turu 4 — doğrulama isteği (vitrin ve /yontem) HTML ile başlar: önceden React'in ilk çiziminden sonra
+          // gidiyor, yanıt gelince bütün ağaç ikinci kez çiziliyor, çapalı açılış (/#karne) ikinci kez kaydırıyordu.
+          // Yalnız aynı köken derlemesinde (VITE_API_URL=".", canlı); useDogrulama.ts sonucu ilk çizimde okur.
+          if (ayniKoken) {
+            const erken = '<script>(function(){try{var p=location.pathname,t=localStorage.getItem("pvq_token"),v=/[?&]vitrin(=|&|$)/.test(location.search);' +
+              'if((p==="/"&&(!t||v))||p==="/yontem"){window.__pvqDogr=fetch("/v1/dogrulama").then(function(r){return r.ok?r.json():null})' +
+              '.then(function(j){window.__pvqDogrSonuc=j;return j},function(){window.__pvqDogrSonuc=null;return null})}}catch(e){}})()</script>'
+            if (!sonuc.includes('<meta charset="UTF-8" />')) throw new Error('index.html: charset meta bulunamadı')
+            sonuc = sonuc.replace('<meta charset="UTF-8" />', `<meta charset="UTF-8" />\n    ${erken}`)
+          }
+          return sonuc
         } finally {
           await sunucu.close()
         }
@@ -63,4 +85,7 @@ function vitrinKabugu(): Plugin {
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), fontOnYukle(), vitrinKabugu()],
+  // Türkçe alt küme yüzleri CSS'e GÖMÜLMEZ: gömülü (data:) font ilk boyamadan sonra çözülüyor, ğ/ş/İ ilk karede yedek
+  // fontla çizilip bir kare sonra yerine geçiyordu (satır kayıyor). Ayrı ~1,5 KB'lık dosya + ön yükleme: ilk boyama onu bekler.
+  build: { assetsInlineLimit: (dosya) => (/inter-tight-tr-\d{3}\.woff2$/.test(dosya) ? false : undefined) },
 })

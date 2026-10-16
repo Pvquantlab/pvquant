@@ -13,19 +13,47 @@ import santralPoster from "./varlik/santral-poster.webp";
  *  azaltma tercihinde yalnız ilk kare (poster) durur; ekran dışında ya da sekme gizliyken oynatma bekler.
  *  Ürün penceresi (gerçek 01.10 koşusu grafiği) sahnenin önünde. Künye kartuşu kullanıcı isteğiyle kaldırıldı. */
 /** Döngü aralığı (14.10, ölçüldü): panel bölgesinin kenar keskinliği 7,5–19 s arasında en yüksek (Laplace ≥ 22 bin);
- *  ilk 6 s en zayıf ve şirket tabelasını içeriyor, 20 s sonrası düşüyor. Dosya olduğu gibi; yalnız bu aralık oynar. */
-const DONGU_BAS = 7.5;
+ *  ilk 6 s en zayıf ve şirket tabelasını içeriyor, 20 s sonrası düşüyor. Dosya olduğu gibi; yalnız bu aralık oynar.
+ *  16.10 hız turu 4 (kullanıcı kararı, «melez»): İLK oynatma posterin kendi karesinden başlar — poster resmi videonun
+ *  ~6,07 s karesi (tuvalde karşılaştırıldı: 6,04–6,11 s en yakın; 7,5 s belirgin uzak). Önce 7,5'ten başlıyordu: poster →
+ *  video eriyişinde 1,4 s'lik kamera sıçraması ve 900 ms çift görüntü vardı, ilk kareden önce ~2 MB fazladan iniyordu.
+ *  Döngü dönüşleri 9,009 s anahtar karesine (MP4 stss: 3,003 s arayla) — keskin aralığın içinde. */
+const ILK_BAS = 6.0727;
+const DONGU_BAS = 9.009;
 const DONGU_SON = 19.0;
+/** 16.10 hız turu 4 (kullanıcı kararı): posteri (474 KB) 2 sn'den uzun sürede indiren hat videoyu (mobil 6,9 MB,
+ *  masaüstü 36 MB) akıcı oynatamaz — veri ve bant harcar, takılır. Bağlantı türü API'si yalnız Chrome'da var ve
+ *  kısıtlı hatta bile çoğu zaman «4g» diyor (ölçüldü: 1,6 Mbps'de video yine indi); ölçü tarayıcıdan bağımsız:
+ *  posterin kendi indirme süresi (Resource Timing). Poster 1 yıl önbellekte kalır; önbellekten geldiğinde (aktarım 0)
+ *  süre hat hakkında bir şey söylemez — o zaman son AĞ ölçümünün kararı kullanılır (7 gün geçerli; yoksa video oynar). */
+const YAVAS_POSTER_MS = 2000;
+const YAVAS_KAYIT = "pvq_yavas_hat";
+const YAVAS_OMUR_MS = 7 * 24 * 3600 * 1000;
+function posterYavasMi(): boolean {
+  try {
+    const g = performance.getEntriesByName(new URL(santralPoster, window.location.href).href) as PerformanceResourceTiming[];
+    const e = g[0];
+    if (!e || !(e.responseEnd > 0)) return false;
+    if (e.transferSize === 0 && e.decodedBodySize > 0) {          // önbellekten: son ağ ölçümüne bak
+      const k = JSON.parse(localStorage.getItem(YAVAS_KAYIT) ?? "null") as { y?: boolean; t?: number } | null;
+      return !!k && k.y === true && typeof k.t === "number" && Date.now() - k.t < YAVAS_OMUR_MS;
+    }
+    const yavas = e.responseEnd - e.startTime > YAVAS_POSTER_MS;
+    try { localStorage.setItem(YAVAS_KAYIT, JSON.stringify({ y: yavas, t: Date.now() })); } catch { /* depo yok */ }
+    return yavas;
+  } catch { return false; }
+}
 const OYNATMA_HIZI = 0.7;   // 14.10 kullanıcı: arka plan göze batmasın — %70 hız (11,5 s'lik aralık ~16 s sürer)
 
 /** Açılış sırası (16.10 hız turu 3 — film ölçümü: hero ilk boyamada siyah zeminle açılıyor, poster
  *  levhalar/videoyla yarışıp mobil 3G'de 11 sn'de iniyor, video poster gelmeden ve farklı kareden başlıyordu):
  *  1) zemin: posterin kendi renklerinden gradyan (vitrin.css «Hız turu 3»; fotoğrafa dokunulmaz);
  *  2) poster: aynı dosya, yüksek öncelikli <img> + videonun kendi posteri; üstteki örtü poster tamamen
- *     çözülünce 450 ms'de solar (yarım çizim görünmez);
- *  3) video: YALNIZ poster + sayfa yüklendikten sonra iner; oynamaya başlayınca üstteki poster resmi 900 ms'de
- *     solar (poster 6,07 sn karesi, döngü 7,5'ten başlar — sıçrama yerine erime). Veri tasarrufu, 2G/3G ve
- *     hareket azaltma tercihinde video hiç indirilmez, poster kalır.
+ *     çözülünce 450 ms'de solar (yarım çizim görünmez). Hız turu 4: istek index.html'deki betikten, CSS iner
+ *     inmez başlar (vite.config «pvq-vitrin-kabugu»); <img> o yanıtı kullanır;
+ *  3) video: YALNIZ poster + sayfa yüklendikten sonra ve hero ekrandayken iner; oynamaya başlayınca üstteki poster resmi 900 ms'de
+ *     solar (poster 6,07 sn karesi, ilk oynatma da oradan — aynı kare üzerinde erime). Veri tasarrufu, 2G/3G, posteri
+ *     2 sn'den uzun sürede indiren hat ve hareket azaltma tercihinde video hiç indirilmez, poster kalır.
  *  LCP (canlı ölçüm v2.451): saydamdan görünüre geçen video ilk karesinde yeni LCP adayı oluyordu (masaüstü 4G
  *  6,0 sn). Video baştan görünür ve posterli olunca yalnız poster anında bir kez sayılır; örtü ve zemin düşük
  *  bilgili SVG olduğundan aday değildir.
@@ -36,11 +64,13 @@ export function Hero({ kabuk = false }: { kabuk?: boolean } = {}) {
   const video = useRef<HTMLVideoElement>(null);
   const [posterHazir, setPosterHazir] = useState(false);
   const [videoGorunur, setVideoGorunur] = useState(false);
+  const yavasHat = useRef(false);
   const posterYuklendi = (e: SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget;
+    yavasHat.current = posterYavasMi();
     (typeof img.decode === "function" ? img.decode() : Promise.resolve()).catch(() => {}).then(() => { setPosterHazir(true); heroHazirOldu(); });
   };
-  const posterHata = () => { setPosterHazir(true); heroHazirOldu(); };
+  const posterHata = () => { yavasHat.current = true; setPosterHazir(true); heroHazirOldu(); };   // poster yoksa video da denenmez
   // poster çok gecikirse (çok yavaş hat) levhalar en geç 5 sn sonra serbest
   useEffect(() => { const t = window.setTimeout(heroHazirOldu, 5000); return () => window.clearTimeout(t); }, []);
   useEffect(() => {
@@ -49,32 +79,48 @@ export function Hero({ kabuk = false }: { kabuk?: boolean } = {}) {
     const baglanti = (navigator as Navigator & { connection?: { effectiveType?: string; saveData?: boolean } }).connection;
     const kisit = !!baglanti && (baglanti.saveData === true || /(^|-)2g$|^3g$/.test(baglanti.effectiveType ?? ""));
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    if (kisit || mq.matches) return;                           // video hiç inmez; poster sahnede kalır
+    if (kisit || yavasHat.current || mq.matches) return;       // video hiç inmez; poster sahnede kalır
     v.muted = true;                                            // tarayıcılar otomatik oynatmayı yalnız sessiz videoya verir
     // aralık yalnız 25,8 s'lik orijinal için; ≤760 px'teki 12 s'lik 1080p döngü zaten iyi bölümden kesilmiş — olduğu gibi döner
     const araliksiz = () => !(v.duration > DONGU_SON + 1);
-    const basaSar = () => { if (!araliksiz()) v.currentTime = DONGU_BAS; };
-    const aralik = () => { if (araliksiz()) return; if (v.currentTime >= DONGU_SON || v.currentTime < DONGU_BAS - 0.25) basaSar(); };
+    let ilkTur = true;                                         // ilk tur poster karesinden, sonrakiler DONGU_BAS'tan
+    const basaSar = () => { if (!araliksiz()) v.currentTime = ILK_BAS; };
+    const aralik = () => {
+      if (araliksiz()) return;
+      const t = v.currentTime;
+      if (t >= DONGU_SON) { ilkTur = false; v.currentTime = DONGU_BAS; return; }
+      const alt = ilkTur ? ILK_BAS : DONGU_BAS;
+      if (t < alt - 0.25) v.currentTime = alt;                 // dosya sonundan «loop» ile başa dönerse de aralığa
+    };
     v.addEventListener("loadedmetadata", basaSar);
     v.addEventListener("timeupdate", aralik);
     const oynuyor = () => { requestAnimationFrame(() => setVideoGorunur(true)); };
     v.addEventListener("playing", oynuyor);
-    let izin = false;                                          // yükleme başlamadan play() ÇAĞRILMAZ (indirmeyi tetikler)
-    let gorunur = true;
+    // 16.10 hız turu 4: indirme YALNIZ hero ilk kez ekranda (ve sekme görünür) olunca başlar. Önce load() sayfa
+    // yüklenir yüklenmez çağrılıyordu: /#karne, /#sss gibi çapalı açılışta hero ekran dışındayken duraklatılmış
+    // video tamponu dolduruyordu (ölçüldü: masaüstü 4G'de 15 sn'de ~12 MB). play() de yüklemeden önce çağrılmaz.
+    let izin = false;                                          // sayfa yüklendi (window load)
+    let yuklendi = false;                                      // load() bir kez çağrıldı
+    let gorunur = typeof IntersectionObserver === "undefined"; // IO yoksa görünür say; varsa ilk geri çağrı söyler
     const uygula = () => {
       if (!izin) return;
-      if (gorunur && document.visibilityState === "visible") v.play().catch(() => {});
-      else v.pause();
+      const ekranda = gorunur && document.visibilityState === "visible";
+      if (ekranda && !yuklendi) { yuklendi = true; v.preload = "auto"; v.load(); v.playbackRate = OYNATMA_HIZI; } // load() hızı sıfırlar
+      if (!yuklendi) return;
+      if (ekranda) v.play().catch(() => {}); else v.pause();
     };
     const io = typeof IntersectionObserver === "undefined" ? null
       : new IntersectionObserver(([g]) => { gorunur = !!g?.isIntersecting; uygula(); });
     io?.observe(v);
     document.addEventListener("visibilitychange", uygula);
-    const basla = () => { izin = true; v.preload = "auto"; v.load(); v.playbackRate = OYNATMA_HIZI; uygula(); };
+    const basla = () => { izin = true; uygula(); };
     if (document.readyState === "complete") basla(); else window.addEventListener("load", basla, { once: true });
     return () => {
       window.removeEventListener("load", basla); io?.disconnect(); document.removeEventListener("visibilitychange", uygula);
       v.removeEventListener("loadedmetadata", basaSar); v.removeEventListener("timeupdate", aralik); v.removeEventListener("playing", oynuyor);
+      // gerçek ayrılışta (vitrin → giriş/panel) süren video indirmesi durur; yoksa masaüstündeki 36 MB'lık dosya panel parçalarıyla
+      // bant paylaşmaya devam ediyordu. StrictMode'un deneme sökümünde öğe DOM'da kalır — dokunulmaz.
+      if (!v.isConnected) { v.pause(); for (const s of [...v.querySelectorAll("source")]) s.remove(); v.removeAttribute("src"); v.load(); }
     };
   }, [posterHazir]);
   return (

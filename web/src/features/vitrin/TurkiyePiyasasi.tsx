@@ -4,7 +4,9 @@ import tlSapma from "./varlik/tl-sapma.png";
 import tlSablon from "./varlik/tl-sablon.png";
 import tlAlarm from "./varlik/tl-alarm.png";
 import tlAralik from "./varlik/tl-aralik.png";
+import { useEffect, useState } from "react";
 import { Levha } from "./Levha";
+import { heroBekle, heroHazirOldu } from "./heroHazir";
 
 /** Türkiye piyasası (v2.386 cila-a + kart-tasarim «panel kesiti»): solda bölüm başı, sağda SAHNELENMİŞ
  *  panel penceresi (dokunulmadı; {EKRAN} yuvası gerçek ekran görüntüsüne/canlı bileşene açık, R22).
@@ -37,6 +39,19 @@ const KARTLAR: readonly {
 ];
 
 export function TurkiyePiyasasi() {
+  // 16.10 hız turu 4: hero'daki «TL karşılığı nasıl hesaplanır» /yontem#para'ya iner. Hero'suz sayfada levhalar hemen
+  // src alıyordu; masaüstünde altısı (toplam 2,0 MB) aynı anda isteniyor, bölümün sahne levhası 4G'de ancak 1,9 sn'de
+  // tamamlanıyordu (ölçüldü; şimdi 1,0 sn). Bu çapada sahne levhası «hero» rolünü üstlenir: inene (ya da 5 sn) dek
+  // yalnız ekrana yakın levhalar iner; kalanlar ardından (tarayıcının tembel eşiği + useCanlandir önden indirmesi).
+  // Çapasız /yontem değişmez.
+  // Karar yalnız ilk çizimde: sonradan sayfa içinde #para'ya gidilirse bekleme yeniden açılmaz (levhalar src'sini korur).
+  const [capa] = useState(() => window.location.hash === "#para");
+  if (capa) heroBekle();
+  useEffect(() => {
+    if (!capa) return;
+    const t = window.setTimeout(heroHazirOldu, 5000);
+    return () => window.clearTimeout(t);
+  }, [capa]);
   return (
     <section className="vt-bolum vt-bolum--bant" id="para" aria-labelledby="vt-para-baslik" data-canlan="">
       <div className="vt-kap">
@@ -46,7 +61,8 @@ export function TurkiyePiyasasi() {
             <p className="vt-giris">Elektrik piyasasında her santral, ertesi gün ne üreteceğini önceden bildirmekle yükümlüdür; gerçekleşen üretim bu programdan saptığında aradaki fark santrale fatura edilir. PVQuant üretim programınızı hazırlar, gün içi güncelleme fırsatlarını izler ve sapmanın size maliyetini her gün TL olarak raporlar.</p>
           </div>
           <div className="vt-sahne vt-sahne--resim" aria-hidden="true">
-            <Levha src={tlSahne} alt="" width="2000" height="2000" loading="lazy" decoding="async" />
+            <Levha src={tlSahne} alt="" width="2000" height="2000" loading="lazy" decoding="async"
+              onLoad={capa ? heroHazirOldu : undefined} onError={capa ? heroHazirOldu : undefined} />
           </div>
         </div>
         <div className="vt-kesit">

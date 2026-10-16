@@ -21,7 +21,6 @@ export function ReferansEgri({ veri }: { veri: null }) {
         <li><span className="vt-lejant__bant" aria-hidden="true" />Tahmin aralığı (P10–P90)</li>
         <li><span className="vt-lejant__cizgi vt-lejant__cizgi--gerceklesen" aria-hidden="true" />Gerçekleşen</li>
       </ul>
-      <Cizim noktalar={noktalar} kip="genis" />
       <Cizim noktalar={noktalar} kip="orta" />
       <Cizim noktalar={noktalar} kip="dar" />
       <figcaption className="vt-kunye vt-pencere__kunye">
@@ -73,10 +72,10 @@ function monotonC(d: readonly (readonly [number, number])[]): string {
   return yol;
 }
 
-type CizimKipi = "genis" | "orta" | "dar";
-/* Geometriler cila-a ile birebir: hero--a pencerede "orta" (520 px), ≥1241 dışı dar/orta CSS seçer. */
+type CizimKipi = "orta" | "dar";
+/* Geometriler cila-a ile birebir: karne penceresinde "orta" (520 px), dar ekranda "dar" — CSS seçer.
+   16.10 hız turu 4: «genis» (720 px) kaldırıldı — vitrin.css her genişlikte gizliyordu (30 öğe, 5,2 KB ölü DOM). */
 const GEOMETRI: Record<CizimKipi, { W: number; H: number; SOL: number; SAG: number; UST: number; ALT: number }> = {
-  genis: { W: 720, H: 314, SOL: 64, SAG: 18, UST: 24, ALT: 34 },
   orta: { W: 520, H: 262, SOL: 60, SAG: 14, UST: 22, ALT: 32 },
   dar: { W: 360, H: 244, SOL: 54, SAG: 10, UST: 20, ALT: 30 },
 };

@@ -646,3 +646,7 @@ select.girdi { font-family: var(--font); }
 .ızgara-cift { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr);
                gap: 14px; align-items: start; margin-bottom: 14px; }
 @media (max-width: 1340px) { .ızgara-cift { grid-template-columns: minmax(0,1fr); } }
+
+/* 16.10 hız turu 4: /yontem soğuk açılışta kabuk silinince React çizene dek (ölçüldü: mobil 3G ~0,6 sn, 4G ~0,3 sn) panel zemini
+   (#E3E9F2) görünüyor, sonra vitrin beyazına atlıyordu. index.html'deki betik /yontem'de html'e .vt-sayfa koyar. */
+html.vt-sayfa body { background: #FFFFFF; }

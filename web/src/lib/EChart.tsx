@@ -2,7 +2,7 @@
  *  Sozlesme kullanim yerlerinden: option + height + ariaLabel.
  *  Yasam dongusu: init -> setOption (degisimde) -> resize (gozlemci) -> dispose. */
 import { useEffect, useRef } from "react";
-import * as echarts from "echarts";
+import * as echarts from "./echarts";
 import type { EChartsOption } from "echarts";
 
 export function EChart({ option, height = 300, ariaLabel }:

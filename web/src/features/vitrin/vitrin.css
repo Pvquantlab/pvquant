@@ -778,26 +778,18 @@
 /* 15.10 hız turu 2 (kullanıcı: «öğeler parça parça, farklı zamanlarda görünüyor»): bekleyen bölüm
    artık GİZLENMEZ — %85 görünür + 10 px kayma; açılış 360 ms. İçerik sayfa dinlenmedeyken de okunur,
    canlılık yalnız hafif vurgu olarak kalır. */
-.vt [data-canlan].is-bekliyor { opacity: .85; }
-.vt [data-canlan].is-bekliyor > * { transform: translateY(10px); }
-.vt [data-canlan].is-acildi { opacity: 1; transition: opacity 360ms var(--vt-ease-cik); }
-.vt [data-canlan].is-acildi > * { transform: none; transition: transform 360ms var(--vt-ease-cik); }
-/* kart kademesi (ızgara .vt-kap içinde: alt seçici); kanıt şeridi hariç — veri gelince ızgara
-   yeniden kurulur, kademe ikinci kez oynardı (inceleme bulgusu 1) */
-.vt [data-canlan].is-acildi:not(.vt-serit) .vt-izgara > * { animation: vt-canlan 360ms var(--vt-ease-cik) backwards; }
-.vt [data-canlan].is-acildi:not(.vt-serit) .vt-izgara > :nth-child(2) { animation-delay: 40ms; }
-.vt [data-canlan].is-acildi:not(.vt-serit) .vt-izgara > :nth-child(3) { animation-delay: 80ms; }
-.vt [data-canlan].is-acildi:not(.vt-serit) .vt-izgara > :nth-child(4) { animation-delay: 120ms; }
-.vt [data-canlan].is-acildi:not(.vt-serit) .vt-izgara > :nth-child(n+5) { animation-delay: 160ms; }
-@keyframes vt-canlan { from { opacity: 0; transform: translateY(18px); } }
+/* 16.10 hız turu 4 (kullanıcı kararı «tek parça açılış»): kart kademesi kalktı — kartlar %0'dan tek tek (360–520 ms,
+   0–240 ms gecikmeyle) beliriyordu; menüden bir bölüme atlanınca ızgara bir kare görünüp sönüyor, sonra parça parça
+   geri geliyordu. Bekleme tonu da bölümden ÇOCUKLARA taşındı: lacivert bantların zemini soluk tondan koyulaşmaz,
+   yalnız içerik bütün olarak %85 → %100 ve 10 px kayarak açılır. */
+.vt [data-canlan].is-bekliyor > * { opacity: .85; transform: translateY(10px); }
+.vt [data-canlan].is-acildi > * { opacity: 1; transform: none; transition: opacity 360ms var(--vt-ease-cik), transform 360ms var(--vt-ease-cik); }
 @media (prefers-reduced-motion: reduce) {
-  .vt [data-canlan].is-bekliyor { opacity: 1; }
-  .vt [data-canlan].is-bekliyor > * { transform: none; }
-  .vt [data-canlan].is-acildi:not(.vt-serit) .vt-izgara > * { animation: none; }
+  .vt [data-canlan].is-bekliyor > * { opacity: 1; transform: none; }
+  .vt [data-canlan].is-acildi > * { transition: none; }
 }
 @media print {
-  .vt [data-canlan].is-bekliyor { opacity: 1; }
-  .vt [data-canlan].is-bekliyor > * { transform: none; }
+  .vt [data-canlan].is-bekliyor > * { opacity: 1; transform: none; }
 }
 /* R24 — hero h1 tek vurgu istisnası (yalnız burada; beyazda 6,65) */
 .vt-h1__vurgu { font-style: normal; color: var(--vt-eylem); }
@@ -981,11 +973,6 @@
 /* ayna: onay imi SR'a okunmaz; dar ekranda ikinci sütun başlığı yalnız GÖRSEL gizlenir */
 .vt-srgizli { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
   clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
-/* zincir ok'ları belirme sırasını kaydırmasın: kart gecikmeleri yeniden kurulur */
-.vt .vt-adim__ok { animation: none !important; }
-.vt [data-canlan].is-acildi:not(.vt-serit) .vt-adimlar > .vt-adim:nth-of-type(2) { animation-delay: 60ms; }
-.vt [data-canlan].is-acildi:not(.vt-serit) .vt-adimlar > .vt-adim:nth-of-type(3) { animation-delay: 120ms; }
-.vt [data-canlan].is-acildi:not(.vt-serit) .vt-adimlar > .vt-adim:nth-of-type(4) { animation-delay: 180ms; }
 /* disiplin: bağlar sütunlar arasında aynı hizada; dipnot ayrı satır */
 .vt-disiplin__bag { margin-top: auto; padding-top: 8px; }
 /* ayna: dar ekranda ikinci sütun başlığı yalnız görsel gizlenir (SR başlığı korur) */
@@ -1038,15 +1025,6 @@
 @media (max-width: 600px) {
   .vt-kesit { grid-template-columns: 1fr; }
   .vt-kesit__hucre { padding: 20px 18px 22px; }
-}
-/* giriş kademesi: .vt-izgara kartlarıyla aynı ritim */
-.vt [data-canlan].is-acildi .vt-kesit > * { animation: vt-canlan 520ms var(--vt-ease-cik) backwards; }
-.vt [data-canlan].is-acildi .vt-kesit > :nth-child(2) { animation-delay: 60ms; }
-.vt [data-canlan].is-acildi .vt-kesit > :nth-child(3) { animation-delay: 120ms; }
-.vt [data-canlan].is-acildi .vt-kesit > :nth-child(4) { animation-delay: 180ms; }
-.vt [data-canlan].is-acildi .vt-kesit > :nth-child(n+5) { animation-delay: 240ms; }
-@media (prefers-reduced-motion: reduce) {
-  .vt [data-canlan].is-acildi .vt-kesit > * { animation: none; }
 }
 /* zorlanmış renklerde zemin çizgileri kaybolur: hücre kenarı geri gelir */
 @media (forced-colors: active) {
@@ -1317,8 +1295,8 @@
 .vt-yontem-giris .vt-giris { font-size: 22px; line-height: 1.45; max-width: 640px; margin-top: 32px; }
 
 /* ── hero: zemin → video → dikey perde → içerik ───────────── */
-/* 13.10: yüksek ekranda hero 960 px'te biter (video alt satırı yukarı); kısa ekranda tam ekran kalır; mobil aşağıda 100dvh */
-.vt-hero--video { display: block; position: relative; overflow: hidden; min-height: min(100dvh, 960px); padding: 0; background: var(--vt-gece-ust); color: #FFFFFF; }
+/* 13.10: yüksek ekranda hero 960 px'te biter (video alt satırı yukarı); kısa ekranda tam ekran kalır; mobil aşağıda 100svh (16.10: dvh, adres çubuğu küçülünce hero’yu uzatır — video yakınlaşır, alttaki bölüm itilir; svh sabit kalır) */
+.vt-hero--video { display: block; position: relative; overflow: hidden; min-height: min(100svh, 960px); padding: 0; background: var(--vt-gece-ust); color: #FFFFFF; }
 .vt-hero--video .vt-hero__sahne { position: absolute; inset: 0; width: auto; height: auto; aspect-ratio: auto; order: 0; margin: 0; z-index: 0; -webkit-mask-image: none; mask-image: none; }
 /* 13.10: kırpma yalnız ALTTAN — gökyüzü (metin bölgesi) her ekran oranında tam kalır.
    Chrome videoyu QuickTime'dan daha düz/soluk oynatır (renk yönetimi farkı): orijinal görünüme yaklaşmak için hafif
@@ -1342,7 +1320,7 @@
 
 .vt-hero--video .vt-hero__ic {
   position: relative; z-index: 1; display: flex; flex-direction: column; justify-content: center; gap: 0;
-  min-height: min(100dvh, 960px); justify-content: flex-start; padding-block: calc(var(--vt-ust-y) + 36px) 64px;   /* 13.10: blok ÜSTTE — açık gök ve ufuk bandı, koyu yazı */
+  min-height: min(100svh, 960px); justify-content: flex-start; padding-block: calc(var(--vt-ust-y) + 36px) 64px;   /* 13.10: blok ÜSTTE — açık gök ve ufuk bandı, koyu yazı */
 }
 .vt-hero--video .vt-hero__sol { order: 1; align-self: auto; width: 100%; max-width: 1180px; margin: 0; padding: 0; }
 .vt-hero--video .vt-hero__sol .vt-h1 { color: #FFFFFF; max-width: 1180px; }
@@ -1712,8 +1690,8 @@
   .vt-karne-pencere .vt-lejant, .vt-karne-pencere .vt-pencere__tarih { font-size: 15px; }
   .vt-egri__et { font-size: 14px; }
   /* kırpma paylaşımı: üstten hizalama en keskin (yakın) panelleri kesiyordu — hero uzar, video %22'den hizalanır */
-  .vt-hero--video { min-height: min(100dvh, 1120px); }
-  .vt-hero--video .vt-hero__ic { min-height: min(100dvh, 1120px); }
+  .vt-hero--video { min-height: min(100svh, 1120px); }
+  .vt-hero--video .vt-hero__ic { min-height: min(100svh, 1120px); }
   .vt-hero--video .vt-hero__video { object-position: 50% 22%; }
   .vt-hero--video .vt-hero__sol { max-width: 760px; }
   .vt-hero--video .vt-hero__sol .vt-h1 { font-size: clamp(56px, 3.2vw, 80px); max-width: 760px; }
@@ -1746,8 +1724,8 @@
   .vt-alt { padding-block: 64px 32px; border-radius: 32px 32px 0 0; }
   .vt-alt__izgara { gap: 36px; }
   .vt-alt__tanim { font-size: 26px; }
-  .vt-hero--video { min-height: 100dvh; }
-  .vt-hero--video .vt-hero__ic { min-height: 100dvh; justify-content: flex-start; padding-block: 110px 40px; }
+  .vt-hero--video { min-height: 100svh; }
+  .vt-hero--video .vt-hero__ic { min-height: 100svh; justify-content: flex-start; padding-block: 110px 40px; }
   /* mobilde uzun metin panellere taşar: yalnız üstte hafif AÇIK örtü (koyu yazı okunsun), altta video olduğu gibi */
   .vt-hero--video .vt-hero__sahne::after { content: ""; background: linear-gradient(180deg, rgba(255, 255, 255, .62) 0%, rgba(255, 255, 255, .52) 45%, rgba(255, 255, 255, .25) 68%, rgba(255, 255, 255, 0) 85%); }
   .vt-hero--video .vt-hero__sol .vt-giris { margin-top: 22px; margin-left: 0; padding: 16px 18px; font-size: 16px; line-height: 1.5; color: #0B1B3C; }
@@ -1776,7 +1754,7 @@
 @media (max-width: 767px) {
   .vt { font-size: 17px; line-height: 26px; }
   /* hero: video yakın panelleri gösterir (alt hizalama), üstte hafif açık perde — metin gökte, paneller altta net */
-  .vt-hero--video { min-height: 100dvh; }
+  .vt-hero--video { min-height: 100svh; }
   .vt-hero--video .vt-hero__video { object-position: 50% 100%; }
   .vt-hero--video .vt-hero__sahne::after { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; mix-blend-mode: normal;
     -webkit-mask-image: none; mask-image: none;
@@ -1977,6 +1955,11 @@
 .vt .vt-hero__poster { position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: cover; object-position: 50% 0%;
   transform: scaleX(-1); filter: url(#vt-keskin); transition: opacity 900ms ease-in-out; }
 .vt .vt-hero__poster.is-gecti { opacity: 0; }
+/* 16.10 hız turu 4 (film karesiyle yakalandı): eski «Ufuk» kuralları (.vt-hero--a .vt-hero__sahne img → width:100%;
+   height:auto; ≤1080 px'te right:-6%, width:min(135%,980px)) özgüllükte üstündeydi — poster sahneyi örtmüyor, 16:9 kutuda
+   kalıyordu: mobilde üstte küçük ölçekli ikinci bir ufuk bandı + dikiş (≈285 px), masaüstünde (1440×900) y≈801'de dikiş. Poster,
+   videoyla aynı kutuya (sahnenin tamamı) oturur; ölçek ve kırpma videoyla birebir. */
+.vt .vt-hero--video .vt-hero__sahne .vt-hero__poster { top: 0; right: 0; bottom: 0; left: 0; width: 100%; height: 100%; max-width: none; }
 .vt .vt-hero__ortu { position: absolute; inset: 0; pointer-events: none; background: #BFD6EE url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2560' height='1440' viewBox='0 0 2560 1440'%3E%3Cdefs%3E%3ClinearGradient id='d' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0.021' stop-color='%23BCD3EB'/%3E%3Cstop offset='0.062' stop-color='%23C0D7EE'/%3E%3Cstop offset='0.104' stop-color='%23C3D8EF'/%3E%3Cstop offset='0.146' stop-color='%23BED6ED'/%3E%3Cstop offset='0.188' stop-color='%23BCD6EE'/%3E%3Cstop offset='0.229' stop-color='%23BBD8F1'/%3E%3Cstop offset='0.271' stop-color='%23C1DDF4'/%3E%3Cstop offset='0.312' stop-color='%23C8E1F6'/%3E%3Cstop offset='0.354' stop-color='%23D2E4F6'/%3E%3Cstop offset='0.396' stop-color='%23DDE5F2'/%3E%3Cstop offset='0.438' stop-color='%23D1DCE9'/%3E%3Cstop offset='0.479' stop-color='%23A1ACB8'/%3E%3Cstop offset='0.521' stop-color='%23978D81'/%3E%3Cstop offset='0.562' stop-color='%236B6A7D'/%3E%3Cstop offset='0.604' stop-color='%23545B77'/%3E%3Cstop offset='0.646' stop-color='%234C526F'/%3E%3Cstop offset='0.688' stop-color='%23505673'/%3E%3Cstop offset='0.729' stop-color='%23525977'/%3E%3Cstop offset='0.771' stop-color='%234D5371'/%3E%3Cstop offset='0.812' stop-color='%23484C6A'/%3E%3Cstop offset='0.854' stop-color='%23454966'/%3E%3Cstop offset='0.896' stop-color='%23424562'/%3E%3Cstop offset='0.938' stop-color='%2341425C'/%3E%3Cstop offset='0.979' stop-color='%23454257'/%3E%3C/linearGradient%3E%3ClinearGradient id='y' x1='0' y1='0' x2='1' y2='0'%3E%3Cstop offset='0' stop-color='%23000' stop-opacity='.24'/%3E%3Cstop offset='.45' stop-color='%23000' stop-opacity='0'/%3E%3Cstop offset='1' stop-color='%23fff' stop-opacity='.1'/%3E%3C/linearGradient%3E%3ClinearGradient id='m' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='.5' stop-color='%23fff' stop-opacity='0'/%3E%3Cstop offset='.6' stop-color='%23fff'/%3E%3C/linearGradient%3E%3Cmask id='k'%3E%3Crect width='2560' height='1440' fill='url(%23m)'/%3E%3C/mask%3E%3C/defs%3E%3Crect width='2560' height='1440' fill='url(%23d)'/%3E%3Crect width='2560' height='1440' fill='url(%23y)' mask='url(%23k)'/%3E%3C/svg%3E") 50% 0% / cover no-repeat;
   transition: opacity 450ms ease-out; }
 .vt .vt-hero__ortu.is-acik { opacity: 0; }
@@ -1990,4 +1973,10 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .vt .vt-hero__poster, .vt .vt-hero__ortu { transition: none; }
+}
+/* kabuk dolgusu (VitrinKabugu.tsx): yalnız derlemedeki ilk ekran HTML'inde; React devralınca yok olur. Yalnız ince
+   işaretçili cihazlarda (klasik kaydırma çubuğu burada yer kaplar); dokunmatikte kaydırma göstergesi devirde boy
+   değiştirmesin diye dolgu yok. */
+@media (pointer: fine) {
+  .vt .vt-kabuk-dolgu { height: 100vh; }
 }

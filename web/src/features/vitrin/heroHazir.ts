@@ -4,7 +4,8 @@ import { useSyncExternalStore } from "react";
  *  Ölçüm (canlı, soğuk önbellek): hero posteri (474 KB) aynı anda inen «Dört adım» levhaları (2×~440 KB)
  *  ve videoyla bant genişliğini paylaştığı için mobil 3G'de 11,0 sn, masaüstü 3G'de 13,7 sn'de iniyordu;
  *  bu sürede hero koyu zeminle duruyordu. Kural: hero bulunan sayfada levhalar ve video, poster inene
- *  (ya da en geç 5 sn) dek bekler. Hero olmayan sayfada (/yontem) beklenecek bir şey yoktur → hemen hazır.
+ *  (ya da en geç 5 sn) dek bekler. Hero olmayan sayfada (/yontem) beklenecek bir şey yoktur → hemen hazır;
+ *  /yontem#para'da sahne levhası aynı rolü üstlenir (TurkiyePiyasasi.tsx, 16.10 hız turu 4).
  *  Hero, render sırasında `heroBekle()` çağırır; kardeş bileşenler (DortAdim, IsIzgarasi) aynı geçişte
  *  sonra render olduğundan bekleme durumunu doğru okur. */
 let bekleniyor = false;

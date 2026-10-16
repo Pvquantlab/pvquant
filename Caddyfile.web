@@ -1,15 +1,32 @@
 :8080 {
-	# v2.431 (14.10): kenar Caddy'siz dogrudan erisimde de sikistirma olsun
+	# v2.431 (14.10): kenar Caddy'siz dogrudan erisimde de sikistirma olsun.
+	# v2.453 (16.10 hiz turu 4): metin dosyalarinin derlemede uretilmis .br/.gz esleri varsa
+	# onlar gider (precompressed; brotli 11 — anlik zstd'den ~%20 kucuk); yoksa anlik zstd/gzip.
 	encode zstd gzip
-	# SPA yonlendirmesi: bilinmeyen yollar index.html'e duser (history API).
 	root * /srv
-	try_files {path} /index.html
 	# v2.324: onbellek sozlesmesi — index.html HER ZAMAN dogrulanir (yoksa
 	# tarayici sezgisel onbellekle ESKI paketi calistirir; Safari'de yakalandi),
 	# hash'li assets/* ise icerik-adresli oldugundan 1 yil dokunulmaz.
-	@varliklar path /assets/*
-	header @varliklar Cache-Control "public, max-age=31536000, immutable"
-	@sayfa not path /assets/*
-	header @sayfa Cache-Control "no-cache"
-	file_server
+	# v2.453: 1 yillik baslik YALNIZ var olan varliga. Eskiden eksik /assets/* dosyasi da
+	# try_files ile index.html'e dusuyor, 200 text/html + immutable donuyordu: yayindan once
+	# acilmis sekme eski parcayi isteyince HTML'i JS diye alip bir yil onbellekte tutuyordu.
+	@varlik {
+		path /assets/*
+		file
+	}
+	header @varlik Cache-Control "public, max-age=31536000, immutable"
+	handle /assets/* {
+		# eksik varlik → 404 (SPA'ya dusmez)
+		file_server {
+			precompressed br gzip
+		}
+	}
+	handle {
+		# SPA yonlendirmesi: bilinmeyen yollar index.html'e duser (history API).
+		header Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server {
+			precompressed br gzip
+		}
+	}
 }

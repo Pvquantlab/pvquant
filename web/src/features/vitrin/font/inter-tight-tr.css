@@ -1,0 +1,33 @@
+/* 16.10 hız turu 4 — Türkçe harfler için Inter Tight alt kümesi (SIL OFL-1.1, font/OFL.txt; kaynak:
+   @fontsource/inter-tight latin-ext 400/500/600, fontTools.subset, glifler kaynakla çizim çizim aynı).
+   Neden: vitrinin latin dışı karakterleri yalnız ğ ş İ (ölçüldü, ana sayfa + /yontem; Ğ Ş ₺ da eklendi). Bunlar
+   için 3 × ~36 KB latin-ext dosyası iniyordu; ikisi ilk ekran için ön yüklenip mobil 3G'de ilk boyamayı
+   kendi bitişlerine bağlıyordu. Bu 6 karakterlik yüzler ~1,5 KB'tır; 500/600 ön yüklenir (vite.config). CSS'e
+   GÖMÜLMEZ: gömülü (data:) yüz ilk boyamadan bir kare sonra hazır oluyor, ğ/ş/İ ilk karede yedek fontla çizilip
+   satır kayıyordu (ölçüldü, her profilde).
+   Sıra şart: Fontsource içe aktarmalarından SONRA gelir — aynı aile/ağırlıkta çakışan unicode-range'lerde
+   tarayıcı son tanımlanan yüzü önce dener; başka bir latin-ext harfi gelirse tam dosya yine iner. */
+@font-face {
+  font-family: 'Inter Tight';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(./inter-tight-tr-400.woff2) format('woff2');
+  unicode-range: U+011E-011F,U+0130,U+015E-015F,U+20BA;
+}
+@font-face {
+  font-family: 'Inter Tight';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url(./inter-tight-tr-500.woff2) format('woff2');
+  unicode-range: U+011E-011F,U+0130,U+015E-015F,U+20BA;
+}
+@font-face {
+  font-family: 'Inter Tight';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url(./inter-tight-tr-600.woff2) format('woff2');
+  unicode-range: U+011E-011F,U+0130,U+015E-015F,U+20BA;
+}

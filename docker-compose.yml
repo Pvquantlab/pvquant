@@ -92,6 +92,10 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      # v2.453 (16.10): HTTP/3 (QUIC) UDP üzerinden — Caddy her yanıtta «alt-svc: h3» ilan ediyordu ama yalnız TCP
+      # yayınlandığı için tarayıcının QUIC denemesi boşa gidiyordu (UDP/443 yoklaması yanıtsız). Tekrar ziyarette
+      # bağlantı ~1 tur hızlı kurulur; kayıplı mobil hatta satır başı tıkanması olmaz.
+      - "443:443/udp"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
