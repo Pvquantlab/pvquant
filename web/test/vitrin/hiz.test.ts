@@ -156,6 +156,8 @@ test("hero CSS: poster sahneyi örter, svh, kabuk dolgusu yalnız ince işaretç
   assert.match(css, /@media \(pointer: fine\) \{\n\s*\.vt \.vt-kabuk-dolgu \{ height: 100vh; \}\n\}/);
   assert.ok(oku("../../src/features/vitrin/VitrinKabugu.tsx").includes('className="vt-kabuk-dolgu"'));
   assert.ok(!oku("../../src/features/vitrin/Vitrin.tsx").includes("vt-kabuk-dolgu"), "dolgu yalnız kabukta");
+  // «Hangi iş için» beyaz tepsisi kenar boşluklu: genişlik otomatik olmalı (%100 + kenar boşluğu kartı taşırıyordu)
+  assert.match(css, /\.vt #isler \.vt-is \.vt-levha--resim \{[^}]*margin: 12px 12px 0;[^}]*width: auto; \}/);
 });
 
 // 16.10 kullanıcı kararları: yavaş hatta video yok, melez döngü başlangıcı, tek parça açılış, HTTP/3

@@ -1842,7 +1842,10 @@
    kartlar kenarsız buz, illüstrasyon kartın içinde beyaz yuvarlak tepside. Sayfa ritmi:
    buz bölüm (dört adım) → beyaz bölüm/buz kart → koyu açık karne. */
 .vt #isler .vt-is { background: #EEF3FA; border: 0; box-shadow: none; }
-.vt #isler .vt-is .vt-levha--resim { background: #fff; margin: 12px 12px 0; border-radius: 14px; }
+.vt #isler .vt-is .vt-levha--resim { background: #fff; margin: 12px 12px 0; border-radius: 14px; width: auto; }
+/* 16.10 v2.454: genişlik otomatik — .vt-levha'nın %100'ü + iki yandaki 12 px tepsiyi kartın sağından 24 px taşırıyordu;
+   kart (overflow:hidden) taşanı kesince sağ boşluk ve sağ yuvarlak köşeler görünmüyordu (canlıda 375 px'te ölçüldü:
+   kart 20–355, tepsi 32–367). */
 
 /* ── 15.10 üst çubuk «Buz cam», 64 px (üç seçenekten B; kullanıcı iki sekmede C ile karşılaştırıp
    «daha az göz yoruyor» dedi) ───────────────────────────────────────────────────────────────
