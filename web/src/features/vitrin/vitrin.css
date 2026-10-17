@@ -1917,6 +1917,13 @@
 .vt .vt-mega__oge[href] { transition: background-color var(--vt-sure-hizli, 120ms) ease; }
 .vt .vt-mega__oge[href]:hover { background: rgba(255, 255, 255, .08); }
 .vt .vt-mega__oge[href]:hover .vt-rz { transform: none; background: rgba(255, 255, 255, .14); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .32); }
+/* 17.10 kutu çerçevesi: Retina'da 1 CSS px kenar = 2 cihaz pikseli, 2 birimlik ikon çizgisinin yarısı → ağır duruyor;
+   kıl çizgi (1 cihaz pikseli) aynı algılanan güçte (.34) ve keskin. 1×'te değişmez. Köşe 10/44 (.227, sürekli köşe
+   oranı) ve zemin .08 (beyaz ikon 13,8:1) ölçüldü, değişmedi — r12 ve .06 zemin yan yana denendi, iyileştirmedi. */
+@media (min-resolution: 2dppx) {
+  .vt .vt-mega .vt-rz { box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .34); }
+  .vt .vt-mega__oge[href]:hover .vt-rz { box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .5); }
+}
 .vt .vt-mega__oge[href]:hover b { text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
 .vt .vt-mega a:focus-visible { outline: 2px solid var(--vt-gece-eylem); outline-offset: 2px; border-radius: 12px; }
 /* alt bağlantı: öğe ikonlarıyla aynı sol çizgide, ad hiyerarşisinde */

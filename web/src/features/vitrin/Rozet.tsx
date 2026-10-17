@@ -1,10 +1,16 @@
 /** Rozet sistemi (P3, cila-a): ürün kimliği renk rozetleri — zemin gradyanı grup değişkenlerinden
  *  (.vt-g-*), ikon çizgisi currentColor. 16.10.2026 ikon ailesi yeniden çizildi: 24 birim tuval, 2 birim
  *  çizgi (CSS), yuvarlak uç/köşe, Lucide'in anahtar çizgileri (kare 18, daire 20, dosya 16×20); çizgiler
- *  tam birime oturur → 24 px'te keskin. Dolgu bilinçli ve az: aralık bandı (eğrinin kendisinden 7 birim kalın, TAM OPAK kurdele; ana eğri kurdeleye
- *  maskeyle oyulmuş 2 birimlik yiv — 16.10 kullanıcı: «netlik ve kontrast daha da artsın»; yarı saydam
- *  bant + ayrı çizgi küçükte gölge/üç çizgi gibi okunuyordu), panel üstündeki güneş ve
- *  sürgü düğmeleri (tam). Eski --g-vurgu çift-ton dolgusu kalktı — koyu menüde çizgiyle
+ *  tam birime oturur → 24 px'te keskin. Dolgu bilinçli ve az: panel üstündeki güneş ve sürgü düğmeleri (tam).
+ *  «Saatlik tahmin ve aralık» (gl-band, 17.10 kullanıcı seçimi A «gün çanı»): taban çizgisi + güneşin günlük üretim
+ *  çanı, iki sınırla — dış eğri iyimser, iç eğri kötümser; aynı ayaklardan çıktıkları için aralık öğlen en geniş, gün
+ *  doğumu/batımında sıfır (fiziksel olarak doğru). Önceki opak kurdele + maskeli yiv küçükte «fıstık/zincir halkası»
+ *  gibi okunuyordu; 2 turlu tasarım + 3 jüri değerlendirmesinden çıkan dört seçenekten kullanıcı seçti.
+ *  Aynı gün piksel rötuşu (form aynı): iki eğri ayakta 5 birim boyunca üst üste binip «çizme» kalınlığı ve kılcal
+ *  yarık bırakıyordu → dış çanın ayak kolu kısa, iç çanınki uzun (eğrilik farkı ayrılmayı hızlandırır):
+ *  en kalın yer 3,3 → 2,7 birim, kılcal yarık 6 → 3 birim. Tepe y=4 ve taban y=19 tam piksel, genişlik 20 birim (aile ile
+ *  aynı), çizim kutusunun merkezi 12,75 → 11,5 → mürekkep ağırlık merkezi 13,9 → 12,5 (aile 11,9–12,6).
+ *  Eski --g-vurgu çift-ton dolgusu kalktı — koyu menüde çizgiyle
  *  aynı beyaza düşüp ikonları lekeye çeviriyordu. Yumuşak dolgu <symbol> İÇİNDE satır içi stil
  *  (BENIOKU §6.3: <use> gölge ağacında sayfa CSS seçicisi motorlar arası tutarsız; bu dosya yapi.test
  *  satır içi stil kuralından bu gerekçeyle muaftır). Renk tek başına anlam taşımaz: grup adı metinde. */
@@ -14,8 +20,7 @@ export function RozetTanimlari() {
   return (
     <svg width="0" height="0" aria-hidden="true" focusable="false" className="vt-rz-tanimlar">
       <defs>
-      <mask id="gl-band-bosluk" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24"><rect width="24" height="24" fill="#fff"/><path d="M8.5 15C11 15 11.5 10.5 14 10.5S17 9.5 19 7" fill="none" stroke="#000" strokeWidth="2" strokeLinecap="round"/></mask>
-      <symbol id="gl-band" viewBox="0 0 24 24"><path d="M3 3V18A3 3 0 0 0 6 21H21"/><path mask="url(#gl-band-bosluk)" style={{strokeWidth: 7}} d="M8.5 15C11 15 11.5 10.5 14 10.5S17 9.5 19 7"/></symbol>
+      <symbol id="gl-band" viewBox="0 0 24 24"><path d="M3 19H21M3 15C4.5 15 6.4 4 12 4S19.5 15 21 15M3 15C10 16 7.2 8 12 8S14 16 21 15"/></symbol>
       <symbol id="gl-santral" viewBox="0 0 24 24"><circle style={{fill: 'currentColor'}} cx="7" cy="5" r="2"/><path d="M6 10H21L18 20H3Z"/><path d="M4.5 15H19.5M13.5 10L10.5 20"/></symbol>
       <symbol id="gl-aylik" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2.5"/><path d="M8 2V6M16 2V6M3 10H21"/><path d="M7 18C9 18 10 13.5 12 13.5S15 18 17 18"/></symbol>
       <symbol id="gl-karne" viewBox="0 0 24 24"><path d="M16 4H18A2 2 0 0 1 20 6V20A2 2 0 0 1 18 22H6A2 2 0 0 1 4 20V6A2 2 0 0 1 6 4H8"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M8.5 14L11 16.5L15.5 12"/></symbol>
