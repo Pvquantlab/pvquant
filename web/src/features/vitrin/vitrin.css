@@ -1235,7 +1235,8 @@
 .vt-bolum--gece .vt-bag { color: #FFFFFF; }
 
 /* ── üst çubuk: yüzen cam hap ───────────────────────────── */
-.vt-ust { position: fixed; top: 16px; left: 0; right: 0; z-index: 20; padding: 0 24px; background: transparent; border: 0; pointer-events: none; }
+/* sağ: çekmece kilidi klasik kaydırma çubuğunu kaldırınca çubuğun genişliği (UstCubuk.tsx); hap yerinde kalır */
+.vt-ust { position: fixed; top: 16px; left: 0; right: var(--vt-kaydirma-payi, 0px); z-index: 20; padding: 0 24px; background: transparent; border: 0; pointer-events: none; }
 .vt-ust__ic {
   pointer-events: auto; max-width: 1180px; height: auto; min-height: 57px; padding: 8px 12px 8px 22px; gap: 16px;
   background: var(--vt-cam-zemin); -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%);
@@ -1255,7 +1256,7 @@
 .vt-ust__eylem .vt-dugme--cizgi:hover { background: rgba(255, 255, 255, .08); color: #FFFFFF; }
 .vt-menu-dugme, .vt-ust__eylem .vt-menu-dugme { min-height: 40px; padding: 0 14px; border: 1px solid rgba(255, 255, 255, .12); background: rgba(255, 255, 255, .06); color: #FFFFFF; }
 /* 13.10 kullanıcı: menü açılınca sayfa KARARMASIN — örtü saydam, yalnız dış tık yakalar; panelin gölgesi ayrımı verir */
-.vt-mega-ortu { inset: 0; background: transparent; }
+.vt-mega-ortu { inset: 0; background: transparent; pointer-events: auto; }   /* 17.10 (v2.458): .vt-ust'ün none'unu miras alıyordu → dış tık sayfaya sızıyordu */
 .vt-mega {
   --vt-zemin: #0B0E15; --vt-metin: #FFFFFF; --vt-ikincil: rgba(255, 255, 255, .72); --vt-ucuncul: rgba(255, 255, 255, .45);
   --vt-kenar-soguk: rgba(255, 255, 255, .08); --vt-kenar: rgba(255, 255, 255, .08); --vt-bant: rgba(255, 255, 255, .08);
@@ -1285,6 +1286,9 @@
 .vt-cekmece {
   --vt-metin: #FFFFFF; --vt-kenar-soguk: rgba(255, 255, 255, .08);
   top: var(--vt-ust-y); background: #0B0E15; color: #FFFFFF; border-top: 0;
+  /* 17.10 (v2.458): çekmece .vt-ust'ün içinde; yüzen hap için verilen pointer-events: none'u miras alıp v2.432'den
+     beri tıklanamıyordu (tıklama kilitli sayfaya düşüyordu). Hap gibi çekmece de tıklamayı geri alır. */
+  pointer-events: auto;
 }
 .vt-cekmece__bag { color: rgba(255, 255, 255, .78); font-size: 16px; }
 .vt-cekmece .vt-dugme--cizgi { border-color: rgba(255, 255, 255, .35); color: #FFFFFF; }
@@ -1924,6 +1928,9 @@
    hap 122,5) → Firefox Retina'da kutu zemini ile çerçevesi 1 cihaz pikseli kayıp kenarlar 2/1 px görünüyordu. Görünüm aynı,
    kayma ≤ .5 px; round() desteklemeyen tarayıcı eski ortalamaya düşer. --hap-en yukarıdaki max-width ile AYNI kalmalı. */
 .vt .vt-ust__ic { --hap-en: 1180px; margin-inline: max(0px, round(down, (100% - var(--hap-en)) / 2, 1px)); }
+/* Örtü (z 15) tıkı yakaladığı için hap (ve içinde konumlanan açılır panel) onun ÜSTÜNDE kalmalı; yoksa hap düğmeleri
+   ve panel bağlantıları ölür (v2.458 ölçümü: Chrome/WebKit/Firefox 1280 px hap 8/8, panel bağlantısı 5/5). */
+.vt .vt-ust__ic { position: relative; z-index: 16; }
 @media (min-width: 2200px) { .vt .vt-ust__ic { --hap-en: 1320px; } }
 .vt .vt-mega__oge[href]:hover b { text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
 .vt .vt-mega a:focus-visible { outline: 2px solid var(--vt-gece-eylem); outline-offset: 2px; border-radius: 12px; }

@@ -3,6 +3,13 @@ import { GunesLogo } from "./GunesLogo";
 import { MenuIkon } from "./MenuIkon";
 import { Rozet, RozetTanimlari, type RozetGrubu, type RozetIkonu } from "./Rozet";
 
+declare global {
+  interface Window {
+    /** Kabuk «Menü»sünün React gelmeden önceki son durumu (vite.config «pvq-vitrin-kabugu» satır içi betiği). */
+    __pvqMenu?: boolean;
+  }
+}
+
 type Yaprak = { ad: string; aciklama: string; hedef?: string; ikon?: RozetIkonu };
 type Grup = { ad: string; rozet?: RozetGrubu; ogeler: readonly Yaprak[] };
 type Panel = { ad: string; genis?: boolean; alt?: readonly [string, string]; gruplar: readonly Grup[] };
@@ -88,7 +95,8 @@ const CEKMECE = [
  *  tek panel açık kalır, arka plan kararır). ≤ 1080 px: Başvuru + Menü → tam ekran çekmece (düz
  *  bağlantılar). kip="yontem": App.tsx onPanel vermez → çapalar ana sayfaya (/#…) gider. */
 export function UstCubuk({ onPanel, kip }: { onPanel?: () => void; kip: "ana" | "yontem" }) {
-  const [acik, setAcik] = useState(false);               // mobil çekmece
+  // mobil çekmece; kabukta React gelmeden «Menü»ye basıldıysa açık başlar (17.10 denetimi). Kabuk derlemede Node'da çizilir: window yok
+  const [acik, setAcik] = useState(() => typeof window !== "undefined" && window.__pvqMenu === true);
   const [panel, setPanel] = useState<string | null>(null); // açık mega panel adı
   const dugme = useRef<HTMLButtonElement>(null);
   const cekmece = useRef<HTMLDivElement>(null);
@@ -96,6 +104,9 @@ export function UstCubuk({ onPanel, kip }: { onPanel?: () => void; kip: "ana" | 
   const panelDugmeleri = useRef(new Map<string, HTMLButtonElement>());
   const adres = (hedef: string) => (kip === "yontem" && hedef.startsWith("#") ? `/${hedef}` : hedef);
   const simdiki = (hedef: string) => (kip === "yontem" && hedef === "/yontem" ? "page" : undefined);
+
+  // kabuk durumu sayfa başına bir kez: vitrin sonradan yeniden takılırsa (giriş → çıkış) çekmece kapalı başlar
+  useEffect(() => { delete window.__pvqMenu; }, []);
 
   useEffect(() => {                                      // mega panel: Esc, nav dışı tık/odak, çapa, kırılım
     if (panel === null) return;
@@ -107,7 +118,12 @@ export function UstCubuk({ onPanel, kip }: { onPanel?: () => void; kip: "ana" | 
       panelDugmeleri.current.get(panel)?.focus();
       setPanel(null);
     };
-    const tik = (e: PointerEvent) => { if (disinda(e.target)) setPanel(null); };
+    // örtüye inen basış paneli burada kapatmaz: örtü tıklama anına kadar yerinde kalıp tıkı kendisi yutar ve kapatır
+    // (dokunmatikte basışta kalkarsa tık alttaki sayfaya düşüyordu — v2.458, iPad ölçümü)
+    const tik = (e: PointerEvent) => {
+      if (e.target instanceof Element && e.target.closest(".vt-mega-ortu")) return;
+      if (disinda(e.target)) setPanel(null);
+    };
     const odak = (e: FocusEvent) => { if (disinda(e.target)) setPanel(null); };
     const kapat = () => setPanel(null);
     const genislik = () => { if (window.innerWidth <= 1080) setPanel(null); };
@@ -129,7 +145,17 @@ export function UstCubuk({ onPanel, kip }: { onPanel?: () => void; kip: "ana" | 
     if (!acik) return;
     const kok = document.documentElement;
     const oncekiTasma = kok.style.overflow;
+    const oncekiDolgu = kok.style.paddingRight;
+    // 17.10 denetimi: klasik kaydırma çubuğunda (Windows, fareli macOS; ≤ 1080 px pencere) kilit çubuğu kaldırınca içerik
+    // ve sabit hap ~15 px genişliyordu. Çubuğun yeri html dolgusuyla tutulur; hap (position: fixed, dolguyu görmez)
+    // --vt-kaydirma-payi kadar içeride kalır. scrollbar-gutter: stable denendi: çekmecenin yanında boş şerit bırakıyor ve
+    // bütün sayfalara (panel, giriş) dokunuyordu. Dokunmatikte çubuk kaplama: fark 0, hiçbir şey eklenmez.
+    const cubuk = window.innerWidth - kok.clientWidth;
     kok.style.overflow = "hidden";
+    if (cubuk > 0) {
+      kok.style.paddingRight = `${cubuk}px`;
+      kok.style.setProperty("--vt-kaydirma-payi", `${cubuk}px`);
+    }
     const arkaPlan = Array.from(document.querySelectorAll<HTMLElement>("main, footer, .vt-atla"));
     arkaPlan.forEach((e) => { e.inert = true; });              // çekmece açıkken Tab arkaya geçmez (QA M1)
     const odaklar = () => [dugme.current, ...Array.from(cekmece.current?.querySelectorAll<HTMLElement>("a, button") ?? [])]
@@ -154,6 +180,8 @@ export function UstCubuk({ onPanel, kip }: { onPanel?: () => void; kip: "ana" | 
       window.removeEventListener("resize", genislik);
       window.removeEventListener("hashchange", kapat);
       kok.style.overflow = oncekiTasma;
+      kok.style.paddingRight = oncekiDolgu;
+      kok.style.removeProperty("--vt-kaydirma-payi");
       arkaPlan.forEach((e) => { e.inert = false; });
     };
   }, [acik]);
@@ -187,7 +215,8 @@ export function UstCubuk({ onPanel, kip }: { onPanel?: () => void; kip: "ana" | 
           {onPanel
             ? <button type="button" className="vt-dugme vt-dugme--cizgi vt-ust__giris" onClick={onPanel}>Panele giriş</button>
             : <a className="vt-dugme vt-dugme--cizgi vt-ust__giris" href="/">← Ana sayfa</a>}
-          <a className="vt-dugme vt-dugme--dolu" href={adres("#basla")}>Karnenizi başlatın</a>
+          {/* çekmeceyi kendisi kapatır: adres zaten #basla ise hashchange gelmez (v2.458) */}
+          <a className="vt-dugme vt-dugme--dolu" href={adres("#basla")} onClick={() => setAcik(false)}>Karnenizi başlatın</a>
           <button type="button" ref={dugme} className="vt-dugme vt-dugme--cizgi vt-menu-dugme"
             aria-expanded={acik} aria-controls="vt-cekmece" onClick={() => setAcik((a) => !a)}>
             {acik ? "Kapat" : "Menü"}

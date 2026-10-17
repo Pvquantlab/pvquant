@@ -58,9 +58,17 @@ function vitrinKabugu(): Plugin {
           // isteği m3g 1,76 sn, m4g 0,62 sn'de başlıyordu; tek koşu). crossorigin YOK — <img> ve video posteri no-cors ister.
           const poster = Object.keys(ctx.bundle ?? {}).find((k) => /^assets\/santral-poster-[\w-]+\.webp$/.test(k))
           if (!poster) throw new Error('derleme: santral-poster varlığı bulunamadı')
+          // 17.10 denetimi — kabuktaki «Menü» React gelmeden de çalışır: main.tsx createRoot kullanır (hydrate değil), React
+          // gelene dek düğmenin dinleyicisi yoktu, dokunuş kayboluyordu. Dinleyiciler doğrudan kabuk düğmesine/başlığına
+          // takılır; React kabuğu silip kendi ağacını koyunca onlarla birlikte giderler. Son durum window.__pvqMenu'de;
+          // UstCubuk ilk çiziminde bir kez okur. Kaydırma kilidi burada YOK (React'in kilidi html'in eski stilini saklayıp geri yükler).
           const betik = '<script>(function(){try{var p=location.pathname,t=localStorage.getItem("pvq_token"),v=/[?&]vitrin(=|&|$)/.test(location.search);' +
             'if(!(p==="/"&&(!t||v))){var r=document.getElementById("root");if(r)r.textContent="";if(p==="/yontem")document.documentElement.classList.add("vt-sayfa")}' +
-            `else{var l=document.createElement("link");l.rel="preload";l.as="image";l.href="/${poster}";l.fetchPriority="high";document.head.appendChild(l)}}catch(e){}})()</script>`
+            `else{var l=document.createElement("link");l.rel="preload";l.as="image";l.href="/${poster}";l.fetchPriority="high";document.head.appendChild(l);` +
+            'var d=document.querySelector(".vt-ust .vt-menu-dugme"),c=document.getElementById("vt-cekmece");if(d&&c){' +
+            'var m=function(a){window.__pvqMenu=a;c.hidden=!a;d.setAttribute("aria-expanded",a?"true":"false");d.textContent=a?"Kapat":"Menü"};' +
+            'd.addEventListener("click",function(){m(c.hidden)});' +
+            'd.closest(".vt-ust").addEventListener("click",function(e){if(!c.hidden&&e.target.closest("a"))m(false)})}}}catch(e){}})()</script>'
           if (!html.includes('<div id="root"></div>')) throw new Error('index.html: boş #root bulunamadı')
           let sonuc = html.replace('<div id="root"></div>', `<div id="root">${govde}</div>\n    ${betik}`)
           // 16.10 hız turu 4 — doğrulama isteği (vitrin ve /yontem) HTML ile başlar: önceden React'in ilk çiziminden sonra
