@@ -10,6 +10,10 @@
  *  yarık bırakıyordu → dış çanın ayak kolu kısa, iç çanınki uzun (eğrilik farkı ayrılmayı hızlandırır):
  *  en kalın yer 3,3 → 2,7 birim, kılcal yarık 6 → 3 birim. Tepe y=4 ve taban y=19 tam piksel, genişlik 20 birim (aile ile
  *  aynı), çizim kutusunun merkezi 12,75 → 11,5 → mürekkep ağırlık merkezi 13,9 → 12,5 (aile 11,9–12,6).
+ *  İkinci tur (v2.456): dış çanın ucundaki eğrilik yarıçapı 0,31 birimdi — çizginin yarı kalınlığından (1) küçük,
+ *  çizginin iç kenarı uçta kırılıp ayakta çıkıntı yapıyordu. Uç kolu 31° açıyla (5.5,13.5): en küçük yarıçap 1,55,
+ *  eğrilik sıçraması 8,6 → 0,5; iki çan arası boşluk tepeden ayağa tekdüze daralır (2 → 1,3 → 0). İç çan aynen;
+ *  dış çanın eskisinden sapması en çok 0,38 birim (çizgi içinde).
  *  Eski --g-vurgu çift-ton dolgusu kalktı — koyu menüde çizgiyle
  *  aynı beyaza düşüp ikonları lekeye çeviriyordu. Yumuşak dolgu <symbol> İÇİNDE satır içi stil
  *  (BENIOKU §6.3: <use> gölge ağacında sayfa CSS seçicisi motorlar arası tutarsız; bu dosya yapi.test
@@ -20,7 +24,7 @@ export function RozetTanimlari() {
   return (
     <svg width="0" height="0" aria-hidden="true" focusable="false" className="vt-rz-tanimlar">
       <defs>
-      <symbol id="gl-band" viewBox="0 0 24 24"><path d="M3 19H21M3 15C4.5 15 6.4 4 12 4S19.5 15 21 15M3 15C10 16 7.2 8 12 8S14 16 21 15"/></symbol>
+      <symbol id="gl-band" viewBox="0 0 24 24"><path d="M3 19H21M3 15C5.5 13.5 5.4 4 12 4S18.5 13.5 21 15M3 15C10 16 7.2 8 12 8S14 16 21 15"/></symbol>
       <symbol id="gl-santral" viewBox="0 0 24 24"><circle style={{fill: 'currentColor'}} cx="7" cy="5" r="2"/><path d="M6 10H21L18 20H3Z"/><path d="M4.5 15H19.5M13.5 10L10.5 20"/></symbol>
       <symbol id="gl-aylik" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2.5"/><path d="M8 2V6M16 2V6M3 10H21"/><path d="M7 18C9 18 10 13.5 12 13.5S15 18 17 18"/></symbol>
       <symbol id="gl-karne" viewBox="0 0 24 24"><path d="M16 4H18A2 2 0 0 1 20 6V20A2 2 0 0 1 18 22H6A2 2 0 0 1 4 20V6A2 2 0 0 1 6 4H8"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M8.5 14L11 16.5L15.5 12"/></symbol>
