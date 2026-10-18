@@ -1,0 +1,16 @@
+{
+ "mobile": {
+  "http": 429,
+  "hata": "Quota exceeded for quota metric 'Queries' and limit 'Queries per day' of service 'pagespeedonline.googleapis.com' for consumer 'project_number:583797351490'.",
+  "sayfa": null,
+  "koken": null,
+  "psiLab": null
+ },
+ "desktop": {
+  "http": 429,
+  "hata": "Quota exceeded for quota metric 'Queries' and limit 'Queries per day' of service 'pagespeedonline.googleapis.com' for consumer 'project_number:583797351490'.",
+  "sayfa": null,
+  "koken": null,
+  "psiLab": null
+ }
+}
