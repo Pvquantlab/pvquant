@@ -1,5 +1,7 @@
 // ortak.mjs — ölçüm düzeneğinin ortak tanımları (hedefler, görünümler, motor açılışı, sayfa içi ölçüm betiği).
 import fs from "node:fs";
+import tls from "node:tls";
+import crypto from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium, firefox, webkit } from "playwright";
@@ -9,13 +11,14 @@ export const KOK = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".
 /** Ölçülen hedefler. once = main (d6ab50a, canlıyla bayt bayt aynı derleme), sonra = perf/cross-browser derlemesi. */
 export const HEDEFLER = {
   once:  { yok: "https://localhost:18443", hizli3g: "https://localhost:19443", yavas4g: "https://localhost:20443", spki: ".replika/once/spki.txt" },
-  sonra: { yok: "https://localhost:28443", hizli3g: "https://localhost:29443", yavas4g: "https://localhost:30443", spki: ".replika/sonra/spki.txt" },
+  sonra: { yok: "https://localhost:28443", hizli3g: "https://localhost:29443", yavas4g: "https://localhost:30443", spki: ".replika/sonra2/spki.txt" },
   canli: { yok: "https://pvquant.com" },
   // Faz 3 ara ölçümleri (tek düzeltmenin etkisini ayırmak için; T=38/48)
   araa:  { yok: "https://localhost:38443", hizli3g: "https://localhost:39443", yavas4g: "https://localhost:40443", spki: ".replika/araa/spki.txt" },
   arac:  { yok: "https://localhost:58443", hizli3g: "https://localhost:59443", yavas4g: "https://localhost:60443", spki: ".replika/arac/spki.txt" },
   arad:  { yok: "https://localhost:24443", hizli3g: "https://localhost:25443", yavas4g: "https://localhost:26443", spki: ".replika/arad/spki.txt" },
   arae:  { yok: "https://localhost:34443", hizli3g: "https://localhost:35443", yavas4g: "https://localhost:36443", spki: ".replika/arae/spki.txt" },
+  araf:  { yok: "https://localhost:34443", hizli3g: "https://localhost:35443", yavas4g: "https://localhost:36443", spki: ".replika/araf/spki.txt" },
   arab:  { yok: "https://localhost:48443", hizli3g: "https://localhost:49443", yavas4g: "https://localhost:50443", spki: ".replika/arab/spki.txt" },
 };
 
@@ -29,11 +32,28 @@ export const GORUNUMLER = {
 export const MOTORLAR = { chromium, firefox, webkit };
 export const SAYFALAR = { ana: "/", yontem: "/yontem" };
 
+/** Replikanın O ANKİ yaprak sertifikasının SPKI'si (sha256, base64). Caddy «tls internal» yaprağı ~12 saatte yeni anahtarla yeniler;
+ *  dosyaya yazılmış eski değer yenilemeden sonra geçersiz kalır ve Chromium sertifika hatası yoluna düşer (19.10'da ölçüldü: soğuk TTFB
+ *  yavaş 4G'de +340 ms, Fast 3G'de +1,16 sn, sıcakta önbellek yok). Kök CA sabitlemesi aynı sonucu vermiyor (+340 ms). Bu yüzden her
+ *  tarayıcı açılışında canlı okunur; dosya yalnız bilgi için güncellenir. */
+export async function yaprakSpki(hedef) {
+  const h = HEDEFLER[hedef]; if (!h?.spki) return null;
+  const { port } = new URL(h.yok);
+  const deger = await new Promise((coz, red) => {
+    const k = tls.connect({ host: "localhost", port: Number(port), servername: "localhost", rejectUnauthorized: false }, () => {
+      const der = k.getPeerX509Certificate().publicKey.export({ type: "spki", format: "der" });
+      k.end(); coz(crypto.createHash("sha256").update(der).digest("base64"));
+    });
+    k.on("error", red);
+  });
+  try { fs.writeFileSync(path.join(KOK, h.spki), deger + "\n"); } catch { /* yalnız bilgi */ }
+  return deger;
+}
+
 export async function motorAc(ad, hedef) {
   const ops = {};
   if (ad === "chromium" && HEDEFLER[hedef].spki) {
-    const spki = fs.readFileSync(path.join(KOK, HEDEFLER[hedef].spki), "utf8").trim();
-    ops.args = ["--ignore-certificate-errors-spki-list=" + spki];      // yerel sertifika «geçerli» sayılır → HTTP önbelleği çalışır
+    ops.args = ["--ignore-certificate-errors-spki-list=" + (await yaprakSpki(hedef))];   // yerel sertifika «geçerli» → HTTP önbelleği çalışır
   }
   return MOTORLAR[ad].launch(ops);
 }

@@ -1,0 +1,62 @@
+[
+ {
+  "ad": "webkit-1440x900-ana.png",
+  "once": [
+   2880,
+   15266
+  ],
+  "sonra": [
+   2880,
+   15266
+  ],
+  "hamAyni": true,
+  "farkli": 0,
+  "aaDahil": 0,
+  "durum": "aynı"
+ },
+ {
+  "ad": "webkit-1920x1080-ana.png",
+  "once": [
+   1920,
+   7722
+  ],
+  "sonra": [
+   1920,
+   7722
+  ],
+  "hamAyni": false,
+  "farkli": 1764,
+  "aaDahil": 1804,
+  "durum": "fark"
+ },
+ {
+  "ad": "webkit-390x844-ana.png",
+  "once": [
+   1170,
+   37857
+  ],
+  "sonra": [
+   1170,
+   37857
+  ],
+  "hamAyni": true,
+  "farkli": 0,
+  "aaDahil": 0,
+  "durum": "aynı"
+ },
+ {
+  "ad": "webkit-768x1024-ana.png",
+  "once": [
+   1536,
+   20532
+  ],
+  "sonra": [
+   1536,
+   20532
+  ],
+  "hamAyni": false,
+  "farkli": 178253,
+  "aaDahil": 187655,
+  "durum": "fark"
+ }
+]

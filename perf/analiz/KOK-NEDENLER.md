@@ -5,6 +5,12 @@ Kaynaklar: temel ölçüm (`perf/baseline/`), salt okuma kod incelemesi (6 alan 
 (`ab/AB-TABLOLAR.md`, `filtre*/esdeger-*.json`), Firefox kaynak kodu (mozilla-central / release / ESR
 `StaticPrefList.yaml`). Her maddede «doğrulandı» yalnız ÇALIŞTIRILMIŞ bir ölçüme dayanır.
 
+> **19.10 düzeltme notu (bağımsız doğrulama, `dogrulama-1.json`):** bu belgedeki bazı sayılar eski vekil verisinden geliyordu; güncel
+> temel değerler REPORT.md'dedir (ör. K5: Firefox 17/36, Chromium 3/36; K4 latin-ext-600 19/36; K3 24/24; LCP oranı üst sınırı 0,94;
+> 768/1920 LCP öğesi `<video poster>`, «video karesi» değil; ayrışık filtre Chromium 1440@2'de en çok 11/255). Chromium kısıtlı hat
+> «önce» satırları geçersiz SPKI ile ölçülmüştü (yeniden ölçüldü; REPORT §6). Kenar enerjisi, 563 → 539 ve `will-change` sayılarının
+> ham dosyası yok.
+
 Durum etiketleri: **DOĞRULANDI** (ölçümle) · **DÜZELTİLDİ** (commit) · **ÇÜRÜTÜLDÜ** · **AÇIK** (ölçüldü, düzeltilmedi; gerekçe yazılı).
 
 ---

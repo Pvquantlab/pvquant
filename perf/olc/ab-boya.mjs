@@ -14,7 +14,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { chromium, firefox, webkit } from "playwright";
 import puppeteer from "puppeteer-core";
-import { KOK, HEDEFLER, GORUNUMLER } from "./ortak.mjs";
+import { KOK, HEDEFLER, GORUNUMLER, yaprakSpki } from "./ortak.mjs";
 
 const arg = (ad, vars) => { const i = process.argv.indexOf("--" + ad); return i > 0 ? process.argv[i + 1] : vars; };
 const basli = process.argv.includes("--basli");
@@ -26,7 +26,7 @@ const cikti = path.join(KOK, arg("cikti", "analiz/ab"));
 fs.mkdirSync(cikti, { recursive: true });
 const dosya = path.join(cikti, "boya.jsonl");
 const URL0 = HEDEFLER[hedef].yok + "/";
-const spki = HEDEFLER[hedef].spki ? fs.readFileSync(path.join(KOK, HEDEFLER[hedef].spki), "utf8").trim() : null;
+const spki = HEDEFLER[hedef].spki ? await yaprakSpki(hedef) : null;   // canlı yaprak SPKI (ortak.mjs)
 const yapilan = new Set(fs.existsSync(dosya) ? fs.readFileSync(dosya, "utf8").trim().split("\n").filter(Boolean).map((s) => JSON.parse(s).anahtar) : []);
 const bekle = (ms) => new Promise((r) => setTimeout(r, ms));
 

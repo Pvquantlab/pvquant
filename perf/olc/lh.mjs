@@ -6,7 +6,7 @@ import lighthouse from "lighthouse";
 import desktopConfig from "lighthouse/core/config/desktop-config.js";
 import * as chromeLauncher from "chrome-launcher";
 import { chromium } from "playwright";
-import { KOK, HEDEFLER, SAYFALAR } from "./ortak.mjs";
+import { KOK, HEDEFLER, SAYFALAR, yaprakSpki } from "./ortak.mjs";
 
 const arg = (ad, vars) => { const i = process.argv.indexOf("--" + ad); return i > 0 ? process.argv[i + 1] : vars; };
 const hedef = arg("hedef", "once");
@@ -15,7 +15,7 @@ const kosu = Number(arg("kosu", "3"));
 fs.mkdirSync(cikti, { recursive: true });
 const dosya = path.join(cikti, `lh-${hedef}.jsonl`);
 const bayrak = ["--headless=new", "--no-first-run", "--no-default-browser-check", "--disable-extensions"];
-if (HEDEFLER[hedef].spki) bayrak.push("--ignore-certificate-errors-spki-list=" + fs.readFileSync(path.join(KOK, HEDEFLER[hedef].spki), "utf8").trim());
+if (HEDEFLER[hedef].spki) bayrak.push("--ignore-certificate-errors-spki-list=" + (await yaprakSpki(hedef)));   // canlı yaprak SPKI (ortak.mjs)
 const ILGI = ["render-blocking-resources", "unused-javascript", "unused-css-rules", "uses-responsive-images", "modern-image-formats", "uses-optimized-images",
   "image-size-responsive", "font-display", "total-byte-weight", "largest-contentful-paint-element", "layout-shifts", "lcp-lazy-loaded",
   "prioritize-lcp-image", "bootup-time", "mainthread-work-breakdown", "non-composited-animations", "server-response-time", "uses-long-cache-ttl", "dom-size", "efficient-animated-content"];
