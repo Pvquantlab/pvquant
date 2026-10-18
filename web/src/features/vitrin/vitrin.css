@@ -1846,7 +1846,10 @@
    kartlar kenarsız buz, illüstrasyon kartın içinde beyaz yuvarlak tepside. Sayfa ritmi:
    buz bölüm (dört adım) → beyaz bölüm/buz kart → koyu açık karne. */
 .vt #isler .vt-is { background: #EEF3FA; border: 0; box-shadow: none; }
-.vt #isler .vt-is .vt-levha--resim { background: #fff; margin: 12px 12px 0; border-radius: 14px; width: auto; }
+/* 18.10 perf/cross-browser: genişlik açık (calc), «auto» değil — gerilen esnek öğede aspect-ratio'yu WebKit kenar boşlukları
+   düşülmemiş genişlikten hesaplıyordu (390'da 350/1,25 = 280 px ↔ Chromium/Firefox 326/1,25 = 261; her kart 19 px uzun).
+   Etkin genişlik aynı (kap − 2×12 px); v2.454'teki sağdan taşma düzeltmesi korunur. */
+.vt #isler .vt-is .vt-levha--resim { background: #fff; margin: 12px 12px 0; border-radius: 14px; width: calc(100% - 24px); }
 /* 16.10 v2.454: genişlik otomatik — .vt-levha'nın %100'ü + iki yandaki 12 px tepsiyi kartın sağından 24 px taşırıyordu;
    kart (overflow:hidden) taşanı kesince sağ boşluk ve sağ yuvarlak köşeler görünmüyordu (canlıda 375 px'te ölçüldü:
    kart 20–355, tepsi 32–367). */

@@ -192,8 +192,10 @@ test("hero CSS: poster sahneyi örter, svh, kabuk dolgusu yalnız ince işaretç
   assert.match(css, /@media \(pointer: fine\) \{\n\s*\.vt \.vt-kabuk-dolgu \{ height: 100vh; \}\n\}/);
   assert.ok(oku("../../src/features/vitrin/VitrinKabugu.tsx").includes('className="vt-kabuk-dolgu"'));
   assert.ok(!oku("../../src/features/vitrin/Vitrin.tsx").includes("vt-kabuk-dolgu"), "dolgu yalnız kabukta");
-  // «Hangi iş için» beyaz tepsisi kenar boşluklu: genişlik otomatik olmalı (%100 + kenar boşluğu kartı taşırıyordu)
-  assert.match(css, /\.vt #isler \.vt-is \.vt-levha--resim \{[^}]*margin: 12px 12px 0;[^}]*width: auto; \}/);
+  // «Hangi iş için» beyaz tepsisi kenar boşluklu: genişlik = kap − iki kenar boşluğu (%100 + kenar boşluğu kartı taşırıyordu, v2.454).
+  // 18.10: «auto» yerine açık calc — WebKit gerilen öğede aspect-ratio'yu kenar boşluksuz genişlikten hesaplıyordu (kart 19 px uzun).
+  assert.match(css, /\.vt #isler \.vt-is \.vt-levha--resim \{[^}]*margin: 12px 12px 0;[^}]*width: calc\(100% - 24px\); \}/);
+  assert.match(css, /\.vt-levha--resim \{ position: relative; aspect-ratio: 10 \/ 8;/);
 });
 
 // 16.10 kullanıcı kararları: yavaş hatta video yok, melez döngü başlangıcı, tek parça açılış, HTTP/3
