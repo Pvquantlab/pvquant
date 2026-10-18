@@ -105,7 +105,8 @@ function vitrinKabugu(): Plugin {
           // boyamayı ~0,9 sn geciktirmişti), ama React'in çizip <img>'i koymasını da beklemez (canlı v2.452: poster
           // isteği m3g 1,76 sn, m4g 0,62 sn'de başlıyordu; tek koşu). crossorigin YOK — <img> ve video posteri no-cors ister.
           // 18.10 perf/cross-browser: istek ilk içerikli boyamanın BİLDİRİMİNDEN sonra başlar (bildirim zaten varsa, API yoksa
-          // hemen; gizli sekmede en geç 1 sn). Poster LCP öğesi değil (LCP hero metni, üç motorda); CSS'ten sonraki birkaç on
+          // hemen; gizli sekmede en geç 1 sn). Telefon (390) ve 1440 genişlikte LCP öğesi hero metni (Chromium tam ekranı kaplayan
+          // görseli saymaz); hero'nun ekrandan kısa kaldığı 768/1920'de Chromium <video poster>'ı LCP sayar. CSS'ten sonraki birkaç on
           // ms'lik ilk boyama aralığında metinle bant yarıştırmaz. Lighthouse mobil benzetimi metin LCP'sinden önce başlayan
           // yüksek öncelikli görseli LCP yoluna katıyordu: 474 KB / Slow 4G ≈ +2,4 sn (LCP 4,1 sn, perf 82–85; perf/analiz).
           const poster = Object.keys(ctx.bundle ?? {}).find((k) => /^assets\/santral-poster-[\w-]+\.webp$/.test(k))

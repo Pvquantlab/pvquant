@@ -60,7 +60,8 @@ function baslat() {
   )
 }
 function boyamayiBekle(): boolean {
-  if (!kok.firstElementChild || document.visibilityState !== 'visible') return false
+  // çapalı açılış (/#karne …): ilk ekran hero değil, hedef bölüm — React hemen kurar, yoksa ilk kare hero olup sonra hedefe sıçrardı
+  if (!kok.firstElementChild || document.visibilityState !== 'visible' || window.location.hash) return false
   if (typeof PerformanceObserver !== 'function' || !PerformanceObserver.supportedEntryTypes?.includes('paint')) return false
   if (performance.getEntriesByName('first-contentful-paint', 'paint').length > 0) return false
   try {

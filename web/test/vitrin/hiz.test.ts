@@ -179,7 +179,7 @@ test("yayın sonrası parça hatası: bir kez yenile, döngü yok, hata sınır�
 
 test("kabuktan devir: kabuk varken React ilk içerikli boyama bildirimini bekler; gizli sekme / API yok / 1 sn emniyet", () => {
   const m = oku("../../src/main.tsx");
-  assert.match(m, /if \(!kok\.firstElementChild \|\| document\.visibilityState !== 'visible'\) return false/);
+  assert.match(m, /if \(!kok\.firstElementChild \|\| document\.visibilityState !== 'visible' \|\| window\.location\.hash\) return false/, "çapalı açılış beklemez");
   assert.match(m, /if \(performance\.getEntriesByName\('first-contentful-paint', 'paint'\)\.length > 0\) return false/, "bildirim zaten varsa beklenmez");
   assert.match(m, /g\.observe\(\{ type: 'paint', buffered: true \}\)/);
   assert.match(m, /getEntriesByName\('first-contentful-paint'\)\.length === 0\) return\n\s*g\.disconnect\(\)\n\s*baslat\(\)/, "geri çağrıda ek zamanlayıcı yok; render() zaten zamanlar");
