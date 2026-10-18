@@ -259,3 +259,19 @@ test("kararlar: bölümler tek parça açılır (kart kademesi yok, zemin solmaz
 test("kararlar: HTTP/3 için UDP 443 yayınlanır", () => {
   assert.match(oku("../../../docker-compose.yml"), /- "443:443\/udp"/);
 });
+
+// 18.10 perf/cross-browser — Firefox'ta keskinleştirme WebRender ilkelleriyle (kaydırmada CPU 1,6 → 0,3 çekirdek, stok Firefox 158).
+test("Gecko ≥ 132: aynı çekirdek feOffset + aritmetik feComposite ile, 1 aygıt pikseli; diğer motorlar özgün filtrede", () => {
+  const hero = oku("../../src/features/vitrin/Hero.tsx");
+  assert.match(hero, /const m = \/\\bFirefox\\\/\(\\d\+\)\/\.exec\(navigator\.userAgent\);\n\s*return !!m && Number\(m\[1\]\) >= 132;/);
+  assert.match(hero, /<feConvolveMatrix order="3" kernelMatrix="0 -0\.45 0 -0\.45 2\.8 -0\.45 0 -0\.45 0"/, "özgün filtre aynen kalır");
+  assert.match(hero, /<filter id="vt-keskin-wr" colorInterpolationFilters="sRGB" x="0" y="0" width="1" height="1">/);
+  assert.equal((hero.match(/<feOffset in="SourceGraphic"/g) || []).length, 4);
+  // o = 2,8c − 1,8·ortalama(l, r, u, d) = 2,8c − 0,45·(l+r+u+d): üç yarı ortalama + son birleşim
+  assert.equal((hero.match(/operator="arithmetic" k2="0\.5" k3="0\.5"/g) || []).length, 3);
+  assert.match(hero, /<feComposite in="SourceGraphic" in2="m" operator="arithmetic" k2="2\.8" k3="-1\.8" \/>/);
+  assert.match(hero, /setKayma\(1\.001 \/ dpr\)/, "ofset aygıt pikselinde; yakınlaştırmada güncellenir");
+  const css = oku("../../src/features/vitrin/vitrin.css");
+  assert.match(css, /\.vt \.vt-hero--wr \.vt-hero__video, \.vt \.vt-hero--wr \.vt-hero__poster \{ filter: url\(#vt-keskin-wr\); \}/);
+  assert.match(css, /\.vt-hero--video \.vt-hero__video \{ object-position: 50% 0%; filter: url\(#vt-keskin\);/);
+});
