@@ -175,6 +175,16 @@ test("yayın sonrası parça hatası: bir kez yenile, döngü yok, hata sınır�
   assert.match(m, /<HataSiniri>\s*<App \/>\s*<\/HataSiniri>/);
 });
 
+test("kabuktan devir: kabuk varken React ilk içerikli boyama bildirimini bekler; gizli sekme / API yok / 1 sn emniyet", () => {
+  const m = oku("../../src/main.tsx");
+  assert.match(m, /if \(!kok\.firstElementChild \|\| document\.visibilityState !== 'visible'\) return false/);
+  assert.match(m, /if \(performance\.getEntriesByName\('first-contentful-paint', 'paint'\)\.length > 0\) return false/, "bildirim zaten varsa beklenmez");
+  assert.match(m, /g\.observe\(\{ type: 'paint', buffered: true \}\)/);
+  assert.match(m, /getEntriesByName\('first-contentful-paint'\)\.length === 0\) return\n\s*g\.disconnect\(\)\n\s*baslat\(\)/, "geri çağrıda ek zamanlayıcı yok; render() zaten zamanlar");
+  assert.match(m, /window\.setTimeout\(\(\) => \{ g\.disconnect\(\); baslat\(\) \}, 1000\)/);
+  assert.doesNotMatch(m, /requestAnimationFrame/, "rAF gizli sekmede çalışmaz, sunumdan önce döner");
+});
+
 test("hero CSS: poster sahneyi örter, svh, kabuk dolgusu yalnız ince işaretçide", () => {
   const css = oku("../../src/features/vitrin/vitrin.css");
   assert.match(css, /\.vt \.vt-hero--video \.vt-hero__sahne \.vt-hero__poster \{ top: 0; right: 0; bottom: 0; left: 0; width: 100%; height: 100%; max-width: none; \}/);
