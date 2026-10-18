@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { hatYavasKayitli, heroHazirSoz } from "./heroHazir";
+import { hatYavasKayitli, heroHazirSoz, levhaKuyruguBasladi, levhalarBittiOldu } from "./heroHazir";
 
 /** Kaydırma canlılığı (R25): [data-canlan] taşıyan bölümler görünür olunca `is-acildi` alır;
  *  CSS yalnız opacity+translateY geçirir (vitrin.css CİLA-ek 4). Kurallar: hero reveal almaz
@@ -9,9 +9,12 @@ import { hatYavasKayitli, heroHazirSoz } from "./heroHazir";
  *  ya da IO'suz ortamda içerik baştan görünür kalır. */
 export function useCanlandir(tetik?: unknown) {
   useEffect(() => {
-    if (typeof IntersectionObserver === "undefined") return;
+    // 18.10: her açılış yeni levha kuyruğu; hero videosu onun bitişini bekler (heroHazir.ts). Önden indirme kurulmayan
+    // her çıkışta sinyal hemen verilir, yoksa video boşuna zaman aşımını bekler.
+    levhaKuyruguBasladi();
+    if (typeof IntersectionObserver === "undefined") { levhalarBittiOldu(); return; }
     const hedefler = Array.from(document.querySelectorAll<HTMLElement>("[data-canlan]:not(.is-acildi)"));
-    if (hedefler.length === 0) return;
+    if (hedefler.length === 0) { levhalarBittiOldu(); return; }
     const io = new IntersectionObserver((girdiler) => {
       for (const g of girdiler) {
         if (!g.isIntersecting) continue;
@@ -45,10 +48,13 @@ export function useCanlandir(tetik?: unknown) {
     const yavas = !!baglanti && (baglanti.saveData === true || /(^|-)2g$|^3g$/.test(baglanti.effectiveType ?? ""));
     let iptal = false;
     const kur = () => {
-      if (iptal || yavas || hatYavasKayitli()) return;
+      if (iptal) return;
+      if (yavas || hatYavasKayitli()) { levhalarBittiOldu(); return; }   // önden indirme yok (yavaş hatta video da inmez)
       const sira = [...document.querySelectorAll<HTMLImageElement>('img[loading="lazy"][src]')];
+      let acik = 2;                                                       // 18.10: iki kuyruk da boşalınca «levhalar bitti»
       const yukle = (i: number) => {
-        if (iptal || i >= sira.length) return;
+        if (iptal) return;
+        if (i >= sira.length) { if (--acik === 0) levhalarBittiOldu(); return; }
         const img = sira[i];
         const sonraki = () => yukle(i + 2);
         img.loading = "eager";

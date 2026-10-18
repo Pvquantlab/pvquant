@@ -4,7 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
-import { hatYavasKayitli, heroBekle, heroHazirMi, heroHazirOldu, heroHazirSoz, posterYavasMi } from "../../src/features/vitrin/heroHazir.ts";
+import { hatYavasKayitli, heroBekle, heroHazirMi, heroHazirOldu, heroHazirSoz, levhaKuyruguBasladi, levhalarBittiOldu, levhalarBittiSoz, posterYavasMi } from "../../src/features/vitrin/heroHazir.ts";
 
 const oku = (yol: string) => readFileSync(new URL(yol, import.meta.url), "utf8");
 const yapi = oku("../../vite.config.ts");
@@ -103,7 +103,9 @@ test("hero videosu: load() yalnız hero ekrandayken bir kez, ayrılışta indirm
   assert.equal((hero.match(/v\.load\(\)/g) ?? []).length, 2);
   assert.match(hero, /if \(ekranda && !yuklendi\) \{ yuklendi = true; v\.preload = "auto"; v\.load\(\); v\.playbackRate = OYNATMA_HIZI; \}/);
   assert.match(hero, /if \(!v\.isConnected\) \{[^}]*v\.load\(\); \}/);
-  assert.match(hero, /const basla = \(\) => \{ izin = true; uygula\(\); \};/, "load olayı yüklemeyi kendisi başlatmaz");
+  assert.match(hero, /const basla = \(\) => \{ bekleme = window\.setTimeout\(ac, LEVHA_BEKLEME_MS\); levhalarBittiSoz\(\)\.then\(ac\); \};/, "load olayı yüklemeyi kendisi başlatmaz; levha kuyruğunu bekler");
+  assert.match(hero, /const ac = \(\) => \{ if \(sokuldu \|\| izin\) return; window\.clearTimeout\(bekleme\); izin = true; uygula\(\); \};/);
+  assert.match(hero, /const LEVHA_BEKLEME_MS = 4000;/);
 });
 
 test("heroHazir: bekleme ve hazır sinyali", async () => {
@@ -139,7 +141,7 @@ test("çapalı açılış: sınıflama kaydırmadan sonra; useCapaKaydir önce �
 
 test("K1 levha önden indirmesi: yavaş hat kararını okur, ölçüm yapmaz", () => {
   const c = oku("../../src/features/vitrin/useCanlandir.ts");
-  assert.match(c, /if \(iptal \|\| yavas \|\| hatYavasKayitli\(\)\) return;/);
+  assert.match(c, /if \(yavas \|\| hatYavasKayitli\(\)\) \{ levhalarBittiOldu\(\); return; \}/);
   assert.doesNotMatch(c, /posterYavasMi/, "ölçüm ve kayıt yalnız Hero'da");
 });
 
@@ -315,4 +317,29 @@ test("kabuk betiği: poster ön yüklemesi FCP bildirimini bekler; bildirim vars
   gizli.zaman.forEach((f) => f());
   assert.equal(gizli.eklenen.length, 1, "bildirim gelmezse (gizli sekme) 1 sn sonra");
   assert.equal(gizli.eklenen[0].fetchPriority, "high");
+});
+
+// 18.10 perf/cross-browser — video ile levha önden indirmesi bandı paylaşmaz (20 Mbps'te Firefox kartları 1,7 → 5,2 sn).
+test("levha kuyruğu sinyali: video levhalar bitince (ya da zaman aşımında) iner; kuyruk yoksa sinyal hemen", async () => {
+  levhaKuyruguBasladi();
+  let bitti = false;
+  const soz = levhalarBittiSoz().then(() => { bitti = true; });
+  await Promise.resolve();
+  assert.equal(bitti, false);
+  levhalarBittiOldu();
+  await soz;
+  assert.equal(bitti, true);
+  levhaKuyruguBasladi();                                   // SPA: yeni sayfa = yeni kuyruk, eski «bitti» taşınmaz
+  let ikinci = false;
+  const soz2 = levhalarBittiSoz().then(() => { ikinci = true; });
+  await Promise.resolve();
+  assert.equal(ikinci, false);
+  levhalarBittiOldu();
+  await soz2;
+  assert.equal(ikinci, true);
+  const c = oku("../../src/features/vitrin/useCanlandir.ts");
+  assert.match(c, /levhaKuyruguBasladi\(\);\n\s*if \(typeof IntersectionObserver === "undefined"\) \{ levhalarBittiOldu\(\); return; \}/);
+  assert.match(c, /if \(hedefler\.length === 0\) \{ levhalarBittiOldu\(\); return; \}/);
+  assert.match(c, /if \(yavas \|\| hatYavasKayitli\(\)\) \{ levhalarBittiOldu\(\); return; \}/);
+  assert.match(c, /if \(i >= sira\.length\) \{ if \(--acik === 0\) levhalarBittiOldu\(\); return; \}/);
 });

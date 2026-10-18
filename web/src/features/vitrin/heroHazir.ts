@@ -28,6 +28,25 @@ export function useHeroHazir(): boolean {
   return useSyncExternalStore(abone, heroHazirMi, () => true);
 }
 
+/** 18.10 levha kuyruğu sinyali (perf/cross-browser): hero videosu, levha önden indirmesinin (useCanlandir; ana sayfada
+ *  8 Storyset PNG, 2.525.490 B) bitişini bekler — ikisi aynı anda başlayınca bandı paylaşıyordu (20 Mbps'te kartların
+ *  tamamlanması Firefox'ta 1,7 → 5,2 sn, mobilde üç motorda +1,4–2,7 sn; perf/analiz/ab). Her açılış yeni kuyruktur
+ *  (levhaKuyruguBasladi; SPA dönüşünde eski «bitti» taşınmaz); kuyruk kurulmayan her çıkışta sinyal hemen verilir.
+ *  Zaman aşımı Hero.tsx'te (LEVHA_BEKLEME_MS). */
+let levhaBitti = false;
+const levhaDinleyiciler = new Set<() => void>();
+export function levhaKuyruguBasladi(): void { levhaBitti = false; }
+export function levhalarBittiOldu(): void {
+  if (levhaBitti) return;
+  levhaBitti = true;
+  for (const d of [...levhaDinleyiciler]) d();
+  levhaDinleyiciler.clear();
+}
+export function levhalarBittiSoz(): Promise<void> {
+  if (levhaBitti) return Promise.resolve();
+  return new Promise<void>((coz) => { levhaDinleyiciler.add(() => coz()); });
+}
+
 /** K1 yavaş hat kararı (16.10 kullanıcı kuralı): posteri AĞDAN 2 sn'den uzun sürede indiren hatta video inmez,
  *  karar 7 gün hatırlanır. 18.10 (kök neden H13): kararı YALNIZ gövde baytları gerçekten aktarılmış ölçüm yazar —
  *  transferSize ≥ encodedBodySize > 0 (ağdan 200: gövde + başlık; ölçüldü Chromium/Firefox 485 432, WebKit 485 720 B;
