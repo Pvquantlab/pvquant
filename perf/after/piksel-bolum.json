@@ -1,0 +1,290 @@
+{
+ "webkit-390x844": [
+  {
+   "bolum": "0:vt-hero",
+   "onceY": 0,
+   "sonraY": 0,
+   "boy": 844,
+   "farkli": 0,
+   "oran": 0
+  },
+  {
+   "bolum": "1:vt-serit",
+   "onceY": 977,
+   "sonraY": 977,
+   "boy": 399.953125,
+   "farkli": 0,
+   "oran": 0
+  },
+  {
+   "bolum": "2:katmanlar",
+   "onceY": 1376.953125,
+   "sonraY": 1376.953125,
+   "boy": 2861.90625,
+   "farkli": 253845,
+   "oran": 0.025269221810102313
+  },
+  {
+   "bolum": "3:isler",
+   "onceBoy": 2897.15625,
+   "sonraBoy": 2820.34375,
+   "durum": "boy değişti"
+  },
+  {
+   "bolum": "4:karne",
+   "onceY": 7136.015625,
+   "sonraY": 7059.203125,
+   "boy": 2196,
+   "farkli": 10310,
+   "oran": 0.0013375782956839422
+  },
+  {
+   "bolum": "5:rakamlar",
+   "onceY": 9332.015625,
+   "sonraY": 9255.203125,
+   "boy": 743,
+   "farkli": 339,
+   "oran": 0.00012998815152247183
+  },
+  {
+   "bolum": "6:sss",
+   "onceY": 10075.015625,
+   "sonraY": 9998.203125,
+   "boy": 646.65625,
+   "farkli": 1090,
+   "oran": 0.00048021852145563483
+  },
+  {
+   "bolum": "7:basla",
+   "onceY": 10721.671875,
+   "sonraY": 10644.859375,
+   "boy": 823.625,
+   "farkli": 7443,
+   "oran": 0.0025744793450175885
+  },
+  {
+   "bolum": "8:vt-alt",
+   "onceY": 11545.296875,
+   "sonraY": 11468.484375,
+   "boy": 1073.71875,
+   "farkli": 14017,
+   "oran": 0.0037194479603669295
+  }
+ ],
+ "webkit-768x1024": [
+  {
+   "bolum": "0:vt-hero",
+   "onceY": 0,
+   "sonraY": 0,
+   "boy": 960,
+   "farkli": 0,
+   "oran": 0
+  },
+  {
+   "bolum": "1:vt-serit",
+   "onceY": 1101,
+   "sonraY": 1101,
+   "boy": 349.953125,
+   "farkli": 0,
+   "oran": 0
+  },
+  {
+   "bolum": "2:katmanlar",
+   "onceY": 1450.953125,
+   "sonraY": 1450.953125,
+   "boy": 1954.625,
+   "farkli": 66001,
+   "oran": 0.010992427997356528
+  },
+  {
+   "bolum": "3:isler",
+   "onceBoy": 1927.015625,
+   "sonraBoy": 1888.609375,
+   "durum": "boy değişti"
+  },
+  {
+   "bolum": "4:karne",
+   "onceY": 5332.59375,
+   "sonraY": 5294.1875,
+   "boy": 2016.171875,
+   "farkli": 2878,
+   "oran": 0.00046470682457010583
+  },
+  {
+   "bolum": "5:rakamlar",
+   "onceY": 7348.765625,
+   "sonraY": 7310.359375,
+   "boy": 657.6875,
+   "farkli": 1008,
+   "oran": 0.0004990494296577947
+  },
+  {
+   "bolum": "6:sss",
+   "onceY": 8006.453125,
+   "sonraY": 7968.046875,
+   "boy": 762.671875,
+   "farkli": 29,
+   "oran": 0.000012380464480874317
+  },
+  {
+   "bolum": "7:basla",
+   "onceY": 8769.125,
+   "sonraY": 8730.71875,
+   "boy": 755.59375,
+   "farkli": 8369,
+   "oran": 0.0036059349492609753
+  },
+  {
+   "bolum": "8:vt-alt",
+   "onceY": 9524.71875,
+   "sonraY": 9486.3125,
+   "boy": 740.96875,
+   "farkli": 18227,
+   "oran": 0.008012516177132568
+  }
+ ],
+ "webkit-1440x900": [
+  {
+   "bolum": "0:vt-hero",
+   "onceY": 0,
+   "sonraY": 0,
+   "boy": 900,
+   "farkli": 0,
+   "oran": 0
+  },
+  {
+   "bolum": "1:vt-serit",
+   "onceY": 1041,
+   "sonraY": 1041,
+   "boy": 312.203125,
+   "farkli": 0,
+   "oran": 0
+  },
+  {
+   "bolum": "2:katmanlar",
+   "onceY": 1353.203125,
+   "sonraY": 1353.203125,
+   "boy": 1371.359375,
+   "farkli": 0,
+   "oran": 0
+  },
+  {
+   "bolum": "3:isler",
+   "onceBoy": 1279.546875,
+   "sonraBoy": 1260.34375,
+   "durum": "boy değişti"
+  },
+  {
+   "bolum": "4:karne",
+   "onceY": 4004.109375,
+   "sonraY": 3984.90625,
+   "boy": 1543.875,
+   "farkli": 10871,
+   "oran": 0.0012223616508347725
+  },
+  {
+   "bolum": "5:rakamlar",
+   "onceY": 5547.984375,
+   "sonraY": 5528.78125,
+   "boy": 512.09375,
+   "farkli": 2256,
+   "oran": 0.0007649739583333333
+  },
+  {
+   "bolum": "6:sss",
+   "onceY": 6060.078125,
+   "sonraY": 6040.875,
+   "boy": 647,
+   "farkli": 1139,
+   "oran": 0.000305630688648463
+  },
+  {
+   "bolum": "7:basla",
+   "onceY": 6707.078125,
+   "sonraY": 6687.875,
+   "boy": 533.5,
+   "farkli": 1752,
+   "oran": 0.000570134333020931
+  },
+  {
+   "bolum": "8:vt-alt",
+   "onceY": 7240.578125,
+   "sonraY": 7221.375,
+   "boy": 392,
+   "farkli": 17481,
+   "oran": 0.007751968922945935
+  }
+ ],
+ "webkit-1920x1080": [
+  {
+   "bolum": "0:vt-hero",
+   "onceY": 0,
+   "sonraY": 0,
+   "boy": 960,
+   "farkli": 0,
+   "oran": 0
+  },
+  {
+   "bolum": "1:vt-serit",
+   "onceY": 1101,
+   "sonraY": 1101,
+   "boy": 312.203125,
+   "farkli": 0,
+   "oran": 0
+  },
+  {
+   "bolum": "2:katmanlar",
+   "onceY": 1413.203125,
+   "sonraY": 1413.203125,
+   "boy": 1382.015625,
+   "farkli": 8847,
+   "oran": 0.003334162445730825
+  },
+  {
+   "bolum": "3:isler",
+   "onceBoy": 1284.875,
+   "sonraBoy": 1265.671875,
+   "durum": "boy değişti"
+  },
+  {
+   "bolum": "4:karne",
+   "onceY": 4080.09375,
+   "sonraY": 4060.890625,
+   "boy": 1543.875,
+   "farkli": 1923,
+   "oran": 0.0006486803756476684
+  },
+  {
+   "bolum": "5:rakamlar",
+   "onceY": 5623.96875,
+   "sonraY": 5604.765625,
+   "boy": 523.796875,
+   "farkli": 0,
+   "oran": 0
+  },
+  {
+   "bolum": "6:sss",
+   "onceY": 6147.765625,
+   "sonraY": 6128.5625,
+   "boy": 647,
+   "farkli": 42,
+   "oran": 0.00003380989180834621
+  },
+  {
+   "bolum": "7:basla",
+   "onceY": 6794.765625,
+   "sonraY": 6775.5625,
+   "boy": 534.875,
+   "farkli": 4110,
+   "oran": 0.004001168224299066
+  },
+  {
+   "bolum": "8:vt-alt",
+   "onceY": 7329.640625,
+   "sonraY": 7310.4375,
+   "boy": 392,
+   "farkli": 13793,
+   "oran": 0.018326158588435375
+  }
+ ]
+}

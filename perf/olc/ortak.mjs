@@ -15,6 +15,7 @@ export const HEDEFLER = {
   araa:  { yok: "https://localhost:38443", hizli3g: "https://localhost:39443", yavas4g: "https://localhost:40443", spki: ".replika/araa/spki.txt" },
   arac:  { yok: "https://localhost:58443", hizli3g: "https://localhost:59443", yavas4g: "https://localhost:60443", spki: ".replika/arac/spki.txt" },
   arad:  { yok: "https://localhost:24443", hizli3g: "https://localhost:25443", yavas4g: "https://localhost:26443", spki: ".replika/arad/spki.txt" },
+  arae:  { yok: "https://localhost:34443", hizli3g: "https://localhost:35443", yavas4g: "https://localhost:36443", spki: ".replika/arae/spki.txt" },
   arab:  { yok: "https://localhost:48443", hizli3g: "https://localhost:49443", yavas4g: "https://localhost:50443", spki: ".replika/arab/spki.txt" },
 };
 

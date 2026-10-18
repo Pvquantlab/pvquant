@@ -20,11 +20,15 @@ Durum etiketleri: **DOĞRULANDI** (ölçümle) · **DÜZELTİLDİ** (commit) · 
   filtresiz 0,36 / %3; camsız (filtre açık) 1,18 / %6 → maliyetin büyük kısmı filtre, cam ikincil. Chrome'da filtre/cam
   değişkenleri arasında fark yok (0,32–0,39 çekirdek). Ölçek: kenar enerjisi (komşu aygıt pikseli farkı, 1440@2 poster)
   Chrome 9,43 · Firefox 12,94 · filtresiz 5,47; ayrışık d=1/dpr Firefox'ta 9,45.
-- **Düzeltme.** `6dfbb35` — Gecko ≥ 132'de aynı çekirdek `feOffset`×4 + aritmetik `feComposite`×4 (WebRender'da GPU),
-  ofset 1 aygıt pikseli. Piksel eşdeğerliği: d=1 CSS px → Firefox özgün çıktısıyla ≤ 2/255 (poster ve duraklatılmış video
-  karesi; renk yolu değişmedi); d=1/dpr → Chromium özgün çıktısıyla ≤ 2/255. Seçilen d=1/dpr (referans = Chrome görünümü).
-- **Bedel (ölçüldü).** 1440@2 boşta (video oynarken) GPU işi artıyor: CPU 0,10 → 0,23 çekirdek, rAF p95 18,7 → 26,6 ms,
-  5 sn'de 4 video karesi düşüyor; 390@3'te etkisiz. Kaydırmada CPU 1,60 → 0,32, kaçan kare %7 → %3.
+- **Denenen düzeltme (geri alındı).** `6dfbb35` — Gecko ≥ 132'de aynı çekirdek `feOffset`×4 + aritmetik `feComposite`×4
+  (WebRender'da GPU), ofset 1 aygıt pikseli. Piksel eşdeğerliği sağlandı (d=1 CSS px → Firefox özgün çıktısıyla ≤ 2/255; d=1/dpr →
+  Chromium özgün çıktısıyla ≤ 2/255) ve kaydırma CPU'su 1,60 → 0,32–0,49 çekirdeğe indi. **Ama** son derlemenin pencereli stok
+  Firefox ölçümünde hero videosu 30 sn boyunca her 5 sn'de 18–53 / ~105 kare düşürdü (özgün filtre ve filtresiz: 0;
+  `ara-sonra2/video-zaman-7c8c46d.jsonl`). A/B'deki 0–8 düşen kare, değişkenin oynatmadan 40–60 sn sonra ölçülmesindendi.
+  Görünür animasyon bozulması olduğu için `a1fb5b8` ile geri alındı.
+- **Durum: AÇIK.** Firefox'ta kaydırma maliyeti (1440@2: 1,60 çekirdek, %7 kaçan kare) ve CSS pikseli ölçeğindeki keskinleştirme
+  sürüyor. Tasarımı koruyan seçenekler (sahip kararı): (a) videoyu tek geçişli WebGL gölgelendiricisiyle süzmek (yalnız yeni video
+  karesinde çizim; renk yolu ve bağlam kaybı riski, orta-yüksek iş); (b) bugünkü hâliyle kabul.
 
 ## K2 — Lighthouse mobil «/» 47–85 (≥90 kriteri), LCP 4,2–10,5 sn arası savruluyor
 - **Belirti.** Replika 75 (47–85), canlı 85 (71–85); LCP öğesi hero paragrafı, gecikmenin tamamı «render delay».
@@ -51,6 +55,10 @@ Durum etiketleri: **DOĞRULANDI** (ölçümle) · **DÜZELTİLDİ** (commit) · 
   simülasyonu (320–767 px: SF ile 172/448, yedekle 436/448 genişlikte Inter Tight'la aynı satır). Firefox soğuk /yontem
   latin-ext-600 17/36, -500 9/36 koşu.
 - **Düzeltme.** `89e910f` — metrik eşlemeli `local()` yedek yüz + latin-ext aralık daraltması. Son görüntü değişmez.
+  Ara «sonra» ölçümü (`ara-sonra1/`): Chromium ve WebKit 25 → 0–2 px, **Firefox 25 px kaldı**. Neden: Firefox ilk aile yüklenirken
+  listedeki henüz yüklenmemiş `local()` yüzü atlayıp sistem fontuna düşüyor (yedek yüzlerin FontFace durumu baştan sona
+  «unloaded»; ölçüldü). `7c8c46d` — yedek yüz `<head>`'de satır içi ve `document.fonts.load` ile CSS'ten önce hazır: Firefox
+  ilk karede 563 → 539 (son 538), Chromium/WebKit 538 (değişmez).
 
 ## K5 — /yontem'de ana sayfa hero'su bir kare görünüyor (yanlış rota karesi)
 - **Kök neden.** Kabuk her yolun HTML'inde; silme kararı gövde sonundaki betikte ve o betik CSS'i bekliyor → motor betikten önce
@@ -90,6 +98,18 @@ Durum etiketleri: **DOĞRULANDI** (ölçümle) · **DÜZELTİLDİ** (commit) · 
   (Service Worker ile aralık önbelleği) kapsam dışı ve riskli; raporda «kalan risk».
 - **Chromium 768 ve 1920'de LCP öğesi videonun ilk karesi** (yavaş 4G'de 4,2–4,9 sn). Düzeltmelerden sonra yeniden ölçülecek
   (devir ve poster değişiklikleri LCP adaylarını etkiler); sonuç REPORT.md'de.
+
+## Ölçüm yöntemi notları (sonuçların yorumu için)
+
+- **Vekil sürümü.** Temel matrisin kısıtlı-hat satırları ilk olarak sıra bozan eski vekille ölçülmüştü; adil kıyas için 144 satır güncel
+  vekille yeniden ölçüldü (eski satırlar `baseline/matris-eski-vekil.jsonl`). Aynı «önce» derlemesi eski vekille Firefox 390 yavaş 4G'de
+  FCP 1,01–1,08 sn, güncel vekille 1,18–1,32 sn verdi (`olc/kritik-yol.mjs`) — vekil farkı tek başına ~150 ms oynatıyordu.
+- **Oturumlar arası gürültü.** Aynı derleme farklı oturumlarda yavaş 4G FCP'de WebKit'te ~100 ms oynuyor (son derleme WebKit 390 «/»:
+  1 339 ↔ 1 228 ms, `ara3/`). Bu eşiğin altındaki farklar iyileşme/gerileme sayılmadı. Satır içi yedek fontun WebKit'i geciktirdiği
+  şüphesi bu yüzden çürütüldü (Gecko'ya özel değişken WebKit'te daha hızlı değildi; ayrıca `MozAppearance` algısı Firefox 157'de
+  çalışmadı → değişken reddedildi).
+- **Ölçüm konumu.** Firefox kaydırma maliyeti oynatma başlangıcına yakınken daha yüksek (1440@2: ~2,3–2,8 çekirdek; 40–60 sn sonra
+  ~1,3–1,6). Önce/sonra kıyası bu yüzden aynı oturumda dönüşümlü ve aynı konumda yapıldı (`ara4/`): fark yok.
 
 ## Çürütülenler (ölçüm ya da kodla)
 

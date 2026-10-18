@@ -1,0 +1,3049 @@
+{
+ "yukleme": {
+  "chromium|390x844|yok|ana|soguk": {
+   "n": 3,
+   "ttfb": 4.300000004470348,
+   "fcp": 96,
+   "lcp": 96,
+   "cls": 0,
+   "tbt": 119,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 9868,
+   "istek": 21,
+   "load": 56.70000000298023,
+   "lcpOge": [
+    "p.vt-giris.vt-hero__giris «PVQuant, güneş santralinizin saatlik üre»"
+   ],
+   "hata": 0
+  },
+  "chromium|390x844|yok|ana|sicak": {
+   "n": 3,
+   "ttfb": 2.899999998509884,
+   "fcp": 56,
+   "lcp": 56,
+   "cls": 0,
+   "tbt": 102,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 0,
+   "istek": 21,
+   "load": 17,
+   "lcpOge": [
+    "p.vt-giris.vt-hero__giris «PVQuant, güneş santralinizin saatlik üre»"
+   ],
+   "hata": 0
+  },
+  "chromium|390x844|yok|yontem|soguk": {
+   "n": 3,
+   "ttfb": 4.100000001490116,
+   "fcp": 112,
+   "lcp": 112,
+   "cls": 0,
+   "tbt": 0,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 2229,
+   "istek": 17,
+   "load": 52.79999999701977,
+   "lcpOge": [
+    "p.vt-giris «Vitrindeki ve paneldeki her doğruluk değ»"
+   ],
+   "hata": 0
+  },
+  "chromium|390x844|yok|yontem|sicak": {
+   "n": 3,
+   "ttfb": 2.899999998509884,
+   "fcp": 44,
+   "lcp": 44,
+   "cls": 0,
+   "tbt": 0,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 0,
+   "istek": 17,
+   "load": 15.799999997019768,
+   "lcpOge": [
+    "p.vt-giris «Vitrindeki ve paneldeki her doğruluk değ»"
+   ],
+   "hata": 0
+  },
+  "chromium|390x844|hizli3g|ana|soguk": {
+   "n": 3,
+   "ttfb": 1738.7999999970198,
+   "fcp": 2796,
+   "lcp": 2796,
+   "cls": 0,
+   "tbt": 176,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.75,
+   "aktarimKB": 645,
+   "istek": 11,
+   "load": 5837.4000000059605,
+   "lcpOge": [
+    "p.vt-giris.vt-hero__giris «PVQuant, güneş santralinizin saatlik üre»"
+   ],
+   "hata": 0
+  },
+  "chromium|390x844|hizli3g|ana|sicak": {
+   "n": 3,
+   "ttfb": 569.8999999985099,
+   "fcp": 616,
+   "lcp": 616,
+   "cls": 0,
+   "tbt": 132,
+   "kaymaMax": 0,
+   "hatBaytMB": 0.27,
+   "aktarimKB": 260,
+   "istek": 15,
+   "load": 590.1999999955297,
+   "lcpOge": [
+    "p.vt-giris.vt-hero__giris «PVQuant, güneş santralinizin saatlik üre»"
+   ],
+   "hata": 0
+  },
+  "chromium|390x844|hizli3g|yontem|soguk": {
+   "n": 3,
+   "ttfb": 1755.1000000014901,
+   "fcp": 3020,
+   "lcp": 3020,
+   "cls": 0,
+   "tbt": 0,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.2,
+   "aktarimKB": 1172,
+   "istek": 14,
+   "load": 3776,
+   "lcpOge": [
+    "p.vt-giris «Vitrindeki ve paneldeki her doğruluk değ»"
+   ],
+   "hata": 0
+  },
+  "chromium|390x844|hizli3g|yontem|sicak": {
+   "n": 3,
+   "ttfb": 569.5,
+   "fcp": 616,
+   "lcp": 616,
+   "cls": 0,
+   "tbt": 0,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.09,
+   "aktarimKB": 1058,
+   "istek": 17,
+   "load": 588.7000000029802,
+   "lcpOge": [
+    "p.vt-giris «Vitrindeki ve paneldeki her doğruluk değ»"
+   ],
+   "hata": 0
+  },
+  "chromium|390x844|yavas4g|ana|soguk": {
+   "n": 3,
+   "ttfb": 519,
+   "fcp": 1208,
+   "lcp": 1208,
+   "cls": 0.000003693157766516406,
+   "tbt": 179,
+   "kaymaMax": 2,
+   "hatBaytMB": 1.6,
+   "aktarimKB": 1089,
+   "istek": 12,
+   "load": 3906.2999999970198,
+   "lcpOge": [
+    "p.vt-giris.vt-hero__giris «PVQuant, güneş santralinizin saatlik üre»"
+   ],
+   "hata": 0
+  },
+  "chromium|390x844|yavas4g|ana|sicak": {
+   "n": 3,
+   "ttfb": 158,
+   "fcp": 208,
+   "lcp": 208,
+   "cls": 0,
+   "tbt": 102,
+   "kaymaMax": 0,
+   "hatBaytMB": 0.41,
+   "aktarimKB": 400,
+   "istek": 15,
+   "load": 180.30000000447035,
+   "lcpOge": [
+    "p.vt-giris.vt-hero__giris «PVQuant, güneş santralinizin saatlik üre»"
+   ],
+   "hata": 0
+  },
+  "chromium|390x844|yavas4g|yontem|soguk": {
+   "n": 3,
+   "ttfb": 501.8999999985099,
+   "fcp": 1372,
+   "lcp": 1372,
+   "cls": 0,
+   "tbt": 0,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.14,
+   "aktarimKB": 852,
+   "istek": 13,
+   "load": 1707.5999999940395,
+   "lcpOge": [
+    "p.vt-giris «Vitrindeki ve paneldeki her doğruluk değ»"
+   ],
+   "hata": 0
+  },
+  "chromium|390x844|yavas4g|yontem|sicak": {
+   "n": 3,
+   "ttfb": 158.09999999403954,
+   "fcp": 204,
+   "lcp": 204,
+   "cls": 0,
+   "tbt": 0,
+   "kaymaMax": 0,
+   "hatBaytMB": 0.98,
+   "aktarimKB": 492,
+   "istek": 14,
+   "load": 176.89999999850988,
+   "lcpOge": [
+    "p.vt-giris «Vitrindeki ve paneldeki her doğruluk değ»"
+   ],
+   "hata": 0
+  },
+  "chromium|768x1024|yok|ana|soguk": {
+   "n": 3,
+   "ttfb": 3.899999998509884,
+   "fcp": 116,
+   "lcp": 552,
+   "cls": 0,
+   "tbt": 496,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 3114,
+   "istek": 21,
+   "load": 56.5,
+   "lcpOge": [
+    "video.vt-hero__video [santral-1440-KjaLgHuf.mp4]"
+   ],
+   "hata": 0
+  },
+  "chromium|768x1024|yok|ana|sicak": {
+   "n": 3,
+   "ttfb": 3.100000001490116,
+   "fcp": 200,
+   "lcp": 636,
+   "cls": 0,
+   "tbt": 468,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 1,
+   "istek": 23,
+   "load": 17.30000000447035,
+   "lcpOge": [
+    "video.vt-hero__video [santral-1440-KjaLgHuf.mp4]"
+   ],
+   "hata": 0
+  },
+  "chromium|768x1024|yok|yontem|soguk": {
+   "n": 3,
+   "ttfb": 4.700000002980232,
+   "fcp": 116,
+   "lcp": 116,
+   "cls": 0,
+   "tbt": 0,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 2229,
+   "istek": 17,
+   "load": 52.29999999701977,
+   "lcpOge": [
+    "p.vt-giris «Vitrindeki ve paneldeki her doğruluk değ»"
+   ],
+   "hata": 0
+  },
+  "chromium|768x1024|yok|yontem|sicak": {
+   "n": 3,
+   "ttfb": 2.899999998509884,
+   "fcp": 52,
+   "lcp": 52,
+   "cls": 0,
+   "tbt": 0,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 0,
+   "istek": 17,
+   "load": 16.30000000447035,
+   "lcpOge": [
+    "p.vt-giris «Vitrindeki ve paneldeki her doğruluk değ»"
+   ],
+   "hata": 0
+  },
+  "chromium|768x1024|hizli3g|ana|soguk": {
+   "n": 3,
+   "ttfb": 1756.3999999985099,
+   "fcp": 2660,
+   "lcp": 6088,
+   "cls": 0,
+   "tbt": 749,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.76,
+   "aktarimKB": 645,
+   "istek": 11,
+   "load": 5687.89999999851,
+   "lcpOge": [
+    "video.vt-hero__video [santral-1440-KjaLgHuf.mp4]"
+   ],
+   "hata": 0
+  },
+  "chromium|768x1024|hizli3g|ana|sicak": {
+   "n": 3,
+   "ttfb": 569.6999999955297,
+   "fcp": 632,
+   "lcp": 1048,
+   "cls": 0,
+   "tbt": 377,
+   "kaymaMax": 0,
+   "hatBaytMB": 0.73,
+   "aktarimKB": 713,
+   "istek": 17,
+   "load": 589.8999999985099,
+   "lcpOge": [
+    "video.vt-hero__video [santral-1440-KjaLgHuf.mp4]"
+   ],
+   "hata": 0
+  },
+  "chromium|768x1024|hizli3g|yontem|soguk": {
+   "n": 3,
+   "ttfb": 1738.8999999985099,
+   "fcp": 3128,
+   "lcp": 3128,
+   "cls": 0,
+   "tbt": 0,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.24,
+   "aktarimKB": 1172,
+   "istek": 14,
+   "load": 3086.89999999851,
+   "lcpOge": [
+    "p.vt-giris «Vitrindeki ve paneldeki her doğruluk değ»"
+   ],
+   "hata": 0
+  },
+  "chromium|768x1024|hizli3g|yontem|sicak": {
+   "n": 3,
+   "ttfb": 570.7999999970198,
+   "fcp": 624,
+   "lcp": 624,
+   "cls": 0,
+   "tbt": 0,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.05,
+   "aktarimKB": 1022,
+   "istek": 17,
+   "load": 590,
+   "lcpOge": [
+    "p.vt-giris «Vitrindeki ve paneldeki her doğruluk değ»"
+   ],
+   "hata": 0
+  },
+  "chromium|768x1024|yavas4g|ana|soguk": {
+   "n": 3,
+   "ttfb": 502.6000000014901,
+   "fcp": 1160,
+   "lcp": 4256,
+   "cls": 0,
+   "tbt": 728,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.57,
+   "aktarimKB": 645,
+   "istek": 11,
+   "load": 3902.5,
+   "lcpOge": [
+    "video.vt-hero__video [santral-1440-KjaLgHuf.mp4]"
+   ],
+   "hata": 0
+  },
+  "chromium|768x1024|yavas4g|ana|sicak": {
+   "n": 3,
+   "ttfb": 157.60000000149012,
+   "fcp": 224,
+   "lcp": 632,
+   "cls": 0,
+   "tbt": 376,
+   "kaymaMax": 0,
+   "hatBaytMB": 0.92,
+   "aktarimKB": 892,
+   "istek": 17,
+   "load": 180.89999999850988,
+   "lcpOge": [
+    "video.vt-hero__video [santral-1440-KjaLgHuf.mp4]"
+   ],
+   "hata": 0
+  },
+  "chromium|768x1024|yavas4g|yontem|soguk": {
+   "n": 3,
+   "ttfb": 522.8999999985099,
+   "fcp": 1272,
+   "lcp": 1272,
+   "cls": 0,
+   "tbt": 0,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.46,
+   "aktarimKB": 1172,
+   "istek": 14,
+   "load": 3099.7999999970198,
+   "lcpOge": [
+    "p.vt-giris «Vitrindeki ve paneldeki her doğruluk değ»"
+   ],
+   "hata": 0
+  },
+  "chromium|768x1024|yavas4g|yontem|sicak": {
+   "n": 3,
+   "ttfb": 157,
+   "fcp": 212,
+   "lcp": 212,
+   "cls": 0,
+   "tbt": 0,
+   "kaymaMax": 0,
+   "hatBaytMB": 0.83,
+   "aktarimKB": 810,
+   "istek": 17,
+   "load": 179.5,
+   "lcpOge": [
+    "p.vt-giris «Vitrindeki ve paneldeki her doğruluk değ»"
+   ],
+   "hata": 0
+  },
+  "chromium|1440x900|yok|ana|soguk": {
+   "n": 3,
+   "ttfb": 4.300000004470348,
+   "fcp": 136,
+   "lcp": 136,
+   "cls": 0,
+   "tbt": 1246,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 3114,
+   "istek": 21,
+   "load": 65.39999999850988,
+   "lcpOge": [
+    "h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "chromium|1440x900|yok|ana|sicak": {
+   "n": 3,
+   "ttfb": 4.100000001490116,
+   "fcp": 136,
+   "lcp": 136,
+   "cls": 0,
+   "tbt": 792,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 0,
+   "istek": 20,
+   "load": 17.80000000447035,
+   "lcpOge": [
+    "h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "chromium|1440x900|yok|yontem|soguk": {
+   "n": 3,
+   "ttfb": 4.399999998509884,
+   "fcp": 128,
+   "lcp": 128,
+   "cls": 0,
+   "tbt": 0,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 2229,
+   "istek": 17,
+   "load": 52.19999999552965,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "chromium|1440x900|yok|yontem|sicak": {
+   "n": 3,
+   "ttfb": 2.7999999970197678,
+   "fcp": 56,
+   "lcp": 56,
+   "cls": 0,
+   "tbt": 0,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 0,
+   "istek": 17,
+   "load": 15.200000002980232,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "chromium|1440x900|hizli3g|ana|soguk": {
+   "n": 3,
+   "ttfb": 1740.6000000014901,
+   "fcp": 2668,
+   "lcp": 3324,
+   "cls": 0,
+   "tbt": 1366,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.75,
+   "aktarimKB": 821,
+   "istek": 12,
+   "load": 5677.89999999851,
+   "lcpOge": [
+    "h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "chromium|1440x900|hizli3g|ana|sicak": {
+   "n": 3,
+   "ttfb": 571.5,
+   "fcp": 656,
+   "lcp": 656,
+   "cls": 0,
+   "tbt": 630,
+   "kaymaMax": 0,
+   "hatBaytMB": 0.96,
+   "aktarimKB": 740,
+   "istek": 15,
+   "load": 594.1000000014901,
+   "lcpOge": [
+    "h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "chromium|1440x900|hizli3g|yontem|soguk": {
+   "n": 3,
+   "ttfb": 1755.1000000014901,
+   "fcp": 2940,
+   "lcp": 2940,
+   "cls": 0,
+   "tbt": 0,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.47,
+   "aktarimKB": 1172,
+   "istek": 14,
+   "load": 5157.10000000149,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "chromium|1440x900|hizli3g|yontem|sicak": {
+   "n": 3,
+   "ttfb": 570.6000000014901,
+   "fcp": 636,
+   "lcp": 636,
+   "cls": 0,
+   "tbt": 0,
+   "kaymaMax": 0,
+   "hatBaytMB": 0.82,
+   "aktarimKB": 763,
+   "istek": 17,
+   "load": 594.3999999985099,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "chromium|1440x900|yavas4g|ana|soguk": {
+   "n": 3,
+   "ttfb": 518.2000000029802,
+   "fcp": 1176,
+   "lcp": 1588,
+   "cls": 0,
+   "tbt": 1378,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.52,
+   "aktarimKB": 839,
+   "istek": 12,
+   "load": 3902.5,
+   "lcpOge": [
+    "h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "chromium|1440x900|yavas4g|ana|sicak": {
+   "n": 3,
+   "ttfb": 158.19999999552965,
+   "fcp": 240,
+   "lcp": 240,
+   "cls": 0,
+   "tbt": 619,
+   "kaymaMax": 0,
+   "hatBaytMB": 0.88,
+   "aktarimKB": 797,
+   "istek": 15,
+   "load": 178.59999999403954,
+   "lcpOge": [
+    "h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "chromium|1440x900|yavas4g|yontem|soguk": {
+   "n": 3,
+   "ttfb": 498.5,
+   "fcp": 1272,
+   "lcp": 1272,
+   "cls": 0,
+   "tbt": 0,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.21,
+   "aktarimKB": 1172,
+   "istek": 14,
+   "load": 1588.8000000044703,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "chromium|1440x900|yavas4g|yontem|sicak": {
+   "n": 3,
+   "ttfb": 156,
+   "fcp": 216,
+   "lcp": 216,
+   "cls": 0,
+   "tbt": 0,
+   "kaymaMax": 0,
+   "hatBaytMB": 0.93,
+   "aktarimKB": 810,
+   "istek": 16,
+   "load": 172.5,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "chromium|1920x1080|yok|ana|soguk": {
+   "n": 3,
+   "ttfb": 5,
+   "fcp": 144,
+   "lcp": 856,
+   "cls": 0,
+   "tbt": 1615,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 3114,
+   "istek": 21,
+   "load": 67.29999999701977,
+   "lcpOge": [
+    "video.vt-hero__video [santral-1440-KjaLgHuf.mp4]"
+   ],
+   "hata": 0
+  },
+  "chromium|1920x1080|yok|ana|sicak": {
+   "n": 3,
+   "ttfb": 3.2999999970197678,
+   "fcp": 316,
+   "lcp": 1000,
+   "cls": 0,
+   "tbt": 1254,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 1,
+   "istek": 23,
+   "load": 16.700000002980232,
+   "lcpOge": [
+    "video.vt-hero__video [santral-1440-KjaLgHuf.mp4]"
+   ],
+   "hata": 0
+  },
+  "chromium|1920x1080|yok|yontem|soguk": {
+   "n": 3,
+   "ttfb": 4.600000001490116,
+   "fcp": 136,
+   "lcp": 136,
+   "cls": 0,
+   "tbt": 0,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 2229,
+   "istek": 17,
+   "load": 50.899999998509884,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "chromium|1920x1080|yok|yontem|sicak": {
+   "n": 3,
+   "ttfb": 3.2000000029802322,
+   "fcp": 64,
+   "lcp": 64,
+   "cls": 0,
+   "tbt": 0,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 0,
+   "istek": 17,
+   "load": 15.5,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "chromium|1920x1080|hizli3g|ana|soguk": {
+   "n": 3,
+   "ttfb": 1755.5,
+   "fcp": 2588,
+   "lcp": 6192,
+   "cls": 0,
+   "tbt": 1949,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.71,
+   "aktarimKB": 1089,
+   "istek": 12,
+   "load": 5580.5,
+   "lcpOge": [
+    "video.vt-hero__video [santral-1440-KjaLgHuf.mp4]"
+   ],
+   "hata": 0
+  },
+  "chromium|1920x1080|hizli3g|ana|sicak": {
+   "n": 3,
+   "ttfb": 571.6999999955297,
+   "fcp": 664,
+   "lcp": 1344,
+   "cls": 0,
+   "tbt": 781,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.05,
+   "aktarimKB": 849,
+   "istek": 16,
+   "load": 586,
+   "lcpOge": [
+    "video.vt-hero__video [santral-1440-KjaLgHuf.mp4]"
+   ],
+   "hata": 0
+  },
+  "chromium|1920x1080|hizli3g|yontem|soguk": {
+   "n": 3,
+   "ttfb": 1753.3999999985099,
+   "fcp": 3152,
+   "lcp": 3152,
+   "cls": 0,
+   "tbt": 0,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.22,
+   "aktarimKB": 186,
+   "istek": 11,
+   "load": 3074.6999999955297,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "chromium|1920x1080|hizli3g|yontem|sicak": {
+   "n": 3,
+   "ttfb": 570.1000000014901,
+   "fcp": 636,
+   "lcp": 636,
+   "cls": 0,
+   "tbt": 0,
+   "kaymaMax": 0,
+   "hatBaytMB": 0.94,
+   "aktarimKB": 772,
+   "istek": 16,
+   "load": 587.8999999985099,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "chromium|1920x1080|yavas4g|ana|soguk": {
+   "n": 3,
+   "ttfb": 502.90000000596046,
+   "fcp": 1160,
+   "lcp": 4888,
+   "cls": 0,
+   "tbt": 1873,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.46,
+   "aktarimKB": 645,
+   "istek": 11,
+   "load": 3911.89999999851,
+   "lcpOge": [
+    "video.vt-hero__video [santral-1440-KjaLgHuf.mp4]"
+   ],
+   "hata": 0
+  },
+  "chromium|1920x1080|yavas4g|ana|sicak": {
+   "n": 3,
+   "ttfb": 159.10000000149012,
+   "fcp": 260,
+   "lcp": 940,
+   "cls": 0,
+   "tbt": 824,
+   "kaymaMax": 0,
+   "hatBaytMB": 0.92,
+   "aktarimKB": 730,
+   "istek": 14,
+   "load": 181.59999999403954,
+   "lcpOge": [
+    "video.vt-hero__video [santral-1440-KjaLgHuf.mp4]"
+   ],
+   "hata": 0
+  },
+  "chromium|1920x1080|yavas4g|yontem|soguk": {
+   "n": 3,
+   "ttfb": 502.3999999985099,
+   "fcp": 1280,
+   "lcp": 1280,
+   "cls": 0,
+   "tbt": 0,
+   "kaymaMax": 0,
+   "hatBaytMB": 2.29,
+   "aktarimKB": 2229,
+   "istek": 17,
+   "load": 9008.19999999553,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "chromium|1920x1080|yavas4g|yontem|sicak": {
+   "n": 3,
+   "ttfb": 156.29999999701977,
+   "fcp": 224,
+   "lcp": 224,
+   "cls": 0,
+   "tbt": 0,
+   "kaymaMax": 0,
+   "hatBaytMB": 0,
+   "aktarimKB": 0,
+   "istek": 17,
+   "load": 173.79999999701977,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "webkit|390x844|yok|ana|soguk": {
+   "n": 3,
+   "ttfb": 8,
+   "fcp": 107,
+   "lcp": 742,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 7404,
+   "istek": 21,
+   "load": 113,
+   "lcpOge": [
+    "p.vt-giris.vt-hero__giris «PVQuant, güneş santralinizin saatlik üre»"
+   ],
+   "hata": 0
+  },
+  "webkit|390x844|yok|ana|sicak": {
+   "n": 3,
+   "ttfb": 0,
+   "fcp": 31,
+   "lcp": 529,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 6758,
+   "istek": 19,
+   "load": 28,
+   "lcpOge": [
+    "p.vt-giris.vt-hero__giris «PVQuant, güneş santralinizin saatlik üre»"
+   ],
+   "hata": 0
+  },
+  "webkit|390x844|yok|yontem|soguk": {
+   "n": 3,
+   "ttfb": 8,
+   "fcp": 163,
+   "lcp": 163,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 186,
+   "istek": 17,
+   "load": 85,
+   "lcpOge": [
+    "p.vt-giris «Vitrindeki ve paneldeki her doğruluk değ»"
+   ],
+   "hata": 0
+  },
+  "webkit|390x844|yok|yontem|sicak": {
+   "n": 3,
+   "ttfb": 0,
+   "fcp": 54,
+   "lcp": 54,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 0,
+   "istek": 14,
+   "load": 24,
+   "lcpOge": [
+    "p.vt-giris «Vitrindeki ve paneldeki her doğruluk değ»"
+   ],
+   "hata": 0
+  },
+  "webkit|390x844|hizli3g|ana|soguk": {
+   "n": 3,
+   "ttfb": 1755,
+   "fcp": 2907,
+   "lcp": 3367,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.19,
+   "aktarimKB": 718,
+   "istek": 13,
+   "load": 6318,
+   "lcpOge": [
+    "p.vt-giris.vt-hero__giris «PVQuant, güneş santralinizin saatlik üre»"
+   ],
+   "hata": 0
+  },
+  "webkit|390x844|hizli3g|ana|sicak": {
+   "n": 3,
+   "ttfb": 0,
+   "fcp": 608,
+   "lcp": 1109,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 0,
+   "aktarimKB": 0,
+   "istek": 10,
+   "load": 604,
+   "lcpOge": [
+    "p.vt-giris.vt-hero__giris «PVQuant, güneş santralinizin saatlik üre»"
+   ],
+   "hata": 0
+  },
+  "webkit|390x844|hizli3g|yontem|soguk": {
+   "n": 3,
+   "ttfb": 1759,
+   "fcp": 3034,
+   "lcp": 3034,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.28,
+   "aktarimKB": 258,
+   "istek": 16,
+   "load": 4016,
+   "lcpOge": [
+    "p.vt-giris «Vitrindeki ve paneldeki her doğruluk değ»"
+   ],
+   "hata": 0
+  },
+  "webkit|390x844|hizli3g|yontem|sicak": {
+   "n": 3,
+   "ttfb": 0,
+   "fcp": 633,
+   "lcp": 633,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.09,
+   "aktarimKB": 0,
+   "istek": 14,
+   "load": 598,
+   "lcpOge": [
+    "p.vt-giris «Vitrindeki ve paneldeki her doğruluk değ»"
+   ],
+   "hata": 0
+  },
+  "webkit|390x844|yavas4g|ana|soguk": {
+   "n": 3,
+   "ttfb": 503,
+   "fcp": 1339,
+   "lcp": 1804,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.19,
+   "aktarimKB": 718,
+   "istek": 13,
+   "load": 4385,
+   "lcpOge": [
+    "p.vt-giris.vt-hero__giris «PVQuant, güneş santralinizin saatlik üre»"
+   ],
+   "hata": 0
+  },
+  "webkit|390x844|yavas4g|ana|sicak": {
+   "n": 3,
+   "ttfb": 0,
+   "fcp": 194,
+   "lcp": 690,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 0,
+   "aktarimKB": 0,
+   "istek": 10,
+   "load": 191,
+   "lcpOge": [
+    "p.vt-giris.vt-hero__giris «PVQuant, güneş santralinizin saatlik üre»"
+   ],
+   "hata": 0
+  },
+  "webkit|390x844|yavas4g|yontem|soguk": {
+   "n": 3,
+   "ttfb": 502,
+   "fcp": 1447,
+   "lcp": 1447,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.14,
+   "aktarimKB": 186,
+   "istek": 15,
+   "load": 1905,
+   "lcpOge": [
+    "p.vt-giris «Vitrindeki ve paneldeki her doğruluk değ»"
+   ],
+   "hata": 0
+  },
+  "webkit|390x844|yavas4g|yontem|sicak": {
+   "n": 3,
+   "ttfb": 0,
+   "fcp": 216,
+   "lcp": 216,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 0.94,
+   "aktarimKB": 0,
+   "istek": 14,
+   "load": 188,
+   "lcpOge": [
+    "p.vt-giris «Vitrindeki ve paneldeki her doğruluk değ»"
+   ],
+   "hata": 0
+  },
+  "webkit|768x1024|yok|ana|soguk": {
+   "n": 3,
+   "ttfb": 9,
+   "fcp": 197,
+   "lcp": 804,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 37172,
+   "istek": 22,
+   "load": 184,
+   "lcpOge": [
+    "div.vt-hero__ortu.is-acik",
+    "video.vt-hero__video [santral-1440-KjaLgHuf.mp4]"
+   ],
+   "hata": 0
+  },
+  "webkit|768x1024|yok|ana|sicak": {
+   "n": 3,
+   "ttfb": 0,
+   "fcp": 34,
+   "lcp": 520,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 36454,
+   "istek": 19,
+   "load": 30,
+   "lcpOge": [
+    "section.vt-hero.vt-hero--a.vt-hero--video «Güneş santraliniz için saatlik üretim ta»",
+    "img.vt-hero__poster [santral-poster-BYmyX5Ic.webp]"
+   ],
+   "hata": 0
+  },
+  "webkit|768x1024|yok|yontem|soguk": {
+   "n": 3,
+   "ttfb": 8,
+   "fcp": 157,
+   "lcp": 157,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 186,
+   "istek": 17,
+   "load": 89,
+   "lcpOge": [
+    "p.vt-giris «Vitrindeki ve paneldeki her doğruluk değ»"
+   ],
+   "hata": 0
+  },
+  "webkit|768x1024|yok|yontem|sicak": {
+   "n": 3,
+   "ttfb": 0,
+   "fcp": 61,
+   "lcp": 61,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 0,
+   "istek": 14,
+   "load": 28,
+   "lcpOge": [
+    "p.vt-giris «Vitrindeki ve paneldeki her doğruluk değ»"
+   ],
+   "hata": 0
+  },
+  "webkit|768x1024|hizli3g|ana|soguk": {
+   "n": 3,
+   "ttfb": 1741,
+   "fcp": 3001,
+   "lcp": 3488,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.63,
+   "aktarimKB": 718,
+   "istek": 14,
+   "load": 6466,
+   "lcpOge": [
+    "section.vt-hero.vt-hero--a.vt-hero--video «Güneş santraliniz için saatlik üretim ta»",
+    "div.vt-hero__ortu"
+   ],
+   "hata": 0
+  },
+  "webkit|768x1024|hizli3g|ana|sicak": {
+   "n": 3,
+   "ttfb": 0,
+   "fcp": 608,
+   "lcp": 1096,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 0,
+   "aktarimKB": 0,
+   "istek": 11,
+   "load": 604,
+   "lcpOge": [
+    "section.vt-hero.vt-hero--a.vt-hero--video «Güneş santraliniz için saatlik üretim ta»",
+    "video.vt-hero__video [santral-1440-KjaLgHuf.mp4]"
+   ],
+   "hata": 0
+  },
+  "webkit|768x1024|hizli3g|yontem|soguk": {
+   "n": 3,
+   "ttfb": 1759,
+   "fcp": 3063,
+   "lcp": 3063,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.28,
+   "aktarimKB": 258,
+   "istek": 16,
+   "load": 4140,
+   "lcpOge": [
+    "p.vt-giris «Vitrindeki ve paneldeki her doğruluk değ»"
+   ],
+   "hata": 0
+  },
+  "webkit|768x1024|hizli3g|yontem|sicak": {
+   "n": 3,
+   "ttfb": 0,
+   "fcp": 629,
+   "lcp": 629,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.09,
+   "aktarimKB": 0,
+   "istek": 14,
+   "load": 602,
+   "lcpOge": [
+    "p.vt-giris «Vitrindeki ve paneldeki her doğruluk değ»"
+   ],
+   "hata": 0
+  },
+  "webkit|768x1024|yavas4g|ana|soguk": {
+   "n": 3,
+   "ttfb": 500,
+   "fcp": 1338,
+   "lcp": 1792,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.63,
+   "aktarimKB": 718,
+   "istek": 14,
+   "load": 4370,
+   "lcpOge": [
+    "section.vt-hero.vt-hero--a.vt-hero--video «Güneş santraliniz için saatlik üretim ta»",
+    "div.vt-hero__ortu"
+   ],
+   "hata": 0
+  },
+  "webkit|768x1024|yavas4g|ana|sicak": {
+   "n": 3,
+   "ttfb": 0,
+   "fcp": 193,
+   "lcp": 672,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 0,
+   "aktarimKB": 0,
+   "istek": 11,
+   "load": 189,
+   "lcpOge": [
+    "video.vt-hero__video [santral-1440-KjaLgHuf.mp4]",
+    "img.vt-hero__poster [santral-poster-BYmyX5Ic.webp]"
+   ],
+   "hata": 0
+  },
+  "webkit|768x1024|yavas4g|yontem|soguk": {
+   "n": 3,
+   "ttfb": 504,
+   "fcp": 1484,
+   "lcp": 1484,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.2,
+   "aktarimKB": 258,
+   "istek": 16,
+   "load": 2155,
+   "lcpOge": [
+    "p.vt-giris «Vitrindeki ve paneldeki her doğruluk değ»"
+   ],
+   "hata": 0
+  },
+  "webkit|768x1024|yavas4g|yontem|sicak": {
+   "n": 3,
+   "ttfb": 0,
+   "fcp": 215,
+   "lcp": 215,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 0.92,
+   "aktarimKB": 0,
+   "istek": 14,
+   "load": 186,
+   "lcpOge": [
+    "p.vt-giris «Vitrindeki ve paneldeki her doğruluk değ»"
+   ],
+   "hata": 0
+  },
+  "webkit|1440x900|yok|ana|soguk": {
+   "n": 3,
+   "ttfb": 10,
+   "fcp": 224,
+   "lcp": 224,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 37100,
+   "istek": 22,
+   "load": 212,
+   "lcpOge": [
+    "h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "webkit|1440x900|yok|ana|sicak": {
+   "n": 3,
+   "ttfb": 0,
+   "fcp": 37,
+   "lcp": 37,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 42061,
+   "istek": 20,
+   "load": 32,
+   "lcpOge": [
+    "h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "webkit|1440x900|yok|yontem|soguk": {
+   "n": 3,
+   "ttfb": 9,
+   "fcp": 135,
+   "lcp": 135,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 186,
+   "istek": 17,
+   "load": 81,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "webkit|1440x900|yok|yontem|sicak": {
+   "n": 3,
+   "ttfb": 0,
+   "fcp": 60,
+   "lcp": 60,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 0,
+   "istek": 14,
+   "load": 28,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "webkit|1440x900|hizli3g|ana|soguk": {
+   "n": 3,
+   "ttfb": 1741,
+   "fcp": 3004,
+   "lcp": 4269,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.66,
+   "aktarimKB": 718,
+   "istek": 15,
+   "load": 6542,
+   "lcpOge": [
+    "h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "webkit|1440x900|hizli3g|ana|sicak": {
+   "n": 3,
+   "ttfb": 0,
+   "fcp": 613,
+   "lcp": 613,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 0.71,
+   "aktarimKB": 0,
+   "istek": 13,
+   "load": 610,
+   "lcpOge": [
+    "h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "webkit|1440x900|hizli3g|yontem|soguk": {
+   "n": 3,
+   "ttfb": 1741,
+   "fcp": 2939,
+   "lcp": 2939,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.25,
+   "aktarimKB": 258,
+   "istek": 16,
+   "load": 3997,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "webkit|1440x900|hizli3g|yontem|sicak": {
+   "n": 3,
+   "ttfb": 0,
+   "fcp": 625,
+   "lcp": 625,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.05,
+   "aktarimKB": 0,
+   "istek": 14,
+   "load": 596,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "webkit|1440x900|yavas4g|ana|soguk": {
+   "n": 3,
+   "ttfb": 520,
+   "fcp": 1352,
+   "lcp": 2729,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.46,
+   "aktarimKB": 646,
+   "istek": 14,
+   "load": 3999,
+   "lcpOge": [
+    "h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "webkit|1440x900|yavas4g|ana|sicak": {
+   "n": 3,
+   "ttfb": 0,
+   "fcp": 198,
+   "lcp": 198,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 0.69,
+   "aktarimKB": 0,
+   "istek": 12,
+   "load": 194,
+   "lcpOge": [
+    "h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "webkit|1440x900|yavas4g|yontem|soguk": {
+   "n": 3,
+   "ttfb": 525,
+   "fcp": 1304,
+   "lcp": 1304,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.16,
+   "aktarimKB": 186,
+   "istek": 15,
+   "load": 1695,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "webkit|1440x900|yavas4g|yontem|sicak": {
+   "n": 3,
+   "ttfb": 0,
+   "fcp": 223,
+   "lcp": 223,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 0.94,
+   "aktarimKB": 0,
+   "istek": 14,
+   "load": 194,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "webkit|1920x1080|yok|ana|soguk": {
+   "n": 3,
+   "ttfb": 10,
+   "fcp": 182,
+   "lcp": 684,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 37172,
+   "istek": 22,
+   "load": 171,
+   "lcpOge": [
+    "div.vt-hero__ortu.is-acik",
+    "section.vt-hero.vt-hero--a.vt-hero--video «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "webkit|1920x1080|yok|ana|sicak": {
+   "n": 3,
+   "ttfb": 0,
+   "fcp": 43,
+   "lcp": 480,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 36454,
+   "istek": 19,
+   "load": 39,
+   "lcpOge": [
+    "img.vt-hero__poster [santral-poster-BYmyX5Ic.webp]",
+    "video.vt-hero__video [santral-1440-KjaLgHuf.mp4]",
+    "div.vt-hero__ortu.is-acik"
+   ],
+   "hata": 0
+  },
+  "webkit|1920x1080|yok|yontem|soguk": {
+   "n": 3,
+   "ttfb": 8,
+   "fcp": 143,
+   "lcp": 143,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 186,
+   "istek": 17,
+   "load": 79,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "webkit|1920x1080|yok|yontem|sicak": {
+   "n": 3,
+   "ttfb": 0,
+   "fcp": 56,
+   "lcp": 56,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 0,
+   "istek": 14,
+   "load": 26,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "webkit|1920x1080|hizli3g|ana|soguk": {
+   "n": 3,
+   "ttfb": 1755,
+   "fcp": 2882,
+   "lcp": 3484,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.78,
+   "aktarimKB": 718,
+   "istek": 16,
+   "load": 6317,
+   "lcpOge": [
+    "div.vt-hero__ortu"
+   ],
+   "hata": 0
+  },
+  "webkit|1920x1080|hizli3g|ana|sicak": {
+   "n": 3,
+   "ttfb": 0,
+   "fcp": 612,
+   "lcp": 1024,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.06,
+   "aktarimKB": 0,
+   "istek": 13,
+   "load": 608,
+   "lcpOge": [
+    "section.vt-hero.vt-hero--a.vt-hero--video «Güneş santraliniz için saatlik üretim ta»",
+    "img.vt-hero__poster [santral-poster-BYmyX5Ic.webp]"
+   ],
+   "hata": 0
+  },
+  "webkit|1920x1080|hizli3g|yontem|soguk": {
+   "n": 3,
+   "ttfb": 1744,
+   "fcp": 2951,
+   "lcp": 2951,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.18,
+   "aktarimKB": 186,
+   "istek": 15,
+   "load": 3759,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "webkit|1920x1080|hizli3g|yontem|sicak": {
+   "n": 3,
+   "ttfb": 0,
+   "fcp": 633,
+   "lcp": 633,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 0.98,
+   "aktarimKB": 0,
+   "istek": 14,
+   "load": 602,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "webkit|1920x1080|yavas4g|ana|soguk": {
+   "n": 3,
+   "ttfb": 515,
+   "fcp": 1348,
+   "lcp": 1956,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.69,
+   "aktarimKB": 718,
+   "istek": 16,
+   "load": 4419,
+   "lcpOge": [
+    "section.vt-hero.vt-hero--a.vt-hero--video «Güneş santraliniz için saatlik üretim ta»",
+    "div.vt-hero__ortu"
+   ],
+   "hata": 0
+  },
+  "webkit|1920x1080|yavas4g|ana|sicak": {
+   "n": 3,
+   "ttfb": 0,
+   "fcp": 197,
+   "lcp": 620,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 0.89,
+   "aktarimKB": 0,
+   "istek": 13,
+   "load": 193,
+   "lcpOge": [
+    "video.vt-hero__video [santral-1440-KjaLgHuf.mp4]",
+    "section.vt-hero.vt-hero--a.vt-hero--video «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "webkit|1920x1080|yavas4g|yontem|soguk": {
+   "n": 3,
+   "ttfb": 502,
+   "fcp": 1428,
+   "lcp": 1428,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.21,
+   "aktarimKB": 258,
+   "istek": 16,
+   "load": 2110,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "webkit|1920x1080|yavas4g|yontem|sicak": {
+   "n": 3,
+   "ttfb": 0,
+   "fcp": 219,
+   "lcp": 219,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 0.93,
+   "aktarimKB": 0,
+   "istek": 14,
+   "load": 189,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "firefox|390x844|yok|ana|soguk": {
+   "n": 3,
+   "ttfb": 9,
+   "fcp": 89,
+   "lcp": 219,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 1,
+   "hatBaytMB": null,
+   "aktarimKB": 9868,
+   "istek": 21,
+   "load": 280,
+   "lcpOge": [
+    "h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "firefox|390x844|yok|ana|sicak": {
+   "n": 3,
+   "ttfb": 3,
+   "fcp": 33,
+   "lcp": 33,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 4,
+   "istek": 9,
+   "load": 121,
+   "lcpOge": [
+    "h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "firefox|390x844|yok|yontem|soguk": {
+   "n": 3,
+   "ttfb": 8,
+   "fcp": 106,
+   "lcp": 106,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 2230,
+   "istek": 18,
+   "load": 126,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "firefox|390x844|yok|yontem|sicak": {
+   "n": 3,
+   "ttfb": 3,
+   "fcp": 100,
+   "lcp": 100,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 4,
+   "istek": 9,
+   "load": 105,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "firefox|390x844|hizli3g|ana|soguk": {
+   "n": 3,
+   "ttfb": 1743,
+   "fcp": 2877,
+   "lcp": 2877,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 1,
+   "hatBaytMB": 0.66,
+   "aktarimKB": 646,
+   "istek": 12,
+   "load": 6012,
+   "lcpOge": [
+    "h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "firefox|390x844|hizli3g|ana|sicak": {
+   "n": 3,
+   "ttfb": 571,
+   "fcp": 605,
+   "lcp": 605,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 0,
+   "aktarimKB": 4,
+   "istek": 9,
+   "load": 684,
+   "lcpOge": [
+    "h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "firefox|390x844|hizli3g|yontem|soguk": {
+   "n": 3,
+   "ttfb": 1761,
+   "fcp": 2901,
+   "lcp": 2901,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.21,
+   "aktarimKB": 1172,
+   "istek": 15,
+   "load": 3669,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "firefox|390x844|hizli3g|yontem|sicak": {
+   "n": 3,
+   "ttfb": 571,
+   "fcp": 667,
+   "lcp": 667,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 0.99,
+   "aktarimKB": 770,
+   "istek": 11,
+   "load": 670,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "firefox|390x844|yavas4g|ana|soguk": {
+   "n": 3,
+   "ttfb": 522,
+   "fcp": 1231,
+   "lcp": 1231,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 1,
+   "hatBaytMB": 0.66,
+   "aktarimKB": 646,
+   "istek": 12,
+   "load": 3953,
+   "lcpOge": [
+    "h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "firefox|390x844|yavas4g|ana|sicak": {
+   "n": 3,
+   "ttfb": 159,
+   "fcp": 196,
+   "lcp": 196,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 0,
+   "aktarimKB": 4,
+   "istek": 9,
+   "load": 271,
+   "lcpOge": [
+    "h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "firefox|390x844|yavas4g|yontem|soguk": {
+   "n": 3,
+   "ttfb": 515,
+   "fcp": 1253,
+   "lcp": 1253,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.16,
+   "aktarimKB": 853,
+   "istek": 14,
+   "load": 1628,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "firefox|390x844|yavas4g|yontem|sicak": {
+   "n": 3,
+   "ttfb": 160,
+   "fcp": 243,
+   "lcp": 243,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 0.96,
+   "aktarimKB": 1090,
+   "istek": 12,
+   "load": 247,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "firefox|768x1024|yok|ana|soguk": {
+   "n": 3,
+   "ttfb": 7,
+   "fcp": 74,
+   "lcp": 74,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 39548,
+   "istek": 21,
+   "load": 316,
+   "lcpOge": [
+    "section.vt-hero.vt-hero--a.vt-hero--video «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "firefox|768x1024|yok|ana|sicak": {
+   "n": 3,
+   "ttfb": 3,
+   "fcp": 37,
+   "lcp": 37,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 4,
+   "istek": 9,
+   "load": 111,
+   "lcpOge": [
+    "h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "firefox|768x1024|yok|yontem|soguk": {
+   "n": 3,
+   "ttfb": 7,
+   "fcp": 105,
+   "lcp": 105,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 2230,
+   "istek": 18,
+   "load": 126,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "firefox|768x1024|yok|yontem|sicak": {
+   "n": 3,
+   "ttfb": 2,
+   "fcp": 91,
+   "lcp": 91,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 4,
+   "istek": 9,
+   "load": 94,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "firefox|768x1024|hizli3g|ana|soguk": {
+   "n": 3,
+   "ttfb": 1760,
+   "fcp": 2878,
+   "lcp": 2878,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 1,
+   "hatBaytMB": 0.66,
+   "aktarimKB": 646,
+   "istek": 12,
+   "load": 6018,
+   "lcpOge": [
+    "section.vt-hero.vt-hero--a.vt-hero--video «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "firefox|768x1024|hizli3g|ana|sicak": {
+   "n": 3,
+   "ttfb": 571,
+   "fcp": 612,
+   "lcp": 612,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 0,
+   "aktarimKB": 4,
+   "istek": 9,
+   "load": 684,
+   "lcpOge": [
+    "h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "firefox|768x1024|hizli3g|yontem|soguk": {
+   "n": 3,
+   "ttfb": 1759,
+   "fcp": 2887,
+   "lcp": 2887,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.27,
+   "aktarimKB": 1172,
+   "istek": 15,
+   "load": 3649,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "firefox|768x1024|hizli3g|yontem|sicak": {
+   "n": 3,
+   "ttfb": 570,
+   "fcp": 666,
+   "lcp": 666,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 0.98,
+   "aktarimKB": 770,
+   "istek": 11,
+   "load": 667,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "firefox|768x1024|yavas4g|ana|soguk": {
+   "n": 3,
+   "ttfb": 519,
+   "fcp": 1119,
+   "lcp": 1119,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 1,
+   "hatBaytMB": 0.66,
+   "aktarimKB": 646,
+   "istek": 12,
+   "load": 3958,
+   "lcpOge": [
+    "section.vt-hero.vt-hero--a.vt-hero--video «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "firefox|768x1024|yavas4g|ana|sicak": {
+   "n": 3,
+   "ttfb": 158,
+   "fcp": 201,
+   "lcp": 201,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 0,
+   "aktarimKB": 4,
+   "istek": 9,
+   "load": 271,
+   "lcpOge": [
+    "h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "firefox|768x1024|yavas4g|yontem|soguk": {
+   "n": 3,
+   "ttfb": 523,
+   "fcp": 1244,
+   "lcp": 1244,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.13,
+   "aktarimKB": 853,
+   "istek": 14,
+   "load": 1628,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "firefox|768x1024|yavas4g|yontem|sicak": {
+   "n": 3,
+   "ttfb": 158,
+   "fcp": 242,
+   "lcp": 242,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 0.94,
+   "aktarimKB": 1090,
+   "istek": 12,
+   "load": 247,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "firefox|1440x900|yok|ana|soguk": {
+   "n": 3,
+   "ttfb": 6,
+   "fcp": 92,
+   "lcp": 218,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 39548,
+   "istek": 21,
+   "load": 351,
+   "lcpOge": [
+    "h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "firefox|1440x900|yok|ana|sicak": {
+   "n": 3,
+   "ttfb": 3,
+   "fcp": 36,
+   "lcp": 36,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 4,
+   "istek": 9,
+   "load": 106,
+   "lcpOge": [
+    "h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "firefox|1440x900|yok|yontem|soguk": {
+   "n": 3,
+   "ttfb": 7,
+   "fcp": 109,
+   "lcp": 109,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 2230,
+   "istek": 18,
+   "load": 129,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "firefox|1440x900|yok|yontem|sicak": {
+   "n": 3,
+   "ttfb": 3,
+   "fcp": 88,
+   "lcp": 88,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 4,
+   "istek": 9,
+   "load": 91,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "firefox|1440x900|hizli3g|ana|soguk": {
+   "n": 3,
+   "ttfb": 1757,
+   "fcp": 2636,
+   "lcp": 2636,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 1,
+   "hatBaytMB": 0.66,
+   "aktarimKB": 646,
+   "istek": 12,
+   "load": 5807,
+   "lcpOge": [
+    "h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "firefox|1440x900|hizli3g|ana|sicak": {
+   "n": 3,
+   "ttfb": 570,
+   "fcp": 611,
+   "lcp": 611,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 0,
+   "aktarimKB": 4,
+   "istek": 9,
+   "load": 686,
+   "lcpOge": [
+    "h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "firefox|1440x900|hizli3g|yontem|soguk": {
+   "n": 3,
+   "ttfb": 1759,
+   "fcp": 2999,
+   "lcp": 2999,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.21,
+   "aktarimKB": 1172,
+   "istek": 15,
+   "load": 3769,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "firefox|1440x900|hizli3g|yontem|sicak": {
+   "n": 3,
+   "ttfb": 571,
+   "fcp": 669,
+   "lcp": 669,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 0.98,
+   "aktarimKB": 770,
+   "istek": 11,
+   "load": 673,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "firefox|1440x900|yavas4g|ana|soguk": {
+   "n": 3,
+   "ttfb": 503,
+   "fcp": 1030,
+   "lcp": 1030,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 1,
+   "hatBaytMB": 0.66,
+   "aktarimKB": 646,
+   "istek": 12,
+   "load": 3947,
+   "lcpOge": [
+    "h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "firefox|1440x900|yavas4g|ana|sicak": {
+   "n": 3,
+   "ttfb": 158,
+   "fcp": 186,
+   "lcp": 186,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 0,
+   "aktarimKB": 4,
+   "istek": 9,
+   "load": 271,
+   "lcpOge": [
+    "h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "firefox|1440x900|yavas4g|yontem|soguk": {
+   "n": 3,
+   "ttfb": 505,
+   "fcp": 1244,
+   "lcp": 1244,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.17,
+   "aktarimKB": 853,
+   "istek": 14,
+   "load": 1621,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "firefox|1440x900|yavas4g|yontem|sicak": {
+   "n": 3,
+   "ttfb": 159,
+   "fcp": 251,
+   "lcp": 251,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 0.95,
+   "aktarimKB": 1090,
+   "istek": 12,
+   "load": 255,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "firefox|1920x1080|yok|ana|soguk": {
+   "n": 3,
+   "ttfb": 6,
+   "fcp": 77,
+   "lcp": 77,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 39548,
+   "istek": 21,
+   "load": 275,
+   "lcpOge": [
+    "section.vt-hero.vt-hero--a.vt-hero--video «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "firefox|1920x1080|yok|ana|sicak": {
+   "n": 3,
+   "ttfb": 3,
+   "fcp": 26,
+   "lcp": 26,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 4,
+   "istek": 9,
+   "load": 116,
+   "lcpOge": [
+    "h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "firefox|1920x1080|yok|yontem|soguk": {
+   "n": 3,
+   "ttfb": 7,
+   "fcp": 112,
+   "lcp": 112,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 2230,
+   "istek": 18,
+   "load": 143,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "firefox|1920x1080|yok|yontem|sicak": {
+   "n": 3,
+   "ttfb": 2,
+   "fcp": 91,
+   "lcp": 91,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": null,
+   "aktarimKB": 4,
+   "istek": 9,
+   "load": 95,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "firefox|1920x1080|hizli3g|ana|soguk": {
+   "n": 3,
+   "ttfb": 1755,
+   "fcp": 2835,
+   "lcp": 2835,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 2,
+   "hatBaytMB": 0.66,
+   "aktarimKB": 646,
+   "istek": 12,
+   "load": 5982,
+   "lcpOge": [
+    "section.vt-hero.vt-hero--a.vt-hero--video «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "firefox|1920x1080|hizli3g|ana|sicak": {
+   "n": 3,
+   "ttfb": 570,
+   "fcp": 603,
+   "lcp": 603,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 0,
+   "aktarimKB": 4,
+   "istek": 9,
+   "load": 686,
+   "lcpOge": [
+    "h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "firefox|1920x1080|hizli3g|yontem|soguk": {
+   "n": 3,
+   "ttfb": 1740,
+   "fcp": 2901,
+   "lcp": 2901,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.27,
+   "aktarimKB": 1172,
+   "istek": 15,
+   "load": 3682,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "firefox|1920x1080|hizli3g|yontem|sicak": {
+   "n": 3,
+   "ttfb": 571,
+   "fcp": 662,
+   "lcp": 662,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 0.98,
+   "aktarimKB": 770,
+   "istek": 11,
+   "load": 663,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "firefox|1920x1080|yavas4g|ana|soguk": {
+   "n": 3,
+   "ttfb": 503,
+   "fcp": 1030,
+   "lcp": 1030,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 0.66,
+   "aktarimKB": 646,
+   "istek": 12,
+   "load": 3963,
+   "lcpOge": [
+    "section.vt-hero.vt-hero--a.vt-hero--video «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "firefox|1920x1080|yavas4g|ana|sicak": {
+   "n": 3,
+   "ttfb": 158,
+   "fcp": 199,
+   "lcp": 199,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 0,
+   "aktarimKB": 4,
+   "istek": 9,
+   "load": 278,
+   "lcpOge": [
+    "h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz için saatlik üretim ta»"
+   ],
+   "hata": 0
+  },
+  "firefox|1920x1080|yavas4g|yontem|soguk": {
+   "n": 3,
+   "ttfb": 521,
+   "fcp": 1239,
+   "lcp": 1239,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 1.14,
+   "aktarimKB": 853,
+   "istek": 14,
+   "load": 1623,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  },
+  "firefox|1920x1080|yavas4g|yontem|sicak": {
+   "n": 3,
+   "ttfb": 160,
+   "fcp": 253,
+   "lcp": 253,
+   "cls": null,
+   "tbt": null,
+   "kaymaMax": 0,
+   "hatBaytMB": 0.93,
+   "aktarimKB": 1090,
+   "istek": 12,
+   "load": 258,
+   "lcpOge": [
+    "h1.vt-h1 «Sayıların arkasındaki yöntem.»"
+   ],
+   "hata": 0
+  }
+ },
+ "surum": {
+  "chromium": "156.0.8078.4",
+  "webkit": "27.2",
+  "firefox": "157.0"
+ },
+ "lighthouse": {
+  "sonra|ana|mobil": {
+   "n": 3,
+   "chrome": "Chrome/156.0.0.0",
+   "surum": "12.8.2",
+   "skor": {
+    "performance": 99,
+    "accessibility": 100,
+    "best-practices": 100,
+    "seo": 91
+   },
+   "metrik": {
+    "fcp": 1503.4701,
+    "lcp": 1878.4701,
+    "tbt": 51.5,
+    "cls": 0,
+    "si": 1503.4701,
+    "ttfb": 3.694
+   },
+   "uyari": {
+    "render-blocking-resources": {
+     "deger": "Est savings of 240 ms",
+     "ornek": [
+      "https://localhost:28443/assets/index-DDT_f9co.css"
+     ]
+    },
+    "unused-javascript": {
+     "deger": "Est savings of 30 KiB",
+     "ornek": [
+      "https://localhost:28443/assets/index-DB0ErZUo.js"
+     ]
+    },
+    "unused-css-rules": {
+     "deger": "Est savings of 11 KiB",
+     "ornek": [
+      "https://localhost:28443/assets/index-DDT_f9co.css"
+     ]
+    },
+    "uses-responsive-images": {
+     "deger": "Est savings of 2,610 KiB",
+     "ornek": [
+      "https://localhost:28443/assets/is-finansman-DwsOxqkM.png",
+      "https://localhost:28443/assets/adim-fizik-D2A4lTYY.png",
+      "https://localhost:28443/assets/adim-ogrenen-DLN0gZyi.png"
+     ]
+    },
+    "modern-image-formats": {
+     "deger": "Est savings of 1,651 KiB",
+     "ornek": [
+      "https://localhost:28443/assets/adim-ogrenen-DLN0gZyi.png",
+      "https://localhost:28443/assets/adim-fizik-D2A4lTYY.png",
+      "https://localhost:28443/assets/is-finansman-DwsOxqkM.png"
+     ]
+    },
+    "total-byte-weight": {
+     "deger": "Total size was 9,805 KiB",
+     "ornek": [
+      "https://localhost:28443/assets/santral-1080-B2bAtIHB.mp4",
+      "https://localhost:28443/assets/santral-1080-B2bAtIHB.mp4",
+      "https://localhost:28443/assets/santral-poster-BYmyX5Ic.webp"
+     ]
+    }
+   }
+  },
+  "sonra|ana|masaustu": {
+   "n": 3,
+   "chrome": "Chrome/156.0.0.0",
+   "surum": "12.8.2",
+   "skor": {
+    "performance": 100,
+    "accessibility": 100,
+    "best-practices": 100,
+    "seo": 91
+   },
+   "metrik": {
+    "fcp": 364.586,
+    "lcp": 404.586,
+    "tbt": 0,
+    "cls": 0,
+    "si": 449.17568816683377,
+    "ttfb": 2.992
+   },
+   "uyari": {
+    "render-blocking-resources": {
+     "deger": "Est savings of 80 ms",
+     "ornek": [
+      "https://localhost:28443/assets/index-DDT_f9co.css"
+     ]
+    },
+    "unused-javascript": {
+     "deger": "Est savings of 30 KiB",
+     "ornek": [
+      "https://localhost:28443/assets/index-DB0ErZUo.js"
+     ]
+    },
+    "unused-css-rules": {
+     "deger": "Est savings of 13 KiB",
+     "ornek": [
+      "https://localhost:28443/assets/index-DDT_f9co.css"
+     ]
+    },
+    "uses-responsive-images": {
+     "deger": "Est savings of 2,740 KiB",
+     "ornek": [
+      "https://localhost:28443/assets/adim-fizik-D2A4lTYY.png",
+      "https://localhost:28443/assets/is-finansman-DwsOxqkM.png",
+      "https://localhost:28443/assets/adim-ogrenen-DLN0gZyi.png"
+     ]
+    },
+    "modern-image-formats": {
+     "deger": "Est savings of 1,651 KiB",
+     "ornek": [
+      "https://localhost:28443/assets/adim-ogrenen-DLN0gZyi.png",
+      "https://localhost:28443/assets/adim-fizik-D2A4lTYY.png",
+      "https://localhost:28443/assets/is-finansman-DwsOxqkM.png"
+     ]
+    },
+    "total-byte-weight": {
+     "deger": "Total size was 33,397 KiB",
+     "ornek": [
+      "https://localhost:28443/assets/santral-1440-KjaLgHuf.mp4",
+      "https://localhost:28443/assets/santral-1440-KjaLgHuf.mp4",
+      "https://localhost:28443/assets/santral-poster-BYmyX5Ic.webp"
+     ]
+    }
+   }
+  },
+  "sonra|yontem|mobil": {
+   "n": 3,
+   "chrome": "Chrome/156.0.0.0",
+   "surum": "12.8.2",
+   "skor": {
+    "performance": 99,
+    "accessibility": 100,
+    "best-practices": 100,
+    "seo": 91
+   },
+   "metrik": {
+    "fcp": 1654.4886000000001,
+    "lcp": 1804.4886000000001,
+    "tbt": 37,
+    "cls": 0,
+    "si": 1654.4886000000001,
+    "ttfb": 2.611
+   },
+   "uyari": {
+    "render-blocking-resources": {
+     "deger": "Est savings of 450 ms",
+     "ornek": [
+      "https://localhost:28443/assets/index-DDT_f9co.css"
+     ]
+    },
+    "unused-javascript": {
+     "deger": "Est savings of 35 KiB",
+     "ornek": [
+      "https://localhost:28443/assets/index-DB0ErZUo.js"
+     ]
+    },
+    "unused-css-rules": {
+     "deger": "Est savings of 17 KiB",
+     "ornek": [
+      "https://localhost:28443/assets/index-DDT_f9co.css"
+     ]
+    },
+    "uses-responsive-images": {
+     "deger": "Est savings of 1,885 KiB",
+     "ornek": [
+      "https://localhost:28443/assets/tl-sablon-D9tPpgwZ.png",
+      "https://localhost:28443/assets/tl-teslim-7WDeLI-X.png",
+      "https://localhost:28443/assets/tl-sapma-DAnyuuMp.png"
+     ]
+    },
+    "modern-image-formats": {
+     "deger": "Est savings of 1,347 KiB",
+     "ornek": [
+      "https://localhost:28443/assets/tl-sablon-D9tPpgwZ.png",
+      "https://localhost:28443/assets/tl-teslim-7WDeLI-X.png",
+      "https://localhost:28443/assets/tl-sapma-DAnyuuMp.png"
+     ]
+    }
+   }
+  },
+  "sonra|yontem|masaustu": {
+   "n": 3,
+   "chrome": "Chrome/156.0.0.0",
+   "surum": "12.8.2",
+   "skor": {
+    "performance": 100,
+    "accessibility": 100,
+    "best-practices": 100,
+    "seo": 91
+   },
+   "metrik": {
+    "fcp": 367.13779999999997,
+    "lcp": 407.13779999999997,
+    "tbt": 0,
+    "cls": 0,
+    "si": 367.13779999999997,
+    "ttfb": 2.666
+   },
+   "uyari": {
+    "render-blocking-resources": {
+     "deger": "Est savings of 80 ms",
+     "ornek": [
+      "https://localhost:28443/assets/index-DDT_f9co.css"
+     ]
+    },
+    "unused-javascript": {
+     "deger": "Est savings of 35 KiB",
+     "ornek": [
+      "https://localhost:28443/assets/index-DB0ErZUo.js"
+     ]
+    },
+    "unused-css-rules": {
+     "deger": "Est savings of 17 KiB",
+     "ornek": [
+      "https://localhost:28443/assets/index-DDT_f9co.css"
+     ]
+    },
+    "uses-responsive-images": {
+     "deger": "Est savings of 1,979 KiB",
+     "ornek": [
+      "https://localhost:28443/assets/tl-sablon-D9tPpgwZ.png",
+      "https://localhost:28443/assets/tl-teslim-7WDeLI-X.png",
+      "https://localhost:28443/assets/tl-sapma-DAnyuuMp.png"
+     ]
+    },
+    "modern-image-formats": {
+     "deger": "Est savings of 1,347 KiB",
+     "ornek": [
+      "https://localhost:28443/assets/tl-sablon-D9tPpgwZ.png",
+      "https://localhost:28443/assets/tl-teslim-7WDeLI-X.png",
+      "https://localhost:28443/assets/tl-sapma-DAnyuuMp.png"
+     ]
+    }
+   }
+  }
+ },
+ "etkilesim": {
+  "chromium|390x844": {
+   "n": 3,
+   "videoOynuyor": 3,
+   "menuAc": 200,
+   "ctaUzerine": null,
+   "girisGirdi": 192.80000000447035,
+   "girisSure": 332,
+   "bostaOrtanca": 99.89999999999964,
+   "bostaP95": 100.09999999999991,
+   "bostaYavas": 0.9411764705882353,
+   "kaydirmaOrtanca": 100,
+   "kaydirmaP95": 100.10000000000036,
+   "kaydirmaYavas": 1,
+   "hata": []
+  },
+  "chromium|768x1024": {
+   "n": 3,
+   "videoOynuyor": 3,
+   "menuAc": 415.30000000447035,
+   "ctaUzerine": null,
+   "girisGirdi": 233.20000000298023,
+   "girisSure": 644,
+   "bostaOrtanca": 216.60000000000036,
+   "bostaP95": 233.30000000000018,
+   "bostaYavas": 1,
+   "kaydirmaOrtanca": 216.6999999999989,
+   "kaydirmaP95": 233.39999999999964,
+   "kaydirmaYavas": 1,
+   "hata": []
+  },
+  "chromium|1440x900": {
+   "n": 3,
+   "videoOynuyor": 3,
+   "menuAc": 726.3000000044703,
+   "ctaUzerine": 709.2000000029802,
+   "girisGirdi": 750,
+   "girisSure": 1223,
+   "bostaOrtanca": 366.6999999999998,
+   "bostaP95": 383.3000000000002,
+   "bostaYavas": 1,
+   "kaydirmaOrtanca": 366.6999999999989,
+   "kaydirmaP95": 383.3000000000011,
+   "kaydirmaYavas": 1,
+   "hata": []
+  },
+  "chromium|1920x1080": {
+   "n": 3,
+   "videoOynuyor": 3,
+   "menuAc": 1026.1999999955297,
+   "ctaUzerine": 631.3999999985099,
+   "girisGirdi": 1061.9000000059605,
+   "girisSure": 1836,
+   "bostaOrtanca": 516.6000000000004,
+   "bostaP95": 533.3999999999996,
+   "bostaYavas": 1,
+   "kaydirmaOrtanca": 533.2999999999993,
+   "kaydirmaP95": 550.1000000000004,
+   "kaydirmaYavas": 1,
+   "hata": []
+  },
+  "webkit|390x844": {
+   "n": 3,
+   "videoOynuyor": 3,
+   "menuAc": 65,
+   "ctaUzerine": null,
+   "girisGirdi": 94,
+   "girisSure": 178,
+   "bostaOrtanca": 17,
+   "bostaP95": 18,
+   "bostaYavas": 0,
+   "kaydirmaOrtanca": 17,
+   "kaydirmaP95": 18,
+   "kaydirmaYavas": 0,
+   "hata": []
+  },
+  "webkit|768x1024": {
+   "n": 3,
+   "videoOynuyor": 3,
+   "menuAc": 54,
+   "ctaUzerine": null,
+   "girisGirdi": 87,
+   "girisSure": 174,
+   "bostaOrtanca": 17,
+   "bostaP95": 18,
+   "bostaYavas": 0,
+   "kaydirmaOrtanca": 17,
+   "kaydirmaP95": 18,
+   "kaydirmaYavas": 0,
+   "hata": []
+  },
+  "webkit|1440x900": {
+   "n": 3,
+   "videoOynuyor": 3,
+   "menuAc": 43,
+   "ctaUzerine": 27,
+   "girisGirdi": 37,
+   "girisSure": 154,
+   "bostaOrtanca": 17,
+   "bostaP95": 18,
+   "bostaYavas": 0,
+   "kaydirmaOrtanca": 17,
+   "kaydirmaP95": 18,
+   "kaydirmaYavas": 0,
+   "hata": []
+  },
+  "webkit|1920x1080": {
+   "n": 3,
+   "videoOynuyor": 3,
+   "menuAc": 41,
+   "ctaUzerine": 22,
+   "girisGirdi": 35,
+   "girisSure": 160,
+   "bostaOrtanca": 17,
+   "bostaP95": 18,
+   "bostaYavas": 0,
+   "kaydirmaOrtanca": 17,
+   "kaydirmaP95": 19,
+   "kaydirmaYavas": 0,
+   "hata": []
+  },
+  "firefox|390x844": {
+   "n": 3,
+   "videoOynuyor": 3,
+   "menuAc": 105,
+   "ctaUzerine": null,
+   "girisGirdi": 98,
+   "girisSure": 280,
+   "bostaOrtanca": 16.68000000000029,
+   "bostaP95": 18.300000000000182,
+   "bostaYavas": 0,
+   "kaydirmaOrtanca": 16.81999999999971,
+   "kaydirmaP95": 51.5,
+   "kaydirmaYavas": 0.14814814814814814,
+   "hata": []
+  },
+  "firefox|768x1024": {
+   "n": 3,
+   "videoOynuyor": 3,
+   "menuAc": 204,
+   "ctaUzerine": null,
+   "girisGirdi": 265,
+   "girisSure": 505,
+   "bostaOrtanca": 16.640000000000327,
+   "bostaP95": 18.279999999999745,
+   "bostaYavas": 0,
+   "kaydirmaOrtanca": 17.280000000000655,
+   "kaydirmaP95": 151.4399999999987,
+   "kaydirmaYavas": 0.2631578947368421,
+   "hata": []
+  },
+  "firefox|1440x900": {
+   "n": 3,
+   "videoOynuyor": 3,
+   "menuAc": 255,
+   "ctaUzerine": 60,
+   "girisGirdi": 239,
+   "girisSure": 611,
+   "bostaOrtanca": 16.699999999999818,
+   "bostaP95": 18.079999999999927,
+   "bostaYavas": 0,
+   "kaydirmaOrtanca": 17.700000000000728,
+   "kaydirmaP95": 199.78000000000065,
+   "kaydirmaYavas": 0.3829787234042553,
+   "hata": []
+  },
+  "firefox|1920x1080": {
+   "n": 3,
+   "videoOynuyor": 3,
+   "menuAc": 360,
+   "ctaUzerine": 134,
+   "girisGirdi": 319,
+   "girisSure": 885,
+   "bostaOrtanca": 16.659999999999854,
+   "bostaP95": 18.38000000000011,
+   "bostaYavas": 0,
+   "kaydirmaOrtanca": 17.799999999999272,
+   "kaydirmaP95": 250.42000000000007,
+   "kaydirmaYavas": 0.4,
+   "hata": []
+  }
+ },
+ "hata": {},
+ "lcpOge": {},
+ "enBuyuk": {
+  "chromium": [
+   {
+    "u": "/assets/santral-poster-BYmyX5Ic.webp",
+    "b": 485432,
+    "tur": "link"
+   },
+   {
+    "u": "/assets/adim-fizik-D2A4lTYY.png",
+    "b": 454674,
+    "tur": "img"
+   },
+   {
+    "u": "/assets/is-finansman-DwsOxqkM.png",
+    "b": 451270,
+    "tur": "img"
+   },
+   {
+    "u": "/assets/adim-ogrenen-DLN0gZyi.png",
+    "b": 438671,
+    "tur": "img"
+   },
+   {
+    "u": "/assets/is-teslim-ohdNk0om.png",
+    "b": 273747,
+    "tur": "img"
+   },
+   {
+    "u": "/assets/adim-karne-9kjaBuF6.png",
+    "b": 268931,
+    "tur": "img"
+   },
+   {
+    "u": "/assets/is-nobet-x-lOvoK1.png",
+    "b": 262399,
+    "tur": "img"
+   },
+   {
+    "u": "/assets/is-ticaret-DASMPkfC.png",
+    "b": 198098,
+    "tur": "img"
+   },
+   {
+    "u": "/assets/adim-aralik-DUGRGjQQ.png",
+    "b": 180100,
+    "tur": "img"
+   },
+   {
+    "u": "/assets/index-BP9LV3hU.js",
+    "b": 75255,
+    "tur": "script"
+   }
+  ],
+  "firefox": [
+   {
+    "u": "/assets/santral-1440-KjaLgHuf.mp4",
+    "b": 37308048,
+    "tur": "video"
+   },
+   {
+    "u": "/assets/santral-poster-BYmyX5Ic.webp",
+    "b": 485432,
+    "tur": "link"
+   },
+   {
+    "u": "/assets/adim-fizik-D2A4lTYY.png",
+    "b": 454674,
+    "tur": "img"
+   },
+   {
+    "u": "/assets/is-finansman-DwsOxqkM.png",
+    "b": 451270,
+    "tur": "img"
+   },
+   {
+    "u": "/assets/adim-ogrenen-DLN0gZyi.png",
+    "b": 438671,
+    "tur": "img"
+   },
+   {
+    "u": "/assets/is-teslim-ohdNk0om.png",
+    "b": 273747,
+    "tur": "img"
+   },
+   {
+    "u": "/assets/adim-karne-9kjaBuF6.png",
+    "b": 268931,
+    "tur": "img"
+   },
+   {
+    "u": "/assets/is-nobet-x-lOvoK1.png",
+    "b": 262399,
+    "tur": "img"
+   },
+   {
+    "u": "/assets/is-ticaret-DASMPkfC.png",
+    "b": 198098,
+    "tur": "img"
+   },
+   {
+    "u": "/assets/adim-aralik-DUGRGjQQ.png",
+    "b": 180100,
+    "tur": "img"
+   }
+  ],
+  "webkit": [
+   {
+    "u": "/assets/santral-1440-KjaLgHuf.mp4",
+    "b": 37328640,
+    "tur": "video"
+   },
+   {
+    "u": "/assets/santral-1440-KjaLgHuf.mp4",
+    "b": 12869700,
+    "tur": "video"
+   },
+   {
+    "u": "/assets/santral-poster-BYmyX5Ic.webp",
+    "b": 485720,
+    "tur": "link"
+   },
+   {
+    "u": "/assets/index-BP9LV3hU.js",
+    "b": 75318,
+    "tur": "script"
+   },
+   {
+    "u": "/assets/inter-latin-opsz-normal-BwkfbSeq.woff2",
+    "b": 73274,
+    "tur": "css"
+   },
+   {
+    "u": "/assets/inter-tight-latin-600-normal-BgSTtRxb.woff2",
+    "b": 22996,
+    "tur": "link"
+   },
+   {
+    "u": "/assets/inter-tight-latin-500-normal-BFXNXuvF.woff2",
+    "b": 22952,
+    "tur": "link"
+   },
+   {
+    "u": "/assets/index-CYGwgew5.css",
+    "b": 22483,
+    "tur": "link"
+   },
+   {
+    "u": "/assets/inter-tight-latin-400-normal-iW8qmuJY.woff2",
+    "b": 22352,
+    "tur": "css"
+   },
+   {
+    "u": "/assets/inter-tight-tr-500-mVGzgBfJ.woff2",
+    "b": 1817,
+    "tur": "link"
+   }
+  ]
+ }
+}

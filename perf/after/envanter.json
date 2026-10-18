@@ -1,0 +1,1022 @@
+[
+ {
+  "motor": "chromium",
+  "surum": "156.0.8078.4",
+  "gorunum": "390x844",
+  "sayfa": "ana",
+  "backdrop": {
+   "adet": 3,
+   "alan": 156625,
+   "ilkEkranAlan": 104755,
+   "ornek": [
+    "div.vt-kap 366×64 blur(24px) saturate(1.6)",
+    "p.vt-giris 350×232 blur(20px) saturate(1.5)",
+    "nav.vt-bolumcubuk 390×133 blur(12px) [sticky]"
+   ],
+   "ilkEkranOran": 0.318
+  },
+  "filtre": {
+   "adet": 5,
+   "alan": 692132,
+   "ilkEkranAlan": 676236,
+   "ornek": [
+    "video.vt-hero__video 390×844 url(\"#vt-keskin\")",
+    "img.vt-hero__poster 390×844 url(\"#vt-keskin\")",
+    "a.vt-dugme::before 350×51 blur(12px)",
+    "a.vt-dugme::before 192×46 blur(12px)",
+    "button.vt-dugme::before 154×46 blur(12px)"
+   ],
+   "ilkEkranOran": 2.054
+  },
+  "karisim": {
+   "adet": 0,
+   "alan": 0,
+   "ilkEkranAlan": 0,
+   "ornek": [],
+   "ilkEkranOran": 0
+  },
+  "maske": {
+   "adet": 0,
+   "alan": 0,
+   "ilkEkranAlan": 0,
+   "ornek": [],
+   "ilkEkranOran": 0
+  }
+ },
+ {
+  "motor": "chromium",
+  "surum": "156.0.8078.4",
+  "gorunum": "390x844",
+  "sayfa": "yontem",
+  "backdrop": {
+   "adet": 1,
+   "alan": 23424,
+   "ilkEkranAlan": 23424,
+   "ornek": [
+    "div.vt-kap 366×64 blur(24px) saturate(1.6)"
+   ],
+   "ilkEkranOran": 0.071
+  },
+  "filtre": {
+   "adet": 1,
+   "alan": 8182,
+   "ilkEkranAlan": 0,
+   "ornek": [
+    "a.vt-dugme::before 178×46 blur(12px)"
+   ],
+   "ilkEkranOran": 0
+  },
+  "karisim": {
+   "adet": 0,
+   "alan": 0,
+   "ilkEkranAlan": 0,
+   "ornek": [],
+   "ilkEkranOran": 0
+  },
+  "maske": {
+   "adet": 0,
+   "alan": 0,
+   "ilkEkranAlan": 0,
+   "ornek": [],
+   "ilkEkranOran": 0
+  }
+ },
+ {
+  "motor": "chromium",
+  "surum": "156.0.8078.4",
+  "gorunum": "768x1024",
+  "sayfa": "ana",
+  "backdrop": {
+   "adet": 3,
+   "alan": 270446,
+   "ilkEkranAlan": 211310,
+   "ornek": [
+    "div.vt-kap 720×64 blur(24px) saturate(1.6)",
+    "p.vt-giris 560×207 blur(20px) saturate(1.5)",
+    "nav.vt-bolumcubuk 768×141 blur(12px) [sticky]"
+   ],
+   "ilkEkranOran": 0.269
+  },
+  "filtre": {
+   "adet": 5,
+   "alan": 1503215,
+   "ilkEkranAlan": 1487319,
+   "ornek": [
+    "video.vt-hero__video 768×960 url(\"#vt-keskin\")",
+    "img.vt-hero__poster 768×960 url(\"#vt-keskin\")",
+    "a.vt-dugme::before 226×56 blur(12px)",
+    "a.vt-dugme::before 192×46 blur(12px)",
+    "button.vt-dugme::before 154×46 blur(12px)"
+   ],
+   "ilkEkranOran": 1.891
+  },
+  "karisim": {
+   "adet": 1,
+   "alan": 737280,
+   "ilkEkranAlan": 737280,
+   "ornek": [
+    "div.vt-hero__sahne::after 768×960 multiply"
+   ],
+   "ilkEkranOran": 0.938
+  },
+  "maske": {
+   "adet": 1,
+   "alan": 737280,
+   "ilkEkranAlan": 737280,
+   "ornek": [
+    "div.vt-hero__sahne::after 768×960 maske"
+   ],
+   "ilkEkranOran": 0.938
+  }
+ },
+ {
+  "motor": "chromium",
+  "surum": "156.0.8078.4",
+  "gorunum": "768x1024",
+  "sayfa": "yontem",
+  "backdrop": {
+   "adet": 1,
+   "alan": 46080,
+   "ilkEkranAlan": 46080,
+   "ornek": [
+    "div.vt-kap 720×64 blur(24px) saturate(1.6)"
+   ],
+   "ilkEkranOran": 0.059
+  },
+  "filtre": {
+   "adet": 1,
+   "alan": 8182,
+   "ilkEkranAlan": 0,
+   "ornek": [
+    "a.vt-dugme::before 178×46 blur(12px)"
+   ],
+   "ilkEkranOran": 0
+  },
+  "karisim": {
+   "adet": 0,
+   "alan": 0,
+   "ilkEkranAlan": 0,
+   "ornek": [],
+   "ilkEkranOran": 0
+  },
+  "maske": {
+   "adet": 0,
+   "alan": 0,
+   "ilkEkranAlan": 0,
+   "ornek": [],
+   "ilkEkranOran": 0
+  }
+ },
+ {
+  "motor": "chromium",
+  "surum": "156.0.8078.4",
+  "gorunum": "1440x900",
+  "sayfa": "ana",
+  "backdrop": {
+   "adet": 3,
+   "alan": 394638,
+   "ilkEkranAlan": 191598,
+   "ornek": [
+    "div.vt-kap 1180×64 blur(24px) saturate(1.6)",
+    "p.vt-giris 560×207 blur(20px) saturate(1.5)",
+    "nav.vt-bolumcubuk 1440×141 blur(12px) [sticky]"
+   ],
+   "ilkEkranOran": 0.148
+  },
+  "filtre": {
+   "adet": 5,
+   "alan": 2620655,
+   "ilkEkranAlan": 2604759,
+   "ornek": [
+    "video.vt-hero__video 1440×900 url(\"#vt-keskin\")",
+    "img.vt-hero__poster 1440×900 url(\"#vt-keskin\")",
+    "a.vt-dugme::before 226×56 blur(12px)",
+    "a.vt-dugme::before 192×46 blur(12px)",
+    "button.vt-dugme::before 154×46 blur(12px)"
+   ],
+   "ilkEkranOran": 2.01
+  },
+  "karisim": {
+   "adet": 1,
+   "alan": 1296000,
+   "ilkEkranAlan": 1296000,
+   "ornek": [
+    "div.vt-hero__sahne::after 1440×900 multiply"
+   ],
+   "ilkEkranOran": 1
+  },
+  "maske": {
+   "adet": 1,
+   "alan": 1296000,
+   "ilkEkranAlan": 1296000,
+   "ornek": [
+    "div.vt-hero__sahne::after 1440×900 maske"
+   ],
+   "ilkEkranOran": 1
+  }
+ },
+ {
+  "motor": "chromium",
+  "surum": "156.0.8078.4",
+  "gorunum": "1440x900",
+  "sayfa": "yontem",
+  "backdrop": {
+   "adet": 1,
+   "alan": 75520,
+   "ilkEkranAlan": 75520,
+   "ornek": [
+    "div.vt-kap 1180×64 blur(24px) saturate(1.6)"
+   ],
+   "ilkEkranOran": 0.058
+  },
+  "filtre": {
+   "adet": 1,
+   "alan": 8182,
+   "ilkEkranAlan": 0,
+   "ornek": [
+    "a.vt-dugme::before 178×46 blur(12px)"
+   ],
+   "ilkEkranOran": 0
+  },
+  "karisim": {
+   "adet": 0,
+   "alan": 0,
+   "ilkEkranAlan": 0,
+   "ornek": [],
+   "ilkEkranOran": 0
+  },
+  "maske": {
+   "adet": 0,
+   "alan": 0,
+   "ilkEkranAlan": 0,
+   "ornek": [],
+   "ilkEkranOran": 0
+  }
+ },
+ {
+  "motor": "chromium",
+  "surum": "156.0.8078.4",
+  "gorunum": "1920x1080",
+  "sayfa": "ana",
+  "backdrop": {
+   "adet": 3,
+   "alan": 462318,
+   "ilkEkranAlan": 421998,
+   "ornek": [
+    "div.vt-kap 1180×64 blur(24px) saturate(1.6)",
+    "p.vt-giris 560×207 blur(20px) saturate(1.5)",
+    "nav.vt-bolumcubuk 1920×141 blur(12px) [sticky]"
+   ],
+   "ilkEkranOran": 0.204
+  },
+  "filtre": {
+   "adet": 5,
+   "alan": 3715055,
+   "ilkEkranAlan": 3699159,
+   "ornek": [
+    "video.vt-hero__video 1920×960 url(\"#vt-keskin\")",
+    "img.vt-hero__poster 1920×960 url(\"#vt-keskin\")",
+    "a.vt-dugme::before 226×56 blur(12px)",
+    "a.vt-dugme::before 192×46 blur(12px)",
+    "button.vt-dugme::before 154×46 blur(12px)"
+   ],
+   "ilkEkranOran": 1.784
+  },
+  "karisim": {
+   "adet": 1,
+   "alan": 1843200,
+   "ilkEkranAlan": 1843200,
+   "ornek": [
+    "div.vt-hero__sahne::after 1920×960 multiply"
+   ],
+   "ilkEkranOran": 0.889
+  },
+  "maske": {
+   "adet": 1,
+   "alan": 1843200,
+   "ilkEkranAlan": 1843200,
+   "ornek": [
+    "div.vt-hero__sahne::after 1920×960 maske"
+   ],
+   "ilkEkranOran": 0.889
+  }
+ },
+ {
+  "motor": "chromium",
+  "surum": "156.0.8078.4",
+  "gorunum": "1920x1080",
+  "sayfa": "yontem",
+  "backdrop": {
+   "adet": 1,
+   "alan": 75520,
+   "ilkEkranAlan": 75520,
+   "ornek": [
+    "div.vt-kap 1180×64 blur(24px) saturate(1.6)"
+   ],
+   "ilkEkranOran": 0.036
+  },
+  "filtre": {
+   "adet": 1,
+   "alan": 8182,
+   "ilkEkranAlan": 0,
+   "ornek": [
+    "a.vt-dugme::before 178×46 blur(12px)"
+   ],
+   "ilkEkranOran": 0
+  },
+  "karisim": {
+   "adet": 0,
+   "alan": 0,
+   "ilkEkranAlan": 0,
+   "ornek": [],
+   "ilkEkranOran": 0
+  },
+  "maske": {
+   "adet": 0,
+   "alan": 0,
+   "ilkEkranAlan": 0,
+   "ornek": [],
+   "ilkEkranOran": 0
+  }
+ },
+ {
+  "motor": "firefox",
+  "surum": "157.0",
+  "gorunum": "390x844",
+  "sayfa": "ana",
+  "backdrop": {
+   "adet": 3,
+   "alan": 156634,
+   "ilkEkranAlan": 104764,
+   "ornek": [
+    "div.vt-kap 366×64 blur(24px) saturate(1.6)",
+    "p.vt-giris 350×232 blur(20px) saturate(1.5)",
+    "nav.vt-bolumcubuk 390×133 blur(12px) [sticky]"
+   ],
+   "ilkEkranOran": 0.318
+  },
+  "filtre": {
+   "adet": 5,
+   "alan": 692147,
+   "ilkEkranAlan": 676240,
+   "ornek": [
+    "video.vt-hero__video 390×844 url(\"#vt-keskin\")",
+    "img.vt-hero__poster 390×844 url(\"#vt-keskin\")",
+    "a.vt-dugme::before 350×51 blur(12px)",
+    "a.vt-dugme::before 192×46 blur(12px)",
+    "button.vt-dugme::before 154×46 blur(12px)"
+   ],
+   "ilkEkranOran": 2.054
+  },
+  "karisim": {
+   "adet": 0,
+   "alan": 0,
+   "ilkEkranAlan": 0,
+   "ornek": [],
+   "ilkEkranOran": 0
+  },
+  "maske": {
+   "adet": 0,
+   "alan": 0,
+   "ilkEkranAlan": 0,
+   "ornek": [],
+   "ilkEkranOran": 0
+  }
+ },
+ {
+  "motor": "firefox",
+  "surum": "157.0",
+  "gorunum": "390x844",
+  "sayfa": "yontem",
+  "backdrop": {
+   "adet": 1,
+   "alan": 23424,
+   "ilkEkranAlan": 23424,
+   "ornek": [
+    "div.vt-kap 366×64 blur(24px) saturate(1.6)"
+   ],
+   "ilkEkranOran": 0.071
+  },
+  "filtre": {
+   "adet": 1,
+   "alan": 8188,
+   "ilkEkranAlan": 0,
+   "ornek": [
+    "a.vt-dugme::before 178×46 blur(12px)"
+   ],
+   "ilkEkranOran": 0
+  },
+  "karisim": {
+   "adet": 0,
+   "alan": 0,
+   "ilkEkranAlan": 0,
+   "ornek": [],
+   "ilkEkranOran": 0
+  },
+  "maske": {
+   "adet": 0,
+   "alan": 0,
+   "ilkEkranAlan": 0,
+   "ornek": [],
+   "ilkEkranOran": 0
+  }
+ },
+ {
+  "motor": "firefox",
+  "surum": "157.0",
+  "gorunum": "768x1024",
+  "sayfa": "ana",
+  "backdrop": {
+   "adet": 3,
+   "alan": 270456,
+   "ilkEkranAlan": 211320,
+   "ornek": [
+    "div.vt-kap 720×64 blur(24px) saturate(1.6)",
+    "p.vt-giris 560×207 blur(20px) saturate(1.5)",
+    "nav.vt-bolumcubuk 768×141 blur(12px) [sticky]"
+   ],
+   "ilkEkranOran": 0.269
+  },
+  "filtre": {
+   "adet": 5,
+   "alan": 1503230,
+   "ilkEkranAlan": 1487323,
+   "ornek": [
+    "video.vt-hero__video 768×960 url(\"#vt-keskin\")",
+    "img.vt-hero__poster 768×960 url(\"#vt-keskin\")",
+    "a.vt-dugme::before 226×56 blur(12px)",
+    "a.vt-dugme::before 192×46 blur(12px)",
+    "button.vt-dugme::before 154×46 blur(12px)"
+   ],
+   "ilkEkranOran": 1.891
+  },
+  "karisim": {
+   "adet": 1,
+   "alan": 737280,
+   "ilkEkranAlan": 737280,
+   "ornek": [
+    "div.vt-hero__sahne::after 768×960 multiply"
+   ],
+   "ilkEkranOran": 0.938
+  },
+  "maske": {
+   "adet": 1,
+   "alan": 737280,
+   "ilkEkranAlan": 737280,
+   "ornek": [
+    "div.vt-hero__sahne::after 768×960 maske"
+   ],
+   "ilkEkranOran": 0.938
+  }
+ },
+ {
+  "motor": "firefox",
+  "surum": "157.0",
+  "gorunum": "768x1024",
+  "sayfa": "yontem",
+  "backdrop": {
+   "adet": 1,
+   "alan": 46080,
+   "ilkEkranAlan": 46080,
+   "ornek": [
+    "div.vt-kap 720×64 blur(24px) saturate(1.6)"
+   ],
+   "ilkEkranOran": 0.059
+  },
+  "filtre": {
+   "adet": 1,
+   "alan": 8188,
+   "ilkEkranAlan": 0,
+   "ornek": [
+    "a.vt-dugme::before 178×46 blur(12px)"
+   ],
+   "ilkEkranOran": 0
+  },
+  "karisim": {
+   "adet": 0,
+   "alan": 0,
+   "ilkEkranAlan": 0,
+   "ornek": [],
+   "ilkEkranOran": 0
+  },
+  "maske": {
+   "adet": 0,
+   "alan": 0,
+   "ilkEkranAlan": 0,
+   "ornek": [],
+   "ilkEkranOran": 0
+  }
+ },
+ {
+  "motor": "firefox",
+  "surum": "157.0",
+  "gorunum": "1440x900",
+  "sayfa": "ana",
+  "backdrop": {
+   "adet": 3,
+   "alan": 394648,
+   "ilkEkranAlan": 191608,
+   "ornek": [
+    "div.vt-kap 1180×64 blur(24px) saturate(1.6)",
+    "p.vt-giris 560×207 blur(20px) saturate(1.5)",
+    "nav.vt-bolumcubuk 1440×141 blur(12px) [sticky]"
+   ],
+   "ilkEkranOran": 0.148
+  },
+  "filtre": {
+   "adet": 5,
+   "alan": 2620670,
+   "ilkEkranAlan": 2604763,
+   "ornek": [
+    "video.vt-hero__video 1440×900 url(\"#vt-keskin\")",
+    "img.vt-hero__poster 1440×900 url(\"#vt-keskin\")",
+    "a.vt-dugme::before 226×56 blur(12px)",
+    "a.vt-dugme::before 192×46 blur(12px)",
+    "button.vt-dugme::before 154×46 blur(12px)"
+   ],
+   "ilkEkranOran": 2.01
+  },
+  "karisim": {
+   "adet": 1,
+   "alan": 1296000,
+   "ilkEkranAlan": 1296000,
+   "ornek": [
+    "div.vt-hero__sahne::after 1440×900 multiply"
+   ],
+   "ilkEkranOran": 1
+  },
+  "maske": {
+   "adet": 1,
+   "alan": 1296000,
+   "ilkEkranAlan": 1296000,
+   "ornek": [
+    "div.vt-hero__sahne::after 1440×900 maske"
+   ],
+   "ilkEkranOran": 1
+  }
+ },
+ {
+  "motor": "firefox",
+  "surum": "157.0",
+  "gorunum": "1440x900",
+  "sayfa": "yontem",
+  "backdrop": {
+   "adet": 1,
+   "alan": 75520,
+   "ilkEkranAlan": 75520,
+   "ornek": [
+    "div.vt-kap 1180×64 blur(24px) saturate(1.6)"
+   ],
+   "ilkEkranOran": 0.058
+  },
+  "filtre": {
+   "adet": 1,
+   "alan": 8188,
+   "ilkEkranAlan": 0,
+   "ornek": [
+    "a.vt-dugme::before 178×46 blur(12px)"
+   ],
+   "ilkEkranOran": 0
+  },
+  "karisim": {
+   "adet": 0,
+   "alan": 0,
+   "ilkEkranAlan": 0,
+   "ornek": [],
+   "ilkEkranOran": 0
+  },
+  "maske": {
+   "adet": 0,
+   "alan": 0,
+   "ilkEkranAlan": 0,
+   "ornek": [],
+   "ilkEkranOran": 0
+  }
+ },
+ {
+  "motor": "firefox",
+  "surum": "157.0",
+  "gorunum": "1920x1080",
+  "sayfa": "ana",
+  "backdrop": {
+   "adet": 3,
+   "alan": 462328,
+   "ilkEkranAlan": 422008,
+   "ornek": [
+    "div.vt-kap 1180×64 blur(24px) saturate(1.6)",
+    "p.vt-giris 560×207 blur(20px) saturate(1.5)",
+    "nav.vt-bolumcubuk 1920×141 blur(12px) [sticky]"
+   ],
+   "ilkEkranOran": 0.204
+  },
+  "filtre": {
+   "adet": 5,
+   "alan": 3715070,
+   "ilkEkranAlan": 3699163,
+   "ornek": [
+    "video.vt-hero__video 1920×960 url(\"#vt-keskin\")",
+    "img.vt-hero__poster 1920×960 url(\"#vt-keskin\")",
+    "a.vt-dugme::before 226×56 blur(12px)",
+    "a.vt-dugme::before 192×46 blur(12px)",
+    "button.vt-dugme::before 154×46 blur(12px)"
+   ],
+   "ilkEkranOran": 1.784
+  },
+  "karisim": {
+   "adet": 1,
+   "alan": 1843200,
+   "ilkEkranAlan": 1843200,
+   "ornek": [
+    "div.vt-hero__sahne::after 1920×960 multiply"
+   ],
+   "ilkEkranOran": 0.889
+  },
+  "maske": {
+   "adet": 1,
+   "alan": 1843200,
+   "ilkEkranAlan": 1843200,
+   "ornek": [
+    "div.vt-hero__sahne::after 1920×960 maske"
+   ],
+   "ilkEkranOran": 0.889
+  }
+ },
+ {
+  "motor": "firefox",
+  "surum": "157.0",
+  "gorunum": "1920x1080",
+  "sayfa": "yontem",
+  "backdrop": {
+   "adet": 1,
+   "alan": 75520,
+   "ilkEkranAlan": 75520,
+   "ornek": [
+    "div.vt-kap 1180×64 blur(24px) saturate(1.6)"
+   ],
+   "ilkEkranOran": 0.036
+  },
+  "filtre": {
+   "adet": 1,
+   "alan": 8188,
+   "ilkEkranAlan": 0,
+   "ornek": [
+    "a.vt-dugme::before 178×46 blur(12px)"
+   ],
+   "ilkEkranOran": 0
+  },
+  "karisim": {
+   "adet": 0,
+   "alan": 0,
+   "ilkEkranAlan": 0,
+   "ornek": [],
+   "ilkEkranOran": 0
+  },
+  "maske": {
+   "adet": 0,
+   "alan": 0,
+   "ilkEkranAlan": 0,
+   "ornek": [],
+   "ilkEkranOran": 0
+  }
+ },
+ {
+  "motor": "webkit",
+  "surum": "27.2",
+  "gorunum": "390x844",
+  "sayfa": "ana",
+  "backdrop": {
+   "adet": 3,
+   "alan": 156625,
+   "ilkEkranAlan": 104755,
+   "ornek": [
+    "div.vt-kap 366×64 blur(24px) saturate(1.6)",
+    "p.vt-giris 350×232 blur(20px) saturate(1.5)",
+    "nav.vt-bolumcubuk 390×133 blur(12px) [sticky]"
+   ],
+   "ilkEkranOran": 0.318
+  },
+  "filtre": {
+   "adet": 5,
+   "alan": 692132,
+   "ilkEkranAlan": 676236,
+   "ornek": [
+    "video.vt-hero__video 390×844 url(\"#vt-keskin\")",
+    "img.vt-hero__poster 390×844 url(\"#vt-keskin\")",
+    "a.vt-dugme::before 350×51 blur(12px)",
+    "a.vt-dugme::before 192×46 blur(12px)",
+    "button.vt-dugme::before 154×46 blur(12px)"
+   ],
+   "ilkEkranOran": 2.054
+  },
+  "karisim": {
+   "adet": 0,
+   "alan": 0,
+   "ilkEkranAlan": 0,
+   "ornek": [],
+   "ilkEkranOran": 0
+  },
+  "maske": {
+   "adet": 0,
+   "alan": 0,
+   "ilkEkranAlan": 0,
+   "ornek": [],
+   "ilkEkranOran": 0
+  }
+ },
+ {
+  "motor": "webkit",
+  "surum": "27.2",
+  "gorunum": "390x844",
+  "sayfa": "yontem",
+  "backdrop": {
+   "adet": 1,
+   "alan": 23424,
+   "ilkEkranAlan": 23424,
+   "ornek": [
+    "div.vt-kap 366×64 blur(24px) saturate(1.6)"
+   ],
+   "ilkEkranOran": 0.071
+  },
+  "filtre": {
+   "adet": 1,
+   "alan": 8182,
+   "ilkEkranAlan": 0,
+   "ornek": [
+    "a.vt-dugme::before 178×46 blur(12px)"
+   ],
+   "ilkEkranOran": 0
+  },
+  "karisim": {
+   "adet": 0,
+   "alan": 0,
+   "ilkEkranAlan": 0,
+   "ornek": [],
+   "ilkEkranOran": 0
+  },
+  "maske": {
+   "adet": 0,
+   "alan": 0,
+   "ilkEkranAlan": 0,
+   "ornek": [],
+   "ilkEkranOran": 0
+  }
+ },
+ {
+  "motor": "webkit",
+  "surum": "27.2",
+  "gorunum": "768x1024",
+  "sayfa": "ana",
+  "backdrop": {
+   "adet": 3,
+   "alan": 270446,
+   "ilkEkranAlan": 211310,
+   "ornek": [
+    "div.vt-kap 720×64 blur(24px) saturate(1.6)",
+    "p.vt-giris 560×207 blur(20px) saturate(1.5)",
+    "nav.vt-bolumcubuk 768×141 blur(12px) [sticky]"
+   ],
+   "ilkEkranOran": 0.269
+  },
+  "filtre": {
+   "adet": 5,
+   "alan": 1503215,
+   "ilkEkranAlan": 1487319,
+   "ornek": [
+    "video.vt-hero__video 768×960 url(\"#vt-keskin\")",
+    "img.vt-hero__poster 768×960 url(\"#vt-keskin\")",
+    "a.vt-dugme::before 226×56 blur(12px)",
+    "a.vt-dugme::before 192×46 blur(12px)",
+    "button.vt-dugme::before 154×46 blur(12px)"
+   ],
+   "ilkEkranOran": 1.891
+  },
+  "karisim": {
+   "adet": 1,
+   "alan": 737280,
+   "ilkEkranAlan": 737280,
+   "ornek": [
+    "div.vt-hero__sahne::after 768×960 multiply"
+   ],
+   "ilkEkranOran": 0.938
+  },
+  "maske": {
+   "adet": 1,
+   "alan": 737280,
+   "ilkEkranAlan": 737280,
+   "ornek": [
+    "div.vt-hero__sahne::after 768×960 maske"
+   ],
+   "ilkEkranOran": 0.938
+  }
+ },
+ {
+  "motor": "webkit",
+  "surum": "27.2",
+  "gorunum": "768x1024",
+  "sayfa": "yontem",
+  "backdrop": {
+   "adet": 1,
+   "alan": 46080,
+   "ilkEkranAlan": 46080,
+   "ornek": [
+    "div.vt-kap 720×64 blur(24px) saturate(1.6)"
+   ],
+   "ilkEkranOran": 0.059
+  },
+  "filtre": {
+   "adet": 1,
+   "alan": 8182,
+   "ilkEkranAlan": 0,
+   "ornek": [
+    "a.vt-dugme::before 178×46 blur(12px)"
+   ],
+   "ilkEkranOran": 0
+  },
+  "karisim": {
+   "adet": 0,
+   "alan": 0,
+   "ilkEkranAlan": 0,
+   "ornek": [],
+   "ilkEkranOran": 0
+  },
+  "maske": {
+   "adet": 0,
+   "alan": 0,
+   "ilkEkranAlan": 0,
+   "ornek": [],
+   "ilkEkranOran": 0
+  }
+ },
+ {
+  "motor": "webkit",
+  "surum": "27.2",
+  "gorunum": "1440x900",
+  "sayfa": "ana",
+  "backdrop": {
+   "adet": 3,
+   "alan": 394638,
+   "ilkEkranAlan": 191598,
+   "ornek": [
+    "div.vt-kap 1180×64 blur(24px) saturate(1.6)",
+    "p.vt-giris 560×207 blur(20px) saturate(1.5)",
+    "nav.vt-bolumcubuk 1440×141 blur(12px) [sticky]"
+   ],
+   "ilkEkranOran": 0.148
+  },
+  "filtre": {
+   "adet": 5,
+   "alan": 2620655,
+   "ilkEkranAlan": 2604759,
+   "ornek": [
+    "video.vt-hero__video 1440×900 url(\"#vt-keskin\")",
+    "img.vt-hero__poster 1440×900 url(\"#vt-keskin\")",
+    "a.vt-dugme::before 226×56 blur(12px)",
+    "a.vt-dugme::before 192×46 blur(12px)",
+    "button.vt-dugme::before 154×46 blur(12px)"
+   ],
+   "ilkEkranOran": 2.01
+  },
+  "karisim": {
+   "adet": 1,
+   "alan": 1296000,
+   "ilkEkranAlan": 1296000,
+   "ornek": [
+    "div.vt-hero__sahne::after 1440×900 multiply"
+   ],
+   "ilkEkranOran": 1
+  },
+  "maske": {
+   "adet": 1,
+   "alan": 1296000,
+   "ilkEkranAlan": 1296000,
+   "ornek": [
+    "div.vt-hero__sahne::after 1440×900 maske"
+   ],
+   "ilkEkranOran": 1
+  }
+ },
+ {
+  "motor": "webkit",
+  "surum": "27.2",
+  "gorunum": "1440x900",
+  "sayfa": "yontem",
+  "backdrop": {
+   "adet": 1,
+   "alan": 75520,
+   "ilkEkranAlan": 75520,
+   "ornek": [
+    "div.vt-kap 1180×64 blur(24px) saturate(1.6)"
+   ],
+   "ilkEkranOran": 0.058
+  },
+  "filtre": {
+   "adet": 1,
+   "alan": 8182,
+   "ilkEkranAlan": 0,
+   "ornek": [
+    "a.vt-dugme::before 178×46 blur(12px)"
+   ],
+   "ilkEkranOran": 0
+  },
+  "karisim": {
+   "adet": 0,
+   "alan": 0,
+   "ilkEkranAlan": 0,
+   "ornek": [],
+   "ilkEkranOran": 0
+  },
+  "maske": {
+   "adet": 0,
+   "alan": 0,
+   "ilkEkranAlan": 0,
+   "ornek": [],
+   "ilkEkranOran": 0
+  }
+ },
+ {
+  "motor": "webkit",
+  "surum": "27.2",
+  "gorunum": "1920x1080",
+  "sayfa": "ana",
+  "backdrop": {
+   "adet": 3,
+   "alan": 462318,
+   "ilkEkranAlan": 421998,
+   "ornek": [
+    "div.vt-kap 1180×64 blur(24px) saturate(1.6)",
+    "p.vt-giris 560×207 blur(20px) saturate(1.5)",
+    "nav.vt-bolumcubuk 1920×141 blur(12px) [sticky]"
+   ],
+   "ilkEkranOran": 0.204
+  },
+  "filtre": {
+   "adet": 5,
+   "alan": 3715055,
+   "ilkEkranAlan": 3699159,
+   "ornek": [
+    "video.vt-hero__video 1920×960 url(\"#vt-keskin\")",
+    "img.vt-hero__poster 1920×960 url(\"#vt-keskin\")",
+    "a.vt-dugme::before 226×56 blur(12px)",
+    "a.vt-dugme::before 192×46 blur(12px)",
+    "button.vt-dugme::before 154×46 blur(12px)"
+   ],
+   "ilkEkranOran": 1.784
+  },
+  "karisim": {
+   "adet": 1,
+   "alan": 1843200,
+   "ilkEkranAlan": 1843200,
+   "ornek": [
+    "div.vt-hero__sahne::after 1920×960 multiply"
+   ],
+   "ilkEkranOran": 0.889
+  },
+  "maske": {
+   "adet": 1,
+   "alan": 1843200,
+   "ilkEkranAlan": 1843200,
+   "ornek": [
+    "div.vt-hero__sahne::after 1920×960 maske"
+   ],
+   "ilkEkranOran": 0.889
+  }
+ },
+ {
+  "motor": "webkit",
+  "surum": "27.2",
+  "gorunum": "1920x1080",
+  "sayfa": "yontem",
+  "backdrop": {
+   "adet": 1,
+   "alan": 75520,
+   "ilkEkranAlan": 75520,
+   "ornek": [
+    "div.vt-kap 1180×64 blur(24px) saturate(1.6)"
+   ],
+   "ilkEkranOran": 0.036
+  },
+  "filtre": {
+   "adet": 1,
+   "alan": 8182,
+   "ilkEkranAlan": 0,
+   "ornek": [
+    "a.vt-dugme::before 178×46 blur(12px)"
+   ],
+   "ilkEkranOran": 0
+  },
+  "karisim": {
+   "adet": 0,
+   "alan": 0,
+   "ilkEkranAlan": 0,
+   "ornek": [],
+   "ilkEkranOran": 0
+  },
+  "maske": {
+   "adet": 0,
+   "alan": 0,
+   "ilkEkranAlan": 0,
+   "ornek": [],
+   "ilkEkranOran": 0
+  }
+ }
+]

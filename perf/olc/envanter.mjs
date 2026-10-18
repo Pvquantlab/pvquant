@@ -16,7 +16,13 @@ for (const motor of motorlar) {
   for (const [gAd, g] of Object.entries(GORUNUMLER)) {
     const b = await t.newContext(baglamAyar(motor, g)); const s = await b.newPage();
     for (const [sAd, yol] of Object.entries(SAYFALAR)) {
-      await s.goto(HEDEFLER[hedef].yok + yol, { waitUntil: "load" }); await s.goto(HEDEFLER[hedef].yok + yol, { waitUntil: "load" }); await s.waitForTimeout(2500);
+      // ısıt + sıcak yükleme; aralarında about:blank (Playwright Firefox'ta aynı adrese doğrudan ikinci gezinme ara sıra «load»a ulaşmıyor —
+      // düzenek bulgusu, stok Firefox'ta yeniden üretilemedi); takılırsa bir kez yeniden denenir
+      for (let d = 0; d < 2; d++) {
+        try { await s.goto(HEDEFLER[hedef].yok + yol, { waitUntil: "load", timeout: 45000 }); await s.goto("about:blank"); await s.goto(HEDEFLER[hedef].yok + yol, { waitUntil: "load", timeout: 45000 }); break; }
+        catch (e) { if (d) throw e; await s.goto("about:blank").catch(() => {}); }
+      }
+      await s.waitForTimeout(2500);
       const r = await s.evaluate(() => {
         const ozellik = { backdrop: (c) => (c.backdropFilter || c.webkitBackdropFilter || "none") !== "none", filtre: (c) => c.filter && c.filter !== "none",
           karisim: (c) => c.mixBlendMode && c.mixBlendMode !== "normal", maske: (c) => (c.maskImage || c.webkitMaskImage || "none") !== "none" };
