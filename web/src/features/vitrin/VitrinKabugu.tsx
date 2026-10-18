@@ -9,10 +9,12 @@ import { Hero } from "./Hero";
  *  Yapı Vitrin.tsx'in ilk üç parçasıyla birebir aynı tutulmalı.
  *  Dolgu (16.10 hız turu 4): kabuk tek ekran boyundaydı — klasik kaydırma çubuklu masaüstünde (Windows, fareli
  *  macOS) çubuk ancak React tüm sayfayı koyunca beliriyor, sayfa 15 px daralıyor ve üst çubuk 7,5 px sola
- *  kayıyordu. Dolgu sayfayı baştan taşırır; çubuk ilk boyamada vardır, devirde genişlik değişmez. */
+ *  kayıyordu. Dolgu sayfayı baştan taşırır; çubuk ilk boyamada vardır, devirde genişlik değişmez.
+ *  data-kabuk (18.10): yalnız bu kökte; kabuksuz yollarda (/yontem, oturumlu «/», öteki yollar) <head>'deki kural kabuğu
+ *  ilk karede gizler (vite.config «pvq-vitrin-kabugu»). Vitrin.tsx / Yontem.tsx kökünde YOK — React ağacı kuraldan etkilenmez. */
 export function VitrinKabugu() {
   return (
-    <div className="vt vt--a">
+    <div className="vt vt--a" data-kabuk="">
       <a className="vt-atla" href="#icerik">İçeriğe geç</a>
       <UstCubuk onPanel={() => {}} kip="ana" />
       <main id="icerik">

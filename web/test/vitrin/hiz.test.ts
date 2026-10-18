@@ -9,8 +9,8 @@ import { hatYavasKayitli, heroBekle, heroHazirMi, heroHazirOldu, heroHazirSoz, p
 const oku = (yol: string) => readFileSync(new URL(yol, import.meta.url), "utf8");
 const yapi = oku("../../vite.config.ts");
 
-/** vite.config'teki iki satır içi betiğin JS gövdeleri (dize birleştirmeleri çözülerek). */
-function betikler(): { erken: string; govde: string } {
+/** vite.config'teki üç satır içi betiğin JS gövdeleri (dize birleştirmeleri çözülerek). */
+function betikler(): { bas: string; erken: string; govde: string } {
   const al = (ad: string) => {
     const m = new RegExp(`const ${ad} = ([\\s\\S]*?)\\n\\s*(?:if|let|const)\\b`).exec(yapi);
     assert.ok(m, `${ad} bulunamadı`);
@@ -18,7 +18,7 @@ function betikler(): { erken: string; govde: string } {
     const parcalar = [...m[1].matchAll(/'([^']*)'|`([^`]*)`/g)].map((p) => (p[1] ?? p[2]).replace("${poster}", "assets/santral-poster-AbC123.webp"));
     return parcalar.join("").replace(/^<script>/, "").replace(/<\/script>$/, "");
   };
-  return { erken: al("erken"), govde: al("betik") };
+  return { bas: al("bas"), erken: al("erken"), govde: al("betik") };
 }
 
 /** Betiği sahte tarayıcı ortamında çalıştırır; ne yaptığını döndürür. */
@@ -60,6 +60,26 @@ test("kabuk betiği: vitrin dalında poster ön yüklemesi, diğer yollarda kabu
     assert.deepEqual(o.sinif, sinif ? ["vt-sayfa"] : []);
   }
   assert.match(oku("../../src/index.css"), /html\.vt-sayfa body \{ background: #FFFFFF; \}/);
+});
+
+test("baş betiği: kabuksuz yollarda kabuk ilk boyamadan önce gizlenir (yanlış rota karesi yok); vitrin dalına dokunmaz", () => {
+  const { bas, govde } = betikler();
+  const durumlar = [["/", "", null], ["/", "?vitrin", "j"], ["/", "?a=1&vitrin", "j"], ["/", "?vitrin=1", "j"], ["/", "?vitrinx", "j"], ["/", "", "j"],
+    ["/yontem", "", null], ["/yontem", "", "j"], ["/yontem/", "", null], ["/parola-yenile", "", null], ["/baska", "", null]] as const;
+  for (const [yol, arama, jeton] of durumlar) {
+    const b = calistir(bas, yol, arama, jeton);
+    const g = calistir(govde, yol, arama, jeton);
+    // iki betik aynı kararı verir: gizlenen kabuk gövde betiğinde silinir; korunan kabuk hiç gizlenmez
+    assert.equal(b.sinif.includes("vt-kabuksuz"), g.kokTemizlendi, `${yol}${arama} jeton=${jeton}`);
+    assert.deepEqual(b.sinif, !g.kokTemizlendi ? [] : yol === "/yontem" ? ["vt-kabuksuz", "vt-sayfa"] : ["vt-kabuksuz"]);
+    assert.equal(b.onyukleme.length + b.istek.length, 0, "baş betiği yalnız sınıf koyar");
+  }
+  assert.match(yapi, /const basStil = '<style>html\.vt-kabuksuz #root>\[data-kabuk\]\{display:none\}<\/style>'/);
+  assert.ok(yapi.includes("`<meta charset=\"UTF-8\" />\\n    ${bas}\\n    ${basStil}`"), "baş betiği ve kuralı <head>'in başında, her derlemede");
+  assert.ok(oku("../../src/features/vitrin/VitrinKabugu.tsx").includes('<div className="vt vt--a" data-kabuk="">'));
+  for (const d of ["Vitrin.tsx", "Yontem.tsx"]) {
+    assert.ok(!oku(`../../src/features/vitrin/${d}`).includes("data-kabuk"), `${d}: React ağacında data-kabuk olmamalı`);
+  }
 });
 
 test("erken doğrulama: yalnız vitrin ve /yontem, aynı köken derlemesinde; useDogrulama aynı adları okur", () => {
