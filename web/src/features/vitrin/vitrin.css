@@ -1180,8 +1180,8 @@
   --vt-cam-zemin: rgba(11, 14, 21, .62); --vt-cam-kenar: rgba(255, 255, 255, .08);
   --vt-cam-golge: 0 1px 0 rgba(255, 255, 255, .06) inset, 0 12px 40px rgba(0, 0, 0, .28), 0 2px 8px rgba(0, 0, 0, .18);
   /* tipografi: tek aile */
-  --vt-baslik: 'Inter Tight', ui-sans-serif, system-ui, sans-serif;
-  --vt-sans: 'Inter Tight', ui-sans-serif, system-ui, sans-serif;
+  --vt-baslik: 'Inter Tight', 'Inter Tight Yedek', ui-sans-serif, system-ui, sans-serif;
+  --vt-sans: 'Inter Tight', 'Inter Tight Yedek', ui-sans-serif, system-ui, sans-serif;
   /* ölçüler */
   --vt-yan: 40px; --vt-ust-y: 89px;               /* 16 üst + 57 hap + 16 */
   --vt-r-m: 24px; --vt-r-l: 28px;

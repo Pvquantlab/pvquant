@@ -77,3 +77,30 @@ test("panel fontları toplu ağırlık dosyalarından: tek alt küme (unicode-ra
     assert.ok(fontlar.includes(`@fontsource/${d}.css`), d);
   }
 });
+
+// 18.10 perf/cross-browser — FOUT kayması (390 px'te düğmeler 25 px zıplıyordu) ve Firefox'un gereksiz latin-ext inişi.
+test("vitrin: metrik eşlemeli yedek yüz Inter Tight'tan hemen sonra; latin-ext aralığı tr/latin yüzlerinin çizdiğini kapsamaz", () => {
+  const yedek = oku("../src/features/vitrin/font/inter-tight-yedek.css");
+  const yuz = [...yedek.matchAll(/@font-face \{([\s\S]*?)\}/g)].map((m) => m[1]);
+  assert.equal(yuz.length, 3, "üç ağırlık aralığı");
+  for (const [agirlik, boy, ust, alt] of [["100 449", "94.52%", "102.49%", "25.52%"], ["450 549", "97.14%", "99.73%", "24.83%"], ["550 900", "92.72%", "104.48%", "26.01%"]]) {
+    const y = yuz.find((x) => x.includes(`font-weight: ${agirlik};`));
+    assert.ok(y, agirlik);
+    assert.match(y, new RegExp(`size-adjust: ${boy.replace(".", "\\.")};`));
+    assert.match(y, new RegExp(`ascent-override: ${ust.replace(".", "\\.")};`));
+    assert.match(y, new RegExp(`descent-override: ${alt.replace(".", "\\.")};`));
+    assert.match(y, /line-gap-override: 0%;/);
+    assert.match(y, /src: local\(/, "yalnız yerel font: ağdan bayt yok");
+    assert.doesNotMatch(y, /url\(/);
+  }
+  assert.ok(oku("../src/features/vitrin/fontlar.ts").includes('import "./font/inter-tight-yedek.css";'));
+  const css = oku("../src/features/vitrin/vitrin.css");
+  for (const j of ["--vt-baslik", "--vt-sans"]) {
+    const son = [...css.matchAll(new RegExp(`${j}: ([^;]+);`, "g"))].map((m) => m[1]).at(-1);
+    assert.match(son ?? "", /^'Inter Tight', 'Inter Tight Yedek', ui-sans-serif, system-ui, sans-serif$/, j);
+  }
+  const yapi = oku("../vite.config.ts");
+  assert.match(yapi, /plugins: \[interTightAralik\(\), react\(\), fontOnYukle\(\), vitrinKabugu\(\)\]/);
+  assert.ok(yapi.includes("'U+0100-011D,U+0120-012F,U+0132-015D,U+0160-02BA,'"), "ğ İ ı ş latin-ext'ten çıkar");
+  assert.ok(yapi.includes("'U+20AD-20B9,U+20BB-20C0,'"), "₺ latin-ext'ten çıkar");
+});

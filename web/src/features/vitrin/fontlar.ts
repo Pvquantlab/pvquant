@@ -9,3 +9,4 @@ import "@fontsource/inter-tight/400.css";
 import "@fontsource/inter-tight/500.css";
 import "@fontsource/inter-tight/600.css";
 import "./font/inter-tight-tr.css";
+import "./font/inter-tight-yedek.css";

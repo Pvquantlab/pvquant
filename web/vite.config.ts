@@ -28,6 +28,33 @@ function fontOnYukle(): Plugin {
   }
 }
 
+/** 18.10 — Firefox'ta gereksiz latin-ext inişi (216 satırlık matris, soğuk /yontem: latin-ext-600 17/36, -500 9/36 koşu; Chromium/WebKit 0).
+ *  Fontsource latin-ext aralığı (U+0100-02BA, U+20AD-20C0) Türkçe alt kümeyi (ğ Ğ İ ş Ş ₺ — font/inter-tight-tr.css) ve
+ *  ı'yı (U+0131: latin yüzünde VAR, latin-ext DOSYASINDA GLİFİ YOK — fontTools) da kapsıyor; Gecko tercih edilen yüz (tr/latin)
+ *  yüklenirken aralığı kapsayan sonraki yüzü (latin-ext, ~37 KB) de başlatabiliyor. Bu kod noktaları 400/500/600 latin-ext
+ *  aralığından çıkar (300'ün tr yüzü yok: yalnız ı çıkar). Kapsama aynı: çıkan her karakter aynı ağırlıkta daha öncelikli
+ *  bir yüzün (tr / latin) cmap'inde var ve son çizimde zaten o yüzden geliyordu. woff2 dosyaları ve adları değişmez.
+ *  Desen bulunamazsa derleme durur (Fontsource sürümü değişirse sessizce geçmesin). */
+const LATIN_EXT_ARALIK = 'unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,' +
+  'U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;'
+function interTightAralik(): Plugin {
+  return {
+    name: 'pvq-inter-tight-aralik',
+    enforce: 'pre',
+    transform(kod, id) {
+      const m = /\/@fontsource\/inter-tight\/(300|400|500|600)\.css(?:\?|$)/.exec(id)
+      if (!m) return null
+      const parca = kod.split(LATIN_EXT_ARALIK)
+      if (parca.length !== 2) throw new Error(`${id}: latin-ext unicode-range ${parca.length - 1} kez bulundu (1 bekleniyordu)`)
+      const yeni = m[1] === '300'
+        ? LATIN_EXT_ARALIK.replace('U+0100-02BA,', 'U+0100-0130,U+0132-02BA,')
+        : LATIN_EXT_ARALIK.replace('U+0100-02BA,', 'U+0100-011D,U+0120-012F,U+0132-015D,U+0160-02BA,')
+          .replace('U+20AD-20C0,', 'U+20AD-20B9,U+20BB-20C0,')
+      return { code: parca.join(yeni), map: null }
+    },
+  }
+}
+
 /** Vitrin ilk ekran kabuğu (16.10 hız turu 3). Film ölçümü: sayfa JavaScript inip çalışmadan hiçbir şey
  *  çizmiyordu (ilk boyama mobil 3G 2,1 sn, mobil 4G 0,9 sn; JS 1,6 / 0,3 sn'de inmiş olmasına rağmen).
  *  Derlemede üst çubuk + hero (src/features/vitrin/VitrinKabugu.tsx, kabukHtml.ts) statik HTML'e dökülür ve #root'a
@@ -103,7 +130,7 @@ function vitrinKabugu(): Plugin {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), fontOnYukle(), vitrinKabugu()],
+  plugins: [interTightAralik(), react(), fontOnYukle(), vitrinKabugu()],
   // Türkçe alt küme yüzleri CSS'e GÖMÜLMEZ: gömülü (data:) font ilk boyamadan sonra çözülüyor, ğ/ş/İ ilk karede yedek
   // fontla çizilip bir kare sonra yerine geçiyordu (satır kayıyor). Ayrı ~1,5 KB'lık dosya + ön yükleme: ilk boyama onu bekler.
   build: { assetsInlineLimit: (dosya) => (/inter-tight-tr-\d{3}\.woff2$/.test(dosya) ? false : undefined) },
