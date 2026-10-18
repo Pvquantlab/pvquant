@@ -4,7 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
-import { hatYavasKayitli, heroBekle, heroHazirMi, heroHazirOldu, heroHazirSoz, levhaKuyruguBasladi, levhalarBittiOldu, levhalarBittiSoz, posterYavasMi } from "../../src/features/vitrin/heroHazir.ts";
+import { hatYavasKayitli, heroBekle, heroHazirMi, heroHazirOldu, heroHazirSoz, levhaKuyruguBasladi, levhalarBittiAbone, levhalarBittiOldu, levhalarBittiSoz, posterYavasMi } from "../../src/features/vitrin/heroHazir.ts";
 
 const oku = (yol: string) => readFileSync(new URL(yol, import.meta.url), "utf8");
 const yapi = oku("../../vite.config.ts");
@@ -103,8 +103,9 @@ test("hero videosu: load() yalnız hero ekrandayken bir kez, ayrılışta indirm
   assert.equal((hero.match(/v\.load\(\)/g) ?? []).length, 2);
   assert.match(hero, /if \(ekranda && !yuklendi\) \{ yuklendi = true; v\.preload = "auto"; v\.load\(\); v\.playbackRate = OYNATMA_HIZI; \}/);
   assert.match(hero, /if \(!v\.isConnected\) \{[^}]*v\.load\(\); \}/);
-  assert.match(hero, /const basla = \(\) => \{ bekleme = window\.setTimeout\(ac, LEVHA_BEKLEME_MS\); levhalarBittiSoz\(\)\.then\(ac\); \};/, "load olayı yüklemeyi kendisi başlatmaz; levha kuyruğunu bekler");
-  assert.match(hero, /const ac = \(\) => \{ if \(sokuldu \|\| izin\) return; window\.clearTimeout\(bekleme\); izin = true; uygula\(\); \};/);
+  assert.match(hero, /const basla = \(\) => \{ bekleme = window\.setTimeout\(ac, LEVHA_BEKLEME_MS\); birak = levhalarBittiAbone\(ac\); \};/, "load olayı yüklemeyi kendisi başlatmaz; levha kuyruğunu bekler");
+  assert.match(hero, /const ac = \(\) => \{ if \(sokuldu \|\| izin\) return; window\.clearTimeout\(bekleme\); birak\(\); izin = true; uygula\(\); \};/);
+  assert.match(hero, /sokuldu = true; window\.clearTimeout\(bekleme\); birak\(\);/, "sökümde levha dinleyicisi bırakılır");
   assert.match(hero, /const LEVHA_BEKLEME_MS = 4000;/);
 });
 
@@ -321,6 +322,11 @@ test("levha kuyruğu sinyali: video levhalar bitince (ya da zaman aşımında) i
   levhalarBittiOldu();
   await soz2;
   assert.equal(ikinci, true);
+  levhaKuyruguBasladi();                                   // abonelik bırakılınca çağrılmaz; sinyal verilmişse hemen çağrılır
+  let say = 0; const birak = levhalarBittiAbone(() => { say++; }); birak(); levhalarBittiOldu();
+  assert.equal(say, 0, "bırakılan dinleyici çağrılmaz");
+  levhalarBittiAbone(() => { say++; });
+  assert.equal(say, 1, "sinyal zaten verildiyse hemen");
   const c = oku("../../src/features/vitrin/useCanlandir.ts");
   assert.match(c, /levhaKuyruguBasladi\(\);\n\s*if \(typeof IntersectionObserver === "undefined"\) \{ levhalarBittiOldu\(\); return; \}/);
   assert.match(c, /if \(hedefler\.length === 0\) \{ levhalarBittiOldu\(\); return; \}/);

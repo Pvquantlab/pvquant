@@ -46,6 +46,12 @@ export function levhalarBittiSoz(): Promise<void> {
   if (levhaBitti) return Promise.resolve();
   return new Promise<void>((coz) => { levhaDinleyiciler.add(() => coz()); });
 }
+/** Abonelik + bırakma (Hero sökülünce dinleyici kümede kalmasın). Sinyal zaten verildiyse hemen çağırır. */
+export function levhalarBittiAbone(d: () => void): () => void {
+  if (levhaBitti) { d(); return () => {}; }
+  levhaDinleyiciler.add(d);
+  return () => { levhaDinleyiciler.delete(d); };
+}
 
 /** K1 yavaş hat kararı (16.10 kullanıcı kuralı): posteri AĞDAN 2 sn'den uzun sürede indiren hatta video inmez,
  *  karar 7 gün hatırlanır. 18.10 (kök neden H13): kararı YALNIZ gövde baytları gerçekten aktarılmış ölçüm yazar —

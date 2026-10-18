@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type SyntheticEvent } from "react";
-import { heroBekle, heroHazirOldu, levhalarBittiSoz, posterYavasMi } from "./heroHazir";
+import { heroBekle, heroHazirOldu, levhalarBittiAbone, posterYavasMi } from "./heroHazir";
 import santral1440 from "./varlik/santral-1440.mp4";
 import santral1080 from "./varlik/santral-1080.mp4";
 import santralPoster from "./varlik/santral-poster.webp";
@@ -30,7 +30,7 @@ const DONGU_SON = 19.0;
  *  kaydı {y:false} ile eziyordu) — ölçüm ve kayıt heroHazir.ts posterYavasMi'de. */
 const OYNATMA_HIZI = 0.7;   // 14.10 kullanıcı: arka plan göze batmasın — %70 hız (11,5 s'lik aralık ~16 s sürer)
 /** 18.10 sıralama (perf/cross-browser): video, levha önden indirmesi (useCanlandir) bitince ya da en geç bu süre sonra iner;
- *  süre load'dan sayılır. 8 levha 2.525.490 B ≈ 20,2 Mbit: tek başına 20 Mbps'te ~1,0 sn, 100'de ~0,2 sn. 4 sn yalnız
+ *  süre load ile posterin çözülmesinden (hangisi sonraysa) sayılır. 8 levha 2.525.490 B ≈ 20,2 Mbit: tek başına 20 Mbps'te ~1,0 sn, 100'de ~0,2 sn. 4 sn yalnız
  *  ~5 Mbps altındaki hatta dolar; orada 1440 videosu (0,7 hızda ~8,1 Mbps) zaten akıcı akmaz. Bekleme süresince sahnede
  *  posterin kendisi (videonun ILK_BAS karesi) durur; erime yine 'playing'de başlar — yalnız hareketin başlama anı ötelenir. */
 const LEVHA_BEKLEME_MS = 4000;
@@ -107,11 +107,12 @@ export function Hero({ kabuk = false }: { kabuk?: boolean } = {}) {
     // bandı paylaşmasın. ac tek sefer çalışır ve sökümden sonra çalışmaz.
     let bekleme = 0;
     let sokuldu = false;
-    const ac = () => { if (sokuldu || izin) return; window.clearTimeout(bekleme); izin = true; uygula(); };
-    const basla = () => { bekleme = window.setTimeout(ac, LEVHA_BEKLEME_MS); levhalarBittiSoz().then(ac); };
+    let birak = () => {};
+    const ac = () => { if (sokuldu || izin) return; window.clearTimeout(bekleme); birak(); izin = true; uygula(); };
+    const basla = () => { bekleme = window.setTimeout(ac, LEVHA_BEKLEME_MS); birak = levhalarBittiAbone(ac); };
     if (document.readyState === "complete") basla(); else window.addEventListener("load", basla, { once: true });
     return () => {
-      sokuldu = true; window.clearTimeout(bekleme);
+      sokuldu = true; window.clearTimeout(bekleme); birak();
       window.removeEventListener("load", basla); io?.disconnect(); document.removeEventListener("visibilitychange", uygula);
       v.removeEventListener("loadedmetadata", basaSar); v.removeEventListener("timeupdate", aralik); v.removeEventListener("playing", oynuyor);
       // gerçek ayrılışta (vitrin → giriş/panel) süren video indirmesi durur; yoksa masaüstündeki 36 MB'lık dosya panel parçalarıyla
