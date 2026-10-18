@@ -1,5 +1,6 @@
 import { createServer, defineConfig, type Plugin } from 'vite'
 import { fileURLToPath } from 'node:url'
+import { readFileSync } from 'node:fs'
 import react from '@vitejs/plugin-react'
 
 /** Font ön yükleme (15.10 hız turu 2): ilk ekranın yazısı yalnız Inter Tight 500 (giriş
@@ -51,6 +52,25 @@ function interTightAralik(): Plugin {
         : LATIN_EXT_ARALIK.replace('U+0100-02BA,', 'U+0100-011D,U+0120-012F,U+0132-015D,U+0160-02BA,')
           .replace('U+20AD-20C0,', 'U+20AD-20B9,U+20BB-20C0,')
       return { code: parca.join(yeni), map: null }
+    },
+  }
+}
+
+/** 18.10 — metrik eşlemeli yedek yüz (font/inter-tight-yedek.css) <head>'de satır içi ve CSS'ten ÖNCE hazırlanır.
+ *  Firefox, ilk aile ('Inter Tight') yüklenirken listedeki henüz yüklenmemiş local() yüzü atlayıp doğrudan sistem fontuna
+ *  düşüyor (FontFace durumu baştan sona «unloaded»; ölçüldü): yedek CSS demetinde kalınca 390'da ilk kare SF ile 9 satır,
+ *  düğmeler 25 px zıplıyordu. Kurallar satır içi + document.fonts.load ile yerel yüzler CSS inmeden yüklenir; Chromium ve
+ *  WebKit zaten eşzamanlı kullanıyordu (değişmez). Tek kaynak bu dosya: CSS demetine ayrıca içe aktarılmaz (aynı tanımlı
+ *  ikinci, yüklenmemiş yüz sonra geldiği için öncekini ezerdi). Geliştirme sunucusunda da çalışır. */
+function yedekFont(): Plugin {
+  const css = readFileSync(fileURLToPath(new URL('./src/features/vitrin/font/inter-tight-yedek.css', import.meta.url)), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').replace(/\s*([{};])\s*/g, '$1').trim()
+  const yukle = '<script>try{if(document.fonts)["400","500","600"].forEach(function(w){document.fonts.load(w+" 1em \'Inter Tight Yedek\'")})}catch(e){}</script>'
+  return {
+    name: 'pvq-yedek-font',
+    transformIndexHtml(html) {
+      if (!html.includes('<meta charset="UTF-8" />')) throw new Error('index.html: charset meta bulunamadı')
+      return html.replace('<meta charset="UTF-8" />', `<meta charset="UTF-8" />\n    <style>${css}</style>\n    ${yukle}`)
     },
   }
 }
@@ -136,7 +156,7 @@ function vitrinKabugu(): Plugin {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [interTightAralik(), react(), fontOnYukle(), vitrinKabugu()],
+  plugins: [interTightAralik(), react(), fontOnYukle(), yedekFont(), vitrinKabugu()],
   // Türkçe alt küme yüzleri CSS'e GÖMÜLMEZ: gömülü (data:) font ilk boyamadan sonra çözülüyor, ğ/ş/İ ilk karede yedek
   // fontla çizilip bir kare sonra yerine geçiyordu (satır kayıyor). Ayrı ~1,5 KB'lık dosya + ön yükleme: ilk boyama onu bekler.
   build: { assetsInlineLimit: (dosya) => (/inter-tight-tr-\d{3}\.woff2$/.test(dosya) ? false : undefined) },
