@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { heroHazirSoz } from "./heroHazir";
+import { hatYavasKayitli, heroHazirSoz } from "./heroHazir";
 
 /** Kaydırma canlılığı (R25): [data-canlan] taşıyan bölümler görünür olunca `is-acildi` alır;
  *  CSS yalnız opacity+translateY geçirir (vitrin.css CİLA-ek 4). Kurallar: hero reveal almaz
@@ -37,11 +37,15 @@ export function useCanlandir(tetik?: unknown) {
     // 15.10 hız turu 2: tembel levhalar sayfa ve fontlar indikten sonra DOM sırasıyla, ikişer ikişer
     // önden indirilir — kaydırınca önbellekten anında açılırlar (kullanıcı: «kartlar hemen açılsın»).
     // Yavaş bağlantı/veri tasarrufunda tarayıcının kendi tembel eşiği yeter; önden indirme yapılmaz.
+    // 18.10: «yavaş» = navigator.connection (yalnız Chromium; kısıtlı hatta da «4g») VEYA Hero'nun K1 poster kararı
+    // (heroHazir.ts; yalnız okunur). kur poster sinyalinden sonra çalışır: poster 5 sn içinde indiyse bu açılışın
+    // ölçümü de görülür; 5 sn zamanlayıcısı (Hero.tsx) önce düştüyse ya da poster hata verdiyse o açılışta yalnız
+    // önceki kayıt vardır (ilk ziyarette yok → bugünkü gibi önden indirir). /yontem'de son kayıt okunur.
     const baglanti = (navigator as Navigator & { connection?: { effectiveType?: string; saveData?: boolean } }).connection;
     const yavas = !!baglanti && (baglanti.saveData === true || /(^|-)2g$|^3g$/.test(baglanti.effectiveType ?? ""));
     let iptal = false;
     const kur = () => {
-      if (iptal || yavas) return;
+      if (iptal || yavas || hatYavasKayitli()) return;
       const sira = [...document.querySelectorAll<HTMLImageElement>('img[loading="lazy"][src]')];
       const yukle = (i: number) => {
         if (iptal || i >= sira.length) return;

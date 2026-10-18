@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type SyntheticEvent } from "react";
-import { heroBekle, heroHazirOldu } from "./heroHazir";
+import { heroBekle, heroHazirOldu, posterYavasMi } from "./heroHazir";
 import santral1440 from "./varlik/santral-1440.mp4";
 import santral1080 from "./varlik/santral-1080.mp4";
 import santralPoster from "./varlik/santral-poster.webp";
@@ -25,24 +25,9 @@ const DONGU_SON = 19.0;
  *  masaüstü 36 MB) akıcı oynatamaz — veri ve bant harcar, takılır. Bağlantı türü API'si yalnız Chrome'da var ve
  *  kısıtlı hatta bile çoğu zaman «4g» diyor (ölçüldü: 1,6 Mbps'de video yine indi); ölçü tarayıcıdan bağımsız:
  *  posterin kendi indirme süresi (Resource Timing). Poster 1 yıl önbellekte kalır; önbellekten geldiğinde (aktarım 0)
- *  süre hat hakkında bir şey söylemez — o zaman son AĞ ölçümünün kararı kullanılır (7 gün geçerli; yoksa video oynar). */
-const YAVAS_POSTER_MS = 2000;
-const YAVAS_KAYIT = "pvq_yavas_hat";
-const YAVAS_OMUR_MS = 7 * 24 * 3600 * 1000;
-function posterYavasMi(): boolean {
-  try {
-    const g = performance.getEntriesByName(new URL(santralPoster, window.location.href).href) as PerformanceResourceTiming[];
-    const e = g[0];
-    if (!e || !(e.responseEnd > 0)) return false;
-    if (e.transferSize === 0 && e.decodedBodySize > 0) {          // önbellekten: son ağ ölçümüne bak
-      const k = JSON.parse(localStorage.getItem(YAVAS_KAYIT) ?? "null") as { y?: boolean; t?: number } | null;
-      return !!k && k.y === true && typeof k.t === "number" && Date.now() - k.t < YAVAS_OMUR_MS;
-    }
-    const yavas = e.responseEnd - e.startTime > YAVAS_POSTER_MS;
-    try { localStorage.setItem(YAVAS_KAYIT, JSON.stringify({ y: yavas, t: Date.now() })); } catch { /* depo yok */ }
-    return yavas;
-  } catch { return false; }
-}
+ *  süre hat hakkında bir şey söylemez — o zaman son AĞ ölçümünün kararı kullanılır (7 gün geçerli; yoksa video oynar).
+ *  18.10: «ağdan mı» testi motor bağımsız (Firefox bellek önbelleğinde RT girdisi yazmıyor, WebKit 0 bayt yazıp
+ *  kaydı {y:false} ile eziyordu) — ölçüm ve kayıt heroHazir.ts posterYavasMi'de. */
 const OYNATMA_HIZI = 0.7;   // 14.10 kullanıcı: arka plan göze batmasın — %70 hız (11,5 s'lik aralık ~16 s sürer)
 
 /** Açılış sırası (16.10 hız turu 3 — film ölçümü: hero ilk boyamada siyah zeminle açılıyor, poster
@@ -67,7 +52,7 @@ export function Hero({ kabuk = false }: { kabuk?: boolean } = {}) {
   const yavasHat = useRef(false);
   const posterYuklendi = (e: SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget;
-    yavasHat.current = posterYavasMi();
+    yavasHat.current = posterYavasMi(new URL(santralPoster, window.location.href).href);
     (typeof img.decode === "function" ? img.decode() : Promise.resolve()).catch(() => {}).then(() => { setPosterHazir(true); heroHazirOldu(); });
   };
   const posterHata = () => { yavasHat.current = true; setPosterHazir(true); heroHazirOldu(); };   // poster yoksa video da denenmez

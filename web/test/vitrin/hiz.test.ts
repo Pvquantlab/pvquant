@@ -4,7 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
-import { heroBekle, heroHazirMi, heroHazirOldu, heroHazirSoz } from "../../src/features/vitrin/heroHazir.ts";
+import { hatYavasKayitli, heroBekle, heroHazirMi, heroHazirOldu, heroHazirSoz, posterYavasMi } from "../../src/features/vitrin/heroHazir.ts";
 
 const oku = (yol: string) => readFileSync(new URL(yol, import.meta.url), "utf8");
 const yapi = oku("../../vite.config.ts");
@@ -117,6 +117,12 @@ test("çapalı açılış: sınıflama kaydırmadan sonra; useCapaKaydir önce �
   }
 });
 
+test("K1 levha önden indirmesi: yavaş hat kararını okur, ölçüm yapmaz", () => {
+  const c = oku("../../src/features/vitrin/useCanlandir.ts");
+  assert.match(c, /if \(iptal \|\| yavas \|\| hatYavasKayitli\(\)\) return;/);
+  assert.doesNotMatch(c, /posterYavasMi/, "ölçüm ve kayıt yalnız Hero'da");
+});
+
 test("panel geçişleri: ekran değişimleri startTransition içinde, tek kalıcı Suspense + kabuk içi Suspense", () => {
   const app = oku("../../src/App.tsx");
   assert.match(app, /const sayfaSec = \(s: SayfaId\) => startTransition\(\(\) => setSayfa\(s\)\);/);
@@ -163,15 +169,64 @@ test("hero CSS: poster sahneyi örter, svh, kabuk dolgusu yalnız ince işaretç
 // 16.10 kullanıcı kararları: yavaş hatta video yok, melez döngü başlangıcı, tek parça açılış, HTTP/3
 test("kararlar: yavaş hatta video inmez; ilk oynatma poster karesinden, döngü anahtar kareden", () => {
   const hero = oku("../../src/features/vitrin/Hero.tsx");
-  assert.match(hero, /const YAVAS_POSTER_MS = 2000;/);
-  assert.match(hero, /e\.responseEnd - e\.startTime > YAVAS_POSTER_MS/);
-  assert.match(hero, /if \(e\.transferSize === 0 && e\.decodedBodySize > 0\) \{/, "önbellekten gelen poster ölçüm sayılmaz");
-  assert.match(hero, /yavasHat\.current = posterYavasMi\(\);/);
+  const hh = oku("../../src/features/vitrin/heroHazir.ts");
+  assert.match(hh, /const YAVAS_POSTER_MS = 2000;/);
+  assert.match(hh, /const YAVAS_OMUR_MS = 7 \* 24 \* 3600 \* 1000;/);
+  assert.match(hh, /if \(e\) return kaydet\(e\.responseEnd - e\.startTime > YAVAS_POSTER_MS\);/, "kararı yalnız ağ ölçümü yazar");
+  assert.match(hero, /yavasHat\.current = posterYavasMi\(new URL\(santralPoster, window\.location\.href\)\.href\);/);
   assert.match(oku("../../src/features/sayfalar/Digerleri.tsx"), /tahminlereGit\(\); startTransition\(\(\) => setKosuyor\(false\)\); return;/);
   assert.match(hero, /if \(kisit \|\| yavasHat\.current \|\| mq\.matches\) return;/);
   assert.match(hero, /const ILK_BAS = 6\.0727;\nconst DONGU_BAS = 9\.009;\nconst DONGU_SON = 19\.0;/);
   assert.match(hero, /const basaSar = \(\) => \{ if \(!araliksiz\(\)\) v\.currentTime = ILK_BAS; \};/);
   assert.match(hero, /if \(t >= DONGU_SON\) \{ ilkTur = false; v\.currentTime = DONGU_BAS; return; \}/);
+});
+
+// 18.10 K1 motor bağımsız (kök neden H13). Girdi biçimleri perf/baseline/matris.jsonl'deki ölçülmüş değerlerden.
+test("K1: kararı yalnız gövdesi aktarılmış ağ ölçümü yazar; önbellek biçimleri kaydı yalnız okur", () => {
+  const depo = new Map<string, string>();
+  let girdiler: object[] = [];
+  const once = { ls: Object.getOwnPropertyDescriptor(globalThis, "localStorage"), pf: Object.getOwnPropertyDescriptor(globalThis, "performance") };
+  Object.defineProperty(globalThis, "localStorage", { configurable: true, writable: true,
+    value: { getItem: (k: string) => depo.get(k) ?? null, setItem: (k: string, v: string) => { depo.set(k, v); } } });
+  Object.defineProperty(globalThis, "performance", { configurable: true, writable: true, value: { getEntriesByName: () => girdiler } });
+  const A = "https://pvquant.com/assets/santral-poster-AbC123.webp";
+  const kayit = () => depo.get("pvq_yavas_hat");
+  const ag = (ms: number) => ({ startTime: 900, responseEnd: 900 + ms, transferSize: 485432, encodedBodySize: 485132, decodedBodySize: 485132 });
+  try {
+    assert.equal(posterYavasMi(A), false, "ilk ziyaret, girdi ve kayıt yok → video serbest");
+    assert.equal(kayit(), undefined, "girdisiz yükleme yazmaz");
+    girdiler = [ag(3400)];                                       // soğuk 3G: ağdan 3,4 sn
+    assert.equal(posterYavasMi(A), true);
+    const yavasKaydi = kayit();
+    assert.equal(JSON.parse(yavasKaydi ?? "{}").y, true);
+    const onbellek: [string, object[]][] = [
+      ["Firefox bellek önbelleği: girdi yok", []],
+      ["WebKit bellek önbelleği: 0/0/0", [{ startTime: 40, responseEnd: 40.4, transferSize: 0, encodedBodySize: 0, decodedBodySize: 0 }]],
+      ["Chromium bellek/disk: aktarım 0", [{ startTime: 40, responseEnd: 46, transferSize: 0, encodedBodySize: 485132, decodedBodySize: 485132 }]],
+      ["304: yalnız başlık", [{ startTime: 40, responseEnd: 640, transferSize: 300, encodedBodySize: 485132, decodedBodySize: 485132 }]],
+      ["eski Safari, bayt alanı yok, hızlı", [{ startTime: 40, responseEnd: 60 }]],
+    ];
+    for (const [ad, g] of onbellek) {
+      girdiler = g;
+      assert.equal(posterYavasMi(A), true, ad + ": kayıtlı «yavaş» okunur");
+      assert.equal(kayit(), yavasKaydi, ad + ": kayıt ezilmez");
+    }
+    girdiler = [{ startTime: 40, responseEnd: 40.4, transferSize: 0, encodedBodySize: 0, decodedBodySize: 0 }, ag(400)];
+    assert.equal(posterYavasMi(A), false, "birden çok girdide ağ ölçümü seçilir");
+    assert.equal(JSON.parse(kayit() ?? "{}").y, false);
+    girdiler = [];
+    assert.equal(posterYavasMi(A), false, "hızlı karar önbellekte de geçerli");
+    girdiler = [{ startTime: 40, responseEnd: 2600 }];
+    assert.equal(posterYavasMi(A), true, "eski Safari: 2 sn'yi aşan sonuç ağdır (önbellek 2 sn sürmez)");
+    depo.set("pvq_yavas_hat", JSON.stringify({ y: true, t: Date.now() - 8 * 24 * 3600 * 1000 }));
+    girdiler = [];
+    assert.equal(hatYavasKayitli(), false, "7 günden eski karar düşer");
+    assert.equal(posterYavasMi(A), false);
+  } finally {
+    for (const [ad, d] of [["localStorage", once.ls], ["performance", once.pf]] as const) {
+      if (d) Object.defineProperty(globalThis, ad, d); else delete (globalThis as Record<string, unknown>)[ad];
+    }
+  }
 });
 
 test("kararlar: bölümler tek parça açılır (kart kademesi yok, zemin solmaz)", () => {

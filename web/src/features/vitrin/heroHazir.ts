@@ -27,3 +27,35 @@ export function heroHazirSoz(): Promise<void> {
 export function useHeroHazir(): boolean {
   return useSyncExternalStore(abone, heroHazirMi, () => true);
 }
+
+/** K1 yavaş hat kararı (16.10 kullanıcı kuralı): posteri AĞDAN 2 sn'den uzun sürede indiren hatta video inmez,
+ *  karar 7 gün hatırlanır. 18.10 (kök neden H13): kararı YALNIZ gövde baytları gerçekten aktarılmış ölçüm yazar —
+ *  transferSize ≥ encodedBodySize > 0 (ağdan 200: gövde + başlık; ölçüldü Chromium/Firefox 485 432, WebKit 485 720 B;
+ *  304'te transferSize yalnız başlıktır, ~300). Önbellek biçimleri kaydı yalnız OKUR: Firefox bellek önbelleği
+ *  (RT girdisi yok), WebKit bellek önbelleği (0/0/0), Chromium bellek/disk (aktarım 0), 304; disk önbelleğinin
+ *  Firefox/WebKit biçimi ölçülmedi — gövde aktarılmadığı sürece o da yalnız okur.
+ *  Bayt alanı olmayan eski Safari'de yalnız «yavaş» sonucu yazılır: 2 sn süren önbellek isabeti olmaz, ama hızlı
+ *  sonuç önbellekten de gelmiş olabilir. Ölçümü Hero.tsx posterYuklendi (onLoad) çağırır; işlev burada durur çünkü
+ *  Hero.tsx video/görsel içe aktarır — node testi davranışı doğrudan sınar (test/vitrin/hiz.test.ts). */
+const YAVAS_POSTER_MS = 2000;
+const YAVAS_KAYIT = "pvq_yavas_hat";
+const YAVAS_OMUR_MS = 7 * 24 * 3600 * 1000;
+export function hatYavasKayitli(): boolean {
+  try {
+    const k = JSON.parse(localStorage.getItem(YAVAS_KAYIT) ?? "null") as { y?: boolean; t?: number } | null;
+    return !!k && k.y === true && typeof k.t === "number" && Date.now() - k.t < YAVAS_OMUR_MS;
+  } catch { return false; }
+}
+function kaydet(y: boolean): boolean {
+  try { localStorage.setItem(YAVAS_KAYIT, JSON.stringify({ y, t: Date.now() })); } catch { /* depo yok */ }
+  return y;
+}
+export function posterYavasMi(adres: string): boolean {
+  let g: PerformanceResourceTiming[] = [];
+  try { g = performance.getEntriesByName(adres, "resource") as PerformanceResourceTiming[]; } catch { /* RT yok */ }
+  const e = g.find((x) => x.responseEnd > 0 && x.encodedBodySize > 0 && x.transferSize >= x.encodedBodySize);
+  if (e) return kaydet(e.responseEnd - e.startTime > YAVAS_POSTER_MS);
+  const eski = g.find((x) => x.responseEnd > 0 && typeof x.transferSize !== "number");
+  if (eski && eski.responseEnd - eski.startTime > YAVAS_POSTER_MS) return kaydet(true);
+  return hatYavasKayitli();
+}
