@@ -285,3 +285,32 @@ test("Gecko ≥ 132: aynı çekirdek feOffset + aritmetik feComposite ile, 1 ayg
   assert.match(css, /\.vt \.vt-hero--wr \.vt-hero__video, \.vt \.vt-hero--wr \.vt-hero__poster \{ filter: url\(#vt-keskin-wr\); \}/);
   assert.match(css, /\.vt-hero--video \.vt-hero__video \{ object-position: 50% 0%; filter: url\(#vt-keskin\);/);
 });
+
+// 18.10 perf/cross-browser — poster ön yüklemesi ilk içerikli boyamanın bildiriminden sonra (metin LCP'siyle yarışmaz).
+test("kabuk betiği: poster ön yüklemesi FCP bildirimini bekler; bildirim varsa / API yoksa hemen; 1 sn emniyet", () => {
+  const { govde } = betikler();
+  const kos = (fcpVar: boolean, destek: boolean) => {
+    const eklenen: Record<string, string>[] = []; const zaman: (() => void)[] = []; let gozlemci: ((s: unknown) => void) | null = null;
+    class PO { static supportedEntryTypes = destek ? ["paint", "largest-contentful-paint"] : ["navigation"];
+      constructor(f: (s: unknown) => void) { gozlemci = f; } observe() {} disconnect() {} }
+    vm.runInNewContext(govde, {
+      location: { pathname: "/", search: "" }, localStorage: { getItem: () => null },
+      document: { getElementById: () => null, documentElement: { classList: { add() {} } }, createElement: () => ({}), head: { appendChild: (l: Record<string, string>) => eklenen.push(l) }, querySelector: () => null },
+      window: { PerformanceObserver: PO }, performance: { getEntriesByName: () => (fcpVar ? [{}] : []) },
+      setTimeout: (f: () => void) => { zaman.push(f); return 1; },
+    });
+    return { eklenen, zaman, bildir: () => gozlemci?.({ getEntriesByName: (ad: string) => (ad === "first-contentful-paint" ? [{}] : []) }) };
+  };
+  const bekleyen = kos(false, true);
+  assert.equal(bekleyen.eklenen.length, 0, "FCP bildirilmeden poster istenmez");
+  bekleyen.bildir();
+  assert.equal(bekleyen.eklenen.length, 1, "bildirimle hemen");
+  bekleyen.zaman.forEach((f) => f());
+  assert.equal(bekleyen.eklenen.length, 1, "emniyet zamanlayıcısı ikinci istek açmaz");
+  assert.equal(kos(true, true).eklenen.length, 1, "FCP zaten varsa hemen");
+  assert.equal(kos(false, false).eklenen.length, 1, "paint desteği yoksa hemen");
+  const gizli = kos(false, true);
+  gizli.zaman.forEach((f) => f());
+  assert.equal(gizli.eklenen.length, 1, "bildirim gelmezse (gizli sekme) 1 sn sonra");
+  assert.equal(gizli.eklenen[0].fetchPriority, "high");
+});

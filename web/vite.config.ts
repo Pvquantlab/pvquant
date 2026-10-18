@@ -83,6 +83,10 @@ function vitrinKabugu(): Plugin {
           // CSS'i bekleyerek çalışır: istek CSS'le yarışmaz (v2.451 denemesinde <head>'deki statik ön yükleme 3G'de ilk
           // boyamayı ~0,9 sn geciktirmişti), ama React'in çizip <img>'i koymasını da beklemez (canlı v2.452: poster
           // isteği m3g 1,76 sn, m4g 0,62 sn'de başlıyordu; tek koşu). crossorigin YOK — <img> ve video posteri no-cors ister.
+          // 18.10 perf/cross-browser: istek ilk içerikli boyamanın BİLDİRİMİNDEN sonra başlar (bildirim zaten varsa, API yoksa
+          // hemen; gizli sekmede en geç 1 sn). Poster LCP öğesi değil (LCP hero metni, üç motorda); CSS'ten sonraki birkaç on
+          // ms'lik ilk boyama aralığında metinle bant yarıştırmaz. Lighthouse mobil benzetimi metin LCP'sinden önce başlayan
+          // yüksek öncelikli görseli LCP yoluna katıyordu: 474 KB / Slow 4G ≈ +2,4 sn (LCP 4,1 sn, perf 82–85; perf/analiz).
           const poster = Object.keys(ctx.bundle ?? {}).find((k) => /^assets\/santral-poster-[\w-]+\.webp$/.test(k))
           if (!poster) throw new Error('derleme: santral-poster varlığı bulunamadı')
           // 17.10 denetimi — kabuktaki «Menü» React gelmeden de çalışır: main.tsx createRoot kullanır (hydrate değil), React
@@ -91,7 +95,9 @@ function vitrinKabugu(): Plugin {
           // UstCubuk ilk çiziminde bir kez okur. Kaydırma kilidi burada YOK (React'in kilidi html'in eski stilini saklayıp geri yükler).
           const betik = '<script>(function(){try{var p=location.pathname,t=localStorage.getItem("pvq_token"),v=/[?&]vitrin(=|&|$)/.test(location.search);' +
             'if(!(p==="/"&&(!t||v))){var r=document.getElementById("root");if(r)r.textContent="";if(p==="/yontem")document.documentElement.classList.add("vt-sayfa")}' +
-            `else{var l=document.createElement("link");l.rel="preload";l.as="image";l.href="/${poster}";l.fetchPriority="high";document.head.appendChild(l);` +
+            `else{var a=function(){if(a.b)return;a.b=1;var l=document.createElement("link");l.rel="preload";l.as="image";l.href="/${poster}";l.fetchPriority="high";document.head.appendChild(l)};` +
+            'try{var P=window.PerformanceObserver;if(!P||!P.supportedEntryTypes||P.supportedEntryTypes.indexOf("paint")<0||performance.getEntriesByName("first-contentful-paint","paint").length)a();' +
+            'else{var g=new P(function(s){if(s.getEntriesByName("first-contentful-paint").length){g.disconnect();a()}});g.observe({type:"paint",buffered:true});setTimeout(function(){g.disconnect();a()},1000)}}catch(x){a()}' +
             'var d=document.querySelector(".vt-ust .vt-menu-dugme"),c=document.getElementById("vt-cekmece");if(d&&c){' +
             'var m=function(a){window.__pvqMenu=a;c.hidden=!a;d.setAttribute("aria-expanded",a?"true":"false");d.textContent=a?"Kapat":"Menü"};' +
             'd.addEventListener("click",function(){m(c.hidden)});' +
