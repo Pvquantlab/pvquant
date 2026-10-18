@@ -61,11 +61,12 @@ function interTightAralik(): Plugin {
  *  düşüyor (FontFace durumu baştan sona «unloaded»; ölçüldü): yedek CSS demetinde kalınca 390'da ilk kare SF ile 9 satır,
  *  düğmeler 25 px zıplıyordu. Kurallar satır içi + document.fonts.load ile yerel yüzler CSS inmeden yüklenir; Chromium ve
  *  WebKit zaten eşzamanlı kullanıyordu (değişmez). Tek kaynak bu dosya: CSS demetine ayrıca içe aktarılmaz (aynı tanımlı
- *  ikinci, yüklenmemiş yüz sonra geldiği için öncekini ezerdi). Geliştirme sunucusunda da çalışır. */
+ *  ikinci, yüklenmemiş yüz sonra geldiği için öncekini ezerdi). Geliştirme sunucusunda da çalışır. Arial/Liberation/Arimo
+ *  olmayan sistemde (Android) yerel yüz «error» olur: load() sözünün reddi yakalanır (konsolda «Uncaught (in promise)» olmasın). */
 function yedekFont(): Plugin {
   const css = readFileSync(fileURLToPath(new URL('./src/features/vitrin/font/inter-tight-yedek.css', import.meta.url)), 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').replace(/\s*([{};])\s*/g, '$1').trim()
-  const yukle = '<script>try{if(document.fonts)["400","500","600"].forEach(function(w){document.fonts.load(w+" 1em \'Inter Tight Yedek\'")})}catch(e){}</script>'
+  const yukle = '<script>try{if(document.fonts)["400","500","600"].forEach(function(w){document.fonts.load(w+" 1em \'Inter Tight Yedek\'").catch(function(){})})}catch(e){}</script>'
   return {
     name: 'pvq-yedek-font',
     transformIndexHtml(html) {
