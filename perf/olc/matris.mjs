@@ -37,6 +37,9 @@ async function hatBos(url, ag) {
 async function yukle(sayfa, url, ag) {
   await sayfa.goto("about:blank").catch(() => {});                // önceki sayfanın istekleri iptal
   const bosBekleme = await hatBos(url, ag);
+  // vekil bayt sayacı (kısıtlı hatlarda): gezinme başından gözlem penceresi sonuna dek alıcıya yazılan bayt — süren medya dahil
+  const bayt = async () => (ag === "yok" ? null : await fetch(`http://127.0.0.1:${Number(new URL(url).port) + 1}/`).then((r) => r.json()).then((d) => d.asagiBayt ?? null).catch(() => null));
+  const b0 = await bayt();
   const hata = { konsol: [], sayfa: [], http: [], basarisiz: [] };
   const k1 = (m) => { if (m.type() === "error") hata.konsol.push(m.text().slice(0, 200)); };
   const k2 = (e) => hata.sayfa.push(String(e.message || e).slice(0, 200));
@@ -50,7 +53,8 @@ async function yukle(sayfa, url, ag) {
   let m = null;
   try { m = await topla(sayfa); } catch (e) { gezinmeHatasi = (gezinmeHatasi || "") + " topla: " + String(e.message).split("\n")[0]; }
   sayfa.off("console", k1); sayfa.off("pageerror", k2); sayfa.off("response", k3); sayfa.off("requestfailed", k4);
-  return { ...m, hata, gezinmeHatasi, duvarSaati: Date.now() - t0, bosBekleme };
+  const b1 = await bayt();
+  return { ...m, hata, gezinmeHatasi, duvarSaati: Date.now() - t0, bosBekleme, hatBayt: b0 !== null && b1 !== null ? b1 - b0 : null };
 }
 
 for (const motor of motorlar) {

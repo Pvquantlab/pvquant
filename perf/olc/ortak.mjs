@@ -11,6 +11,11 @@ export const HEDEFLER = {
   once:  { yok: "https://localhost:18443", hizli3g: "https://localhost:19443", yavas4g: "https://localhost:20443", spki: ".replika/once/spki.txt" },
   sonra: { yok: "https://localhost:28443", hizli3g: "https://localhost:29443", yavas4g: "https://localhost:30443", spki: ".replika/sonra/spki.txt" },
   canli: { yok: "https://pvquant.com" },
+  // Faz 3 ara ölçümleri (tek düzeltmenin etkisini ayırmak için; T=38/48)
+  araa:  { yok: "https://localhost:38443", hizli3g: "https://localhost:39443", yavas4g: "https://localhost:40443", spki: ".replika/araa/spki.txt" },
+  arac:  { yok: "https://localhost:58443", hizli3g: "https://localhost:59443", yavas4g: "https://localhost:60443", spki: ".replika/arac/spki.txt" },
+  arad:  { yok: "https://localhost:24443", hizli3g: "https://localhost:25443", yavas4g: "https://localhost:26443", spki: ".replika/arad/spki.txt" },
+  arab:  { yok: "https://localhost:48443", hizli3g: "https://localhost:49443", yavas4g: "https://localhost:50443", spki: ".replika/arab/spki.txt" },
 };
 
 /** Görünümler: 390 = iPhone 13 (DPR 3, dokunmatik), 768 = tablet (DPR 2, dokunmatik), 1440 = MacBook (DPR 2), 1920 = harici ekran (DPR 1). */

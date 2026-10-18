@@ -7,6 +7,7 @@ import http from "node:http";
 export const PROFILLER = {
   hizli3g: { rttMs: 562.5, asagiKbps: 1638.4, yukariKbps: 750 },   // DevTools eski «Fast 3G»
   yavas4g: { rttMs: 150, asagiKbps: 1638.4, yukariKbps: 750 },     // Lighthouse mobil «Slow 4G»
+  kablo20: { rttMs: 40, asagiKbps: 20000, yukariKbps: 5000 },      // ev/4G ortası: poster 0,2 sn (video oynar), 37 MB video ≈ 15 sn
   seffaf: { rttMs: 0, asagiKbps: Infinity, yukariKbps: Infinity },  // kısıtsız; yalnız bayt sayacı için (A/B deneyleri)
 };
 const [dinle, hedef, ad] = process.argv.slice(2);

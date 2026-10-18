@@ -69,6 +69,17 @@ Sürümler: chromium 156.0.8078.4 · firefox 157.0 · webkit 27.2
 | yavas4g · soğuk | 820 | 644 | 1517 | 644 | 1517 | 1517 | 1517 | 1517 | 645 | 645 | 645 | 716 |
 | yavas4g · sıcak | 819 | 749 | 225 | 695 | 442 | 442 | 266 | 442 | 1 | 1 | 1 | 1 |
 
+#### «/» — Hattan geçen bayt, MB (vekil sayacı; süren video dahil; yalnız kısıtlı hat) — medyan (3 koşu)
+
+| ağ · önbellek | ch 390 | ch 768 | ch 1440 | ch 1920 | fi 390 | fi 768 | fi 1440 | fi 1920 | we 390 | we 768 | we 1440 | we 1920 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| yok · soğuk | — | — | — | — | — | — | — | — | — | — | — | — |
+| yok · sıcak | — | — | — | — | — | — | — | — | — | — | — | — |
+| hizli3g · soğuk | — | — | — | — | — | — | — | — | — | — | — | — |
+| hizli3g · sıcak | — | — | — | — | — | — | — | — | — | — | — | — |
+| yavas4g · soğuk | — | — | — | — | — | — | — | — | — | — | — | — |
+| yavas4g · sıcak | — | — | — | — | — | — | — | — | — | — | — | — |
+
 #### «/yontem» — LCP (ms) — medyan (3 koşu)
 
 | ağ · önbellek | ch 390 | ch 768 | ch 1440 | ch 1920 | fi 390 | fi 768 | fi 1440 | fi 1920 | we 390 | we 768 | we 1440 | we 1920 |
@@ -134,6 +145,17 @@ Sürümler: chromium 156.0.8078.4 · firefox 157.0 · webkit 27.2
 | hizli3g · sıcak | 767 | 881 | 846 | 0 | 770 | 770 | 770 | 1060 | 0 | 0 | 0 | 0 |
 | yavas4g · soğuk | 851 | 1171 | 1171 | 2228 | 852 | 889 | 852 | 926 | 257 | 257 | 185 | 257 |
 | yavas4g · sıcak | 566 | 566 | 829 | 0 | 1089 | 1089 | 1089 | 1089 | 0 | 0 | 0 | 0 |
+
+#### «/yontem» — Hattan geçen bayt, MB (vekil sayacı; süren video dahil; yalnız kısıtlı hat) — medyan (3 koşu)
+
+| ağ · önbellek | ch 390 | ch 768 | ch 1440 | ch 1920 | fi 390 | fi 768 | fi 1440 | fi 1920 | we 390 | we 768 | we 1440 | we 1920 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| yok · soğuk | — | — | — | — | — | — | — | — | — | — | — | — |
+| yok · sıcak | — | — | — | — | — | — | — | — | — | — | — | — |
+| hizli3g · soğuk | — | — | — | — | — | — | — | — | — | — | — | — |
+| hizli3g · sıcak | — | — | — | — | — | — | — | — | — | — | — | — |
+| yavas4g · soğuk | — | — | — | — | — | — | — | — | — | — | — | — |
+| yavas4g · sıcak | — | — | — | — | — | — | — | — | — | — | — | — |
 
 #### Firefox / Chromium LCP oranı (soğuk, medyan) — kabul ölçütü: fark < %20
 

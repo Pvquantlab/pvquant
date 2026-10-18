@@ -37,6 +37,7 @@ nohup caddy run --config "$R/caddy/Caddyfile.kenar" --adapter caddyfile > "$R/ca
 nohup node "$KOK/perf/replika/kisitla.mjs" $((T+1))443 ${T}443 hizli3g > "$R/caddy/hizli3g.log" 2>&1 & echo $! > "$R/caddy/hizli3g.pid"
 nohup node "$KOK/perf/replika/kisitla.mjs" $((T+2))443 ${T}443 yavas4g > "$R/caddy/yavas4g.log" 2>&1 & echo $! > "$R/caddy/yavas4g.pid"
 nohup node "$KOK/perf/replika/kisitla.mjs" $((T+3))443 ${T}443 seffaf > "$R/caddy/seffaf.log" 2>&1 & echo $! > "$R/caddy/seffaf.pid"
+nohup node "$KOK/perf/replika/kisitla.mjs" $((T+4))443 ${T}443 kablo20 > "$R/caddy/kablo20.log" 2>&1 & echo $! > "$R/caddy/kablo20.pid"
 sleep 3
 curl -sk -o /dev/null -w "kenar  %{http_version} %{http_code} %{time_total}s\n" "https://localhost:${T}443/"
 curl -sk -o /dev/null -w "hizli3g %{http_version} %{http_code} %{time_total}s\n" "https://localhost:$((T+1))443/"

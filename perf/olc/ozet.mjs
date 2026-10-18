@@ -23,7 +23,7 @@ for (const [k, kosular] of g) for (const o of ONB) {
   ozet.yukleme[k + "|" + o] = {
     n: kosular.length, ttfb: medyan(al((m) => m.ttfb)), fcp: medyan(al((m) => m.fcp)), lcp: medyan(al((m) => m.lcp)),
     cls: kosular.some((x) => x[o].cls === null) ? null : medyan(al((m) => m.cls)), tbt: kosular.some((x) => x[o].tbt === null) ? null : medyan(al((m) => m.tbt)),
-    kaymaMax: medyan(kaymaMax), aktarimKB: yuvarla(medyan(al((m) => m.aktarim)) / 1024), istek: medyan(al((m) => m.kaynakSayisi)), load: medyan(al((m) => m.load)),
+    kaymaMax: medyan(kaymaMax), hatBaytMB: kosular.some((x) => typeof x[o].hatBayt === "number") ? yuvarla(medyan(al((m) => m.hatBayt)) / 1e6, 2) : null, aktarimKB: yuvarla(medyan(al((m) => m.aktarim)) / 1024), istek: medyan(al((m) => m.kaynakSayisi)), load: medyan(al((m) => m.load)),
     lcpOge: [...new Set(al((m) => m.lcpEl))].slice(0, 3),
     hata: kosular.reduce((s, x) => s + (x[o].hata?.konsol?.length || 0) + (x[o].hata?.sayfa?.length || 0) + (x[o].hata?.http?.length || 0) + (x[o].hata?.basarisiz?.length || 0) + (x[o].gezinmeHatasi ? 1 : 0), 0),
   };
@@ -50,7 +50,7 @@ fs.writeFileSync(path.join(klasor, "ozet.json"), JSON.stringify(ozet, null, 1));
 // ── markdown tabloları
 const h = (v, b = 0) => (v === null || v === undefined ? "—" : typeof v === "number" ? v.toFixed(b).replace(".", ",") : String(v));
 let md = `<!-- olc/ozet.mjs tarafından üretildi; elle düzenlemeyin -->\n\nSürümler: ${Object.entries(ozet.surum).map(([m, s]) => `${m} ${s}`).join(" · ")}\n\n`;
-for (const s of SAYFA) for (const [met, ad, b] of [["lcp", "LCP (ms)", 0], ["fcp", "FCP (ms)", 0], ["cls", "CLS (yalnız Chromium destekler)", 3], ["kaymaMax", "En büyük öğe kayması, px (tüm motorlar; kendi izleyicimiz)", 0], ["tbt", "TBT yaklaşımı, ms (uzun görev; yalnız Chromium)", 0], ["aktarimKB", "Aktarım (KB, gözlem penceresi sonunda)", 0]]) {
+for (const s of SAYFA) for (const [met, ad, b] of [["lcp", "LCP (ms)", 0], ["fcp", "FCP (ms)", 0], ["cls", "CLS (yalnız Chromium destekler)", 3], ["kaymaMax", "En büyük öğe kayması, px (tüm motorlar; kendi izleyicimiz)", 0], ["tbt", "TBT yaklaşımı, ms (uzun görev; yalnız Chromium)", 0], ["aktarimKB", "Aktarım (KB, gözlem penceresi sonunda)", 0], ["hatBaytMB", "Hattan geçen bayt, MB (vekil sayacı; süren video dahil; yalnız kısıtlı hat)", 2]]) {
   md += `\n#### «${s === "ana" ? "/" : "/yontem"}» — ${ad} — medyan (3 koşu)\n\n| ağ · önbellek | ${MOTOR.flatMap((m) => GOR.map((v) => `${m.slice(0, 2)} ${v.split("x")[0]}`)).join(" | ")} |\n|---|${MOTOR.flatMap(() => GOR.map(() => "---:")).join("|")}|\n`;
   for (const a of AG) for (const o of ONB) md += `| ${a} · ${o === "soguk" ? "soğuk" : "sıcak"} | ${MOTOR.flatMap((m) => GOR.map((v) => h(ozet.yukleme[[m, v, a, s, o].join("|")]?.[met], b))).join(" | ")} |\n`;
 }
