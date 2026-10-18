@@ -28,19 +28,6 @@ const DONGU_SON = 19.0;
  *  süre hat hakkında bir şey söylemez — o zaman son AĞ ölçümünün kararı kullanılır (7 gün geçerli; yoksa video oynar).
  *  18.10: «ağdan mı» testi motor bağımsız (Firefox bellek önbelleğinde RT girdisi yazmıyor, WebKit 0 bayt yazıp
  *  kaydı {y:false} ile eziyordu) — ölçüm ve kayıt heroHazir.ts posterYavasMi'de. */
-/** 18.10 (perf/cross-browser): Gecko feConvolveMatrix'i WebRender'da çalıştırmıyor (gfx.webrender.svg-filter-effects
- *  .feconvolvematrix = false) — filtreli video ve poster her değişimde CPU'da süzülüyor (stok Firefox 158, 1440@2,
- *  kaydırırken 1,6 çekirdek, %7 kaçan kare; filtresiz 0,36 çekirdek). Aynı çekirdek, o = 2,8c − 0,45·(l+r+u+d), WebRender'ın
- *  GPU'da çalıştırdığı ilkellerle kurulur (4 feOffset + 4 aritmetik feComposite; Gecko ≥ 132'de varsayılan açık; ESR 128/115
- *  ve öncesinde bu ilkeller de CPU'da → özgün filtre kalır). Ofset 1 AYGIT pikseli: Chromium çekirdeği aygıt pikselinde
- *  uygular (referans görünüm; ayrışık kurulum Chromium'un özgün çıktısıyla ≤2/255 aynı), Gecko'nun feConvolveMatrix'i CSS
- *  pikselinde uyguluyordu — Retina'da iki kat kaba, belirgin fazla keskin (kenar enerjisi 12,9 ↔ Chrome 9,4; yeni 9,5).
- *  Ölçümler: perf/analiz (filtre-esdeger, ab-boya). 1,001: Gecko ofseti tamsayıya keserse 1 aygıt pikselinin altına düşmesin. */
-function geckoWebRenderFiltresi(): boolean {
-  if (typeof navigator === "undefined") return false;
-  const m = /\bFirefox\/(\d+)/.exec(navigator.userAgent);
-  return !!m && Number(m[1]) >= 132;
-}
 const OYNATMA_HIZI = 0.7;   // 14.10 kullanıcı: arka plan göze batmasın — %70 hız (11,5 s'lik aralık ~16 s sürer)
 /** 18.10 sıralama (perf/cross-browser): video, levha önden indirmesi (useCanlandir) bitince ya da en geç bu süre sonra iner;
  *  süre load'dan sayılır. 8 levha 2.525.490 B ≈ 20,2 Mbit: tek başına 20 Mbps'te ~1,0 sn, 100'de ~0,2 sn. 4 sn yalnız
@@ -68,21 +55,6 @@ export function Hero({ kabuk = false }: { kabuk?: boolean } = {}) {
   const [posterHazir, setPosterHazir] = useState(false);
   const [videoGorunur, setVideoGorunur] = useState(false);
   const yavasHat = useRef(false);
-  const [wr] = useState(geckoWebRenderFiltresi);
-  const [kayma, setKayma] = useState(() => (typeof window === "undefined" ? 1.001 : 1.001 / (window.devicePixelRatio || 1)));
-  useEffect(() => {                                            // yakınlaştırma / ekran değişimi aygıt piksel oranını değiştirir
-    if (!wr) return;
-    let mq: MediaQueryList | null = null;
-    const izle = () => {
-      const dpr = window.devicePixelRatio || 1;
-      setKayma(1.001 / dpr);
-      mq?.removeEventListener("change", izle);
-      mq = window.matchMedia(`(resolution: ${dpr}dppx)`);
-      mq.addEventListener("change", izle);
-    };
-    izle();
-    return () => mq?.removeEventListener("change", izle);
-  }, [wr]);
   const posterYuklendi = (e: SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget;
     yavasHat.current = posterYavasMi(new URL(santralPoster, window.location.href).href);
@@ -148,24 +120,12 @@ export function Hero({ kabuk = false }: { kabuk?: boolean } = {}) {
     };
   }, [posterHazir]);
   return (
-    <section className={wr ? "vt-hero vt-hero--a vt-hero--video vt-hero--wr" : "vt-hero vt-hero--a vt-hero--video"} aria-labelledby="vt-hero-baslik">
+    <section className="vt-hero vt-hero--a vt-hero--video" aria-labelledby="vt-hero-baslik">
       {/* 14.10: videoya hafif keskinleştirme (SVG unsharp çekirdeği) — uzak panel sıraları 1440p'de yumuşak kalıyordu */}
       <svg className="vt-hero__filtre" width="0" height="0" aria-hidden="true" focusable="false">
         <filter id="vt-keskin" colorInterpolationFilters="sRGB">
           <feConvolveMatrix order="3" kernelMatrix="0 -0.45 0 -0.45 2.8 -0.45 0 -0.45 0" divisor="1" preserveAlpha="true" edgeMode="duplicate" />
         </filter>
-        {wr && (
-          <filter id="vt-keskin-wr" colorInterpolationFilters="sRGB" x="0" y="0" width="1" height="1">
-            <feOffset in="SourceGraphic" dx={kayma.toFixed(4)} dy="0" result="l" />
-            <feOffset in="SourceGraphic" dx={(-kayma).toFixed(4)} dy="0" result="r" />
-            <feOffset in="SourceGraphic" dx="0" dy={kayma.toFixed(4)} result="u" />
-            <feOffset in="SourceGraphic" dx="0" dy={(-kayma).toFixed(4)} result="a" />
-            <feComposite in="l" in2="r" operator="arithmetic" k2="0.5" k3="0.5" result="lr" />
-            <feComposite in="u" in2="a" operator="arithmetic" k2="0.5" k3="0.5" result="ua" />
-            <feComposite in="lr" in2="ua" operator="arithmetic" k2="0.5" k3="0.5" result="m" />
-            <feComposite in="SourceGraphic" in2="m" operator="arithmetic" k2="2.8" k3="-1.8" />
-          </filter>
-        )}
       </svg>
       <div className="vt-hero__sahne" aria-hidden="true">
         {/* Katmanlar (alttan üste): video (posterini kendi çizer, baştan görünür) → poster resmi (aynı dosya; video

@@ -1976,9 +1976,6 @@
 .vt .vt-hero__poster { position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: cover; object-position: 50% 0%;
   transform: scaleX(-1); filter: url(#vt-keskin); transition: opacity 900ms ease-in-out; }
 .vt .vt-hero__poster.is-gecti { opacity: 0; }
-/* 18.10 perf/cross-browser: Gecko ≥ 132 — aynı keskinleştirme WebRender'ın GPU ilkelleriyle, 1 aygıt pikseli ölçeğinde
-   (Hero.tsx geckoWebRenderFiltresi; Chromium ve WebKit özgün feConvolveMatrix'te kalır). */
-.vt .vt-hero--wr .vt-hero__video, .vt .vt-hero--wr .vt-hero__poster { filter: url(#vt-keskin-wr); }
 /* 16.10 hız turu 4 (film karesiyle yakalandı): eski «Ufuk» kuralları (.vt-hero--a .vt-hero__sahne img → width:100%;
    height:auto; ≤1080 px'te right:-6%, width:min(135%,980px)) özgüllükte üstündeydi — poster sahneyi örtmüyor, 16:9 kutuda
    kalıyordu: mobilde üstte küçük ölçekli ikinci bir ufuk bandı + dikiş (≈285 px), masaüstünde (1440×900) y≈801'de dikiş. Poster,
