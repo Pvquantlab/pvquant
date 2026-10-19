@@ -101,7 +101,7 @@ test("vitrin: metrik eşlemeli yedek yüz Inter Tight'tan hemen sonra; latin-ext
     assert.match(son ?? "", /^'Inter Tight', 'Inter Tight Yedek', ui-sans-serif, system-ui, sans-serif$/, j);
   }
   const yapi = oku("../vite.config.ts");
-  assert.match(yapi, /plugins: \[interTightAralik\(\), react\(\), fontOnYukle\(\), yedekFont\(\), vitrinKabugu\(\)\]/);
+  assert.match(yapi, /plugins: \[interTightAralik\(\), react\(\), fontOnYukle\(\), yedekFont\(\), vitrinKabugu\(\), cssGom\(\)\]/);
   assert.match(yapi, /new URL\('\.\/src\/features\/vitrin\/font\/inter-tight-yedek\.css', import\.meta\.url\)/);
   assert.ok(yapi.includes(`document.fonts.load(w+" 1em \\'Inter Tight Yedek\\'").catch(function(){})`), "yerel yüzler CSS inmeden yüklenir; yerel font yoksa (Android) red yakalanır");
   assert.ok(yapi.includes("'U+0100-011D,U+0120-012F,U+0132-015D,U+0160-02BA,'"), "ğ İ ı ş latin-ext'ten çıkar");

@@ -165,9 +165,44 @@ function vitrinKabugu(): Plugin {
   }
 }
 
+/** 19.10 perf/cross-browser — giriş CSS'i HTML'e gömülür. Kritik yol ölçümü (yavaş 4G): ilk boyama CSS'in inmesini bekliyor;
+ *  22 KB'lık CSS ayrı istekte JS (74 KB), dört font ve /v1/dogrulama ile bandı paylaşıyor, bitişi koşudan koşuya 0,8–1,4 sn
+ *  arasında oynuyordu. Gömülünce CSS baytları HTML akışında ilk sırada gelir; ek istek ve gidiş-dönüş yok. Modül betiği stilin
+ *  ARDINA alınır: önden tarayıcı JS'i stil baytları inmeden istemesin (modül betiği ertelenmiş çalışır, sırası değişmez).
+ *  Ölçüm (5 koşu, medyan FCP): Chromium 390 1112 → 692 ms, 1920 1320 → 748 ms; Firefox 390 ~1250 → 684; WebKit 390 ~1280 → 693.
+ *  Maliyet: index.html br 3,6 → 25,6 KB (her yolda; HTML no-cache ile yeniden doğrulanır, değişmediyse 304). CSS dosyası
+ *  dist'te kalır, hiçbir yerden istenmez (JS demetleri ona başvurmuyor — derlemede denetlenir). Tasarım aynı: aynı CSS, aynı
+ *  sıra (satır içi yedek yüz ve kabuk kuralı önce gelir). CSS belgenin adresine göre çözüleceği için göreli url() derlemeyi durdurur. */
+export function cssGom(): Plugin {
+  return {
+    name: 'pvq-css-gom',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        const link = /<link rel="stylesheet" crossorigin href="\/(assets\/index-[\w-]+\.css)">\n?/.exec(html)
+        const betik = /[ \t]*<script type="module" crossorigin src="\/assets\/index-[\w-]+\.js"><\/script>\n?/.exec(html)
+        if (!link || !betik) throw new Error('index.html: giriş CSS bağlantısı ya da modül betiği bulunamadı')
+        const varlik = ctx.bundle?.[link[1]]
+        if (!varlik || varlik.type !== 'asset') throw new Error(`derleme: ${link[1]} bulunamadı`)
+        const css = typeof varlik.source === 'string' ? varlik.source : new TextDecoder().decode(varlik.source)
+        if (/<\/style/i.test(css)) throw new Error(`${link[1]}: «</style» içeriyor, gömülemez`)
+        const goreli = [...css.matchAll(/url\(\s*(['"]?)([^'")]*)\1\s*\)/g)].map((m) => m[2]).filter((u) => !/^(\/|data:|#|%23)/.test(u))
+        if (goreli.length) throw new Error(`${link[1]}: göreli url() gömülünce bozulur: ${goreli.slice(0, 3).join(', ')}`)
+        const ad = link[1].replace(/^assets\//, '')
+        for (const [k, v] of Object.entries(ctx.bundle ?? {})) {
+          if (v.type === 'chunk' && v.code.includes(ad)) throw new Error(`${k} ${ad} dosyasına başvuruyor: gömülürse CSS iki kez yüklenir`)
+        }
+        // işlev biçimli değiştirme: CSS'teki «$&», «$'» gibi diziler değiştirme deseni sayılmasın
+        return html.replace(betik[0], '').replace(link[0], () => `<style>${css}</style>\n${betik[0]}`)
+      },
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [interTightAralik(), react(), fontOnYukle(), yedekFont(), vitrinKabugu()],
+  plugins: [interTightAralik(), react(), fontOnYukle(), yedekFont(), vitrinKabugu(), cssGom()],
   // Türkçe alt küme yüzleri CSS'e GÖMÜLMEZ: gömülü (data:) font ilk boyamadan sonra çözülüyor, ğ/ş/İ ilk karede yedek
   // fontla çizilip bir kare sonra yerine geçiyordu (satır kayıyor). Ayrı ~1,5 KB'lık dosya + ön yükleme: ilk boyama onu bekler.
   build: { assetsInlineLimit: (dosya) => (/inter-tight-tr-\d{3}\.woff2$/.test(dosya) ? false : undefined) },
