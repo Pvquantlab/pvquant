@@ -1,0 +1,36 @@
+ÖZET chromium 390x844 sonra: ilk kare yedek yüzle 0/5
+ÖZET chromium 390x844 sonra7: ilk kare yedek yüzle 0/5
+ÖZET chromium 1440x900 sonra: ilk kare yedek yüzle 0/5
+ÖZET chromium 1440x900 sonra7: ilk kare yedek yüzle 0/5
+ÖZET firefox 390x844 sonra: ilk kare yedek yüzle 0/5
+ÖZET firefox 390x844 sonra7: ilk kare yedek yüzle 0/5
+ÖZET firefox 1440x900 sonra: ilk kare yedek yüzle 0/5
+ÖZET firefox 1440x900 sonra7: ilk kare yedek yüzle 0/5
+ÖZET webkit 390x844 sonra: ilk kare yedek yüzle 0/5
+ÖZET webkit 390x844 sonra7: ilk kare yedek yüzle 0/5
+ÖZET webkit 1440x900 sonra: ilk kare yedek yüzle 0/5
+ÖZET webkit 1440x900 sonra7: ilk kare yedek yüzle 0/5
+kablo20 chromium 390x844 sonra  #1 FCP 312 · 500/600 font bitişi 254 → ilk kare web fontuyla
+kablo20 chromium 390x844 sonra7 #1 FCP 232 · 500/600 font bitişi 265 → ilk kare YEDEK YÜZLE
+kablo20 ÖZET chromium 390x844 sonra: ilk kare yedek yüzle 0/3
+kablo20 ÖZET chromium 390x844 sonra7: ilk kare yedek yüzle 3/3
+kablo20 firefox 390x844 sonra  #1 FCP 383 · 500/600 font bitişi 351 → ilk kare web fontuyla
+kablo20 firefox 390x844 sonra7 #1 FCP 326 · 500/600 font bitişi 400 → ilk kare YEDEK YÜZLE
+kablo20 ÖZET firefox 390x844 sonra: ilk kare yedek yüzle 0/3
+kablo20 ÖZET firefox 390x844 sonra7: ilk kare yedek yüzle 3/3
+kablo20 webkit 390x844 sonra  #1 FCP 546 · 500/600 font bitişi 308 → ilk kare web fontuyla
+kablo20 webkit 390x844 sonra7 #1 FCP 543 · 500/600 font bitişi 311 → ilk kare web fontuyla
+kablo20 ÖZET webkit 390x844 sonra: ilk kare yedek yüzle 0/3
+kablo20 ÖZET webkit 390x844 sonra7: ilk kare yedek yüzle 1/3
+yavas4g chromium 390x844 sonra  #1 FCP 1500 · 500/600 font bitişi 1320 → ilk kare web fontuyla
+yavas4g chromium 390x844 sonra7 #1 FCP 772 · 500/600 font bitişi 1466 → ilk kare YEDEK YÜZLE
+yavas4g ÖZET chromium 390x844 sonra: ilk kare yedek yüzle 2/3
+yavas4g ÖZET chromium 390x844 sonra7: ilk kare yedek yüzle 3/3
+yavas4g firefox 390x844 sonra  #1 FCP 1394 · 500/600 font bitişi 1568 → ilk kare YEDEK YÜZLE
+yavas4g firefox 390x844 sonra7 #1 FCP 736 · 500/600 font bitişi 1434 → ilk kare YEDEK YÜZLE
+yavas4g ÖZET firefox 390x844 sonra: ilk kare yedek yüzle 2/3
+yavas4g ÖZET firefox 390x844 sonra7: ilk kare yedek yüzle 3/3
+yavas4g webkit 390x844 sonra  #1 FCP 1328 · 500/600 font bitişi 1422 → ilk kare YEDEK YÜZLE
+yavas4g webkit 390x844 sonra7 #1 FCP 730 · 500/600 font bitişi 1438 → ilk kare YEDEK YÜZLE
+yavas4g ÖZET webkit 390x844 sonra: ilk kare yedek yüzle 3/3
+yavas4g ÖZET webkit 390x844 sonra7: ilk kare yedek yüzle 3/3

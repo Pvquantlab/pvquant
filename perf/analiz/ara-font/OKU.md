@@ -31,3 +31,15 @@ geniş ekranda poster LCP'si inişinden 0,6–0,9 sn sonra. Pencereli Chromium'd
 kabuksuz dalda stilden önce `<link rel="modulepreload">`. `yontem-erken-js.txt` (Chromium yavaş 4G /yontem, 3'er dönüşümlü koşu, FCP
 medyanı; sonra2 = 0dee665, sonra5 = 0304003, sonra6 = düzeltmeli): 390 1484 / 1488 / 1188 · 768 1372 / 1468 / 1180 · 1920 1508 / 1520 /
 1196 ms. `js-istek.txt`: üç motorda index.js için tek istek, konsol temiz, «/»de modulepreload yok.
+
+## Hızlı hatta ilk karede yedek font (bağımsız inceleme sorusu) → `160a22a`
+`font-flas.txt` (önceki derleme `sonra` = 0dee665 ↔ `sonra7` = d853320, 390×844, kısıtsız / 20 Mbps (kablo20) / yavaş 4G):
+kısıtsız hatta iki derlemede de ilk metin web fontuyla (0/5); 20 Mbps'te yeni derlemede ilk metin metrik eşlemeli yedek yüzle
+(Chromium 3/3, Firefox 3/3, WebKit 1–2/3; önceki 0/3) — fontlardan ~30–75 ms önce çiziliyor. `font-flas.mjs` ilk görünür metni LCP
+API'sinin ilk metin adayından alır (WebKit'te API yok → FCP).
+- `font-fallback.txt`: Inter Tight için `font-display: fallback` (`araff`, `olc/iz/deney-fallback.mjs`) — Firefox ilk metni yine
+  yedekle çizdi (3/3); engelleme süresi font isteğinin başından sayılıyor. Reddedildi.
+- `font-bekle.txt`: `fontBekle` (vitrin, Chromium/Gecko; #root fontlar ya da 100 ms'ye dek gizli) — 20 Mbps'te Chromium 0/3, Firefox
+  0/3; yavaş 4G FCP Chromium 824, Firefox 777 ms (beklemesiz 700 / 668; önceki 1116 / 1020). WebKit'te gizleme (visibility ya da
+  opacity, `document.fonts.load` ile de onsuz da) zamanlayıcı açsa bile çizimi fontlara dek erteledi (`font-bekle-iz.mjs`: sınıf
+  779 ms'de kalktı, FCP 1814 ms) → WebKit dışarıda (20 Mbps'te 2/3 yedekle, FCP 286 ms; önceki 345).

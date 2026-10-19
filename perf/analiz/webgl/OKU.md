@@ -69,3 +69,10 @@ Chrome'da WebGL↔video karşılaştırması renk yönetimi farkıyla kirli (kim
 - **Ara sonuç (hatalı sürüm, belge için):** `dpr1-esdeger.txt` — device-pixel-content-box'lı ilk düzeltme 1x'te 2x tampon kullanıyordu
   (1920@1 5,59 · 1440@1 8,38 · 1366@1 18,82; tuval CSS'ten %10 yumuşak). `bayat-kare.txt`'teki 1440@1 5,60 de o sürümden.
 - **Bayat kare yok** (`bayat-kare.txt`): duraklat + sar sonrası rVFC bir kez geliyor, tuval yeni kareyi çiziyor.
+
+## Yazılımla birleştirme (19.10, `d853320`)
+Son doğrulama zincirinin başsız Firefox etkileşim ölçümü (`../ara-son-e1e6b3c/etkilesim.jsonl`): tuval etkinken boşta kare aralığı
+ortancası 1440'ta 100–133, 1920'de 150–200 ms (önceki derlemede 16,7). `../webgl-son/yazilim-ff.txt`: Playwright Firefox 157 başsızda
+WebGL bağlamı failIfMajorPerformanceCaveat'i geçiyor, tuval etkin, ortanca 99,8 ms (CSS süzgeçli derleme 16,7). Düzeltme: ilk saniye
+kare sınaması (ortanca > 25 ms → söküm + 7 gün kayıt). `yazilim-ff2.txt`: 1. açılışta tuval 1656 ms'de etkin, 2173 ms'de söküldü,
+sonra 16,7 ms; 2. açılışta hiç kurulmadı. `../webgl-son/sinama/`: stok Firefox 158 (donanım) tuval 30 sn etkin kaldı, düşen kare 0.
