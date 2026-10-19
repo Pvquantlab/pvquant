@@ -1,7 +1,7 @@
 // 16.10 hız turu 4 — web imajındaki Caddy sözleşmesi (Caddyfile.web) ve ön-sıkıştırma.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 const oku = (yol: string) => readFileSync(new URL(yol, import.meta.url), "utf8");
 
@@ -31,4 +31,39 @@ test("imaj derlemesi ön-sıkıştırma betiğini çalıştırır", () => {
   const re = new RegExp(uzanti[1], uzanti[2]);
   for (const ad of ["a.png", "b.webp", "c.jpg", "d.jpeg", "e.avif", "f.gif", "g.mp4", "h.webm", "i.woff2", "j.woff", "k.PNG"]) assert.ok(!re.test(ad), `sıkıştırılmamalı: ${ad}`);
   for (const ad of ["index-x.js", "index-x.css", "index.html", "icons.svg", "a.json"]) assert.ok(re.test(ad), `sıkıştırılmalı: ${ad}`);
+});
+
+// 19.10 (v2.460): /robots.txt gerçek dosya olmalı. Yokken try_files onu da index.html'e çeviriyordu (200 text/html) —
+// Lighthouse «robots.txt is not valid — 38 errors», SEO her sayfada 91. Burada tarayıcının yaptığı okunur: yalnız bilinen
+// yönergeler, kurallar bir user-agent grubunun içinde, «*» için en uzun eşleşen kural kazanır (eşitlikte Allow, RFC 9309).
+// Site haritası yok; Sitemap satırı eklenirse gösterdiği dosya public/'te olmalı (yoksa o adres de index.html'e düşer).
+test("robots.txt geçerli, kamu sayfaları taranabilir, Sitemap yalnız var olan dosyayı gösterir", () => {
+  const satirlar = oku("../public/robots.txt").split(/\r?\n/).map((l) => l.replace(/#.*/, "").trim()).filter(Boolean);
+  assert.ok(satirlar.length, "robots.txt boş");
+  const kurallar: { izin: boolean; desen: string }[] = [];
+  let ajanlar: string[] = [], kuralda = false;   // grup = ardışık user-agent satırları + ardından gelen kurallar
+  for (const l of satirlar) {
+    const m = /^(user-agent|allow|disallow|sitemap)\s*:\s*(.*)$/i.exec(l);
+    assert.ok(m, `tanınmayan satır: ${l}`);
+    const ad = m[1].toLowerCase(), deger = m[2];
+    if (ad === "sitemap") {
+      const yol = new URL(deger).pathname;   // göreli adres burada patlar — yönerge mutlak URL ister
+      assert.ok(existsSync(new URL(`../public${yol}`, import.meta.url)), `site haritası public/'te yok: ${yol}`);
+    } else if (ad === "user-agent") {
+      if (kuralda) { ajanlar = []; kuralda = false; }
+      ajanlar.push(deger.toLowerCase());
+    } else {
+      assert.ok(ajanlar.length, `user-agent'tan önce kural: ${l}`);
+      kuralda = true;
+      if (ajanlar.includes("*")) kurallar.push({ izin: ad === "allow", desen: deger });
+    }
+  }
+  const eslesir = (desen: string, yol: string) =>
+    new RegExp("^" + desen.replace(/[.+?^{}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*")).test(yol);
+  const izinli = (yol: string) => {
+    const en = kurallar.filter((k) => k.desen && eslesir(k.desen, yol))
+      .sort((a, b) => b.desen.length - a.desen.length || Number(b.izin) - Number(a.izin))[0];
+    return !en || en.izin;
+  };
+  for (const yol of ["/", "/yontem"]) assert.ok(izinli(yol), `kamu sayfası taramaya kapalı: ${yol}`);
 });
