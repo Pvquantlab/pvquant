@@ -9,9 +9,16 @@ import react from '@vitejs/plugin-react'
  *  Preload ile istek HTML'le başlar. 400 (gövde) ve 300 ekranın altında kalır, CSS keşfiyle her zamanki gibi iner.
  *  16.10 hız turu 4: latin-ext ön yüklemesi kalktı — Türkçe ğ/ş/İ artık ~1,5 KB'lık alt kümeden
  *  (features/vitrin/font/inter-tight-tr.css); iki 37 KB'lık latin-ext dosyası ilk boyamayı kendi bitişlerine
- *  bağlıyordu (mobil 3G'de 8/8 koşu). Ön yükleme 4 dosya 118 KB → 4 dosya 47 KB (latin 500/600 + tr 500/600). */
+ *  bağlıyordu (mobil 3G'de 8/8 koşu). Ön yükleme 4 dosya 118 KB → 4 dosya 47 KB (latin 500/600 + tr 500/600).
+ *  19.10 perf/cross-browser: etiketler <head> sonuna değil <body> başına konur. Chromium, <body> oluşmadan eklenen font ön
+ *  yüklemelerini ilk boyamayı engelleyen kaynak sayıyor: CSS bitince çizim fontları ya da 100 ms'lik bir zamanlayıcıyı bekliyordu
+ *  (izleme: Document::BeginLifecycleUpdatesIfRenderingReady CSS'ten sonra hâlâ false, ~100 ms sonra zamanlayıcıyla true;
+ *  Chromium 156 ve Chrome 155). Metrik eşlemeli yedek yüz sayesinde font değişimi kaydırmadığı için bu bekleme bir şey
+ *  kazandırmıyordu. Gövdedeki <link rel=preload>'u önden tarayıcı yine HTML'le birlikte bulur, istek aynı anda başlar; Firefox ve
+ *  WebKit ön yüklemeyi zaten engelleyici saymıyor. Ölçüm (yavaş 4G, 5'er koşu): CSS bitişi → FCP 390'da 154–173 → 57–85 ms,
+ *  1920'de 213–228 → 107–119 ms. */
 const KRITIK_FONT = /^inter-tight-(latin-(500|600)-normal|tr-(500|600))-[\w-]+\.woff2$/
-function fontOnYukle(): Plugin {
+export function fontOnYukle(): Plugin {
   const dosyalar = new Set<string>()
   return {
     name: 'pvq-font-onyukle',
@@ -22,8 +29,10 @@ function fontOnYukle(): Plugin {
       order: 'post',
       handler(html) {
         const etiketler = [...dosyalar].sort().map((d) =>
-          `    <link rel="preload" as="font" type="font/woff2" crossorigin href="/${d}" />`).join('\n')
-        return etiketler ? html.replace('</head>', `${etiketler}\n  </head>`) : html
+          `\n    <link rel="preload" as="font" type="font/woff2" crossorigin href="/${d}" />`).join('')
+        if (!etiketler) return html
+        if (!html.includes('<body>')) throw new Error('index.html: <body> bulunamadı')
+        return html.replace('<body>', `<body>${etiketler}`)
       },
     },
   }
