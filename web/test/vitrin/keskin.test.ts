@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { KESKIN_CEKIRDEK, KESKIN_PARCA, keskinEslem, keskinGLGerekli, keskinGLKur, kutuOlc } from "../../src/features/vitrin/keskinGL.ts";
+import { KESKIN_CEKIRDEK, KESKIN_PARCA, karelerYavasMi, keskinEslem, keskinGLGerekli, keskinGLKur, keskinYazilimKayitli, kutuOlc } from "../../src/features/vitrin/keskinGL.ts";
 
 const oku = (yol: string) => readFileSync(new URL(yol, import.meta.url), "utf8");
 const rvfc = { requestVideoFrameCallback() {} };
@@ -51,6 +51,21 @@ test("tampon boyu: kesirli CSS kutusu × devicePixelRatio (device-pixel-content-
   assert.deepEqual(kutuOlc(undefined, { W: 390, H: 844 }, 3), { W: 390, H: 844, gw: 1170, gh: 2532, dpr: 3 });
 });
 
+test("yazılımla birleştirme kaydı (7 gün) ve kare sınaması (ortanca > 25 ms)", () => {
+  const simdi = 1_800_000_000_000, gun = 24 * 3600 * 1000;
+  const depo = (deger: string | null) => ({ getItem: (k: string) => (k === "pvq_keskin_yazilim" ? deger : null) });
+  assert.equal(keskinYazilimKayitli(simdi, depo(JSON.stringify({ t: simdi - gun }))), true);
+  assert.equal(keskinYazilimKayitli(simdi, depo(JSON.stringify({ t: simdi - 8 * gun }))), false, "7 günden eski");
+  assert.equal(keskinYazilimKayitli(simdi, depo(JSON.stringify({ t: simdi + gun }))), false, "gelecekte");
+  assert.equal(keskinYazilimKayitli(simdi, depo(null)), false);
+  assert.equal(keskinYazilimKayitli(simdi, depo("bozuk{")), false);
+  assert.equal(keskinYazilimKayitli(simdi, { getItem: () => { throw new Error("SecurityError"); } }), false);
+  assert.equal(karelerYavasMi(Array(30).fill(16.7)), false, "donanım: 60 Hz");
+  assert.equal(karelerYavasMi(Array(30).fill(8.3)), false, "120 Hz");
+  assert.equal(karelerYavasMi([16.7, 17, 99, 100, 101, 100, 98, 120, 100, 99]), true, "yazılım: ~100 ms");
+  assert.equal(karelerYavasMi([100, 100, 100, 100]), false, "5'ten az örnekle karar yok");
+});
+
 test("WebGL çekirdeği Hero'daki SVG süzgeciyle aynı; eşleme satırı sabit", () => {
   const hero = oku("../../src/features/vitrin/Hero.tsx");
   const m = /<feConvolveMatrix order="3" kernelMatrix="([^"]+)" divisor="1" preserveAlpha="true" edgeMode="duplicate" \/>/.exec(hero);
@@ -71,6 +86,7 @@ function sahne(sec: Sec = {}) {
   let kare: (() => void) | null = null, roGeri: ((g: unknown[]) => void) | null = null, roKutu = "";
   const mqDinle = new Set<() => void>();
   const pencere = { devicePixelRatio: 2, matchMedia: (q: string) => ({ media: q, addEventListener: (_: string, f: () => void) => mqDinle.add(f), removeEventListener: (_: string, f: () => void) => mqDinle.delete(f) }) };
+  const raf: ((t: number) => void)[] = [], depo = new Map<string, string>();
   const v = { videoWidth: 2560, videoHeight: 1440, readyState: 4, getBoundingClientRect: () => ({ width: 1440, height: 810 }), classList: sinif(),
     requestVideoFrameCallback: (f: () => void) => { kare = f; return 7; }, cancelVideoFrameCallback: (n: number) => kayit.push(`iptal ${n}`) };
   const dinle: Record<string, (e: Event) => void> = {};
@@ -87,10 +103,13 @@ function sahne(sec: Sec = {}) {
   } });
   const c = { width: 300, height: 150, classList: sinif(), getContext: () => (sec.glVar === false ? null : gl),
     addEventListener: (t: string, f: (e: Event) => void) => { dinle[t] = f; }, removeEventListener: (t: string) => { delete dinle[t]; } };
-  Object.assign(globalThis, { window: pencere, getComputedStyle: () => ({ objectPosition: "50% 0%" }),
+  Object.assign(globalThis, { window: pencere, requestAnimationFrame: (f: (t: number) => void) => raf.push(f), document: { visibilityState: "visible" },
+    localStorage: { getItem: (k: string) => depo.get(k) ?? null, setItem: (k: string, d: string) => depo.set(k, d) }, getComputedStyle: () => ({ objectPosition: "50% 0%" }),
     ResizeObserver: class { constructor(f: (g: unknown[]) => void) { roGeri = f; } observe(_: unknown, o?: { box?: string }) { roKutu = o?.box ?? ""; } disconnect() { kayit.push("ro bitti"); } } });
   const yogunluk = (d: number) => { pencere.devicePixelRatio = d; for (const f of [...mqDinle]) f(); };
-  return { v, c, kayit, dinle, kare: () => kare?.(), ro: (g: unknown) => roGeri?.([g]), roKutu: () => roKutu, yogunluk, mqSay: () => mqDinle.size };
+  let saat = 1000;
+  const kareler = (aralik: number, n: number) => { for (let i = 0; i < n && raf.length; i++) { saat += aralik; for (const f of raf.splice(0)) f(saat); } };
+  return { v, c, kayit, dinle, kare: () => kare?.(), ro: (g: unknown) => roGeri?.([g]), roKutu: () => roKutu, yogunluk, mqSay: () => mqDinle.size, kareler, depo };
 }
 const kur = (s: ReturnType<typeof sahne>) => keskinGLKur(s.v as unknown as HTMLVideoElement, s.c as unknown as HTMLCanvasElement);
 
@@ -127,6 +146,17 @@ test("kurulum ve çizim: ilk hatasız karede tuval görünür, video süzgecini 
   assert.ok(s.kayit.includes("iptal 7") && s.kayit.includes("bağlam bırakıldı") && s.kayit.includes("ro bitti"));
 });
 
+test("ilk saniye sınaması: donanımda tuval kalır; yazılımla birleştirmede (~100 ms kare) söker ve 7 gün hatırlar", () => {
+  const d = sahne(); kur(d); d.kare(); d.kareler(16.7, 40);
+  assert.equal(d.c.classList.has("is-hazir"), true, "16,7 ms: tuval kalır");
+  assert.equal(d.depo.has("pvq_keskin_yazilim"), false);
+  const y = sahne(); kur(y); y.kare(); y.kareler(100, 20);
+  assert.equal(y.c.classList.has("is-hazir"), false, "100 ms: tuval söküldü");
+  assert.equal(y.v.classList.has("is-gl"), false, "CSS süzgeci geri geldi");
+  assert.ok(y.kayit.includes("bağlam bırakıldı"));
+  assert.ok(typeof JSON.parse(y.depo.get("pvq_keskin_yazilim") ?? "{}").t === "number", "karar kaydedildi");
+});
+
 test("geri dönüşler: WebGL yok, bağlam kayıp, gölgelendirici yok → null; ilk karede GL hatası ve sonradan bağlam kaybı → CSS süzgeci", () => {
   assert.equal(kur(sahne({ glVar: false })), null);
   assert.equal(kur(sahne({ kayip: true })), null);
@@ -145,6 +175,7 @@ test("Hero: tuval yalnız keskinGL'de ve videonun hemen ardında; erime GL'den b
   const hero = oku("../../src/features/vitrin/Hero.tsx");
   assert.match(hero, /<\/video>\n\s*\)\}\n\s*\{keskinGL && <canvas ref=\{tuval\} className="vt-hero__keskin" aria-hidden="true" \/>\}\n\s*\{!kabuk && <img className=\{videoGorunur/);
   assert.match(hero, /const \[keskinGL\] = useState\(\(\) => !kabuk && typeof navigator !== "undefined"/);
+  assert.match(hero, /&& keskinGLGerekli\(navigator\.userAgent, HTMLVideoElement\.prototype\) && !keskinYazilimKayitli\(Date\.now\(\)\)\);/, "yazılım kaydı varsa tuval hiç kurulmaz");
   assert.match(hero, /requestAnimationFrame\(\(\) => setVideoGorunur\(true\)\);[^\n]*\n\s*if \(!glDenendi && tuval\.current\) \{ glDenendi = true; try \{ gl = keskinGLKur\(v, tuval\.current\); \} catch \{ gl = null; \} \}/);
   assert.match(hero, /v\.removeEventListener\("playing", oynuyor\);\n\s*gl\?\.\(\);/);
   const css = oku("../../src/features/vitrin/vitrin.css");

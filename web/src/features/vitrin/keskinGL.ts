@@ -13,7 +13,28 @@
  *  yumuşuyordu) ve yoğunluk değişince gözlemciyi tetiklemiyor (ölçüldü: perf/olc/iz/ro-sina.mjs, perf/analiz/webgl-son). Chromium ve WebKit'te kullanılmaz:
  *  onlar süzgeci zaten ekran kartında uyguluyor.
  *  Geri dönüş (CSS süzgeci olduğu gibi kalır): WebGL yok, yalnız yazılımla çalışıyor (failIfMajorPerformanceCaveat), bağlam kayıp,
- *  gölgelendirici/program kurulamadı, ilk karede GL hatası ya da istisna, sonradan bağlam kaybı, requestVideoFrameCallback yok (Firefox < 132). */
+ *  gölgelendirici/program kurulamadı, ilk karede GL hatası ya da istisna, sonradan bağlam kaybı, requestVideoFrameCallback yok (Firefox < 132),
+ *  birleştirici yazılımla çalışıyor (aşağıda: ilk saniyenin kare aralığı sınaması). */
+
+/** Yazılımla birleştirme sınaması: Firefox'ta birleştirici yazılımla çalışırken (software WebRender — engellenmiş sürücü, sanal makine,
+ *  uzak masaüstü, başsız) WebGL bağlamı «performans engeli»ni geçebiliyor ama tuval her karede işlemciye geri okunuyor: ölçüldü (Playwright
+ *  Firefox 157 başsız, 1440×900) boşta kare aralığı ortancası CSS süzgeciyle 16,7 ms, tuvalle 99,8 ms. Tuval ilk karesinden sonra ~1 sn
+ *  (en çok 30 kare) kare aralığına bakar; ortanca 25 ms'yi aşarsa söker (CSS süzgeci geri gelir) ve kararı 7 gün hatırlar (K1 yavaş hat
+ *  kaydıyla aynı kalıp). Donanımla birleştirmede ortanca ~16,7 ms (stok Firefox 158). Gizli sekmede karar verilmez. */
+const YAZILIM_KAYIT = "pvq_keskin_yazilim";
+const YAZILIM_OMUR_MS = 7 * 24 * 3600 * 1000;
+const YAVAS_KARE_MS = 25;
+export function keskinYazilimKayitli(simdi: number, depo?: Pick<Storage, "getItem">): boolean {
+  try {
+    const k = JSON.parse((depo ?? globalThis.localStorage).getItem(YAZILIM_KAYIT) ?? "null") as { t?: number } | null;
+    return !!k && typeof k.t === "number" && simdi - k.t >= 0 && simdi - k.t < YAZILIM_OMUR_MS;
+  } catch { return false; }
+}
+export function karelerYavasMi(araliklar: readonly number[]): boolean {
+  if (araliklar.length < 5) return false;
+  const s = [...araliklar].sort((a, b) => a - b);
+  return s[Math.floor(s.length / 2)] > YAVAS_KARE_MS;
+}
 
 /** #vt-keskin kernelMatrix="0 -0.45 0 -0.45 2.8 -0.45 0 -0.45 0" (Hero.tsx) — test ikisinin aynı kaldığını denetler. */
 export const KESKIN_CEKIRDEK = { merkez: 2.8, komsu: 0.45 } as const;
@@ -81,6 +102,22 @@ export function keskinGLKur(v: HTMLVideoElement, c: HTMLCanvasElement): (() => v
   const uM = gl.getUniformLocation(p, "m"), uA = gl.getUniformLocation(p, "a"), uH = gl.getUniformLocation(p, "h");
   let kutu: Kutu | null = null, eslemli = false, bitti = false, hazir = false, istek = 0;
   const yedekKutu = () => { const r = v.getBoundingClientRect(); return { W: r.width, H: r.height }; };   // aynalama genişliği değiştirmez
+  // ilk saniyenin kare aralığı: yazılımla birleştirmede tuval ana iş parçacığını kilitliyor → CSS süzgecine dön, 7 gün hatırla
+  const sina = () => {
+    const d: number[] = []; let onceki = -1, bas = -1;
+    const f = (t: number) => {
+      if (bitti || document.visibilityState !== "visible") return;
+      if (bas < 0) bas = t;
+      if (onceki >= 0) d.push(t - onceki);
+      onceki = t;
+      if (d.length < 30 && t - bas < 1000) { requestAnimationFrame(f); return; }
+      if (karelerYavasMi(d)) {
+        sok();
+        try { localStorage.setItem(YAZILIM_KAYIT, JSON.stringify({ t: Date.now() })); } catch { /* depo yok */ }
+      }
+    };
+    requestAnimationFrame(() => requestAnimationFrame(f));   // ilk çizimin kurulum maliyeti sayılmaz
+  };
   const ciz = () => {
     if (bitti || !v.videoWidth || v.readyState < 2) return;
     if (!eslemli) {
@@ -98,6 +135,7 @@ export function keskinGLKur(v: HTMLVideoElement, c: HTMLCanvasElement): (() => v
     if (!hazir) {
       if (gl.getError() !== gl.NO_ERROR) { sok(); return; }   // ilk karede yükleme/çizim hatası: tuval hiç görünmez, CSS süzgeci kalır
       hazir = true; c.classList.add("is-hazir"); v.classList.add("is-gl");
+      sina();
     }
   };
   const kare = () => { if (bitti) return; ciz(); if (!bitti) istek = v.requestVideoFrameCallback(kare); };

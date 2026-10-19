@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type SyntheticEvent } from "react";
 import { heroBekle, heroHazirOldu, levhalarBittiAbone, posterYavasMi } from "./heroHazir";
-import { keskinGLGerekli, keskinGLKur } from "./keskinGL";
+import { keskinGLGerekli, keskinGLKur, keskinYazilimKayitli } from "./keskinGL";
 import santral1440 from "./varlik/santral-1440.mp4";
 import santral1080 from "./varlik/santral-1080.mp4";
 import santralPoster from "./varlik/santral-poster.webp";
@@ -56,7 +56,7 @@ export function Hero({ kabuk = false }: { kabuk?: boolean } = {}) {
   // 19.10: Firefox'ta keskinleştirme WebGL tuvalinde (keskinGL.ts) — süzgeç işlemcide çalışıyor, kaydırmayı ağırlaştırıyordu.
   const tuval = useRef<HTMLCanvasElement>(null);
   const [keskinGL] = useState(() => !kabuk && typeof navigator !== "undefined" && typeof HTMLVideoElement !== "undefined"
-    && keskinGLGerekli(navigator.userAgent, HTMLVideoElement.prototype));
+    && keskinGLGerekli(navigator.userAgent, HTMLVideoElement.prototype) && !keskinYazilimKayitli(Date.now()));
   const [posterHazir, setPosterHazir] = useState(false);
   const [videoGorunur, setVideoGorunur] = useState(false);
   const yavasHat = useRef(false);
