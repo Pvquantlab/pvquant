@@ -9,17 +9,20 @@ window.__keskinKur = function (v, ayar) {
   c.setAttribute("aria-hidden", "true");
   c.className = "vt-hero__keskin";
   c.style.cssText = "position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;transform:scaleX(-1);visibility:hidden";
-  var gl = c.getContext("webgl", { alpha: false, antialias: false, depth: false, stencil: false, premultipliedAlpha: false,
+  var gl = c.getContext(ayar.mip ? "webgl2" : "webgl", { alpha: false, antialias: false, depth: false, stencil: false, premultipliedAlpha: false,
     preserveDrawingBuffer: false, failIfMajorPerformanceCaveat: true });
   if (!gl) return null;
   var derle = function (tur, kod) { var s = gl.createShader(tur); gl.shaderSource(s, kod); gl.compileShader(s); return s; };
   var p = gl.createProgram();
   gl.attachShader(p, derle(gl.VERTEX_SHADER, "attribute vec2 k;void main(){gl_Position=vec4(k,0.,1.);}"));
+  // ss: piksel alanında k×k çift doğrusal örnek ortalaması (kutu süzgeci; küçültmede örtüşmeyi önler)
+  var k = ayar.ss || 1, ornek = "";
+  for (var i = 0; i < k; i++) for (var j = 0; j < k; j++) ornek += (ornek ? "+" : "") + "texture2D(t,q+vec2(" + ((i + 0.5) / k - 0.5).toFixed(4) + "," + ((j + 0.5) / k - 0.5).toFixed(4) + ")*m.xy).rgb";
   gl.attachShader(p, derle(gl.FRAGMENT_SHADER,
     "precision highp float;uniform sampler2D t;uniform vec4 m;uniform vec2 a;uniform float h;uniform vec2 w;" +
+    "vec3 o(vec2 q){return (" + ornek + ")/" + (k * k).toFixed(1) + ";}" +
     "void main(){vec2 u=vec2(gl_FragCoord.x,h-gl_FragCoord.y)*m.xy+m.zw;" +
-    "vec3 o=w.x*texture2D(t,u).rgb-w.y*(texture2D(t,u+vec2(a.x,0.)).rgb+texture2D(t,u-vec2(a.x,0.)).rgb" +
-    "+texture2D(t,u+vec2(0.,a.y)).rgb+texture2D(t,u-vec2(0.,a.y)).rgb);gl_FragColor=vec4(clamp(o,0.,1.),1.);}"));
+    "vec3 r=w.x*o(u)-w.y*(o(u+vec2(a.x,0.))+o(u-vec2(a.x,0.))+o(u+vec2(0.,a.y))+o(u-vec2(0.,a.y)));gl_FragColor=vec4(clamp(r,0.,1.),1.);}"));
   gl.linkProgram(p);
   if (!gl.getProgramParameter(p, gl.LINK_STATUS)) return null;
   gl.useProgram(p);
@@ -28,11 +31,11 @@ window.__keskinKur = function (v, ayar) {
   var kl = gl.getAttribLocation(p, "k"); gl.enableVertexAttribArray(kl); gl.vertexAttribPointer(kl, 2, gl.FLOAT, false, 0, 0);
   var dok = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, dok);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, ayar.mip ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   var uM = gl.getUniformLocation(p, "m"), uA = gl.getUniformLocation(p, "a"), uH = gl.getUniformLocation(p, "h"), uW = gl.getUniformLocation(p, "w");
   gl.uniform2f(uW, ayar.kimlik ? 1 : 2.8, ayar.kimlik ? 0 : 0.45);   // kimlik: süzgeçsiz (ardışık düzen denetimi)
   var kutu = null, bitti = false, gorundu = false, dokBoy = "";
-  var olc = function () { var s = getComputedStyle(v).objectPosition.split(" "); kutu = { W: v.clientWidth, H: v.clientHeight,
+  var olc = function () { var s = getComputedStyle(v).objectPosition.split(" "); var br = v.getBoundingClientRect(); kutu = { W: ayar.W || (ayar.kesirli ? br.width : v.clientWidth), H: ayar.H || (ayar.kesirli ? br.height : v.clientHeight),
     px: parseFloat(s[0]) / 100, py: parseFloat(s[1] || "50%") / 100, dpr: ayar.olcek || window.devicePixelRatio || 1 }; };   // olcek: tuval çözünürlüğü (CSS pikseli başına)
   var ciz = function () {
     if (bitti || !v.videoWidth || v.readyState < 2) return;
@@ -41,11 +44,18 @@ window.__keskinKur = function (v, ayar) {
     var gw = Math.max(1, Math.round(W * dpr)), gh = Math.max(1, Math.round(H * dpr));
     if (c.width !== gw || c.height !== gh) { c.width = gw; c.height = gh; gl.viewport(0, 0, gw, gh); }
     var ox = (W - w * s) * kutu.px, oy = (H - hh * s) * kutu.py, adim = ayar.adim || 1;
+    if (ayar.snap) {   // hedef dikdörtgen aygıt pikseline yuvarlanır (WebRender gibi): doku = (p − x0)/(x1 − x0)
+      var x0 = Math.round(ox * dpr), x1 = Math.round((ox + w * s) * dpr), y0 = Math.round(oy * dpr), y1 = Math.round((oy + hh * s) * dpr);
+      gl.uniform4f(uM, 1 / (x1 - x0), 1 / (y1 - y0), -x0 / (x1 - x0), -y0 / (y1 - y0));
+      gl.uniform2f(uA, adim * dpr / (x1 - x0), adim * dpr / (y1 - y0));
+    } else {
     gl.uniform4f(uM, 1 / (dpr * w * s), 1 / (dpr * hh * s), -ox / (w * s), -oy / (hh * s));
     gl.uniform2f(uA, adim / (w * s), adim / (hh * s));
+    }
     gl.uniform1f(uH, gh);
     if (ayar.alt && dokBoy === w + "x" + hh) gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, v);
     else { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, v); dokBoy = w + "x" + hh; }
+    if (ayar.mip) gl.generateMipmap(gl.TEXTURE_2D);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     if (!gorundu) { gorundu = true; c.style.visibility = "visible"; v.style.setProperty("filter", "none"); }
   };

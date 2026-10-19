@@ -52,3 +52,20 @@ Chrome'da WebGL↔video karşılaştırması renk yönetimi farkıyla kirli (kim
   texSubImage2D bunu değiştirmedi (`../webgl-son/alt/`).
 - `olc/iz/ekran-hiz.mjs` GEÇERSİZ (ekran görüntüsü alma hızı iki derlemede farklı ve videoyu yavaşlatıyor; rVFC sayacı ikinci
   bölgede çift sayıyor) — sonuç kullanılmadı.
+
+## Bağımsız inceleme sonrası (19.10, `22fb97f`) — `../webgl-son/`
+- **Yoğunluk değişimi** (`dpr-degis.txt`, stok Firefox 158, setViewport deviceScaleFactor 2 → 1 → 1,5 → 3 → 2): tampon 2850×1800 →
+  1425×900 → 2138×1350 → 4275×2700 → 2850×1800 (önce: hep 2850×1800). Firefox 158 ResizeObserver `device-pixel-content-box`'ta
+  fiziksel ekranın yoğunluğunu bildiriyor (1x/3x geçersiz kılmada da 601 = 300,5 × 2) ve yoğunluk değişince tetiklenmiyor;
+  `matchMedia('(resolution: …dppx)')` her değişimde tetikleniyor (`olc/iz/ro-sina.mjs`). Bu yüzden tampon = kesirli CSS kutusu × dpr.
+- **1x ekranlar** (`son-esdeger.txt`, tuval ↔ aynı sayfada CSS süzgeci, ortalama fark ÷255 · kenar enerjisi tuval ↔ CSS):
+  1366×768@1 5,40 (19,02 ↔ 19,03) · 1440×900@1 2,78 (19,49 ↔ 19,52) · 1920×1080@1 2,56 (17,58 ↔ 17,58) · 1440×900@2 2,81 (21,93 ↔ 22,01) ·
+  390×844@3 3,49 (17,01 ↔ 16,99). Önceki sürüm 1366@1'de 20,39 idi: tamsayı kutu (clientHeight 776 ↔ gerçek 775,6) ve tamponu kutuya
+  germe varsayımı; 1x'te çok ince panel deseni ~0,4 px kayıyordu (`1366-geometri.txt`: kimlik tuvali ↔ süzgeçsiz video 7,6 → kesirli
+  kutuyla 1,56). Firefox tuvali germiyor: tampon satırı aygıt pikseline birebir oturuyor.
+- **Reddedilenler:** mipmap (WebGL2) ve piksel alanında 2×2 / 3×3 kutu örneklemesi CSS süzgecinden uzaklaştırıyor (1440@1: 11,0 / 5,9 /
+  6,5 ↔ 2,5; kenar enerjisi 13,5 / 15,5 ↔ 16,4) — Gecko da çift doğrusal örnekliyor (`kucultme-varyant.txt`); hedef dikdörtgeni aygıt
+  pikseline yuvarlamak da kötüleştiriyor (`snap.txt`).
+- **Ara sonuç (hatalı sürüm, belge için):** `dpr1-esdeger.txt` — device-pixel-content-box'lı ilk düzeltme 1x'te 2x tampon kullanıyordu
+  (1920@1 5,59 · 1440@1 8,38 · 1366@1 18,82; tuval CSS'ten %10 yumuşak). `bayat-kare.txt`'teki 1440@1 5,60 de o sürümden.
+- **Bayat kare yok** (`bayat-kare.txt`): duraklat + sar sonrası rVFC bir kez geliyor, tuval yeni kareyi çiziyor.

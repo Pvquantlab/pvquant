@@ -36,7 +36,7 @@ const kiyas = (a, b, kenar) => {
 };
 const sonuc = [];
 for (const surucu of suruculer) for (const gAd of gorunumler) {
-  const g = GORUNUMLER[gAd]; const t = await ac(surucu, g);
+  const g = GORUNUMLER[gAd] ?? (([w, h, d]) => ({ width: +w, height: +h, dpr: +d }))(gAd.split(/[x@]/)); const t = await ac(surucu, g);
   await t.git(HEDEFLER[hedef].yok + "/"); await bekle(2000);
   const durum = await t.deger(async (zaman) => { const v = document.querySelector("video.vt-hero__video"); const b = performance.now();
     while (performance.now() - b < 40000 && !(v && !v.paused && v.readyState >= 3)) await new Promise((r) => setTimeout(r, 100));
@@ -48,21 +48,22 @@ for (const surucu of suruculer) for (const gAd of gorunumler) {
   const kutu = await t.deger(() => { const r = document.querySelector("video.vt-hero__video").getBoundingClientRect();
     return { x: Math.max(0, r.left), y: Math.max(0, r.top), width: Math.min(innerWidth, r.width), height: Math.min(innerHeight - Math.max(0, r.top), r.height) }; });
   await bekle(1000);
-  const durumlar = [["ozgun", null], ["ozgun-tekrar", null], ["webgl-css", 1], ["webgl-aygit", 1 / g.dpr], ["filtresiz", "yok"], ["webgl-kimlik", "kimlik"], ["webgl-css-1x", "1x"]];
+  const durumlar = arg("durum", "") ? [["ozgun", null], ["ozgun-tekrar", null], ...arg("durum").split(",").map((d) => [d, d === "filtresiz" ? "yok" : d])] : [["ozgun", null], ["ozgun-tekrar", null], ["webgl-css", 1], ["webgl-aygit", 1 / g.dpr], ["filtresiz", "yok"], ["webgl-kimlik", "kimlik"], ["webgl-css-1x", "1x"]];
   const resim = {}, bilgi = {};
   for (const [ad, adim] of durumlar) {
     bilgi[ad] = await t.deger(({ adim }) => { window.__keskinSok?.(); window.__keskinSok = null; const v = document.querySelector("video.vt-hero__video");
       document.getElementById("__ab")?.remove();
       if (adim === "yok") { const e = document.createElement("style"); e.id = "__ab"; e.textContent = ".vt-hero video { filter: none !important; }"; document.head.appendChild(e); return "filtresiz"; }
       if (adim === null) return getComputedStyle(v).filter;
-      return window.__keskinKur(v, adim === "kimlik" ? { adim: 1, kimlik: true } : adim === "1x" ? { adim: 1, olcek: 1 } : { adim }) ? "webgl tamam" : "webgl YOK"; }, { adim });
+      const AYAR = { "kesirli": { adim: 1, kesirli: true }, "snap": { adim: 1, kesirli: true, snap: true }, "h776-keskin": { adim: 1, H: 775.6 }, "h768": { adim: 1, kimlik: true, H: 768 }, "h776": { adim: 1, kimlik: true, H: 775.6 }, "h768-keskin": { adim: 1, H: 768 }, "webgl-css": { adim: 1 }, "mip": { adim: 1, mip: true }, "ss2": { adim: 1, ss: 2 }, "ss3": { adim: 1, ss: 3 }, "mip-ss2": { adim: 1, mip: true, ss: 2 } };
+      return window.__keskinKur(v, adim === "kimlik" ? { adim: 1, kimlik: true } : adim === "1x" ? { adim: 1, olcek: 1 } : AYAR[adim] || { adim }) ? "webgl tamam" : "webgl YOK"; }, { adim });
     await bekle(1200);
     const buf = await t.resim(kutu); resim[ad] = PNG.sync.read(Buffer.from(buf));
     fs.writeFileSync(path.join(cikti, `${surucu}-${gAd}-${ad}.png`), Buffer.from(buf));
   }
   const r = { surucu, surum: t.surum, gorunum: gAd, durum, kutu, bilgi, kiyas: {} };
   for (const [ad] of durumlar.slice(1)) r.kiyas[ad] = { tum: kiyas(resim.ozgun, resim[ad], 0), ic: kiyas(resim.ozgun, resim[ad], 6) };
-  r.kiyas["kimlik↔filtresiz"] = { tum: kiyas(resim.filtresiz, resim["webgl-kimlik"], 0), ic: kiyas(resim.filtresiz, resim["webgl-kimlik"], 6) };
+  if (resim.filtresiz && resim["webgl-kimlik"]) r.kiyas["kimlik↔filtresiz"] = { tum: kiyas(resim.filtresiz, resim["webgl-kimlik"], 0), ic: kiyas(resim.filtresiz, resim["webgl-kimlik"], 6) };
   sonuc.push(r);
   console.log(`${surucu} ${r.surum} ${gAd} ${JSON.stringify(durum)} ${JSON.stringify(bilgi)}`);
   for (const [ad, k] of Object.entries(r.kiyas)) console.log(`   ${ad.padEnd(13)} iç: en büyük ${k.ic.enBuyuk} · ort ${k.ic.ort} · >2 %${(100 * k.ic[">2"]).toFixed(3)} · >4 %${(100 * k.ic[">4"]).toFixed(3)} · >8 %${(100 * k.ic[">8"]).toFixed(3)}`);

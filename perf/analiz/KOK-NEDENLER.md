@@ -32,9 +32,16 @@ Durum etiketleri: **DOĞRULANDI** (ölçümle) · **DÜZELTİLDİ** (commit) · 
   Firefox ölçümünde hero videosu 30 sn boyunca her 5 sn'de 18–53 / ~105 kare düşürdü (özgün filtre ve filtresiz: 0;
   `ara-sonra2/video-zaman-7c8c46d.jsonl`). A/B'deki 0–8 düşen kare, değişkenin oynatmadan 40–60 sn sonra ölçülmesindendi.
   Görünür animasyon bozulması olduğu için `a1fb5b8` ile geri alındı.
-- **Durum: AÇIK.** Firefox'ta kaydırma maliyeti (1440@2: 1,60 çekirdek, %7 kaçan kare) ve CSS pikseli ölçeğindeki keskinleştirme
-  sürüyor. Tasarımı koruyan seçenekler (sahip kararı): (a) videoyu tek geçişli WebGL gölgelendiricisiyle süzmek (yalnız yeni video
-  karesinde çizim; renk yolu ve bağlam kaybı riski, orta-yüksek iş); (b) bugünkü hâliyle kabul.
+- **Durum (19.10): DÜZELTİLDİ — `0304003`.** Seçenek (a): Firefox'ta (Gecko + requestVideoFrameCallback) videonun üstünde tek geçişli
+  WebGL tuvali; her sunulan video karesinde doku + tek çizim; ilk kare çizilince videonun CSS süzgeci kalkar. Ölçek ölçüldü
+  (`webgl/OKU.md`): Gecko çekirdeği aygıt çözünürlüğünde, komşuları 1 CSS pikseli uzaktan alarak uyguluyor (1x hesaplayıp büyütmüyor);
+  tuval de öyle → Firefox'taki görünüm aynı (kenar enerjisi 1440: 21,93 ↔ 22,01; 390: 17,01 ↔ 16,99; ortalama piksel farkı 2,8 / 3,5
+  ÷255, video ölçekleme süzgecinden). Gerçek derlemeler dönüşümlü (stok Firefox 158, pencereli, 3'er koşu): kaydırma CPU 1440@2
+  2,66–2,70 → 0,68–0,80 çekirdek, 390@3 1,70–1,79 → 0,30–0,32; p95 49–66 → 18–33 ms / 66–67 → 18–19 ms; kaydırmada sunulan video
+  karesi 8 → 15–17; düşen kare 0 (boşta 30 sn ve kaydırma). Bedel: durağan oynatmada +~0,2 çekirdek (süzgeçsiz video düzeyi).
+  Geri dönüş: WebGL yok / yazılım / bağlam kaybı / Firefox < 132 → CSS süzgeci (önceki derlemeyle piksel piksel aynı). Chromium ve
+  WebKit'te tuval yok. Firefox'un Chrome'dan sert görünmesi (ölçek farkı) bilinçli olarak korunuyor: değiştirmek Firefox'ta görünür
+  değişiklik olurdu ve poster (CSS süzgeçli) ile video arasındaki erimede keskinlik sıçraması yaratırdı.
 
 ## K2 — Lighthouse mobil «/» 47–85 (≥90 kriteri), LCP 4,2–10,5 sn arası savruluyor
 - **Belirti.** Replika 75 (47–85), canlı 85 (71–85); LCP öğesi hero paragrafı, gecikmenin tamamı «render delay».
@@ -88,7 +95,30 @@ Durum etiketleri: **DOĞRULANDI** (ölçümle) · **DÜZELTİLDİ** (commit) · 
 - **Düzeltme.** `02c875d` — video, kart kuyruğu bitince ya da en geç 4 sn'de iner. Bedel: hareketin başlama anı ötelenir
   (ölçüm REPORT.md'de).
 
+## K8 — Chromium yavaş hatta ilk boyamayı fontlar için ~100 ms bekletiyor (19.10)
+- **Belirti.** «Chrome'da yavaş hatta açılış hızlanmadı» (REPORT taslağı). Slow 4G'de FCP, CSS bitişinden 154–228 ms sonra.
+- **Kök neden.** Chromium, `<body>` oluşmadan eklenen font ön yüklemelerini (`<head>`'deki 4 × `<link rel=preload as=font>`) ilk boyamayı
+  engelleyen kaynak sayıyor: CSS inince çizim fontları ya da ~100 ms'lik bir zamanlayıcıyı bekliyor. Metrik eşlemeli yedek yüz (K4)
+  değişimi kaydırmasız yaptığı için bekleme bir şey kazandırmıyordu.
+- **Kanıt (`ara-font/izleme.txt`).** Chromium 156 ve kurulu Chrome 155 izlemesi: CSS'ten sonra `Document::BeginLifecycleUpdatesIfRenderingReady`
+  false, ~100 ms sonra `TimerBase::run` ile true; `PreloadRenderBlockingStatusChange` dört font. Etiketler `<body>` başına alınınca
+  (önden tarayıcı yine aynı anda istiyor) CSS bitişi → FCP 390'da 154–173 → 57–85 ms, 1920'de 213–228 → 107–119 ms (5'er koşu).
+  `<body>` başındaki betikle eklemek reddedildi: betik bekleyen CSS'i bekledi, fontlar ~530 ms geç başladı.
+- **Düzeltme.** `1353dc1`.
+
+## K9 — Yavaş hatta ilk boyama CSS'in inmesini bekliyor, CSS bandı JS/font/API ile paylaşıyor (19.10)
+- **Kök neden.** 22 KB'lık giriş CSS'i ayrı istekte; JS (74 KB), dört font, `/v1/dogrulama` ile aynı anda istendiği için bandı
+  paylaşıyor (sunucu akışları sırayla serpiştiriyor), bitişi 0,8–1,4 sn arasında oynuyordu. Üç motorda da FCP ≈ CSS bitişi + çizim.
+- **Kanıt (`ara-font/kritik-yol-*.txt`).** CSS `<style>` olarak gömülüp modül betiği stilin ardına alınınca FCP medyanı Chromium 390
+  1112 → 692, 1920 1320 → 748 ms; Firefox 390 1181–1707 → 677–689; WebKit 390 1265–1464 → 678–697 ms; yayılım ±10 ms'ye indi.
+  Lighthouse (lantern) ise 25,6 KB'lık HTML'i bir gidiş-dönüş uzun sayıyor: benzetimli FCP 1504 → 1652 ms, LCP 1,88 → 1,80 sn, skor 98–99.
+- **Düzeltme.** `c9944cf`. Bedel: index.html br 3,6 → 25,6 KB (her yolda; değişmediyse 304).
+
 ## Ölçülen ama düzeltilmeyenler (AÇIK) — gerekçeleriyle
+- **Poster ertelemesini ≤ 760 px'e sınırlamak (19.10, `ara-font/OKU.md`).** CSS gömüldükten sonra ertelemenin bedeli ölçülemez oldu:
+  geniş ekranda poster ~0,1 sn erken başlıyor ama bitişi aynı (hat dolu), LCP farkı koşu yayılımı içinde → uygulanmadı.
+- **Başsız Chromium süzgeçli posteri yazılımla tarıyor (19.10):** geniş ekranda poster LCP'si inişinden 0,6–0,9 sn sonra; pencereli
+  Chromium'da (GPU) ~120 ms sonra. Matrisin Chromium 768/1920 LCP'leri bu yüzden gerçek Chrome'dan yüksek (önce ve sonra eşit şişkin).
 
 - **Playwright Firefox'ta (157) aynı adrese yeniden gezinmede `load` olayı gelmiyor** (~%8; etkileşim ölçümünde 2/36 koşu,
   boya ölçümünde 1). Teşhis (`olc/load-takilma2.mjs`): takılma anında fontlar yüklü, bitmemiş kaynak yok, poster tamam;

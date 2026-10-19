@@ -1,0 +1,20 @@
+firefox-stok firefox/158.0 1366x768@1 
+   webgl-css     iç: en büyük 255 · ort 17.154 · >2 %62.331 · >4 %44.970 · >8 %36.614
+   kesirli       iç: en büyük 91 · ort 4.642 · >2 %48.229 · >4 %25.845 · >8 %14.571
+   snap          iç: en büyük 255 · ort 16.778 · >2 %61.327 · >4 %44.078 · >8 %36.169
+firefox-stok firefox/158.0 1440x900@1 
+   webgl-css     iç: en büyük 32 · ort 2.496 · >2 %36.392 · >4 %10.472 · >8 %2.673
+   kesirli       iç: en büyük 32 · ort 2.496 · >2 %36.392 · >4 %10.472 · >8 %2.673
+   snap          iç: en büyük 255 · ort 16.08 · >2 %63.980 · >4 %45.323 · >8 %33.803
+firefox-stok firefox/158.0 1920x1080 
+   webgl-css     iç: en büyük 36 · ort 2.329 · >2 %33.462 · >4 %8.152 · >8 %1.627
+   kesirli       iç: en büyük 36 · ort 2.329 · >2 %33.462 · >4 %8.152 · >8 %1.627
+   snap          iç: en büyük 211 · ort 10.459 · >2 %56.546 · >4 %37.993 · >8 %29.429
+firefox-stok firefox/158.0 1440x900 
+   webgl-css     iç: en büyük 36 · ort 2.52 · >2 %36.709 · >4 %10.630 · >8 %2.770
+   kesirli       iç: en büyük 36 · ort 2.52 · >2 %36.709 · >4 %10.630 · >8 %2.770
+   snap          iç: en büyük 36 · ort 2.52 · >2 %36.709 · >4 %10.630 · >8 %2.770
+firefox-stok firefox/158.0 390x844 
+   webgl-css     iç: en büyük 74 · ort 3.076 · >2 %31.849 · >4 %18.998 · >8 %8.720
+   kesirli       iç: en büyük 74 · ort 3.076 · >2 %31.849 · >4 %18.998 · >8 %8.720
+   snap          iç: en büyük 65 · ort 2.966 · >2 %31.546 · >4 %18.496 · >8 %8.191

@@ -24,3 +24,10 @@ olmaktan çıktı → değişiklik yapılmadı.
 Yan bulgu: başsız Chromium posteri (feConvolveMatrix süzgeçli) yazılımla tarıyor (izleme: 65 RasterTask × ~30 ms; commit 722 ms bekliyor),
 geniş ekranda poster LCP'si inişinden 0,6–0,9 sn sonra. Pencereli Chromium'da (GPU) poster bitişi + ~120 ms (LCP 4012–4020 ms,
 `lcp-poster-chromium.txt` sonu). Matristeki Chromium 768/1920 LCP değerleri bu yüzden gerçek Chrome'dan yüksek (önce ve sonra eşit şişkin).
+
+## Bağımsız inceleme sonrası: JS'le çizilen yollarda JS erken (`44fefcc`)
+`c9944cf` modül betiğini gömülü stilin ardına aldığı için ilk boyaması JS'i bekleyen yollarda (/yontem, panel) JS geç başlıyordu
+(yarım kalan son matris `matris-0304003-yarim.jsonl`, Chromium yavaş 4G /yontem FCP medyanı 1272–1372 → 1388–1512 ms). Düzeltme:
+kabuksuz dalda stilden önce `<link rel="modulepreload">`. `yontem-erken-js.txt` (Chromium yavaş 4G /yontem, 3'er dönüşümlü koşu, FCP
+medyanı; sonra2 = 0dee665, sonra5 = 0304003, sonra6 = düzeltmeli): 390 1484 / 1488 / 1188 · 768 1372 / 1468 / 1180 · 1920 1508 / 1520 /
+1196 ms. `js-istek.txt`: üç motorda index.js için tek istek, konsol temiz, «/»de modulepreload yok.

@@ -14,7 +14,8 @@ export const HEDEFLER = {
   sonra: { yok: "https://localhost:28443", hizli3g: "https://localhost:29443", yavas4g: "https://localhost:30443", spki: ".replika/sonra2/spki.txt" },
   sonra3: { yok: "https://localhost:4443", hizli3g: "https://localhost:5443", yavas4g: "https://localhost:6443", spki: ".replika/sonra3/spki.txt" },   // 19.10: font <body> + CSS gömülü (c9944cf), T=4
   sonra4: { yok: "https://localhost:52443", hizli3g: "https://localhost:53443", yavas4g: "https://localhost:54443", spki: ".replika/sonra4/spki.txt" },   // 19.10: + Firefox WebGL keskinleştirme, T=52
-  sonra5: { yok: "https://localhost:44443", hizli3g: "https://localhost:45443", yavas4g: "https://localhost:46443", spki: ".replika/sonra5/spki.txt" },   // 19.10 SON: 0304003 (derle.sh), T=44
+  final: { yok: "https://localhost:44443", hizli3g: "https://localhost:45443", yavas4g: "https://localhost:46443", spki: ".replika/final/spki.txt" },   // 19.10 SON DERLEME: e1e6b3c (derle.sh), T=44 — önce sonra5 (0304003) bu portlardaydı
+  sonra6: { yok: "https://localhost:52443", hizli3g: "https://localhost:53443", yavas4g: "https://localhost:54443", spki: ".replika/sonra6/spki.txt" },   // 19.10: + inceleme düzeltmeleri, T=52 (sonra4'ün portları)
   canli: { yok: "https://pvquant.com" },
   // Faz 3 ara ölçümleri (tek düzeltmenin etkisini ayırmak için; T=38/48)
   araa:  { yok: "https://localhost:38443", hizli3g: "https://localhost:39443", yavas4g: "https://localhost:40443", spki: ".replika/araa/spki.txt" },

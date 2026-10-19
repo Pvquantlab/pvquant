@@ -1,0 +1,32 @@
+// bayat-kare.mjs — üretim tuvali (keskinGL.ts) duraklatılıp sarılan videoda yeni kareyi çiziyor mu: sarma sonrası tuval ↔ CSS süzgeci,
+// sonra küçük bir yeniden boyutla zorla yeniden çizim ve tekrar kıyas. node olc/iz/bayat-kare.mjs --hedef sonra6 --gorunum 1440x900@1
+import puppeteer from "puppeteer-core";
+import { PNG } from "pngjs";
+import { HEDEFLER, GORUNUMLER } from "../ortak.mjs";
+const arg = (ad, vars) => { const i = process.argv.indexOf("--" + ad); return i > 0 ? process.argv[i + 1] : vars; };
+const hedef = arg("hedef", "sonra6"), gAd = arg("gorunum", "1440x900@1");
+const g = GORUNUMLER[gAd] ?? (([w, h, d]) => ({ width: +w, height: +h, dpr: +d }))(gAd.split(/[x@]/));
+const bekle = (ms) => new Promise((r) => setTimeout(r, ms));
+const ort = (a, b) => { let t = 0; for (let i = 0; i < a.data.length; i += 4) t += Math.max(Math.abs(a.data[i] - b.data[i]), Math.abs(a.data[i + 1] - b.data[i + 1]), Math.abs(a.data[i + 2] - b.data[i + 2])); return (t / (a.data.length / 4)).toFixed(2); };
+const t = await puppeteer.launch({ browser: "firefox", executablePath: "/Applications/Firefox.app/Contents/MacOS/firefox", headless: false, acceptInsecureCerts: true, defaultViewport: null });
+const s = await t.newPage(); await s.setViewport({ width: g.width, height: g.height, deviceScaleFactor: g.dpr });
+await s.goto(HEDEFLER[hedef].yok + "/", { waitUntil: "load" });
+await s.evaluate(async () => { const v = document.querySelector("video.vt-hero__video"); const b = performance.now();
+  while (performance.now() - b < 40000 && !(v && !v.paused && v.readyState >= 3 && v.currentTime > 6.8)) await new Promise((r) => setTimeout(r, 100));
+  await new Promise((r) => setTimeout(r, 1500)); window.__rv = 0; const f = () => { window.__rv++; v.requestVideoFrameCallback(f); }; v.requestVideoFrameCallback(f);
+  v.pause(); const once = window.__rv; v.currentTime = 10; await new Promise((r) => { v.addEventListener("seeked", r, { once: true }); setTimeout(r, 5000); });
+  await new Promise((r) => setTimeout(r, 800)); window.__rvSarma = window.__rv - once;
+  const e = document.createElement("style"); e.textContent = "img.vt-hero__poster, .vt-ust, .vt-hero .vt-kap, .vt-hero__ortu, .vt-bolumcubuk { visibility: hidden !important; } .vt-hero::after, .vt-hero::before, .vt-hero__sahne::after { display: none !important; }"; document.head.appendChild(e); });
+const kutu = { x: 100, y: 100, width: 800, height: 500 };
+const al = async () => PNG.sync.read(Buffer.from(await s.screenshot({ clip: kutu, type: "png" })));
+await bekle(800);
+const tuval1 = await al();
+const rv = await s.evaluate(() => window.__rvSarma);
+await s.evaluate(() => { document.querySelector("canvas.vt-hero__keskin").classList.remove("is-hazir"); document.querySelector("video.vt-hero__video").classList.remove("is-gl"); });
+await bekle(800); const css = await al();
+await s.evaluate(() => { document.querySelector("canvas.vt-hero__keskin").classList.add("is-hazir"); document.querySelector("video.vt-hero__video").classList.add("is-gl"); });
+await s.setViewport({ width: g.width - 1, height: g.height, deviceScaleFactor: g.dpr }); await bekle(600);
+await s.setViewport({ width: g.width, height: g.height, deviceScaleFactor: g.dpr }); await bekle(1000);
+const tuval2 = await al();
+console.log(`${hedef} ${gAd}: sarmadan sonra rVFC ${rv} kez · tuval(sarma sonrası) ↔ CSS ort ${ort(tuval1, css)} · tuval(yeniden boyut sonrası) ↔ CSS ort ${ort(tuval2, css)} · tuval1 ↔ tuval2 ${ort(tuval1, tuval2)}`);
+await t.close();

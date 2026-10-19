@@ -1,12 +1,14 @@
 // kiyas.mjs — önce/sonra karşılaştırması ve kabul ölçütleri: baseline/ozet.json ↔ after/ozet.json (+ Lighthouse, piksel, A/B).
-// node olc/kiyas.mjs   → after/KIYAS.md (üretilir; elle düzenlenmez)
+// node olc/kiyas.mjs [--sonra after] [--hedef sonra]   → <sonra>/KIYAS.md (üretilir; elle düzenlenmez). 19.10: son derleme için --sonra son --hedef sonra5
 import fs from "node:fs";
 import path from "node:path";
 import { KOK, medyan } from "./ortak.mjs";
 
+const arg = (ad, vars) => { const i = process.argv.indexOf("--" + ad); return i > 0 ? process.argv[i + 1] : vars; };
+const SON = arg("sonra", "after"), SON_HEDEF = arg("hedef", "sonra");
 const oku = (f) => JSON.parse(fs.readFileSync(path.join(KOK, f), "utf8"));
 const satirlar = (f) => (fs.existsSync(path.join(KOK, f)) ? fs.readFileSync(path.join(KOK, f), "utf8").trim().split("\n").filter(Boolean).map((s) => JSON.parse(s)) : []);
-const A = oku("baseline/ozet.json"), B = oku("after/ozet.json");
+const A = oku("baseline/ozet.json"), B = oku(`${SON}/ozet.json`);
 const MOTOR = ["chromium", "firefox", "webkit"], GOR = ["390x844", "768x1024", "1440x900", "1920x1080"], AG = ["yok", "hizli3g", "yavas4g"];
 const h = (v, b = 0) => (v === null || v === undefined || Number.isNaN(v) ? "—" : typeof v === "number" ? v.toFixed(b).replace(".", ",") : String(v));
 const ok = (b) => (b ? "✅" : "❌");
@@ -29,7 +31,7 @@ for (const m of MOTOR) for (const ag of ["yok", "yavas4g"]) md += `| ${m} · ${a
 const krit = [];
 // 1) Lighthouse ≥ 90 (sonra, replika) her sayfa × mobil/masaüstü; erişilebilirlik / en iyi uyg. düşmez
 for (const sayfa of ["ana", "yontem"]) for (const tur of ["mobil", "masaustu"]) {
-  const a = A.lighthouse[["once", sayfa, tur].join("|")], b = B.lighthouse[["sonra", sayfa, tur].join("|")];
+  const a = A.lighthouse[["once", sayfa, tur].join("|")], b = B.lighthouse[[SON_HEDEF, sayfa, tur].join("|")];
   if (!b) { krit.push([`Lighthouse perf ≥ 90 · ${sayfa} · ${tur}`, "ölçülmedi", false]); continue; }
   krit.push([`Lighthouse perf ≥ 90 · ${sayfa} · ${tur}`, `${h(a?.skor.performance)} → ${h(b.skor.performance)}`, b.skor.performance >= 90]);
   krit.push([`Erişilebilirlik / En iyi uyg. düşmez · ${sayfa} · ${tur}`, `${h(a?.skor.accessibility)}/${h(a?.skor["best-practices"])} → ${h(b.skor.accessibility)}/${h(b.skor["best-practices"])}`,
@@ -56,9 +58,9 @@ for (const sayfa of ["ana", "yontem"]) for (const ag of AG) for (const g of GOR)
 const hataSay = Object.entries(B.hata).filter(([k]) => !/PARSED_DATA_CACHED/.test(k)).reduce((s, [, n]) => s + n, 0);
 krit.push(["Konsol hatası, 4xx/5xx, başarısız istek = 0 (sonra matrisi, 432 yükleme)", `${Object.entries(A.hata).filter(([k]) => !/PARSED_DATA_CACHED/.test(k)).reduce((s, [, n]) => s + n, 0)} → ${hataSay}`, hataSay === 0]);
 // 6) görsel regresyon (piksel.json varsa)
-if (fs.existsSync(path.join(KOK, "after/piksel.json"))) {
-  const p = oku("after/piksel.json");
-  const bolum = fs.existsSync(path.join(KOK, "after/piksel-bolum.json")) ? oku("after/piksel-bolum.json") : {};
+if (fs.existsSync(path.join(KOK, `${SON}/piksel.json`))) {
+  const p = oku(`${SON}/piksel.json`);
+  const bolum = fs.existsSync(path.join(KOK, `${SON}/piksel-bolum.json`)) ? oku(`${SON}/piksel-bolum.json`) : {};
   const ayni = p.filter((r) => r.durum === "aynı");
   krit.push([`Piksel · birebir aynı görüntüler (${p.length} görüntü; Chromium + Firefox tamamı, WebKit «/» tam sayfa hariç)`, `${ayni.length} / ${p.length} aynı`, p.every((r) => r.durum === "aynı" || (r.ad.startsWith("webkit-") && r.ad.endsWith("-ana.png")))]);
   for (const r of p.filter((r) => r.durum !== "aynı")) {
@@ -74,11 +76,11 @@ md += `\nÖzet: ${krit.filter((k) => k[2]).length} / ${krit.length} ölçüt kar
 
 // ── etkileşim (başsız) önce → sonra
 md += `\n### Etkileşim (başsız; motorlar arası ve önce/sonra kıyası) — medyan: önce → sonra\n\n| motor · görünüm | menü (ms) | giriş → form (ms) | kaydırma kare p95 (ms) | kaydırma >33 ms | koşu hatası |\n|---|---:|---:|---:|---:|---:|\n`;
-const ka = satirlar("baseline/etkilesim.jsonl"), kb = satirlar("after/etkilesim.jsonl");
+const ka = satirlar("baseline/etkilesim.jsonl"), kb = satirlar(`${SON}/etkilesim.jsonl`);
 for (const m of MOTOR) for (const g of GOR) {
   const e = A.etkilesim[[m, g].join("|")], f = B.etkilesim[[m, g].join("|")];
   const hataA = ka.filter((r) => r.motor === m && r.gorunum === g && r.kosuHatasi).length, hataB = kb.filter((r) => r.motor === m && r.gorunum === g && r.kosuHatasi).length;
   md += `| ${m} · ${g} | ${h(e?.menuAc)} → ${h(f?.menuAc)} | ${h(e?.girisSure)} → ${h(f?.girisSure)} | ${h(e?.kaydirmaP95, 1)} → ${h(f?.kaydirmaP95, 1)} | %${h(100 * (e?.kaydirmaYavas ?? NaN))} → %${h(100 * (f?.kaydirmaYavas ?? NaN))} | ${hataA} → ${hataB} |\n`;
 }
-fs.writeFileSync(path.join(KOK, "after/KIYAS.md"), md);
-console.log("yazıldı: after/KIYAS.md ·", krit.filter((k) => k[2]).length, "/", krit.length, "ölçüt");
+fs.writeFileSync(path.join(KOK, `${SON}/KIYAS.md`), md);
+console.log(`yazıldı: ${SON}/KIYAS.md ·`, krit.filter((k) => k[2]).length, "/", krit.length, "ölçüt");

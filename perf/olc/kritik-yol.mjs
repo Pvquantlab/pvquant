@@ -9,7 +9,7 @@ for (const hedef of arg("hedef", "once,sonra").split(",")) {
   const t = await motorAc(motor, hedef);
   for (let k = 1; k <= kosu; k++) {
     const b = await t.newContext(baglamAyar(motor, GORUNUMLER[gAd])); const s = await b.newPage();
-    const url = HEDEFLER[hedef][ag] + "/"; await hatBos(url);
+    const url = HEDEFLER[hedef][ag] + arg("yol", "/"); await hatBos(url);
     await s.goto(url, { waitUntil: "load", timeout: 120000 }); await s.waitForTimeout(3000);
     const r = await s.evaluate(() => { const n = performance.getEntriesByType("navigation")[0]; const fcp = performance.getEntriesByName("first-contentful-paint")[0]?.startTime;
       const k = performance.getEntriesByType("resource").filter((e) => /\.(css|js|woff2|webp)$/.test(e.name) || /dogrulama/.test(e.name)).map((e) => `${e.name.split("/").pop().replace(/-[\w-]{8}\.(\w+)$/, ".$1").slice(0, 22)} ${Math.round(e.startTime)}→${Math.round(e.responseEnd)}`);

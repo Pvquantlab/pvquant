@@ -1,0 +1,5 @@
+başlangıç {"dpr":2,"tuval":"2850×1800","hazir":true,"kutu":"1425×900","suzgec":"none"}
+dsf 1 {"dpr":1,"tuval":"1425×900","hazir":true,"kutu":"1425×900","suzgec":"none"}
+dsf 1.5 {"dpr":1.5,"tuval":"2138×1350","hazir":true,"kutu":"1425×900","suzgec":"none"}
+dsf 3 {"dpr":3,"tuval":"4275×2700","hazir":true,"kutu":"1425×900","suzgec":"none"}
+dsf 2 {"dpr":2,"tuval":"2850×1800","hazir":true,"kutu":"1425×900","suzgec":"none"}

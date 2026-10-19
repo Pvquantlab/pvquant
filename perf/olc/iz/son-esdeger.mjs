@@ -18,7 +18,7 @@ const kenar = (p) => { const { width: w, height: h, data: d } = p; let t = 0, n 
   for (let y = 6; y < h - 6; y++) for (let x = 6; x < w - 6; x++) { const gx = L(x + 1, y - 1) + 2 * L(x + 1, y) + L(x + 1, y + 1) - L(x - 1, y - 1) - 2 * L(x - 1, y) - L(x - 1, y + 1);
     const gy = L(x - 1, y + 1) + 2 * L(x, y + 1) + L(x + 1, y + 1) - L(x - 1, y - 1) - 2 * L(x, y - 1) - L(x + 1, y - 1); t += Math.hypot(gx, gy) / 8; n++; } return (t / n).toFixed(3); };
 for (const gAd of arg("gorunum", "1440x900,390x844").split(",")) {
-  const g = GORUNUMLER[gAd]; const resim = {};
+  const g = GORUNUMLER[gAd] ?? (([w, h, d]) => ({ width: +w, height: +h, dpr: +d }))(gAd.split(/[x@]/)); const resim = {};
   for (const h of [hedef, onceki]) {
     const t = await puppeteer.launch({ browser: "firefox", executablePath: "/Applications/Firefox.app/Contents/MacOS/firefox", headless: false, acceptInsecureCerts: true, defaultViewport: null });
     const s = await t.newPage(); await s.setViewport({ width: g.width, height: g.height, deviceScaleFactor: g.dpr });
