@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type SyntheticEvent } from "react";
 import { heroBekle, heroHazirOldu, levhalarBittiAbone, posterYavasMi } from "./heroHazir";
+import { keskinGLGerekli, keskinGLKur } from "./keskinGL";
 import santral1440 from "./varlik/santral-1440.mp4";
 import santral1080 from "./varlik/santral-1080.mp4";
 import santralPoster from "./varlik/santral-poster.webp";
@@ -52,6 +53,10 @@ const LEVHA_BEKLEME_MS = 4000;
 export function Hero({ kabuk = false }: { kabuk?: boolean } = {}) {
   heroBekle();
   const video = useRef<HTMLVideoElement>(null);
+  // 19.10: Firefox'ta keskinleştirme WebGL tuvalinde (keskinGL.ts) — süzgeç işlemcide çalışıyor, kaydırmayı ağırlaştırıyordu.
+  const tuval = useRef<HTMLCanvasElement>(null);
+  const [keskinGL] = useState(() => !kabuk && typeof navigator !== "undefined" && typeof HTMLVideoElement !== "undefined"
+    && keskinGLGerekli(navigator.userAgent, HTMLVideoElement.prototype));
   const [posterHazir, setPosterHazir] = useState(false);
   const [videoGorunur, setVideoGorunur] = useState(false);
   const yavasHat = useRef(false);
@@ -84,7 +89,12 @@ export function Hero({ kabuk = false }: { kabuk?: boolean } = {}) {
     };
     v.addEventListener("loadedmetadata", basaSar);
     v.addEventListener("timeupdate", aralik);
-    const oynuyor = () => { requestAnimationFrame(() => setVideoGorunur(true)); };
+    // ilk oynatmada Firefox tuvali kurulur: video yalnız gerçekten oynayınca (yavaş hat / hareket azaltma / veri tasarrufunda hiç)
+    let gl: (() => void) | null = null, glDenendi = false;    // tek deneme: kurulamazsa CSS süzgeci kalır
+    const oynuyor = () => {
+      if (!glDenendi && tuval.current) { glDenendi = true; gl = keskinGLKur(v, tuval.current); }
+      requestAnimationFrame(() => setVideoGorunur(true));
+    };
     v.addEventListener("playing", oynuyor);
     // 16.10 hız turu 4: indirme YALNIZ hero ilk kez ekranda (ve sekme görünür) olunca başlar. Önce load() sayfa
     // yüklenir yüklenmez çağrılıyordu: /#karne, /#sss gibi çapalı açılışta hero ekran dışındayken duraklatılmış
@@ -115,6 +125,7 @@ export function Hero({ kabuk = false }: { kabuk?: boolean } = {}) {
       sokuldu = true; window.clearTimeout(bekleme); birak();
       window.removeEventListener("load", basla); io?.disconnect(); document.removeEventListener("visibilitychange", uygula);
       v.removeEventListener("loadedmetadata", basaSar); v.removeEventListener("timeupdate", aralik); v.removeEventListener("playing", oynuyor);
+      gl?.();
       // gerçek ayrılışta (vitrin → giriş/panel) süren video indirmesi durur; yoksa masaüstündeki 36 MB'lık dosya panel parçalarıyla
       // bant paylaşmaya devam ediyordu. StrictMode'un deneme sökümünde öğe DOM'da kalır — dokunulmaz.
       if (!v.isConnected) { v.pause(); for (const s of [...v.querySelectorAll("source")]) s.remove(); v.removeAttribute("src"); v.load(); }
@@ -138,6 +149,7 @@ export function Hero({ kabuk = false }: { kabuk?: boolean } = {}) {
           <source src={santral1440} type="video/mp4" />
         </video>
         )}
+        {keskinGL && <canvas ref={tuval} className="vt-hero__keskin" aria-hidden="true" />}
         {!kabuk && <img className={videoGorunur ? "vt-hero__poster is-gecti" : "vt-hero__poster"} src={santralPoster} alt="" width="2560" height="1440"
           fetchPriority="high" decoding="async" onLoad={posterYuklendi} onError={posterHata} />}
         <div className={posterHazir ? "vt-hero__ortu is-acik" : "vt-hero__ortu"} />

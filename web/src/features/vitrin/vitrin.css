@@ -1308,6 +1308,12 @@
 /* 14.10: filtre YOK — kaynak kare olduğu gibi. Yatay AYNA: çekimde sol taraf her karede puslu (ölçüldü: parlaklık ~90 / doygunluk %32,
    sağda ~65 / %48); aynalanınca keskin paneller metnin altına, puslu taraf sağa gelir. Kayıpsız, piksel değişmez. */
 .vt-hero--video .vt-hero__video { object-position: 50% 0%; filter: url(#vt-keskin); transform: scaleX(-1); }   /* 14.10: SVG keskinleştirme (renk/ton değişmez) */
+/* 19.10 perf/cross-browser — Firefox: aynı keskinleştirme WebGL tuvalinde (keskinGL.ts). Tuval videonun kutusunu ve aynalamasını
+   paylaşır, videonun hemen üstünde (poster ve örtü yine üstte); ilk kare çizilene dek gizli, çizilince videonun süzgeci kalkar —
+   çekirdek iki kez uygulanmaz. Diğer motorlarda tuval hiç yok. */
+.vt-hero--video .vt-hero__keskin { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; transform: scaleX(-1); visibility: hidden; }
+.vt-hero--video .vt-hero__keskin.is-hazir { visibility: visible; }
+.vt-hero--video .vt-hero__video.is-gl { filter: none; }
 .vt-hero__filtre { position: absolute; width: 0; height: 0; overflow: hidden; }
 /* 13.10 okunurluk: gündüz gökyüzü videosunda jua'nın dikey perdesi tek başına yetmiyor — metin tarafı (sol %60)
    yatay ikinci perdeyle koyulaşır, sağ yarı santrali gösterir; mobilde dikey ağır perde zaten yeter */
