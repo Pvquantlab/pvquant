@@ -1,0 +1,44 @@
+firefox-stok firefox/158.0 1366x768@1 {"hazir":4,"t":10,"kaynak":"santral-1440-KjaLgHuf.mp4","boy":[2560,1440]} {"ozgun":"url(\"#vt-keskin\")","ozgun-tekrar":"url(\"#vt-keskin\")","webgl-css":"webgl tamam","mip":"webgl tamam","ss2":"webgl tamam","ss3":"webgl tamam"}
+   ozgun-tekrar  iç: en büyük 0 · ort 0 · >2 %0.000 · >4 %0.000 · >8 %0.000
+   webgl-css     iç: en büyük 255 · ort 17.154 · >2 %62.331 · >4 %44.970 · >8 %36.614
+   mip           iç: en büyük 255 · ort 18.442 · >2 %65.205 · >4 %48.729 · >8 %39.968
+   ss2           iç: en büyük 255 · ort 16.309 · >2 %63.050 · >4 %45.441 · >8 %37.070
+   ss3           iç: en büyük 253 · ort 16.337 · >2 %63.350 · >4 %45.748 · >8 %37.354
+firefox-stok firefox/158.0 1440x900@1 {"hazir":4,"t":10,"kaynak":"santral-1440-KjaLgHuf.mp4","boy":[2560,1440]} {"ozgun":"url(\"#vt-keskin\")","ozgun-tekrar":"url(\"#vt-keskin\")","webgl-css":"webgl tamam","mip":"webgl tamam","ss2":"webgl tamam","ss3":"webgl tamam"}
+   ozgun-tekrar  iç: en büyük 0 · ort 0 · >2 %0.000 · >4 %0.000 · >8 %0.000
+   webgl-css     iç: en büyük 32 · ort 2.496 · >2 %36.392 · >4 %10.472 · >8 %2.673
+   mip           iç: en büyük 147 · ort 11.009 · >2 %60.582 · >4 %43.226 · >8 %33.502
+   ss2           iç: en büyük 103 · ort 5.914 · >2 %54.183 · >4 %32.975 · >8 %20.813
+   ss3           iç: en büyük 103 · ort 6.452 · >2 %55.645 · >4 %35.191 · >8 %23.321
+firefox-stok firefox/158.0 1920x1080 {"hazir":4,"t":10,"kaynak":"santral-1440-KjaLgHuf.mp4","boy":[2560,1440]} {"ozgun":"url(\"#vt-keskin\")","ozgun-tekrar":"url(\"#vt-keskin\")","webgl-css":"webgl tamam","mip":"webgl tamam","ss2":"webgl tamam","ss3":"webgl tamam"}
+   ozgun-tekrar  iç: en büyük 0 · ort 0 · >2 %0.000 · >4 %0.000 · >8 %0.000
+   webgl-css     iç: en büyük 36 · ort 2.329 · >2 %33.462 · >4 %8.152 · >8 %1.627
+   mip           iç: en büyük 86 · ort 6.407 · >2 %52.628 · >4 %33.001 · >8 %22.520
+   ss2           iç: en büyük 80 · ort 4.37 · >2 %47.774 · >4 %24.726 · >8 %13.318
+   ss3           iç: en büyük 78 · ort 4.7 · >2 %49.624 · >4 %27.335 · >8 %15.522
+firefox-stok firefox/158.0 1440x900 {"hazir":4,"t":10,"kaynak":"santral-1440-KjaLgHuf.mp4","boy":[2560,1440]} {"ozgun":"url(\"#vt-keskin\")","ozgun-tekrar":"url(\"#vt-keskin\")","webgl-css":"webgl tamam","mip":"webgl tamam","ss2":"webgl tamam","ss3":"webgl tamam"}
+   ozgun-tekrar  iç: en büyük 0 · ort 0 · >2 %0.000 · >4 %0.000 · >8 %0.000
+   webgl-css     iç: en büyük 36 · ort 2.52 · >2 %36.709 · >4 %10.630 · >8 %2.770
+   mip           iç: en büyük 36 · ort 2.52 · >2 %36.709 · >4 %10.630 · >8 %2.770
+   ss2           iç: en büyük 50 · ort 3.072 · >2 %42.246 · >4 %16.661 · >8 %5.980
+   ss3           iç: en büyük 52 · ort 3.164 · >2 %42.935 · >4 %17.489 · >8 %6.579
+1366x768@1  firefox-stok-1366x768@1-ozgun.png            kenar 15.990 laplace 99.319
+1366x768@1  firefox-stok-1366x768@1-webgl-css.png        kenar 15.978 laplace 99.192
+1366x768@1  firefox-stok-1366x768@1-mip.png              kenar 13.071 laplace 54.040
+1366x768@1  firefox-stok-1366x768@1-ss2.png              kenar 15.128 laplace 78.590
+1366x768@1  firefox-stok-1366x768@1-ss3.png              kenar 14.961 laplace 75.581
+1440x900@1  firefox-stok-1440x900@1-ozgun.png            kenar 16.352 laplace 86.094
+1440x900@1  firefox-stok-1440x900@1-webgl-css.png        kenar 16.322 laplace 85.475
+1440x900@1  firefox-stok-1440x900@1-mip.png              kenar 13.516 laplace 52.398
+1440x900@1  firefox-stok-1440x900@1-ss2.png              kenar 15.451 laplace 69.753
+1440x900@1  firefox-stok-1440x900@1-ss3.png              kenar 15.298 laplace 67.566
+1920x1080  firefox-stok-1920x1080-ozgun.png             kenar 14.669 laplace 60.730
+1920x1080  firefox-stok-1920x1080-webgl-css.png         kenar 14.670 laplace 60.607
+1920x1080  firefox-stok-1920x1080-mip.png               kenar 12.520 laplace 44.183
+1920x1080  firefox-stok-1920x1080-ss2.png               kenar 13.738 laplace 50.755
+1920x1080  firefox-stok-1920x1080-ss3.png               kenar 13.565 laplace 49.164
+1440x900  firefox-stok-1440x900-ozgun.png              kenar 18.201 laplace 35.558
+1440x900  firefox-stok-1440x900-webgl-css.png          kenar 18.130 laplace 34.946
+1440x900  firefox-stok-1440x900-mip.png                kenar 18.130 laplace 34.946
+1440x900  firefox-stok-1440x900-ss2.png                kenar 17.555 laplace 32.680
+1440x900  firefox-stok-1440x900-ss3.png                kenar 17.491 laplace 32.433

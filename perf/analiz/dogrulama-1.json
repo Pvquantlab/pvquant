@@ -1,0 +1,483 @@
+{
+ "inceleme": [
+  {
+   "alan": "Kod incelemesi: perf/cross-browser dalı, d6ab50a..HEAD (web/ altındaki 10 commit: 0686656, fa0c598, 89e910f, 6dfbb35, fdb8c6c, 13e9f12, b6daa3e, 02c875d, 7c8c46d, a1fb5b8) + npm test / tsc / oxlint / build",
+   "dogrulanan": [
+    "Dört komut ayrı ayrı çalıştırıldı (web/ içinde). npm test çıkış 0, 57/57 geçti. npx tsc -b --noEmit çıkış 0. npx oxlint src çıkış 0: 0 hata, 16 uyarı; d6ab50a'da da aynı 16 uyarı var, yeni uyarı yok. VITE_API_URL=. npm run build çıkış 0; yalnız bilinen >500 kB parça uyarısı. dist/ git'te yok sayılıyor, replikalar kullanmıyor.",
+    "Commit başına test sayıları git archive kopyalarında çalıştırılarak doğrulandı: d6ab50a 50, fa0c598 53, 89e910f 54, 6dfbb35 55, fdb8c6c 56, 13e9f12 57, b6daa3e 57, 02c875d 58, 7c8c46d 58, a1fb5b8 57; hepsi geçti. Tek uyuşmazlık 0686656: mesajda 53/53 yazıyor, gerçekte 52/52 (sorunlar listesinde). Ara commit'lerin hepsinde tsc (app ve node yapılandırması) ve oxlint 0.",
+    "a1fb5b8, 6dfbb35'i tam geri alıyor: 6dfbb35^ ile 6dfbb35 arasındaki değişen 60 satır, a1fb5b8'in değişen satırlarıyla birebir aynı ve ters yönde. web/src ve web/test'te keskin-wr, WebRender, Gecko, 1.001 izi kalmadı. Hero.tsx'teki #vt-keskin feConvolveMatrix filtresi d6ab50a ile aynı.",
+    "Değişiklik kapsamı doğrulandı: a1fb5b8'den HEAD'e kadar web/ değişmemiş (5b39d12, bc8071c ve 49d8f2b yalnız perf/'e dokunuyor). Medya, varlık ve public dosyalarına dokunulmamış. main hâlâ d6ab50a'da, birleştirme yok. Taban ölçümü 49d8f2b, ilk kod commit'inden önce.",
+    "89e910f latin-ext daraltması fontTools 4.63 ile doğrulandı. Derlenmiş CSS'teki aralıklar doğru; küçültücü U+0120-012F'yi geçerli joker biçime (U+12?) çevirmiş. 400/500/600 tr yüzünde ğ Ğ İ ş Ş ₺ glifleri var; latin yüzünde dört ağırlıkta da ı var. Son çizim değişmez.",
+    "inter-tight-yedek.css'in unicode-range'i Inter Tight latin + tr cmap kapsamıyla birebir aynı. ₺ ve U+FEFF yedekte yok; zararsız, swap penceresinde sistem fontuna düşerler. 300'de yedek ğ/ş/İ'yi kapsıyor, ama aile sırasında Inter Tight 300 latin-ext önde olduğundan son çizim yine Inter Tight. Font yüklendikten sonra hiçbir karakter yedekten çizilmiyor.",
+    "Inter Tight yalnız vitrin/fontlar.ts'ten içe aktarılıyor ve CSS tek demet (index-*.css). Yani tr yüzleri her bağlamda var; panel etkilenmiyor. Caddyfile ve Caddyfile.web'de CSP yok, satır içi <style> ve <script> engellenmiyor.",
+    "Derlenmiş index.html'deki dört satır içi betik sözdizimi açısından geçerli (vm.Script ile denendi). <head> sırası: charset → erken doğrulama → baş betiği → kabuksuz kuralı → yedek @font-face → fonts.load. index.html 10 897 B'tan 13 628 B'a büyüdü (+2,7 KB), commit'lerde verilen +361 B ve +1,8 KB'la tutarlı.",
+    "b6daa3e en küçük örnekle üç motorda doğrulandı (genişlik 350 px, kenar boşluğu 12 px, aspect-ratio 10/8). width:auto ile: Chromium 326×260,8, Firefox 326×260,8, WebKit 326×280. calc(100% - 24px) ile üçü de 326×260,8. Chromium ve Firefox'ta ölçü değişmiyor. 4 kartla, tek sayılı son kartı satır yapan kural hiç devreye girmiyor.",
+    "0686656 (K1) Slow 4G replikalarında soğuk açılış ve ardından yenileme ile doğrulandı. «once» (20443): Firefox yenilemede 1 mp4 isteği yaptı; WebKit kaydı {y:false} ile ezdi ve 2 mp4 isteği yaptı. «sonra» (30443): üç motorda da soğukta y:true yazılıyor, yenilemede korunuyor, mp4 isteği 0. Poster girdileri: Chromium t485432/e485132 ve yenilemede t0, Firefox yenilemede girdi yok, WebKit yenilemede 0/0. Commit'teki iddiayla birebir.",
+    "fdb8c6c: «sonra» Slow 4G'de React devri üç motorda da FCP'den sonra geliyor (Chromium +90–220 ms, Firefox +100–240 ms, WebKit +50–75 ms). Chromium'da LCP = FCP (hero paragrafı). Gizli sekme benzetiminde poster tek istek, 'preload kullanılmadı' uyarısı yok.",
+    "fa0c598: «sonra» replikasında üç motorda da /yontem'de html sınıfı «vt-kabuksuz vt-sayfa», oturumlu / yolunda «vt-kabuksuz», ?vitrin ve oturumsuz / yolunda sınıf yok. Hiçbir durumda #root>[data-kabuk] kalmıyor. Mac'te üç motorda konsol hatası yok; jetonlu durumlardaki 401 sahte jetondan geliyor.",
+    "02c875d mantığı satır satır izlendi: levha kuyruğu kurulmadığında her çıkışta sinyal veriliyor; iki kuyruk sayacı 0, 1 ve N görselde doğru; temizlikte zamanlayıcı siliniyor ve sokuldu bayrağı var; ac tek kez çalışıyor. useCanlandir(durum.tur) yeniden çalışınca ya yeni kuyruk kuruluyor ya sinyal hemen veriliyor; askıda kalma yok, 4 sn emniyet de var. Modül düzeyindeki durumu React'in effect sırası (önce levhaKuyruguBasladi, sonra Hero'nun aboneliği) doğru kuruyor."
+   ],
+   "sorunlar": [
+    {
+     "siddet": "onemli",
+     "bulgu": "7c8c46d: vite.config.ts'teki «pvq-yedek-font» betiği her rotanın <head>'inde document.fonts.load(...) çağırıyor, ama dönen promise yakalanmıyor (try/catch eşzamansız reddi tutmaz). Arial, Liberation Sans ya da Arimo bulunmayan sistemlerde (Android Chrome ve Firefox, fontsuz Linux) yerel yüz 'error' durumuna düşüyor ve her sayfa açılışında 3 adet «Uncaught (in promise) NetworkError» çıkıyor. 89e910f'in kendi yorumu da «Android'de Arial yok» diyor. Brief'teki «sıfır konsol hatası» ölçütü bu cihazlarda bozuluyor. REPORT.md Android'in sınanmadığını söylüyor (§152). Düzeltme: her çağrıya .catch(function(){}) eklemek.",
+     "kanit": "Satır: web/vite.config.ts:398 (const yukle = '<script>try{if(document.fonts)[\"400\",\"500\",\"600\"].forEach(function(w){document.fonts.load(w+\" 1em \\'Inter Tight Yedek\\'\")})}catch(e){}</script>'). Yapay deneme (perf/dogrulama/kod-inceleme/fontload.mjs), local() adları var olmayanlarla değiştirilince: Chromium, Firefox ve WebKit'te üç yüz de 'error', üç motorda da pageerror «A network error occurred.» (Chromium ve Firefox 3 kez, WebKit 1 kez). Gerçek replika (android.mjs; index.html route ile aynı biçimde değiştirildi): «once» 18443'te Chromium ve Firefox'ta olay yok; «sonra» 28443'te Chromium ve Firefox'ta 3 pageerror. Gerçek Android cihazda sınanmadı.",
+     "iddia": "7c8c46d: «document.fonts.load ile 400/500/600 yerel yüzlerini CSS inmeden yükler»; 89e910f: «Android'de Arial yok → yüz geçersiz → bugünkü davranış»"
+    },
+    {
+     "siddet": "kucuk",
+     "bulgu": "fdb8c6c (React devri FCP'den sonra), çapalı açılışta (/#karne gibi) görünen kareyi değiştiriyor. Önce Chromium'da sıcak açılışın ilk karesi doğrudan #karne idi (FCP geç geliyordu). Şimdi ilk kare kabuk hero'su, scrollY 0. React #karne'yi ~10–14 ms sonra koyuyor ve sayfa oraya sıçrıyor. Yenilemede kaydırma geri yükleniyor, ilk kare y=900'de kabuk dolgusu (boş zemin) olarak çıkıyor, sonra 3831'e sıçrıyor. Mobil Slow 4G'de devir FCP'den 50–240 ms sonra, yani ara kare daha uzun görünüyor. Soğuk açılışta ve WebKit'te bu ara kare önceden de kısmen vardı. Commit'teki «Görünen hiçbir şey değişmez» sözü çapalı açılış için tam doğru değil. Öneri: boyamayiBekle'de location.hash varsa beklemeden başlatmak.",
+     "kanit": "perf/dogrulama/kod-inceleme/capa2.mjs, 1440×900, about:blank → /#karne, sıcak, 3 koşu. Chromium «once»: FCP 932/132/712 ms, ilk karede karne=true, y=3831. Chromium «sonra»: FCP 116/84/80 ms, ilk karede karne=false, y=0; karne DOM'a 127/94/93 ms'de giriyor; son y=3831. Yenileme sürümü capa.mjs: «sonra»da ilk kare y=900, karne=false. devir.mjs, Slow 4G: devir − FCP Chromium 89–221 ms.",
+     "iddia": "fdb8c6c: «Görünen hiçbir şey değişmez (kabuk ile React aynı ilk ekranı çizer)»"
+    },
+    {
+     "siddet": "kucuk",
+     "bulgu": "b6daa3e, WebKit/Safari'de görünür bir tasarım farkı yaratıyor. «Hangi iş için» kartlarındaki beyaz tepsi 19–20 px kısalıyor; çizim object-fit:contain olduğu için onunla birlikte küçülüyor (280 → 261 px yükseklik). Chromium ve Firefox'ta değişiklik yok. Değişiklik Safari'yi Chrome görünümüne çekiyor; yani bir hata düzeltmesi. Ama sahibin «tasarım dokunulmaz» kuralı nedeniyle bu farkın açıkça onaylatılması gerekir.",
+     "kanit": "perf/dogrulama/kod-inceleme/aspect.mjs: WebKit width:auto 326×280 → calc 326×260,797; Chromium ve Firefox iki durumda da 326×260,8. vitrin.css:1142: .vt-levha--resim img { position:absolute; inset:0; object-fit:contain }.",
+     "iddia": "b6daa3e: «aspect-ratio, kenar boşluğu, köşe, zemin aynı»; Safari'de kartlar Chrome ile aynı oranda"
+    },
+    {
+     "siddet": "kucuk",
+     "bulgu": "02c875d: hero videosunun hareketi en geç 4 sn ötelenebiliyor. Bu REPORT.md §185'te bedel olarak yazılı; animasyon kaldırılmıyor, yalnız geciktiriliyor. İki ufak kusur var. (a) Yorumdaki «süre load'dan sayılır» sözü kesin değil: zamanlayıcı load ile posterHazir anından hangisi sonraysa ondan başlıyor. (b) Bileşen söküldükten sonra levhalarBittiSoz dinleyicisi kümede kalıyor; kapanış, ayrılmış video öğesini bir sonraki levhalarBittiOldu çağrısına dek tutuyor. Panel tarafında useCanlandir yok, orada sayfa yenilenene dek tutuyor. Sızıntı ihmal edilebilir.",
+     "kanit": "Hero.tsx:111-112: basla, posterHazir effect'i içinde; readyState 'complete' ise hemen çağrılıyor. heroHazir.ts:45-48: dinleyici yalnız levhalarBittiOldu'da temizleniyor.",
+     "iddia": "02c875d: «en geç 4 sn» (load'dan)"
+    },
+    {
+     "siddet": "kucuk",
+     "bulgu": "0686656'nın commit mesajı test sayısını yanlış veriyor: «npm test 53/53» yazıyor, oysa o commit'te paket 52/52. Muhtemelen fa0c598'in testi henüz commit'lenmemiş çalışma ağacıyla sayılmış; iki commit 11 sn arayla atılmış. Sahibin «uydurma sayı yok» kuralı açısından düzeltilmeli. Diğer dokuz commit'in sayıları doğru.",
+     "kanit": "git archive 0686656 web docker-compose.yml Caddyfile.web Dockerfile.web Caddyfile ile açılan kopyada npm test: «tests 52, pass 52, fail 0». fa0c598 53/53. Commit zamanları 17:45:17 ve 17:45:28.",
+     "iddia": "0686656: «npm test 53/53, tsc 0, oxlint 0»"
+    },
+    {
+     "siddet": "kucuk",
+     "bulgu": "89e910f iki ayrı kök nedeni tek commit'te birleştiriyor: metrik eşlemeli yedek yüz (FOUT zıplaması) ve Firefox'un gereksiz latin-ext indirmesi (unicode-range daraltma eklentisi). Bu, «her kök neden için tek açıklayıcı commit» kuralına uymuyor. REPORT.md K4 satırı ikisini tek madde olarak sunuyor.",
+     "kanit": "git show 89e910f --stat: inter-tight-yedek.css + vitrin.css yığını (neden 1) ve vite.config interTightAralik (neden 2) aynı commit'te.",
+     "iddia": "Brief: bir kök neden = bir açıklayıcı commit"
+    },
+    {
+     "siddet": "kucuk",
+     "bulgu": "Yeni testlerin çoğu kaynak kodu düzenli ifadeyle tarıyor (main.tsx devri, useCanlandir, Hero geçidi, vite.config dizeleri). Davranışı sınayanlar yalnız posterYavasMi, levha sinyali ve kabuk betiğinin vm benzetimi. main.tsx'in FCP bekleme mantığının davranış testi yok; yeniden biçimlendirmede kırılır, gerçek hatayı yakalamaz. fonts.load reddini de hiçbir test yakalamıyor.",
+     "kanit": "web/test/vitrin/hiz.test.ts: «kabuktan devir» testi yalnız assert.match(m, /.../) satırlarından oluşuyor.",
+     "iddia": ""
+    },
+    {
+     "siddet": "kucuk",
+     "bulgu": "Gözlem (inceleme dışı ama ilgili): bu inceleme sürerken (01:25) çalışma ağacında izlenen üç ölçüm betiği commit'lenmeden değişti: perf/olc/ab-boya.mjs, lh.mjs, ortak.mjs (+25/−6 satır; ortak.mjs'ye replikanın yaprak sertifikası SPKI'sini canlı okuyan yaprakSpki() eklenmiş). Bu doğrulayıcı bu dosyalara yazmadı; başka bir eşzamanlı süreç yazdı. «sonra» ölçümleri bu commit'lenmemiş araçla yeniden alınırsa, sonuçlar commit'li araçla yeniden üretilemez.",
+     "kanit": "git status --short: « M perf/olc/ab-boya.mjs», « M perf/olc/lh.mjs», « M perf/olc/ortak.mjs»; değişiklik saati Oct 19 01:25; HEAD 5b39d12 01:01'de.",
+     "iddia": ""
+    }
+   ],
+   "calistirilan_komutlar": [
+    "cd web && npm test  → çıkış 0 (57/57)",
+    "cd web && npx tsc -b --noEmit  → çıkış 0",
+    "cd web && npx oxlint src  → çıkış 0 (0 hata, 16 uyarı; d6ab50a'da da 16)",
+    "cd web && VITE_API_URL=. npm run build  → çıkış 0",
+    "git log --oneline d6ab50a..HEAD; git diff d6ab50a..HEAD -- web; git show --stat <her commit>",
+    "git diff 6dfbb35 6dfbb35^ ile git diff a1fb5b8^ a1fb5b8 satır karşılaştırması → 60/60 aynı; git grep (keskin-wr|webrender|Gecko|1.001) → iz yok",
+    "git archive <commit> web docker-compose.yml Caddyfile.web Dockerfile.web Caddyfile → scratchpad/kom/<commit>; npm test (11 commit), tsc -p tsconfig.app.json/tsconfig.node.json --noEmit --incremental false ve oxlint src (9 ara commit)",
+    "/Users/sisamlipisagor/Desktop/masaüstü/pvquant/.venv/bin/python -I (fontTools 4.63): Inter Tight latin/latin-ext/tr cmap kapsaması ve yedek unicode-range karşılaştırması",
+    "node -e (vm.Script) ile dist/index.html satır içi betik sözdizimi denetimi",
+    "node perf/dogrulama/kod-inceleme/fontload.mjs (3 motor, local() yok benzetimi)",
+    "node perf/dogrulama/kod-inceleme/android.mjs (Chromium+Firefox, once 18443 / sonra 28443)",
+    "node perf/dogrulama/kod-inceleme/aspect.mjs (3 motor aspect-ratio)",
+    "node perf/dogrulama/kod-inceleme/sayfa.mjs https://localhost:28443 (3 motor × 4 rota/oturum durumu)",
+    "node perf/dogrulama/kod-inceleme/k1.mjs https://localhost:30443 ve https://localhost:20443 (Slow 4G soğuk+yenileme)",
+    "node perf/dogrulama/kod-inceleme/devir.mjs https://localhost:30443 (ve 20443)",
+    "node perf/dogrulama/kod-inceleme/capa.mjs ve capa2.mjs (çapalı açılış ilk kare, once/sonra)",
+    "node scratchpad/t/gizli.mjs (gizli sekme benzetimi, poster istekleri)"
+   ],
+   "ozet": "İstenen dört komutun dördü de 0 ile çıktı: npm test (57/57), tsc, oxlint (0 hata, 16 eski uyarı) ve build. Kod değişikliklerinin büyük kısmı commit mesajlarının söylediğini yapıyor:\n- **K1 yavaş hat kapısı (0686656):** Slow 4G replikasında üç motorda doğrulandı. Önce Firefox ve WebKit yenilemede videoyu indiriyordu; şimdi mp4 isteği 0 ve kayıt korunuyor.\n- **Yanlış rota karesi (fa0c598):** Doğru çalışıyor.\n- **Font aralık daraltması (89e910f):** fontTools ile doğrulandı; font yüklendikten sonraki son çizim değişmiyor.\n- **WebKit kart oranı (b6daa3e):** Chromium ve Firefox'ta ölçü aynı kalıyor, WebKit Chrome'a eşitleniyor.\n- **React devri (fdb8c6c):** Üç motorda da FCP'den sonra geliyor.\n- **Levha/video sinyali (02c875d):** Askıda kalma ya da yarış koşulu bulunmadı.\n- **Geri alma (a1fb5b8):** 6dfbb35'in birebir tersi; iz kalmamış. a1fb5b8'den sonra web/'e dokunulmamış, medya dosyaları aynı, main birleştirilmemiş.\n\nBir önemli sorun var. 7c8c46d'nin <head> betiğindeki document.fonts.load promise'leri yakalanmıyor. Arial, Liberation Sans ya da Arimo olmayan sistemlerde (Android Chrome ve Firefox) her rotada 3 adet «Uncaught (in promise) NetworkError» çıkıyor; «sıfır konsol hatası» ölçütü bu cihazlarda bozuluyor. Bu, gerçek replikada local() adları değiştirilerek kanıtlandı (once 0, sonra 3 hata); gerçek Android cihazda sınanmadı. Düzeltme tek satır: .catch(function(){}).\n\nKüçük sorunlar:\n- **Çapalı açılış:** fdb8c6c'den sonra /#karne gibi açılışlarda Chromium sıcak yüklemede ilk kare hero oluyor, sonra sayfa #karne'ye sıçrıyor; önceden ilk kare doğrudan #karne idi.\n- **Safari'de görünür fark:** b6daa3e kart tepsisini 19–20 px kısaltıyor; sahibin onayı gerekir.\n- **Video gecikmesi:** 02c875d'de 4 sn'lik süre yorumdaki gibi load'dan değil, load ile posterin hazır oluşundan hangisi sonraysa ondan sayılıyor; ayrıca ihmal edilebilir bir dinleyici sızıntısı var.\n- **Yanlış test sayısı:** 0686656'nın mesajı 53/53 diyor, o commit'te paket 52/52.\n- **Commit kuralı:** 89e910f iki kök nedeni tek commit'te birleştiriyor.\n- **Test kalitesi:** Yeni testlerin çoğu kaynağı düzenli ifadeyle tarıyor.\n\nAyrıca inceleme sırasında başka bir süreç izlenen üç perf/olc betiğini commit'lemeden değiştirdi; bu doğrulayıcı değil. Doğrulama betikleri /Users/sisamlipisagor/Desktop/masaüstü/pvquant/.claude/worktrees/perf-cross-browser/perf/dogrulama/kod-inceleme/ altına kondu; izlenen hiçbir dosya değiştirilmedi."
+  },
+  {
+   "alan": "İddia denetimi (sayılar): perf/REPORT.md, perf/analiz/KOK-NEDENLER.md, perf/after/KIYAS.md ve d6ab50a..HEAD commit iletileri; ham dosyalardan bağımsız yeniden hesap",
+   "dogrulanan": [
+    "Lighthouse «/» mobil önce 47/75/85 (medyan 75) → sonra 99/99/99. Kaynak: baseline/lighthouse/lh-once.jsonl, after/lighthouse/lh-sonra.jsonl",
+    "Lighthouse «/» mobil LCP 7 506 → 1 878 ms (rapor: 7,51 → 1,88 sn) ve TBT 124 → 51,5 ms (rapor: 52); CLS 0 → 0",
+    "Lighthouse «/» masaüstü 93/93/93 → 100/100/100; LCP 1 764 → 405 ms",
+    "Lighthouse /yontem mobil 99 → 99 (LCP 1 804 → 1 804, TBT 35 → 37); masaüstü 100 → 100 (LCP 404 → 407). Erişilebilirlik ve en iyi uygulama her yerde 100, SEO 91: değişmedi",
+    "Canlı Lighthouse «/» mobil 71/85/85 (medyan 85), masaüstü 100 (lh-canli.jsonl)",
+    "K2 ayrıştırması (analiz/ara/lighthouse): araa 64/85/75, arab (yalnız devir) 82/84/85 ve LCP 4,13–4,21 sn, arad (yalnız poster) 76/75/75 ve LCP 7,4–9,2 sn, arac (ikisi) 99/99/99 ve LCP 1 729 ms, TBT ~48,5 ms. Commit 13e9f12'deki masaüstü LCP 385 ms arac'ta da 385",
+    "fdb8c6c'deki «gözlenen FCP = LCP = 251 ms»: lh-arab-ana-mobil-{1,2,3}.html içinde observed 272/251/232, her koşuda FCP = LCP",
+    "Matris «/» soğuk LCP, FCP ve öğe kayması medyanlarının 3 ağ × 12 hücrelik tamamı KIYAS.md ile birebir; /yontem LCP/kayma ve sıcak LCP tabloları da birebir (perf/dogrulama/iddia-matris.mjs)",
+    "REPORT §2 LCP tablosunun bütün hücreleri doğru (ör. Chromium 390 kısıtsız 416 → 96, Slow 4G 1 516 → 1 208, Chromium 768 Slow 4G 4 624 → 4 256)",
+    "Öğe kayması: 390'da .vt-hero__eylem kısıtlı hatta üç motorda 25 px → 0–2 px; Firefox'ta kısıtsızda da 25 → 1. /yontem kayması önce en çok 56, sonra her hücrede 0",
+    "Chromium matris CLS en kötü medyan 0,0283 → 0,0000",
+    "Kabul tablosu 56/59 yeniden kuruldu: Lighthouse 16/16; Slow 4G LCP 11/12 (Chromium 768 4 256 ms ❌); oran 22/24 (yok·390 219/96 = 2,28 ❌, yok·1440 218/136 = 1,60 ❌); hata 1/1; piksel 5/5. Mutlak farklar 123 ve 82 ms",
+    "Sonra matrisi 216 satır × 2 = 432 yükleme: konsol, sayfa, http ve başarısız istek hatası 0, gezinme hatası 0",
+    "Firefox soğuk /yontem latin-ext-600 19/36, -500 9/36 → 0/36 (güncel baseline/matris.jsonl). /yontem satırlarında 10. kaynak her zaman < 38 KB, yani ilk-10 kesimi sonucu gizlemiyor. after/ab yazı tipi listesinde latin-ext 0/18",
+    "20 Mbps 8 kartın tamamlanması (ham koşu, medyan): Firefox 1440 5 179 → 1 756, Firefox 390 4 386 → 1 688, Chromium 390 3 404 → 1 773, WebKit 390 3 469 → 2 076 ms. Videosuz kontrol 1 706 / 1 648 / 1 818 / 2 055",
+    "Video «playing» 20 Mbps: Firefox 1440 2 821 → 3 298, Chromium 390 1 406 → 1 962, WebKit 390 2 086 → 2 791 ms. Altı hücrede gecikme 0,40–0,89 sn (rapordaki «0,4–0,9 sn» doğru)",
+    "Yavaş hatta sıcak +12 sn bayt: Firefox 2,29–2,40 → 0,00 MB, WebKit 2,17–2,31 → 0,00–0,07 MB (analiz/ab ve after/ab yukleme.jsonl)",
+    "Boya A/B (analiz/ab/boya.jsonl), stok Firefox 1440 kaydırma: mevcut 1,60 çekirdek, %7, p95 28,9; filtresiz 0,36, %3; camsız 1,18, %6; ayrışık 0,32, %3, p95 23,0. 390: 0,42 → 0,21. Boşta ayrışık: CPU 0,10 → 0,23, p95 18,7 → 26,6, düşen kare 4 ([8,4,0])",
+    "ara4: sonra 1440 p95 30,2, %7, 2,44 çekirdek; 390 p95 63,6 → 65,0, %9 → %10",
+    "video-zaman-7c8c46d.jsonl: ayrışık yol 5 sn'lik pencerelerde 18–53 / ~105 kare düşürdü (rVFC 40–63); özgün ve filtresiz yollar her pencerede 0. ara-sonra2/boya-firefox-stok.jsonl: 1440 boşta 35/23/39 düşen kare, kaydırma CPU 0,49",
+    "Piksel: after/piksel.json Chromium 20/20, Firefox 20/20, WebKit 16/20 aynı. md5 ile bağımsız kıyas: 60 PNG'nin 56'sı bayt bayt aynı, farklı olan yalnız 4 WebKit «/» tam sayfa. Gürültü tabanı 58/60",
+    "WebKit sayfa boyu 12 619 → 12 542, 10 266 → 10 227, 7 633 → 7 613, 7 722 → 7 702 (20–77 CSS px). #isler 2 897,2 → 2 820,3 px. Diğer bölümlerde en çok %0,37 / %0,80 / %0,78 / %1,83. WebKit 390 «katmanlar» farkı 253 845 px, webkit-tekrar/NOT.md'deki aynı derleme gürültüsüyle birebir",
+    "Envanter (Firefox «/»): backdrop 3 öğe, ilk ekranın %14,8'i (1440) ve %31,8'i (390); filtre 5 öğe, %201; multiply + mask 390'da yok; önce = sonra (24 satırda fark 0)",
+    "Etkileşim menü açma Firefox 1920 539 → 360 ve 1440 290 → 255 ms; başsız Chromium kaydırma p95 100,1–633,3 ms",
+    "Baytlar: poster 485 432 B (474 KiB), video 1440 37,3 MB / 1080 6,9 MB, latin-ext 38 204 + 38 028 B; fa0c598 index.html +361 B ham / +73 B gzip (.replika araa ↔ once)",
+    "Kenar enerjisi: ham dosyası yok ama PNG'lerden yatay RGB komşu farkıyla yeniden hesaplandı. FF özgün 13,16, Chrome 9,54, FF filtresiz 5,52, FF ayrışık d=1/dpr 9,54 (rapor: 12,94 / 9,43 / 5,47 / 9,45). Sıralama ve oranlar tutuyor",
+    "Filtre eşdeğerliği: ayrışık d=1 CSS px ↔ Firefox özgün, poster ve video karesinde en büyük fark 2/255 (esdeger.json, esdeger-video.json)",
+    "Chromium 768/1920 LCP öğesi gerçekten poster: lcpUrl = santral-poster-BYmyX5Ic.webp",
+    "WebKit oturum gürültüsü: ara3/sonra WebKit 390 «/» FCP medyanı 1 228 ↔ after matrisi 1 339 ms",
+    "Medya dosyaları d6ab50a..a1fb5b8 arasında değişmedi (0 medya farkı); a1fb5b8'den sonra perf/ dışında değişiklik yok"
+   ],
+   "sorunlar": [
+    {
+     "siddet": "onemli",
+     "iddia": "KIYAS.md / REPORT §2: «TBT ≤ 200 ms» 4/4 ✅",
+     "bulgu": "TBT ölçütü yalnız Lighthouse'un 4 satırından değerlendirilmiş. Projenin kendi matrisi Chromium'da 18 hücrede TBT medyanını 200 ms'nin üstünde veriyor, bazı hücrelerde de sonrası daha kötü. REPORT bundan hiç söz etmiyor.",
+     "kanit": "after/matris.jsonl (ve after/TABLOLAR.md'deki «TBT yaklaşımı» tablosu): «/» 768/1440/1920'nin bütün soğuk/sıcak × 3 ağ hücreleri > 200 ms, en yüksek 1 949 ms (1920 hizli3g soğuk). Önce → sonra: 1440 yavas4g soğuk 1 116 → 1 378; sıcak 1920 yok 424 → 1 254, 1440 yok 533 → 792, 1440 yavas4g 240 → 619, 1920 yavas4g 340 → 824. Başsız ortamın yapaylığı olabilir ama açıklanmamış."
+    },
+    {
+     "siddet": "onemli",
+     "iddia": "Kabul: «Lighthouse ≥ 90 tüm sayfalarda» ✅",
+     "bulgu": "Lighthouse yalnız «/» ve «/yontem» için koşulmuş. Herkese açık /parola-yenile hiç ölçülmemiş; fa0c598'in baş betiği «diğer yollar»da bu sayfayı da etkiliyor. Giriş/panel görünümü de Lighthouse'a girmemiş. REPORT bu kapsam daralmasını yazmıyor.",
+     "kanit": "web/src/App.tsx:129-133 (/yontem, /parola-yenile); olc/ortak.mjs SAYFALAR = {ana, yontem}; lh-*.jsonl yalnız ana ve yontem satırları içeriyor."
+    },
+    {
+     "siddet": "onemli",
+     "iddia": "Kabul: «Firefox ↔ Chromium LCP farkı < %20» → 22/24 ✅",
+     "bulgu": "Ölçüt tek yönlü uygulanmış: yalnız f/c ≤ 1,20 (Firefox en çok %20 yavaş) bakılıyor. Brief «fark < %20» diyor, bu doğal okumayla simetrik. Simetrik okumada «/» sayfasında 12 hücreden 10'u karşılanmıyor, çünkü Chromium Firefox'tan çok yavaş. KIYAS ve REPORT bu yorumu açıkça belirtmiyor (yalnız olc/kiyas.mjs yorumunda var).",
+     "kanit": "after/matris.jsonl FF/CH oranları «/»: yok 2,28/0,13/1,60/0,09; hizli3g 1,03/0,47/0,79/0,46; yavas4g 1,02/0,26/0,65/0,21. Simetrik okumada yalnız 1,03 ve 1,02 geçiyor; /yontem 12/12 geçiyor. Toplam 14/24."
+    },
+    {
+     "siddet": "onemli",
+     "iddia": "REPORT §2: «Firefox kaydırma ... 1440@2: p95 29,0 → 30,2 ms, CPU 2,32 → 2,44 ... Değişmedi»",
+     "bulgu": "Son derlemenin kendi A/B tablosundaki çok daha kötü Firefox kaydırma sonucu raporda hiç yok; rapor yalnız ara4'ü kullanıyor. Ayrıca §1.5 (~2,3 çekirdek), §8.1 (1,60 çekirdek) ve after/ab (3,12 çekirdek) aynı yapılandırma için üç farklı değer veriyor; aralarındaki uzlaştırma yalnız KOK-NEDENLER'deki «ölçüm konumu» notunda.",
+     "kanit": "after/ab/boya.jsonl (AB-TABLOLAR.md'de de var): sonra · firefox-stok · 1440 kaydırma p95 165,0 (koşular 165,0/34,5/182,6), %11 kaçan kare, 3,12 çekirdek, tıkanma 109 ms; 390: p95 68,5, %12, 2,11 çekirdek (ara4 sonra 390: 1,35 çekirdek)."
+    },
+    {
+     "siddet": "onemli",
+     "iddia": "ara4 «önce» 1440@2: p95 29,0 ms, CPU 2,32 çekirdek (3 koşu medyanı varsayımı)",
+     "bulgu": "Bu değerler medyan değil. Koşu 1'de video oynamamış (oynadi=false, kare=0, tıkanma 2 807 ms); geçerli koşu yalnız 2. 29,0 koşu 2'nin p95'i, 2,32 koşu 3'ün CPU'su, yani her ölçüde iki değerin büyüğü seçilmiş.",
+     "kanit": "analiz/ara4/once/boya.jsonl 1440 kaydırma: p95 [—, 29,04, 26,24], CPU [0,59, 2,27, 2,32]. Geçerli iki koşunun medyanı 27,6 ms / 2,30 çekirdek, üç koşununki 27,6 / 2,27. «Değişmedi» sonucu yine de geçerli, ama n=2 belirtilmemiş."
+    },
+    {
+     "siddet": "onemli",
+     "iddia": "REPORT §2: «/yontem mobil FCP 1,50 → 1,65 sn: önceki değer ana sayfa kabuğunun yanlış rota karesini sayıyordu (K5)»",
+     "bulgu": "Açıklama ham veriyle çelişiyor. K5 düzeltmesini (fa0c598) içeren araa (6dfbb35) derlemesinde ve arab/arac/arad'da /yontem mobil FCP hâlâ ~1,50 sn. 1,65 sn yalnız sonraki derlemelerde (ara-sonra2 ve sonra) görülüyor. Gözlenen FCP değişmemiş, artış simülasyonda. Aynı derlemede «/» mobil LCP de 1 729'dan 1 878'e +149 ms çıkmış ve açıklanmamış.",
+     "kanit": "lh-araa yontem mobil FCP 1 506/1 503/1 503; lh-arac 1 527/1 504/1 504; lh-sonra 1 654/1 654/1 655 (ara-sonra2: 1 654). git merge-base: fa0c598, 6dfbb35'in atası. observedFCP 231 (once) → 225 (araa) → 239 (sonra)."
+    },
+    {
+     "siddet": "onemli",
+     "iddia": "REPORT §8.8: «Video sıcak ziyarette yeniden iniyor ... değiştirilmedi»",
+     "bulgu": "Chromium 1440'ta 20 Mbps sıcak ziyarette indirilen bayt sonra yaklaşık 2,5 katına çıkmış. Yukleme-once-sonra.md'de görünüyor, REPORT'ta tartışılmıyor; «değiştirilmedi» ifadesi verinin gösterdiğinden iyimser.",
+     "kanit": "analiz/ab/yukleme.jsonl chromium 1440 kablo20 mevcut sıcak +12 sn: 9,01 / 3,60 / 9,57 MB (medyan 9,01) → after/ab/yukleme.jsonl 28,61 / 22,97 / 9,34 MB (medyan 22,97)."
+    },
+    {
+     "siddet": "onemli",
+     "iddia": "REPORT §4 0686656 riski: «Düşük»; K7: «kaydıran ziyaretçi kartları boş görüyor» düzeltildi",
+     "bulgu": "Yavaş hatlarda (Fast 3G / Slow 4G) soğuk yüklemede kart önden indirmesi artık Firefox'ta hiç, WebKit ve Chromium 390'da kısmen yapılmıyor; önce 8/8 kart ~16–20 sn'de tamamlanıyordu. Sahibin kuralına uygun olabilir, ama bu davranış değişikliği REPORT'un risk ya da bedel bölümünde yok. REPORT §2 tablosu yalnız 20 Mbps hücrelerini gösteriyor.",
+     "kanit": "after/ab/yukleme.jsonl 20 sn içinde yüklenen PNG kart sayısı: Firefox 390/1440 × hizli3g/yavas4g 0/8; WebKit 1440 3/8, WebKit 390 1/8; Chromium 390 4/8. analiz/ab'de hepsi 8/8. yukleme-once-sonra.md «19,66 → —»."
+    },
+    {
+     "siddet": "onemli",
+     "iddia": "REPORT §1–2: LCP iyileşmesi; FCP tartışılmıyor",
+     "bulgu": "Olası gizli gerileme: Firefox mobil genişliklerde Fast 3G FCP'si ~0,16–0,2 sn kötüleşmiş. LCP aynı hücrede iyileştiği için tabloda görünmüyor. Commit 7c8c46d'den önce de var (ara-sonra1).",
+     "kanit": "Firefox 390 hizli3g «/» soğuk FCP koşuları önce [2 642, 2 671, 2 858] → sonra [2 897, 2 877, 2 870] (medyan +206 ms); Firefox 768 hizli3g FCP 2 714 → 2 878. ara-sonra1: 2 877 / 2 870; ara-sonra2: 2 841 / 2 749."
+    },
+    {
+     "siddet": "kucuk",
+     "iddia": "REPORT §2 ve §8.7: «WebKit kısıtsız LCP artışı (116 → 224 ms vb.) ölçümsel ... ilk boyama anı değişmiyor»",
+     "bulgu": "WebKit 1440'ta LCP adayı tek ve LCP = FCP; artan şey FCP'nin kendisi. Yani «React'in yeni düğümü yeni aday» açıklaması bu hücreye uymuyor. 768'de de FCP artmış. Mutlak değerler küçük ama ifade veriden güçlü.",
+     "kanit": "after/matris.jsonl webkit yok «/» FCP: 1440 116 → 224 (koşular 224/130/265, lcpAday 1), 768 106 → 197."
+    },
+    {
+     "siddet": "kucuk",
+     "iddia": "«Gürültü ~100 ms; bu eşiğin altındaki WebKit farkları sayılmadı»",
+     "bulgu": "WebKit /yontem Slow 4G LCP artışları eşiğin üstünde ve raporda geçmiyor. Öte yandan aynı derlemenin oturumlar arası farkı 152 ms'ye çıkıyor (ara3), yani gürültü «~100 ms»den büyük. İki durumda da metin eksik.",
+     "kanit": "WebKit 390 /yontem yavas4g: önce [1 357, 1 326, 1 333] → sonra [1 598, 1 433, 1 447] (+114); 768: [1 389, 1 305, 1 347] → [1 484, 1 493, 1 413] (+137). ara3/sonra 390 /yontem: 1 295 ↔ after 1 447."
+    },
+    {
+     "siddet": "kucuk",
+     "iddia": "K5 / fa0c598: «/yontem başlığı Firefox 36–56 px (19/36 koşu), Chromium 36 px (5/36)»",
+     "bulgu": "Bu sayılar güncel baseline/matris.jsonl'den çıkmıyor; yalnız eski vekille ölçülmüş, yerine yenisi konmuş veriyle tutuyor. O eski veride Chromium'da da 56 px var.",
+     "kanit": "Güncel: Firefox 17/36, Chromium 3/36 (yalnız 36). Eski (yok satırları + matris-eski-vekil.jsonl): Firefox 19/36, Chromium 5/36 (56, 36, 36, 36, 36)."
+    },
+    {
+     "siddet": "kucuk",
+     "iddia": "REPORT §3 K4, KOK-NEDENLER K4, 89e910f: «latin-ext 17/36» ↔ REPORT §2: «19/36»",
+     "bulgu": "REPORT kendi içinde tutarsız: §2'de 19/36, §3'te 17/36 yazıyor. 17/36 eski vekil verisinden geliyor; duzeltme-tasarimi.json'da 15/33 olarak da geçiyor.",
+     "kanit": "Güncel baseline: 600 19/36, 500 9/36. Eski vekil: 600 17/36."
+    },
+    {
+     "siddet": "kucuk",
+     "iddia": "K3 / 0686656: «Firefox 18/18 satırda poster girdisi yok; WebKit 23/23'te poster 0 B ve 21/23'te mp4; Chromium 24/24»",
+     "bulgu": "Paydalar ve pay ham dosyalardan yeniden üretilemiyor. Sonucun yönü doğru, hatta veri daha güçlü.",
+     "kanit": "Kısıtlı hat, sıcak «/»: Firefox 24/24 poster girdisi yok; WebKit 24/24 poster 0 B, mp4 girdisi 24/24 (eski vekilde 22/24); Chromium 24/24 mp4 yok."
+    },
+    {
+     "siddet": "kucuk",
+     "iddia": "KOK-NEDENLER çürütülenler: ««/» LCP oranı Firefox/Chromium 0,23–0,98»",
+     "bulgu": "Eski vekil verisinden. Güncel temel matriste üst sınır 0,94.",
+     "kanit": "baseline/matris.jsonl «/» oranları 0,23–0,94; eski vekil verisiyle 0,23–0,98."
+    },
+    {
+     "siddet": "kucuk",
+     "iddia": "KOK-NEDENLER K1 ve 6dfbb35: «ayrışık d=1/dpr → Chromium özgün çıktısıyla ≤ 2/255»",
+     "bulgu": "1440@2'de doğru değil. Commit geri alındığı için etkisi sınırlı, ama «piksel olarak eşdeğer» iddiasını (REPORT §1.5 ve §8.1) zayıflatıyor. Ayrıca stok Firefox 158 ile Playwright Firefox 157 PNG'leri bayt bayt aynı: bu, ölçümün ekrandaki GPU birleştirmesini değil, tarayıcının ekran görüntüsü için yaptığı ayrı çizimi yansıttığını düşündürüyor (§8.2 bunu kendisi söylüyor).",
+     "kanit": "analiz/filtre-diger/esdeger.json pw-chromium 1440 ayrisik-d1/dpr: en büyük fark 11, %0,11 piksel > 2/255 (hist 3: 3 191 … ≥9: 63). WebKit 1440 en büyük fark 3. md5 firefox-stok-1440x900-ozgun.png = pw-firefox-1440x900-ozgun.png = 2bda6904…"
+    },
+    {
+     "siddet": "kucuk",
+     "iddia": "Kenar enerjisi 12,94 / 9,43 / 5,47 / 9,45; 7c8c46d «ilk kare 563 → 539 (son 538)»; «will-change duman testi: 41 kare/sn, 1,9 çekirdek»; satır simülasyonu 172/448 ↔ 436/448",
+     "bulgu": "Bu sayıların hiçbirinin depoda ham ölçüm dosyası yok; yalnız metin, commit iletisi ya da analiz anlatısı (duzeltme-tasarimi.json) içinde geçiyorlar. Kenar enerjisini PNG'lerden yaklaşık olarak yeniden üretebildim (13,16 / 9,54 / 5,52 / 9,54); 563/539 ve will-change sayıları doğrulanamadı.",
+     "kanit": "grep: 12,94 ve 563 yalnız REPORT.md / KOK-NEDENLER.md'de; perf/dogrulama/iddia-kenar.mjs çıktısı."
+    },
+    {
+     "siddet": "kucuk",
+     "iddia": "a1fb5b8 KANIT: «perf/after/ab/video-zaman.jsonl ... Boya ölçümü (after/ab): 1440 boşta 23–39 düşen kare»",
+     "bulgu": "Commit iletisi var olmayan bir dosyayı gösteriyor; bu yol git geçmişinde hiç bulunmadı. Veri analiz/ara-sonra2/video-zaman-7c8c46d.jsonl ve analiz/ara-sonra2/boya-firefox-stok.jsonl dosyalarında. after/ab/boya.jsonl'de Firefox boşta 0 düşen kare var.",
+     "kanit": "git log --all -- perf/after/ab/video-zaman.jsonl → boş; olc/video-zaman.mjs varsayılan çıktısı after/ab."
+    },
+    {
+     "siddet": "kucuk",
+     "iddia": "KIYAS: «Konsol hatası, 4xx/5xx, başarısız istek = 0 → 0»",
+     "bulgu": "«Önce» değeri süzgeçle sıfırlanmış: kiyas.mjs /PARSED_DATA_CACHED/ iletisini sayımdan çıkarıyor, ama bunu belirtmiyor. «Sonra» gerçekten 0.",
+     "kanit": "baseline/matris.jsonl: 1 × firefox · basarisiz · NS_ERROR_PARSED_DATA_CACHED /assets/santral-1440-KjaLgHuf.mp4; after: 0."
+    },
+    {
+     "siddet": "kucuk",
+     "iddia": "after/ab/AB-TABLOLAR.md: «Video 20 sn içinde oynamaya başlamayan koşular»",
+     "bulgu": "Son derlemede Chrome ve WebKit boya koşularının 9/9'unda video 20 sn içinde currentTime > 6,6 eşiğine ulaşmamış; önce Chrome'da 6/6 ulaşıyordu. Ölçüm penceresinde video oynuyor (105 kare) ve yükleme ölçümünde currentTime normal ilerliyor; büyük olasılıkla düzenek yapaylığı, ama REPORT bunu hiç açıklamıyor.",
+     "kanit": "after/ab/boya.jsonl oynadi=false, chrome 6/6 ve pw-webkit 3/3; analiz/ab/boya.jsonl chrome 6/6 true."
+    },
+    {
+     "siddet": "kucuk",
+     "iddia": "REPORT §2: «Yavaş hatta yenileme: WebKit video baytı 0,00–0,07 MB»",
+     "bulgu": "A/B düzeneğinde doğru. Ana matrisin vekil sayacı ise WebKit 1440 sıcak yüklemede kısıtlı hatta 6 koşunun 5'inde hâlâ 0,69–1,07 MB gösteriyor; Resource Timing'de karşılığı olan bir kaynak yok. Açıklanmamış.",
+     "kanit": "after/matris.jsonl webkit 1440 ana sıcak hatBayt: hizli3g 1,07/0,00/0,71, yavas4g 0,69/0,69/0,69 MB; aktarim 327 B."
+    },
+    {
+     "siddet": "kucuk",
+     "iddia": "REPORT §2: «390'da 25 → 0–2 (üç motor, üç ağ)»; KOK-NEDENLER ve 49d8f2b: «Chromium 768/1920'de LCP = video karesi»",
+     "bulgu": "İki ifade de veriden güçlü ya da yanlış. Kısıtsız ağda Chromium ve WebKit 390 zaten 0 px'ti; 25 px yalnız kısıtlı hatta (Firefox'ta her ağda). LCP öğesi video karesi değil, poster (REPORT bunu doğru yazıyor, KOK-NEDENLER ve commit iletisi yanlış).",
+     "kanit": "baseline kayma ch390 yok 0, we390 yok 0; lcpUrl her koşuda santral-poster-BYmyX5Ic.webp."
+    },
+    {
+     "siddet": "kucuk",
+     "iddia": "REPORT §3 K2 «önce 64/85/75» ↔ §2 «önce 47/75/85»",
+     "bulgu": "Ayrıştırmadaki «önce» d6ab50a değil, 6dfbb35 derlemesi (araa); aynı adla iki farklı derleme anılıyor. Ayrıca REPORT §1.3 yalnız iyileşen kart hücrelerini veriyor; WebKit 1440 hafifçe kötüleşmiş.",
+     "kanit": ".replika/araa/REF = 6dfbb35. WebKit 1440 kablo20 kartlar 2 163 → 2 292 ms."
+    },
+    {
+     "siddet": "kucuk",
+     "iddia": "«Sıfır istenmeyen görsel fark»",
+     "bulgu": "WebKit bölümlerinde %1,83'e varan farklar (1920 altbilgi, 13 793 px) yalnız göz kontrolüyle ve kendi koyulan %2 eşiğiyle «alt-piksel kayması» sayılmış. Ekran görüntüleri hareket azaltma kipinde alındığı için oynayan video ve 02c875d'nin zamanlama etkisi görsel olarak doğrulanmamış (REPORT bunu §5'te açıklıyor).",
+     "kanit": "after/piksel-bolum.json webkit-1920x1080 8:vt-alt oran 0,01833; kiyas.mjs eşiği enCok < 0,02."
+    },
+    {
+     "siddet": "kucuk",
+     "iddia": "KOK-NEDENLER: «etkileşim ölçümünde 2/36 koşu» (Playwright Firefox load takılması); REPORT etkileşim «Firefox 1920: 539 → 360»",
+     "bulgu": "Ham etkileşim verisinde «önce» için 1/36 koşu hatası var. 539 değeri üç değil, iki koşunun ortalaması; n=2 belirtilmemiş.",
+     "kanit": "baseline/etkilesim.jsonl: yalnız once|firefox|1920x1080|3 «page.goto: Timeout»; menü koşuları 463/615/—."
+    }
+   ],
+   "calistirilan_komutlar": [
+    "git -C <worktree> log d6ab50a..HEAD --format='%h %s%n%b'",
+    "cat perf/REPORT.md perf/analiz/KOK-NEDENLER.md perf/after/KIYAS.md perf/analiz/ab/AB-TABLOLAR.md perf/after/ab/AB-TABLOLAR.md perf/analiz/yukleme-once-sonra.md",
+    "node -e (lh-once / lh-canli / lh-sonra / lh-ara{a,b,c,d} / ara-sonra2 jsonl → koşu ve medyan skor, LCP, FCP, TBT, CLS)",
+    "node perf/dogrulama/iddia-matris.mjs {baseline,after,analiz/ara-sonra1,analiz/ara-sonra2}/matris*.jsonl {lcp,fcp,kayma,tbt} {soguk,sicak} {ana,yontem}",
+    "node -e (matris: /yontem ≥30 px sayımı, güncel ↔ eski vekil; latin-ext sayımı; Chromium CLS/TBT en kötü; hata sayımı 432 yükleme; sıcak hatBayt; lcpUrl; FF/CH oran aralığı)",
+    "node perf/dogrulama/iddia-boya.mjs analiz/ab/boya.jsonl | after/ab/boya.jsonl | analiz/ara4/{once,sonra}/boya.jsonl | analiz/ara-sonra2/boya-firefox-stok.jsonl",
+    "node -e (video-zaman-7c8c46d.jsonl ve video-zaman.jsonl pencereleri)",
+    "node perf/dogrulama/iddia-yukleme.mjs analiz/ab/yukleme.jsonl | after/ab/yukleme.jsonl",
+    "node -e (after/piksel.json, analiz/gurultu/piksel.json, after/piksel-bolum.json, baseline|after/ekran.json sayfa boyları)",
+    "md5 -q baseline/screens/* after/screens/* (60 görüntü bayt kıyası)",
+    "node -e (filtre/esdeger.json, esdeger-video.json, filtre-diger/esdeger.json en büyük fark ve histogram)",
+    "node perf/dogrulama/iddia-kenar.mjs analiz/filtre/*.png analiz/filtre-diger/pw-chromium-1440x900-*.png",
+    "md5 -q analiz/filtre/firefox-stok-* analiz/filtre/pw-firefox-*",
+    "node -e (baseline|after/envanter.json kıyası)",
+    "node -e (baseline|after/etkilesim.jsonl medyanları ve koşu hataları)",
+    "grep -o observedFirstContentfulPaint lh-*.html; node perf/dogrulama/iddia-lh-ag.mjs (FCP öncesi istekler)",
+    "cat perf/.replika/*/REF + git log -1; wc -c / gzip -9c .replika/*/dist/index.html",
+    "git merge-base --is-ancestor fa0c598 6dfbb35; git diff --name-only d6ab50a a1fb5b8 (medya); git log --all -- perf/after/ab/video-zaman.jsonl",
+    "grep (kenar enerjisi, 563, will-change, 448 ham kaynak araması)"
+   ],
+   "ozet": "Ana sayılar doğru: 43 sayısal iddia ham dosyalardan yeniden hesaplandı. Lighthouse koşuları (47/75/85 → 99/99/99, 93 → 100, LCP 7,51 → 1,88 sn, TBT 124 → 52 ms), matristeki bütün LCP/FCP/kayma medyanları (KIYAS.md ile birebir), 56/59 kabul sayımı, 432 yüklemede 0 hata, 20 Mbps kart ve video süreleri, sıcak yükleme baytları, boya A/B çekirdek değerleri, video kare düşmesi, piksel sonuçları (60 PNG'nin 56'sı bayt bayt aynı), sayfa boyları, envanter ve bayt büyüklükleri tutuyor. Uydurma bir sayı bulmadım.\n\nSorunlar dört grupta. (1) Kabul tablosunun gösterdiğinden daha iyimser olduğu yerler:\n- TBT ölçütü yalnız Lighthouse'tan değerlendirilmiş; projenin kendi matrisinde Chromium'da 18 hücre 200 ms'yi aşıyor ve sıcak yüklemede 1440/1920 yaklaşık iki katına çıkmış.\n- «Tüm sayfalar» yalnız «/» ve «/yontem»; /parola-yenile ve giriş görünümü ölçülmemiş.\n- Firefox/Chromium oranı tek yönlü yorumlanmış; simetrik okumada «/» sayfasında 12 hücreden 10'u karşılanmıyor.\n\n(2) Raporda geçmeyen veriler:\n- Son derlemenin kendi A/B'sinde Firefox kaydırma p95 165 ms ve 3,12 çekirdek.\n- Chromium 1440'ta sıcak ziyaret baytı 9 → 23 MB.\n- Yavaş hatlarda kart önden indirmesi Firefox'ta 0/8'e, WebKit'te 1–3/8'e inmiş.\n- Firefox 390 Fast 3G FCP'sinde +0,2 sn olası gerileme.\n- WebKit 1440 FCP artışı, «ilk boyama değişmiyor» ifadesiyle çelişiyor.\n\n(3) Yanlış atıf ya da medyan olmayan değerler:\n- /yontem mobil FCP 1,50 → 1,65 sn artışı K5'e bağlanmış; oysa K5'i içeren ara derlemelerde değer hâlâ 1,50.\n- ara4 «önce» 29,0 ms / 2,32 çekirdek medyan değil, iki geçerli koşunun büyük değerleri.\n- Eski vekil verisinden kalan sayılar: 19/36, 5/36, 17/36, 0,98 ve K3'teki 18/18 ile 23/23.\n- Chromium 1440@2'de filtre eşdeğerliği ≤ 2/255 değil, en büyük fark 11/255.\n- a1fb5b8 commit iletisi var olmayan bir dosya yolunu gösteriyor.\n\n(4) Ham dosyası olmayan iddialar: kenar enerjisi değerleri (PNG'lerden yaklaşık olarak yeniden ürettim), 563 → 539, will-change duman testi. Kritik sorun yok. Raporda açıkça karşılanmadı denen 3 ölçüt doğru.\n\nDenetim betikleri: perf/dogrulama/ altında iddia-matris.mjs, iddia-boya.mjs, iddia-yukleme.mjs, iddia-kenar.mjs, iddia-lh-ag.mjs. Takip edilen hiçbir dosya değiştirilmedi."
+  },
+  {
+   "alan": "Süreç denetimi, perf/cross-browser (d6ab50a..5b39d12). Kapsam: commit sırası, kök neden başına commit, main'e birleştirme ve push yapılmadığı, canlıya dağıtım yapılmadığı, REPORT.md'nin 9 bölümü ve şeffaflığı, medya dosyalarının bayt bayt aynı kalması.",
+   "dogrulanan": [
+    "(1) Temel ölçüm commit'i 49d8f2b (18.10 17:18:23 +03) yalnız perf/ dosyalarına dokunuyor ve tüm web/ commit'lerinden önce geliyor. İlk web commit'i 0686656 (17:45:17). «once» replikası `git archive d6ab50a web` ile derlenmiş (perf/.replika/once/REF = d6ab50a, 15:04), yani çalışma ağacındaki düzenlemeler ölçüme sızamaz. 49d8f2b'deki ilk temel satırları 12:10Z–14:04Z (15:10–17:04 +03) arasında, commit'ten önce ölçülmüş.",
+    "(2) 10 web commit'inin hepsinde Türkçe NE/NEDEN/KANIT gövdesi var. perf/ ve web/ dışında değişen izlenen dosya yok; Caddyfile, Dockerfile ve .github değişmemiş. a1fb5b8, 6dfbb35'in birebir tersi: değişen satır kümeleri ters çevrilince eşit.",
+    "(2) Ölçüm için kurulan GEÇİCİ commit'ler (936eb2b, a2f038c, c66b0c5, 6da4921) reset edilmiş, dal geçmişinde değiller. arab ve arac derlemelerinin web ağacı fdb8c6c ve 13e9f12 ile aynı (git diff boş). Commit mesajlarındaki ara Lighthouse kanıtı commit'ten önce ölçülmüş (lh-arad 18:05:24, commit 18:05:53).",
+    "(3) Birleştirme yok. 13 dal commit'inin her biri yalnız perf/cross-browser'da (`git branch -a --contains`). main = origin/main = d6ab50a. main..HEAD = 13, HEAD..main = 0.",
+    "(3) Push yok. Dalın upstream'i ve uzak izleme dalı yok. Salt okuma `git ls-remote --heads origin`: uzakta perf/cross-browser yok, uzak main = d6ab50a, diğer 7 uzak dal başının hiçbiri 49d8f2b'yi içermiyor.",
+    "(4) Dağıtım yok, gözlenebildiği kadarıyla. Canlı https://pvquant.com/ index.html, «once» (d6ab50a) derlemesiyle bayt bayt aynı (10 897 B). Dala özgü işaretlerin (vt-kabuksuz, 'Inter Tight Yedek', data-kabuk, first-contentful-paint) hiçbiri yok. JS/CSS varlık adları once ile aynı, sonra ile farklı. Last-Modified Sat 17 Oct 2026 21:50:43 GMT, yani d6ab50a push'undan (21:43:07 UTC) 7 dk sonra. CI yalnız main ve faz2-ui push'unda tetikleniyor. perf/ betiklerinde ssh/rsync/deploy yok; pvquant.com'a giden istekler yalnız okuma (canlı Lighthouse, /v1 vekili, PSI).",
+    "(6) Medya: web/src/features/vitrin/varlik altındaki 22 dosyanın sha256'sı d6ab50a, HEAD ve çalışma ağacında aynı. `git diff --stat d6ab50a..HEAD -- web/src/features/vitrin/varlik` boş. Tüm diff'te medya veya font uzantılı dosya yok; web/public aynı. Derlenmiş once ve sonra dist'te 17 mp4/webp/png ve 113 woff2/svg/ico dosyasının sha256'sı aynı.",
+    "(5) REPORT.md'de 9 başlığın hepsi var: §1 özet 5 madde; §2 önce/sonra tabloları; §3 kök neden ve kanıt tablosu (K1–K7); §4 12 commit'lik tablo; §5 görsel regresyon; §6 bağımsız doğrulama (yalnız yer tutucu); §7 test edilemeyenler ve 10 maddelik elle kontrol listesi; §8 9 kalan risk; §9 tek production onay satırı (EVET / HAYIR). Karşılanmayan 3 ölçüt (56/59) §1 ve §2'de gerekçesiyle yazılmış ve KIYAS.md ile tutarlı. Lighthouse skorları ham jsonl'larla tutarlı: önce 47/75/85, sonra 99/99/99; erişilebilirlik ve en iyi uygulamalar iki tarafta da 100/100.",
+    "İzlenen hiçbir dosyada yerel değişiklik yok. git status yalnız izlenmeyen perf/ dosyalarını gösteriyor."
+   ],
+   "sorunlar": [
+    {
+     "siddet": "kritik",
+     "bulgu": "Temel matrisin kısıtlı-hat yarısı (144 satır) kod değişikliklerinden sonra, 20:34Z–21:23Z arasında yeniden ölçülmüş ve perf/baseline/matris.jsonl'daki eski satırların yerine konmuş. Bu yeniden ölçümde yalnız Chromium'un TTFB'si şişik: Fast 3G'de +1 162 ms, Slow 4G'de +345 ms (yaklaşık 2 fazla gidiş-dönüş). Diğer bütün oturumlarda (49d8f2b temeli, ara-sonra1, sonra) ve Firefox ile WebKit'te TTFB aynı. TTFB ön yüz kodundan bağımsız olduğu için bu fark ölçüm oturumundan geliyor. Sonuç: REPORT §2'deki Chromium kısıtlı-hat LCP/FCP iyileşmeleri bu ölçüm yapaylığından kaynaklanıyor. Özgün temele göre Chromium kısıtlı FCP/LCP ya değişmemiş ya hafif kötüleşmiş. REPORT yeniden ölçümü hiç anmıyor. KOK-NEDENLER'deki gerekçe («eski vekil», ~150 ms) kendi verisiyle çelişiyor: «once» kısıtlama süreçleri (PID 43004/43005, 18.10 16:37:02'de başlamış, hâlâ çalışıyor) hem özgün temelin son satırlarını hem yeniden ölçümü taşıdı. Aynı süreçte aynı hücreler 2912/2948/1392 ms'den 4028/4320/1848 ms'ye çıkmış. perf/baseline/SUMMARY.md eski sayıları ve «hatasız satırlar geçerlidir» cümlesini koruyor, aynı klasördeki TABLOLAR.md ile çelişiyor. Kabul ölçütü kararları «sonra» değerlerini kullandığı için etkilenmiyor.",
+     "kanit": "`python3 -I perf/dogrulama/surec-denetimi.py` çıktısı. Soğuk TTFB medyanı (49d8f2b temeli | HEAD temeli | ara-sonra1 | sonra): ch-hizli3g 1749 | 2911 | 1753 | 1755; ch-yavas4g 513 | 858 | 516 | 503; fi ve we her oturumda ~1750 / ~512. Chromium soğuk FCP (once@49d8f2b | once@HEAD | sonra): ana hizli3g 390: 3000 | 4052 | 2796; ana yavas4g 390: 1128 | 1516 | 1208; yontem hizli3g 390: 2948 | 4212 | 3020; yontem yavas4g 390: 1380 | 1828 | 1372. LCP: ana yavas4g 390: 1128 | 1516 | 1208; 768: 4216 | 4624 | 4256; 1440: 1708 | 2224 | 1588; ana hizli3g 390: 3060 | 4056 | 2796. REPORT §2 bu hücreleri «1 516 → 1 208», «4 624 → 4 256», «2 224 → 1 588», «4 056 → 2 796» olarak veriyor; özgün temele göre farklar +80, +40, −120 ve −264 ms. `ps -axo lstart,command | grep kisitla` ile süreçlerin başlama saati görüldü. `grep -iE 'yeniden ölç|eski vekil|TTFB' perf/REPORT.md` boş döndü. 5b39d12 commit gövdesi yeniden ölçümü anıyor, REPORT anmıyor.",
+     "iddia": "REPORT §2: «Önce» = d6ab50a, «sonra» = a1fb5b8; aynı replika düzeni, aynı ağ vekili, aynı betikler. KOK-NEDENLER: vekil farkı tek başına ~150 ms oynatıyordu."
+    },
+    {
+     "siddet": "onemli",
+     "bulgu": "89e910f iki ayrı kök nedeni tek commit'te birleştiriyor: (1) FOUT'taki 25 px zıplamayı gideren metrik eşlemeli yedek yüz, (2) Firefox'ta gereksiz latin-ext inişini kesen unicode-range daraltması. Mekanizmaları, belirtileri ve kanıtları farklı; biri diğerinden bağımsız geri alınamaz. REPORT §3 K4 de ikisini tek satırda topluyor. Bu, «kök neden başına tek commit» kuralının çiğnenmesi.",
+     "kanit": "`git show 89e910f`: (1) yeni font/inter-tight-yedek.css dosyası, fontlar.ts içe aktarması ve vitrin.css aile yığını; (2) vite.config.ts'deki interTightAralik() eklentisi. Başlık: «Font: metrik eşlemeli yedek yüz (FOUT zıplaması) + Firefox'ta gereksiz latin-ext inişi». Daha küçük bir karışma: 0686656, yavaş-hat düzeltmesinin yanında kart önden indirme politikasını da değiştiriyor (useCanlandir.ts hatYavasKayitli); NE'de açıklanmış.",
+     "iddia": "Her kök neden için ayrı, açıklayıcı commit."
+    },
+    {
+     "siddet": "onemli",
+     "bulgu": "«Firefox ile Chromium arasında LCP farkı < %20» ölçütü tek yönlü uygulanmış (Firefox/Chromium ≤ 1,20). REPORT bu yorumu açıkça yazmıyor; yalnız baseline SUMMARY'de geçiyor. Simetrik okumada 24 hücreden 11'i karşılanmıyor, 2'si değil. Bunlardan 9'u Chromium'un Firefox'tan çok yavaş olduğu hücreler, yani motorlar arası tutarsızlık sürüyor.",
+     "kanit": "KIYAS.md'deki 24 oran satırı yeniden hesaplandı: tek yönlü 2 başarısız, |FF−CH|/min > 0,2 ölçüsüyle 11 başarısız. Örnekler: «/» Slow 4G 768: FF 1119 ↔ CH 4256 ms; 1920: 1030 ↔ 4888; Fast 3G 768: 2878 ↔ 6088; kısıtsız 1920: 77 ↔ 856.",
+     "iddia": "REPORT §1/§2: 59 kabul ölçütünden 56'sı karşılandı."
+    },
+    {
+     "siddet": "onemli",
+     "bulgu": "«Lighthouse ≥ 90, tüm sayfalarda» ölçütü yalnız «/» ve «/yontem» ile ölçülmüş. Kimlik istemeyen, herkese açık /parola-yenile rotası ölçülmemiş ve §7 «test edilemeyenler» listesinde de yok; oturumlu panel de anılmıyor. Oysa fa0c598 (baş betiği, kabuğu gizleyen kural) ve fdb8c6c (devir) kabuksuz yolları, /parola-yenile dahil, doğrudan etkiliyor.",
+     "kanit": "web/src/App.tsx:129-133 (/yontem ve /parola-yenile dalları). `grep -rn parola-yenile perf` boş. Bütün lh-*.jsonl dosyalarında sayfa alanı yalnız ana ve yontem.",
+     "iddia": "Lighthouse ölçütü tüm sayfalarda karşılandı."
+    },
+    {
+     "siddet": "onemli",
+     "bulgu": "«Tasarım dokunulmaz» kuralı (ölçüler ve fontlar dahil) iki yerde bilerek esnetilmiş. Raporda açıklanmış, ama §9'daki tek onay satırı bunları sahibe ayrıca sormuyor. b6daa3e: Safari'de «Hangi iş için» kart görsel kutusu 326×280'den 326×261'e inmiş, sayfa 20–77 px kısalmış. 89e910f/7c8c46d: FOUT penceresinde ve web fontu hiç yüklenemeyen ziyaretçide yedek font SF yerine ölçeklenmiş Arial.",
+     "kanit": "REPORT §1.4, §5 (WebKit «/» tam sayfa: bilinçli değişiklik K6), §8.5. §9 onay satırı yalnız commit listesini içeriyor."
+    },
+    {
+     "siddet": "kucuk",
+     "bulgu": "REPORT §6 «Bağımsız doğrulama» yalnız bir yer tutucu; rapor henüz taslak.",
+     "kanit": "perf/REPORT.md §6: «⟨doğrulama iş akışı bekleniyor⟩». 5b39d12 başlığında da «rapor taslağı» yazıyor."
+    },
+    {
+     "siddet": "kucuk",
+     "bulgu": "REPORT, temel matrisin iki sürümünden gelen sayıları karıştırıyor. Ayrıca §3 K2'deki «önce» değeri gerçek önce değil.",
+     "kanit": "Firefox soğuk /yontem, latin-ext-600 inişi: 49d8f2b temelinde 17/36, HEAD temelinde 19/36. §3 K4 «17/36» yazıyor, §2 «19/36». /yontem'de ≥30 px kayma: 49d8f2b'de Firefox 19/36 ve Chromium 5/36, HEAD temelinde 17/36 ve 3/36; §3 K5 «19/36» yazıyor. §3 K2'deki «önce 64/85/75» aslında araa'nın (6dfbb35 derlemesi, lh-araa.jsonl) değeri; §2'deki önce değeri 47/75/85."
+    },
+    {
+     "siddet": "kucuk",
+     "bulgu": "Commit KANIT işaretçilerinde sorunlar var. a1fb5b8 var olmayan bir dosyaya atıf yapıyor. 0686656'daki sayılar atıf yaptığı dosyadan birebir çıkmıyor, ama nitel sonuç aynı. Birçok commit'in kanıt dosyası commit anında depoda yoktu; sonradan geldi.",
+     "kanit": "`git cat-file -e HEAD:perf/after/ab/video-zaman.jsonl` → dosya yok. Veri perf/analiz/ara-sonra2/video-zaman-7c8c46d.jsonl'da; düşen kare 18–53 ve rVFC 40–63 orada doğrulandı. 0686656: Firefox 18/18, WebKit 23/23 ve 21/23 mp4, Chromium 24/24 diyor; 49d8f2b matrisinden çıkan 24/24, 24/24 ve 22/24, 24/24. 6dfbb35, fdb8c6c, 13e9f12, b6daa3e ve 02c875d'nin kanıtı bc8071c'de, 7c8c46d'ninki 5b39d12'de geldi. Ölçüm zamanları commit'lerden önce."
+    },
+    {
+     "siddet": "kucuk",
+     "bulgu": "13e9f12'nin NEDEN kısmı ve vite.config yorumu «LCP öğesi hero metni, üç motorda; poster LCP sayılmıyor» diyor. Veriye göre Chromium 768 ve 1920'de LCP öğesi poster; REPORT §2 de bunu söylüyor.",
+     "kanit": "after/matris.jsonl ve 49d8f2b matrisi, chromium ana yavas4g 768 ve 1920: lcpUrl = santral-poster-BYmyX5Ic.webp."
+    },
+    {
+     "siddet": "kucuk",
+     "bulgu": "«sonra = a1fb5b8» ifadesi kısmen doğru. Chromium ve WebKit matris ile etkileşim satırları 7c8c46d derlemesinde ölçülmüş; a1fb5b8'de yeniden koşulanlar yalnız Firefox matrisi, ekran görüntüleri ve Lighthouse. 6dfbb35 UA ile Gecko'ya sınırlı olduğu için etkisi ihmal edilebilir, ama REPORT bunu söylemiyor.",
+     "kanit": "after/matris.jsonl: chromium 17:37Z–17:56Z, webkit 18:14Z–18:31Z, firefox 19:39Z–19:56Z. a1fb5b8 19:38Z'de oluşmuş; sonra replikası 22:39 +03'te derlenmiş. after/zincir-firefox.sh başlığı: «yalnız Firefox kod yolu değişti»."
+    },
+    {
+     "siddet": "kucuk",
+     "bulgu": "Adlandırma karışık: 0686656'nın başlığındaki «K1» sitenin eski yavaş-hat kuralını kastediyor. REPORT'ta K1 Firefox filtresi, bu commit ise K3 altında.",
+     "kanit": "0686656 başlığı «K1 yavaş hat kapısı…»; REPORT §3 tablosu: K1 = feConvolveMatrix, K3 = 0686656."
+    },
+    {
+     "siddet": "kucuk",
+     "bulgu": "Kanıtın bir kısmı depoda değil. Bazı ara deneyler dal geçmişinden yeniden üretilemez; reflog nesneleri silinince kaybolacaklar.",
+     "kanit": "İzlenmeyen dosyalar: perf/analiz/webkit-tekrar/ekran.json, perf/analiz/webkit-tekrar2/ ve perf/analiz/gurultu/diff/. NOT.md commit'li ama dayandığı ekran.json değil; `*/diff/` deseni iki seviye derindeki dizini kapsamıyor. arad (c66b0c5, «yalnız poster», lh-arad 75–76) ve arae (6da4921) derlemeleri yalnız reflog'daki GEÇİCİ commit'lerden yapılmış."
+    }
+   ],
+   "calistirilan_komutlar": [
+    "git log --format='%h %ad %s' --date=iso d6ab50a..HEAD",
+    "git log --format='=== %h %s' --name-only --reverse d6ab50a..HEAD",
+    "git log -1 --format=%B <her commit>",
+    "git show <commit> -- web/src web/vite.config.ts (0686656, fa0c598, 89e910f, 6dfbb35, fdb8c6c, 13e9f12, 7c8c46d, a1fb5b8)",
+    "6dfbb35 ile a1fb5b8'in değişen satır kümeleri ters çevrilerek karşılaştırıldı (diff)",
+    "git reflog show perf/cross-browser --date=iso",
+    "git diff --stat 936eb2b fdb8c6c -- web; git diff --stat a2f038c 13e9f12 -- web",
+    "git branch -a --contains <13 commit>; git log main --oneline -5; git rev-list --count main..HEAD / HEAD..main",
+    "git remote -v; git branch -r; git rev-parse --abbrev-ref perf/cross-browser@{upstream}; git log origin/main..HEAD",
+    "GIT_TERMINAL_PROMPT=0 git ls-remote --heads origin (salt okuma)",
+    "git merge-base --is-ancestor 49d8f2b <uzak dal başları>",
+    "curl -s -D - https://pvquant.com/ (salt okuma GET); cmp ile perf/.replika/once/dist/index.html karşılaştırması; dala özgü işaretler için grep",
+    "git diff --stat d6ab50a..HEAD -- web/src/features/vitrin/varlik; git ls-tree -r d6ab50a/HEAD; her blob için shasum -a 256",
+    "once ve sonra dist dosyaları için shasum -a 256 (mp4/webp/png/woff2/svg/ico)",
+    "cat perf/replika/derle.sh baslat.sh; cat perf/.replika/*/REF",
+    "ps -axo pid,lstart,command | grep -E 'kisitla|caddy'",
+    "python3 -I ile b0/b1/a1/s1 matris çözümlemeleri (TTFB/FCP/LCP medyanı, latin-ext sayımı, K1 kanıt sayımı, LCP oranı tek/çift yönlü)",
+    "python3 -I perf/dogrulama/surec-denetimi.py (yeni, yeniden üretilebilir betik)",
+    "grep -rnI 'ssh|scp|rsync|deploy|178.18.206.130|git push' perf; .github/workflows/ci.yml tetikleyicileri",
+    "grep -n 'pathname' web/src/App.tsx; grep -rn parola-yenile perf"
+   ],
+   "ozet": "Sürecin en temel kuralları uyulmuş görünüyor. Temel ölçüm (49d8f2b) her web/ değişikliğinden önce geliyor ve «once» replikası doğrudan d6ab50a ref'inden derlenmiş. Dal main'e birleştirilmemiş ve uzağa push edilmemiş; `ls-remote` uzakta dalın olmadığını, uzak main'in d6ab50a olduğunu gösteriyor. Canlıdaki index.html, d6ab50a derlemesiyle bayt bayt aynı (Last-Modified d6ab50a push'undan 7 dk sonra), yani dağıtım izi yok. Sunucunun iç durumu (/opt/pvquant checkout'u, docker imajları), diğer rotalar ve geçmişte push edilip silinmiş bir dal doğrulanamadı. Medya dosyalarının 22'si de bayt bayt aynı; derlenmiş medya ve fontlar da aynı. REPORT.md'nin 9 bölümü var, ama §6 boş bir yer tutucu.\n\nKritik bulgu: temel matrisin kısıtlı-hat yarısı kod değişikliklerinden sonra yeniden ölçülüp eski satırların yerine konmuş. Bu yeniden ölçümde yalnız Chromium'un TTFB'si yaklaşık +1,16 sn (Fast 3G) ve +0,35 sn (Slow 4G) şişik; TTFB koddan bağımsız olduğu için bu bir ölçüm yapaylığı. REPORT §2'deki Chromium kısıtlı-hat iyileşmeleri (ör. Slow 4G 390: 1 516 → 1 208 ms) bundan geliyor; özgün temele göre bu hücreler değişmemiş ya da hafif kötüleşmiş (1 128 → 1 208 ms). REPORT yeniden ölçümü anmıyor. KOK-NEDENLER'in «eski vekil» gerekçesi kendi verisiyle çelişiyor: aynı kısıtlama süreci aynı hücreler için çok farklı sonuç vermiş. Kabul ölçütü kararları bundan etkilenmiyor.\n\nÖnemli bulgular:\n- 89e910f iki ayrı kök nedeni tek commit'te birleştiriyor.\n- LCP oranı ölçütü tek yönlü yorumlanmış ve bu açıklanmamış; simetrik okumada 24 hücreden 2 değil 11'i karşılanmıyor.\n- «Tüm sayfalar» için Lighthouse /parola-yenile'yi kapsamıyor.\n- Safari kart ölçüsü ve yedek font gibi bilinçli tasarım esnetmeleri onay satırında ayrıca sorulmuyor.\n\nKüçük bulgular: iki temel sürümünden gelen sayılar karışık, bazı commit'lerin KANIT işaretçileri kırık ya da yeniden üretilemiyor, 13e9f12'deki «poster LCP değil» ifadesi verilerle çelişiyor, «sonra»nın Chromium/WebKit satırları 7c8c46d derlemesinde ölçülmüş, K1 adı iki farklı şey için kullanılmış, bazı kanıtlar commit edilmemiş.\n\nYeniden üretilebilir betik: /Users/sisamlipisagor/Desktop/masaüstü/pvquant/.claude/worktrees/perf-cross-browser/perf/dogrulama/surec-denetimi.py"
+  }
+ ],
+ "olcum": {
+  "alan": "Bağımsız yeniden ölçüm (perf/cross-browser): Lighthouse, Slow 4G matris alt kümesi, yavaş hatta sıcak video baytı, piksel eşitliği. Önce = d6ab50a (:18443), sonra = a1fb5b8 (:28443).",
+  "dogrulanan": [
+   "Replikalar ayakta: https://localhost:18443/ ve :28443/ ikisi de 200 döndü. .replika/sonra/REF = a1fb5b8c515f… = `git log -1 -- web`. once/REF = d6ab50a. 5b39d12 yalnız perf/ altına dokunuyor. :28443'ün sunduğu index.html, .replika/sonra/dist/index.html ile md5 olarak aynı (dist 18.10 22:39'dan beri değişmedi).",
+   "Lighthouse, sayfa/tür başına 1 koşu (dogrulama/lighthouse/). SONRA: / mobil 98 (rapor 99), LCP 1878 ms (rapor 1,88 sn), CLS 0; / masaüstü 100 (rapor 100), LCP 405 (rapor 405); /yontem mobil 99, LCP 1804 (rapor 99, 1,80 sn); /yontem masaüstü 100, LCP 407 (rapor 100, 407). ÖNCE: / mobil 75 (rapor medyanı 75), LCP 7505 (rapor 7,51 sn); / masaüstü 93, LCP 1764 (rapor 93, 1764); /yontem 99/100 (rapor 99/100). Erişilebilirlik / En iyi uygulama / SEO her yerde 100/100/91, rapordakiyle aynı. Perf ≥ 90, TBT ≤ 200 ve CLS ≤ 0,1 sonrada sağlanıyor.",
+   "Öğe kayması (Slow 4G, «/», 2 koşu medyanı). 390'da önce → sonra: Chromium 25 → 2 (rapor 25 → 2), Firefox 25 → 1 (rapor 25 → 1), WebKit 25 → 0 (rapor 25 → 0). 1440'ta: Chromium 1 → 0, Firefox 0 → 1, WebKit 0 → 0 (rapordakiyle birebir). Chromium CLS önce 0,000–0,008, sonra 0,000.",
+   "Sonrada Slow 4G'de 390 genişlikte LCP ≤ 2,5 sn (5 koşu medyanı Chromium ve Firefox için, 2 koşu WebKit için): Chromium 1316 ms (rapor 1208), Firefox 1259 (rapor 1231), WebKit 1915 (rapor 1804). Ölçüt sağlanıyor.",
+   "Firefox/Chromium LCP oranı, sonra, Slow 4G (5 koşu medyanı): 390'da 0,96, 1440'ta 0,93. İkisi de ≤ 1,20 (rapor 1,02 ve 0,65).",
+   "Konsol hatası, sayfa hatası, 4xx/5xx, başarısız istek ve gezinme hatası: 0. Kapsam: ana matrisin 24 satırı (48 yükleme), ek matrisin 18 satırı (36 yükleme) ve A/B'nin 4 yüklemesi.",
+   "K3 / commit 0686656 (yavaş hatta yenilemede video inmesin). Sonra, Fast 3G, 390. Firefox: sicak.bayt[+12] = 61 B (0,00 MB). WebKit: 73 395 B (0,07 MB). Her iki motorda video readyState 0, buffered 0, networkState IDLE. Yavaş hat kaydı {y:true}. Önceki A/B'de WebKit'in «videosuz» kontrolü (mp4 → 404) de 0,07 MB gösteriyordu, yani bu 73 KB video değil. Raporun «0,00 / 0,00–0,07 MB» iddiası doğrulandı.",
+   "Piksel, 60 çiftin tamamı (dogrulama/piksel-bagimsiz.mjs, pixelmatch eşik 0,1, includeAA false ve true). Aynı boyutlu 56 çiftin 56'sı ham RGBA baytı olarak birebir aynı; farklı piksel 0, kenar yumuşatma dahil 0. Kırılım: Chromium 20/20, Firefox 20/20, WebKit (/yontem, giriş, ilk ekranlar) 16/16. Rapor §5 ve KIYAS «56/60» doğrulandı.",
+   "WebKit «/» tam sayfa, 4 çift. Hero bölgesi (görünüm yüksekliği × DPR satır) ham bayt olarak birebir aynı. Boy farkı 390: 77 CSS px, 768: 39, 1440: 20, 1920: 20 (rapor «20–77 px» diyor). İlk farklı satır 1440'ta CSS 3154, yani #isler içinde (#isler 2724'te başlıyor). 390 (2197), 768 (2394) ve 1920 (1858) için ilk fark «katmanlar» bandında.",
+   "«katmanlar» gürültü bandı iddiası doğrulandı. Sonra ↔ sonra çekiminde (after ↔ analiz/webkit-tekrar, WebKit 390) aynı bantta (CSS 2197'den itibaren) tam olarak aynı 253 845 px fark var. Bu sayı, önce ↔ sonra farkıyla aynı. Önce ↔ önce gürültü tabanında (baseline ↔ analiz/gurultu) WebKit 768'de 178 253 px, 1920'de 1 764 px fark var; 390 ve 1440 aynı (rapor «58/60 aynı» diyor).",
+   "after/screens dosyaları 18.10 22:56'da, a1fb5b8 replikası kurulduktan sonra (22:39) çekilmiş. Firefox matris satırları da a1fb5b8 üzerinde ölçülmüş (19:39Z sonrası)."
+  ],
+  "sorunlar": [
+   {
+    "siddet": "kritik",
+    "bulgu": "Raporun Chromium kısıtlı ağ «önce» değerleri (Slow 4G ve Fast 3G; «/» ve «/yontem») bir ölçüm hatasıyla şişmiş. Bu değerler baseline/matris.jsonl'den geliyor ve REPORT §2 tablosuna ve KIYAS'a girmiş. Satırlar 18.10 20:34–20:50Z arasında ölçülmüş. Önce replikasının yaprak sertifikası ise 20:10:14Z'de yenilenmiş. Dosyadaki SPKI eski kaldığı için Chromium sertifika hatası yoluna düşmüş. Sonuçta raporlanan Chromium iyileşmelerinin çoğu ölçüm hatası. Sonra tarafının değerleri ve geçti/kaldı sonuçları bundan etkilenmiyor.",
+    "kanit": "Medyan TTFB, aynı derleme ve aynı vekil. baseline Chromium: yavas4g 854–863 ms, hizli3g 2916 ms. Aynı dosyada Firefox/WebKit: 508–515 ve 1757. Benim önce/Chromium ölçümüm canlı SPKI ile: 506/513 ms. Doğrudan deney (dogrulama/spki-ttfb.mjs): geçerli SPKI ile TTFB 519 ve 514 ms, eşleşmeyen SPKI ile 868 ve 882 ms, yani +350 ms. Benim önce/Chromium FCP değerlerim: 390'da 1238, 1440'ta 1222 ms (rapor 1516 ve 1520). LCP: 1356 ve 1444 (rapor 1516 ve 2224). Gerçek sonra FCP 1152–1226 ve 1008–1152, yani Chromium FCP'si fiilen değişmemiş. LCP iyileşmesi 390'da yaklaşık −40…−130 ms; rapordaki −308 ms değil. Eski vekille 12:21Z'de alınan baseline'da (matris-eski-vekil.jsonl) Chromium 390 Slow 4G TTFB 516, LCP 1128 ms. Aynı şişme /yontem satırlarında da var (TTFB 849 ve 2910). Bu yüzden 1828 → 1372 ve 4212 → 3020 gibi iyileşmeler de büyük ölçüde ölçüm hatası. Çalışma ağacındaki commit edilmemiş olc/ortak.mjs değişikliği (canlı SPKI) bu sorunu tarif ediyor. Ama REPORT/KIYAS güncellenmemiş, baseline yeniden ölçülmemiş.",
+    "iddia": "REPORT §2: Chromium Slow 4G 390 1 516 → 1 208, 1440 2 224 → 1 588, 768 4 624 → 4 256; Fast 3G 4 056 → 2 796, 4 480 → 3 324, 7 096 → 6 088; KIYAS /yontem Chromium 1828 → 1372 (Slow 4G) ve 4212 → 3020 (Fast 3G)"
+   },
+   {
+    "siddet": "onemli",
+    "bulgu": "Çalışma ağacında başka bir oturumun commit edilmemiş değişiklikleri var. web/ altında 6 dosya (Hero.tsx, heroHazir.ts, main.tsx, vite.config.ts, fontlar.test.ts, hiz.test.ts) 01:29:09'da değiştirilmiş; perf/olc altında 3 dosya. Bunlar ölçülen a1fb5b8 replikasında yok. Commit edilirlerse ne raporun ne benim ölçümüm onları kapsar. Ben izlenen hiçbir dosyaya dokunmadım.",
+    "kanit": "`git status` ilk kontrolde yalnız perf/olc/{ab-boya,lh,ortak}.mjs değişikliklerini gösteriyordu; LH koşum sırasında web/ dosyaları da değişti (mtime 01:29:09). Diff'in içeriği: vite.config.ts'de document.fonts.load(...).catch() eklenmiş; yorumda Arial olmayan Android'de «Uncaught (in promise)» konsol hatası anılıyor. main.tsx'te window.location.hash varken React'in beklemesi kaldırılmış. Bunlar başka bir doğrulayıcının bulduğu kusurlara işaret ediyor; «sıfır konsol hatası» ölçütü Android'de etkilenebilir. Replika dist dosyaları 22:39'dan beri değişmedi."
+   },
+   {
+    "siddet": "kucuk",
+    "bulgu": "WebKit 1440, Slow 4G, «/» LCP'sinde iki ayrı oturumda da gerileme var ve rapor bunu açıklamıyor. Fark, raporun WebKit için kullandığı ~100 ms gürültü eşiğinin üstünde. Rapor yalnız kısıtsız ağdaki WebKit artışını «ölçümsel» diye açıklıyor. Bu hücre mobil kabul ölçütü değil; ama değer zaten 2,5 sn'nin üstünde ve daha da kötüleşmiş.",
+    "kanit": "Rapor: 2567 → 2729 (+162). Bu doğrulama, aynı oturumda 2'şer koşu: 2773 (2719, 2827) → 3004 (3040, 2967), yani +231. FCP değişmemiş (1272 → 1291). LCP öğesi h1 ve FCP'den yaklaşık 1,5–1,7 sn sonra düşüyor.",
+    "iddia": "REPORT §2 tablosu we 1440 Slow 4G 2 567 → 2 729; §2 «WebKit farkları ~100 ms altı gürültü»"
+   },
+   {
+    "siddet": "kucuk",
+    "bulgu": "Firefox 1440 Slow 4G LCP iyileşmesi abartılı. 390'daki değer doğrulanıyor.",
+    "kanit": "Rapor 1440: 1287 → 1030 (−257). Benimki 5'er koşu: 1295 (1096, 1313, 1324, 1292, 1295) → 1219 (1631, 1216, 1219, 1212, 1262), yani −76. Raporun sonra koşuları 1030/1386/1024; benim oturumumdaki küme ise ~1215 ms civarında, yaklaşık 190 ms yukarıda. 390: rapor 1299 → 1231, benimki 1318 → 1259; uyumlu.",
+    "iddia": "REPORT §2: Firefox 1440 Slow 4G 1 287 → 1 030"
+   },
+   {
+    "siddet": "kucuk",
+    "bulgu": "Chromium 1440 Slow 4G sonra LCP'si iki tepeli dağılıyor: LCP ya FCP'yle aynı anda düşüyor (~1,0–1,3 sn) ya da sonradan bir h1 adayı geliyor (~1,6–1,7 sn). Bu yüzden 2–3 koşuyla Firefox/Chromium oran ölçütü kararsız. Görevdeki 2 koşulu alt kümede oran 1440'ta 1,24 çıktı ve ölçütü geçemedi. 5 koşuda 0,93 çıktı ve geçti.",
+    "kanit": "Sonra Chromium 1440 LCP koşuları: 1316, 988, 1188, 1684, 1716; medyan 1316. Raporda 3 koşunun üçü de geç tepede (1588–1600), medyan 1588. Ölçütün güvenilir olması için en az 5 koşu öneririm.",
+    "iddia": "KIYAS: Firefox/Chromium LCP ≤ 1,20 · ana · yavas4g · 1440x900 → 0,65"
+   },
+   {
+    "siddet": "kucuk",
+    "bulgu": "Lighthouse TBT değeri ana makinenin CPU yüküne duyarlı. Tek koşumda «/» mobil sonra TBT 141 ms çıktı; rapor medyanı 52 (49–76). Önce tarafında TBT 84 (rapor 124). Ölçüt (≤ 200) sağlanıyor ama pay dar. O sırada yük ortalaması 5–8'di; kullanıcının Chrome sekmesi ~%93 CPU kullanıyordu.",
+    "kanit": "dogrulama/lighthouse/lh-sonra.jsonl ve lh-once.jsonl (perf 98 ve 75).",
+    "iddia": "REPORT §2: / mobil TBT 124 → 52 ms"
+   },
+   {
+    "siddet": "kucuk",
+    "bulgu": "Rapor tüm «sonra» verisini a1fb5b8 olarak sunuyor. Ama Chromium/WebKit matris satırları (17:37–18:31Z) ve Chromium/WebKit A/B satırları (18:56–19:29Z), a1fb5b8 replikası kurulmadan (19:39Z) önce, 7c8c46d derlemesinde ölçülmüş. İki derleme arasındaki fark yalnız Firefox'ta devreye giren koddan ibaret (geckoWebRenderFiltresi), yani sonuçlar pratikte geçerli. zincir-firefox.sh bunu belgeliyor; REPORT'taki «sonra = a1fb5b8» cümlesi ise eksik.",
+    "kanit": "after/matris.jsonl zaman damgaları; .replika/sonra/REF ve dist 18.10 22:39:02; `git diff 7c8c46d a1fb5b8 -- web` yalnız Hero.tsx'teki Firefox yolunu, CSS'teki .vt-hero--wr kuralını ve bir testi siliyor.",
+    "iddia": "REPORT §2: «Önce» = d6ab50a, «sonra» = a1fb5b8; aynı replika düzeni"
+   }
+  ],
+  "calistirilan_komutlar": [
+   "curl -sk -o /dev/null -w '%{http_code}' https://localhost:18443/ ; … :28443/ (200 / 200)",
+   "cat perf/.replika/sonra/REF ; git log -1 --format=%H -- web ; git show --stat 5b39d12",
+   "openssl s_client … | openssl x509 -pubkey … | dgst -sha256 (canlı yaprak SPKI ↔ spki.txt; once notBefore 2026-10-18 20:10:14Z)",
+   "node olc/lh.mjs --hedef sonra --cikti dogrulama --kosu 1",
+   "node olc/lh.mjs --hedef once --cikti dogrulama --kosu 1",
+   "node olc/matris.mjs --hedef once --cikti dogrulama/once --gorunum 390x844,1440x900 --ag yavas4g --sayfa ana --kosu 2",
+   "node olc/matris.mjs --hedef sonra --cikti dogrulama/sonra --gorunum 390x844,1440x900 --ag yavas4g --sayfa ana --kosu 2",
+   "node dogrulama/matris-kiyas.mjs (medyanlar + rapor verisiyle kıyas → dogrulama/matris-kiyas.json)",
+   "node olc/ab-yukleme.mjs --hedef sonra --cikti dogrulama --motor firefox,webkit --gorunum 390x844 --ag hizli3g --kosu 1",
+   "node --max-old-space-size=8192 dogrulama/piksel-bagimsiz.mjs (60 çift → dogrulama/piksel-bagimsiz.json)",
+   "node dogrulama/piksel-bagimsiz.mjs 'webkit-.*-ana\\.png' analiz/gurultu (önce↔önce gürültü tabanı)",
+   "node -e … (after ↔ analiz/webkit-tekrar, WebKit 390 «/»: sonra↔sonra gürültüsü)",
+   "node dogrulama/spki-ttfb.mjs (Chromium: canlı ve eşleşmeyen SPKI ile TTFB, 2+2 yükleme)",
+   "EK (görevde istenmedi; oran ölçütü 2 koşuyla kararsız kaldığı için): node olc/matris.mjs --hedef sonra --cikti dogrulama/ek-sonra --motor chromium,firefox --gorunum 390x844,1440x900 --ag yavas4g --sayfa ana --kosu 3",
+   "EK: node olc/matris.mjs --hedef once --cikti dogrulama/ek-once --motor firefox --gorunum 390x844,1440x900 --ag yavas4g --sayfa ana --kosu 3",
+   "node dogrulama/matris-birlesik.mjs (2 + 3 koşu birleşik medyanlar → dogrulama/matris-birlesik.json)"
+  ],
+  "ozet": "Sonra derlemesinin (a1fb5b8) kabul sonuçları büyük ölçüde doğrulandı. Lighthouse: «/» mobil 98, masaüstü 100; /yontem 99/100. Mobil «/» LCP 1,88 sn; erişilebilirlik / en iyi uygulama / SEO 100/100/91, rapordakiyle aynı. 390'daki 25 px zıplama üç motorda da 0–2 px'e inmiş. Slow 4G 390'da LCP ≤ 2,5 sn. Firefox/Chromium oranı 5 koşuda 0,96 / 0,93. Hata 0. Yavaş hatta yenilemede video baytı Firefox'ta 61 B, WebKit'te 73 KB; bu 73 KB video değil. Aynı boyutlu 56 görüntü çiftinin 56'sı ham bayt olarak birebir aynı. WebKit «/» sayfalarında hero aynı, boy farkı 20–77 CSS px; «katmanlar» bandının çekim gürültüsü olduğu sonra↔sonra kıyasıyla teyit edildi.\n\nKRİTİK: Raporun Chromium kısıtlı ağ «önce» sayıları geçersiz. Baseline'ın Chromium Slow 4G / Fast 3G satırları, önce replikasının sertifikası yenilendikten sonra (20:10Z), dosyadaki eski SPKI ile ölçülmüş. TTFB +340 ms (Slow 4G) ve +1,16 sn (Fast 3G) şişmiş. Canlı SPKI ile 514–519 ms, eşleşmeyen SPKI ile 868–882 ms ölçtüm. Gerçekte Chromium Slow 4G FCP'si değişmemiş (1238 → 1152–1226 ms); LCP iyileşmesi rapordaki −308 / −636 ms değil, yaklaşık −40…−290 ms. Fast 3G ve /yontem'deki Chromium iyileşmeleri de büyük ölçüde bu hatadan geliyor. Rapor §2 ve KIYAS'taki Chromium önce sütunları canlı SPKI ile yeniden ölçülmeli.\n\nDiğer bulgular küçük. WebKit 1440 Slow 4G LCP'si iki oturumda da +160–230 ms gerilemiş ve rapor bunu açıklamıyor. Firefox 1440 iyileşmesi abartılı (−257 değil −76 ms). Chromium 1440 LCP iki tepeli dağılıyor; 2 koşuyla oran 1,24 çıkıyor, en az 5 koşu gerekiyor. Lighthouse TBT CPU yüküne duyarlı: 141 ms ölçtüm (rapor 52). Rapor «sonra = a1fb5b8» diyor; Chromium/WebKit satırları ise 7c8c46d'de ölçülmüş, yalnız Firefox kodu farklı olduğundan sonuçlar pratikte geçerli.\n\nAyrıca çalışma ağacında başka bir oturumun commit edilmemiş web/ değişiklikleri var (01:29). Bunlar ölçülen replikada yok. Ölçümler CPU gürültüsü altında yapıldı (yük ortalaması 3–8; kullanıcının Chrome sekmesi). Çıktılar /Users/sisamlipisagor/Desktop/masaüstü/pvquant/.claude/worktrees/perf-cross-browser/perf/dogrulama/ altında (lighthouse/, once/, sonra/, ek-once/, ek-sonra/, yukleme.jsonl, piksel-bagimsiz.json, piksel-gurultu.json, spki-ttfb.jsonl, matris-kiyas.json, matris-birlesik.json ve betikler). İzlenen hiçbir dosyayı değiştirmedim."
+ },
+ "sentez": "**Nihai hüküm: dal bu hâliyle sahibe teslim edilemez.** Kod tarafı büyük ölçüde sağlam. Testler, tip denetimi, lint ve derleme temiz. main'e birleştirme, push ya da canlıya gönderim yapılmamış. Medya dosyaları bayt bayt aynı. Ancak REPORT.md'de bir ölçüm hatası, açıklanmamış kapsam daraltmaları ve commit'lenmemiş düzeltmeler var. Bunlar giderilmeden kabul tablosu dürüst sayılamaz.\n\n**Teslimden önce zorunlu düzeltmeler**\n\n- **Chromium kısıtlı hat «önce» sütunları geçersiz.** Etkilenen yerler: REPORT §2 LCP tablosundaki Chromium Slow 4G / Fast 3G hücreleri, KIYAS.md ve TABLOLAR.md (/yontem dahil).\n  - Nedeni: «önce» replikasının sertifikası 18.10 20:10:14Z'de yenilenmiş, bu satırlar ise 20:34–20:50Z'de, dosyadaki eski sertifika anahtarıyla ölçülmüş.\n  - Sonuç: yalnız Chromium'da sunucu yanıt süresi şişmiş: 2 911 / 858 ms. Diğer bütün ölçüm setlerinde ve Firefox/WebKit'te 1 749–1 757 / 503–519 ms.\n  - Yanlışlıkla iyileşme diye sunulan değerler: 1 516→1 208, 2 224→1 588, 4 624→4 256, 4 056→2 796, 4 480→3 324, 7 096→6 088, /yontem 1 828→1 372 ve 4 212→3 020.\n  - Özgün temel ölçüme göre Chromium kısıtlı FCP değişmemiş; LCP aşağı yukarı aynı ya da hafif kötü (ör. 1 128→1 208, 4 216→4 256).\n  - Yapılacak: «önce» Chromium kısıtlı hat satırları canlı sertifika anahtarıyla yeniden ölçülmeli ya da özgün temel ölçüm satırları (matris-eski-vekil.jsonl) kullanılmalı. KOK-NEDENLER'deki «eski vekil ~150 ms» açıklaması ve baseline/SUMMARY.md düzeltilmeli.\n- **Kabul tablosunun kapsamı ve yorumu açıkça yazılmalı.**\n  - Lighthouse yalnız «/» ve «/yontem» için koşulmuş. /parola-yenile ve giriş görünümü ölçülmemiş; ya ölçülmeli ya «tüm sayfalar» ifadesi düzeltilmeli.\n  - TBT ölçütü yalnız Lighthouse'tan değerlendirilmiş. Projenin kendi matrisinde Chromium'da 18 hücre 200 ms'yi aşıyor (en yüksek 1 949 ms) ve sıcak yüklemede kötüleşmiş (ör. 424→1 254). Başsız tarayıcı yapaylığı olabilir, ama yazılmalı.\n  - «Firefox/Chromium LCP farkı < %20» ölçütü tek yönlü uygulanmış. Simetrik okumada 24 hücrenin 10–11'i karşılanmıyor (formüle göre). Bunların çoğu 768/1920 genişlikte, Chromium posteri LCP saydığı için 3–4 kat yavaş olduğu hücreler.\n- **«Sıfır konsol hatası» ölçütü a1fb5b8'de her ortamda geçerli değil.** <head>'deki `document.fonts.load` çağrılarının reddi yakalanmıyor (`web/vite.config.ts:398`). Arial, Liberation Sans ya da Arimo olmayan sistemlerde (Android) her sayfada 3 «Uncaught (in promise)» hatası çıkıyor. Bu, benzetimle kanıtlandı; gerçek Android cihazda sınanmadı.\n- **Çalışma ağacında commit'lenmemiş, ölçülmemiş değişiklikler var.** 6 web/ dosyası ve 3 perf/olc dosyası 19.10 01:25–01:29'da başka bir oturum tarafından değiştirilmiş: `.catch` eki, çapalı açılışta beklememe, levha dinleyicisinin bırakılması ve canlı sertifika anahtarı okuma. Bu değişikliklerle `npm test` 57/57 geçiyor (bu incelemede koşuldu). Teslimden önce bunlar ya kök neden başına ayrı commit'lenmeli ve etkilediği ölçümler yeniden alınmalı, ya geri alınmalı. Rapordaki «sonra = a1fb5b8» ifadesi buna göre güncellenmeli.\n- **Firefox kaydırma (§2) yeniden yazılmalı.**\n  - ara4'teki «önce» değerleri (29,0 ms / 2,32 çekirdek) medyan değil: iki geçerli koşunun büyük değerleri seçilmiş. Gerçek medyan 27,6 ms / 2,30 çekirdek; geçerli koşu sayısı (n=2) da belirtilmemiş.\n  - Son derlemenin kendi A/B ölçümü (after/ab) çok daha kötü: p95 165 ms (koşular 165 / 34,5 / 182,6), %11 kaçan kare, 3,12 çekirdek. Rapor bunu hiç anmıyor.\n  - «Değişmedi» yerine «kararsız, belirsiz» yazılmalı.\n- **/yontem mobil FCP 1,50→1,65 sn yanlış commit'e bağlanmış.** Bu artış K5'e bağlanmış, ama K5'i (fa0c598) içeren ara derlemelerde (araa, arac) değer hâlâ 1,50 sn. Ben de yeniden okudum. Neden bilinmiyor; 13e9f12'den sonra ortaya çıkıyor (7c8c46d olası, kanıtlanmadı). «/» mobil LCP'deki 1 729→1 878 ms artışı da açıklanmamış.\n- **Açıklanmamış davranış değişiklikleri ve olası gerilemeler §8'e eklenmeli:**\n  - Yavaş hatlarda kart görsellerinin önden indirmesi 8/8'den Firefox'ta 0/8'e, WebKit'te 1–3/8'e, Chromium 390'da 4/8'e inmiş.\n  - Chromium 1440, 20 Mbps sıcak ziyarette indirilen bayt 9,0→23,0 MB (medyan, yüksek oynaklık). Önbellek iki tarafta da çalışıyor; bu fark önbellek hatası değil, video baytı.\n  - Firefox 390/768 Fast 3G FCP +0,16–0,21 sn.\n  - WebKit 1440 Slow 4G LCP iki ayrı oturumda +160–230 ms; WebKit /yontem Slow 4G +114 / +137 ms.\n  - WebKit 1440 kısıtsız FCP 116→224 ms. Bu, raporun «ilk boyama anı değişmiyor» cümlesiyle çelişiyor.\n  - Firefox 1440 Slow 4G iyileşmesi abartılı: rapor −257 ms diyor, bağımsız ölçüm −76 ms.\n- **Tasarım esnetmeleri §9'da ayrıca onaya sunulmalı.**\n  - Safari'de kart görselleri 280→261 px (b6daa3e).\n  - Font gelene dek ve web fontu hiç yüklenemeyen ziyaretçide yedek font, SF yerine ölçeklenmiş Arial.\n  - Video hareketi en geç 4 sn ötelenebiliyor (20 Mbps'te ölçülen gecikme 0,4–0,9 sn).\n  - «Sıfır istenmeyen görsel fark» ifadesi şöyle düzeltilmeli: «Chromium/Firefox 40/40 aynı; WebKit'te onay bekleyen bilinçli fark; video oynarken görsel doğrulama yapılmadı.»\n- **Sayı ve atıf düzeltmeleri:**\n  - §3 K4: 17/36 → 19/36 (§2 ile tutarlı olsun).\n  - §3 K5: Firefox 19/36 ve Chromium 5/36 → 17/36 ve 3/36 (güncel temel ölçüm).\n  - §3 K2'deki «önce 64/85/75» aslında araa (6dfbb35) derlemesi.\n  - KOK-NEDENLER'deki 0,98 → 0,94.\n  - K3: 18/18, 23/23, 21/23 → 24/24, 24/24, 24/24.\n  - Filtre eşdeğerliği «≤ 2/255», Chromium 1440@2'de geçerli değil (en büyük fark 11/255).\n  - «LCP = video karesi» (KOK-NEDENLER, 49d8f2b) ve «poster LCP sayılmıyor» (13e9f12) yanlış: LCP öğesi poster.\n  - «390'da 25→0–2 (üç ağ)» yalnız kısıtlı hatlarda doğru; Firefox'ta her ağda.\n  - Etkileşimdeki 539 ms iki koşunun ortalaması (n=2).\n  - KIYAS'taki «önce 0 hata» bir süzgeçle sıfırlanmış; gerçekte 1 adet NS_ERROR_PARSED_DATA_CACHED var.\n  - Ham verisi olmayan sayılar «yeniden üretilemez» diye işaretlenmeli ya da ham dosyaları eklenmeli: kenar enerjisi değerleri, 563→539, will-change duman testi, 172/448.\n- **Commit düzeyindeki sorunlar.** Dal push edilmediği için ya yeniden düzenlenebilir (commit kimlikleri değişir ve raporlar güncellenmeli) ya da §4'te açıkça yazılabilir; karar sahibin.\n  - 0686656 mesajı «53/53» diyor, o commit'te gerçek 52/52.\n  - 89e910f iki kök nedeni tek commit'te birleştiriyor; bu, «kök neden başına tek commit» kuralının çiğnenmesi.\n  - a1fb5b8 var olmayan bir dosyaya atıf yapıyor (perf/after/ab/video-zaman.jsonl; veri analiz/ara-sonra2'de).\n  - «K1» adı 0686656'da başka, raporda başka anlamda kullanılıyor.\n- **Diğer eksikler:** REPORT §6 boş bir yer tutucu (`⟨doğrulama iş akışı bekleniyor⟩`); bu doğrulamanın sonucuyla doldurulmalı. Commit'lenmemiş kanıtlar (analiz/webkit-tekrar/ekran.json, webkit-tekrar2/, gurultu/diff/) ya eklenmeli ya «yeniden üretilemez» denmeli; arad ve arae derlemeleri de yalnız reflog'da duruyor.\n\n**Doğrulananlar**\n\nDört doğrulama birbirini büyük ölçüde tutuyor.\n\n- **Kod:** `npm test` 57/57, `tsc`, `oxlint` (0 hata; 16 uyarının hepsi d6ab50a'da da var) ve derleme çıkış 0.\n- **Commit davranışları:**\n  - a1fb5b8, 6dfbb35'in birebir tersi; iz kalmamış.\n  - K3 yavaş hat kapısı üç motorda doğru çalışıyor: yenilemede video isteği 0; WebKit'teki 73 KB video değil.\n  - fa0c598 doğru rota karesini veriyor.\n  - Font aralık daraltması fontTools ile doğrulandı; font yüklendikten sonraki son çizim değişmiyor.\n  - 02c875d'de askıda kalma yok.\n- **Lighthouse:** ham dosyalardan ve bağımsız yeniden ölçümle doğrulandı. «/» mobil 47/75/85→99/99/99 (bağımsız koşu 98), masaüstü 93→100, LCP 7,51→1,88 sn; /yontem 99/100. Erişilebilirlik / en iyi uygulama / SEO 100/100/91, değişmedi. TBT ≤ 200 sağlanıyor ama pay dar: makine yükü altında bağımsız tek koşuda 141 ms ölçüldü.\n- **Kayma ve LCP:** 390'daki 25 px zıplama kısıtlı hatta üç motorda 0–2 px'e inmiş. Slow 4G 390'da LCP ≤ 2,5 sn üç motorda bağımsız olarak doğrulandı (1 316 / 1 259 / 1 915 ms).\n- **Hatalar:** 432 yüklemede ve bağımsız 88 yüklemede konsol, istek ve gezinme hatası 0 (Mac'teki üç motorda).\n- **Bant ve font:** yavaş hatta yenilemede video baytı 0; Firefox latin-ext 0/36; 20 Mbps kart süreleri ve boya A/B çekirdek değerleri tutuyor.\n- **Piksel:** aynı boyutlu 56 çiftin 56'sı ham bayt olarak aynı. WebKit farkının «katmanlar» bandı, sonra↔sonra çekiminde de aynı 253 845 px ile çıkıyor; yani çekim gürültüsü.\n- **Süreç:** temel ölçüm (49d8f2b) kod değişikliklerinden önce. main = origin/main = d6ab50a; dal uzakta yok. Canlıdaki index.html, d6ab50a derlemesiyle bayt bayt aynı. Medyanın 22'si de bayt bayt aynı.\n\n**Doğrulanmayan ya da yanlış olanlar**\n\nEn ağır bulgu Chromium kısıtlı hat «önce» sütunu. İki doğrulayıcı bunu birbirinden bağımsız buldu; ben de zaman çizelgesini ve yanıt sürelerini yeniden okuyarak teyit ettim. Ölçüm doğrulayıcısı sertifika anahtarını bilerek uyuşmaz yapınca yanıt süresinin +350 ms arttığını deneyle gösterdi.\n\nBu hata geçti/kaldı kararlarını değiştirmiyor, çünkü kararlar «sonra» değerleriyle veriliyor. Ama raporun Chromium'daki iyileşme anlatısını büyük ölçüde geçersiz kılıyor. «Chromium 768: 4 624→4 256» satırı gerçekte iyileşme değil, yatay ya da hafif gerileme.\n\nAyrıca:\n- Firefox kaydırmada rapor yalnız işine gelen ara ölçümü kullanmış.\n- /yontem FCP artışının açıklaması veriyle çelişiyor.\n- WebKit gerilemeleri «gürültü» eşiğinin üstünde, ama yazılmamış.\n- Chromium 1440 Slow 4G LCP iki tepeli dağılıyor. Üç koşu yetmiyor: ölçüm doğrulayıcısında iki koşuyla oran 1,24 çıkıp ölçüt kaldı, beş koşuyla 0,93 çıkıp geçti. En az beş koşu gerekiyor.\n\n**Kabul tablosu dürüst mü?**\n\nKendi yorumları içinde 56/59 sayımı aritmetik olarak doğru. Uydurma bir sayı bulunmadı. Ama tablo şu hâliyle dürüst değil:\n- «Tüm sayfalar» iki sayfaya daraltılmış.\n- TBT yalnız Lighthouse'tan okunmuş; matrisin karşıt verisi saklanmış.\n- Firefox/Chromium oranı açıklanmadan tek yönlü uygulanmış.\n- Konsol ölçütü Android'de bozuluyor.\n- WebKit'teki tasarım değişikliği «istenmeyen değil» diye kendiliğinden onaylanmış.\n\nDürüst bir tabloda Lighthouse ölçütü «ölçülen iki sayfada» geçer. Firefox/Chromium ölçütü simetrik okumada «/» sayfasında büyük ölçüde kalır. Konsol ölçütü Android için «düzeltme commit'lenmedi, ölçülmedi» notu taşır. Görsel ölçüt «sahip onayı bekliyor» olur.\n\n**Kurallara uyum**\n\nUyulanlar: önce ölçüm, tasarım dosyaları ve medyanın korunması, main'e birleştirmeme ve canlıya göndermeme.\n\nÇiğnenenler ya da zayıflar:\n- «Her kök neden için tek commit»: 89e910f.\n- «Uydurma ya da koşulmamış sayı yok»: 0686656'nın test sayısı ve ham verisi olmayan sayılar.\n\nÇalışma ağacı şu an temiz değil. Yeniden ölçümler, commit'lenmemiş bir ölçüm aracıyla yapılırsa yeniden üretilemez: sertifika anahtarı dosyaları 01:45 ve 01:47'de yeniden yazıldı, yani başka bir oturum şu anda ölçüm yapıyor.\n\nBu doğrulama için yalnız okuma komutları ve `npm test` çalıştırıldı; izlenen hiçbir dosya değiştirilmedi.\n\nDosyalar:\n- /Users/sisamlipisagor/Desktop/masaüstü/pvquant/.claude/worktrees/perf-cross-browser/perf/REPORT.md\n- /Users/sisamlipisagor/Desktop/masaüstü/pvquant/.claude/worktrees/perf-cross-browser/perf/after/KIYAS.md\n- /Users/sisamlipisagor/Desktop/masaüstü/pvquant/.claude/worktrees/perf-cross-browser/perf/analiz/KOK-NEDENLER.md\n- /Users/sisamlipisagor/Desktop/masaüstü/pvquant/.claude/worktrees/perf-cross-browser/perf/baseline/matris.jsonl (şişmiş Chromium satırları)\n- /Users/sisamlipisagor/Desktop/masaüstü/pvquant/.claude/worktrees/perf-cross-browser/perf/baseline/matris-eski-vekil.jsonl (özgün temel)\n- /Users/sisamlipisagor/Desktop/masaüstü/pvquant/.claude/worktrees/perf-cross-browser/perf/baseline/SUMMARY.md\n- /Users/sisamlipisagor/Desktop/masaüstü/pvquant/.claude/worktrees/perf-cross-browser/web/vite.config.ts\n- /Users/sisamlipisagor/Desktop/masaüstü/pvquant/.claude/worktrees/perf-cross-browser/perf/dogrulama/ (doğrulayıcıların betikleri ve çıktıları; surec-denetimi.py, spki-ttfb.mjs, iddia-*.mjs, kod-inceleme/)"
+}

@@ -1,0 +1,2 @@
+final başsız 157.0 {"tuval":"etkin","ortanca":99.8,"p95":216,"cizici":"Intel(R) HD Graphics, or similar","caveat":"geçti","oynuyor":true}
+sonra başsız 157.0 {"tuval":"yok","ortanca":16.7,"p95":17.6,"cizici":"Intel(R) HD Graphics, or similar","caveat":"geçti","oynuyor":true}

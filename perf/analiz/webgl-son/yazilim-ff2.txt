@@ -1,0 +1,2 @@
+sonra7 açılış 1: {"iz":"1656:etkin/süzgeç-yok 2173:gizli/css 2698:gizli/css 3210:gizli/css 3749:gizli/css 4253:gizli/css 4755:gizli/css 5272:gizli/css 5800:gizli/css","ortanca":16.7,"p95":17.7,"kayit":"var"}
+sonra7 açılış 2: {"iz":"1483:yok/css 2001:yok/css 2510:yok/css 3041:yok/css 3576:yok/css 4100:yok/css 4604:yok/css 5104:yok/css 5626:yok/css","ortanca":16.7,"p95":17.7,"kayit":"var"}

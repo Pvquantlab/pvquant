@@ -1,0 +1,12 @@
+chromium sonra6 /yontem #1 FCP 1180 · kabuksuz=true modulepreload=1 · RT: script 549→1086 · ağ istekleri: script
+chromium sonra6 /yontem #2 FCP 1236 · kabuksuz=true modulepreload=1 · RT: script 607→1145 · ağ istekleri: script
+chromium sonra6 /yontem #3 FCP 1184 · kabuksuz=true modulepreload=1 · RT: script 553→1094 · ağ istekleri: script
+firefox sonra6 /yontem #1 FCP 1285 · kabuksuz=true modulepreload=1 · RT: script 670→1210 · ağ istekleri: script
+firefox sonra6 /yontem #2 FCP 1204 · kabuksuz=true modulepreload=1 · RT: link 590→1133 · ağ istekleri: script
+firefox sonra6 /yontem #3 FCP 1179 · kabuksuz=true modulepreload=1 · RT: link 563→1104 · ağ istekleri: script
+webkit sonra6 /yontem #1 FCP 1446 · kabuksuz=true modulepreload=1 · RT: link 693→1223 · ağ istekleri: script
+webkit sonra6 /yontem #2 FCP 1242 · kabuksuz=true modulepreload=1 · RT: link 603→1134 · ağ istekleri: script
+webkit sonra6 /yontem #3 FCP 1202 · kabuksuz=true modulepreload=1 · RT: link 567→1098 · ağ istekleri: script
+chromium sonra6 / #1 FCP 688 · kabuksuz=false modulepreload=0 · RT: script 633→1282 · ağ istekleri: script
+firefox sonra6 / #1 FCP 692 · kabuksuz=false modulepreload=0 · RT: script 650→1183 · ağ istekleri: script
+webkit sonra6 / #1 FCP 718 · kabuksuz=false modulepreload=0 · RT: script 669→1199 · ağ istekleri: script

@@ -1,0 +1,14 @@
+firefox-stok firefox/158.0 1366x768@1 {"hazir":4,"t":10,"kaynak":"santral-1440-KjaLgHuf.mp4","boy":[2560,1440]} {"ozgun":"url(\"#vt-keskin\")","ozgun-tekrar":"url(\"#vt-keskin\")","webgl-css":"webgl tamam","webgl-aygit":"webgl tamam","filtresiz":"filtresiz","webgl-kimlik":"webgl tamam","webgl-css-1x":"webgl tamam"}
+   ozgun-tekrar  iç: en büyük 0 · ort 0 · >2 %0.000 · >4 %0.000 · >8 %0.000
+   webgl-css     iç: en büyük 255 · ort 17.154 · >2 %62.331 · >4 %44.970 · >8 %36.614
+   webgl-aygit   iç: en büyük 255 · ort 17.154 · >2 %62.331 · >4 %44.970 · >8 %36.614
+   filtresiz     iç: en büyük 136 · ort 15.66 · >2 %55.156 · >4 %45.860 · >8 %38.944
+   webgl-kimlik  iç: en büyük 229 · ort 19.729 · >2 %67.349 · >4 %50.188 · >8 %41.054
+   webgl-css-1x  iç: en büyük 255 · ort 17.154 · >2 %62.331 · >4 %44.970 · >8 %36.614
+   kimlik↔filtresiz iç: en büyük 136 · ort 7.625 · >2 %50.738 · >4 %34.676 · >8 %23.941
+firefox-stok-1366x768@1-ozgun.png            kenar 15.990 laplace 99.319
+firefox-stok-1366x768@1-filtresiz.png        kenar 9.176 laplace 37.416
+firefox-stok-1366x768@1-webgl-kimlik.png     kenar 9.170 laplace 37.410
+firefox-stok-1366x768@1-webgl-css.png        kenar 15.978 laplace 99.192
+kaymasız ortalama |ΔL| 6.41
+en iyi kayma dx=0 dy=0 → ortalama |ΔL| 6.41

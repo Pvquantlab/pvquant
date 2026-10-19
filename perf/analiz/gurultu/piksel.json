@@ -1,0 +1,1382 @@
+[
+ {
+  "ad": "chromium-1440x900-ana-ilk-ekran.png",
+  "durum": "aynı",
+  "boyut": [
+   2880,
+   1800
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "chromium-1440x900-ana.png",
+  "durum": "aynı",
+  "boyut": [
+   2880,
+   15226
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "chromium-1440x900-giris.png",
+  "durum": "aynı",
+  "boyut": [
+   2880,
+   1800
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "chromium-1440x900-yontem-ilk-ekran.png",
+  "durum": "aynı",
+  "boyut": [
+   2880,
+   1800
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "chromium-1440x900-yontem.png",
+  "durum": "aynı",
+  "boyut": [
+   2880,
+   10376
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "chromium-1920x1080-ana-ilk-ekran.png",
+  "durum": "aynı",
+  "boyut": [
+   1920,
+   1080
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "chromium-1920x1080-ana.png",
+  "durum": "aynı",
+  "boyut": [
+   1920,
+   7703
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "chromium-1920x1080-giris.png",
+  "durum": "aynı",
+  "boyut": [
+   1920,
+   1080
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "chromium-1920x1080-yontem-ilk-ekran.png",
+  "durum": "aynı",
+  "boyut": [
+   1920,
+   1080
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "chromium-1920x1080-yontem.png",
+  "durum": "aynı",
+  "boyut": [
+   1920,
+   5218
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "chromium-390x844-ana-ilk-ekran.png",
+  "durum": "aynı",
+  "boyut": [
+   1170,
+   2532
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "chromium-390x844-ana.png",
+  "durum": "aynı",
+  "boyut": [
+   1170,
+   37620
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "chromium-390x844-giris.png",
+  "durum": "aynı",
+  "boyut": [
+   1170,
+   3927
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "chromium-390x844-yontem-ilk-ekran.png",
+  "durum": "aynı",
+  "boyut": [
+   1170,
+   2532
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "chromium-390x844-yontem.png",
+  "durum": "aynı",
+  "boyut": [
+   1170,
+   26559
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "chromium-768x1024-ana-ilk-ekran.png",
+  "durum": "aynı",
+  "boyut": [
+   1536,
+   2048
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "chromium-768x1024-ana.png",
+  "durum": "aynı",
+  "boyut": [
+   1536,
+   20452
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "chromium-768x1024-giris.png",
+  "durum": "aynı",
+  "boyut": [
+   1536,
+   2400
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "chromium-768x1024-yontem-ilk-ekran.png",
+  "durum": "aynı",
+  "boyut": [
+   1536,
+   2048
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "chromium-768x1024-yontem.png",
+  "durum": "aynı",
+  "boyut": [
+   1536,
+   13910
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "firefox-1440x900-ana-ilk-ekran.png",
+  "durum": "aynı",
+  "boyut": [
+   2880,
+   1800
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "firefox-1440x900-ana.png",
+  "durum": "aynı",
+  "boyut": [
+   2880,
+   15224
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "firefox-1440x900-giris.png",
+  "durum": "aynı",
+  "boyut": [
+   2880,
+   1800
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "firefox-1440x900-yontem-ilk-ekran.png",
+  "durum": "aynı",
+  "boyut": [
+   2880,
+   1800
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "firefox-1440x900-yontem.png",
+  "durum": "aynı",
+  "boyut": [
+   2880,
+   10376
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "firefox-1920x1080-ana-ilk-ekran.png",
+  "durum": "aynı",
+  "boyut": [
+   1920,
+   1080
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "firefox-1920x1080-ana.png",
+  "durum": "aynı",
+  "boyut": [
+   1920,
+   7702
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "firefox-1920x1080-giris.png",
+  "durum": "aynı",
+  "boyut": [
+   1920,
+   1080
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "firefox-1920x1080-yontem-ilk-ekran.png",
+  "durum": "aynı",
+  "boyut": [
+   1920,
+   1080
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "firefox-1920x1080-yontem.png",
+  "durum": "aynı",
+  "boyut": [
+   1920,
+   5218
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "firefox-390x844-ana-ilk-ekran.png",
+  "durum": "aynı",
+  "boyut": [
+   1170,
+   2532
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "firefox-390x844-ana.png",
+  "durum": "aynı",
+  "boyut": [
+   1170,
+   37620
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "firefox-390x844-giris.png",
+  "durum": "aynı",
+  "boyut": [
+   1170,
+   3927
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "firefox-390x844-yontem-ilk-ekran.png",
+  "durum": "aynı",
+  "boyut": [
+   1170,
+   2532
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "firefox-390x844-yontem.png",
+  "durum": "aynı",
+  "boyut": [
+   1170,
+   26559
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "firefox-768x1024-ana-ilk-ekran.png",
+  "durum": "aynı",
+  "boyut": [
+   1536,
+   2048
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "firefox-768x1024-ana.png",
+  "durum": "aynı",
+  "boyut": [
+   1536,
+   20452
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "firefox-768x1024-giris.png",
+  "durum": "aynı",
+  "boyut": [
+   1536,
+   2402
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "firefox-768x1024-yontem-ilk-ekran.png",
+  "durum": "aynı",
+  "boyut": [
+   1536,
+   2048
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "firefox-768x1024-yontem.png",
+  "durum": "aynı",
+  "boyut": [
+   1536,
+   13910
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "webkit-1440x900-ana-ilk-ekran.png",
+  "durum": "aynı",
+  "boyut": [
+   2880,
+   1800
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "webkit-1440x900-ana.png",
+  "durum": "aynı",
+  "boyut": [
+   2880,
+   15266
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "webkit-1440x900-giris.png",
+  "durum": "aynı",
+  "boyut": [
+   2880,
+   1800
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "webkit-1440x900-yontem-ilk-ekran.png",
+  "durum": "aynı",
+  "boyut": [
+   2880,
+   1800
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "webkit-1440x900-yontem.png",
+  "durum": "aynı",
+  "boyut": [
+   2880,
+   10376
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "webkit-1920x1080-ana-ilk-ekran.png",
+  "durum": "aynı",
+  "boyut": [
+   1920,
+   1080
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "webkit-1920x1080-ana.png",
+  "durum": "fark",
+  "boyut": [
+   1920,
+   7722
+  ],
+  "farkli": 1764,
+  "oran": 0.00011897824397824398,
+  "aaDahil": 1804,
+  "bant": [
+   0,
+   0,
+   1764,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "webkit-1920x1080-giris.png",
+  "durum": "aynı",
+  "boyut": [
+   1920,
+   1080
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "webkit-1920x1080-yontem-ilk-ekran.png",
+  "durum": "aynı",
+  "boyut": [
+   1920,
+   1080
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "webkit-1920x1080-yontem.png",
+  "durum": "aynı",
+  "boyut": [
+   1920,
+   5218
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "webkit-390x844-ana-ilk-ekran.png",
+  "durum": "aynı",
+  "boyut": [
+   1170,
+   2532
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "webkit-390x844-ana.png",
+  "durum": "aynı",
+  "boyut": [
+   1170,
+   37857
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "webkit-390x844-giris.png",
+  "durum": "aynı",
+  "boyut": [
+   1170,
+   3930
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "webkit-390x844-yontem-ilk-ekran.png",
+  "durum": "aynı",
+  "boyut": [
+   1170,
+   2532
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "webkit-390x844-yontem.png",
+  "durum": "aynı",
+  "boyut": [
+   1170,
+   26559
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "webkit-768x1024-ana-ilk-ekran.png",
+  "durum": "aynı",
+  "boyut": [
+   1536,
+   2048
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "webkit-768x1024-ana.png",
+  "durum": "fark",
+  "boyut": [
+   1536,
+   20532
+  ],
+  "farkli": 178253,
+  "oran": 0.005652159078917462,
+  "aaDahil": 187655,
+  "bant": [
+   0,
+   112788,
+   65465,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "webkit-768x1024-giris.png",
+  "durum": "aynı",
+  "boyut": [
+   1536,
+   2404
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "webkit-768x1024-yontem-ilk-ekran.png",
+  "durum": "aynı",
+  "boyut": [
+   1536,
+   2048
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "ad": "webkit-768x1024-yontem.png",
+  "durum": "aynı",
+  "boyut": [
+   1536,
+   13910
+  ],
+  "farkli": 0,
+  "oran": 0,
+  "aaDahil": 0,
+  "bant": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ }
+]

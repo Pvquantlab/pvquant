@@ -1,0 +1,44 @@
+/* 18.10 — Inter Tight'ın METRİK EŞLEMELİ yedeği. Yalnız swap penceresinde (Inter Tight yüzü henüz yüklenmemişken) çizer;
+   Inter Tight yüklenince hiçbir karakter buradan çizilmez: unicode-range = Inter Tight latin + tr yüzlerinin GERÇEK cmap
+   kapsaması (bildirilen aralık ∩ cmap). Inter Tight'ın çizmediği karakterler (← → ‑ U+2011 …) bugünkü gibi
+   ui-sans-serif/system-ui'ye düşer; ağdan bayt yok (local()).
+   Neden: yedek bugün system-ui (macOS'ta SF), Inter Tight'tan geniş. 390 px'te hero paragrafı SF'de 9, Inter Tight'ta 8
+   satır → font gelince düğmeler + mikro 24,8 px (16 px × 1,55) zıplıyordu (matris: üç motor, yavaş hat). Arial (macOS, iOS,
+   Windows sistem fontu; Liberation Sans/Arimo Arial'la aynı genişlikte) size-adjust ile Inter Tight genişliğine, *-override
+   ile Inter Tight'ın dikey ölçüsüne (upm 2048; hhea = typo 1984/−494/0, USE_TYPO_METRICS) çekilir.
+   Ölçüm (fontTools, GPOS kern dahil; Σ Inter Tight / Σ Arial): 400 → 0,9452 (5 543 karakter vitrin metni), 500 → 0,9714
+   (ilk ekran metni), 600 → 0,9272 (Arial Bold'a, ilk ekran metni). Override'lar size-adjust ile ölçeklenir:
+   ascent = 0,96875 / s, descent = 0,24121 / s, line-gap = 0. Android'de Arial yok → yüz geçersiz → bugünkü davranış. */
+@font-face {
+  font-family: 'Inter Tight Yedek';
+  font-style: normal;
+  font-weight: 100 449;
+  src: local('Arial'), local('ArialMT'), local('Liberation Sans'), local('LiberationSans'), local('Arimo'), local('Arimo-Regular');
+  size-adjust: 94.52%;
+  ascent-override: 102.49%;
+  descent-override: 25.52%;
+  line-gap-override: 0%;
+  unicode-range: U+0020-007E,U+00A0-00FF,U+011E-011F,U+0130-0131,U+0152-0153,U+015E-015F,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2002,U+2009,U+200B,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2026,U+2032-2033,U+2039-203A,U+2044,U+20AC,U+2122,U+2191,U+2193,U+2212;
+}
+@font-face {
+  font-family: 'Inter Tight Yedek';
+  font-style: normal;
+  font-weight: 450 549;
+  src: local('Arial'), local('ArialMT'), local('Liberation Sans'), local('LiberationSans'), local('Arimo'), local('Arimo-Regular');
+  size-adjust: 97.14%;
+  ascent-override: 99.73%;
+  descent-override: 24.83%;
+  line-gap-override: 0%;
+  unicode-range: U+0020-007E,U+00A0-00FF,U+011E-011F,U+0130-0131,U+0152-0153,U+015E-015F,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2002,U+2009,U+200B,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2026,U+2032-2033,U+2039-203A,U+2044,U+20AC,U+2122,U+2191,U+2193,U+2212;
+}
+@font-face {
+  font-family: 'Inter Tight Yedek';
+  font-style: normal;
+  font-weight: 550 900;
+  src: local('Arial Bold'), local('Arial-BoldMT'), local('Liberation Sans Bold'), local('LiberationSans-Bold'), local('Arimo Bold'), local('Arimo-Bold');
+  size-adjust: 92.72%;
+  ascent-override: 104.48%;
+  descent-override: 26.01%;
+  line-gap-override: 0%;
+  unicode-range: U+0020-007E,U+00A0-00FF,U+011E-011F,U+0130-0131,U+0152-0153,U+015E-015F,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2002,U+2009,U+200B,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2026,U+2032-2033,U+2039-203A,U+2044,U+20AC,U+2122,U+2191,U+2193,U+2212;
+}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type SyntheticEvent } from "react";
-import { heroBekle, heroHazirOldu } from "./heroHazir";
+import { heroBekle, heroHazirOldu, levhalarBittiAbone, posterYavasMi } from "./heroHazir";
+import { keskinGLGerekli, keskinGLKur, keskinYazilimKayitli } from "./keskinGL";
 import santral1440 from "./varlik/santral-1440.mp4";
 import santral1080 from "./varlik/santral-1080.mp4";
 import santralPoster from "./varlik/santral-poster.webp";
@@ -25,32 +26,22 @@ const DONGU_SON = 19.0;
  *  masaüstü 36 MB) akıcı oynatamaz — veri ve bant harcar, takılır. Bağlantı türü API'si yalnız Chrome'da var ve
  *  kısıtlı hatta bile çoğu zaman «4g» diyor (ölçüldü: 1,6 Mbps'de video yine indi); ölçü tarayıcıdan bağımsız:
  *  posterin kendi indirme süresi (Resource Timing). Poster 1 yıl önbellekte kalır; önbellekten geldiğinde (aktarım 0)
- *  süre hat hakkında bir şey söylemez — o zaman son AĞ ölçümünün kararı kullanılır (7 gün geçerli; yoksa video oynar). */
-const YAVAS_POSTER_MS = 2000;
-const YAVAS_KAYIT = "pvq_yavas_hat";
-const YAVAS_OMUR_MS = 7 * 24 * 3600 * 1000;
-function posterYavasMi(): boolean {
-  try {
-    const g = performance.getEntriesByName(new URL(santralPoster, window.location.href).href) as PerformanceResourceTiming[];
-    const e = g[0];
-    if (!e || !(e.responseEnd > 0)) return false;
-    if (e.transferSize === 0 && e.decodedBodySize > 0) {          // önbellekten: son ağ ölçümüne bak
-      const k = JSON.parse(localStorage.getItem(YAVAS_KAYIT) ?? "null") as { y?: boolean; t?: number } | null;
-      return !!k && k.y === true && typeof k.t === "number" && Date.now() - k.t < YAVAS_OMUR_MS;
-    }
-    const yavas = e.responseEnd - e.startTime > YAVAS_POSTER_MS;
-    try { localStorage.setItem(YAVAS_KAYIT, JSON.stringify({ y: yavas, t: Date.now() })); } catch { /* depo yok */ }
-    return yavas;
-  } catch { return false; }
-}
+ *  süre hat hakkında bir şey söylemez — o zaman son AĞ ölçümünün kararı kullanılır (7 gün geçerli; yoksa video oynar).
+ *  18.10: «ağdan mı» testi motor bağımsız (Firefox bellek önbelleğinde RT girdisi yazmıyor, WebKit 0 bayt yazıp
+ *  kaydı {y:false} ile eziyordu) — ölçüm ve kayıt heroHazir.ts posterYavasMi'de. */
 const OYNATMA_HIZI = 0.7;   // 14.10 kullanıcı: arka plan göze batmasın — %70 hız (11,5 s'lik aralık ~16 s sürer)
+/** 18.10 sıralama (perf/cross-browser): video, levha önden indirmesi (useCanlandir) bitince ya da en geç bu süre sonra iner;
+ *  süre load ile posterin çözülmesinden (hangisi sonraysa) sayılır. 8 levha 2.525.490 B ≈ 20,2 Mbit: tek başına 20 Mbps'te ~1,0 sn, 100'de ~0,2 sn. 4 sn yalnız
+ *  ~5 Mbps altındaki hatta dolar; orada 1440 videosu (0,7 hızda ~8,1 Mbps) zaten akıcı akmaz. Bekleme süresince sahnede
+ *  posterin kendisi (videonun ILK_BAS karesi) durur; erime yine 'playing'de başlar — yalnız hareketin başlama anı ötelenir. */
+const LEVHA_BEKLEME_MS = 4000;
 
 /** Açılış sırası (16.10 hız turu 3 — film ölçümü: hero ilk boyamada siyah zeminle açılıyor, poster
  *  levhalar/videoyla yarışıp mobil 3G'de 11 sn'de iniyor, video poster gelmeden ve farklı kareden başlıyordu):
  *  1) zemin: posterin kendi renklerinden gradyan (vitrin.css «Hız turu 3»; fotoğrafa dokunulmaz);
  *  2) poster: aynı dosya, yüksek öncelikli <img> + videonun kendi posteri; üstteki örtü poster tamamen
- *     çözülünce 450 ms'de solar (yarım çizim görünmez). Hız turu 4: istek index.html'deki betikten, CSS iner
- *     inmez başlar (vite.config «pvq-vitrin-kabugu»); <img> o yanıtı kullanır;
+ *     çözülünce 450 ms'de solar (yarım çizim görünmez). Hız turu 4: istek index.html'deki betikten başlar (vite.config
+ *     «pvq-vitrin-kabugu»; 19.10'dan beri ilk içerikli boyamanın bildiriminden sonra, CSS HTML'e gömülü); <img> o yanıtı kullanır;
  *  3) video: YALNIZ poster + sayfa yüklendikten sonra ve hero ekrandayken iner; oynamaya başlayınca üstteki poster resmi 900 ms'de
  *     solar (poster 6,07 sn karesi, ilk oynatma da oradan — aynı kare üzerinde erime). Veri tasarrufu, 2G/3G, posteri
  *     2 sn'den uzun sürede indiren hat ve hareket azaltma tercihinde video hiç indirilmez, poster kalır.
@@ -62,12 +53,16 @@ const OYNATMA_HIZI = 0.7;   // 14.10 kullanıcı: arka plan göze batmasın — 
 export function Hero({ kabuk = false }: { kabuk?: boolean } = {}) {
   heroBekle();
   const video = useRef<HTMLVideoElement>(null);
+  // 19.10: Firefox'ta keskinleştirme WebGL tuvalinde (keskinGL.ts) — süzgeç işlemcide çalışıyor, kaydırmayı ağırlaştırıyordu.
+  const tuval = useRef<HTMLCanvasElement>(null);
+  const [keskinGL] = useState(() => !kabuk && typeof navigator !== "undefined" && typeof HTMLVideoElement !== "undefined"
+    && keskinGLGerekli(navigator.userAgent, HTMLVideoElement.prototype) && !keskinYazilimKayitli(Date.now()));
   const [posterHazir, setPosterHazir] = useState(false);
   const [videoGorunur, setVideoGorunur] = useState(false);
   const yavasHat = useRef(false);
   const posterYuklendi = (e: SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget;
-    yavasHat.current = posterYavasMi();
+    yavasHat.current = posterYavasMi(new URL(santralPoster, window.location.href).href);
     (typeof img.decode === "function" ? img.decode() : Promise.resolve()).catch(() => {}).then(() => { setPosterHazir(true); heroHazirOldu(); });
   };
   const posterHata = () => { yavasHat.current = true; setPosterHazir(true); heroHazirOldu(); };   // poster yoksa video da denenmez
@@ -94,12 +89,17 @@ export function Hero({ kabuk = false }: { kabuk?: boolean } = {}) {
     };
     v.addEventListener("loadedmetadata", basaSar);
     v.addEventListener("timeupdate", aralik);
-    const oynuyor = () => { requestAnimationFrame(() => setVideoGorunur(true)); };
+    // ilk oynatmada Firefox tuvali kurulur: video yalnız gerçekten oynayınca (yavaş hat / hareket azaltma / veri tasarrufunda hiç)
+    let gl: (() => void) | null = null, glDenendi = false;    // tek deneme: kurulamazsa CSS süzgeci kalır
+    const oynuyor = () => {
+      requestAnimationFrame(() => setVideoGorunur(true));      // poster erimesi GL kurulumundan bağımsız
+      if (!glDenendi && tuval.current) { glDenendi = true; try { gl = keskinGLKur(v, tuval.current); } catch { gl = null; } }
+    };
     v.addEventListener("playing", oynuyor);
     // 16.10 hız turu 4: indirme YALNIZ hero ilk kez ekranda (ve sekme görünür) olunca başlar. Önce load() sayfa
     // yüklenir yüklenmez çağrılıyordu: /#karne, /#sss gibi çapalı açılışta hero ekran dışındayken duraklatılmış
     // video tamponu dolduruyordu (ölçüldü: masaüstü 4G'de 15 sn'de ~12 MB). play() de yüklemeden önce çağrılmaz.
-    let izin = false;                                          // sayfa yüklendi (window load)
+    let izin = false;                                          // sayfa yüklendi (window load) ve levha kuyruğu boşaldı (ya da zaman aşımı)
     let yuklendi = false;                                      // load() bir kez çağrıldı
     let gorunur = typeof IntersectionObserver === "undefined"; // IO yoksa görünür say; varsa ilk geri çağrı söyler
     const uygula = () => {
@@ -113,11 +113,19 @@ export function Hero({ kabuk = false }: { kabuk?: boolean } = {}) {
       : new IntersectionObserver(([g]) => { gorunur = !!g?.isIntersecting; uygula(); });
     io?.observe(v);
     document.addEventListener("visibilitychange", uygula);
-    const basla = () => { izin = true; uygula(); };
+    // 18.10: load'da hemen değil; levha önden indirmesi bitince (ya da LEVHA_BEKLEME_MS'de) izin verilir, video ile levhalar
+    // bandı paylaşmasın. ac tek sefer çalışır ve sökümden sonra çalışmaz.
+    let bekleme = 0;
+    let sokuldu = false;
+    let birak = () => {};
+    const ac = () => { if (sokuldu || izin) return; window.clearTimeout(bekleme); birak(); izin = true; uygula(); };
+    const basla = () => { bekleme = window.setTimeout(ac, LEVHA_BEKLEME_MS); birak = levhalarBittiAbone(ac); };
     if (document.readyState === "complete") basla(); else window.addEventListener("load", basla, { once: true });
     return () => {
+      sokuldu = true; window.clearTimeout(bekleme); birak();
       window.removeEventListener("load", basla); io?.disconnect(); document.removeEventListener("visibilitychange", uygula);
       v.removeEventListener("loadedmetadata", basaSar); v.removeEventListener("timeupdate", aralik); v.removeEventListener("playing", oynuyor);
+      gl?.();
       // gerçek ayrılışta (vitrin → giriş/panel) süren video indirmesi durur; yoksa masaüstündeki 36 MB'lık dosya panel parçalarıyla
       // bant paylaşmaya devam ediyordu. StrictMode'un deneme sökümünde öğe DOM'da kalır — dokunulmaz.
       if (!v.isConnected) { v.pause(); for (const s of [...v.querySelectorAll("source")]) s.remove(); v.removeAttribute("src"); v.load(); }
@@ -141,6 +149,7 @@ export function Hero({ kabuk = false }: { kabuk?: boolean } = {}) {
           <source src={santral1440} type="video/mp4" />
         </video>
         )}
+        {keskinGL && <canvas ref={tuval} className="vt-hero__keskin" aria-hidden="true" />}
         {!kabuk && <img className={videoGorunur ? "vt-hero__poster is-gecti" : "vt-hero__poster"} src={santralPoster} alt="" width="2560" height="1440"
           fetchPriority="high" decoding="async" onLoad={posterYuklendi} onError={posterHata} />}
         <div className={posterHazir ? "vt-hero__ortu is-acik" : "vt-hero__ortu"} />

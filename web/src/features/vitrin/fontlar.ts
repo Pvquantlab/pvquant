@@ -9,3 +9,4 @@ import "@fontsource/inter-tight/400.css";
 import "@fontsource/inter-tight/500.css";
 import "@fontsource/inter-tight/600.css";
 import "./font/inter-tight-tr.css";
+// font/inter-tight-yedek.css BURADA içe aktarılmaz: vite.config «pvq-yedek-font» onu <head>'e satır içi koyar (Firefox ilk karesi).

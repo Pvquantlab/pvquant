@@ -4,13 +4,13 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
-import { heroBekle, heroHazirMi, heroHazirOldu, heroHazirSoz } from "../../src/features/vitrin/heroHazir.ts";
+import { hatYavasKayitli, heroBekle, heroHazirMi, heroHazirOldu, heroHazirSoz, levhaKuyruguBasladi, levhalarBittiAbone, levhalarBittiOldu, levhalarBittiSoz, posterYavasMi } from "../../src/features/vitrin/heroHazir.ts";
 
 const oku = (yol: string) => readFileSync(new URL(yol, import.meta.url), "utf8");
 const yapi = oku("../../vite.config.ts");
 
-/** vite.config'teki iki satır içi betiğin JS gövdeleri (dize birleştirmeleri çözülerek). */
-function betikler(): { erken: string; govde: string } {
+/** vite.config'teki üç satır içi betiğin JS gövdeleri (dize birleştirmeleri çözülerek). */
+function betikler(): { bas: string; erken: string; govde: string } {
   const al = (ad: string) => {
     const m = new RegExp(`const ${ad} = ([\\s\\S]*?)\\n\\s*(?:if|let|const)\\b`).exec(yapi);
     assert.ok(m, `${ad} bulunamadı`);
@@ -18,7 +18,7 @@ function betikler(): { erken: string; govde: string } {
     const parcalar = [...m[1].matchAll(/'([^']*)'|`([^`]*)`/g)].map((p) => (p[1] ?? p[2]).replace("${poster}", "assets/santral-poster-AbC123.webp"));
     return parcalar.join("").replace(/^<script>/, "").replace(/<\/script>$/, "");
   };
-  return { erken: al("erken"), govde: al("betik") };
+  return { bas: al("bas"), erken: al("erken"), govde: al("betik") };
 }
 
 /** Betiği sahte tarayıcı ortamında çalıştırır; ne yaptığını döndürür. */
@@ -62,6 +62,26 @@ test("kabuk betiği: vitrin dalında poster ön yüklemesi, diğer yollarda kabu
   assert.match(oku("../../src/index.css"), /html\.vt-sayfa body \{ background: #FFFFFF; \}/);
 });
 
+test("baş betiği: kabuksuz yollarda kabuk ilk boyamadan önce gizlenir (yanlış rota karesi yok); vitrin dalına dokunmaz", () => {
+  const { bas, govde } = betikler();
+  const durumlar = [["/", "", null], ["/", "?vitrin", "j"], ["/", "?a=1&vitrin", "j"], ["/", "?vitrin=1", "j"], ["/", "?vitrinx", "j"], ["/", "", "j"],
+    ["/yontem", "", null], ["/yontem", "", "j"], ["/yontem/", "", null], ["/parola-yenile", "", null], ["/baska", "", null]] as const;
+  for (const [yol, arama, jeton] of durumlar) {
+    const b = calistir(bas, yol, arama, jeton);
+    const g = calistir(govde, yol, arama, jeton);
+    // iki betik aynı kararı verir: gizlenen kabuk gövde betiğinde silinir; korunan kabuk hiç gizlenmez
+    assert.equal(b.sinif.includes("vt-kabuksuz"), g.kokTemizlendi, `${yol}${arama} jeton=${jeton}`);
+    assert.deepEqual(b.sinif, !g.kokTemizlendi ? [] : yol === "/yontem" ? ["vt-kabuksuz", "vt-sayfa"] : ["vt-kabuksuz"]);
+    assert.equal(b.onyukleme.length + b.istek.length, 0, "baş betiği yalnız sınıf koyar");
+  }
+  assert.match(yapi, /const basStil = '<style>html\.vt-kabuksuz #root>\[data-kabuk\]\{display:none\}<\/style>'/);
+  assert.ok(yapi.includes("`<meta charset=\"UTF-8\" />\\n    ${bas}\\n    ${basStil}`"), "baş betiği ve kuralı <head>'in başında, her derlemede");
+  assert.ok(oku("../../src/features/vitrin/VitrinKabugu.tsx").includes('<div className="vt vt--a" data-kabuk="">'));
+  for (const d of ["Vitrin.tsx", "Yontem.tsx"]) {
+    assert.ok(!oku(`../../src/features/vitrin/${d}`).includes("data-kabuk"), `${d}: React ağacında data-kabuk olmamalı`);
+  }
+});
+
 test("erken doğrulama: yalnız vitrin ve /yontem, aynı köken derlemesinde; useDogrulama aynı adları okur", () => {
   const { erken } = betikler();
   for (const [yol, arama, jeton, beklenen] of [["/", "", null, 1], ["/", "?vitrin", "j", 1], ["/yontem", "", "j", 1], ["/", "", "j", 0], ["/parola-yenile", "", null, 0]] as const) {
@@ -83,7 +103,10 @@ test("hero videosu: load() yalnız hero ekrandayken bir kez, ayrılışta indirm
   assert.equal((hero.match(/v\.load\(\)/g) ?? []).length, 2);
   assert.match(hero, /if \(ekranda && !yuklendi\) \{ yuklendi = true; v\.preload = "auto"; v\.load\(\); v\.playbackRate = OYNATMA_HIZI; \}/);
   assert.match(hero, /if \(!v\.isConnected\) \{[^}]*v\.load\(\); \}/);
-  assert.match(hero, /const basla = \(\) => \{ izin = true; uygula\(\); \};/, "load olayı yüklemeyi kendisi başlatmaz");
+  assert.match(hero, /const basla = \(\) => \{ bekleme = window\.setTimeout\(ac, LEVHA_BEKLEME_MS\); birak = levhalarBittiAbone\(ac\); \};/, "load olayı yüklemeyi kendisi başlatmaz; levha kuyruğunu bekler");
+  assert.match(hero, /const ac = \(\) => \{ if \(sokuldu \|\| izin\) return; window\.clearTimeout\(bekleme\); birak\(\); izin = true; uygula\(\); \};/);
+  assert.match(hero, /sokuldu = true; window\.clearTimeout\(bekleme\); birak\(\);/, "sökümde levha dinleyicisi bırakılır");
+  assert.match(hero, /const LEVHA_BEKLEME_MS = 4000;/);
 });
 
 test("heroHazir: bekleme ve hazır sinyali", async () => {
@@ -115,6 +138,12 @@ test("çapalı açılış: sınıflama kaydırmadan sonra; useCapaKaydir önce �
     const a = k.indexOf("useCapaKaydir(durum.tur)"), b = k.indexOf("useCanlandir(durum.tur)");
     assert.ok(a >= 0 && a < b, d);
   }
+});
+
+test("K1 levha önden indirmesi: yavaş hat kararını okur, ölçüm yapmaz", () => {
+  const c = oku("../../src/features/vitrin/useCanlandir.ts");
+  assert.match(c, /if \(yavas \|\| hatYavasKayitli\(\)\) \{ levhalarBittiOldu\(\); return; \}/);
+  assert.doesNotMatch(c, /posterYavasMi/, "ölçüm ve kayıt yalnız Hero'da");
 });
 
 test("panel geçişleri: ekran değişimleri startTransition içinde, tek kalıcı Suspense + kabuk içi Suspense", () => {
@@ -149,6 +178,16 @@ test("yayın sonrası parça hatası: bir kez yenile, döngü yok, hata sınır�
   assert.match(m, /<HataSiniri>\s*<App \/>\s*<\/HataSiniri>/);
 });
 
+test("kabuktan devir: kabuk varken React ilk içerikli boyama bildirimini bekler; gizli sekme / API yok / 1 sn emniyet", () => {
+  const m = oku("../../src/main.tsx");
+  assert.match(m, /if \(!kok\.firstElementChild \|\| document\.visibilityState !== 'visible' \|\| window\.location\.hash\) return false/, "çapalı açılış beklemez");
+  assert.match(m, /if \(performance\.getEntriesByName\('first-contentful-paint', 'paint'\)\.length > 0\) return false/, "bildirim zaten varsa beklenmez");
+  assert.match(m, /g\.observe\(\{ type: 'paint', buffered: true \}\)/);
+  assert.match(m, /getEntriesByName\('first-contentful-paint'\)\.length === 0\) return\n\s*g\.disconnect\(\)\n\s*baslat\(\)/, "geri çağrıda ek zamanlayıcı yok; render() zaten zamanlar");
+  assert.match(m, /window\.setTimeout\(\(\) => \{ g\.disconnect\(\); baslat\(\) \}, 1000\)/);
+  assert.doesNotMatch(m, /requestAnimationFrame/, "rAF gizli sekmede çalışmaz, sunumdan önce döner");
+});
+
 test("hero CSS: poster sahneyi örter, svh, kabuk dolgusu yalnız ince işaretçide", () => {
   const css = oku("../../src/features/vitrin/vitrin.css");
   assert.match(css, /\.vt \.vt-hero--video \.vt-hero__sahne \.vt-hero__poster \{ top: 0; right: 0; bottom: 0; left: 0; width: 100%; height: 100%; max-width: none; \}/);
@@ -156,22 +195,73 @@ test("hero CSS: poster sahneyi örter, svh, kabuk dolgusu yalnız ince işaretç
   assert.match(css, /@media \(pointer: fine\) \{\n\s*\.vt \.vt-kabuk-dolgu \{ height: 100vh; \}\n\}/);
   assert.ok(oku("../../src/features/vitrin/VitrinKabugu.tsx").includes('className="vt-kabuk-dolgu"'));
   assert.ok(!oku("../../src/features/vitrin/Vitrin.tsx").includes("vt-kabuk-dolgu"), "dolgu yalnız kabukta");
-  // «Hangi iş için» beyaz tepsisi kenar boşluklu: genişlik otomatik olmalı (%100 + kenar boşluğu kartı taşırıyordu)
-  assert.match(css, /\.vt #isler \.vt-is \.vt-levha--resim \{[^}]*margin: 12px 12px 0;[^}]*width: auto; \}/);
+  // «Hangi iş için» beyaz tepsisi kenar boşluklu: genişlik = kap − iki kenar boşluğu (%100 + kenar boşluğu kartı taşırıyordu, v2.454).
+  // 18.10: «auto» yerine açık calc — WebKit gerilen öğede aspect-ratio'yu kenar boşluksuz genişlikten hesaplıyordu (kart 19 px uzun).
+  assert.match(css, /\.vt #isler \.vt-is \.vt-levha--resim \{[^}]*margin: 12px 12px 0;[^}]*width: calc\(100% - 24px\); \}/);
+  assert.match(css, /\.vt-levha--resim \{ position: relative; aspect-ratio: 10 \/ 8;/);
 });
 
 // 16.10 kullanıcı kararları: yavaş hatta video yok, melez döngü başlangıcı, tek parça açılış, HTTP/3
 test("kararlar: yavaş hatta video inmez; ilk oynatma poster karesinden, döngü anahtar kareden", () => {
   const hero = oku("../../src/features/vitrin/Hero.tsx");
-  assert.match(hero, /const YAVAS_POSTER_MS = 2000;/);
-  assert.match(hero, /e\.responseEnd - e\.startTime > YAVAS_POSTER_MS/);
-  assert.match(hero, /if \(e\.transferSize === 0 && e\.decodedBodySize > 0\) \{/, "önbellekten gelen poster ölçüm sayılmaz");
-  assert.match(hero, /yavasHat\.current = posterYavasMi\(\);/);
+  const hh = oku("../../src/features/vitrin/heroHazir.ts");
+  assert.match(hh, /const YAVAS_POSTER_MS = 2000;/);
+  assert.match(hh, /const YAVAS_OMUR_MS = 7 \* 24 \* 3600 \* 1000;/);
+  assert.match(hh, /if \(e\) return kaydet\(e\.responseEnd - e\.startTime > YAVAS_POSTER_MS\);/, "kararı yalnız ağ ölçümü yazar");
+  assert.match(hero, /yavasHat\.current = posterYavasMi\(new URL\(santralPoster, window\.location\.href\)\.href\);/);
   assert.match(oku("../../src/features/sayfalar/Digerleri.tsx"), /tahminlereGit\(\); startTransition\(\(\) => setKosuyor\(false\)\); return;/);
   assert.match(hero, /if \(kisit \|\| yavasHat\.current \|\| mq\.matches\) return;/);
   assert.match(hero, /const ILK_BAS = 6\.0727;\nconst DONGU_BAS = 9\.009;\nconst DONGU_SON = 19\.0;/);
   assert.match(hero, /const basaSar = \(\) => \{ if \(!araliksiz\(\)\) v\.currentTime = ILK_BAS; \};/);
   assert.match(hero, /if \(t >= DONGU_SON\) \{ ilkTur = false; v\.currentTime = DONGU_BAS; return; \}/);
+});
+
+// 18.10 K1 motor bağımsız (kök neden H13). Girdi biçimleri perf/baseline/matris.jsonl'deki ölçülmüş değerlerden.
+test("K1: kararı yalnız gövdesi aktarılmış ağ ölçümü yazar; önbellek biçimleri kaydı yalnız okur", () => {
+  const depo = new Map<string, string>();
+  let girdiler: object[] = [];
+  const once = { ls: Object.getOwnPropertyDescriptor(globalThis, "localStorage"), pf: Object.getOwnPropertyDescriptor(globalThis, "performance") };
+  Object.defineProperty(globalThis, "localStorage", { configurable: true, writable: true,
+    value: { getItem: (k: string) => depo.get(k) ?? null, setItem: (k: string, v: string) => { depo.set(k, v); } } });
+  Object.defineProperty(globalThis, "performance", { configurable: true, writable: true, value: { getEntriesByName: () => girdiler } });
+  const A = "https://pvquant.com/assets/santral-poster-AbC123.webp";
+  const kayit = () => depo.get("pvq_yavas_hat");
+  const ag = (ms: number) => ({ startTime: 900, responseEnd: 900 + ms, transferSize: 485432, encodedBodySize: 485132, decodedBodySize: 485132 });
+  try {
+    assert.equal(posterYavasMi(A), false, "ilk ziyaret, girdi ve kayıt yok → video serbest");
+    assert.equal(kayit(), undefined, "girdisiz yükleme yazmaz");
+    girdiler = [ag(3400)];                                       // soğuk 3G: ağdan 3,4 sn
+    assert.equal(posterYavasMi(A), true);
+    const yavasKaydi = kayit();
+    assert.equal(JSON.parse(yavasKaydi ?? "{}").y, true);
+    const onbellek: [string, object[]][] = [
+      ["Firefox bellek önbelleği: girdi yok", []],
+      ["WebKit bellek önbelleği: 0/0/0", [{ startTime: 40, responseEnd: 40.4, transferSize: 0, encodedBodySize: 0, decodedBodySize: 0 }]],
+      ["Chromium bellek/disk: aktarım 0", [{ startTime: 40, responseEnd: 46, transferSize: 0, encodedBodySize: 485132, decodedBodySize: 485132 }]],
+      ["304: yalnız başlık", [{ startTime: 40, responseEnd: 640, transferSize: 300, encodedBodySize: 485132, decodedBodySize: 485132 }]],
+      ["eski Safari, bayt alanı yok, hızlı", [{ startTime: 40, responseEnd: 60 }]],
+    ];
+    for (const [ad, g] of onbellek) {
+      girdiler = g;
+      assert.equal(posterYavasMi(A), true, ad + ": kayıtlı «yavaş» okunur");
+      assert.equal(kayit(), yavasKaydi, ad + ": kayıt ezilmez");
+    }
+    girdiler = [{ startTime: 40, responseEnd: 40.4, transferSize: 0, encodedBodySize: 0, decodedBodySize: 0 }, ag(400)];
+    assert.equal(posterYavasMi(A), false, "birden çok girdide ağ ölçümü seçilir");
+    assert.equal(JSON.parse(kayit() ?? "{}").y, false);
+    girdiler = [];
+    assert.equal(posterYavasMi(A), false, "hızlı karar önbellekte de geçerli");
+    girdiler = [{ startTime: 40, responseEnd: 2600 }];
+    assert.equal(posterYavasMi(A), true, "eski Safari: 2 sn'yi aşan sonuç ağdır (önbellek 2 sn sürmez)");
+    depo.set("pvq_yavas_hat", JSON.stringify({ y: true, t: Date.now() - 8 * 24 * 3600 * 1000 }));
+    girdiler = [];
+    assert.equal(hatYavasKayitli(), false, "7 günden eski karar düşer");
+    assert.equal(posterYavasMi(A), false);
+  } finally {
+    for (const [ad, d] of [["localStorage", once.ls], ["performance", once.pf]] as const) {
+      if (d) Object.defineProperty(globalThis, ad, d); else delete (globalThis as Record<string, unknown>)[ad];
+    }
+  }
 });
 
 test("kararlar: bölümler tek parça açılır (kart kademesi yok, zemin solmaz)", () => {
@@ -183,4 +273,63 @@ test("kararlar: bölümler tek parça açılır (kart kademesi yok, zemin solmaz
 
 test("kararlar: HTTP/3 için UDP 443 yayınlanır", () => {
   assert.match(oku("../../../docker-compose.yml"), /- "443:443\/udp"/);
+});
+
+// 18.10 perf/cross-browser — poster ön yüklemesi ilk içerikli boyamanın bildiriminden sonra (metin LCP'siyle yarışmaz).
+test("kabuk betiği: poster ön yüklemesi FCP bildirimini bekler; bildirim varsa / API yoksa hemen; 1 sn emniyet", () => {
+  const { govde } = betikler();
+  const kos = (fcpVar: boolean, destek: boolean) => {
+    const eklenen: Record<string, string>[] = []; const zaman: (() => void)[] = []; let gozlemci: ((s: unknown) => void) | null = null;
+    class PO { static supportedEntryTypes = destek ? ["paint", "largest-contentful-paint"] : ["navigation"];
+      constructor(f: (s: unknown) => void) { gozlemci = f; } observe() {} disconnect() {} }
+    vm.runInNewContext(govde, {
+      location: { pathname: "/", search: "" }, localStorage: { getItem: () => null },
+      document: { getElementById: () => null, documentElement: { classList: { add() {} } }, createElement: () => ({}), head: { appendChild: (l: Record<string, string>) => eklenen.push(l) }, querySelector: () => null },
+      window: { PerformanceObserver: PO }, performance: { getEntriesByName: () => (fcpVar ? [{}] : []) },
+      setTimeout: (f: () => void) => { zaman.push(f); return 1; },
+    });
+    return { eklenen, zaman, bildir: () => gozlemci?.({ getEntriesByName: (ad: string) => (ad === "first-contentful-paint" ? [{}] : []) }) };
+  };
+  const bekleyen = kos(false, true);
+  assert.equal(bekleyen.eklenen.length, 0, "FCP bildirilmeden poster istenmez");
+  bekleyen.bildir();
+  assert.equal(bekleyen.eklenen.length, 1, "bildirimle hemen");
+  bekleyen.zaman.forEach((f) => f());
+  assert.equal(bekleyen.eklenen.length, 1, "emniyet zamanlayıcısı ikinci istek açmaz");
+  assert.equal(kos(true, true).eklenen.length, 1, "FCP zaten varsa hemen");
+  assert.equal(kos(false, false).eklenen.length, 1, "paint desteği yoksa hemen");
+  const gizli = kos(false, true);
+  gizli.zaman.forEach((f) => f());
+  assert.equal(gizli.eklenen.length, 1, "bildirim gelmezse (gizli sekme) 1 sn sonra");
+  assert.equal(gizli.eklenen[0].fetchPriority, "high");
+});
+
+// 18.10 perf/cross-browser — video ile levha önden indirmesi bandı paylaşmaz (20 Mbps'te Firefox kartları 1,7 → 5,2 sn).
+test("levha kuyruğu sinyali: video levhalar bitince (ya da zaman aşımında) iner; kuyruk yoksa sinyal hemen", async () => {
+  levhaKuyruguBasladi();
+  let bitti = false;
+  const soz = levhalarBittiSoz().then(() => { bitti = true; });
+  await Promise.resolve();
+  assert.equal(bitti, false);
+  levhalarBittiOldu();
+  await soz;
+  assert.equal(bitti, true);
+  levhaKuyruguBasladi();                                   // SPA: yeni sayfa = yeni kuyruk, eski «bitti» taşınmaz
+  let ikinci = false;
+  const soz2 = levhalarBittiSoz().then(() => { ikinci = true; });
+  await Promise.resolve();
+  assert.equal(ikinci, false);
+  levhalarBittiOldu();
+  await soz2;
+  assert.equal(ikinci, true);
+  levhaKuyruguBasladi();                                   // abonelik bırakılınca çağrılmaz; sinyal verilmişse hemen çağrılır
+  let say = 0; const birak = levhalarBittiAbone(() => { say++; }); birak(); levhalarBittiOldu();
+  assert.equal(say, 0, "bırakılan dinleyici çağrılmaz");
+  levhalarBittiAbone(() => { say++; });
+  assert.equal(say, 1, "sinyal zaten verildiyse hemen");
+  const c = oku("../../src/features/vitrin/useCanlandir.ts");
+  assert.match(c, /levhaKuyruguBasladi\(\);\n\s*if \(typeof IntersectionObserver === "undefined"\) \{ levhalarBittiOldu\(\); return; \}/);
+  assert.match(c, /if \(hedefler\.length === 0\) \{ levhalarBittiOldu\(\); return; \}/);
+  assert.match(c, /if \(yavas \|\| hatYavasKayitli\(\)\) \{ levhalarBittiOldu\(\); return; \}/);
+  assert.match(c, /if \(i >= sira\.length\) \{ if \(--acik === 0\) levhalarBittiOldu\(\); return; \}/);
 });

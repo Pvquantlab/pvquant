@@ -40,10 +40,41 @@ class HataSiniri extends Component<{ children: ReactNode }, { hata: boolean }> {
   }
 }
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <HataSiniri>
-      <App />
-    </HataSiniri>
-  </StrictMode>,
-)
+/** 18.10 — kabuktan devir (perf/analiz H1, Y1, H6, H14). createRoot kabuk düğümlerini silip aynı görünümü yeni düğümlerle
+ *  kurar (hydrate değil). Devir, kabuğun ilk boyaması sunulup bildirilmeden gelirse Chromium'da: sıcak açılışta ilk kare React'in
+ *  tam sayfasını bekliyor (FCP «/» 1440: 568–776 ms, /yontem 48–80 ms); soğukta kabuk metninin LCP kaydı zaman damgası almadan
+ *  düşüyor (LCP = devir anı). Kabuk varken devir ilk içerikli boyamanın BİLDİRİMİNİ bekler — rAF değil: gizli sekmede çalışmaz,
+ *  sunum geri çağrısından önce döner. Bildirim zaten varsa, sekme gizliyse, API yoksa ya da 1 sn içinde gelmezse hemen başlar.
+ *  render() işi kendisi zamanlar (Scheduler görevi): geri çağrıda ek zamanlayıcı yok. Kabuksuz yollar (panel, /yontem) hemen. */
+const kok = document.getElementById('root')!
+let basladi = false
+function baslat() {
+  if (basladi) return
+  basladi = true
+  createRoot(kok).render(
+    <StrictMode>
+      <HataSiniri>
+        <App />
+      </HataSiniri>
+    </StrictMode>,
+  )
+}
+function boyamayiBekle(): boolean {
+  // çapalı açılış (/#karne …): ilk ekran hero değil, hedef bölüm — React hemen kurar, yoksa ilk kare hero olup sonra hedefe sıçrardı
+  if (!kok.firstElementChild || document.visibilityState !== 'visible' || window.location.hash) return false
+  if (typeof PerformanceObserver !== 'function' || !PerformanceObserver.supportedEntryTypes?.includes('paint')) return false
+  if (performance.getEntriesByName('first-contentful-paint', 'paint').length > 0) return false
+  try {
+    const g = new PerformanceObserver((liste) => {
+      if (liste.getEntriesByName('first-contentful-paint').length === 0) return
+      g.disconnect()
+      baslat()
+    })
+    g.observe({ type: 'paint', buffered: true })
+    window.setTimeout(() => { g.disconnect(); baslat() }, 1000)
+    return true
+  } catch {
+    return false
+  }
+}
+if (!boyamayiBekle()) baslat()

@@ -1,0 +1,9 @@
+node_modules/
+.replika/
+**/screens/
+*/traces/
+**/lighthouse/*.html
+**/diff/
+analiz/filtre*/*.png
+_*/
+analiz/webgl*/*.png

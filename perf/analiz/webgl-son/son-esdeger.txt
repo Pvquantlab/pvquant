@@ -1,0 +1,20 @@
+   sonra6 tuval ↔ aynı sayfa CSS süzgeci: en büyük 99 · ort 5.40 · >2 %51.0 · >4 %28.7 · >8 %17.3
+   sonra6 tuval ↔ sonra (CSS süzgeci): en büyük 99 · ort 5.40 · >2 %51.0 · >4 %28.7 · >8 %17.3
+   sonra6-css ↔ sonra: en büyük 0 · ort 0.00 · >2 %0.0 · >4 %0.0 · >8 %0.0
+   kenar enerjisi: sonra6 tuval 19.019 · sonra6 CSS 19.034 · sonra 19.034
+   sonra6 tuval ↔ aynı sayfa CSS süzgeci: en büyük 35 · ort 2.78 · >2 %41.0 · >4 %13.5 · >8 %3.9
+   sonra6 tuval ↔ sonra (CSS süzgeci): en büyük 35 · ort 2.78 · >2 %41.0 · >4 %13.5 · >8 %3.9
+   sonra6-css ↔ sonra: en büyük 0 · ort 0.00 · >2 %0.0 · >4 %0.0 · >8 %0.0
+   kenar enerjisi: sonra6 tuval 19.487 · sonra6 CSS 19.524 · sonra 19.524
+   sonra6 tuval ↔ aynı sayfa CSS süzgeci: en büyük 36 · ort 2.56 · >2 %38.4 · >4 %10.8 · >8 %2.3
+   sonra6 tuval ↔ sonra (CSS süzgeci): en büyük 36 · ort 2.56 · >2 %38.4 · >4 %10.8 · >8 %2.3
+   sonra6-css ↔ sonra: en büyük 0 · ort 0.00 · >2 %0.0 · >4 %0.0 · >8 %0.0
+   kenar enerjisi: sonra6 tuval 17.584 · sonra6 CSS 17.582 · sonra 17.582
+   sonra6 tuval ↔ aynı sayfa CSS süzgeci: en büyük 38 · ort 2.81 · >2 %41.3 · >4 %13.7 · >8 %4.1
+   sonra6 tuval ↔ sonra (CSS süzgeci): en büyük 38 · ort 2.81 · >2 %41.3 · >4 %13.7 · >8 %4.1
+   sonra6-css ↔ sonra: en büyük 0 · ort 0.00 · >2 %0.0 · >4 %0.0 · >8 %0.0
+   kenar enerjisi: sonra6 tuval 21.925 · sonra6 CSS 22.013 · sonra 22.013
+   sonra6 tuval ↔ aynı sayfa CSS süzgeci: en büyük 74 · ort 3.49 · >2 %38.5 · >4 %19.7 · >8 %8.9
+   sonra6 tuval ↔ sonra (CSS süzgeci): en büyük 74 · ort 3.49 · >2 %38.5 · >4 %19.7 · >8 %8.9
+   sonra6-css ↔ sonra: en büyük 0 · ort 0.00 · >2 %0.0 · >4 %0.0 · >8 %0.0
+   kenar enerjisi: sonra6 tuval 17.006 · sonra6 CSS 16.994 · sonra 16.994

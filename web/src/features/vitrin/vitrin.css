@@ -1180,8 +1180,8 @@
   --vt-cam-zemin: rgba(11, 14, 21, .62); --vt-cam-kenar: rgba(255, 255, 255, .08);
   --vt-cam-golge: 0 1px 0 rgba(255, 255, 255, .06) inset, 0 12px 40px rgba(0, 0, 0, .28), 0 2px 8px rgba(0, 0, 0, .18);
   /* tipografi: tek aile */
-  --vt-baslik: 'Inter Tight', ui-sans-serif, system-ui, sans-serif;
-  --vt-sans: 'Inter Tight', ui-sans-serif, system-ui, sans-serif;
+  --vt-baslik: 'Inter Tight', 'Inter Tight Yedek', ui-sans-serif, system-ui, sans-serif;
+  --vt-sans: 'Inter Tight', 'Inter Tight Yedek', ui-sans-serif, system-ui, sans-serif;
   /* ölçüler */
   --vt-yan: 40px; --vt-ust-y: 89px;               /* 16 üst + 57 hap + 16 */
   --vt-r-m: 24px; --vt-r-l: 28px;
@@ -1308,6 +1308,12 @@
 /* 14.10: filtre YOK — kaynak kare olduğu gibi. Yatay AYNA: çekimde sol taraf her karede puslu (ölçüldü: parlaklık ~90 / doygunluk %32,
    sağda ~65 / %48); aynalanınca keskin paneller metnin altına, puslu taraf sağa gelir. Kayıpsız, piksel değişmez. */
 .vt-hero--video .vt-hero__video { object-position: 50% 0%; filter: url(#vt-keskin); transform: scaleX(-1); }   /* 14.10: SVG keskinleştirme (renk/ton değişmez) */
+/* 19.10 perf/cross-browser — Firefox: aynı keskinleştirme WebGL tuvalinde (keskinGL.ts). Tuval videonun kutusunu ve aynalamasını
+   paylaşır, videonun hemen üstünde (poster ve örtü yine üstte); ilk kare çizilene dek gizli, çizilince videonun süzgeci kalkar —
+   çekirdek iki kez uygulanmaz. Diğer motorlarda tuval hiç yok. */
+.vt-hero--video .vt-hero__keskin { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; transform: scaleX(-1); visibility: hidden; }
+.vt-hero--video .vt-hero__keskin.is-hazir { visibility: visible; }
+.vt-hero--video .vt-hero__video.is-gl { filter: none; }
 .vt-hero__filtre { position: absolute; width: 0; height: 0; overflow: hidden; }
 /* 13.10 okunurluk: gündüz gökyüzü videosunda jua'nın dikey perdesi tek başına yetmiyor — metin tarafı (sol %60)
    yatay ikinci perdeyle koyulaşır, sağ yarı santrali gösterir; mobilde dikey ağır perde zaten yeter */
@@ -1846,7 +1852,10 @@
    kartlar kenarsız buz, illüstrasyon kartın içinde beyaz yuvarlak tepside. Sayfa ritmi:
    buz bölüm (dört adım) → beyaz bölüm/buz kart → koyu açık karne. */
 .vt #isler .vt-is { background: #EEF3FA; border: 0; box-shadow: none; }
-.vt #isler .vt-is .vt-levha--resim { background: #fff; margin: 12px 12px 0; border-radius: 14px; width: auto; }
+/* 18.10 perf/cross-browser: genişlik açık (calc), «auto» değil — gerilen esnek öğede aspect-ratio'yu WebKit kenar boşlukları
+   düşülmemiş genişlikten hesaplıyordu (390'da 350/1,25 = 280 px ↔ Chromium/Firefox 326/1,25 = 261; her kart 19 px uzun).
+   Etkin genişlik aynı (kap − 2×12 px); v2.454'teki sağdan taşma düzeltmesi korunur. */
+.vt #isler .vt-is .vt-levha--resim { background: #fff; margin: 12px 12px 0; border-radius: 14px; width: calc(100% - 24px); }
 /* 16.10 v2.454: genişlik otomatik — .vt-levha'nın %100'ü + iki yandaki 12 px tepsiyi kartın sağından 24 px taşırıyordu;
    kart (overflow:hidden) taşanı kesince sağ boşluk ve sağ yuvarlak köşeler görünmüyordu (canlıda 375 px'te ölçüldü:
    kart 20–355, tepsi 32–367). */

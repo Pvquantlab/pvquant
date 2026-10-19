@@ -1,0 +1,314 @@
+[
+ {
+  "motor": "chromium",
+  "gorunum": "390x844",
+  "sayfa": "ana",
+  "dosya": "chromium-390x844-ana.png",
+  "dilim": 2,
+  "w": 390,
+  "h": 12540,
+  "yatayTasma": false
+ },
+ {
+  "motor": "chromium",
+  "gorunum": "390x844",
+  "sayfa": "yontem",
+  "dosya": "chromium-390x844-yontem.png",
+  "dilim": 1,
+  "w": 390,
+  "h": 8853,
+  "yatayTasma": false
+ },
+ {
+  "motor": "chromium",
+  "gorunum": "390x844",
+  "sayfa": "giris",
+  "dosya": "chromium-390x844-giris.png"
+ },
+ {
+  "motor": "chromium",
+  "gorunum": "768x1024",
+  "sayfa": "ana",
+  "dosya": "chromium-768x1024-ana.png",
+  "dilim": 1,
+  "w": 768,
+  "h": 10226,
+  "yatayTasma": false
+ },
+ {
+  "motor": "chromium",
+  "gorunum": "768x1024",
+  "sayfa": "yontem",
+  "dosya": "chromium-768x1024-yontem.png",
+  "dilim": 1,
+  "w": 768,
+  "h": 6955,
+  "yatayTasma": false
+ },
+ {
+  "motor": "chromium",
+  "gorunum": "768x1024",
+  "sayfa": "giris",
+  "dosya": "chromium-768x1024-giris.png"
+ },
+ {
+  "motor": "chromium",
+  "gorunum": "1440x900",
+  "sayfa": "ana",
+  "dosya": "chromium-1440x900-ana.png",
+  "dilim": 1,
+  "w": 1440,
+  "h": 7613,
+  "yatayTasma": false
+ },
+ {
+  "motor": "chromium",
+  "gorunum": "1440x900",
+  "sayfa": "yontem",
+  "dosya": "chromium-1440x900-yontem.png",
+  "dilim": 1,
+  "w": 1440,
+  "h": 5188,
+  "yatayTasma": false
+ },
+ {
+  "motor": "chromium",
+  "gorunum": "1440x900",
+  "sayfa": "giris",
+  "dosya": "chromium-1440x900-giris.png"
+ },
+ {
+  "motor": "chromium",
+  "gorunum": "1920x1080",
+  "sayfa": "ana",
+  "dosya": "chromium-1920x1080-ana.png",
+  "dilim": 1,
+  "w": 1920,
+  "h": 7703,
+  "yatayTasma": false
+ },
+ {
+  "motor": "chromium",
+  "gorunum": "1920x1080",
+  "sayfa": "yontem",
+  "dosya": "chromium-1920x1080-yontem.png",
+  "dilim": 1,
+  "w": 1920,
+  "h": 5218,
+  "yatayTasma": false
+ },
+ {
+  "motor": "chromium",
+  "gorunum": "1920x1080",
+  "sayfa": "giris",
+  "dosya": "chromium-1920x1080-giris.png"
+ },
+ {
+  "motor": "firefox",
+  "gorunum": "390x844",
+  "sayfa": "ana",
+  "dosya": "firefox-390x844-ana.png",
+  "dilim": 2,
+  "w": 390,
+  "h": 12540,
+  "yatayTasma": false
+ },
+ {
+  "motor": "firefox",
+  "gorunum": "390x844",
+  "sayfa": "yontem",
+  "dosya": "firefox-390x844-yontem.png",
+  "dilim": 1,
+  "w": 390,
+  "h": 8853,
+  "yatayTasma": false
+ },
+ {
+  "motor": "firefox",
+  "gorunum": "390x844",
+  "sayfa": "giris",
+  "dosya": "firefox-390x844-giris.png"
+ },
+ {
+  "motor": "firefox",
+  "gorunum": "768x1024",
+  "sayfa": "ana",
+  "dosya": "firefox-768x1024-ana.png",
+  "dilim": 1,
+  "w": 768,
+  "h": 10226,
+  "yatayTasma": false
+ },
+ {
+  "motor": "firefox",
+  "gorunum": "768x1024",
+  "sayfa": "yontem",
+  "dosya": "firefox-768x1024-yontem.png",
+  "dilim": 1,
+  "w": 768,
+  "h": 6955,
+  "yatayTasma": false
+ },
+ {
+  "motor": "firefox",
+  "gorunum": "768x1024",
+  "sayfa": "giris",
+  "dosya": "firefox-768x1024-giris.png"
+ },
+ {
+  "motor": "firefox",
+  "gorunum": "1440x900",
+  "sayfa": "ana",
+  "dosya": "firefox-1440x900-ana.png",
+  "dilim": 1,
+  "w": 1440,
+  "h": 7612,
+  "yatayTasma": false
+ },
+ {
+  "motor": "firefox",
+  "gorunum": "1440x900",
+  "sayfa": "yontem",
+  "dosya": "firefox-1440x900-yontem.png",
+  "dilim": 1,
+  "w": 1440,
+  "h": 5188,
+  "yatayTasma": false
+ },
+ {
+  "motor": "firefox",
+  "gorunum": "1440x900",
+  "sayfa": "giris",
+  "dosya": "firefox-1440x900-giris.png"
+ },
+ {
+  "motor": "firefox",
+  "gorunum": "1920x1080",
+  "sayfa": "ana",
+  "dosya": "firefox-1920x1080-ana.png",
+  "dilim": 1,
+  "w": 1920,
+  "h": 7702,
+  "yatayTasma": false
+ },
+ {
+  "motor": "firefox",
+  "gorunum": "1920x1080",
+  "sayfa": "yontem",
+  "dosya": "firefox-1920x1080-yontem.png",
+  "dilim": 1,
+  "w": 1920,
+  "h": 5218,
+  "yatayTasma": false
+ },
+ {
+  "motor": "firefox",
+  "gorunum": "1920x1080",
+  "sayfa": "giris",
+  "dosya": "firefox-1920x1080-giris.png"
+ },
+ {
+  "motor": "webkit",
+  "gorunum": "390x844",
+  "sayfa": "ana",
+  "dosya": "webkit-390x844-ana.png",
+  "dilim": 2,
+  "w": 390,
+  "h": 12619,
+  "yatayTasma": false
+ },
+ {
+  "motor": "webkit",
+  "gorunum": "390x844",
+  "sayfa": "yontem",
+  "dosya": "webkit-390x844-yontem.png",
+  "dilim": 1,
+  "w": 390,
+  "h": 8853,
+  "yatayTasma": false
+ },
+ {
+  "motor": "webkit",
+  "gorunum": "390x844",
+  "sayfa": "giris",
+  "dosya": "webkit-390x844-giris.png"
+ },
+ {
+  "motor": "webkit",
+  "gorunum": "768x1024",
+  "sayfa": "ana",
+  "dosya": "webkit-768x1024-ana.png",
+  "dilim": 1,
+  "w": 768,
+  "h": 10266,
+  "yatayTasma": false
+ },
+ {
+  "motor": "webkit",
+  "gorunum": "768x1024",
+  "sayfa": "yontem",
+  "dosya": "webkit-768x1024-yontem.png",
+  "dilim": 1,
+  "w": 768,
+  "h": 6955,
+  "yatayTasma": false
+ },
+ {
+  "motor": "webkit",
+  "gorunum": "768x1024",
+  "sayfa": "giris",
+  "dosya": "webkit-768x1024-giris.png"
+ },
+ {
+  "motor": "webkit",
+  "gorunum": "1440x900",
+  "sayfa": "ana",
+  "dosya": "webkit-1440x900-ana.png",
+  "dilim": 1,
+  "w": 1440,
+  "h": 7633,
+  "yatayTasma": false
+ },
+ {
+  "motor": "webkit",
+  "gorunum": "1440x900",
+  "sayfa": "yontem",
+  "dosya": "webkit-1440x900-yontem.png",
+  "dilim": 1,
+  "w": 1440,
+  "h": 5188,
+  "yatayTasma": false
+ },
+ {
+  "motor": "webkit",
+  "gorunum": "1440x900",
+  "sayfa": "giris",
+  "dosya": "webkit-1440x900-giris.png"
+ },
+ {
+  "motor": "webkit",
+  "gorunum": "1920x1080",
+  "sayfa": "ana",
+  "dosya": "webkit-1920x1080-ana.png",
+  "dilim": 1,
+  "w": 1920,
+  "h": 7722,
+  "yatayTasma": false
+ },
+ {
+  "motor": "webkit",
+  "gorunum": "1920x1080",
+  "sayfa": "yontem",
+  "dosya": "webkit-1920x1080-yontem.png",
+  "dilim": 1,
+  "w": 1920,
+  "h": 5218,
+  "yatayTasma": false
+ },
+ {
+  "motor": "webkit",
+  "gorunum": "1920x1080",
+  "sayfa": "giris",
+  "dosya": "webkit-1920x1080-giris.png"
+ }
+]

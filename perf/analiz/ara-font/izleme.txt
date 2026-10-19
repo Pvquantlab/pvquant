@@ -1,0 +1,26 @@
+# Chromium 156 (Playwright), sonra (0dee665), 390x844, yavaş 4G — iz390.json (olc/iz/coz.mjs, ara.mjs çıktısından)
+kaynak   532→  820→ 1072 VeryHigh index-DDT_f9co.css
+kaynak   532→ 1426→ 1400 High inter-tight-latin-500-normal-B
+kaynak   532→ 1426→ 1401 High inter-tight-latin-600-normal-B
+kaynak   532→ 1426→ 1411 High inter-tight-tr-500-mVGzgBfJ.wo
+kaynak   532→ 1427→ 1411 High inter-tight-tr-600-CHm7J1s7.wo
+işaret 1233 firstContentfulPaint
+ 1073.7 +1.9    CrRendererMain         X ParseAuthorStyleSheet {"styleSheetUrl":"https://localhost:30443/assets/index-DDT_f9co.css"}
+ 1075.6 +0.0    CrRendererMain         X Document::BeginLifecycleUpdatesIfRenderingReady {"have_render_blocking_resources_loaded":false,"is_active":true}
+ 1176.4 +0.0    CrRendererMain         X TimerBase::run {}
+ 1176.4 +0.0    CrRendererMain         X Document::BeginLifecycleUpdatesIfRenderingReady {"have_render_blocking_resources_loaded":true,"is_active":true}
+ 1176.9 +29.2   CrRendererMain         X ProxyMain::BeginMainFrame
+PreloadRenderBlockingStatusChange 1180.6–1181.0: inter-tight-latin-500/600, tr-500/600
+
+# aynı, 1920x1080 — iz1920.json
+BeginLifecycleUpdatesIfRenderingReady: 1168.4 false → 1269.3 true · FCP 1376.6
+
+# Chrome 155.0.8059.84 (kurulu, channel chrome), 390x844 — izc390.json
+kaynak   535→  744→  953 VeryHigh index-DDT_f9co.css
+BeginLifecycleUpdatesIfRenderingReady: 959.2 false → 961.6 false → 1060.1 true
+PreloadRenderBlockingStatusChange 1065.8–1066.0: inter-tight-latin-600, tr-500, tr-600
+
+# deney (olc/iz/kisa.mjs; tek koşu, 390x844 yavaş 4G)
+f-sonra: CSS 522→977 · FCP 1136 · fontlar 523'te başlar · PRBSC 1084–1085 (CSS+107 ms)
+f-arag:  CSS 524→1050 · FCP 1104 · fontlar 1051'de başlar (G1: betik CSS'i bekledi)
+f-arah:  CSS 536→822 · FCP 878 · fontlar 536'da başlar · PRBSC 828 (CSS+6 ms)

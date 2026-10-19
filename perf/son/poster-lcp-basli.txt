@@ -1,0 +1,16 @@
+768x1024 chromium/başlı once   #1 FCP 2052 LCP 3952 video.vt-hero__video[santral-poster.webp] poster 826→3834
+768x1024 chromium/başlı final2 #1 FCP 5796 LCP 6416 video.vt-hero__video[santral-poster.webp] poster 3518→6064
+768x1024 chromium/başlı final2 #2 FCP 856 LCP 4024 video.vt-hero__video[santral-poster.webp] poster 859→3907
+768x1024 chromium/başlı once   #2 FCP 1156 LCP 4040 video.vt-hero__video[santral-poster.webp] poster 936→3884
+768x1024 chromium/başlı once   #3 FCP 1208 LCP 3940 video.vt-hero__video[santral-poster.webp] poster 975→3880
+768x1024 chromium/başlı final2 #3 FCP 856 LCP 4040 video.vt-hero__video[santral-poster.webp] poster 857→3913
+1920x1080 chromium/başlı once   #1 FCP 1388 LCP 4020 video.vt-hero__video[santral-poster.webp] poster 1050→3887
+1920x1080 chromium/başlı final2 #1 FCP 1012 LCP 4032 video.vt-hero__video[santral-poster.webp] poster 1015→3903
+1920x1080 chromium/başlı final2 #2 FCP 884 LCP 4020 video.vt-hero__video[santral-poster.webp] poster 886→3896
+1920x1080 chromium/başlı once   #2 FCP 1268 LCP 4020 video.vt-hero__video[santral-poster.webp] poster 989→3898
+1920x1080 chromium/başlı once   #3 FCP 1448 LCP 3884 video.vt-hero__video[santral-poster.webp] poster 1174→3815
+1920x1080 chromium/başlı final2 #3 FCP 968 LCP 4104 video.vt-hero__video[santral-poster.webp] poster 971→3968
+768x1024 once          FCP 1208 LCP 3952 poster başlangıç 936 bitiş 3880 LCP öğeleri video.vt-hero__video[santral-poster.webp]
+768x1024 final2        FCP 856 LCP 4040 poster başlangıç 859 bitiş 3913 LCP öğeleri video.vt-hero__video[santral-poster.webp]
+1920x1080 once         FCP 1388 LCP 4020 poster başlangıç 1050 bitiş 3887 LCP öğeleri video.vt-hero__video[santral-poster.webp]
+1920x1080 final2       FCP 968 LCP 4032 poster başlangıç 971 bitiş 3903 LCP öğeleri video.vt-hero__video[santral-poster.webp]
