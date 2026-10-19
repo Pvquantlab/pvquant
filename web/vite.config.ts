@@ -207,9 +207,40 @@ export function cssGom(): Plugin {
   }
 }
 
+/** 19.10 perf/cross-browser — vitrinde ilk kare web fontunu en çok 100 ms bekler (üç motorda aynı). Ölçüm (olc/iz/font-flas.mjs,
+ *  20 Mbps / 40 ms hat): CSS gömülüp font ön yüklemeleri ilk boyamayı bekletmeyince sayfa fontlardan ~30–75 ms önce çiziliyor, başlık
+ *  ilk karelerde metrik eşlemeli yedek yüzle görünüp Inter Tight'a geçiyordu (Chromium 3/3, Firefox 3/3, WebKit 1/3 koşu; önceki
+ *  derlemede 0/3). Chromium eskiden <head>'deki font ön yüklemesi için bunu kendiliğinden yapıyordu (en çok 100 ms); şimdi kabuk
+ *  (#root) Inter Tight 500/600 — Türkçe alt küme dahil — yüklenene ya da 100 ms dolana dek gizli, hangisi önceyse. Yavaş hatta
+ *  bedel en çok 100 ms (ilk kare yine yedek yüzle, değişim kaydırmasız). JS yoksa ya da document.fonts yoksa bekleme olmaz.
+ *  Yalnız vitrin dalı (kabuksuz yollarda baş betiği .vt-kabuksuz koyar; /yontem ve panel React'le çizilir, JS fontlardan sonra iner).
+ *  Yalnız Chromium ve Gecko («Chrome/», «Firefox/»; iOS'taki CriOS/FxiOS WebKit'tir): WebKit ilk düzende içerik gizliyse —
+ *  visibility ya da opacity, document.fonts.load ile de onsuz da — zamanlayıcı 100 ms'de açsa bile hiçbir şey çizmiyor, fontların
+ *  inmesini bekliyor (ölçüldü, yavaş 4G: FCP ~690 → ~1800 ms; olc/iz/font-bekle-iz.mjs). WebKit'te davranış beklemesiz kalır. */
+export function fontBekle(): Plugin {
+  const stil = '<style>html.vt-font-bekle #root{visibility:hidden}</style>'
+  const betik = '<script>(function(){try{var h=document.documentElement,f=document.fonts;if(h.classList.contains("vt-kabuksuz")||!f||!f.load||!/Chrome\\/|Firefox\\//.test(navigator.userAgent))return;' +
+    'h.classList.add("vt-font-bekle");var a=function(){h.classList.remove("vt-font-bekle")};setTimeout(a,100);var m="aĞğİıŞş";' +
+    'Promise.all([f.load(\'600 1em "Inter Tight"\',m),f.load(\'500 1em "Inter Tight"\',m)]).then(a,a)}catch(e){}})()</script>'
+  return {
+    name: 'pvq-font-bekle',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html) {
+        // gömülü CSS'ten SONRA (@font-face kuralları tanınsın) ve kabuk baş betiğinden sonra (karar sınıfı konmuş olsun)
+        if (!html.includes('h.add("vt-kabuksuz")')) throw new Error('index.html: kabuk baş betiği bulunamadı — fontBekle vitrinKabugu\'ndan sonra çalışmalı')
+        if (!/font-family:\s*["']?Inter Tight["']?\s*;/.test(html)) throw new Error('index.html: gömülü Inter Tight @font-face bulunamadı — fontBekle cssGom\'dan sonra çalışmalı')
+        if (!html.includes('</head>')) throw new Error('index.html: </head> bulunamadı')
+        return html.replace('</head>', () => `  ${stil}\n    ${betik}\n  </head>`)
+      },
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [interTightAralik(), react(), fontOnYukle(), yedekFont(), vitrinKabugu(), cssGom()],
+  plugins: [interTightAralik(), react(), fontOnYukle(), yedekFont(), vitrinKabugu(), cssGom(), fontBekle()],
   // Türkçe alt küme yüzleri CSS'e GÖMÜLMEZ: gömülü (data:) font ilk boyamadan sonra çözülüyor, ğ/ş/İ ilk karede yedek
   // fontla çizilip bir kare sonra yerine geçiyordu (satır kayıyor). Ayrı ~1,5 KB'lık dosya + ön yükleme. 19.10: ön yükleme artık ilk
   // boyamayı bekletmiyor (<body>'de, fontOnYukle); ilk karede metrik eşlemeli yedek yüz çizer, satır kaymaz (ölçüm: 0–2 px).
