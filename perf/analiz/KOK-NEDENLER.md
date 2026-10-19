@@ -114,6 +114,32 @@ Durum etiketleri: **DOĞRULANDI** (ölçümle) · **DÜZELTİLDİ** (commit) · 
   Lighthouse (lantern) ise 25,6 KB'lık HTML'i bir gidiş-dönüş uzun sayıyor: benzetimli FCP 1504 → 1652 ms, LCP 1,88 → 1,80 sn, skor 98–99.
 - **Düzeltme.** `c9944cf`. Bedel: index.html br 3,6 → 25,6 KB (her yolda; değişmediyse 304).
 
+## K10 — /yontem ve panelde ilk boyama geriledi (K9 düzeltmesinin yan etkisi; bağımsız inceleme, 19.10)
+- **Kök neden.** `c9944cf` modül betiğini gömülü stilin ardına aldı; ilk boyaması JS'i bekleyen yollarda JS isteği ~22 KB gecikti.
+- **Kanıt.** `ara-font/matris-0304003-yarim.jsonl`, `ara-font/yontem-erken-js.txt`: Chromium Slow 4G /yontem FCP 1272–1372 → 1388–1512 ms;
+  kabuksuz dalda stilden önce `modulepreload` ile 1180–1196 ms (önceki derlemeden de hızlı); üç motorda tek istek (`js-istek.txt`).
+- **Düzeltme.** `44fefcc`.
+
+## K11 — Firefox tuvali yoğunluk değişiminde ve 1x ekranda (bağımsız inceleme, 19.10)
+- **Kök neden.** Tampon yalnız CSS boyu değişince yenileniyordu. `device-pixel-content-box` denendi: Firefox 158 orada sayfanın çizildiği
+  değil fiziksel ekranın yoğunluğunu bildiriyor ve yoğunluk değişince tetiklenmiyor (`olc/iz/ro-sina.mjs`) — 1x'te tuval yumuşadı.
+  Ayrıca tamsayı kutu (clientHeight 776 ↔ 775,6) 1366×768@1'de ince deseni ~0,4 px kaydırıyordu.
+- **Kanıt.** `webgl-son/dpr-degis.txt`, `son-esdeger.txt`, `1366-geometri.txt`: tampon artık 1425 → 2138 → 4275 px; 1366@1 fark 20,4 → 5,4.
+- **Düzeltme.** `22fb97f` (tampon = kesirli kutu × dpr, `matchMedia(resolution)`, GL hata/kayıp geri dönüşleri).
+
+## K12 — Ekran kartsız birleştirmede Firefox tuvali sayfayı kilitliyor (son doğrulama zinciri, 19.10)
+- **Kök neden.** Software WebRender'da WebGL bağlamı `failIfMajorPerformanceCaveat`'i geçiyor ama tuval her karede işlemciye geri okunuyor.
+- **Kanıt.** `ara-son-e1e6b3c/etkilesim.jsonl` (başsız Firefox boşta 1440: 100–133 ms kare), `webgl-son/yazilim-ff.txt` (16,7 → 99,8 ms),
+  `yazilim-ff2.txt` ve `../son/yazilim-ff.txt` (sınamayla tuval ~0,5 sn'de sökülüyor, sonra 16,7 ms; 2. açılışta hiç kurulmuyor).
+- **Düzeltme.** `d853320` (ilk saniye kare sınaması, ortanca > 25 ms → CSS süzgeci, 7 gün).
+
+## K13 — Hızlı hatta ilk karelerde yedek font (K8/K9'un yan etkisi; bağımsız inceleme sorusu, 19.10)
+- **Kök neden.** Sayfa artık fontlardan ~30–75 ms önce çiziliyor.
+- **Kanıt.** `ara-font/font-flas.txt`, `font-bekle.txt`, `../son/font-ilk-metin.txt`: 20 Mbps'te ilk metin yedek yüzle Chromium 3/3, Firefox 3/3
+  (önce 0/3); 100 ms beklemeyle 0/3. `font-display: fallback` reddedildi (Firefox yine yedekle); WebKit'te gizleme çizimi fontlara dek
+  erteledi (FCP ~0,7 → ~1,8 sn) → WebKit dışarıda (20 Mbps'te 2/3 yedekle).
+- **Düzeltme.** `160a22a`.
+
 ## Ölçülen ama düzeltilmeyenler (AÇIK) — gerekçeleriyle
 - **Poster ertelemesini ≤ 760 px'e sınırlamak (19.10, `ara-font/OKU.md`).** CSS gömüldükten sonra ertelemenin bedeli ölçülemez oldu:
   geniş ekranda poster ~0,1 sn erken başlıyor ama bitişi aynı (hat dolu), LCP farkı koşu yayılımı içinde → uygulanmadı.

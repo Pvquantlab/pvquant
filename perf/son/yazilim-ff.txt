@@ -1,0 +1,2 @@
+final2 açılış 1: {"iz":"1613:etkin/süzgeç-yok 2120:gizli/css 2630:gizli/css 3138:gizli/css 3639:gizli/css 4141:gizli/css 4646:gizli/css 5147:gizli/css 5680:gizli/css","ortanca":16.7,"p95":18.4,"kayit":"var"}
+final2 açılış 2: {"iz":"1334:yok/css 1840:yok/css 2349:yok/css 2849:yok/css 3366:yok/css 3882:yok/css 4390:yok/css 4891:yok/css 5422:yok/css","ortanca":16.7,"p95":18.6,"kayit":"var"}

@@ -36,7 +36,8 @@ medyanı; sonra2 = 0dee665, sonra5 = 0304003, sonra6 = düzeltmeli): 390 1484 / 
 `font-flas.txt` (önceki derleme `sonra` = 0dee665 ↔ `sonra7` = d853320, 390×844, kısıtsız / 20 Mbps (kablo20) / yavaş 4G):
 kısıtsız hatta iki derlemede de ilk metin web fontuyla (0/5); 20 Mbps'te yeni derlemede ilk metin metrik eşlemeli yedek yüzle
 (Chromium 3/3, Firefox 3/3, WebKit 1–2/3; önceki 0/3) — fontlardan ~30–75 ms önce çiziliyor. `font-flas.mjs` ilk görünür metni LCP
-API'sinin ilk metin adayından alır (WebKit'te API yok → FCP).
+API'sinin ilk metin adayından alır (API yoksa FCP; 19.10 düzeltme: Playwright WebKit (Safari 26 motoru) LCP API'sini destekliyor, ölçüm
+onu kullandı — önceki «WebKit'te API yok» ifadesi yanlıştı).
 - `font-fallback.txt`: Inter Tight için `font-display: fallback` (`araff`, `olc/iz/deney-fallback.mjs`) — Firefox ilk metni yine
   yedekle çizdi (3/3); engelleme süresi font isteğinin başından sayılıyor. Reddedildi.
 - `font-bekle.txt`: `fontBekle` (vitrin, Chromium/Gecko; #root fontlar ya da 100 ms'ye dek gizli) — 20 Mbps'te Chromium 0/3, Firefox
