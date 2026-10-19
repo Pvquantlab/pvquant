@@ -92,8 +92,8 @@ export function Hero({ kabuk = false }: { kabuk?: boolean } = {}) {
     // ilk oynatmada Firefox tuvali kurulur: video yalnız gerçekten oynayınca (yavaş hat / hareket azaltma / veri tasarrufunda hiç)
     let gl: (() => void) | null = null, glDenendi = false;    // tek deneme: kurulamazsa CSS süzgeci kalır
     const oynuyor = () => {
-      if (!glDenendi && tuval.current) { glDenendi = true; gl = keskinGLKur(v, tuval.current); }
-      requestAnimationFrame(() => setVideoGorunur(true));
+      requestAnimationFrame(() => setVideoGorunur(true));      // poster erimesi GL kurulumundan bağımsız
+      if (!glDenendi && tuval.current) { glDenendi = true; try { gl = keskinGLKur(v, tuval.current); } catch { gl = null; } }
     };
     v.addEventListener("playing", oynuyor);
     // 16.10 hız turu 4: indirme YALNIZ hero ilk kez ekranda (ve sekme görünür) olunca başlar. Önce load() sayfa
