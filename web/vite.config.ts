@@ -80,7 +80,7 @@ function yedekFont(): Plugin {
     name: 'pvq-yedek-font',
     transformIndexHtml(html) {
       if (!html.includes('<meta charset="UTF-8" />')) throw new Error('index.html: charset meta bulunamadı')
-      return html.replace('<meta charset="UTF-8" />', `<meta charset="UTF-8" />\n    <style>${css}</style>\n    ${yukle}`)
+      return html.replace('<meta charset="UTF-8" />', () => `<meta charset="UTF-8" />\n    <style>${css}</style>\n    ${yukle}`)
     },
   }
 }
@@ -110,7 +110,7 @@ function vitrinKabugu(): Plugin {
           const modul = await sunucu.ssrLoadModule('/src/features/vitrin/kabukHtml.ts')
           const govde = (modul.kabukHtml as () => string)()
           // 16.10 hız turu 4 — poster isteği kabuğun kaldığı dalda (vitrin) bu betikten başlar. Betik gövde sonunda,
-          // CSS'i bekleyerek çalışır: istek CSS'le yarışmaz (v2.451 denemesinde <head>'deki statik ön yükleme 3G'de ilk
+          // CSS'i bekleyerek çalışırdı (19.10'dan beri CSS gömülü — betik ayrıştırma anında çalışır; kapı FCP bildirimi): istek CSS'le yarışmaz (v2.451 denemesinde <head>'deki statik ön yükleme 3G'de ilk
           // boyamayı ~0,9 sn geciktirmişti), ama React'in çizip <img>'i koymasını da beklemez (canlı v2.452: poster
           // isteği m3g 1,76 sn, m4g 0,62 sn'de başlıyordu; tek koşu). crossorigin YOK — <img> ve video posteri no-cors ister.
           // 18.10 perf/cross-browser: istek ilk içerikli boyamanın BİLDİRİMİNDEN sonra başlar (bildirim zaten varsa, API yoksa
@@ -134,9 +134,9 @@ function vitrinKabugu(): Plugin {
             'd.addEventListener("click",function(){m(c.hidden)});' +
             'd.closest(".vt-ust").addEventListener("click",function(e){if(!c.hidden&&e.target.closest("a"))m(false)})}}}catch(e){}})()</script>'
           if (!html.includes('<div id="root"></div>')) throw new Error('index.html: boş #root bulunamadı')
-          let sonuc = html.replace('<div id="root"></div>', `<div id="root">${govde}</div>\n    ${betik}`)
+          let sonuc = html.replace('<div id="root"></div>', () => `<div id="root">${govde}</div>\n    ${betik}`)
           // 18.10 — yanlış rota karesi (perf/analiz H10, Y6, H14): kabuk her yolun HTML'inde gelir, silme kararı gövde
-          // sonundaki betikte ve o betik CSS'i bekler. CSS inince motor betikten ÖNCE bir kare üretebiliyordu (Chromium yavaş
+          // sonundaki betikte ve o betik CSS'i bekliyordu (19.10'dan beri CSS gömülü, beklemez; baştaki karar yine ilk boyamadan önce). CSS inince motor betikten ÖNCE bir kare üretebiliyordu (Chromium yavaş
           // hatta boyuyor, Firefox yerleştiriyor): /yontem'de ve oturumlu «/»de vitrin hero'su bir kare görünüyor, Chromium FCP'si
           // o yabancı kareyi ölçüyordu. Karar kabuk ayrıştırılmadan önce de verilir (gövde betiğiyle aynı ifade, aynı try/catch):
           // kabuksuz dalda html'e .vt-kabuksuz (/yontem'de ayrıca .vt-sayfa) konur; satır içi kural yalnız [data-kabuk]'ı
@@ -145,7 +145,7 @@ function vitrinKabugu(): Plugin {
             'if(!(p==="/"&&(!t||v))){var h=document.documentElement.classList;h.add("vt-kabuksuz");if(p==="/yontem")h.add("vt-sayfa")}}catch(e){}})()</script>'
           const basStil = '<style>html.vt-kabuksuz #root>[data-kabuk]{display:none}</style>'
           if (!sonuc.includes('<meta charset="UTF-8" />')) throw new Error('index.html: charset meta bulunamadı')
-          sonuc = sonuc.replace('<meta charset="UTF-8" />', `<meta charset="UTF-8" />\n    ${bas}\n    ${basStil}`)
+          sonuc = sonuc.replace('<meta charset="UTF-8" />', () => `<meta charset="UTF-8" />\n    ${bas}\n    ${basStil}`)
           // 16.10 hız turu 4 — doğrulama isteği (vitrin ve /yontem) HTML ile başlar: önceden React'in ilk çiziminden sonra
           // gidiyor, yanıt gelince bütün ağaç ikinci kez çiziliyor, çapalı açılış (/#karne) ikinci kez kaydırıyordu.
           // Yalnız aynı köken derlemesinde (VITE_API_URL=".", canlı); useDogrulama.ts sonucu ilk çizimde okur.
@@ -154,7 +154,7 @@ function vitrinKabugu(): Plugin {
               'if((p==="/"&&(!t||v))||p==="/yontem"){window.__pvqDogr=fetch("/v1/dogrulama").then(function(r){return r.ok?r.json():null})' +
               '.then(function(j){window.__pvqDogrSonuc=j;return j},function(){window.__pvqDogrSonuc=null;return null})}}catch(e){}})()</script>'
             if (!sonuc.includes('<meta charset="UTF-8" />')) throw new Error('index.html: charset meta bulunamadı')
-            sonuc = sonuc.replace('<meta charset="UTF-8" />', `<meta charset="UTF-8" />\n    ${erken}`)
+            sonuc = sonuc.replace('<meta charset="UTF-8" />', () => `<meta charset="UTF-8" />\n    ${erken}`)
           }
           return sonuc
         } finally {
@@ -211,6 +211,7 @@ export function cssGom(): Plugin {
 export default defineConfig({
   plugins: [interTightAralik(), react(), fontOnYukle(), yedekFont(), vitrinKabugu(), cssGom()],
   // Türkçe alt küme yüzleri CSS'e GÖMÜLMEZ: gömülü (data:) font ilk boyamadan sonra çözülüyor, ğ/ş/İ ilk karede yedek
-  // fontla çizilip bir kare sonra yerine geçiyordu (satır kayıyor). Ayrı ~1,5 KB'lık dosya + ön yükleme: ilk boyama onu bekler.
+  // fontla çizilip bir kare sonra yerine geçiyordu (satır kayıyor). Ayrı ~1,5 KB'lık dosya + ön yükleme. 19.10: ön yükleme artık ilk
+  // boyamayı bekletmiyor (<body>'de, fontOnYukle); ilk karede metrik eşlemeli yedek yüz çizer, satır kaymaz (ölçüm: 0–2 px).
   build: { assetsInlineLimit: (dosya) => (/inter-tight-tr-\d{3}\.woff2$/.test(dosya) ? false : undefined) },
 })

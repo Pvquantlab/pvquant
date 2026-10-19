@@ -40,8 +40,8 @@ const LEVHA_BEKLEME_MS = 4000;
  *  levhalar/videoyla yarışıp mobil 3G'de 11 sn'de iniyor, video poster gelmeden ve farklı kareden başlıyordu):
  *  1) zemin: posterin kendi renklerinden gradyan (vitrin.css «Hız turu 3»; fotoğrafa dokunulmaz);
  *  2) poster: aynı dosya, yüksek öncelikli <img> + videonun kendi posteri; üstteki örtü poster tamamen
- *     çözülünce 450 ms'de solar (yarım çizim görünmez). Hız turu 4: istek index.html'deki betikten, CSS iner
- *     inmez başlar (vite.config «pvq-vitrin-kabugu»); <img> o yanıtı kullanır;
+ *     çözülünce 450 ms'de solar (yarım çizim görünmez). Hız turu 4: istek index.html'deki betikten başlar (vite.config
+ *     «pvq-vitrin-kabugu»; 19.10'dan beri ilk içerikli boyamanın bildiriminden sonra, CSS HTML'e gömülü); <img> o yanıtı kullanır;
  *  3) video: YALNIZ poster + sayfa yüklendikten sonra ve hero ekrandayken iner; oynamaya başlayınca üstteki poster resmi 900 ms'de
  *     solar (poster 6,07 sn karesi, ilk oynatma da oradan — aynı kare üzerinde erime). Veri tasarrufu, 2G/3G, posteri
  *     2 sn'den uzun sürede indiren hat ve hareket azaltma tercihinde video hiç indirilmez, poster kalır.
