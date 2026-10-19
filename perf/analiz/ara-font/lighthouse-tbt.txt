@@ -1,0 +1,14 @@
+# Lighthouse raporlarından (HTML içindeki LHR): benzetimli FCP, TBT, uzun görevler (url@başlangıç+süre, ms) ve ana iş parçacığı dökümü
+lh-sonra-ana-mobil-1.html FCP(sim) 1504 TBT 45 | uzun görevler: index-B4Lvek3H.js@1804+140 Unattributable@959+126 @870+68 @820+50 
+   iş: other:842 scriptEvaluation:339 styleLayout:306 paintCompositeRender:155 garbageCollection:15 parseHTML:14 scriptParseCompile:7
+lh-sonra-ana-mobil-2.html FCP(sim) 1507 TBT 73 | uzun görevler: index-B4Lvek3H.js@1807+196 Unattributable@1099+158 @955+98 @889+66 @803+63 
+   iş: other:954 scriptEvaluation:434 styleLayout:368 paintCompositeRender:153 garbageCollection:22 parseHTML:18 scriptParseCompile:8
+lh-arai-ana-mobil-1.html FCP(sim) 1653 TBT 86 | uzun görevler: index-B4Lvek3H.js@1653+136 Unattributable@1176+119 @1073+79 @998+58 
+   iş: other:821 scriptEvaluation:329 styleLayout:318 paintCompositeRender:149 parseHTML:18 garbageCollection:15 scriptParseCompile:7
+lh-arai-ana-mobil-5.html FCP(sim) 1652 TBT 120 | uzun görevler: Unattributable@1188+175 index-B4Lvek3H.js@1652+155 @944+83 index-B4Lvek3H.js@1807+80 @1090+75 @1036+54 
+   iş: other:888 scriptEvaluation:404 styleLayout:324 paintCompositeRender:141 parseHTML:38 garbageCollection:19 scriptParseCompile:7
+lh-arai-yontem-mobil-1.html FCP(sim) 1509 TBT 152.5 | uzun görevler: index-B4Lvek3H.js@1562+140 index-B4Lvek3H.js@1702+112 yontem@955+80 index-B4Lvek3H.js@1509+53 
+   iş: other:297 scriptEvaluation:296 styleLayout:291 paintCompositeRender:57 parseHTML:26 scriptParseCompile:11 garbageCollection:7
+lh-sonra-yontem-mobil-1.html FCP(sim) 1658 TBT 27 | uzun görevler: index-B4Lvek3H.js@1658+77 yontem@824+75 
+   iş: other:252 scriptEvaluation:195 styleLayout:192 paintCompositeRender:36 parseHTML:21 garbageCollection:14 scriptParseCompile:6
+# (lh-arai-ana-mobil-1/5 = analiz/ara-arai/tekrar; diğerleri analiz/ara-arai/lighthouse)

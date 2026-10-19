@@ -12,6 +12,9 @@ export const KOK = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".
 export const HEDEFLER = {
   once:  { yok: "https://localhost:18443", hizli3g: "https://localhost:19443", yavas4g: "https://localhost:20443", spki: ".replika/once/spki.txt" },
   sonra: { yok: "https://localhost:28443", hizli3g: "https://localhost:29443", yavas4g: "https://localhost:30443", spki: ".replika/sonra2/spki.txt" },
+  sonra3: { yok: "https://localhost:4443", hizli3g: "https://localhost:5443", yavas4g: "https://localhost:6443", spki: ".replika/sonra3/spki.txt" },   // 19.10: font <body> + CSS gömülü (c9944cf), T=4
+  sonra4: { yok: "https://localhost:52443", hizli3g: "https://localhost:53443", yavas4g: "https://localhost:54443", spki: ".replika/sonra4/spki.txt" },   // 19.10: + Firefox WebGL keskinleştirme, T=52
+  sonra5: { yok: "https://localhost:44443", hizli3g: "https://localhost:45443", yavas4g: "https://localhost:46443", spki: ".replika/sonra5/spki.txt" },   // 19.10 SON: 0304003 (derle.sh), T=44
   canli: { yok: "https://pvquant.com" },
   // Faz 3 ara ölçümleri (tek düzeltmenin etkisini ayırmak için; T=38/48)
   araa:  { yok: "https://localhost:38443", hizli3g: "https://localhost:39443", yavas4g: "https://localhost:40443", spki: ".replika/araa/spki.txt" },
@@ -19,9 +22,7 @@ export const HEDEFLER = {
   arad:  { yok: "https://localhost:24443", hizli3g: "https://localhost:25443", yavas4g: "https://localhost:26443", spki: ".replika/arad/spki.txt" },
   arae:  { yok: "https://localhost:34443", hizli3g: "https://localhost:35443", yavas4g: "https://localhost:36443", spki: ".replika/arae/spki.txt" },
   araf:  { yok: "https://localhost:34443", hizli3g: "https://localhost:35443", yavas4g: "https://localhost:36443", spki: ".replika/araf/spki.txt" },
-  // 19.10 font ön yükleme yeri deneyi (olc/iz/deney-font.mjs; T=44/52)
-  arag:  { yok: "https://localhost:44443", hizli3g: "https://localhost:45443", yavas4g: "https://localhost:46443", spki: ".replika/arag/spki.txt" },
-  arah:  { yok: "https://localhost:52443", hizli3g: "https://localhost:53443", yavas4g: "https://localhost:54443", spki: ".replika/arah/spki.txt" },
+  // 19.10 deneyleri (analiz/ara-font): arag/arah (font preload yeri, T=44/52; portları sonra4/sonra5 devraldı), arai = CSS gömülü (T=12)
   arai:  { yok: "https://localhost:12443", hizli3g: "https://localhost:13443", yavas4g: "https://localhost:14443", spki: ".replika/arai/spki.txt" },
   arab:  { yok: "https://localhost:48443", hizli3g: "https://localhost:49443", yavas4g: "https://localhost:50443", spki: ".replika/arab/spki.txt" },
 };

@@ -6,3 +6,4 @@ node_modules/
 **/diff/
 analiz/filtre*/*.png
 _*/
+analiz/webgl*/*.png

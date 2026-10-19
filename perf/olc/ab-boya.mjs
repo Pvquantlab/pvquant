@@ -46,6 +46,8 @@ const AYRISIK_SVG = (d) => `<filter id="vt-keskin-ab" color-interpolation-filter
   <feComposite in="lr" in2="ua" operator="arithmetic" k2=".5" k3=".5" result="m"/>
   <feComposite in="SourceGraphic" in2="m" operator="arithmetic" k2="2.8" k3="-1.8"/></filter>`;
 CSS.ayrisik = ".vt-hero video, .vt-hero img.vt-hero__poster { filter: url(#vt-keskin-ab) !important; }";
+// 19.10 webgl: olc/iz/keskin-webgl.js — videonun üstüne tek geçişli WebGL keskinleştirme tuvali (1 CSS pikseli = Gecko'nun ölçeği)
+const WEBGL = fs.readFileSync(path.join(KOK, "olc/iz/keskin-webgl.js"), "utf8");
 
 // ── süreç ağacı CPU süresi (sn): kök pid'in torunları ∪ komut satırında işaret geçen süreçler (WebKit XPC süreçleri launchd altında)
 function cpuOrnek(kokPid, isaret) {
@@ -127,11 +129,13 @@ for (const surucu of suruculer) for (const gAd of gorunumler) {
     const sira = DEGISKEN.slice(k - 1).concat(DEGISKEN.slice(0, k - 1));   // koşu başına döndürülmüş sıra
     const sonuc = {};
     for (const d of sira) {
-      await s.deger(({ css, svg }) => { scrollTo(0, 0); document.getElementById("__ab")?.remove(); document.getElementById("vt-keskin-ab")?.remove();
+      await s.deger(({ css, svg, webgl }) => { scrollTo(0, 0); document.getElementById("__ab")?.remove(); document.getElementById("vt-keskin-ab")?.remove();
+        window.__keskinSok?.(); window.__keskinSok = null;
+        if (webgl) { if (!window.__keskinKur) (0, eval)(webgl); window.__keskinKur(document.querySelector("video.vt-hero__video"), { adim: 1 }); }
         if (svg) document.querySelector("svg.vt-hero__filtre")?.insertAdjacentHTML("beforeend", svg);
         if (css) { const e = document.createElement("style"); e.id = "__ab"; e.textContent = css; document.head.appendChild(e); }
         const v = document.querySelector("video.vt-hero__video"); if (v && v.paused) v.play().catch(() => {}); },
-        { css: d === "filtresiz+camsiz" ? CSS.filtresiz + CSS.camsiz : CSS[d] || "", svg: d === "ayrisik" ? AYRISIK_SVG((1.001 / g.dpr).toFixed(4)) : "" });
+        { css: d === "filtresiz+camsiz" ? CSS.filtresiz + CSS.camsiz : CSS[d] || "", svg: d === "ayrisik" ? AYRISIK_SVG((1.001 / g.dpr).toFixed(4)) : "", webgl: d === "webgl" ? WEBGL : "" });
       await bekle(1200);                                           // görünürlük gözlemcisi başa dönüşü işlesin
       if (d === "video-durgun") { await s.deger(() => document.querySelector("video.vt-hero__video")?.pause()); await bekle(300); }
       const c0 = cpuOrnek(t.kokPid, t.isaret);

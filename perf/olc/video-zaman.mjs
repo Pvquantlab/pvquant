@@ -12,6 +12,8 @@ const degiskenler = arg("degisken", "yeni,ozgun,filtresiz").split(",");
 const CSS = { yeni: "", ozgun: ".vt .vt-hero--wr .vt-hero__video, .vt .vt-hero--wr .vt-hero__poster { filter: url(#vt-keskin) !important; }",
   filtresiz: ".vt-hero video, .vt-hero img { filter: none !important; }" };
 const cikti = path.join(KOK, arg("cikti", "after/ab"), "video-zaman.jsonl");
+// 19.10 webgl: olc/iz/keskin-webgl.js (tek geçişli WebGL keskinleştirme tuvali; video CSS süzgecini ilk çizimde bırakır)
+const WEBGL = fs.readFileSync(path.join(KOK, "olc/iz/keskin-webgl.js"), "utf8");
 const bekle = (ms) => new Promise((r) => setTimeout(r, ms));
 function cpu(kok) {
   const s = execFileSync("ps", ["-A", "-o", "pid=,ppid=,time="], { encoding: "utf8" }).trim().split("\n").map((l) => l.trim().split(/\s+/)).map(([p, pp, t]) => ({ p: +p, pp: +pp, t: t.split(":").map(Number).reduce((a, x) => a * 60 + x, 0) }));
@@ -22,6 +24,7 @@ for (let k = 1; k <= kosu; k++) for (const d of (k % 2 ? degiskenler : [...degis
   const t = await puppeteer.launch({ browser: "firefox", executablePath: "/Applications/Firefox.app/Contents/MacOS/firefox", headless: false, acceptInsecureCerts: true, defaultViewport: null });
   const s = await t.newPage(); await s.setViewport({ width: g.width, height: g.height, deviceScaleFactor: g.dpr });
   if (CSS[d]) await s.evaluateOnNewDocument((c) => { document.addEventListener("DOMContentLoaded", () => { const e = document.createElement("style"); e.textContent = c; document.head.appendChild(e); }); }, CSS[d]);
+  if (d === "webgl" || d === "webgl-alt") await s.evaluateOnNewDocument((kod, alt) => { (0, eval)(kod); const bak = setInterval(() => { const v = document.querySelector("video.vt-hero__video"); if (v) { clearInterval(bak); window.__keskinDurum = window.__keskinKur(v, { adim: 1, alt }) ? "tamam" : "yok"; } }, 50); }, WEBGL, d === "webgl-alt");
   await s.goto(HEDEFLER[hedef].yok + "/", { waitUntil: "load" });
   await s.evaluate(async () => { const v = document.querySelector("video.vt-hero__video"); const b = performance.now(); while (performance.now() - b < 30000 && !(v && !v.paused && v.readyState >= 3)) await new Promise((r) => setTimeout(r, 50)); });
   const pid = t.process().pid; const pencereler = [];
@@ -34,10 +37,10 @@ for (let k = 1; k <= kosu; k++) for (const d of (k % 2 ? degiskenler : [...degis
       const q1 = v.getVideoPlaybackQuality(); dd.sort((a, z) => a - z);
       return { dusen: q1.droppedVideoFrames - q0.droppedVideoFrames, toplam: q1.totalVideoFrames - q0.totalVideoFrames, rvfc: rv, p95: dd[Math.floor(dd.length * 0.95)], t: v.currentTime };
     });
-    r.cpu = +((cpu(pid) - c0) / 5).toFixed(2); pencereler.push(r);
+    r.cpu = +((cpu(pid) - c0) / 5).toFixed(2); r.gl = await s.evaluate(() => { const c = document.querySelector("canvas.vt-hero__keskin"); const v = document.querySelector("video.vt-hero__video"); return c ? `${c.classList.contains("is-hazir") ? "tuval" : "tuval-gizli"}/${v.classList.contains("is-gl") ? "süzgeç-yok" : "css"}` : "tuval-yok"; }); if (d === "webgl") r.webgl = await s.evaluate(() => `${window.__keskinDurum} ${document.querySelector("canvas.vt-hero__keskin")?.style.visibility} ${getComputedStyle(document.querySelector("video.vt-hero__video")).filter}`); pencereler.push(r);
   }
   const satir = { hedef, degisken: d, kosu: k, gorunum: `${g.width}x${g.height}`, surum: await t.version(), zaman: new Date().toISOString(), pencereler };
   fs.appendFileSync(cikti, JSON.stringify(satir) + "\n");
-  console.log(`${d.padEnd(9)} #${k} düşen/toplam: ${pencereler.map((x) => `${x.dusen}/${x.toplam}`).join(" ")} · rVFC: ${pencereler.map((x) => x.rvfc).join(" ")} · cpu: ${pencereler.map((x) => x.cpu).join(" ")}`);
+  console.log(`${d.padEnd(9)} #${k} ${pencereler[0].gl} düşen/toplam: ${pencereler.map((x) => `${x.dusen}/${x.toplam}`).join(" ")} · rVFC: ${pencereler.map((x) => x.rvfc).join(" ")} · cpu: ${pencereler.map((x) => x.cpu).join(" ")}`);
   await t.close();
 }

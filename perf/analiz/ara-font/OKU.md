@@ -12,3 +12,15 @@ Dosyalar (konsol çıktıları olduğu gibi):
 - `lighthouse/`, `tekrar/lighthouse/` (../ara-arai) — Lighthouse 12, arai ve sonra.
 
 G1 reddedildi: gövdedeki klasik betik bekleyen stil sayfasını bekliyor (betik CSS'ten sonra çalıştı), fontlar ~530 ms geç başladı.
+
+## Poster ertelemesini yalnız dar ekrana sınırlama (araj) — UYGULANMADI
+`araj` = sonra3 (font <body> + CSS gömülü) + poster ön yüklemesi yalnız ≤760 px'te FCP bildirimini bekler, geniş ekranda betik
+çalışınca başlar (`olc/iz/deney-poster.mjs`). Ölçüm `olc/iz/lcp.mjs` (Chromium, yavaş 4G, 5'er dönüşümlü koşu; `lcp-poster-chromium.txt`):
+poster isteği ~90–110 ms erken başlıyor (768: 639–701 ↔ 709–757 ms; 1920: 637–665 ↔ 726–765 ms) ama bitişi aynı (hat dolu; 768 medyan
+3901 ↔ 3894 ms, 1920 3909 ↔ 3898 ms). LCP 768 medyan 4208 ↔ 4288 ms (koşu yayılımı 4064–4448 içinde), 1920 karar verilemez
+(4336–5900). FCP geniş ekranda 12–28 ms geç. CSS gömüldükten sonra ilk boyama ~0,7 sn'ye indiği için ertelemenin bedeli ölçülebilir
+olmaktan çıktı → değişiklik yapılmadı.
+
+Yan bulgu: başsız Chromium posteri (feConvolveMatrix süzgeçli) yazılımla tarıyor (izleme: 65 RasterTask × ~30 ms; commit 722 ms bekliyor),
+geniş ekranda poster LCP'si inişinden 0,6–0,9 sn sonra. Pencereli Chromium'da (GPU) poster bitişi + ~120 ms (LCP 4012–4020 ms,
+`lcp-poster-chromium.txt` sonu). Matristeki Chromium 768/1920 LCP değerleri bu yüzden gerçek Chrome'dan yüksek (önce ve sonra eşit şişkin).
