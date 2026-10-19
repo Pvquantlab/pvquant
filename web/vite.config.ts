@@ -172,7 +172,10 @@ function vitrinKabugu(): Plugin {
  *  Ölçüm (5 koşu, medyan FCP): Chromium 390 1112 → 692 ms, 1920 1320 → 748 ms; Firefox 390 ~1250 → 684; WebKit 390 ~1280 → 693.
  *  Maliyet: index.html br 3,6 → 25,6 KB (her yolda; HTML no-cache ile yeniden doğrulanır, değişmediyse 304). CSS dosyası
  *  dist'te kalır, hiçbir yerden istenmez (JS demetleri ona başvurmuyor — derlemede denetlenir). Tasarım aynı: aynı CSS, aynı
- *  sıra (satır içi yedek yüz ve kabuk kuralı önce gelir). CSS belgenin adresine göre çözüleceği için göreli url() derlemeyi durdurur. */
+ *  sıra (satır içi yedek yüz ve kabuk kuralı önce gelir). CSS belgenin adresine göre çözüleceği için göreli url() derlemeyi durdurur.
+ *  19.10 (bağımsız inceleme bulgusu): ilk boyaması JS'i bekleyen yollarda (/yontem, panel, oturumlu «/») modül betiğinin stilin ardına
+ *  alınması JS isteğini ~22 KB geciktiriyordu (Chromium yavaş 4G /yontem FCP +100…+230 ms). Kabuksuz dalda (baş betiği html'e
+ *  .vt-kabuksuz koyar) stilden ÖNCE <link rel="modulepreload"> eklenir: JS HTML'in başında istenir; vitrin dalında eklenmez. */
 export function cssGom(): Plugin {
   return {
     name: 'pvq-css-gom',
@@ -189,12 +192,16 @@ export function cssGom(): Plugin {
         if (/<\/style/i.test(css)) throw new Error(`${link[1]}: «</style» içeriyor, gömülemez`)
         const goreli = [...css.matchAll(/url\(\s*(['"]?)([^'")]*)\1\s*\)/g)].map((m) => m[2]).filter((u) => !/^(\/|data:|#|%23)/.test(u))
         if (goreli.length) throw new Error(`${link[1]}: göreli url() gömülünce bozulur: ${goreli.slice(0, 3).join(', ')}`)
+        const js = /src="(\/assets\/index-[\w-]+\.js)"/.exec(betik[0])![1]
+        if (!html.includes('h.add("vt-kabuksuz")')) throw new Error('index.html: kabuk baş betiği (vt-kabuksuz) bulunamadı — cssGom vitrinKabugu\'ndan sonra çalışmalı')
+        const erkenJs = '<script>try{if(document.documentElement.classList.contains("vt-kabuksuz")){var l=document.createElement("link");' +
+          `l.rel="modulepreload";l.crossOrigin="anonymous";l.href="${js}";document.head.appendChild(l)}}catch(e){}</script>`
         const ad = link[1].replace(/^assets\//, '')
         for (const [k, v] of Object.entries(ctx.bundle ?? {})) {
           if (v.type === 'chunk' && v.code.includes(ad)) throw new Error(`${k} ${ad} dosyasına başvuruyor: gömülürse CSS iki kez yüklenir`)
         }
         // işlev biçimli değiştirme: CSS'teki «$&», «$'» gibi diziler değiştirme deseni sayılmasın
-        return html.replace(betik[0], '').replace(link[0], () => `<style>${css}</style>\n${betik[0]}`)
+        return html.replace(betik[0], '').replace(link[0], () => `${erkenJs}\n    <style>${css}</style>\n${betik[0]}`)
       },
     },
   }
