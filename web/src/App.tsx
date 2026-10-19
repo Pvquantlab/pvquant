@@ -96,6 +96,18 @@ export default function App() {
     });
     return () => oturumDusunce_kaydet(null);
   }, []);
+  // 19.10: giriş ekranı URL değil durum — vitrinden girişe geçiş geçmişe kayıt düşmüyordu, tarayıcının Geri tuşu
+  // vitrine dönmek yerine siteden çıkıyordu. Geçiş aynı adrese bir kayıt ekler; Geri/İleri kaydın durumunu izler.
+  const giriseGec = () => {
+    history.pushState({ pvqGorunum: "giris" }, "");
+    startTransition(() => setGorunum("giris"));
+  };
+  useEffect(() => {
+    const gezin = (e: PopStateEvent) =>
+      startTransition(() => setGorunum(e.state?.pvqGorunum === "giris" ? "giris" : "vitrin"));
+    window.addEventListener("popstate", gezin);
+    return () => window.removeEventListener("popstate", gezin);
+  }, []);
 
   const santralYenile = () => {
     api.santraller().then((l) => {
@@ -137,7 +149,7 @@ export default function App() {
     icerik = <Vitrin onPanel={() => { window.location.search = ""; }} />;
   else if (!girdi)
     icerik = gorunum === "vitrin"
-      ? <Vitrin onPanel={() => startTransition(() => setGorunum("giris"))} />   // v2.81
+      ? <Vitrin onPanel={giriseGec} />   // v2.81
       : <Giris key={girisNo} onGiris={() => {
           // panelin ilk ekranı için kabuk, Santralim ve santral listesi AYNI ANDA istenir (önceden sırayla: kabuk
           // çizilince sayfa parçası, o çizilince liste). İki parça da inene dek giriş ekranı (düğme «bekliyor») kalır:
