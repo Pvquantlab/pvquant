@@ -19,6 +19,10 @@ export const HEDEFLER = {
   arad:  { yok: "https://localhost:24443", hizli3g: "https://localhost:25443", yavas4g: "https://localhost:26443", spki: ".replika/arad/spki.txt" },
   arae:  { yok: "https://localhost:34443", hizli3g: "https://localhost:35443", yavas4g: "https://localhost:36443", spki: ".replika/arae/spki.txt" },
   araf:  { yok: "https://localhost:34443", hizli3g: "https://localhost:35443", yavas4g: "https://localhost:36443", spki: ".replika/araf/spki.txt" },
+  // 19.10 font ön yükleme yeri deneyi (olc/iz/deney-font.mjs; T=44/52)
+  arag:  { yok: "https://localhost:44443", hizli3g: "https://localhost:45443", yavas4g: "https://localhost:46443", spki: ".replika/arag/spki.txt" },
+  arah:  { yok: "https://localhost:52443", hizli3g: "https://localhost:53443", yavas4g: "https://localhost:54443", spki: ".replika/arah/spki.txt" },
+  arai:  { yok: "https://localhost:12443", hizli3g: "https://localhost:13443", yavas4g: "https://localhost:14443", spki: ".replika/arai/spki.txt" },
   arab:  { yok: "https://localhost:48443", hizli3g: "https://localhost:49443", yavas4g: "https://localhost:50443", spki: ".replika/arab/spki.txt" },
 };
 

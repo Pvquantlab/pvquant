@@ -1,0 +1,30 @@
+ara-arai/lighthouse/lh-arai-ana-mobil-1.html perf 84 LCP 4129 | gözlenen FCP 1287 LCP 1357 DCL 140 load 141
+   LCP öğesi: section.vt-hero > div.vt-kap > div.vt-hero__sol > p.vt-giris «<p class="vt-giris vt-hero__giris">»
+   html 2→10 VeryHigh | index.js 46→58 High | inter-tight-latin-500-norm 47→54 High | inter-tight-latin-600-norm 50→61 High | inter-tight-tr-500.woff2 52→56 High | inter-tight-tr-600.woff2 53→60 High | dogrulama 53→72 High | inter-tight-latin-400-norm 122→125 VeryHigh | santral-poster.webp 1072→1082 High | inter-tight-tr-400.woff2 1257→1262 VeryHigh
+ara-arai/lighthouse/lh-arai-ana-mobil-2.html perf 99 LCP 1803 | gözlenen FCP 202 LCP 202 DCL 89 load 89
+   LCP öğesi: undefined «»
+   html 1→5 VeryHigh | index.js 24→40 High | inter-tight-latin-500-norm 25→37 High | inter-tight-latin-600-norm 26→33 High | inter-tight-tr-500.woff2 26→33 High | inter-tight-tr-600.woff2 27→34 High | dogrulama 28→50 High | inter-tight-latin-400-norm 64→66 VeryHigh | santral-poster.webp 204→209 High | inter-tight-tr-400.woff2 280→282 VeryHigh
+tekrar/lighthouse/lh-arai-ana-mobil-1.html perf 99 LCP 1803 | gözlenen FCP 217 LCP 217 DCL 97 load 97
+   LCP öğesi: undefined «»
+   html 2→11 VeryHigh | index.js 32→44 High | inter-tight-latin-500-norm 33→42 High | inter-tight-latin-600-norm 34→43 High | inter-tight-tr-500.woff2 34→40 High | inter-tight-tr-600.woff2 35→40 High | dogrulama 36→88 High | inter-tight-latin-400-norm 72→75 VeryHigh | santral-poster.webp 218→226 High | inter-tight-tr-400.woff2 297→300 VeryHigh
+tekrar/lighthouse/lh-arai-ana-mobil-2.html perf 99 LCP 1802 | gözlenen FCP 225 LCP 225 DCL 93 load 94
+   LCP öğesi: undefined «»
+   html 1→6 VeryHigh | index.js 25→39 High | inter-tight-latin-500-norm 26→35 High | inter-tight-latin-600-norm 26→35 High | inter-tight-tr-500.woff2 27→36 High | inter-tight-tr-600.woff2 29→37 High | dogrulama 30→52 High | inter-tight-latin-400-norm 69→71 VeryHigh | santral-poster.webp 229→234 High | inter-tight-tr-400.woff2 315→317 VeryHigh
+tekrar/lighthouse/lh-arai-ana-mobil-3.html perf 98 LCP 1802 | gözlenen FCP 209 LCP 209 DCL 90 load 90
+   LCP öğesi: undefined «»
+   html 1→8 VeryHigh | index.js 28→36 High | inter-tight-latin-500-norm 28→33 High | inter-tight-latin-600-norm 29→34 High | inter-tight-tr-500.woff2 29→39 High | inter-tight-tr-600.woff2 30→35 High | dogrulama 30→49 High | inter-tight-latin-400-norm 67→71 VeryHigh | santral-poster.webp 213→219 High | inter-tight-tr-400.woff2 294→296 VeryHigh
+tekrar/lighthouse/lh-arai-ana-mobil-4.html perf 99 LCP 1802 | gözlenen FCP 255 LCP 255 DCL 86 load 87
+   LCP öğesi: undefined «»
+   html 2→6 VeryHigh | index.js 24→35 High | inter-tight-latin-500-norm 25→31 High | inter-tight-latin-600-norm 25→33 High | inter-tight-tr-500.woff2 26→34 High | inter-tight-tr-600.woff2 29→35 High | dogrulama 29→52 High | inter-tight-latin-400-norm 72→75 VeryHigh | santral-poster.webp 255→260 High | inter-tight-tr-400.woff2 336→338 VeryHigh
+tekrar/lighthouse/lh-arai-ana-mobil-5.html perf 98 LCP 1802 | gözlenen FCP 263 LCP 263 DCL 103 load 104
+   LCP öğesi: undefined «»
+   html 1→6 VeryHigh | index.js 28→43 High | inter-tight-latin-500-norm 28→40 High | inter-tight-latin-600-norm 30→46 High | inter-tight-tr-500.woff2 30→44 High | inter-tight-tr-600.woff2 31→49 High | dogrulama 31→63 High | inter-tight-latin-400-norm 77→79 VeryHigh | santral-poster.webp 264→271 High | inter-tight-tr-400.woff2 346→348 VeryHigh
+tekrar/lighthouse/lh-arai-ana-mobil-6.html perf 98 LCP 1803 | gözlenen FCP 218 LCP 218 DCL 83 load 84
+   LCP öğesi: undefined «»
+   html 1→6 VeryHigh | index.js 24→33 High | inter-tight-latin-500-norm 24→31 High | inter-tight-latin-600-norm 25→31 High | inter-tight-tr-500.woff2 25→32 High | inter-tight-tr-600.woff2 26→32 High | dogrulama 26→53 High | inter-tight-latin-400-norm 64→66 VeryHigh | santral-poster.webp 220→226 High | inter-tight-tr-400.woff2 300→302 VeryHigh
+ara-arai/lighthouse/lh-sonra-ana-mobil-1.html perf 99 LCP 1879 | gözlenen FCP 225 LCP 225 DCL 87 load 88
+   LCP öğesi: undefined «»
+   html 2→8 VeryHigh | index.js 27→39 High | index.css 27→35 VeryHigh | inter-tight-latin-500-norm 28→36 High | inter-tight-latin-600-norm 28→37 High | inter-tight-tr-500.woff2 29→37 High | inter-tight-tr-600.woff2 29→38 High | dogrulama 30→175 High | inter-tight-latin-400-norm 81→85 VeryHigh | santral-poster.webp 241→249 High | inter-tight-tr-400.woff2 314→319 VeryHigh
+ara-arai/lighthouse/lh-sonra-ana-mobil-2.html perf 99 LCP 1882 | gözlenen FCP 320 LCP 320 DCL 116 load 126
+   LCP öğesi: undefined «»
+   html 2→9 VeryHigh | index.js 36→62 High | index.css 36→55 VeryHigh | inter-tight-latin-500-norm 38→51 High | inter-tight-latin-600-norm 38→61 High | inter-tight-tr-500.woff2 39→53 High | inter-tight-tr-600.woff2 40→53 High | dogrulama 41→74 High | inter-tight-latin-400-norm 100→118 VeryHigh | santral-poster.webp 324→360 High | inter-tight-tr-400.woff2 427→435 VeryHigh

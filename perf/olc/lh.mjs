@@ -20,7 +20,9 @@ const ILGI = ["render-blocking-resources", "unused-javascript", "unused-css-rule
   "image-size-responsive", "font-display", "total-byte-weight", "largest-contentful-paint-element", "layout-shifts", "lcp-lazy-loaded",
   "prioritize-lcp-image", "bootup-time", "mainthread-work-breakdown", "non-composited-animations", "server-response-time", "uses-long-cache-ttl", "dom-size", "efficient-animated-content"];
 
+const sayfaSec = arg("sayfa", "ana,yontem").split(","), turSec = arg("tur", "mobil,masaustu").split(",");   // isteğe bağlı süzgeç
 for (const [sAd, yol] of Object.entries(SAYFALAR)) for (const tur of ["mobil", "masaustu"]) for (let k = 1; k <= kosu; k++) {
+  if (!sayfaSec.includes(sAd) || !turSec.includes(tur)) continue;
   const chrome = await chromeLauncher.launch({ chromePath: chromium.executablePath(), chromeFlags: bayrak });
   try {
     const url = HEDEFLER[hedef].yok + yol;

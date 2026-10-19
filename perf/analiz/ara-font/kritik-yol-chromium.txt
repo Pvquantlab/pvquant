@@ -1,0 +1,53 @@
+# node olc/kritik-yol.mjs --motor chromium --gorunum <g> --ag yavas4g --kosu 1 --hedef <h> (dönüşümlü). fark = FCP − CSS bitişi.
+390x844 sonra FCP 980 CSS 810 fark 170 font son 1412 poster 984→3942
+390x844 arah FCP 1232 CSS 1163 fark 69 font son 1402 poster 1233→3896
+390x844 sonra FCP 1220 CSS 1054 fark 166 font son 1399 poster 1221→3893
+390x844 arah FCP 1232 CSS 1170 fark 62 font son 1419 poster 1234→3908
+390x844 sonra FCP 1308 CSS 1145 fark 163 font son 1410 poster 1310→3931
+390x844 arah FCP 1496 CSS 1411 fark 85 font son 1411 poster 1500→4117
+390x844 sonra FCP 1200 CSS 1046 fark 154 font son 1405 poster 1201→3894
+390x844 arah FCP 1128 CSS 1065 fark 63 font son 1403 poster 1129→3897
+390x844 sonra FCP 1232 CSS 1059 fark 173 font son 1421 poster 1234→3911
+390x844 arah FCP 848 CSS 791 fark 57 font son 1397 poster 850→3890
+1920x1080 sonra FCP 1044 CSS 816 fark 228 font son 1408 poster 1046→3902
+1920x1080 arah FCP 1052 CSS 933 fark 119 font son 1417 poster 1054→3910
+1920x1080 sonra FCP 1252 CSS 1039 fark 213 font son 1410 poster 1254→3904
+1920x1080 arah FCP 896 CSS 789 fark 107 font son 1392 poster 910→3887
+1920x1080 sonra FCP 1084 CSS 856 fark 228 font son 1421 poster 1085→3915
+1920x1080 arah FCP 1164 CSS 1056 fark 108 font son 1460 poster 1165→3956
+1920x1080 sonra FCP 1372 CSS 1159 fark 213 font son 1401 poster 1376→3942
+1920x1080 arah FCP 1028 CSS 916 fark 112 font son 1401 poster 1030→3893
+1920x1080 sonra FCP 1276 CSS 1060 fark 216 font son 1407 poster 1278→3903
+1920x1080 arah FCP 912 CSS 795 fark 117 font son 1404 poster 913→3890
+
+# ikinci tur: sonra / arah / arai (arai'de ayrı CSS isteği yok)
+390x844 sonra FCP 1076 html 517 CSS 901 js 1388 font son 1408 poster 1082→3896
+390x844 arah  FCP 876 html 522 CSS 813 js 1391 font son 1420 poster 878→3911
+390x844 arai  FCP 708 html 628 CSS - js 1173 font son 1521 poster 711→3906
+390x844 sonra FCP 1160 html 519 CSS 988 js 1287 font son 1422 poster 1162→3906
+390x844 arah  FCP 1232 html 518 CSS 1170 js 1182 font son 1421 poster 1234→3905
+390x844 arai  FCP 692 html 624 CSS - js 1162 font son 1400 poster 694→3897
+390x844 sonra FCP 1112 html 521 CSS 943 js 1400 font son 1421 poster 1121→3910
+390x844 arah  FCP 1100 html 521 CSS 1037 js 1415 font son 1422 poster 1103→3916
+390x844 arai  FCP 684 html 627 CSS - js 1386 font son 1402 poster 685→3897
+390x844 sonra FCP 932 html 512 CSS 784 js 1150 font son 1388 poster 937→3883
+390x844 arah  FCP 1032 html 519 CSS 972 js 1403 font son 1412 poster 1033→3904
+390x844 arai  FCP 692 html 625 CSS - js 1278 font son 1405 poster 693→3898
+390x844 sonra FCP 1168 html 521 CSS 997 js 1290 font son 1417 poster 1169→3911
+390x844 arah  FCP 1196 html 519 CSS 1135 js 1296 font son 1413 poster 1199→3907
+390x844 arai  FCP 696 html 626 CSS - js 1393 font son 1409 poster 698→3903
+1920x1080 sonra FCP 1320 html 518 CSS 1120 js 1181 font son 1398 poster 1336→3895
+1920x1080 arah  FCP 924 html 519 CSS 813 js 1407 font son 1426 poster 926→3910
+1920x1080 arai  FCP 744 html 624 CSS - js 1391 font son 1407 poster 745→3901
+1920x1080 sonra FCP 1476 html 520 CSS 1266 js 1077 font son 1407 poster 1483→4058
+1920x1080 arah  FCP 940 html 519 CSS 828 js 1304 font son 1412 poster 942→3906
+1920x1080 arai  FCP 752 html 630 CSS - js 1285 font son 1412 poster 753→3906
+1920x1080 sonra FCP 1208 html 519 CSS 987 js 1173 font son 1411 poster 1209→3906
+1920x1080 arah  FCP 924 html 516 CSS 808 js 1284 font son 1411 poster 932→3905
+1920x1080 arai  FCP 748 html 627 CSS - js 1403 font son 1416 poster 749→3904
+1920x1080 sonra FCP 1112 html 519 CSS 897 js 1173 font son 1412 poster 1114→3905
+1920x1080 arah  FCP 904 html 519 CSS 799 js 1307 font son 1407 poster 905→3897
+1920x1080 arai  FCP 744 html 624 CSS - js 1281 font son 1406 poster 746→3899
+1920x1080 sonra FCP 1364 html 517 CSS 1146 js 1285 font son 1412 poster 1365→3942
+1920x1080 arah  FCP 1084 html 517 CSS 976 js 1164 font son 1403 poster 1086→3898
+1920x1080 arai  FCP 748 html 626 CSS - js 1402 font son 1413 poster 750→3903

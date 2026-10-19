@@ -1,0 +1,13 @@
+# node olc/kritik-yol.mjs --motor <m> --gorunum 390x844 --ag yavas4g --kosu 1 --hedef <h> (dönüşümlü); font = inen 500/600 dosya sayısı
+firefox sonra FCP 1249 html 527 CSS 1214 js 1103 font 4 son 1451 poster 1289→3948
+firefox arai  FCP 677 html 532 CSS - js 1161 font 4 son 1399 poster 717→3896
+firefox sonra FCP 1181 html 533 CSS 1060 js 1337 font 4 son 1465 poster 1224→3889
+firefox arai  FCP 689 html 536 CSS - js 1165 font 4 son 1405 poster 730→3900
+firefox sonra FCP 1707 html 733 CSS 1509 js 1859 font 4 son 1995 poster 1784→4479
+firefox arai  FCP 684 html 538 CSS - js 1168 font 4 son 1407 poster 727→3828
+webkit sonra FCP 1464 html 551 CSS 1285 js 1197 font 4 son 1523 poster 1486→4233
+webkit arai  FCP 678 html 626 CSS - js 1157 font 4 son 1396 poster 682→3890
+webkit sonra FCP 1281 html 537 CSS 1212 js 1083 font 4 son 1429 poster 1286→3992
+webkit arai  FCP 697 html 642 CSS - js 1292 font 4 son 1420 poster 702→4110
+webkit sonra FCP 1265 html 524 CSS 1199 js 1109 font 4 son 1436 poster 1269→3956
+webkit arai  FCP 693 html 645 CSS - js 1176 font 4 son 1414 poster 697→4093
