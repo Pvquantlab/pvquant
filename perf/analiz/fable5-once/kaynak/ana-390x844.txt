@@ -1,0 +1,20 @@
+chromium 390x844 https://localhost:18443/: 19 kaynak, aktarım 9844 KB
+    19     34     76706    284931 script   /assets/index-CIVAG198.js
+    20     31     22916     22616 link     /assets/inter-tight-latin-500-normal-BFXNXuvF.woff2
+    20     29     22960     22660 link     /assets/inter-tight-latin-600-normal-BgSTtRxb.woff2
+    20     31      1808      1508 link     /assets/inter-tight-tr-500-mVGzgBfJ.woff2
+    20     31      1804      1504 link     /assets/inter-tight-tr-600-CHm7J1s7.woff2
+    23    205       318        18 fetch    /v1/dogrulama
+    63     69     22316     22016 css      /assets/inter-tight-latin-400-normal-iW8qmuJY.woff2
+   149    155    485432    485132 link     /assets/santral-poster-BYmyX5Ic.webp
+   196    233      1772      1472 css      /assets/inter-tight-tr-400-B33n_V-o.woff2
+   640    649    454674    454374 img      /assets/adim-fizik-D2A4lTYY.png
+   640    663    438671    438371 img      /assets/adim-ogrenen-DLN0gZyi.png
+   641    659    180100    179800 img      /assets/adim-aralik-DUGRGjQQ.png
+   641    662    268931    268631 img      /assets/adim-karne-9kjaBuF6.png
+   869    876    273747    273447 img      /assets/is-teslim-ohdNk0om.png
+   874    880    198098    197798 img      /assets/is-ticaret-DASMPkfC.png
+   994   1005    262399    262099 img      /assets/is-nobet-x-lOvoK1.png
+   994   1008    451270    450970 img      /assets/is-finansman-DwsOxqkM.png
+  1011   1017         0         0 video    /assets/santral-1080-B2bAtIHB.mp4
+  1014   1235   6916161   6915861 video    /assets/santral-1080-B2bAtIHB.mp4

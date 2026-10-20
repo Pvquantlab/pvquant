@@ -22,6 +22,9 @@ export const HEDEFLER = {
   sonra9: { yok: "https://localhost:12443", hizli3g: "https://localhost:13443", yavas4g: "https://localhost:14443", spki: ".replika/sonra9/spki.txt" },   // 19.10 deney: sonra8 + opacity:0 gizleme, T=12
   sonra10: { yok: "https://localhost:23443", hizli3g: "https://localhost:24443", yavas4g: "https://localhost:25443", spki: ".replika/sonra10/spki.txt" },   // 19.10 deney: font bekleme check/loadingdone ile, T=23
   canli: { yok: "https://pvquant.com" },
+  // 20.10 (Fable 5, Linux bulut): once = 1494f8e (canlı v2.461 + perf verisi), T=18; sonra = çalışma ağacı, T=28
+  "fable5-once":  { yok: "https://localhost:18443", hizli3g: "https://localhost:19443", yavas4g: "https://localhost:20443", kablo20: "https://localhost:22443", spki: ".replika/fable5-once/spki.txt" },
+  "fable5-sonra": { yok: "https://localhost:28443", hizli3g: "https://localhost:29443", yavas4g: "https://localhost:30443", kablo20: "https://localhost:32443", spki: ".replika/fable5-sonra/spki.txt" },
   // Faz 3 ara ölçümleri (tek düzeltmenin etkisini ayırmak için; T=38/48)
   araa:  { yok: "https://localhost:38443", hizli3g: "https://localhost:39443", yavas4g: "https://localhost:40443", spki: ".replika/araa/spki.txt" },
   arac:  { yok: "https://localhost:58443", hizli3g: "https://localhost:59443", yavas4g: "https://localhost:60443", spki: ".replika/arac/spki.txt" },
@@ -40,7 +43,7 @@ export const GORUNUMLER = {
   "1440x900":  { width: 1440, height: 900,  dpr: 2, mobil: false },
   "1920x1080": { width: 1920, height: 1080, dpr: 1, mobil: false },
 };
-export const MOTORLAR = { chromium, firefox, webkit };
+export const MOTORLAR = { chromium, firefox, webkit, edge: chromium };   // edge = Chromium'un «msedge» kanalı (kurulu Microsoft Edge)
 export const SAYFALAR = { ana: "/", yontem: "/yontem" };
 
 /** Replikanın O ANKİ yaprak sertifikasının SPKI'si (sha256, base64). Caddy «tls internal» yaprağı ~12 saatte yeni anahtarla yeniler;
@@ -63,7 +66,8 @@ export async function yaprakSpki(hedef) {
 
 export async function motorAc(ad, hedef) {
   const ops = {};
-  if (ad === "chromium" && HEDEFLER[hedef].spki) {
+  if (ad === "edge") ops.channel = "msedge";
+  if ((ad === "chromium" || ad === "edge") && HEDEFLER[hedef].spki) {
     ops.args = ["--ignore-certificate-errors-spki-list=" + (await yaprakSpki(hedef))];   // yerel sertifika «geçerli» → HTTP önbelleği çalışır
   }
   return MOTORLAR[ad].launch(ops);
