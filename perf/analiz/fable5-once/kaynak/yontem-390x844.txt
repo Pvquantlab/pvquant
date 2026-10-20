@@ -1,0 +1,16 @@
+chromium 390x844 https://localhost:18443/yontem: 15 kaynak, aktarım 2205 KB
+    21     44     76706    284931 script   /assets/index-CIVAG198.js
+    21     41     22916     22616 link     /assets/inter-tight-latin-500-normal-BFXNXuvF.woff2
+    21     44     22960     22660 link     /assets/inter-tight-latin-600-normal-BgSTtRxb.woff2
+    22     43      1808      1508 link     /assets/inter-tight-tr-500-mVGzgBfJ.woff2
+    22     43      1804      1504 link     /assets/inter-tight-tr-600-CHm7J1s7.woff2
+    25    216       318        18 fetch    /v1/dogrulama
+    99    143     15008     14708 css      /assets/ibm-plex-mono-latin-400-normal-DMJ8VG8y.woff2
+   100    143     22316     22016 css      /assets/inter-tight-latin-400-normal-iW8qmuJY.woff2
+   120    142      1772      1472 css      /assets/inter-tight-tr-400-B33n_V-o.woff2
+   168    174    304935    304635 img      /assets/tl-sahne-C0tkUzUQ.png
+   168    178    377407    377107 img      /assets/tl-teslim-7WDeLI-X.png
+   176    186    327430    327130 img      /assets/tl-sapma-DAnyuuMp.png
+   180    188    503051    502751 img      /assets/tl-sablon-D9tPpgwZ.png
+   188    194    281741    281441 img      /assets/tl-alarm-B-o0wbSV.png
+   194    199    297855    297555 img      /assets/tl-aralik-Baw2lrxl.png
