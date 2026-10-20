@@ -10,7 +10,7 @@ ENV VITE_API_URL=$VITE_API_URL
 # v2.453: derleme sonrası metin dosyalarının .br/.gz eşleri (Caddyfile.web «precompressed»)
 RUN npm run build && node scripts/onsikistir.mjs dist
 
-FROM caddy:2
+FROM caddy:2.11.7
 COPY Caddyfile.web /etc/caddy/Caddyfile
 COPY --from=derleme /app/dist /srv
 EXPOSE 8080
