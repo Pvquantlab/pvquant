@@ -255,6 +255,16 @@ Yerel oturumda (10 dk): Safari'de «/» iki kez aç → Web Inspector Network: i
 Performance'ta «/» Slow 4G: paragraf LCP'si fontun gelişinde mi (§3.4); `docker compose build web` sonrası `docker image inspect` ile
 Caddy 2.11.7; `curl -I https://pvquant.com/ -H 'Accept-Encoding: br'` → 200.
 
+
+**Yerel oturum sonuçları (20.10 akşam, Mac):**
+
+| Adım | Sonuç |
+|---|---|
+| Dağıtım | `git pull && docker compose build web && up -d` tamam; `web` yeniden oluşturuldu, db sağlıklı. Sunucuda `caddy version` → **v2.11.7**, `main` 4432060. Canlı `/`, `/yontem`, JS, `icons.svg` → **200** + brotli; mp4 Range isteği → 206 (doğru). Varlık adları aynı (derleme bayt bayt aynı). |
+| Chrome (gerçek ağ), 400 px, Slow 4G, önbellek kapalı, 3 koşu | FCP 992 / 932 / 904 ms; **LCP = FCP** (giriş paragrafı, 61 920 px²), 3/3 koşuda tek LCP girdisi — §3.4'teki ikinci aday gerçek Chrome'da oluşmadı; `size-adjust` önerisi düşük öncelik. Kısıtsız/sıcak: FCP = LCP 312 ms. |
+| Safari (macOS) görsel | Yeni derleme açıldı: başlık Inter Tight, kartlar, cam, video oynuyor; kayma yok. |
+| Safari sıcak ziyaret video / font listesi | **Doğrulanmadı** (Web Inspector Ağ sekmesinde yenileme alınamadı). Buradan WebKit ile canlı: ana sayfada yalnız Inter Tight (7 dosya, ~75 KB), Chrome'la aynı; Safari'nin Ağ listesinde görünen Space Grotesk / IBM Plex Mono / Inter dosyaları panel fontlarıdır, muhtemelen sekmenin önceki panel ziyaretinden. |
+
 ## 8. Öneriler (uygulanmadı)
 
 1. Yedek yüz `size-adjust` ayarı (§3.4) — piksel kıyasıyla denenmeli.
