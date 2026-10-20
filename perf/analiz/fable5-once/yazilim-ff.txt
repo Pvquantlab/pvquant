@@ -1,0 +1,4 @@
+fable5-once açılış 1: {"iz":"2163:gizli/css 2663:gizli/css 3181:gizli/css 3683:gizli/css 4183:gizli/css 4684:gizli/css 5202:gizli/css 5720:gizli/css 6238:gizli/css","ortanca":16.4,"p95":17.3,"kayit":"yok"}
+fable5-once açılış 2: {"iz":"1708:gizli/css 2212:gizli/css 2735:gizli/css 3260:gizli/css 3761:gizli/css 4261:gizli/css 4779:gizli/css 5297:gizli/css 5814:gizli/css","ortanca":16.4,"p95":17.3,"kayit":"yok"}
+fable5-once açılış 1: {"iz":"10131:gizli/css 10636:gizli/css 11172:gizli/css 11683:gizli/css 12183:gizli/css 12684:gizli/css 13202:gizli/css 13722:gizli/css 14239:gizli/css","ortanca":16.4,"p95":17.3,"kayit":"yok"}
+fable5-once açılış 2: {"iz":"10042:gizli/css 10556:gizli/css 11083:gizli/css 11603:gizli/css 12120:gizli/css 12643:gizli/css 13162:gizli/css 13680:gizli/css 14200:gizli/css","ortanca":16.4,"p95":17.3,"kayit":"yok"}

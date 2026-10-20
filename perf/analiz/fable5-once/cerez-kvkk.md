@@ -19,3 +19,7 @@ font yorumunda). Fontlar (Fontsource) kendi sunucudan; analitik/izleme betiği y
 
 Vitrine giren anonim ziyaretçide yazılan tek kalıcı anahtarlar: `pvq_yavas_hat` (yalnız yavaş hatta) ve `pvq_keskin_yazilim`
 (yalnız Firefox + yazılım birleştirme). İkisi de kişisel veri değil, teknik tercih; KVKK/çerez bildirimi gerektiren bir izleme yok.
+
+**Çalışma zamanı doğrulaması (olc/cerez-sina.mjs, 20.10; dört motor, 390×844, «/» ve «/yontem», 8 sn + sayfa sonuna kaydırma):**
+çerez 0/0/0/0 (Chromium, Firefox, WebKit, Edge); «/»te localStorage yalnız `pvq_yavas_hat` (poster hız kararı), «/yontem»de hiç;
+sessionStorage boş; istenen köken yalnız sitenin kendisi (`analiz/fable5-once/cerez-sina.txt`).

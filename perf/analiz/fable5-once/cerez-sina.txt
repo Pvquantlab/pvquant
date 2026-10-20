@@ -1,0 +1,8 @@
+chromium ana: çerez 0 [] · localStorage ["pvq_yavas_hat"] · sessionStorage [] · kökenler https://localhost:18443
+chromium yontem: çerez 0 [] · localStorage [] · sessionStorage [] · kökenler https://localhost:18443
+firefox ana: çerez 0 [] · localStorage ["pvq_yavas_hat"] · sessionStorage [] · kökenler https://localhost:18443
+firefox yontem: çerez 0 [] · localStorage [] · sessionStorage [] · kökenler https://localhost:18443
+webkit ana: çerez 0 [] · localStorage ["pvq_yavas_hat"] · sessionStorage [] · kökenler https://localhost:18443
+webkit yontem: çerez 0 [] · localStorage [] · sessionStorage [] · kökenler https://localhost:18443
+edge ana: çerez 0 [] · localStorage ["pvq_yavas_hat"] · sessionStorage [] · kökenler https://localhost:18443
+edge yontem: çerez 0 [] · localStorage [] · sessionStorage [] · kökenler https://localhost:18443
