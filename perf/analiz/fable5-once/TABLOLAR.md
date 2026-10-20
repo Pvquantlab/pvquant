@@ -177,6 +177,40 @@ Sürümler: chromium 156.0.8078.4 · firefox 157.0 · webkit 27.2 · edge 155.0.
 | firefox | h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz i | section.vt-hero.vt-hero--a.vt-hero--video «Güneş santraliniz | h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz i | section.vt-hero.vt-hero--a.vt-hero--video «Güneş santraliniz |
 | webkit | p.vt-giris.vt-hero__giris «PVQuant, güneş santralinizin saat | h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz i<br>section.vt-hero.vt-hero--a.vt-hero--video «Güneş santraliniz<br>img.vt-hero__poster [santral-poster-BYmyX5Ic.webp] | h1#vt-hero-baslik.vt-h1.vt-hero__baslik «Güneş santraliniz i | section.vt-hero.vt-hero--a.vt-hero--video «Güneş santraliniz<br>video.vt-hero__video [santral-1440-KjaLgHuf.mp4] |
 
+#### Lighthouse (Chromium) — medyan
+
+| hedef · sayfa · tür | Perf | Erişil. | En iyi uyg. | SEO | FCP | LCP | TBT | CLS | SI | TTFB |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| canli · ana · masaustu | 67 | 100 | 100 | 100 | 301 | 824 | 3154 | 0,000 | 1768 | 161 |
+| canli · ana · mobil | 56 | 100 | 100 | 100 | 1009 | 4216 | 3788 | 0,000 | 2986 | 162 |
+| canli · yontem · masaustu | 100 | 100 | 100 | 100 | 324 | 430 | 0 | 0,000 | 988 | 163 |
+| canli · yontem · mobil | 99 | 100 | 100 | 100 | 1300 | 1794 | 112 | 0,000 | 2359 | 169 |
+| fable5-once · ana · masaustu | 69 | 100 | 100 | 100 | 365 | 858 | 1989 | 0,000 | 1038 | 2 |
+| fable5-once · ana · mobil | 70 | 100 | 100 | 100 | 1504 | 1842 | 3154 | 0,000 | 1776 | 2 |
+| fable5-once · yontem · masaustu | 100 | 100 | 100 | 100 | 366 | 405 | 0 | 0,000 | 371 | 2 |
+| fable5-once · yontem · mobil | 99 | 100 | 100 | 100 | 1503 | 1803 | 52 | 0,000 | 1503 | 2 |
+
+#### Etkileşim ve kare süreleri — medyan (başsız tarayıcı; motorlar arası/önce-sonra kıyası içindir)
+
+| motor · görünüm | menü açma (girdi→kare, ms) | CTA üzerine | «Panele giriş» → form (ms) | boşta kare p95 (video oynarken) | boşta >33 ms | kaydırma kare p95 | kaydırma >33 ms |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| chromium · 390x844 | 298 | — | 492 | 216,7 | %86 | 316,6 | %100 |
+| chromium · 768x1024 | 756 | — | 1107 | 483,3 | %100 | 700,0 | %100 |
+| chromium · 1440x900 | 1210 | 853 | 3216 | 1166,6 | %100 | 1066,6 | %100 |
+| chromium · 1920x1080 | 1698 | 1237 | 4220 | 949,9 | %88 | 783,4 | %100 |
+| edge · 390x844 | 272 | — | 572 | 183,3 | %95 | 183,3 | %100 |
+| edge · 768x1024 | 630 | — | 1030 | 366,6 | %100 | 550,0 | %100 |
+| edge · 1440x900 | 1079 | 657 | 2013 | 699,9 | %100 | 650,0 | %100 |
+| edge · 1920x1080 | 1435 | 1136 | 2578 | 816,7 | %83 | 1466,6 | %100 |
+| firefox · 390x844 | 117 | — | 436 | 17,3 | %0 | 50,9 | %12 |
+| firefox · 768x1024 | 295 | — | 498 | 17,3 | %0 | 167,1 | %21 |
+| firefox · 1440x900 | 330 | 125 | 1006 | 17,3 | %0 | 267,3 | %33 |
+| firefox · 1920x1080 | 517 | 242 | 1328 | 17,3 | %0 | 432,8 | %67 |
+| webkit · 390x844 | 706 | — | 1984 | 24,0 | %1 | 772,0 | %100 |
+| webkit · 768x1024 | 861 | — | 2383 | 25,0 | %4 | 939,0 | %100 |
+| webkit · 1440x900 | 1191 | 2378 | 2250 | 1377,0 | %100 | 463,0 | %100 |
+| webkit · 1920x1080 | 510 | 660 | 1116 | 22,0 | %0 | 152,0 | %100 |
+
 #### Konsol hataları, 4xx/5xx ve başarısız istekler (tüm yüklemeler)
 
 - yok (0)

@@ -3284,8 +3284,716 @@
   "webkit": "27.2",
   "edge": "155.0.4283.62"
  },
- "lighthouse": {},
- "etkilesim": {},
+ "lighthouse": {
+  "canli|ana|mobil": {
+   "n": 2,
+   "chrome": "Chrome/156.0.0.0",
+   "surum": "12.8.2",
+   "skor": {
+    "performance": 55.5,
+    "accessibility": 100,
+    "best-practices": 100,
+    "seo": 100
+   },
+   "metrik": {
+    "fcp": 1009.48275,
+    "lcp": 4215.98275,
+    "tbt": 3787.75,
+    "cls": 0,
+    "si": 2986.236620313455,
+    "ttfb": 162.28200000000004
+   },
+   "uyari": {
+    "unused-javascript": {
+     "deger": "Est savings of 31 KiB",
+     "ornek": [
+      "https://pvquant.com/assets/index-CIVAG198.js"
+     ]
+    },
+    "unused-css-rules": {
+     "deger": "Est savings of 12 KiB",
+     "ornek": [
+      "@font-face{font-family:Inter Variable;font-style:normal;font-display:swap;font-weight:100 900; … } …"
+     ]
+    },
+    "uses-responsive-images": {
+     "deger": "Est savings of 2,610 KiB",
+     "ornek": [
+      "https://pvquant.com/assets/is-finansman-DwsOxqkM.png",
+      "https://pvquant.com/assets/adim-fizik-D2A4lTYY.png",
+      "https://pvquant.com/assets/adim-ogrenen-DLN0gZyi.png"
+     ]
+    },
+    "modern-image-formats": {
+     "deger": "Est savings of 1,651 KiB",
+     "ornek": [
+      "https://pvquant.com/assets/adim-ogrenen-DLN0gZyi.png",
+      "https://pvquant.com/assets/adim-fizik-D2A4lTYY.png",
+      "https://pvquant.com/assets/is-finansman-DwsOxqkM.png"
+     ]
+    },
+    "total-byte-weight": {
+     "deger": "Total size was 9,871 KiB",
+     "ornek": [
+      "https://pvquant.com/assets/santral-1080-B2bAtIHB.mp4",
+      "https://pvquant.com/assets/santral-poster-BYmyX5Ic.webp",
+      "https://pvquant.com/assets/adim-fizik-D2A4lTYY.png"
+     ]
+    },
+    "largest-contentful-paint-element": {
+     "deger": "4,200 ms",
+     "ornek": []
+    },
+    "mainthread-work-breakdown": {
+     "deger": "6.4 s",
+     "ornek": [
+      "Other",
+      "Script Evaluation",
+      "Style & Layout"
+     ]
+    }
+   }
+  },
+  "canli|ana|masaustu": {
+   "n": 2,
+   "chrome": "Chrome/156.0.0.0",
+   "surum": "12.8.2",
+   "skor": {
+    "performance": 66.5,
+    "accessibility": 100,
+    "best-practices": 100,
+    "seo": 100
+   },
+   "metrik": {
+    "fcp": 301.12749999999994,
+    "lcp": 823.6275,
+    "tbt": 3153.5,
+    "cls": 0,
+    "si": 1767.673012621971,
+    "ttfb": 161.34750000000003
+   },
+   "uyari": {
+    "unused-javascript": {
+     "deger": "Est savings of 31 KiB",
+     "ornek": [
+      "https://pvquant.com/assets/index-CIVAG198.js"
+     ]
+    },
+    "unused-css-rules": {
+     "deger": "Est savings of 14 KiB",
+     "ornek": [
+      "@font-face{font-family:Inter Variable;font-style:normal;font-display:swap;font-weight:100 900; … } …"
+     ]
+    },
+    "uses-responsive-images": {
+     "deger": "Est savings of 2,742 KiB",
+     "ornek": [
+      "https://pvquant.com/assets/adim-fizik-D2A4lTYY.png",
+      "https://pvquant.com/assets/is-finansman-DwsOxqkM.png",
+      "https://pvquant.com/assets/adim-ogrenen-DLN0gZyi.png"
+     ]
+    },
+    "modern-image-formats": {
+     "deger": "Est savings of 1,527 KiB",
+     "ornek": [
+      "https://pvquant.com/assets/adim-ogrenen-DLN0gZyi.png",
+      "https://pvquant.com/assets/adim-fizik-D2A4lTYY.png",
+      "https://pvquant.com/assets/is-finansman-DwsOxqkM.png"
+     ]
+    },
+    "total-byte-weight": {
+     "deger": "Total size was 20,851 KiB",
+     "ornek": [
+      "https://pvquant.com/assets/santral-1440-KjaLgHuf.mp4",
+      "https://pvquant.com/assets/santral-1440-KjaLgHuf.mp4",
+      "https://pvquant.com/assets/santral-1440-KjaLgHuf.mp4"
+     ]
+    },
+    "mainthread-work-breakdown": {
+     "deger": "5.5 s",
+     "ornek": [
+      "Other",
+      "Script Evaluation",
+      "Style & Layout"
+     ]
+    }
+   }
+  },
+  "canli|yontem|mobil": {
+   "n": 2,
+   "chrome": "Chrome/156.0.0.0",
+   "surum": "12.8.2",
+   "skor": {
+    "performance": 98.5,
+    "accessibility": 100,
+    "best-practices": 100,
+    "seo": 100
+   },
+   "metrik": {
+    "fcp": 1300.0729999999999,
+    "lcp": 1793.8229999999999,
+    "tbt": 111.74999999999994,
+    "cls": 0,
+    "si": 2359.3093272173564,
+    "ttfb": 169.0085
+   },
+   "uyari": {
+    "unused-javascript": {
+     "deger": "Est savings of 38 KiB",
+     "ornek": [
+      "https://pvquant.com/assets/index-CIVAG198.js"
+     ]
+    },
+    "unused-css-rules": {
+     "deger": "Est savings of 18 KiB",
+     "ornek": [
+      "@font-face{font-family:Inter Variable;font-style:normal;font-display:swap;font-weight:100 900; … } …"
+     ]
+    },
+    "uses-responsive-images": {
+     "deger": "Est savings of 1,885 KiB",
+     "ornek": [
+      "https://pvquant.com/assets/tl-sablon-D9tPpgwZ.png",
+      "https://pvquant.com/assets/tl-teslim-7WDeLI-X.png",
+      "https://pvquant.com/assets/tl-sapma-DAnyuuMp.png"
+     ]
+    },
+    "modern-image-formats": {
+     "deger": "Est savings of 1,347 KiB",
+     "ornek": [
+      "https://pvquant.com/assets/tl-sablon-D9tPpgwZ.png",
+      "https://pvquant.com/assets/tl-teslim-7WDeLI-X.png",
+      "https://pvquant.com/assets/tl-sapma-DAnyuuMp.png"
+     ]
+    }
+   }
+  },
+  "canli|yontem|masaustu": {
+   "n": 2,
+   "chrome": "Chrome/156.0.0.0",
+   "surum": "12.8.2",
+   "skor": {
+    "performance": 100,
+    "accessibility": 100,
+    "best-practices": 100,
+    "seo": 100
+   },
+   "metrik": {
+    "fcp": 323.5,
+    "lcp": 430,
+    "tbt": 0,
+    "cls": 0,
+    "si": 988.2704583335046,
+    "ttfb": 163.3005
+   },
+   "uyari": {
+    "unused-javascript": {
+     "deger": "Est savings of 38 KiB",
+     "ornek": [
+      "https://pvquant.com/assets/index-CIVAG198.js"
+     ]
+    },
+    "unused-css-rules": {
+     "deger": "Est savings of 19 KiB",
+     "ornek": [
+      "@font-face{font-family:Inter Variable;font-style:normal;font-display:swap;font-weight:100 900; … } …"
+     ]
+    },
+    "uses-responsive-images": {
+     "deger": "Est savings of 1,980 KiB",
+     "ornek": [
+      "https://pvquant.com/assets/tl-sablon-D9tPpgwZ.png",
+      "https://pvquant.com/assets/tl-teslim-7WDeLI-X.png",
+      "https://pvquant.com/assets/tl-sapma-DAnyuuMp.png"
+     ]
+    },
+    "modern-image-formats": {
+     "deger": "Est savings of 1,347 KiB",
+     "ornek": [
+      "https://pvquant.com/assets/tl-sablon-D9tPpgwZ.png",
+      "https://pvquant.com/assets/tl-teslim-7WDeLI-X.png",
+      "https://pvquant.com/assets/tl-sapma-DAnyuuMp.png"
+     ]
+    }
+   }
+  },
+  "fable5-once|ana|mobil": {
+   "n": 6,
+   "chrome": "Chrome/156.0.0.0",
+   "surum": "12.8.2",
+   "skor": {
+    "performance": 70,
+    "accessibility": 100,
+    "best-practices": 100,
+    "seo": 100
+   },
+   "metrik": {
+    "fcp": 1504.3389000000002,
+    "lcp": 1841.7783,
+    "tbt": 3154,
+    "cls": 0,
+    "si": 1776.0247550557594,
+    "ttfb": 1.6445
+   },
+   "uyari": {
+    "unused-javascript": {
+     "deger": "Est savings of 31 KiB",
+     "ornek": [
+      "https://localhost:18443/assets/index-CIVAG198.js"
+     ]
+    },
+    "unused-css-rules": {
+     "deger": "Est savings of 12 KiB",
+     "ornek": [
+      "@font-face{font-family:Inter Variable;font-style:normal;font-display:swap;font-weight:100 900; … } …"
+     ]
+    },
+    "uses-responsive-images": {
+     "deger": "Est savings of 2,610 KiB",
+     "ornek": [
+      "https://localhost:18443/assets/is-finansman-DwsOxqkM.png",
+      "https://localhost:18443/assets/adim-fizik-D2A4lTYY.png",
+      "https://localhost:18443/assets/adim-ogrenen-DLN0gZyi.png"
+     ]
+    },
+    "modern-image-formats": {
+     "deger": "Est savings of 1,651 KiB",
+     "ornek": [
+      "https://localhost:18443/assets/adim-ogrenen-DLN0gZyi.png",
+      "https://localhost:18443/assets/adim-fizik-D2A4lTYY.png",
+      "https://localhost:18443/assets/is-finansman-DwsOxqkM.png"
+     ]
+    },
+    "total-byte-weight": {
+     "deger": "Total size was 9,871 KiB",
+     "ornek": [
+      "https://localhost:18443/assets/santral-1080-B2bAtIHB.mp4",
+      "https://localhost:18443/assets/santral-poster-BYmyX5Ic.webp",
+      "https://localhost:18443/assets/adim-fizik-D2A4lTYY.png"
+     ]
+    },
+    "largest-contentful-paint-element": {
+     "deger": "4,280 ms",
+     "ornek": []
+    },
+    "bootup-time": {
+     "deger": "1.8 s",
+     "ornek": [
+      "Unattributable",
+      "https://localhost:18443/",
+      "https://localhost:18443/assets/index-CIVAG198.js"
+     ]
+    },
+    "mainthread-work-breakdown": {
+     "deger": "11.8 s",
+     "ornek": [
+      "Other",
+      "Script Evaluation",
+      "Style & Layout"
+     ]
+    }
+   }
+  },
+  "fable5-once|ana|masaustu": {
+   "n": 6,
+   "chrome": "Chrome/156.0.0.0",
+   "surum": "12.8.2",
+   "skor": {
+    "performance": 69,
+    "accessibility": 100,
+    "best-practices": 100,
+    "seo": 100
+   },
+   "metrik": {
+    "fcp": 365.0746,
+    "lcp": 858.42365,
+    "tbt": 1988.75,
+    "cls": 0,
+    "si": 1037.7618484459988,
+    "ttfb": 2.4085
+   },
+   "uyari": {
+    "unused-css-rules": {
+     "deger": "Est savings of 14 KiB",
+     "ornek": [
+      "@font-face{font-family:Inter Variable;font-style:normal;font-display:swap;font-weight:100 900; … } …"
+     ]
+    },
+    "uses-responsive-images": {
+     "deger": "Est savings of 2,742 KiB",
+     "ornek": [
+      "https://localhost:18443/assets/adim-fizik-D2A4lTYY.png",
+      "https://localhost:18443/assets/is-finansman-DwsOxqkM.png",
+      "https://localhost:18443/assets/adim-ogrenen-DLN0gZyi.png"
+     ]
+    },
+    "modern-image-formats": {
+     "deger": "Est savings of 1,651 KiB",
+     "ornek": [
+      "https://localhost:18443/assets/adim-ogrenen-DLN0gZyi.png",
+      "https://localhost:18443/assets/adim-fizik-D2A4lTYY.png",
+      "https://localhost:18443/assets/is-finansman-DwsOxqkM.png"
+     ]
+    },
+    "total-byte-weight": {
+     "deger": "Total size was 36,965 KiB",
+     "ornek": [
+      "https://localhost:18443/assets/santral-1440-KjaLgHuf.mp4",
+      "https://localhost:18443/assets/santral-poster-BYmyX5Ic.webp",
+      "https://localhost:18443/assets/adim-fizik-D2A4lTYY.png"
+     ]
+    },
+    "mainthread-work-breakdown": {
+     "deger": "3.7 s",
+     "ornek": [
+      "Other",
+      "Script Evaluation",
+      "Style & Layout"
+     ]
+    }
+   }
+  },
+  "fable5-once|yontem|mobil": {
+   "n": 6,
+   "chrome": "Chrome/156.0.0.0",
+   "surum": "12.8.2",
+   "skor": {
+    "performance": 99,
+    "accessibility": 100,
+    "best-practices": 100,
+    "seo": 100
+   },
+   "metrik": {
+    "fcp": 1503.2505999999998,
+    "lcp": 1803.2505999999998,
+    "tbt": 52,
+    "cls": 0,
+    "si": 1503.2505999999998,
+    "ttfb": 2.4615000000000005
+   },
+   "uyari": {
+    "unused-javascript": {
+     "deger": "Est savings of 37 KiB",
+     "ornek": [
+      "https://localhost:18443/assets/index-CIVAG198.js"
+     ]
+    },
+    "unused-css-rules": {
+     "deger": "Est savings of 18 KiB",
+     "ornek": [
+      "@font-face{font-family:Inter Variable;font-style:normal;font-display:swap;font-weight:100 900; … } …"
+     ]
+    },
+    "uses-responsive-images": {
+     "deger": "Est savings of 1,885 KiB",
+     "ornek": [
+      "https://localhost:18443/assets/tl-sablon-D9tPpgwZ.png",
+      "https://localhost:18443/assets/tl-teslim-7WDeLI-X.png",
+      "https://localhost:18443/assets/tl-sapma-DAnyuuMp.png"
+     ]
+    },
+    "modern-image-formats": {
+     "deger": "Est savings of 1,347 KiB",
+     "ornek": [
+      "https://localhost:18443/assets/tl-sablon-D9tPpgwZ.png",
+      "https://localhost:18443/assets/tl-teslim-7WDeLI-X.png",
+      "https://localhost:18443/assets/tl-sapma-DAnyuuMp.png"
+     ]
+    }
+   }
+  },
+  "fable5-once|yontem|masaustu": {
+   "n": 6,
+   "chrome": "Chrome/156.0.0.0",
+   "surum": "12.8.2",
+   "skor": {
+    "performance": 100,
+    "accessibility": 100,
+    "best-practices": 100,
+    "seo": 100
+   },
+   "metrik": {
+    "fcp": 365.6615,
+    "lcp": 405.0731,
+    "tbt": 0,
+    "cls": 0,
+    "si": 371.43758995576707,
+    "ttfb": 1.5074999999999994
+   },
+   "uyari": {
+    "unused-javascript": {
+     "deger": "Est savings of 37 KiB",
+     "ornek": [
+      "https://localhost:18443/assets/index-CIVAG198.js"
+     ]
+    },
+    "unused-css-rules": {
+     "deger": "Est savings of 19 KiB",
+     "ornek": [
+      "@font-face{font-family:Inter Variable;font-style:normal;font-display:swap;font-weight:100 900; … } …"
+     ]
+    },
+    "uses-responsive-images": {
+     "deger": "Est savings of 1,980 KiB",
+     "ornek": [
+      "https://localhost:18443/assets/tl-sablon-D9tPpgwZ.png",
+      "https://localhost:18443/assets/tl-teslim-7WDeLI-X.png",
+      "https://localhost:18443/assets/tl-sapma-DAnyuuMp.png"
+     ]
+    },
+    "modern-image-formats": {
+     "deger": "Est savings of 1,347 KiB",
+     "ornek": [
+      "https://localhost:18443/assets/tl-sablon-D9tPpgwZ.png",
+      "https://localhost:18443/assets/tl-teslim-7WDeLI-X.png",
+      "https://localhost:18443/assets/tl-sapma-DAnyuuMp.png"
+     ]
+    }
+   }
+  }
+ },
+ "etkilesim": {
+  "chromium|390x844": {
+   "n": 3,
+   "videoOynuyor": 3,
+   "menuAc": 297.90000000037253,
+   "ctaUzerine": null,
+   "girisGirdi": 254.20000000018626,
+   "girisSure": 492,
+   "bostaOrtanca": 149.90000000000055,
+   "bostaP95": 216.69999999999982,
+   "bostaYavas": 0.8571428571428571,
+   "kaydirmaOrtanca": 150,
+   "kaydirmaP95": 316.60000000000036,
+   "kaydirmaYavas": 1,
+   "hata": []
+  },
+  "chromium|768x1024": {
+   "n": 3,
+   "videoOynuyor": 3,
+   "menuAc": 756.2999999998137,
+   "ctaUzerine": null,
+   "girisGirdi": 710.3999999994412,
+   "girisSure": 1107,
+   "bostaOrtanca": 383.3000000000002,
+   "bostaP95": 483.3000000000002,
+   "bostaYavas": 1,
+   "kaydirmaOrtanca": 333.3000000000011,
+   "kaydirmaP95": 700,
+   "kaydirmaYavas": 1,
+   "hata": []
+  },
+  "chromium|1440x900": {
+   "n": 3,
+   "videoOynuyor": 3,
+   "menuAc": 1210,
+   "ctaUzerine": 853,
+   "girisGirdi": 1809.7999999998137,
+   "girisSure": 3216,
+   "bostaOrtanca": 650,
+   "bostaP95": 1166.5999999999995,
+   "bostaYavas": 1,
+   "kaydirmaOrtanca": 616.6000000000004,
+   "kaydirmaP95": 1066.6000000000004,
+   "kaydirmaYavas": 1,
+   "hata": []
+  },
+  "chromium|1920x1080": {
+   "n": 3,
+   "videoOynuyor": 0,
+   "menuAc": 1697.5999999996275,
+   "ctaUzerine": 1236.7000000001863,
+   "girisGirdi": 2594.7999999998137,
+   "girisSure": 4220,
+   "bostaOrtanca": 633.3000000000002,
+   "bostaP95": 949.9000000000005,
+   "bostaYavas": 0.875,
+   "kaydirmaOrtanca": 783.2999999999993,
+   "kaydirmaP95": 783.4000000000015,
+   "kaydirmaYavas": 1,
+   "hata": []
+  },
+  "edge|390x844": {
+   "n": 3,
+   "videoOynuyor": 3,
+   "menuAc": 271.79999999981374,
+   "ctaUzerine": null,
+   "girisGirdi": 261.90000000037253,
+   "girisSure": 572,
+   "bostaOrtanca": 116.70000000000073,
+   "bostaP95": 183.30000000000018,
+   "bostaYavas": 0.9523809523809523,
+   "kaydirmaOrtanca": 133.3000000000011,
+   "kaydirmaP95": 183.3000000000011,
+   "kaydirmaYavas": 1,
+   "hata": []
+  },
+  "edge|768x1024": {
+   "n": 3,
+   "videoOynuyor": 3,
+   "menuAc": 629.7000000001863,
+   "ctaUzerine": null,
+   "girisGirdi": 494.29999999981374,
+   "girisSure": 1030,
+   "bostaOrtanca": 300,
+   "bostaP95": 366.60000000000036,
+   "bostaYavas": 1,
+   "kaydirmaOrtanca": 266.7000000000007,
+   "kaydirmaP95": 550,
+   "kaydirmaYavas": 1,
+   "hata": []
+  },
+  "edge|1440x900": {
+   "n": 3,
+   "videoOynuyor": 3,
+   "menuAc": 1079.300000000745,
+   "ctaUzerine": 657.2999999998137,
+   "girisGirdi": 1000.7999999998137,
+   "girisSure": 2013,
+   "bostaOrtanca": 549.8999999999996,
+   "bostaP95": 699.8999999999996,
+   "bostaYavas": 1,
+   "kaydirmaOrtanca": 566.7000000000007,
+   "kaydirmaP95": 650,
+   "kaydirmaYavas": 1,
+   "hata": []
+  },
+  "edge|1920x1080": {
+   "n": 3,
+   "videoOynuyor": 1,
+   "menuAc": 1435.2999999998137,
+   "ctaUzerine": 1135.5999999996275,
+   "girisGirdi": 1428.7999999998137,
+   "girisSure": 2578,
+   "bostaOrtanca": 650,
+   "bostaP95": 816.6999999999998,
+   "bostaYavas": 0.8333333333333334,
+   "kaydirmaOrtanca": 783.4000000000015,
+   "kaydirmaP95": 1466.6000000000022,
+   "kaydirmaYavas": 1,
+   "hata": []
+  },
+  "firefox|390x844": {
+   "n": 3,
+   "videoOynuyor": 3,
+   "menuAc": 117,
+   "ctaUzerine": null,
+   "girisGirdi": 134,
+   "girisSure": 436,
+   "bostaOrtanca": 16.40000000000009,
+   "bostaP95": 17.279999999999745,
+   "bostaYavas": 0,
+   "kaydirmaOrtanca": 17.079999999999927,
+   "kaydirmaP95": 50.88000000000011,
+   "kaydirmaYavas": 0.11764705882352941,
+   "hata": []
+  },
+  "firefox|768x1024": {
+   "n": 3,
+   "videoOynuyor": 3,
+   "menuAc": 295,
+   "ctaUzerine": null,
+   "girisGirdi": 321,
+   "girisSure": 498,
+   "bostaOrtanca": 16.400000000000546,
+   "bostaP95": 17.26000000000022,
+   "bostaYavas": 0,
+   "kaydirmaOrtanca": 17.1200000000008,
+   "kaydirmaP95": 167.0599999999995,
+   "kaydirmaYavas": 0.21333333333333335,
+   "hata": []
+  },
+  "firefox|1440x900": {
+   "n": 3,
+   "videoOynuyor": 3,
+   "menuAc": 330,
+   "ctaUzerine": 125,
+   "girisGirdi": 398,
+   "girisSure": 1006,
+   "bostaOrtanca": 16.400000000000546,
+   "bostaP95": 17.26000000000022,
+   "bostaYavas": 0,
+   "kaydirmaOrtanca": 17.219999999999345,
+   "kaydirmaP95": 267.2600000000002,
+   "kaydirmaYavas": 0.3333333333333333,
+   "hata": []
+  },
+  "firefox|1920x1080": {
+   "n": 3,
+   "videoOynuyor": 3,
+   "menuAc": 517,
+   "ctaUzerine": 242,
+   "girisGirdi": 597,
+   "girisSure": 1328,
+   "bostaOrtanca": 16.44000000000051,
+   "bostaP95": 17.279999999999745,
+   "bostaYavas": 0,
+   "kaydirmaOrtanca": 199.51999999999862,
+   "kaydirmaP95": 432.7600000000002,
+   "kaydirmaYavas": 0.6666666666666666,
+   "hata": []
+  },
+  "webkit|390x844": {
+   "n": 3,
+   "videoOynuyor": 3,
+   "menuAc": 706,
+   "ctaUzerine": null,
+   "girisGirdi": 808,
+   "girisSure": 1984,
+   "bostaOrtanca": 16,
+   "bostaP95": 24,
+   "bostaYavas": 0.013422818791946308,
+   "kaydirmaOrtanca": 166,
+   "kaydirmaP95": 772,
+   "kaydirmaYavas": 1,
+   "hata": []
+  },
+  "webkit|768x1024": {
+   "n": 3,
+   "videoOynuyor": 3,
+   "menuAc": 861,
+   "ctaUzerine": null,
+   "girisGirdi": 885,
+   "girisSure": 2383,
+   "bostaOrtanca": 16,
+   "bostaP95": 25,
+   "bostaYavas": 0.035398230088495575,
+   "kaydirmaOrtanca": 173,
+   "kaydirmaP95": 939,
+   "kaydirmaYavas": 1,
+   "hata": []
+  },
+  "webkit|1440x900": {
+   "n": 3,
+   "videoOynuyor": 3,
+   "menuAc": 1191,
+   "ctaUzerine": 2378,
+   "girisGirdi": 805,
+   "girisSure": 2250,
+   "bostaOrtanca": 410,
+   "bostaP95": 1377,
+   "bostaYavas": 1,
+   "kaydirmaOrtanca": 234,
+   "kaydirmaP95": 463,
+   "kaydirmaYavas": 1,
+   "hata": []
+  },
+  "webkit|1920x1080": {
+   "n": 3,
+   "videoOynuyor": 3,
+   "menuAc": 510,
+   "ctaUzerine": 660,
+   "girisGirdi": 478,
+   "girisSure": 1116,
+   "bostaOrtanca": 16,
+   "bostaP95": 22,
+   "bostaYavas": 0,
+   "kaydirmaOrtanca": 98,
+   "kaydirmaP95": 152,
+   "kaydirmaYavas": 1,
+   "hata": []
+  }
+ },
  "hata": {},
  "lcpOge": {},
  "enBuyuk": {
