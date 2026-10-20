@@ -178,7 +178,22 @@ Bu makinede dört motor da yazılımla birleştiriyor. Lighthouse «/» TBT 2,5�
 
 Firefox'ta WebGL tuvali yazılım GL'de hiç kurulmuyor (`failIfMajorPerformanceCaveat`; `yazilim-ff.txt`: «gizli/css», boşta 16,4 ms
 ortanca, kilitlenme yok, 7 günlük kayıt yazılmıyor) — Linux'ta geri dönüş yolu doğrulandı; ekran kartlı Linux/Windows yolu bu
-makinede sınanamadı. Süzgeç/cam/video paylarının ayrıştırması (A/B, `olc/ab-boya.mjs`): (ZİNCİR BİTİNCE).
+makinede sınanamadı.
+
+Payların ayrıştırması (A/B, `olc/ab-boya.mjs`, aynı sayfada yük sonrası değişken; 5 sn boşta, video oynarken; kare p95 ms / süreç
+ağacı CPU çekirdek; 2 koşu; `analiz/fable5-once/ab`):
+
+| Motor · görünüm | mevcut | süzgeçsiz (video+poster `filter:none`) | camsız (`backdrop-filter:none`) | süzgeçsiz+camsız | video durgun |
+|---|---|---|---|---|---|
+| Chromium 1440 | 767 / 667 ms · 1,4–1,6 | **67 / 67 · 1,4** | 633 / 683 · 1,6–1,8 | 50 / 50 · 1,4 | 17 · 0,2 |
+| Chromium 390 | 200 / 233 · 1,2–1,4 | **17 / 17 · 0,6–0,8** | 183 / 233 · 1,2 | 17 / 17 · 0,4–0,6 | 17 · 0,0–0,2 |
+| WebKit 1440 | 22 / 21 · 3,0–3,2 | 22 / 22 · 3,2–3,4 | 23 / 22 · 3,4 | 24 / 21 · 3,2–3,4 | 17 · 0,2 |
+| WebKit 390 | 22 · 3,2 | 20 · 3,2 | 24 · 3,2 | 23 · 3,0 | 17 · 0,2 |
+
+Yazılım çiziminde Chromium'un kare süresinin > %90'ı videodaki `feConvolveMatrix` süzgecinden (süzgeç kalkınca 767 → 67, 200 → 17
+ms; cam tek başına 767 → 633); WebKit'te kare süresi iyi (22 ms) ama CPU 3 çekirdek, süzgeçten bağımsız → yazılım video çözme
+(GStreamer). Dün ekran kartlı Mac'te aynı süzgeç Chromium'da ücretsizdi (kaydırma p95 18–19 ms); yani bu, ekran kartı
+hızlandırması olmayan ortamlara (kapalı ayar, uzak masaüstü, sanal makine, eski entegre GPU'lu sürücü kara listesi) özgü bir maliyettir.
 Bu sayılar ekran kartı olan gerçek cihazları temsil etmez (dün Mac'te Chromium 1440 kaydırma p95 18–19 ms). Ekran kartı
 hızlandırması kapalı masaüstü tarayıcıları ve uzak masaüstü oturumları için gerçek bir maliyet göstergesidir; «süzgeç/animasyon
 kaldırılmaz» kuralı gereği düzeltme yapılmadı, öneri §8.
@@ -201,6 +216,12 @@ kuralıyla sabit.
 
 Kod değişikliği olmayan, ölçümle kapatılan konular: Edge, önbellek başlıkları, sıcak ziyaret, çerez/KVKK, INP laboratuvarı, Firefox/Linux
 WebGL geri dönüşü, 768 poster-LCP.
+
+**Kapılar (web/, ayrı çıkış kodları, 20.10 14:36):** `npm test` 0 (71/71), `npx tsc --noEmit -p tsconfig.app.json` 0, `npm run build` 0
+(2,7 sn), `npx oxlint src/features` 0 (2 önceden var olan uyarı: `sayfalar/parcalar.tsx` fast-refresh; bu turda dokunulmadı).
+Python: kaynak değişmedi; CI (`.github/workflows/ci.yml`, PR #7) `test` ve `web` işleri her commit'te yeşil (2114bb0 … 4675cba).
+Dağıtım YAPILMADI (bulutta ssh yok): canlıya alma yerel oturumda (`git pull && docker compose build web && docker compose up -d`,
+sonra `curl -I` ile 200 ve Caddy sürümü). UI'ye dokunulmadığı için tasarım skill'i ve piksel kıyası bu turda gerekmedi.
 
 ## 5. Çerez / KVKK envanteri
 
@@ -246,4 +267,5 @@ Caddy 2.11.7; `curl -I https://pvquant.com/ -H 'Accept-Encoding: br'` → 200.
 ## 9. Bulut kullanımı
 
 Bu oturumun kredi/kullanım düşümü bu ortamdan okunamadı — **doğrulanamadı**; kullanıcı claude.ai kullanım sayfasından teyit edecek.
-Ölçüm süreleri: başlangıç matrisi 72 dk (288 hücre), etkileşim 20 dk, Lighthouse 3 × ~5 dk, kontrol matrisi (zincir).
+Ölçüm süreleri (duvar saati): başlangıç matrisi 72 dk (288 hücre; 206'lı ilk 10 dk atıldı), etkileşim 20 dk, Lighthouse 4 seri × ~5 dk,
+kontrol matrisi 47 dk (192 hücre), A/B 10 dk; toplam ~3,5 saat sıralı ölçüm.
