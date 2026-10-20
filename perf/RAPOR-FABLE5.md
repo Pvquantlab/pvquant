@@ -40,16 +40,59 @@ boş (sha256, 0 satır fark). Bu yüzden «sonra» ölçümü bir **ikinci bağ�
 kısıtsız, Slow 4G, Fast 3G + yeni hat kablo20) taze replikada (ayrı port, taze Caddy, taze sertifika) yeniden koşuldu. Beklenen: fark
 gürültü bandında (±150 ms); gürültü bandı dışına çıkan her hücre aşağıda açıklanır.
 
-(ZİNCİR BİTİNCE DOLDURULACAK: «/» ve «/yontem» FCP/LCP önce → sonra tabloları, kablo20 satırı, Lighthouse önce → sonra.)
+Sonuç (`analiz/fable5-sonra/KIYAS-FABLE5.md`, 192 hücre; kontrol matrisi 113. hücrede WebKit «Page crashed» ile kesildi, aynı komutla
+kaldığı yerden sürdü, veri kaybı yok): **64 FCP hücresinin 64'ü gürültü bandında** (soğuk ve sıcak; en büyük fark 96 ms, Edge 1440
+kısıtsız). Gürültü bandı dışına çıkan 7 hücrenin hepsi LCP ya da tekil sıcak koşu: Edge 390/1440 Slow 4G ve 390 Fast 3G LCP
+1524 → 848, 2092 → 956, 3196 → 2044 (fontun gelişinin ikinci LCP adayı, §3.4 — «sonra»da 3 koşunun ikisinde çıkmadı), WebKit 1440
+LCP 3024 → 3182 ve 4430 → 1996 (WebKit LCP API'si, §3.5), sıcak FCP Edge 1440 584 → 232 ve WebKit 1440 54 → 206 (tek koşu
+oynaklığı; soğuk FCP aynı). Konsol/HTTP/başarısız istek: önce 0 (576 yükleme), sonra 0 (384 yükleme).
 
-**Lighthouse 12.8.2 (replika, bu ortam; 3 koşu)**
+**«/» soğuk FCP, medyan (ms): önce → sonra**
 
-| Sayfa · tür | Başlangıç (1494f8e) perf (koşular) | LCP | FCP | TBT | CLS | Sonra |
-|---|---|---:|---:|---:|---:|---|
-| `/` · mobil | 70 (70/71/70) | 1,80 sn | 1,50 sn | 2,5–2,9 sn | 0 | (zincir) |
-| `/` · masaüstü | 69 (69/69/69) | 0,82 sn | 0,37 sn | 1,8–2,4 sn | 0 | (zincir) |
-| `/yontem` · mobil | 99 (99/99/99) | 1,80 sn | 1,50 sn | 32–101 ms | 0 | (zincir) |
-| `/yontem` · masaüstü | 100 (100/100/100) | 0,41 sn | 0,37 sn | 0 | 0 | (zincir) |
+| hat | ch 390 | ch 1440 | ed 390 | ed 1440 | fi 390 | fi 1440 | we 390 | we 1440 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Kısıtsız | 156 → 148 | 280 → 284 | 212 → 200 | 428 → 332 | 98 → 85 | 96 → 96 | 135 → 143 | 149 → 136 |
+| Slow 4G | 828 → 824 | 944 → 948 | 844 → 848 | 984 → 956 | 766 → 750 | 750 → 778 | 718 → 755 | 761 → 761 |
+| Fast 3G | 2 064 → 2 056 | 2 208 → 2 172 | 2 044 → 2 044 | 2 188 → 2 204 | 1 999 → 1 986 | 2 005 → 1 999 | 1 995 → 1 987 | 1 994 → 1 996 |
+| Kablo 20 Mbps (yalnız sonra) | 396 | 556 | 404 | 572 | 321 | 321 | 305 | 325 |
+
+**«/» soğuk LCP, medyan (ms): önce → sonra** (390/1440'ta LCP öğesi metin; Edge'deki büyük farklar §3.4, WebKit §3.5)
+
+| hat | ch 390 | ch 1440 | ed 390 | ed 1440 | fi 390 | fi 1440 | we 390 | we 1440 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Kısıtsız | 156 → 148 | 280 → 284 | 212 → 200 | 428 → 332 | 98 → 85 | 96 → 96 | 1 724 → 1 824 | 2 869 → 2 900 |
+| Slow 4G | 828 → 824 | 944 → 972 | 1 524 → 848 | 2 092 → 956 | 766 → 750 | 764 → 778 | 2 241 → 2 329 | 3 024 → 3 182 |
+| Fast 3G | 2 064 → 2 088 | 2 216 → 2 172 | 3 196 → 2 044 | 2 192 → 2 216 | 1 999 → 1 986 | 2 005 → 1 999 | 2 386 → 2 364 | 4 430 → 1 996 |
+| Kablo 20 Mbps (yalnız sonra) | 396 | 556 | 404 | 1 720 | 321 | 321 | 1 461 | 2 983 |
+
+**«/» sıcak FCP, medyan (ms): önce → sonra**
+
+| hat | ch 390 | ch 1440 | ed 390 | ed 1440 | fi 390 | fi 1440 | we 390 | we 1440 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Kısıtsız | 208 → 228 | 204 → 212 | 116 → 144 | 584 → 232 | 55 → 53 | 69 → 62 | 127 → 81 | 54 → 206 |
+| Slow 4G | 248 → 228 | 308 → 332 | 256 → 272 | 340 → 368 | 203 → 198 | 210 → 198 | 199 → 207 | 197 → 212 |
+| Fast 3G | 656 → 664 | 732 → 732 | 672 → 688 | 772 → 772 | 612 → 606 | 616 → 617 | 618 → 614 | 626 → 621 |
+| Kablo 20 Mbps (yalnız sonra) | 124 | 200 | 172 | 232 | 85 | 79 | 98 | 99 |
+
+**«/yontem» soğuk FCP (= LCP), medyan (ms): önce → sonra**
+
+| hat | ch 390 | ch 1440 | ed 390 | ed 1440 | fi 390 | fi 1440 | we 390 | we 1440 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Kısıtsız | 152 → 160 | 192 → 180 | 212 → 188 | 240 → 248 | 160 → 143 | 171 → 156 | 245 → 203 | 218 → 266 |
+| Slow 4G | 1 244 → 1 176 | 1 196 → 1 216 | 1 256 → 1 244 | 1 260 → 1 252 | 1 195 → 1 228 | 1 194 → 1 214 | 1 317 → 1 401 | 1 346 → 1 305 |
+| Fast 3G | 2 840 → 2 824 | 2 928 → 2 928 | 2 932 → 2 880 | 2 944 → 2 880 | 2 831 → 2 940 | 2 912 → 2 879 | 2 981 → 3 011 | 2 927 → 3 024 |
+| Kablo 20 Mbps (yalnız sonra) | 396 | 392 | 460 | 440 | 379 | 394 | 421 | 435 |
+
+«/yontem» sıcak FCP: dört motorda 64–140 (kısıtsız), 198–285 (Slow 4G), 606–704 (Fast 3G), 128–172 (kablo20) ms; önce→sonra farkı ≤ 32 ms.
+
+**Lighthouse 12.8.2 (replika, bu ortam; 3 koşu): önce → sonra**
+
+| Sayfa · tür | perf (koşular) | LCP | FCP | TBT | CLS |
+|---|---|---:|---:|---:|---:|
+| `/` · mobil | 70 (70/71/70) → 70 (70/69/70) | 1,80 → 1,80 sn | 1,50 → 1,50 sn | 2,5–2,9 → 2,8–3,6 sn | 0 → 0 |
+| `/` · masaüstü | 69 (69/69/69) → 69 (69/69/69) | 0,82 → 0,83 sn | 0,37 → 0,37 sn | 1,8–2,4 → 1,7–2,6 sn | 0 → 0 |
+| `/yontem` · mobil | 99 (99/99/99) → 99 (99/99/99) | 1,80 → 1,80 sn | 1,50 → 1,50 sn | 32–101 → 43–64 ms | 0 → 0 |
+| `/yontem` · masaüstü | 100 (100/100/100) → 100 (100/100/100) | 0,41 → 0,41 sn | 0,37 → 0,37 sn | 0 → 0 | 0 → 0 |
 
 Karşılaştırma: dün aynı derleme ekran kartlı Mac'te «/» mobil 99 (TBT 68 ms), masaüstü 100; canlıda 97/99. Bu makinede «/»nin
 TBT'si yalnızca yazılım çiziminden (§3.6); «/yontem» (video yok) iki ortamda da 99/100. İlk Lighthouse serisi (`lh-fable5-once-KIRLI.jsonl`)
