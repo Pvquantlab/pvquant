@@ -15,6 +15,7 @@ const kosu = Number(arg("kosu", "3"));
 fs.mkdirSync(cikti, { recursive: true });
 const dosya = path.join(cikti, `lh-${hedef}.jsonl`);
 const bayrak = ["--headless=new", "--no-first-run", "--no-default-browser-check", "--disable-extensions"];
+if (typeof process.getuid === "function" && process.getuid() === 0) bayrak.push("--no-sandbox");   // 20.10 bulut Linux: root kullanıcıda Chrome sandbox'sız açılır
 if (HEDEFLER[hedef].spki) bayrak.push("--ignore-certificate-errors-spki-list=" + (await yaprakSpki(hedef)));   // canlı yaprak SPKI (ortak.mjs)
 const ILGI = ["render-blocking-resources", "unused-javascript", "unused-css-rules", "uses-responsive-images", "modern-image-formats", "uses-optimized-images",
   "image-size-responsive", "font-display", "total-byte-weight", "largest-contentful-paint-element", "layout-shifts", "lcp-lazy-loaded",

@@ -10,7 +10,7 @@ const matris = oku(path.join(klasor, "matris.jsonl"));
 const etk = oku(path.join(klasor, "etkilesim.jsonl"));
 const lhDir = path.join(klasor, "lighthouse");
 const lh = fs.existsSync(lhDir) ? fs.readdirSync(lhDir).filter((f) => f.endsWith(".jsonl")).flatMap((f) => oku(path.join(lhDir, f))) : [];
-const MOTOR = ["chromium", "firefox", "webkit"], GOR = Object.keys(GORUNUMLER), AG = ["yok", "hizli3g", "yavas4g"], ONB = ["soguk", "sicak"], SAYFA = ["ana", "yontem"];
+const MOTOR = [...new Set(matris.map((x) => x.motor))].sort((a, z) => ["chromium", "edge", "firefox", "webkit"].indexOf(a) - ["chromium", "edge", "firefox", "webkit"].indexOf(z)), GOR = Object.keys(GORUNUMLER), AG = ["yok", "hizli3g", "yavas4g"], ONB = ["soguk", "sicak"], SAYFA = ["ana", "yontem"];
 const yuvarla = (v, b = 0) => (v === null || v === undefined ? null : Number(v.toFixed(b)));
 const grup = (f) => { const m = new Map(); for (const x of matris) { const k = f(x); if (!m.has(k)) m.set(k, []); m.get(k).push(x); } return m; };
 const g = grup((x) => [x.motor, x.gorunum, x.ag, x.sayfa].join("|"));
