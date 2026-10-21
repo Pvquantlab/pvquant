@@ -32,13 +32,13 @@ export const METRIKLER = [
 
 export const KISA_TANIMLAR = [
   ["Ortalama sapma",
-   "her gündüz saatinde |tahmin − gerçekleşen| toplanır, o günün gerçekleşen üretimine bölünür ve günler ortalanır (gün içinde üretime ağırlıklı; gündüz saati = gerçekleşen üretimin kurulu gücün %2'sini aştığı saat)."],
+   "Her gündüz saatinde tahmin ile gerçekleşen üretim arasındaki fark toplanır, o günün toplam gerçekleşen üretimine bölünür ve günler ortalanır. Hesap gün içinde üretime ağırlıklıdır; gündüz saati, gerçekleşen üretimin kurulu gücün %2'sini aştığı saattir."],
   ["Basit yöntem",
-   "“yarın = dün aynı saat”, güneşin konum farkına göre açık-gök ışınımı oranıyla ölçeklenir — sektörün sıfır maliyetli tabanı."],
+   "Referans kuralı “yarın = dün aynı saat” olarak alınır; değer, güneşin iki gün arasındaki konum farkına göre açık-gök ışınımı oranıyla ölçeklenir. Maliyeti sıfır olduğu için sektörde taban kabul edilir."],
   ["Sıkı referans",
-   "iklim beklentisiyle akıllı sürekliliğin en iyi ağırlıklı karışımı — geçilmesi zor, dürüst kıyas çıtası."],
+   "Aya ve saate göre iklim beklentisi ile sürekliliğin en iyi ağırlıklı birleşimidir; basit yöntemden belirgin ölçüde zor bir kıyas ölçütüdür."],
   ["Bant kapsaması",
-   "gerçekleşen üretimin önceden söylenen iyimser–kötümser aralıkta kaldığı gündüz saatlerinin oranı; her gün ayrı hesaplanır, pencere boyunca ortalanır."],
+   "Gerçekleşen üretimin, önceden ilan edilen iyimser–kötümser aralık içinde kaldığı gündüz saatlerinin oranıdır. Her gün ayrı hesaplanır ve pencere boyunca ortalanır."],
 ] as const;
 
-export const YONTEM_KAPANIS = "Hepsi her gece aynı kuralla, otomatik hesaplanır; geçmiş değiştirilmez.";
+export const YONTEM_KAPANIS = "Tüm değerler her gece aynı kuralla, otomatik olarak hesaplanır; geçmiş değiştirilmez.";

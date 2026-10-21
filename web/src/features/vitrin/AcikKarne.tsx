@@ -52,13 +52,13 @@ function KilitliKarne() {
     <div className="vt-karne">
       <div className="vt-karne__bas">
         <h3 className="vt-h3">Açık karne — Referans santral · 10 MW üzeri · İç Anadolu</h3>
-        <span className="vt-kunye">yayın için en az 30 sınav günü · 0–24 saat ufku</span>
+        <span className="vt-kunye">Yayın koşulu: en az 30 sınav günü · Tahmin ufku: 0–24 saat</span>
       </div>
       <div className="vt-kilitli">
         <div className="vt-kilitli__sol">
           <span className="vt-kilitli__kilit"><MenuIkon ad="kilit" /></span>
-          <p className="vt-kilitli__baslik">Yayın, 30. sınav gününde açılır.</p>
-          <p className="vt-kilitli__cumle">30 sınav günü dolunca dört değer — PVQuant, basit yöntem, sıkı referans, bant kapsaması — ve aylık tablo burada görünür.</p>
+          <p className="vt-kilitli__baslik">Açık karne, 30 sınav günü tamamlandığında yayımlanır.</p>
+          <p className="vt-kilitli__cumle">30 sınav günü tamamlandığında dört değer (PVQuant, basit yöntem, sıkı referans, bant kapsaması) ve aylık tablo bu alanda yayımlanır.</p>
         </div>
         <dl className="vt-kilitli__tanimlar">
           {KISA_TANIMLAR.map(([ad, tanim]) => (
