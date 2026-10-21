@@ -21,9 +21,9 @@ const KARTLAR: readonly {
   ad: string; etiket: string; metin: string; kunye: readonly string[];
   resim: string; genis?: true;
 }[] = [
-  { ad: "Teslim programı", etiket: "D‑1 · teslim penceresi", resim: tlTeslim,
-    metin: "Yarının saatlik programı ve emre amadelik bildirimi teslim penceresi kapanmadan hazırdır; bir gecikme olursa alarm sizi uyarır.",
-    kunye: ["saatlik", "emre amadelik", "alarm çalar"] },
+  { ad: "Teslim programı", etiket: "Bir gün önce · teslim saati", resim: tlTeslim,
+    metin: "Yarının saatlik programı ve emre amadelik bildirimi teslim saatinden önce hazırdır; bir gecikme olursa alarm sizi uyarır.",
+    kunye: ["saatlik", "emre amadelik", "alarm uyarısı"] },
   { ad: "Dengesizlik maliyeti", etiket: "Ay boyunca · gün gün", resim: tlSapma,
     metin: "Tahmin hatasının size aylık kaç TL'ye mal olduğunu, basit yönteme göre farkı ve teminata etkisini tek yerde görürsünüz.",
     kunye: ["TL · aylık", "basit yönteme karşı", "teminat etkisi"] },
@@ -31,9 +31,9 @@ const KARTLAR: readonly {
     metin: "Tahmin aralığını toplayıcınızın ya da DSG'nin şablonunda indirirsiniz; biçimi elle düzeltmeniz gerekmez. İsterseniz API anahtarıyla doğrudan sisteminize akar.",
     kunye: ["CSV · XLSX", "saatlik ya da 15 dk", "API anahtarı"] },
   { ad: "Alarm kuralları", etiket: "Gece ve gündüz", resim: tlAlarm, genis: true,
-    metin: "Gece ekrana kimse bakmazken kurallar bakar. Sabah ilk iş gece karnesini ve açık alarmları görürsünüz.",
+    metin: "Gece ekran başında kimse yokken kurallar izler; sabah gece karnesi ve açık alarmlar hazırdır.",
     kunye: ["8 kural", "veri · teslim · performans", "gece karnesi"] },
-  { ad: "Gün içi güncelleme", etiket: "Sabah koşusundan itibaren", resim: tlAralik, genis: true,
+  { ad: "Gün içi güncelleme", etiket: "Sabah hesabından itibaren", resim: tlAralik, genis: true,
     metin: "İyimser–kötümser aralık gün içinde güncellendikçe önceki hâlleri kayıtta kalır; sabah hesabı bitince sisteminize otomatik bildirim gider.",
     kunye: ["iyimser–kötümser", "gün içi güncelleme", "sabah bildirimi (webhook)"] },
 ];

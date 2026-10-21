@@ -23,7 +23,7 @@ const PANELLER: readonly Panel[] = [
       { ad: "Tahmin", rozet: "tahmin", ogeler: [
         { ad: "Saatlik tahmin ve aralık", aciklama: "Her saat için tahmin ve iyimser–kötümser aralığı, 15 gün ileriye", ikon: "band" },
         { ad: "Santralım", aciklama: "Dün, bugün, yarın: anlık güç ve günün eğrisi tek ekranda", ikon: "santral" },
-        { ad: "Aylık beklenti", aciklama: "İklim geçmişinden aylık üretim zarfı ve yıllık P50\u2060–\u2060P99", ikon: "aylik" },
+        { ad: "Aylık beklenti", aciklama: "İklim geçmişinden aylık üretim aralığı ve yıllık P50\u2060–\u2060P99", ikon: "aylik" },
       ] },
       { ad: "Kanıt", rozet: "kanit", ogeler: [
         { ad: "Doğruluk karnesi", aciklama: "Tahmin her gece gerçekleşenle karşılaştırılır; sonuç değiştirilmez", ikon: "karne" },
@@ -32,7 +32,7 @@ const PANELLER: readonly Panel[] = [
       { ad: "Operasyon", rozet: "operasyon", ogeler: [
         { ad: "Portföy", aciklama: "Bütün santralleriniz tek tabloda; sapma ve uyarı öne çıkar", ikon: "portfoy" },
         { ad: "Alarmlar", aciklama: "Veri gelmedi, doğruluk düştü, KGÜP teslim saati kaçtı… sekiz kural", ikon: "alarm" },
-        { ad: "Raporlar", aciklama: "16 sayfalık PDF, Excel doğruluk şeridi, şemalı JSON", ikon: "rapor" },
+        { ad: "Raporlar", aciklama: "16 sayfalık PDF, Excel doğruluk şeridi, JSON çıktı", ikon: "rapor" },
       ] },
       { ad: "Veri", rozet: "veri", ogeler: [
         { ad: "Dosyasız santral bağlama", aciklama: "Kamuya açık üretim kaydı kimliğiyle gerçekleşen üretim kendiliğinden akar", ikon: "baglanti" },
@@ -48,7 +48,7 @@ const PANELLER: readonly Panel[] = [
       ] },
       { ad: "Okuma", rozet: "kanit", ogeler: [
         { ad: "Metrik sözlüğü", aciklama: "Ortalama sapma, basit yöntem, sıkı referans, bant kapsaması", hedef: "/yontem#yt-tanimlar" },
-        { ad: "Aralık ve yayın disiplini", aciklama: "Bant nasıl kurulur, yayın kapısı ne zaman açılır", hedef: "/yontem#yt-disiplin" },
+        { ad: "Aralık ve yayın disiplini", aciklama: "Aralık nasıl kurulur, yayın koşulu nedir", hedef: "/yontem#yt-disiplin" },
       ] },
     ],
   },

@@ -133,7 +133,7 @@ function Cizim({ noktalar, kip }: { noktalar: readonly EgriNoktasi[]; kip: Cizim
       onPointerLeave={(e) => { if (e.pointerType !== "touch") setAktif(null); }}
       onAnimationEnd={(e) => { if ((e.target as Element).classList?.contains("vt-egri__gercek")) setOynat(false); }}>
       <title id={`vt-egri-baslik-${ek}`}>1 Ekim 2026 tahmini ve gerçekleşen üretim</title>
-      <desc id={`vt-egri-aciklama-${ek}`}>Araştırma koşusu; canlı panel çıktısı değildir. Mavi bant tahmin aralığını, mavi çizgi tahmini, amber çizgi gerçekleşen üretimi gösterir; her değer saat ortalamasıdır ve saat ortasında çizilir. Sabah saatlerinde bu koşunun P90 değeri P50 ile çakışır; bandın üst kenarı çizgiyle örtüşür. 08:00–12:00 arasında gerçekleşen, söylenen aralığın altında kalıyor; öğleden sonra aralığın içinde. Saatlik sayılar tablo görünümünde.</desc>
+      <desc id={`vt-egri-aciklama-${ek}`}>Araştırma amaçlı örnek gün; canlı panel çıktısı değildir. Mavi bant tahmin aralığını, mavi çizgi tahmini, amber çizgi gerçekleşen üretimi gösterir; her değer saat ortalamasıdır ve saat ortasında çizilir. Sabah saatlerinde bu günün P90 değeri P50 ile çakışır; bandın üst kenarı çizgiyle örtüşür. 08:00–12:00 arasında gerçekleşen, söylenen aralığın altında kalıyor; öğleden sonra aralığın içinde. Saatlik sayılar tablo görünümünde.</desc>
       {yIzgara.filter((o) => o > 0).map((o) => (
         <line key={o} className="vt-egri__izgara" x1={SOL} x2={W - SAG} y1={y(o)} y2={y(o)} />
       ))}
@@ -148,7 +148,7 @@ function Cizim({ noktalar, kip }: { noktalar: readonly EgriNoktasi[]; kip: Cizim
       ))}
       <text className="vt-egri__eksen-baslik" transform={`translate(${dar ? 13 : 15} ${(UST + H - ALT) / 2}) rotate(-90)`} textAnchor="middle">Kurulu güce oran (%)</text>
       <line className="vt-egri__esik" x1={SOL} x2={W - SAG} y1={y(1)} y2={y(1)} />
-      {!aktif && <text className="vt-egri__et vt-egri__et--halo" x={W - SAG - 2} y={y(1) - 6} textAnchor="end">AC tavanı</text>}
+      {!aktif && <text className="vt-egri__et vt-egri__et--halo" x={W - SAG - 2} y={y(1) - 6} textAnchor="end">AC sınırı</text>}
       <path className="vt-egri__bant" d={bant()} />
       <path className="vt-egri__p50" d={cizgi("p50")} />
       <path className="vt-egri__gercek" d={cizgi("gercek")} pathLength={1} />
