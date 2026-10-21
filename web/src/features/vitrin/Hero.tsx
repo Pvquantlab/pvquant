@@ -157,11 +157,11 @@ export function Hero({ kabuk = false }: { kabuk?: boolean } = {}) {
       <div className="vt-kap vt-hero__ic">
         <div className="vt-hero__sol">
           <h1 className="vt-h1 vt-hero__baslik" id="vt-hero-baslik"><span className="vt-h1__vurgu">Güneş santraliniz için</span> saatlik üretim tahmini ve günlük doğruluk karnesi.</h1>
-          <p className="vt-giris vt-hero__giris">PVQuant, güneş santralinizin saatlik üretimini 15 güne kadar tahmin eder ve her tahmine bir güven aralığı ekler. Günlük üretim programınız bildirim saatinden önce hazır olur; tahmin ile gerçekleşen üretim arasındaki farkın size maliyeti panelde günlük olarak raporlanır. Her tahmin, <a className="vt-bag vt-bag--metin" href="#karne">ertesi gün gerçekleşen üretimle karşılaştırılır</a>.</p>
+          <p className="vt-giris vt-hero__giris">PVQuant, santralinizin saat saat ne üreteceğini 15 gün öncesinden söyler ve her saate bir iyimser–kötümser aralık ekler. Üretim programınız (KGÜP) teslim saatinden önce hazır olur; tahmin hatasının size kaç TL&#39;ye mal olduğunu her gün panelde görürsünüz. Her tahmin, <a className="vt-bag vt-bag--metin" href="#karne">ertesi gün gerçekleşen üretimle karşılaştırılır</a>; doğruluk karneniz gün gün birikir.</p>
           <div className="vt-eylemler vt-hero__eylem">
             <a className="vt-dugme vt-dugme--dolu vt-dugme--ok vt-dugme--buyuk" href="#basla">Karnenizi başlatın</a>
-            <a className="vt-dugme vt-dugme--gece-cizgi vt-dugme--buyuk" href="/yontem#para">TL karşılığı nasıl hesaplanır</a>
-            <p className="vt-hero__mikro">başvuru · hesabınızı biz kurarız · veri yüklemeniz gerekmez · karneniz ilk gece sınavından itibaren birikir</p>
+            <a className="vt-dugme vt-dugme--gece-cizgi vt-dugme--buyuk" href="/yontem#para">Dengesizlik maliyeti nasıl hesaplanır</a>
+            <p className="vt-hero__mikro">başvuru · kurulumu biz yaparız · veri yüklemeniz gerekmez · doğruluk karneniz ilk günden birikmeye başlar</p>
           </div>
         </div>
       </div>

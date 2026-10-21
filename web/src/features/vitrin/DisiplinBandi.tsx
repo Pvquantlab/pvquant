@@ -9,7 +9,7 @@
 const RAKAMLAR = [
   ["700", "otomatik test", "testlerin tamamı her sürümde koşar", "#vt-dipnot-1", "sayım kuralı"],
   ["15 gün", "tahmin ufku", "15 güne dek her saat için iyimser–kötümser aralık", "/yontem#yt-tanimlar", "aralığın tanımı"],
-  ["8", "alarm kuralı", "veri, teslim ve performans nöbetini kurallar tutar", "#isler", "operasyon nöbeti"],
+  ["8", "alarm kuralı", "veri akışı, program teslimi ve üretim performansı izlenir", "#isler", "operasyon nöbeti"],
   ["32", "kapatılmış bulgu kaydı", "bulundu, düzeltildi, kayda geçti", "", ""],
 ] as const;
 
@@ -17,7 +17,7 @@ export function DisiplinBandi() {
   return (
     <section className="vt-disiplin" id="rakamlar" aria-labelledby="vt-disiplin-baslik" data-canlan="">
       <div className="vt-kap">
-        <h2 className="vt-disiplin__baslik" id="vt-disiplin-baslik">Disiplin, tarihli rakamla.</h2>
+        <h2 className="vt-disiplin__baslik" id="vt-disiplin-baslik">Vaat değil, tarihli rakam.</h2>
         <div className="vt-izgara vt-izgara--4 vt-disiplin__izgara">
           {RAKAMLAR.map(([deger, etiket, anlam, hedef, bagAd]) => (
             <div key={etiket} className="vt-disiplin__oge">

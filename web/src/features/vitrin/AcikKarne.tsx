@@ -19,7 +19,7 @@ export function AcikKarne({ durum }: { durum: DogrulamaDurumu }) {
           <div className="vt-bolum-bas">
             <p className="vt-eyebrow">Doğruluk</p>
             <h2 className="vt-h2" id="vt-karne-baslik"><span className="vt-h2__soluk">Sözümüze değil,</span> karneye bakın.</h2>
-            <p className="vt-giris">Sistem her gece tahminini gerçekleşen üretimle karşılaştırır. Sonuç saklanmaz, süslenmez — panelde gün gün birikir.</p>
+            <p className="vt-giris">Her gece günün tahmini gerçekleşen üretimle karşılaştırılır. Sonuç gizlenmez, düzeltilmez; panelde gün gün birikir.</p>
           </div>
           <div className="vt-karne-pencere">
             <ReferansEgri veri={null} />
@@ -75,7 +75,7 @@ function KarneKutusu({ veri }: { veri: Dogrulama }) {
   const degerler = [
     { ad: "PVQuant", deger: yuzdeTr(veri.wmape_pct), alt: "saatlik ortalama sapma", referans: false },
     { ad: "Basit yöntem", deger: yuzdeTr(veri.naif_wmape_pct), alt: "dünü tekrarlar", referans: true },
-    { ad: "Sıkı referans", deger: yuzdeTr(veri.siki_referans_wmape_pct), alt: "iklim + akıllı süreklilik", referans: true },
+    { ad: "Sıkı referans", deger: yuzdeTr(veri.siki_referans_wmape_pct), alt: "iklim beklentisi + süreklilik", referans: true },
     { ad: "Bant kapsaması", deger: yuzdeTr(veri.bant_kapsama_pct), alt: `hedef ${yuzdeTr(veri.bant_hedef_pct)}`, referans: false },
   ];
   const aylar = veri.aylar ?? [];

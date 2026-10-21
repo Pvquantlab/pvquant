@@ -34,7 +34,7 @@ export function Altbilgi({ onPanel }: { onPanel?: () => void }) {
           <div>
             <a className="vt-logo" href="/"><GunesLogo />PVQuant</a>
             <p className="vt-alt__tanim">Saatlik üretim tahmini, <span className="vt-alt__vurgu">her gece sınanır.</span></p>
-            <p className="vt-alt__alt">Güneş santralleri için. Fizikten başlar, geçmişinizden öğrenir.</p>
+            <p className="vt-alt__alt">Güneş santralleri için. Santralinizin yapısından başlar, geçmiş üretiminizden öğrenir.</p>
           </div>
           <nav aria-label="Sayfa">
             <h2 className="vt-alt__baslik">Sayfa</h2>
