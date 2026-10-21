@@ -4,7 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
-import { hatYavasKayitli, heroBekle, heroHazirMi, heroHazirOldu, heroHazirSoz, levhaKuyruguBasladi, levhalarBittiAbone, levhalarBittiOldu, levhalarBittiSoz, posterYavasMi } from "../../src/features/vitrin/heroHazir.ts";
+import { hatYavasKayitli, hatiYenidenOlc, heroBekle, heroHazirMi, heroHazirOldu, heroHazirSoz, levhaKuyruguBasladi, levhalarBittiAbone, levhalarBittiOldu, levhalarBittiSoz, posterYavasMi, yavasKararKayittan } from "../../src/features/vitrin/heroHazir.ts";
 
 const oku = (yol: string) => readFileSync(new URL(yol, import.meta.url), "utf8");
 const yapi = oku("../../vite.config.ts");
@@ -210,7 +210,11 @@ test("kararlar: yavaş hatta video inmez; ilk oynatma poster karesinden, döngü
   assert.match(hh, /if \(e\) return kaydet\(e\.responseEnd - e\.startTime > YAVAS_POSTER_MS\);/, "kararı yalnız ağ ölçümü yazar");
   assert.match(hero, /yavasHat\.current = posterYavasMi\(new URL\(santralPoster, window\.location\.href\)\.href\);/);
   assert.match(oku("../../src/features/sayfalar/Digerleri.tsx"), /tahminlereGit\(\); startTransition\(\(\) => setKosuyor\(false\)\); return;/);
-  assert.match(hero, /if \(kisit \|\| yavasHat\.current \|\| mq\.matches\) return;/);
+  assert.match(hero, /if \(kisit \|\| mq\.matches\) return;/);
+  // 21.10: kayıttan gelen «yavaş» karar yeniden ölçülür (günde bir); ağ ölçümünden gelen karar kesindir
+  assert.match(hero, /if \(!yavasHat\.current\) sok = videoKur\(v\);\n\s*else if \(yavasKararKayittan\(\)\) \{\n\s*hatiYenidenOlc\(new URL\(santralPoster, window\.location\.href\)\.href\)\.then\(\(yavas\) => \{ if \(!birakildi && !yavas\) sok = videoKur\(v\); \}\);/);
+  assert.match(hh, /const YAVAS_YENIDEN_MS = 24 \* 3600 \* 1000;/);
+  assert.match(hh, /fetch\(adres, \{ cache: "reload", credentials: "omit" \}\)/, "yeniden ölçüm önbelleği atlar");
   assert.match(hero, /const ILK_BAS = 6\.0727;\nconst DONGU_BAS = 9\.009;\nconst DONGU_SON = 19\.0;/);
   assert.match(hero, /const basaSar = \(\) => \{ if \(!araliksiz\(\)\) v\.currentTime = ILK_BAS; \};/);
   assert.match(hero, /if \(t >= DONGU_SON\) \{ ilkTur = false; v\.currentTime = DONGU_BAS; return; \}/);
@@ -230,8 +234,10 @@ test("K1: kararı yalnız gövdesi aktarılmış ağ ölçümü yazar; önbellek
   try {
     assert.equal(posterYavasMi(A), false, "ilk ziyaret, girdi ve kayıt yok → video serbest");
     assert.equal(kayit(), undefined, "girdisiz yükleme yazmaz");
+    assert.equal(yavasKararKayittan(), true, "ölçüm yok → karar kayıttan (boş)");
     girdiler = [ag(3400)];                                       // soğuk 3G: ağdan 3,4 sn
     assert.equal(posterYavasMi(A), true);
+    assert.equal(yavasKararKayittan(), false, "ağ ölçümü → karar kesin, yeniden ölçülmez");
     const yavasKaydi = kayit();
     assert.equal(JSON.parse(yavasKaydi ?? "{}").y, true);
     const onbellek: [string, object[]][] = [
@@ -244,6 +250,7 @@ test("K1: kararı yalnız gövdesi aktarılmış ağ ölçümü yazar; önbellek
     for (const [ad, g] of onbellek) {
       girdiler = g;
       assert.equal(posterYavasMi(A), true, ad + ": kayıtlı «yavaş» okunur");
+      assert.equal(yavasKararKayittan(), true, ad + ": karar kayıttan → Hero yeniden ölçer");
       assert.equal(kayit(), yavasKaydi, ad + ": kayıt ezilmez");
     }
     girdiler = [{ startTime: 40, responseEnd: 40.4, transferSize: 0, encodedBodySize: 0, decodedBodySize: 0 }, ag(400)];
@@ -259,6 +266,46 @@ test("K1: kararı yalnız gövdesi aktarılmış ağ ölçümü yazar; önbellek
     assert.equal(posterYavasMi(A), false);
   } finally {
     for (const [ad, d] of [["localStorage", once.ls], ["performance", once.pf]] as const) {
+      if (d) Object.defineProperty(globalThis, ad, d); else delete (globalThis as Record<string, unknown>)[ad];
+    }
+  }
+});
+
+// 21.10 canlı bulgu: kayıttan okunan «yavaş» karar posteri önbelleksiz yeniden indirerek sınanır (günde bir).
+test("K1 yeniden ölçüm: yanlış «yavaş» kaydı ilk ziyarette düzelir; gerçek yavaş hat 24 saat tekrar indirmez; ağ hatası kaydı bozmaz", async () => {
+  const depo = new Map<string, string>();
+  let simdi = 0, indirme = 0, sureMs = 0, hata = false;
+  const once = { ls: Object.getOwnPropertyDescriptor(globalThis, "localStorage"), pf: Object.getOwnPropertyDescriptor(globalThis, "performance"), f: Object.getOwnPropertyDescriptor(globalThis, "fetch") };
+  Object.defineProperty(globalThis, "localStorage", { configurable: true, writable: true,
+    value: { getItem: (k: string) => depo.get(k) ?? null, setItem: (k: string, v: string) => { depo.set(k, v); } } });
+  Object.defineProperty(globalThis, "performance", { configurable: true, writable: true, value: { now: () => simdi, getEntriesByName: () => [] } });
+  Object.defineProperty(globalThis, "fetch", { configurable: true, writable: true,
+    value: async (_a: string, o: RequestInit) => { indirme++; assert.equal(o.cache, "reload"); if (hata) throw new Error("ağ yok"); simdi += sureMs; return { ok: true, arrayBuffer: async () => new ArrayBuffer(8) }; } });
+  const A = "https://pvquant.com/assets/santral-poster-AbC123.webp";
+  const kayit = () => JSON.parse(depo.get("pvq_yavas_hat") ?? "null") as { y?: boolean; t?: number; p?: number } | null;
+  try {
+    depo.set("pvq_yavas_hat", JSON.stringify({ y: true, t: Date.now() }));   // DevTools kısıtlamasında yazılmış yanlış karar
+    sureMs = 900;
+    assert.equal(await hatiYenidenOlc(A), false, "hızlı hat: karar düzelir");
+    assert.equal(indirme, 1);
+    assert.equal(kayit()?.y, false); assert.equal(typeof kayit()?.p, "number");
+    depo.set("pvq_yavas_hat", JSON.stringify({ y: true, t: Date.now() }));
+    sureMs = 3100;
+    assert.equal(await hatiYenidenOlc(A), true, "gerçek yavaş hat: karar kalır");
+    assert.equal(kayit()?.y, true);
+    const p = kayit()?.p; assert.equal(typeof p, "number");
+    assert.equal(await hatiYenidenOlc(A), true, "24 saat dolmadan yeniden indirilmez");
+    assert.equal(indirme, 2);
+    depo.set("pvq_yavas_hat", JSON.stringify({ y: true, t: Date.now(), p: Date.now() - 25 * 3600 * 1000 }));
+    sureMs = 500;
+    assert.equal(await hatiYenidenOlc(A), false, "24 saat geçince yeniden ölçülür");
+    assert.equal(indirme, 3);
+    depo.set("pvq_yavas_hat", JSON.stringify({ y: true, t: 123 }));
+    hata = true;
+    assert.equal(await hatiYenidenOlc(A), true, "ağ hatası: yavaş sayılır");
+    assert.deepEqual(kayit(), { y: true, t: 123 }, "ağ hatasında kayıt değişmez");
+  } finally {
+    for (const [ad, d] of [["localStorage", once.ls], ["performance", once.pf], ["fetch", once.f]] as const) {
       if (d) Object.defineProperty(globalThis, ad, d); else delete (globalThis as Record<string, unknown>)[ad];
     }
   }

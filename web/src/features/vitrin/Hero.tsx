@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type SyntheticEvent } from "react";
-import { heroBekle, heroHazirOldu, levhalarBittiAbone, posterYavasMi } from "./heroHazir";
+import { hatiYenidenOlc, heroBekle, heroHazirOldu, levhalarBittiAbone, posterYavasMi, yavasKararKayittan } from "./heroHazir";
 import { keskinGLGerekli, keskinGLKur, keskinYazilimKayitli } from "./keskinGL";
 import santral1440 from "./varlik/santral-1440.mp4";
 import santral1080 from "./varlik/santral-1080.mp4";
@@ -74,7 +74,19 @@ export function Hero({ kabuk = false }: { kabuk?: boolean } = {}) {
     const baglanti = (navigator as Navigator & { connection?: { effectiveType?: string; saveData?: boolean } }).connection;
     const kisit = !!baglanti && (baglanti.saveData === true || /(^|-)2g$|^3g$/.test(baglanti.effectiveType ?? ""));
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    if (kisit || yavasHat.current || mq.matches) return;       // video hiç inmez; poster sahnede kalır
+    if (kisit || mq.matches) return;                           // video hiç inmez; poster sahnede kalır
+    // 21.10: «yavaş» karar bu açılışın ağ ölçümünden geldiyse kesindir; eski kayıttan geldiyse (poster önbellekte) günde bir
+    // kez yeniden ölçülür (heroHazir.ts hatiYenidenOlc) — hat hızlıysa video kurulur, yavaşsa poster kalır.
+    let sok: (() => void) | null = null;
+    let birakildi = false;
+    if (!yavasHat.current) sok = videoKur(v);
+    else if (yavasKararKayittan()) {
+      hatiYenidenOlc(new URL(santralPoster, window.location.href).href).then((yavas) => { if (!birakildi && !yavas) sok = videoKur(v); });
+    }
+    return () => { birakildi = true; sok?.(); };
+  }, [posterHazir]);
+  /** Video kurulumu (kapılar geçildikten sonra): aralık, oynatma, görünürlük, levha bekleme. Sökücüyü döner. */
+  function videoKur(v: HTMLVideoElement): () => void {
     v.muted = true;                                            // tarayıcılar otomatik oynatmayı yalnız sessiz videoya verir
     // aralık yalnız 25,8 s'lik orijinal için; ≤760 px'teki 12 s'lik 1080p döngü zaten iyi bölümden kesilmiş — olduğu gibi döner
     const araliksiz = () => !(v.duration > DONGU_SON + 1);
@@ -130,7 +142,7 @@ export function Hero({ kabuk = false }: { kabuk?: boolean } = {}) {
       // bant paylaşmaya devam ediyordu. StrictMode'un deneme sökümünde öğe DOM'da kalır — dokunulmaz.
       if (!v.isConnected) { v.pause(); for (const s of [...v.querySelectorAll("source")]) s.remove(); v.removeAttribute("src"); v.load(); }
     };
-  }, [posterHazir]);
+  }
   return (
     <section className="vt-hero vt-hero--a vt-hero--video" aria-labelledby="vt-hero-baslik">
       {/* 14.10: videoya hafif keskinleştirme (SVG unsharp çekirdeği) — uzak panel sıraları 1440p'de yumuşak kalıyordu */}
