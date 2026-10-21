@@ -35,7 +35,7 @@ export function DortAdim({ onPanel }: { onPanel?: () => void }) {
       <div className="vt-kap">
         <div className="vt-bolum-bas">
           <p className="vt-eyebrow">Nasıl çalışır</p>
-          <h2 className="vt-h2" id="vt-adim-baslik">Tahmin dört adımda oluşur. <span className="vt-h2__soluk">Her adımını panelde izlersiniz.</span></h2>
+          <h2 className="vt-h2" id="vt-adim-baslik">Dört adımlı, denetlenebilir tahmin süreci. <span className="vt-h2__soluk">Her adım panelde.</span></h2>
         </div>
         <div className="vt-izgara vt-izgara--2 vt-adimlar">
           {ADIM.map((a, i) => (<Fragment key={a.no}>
