@@ -31,7 +31,7 @@ export function Yontem() {
         <section className="vt-yontem-giris">
           <div className="vt-kap vt-dar">
             <h1 className="vt-h1">Sayıların arkasındaki yöntem.</h1>
-            <p className="vt-giris">Vitrindeki ve paneldeki her doğruluk değeri aynı gece sürecinden çıkar. Bu sayfa o süreci, metrik tanımlarını ve sonuçların nasıl denetlenebileceğini açıklar — beyan değil, tarif.</p>
+            <p className="vt-giris">Bu sitedeki ve paneldeki her doğruluk değeri aynı gece sürecinden çıkar. Bu sayfa o süreci, metrik tanımlarını ve sonuçların nasıl denetlenebileceğini açıklar — beyan değil, tarif.</p>
           </div>
         </section>
 
@@ -75,7 +75,7 @@ export function Yontem() {
               </div>
               <div className="vt-gece-kart">
                 <h3 className="vt-h3">Denetlenebilirlik</h3>
-                <p>Vitrindeki Açık karne elle yazılmış değildir; kimlik doğrulaması gerektirmeyen bir uçtan canlı okunur. Aynı sayıları herkes, herhangi bir anda kendisi çekebilir:</p>
+                <p>Ana sayfadaki Açık karne elle yazılmış değildir; kimlik doğrulaması gerektirmeyen bir uçtan canlı okunur. Aynı sayıları herkes, herhangi bir anda kendisi çekebilir:</p>
                 <code className="vt-kod">GET /v1/dogrulama</code>
                 {dg && (
                   <p className="vt-kunye">şu an: {dg.santral_etiketi} · {dg.pencere_gun} sınav günü · ortalama sapma {yuzdeTr(dg.wmape_pct)}</p>
