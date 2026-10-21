@@ -75,7 +75,7 @@ export function TurkiyePiyasasi() {
             </article>
           ))}
         </div>
-        <p className="vt-not">Sapmanın TL karşılığı panelde, kendi santralinizin verisiyle hesaplanır.</p>
+        <p className="vt-not">Dengesizlik maliyetinin TL karşılığı panelde, kendi santralinizin verisiyle hesaplanır.</p>
       </div>
     </section>
   );

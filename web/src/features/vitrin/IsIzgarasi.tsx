@@ -20,7 +20,7 @@ const ISLER: readonly {
 }[] = [
   {
     masa: "Program teslimi",
-    sonuc: "Üretim programınız (KGÜP) teslim saatinden önce hazır olsun",
+    sonuc: "Üretim programınız (KGÜP) zamanında hazır olsun",
     fayda: "Yarının saatlik programı panelden dosya olarak iner (CSV/XLSX, toplayıcınızın şablonuna uygun); gün içi düzeltme fırsatları izlenir.",
     kunye: [["Hazır", "bir gün önce, öğleden sonra"], ["Çözünürlük", "saatlik ya da 15 dakika"]],
     bag: ["/yontem#para", "Panelde nasıl görünür"],
@@ -31,7 +31,7 @@ const ISLER: readonly {
     sonuc: "Gün öncesi teklifinizi doğru seviyeden verin",
     fayda: "Gün öncesi piyasaya hangi miktarı teklif etmeniz gerektiği panelde önerilir; dengesizlik maliyetiniz her gün TL olarak görünür.",
     kunye: [["Teklif", "önerilen seviye"], ["Dengesizlik", "TL · gün gün"]],
-    bag: ["/yontem#para", "Sapmanın TL hesabı"],
+    bag: ["/yontem#para", "Dengesizlik maliyetinin hesabı"],
     grup: "tahmin", ikon: "aylik", resim: isTicaret,
   },
   {

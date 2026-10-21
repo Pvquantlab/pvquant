@@ -99,7 +99,7 @@ test("kanıt şeridi: uydurma hedef yok; kapalı/hata tek güçlü dilde, zayıf
 test("Türkiye piyasası: elle yazılmış TL ve kurulu güç dipnotu yok", () => {
   const piyasa = oku("../../src/features/vitrin/TurkiyePiyasasi.tsx");
   assert.doesNotMatch(piyasa, /25,4 bin TL|4,5 MW/);
-  assert.match(piyasa, /Sapmanın TL karşılığı panelde, kendi santralinizin verisiyle hesaplanır\./);
+  assert.match(piyasa, /Dengesizlik maliyetinin TL karşılığı panelde, kendi santralinizin verisiyle hesaplanır\./);
   assert.match(piyasa, /id="para"/);
 });
 
