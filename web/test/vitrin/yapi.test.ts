@@ -128,7 +128,7 @@ test("başvuru: hitap 'siz', bal küpü yerinde, uç aynı; SSS altı soru (Ö13
     .map((g) => readFileSync(new URL(g.name, vitrinKok), "utf8")).join("\n");
   assert.doesNotMatch(tum, /Kendi karneni başlat/);
   assert.equal((oku("../../src/features/vitrin/Sss.tsx").match(/^\s*\["/gm) ?? []).length, 6);
-  assert.match(oku("../../src/features/vitrin/Sss.tsx"), /Modelinize neden güvenelim\?/);
+  assert.match(oku("../../src/features/vitrin/Sss.tsx"), /Tahminlerinize neden güvenelim\?/);
 });
 
 test("disiplin dipnotu otomasyon iddia etmez; sayım kuralını açıkça söyler (inceleme C1)", () => {

@@ -28,8 +28,8 @@ export function DisiplinBandi() {
             </div>
           ))}
         </div>
-        <p className="vt-kunye vt-disiplin__kunye">04.10.2026 itibarıyla · kaynak: depo, test takımı ve bulgu defteri</p>
-        <p className="vt-kunye vt-disiplin__dipnot" id="vt-dipnot-1">Sayım kuralı: 04.10.2026 sürümündeki iki test takımının (hesap hattı + arayüz) toplamı, aşağı yuvarlanmış; her sürümde iki takım da baştan sona koşar.</p>
+        <p className="vt-kunye vt-disiplin__kunye">04.10.2026 itibarıyla · kaynak: yazılım deposu, otomatik test takımı ve bulgu kayıt defteri</p>
+        <p className="vt-kunye vt-disiplin__dipnot" id="vt-dipnot-1">Sayım kuralı: 04.10.2026 sürümündeki iki test takımının (hesaplama motoru + arayüz) toplamı, aşağı yuvarlanmış; her sürümde iki takım da baştan sona koşar.</p>
       </div>
     </section>
   );

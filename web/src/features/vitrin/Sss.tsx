@@ -14,7 +14,7 @@ const SORULAR = [
    "Tüm doğruluk değerleri ölçüme dayanır: tahminler her gece, gerçekleşen üretimle aynı yöntemle karşılaştırılır; sonuçlar panelde birikir ve geçmiş kayıtlar değiştirilemez. Bu sayfadaki Açık karne, aynı hesaplamanın kamuya açık örneğidir; yöntem tanımları karne bloğunun hemen altında yer alır."],
   ["Verilerimizin güvenliği nasıl sağlanıyor?",
    "Verileriniz kurumunuza aittir; dilediğiniz zaman tamamını dışa aktarabilir veya silebilirsiniz. Hesaplar birbirinden yalıtılmıştır; kurumlar arası paylaşım yalnızca sizin onayınızla açılır ve tüm erişimler denetim kaydına işlenir. Veri iletimi TLS ile şifrelenir."],
-  ["Modelinize neden güvenelim?",
+  ["Tahminlerinize neden güvenelim?",
    <>Tahminin nasıl oluştuğu açıktır: santralinizin yapısından başlar, geçmiş üretiminizle size özel ayarlanır, iyimser–kötümser aralık geçmiş hatalara göre kurulur ve her gece sonuç ölçülür. Güven bizden değil karneden gelir: tahmin her gece basit yönteme ve sıkı referansa karşı aynı kuralla sınanır; geçmiş değiştirilmez. Referans santralin karnesi 30 sınav günü dolduğunda <a className="vt-bag vt-bag--metin" href="#karne">bu sayfadaki Açık karnede</a> herkese açıktır.</>],
 ] as const satisfies readonly (readonly [string, ReactNode])[];
 

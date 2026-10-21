@@ -19,7 +19,7 @@ const ILKELER = [
   "Geçmiş sonuç değiştirilmez; yenisi eklenir",
   "Kurumlar arası paylaşım yalnız sizin izninizle açılır ve denetim iziyle kayda geçer",
   "Hava tahmini bir aya uzatılmaz — aylık beklenti iklim geçmişinden gelir",
-  "Vitrin vaat etmez; karne panelde canlıdır",
+  "Bu sayfa vaat etmez; karne panelde canlıdır",
 ] as const;
 
 /** Altbilgi (v2.384, V1 geniş site haritası — yalnız bugün var olan yüzeyler, R18). 13.10 jua kalıbı: ikonsuz büyük harf
