@@ -59,7 +59,7 @@ function DurumSatiri({ tur }: { tur: "yukleniyor" | "kapali" | "hata" }) {
     <div className="vt-durum">
       <div>
         <span className="vt-cip">karne disiplini</span>
-        <p className="vt-durum__baslik">Her gece bir sınav, her sabah bir karne.</p>
+        <p className="vt-durum__baslik">Tahmin doğruluğumuz her gün ölçülür ve kayda geçer.</p>
         <div className="vt-alanlar">
           <span className="vt-alanlar__et">yayın açılınca</span>
           {ALANLAR.map((a) => <span key={a} className="vt-alan">{a}</span>)}
