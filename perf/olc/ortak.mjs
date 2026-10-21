@@ -24,6 +24,7 @@ export const HEDEFLER = {
   canli: { yok: "https://pvquant.com" },
   // 20.10 (Fable 5, Linux bulut): once = 1494f8e (canlı v2.461 + perf verisi), T=18; sonra = çalışma ağacı, T=28
   "fable5-once":  { yok: "https://localhost:18443", hizli3g: "https://localhost:19443", yavas4g: "https://localhost:20443", kablo20: "https://localhost:22443", spki: ".replika/fable5-once/spki.txt" },
+  "fable5-icerik": { yok: "https://localhost:38443", hizli3g: "https://localhost:39443", yavas4g: "https://localhost:40443", spki: ".replika/fable5-icerik/spki.txt" },   // 21.10 içerik turu (çalışma ağacı), T=38
   "fable5-sonra": { yok: "https://localhost:28443", hizli3g: "https://localhost:29443", yavas4g: "https://localhost:30443", kablo20: "https://localhost:32443", spki: ".replika/fable5-sonra/spki.txt" },
   // Faz 3 ara ölçümleri (tek düzeltmenin etkisini ayırmak için; T=38/48)
   araa:  { yok: "https://localhost:38443", hizli3g: "https://localhost:39443", yavas4g: "https://localhost:40443", spki: ".replika/araa/spki.txt" },

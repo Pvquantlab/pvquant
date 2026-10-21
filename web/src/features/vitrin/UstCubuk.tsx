@@ -27,11 +27,11 @@ const PANELLER: readonly Panel[] = [
       ] },
       { ad: "Kanıt", rozet: "kanit", ogeler: [
         { ad: "Doğruluk karnesi", aciklama: "Tahmin her gece gerçekleşenle karşılaştırılır; sonuç değiştirilmez", ikon: "karne" },
-        { ad: "Kalibrasyon", aciklama: "Üretim verinizle santralinize özgü model; kayıp ağacı ve güç matrisi", ikon: "kalibrasyon" },
+        { ad: "Kalibrasyon", aciklama: "Üretim verinizle tahmin santralinize özel ayarlanır; kayıp kalemleri ve güç tablosu", ikon: "kalibrasyon" },
       ] },
       { ad: "Operasyon", rozet: "operasyon", ogeler: [
         { ad: "Portföy", aciklama: "Bütün santralleriniz tek tabloda; sapma ve uyarı öne çıkar", ikon: "portfoy" },
-        { ad: "Alarmlar", aciklama: "Veri gelmedi, isabet düştü, KGÜP penceresi kaçtı… sekiz kural", ikon: "alarm" },
+        { ad: "Alarmlar", aciklama: "Veri gelmedi, doğruluk düştü, KGÜP teslim saati kaçtı… sekiz kural", ikon: "alarm" },
         { ad: "Raporlar", aciklama: "16 sayfalık PDF, Excel doğruluk şeridi, şemalı JSON", ikon: "rapor" },
       ] },
       { ad: "Veri", rozet: "veri", ogeler: [
@@ -55,8 +55,8 @@ const PANELLER: readonly Panel[] = [
   {
     ad: "Türkiye piyasası", alt: ["Türkiye piyasası bölümü", "/yontem#para"], gruplar: [
       { ad: "Program", rozet: "tahmin", ogeler: [
-        { ad: "Üretim programı (KGÜP)", aciklama: "Program her gün hazır; teslim penceresi ve revizyon kapısı izlenir", hedef: "/yontem#para" },
-        { ad: "Dengesizlik maliyeti (TL)", aciklama: "Tahmin hatasının gün gün TL karşılığı, basit yöntemle kıyaslı", hedef: "/yontem#para" },
+        { ad: "Üretim programı (KGÜP)", aciklama: "Program her gün hazır; teslim saati ve gün içi düzeltme fırsatı izlenir", hedef: "/yontem#para" },
+        { ad: "Dengesizlik maliyeti (TL)", aciklama: "Tahmin hatasının her gün TL karşılığı, basit yöntemle kıyaslı", hedef: "/yontem#para" },
       ] },
       { ad: "Bağlantı", rozet: "veri", ogeler: [
         { ad: "Toplayıcı / DSG şablonları", aciklama: "Saatlik ya da 15 dakikalık şablona tek tıkla dışa aktarım", hedef: "/yontem#para" },

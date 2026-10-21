@@ -24,18 +24,18 @@ const KARTLAR: readonly {
   { ad: "Teslim programı", etiket: "D‑1 · teslim penceresi", resim: tlTeslim,
     metin: "Yarının saatlik programı ve emre amadelik bildirimi teslim penceresi kapanmadan hazırdır; bir gecikme olursa alarm sizi uyarır.",
     kunye: ["saatlik", "emre amadelik", "alarm çalar"] },
-  { ad: "Sapma maliyeti", etiket: "Ay boyunca · gün gün", resim: tlSapma,
+  { ad: "Dengesizlik maliyeti", etiket: "Ay boyunca · gün gün", resim: tlSapma,
     metin: "Tahmin hatasının size aylık kaç TL'ye mal olduğunu, basit yönteme göre farkı ve teminata etkisini tek yerde görürsünüz.",
     kunye: ["TL · aylık", "basit yönteme karşı", "teminat etkisi"] },
-  { ad: "Şablonlu dışa verim", etiket: "Teslimle birlikte", resim: tlSablon,
+  { ad: "Hazır şablonla dışa aktarım", etiket: "Teslimle birlikte", resim: tlSablon,
     metin: "Tahmin aralığını toplayıcınızın ya da DSG'nin şablonunda indirirsiniz; biçimi elle düzeltmeniz gerekmez. İsterseniz API anahtarıyla doğrudan sisteminize akar.",
     kunye: ["CSV · XLSX", "saatlik ya da 15 dk", "API anahtarı"] },
-  { ad: "Alarm kütüphanesi", etiket: "Gece ve gündüz", resim: tlAlarm, genis: true,
+  { ad: "Alarm kuralları", etiket: "Gece ve gündüz", resim: tlAlarm, genis: true,
     metin: "Gece ekrana kimse bakmazken kurallar bakar. Sabah ilk iş gece karnesini ve açık alarmları görürsünüz.",
     kunye: ["8 kural", "veri · teslim · performans", "gece karnesi"] },
-  { ad: "Gün içi aralık", etiket: "Sabah koşusundan itibaren", resim: tlAralik, genis: true,
-    metin: "İyimser–kötümser bant gün içinde güncellendikçe önceki hâlleri izde kalır; sabah koşusu bitince webhook sisteminize haber verir.",
-    kunye: ["iyimser–kötümser", "gün içi revizyon", "sabah webhook’u"] },
+  { ad: "Gün içi güncelleme", etiket: "Sabah koşusundan itibaren", resim: tlAralik, genis: true,
+    metin: "İyimser–kötümser aralık gün içinde güncellendikçe önceki hâlleri kayıtta kalır; sabah hesabı bitince sisteminize otomatik bildirim gider.",
+    kunye: ["iyimser–kötümser", "gün içi güncelleme", "sabah bildirimi (webhook)"] },
 ];
 
 export function TurkiyePiyasasi() {
@@ -57,8 +57,8 @@ export function TurkiyePiyasasi() {
       <div className="vt-kap">
         <div className="vt-para-ust">
           <div className="vt-bolum-bas">
-            <h2 className="vt-h2" id="vt-para-baslik">Tahmin hatasının maliyetini TL olarak görün.</h2>
-            <p className="vt-giris">Elektrik piyasasında her santral, ertesi gün ne üreteceğini önceden bildirmekle yükümlüdür; gerçekleşen üretim bu programdan saptığında aradaki fark santrale fatura edilir. PVQuant üretim programınızı hazırlar, gün içi güncelleme fırsatlarını izler ve sapmanın size maliyetini her gün TL olarak raporlar.</p>
+            <h2 className="vt-h2" id="vt-para-baslik">Dengesizlik maliyetinizi her gün TL olarak görün.</h2>
+            <p className="vt-giris">Elektrik piyasasında her santral, ertesi gün saat saat ne üreteceğini önceden bildirir: üretim programı (KGÜP). Gerçekleşen üretim bu programdan saptığında aradaki fark dengesizlik maliyeti olarak santrale yansır. PVQuant programınızı hazırlar, gün içi düzeltme fırsatlarını izler ve dengesizliğin size maliyetini her gün TL olarak raporlar.</p>
           </div>
           <div className="vt-sahne vt-sahne--resim" aria-hidden="true">
             <Levha src={tlSahne} alt="" width="2000" height="2000" loading="lazy" decoding="async"
@@ -75,7 +75,7 @@ export function TurkiyePiyasasi() {
             </article>
           ))}
         </div>
-        <p className="vt-not">Sapmanın TL karşılığı panelde, kendi santralinizin verisiyle hesaplanır.</p>
+        <p className="vt-not">Dengesizlik maliyetinin TL karşılığı panelde, kendi santralinizin verisiyle hesaplanır.</p>
       </div>
     </section>
   );

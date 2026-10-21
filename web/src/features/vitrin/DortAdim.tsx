@@ -15,18 +15,18 @@ import { Levha } from "./Levha";
  *  üstünlük iddiası olmadan). Kart eylemlidir (vt-kart--bag, R21); "Panelde: …" satırı panel
  *  girişini açar (R18). Cümleler v2.383 vitrinindeki KATMANLAR'dan aynen. */
 const AYNA = [
-  ["Işınımı MWh'e kim çeviriyor?", "Saatlik P10/P50/P90 üretim aralığı, 15 güne dek."],
-  ["Tahmin tuttu mu, kim hesaplıyor?", "Her gece gerçekleşenle karşılaştırılır; sonuç panelde gün gün birikir."],
-  ["Sapmanın bedelini ne zaman görüyorsunuz?", "Dengesizlik maliyetinin TL karşılığı panelde gün gün, teklif kantili önerisiyle."],
+  ["Hava tahminini üretime kim çeviriyor?", "Her saat için iyimser, beklenen ve kötümser üretim; 15 gün ileriye."],
+  ["Tahmin tuttu mu, kim ölçüyor?", "Her gece gerçekleşen üretimle karşılaştırılır; sonuç panelde gün gün birikir."],
+  ["Dengesizlik maliyetini ne zaman görüyorsunuz?", "Panelde her gün TL olarak; gün öncesi teklifinizi hangi seviyeden vermeniz gerektiği önerisiyle."],
 ] as const;
 const ADIM: readonly {
   no: string; baslik: string; cumle: ReactNode; etiket: string;
   levha: string; grup: RozetGrubu; ikon: RozetIkonu;
 }[] = [
-  { no: "01 / 04", baslik: "Fizik modeli", cumle: "Santralin geometrisinden yola çıkar — panel eğimi, tavan, kayıplar.", etiket: "Panelde: Kalibrasyon", levha: levhaFizik, grup: "kanit", ikon: "kalibrasyon" },
-  { no: "02 / 04", baslik: "Öğrenen model", cumle: "Fiziğin gözden kaçırdığını santralin kendi geçmişinden öğrenir.", etiket: "Panelde: Kalibrasyon", levha: levhaOgrenen, grup: "kanit", ikon: "kalibrasyon" },
-  { no: "03 / 04", baslik: "Dürüst aralık", cumle: <>Tek sayı değil, gerçek hatayla ayarlanmış <a className="vt-bag vt-bag--metin" href="/yontem#yt-tanimlar">iyimser–kötümser bandı</a> verir.</>, etiket: "Panelde: Tahminler", levha: levhaAralik, grup: "tahmin", ikon: "band" },
-  { no: "04 / 04", baslik: "Gece karnesi", cumle: "Her gece tahmin gerçekleşenle yüzleşir; kanıt birikir.", etiket: "Panelde: Doğruluk", levha: levhaKarne, grup: "kanit", ikon: "karne" },
+  { no: "01 / 04", baslik: "Santralinizin yapısı", cumle: "Panel eğimi ve yönü, kurulu güç, inverter sınırı ve kayıplar: tahmin, santralinizin kendi özelliklerinden başlar.", etiket: "Panelde: Kalibrasyon", levha: levhaFizik, grup: "kanit", ikon: "kalibrasyon" },
+  { no: "02 / 04", baslik: "Geçmiş üretiminiz", cumle: "Santralinizin geçmiş üretim verisiyle tahmin size özel ayarlanır; her yeni gün bu ayarı keskinleştirir.", etiket: "Panelde: Kalibrasyon", levha: levhaOgrenen, grup: "kanit", ikon: "kalibrasyon" },
+  { no: "03 / 04", baslik: "İyimser–kötümser aralık", cumle: <>Tek bir sayı değil, geçmiş hatalara göre ayarlanmış bir <a className="vt-bag vt-bag--metin" href="/yontem#yt-tanimlar">iyimser–kötümser aralık</a>: programı hangi seviyeden vereceğinizi siz seçersiniz.</>, etiket: "Panelde: Tahminler", levha: levhaAralik, grup: "tahmin", ikon: "band" },
+  { no: "04 / 04", baslik: "Her gece sınav", cumle: "Günün tahmini gerçekleşen üretimle karşılaştırılır; doğruluk karneniz gün gün birikir.", etiket: "Panelde: Doğruluk", levha: levhaKarne, grup: "kanit", ikon: "karne" },
 ];
 
 export function DortAdim({ onPanel }: { onPanel?: () => void }) {
@@ -35,7 +35,7 @@ export function DortAdim({ onPanel }: { onPanel?: () => void }) {
       <div className="vt-kap">
         <div className="vt-bolum-bas">
           <p className="vt-eyebrow">Nasıl çalışır</p>
-          <h2 className="vt-h2" id="vt-adim-baslik">Tahmin dört adımda doğar. <span className="vt-h2__soluk">Her adımı panelde görünür.</span></h2>
+          <h2 className="vt-h2" id="vt-adim-baslik">Dört adımlı, denetlenebilir tahmin süreci. <span className="vt-h2__soluk">Her adım panelde.</span></h2>
         </div>
         <div className="vt-izgara vt-izgara--2 vt-adimlar">
           {ADIM.map((a, i) => (<Fragment key={a.no}>
@@ -61,7 +61,7 @@ export function DortAdim({ onPanel }: { onPanel?: () => void }) {
             </article>
           </Fragment>))}
         </div>
-        <p className="vt-not vt-adim__cikis">Zincirin çıkışı teslim kanallarıdır — TPYS&#39;ye öneri CSV, toplayıcıya CSV/XLSX, REST API ve sabah webhook&#39;u; <a className="vt-bag vt-bag--metin" href="#isler">masanıza göre ayrıntısı iş kartlarında</a>.</p>
+        <p className="vt-not vt-adim__cikis">Sonuç, kullandığınız kanala gider: üretim programı dosyası (CSV/XLSX, toplayıcı şablonuna uygun), doğrudan sisteminize API ile ve her sabah otomatik bildirimle; <a className="vt-bag vt-bag--metin" href="#isler">işinize göre ayrıntısı iş kartlarında</a>.</p>
         <div className="vt-ayna" role="table" aria-label="Tahmini kendiniz işlerseniz ve PVQuant ile karşılaştırması">
           <div className="vt-ayna__bas" role="row">
             <span role="columnheader">Tahmini kendiniz işlerseniz</span>

@@ -19,7 +19,7 @@ export function AcikKarne({ durum }: { durum: DogrulamaDurumu }) {
           <div className="vt-bolum-bas">
             <p className="vt-eyebrow">Doğruluk</p>
             <h2 className="vt-h2" id="vt-karne-baslik"><span className="vt-h2__soluk">Sözümüze değil,</span> karneye bakın.</h2>
-            <p className="vt-giris">Sistem her gece tahminini gerçekleşen üretimle karşılaştırır. Sonuç saklanmaz, süslenmez — panelde gün gün birikir.</p>
+            <p className="vt-giris">Her gece günün tahmini gerçekleşen üretimle karşılaştırılır. Sonuç gizlenmez, düzeltilmez; panelde gün gün birikir.</p>
           </div>
           <div className="vt-karne-pencere">
             <ReferansEgri veri={null} />
@@ -52,13 +52,13 @@ function KilitliKarne() {
     <div className="vt-karne">
       <div className="vt-karne__bas">
         <h3 className="vt-h3">Açık karne — Referans santral · 10 MW üzeri · İç Anadolu</h3>
-        <span className="vt-kunye">yayın için en az 30 sınav günü · 0–24 saat ufku</span>
+        <span className="vt-kunye">Yayın koşulu: en az 30 sınav günü · Tahmin ufku: 0–24 saat</span>
       </div>
       <div className="vt-kilitli">
         <div className="vt-kilitli__sol">
           <span className="vt-kilitli__kilit"><MenuIkon ad="kilit" /></span>
-          <p className="vt-kilitli__baslik">Yayın, 30. sınav gününde açılır.</p>
-          <p className="vt-kilitli__cumle">30 sınav günü dolunca dört değer — PVQuant, basit yöntem, sıkı referans, bant kapsaması — ve aylık tablo burada görünür.</p>
+          <p className="vt-kilitli__baslik">Açık karne, 30 sınav günü tamamlandığında yayımlanır.</p>
+          <p className="vt-kilitli__cumle">30 sınav günü tamamlandığında dört değer (PVQuant, basit yöntem, sıkı referans, bant kapsaması) ve aylık tablo bu alanda yayımlanır.</p>
         </div>
         <dl className="vt-kilitli__tanimlar">
           {KISA_TANIMLAR.map(([ad, tanim]) => (
@@ -75,7 +75,7 @@ function KarneKutusu({ veri }: { veri: Dogrulama }) {
   const degerler = [
     { ad: "PVQuant", deger: yuzdeTr(veri.wmape_pct), alt: "saatlik ortalama sapma", referans: false },
     { ad: "Basit yöntem", deger: yuzdeTr(veri.naif_wmape_pct), alt: "dünü tekrarlar", referans: true },
-    { ad: "Sıkı referans", deger: yuzdeTr(veri.siki_referans_wmape_pct), alt: "iklim + akıllı süreklilik", referans: true },
+    { ad: "Sıkı referans", deger: yuzdeTr(veri.siki_referans_wmape_pct), alt: "iklim beklentisi + süreklilik", referans: true },
     { ad: "Bant kapsaması", deger: yuzdeTr(veri.bant_kapsama_pct), alt: `hedef ${yuzdeTr(veri.bant_hedef_pct)}`, referans: false },
   ];
   const aylar = veri.aylar ?? [];

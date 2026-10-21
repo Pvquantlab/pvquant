@@ -20,32 +20,32 @@ const ISLER: readonly {
 }[] = [
   {
     masa: "Program teslimi",
-    sonuc: "Programı teslim penceresi kapanmadan verin",
-    fayda: "Program dosyanız TPYS'ye öneri CSV, toplayıcıya CSV/XLSX olarak panelden iner; gün içi revizyon penceresi izlenir.",
-    kunye: [["Dosya", "D‑1 öğleden sonra"], ["Dilim", "saatlik ya da 15 dk"]],
+    sonuc: "Üretim programınız (KGÜP) zamanında hazır olsun",
+    fayda: "Yarının saatlik programı panelden dosya olarak iner (CSV/XLSX, toplayıcınızın şablonuna uygun); gün içi düzeltme fırsatları izlenir.",
+    kunye: [["Hazır", "bir gün önce, öğleden sonra"], ["Çözünürlük", "saatlik ya da 15 dakika"]],
     bag: ["/yontem#para", "Panelde nasıl görünür"],
     grup: "tahmin", ikon: "band", resim: isTeslim,
   },
   {
     masa: "Ticaret masası",
-    sonuc: "Teklifi önerilen kantille verin",
-    fayda: "Gün öncesi teklif için önerilen kantil panelde; sapmanın TL karşılığı gün gün.",
-    kunye: [["Teklif", "önerilen kantil"], ["Sapma", "TL · gün gün"]],
-    bag: ["/yontem#para", "Sapmanın TL hesabı"],
+    sonuc: "Gün öncesi teklifinizi doğru seviyeden verin",
+    fayda: "Gün öncesi piyasaya hangi miktarı teklif etmeniz gerektiği panelde önerilir; dengesizlik maliyetiniz her gün TL olarak görünür.",
+    kunye: [["Teklif", "önerilen seviye"], ["Dengesizlik", "TL · gün gün"]],
+    bag: ["/yontem#para", "Dengesizlik maliyetinin hesabı"],
     grup: "tahmin", ikon: "aylik", resim: isTicaret,
   },
   {
     masa: "Operasyon nöbeti",
-    sonuc: "Nöbeti kurallar tutsun, sabah karne hazır olsun",
-    fayda: "Alarm kütüphanesi veri, teslim ve performans nöbetini tutar; gece karnesi her sabah hazırdır.",
-    kunye: [["Alarm kuralı", "8"], ["Akış", "REST API · sabah webhook'u"]],
+    sonuc: "Geceyi kurallar beklesin, sabah karne hazır olsun",
+    fayda: "Veri kesildi mi, program teslim edildi mi, üretim beklenenin altında mı: sekiz alarm kuralı sizin yerinize izler; sabah karne hazırdır.",
+    kunye: [["Alarm kuralı", "8"], ["Bildirim", "API · her sabah otomatik"]],
     bag: ["#karne", "Gece karnesine bakın"],
     grup: "operasyon", ikon: "alarm", resim: isNobet,
   },
   {
     masa: "Finansman dosyası",
-    sonuc: "Beklentiyi bileşenleriyle raporlayın",
-    fayda: "P50/P90 üretim beklentisi bileşenlerine ayrılmış belirsizlik bütçesiyle hesaplanır — dosya bağımsız doğrulamaya hazır biçimde.",
+    sonuc: "Yatırımcıya ve bankaya üretim beklentisini raporlayın",
+    fayda: "Beklenen (P50) ve güvenli (P90) üretim, belirsizliğin nereden geldiği kalem kalem gösterilerek hesaplanır; dosya bağımsız denetime hazırdır.",
     kunye: [["Beklenti", "P50/P90"], ["Ölçüt", "IEC 61724 · ASTM E2848"]],
     bag: ["/yontem", "Yöntemin tamamı"],
     grup: "kanit", ikon: "rapor", resim: isFinansman,
@@ -58,8 +58,8 @@ export function IsIzgarasi() {
       <div className="vt-kap">
         <div className="vt-bolum-bas">
           <p className="vt-eyebrow">Kimin için</p>
-          <h2 className="vt-h2" id="vt-isler-baslik">Hangi iş için?</h2>
-          <p className="vt-giris">Aynı tahmin hattı dört masaya dört ayrı dille hizmet eder. Dördü de bugün panelde.</p>
+          <h2 className="vt-h2" id="vt-isler-baslik">Dört iş birimi, tek tahmin altyapısı.</h2>
+          <p className="vt-giris">Program teslimi, ticaret masası, operasyon ve finansman aynı tahminden beslenir. Dördü de bugün panelde.</p>
         </div>
         <div className="vt-izgara vt-izgara--4 vt-isler">
           {ISLER.map((is, i) => (
