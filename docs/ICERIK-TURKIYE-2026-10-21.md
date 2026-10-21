@@ -99,6 +99,37 @@ beş sorusu (zaten düz dil), /yontem'in yöntem bölümleri (teknik okur için 
 - Tolerans oranları (%8 güneş) metne alınmadı; EPDK kararıyla değişiyor.
 - /yontem'in yöntem/metrik bölümleri teknik kaldı; hedef okuru o.
 
-## 5. Kontroller
+## 5. Kontroller (hepsi bulut oturumunda çalıştırıldı)
 
-(ekran görüntüleri bitince doldurulacak)
+| Kontrol | Sonuç |
+|---|---|
+| `npm test` (71 test; gizlilik/yapı/mantık/tıklama pinleri dahil) | **71/71** — her metin commit'inden sonra tekrar koştu (adfe316, 9005517, 111780a) |
+| `npx tsc --noEmit`, `npm run build`, `npx oxlint src/features` | 0 / 0 / 0 (oxlint'teki 2 uyarı önceden var, dokunulmayan dosyada) |
+| Yasak terim taraması (`gizlilik.test`: yöntem ve kaynak adları, «şeffaf») | geçti; yeni metinlerde yöntem/kütüphane/kaynak adı yok |
+| CDP taraması (`pvquant-tasarim/betikler/tarama.mjs`; «/» ve «/yontem», 320/375/390/768/1081/1440/1920 px) | **taşma 0, çift id 0, isimsiz etkileşimli 0, alt'sız görsel 0**; küçük dokunma hedefi (<44 px) sayıları önceki derlemeyle birebir aynı (ana 7/8/8, /yontem 1 — önceden var, bu turun konusu değil); son derleme 111780a'da tekrar: temiz |
+| Ekran görüntüleri — önce (2cb5fbf) ↔ sonra (adfe316): Chromium 156, Firefox 157, WebKit 27.2 × 390/768/1440/1920 × «/», «/yontem», giriş (2 × 60 görüntü, hareket azaltma kipinde) | Kırpılan/üst üste binen metin yok; kart ızgaraları eşit yükseklikte; üç motorda sayfa yüksekliği ±2 px aynı (aşağıdaki tablo) |
+| Son derleme (111780a) Chromium 390/1440 görüntüleri + gözle kontrol (hero, Dört adım, Hangi iş için, /yontem Türkiye piyasası, altbilgi) | Düzgün; iş kartı başlıkları 1440'ta dörtte de 3 satır; hero girişi 390'da 7 satır, 1440'ta 6 satır |
+
+**Sayfa yüksekliği önce → sonra (CSS px; metin uzadıkça sayfa uzar — düzen değişmedi):**
+
+| Motor | Görünüm | «/» | «/yontem» |
+|---|---|---:|---:|
+| Chromium | 390×844 | 12 539 → 12 887 (son 111780a: 12 860) | 8 853 → 8 853 |
+| Chromium | 768×1024 | 10 225 → 10 487 | 6 955 → 7 050 |
+| Chromium | 1440×900 | 7 611 → 7 723 (son: 7 718) | 5 188 → 5 188 |
+| Chromium | 1920×1080 | 7 701 → 7 813 | 5 218 → 5 231 |
+| Firefox | 390 / 768 / 1440 / 1920 | 12 540 → 12 888 · 10 226 → 10 489 · 7 612 → 7 724 · 7 702 → 7 814 | 8 853 → 8 853 · 6 955 → 7 051 · 5 188 → 5 188 · 5 218 → 5 231 |
+| WebKit | 390 / 768 / 1440 / 1920 | 12 542 → 12 890 · 10 227 → 10 512 · 7 613 → 7 725 · 7 702 → 7 814 | 8 853 → 8 853 · 6 955 → 7 073 · 5 188 → 5 188 · 5 218 → 5 231 |
+
+Artış kaynağı: hero girişi (+1 satır dar ekranda; sonra 1 cümle kısaltıldı), Dört adım ve iş kartlarının açıklama cümleleri (+1–2 satır),
+ayna tablosu cevapları. Hiçbir bileşen eklenmedi/çıkarılmadı; CSS değişmedi.
+
+**Bu turda yapılmayan kontroller:** gerçek Safari/iOS ve Android cihaz (Linux WebKit/Chromium kullanıldı), panel içi metinler
+(kapsam dışı), canlıya alma (ssh bulutta yok; `git pull && docker compose build web && docker compose up -d` yerel oturumdan).
+Ham veri: `perf/analiz/fable5-icerik/` (depo dışı; görüntüler 2 × 60 + 2 × 10, tarama JSON'ları).
+
+## 6. Ortam ve teslim
+
+Bu turun bütün adımları (araştırma, kod incelemesi, metin düzenlemesi, testler, derleme, ekran görüntüleri, rapor) bulut
+oturumunda yapıldı; yerel oturum kullanılmadı. Bulut kredi tüketimi bu ortamdan okunamıyor (**doğrulanamadı**). Commit'ler:
+adfe316 (metinler), 9005517 (başlık kısaltma + «dengesizlik» tutarlılığı), 111780a (hero girişi kısaltma), rapor commit'i. PR #9.
