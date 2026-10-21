@@ -65,22 +65,49 @@ export function levhalarBittiAbone(d: () => void): () => void {
 const YAVAS_POSTER_MS = 2000;
 const YAVAS_KAYIT = "pvq_yavas_hat";
 const YAVAS_OMUR_MS = 7 * 24 * 3600 * 1000;
-export function hatYavasKayitli(): boolean {
-  try {
-    const k = JSON.parse(localStorage.getItem(YAVAS_KAYIT) ?? "null") as { y?: boolean; t?: number } | null;
-    return !!k && k.y === true && typeof k.t === "number" && Date.now() - k.t < YAVAS_OMUR_MS;
-  } catch { return false; }
+/** 21.10 (canlı bulgu): «yavaş» kaydı poster önbellekten geldiği sürece (1 yıl, immutable) hiç yenilenmiyordu — DevTools
+ *  kısıtlamasıyla yapılan tek bir ölçüm 7 gün boyunca videoyu kapatıyordu (kullanıcı: gizli pencerede oynuyor, normalde
+ *  oynamıyor). Kural değişmedi (2 sn, 7 gün); kayıttan okunan «yavaş» karar artık günde en çok bir kez, posteri önbelleği
+ *  atlayarak yeniden indirip (474 KB) sınanır — hatiYenidenOlc. Gerçek yavaş hatta sonuç yine «yavaş» (p damgası, 24 sa
+ *  tekrar yok); hızlanmış/yanlış kayıt ilk ziyarette düzelir. Yalnız kayıttan okunan karar sınanır: bu açılışta ağdan
+ *  ölçüldüyse (poster yeni ya da önbellek düşmüş) ölçüm kesindir, ikinci indirme yapılmaz. */
+const YAVAS_YENIDEN_MS = 24 * 3600 * 1000;
+type YavasKaydi = { y?: boolean; t?: number; p?: number };
+let sonKararKayittan = false;
+function kayitOku(): YavasKaydi | null {
+  try { return JSON.parse(localStorage.getItem(YAVAS_KAYIT) ?? "null") as YavasKaydi | null; } catch { return null; }
 }
-function kaydet(y: boolean): boolean {
-  try { localStorage.setItem(YAVAS_KAYIT, JSON.stringify({ y, t: Date.now() })); } catch { /* depo yok */ }
+export function hatYavasKayitli(): boolean {
+  const k = kayitOku();
+  return !!k && k.y === true && typeof k.t === "number" && Date.now() - k.t < YAVAS_OMUR_MS;
+}
+function kaydet(y: boolean, p?: number): boolean {
+  try { localStorage.setItem(YAVAS_KAYIT, JSON.stringify(p === undefined ? { y, t: Date.now() } : { y, t: Date.now(), p })); } catch { /* depo yok */ }
   return y;
 }
 export function posterYavasMi(adres: string): boolean {
+  sonKararKayittan = false;
   let g: PerformanceResourceTiming[] = [];
   try { g = performance.getEntriesByName(adres, "resource") as PerformanceResourceTiming[]; } catch { /* RT yok */ }
   const e = g.find((x) => x.responseEnd > 0 && x.encodedBodySize > 0 && x.transferSize >= x.encodedBodySize);
   if (e) return kaydet(e.responseEnd - e.startTime > YAVAS_POSTER_MS);
   const eski = g.find((x) => x.responseEnd > 0 && typeof x.transferSize !== "number");
   if (eski && eski.responseEnd - eski.startTime > YAVAS_POSTER_MS) return kaydet(true);
+  sonKararKayittan = true;
   return hatYavasKayitli();
+}
+/** Son posterYavasMi kararı ağ ölçümünden değil, eski kayıttan mı geldi? (Hero: yalnız o zaman yeniden ölçülür.) */
+export function yavasKararKayittan(): boolean { return sonKararKayittan; }
+/** Kayıttaki «yavaş» kararını sınar: posteri önbelleksiz indirir, 2 sn kuralını uygular, kaydı (p damgasıyla) yeniler.
+ *  Günde bir: p üzerinden 24 saat geçmediyse indirmeden «yavaş» döner. Ağ hatasında kayıt değişmez, «yavaş» döner. */
+export async function hatiYenidenOlc(adres: string): Promise<boolean> {
+  const k = kayitOku();
+  if (k && typeof k.p === "number" && Date.now() - k.p < YAVAS_YENIDEN_MS) return true;
+  const t0 = performance.now();
+  try {
+    const r = await fetch(adres, { cache: "reload", credentials: "omit" });
+    if (!r.ok) return true;
+    await r.arrayBuffer();
+  } catch { return true; }
+  return kaydet(performance.now() - t0 > YAVAS_POSTER_MS, Date.now());
 }
