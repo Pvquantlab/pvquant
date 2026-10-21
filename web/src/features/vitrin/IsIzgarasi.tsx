@@ -58,8 +58,8 @@ export function IsIzgarasi() {
       <div className="vt-kap">
         <div className="vt-bolum-bas">
           <p className="vt-eyebrow">Kimin için</p>
-          <h2 className="vt-h2" id="vt-isler-baslik">Hangi iş için?</h2>
-          <p className="vt-giris">Aynı tahmin, santralinizdeki dört farklı işe hizmet eder. Dördü de bugün panelde.</p>
+          <h2 className="vt-h2" id="vt-isler-baslik">Dört iş birimi, tek tahmin altyapısı.</h2>
+          <p className="vt-giris">Program teslimi, ticaret masası, operasyon ve finansman aynı tahminden beslenir. Dördü de bugün panelde.</p>
         </div>
         <div className="vt-izgara vt-izgara--4 vt-isler">
           {ISLER.map((is, i) => (
