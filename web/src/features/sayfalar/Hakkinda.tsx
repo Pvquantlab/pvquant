@@ -52,7 +52,7 @@ export function Hakkinda() {
               </tbody>
             </table>
           </div>
-          <p className="soluk" style={{ fontSize: 13, margin: "10px 0 0" }}>
+          <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>
             Ürün bu çerçevenin tanımlarını uygular; madde numaraları yürürlükteki metne işaret eder.
             Mevzuat değişirse katsayılar koda gömülü olmadığından santral ayarından güncellenir.
           </p>
@@ -70,7 +70,7 @@ export function Hakkinda() {
               </tbody>
             </table>
           </div>
-          <p className="soluk" style={{ fontSize: 13, margin: "10px 0 0" }}>
+          <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>
             Her gece hava tahmini verisi indirilir, santral noktaları çıkarılır ve saklanır; tahmin, kalibrasyon ve hava verisi
             tutarlılık denetimi aynı arşivden beslenir. Ham ızgara dosyaları tutulmaz.
           </p>

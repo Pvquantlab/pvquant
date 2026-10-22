@@ -521,7 +521,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
         ) : (
           <p className="soluk" style={{ margin: 0 }}>Aralık değerlendirmesi, P10–P90 kaydedilen tahminlerle gece değerlendirmesinde birikir; ilk gün tamamlanınca burada görünür.</p>
         )}
-        <p className="soluk" style={{ marginTop: 10, marginBottom: 0, fontSize: 13 }}>
+        <p className="soluk" style={{ marginTop: 10, marginBottom: 0, fontSize: 13.5 }}>
           Ne gösterir: gerçekleşen üretimin, önceden verilen P10–P90 aralığı içinde kaldığı günlerin oranı.
           Neye bakmalı: yeşil çubuk hedefe ±5 puan yakın demektir; düşükse aralık dar (fazla iddialı), yüksekse aralık geniş (fazla temkinli).
           {ol?.crps != null && ` Aralık kalitesi (CRPS): ${sayiTr(ol.crps, 0)} kW · ortalama aralık genişliği kurulu gücün %${sayiTr((ol.bant_n ?? 0) * 100, 0)}'i.`}
@@ -558,7 +558,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
                     ))}
                   </tbody>
                 </table>
-                <p className="soluk" style={{ fontSize: 12.5, margin: "6px 0 0" }}>
+                <p className="soluk" style={{ fontSize: 13.5, margin: "6px 0 0" }}>
                   Hedef %80. "Tek düzeltme" eski yöntemdir (aynı düzeltme her ufka uygulanır);
                   "ufka göre" her ufuk için ayrı öğrenilir. Hedefe yakın olan iyidir.
                 </p>
@@ -582,14 +582,14 @@ export function Dogruluk({ plantId }: { plantId: string }) {
               <div><div className="etiket-ust" style={{ marginBottom: 4 }}>PIT histogramı — gerçekleşenin aralık içindeki yüzdeliği (düz = iyi ayarlı)</div>
                 <EChart option={pitOption} height={220} /></div>
             </div>
-            <p className="soluk" style={{ marginTop: 8, marginBottom: 0, fontSize: 13 }}>
+            <p className="soluk" style={{ marginTop: 8, marginBottom: 0, fontSize: 13.5 }}>
               Nasıl okunur: nokta köşegenin altındaysa o seviye olması gerekenden düşük, üstündeyse yüksek demektir.
               P10 için düşük kalmak alt sınırın, P90 için yüksek kalmak üst sınırın fazla temkinli olduğunu gösterir; ikisi birden aralığın fazla geniş olduğunu söyler.
               PIT sütunları %10 çizgisine yakın olmalıdır: ortada tepe aralık fazla geniş, kenarlarda tepe aralık fazla dar demektir. Aralık puanı, genişlik ile aralık dışı kalma cezasının toplamıdır.
             </p>
           </div>
         ) : gv.durum !== "ok" ? (
-          <p className="soluk" style={{ marginTop: 10, marginBottom: 0, fontSize: 13 }}>
+          <p className="soluk" style={{ marginTop: 10, marginBottom: 0, fontSize: 13.5 }}>
             Güvenilirlik diyagramı için en az {sayiTr(gv.min_saat ?? 72)} gündüz saati gerekir (şu an {sayiTr(gv.n_saat)}).
           </p>
         ) : null)}
@@ -636,7 +636,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
                     %{sayiTr((dz.oneri.acik_saat_orani ?? 0) * 100, 0)}'inde üretim beklenenin altında kaldı); eksik üretim cezası ile fazla üretim kaybının dengesidir.</>
                 : <span className="soluk">Önerilen program seviyesi: — {dz.oneri.not}</span>)}
             </p>
-            <p className="soluk" style={{ marginTop: 8, marginBottom: 0, fontSize: 13 }}>
+            <p className="soluk" style={{ marginTop: 8, marginBottom: 0, fontSize: 13.5 }}>
               Ne gösterir: saatlik üretim programı ile gerçekleşen üretim arasındaki farkın, piyasa kurallarına göre (pozitif dengesizlik
               min(PTF, SMF)×0,97; negatif dengesizlik max(PTF, SMF)×1,03) TL karşılığı; kusursuz programa göre kayıp. Neye bakmalı: PVQuant sütunu
               referans sütunundan ne kadar küçükse tahminin parasal değeri o kadar büyüktür. {dz.fiyat.senaryo_saat > 0 && "Senaryo fiyatı EPDK 2025 yıllık ortalamasıdır; piyasa (EPİAŞ) kimliği tanımlanınca gerçek saatlik fiyatlarla hesaplanır."}

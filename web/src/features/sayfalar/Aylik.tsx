@@ -200,14 +200,14 @@ export function Aylik({ plantId }: { plantId: string }) {
                 </tbody>
               </table>
             </div>
-            <p className="soluk" style={{ fontSize: 13, margin: "10px 0 0" }}>
+            <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>
               {bk.mod}. Işınım P50 {sayiTr(bk.ghi?.p50_kwh_m2 ?? 0, 0)} kWh/m² (tek yıl P90 {sayiTr(bk.ghi?.p90_kwh_m2_1yil ?? 0, 0)}).
               {bk.tmy?.p90_yili ? ` P90 senaryo yılı: ${bk.tmy.p90_yili} (${sayiTr(bk.tmy.p90_yili_ghi ?? 0, 0)} kWh/m²); tipik meteorolojik yıl ${sayiTr(bk.tmy.tmy_ghi_kwh_m2 ?? 0, 0)} kWh/m².` : ""}
               {bk.monte_carlo ? ` Çarpımsal sınama (asimetri korunur): P90 ${sayiTr(bk.monte_carlo.p90_1yil / 1000, 0)} · P99 ${sayiTr(bk.monte_carlo.p99_1yil / 1000, 0)} MWh — normal varsayımla ${Math.abs((bk.monte_carlo.p90_1yil - (bk.bir_yil?.p90 ?? 0)) / (bk.bir_yil?.p90 || 1) * 100) < 1 ? "uyumlu" : "farklı"}.` : ""}
               {bk.gelir ? ` Gelir (tarife: ${bk.gelir.tip}, ${sayiTr(bk.gelir.fiyat_tl_mwh, 0)} TL/MWh): P50 ${sayiTr(bk.gelir.p50_tl / 1e6, 2)} milyon TL/yıl · P90 tek yıl ${sayiTr(bk.gelir.p90_1yil_tl / 1e6, 2)} · P90 10 yıl ${sayiTr(bk.gelir.p90_nyil_tl / 1e6, 2)} milyon TL.${bk.gelir.not ? " " + bk.gelir.not + "." : ""}` : ""}
               {" "}{bk.not}
             </p>
-            {bkMesaj && <p className="soluk" style={{ fontSize: 13, margin: "6px 0 0" }}>{bkMesaj}</p>}
+            {bkMesaj && <p className="soluk" style={{ fontSize: 13.5, margin: "6px 0 0" }}>{bkMesaj}</p>}
           </>
         )}
       </Kart>

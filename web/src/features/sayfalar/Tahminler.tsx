@@ -209,7 +209,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
             </div>
             {kgup.uyarilar.length > 0 && <p style={{ color: "var(--uyari-metin)", fontSize: 13, margin: "8px 0 0" }}>{kgup.uyarilar.join(" · ")}</p>}
             {kgup.sicrama_saatleri.length > 0 && <p style={{ fontSize: 13, margin: "8px 0 0" }}>≥200 MWh ani değişim: saat {kgup.sicrama_saatleri.join(", ")}; dosyada 15 dakikalık adımlar.</p>}
-            <p className="soluk" style={{ fontSize: 13, margin: "10px 0 0" }}>
+            <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>
               {kgup.gip && `${kgup.gip.kural} Örnek: ${kgup.gip.ornek_teslimat} teslimatı için kapı ${kgup.gip.ornek_kapi}, revizyon son ${kgup.gip.ornek_revizyon_son}. `}
               Program, teslim saatinden (bir gün önce 15:30) önce verilmiş son tahminin saatlik beklenen (P50) değeridir; KGÜP ≤ emre amade kapasite ≤ kurulu güç
               kuralı uygulanır. CSV kolon adları TPYS şablonuyla eşlenmelidir (resmî şablon teyit edilemedi); dosya bir öneridir, bildirim TPYS'de yapılır.
@@ -238,7 +238,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
                 </tbody>
               </table>
             </div>
-            <p className="soluk" style={{ fontSize: 13, margin: "10px 0 0" }}>
+            <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>
               Son {sayiTr(nc.n_saat)} saatin ölçüm/tahmin oranı ({sayiTr(nc.oran ?? 0, 2)}) ileriye doğru azalan ağırlıkla beklenen değere (P50)
               karıştırılır; 6 saat sonrası beklenen değerdir. Gün içi program güncellemesi için yol göstericidir; kayıt yazmaz.
             </p>

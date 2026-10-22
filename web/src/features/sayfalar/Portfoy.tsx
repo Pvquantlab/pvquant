@@ -83,7 +83,7 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
             </table>
           </div>
         )}
-        <p className="soluk" style={{ fontSize: 13, margin: "10px 0 0" }}>
+        <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>
           Bugün/yarın: son tahminin yerel gün toplamı (beklenen, P50); 20 saatten az kapsanan gün gösterilmez.
           WMAPE: son 30 günün 0–24 saat tahmin hatası. Alarm: son 7 günde okunmamış kayıt.
         </p>
@@ -108,7 +108,7 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
                   </>); })()}
               </table>
             </div>
-            <p className="soluk" style={{ fontSize: 13, margin: "10px 0 0" }}>Santral tahminleri toplanır; toplam, santral tahminleriyle çelişmez. {pt.not}{pt.artik_gun ? ` Düzeltme geçmişi ${sayiTr(pt.artik_gun)} gün.` : ""}</p>
+            <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>Santral tahminleri toplanır; toplam, santral tahminleriyle çelişmez. {pt.not}{pt.artik_gun ? ` Düzeltme geçmişi ${sayiTr(pt.artik_gun)} gün.` : ""}</p>
           </>
         )}
       </Kart>
@@ -123,7 +123,7 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
               <Kpi etiket="Portföy netleşmiş" deger={sayiTr((dsg.net_tl ?? 0) / 1000, 1)} birim="bin TL" alt={`${sayiTr(dsg.sapma_net_mwh ?? 0, 1)} MWh net sapma`} />
               <Kpi etiket="Netleşme kazancı" deger={sayiTr((dsg.kazanc_tl ?? 0) / 1000, 1)} birim="bin TL" alt={dsg.kazanc_pct != null ? `ayrı maliyetin %${sayiTr(dsg.kazanc_pct, 1)}'i` : "—"} />
             </div>
-            <p className="soluk" style={{ fontSize: 13, margin: 0 }}>{dsg.not}</p>
+            <p className="soluk" style={{ fontSize: 13.5, margin: 0 }}>{dsg.not}</p>
           </>
         )}
       </Kart>
@@ -170,7 +170,7 @@ function GelenTalepler() {
           </table>
         </div>
       )}
-      <p className="soluk" style={{ fontSize: 13, margin: "10px 0 0" }}>
+      <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>
         Web sitesindeki "Karnenizi başlatın" formundan gelir. Yanıt e-postası elle gönderilir;
         yanıtlayınca "okundu" işaretleyin.
       </p>
@@ -201,7 +201,7 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
     <Kart baslik="Dış erişim"
           sag={<span style={{ display: "flex", gap: 6 }}><span className="cip">yalnız yönetici</span>
                 {docs ? <a className="cip" href={docs} target="_blank" rel="noreferrer">OpenAPI şeması ↗</a> : <span className="cip">örnek kip</span>}</span>}>
-      <p className="soluk" style={{ margin: "0 0 10px", fontSize: 13 }}>
+      <p className="soluk" style={{ margin: "0 0 10px", fontSize: 13.5 }}>
         Müşteri sistemleri tahmini <span className="mono">X-API-Key</span> başlığıyla çeker; sabah tahmini üretildikten sonra webhook alıcılarına imzalı bildirim gider.
         Anahtar ve sır yalnız üretildiği anda görünür — sunucu yalnız özetini saklar.
       </p>
@@ -210,7 +210,7 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(340px, 100%), 1fr))", gap: 16 }}>
         <div>
           <div className="etiket-ust">API anahtarları</div>
-          {anahtarlar.length === 0 ? <p className="soluk" style={{ fontSize: 13, margin: 0 }}>Henüz anahtar yok.</p> : (
+          {anahtarlar.length === 0 ? <p className="soluk" style={{ fontSize: 13.5, margin: 0 }}>Henüz anahtar yok.</p> : (
             <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 12.5 }}>
               <thead><tr><th>Ad</th><th>Önek</th><th>Kapsam</th><th>Son kullanım</th><th>Durum</th><th></th></tr></thead>
               <tbody className="mono">{anahtarlar.map((k) => (
@@ -242,7 +242,7 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
         </div>
         <div>
           <div className="etiket-ust">Webhook alıcıları <span className="soluk">(tahmin.yeni)</span></div>
-          {webhooklar.length === 0 ? <p className="soluk" style={{ fontSize: 13, margin: 0 }}>Henüz alıcı yok.</p> : (
+          {webhooklar.length === 0 ? <p className="soluk" style={{ fontSize: 13.5, margin: 0 }}>Henüz alıcı yok.</p> : (
             <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 12.5 }}>
               <thead><tr><th>Adres</th><th>Santral</th><th>Son gönderim</th><th>Durum</th><th></th></tr></thead>
               <tbody className="mono">{webhooklar.map((w) => (
@@ -277,7 +277,7 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
             </div>)}
         </div>
       </div>
-      <p className="soluk" style={{ fontSize: 12.5, margin: "10px 0 0" }}>
+      <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>
         Uçlar: <span className="mono">/v1/dis/santraller</span>, <span className="mono">/v1/dis/santral/{"{id}"}/tahmin</span> (ETag ile 304),
         <span className="mono"> /v1/dis/santral/{"{id}"}/kgup</span>. Oran sınırı dakikada 120 istek. Ayrıntı: docs/api/dis-api.md.
       </p>
@@ -303,7 +303,7 @@ function Paylasimlar({ santraller }: { santraller: { id: string; ad: string }[] 
   if (!yonetici && liste.verilenler.length === 0 && liste.alinanlar.length === 0) return null;
   return (
     <Kart baslik="Kuruluşlar arası paylaşım" sag={<span className="cip">yalnız okuma · zaman sınırlı</span>}>
-      <p className="soluk" style={{ margin: "0 0 10px", fontSize: 13 }}>
+      <p className="soluk" style={{ margin: "0 0 10px", fontSize: 13.5 }}>
         Bir santralin tahmin, karne ya da gerçekleşen özetini başka bir kuruluşa (toplayıcı, danışman, alıcı) açar.
         Karşı taraf yalnız seçtiğiniz kapsamı, günlük toplam düzeyinde görür; istenirse santral adı takma adla gizlenir.
         Her erişim denetim iziyle kayda geçer.
@@ -313,7 +313,7 @@ function Paylasimlar({ santraller }: { santraller: { id: string; ad: string }[] 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(340px, 100%), 1fr))", gap: 16 }}>
         <div>
           <div className="etiket-ust">Verdiklerimiz</div>
-          {liste.verilenler.length === 0 ? <p className="soluk" style={{ fontSize: 13, margin: 0 }}>Henüz paylaşım yok.</p> : (
+          {liste.verilenler.length === 0 ? <p className="soluk" style={{ fontSize: 13.5, margin: 0 }}>Henüz paylaşım yok.</p> : (
             <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 12.5 }}>
               <thead><tr><th>Santral</th><th>Kuruluş</th><th>Kapsam</th><th>Bitiş</th><th>Durum</th><th></th></tr></thead>
               <tbody>{liste.verilenler.map((x) => (
@@ -355,7 +355,7 @@ function Paylasimlar({ santraller }: { santraller: { id: string; ad: string }[] 
         </div>
         <div>
           <div className="etiket-ust">Aldıklarımız</div>
-          {liste.alinanlar.length === 0 ? <p className="soluk" style={{ fontSize: 13, margin: 0 }}>Bize açılmış paylaşım yok.</p> : (
+          {liste.alinanlar.length === 0 ? <p className="soluk" style={{ fontSize: 13.5, margin: 0 }}>Bize açılmış paylaşım yok.</p> : (
             <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 12.5 }}>
               <thead><tr><th>Santral</th><th>Kuruluş</th><th>Bitiş</th><th>Görüntüle</th></tr></thead>
               <tbody>{liste.alinanlar.map((x) => (
@@ -382,7 +382,7 @@ function Paylasimlar({ santraller }: { santraller: { id: string; ad: string }[] 
                   <tr><td>Kurulu güce göre hata (nMAE)</td><td className="mono">{acik.veri.nmae_pct == null ? "—" : `%${sayiTr(acik.veri.nmae_pct, 1)}`}</td></tr>
                   <tr><td>Tahmin aralığı isabeti (P10–P90)</td><td className="mono">{acik.veri.picp80 == null ? "—" : `%${sayiTr(acik.veri.picp80 * 100, 1)}`}</td></tr>
                 </tbody></table>
-              ) : (acik.veri.gunler?.length ?? 0) === 0 ? <p className="soluk" style={{ fontSize: 13, margin: 0 }}>{acik.veri.not ?? "Veri yok."}</p> : (
+              ) : (acik.veri.gunler?.length ?? 0) === 0 ? <p className="soluk" style={{ fontSize: 13.5, margin: 0 }}>{acik.veri.not ?? "Veri yok."}</p> : (
                 <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 12.5 }}>
                   <thead>{acik.tur === "tahmin"
                     ? <tr><th>Gün</th><th>P50 (kWh)</th><th>P10–P90 (kWh)</th></tr>
@@ -574,7 +574,7 @@ function HesapVeEkip() {
               <code className="mono" style={{ fontSize: 13.5, userSelect: "all" }}>{gecici.parola}</code>
               <div style={{ marginTop: 6 }}><button className="dugme" style={{ fontSize: 12.5 }} onClick={() => setGecici(null)}>Kapat</button></div>
             </div>)}
-          <p className="soluk" style={{ fontSize: 12.5, margin: "10px 0 0" }}>
+          <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>
             Pasif üye oturum açamaz; kaydı ve geçmiş atamaları silinmez. Son etkin yönetici düşürülemez.
           </p>
         </div>
@@ -603,7 +603,7 @@ function SantralArsivi({ santralYenile }: { santralYenile?: () => void }) {
   if (etkin.length < 2 && arsiv.length === 0) return null;   // tek santral + boş arşiv: kart gereksiz
   return (
     <Kart baslik="Santral arşivi" sag={<span className="cip">silmez — veri denetim için durur</span>}>
-      <p className="soluk" style={{ margin: "0 0 10px", fontSize: 13 }}>
+      <p className="soluk" style={{ margin: "0 0 10px", fontSize: 13.5 }}>
         Arşivlenen santral listelerden ve gece hesaplamalarından çıkarılır; ölçüm, kalibrasyon ve tahmin geçmişi
         yerinde kalır ve geri alınabilir. Son etkin santral arşivlenemez.
       </p>

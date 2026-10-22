@@ -219,9 +219,9 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
           </div>
           {onCikis && (
             <button onClick={onCikis}
-              style={{ marginTop: 8, background: "none", border: "none", padding: 0,
-                       fontSize: 12.5, color: "var(--yan-metin)", cursor: "pointer",
-                       textDecoration: "underline" }}>
+              style={{ marginTop: 4, background: "none", border: "none", padding: "6px 0", minHeight: 28,
+                       fontSize: 13, color: "var(--yan-metin)", cursor: "pointer", fontFamily: "var(--display)",
+                       fontWeight: 500, textDecoration: "underline", textUnderlineOffset: 3 }}>
               Çıkış yap
             </button>
           )}

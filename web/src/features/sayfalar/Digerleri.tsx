@@ -22,7 +22,7 @@ function SablonDugmeleri({ plantId }: { plantId: string }) {
         <button className="dugme" onClick={() => indir("beklenen-gerceklesen")}>Beklenen – gerçekleşen (aylık)</button>
       </div>
       {hata && <p style={{ color: "var(--uyari-metin)", fontSize: 13, margin: "8px 0 0" }}>{hata}</p>}
-      <p className="soluk" style={{ fontSize: 13, margin: "8px 0 0" }}>
+      <p className="soluk" style={{ fontSize: 13.5, margin: "8px 0 0" }}>
         Kapasite testi ölçülen düzlem ışınımı gerektirir; fatura özeti santral ayarlarındaki tarifeyi ve dengesizlik hesabını kullanır; kullanılabilirlik raporu otomatik arıza tespitine dayanır.
       </p>
     </>
@@ -57,7 +57,7 @@ function GucMatrisiKarti({ plantId, ilkVeri }: { plantId: string; ilkVeri: GucMa
               </tbody>
             </table>
           </div>
-          <p className="soluk" style={{ fontSize: 13, margin: "10px 0 0" }}>Kaynak: {g.kaynak}. {g.not}</p>
+          <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>Kaynak: {g.kaynak}. {g.not}</p>
         </>
       )}
     </Kart>
@@ -93,7 +93,7 @@ function KayipAgaciKarti({ plantId, ilkVeri }: { plantId: string; ilkVeri: Kayip
               </tbody>
             </table>
           </div>
-          <p className="soluk" style={{ fontSize: 13, margin: "10px 0 0" }}>
+          <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>
             Yatay ışınım {sayiTr(k.ghi_kwh_m2 ?? 0, 0)} → düzlem {sayiTr(k.poa_kwh_m2 ?? 0, 0)} kWh/m²; nominal {sayiTr((k.nominal_dc_kwh ?? 0) / 1000, 0)} MWh → şebeke {sayiTr((k.sebeke_kwh ?? 0) / 1000, 0)} MWh.
             "Varsayılan" satırlar sektör tipik değerleridir (gölge, uyumsuzluk, kablo, evirici); ölçümle değişmez. {mesaj ?? ""}
           </p>
@@ -402,7 +402,7 @@ export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
         <Kart baslik="Bu dosya cihaz bazlı görünüyor"
           sag={<span className="cip mono">{`damga başına ~${sayiTr(cihaz.oran, 1)} satır`}</span>}>
           <p style={{ fontSize: 14, margin: "0 0 6px", lineHeight: 1.7 }}>{cihaz.mesaj}</p>
-          <p className="soluk" style={{ fontSize: 13, margin: "0 0 12px", lineHeight: 1.65 }}>
+          <p className="soluk" style={{ fontSize: 13.5, margin: "0 0 12px", lineHeight: 1.65 }}>
             Aynı andaki satırlar tek santral serisine indirgenecek. <b>Santral toplamı</b> güç ve
             enerjiyi toplar (cihazlar → santral; önerilen), sıcaklık gibi ölçümleri ortalar.
             <b> Ortalama</b> her kolonu ortalar — yalnız satırlar aynı ölçümün kopyalarıysa doğrudur.
@@ -973,7 +973,7 @@ function VerinizSizindirKarti({ plantId }: { plantId: string }) {
   };
   return (
     <Kart baslik="Veriniz sizindir" sag={<span className="cip">dışa aktarma her role açık · silme yalnız yönetici</span>}>
-      <p className="soluk" style={{ margin: "0 0 10px", fontSize: 13, maxWidth: 900 }}>
+      <p className="soluk" style={{ margin: "0 0 10px", fontSize: 13.5, maxWidth: 900 }}>
         Yüklediğiniz ham veriyi istediğiniz an CSV olarak geri alabilirsiniz; istenirse bir tarih aralığı
         kalıcı olarak silinir. Silme ham veriyi kaldırır; geçmiş doğruluk sonuçları değişmez,
         kalibrasyon bir sonraki hesaplamada kalan veriyle yenilenir.
@@ -1019,10 +1019,10 @@ function GeceIsleriKarti() {
     <Kart baslik="Otomatik gece işlemleri" sag={<span className="cip">{`son ${sayiTr(j.pencere_saat)} saat · ayrıntı sunucu günlüğünde`}</span>}>
       {/* v2.359: "santral yok / ilk gece" bilgi tonudur — turuncu yalnız gerçek bayatlıkta */}
       {j.not && (j.seviye === "bilgi"
-        ? <p className="soluk" style={{ margin: "0 0 10px", fontSize: 13 }}>{j.not}</p>
+        ? <p className="soluk" style={{ margin: "0 0 10px", fontSize: 13.5 }}>{j.not}</p>
         : <p className="ayar-durum hata" style={{ margin: "0 0 10px" }}>{j.not}</p>)}
       {j.isler.length === 0 ? (
-        <p className="soluk" style={{ margin: 0, fontSize: 13 }}>Bu dönemde kayıtlı işlem yok.</p>
+        <p className="soluk" style={{ margin: 0, fontSize: 13.5 }}>Bu dönemde kayıtlı işlem yok.</p>
       ) : (
         <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 13 }}>
           <thead><tr><th style={{ textAlign: "left" }}>İşlem</th><th style={{ textAlign: "left" }}>Zaman</th><th>Süre</th><th>Durum</th></tr></thead>
@@ -1035,7 +1035,7 @@ function GeceIsleriKarti() {
             </tr>))}</tbody>
         </table></div>
       )}
-      <p className="soluk" style={{ fontSize: 12.5, margin: "10px 0 0" }}>
+      <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>
         Hava verisi indirme, tahmin, doğruluk değerlendirmesi ve kalibrasyon her gece otomatik çalışır; başarısız işlemin ayrıntısı sunucu günlüğündedir.
       </p>
     </Kart>

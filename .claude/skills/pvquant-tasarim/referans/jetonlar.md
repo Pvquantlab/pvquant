@@ -41,6 +41,9 @@ Kaynak dosyalar (gerçek değerler HER ZAMAN oradan okunur, burası harita):
   gelmez), kenar beyaz .12, metin #FFFFFF / ikincil #D2D5DC / soluk #A3A9B4. Açık yüz nötr gri — zemin **#E8EAEE**
   (kart/zemin 1,20 ≥ 1,15 hedefi), kart beyaz, kenar #D9DBE1, mürekkep vitrinin merdiveni #0B0E15 / #404551 / #5B6270
   (vitrinin #6B7280'i 13 px'te zeminde 4,3 kalıyordu). D1 laciverti (#0B1424) ve E2 mavi-gri kâğıdı (#E3E9F2) TARİHSEL.
+  İkinci denetim (22.10 akşam, `docs/PANEL-DENETIM-2026-10-22.md`): açık yan menü `--yan` #F2F3F5 (zeminden bir ton
+  açık); ızgara koyu `--chart-grid` .14 / `--izgara` .11, açık .13 / .12; açık `--ch-dusuk` #7F8B9A (≥3:1 grafik nesnesi);
+  kontroller: `.dugme` ≥32 px, sekme/segment 30 px; açıklama paragrafı `p.soluk` 13,5 px.
   Tema üçlüsü oto|açık|koyu (`pvq_tema`). Birincil düğme `.dugme-ana` = vitrinin dolu hapı: açıkta mürekkep/beyaz yazı,
   koyuda beyaz/mürekkep yazı; yeşil `--marka` seçim/durum/odak rengi olarak kalır (nav aktif, rozet-ok, odak halkası, amblem).
   Giriş ekranı sol yüzü: #0B0E15 + jua radyal ışıkları (lavanta/camgöbeği), vurgu düz gök mavisi #8FD3FF.

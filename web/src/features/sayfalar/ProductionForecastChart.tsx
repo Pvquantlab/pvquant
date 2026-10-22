@@ -1150,11 +1150,13 @@ export default function ProductionForecastChart({
     a.click();
   };
 
+  // 22.10 ikinci denetim: dışa aktarma düğmeleri panel hap diliyle (Inter Tight 500, 999 köşe, ≥28 px)
   const btn: React.CSSProperties = {
-    font: "12px 'IBM Plex Mono', ui-monospace, monospace",
-    padding: "3px 8px",
+    font: "500 12.5px 'Inter Tight', 'Inter Tight Yedek', 'Inter Variable', system-ui, sans-serif",
+    padding: "4px 11px",
+    minHeight: 28,
     border: `1px solid ${T.btnBorder}`,
-    borderRadius: 4,
+    borderRadius: 999,
     background: "transparent",
     color: "inherit",
     cursor: "pointer",
@@ -1167,11 +1169,11 @@ export default function ProductionForecastChart({
     color: T.axisText,
   };
   const pill: React.CSSProperties = {
-    font: "12px 'IBM Plex Mono', ui-monospace, monospace",
+    font: "500 12px 'Inter Tight', 'Inter Tight Yedek', 'Inter Variable', system-ui, sans-serif",
     background: T.surface,
-    border: `0.5px solid ${T.gridLine}`,
-    borderRadius: 4,
-    padding: "3px 7px",
+    border: `1px solid ${T.btnBorder}`,
+    borderRadius: 999,
+    padding: "3px 9px",
   };
 
   return (

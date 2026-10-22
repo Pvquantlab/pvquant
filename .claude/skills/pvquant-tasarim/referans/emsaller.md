@@ -50,6 +50,13 @@ Her satır: kalıp → dosya → kritik kural. Yeni mühürde yeni kalıp çıka
   `Dockerfile.web` 2.11.7'ye sabit. Güncelleme = changelog + replika sınaması, bilinçli tek satır.
 - **Yavaş hat kararı günlük tazelenir (21.10.2026, #11):** `heroHazir.ts` kayıttaki 7 günlük «yavaş hat» kararı günde bir
   yeniden ölçülür — tek yanlış ölçüm videoyu 7 gün kapatmasın.
+- **İki tema ölçümlü denetim (22.10.2026 akşam):** rapor `docs/PANEL-DENETIM-2026-10-22.md`. Yöntem: ham CDP
+  `denetim.mjs` — her görünür metin düğümü için hesaplanmış aile/punto/ağırlık, yarı saydam katmanları harmanlayan etkin
+  zemin ve WCAG kontrast; düğme/girdi yükseklikleri; grafik jetonlarının kart üstü kontrastı; iki temada aynı düğüm
+  kümesi → punto histogramı birebir = ölçüler temadan bağımsız kanıtı. Ekran görüntüsünde «küçük» görünen yazı CSS
+  değeriyle doğrulanır (2560 px kare yarıya iner). Vitrin bozulmadı kanıtı: `git stash` ile değişikliksiz kare + piksel
+  kıyası. Tuzak: scratchpad bir sonraki kullanıcı turunda silinebiliyor — betikleri (kare/pngfark/denetim) yeniden
+  yazmak gerekti; kalıcı gerekiyorsa `.claude/skills/pvquant-tasarim/betikler/` altına alınmalı.
 - **Tek tasarım sistemi — panel vitrinin kesimine geçti (22.10.2026):** rapor `docs/PANEL-TASARIM-2026-10-22.md`. Vitrinin
   jua katmanı tek doğruluk kaynağı alındı (Inter Tight, mürekkep #0B0E15, gece #0B0E15, hap düğme/çip, 12 px kart köşesi);
   panel gövde/tabloda Inter Variable + Plex Mono'yu korudu, KPI sayıları Inter Tight'a geçti (jetonlar.md istisnası).
