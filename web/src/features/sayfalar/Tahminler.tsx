@@ -144,7 +144,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
             />
             <p
               style={{
-                fontSize: 12.5,
+                fontSize: 13,
                 color: "var(--soluk)",
                 margin: "12px 0 0",
               }}
@@ -183,7 +183,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
               </tbody>
             </table>
             {gunlukVeri.some((g) => g.kismi) && (
-              <p style={{ color: "var(--ikincil)", fontSize: 12.5, marginTop: 8 }}>
+              <p style={{ color: "var(--ikincil)", fontSize: 13, marginTop: 8 }}>
                 * dönemin yalnız bir bölümü kapsanan gün
               </p>
             )}
@@ -205,11 +205,11 @@ export function Tahminler({ plantId }: { plantId: string }) {
               {kgup.oneri && kgup.oneri.durum === "ok" && kgup.oneri.kantil &&
                 <span className="cip" title={kgup.oneri.not ?? ""}>önerilen seviye {kgup.oneri.kantil.toUpperCase()}</span>}
               {kgup.eak && <span className="cip" title="Emre amade kapasite — ayarlardan değiştirilir">EAK {sayiTr(kgup.eak.eak_mw, 2)} MW · {({ gecici: "geçici kısıt", eak_alani: "EAK alanı", ac_tavani: "AC sınırı", kurulu_guc: "kurulu güç" } as Record<string, string>)[kgup.eak.kaynak] ?? kgup.eak.kaynak}</span>}
-              {kgupHata && <span style={{ color: "var(--uyari-metin)", fontSize: 13 }}>{kgupHata}</span>}
+              {kgupHata && <span style={{ color: "var(--uyari-metin)", fontSize: 13.5 }}>{kgupHata}</span>}
             </div>
-            {kgup.uyarilar.length > 0 && <p style={{ color: "var(--uyari-metin)", fontSize: 13, margin: "8px 0 0" }}>{kgup.uyarilar.join(" · ")}</p>}
-            {kgup.sicrama_saatleri.length > 0 && <p style={{ fontSize: 13, margin: "8px 0 0" }}>≥200 MWh ani değişim: saat {kgup.sicrama_saatleri.join(", ")}; dosyada 15 dakikalık adımlar.</p>}
-            <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>
+            {kgup.uyarilar.length > 0 && <p style={{ color: "var(--uyari-metin)", fontSize: 13.5, margin: "8px 0 0" }}>{kgup.uyarilar.join(" · ")}</p>}
+            {kgup.sicrama_saatleri.length > 0 && <p style={{ fontSize: 13.5, margin: "8px 0 0" }}>≥200 MWh ani değişim: saat {kgup.sicrama_saatleri.join(", ")}; dosyada 15 dakikalık adımlar.</p>}
+            <p className="soluk" style={{ fontSize: 14, margin: "10px 0 0" }}>
               {kgup.gip && `${kgup.gip.kural} Örnek: ${kgup.gip.ornek_teslimat} teslimatı için kapı ${kgup.gip.ornek_kapi}, revizyon son ${kgup.gip.ornek_revizyon_son}. `}
               Program, teslim saatinden (bir gün önce 15:30) önce verilmiş son tahminin saatlik beklenen (P50) değeridir; KGÜP ≤ emre amade kapasite ≤ kurulu güç
               kuralı uygulanır. CSV kolon adları TPYS şablonuyla eşlenmelidir (resmî şablon teyit edilemedi); dosya bir öneridir, bildirim TPYS'de yapılır.
@@ -229,7 +229,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
         ) : (
           <>
             <div className="grafik-kaydir">
-              <table className="veri" style={{ fontSize: 13 }}>
+              <table className="veri" style={{ fontSize: 13.5 }}>
                 <thead><tr><th>Saat</th><th>Beklenen (P50)</th><th>Düzeltilmiş</th><th>Düzeltme ağırlığı</th></tr></thead>
                 <tbody className="mono">
                   {nc.ufuk.map((u) => (
@@ -238,7 +238,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
                 </tbody>
               </table>
             </div>
-            <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>
+            <p className="soluk" style={{ fontSize: 14, margin: "10px 0 0" }}>
               Son {sayiTr(nc.n_saat)} saatin ölçüm/tahmin oranı ({sayiTr(nc.oran ?? 0, 2)}) ileriye doğru azalan ağırlıkla beklenen değere (P50)
               karıştırılır; 6 saat sonrası beklenen değerdir. Gün içi program güncellemesi için yol göstericidir; kayıt yazmaz.
             </p>

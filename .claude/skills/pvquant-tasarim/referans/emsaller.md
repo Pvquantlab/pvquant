@@ -50,6 +50,11 @@ Her satır: kalıp → dosya → kritik kural. Yeni mühürde yeni kalıp çıka
   `Dockerfile.web` 2.11.7'ye sabit. Güncelleme = changelog + replika sınaması, bilinçli tek satır.
 - **Yavaş hat kararı günlük tazelenir (21.10.2026, #11):** `heroHazir.ts` kayıttaki 7 günlük «yavaş hat» kararı günde bir
   yeniden ölçülür — tek yanlış ölçüm videoyu 7 gün kapatmasın.
+- **Üçüncü tur — ölçek bir kademe (22.10.2026 gece):** `docs/PANEL-TUR3-2026-10-22.md`. Ders: 2560 px ekran
+  görüntüsünde 14 px gövde «küçük» görünür ve kullanıcı bunu üç brief'te yineledi — ölçüm «standart» dese de fiziksel
+  ekran büyüklüğü karar verdirir; gövde 15, tablo 14, eksen 12–13 px. Satır içi boyutlar betikle (grafik satırları ayrı
+  tablo: axisLabel/nameTextStyle/textStyle). Koyu temada üç kademe yüzey (zemin/yan/kart 1,04/1,12) «tonlar yakın»
+  bulgusunu çözer. Boş grafik yerine koşullu kompakt boş durum (veri yokluğu gizlenmeden).
 - **İki tema ölçümlü denetim (22.10.2026 akşam):** rapor `docs/PANEL-DENETIM-2026-10-22.md`. Yöntem: ham CDP
   `denetim.mjs` — her görünür metin düğümü için hesaplanmış aile/punto/ağırlık, yarı saydam katmanları harmanlayan etkin
   zemin ve WCAG kontrast; düğme/girdi yükseklikleri; grafik jetonlarının kart üstü kontrastı; iki temada aynı düğüm

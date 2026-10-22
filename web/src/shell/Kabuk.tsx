@@ -211,8 +211,8 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
               {(hesap?.firma ?? "").split(/\s+/).slice(0, 2).map((k) => k[0] ?? "").join("").toUpperCase() || "·"}
             </div>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 13, color: "var(--metin)", fontWeight: 600 }}>{hesap?.firma ?? "—"}</div>
-              <div style={{ fontSize: 12.5, color: "var(--yan-metin)" }}>
+              <div style={{ fontSize: 13.5, color: "var(--metin)", fontWeight: 600 }}>{hesap?.firma ?? "—"}</div>
+              <div style={{ fontSize: 13, color: "var(--yan-metin)" }}>
                 {hesap ? ({ admin: "Yönetici", editor: "Editör", viewer: "İzleyici" }[hesap.rol] ?? hesap.rol) : "—"}
               </div>
             </div>
@@ -220,7 +220,7 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
           {onCikis && (
             <button onClick={onCikis}
               style={{ marginTop: 4, background: "none", border: "none", padding: "6px 0", minHeight: 28,
-                       fontSize: 13, color: "var(--yan-metin)", cursor: "pointer", fontFamily: "var(--display)",
+                       fontSize: 13.5, color: "var(--yan-metin)", cursor: "pointer", fontFamily: "var(--display)",
                        fontWeight: 500, textDecoration: "underline", textUnderlineOffset: 3 }}>
               Çıkış yap
             </button>
@@ -237,7 +237,7 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
               <path d="M3 5.5h14M3 10h14M3 14.5h14" />
             </svg>
           </button>
-          <div style={{ fontSize: 13.5, color: "var(--ikincil)", minWidth: 0,
+          <div style={{ fontSize: 14, color: "var(--ikincil)", minWidth: 0,
                         overflow: "hidden", textOverflow: "ellipsis",
                         whiteSpace: "nowrap" }}>
             Panel <b style={{ color: "var(--metin)" }}>· {santral}</b>
@@ -311,10 +311,10 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
                       <div className="zil-eylem">
                         {x.okundu
                           ? <span className="mono">okundu{x.okuyan ? ` · ${x.okuyan}` : ""}</span>
-                          : <button className="dugme" style={{ fontSize: 12 }}
+                          : <button className="dugme" style={{ fontSize: 12.5 }}
                               onClick={() => plantId && api.alarmOkundu(plantId, x.id).then(alarmYenile).catch(() => {})}>Okundu</button>}
                         {yazabilir && kullanicilar && kullanicilar.length > 0 && (
-                          <select className="mono" value={x.atanan_id ?? ""} aria-label="Ata" style={{ fontSize: 12 }}
+                          <select className="mono" value={x.atanan_id ?? ""} aria-label="Ata" style={{ fontSize: 12.5 }}
                                   onChange={(e) => plantId && api.alarmAta(plantId, x.id, e.target.value || null).then(alarmYenile).catch(() => {})}>
                             <option value="">atanmadı</option>
                             {kullanicilar.map((u) => <option key={u.id} value={u.id}>{u.email}</option>)}
@@ -439,7 +439,7 @@ function YeniSantral({ kapat, eklendi }: { kapat: () => void; eklendi: (id: stri
            onClick={(e) => e.stopPropagation()}>
         <div className="palet-govde" style={{ padding: "16px 18px" }}>
           <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Yeni santral bağla</div>
-          <p className="soluk" style={{ fontSize: 13, margin: "0 0 12px" }}>
+          <p className="soluk" style={{ fontSize: 13.5, margin: "0 0 12px" }}>
             Temel bilgiler yeterli; eğim, AC sınırı ve diğer ayarlar sonra Santralim sayfasından düzenlenir.
             Tahmin, SCADA verisi yüklenmeden fiziksel modelle başlar.</p>
           {hata && <p className="ayar-durum hata" style={{ margin: "0 0 8px" }}>{hata}</p>}

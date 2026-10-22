@@ -41,6 +41,9 @@ Kaynak dosyalar (gerçek değerler HER ZAMAN oradan okunur, burası harita):
   gelmez), kenar beyaz .12, metin #FFFFFF / ikincil #D2D5DC / soluk #A3A9B4. Açık yüz nötr gri — zemin **#E8EAEE**
   (kart/zemin 1,20 ≥ 1,15 hedefi), kart beyaz, kenar #D9DBE1, mürekkep vitrinin merdiveni #0B0E15 / #404551 / #5B6270
   (vitrinin #6B7280'i 13 px'te zeminde 4,3 kalıyordu). D1 laciverti (#0B1424) ve E2 mavi-gri kâğıdı (#E3E9F2) TARİHSEL.
+  Üçüncü tur (22.10 gece, `docs/PANEL-TUR3-2026-10-22.md`): tip ölçeği gövde 15 · ikincil 13,5 · etiket 12,5 · kart 16 ·
+  bölüm 21 · sayfa 28 · KPI 32 · nav 15,5 · tablo 14 · düğme 14/34 px · girdi 14/36 px; grafik eksen/lejant 12–13,5 px;
+  `.icerik` 1840 px; yan menü 248; KOYU üç kademe zemin #0B0E15 / yan #10131B / kart #181B23, kenar .14, yüzey .07.
   İkinci denetim (22.10 akşam, `docs/PANEL-DENETIM-2026-10-22.md`): açık yan menü `--yan` #F2F3F5 (zeminden bir ton
   açık); ızgara koyu `--chart-grid` .14 / `--izgara` .11, açık .13 / .12; açık `--ch-dusuk` #7F8B9A (≥3:1 grafik nesnesi);
   kontroller: `.dugme` ≥32 px, sekme/segment 30 px; açıklama paragrafı `p.soluk` 13,5 px.

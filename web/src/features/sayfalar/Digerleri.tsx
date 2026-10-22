@@ -21,8 +21,8 @@ function SablonDugmeleri({ plantId }: { plantId: string }) {
         <button className="dugme" onClick={() => indir("kullanilabilirlik")}>Kullanılabilirlik (30 gün)</button>
         <button className="dugme" onClick={() => indir("beklenen-gerceklesen")}>Beklenen – gerçekleşen (aylık)</button>
       </div>
-      {hata && <p style={{ color: "var(--uyari-metin)", fontSize: 13, margin: "8px 0 0" }}>{hata}</p>}
-      <p className="soluk" style={{ fontSize: 13.5, margin: "8px 0 0" }}>
+      {hata && <p style={{ color: "var(--uyari-metin)", fontSize: 13.5, margin: "8px 0 0" }}>{hata}</p>}
+      <p className="soluk" style={{ fontSize: 14, margin: "8px 0 0" }}>
         Kapasite testi ölçülen düzlem ışınımı gerektirir; fatura özeti santral ayarlarındaki tarifeyi ve dengesizlik hesabını kullanır; kullanılabilirlik raporu otomatik arıza tespitine dayanır.
       </p>
     </>
@@ -39,7 +39,7 @@ function GucMatrisiKarti({ plantId, ilkVeri }: { plantId: string; ilkVeri: GucMa
   return (
     <Kart baslik="Panel verimi — ışınım ve sıcaklığa göre güç tablosu" sag={<span style={{ display: "flex", gap: 6 }}>
       {g?.durum === "ok" && <span className="cip">tipik yıl {g.yil} · iklim-özgü verim oranı %{sayiTr((g.cser ?? 0) * 100, 1)}</span>}
-      <button className="dugme" style={{ fontSize: 12.5 }} onClick={hesapla}>{g?.durum === "ok" ? "Yenile" : "Hesapla"}</button></span>}>
+      <button className="dugme" style={{ fontSize: 13 }} onClick={hesapla}>{g?.durum === "ok" ? "Yenile" : "Hesapla"}</button></span>}>
       {!g || g.durum !== "ok" ? <p className="soluk" style={{ margin: 0 }}>{mesaj ?? "Henüz hesaplanmadı. 'Hesapla' panelin ışınım ve sıcaklığa göre verimini tipik yıl iklimiyle değerlendirir."}</p>
        : (
         <>
@@ -49,7 +49,7 @@ function GucMatrisiKarti({ plantId, ilkVeri }: { plantId: string; ilkVeri: GucMa
             <span className="cip">tipik yıl DC {sayiTr(g.e_dc_kwh_kwp ?? 0, 0)} kWh/kWp · düzlem {sayiTr(g.h_poa_kwh_m2 ?? 0, 0)} kWh/m²</span>
           </div>
           <div className="grafik-kaydir">
-            <table className="veri" style={{ fontSize: 12.5 }}>
+            <table className="veri" style={{ fontSize: 13 }}>
               <thead><tr><th style={{ textAlign: "left" }}>Işınım (W/m²)</th>{(g.tablo ?? []).map((r) => <th key={r.g_wm2}>{sayiTr(r.g_wm2)}</th>)}</tr></thead>
               <tbody className="mono">
                 <tr><td style={{ textAlign: "left", fontFamily: "var(--font)" }}>Verim oranı · 25 °C</td>{(g.tablo ?? []).map((r) => <td key={r.g_wm2}>%{sayiTr(r.verim_25_pct, 1)}</td>)}</tr>
@@ -57,7 +57,7 @@ function GucMatrisiKarti({ plantId, ilkVeri }: { plantId: string; ilkVeri: GucMa
               </tbody>
             </table>
           </div>
-          <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>Kaynak: {g.kaynak}. {g.not}</p>
+          <p className="soluk" style={{ fontSize: 14, margin: "10px 0 0" }}>Kaynak: {g.kaynak}. {g.not}</p>
         </>
       )}
     </Kart>
@@ -73,12 +73,12 @@ function KayipAgaciKarti({ plantId, ilkVeri }: { plantId: string; ilkVeri: Kayip
   return (
     <Kart baslik="Kayıp zinciri — yatay ışınımdan şebekeye" sag={<span style={{ display: "flex", gap: 6 }}>
       {k?.durum === "ok" && <span className="cip">tipik yıl {k.yil} · PR {sayiTr((k.pr ?? 0) * 100, 0)}% · {sayiTr(k.ozgul_kwh_kwp ?? 0, 0)} kWh/kWp</span>}
-      <button className="dugme" style={{ fontSize: 12.5 }} onClick={hesapla}>{k?.durum === "ok" ? "Yenile" : "Hesapla"}</button></span>}>
+      <button className="dugme" style={{ fontSize: 13 }} onClick={hesapla}>{k?.durum === "ok" ? "Yenile" : "Hesapla"}</button></span>}>
       {!k || k.durum !== "ok" ? <p className="soluk" style={{ margin: 0 }}>{mesaj ?? "Henüz hesaplanmadı. 'Hesapla' tipik yıl ışınımından adım adım kayıp zincirini üretir."}</p>
        : (
         <>
           <div className="grafik-kaydir">
-            <table className="veri" style={{ fontSize: 12.5 }}>
+            <table className="veri" style={{ fontSize: 13 }}>
               <thead><tr><th style={{ textAlign: "left" }}>Adım</th><th>Giren (MWh)</th><th>Kayıp (%)</th><th>Çıkan (MWh)</th><th style={{ textAlign: "left" }}>Kaynak</th></tr></thead>
               <tbody className="mono">
                 {(k.satirlar ?? []).map((r) => (
@@ -93,7 +93,7 @@ function KayipAgaciKarti({ plantId, ilkVeri }: { plantId: string; ilkVeri: Kayip
               </tbody>
             </table>
           </div>
-          <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>
+          <p className="soluk" style={{ fontSize: 14, margin: "10px 0 0" }}>
             Yatay ışınım {sayiTr(k.ghi_kwh_m2 ?? 0, 0)} → düzlem {sayiTr(k.poa_kwh_m2 ?? 0, 0)} kWh/m²; nominal {sayiTr((k.nominal_dc_kwh ?? 0) / 1000, 0)} MWh → şebeke {sayiTr((k.sebeke_kwh ?? 0) / 1000, 0)} MWh.
             "Varsayılan" satırlar sektör tipik değerleridir (gölge, uyumsuzluk, kablo, evirici); ölçümle değişmez. {mesaj ?? ""}
           </p>
@@ -120,7 +120,7 @@ function EpiasUretimKarti({ plantId }: { plantId: string }) {
           style={{ maxWidth: 900 }}>
       {d === null ? <p className="soluk" style={{ margin: 0 }}>Örnek kip.</p> : (
         <>
-          <p style={{ margin: "0 0 8px", fontSize: 13 }}>
+          <p style={{ margin: "0 0 8px", fontSize: 13.5 }}>
             SCADA dosyası yüklenmeyen lisanslı santralda gerçekleşen üretim, EPİAŞ Şeffaflık Platformu'ndan saatlik olarak alınır ve
             karne, alarm ve dengesizlik hesapları bunu kullanır. Yüklenen SCADA her zaman önceliklidir.
           </p>
@@ -254,8 +254,8 @@ export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
     <Kart baslik={ad} sag={onerilen ? <span className="rozet rozet-ok">Önerilen</span> : undefined}>
       <div className="sayi-buyuk" style={{ fontSize: 30,
         color: onerilen ? "var(--marka)" : "var(--metin)" }}>{bant}</div>
-      <div style={{ fontSize: 13, color: "var(--soluk)", marginBottom: 16 }}>{alt}</div>
-      <ul style={{ fontSize: 13.5, color: "var(--ikincil)", paddingLeft: 17,
+      <div style={{ fontSize: 13.5, color: "var(--soluk)", marginBottom: 16 }}>{alt}</div>
+      <ul style={{ fontSize: 14, color: "var(--ikincil)", paddingLeft: 17,
                    margin: 0, lineHeight: 2 }}>
         {maddeler.map((m) => <li key={m}>{m}</li>)}
       </ul>
@@ -299,14 +299,14 @@ export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
       </div>
 
       {kosuHata && (
-        <p style={{ fontSize: 13.5, color: "var(--ikincil)", maxWidth: 900,
+        <p style={{ fontSize: 14, color: "var(--ikincil)", maxWidth: 900,
                     margin: "14px 0 0", lineHeight: 1.65 }}>{kosuHata}</p>
       )}
 
       {hata && (
         <div style={{ maxWidth: 900, marginTop: 14 }}>
           <Kart baslik="Dosya okunamadı">
-            <p style={{ fontSize: 13.5, color: "var(--ikincil)", margin: 0,
+            <p style={{ fontSize: 14, color: "var(--ikincil)", margin: 0,
                         lineHeight: 1.65 }}>{hata}</p>
             <button className="dugme" style={{ marginTop: 14 }}
               onClick={() => { setHata(null); setDosyaAdi(null); }}>
@@ -320,7 +320,7 @@ export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
         <div style={{ maxWidth: 900, marginTop: 14, display: "grid", gap: 14 }}>
           <Kart baslik="Kolonları elle eşleyin"
             sag={<span className="rozet mono">{dosyaAdi}</span>}>
-            <p style={{ fontSize: 13.5, color: "var(--ikincil)",
+            <p style={{ fontSize: 14, color: "var(--ikincil)",
                         margin: "0 0 14px", lineHeight: 1.65 }}>
               Otomatik eşleme bu dosyada tutmadı — hangi kolonun hangi alana
               denk geldiğini siz söyleyin. Zorunlu: Zaman damgası ve Güç
@@ -368,7 +368,7 @@ export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
             </div>
           </Kart>
           <Kart baslik="Onay">
-            <p style={{ fontSize: 13.5, color: "var(--ikincil)", margin: 0,
+            <p style={{ fontSize: 14, color: "var(--ikincil)", margin: 0,
                         lineHeight: 1.65 }}>
               Saat dilimi santral kaydından alınacak. Şüpheli satırlar
               silinmez, bayraklanır.
@@ -388,7 +388,7 @@ export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
               </button>
             </div>
             {kayitHata && (
-              <p style={{ fontSize: 13.5, color: "var(--ikincil)",
+              <p style={{ fontSize: 14, color: "var(--ikincil)",
                           margin: "12px 0 0", lineHeight: 1.65 }}>{kayitHata}</p>
             )}
           </Kart>
@@ -401,8 +401,8 @@ export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
       {cihaz && dosya && (
         <Kart baslik="Bu dosya cihaz bazlı görünüyor"
           sag={<span className="cip mono">{`damga başına ~${sayiTr(cihaz.oran, 1)} satır`}</span>}>
-          <p style={{ fontSize: 14, margin: "0 0 6px", lineHeight: 1.7 }}>{cihaz.mesaj}</p>
-          <p className="soluk" style={{ fontSize: 13.5, margin: "0 0 12px", lineHeight: 1.65 }}>
+          <p style={{ fontSize: 14.5, margin: "0 0 6px", lineHeight: 1.7 }}>{cihaz.mesaj}</p>
+          <p className="soluk" style={{ fontSize: 14, margin: "0 0 12px", lineHeight: 1.65 }}>
             Aynı andaki satırlar tek santral serisine indirgenecek. <b>Santral toplamı</b> güç ve
             enerjiyi toplar (cihazlar → santral; önerilen), sıcaklık gibi ölçümleri ortalar.
             <b> Ortalama</b> her kolonu ortalar — yalnız satırlar aynı ölçümün kopyalarıysa doğrudur.
@@ -422,7 +422,7 @@ export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
                                setDosyaAdi(null); setDosya(null); }}>Vazgeç</button>
           </div>
           {kayitHata && (
-            <p style={{ fontSize: 13.5, color: "var(--ikincil)",
+            <p style={{ fontSize: 14, color: "var(--ikincil)",
                         margin: "12px 0 0", lineHeight: 1.65 }}>{kayitHata}</p>
           )}
         </Kart>
@@ -443,7 +443,7 @@ export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
               {on.matched_template ? sr("Eşleşen şablon", on.matched_template) : null}
             </tbody></table>
             {on.notes.length > 0 && (
-              <p style={{ fontSize: 13, color: "var(--soluk)", margin: "12px 0 0" }}>
+              <p style={{ fontSize: 13.5, color: "var(--soluk)", margin: "12px 0 0" }}>
                 {on.notes.join(" · ")}
               </p>
             )}
@@ -465,7 +465,7 @@ export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
               </tbody>
             </table>
             {on.unmapped_columns.length > 0 && (
-              <p style={{ fontSize: 13, color: "var(--soluk)", margin: "12px 0 0" }}>
+              <p style={{ fontSize: 13.5, color: "var(--soluk)", margin: "12px 0 0" }}>
                 Eşlenmeyen kolonlar (yok sayılacak):{" "}
                 <span className="mono">{on.unmapped_columns.join(", ")}</span>
               </p>
@@ -486,13 +486,13 @@ export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
                 </tbody>
               </table>
             </div>
-            <p style={{ fontSize: 13, color: "var(--soluk)", margin: "12px 0 0" }}>
+            <p style={{ fontSize: 13.5, color: "var(--soluk)", margin: "12px 0 0" }}>
               Değerler dosyadan olduğu gibi — dönüştürme onaydan sonra yapılır.
             </p>
           </Kart>
 
           <Kart baslik="Onay">
-            <p style={{ fontSize: 13.5, color: "var(--ikincil)", margin: 0,
+            <p style={{ fontSize: 14, color: "var(--ikincil)", margin: 0,
                         lineHeight: 1.65 }}>
               Saat dilimi <span className="mono">{on.onerilen_tz}</span> (santral
               kaydından) ile yüklenecek. Şüpheli satırlar silinmez, bayraklanır.
@@ -508,7 +508,7 @@ export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
               </button>
             </div>
             {kayitHata && (
-              <p style={{ fontSize: 13.5, color: "var(--ikincil)",
+              <p style={{ fontSize: 14, color: "var(--ikincil)",
                           margin: "12px 0 0", lineHeight: 1.65 }}>{kayitHata}</p>
             )}
           </Kart>
@@ -543,21 +543,21 @@ export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
                       ))}
                   </tbody>
                 </table>
-                <p style={{ fontSize: 13, color: "var(--soluk)",
+                <p style={{ fontSize: 13.5, color: "var(--soluk)",
                             margin: "12px 0 0" }}>
                   İşaretli satırlar kalibrasyona girmez ama silinmez; kayıtta izlenebilir.
                 </p>
               </>
             )}
             {karne.report.warnings.length > 0 && (
-              <p style={{ fontSize: 13, color: "var(--soluk)",
+              <p style={{ fontSize: 13.5, color: "var(--soluk)",
                           margin: "12px 0 0" }}>
                 {karne.report.warnings.join(" · ")}
               </p>
             )}
           </Kart>
           <Kart baslik="Sırada ne var">
-            <p style={{ fontSize: 13.5, color: "var(--ikincil)", margin: 0,
+            <p style={{ fontSize: 14, color: "var(--ikincil)", margin: 0,
                         lineHeight: 1.65 }}>
               Model bu veriyle gece yeniden değerlendirilir; doğruluk karneniz
               oradan büyür. Santralim sayfasındaki "Son veri yüklemesi" güncellendi.
@@ -577,7 +577,7 @@ export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
         </div>
       )}
 
-      <p style={{ fontSize: 13, color: "var(--soluk)", marginTop: 16, maxWidth: 900 }}>
+      <p style={{ fontSize: 13.5, color: "var(--soluk)", marginTop: 16, maxWidth: 900 }}>
         Veriniz azsa endişelenmeyin: 3 aydan kısa veriyle de başlayabilirsiniz;
         hızlı tahminle başlayıp sonra kalibre tahmine geçmenizi öneririz.
       </p>
@@ -633,12 +633,12 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
         grid: { left: 44, right: 10, top: 30, bottom: 26 }, animation: false,
         xAxis: { type: "category", data: ["Fiziksel", "Kalibrasyon", "Kalibre"],
           axisTick: { show: false }, axisLine: { show: false },
-          axisLabel: { color: oku("--ikincil"), fontFamily: mono, fontSize: 13 } },
+          axisLabel: { color: oku("--ikincil"), fontFamily: mono, fontSize: 13.5 } },
         yAxis: { type: "value", splitLine: { lineStyle: { color: izgara } },
           axisLine: { show: false },
           min: +(Math.min(o, so) * 0.9).toFixed(1),
           max: +(Math.max(o, so) * 1.12).toFixed(1),
-          axisLabel: { color: soluk, fontFamily: mono, fontSize: 12,
+          axisLabel: { color: soluk, fontFamily: mono, fontSize: 13,
                        formatter: (v: number) => `%${sayiTr(v, 1)}` } },
         series: [
           { type: "bar", stack: "s", barMaxWidth: 44, silent: true,
@@ -646,7 +646,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
             data: [0, Math.min(o, so), 0] },
           { type: "bar", stack: "s", barMaxWidth: 44,
             label: { show: true, position: "top", fontFamily: mono,
-              fontSize: 13.5, fontWeight: 600, color: oku("--metin"),
+              fontSize: 14, fontWeight: 600, color: oku("--metin"),
               formatter: (pr: { dataIndex: number }) =>
                 [et(o), `${d >= 0 ? "+" : ""}${sayiTr(d, 1)} puan`, et(so)][pr.dataIndex] },
             itemStyle: { borderRadius: [2, 2, 0, 0] },
@@ -678,7 +678,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
         style={{ opacity: 0.55, cursor: "not-allowed" }}>Yeniden kalibre et</button>}>
       {yuklendi && !k && (
         <Kart baslik="Aktif kalibrasyon yok">
-          <p style={{ fontSize: 14, color: "var(--soluk)", margin: 0 }}>
+          <p style={{ fontSize: 14.5, color: "var(--soluk)", margin: 0 }}>
             Bu santral için aktif bir kalibrasyon kaydı yok. SCADA verisi
             yükleyip kalibre tahmine geçtiğinizde bu sayfa kendiliğinden dolar.
           </p>
@@ -688,7 +688,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
       {k.uyarilar.length > 0 && (
         <div style={{ background: "var(--uyari-zemin)", border: "1px solid var(--uyari)",
                       borderRadius: "var(--rk)", padding: "12px 16px", marginBottom: 14,
-                      fontSize: 13.5, color: "var(--metin)" }}>
+                      fontSize: 14, color: "var(--metin)" }}>
           <b>Kalibrasyon uyarısı:</b> {k.uyarilar.join(" · ")}
         </div>
       )}
@@ -724,7 +724,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
             <span style={{ color: "var(--soluk)" }}>{"\u2192"}</span>
             <span className="sayi-buyuk" style={{ fontSize: 30 }}>{yzd(k.sapma_sonra)}</span>
           </div>
-          <p style={{ fontSize: 13, color: "var(--soluk)", margin: "14px 0 0" }}>
+          <p style={{ fontSize: 13.5, color: "var(--soluk)", margin: "14px 0 0" }}>
             Fiziksel model → kalibre model. Bu değer kalibrasyon dönemindeki sistematik sapmadır;
             saatlik tahmin doğruluğu Doğruluk sayfasında ölçülür.
           </p>
@@ -736,7 +736,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
           <div className="ızgara" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)" }}>
             {selale.mape && (
               <div>
-                <p style={{ fontSize: 13, fontWeight: 600, color: "var(--metin)",
+                <p style={{ fontSize: 13.5, fontWeight: 600, color: "var(--metin)",
                             margin: "0 0 4px" }}>Saatlik hata — MAPE</p>
                 <EChart option={selale.mape} height={210}
                   ariaLabel="Fiziksel modelden kalibre modele MAPE değişimi" />
@@ -744,14 +744,14 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
             )}
             {selale.sapma && (
               <div>
-                <p style={{ fontSize: 13, fontWeight: 600, color: "var(--metin)",
+                <p style={{ fontSize: 13.5, fontWeight: 600, color: "var(--metin)",
                             margin: "0 0 4px" }}>Enerji sapması — mutlak %</p>
                 <EChart option={selale.sapma} height={210}
                   ariaLabel="Fiziksel modelden kalibre modele mutlak enerji sapması" />
               </div>
             )}
           </div>
-          <p style={{ fontSize: 12.5, color: "var(--soluk)", margin: "12px 0 0" }}>
+          <p style={{ fontSize: 13, color: "var(--soluk)", margin: "12px 0 0" }}>
             Orta basamak kalibrasyonun katkısıdır: aşağı inen mavi basamak iyileşmeyi,
             yukarı çıkan kızıl basamak kaybı gösterir.
           </p>
@@ -775,7 +775,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
                 <div className="kpi-dg mono">{hj.kisinti_aranabildi ? <>+{sayiTr(hj.kisinti_kayip_kwh / 1000, 2)} <small>MWh</small></> : "—"}</div>
                 <div className="kpi-alt">{hj.kisinti_aranabildi ? "kısıt saatlerinde beklenen − gerçekleşen" : "—"}</div></div>
             </div>
-            <p style={{ fontSize: 13, color: "var(--ikincil)", margin: "10px 0 0", lineHeight: 1.55 }}>
+            <p style={{ fontSize: 13.5, color: "var(--ikincil)", margin: "10px 0 0", lineHeight: 1.55 }}>
               Kırpma: üretimin AC sınırına dayandığı saatlerdir; gerçek üretimdir ve tahmin de bu sınırı bilir, ancak
               sınırlanmış güç panel fiziğini yansıtmadığından kalibrasyon bu saatleri kullanmaz. Kısıt: beklenenin çok
               altında ve düz seyreden bloklardır; şebeke kısıtının izidir, bulut düşüşü düz olmaz. Her gece yeniden
@@ -791,7 +791,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
         {ky && ky.ozellikler.length > 0 ? (
           <>
             <div className="grafik-kaydir">
-              <table className="veri" style={{ fontSize: 13 }}>
+              <table className="veri" style={{ fontSize: 13.5 }}>
                 <thead><tr><th>Girdi</th><th>Saat</th><th>Dağılım farkı (PSI)</th><th>KS</th><th>Tahmin − kalibrasyon</th><th>Hüküm</th></tr></thead>
                 <tbody className="mono">
                   {ky.ozellikler.map((o) => (
@@ -802,7 +802,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
                 </tbody>
               </table>
             </div>
-            <p style={{ fontSize: 13, color: "var(--ikincil)", margin: "10px 0 0", lineHeight: 1.55 }}>
+            <p style={{ fontSize: 13.5, color: "var(--ikincil)", margin: "10px 0 0", lineHeight: 1.55 }}>
               Kalibrasyon verisi: {ky.kaynak.egitim} · Tahmin verisi: {ky.kaynak.servis}. {ky.kaynak.not}. PSI &lt; 0,10 uyumlu, 0,10–0,25 dikkat, &gt; 0,25 kayma.
               Kayma varsa tahmin aralığındaki sapmanın nedeni büyük olasılıkla buradadır; bu kart yalnız ölçer, düzeltme yapmaz.
             </p>
@@ -864,7 +864,7 @@ export function Raporlar({ plantId }: { plantId: string }) {
     finally { setUretilen(null); }
   };
   const hataSatiri = (
-    <p style={{ fontSize: 13.5, color: "var(--ikincil)", margin: "12px 0 0",
+    <p style={{ fontSize: 14, color: "var(--ikincil)", margin: "12px 0 0",
                 lineHeight: 1.65 }}>{hata}</p>
   );
 
@@ -882,7 +882,7 @@ export function Raporlar({ plantId }: { plantId: string }) {
     <Sayfa baslik="Raporlar"
       alt="Tüm raporlar tahmin arşivinden üretilir; tahminler güncellenmez, yenisi eklenir.">
       <Kart baslik="16 sayfalık müşteri raporu">
-        <div style={{ fontSize: 13.5, color: "var(--ikincil)", lineHeight: 1.6 }}>
+        <div style={{ fontSize: 14, color: "var(--ikincil)", lineHeight: 1.6 }}>
           Kapaktan eklere tam rapor: doğruluk karnesi, hata dağılımı,
           kalibrasyon, veri kalitesi, iklim beklentisi ve tahmin yöntemi özeti.
           A4, 16 sayfa, PDF.
@@ -898,7 +898,7 @@ export function Raporlar({ plantId }: { plantId: string }) {
             {bulgular.map((b, i) => (
               <div key={i} style={{
                 borderLeft: `3px solid ${b.seviye === "hata" ? "var(--uyari)" : "var(--soluk)"}`,
-                padding: "6px 10px", margin: "6px 0", fontSize: 13,
+                padding: "6px 10px", margin: "6px 0", fontSize: 13.5,
                 background: "var(--yuzey)", lineHeight: 1.5 }}>
                 <b>{b.kod}</b> · {b.mesaj}
                 {b.beklenen && <div style={{ color: "var(--ikincil)" }}>
@@ -911,7 +911,7 @@ export function Raporlar({ plantId }: { plantId: string }) {
       <div className="ızgara satir-3" style={{ margin: "14px 0 14px" }}>
         {kartlar.map(([ad, fmt, alt]) => (
           <Kart key={ad} baslik={ad}>
-            <div style={{ fontSize: 13.5, color: "var(--ikincil)", minHeight: 38 }}>{alt}</div>
+            <div style={{ fontSize: 14, color: "var(--ikincil)", minHeight: 38 }}>{alt}</div>
             <button className="dugme" disabled={uretilen !== null}
               onClick={() => hazirla(fmt)}
               style={{ width: "100%", marginTop: 14 }}>
@@ -934,7 +934,7 @@ export function Raporlar({ plantId }: { plantId: string }) {
       )}
       <Kart baslik="Tahmin geçmişi">
         {kosular.length === 0 ? (
-          <p style={{ fontSize: 13, color: "var(--soluk)", margin: 0,
+          <p style={{ fontSize: 13.5, color: "var(--soluk)", margin: 0,
                       lineHeight: 1.65 }}>
             Henüz tahmin yok; ilk tahminle bu tablo dolar.
           </p>
@@ -973,7 +973,7 @@ function VerinizSizindirKarti({ plantId }: { plantId: string }) {
   };
   return (
     <Kart baslik="Veriniz sizindir" sag={<span className="cip">dışa aktarma her role açık · silme yalnız yönetici</span>}>
-      <p className="soluk" style={{ margin: "0 0 10px", fontSize: 13.5, maxWidth: 900 }}>
+      <p className="soluk" style={{ margin: "0 0 10px", fontSize: 14, maxWidth: 900 }}>
         Yüklediğiniz ham veriyi istediğiniz an CSV olarak geri alabilirsiniz; istenirse bir tarih aralığı
         kalıcı olarak silinir. Silme ham veriyi kaldırır; geçmiş doğruluk sonuçları değişmez,
         kalibrasyon bir sonraki hesaplamada kalan veriyle yenilenir.
@@ -1000,7 +1000,7 @@ function VerinizSizindirKarti({ plantId }: { plantId: string }) {
                     })}>Eminim — {b1} → {b2} aralığını kalıcı sil</button>
           )
         ) : (
-          <span className="soluk" style={{ fontSize: 12.5 }}>silmek için iki tarih de gerekli</span>
+          <span className="soluk" style={{ fontSize: 13 }}>silmek için iki tarih de gerekli</span>
         ))}
       </div>
     </Kart>
@@ -1019,12 +1019,12 @@ function GeceIsleriKarti() {
     <Kart baslik="Otomatik gece işlemleri" sag={<span className="cip">{`son ${sayiTr(j.pencere_saat)} saat · ayrıntı sunucu günlüğünde`}</span>}>
       {/* v2.359: "santral yok / ilk gece" bilgi tonudur — turuncu yalnız gerçek bayatlıkta */}
       {j.not && (j.seviye === "bilgi"
-        ? <p className="soluk" style={{ margin: "0 0 10px", fontSize: 13.5 }}>{j.not}</p>
+        ? <p className="soluk" style={{ margin: "0 0 10px", fontSize: 14 }}>{j.not}</p>
         : <p className="ayar-durum hata" style={{ margin: "0 0 10px" }}>{j.not}</p>)}
       {j.isler.length === 0 ? (
-        <p className="soluk" style={{ margin: 0, fontSize: 13.5 }}>Bu dönemde kayıtlı işlem yok.</p>
+        <p className="soluk" style={{ margin: 0, fontSize: 14 }}>Bu dönemde kayıtlı işlem yok.</p>
       ) : (
-        <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 13 }}>
+        <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 13.5 }}>
           <thead><tr><th style={{ textAlign: "left" }}>İşlem</th><th style={{ textAlign: "left" }}>Zaman</th><th>Süre</th><th>Durum</th></tr></thead>
           <tbody>{j.isler.slice(0, 14).map((x, i) => (
             <tr key={i}>
@@ -1035,7 +1035,7 @@ function GeceIsleriKarti() {
             </tr>))}</tbody>
         </table></div>
       )}
-      <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>
+      <p className="soluk" style={{ fontSize: 14, margin: "10px 0 0" }}>
         Hava verisi indirme, tahmin, doğruluk değerlendirmesi ve kalibrasyon her gece otomatik çalışır; başarısız işlemin ayrıntısı sunucu günlüğündedir.
       </p>
     </Kart>

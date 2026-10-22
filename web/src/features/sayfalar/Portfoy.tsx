@@ -67,7 +67,7 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
         {!p || p.santraller.length === 0 ? <p className="soluk" style={{ margin: 0 }}>Bu hesapta santral yok.</p>
          : (
           <div className="grafik-kaydir">
-            <table className="veri" style={{ fontSize: 13 }}>
+            <table className="veri" style={{ fontSize: 13.5 }}>
               <thead><tr><th>Santral</th><th>kWp</th><th>Segment</th><th>Son ölçüm</th><th>Hata 30g (WMAPE)</th><th>Bugün</th><th>Yarın</th><th>Alarm</th><th>Son tahmin</th></tr></thead>
               <tbody className="mono">
                 {p.santraller.map((r) => (
@@ -83,7 +83,7 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
             </table>
           </div>
         )}
-        <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>
+        <p className="soluk" style={{ fontSize: 14, margin: "10px 0 0" }}>
           Bugün/yarın: son tahminin yerel gün toplamı (beklenen, P50); 20 saatten az kapsanan gün gösterilmez.
           WMAPE: son 30 günün 0–24 saat tahmin hatası. Alarm: son 7 günde okunmamış kayıt.
         </p>
@@ -93,7 +93,7 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
         {!pt || pt.durum !== "ok" ? <p className="soluk" style={{ margin: 0 }}>— henüz tahmin yok</p> : (
           <>
             <div className="grafik-kaydir">
-              <table className="veri" style={{ fontSize: 13 }}>
+              <table className="veri" style={{ fontSize: 13.5 }}>
                 {/* v2.362: küçük portföyde günlük toplamlar kWh konuşur (bulgu 14) */}
                 {(() => { const kucukP = !(pt.gunler ?? []).some((g) => (g.p90_mwh ?? 0) >= 10);
                   const b = kucukP ? "kWh" : "MWh";
@@ -108,7 +108,7 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
                   </>); })()}
               </table>
             </div>
-            <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>Santral tahminleri toplanır; toplam, santral tahminleriyle çelişmez. {pt.not}{pt.artik_gun ? ` Düzeltme geçmişi ${sayiTr(pt.artik_gun)} gün.` : ""}</p>
+            <p className="soluk" style={{ fontSize: 14, margin: "10px 0 0" }}>Santral tahminleri toplanır; toplam, santral tahminleriyle çelişmez. {pt.not}{pt.artik_gun ? ` Düzeltme geçmişi ${sayiTr(pt.artik_gun)} gün.` : ""}</p>
           </>
         )}
       </Kart>
@@ -123,7 +123,7 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
               <Kpi etiket="Portföy netleşmiş" deger={sayiTr((dsg.net_tl ?? 0) / 1000, 1)} birim="bin TL" alt={`${sayiTr(dsg.sapma_net_mwh ?? 0, 1)} MWh net sapma`} />
               <Kpi etiket="Netleşme kazancı" deger={sayiTr((dsg.kazanc_tl ?? 0) / 1000, 1)} birim="bin TL" alt={dsg.kazanc_pct != null ? `ayrı maliyetin %${sayiTr(dsg.kazanc_pct, 1)}'i` : "—"} />
             </div>
-            <p className="soluk" style={{ fontSize: 13.5, margin: 0 }}>{dsg.not}</p>
+            <p className="soluk" style={{ fontSize: 14, margin: 0 }}>{dsg.not}</p>
           </>
         )}
       </Kart>
@@ -150,7 +150,7 @@ function GelenTalepler() {
       sag={<span className="cip">{liste === null ? "—" : `${sayiTr(acik)} açık · ${sayiTr(liste.length)} toplam`}</span>}>
       {liste === null ? <p className="soluk" style={{ margin: 0 }}>— veri yok</p> : (
         <div className="grafik-kaydir">
-          <table className="veri" style={{ fontSize: 13 }}>
+          <table className="veri" style={{ fontSize: 13.5 }}>
             <thead><tr><th style={{ textAlign: "left" }}>E-posta</th><th style={{ textAlign: "left" }}>Santral</th>
               <th>Kurulu güç</th><th style={{ textAlign: "left" }}>Tarih</th><th>Durum</th></tr></thead>
             <tbody className="mono">
@@ -161,7 +161,7 @@ function GelenTalepler() {
                   <td>{b.kurulu_guc_kwp != null ? `${sayiTr(b.kurulu_guc_kwp / 1000, 1)} MW` : "—"}</td>
                   <td>{new Date(b.created_at).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" })}</td>
                   <td>{b.okundu ? "okundu" : (
-                    <button className="dugme" style={{ fontSize: 12.5 }}
+                    <button className="dugme" style={{ fontSize: 13 }}
                       onClick={() => { void api.basvuruOkundu(b.id).then(yenile); }}>Okundu işaretle</button>
                   )}</td>
                 </tr>
@@ -170,7 +170,7 @@ function GelenTalepler() {
           </table>
         </div>
       )}
-      <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>
+      <p className="soluk" style={{ fontSize: 14, margin: "10px 0 0" }}>
         Web sitesindeki "Karnenizi başlatın" formundan gelir. Yanıt e-postası elle gönderilir;
         yanıtlayınca "okundu" işaretleyin.
       </p>
@@ -201,7 +201,7 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
     <Kart baslik="Dış erişim"
           sag={<span style={{ display: "flex", gap: 6 }}><span className="cip">yalnız yönetici</span>
                 {docs ? <a className="cip" href={docs} target="_blank" rel="noreferrer">OpenAPI şeması ↗</a> : <span className="cip">örnek kip</span>}</span>}>
-      <p className="soluk" style={{ margin: "0 0 10px", fontSize: 13.5 }}>
+      <p className="soluk" style={{ margin: "0 0 10px", fontSize: 14 }}>
         Müşteri sistemleri tahmini <span className="mono">X-API-Key</span> başlığıyla çeker; sabah tahmini üretildikten sonra webhook alıcılarına imzalı bildirim gider.
         Anahtar ve sır yalnız üretildiği anda görünür — sunucu yalnız özetini saklar.
       </p>
@@ -210,14 +210,14 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(340px, 100%), 1fr))", gap: 16 }}>
         <div>
           <div className="etiket-ust">API anahtarları</div>
-          {anahtarlar.length === 0 ? <p className="soluk" style={{ fontSize: 13.5, margin: 0 }}>Henüz anahtar yok.</p> : (
-            <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 12.5 }}>
+          {anahtarlar.length === 0 ? <p className="soluk" style={{ fontSize: 14, margin: 0 }}>Henüz anahtar yok.</p> : (
+            <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 13 }}>
               <thead><tr><th>Ad</th><th>Önek</th><th>Kapsam</th><th>Son kullanım</th><th>Durum</th><th></th></tr></thead>
               <tbody className="mono">{anahtarlar.map((k) => (
                 <tr key={k.id} style={{ opacity: k.iptal ? 0.5 : 1 }}>
                   <td>{k.ad ?? "—"}</td><td>pvq_{k.prefix}…</td><td>{k.kapsamlar.join(", ")}</td><td>{tarih(k.son_kullanim)}</td>
                   <td>{k.iptal ? "iptal" : k.expires_at && new Date(k.expires_at) < new Date() ? "süresi doldu" : "etkin"}</td>
-                  <td>{!k.iptal && <button className="dugme" style={{ fontSize: 12.5 }} onClick={() => dene(() => api.apiAnahtarIptal(k.id))}>İptal et</button>}</td>
+                  <td>{!k.iptal && <button className="dugme" style={{ fontSize: 13 }} onClick={() => dene(() => api.apiAnahtarIptal(k.id))}>İptal et</button>}</td>
                 </tr>))}</tbody>
             </table></div>
           )}
@@ -234,16 +234,16 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
           </form>
           {yeniAnahtar && (
             <div style={{ marginTop: 10, padding: 10, border: "1px solid var(--kenar)", borderRadius: 8, background: "var(--yuzey2)" }}>
-              <div style={{ fontSize: 12.5, marginBottom: 4 }}>Yeni anahtar — <strong>bir daha gösterilmez</strong>, şimdi kopyalayın:</div>
-              <code className="mono" style={{ fontSize: 13, wordBreak: "break-all", userSelect: "all" }}>{yeniAnahtar}</code>
-              <div style={{ marginTop: 6 }}><button className="dugme" style={{ fontSize: 12.5 }} onClick={() => { navigator.clipboard?.writeText(yeniAnahtar).then(() => setMesaj("Anahtar panoya kopyalandı.")).catch(() => {}); }}>Kopyala</button>
-                <button className="dugme" style={{ fontSize: 12.5, marginLeft: 6 }} onClick={() => setYeniAnahtar(null)}>Kapat</button></div>
+              <div style={{ fontSize: 13, marginBottom: 4 }}>Yeni anahtar — <strong>bir daha gösterilmez</strong>, şimdi kopyalayın:</div>
+              <code className="mono" style={{ fontSize: 13.5, wordBreak: "break-all", userSelect: "all" }}>{yeniAnahtar}</code>
+              <div style={{ marginTop: 6 }}><button className="dugme" style={{ fontSize: 13 }} onClick={() => { navigator.clipboard?.writeText(yeniAnahtar).then(() => setMesaj("Anahtar panoya kopyalandı.")).catch(() => {}); }}>Kopyala</button>
+                <button className="dugme" style={{ fontSize: 13, marginLeft: 6 }} onClick={() => setYeniAnahtar(null)}>Kapat</button></div>
             </div>)}
         </div>
         <div>
           <div className="etiket-ust">Webhook alıcıları <span className="soluk">(tahmin.yeni)</span></div>
-          {webhooklar.length === 0 ? <p className="soluk" style={{ fontSize: 13.5, margin: 0 }}>Henüz alıcı yok.</p> : (
-            <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 12.5 }}>
+          {webhooklar.length === 0 ? <p className="soluk" style={{ fontSize: 14, margin: 0 }}>Henüz alıcı yok.</p> : (
+            <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 13 }}>
               <thead><tr><th>Adres</th><th>Santral</th><th>Son gönderim</th><th>Durum</th><th></th></tr></thead>
               <tbody className="mono">{webhooklar.map((w) => (
                 <tr key={w.id}>
@@ -252,8 +252,8 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
                   <td style={{ color: w.son_durum != null && !(w.son_durum >= 200 && w.son_durum < 300) ? "var(--uyari-metin)" : undefined }}>
                     {w.son_durum == null ? "—" : w.son_durum === 0 ? "ulaşılamadı" : `HTTP ${w.son_durum}`}{w.hata_sayisi > 0 ? ` · ${sayiTr(w.hata_sayisi)} hata` : ""}</td>
                   <td style={{ whiteSpace: "nowrap" }}>
-                    <button className="dugme" style={{ fontSize: 12.5 }} onClick={() => dene(async () => { const r = await api.webhookDene(w.id); setMesaj(r.ok ? `Deneme ulaştı (HTTP ${r.durum}).` : `Deneme başarısız (${r.durum === 0 ? "ulaşılamadı" : "HTTP " + r.durum}).`); })}>Dene</button>
-                    <button className="dugme" style={{ fontSize: 12.5, marginLeft: 4 }} onClick={() => dene(() => api.webhookSil(w.id))}>Sil</button>
+                    <button className="dugme" style={{ fontSize: 13 }} onClick={() => dene(async () => { const r = await api.webhookDene(w.id); setMesaj(r.ok ? `Deneme ulaştı (HTTP ${r.durum}).` : `Deneme başarısız (${r.durum === 0 ? "ulaşılamadı" : "HTTP " + r.durum}).`); })}>Dene</button>
+                    <button className="dugme" style={{ fontSize: 13, marginLeft: 4 }} onClick={() => dene(() => api.webhookSil(w.id))}>Sil</button>
                   </td>
                 </tr>))}</tbody>
             </table></div>
@@ -271,13 +271,13 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
           </form>
           {yeniSir && (
             <div style={{ marginTop: 10, padding: 10, border: "1px solid var(--kenar)", borderRadius: 8 }}>
-              <div style={{ fontSize: 12.5, marginBottom: 4 }}>İmza sırrı — <strong>bir daha gösterilmez</strong>; alıcı <span className="mono">X-PVQ-Signature</span> başlığını bununla doğrular:</div>
-              <code className="mono" style={{ fontSize: 13, wordBreak: "break-all", userSelect: "all" }}>{yeniSir}</code>
-              <div style={{ marginTop: 6 }}><button className="dugme" style={{ fontSize: 12.5 }} onClick={() => setYeniSir(null)}>Kapat</button></div>
+              <div style={{ fontSize: 13, marginBottom: 4 }}>İmza sırrı — <strong>bir daha gösterilmez</strong>; alıcı <span className="mono">X-PVQ-Signature</span> başlığını bununla doğrular:</div>
+              <code className="mono" style={{ fontSize: 13.5, wordBreak: "break-all", userSelect: "all" }}>{yeniSir}</code>
+              <div style={{ marginTop: 6 }}><button className="dugme" style={{ fontSize: 13 }} onClick={() => setYeniSir(null)}>Kapat</button></div>
             </div>)}
         </div>
       </div>
-      <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>
+      <p className="soluk" style={{ fontSize: 14, margin: "10px 0 0" }}>
         Uçlar: <span className="mono">/v1/dis/santraller</span>, <span className="mono">/v1/dis/santral/{"{id}"}/tahmin</span> (ETag ile 304),
         <span className="mono"> /v1/dis/santral/{"{id}"}/kgup</span>. Oran sınırı dakikada 120 istek. Ayrıntı: docs/api/dis-api.md.
       </p>
@@ -303,7 +303,7 @@ function Paylasimlar({ santraller }: { santraller: { id: string; ad: string }[] 
   if (!yonetici && liste.verilenler.length === 0 && liste.alinanlar.length === 0) return null;
   return (
     <Kart baslik="Kuruluşlar arası paylaşım" sag={<span className="cip">yalnız okuma · zaman sınırlı</span>}>
-      <p className="soluk" style={{ margin: "0 0 10px", fontSize: 13.5 }}>
+      <p className="soluk" style={{ margin: "0 0 10px", fontSize: 14 }}>
         Bir santralin tahmin, karne ya da gerçekleşen özetini başka bir kuruluşa (toplayıcı, danışman, alıcı) açar.
         Karşı taraf yalnız seçtiğiniz kapsamı, günlük toplam düzeyinde görür; istenirse santral adı takma adla gizlenir.
         Her erişim denetim iziyle kayda geçer.
@@ -313,8 +313,8 @@ function Paylasimlar({ santraller }: { santraller: { id: string; ad: string }[] 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(340px, 100%), 1fr))", gap: 16 }}>
         <div>
           <div className="etiket-ust">Verdiklerimiz</div>
-          {liste.verilenler.length === 0 ? <p className="soluk" style={{ fontSize: 13.5, margin: 0 }}>Henüz paylaşım yok.</p> : (
-            <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 12.5 }}>
+          {liste.verilenler.length === 0 ? <p className="soluk" style={{ fontSize: 14, margin: 0 }}>Henüz paylaşım yok.</p> : (
+            <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 13 }}>
               <thead><tr><th>Santral</th><th>Kuruluş</th><th>Kapsam</th><th>Bitiş</th><th>Durum</th><th></th></tr></thead>
               <tbody>{liste.verilenler.map((x) => (
                 <tr key={x.id} style={{ opacity: x.aktif ? 1 : 0.5 }}>
@@ -322,7 +322,7 @@ function Paylasimlar({ santraller }: { santraller: { id: string; ad: string }[] 
                   <td>{x.karsi_kurulus}</td><td>{x.izinler.map(etiket).join(", ")}</td>
                   <td>{x.bitis ? new Date(x.bitis).toLocaleDateString("tr-TR") : "süresiz"}</td>
                   <td>{x.iptal ? "iptal" : x.aktif ? "etkin" : "süresi doldu"}</td>
-                  <td>{yonetici && x.aktif && <button className="dugme" style={{ fontSize: 12.5 }}
+                  <td>{yonetici && x.aktif && <button className="dugme" style={{ fontSize: 13 }}
                         onClick={() => dene(async () => { await api.paylasimIptal(x.id); setMesaj("Paylaşım iptal edildi."); })}>İptal et</button>}</td>
                 </tr>))}</tbody>
             </table></div>
@@ -355,15 +355,15 @@ function Paylasimlar({ santraller }: { santraller: { id: string; ad: string }[] 
         </div>
         <div>
           <div className="etiket-ust">Aldıklarımız</div>
-          {liste.alinanlar.length === 0 ? <p className="soluk" style={{ fontSize: 13.5, margin: 0 }}>Bize açılmış paylaşım yok.</p> : (
-            <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 12.5 }}>
+          {liste.alinanlar.length === 0 ? <p className="soluk" style={{ fontSize: 14, margin: 0 }}>Bize açılmış paylaşım yok.</p> : (
+            <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 13 }}>
               <thead><tr><th>Santral</th><th>Kuruluş</th><th>Bitiş</th><th>Görüntüle</th></tr></thead>
               <tbody>{liste.alinanlar.map((x) => (
                 <tr key={x.id} style={{ opacity: x.aktif ? 1 : 0.5 }}>
                   <td>{x.santral}</td><td>{x.karsi_kurulus}</td>
                   <td>{x.bitis ? new Date(x.bitis).toLocaleDateString("tr-TR") : "süresiz"}</td>
                   <td style={{ whiteSpace: "nowrap" }}>{x.aktif ? x.izinler.map((i) => (
-                    <button key={i} className="dugme" style={{ fontSize: 12.5, marginRight: 4 }}
+                    <button key={i} className="dugme" style={{ fontSize: 13, marginRight: 4 }}
                             onClick={() => dene(async () => setAcik({ id: x.id, tur: i.split(":")[0], veri: await api.paylasimVeri(x.id, i.split(":")[0]) }))}>{etiket(i)}</button>
                   )) : <span className="soluk">kapandı</span>}</td>
                 </tr>))}</tbody>
@@ -371,19 +371,19 @@ function Paylasimlar({ santraller }: { santraller: { id: string; ad: string }[] 
           )}
           {acik && (
             <div style={{ marginTop: 10, padding: 10, border: "1px solid var(--kenar)", borderRadius: 8, background: "var(--yuzey2)" }}>
-              <div style={{ fontSize: 12.5, marginBottom: 6, display: "flex", justifyContent: "space-between", gap: 8 }}>
+              <div style={{ fontSize: 13, marginBottom: 6, display: "flex", justifyContent: "space-between", gap: 8 }}>
                 <span><strong>{acik.veri.santral}</strong> · {etiket(`${acik.tur}:oku`)}</span>
-                <button className="dugme" style={{ fontSize: 12.5 }} onClick={() => setAcik(null)}>Kapat</button>
+                <button className="dugme" style={{ fontSize: 13 }} onClick={() => setAcik(null)}>Kapat</button>
               </div>
               {acik.tur === "karne" ? (
-                <table className="veri" style={{ fontSize: 12.5 }}><tbody>
+                <table className="veri" style={{ fontSize: 13 }}><tbody>
                   <tr><td>Değerlendirilen gün</td><td className="mono">{sayiTr(acik.veri.gun ?? 0)}</td></tr>
                   <tr><td>Ağırlıklı hata (WMAPE)</td><td className="mono">{acik.veri.wmape_pct == null ? "—" : `%${sayiTr(acik.veri.wmape_pct, 1)}`}</td></tr>
                   <tr><td>Kurulu güce göre hata (nMAE)</td><td className="mono">{acik.veri.nmae_pct == null ? "—" : `%${sayiTr(acik.veri.nmae_pct, 1)}`}</td></tr>
                   <tr><td>Tahmin aralığı isabeti (P10–P90)</td><td className="mono">{acik.veri.picp80 == null ? "—" : `%${sayiTr(acik.veri.picp80 * 100, 1)}`}</td></tr>
                 </tbody></table>
-              ) : (acik.veri.gunler?.length ?? 0) === 0 ? <p className="soluk" style={{ fontSize: 13.5, margin: 0 }}>{acik.veri.not ?? "Veri yok."}</p> : (
-                <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 12.5 }}>
+              ) : (acik.veri.gunler?.length ?? 0) === 0 ? <p className="soluk" style={{ fontSize: 14, margin: 0 }}>{acik.veri.not ?? "Veri yok."}</p> : (
+                <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 13 }}>
                   <thead>{acik.tur === "tahmin"
                     ? <tr><th>Gün</th><th>P50 (kWh)</th><th>P10–P90 (kWh)</th></tr>
                     : <tr><th>Gün</th><th>Üretim (kWh)</th></tr>}</thead>
@@ -431,27 +431,27 @@ function IkiAdimBolumu() {
 
       {kurtarma ? (
         <div style={{ padding: 12, border: "1px solid var(--kenar)", borderRadius: 8, background: "var(--yuzey2)" }}>
-          <p style={{ fontSize: 13, margin: "0 0 8px", lineHeight: 1.6 }}>
+          <p style={{ fontSize: 13.5, margin: "0 0 8px", lineHeight: 1.6 }}>
             <strong>Kurtarma kodları — bir daha gösterilmez.</strong> Telefonunuzu
             kaybederseniz her biri bir kez giriş sağlar. Güvenli bir yere kaydedin:</p>
           <div className="mono" style={{ display: "grid", gridTemplateColumns: "1fr 1fr",
-            gap: "4px 16px", fontSize: 13.5, userSelect: "all" }}>
+            gap: "4px 16px", fontSize: 14, userSelect: "all" }}>
             {kurtarma.map((k) => <span key={k}>{k}</span>)}
           </div>
-          <button className="dugme" style={{ marginTop: 10, fontSize: 12.5 }}
+          <button className="dugme" style={{ marginTop: 10, fontSize: 13 }}
             onClick={() => { setKurtarma(null); setKod(""); yenile(); }}>Kaydettim, kapat</button>
         </div>
       ) : kurulum ? (
         <div>
-          <p style={{ fontSize: 13, margin: "0 0 10px", lineHeight: 1.6 }}>
+          <p style={{ fontSize: 13.5, margin: "0 0 10px", lineHeight: 1.6 }}>
             Authenticator uygulamanızla (Google Authenticator, 1Password, Authy…)
             QR'ı okutun ya da anahtarı elle girin, sonra üretilen 6 haneli kodu yazın:</p>
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
             <div style={{ width: 160, height: 160, background: "#fff", padding: 8, borderRadius: 8 }}
               dangerouslySetInnerHTML={{ __html: kurulum.qr_svg }} />
             <div>
-              <div style={{ fontSize: 12.5, color: "var(--soluk)" }}>Elle giriş anahtarı</div>
-              <code className="mono" style={{ fontSize: 13, userSelect: "all", wordBreak: "break-all" }}>{kurulum.secret}</code>
+              <div style={{ fontSize: 13, color: "var(--soluk)" }}>Elle giriş anahtarı</div>
+              <code className="mono" style={{ fontSize: 13.5, userSelect: "all", wordBreak: "break-all" }}>{kurulum.secret}</code>
             </div>
           </div>
           <form className="ayar-kontrol" style={{ marginTop: 10 }} onSubmit={(e) => { e.preventDefault();
@@ -464,12 +464,12 @@ function IkiAdimBolumu() {
         </div>
       ) : durum?.aktif ? (
         <div>
-          <p style={{ fontSize: 13, margin: "0 0 8px" }}>
+          <p style={{ fontSize: 13.5, margin: "0 0 8px" }}>
             Açık · kalan kurtarma kodu: <strong>{durum.kalan_kurtarma}</strong></p>
           {!kapatAcik ? (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button className="dugme" style={{ fontSize: 12.5 }} onClick={() => setKapatAcik(true)}>Kapat</button>
-              <button className="dugme" style={{ fontSize: 12.5 }}
+              <button className="dugme" style={{ fontSize: 13 }} onClick={() => setKapatAcik(true)}>Kapat</button>
+              <button className="dugme" style={{ fontSize: 13 }}
                 onClick={() => dene(async () => { const r = await api.ikiAdimKurtarmaYenile(
                   prompt("Yenilemek için uygulamadaki 6 haneli kodu ya da bir kurtarma kodunu girin:") || "");
                   setKurtarma(r.kurtarma_kodlari); })}>Kurtarma kodlarını yenile</button>
@@ -487,7 +487,7 @@ function IkiAdimBolumu() {
         </div>
       ) : (
         <div>
-          <p style={{ fontSize: 13, margin: "0 0 8px", color: "var(--ikincil)", lineHeight: 1.6 }}>
+          <p style={{ fontSize: 13.5, margin: "0 0 8px", color: "var(--ikincil)", lineHeight: 1.6 }}>
             Kapalı. Açtığınızda girişte parolanıza ek olarak authenticator
             uygulamanızdaki 6 haneli kod istenir.</p>
           <button className="dugme" onClick={() => dene(async () => {
@@ -532,12 +532,12 @@ function HesapVeEkip() {
         <div style={{ marginTop: 16 }}>
           <div className="etiket-ust">Ekip</div>
           {uyeler.length > 0 && (
-            <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 12.5 }}>
+            <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 13 }}>
               <thead><tr><th>E-posta</th><th>Rol</th><th>Son giriş</th><th>Durum</th><th>2FA</th><th></th></tr></thead>
               <tbody>{uyeler.map((u) => (
                 <tr key={u.id} style={{ opacity: u.aktif ? 1 : 0.5 }}>
                   <td className="mono">{u.email}</td>
-                  <td><select className="girdi" style={{ padding: "3px 6px", fontSize: 12.5 }} value={u.rol}
+                  <td><select className="girdi" style={{ padding: "3px 6px", fontSize: 13 }} value={u.rol}
                         onChange={(e) => dene(async () => { await api.takimGuncelle(u.id, { rol: e.target.value }); setMesaj("Rol güncellendi."); })}>
                         {roller.map((r) => <option key={r} value={r}>{r === "admin" ? "yönetici" : r === "editor" ? "editör" : "izleyici"}</option>)}
                       </select></td>
@@ -546,12 +546,12 @@ function HesapVeEkip() {
                   {/* v2.339: kilitlenme çıkışı — telefonunu ve kurtarma kodlarını
                       birlikte kaybeden üyenin 2FA'sını yönetici kapatabilir */}
                   <td>{u.iki_adim ? (
-                    <button className="dugme" style={{ fontSize: 12.5 }}
+                    <button className="dugme" style={{ fontSize: 13 }}
                       onClick={() => { if (confirm(`${u.email} için iki adımlı doğrulama kapatılsın mı? Üye girişte yalnız parolasını kullanır ve dilerse yeniden kurar.`))
                         dene(async () => { await api.takimIkiAdimSifirla(u.id); setMesaj("Üyenin iki adımlı doğrulaması kapatıldı."); }); }}>
                       açık · sıfırla</button>
                   ) : <span className="soluk">kapalı</span>}</td>
-                  <td><button className="dugme" style={{ fontSize: 12.5 }}
+                  <td><button className="dugme" style={{ fontSize: 13 }}
                         onClick={() => dene(async () => { await api.takimGuncelle(u.id, { aktif: !u.aktif }); setMesaj(u.aktif ? "Üye pasifleştirildi — oturum açamaz." : "Üye yeniden etkin."); })}>
                         {u.aktif ? "Pasifleştir" : "Etkinleştir"}</button></td>
                 </tr>))}</tbody>
@@ -569,12 +569,12 @@ function HesapVeEkip() {
           </form>
           {gecici && (
             <div style={{ marginTop: 10, padding: 10, border: "1px solid var(--kenar)", borderRadius: 8, background: "var(--yuzey2)" }}>
-              <div style={{ fontSize: 12.5, marginBottom: 4 }}>
+              <div style={{ fontSize: 13, marginBottom: 4 }}>
                 <span className="mono">{gecici.email}</span> için geçici parola — <strong>bir daha gösterilmez</strong>, güvenli kanaldan iletin; üye girişte kendi parolasını değiştirsin:</div>
-              <code className="mono" style={{ fontSize: 13.5, userSelect: "all" }}>{gecici.parola}</code>
-              <div style={{ marginTop: 6 }}><button className="dugme" style={{ fontSize: 12.5 }} onClick={() => setGecici(null)}>Kapat</button></div>
+              <code className="mono" style={{ fontSize: 14, userSelect: "all" }}>{gecici.parola}</code>
+              <div style={{ marginTop: 6 }}><button className="dugme" style={{ fontSize: 13 }} onClick={() => setGecici(null)}>Kapat</button></div>
             </div>)}
-          <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>
+          <p className="soluk" style={{ fontSize: 14, margin: "10px 0 0" }}>
             Pasif üye oturum açamaz; kaydı ve geçmiş atamaları silinmez. Son etkin yönetici düşürülemez.
           </p>
         </div>
@@ -603,7 +603,7 @@ function SantralArsivi({ santralYenile }: { santralYenile?: () => void }) {
   if (etkin.length < 2 && arsiv.length === 0) return null;   // tek santral + boş arşiv: kart gereksiz
   return (
     <Kart baslik="Santral arşivi" sag={<span className="cip">silmez — veri denetim için durur</span>}>
-      <p className="soluk" style={{ margin: "0 0 10px", fontSize: 13.5 }}>
+      <p className="soluk" style={{ margin: "0 0 10px", fontSize: 14 }}>
         Arşivlenen santral listelerden ve gece hesaplamalarından çıkarılır; ölçüm, kalibrasyon ve tahmin geçmişi
         yerinde kalır ve geri alınabilir. Son etkin santral arşivlenemez.
       </p>
@@ -621,13 +621,13 @@ function SantralArsivi({ santralYenile }: { santralYenile?: () => void }) {
         </div>
       )}
       {arsiv.length > 0 && (
-        <div className="grafik-kaydir" style={{ marginTop: 10 }}><table className="veri" style={{ fontSize: 13 }}>
+        <div className="grafik-kaydir" style={{ marginTop: 10 }}><table className="veri" style={{ fontSize: 13.5 }}>
           <thead><tr><th style={{ textAlign: "left" }}>Arşivdeki santral</th><th>Kurulu güç</th><th></th></tr></thead>
           <tbody>{arsiv.map((x) => (
             <tr key={x.id}>
               <td style={{ textAlign: "left" }}>{x.name}</td>
               <td className="mono">{gucTr(x.capacity_kwp)} kWp</td>
-              <td><button className="dugme" style={{ fontSize: 12.5 }}
+              <td><button className="dugme" style={{ fontSize: 13 }}
                     onClick={() => dene(async () => { await api.santralGeriAl(x.id); setMesaj(`${x.name} geri alındı.`); })}>Geri al</button></td>
             </tr>))}</tbody>
         </table></div>
