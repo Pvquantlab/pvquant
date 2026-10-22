@@ -73,7 +73,7 @@ export function Santralim({ plantId }: { plantId: string }) {
     api.fizikOnizle(plantId, { [k]: v }).then(setFtOn).catch((e) => setFtMesaj(String((e as Error).message ?? e)));
   };
   const ftUygula = (k: string, v: string) => {
-    api.fizikAyarla(plantId, { [k]: v }).then((r) => { setFt(r); setFtOn(null); setFtSon({}); setFtMesaj("Kaydedildi — bir sonraki koşudan itibaren geçerli."); })
+    api.fizikAyarla(plantId, { [k]: v }).then((r) => { setFt(r); setFtOn(null); setFtSon({}); setFtMesaj("Kaydedildi — bir sonraki tahminden itibaren geçerli."); })
       .catch((e) => setFtMesaj(String((e as Error).message ?? e)));
   };
   // v2.275 (Dalga 4 tamamlayıcısı): EAK alanı + geçici kısıt — KGÜP ve toplayıcı çıktısı bunu okur
@@ -241,7 +241,7 @@ export function Santralim({ plantId }: { plantId: string }) {
           const saat = p1.value.length > 2 ? ` · ${p1.value[2]}:00` : "";
           return `${p1.seriesName}${saat}<br/>azimut ${Math.round(p1.value[0])}° · yükseklik ${Math.round(p1.value[1])}°`;
         } },
-      xAxis: { type: "value", min: 45, max: 315, name: "[panel yönü — azimuth]",
+      xAxis: { type: "value", min: 45, max: 315, name: "[panel yönü — azimut]",
         nameLocation: "middle", nameGap: 30,
         // v2.202: tikler 45'lik adimla — 90/180/270 tam duser, ana yonler okunur
         interval: 45,
@@ -286,7 +286,7 @@ export function Santralim({ plantId }: { plantId: string }) {
           tam genislik, hava+kunye/saglik cifti, 3 parmak izi, 4 gunes yolu,
           5 yedi gun + 6 aylik. */}
       <div className="ozet-bas"><span className="no">1</span> Özet
-        <span className="sag">tümü P50 · gece sınavıyla ayarlı</span></div>
+        <span className="sag">tümü beklenen değer (P50) · her gece gerçekleşenle sınanır</span></div>
       <div className="ozet">
         <div className="anlik">
           <svg viewBox="0 0 160 112" role="img" style={{ width: "100%", maxWidth: 118 }}
@@ -310,10 +310,10 @@ export function Santralim({ plantId }: { plantId: string }) {
           </svg>
           <div>
             <div className="et">Anlık güç</div>
-            <div className="alt">{tavan ? `AC tavanı ${sayiTr(tavan)} kW` : "AC tavanı —"}</div>
+            <div className="alt">{tavan ? `AC sınırı ${sayiTr(tavan)} kW` : "AC sınırı —"}</div>
             <div className="alt">{gosterilen === null
-              ? "şimdiyi kapsayan koşu yok"
-              : olcumMu ? "SCADA'dan — ölçüm" : "son tahmin koşusundan"}</div>
+              ? "şu anı kapsayan tahmin yok"
+              : olcumMu ? "SCADA'dan — ölçüm" : "son tahminden"}</div>
           </div>
         </div>
         <div>
@@ -335,7 +335,7 @@ export function Santralim({ plantId }: { plantId: string }) {
           <div className="dg">{o.hafta_mwh == null ? <span style={{ color: "var(--soluk)" }}>—</span>
                                 : (() => { const [d, b] = enerjiTr(o.hafta_mwh * 1000).split(" ");
                                            return <>{d} <small>{b}</small></>; })()}</div>
-          <div className="alt">döküm §5'te</div>
+          <div className="alt">ayrıntı 6. bölümde</div>
         </div>
         <div>
           <div className="et">Model durumu</div>
@@ -392,8 +392,8 @@ export function Santralim({ plantId }: { plantId: string }) {
             /* v2.90: bos kart sessiz kalmasin — neden bos, soyle */
             <p style={{ fontSize: 12.5, color: "var(--soluk)", margin: 0,
                         lineHeight: 1.65 }}>
-              Hava özeti son tahmin koşusundan gelir — bugünü kapsayan
-              koşu yok. Yeni koşuyla bu kart kendiliğinden dolar.
+              Hava özeti son tahminle gelir; bugünü kapsayan tahmin henüz yok.
+              Yeni tahminle bu kart kendiliğinden dolar.
             </p>
           )}
           <div className="hava">
@@ -406,12 +406,12 @@ export function Santralim({ plantId }: { plantId: string }) {
             ))}
           </div>
         </Kart>
-        <Kart baslik="Künye & veri sağlığı">
+        <Kart baslik="Santral bilgileri ve veri durumu">
           <table className="veri">
             <tbody className="mono">
               <tr><td>DC gücü</td><td>{gucTr(o.kapasite_kwp)} kWp</td></tr>
-              <tr><td>AC tavanı</td><td>{o.ac_tavani_kw == null
-                ? <span style={{ color: "var(--soluk)" }}>— künyede tanımlı değil; santral ayarlarından girilir</span>
+              <tr><td>AC sınırı</td><td>{o.ac_tavani_kw == null
+                ? <span style={{ color: "var(--soluk)" }}>— tanımlı değil; santral ayarlarından girilir</span>
                 : `${sayiTr(o.ac_tavani_kw)} kW`}</td></tr>
               <tr><td>Eğim / azimut</td><td>{o.egim_azimut}</td></tr>
               <tr><td>Saat dilimi</td><td>{o.tz}</td></tr>
@@ -422,9 +422,9 @@ export function Santralim({ plantId }: { plantId: string }) {
                     ? <span style={{ color: "var(--uyari-metin)" }}>{s.son_scada} · {sayiTr(s.kesinti_gun!)} gündür yeni veri yok</span>
                     : s.son_scada}</td></tr>
               <tr><td>İşlenen veri</td><td>{sayiTr(s.islenen_saat)} saatlik ölçüm</td></tr>
-              <tr><td>Anomali tespiti</td><td>{sayiTr(s.anomali)} işaretlendi — tek satır silinmedi</td></tr>
+              <tr><td>Şüpheli kayıt</td><td>{sayiTr(s.anomali)} işaretlendi; hiçbir satır silinmedi</td></tr>
               {/* v2.249 (Dalga 1.4): IEC 61724-1 performans orani — olcumden, POA yoksa tire + neden */}
-              <tr><td>Performans oranı (30 g)</td>
+              <tr><td>Performans oranı (PR, 30 gün)</td>
                 <td>{pr?.durum === "ok" && pr.PR != null
                   ? <>%{sayiTr(pr.PR * 100, 1)}{pr.PR_sicaklik != null && ` · sıcaklık düzeltmeli %${sayiTr(pr.PR_sicaklik * 100, 1)}`}
                       <span style={{ color: "var(--soluk)" }}> · {sayiTr(pr.gun)} gün{pr.son_olcum ? `, son ölçüm ${pr.son_olcum}` : ""}</span></>
@@ -438,7 +438,7 @@ export function Santralim({ plantId }: { plantId: string }) {
                       {seg.dengesizlik_sahibi && <span style={{ color: "var(--soluk)" }}> · dengesizlik: {seg.dengesizlik_sahibi}</span>}</>
                   : <span style={{ color: "var(--soluk)" }}>belirtilmedi — ayarlardan seçilir</span>}</td></tr>
               {/* v2.256 (Dalga 3.11): bozunma ve eğilim — POA yoksa model-normalize verimle; yetersizse neden */}
-              <tr><td>Bozunma eğilimi</td>
+              <tr><td>Yıllık verim kaybı (bozunma)</td>
                 <td>{sg?.bozunma_yuzde_yil != null
                   ? <>%{sayiTr(sg.bozunma_yuzde_yil, 2)}/yıl{sg.bozunma_ga && ` (±${sayiTr(Math.abs(sg.bozunma_ga[1] - sg.bozunma_ga[0]) / 2, 2)})`}
                       <span style={{ color: "var(--soluk)" }}> · {sayiTr(sg.ay)} ay</span></>
@@ -446,7 +446,7 @@ export function Santralim({ plantId }: { plantId: string }) {
                     ? <>eğilim %{sayiTr(sg.egim_yuzde_yil, 1)}/yıl<span style={{ color: "var(--soluk)" }}> · {sayiTr(sg.gun)} gün · {sg.not || "bozunma için ≥13 ay"}</span></>
                     : <span style={{ color: "var(--soluk)" }}>— {sg?.not || "ölçüm birikmedi"}</span>}</td></tr>
               {/* v2.281: kullanılabilirlik — otomatik arıza tespiti (olay günlüğü yok; dürüst not) */}
-              <tr><td>Kullanılabilirlik (30 g)</td>
+              <tr><td>Kullanılabilirlik (30 gün)</td>
                 <td>{ku?.durum === "ok" && ku.A_t != null
                   ? <>%{sayiTr(ku.A_t * 100, 1)} zaman · {ku.A_e != null ? `%${sayiTr(ku.A_e * 100, 1)} enerji` : "—"}
                       <span style={{ color: "var(--soluk)" }}> · {sayiTr(ku.ariza_saat ?? 0)} arıza saati · veri %{sayiTr((ku.veri_orani ?? 0) * 100, 0)} · otomatik tespit</span></>
@@ -455,17 +455,17 @@ export function Santralim({ plantId }: { plantId: string }) {
           </table>
           <p style={{ fontSize: 12.5, color: "var(--ikincil)", margin: "12px 0 0",
                       lineHeight: 1.55 }}>
-            Model, en taze verinizle en güçlü hâlindedir. Yeni SCADA dosyanızı
-            yükleyin — tahmin o gece kendini yeniden sınar, karneniz büyür.
+            Model en güncel verinizle en iyi sonucu verir. Yeni SCADA dosyanızı
+            yükleyin; tahmin o gece gerçekleşenle yeniden karşılaştırılır ve doğruluk karneniz büyür.
           </p>
         </Kart>
         </div>
         {/* v2.285 (tasarım çıtası): ayarlar veri tablosundan çıktı — her ayar ad + açıklama solda, kontroller sağda. */}
         <Kart no="3" baslik="Santral ayarları"
-            sag={<span className="cip">değişiklikler bir sonraki koşudan itibaren geçerli</span>}>
+            sag={<span className="cip">değişiklikler bir sonraki tahminden itibaren geçerli</span>}>
           <div className="ayar">
             <div><div className="ayar-ad">Piyasa segmenti</div>
-              <div className="ayar-aciklama">Dengesizliği kimin taşıdığını, KGÜP yükümlülüğünü ve KÜPST'ü belirler.</div></div>
+              <div className="ayar-aciklama">Dengesizlik sorumluluğunu, üretim programı (KGÜP) yükümlülüğünü ve KÜPST uygulamasını belirler.</div></div>
             <div className="ayar-kontrol">
               <label className="girdi-etiket">Segment
                 <select className="girdi" value={seg?.segment ?? ""}
@@ -513,9 +513,9 @@ export function Santralim({ plantId }: { plantId: string }) {
           </div>
           <div className="ayar">
             <div><div className="ayar-ad">Emre amade kapasite</div>
-              <div className="ayar-aciklama">Program dosyaları üretimi bu tavanla sınırlar. Geçici kısıt bakım/arıza içindir ve bitiş gününe kadar geçerlidir.</div></div>
+              <div className="ayar-aciklama">Üretim programı dosyaları bu sınırı aşmaz. Geçici kısıt bakım ya da arıza içindir ve bitiş gününe kadar geçerlidir.</div></div>
             <div className="ayar-kontrol">
-              <label className="girdi-etiket">EAK (kW) — boş: AC tavanı
+              <label className="girdi-etiket">EAK (kW) — boşsa AC sınırı
                 <input className="girdi" style={{ width: 140 }} inputMode="numeric" value={eakKw} onChange={(e) => setEakKw(e.target.value)} /></label>
               <label className="girdi-etiket">Geçici kısıt (kW)
                 <input className="girdi" style={{ width: 100 }} inputMode="numeric" value={gecKw} onChange={(e) => setGecKw(e.target.value)} /></label>
@@ -527,7 +527,7 @@ export function Santralim({ plantId }: { plantId: string }) {
           </div>
           <div className="ayar">
             <div><div className="ayar-ad">Fizik terimleri</div>
-              <div className="ayar-aciklama">Işınımın geliş açısı, spektrum, kirlenme ve kar etkileri. Seçim önce tipik haftada önizlenir, "Uygula" ile kaydedilir.</div></div>
+              <div className="ayar-aciklama">Işınımın geliş açısı, spektrum, kirlenme ve kar etkileri. Seçim önce 7 günlük önizlemede gösterilir, "Uygula" ile kaydedilir.</div></div>
             <div className="ayar-kontrol">
               {ft ? <>
                 {(["iam_model", "spectral_model", "soiling_model", "kar_model"] as const).map((k) => (
@@ -540,9 +540,9 @@ export function Santralim({ plantId }: { plantId: string }) {
                     </select>
                   </label>))}
                 {ftOn && <div className="ayar-panel">
-                  <span>Önizleme · 7 gün salt fizik: <b>{ftOn.toplam_fark_pct == null ? "—" : `%${sayiTr(ftOn.toplam_fark_pct, 2)}`}</b> enerji farkı ({sayiTr(ftOn.toplam_mevcut_kwh / 1000, 1)} → {sayiTr(ftOn.toplam_aday_kwh / 1000, 1)} MWh)</span>
-                  {!ftOn.nem_var && <span className="soluk">nem verisi yok → spektral etkisiz</span>}
-                  {!ftOn.kar_var && <span className="soluk">kar verisi yok → kar örtüsü etkisiz</span>}
+                  <span>Önizleme · 7 gün, yalnız fiziksel model: <b>{ftOn.toplam_fark_pct == null ? "—" : `%${sayiTr(ftOn.toplam_fark_pct, 2)}`}</b> enerji farkı ({sayiTr(ftOn.toplam_mevcut_kwh / 1000, 1)} → {sayiTr(ftOn.toplam_aday_kwh / 1000, 1)} MWh)</span>
+                  {!ftOn.nem_var && <span className="soluk">nem verisi yok; spektral düzeltme etkisiz</span>}
+                  {!ftOn.kar_var && <span className="soluk">kar verisi yok; kar örtüsü etkisiz</span>}
                   <button className="dugme" onClick={() => { const [k, v] = Object.entries(ftSon)[0] ?? []; if (k) ftUygula(k, String(v)); }}>Uygula</button>
                 </div>}
                 {ftMesaj && <span className={`ayar-durum ${ftMesaj.startsWith("Kayded") ? "ok" : "hata"}`}>{ftMesaj}</span>}
@@ -551,7 +551,7 @@ export function Santralim({ plantId }: { plantId: string }) {
           </div>
           <div className="ayar">
             <div><div className="ayar-ad">Alarm kuralları</div>
-              <div className="ayar-aciklama">Veri kesintisi ve isabet düşüşü her santralda sabittir; ek kurallar seçime bağlıdır ve gece taramasında çalışır.</div></div>
+              <div className="ayar-aciklama">Veri kesintisi ve tahmin doğruluğu düşüşü her santralde sabittir; ek kurallar seçime bağlıdır ve gece taramasında çalışır.</div></div>
             <div className="ayar-kontrol">
               {ak ? <>
                 {ak.secilebilir.map((k) => (
@@ -572,7 +572,7 @@ export function Santralim({ plantId }: { plantId: string }) {
       </div>
 
       {sam && sam.saatler.length > 0 && (
-        <Kart no="4" baslik="Üretim parmak izi — saat × ay"
+        <Kart no="4" baslik="Saatlik üretim profili — saat × ay"
           sag={<span className="cip">tüm geçerli SCADA · kW · {sam.tz}</span>}>
           <div style={{ overflowX: "auto" }}>
             <table style={{ borderCollapse: "collapse", width: "100%",
@@ -611,8 +611,8 @@ export function Santralim({ plantId }: { plantId: string }) {
             </table>
           </div>
           <p style={{ fontSize: 12, color: "var(--soluk)", margin: "12px 0 0" }}>
-            Hücreler saat×ay çok-yıllı ortalama güç (kW); Tipik gün satırı, o ayın
-            karakteristik günlük üretimidir.
+            Her hücre o ay ve saatteki çok yıllı ortalama gücü (kW) gösterir; "Tipik gün"
+            satırı o ayın karakteristik günlük üretimidir.
           </p>
         </Kart>
       )}
@@ -623,8 +623,8 @@ export function Santralim({ plantId }: { plantId: string }) {
           <EChart option={gyOption} height={300}
             ariaLabel="Azimut ve yükseklik düzleminde yaz gündönümü, ekinoks ve kış gündönümü güneş yolları, saat işaretleriyle" />
           <p style={{ fontSize: 12, color: "var(--soluk)", margin: "12px 0 0" }}>
-            Eğriler güneşin gökyüzündeki günlük yolunu gösterir; noktalar saat başlarıdır.
-            Panel eğim/azimut kararları ve gölgelenme analizi bu geometriden beslenir.
+            Eğriler güneşin gökyüzündeki günlük yolunu, noktalar saat başlarını gösterir.
+            Panel eğimi, yönü ve gölgelenme değerlendirmesi bu geometriye dayanır.
           </p>
         </Kart>
       )}
@@ -638,7 +638,7 @@ export function Santralim({ plantId }: { plantId: string }) {
           <table className="veri">
             <thead><tr>
               <th>Gün</th><th style={{ textAlign: "left" }}>Profil</th>
-              <th>Tepe kW · P50</th><th>Toplam · P50</th>
+              <th>Tepe güç (kW)</th><th>Günlük toplam</th>
             </tr></thead>
             <tbody className="mono">
               {/* v2.310: "bugün" satırı DİZİN 0 DEĞİL. Pencere son koşunun gününden
@@ -666,7 +666,7 @@ export function Santralim({ plantId }: { plantId: string }) {
             </tbody>
           </table>
           <p style={{ fontSize: 12, color: "var(--soluk)", margin: "10px 0 0" }}>
-            Profiller aynı ölçekte çizilir — kısa görünen gün, düşük beklenen gündür.
+            Profiller aynı ölçekte çizilir; kısa görünen gün, beklenen üretimi düşük olan gündür. Değerler beklenen (P50) tahmindir.
           </p>
         </Kart>
         <Kart no="7" baslik="Aylık üretim — gerçekleşen"
@@ -700,8 +700,8 @@ export function Santralim({ plantId }: { plantId: string }) {
             </tbody>
           </table>
           <p style={{ fontSize: 12, color: "var(--soluk)", margin: "8px 0 0" }}>
-            Beklenti, her gün için gün başlamadan verilmiş en taze tahminin
-            toplamıdır; ay tam kapsanmadan gösterilmez.
+            Beklenti, her gün için gün başlamadan önce verilmiş son tahminin
+            toplamıdır; ay tamamen kapsanmadan gösterilmez.
           </p>
           </>); })()}
         </Kart>

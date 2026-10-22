@@ -35,12 +35,12 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
   const enj = (v: number | null | undefined) => v == null ? "—" : enerjiTr(v);
   const tarih = (s: string | null) => s ? new Date(s).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }) : "—";
   if (!hazir) return (
-    <Sayfa baslik="Portföy" alt="Tüm santraller bir bakışta — sayılar kapasite ile ağırlıklı, eksikler tire.">
+    <Sayfa baslik="Portföy" alt="Tüm santraller bir bakışta; sayılar kurulu güçle ağırlıklıdır, hesaplanamayan değerler — ile gösterilir.">
       <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p>
     </Sayfa>
   );
   return (
-    <Sayfa baslik="Portföy" alt="Tüm santraller bir bakışta — sayılar kapasite ile ağırlıklı, eksikler tire."
+    <Sayfa baslik="Portföy" alt="Tüm santraller bir bakışta; sayılar kurulu güçle ağırlıklıdır, hesaplanamayan değerler — ile gösterilir."
       sag={<span className="cip">{p ? `${sayiTr(p.santraller.length)} santral · ${new Date(p.gun + "T12:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}` : "—"}</span>}>
       <div className="ızgara satir-4" style={{ marginBottom: 14 }}>
         {/* v2.360: küçük portföyde MWp "0,00" okunuyordu — birim ölçekle gelir */}
@@ -48,18 +48,18 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
              deger={t ? (t.kapasite_kwp < 100 ? gucTr(t.kapasite_kwp) : sayiTr(t.kapasite_kwp / 1000, 2)) : "—"}
              birim={t && t.kapasite_kwp < 100 ? "kWp" : "MWp"} alt={t ? `${sayiTr(t.santral)} santral` : ""} />
         <Kpi etiket="Bugün beklenen · yarın" deger={t ? `${enj(t.bugun_kwh)} · ${enj(t.yarin_kwh)}` : "—"}
-             alt={t && (t.bugun_kwh == null || t.yarin_kwh == null) ? "bir santralde beklenti yok → toplam yazılmaz" : "tüm santrallerin P50 toplamı"} />
-        <Kpi etiket="30 günlük WMAPE (ağırlıklı)" deger={t?.wmape_agirlikli != null ? `%${sayiTr(t.wmape_agirlikli, 1)}` : "—"}
-             alt={t ? `${sayiTr(t.wmape_kapsanan_kwp / 1000, 2)} MWp karneli` : ""} />
+             alt={t && (t.bugun_kwh == null || t.yarin_kwh == null) ? "bir santralde tahmin yok; toplam gösterilmez" : "tüm santrallerin beklenen (P50) toplamı"} />
+        <Kpi etiket="30 günlük tahmin hatası (WMAPE)" deger={t?.wmape_agirlikli != null ? `%${sayiTr(t.wmape_agirlikli, 1)}` : "—"}
+             alt={t ? `${sayiTr(t.wmape_kapsanan_kwp / 1000, 2)} MWp değerlendirmede` : ""} />
         <Kpi etiket="Açık alarm · veri gecikmiş" deger={t ? `${sayiTr(t.acik_alarm)} · ${sayiTr(t.veri_gecikmis)}` : "—"}
-             alt={t && t.santral > 0 ? "son 7 gün okunmamış · 2 günden eski ölçüm" : ""} ton={t && (t.acik_alarm > 0 || t.veri_gecikmis > 0) ? "uyari" : undefined} />
+             alt={t && t.santral > 0 ? "son 7 günde okunmamış · son ölçüm 2 günden eski" : ""} ton={t && (t.acik_alarm > 0 || t.veri_gecikmis > 0) ? "uyari" : undefined} />
       </div>
       <Kart baslik="Santraller" sag={<span className="cip">satıra tıkla → santral</span>}>
         {!p || p.santraller.length === 0 ? <p className="soluk" style={{ margin: 0 }}>Bu hesapta santral yok.</p>
          : (
           <div className="grafik-kaydir">
             <table className="veri" style={{ fontSize: 12.5 }}>
-              <thead><tr><th>Santral</th><th>kWp</th><th>Segment</th><th>Son ölçüm</th><th>WMAPE 30g</th><th>Bugün</th><th>Yarın</th><th>Alarm</th><th>Son koşu</th></tr></thead>
+              <thead><tr><th>Santral</th><th>kWp</th><th>Segment</th><th>Son ölçüm</th><th>Hata 30g (WMAPE)</th><th>Bugün</th><th>Yarın</th><th>Alarm</th><th>Son tahmin</th></tr></thead>
               <tbody className="mono">
                 {p.santraller.map((r) => (
                   <tr key={r.id} style={{ cursor: "pointer" }} onClick={() => onSec(r.id)} tabIndex={0}
@@ -75,13 +75,13 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
           </div>
         )}
         <p className="soluk" style={{ fontSize: 12.5, margin: "10px 0 0" }}>
-          Bugün/yarın = son koşunun yerel-gün P50 toplamı (20 saatten az kapsanan gün yazılmaz); WMAPE = son 30 günün 0–24 saat karnesi;
-          alarm = son 7 günde okunmamış kayıt. Hiyerarşik uzlaştırma (portföy toplamının santral tahminleriyle tutarlı hale getirilmesi) sonraki dalga.
+          Bugün/yarın: son tahminin yerel gün toplamı (beklenen, P50); 20 saatten az kapsanan gün gösterilmez.
+          WMAPE: son 30 günün 0–24 saat tahmin hatası. Alarm: son 7 günde okunmamış kayıt.
         </p>
       </Kart>
       {/* v2.280 (Tablo 3.2 satır 11): hiyerarşik uzlaştırılmış portföy tahmini — toplam santral tahminleriyle tutarlı */}
-      <Kart baslik="Portföy tahmini — uzlaştırılmış günlük toplamlar" sag={<span className="cip">{pt?.durum === "ok" ? `${pt.yontem}${pt.tutarli === false ? " · tutarsız!" : ""}` : "—"}</span>}>
-        {!pt || pt.durum !== "ok" ? <p className="soluk" style={{ margin: 0 }}>— koşu yok</p> : (
+      <Kart baslik="Portföyün günlük üretim tahmini" sag={<span className="cip">{pt?.durum === "ok" ? `${pt.yontem}${pt.tutarli === false ? " · tutarsız" : ""}` : "—"}</span>}>
+        {!pt || pt.durum !== "ok" ? <p className="soluk" style={{ margin: 0 }}>— henüz tahmin yok</p> : (
           <>
             <div className="grafik-kaydir">
               <table className="veri" style={{ fontSize: 12.5 }}>
@@ -99,12 +99,12 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
                   </>); })()}
               </table>
             </div>
-            <p className="soluk" style={{ fontSize: 12.5, margin: "10px 0 0" }}>{pt.not}{pt.artik_gun ? ` Artık geçmişi ${sayiTr(pt.artik_gun)} gün.` : ""}</p>
+            <p className="soluk" style={{ fontSize: 12.5, margin: "10px 0 0" }}>Santral tahminleri toplanır; toplam, santral tahminleriyle çelişmez. {pt.not}{pt.artik_gun ? ` Düzeltme geçmişi ${sayiTr(pt.artik_gun)} gün.` : ""}</p>
           </>
         )}
       </Kart>
       {/* v2.276 (Dalga 5): DSG/toplayıcı netleştirmesi — portföy tek dengesizlik hesabına girerse ne kazanılır */}
-      <Kart baslik="DSG netleştirmesi — portföy dengesizliği" sag={<span className="cip">{dsg ? `${sayiTr(dsg.pencere_gun)} gün · ${dsg.fiyat.senaryo_saat > 0 ? "senaryo fiyat" : "EPİAŞ fiyat"}` : "—"}</span>}>
+      <Kart baslik="Dengeden sorumlu grup (DSG) netleştirmesi — portföy dengesizliği" sag={<span className="cip">{dsg ? `${sayiTr(dsg.pencere_gun)} gün · ${dsg.fiyat.senaryo_saat > 0 ? "senaryo fiyatı" : "piyasa fiyatı (EPİAŞ)"}` : "—"}</span>}>
         {!dsg ? <p className="soluk" style={{ margin: 0 }}>— veri yok</p> : dsg.ayri_tl == null ? (
           <p className="soluk" style={{ margin: 0 }}>— {dsg.not ?? "ortak saat yetersiz"}</p>
         ) : (
@@ -137,7 +137,7 @@ function GelenTalepler() {
   const acik = (liste ?? []).filter((b) => !b.okundu).length;
   if (liste !== null && liste.length === 0) return null;   // hiç başvuru yoksa kart yer kaplamaz
   return (
-    <Kart baslik="Gelen talepler — vitrin başvuruları"
+    <Kart baslik="Gelen talepler — web sitesi başvuruları"
       sag={<span className="cip">{liste === null ? "—" : `${sayiTr(acik)} açık · ${sayiTr(liste.length)} toplam`}</span>}>
       {liste === null ? <p className="soluk" style={{ margin: 0 }}>— veri yok</p> : (
         <div className="grafik-kaydir">
@@ -162,8 +162,8 @@ function GelenTalepler() {
         </div>
       )}
       <p className="soluk" style={{ fontSize: 12.5, margin: "10px 0 0" }}>
-        Vitrindeki "Karneni başlat" formundan düşer. Dönüş e-postası elle atılır;
-        dönülünce "okundu" işaretleyin.
+        Web sitesindeki "Karnenizi başlatın" formundan gelir. Yanıt e-postası elle gönderilir;
+        yanıtlayınca "okundu" işaretleyin.
       </p>
     </Kart>
   );
@@ -193,7 +193,7 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
           sag={<span style={{ display: "flex", gap: 6 }}><span className="cip">yalnız yönetici</span>
                 {docs ? <a className="cip" href={docs} target="_blank" rel="noreferrer">OpenAPI şeması ↗</a> : <span className="cip">örnek kip</span>}</span>}>
       <p className="soluk" style={{ margin: "0 0 10px", fontSize: 12.5 }}>
-        Müşteri sistemleri tahmini <span className="mono">X-API-Key</span> başlığıyla çeker; sabah koşusundan sonra webhook alıcılarına imzalı bildirim gider.
+        Müşteri sistemleri tahmini <span className="mono">X-API-Key</span> başlığıyla çeker; sabah tahmini üretildikten sonra webhook alıcılarına imzalı bildirim gider.
         Anahtar ve sır yalnız üretildiği anda görünür — sunucu yalnız özetini saklar.
       </p>
       {hata && <p className="ayar-durum hata" style={{ margin: "0 0 8px" }}>{hata}</p>}
@@ -370,8 +370,8 @@ function Paylasimlar({ santraller }: { santraller: { id: string; ad: string }[] 
                 <table className="veri" style={{ fontSize: 12 }}><tbody>
                   <tr><td>Değerlendirilen gün</td><td className="mono">{sayiTr(acik.veri.gun ?? 0)}</td></tr>
                   <tr><td>Ağırlıklı hata (WMAPE)</td><td className="mono">{acik.veri.wmape_pct == null ? "—" : `%${sayiTr(acik.veri.wmape_pct, 1)}`}</td></tr>
-                  <tr><td>Normalleştirilmiş hata (nMAE)</td><td className="mono">{acik.veri.nmae_pct == null ? "—" : `%${sayiTr(acik.veri.nmae_pct, 1)}`}</td></tr>
-                  <tr><td>%80 bant kapsaması</td><td className="mono">{acik.veri.picp80 == null ? "—" : `%${sayiTr(acik.veri.picp80 * 100, 1)}`}</td></tr>
+                  <tr><td>Kurulu güce göre hata (nMAE)</td><td className="mono">{acik.veri.nmae_pct == null ? "—" : `%${sayiTr(acik.veri.nmae_pct, 1)}`}</td></tr>
+                  <tr><td>Tahmin aralığı isabeti (P10–P90)</td><td className="mono">{acik.veri.picp80 == null ? "—" : `%${sayiTr(acik.veri.picp80 * 100, 1)}`}</td></tr>
                 </tbody></table>
               ) : (acik.veri.gunler?.length ?? 0) === 0 ? <p className="soluk" style={{ fontSize: 12.5, margin: 0 }}>{acik.veri.not ?? "Veri yok."}</p> : (
                 <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 12 }}>
@@ -597,7 +597,7 @@ function SantralArsivi({ santralYenile }: { santralYenile?: () => void }) {
   return (
     <Kart baslik="Santral arşivi" sag={<span className="cip">silmez — veri denetim için durur</span>}>
       <p className="soluk" style={{ margin: "0 0 10px", fontSize: 12.5 }}>
-        Arşivlenen santral listelerden ve gece koşularından çekilir; ölçüm, kalibrasyon ve tahmin geçmişi
+        Arşivlenen santral listelerden ve gece hesaplamalarından çıkarılır; ölçüm, kalibrasyon ve tahmin geçmişi
         yerinde kalır ve geri alınabilir. Son etkin santral arşivlenemez.
       </p>
       {hata && <p className="ayar-durum hata" style={{ margin: "0 0 8px" }}>{hata}</p>}

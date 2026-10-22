@@ -15,7 +15,7 @@ const MODEL_AD: Record<string, string> = {
 };
 // Kaynak adı görünür dile çevrilir; tanınmayan kod "hava kaynağı" der (anayasa:
 // sağlayıcı adları görünür metne girmez, anahtar listesi de yalnız iç kod adı taşır)
-const KAYNAK_AD: Record<string, string> = { "acik-nwp": "Açık NWP birleşimi" };
+const KAYNAK_AD: Record<string, string> = { "acik-nwp": "Açık kaynaklı hava tahmini birleşimi" };
 
 function tr(iso: string, saat = true) {
   const d = new Date(iso);
@@ -33,7 +33,7 @@ export function JsonOnizleme({ veri, onKapat }: { veri: RaporJson; onKapat: () =
   const q = veri.quality;
   const kpi: [string, string, string][] = [
     ["Dönem toplamı (P50)", `${num(veri.totals.p50_mwh)} MWh`,
-      veri.totals.p10_mwh != null ? `aralık ${num(veri.totals.p10_mwh)}–${num(veri.totals.p90_mwh)} MWh` : "bant yok"],
+      veri.totals.p10_mwh != null ? `aralık ${num(veri.totals.p10_mwh)}–${num(veri.totals.p90_mwh)} MWh` : "aralık yok"],
     ["Kapasite faktörü", pct(veri.totals.capacity_factor_pct), "dönem boyunca"],
     ["Özgül verim", `${num(veri.totals.specific_yield_kwh_kwp)} kWh/kWp`, "kurulu güç başına"],
     ["Kalibrasyon MAPE", pct(q.mape_pct), q.hybrid ? `bağımsız test ${pct(q.hybrid.holdout_mape_pct)}` : "—"],
@@ -91,14 +91,14 @@ export function JsonOnizleme({ veri, onKapat }: { veri: RaporJson; onKapat: () =
             <div style={{ display: "flex", gap: 22, flexWrap: "wrap", fontSize: 13 }}>
               <span><b>{pct(a.wmape_pct)}</b> WMAPE</span>
               <span><b>{pct(a.nmae_pct)}</b> kapasiteye normalize</span>
-              <span><b>{pct(a.skill_vs_naive_pct, 0)}</b> naife üstünlük</span>
-              <span><b>{pct(a.band_coverage_pct)}</b> bant kapsaması · hedef {pct(a.band_target_pct, 0)}</span>
+              <span><b>{pct(a.skill_vs_naive_pct, 0)}</b> referansa göre iyileşme</span>
+              <span><b>{pct(a.band_coverage_pct)}</b> aralık isabeti · hedef {pct(a.band_target_pct, 0)}</span>
               <span><b>{a.daily.filter((d) => d.measured).length}</b>/{a.daily.length} gün ölçülü</span>
             </div>
           </>
         ) : (
           <div style={{ fontSize: 13, color: "var(--ikincil)" }}>
-            Ölçüm özeti yok — doğruluk bloğu null, uydurulmadı.
+            Ölçüm özeti yok; doğruluk bölümü boş bırakıldı.
           </div>
         )}
       </div>

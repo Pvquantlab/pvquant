@@ -61,7 +61,7 @@ function SantralYok() {
       <h2 style={{ fontSize: 21, marginBottom: 10 }}>Henüz santral eklenmedi</h2>
       <p style={{ fontSize: 14, color: "var(--ikincil)", lineHeight: 1.75 }}>
         Başlamak için sol üstteki <b>+ Yeni santral bağla</b> düğmesini kullanın.
-        Adı, kurulu gücü ve konumu yeterli: tahmin ilk gece koşusuyla üretilir,
+        Adı, kurulu gücü ve konumu yeterli: tahmin ilk gece otomatik olarak üretilir,
         doğruluk karnesi ölçüm geldikçe dolar.
       </p>
     </div>

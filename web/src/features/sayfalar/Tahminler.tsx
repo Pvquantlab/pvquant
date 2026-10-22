@@ -55,8 +55,8 @@ export function Tahminler({ plantId }: { plantId: string }) {
           const b = k[0]?.bant;
           const s = k[0]?.sapma;
           const sy = s?.aktif ? ` · son ${sayiTr(s.n_gun ?? 0)} günün ölçümüyle %${sayiTr(((s.oran_genel ?? 1) - 1) * 100, 1)} düzeltildi` : "";
-          const gi = k[0]?.etiket === "gun_ici" ? " · gün içi güncelleme (taze bölgesel koşu)" : "";
-          setBantYazisi((!b ? "" : b.kaynak === "gefs" ? `${sayiTr(b.uye ?? 0)} üyeli hava topluluğundan ampirik kantil` : "model bandı") + sy + gi || null);
+          const gi = k[0]?.etiket === "gun_ici" ? " · gün içi güncelleme (güncel bölgesel hava tahmini)" : "";
+          setBantYazisi((!b ? "" : b.kaynak === "gefs" ? `${sayiTr(b.uye ?? 0)} üyeli hava tahmini topluluğundan türetilen aralık` : "model aralığı") + sy + gi || null);
         } else setBantYazisi(null);
         setHazir(true);
       });
@@ -85,7 +85,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
       baslik="Tahminler"
       alt={
         dilim
-          ? `${dilim.tahminSaat} saatlik tahmin · ${dilim.gecmisSaat} sa arşiv bağlamı — son koşu.`
+          ? `${dilim.tahminSaat} saatlik tahmin · son ${dilim.gecmisSaat} saatin geçmişiyle · en son tahmin.`
           : ""
       }
       sag={
@@ -149,12 +149,12 @@ export function Tahminler({ plantId }: { plantId: string }) {
                 margin: "12px 0 0",
               }}
             >
-              <b style={{ color: "var(--ikincil)" }}>Bu grafik son koşunun
-              saatlik üretim tahminidir:</b> mavi çizgi P50 (medyan senaryo),
-              bant P10–P90 aralığı — saatlerin %80'inin içinde kalması beklenen
-              koridor; amber çizgi varsa gerçekleşen üretimdir. Son koşu Mod{" "}
-              {seri.mod ?? "—"}{bantYazisi ? ` · bant: ${bantYazisi}` : ""} · kaynak: tahmin arşivi — koşular güncellenmez,
-              yenisi eklenir.
+              <b style={{ color: "var(--ikincil)" }}>Ne gösterir:</b> en son
+              tahminin saatlik üretimi. Mavi çizgi beklenen üretim (P50), mavi aralık
+              P10–P90 (saatlerin %80'inin içinde kalması beklenen koridor); amber
+              çizgi varsa gerçekleşen üretimdir. Son tahmin Mod{" "}
+              {seri.mod ?? "—"}{bantYazisi ? ` · aralık: ${bantYazisi}` : ""}. Tahminler güncellenmez; her yeni tahmin
+              ayrıca kaydedilir.
             </p>
           </Kart>
           <Kart baslik="Günlük toplamlar">
@@ -162,7 +162,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
               <thead>
                 <tr>
                   <th>Tarih</th>
-                  <th>P50 kWh</th>
+                  <th>Beklenen (P50) kWh</th>
                   {bantVar && <th>P10–P90</th>}
                 </tr>
               </thead>
@@ -184,53 +184,53 @@ export function Tahminler({ plantId }: { plantId: string }) {
             </table>
             {gunlukVeri.some((g) => g.kismi) && (
               <p style={{ color: "var(--ikincil)", fontSize: 12, marginTop: 8 }}>
-                * pencereye kısmen giren gün
+                * dönemin yalnız bir bölümü kapsanan gün
               </p>
             )}
           </Kart>
         </div>
       )}
       {/* v2.260 (Dalga 4.13): KGÜP bildirim dosyası — D-1 15:30 öncesi koşudan saatlik program (TPYS CSV) */}
-      <Kart baslik="KGÜP bildirimi — yarının saatlik programı"
-        sag={<span className="cip">{kgup ? `${new Date(kgup.teslim.hedef_gun + "T12:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" })} · pencere ${kgup.teslim.durum === "pencere_acik" ? "açık" : kgup.teslim.durum === "erken" ? "henüz açılmadı" : "kapandı"} (14:00–15:30) · teyit ${kgup.teslim.teyit_saati.slice(0, 5)}` : "koşu bekleniyor"}</span>}>
+      <Kart baslik="Üretim programı (KGÜP) — yarının saatlik programı"
+        sag={<span className="cip">{kgup ? `${new Date(kgup.teslim.hedef_gun + "T12:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" })} · bildirim saati ${kgup.teslim.durum === "pencere_acik" ? "açık" : kgup.teslim.durum === "erken" ? "henüz açılmadı" : "kapandı"} (14:00–15:30) · teyit ${kgup.teslim.teyit_saati.slice(0, 5)}` : "tahmin bekleniyor"}</span>}>
         {kgup ? (
           <>
             <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-              <span className="mono">{sayiTr(kgup.toplam_mwh, 1)} MWh · {kgup.kantil.toUpperCase()} · koşu {kgup.kosu.run_at ? new Date(kgup.kosu.run_at).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }) : "—"}</span>
+              <span className="mono">{sayiTr(kgup.toplam_mwh, 1)} MWh · {kgup.kantil.toUpperCase()} · tahmin {kgup.kosu.run_at ? new Date(kgup.kosu.run_at).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }) : "—"}</span>
               <button className="dugme" onClick={() => { setKgupHata(null); api.kgupIndir(plantId).catch((e) => setKgupHata(String(e.message ?? e))); }}>CSV indir (TPYS)</button>
               <button className="dugme" onClick={() => { setKgupHata(null); api.kgupIndir(plantId, undefined, "p10").catch((e) => setKgupHata(String(e.message ?? e))); }}>Temkinli (P10) indir</button>
               {/* v2.275: toplayıcı/DSG çıktısı — bantlı saatlik ve 15 dk (2027 hazırlığı) */}
               <button className="dugme" onClick={() => { setKgupHata(null); api.toplayiciIndir(plantId, "xlsx", 60).catch((e) => setKgupHata(String(e.message ?? e))); }}>Toplayıcı (Excel, saatlik)</button>
               <button className="dugme" onClick={() => { setKgupHata(null); api.toplayiciIndir(plantId, "csv", 15).catch((e) => setKgupHata(String(e.message ?? e))); }}>Toplayıcı (CSV, 15 dk)</button>
               {kgup.oneri && kgup.oneri.durum === "ok" && kgup.oneri.kantil &&
-                <span className="cip" title={kgup.oneri.not ?? ""}>önerilen kantil {kgup.oneri.kantil.toUpperCase()}</span>}
-              {kgup.eak && <span className="cip" title="Emre amade kapasite — ayarlardan değiştirilir">EAK {sayiTr(kgup.eak.eak_mw, 2)} MW · {({ gecici: "geçici kısıt", eak_alani: "EAK alanı", ac_tavani: "AC tavanı", kurulu_guc: "kurulu güç" } as Record<string, string>)[kgup.eak.kaynak] ?? kgup.eak.kaynak}</span>}
+                <span className="cip" title={kgup.oneri.not ?? ""}>önerilen seviye {kgup.oneri.kantil.toUpperCase()}</span>}
+              {kgup.eak && <span className="cip" title="Emre amade kapasite — ayarlardan değiştirilir">EAK {sayiTr(kgup.eak.eak_mw, 2)} MW · {({ gecici: "geçici kısıt", eak_alani: "EAK alanı", ac_tavani: "AC sınırı", kurulu_guc: "kurulu güç" } as Record<string, string>)[kgup.eak.kaynak] ?? kgup.eak.kaynak}</span>}
               {kgupHata && <span style={{ color: "var(--uyari-metin)", fontSize: 12.5 }}>{kgupHata}</span>}
             </div>
             {kgup.uyarilar.length > 0 && <p style={{ color: "var(--uyari-metin)", fontSize: 12.5, margin: "8px 0 0" }}>{kgup.uyarilar.join(" · ")}</p>}
-            {kgup.sicrama_saatleri.length > 0 && <p style={{ fontSize: 12.5, margin: "8px 0 0" }}>≥200 MWh sıçrama: saat {kgup.sicrama_saatleri.join(", ")} — dosyada 15 dakikalık dilimler.</p>}
+            {kgup.sicrama_saatleri.length > 0 && <p style={{ fontSize: 12.5, margin: "8px 0 0" }}>≥200 MWh ani değişim: saat {kgup.sicrama_saatleri.join(", ")}; dosyada 15 dakikalık adımlar.</p>}
             <p className="soluk" style={{ fontSize: 12.5, margin: "10px 0 0" }}>
               {kgup.gip && `${kgup.gip.kural} Örnek: ${kgup.gip.ornek_teslimat} teslimatı için kapı ${kgup.gip.ornek_kapi}, revizyon son ${kgup.gip.ornek_revizyon_son}. `}
-              Program, teslim kesiminden (D-1 15:30) önce verilmiş son koşunun saatlik P50'sidir; KGÜP ≤ emre amade kapasite ≤ kurulu güç
-              kuralı uygulanır. CSV kolon adları TPYS şablonuyla eşlenmelidir (resmi şablon teyit edilemedi); dosya bir öneridir, bildirim TPYS'de yapılır.
+              Program, teslim saatinden (bir gün önce 15:30) önce verilmiş son tahminin saatlik beklenen (P50) değeridir; KGÜP ≤ emre amade kapasite ≤ kurulu güç
+              kuralı uygulanır. CSV kolon adları TPYS şablonuyla eşlenmelidir (resmî şablon teyit edilemedi); dosya bir öneridir, bildirim TPYS'de yapılır.
             </p>
           </>
-        ) : <p className="soluk" style={{ margin: 0 }}>Yarın için teslim kesiminden önce verilmiş koşu yok — sabah koşusu geldiğinde burada görünür.</p>}
+        ) : <p className="soluk" style={{ margin: 0 }}>Yarın için teslim saatinden önce verilmiş tahmin yok; sabah tahmini üretildiğinde burada görünür.</p>}
       </Kart>
       {/* v2.266 (Dalga 5.18): kısa ufuk — ölçüm persistansı; uydu değil. Canlı SCADA yoksa dürüstçe tire. */}
-      <Kart baslik="Kısa ufuk (0–6 saat) — ölçüm persistansı"
-        sag={<span className="cip">{nc?.durum === "ok" ? `oran ${sayiTr(nc.oran ?? 0, 2)} · ${sayiTr(nc.n_saat)} saatten` : nc?.durum === "gece" ? "gece · P50" : "uydu değil"}</span>}>
+      <Kart baslik="Önümüzdeki 6 saat — son ölçümlere göre düzeltme"
+        sag={<span className="cip">{nc?.durum === "ok" ? `düzeltme oranı ${sayiTr(nc.oran ?? 0, 2)} · son ${sayiTr(nc.n_saat)} saat` : nc?.durum === "gece" ? "gece · beklenen (P50)" : "canlı ölçüm gerektirir"}</span>}>
         {nc === undefined ? <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p>
          : !nc || nc.durum === "scada_bayat" || nc.durum === "olcum_yok" || nc.durum === "tahmin_yok" ? (
           <p className="soluk" style={{ margin: 0 }}>
             — {nc?.not ?? "hesaplanamadı"}{nc?.tazelik_saat != null ? ` (son ölçüm ${nc.tazelik_saat >= 48 ? `${sayiTr(nc.tazelik_saat / 24, 0)} gün` : `${sayiTr(nc.tazelik_saat, 0)} saat`} önce)` : ""}.
-            Bu katman son 3 saatin ölçüm/tahmin oranını ileri taşır; dosya yüklemeli santralde çalışmaz.
+            Bu düzeltme, son 3 saatte ölçülen üretimin tahmine oranını ileriye taşır; yalnız canlı SCADA bağlantısı olan santrallerde çalışır.
           </p>
         ) : (
           <>
             <div className="grafik-kaydir">
               <table className="veri" style={{ fontSize: 12.5 }}>
-                <thead><tr><th>Saat</th><th>P50</th><th>Kısa ufuk</th><th>Persistans ağırlığı</th></tr></thead>
+                <thead><tr><th>Saat</th><th>Beklenen (P50)</th><th>Düzeltilmiş</th><th>Düzeltme ağırlığı</th></tr></thead>
                 <tbody className="mono">
                   {nc.ufuk.map((u) => (
                     <tr key={u.ts}><td>{new Date(u.ts).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</td>
@@ -239,8 +239,8 @@ export function Tahminler({ plantId }: { plantId: string }) {
               </table>
             </div>
             <p className="soluk" style={{ fontSize: 12.5, margin: "10px 0 0" }}>
-              Uydu bulut-hareket tahmini değil: son {sayiTr(nc.n_saat)} saatin ölçüm/tahmin oranı ({sayiTr(nc.oran ?? 0, 2)}) ufuk boyunca üstel sönümle
-              (τ = 2 saat) P50'ye harmanlanır; 6 saat sonrası P50'dir. Gün içi KGÜP güncellemesi (GİP kapanış + 30 dk) için yol göstericidir, kayıt yazmaz.
+              Son {sayiTr(nc.n_saat)} saatin ölçüm/tahmin oranı ({sayiTr(nc.oran ?? 0, 2)}) ileriye doğru azalan ağırlıkla beklenen değere (P50)
+              karıştırılır; 6 saat sonrası beklenen değerdir. Gün içi program güncellemesi için yol göstericidir; kayıt yazmaz.
             </p>
           </>
         )}

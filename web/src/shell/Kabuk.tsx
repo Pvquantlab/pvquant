@@ -73,7 +73,7 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
     document.title = `${ad} · ${santral} — PVQuant`;
     // temizleme şart: çıkışta Kabuk sökülür ama başlık kalırdı — giriş/vitrin
     // ekranındaki ziyaretçi sekmede santral adını görmeye devam ederdi.
-    return () => { document.title = "PVQuant — Kanıtla konuşan üretim tahmini"; };
+    return () => { document.title = "PVQuant — Güneş santralleri için üretim tahmini ve doğruluk karnesi"; };
   }, [sayfa, santral]);
   const koyu = temaKipi === "koyu" || (temaKipi === "oto" && sayfaYuzu === "koyu");
   const kipSec = (k: "oto" | "acik" | "koyu") => {
@@ -284,14 +284,14 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
                     ? "Alarm listesi alınamadı — bağlantıyı kontrol edin."
                     : "Yükleniyor…"}</p>
                 ) : alarmlar.length === 0 ? (
-                  <p className="zil-bos">Alarm yok — kurallar her gece tarar
-                    (veri kesintisi ve isabet düşüşü; ek kurallar Santralim › künyeden açılır).</p>
+                  <p className="zil-bos">Alarm yok. Kurallar her gece tarar (veri kesintisi ve
+                    tahmin doğruluğu düşüşü); ek kurallar Santralim › Santral ayarları'ndan açılır.</p>
                 ) : (
                   alarmlar.map((x) => (
                     <div key={x.id} className="zil-satir">
                       <div className="zil-ust">
                         <b>{{ veri_gelmedi: "Veri gelmedi",
-                              skill_dustu: "İsabet düştü",
+                              skill_dustu: "Tahmin doğruluğu düştü",
                               pr_dustu: "Performans oranı düştü",           // v2.265
                               clipping_orani_yuksek: "Kırpma oranı yüksek",
                               iletisim_kesintisi: "İletişim kesintisi",
@@ -355,14 +355,14 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
               </span>
               {sonKosu !== undefined && (
                 <span>{sonKosu
-                  ? `son koşu ${trKosu(sonKosu)}` : "henüz koşu yok"}</span>
+                  ? `son tahmin ${trKosu(sonKosu)}` : "henüz tahmin yok"}</span>
               )}
               <span className="tele-sag">
                 model {ozet.model_adi}{ozet.mod ? ` · Mod ${ozet.mod}` : ""}
                 {ozet.son_kalibrasyon ? ` · kalibrasyon ${ozet.son_kalibrasyon}` : ""}
                 {ozet.sapma_pct !== null ? ` · sapma %${sayiTr(ozet.sapma_pct, 2)}` : ""}
                 {/* v2.265: 'tazelenir' iddiası ancak damga yoklaması gerçekten çalışıyorsa yazılır */}
-                {sonYoklama && ` · yoklandı ${sonYoklama.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}`}
+                {sonYoklama && ` · son kontrol ${sonYoklama.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}`}
               </span>
             </div>
           );
@@ -440,8 +440,8 @@ function YeniSantral({ kapat, eklendi }: { kapat: () => void; eklendi: (id: stri
         <div className="palet-govde" style={{ padding: "16px 18px" }}>
           <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Yeni santral bağla</div>
           <p className="soluk" style={{ fontSize: 12.5, margin: "0 0 12px" }}>
-            Çekirdek künye yeter — eğim, tavan ve diğer ayarlar sonra Santralım'dan düzenlenir.
-            Tahmin, SCADA yüklenmeden salt fizikle başlar.</p>
+            Temel bilgiler yeterli; eğim, AC sınırı ve diğer ayarlar sonra Santralim sayfasından düzenlenir.
+            Tahmin, SCADA verisi yüklenmeden fiziksel modelle başlar.</p>
           {hata && <p className="ayar-durum hata" style={{ margin: "0 0 8px" }}>{hata}</p>}
           <div className="ayar-kontrol" style={{ flexWrap: "wrap", gap: 10 }}>
             <label className="girdi-etiket">Santral adı
@@ -474,7 +474,7 @@ function YeniSantral({ kapat, eklendi }: { kapat: () => void; eklendi: (id: stri
               <input className="girdi" style={{ width: 90 }} inputMode="decimal" value={g.tilt} onChange={al("tilt")} /></label>
             <label className="girdi-etiket">Azimut ° (isteğe bağlı)
               <input className="girdi" style={{ width: 90 }} inputMode="decimal" value={g.azimuth} onChange={al("azimuth")} /></label>
-            <label className="girdi-etiket">AC tavanı kW (isteğe bağlı)
+            <label className="girdi-etiket">AC sınırı kW (isteğe bağlı)
               <input className="girdi" style={{ width: 110 }} inputMode="decimal" value={g.ac_limit_kw} onChange={al("ac_limit_kw")} /></label>
           </div>
           <div style={{ display: "flex", gap: 8, marginTop: 14, justifyContent: "flex-end" }}>

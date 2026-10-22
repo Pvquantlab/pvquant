@@ -36,7 +36,7 @@ export function Giris({ onGiris }: { onGiris: () => void }) {
         ? "Doğrulama kodu hatalı — uygulamadaki 6 haneyi ya da bir kurtarma kodunu girin."
         : "E-posta ya da parola hatalı.");
     } catch {
-      setHata("Sunucuya ulaşılamadı — API ayakta mı?");
+      setHata("Sunucuya ulaşılamadı. Bağlantınızı kontrol edip yeniden deneyin.");
     }
     setBekliyor(false);
   }

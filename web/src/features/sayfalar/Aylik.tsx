@@ -20,7 +20,7 @@ export function Aylik({ plantId }: { plantId: string }) {
   // v2.278: bankable yıllık beklenti — saklı sonuç; "yenile" 1–2 dk sürer (19 yıl × fizik koşusu)
   const [bk, setBk] = useState<Bankable | null | undefined>(undefined);
   const [bkMesaj, setBkMesaj] = useState<string | null>(null);
-  const bkYenile = () => { setBkMesaj("Hesaplanıyor — 19 yıl × fizik koşusu, 1–2 dakika…"); api.bankableHesapla(plantId).then((r) => { setBk(r); setBkMesaj(null); }).catch((e) => setBkMesaj(String((e as Error).message ?? e))); };
+  const bkYenile = () => { setBkMesaj("Hesaplanıyor — 19 yıllık fiziksel model hesabı, 1–2 dakika…"); api.bankableHesapla(plantId).then((r) => { setBk(r); setBkMesaj(null); }).catch((e) => setBkMesaj(String((e as Error).message ?? e))); };
   const { n, oku } = useTema();
 
   // v2.327: TEK KAPI (Portföy kalıbı) — üç kaynak paralel, sayfa bütün belirir.
@@ -135,11 +135,11 @@ export function Aylik({ plantId }: { plantId: string }) {
 
   if (!hazir) return <div style={{ color: "var(--soluk)" }}>Yükleniyor…</div>;
   if (birikiyor) return (
-    <Sayfa baslik="Aylık beklenti" alt="İklimden gelen ay bazlı üretim zarfı.">
+    <Sayfa baslik="Aylık beklenti" alt="Uzun dönem iklim verisinden aylık üretim aralığı.">
       <Kart baslik="Beklenti birikiyor">
         <p style={{ fontSize: 13, color: "var(--ikincil)", margin: 0 }}>
-          İklim beklentisi henüz hesaplanmadı — worker her ayın 1'inde
-          uzun dönem arşivden tazeler. İlk hesap sonrası bu sayfa dolar.
+          İklim beklentisi henüz hesaplanmadı; her ayın 1'inde uzun dönem arşivden
+          otomatik olarak hesaplanır. İlk hesaptan sonra bu sayfa dolar.
         </p>
       </Kart>
     </Sayfa>);
@@ -155,7 +155,7 @@ export function Aylik({ plantId }: { plantId: string }) {
   // sürümse ya da hesap yoksa v2.314'ün nötr metnine düşülür — sayı uydurulmaz.
   return (
     <Sayfa baslik="Aylık beklenti"
-      alt="İklimden gelen ay bazlı üretim zarfı — kısa ufuk tahmini değildir; NWP aya uzatılmaz."
+      alt="Uzun dönem iklim verisinden aylık üretim aralığı; günlük tahminden bağımsızdır."
       sag={<span className="cip">
         {b.donem != null && b.yil_sayisi != null
           ? `Kaynak: ${b.donem} arşivi · ${sayiTr(b.yil_sayisi)} yıl · hesap ${hesap}`
@@ -163,30 +163,30 @@ export function Aylik({ plantId }: { plantId: string }) {
       <div className="ızgara satir-3" style={{ marginBottom: 14 }}>
         <Kpi etiket={`${AYLAR[buAy - 1]} · P10`}
              deger={k?.p10 !== null && k ? sayiTr(k.p10) : "—"}
-             birim="kWh/m²" alt="kötümser zarf (10/100 yıl altında)" />
+             birim="kWh/m²" alt="kötümser (yılların %10'u bunun altında)" />
         <Kpi etiket={`${AYLAR[buAy - 1]} · P50`}
              deger={k?.p50 !== null && k ? sayiTr(k.p50) : "—"}
-             birim="kWh/m²" alt={`medyan · ${k?.yil_sayisi ?? "—"} yıl`} />
+             birim="kWh/m²" alt={`beklenen (medyan) · ${k?.yil_sayisi ?? "—"} yıl`} />
         <Kpi etiket={`${AYLAR[buAy - 1]} · P90`}
              deger={k?.p90 !== null && k ? sayiTr(k.p90) : "—"}
-             birim="kWh/m²" alt="iyimser zarf (10/100 yıl üstünde)" />
+             birim="kWh/m²" alt="iyimser (yılların %10'u bunun üstünde)" />
       </div>
       {/* v2.278 (Tablo 3.1 satır 6): bankable yıllık beklenti — ücretsiz uydu türevli arşiv + fizik + belirsizlik bütçesi */}
-      <Kart baslik="Yıllık beklenti — P50 / P90 ve belirsizlik bütçesi"
+      <Kart baslik="Yıllık üretim beklentisi — P50 / P90 ve belirsizlik kalemleri"
         sag={<span style={{ display: "flex", gap: 6, alignItems: "center" }}>
           {bk?.durum === "ok" && <span className="cip">{bk.donem} · {sayiTr(bk.yil_sayisi ?? 0)} yıl</span>}
           <button className="dugme" style={{ fontSize: 11.5 }} onClick={bkYenile}>{bk?.durum === "ok" ? "Yenile" : "Hesapla"}</button>
         </span>}>
         {bk === undefined ? <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p>
          : !bk || bk.durum !== "ok" ? (
-          <p className="soluk" style={{ margin: 0 }}>{bkMesaj ?? (bk?.not ?? "Henüz hesaplanmadı — 'Hesapla' ile uzun dönem ışınım arşivinden yıllık dağılım üretilir (ayda bir kendiliğinden yenilenir).")}</p>
+          <p className="soluk" style={{ margin: 0 }}>{bkMesaj ?? (bk?.not ?? "Henüz hesaplanmadı. 'Hesapla' uzun dönem ışınım arşivinden yıllık dağılımı üretir (ayda bir kendiliğinden yenilenir).")}</p>
         ) : (
           <>
             <div className="ızgara satir-4" style={{ marginBottom: 10 }}>
-              <Kpi etiket="P50 (yıllık)" deger={sayiTr((bk.p50_kwh ?? 0) / 1000, 0)} birim="MWh" alt={`${sayiTr(bk.ozgul_verim_kwh_kwp ?? 0, 0)} kWh/kWp özgül verim`} />
-              <Kpi etiket="P90 · tek yıl" deger={sayiTr((bk.bir_yil?.p90 ?? 0) / 1000, 0)} birim="MWh" alt={`P99 ${sayiTr((bk.bir_yil?.p99 ?? 0) / 1000, 0)} MWh`} />
-              <Kpi etiket={`P90 · ${sayiTr(bk.N_yil ?? 10)} yıl ortalaması`} deger={sayiTr((bk.n_yil?.p90 ?? 0) / 1000, 0)} birim="MWh" alt="finansman ufku (yıllar arası bileşen küçülür)" />
-              <Kpi etiket="Toplam belirsizlik (σ)" deger={`%${sayiTr((bk.sigma_toplam ?? 0) * 100, 1)}`}
+              <Kpi etiket="Beklenen (P50) · yıllık" deger={sayiTr((bk.p50_kwh ?? 0) / 1000, 0)} birim="MWh" alt={`${sayiTr(bk.ozgul_verim_kwh_kwp ?? 0, 0)} kWh/kWp özgül verim`} />
+              <Kpi etiket="Güvenli (P90) · tek yıl" deger={sayiTr((bk.bir_yil?.p90 ?? 0) / 1000, 0)} birim="MWh" alt={`P99 ${sayiTr((bk.bir_yil?.p99 ?? 0) / 1000, 0)} MWh`} />
+              <Kpi etiket={`Güvenli (P90) · ${sayiTr(bk.N_yil ?? 10)} yıl ortalaması`} deger={sayiTr((bk.n_yil?.p90 ?? 0) / 1000, 0)} birim="MWh" alt="finansman dönemi (yıllar arası oynaklık ortalamada küçülür)" />
+              <Kpi etiket="Toplam belirsizlik" deger={`%${sayiTr((bk.sigma_toplam ?? 0) * 100, 1)}`}
                    alt={bk.katki_pct
                      ? (bk.olcumle_kalibre ? "ölçümle kalibre · " : "") + "katkı: " + Object.entries(bk.katki_pct).sort((x, y) => y[1] - x[1]).slice(0, 3)   /* jsonb anahtar sırası korumaz — değere göre */.map(([k, v]) => `${({ yillar_arasi: "yıllar arası", kaynak: "kaynak", transpozisyon: "düzleme aktarma", model_zinciri: "model", olcum: "ölçüm", degradasyon: "bozunma", kullanilabilirlik: "kullanılabilirlik" } as Record<string, string>)[k] ?? k} %${sayiTr(v, 0)}`).join(" · ")
                      : bk.bilesenler ? `yıllar arası %${sayiTr((bk.bilesenler.yillar_arasi ?? 0) * 100, 1)} · kaynak %${sayiTr((bk.bilesenler.kaynak ?? 0) * 100, 0)} · model %${sayiTr((bk.bilesenler.model_zinciri ?? bk.bilesenler.model ?? 0) * 100, 1)}` : ""} />
@@ -211,20 +211,20 @@ export function Aylik({ plantId }: { plantId: string }) {
           </>
         )}
       </Kart>
-      <Kart baslik="Aylık GHI — uzun dönem P50 ve P10–P90 aralığı">
+      <Kart baslik="Aylık yatay ışınım (GHI) — uzun dönem P50 ve P10–P90 aralığı">
         <EChart option={option} height={320}
           ariaLabel="12 ay için uzun dönem GHI serpilisi, P10-P90 bandı ve P50 çizgisi" />
         <p style={{ fontSize: 12, color: "var(--soluk)", margin: "12px 0 0" }}>
-          <b style={{ color: "var(--ikincil)" }}>Bu grafik ayın iklim zarfıdır:</b>{" "}
-          yeşil sütun arşivin medyan (P50) ışınımı, çentikli çizgi
-          P10–P90 aralığıdır — yılların %80'i bu bandın içinde kalır.{" "}
-          <b style={{ color: "var(--ikincil)" }}>Nasıl okunur:</b> bu bir kısa
-          ufuk tahmini değildir; "bu ay normalde ne getirir" sorusunun cevabıdır.
-          Bant genişse o ay iklimsel olarak oynaktır — plana pay bırakın.
+          <b style={{ color: "var(--ikincil)" }}>Ne gösterir:</b>{" "}
+          yeşil sütun arşivin beklenen (P50) ışınımı, çentikli çizgi
+          P10–P90 aralığıdır; yılların %80'i bu aralıkta kalır.{" "}
+          <b style={{ color: "var(--ikincil)" }}>Neye bakmalı:</b> bu bir günlük
+          tahmin değildir; "bu ay normalde ne getirir" sorusunun cevabıdır.
+          Aralık genişse o ay iklim olarak oynaktır; plana pay bırakın.
         </p>
       </Kart>
-      <Kart baslik="Yıl × ay GHI matrisi"
-        sag={<span className="cip">kWh/m² · renk: değer skalası</span>}>
+      <Kart baslik="Yıl × ay ışınım tablosu (GHI)"
+        sag={<span className="cip">kWh/m² · renk: değer ölçeği</span>}>
         <div style={{ overflowX: "auto" }}>
           <table style={{ borderCollapse: "collapse", width: "100%",
                           fontFamily: "var(--mono)", fontSize: 11.5 }}>
@@ -292,13 +292,12 @@ export function Aylik({ plantId }: { plantId: string }) {
           </table>
         </div>
         <p style={{ fontSize: 12, color: "var(--soluk)", margin: "12px 0 0" }}>
-          <b style={{ color: "var(--ikincil)" }}>Her hücre bir yılın o ayki GHI
-          toplamıdır</b> (kWh/m²); sıcak tonlar yüksek ışınımı gösterir, skala
-          tüm tabloda ortaktır.{" "}
-          <b style={{ color: "var(--ikincil)" }}>Neye bakmalı:</b> bir sütunda
-          yukarıdan aşağı renk oynaklığı, o ayın yıldan yıla ne kadar değiştiğini
-          söyler. Yıl sütunu tam yılların toplamı, Ort. satırı uzun dönem
-          ortalamasıdır.
+          <b style={{ color: "var(--ikincil)" }}>Ne gösterir:</b> her hücre bir
+          yılın o aydaki yatay ışınım toplamıdır (kWh/m²); sıcak tonlar yüksek ışınımı
+          gösterir, ölçek tüm tabloda ortaktır.{" "}
+          <b style={{ color: "var(--ikincil)" }}>Neye bakmalı:</b> bir sütundaki
+          renk oynaklığı, o ayın yıldan yıla ne kadar değiştiğini gösterir. Yıl
+          sütunu tam yılların toplamı, Ort. satırı uzun dönem ortalamasıdır.
         </p>
       </Kart>
       {o && o.aylik.length > 0 && (

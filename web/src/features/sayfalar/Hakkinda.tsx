@@ -59,10 +59,10 @@ export function Hakkinda() {
         </Kart>
       )}
       {h && Object.keys(h.arsiv).length > 0 && (
-        <Kart baslik="Meteoroloji arşivi" sag={<span className="cip">koşu başına nokta serileri</span>}>
+        <Kart baslik="Meteoroloji arşivi" sag={<span className="cip">tahmin başına nokta serileri</span>}>
           <div className="grafik-kaydir">
             <table className="veri" style={{ fontSize: 12.5 }}>
-              <thead><tr><th style={sol}>Kaynak</th><th style={sol}>Son koşu</th><th>Nokta</th><th>Satır</th><th style={sol}>Kapsam</th></tr></thead>
+              <thead><tr><th style={sol}>Kaynak</th><th style={sol}>Son indirme</th><th>Nokta</th><th>Satır</th><th style={sol}>Kapsam</th></tr></thead>
               <tbody>
                 {Object.entries(h.arsiv).map(([k, v]) => (
                   <tr key={k}><td style={sol}>{k}</td><td className="mono" style={sol}>{tarih(v.son)}</td><td className="mono">{sayiTr(v.nokta)}</td><td className="mono">{sayiTr(v.satir)}</td>
@@ -71,8 +71,8 @@ export function Hakkinda() {
             </table>
           </div>
           <p className="soluk" style={{ fontSize: 12.5, margin: "10px 0 0" }}>
-            Her gece açık koşular indirilir, santral noktaları çıkarılır ve saklanır; tahmin, kalibrasyon ve eğitim/servis
-            kayma denetimi aynı arşivden beslenir. Ham ızgara dosyaları tutulmaz.
+            Her gece hava tahmini verisi indirilir, santral noktaları çıkarılır ve saklanır; tahmin, kalibrasyon ve hava verisi
+            tutarlılık denetimi aynı arşivden beslenir. Ham ızgara dosyaları tutulmaz.
           </p>
         </Kart>
       )}

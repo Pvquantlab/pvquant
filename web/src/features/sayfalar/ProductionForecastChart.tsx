@@ -664,7 +664,7 @@ export function buildChartOption(input: BuildInput): EChartsOption {
       if (typeof p.p90 === "number" && bandSature(p.p90, acVal)) {
         // U3: sıfır/ince bant burada kesinlik değil, tavan kesmesi.
         notlar.push(`<div style="margin-top:4px;color:${T.mutedText};` +
-          `font-size:11px">Bant tavana dayalı — üst sınır AC kırpması</div>`);
+          `font-size:11px">Aralık AC sınırına dayalı — üst değer kırpılmış</div>`);
       }
       return (
         `<b>${fmtTime(toMs(ts), tz)} · ${isPast ? "Geçmiş" : "Tahmin"}</b>` +
@@ -1218,7 +1218,7 @@ export default function ProductionForecastChart({
         {plant.acCapacityKw !== null && (
           <span style={key}>
             <LineSample color={T.acLimit} dashed />
-            AC tavanı
+            AC sınırı
           </span>
         )}
         {hasActual && (
