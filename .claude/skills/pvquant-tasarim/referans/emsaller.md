@@ -50,3 +50,10 @@ Her satır: kalıp → dosya → kritik kural. Yeni mühürde yeni kalıp çıka
   `Dockerfile.web` 2.11.7'ye sabit. Güncelleme = changelog + replika sınaması, bilinçli tek satır.
 - **Yavaş hat kararı günlük tazelenir (21.10.2026, #11):** `heroHazir.ts` kayıttaki 7 günlük «yavaş hat» kararı günde bir
   yeniden ölçülür — tek yanlış ölçüm videoyu 7 gün kapatmasın.
+- **Panel dili = piyasa dili (22.10.2026, v2.462):** anti-slop 7'nin panel karşılığı. Standart `docs/PANEL-DIL-2026-10-22.md` §2
+  (26 terim; «koşu»→tahmin, «naif»→referans tahmin, «bant»→tahmin aralığı, «zarf»→aralık, «D‑1»→bir gün önce, «AC tavanı»→
+  AC sınırı, «künye»→santral bilgileri). Yöntem: tüm eski→yeni çiftleri tek betikte, her eski metin dosyada tam bir kez
+  bulunmak zorunda (sessiz yanlış eşleşme yok); aynı liste raporun eki. Bekçi `web/test/panel/dil.test.ts` (yorum ve
+  tanımlayıcı kapsam dışı; «naif» gibi ASCII tanımlayıcılar için desen daraltılır). API'den gelen görünür metinler
+  (`isler_service.ISIM_TR`, `alarm_service.KURAL_ETIKET`, servis «not» cümleleri) sunum katmanında ÇEVRİLMEZ, raporlanır.
+  Yerel doğrulama: `.env.local` kenara → örnek kip (API'siz) ile 9 sayfa, `scrollWidth>clientWidth` taraması.
