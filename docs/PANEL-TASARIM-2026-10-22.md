@@ -3,7 +3,8 @@
 Amaç: pazarlama sayfası (vitrin) ile yönetim paneli aynı kurumsal SaaS ürününe ait okunsun. Yalnız
 sunum katmanı (`web/src/index.css`, panel TSX'lerinde satır içi boyut/sınıf, iki sunum testi) değişti;
 yazılım çekirdeğine (modeller, hesaplar, API, veritabanı, servisler, zamanlanmış işler, kimlik) dokunulmadı
-(§9 git kanıtı). Durum: **yerelde uygulandı, commit/push/dağıtım onay bekliyor.**
+(§9 git kanıtı). Durum: **CANLI — v2.464 (e3599ed), CI #538 yeşil, sunucuda yalnız web imajı yenilendi;
+canlı index.html ve 16 JS parçası yerel referans derlemeyle sha256 birebir (22.10.2026).**
 
 ## 1. Tespit edilen farklar (önce)
 
