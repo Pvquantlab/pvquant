@@ -2,7 +2,8 @@
 
 Önceki tur: `docs/PANEL-TASARIM-2026-10-22.md` (v2.464 canlı). Bu tur: iki temanın **bağımsız, ölçüme dayalı**
 denetimi ve kalan pürüzlerin giderilmesi. Yalnız `web/src` (9 dosya); çekirdek, API, veritabanı, vitrin kaynakları
-değişmedi (§H). Durum: **yerelde uygulandı, commit/dağıtım onay bekliyor.**
+değişmedi (§H). Durum: **CANLI — v2.465 (9f135cd), CI #540 yeşil, sunucuda yalnız web imajı yenilendi; canlı
+index.html ve JS parçaları referans derlemeyle sha256 kıyaslandı (22.10.2026).**
 
 ## Yöntem
 
