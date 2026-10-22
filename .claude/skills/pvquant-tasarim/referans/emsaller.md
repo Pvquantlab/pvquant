@@ -39,3 +39,14 @@ Her satır: kalıp → dosya → kritik kural. Yeni mühürde yeni kalıp çıka
 - Bulut teslimi devralma: DEVIR.md + temiz patch kalıbı (v2.393).
 - **Üst çubuk hapı rengi/yüksekliği (15.10.2026):** üç seçenek (lacivert cam / buz cam / derin gök) panoda sunuldu; kullanıcı önce C, sonra iki sekmede yan yana görüp B «buz cam»ı seçti. Yükseklik sayfa taramasıyla (hero düğmesi 56, başlık 92) 64 px. Açılır panel ve çekmece hapın CTA rengiyle aynı aile — hap açık, panel siyah bırakılmaz. Kararsızlıkta iki varyantı iki portta yan yana açmak işe yaradı.
 - **İkon rötuşu «formu koru, kaliteyi yükselt» (17.10.2026, v2.455):** göz kararı değil ölçü — en kalın yer, kılcal yarık boyu, mürekkep ağırlık merkezi (aile ile kıyas); parametre taraması → «ayak temizliği ↔ özgün forma sapma» Pareto ön yüzü; 1×/2×/3× piksel büyüteci + canlı menü kırpması; sonda tek önce/sonra panosu. Çok motorlu sınama (v2.456): Chrome CDP, WebKit = Playwright önbelleği, Firefox = stok uygulama + puppeteer-core WebDriver BiDi (setViewport deviceScaleFactor); Firefox --screenshot devPixelsPerPx'i yok sayar. Kutu (çerçeve) aileye ortak: yalnız ölçüyle haklı değişiklik, o da tüm kutulara.
+- **Bulut turu teslim kalıbı (20–21.10.2026, PR #7/#9/#10/#11):** bulutta ssh ve bellek yok → iş = dal + rapor
+  (`perf/RAPOR-FABLE5.md`, `docs/ICERIK-TURKIYE-…`, `docs/SON-KONTROL-…`) + PR; dağıtım ve defter/bellek adımı yerel
+  oturumdan. Bulut kredi düşümü ortamdan okunamaz — raporda «doğrulanamadı» yazılır, uydurulmaz. Replika (`perf/replika`,
+  Caddy sabit sürüm) ile 4 motor × görünüm × hat matrisi; «sonra» ölçümü kod değişmese de ikinci bağımsız kontrol sayılır.
+- **Metin denetimi dört ölçüt (21.10.2026):** (a) Türkiye piyasası uyumu, (b) santral sahibi ilk okuyuşta anlar mı,
+  (c) kurumsal ton (edebî fiil, boş sıfat yok), (d) tutarlılık (bölüm adı değişince göndermeler de). Yalnız metin
+  düğümü değişir; yapı/CSS/test pini korunur; yeni ifade var / eski ifade yok DOM yoklaması 3 motor × 3 görünüm.
+- **Taban imaj sabitleme (20.10.2026, 158d3e1):** `caddy:2` yüzen etiketi 2.10.1–2.10.2'de precompressed → 206 veriyordu;
+  `Dockerfile.web` 2.11.7'ye sabit. Güncelleme = changelog + replika sınaması, bilinçli tek satır.
+- **Yavaş hat kararı günlük tazelenir (21.10.2026, #11):** `heroHazir.ts` kayıttaki 7 günlük «yavaş hat» kararı günde bir
+  yeniden ölçülür — tek yanlış ölçüm videoyu 7 gün kapatmasın.

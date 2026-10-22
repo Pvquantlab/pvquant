@@ -24,6 +24,11 @@ Amaç tuhaflık değil: kasıtlı, olgun, teknik, ölçülü. ✓ = testle zorla
 4. Grafik bir karar sorusuna cevap vermiyorsa grafik değildir — tablo ya da cümle.
 5. Boş/yükleniyor/hata dürüst: tire, «yayın açılınca», iskelet; asla sahte eğri.
 6. Görünür yüzeyde yöntem/kaynak adı yok ✓ (vitrin); panelde müşteri dili (env adı yazılmaz).
+7. Görünür yüzeyde ekip iç terimi yok (21.10.2026, `docs/SON-KONTROL-2026-10-21.md`): «vitrin», «koşu»,
+   «zarf», «kapı», «hesap hattı», «D‑1», «pencere», «dilim», «ağaç/matris», «kantil», «şemalı» yazılmaz;
+   müşteri dili: üretim programı (KGÜP), dengesizlik maliyeti, teslim saati, gün içi düzeltme,
+   iyimser–kötümser aralık, kurulu güç (MW). P50/P90 yalnız finans bağlamında ve açıklamalı
+   (`docs/ICERIK-TURKIYE-2026-10-21.md` §2 terim tablosu tek kaynak).
 
 ## Süreç (Claude öz-denetimi)
 
