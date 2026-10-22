@@ -32,7 +32,7 @@ export function BandImza({ yukseklik = 96, etiketli = false }: { yukseklik?: num
               strokeWidth="1" strokeDasharray="2 4" opacity=".5" />
       </svg>
       {etiketli && (
-        <div className="mono" style={{ fontSize: 10.5, letterSpacing: ".05em", color: "var(--soluk)",
+        <div className="mono" style={{ fontSize: 11.5, letterSpacing: ".05em", color: "var(--soluk)",
                                        display: "flex", gap: 14, marginTop: 6 }}>
           <span><i style={{ display: "inline-block", width: 14, height: 3, borderRadius: 2, verticalAlign: 2,
                             background: "var(--chart-p50-future, #2D6FB5)", marginRight: 5 }} />P10–P90 aralığıyla tahmin</span>

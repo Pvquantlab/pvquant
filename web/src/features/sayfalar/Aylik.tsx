@@ -84,7 +84,7 @@ export function Aylik({ plantId }: { plantId: string }) {
       grid: { left: 52, right: 12, top: 28, bottom: 28 }, animation: false,
       tooltip: { trigger: "axis", backgroundColor: oku("--kart"),
         borderColor: kenar, borderWidth: 0.5,
-        textStyle: { color: oku("--metin"), fontSize: 12 },
+        textStyle: { color: oku("--metin"), fontSize: 12.5 },
         formatter: (ps: unknown) => {
           const arr = ps as { dataIndex: number }[];
           const r = bek[arr[0]?.dataIndex];
@@ -97,16 +97,16 @@ export function Aylik({ plantId }: { plantId: string }) {
         axisTick: { show: true, length: 4,
           lineStyle: { color: oku("--chart-baseline") || kenar } },
         axisLine: { lineStyle: { color: oku("--chart-baseline") || kenar } },
-        axisLabel: { color: soluk, fontFamily: mono, fontSize: 11 } },
+        axisLabel: { color: soluk, fontFamily: mono, fontSize: 12 } },
       yAxis: { type: "value", name: "kWh/m²",
-        nameTextStyle: { color: soluk, fontFamily: mono, fontSize: 10 },
+        nameTextStyle: { color: soluk, fontFamily: mono, fontSize: 11 },
         splitLine: { lineStyle: { color: izgara } }, axisLine: { show: false },
-        axisLabel: { color: soluk, fontFamily: mono, fontSize: 11 } },
+        axisLabel: { color: soluk, fontFamily: mono, fontSize: 12 } },
       series: [
         { name: "P50", type: "bar", barMaxWidth: 34, z: 1,
           itemStyle: { borderRadius: [2, 2, 0, 0], color: oku("--ch-cubuk") },
           label: { show: true, position: "top", distance: 16,
-            color: oku("--metin"), fontFamily: mono, fontSize: 10.5,
+            color: oku("--metin"), fontFamily: mono, fontSize: 11.5,
             formatter: (pr: { value: number }) => `${Math.round(pr.value)}` },
           data: bek.map((r) => r.p50) },
         { name: "P10–P90", type: "custom", z: 2,
@@ -137,7 +137,7 @@ export function Aylik({ plantId }: { plantId: string }) {
   if (birikiyor) return (
     <Sayfa baslik="Aylık beklenti" alt="Uzun dönem iklim verisinden aylık üretim aralığı.">
       <Kart baslik="Beklenti birikiyor">
-        <p style={{ fontSize: 13, color: "var(--ikincil)", margin: 0 }}>
+        <p style={{ fontSize: 13.5, color: "var(--ikincil)", margin: 0 }}>
           İklim beklentisi henüz hesaplanmadı; her ayın 1'inde uzun dönem arşivden
           otomatik olarak hesaplanır. İlk hesaptan sonra bu sayfa dolar.
         </p>
@@ -175,7 +175,7 @@ export function Aylik({ plantId }: { plantId: string }) {
       <Kart baslik="Yıllık üretim beklentisi — P50 / P90 ve belirsizlik kalemleri"
         sag={<span style={{ display: "flex", gap: 6, alignItems: "center" }}>
           {bk?.durum === "ok" && <span className="cip">{bk.donem} · {sayiTr(bk.yil_sayisi ?? 0)} yıl</span>}
-          <button className="dugme" style={{ fontSize: 11.5 }} onClick={bkYenile}>{bk?.durum === "ok" ? "Yenile" : "Hesapla"}</button>
+          <button className="dugme" style={{ fontSize: 12.5 }} onClick={bkYenile}>{bk?.durum === "ok" ? "Yenile" : "Hesapla"}</button>
         </span>}>
         {bk === undefined ? <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p>
          : !bk || bk.durum !== "ok" ? (
@@ -192,7 +192,7 @@ export function Aylik({ plantId }: { plantId: string }) {
                      : bk.bilesenler ? `yıllar arası %${sayiTr((bk.bilesenler.yillar_arasi ?? 0) * 100, 1)} · kaynak %${sayiTr((bk.bilesenler.kaynak ?? 0) * 100, 0)} · model %${sayiTr((bk.bilesenler.model_zinciri ?? bk.bilesenler.model ?? 0) * 100, 1)}` : ""} />
             </div>
             <div className="grafik-kaydir">
-              <table className="veri sik" style={{ fontSize: 12 }}>
+              <table className="veri sik" style={{ fontSize: 12.5 }}>
                 <thead><tr><th>Yıl</th>{(bk.yillar ?? []).map((y) => <th key={y.yil}>{y.yil}</th>)}</tr></thead>
                 <tbody className="mono">
                   <tr><td>Üretim (MWh)</td>{(bk.yillar ?? []).map((y) => <td key={y.yil}>{sayiTr(y.kwh / 1000, 0)}</td>)}</tr>
@@ -200,21 +200,21 @@ export function Aylik({ plantId }: { plantId: string }) {
                 </tbody>
               </table>
             </div>
-            <p className="soluk" style={{ fontSize: 12.5, margin: "10px 0 0" }}>
+            <p className="soluk" style={{ fontSize: 13, margin: "10px 0 0" }}>
               {bk.mod}. Işınım P50 {sayiTr(bk.ghi?.p50_kwh_m2 ?? 0, 0)} kWh/m² (tek yıl P90 {sayiTr(bk.ghi?.p90_kwh_m2_1yil ?? 0, 0)}).
               {bk.tmy?.p90_yili ? ` P90 senaryo yılı: ${bk.tmy.p90_yili} (${sayiTr(bk.tmy.p90_yili_ghi ?? 0, 0)} kWh/m²); tipik meteorolojik yıl ${sayiTr(bk.tmy.tmy_ghi_kwh_m2 ?? 0, 0)} kWh/m².` : ""}
               {bk.monte_carlo ? ` Çarpımsal sınama (asimetri korunur): P90 ${sayiTr(bk.monte_carlo.p90_1yil / 1000, 0)} · P99 ${sayiTr(bk.monte_carlo.p99_1yil / 1000, 0)} MWh — normal varsayımla ${Math.abs((bk.monte_carlo.p90_1yil - (bk.bir_yil?.p90 ?? 0)) / (bk.bir_yil?.p90 || 1) * 100) < 1 ? "uyumlu" : "farklı"}.` : ""}
               {bk.gelir ? ` Gelir (tarife: ${bk.gelir.tip}, ${sayiTr(bk.gelir.fiyat_tl_mwh, 0)} TL/MWh): P50 ${sayiTr(bk.gelir.p50_tl / 1e6, 2)} milyon TL/yıl · P90 tek yıl ${sayiTr(bk.gelir.p90_1yil_tl / 1e6, 2)} · P90 10 yıl ${sayiTr(bk.gelir.p90_nyil_tl / 1e6, 2)} milyon TL.${bk.gelir.not ? " " + bk.gelir.not + "." : ""}` : ""}
               {" "}{bk.not}
             </p>
-            {bkMesaj && <p className="soluk" style={{ fontSize: 12.5, margin: "6px 0 0" }}>{bkMesaj}</p>}
+            {bkMesaj && <p className="soluk" style={{ fontSize: 13, margin: "6px 0 0" }}>{bkMesaj}</p>}
           </>
         )}
       </Kart>
       <Kart baslik="Aylık yatay ışınım (GHI) — uzun dönem P50 ve P10–P90 aralığı">
         <EChart option={option} height={320}
           ariaLabel="12 ay için uzun dönem GHI serpilisi, P10-P90 bandı ve P50 çizgisi" />
-        <p style={{ fontSize: 12, color: "var(--soluk)", margin: "12px 0 0" }}>
+        <p style={{ fontSize: 12.5, color: "var(--soluk)", margin: "12px 0 0" }}>
           <b style={{ color: "var(--ikincil)" }}>Ne gösterir:</b>{" "}
           yeşil sütun arşivin beklenen (P50) ışınımı, çentikli çizgi
           P10–P90 aralığıdır; yılların %80'i bu aralıkta kalır.{" "}
@@ -227,7 +227,7 @@ export function Aylik({ plantId }: { plantId: string }) {
         sag={<span className="cip">kWh/m² · renk: değer ölçeği</span>}>
         <div style={{ overflowX: "auto" }}>
           <table style={{ borderCollapse: "collapse", width: "100%",
-                          fontFamily: "var(--mono)", fontSize: 11.5 }}>
+                          fontFamily: "var(--mono)", fontSize: 12.5 }}>
             <thead>
               <tr>
                 <th style={{ textAlign: "left", padding: "4px 6px",
@@ -291,7 +291,7 @@ export function Aylik({ plantId }: { plantId: string }) {
             </tbody>
           </table>
         </div>
-        <p style={{ fontSize: 12, color: "var(--soluk)", margin: "12px 0 0" }}>
+        <p style={{ fontSize: 12.5, color: "var(--soluk)", margin: "12px 0 0" }}>
           <b style={{ color: "var(--ikincil)" }}>Ne gösterir:</b> her hücre bir
           yılın o aydaki yatay ışınım toplamıdır (kWh/m²); sıcak tonlar yüksek ışınımı
           gösterir, ölçek tüm tabloda ortaktır.{" "}

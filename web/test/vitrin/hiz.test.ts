@@ -162,7 +162,7 @@ test("panel geçişleri: ekran değişimleri startTransition içinde, tek kalıc
   const ornek = new Map([...app.matchAll(/document\.fonts\.load\("([^"]+)", "([^"]+)"\)/g)].map((m) => [m[1], m[2]]));
   assert.equal(ornek.size, 5);
   for (const [f, s] of ornek) assert.match(s, /[A-Za-z]/, f);
-  for (const f of ["700 64px 'Space Grotesk'", "400 16px 'Inter Variable'", "400 12px 'IBM Plex Mono'"]) assert.match(ornek.get(f) ?? "", /[ğşİ]/, f);
+  for (const f of ["500 64px 'Inter Tight'", "400 16px 'Inter Variable'", "400 12px 'IBM Plex Mono'"]) assert.match(ornek.get(f) ?? "", /[ğşİ]/, f);
   assert.ok(ornek.has("500 12px 'IBM Plex Mono'") && ornek.has("600 12px 'IBM Plex Mono'"));
   assert.match(oku("../../src/features/giris/Giris.tsx"), /if \(r === "ok"\) \{ onGiris\(\); return; \}/);
   assert.match(oku("../../src/features/sayfalar/Digerleri.tsx"), /if \(tahminlereGit\) \{ tahminlereGit\(\);/);

@@ -12,12 +12,13 @@ import type { SantralKisa } from "./api/types";
  *  girişten sonra, ekrana gelmeden hemen önce iner. */
 /** 16.10 hız turu 4: giriş ekranı yazıları inene dek ekran değişmez — en çok 1,2 sn; sonra yine açılır (yazı yedek
  *  fonttan gerçeğine geçer). Önceden ekran önce boş, sonra yedek fontla geliyor, ardından yazılar yer değiştiriyordu.
- *  Liste ölçüldü (16.10, giriş ekranının çizilmiş metni): başlık Space Grotesk 700 (600 yüzü), gövde Inter Variable,
- *  etiketler Plex Mono 400/500/600; Türkçe harfli olanlarda latin + latin-ext ikisi de — örnek metin ikisini de ister. */
+ *  Liste ölçüldü (16.10, giriş ekranının çizilmiş metni): başlık Inter Tight 500 (22.10'dan beri; Space Grotesk kalktı),
+ *  gövde Inter Variable, etiketler Plex Mono 400/500/600; Türkçe harfli olanlarda latin + latin-ext ikisi de — örnek
+ *  metin ikisini de ister. */
 function girisFontlari(): Promise<unknown> {
   if (typeof document === "undefined" || !document.fonts?.load) return Promise.resolve();
   const yukle = Promise.all([
-    document.fonts.load("700 64px 'Space Grotesk'", "Aa ğşİ"),
+    document.fonts.load("500 64px 'Inter Tight'", "Aa ğşİ"),
     document.fonts.load("400 16px 'Inter Variable'", "Aa ğşİ"),
     document.fonts.load("400 12px 'IBM Plex Mono'", "Aa ğşİ"),
     document.fonts.load("500 12px 'IBM Plex Mono'", "Aa"),

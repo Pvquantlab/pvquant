@@ -208,7 +208,7 @@ export function Santralim({ plantId }: { plantId: string }) {
       return { type: "scatter" as const, silent: true, symbolSize: 0.1, z: 5,
         tooltip: { show: false }, itemStyle: { color: "transparent" },
         label: { show: true, position: "bottom" as const, distance: 10,
-          color: renk[e.ad], fontFamily: mono, fontSize: 11,
+          color: renk[e.ad], fontFamily: mono, fontSize: 12,
           formatter: `${(ad[e.ad] ?? e.ad).toLowerCase()} · ${Math.round(apex[1])}°` },
         data: [apex] };
     });
@@ -225,7 +225,7 @@ export function Santralim({ plantId }: { plantId: string }) {
           itemStyle: { color: e.ad === "yaz" ? oku("--amber") : renk[e.ad] },
           tooltip: { show: true },
           label: { show: e.ad === "yaz", position: "top" as const,
-            color: soluk, fontSize: 9.5, fontFamily: mono,
+            color: soluk, fontSize: 10.5, fontFamily: mono,
             formatter: (pr: { value: [number, number, number] }) =>
               `${pr.value[2]}:00` },
           data: e.saat },
@@ -235,7 +235,7 @@ export function Santralim({ plantId }: { plantId: string }) {
     return {
       grid: { left: 60, right: 16, top: 26, bottom: 46 }, animation: false,
       tooltip: { backgroundColor: oku("--kart"), borderColor: kenar,
-        borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 12 },
+        borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 12.5 },
         formatter: (p0: unknown) => {
           const p1 = p0 as { seriesName: string; value: number[] };
           const saat = p1.value.length > 2 ? ` · ${p1.value[2]}:00` : "";
@@ -245,8 +245,8 @@ export function Santralim({ plantId }: { plantId: string }) {
         nameLocation: "middle", nameGap: 30,
         // v2.202: tikler 45'lik adimla — 90/180/270 tam duser, ana yonler okunur
         interval: 45,
-        nameTextStyle: { color: soluk, fontFamily: mono, fontSize: 10.5 },
-        axisLabel: { color: soluk, fontFamily: mono, fontSize: 10.5,
+        nameTextStyle: { color: soluk, fontFamily: mono, fontSize: 11.5 },
+        axisLabel: { color: soluk, fontFamily: mono, fontSize: 11.5,
           formatter: (v: number) =>
             ({ 90: "Doğu · 90°", 180: "Güney · 180°", 270: "Batı · 270°"
              } as Record<number, string>)[v] ?? `${v}°` },
@@ -255,8 +255,8 @@ export function Santralim({ plantId }: { plantId: string }) {
       yAxis: { type: "value", min: 0, max: 90, name: "Güneş yüksekliği [°]",
         interval: 30,
         nameLocation: "middle", nameGap: 36, nameRotate: 90,
-        nameTextStyle: { color: soluk, fontFamily: mono, fontSize: 10.5 },
-        axisLabel: { color: soluk, fontFamily: mono, fontSize: 10.5 },
+        nameTextStyle: { color: soluk, fontFamily: mono, fontSize: 11.5 },
+        axisLabel: { color: soluk, fontFamily: mono, fontSize: 11.5 },
         splitLine: { lineStyle: { color: izgara } }, axisLine: { show: false } },
       series: seriler,
     } as EChartsOption;  // v2.148: üretim derlemesi literal daraltması
@@ -280,7 +280,7 @@ export function Santralim({ plantId }: { plantId: string }) {
         {o.mod
           ? <span className="rozet rozet-ok">{o.model_adi} · Mod {o.mod}</span>
           : <span className="cip">kalibrasyon bekliyor</span>}
-        <span className="mono" style={{ fontSize: 12.5, color: "var(--soluk)" }}>
+        <span className="mono" style={{ fontSize: 13, color: "var(--soluk)" }}>
           {gucTr(o.kapasite_kwp)} kWp · {o.lat}, {o.lon}
         </span>
       </div>}>
@@ -376,7 +376,7 @@ export function Santralim({ plantId }: { plantId: string }) {
             height={340}
           />
         )}
-        <p style={{ fontSize: 12, color: "var(--soluk)", margin: "10px 0 0" }}>
+        <p style={{ fontSize: 12.5, color: "var(--soluk)", margin: "10px 0 0" }}>
           Gerçekleşen üretimi görmek için bugünün SCADA verisini yükleyin.
         </p>
       </Kart>
@@ -393,7 +393,7 @@ export function Santralim({ plantId }: { plantId: string }) {
           sag={<span className="cip">profesyonel meteoroloji verisi</span>}>
           {o.hava.length === 0 && (
             /* v2.90: bos kart sessiz kalmasin — neden bos, soyle */
-            <p style={{ fontSize: 12.5, color: "var(--soluk)", margin: 0,
+            <p style={{ fontSize: 13, color: "var(--soluk)", margin: 0,
                         lineHeight: 1.65 }}>
               Hava özeti son tahminle gelir; bugünü kapsayan tahmin henüz yok.
               Yeni tahminle bu kart kendiliğinden dolar.
@@ -456,7 +456,7 @@ export function Santralim({ plantId }: { plantId: string }) {
                   : <span style={{ color: "var(--soluk)" }}>— {ku?.durum === "yetersiz" ? "üretim mümkün saat yetersiz" : "ölçüm/beklenti birikmedi"}</span>}</td></tr>
               </tbody>
           </table>
-          <p style={{ fontSize: 12.5, color: "var(--ikincil)", margin: "12px 0 0",
+          <p style={{ fontSize: 13, color: "var(--ikincil)", margin: "12px 0 0",
                       lineHeight: 1.55 }}>
             Model en güncel verinizle en iyi sonucu verir. Yeni SCADA dosyanızı
             yükleyin; tahmin o gece gerçekleşenle yeniden karşılaştırılır ve doğruluk karneniz büyür.
@@ -579,7 +579,7 @@ export function Santralim({ plantId }: { plantId: string }) {
           sag={<span className="cip">tüm geçerli SCADA · kW · {sam.tz}</span>}>
           <div style={{ overflowX: "auto" }}>
             <table style={{ borderCollapse: "collapse", width: "100%",
-                            fontFamily: "var(--mono)", fontSize: 11.5 }}>
+                            fontFamily: "var(--mono)", fontSize: 12.5 }}>
               <thead><tr>
                 <th style={{ textAlign: "left", padding: "4px 6px",
                              color: "var(--soluk)", fontWeight: 500 }}></th>
@@ -613,7 +613,7 @@ export function Santralim({ plantId }: { plantId: string }) {
               </tbody>
             </table>
           </div>
-          <p style={{ fontSize: 12, color: "var(--soluk)", margin: "12px 0 0" }}>
+          <p style={{ fontSize: 12.5, color: "var(--soluk)", margin: "12px 0 0" }}>
             Her hücre o ay ve saatteki çok yıllı ortalama gücü (kW) gösterir; "Tipik gün"
             satırı o ayın karakteristik günlük üretimidir.
           </p>
@@ -625,7 +625,7 @@ export function Santralim({ plantId }: { plantId: string }) {
           sag={<span className="cip">{gy.lat}°K · {gy.tz}</span>}>
           <EChart option={gyOption} height={300}
             ariaLabel="Azimut ve yükseklik düzleminde yaz gündönümü, ekinoks ve kış gündönümü güneş yolları, saat işaretleriyle" />
-          <p style={{ fontSize: 12, color: "var(--soluk)", margin: "12px 0 0" }}>
+          <p style={{ fontSize: 12.5, color: "var(--soluk)", margin: "12px 0 0" }}>
             Eğriler güneşin gökyüzündeki günlük yolunu, noktalar saat başlarını gösterir.
             Panel eğimi, yönü ve gölgelenme değerlendirmesi bu geometriye dayanır.
           </p>
@@ -668,7 +668,7 @@ export function Santralim({ plantId }: { plantId: string }) {
               })}
             </tbody>
           </table>
-          <p style={{ fontSize: 12, color: "var(--soluk)", margin: "10px 0 0" }}>
+          <p style={{ fontSize: 12.5, color: "var(--soluk)", margin: "10px 0 0" }}>
             Profiller aynı ölçekte çizilir; kısa görünen gün, beklenen üretimi düşük olan gündür. Değerler beklenen (P50) tahmindir.
           </p>
         </Kart>
@@ -702,7 +702,7 @@ export function Santralim({ plantId }: { plantId: string }) {
               ))}
             </tbody>
           </table>
-          <p style={{ fontSize: 12, color: "var(--soluk)", margin: "8px 0 0" }}>
+          <p style={{ fontSize: 12.5, color: "var(--soluk)", margin: "8px 0 0" }}>
             Beklenti, her gün için gün başlamadan önce verilmiş son tahminin
             toplamıdır; ay tamamen kapsanmadan gösterilmez.
           </p>

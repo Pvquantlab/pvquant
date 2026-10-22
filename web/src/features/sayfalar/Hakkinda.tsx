@@ -18,9 +18,9 @@ export function Hakkinda() {
         {h === undefined ? <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p>
          : !h ? <p className="soluk" style={{ margin: 0 }}>Örnek kip — kaynak listesi sunucudan gelir.</p> : (
           <>
-            {h.uyarilar.length > 0 && <p style={{ color: "var(--uyari-metin)", fontSize: 12.5, margin: "0 0 10px" }}>{h.uyarilar.join(" · ")}</p>}
+            {h.uyarilar.length > 0 && <p style={{ color: "var(--uyari-metin)", fontSize: 13, margin: "0 0 10px" }}>{h.uyarilar.join(" · ")}</p>}
             <div className="grafik-kaydir">
-              <table className="veri" style={{ fontSize: 12.5 }}>
+              <table className="veri" style={{ fontSize: 13 }}>
                 <thead><tr><th style={sol}>Kaynak</th><th style={sol}>Kurum</th><th style={sol}>Lisans</th><th style={sol}>Ne için</th></tr></thead>
                 <tbody>
                   {h.kaynaklar.map((k) => (
@@ -33,14 +33,14 @@ export function Hakkinda() {
                 </tbody>
               </table>
             </div>
-            <p style={{ fontSize: 12.5, margin: "12px 0 0", lineHeight: 1.55 }}>{h.yontem}</p>
+            <p style={{ fontSize: 13, margin: "12px 0 0", lineHeight: 1.55 }}>{h.yontem}</p>
           </>
         )}
       </Kart>
       {h && (h.mevzuat?.length ?? 0) > 0 && (
         <Kart baslik="Mevzuat ve standart dayanağı" sag={<span className="cip">katsayılar ayarlardan değişir</span>}>
           <div className="grafik-kaydir">
-            <table className="veri" style={{ fontSize: 12.5 }}>
+            <table className="veri" style={{ fontSize: 13 }}>
               <thead><tr><th style={sol}>Dayanak</th><th style={sol}>Kapsam</th><th style={sol}>Not</th></tr></thead>
               <tbody>
                 {h.mevzuat!.map((m) => (
@@ -52,7 +52,7 @@ export function Hakkinda() {
               </tbody>
             </table>
           </div>
-          <p className="soluk" style={{ fontSize: 12.5, margin: "10px 0 0" }}>
+          <p className="soluk" style={{ fontSize: 13, margin: "10px 0 0" }}>
             Ürün bu çerçevenin tanımlarını uygular; madde numaraları yürürlükteki metne işaret eder.
             Mevzuat değişirse katsayılar koda gömülü olmadığından santral ayarından güncellenir.
           </p>
@@ -61,7 +61,7 @@ export function Hakkinda() {
       {h && Object.keys(h.arsiv).length > 0 && (
         <Kart baslik="Meteoroloji arşivi" sag={<span className="cip">tahmin başına nokta serileri</span>}>
           <div className="grafik-kaydir">
-            <table className="veri" style={{ fontSize: 12.5 }}>
+            <table className="veri" style={{ fontSize: 13 }}>
               <thead><tr><th style={sol}>Kaynak</th><th style={sol}>Son indirme</th><th>Nokta</th><th>Satır</th><th style={sol}>Kapsam</th></tr></thead>
               <tbody>
                 {Object.entries(h.arsiv).map(([k, v]) => (
@@ -70,7 +70,7 @@ export function Hakkinda() {
               </tbody>
             </table>
           </div>
-          <p className="soluk" style={{ fontSize: 12.5, margin: "10px 0 0" }}>
+          <p className="soluk" style={{ fontSize: 13, margin: "10px 0 0" }}>
             Her gece hava tahmini verisi indirilir, santral noktaları çıkarılır ve saklanır; tahmin, kalibrasyon ve hava verisi
             tutarlılık denetimi aynı arşivden beslenir. Ham ızgara dosyaları tutulmaz.
           </p>

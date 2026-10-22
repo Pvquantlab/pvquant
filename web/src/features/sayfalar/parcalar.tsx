@@ -45,7 +45,8 @@ export function Kpi({ etiket, deger, birim, alt, ton }:
   return (
     <div className="kpi" style={st}>
       <div className="kpi-et">{etiket}</div>
-      <div className="kpi-dg mono"
+      {/* 22.10 tek tasarım sistemi: KPI değeri .kpi-dg (Inter Tight 500, tabular) — mono sınıfı kalktı */}
+      <div className="kpi-dg"
            style={ton === "amber" ? { color: "var(--amber-metin)" } : ton === "uyari" ? { color: "var(--uyari-metin)" } : undefined}>
         {/* v2.310: değer kendi içinde BÖLÜNMESİN. Dar ızgarada (1180px pencerede
             KPI kutusu 209px) "27,3 · 26,9" ikiye ayrılıp birinci satırda yalnız
@@ -54,7 +55,7 @@ export function Kpi({ etiket, deger, birim, alt, ton }:
             boşluksuz bitişik inline'ları kıramaz, "0,54MWh" taşıyordu
             (karne ekranında "MWh" kırpılması). Araya gerçek boşluk kondu. */}
         <span style={{ whiteSpace: "nowrap" }}>{deger}</span>{birim && <>{" "}
-        <span style={{ fontSize: 13, color: "var(--soluk)", whiteSpace: "nowrap" }}>{birim}</span></>}</div>
+        <span style={{ fontSize: 14, fontWeight: 400, letterSpacing: 0, color: "var(--soluk)", whiteSpace: "nowrap" }}>{birim}</span></>}</div>
       {alt && <div className="kpi-br">{alt}</div>}
     </div>
   );
@@ -77,10 +78,11 @@ export function Sayfa({ baslik, alt, sag, children }:
   return (
     <>
       <div style={{ display: "flex", justifyContent: "space-between",
-                    alignItems: "flex-start", gap: 20, marginBottom: 20 }}>
+                    alignItems: "flex-start", gap: 20, marginBottom: 24 }}>
         <div>
-          <h1 style={{ fontSize: 24 }}>{baslik}</h1>
-          {alt && <p style={{ fontSize: 13, color: "var(--ikincil)", margin: "5px 0 0" }}>{alt}</p>}
+          {/* 22.10: boyut CSS'ten (h1 = --t-baslik 26 px); açıklama 14 px gövde */}
+          <h1>{baslik}</h1>
+          {alt && <p style={{ fontSize: 14, color: "var(--ikincil)", margin: "6px 0 0", lineHeight: 1.5, maxWidth: "80ch" }}>{alt}</p>}
         </div>
         {sag}
       </div>

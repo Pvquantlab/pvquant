@@ -50,6 +50,18 @@ Her satır: kalıp → dosya → kritik kural. Yeni mühürde yeni kalıp çıka
   `Dockerfile.web` 2.11.7'ye sabit. Güncelleme = changelog + replika sınaması, bilinçli tek satır.
 - **Yavaş hat kararı günlük tazelenir (21.10.2026, #11):** `heroHazir.ts` kayıttaki 7 günlük «yavaş hat» kararı günde bir
   yeniden ölçülür — tek yanlış ölçüm videoyu 7 gün kapatmasın.
+- **Tek tasarım sistemi — panel vitrinin kesimine geçti (22.10.2026):** rapor `docs/PANEL-TASARIM-2026-10-22.md`. Vitrinin
+  jua katmanı tek doğruluk kaynağı alındı (Inter Tight, mürekkep #0B0E15, gece #0B0E15, hap düğme/çip, 12 px kart köşesi);
+  panel gövde/tabloda Inter Variable + Plex Mono'yu korudu, KPI sayıları Inter Tight'a geçti (jetonlar.md istisnası).
+  Kart başlıkları mono büyük harf 11 px'ten Inter Tight 15/600 cümle düzenine; satır içi tip ölçeği betikle bir kademe
+  (9→10 … 13,5→14; 240 değer, 12 dosya). Yöntem: (1) değişiklik ÖNCESİ 5 genişlik × 11 sayfa tam sayfa kare (ham CDP,
+  `kare.mjs`), (2) jetonlar + bileşen CSS, (3) satır içi boyutlar tek betikle (`boyut.py`, kuru koşu→yaz), (4) SONRA aynı
+  kareler + vitrin/yöntem piksel kıyası (`pngfark.mjs`, bağımlılıksız PNG çözücü) — /yontem 4 genişlikte BİREBİR, vitrin
+  375'te birebir, 1440'ta yalnız canlı animasyon bölgesi çekimden çekime oynar (iki «sonra» çekimi de aynı kutuda ayrışır).
+  Dersler: `.soluk` sınıfı 60+ yerde kullanılıp hiç tanımlanmamıştı; `minmax(340px,1fr)` dolgu 4 px artınca 375'te taştı →
+  `min(Npx,100%)`; `.env.local` örnek kipi bozar — scratchpad'e park edip sonunda geri koy; fontlar.test/hiz.test
+  Space Grotesk'i pinliyordu (sunum testi, güncellendi). web-design-guidelines denetiminden mobil girdi 16 px +
+  `touch-action: manipulation` çıktı.
 - **Panel dili = piyasa dili (22.10.2026, v2.462):** anti-slop 7'nin panel karşılığı. Standart `docs/PANEL-DIL-2026-10-22.md` §2
   (26 terim; «koşu»→tahmin, «naif»→referans tahmin, «bant»→tahmin aralığı, «zarf»→aralık, «D‑1»→bir gün önce, «AC tavanı»→
   AC sınırı, «künye»→santral bilgileri). Yöntem: tüm eski→yeni çiftleri tek betikte, her eski metin dosyada tam bir kez

@@ -30,12 +30,17 @@ test("vitrin TEK aile Inter Tight (13.10 jua katmanı): 300/400/500/600 @fontsou
 
 test("panel aileleri @fontsource'tan yüklenir; yığın 'Inter Variable' ile başlar", () => {
   const fontlar = oku("../src/fontlar.ts");
-  for (const paket of ["@fontsource-variable/inter/opsz.css", "@fontsource/space-grotesk/", "@fontsource/ibm-plex-mono/"]) {
+  for (const paket of ["@fontsource-variable/inter/opsz.css", "@fontsource/ibm-plex-mono/"]) {
     assert.ok(fontlar.includes(paket), paket);
   }
+  // 22.10 tek tasarım sistemi: başlık ailesi vitrinle ortak Inter Tight; Space Grotesk bayt yükü olarak geri gelmesin
+  assert.doesNotMatch(fontlar, /space-grotesk/);
   assert.match(oku("../src/main.tsx"), /import ['"]\.\/fontlar['"]/);
   assert.match(oku("../src/index.css"), /--font: 'Inter Variable', 'Inter'/);
-  assert.match(oku("../src/index.css"), /--display: 'Space Grotesk', 'Inter Variable'/);
+  assert.match(oku("../src/index.css"), /--display: 'Inter Tight', 'Inter Tight Yedek', 'Inter Variable'/);
+  // Inter Tight dosyalarını vitrin yükler; Vitrin.tsx tembel değil, ana pakette — panel de aynı yüzleri görür
+  assert.match(oku("../src/App.tsx"), /import \{ Vitrin \} from "\.\/features\/vitrin\/Vitrin";/);
+  assert.match(oku("../src/features/vitrin/Vitrin.tsx"), /import "\.\/fontlar";/);
 });
 
 // 16.10 hız turu 4 — Türkçe harf alt kümesi ve unicode-range'li içe aktarma
@@ -73,7 +78,7 @@ test("vitrin: ğ/ş/İ küçük Türkçe alt kümeden gelir; latin-ext ön yükl
 test("panel fontları toplu ağırlık dosyalarından: tek alt küme (unicode-range'siz) içe aktarma yok", () => {
   const fontlar = oku("../src/fontlar.ts");
   assert.doesNotMatch(fontlar, /@fontsource\/[\w-]+\/latin(-ext)?(-\d{3})?\.css/);
-  for (const d of ["space-grotesk/500", "space-grotesk/600", "ibm-plex-mono/400", "ibm-plex-mono/500", "ibm-plex-mono/600"]) {
+  for (const d of ["ibm-plex-mono/400", "ibm-plex-mono/500", "ibm-plex-mono/600"]) {
     assert.ok(fontlar.includes(`@fontsource/${d}.css`), d);
   }
 });

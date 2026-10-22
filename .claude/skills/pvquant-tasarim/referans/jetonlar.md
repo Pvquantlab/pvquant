@@ -26,26 +26,35 @@ Kaynak dosyalar (gerçek değerler HER ZAMAN oradan okunur, burası harita):
 
 | Rol | Panel | Vitrin |
 |---|---|---|
-| Display/başlık | `--display` | Inter Tight **300** (−0,035em, satır 0,96; h2 −0,028em/1,02) |
-| Gövde | Inter (`--font`) | Inter Tight 400 (16/24 taban; giriş 19/1,5; hero 22/1,45) |
-| Etiket/düğme | — | Inter Tight 500 (eyebrow 12px +0,14em büyük harf; hap düğme 999px) |
-| VERİ/eksen/künye | IBM Plex Mono + `tabular-nums` — sayı asla gövde fontuyla dizilmez | **Vitrin istisnası (13.10, kullanıcı kararı):** Inter Tight + `tabular-nums` (300 büyük sayı, 400/500 künye); Plex Mono vitrinde kullanılmaz |
+| Display/başlık | `--display` = **Inter Tight** (22.10.2026 tek tasarım sistemi; Space Grotesk kalktı): h1 26/600 −.02em · h2 20/600 · kart h3 15/600 −.01em (`.kart-bas h3`, cümle düzeni, büyük harf YOK) · giriş hero 64/500 −.03em | Inter Tight **300** (−0,035em, satır 0,96; h2 −0,028em/1,02) |
+| Gövde | Inter (`--font`) 14/1,55 · ikincil 13 · tablo 13,5 (optik boyut ekseni küçük puntoda kalır) | Inter Tight 400 (16/24 taban; giriş 19/1,5; hero 22/1,45) |
+| Etiket/düğme | Inter Tight 500: eyebrow `.etiket-ust` 12px +.10em büyük harf · nav 14,5 · düğme 13,5 · çip/rozet 12 · sekme 13; düğme/çip/sekme/segment **hap 999** (`--r-hap`) | Inter Tight 500 (eyebrow 12px +0,14em büyük harf; hap düğme 999px) |
+| VERİ/eksen/künye | IBM Plex Mono + `tabular-nums` tablo gövdesi, eksen, kod, zaman damgası (mono tablolarda İLK sütun etiket → gövde ailesi). **22.10 istisnası (tek tasarım sistemi):** KPI başlık sayıları `.kpi-dg` / `.ozet .dg` / `.yan-ozet .dg` / `.sayi-buyuk` Inter Tight 500 30px tabular — vitrinin karne sayısıyla aynı kesim; tek jeton (`--display`) ile geri alınabilir | **Vitrin istisnası (13.10, kullanıcı kararı):** Inter Tight + `tabular-nums` (300 büyük sayı, 400/500 künye); Plex Mono vitrinde kullanılmaz |
 
 - Etikette `text-transform: uppercase` birimleri bozar (kWp→KWP) — birim taşıyan metne asla.
 - Türkçe büyük harf: `lang="tr"` şart; JS `/i` bayrağı İ'yi KATLAMAZ (regex'te sınıf kullan).
 
 ## Yüzey kuralları
 
-- Panel çift yüz: koyu **D1 «Düz lacivert»** (zemin #0B1424, kart #17243C, OPAK — cam/doku
-  KALKTI, geri gelmez) + açık **E2 «Derin mavi kâğıt»** (zemin #E3E9F2). Tema üçlüsü
-  oto|açık|koyu (`pvq_tema`).
+- Panel çift yüz (22.10.2026 tek tasarım sistemi, `docs/PANEL-TASARIM-2026-10-22.md`): koyu yüz vitrinin
+  gecesi — zemin **#0B0E15** (= `--vt-gece`), kart **#14161D** OPAK (zemin + %3,5 beyaz; cam/doku KALKTI, geri
+  gelmez), kenar beyaz .12, metin #FFFFFF / ikincil #D2D5DC / soluk #A3A9B4. Açık yüz nötr gri — zemin **#E8EAEE**
+  (kart/zemin 1,20 ≥ 1,15 hedefi), kart beyaz, kenar #D9DBE1, mürekkep vitrinin merdiveni #0B0E15 / #404551 / #5B6270
+  (vitrinin #6B7280'i 13 px'te zeminde 4,3 kalıyordu). D1 laciverti (#0B1424) ve E2 mavi-gri kâğıdı (#E3E9F2) TARİHSEL.
+  Tema üçlüsü oto|açık|koyu (`pvq_tema`). Birincil düğme `.dugme-ana` = vitrinin dolu hapı: açıkta mürekkep/beyaz yazı,
+  koyuda beyaz/mürekkep yazı; yeşil `--marka` seçim/durum/odak rengi olarak kalır (nav aktif, rozet-ok, odak halkası, amblem).
+  Giriş ekranı sol yüzü: #0B0E15 + jua radyal ışıkları (lavanta/camgöbeği), vurgu düz gök mavisi #8FD3FF.
 - Vitrin (13.10 jua katmanı): üç zemin — beyaz / krem #FEF0E6 / koyu #0B0E15; hero = zemin → video →
   dikey perde (`--vt-jua-perde`, mobil ayrı) → içerik. Koyu yüzeylerde pembe/camgöbeği radyal ışık
   (`--vt-jua-isik`, opaklık .35). Gren ve fotoğraf zeminleri KALKTI. Üst çubuk yüzen cam hap
   (`--vt-cam-*`; anti-slop istisnası, kullanıcı kararı). Marka ışıkları `--vt-jua-gok/lavanta/camgobegi` (#8FD3FF/#AA85FF/#0AB8DC; jua pembesi santral videosuyla çatıştığı için 13.10'da düştü)
   yalnız: h1 italik gradyan vurgusu, birincil düğme halesi, radyal ışık. **Şeftali #FABD8F alınmadı** —
   amber sözleşmesi. Gölge ölçeği `--vt-golge-*` yalnız yükselme anlamında (menü/pencere).
-- Köşe ölçeği: vitrin `--vt-r-xs..l/tam` (jua katmanı: r-m 24, r-l 28; altbilgi üst köşe 50; düğme 999); yeni köşe değeri icat edilmez.
+- Köşe ölçeği: vitrin `--vt-r-xs..l/tam` (jua katmanı: r-m 24, r-l 28; altbilgi üst köşe 50; düğme 999); panel (22.10)
+  `--r` 8 kontrol/girdi · `--rk` 12 kart/KPI · `--r-hap` 999 düğme/çip/sekme/segment/arama · pencere (palet, zil) 16;
+  yeni köşe değeri icat edilmez.
+- Panel yerleşimi (22.10): yan menü 236 px; `.icerik` max 1600 px, ana sütunda ORTALANIR (margin auto), dolgu 28/36,
+  mobil 16; ızgara oluğu 16; kart dolgusu 20/22; satır içi `minmax(Npx, 1fr)` daima `minmax(min(Npx, 100%), 1fr)`.
 - Boşluk ritmi 4/8 px; süre `--vt-sure*` (120/200/320 ms), reduced-motion her animasyonu keser.
 
 ## Jeton-dışı değer yasağı

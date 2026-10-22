@@ -69,13 +69,13 @@ export function Dogruluk({ plantId }: { plantId: string }) {
       lineStyle: { color: renk, width: kalin }, itemStyle: { color: renk } });
     return {
       animation: false, grid: { left: 44, right: 12, top: 26, bottom: 34 },
-      legend: { top: 0, right: 0, textStyle: { color: soluk, fontSize: 11 }, itemWidth: 14 },
-      tooltip: { trigger: "axis", backgroundColor: oku("--kart"), borderColor: kenar, borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 12 },
+      legend: { top: 0, right: 0, textStyle: { color: soluk, fontSize: 12 }, itemWidth: 14 },
+      tooltip: { trigger: "axis", backgroundColor: oku("--kart"), borderColor: kenar, borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 12.5 },
         valueFormatter: (v: unknown) => `%${sayiTr(Number(v) * 100, 0)}` },
-      xAxis: { type: "value", min: 0, max: 1, name: "nominal", nameTextStyle: { color: soluk, fontSize: 10 },
-        axisLabel: { color: soluk, fontFamily: mono, fontSize: 10, formatter: (v: number) => `P${Math.round(v * 100)}` }, splitLine: { lineStyle: { color: oku("--izgara") } } },
-      yAxis: { type: "value", min: 0, max: 1, name: "gözlenen", nameTextStyle: { color: soluk, fontSize: 10 },
-        axisLabel: { color: soluk, fontFamily: mono, fontSize: 10, formatter: (v: number) => `%${Math.round(v * 100)}` }, splitLine: { lineStyle: { color: oku("--izgara") } } },
+      xAxis: { type: "value", min: 0, max: 1, name: "nominal", nameTextStyle: { color: soluk, fontSize: 11 },
+        axisLabel: { color: soluk, fontFamily: mono, fontSize: 11, formatter: (v: number) => `P${Math.round(v * 100)}` }, splitLine: { lineStyle: { color: oku("--izgara") } } },
+      yAxis: { type: "value", min: 0, max: 1, name: "gözlenen", nameTextStyle: { color: soluk, fontSize: 11 },
+        axisLabel: { color: soluk, fontFamily: mono, fontSize: 11, formatter: (v: number) => `%${Math.round(v * 100)}` }, splitLine: { lineStyle: { color: oku("--izgara") } } },
       series: [
         { name: "ideal", type: "line", data: [[0, 0], [1, 1]], symbol: "none", showSymbol: false, itemStyle: { color: soluk },
           lineStyle: { color: soluk, type: "dashed", width: 1 }, silent: true },
@@ -89,10 +89,10 @@ export function Dogruluk({ plantId }: { plantId: string }) {
     const soluk = oku("--soluk"), mono = oku("--mono");
     return {
       animation: false, grid: { left: 40, right: 12, top: 18, bottom: 30 },
-      tooltip: { trigger: "axis", backgroundColor: oku("--kart"), borderColor: oku("--kenar"), borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 12 },
+      tooltip: { trigger: "axis", backgroundColor: oku("--kart"), borderColor: oku("--kenar"), borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 12.5 },
         valueFormatter: (v: unknown) => `%${sayiTr(Number(v) * 100, 0)}` },
-      xAxis: { type: "category", data: gv.pit.map((p) => p.kutu), axisLabel: { color: soluk, fontFamily: mono, fontSize: 9, interval: 1 }, axisTick: { show: false } },
-      yAxis: { type: "value", min: 0, axisLabel: { color: soluk, fontFamily: mono, fontSize: 10, formatter: (v: number) => `%${Math.round(v * 100)}` }, splitLine: { lineStyle: { color: oku("--izgara") } } },
+      xAxis: { type: "category", data: gv.pit.map((p) => p.kutu), axisLabel: { color: soluk, fontFamily: mono, fontSize: 10, interval: 1 }, axisTick: { show: false } },
+      yAxis: { type: "value", min: 0, axisLabel: { color: soluk, fontFamily: mono, fontSize: 11, formatter: (v: number) => `%${Math.round(v * 100)}` }, splitLine: { lineStyle: { color: oku("--izgara") } } },
       series: [{ type: "bar", data: gv.pit.map((p) => p.oran), itemStyle: { color: oku("--ch-cubuk") }, barMaxWidth: 26,
         markLine: { silent: true, symbol: "none", lineStyle: { color: soluk, type: "dashed" }, data: [{ yAxis: 0.1 }], label: { show: false } } }],
     };
@@ -130,17 +130,17 @@ export function Dogruluk({ plantId }: { plantId: string }) {
       return {
         grid: { left: 40, right: 14, top: 18, bottom: 26 }, animation: false,
         tooltip: { trigger: "axis", backgroundColor: oku("--kart"), borderColor: kenar,
-          borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 12 },
+          borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 12.5 },
           valueFormatter: (v: unknown) => (v == null ? "—" : `%${sayiTr(Number(v), 1)}`) },
         xAxis: { type: "category", data: tarihler, axisTick: { show: false },
           axisLine: { lineStyle: { color: kenar } },
           // v2.231: sabit 13 araligi 30g penceresinde tek etiket birakiyordu —
           // hedef ~4 etiket, pencereye gore olceklenir
-          axisLabel: { color: soluk, fontFamily: mono, fontSize: 10,
+          axisLabel: { color: soluk, fontFamily: mono, fontSize: 11,
             interval: Math.max(1, Math.ceil(tarihler.length / 4) - 1) } },
         yAxis: { type: "value", max: ymax, splitLine: { lineStyle: { color: izgara } },
           axisLine: { show: false },
-          axisLabel: { color: soluk, fontFamily: mono, fontSize: 10,
+          axisLabel: { color: soluk, fontFamily: mono, fontSize: 11,
                        formatter: (v: number) => `%${v}` } },
         series: [
           { name: "Referans tahmin", type: "line", symbol: "none", z: 1,
@@ -156,7 +156,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
               silent: true, symbol: "circle", symbolSize: 7,
               itemStyle: { color: marka, borderColor: oku("--kart"), borderWidth: 1.5 },
               label: { show: true, position: "top", distance: 6, color: markaKoyu,
-                fontFamily: "monospace", fontSize: 10, fontWeight: "bold",
+                fontFamily: "monospace", fontSize: 11, fontWeight: "bold",
                 formatter: () => `%${sayiTr(egilim[si] as number, 1)}` },
               data: [{ coord: [tarihler[si], egilim[si]] }],
             } } : {}),
@@ -193,7 +193,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
       ],
       animation: false,
       tooltip: { backgroundColor: oku("--kart"), borderColor: kenar,
-        borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 12 },
+        borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 12.5 },
         formatter: (p0: unknown) => {
           const p1 = p0 as { seriesType: string; value: unknown; name: string };
           if (p1.seriesType === "bar") {
@@ -209,7 +209,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           /* v2.311: yalnız gün numarası basılıyordu ("09", "10") — hangi ay
              olduğu okunmuyordu. Ay, ilk sütunda ve ay değişiminde yazılır;
              kalabalık 30 sütunlu pencerede yine sade kalır. */
-          axisLabel: { color: soluk, fontFamily: mono, fontSize: 10,
+          axisLabel: { color: soluk, fontFamily: mono, fontSize: 11,
             formatter: (t: string, i: number) => {
               const oncekiAy = i > 0 ? gunler[i - 1]?.slice(5, 7) : null;
               return oncekiAy === t.slice(5, 7)
@@ -219,14 +219,14 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           axisLine: { show: false }, axisTick: { show: false },
           axisLabel: { show: false },
           name: "ort. hata (kW)", nameLocation: "end" as const, nameGap: 6,
-          nameTextStyle: { color: soluk, fontFamily: mono, fontSize: 10,
+          nameTextStyle: { color: soluk, fontFamily: mono, fontSize: 11,
                            align: "right" as const, verticalAlign: "bottom" as const,
                            padding: [0, 0, -34, 0] } },
       ],
       yAxis: [
         { type: "category", data: saatler, gridIndex: 0, axisTick: { show: false },
           axisLine: { show: false },
-          axisLabel: { color: soluk, fontFamily: mono, fontSize: 10 } },
+          axisLabel: { color: soluk, fontFamily: mono, fontSize: 11 } },
         { type: "category", data: saatler, gridIndex: 1, show: false },
       ],
       // v2.225 (H): rampa "alacakaranlik" — celik mavi ↔ sicak altin,
@@ -238,7 +238,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
         orient: "horizontal", left: "center", bottom: 0, itemWidth: 10, itemHeight: 90,
         seriesIndex: 0,
         text: [`fazla · +${sayiTr(tepe, 0)} kW`, `eksik · −${sayiTr(tepe, 0)} kW`],
-        textStyle: { color: soluk, fontSize: 11 },
+        textStyle: { color: soluk, fontSize: 12 },
         inRange: { color: document.documentElement.dataset.tema === "koyu"
           ? ["#7FB0DE", "#5A87B4", "#3D608A", "#263D5C",
              "#14213A", "#4A3418", "#755324", "#A47334", "#D49A4C"]
@@ -279,15 +279,15 @@ export function Dogruluk({ plantId }: { plantId: string }) {
     return {
       grid: { left: 46, right: 46, top: 24, bottom: 44 }, animation: false,
       tooltip: { trigger: "axis", backgroundColor: oku("--kart"), borderColor: kenar,
-        borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 12 },
+        borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 12.5 },
         valueFormatter: (v: unknown) => `${v}` },
       xAxis: [
         { type: "category", data: etiket, name: "MWh/g\u00fcn (tahmin \u2212 ger\u00e7ekle\u015fen)",
           nameLocation: "middle", nameGap: 26,
-          nameTextStyle: { color: soluk, fontSize: 11 },
+          nameTextStyle: { color: soluk, fontSize: 12 },
           axisTick: { show: false },
           axisLine: { lineStyle: { color: oku("--chart-baseline") || kenar } },
-          axisLabel: { color: soluk, fontFamily: mono, fontSize: 11 } },
+          axisLabel: { color: soluk, fontFamily: mono, fontSize: 12 } },
         // v2.232: KDF icin gizli deger ekseni — kutu KENARLARI (kumulatif pay
         // kutunun SONUNDA birikir; Solargis Fig 7.5 egriyi kenardan gecirir)
         { type: "value", min: -0.5, max: Math.max(0.5, kutular.length - 0.5),
@@ -296,10 +296,10 @@ export function Dogruluk({ plantId }: { plantId: string }) {
       yAxis: [
         { type: "value", splitLine: { lineStyle: { color: oku("--izgara") } },
           axisLine: { show: false }, axisTick: { show: false },
-          axisLabel: { color: soluk, fontFamily: mono, fontSize: 11 } },
+          axisLabel: { color: soluk, fontFamily: mono, fontSize: 12 } },
         { type: "value", min: 0, max: 100, splitLine: { show: false },
           axisLine: { show: false }, axisTick: { show: false },
-          axisLabel: { color: markaKoyu, fontFamily: mono, fontSize: 11,
+          axisLabel: { color: markaKoyu, fontFamily: mono, fontSize: 12,
                        formatter: (v: number) => `%${v}` } },
       ],
       series: [
@@ -313,7 +313,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
             ? { symbol: "none", animation: false, silent: true,
                 data: [{ name: "medyan", xAxis: xi(hd.p50),
                   lineStyle: { color: soluk, type: "solid" as const, width: 1.4 },
-                  label: { color: soluk, fontSize: 10, fontFamily: mono,
+                  label: { color: soluk, fontSize: 11, fontFamily: mono,
                     position: "end" as const, distance: 6, rotate: 0,
                     formatter: () => `medyan ${sayiTr(hd.p50 as number, 2)}` } }] as never }
             : undefined },
@@ -461,19 +461,19 @@ export function Dogruluk({ plantId }: { plantId: string }) {
         sag={<span className="cip">nokta: günlük · kalın: 7 gün eğilimi · ince gri: referans tahmin</span>}>
         <div className="ızgara" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)" }}>
           <div>
-            <p style={{ fontSize: 12.5, fontWeight: 600, color: "var(--metin)",
+            <p style={{ fontSize: 13, fontWeight: 600, color: "var(--metin)",
                         margin: "0 0 4px" }}>0–24 saat ufku</p>
             <EChart option={wmapePanel("0-24")} height={240}
               ariaLabel="0–24 saat ufku günlük tahmin hatası (WMAPE), referans tahminle" />
           </div>
           <div>
-            <p style={{ fontSize: 12.5, fontWeight: 600, color: "var(--metin)",
+            <p style={{ fontSize: 13, fontWeight: 600, color: "var(--metin)",
                         margin: "0 0 4px" }}>24–72 saat ufku</p>
             <EChart option={wmapePanel("24-72")} height={240}
               ariaLabel="24–72 saat ufku günlük tahmin hatası (WMAPE), referans tahminle" />
           </div>
         </div>
-        <p style={{ fontSize: 12, color: "var(--soluk)", margin: "12px 0 0" }}>
+        <p style={{ fontSize: 12.5, color: "var(--soluk)", margin: "12px 0 0" }}>
           <b style={{ color: "var(--ikincil)" }}>Ne gösterir:</b>{" "}
           her nokta bir günün tahmin hatasıdır (WMAPE); kalın yeşil çizgi 7 günlük eğilim,
           ince gri çizgi referans tahmindir (dün aynı saat).{" "}
@@ -508,7 +508,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
               <div key={et} className="kpi">
                 <div className="kpi-et">{et}</div>
                 <div className="kpi-dg mono">{v == null ? "—" : `%${sayiTr(v * 100, 0)}`}
-                  <span style={{ fontSize: 12, color: "var(--soluk)", marginLeft: 6 }}>hedef %{sayiTr(hedef * 100, 0)}</span></div>
+                  <span style={{ fontSize: 12.5, color: "var(--soluk)", marginLeft: 6 }}>hedef %{sayiTr(hedef * 100, 0)}</span></div>
                 <div style={{ position: "relative", height: 6, background: "var(--yuzey2)", borderRadius: 3, margin: "8px 0 6px" }}>
                   <div style={{ width: `${Math.min(100, (v ?? 0) * 100)}%`, height: "100%", borderRadius: 3,
                     background: v != null && Math.abs(v - hedef) <= 0.05 ? "var(--basari)" : "var(--chart-p50-future)" }} />
@@ -521,7 +521,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
         ) : (
           <p className="soluk" style={{ margin: 0 }}>Aralık değerlendirmesi, P10–P90 kaydedilen tahminlerle gece değerlendirmesinde birikir; ilk gün tamamlanınca burada görünür.</p>
         )}
-        <p className="soluk" style={{ marginTop: 10, marginBottom: 0, fontSize: 12.5 }}>
+        <p className="soluk" style={{ marginTop: 10, marginBottom: 0, fontSize: 13 }}>
           Ne gösterir: gerçekleşen üretimin, önceden verilen P10–P90 aralığı içinde kaldığı günlerin oranı.
           Neye bakmalı: yeşil çubuk hedefe ±5 puan yakın demektir; düşükse aralık dar (fazla iddialı), yüksekse aralık geniş (fazla temkinli).
           {ol?.crps != null && ` Aralık kalitesi (CRPS): ${sayiTr(ol.crps, 0)} kW · ortalama aralık genişliği kurulu gücün %${sayiTr((ol.bant_n ?? 0) * 100, 0)}'i.`}
@@ -532,7 +532,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
             <div className="cip" style={{ display: "inline-block", marginBottom: 6 }}>
               Geriye dönük değerlendirme · {sayiTr(bt.pencere)} dönem · ham %{sayiTr((bt.picp_ham_ort ?? 0) * 100, 0)} → ayarlı %{sayiTr((bt.picp_kal_ort ?? 0) * 100, 0)} (hedef %80) · {bt.hukum}
             </div>
-            <table className="veri" style={{ fontSize: 12.5 }}>
+            <table className="veri" style={{ fontSize: 13 }}>
               <thead><tr><th>Başlangıç</th><th>Test saati</th><th>Ham kapsama</th><th>Ayarlı kapsama</th><th>Aralık genişliği (ham → ayarlı)</th></tr></thead>
               <tbody className="mono">
                 {bt.satirlar.map((r) => (
@@ -548,7 +548,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
                 <div className="cip" style={{ display: "inline-block", margin: "12px 0 6px" }}>
                   Ufka göre değerlendirme · {sayiTr(bt.kova_sinav.pencere)} dönem · {bt.kova_sinav.hukum}
                 </div>
-                <table className="veri" style={{ fontSize: 12.5 }}>
+                <table className="veri" style={{ fontSize: 13 }}>
                   <thead><tr><th>Ufuk</th><th>Test saati</th><th>Ham</th><th>Tek düzeltme</th><th>Ufka göre düzeltme</th></tr></thead>
                   <tbody className="mono">
                     {bt.kova_sinav.kovalar.map((k) => (
@@ -558,7 +558,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
                     ))}
                   </tbody>
                 </table>
-                <p className="soluk" style={{ fontSize: 12, margin: "6px 0 0" }}>
+                <p className="soluk" style={{ fontSize: 12.5, margin: "6px 0 0" }}>
                   Hedef %80. "Tek düzeltme" eski yöntemdir (aynı düzeltme her ufka uygulanır);
                   "ufka göre" her ufuk için ayrı öğrenilir. Hedefe yakın olan iyidir.
                 </p>
@@ -576,20 +576,20 @@ export function Dogruluk({ plantId }: { plantId: string }) {
               <span className="cip">PIT en büyük sapma {sayiTr((gv.pit_max_sapma ?? 0) * 100, 0)} puan</span>
               <span className="cip">{(gv.guvenilirlik?.kalibre ?? []).map((r) => `P${Math.round(r.tau * 100)} altı %${sayiTr(r.gozlenen * 100, 0)} (hedef %${Math.round(r.tau * 100)})`).join(" · ")}</span>
             </div>
-            <div className="ızgara satir-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 14 }}>
-              <div><div className="mono" style={{ fontSize: 11, color: "var(--soluk)", marginBottom: 4 }}>GÜVENİLİRLİK DİYAGRAMI — gözlenen ve hedeflenen kapsama</div>
+            <div className="ızgara satir-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))", gap: 14 }}>
+              <div><div className="etiket-ust" style={{ marginBottom: 4 }}>Güvenilirlik diyagramı — gözlenen ve hedeflenen kapsama</div>
                 <EChart option={gvOption} height={220} /></div>
-              <div><div className="mono" style={{ fontSize: 11, color: "var(--soluk)", marginBottom: 4 }}>PIT HİSTOGRAMI — gerçekleşenin aralık içindeki yüzdeliği (düz = iyi ayarlı)</div>
+              <div><div className="etiket-ust" style={{ marginBottom: 4 }}>PIT histogramı — gerçekleşenin aralık içindeki yüzdeliği (düz = iyi ayarlı)</div>
                 <EChart option={pitOption} height={220} /></div>
             </div>
-            <p className="soluk" style={{ marginTop: 8, marginBottom: 0, fontSize: 12.5 }}>
+            <p className="soluk" style={{ marginTop: 8, marginBottom: 0, fontSize: 13 }}>
               Nasıl okunur: nokta köşegenin altındaysa o seviye olması gerekenden düşük, üstündeyse yüksek demektir.
               P10 için düşük kalmak alt sınırın, P90 için yüksek kalmak üst sınırın fazla temkinli olduğunu gösterir; ikisi birden aralığın fazla geniş olduğunu söyler.
               PIT sütunları %10 çizgisine yakın olmalıdır: ortada tepe aralık fazla geniş, kenarlarda tepe aralık fazla dar demektir. Aralık puanı, genişlik ile aralık dışı kalma cezasının toplamıdır.
             </p>
           </div>
         ) : gv.durum !== "ok" ? (
-          <p className="soluk" style={{ marginTop: 10, marginBottom: 0, fontSize: 12.5 }}>
+          <p className="soluk" style={{ marginTop: 10, marginBottom: 0, fontSize: 13 }}>
             Güvenilirlik diyagramı için en az {sayiTr(gv.min_saat ?? 72)} gündüz saati gerekir (şu an {sayiTr(gv.n_saat)}).
           </p>
         ) : null)}
@@ -616,7 +616,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
                 <div className="kpi-alt">{dz.segment.santral_tasir === false ? `dengesizliği ${dz.segment.dengesizlik_sahibi} taşır` : dz.segment.segment ? "dengesizlik santralde" : "segment belirtilmedi (Santralim › Santral ayarları)"}</div></div>
             </div>
             <div className="grafik-kaydir" style={{ marginTop: 12 }}>
-              <table className="veri" style={{ fontSize: 12.5 }}>
+              <table className="veri" style={{ fontSize: 13 }}>
                 <thead><tr><th>Ay</th><th>Üretim (MWh)</th><th>Sapma (MWh)</th><th>PVQuant (TL)</th><th>KÜPST (TL)</th><th>Referans (TL)</th><th>Tasarruf (TL)</th><th>Gelirin %'si</th><th>TL/MWh</th></tr></thead>
                 <tbody className="mono">
                   {dz.aylar.map((a) => (
@@ -628,7 +628,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
                 </tbody>
               </table>
             </div>
-            <p style={{ marginTop: 10, marginBottom: 0, fontSize: 12.5 }}>
+            <p style={{ marginTop: 10, marginBottom: 0, fontSize: 13 }}>
               {dz.toplam?.teminat_tl != null && <>Teminat tahmini: <b>{sayiTr(dz.toplam.teminat_tl / 1000, 1)} bin TL</b> (son 3 ayın en
               yüksek aylık negatif dengesizlik gideri; sadeleştirilmiş hesap). </>}
               {dz.oneri && (dz.oneri.durum === "ok" && dz.oneri.kantil
@@ -636,7 +636,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
                     %{sayiTr((dz.oneri.acik_saat_orani ?? 0) * 100, 0)}'inde üretim beklenenin altında kaldı); eksik üretim cezası ile fazla üretim kaybının dengesidir.</>
                 : <span className="soluk">Önerilen program seviyesi: — {dz.oneri.not}</span>)}
             </p>
-            <p className="soluk" style={{ marginTop: 8, marginBottom: 0, fontSize: 12.5 }}>
+            <p className="soluk" style={{ marginTop: 8, marginBottom: 0, fontSize: 13 }}>
               Ne gösterir: saatlik üretim programı ile gerçekleşen üretim arasındaki farkın, piyasa kurallarına göre (pozitif dengesizlik
               min(PTF, SMF)×0,97; negatif dengesizlik max(PTF, SMF)×1,03) TL karşılığı; kusursuz programa göre kayıp. Neye bakmalı: PVQuant sütunu
               referans sütunundan ne kadar küçükse tahminin parasal değeri o kadar büyüktür. {dz.fiyat.senaryo_saat > 0 && "Senaryo fiyatı EPDK 2025 yıllık ortalamasıdır; piyasa (EPİAŞ) kimliği tanımlanınca gerçek saatlik fiyatlarla hesaplanır."}
@@ -661,7 +661,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
               <EChart option={matrisOption} height={360}
                 ariaLabel="Saat ve gün kırılımında işaretli tahmin hatası haritası" />
             </div></div>
-            <p style={{ fontSize: 12, color: "var(--soluk)", margin: "12px 0 0" }}>
+            <p style={{ fontSize: 12.5, color: "var(--soluk)", margin: "12px 0 0" }}>
               <b style={{ color: "var(--ikincil)" }}>Ne gösterir:</b>{" "}
               her hücre bir gün ve saattir: altın tonlar fazla tahmin
               (tahmin &gt; gerçekleşen), mavi tonlar eksik tahmin; renk koyulaştıkça
@@ -673,7 +673,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
             </p>
           </>
         ) : (
-          <p style={{ fontSize: 13, color: "var(--soluk)", margin: 0 }}>
+          <p style={{ fontSize: 13.5, color: "var(--soluk)", margin: 0 }}>
             Harita için henüz karşılaştırılabilir tahmin–gerçekleşen çifti birikmedi; SCADA
             yüklemeleri sürdükçe burası kendiliğinden dolar.
           </p>
@@ -692,7 +692,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           <>
             <EChart option={dagOption} height={280}
               ariaLabel="Günlük tahmin sapması histogramı, yüzdelik çizgileriyle" />
-            <p style={{ fontSize: 12, color: "var(--soluk)", margin: "12px 0 0" }}>
+            <p style={{ fontSize: 12.5, color: "var(--soluk)", margin: "12px 0 0" }}>
               <b style={{ color: "var(--ikincil)" }}>Ne gösterir:</b>{" "}
               her mavi çubuk, günlük toplam sapması (tahmin − gerçekleşen, MWh) o aralığa
               düşen gün sayısını verir; sıfırın solu eksik, sağı fazla tahmindir. Kesikli
@@ -704,7 +704,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
             </p>
           </>
         ) : (
-          <p style={{ fontSize: 13, color: "var(--soluk)", margin: 0 }}>
+          <p style={{ fontSize: 13.5, color: "var(--soluk)", margin: 0 }}>
             Dağılım için henüz yeterli eşleşmiş gün birikmedi.
           </p>
         )}

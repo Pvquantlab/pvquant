@@ -30,7 +30,7 @@ export function Cubuklar({ etiketler, degerler, birim, vurguIdx, yukseklik = 260
     return {
       grid: { left: 46, right: 10, top: 26, bottom: 26 }, animation: false,
       tooltip: { trigger: "axis", backgroundColor: oku("--kart"), borderColor: kenar,
-        borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 12 },
+        borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 12.5 },
         formatter: (ps: unknown) => {
           const a = ps as { dataIndex: number; value: number }[];
           const i = a[0]?.dataIndex ?? 0;
@@ -44,10 +44,10 @@ export function Cubuklar({ etiketler, degerler, birim, vurguIdx, yukseklik = 260
         } },
       xAxis: { type: "category", data: etiketler, axisTick: { show: false },
         axisLine: { lineStyle: { color: kenar } },
-        axisLabel: { color: soluk, fontFamily: mono, fontSize: 11 } },
+        axisLabel: { color: soluk, fontFamily: mono, fontSize: 12 } },
       yAxis: { type: "value", splitLine: { lineStyle: { color: izgara } },
         axisLine: { show: false },
-        axisLabel: { color: soluk, fontFamily: mono, fontSize: 11,
+        axisLabel: { color: soluk, fontFamily: mono, fontSize: 12,
                      formatter: (v: number) => sayiTr(v) } },
       series: [{
         type: "bar", barMaxWidth: 34,
@@ -64,7 +64,7 @@ export function Cubuklar({ etiketler, degerler, birim, vurguIdx, yukseklik = 260
           // hayalet cubugun rakami kendinden emin okunuyordu.
           label: tam(i) ? undefined : { color: oku("--soluk") } })),
         label: { show: true, position: "top", color: oku("--ikincil"),
-                 fontFamily: mono, fontSize: 11,
+                 fontFamily: mono, fontSize: 12,
                  formatter: (p: unknown) =>
                    sayiTr(Number((p as { value: number }).value), ondalik) },
       },
