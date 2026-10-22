@@ -276,7 +276,10 @@ export function Santralim({ plantId }: { plantId: string }) {
     <Sayfa baslik={o.ad}
       alt={o.anlati}
       sag={<div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-        <span className="rozet rozet-ok">{o.model_adi} · Mod {o.mod}</span>
+        {/* 22.10 (v2.463): mod yokken «— · Mod» basılıyordu; «Model durumu» kutusuyla aynı dil */}
+        {o.mod
+          ? <span className="rozet rozet-ok">{o.model_adi} · Mod {o.mod}</span>
+          : <span className="cip">kalibrasyon bekliyor</span>}
         <span className="mono" style={{ fontSize: 12.5, color: "var(--soluk)" }}>
           {gucTr(o.kapasite_kwp)} kWp · {o.lat}, {o.lon}
         </span>

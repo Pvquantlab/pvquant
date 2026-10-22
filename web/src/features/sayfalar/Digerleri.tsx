@@ -125,7 +125,7 @@ function EpiasUretimKarti({ plantId }: { plantId: string }) {
             karne, alarm ve dengesizlik hesapları bunu kullanır. Yüklenen SCADA her zaman önceliklidir.
           </p>
           <div className="ayar-kontrol">
-            <label className="girdi-etiket">Santralın şeffaflık numarası
+            <label className="girdi-etiket">Santralin şeffaflık numarası
               <input className="girdi mono" style={{ width: 130 }} value={kimlik} onChange={(e) => setKimlik(e.target.value)} placeholder="örn. 1234" inputMode="numeric" /></label>
             <button className="dugme" onClick={kaydet}>Kaydet</button>
             <span className="ayar-durum">{d.uygun ? `${sayiTr(d.n_saat)} saat yazıldı${d.son ? ` · son ${new Date(d.son).toLocaleDateString("tr-TR")}` : ""}` : d.neden}</span>

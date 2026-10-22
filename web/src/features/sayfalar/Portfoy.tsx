@@ -47,7 +47,16 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
         <Kpi etiket="Toplam kurulu güç"
              deger={t ? (t.kapasite_kwp < 100 ? gucTr(t.kapasite_kwp) : sayiTr(t.kapasite_kwp / 1000, 2)) : "—"}
              birim={t && t.kapasite_kwp < 100 ? "kWp" : "MWp"} alt={t ? `${sayiTr(t.santral)} santral` : ""} />
-        <Kpi etiket="Bugün beklenen · yarın" deger={t ? `${enj(t.bugun_kwh)} · ${enj(t.yarin_kwh)}` : "—"}
+        {/* 22.10 (v2.463): iki değer tek birimle — «1.754,1 MWh · 1.755,1 MWh» kartta kesiliyordu;
+            birim Kpi'nin kendi alanında bir kez yazılır, ölçek büyük olana göre seçilir. */}
+        <Kpi etiket="Bugün beklenen · yarın"
+             deger={t && t.bugun_kwh != null && t.yarin_kwh != null
+               ? (Math.max(Math.abs(t.bugun_kwh), Math.abs(t.yarin_kwh)) < 10_000
+                   ? `${sayiTr(t.bugun_kwh, 0)} · ${sayiTr(t.yarin_kwh, 0)}`
+                   : `${sayiTr(t.bugun_kwh / 1000, 1)} · ${sayiTr(t.yarin_kwh / 1000, 1)}`)
+               : t ? `${enj(t.bugun_kwh)} · ${enj(t.yarin_kwh)}` : "—"}
+             birim={t && t.bugun_kwh != null && t.yarin_kwh != null
+               ? (Math.max(Math.abs(t.bugun_kwh), Math.abs(t.yarin_kwh)) < 10_000 ? "kWh" : "MWh") : undefined}
              alt={t && (t.bugun_kwh == null || t.yarin_kwh == null) ? "bir santralde tahmin yok; toplam gösterilmez" : "tüm santrallerin beklenen (P50) toplamı"} />
         <Kpi etiket="30 günlük tahmin hatası (WMAPE)" deger={t?.wmape_agirlikli != null ? `%${sayiTr(t.wmape_agirlikli, 1)}` : "—"}
              alt={t ? `${sayiTr(t.wmape_kapsanan_kwp / 1000, 2)} MWp değerlendirmede` : ""} />
