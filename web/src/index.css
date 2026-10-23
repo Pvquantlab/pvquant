@@ -460,6 +460,25 @@ tr.satir-tikla { cursor: pointer; }
 }
 @media (prefers-reduced-motion: reduce) { table.veri.santral .satir-ok { transition: none; } }
 /* tablo altı tanım listesi: terim + açıklama, satır satır */
+/* 24.10 sekizinci tur — ölçüt grubu: tek çipe sıkışan metrik+durum bilgisi yerine başlık + niteleyici, etiket/değer
+   çiftleri, ayrı durum satırı. Sayfa düzeyinde ikincil yüzey (KPI kartından sakin: 8 px köşe, 10/14 dolgu). */
+.olcut-serit { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 12px 16px;
+               margin-bottom: 14px; }
+.olcut-grup { border: 1px solid var(--kenar); border-radius: var(--r); padding: 10px 14px 11px; background: var(--kart); min-width: 0; }
+.olcut-bas { font-family: var(--font); font-size: var(--t-ikincil); font-weight: 500; color: var(--ikincil);
+             display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+.olcut-not { font-size: 12.5px; font-weight: 400; color: var(--soluk); }
+.olcut-liste { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 7px 0 0; }
+.olcut-liste > div { display: flex; align-items: baseline; gap: 6px; }
+.olcut-liste dt { font-size: 12.5px; color: var(--soluk); }
+.olcut-liste dd { margin: 0; font-family: var(--display); font-size: 16px; font-weight: 500; color: var(--metin);
+                  font-variant-numeric: tabular-nums; letter-spacing: -0.01em; white-space: nowrap; }
+.olcut-liste dd.bos { color: var(--soluk); font-weight: 400; }
+.olcut-durum { margin: 6px 0 0; font-size: 12.5px; color: var(--soluk); }
+/* indirme düğmesi: ikon + etiket (eylem, bilgi çipi değil) */
+.dugme.dugme-indir { gap: 7px; }
+.dugme.dugme-indir svg { color: var(--soluk); flex-shrink: 0; }
+.dugme.dugme-indir:hover svg { color: var(--metin); }
 .tanim-listesi { list-style: none; margin: 14px 0 0; padding: 12px 0 0; border-top: 1px solid var(--izgara);
                  font-size: 13px; color: var(--soluk); line-height: 1.5; max-width: 90ch; }
 .tanim-listesi li { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; }

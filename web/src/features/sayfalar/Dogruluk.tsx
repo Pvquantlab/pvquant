@@ -452,15 +452,28 @@ export function Dogruluk({ plantId }: { plantId: string }) {
       </div>
       {/* v2.247 (Dalga 1.2): kapasiteye normalize standart ölçütler — WMAPE'nin
           yanına, yerine değil. Eski kayıtlarda kolon boş → tire + neden. */}
-      <div className="cip" style={{ display: "inline-block", marginBottom: 14 }}>
-        <Meta items={["Kurulu güce göre (sektör standardı)", "0–24 saat", `nMAE ${sfaYaz(k.nmae_ort)}`, `nRMSE ${sfaYaz(k.nrmse_ort)}`,
-          `nMBE ${sfaYaz(k.nmbe_ort, true)}`, k.nmae_ort == null && "gece değerlendirmesinde birikiyor"]} />
-      </div>
-      {/* v2.279: sıkı referans — iklim + persistans optimal birleşimi; naiften daha zor geçilir */}
-      <div className="cip" style={{ display: "inline-block", marginBottom: 14, marginLeft: 8 }} title="Sektör referansı: iklim ortalaması ile son günlerin en iyi ağırlıklı birleşimi; tahmin becerisi iddiasının ölçütü">
-        <Meta items={[`Sektör referansına göre iyileşme ${k.cliper_ustunluk_pct == null ? "—" : `%${sayiTr(k.cliper_ustunluk_pct, 1)}`}`,
-          k.cliper_ustunluk_pct == null && "gece değerlendirmesinde birikiyor",
-          k.cliper_wmape_ort != null && `referans WMAPE %${sayiTr(k.cliper_wmape_ort, 1)}`]} />
+      {/* 24.10 sekizinci tur: tek çipe sıkışan 6 bilgi → ölçüt grubu (.olcut-grup): başlık + niteleyici, etiket/değer
+          çiftleri, ayrı durum satırı. Değer yoksa «—» (sıfır uydurulmaz); durum yalnız null ise yazılır. Hesap aynı. */}
+      <div className="olcut-serit">
+        <section className="olcut-grup" aria-label="Kurulu güce göre ölçütler">
+          <div className="olcut-bas">Kurulu güce göre ölçütler<span className="olcut-not">sektör standardı, 0–24 saat</span></div>
+          <dl className="olcut-liste">
+            <div><dt>nMAE</dt><dd className={k.nmae_ort == null ? "bos" : undefined}>{sfaYaz(k.nmae_ort)}</dd></div>
+            <div><dt>nRMSE</dt><dd className={k.nrmse_ort == null ? "bos" : undefined}>{sfaYaz(k.nrmse_ort)}</dd></div>
+            <div><dt>nMBE</dt><dd className={k.nmbe_ort == null ? "bos" : undefined}>{sfaYaz(k.nmbe_ort, true)}</dd></div>
+          </dl>
+          {k.nmae_ort == null && <p className="olcut-durum">Henüz değer yok; gece değerlendirmesinde birikiyor.</p>}
+        </section>
+        {/* v2.279: sıkı referans — iklim + persistans optimal birleşimi; naiften daha zor geçilir */}
+        <section className="olcut-grup" aria-label="Sektör referansına göre iyileşme"
+                 title="Sektör referansı: iklim ortalaması ile son günlerin en iyi ağırlıklı birleşimi; tahmin becerisi iddiasının ölçütü">
+          <div className="olcut-bas">Sektör referansına göre iyileşme<span className="olcut-not">iklim ortalaması ve son günlerin birleşimi</span></div>
+          <dl className="olcut-liste">
+            <div><dt>İyileşme</dt><dd className={k.cliper_ustunluk_pct == null ? "bos" : undefined}>{k.cliper_ustunluk_pct == null ? "—" : `%${sayiTr(k.cliper_ustunluk_pct, 1)}`}</dd></div>
+            {k.cliper_wmape_ort != null && <div><dt>Referans WMAPE</dt><dd>%{sayiTr(k.cliper_wmape_ort, 1)}</dd></div>}
+          </dl>
+          {k.cliper_ustunluk_pct == null && <p className="olcut-durum">Henüz değer yok; gece değerlendirmesinde birikiyor.</p>}
+        </section>
       </div>
       <Kart baslik="Günlük tahmin hatası (WMAPE) — referans tahminle karşılaştırma"
         sag={<span className="cip"><Meta items={["nokta: günlük", "kalın: 7 gün eğilimi", "ince gri: referans tahmin"]} /></span>}>
@@ -583,12 +596,30 @@ export function Dogruluk({ plantId }: { plantId: string }) {
         {/* v2.271 (Dalga 1 tamamlayıcısı): kantil güvenilirliği + PIT + keskinlik — ham ↔ kalibre */}
         {gv && (gv.durum === "ok" && gvOption && pitOption ? (
           <div style={{ marginTop: 14 }}>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
-              <span className="cip"><Meta items={["güvenilirlik", `${sayiTr(gv.n_saat)} gündüz saati`, `${sayiTr(gv.gun_sayisi ?? 0)} gün`]} /></span>
-              <span className="cip">aralık genişliği: ham %{sayiTr((gv.keskinlik?.ham ?? 0) * 100, 0)} → ayarlı %{sayiTr((gv.keskinlik?.kalibre ?? 0) * 100, 0)} (kurulu gücün)</span>
-              <span className="cip">aralık puanı: ham {sayiTr((gv.aralik_skoru_n?.ham ?? 0) * 100, 1)} → ayarlı {sayiTr((gv.aralik_skoru_n?.kalibre ?? 0) * 100, 1)} (küçük iyi)</span>
-              <span className="cip">PIT en büyük sapma {sayiTr((gv.pit_max_sapma ?? 0) * 100, 0)} puan</span>
-              <span className="cip">{(gv.guvenilirlik?.kalibre ?? []).map((r) => `P${Math.round(r.tau * 100)} altı %${sayiTr(r.gozlenen * 100, 0)} (hedef %${Math.round(r.tau * 100)})`).join(", ")}</span>
+            {/* 24.10: beş çip → üç ölçüt grubu (örneklem · aralık ayarının etkisi · seviyeler); sayılar ve kaynak aynı */}
+            <div className="olcut-serit" style={{ marginBottom: 12 }}>
+              <section className="olcut-grup" aria-label="Güvenilirlik örneklemi">
+                <div className="olcut-bas">Örneklem</div>
+                <dl className="olcut-liste">
+                  <div><dt>Gündüz saati</dt><dd>{sayiTr(gv.n_saat)}</dd></div>
+                  <div><dt>Gün</dt><dd>{sayiTr(gv.gun_sayisi ?? 0)}</dd></div>
+                </dl>
+              </section>
+              <section className="olcut-grup" aria-label="Aralık ayarının etkisi">
+                <div className="olcut-bas">Aralık ayarının etkisi<span className="olcut-not">ham → ayarlı</span></div>
+                <dl className="olcut-liste">
+                  <div><dt>Genişlik</dt><dd>%{sayiTr((gv.keskinlik?.ham ?? 0) * 100, 0)} → %{sayiTr((gv.keskinlik?.kalibre ?? 0) * 100, 0)}</dd><span className="olcut-not">kurulu gücün</span></div>
+                  <div><dt>Aralık puanı</dt><dd>{sayiTr((gv.aralik_skoru_n?.ham ?? 0) * 100, 1)} → {sayiTr((gv.aralik_skoru_n?.kalibre ?? 0) * 100, 1)}</dd><span className="olcut-not">küçük iyi</span></div>
+                  <div><dt>PIT en büyük sapma</dt><dd>{sayiTr((gv.pit_max_sapma ?? 0) * 100, 0)}</dd><span className="olcut-not">puan</span></div>
+                </dl>
+              </section>
+              <section className="olcut-grup" aria-label="Seviyelerde gözlenen kapsama">
+                <div className="olcut-bas">Seviyeler<span className="olcut-not">gözlenen, hedef parantezde</span></div>
+                <dl className="olcut-liste">
+                  {(gv.guvenilirlik?.kalibre ?? []).map((r) => (
+                    <div key={r.tau}><dt>P{Math.round(r.tau * 100)} altı</dt><dd>%{sayiTr(r.gozlenen * 100, 0)}</dd><span className="olcut-not">(%{Math.round(r.tau * 100)})</span></div>))}
+                </dl>
+              </section>
             </div>
             <div className="ızgara satir-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))", gap: 14 }}>
               <div><div className="etiket-ust" style={{ marginBottom: 2 }}>Güvenilirlik diyagramı</div><p className="kart-alt" style={{ margin: "0 0 6px" }}>Gözlenen ve hedeflenen kapsama</p>

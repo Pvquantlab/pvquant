@@ -16,11 +16,15 @@ function SablonDugmeleri({ plantId }: { plantId: string }) {
   const indir = (ad: "kapasite-testi" | "fatura" | "kullanilabilirlik" | "beklenen-gerceklesen") => { setHata(null); api.raporSablonIndir(plantId, ad).catch((e) => setHata(String((e as Error).message ?? e))); };
   return (
     <>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <button className="dugme" onClick={() => indir("kapasite-testi")}>Kapasite testi</button>
-        <button className="dugme" onClick={() => indir("fatura")}>Fatura / uzlaştırma özeti (son ay)</button>
-        <button className="dugme" onClick={() => indir("kullanilabilirlik")}>Kullanılabilirlik (30 gün)</button>
-        <button className="dugme" onClick={() => indir("beklenen-gerceklesen")}>Beklenen – gerçekleşen (aylık)</button>
+      {/* 24.10 sekizinci tur: dört düğme indirme EYLEMİ olarak netleşti — grup etiketi + indirme ikonu + «… şablonunu
+          indir» erişilebilir ad; onClick/api.raporSablonIndir ve şablon adları aynen */}
+      <div className="dugme-sira">
+        {([["kapasite-testi", "Kapasite testi"], ["fatura", "Fatura ve uzlaştırma özeti (son ay)"],
+           ["kullanilabilirlik", "Kullanılabilirlik (30 gün)"], ["beklenen-gerceklesen", "Beklenen – gerçekleşen (aylık)"]] as const).map(([ad, etiket]) => (
+          <button key={ad} className="dugme dugme-indir" onClick={() => indir(ad)} aria-label={`${etiket} şablonunu indir`}>
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 2v7m0 0L4.5 6.5M7 9l2.5-2.5M2.5 11.5h9" /></svg>
+            {etiket}
+          </button>))}
       </div>
       {hata && <p style={{ color: "var(--uyari-metin)", fontSize: 13.5, margin: "8px 0 0" }}>{hata}</p>}
       <p className="soluk" style={{ fontSize: 14, margin: "8px 0 0" }}>

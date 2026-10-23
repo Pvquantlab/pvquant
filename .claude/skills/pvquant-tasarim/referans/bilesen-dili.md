@@ -24,6 +24,13 @@ tek yerden bölünür, ilk harf büyütülür); grafik/tablo grup başlığı ey
 ana başlık kısa, alt başlık açıklayıcı. Numara `.kart-no` yalnız gerçek sırada (Santralim 1–7), ayraç CSS,
 `aria-hidden`; numarasız kartı sırf tutarlılık için numaralandırma. Sağ slot ilk satırın taban çizgisine hizalı.
 
+## Ölçüt grubu (24.10.2026)
+
+Üçten fazla bilgi (metrik adı + değer + pencere + durum) tek `.cip` içine Meta ile dizilmez → `.olcut-serit > .olcut-grup`:
+başlık + niteleyici, `dl.olcut-liste` etiket/değer çiftleri (değer Inter Tight 16/500 tabular, yoksa soluk «—»),
+ayrı `.olcut-durum` satırı (yalnız durum gerçekten null ise; iki grup bağımsızsa tekrar normal). Çip, 2–4 kısa
+metaveri için kalır; eylem düğmesi bilgi çipi gibi görünmez (`.dugme-indir` ikon + aria-label).
+
 ## Künye / tanım listesi (23.10.2026)
 
 Etiket–değer çiftleri (santral bilgileri, veri durumu) `table.veri` + `tbody.mono` ile DEĞİL, `dl.kunye` ile:
