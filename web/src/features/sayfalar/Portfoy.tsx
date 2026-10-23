@@ -82,7 +82,7 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
                   const eski = r.kesinti_gun != null && r.kesinti_gun > 2;
                   return (
                   <tr key={r.id} style={{ cursor: "pointer" }} onClick={() => onSec(r.id)} tabIndex={0}
-                      aria-label={`${r.ad} — santral sayfasını aç`}
+                      aria-label={`${r.ad}, santral sayfasını aç`}
                       onKeyDown={(e) => { if (e.key === "Enter") onSec(r.id); }}>
                     <td style={{ fontWeight: 600 }}>{r.ad}</td><td>{sayiTr(r.kapasite_kwp)}</td><td>{r.segment ?? "—"}</td>
                     <td style={{ color: eski ? "var(--uyari-metin)" : undefined }}>{tarih(r.son_olcum)}{eski && (
@@ -217,7 +217,7 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
                 {docs ? <a className="cip" href={docs} target="_blank" rel="noreferrer">OpenAPI şeması ↗</a> : <span className="cip">örnek kip</span>}</span>}>
       <p className="soluk" style={{ margin: "0 0 14px", fontSize: 14, maxWidth: "100ch" }}>
         Müşteri sistemleri tahmini <span className="kod">X-API-Key</span> başlığıyla çeker; sabah tahmini üretildikten sonra webhook alıcılarına imzalı bildirim gider.
-        Anahtar ve sır yalnız üretildiği anda görünür — sunucu yalnız özetini saklar.
+        Anahtar ve sır yalnız üretildiği anda görünür; sunucu yalnız özetini saklar.
       </p>
       {hata && <p className="ayar-durum hata" style={{ margin: "0 0 8px" }}>{hata}</p>}
       {mesaj && <p className="ayar-durum ok" style={{ margin: "0 0 8px" }}>{mesaj}</p>}
@@ -253,7 +253,7 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
           </form>
           {yeniAnahtar && (
             <div style={{ marginTop: 10, padding: 10, border: "1px solid var(--kenar)", borderRadius: 8, background: "var(--yuzey2)" }}>
-              <div style={{ fontSize: 13, marginBottom: 4 }}>Yeni anahtar — <strong>bir daha gösterilmez</strong>, şimdi kopyalayın:</div>
+              <div style={{ fontSize: 13, marginBottom: 4 }}>Yeni anahtar: <strong>bir daha gösterilmez</strong>, şimdi kopyalayın:</div>
               <code className="mono" style={{ fontSize: 13.5, wordBreak: "break-all", userSelect: "all" }}>{yeniAnahtar}</code>
               <div style={{ marginTop: 6 }}><button className="dugme" style={{ fontSize: 13 }} onClick={() => { navigator.clipboard?.writeText(yeniAnahtar).then(() => setMesaj("Anahtar panoya kopyalandı.")).catch(() => {}); }}>Kopyala</button>
                 <button className="dugme" style={{ fontSize: 13, marginLeft: 6 }} onClick={() => setYeniAnahtar(null)}>Kapat</button></div>
@@ -290,16 +290,25 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
           </form>
           {yeniSir && (
             <div style={{ marginTop: 10, padding: 10, border: "1px solid var(--kenar)", borderRadius: 8 }}>
-              <div style={{ fontSize: 13, marginBottom: 4 }}>İmza sırrı — <strong>bir daha gösterilmez</strong>; alıcı <span className="mono">X-PVQ-Signature</span> başlığını bununla doğrular:</div>
+              <div style={{ fontSize: 13, marginBottom: 4 }}>İmza sırrı: <strong>bir daha gösterilmez</strong>; alıcı <span className="mono">X-PVQ-Signature</span> başlığını bununla doğrular:</div>
               <code className="mono" style={{ fontSize: 13.5, wordBreak: "break-all", userSelect: "all" }}>{yeniSir}</code>
               <div style={{ marginTop: 6 }}><button className="dugme" style={{ fontSize: 13 }} onClick={() => setYeniSir(null)}>Kapat</button></div>
             </div>)}
         </div>
       </div>
-      <p className="soluk" style={{ fontSize: 13.5, margin: "14px 0 0", lineHeight: 1.9, maxWidth: "100ch" }}>
-        Uçlar: <span className="kod">/v1/dis/santraller</span> <span className="kod">/v1/dis/santral/{"{id}"}/tahmin</span> (ETag ile 304){" "}
-        <span className="kod">/v1/dis/santral/{"{id}"}/kgup</span>. Oran sınırı dakikada 120 istek; ayrıntı <span className="kod">docs/api/dis-api.md</span>
-      </p>
+      {/* 23.10 sekizinci tur: uç yolları düz paragraf içindeki satır içi kod yerine hap çipleri (.cip-kod — santral
+          arşivinin hap düğmeleriyle aynı aile: --kenar çerçeve, 999 köşe, Inter Tight/mono); notlar ayrı ikincil satır.
+          Yollar, sınır ve belge yolu aynen; tıklanabilir bağlantı yoktu, eklenmedi. */}
+      <div className="uc-listesi">
+        <div className="etiket-ust">API uçları</div>
+        <div className="uc-sira" role="list" aria-label="API uçları">
+          <span className="cip cip-kod" role="listitem">/v1/dis/santraller</span>
+          <span className="cip cip-kod" role="listitem">/v1/dis/santral/{"{id}"}/tahmin</span>
+          <span className="cip cip-kod" role="listitem">/v1/dis/santral/{"{id}"}/kgup</span>
+        </div>
+        <p className="uc-not"><Meta className="uzun" items={["tahmin ucu ETag ile 304 döner", "oran sınırı dakikada 120 istek",
+          <span key="belge">ayrıntı <span className="kod">docs/api/dis-api.md</span></span>]} /></p>
+      </div>
     </Kart>
   );
 }
@@ -366,7 +375,7 @@ function Paylasimlar({ santraller }: { santraller: { id: string; ad: string }[] 
           {acik && (
             <div style={{ marginTop: 10, padding: 10, border: "1px solid var(--kenar)", borderRadius: 8, background: "var(--yuzey2)" }}>
               <div style={{ fontSize: 13, marginBottom: 6, display: "flex", justifyContent: "space-between", gap: 8 }}>
-                <span><strong>{acik.veri.santral}</strong> — {etiket(`${acik.tur}:oku`)}</span>
+                <span><Meta items={[<strong key="ad">{acik.veri.santral}</strong>, etiket(`${acik.tur}:oku`)]} /></span>
                 <button className="dugme" style={{ fontSize: 13 }} onClick={() => setAcik(null)}>Kapat</button>
               </div>
               {acik.tur === "karne" ? (
@@ -462,7 +471,7 @@ function IkiAdimBolumu() {
       {kurtarma ? (
         <div style={{ padding: 12, border: "1px solid var(--kenar)", borderRadius: 8, background: "var(--yuzey2)" }}>
           <p style={{ fontSize: 13.5, margin: "0 0 8px", lineHeight: 1.6 }}>
-            <strong>Kurtarma kodları — bir daha gösterilmez.</strong> Telefonunuzu
+            <strong>Kurtarma kodları bir daha gösterilmez.</strong> Telefonunuzu
             kaybederseniz her biri bir kez giriş sağlar. Güvenli bir yere kaydedin:</p>
           <div className="mono" style={{ display: "grid", gridTemplateColumns: "1fr 1fr",
             gap: "4px 16px", fontSize: 14, userSelect: "all" }}>
@@ -576,14 +585,17 @@ function HesapVeEkip() {
                   {/* v2.339: kilitlenme çıkışı — telefonunu ve kurtarma kodlarını
                       birlikte kaybeden üyenin 2FA'sını yönetici kapatabilir */}
                   <td>{u.iki_adim ? (
-                    <button className="dugme" style={{ fontSize: 13 }}
-                      onClick={() => { if (confirm(`${u.email} için iki adımlı doğrulama kapatılsın mı? Üye girişte yalnız parolasını kullanır ve dilerse yeniden kurar.`))
-                        dene(async () => { await api.takimIkiAdimSifirla(u.id); setMesaj("Üyenin iki adımlı doğrulaması kapatıldı."); }); }}>
-                      açık — sıfırla</button>
+                    <span className="islem-onay" style={{ justifyContent: "flex-end" }}>
+                      <span className="rozet rozet-ok">açık</span>
+                      <button className="dugme kucuk"
+                        onClick={() => { if (confirm(`${u.email} için iki adımlı doğrulama kapatılsın mı? Üye girişte yalnız parolasını kullanır ve dilerse yeniden kurar.`))
+                          dene(async () => { await api.takimIkiAdimSifirla(u.id); setMesaj("Üyenin iki adımlı doğrulaması kapatıldı."); }); }}>
+                        Sıfırla</button>
+                    </span>
                   ) : <span className="soluk">kapalı</span>}</td>
                   {/* 23.10: pasifleştirme tehlikeli işlem dilinde (uyarı rengi, dolgu yok); davranış aynı */}
                   <td><button className={`dugme${u.aktif ? " dugme-tehlike" : ""}`} style={{ fontSize: 13 }}
-                        onClick={() => dene(async () => { await api.takimGuncelle(u.id, { aktif: !u.aktif }); setMesaj(u.aktif ? "Üye pasifleştirildi — oturum açamaz." : "Üye yeniden etkin."); })}>
+                        onClick={() => dene(async () => { await api.takimGuncelle(u.id, { aktif: !u.aktif }); setMesaj(u.aktif ? "Üye pasifleştirildi; oturum açamaz." : "Üye yeniden etkin."); })}>
                         {u.aktif ? "Pasifleştir" : "Etkinleştir"}</button></td>
                 </tr>))}</tbody>
             </table></div>
@@ -602,7 +614,7 @@ function HesapVeEkip() {
           {gecici && (
             <div style={{ marginTop: 10, padding: 10, border: "1px solid var(--kenar)", borderRadius: 8, background: "var(--yuzey2)" }}>
               <div style={{ fontSize: 13, marginBottom: 4 }}>
-                <span className="mono">{gecici.email}</span> için geçici parola — <strong>bir daha gösterilmez</strong>, güvenli kanaldan iletin; üye girişte kendi parolasını değiştirsin:</div>
+                <span className="mono">{gecici.email}</span> için geçici parola: <strong>bir daha gösterilmez</strong>, güvenli kanaldan iletin; üye girişte kendi parolasını değiştirsin:</div>
               <code className="mono" style={{ fontSize: 14, userSelect: "all" }}>{gecici.parola}</code>
               <div style={{ marginTop: 6 }}><button className="dugme" style={{ fontSize: 13 }} onClick={() => setGecici(null)}>Kapat</button></div>
             </div>)}
@@ -634,23 +646,32 @@ function SantralArsivi({ santralYenile }: { santralYenile?: () => void }) {
   };
   if (etkin.length < 2 && arsiv.length === 0) return null;   // tek santral + boş arşiv: kart gereksiz
   return (
-    <Kart baslik="Santral arşivi" sag={<span className="cip">silmez — veri denetim için durur</span>}>
+    <Kart baslik="Santral arşivi" sag={<span className="cip"><Meta items={["silmez", "veri denetim için durur"]} /></span>}>
       <p className="soluk" style={{ margin: "0 0 10px", fontSize: 14 }}>
         Arşivlenen santral listelerden ve gece hesaplamalarından çıkarılır; ölçüm, kalibrasyon ve tahmin geçmişi
         yerinde kalır ve geri alınabilir. Son etkin santral arşivlenemez.
       </p>
       {hata && <p className="ayar-durum hata" style={{ margin: "0 0 8px" }}>{hata}</p>}
       {mesaj && <p className="ayar-durum ok" style={{ margin: "0 0 8px" }}>{mesaj}</p>}
+      {/* 23.10 sekizinci tur: «Edikli GES — arşivle…» hap düğmeleri → satır listesi: santral adı solda, işlem düğmesi
+          sağda; onay aynı satırda tehlikeli işlem dilinde. onClick/api çağrıları aynen. */}
       {etkin.length > 1 && (
-        <div className="ayar-kontrol" style={{ flexWrap: "wrap" }}>
-          {etkin.map((x) => onayId === x.id ? (
-            <button key={x.id} className="dugme" style={{ color: "var(--uyari-metin)", fontWeight: 600 }}
-                    onClick={() => dene(async () => { await api.santralArsivle(x.id); setOnayId(null); setMesaj(`${x.name} arşive alındı.`); })}>
-              Eminim — {x.name} arşive alınsın</button>
-          ) : (
-            <button key={x.id} className="dugme" onClick={() => setOnayId(x.id)}>{x.name} — arşivle…</button>
+        <ul className="islem-listesi">
+          {etkin.map((x) => (
+            <li key={x.id}>
+              <span className="islem-ad">{x.name}</span>
+              {onayId === x.id ? (
+                <span className="islem-onay">
+                  <button className="dugme dugme-tehlike" style={{ fontWeight: 600 }}
+                          onClick={() => dene(async () => { await api.santralArsivle(x.id); setOnayId(null); setMesaj(`${x.name} arşive alındı.`); })}>
+                    Eminim, arşive al</button>
+                </span>
+              ) : (
+                <button className="dugme kucuk" onClick={() => setOnayId(x.id)}>Arşivle…</button>
+              )}
+            </li>
           ))}
-        </div>
+        </ul>
       )}
       {arsiv.length > 0 && (
         <div className="grafik-kaydir" style={{ marginTop: 10 }}><table className="veri" style={{ fontSize: 13.5 }}>

@@ -16,6 +16,14 @@ eksik veri «—» (tire disiplini, `?? 0` yasak — v2.310 dersi).
 «Henüz tahmin yok.» — 23.10.2026 kullanıcı bulgusu: konuşma çizgisi / madde imi gibi okunuyor). Değer tiresinin ardına
 neden gelecekse orta noktayla: «— · gece değerlendirmesinde birikiyor»; iki tire yan yana gelmez.
 
+## Başlık sistemi (23.10.2026, sekizinci tur)
+
+Sayfa h1 28/600 + 15 px ikincil alt metin (`Sayfa`); bölüm eyebrow `.ozet-bas`/`.etiket-ust` 12,5/500 büyük harf
+soluk; **kart h3 16/600 + ayrı satırda `p.kart-alt` 13,5/400 ikincil** (`Kart alt="…"`; «Başlık — açıklama» dizgisi
+tek yerden bölünür, ilk harf büyütülür); grafik/tablo grup başlığı eyebrow + `p.kart-alt`. Başlıkta uzun çizgi YOK;
+ana başlık kısa, alt başlık açıklayıcı. Numara `.kart-no` yalnız gerçek sırada (Santralim 1–7), ayraç CSS,
+`aria-hidden`; numarasız kartı sırf tutarlılık için numaralandırma. Sağ slot ilk satırın taban çizgisine hizalı.
+
 ## Künye / tanım listesi (23.10.2026)
 
 Etiket–değer çiftleri (santral bilgileri, veri durumu) `table.veri` + `tbody.mono` ile DEĞİL, `dl.kunye` ile:
@@ -55,7 +63,11 @@ bal küpü `vt-bal` kalıbı korunur.
 Orta nokta «·» bilgi ayırıcısı olarak KULLANILMAZ (iki sayı arasında işlem işareti gibi okunur, etiketsiz bilgileri tek
 satıra yığar). Kural tablosu:
 - **Farklı türden kısa bilgiler** (sayı, tarih, pencere, durum, kaynak) → `Meta` bileşeni (`src/lib/Meta.tsx`): her bilgi
-  kendi dilimi, dilimler ince dikey ayraçla (`.meta > span + span::before`, currentColor %35). Çip, rozet, telemetri,
+  kendi dilimi, dilimler ince dikey ayraçla (ayraç her dilimin solunda mutlak; kap −19 px kenar + `clip-path: inset(0 0 0
+  19px)` → satır BAŞINDAKİ dilimin ayracı kırpılır; `inset(0)` yetmez, kabın kutusu o şeridi içerir — 23.10 ölçüldü).
+- **Kod/yol çipleri** (API uçları) → `.cip.cip-kod`: `.cip` hapının mono içerikli türevi (13 px, 28 px, `--kenar`); eylem
+  düğmesi `.dugme.kucuk` (32 px) ile aynı aile — çip bilgi, düğme eylem. Uçlar `.uc-listesi` (eyebrow + `.uc-sira` +
+  `.uc-not` Meta). Çip, rozet, telemetri,
   vitrin künyesi aynı bileşen; boş/false öğe atlanır; dilim içinde kırılma yok, dizi dilim sınırından sarar.
 - **Aynı karttaki iki sayı** (bugün/yarın, ortalama/standart sapma, alarm/gecikme) → `Kpi.ikinci` {etiket, deger, birim}:
   ana değer büyük, ikincisi kendi etiketi ve birimiyle ayrı satır. «1.914,2 · 1.827,6 MWh» YASAK.
@@ -66,6 +78,11 @@ satıra yığar). Kural tablosu:
 - **Grafik**: tooltip başlığı `<b>saat</b> <soluk>geçmiş/tahmin</soluk>`; eksen adı «[yerel saat]»; «şimdi» hapı etiket + değer.
 - **Alan adı dürüstlüğü**: `son_scada` = son ÖLÇÜM zaman damgası → etiket «son veri» (yükleme/güncelleme değil).
 - Kalan tek orta nokta: avatar baş harfi yer tutucusu («·») ve kod yorumları.
+- **Uzun çizgi «—» (23.10, sekizinci tur):** ad + işlem («Edikli GES — arşivle») ve ad + nitelik ayırıcısı olarak YASAK:
+  işlem satır listesinde (`ul.islem-listesi`: ad solda, düğme sağda), nitelik `Meta`/virgül/parantezle. Kart başlığındaki
+  «Başlık — açıklama» dizgisi kalır; `Kart` onu `.kart-alt` ile tipografik böler (çizgi görünmez). Durum mesajlarında
+  nokta / noktalı virgül / iki nokta. KORUNAN: değer yerindeki tek «—», aralıklarda kısa çizgi «P10–P90», eksi «−»,
+  tablo «ham → ayarlı», sembolden söz eden cümle, eyebrow etiketleri, sekme başlığı, vitrin başlıkları.
 
 ## Durum sözcüğü + neden (23.10.2026, altıncı tur)
 

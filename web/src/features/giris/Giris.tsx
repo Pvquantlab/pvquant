@@ -33,7 +33,7 @@ export function Giris({ onGiris }: { onGiris: () => void }) {
       if (r === "ok") { onGiris(); return; }
       if (r === "iki_adim") { setIkiAdim(true); setHata(null); }   // kod alanını aç
       else setHata(ikiAdim
-        ? "Doğrulama kodu hatalı — uygulamadaki 6 haneyi ya da bir kurtarma kodunu girin."
+        ? "Doğrulama kodu hatalı; uygulamadaki 6 haneyi ya da bir kurtarma kodunu girin."
         : "E-posta ya da parola hatalı.");
     } catch {
       setHata("Sunucuya ulaşılamadı. Bağlantınızı kontrol edip yeniden deneyin.");

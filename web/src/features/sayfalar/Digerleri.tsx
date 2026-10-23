@@ -49,7 +49,7 @@ function GucMatrisiKarti({ plantId, ilkVeri }: { plantId: string; ilkVeri: GucMa
   const [mesaj, setMesaj] = useState<string | null>(null);
   const hesapla = () => { setMesaj("Hesaplanıyor (tipik yıl, ~10 s)…"); api.gucMatrisiHesapla(plantId).then((r) => { setG(r); setMesaj(null); }).catch((e) => setMesaj(String((e as Error).message ?? e))); };
   return (
-    <Kart baslik="Panel verimi — ışınım ve sıcaklığa göre güç tablosu" sag={<span style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+    <Kart baslik="Panel verimi" alt="Işınım ve sıcaklığa göre güç tablosu" sag={<span style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
       {g?.durum === "ok" && <span className="cip"><Meta items={[`tipik yıl ${g.yil}`, `iklim-özgü verim oranı %${sayiTr((g.cser ?? 0) * 100, 1)}`]} /></span>}
       <button className="dugme kucuk" onClick={hesapla}>{g?.durum === "ok" ? "Yenile" : "Hesapla"}</button></span>}>
       {/* 23.10 altıncı tur: boş durum iki kademe (.bos-durum); tablo dar + sans tabular (.veri.sayisal.dar) — 7 sütun
@@ -94,7 +94,7 @@ function KayipAgaciKarti({ plantId, ilkVeri }: { plantId: string; ilkVeri: Kayip
   const [mesaj, setMesaj] = useState<string | null>(null);
   const hesapla = () => { setMesaj("Hesaplanıyor (tipik yıl ışınımı, ~10 s)…"); api.kayipAgaciHesapla(plantId).then((r) => { setK(r); setMesaj(null); }).catch((e) => setMesaj(String((e as Error).message ?? e))); };
   return (
-    <Kart baslik="Kayıp zinciri — yatay ışınımdan şebekeye" sag={<span style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+    <Kart baslik="Kayıp zinciri" alt="Yatay ışınımdan şebekeye, adım adım" sag={<span style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
       {k?.durum === "ok" && <span className="cip"><Meta items={[`tipik yıl ${k.yil}`, `PR %${sayiTr((k.pr ?? 0) * 100, 0)}`, `${sayiTr(k.ozgul_kwh_kwp ?? 0, 0)} kWh/kWp`]} /></span>}
       <button className="dugme kucuk" onClick={hesapla}>{k?.durum === "ok" ? "Yenile" : "Hesapla"}</button></span>}>
       {/* 23.10 altıncı tur: boş durum iki kademe — başlık satırı + «Hesapla» yönlendirmesi */}
@@ -139,12 +139,12 @@ function EpiasUretimKarti({ plantId }: { plantId: string }) {
   useEffect(() => { api.epiasUretim(plantId).then((r) => { setD(r); setKimlik(r?.epias_santral_id ? String(r.epias_santral_id) : ""); }).catch(() => setD(null)); }, [plantId]);
   const kaydet = () => {
     setMesaj(null);
-    api.epiasUretimAyarla(plantId, kimlik ? Number(kimlik) : null).then((r) => { setD(r); setMesaj("Kaydedildi — gece işlemi son 7 günü alır; SCADA ölçümü olan saatlere dokunmaz."); })
+    api.epiasUretimAyarla(plantId, kimlik ? Number(kimlik) : null).then((r) => { setD(r); setMesaj("Kaydedildi. Gece işlemi son 7 günü alır; SCADA ölçümü olan saatlere dokunmaz."); })
       .catch((e) => setMesaj(String((e as Error).message ?? e)));
   };
   if (d === undefined) return null;
   return (
-    <Kart baslik="Gerçekleşen üretim kaynağı — piyasa şeffaflık akışı" sag={<span className="cip">{d?.uygun ? "hazır" : "devre dışı"}</span>}
+    <Kart baslik="Gerçekleşen üretim kaynağı" alt="Piyasa şeffaflık akışı" sag={<span className="cip">{d?.uygun ? "hazır" : "devre dışı"}</span>}
           style={{ maxWidth: 1240 }}>
       {d === null ? <p className="soluk" style={{ margin: 0 }}>Örnek kip.</p> : (
         <>
@@ -351,7 +351,7 @@ export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
             sag={<span className="rozet mono">{dosyaAdi}</span>}>
             <p style={{ fontSize: 14, color: "var(--ikincil)",
                         margin: "0 0 14px", lineHeight: 1.65 }}>
-              Otomatik eşleme bu dosyada tutmadı — hangi kolonun hangi alana
+              Otomatik eşleme bu dosyada tutmadı; hangi kolonun hangi alana
               denk geldiğini siz söyleyin. Zorunlu: Zaman damgası ve Güç
               (ya da Enerji); gerisi isteğe bağlı.
             </p>
@@ -434,7 +434,7 @@ export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
           <p className="soluk" style={{ fontSize: 14, margin: "0 0 12px", lineHeight: 1.65 }}>
             Aynı andaki satırlar tek santral serisine indirgenecek. <b>Santral toplamı</b> güç ve
             enerjiyi toplar (cihazlar → santral; önerilen), sıcaklık gibi ölçümleri ortalar.
-            <b> Ortalama</b> her kolonu ortalar — yalnız satırlar aynı ölçümün kopyalarıysa doğrudur.
+            <b> Ortalama</b> her kolonu ortalar; yalnız satırlar aynı ölçümün kopyalarıysa doğrudur.
           </p>
           {/* v2.373 (E6): önerilen rozet sunucudan — kopya mükerrerde 'sum'
               değerleri katlar, doğru öneri 'Ortalama'. */}
@@ -516,7 +516,7 @@ export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
               </table>
             </div>
             <p style={{ fontSize: 13.5, color: "var(--soluk)", margin: "12px 0 0" }}>
-              Değerler dosyadan olduğu gibi — dönüştürme onaydan sonra yapılır.
+              Değerler dosyadan olduğu gibi; dönüştürme onaydan sonra yapılır.
             </p>
           </Kart>
 
@@ -764,7 +764,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
         </Kart>
       </div>
       {(selale.mape || selale.sapma) && (
-        <Kart baslik="Kalibrasyonun etkisi — fiziksel modelden kalibre modele"
+        <Kart baslik="Kalibrasyonun etkisi" alt="Fiziksel modelden kalibre modele"
           sag={<span className="cip"><Meta items={["mavi: iyileşme", "kızıl: kayıp", "eksen kırpılmış"]} /></span>}>
           <div className="ızgara" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)" }}>
             {selale.mape && (
@@ -793,7 +793,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
       </>)}
       {/* v2.254 (Dalga 3.9): kırpma (AC tavanı) ve şebeke kısıntısı — ölçüm silinmez, bayraklanır;
           kısıntı karne ve kalibrasyon dışı, kırpma yalnız kalibrasyon dışı. */}
-      <Kart baslik="Veri temizliği — AC sınırında kırpma ve şebeke kısıtı"
+      <Kart baslik="Veri temizliği" alt="AC sınırında kırpma ve şebeke kısıtı"
         sag={<span style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
           {/* 23.10 altıncı tur: pencere bitişi TR tarihle; 60 günden eski pencere rozetle söylenir (tarih aynen API'den) */}
           <span className="cip">{hj ? <Meta items={[`son ${sayiTr(hj.pencere_gun)} ölçüm günü`, hj.son_olcum && `bitiş ${tarihTr(hj.son_olcum)}`, `${sayiTr(hj.saat)} saat`]} /> : "hesaplanıyor"}</span>
@@ -807,10 +807,10 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
                 <div className="kpi-alt">{sayiTr(hj.kirpma_gun)} gün; değerlendirmede sayılır, kalibrasyona girmez</div></div>
               <div className="kpi"><div className="kpi-et">Şebeke kısıtı</div>
                 <div className="kpi-dg">{hj.kisinti_aranabildi ? <>{sayiTr(hj.kisinti_saat)} <small>saat</small></> : "—"}</div>
-                <div className="kpi-alt">{hj.kisinti_aranabildi ? `${sayiTr(hj.kisinti_gun)} gün; değerlendirme ve kalibrasyon dışı` : "aranmadı — beklenen üretim tahmini olmadan kısıt ayırt edilemez"}</div></div>
+                <div className="kpi-alt">{hj.kisinti_aranabildi ? `${sayiTr(hj.kisinti_gun)} gün; değerlendirme ve kalibrasyon dışı` : "aranmadı; beklenen üretim tahmini olmadan kısıt ayırt edilemez"}</div></div>
               <div className="kpi"><div className="kpi-et">Kısıt olmasaydı</div>
                 <div className="kpi-dg">{hj.kisinti_aranabildi ? <>+{sayiTr(hj.kisinti_kayip_kwh / 1000, 2)} <small>MWh</small></> : "—"}</div>
-                <div className="kpi-alt">{hj.kisinti_aranabildi ? "kısıt saatlerinde beklenen − gerçekleşen" : "hesaplanmadı — kısıt aranmayınca kayıp da yok"}</div></div>
+                <div className="kpi-alt">{hj.kisinti_aranabildi ? "kısıt saatlerinde beklenen − gerçekleşen" : "hesaplanmadı; kısıt aranmayınca kayıp da yok"}</div></div>
             </div>
             <details className="aciklama">
               <summary>Kırpma ve kısıt nasıl ayrılır</summary>
@@ -826,7 +826,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
       </Kart>
       {/* v2.253 (Dalga 2.8b): eğitim/servis kayması — kalibrasyon arşiv meteosuyla, tahmin servisi tahmin
           meteosuyla çalışır; aynı saatlerde dağılım/sapma farkı bant sapmasının olası adresidir. */}
-      <Kart baslik="Hava verisi tutarlılığı — kalibrasyon ve tahmin aynı veriyi mi görüyor?"
+      <Kart baslik="Hava verisi tutarlılığı" alt="Kalibrasyon ve tahmin aynı veriyi mi görüyor?"
         sag={<span className="cip">{ky ? <Meta items={[`${sayiTr(ky.n_saat)} saat`, ky.hukum]} /> : "hesaplanıyor"}</span>}>
         {ky && ky.ozellikler.length > 0 ? (
           <>
@@ -854,7 +854,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
           /* 23.10 altıncı tur: boş durum iki kademe — kısa başlık + API'nin nedeni aynen */
           <div className="bos-durum">
             <div className="bos-bas">{ky ? "Karşılaştırma henüz yapılamadı" : "Karşılaştırılıyor…"}</div>
-            <p>{ky ? (ky.not ? ky.not : "Ortak saat yetersiz — en az 48 saat gerekir.") : "Arşiv ve tahmin hava verisi aynı dönemde karşılaştırılıyor."}</p>
+            <p>{ky ? (ky.not ? ky.not : "Ortak saat yetersiz; en az 48 saat gerekir.") : "Arşiv ve tahmin hava verisi aynı dönemde karşılaştırılıyor."}</p>
           </div>
         )}
       </Kart>
@@ -921,9 +921,9 @@ export function Raporlar({ plantId }: { plantId: string }) {
     // v2.351: kurumsal ton (kullanıcı geri bildirimi) — sürüm numarası ve şema
     // jargonu kartta yok; her kart tek cümlede ne işe yaradığını söyler.
     // Teknik ayrıntı (şema sürümü, sözleşme ucu) dosyanın kendi künyesindedir.
-    ["PDF", "pdf", "Yönetici özeti — dönem beklentisi, tahmin aralığı, doğruluk karnesi ve kalibrasyon sonucu tek belgede."],
-    ["Excel", "xlsx", "Çalışma dosyası — saatlik seri, günlük özet, doğruluk karnesi, performans ve santral bilgileri; formüller kaynağını gösterir."],
-    ["JSON", "json", "Sistem entegrasyonu — saatlik ve günlük tahmin, tahmin aralığı ve doğruluk özeti; sürümlü, belgelenmiş veri yapısı."],
+    ["PDF", "pdf", "Yönetici özeti: dönem beklentisi, tahmin aralığı, doğruluk karnesi ve kalibrasyon sonucu tek belgede."],
+    ["Excel", "xlsx", "Çalışma dosyası: saatlik seri, günlük özet, doğruluk karnesi, performans ve santral bilgileri; formüller kaynağını gösterir."],
+    ["JSON", "json", "Sistem entegrasyonu: saatlik ve günlük tahmin, tahmin aralığı ve doğruluk özeti; sürümlü, belgelenmiş veri yapısı."],
   ];
   return (
     <Sayfa baslik="Raporlar"
@@ -1044,7 +1044,7 @@ function VerinizSizindirKarti({ plantId }: { plantId: string }) {
                     onClick={() => dene(async () => {
                       const r = await api.scadaSil(plantId, b1, b2); setOnay(false);
                       setMesaj(`${sayiTr(r.silinen_satir)} satır kalıcı olarak silindi.`);
-                    })}>Eminim — {b1} → {b2} aralığını kalıcı sil</button>
+                    })}>Eminim, {b1} – {b2} aralığını kalıcı sil</button>
           )
         ) : (
           <span className="soluk" style={{ fontSize: 13 }}>silmek için iki tarih de gerekli</span>

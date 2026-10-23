@@ -16,7 +16,7 @@ export function Hakkinda() {
     <Sayfa baslik="Hakkında" alt="Veri kaynakları, lisanslar ve işleme notu.">
       <Kart baslik="Veri kaynakları ve lisanslar">
         {h === undefined ? <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p>
-         : !h ? <p className="soluk" style={{ margin: 0 }}>Örnek kip — kaynak listesi sunucudan gelir.</p> : (
+         : !h ? <p className="soluk" style={{ margin: 0 }}>Örnek kip; kaynak listesi sunucudan gelir.</p> : (
           <>
             {h.uyarilar.length > 0 && <ul className="not-listesi uyari" style={{ margin: "0 0 10px" }}>{h.uyarilar.map((u) => <li key={u}>{u}</li>)}</ul>}
             <div className="grafik-kaydir">

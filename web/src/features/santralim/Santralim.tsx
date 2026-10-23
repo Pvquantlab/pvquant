@@ -74,7 +74,7 @@ export function Santralim({ plantId }: { plantId: string }) {
     api.fizikOnizle(plantId, { [k]: v }).then(setFtOn).catch((e) => setFtMesaj(String((e as Error).message ?? e)));
   };
   const ftUygula = (k: string, v: string) => {
-    api.fizikAyarla(plantId, { [k]: v }).then((r) => { setFt(r); setFtOn(null); setFtSon({}); setFtMesaj("Kaydedildi — bir sonraki tahminden itibaren geçerli."); })
+    api.fizikAyarla(plantId, { [k]: v }).then((r) => { setFt(r); setFtOn(null); setFtSon({}); setFtMesaj("Kaydedildi. Bir sonraki tahminden itibaren geçerli."); })
       .catch((e) => setFtMesaj(String((e as Error).message ?? e)));
   };
   // v2.275 (Dalga 4 tamamlayıcısı): EAK alanı + geçici kısıt — KGÜP ve toplayıcı çıktısı bunu okur
@@ -119,14 +119,14 @@ export function Santralim({ plantId }: { plantId: string }) {
     setTarifeMesaj(null);
     // Zorunlu alan bozuk/boşken isteği ağa hiç çıkarma — evin "yol gösteren hata" kuralı.
     const eksik = tarife.tip === "sabit" && tarife.tl_mwh == null
-      ? "Fiyat (TL/MWh) boş ya da okunamadı — ör. 2650 veya 2650,5 yazın."
+      ? "Fiyat (TL/MWh) boş ya da okunamadı; ör. 2650 veya 2650,5 yazın."
       : tarife.tip === "cok_zamanli"
         && (tarife.gunduz_tl_mwh == null || tarife.puant_tl_mwh == null || tarife.gece_tl_mwh == null)
         ? "Çok zamanlı tarifede gündüz, puant ve gece fiyatlarının üçü de gerekir."
         : null;
     if (eksik) { setTarifeMesaj(eksik); return; }
     api.tarifeAyarla(plantId, tarife).then((r) => { setTarifeMetin({});
-        setTarifeMesaj(r.tarife ? "Kaydedildi — fatura şablonu ve yıllık gelir bunu kullanır." : "Kaldırıldı."); })
+        setTarifeMesaj(r.tarife ? "Kaydedildi. Fatura şablonu ve yıllık gelir bunu kullanır." : "Kaldırıldı."); })
       .catch((e) => setTarifeMesaj(String((e as Error).message ?? e)));
   };
   const [ak, setAk] = useState<AlarmKurallari | null>(null);   // v2.265: ek alarm kuralları (opt-in)
@@ -242,7 +242,7 @@ export function Santralim({ plantId }: { plantId: string }) {
           const saat = p1.value.length > 2 ? ` ${p1.value[2]}:00` : "";
           return `${p1.seriesName}${saat}<br/>azimut ${Math.round(p1.value[0])}°, yükseklik ${Math.round(p1.value[1])}°`;
         } },
-      xAxis: { type: "value", min: 45, max: 315, name: "[panel yönü — azimut]",
+      xAxis: { type: "value", min: 45, max: 315, name: "[panel yönü, azimut]",
         nameLocation: "middle", nameGap: 30,
         // v2.202: tikler 45'lik adimla — 90/180/270 tam duser, ana yonler okunur
         interval: 45,
@@ -295,8 +295,8 @@ export function Santralim({ plantId }: { plantId: string }) {
         <div className="anlik">
           <svg viewBox="0 0 160 112" role="img" style={{ width: "100%", maxWidth: 118 }}
             aria-label={gosterilen === null ? "Şimdi beklenen güç verisi yok"
-              : olcumMu ? `Anlık güç ${sayiTr(gosterilen)} kilovat — ölçüm`
-              : `Şimdi beklenen güç ${sayiTr(gosterilen)} kilovat — tahmin`}>
+              : olcumMu ? `Anlık güç ${sayiTr(gosterilen)} kilovat, ölçüm`
+              : `Şimdi beklenen güç ${sayiTr(gosterilen)} kilovat, tahmin`}>
             <path d="M18,88 A62,62 0 0 1 142,88" fill="none"
               stroke="var(--izgara)" strokeWidth="10" strokeLinecap="round" />
             {/* pay ~0 iken cizme: round linecap sifirda bile nokta basiyordu */}
@@ -317,11 +317,11 @@ export function Santralim({ plantId }: { plantId: string }) {
             <div className="alt">{tavan ? `AC sınırı ${sayiTr(tavan)} kW` : "AC sınırı —"}</div>
             <div className="alt">{gosterilen === null
               ? "şu anı kapsayan tahmin yok"
-              : olcumMu ? "SCADA'dan — ölçüm" : "son tahminden"}</div>
+              : olcumMu ? "SCADA ölçümü" : "son tahminden"}</div>
           </div>
         </div>
         <div>
-          <div className="et">Bugün — beklenen</div>
+          <div className="et">Bugün beklenen</div>
           <div className="dg">{o.bugun_kwh == null ? <span style={{ color: "var(--soluk)" }}>—</span>
                                 : <>{sayiTr(o.bugun_kwh)} <small>kWh</small></>}</div>
           <div className="alt">gün sonu itibarıyla</div>
@@ -356,7 +356,7 @@ export function Santralim({ plantId }: { plantId: string }) {
         </div>
       </div>
 
-      <Kart no="2" baslik="Bugün — saatlik üretim"
+      <Kart no="2" baslik="Bugün" alt="Saatlik üretim"
         sag={<span className="cip">saatlik çözünürlük</span>}
         style={{ marginBottom: 14 }}>
         {seri && dilim && (
@@ -390,7 +390,7 @@ export function Santralim({ plantId }: { plantId: string }) {
           bölüm numarası 3 yerinde. */}
       <div className="ızgara-cift">
         <div className="kart-sutunu">
-        <Kart baslik="Hava — önümüzdeki günler"
+        <Kart baslik="Hava" alt="Önümüzdeki günler"
           sag={<span className="cip">profesyonel meteoroloji verisi</span>}>
           {o.hava.length === 0 && (
             /* v2.90: bos kart sessiz kalmasin — neden bos, soyle */
@@ -524,7 +524,7 @@ export function Santralim({ plantId }: { plantId: string }) {
             <div><div className="ayar-ad">Emre amade kapasite</div>
               <div className="ayar-aciklama">Üretim programı dosyaları bu sınırı aşmaz. Geçici kısıt bakım ya da arıza içindir ve bitiş gününe kadar geçerlidir.</div></div>
             <div className="ayar-kontrol">
-              <label className="girdi-etiket">EAK (kW) — boşsa AC sınırı
+              <label className="girdi-etiket">EAK (kW), boşsa AC sınırı
                 <input className="girdi" style={{ width: 140 }} inputMode="numeric" value={eakKw} onChange={(e) => setEakKw(e.target.value)} /></label>
               <label className="girdi-etiket">Geçici kısıt (kW)
                 <input className="girdi" style={{ width: 100 }} inputMode="numeric" value={gecKw} onChange={(e) => setGecKw(e.target.value)} /></label>
@@ -581,7 +581,7 @@ export function Santralim({ plantId }: { plantId: string }) {
       </div>
 
       {sam && sam.saatler.length > 0 && (
-        <Kart no="4" baslik="Saatlik üretim profili — saat × ay"
+        <Kart no="4" baslik="Saatlik üretim profili" alt="Saat × ay matrisi"
           sag={<span className="cip"><Meta items={["tüm geçerli SCADA", "kW", sam.tz]} /></span>}>
           <div style={{ overflowX: "auto" }}>
             <table style={{ borderCollapse: "collapse", width: "100%",
@@ -627,7 +627,7 @@ export function Santralim({ plantId }: { plantId: string }) {
       )}
 
       {gy && gy.egriler.length > 0 && (
-        <Kart no="5" baslik="Güneş yolu — yaz / ekinoks / kış"
+        <Kart no="5" baslik="Güneş yolu" alt="Yaz, ekinoks ve kış karşılaştırması"
           sag={<span className="cip"><Meta items={[`${gy.lat}°K`, gy.tz]} /></span>}>
           <EChart option={gyOption} height={300}
             ariaLabel="Azimut ve yükseklik düzleminde yaz gündönümü, ekinoks ve kış gündönümü güneş yolları, saat işaretleriyle" />
@@ -678,7 +678,7 @@ export function Santralim({ plantId }: { plantId: string }) {
             Profiller aynı ölçekte çizilir; kısa görünen gün, beklenen üretimi düşük olan gündür. Değerler beklenen (P50) tahmindir.
           </p>
         </Kart>
-        <Kart no="7" baslik="Aylık üretim — gerçekleşen"
+        <Kart no="7" baslik="Aylık üretim" alt="Gerçekleşen üretim"
           sag={<span className="cip">son 12 ay</span>}>
           {/* v2.205: beklenti-P50 imleci (D bullet dili) — yalniz TAM
               kapsanmis aylarda; imlecin hakemi gun-oncesi arsiv */}

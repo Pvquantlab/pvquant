@@ -58,6 +58,9 @@ Her satır: kalıp → dosya → kritik kural. Yeni mühürde yeni kalıp çıka
   taşırır → ≤560 px ve künye satırlarında `white-space: normal`; `table.veri.sayisal` nowrap dar kartta kırpar → tablo
   `.grafik-kaydir` içinde; vitrin dizgilerinde no-break boşluk (U+00A0) düz metin eşleşmesini bozar, `repr()` ile bak;
   JSX dizi öğesi `Meta`'ya verilirken `key` ver (oxlint jsx-key). Cümle başı tire de yasak (bkz. bilesen-dili).
+  Sekizinci tur ekleri (23.10, yerelde): uzun çizgi ad+işlem ayırıcısı yasak → `ul.islem-listesi` (santral arşivi),
+  `Kart` «Başlık — açıklama» dizgisini `.kart-alt` ile tipografik böler; API uçları `.cip-kod` çipleri; `Meta` kırpma
+  hatası `inset(0)` → `inset(0 0 0 19px)` (ölçüm: kap 755 / ilk dilim 774 / ayraç 764 px — ayraç kabın içindeydi).
 - **Altıncı tur — santral bilgileri, Kalibrasyon, Tahminler (23.10.2026):** `docs/PANEL-TUR6-2026-10-23.md`. Eksik
   satır = durum sözcüğü + neden (`.kunye-durum` + `.kunye-not`); boş durum `.bos-durum` (kutu yok); uzun teknik not
   `<details class="aciklama">` (metin aynen); geçmiş P50 soluk mavi (`--chart-p50-past`), **lejant örneği çizimle aynı**

@@ -664,7 +664,7 @@ export function buildChartOption(input: BuildInput): EChartsOption {
       if (typeof p.p90 === "number" && bandSature(p.p90, acVal)) {
         // U3: sıfır/ince bant burada kesinlik değil, tavan kesmesi.
         notlar.push(`<div style="margin-top:4px;color:${T.mutedText};` +
-          `font-size:12.5px">Aralık AC sınırına dayalı — üst değer kırpılmış</div>`);
+          `font-size:12.5px">Aralık AC sınırına dayalı; üst değer kırpılmış</div>`);
       }
       return (
         `<b>${fmtTime(toMs(ts), tz)}</b> <span style="color:${T.mutedText}">${isPast ? "geçmiş" : "tahmin"}</span>` +

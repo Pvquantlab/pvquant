@@ -34,13 +34,13 @@ export function Cubuklar({ etiketler, degerler, birim, vurguIdx, yukseklik = 260
         formatter: (ps: unknown) => {
           const a = ps as { dataIndex: number; value: number }[];
           const i = a[0]?.dataIndex ?? 0;
-          if (degerler[i] == null) return `${etiketler[i]}: — veri yok`;
+          if (degerler[i] == null) return `${etiketler[i]}: veri yok`;
           let satir = `${etiketler[i]}: ${sayiTr(Number(a[0]?.value), ondalik)} ${birim}`;
           const b = beklenti?.[i];
           if (b !== null && b !== undefined)
             satir += `<br/>beklenti (P50): ${sayiTr(b, ondalik)} ${birim}`;
           return tam(i) ? satir
-            : `${satir}<br/><span style="opacity:.75">kapsam %${sayiTr(kapsamPct![i], 1)} — eksik veri</span>`;
+            : `${satir}<br/><span style="opacity:.75">kapsam %${sayiTr(kapsamPct![i], 1)} (eksik veri)</span>`;
         } },
       xAxis: { type: "category", data: etiketler, axisTick: { show: false },
         axisLine: { lineStyle: { color: kenar } },

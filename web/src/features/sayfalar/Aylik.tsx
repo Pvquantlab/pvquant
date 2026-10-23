@@ -21,7 +21,7 @@ export function Aylik({ plantId }: { plantId: string }) {
   // v2.278: bankable yıllık beklenti — saklı sonuç; "yenile" 1–2 dk sürer (19 yıl × fizik koşusu)
   const [bk, setBk] = useState<Bankable | null | undefined>(undefined);
   const [bkMesaj, setBkMesaj] = useState<string | null>(null);
-  const bkYenile = () => { setBkMesaj("Hesaplanıyor — 19 yıllık fiziksel model hesabı, 1–2 dakika…"); api.bankableHesapla(plantId).then((r) => { setBk(r); setBkMesaj(null); }).catch((e) => setBkMesaj(String((e as Error).message ?? e))); };
+  const bkYenile = () => { setBkMesaj("Hesaplanıyor: 19 yıllık fiziksel model hesabı, 1–2 dakika…"); api.bankableHesapla(plantId).then((r) => { setBk(r); setBkMesaj(null); }).catch((e) => setBkMesaj(String((e as Error).message ?? e))); };
   const { n, oku } = useTema();
 
   // v2.327: TEK KAPI (Portföy kalıbı) — üç kaynak paralel, sayfa bütün belirir.

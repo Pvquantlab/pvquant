@@ -213,6 +213,20 @@ h2 { font-size: var(--t-bolum); line-height: 1.2; }
 /* v2.310: ayirici orta nokta — parcalar.tsx serhi bu dili "2 · BUGUN…" diye
    tanimliyor ama nokta hic basilmiyordu. Rakamla baslayan tek baslik (6 "7 gunluk
    gorunum") ekranda "6 7" olarak okunuyordu; bolum metni degistirilmeden ayrilir. */
+/* 23.10 sekizinci tur — başlık sistemi: sayfa h1 (28/600) + sayfa alt metni 15 px ikincil (Sayfa);
+   bölüm eyebrow .ozet-bas / .etiket-ust (12,5/500 büyük harf, soluk); kart h3 (16/600) + alt başlık p.kart-alt
+   (13,5/400, --ikincil, ayrı satır); grafik/tablo grup başlığı .etiket-ust. Numara .kart-no yalnız gerçek sırada,
+   ayraç CSS. Kart başlığı sağ slot (.kart-bas > *:last-child) ilk satırın taban çizgisine hizalı kalır. */
+.kart-baslik { min-width: 0; flex: 1 1 auto; }
+.kart-alt { margin: 3px 0 0; font-family: var(--font); font-size: var(--t-ikincil); font-weight: 400;
+            color: var(--ikincil); letter-spacing: 0; line-height: 1.45; max-width: 80ch; overflow-wrap: anywhere; }
+/* işlem listesi: ad solda, işlem düğmesi sağda (santral arşivi) — ad ile işlem noktalamayla değil hizalamayla ayrılır */
+.islem-listesi { list-style: none; margin: 0; padding: 0; max-width: 720px; }
+.islem-listesi li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0;
+                    border-bottom: 1px solid var(--izgara); }
+.islem-listesi li:last-child { border-bottom: 0; }
+.islem-ad { font-size: var(--t-govde); font-weight: 500; color: var(--metin); min-width: 0; overflow-wrap: anywhere; }
+.islem-onay { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .kart-no { color: var(--marka-koyu); margin-right: 8px; font-variant-numeric: tabular-nums; }
 .kart-no::after { content: ""; display: inline-block; width: 1px; height: 12px; margin-left: 10px; vertical-align: -1px;
                   background: var(--kenar); }   /* 23.10 yedinci tur: orta nokta yerine ince ayraç */
@@ -331,6 +345,15 @@ table.veri tbody tr:hover td { background: var(--yuzey); }
 /* alt bölüm: tek kart içindeki ayrı işlevler (parola · iki adım · ekip) — ince ayraç + eyebrow */
 .alt-bolum { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--izgara); }
 /* satır içi kod (API yolu, başlık adı): mono, hafif zemin, taşmadan kırılır */
+/* 23.10 sekizinci tur: uç yolu çipi — .cip hapının mono içerikli türevi (santral arşivi .dugme.kucuk ile aynı aile:
+   --kenar çerçeve, 999 köşe, 28 px); uzun yol dar ekranda çip içinde kırılabilir */
+.cip-kod { font-family: var(--mono); font-size: 13px; font-weight: 400; letter-spacing: 0; color: var(--metin);
+           display: inline-flex; align-items: center; min-height: 28px; padding: 4px 12px; overflow-wrap: anywhere;
+           white-space: normal; }
+.uc-listesi { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--izgara); }
+.uc-sira { display: flex; flex-wrap: wrap; gap: 8px; }
+.uc-not { margin: 10px 0 0; font-size: 13.5px; color: var(--soluk); line-height: 1.6; }
+.uc-not .kod { font-size: 12.5px; }
 .kod { font-family: var(--mono); font-size: 13px; background: var(--yuzey); padding: 1px 6px; border-radius: 6px;
        overflow-wrap: anywhere; color: var(--metin); }
 /* tehlikeli işlem (pasifleştir): sıradan düğmeden ayrışır, bağırmaz */
@@ -392,7 +415,8 @@ table.veri.dar th + th, table.veri.dar td + td { padding-left: 28px; }
 /* Ayraç her dilimin SOLUNDA mutlak konumlu; kap 19 px negatif kenarla başlayıp clip-path ile kırpıldığından satır
    başındaki dilimin ayracı (ilk dilim ve sarınca yeni satıra düşen dilim) görünmez — sarma hangi genişlikte olursa
    olsun çizgi yalnız iki dilimin ARASINDA kalır. overflow:hidden değil clip-path: satır içi taban çizgisi bozulmaz. */
-.meta { display: inline-flex; flex-wrap: wrap; align-items: center; min-width: 0; margin-left: -19px; clip-path: inset(0); }
+.meta { display: inline-flex; flex-wrap: wrap; align-items: center; min-width: 0; margin-left: -19px;
+        clip-path: inset(0 0 0 19px); }   /* sol 19 px şerit kırpılır: satır başındaki dilimin ayracı orada kalır */
 .meta > span { display: inline-flex; align-items: baseline; white-space: nowrap; position: relative; margin-left: 19px; }
 .meta > span::before { content: ""; position: absolute; left: -10px; top: 50%; transform: translateY(-50%);
                        width: 1px; height: 11px; background: currentColor; opacity: .35; }
@@ -401,7 +425,7 @@ table.veri.dar th + th, table.veri.dar td + td { padding-left: 28px; }
 @media (max-width: 560px) { .meta > span { white-space: normal; display: inline; } }
 .meta .meta-et { color: var(--soluk); margin-right: 5px; }
 .meta .meta-uyari { color: var(--uyari-metin); }
-.telemetri .meta { margin-left: -23px; } .telemetri .meta > span { margin-left: 23px; }
+.telemetri .meta { margin-left: -23px; clip-path: inset(0 0 0 23px); } .telemetri .meta > span { margin-left: 23px; }
 .telemetri .meta > span::before { left: -12px; }
 .ust-yol-ayrac { color: var(--soluk); margin: 0 7px; font-weight: 400; }
 .kpi-ikinci { display: flex; align-items: baseline; gap: 8px; margin-top: 8px; padding-top: 8px;

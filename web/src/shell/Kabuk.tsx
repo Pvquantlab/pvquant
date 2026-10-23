@@ -252,7 +252,7 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
             </button>
             <button className="ikon-dugme" aria-label={`Alarmlar${
                 Array.isArray(alarmlar) && alarmlar.length
-                  ? ` — son kayıt ${alarmlar.length >= 20 ? "20+" : alarmlar.length}` : ""}`}
+                  ? `, son kayıt ${alarmlar.length >= 20 ? "20+" : alarmlar.length}` : ""}`}
               aria-expanded={zilAcik}
               onClick={() => setZilAcik((a) => !a)}>
               <svg width="16" height="16" viewBox="0 0 20 20" fill="none"
@@ -282,7 +282,7 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
                 <div className="zil-govde">
                 {alarmlar === undefined || alarmlar === null ? (
                   <p className="zil-bos">{alarmlar === null
-                    ? "Alarm listesi alınamadı — bağlantıyı kontrol edin."
+                    ? "Alarm listesi alınamadı; bağlantıyı kontrol edin."
                     : "Yükleniyor…"}</p>
                 ) : alarmlar.length === 0 ? (
                   <p className="zil-bos">Alarm yok. Kurallar her gece tarar (veri kesintisi ve

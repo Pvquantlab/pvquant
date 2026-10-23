@@ -65,13 +65,23 @@ export function Kpi({ etiket, deger, birim, alt, ton, ikinci }:
   );
 }
 
-export function Kart({ baslik, no, sag, children, ...rest }:
-  { baslik?: string; no?: string; sag?: ReactNode; children: ReactNode } & { style?: React.CSSProperties }) {
-  // v2.196: opsiyonel "no" — D dilinin numarali bolum basligi ("2 · BUGÜN...")
+/** 23.10 sekizinci tur — tek başlık sistemi (kart seviyesi): ana başlık h3 (Inter Tight 16/600) + ayrı satırda
+ *  ikincil alt başlık p.kart-alt (13,5 px, --ikincil). `alt` açıkça verilebilir; verilmezse «Başlık — açıklama»
+ *  dizgisi tek yerden bölünür (uzun çizgi yalnız bu ayırıcı anlamında kullanılır; aralıklar kısa çizgi). Alt başlığın
+ *  ilk harfi Türkçe kurala göre büyütülür (yalnız sunum). Numara (.kart-no) gerçek sıralamayı taşıyan sayfalarda
+ *  (Santralim 1–7) kalır; ayraç CSS ile çizilir, ekran okuyucuya metin olarak gitmez. */
+const buyukHarf = (s: string) => s.length ? s[0].toLocaleUpperCase("tr-TR") + s.slice(1) : s;
+export function Kart({ baslik, alt, no, sag, children, ...rest }:
+  { baslik?: string; alt?: string; no?: string; sag?: ReactNode; children: ReactNode } & { style?: React.CSSProperties }) {
+  const [bas, ...kuyruk] = (baslik ?? "").split(" — ");
+  const altMetin = alt ?? (kuyruk.length > 0 ? buyukHarf(kuyruk.join(" — ")) : undefined);
   return (
     <section className="kart" {...rest}>
       {(baslik || sag) && <div className="kart-bas">
-        <h3>{no && <span className="kart-no">{no}</span>}{baslik}</h3>{sag}</div>}
+        <div className="kart-baslik">
+          <h3>{no && <span className="kart-no" aria-hidden="true">{no}</span>}{bas}</h3>
+          {altMetin && <p className="kart-alt">{altMetin}</p>}
+        </div>{sag}</div>}
       {children}
     </section>
   );

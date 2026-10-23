@@ -378,7 +378,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
   }, [k]);
 
   if (!hazir) return <div style={{ color: "var(--soluk)" }}>Yükleniyor…</div>;
-  if (!k) return <div style={{ color: "var(--soluk)" }}>Doğruluk verisi alınamadı — sayfayı yenileyin.</div>;
+  if (!k) return <div style={{ color: "var(--soluk)" }}>Doğruluk verisi alınamadı; sayfayı yenileyin.</div>;
 
   const OK = ({ yukari }: { yukari: boolean }) => (
     <svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true">
@@ -591,9 +591,9 @@ export function Dogruluk({ plantId }: { plantId: string }) {
               <span className="cip">{(gv.guvenilirlik?.kalibre ?? []).map((r) => `P${Math.round(r.tau * 100)} altı %${sayiTr(r.gozlenen * 100, 0)} (hedef %${Math.round(r.tau * 100)})`).join(", ")}</span>
             </div>
             <div className="ızgara satir-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))", gap: 14 }}>
-              <div><div className="etiket-ust" style={{ marginBottom: 4 }}>Güvenilirlik diyagramı — gözlenen ve hedeflenen kapsama</div>
+              <div><div className="etiket-ust" style={{ marginBottom: 2 }}>Güvenilirlik diyagramı</div><p className="kart-alt" style={{ margin: "0 0 6px" }}>Gözlenen ve hedeflenen kapsama</p>
                 <EChart option={gvOption} height={220} /></div>
-              <div><div className="etiket-ust" style={{ marginBottom: 4 }}>PIT histogramı — gerçekleşenin aralık içindeki yüzdeliği (düz = iyi ayarlı)</div>
+              <div><div className="etiket-ust" style={{ marginBottom: 2 }}>PIT histogramı</div><p className="kart-alt" style={{ margin: "0 0 6px" }}>Gerçekleşenin aralık içindeki yüzdeliği (düz = iyi ayarlı)</p>
                 <EChart option={pitOption} height={220} /></div>
             </div>
             <p className="soluk" style={{ marginTop: 8, marginBottom: 0, fontSize: 14 }}>
@@ -648,7 +648,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
               {dz.oneri && (dz.oneri.durum === "ok" && dz.oneri.kantil
                 ? <>Önerilen program seviyesi: <b>{dz.oneri.kantil.toUpperCase()}</b> (saatlerin
                     %{sayiTr((dz.oneri.acik_saat_orani ?? 0) * 100, 0)}'inde üretim beklenenin altında kaldı); eksik üretim cezası ile fazla üretim kaybının dengesidir.</>
-                : <span className="soluk">Önerilen program seviyesi: — {dz.oneri.not}</span>)}
+                : <span className="soluk">Önerilen program seviyesi: — ({dz.oneri.not})</span>)}
             </p>
             <p className="soluk" style={{ marginTop: 8, marginBottom: 0, fontSize: 14 }}>
               Ne gösterir: saatlik üretim programı ile gerçekleşen üretim arasındaki farkın, piyasa kurallarına göre (pozitif dengesizlik
