@@ -222,6 +222,9 @@ h2 { font-size: var(--t-bolum); line-height: 1.2; }
             color: var(--ikincil); letter-spacing: 0; line-height: 1.45; max-width: 80ch; overflow-wrap: anywhere; }
 /* işlem listesi: ad solda, işlem düğmesi sağda (santral arşivi) — ad ile işlem noktalamayla değil hizalamayla ayrılır */
 .islem-listesi { list-style: none; margin: 0; padding: 0; max-width: 720px; }
+/* geniş kartta iki sütun: ad + düğme çiftleri yan yana, sağda boş alan kalmaz; dar ekranda tek sütun */
+.islem-listesi.cift { max-width: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
+                      column-gap: 48px; }
 .islem-listesi li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0;
                     border-bottom: 1px solid var(--izgara); }
 .islem-listesi li:last-child { border-bottom: 0; }
@@ -351,6 +354,33 @@ table.veri tbody tr:hover td { background: var(--yuzey); }
            display: inline-flex; align-items: center; min-height: 28px; padding: 4px 12px; overflow-wrap: anywhere;
            white-space: normal; }
 .uc-listesi { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--izgara); }
+/* uç çipi düğme: kopyalanabilir; ikon soluk, hover'da belirgin; geri bildirim çipin içinde */
+.uc-kopyala { cursor: pointer; gap: 8px; transition: border-color .12s, background .12s; }
+.uc-kopyala svg { color: var(--soluk); flex-shrink: 0; }
+.uc-kopyala:hover { border-color: var(--soluk); background: var(--kart); }
+.uc-kopyala:hover svg { color: var(--metin); }
+.uc-kopyala:focus-visible { outline: 2px solid var(--marka); outline-offset: 2px; }
+.uc-kopyala .uc-geri { font-family: var(--display); font-size: 12px; color: var(--marka-koyu); }
+.uc-kopyala .uc-geri:empty { display: none; }
+.uc-kopyala.kopyalandi { border-color: var(--marka); }
+.uc-listesi .tanim-listesi { margin-top: 12px; padding-top: 0; border-top: 0; }
+/* dış erişim formları: açık şablon — etiketler aynı hizada, düğme son sütunda; dar ekranda tek sütun */
+/* iki form simetrik: 1. satır ad/adres tam genişlik, 2. satır kapsam (sol) + düğme (sağ, alt hizalı); ≤700 px tek sütun */
+.form-izgara.form-anahtar, .form-izgara.form-webhook { grid-template-columns: minmax(0, 1fr) auto; max-width: none; }
+.form-izgara.form-anahtar > .girdi-etiket:first-child, .form-izgara.form-webhook > .girdi-etiket:first-child { grid-column: 1 / -1; }
+.form-izgara.form-webhook .girdi-etiket select.girdi { max-width: 360px; }
+.form-izgara.form-anahtar .onay-grubu { flex-wrap: wrap; }
+@media (max-width: 700px) { .form-izgara.form-anahtar, .form-izgara.form-webhook { grid-template-columns: 1fr; }
+  .form-izgara.form-anahtar > .girdi-etiket:first-child, .form-izgara.form-webhook > .girdi-etiket:first-child { grid-column: auto; } }
+/* kapsam onayı: insan dili etiket + küçük kod; tıklanabilir alan ≥36 px; odak halkası kutuda */
+.onay-kapsam { display: inline-flex; align-items: center; gap: 9px; min-height: 36px; padding: 0 10px 0 0; border-radius: var(--r);
+               cursor: pointer; }
+.onay-kapsam .onay-metin { display: inline-flex; flex-direction: column; line-height: 1.2; }
+.onay-kapsam .onay-ad { font-size: 13.5px; color: var(--metin); }
+.onay-kapsam .onay-metin .kod { font-size: 11.5px; padding: 0; background: none; color: var(--soluk); }
+.onay-kapsam:hover .onay-ad { color: var(--marka-koyu); }
+.onay-kapsam:has(input:focus-visible) { box-shadow: 0 0 0 2px var(--marka); }
+.onay-kapsam:has(input:disabled) { opacity: .55; cursor: not-allowed; }
 .uc-sira { display: flex; flex-wrap: wrap; gap: 8px; }
 .uc-not { margin: 10px 0 0; font-size: 13.5px; color: var(--soluk); line-height: 1.6; }
 .uc-not .kod { font-size: 12.5px; }
@@ -401,6 +431,42 @@ table.veri tbody tr[tabindex]:focus-visible td { box-shadow: inset 0 0 0 2px var
 .dugme-sira { display: flex; flex-wrap: wrap; gap: 6px; }
 .dugme.kucuk { min-height: 32px; padding: 5px 12px; font-size: 13px; }
 /* dar sayısal tablo: içerik genişliğinde kalır (7 sütunlu verim tablosu 1840 px'e yayılmasın), oluk geniş */
+/* 23.10 sekizinci tur — kurumsal veri tablosu (santraller): veri sütunları içerik genişliğinde, ad sütunu esner */
+table.veri.santral { font-size: 14px; }
+table.veri.santral th, table.veri.santral td { width: 1%; }                 /* içerik genişliği */
+table.veri.santral th:first-child, table.veri.santral td:first-child { width: auto; }
+table.veri.santral th + th, table.veri.santral td + td { padding-left: 20px; }
+/* tarih sütunları esnek: yer varsa tek satır, dar ekranda yalnız tarih ile saat arasında kırılır (ad sütunuyla paylaşır) */
+table.veri.santral th.tarih-saat, table.veri.santral td.tarih-saat { width: auto; white-space: normal; }
+table.veri.santral td .tarih-saat { white-space: normal; }
+table.veri.santral .tarih-saat .parca { white-space: nowrap; }
+table.veri.santral td { padding: 10px 0; vertical-align: top; line-height: 1.35; }
+table.veri.santral th { padding-bottom: 10px; white-space: nowrap; }
+table.veri.santral td.ad { font-weight: 500; color: var(--metin); }
+table.veri.santral .birim { font-size: 12px; color: var(--soluk); font-weight: 400; margin-left: 3px; }
+table.veri.santral th .birim { margin-left: 4px; }
+table.veri.santral .bos { color: var(--soluk); }
+table.veri.santral .hucre-alt { margin-top: 3px; }
+.rozet-kucuk { font-size: 11.5px; padding: 2px 8px; }
+table.veri.santral .satir-ok { color: var(--soluk); opacity: 0; width: 14px; padding-left: 12px; transition: opacity .12s; }
+table.veri.santral tr:hover .satir-ok, table.veri.santral tr:focus-visible .satir-ok { opacity: 1; }
+tr.satir-tikla { cursor: pointer; }
+/* dar ekranda yatay kaydırma; ad sütunu yapışkan */
+.santral-tablo { overflow-x: auto; }
+@media (max-width: 900px) {
+  table.veri.santral th:first-child, table.veri.santral td:first-child { position: sticky; left: 0; z-index: 1;
+    background: var(--kart); padding-right: 12px; }
+  table.veri.santral tbody tr:hover td:first-child { background: var(--yuzey); }
+}
+@media (prefers-reduced-motion: reduce) { table.veri.santral .satir-ok { transition: none; } }
+/* tablo altı tanım listesi: terim + açıklama, satır satır */
+.tanim-listesi { list-style: none; margin: 14px 0 0; padding: 12px 0 0; border-top: 1px solid var(--izgara);
+                 font-size: 13px; color: var(--soluk); line-height: 1.5; max-width: 90ch; }
+.tanim-listesi li { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; }
+.tanim-listesi li + li { margin-top: 3px; }
+.tanim-listesi b { font-weight: 500; color: var(--ikincil); }
+.tanim-listesi li > .kod { justify-self: start; }
+@media (max-width: 560px) { .tanim-listesi li { grid-template-columns: 1fr; gap: 0; } }
 table.veri.dar { width: auto; min-width: 0; }
 table.veri.dar th + th, table.veri.dar td + td { padding-left: 28px; }
 .rozet-notr { background: var(--yuzey); color: var(--ikincil); border: 1px solid var(--kenar); }

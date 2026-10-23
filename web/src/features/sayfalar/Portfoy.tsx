@@ -4,6 +4,43 @@ import type { PaylasimListesi, PaylasilanVeri, TakimUyesi, Portfoy as PortfoyT, 
 import { Kart, Kpi, Sayfa, sayiTr, gucTr, enerjiTr } from "./parcalar";
 import { Meta } from "../../lib/Meta";
 
+/** 23.10 sekizinci tur — «76,3 MWh» gibi birimli dizgiyi sayı + soluk birim olarak basar; dizgi aynen (enerjiTr). */
+function DegerBirim({ metin }: { metin: string }) {
+  const i = metin.lastIndexOf(" ");
+  if (i < 0) return <>{metin}</>;
+  return <>{metin.slice(0, i)} <span className="birim">{metin.slice(i + 1)}</span></>;
+}
+/** 23.10 sekizinci tur — kapsam tanımlayıcısının kullanıcı dili (değer ve yetki anlamı aynı; bilinmeyen kapsam kodla kalır). */
+const KAPSAM_AD: Record<string, string> = { "tahmin:oku": "Tahmin okuma", "kgup:oku": "KGÜP programı okuma" };
+/** API ucu çipi — tıklanınca yolu panoya kopyalar (yalnız istemci); geri bildirim çipin içinde ve aria-live ile. */
+function UcKopyala({ yol }: { yol: string }) {
+  const [durum, setDurum] = useState<"" | "kopyalandı" | "kopyalanamadı">("");
+  const bildir = (d: "kopyalandı" | "kopyalanamadı") => { setDurum(d); setTimeout(() => setDurum(""), 1600); };
+  // pano API'si reddederse (izin/iframe) eski yol: geçici textarea + execCommand; ikisi de olmazsa dürüst geri bildirim
+  const kopyala = async () => {
+    try { await navigator.clipboard.writeText(yol); bildir("kopyalandı"); return; } catch { /* aşağıya düş */ }
+    try {
+      const ta = document.createElement("textarea"); ta.value = yol; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select(); const ok = document.execCommand("copy"); ta.remove(); bildir(ok ? "kopyalandı" : "kopyalanamadı");
+    } catch { bildir("kopyalanamadı"); }
+  };
+  return (
+    <button type="button" className={`cip cip-kod uc-kopyala${durum === "kopyalandı" ? " kopyalandi" : ""}`} title="Yolu kopyala" onClick={kopyala}>
+      <span>{yol}</span>
+      <svg aria-hidden="true" width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="4.5" y="4.5" width="7.5" height="7.5" rx="1.5" /><path d="M9.5 4.5V3a1.5 1.5 0 0 0-1.5-1.5H3A1.5 1.5 0 0 0 1.5 3v5A1.5 1.5 0 0 0 3 9.5h1.5" />
+      </svg>
+      <span className="uc-geri" aria-live="polite">{durum}</span>
+    </button>
+  );
+}
+/** «22.10.2026 23:00» → tarih ve saat ayrı parçalar; dar sütunda yalnız ikisinin arasında kırılır. */
+function TarihSaat({ metin }: { metin: string }) {
+  const i = metin.lastIndexOf(" ");
+  if (i < 0) return <>{metin}</>;
+  return <><span className="parca">{metin.slice(0, i)}</span> <span className="parca">{metin.slice(i + 1)}</span></>;
+}
+
 /** v2.263 (Dalga 5.15) — Portföy: kiracının tüm santralleri tek tabloda; toplamlar dürüst
  *  (bir santralin beklentisi yoksa toplam da yok). Satıra tıklayınca o santrala geçilir. */
 export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
@@ -69,37 +106,55 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
              ikinci={t ? { etiket: "Veri gecikmiş", deger: sayiTr(t.veri_gecikmis), birim: "santral" } : undefined}
              alt={t && t.santral > 0 ? "alarm: son 7 günde okunmamış kayıt; gecikme: son ölçüm 2 günden eski" : ""} ton={t && (t.acik_alarm > 0 || t.veri_gecikmis > 0) ? "uyari" : undefined} />
       </div>
-      <Kart baslik="Santraller" sag={<span className="cip">satıra tıkla → santral</span>}>
+      {/* 23.10 sekizinci tur — kurumsal veri tablosu: veri sütunları içerik genişliğinde (width:1%) ve 28 px oluklu, ad
+          sütunu kalan alanı alır; birimler soluk küçük (.birim); ölçüm tarihi üstte, «N gün eski» rozeti altta (eşik aynı:
+          kesinti_gun > 2); alarm sayısı >0 rozet; «satıra tıkla» çipi kalktı — tıklanabilirlik hover/odak zemini,
+          imleç ve satır sonundaki ok ile; ilk sütun dar ekranda yapışkan; dipnot üç tanım satırı. onClick/onKeyDown ve
+          onSec aynen; veri/eşik/biçim değişmedi. */}
+      <Kart baslik="Santraller" alt={p && p.santraller.length > 0 ? `${sayiTr(p.santraller.length)} santral, satır santral sayfasını açar` : undefined}>
         {!p || p.santraller.length === 0 ? <p className="soluk" style={{ margin: 0 }}>Bu hesapta santral yok.</p>
          : (
-          <div className="grafik-kaydir">
-            {/* 23.10 beşinci tur: gövde ailesi + tabular (tarih/saat mono gerekmez); eski ölçüm renk + rozet metniyle
-                («N gün eski») — renk dışı gösterge; satır klavyeyle odaklanır ve Enter'la açılır (davranış aynı) */}
-            <table className="veri sayisal" style={{ fontSize: 14 }}>
-              <thead><tr><th>Santral</th><th>kWp</th><th>Segment</th><th>Son ölçüm</th><th>Hata 30g (WMAPE)</th><th>Bugün</th><th>Yarın</th><th>Alarm</th><th>Son tahmin</th></tr></thead>
+          <div className="grafik-kaydir santral-tablo">
+            <table className="veri sayisal santral">
+              <thead><tr>
+                <th>Santral</th><th>Kurulu güç <span className="birim">kWp</span></th><th>Segment</th><th className="tarih-saat">Son ölçüm</th>
+                <th>Hata 30 g <span className="birim">WMAPE</span></th><th>Bugün</th><th>Yarın</th><th>Alarm</th><th className="tarih-saat">Son tahmin</th><th aria-hidden="true" />
+              </tr></thead>
               <tbody>
                 {p.santraller.map((r) => {
                   const eski = r.kesinti_gun != null && r.kesinti_gun > 2;
                   return (
-                  <tr key={r.id} style={{ cursor: "pointer" }} onClick={() => onSec(r.id)} tabIndex={0}
+                  <tr key={r.id} className="satir-tikla" onClick={() => onSec(r.id)} tabIndex={0}
                       aria-label={`${r.ad}, santral sayfasını aç`}
                       onKeyDown={(e) => { if (e.key === "Enter") onSec(r.id); }}>
-                    <td style={{ fontWeight: 600 }}>{r.ad}</td><td>{sayiTr(r.kapasite_kwp)}</td><td>{r.segment ?? "—"}</td>
-                    <td style={{ color: eski ? "var(--uyari-metin)" : undefined }}>{tarih(r.son_olcum)}{eski && (
-                      <span className="rozet rozet-uyari" style={{ marginLeft: 8, fontSize: 12 }} title="Son ölçüm 2 günden eski">{sayiTr(r.kesinti_gun!)} gün eski</span>)}</td>
-                    <td>{r.wmape_30g != null ? `%${sayiTr(r.wmape_30g, 1)}` : "—"}</td><td>{kwhYaz(r.bugun_kwh)}</td><td>{kwhYaz(r.yarin_kwh)}</td>
-                    <td style={{ color: r.acik_alarm > 0 ? "var(--uyari-metin)" : undefined, fontWeight: r.acik_alarm > 0 ? 600 : undefined }}>{sayiTr(r.acik_alarm)}</td><td>{tarih(r.son_kosu)}</td>
+                    <td className="ad">{r.ad}</td>
+                    <td>{sayiTr(r.kapasite_kwp)}</td>
+                    <td>{r.segment ?? <span className="bos" title="Piyasa segmenti seçilmedi">—</span>}</td>
+                    <td>
+                      <div className="tarih-saat"><TarihSaat metin={tarih(r.son_olcum)} /></div>
+                      {eski && <div className="hucre-alt"><span className="rozet rozet-uyari rozet-kucuk" title="Son ölçüm 2 günden eski">{sayiTr(r.kesinti_gun!)} gün eski</span></div>}
+                    </td>
+                    <td>{r.wmape_30g != null ? `%${sayiTr(r.wmape_30g, 1)}` : <span className="bos" title="Son 30 günde karşılaştırılmış gün yok">—</span>}</td>
+                    <td><DegerBirim metin={kwhYaz(r.bugun_kwh)} /></td>
+                    <td><DegerBirim metin={kwhYaz(r.yarin_kwh)} /></td>
+                    <td>{r.acik_alarm > 0
+                      ? <span className="rozet rozet-uyari rozet-kucuk" title="Son 7 günde okunmamış kayıt">{sayiTr(r.acik_alarm)}</span>
+                      : <span className="bos">0</span>}</td>
+                    <td className="tarih-saat"><TarihSaat metin={tarih(r.son_kosu)} /></td>
+                    <td className="satir-ok" aria-hidden="true">
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="m5 3 4 4-4 4" /></svg>
+                    </td>
                   </tr>);
                 })}
               </tbody>
             </table>
           </div>
         )}
-        <p className="soluk" style={{ fontSize: 13.5, margin: "12px 0 0", maxWidth: "90ch", lineHeight: 1.55 }}>
-          <b style={{ color: "var(--ikincil)", fontWeight: 500 }}>Bugün/yarın:</b> son tahminin yerel gün toplamı (beklenen, P50); 20 saatten az kapsanan gün gösterilmez.{" "}
-          <b style={{ color: "var(--ikincil)", fontWeight: 500 }}>WMAPE:</b> son 30 günün 0–24 saat tahmin hatası.{" "}
-          <b style={{ color: "var(--ikincil)", fontWeight: 500 }}>Alarm:</b> son 7 günde okunmamış kayıt.
-        </p>
+        <ul className="tanim-listesi">
+          <li><b>Bugün, yarın</b>son tahminin yerel gün toplamı (beklenen, P50); 20 saatten az kapsanan gün gösterilmez.</li>
+          <li><b>Hata 30 g</b>son 30 günün 0–24 saat tahmin hatası (WMAPE).</li>
+          <li><b>Alarm</b>son 7 günde okunmamış kayıt.</li>
+        </ul>
       </Kart>
       {/* v2.280 (Tablo 3.2 satır 11): hiyerarşik uzlaştırılmış portföy tahmini — toplam santral tahminleriyle tutarlı */}
       <Kart baslik="Portföyün günlük üretim tahmini" sag={<span className="cip">{pt?.durum === "ok" ? <Meta items={[pt.yontem, pt.tutarli === false && "tutarsız"]} /> : "—"}</span>}>
@@ -221,7 +276,9 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
       </p>
       {hata && <p className="ayar-durum hata" style={{ margin: "0 0 8px" }}>{hata}</p>}
       {mesaj && <p className="ayar-durum ok" style={{ margin: "0 0 8px" }}>{mesaj}</p>}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(340px, 100%), 1fr))", gap: 16 }}>
+      {/* 23.10 sekizinci tur: iki sütun 28 px oluk; formlar açık ızgara şablonlu (.form-anahtar / .form-webhook): etiketler
+          aynı hizada, düğme son sütunda; ≤700 px tek sütun. Kapsam onayları insan diliyle etiket + küçük kod (değer aynı). */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(340px, 100%), 1fr))", gap: "20px 28px" }}>
         <div>
           <div className="etiket-ust">API anahtarları</div>
           {anahtarlar.length === 0 ? <p className="soluk" style={{ fontSize: 14, margin: 0 }}>Henüz anahtar yok.</p> : (
@@ -236,16 +293,16 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
             </table></div>
           )}
           {/* 23.10 beşinci tur: form ızgarası — etiket üstte, onay grubu ve düğme kontrol satırıyla hizalı */}
-          <form className="form-izgara"
+          <form className="form-izgara form-anahtar"
                 onSubmit={(e) => { e.preventDefault(); dene(async () => { const r = await api.apiAnahtarUret(ad, secili, null); setYeniAnahtar(r.anahtar); setAd(""); }); }}>
             <label className="girdi-etiket">Anahtar adı
               <input className="girdi" value={ad} onChange={(e) => setAd(e.target.value)} placeholder="ör. ticaret masası" /></label>
             <div className="girdi-etiket">Kapsam
               <div className="onay-grubu">
                 {kapsamlar.map((k) => (
-                  <label key={k} className="ayar-onay">
+                  <label key={k} className="ayar-onay onay-kapsam">
                     <input type="checkbox" checked={secili.includes(k)} onChange={(e) => setSecili(e.target.checked ? [...secili, k] : secili.filter((x) => x !== k))} />
-                    <span className="kod">{k}</span>
+                    <span className="onay-metin"><span className="onay-ad">{KAPSAM_AD[k] ?? k}</span><span className="kod">{k}</span></span>
                   </label>))}
               </div>
             </div>
@@ -277,9 +334,9 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
                 </tr>))}</tbody>
             </table></div>
           )}
-          <form className="form-izgara"
+          <form className="form-izgara form-webhook"
                 onSubmit={(e) => { e.preventDefault(); dene(async () => { const r = await api.webhookEkle(url, whSantral || null); setYeniSir(r.secret); setUrl(""); }); }}>
-            <label className="girdi-etiket" style={{ gridColumn: "span 2" }}>Alıcı adresi
+            <label className="girdi-etiket">Alıcı adresi
               <input className="girdi mono" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…/pvquant-webhook" required /></label>
             <label className="girdi-etiket">Kapsam
               <select className="girdi" value={whSantral} onChange={(e) => setWhSantral(e.target.value)}>
@@ -301,13 +358,16 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
           Yollar, sınır ve belge yolu aynen; tıklanabilir bağlantı yoktu, eklenmedi. */}
       <div className="uc-listesi">
         <div className="etiket-ust">API uçları</div>
-        <div className="uc-sira" role="list" aria-label="API uçları">
-          <span className="cip cip-kod" role="listitem">/v1/dis/santraller</span>
-          <span className="cip cip-kod" role="listitem">/v1/dis/santral/{"{id}"}/tahmin</span>
-          <span className="cip cip-kod" role="listitem">/v1/dis/santral/{"{id}"}/kgup</span>
+        <div className="uc-sira">
+          <UcKopyala yol="/v1/dis/santraller" />
+          <UcKopyala yol="/v1/dis/santral/{id}/tahmin" />
+          <UcKopyala yol="/v1/dis/santral/{id}/kgup" />
         </div>
-        <p className="uc-not"><Meta className="uzun" items={["tahmin ucu ETag ile 304 döner", "oran sınırı dakikada 120 istek",
-          <span key="belge">ayrıntı <span className="kod">docs/api/dis-api.md</span></span>]} /></p>
+        <ul className="tanim-listesi">
+          <li><b>Önbellek</b>tahmin ucu ETag ile 304 döner.</li>
+          <li><b>Oran sınırı</b>dakikada 120 istek.</li>
+          <li><b>Belge</b><span className="kod">docs/api/dis-api.md</span></li>
+        </ul>
       </div>
     </Kart>
   );
@@ -655,19 +715,22 @@ function SantralArsivi({ santralYenile }: { santralYenile?: () => void }) {
       {mesaj && <p className="ayar-durum ok" style={{ margin: "0 0 8px" }}>{mesaj}</p>}
       {/* 23.10 sekizinci tur: «Edikli GES — arşivle…» hap düğmeleri → satır listesi: santral adı solda, işlem düğmesi
           sağda; onay aynı satırda tehlikeli işlem dilinde. onClick/api çağrıları aynen. */}
+      {/* «Arşivle…» üç noktası kırpma değil onay adımı imasıydı; düğme «Arşivle», onay satır içinde (mekanizma aynı) +
+          «Vazgeç» yalnız yerel onay durumunu kapatır. Liste geniş kartta iki sütun (.islem-listesi.cift). */}
       {etkin.length > 1 && (
-        <ul className="islem-listesi">
+        <ul className="islem-listesi cift">
           {etkin.map((x) => (
             <li key={x.id}>
               <span className="islem-ad">{x.name}</span>
               {onayId === x.id ? (
                 <span className="islem-onay">
-                  <button className="dugme dugme-tehlike" style={{ fontWeight: 600 }}
+                  <button className="dugme kucuk dugme-tehlike" style={{ fontWeight: 600 }}
                           onClick={() => dene(async () => { await api.santralArsivle(x.id); setOnayId(null); setMesaj(`${x.name} arşive alındı.`); })}>
                     Eminim, arşive al</button>
+                  <button className="dugme kucuk" onClick={() => setOnayId(null)}>Vazgeç</button>
                 </span>
               ) : (
-                <button className="dugme kucuk" onClick={() => setOnayId(x.id)}>Arşivle…</button>
+                <button className="dugme kucuk" onClick={() => setOnayId(x.id)}>Arşivle</button>
               )}
             </li>
           ))}

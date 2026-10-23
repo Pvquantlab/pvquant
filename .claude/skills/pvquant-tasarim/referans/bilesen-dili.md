@@ -32,6 +32,11 @@ etiket solda sabit kolon, değer kendi kolonunda sola hizalı (vitrin `.vt-tanim
 uyarı `.kunye-uyari`. Sağa dayalı uzun cümle ve mono düz yazı yasak — «terminal» imzası.
 
 ## Tablo
+Kurumsal veri tablosu (23.10, santraller `table.veri.sayisal.santral`): veri sütunları içerik genişliğinde (`width:1%`
++ nowrap), ad sütunu esner, oluk 20 px; tarih sütunları esnek ve yalnız tarih/saat arasında kırılır (`TarihSaat`
+parçaları); birim `.birim` soluk 12 px (`DegerBirim`); durum rozeti hücrede ikinci satır (`.hucre-alt`), alarm sayısı
+`rozet-uyari`; boş değer soluk «—» + `title`; tıklanabilir satır `tr.satir-tikla` (imleç, hover/odak zemini, satır sonu
+ok) — «satıra tıkla» çipi YOK; ≤900 px ad sütunu yapışkan; dipnot `ul.tanim-listesi`. Eşit yayılan 9 sütun yasak.
 
 `table.veri` dili: mono sayı sütunları sağa, `th+th/td+td { padding-left }` oluk kuralı
 (v2.309 dersi — oluk ilk sütun dolgusuyla sağlanmaz); başlık uppercase ise birim taşımaz.
@@ -51,6 +56,13 @@ hücreler, onay kutuları `.onay-grubu` içinde ve düğme kontrol satırıyla a
 Satır içi `width/minWidth` YASAK — hücre genişliği ızgaradan. Uzun form yarım sütuna sıkışacaksa kartın altında tam
 satır (`.alt-bolum` + eyebrow «Yeni …»). Tehlikeli işlem `.dugme-tehlike` (uyarı rengi, dolgu yok). Satır içi kod
 `.kod`. Sayısal tablo `table.veri.sayisal` (gövde ailesi + tabular; mono yalnız kod/kimlik).
+
+## Onay kutusu etiketi ve kopyalanabilir kod çipi (23.10)
+
+Teknik tanımlayıcılı seçenek (`tahmin:oku`) → `.onay-kapsam`: insan dili etiket + altında küçük kod; değer aynı.
+Kopyalanabilir yol/kod → `UcKopyala` (`.cip-kod.uc-kopyala`): pano + `execCommand` yedeği + dürüst «kopyalanamadı»,
+geri bildirim çipin içinde `aria-live`. Formda düğme alt satıra düşüyorsa auto-fit değil AÇIK şablon: 1. satır uzun
+alan tam genişlik, 2. satır kısa alan + düğme.
 
 ## Form ve ayar dili
 
