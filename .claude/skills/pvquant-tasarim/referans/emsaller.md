@@ -50,6 +50,11 @@ Her satır: kalıp → dosya → kritik kural. Yeni mühürde yeni kalıp çıka
   `Dockerfile.web` 2.11.7'ye sabit. Güncelleme = changelog + replika sınaması, bilinçli tek satır.
 - **Yavaş hat kararı günlük tazelenir (21.10.2026, #11):** `heroHazir.ts` kayıttaki 7 günlük «yavaş hat» kararı günde bir
   yeniden ölçülür — tek yanlış ölçüm videoyu 7 gün kapatmasın.
+- **Beşinci tur — Portföy yönetim formları (23.10.2026):** `docs/PANEL-TUR5-2026-10-23.md`. `.form-izgara` kalıbı
+  (etiket üstte, 36 px kontrol, onay grubu/düğme hizalı), paylaşım formu yarım sütundan kartın altına tam satıra,
+  Hesap/ekip `.alt-bolum` ayraçları, «Pasifleştir» `.dugme-tehlike`, santral tablosu sans tabular + «N gün eski»
+  rozeti + klavye odağı. Ders: örnek kipte boş listeler (santral tablosu, ekip) yerelde görülemez — kaynak + canlı
+  teyit; JSX yorumu `{cond && ( ... )}` parantezinin içine değil üstüne.
 - **Dördüncü tur — künye kartı ve mono disiplini (23.10.2026):** `docs/PANEL-TUR4-2026-10-23.md`. Santral bilgileri
   tablosu → `dl.kunye` (etiket/değer kolonları, değer sola; mono yalnız sayı/tarih/kimlik; durum cümleleri gövde
   ailesi). Veri yükleme: karar/form kartları 1240 px, veri tabloları tam genişlik — tek kural. Üst çubuk + telemetri

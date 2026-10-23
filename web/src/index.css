@@ -315,6 +315,32 @@ table.veri tbody.mono td:first-child { font-family: var(--font); font-variant-nu
 @media (max-width: 560px) { table.veri td:first-child { white-space: normal; } }
 table.veri tbody tr:hover td { background: var(--yuzey); }
 
+/* ---------- form ızgarası (23.10 beşinci tur): etiket üstte, kontrol 36 px, hücreler eşit; onay grubu ve düğme
+   kontrol satırıyla aynı taban çizgisinde. Karar/form satırları 1100 px'i aşmaz (okunur akış soldan sağa). ---------- */
+.form-izgara { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+               gap: 12px 16px; align-items: end; max-width: 1100px; margin-top: 12px; }
+.form-izgara .girdi-etiket { min-width: 0; }
+.form-izgara .girdi { width: 100%; }
+.form-izgara .dugme { min-height: 36px; justify-self: start; }
+.onay-grubu { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; min-height: 36px; }
+.onay-grubu .ayar-onay { padding: 0; }
+.ayar-onay input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var(--marka); }
+/* alt bölüm: tek kart içindeki ayrı işlevler (parola · iki adım · ekip) — ince ayraç + eyebrow */
+.alt-bolum { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--izgara); }
+/* satır içi kod (API yolu, başlık adı): mono, hafif zemin, taşmadan kırılır */
+.kod { font-family: var(--mono); font-size: 13px; background: var(--yuzey); padding: 1px 6px; border-radius: 6px;
+       overflow-wrap: anywhere; color: var(--metin); }
+/* tehlikeli işlem (pasifleştir): sıradan düğmeden ayrışır, bağırmaz */
+.dugme-tehlike { color: var(--uyari-metin); border-color: var(--kenar); }
+.dugme-tehlike:hover { background: var(--uyari-zemin); border-color: var(--uyari-metin); }
+/* sayısal tablo: gövde ailesi + tabular — tarih/saat için mono gerekmez; sayı sütunları yine sağa dayalı */
+table.veri.sayisal tbody { font-variant-numeric: tabular-nums; }
+table.veri.sayisal td { white-space: nowrap; }
+/* tıklanabilir satır: klavye odağı görünür (outline tr'de çizilmez → hücrelere iç gölge) */
+table.veri tbody tr[tabindex]:focus-visible { outline: none; }
+table.veri tbody tr[tabindex]:focus-visible td { box-shadow: inset 0 0 0 2px var(--marka); background: var(--yuzey); }
+.girdi.kucuk { min-height: 32px; padding: 4px 8px; font-size: 13.5px; width: auto; }
+
 /* ---------- künye / tanım listesi (23.10 dördüncü tur; vitrin .vt-tanim kalıbı) ----------
    Etiket solda sabit kolon, değer kendi kolonunda SOLA hizalı (sağa dayalı uzun cümleler düzensiz bölünüyordu);
    sayı/tarih/kimlik mono tabular, durum cümleleri gövde ailesi soluk, uyarı ayrı renk. */
@@ -596,7 +622,7 @@ body { background: var(--zemin); }
 /* 22.10 web-design-guidelines denetimi: mobilde girdi yazısı ≥16 px (iOS odakta yakınlaştırmasın — giriş ekranı
    kuralı panele de); dokunma hedeflerinde çift dokunma yakınlaştırması kapalı */
 @media (max-width: 900px) {
-  .girdi, .yan-secim, .palet-girdi, .ayar-kontrol input, .ayar-kontrol select, .zil-eylem select { font-size: 16px; }
+  .girdi, .yan-secim, .palet-girdi, .ayar-kontrol input, .ayar-kontrol select, .form-izgara input, .form-izgara select, .zil-eylem select { font-size: 16px; }
 }
 .dugme, .nav-btn, .sekme button, .seg button, .ikon-dugme, .menu-dugme, .arama, .palet-satir, .yan-yeni { touch-action: manipulation; }
 @media (prefers-reduced-motion: reduce) {

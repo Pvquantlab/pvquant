@@ -33,6 +33,14 @@ Ayna/karşılaştırma tablosu: role=table + ✓ hücrelerinde alt-metin kuralı
 - Durum çipi: nokta + mono etiket; yanıp sönme yasak; alarm rozeti yalnız okunmamış sayısı.
 - Dolu/primary düğme sayfada EN FAZLA bir; gerisi outline/ghost.
 
+## Form ızgarası (23.10.2026, v2.468)
+
+Satır içi formlar `.form-izgara`: etiket üstte (`.girdi-etiket`), kontroller 36 px, `auto-fit minmax(200px,1fr)`
+hücreler, onay kutuları `.onay-grubu` içinde ve düğme kontrol satırıyla aynı taban çizgisinde; en çok 1100 px.
+Satır içi `width/minWidth` YASAK — hücre genişliği ızgaradan. Uzun form yarım sütuna sıkışacaksa kartın altında tam
+satır (`.alt-bolum` + eyebrow «Yeni …»). Tehlikeli işlem `.dugme-tehlike` (uyarı rengi, dolgu yok). Satır içi kod
+`.kod`. Sayısal tablo `table.veri.sayisal` (gövde ailesi + tabular; mono yalnız kod/kimlik).
+
 ## Form ve ayar dili
 
 Panel `.ayar/.girdi/.girdi-etiket/.ayar-durum/.ayar-onay` kalıbı (v2.285-286);

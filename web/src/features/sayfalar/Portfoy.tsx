@@ -67,25 +67,32 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
         {!p || p.santraller.length === 0 ? <p className="soluk" style={{ margin: 0 }}>Bu hesapta santral yok.</p>
          : (
           <div className="grafik-kaydir">
-            <table className="veri" style={{ fontSize: 13.5 }}>
+            {/* 23.10 beşinci tur: gövde ailesi + tabular (tarih/saat mono gerekmez); eski ölçüm renk + rozet metniyle
+                («N gün eski») — renk dışı gösterge; satır klavyeyle odaklanır ve Enter'la açılır (davranış aynı) */}
+            <table className="veri sayisal" style={{ fontSize: 14 }}>
               <thead><tr><th>Santral</th><th>kWp</th><th>Segment</th><th>Son ölçüm</th><th>Hata 30g (WMAPE)</th><th>Bugün</th><th>Yarın</th><th>Alarm</th><th>Son tahmin</th></tr></thead>
-              <tbody className="mono">
-                {p.santraller.map((r) => (
+              <tbody>
+                {p.santraller.map((r) => {
+                  const eski = r.kesinti_gun != null && r.kesinti_gun > 2;
+                  return (
                   <tr key={r.id} style={{ cursor: "pointer" }} onClick={() => onSec(r.id)} tabIndex={0}
+                      aria-label={`${r.ad} — santral sayfasını aç`}
                       onKeyDown={(e) => { if (e.key === "Enter") onSec(r.id); }}>
                     <td style={{ fontWeight: 600 }}>{r.ad}</td><td>{sayiTr(r.kapasite_kwp)}</td><td>{r.segment ?? "—"}</td>
-                    <td style={{ color: r.kesinti_gun != null && r.kesinti_gun > 2 ? "var(--uyari-metin)" : undefined }}>{tarih(r.son_olcum)}{r.kesinti_gun != null && r.kesinti_gun > 2 ? ` (${sayiTr(r.kesinti_gun)} g)` : ""}</td>
+                    <td style={{ color: eski ? "var(--uyari-metin)" : undefined }}>{tarih(r.son_olcum)}{eski && (
+                      <span className="rozet rozet-uyari" style={{ marginLeft: 8, fontSize: 12 }} title="Son ölçüm 2 günden eski">{sayiTr(r.kesinti_gun!)} gün eski</span>)}</td>
                     <td>{r.wmape_30g != null ? `%${sayiTr(r.wmape_30g, 1)}` : "—"}</td><td>{kwhYaz(r.bugun_kwh)}</td><td>{kwhYaz(r.yarin_kwh)}</td>
-                    <td style={{ color: r.acik_alarm > 0 ? "var(--uyari-metin)" : undefined }}>{sayiTr(r.acik_alarm)}</td><td>{tarih(r.son_kosu)}</td>
-                  </tr>
-                ))}
+                    <td style={{ color: r.acik_alarm > 0 ? "var(--uyari-metin)" : undefined, fontWeight: r.acik_alarm > 0 ? 600 : undefined }}>{sayiTr(r.acik_alarm)}</td><td>{tarih(r.son_kosu)}</td>
+                  </tr>);
+                })}
               </tbody>
             </table>
           </div>
         )}
-        <p className="soluk" style={{ fontSize: 14, margin: "10px 0 0" }}>
-          Bugün/yarın: son tahminin yerel gün toplamı (beklenen, P50); 20 saatten az kapsanan gün gösterilmez.
-          WMAPE: son 30 günün 0–24 saat tahmin hatası. Alarm: son 7 günde okunmamış kayıt.
+        <p className="soluk" style={{ fontSize: 13.5, margin: "12px 0 0", maxWidth: "90ch", lineHeight: 1.55 }}>
+          <b style={{ color: "var(--ikincil)", fontWeight: 500 }}>Bugün/yarın:</b> son tahminin yerel gün toplamı (beklenen, P50); 20 saatten az kapsanan gün gösterilmez.{" "}
+          <b style={{ color: "var(--ikincil)", fontWeight: 500 }}>WMAPE:</b> son 30 günün 0–24 saat tahmin hatası.{" "}
+          <b style={{ color: "var(--ikincil)", fontWeight: 500 }}>Alarm:</b> son 7 günde okunmamış kayıt.
         </p>
       </Kart>
       {/* v2.280 (Tablo 3.2 satır 11): hiyerarşik uzlaştırılmış portföy tahmini — toplam santral tahminleriyle tutarlı */}
@@ -201,8 +208,8 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
     <Kart baslik="Dış erişim"
           sag={<span style={{ display: "flex", gap: 6 }}><span className="cip">yalnız yönetici</span>
                 {docs ? <a className="cip" href={docs} target="_blank" rel="noreferrer">OpenAPI şeması ↗</a> : <span className="cip">örnek kip</span>}</span>}>
-      <p className="soluk" style={{ margin: "0 0 10px", fontSize: 14 }}>
-        Müşteri sistemleri tahmini <span className="mono">X-API-Key</span> başlığıyla çeker; sabah tahmini üretildikten sonra webhook alıcılarına imzalı bildirim gider.
+      <p className="soluk" style={{ margin: "0 0 14px", fontSize: 14, maxWidth: "100ch" }}>
+        Müşteri sistemleri tahmini <span className="kod">X-API-Key</span> başlığıyla çeker; sabah tahmini üretildikten sonra webhook alıcılarına imzalı bildirim gider.
         Anahtar ve sır yalnız üretildiği anda görünür — sunucu yalnız özetini saklar.
       </p>
       {hata && <p className="ayar-durum hata" style={{ margin: "0 0 8px" }}>{hata}</p>}
@@ -221,15 +228,20 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
                 </tr>))}</tbody>
             </table></div>
           )}
-          <form className="ayar-kontrol" style={{ marginTop: 10 }}
+          {/* 23.10 beşinci tur: form ızgarası — etiket üstte, onay grubu ve düğme kontrol satırıyla hizalı */}
+          <form className="form-izgara"
                 onSubmit={(e) => { e.preventDefault(); dene(async () => { const r = await api.apiAnahtarUret(ad, secili, null); setYeniAnahtar(r.anahtar); setAd(""); }); }}>
             <label className="girdi-etiket">Anahtar adı
-              <input className="girdi" style={{ width: 170 }} value={ad} onChange={(e) => setAd(e.target.value)} placeholder="ör. ticaret masası" /></label>
-            {kapsamlar.map((k) => (
-              <label key={k} className="ayar-onay">
-                <input type="checkbox" checked={secili.includes(k)} onChange={(e) => setSecili(e.target.checked ? [...secili, k] : secili.filter((x) => x !== k))} />
-                <span className="mono">{k}</span>
-              </label>))}
+              <input className="girdi" value={ad} onChange={(e) => setAd(e.target.value)} placeholder="ör. ticaret masası" /></label>
+            <div className="girdi-etiket">Kapsam
+              <div className="onay-grubu">
+                {kapsamlar.map((k) => (
+                  <label key={k} className="ayar-onay">
+                    <input type="checkbox" checked={secili.includes(k)} onChange={(e) => setSecili(e.target.checked ? [...secili, k] : secili.filter((x) => x !== k))} />
+                    <span className="kod">{k}</span>
+                  </label>))}
+              </div>
+            </div>
             <button className="dugme" type="submit" disabled={secili.length === 0}>Anahtar üret</button>
           </form>
           {yeniAnahtar && (
@@ -258,10 +270,10 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
                 </tr>))}</tbody>
             </table></div>
           )}
-          <form className="ayar-kontrol" style={{ marginTop: 10 }}
+          <form className="form-izgara"
                 onSubmit={(e) => { e.preventDefault(); dene(async () => { const r = await api.webhookEkle(url, whSantral || null); setYeniSir(r.secret); setUrl(""); }); }}>
-            <label className="girdi-etiket">Alıcı adresi
-              <input className="girdi mono" style={{ minWidth: 230 }} value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…/pvquant-webhook" required /></label>
+            <label className="girdi-etiket" style={{ gridColumn: "span 2" }}>Alıcı adresi
+              <input className="girdi mono" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…/pvquant-webhook" required /></label>
             <label className="girdi-etiket">Kapsam
               <select className="girdi" value={whSantral} onChange={(e) => setWhSantral(e.target.value)}>
                 <option value="">tüm santraller</option>
@@ -277,9 +289,9 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
             </div>)}
         </div>
       </div>
-      <p className="soluk" style={{ fontSize: 14, margin: "10px 0 0" }}>
-        Uçlar: <span className="mono">/v1/dis/santraller</span>, <span className="mono">/v1/dis/santral/{"{id}"}/tahmin</span> (ETag ile 304),
-        <span className="mono"> /v1/dis/santral/{"{id}"}/kgup</span>. Oran sınırı dakikada 120 istek. Ayrıntı: docs/api/dis-api.md.
+      <p className="soluk" style={{ fontSize: 13.5, margin: "14px 0 0", lineHeight: 1.9, maxWidth: "100ch" }}>
+        Uçlar: <span className="kod">/v1/dis/santraller</span> <span className="kod">/v1/dis/santral/{"{id}"}/tahmin</span> (ETag ile 304){" "}
+        <span className="kod">/v1/dis/santral/{"{id}"}/kgup</span> · oran sınırı dakikada 120 istek · ayrıntı <span className="kod">docs/api/dis-api.md</span>
       </p>
     </Kart>
   );
@@ -326,31 +338,6 @@ function Paylasimlar({ santraller }: { santraller: { id: string; ad: string }[] 
                         onClick={() => dene(async () => { await api.paylasimIptal(x.id); setMesaj("Paylaşım iptal edildi."); })}>İptal et</button>}</td>
                 </tr>))}</tbody>
             </table></div>
-          )}
-          {yonetici && (
-            <form className="ayar-kontrol" style={{ marginTop: 10 }}
-                  onSubmit={(e) => { e.preventDefault(); dene(async () => {
-                    const r = await api.paylasimEkle({ plant_id: santral || santraller[0]?.id, hedef_eposta: eposta,
-                      izinler, bitis: bitis || null, takma_ad: takmaAd || null });
-                    setMesaj(`Paylaşım kuruldu: ${r.hedef_kurulus}.`); setEposta(""); setTakmaAd(""); }); }}>
-              <label className="girdi-etiket">Santral
-                <select className="girdi" value={santral || santraller[0]?.id || ""} onChange={(e) => setSantral(e.target.value)}>
-                  {santraller.map((x) => <option key={x.id} value={x.id}>{x.ad}</option>)}
-                </select></label>
-              <label className="girdi-etiket">Karşı tarafın e-postası
-                <input className="girdi" type="email" style={{ minWidth: 190 }} value={eposta} onChange={(e) => setEposta(e.target.value)} required /></label>
-              {liste.izin_secenekleri.map((k) => (
-                <label key={k.deger} className="ayar-onay">
-                  <input type="checkbox" checked={izinler.includes(k.deger)}
-                         onChange={(e) => setIzinler(e.target.checked ? [...izinler, k.deger] : izinler.filter((x) => x !== k.deger))} />
-                  <span>{k.etiket}</span>
-                </label>))}
-              <label className="girdi-etiket">Bitiş (isteğe bağlı)
-                <input className="girdi" type="date" value={bitis} onChange={(e) => setBitis(e.target.value)} /></label>
-              <label className="girdi-etiket">Takma ad (isteğe bağlı)
-                <input className="girdi" style={{ width: 120 }} value={takmaAd} onChange={(e) => setTakmaAd(e.target.value)} placeholder="ör. GES-A" /></label>
-              <button className="dugme" type="submit" disabled={izinler.length === 0 || santraller.length === 0}>Paylaş</button>
-            </form>
           )}
         </div>
         <div>
@@ -401,6 +388,41 @@ function Paylasimlar({ santraller }: { santraller: { id: string; ad: string }[] 
           )}
         </div>
       </div>
+      {/* 23.10 beşinci tur: yeni paylaşım formu iki listenin ALTINDA tam satır (önce yarım sütuna sıkışıp sağda boşluk
+          bırakıyordu) — soldan sağa: santral, karşı taraf, kapsam, bitiş, takma ad, Paylaş; isteğe bağlı alanlar
+          etiketinde işaretli; gönderilen parametreler ve doğrulamalar aynı */}
+      {yonetici && (
+        <div className="alt-bolum">
+          <div className="etiket-ust">Yeni paylaşım</div>
+          <form className="form-izgara" style={{ marginTop: 6 }}
+                onSubmit={(e) => { e.preventDefault(); dene(async () => {
+                  const r = await api.paylasimEkle({ plant_id: santral || santraller[0]?.id, hedef_eposta: eposta,
+                    izinler, bitis: bitis || null, takma_ad: takmaAd || null });
+                  setMesaj(`Paylaşım kuruldu: ${r.hedef_kurulus}.`); setEposta(""); setTakmaAd(""); }); }}>
+            <label className="girdi-etiket">Santral
+              <select className="girdi" value={santral || santraller[0]?.id || ""} onChange={(e) => setSantral(e.target.value)}>
+                {santraller.map((x) => <option key={x.id} value={x.id}>{x.ad}</option>)}
+              </select></label>
+            <label className="girdi-etiket">Karşı tarafın e-postası
+              <input className="girdi" type="email" value={eposta} onChange={(e) => setEposta(e.target.value)} required /></label>
+            <div className="girdi-etiket">Kapsam
+              <div className="onay-grubu">
+                {liste.izin_secenekleri.map((k) => (
+                  <label key={k.deger} className="ayar-onay">
+                    <input type="checkbox" checked={izinler.includes(k.deger)}
+                           onChange={(e) => setIzinler(e.target.checked ? [...izinler, k.deger] : izinler.filter((x) => x !== k.deger))} />
+                    <span>{k.etiket}</span>
+                  </label>))}
+              </div>
+            </div>
+            <label className="girdi-etiket">Bitiş (isteğe bağlı)
+              <input className="girdi" type="date" value={bitis} onChange={(e) => setBitis(e.target.value)} /></label>
+            <label className="girdi-etiket">Takma ad (isteğe bağlı)
+              <input className="girdi" value={takmaAd} onChange={(e) => setTakmaAd(e.target.value)} placeholder="ör. GES-A" /></label>
+            <button className="dugme" type="submit" disabled={izinler.length === 0 || santraller.length === 0}>Paylaş</button>
+          </form>
+        </div>
+      )}
     </Kart>
   );
 }
@@ -424,8 +446,9 @@ function IkiAdimBolumu() {
     try { await fn(); } catch (e) { setHata(String((e as Error).message ?? e)); }
   };
   return (
-    <div style={{ marginTop: 18, paddingTop: 14, borderTop: "1px solid var(--kenar)" }}>
-      <div className="etiket-ust">İki adımlı doğrulama</div>
+    <div className="alt-bolum">
+      <div className="etiket-ust">İki adımlı doğrulama{" "}
+        {durum && <span className={`rozet ${durum.aktif ? "rozet-ok" : ""}`} style={{ marginLeft: 8, letterSpacing: 0, textTransform: "none", ...(durum.aktif ? {} : { background: "var(--yuzey)", color: "var(--soluk)" }) }}>{durum.aktif ? "açık" : "kapalı"}</span>}</div>
       {hata && <p className="ayar-durum hata" style={{ margin: "0 0 8px" }}>{hata}</p>}
       {mesaj && <p className="ayar-durum ok" style={{ margin: "0 0 8px" }}>{mesaj}</p>}
 
@@ -519,7 +542,7 @@ function HesapVeEkip() {
       {hata && <p className="ayar-durum hata" style={{ margin: "0 0 8px" }}>{hata}</p>}
       {mesaj && <p className="ayar-durum ok" style={{ margin: "0 0 8px" }}>{mesaj}</p>}
       <div className="etiket-ust">Parolamı değiştir</div>
-      <form className="ayar-kontrol" onSubmit={(e) => { e.preventDefault();
+      <form className="form-izgara" onSubmit={(e) => { e.preventDefault();
               dene(async () => { await api.parolaDegistir(eski, yeni); setEski(""); setYeni(""); setMesaj("Parolanız değiştirildi."); }); }}>
         <label className="girdi-etiket">Mevcut parola
           <input className="girdi" type="password" autoComplete="current-password" value={eski} onChange={(e) => setEski(e.target.value)} required /></label>
@@ -529,20 +552,20 @@ function HesapVeEkip() {
       </form>
       <IkiAdimBolumu />
       {yonetici && (
-        <div style={{ marginTop: 16 }}>
+        <div className="alt-bolum">
           <div className="etiket-ust">Ekip</div>
           {uyeler.length > 0 && (
-            <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 13 }}>
+            <div className="grafik-kaydir"><table className="veri sayisal" style={{ fontSize: 14 }}>
               <thead><tr><th>E-posta</th><th>Rol</th><th>Son giriş</th><th>Durum</th><th>2FA</th><th></th></tr></thead>
               <tbody>{uyeler.map((u) => (
                 <tr key={u.id} style={{ opacity: u.aktif ? 1 : 0.5 }}>
-                  <td className="mono">{u.email}</td>
-                  <td><select className="girdi" style={{ padding: "3px 6px", fontSize: 13 }} value={u.rol}
+                  <td>{u.email}</td>
+                  <td><select className="girdi kucuk" value={u.rol}
                         onChange={(e) => dene(async () => { await api.takimGuncelle(u.id, { rol: e.target.value }); setMesaj("Rol güncellendi."); })}>
                         {roller.map((r) => <option key={r} value={r}>{r === "admin" ? "yönetici" : r === "editor" ? "editör" : "izleyici"}</option>)}
                       </select></td>
-                  <td className="mono">{tarih(u.son_giris)}</td>
-                  <td>{u.aktif ? "etkin" : "pasif"}</td>
+                  <td>{tarih(u.son_giris)}</td>
+                  <td>{u.aktif ? <span className="rozet rozet-ok">etkin</span> : <span className="rozet" style={{ background: "var(--yuzey)", color: "var(--soluk)" }}>pasif</span>}</td>
                   {/* v2.339: kilitlenme çıkışı — telefonunu ve kurtarma kodlarını
                       birlikte kaybeden üyenin 2FA'sını yönetici kapatabilir */}
                   <td>{u.iki_adim ? (
@@ -551,16 +574,18 @@ function HesapVeEkip() {
                         dene(async () => { await api.takimIkiAdimSifirla(u.id); setMesaj("Üyenin iki adımlı doğrulaması kapatıldı."); }); }}>
                       açık · sıfırla</button>
                   ) : <span className="soluk">kapalı</span>}</td>
-                  <td><button className="dugme" style={{ fontSize: 13 }}
+                  {/* 23.10: pasifleştirme tehlikeli işlem dilinde (uyarı rengi, dolgu yok); davranış aynı */}
+                  <td><button className={`dugme${u.aktif ? " dugme-tehlike" : ""}`} style={{ fontSize: 13 }}
                         onClick={() => dene(async () => { await api.takimGuncelle(u.id, { aktif: !u.aktif }); setMesaj(u.aktif ? "Üye pasifleştirildi — oturum açamaz." : "Üye yeniden etkin."); })}>
                         {u.aktif ? "Pasifleştir" : "Etkinleştir"}</button></td>
                 </tr>))}</tbody>
             </table></div>
           )}
-          <form className="ayar-kontrol" style={{ marginTop: 10 }} onSubmit={(e) => { e.preventDefault();
+          {uyeler.length > 0 && <div className="etiket-ust" style={{ marginTop: 16 }}>Yeni üye</div>}
+          <form className="form-izgara" style={{ marginTop: 6 }} onSubmit={(e) => { e.preventDefault();
                   dene(async () => { const r = await api.takimEkle(eposta, rol); setGecici({ email: r.email, parola: r.gecici_parola }); setEposta(""); }); }}>
             <label className="girdi-etiket">E-posta
-              <input className="girdi" type="email" style={{ minWidth: 190 }} value={eposta} onChange={(e) => setEposta(e.target.value)} required /></label>
+              <input className="girdi" type="email" value={eposta} onChange={(e) => setEposta(e.target.value)} required /></label>
             <label className="girdi-etiket">Rol
               <select className="girdi" value={rol} onChange={(e) => setRol(e.target.value)}>
                 <option value="viewer">izleyici</option><option value="editor">editör</option><option value="admin">yönetici</option>
