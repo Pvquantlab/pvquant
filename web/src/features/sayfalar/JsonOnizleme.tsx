@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { RaporJson } from "../../api/types";
 import { sayiTr } from "./parcalar";
+import { Meta } from "../../lib/Meta";
 
 /** v2.351: JSON raporunun panel içi OKUNUR önizlemesi (kullanıcı kararı,
  *  22 Eyl). İndirme ham JSON kalır — bu görünüm dosyanın kendisini değil,
@@ -51,9 +52,8 @@ export function JsonOnizleme({ veri, onKapat }: { veri: RaporJson; onKapat: () =
         <div>
           <div style={{ fontSize: 17, fontWeight: 700 }}>{veri.plant.name} — JSON raporu</div>
           <div style={{ fontSize: 13.5, color: "var(--ikincil)" }}>
-            {veri.report_id ?? "kimlik yok"} · şema {veri.schema_version} · üretildi {tr(veri.generated_at)}
-            {" · "}{MODEL_AD[veri.run.model] ?? "Model"} · Mod {veri.run.mode}
-            {" · "}{KAYNAK_AD[veri.run.meteo_source] ?? "hava kaynağı"}
+            <Meta items={[veri.report_id ?? "kimlik yok", `şema ${veri.schema_version}`, `üretildi ${tr(veri.generated_at)}`,
+              `${MODEL_AD[veri.run.model] ?? "Model"}, Mod ${veri.run.mode}`, KAYNAK_AD[veri.run.meteo_source] ?? "hava kaynağı"]} />
           </div>
         </div>
         <button className="dugme" onClick={onKapat} style={{ fontFamily: ARIAL }}>Kapat</button>
@@ -61,11 +61,10 @@ export function JsonOnizleme({ veri, onKapat }: { veri: RaporJson; onKapat: () =
 
       {/* sözleşme — makine-okunur bloğun insan dili */}
       <div style={{ fontSize: 13.5, color: "var(--ikincil)", marginBottom: 14 }}>
-        Damga: aralığın {veri.conventions.timestamp === "interval_start" ? "başı" : veri.conventions.timestamp}
-        {" · "}adım {veri.conventions.period === "PT1H" ? "1 saat" : veri.conventions.period}
-        {" · "}{veri.conventions.timezone}
-        {" · "}eksik değer: {veri.conventions.missing === "null" ? "null (uydurulmaz)" : veri.conventions.missing}
-        {" · "}{veri.hourly.length} saatlik · {veri.daily.length} günlük satır
+        <Meta items={[`Damga: aralığın ${veri.conventions.timestamp === "interval_start" ? "başı" : veri.conventions.timestamp}`,
+          `adım ${veri.conventions.period === "PT1H" ? "1 saat" : veri.conventions.period}`, veri.conventions.timezone,
+          `eksik değer: ${veri.conventions.missing === "null" ? "null (uydurulmaz)" : veri.conventions.missing}`,
+          `${veri.hourly.length} saatlik, ${veri.daily.length} günlük satır`]} />
       </div>
 
       {/* KPI'lar */}
@@ -86,13 +85,13 @@ export function JsonOnizleme({ veri, onKapat }: { veri: RaporJson; onKapat: () =
         {a ? (
           <>
             <div style={{ fontSize: 14, marginBottom: 6 }}>
-              Son {a.window_days} gün · son ölçüm {tr(a.last_measured_date + "T12:00:00", false)}
+              <Meta items={[`Son ${a.window_days} gün`, `son ölçüm ${tr(a.last_measured_date + "T12:00:00", false)}`]} />
             </div>
             <div style={{ display: "flex", gap: 22, flexWrap: "wrap", fontSize: 14 }}>
               <span><b>{pct(a.wmape_pct)}</b> WMAPE</span>
               <span><b>{pct(a.nmae_pct)}</b> kapasiteye normalize</span>
               <span><b>{pct(a.skill_vs_naive_pct, 0)}</b> referansa göre iyileşme</span>
-              <span><b>{pct(a.band_coverage_pct)}</b> aralık isabeti · hedef {pct(a.band_target_pct, 0)}</span>
+              <span><b>{pct(a.band_coverage_pct)}</b> aralık isabeti (hedef {pct(a.band_target_pct, 0)})</span>
               <span><b>{a.daily.filter((d) => d.measured).length}</b>/{a.daily.length} gün ölçülü</span>
             </div>
           </>

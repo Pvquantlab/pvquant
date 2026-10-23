@@ -79,7 +79,7 @@ export function Giris({ onGiris }: { onGiris: () => void }) {
           {/* v2.290: imza motifi — grafik anayasası (mavi bant = tahmin, amber = gerçekleşen)
               giriş ekranından itibaren tek çizimdir */}
           <div className="giris-egri"><BandImza yukseklik={90} /></div>
-          <div className="giris-etiket">Mavi bant: P10–P90 tahmin aralığı{"\u00a0"}· amber: gerçekleşen</div>
+          <div className="giris-etiket">Mavi bant: P10–P90 tahmin aralığı; amber: gerçekleşen</div>
         </div>
       </div>
 

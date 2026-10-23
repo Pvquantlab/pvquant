@@ -214,7 +214,8 @@ h2 { font-size: var(--t-bolum); line-height: 1.2; }
    tanimliyor ama nokta hic basilmiyordu. Rakamla baslayan tek baslik (6 "7 gunluk
    gorunum") ekranda "6 7" olarak okunuyordu; bolum metni degistirilmeden ayrilir. */
 .kart-no { color: var(--marka-koyu); margin-right: 8px; font-variant-numeric: tabular-nums; }
-.kart-no::after { content: "·"; margin-left: 8px; color: var(--soluk); font-weight: 400; }
+.kart-no::after { content: ""; display: inline-block; width: 1px; height: 12px; margin-left: 10px; vertical-align: -1px;
+                  background: var(--kenar); }   /* 23.10 yedinci tur: orta nokta yerine ince ayraç */
 
 .kpi { background: var(--kart); border: 1px solid var(--kenar);
        border-radius: var(--rk); padding: 18px 20px; }
@@ -384,6 +385,34 @@ table.veri.dar th + th, table.veri.dar td + td { padding-left: 28px; }
 .grafik-serit { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 8px; }
 .grafik-serit .lejant { flex: 1 1 auto; justify-content: center; }
 
+/* ---------- 23.10 yedinci tur: bilgi ayırıcı standardı ----------
+   Farklı türden kısa bilgiler (sayı, tarih, pencere, durum) orta noktayla değil İNCE DİKEY AYRAÇLA ayrılır (.meta);
+   düzyazıda virgül / noktalı virgül; iki sayı tek karta girecekse ikincisi kendi etiketiyle ayrı satırda (.kpi-ikinci);
+   uyarı/not listeleri satır satır (.not-listesi). Orta nokta yalnız sabit ürün adlarında kalır. */
+/* Ayraç her dilimin SOLUNDA mutlak konumlu; kap 19 px negatif kenarla başlayıp clip-path ile kırpıldığından satır
+   başındaki dilimin ayracı (ilk dilim ve sarınca yeni satıra düşen dilim) görünmez — sarma hangi genişlikte olursa
+   olsun çizgi yalnız iki dilimin ARASINDA kalır. overflow:hidden değil clip-path: satır içi taban çizgisi bozulmaz. */
+.meta { display: inline-flex; flex-wrap: wrap; align-items: center; min-width: 0; margin-left: -19px; clip-path: inset(0); }
+.meta > span { display: inline-flex; align-items: baseline; white-space: nowrap; position: relative; margin-left: 19px; }
+.meta > span::before { content: ""; position: absolute; left: -10px; top: 50%; transform: translateY(-50%);
+                       width: 1px; height: 11px; background: currentColor; opacity: .35; }
+/* uzun dilimler (künye cümlesi, dar ekran) dilim içinde de kırılabilir */
+.meta.uzun > span, .vt-kunye .meta > span, .vt-hero__mikro .meta > span { white-space: normal; display: inline; }
+@media (max-width: 560px) { .meta > span { white-space: normal; display: inline; } }
+.meta .meta-et { color: var(--soluk); margin-right: 5px; }
+.meta .meta-uyari { color: var(--uyari-metin); }
+.telemetri .meta { margin-left: -23px; } .telemetri .meta > span { margin-left: 23px; }
+.telemetri .meta > span::before { left: -12px; }
+.ust-yol-ayrac { color: var(--soluk); margin: 0 7px; font-weight: 400; }
+.kpi-ikinci { display: flex; align-items: baseline; gap: 8px; margin-top: 8px; padding-top: 8px;
+              border-top: 1px solid var(--izgara); font-size: var(--t-ikincil); color: var(--soluk); }
+.kpi-ikinci b { font-family: var(--display); font-weight: 500; font-size: 18px; color: var(--metin);
+                font-variant-numeric: tabular-nums; letter-spacing: -0.01em; white-space: nowrap; }
+.kpi-ikinci small { font-size: 12.5px; color: var(--soluk); }
+.not-listesi { margin: 8px 0 0; padding: 0; list-style: none; font-size: 13.5px; line-height: 1.55; max-width: 90ch; }
+.not-listesi li + li { margin-top: 3px; }
+.not-listesi.uyari { color: var(--uyari-metin); }
+
 /* ---------- künye / tanım listesi (23.10 dördüncü tur; vitrin .vt-tanim kalıbı) ----------
    Etiket solda sabit kolon, değer kendi kolonunda SOLA hizalı (sağa dayalı uzun cümleler düzensiz bölünüyordu);
    sayı/tarih/kimlik mono tabular, durum cümleleri gövde ailesi soluk, uyarı ayrı renk. */
@@ -395,7 +424,8 @@ table.veri.dar th + th, table.veri.dar td + td { padding-left: 28px; }
 .kunye dd { margin: 0; font-size: var(--t-govde); color: var(--metin); font-variant-numeric: tabular-nums;
             line-height: 1.5; overflow-wrap: anywhere; }
 .kunye-sayi { font-family: var(--mono); font-size: 14px; }
-.kunye-not { color: var(--soluk); }
+/* 23.10 yedinci tur: neden/not durumun ALTINDA ayrı satır — satır içi orta nokta ayracı kalktı */
+.kunye-not { display: block; color: var(--soluk); font-size: 13.5px; margin-top: 2px; }
 .kunye-uyari { color: var(--uyari-metin); }
 .kunye-uyari .kunye-sayi { color: inherit; }
 @media (max-width: 560px) { .kunye > div { grid-template-columns: minmax(0, 1fr); gap: 2px; } }

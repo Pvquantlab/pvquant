@@ -28,9 +28,12 @@ export const enerjiTr = (kwh: number | null | undefined): string => {
   return Math.abs(kwh) < 10_000 ? `${sayiTr(kwh, 0)} kWh` : `${sayiTr(kwh / 1000, 1)} MWh`;
 };
 
-export function Kpi({ etiket, deger, birim, alt, ton }:
+export function Kpi({ etiket, deger, birim, alt, ton, ikinci }:
   { etiket: string; deger: string; birim?: string; alt?: ReactNode;
-    ton?: "amber" | "uyari" }) {
+    ton?: "amber" | "uyari";
+    /** 23.10 yedinci tur: aynı karttaki İKİNCİ değer (yarın, standart sapma, veri gecikmiş) kendi etiketiyle ayrı
+     *  satırda — «1.914,2 · 1.827,6» gibi iki sayı tek noktalama ile birleştirilmez. */
+    ikinci?: { etiket: string; deger: string; birim?: string } }) {
   // v2.124: opsiyonel uyari tonu — negatif iyilesme gibi "dikkat" KPI'lari
   // icin; verilmezse davranis birebir eski hali (geriye uyumlu).
   // v2.264: "uyari" tonu — amber gerçekleşen mürekkebi olduğundan, açık alarm/gecikme gibi
@@ -56,6 +59,7 @@ export function Kpi({ etiket, deger, birim, alt, ton }:
             (karne ekranında "MWh" kırpılması). Araya gerçek boşluk kondu. */}
         <span style={{ whiteSpace: "nowrap" }}>{deger}</span>{birim && <>{" "}
         <span style={{ fontSize: 15, fontWeight: 400, letterSpacing: 0, color: "var(--soluk)", whiteSpace: "nowrap" }}>{birim}</span></>}</div>
+      {ikinci && <div className="kpi-ikinci"><span>{ikinci.etiket}</span><b>{ikinci.deger}</b>{ikinci.birim && <small>{ikinci.birim}</small>}</div>}
       {alt && <div className="kpi-br">{alt}</div>}
     </div>
   );

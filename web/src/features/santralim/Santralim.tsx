@@ -8,6 +8,7 @@ import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
 import { Kart, Sayfa, sayiTr, sayiTrN, gucTr, enerjiTr, isiTonu, isiMetni } from "../sayfalar/parcalar";
 import ProductionForecastChart from "../sayfalar/ProductionForecastChart";
+import { Meta } from "../../lib/Meta";
 import { t0Hesapla, simdiDegeri, simdiGercegi, dilimle } from "../sayfalar/tahminPencere";
 import { Cubuklar } from "./Cubuklar";
 
@@ -82,7 +83,7 @@ export function Santralim({ plantId }: { plantId: string }) {
   const eakKaydet = () => {
     setEakMesaj(null);
     api.eakAyarla(plantId, { eak_kw: eakKw ? Number(eakKw) : null, gecici_kw: gecKw ? Number(gecKw) : null, gecici_bitis: gecBitis || null })
-      .then((r) => setEakMesaj(`Kaydedildi · bugün EAK ${sayiTr(r.eak_bugun.eak_mw, 2)} MW (${r.eak_bugun.kaynak})`))
+      .then((r) => setEakMesaj(`Kaydedildi. Bugün EAK ${sayiTr(r.eak_bugun.eak_mw, 2)} MW (${r.eak_bugun.kaynak})`))
       .catch((e) => setEakMesaj(String((e as Error).message ?? e)));
   };
   // v2.281: kullanılabilirlik (otomatik tespit) + tarife/gelir yapılandırması
@@ -209,7 +210,7 @@ export function Santralim({ plantId }: { plantId: string }) {
         tooltip: { show: false }, itemStyle: { color: "transparent" },
         label: { show: true, position: "bottom" as const, distance: 10,
           color: renk[e.ad], fontFamily: mono, fontSize: 12.5,
-          formatter: `${(ad[e.ad] ?? e.ad).toLowerCase()} · ${Math.round(apex[1])}°` },
+          formatter: `${(ad[e.ad] ?? e.ad).toLowerCase()} ${Math.round(apex[1])}°` },
         data: [apex] };
     });
     const seriler = [
@@ -238,8 +239,8 @@ export function Santralim({ plantId }: { plantId: string }) {
         borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 13 },
         formatter: (p0: unknown) => {
           const p1 = p0 as { seriesName: string; value: number[] };
-          const saat = p1.value.length > 2 ? ` · ${p1.value[2]}:00` : "";
-          return `${p1.seriesName}${saat}<br/>azimut ${Math.round(p1.value[0])}° · yükseklik ${Math.round(p1.value[1])}°`;
+          const saat = p1.value.length > 2 ? ` ${p1.value[2]}:00` : "";
+          return `${p1.seriesName}${saat}<br/>azimut ${Math.round(p1.value[0])}°, yükseklik ${Math.round(p1.value[1])}°`;
         } },
       xAxis: { type: "value", min: 45, max: 315, name: "[panel yönü — azimut]",
         nameLocation: "middle", nameGap: 30,
@@ -248,7 +249,7 @@ export function Santralim({ plantId }: { plantId: string }) {
         nameTextStyle: { color: soluk, fontFamily: mono, fontSize: 12.5 },
         axisLabel: { color: soluk, fontFamily: mono, fontSize: 12.5,
           formatter: (v: number) =>
-            ({ 90: "Doğu · 90°", 180: "Güney · 180°", 270: "Batı · 270°"
+            ({ 90: "Doğu 90°", 180: "Güney 180°", 270: "Batı 270°"
              } as Record<number, string>)[v] ?? `${v}°` },
         splitLine: { show: false },
         axisLine: { lineStyle: { color: kenar } } },
@@ -278,10 +279,10 @@ export function Santralim({ plantId }: { plantId: string }) {
       sag={<div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         {/* 22.10 (v2.463): mod yokken «— · Mod» basılıyordu; «Model durumu» kutusuyla aynı dil */}
         {o.mod
-          ? <span className="rozet rozet-ok">{o.model_adi} · Mod {o.mod}</span>
+          ? <span className="rozet rozet-ok"><Meta items={[o.model_adi, `Mod ${o.mod}`]} /></span>
           : <span className="cip">kalibrasyon bekliyor</span>}
         <span className="mono" style={{ fontSize: 13.5, color: "var(--soluk)" }}>
-          {gucTr(o.kapasite_kwp)} kWp · {o.lat}, {o.lon}
+          <Meta items={[`${gucTr(o.kapasite_kwp)} kWp`, `${o.lat}, ${o.lon}`]} />
         </span>
       </div>}>
 
@@ -289,7 +290,7 @@ export function Santralim({ plantId }: { plantId: string }) {
           tam genislik, hava+kunye/saglik cifti, 3 parmak izi, 4 gunes yolu,
           5 yedi gun + 6 aylik. */}
       <div className="ozet-bas"><span className="no">1</span> Özet
-        <span className="sag">tümü beklenen değer (P50) · her gece gerçekleşenle sınanır</span></div>
+        <span className="sag">tümü beklenen değer (P50); her gece gerçekleşenle sınanır</span></div>
       <div className="ozet">
         <div className="anlik">
           <svg viewBox="0 0 160 112" role="img" style={{ width: "100%", maxWidth: 118 }}
@@ -309,7 +310,7 @@ export function Santralim({ plantId }: { plantId: string }) {
               {gosterilen === null ? "—" : sayiTr(gosterilen)}</text>
             <text x="80" y="82" textAnchor="middle" className="ch-t">
               {gosterilen === null ? "veri yok" :
-                anlikPay === null ? "kW" : `kW · %${sayiTr(anlikPay * 100)}`}</text>
+                anlikPay === null ? "kW" : `kW (%${sayiTr(anlikPay * 100)})`}</text>
           </svg>
           <div>
             <div className="et">Anlık güç</div>
@@ -345,8 +346,8 @@ export function Santralim({ plantId }: { plantId: string }) {
           <div className="md-dizi">
             <div><span className="e">Durum</span>
               {o.mod
-                ? <span className="rozet rozet-ok">{o.model_adi} · Mod {o.mod}</span>
-                : <span className="cip">{o.model_adi} · kalibrasyon bekliyor</span>}</div>
+                ? <span className="rozet rozet-ok"><Meta items={[o.model_adi, `Mod ${o.mod}`]} /></span>
+                : <span className="cip"><Meta items={[o.model_adi, "kalibrasyon bekliyor"]} /></span>}</div>
             <div><span className="e">Yıllık sapma</span>
               <span className="d">{o.sapma_pct == null ? "—" : `%${sayiTr(o.sapma_pct, 2)}`}</span></div>
             <div><span className="e">Son kalibrasyon</span>
@@ -420,47 +421,47 @@ export function Santralim({ plantId }: { plantId: string }) {
           <dl className="kunye">
             <div><dt>DC gücü</dt><dd><span className="kunye-sayi">{gucTr(o.kapasite_kwp)} kWp</span></dd></div>
             <div><dt>AC sınırı</dt><dd>{o.ac_tavani_kw == null
-              ? <><span className="kunye-durum eksik">Tanımlı değil</span><span className="kunye-not"> · santral ayarlarından girilir</span></>
+              ? <><span className="kunye-durum eksik">Tanımlı değil</span><span className="kunye-not">santral ayarlarından girilir</span></>
               : <span className="kunye-sayi">{sayiTr(o.ac_tavani_kw)} kW</span>}</dd></div>
             <div><dt>Eğim / azimut</dt><dd><span className="kunye-sayi">{o.egim_azimut}</span></dd></div>
             <div><dt>Saat dilimi</dt><dd><span className="kunye-sayi">{o.tz}</span></dd></div>
-            <div><dt>Son veri yüklemesi</dt>
+            <div><dt>Son veri</dt>
               <dd>{s.son_scada == null
-                ? <><span className="kunye-durum eksik">Yüklenmedi</span><span className="kunye-not"> · SCADA verisi henüz yüklenmedi</span></>
+                ? <><span className="kunye-durum eksik">Yüklenmedi</span><span className="kunye-not">SCADA verisi henüz yüklenmedi</span></>
                 : (s.kesinti_gun ?? 0) > 2
                   ? <><span className="kunye-sayi">{s.son_scada}</span>{" "}
                       <span className="rozet rozet-uyari" style={{ marginLeft: 6, fontSize: 12 }} title="Son yüklemeden bu yana yeni ölçüm yok">{sayiTr(s.kesinti_gun!)} gündür yeni veri yok</span></>
                   : <span className="kunye-sayi">{s.son_scada}</span>}</dd></div>
-            <div><dt>Geçerli ölçüm</dt><dd><span className="kunye-sayi">{sayiTr(s.islenen_saat)}</span> saat<span className="kunye-not"> · kalite bayrağı geçerli olan saatler</span></dd></div>
-            <div><dt>Şüpheli ölçüm</dt><dd><span className="kunye-sayi">{sayiTr(s.anomali)}</span> saat işaretlendi<span className="kunye-not"> · geçerli sayıma girmez; hiçbir satır silinmedi</span></dd></div>
+            <div><dt>Geçerli ölçüm</dt><dd><span className="kunye-sayi">{sayiTr(s.islenen_saat)}</span> saat<span className="kunye-not">kalite bayrağı geçerli olan saatler</span></dd></div>
+            <div><dt>Şüpheli ölçüm</dt><dd><span className="kunye-sayi">{sayiTr(s.anomali)}</span> saat işaretlendi<span className="kunye-not">geçerli sayıma girmez; hiçbir satır silinmedi</span></dd></div>
             {/* v2.249 (Dalga 1.4): IEC 61724-1 performans orani — olcumden, POA yoksa tire + neden */}
             <div><dt>Performans oranı (PR, 30 gün)</dt>
               <dd>{pr?.durum === "ok" && pr.PR != null
-                ? <>%{sayiTr(pr.PR * 100, 1)}{pr.PR_sicaklik != null && ` · sıcaklık düzeltmeli %${sayiTr(pr.PR_sicaklik * 100, 1)}`}
-                    <span className="kunye-not"> · {sayiTr(pr.gun)} gün{pr.son_olcum ? `, son ölçüm ${pr.son_olcum}` : ""}</span></>
+                ? <>%{sayiTr(pr.PR * 100, 1)}{pr.PR_sicaklik != null && ` (sıcaklık düzeltmeli %${sayiTr(pr.PR_sicaklik * 100, 1)})`}
+                    <span className="kunye-not">{sayiTr(pr.gun)} gün değerlendirildi{pr.son_olcum ? `, son ölçüm ${pr.son_olcum}` : ""}</span></>
                 : pr?.durum === "poa_yok"
-                  ? <><span className="kunye-durum eksik">Hesaplanamadı</span><span className="kunye-not"> · düzlem ışınımı (POA) ölçümü {pr.poa_orani != null ? `saatlerin %${sayiTr(pr.poa_orani * 100, 0)}'inde` : "yok"}; PR için en az %95 gerekir</span></>
-                  : <><span className="kunye-durum eksik">Hesaplanamadı</span><span className="kunye-not"> · ölçüm birikmedi</span></>}</dd></div>
+                  ? <><span className="kunye-durum eksik">Hesaplanamadı</span><span className="kunye-not">düzlem ışınımı (POA) ölçümü {pr.poa_orani != null ? `saatlerin %${sayiTr(pr.poa_orani * 100, 0)}'inde` : "yok"}; PR için en az %95 gerekir</span></>
+                  : <><span className="kunye-durum eksik">Hesaplanamadı</span><span className="kunye-not">ölçüm birikmedi</span></>}</dd></div>
             {/* v2.285: segment salt-okunur — değişiklik "Santral ayarları" kartından */}
             <div><dt>Piyasa segmenti</dt>
               <dd>{seg?.segment
                 ? <>{SEGMENTLER.find((x) => x.deger === seg.segment)?.etiket ?? seg.segment}
-                    {seg.dengesizlik_sahibi && <span className="kunye-not"> · dengesizlik: {seg.dengesizlik_sahibi}</span>}</>
-                : <><span className="kunye-durum eksik">Belirtilmedi</span><span className="kunye-not"> · santral ayarlarından seçilir</span></>}</dd></div>
+                    {seg.dengesizlik_sahibi && <span className="kunye-not">dengesizlik: {seg.dengesizlik_sahibi}</span>}</>
+                : <><span className="kunye-durum eksik">Belirtilmedi</span><span className="kunye-not">santral ayarlarından seçilir</span></>}</dd></div>
             {/* v2.256 (Dalga 3.11): bozunma ve eğilim — POA yoksa model-normalize verimle; yetersizse neden */}
             <div><dt>Yıllık verim kaybı (bozunma)</dt>
               <dd>{sg?.bozunma_yuzde_yil != null
                 ? <>%{sayiTr(sg.bozunma_yuzde_yil, 2)}/yıl{sg.bozunma_ga && ` (±${sayiTr(Math.abs(sg.bozunma_ga[1] - sg.bozunma_ga[0]) / 2, 2)})`}
-                    <span className="kunye-not"> · {sayiTr(sg.ay)} ay</span></>
+                    <span className="kunye-not">{sayiTr(sg.ay)} ay</span></>
                 : sg?.egim_yuzde_yil != null
-                  ? <>eğilim %{sayiTr(sg.egim_yuzde_yil, 1)}/yıl<span className="kunye-not"> · {sayiTr(sg.gun)} gün · {sg.not || "bozunma için ≥13 ay"}</span></>
-                  : <><span className="kunye-durum eksik">Hesaplanamadı</span><span className="kunye-not"> · {sg?.not || "ölçüm birikmedi"}</span></>}</dd></div>
+                  ? <>eğilim %{sayiTr(sg.egim_yuzde_yil, 1)}/yıl<span className="kunye-not">{sayiTr(sg.gun)} gün; {sg.not || "bozunma için ≥13 ay"}</span></>
+                  : <><span className="kunye-durum eksik">Hesaplanamadı</span><span className="kunye-not">{sg?.not || "ölçüm birikmedi"}</span></>}</dd></div>
             {/* v2.281: kullanılabilirlik — otomatik arıza tespiti (olay günlüğü yok; dürüst not) */}
             <div><dt>Kullanılabilirlik (30 gün)</dt>
               <dd>{ku?.durum === "ok" && ku.A_t != null
-                ? <>%{sayiTr(ku.A_t * 100, 1)} zaman · {ku.A_e != null ? `%${sayiTr(ku.A_e * 100, 1)} enerji` : "—"}
-                    <span className="kunye-not"> · {sayiTr(ku.ariza_saat ?? 0)} arıza saati · veri %{sayiTr((ku.veri_orani ?? 0) * 100, 0)} · otomatik tespit</span></>
-                : <><span className="kunye-durum eksik">Hesaplanamadı</span><span className="kunye-not"> · {ku?.durum === "yetersiz" ? "üretim mümkün saat yetersiz" : "ölçüm/beklenti birikmedi"}</span></>}</dd></div>
+                ? <>%{sayiTr(ku.A_t * 100, 1)} zaman, {ku.A_e != null ? `%${sayiTr(ku.A_e * 100, 1)} enerji` : "—"}
+                    <span className="kunye-not">{sayiTr(ku.ariza_saat ?? 0)} arıza saati, veri %{sayiTr((ku.veri_orani ?? 0) * 100, 0)}, otomatik tespit</span></>
+                : <><span className="kunye-durum eksik">Hesaplanamadı</span><span className="kunye-not">{ku?.durum === "yetersiz" ? "üretim mümkün saat yetersiz" : "ölçüm/beklenti birikmedi"}</span></>}</dd></div>
           </dl>
           <p className="kunye-dip">
             Model en güncel verinizle en iyi sonucu verir. Yeni SCADA dosyanızı
@@ -548,7 +549,7 @@ export function Santralim({ plantId }: { plantId: string }) {
                     </select>
                   </label>))}
                 {ftOn && <div className="ayar-panel">
-                  <span>Önizleme · 7 gün, yalnız fiziksel model: <b>{ftOn.toplam_fark_pct == null ? "—" : `%${sayiTr(ftOn.toplam_fark_pct, 2)}`}</b> enerji farkı ({sayiTr(ftOn.toplam_mevcut_kwh / 1000, 1)} → {sayiTr(ftOn.toplam_aday_kwh / 1000, 1)} MWh)</span>
+                  <span>Önizleme (7 gün, yalnız fiziksel model): <b>{ftOn.toplam_fark_pct == null ? "—" : `%${sayiTr(ftOn.toplam_fark_pct, 2)}`}</b> enerji farkı ({sayiTr(ftOn.toplam_mevcut_kwh / 1000, 1)} → {sayiTr(ftOn.toplam_aday_kwh / 1000, 1)} MWh)</span>
                   {!ftOn.nem_var && <span className="soluk">nem verisi yok; spektral düzeltme etkisiz</span>}
                   {!ftOn.kar_var && <span className="soluk">kar verisi yok; kar örtüsü etkisiz</span>}
                   <button className="dugme" onClick={() => { const [k, v] = Object.entries(ftSon)[0] ?? []; if (k) ftUygula(k, String(v)); }}>Uygula</button>
@@ -581,7 +582,7 @@ export function Santralim({ plantId }: { plantId: string }) {
 
       {sam && sam.saatler.length > 0 && (
         <Kart no="4" baslik="Saatlik üretim profili — saat × ay"
-          sag={<span className="cip">tüm geçerli SCADA · kW · {sam.tz}</span>}>
+          sag={<span className="cip"><Meta items={["tüm geçerli SCADA", "kW", sam.tz]} /></span>}>
           <div style={{ overflowX: "auto" }}>
             <table style={{ borderCollapse: "collapse", width: "100%",
                             fontFamily: "var(--mono)", fontSize: 13 }}>
@@ -627,7 +628,7 @@ export function Santralim({ plantId }: { plantId: string }) {
 
       {gy && gy.egriler.length > 0 && (
         <Kart no="5" baslik="Güneş yolu — yaz / ekinoks / kış"
-          sag={<span className="cip">{gy.lat}°K · {gy.tz}</span>}>
+          sag={<span className="cip"><Meta items={[`${gy.lat}°K`, gy.tz]} /></span>}>
           <EChart option={gyOption} height={300}
             ariaLabel="Azimut ve yükseklik düzleminde yaz gündönümü, ekinoks ve kış gündönümü güneş yolları, saat işaretleriyle" />
           <p style={{ fontSize: 13, color: "var(--soluk)", margin: "12px 0 0" }}>

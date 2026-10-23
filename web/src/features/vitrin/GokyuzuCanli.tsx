@@ -14,10 +14,10 @@ export function GokyuzuCanli() {
   }, []);
   return (
     <span className="vt-gok-canli">
-      {"astronomik hesap · şu an: "}
+      {"astronomik hesap, şu an: "}
       {gok.gunduz
-        ? `güneş yüksekliği ${Math.max(0, Math.round(gok.yukseklikDeg))}° · batışa ${sureMetni(gok.kalanDk)}`
-        : `güneş ufkun altında · doğuşa ${sureMetni(gok.kalanDk)} — gece sınavı bu aralıkta koşar`}
+        ? `güneş yüksekliği ${Math.max(0, Math.round(gok.yukseklikDeg))}°, batışa ${sureMetni(gok.kalanDk)}`
+        : `güneş ufkun altında, doğuşa ${sureMetni(gok.kalanDk)} — gece sınavı bu aralıkta koşar`}
     </span>
   );
 }

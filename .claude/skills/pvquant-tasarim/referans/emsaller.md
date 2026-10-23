@@ -50,6 +50,14 @@ Her satır: kalıp → dosya → kritik kural. Yeni mühürde yeni kalıp çıka
   `Dockerfile.web` 2.11.7'ye sabit. Güncelleme = changelog + replika sınaması, bilinçli tek satır.
 - **Yavaş hat kararı günlük tazelenir (21.10.2026, #11):** `heroHazir.ts` kayıttaki 7 günlük «yavaş hat» kararı günde bir
   yeniden ölçülür — tek yanlış ölçüm videoyu 7 gün kapatmasın.
+- **Yedinci tur — bilgi ayırıcı standardı (23.10.2026, toplu commit bekliyor):** `docs/PANEL-TUR7-2026-10-23.md`. Orta nokta
+  «·» bilgi ayırıcısı olarak kalktı (panel 164 + vitrin 29 satır): metaveri dizileri `Meta` (`src/lib/Meta.tsx`, ince
+  dikey ayraç — ayraç dilimin solunda mutlak, kap −19 px kenar + `clip-path: inset(0)` ile satır başındaki ayraç
+  görünmez), iki sayı `Kpi.ikinci`, düzyazı virgül/noktalı virgül/parantez, uyarılar `ul.not-listesi`, künye notu blok
+  satır, «son yükleme» → «son veri» (alan = son ölçüm damgası). Dersler: `.meta > span { nowrap }` dar ekranda uzun dilimi
+  taşırır → ≤560 px ve künye satırlarında `white-space: normal`; `table.veri.sayisal` nowrap dar kartta kırpar → tablo
+  `.grafik-kaydir` içinde; vitrin dizgilerinde no-break boşluk (U+00A0) düz metin eşleşmesini bozar, `repr()` ile bak;
+  JSX dizi öğesi `Meta`'ya verilirken `key` ver (oxlint jsx-key). Cümle başı tire de yasak (bkz. bilesen-dili).
 - **Altıncı tur — santral bilgileri, Kalibrasyon, Tahminler (23.10.2026):** `docs/PANEL-TUR6-2026-10-23.md`. Eksik
   satır = durum sözcüğü + neden (`.kunye-durum` + `.kunye-not`); boş durum `.bos-durum` (kutu yok); uzun teknik not
   `<details class="aciklama">` (metin aynen); geçmiş P50 soluk mavi (`--chart-p50-past`), **lejant örneği çizimle aynı**

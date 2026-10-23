@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, rolum } from "../../api/client";
 import type { PaylasimListesi, PaylasilanVeri, TakimUyesi, Portfoy as PortfoyT, PortfoyDsg, PortfoyTahmin, ApiAnahtar, Webhook } from "../../api/types";
 import { Kart, Kpi, Sayfa, sayiTr, gucTr, enerjiTr } from "./parcalar";
+import { Meta } from "../../lib/Meta";
 
 /** v2.263 (Dalga 5.15) — Portföy: kiracının tüm santralleri tek tabloda; toplamlar dürüst
  *  (bir santralin beklentisi yoksa toplam da yok). Satıra tıklayınca o santrala geçilir. */
@@ -41,7 +42,7 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
   );
   return (
     <Sayfa baslik="Portföy" alt="Tüm santraller bir bakışta; sayılar kurulu güçle ağırlıklıdır, hesaplanamayan değerler — ile gösterilir."
-      sag={<span className="cip">{p ? `${sayiTr(p.santraller.length)} santral · ${new Date(p.gun + "T12:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}` : "—"}</span>}>
+      sag={<span className="cip">{p ? <Meta items={[`${sayiTr(p.santraller.length)} santral`, new Date(p.gun + "T12:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" })]} /> : "—"}</span>}>
       <div className="ızgara satir-4" style={{ marginBottom: 14 }}>
         {/* v2.360: küçük portföyde MWp "0,00" okunuyordu — birim ölçekle gelir */}
         <Kpi etiket="Toplam kurulu güç"
@@ -49,19 +50,24 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
              birim={t && t.kapasite_kwp < 100 ? "kWp" : "MWp"} alt={t ? `${sayiTr(t.santral)} santral` : ""} />
         {/* 22.10 (v2.463): iki değer tek birimle — «1.754,1 MWh · 1.755,1 MWh» kartta kesiliyordu;
             birim Kpi'nin kendi alanında bir kez yazılır, ölçek büyük olana göre seçilir. */}
-        <Kpi etiket="Bugün beklenen · yarın"
-             deger={t && t.bugun_kwh != null && t.yarin_kwh != null
-               ? (Math.max(Math.abs(t.bugun_kwh), Math.abs(t.yarin_kwh)) < 10_000
-                   ? `${sayiTr(t.bugun_kwh, 0)} · ${sayiTr(t.yarin_kwh, 0)}`
-                   : `${sayiTr(t.bugun_kwh / 1000, 1)} · ${sayiTr(t.yarin_kwh / 1000, 1)}`)
-               : t ? `${enj(t.bugun_kwh)} · ${enj(t.yarin_kwh)}` : "—"}
-             birim={t && t.bugun_kwh != null && t.yarin_kwh != null
-               ? (Math.max(Math.abs(t.bugun_kwh), Math.abs(t.yarin_kwh)) < 10_000 ? "kWh" : "MWh") : undefined}
-             alt={t && (t.bugun_kwh == null || t.yarin_kwh == null) ? "bir santralde tahmin yok; toplam gösterilmez" : "tüm santrallerin beklenen (P50) toplamı"} />
+        {/* 23.10 yedinci tur: «1.914,2 · 1.827,6 MWh» iki sayı tek noktalamayla okunmuyordu — bugün ana değer, yarın
+            kendi etiketiyle ikinci satır (Kpi.ikinci); ölçek yine büyük olana göre ortak. */}
+        {(() => {
+          const ikisi = !!t && t.bugun_kwh != null && t.yarin_kwh != null;
+          const kucuk = ikisi && Math.max(Math.abs(t!.bugun_kwh!), Math.abs(t!.yarin_kwh!)) < 10_000;
+          const b = kucuk ? "kWh" : "MWh";
+          const yaz = (v: number) => kucuk ? sayiTr(v, 0) : sayiTr(v / 1000, 1);
+          return <Kpi etiket="Bugün beklenen üretim"
+             deger={ikisi ? yaz(t!.bugun_kwh!) : t ? enj(t.bugun_kwh) : "—"}
+             birim={ikisi ? b : undefined}
+             ikinci={t ? { etiket: "Yarın", deger: ikisi ? yaz(t.yarin_kwh!) : enj(t.yarin_kwh), birim: ikisi ? b : undefined } : undefined}
+             alt={t && (t.bugun_kwh == null || t.yarin_kwh == null) ? "bir santralde tahmin yok; toplam gösterilmez" : "tüm santrallerin beklenen (P50) toplamı"} />;
+        })()}
         <Kpi etiket="30 günlük tahmin hatası (WMAPE)" deger={t?.wmape_agirlikli != null ? `%${sayiTr(t.wmape_agirlikli, 1)}` : "—"}
              alt={t ? `${sayiTr(t.wmape_kapsanan_kwp / 1000, 2)} MWp değerlendirmede` : ""} />
-        <Kpi etiket="Açık alarm · veri gecikmiş" deger={t ? `${sayiTr(t.acik_alarm)} · ${sayiTr(t.veri_gecikmis)}` : "—"}
-             alt={t && t.santral > 0 ? "son 7 günde okunmamış · son ölçüm 2 günden eski" : ""} ton={t && (t.acik_alarm > 0 || t.veri_gecikmis > 0) ? "uyari" : undefined} />
+        <Kpi etiket="Açık alarm" deger={t ? sayiTr(t.acik_alarm) : "—"}
+             ikinci={t ? { etiket: "Veri gecikmiş", deger: sayiTr(t.veri_gecikmis), birim: "santral" } : undefined}
+             alt={t && t.santral > 0 ? "alarm: son 7 günde okunmamış kayıt; gecikme: son ölçüm 2 günden eski" : ""} ton={t && (t.acik_alarm > 0 || t.veri_gecikmis > 0) ? "uyari" : undefined} />
       </div>
       <Kart baslik="Santraller" sag={<span className="cip">satıra tıkla → santral</span>}>
         {!p || p.santraller.length === 0 ? <p className="soluk" style={{ margin: 0 }}>Bu hesapta santral yok.</p>
@@ -96,8 +102,9 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
         </p>
       </Kart>
       {/* v2.280 (Tablo 3.2 satır 11): hiyerarşik uzlaştırılmış portföy tahmini — toplam santral tahminleriyle tutarlı */}
-      <Kart baslik="Portföyün günlük üretim tahmini" sag={<span className="cip">{pt?.durum === "ok" ? `${pt.yontem}${pt.tutarli === false ? " · tutarsız" : ""}` : "—"}</span>}>
-        {!pt || pt.durum !== "ok" ? <p className="soluk" style={{ margin: 0 }}>— henüz tahmin yok</p> : (
+      <Kart baslik="Portföyün günlük üretim tahmini" sag={<span className="cip">{pt?.durum === "ok" ? <Meta items={[pt.yontem, pt.tutarli === false && "tutarsız"]} /> : "—"}</span>}>
+        {/* 23.10 yedinci tur: cümle başı tire kalktı — tire yalnız değer yerinde (tablo/KPI hücresi) */}
+        {!pt || pt.durum !== "ok" ? <p className="soluk" style={{ margin: 0 }}>Henüz tahmin yok.</p> : (
           <>
             <div className="grafik-kaydir">
               <table className="veri" style={{ fontSize: 13.5 }}>
@@ -120,13 +127,13 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
         )}
       </Kart>
       {/* v2.276 (Dalga 5): DSG/toplayıcı netleştirmesi — portföy tek dengesizlik hesabına girerse ne kazanılır */}
-      <Kart baslik="Dengeden sorumlu grup (DSG) netleştirmesi — portföy dengesizliği" sag={<span className="cip">{dsg ? `${sayiTr(dsg.pencere_gun)} gün · ${dsg.fiyat.senaryo_saat > 0 ? "senaryo fiyatı" : "piyasa fiyatı (EPİAŞ)"}` : "—"}</span>}>
-        {!dsg ? <p className="soluk" style={{ margin: 0 }}>— veri yok</p> : dsg.ayri_tl == null ? (
-          <p className="soluk" style={{ margin: 0 }}>— {dsg.not ?? "ortak saat yetersiz"}</p>
+      <Kart baslik="Dengeden sorumlu grup (DSG) netleştirmesi — portföy dengesizliği" sag={<span className="cip">{dsg ? <Meta items={[`${sayiTr(dsg.pencere_gun)} gün`, dsg.fiyat.senaryo_saat > 0 ? "senaryo fiyatı" : "piyasa fiyatı (EPİAŞ)"]} /> : "—"}</span>}>
+        {!dsg ? <p className="soluk" style={{ margin: 0 }}>Veri yok.</p> : dsg.ayri_tl == null ? (
+          <p className="soluk" style={{ margin: 0 }}>{dsg.not ?? "Ortak saat yetersiz."}</p>
         ) : (
           <>
             <div className="ızgara satir-3" style={{ marginBottom: 10 }}>
-              <Kpi etiket="Santraller ayrı ayrı" deger={sayiTr(dsg.ayri_tl / 1000, 1)} birim="bin TL" alt={`${sayiTr(dsg.santral)} santral · ${sayiTr(dsg.sapma_ayri_mwh ?? 0, 1)} MWh sapma`} />
+              <Kpi etiket="Santraller ayrı ayrı" deger={sayiTr(dsg.ayri_tl / 1000, 1)} birim="bin TL" alt={`${sayiTr(dsg.santral)} santral, ${sayiTr(dsg.sapma_ayri_mwh ?? 0, 1)} MWh sapma`} />
               <Kpi etiket="Portföy netleşmiş" deger={sayiTr((dsg.net_tl ?? 0) / 1000, 1)} birim="bin TL" alt={`${sayiTr(dsg.sapma_net_mwh ?? 0, 1)} MWh net sapma`} />
               <Kpi etiket="Netleşme kazancı" deger={sayiTr((dsg.kazanc_tl ?? 0) / 1000, 1)} birim="bin TL" alt={dsg.kazanc_pct != null ? `ayrı maliyetin %${sayiTr(dsg.kazanc_pct, 1)}'i` : "—"} />
             </div>
@@ -154,8 +161,8 @@ function GelenTalepler() {
   if (liste !== null && liste.length === 0) return null;   // hiç başvuru yoksa kart yer kaplamaz
   return (
     <Kart baslik="Gelen talepler — web sitesi başvuruları"
-      sag={<span className="cip">{liste === null ? "—" : `${sayiTr(acik)} açık · ${sayiTr(liste.length)} toplam`}</span>}>
-      {liste === null ? <p className="soluk" style={{ margin: 0 }}>— veri yok</p> : (
+      sag={<span className="cip">{liste === null ? "—" : <Meta items={[`${sayiTr(acik)} açık`, `${sayiTr(liste.length)} toplam`]} />}</span>}>
+      {liste === null ? <p className="soluk" style={{ margin: 0 }}>Veri yok.</p> : (
         <div className="grafik-kaydir">
           <table className="veri" style={{ fontSize: 13.5 }}>
             <thead><tr><th style={{ textAlign: "left" }}>E-posta</th><th style={{ textAlign: "left" }}>Santral</th>
@@ -262,7 +269,7 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
                   <td style={{ maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={w.url}>{w.url}</td>
                   <td>{w.santral ?? "tümü"}</td><td>{tarih(w.son_gonderim)}</td>
                   <td style={{ color: w.son_durum != null && !(w.son_durum >= 200 && w.son_durum < 300) ? "var(--uyari-metin)" : undefined }}>
-                    {w.son_durum == null ? "—" : w.son_durum === 0 ? "ulaşılamadı" : `HTTP ${w.son_durum}`}{w.hata_sayisi > 0 ? ` · ${sayiTr(w.hata_sayisi)} hata` : ""}</td>
+                    {w.son_durum == null ? "—" : w.son_durum === 0 ? "ulaşılamadı" : `HTTP ${w.son_durum}`}{w.hata_sayisi > 0 ? ` (${sayiTr(w.hata_sayisi)} hata)` : ""}</td>
                   <td style={{ whiteSpace: "nowrap" }}>
                     <button className="dugme" style={{ fontSize: 13 }} onClick={() => dene(async () => { const r = await api.webhookDene(w.id); setMesaj(r.ok ? `Deneme ulaştı (HTTP ${r.durum}).` : `Deneme başarısız (${r.durum === 0 ? "ulaşılamadı" : "HTTP " + r.durum}).`); })}>Dene</button>
                     <button className="dugme" style={{ fontSize: 13, marginLeft: 4 }} onClick={() => dene(() => api.webhookSil(w.id))}>Sil</button>
@@ -291,7 +298,7 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
       </div>
       <p className="soluk" style={{ fontSize: 13.5, margin: "14px 0 0", lineHeight: 1.9, maxWidth: "100ch" }}>
         Uçlar: <span className="kod">/v1/dis/santraller</span> <span className="kod">/v1/dis/santral/{"{id}"}/tahmin</span> (ETag ile 304){" "}
-        <span className="kod">/v1/dis/santral/{"{id}"}/kgup</span> · oran sınırı dakikada 120 istek · ayrıntı <span className="kod">docs/api/dis-api.md</span>
+        <span className="kod">/v1/dis/santral/{"{id}"}/kgup</span>. Oran sınırı dakikada 120 istek; ayrıntı <span className="kod">docs/api/dis-api.md</span>
       </p>
     </Kart>
   );
@@ -314,7 +321,7 @@ function Paylasimlar({ santraller }: { santraller: { id: string; ad: string }[] 
   if (liste === null) return null;
   if (!yonetici && liste.verilenler.length === 0 && liste.alinanlar.length === 0) return null;
   return (
-    <Kart baslik="Kuruluşlar arası paylaşım" sag={<span className="cip">yalnız okuma · zaman sınırlı</span>}>
+    <Kart baslik="Kuruluşlar arası paylaşım" sag={<span className="cip"><Meta items={["yalnız okuma", "zaman sınırlı"]} /></span>}>
       <p className="soluk" style={{ margin: "0 0 10px", fontSize: 14 }}>
         Bir santralin tahmin, karne ya da gerçekleşen özetini başka bir kuruluşa (toplayıcı, danışman, alıcı) açar.
         Karşı taraf yalnız seçtiğiniz kapsamı, günlük toplam düzeyinde görür; istenirse santral adı takma adla gizlenir.
@@ -359,7 +366,7 @@ function Paylasimlar({ santraller }: { santraller: { id: string; ad: string }[] 
           {acik && (
             <div style={{ marginTop: 10, padding: 10, border: "1px solid var(--kenar)", borderRadius: 8, background: "var(--yuzey2)" }}>
               <div style={{ fontSize: 13, marginBottom: 6, display: "flex", justifyContent: "space-between", gap: 8 }}>
-                <span><strong>{acik.veri.santral}</strong> · {etiket(`${acik.tur}:oku`)}</span>
+                <span><strong>{acik.veri.santral}</strong> — {etiket(`${acik.tur}:oku`)}</span>
                 <button className="dugme" style={{ fontSize: 13 }} onClick={() => setAcik(null)}>Kapat</button>
               </div>
               {acik.tur === "karne" ? (
@@ -488,7 +495,7 @@ function IkiAdimBolumu() {
       ) : durum?.aktif ? (
         <div>
           <p style={{ fontSize: 13.5, margin: "0 0 8px" }}>
-            Açık · kalan kurtarma kodu: <strong>{durum.kalan_kurtarma}</strong></p>
+            Açık. Kalan kurtarma kodu: <strong>{durum.kalan_kurtarma}</strong></p>
           {!kapatAcik ? (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button className="dugme" style={{ fontSize: 13 }} onClick={() => setKapatAcik(true)}>Kapat</button>
@@ -538,7 +545,7 @@ function HesapVeEkip() {
   };
   const tarih = (t: string | null) => t ? new Date(t).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }) : "—";
   return (
-    <Kart baslik="Hesap ve ekip" sag={<span className="cip">parola herkese · üye yönetimi yalnız yönetici</span>}>
+    <Kart baslik="Hesap ve ekip" sag={<span className="cip"><Meta items={["parola herkese", "üye yönetimi yalnız yönetici"]} /></span>}>
       {hata && <p className="ayar-durum hata" style={{ margin: "0 0 8px" }}>{hata}</p>}
       {mesaj && <p className="ayar-durum ok" style={{ margin: "0 0 8px" }}>{mesaj}</p>}
       <div className="etiket-ust">Parolamı değiştir</div>
@@ -572,7 +579,7 @@ function HesapVeEkip() {
                     <button className="dugme" style={{ fontSize: 13 }}
                       onClick={() => { if (confirm(`${u.email} için iki adımlı doğrulama kapatılsın mı? Üye girişte yalnız parolasını kullanır ve dilerse yeniden kurar.`))
                         dene(async () => { await api.takimIkiAdimSifirla(u.id); setMesaj("Üyenin iki adımlı doğrulaması kapatıldı."); }); }}>
-                      açık · sıfırla</button>
+                      açık — sıfırla</button>
                   ) : <span className="soluk">kapalı</span>}</td>
                   {/* 23.10: pasifleştirme tehlikeli işlem dilinde (uyarı rengi, dolgu yok); davranış aynı */}
                   <td><button className={`dugme${u.aktif ? " dugme-tehlike" : ""}`} style={{ fontSize: 13 }}

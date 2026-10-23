@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api/client";
 import type { SantralOzeti, TahminSerisi, KgupOnizleme, Nowcast } from "../../api/types";
 import { Kart, Sayfa, sayiTr } from "./parcalar";
+import { Meta } from "../../lib/Meta";
 import ProductionForecastChart from "./ProductionForecastChart";
 import {
   GUNLUK_MOD,
@@ -54,8 +55,8 @@ export function Tahminler({ plantId }: { plantId: string }) {
           const k = rko.value;
           const b = k[0]?.bant;
           const s = k[0]?.sapma;
-          const sy = s?.aktif ? ` · son ${sayiTr(s.n_gun ?? 0)} günün ölçümüyle %${sayiTr(((s.oran_genel ?? 1) - 1) * 100, 1)} düzeltildi` : "";
-          const gi = k[0]?.etiket === "gun_ici" ? " · gün içi güncelleme (güncel bölgesel hava tahmini)" : "";
+          const sy = s?.aktif ? `; son ${sayiTr(s.n_gun ?? 0)} günün ölçümüyle %${sayiTr(((s.oran_genel ?? 1) - 1) * 100, 1)} düzeltildi` : "";
+          const gi = k[0]?.etiket === "gun_ici" ? "; gün içi güncelleme (güncel bölgesel hava tahmini)" : "";
           setBantYazisi((!b ? "" : b.kaynak === "gefs" ? `${sayiTr(b.uye ?? 0)} üyeli hava tahmini topluluğundan türetilen aralık` : "model aralığı") + sy + gi || null);
         } else setBantYazisi(null);
         setHazir(true);
@@ -85,7 +86,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
       baslik="Tahminler"
       alt={
         dilim
-          ? `${dilim.tahminSaat} saatlik tahmin · son ${dilim.gecmisSaat} saatin geçmişiyle · en son tahmin.`
+          ? `${dilim.tahminSaat} saatlik tahmin, son ${dilim.gecmisSaat} saatin geçmişiyle; en son tahmin.`
           : ""
       }
       sag={
@@ -145,7 +146,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
             {/* 23.10 altıncı tur: tahmin kimliği (mod · aralık kaynağı) görünür tek satır; uzun «Ne gösterir»
                 açıklaması açılır alanda (details) — metin aynen, bilgi kaybı yok */}
             <p className="soluk" style={{ fontSize: 13.5, margin: "12px 0 0" }}>
-              Son tahmin Mod {seri.mod ?? "—"}{bantYazisi ? ` · aralık: ${bantYazisi}` : ""}.
+              Son tahmin Mod {seri.mod ?? "—"}.{bantYazisi ? ` Aralık: ${bantYazisi}.` : ""}
             </p>
             <details className="aciklama">
               <summary>Ne gösterir</summary>
@@ -159,6 +160,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
           </Kart>
           <Kart baslik="Günlük toplamlar">
             {/* 23.10 altıncı tur: grafikle aynı dil — gövde ailesi + tabular (.veri.sayisal), mono kalktı */}
+            <div className="grafik-kaydir">
             <table className="veri sayisal">
               <thead>
                 <tr>
@@ -183,6 +185,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
                 ))}
               </tbody>
             </table>
+            </div>
             {gunlukVeri.some((g) => g.kismi) && (
               <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>
                 * dönemin yalnız bir bölümü kapsanan gün
@@ -196,18 +199,18 @@ export function Tahminler({ plantId }: { plantId: string }) {
           bildirim durumu rozeti; (2) indirme düğmeleri iki etiketli küme (bildirim dosyası · toplayıcı);
           (3) piyasa takvimi kuralı açılır alanda. Düğmelerin onClick'leri ve api çağrıları aynen. */}
       <Kart baslik="Üretim programı (KGÜP) — yarının saatlik programı"
-        sag={<span className="cip">{kgup ? `teslim günü ${new Date(kgup.teslim.hedef_gun + "T12:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" })} · teyit ${kgup.teslim.teyit_saati.slice(0, 5)}` : "tahmin bekleniyor"}</span>}>
+        sag={<span className="cip">{kgup ? <Meta items={[`teslim günü ${new Date(kgup.teslim.hedef_gun + "T12:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}`, `teyit ${kgup.teslim.teyit_saati.slice(0, 5)}`]} /> : "tahmin bekleniyor"}</span>}>
         {kgup ? (
           <>
             <div className="program-ozet">
               <span className="sayi-buyuk">{sayiTr(kgup.toplam_mwh, 1)} <small style={{ fontSize: 15, fontWeight: 400, color: "var(--soluk)" }}>MWh</small></span>
-              <span className="soluk" style={{ fontSize: 13.5 }}>{kgup.kantil.toUpperCase()} · tahmin {kgup.kosu.run_at ? new Date(kgup.kosu.run_at).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }) : "—"}</span>
+              <span className="soluk" style={{ fontSize: 13.5 }}><Meta items={[kgup.kantil.toUpperCase(), `tahmin ${kgup.kosu.run_at ? new Date(kgup.kosu.run_at).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }) : "—"}`]} /></span>
               <span className={`rozet ${kgup.teslim.durum === "pencere_acik" ? "rozet-ok" : "rozet-notr"}`}>
-                bildirim saati {kgup.teslim.durum === "pencere_acik" ? "açık" : kgup.teslim.durum === "erken" ? "henüz açılmadı" : "kapandı"} · 14:00–15:30
+                bildirim saati {kgup.teslim.durum === "pencere_acik" ? "açık" : kgup.teslim.durum === "erken" ? "henüz açılmadı" : "kapandı"} (14:00–15:30)
               </span>
               {kgup.oneri && kgup.oneri.durum === "ok" && kgup.oneri.kantil &&
                 <span className="cip" title={kgup.oneri.not ?? ""}>önerilen seviye {kgup.oneri.kantil.toUpperCase()}</span>}
-              {kgup.eak && <span className="cip" title="Emre amade kapasite — ayarlardan değiştirilir">EAK {sayiTr(kgup.eak.eak_mw, 2)} MW · {({ gecici: "geçici kısıt", eak_alani: "EAK alanı", ac_tavani: "AC sınırı", kurulu_guc: "kurulu güç" } as Record<string, string>)[kgup.eak.kaynak] ?? kgup.eak.kaynak}</span>}
+              {kgup.eak && <span className="cip" title="Emre amade kapasite — ayarlardan değiştirilir">EAK {sayiTr(kgup.eak.eak_mw, 2)} MW ({({ gecici: "geçici kısıt", eak_alani: "EAK alanı", ac_tavani: "AC sınırı", kurulu_guc: "kurulu güç" } as Record<string, string>)[kgup.eak.kaynak] ?? kgup.eak.kaynak})</span>}
             </div>
             <div className="dugme-grubu">
               <div>
@@ -227,7 +230,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
               </div>
             </div>
             {kgupHata && <p style={{ color: "var(--uyari-metin)", fontSize: 13.5, margin: "8px 0 0" }}>{kgupHata}</p>}
-            {kgup.uyarilar.length > 0 && <p style={{ color: "var(--uyari-metin)", fontSize: 13.5, margin: "8px 0 0" }}>{kgup.uyarilar.join(" · ")}</p>}
+            {kgup.uyarilar.length > 0 && <ul className="not-listesi uyari">{kgup.uyarilar.map((u) => <li key={u}>{u}</li>)}</ul>}
             {kgup.sicrama_saatleri.length > 0 && <p style={{ fontSize: 13.5, margin: "8px 0 0" }}>≥200 MWh ani değişim: saat {kgup.sicrama_saatleri.join(", ")}; dosyada 15 dakikalık adımlar.</p>}
             <details className="aciklama">
               <summary>Piyasa takvimi ve program kuralı</summary>
@@ -247,13 +250,13 @@ export function Tahminler({ plantId }: { plantId: string }) {
       </Kart>
       {/* v2.266 (Dalga 5.18): kısa ufuk — ölçüm persistansı; uydu değil. Canlı SCADA yoksa dürüstçe tire. */}
       <Kart baslik="Önümüzdeki 6 saat — son ölçümlere göre düzeltme"
-        sag={<span className="cip">{nc?.durum === "ok" ? `düzeltme oranı ${sayiTr(nc.oran ?? 0, 2)} · son ${sayiTr(nc.n_saat)} saat` : nc?.durum === "gece" ? "gece · beklenen (P50)" : "canlı ölçüm gerektirir"}</span>}>
+        sag={<span className="cip">{nc?.durum === "ok" ? <Meta items={[`düzeltme oranı ${sayiTr(nc.oran ?? 0, 2)}`, `son ${sayiTr(nc.n_saat)} saat`]} /> : nc?.durum === "gece" ? "gece: beklenen (P50)" : "canlı ölçüm gerektirir"}</span>}>
         {nc === undefined ? <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p>
          : !nc || nc.durum === "scada_bayat" || nc.durum === "olcum_yok" || nc.durum === "tahmin_yok" ? (
           /* 23.10 altıncı tur: boş durum iki kademe — API'nin nedeni başlık, ne yaptığı açıklama */
           <div className="bos-durum">
             <div className="bos-bas">
-              {nc?.not ?? "Hesaplanamadı"}{nc?.tazelik_saat != null && <span className="soluk" style={{ fontWeight: 400 }}> · son ölçüm {nc.tazelik_saat >= 48 ? `${sayiTr(nc.tazelik_saat / 24, 0)} gün` : `${sayiTr(nc.tazelik_saat, 0)} saat`} önce</span>}
+              {nc?.not ?? "Hesaplanamadı"}{nc?.tazelik_saat != null && <span className="soluk" style={{ fontWeight: 400 }}> (son ölçüm {nc.tazelik_saat >= 48 ? `${sayiTr(nc.tazelik_saat / 24, 0)} gün` : `${sayiTr(nc.tazelik_saat, 0)} saat`} önce)</span>}
             </div>
             <p>Bu düzeltme, son 3 saatte ölçülen üretimin tahmine oranını ileriye taşır; yalnız canlı SCADA bağlantısı olan santrallerde çalışır.</p>
           </div>

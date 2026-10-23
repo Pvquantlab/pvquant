@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Meta } from "../../lib/Meta";
 import "./fontlar";
 import "./vitrin.css";
 import { UstCubuk } from "./UstCubuk";
@@ -78,7 +79,7 @@ export function Yontem() {
                 <p>Ana sayfadaki Açık karne elle yazılmış değildir; kimlik doğrulaması gerektirmeyen bir uçtan canlı okunur. Aynı sayıları herkes, herhangi bir anda kendisi çekebilir:</p>
                 <code className="vt-kod">GET /v1/dogrulama</code>
                 {dg && (
-                  <p className="vt-kunye">şu an: {dg.santral_etiketi} · {dg.pencere_gun} sınav günü · ortalama sapma {yuzdeTr(dg.wmape_pct)}</p>
+                  <p className="vt-kunye"><Meta items={[`şu an: ${dg.santral_etiketi}`, `${dg.pencere_gun} sınav günü`, `ortalama sapma ${yuzdeTr(dg.wmape_pct)}`]} /></p>
                 )}
               </div>
             </div>

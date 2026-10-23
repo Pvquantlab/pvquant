@@ -3,6 +3,7 @@ import { api, type AlarmSatiri, rolum } from "../api/client";
 import type { SantralOzeti, Kullanici } from "../api/types";
 import { useDamga } from "./useDamga";
 import { sayiTr, gucTr } from "../features/sayfalar/parcalar";
+import { Meta } from "../lib/Meta";
 
 /* v2.290 — "Çift Yüz": her sayfanın varsayılan yüzü. Operasyon sayfaları (portföy,
    santral, veri, tahmin) koyu terminal; kanıt sayfaları (kalibrasyon, doğruluk,
@@ -70,7 +71,7 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
   // arasında gezerken hepsi aynı başlığı taşıyordu, açık sekmeler ayırt edilemiyordu.
   useEffect(() => {
     const ad = SAYFALAR.find((s) => s.id === sayfa)?.ad ?? "Panel";
-    document.title = `${ad} · ${santral} — PVQuant`;
+    document.title = `${ad} — ${santral} | PVQuant`;
     // temizleme şart: çıkışta Kabuk sökülür ama başlık kalırdı — giriş/vitrin
     // ekranındaki ziyaretçi sekmede santral adını görmeye devam ederdi.
     return () => { document.title = "PVQuant — Güneş santralleri için üretim tahmini ve doğruluk karnesi"; };
@@ -240,7 +241,7 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
           <div style={{ fontSize: 14, color: "var(--ikincil)", minWidth: 0,
                         overflow: "hidden", textOverflow: "ellipsis",
                         whiteSpace: "nowrap" }}>
-            Panel <b style={{ color: "var(--metin)" }}>· {santral}</b>
+            Panel<span className="ust-yol-ayrac" aria-hidden="true">/</span><b style={{ color: "var(--metin)" }}>{santral}</b>
             <span className="mono ust-tarih" style={{ color: "var(--soluk)", marginLeft: 14 }}>{bugun}</span>
           </div>
           <div className="ust-arac">
@@ -310,7 +311,7 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
                       {/* v2.265: okundu / atama — nokta rozeti yalnız okunmamışlar için yanar */}
                       <div className="zil-eylem">
                         {x.okundu
-                          ? <span className="mono">okundu{x.okuyan ? ` · ${x.okuyan}` : ""}</span>
+                          ? <span className="mono">okundu{x.okuyan ? ` (${x.okuyan})` : ""}</span>
                           : <button className="dugme" style={{ fontSize: 12.5 }}
                               onClick={() => plantId && api.alarmOkundu(plantId, x.id).then(alarmYenile).catch(() => {})}>Okundu</button>}
                         {yazabilir && kullanicilar && kullanicilar.length > 0 && (
@@ -347,22 +348,27 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
                 <i className="nokta-isik" aria-hidden="true"
                    style={{ background: sg.son_scada === null
                      ? "var(--soluk)" : gecikti ? "var(--uyari)" : "var(--basari)" }} />
+                {/* 23.10 yedinci tur: «son yükleme» → «son veri» (alan = son ÖLÇÜM zaman damgası); tarih ve
+                    gecikme uyarısı ayrı dilimler, orta nokta yok */}
                 {sg.son_scada === null
                   ? "SCADA verisi henüz yüklenmedi"
-                  : gecikti
-                    ? `son yükleme ${sg.son_scada} · ${sg.kesinti_gun} gündür yeni veri yok`
-                    : `veri akışı sağlıklı · son yükleme ${sg.son_scada}`}
+                  : <Meta items={[
+                      <span key="son-veri"><span className="meta-et">son veri</span>{sg.son_scada}</span>,
+                      gecikti ? <span key="gecikme" className="meta-uyari">{sg.kesinti_gun} gündür yeni veri yok</span> : "veri akışı sağlıklı",
+                    ]} />}
               </span>
               {sonKosu !== undefined && (
                 <span>{sonKosu
                   ? `son tahmin ${trKosu(sonKosu)}` : "henüz tahmin yok"}</span>
               )}
               <span className="tele-sag">
-                model {ozet.model_adi}{ozet.mod ? ` · Mod ${ozet.mod}` : ""}
-                {ozet.son_kalibrasyon ? ` · kalibrasyon ${ozet.son_kalibrasyon}` : ""}
-                {ozet.sapma_pct !== null ? ` · sapma %${sayiTr(ozet.sapma_pct, 2)}` : ""}
                 {/* v2.265: 'tazelenir' iddiası ancak damga yoklaması gerçekten çalışıyorsa yazılır */}
-                {sonYoklama && ` · son kontrol ${sonYoklama.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}`}
+                <Meta items={[
+                  `model ${ozet.model_adi}${ozet.mod ? `, Mod ${ozet.mod}` : ""}`,
+                  ozet.son_kalibrasyon && `kalibrasyon ${ozet.son_kalibrasyon}`,
+                  ozet.sapma_pct !== null && `sapma %${sayiTr(ozet.sapma_pct, 2)}`,
+                  sonYoklama && `son kontrol ${sonYoklama.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}`,
+                ]} />
               </span>
             </div>
           );

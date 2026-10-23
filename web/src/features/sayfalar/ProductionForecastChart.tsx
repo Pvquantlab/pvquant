@@ -667,7 +667,7 @@ export function buildChartOption(input: BuildInput): EChartsOption {
           `font-size:12.5px">Aralık AC sınırına dayalı — üst değer kırpılmış</div>`);
       }
       return (
-        `<b>${fmtTime(toMs(ts), tz)} · ${isPast ? "Geçmiş" : "Tahmin"}</b>` +
+        `<b>${fmtTime(toMs(ts), tz)}</b> <span style="color:${T.mutedText}">${isPast ? "geçmiş" : "tahmin"}</span>` +
         `<table style="border-collapse:collapse;margin-top:4px">` +
         rows.join("") + `</table>` + notlar.join("")
       );
@@ -773,7 +773,7 @@ export function buildChartOption(input: BuildInput): EChartsOption {
           nokta(T.acLimit)));
       }
       return (
-        `<b>${label} · ${isPast ? "Geçmiş" : "Tahmin"}</b>` +
+        `<b>${label}</b> <span style="color:${T.mutedText}">${isPast ? "geçmiş" : "tahmin"}</span>` +
         `<table style="border-collapse:collapse;margin-top:4px">` +
         rows.join("") + `</table>`
       );
@@ -926,7 +926,7 @@ export function buildChartOption(input: BuildInput): EChartsOption {
       splitLine: { show: false },
       // v2.201: D cizim dili — Solargis'in koseli parantezli eksen notu
       ...(narrow ? {} : {
-        name: daily ? "[gün · yerel]" : "[saat · yerel]",
+        name: daily ? "[yerel gün]" : "[yerel saat]",
         nameLocation: "middle" as const,
         nameGap: 30,
         nameTextStyle: { color: T.unitText, fontFamily: "'IBM Plex Mono', ui-monospace, monospace", fontSize: 12.5 },
@@ -1179,9 +1179,8 @@ export default function ProductionForecastChart({
     <div>
       <div className="grafik-serit">
         <span style={{ ...pill, color: T.labelText }} aria-label="şu anki beklenen üretim">
-          {nowValue !== null
-            ? `şimdi · ${nfKw.format(nowValue)} kW`
-            : "şimdi"}
+          <span style={{ color: T.mutedText, marginRight: 6 }}>şimdi</span>
+          {nowValue !== null ? `${nfKw.format(nowValue)} kW` : "—"}
         </span>
         <div className="lejant" role="list" aria-label="grafik açıklaması" style={{ gap: narrow ? "6px 12px" : "6px 16px" }}>
           <span role="listitem">
@@ -1229,7 +1228,7 @@ export default function ProductionForecastChart({
         </div>
         {(narrow || daily) && (
           <span style={{ font: "12.5px 'IBM Plex Mono', ui-monospace, monospace", color: T.mutedText, whiteSpace: "nowrap" }}>
-            {daily ? "günlük tepe ve aralık · " : ""}kW
+            {daily ? "günlük tepe ve aralık, " : ""}kW
           </span>
         )}
         {features.exportButtons && (

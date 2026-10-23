@@ -1,4 +1,5 @@
 import type { Dogrulama } from "../../api/types";
+import { Meta } from "../../lib/Meta";
 import type { DogrulamaDurumu } from "./dogrulamaDurumu";
 import { yuzdeTr, kisaTarihTr } from "./bicim";
 
@@ -19,11 +20,11 @@ function Sayilar({ veri }: { veri: Dogrulama }) {
   const yok = "henüz hesaplanmadı";
   const beceri = veri.beceri_naif_pct;
   const kutular = [
-    { et: `Ortalama sapma · ${veri.pencere_gun ?? "—"} sınav günü`, deger: yuzdeTr(veri.wmape_pct),
+    { et: `Ortalama sapma (${veri.pencere_gun ?? "—"} sınav günü)`, deger: yuzdeTr(veri.wmape_pct),
       alt: veri.wmape_pct == null ? yok : "üretime ağırlıklı saatlik hata" },
     { et: "Basit yönteme göre", deger: yuzdeTr(beceri == null ? beceri : Math.abs(beceri)),
       alt: beceri == null ? yok : beceri >= 0 ? "daha az hata" : "daha fazla hata" },
-    { et: `Bant kapsaması · hedef ${yuzdeTr(veri.bant_hedef_pct)}`, deger: yuzdeTr(veri.bant_kapsama_pct),
+    { et: `Bant kapsaması (hedef ${yuzdeTr(veri.bant_hedef_pct)})`, deger: yuzdeTr(veri.bant_kapsama_pct),
       alt: veri.bant_kapsama_pct == null ? yok : "gerçekleşen, söylenen aralıkta kaldı" },
     { et: "Sınav günü", deger: veri.pencere_gun == null ? "—" : String(veri.pencere_gun),
       alt: veri.pencere_gun == null ? yok : "her gece bir sınav" },
@@ -39,7 +40,7 @@ function Sayilar({ veri }: { veri: Dogrulama }) {
           </div>
         ))}
       </div>
-      <p className="vt-kunye vt-serit__kunye">GET /v1/dogrulama · güncelleme {kisaTarihTr(veri.son_gun)}</p>
+      <p className="vt-kunye vt-serit__kunye"><Meta items={["GET /v1/dogrulama", `güncelleme ${kisaTarihTr(veri.son_gun)}`]} /></p>
     </>
   );
 }

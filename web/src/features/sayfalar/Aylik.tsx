@@ -6,6 +6,7 @@ import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
 import { Cubuklar } from "../santralim/Cubuklar";
 import { Kart, Kpi, Sayfa, sayiTr, isiTonu, isiMetni } from "./parcalar";
+import { Meta } from "../../lib/Meta";
 
 const AYLAR = ["Oca", "Şub", "Mar", "Nis", "May", "Haz",
                "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
@@ -158,23 +159,23 @@ export function Aylik({ plantId }: { plantId: string }) {
       alt="Uzun dönem iklim verisinden aylık üretim aralığı; günlük tahminden bağımsızdır."
       sag={<span className="cip">
         {b.donem != null && b.yil_sayisi != null
-          ? `Kaynak: ${b.donem} arşivi · ${sayiTr(b.yil_sayisi)} yıl · hesap ${hesap}`
-          : `Kaynak: uzun dönem arşiv · hesap ${hesap}`}</span>}>
+          ? <Meta items={[`Kaynak: ${b.donem} arşivi`, `${sayiTr(b.yil_sayisi)} yıl`, `hesap ${hesap}`]} />
+          : <Meta items={["Kaynak: uzun dönem arşiv", `hesap ${hesap}`]} />}</span>}>
       <div className="ızgara satir-3" style={{ marginBottom: 14 }}>
-        <Kpi etiket={`${AYLAR[buAy - 1]} · P10`}
+        <Kpi etiket={`${AYLAR[buAy - 1]} P10`}
              deger={k?.p10 !== null && k ? sayiTr(k.p10) : "—"}
              birim="kWh/m²" alt="kötümser (yılların %10'u bunun altında)" />
-        <Kpi etiket={`${AYLAR[buAy - 1]} · P50`}
+        <Kpi etiket={`${AYLAR[buAy - 1]} P50`}
              deger={k?.p50 !== null && k ? sayiTr(k.p50) : "—"}
-             birim="kWh/m²" alt={`beklenen (medyan) · ${k?.yil_sayisi ?? "—"} yıl`} />
-        <Kpi etiket={`${AYLAR[buAy - 1]} · P90`}
+             birim="kWh/m²" alt={`beklenen (medyan), ${k?.yil_sayisi ?? "—"} yıl`} />
+        <Kpi etiket={`${AYLAR[buAy - 1]} P90`}
              deger={k?.p90 !== null && k ? sayiTr(k.p90) : "—"}
              birim="kWh/m²" alt="iyimser (yılların %10'u bunun üstünde)" />
       </div>
       {/* v2.278 (Tablo 3.1 satır 6): bankable yıllık beklenti — ücretsiz uydu türevli arşiv + fizik + belirsizlik bütçesi */}
       <Kart baslik="Yıllık üretim beklentisi — P50 / P90 ve belirsizlik kalemleri"
         sag={<span style={{ display: "flex", gap: 6, alignItems: "center" }}>
-          {bk?.durum === "ok" && <span className="cip">{bk.donem} · {sayiTr(bk.yil_sayisi ?? 0)} yıl</span>}
+          {bk?.durum === "ok" && <span className="cip"><Meta items={[bk.donem, `${sayiTr(bk.yil_sayisi ?? 0)} yıl`]} /></span>}
           <button className="dugme" style={{ fontSize: 13 }} onClick={bkYenile}>{bk?.durum === "ok" ? "Yenile" : "Hesapla"}</button>
         </span>}>
         {bk === undefined ? <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p>
@@ -183,13 +184,13 @@ export function Aylik({ plantId }: { plantId: string }) {
         ) : (
           <>
             <div className="ızgara satir-4" style={{ marginBottom: 10 }}>
-              <Kpi etiket="Beklenen (P50) · yıllık" deger={sayiTr((bk.p50_kwh ?? 0) / 1000, 0)} birim="MWh" alt={`${sayiTr(bk.ozgul_verim_kwh_kwp ?? 0, 0)} kWh/kWp özgül verim`} />
-              <Kpi etiket="Güvenli (P90) · tek yıl" deger={sayiTr((bk.bir_yil?.p90 ?? 0) / 1000, 0)} birim="MWh" alt={`P99 ${sayiTr((bk.bir_yil?.p99 ?? 0) / 1000, 0)} MWh`} />
-              <Kpi etiket={`Güvenli (P90) · ${sayiTr(bk.N_yil ?? 10)} yıl ortalaması`} deger={sayiTr((bk.n_yil?.p90 ?? 0) / 1000, 0)} birim="MWh" alt="finansman dönemi (yıllar arası oynaklık ortalamada küçülür)" />
+              <Kpi etiket="Yıllık beklenen (P50)" deger={sayiTr((bk.p50_kwh ?? 0) / 1000, 0)} birim="MWh" alt={`${sayiTr(bk.ozgul_verim_kwh_kwp ?? 0, 0)} kWh/kWp özgül verim`} />
+              <Kpi etiket="Güvenli (P90), tek yıl" deger={sayiTr((bk.bir_yil?.p90 ?? 0) / 1000, 0)} birim="MWh" alt={`P99 ${sayiTr((bk.bir_yil?.p99 ?? 0) / 1000, 0)} MWh`} />
+              <Kpi etiket={`Güvenli (P90), ${sayiTr(bk.N_yil ?? 10)} yıl ortalaması`} deger={sayiTr((bk.n_yil?.p90 ?? 0) / 1000, 0)} birim="MWh" alt="finansman dönemi (yıllar arası oynaklık ortalamada küçülür)" />
               <Kpi etiket="Toplam belirsizlik" deger={`%${sayiTr((bk.sigma_toplam ?? 0) * 100, 1)}`}
                    alt={bk.katki_pct
-                     ? (bk.olcumle_kalibre ? "ölçümle kalibre · " : "") + "katkı: " + Object.entries(bk.katki_pct).sort((x, y) => y[1] - x[1]).slice(0, 3)   /* jsonb anahtar sırası korumaz — değere göre */.map(([k, v]) => `${({ yillar_arasi: "yıllar arası", kaynak: "kaynak", transpozisyon: "düzleme aktarma", model_zinciri: "model", olcum: "ölçüm", degradasyon: "bozunma", kullanilabilirlik: "kullanılabilirlik" } as Record<string, string>)[k] ?? k} %${sayiTr(v, 0)}`).join(" · ")
-                     : bk.bilesenler ? `yıllar arası %${sayiTr((bk.bilesenler.yillar_arasi ?? 0) * 100, 1)} · kaynak %${sayiTr((bk.bilesenler.kaynak ?? 0) * 100, 0)} · model %${sayiTr((bk.bilesenler.model_zinciri ?? bk.bilesenler.model ?? 0) * 100, 1)}` : ""} />
+                     ? (bk.olcumle_kalibre ? "ölçümle kalibre; " : "") + "katkı: " + Object.entries(bk.katki_pct).sort((x, y) => y[1] - x[1]).slice(0, 3)   /* jsonb anahtar sırası korumaz — değere göre */.map(([k, v]) => `${({ yillar_arasi: "yıllar arası", kaynak: "kaynak", transpozisyon: "düzleme aktarma", model_zinciri: "model", olcum: "ölçüm", degradasyon: "bozunma", kullanilabilirlik: "kullanılabilirlik" } as Record<string, string>)[k] ?? k} %${sayiTr(v, 0)}`).join(", ")
+                     : bk.bilesenler ? `yıllar arası %${sayiTr((bk.bilesenler.yillar_arasi ?? 0) * 100, 1)}, kaynak %${sayiTr((bk.bilesenler.kaynak ?? 0) * 100, 0)}, model %${sayiTr((bk.bilesenler.model_zinciri ?? bk.bilesenler.model ?? 0) * 100, 1)}` : ""} />
             </div>
             <div className="grafik-kaydir">
               <table className="veri sik" style={{ fontSize: 13 }}>
@@ -203,8 +204,8 @@ export function Aylik({ plantId }: { plantId: string }) {
             <p className="soluk" style={{ fontSize: 14, margin: "10px 0 0" }}>
               {bk.mod}. Işınım P50 {sayiTr(bk.ghi?.p50_kwh_m2 ?? 0, 0)} kWh/m² (tek yıl P90 {sayiTr(bk.ghi?.p90_kwh_m2_1yil ?? 0, 0)}).
               {bk.tmy?.p90_yili ? ` P90 senaryo yılı: ${bk.tmy.p90_yili} (${sayiTr(bk.tmy.p90_yili_ghi ?? 0, 0)} kWh/m²); tipik meteorolojik yıl ${sayiTr(bk.tmy.tmy_ghi_kwh_m2 ?? 0, 0)} kWh/m².` : ""}
-              {bk.monte_carlo ? ` Çarpımsal sınama (asimetri korunur): P90 ${sayiTr(bk.monte_carlo.p90_1yil / 1000, 0)} · P99 ${sayiTr(bk.monte_carlo.p99_1yil / 1000, 0)} MWh — normal varsayımla ${Math.abs((bk.monte_carlo.p90_1yil - (bk.bir_yil?.p90 ?? 0)) / (bk.bir_yil?.p90 || 1) * 100) < 1 ? "uyumlu" : "farklı"}.` : ""}
-              {bk.gelir ? ` Gelir (tarife: ${bk.gelir.tip}, ${sayiTr(bk.gelir.fiyat_tl_mwh, 0)} TL/MWh): P50 ${sayiTr(bk.gelir.p50_tl / 1e6, 2)} milyon TL/yıl · P90 tek yıl ${sayiTr(bk.gelir.p90_1yil_tl / 1e6, 2)} · P90 10 yıl ${sayiTr(bk.gelir.p90_nyil_tl / 1e6, 2)} milyon TL.${bk.gelir.not ? " " + bk.gelir.not + "." : ""}` : ""}
+              {bk.monte_carlo ? ` Çarpımsal sınama (asimetri korunur): P90 ${sayiTr(bk.monte_carlo.p90_1yil / 1000, 0)} MWh, P99 ${sayiTr(bk.monte_carlo.p99_1yil / 1000, 0)} MWh — normal varsayımla ${Math.abs((bk.monte_carlo.p90_1yil - (bk.bir_yil?.p90 ?? 0)) / (bk.bir_yil?.p90 || 1) * 100) < 1 ? "uyumlu" : "farklı"}.` : ""}
+              {bk.gelir ? ` Gelir (tarife: ${bk.gelir.tip}, ${sayiTr(bk.gelir.fiyat_tl_mwh, 0)} TL/MWh): P50 ${sayiTr(bk.gelir.p50_tl / 1e6, 2)} milyon TL/yıl, P90 tek yıl ${sayiTr(bk.gelir.p90_1yil_tl / 1e6, 2)} milyon TL, P90 10 yıl ${sayiTr(bk.gelir.p90_nyil_tl / 1e6, 2)} milyon TL.${bk.gelir.not ? " " + bk.gelir.not + "." : ""}` : ""}
               {" "}{bk.not}
             </p>
             {bkMesaj && <p className="soluk" style={{ fontSize: 14, margin: "6px 0 0" }}>{bkMesaj}</p>}
@@ -224,7 +225,7 @@ export function Aylik({ plantId }: { plantId: string }) {
         </p>
       </Kart>
       <Kart baslik="Yıl × ay ışınım tablosu (GHI)"
-        sag={<span className="cip">kWh/m² · renk: değer ölçeği</span>}>
+        sag={<span className="cip"><Meta items={["kWh/m²", "renk: değer ölçeği"]} /></span>}>
         <div style={{ overflowX: "auto" }}>
           <table style={{ borderCollapse: "collapse", width: "100%",
                           fontFamily: "var(--mono)", fontSize: 13 }}>

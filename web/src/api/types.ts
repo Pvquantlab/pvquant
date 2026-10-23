@@ -133,9 +133,9 @@ export interface KgupOnizleme {
   teslim: { hedef_gun: string; durum: string; dakika_kaldi: number; teyit_saati: string };
 }
 export const SEGMENTLER: { deger: string; etiket: string }[] = [
-  { deger: "lisansli_serbest", etiket: "Lisanslı · serbest piyasa" }, { deger: "lisansli_yekdem", etiket: "Lisanslı · YEKDEM" },
-  { deger: "yeka", etiket: "YEKA" }, { deger: "lisanssiz_iletim", etiket: "Lisanssız · iletim bağlantılı" },
-  { deger: "lisanssiz_dagitim", etiket: "Lisanssız · dağıtım (GTŞ/toplayıcı)" }, { deger: "oz_tuketim_saatlik", etiket: "Öz tüketim · saatlik mahsup" },
+  { deger: "lisansli_serbest", etiket: "Lisanslı (serbest piyasa)" }, { deger: "lisansli_yekdem", etiket: "Lisanslı (YEKDEM)" },
+  { deger: "yeka", etiket: "YEKA" }, { deger: "lisanssiz_iletim", etiket: "Lisanssız (iletim bağlantılı)" },
+  { deger: "lisanssiz_dagitim", etiket: "Lisanssız (dağıtım, GTŞ/toplayıcı)" }, { deger: "oz_tuketim_saatlik", etiket: "Öz tüketim (saatlik mahsup)" },
 ];
 /** /dengesizlik — v2.259: karnenin TL dili. */
 export interface Dengesizlik {

@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
+import { Meta } from "../../lib/Meta";
 import { numuneGun, NUMUNE_TARIH, type EgriNoktasi } from "./numuneGun";
 
 /** Tablo yüzdesi: tek ondalık, Türkçe virgül (araştırmadaki yuzde() ile aynı hassasiyet). */
@@ -14,8 +15,8 @@ export function ReferansEgri({ veri }: { veri: null }) {
   return (
     <div className="vt-pencere">
       <figure className="vt-pencere__fig">
-      <div className="vt-pencere__bas">Referans santral · 10{" "}MW üzeri · İç{" "}Anadolu</div>
-      <p className="vt-pencere__tarih">{NUMUNE_TARIH} · saatlik üretim, kurulu güce oran</p>
+      <div className="vt-pencere__bas">Referans santral, 10{" "}MW üzeri, İç{" "}Anadolu</div>
+      <p className="vt-pencere__tarih"><Meta items={[NUMUNE_TARIH, "saatlik üretim, kurulu güce oran"]} /></p>
       <ul className="vt-lejant" role="list" aria-label="Lejant">
         <li><span className="vt-lejant__cizgi vt-lejant__cizgi--tahmin" aria-hidden="true" />Tahmin (P50)</li>
         <li><span className="vt-lejant__bant" aria-hidden="true" />Tahmin aralığı (P10–P90)</li>
@@ -24,7 +25,7 @@ export function ReferansEgri({ veri }: { veri: null }) {
       <Cizim noktalar={noktalar} kip="orta" />
       <Cizim noktalar={noktalar} kip="dar" />
       <figcaption className="vt-kunye vt-pencere__kunye">
-        <strong>Örnek gün:</strong> 1 Ekim 2026 · <strong>Kaynak:</strong> kamuya açık üretim verisi ve PVQuant tahmini
+        <Meta items={[<span key="gun"><strong>Örnek gün:</strong> 1 Ekim 2026</span>, <span key="kaynak"><strong>Kaynak:</strong> kamuya açık üretim verisi ve PVQuant tahmini</span>]} />
       </figcaption>
       </figure>
       <details className="vt-pencere__tablo">
@@ -161,7 +162,7 @@ function Cizim({ noktalar, kip }: { noktalar: readonly EgriNoktasi[]; kip: Cizim
           {aktif.gercek > 0 && <circle className="vt-egri__im-nokta vt-egri__im-nokta--gercek" cx={x(aktif.saat + 0.5)} cy={y(aktif.gercek)} r={dar ? 3.4 : 4.2} />}
           <text ref={imYazi} className="vt-egri__et vt-egri__et--halo vt-egri__im-et"
             x={imX ?? SOL} y={UST - 6} textAnchor="start">
-            {`${String(aktif.saat).padStart(2, "0")}:00 · tahmin %${(aktif.p50 * 100).toFixed(1).replace(".", ",")} · gerçekleşen %${(aktif.gercek * 100).toFixed(1).replace(".", ",")}`}
+            {`${String(aktif.saat).padStart(2, "0")}:00 — tahmin %${(aktif.p50 * 100).toFixed(1).replace(".", ",")}, gerçekleşen %${(aktif.gercek * 100).toFixed(1).replace(".", ",")}`}
           </text>
         </g>
       )}

@@ -12,6 +12,9 @@ Kart-içinde-kart (2+ seviye çerçeve/gölge) yasak.
 `değer (mono, tabular, birimli) + çapa (Δ hedef/dün/bant) + pencere etiketi`.
 Değer etiketinden görsel olarak baskın. Mod/boş durumda yeşil rozet değil nötr çip;
 eksik veri «—» (tire disiplini, `?? 0` yasak — v2.310 dersi).
+**Tire yalnız DEĞER yerinde** (hücre, KPI, çip içindeki sayı): cümlenin başına tire KONMAZ («— henüz tahmin yok» yasak;
+«Henüz tahmin yok.» — 23.10.2026 kullanıcı bulgusu: konuşma çizgisi / madde imi gibi okunuyor). Değer tiresinin ardına
+neden gelecekse orta noktayla: «— · gece değerlendirmesinde birikiyor»; iki tire yan yana gelmez.
 
 ## Künye / tanım listesi (23.10.2026)
 
@@ -46,6 +49,23 @@ satır (`.alt-bolum` + eyebrow «Yeni …»). Tehlikeli işlem `.dugme-tehlike` 
 Panel `.ayar/.girdi/.girdi-etiket/.ayar-durum/.ayar-onay` kalıbı (v2.285-286);
 etikette uppercase yok (birimler bozulur). Vitrin formu asla gerçek gönderilmez;
 bal küpü `vt-bal` kalıbı korunur.
+
+## Bilgi ayırıcı standardı (23.10.2026, yedinci tur)
+
+Orta nokta «·» bilgi ayırıcısı olarak KULLANILMAZ (iki sayı arasında işlem işareti gibi okunur, etiketsiz bilgileri tek
+satıra yığar). Kural tablosu:
+- **Farklı türden kısa bilgiler** (sayı, tarih, pencere, durum, kaynak) → `Meta` bileşeni (`src/lib/Meta.tsx`): her bilgi
+  kendi dilimi, dilimler ince dikey ayraçla (`.meta > span + span::before`, currentColor %35). Çip, rozet, telemetri,
+  vitrin künyesi aynı bileşen; boş/false öğe atlanır; dilim içinde kırılma yok, dizi dilim sınırından sarar.
+- **Aynı karttaki iki sayı** (bugün/yarın, ortalama/standart sapma, alarm/gecikme) → `Kpi.ikinci` {etiket, deger, birim}:
+  ana değer büyük, ikincisi kendi etiketi ve birimiyle ayrı satır. «1.914,2 · 1.827,6 MWh» YASAK.
+- **Düzyazı / not / KPI alt satırı** → virgül, noktalı virgül, parantez («%92,1 (sıcaklık düzeltmeli %93,0)»).
+- **Etiket + niteleyici** (KPI etiketi, tablo satır etiketi) → virgül ya da parantez: «Tahmin hatası (WMAPE), 0–24 saat».
+- **Uyarı / not listeleri** → `ul.not-listesi` satır satır (`join(" · ")` yasak).
+- **Künye notu** → `.kunye-not` blok satır (durumun altında), satır içi ayraç yok.
+- **Grafik**: tooltip başlığı `<b>saat</b> <soluk>geçmiş/tahmin</soluk>`; eksen adı «[yerel saat]»; «şimdi» hapı etiket + değer.
+- **Alan adı dürüstlüğü**: `son_scada` = son ÖLÇÜM zaman damgası → etiket «son veri» (yükleme/güncelleme değil).
+- Kalan tek orta nokta: avatar baş harfi yer tutucusu («·») ve kod yorumları.
 
 ## Durum sözcüğü + neden (23.10.2026, altıncı tur)
 

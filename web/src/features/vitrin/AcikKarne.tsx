@@ -1,4 +1,5 @@
 import type { Dogrulama } from "../../api/types";
+import { Meta } from "../../lib/Meta";
 import type { DogrulamaDurumu } from "./dogrulamaDurumu";
 import { yuzdeTr, kisaTarihTr, ayTr } from "./bicim";
 import { KISA_TANIMLAR, YONTEM_KAPANIS } from "./yontem-metni";
@@ -39,7 +40,7 @@ export function AcikKarne({ durum }: { durum: DogrulamaDurumu }) {
           <a className="vt-dugme vt-dugme--gece vt-dugme--ok" href="#basla">Karnenizi başlatın</a>
           <a className="vt-bag" href="/yontem">Yöntemin tamamı</a>
         </div>
-        <p className="vt-kunye vt-karne__ilkeler">Geçmiş sonuç değiştirilmez; yenisi eklenir. · Veriniz sizindir — dilediğiniz an dışa aktarır ya da silersiniz.</p>
+        <p className="vt-kunye vt-karne__ilkeler">Geçmiş sonuç değiştirilmez; yenisi eklenir. Veriniz sizindir — dilediğiniz an dışa aktarır ya da silersiniz.</p>
       </div>
     </section>
   );
@@ -51,8 +52,8 @@ function KilitliKarne() {
   return (
     <div className="vt-karne">
       <div className="vt-karne__bas">
-        <h3 className="vt-h3">Açık karne — Referans santral · 10 MW üzeri · İç Anadolu</h3>
-        <span className="vt-kunye">Yayın koşulu: en az 30 sınav günü · Tahmin ufku: 0–24 saat</span>
+        <h3 className="vt-h3">Açık karne — Referans santral, 10 MW üzeri, İç Anadolu</h3>
+        <span className="vt-kunye"><Meta items={["Yayın koşulu: en az 30 sınav günü", "Tahmin ufku: 0–24 saat"]} /></span>
       </div>
       <div className="vt-kilitli">
         <div className="vt-kilitli__sol">
@@ -66,7 +67,7 @@ function KilitliKarne() {
           ))}
         </dl>
       </div>
-      <p className="vt-kunye vt-kilitli__kapanis">{YONTEM_KAPANIS} · GET /v1/dogrulama</p>
+      <p className="vt-kunye vt-kilitli__kapanis"><Meta items={[YONTEM_KAPANIS, "GET /v1/dogrulama"]} /></p>
     </div>
   );
 }
@@ -83,7 +84,7 @@ function KarneKutusu({ veri }: { veri: Dogrulama }) {
     <div className="vt-karne">
       <div className="vt-karne__bas">
         <h3 className="vt-h3">Açık karne — {veri.santral_etiketi ?? "Referans santral"}</h3>
-        <span className="vt-kunye">{veri.pencere_gun ?? "—"} sınav günü · güncelleme {kisaTarihTr(veri.son_gun)}</span>
+        <span className="vt-kunye"><Meta items={[`${veri.pencere_gun ?? "—"} sınav günü`, `güncelleme ${kisaTarihTr(veri.son_gun)}`]} /></span>
       </div>
       <dl className="vt-karne__degerler">
         {degerler.map((d) => (

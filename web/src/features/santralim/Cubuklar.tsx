@@ -38,7 +38,7 @@ export function Cubuklar({ etiketler, degerler, birim, vurguIdx, yukseklik = 260
           let satir = `${etiketler[i]}: ${sayiTr(Number(a[0]?.value), ondalik)} ${birim}`;
           const b = beklenti?.[i];
           if (b !== null && b !== undefined)
-            satir += `<br/>beklenti · P50: ${sayiTr(b, ondalik)} ${birim}`;
+            satir += `<br/>beklenti (P50): ${sayiTr(b, ondalik)} ${birim}`;
           return tam(i) ? satir
             : `${satir}<br/><span style="opacity:.75">kapsam %${sayiTr(kapsamPct![i], 1)} — eksik veri</span>`;
         } },
@@ -98,9 +98,9 @@ export function Cubuklar({ etiketler, degerler, birim, vurguIdx, yukseklik = 260
       ? [{ renk: "var(--cubuk-vurgu)", ad: "son ay" }] : []),
     ...(tamSayisi >= 2 ? [{ renk: "var(--ch-dusuk)", ad: "en düşük ay" }] : []),
     ...(kapsamPct && degerler.some((v, i) => v != null && !tamMi(i))
-      ? [{ renk: "var(--notr)", ad: "eksik veri · kapsam <%50", kesik: true }] : []),
+      ? [{ renk: "var(--notr)", ad: "eksik veri (kapsam <%50)", kesik: true }] : []),
     ...(beklenti && beklenti.some((b) => b != null)
-      ? [{ renk: "var(--metin)", ad: "beklenti · P50", cizgi: true }] : []),
+      ? [{ renk: "var(--metin)", ad: "beklenti (P50)", cizgi: true }] : []),
   ];
   return (
     <>

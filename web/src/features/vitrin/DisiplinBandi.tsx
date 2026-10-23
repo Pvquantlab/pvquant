@@ -6,6 +6,7 @@
  *  künyesi taşır; bayatlarsa sürümle güncellenir (dal defteri kuralı). Kaynaklar: test takımı
  *  koşusu (python+web; "her sürümde tamamı koşar" sözünü ci.yml'deki iki iş birlikte tutar),
  *  forecast_horizon_days, alarm_service kuralları, BULGU_DEFTERI kayıtları. */
+import { Meta } from "../../lib/Meta";
 const RAKAMLAR = [
   ["700", "otomatik test", "testlerin tamamı her sürümde koşar", "#vt-dipnot-1", "sayım kuralı"],
   ["15 gün", "tahmin ufku", "15 güne dek her saat için iyimser–kötümser aralık", "/yontem#yt-tanimlar", "aralığın tanımı"],
@@ -28,7 +29,7 @@ export function DisiplinBandi() {
             </div>
           ))}
         </div>
-        <p className="vt-kunye vt-disiplin__kunye">04.10.2026 itibarıyla · kaynak: yazılım deposu, otomatik test takımı ve bulgu kayıt defteri</p>
+        <p className="vt-kunye vt-disiplin__kunye"><Meta items={["04.10.2026 itibarıyla", "kaynak: yazılım deposu, otomatik test takımı ve bulgu kayıt defteri"]} /></p>
         <p className="vt-kunye vt-disiplin__dipnot" id="vt-dipnot-1">Sayım kuralı: 04.10.2026 sürümündeki iki test takımının (hesaplama motoru + arayüz) toplamı, aşağı yuvarlanmış; her sürümde iki takım da baştan sona koşar.</p>
       </div>
     </section>

@@ -5,11 +5,16 @@ import type { Karne, HataMatrisi, HataDagilimi, KonformalAyar, Backtest, Dengesi
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
 import { Kpi, Kart, Sayfa, sayiTr } from "./parcalar";
+import { Meta } from "../../lib/Meta";
 
 const AY = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran",
             "Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
+// 23.10 yedinci tur: geçersiz tarih (örnek kipte günlük satırlar «15 Nis» etiketli) «NaN undefined» basıyordu —
+// çözümlenemeyen tarihte tire; çağıran taraf önce geçerli sınır tarihe düşer.
+const tarihGecerli = (s: string | null | undefined): s is string =>
+  !!s && !Number.isNaN(new Date(s).getTime());
 const donemYaz = (a: string | null, b: string | null) => {
-  if (!a || !b) return "—";
+  if (!tarihGecerli(a) || !tarihGecerli(b)) return "—";
   const x = new Date(a), y = new Date(b);
   return x.getMonth() === y.getMonth()
     ? `${x.getDate()} – ${y.getDate()} ${AY[y.getMonth()]} ${y.getFullYear()}`
@@ -197,11 +202,11 @@ export function Dogruluk({ plantId }: { plantId: string }) {
         formatter: (p0: unknown) => {
           const p1 = p0 as { seriesType: string; value: unknown; name: string };
           if (p1.seriesType === "bar") {
-            return `${p1.name} · ort. hata ${sayiTr(Number(p1.value), 0)} kW`;
+            return `${p1.name}: ort. hata ${sayiTr(Number(p1.value), 0)} kW`;
           }
           const [gi, si, v] = p1.value as [number, number, number];
           const yon = v >= 0 ? "fazla tahmin" : "eksik tahmin";
-          return `${gunler[gi]} · ${saatler[si]}<br/>${v >= 0 ? "+" : ""}${sayiTr(v, 1)} kW (${yon})`;
+          return `${gunler[gi]} ${saatler[si]}<br/>${v >= 0 ? "+" : ""}${sayiTr(v, 1)} kW (${yon})`;
         } },
       xAxis: [
         { type: "category", data: gunler, gridIndex: 0, axisTick: { show: false },
@@ -237,7 +242,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
       visualMap: { min: -tepe || -1, max: tepe || 1, calculable: false,
         orient: "horizontal", left: "center", bottom: 0, itemWidth: 10, itemHeight: 90,
         seriesIndex: 0,
-        text: [`fazla · +${sayiTr(tepe, 0)} kW`, `eksik · −${sayiTr(tepe, 0)} kW`],
+        text: [`fazla +${sayiTr(tepe, 0)} kW`, `eksik −${sayiTr(tepe, 0)} kW`],
         textStyle: { color: soluk, fontSize: 13 },
         inRange: { color: document.documentElement.dataset.tema === "koyu"
           ? ["#7FB0DE", "#5A87B4", "#3D608A", "#263D5C",
@@ -385,12 +390,12 @@ export function Dogruluk({ plantId }: { plantId: string }) {
   const deltaCip = delta === null ? "gündüz saatleri, geçerli ölçümlerle"
     : Math.abs(delta) < 0.05 ? (
       <span className="kpi-delta notr" role="status">
-        değişim yok · önceki 30 güne göre
+        önceki 30 güne göre değişim yok
       </span>
     ) : (
       <span className={`kpi-delta ${delta < 0 ? "iyi" : "notr"}`} role="status">
         <OK yukari={delta > 0} />
-        {sayiTr(Math.abs(delta), 1)} puan · önceki 30 güne göre
+        önceki 30 güne göre {sayiTr(Math.abs(delta), 1)} puan
       </span>
     );
 
@@ -405,8 +410,8 @@ export function Dogruluk({ plantId }: { plantId: string }) {
   // v2.76: karne gunu + kapsanan donem TUM kovalardan (Streamlit tanimi:
   // sk["date"].nunique() ve sk min/max — kova filtresiz).
   const tumTarihler = [...new Set(k.gunluk.map((r) => r.tarih))].sort();
-  const donemIlk = tumTarihler[0] ?? k.ilk_tarih;
-  const donemSon = tumTarihler[tumTarihler.length - 1] ?? k.son_tarih;
+  const donemIlk = tarihGecerli(tumTarihler[0]) ? tumTarihler[0] : k.ilk_tarih;
+  const donemSon = tarihGecerli(tumTarihler[tumTarihler.length - 1]) ? tumTarihler[tumTarihler.length - 1] : k.son_tarih;
 
   return (
     <Sayfa baslik="Doğruluk karnesi"
@@ -425,7 +430,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
             sayfasının en tepesi "%0,0 WMAPE" ile kusursuzluk ilan ediyordu.
             İki KPI ayrı denetlenir: backend kova ve skill_vs_naive'i bağımsız
             hesaplıyor, tek bayrak dolu-WMAPE + null-naif vakasını kaçırır. */}
-        <Kpi etiket={k.wmape_ort == null ? "Tahmin hatası (WMAPE) · 0–24 saat" : `Tahmin hatası (WMAPE) · 0–24 saat · ${k.gun_sayisi} gün ort.`}
+        <Kpi etiket={k.wmape_ort == null ? "Tahmin hatası (WMAPE), 0–24 saat" : `Tahmin hatası (WMAPE), 0–24 saat, ${k.gun_sayisi} gün ort.`}
              deger={k.wmape_ort == null ? "—" : `%${sayiTr(k.wmape_ort, 1)}`}
              alt={k.wmape_ort == null
                ? "henüz karşılaştırılmış gün yok; gece değerlendirmesinde birikiyor" : deltaCip} />
@@ -436,10 +441,11 @@ export function Dogruluk({ plantId }: { plantId: string }) {
                : "referans tahmin: dün aynı saat, gök açıklığına göre ölçekli"} />
         <Kpi etiket="Değerlendirilen gün" deger={sayiTr(new Set(k.gunluk.map((g) => g.tarih)).size)}
              birim="gün" alt="kesintisiz değerlendirme geçmişi" />
-        <Kpi etiket="Günlük sapma (ortalama · standart sapma)"
-             deger={hd?.mu != null && hd?.sd != null
-               ? `${sayiTr(hd.mu, 2)} · ${sayiTr(hd.sd, 2)}` : "—"}
+        {/* 23.10 yedinci tur: ortalama ana değer, standart sapma kendi etiketiyle ikinci satır (iki sayı tek noktalamayla değil) */}
+        <Kpi etiket="Günlük sapma (ortalama)"
+             deger={hd?.mu != null ? sayiTr(hd.mu, 2) : "—"}
              birim={hd?.mu != null ? "MWh" : undefined}
+             ikinci={hd?.sd != null ? { etiket: "Standart sapma", deger: sayiTr(hd.sd, 2), birim: "MWh" } : undefined}
              alt={hd?.mu != null
                ? "hedef: sıfıra yakın ortalama, dar dağılım"
                : "yeterli gün birikmedi"} />
@@ -447,18 +453,17 @@ export function Dogruluk({ plantId }: { plantId: string }) {
       {/* v2.247 (Dalga 1.2): kapasiteye normalize standart ölçütler — WMAPE'nin
           yanına, yerine değil. Eski kayıtlarda kolon boş → tire + neden. */}
       <div className="cip" style={{ display: "inline-block", marginBottom: 14 }}>
-        Kurulu güce göre (sektör standardı) · 0–24 saat ·{" "}
-        nMAE {sfaYaz(k.nmae_ort)} · nRMSE {sfaYaz(k.nrmse_ort)} · nMBE {sfaYaz(k.nmbe_ort, true)}
-        {k.nmae_ort == null && " — bu ölçütler gece değerlendirmesinde birikiyor"}
+        <Meta items={["Kurulu güce göre (sektör standardı)", "0–24 saat", `nMAE ${sfaYaz(k.nmae_ort)}`, `nRMSE ${sfaYaz(k.nrmse_ort)}`,
+          `nMBE ${sfaYaz(k.nmbe_ort, true)}`, k.nmae_ort == null && "gece değerlendirmesinde birikiyor"]} />
       </div>
       {/* v2.279: sıkı referans — iklim + persistans optimal birleşimi; naiften daha zor geçilir */}
       <div className="cip" style={{ display: "inline-block", marginBottom: 14, marginLeft: 8 }} title="Sektör referansı: iklim ortalaması ile son günlerin en iyi ağırlıklı birleşimi; tahmin becerisi iddiasının ölçütü">
-        Sektör referansına göre iyileşme{" "}
-        {k.cliper_ustunluk_pct == null ? "— (gece değerlendirmesinde birikiyor)" : `%${sayiTr(k.cliper_ustunluk_pct, 1)}`}
-        {k.cliper_wmape_ort != null && ` · referans WMAPE %${sayiTr(k.cliper_wmape_ort, 1)}`}
+        <Meta items={[`Sektör referansına göre iyileşme ${k.cliper_ustunluk_pct == null ? "—" : `%${sayiTr(k.cliper_ustunluk_pct, 1)}`}`,
+          k.cliper_ustunluk_pct == null && "gece değerlendirmesinde birikiyor",
+          k.cliper_wmape_ort != null && `referans WMAPE %${sayiTr(k.cliper_wmape_ort, 1)}`]} />
       </div>
       <Kart baslik="Günlük tahmin hatası (WMAPE) — referans tahminle karşılaştırma"
-        sag={<span className="cip">nokta: günlük · kalın: 7 gün eğilimi · ince gri: referans tahmin</span>}>
+        sag={<span className="cip"><Meta items={["nokta: günlük", "kalın: 7 gün eğilimi", "ince gri: referans tahmin"]} /></span>}>
         {/* 22.10 üçüncü tur: hiç karşılaştırılmış gün yokken 2×240 px boş grafik yerine kompakt boş durum
             (veri yokluğu gizlenmez; seri/hesap değişmez — yalnız sunum) */}
         {(k?.gunluk ?? []).length === 0 ? (
@@ -495,15 +500,15 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           TUTUP TUTMADIĞI. Üç çubuk: hedef işareti (%10 / %80 / %90) ile gözlenen oran. */}
       <Kart baslik="Tahmin aralığının güvenilirliği (P10–P90)"
         sag={<>
-          <span className="cip">{ol?.gun_sayisi ? `${sayiTr(ol.gun_sayisi)} gün · 0–24 saat` : "henüz birikmedi"}</span>
+          <span className="cip">{ol?.gun_sayisi ? <Meta items={[`${sayiTr(ol.gun_sayisi)} gün`, "0–24 saat"]} /> : "henüz birikmedi"}</span>
           {/* v2.252: bant kalibrasyonu durumu — q̂ negatifse bant daraltılıyor, pozitifse genişletiliyor */}
           <span className="cip" title="Yayımlanan P10–P90 aralığı, son dönemin sonuçlarından öğrenilen düzeltmeyle ayarlanır">
             {kf.aktif
               ? kf.kova_ort_q_kw && Object.keys(kf.kova_ort_q_kw).length > 0
                 /* v2.296: q̂ artık ufka göre — kova başına yön ve büyüklük tek çipte */
-                ? `aralık ayarı ufka göre · ${Object.entries(kf.kova_ort_q_kw)
-                    .map(([k, v]) => `${k} s ${v < 0 ? "−" : "+"}${sayiTr(Math.abs(v), 0)} kW`).join(" · ")}`
-                : `aralık ayarı: ${kf.ort_q_kw != null && kf.ort_q_kw < 0 ? "daraltıyor" : "genişletiyor"} · ort. ${sayiTr(Math.abs(kf.ort_q_kw ?? 0), 0)} kW · ${sayiTr(kf.pencere_gun ?? 0)} gün`
+                ? `aralık ayarı ufka göre: ${Object.entries(kf.kova_ort_q_kw)
+                    .map(([k, v]) => `${k} s ${v < 0 ? "−" : "+"}${sayiTr(Math.abs(v), 0)} kW`).join(", ")}`
+                : `aralık ayarı: ${kf.ort_q_kw != null && kf.ort_q_kw < 0 ? "daraltıyor" : "genişletiyor"} (ort. ${sayiTr(Math.abs(kf.ort_q_kw ?? 0), 0)} kW, ${sayiTr(kf.pencere_gun ?? 0)} gün)`
               : "aralık ayarı: henüz yok"}
           </span>
         </>}>
@@ -533,13 +538,13 @@ export function Dogruluk({ plantId }: { plantId: string }) {
         <p className="soluk" style={{ marginTop: 10, marginBottom: 0, fontSize: 14 }}>
           Ne gösterir: gerçekleşen üretimin, önceden verilen P10–P90 aralığı içinde kaldığı günlerin oranı.
           Neye bakmalı: yeşil çubuk hedefe ±5 puan yakın demektir; düşükse aralık dar (fazla iddialı), yüksekse aralık geniş (fazla temkinli).
-          {ol?.crps != null && ` Aralık kalitesi (CRPS): ${sayiTr(ol.crps, 0)} kW · ortalama aralık genişliği kurulu gücün %${sayiTr((ol.bant_n ?? 0) * 100, 0)}'i.`}
+          {ol?.crps != null && ` Aralık kalitesi (CRPS): ${sayiTr(ol.crps, 0)} kW; ortalama aralık genişliği kurulu gücün %${sayiTr((ol.bant_n ?? 0) * 100, 0)}'i.`}
         </p>
         {/* v2.253: kayan-başlangıç geriye dönük sınav — q̂ yalnız önceki günlerden, sonraki haftaya uygulanır (sızıntı yok) */}
         {bt && bt.pencere > 0 && (
           <div className="grafik-kaydir" style={{ marginTop: 12 }}>
             <div className="cip" style={{ display: "inline-block", marginBottom: 6 }}>
-              Geriye dönük değerlendirme · {sayiTr(bt.pencere)} dönem · ham %{sayiTr((bt.picp_ham_ort ?? 0) * 100, 0)} → ayarlı %{sayiTr((bt.picp_kal_ort ?? 0) * 100, 0)} (hedef %80) · {bt.hukum}
+              <Meta items={["Geriye dönük değerlendirme", `${sayiTr(bt.pencere)} dönem`, `ham %${sayiTr((bt.picp_ham_ort ?? 0) * 100, 0)} → ayarlı %${sayiTr((bt.picp_kal_ort ?? 0) * 100, 0)} (hedef %80)`, bt.hukum]} />
             </div>
             <table className="veri" style={{ fontSize: 13.5 }}>
               <thead><tr><th>Başlangıç</th><th>Test saati</th><th>Ham kapsama</th><th>Ayarlı kapsama</th><th>Aralık genişliği (ham → ayarlı)</th></tr></thead>
@@ -555,7 +560,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
             {bt.kova_sinav && bt.kova_sinav.pencere > 0 && bt.kova_sinav.kovalar.length > 0 && (
               <>
                 <div className="cip" style={{ display: "inline-block", margin: "12px 0 6px" }}>
-                  Ufka göre değerlendirme · {sayiTr(bt.kova_sinav.pencere)} dönem · {bt.kova_sinav.hukum}
+                  <Meta items={["Ufka göre değerlendirme", `${sayiTr(bt.kova_sinav.pencere)} dönem`, bt.kova_sinav.hukum]} />
                 </div>
                 <table className="veri" style={{ fontSize: 13.5 }}>
                   <thead><tr><th>Ufuk</th><th>Test saati</th><th>Ham</th><th>Tek düzeltme</th><th>Ufka göre düzeltme</th></tr></thead>
@@ -579,11 +584,11 @@ export function Dogruluk({ plantId }: { plantId: string }) {
         {gv && (gv.durum === "ok" && gvOption && pitOption ? (
           <div style={{ marginTop: 14 }}>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
-              <span className="cip">güvenilirlik · {sayiTr(gv.n_saat)} gündüz saati · {sayiTr(gv.gun_sayisi ?? 0)} gün</span>
+              <span className="cip"><Meta items={["güvenilirlik", `${sayiTr(gv.n_saat)} gündüz saati`, `${sayiTr(gv.gun_sayisi ?? 0)} gün`]} /></span>
               <span className="cip">aralık genişliği: ham %{sayiTr((gv.keskinlik?.ham ?? 0) * 100, 0)} → ayarlı %{sayiTr((gv.keskinlik?.kalibre ?? 0) * 100, 0)} (kurulu gücün)</span>
               <span className="cip">aralık puanı: ham {sayiTr((gv.aralik_skoru_n?.ham ?? 0) * 100, 1)} → ayarlı {sayiTr((gv.aralik_skoru_n?.kalibre ?? 0) * 100, 1)} (küçük iyi)</span>
               <span className="cip">PIT en büyük sapma {sayiTr((gv.pit_max_sapma ?? 0) * 100, 0)} puan</span>
-              <span className="cip">{(gv.guvenilirlik?.kalibre ?? []).map((r) => `P${Math.round(r.tau * 100)} altı %${sayiTr(r.gozlenen * 100, 0)} (hedef %${Math.round(r.tau * 100)})`).join(" · ")}</span>
+              <span className="cip">{(gv.guvenilirlik?.kalibre ?? []).map((r) => `P${Math.round(r.tau * 100)} altı %${sayiTr(r.gozlenen * 100, 0)} (hedef %${Math.round(r.tau * 100)})`).join(", ")}</span>
             </div>
             <div className="ızgara satir-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))", gap: 14 }}>
               <div><div className="etiket-ust" style={{ marginBottom: 4 }}>Güvenilirlik diyagramı — gözlenen ve hedeflenen kapsama</div>
@@ -607,7 +612,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           Fiyat kaynağı (EPİAŞ / senaryo) ve segment (dengesizliği kim taşır) açıkça söylenir. */}
       <Kart baslik="Dengesizlik maliyeti — tahmin hatasının TL karşılığı"
         sag={<>
-          <span className="cip">{dz && dz.gun_sayisi ? `${sayiTr(dz.gun_sayisi)} gün · KGÜP: bir gün önce 15:30'dan önceki tahmin (P50)` : "henüz karşılaştırılan gün yok"}</span>
+          <span className="cip">{dz && dz.gun_sayisi ? <Meta items={[`${sayiTr(dz.gun_sayisi)} gün`, "KGÜP: bir gün önce 15:30'dan önceki tahmin (P50)"]} /> : "henüz karşılaştırılan gün yok"}</span>
           {dz && <span className="cip" title={dz.not}>{dz.fiyat.senaryo_saat > 0 ? "fiyat: senaryo (piyasa kimliği tanımlı değil)" : "fiyat: piyasa (EPİAŞ)"}</span>}
         </>}>
         {dz && dz.toplam ? (
@@ -658,12 +663,12 @@ export function Dogruluk({ plantId }: { plantId: string }) {
       {/* v2.311: rozet "son 30 gün" diyordu ama pencerede yalnız EŞLEŞMİŞ günler
           var (canlıda 2 gün); rozet gerçekten çizileni söylesin. */}
       <Kart baslik="Saat × gün hata haritası"
-        sag={<span className="cip">
-          {hm && hm.gunler.length > 1
-            ? `${sayiTr(hm.gunler.length)} gün · ${donemYaz(hm.gunler[0], hm.gunler[hm.gunler.length - 1])}`
+        sag={<span className="cip"><Meta items={[
+          hm && hm.gunler.length > 1
+            ? `${sayiTr(hm.gunler.length)} gün, ${donemYaz(hm.gunler[0], hm.gunler[hm.gunler.length - 1])}`
             : hm && hm.gunler.length === 1
-              ? `tek gün · ${donemYaz(hm.gunler[0], hm.gunler[0]).replace(/^\d+ – /, "")}`
-              : "son 30 gün"} · 0–24 saat · {hm?.tz ?? "—"}</span>}>
+              ? `tek gün, ${donemYaz(hm.gunler[0], hm.gunler[0]).replace(/^\d+ – /, "")}`
+              : "son 30 gün", "0–24 saat", hm?.tz ?? "—"]} /></span>}>
         {hm && hm.gunler.length > 0 ? (
           <>
             <div className="grafik-kaydir"><div>
@@ -693,9 +698,9 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           {/* v2.311: μ ve σ burada sayiTr'siz basılıyordu — aynı sayı KPI'da
               "-0,03", çipte "-0.03". Türkçe ondalık ayracı kaybolup panel iki
               farklı sayı yazımı gösteriyordu. */}
-          {hd ? sayiTr(hd.ndays) : "—"} geçerli gün · ortalama {hd?.mu != null ? sayiTr(hd.mu, 2) : "—"} · std. sapma {hd?.sd != null ? sayiTr(hd.sd, 2) : "—"} MWh
-          {hd?.p10 != null && hd?.p90 != null
-            ? ` · P10–P90: ${sayiTr(hd.p10, 2)} – ${sayiTr(hd.p90, 2)}` : ""}
+          <Meta items={[`${hd ? sayiTr(hd.ndays) : "—"} geçerli gün`, `ortalama ${hd?.mu != null ? `${sayiTr(hd.mu, 2)} MWh` : "—"}`,
+            `std. sapma ${hd?.sd != null ? `${sayiTr(hd.sd, 2)} MWh` : "—"}`,
+            hd?.p10 != null && hd?.p90 != null && `P10–P90: ${sayiTr(hd.p10, 2)} – ${sayiTr(hd.p90, 2)} MWh`]} />
         </span>}>
         {hd && hd.kutular.length > 0 ? (
           <>

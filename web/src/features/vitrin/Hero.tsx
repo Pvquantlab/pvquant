@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type SyntheticEvent } from "react";
+import { Meta } from "../../lib/Meta";
 import { hatiYenidenOlc, heroBekle, heroHazirOldu, levhalarBittiAbone, posterYavasMi, yavasKararKayittan } from "./heroHazir";
 import { keskinGLGerekli, keskinGLKur, keskinYazilimKayitli } from "./keskinGL";
 import santral1440 from "./varlik/santral-1440.mp4";
@@ -173,7 +174,7 @@ export function Hero({ kabuk = false }: { kabuk?: boolean } = {}) {
           <div className="vt-eylemler vt-hero__eylem">
             <a className="vt-dugme vt-dugme--dolu vt-dugme--ok vt-dugme--buyuk" href="#basla">Karnenizi başlatın</a>
             <a className="vt-dugme vt-dugme--gece-cizgi vt-dugme--buyuk" href="/yontem#para">Dengesizlik maliyeti nasıl hesaplanır</a>
-            <p className="vt-hero__mikro">başvuru · kurulumu biz yaparız · veri yüklemeniz gerekmez · doğruluk karneniz ilk günden birikmeye başlar</p>
+            <p className="vt-hero__mikro"><Meta items={["başvuru", "kurulumu biz yaparız", "veri yüklemeniz gerekmez", "doğruluk karneniz ilk günden birikmeye başlar"]} /></p>
           </div>
         </div>
       </div>
