@@ -50,6 +50,12 @@ Her satır: kalıp → dosya → kritik kural. Yeni mühürde yeni kalıp çıka
   `Dockerfile.web` 2.11.7'ye sabit. Güncelleme = changelog + replika sınaması, bilinçli tek satır.
 - **Yavaş hat kararı günlük tazelenir (21.10.2026, #11):** `heroHazir.ts` kayıttaki 7 günlük «yavaş hat» kararı günde bir
   yeniden ölçülür — tek yanlış ölçüm videoyu 7 gün kapatmasın.
+- **Dördüncü tur — künye kartı ve mono disiplini (23.10.2026):** `docs/PANEL-TUR4-2026-10-23.md`. Santral bilgileri
+  tablosu → `dl.kunye` (etiket/değer kolonları, değer sola; mono yalnız sayı/tarih/kimlik; durum cümleleri gövde
+  ailesi). Veri yükleme: karar/form kartları 1240 px, veri tabloları tam genişlik — tek kural. Üst çubuk + telemetri
+  `--yan` yüzeyinde (çerçeve). QA betikleri artık KALICI: `betikler/kare.mjs` (5 genişlik tam sayfa kare + taşma),
+  `betikler/pngfark.mjs` (bağımlılıksız piksel kıyası), `betikler/denetim.mjs` (hesaplanmış punto/kontrast/düğme
+  yüksekliği, iki tema) — scratchpad iki turda silindi, bir daha yazılmaz. Kullanım başlıkları dosyaların içinde.
 - **Üçüncü tur — ölçek bir kademe (22.10.2026 gece):** `docs/PANEL-TUR3-2026-10-22.md`. Ders: 2560 px ekran
   görüntüsünde 14 px gövde «küçük» görünür ve kullanıcı bunu üç brief'te yineledi — ölçüm «standart» dese de fiziksel
   ekran büyüklüğü karar verdirir; gövde 15, tablo 14, eksen 12–13 px. Satır içi boyutlar betikle (grafik satırları ayrı

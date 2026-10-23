@@ -117,7 +117,7 @@ function EpiasUretimKarti({ plantId }: { plantId: string }) {
   if (d === undefined) return null;
   return (
     <Kart baslik="Gerçekleşen üretim kaynağı — piyasa şeffaflık akışı" sag={<span className="cip">{d?.uygun ? "hazır" : "devre dışı"}</span>}
-          style={{ maxWidth: 900 }}>
+          style={{ maxWidth: 1240 }}>
       {d === null ? <p className="soluk" style={{ margin: 0 }}>Örnek kip.</p> : (
         <>
           <p style={{ margin: "0 0 8px", fontSize: 13.5 }}>
@@ -286,8 +286,9 @@ export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
         accept=".csv,.tsv,.txt,.xlsx,.xls"
         onChange={(e) => { const d = e.target.files?.[0];
                            if (d) sec(d); e.target.value = ""; }} />
+      {/* 23.10: karar/form kartları 1240 px'e kadar (okunur satır), veri tabloları tam genişlik — tek yerleşim kuralı */}
       <div className="ızgara" style={{ gridTemplateColumns: "repeat(2, minmax(0,1fr))",
-                                       maxWidth: 900 }}>
+                                       maxWidth: 1240 }}>
         {yol("Hızlı tahmin", "%5–10", "beklenen yıllık enerji sapması",
           ["Veri yüklemeden, saniyeler içinde sonuç",
            "Profesyonel meteoroloji verisiyle",

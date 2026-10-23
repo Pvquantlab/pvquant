@@ -13,6 +13,13 @@ Kart-içinde-kart (2+ seviye çerçeve/gölge) yasak.
 Değer etiketinden görsel olarak baskın. Mod/boş durumda yeşil rozet değil nötr çip;
 eksik veri «—» (tire disiplini, `?? 0` yasak — v2.310 dersi).
 
+## Künye / tanım listesi (23.10.2026)
+
+Etiket–değer çiftleri (santral bilgileri, veri durumu) `table.veri` + `tbody.mono` ile DEĞİL, `dl.kunye` ile:
+etiket solda sabit kolon, değer kendi kolonunda sola hizalı (vitrin `.vt-tanim` kalıbı). Mono yalnız
+`.kunye-sayi` (sayı/tarih/kimlik, tabular); durum ve eksik-veri cümleleri `.kunye-not` gövde ailesi soluk;
+uyarı `.kunye-uyari`. Sağa dayalı uzun cümle ve mono düz yazı yasak — «terminal» imzası.
+
 ## Tablo
 
 `table.veri` dili: mono sayı sütunları sağa, `th+th/td+td { padding-left }` oluk kuralı

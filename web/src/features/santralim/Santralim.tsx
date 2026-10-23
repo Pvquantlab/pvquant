@@ -410,52 +410,53 @@ export function Santralim({ plantId }: { plantId: string }) {
           </div>
         </Kart>
         <Kart baslik="Santral bilgileri ve veri durumu">
-          <table className="veri">
-            <tbody className="mono">
-              <tr><td>DC gücü</td><td>{gucTr(o.kapasite_kwp)} kWp</td></tr>
-              <tr><td>AC sınırı</td><td>{o.ac_tavani_kw == null
-                ? <span style={{ color: "var(--soluk)" }}>— tanımlı değil; santral ayarlarından girilir</span>
-                : `${sayiTr(o.ac_tavani_kw)} kW`}</td></tr>
-              <tr><td>Eğim / azimut</td><td>{o.egim_azimut}</td></tr>
-              <tr><td>Saat dilimi</td><td>{o.tz}</td></tr>
-              <tr><td>Son veri yüklemesi</td>
-                <td>{s.son_scada == null
-                  ? <span style={{ color: "var(--soluk)" }}>— SCADA verisi henüz yüklenmedi</span>
-                  : (s.kesinti_gun ?? 0) > 2
-                    ? <span style={{ color: "var(--uyari-metin)" }}>{s.son_scada} · {sayiTr(s.kesinti_gun!)} gündür yeni veri yok</span>
-                    : s.son_scada}</td></tr>
-              <tr><td>İşlenen veri</td><td>{sayiTr(s.islenen_saat)} saatlik ölçüm</td></tr>
-              <tr><td>Şüpheli kayıt</td><td>{sayiTr(s.anomali)} işaretlendi; hiçbir satır silinmedi</td></tr>
-              {/* v2.249 (Dalga 1.4): IEC 61724-1 performans orani — olcumden, POA yoksa tire + neden */}
-              <tr><td>Performans oranı (PR, 30 gün)</td>
-                <td>{pr?.durum === "ok" && pr.PR != null
-                  ? <>%{sayiTr(pr.PR * 100, 1)}{pr.PR_sicaklik != null && ` · sıcaklık düzeltmeli %${sayiTr(pr.PR_sicaklik * 100, 1)}`}
-                      <span style={{ color: "var(--soluk)" }}> · {sayiTr(pr.gun)} gün{pr.son_olcum ? `, son ölçüm ${pr.son_olcum}` : ""}</span></>
-                  : pr?.durum === "poa_yok"
-                    ? <span style={{ color: "var(--soluk)" }}>— düzlem ışınımı (POA) ölçümü {pr.poa_orani != null ? `saatlerin %${sayiTr(pr.poa_orani * 100, 0)}'inde` : "yok"}; PR için en az %95 gerekir</span>
-                    : <span style={{ color: "var(--soluk)" }}>— ölçüm birikmedi</span>}</td></tr>
-              {/* v2.285: segment künyede SALT-OKUNUR — değişiklik "Santral ayarları" kartından */}
-              <tr><td>Piyasa segmenti</td>
-                <td>{seg?.segment
-                  ? <>{SEGMENTLER.find((x) => x.deger === seg.segment)?.etiket ?? seg.segment}
-                      {seg.dengesizlik_sahibi && <span style={{ color: "var(--soluk)" }}> · dengesizlik: {seg.dengesizlik_sahibi}</span>}</>
-                  : <span style={{ color: "var(--soluk)" }}>belirtilmedi — ayarlardan seçilir</span>}</td></tr>
-              {/* v2.256 (Dalga 3.11): bozunma ve eğilim — POA yoksa model-normalize verimle; yetersizse neden */}
-              <tr><td>Yıllık verim kaybı (bozunma)</td>
-                <td>{sg?.bozunma_yuzde_yil != null
-                  ? <>%{sayiTr(sg.bozunma_yuzde_yil, 2)}/yıl{sg.bozunma_ga && ` (±${sayiTr(Math.abs(sg.bozunma_ga[1] - sg.bozunma_ga[0]) / 2, 2)})`}
-                      <span style={{ color: "var(--soluk)" }}> · {sayiTr(sg.ay)} ay</span></>
-                  : sg?.egim_yuzde_yil != null
-                    ? <>eğilim %{sayiTr(sg.egim_yuzde_yil, 1)}/yıl<span style={{ color: "var(--soluk)" }}> · {sayiTr(sg.gun)} gün · {sg.not || "bozunma için ≥13 ay"}</span></>
-                    : <span style={{ color: "var(--soluk)" }}>— {sg?.not || "ölçüm birikmedi"}</span>}</td></tr>
-              {/* v2.281: kullanılabilirlik — otomatik arıza tespiti (olay günlüğü yok; dürüst not) */}
-              <tr><td>Kullanılabilirlik (30 gün)</td>
-                <td>{ku?.durum === "ok" && ku.A_t != null
-                  ? <>%{sayiTr(ku.A_t * 100, 1)} zaman · {ku.A_e != null ? `%${sayiTr(ku.A_e * 100, 1)} enerji` : "—"}
-                      <span style={{ color: "var(--soluk)" }}> · {sayiTr(ku.ariza_saat ?? 0)} arıza saati · veri %{sayiTr((ku.veri_orani ?? 0) * 100, 0)} · otomatik tespit</span></>
-                  : <span style={{ color: "var(--soluk)" }}>— {ku?.durum === "yetersiz" ? "üretim mümkün saat yetersiz" : "ölçüm/beklenti birikmedi"}</span>}</td></tr>
-              </tbody>
-          </table>
+          {/* 23.10 dördüncü tur: tablo → tanım listesi (.kunye, vitrin .vt-tanim kalıbı). Etiket solda sabit kolon,
+              değer solda hizalı kendi kolonunda; sayı/tarih/kimlik mono (.kunye-sayi), durum ve açıklama cümleleri
+              gövde ailesinde (.kunye-not / .kunye-uyari). Değerler ve anlamları aynen korunur. */}
+          <dl className="kunye">
+            <div><dt>DC gücü</dt><dd><span className="kunye-sayi">{gucTr(o.kapasite_kwp)} kWp</span></dd></div>
+            <div><dt>AC sınırı</dt><dd>{o.ac_tavani_kw == null
+              ? <span className="kunye-not">— tanımlı değil; santral ayarlarından girilir</span>
+              : <span className="kunye-sayi">{sayiTr(o.ac_tavani_kw)} kW</span>}</dd></div>
+            <div><dt>Eğim / azimut</dt><dd><span className="kunye-sayi">{o.egim_azimut}</span></dd></div>
+            <div><dt>Saat dilimi</dt><dd><span className="kunye-sayi">{o.tz}</span></dd></div>
+            <div><dt>Son veri yüklemesi</dt>
+              <dd>{s.son_scada == null
+                ? <span className="kunye-not">— SCADA verisi henüz yüklenmedi</span>
+                : (s.kesinti_gun ?? 0) > 2
+                  ? <span className="kunye-uyari"><span className="kunye-sayi">{s.son_scada}</span> · {sayiTr(s.kesinti_gun!)} gündür yeni veri yok</span>
+                  : <span className="kunye-sayi">{s.son_scada}</span>}</dd></div>
+            <div><dt>İşlenen veri</dt><dd>{sayiTr(s.islenen_saat)} saatlik ölçüm</dd></div>
+            <div><dt>Şüpheli kayıt</dt><dd>{sayiTr(s.anomali)} işaretlendi; hiçbir satır silinmedi</dd></div>
+            {/* v2.249 (Dalga 1.4): IEC 61724-1 performans orani — olcumden, POA yoksa tire + neden */}
+            <div><dt>Performans oranı (PR, 30 gün)</dt>
+              <dd>{pr?.durum === "ok" && pr.PR != null
+                ? <>%{sayiTr(pr.PR * 100, 1)}{pr.PR_sicaklik != null && ` · sıcaklık düzeltmeli %${sayiTr(pr.PR_sicaklik * 100, 1)}`}
+                    <span className="kunye-not"> · {sayiTr(pr.gun)} gün{pr.son_olcum ? `, son ölçüm ${pr.son_olcum}` : ""}</span></>
+                : pr?.durum === "poa_yok"
+                  ? <span className="kunye-not">— düzlem ışınımı (POA) ölçümü {pr.poa_orani != null ? `saatlerin %${sayiTr(pr.poa_orani * 100, 0)}'inde` : "yok"}; PR için en az %95 gerekir</span>
+                  : <span className="kunye-not">— ölçüm birikmedi</span>}</dd></div>
+            {/* v2.285: segment künyede SALT-OKUNUR — değişiklik "Santral ayarları" kartından */}
+            <div><dt>Piyasa segmenti</dt>
+              <dd>{seg?.segment
+                ? <>{SEGMENTLER.find((x) => x.deger === seg.segment)?.etiket ?? seg.segment}
+                    {seg.dengesizlik_sahibi && <span className="kunye-not"> · dengesizlik: {seg.dengesizlik_sahibi}</span>}</>
+                : <span className="kunye-not">belirtilmedi — ayarlardan seçilir</span>}</dd></div>
+            {/* v2.256 (Dalga 3.11): bozunma ve eğilim — POA yoksa model-normalize verimle; yetersizse neden */}
+            <div><dt>Yıllık verim kaybı (bozunma)</dt>
+              <dd>{sg?.bozunma_yuzde_yil != null
+                ? <>%{sayiTr(sg.bozunma_yuzde_yil, 2)}/yıl{sg.bozunma_ga && ` (±${sayiTr(Math.abs(sg.bozunma_ga[1] - sg.bozunma_ga[0]) / 2, 2)})`}
+                    <span className="kunye-not"> · {sayiTr(sg.ay)} ay</span></>
+                : sg?.egim_yuzde_yil != null
+                  ? <>eğilim %{sayiTr(sg.egim_yuzde_yil, 1)}/yıl<span className="kunye-not"> · {sayiTr(sg.gun)} gün · {sg.not || "bozunma için ≥13 ay"}</span></>
+                  : <span className="kunye-not">— {sg?.not || "ölçüm birikmedi"}</span>}</dd></div>
+            {/* v2.281: kullanılabilirlik — otomatik arıza tespiti (olay günlüğü yok; dürüst not) */}
+            <div><dt>Kullanılabilirlik (30 gün)</dt>
+              <dd>{ku?.durum === "ok" && ku.A_t != null
+                ? <>%{sayiTr(ku.A_t * 100, 1)} zaman · {ku.A_e != null ? `%${sayiTr(ku.A_e * 100, 1)} enerji` : "—"}
+                    <span className="kunye-not"> · {sayiTr(ku.ariza_saat ?? 0)} arıza saati · veri %{sayiTr((ku.veri_orani ?? 0) * 100, 0)} · otomatik tespit</span></>
+                : <span className="kunye-not">— {ku?.durum === "yetersiz" ? "üretim mümkün saat yetersiz" : "ölçüm/beklenti birikmedi"}</span>}</dd></div>
+          </dl>
           <p style={{ fontSize: 13.5, color: "var(--ikincil)", margin: "12px 0 0",
                       lineHeight: 1.55 }}>
             Model en güncel verinizle en iyi sonucu verir. Yeni SCADA dosyanızı

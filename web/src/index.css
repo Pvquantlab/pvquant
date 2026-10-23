@@ -187,8 +187,10 @@ h2 { font-size: var(--t-bolum); line-height: 1.2; }
 .nav-btn[aria-current="page"] svg { color: var(--marka); }
 .yan-alt { margin-top: auto; padding: 14px 6px 2px; border-top: 1px solid var(--yan-cizgi); }
 
+/* 23.10 dördüncü tur: üst çubuk ve telemetri yan menüyle aynı yüzey (--yan) — içerik alanının çevresinde tek
+   «çerçeve»; açık temada «fazla düz» bulgusu için yapı, dekor değil */
 .ust { display: flex; align-items: center; justify-content: space-between; gap: 16px;
-       padding: 0 40px; height: 58px; background: var(--zemin);
+       padding: 0 40px; height: 58px; background: var(--yan);
        border-bottom: 1px solid var(--kenar); position: sticky; top: 0; z-index: 5; }
 /* 22.10 yerleşim: içerik 1600 px'e kadar genişler ve ana sütunda ORTALANIR — 2560 px ekranda içerik solda
    yığılıp sağda ~800 px boşluk kalıyordu; şimdi iki yanda eşit pay (vitrin .vt-kap 1360 + kenar payı kalıbı). */
@@ -312,6 +314,22 @@ table.veri td:not(:first-child) { white-space: normal; }
 table.veri tbody.mono td:first-child { font-family: var(--font); font-variant-numeric: tabular-nums; }
 @media (max-width: 560px) { table.veri td:first-child { white-space: normal; } }
 table.veri tbody tr:hover td { background: var(--yuzey); }
+
+/* ---------- künye / tanım listesi (23.10 dördüncü tur; vitrin .vt-tanim kalıbı) ----------
+   Etiket solda sabit kolon, değer kendi kolonunda SOLA hizalı (sağa dayalı uzun cümleler düzensiz bölünüyordu);
+   sayı/tarih/kimlik mono tabular, durum cümleleri gövde ailesi soluk, uyarı ayrı renk. */
+.kunye { display: grid; margin: 0; }
+.kunye > div { display: grid; grid-template-columns: minmax(170px, 34%) minmax(0, 1fr); gap: 4px 20px;
+               padding: 9px 0; border-bottom: 1px solid var(--izgara); align-items: baseline; }
+.kunye > div:last-child { border-bottom: 0; }
+.kunye dt { font-size: var(--t-govde); color: var(--ikincil); font-weight: 500; }
+.kunye dd { margin: 0; font-size: var(--t-govde); color: var(--metin); font-variant-numeric: tabular-nums;
+            line-height: 1.5; overflow-wrap: anywhere; }
+.kunye-sayi { font-family: var(--mono); font-size: 14px; }
+.kunye-not { color: var(--soluk); }
+.kunye-uyari { color: var(--uyari-metin); }
+.kunye-uyari .kunye-sayi { color: inherit; }
+@media (max-width: 560px) { .kunye > div { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
 
 /* ---------- kontroller ---------- */
 /* 22.10 kontroller: vitrinin hap dili — sekme/düğme/çip 999 px; Inter Tight 500; mono kalktı */
@@ -463,8 +481,8 @@ body { background: var(--zemin); }
    Açık yüz bilerek dokunulmadı (ayrı adım). */
 [data-tema="koyu"] body { background: var(--zemin);
   -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-/* v2.305: yüzeyler iki yüzde de opak — bulanıklık katmanı tamamen kalktı */
-.ust { background: var(--zemin); }
+/* v2.305: yüzeyler iki yüzde de opak — bulanıklık katmanı tamamen kalktı (23.10: üst çubuk --yan yüzeyinde) */
+.ust { background: var(--yan); }
 
 /* ============================================================
    v2.216 — SaaS kromu (durustluk suzgeciyle): yalniz gercek
@@ -604,7 +622,7 @@ body { background: var(--zemin); }
 .telemetri { display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
   padding: 9px 40px; font-family: var(--font); font-size: 13px; font-variant-numeric: tabular-nums;
   font-weight: 500; color: var(--soluk);
-  background: var(--zemin); border-bottom: 1px solid var(--kenar); }
+  background: var(--yan); border-bottom: 1px solid var(--kenar); }
 .telemetri .tele-sag { margin-left: auto; }
 .nokta-isik { display: inline-block; width: 7px; height: 7px;
   border-radius: 50%; margin-right: 7px; }
@@ -621,7 +639,7 @@ body { background: var(--zemin); }
 .ikon-dugme:hover { color: var(--metin); border-color: var(--soluk); }
 .nokta-badge { position: absolute; top: 6px; right: 6px; width: 7px; height: 7px;
   border-radius: 50%; background: var(--uyari);
-  border: 1.5px solid var(--zemin); }
+  border: 1.5px solid var(--yan); }
 .zil-ort { position: fixed; inset: 0; z-index: 39; }
 /* v2.241: cam degil DUZ OPAK zemin — yapiskan ust seridin icindeki mutlak
    panelde backdrop blur uygulanmiyor, yari saydam kart arkadaki yazilari
