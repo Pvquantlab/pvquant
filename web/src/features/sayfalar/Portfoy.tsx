@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, rolum } from "../../api/client";
 import type { PaylasimListesi, PaylasilanVeri, TakimUyesi, Portfoy as PortfoyT, PortfoyDsg, PortfoyTahmin, ApiAnahtar, Webhook } from "../../api/types";
-import { Kart, Kpi, Sayfa, sayiTr, gucTr, enerjiTr } from "./parcalar";
+import { Kart, Kpi, Sayfa, sayiTr, gucTr, enerjiTr, SayfaIskeleti } from "./parcalar";
 import { Meta } from "../../lib/Meta";
 
 /** 23.10 sekizinci tur — «76,3 MWh» gibi birimli dizgiyi sayı + soluk birim olarak basar; dizgi aynen (enerjiTr). */
@@ -74,7 +74,7 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
   const tarih = (s: string | null) => s ? new Date(s).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }) : "—";
   if (!hazir) return (
     <Sayfa baslik="Portföy" alt="Tüm santraller bir bakışta; sayılar kurulu güçle ağırlıklıdır, hesaplanamayan değerler — ile gösterilir.">
-      <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p>
+      <SayfaIskeleti kpi={4} kart={2} />
     </Sayfa>
   );
   return (

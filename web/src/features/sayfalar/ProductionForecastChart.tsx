@@ -29,6 +29,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { sayiBicimi, tarihBicimi } from "../../lib/bicim";
 import * as echarts from "../../lib/echarts";
 import type { EChartsOption, SeriesOption } from "echarts";
 
@@ -154,38 +155,22 @@ export const CHART_TOKENS = (dark: boolean) => ({
 const toMs = (ts: string) => new Date(ts).getTime();
 const nfKw = new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 0 });
 
+// 24.10 performans turu: biçimleyiciler önbellekten (tarihBicimi) — nokta başına Intl kurulumu kalktı
 function fmtClock(ms: number, tz: string): string {
-  return new Intl.DateTimeFormat("tr-TR", {
-    timeZone: tz, hour: "2-digit", minute: "2-digit",
-  }).format(new Date(ms));
+  return tarihBicimi("tr-TR", { timeZone: tz, hour: "2-digit", minute: "2-digit" }).format(new Date(ms));
 }
 
 function fmtTime(ms: number, tz: string): string {
-  return new Intl.DateTimeFormat("tr-TR", {
-    timeZone: tz,
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(ms));
+  return tarihBicimi("tr-TR", { timeZone: tz, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(ms));
 }
 
 function fmtDay(ms: number, tz: string): string {
-  return new Intl.DateTimeFormat("tr-TR", {
-    timeZone: tz,
-    day: "numeric",
-    month: "short",
-  }).format(new Date(ms));
+  return tarihBicimi("tr-TR", { timeZone: tz, day: "numeric", month: "short" }).format(new Date(ms));
 }
 
 function fmtAxisLabel(ms: number, tz: string): string {
-  const parts = new Intl.DateTimeFormat("tr-TR", {
-    timeZone: tz,
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
+  const parts = tarihBicimi("tr-TR", {
+    timeZone: tz, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
   }).formatToParts(new Date(ms));
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
   return get("hour") === "00"
@@ -194,22 +179,11 @@ function fmtAxisLabel(ms: number, tz: string): string {
 }
 
 function tzHour(ms: number, tz: string): number {
-  return Number(
-    new Intl.DateTimeFormat("en-GB", {
-      timeZone: tz,
-      hour: "2-digit",
-      hourCycle: "h23",
-    }).format(new Date(ms)),
-  );
+  return Number(tarihBicimi("en-GB", { timeZone: tz, hour: "2-digit", hourCycle: "h23" }).format(new Date(ms)));
 }
 
 function tzDayKey(ms: number, tz: string): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: tz,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(ms));
+  return tarihBicimi("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
 }
 
 function nearestTs(ms: number, tsList: string[]): string {
@@ -409,8 +383,7 @@ export function buildChartOption(input: BuildInput): EChartsOption {
   const yMax = (mant <= 1 ? 1 : mant <= 2 ? 2 : mant <= 5 ? 5 : 10) * kat;
   // 4-6 çizgi hedefi merdivenle birlikte: 1→5, 2→4, 5→5 dilim.
   const yAralik = yMax / (Math.abs(yMax / kat - 2) < 1e-9 ? 4 : 5);
-  const nfEksen = new Intl.NumberFormat("tr-TR", {
-    maximumFractionDigits: yAralik >= 1 ? 0 : yAralik >= 0.1 ? 1 : 2 });
+  const nfEksen = sayiBicimi("tr-TR", { maximumFractionDigits: yAralik >= 1 ? 0 : yAralik >= 0.1 ? 1 : 2 });
   const kwPerPx = yMax / Math.max(input.plotHeightPx, 1);
   const minKw = 3 * kwPerPx; // U2: 3px minimum rendered band height
 

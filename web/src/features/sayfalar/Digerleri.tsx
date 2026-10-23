@@ -6,7 +6,7 @@ import { api, rolum, RaporDenetimHata, type DenetimBulgusu, EslemeHatasi, type E
          type ScadaOnizleme, type ScadaKayit,
          type KosuSatiri , CihazBazliHatasi} from "../../api/client";
 import type { KalibrasyonOzeti, Kayma, Hijyen, EpiasUretim, KayipAgaci, GucMatrisi, Isler } from "../../api/types";
-import { Kart, Sayfa, Kpi, sayiTr } from "./parcalar";
+import { Kart, Sayfa, Kpi, sayiTr, SayfaIskeleti } from "./parcalar";
 import { Meta } from "../../lib/Meta";
 import { JsonOnizleme } from "./JsonOnizleme";   // v2.351: JSON panel içi önizleme
 import type { RaporJson } from "../../api/types";
@@ -701,7 +701,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
     const d = new Date(iso);
     return `${d.getDate()} ${AY[d.getMonth()]} ${d.getFullYear()}`;
   };
-  if (!yuklendi) return <div style={{ color: "var(--soluk)" }}>Y\u00fckleniyor\u2026</div>;
+  if (!yuklendi) return <SayfaIskeleti kpi={3} kart={2} />;
   return (
     <Sayfa baslik="Kalibrasyon"
       alt="Model santralinizin kendi verisiyle uyarlanır; sonucunu bu sayfada görürsünüz."

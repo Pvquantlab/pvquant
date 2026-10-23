@@ -491,6 +491,17 @@ table.veri.dar th + th, table.veri.dar td + td { padding-left: 28px; }
 .rozet-notr { background: var(--yuzey); color: var(--ikincil); border: 1px solid var(--kenar); }
 /* grafik üst şeridi: şimdi hapı · lejant · dışa aktarma tek satırda; dar ekranda sarar */
 .grafik-serit { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 8px; }
+
+/* ---------- 24.10 performans turu: sayfa iskeleti (boyutlu yer tutucu; hareketsiz) ---------- */
+.iskelet { display: grid; gap: 16px; }
+.iskelet-bas { display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
+.iskelet-h1 { width: 220px; height: 28px; border-radius: 6px; background: var(--yuzey); }
+.iskelet-alt { width: 46%; max-width: 560px; height: 14px; border-radius: 4px; background: var(--yuzey); }
+.iskelet-kpi { display: grid; gap: 16px; }
+.iskelet-kpi > span { height: 124px; border-radius: var(--rk); border: 1px solid var(--kenar); background: var(--kart); }
+.iskelet-kart { height: 320px; border-radius: var(--rk); border: 1px solid var(--kenar); background: var(--kart); }
+.gorsel-gizli { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (max-width: 1100px) { .iskelet-kpi { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
 .grafik-serit .lejant { flex: 1 1 auto; justify-content: center; }
 
 /* ---------- 23.10 yedinci tur: bilgi ayırıcı standardı ----------

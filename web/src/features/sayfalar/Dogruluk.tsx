@@ -4,7 +4,7 @@ import { api } from "../../api/client";
 import type { Karne, HataMatrisi, HataDagilimi, KonformalAyar, Backtest, Dengesizlik, Guvenilirlik } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
-import { Kpi, Kart, Sayfa, sayiTr } from "./parcalar";
+import { Kpi, Kart, Sayfa, sayiTr, SayfaIskeleti } from "./parcalar";
 import { Meta } from "../../lib/Meta";
 
 const AY = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran",
@@ -377,7 +377,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
     return son - once;
   }, [k]);
 
-  if (!hazir) return <div style={{ color: "var(--soluk)" }}>Yükleniyor…</div>;
+  if (!hazir) return <SayfaIskeleti kpi={4} kart={2} />;
   if (!k) return <div style={{ color: "var(--soluk)" }}>Doğruluk verisi alınamadı; sayfayı yenileyin.</div>;
 
   const OK = ({ yukari }: { yukari: boolean }) => (

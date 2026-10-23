@@ -52,6 +52,24 @@ const Kalibrasyon = lazy(() => import("./features/sayfalar/Digerleri").then((m) 
 const Raporlar = lazy(() => import("./features/sayfalar/Digerleri").then((m) => ({ default: m.Raporlar })));
 const Portfoy = lazy(() => import("./features/sayfalar/Portfoy").then((m) => ({ default: m.Portfoy })));
 const Hakkinda = lazy(() => import("./features/sayfalar/Hakkinda").then((m) => ({ default: m.Hakkinda })));
+/** 24.10 performans turu: panel açılınca öteki sayfa parçaları BOŞ ZAMANDA sırayla indirilir — ilk ziyarette
+ *  parça inişi (yavaş ağda ~200 ms) kalmaz; ilk boyamayı geciktirmez (idle + 1,5 sn sonra), veri tasarrufu/2G'de
+ *  atlanır. Aynı import() ifadeleri olduğundan tembel bileşenler inmiş parçayı kullanır; veri çekilmez. */
+const ONYUKLENECEKLER = [
+  () => import("./features/sayfalar/Portfoy"), () => import("./features/sayfalar/Tahminler"),
+  () => import("./features/sayfalar/Digerleri"), () => import("./features/sayfalar/Dogruluk"),
+  () => import("./features/sayfalar/Aylik"), () => import("./features/sayfalar/Hakkinda"),
+];
+function parcalariOnyukle() {
+  const b = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+  if (b?.saveData || /2g/.test(b?.effectiveType ?? "")) return;
+  const w = window as Window & { requestIdleCallback?: (fn: () => void, o?: { timeout: number }) => number };
+  const bosZamanda = (fn: () => void) =>
+    typeof w.requestIdleCallback === "function" ? w.requestIdleCallback(fn, { timeout: 4000 }) : window.setTimeout(fn, 1500);
+  window.setTimeout(() => bosZamanda(async () => {
+    for (const y of ONYUKLENECEKLER) { try { await y(); } catch { /* ağ yoksa sessiz; ziyarette yeniden denenir */ } }
+  }), 1500);
+}
 
 /** v2.353: kiracının hiç santrali yokken sayfalar çizilmez — hepsi plantId ister
  *  ve boş/yabancı kimlikle 404 üretir. Kabuk (dolayısıyla "+ Yeni santral bağla")
@@ -121,6 +139,7 @@ export default function App() {
     }).catch(() => {});
   };
   useEffect(() => { if (girdi) santralYenile(); }, [girdi]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (girdi) parcalariOnyukle(); }, [girdi]);
   const santralSec = (id: string) => setPlantId(id);
   // 16.10 hız turu 4: ekran geçişleri «geçiş» (transition) olarak yapılır — yeni ekranın parçası inerken eski ekran
   // yerinde kalır. Önceden vitrin → giriş, giriş → panel ve panelde ilk kez açılan her sayfada ekran (yan menü dahil)

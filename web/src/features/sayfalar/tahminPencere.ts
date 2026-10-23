@@ -12,6 +12,7 @@
  */
 
 import type { TahminSerisi } from "../../api/types";
+import { tarihBicimi } from "../../lib/bicim";
 
 export type Ufuk = "24h" | "72h" | "7d" | "16d";
 export type Saatlik = TahminSerisi["saatlik"][number];
@@ -135,20 +136,11 @@ export type GunToplam = {
 };
 
 function tzDayKey(ms: number, tz: string): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: tz,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(ms));
+  return tarihBicimi("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
 }
 
 function fmtDay(ms: number, tz: string): string {
-  return new Intl.DateTimeFormat("tr-TR", {
-    timeZone: tz,
-    day: "numeric",
-    month: "short",
-  }).format(new Date(ms));
+  return tarihBicimi("tr-TR", { timeZone: tz, day: "numeric", month: "short" }).format(new Date(ms));
 }
 
 /**

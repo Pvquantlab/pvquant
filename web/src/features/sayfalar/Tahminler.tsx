@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api/client";
 import type { SantralOzeti, TahminSerisi, KgupOnizleme, Nowcast } from "../../api/types";
-import { Kart, Sayfa, sayiTr } from "./parcalar";
+import { Kart, Sayfa, sayiTr, SayfaIskeleti } from "./parcalar";
 import { Meta } from "../../lib/Meta";
 import ProductionForecastChart from "./ProductionForecastChart";
 import {
@@ -80,7 +80,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
   );
   const bantVar = gunlukVeri.some((g) => g.p10Kwh !== null);
 
-  if (!hazir) return <div style={{ color: "var(--soluk)" }}>Yükleniyor…</div>;
+  if (!hazir) return <SayfaIskeleti kpi={0} kart={2} />;
   return (
     <Sayfa
       baslik="Tahminler"

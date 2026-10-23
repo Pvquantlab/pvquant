@@ -5,7 +5,7 @@ import type { AylikBeklenti, SantralOzeti, Bankable } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
 import { Cubuklar } from "../santralim/Cubuklar";
-import { Kart, Kpi, Sayfa, sayiTr, isiTonu, isiMetni } from "./parcalar";
+import { Kart, Kpi, Sayfa, sayiTr, isiTonu, isiMetni, SayfaIskeleti } from "./parcalar";
 import { Meta } from "../../lib/Meta";
 
 const AYLAR = ["Oca", "Şub", "Mar", "Nis", "May", "Haz",
@@ -134,7 +134,7 @@ export function Aylik({ plantId }: { plantId: string }) {
     } as EChartsOption;
   }, [b, n]);  // v2.148
 
-  if (!hazir) return <div style={{ color: "var(--soluk)" }}>Yükleniyor…</div>;
+  if (!hazir) return <SayfaIskeleti kpi={3} kart={2} />;
   if (birikiyor) return (
     <Sayfa baslik="Aylık beklenti" alt="Uzun dönem iklim verisinden aylık üretim aralığı.">
       <Kart baslik="Beklenti birikiyor">
@@ -144,7 +144,7 @@ export function Aylik({ plantId }: { plantId: string }) {
         </p>
       </Kart>
     </Sayfa>);
-  if (!b) return <div style={{ color: "var(--soluk)" }}>Yükleniyor…</div>;
+  if (!b) return <SayfaIskeleti kpi={3} kart={2} />;
 
   const buAy = new Date().getMonth() + 1;
   const k = b.beklenti.find((r) => r.ay === buAy);

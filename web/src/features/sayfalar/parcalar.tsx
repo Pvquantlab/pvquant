@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { sayiBicimi } from "../../lib/bicim";
 
 /** v2.85: Intl, sayinin kisa ondalik yazimindan yuvarlar (212.95 -> "213,0");
  *  Python/Streamlit ikili degerden yuvarlar (-> 212,9). Iki panel ayni sayiyi
@@ -6,8 +7,7 @@ import type { ReactNode } from "react";
  *  (Serh: tam ikili dugumde — orn. 2.5 — JS yarim-yukari, Python cift-e; olculmus
  *  toplamlarda dogmaz.) */
 export const sayiTr = (x: number, ondalik = 0): string =>
-  new Intl.NumberFormat("tr-TR", { minimumFractionDigits: ondalik,
-                                   maximumFractionDigits: ondalik })
+  sayiBicimi("tr-TR", { minimumFractionDigits: ondalik, maximumFractionDigits: ondalik })   // 24.10: biçimleyici önbellekten
     .format(Number(x.toFixed(ondalik)));
 
 /** v2.310 — null-bilen kardeş: veri yoksa tire, sıfır UYDURULMAZ (anayasa).
@@ -84,6 +84,21 @@ export function Kart({ baslik, alt, no, sag, children, ...rest }:
         </div>{sag}</div>}
       {children}
     </section>
+  );
+}
+
+/** 24.10 performans turu — sayfa iskeleti: veri gelene dek «Yükleniyor…» tek satırı yerine sayfanın kaba kalıbı
+ *  (başlık, KPI sırası, kart). Boyut korunur → içerik gelince sıçrama küçülür; hareket yok (reduced-motion dostu).
+ *  Sayı/veri göstermez — yalnız yer tutucu. */
+export function SayfaIskeleti({ kpi = 4, kart = 2 }: { kpi?: number; kart?: number }) {
+  return (
+    <div className="iskelet" role="status" aria-live="polite" aria-label="Yükleniyor">
+      <div className="iskelet-bas"><span className="iskelet-h1" /><span className="iskelet-alt" /></div>
+      {kpi > 0 && <div className="iskelet-kpi" style={{ gridTemplateColumns: `repeat(${kpi}, minmax(0, 1fr))` }}>
+        {Array.from({ length: kpi }, (_, i) => <span key={i} />)}</div>}
+      {Array.from({ length: kart }, (_, i) => <div key={i} className="iskelet-kart" />)}
+      <span className="gorsel-gizli">Yükleniyor…</span>
+    </div>
   );
 }
 

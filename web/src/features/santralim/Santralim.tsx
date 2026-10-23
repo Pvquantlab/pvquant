@@ -6,9 +6,10 @@ import { api } from "../../api/client";
 import type { SantralOzeti, TahminSerisi, GunesYolu, SaatAyMatrisi } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
-import { Kart, Sayfa, sayiTr, sayiTrN, gucTr, enerjiTr, isiTonu, isiMetni } from "../sayfalar/parcalar";
+import { Kart, Sayfa, sayiTr, sayiTrN, gucTr, enerjiTr, isiTonu, isiMetni, SayfaIskeleti } from "../sayfalar/parcalar";
 import ProductionForecastChart from "../sayfalar/ProductionForecastChart";
 import { Meta } from "../../lib/Meta";
+import { tarihBicimi } from "../../lib/bicim";
 import { t0Hesapla, simdiDegeri, simdiGercegi, dilimle } from "../sayfalar/tahminPencere";
 import { Cubuklar } from "./Cubuklar";
 
@@ -17,9 +18,7 @@ import { Cubuklar } from "./Cubuklar";
  *  Tahminler kalibi); toplam MWh API'nin kendi gunluk degeridir. Tum gunler
  *  AYNI olcekle cizilir — profiller karsilastirilabilir kalsin. */
 function gunAnahtari(ms: number, tz: string): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
-  }).format(new Date(ms));
+  return tarihBicimi("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
 }
 
 function GunProfili({ noktalar, tepe, vurgu }:
@@ -264,7 +263,7 @@ export function Santralim({ plantId }: { plantId: string }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gy, n]);
 
-  if (!o) return <div style={{ color: "var(--soluk)" }}>Yükleniyor…</div>;
+  if (!o) return <SayfaIskeleti kpi={4} kart={2} />;
 
   const s = o.saglik;
   // v2.198 (D ozet seridi): anlik guc = simdiDegeri; gece/veri yokken "—".

@@ -50,6 +50,14 @@ Her satır: kalıp → dosya → kritik kural. Yeni mühürde yeni kalıp çıka
   `Dockerfile.web` 2.11.7'ye sabit. Güncelleme = changelog + replika sınaması, bilinçli tek satır.
 - **Yavaş hat kararı günlük tazelenir (21.10.2026, #11):** `heroHazir.ts` kayıttaki 7 günlük «yavaş hat» kararı günde bir
   yeniden ölçülür — tek yanlış ölçüm videoyu 7 gün kapatmasın.
+- **Performans turu — panel geçişleri (24.10.2026, yerelde):** `docs/PANEL-TUR7-2026-10-23.md` §10. Ölçüm:
+  `betikler/gecis-olcum.mjs` (örnek kip üretim derlemesi, CDP; ilk/tekrar/akış/hızlı ardışık/heap/konsol) + `profil.mjs`
+  (CDP Profiler). Dersler: döngü içinde `new Intl.DateTimeFormat/NumberFormat` kurma → `src/lib/bicim.ts` önbelleği
+  (Santralim 4× CPU 179→40 ms); tembel parçaları panel açılınca boş zamanda ön-yükle (ilk ziyaret ~200→~40 ms);
+  grafikleri görünür olunca başlat (`EChart` IO); boyutlu iskelet; tema `data-tema`'yı index.html'de ilk boyamadan
+  önce (yalnız jetonlu). Ölçüm tuzakları: `.env.local` üretim derlemesine sızar (park et); python http.server'da
+  örnek kip `undefined/v1/...` 404'leri; aynı sayfaya «geçiş» h1 değişmediğinden zaman aşımı sayar (betik atlar);
+  4× CPU'da ±10 ms gürültü.
 - **Yedinci tur — bilgi ayırıcı standardı (23.10.2026, toplu commit bekliyor):** `docs/PANEL-TUR7-2026-10-23.md`. Orta nokta
   «·» bilgi ayırıcısı olarak kalktı (panel 164 + vitrin 29 satır): metaveri dizileri `Meta` (`src/lib/Meta.tsx`, ince
   dikey ayraç — ayraç dilimin solunda mutlak, kap −19 px kenar + `clip-path: inset(0)` ile satır başındaki ayraç
