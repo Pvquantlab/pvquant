@@ -1000,14 +1000,17 @@ function useDomDark(override?: boolean): boolean {
   return override ?? domDark;
 }
 
-function LineSample({ color, dashed }: { color: string; dashed?: boolean }) {
+// 23.10 altıncı tur: lejant örneği ÇİZİMLE aynı — kalınlık çizgi serisinden (geçmiş 2, tahmin 3), kesikli yalnız
+// gerçekten kesikli çizilen AC sınırı (eskiden «Tahmin P50» kesikli gösterilip düz çiziliyordu).
+function LineSample({ color, dashed, width = 3 }: { color: string; dashed?: boolean; width?: number }) {
   return (
     <span
       style={{
         display: "inline-block",
-        width: 18,
-        borderTop: dashed ? `2px dashed ${color}` : `3px solid ${color}`,
+        width: 20,
+        borderTop: dashed ? `${width}px dashed ${color}` : `${width}px solid ${color}`,
         verticalAlign: "middle",
+        borderRadius: 2,
       }}
     />
   );
@@ -1150,123 +1153,96 @@ export default function ProductionForecastChart({
     a.click();
   };
 
-  // 22.10 ikinci denetim: dışa aktarma düğmeleri panel hap diliyle (Inter Tight 500, 999 köşe, ≥28 px)
+  // 22.10 ikinci denetim: dışa aktarma düğmeleri panel hap diliyle (Inter Tight 500, 999 köşe)
+  // 23.10 altıncı tur: ≥32 px (panel düğme tabanı); üç krom satırı (lejant / şimdi+birim / PNG-CSV) TEK şeride indi:
+  // şimdi hapı solda, lejant ortada (.lejant: gövde ailesi), dışa aktarma sağda; dar ekranda sarar.
   const btn: React.CSSProperties = {
     font: "500 13px 'Inter Tight', 'Inter Tight Yedek', 'Inter Variable', system-ui, sans-serif",
-    padding: "4px 11px",
-    minHeight: 28,
+    padding: "5px 12px",
+    minHeight: 32,
     border: `1px solid ${T.btnBorder}`,
     borderRadius: 999,
     background: "transparent",
     color: "inherit",
     cursor: "pointer",
   };
-  const key: React.CSSProperties = {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 6,
-    font: `${narrow ? 12 : 13.5}px 'IBM Plex Mono', ui-monospace, monospace`,
-    color: T.axisText,
-  };
   const pill: React.CSSProperties = {
     font: "500 12.5px 'Inter Tight', 'Inter Tight Yedek', 'Inter Variable', system-ui, sans-serif",
     background: T.surface,
     border: `1px solid ${T.btnBorder}`,
     borderRadius: 999,
-    padding: "3px 9px",
+    padding: "4px 10px",
+    whiteSpace: "nowrap",
   };
 
   return (
     <div>
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: narrow ? 10 : 16,
-          justifyContent: "center",
-          marginBottom: 6,
-        }}
-      >
-        <span style={key}>
-          <LineSample color={T.p50Past} />
-          {daily ? "Geçmiş tepe" : "Geçmiş P50"}
-        </span>
-        <span style={key}>
-          <LineSample color={T.p50Future} dashed />
-          {daily ? "Tahmin tepe" : "Tahmin P50"}
-        </span>
-        {hasInner && (
-          <span style={key}>
-            <BandSample
-              pastFill={T.bandIcPastFill}
-              futFill={T.bandIcFutFill}
-              pastEdge="transparent"
-              futEdge="transparent"
-            />
-            P25–P75
-          </span>
-        )}
-        {(hasOuter || daily) && (
-          <span style={key}>
-            <BandSample
-              pastFill={T.bandPastFill}
-              futFill={T.bandFutFill}
-              pastEdge={T.bandPastEdge}
-              futEdge={T.bandFutEdge}
-            />
-            {daily ? "Tepe P10–P90" : "P10–P90"}
-          </span>
-        )}
-        {plant.acCapacityKw !== null && (
-          <span style={key}>
-            <LineSample color={T.acLimit} dashed />
-            AC sınırı
-          </span>
-        )}
-        {hasActual && (
-          <span style={key}>
-            <LineSample color={T.actualLine} />
-            Gerçekleşen
-          </span>
-        )}
-      </div>
-
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 8,
-          marginBottom: 4,
-        }}
-      >
-        <span style={{ ...pill, color: T.labelText }}>
+      <div className="grafik-serit">
+        <span style={{ ...pill, color: T.labelText }} aria-label="şu anki beklenen üretim">
           {nowValue !== null
             ? `şimdi · ${nfKw.format(nowValue)} kW`
             : "şimdi"}
         </span>
-        <span style={{ font: "13px 'IBM Plex Mono', ui-monospace, monospace", color: T.mutedText }}>
-          {daily ? "günlük tepe ve aralık · " : ""}kW
-        </span>
-      </div>
-
-      {features.exportButtons && (
-        <div
-          style={{
-            display: "flex",
-            gap: 6,
-            justifyContent: "flex-end",
-            marginBottom: 6,
-          }}
-        >
-          <button style={btn} onClick={exportPng}>
-            PNG
-          </button>
-          <button style={btn} onClick={exportCsv}>
-            CSV
-          </button>
+        <div className="lejant" role="list" aria-label="grafik açıklaması" style={{ gap: narrow ? "6px 12px" : "6px 16px" }}>
+          <span role="listitem">
+            <LineSample color={T.p50Past} width={T.p50PastWidth} />
+            {daily ? "Geçmiş tepe" : "Geçmiş P50"}
+          </span>
+          <span role="listitem">
+            <LineSample color={T.p50Future} width={T.p50FutureWidth} />
+            {daily ? "Tahmin tepe" : "Tahmin P50"}
+          </span>
+          {hasInner && (
+            <span role="listitem">
+              <BandSample
+                pastFill={T.bandIcPastFill}
+                futFill={T.bandIcFutFill}
+                pastEdge="transparent"
+                futEdge="transparent"
+              />
+              P25–P75
+            </span>
+          )}
+          {(hasOuter || daily) && (
+            <span role="listitem">
+              <BandSample
+                pastFill={T.bandPastFill}
+                futFill={T.bandFutFill}
+                pastEdge={T.bandPastEdge}
+                futEdge={T.bandFutEdge}
+              />
+              {daily ? "Tepe P10–P90" : "P10–P90"}
+            </span>
+          )}
+          {plant.acCapacityKw !== null && (
+            <span role="listitem">
+              <LineSample color={T.acLimit} dashed width={1.5} />
+              AC sınırı
+            </span>
+          )}
+          {hasActual && (
+            <span role="listitem">
+              <LineSample color={T.actualLine} width={2} />
+              Gerçekleşen
+            </span>
+          )}
         </div>
-      )}
+        {(narrow || daily) && (
+          <span style={{ font: "12.5px 'IBM Plex Mono', ui-monospace, monospace", color: T.mutedText, whiteSpace: "nowrap" }}>
+            {daily ? "günlük tepe ve aralık · " : ""}kW
+          </span>
+        )}
+        {features.exportButtons && (
+          <span style={{ display: "inline-flex", gap: 6, marginLeft: "auto" }}>
+            <button style={btn} onClick={exportPng} title="Grafiği PNG olarak indir">
+              PNG
+            </button>
+            <button style={btn} onClick={exportCsv} title="Seriyi CSV olarak indir">
+              CSV
+            </button>
+          </span>
+        )}
+      </div>
       <div ref={ref} style={{ width: "100%", height }} />
     </div>
   );

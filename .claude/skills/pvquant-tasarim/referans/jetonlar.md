@@ -11,7 +11,9 @@ Kaynak dosyalar (gerçek değerler HER ZAMAN oradan okunur, burası harita):
 ## Veri renk sözleşmesi (İHLAL EDİLEMEZ)
 
 - **Mavi #2D6FB5 = tahmin.** Panel: `--chart-p50-*`, bantlar mavi alfa türevleri.
-  Vitrin: `--vt-veri-tahmin`.
+  Vitrin: `--vt-veri-tahmin`. Geçmişte kalan tahmin saatleri AYNI ailenin soluk tonu (23.10.2026, altıncı tur):
+  `--chart-p50-past` açık #5F8BC0 (3,5:1 beyaz) / koyu #5E8DBF (4,9:1 kart); bant kenarı da bu ton. Lejant örneği
+  çizimle aynı kalınlık/çizgi türü — çizilmeyen kesikli lejantta gösterilmez.
 - **Amber = YALNIZ gerçekleşen üretim.** Başka hiçbir şeyde kullanılamaz — uyarı rengi
   AYRIDIR (`--uyari`/`--vt-uyari` #B8421F ailesi; koyu yüzde `--uyari-metin` türevleri).
 - **İKİ-AMBER KARARI (Mühür A, 05.10.2026):** panel `--chart-actual: #E8940A`, vitrin

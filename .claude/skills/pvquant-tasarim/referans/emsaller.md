@@ -50,6 +50,12 @@ Her satır: kalıp → dosya → kritik kural. Yeni mühürde yeni kalıp çıka
   `Dockerfile.web` 2.11.7'ye sabit. Güncelleme = changelog + replika sınaması, bilinçli tek satır.
 - **Yavaş hat kararı günlük tazelenir (21.10.2026, #11):** `heroHazir.ts` kayıttaki 7 günlük «yavaş hat» kararı günde bir
   yeniden ölçülür — tek yanlış ölçüm videoyu 7 gün kapatmasın.
+- **Altıncı tur — santral bilgileri, Kalibrasyon, Tahminler (23.10.2026):** `docs/PANEL-TUR6-2026-10-23.md`. Eksik
+  satır = durum sözcüğü + neden (`.kunye-durum` + `.kunye-not`); boş durum `.bos-durum` (kutu yok); uzun teknik not
+  `<details class="aciklama">` (metin aynen); geçmiş P50 soluk mavi (`--chart-p50-past`), **lejant örneği çizimle aynı**
+  (kesikli yalnız kesikli çizilen); grafik kromu tek şerit; KGÜP `.program-ozet` + `.dugme-grubu`; sentetik sonuç
+  «model hesabı · ölçüm değil» rozeti. Ders: örnek verinin tarihi geçmişte → `SAHTE_ZAMAN` ile çek; aynı tablonun ayrık
+  alt kümeleri (geçerli/şüpheli saat) etiketle ayrılır, toplam türetilmez.
 - **Beşinci tur — Portföy yönetim formları (23.10.2026):** `docs/PANEL-TUR5-2026-10-23.md`. `.form-izgara` kalıbı
   (etiket üstte, 36 px kontrol, onay grubu/düğme hizalı), paylaşım formu yarım sütundan kartın altına tam satıra,
   Hesap/ekip `.alt-bolum` ayraçları, «Pasifleştir» `.dugme-tehlike`, santral tablosu sans tabular + «N gün eski»

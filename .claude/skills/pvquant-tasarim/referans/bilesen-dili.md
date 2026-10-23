@@ -47,9 +47,18 @@ Panel `.ayar/.girdi/.girdi-etiket/.ayar-durum/.ayar-onay` kalıbı (v2.285-286);
 etikette uppercase yok (birimler bozulur). Vitrin formu asla gerçek gönderilmez;
 bal küpü `vt-bal` kalıbı korunur.
 
+## Durum sözcüğü + neden (23.10.2026, altıncı tur)
+
+Eksik/hesaplanamayan değer tek uzun soluk cümle DEĞİL: kısa durum sözcüğü (`.kunye-durum.eksik`: «Tanımlı değil»,
+«Hesaplanamadı», «Belirtilmedi», «Yüklenmedi») + ` · ` + neden (`.kunye-not`). Tire yalnız sayı yerinde (KPI, hücre).
+Uzun teknik açıklama (nasıl okunur, yöntem, piyasa kuralı) `<details class="aciklama">` ile katlanır — metin aynen,
+kimlik satırı (mod, aralık kaynağı) görünür kalır. Sentetik/model sonucu ölçüm sanılmasın: `.rozet-notr`
+«model hesabı · ölçüm değil».
+
 ## Boş / yükleniyor / hata durumları
 
-- Boş: yönlendiren tek cümle + (varsa) ilk adım bağlantısı; «No data» tek satırı yasak.
+- Boş: `.bos-durum` = başlık satırı (`.bos-bas`, gövde 500) + neden/ilk adım (`p`, soluk); kutu/çerçeve yok.
+  «No data» tek satırı ve «— … — …» çift tireli cümle yasak.
 - Yükleniyor: iskelet ya da «Yükleniyor…» soluk metin; spinner süsü değil.
 - Hata: ne oldu + ne yapılır («sayfayı yenileyin»); özür/jargon yok.
 - Yayın kapalıysa dürüst dil: «yayın açılınca» (KanitSeridi emsali).

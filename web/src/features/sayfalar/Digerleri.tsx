@@ -29,6 +29,17 @@ function SablonDugmeleri({ plantId }: { plantId: string }) {
   );
 }
 
+/** 23.10 altıncı tur — sunum yardımcıları: ISO gün dizgisi («2020-06-17») Türkçe kısa tarihe; bugüne gün farkı
+ *  (yalnız «eski pencere» rozeti için; sayı API'den gelen tarihten türer, hesap yok). Geçersiz dizgi aynen döner. */
+function tarihTr(iso: string): string {
+  const d = new Date(iso.length === 10 ? iso + "T12:00:00" : iso);
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString("tr-TR", { day: "numeric", month: "short", year: "numeric" });
+}
+function gunFarki(iso: string): number {
+  const d = new Date(iso.length === 10 ? iso + "T12:00:00" : iso);
+  return Number.isNaN(d.getTime()) ? 0 : Math.max(0, Math.floor((Date.now() - d.getTime()) / 86_400_000));
+}
+
 /** v2.283 (Tablo 3.3 satır 5) — modül davranışı: güç matrisi kalıbıyla ışınım/sıcaklık verimi ve iklim-özgü verim oranı. */
 function GucMatrisiKarti({ plantId, ilkVeri }: { plantId: string; ilkVeri: GucMatrisi | null }) {
   // v2.327: ilk veri ebeveynin tek kapısından gelir (kart kendi Yükleniyor'unu göstermez);
@@ -37,27 +48,38 @@ function GucMatrisiKarti({ plantId, ilkVeri }: { plantId: string; ilkVeri: GucMa
   const [mesaj, setMesaj] = useState<string | null>(null);
   const hesapla = () => { setMesaj("Hesaplanıyor (tipik yıl, ~10 s)…"); api.gucMatrisiHesapla(plantId).then((r) => { setG(r); setMesaj(null); }).catch((e) => setMesaj(String((e as Error).message ?? e))); };
   return (
-    <Kart baslik="Panel verimi — ışınım ve sıcaklığa göre güç tablosu" sag={<span style={{ display: "flex", gap: 6 }}>
+    <Kart baslik="Panel verimi — ışınım ve sıcaklığa göre güç tablosu" sag={<span style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
       {g?.durum === "ok" && <span className="cip">tipik yıl {g.yil} · iklim-özgü verim oranı %{sayiTr((g.cser ?? 0) * 100, 1)}</span>}
-      <button className="dugme" style={{ fontSize: 13 }} onClick={hesapla}>{g?.durum === "ok" ? "Yenile" : "Hesapla"}</button></span>}>
-      {!g || g.durum !== "ok" ? <p className="soluk" style={{ margin: 0 }}>{mesaj ?? "Henüz hesaplanmadı. 'Hesapla' panelin ışınım ve sıcaklığa göre verimini tipik yıl iklimiyle değerlendirir."}</p>
-       : (
+      <button className="dugme kucuk" onClick={hesapla}>{g?.durum === "ok" ? "Yenile" : "Hesapla"}</button></span>}>
+      {/* 23.10 altıncı tur: boş durum iki kademe (.bos-durum); tablo dar + sans tabular (.veri.sayisal.dar) — 7 sütun
+          1840 px'e yayılmıyor; sentetik kaynak başlıkta rozetle söylenir (ölçüm sanılmasın); kaynak/not iki ayrı cümle. */}
+      {!g || g.durum !== "ok" ? (
+        <div className="bos-durum">
+          <div className="bos-bas">{mesaj ?? "Henüz hesaplanmadı"}</div>
+          {!mesaj && <p>«Hesapla» panelin ışınım ve sıcaklığa göre verimini tipik yıl iklimiyle değerlendirir.</p>}
+        </div>
+      ) : (
         <>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12, alignItems: "center" }}>
+            {/^sentetik/i.test(g.kaynak ?? "") && <span className="rozet rozet-notr" title="Motorun verim eğrisinden hesaplanır; saha ölçümü değildir">model hesabı · ölçüm değil</span>}
             <span className="cip">düşük ışınım (200 W/m²) verim kaybı %{sayiTr(g.dusuk_isinim_kayip_pct ?? 0, 1)}</span>
             <span className="cip">sıcak hücre (50 °C) kaybı %{sayiTr(g.sicaklik_50_kayip_pct ?? 0, 1)}</span>
             <span className="cip">tipik yıl DC {sayiTr(g.e_dc_kwh_kwp ?? 0, 0)} kWh/kWp · düzlem {sayiTr(g.h_poa_kwh_m2 ?? 0, 0)} kWh/m²</span>
           </div>
           <div className="grafik-kaydir">
-            <table className="veri" style={{ fontSize: 13 }}>
+            <table className="veri sayisal dar" style={{ fontSize: 14 }}>
               <thead><tr><th style={{ textAlign: "left" }}>Işınım (W/m²)</th>{(g.tablo ?? []).map((r) => <th key={r.g_wm2}>{sayiTr(r.g_wm2)}</th>)}</tr></thead>
-              <tbody className="mono">
-                <tr><td style={{ textAlign: "left", fontFamily: "var(--font)" }}>Verim oranı · 25 °C</td>{(g.tablo ?? []).map((r) => <td key={r.g_wm2}>%{sayiTr(r.verim_25_pct, 1)}</td>)}</tr>
-                <tr><td style={{ textAlign: "left", fontFamily: "var(--font)" }}>Verim oranı · 50 °C</td>{(g.tablo ?? []).map((r) => <td key={r.g_wm2}>%{sayiTr(r.verim_50_pct, 1)}</td>)}</tr>
+              <tbody>
+                <tr><td style={{ textAlign: "left" }}>Verim oranı · hücre 25 °C</td>{(g.tablo ?? []).map((r) => <td key={r.g_wm2}>%{sayiTr(r.verim_25_pct, 1)}</td>)}</tr>
+                <tr><td style={{ textAlign: "left" }}>Verim oranı · hücre 50 °C</td>{(g.tablo ?? []).map((r) => <td key={r.g_wm2}>%{sayiTr(r.verim_50_pct, 1)}</td>)}</tr>
               </tbody>
             </table>
           </div>
-          <p className="soluk" style={{ fontSize: 14, margin: "10px 0 0" }}>Kaynak: {g.kaynak}. {g.not}</p>
+          <details className="aciklama">
+            <summary>Kaynak ve yöntem</summary>
+            <p><b>Kaynak:</b> {g.kaynak}.</p>
+            <p>{g.not}</p>
+          </details>
         </>
       )}
     </Kart>
@@ -71,11 +93,16 @@ function KayipAgaciKarti({ plantId, ilkVeri }: { plantId: string; ilkVeri: Kayip
   const [mesaj, setMesaj] = useState<string | null>(null);
   const hesapla = () => { setMesaj("Hesaplanıyor (tipik yıl ışınımı, ~10 s)…"); api.kayipAgaciHesapla(plantId).then((r) => { setK(r); setMesaj(null); }).catch((e) => setMesaj(String((e as Error).message ?? e))); };
   return (
-    <Kart baslik="Kayıp zinciri — yatay ışınımdan şebekeye" sag={<span style={{ display: "flex", gap: 6 }}>
+    <Kart baslik="Kayıp zinciri — yatay ışınımdan şebekeye" sag={<span style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
       {k?.durum === "ok" && <span className="cip">tipik yıl {k.yil} · PR {sayiTr((k.pr ?? 0) * 100, 0)}% · {sayiTr(k.ozgul_kwh_kwp ?? 0, 0)} kWh/kWp</span>}
-      <button className="dugme" style={{ fontSize: 13 }} onClick={hesapla}>{k?.durum === "ok" ? "Yenile" : "Hesapla"}</button></span>}>
-      {!k || k.durum !== "ok" ? <p className="soluk" style={{ margin: 0 }}>{mesaj ?? "Henüz hesaplanmadı. 'Hesapla' tipik yıl ışınımından adım adım kayıp zincirini üretir."}</p>
-       : (
+      <button className="dugme kucuk" onClick={hesapla}>{k?.durum === "ok" ? "Yenile" : "Hesapla"}</button></span>}>
+      {/* 23.10 altıncı tur: boş durum iki kademe — başlık satırı + «Hesapla» yönlendirmesi */}
+      {!k || k.durum !== "ok" ? (
+        <div className="bos-durum">
+          <div className="bos-bas">{mesaj ?? "Henüz hesaplanmadı"}</div>
+          {!mesaj && <p>«Hesapla» tipik yıl ışınımından şebekeye adım adım kayıp zincirini üretir; her satır kaynağını söyler.</p>}
+        </div>
+       ) : (
         <>
           <div className="grafik-kaydir">
             <table className="veri" style={{ fontSize: 13 }}>
@@ -674,15 +701,19 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
   return (
     <Sayfa baslik="Kalibrasyon"
       alt="Model santralinizin kendi verisiyle uyarlanır; sonucunu bu sayfada görürsünüz."
-      sag={<button className="dugme" disabled
-        title="Kalibrasyon her ay otomatik yenilenir; elle yeniden kalibrasyon henüz panelde değil"
-        style={{ opacity: 0.55, cursor: "not-allowed" }}>Yeniden kalibre et</button>}>
+      sag={<span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+        {/* 23.10 altıncı tur: pasif düğmenin nedeni yalnız title'da (üzerine gelince) kalmıyor — altında açık yazı;
+            davranış aynı (disabled). Satır içi opacity/cursor .dugme:disabled kuralıyla zaten sağlanıyor. */}
+        <button className="dugme" disabled
+          title="Kalibrasyon her ay otomatik yenilenir; elle yeniden kalibrasyon henüz panelde değil">Yeniden kalibre et</button>
+        <span className="soluk" style={{ fontSize: 12.5, textAlign: "right" }}>her ay otomatik yenilenir · elle yenileme henüz panelde değil</span>
+      </span>}>
       {yuklendi && !k && (
         <Kart baslik="Aktif kalibrasyon yok">
-          <p style={{ fontSize: 14.5, color: "var(--soluk)", margin: 0 }}>
-            Bu santral için aktif bir kalibrasyon kaydı yok. SCADA verisi
-            yükleyip kalibre tahmine geçtiğinizde bu sayfa kendiliğinden dolar.
-          </p>
+          <div className="bos-durum">
+            <div className="bos-bas">Bu santral için aktif bir kalibrasyon kaydı yok.</div>
+            <p>SCADA verisi yükleyip kalibre tahmine geçtiğinizde bu sayfa kendiliğinden dolar; kalibrasyon her ay otomatik yenilenir.</p>
+          </div>
         </Kart>
       )}
       {k && (<>
@@ -762,26 +793,33 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
       {/* v2.254 (Dalga 3.9): kırpma (AC tavanı) ve şebeke kısıntısı — ölçüm silinmez, bayraklanır;
           kısıntı karne ve kalibrasyon dışı, kırpma yalnız kalibrasyon dışı. */}
       <Kart baslik="Veri temizliği — AC sınırında kırpma ve şebeke kısıtı"
-        sag={<span className="cip">{hj ? `son ${sayiTr(hj.pencere_gun)} ölçüm günü${hj.son_olcum ? ` (bitiş ${hj.son_olcum})` : ""} · ${sayiTr(hj.saat)} saat` : "hesaplanıyor"}</span>}>
+        sag={<span style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          {/* 23.10 altıncı tur: pencere bitişi TR tarihle; 60 günden eski pencere rozetle söylenir (tarih aynen API'den) */}
+          <span className="cip">{hj ? `son ${sayiTr(hj.pencere_gun)} ölçüm günü${hj.son_olcum ? ` · bitiş ${tarihTr(hj.son_olcum)}` : ""} · ${sayiTr(hj.saat)} saat` : "hesaplanıyor"}</span>
+          {hj?.son_olcum && gunFarki(hj.son_olcum) > 60 && <span className="rozet rozet-uyari" title="Ölçüm penceresi bugünden uzak; yeni SCADA yüklenince yenilenir">{sayiTr(gunFarki(hj.son_olcum))} gün önce bitti</span>}
+        </span>}>
         {hj ? (
           <>
             <div className="ızgara satir-3" style={{ gap: 12 }}>
               <div className="kpi"><div className="kpi-et">AC sınırında kırpılan</div>
-                <div className="kpi-dg mono">{sayiTr(hj.kirpma_saat)} <small>saat</small></div>
+                <div className="kpi-dg">{sayiTr(hj.kirpma_saat)} <small>saat</small></div>
                 <div className="kpi-alt">{sayiTr(hj.kirpma_gun)} gün · değerlendirmede sayılır, kalibrasyona girmez</div></div>
               <div className="kpi"><div className="kpi-et">Şebeke kısıtı</div>
-                <div className="kpi-dg mono">{hj.kisinti_aranabildi ? <>{sayiTr(hj.kisinti_saat)} <small>saat</small></> : "—"}</div>
-                <div className="kpi-alt">{hj.kisinti_aranabildi ? `${sayiTr(hj.kisinti_gun)} gün · değerlendirme ve kalibrasyon dışı` : "beklenen üretim tahmini olmadan aranmaz"}</div></div>
+                <div className="kpi-dg">{hj.kisinti_aranabildi ? <>{sayiTr(hj.kisinti_saat)} <small>saat</small></> : "—"}</div>
+                <div className="kpi-alt">{hj.kisinti_aranabildi ? `${sayiTr(hj.kisinti_gun)} gün · değerlendirme ve kalibrasyon dışı` : "aranmadı — beklenen üretim tahmini olmadan kısıt ayırt edilemez"}</div></div>
               <div className="kpi"><div className="kpi-et">Kısıt olmasaydı</div>
-                <div className="kpi-dg mono">{hj.kisinti_aranabildi ? <>+{sayiTr(hj.kisinti_kayip_kwh / 1000, 2)} <small>MWh</small></> : "—"}</div>
-                <div className="kpi-alt">{hj.kisinti_aranabildi ? "kısıt saatlerinde beklenen − gerçekleşen" : "—"}</div></div>
+                <div className="kpi-dg">{hj.kisinti_aranabildi ? <>+{sayiTr(hj.kisinti_kayip_kwh / 1000, 2)} <small>MWh</small></> : "—"}</div>
+                <div className="kpi-alt">{hj.kisinti_aranabildi ? "kısıt saatlerinde beklenen − gerçekleşen" : "hesaplanmadı — kısıt aranmayınca kayıp da yok"}</div></div>
             </div>
-            <p style={{ fontSize: 13.5, color: "var(--ikincil)", margin: "10px 0 0", lineHeight: 1.55 }}>
-              Kırpma: üretimin AC sınırına dayandığı saatlerdir; gerçek üretimdir ve tahmin de bu sınırı bilir, ancak
-              sınırlanmış güç panel fiziğini yansıtmadığından kalibrasyon bu saatleri kullanmaz. Kısıt: beklenenin çok
-              altında ve düz seyreden bloklardır; şebeke kısıtının izidir, bulut düşüşü düz olmaz. Her gece yeniden
-              değerlendirilir; hiçbir ölçüm silinmez. {hj.beklenen_kapsama != null && `Beklenen üretim saatlerin %${sayiTr(hj.beklenen_kapsama * 100, 0)}'inde vardı.`}
-            </p>
+            <details className="aciklama">
+              <summary>Kırpma ve kısıt nasıl ayrılır</summary>
+              <p>
+                Kırpma: üretimin AC sınırına dayandığı saatlerdir; gerçek üretimdir ve tahmin de bu sınırı bilir, ancak
+                sınırlanmış güç panel fiziğini yansıtmadığından kalibrasyon bu saatleri kullanmaz. Kısıt: beklenenin çok
+                altında ve düz seyreden bloklardır; şebeke kısıtının izidir, bulut düşüşü düz olmaz. Her gece yeniden
+                değerlendirilir; hiçbir ölçüm silinmez. {hj.beklenen_kapsama != null && `Beklenen üretim saatlerin %${sayiTr(hj.beklenen_kapsama * 100, 0)}'inde vardı.`}
+              </p>
+            </details>
           </>
         ) : <p className="soluk" style={{ margin: 0 }}>Hesaplanıyor…</p>}
       </Kart>
@@ -803,13 +841,20 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
                 </tbody>
               </table>
             </div>
-            <p style={{ fontSize: 13.5, color: "var(--ikincil)", margin: "10px 0 0", lineHeight: 1.55 }}>
-              Kalibrasyon verisi: {ky.kaynak.egitim} · Tahmin verisi: {ky.kaynak.servis}. {ky.kaynak.not}. PSI &lt; 0,10 uyumlu, 0,10–0,25 dikkat, &gt; 0,25 kayma.
-              Kayma varsa tahmin aralığındaki sapmanın nedeni büyük olasılıkla buradadır; bu kart yalnız ölçer, düzeltme yapmaz.
-            </p>
+            <details className="aciklama">
+              <summary>Veri kaynakları ve eşikler</summary>
+              <p>
+                Kalibrasyon verisi: {ky.kaynak.egitim} · Tahmin verisi: {ky.kaynak.servis}. {ky.kaynak.not}. PSI &lt; 0,10 uyumlu, 0,10–0,25 dikkat, &gt; 0,25 kayma.
+                Kayma varsa tahmin aralığındaki sapmanın nedeni büyük olasılıkla buradadır; bu kart yalnız ölçer, düzeltme yapmaz.
+              </p>
+            </details>
           </>
         ) : (
-          <p className="soluk" style={{ margin: 0 }}>{ky ? (ky.not ? `— ${ky.not}` : "Ortak saat yetersiz — en az 48 saat gerekir.") : "Arşiv ve tahmin hava verisi aynı dönemde karşılaştırılıyor…"}</p>
+          /* 23.10 altıncı tur: boş durum iki kademe — kısa başlık + API'nin nedeni aynen */
+          <div className="bos-durum">
+            <div className="bos-bas">{ky ? "Karşılaştırma henüz yapılamadı" : "Karşılaştırılıyor…"}</div>
+            <p>{ky ? (ky.not ? ky.not : "Ortak saat yetersiz — en az 48 saat gerekir.") : "Arşiv ve tahmin hava verisi aynı dönemde karşılaştırılıyor."}</p>
+          </div>
         )}
       </Kart>
       <KayipAgaciKarti plantId={plantId} ilkVeri={ka} />

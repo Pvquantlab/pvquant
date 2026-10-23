@@ -35,6 +35,17 @@ const js = async (ifade) => {
 const uyut = (ms) => new Promise((r) => setTimeout(r, ms));
 await cdp("Page.enable");
 await cdp("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
+// 23.10 altıncı tur: SAHTE_ZAMAN=2026-08-01T12:30:00+03:00 → sayfanın saati o ana kayar (örnek verinin tahmin
+// penceresi 30 Tem 2026'dan başlar; gerçek saatle Tahminler/Santralim grafikleri boş kalıyordu). Yalnız çekim aracı.
+if (process.env.SAHTE_ZAMAN) {
+  const hedef = new Date(process.env.SAHTE_ZAMAN).getTime();
+  if (Number.isNaN(hedef)) throw new Error("SAHTE_ZAMAN geçersiz");
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: `(() => {
+    const KAYMA = ${hedef} - Date.now(); const G = Date;
+    class SahteDate extends G { constructor(...a) { a.length === 0 ? super(G.now() + KAYMA) : super(...a); }
+      static now() { return G.now() + KAYMA; } }
+    window.Date = SahteDate; })();` });
+}
 
 const OZET = `(() => {
   const de = document.documentElement;
