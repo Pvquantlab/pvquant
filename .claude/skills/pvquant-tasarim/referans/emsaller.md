@@ -117,3 +117,12 @@ Her satır: kalıp → dosya → kritik kural. Yeni mühürde yeni kalıp çıka
   tanımlayıcı kapsam dışı; «naif» gibi ASCII tanımlayıcılar için desen daraltılır). API'den gelen görünür metinler
   (`isler_service.ISIM_TR`, `alarm_service.KURAL_ETIKET`, servis «not» cümleleri) sunum katmanında ÇEVRİLMEZ, raporlanır.
   Yerel doğrulama: `.env.local` kenara → örnek kip (API'siz) ile 9 sayfa, `scrollWidth>clientWidth` taraması.
+- **Üç motor turu — Firefox/WebKit (24.10.2026, yerelde):** `docs/PANEL-TUR7-2026-10-23.md` §11; betik
+  `betikler/motor-test.mjs` (Playwright; `PW_DIR=<scratch>/pw` ile paket, tarayıcılar ms-playwright önbelleği).
+  Dersler: (1) esnek öğeye `display:inline` verme — WebKit bloklaşan kutuyu geniş ölçüp içini dar sarar (telemetri
+  dilimi 122 px'te iki satır); inline-flex + `white-space:normal` üç motorda aynı. (2) ECharts `graphic` metni eksen
+  sütununa sığmalı: 12 px mono «AC 3.560» ≈ 62 px > 52 px dar pay → pay 60 + 11 px; sağ uca taşımak bant tepesine biner.
+  (3) Tembel (IO) grafik kaydırmasız tam sayfa karede boş kalır — kareden önce sona kaydır. (4) Firefox 4190 (sieve)
+  portunu yasaklar («Navigation interrupted by another navigation» = uygulama değil port); python http.server Firefox'ta
+  belge vermez → `vite preview` + 4273. (5) Vitrin yüklenirken ikinci gezinme WebKit'te iptal edilen tembel import'tan
+  «React #306» düşürür — jetonu init-script ile ver, tek gezinme. (6) WebKit'te `requestIdleCallback` yok → yedek şart.

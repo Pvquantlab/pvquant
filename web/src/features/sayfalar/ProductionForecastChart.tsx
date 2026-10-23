@@ -853,7 +853,7 @@ export function buildChartOption(input: BuildInput): EChartsOption {
     legend: { show: false }, // legend is the component's HTML layer
     grid: {
       // v2.201: D cizim dili — dondurulmus eksen basligi + alt eksen notu payi
-      left: narrow ? 52 : 76,
+      left: narrow ? 60 : 76, // 60: «AC 3.560» etiketi 11 px'te sütuna sığsın (24.10)
       right: narrow ? 12 : 16,
       top: 34,
       bottom: features.dataZoom ? 58 : narrow ? 32 : 48,
@@ -863,12 +863,15 @@ export function buildChartOption(input: BuildInput): EChartsOption {
         ? [
             {
               type: "text",
+              // Dar ekranda «AC 3.560» (12 px mono ≈ 62 px) 52 px'lik eksen sütununa sığmayıp eksen çizgisi ve
+              // «şimdi» noktasının üstüne taşıyordu (24.10 üç motor turu, 375 px). Sol pay dar kipte 60 px, etiket
+              // 11 px (≈ 53 px) → sütunda kalır; sağ uca almak P90 tepesine biniyordu.
               left: 4,
               top: 34 + input.plotHeightPx * (1 - acVal / yMax) - 6,
               style: {
                 text: `AC ${nfKw.format(acVal)}`,
                 fill: T.acLimit,
-                font: "12px 'IBM Plex Mono', ui-monospace, monospace",
+                font: `${narrow ? 11 : 12}px 'IBM Plex Mono', ui-monospace, monospace`,
               },
               silent: true,
               z: 50,
