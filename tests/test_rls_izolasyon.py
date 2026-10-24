@@ -66,15 +66,19 @@ def test_rapor_tablolari_rls(iki_tenant):
     B bağlamından A adına yazılamaz."""
     a, b = iki_tenant["a"], iki_tenant["b"]
     with tenant_baglami(a) as s:
+        # JSON gövdesi bağlı parametreyle (text() içinde ':1' bağ parametresi sanılır — worker kalıbıyla aynı CAST)
         s.execute(text("INSERT INTO report_stats(tenant_id,plant_id,key,value_json,updated_at) "
-                       "VALUES(:t,:p,'rls_test','{\"v\":1}'::jsonb,now()) ON CONFLICT (plant_id,key) DO NOTHING"),
-                  {"t": a, "p": iki_tenant["a_plant"]})
+                       "VALUES(:t,:p,'rls_test',CAST(:v AS jsonb),now()) ON CONFLICT (plant_id,key) DO NOTHING"),
+                  {"t": a, "p": iki_tenant["a_plant"], "v": '{"v": 1}'})
+    from sqlalchemy.exc import DatabaseError
     try:
         with tenant_baglami(b) as s:
             assert s.execute(text("SELECT count(*) FROM report_stats WHERE key='rls_test'")).scalar() == 0
-            with pytest.raises(Exception):
+        # reddedilen INSERT oturumu iptal durumuna sokar → pytest.raises bağlamın DIŞINDA (üstteki testle aynı kalıp)
+        with pytest.raises(DatabaseError):
+            with tenant_baglami(b) as s:
                 s.execute(text("INSERT INTO report_stats(tenant_id,plant_id,key,value_json,updated_at) "
-                               "VALUES(:t,:p,'rls_test2','{}'::jsonb,now())"), {"t": a, "p": iki_tenant["a_plant"]})
+                               "VALUES(:t,:p,'rls_test2',CAST(:v AS jsonb),now())"), {"t": a, "p": iki_tenant["a_plant"], "v": "{}"})
         with tenant_baglami(a) as s:
             assert s.execute(text("SELECT count(*) FROM report_stats WHERE key='rls_test'")).scalar() == 1
     finally:
