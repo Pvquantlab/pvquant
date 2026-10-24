@@ -145,3 +145,12 @@ Her satır: kalıp → dosya → kritik kural. Yeni mühürde yeni kalıp çıka
   referans korunur (`ayniysaEskisi`) — grafik ikinci kez çizilmez. (6) Ölçüm tuzağı: `startTransition` eski sayfayı ekranda
   tutar; «içerik» ölçütü yeni sayfanın h1'i görünmeden sayılmaz. (7) Yer tutucu yüksekliği oturmuş kartla eşlenir
   (`perf/analiz/acik-tema/kart-yukseklik.mjs`); 4× CPU'da kademeli yerleşme «tam» süresini uzatabilir, raporda saklanmaz.
+- **Faz 0 güvenlik tabanı mührü (24.10.2026, v2.479):** `docs/FAZ0-GUVENLIK-2026-10-24.md`. Dersler: (1) Caddyfile tek dosya
+  bind-mount (`./Caddyfile:/etc/caddy/Caddyfile:ro`): `git pull` dosyayı yeni inode ile yazar, konteyner ESKİ içeriği görür;
+  `caddy reload` «config is unchanged» der → Caddyfile değişen her mühürde `docker compose up -d --force-recreate caddy`.
+  (2) RLS testinde reddedilen INSERT oturumu iptal eder: `pytest.raises` `tenant_baglami` bloğunun DIŞINDA (commit patlar);
+  `text()` içinde `'{"v":1}'` literal'i `:1` bağ parametresi sanılır → `CAST(:v AS jsonb)`. (3) DB'li testleri CI'ya bırakma:
+  yerelde `docker run timescale/timescaledb:latest-pg16` + `PVQ_DB_URL` + `alembic upgrade head` ile 6 dk'da aynı koşul.
+  (4) Sürüm numarası çakışması: push reddedilince `git pull --rebase`, uzaktaki numara doluysa yeniden numaralandır (migration
+  adı dahil). (5) `docker compose up -d` imaj değişse de bazen web/worker'ı yeniden oluşturmaz → konteyner imaj kimliğini
+  imajla kıyasla, gerekirse `--force-recreate`.

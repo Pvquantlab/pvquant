@@ -1,4 +1,15 @@
-# Faz 0 — Güvenlik tabanı (24.10.2026) — BİRİKTİ, commit bekliyor
+# Faz 0 — Güvenlik tabanı (24.10.2026) — CANLI v2.479
+**Durum:** v2.479 = 4944f2a + düzeltme 1c67542 (24.10; v2.478 numarası PR #12 «açık tema panel geçişleri» ile dolu olduğundan
+yeniden numaralandı, migration `v2479_faz0_guvenlik`). CI #568 kırmızı (yeni RLS testinde `pytest.raises` bağlam içindeydi +
+`'{"v":1}'` literal'i text() bağ parametresi sanıldı) → düzeltme CI #569 yeşil; yerelde CI ile aynı timescale imajıyla 690/690.
+Dağıtım: `.env` PVQ_PLATFORM_TENANT_ID (Meridyen Enerji), api+web imajı, `alembic upgrade head` → `v2479_faz0_guvenlik (head)`,
+api yeni komutla (`--proxy-headers --forwarded-allow-ips *`; loglarda gerçek istemci IP'si görünüyor), web yeniden oluşturuldu,
+Caddy **yeniden oluşturuldu** (reload «config is unchanged» dedi: tek dosya bind-mount, `git pull` yeni inode yazınca konteyner
+eski dosyayı görüyordu — ders emsaller.md'de). Canlı: index.html + 18/18 JS/CSS referansla birebir; başlıklar `/`'da HSTS,
+nosniff, X-Frame-Options DENY, CSP frame-ancestors, Referrer-Policy, Permissions-Policy, `Server` yok; `/v1/*`'da da aynı;
+www → apex 301; sahte jeton 401, jetonsuz başvurular 401, yanlış parola 401; api logunda hata 0. Worker konteyneri eski imajda
+(Faz 0 kodu worker'a dokunmaz; bir sonraki gece işi/dağıtımda yenilenir). Panelden gerçek hesapla pasifleştirme ≤60 sn düşme
+denemesi kullanıcıda.
 
 Dayanak: `docs/YONETICI-PANELI-YOL-HARITASI-2026-10-24.md` §1 (seçenek C). Kapsam kullanıcı talimatı: başvuru kilidi,
 report_* RLS, oturum_surumu jeton iptali, kiracı status, proxy IP + güvenlik başlıkları. Yalnız EKLEME: mevcut uç
