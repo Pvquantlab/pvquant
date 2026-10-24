@@ -1,4 +1,8 @@
-# Faz 2 — Yönetici paneli arayüzü `/yonetim` (25.10.2026) — BİRİKTİ, commit bekliyor
+# Faz 2 — Yönetici paneli arayüzü `/yonetim` (25.10.2026) — CANLI v2.481
+**Durum:** v2.481 = 02f017a (25.10), CI #573 yeşil. Sunucu: pull, api + web imajları, `up -d --force-recreate api web`;
+api ortamında `PVQ_PLATFORM_TENANT_ID` boş (kilit kalktı). Canlı index.html + 19/19 JS/CSS (Yonetim parçası dahil) referans
+derlemeyle birebir; `/yonetim` 200; `/v1/vitrin/basvurular` 404; `/v1/yonetim/giris` yanlış parola 401; api logunda hata 0.
+Gerçek hesapla `/yonetim` girişi (2FA) ve Müşteriler listesinde iki kiracının görünmesi kullanıcıda.
 
 Dayanak: `docs/YONETICI-PANELI-YOL-HARITASI-2026-10-24.md` Faz 2; Faz 1 API'si (v2.480) üstüne. Müşteri paneli, tahmin
 sistemi ve `/v1/*` müşteri sözleşmeleri değişmedi; tek istisna yol haritasında kararlaştırılan temizlik: vitrin başvurularının
