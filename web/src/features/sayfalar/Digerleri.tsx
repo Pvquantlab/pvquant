@@ -2,11 +2,11 @@ import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import type { EChartsOption } from "echarts";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
-import { api, rolum, RaporDenetimHata, type DenetimBulgusu, EslemeHatasi, type EslemeVerisi,
+import { api, bellekten, ayniysaEskisi, rolum, RaporDenetimHata, type DenetimBulgusu, EslemeHatasi, type EslemeVerisi,
          type ScadaOnizleme, type ScadaKayit,
          type KosuSatiri , CihazBazliHatasi} from "../../api/client";
 import type { KalibrasyonOzeti, Kayma, Hijyen, EpiasUretim, KayipAgaci, GucMatrisi, Isler } from "../../api/types";
-import { Kart, Sayfa, Kpi, sayiTr, SayfaIskeleti } from "./parcalar";
+import { Kart, Sayfa, Kpi, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
 import { Meta } from "../../lib/Meta";
 import { JsonOnizleme } from "./JsonOnizleme";   // v2.351: JSON panel içi önizleme
 import type { RaporJson } from "../../api/types";
@@ -46,10 +46,11 @@ function gunFarki(iso: string): number {
 }
 
 /** v2.283 (Tablo 3.3 satır 5) — modül davranışı: güç matrisi kalıbıyla ışınım/sıcaklık verimi ve iklim-özgü verim oranı. */
-function GucMatrisiKarti({ plantId, ilkVeri }: { plantId: string; ilkVeri: GucMatrisi | null }) {
-  // v2.327: ilk veri ebeveynin tek kapısından gelir (kart kendi Yükleniyor'unu göstermez);
-  // "Hesapla/Yenile" kartın kendi işi olarak kalır.
-  const [g, setG] = useState<GucMatrisi | null>(ilkVeri);
+function GucMatrisiKarti({ plantId, ilkVeri }: { plantId: string; ilkVeri: GucMatrisi | null | undefined }) {
+  // v2.327: ilk veri ebeveynden gelir; "Hesapla/Yenile" kartın kendi işi olarak kalır.
+  // 24.10: ebeveyn artık tek kapı beklemiyor — ilk veri SONRADAN gelebilir (undefined = yolda → yer tutucu), gelince izlenir.
+  const [g, setG] = useState<GucMatrisi | null | undefined>(ilkVeri);
+  useEffect(() => { setG(ilkVeri); }, [ilkVeri]);
   const [mesaj, setMesaj] = useState<string | null>(null);
   const hesapla = () => { setMesaj("Hesaplanıyor (tipik yıl, ~10 s)…"); api.gucMatrisiHesapla(plantId).then((r) => { setG(r); setMesaj(null); }).catch((e) => setMesaj(String((e as Error).message ?? e))); };
   return (
@@ -58,7 +59,7 @@ function GucMatrisiKarti({ plantId, ilkVeri }: { plantId: string; ilkVeri: GucMa
       <button className="dugme kucuk" onClick={hesapla}>{g?.durum === "ok" ? "Yenile" : "Hesapla"}</button></span>}>
       {/* 23.10 altıncı tur: boş durum iki kademe (.bos-durum); tablo dar + sans tabular (.veri.sayisal.dar) — 7 sütun
           1840 px'e yayılmıyor; sentetik kaynak başlıkta rozetle söylenir (ölçüm sanılmasın); kaynak/not iki ayrı cümle. */}
-      {!g || g.durum !== "ok" ? (
+      {g === undefined ? <YerTutucu yukseklik={178} /> : !g || g.durum !== "ok" ? (
         <div className="bos-durum">
           <div className="bos-bas">{mesaj ?? "Henüz hesaplanmadı"}</div>
           {!mesaj && <p>«Hesapla» panelin ışınım ve sıcaklığa göre verimini tipik yıl iklimiyle değerlendirir.</p>}
@@ -92,9 +93,10 @@ function GucMatrisiKarti({ plantId, ilkVeri }: { plantId: string; ilkVeri: GucMa
 }
 
 /** v2.281 (Tablo 3.3 satır 4) — kayıp ağacı: tipik yıl ışınımından şebekeye adım adım; her satır kaynağını söyler. */
-function KayipAgaciKarti({ plantId, ilkVeri }: { plantId: string; ilkVeri: KayipAgaci | null }) {
-  // v2.327: ilk veri ebeveynin tek kapısından (bkz. GucMatrisiKarti notu).
-  const [k, setK] = useState<KayipAgaci | null>(ilkVeri);
+function KayipAgaciKarti({ plantId, ilkVeri }: { plantId: string; ilkVeri: KayipAgaci | null | undefined }) {
+  // v2.327: ilk veri ebeveynden (bkz. GucMatrisiKarti notu); 24.10: sonradan gelebilir, izlenir.
+  const [k, setK] = useState<KayipAgaci | null | undefined>(ilkVeri);
+  useEffect(() => { setK(ilkVeri); }, [ilkVeri]);
   const [mesaj, setMesaj] = useState<string | null>(null);
   const hesapla = () => { setMesaj("Hesaplanıyor (tipik yıl ışınımı, ~10 s)…"); api.kayipAgaciHesapla(plantId).then((r) => { setK(r); setMesaj(null); }).catch((e) => setMesaj(String((e as Error).message ?? e))); };
   return (
@@ -102,7 +104,7 @@ function KayipAgaciKarti({ plantId, ilkVeri }: { plantId: string; ilkVeri: Kayip
       {k?.durum === "ok" && <span className="cip"><Meta items={[`tipik yıl ${k.yil}`, `PR %${sayiTr((k.pr ?? 0) * 100, 0)}`, `${sayiTr(k.ozgul_kwh_kwp ?? 0, 0)} kWh/kWp`]} /></span>}
       <button className="dugme kucuk" onClick={hesapla}>{k?.durum === "ok" ? "Yenile" : "Hesapla"}</button></span>}>
       {/* 23.10 altıncı tur: boş durum iki kademe — başlık satırı + «Hesapla» yönlendirmesi */}
-      {!k || k.durum !== "ok" ? (
+      {k === undefined ? <YerTutucu yukseklik={430} /> : !k || k.durum !== "ok" ? (
         <div className="bos-durum">
           <div className="bos-bas">{mesaj ?? "Henüz hesaplanmadı"}</div>
           {!mesaj && <p>«Hesapla» tipik yıl ışınımından şebekeye adım adım kayıp zincirini üretir; her satır kaynağını söyler.</p>}
@@ -621,31 +623,30 @@ export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
 }
 
 export function Kalibrasyon({ plantId }: { plantId: string }) {
-  const [k, setK] = useState<KalibrasyonOzeti | null>(null);
-  const [yuklendi, setYuklendi] = useState(false);
-  const [ky, setKy] = useState<Kayma | null>(null);   // v2.253
-  const [hj, setHj] = useState<Hijyen | null>(null);  // v2.254
-  // v2.327: TEK KAPI (Portföy kalıbı) — beş kaynak (özet, hijyen, kayma,
-  // kayıp ağacı, güç matrisi) paralel; sayfa bütün belirir. Alt kartların ilk
-  // verisi prop'la iner; "Hesapla/Yenile" kartlarda kalır.
-  const [ka, setKa] = useState<KayipAgaci | null>(null);
-  const [gm, setGm] = useState<GucMatrisi | null>(null);
+  // 24.10 açık tema geçiş turu — BEŞ İSTEK BAĞIMSIZ, BAYAT-ÖNCE (Portföy kalıbı). v2.327'nin tek kapısı KPI'ları en yavaş
+  // isteğe (hava verisi tutarlılığı, hijyen) bekletiyordu. Şimdi kalibrasyon özeti gelir gelmez başlık + KPI'lar + sonuç
+  // kartları; hijyen/kayma/kayıp zinciri/güç matrisi kartları kendi yanıtlarını boyutlu yer tutucuyla bekler. Bellekte son
+  // özet varsa sayfa onunla anında çizilir. undefined = yolda, null = yok/alınamadı. Hesaplar ve metinler aynı.
+  type Durum = "bekliyor" | "tamam" | "hata";
+  const [k, setK] = useState<KalibrasyonOzeti | null | undefined>(() => bellekten.kalibrasyon(plantId));
+  const [kD, setKD] = useState<Durum>("bekliyor");
+  const [ky, setKy] = useState<Kayma | null | undefined>(undefined);   // v2.253
+  const [hj, setHj] = useState<Hijyen | null | undefined>(undefined);  // v2.254
+  const [ka, setKa] = useState<KayipAgaci | null | undefined>(undefined);
+  const [gm, setGm] = useState<GucMatrisi | null | undefined>(undefined);
   useEffect(() => {
     let acik = true;
-    setYuklendi(false);
-    Promise.allSettled([api.kalibrasyon(plantId), api.hijyen(plantId), api.kayma(plantId),
-      api.kayipAgaci(plantId), api.gucMatrisi(plantId)])
-      .then(([rk, rhj, rky, rka, rgm]) => {
-        if (!acik) return;
-        if (rk.status === "fulfilled") setK(rk.value);
-        if (rhj.status === "fulfilled") setHj(rhj.value);
-        if (rky.status === "fulfilled") setKy(rky.value);
-        setKa(rka.status === "fulfilled" ? rka.value : null);
-        setGm(rgm.status === "fulfilled" ? rgm.value : null);
-        setYuklendi(true);
-      });
+    setK(bellekten.kalibrasyon(plantId)); setKD("bekliyor");
+    setHj(undefined); setKy(undefined); setKa(undefined); setGm(undefined);
+    api.kalibrasyon(plantId).then((v) => { if (acik) { setK((e) => ayniysaEskisi(e, v)); setKD("tamam"); } }, () => { if (acik) { setK((e) => e ?? null); setKD("hata"); } });
+    api.hijyen(plantId).then((v) => { if (acik) setHj(v); }, () => { if (acik) setHj(null); });
+    api.kayma(plantId).then((v) => { if (acik) setKy(v); }, () => { if (acik) setKy(null); });
+    api.kayipAgaci(plantId).then((v) => { if (acik) setKa(v); }, () => { if (acik) setKa(null); });
+    api.gucMatrisi(plantId).then((v) => { if (acik) setGm(v); }, () => { if (acik) setGm(null); });
     return () => { acik = false; };
   }, [plantId]);
+  const yuklendi = k !== undefined || kD !== "bekliyor";
+  const tazeleniyor = yuklendi && kD === "bekliyor";
   const sr = (a: string, b: string) => <tr key={a}><td>{a}</td><td className="mono">{b}</td></tr>;
   const yzd = (v: number | null) => v === null ? "\u2014" : `%${sayiTr(v, 1)}`;
   const iyilesme = k && k.mape_once && k.mape_sonra
@@ -706,6 +707,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
     <Sayfa baslik="Kalibrasyon"
       alt="Model santralinizin kendi verisiyle uyarlanır; sonucunu bu sayfada görürsünüz."
       sag={<span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+        {(tazeleniyor || kD === "hata") && <span className="cip">{tazeleniyor ? "güncelleniyor" : "güncellenemedi"}</span>}
         {/* 23.10 altıncı tur: pasif düğmenin nedeni yalnız title'da (üzerine gelince) kalmıyor — altında açık yazı;
             davranış aynı (disabled). Satır içi opacity/cursor .dugme:disabled kuralıyla zaten sağlanıyor. */}
         <button className="dugme" disabled
@@ -800,7 +802,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
       <Kart baslik="Veri temizliği" alt="AC sınırında kırpma ve şebeke kısıtı"
         sag={<span style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
           {/* 23.10 altıncı tur: pencere bitişi TR tarihle; 60 günden eski pencere rozetle söylenir (tarih aynen API'den) */}
-          <span className="cip">{hj ? <Meta items={[`son ${sayiTr(hj.pencere_gun)} ölçüm günü`, hj.son_olcum && `bitiş ${tarihTr(hj.son_olcum)}`, `${sayiTr(hj.saat)} saat`]} /> : "hesaplanıyor"}</span>
+          <span className="cip">{hj ? <Meta items={[`son ${sayiTr(hj.pencere_gun)} ölçüm günü`, hj.son_olcum && `bitiş ${tarihTr(hj.son_olcum)}`, `${sayiTr(hj.saat)} saat`]} /> : hj === undefined ? "hesaplanıyor" : "alınamadı"}</span>
           {hj?.son_olcum && gunFarki(hj.son_olcum) > 60 && <span className="rozet rozet-uyari" title="Ölçüm penceresi bugünden uzak; yeni SCADA yüklenince yenilenir">{sayiTr(gunFarki(hj.son_olcum))} gün önce bitti</span>}
         </span>}>
         {hj ? (
@@ -826,13 +828,13 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
               </p>
             </details>
           </>
-        ) : <p className="soluk" style={{ margin: 0 }}>Hesaplanıyor…</p>}
+        ) : hj === undefined ? <YerTutucu yukseklik={184} /> : <p className="soluk" style={{ margin: 0 }}>Veri temizliği özeti şu anda alınamadı.</p>}
       </Kart>
       {/* v2.253 (Dalga 2.8b): eğitim/servis kayması — kalibrasyon arşiv meteosuyla, tahmin servisi tahmin
           meteosuyla çalışır; aynı saatlerde dağılım/sapma farkı bant sapmasının olası adresidir. */}
       <Kart baslik="Hava verisi tutarlılığı" alt="Kalibrasyon ve tahmin aynı veriyi mi görüyor?"
-        sag={<span className="cip">{ky ? <Meta items={[`${sayiTr(ky.n_saat)} saat`, ky.hukum]} /> : "hesaplanıyor"}</span>}>
-        {ky && ky.ozellikler.length > 0 ? (
+        sag={<span className="cip">{ky ? <Meta items={[`${sayiTr(ky.n_saat)} saat`, ky.hukum]} /> : ky === undefined ? "hesaplanıyor" : "alınamadı"}</span>}>
+        {ky === undefined ? <YerTutucu yukseklik={222} /> : ky && ky.ozellikler.length > 0 ? (
           <>
             <div className="grafik-kaydir">
               <table className="veri" style={{ fontSize: 13.5 }}>
@@ -857,8 +859,8 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
         ) : (
           /* 23.10 altıncı tur: boş durum iki kademe — kısa başlık + API'nin nedeni aynen */
           <div className="bos-durum">
-            <div className="bos-bas">{ky ? "Karşılaştırma henüz yapılamadı" : "Karşılaştırılıyor…"}</div>
-            <p>{ky ? (ky.not ? ky.not : "Ortak saat yetersiz; en az 48 saat gerekir.") : "Arşiv ve tahmin hava verisi aynı dönemde karşılaştırılıyor."}</p>
+            <div className="bos-bas">{ky ? "Karşılaştırma henüz yapılamadı" : "Karşılaştırma şu anda alınamadı"}</div>
+            <p>{ky ? (ky.not ? ky.not : "Ortak saat yetersiz; en az 48 saat gerekir.") : "Sunucu yanıt vermedi; sayfayı yenileyin."}</p>
           </div>
         )}
       </Kart>

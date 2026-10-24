@@ -87,6 +87,12 @@ export function Kart({ baslik, alt, no, sag, children, ...rest }:
   );
 }
 
+/** 24.10 — kart gövdesi için boyutlu, hareketsiz yer tutucu (iskelet dili): içerik gelince yükseklik korunur, kayma olmaz.
+ *  Portföy geçiş turunda doğdu; açık tema geçiş turunda Doğruluk/Kalibrasyon/Aylık/Tahminler/Hakkında da kullanır (ortak). */
+export function YerTutucu({ yukseklik }: { yukseklik: number }) {
+  return <div className="iskelet-alan" style={{ minHeight: yukseklik }} role="status" aria-live="polite" aria-label="Yükleniyor"><span className="gorsel-gizli">Yükleniyor…</span></div>;
+}
+
 /** 24.10 performans turu — sayfa iskeleti: veri gelene dek «Yükleniyor…» tek satırı yerine sayfanın kaba kalıbı
  *  (başlık, KPI sırası, kart). Boyut korunur → içerik gelince sıçrama küçülür; hareket yok (reduced-motion dostu).
  *  Sayı/veri göstermez — yalnız yer tutucu. */

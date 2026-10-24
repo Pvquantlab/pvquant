@@ -89,6 +89,28 @@ export function bellektenOku<T>(yol: string): T | undefined {
   return bellekte.get(yol)?.veri as T | undefined;
 }
 
+/** 24.10 açık tema geçiş turu — sayfaların BAYAT-ÖNCE başlangıcı (Portföy kalıbı): dönüşte bellekteki son yanıt
+ *  anında çizilir, taze yanıt arkadan gelir («güncelleniyor» çipi). Yollar ve uyarlayıcılar api.* ile birebir aynıdır;
+ *  yalnız okur, ağa çıkmaz. Örnek kipte undefined (bellek yok). */
+export const bellekten = {
+  ozet: (p: string): SantralOzeti | undefined => { const g = bellektenOku<OzetYanit>(`/v1/plants/${p}/summary`); return g ? uyarlaOzet(g) : undefined; },
+  tahmin: (p: string, u: Ufuk): TahminSerisi | undefined => { const g = bellektenOku<ForecastYanit>(`/v1/plants/${p}/forecast?hours=${UFUK_SAAT[u]}`); return g ? uyarla(g) : undefined; },
+  karne: (p: string, gun = 60): Karne | undefined => {
+    const k0 = bellektenOku<Karne>(`/v1/plants/${p}/skill?bucket=0-24&gun=${gun}`), k1 = bellektenOku<Karne>(`/v1/plants/${p}/skill?bucket=24-72&gun=${gun}`);
+    return k0 && k1 ? { ...k0, gunluk: [...k0.gunluk, ...k1.gunluk] } : undefined;
+  },
+  kalibrasyon: (p: string): KalibrasyonOzeti | undefined => bellektenOku<KalibrasyonOzeti>(`/v1/plants/${p}/kalibrasyon`),
+  aylik: (p: string): AylikBeklenti | undefined => bellektenOku<AylikBeklenti>(`/v1/plants/${p}/monthly`),
+};
+
+/** 24.10 — bayat-önce tazelemesi: taze yanıt bellekteki bayat değerle BİREBİR aynıysa eski referans korunur; böylece
+ *  useMemo'lu grafik seçenekleri yeniden kurulmaz, ECharts aynı veriyi ikinci kez çizmez (4× CPU'da Aylık/Tahminler'in
+ *  «tam» süresini uzatan tek fark buydu). Farklıysa taze değer döner; veri hiçbir zaman bastırılmaz. */
+export function ayniysaEskisi<T>(eski: T | null | undefined, yeni: T): T {
+  if (eski == null || yeni == null) return yeni;
+  try { return JSON.stringify(eski) === JSON.stringify(yeni) ? (eski as T) : yeni; } catch { return yeni; }
+}
+
 /** v2.264: JSON gövdeli POST/DELETE — getir'in 401 sözleşmesi; 4xx'te sunucunun detail'i Error olur. */
 async function gonder<T>(yol: string, method: "POST" | "DELETE" | "PUT", govde?: unknown): Promise<T> {
   const jeton = localStorage.getItem("pvq_token");

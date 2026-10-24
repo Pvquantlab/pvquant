@@ -2,12 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import type { PrKarti, Saglik, AlarmKurallari, FizikTerimleri, FizikOnizleme, Kullanilabilirlik, Tarife } from "../../api/types";
 import { SEGMENTLER } from "../../api/types";
 import type { EChartsOption } from "echarts";
-import { api } from "../../api/client";
+import { api, bellekten, ayniysaEskisi } from "../../api/client";
 import type { SantralOzeti, TahminSerisi, GunesYolu, SaatAyMatrisi } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
 import { Kart, Sayfa, sayiTr, sayiTrN, gucTr, enerjiTr, isiTonu, isiMetni, SayfaIskeleti } from "../sayfalar/parcalar";
-import ProductionForecastChart from "../sayfalar/ProductionForecastChart";
+import ProductionForecastChart, { type ActualPoint, type ForecastPoint, type Plant } from "../sayfalar/ProductionForecastChart";
 import { Meta } from "../../lib/Meta";
 import { tarihBicimi } from "../../lib/bicim";
 import { t0Hesapla, simdiDegeri, simdiGercegi, dilimle } from "../sayfalar/tahminPencere";
@@ -46,15 +46,20 @@ const YONTEM_ADI: Record<string, string> = {
   first_solar: "First Solar", kimber: "Kimber", nrel: "NREL",
 };
 
+// 24.10: grafik özellikleri sabit nesne — her render'da yeni {} üretilip option'ın yeniden kurulmasını önler
+const GRAFIK_OZELLIKLERI = { exportButtons: true } as const;  // v2.215: PNG/CSV — SaaS eylemi
+
 export function Santralim({ plantId }: { plantId: string }) {
-  const [o, setO] = useState<SantralOzeti | null>(null);
+  // 24.10 açık tema geçiş turu: özet ve seri BAYAT-ÖNCE — bellekte son yanıt varsa (60 sn dolmuş olsa da) sayfa anında
+  // çizilir, ağdan gelen yanıt üstüne yazar (Portföy kalıbı). İstekler zaten bağımsızdı; yalnız başlangıç durumu değişti.
+  const [o, setO] = useState<SantralOzeti | null>(() => bellekten.ozet(plantId) ?? null);
   const [pr, setPr] = useState<PrKarti | null>(null);   // v2.249
-  const [seri, setSeri] = useState<TahminSerisi | null>(null);
+  const [seri, setSeri] = useState<TahminSerisi | null>(() => bellekten.tahmin(plantId, "16d") ?? null);
   const [gy, setGy] = useState<GunesYolu | null>(null);
   const [sam, setSam] = useState<SaatAyMatrisi | null>(null);
   const { n, oku } = useTema();
-  useEffect(() => { api.ozet(plantId).then(setO); }, [plantId]);
-  useEffect(() => { api.tahmin(plantId, "16d").then(setSeri).catch(() => {}); }, [plantId]);   // v2.365: kosusuz santralda 404 gurultusuz // v2.166: D1 — tam seri cek, istemcide "24h" dilimle (Tahminler kalibi)
+  useEffect(() => { setO(bellekten.ozet(plantId) ?? null); api.ozet(plantId).then((v) => setO((e) => ayniysaEskisi(e, v))); }, [plantId]);
+  useEffect(() => { setSeri(bellekten.tahmin(plantId, "16d") ?? null); api.tahmin(plantId, "16d").then((v) => setSeri((e) => ayniysaEskisi(e, v))).catch(() => {}); }, [plantId]);   // v2.365: kosusuz santralda 404 gurultusuz // v2.166: D1 — tam seri cek, istemcide "24h" dilimle (Tahminler kalibi)
   useEffect(() => { api.gunesYolu(plantId).then(setGy).catch(() => {}); }, [plantId]);
   useEffect(() => { api.saatAyMatrisi(plantId).then(setSam).catch(() => {}); }, [plantId]);
   useEffect(() => { api.pr(plantId).then(setPr).catch(() => {}); }, [plantId]);   // v2.249
@@ -146,6 +151,18 @@ export function Santralim({ plantId }: { plantId: string }) {
     () => (seri ? simdiGercegi(seri.saatlik, t0) : null), [seri, t0]);
   const dilim = useMemo(
     () => (seri ? dilimle(seri.saatlik, t0, "24h") : null), [seri, t0]);
+  // 24.10 açık tema geçiş turu: grafik girdileri dilim/seri/özet değişmeden aynı referans — bu sayfanın 12 bağımsız
+  // isteğinin her yanıtı (PR, sağlık, alarm, tarife…) render'ı tetikler; eski inline map'ler her seferinde yeni dizi
+  // üretip ECharts option'ını boşuna yeniden kuruyordu.
+  const grafikTahmin = useMemo<ForecastPoint[]>(
+    () => (dilim ? dilim.saatlik.map((x) => ({ ts: x.ts, p10: x.p10_kw, p50: x.p50_kw, p90: x.p90_kw, p25: x.p25_kw, p75: x.p75_kw })) : []),
+    [dilim]);
+  const grafikGercek = useMemo<ActualPoint[]>(
+    () => (dilim ? dilim.saatlik.filter((x) => x.gercek_kw !== null).map((x) => ({ ts: x.ts, kw: x.gercek_kw as number })) : []),
+    [dilim]);
+  const grafikSantral = useMemo<Plant | null>(
+    () => (seri && o ? { acCapacityKw: seri.ac_tavani_kw ?? o.ac_tavani_kw, lat: o.lat, lon: o.lon, timezone: o.tz } : null),
+    [seri, o]);
   // v2.200: gun-ici P50 profilleri — gunAnahtari(t0+i gun) ile gruplanir
   const gunProfilleri = useMemo(() => {
     if (!seri || !o) return null;
@@ -358,21 +375,16 @@ export function Santralim({ plantId }: { plantId: string }) {
       <Kart no="2" baslik="Bugün" alt="Saatlik üretim"
         sag={<span className="cip">saatlik çözünürlük</span>}
         style={{ marginBottom: 14 }}>
-        {seri && dilim && (
+        {seri && dilim && grafikSantral && (
           <ProductionForecastChart
-            forecast={dilim.saatlik.map((x) => ({
-              ts: x.ts, p10: x.p10_kw, p50: x.p50_kw, p90: x.p90_kw,
-              p25: x.p25_kw, p75: x.p75_kw }))}
-            actual={dilim.saatlik
-              .filter((x) => x.gercek_kw !== null)
-              .map((x) => ({ ts: x.ts, kw: x.gercek_kw as number }))}
+            forecast={grafikTahmin}
+            actual={grafikGercek}
             nowMs={t0}
             nowValue={nowVal}
             gunes={seri.gunes}
             mode="hourly"
-            plant={{ acCapacityKw: seri.ac_tavani_kw ?? o.ac_tavani_kw,
-                     lat: o.lat, lon: o.lon, timezone: o.tz }}
-            features={{ exportButtons: true }}  // v2.215: PNG/CSV — SaaS eylemi
+            plant={grafikSantral}
+            features={GRAFIK_OZELLIKLERI}
             height={340}
           />
         )}
