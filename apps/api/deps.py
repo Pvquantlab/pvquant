@@ -11,6 +11,9 @@ def gecerli_kullanici(authorization: str = Header(...)):
     c = token_coz(authorization.removeprefix("Bearer ").strip())
     if c is None:
         raise HTTPException(401, "Gecersiz/suresi dolmus token")
+    # 24.10 Faz 1: platform (PVQuant personeli) jetonu müşteri uçlarını AÇAMAZ — iki yüz, iki kapsam.
+    if c.get("kapsam") == "platform":
+        raise HTTPException(403, "platform jetonu müşteri ucunda geçersiz")
     # 24.10 Faz 0: imza yetmez — oturum sürümü, aktiflik ve kiracı durumu DB'den (60 sn önbellek) doğrulanır.
     # `sv` iddiası olmayan eski jeton 0 sayılır: sürümü hiç artmamış kullanıcıda geçerli kalır (geriye uyumlu).
     d = auth_service.oturum_durumu(c["sub"])
@@ -21,6 +24,29 @@ def gecerli_kullanici(authorization: str = Header(...)):
     if int(c.get("sv", 0)) != d["sv"]:
         raise HTTPException(401, "oturum geçersiz; yeniden giriş yapın")
     return c  # {"sub","tenant_id","role","exp","sv"}
+
+
+def platform_yetkisi(rol: str | None = None):
+    """24.10 Faz 1 — PLATFORM kapısı: yalnız `kapsam: platform` jetonu; platform_kullanicilar'dan aktiflik ve oturum
+    sürümü (60 sn önbellek); `rol="sahip"` verilirse operatör 403. Müşteri jetonu burada 403: kapsamlar karışmaz."""
+    def _ic(authorization: str = Header(...)):
+        from pvquant.services import platform_service
+        if not authorization.startswith("Bearer "):
+            raise HTTPException(401, "Bearer token gerekli")
+        c = token_coz(authorization.removeprefix("Bearer ").strip())
+        if c is None:
+            raise HTTPException(401, "Gecersiz/suresi dolmus token")
+        if c.get("kapsam") != "platform":
+            raise HTTPException(403, "platform jetonu gerekli")
+        d = platform_service.oturum_durumu(c["sub"])
+        if d is None or not d["aktif"]:
+            raise HTTPException(401, "hesap etkin değil")
+        if int(c.get("sv", 0)) != d["sv"]:
+            raise HTTPException(401, "oturum geçersiz; yeniden giriş yapın")
+        if rol == "sahip" and d["rol"] != "sahip":
+            raise HTTPException(403, "sahip yetkisi gerekli")
+        return {**c, "rol": d["rol"], "email": d["email"]}
+    return _ic
 
 
 def platform_kiracisi():

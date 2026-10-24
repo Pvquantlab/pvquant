@@ -154,3 +154,10 @@ Her satır: kalıp → dosya → kritik kural. Yeni mühürde yeni kalıp çıka
   (4) Sürüm numarası çakışması: push reddedilince `git pull --rebase`, uzaktaki numara doluysa yeniden numaralandır (migration
   adı dahil). (5) `docker compose up -d` imaj değişse de bazen web/worker'ı yeniden oluşturmaz → konteyner imaj kimliğini
   imajla kıyasla, gerekirse `--force-recreate`.
+- **Faz 1 platform kimliği API'si (24.10.2026, biriktirildi):** `docs/FAZ1-PLATFORM-2026-10-24.md`. Dersler: (1) ikinci yüz
+  = ikinci KAPSAM (jeton iddiası `kapsam`), ayrı tablo, ayrı bağımlılık; `gecerli_kullanici` öteki kapsamı 403'ler — tek
+  yönlü değil, iki yönlü ret. (2) Yönlendirici ayrı dosyada (`apps/api/yonetim.py`) + limiter ayrı modülde (`hiz.py`),
+  dairesel import yok. (3) Denetim izi kendi işleminde ve asla ana işi düşürmez; sır (geçici parola, düz anahtar, davet
+  bağlantısı) asla ayrıntıya yazılmaz — test bunu doğrular. (4) Davet = rastgele parola + mevcut parola_sifirlama akışı
+  (72 sa); posta kapalıysa bağlantı bir kez yanıtta. (5) DB'li uçtan uca test etiketle temizlenir (uuid parçası e-posta/ad
+  içinde) — paralel koşulara dayanır. (6) Yerelde CI koşulu: timescale konteyneri + alembic upgrade head + tam takım ~5,5 dk.

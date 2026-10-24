@@ -42,13 +42,17 @@ app.add_middleware(
     # v2.94: rapor dosya adi — tarayici bu basligi ancak expose ile gorur
     expose_headers=["Content-Disposition"])
 
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
+from apps.api.hiz import limiter   # 24.10 Faz 1: yonetim yönlendiricisiyle paylaşılır
 
-limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# 24.10 Faz 1: platform yönetimi (/v1/yonetim/*) — ayrı kapsam, ayrı yönlendirici
+from apps.api.yonetim import yonetim as _yonetim   # noqa: E402
+from pvquant.services import denetim_service as _denetim   # noqa: E402
+app.include_router(_yonetim)
 
 
 class GirisIstek(BaseModel):
@@ -68,6 +72,9 @@ def login(request: Request, g: GirisIstek):
         raise HTTPException(401, "hatali")
     # v2.338: parola doğru ama 2FA kodu gerekiyor — token YOK, istemci kod ister.
     # 200 döner (401 değil): "yanlış parola" ile "kod gerekli" ayrışsın.
+    if r.get("token"):   # 24.10 Faz 1: başarılı giriş denetim izine (parola/jeton yazılmaz)
+        _denetim.kaydet("musteri", "giris", aktor_id=r.get("user_id"), aktor_eposta=g.email.lower(),
+                        tenant_id=r.get("tenant_id"), ip=request.client.host if request.client else None)
     return r
 
 
@@ -116,6 +123,7 @@ def plant_arsivle(plant_id: str, claims=Depends(yonetici_yetkisi())):
         raise HTTPException(422, str(e))
     if not r["arsivlendi"]:
         raise HTTPException(404, "santral yok ya da zaten arşivde")
+    _denetim.kaydet("musteri", "santral_arsivle", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=plant_id)
     return r
 
 
@@ -130,6 +138,7 @@ def plant_geri_al(plant_id: str, claims=Depends(yonetici_yetkisi())):
     r = plant_service.geri_al(claims["tenant_id"], plant_id)
     if not r["geri_alindi"]:
         raise HTTPException(404, "arşivde böyle bir santral yok")
+    _denetim.kaydet("musteri", "santral_geri_al", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=plant_id)
     return r
 
 
@@ -411,9 +420,12 @@ def takim(claims=Depends(yonetici_yetkisi())):
 def takim_ekle(p: UyeIstek, claims=Depends(yonetici_yetkisi())):
     """Geçici parola YALNIZ bu yanıtta görünür; üye ilk girişte kendi parolasını değiştirir."""
     try:
-        return auth_service.kullanici_ekle(claims["tenant_id"], p.email, p.rol)
+        y = auth_service.kullanici_ekle(claims["tenant_id"], p.email, p.rol)
     except ValueError as e:
         raise HTTPException(422, str(e))
+    _denetim.kaydet("musteri", "takim_ekle", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="user", nesne_id=y["id"],
+                    ayrinti={"email": y["email"], "rol": y["rol"]})   # geçici parola YAZILMAZ
+    return y
 
 
 @app.put("/v1/takim/{uye_id}", tags=["Yönetim"])
@@ -423,6 +435,8 @@ def takim_guncelle(uye_id: str, p: UyeGuncelle, claims=Depends(yonetici_yetkisi(
             raise HTTPException(404, "üye yok")
     except ValueError as e:
         raise HTTPException(422, str(e))
+    _denetim.kaydet("musteri", "takim_guncelle", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="user", nesne_id=uye_id,
+                    ayrinti={"rol": p.rol, "aktif": p.aktif})
     return {"tamam": True}
 
 
@@ -433,6 +447,7 @@ def takim_iki_adim_sifirla(uye_id: str, claims=Depends(yonetici_yetkisi())):
     from pvquant.services import iki_adim_service
     if not iki_adim_service.yonetici_sifirla(claims["tenant_id"], uye_id):
         raise HTTPException(404, "üye yok")
+    _denetim.kaydet("musteri", "takim_iki_adim_sifirla", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="user", nesne_id=uye_id)
     return {"tamam": True}
 
 
@@ -443,6 +458,7 @@ def parola(p: ParolaIstek, claims=Depends(gecerli_kullanici)):
         auth_service.parola_degistir(claims["sub"], p.eski, p.yeni)
     except ValueError as e:
         raise HTTPException(422, str(e))
+    _denetim.kaydet("musteri", "parola_degistir", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="user", nesne_id=claims["sub"])
     return {"tamam": True}
 
 
@@ -813,9 +829,12 @@ def anahtar_uret(p: AnahtarIstek, claims=Depends(yonetici_yetkisi())):
     """Düz anahtar YALNIZ bu yanıtta; sunucu sha256 dışında hiçbir şey saklamaz."""
     from pvquant.services import api_anahtar_service
     try:
-        return api_anahtar_service.uret(claims["tenant_id"], p.ad, p.kapsamlar, p.gecerlilik_gun, p.rpm)
+        y = api_anahtar_service.uret(claims["tenant_id"], p.ad, p.kapsamlar, p.gecerlilik_gun, p.rpm)
     except ValueError as e:
         raise HTTPException(422, str(e))
+    _denetim.kaydet("musteri", "anahtar_uret", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="api_key", nesne_id=y.get("id"),
+                    ayrinti={"ad": p.ad, "kapsamlar": p.kapsamlar, "rpm": p.rpm})   # düz anahtar YAZILMAZ
+    return y
 
 
 @app.delete("/v1/api-anahtarlari/{anahtar_id}", tags=["Yönetim"])
@@ -823,6 +842,7 @@ def anahtar_iptal(anahtar_id: str, claims=Depends(yonetici_yetkisi())):
     from pvquant.services import api_anahtar_service
     if not api_anahtar_service.iptal(claims["tenant_id"], anahtar_id):
         raise HTTPException(404, "anahtar yok ya da zaten iptal")
+    _denetim.kaydet("musteri", "anahtar_iptal", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="api_key", nesne_id=anahtar_id)
     return {"iptal": True}
 
 
@@ -837,9 +857,12 @@ def webhook_ekle(p: WebhookIstek, claims=Depends(yonetici_yetkisi())):
     """`secret` YALNIZ bu yanıtta gösterilir; alıcı imzayı onunla doğrular."""
     from pvquant.services import webhook_service
     try:
-        return webhook_service.ekle(claims["tenant_id"], p.url, p.plant_id, p.olaylar)
+        y = webhook_service.ekle(claims["tenant_id"], p.url, p.plant_id, p.olaylar)
     except ValueError as e:
         raise HTTPException(422, str(e))
+    _denetim.kaydet("musteri", "webhook_ekle", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="webhook", nesne_id=y.get("id"),
+                    ayrinti={"url": p.url, "plant_id": p.plant_id})   # secret YAZILMAZ
+    return y
 
 
 @app.delete("/v1/webhooklar/{webhook_id}", tags=["Yönetim"])
@@ -847,6 +870,7 @@ def webhook_sil(webhook_id: str, claims=Depends(yonetici_yetkisi())):
     from pvquant.services import webhook_service
     if not webhook_service.sil(claims["tenant_id"], webhook_id):
         raise HTTPException(404, "webhook yok")
+    _denetim.kaydet("musteri", "webhook_sil", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="webhook", nesne_id=webhook_id)
     return {"silindi": True}
 
 
@@ -1428,6 +1452,8 @@ def scada_sil(plant_id: str, baslangic: str, bitis: str, claims=Depends(yonetici
         n = ingest_service.scada_sil(claims["tenant_id"], plant_id, baslangic, bitis)
     except ValueError as e:
         raise HTTPException(422, str(e))
+    _denetim.kaydet("musteri", "scada_sil", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=plant_id,
+                    ayrinti={"baslangic": baslangic, "bitis": bitis, "silinen": n})
     return {"silinen_satir": n}
 
 
