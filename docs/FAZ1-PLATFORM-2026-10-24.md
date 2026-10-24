@@ -1,4 +1,9 @@
-# Faz 1 — Platform kimliği ve müşteri yönetimi API'si (24.10.2026) — BİRİKTİ, commit bekliyor
+# Faz 1 — Platform kimliği ve müşteri yönetimi API'si (24.10.2026) — CANLI v2.480
+**Durum:** v2.480 = 3860f0c (24.10), CI #571 yeşil. Sunucu: git pull, api + worker imajları, `alembic upgrade head` →
+`v2480_faz1_platform (head)`, api ve worker yeniden oluşturuldu (worker v2.477'den beri eski imajdaydı; artık güncel).
+Canlı: `POST /v1/yonetim/giris` yanlış parola → 401 ve `denetim_izi`'ne `platform/giris_basarisiz` satırı gerçek istemci IP'siyle;
+sahte jeton `/v1/yonetim/ben` 401; müşteri ucu aynı; api/worker logunda hata 0. **İlk platform sahibi henüz açılmadı** (kullanıcı:
+`docker compose exec -it api python scripts/platform_sahip.py <eposta>`, sonra `/v1/yonetim/giris` → `iki-adim/baslat` + `dogrula`).
 
 Dayanak: `docs/YONETICI-PANELI-YOL-HARITASI-2026-10-24.md` §3–§6 (Faz 1, «önce API + şema»). UI yok (Faz 2). Yalnız EKLEME:
 mevcut `/v1/*` sözleşmeleri, hesap servisleri, tahmin/kalibrasyon, mevcut RLS politikaları ve kiracı rol kümesi değişmedi.
