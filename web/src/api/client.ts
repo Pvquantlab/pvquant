@@ -80,6 +80,15 @@ function getir<T>(yol: string): Promise<T> {
   return soz;
 }
 
+/** 24.10 Portföy geçiş turu — BAYAT OKUYUCU (stale-while-revalidate; sayfanın bilinçli, görünür kullanımı için):
+ *  yolun bellekteki SON başarılı yanıtını yaşına bakmadan döner; getir'in 60 sn tazelik kuralı DEĞİŞMEZ. Sayfa dönüşte
+ *  önce bunu çizer, getir ile tazeler ve tazelenirken bunu söyler («güncelleniyor»). Hesap sınırı aynı: cikis() ve her
+ *  yazma belleği boşaltır; örnek kipte bellek yoktur (undefined). */
+export function bellektenOku<T>(yol: string): T | undefined {
+  if (TABAN == null) return undefined;
+  return bellekte.get(yol)?.veri as T | undefined;
+}
+
 /** v2.264: JSON gövdeli POST/DELETE — getir'in 401 sözleşmesi; 4xx'te sunucunun detail'i Error olur. */
 async function gonder<T>(yol: string, method: "POST" | "DELETE" | "PUT", govde?: unknown): Promise<T> {
   const jeton = localStorage.getItem("pvq_token");
@@ -491,17 +500,19 @@ export const api = {
     if (TABAN == null) return [{ id: "ornek", name: "Konya GES", capacity_kwp: 4514, tz: "Europe/Istanbul" }];
     try { return await getir<SantralKisa[]>(`/v1/plants`); } catch { return []; }
   },
+  /** 24.10: üçü de hatayı FIRLATIR — Portföy «sunucu hatası» ile «veri yok»u ayırır (canlıda /portfoy/tahmin 500
+   *  dönerken sayfa «Henüz tahmin yok» yazıyordu). Örnek kipte null = veri yok. Tek çağıran: Portfoy.tsx. */
   portfoyTahmin: async (gun = 7): Promise<PortfoyTahmin | null> => {
     if (TABAN == null) return null;
-    try { return await getir<PortfoyTahmin>(`/v1/portfoy/tahmin?gun=${gun}`); } catch { return null; }
+    return getir<PortfoyTahmin>(`/v1/portfoy/tahmin?gun=${gun}`);
   },
   portfoyDsg: async (gun = 30): Promise<PortfoyDsg | null> => {
     if (TABAN == null) return null;
-    try { return await getir<PortfoyDsg>(`/v1/portfoy/dsg?gun=${gun}`); } catch { return null; }
+    return getir<PortfoyDsg>(`/v1/portfoy/dsg?gun=${gun}`);
   },
   portfoy: async (): Promise<Portfoy | null> => {
     if (TABAN == null) return null;
-    try { return await getir<Portfoy>(`/v1/portfoy`); } catch { return null; }
+    return getir<Portfoy>(`/v1/portfoy`);
   },
   /** v2.270: Hakkında — veri kaynakları ve lisanslar. */
   hakkinda: async (): Promise<Hakkinda | null> => {

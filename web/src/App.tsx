@@ -144,7 +144,11 @@ export default function App() {
   // 16.10 hız turu 4: ekran geçişleri «geçiş» (transition) olarak yapılır — yeni ekranın parçası inerken eski ekran
   // yerinde kalır. Önceden vitrin → giriş, giriş → panel ve panelde ilk kez açılan her sayfada ekran (yan menü dahil)
   // boşalıyordu (kare kaydı, 3G + 4× CPU: her geçişte en az bir tamamen boş kare). Tek ve kalıcı Suspense sınırı bunu sağlar.
-  const sayfaSec = (s: SayfaId) => startTransition(() => setSayfa(s));
+  // 24.10 Portföy geçiş turu: yan menü vurgusu ACİL güncelleme, içerik GEÇİŞ — tıklanan satır aynı karede seçili görünür;
+  // içerik parçası/verisi gelene dek eski sayfa yerinde kalır. Eskiden vurgu da geçişle beklediğinden ilk ziyarette
+  // (parça inene dek) tıklamanın görünür karşılığı yoktu.
+  const [secili, setSecili] = useState<SayfaId>("santralim");
+  const sayfaSec = (s: SayfaId) => { setSecili(s); startTransition(() => setSayfa(s)); };
   // v2.353: kalıcılık TEK yerde — seçim nereden değişirse değişsin (kullanıcı
   // tıklaması, otomatik ilk santral, son santral arşivlenince boşalma) depo
   // izler. Eskiden yalnız elle seçim yazıyordu; otomatik geçişler kaydolmuyordu.
@@ -180,7 +184,7 @@ export default function App() {
             .finally(() => { if (kusak === oturumKusagi.current) startTransition(() => setGirdi(true)); });
         }} />;
   else icerik = (
-    <Kabuk sayfa={sayfa} setSayfa={sayfaSec} santral={santralAd} plantId={plantId}
+    <Kabuk sayfa={sayfa} tiklanan={secili} setSayfa={sayfaSec} santral={santralAd} plantId={plantId}
            santraller={santraller} onSantral={santralSec} santralYenile={santralYenile}
            onCikis={() => { cikis(); setGirdi(false);
                             setGorunum("vitrin"); }}>  {/* gonullu cikis -> vitrin */}

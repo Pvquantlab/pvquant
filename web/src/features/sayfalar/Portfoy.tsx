@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, rolum } from "../../api/client";
+import { api, rolum, bellektenOku } from "../../api/client";
 import type { PaylasimListesi, PaylasilanVeri, TakimUyesi, Portfoy as PortfoyT, PortfoyDsg, PortfoyTahmin, ApiAnahtar, Webhook } from "../../api/types";
 import { Kart, Kpi, Sayfa, sayiTr, gucTr, enerjiTr, SayfaIskeleti } from "./parcalar";
 import { Meta } from "../../lib/Meta";
@@ -45,27 +45,33 @@ function TarihSaat({ metin }: { metin: string }) {
  *  (bir santralin beklentisi yoksa toplam da yok). Satıra tıklayınca o santrala geçilir. */
 export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
   /** v2.303: arşivleme/geri alma sonrası üst listeyi tazele */ santralYenile?: () => void }) {
-  const [p, setP] = useState<PortfoyT | null | undefined>(undefined);
-  const [dsg, setDsg] = useState<PortfoyDsg | null>(null);   // v2.276
-  const [pt, setPt] = useState<PortfoyTahmin | null>(null);   // v2.280
-  // v2.324: TEK KAPI — üç çekirdek istek paralel gider, ÜÇÜ DE yerleşince sayfa
-  // bir bütün olarak belirir. Önceki hâlde her bölüm kendi anında doluyordu
-  // ("parça parça" şikâyeti); API v2.323 ile ~60-130 ms olduğundan hepsini
-  // beklemek en yavaş isteğin bedeli kadardır. null artık "yok" demektir,
-  // "bekliyor" değil — bölümlerin boş dalları buna göre dürüstleştirildi.
-  const [hazir, setHazir] = useState(false);
+  // 24.10 Portföy geçiş turu — üç istek BAĞIMSIZ ve BAYAT-ÖNCE. Canlıda (Deneme Lab, konteyner içi sıcak) ölçüldü:
+  // /v1/portfoy ≈ 0,25–0,27 s, /portfoy/tahmin ≈ 0,4 s (sonra 500), /portfoy/dsg ≈ 0,85–1,1 s. v2.324'ün «tek kapı»sı
+  // KPI'ları ve santral tablosunu en yavaş olan DSG'ye bekletiyordu; 60 sn bellek dolunca her dönüş iskeletten başlıyordu.
+  // Şimdi: (1) bellekte son yanıt varsa sayfa onunla ANINDA çizilir, başlık çipi «güncelleniyor» der, taze yanıt gelince
+  // değerler yenilenir (SWR; tarih/tazelik alanları verinin kendisinden gelir, uydurulmaz); (2) KPI + tablo /portfoy
+  // gelir gelmez, tahmin ve DSG kartları kendi yanıtlarıyla dolar — yerleri boyutlu tutulur (kayma yok); (3) üç istek
+  // useState başlatıcısında yola çıkar: çocuk bölümlerin (dış erişim, paylaşım, ekip, arşiv) effect'leri ebeveynden önce
+  // koştuğundan eskiden 8 ikincil istek çekirdek üçünün ÖNÜNE geçiyordu; (4) sunucu hatası «veri yok»tan ayrı söylenir.
+  // API sözleşmesi, hesaplar ve yetkiler değişmedi. undefined = henüz bilinmiyor, null = yok.
+  type Durum = "bekliyor" | "tamam" | "hata";
+  const [p, setP] = useState<PortfoyT | null | undefined>(() => bellektenOku<PortfoyT>("/v1/portfoy"));
+  const [dsg, setDsg] = useState<PortfoyDsg | null | undefined>(() => bellektenOku<PortfoyDsg>("/v1/portfoy/dsg?gun=30"));   // v2.276
+  const [pt, setPt] = useState<PortfoyTahmin | null | undefined>(() => bellektenOku<PortfoyTahmin>("/v1/portfoy/tahmin?gun=7"));   // v2.280
+  const [pD, setPD] = useState<Durum>("bekliyor");
+  const [ptD, setPtD] = useState<Durum>("bekliyor");
+  const [dsgD, setDsgD] = useState<Durum>("bekliyor");
+  const [istekler] = useState(() => ({ p: hatirlayarak("/v1/portfoy", api.portfoy), pt: hatirlayarak("/v1/portfoy/tahmin?gun=7", api.portfoyTahmin), dsg: hatirlayarak("/v1/portfoy/dsg?gun=30", api.portfoyDsg) }));
   useEffect(() => {
     let acik = true;
-    Promise.allSettled([api.portfoy(), api.portfoyTahmin(), api.portfoyDsg()])
-      .then(([rp, rpt, rdsg]) => {
-        if (!acik) return;
-        setP(rp.status === "fulfilled" ? rp.value : null);
-        setPt(rpt.status === "fulfilled" ? rpt.value : null);
-        setDsg(rdsg.status === "fulfilled" ? rdsg.value : null);
-        setHazir(true);
-      });
+    // hata: bayat değer varsa yerinde kalır (çip «güncellenemedi» der), yoksa null + «sunucu hatası» metni
+    istekler.p.then((v) => { if (acik) { setP(v); setPD("tamam"); } }, () => { if (acik) { setP((e) => e ?? null); setPD("hata"); } });
+    istekler.pt.then((v) => { if (acik) { setPt(v); setPtD("tamam"); } }, () => { if (acik) { setPt((e) => e ?? null); setPtD("hata"); } });
+    istekler.dsg.then((v) => { if (acik) { setDsg(v); setDsgD("tamam"); } }, () => { if (acik) { setDsg((e) => e ?? null); setDsgD("hata"); } });
     return () => { acik = false; };
-  }, []);
+  }, [istekler]);
+  const hazir = p !== undefined || pD !== "bekliyor";
+  const tazeleniyor = hazir && (pD === "bekliyor" || ptD === "bekliyor" || dsgD === "bekliyor");
   const t = p?.toplam ?? null;
   // v2.362: santraller listesi de ölçekle konuşur (bulgu 14 — 0,0 MWh kalıntısı)
   const kwhYaz = (v: number | null | undefined) => v == null ? "—" : enerjiTr(v);
@@ -79,7 +85,7 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
   );
   return (
     <Sayfa baslik="Portföy" alt="Tüm santraller bir bakışta; sayılar kurulu güçle ağırlıklıdır, hesaplanamayan değerler — ile gösterilir."
-      sag={<span className="cip">{p ? <Meta items={[`${sayiTr(p.santraller.length)} santral`, new Date(p.gun + "T12:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" })]} /> : "—"}</span>}>
+      sag={<span className="cip">{p ? <Meta items={[`${sayiTr(p.santraller.length)} santral`, new Date(p.gun + "T12:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" }), tazeleniyor && "güncelleniyor", pD === "hata" && "güncellenemedi"]} /> : "—"}</span>}>
       <div className="ızgara satir-4" style={{ marginBottom: 14 }}>
         {/* v2.360: küçük portföyde MWp "0,00" okunuyordu — birim ölçekle gelir */}
         <Kpi etiket="Toplam kurulu güç"
@@ -112,7 +118,8 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
           imleç ve satır sonundaki ok ile; ilk sütun dar ekranda yapışkan; dipnot üç tanım satırı. onClick/onKeyDown ve
           onSec aynen; veri/eşik/biçim değişmedi. */}
       <Kart baslik="Santraller" alt={p && p.santraller.length > 0 ? `${sayiTr(p.santraller.length)} santral, satır santral sayfasını açar` : undefined}>
-        {!p || p.santraller.length === 0 ? <p className="soluk" style={{ margin: 0 }}>Bu hesapta santral yok.</p>
+        {!p && pD === "hata" ? <p className="soluk" style={{ margin: 0 }}>Portföy özeti şu anda alınamadı (sunucu hatası); sayfayı yenileyin.</p>
+         : !p || p.santraller.length === 0 ? <p className="soluk" style={{ margin: 0 }}>Bu hesapta santral yok.</p>
          : (
           <div className="grafik-kaydir santral-tablo">
             <table className="veri sayisal santral">
@@ -157,9 +164,12 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
         </ul>
       </Kart>
       {/* v2.280 (Tablo 3.2 satır 11): hiyerarşik uzlaştırılmış portföy tahmini — toplam santral tahminleriyle tutarlı */}
-      <Kart baslik="Portföyün günlük üretim tahmini" sag={<span className="cip">{pt?.durum === "ok" ? <Meta items={[pt.yontem, pt.tutarli === false && "tutarsız"]} /> : "—"}</span>}>
+      <Kart baslik="Portföyün günlük üretim tahmini" sag={<span className="cip">{pt?.durum === "ok" ? <Meta items={[pt.yontem, pt.tutarli === false && "tutarsız", ptD === "bekliyor" && "güncelleniyor", ptD === "hata" && "güncellenemedi"]} /> : "—"}</span>}>
         {/* 23.10 yedinci tur: cümle başı tire kalktı — tire yalnız değer yerinde (tablo/KPI hücresi) */}
-        {!pt || pt.durum !== "ok" ? <p className="soluk" style={{ margin: 0 }}>Henüz tahmin yok.</p> : (
+        {/* 24.10: bekliyor → boyutlu yer tutucu; sunucu hatası → açıkça söylenir (eskiden «Henüz tahmin yok» ile karışıyordu) */}
+        {pt === undefined && ptD === "bekliyor" ? <YerTutucu yukseklik={168} />
+         : ptD === "hata" && (!pt || pt.durum !== "ok") ? <p className="soluk" style={{ margin: 0 }}>Portföy tahmini şu anda alınamadı (sunucu hatası); santral tahminleri Tahminler sayfasında.</p>
+         : !pt || pt.durum !== "ok" ? <p className="soluk" style={{ margin: 0 }}>Henüz tahmin yok.</p> : (
           <>
             <div className="grafik-kaydir">
               <table className="veri" style={{ fontSize: 13.5 }}>
@@ -182,8 +192,10 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
         )}
       </Kart>
       {/* v2.276 (Dalga 5): DSG/toplayıcı netleştirmesi — portföy tek dengesizlik hesabına girerse ne kazanılır */}
-      <Kart baslik="Dengeden sorumlu grup (DSG) netleştirmesi — portföy dengesizliği" sag={<span className="cip">{dsg ? <Meta items={[`${sayiTr(dsg.pencere_gun)} gün`, dsg.fiyat.senaryo_saat > 0 ? "senaryo fiyatı" : "piyasa fiyatı (EPİAŞ)"]} /> : "—"}</span>}>
-        {!dsg ? <p className="soluk" style={{ margin: 0 }}>Veri yok.</p> : dsg.ayri_tl == null ? (
+      <Kart baslik="Dengeden sorumlu grup (DSG) netleştirmesi — portföy dengesizliği" sag={<span className="cip">{dsg ? <Meta items={[`${sayiTr(dsg.pencere_gun)} gün`, dsg.fiyat.senaryo_saat > 0 ? "senaryo fiyatı" : "piyasa fiyatı (EPİAŞ)", dsgD === "bekliyor" && "güncelleniyor", dsgD === "hata" && "güncellenemedi"]} /> : "—"}</span>}>
+        {dsg === undefined && dsgD === "bekliyor" ? <YerTutucu yukseklik={124} />
+         : !dsg && dsgD === "hata" ? <p className="soluk" style={{ margin: 0 }}>DSG hesabı şu anda alınamadı (sunucu hatası).</p>
+         : !dsg ? <p className="soluk" style={{ margin: 0 }}>Veri yok.</p> : dsg.ayri_tl == null ? (
           <p className="soluk" style={{ margin: 0 }}>{dsg.not ?? "Ortak saat yetersiz."}</p>
         ) : (
           <>
@@ -205,11 +217,31 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
   );
 }
 
+/** 24.10 — başarısız GET'in KISA hafızası (15 sn, yalnız Portföy'ün üç çekirdek isteği): getir 500'ü belleğe almaz, bu
+ *  yüzden canlıda 500 dönen /portfoy/tahmin her Portföy açılışında (hızlı ardışık geçişlerde de) yeniden gidiyordu.
+ *  Yakın zamanda başarısız olduysa kart hemen «sunucu hatası» der; 15 sn sonra yeniden denenir. Başarı kaydı siler. */
+const sonHata = new Map<string, number>();
+function hatirlayarak<T>(yol: string, fn: () => Promise<T>): Promise<T> {
+  const t = sonHata.get(yol);
+  const soz = t !== undefined && Date.now() - t < 15_000
+    ? Promise.reject(new Error(`yakın zamanda başarısız: ${yol}`))
+    : fn().then((v) => { sonHata.delete(yol); return v; }, (e: unknown) => { sonHata.set(yol, Date.now()); throw e; });
+  // işleyiciler effect'te (bir mikro görev sonra) bağlanır; atılan render'da hiç bağlanmaz → «işlenmemiş ret» olmasın
+  soz.catch(() => {});
+  return soz;
+}
+
+/** 24.10 — kart gövdesi için boyutlu, hareketsiz yer tutucu (iskelet dili): içerik gelince yükseklik korunur, kayma olmaz. */
+function YerTutucu({ yukseklik }: { yukseklik: number }) {
+  return <div className="iskelet-alan" style={{ minHeight: yukseklik }} role="status" aria-live="polite" aria-label="Yükleniyor"><span className="gorsel-gizli">Yükleniyor…</span></div>;
+}
+
 /** v2.328 — vitrin "Karneni başlat" başvuruları. Yalnız yönetici görür; e-posta
  *  altyapısı bilerek yok — dönüş buradaki adrese elle yapılır, sonra "okundu". */
 function GelenTalepler() {
   const [liste, setListe] = useState<{ id: string; eposta: string; santral_adi: string | null;
-    kurulu_guc_kwp: number | null; okundu: boolean; created_at: string }[] | null>(null);
+    kurulu_guc_kwp: number | null; okundu: boolean; created_at: string }[] | null>(
+    () => bellektenOku<Awaited<ReturnType<typeof api.basvurular>>>("/v1/vitrin/basvurular")?.basvurular ?? null);   // 24.10: bayat-önce
   const yenile = () => { api.basvurular().then((r) => setListe(r.basvurular)).catch(() => setListe([])); };
   useEffect(yenile, []);
   const acik = (liste ?? []).filter((b) => !b.okundu).length;
@@ -250,9 +282,10 @@ function GelenTalepler() {
 /** v2.264 (Dalga 5.16) — Dış erişim: API anahtarları + webhook alıcıları. Yalnız admin görür.
  *  Anahtar ve webhook sırrı YALNIZ üretildiği anda gösterilir; sunucu sırrı geri veremez. */
 function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] }) {
-  const [anahtarlar, setAnahtarlar] = useState<ApiAnahtar[]>([]);
-  const [kapsamlar, setKapsamlar] = useState<string[]>([]);
-  const [webhooklar, setWebhooklar] = useState<Webhook[]>([]);
+  // 24.10: dönüşte bellekteki son listeyle başlar — «Henüz anahtar yok» yanıp sönmesi biter; yenile() tazeler
+  const [anahtarlar, setAnahtarlar] = useState<ApiAnahtar[]>(() => bellektenOku<{ anahtarlar: ApiAnahtar[] }>("/v1/api-anahtarlari")?.anahtarlar ?? []);
+  const [kapsamlar, setKapsamlar] = useState<string[]>(() => bellektenOku<{ kapsamlar: string[] }>("/v1/api-anahtarlari")?.kapsamlar ?? []);
+  const [webhooklar, setWebhooklar] = useState<Webhook[]>(() => bellektenOku<{ webhooklar: Webhook[] }>("/v1/webhooklar")?.webhooklar ?? []);
   const [ad, setAd] = useState(""); const [secili, setSecili] = useState<string[]>(["tahmin:oku"]);
   const [yeniAnahtar, setYeniAnahtar] = useState<string | null>(null);
   const [url, setUrl] = useState(""); const [whSantral, setWhSantral] = useState<string>("");
@@ -376,7 +409,7 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
 
 /** v2.289: kuruluşlar arası paylaşım — verdiklerimiz (kurmak yalnız yönetici) + aldıklarımız (herkes görür). */
 function Paylasimlar({ santraller }: { santraller: { id: string; ad: string }[] }) {
-  const [liste, setListe] = useState<PaylasimListesi | null>(null);
+  const [liste, setListe] = useState<PaylasimListesi | null>(() => bellektenOku<PaylasimListesi>("/v1/paylasimlar") ?? null);   // 24.10: bayat-önce
   const [santral, setSantral] = useState(""); const [eposta, setEposta] = useState("");
   const [izinler, setIzinler] = useState<string[]>(["tahmin:oku"]);
   const [bitis, setBitis] = useState(""); const [takmaAd, setTakmaAd] = useState("");
@@ -508,7 +541,7 @@ function Paylasimlar({ santraller }: { santraller: { id: string; ad: string }[] 
  *  Geçici parola API anahtarı kalıbıyla YALNIZ bir kez gösterilir; sunucu özet saklar. */
 function IkiAdimBolumu() {
   // v2.338: kullanıcının kendi 2FA'sı — kur/onayla, kapat, kurtarma yenile.
-  const [durum, setDurum] = useState<{ aktif: boolean; kalan_kurtarma: number } | null>(null);
+  const [durum, setDurum] = useState<{ aktif: boolean; kalan_kurtarma: number } | null>(() => bellektenOku<{ aktif: boolean; kalan_kurtarma: number }>("/v1/iki-adim") ?? null);   // 24.10: bayat-önce
   const [kurulum, setKurulum] = useState<{ secret: string; qr_svg: string } | null>(null);
   const [kod, setKod] = useState("");
   const [kurtarma, setKurtarma] = useState<string[] | null>(null);
@@ -599,8 +632,8 @@ function IkiAdimBolumu() {
 }
 
 function HesapVeEkip() {
-  const [uyeler, setUyeler] = useState<TakimUyesi[]>([]);
-  const [roller, setRoller] = useState<string[]>([]);
+  const [uyeler, setUyeler] = useState<TakimUyesi[]>(() => bellektenOku<{ uyeler: TakimUyesi[] }>("/v1/takim")?.uyeler ?? []);   // 24.10: bayat-önce
+  const [roller, setRoller] = useState<string[]>(() => bellektenOku<{ roller: string[] }>("/v1/takim")?.roller ?? []);
   const [eposta, setEposta] = useState(""); const [rol, setRol] = useState("viewer");
   const [gecici, setGecici] = useState<{ email: string; parola: string } | null>(null);
   const [eski, setEski] = useState(""); const [yeni, setYeni] = useState("");
@@ -691,8 +724,8 @@ function HesapVeEkip() {
 /** v2.303 — santral yaşam döngüsünün öbür ucu: arşivle (v2.54 sözleşmesi: SİLMEZ) ve geri al.
  *  Son etkin santral arşivlenemez — sunucu korur, panel dürüstçe iletir. */
 function SantralArsivi({ santralYenile }: { santralYenile?: () => void }) {
-  const [arsiv, setArsiv] = useState<{ id: string; name: string; capacity_kwp: number }[]>([]);
-  const [etkin, setEtkin] = useState<{ id: string; name: string }[]>([]);
+  const [arsiv, setArsiv] = useState<{ id: string; name: string; capacity_kwp: number }[]>(() => bellektenOku<{ santraller: { id: string; name: string; capacity_kwp: number }[] }>("/v1/plants-arsiv")?.santraller ?? []);   // 24.10: bayat-önce
+  const [etkin, setEtkin] = useState<{ id: string; name: string }[]>(() => (bellektenOku<{ id: string; name: string }[]>("/v1/plants") ?? []).map((x) => ({ id: x.id, name: x.name })));
   const [onayId, setOnayId] = useState<string | null>(null);
   const [hata, setHata] = useState<string | null>(null); const [mesaj, setMesaj] = useState<string | null>(null);
   const yenile = () => {

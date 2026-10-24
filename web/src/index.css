@@ -500,6 +500,8 @@ table.veri.dar th + th, table.veri.dar td + td { padding-left: 28px; }
 .iskelet-kpi { display: grid; gap: 16px; }
 .iskelet-kpi > span { height: 124px; border-radius: var(--rk); border: 1px solid var(--kenar); background: var(--kart); }
 .iskelet-kart { height: 320px; border-radius: var(--rk); border: 1px solid var(--kenar); background: var(--kart); }
+/* 24.10 Portföy geçiş turu: kart gövdesi yer tutucusu — bölüm kendi yanıtını beklerken boyutlu, hareketsiz alan */
+.iskelet-alan { border-radius: 8px; background: var(--yuzey); }
 .gorsel-gizli { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (max-width: 1100px) { .iskelet-kpi { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
 .grafik-serit .lejant { flex: 1 1 auto; justify-content: center; }

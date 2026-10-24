@@ -148,7 +148,8 @@ test("K1 levha önden indirmesi: yavaş hat kararını okur, ölçüm yapmaz", (
 
 test("panel geçişleri: ekran değişimleri startTransition içinde, tek kalıcı Suspense + kabuk içi Suspense", () => {
   const app = oku("../../src/App.tsx");
-  assert.match(app, /const sayfaSec = \(s: SayfaId\) => startTransition\(\(\) => setSayfa\(s\)\);/);
+  // 24.10 Portföy geçiş turu: vurgu acil (setSecili), içerik geçiş — startTransition yine zorunlu
+  assert.match(app, /const sayfaSec = \(s: SayfaId\) => \{ setSecili\(s\); startTransition\(\(\) => setSayfa\(s\)\); \};/);
   assert.match(app, /setSayfa=\{sayfaSec\}/);
   assert.doesNotMatch(app.replace(/startTransition\(\(\) => [^;\n]*\);/g, ""), /[^.]set(Sayfa|Girdi)\((true|"[a-z]+")\)/, "geçiş dışı ekran değişimi");
   assert.match(app, /if \(kusak === oturumKusagi\.current\) startTransition\(\(\) => setGirdi\(true\)\);/, "bekleyen giriş araya giren 401'i ezmez");

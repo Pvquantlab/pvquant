@@ -126,3 +126,12 @@ Her satır: kalıp → dosya → kritik kural. Yeni mühürde yeni kalıp çıka
   portunu yasaklar («Navigation interrupted by another navigation» = uygulama değil port); python http.server Firefox'ta
   belge vermez → `vite preview` + 4273. (5) Vitrin yüklenirken ikinci gezinme WebKit'te iptal edilen tembel import'tan
   «React #306» düşürür — jetonu init-script ile ver, tek gezinme. (6) WebKit'te `requestIdleCallback` yok → yedek şart.
+- **Portföy geçişi kök neden turu (24.10.2026, yerelde, commit bekliyor):** `docs/PANEL-TUR7-2026-10-23.md` §12. Dersler:
+  (1) «tek kapı» (allSettled) yalnız tüm uçlar hızlıysa doğru — canlıda DSG 1 s, tahmin 500: kritik içerik kendi
+  isteğiyle, yan kartlar boyutlu yer tutucuyla. (2) `getir` hatayı belleğe almaz → 500 dönen uç her girişte yeniden gider;
+  kısa «başarısız oldu» hafızası (15 sn) + dürüst «sunucu hatası» metni. (3) Çocuk effect'leri ebeveynden önce koşar:
+  kritik istekleri `useState` başlatıcısında başlat. (4) Dönüşte bayat-önce (`bellektenOku`) + «güncelleniyor» çipi;
+  60 sn tazelik ve hesap sınırı aynı. (5) Vurgu acil, içerik geçiş. (6) Canlı sunucu süresi: konteynerde servis
+  fonksiyonunu zamanla (`docker compose exec api python -`), sonra sahte API'ye taşı (`betikler/sahte-api.mjs`) ve gerçek
+  tıklamayla ölç (`betikler/portfoy-olcum.mjs`); Chrome eklentisi/canlı giriş yoksa tek dürüst yol bu. (7) «Henüz tahmin
+  yok» ile sunucu hatası aynı metinse arayüz yalan söyler — hata ayrı dal.

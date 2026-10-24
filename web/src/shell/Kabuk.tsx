@@ -55,8 +55,8 @@ export function GunesLogo() {   // v2.341: Giris de kullanır — tek marka işa
   );
 }
 
-export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, santraller, onSantral, santralYenile }:
-  { sayfa: SayfaId; setSayfa: (s: SayfaId) => void; santral: string;
+export function Kabuk({ sayfa, tiklanan, setSayfa, santral, plantId, onCikis, children, santraller, onSantral, santralYenile }:
+  { sayfa: SayfaId; /** 24.10: tıklanan sayfa — vurgu geçişi beklemez (yoksa sayfa) */ tiklanan?: SayfaId; setSayfa: (s: SayfaId) => void; santral: string;
     plantId?: string; onCikis?: () => void; children: ReactNode;
     /** v2.263: gerçek santral seçici — liste ve seçim geri çağrısı (yoksa tek santral). */
     santraller?: { id: string; name: string }[]; onSantral?: (id: string) => void;
@@ -201,7 +201,7 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
         {SAYFALAR.map((s) => (
           <button key={s.id} className="nav-btn"
             onClick={() => { setSayfa(s.id); setMenuAcik(false); }}
-            aria-current={sayfa === s.id ? "page" : undefined}>
+            aria-current={(tiklanan ?? sayfa) === s.id ? "page" : undefined}>
             {IKONLAR[s.id]}{s.ad}
           </button>
         ))}
@@ -406,7 +406,7 @@ export function Kabuk({ sayfa, setSayfa, santral, plantId, onCikis, children, sa
                     onMouseEnter={() => setSecili(i)}
                     onClick={() => paletSec(s.id)}>
                     {IKONLAR[s.id]}{s.ad}
-                    {sayfa === s.id && <span className="palet-not">şu an</span>}
+                    {(tiklanan ?? sayfa) === s.id && <span className="palet-not">şu an</span>}
                   </button>
                 ))}
             </div>
