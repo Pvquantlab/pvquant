@@ -59,3 +59,24 @@ def test_a_baginda_b_ye_insert_yasak(iki_tenant):
                 "INSERT INTO plants(tenant_id, name, lat, lon, tz, capacity_kwp) "
                 "VALUES(:tid, 'sizinti', 0, 0, 'UTC', 1)"),
                 {"tid": iki_tenant["b"]})
+
+
+def test_rapor_tablolari_rls(iki_tenant):
+    """24.10 Faz 0 (v2479): report_stats/report_log politikasızdı — A'nın fotoğrafı B bağlamında görünmez,
+    B bağlamından A adına yazılamaz."""
+    a, b = iki_tenant["a"], iki_tenant["b"]
+    with tenant_baglami(a) as s:
+        s.execute(text("INSERT INTO report_stats(tenant_id,plant_id,key,value_json,updated_at) "
+                       "VALUES(:t,:p,'rls_test','{\"v\":1}'::jsonb,now()) ON CONFLICT (plant_id,key) DO NOTHING"),
+                  {"t": a, "p": iki_tenant["a_plant"]})
+    try:
+        with tenant_baglami(b) as s:
+            assert s.execute(text("SELECT count(*) FROM report_stats WHERE key='rls_test'")).scalar() == 0
+            with pytest.raises(Exception):
+                s.execute(text("INSERT INTO report_stats(tenant_id,plant_id,key,value_json,updated_at) "
+                               "VALUES(:t,:p,'rls_test2','{}'::jsonb,now())"), {"t": a, "p": iki_tenant["a_plant"]})
+        with tenant_baglami(a) as s:
+            assert s.execute(text("SELECT count(*) FROM report_stats WHERE key='rls_test'")).scalar() == 1
+    finally:
+        with sistem_baglami() as s:
+            s.execute(text("DELETE FROM report_stats WHERE key IN ('rls_test','rls_test2')"))

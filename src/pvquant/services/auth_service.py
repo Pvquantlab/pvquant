@@ -54,13 +54,20 @@ def eposta_getir(user_id) -> str:
     return row.email
 
 
+class KiraciAskida(Exception):
+    """24.10 Faz 0 — kiracı `status != 'active'`: parola doğru olsa da oturum açılmaz; uç 403 «hesap askıda» der.
+    Hesap varlığı sızdırılmaz: parola YANLIŞSA yine None (hatalı) döner, askı yalnız doğru parolaya söylenir."""
+
+
 def giris(email, sifre, kod=None) -> dict | None:
     with sistem_baglami() as s:
         row = s.execute(text(
-            "SELECT id, tenant_id, pw_hash, role, aktif, totp_aktif FROM users "
-            "WHERE email=:e"), {"e": email.lower()}).first()
+            "SELECT u.id, u.tenant_id, u.pw_hash, u.role, u.aktif, u.totp_aktif, u.oturum_surumu, t.status AS kiraci_durum "
+            "FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.email=:e"), {"e": email.lower()}).first()
         if not row or not row.aktif or not bcrypt.verify(sifre, row.pw_hash):
             return None   # v2.299: pasif hesap da 'hatalı' der — hesap varlığı sızdırılmaz
+    if row.kiraci_durum != "active":
+        raise KiraciAskida()   # 24.10 Faz 0: askıdaki kiracı giremez (parola doğrulandıktan sonra)
     # v2.338: parola doğru; iki adımlı doğrulama açıksa ikinci adım şart.
     # Kod yoksa TOKEN ÜRETİLMEZ; istemciye "kod iste" işareti döner (parola
     # doğrulaması geçildi ama oturum henüz açılmadı — last_login de yazılmaz).
@@ -75,7 +82,7 @@ def giris(email, sifre, kod=None) -> dict | None:
                   {"i": row.id})
     token = jwt.encode({
         "sub": str(row.id), "tenant_id": str(row.tenant_id),
-        "role": row.role,
+        "role": row.role, "sv": int(row.oturum_surumu),   # 24.10 Faz 0: oturum sürümü — iptal için
         "exp": dt.datetime.utcnow() + dt.timedelta(hours=JWT_SAAT)},
         _sir(), algorithm="HS256")
     return {"token": token, "user_id": str(row.id),
@@ -87,6 +94,45 @@ def token_coz(token) -> dict | None:
         return jwt.decode(token, _sir(), algorithms=["HS256"])
     except jwt.PyJWTError:
         return None
+
+
+# ---------------- 24.10 Faz 0: jeton iptali + kiracı durumu ----------------
+# Jeton imzası 12 saat geçerliydi ve gecerli_kullanici DB'ye bakmıyordu: pasifleştirilen üye, rolü düşürülen üye,
+# parolası sıfırlanan hesap ve askıya alınan kiracı süre dolana dek içeride kalıyordu. Şimdi her isteğin iddiaları
+# kullanıcının DB'deki oturum sürümü (users.oturum_surumu), aktifliği ve kiracı durumuyla kıyaslanır. Sorgu süreç
+# içinde kullanıcı başına ONBELLEK_SN saniye önbelleklenir: iptal en geç bu kadar sürede tüm işçilerde etkir;
+# sürümü artıran işlemler kendi sürecinin önbelleğini anında düşürür.
+ONBELLEK_SN = 60
+_oturum_onbellegi: dict[str, tuple[float, dict | None]] = {}
+
+
+def oturum_durumu(user_id: str) -> dict | None:
+    """{sv, aktif, kiraci_durum} ya da None (kullanıcı yok)."""
+    import time
+    simdi = time.monotonic()
+    k = _oturum_onbellegi.get(str(user_id))
+    if k is not None and simdi - k[0] < ONBELLEK_SN:
+        return k[1]
+    with sistem_baglami() as s:
+        r = s.execute(text(
+            "SELECT u.oturum_surumu, u.aktif, t.status FROM users u JOIN tenants t ON t.id = u.tenant_id "
+            "WHERE u.id = :i"), {"i": str(user_id)}).first()
+    d = None if r is None else {"sv": int(r.oturum_surumu), "aktif": bool(r.aktif), "kiraci_durum": r.status}
+    _oturum_onbellegi[str(user_id)] = (simdi, d)
+    return d
+
+
+def oturum_onbellegi_dusur(user_id: str | None = None) -> None:
+    if user_id is None:
+        _oturum_onbellegi.clear()
+    else:
+        _oturum_onbellegi.pop(str(user_id), None)
+
+
+def oturum_surumu_artir(s, user_id) -> None:
+    """Aynı oturum (s) içinde: kullanıcının açık jetonlarını geçersiz kılar."""
+    s.execute(text("UPDATE users SET oturum_surumu = oturum_surumu + 1 WHERE id=:i"), {"i": str(user_id)})
+    oturum_onbellegi_dusur(user_id)
 
 
 # ---------------- v2.299: ekip yönetimi ----------------
@@ -144,6 +190,7 @@ def kullanici_guncelle(tenant_id, user_id, rol: str | None = None, aktif: bool |
         s.execute(text("UPDATE users SET role=COALESCE(:r, role), aktif=COALESCE(:a, aktif) "
                        "WHERE id=:i AND tenant_id=:t"),
                   {"r": rol, "a": aktif, "i": user_id, "t": tenant_id})
+        oturum_surumu_artir(s, user_id)   # 24.10 Faz 0: rol/durum değişimi açık jetonları düşürür
     return True
 
 
@@ -156,6 +203,7 @@ def parola_degistir(user_id, eski: str, yeni: str) -> None:
         if r is None or not bcrypt.verify(eski or "", r.pw_hash):
             raise ValueError("mevcut parola hatalı")
         s.execute(text("UPDATE users SET pw_hash=:h WHERE id=:i"), {"i": user_id, "h": bcrypt.hash(yeni)})
+        oturum_surumu_artir(s, user_id)   # 24.10 Faz 0: parola değişince eski jetonlar düşer (bu istemci yenisini tazeler)
 
 
 def oturum_yenile(user_id) -> dict | None:
@@ -166,13 +214,15 @@ def oturum_yenile(user_id) -> dict | None:
         # v2.355: firma adı da döner — kabuğun hesap kutusu gerçek kiracıyı yazar
         # (koda gömülü "Meridyen Enerji" sabiti canlıda Deneme Lab girişiyle yakalandı).
         row = s.execute(text(
-            "SELECT u.id, u.tenant_id, u.role, u.aktif, u.email, t.name AS firma "
+            "SELECT u.id, u.tenant_id, u.role, u.aktif, u.email, u.oturum_surumu, t.name AS firma, t.status AS kiraci_durum "
             "FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.id=:i"),
             {"i": user_id}).first()
     if row is None or not row.aktif:
         return None
+    if row.kiraci_durum != "active":
+        raise KiraciAskida()   # 24.10 Faz 0
     token = jwt.encode({
-        "sub": str(row.id), "tenant_id": str(row.tenant_id), "role": row.role,
+        "sub": str(row.id), "tenant_id": str(row.tenant_id), "role": row.role, "sv": int(row.oturum_surumu),
         "exp": dt.datetime.utcnow() + dt.timedelta(hours=JWT_SAAT)}, _sir(), algorithm="HS256")
     return {"token": token, "role": row.role, "firma": row.firma, "email": row.email}
 
@@ -238,5 +288,6 @@ def parola_sifirla(jeton: str, yeni: str) -> None:
             raise ValueError("bağlantı geçersiz ya da süresi dolmuş")
         s.execute(text("UPDATE users SET pw_hash=:p WHERE id=:u"),
                   {"u": row.user_id, "p": bcrypt.hash(yeni)})
+        oturum_surumu_artir(s, row.user_id)   # 24.10 Faz 0: sıfırlama = ele geçirilmiş oturumları da kapat
         s.execute(text("UPDATE parola_sifirlama SET used_at=now() WHERE id=:i"),
                   {"i": row.id})

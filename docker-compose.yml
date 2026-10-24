@@ -48,11 +48,16 @@ services:
     # (ölçüldü: /summary tek başına 224ms, sayfa yükünde 1116ms). 4 süreç gerçek
     # paralellik verir (pandas GIL'i aşılır). Not: API-anahtarı hız sınırı süreç
     # başına sayar — 120/dk pratikte gevşer; sınır faturalama değil emniyettir.
-    command: ["uvicorn", "apps.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+    # 24.10 Faz 0: api'ye yalnız Caddy ulaşır (compose ağı; dışa port yok) → X-Forwarded-For'a güvenilir. Bu olmadan
+    # slowapi'nin gördüğü adres Caddy konteyneriydi: giriş sınırı (5/dk) tüm ziyaretçilerde ORTAKTI.
+    command: ["uvicorn", "apps.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4",
+              "--proxy-headers", "--forwarded-allow-ips", "*"]
     environment:
       PVQ_DB_URL: postgresql+psycopg://pvquant:${DB_PASSWORD:?.env'de DB_PASSWORD tanimli olmali}@db:5432/pvquant
       PVQ_JWT_SECRET: ${PVQ_JWT_SECRET:-}
       PVQ_SENTRY_DSN: ${PVQ_SENTRY_DSN:-}
+      # 24.10 Faz 0: vitrin başvurularını yalnız bu kiracının yöneticisi görür (boşsa KİMSE — platform rolü gelene dek)
+      PVQ_PLATFORM_TENANT_ID: ${PVQ_PLATFORM_TENANT_ID:-}
       # v2.334: başvuru teyidi/bildirimi api'den çıkar — worker'daki SMTP seti buraya da
       PVQ_SMTP_HOST: ${PVQ_SMTP_HOST:-}
       PVQ_SMTP_PORT: ${PVQ_SMTP_PORT:-}

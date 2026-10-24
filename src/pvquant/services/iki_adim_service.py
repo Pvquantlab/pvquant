@@ -124,11 +124,13 @@ def yonetici_sifirla(tenant_id, user_id) -> bool:
     Dönüş False = o kiracıda böyle bir üye yok."""
     with sistem_baglami() as s:
         r = s.execute(text(
-            "UPDATE users SET totp_secret=NULL, totp_aktif=false "
-            "WHERE id=:u AND tenant_id=:t"), {"u": user_id, "t": tenant_id})
+            "UPDATE users SET totp_secret=NULL, totp_aktif=false, oturum_surumu = oturum_surumu + 1 "
+            "WHERE id=:u AND tenant_id=:t"), {"u": user_id, "t": tenant_id})   # 24.10 Faz 0: açık jetonlar düşer
         if r.rowcount == 0:
             return False
         s.execute(text("DELETE FROM kurtarma_kodlari WHERE user_id=:u"), {"u": user_id})
+        from pvquant.services.auth_service import oturum_onbellegi_dusur
+        oturum_onbellegi_dusur(user_id)
     return True
 
 

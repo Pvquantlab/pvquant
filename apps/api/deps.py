@@ -1,5 +1,7 @@
 """API bagimlilik enjeksiyonu: token dogrulama + rol kontrolu."""
+import os
 from fastapi import Header, HTTPException, Depends
+from pvquant.services import auth_service
 from pvquant.services.auth_service import token_coz
 
 
@@ -9,7 +11,28 @@ def gecerli_kullanici(authorization: str = Header(...)):
     c = token_coz(authorization.removeprefix("Bearer ").strip())
     if c is None:
         raise HTTPException(401, "Gecersiz/suresi dolmus token")
-    return c  # {"sub","tenant_id","role","exp"}
+    # 24.10 Faz 0: imza yetmez — oturum sürümü, aktiflik ve kiracı durumu DB'den (60 sn önbellek) doğrulanır.
+    # `sv` iddiası olmayan eski jeton 0 sayılır: sürümü hiç artmamış kullanıcıda geçerli kalır (geriye uyumlu).
+    d = auth_service.oturum_durumu(c["sub"])
+    if d is None or not d["aktif"]:
+        raise HTTPException(401, "hesap etkin değil")
+    if d["kiraci_durum"] != "active":
+        raise HTTPException(403, "hesap askıda")
+    if int(c.get("sv", 0)) != d["sv"]:
+        raise HTTPException(401, "oturum geçersiz; yeniden giriş yapın")
+    return c  # {"sub","tenant_id","role","exp","sv"}
+
+
+def platform_kiracisi():
+    """24.10 Faz 0 — GEÇİCİ platform kapısı: vitrin başvuruları gibi platform-sahibi işleri yalnız
+    PVQ_PLATFORM_TENANT_ID'de yazılı kiracının yöneticisine açıktır; değişken boşsa KİMSEYE (önceden her kiracının
+    yöneticisi görüyordu). Faz 1'de ayrı platform kimliği (`kapsam: platform`) bunun yerini alır."""
+    def _ic(claims=Depends(yonetici_yetkisi())):
+        hedef = os.environ.get("PVQ_PLATFORM_TENANT_ID", "").strip()
+        if not hedef or str(claims["tenant_id"]) != hedef:
+            raise HTTPException(403, "yalnız platform kiracısının yöneticisi")
+        return claims
+    return _ic
 
 
 def yonetici_yetkisi():

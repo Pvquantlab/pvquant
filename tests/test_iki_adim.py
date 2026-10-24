@@ -59,6 +59,7 @@ def test_login_2fa_dali(monkeypatch):
     class _Row:
         id, tenant_id, role, aktif, totp_aktif = "u1", "t1", "admin", True, True
         pw_hash = "x"
+        oturum_surumu, kiraci_durum = 0, "active"   # 24.10 Faz 0: giriş sorgusu bu iki sütunu da okur
 
     class _S:
         def execute(self, *a, **k):
@@ -90,6 +91,7 @@ def test_login_2fa_kapali_kod_gerekmez(monkeypatch):
     """2FA kapalı hesap kod olmadan girer (geriye uyumluluk)."""
     class _Row:
         id, tenant_id, role, aktif, totp_aktif = "u2", "t1", "viewer", True, False
+        oturum_surumu, kiraci_durum = 0, "active"   # 24.10 Faz 0
         pw_hash = "x"
 
     class _S:

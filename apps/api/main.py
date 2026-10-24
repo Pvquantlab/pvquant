@@ -3,7 +3,7 @@ import pandas as pd
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.responses import Response   # v2.261: /kgup CSV eki modül düzeyinde kullanır
 from pydantic import BaseModel
-from apps.api.deps import gecerli_kullanici, yazma_yetkisi, yonetici_yetkisi, api_anahtari
+from apps.api.deps import gecerli_kullanici, yazma_yetkisi, yonetici_yetkisi, api_anahtari, platform_kiracisi
 from pvquant.services import auth_service, plant_service
 
 # v2.364: İTHALAT ISINDIRMASI — FastAPI'nin sync uçları iş parçacığı havuzunda
@@ -60,7 +60,10 @@ class GirisIstek(BaseModel):
 @app.post("/v1/auth/login")
 @limiter.limit("5/minute")
 def login(request: Request, g: GirisIstek):
-    r = auth_service.giris(g.email, g.sifre, g.kod)
+    try:
+        r = auth_service.giris(g.email, g.sifre, g.kod)
+    except auth_service.KiraciAskida:
+        raise HTTPException(403, "hesap askıda")   # 24.10 Faz 0: kiracı status != active
     if r is None:
         raise HTTPException(401, "hatali")
     # v2.338: parola doğru ama 2FA kodu gerekiyor — token YOK, istemci kod ister.
@@ -373,7 +376,10 @@ def alarm_ata(plant_id: str, alarm_id: str, p: AtaIstek, claims=Depends(yazma_ye
 @app.post("/v1/oturum/yenile")
 def oturum_yenile(claims=Depends(gecerli_kullanici)):
     """v2.300 — kayan oturum: geçerli jetonla yenisi alınır (rol/durum DB'den taze). Pasif hesap 401."""
-    y = auth_service.oturum_yenile(claims["sub"])
+    try:
+        y = auth_service.oturum_yenile(claims["sub"])
+    except auth_service.KiraciAskida:
+        raise HTTPException(403, "hesap askıda")   # 24.10 Faz 0
     if y is None:
         raise HTTPException(401, "hesap etkin değil")
     return y
@@ -654,15 +660,15 @@ def parola_sifirla(request: Request, g: ParolaSifirlamaGovde):
 
 
 @app.get("/v1/vitrin/basvurular")
-def vitrin_basvurular(claims=Depends(yonetici_yetkisi())):
-    """v2.328 — başvuru listesi. Bugünkü tek-kiracılı kurulumda platform sahibi =
-    hesabın yöneticisi; gerçek çok kiracılılıkta platform-sahibi rolüne taşınacak."""
+def vitrin_basvurular(claims=Depends(platform_kiracisi())):
+    """v2.328 — başvuru listesi. 24.10 Faz 0: yalnız PVQ_PLATFORM_TENANT_ID kiracısının yöneticisi (önceden HER
+    kiracının yöneticisi görüyordu — satış adayları başka müşteriye sızıyordu). Faz 1'de platform kimliğine taşınır."""
     from pvquant.services import basvuru_service
     return {"basvurular": basvuru_service.listele()}
 
 
 @app.post("/v1/vitrin/basvurular/{basvuru_id}/okundu")
-def vitrin_basvuru_okundu(basvuru_id: str, claims=Depends(yonetici_yetkisi())):
+def vitrin_basvuru_okundu(basvuru_id: str, claims=Depends(platform_kiracisi())):
     from pvquant.services import basvuru_service
     if not basvuru_service.okundu_isaretle(basvuru_id):
         raise HTTPException(404, "başvuru yok")

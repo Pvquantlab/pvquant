@@ -14,6 +14,17 @@ www.{$PVQ_DOMAIN:localhost} {
 	# JS teli 1,6 MB ham olarak gecti, mobil 3G'de ilk boyama ~11 sn olctu. zstd/gzip
 	# muzakeresi tarayiciya gore; gorsel/video zaten sikisik, Caddy onlari atlar.
 	encode zstd gzip
+	# 24.10 Faz 0 guvenlik basliklari (docs/YONETICI-PANELI-YOL-HARITASI §1). CSP yalniz frame-ancestors:
+	# index.html'de satir ici tema betigi var (v2.474), script-src icin nonce/hash ayri is. Server basligi silinir.
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Content-Security-Policy "frame-ancestors 'none'"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
 	# v2.72: API ayni alan adinin /v1/* yolunda — SPA'da CORS derdi dogmaz.
 	# Uc yollari zaten /v1 onekli; soyma (strip) gerekmez.
 	route /v1/* {
