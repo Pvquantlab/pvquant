@@ -161,3 +161,9 @@ Her satır: kalıp → dosya → kritik kural. Yeni mühürde yeni kalıp çıka
   bağlantısı) asla ayrıntıya yazılmaz — test bunu doğrular. (4) Davet = rastgele parola + mevcut parola_sifirlama akışı
   (72 sa); posta kapalıysa bağlantı bir kez yanıtta. (5) DB'li uçtan uca test etiketle temizlenir (uuid parçası e-posta/ad
   içinde) — paralel koşulara dayanır. (6) Yerelde CI koşulu: timescale konteyneri + alembic upgrade head + tam takım ~5,5 dk.
+- **Platform yüzü /yonetim (25.10.2026, biriktirildi):** `docs/FAZ2-YONETIM-PANELI-2026-10-25.md`. Kalıp: ikinci yüz = aynı
+  kabuk ızgarası + sınıfları, AYRI bileşen (müşteri Kabuk'u dokunulmaz), `data-yuz` ile vurgu jetonu değişir (nötr lacivert),
+  yüz kökte ayarlanır (giriş ekranı dahil — kabukta ayarlanınca giriş açık temada kalıyordu). Tek seferlik sırlar (davet
+  bağlantısı, geçici parola) `.plat-tek-seferlik` + kopyala; denetim izine yazılmaz. Tablo tuzakları: 1 % genişlikli hücrede
+  `.cip-kod` harf harf kırılır → nowrap; işlem düğmeleri `.dugme-sira` tek satır; `.grafik-kaydir` doğrudan tabloyu sararsa
+  min-width tabloya. Playwright: önbellekteki Chromium sürümü paketle uyuşmazsa `channel: "chrome"` (kurulu Chrome) ile çalışır.

@@ -59,7 +59,7 @@ def kaydet(eposta: str, santral_adi: str | None, kurulu_guc_kwp: float | None,
             f"E-posta: {eposta}\n"
             f"Santral: {ad or '—'}\n"
             f"Kurulu güç (kWp): {kwp if kwp is not None else '—'}\n\n"
-            "Ayrıntı: panel → Portföy → Gelen talepler")
+            "Ayrıntı: pvquant.com/yonetim → Başvurular")
     return {"tamam": True, "teyit": teyit}
 
 

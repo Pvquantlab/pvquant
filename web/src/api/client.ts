@@ -696,10 +696,7 @@ export const api = {
     } catch { return { tamam: false, neden: "Ağ hatası — yeniden deneyin." }; }
   },
   /** v2.328: başvuru listesi (yalnız yönetici) + okundu işareti. */
-  basvurular: async (): Promise<{ basvurular: { id: string; eposta: string; santral_adi: string | null; kurulu_guc_kwp: number | null; okundu: boolean; created_at: string }[] }> =>
-    getir(`/v1/vitrin/basvurular`),
-  basvuruOkundu: (id: string): Promise<{ tamam: boolean }> =>
-    gonder(`/v1/vitrin/basvurular/${id}/okundu`, "POST"),
+  // 24.10 Faz 2: vitrin başvuruları platform yüzüne taşındı (api/yonetim.ts); müşteri uçları kaldırıldı.
   dogrulama: async (): Promise<Dogrulama | null> => {
     if (TABAN == null) return null;
     try { const y = await fetch(`${TABAN}/v1/dogrulama`); return y.ok ? (await y.json()) as Dogrulama : null; }

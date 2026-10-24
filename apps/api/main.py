@@ -3,7 +3,7 @@ import pandas as pd
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.responses import Response   # v2.261: /kgup CSV eki modül düzeyinde kullanır
 from pydantic import BaseModel
-from apps.api.deps import gecerli_kullanici, yazma_yetkisi, yonetici_yetkisi, api_anahtari, platform_kiracisi
+from apps.api.deps import gecerli_kullanici, yazma_yetkisi, yonetici_yetkisi, api_anahtari
 from pvquant.services import auth_service, plant_service
 
 # v2.364: İTHALAT ISINDIRMASI — FastAPI'nin sync uçları iş parçacığı havuzunda
@@ -675,20 +675,8 @@ def parola_sifirla(request: Request, g: ParolaSifirlamaGovde):
     return {"tamam": True}
 
 
-@app.get("/v1/vitrin/basvurular")
-def vitrin_basvurular(claims=Depends(platform_kiracisi())):
-    """v2.328 — başvuru listesi. 24.10 Faz 0: yalnız PVQ_PLATFORM_TENANT_ID kiracısının yöneticisi (önceden HER
-    kiracının yöneticisi görüyordu — satış adayları başka müşteriye sızıyordu). Faz 1'de platform kimliğine taşınır."""
-    from pvquant.services import basvuru_service
-    return {"basvurular": basvuru_service.listele()}
-
-
-@app.post("/v1/vitrin/basvurular/{basvuru_id}/okundu")
-def vitrin_basvuru_okundu(basvuru_id: str, claims=Depends(platform_kiracisi())):
-    from pvquant.services import basvuru_service
-    if not basvuru_service.okundu_isaretle(basvuru_id):
-        raise HTTPException(404, "başvuru yok")
-    return {"tamam": True}
+# 24.10 Faz 2: /v1/vitrin/basvurular* müşteri uçları KALDIRILDI — başvurular platform yüzünde (/v1/yonetim/basvurular*).
+# Faz 0'ın PVQ_PLATFORM_TENANT_ID geçici kilidi de bununla kalktı.
 
 
 @app.get("/v1/hakkinda")

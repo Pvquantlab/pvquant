@@ -61,6 +61,6 @@ def test_sacma_kurulu_guc_null_olur(istemci):
     assert istemci.kayitlar[0]["kurulu_guc_kwp"] is None
 
 
-def test_liste_admin_ister(istemci):
-    # başlıksız istek FastAPI doğrulamasında 422 düşer (depo sözleşmesi); jetonsuz asla 200 olmaz
-    assert istemci.get("/v1/vitrin/basvurular").status_code in (401, 422)
+def test_liste_musteri_ucunda_yok(istemci):
+    # 24.10 Faz 2: liste ucu müşteri API'sinden kaldırıldı (platform: /v1/yonetim/basvurular); jetonsuz/jetonlu 404
+    assert istemci.get("/v1/vitrin/basvurular").status_code == 404

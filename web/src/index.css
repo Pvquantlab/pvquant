@@ -500,6 +500,30 @@ table.veri.dar th + th, table.veri.dar td + td { padding-left: 28px; }
 .iskelet-kpi { display: grid; gap: 16px; }
 .iskelet-kpi > span { height: 124px; border-radius: var(--rk); border: 1px solid var(--kenar); background: var(--kart); }
 .iskelet-kart { height: 320px; border-radius: var(--rk); border: 1px solid var(--kenar); background: var(--kart); }
+/* ---------- 24.10 Faz 2: PLATFORM yüzü (/yonetim) ----------
+   Müşteri kabuğunun ızgarası/sınıfları aynen; vurgu rengi nötr lacivert (marka yeşili müşteriye kalır) — yanlış pencerede
+   işlem riskine karşı ilk bakışta ayırt edilir. Yüz koyu sabit (PlatformKabugu data-tema=koyu). */
+:root[data-yuz="platform"] { --marka: #5B8DEF; --marka-koyu: #9DBBFF; --marka-zemin: rgba(91,141,239,.16); --yan-aktif: rgba(91,141,239,.18); }
+.plat-rozet { display: inline-flex; align-items: center; font-family: var(--display); font-size: 11px; font-weight: 600; letter-spacing: .12em;
+              text-transform: uppercase; color: #9DBBFF; background: rgba(91,141,239,.16); border: 1px solid rgba(91,141,239,.35);
+              border-radius: var(--r-hap); padding: 2px 9px; vertical-align: middle; }
+.plat-ust-rozet { font-family: var(--display); font-size: 11px; font-weight: 600; letter-spacing: .14em; color: #9DBBFF;
+                  border: 1px solid rgba(91,141,239,.45); border-radius: var(--r-hap); padding: 4px 10px; }
+.plat-yan-rozet { display: flex; align-items: center; gap: 8px; margin: 2px 6px 14px; }
+.plat-yan-not { font-size: 12px; color: var(--yan-metin); }
+.plat-giris-marka { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-size: 20px; font-weight: 600; color: var(--metin); margin-bottom: 22px; }
+.plat-anahtar { display: block; font-family: var(--mono); font-size: 15px; letter-spacing: .06em; word-break: break-all; padding: 10px 12px;
+                border: 1px solid var(--kenar); border-radius: var(--r); background: var(--yuzey); color: var(--metin); margin: 0 0 12px; user-select: all; }
+.plat-anahtar--kucuk { font-size: 12.5px; letter-spacing: 0; }
+.plat-tek-seferlik { margin: 12px 0 14px; padding: 14px 16px; border: 1px solid var(--kenar); border-radius: var(--rk); background: var(--kart); }
+.plat-cikis { margin-top: 4px; background: none; border: none; padding: 6px 0; min-height: 28px; font-size: 13.5px; color: var(--yan-metin); cursor: pointer;
+              font-family: var(--display); font-weight: 500; text-decoration: underline; text-underline-offset: 3px; }
+.plat-cikis:hover { color: var(--metin); }
+textarea.girdi { resize: vertical; min-height: 72px; line-height: 1.5; }
+table.veri td .cip-kod, table.veri td .rozet { white-space: nowrap; }   /* 1 % genişlikli hücrede çip harf harf kırılmasın */
+table.veri td .dugme-sira { flex-wrap: nowrap; }                        /* işlem düğmeleri tek satır; dar ekranda tablo kayar */
+.grafik-kaydir > table { min-width: 620px; }                             /* doğrudan sarılan tablo da kaydırma alanı alır */
+
 /* 24.10 Portföy geçiş turu: kart gövdesi yer tutucusu — bölüm kendi yanıtını beklerken boyutlu, hareketsiz alan */
 .iskelet-alan { border-radius: 8px; background: var(--yuzey); }
 .gorsel-gizli { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

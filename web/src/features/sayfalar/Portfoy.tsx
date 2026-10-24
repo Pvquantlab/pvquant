@@ -208,7 +208,6 @@ export function Portfoy({ onSec, santralYenile }: { onSec: (id: string) => void;
           </>
         )}
       </Kart>
-      {rolum() === "admin" && <GelenTalepler />}
       {rolum() === "admin" && <DisErisim santraller={p?.santraller.map((s) => ({ id: s.id, ad: s.ad })) ?? []} />}
       {rolum() === "admin" && <SantralArsivi santralYenile={santralYenile} />}
       <Paylasimlar santraller={p?.santraller.map((s) => ({ id: s.id, ad: s.ad })) ?? []} />
@@ -231,48 +230,7 @@ function hatirlayarak<T>(yol: string, fn: () => Promise<T>): Promise<T> {
   return soz;
 }
 
-/** v2.328 — vitrin "Karneni başlat" başvuruları. Yalnız yönetici görür; e-posta
- *  altyapısı bilerek yok — dönüş buradaki adrese elle yapılır, sonra "okundu". */
-function GelenTalepler() {
-  const [liste, setListe] = useState<{ id: string; eposta: string; santral_adi: string | null;
-    kurulu_guc_kwp: number | null; okundu: boolean; created_at: string }[] | null>(
-    () => bellektenOku<Awaited<ReturnType<typeof api.basvurular>>>("/v1/vitrin/basvurular")?.basvurular ?? null);   // 24.10: bayat-önce
-  const yenile = () => { api.basvurular().then((r) => setListe(r.basvurular)).catch(() => setListe([])); };
-  useEffect(yenile, []);
-  const acik = (liste ?? []).filter((b) => !b.okundu).length;
-  if (liste !== null && liste.length === 0) return null;   // hiç başvuru yoksa kart yer kaplamaz
-  return (
-    <Kart baslik="Gelen talepler — web sitesi başvuruları"
-      sag={<span className="cip">{liste === null ? "—" : <Meta items={[`${sayiTr(acik)} açık`, `${sayiTr(liste.length)} toplam`]} />}</span>}>
-      {liste === null ? <p className="soluk" style={{ margin: 0 }}>Veri yok.</p> : (
-        <div className="grafik-kaydir">
-          <table className="veri" style={{ fontSize: 13.5 }}>
-            <thead><tr><th style={{ textAlign: "left" }}>E-posta</th><th style={{ textAlign: "left" }}>Santral</th>
-              <th>Kurulu güç</th><th style={{ textAlign: "left" }}>Tarih</th><th>Durum</th></tr></thead>
-            <tbody className="mono">
-              {liste.map((b) => (
-                <tr key={b.id} style={{ opacity: b.okundu ? 0.55 : 1 }}>
-                  <td style={{ fontWeight: b.okundu ? 400 : 600 }}>{b.eposta}</td>
-                  <td>{b.santral_adi ?? "—"}</td>
-                  <td>{b.kurulu_guc_kwp != null ? `${sayiTr(b.kurulu_guc_kwp / 1000, 1)} MW` : "—"}</td>
-                  <td>{new Date(b.created_at).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" })}</td>
-                  <td>{b.okundu ? "okundu" : (
-                    <button className="dugme" style={{ fontSize: 13 }}
-                      onClick={() => { void api.basvuruOkundu(b.id).then(yenile); }}>Okundu işaretle</button>
-                  )}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      <p className="soluk" style={{ fontSize: 14, margin: "10px 0 0" }}>
-        Web sitesindeki "Karnenizi başlatın" formundan gelir. Yanıt e-postası elle gönderilir;
-        yanıtlayınca "okundu" işaretleyin.
-      </p>
-    </Kart>
-  );
-}
+/* 24.10 Faz 2: GelenTalepler (vitrin başvuruları) PLATFORM yüzüne taşındı (/yonetim → Başvurular); müşteri panelinde yeri yok. */
 
 /** v2.264 (Dalga 5.16) — Dış erişim: API anahtarları + webhook alıcıları. Yalnız admin görür.
  *  Anahtar ve webhook sırrı YALNIZ üretildiği anda gösterilir; sunucu sırrı geri veremez. */

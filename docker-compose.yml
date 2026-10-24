@@ -56,8 +56,6 @@ services:
       PVQ_DB_URL: postgresql+psycopg://pvquant:${DB_PASSWORD:?.env'de DB_PASSWORD tanimli olmali}@db:5432/pvquant
       PVQ_JWT_SECRET: ${PVQ_JWT_SECRET:-}
       PVQ_SENTRY_DSN: ${PVQ_SENTRY_DSN:-}
-      # 24.10 Faz 0: vitrin başvurularını yalnız bu kiracının yöneticisi görür (boşsa KİMSE — platform rolü gelene dek)
-      PVQ_PLATFORM_TENANT_ID: ${PVQ_PLATFORM_TENANT_ID:-}
       # v2.334: başvuru teyidi/bildirimi api'den çıkar — worker'daki SMTP seti buraya da
       PVQ_SMTP_HOST: ${PVQ_SMTP_HOST:-}
       PVQ_SMTP_PORT: ${PVQ_SMTP_PORT:-}

@@ -24,22 +24,14 @@ def _temiz():
     au.oturum_onbellegi_dusur()
 
 
-def test_basvurular_yalniz_platform_kiracisi(monkeypatch):
+def test_basvurular_musteri_ucunda_yok(monkeypatch):
+    """Faz 0 geçici kilidi (PVQ_PLATFORM_TENANT_ID) Faz 2'de kalktı: müşteri uçları artık YOK (404); başvurular yalnız
+    /v1/yonetim/basvurular* (tests/test_yonetim_api.py). Başvuru GÖNDERME ucu (/v1/vitrin/basvuru) kamuya açık kalır."""
     monkeypatch.setattr(basvuru_service, "listele", lambda n=100: [{"id": "b1"}])
-    monkeypatch.setattr(basvuru_service, "okundu_isaretle", lambda i: True)
     c = TestClient(api_main.app)
-    monkeypatch.delenv("PVQ_PLATFORM_TENANT_ID", raising=False)
     _rol("admin", "t1")
-    assert c.get("/v1/vitrin/basvurular").status_code == 403          # değişken yok → kimse
-    monkeypatch.setenv("PVQ_PLATFORM_TENANT_ID", "t-platform")
-    _rol("admin", "t1")
-    assert c.get("/v1/vitrin/basvurular").status_code == 403          # başka kiracının yöneticisi
-    assert c.post("/v1/vitrin/basvurular/b1/okundu").status_code == 403
-    _rol("admin", "t-platform")
-    assert c.get("/v1/vitrin/basvurular").json() == {"basvurular": [{"id": "b1"}]}
-    assert c.post("/v1/vitrin/basvurular/b1/okundu").json() == {"tamam": True}
-    _rol("editor", "t-platform")
-    assert c.get("/v1/vitrin/basvurular").status_code == 403          # platform kiracısında bile yönetici şart
+    assert c.get("/v1/vitrin/basvurular").status_code == 404
+    assert c.post("/v1/vitrin/basvurular/b1/okundu").status_code == 404
 
 
 def _jeton(monkeypatch, **ek):

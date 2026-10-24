@@ -28,6 +28,8 @@ function girisFontlari(): Promise<unknown> {
 }
 const Giris = lazy(() => Promise.all([import("./features/giris/Giris"), girisFontlari()]).then(([m]) => ({ default: m.Giris })));
 const ParolaYenile = lazy(() => import("./features/giris/ParolaYenile").then((m) => ({ default: m.ParolaYenile })));
+// 24.10 Faz 2: platform yönetimi — ayrı yol, ayrı jeton, ayrı kabuk; müşteri paneline dokunmaz
+const Yonetim = lazy(() => import("./features/yonetim/Yonetim").then((m) => ({ default: m.Yonetim })));
 /** 16.10 hız turu 4: önceden indirilebilen tembel bileşen. React.lazy, modül zaten inmiş olsa bile ilk çizimde bir
  *  mikro görev askıya alır; panelin ilk girişinde yeni kurulan iç Suspense bu arada boş içerik alanını gösteriyordu
  *  (3G kare kaydı: yan menü var, içerik ~3 kare boş). Modül önceden indiyse bileşen doğrudan çizilir; seçim bir
@@ -162,7 +164,10 @@ export default function App() {
   // v2.333 (rapor m.5): /yontem — kamuya açık yöntem/doğrulama alt sayfası.
   // Caddyfile.web try_files ile her yol index.html'e düştüğünden ek sunucu işi yok.
   let icerik: ReactNode;
-  if (window.location.pathname === "/yontem")
+  // 24.10 Faz 2: /yonetim — PVQuant personeli yüzü (kendi girişi ve jetonu; müşteri oturumuyla ilgisiz)
+  if (window.location.pathname === "/yonetim" || window.location.pathname.startsWith("/yonetim/"))
+    icerik = <Yonetim />;
+  else if (window.location.pathname === "/yontem")
     icerik = <Yontem />;
   // v2.335: e-postadaki sıfırlama bağlantısı — kimliksiz kamu sayfası
   else if (window.location.pathname === "/parola-yenile")

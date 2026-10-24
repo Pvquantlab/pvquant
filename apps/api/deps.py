@@ -49,18 +49,6 @@ def platform_yetkisi(rol: str | None = None):
     return _ic
 
 
-def platform_kiracisi():
-    """24.10 Faz 0 — GEÇİCİ platform kapısı: vitrin başvuruları gibi platform-sahibi işleri yalnız
-    PVQ_PLATFORM_TENANT_ID'de yazılı kiracının yöneticisine açıktır; değişken boşsa KİMSEYE (önceden her kiracının
-    yöneticisi görüyordu). Faz 1'de ayrı platform kimliği (`kapsam: platform`) bunun yerini alır."""
-    def _ic(claims=Depends(yonetici_yetkisi())):
-        hedef = os.environ.get("PVQ_PLATFORM_TENANT_ID", "").strip()
-        if not hedef or str(claims["tenant_id"]) != hedef:
-            raise HTTPException(403, "yalnız platform kiracısının yöneticisi")
-        return claims
-    return _ic
-
-
 def yonetici_yetkisi():
     """v2.264: yalnız admin (API anahtarı ve webhook yönetimi)."""
     def _ic(claims=Depends(gecerli_kullanici)):
