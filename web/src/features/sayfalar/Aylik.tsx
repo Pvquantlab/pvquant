@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import type { EChartsOption } from "echarts";
-import { api } from "../../api/client";
+import { api, bellekten, ayniysaEskisi } from "../../api/client";
 import type { AylikBeklenti, SantralOzeti, Bankable } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
 import { Cubuklar } from "../santralim/Cubuklar";
-import { Kart, Kpi, Sayfa, sayiTr, isiTonu, isiMetni, SayfaIskeleti } from "./parcalar";
+import { Kart, Kpi, Sayfa, sayiTr, isiTonu, isiMetni, SayfaIskeleti, YerTutucu } from "./parcalar";
 import { Meta } from "../../lib/Meta";
 
 const AYLAR = ["Oca", "Şub", "Mar", "Nis", "May", "Haz",
@@ -15,30 +15,30 @@ const AYLAR = ["Oca", "Şub", "Mar", "Nis", "May", "Haz",
  *  serpilisi + P10-P90 bandi + gerceklesen uretim cubugu (ozet'ten).
  *  NWP aya UZATILMAZ — beklenti iklimden gelir (sartname). */
 export function Aylik({ plantId }: { plantId: string }) {
-  const [b, setB] = useState<AylikBeklenti | null>(null);
-  const [o, setO] = useState<SantralOzeti | null>(null);
-  const [birikiyor, setBirikiyor] = useState(false);
+  // 24.10 açık tema geçiş turu — ÜÇ İSTEK BAĞIMSIZ, BAYAT-ÖNCE (Portföy kalıbı). v2.327'nin tek kapısı KPI'ları ve ışınım
+  // grafiğini en yavaş isteğe (yıllık beklenti hesabı) bekletiyordu. Şimdi aylık beklenti gelir gelmez sayfa; yıllık beklenti
+  // ve gerçekleşen üretim kartları kendi yanıtlarını bekler. Bellekte son yanıt varsa anında çizilir. undefined = yolda.
+  type Durum = "bekliyor" | "tamam" | "hata";
+  const [b, setB] = useState<AylikBeklenti | null | undefined>(() => bellekten.aylik(plantId));
+  const [bD, setBD] = useState<Durum>("bekliyor");
+  const [o, setO] = useState<SantralOzeti | null | undefined>(() => bellekten.ozet(plantId));
   // v2.278: bankable yıllık beklenti — saklı sonuç; "yenile" 1–2 dk sürer (19 yıl × fizik koşusu)
   const [bk, setBk] = useState<Bankable | null | undefined>(undefined);
   const [bkMesaj, setBkMesaj] = useState<string | null>(null);
   const bkYenile = () => { setBkMesaj("Hesaplanıyor: 19 yıllık fiziksel model hesabı, 1–2 dakika…"); api.bankableHesapla(plantId).then((r) => { setBk(r); setBkMesaj(null); }).catch((e) => setBkMesaj(String((e as Error).message ?? e))); };
   const { n, oku } = useTema();
 
-  // v2.327: TEK KAPI (Portföy kalıbı) — üç kaynak paralel, sayfa bütün belirir.
-  const [hazir, setHazir] = useState(false);
   useEffect(() => {
     let acik = true;
-    setHazir(false);
-    Promise.allSettled([api.aylik(plantId), api.ozet(plantId), api.bankable(plantId)])
-      .then(([ra, ro, rb]) => {
-        if (!acik) return;
-        if (ra.status === "fulfilled") setB(ra.value); else setBirikiyor(true);
-        if (ro.status === "fulfilled") setO(ro.value);
-        setBk(rb.status === "fulfilled" ? rb.value : null);
-        setHazir(true);
-      });
+    setB(bellekten.aylik(plantId)); setBD("bekliyor"); setO(bellekten.ozet(plantId)); setBk(undefined);
+    api.aylik(plantId).then((v) => { if (acik) { setB((e) => ayniysaEskisi(e, v)); setBD("tamam"); } }, () => { if (acik) { setB((e) => e ?? null); setBD("hata"); } });
+    api.ozet(plantId).then((v) => { if (acik) setO((e) => ayniysaEskisi(e, v)); }, () => { if (acik) setO((e) => e ?? null); });
+    api.bankable(plantId).then((v) => { if (acik) setBk(v); }, () => { if (acik) setBk(null); });
     return () => { acik = false; };
   }, [plantId]);
+  const hazir = b !== undefined || bD !== "bekliyor";
+  const birikiyor = hazir && b === null;   // aylık beklenti ucu yok/alınamadı → «birikiyor» kartı (eski davranış)
+  const tazeleniyor = hazir && bD === "bekliyor";
 
   // Solargis Tablo 4.3/5.2 formati: sayi + isi-skalasi arka plan (v2.115)
   const matris = useMemo(() => {
@@ -159,8 +159,8 @@ export function Aylik({ plantId }: { plantId: string }) {
       alt="Uzun dönem iklim verisinden aylık üretim aralığı; günlük tahminden bağımsızdır."
       sag={<span className="cip">
         {b.donem != null && b.yil_sayisi != null
-          ? <Meta items={[`Kaynak: ${b.donem} arşivi`, `${sayiTr(b.yil_sayisi)} yıl`, `hesap ${hesap}`]} />
-          : <Meta items={["Kaynak: uzun dönem arşiv", `hesap ${hesap}`]} />}</span>}>
+          ? <Meta items={[`Kaynak: ${b.donem} arşivi`, `${sayiTr(b.yil_sayisi)} yıl`, `hesap ${hesap}`, tazeleniyor && "güncelleniyor", bD === "hata" && "güncellenemedi"]} />
+          : <Meta items={["Kaynak: uzun dönem arşiv", `hesap ${hesap}`, tazeleniyor && "güncelleniyor", bD === "hata" && "güncellenemedi"]} />}</span>}>
       <div className="ızgara satir-3" style={{ marginBottom: 14 }}>
         <Kpi etiket={`${AYLAR[buAy - 1]} P10`}
              deger={k?.p10 !== null && k ? sayiTr(k.p10) : "—"}
@@ -178,7 +178,7 @@ export function Aylik({ plantId }: { plantId: string }) {
           {bk?.durum === "ok" && <span className="cip"><Meta items={[bk.donem, `${sayiTr(bk.yil_sayisi ?? 0)} yıl`]} /></span>}
           <button className="dugme" style={{ fontSize: 13 }} onClick={bkYenile}>{bk?.durum === "ok" ? "Yenile" : "Hesapla"}</button>
         </span>}>
-        {bk === undefined ? <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p>
+        {bk === undefined ? <YerTutucu yukseklik={317} />
          : !bk || bk.durum !== "ok" ? (
           <p className="soluk" style={{ margin: 0 }}>{bkMesaj ?? (bk?.not ?? "Henüz hesaplanmadı. 'Hesapla' uzun dönem ışınım arşivinden yıllık dağılımı üretir (ayda bir kendiliğinden yenilenir).")}</p>
         ) : (
@@ -301,6 +301,7 @@ export function Aylik({ plantId }: { plantId: string }) {
           sütunu tam yılların toplamı, Ort. satırı uzun dönem ortalamasıdır.
         </p>
       </Kart>
+      {o === undefined && <Kart baslik="Gerçekleşen üretim — son 12 ay (SCADA)"><YerTutucu yukseklik={220} /></Kart>}
       {o && o.aylik.length > 0 && (
         <Kart baslik="Gerçekleşen üretim — son 12 ay (SCADA)">
           {/* v2.316: iç boşluk ayı artık API'den null-mwh satırı olarak gelir (eksen

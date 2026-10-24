@@ -966,10 +966,11 @@ function useDomDark(override?: boolean): boolean {
   const [domDark, setDomDark] = useState(read);
   useEffect(() => {
     if (typeof document === "undefined") return;
+    // 24.10: yalnız data-tema — Kabuk'un 120 ms'lik .tema-gecisi sınıfı tema bilgisi taşımaz (useTema ile aynı karar)
     const obs = new MutationObserver(() => setDomDark(read()));
     obs.observe(document.documentElement, {
       attributes: true,
-      attributeFilter: ["data-tema", "class"],
+      attributeFilter: ["data-tema"],
     });
     return () => obs.disconnect();
   }, []);

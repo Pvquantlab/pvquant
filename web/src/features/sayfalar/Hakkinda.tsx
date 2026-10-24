@@ -1,21 +1,22 @@
 import { useEffect, useState } from "react";
-import { api } from "../../api/client";
+import { api, bellektenOku, ayniysaEskisi } from "../../api/client";
 import type { Hakkinda as HakkindaT } from "../../api/types";
-import { Kart, Sayfa, sayiTr } from "./parcalar";
+import { Kart, Sayfa, sayiTr, YerTutucu } from "./parcalar";
 
 /** v2.270 (Dalga 0) — Hakkında › Veri kaynakları ve lisanslar.
  *  Gizlilik Anayasası v2.245 istisnası: kaynak adı + lisans bağlantısı YALNIZ burada (ve rapor künyesi, README).
  *  Liste sunucunun gerçek kullanımından gelir; kullanılmayan kaynağa atıf yazılmaz. */
 export function Hakkinda() {
-  const [h, setH] = useState<HakkindaT | null | undefined>(undefined);
-  useEffect(() => { api.hakkinda().then(setH).catch(() => setH(null)); }, []);
+  // 24.10 açık tema geçiş turu: bayat-önce — bellekte son liste varsa dönüşte anında; yoldayken yer tutucu (metin yerine)
+  const [h, setH] = useState<HakkindaT | null | undefined>(() => bellektenOku<HakkindaT>("/v1/hakkinda"));
+  useEffect(() => { api.hakkinda().then((v) => setH((e) => (v ? ayniysaEskisi(e, v) : v))).catch(() => setH(null)); }, []);
   const tarih = (s: string | null | undefined) => s ? new Date(s).toLocaleString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—";
   const sol = { textAlign: "left" as const };
   const bag = { color: "var(--ikincil)", textDecoration: "underline", textUnderlineOffset: 2 };
   return (
     <Sayfa baslik="Hakkında" alt="Veri kaynakları, lisanslar ve işleme notu.">
       <Kart baslik="Veri kaynakları ve lisanslar">
-        {h === undefined ? <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p>
+        {h === undefined ? <YerTutucu yukseklik={120} />
          : !h ? <p className="soluk" style={{ margin: 0 }}>Örnek kip; kaynak listesi sunucudan gelir.</p> : (
           <>
             {h.uyarilar.length > 0 && <ul className="not-listesi uyari" style={{ margin: "0 0 10px" }}>{h.uyarilar.map((u) => <li key={u}>{u}</li>)}</ul>}

@@ -8,8 +8,12 @@ export function useTema() {
   const [n, setN] = useState(0);
 
   useEffect(() => {
+    // 24.10 açık tema geçiş turu: YALNIZ data-tema izlenir. Kabuk tema geçişinde <html>'e önce .tema-gecisi sınıfını
+    // koyup 120 ms sonra kaldırır; filtresiz gözlemci her tema değişiminde ÜÇ kez tetikleniyor, sayfadaki her grafik
+    // seçeneklerini üç kez kurup setOption(notMerge) ile üç kez yeniden çiziyordu (Doğruluk: 6 grafik × 3). Renkler
+    // data-tema ile birlikte değiştiğinden tek tetik yeterlidir; çıktı birebir aynı.
     const gozlemci = new MutationObserver(() => setN((x) => x + 1));
-    gozlemci.observe(document.documentElement, { attributes: true });
+    gozlemci.observe(document.documentElement, { attributes: true, attributeFilter: ["data-tema"] });
     return () => gozlemci.disconnect();
   }, []);
 

@@ -1,0 +1,121 @@
+/** Sahte PANEL API'si (24.10 açık tema geçiş turu) — dokuz panel sayfasının çağırdığı BÜTÜN GET uçları, tiplerle
+ *  (web/src/api/types.ts, client.ts OzetYanit/ForecastYanit) uyumlu, deterministik verilerle ve uç başına gecikmeyle.
+ *  Gecikmeler VARSAYIMDIR (canlıya giriş yapılamadığı için ölçülemedi); yalnız Portföy üçlüsü §12'de konteyner içinde
+ *  ölçülmüş canlı değerlerdir. Yapısal sonuç gecikmeden bağımsızdır: tek kapılı sayfa en YAVAŞ isteği, kademeli
+ *  sayfa kendi isteğini bekler.
+ *  node sahte-api-panel.mjs [port=4807] ; ortam: YAVAS=<çarpan> (varsayılan 1) ; GET /_log istek günlüğü, POST /_sifirla. */
+import http from "node:http";
+const PORT = Number(process.argv[2] ?? 4807);
+const CARPAN = Number(process.env.YAVAS ?? 1);
+/** uç → gecikme (ms); anahtar yol öneki (sorgu hariç) */
+const GECIKME = {
+  "/v1/plants": 60, "/v1/oturum/yenile": 60, "/v1/portfoy": 270, "/v1/portfoy/tahmin": 400, "/v1/portfoy/dsg": 1000,
+  summary: 250, forecast: 350, skill: 300, runs: 80, alarmlar: 80, "alarm-kurallari": 80, nowcast: 150, kgup: 300, konformal: 120,
+  dengesizlik: 500, backtest: 900, guvenilirlik: 700, "hata-matrisi": 400, "hata-dagilimi": 350, kalibrasyon: 200, hijyen: 300,
+  kayma: 600, "kayip-agaci": 250, "guc-matrisi": 250, monthly: 300, bankable: 800, "saat-ay-matrisi": 400, "gunes-yolu": 300,
+  pr: 200, saglik: 300, kullanilabilirlik: 200, "fizik-terimleri": 100, tarife: 80, "epias-uretim": 100, damga: 40,
+  "/v1/isler": 100, "/v1/hakkinda": 150,
+};
+const gunluk = [];
+const GUN = "2026-10-24";
+const santral = (id, ad, kwp, wm, b, y, al, son, kes) => ({ id, ad, kapasite_kwp: kwp, tz: "Europe/Istanbul", segment: null, son_olcum: son, kesinti_gun: kes, wmape_30g: wm, bugun_kwh: b, yarin_kwh: y, acik_alarm: al, son_kosu: "2026-10-23T15:42:00Z" });
+const PORTFOY = { gun: GUN, santraller: [
+  santral("a1", "Edikli GES", 15230, 37.5, 65400, 64200, 0, "2026-10-22T20:00:00Z", 1), santral("a2", "Format Lab", 1000, null, 4383, 4330, 3, "2020-06-17T20:00:00Z", 2319),
+  santral("a3", "Karapınar RT-2579", 260000, 29.2, 1446500, 1486300, 0, "2026-10-22T20:00:00Z", 1), santral("a4", "Kıvanç 2 GES", 52500, 33.7, 282200, 275400, 0, "2026-10-22T20:00:00Z", 1),
+  santral("a5", "PVDAQ Golden 33", 2, null, 3, 8, 3, "2019-01-01T06:00:00Z", 2852) ],
+  toplam: { santral: 5, kapasite_kwp: 328732, bugun_kwh: 1798700, yarin_kwh: 1830200, wmape_agirlikli: 30.3, wmape_kapsanan_kwp: 327730, acik_alarm: 6, veri_gecikmis: 2 } };
+const PLANTS = PORTFOY.santraller.map((s) => ({ id: s.id, name: s.ad, capacity_kwp: s.kapasite_kwp, tz: s.tz }));
+const KWP = 15230, AC = 12000;
+const PROFIL = [0, 0, 0, 0, 0, 0.012, 0.09, 0.26, 0.45, 0.63, 0.76, 0.84, 0.86, 0.84, 0.76, 0.63, 0.45, 0.26, 0.09, 0.012, 0, 0, 0, 0];
+const r = (i, k = 1) => ((Math.sin(i * 12.9898 + k * 78.233) * 43758.5453) % 1 + 1) % 1;   // deterministik 0–1
+const ISO = (ms) => new Date(ms).toISOString().replace(/\.\d{3}Z$/, "Z");
+const BAS = Date.UTC(2026, 9, 23, 21, 0, 0);   // 24 Eki 00:00 TR
+function forecast(hours) {
+  const series = Array.from({ length: hours }, (_, i) => {
+    const saatTR = (i + 0) % 24; const p = PROFIL[saatTR] * KWP * (0.85 + 0.3 * r(i));
+    const p50 = Math.min(AC, Math.round(p));
+    return { ts_utc: ISO(BAS + i * 3600e3), p10_kw: Math.round(p50 * 0.78), p25_kw: Math.round(p50 * 0.9), p50_kw: p50, p75_kw: Math.min(AC, Math.round(p50 * 1.08)), p90_kw: Math.min(AC, Math.round(p50 * 1.18)) };
+  });
+  const gunes = Array.from({ length: Math.ceil(hours / 24) }, (_, g) => ({ gun: new Date(BAS + g * 86400e3 + 12 * 3600e3).toISOString().slice(0, 10), dogus_utc: ISO(BAS + g * 86400e3 + 4.3 * 3600e3), batis_utc: ISO(BAS + g * 86400e3 + 15.2 * 3600e3) }));
+  return { plant_id: "a1", run_at: "2026-10-24T03:12:00Z", mode: "C", hours, gunes, series };
+}
+function summary() {
+  const aylar = Array.from({ length: 18 }, (_, i) => { const d = new Date(Date.UTC(2025, 4 + i, 1)); return { ay: d.toISOString().slice(0, 7), mwh: Math.round(1800 + 900 * Math.sin((d.getUTCMonth() - 3) / 12 * 2 * Math.PI) + 50 * r(i)), saglam_saat: 400 + Math.round(60 * r(i, 2)), kapsam_pct: 55 + Math.round(12 * r(i, 3)), beklenti_mwh: i < 17 ? Math.round(1750 + 900 * Math.sin((d.getUTCMonth() - 3) / 12 * 2 * Math.PI)) : null }; });
+  return { plant: { id: "a1", name: "Edikli GES", capacity_kwp: KWP, ac_limit_kw: AC, lat: 38.41, lon: 34.61, tz: "Europe/Istanbul", tilt: 25, azimuth: 180, panel_tech: "bifacial" },
+    mode: "C", sapma_pct: -1.42, anlati: "Yarın beklenen üretim bugünle aynı seviyede.", bugun_kwh: 65400, yarin_kwh: 64200, yarin_hava: "açık", hafta_mwh: 441.2, model_alt: "Hibrit", kalibrasyon_tarihi: "2026-10-01",
+    hava: [{ gun: "Bugün", derece: 19.2, kwhm2: 4.9 }, { gun: "Yarın", derece: 18.4, kwhm2: 4.8 }, { gun: "Pzt", derece: 17.1, kwhm2: 4.1 }],
+    gunler: ["Bugün", "Yarın", "Pzt", "Sal", "Çar", "Per", "Cum"].map((e, i) => ({ etiket: e, mwh: 65.4 - i * 1.3 + 2 * r(i) })),
+    saglik: { son_scada: "2026-10-22T20:00:00Z", islenen_saat: 14812, anomali: 3210 }, aylik: aylar };
+}
+function karne(bucket, gun) {
+  const g = Array.from({ length: gun }, (_, i) => { const d = new Date(Date.UTC(2026, 9, 23) - (gun - 1 - i) * 86400e3); const w = bucket === "0-24" ? 18 + 22 * r(i, 4) : 24 + 26 * r(i, 5); return { tarih: d.toISOString().slice(0, 10), kova: bucket, wmape: +w.toFixed(1), naif_wmape: +(w * 1.35 + 4).toFixed(1), nmae: +(w * 0.31).toFixed(2), nrmse: +(w * 0.46).toFixed(2), nmbe: +((r(i, 6) - 0.5) * 4).toFixed(2) }; });
+  const ort = (f) => +(g.reduce((a, x) => a + f(x), 0) / g.length).toFixed(2);
+  return { kova: bucket, gun_sayisi: gun, wmape_ort: ort((x) => x.wmape), naife_ustunluk_pct: 27.4, ilk_tarih: g[0].tarih, son_tarih: g[g.length - 1].tarih, nmae_ort: ort((x) => x.nmae), nrmse_ort: ort((x) => x.nrmse), nmbe_ort: ort((x) => x.nmbe), cliper_wmape_ort: ort((x) => x.wmape) * 1.12, cliper_ustunluk_pct: 11.8,
+    olasiliksal: { gun_sayisi: gun - 2, pinball_p10: 412, pinball_p50: 980, pinball_p90: 430, crps: 760, picp80: 0.77, kapsama_p10: 0.12, kapsama_p90: 0.89, bant_n: 0.22 }, gunluk: g };
+}
+const SAAT = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0") + ":00");
+const GUNLER30 = Array.from({ length: 30 }, (_, i) => new Date(Date.UTC(2026, 9, 23) - (29 - i) * 86400e3).toISOString().slice(0, 10));
+const VERI = {
+  summary: summary(),
+  runs: [{ run_at: "2026-10-24T03:12:00Z", mode: "C", model: "hybrid_residual", bant: { kaynak: "gefs", uye: 31 }, sapma: { aktif: true, oran_genel: 0.97, n_gun: 14 }, etiket: null }, { run_at: "2026-10-23T11:05:00Z", mode: "C", model: "hybrid_residual", etiket: "gun_ici" }, { run_at: "2026-10-23T03:11:00Z", mode: "C", model: "hybrid_residual" }],
+  alarmlar: [], "alarm-kurallari": { secili: ["veri_gelmedi", "skill_dustu"], secilebilir: ["veri_gelmedi", "skill_dustu", "pr_dustu", "clipping_orani_yuksek", "iletisim_kesintisi", "kullanilabilirlik_dustu", "kgup_teslim_gecikti", "dengesizlik_asimi"], esik: { skill_dustu: 10, pr_esik: 0.7, clipping_esik: 0.1, kullanilabilirlik_esik: 0.97, dengesizlik_esik: 0.03, iletisim_esik_saat: 6 }, etiket: { veri_gelmedi: "Veri gelmedi", skill_dustu: "Tahmin doğruluğu düştü" }, varsayilan: ["veri_gelmedi", "skill_dustu"] },
+  nowcast: { durum: "ok", uydu: false, yontem: "persistans", ufuk_saat: 6, son_olcum: "2026-10-24T08:00:00Z", tazelik_saat: 1, oran: 0.94, n_saat: 3, ufuk: Array.from({ length: 6 }, (_, i) => ({ ts: ISO(BAS + (9 + i) * 3600e3), p50_kw: 8000 + i * 600, nowcast_kw: 7500 + i * 620, agirlik: +(0.8 * (1 - i / 6)).toFixed(2) })) },
+  kgup: { gun: "2026-10-25", kantil: "p50", kosu: { run_at: "2026-10-24T03:12:00Z", mode: "C" }, uyarilar: [], sicrama_saatleri: [], toplam_mwh: 64.2, satirlar: Array.from({ length: 24 }, (_, s) => ({ saat: s, kgup_mwh: +(PROFIL[s] * KWP / 1000).toFixed(2), eak_mwh: 12 })), dosya_adi: "KGUP_2026-10-25.csv", eak: { eak_mw: 12, kaynak: "ac_tavani" }, gip: { kural: "GİP'te teslimattan 60 dakika öncesine kadar revizyon yapılabilir.", ornek_teslimat: "25 Eki 12:00", ornek_kapi: "10:30", ornek_revizyon_son: "11:00" }, oneri: { durum: "ok", kantil: "p50", tau: 0.5 }, teslim: { hedef_gun: "2026-10-25", durum: "erken", dakika_kaldi: 310, teyit_saati: "15:30:00" } },
+  konformal: { aktif: true, alpha: 0.2, n: 1420, pencere_gun: 60, hesap_zamani: "2026-10-24T02:00:00Z", ort_q_kw: -180, kova_ort_q_kw: { "0-24": -120, "24-72": 210 } },
+  dengesizlik: { gun_sayisi: 84, pencere_gun: 90, not: "Senaryo fiyatıyla.", aylar: ["2026-08", "2026-09", "2026-10"].map((ay, i) => ({ ay, uretim_mwh: 1900 - i * 120, sapma_mwh: 160 - i * 10, referans_gelir_tl: 5100000 - i * 300000, pvquant_tl: 212000 - i * 9000, naif_tl: 318000 - i * 12000, kurtarilan_tl: 106000 - i * 3000, gelir_oran_pct: 4.1, tl_per_mwh: 112, kupst_tl: 0 })), toplam: { pvquant_tl: 609000, naif_tl: 918000, kurtarilan_tl: 309000, gelir_oran_pct: 4.0, referans_gelir_tl: 14700000, kupst_tl: 0, teminat_tl: 240000 }, oneri: { durum: "ok", kantil: "p50", tau: 0.5, n_saat: 1200, acik_saat_orani: 0.48 }, katsayilar: { k: 0.97, l: 1.03, kupst_n: 0 }, fiyat: { epias_saat: 0, senaryo_saat: 2016 }, segment: { segment: "lisansli_serbest", kgup_yukumlu: true, dengesizlik_sahibi: "santral", santral_tasir: true } },
+  backtest: { pencere: 8, picp_ham_ort: 0.71, picp_kal_ort: 0.79, hedef: 0.8, hukum: "hedefe yakın", satirlar: Array.from({ length: 8 }, (_, i) => ({ baslangic: GUNLER30[i * 3], n_test: 60 + i, picp_ham: +(0.66 + 0.08 * r(i, 7)).toFixed(2), picp_kal: +(0.76 + 0.06 * r(i, 8)).toFixed(2), bant_ham_n: 0.19, bant_kal_n: 0.23, q_ort: -150 })), kova_sinav: { pencere: 8, hedef: 0.8, hukum: "ufka göre daha iyi", kovalar: [{ kova: "0-24", n: 420, picp_ham: 0.72, picp_tek: 0.78, picp_kova: 0.8 }, { kova: "24-72", n: 410, picp_ham: 0.69, picp_tek: 0.74, picp_kova: 0.79 }] } },
+  guvenilirlik: { durum: "ok", n_saat: 1180, gun_sayisi: 58, min_saat: 72, pencere_gun: 60, guvenilirlik: { ham: [0.1, 0.25, 0.5, 0.75, 0.9].map((t) => ({ tau: t, gozlenen: +(t * 0.9 + 0.03).toFixed(3), sapma: 0.02, n: 1180 })), kalibre: [0.1, 0.25, 0.5, 0.75, 0.9].map((t) => ({ tau: t, gozlenen: +(t * 0.98 + 0.008).toFixed(3), sapma: 0.01, n: 1180 })) }, pit: Array.from({ length: 10 }, (_, i) => ({ kutu: `${i * 10}–${i * 10 + 10}`, oran: +(0.08 + 0.04 * r(i, 9)).toFixed(3) })), pit_max_sapma: 0.03, keskinlik: { ham: 0.21, kalibre: 0.23 }, aralik_skoru_n: { ham: 0.071, kalibre: 0.064 }, picp80: { ham: 0.71, kalibre: 0.79 } },
+  "hata-matrisi": { gunler: GUNLER30, saatler: SAAT, hucreler: SAAT.map((_, s) => GUNLER30.map((_, g) => PROFIL[s] === 0 ? null : Math.round((r(s * 31 + g, 10) - 0.5) * 2 * PROFIL[s] * 2600))), metrik: "isaretli_hata", birim: "kW", kova: "0-24", tz: "Europe/Istanbul" },
+  "hata-dagilimi": { kutular: Array.from({ length: 14 }, (_, i) => ({ lo: -14 + i * 2, hi: -12 + i * 2, adet: Math.round(14 * Math.exp(-((i - 6.5) ** 2) / 8)) })), mu: -0.42, sd: 5.1, ndays: 88, p10: -6.8, p50: -0.3, p90: 5.9, birim: "MWh/gun", kova: "0-24", tz: "Europe/Istanbul" },
+  kalibrasyon: { mode: "C", eta_bos: 0.912, bg: 0.071, fizik_terimleri: { iam: "physical", spektral: "none", kt_referans: "ineichen", kirlenme: "none", kar: "none" }, gecerli_saat: 4812, tarih: "2026-10-01T02:10:00Z", mape_once: 31.2, mape_sonra: 22.6, wmape_once: 24.1, wmape_sonra: 17.3, sapma_once: -8.4, sapma_sonra: -1.4, uyarilar: [] },
+  hijyen: { pencere_gun: 30, son_olcum: "2026-10-22T20:00:00Z", saat: 720, kirpma_saat: 38, kirpma_gun: 9, kisinti_saat: 6, kisinti_gun: 2, kisinti_kayip_kwh: 41200, beklenen_kapsama: 0.97, kisinti_aranabildi: true },
+  kayma: { n_saat: 1420, hukum: "uyumlu", gun: 30, baslangic: GUNLER30[0], bitis: GUNLER30[29], kaynak: { egitim: "uzun dönem arşiv", servis: "bölgesel hava tahmini", not: "Aynı saatler eşlendi" }, ozellikler: [["ghi", "Yatay ışınım"], ["temp", "Sıcaklık"], ["wind", "Rüzgâr"], ["cloud", "Bulutluluk"]].map(([ad, et], i) => ({ ad, etiket: et, n: 1420, psi: +(0.03 + 0.05 * r(i, 11)).toFixed(3), ks: +(0.04 + 0.04 * r(i, 12)).toFixed(3), sapma: +((r(i, 13) - 0.5) * 2).toFixed(2), sapma_pct: +((r(i, 14) - 0.5) * 6).toFixed(1), hukum: i === 3 ? "dikkat" : "uyumlu" })) },
+  "kayip-agaci": { durum: "ok", yil: 2025, kaynak: "tipik yıl", ghi_kwh_m2: 1712, poa_kwh_m2: 1960, nominal_dc_kwh: 29850000, sebeke_kwh: 24120000, pr: 0.808, ozgul_kwh_kwp: 1584, hesap_zamani: "2026-10-01T02:30:00Z", satirlar: [["poa", "Düzleme aktarma", -14.5], ["iam", "Geliş açısı", 2.1], ["soiling", "Kirlenme", 2.0], ["temp", "Sıcaklık", 4.5], ["mismatch", "Uyumsuzluk", 1.5], ["dc_cable", "DC kablo", 1.0], ["inverter", "Evirici", 2.2], ["clipping", "Kırpma", 1.4], ["ac_cable", "AC kablo", 0.6]].map(([a, e, k], i) => ({ adim: a, etiket: e, giren_kwh: 29850000 - i * 900000, cikan_kwh: 29850000 - (i + 1) * 900000, kayip_kwh: 900000, kayip_pct: k, kaynak: i < 4 ? "model" : "varsayılan" })) },
+  "guc-matrisi": { durum: "ok", kaynak: "sentetik verim eğrisi", gamma: -0.34, yil: 2025, hesap_zamani: "2026-10-01T02:40:00Z", not: "Modül verim eğrisinden.", tablo: [100, 200, 400, 600, 800, 1000, 1100].map((g) => ({ g_wm2: g, verim_25_pct: +(94 + 6 * Math.min(1, g / 600)).toFixed(1), verim_50_pct: +(86 + 6 * Math.min(1, g / 600)).toFixed(1) })), cser: 0.962, e_dc_kwh_kwp: 1830, h_poa_kwh_m2: 1960, dusuk_isinim_kayip_pct: 3.1, sicaklik_50_kayip_pct: 8.5 },
+  monthly: { plant_id: "a1", hesap_zamani: "2026-10-01T02:00:00Z", donem: "2006–2025", yil_sayisi: 20, beklenti: Array.from({ length: 12 }, (_, i) => { const p50 = Math.round(70 + 110 * (1 + Math.sin((i - 3) / 12 * 2 * Math.PI)) / 2); return { ay: i + 1, p10: Math.round(p50 * 0.88), p50, p90: Math.round(p50 * 1.1), yil_sayisi: 20 }; }), yillik: Array.from({ length: 240 }, (_, i) => ({ yil: 2006 + Math.floor(i / 12), ay: (i % 12) + 1, ghi_kwh_m2: Math.round((70 + 110 * (1 + Math.sin(((i % 12) - 3) / 12 * 2 * Math.PI)) / 2) * (0.9 + 0.2 * r(i, 15))) })) },
+  bankable: { durum: "ok", hesap_zamani: "2026-10-01T03:00:00Z", kaynak: "uzun dönem arşiv", donem: "2006–2025", mod: "fizik + ölçüm kalibresi", not: "Yıllık dağılım 20 yıldan.", p50_kwh: 24300000, ozgul_verim_kwh_kwp: 1596, sigma_toplam: 0.062, yil_sayisi: 20, N_yil: 10, bilesenler: { yillar_arasi: 0.041, kaynak: 0.03, model_zinciri: 0.025 }, bir_yil: { p90: 22400000, p99: 20800000 }, n_yil: { p90: 23600000 }, katki_pct: { yillar_arasi: 44, kaynak: 24, model_zinciri: 16, olcum: 9, degradasyon: 7 }, olcumle_kalibre: true, monte_carlo: { p90_1yil: 22350000, p99_1yil: 20650000 }, ghi: { p50_kwh_m2: 1712, p90_kwh_m2_1yil: 1640, sigma_yillar_arasi: 0.041 }, yillar: Array.from({ length: 20 }, (_, i) => ({ yil: 2006 + i, kwh: Math.round(24300000 * (0.93 + 0.14 * r(i, 16))), ghi_kwh_m2: Math.round(1712 * (0.93 + 0.14 * r(i, 16))) })), tmy: { p90_yili: 2011, p90_yili_ghi: 1638, tmy_ghi_kwh_m2: 1705 } },
+  "saat-ay-matrisi": { saatler: SAAT, hucreler: SAAT.map((_, s) => Array.from({ length: 12 }, (_, m) => PROFIL[s] === 0 ? null : Math.round(PROFIL[s] * KWP * (0.55 + 0.45 * (1 + Math.sin((m - 3) / 12 * 2 * Math.PI)) / 2)))), toplam: Array.from({ length: 12 }, (_, m) => Math.round(1800000 * (0.55 + 0.45 * (1 + Math.sin((m - 3) / 12 * 2 * Math.PI)) / 2))), birim: "kW", tz: "Europe/Istanbul" },
+  "gunes-yolu": { lat: 38.41, lon: 34.61, tz: "Europe/Istanbul", yil: 2026, egriler: [["yaz", 75], ["ekinoks", 52], ["kis", 28]].map(([ad, tepe]) => ({ ad, nokta: Array.from({ length: 37 }, (_, i) => [60 + i * 6.7, Math.max(0, tepe * Math.sin((i / 36) * Math.PI))]), saat: [6, 9, 12, 15, 18].map((h) => [60 + (h - 6) * 20, Math.max(0, tepe * Math.sin(((h - 6) / 12) * Math.PI)), h]) })) },
+  pr: { durum: "ok", gun: 30, saat: 318, poa_orani: 0.98, Y_r: 4.9, Y_f: 3.96, PR: 0.808, PR_sicaklik: 0.84, CF: 0.21, t_ref: 25, pencere_gun: 30, son_olcum: "2026-10-22" },
+  saglik: { gun: 540, ay: 18, indeks_ort: 0.97, bozunma_yuzde_yil: -0.6, bozunma_ga: [-1.1, -0.1], egim_yuzde_yil: -0.5, son3_vs_onceki12_pct: -1.2, pr_egim_yuzde_yil: -0.4, not: "Mevsim etkisi arındırıldı.", pencere_gun: 540, kaynak: "ölçüm" },
+  kullanilabilirlik: { durum: "ok", mumkun_saat: 360, veri_orani: 0.98, haric_saat: 6, ariza_saat: 4, A_t: 0.989, A_e: 0.991, kayip_kwh: 18200, pencere_gun: 30 },
+  "fizik-terimleri": { iam_model: "physical", spectral_model: "none", soiling_model: "none", kar_model: "none", soiling_gunluk_kayip: null, soiling_temizleme_mm: null, soiling_baslangic: null, secenekler: { iam_model: ["none", "physical", "ashrae"], spectral_model: ["none", "first_solar"], soiling_model: ["none", "hsu"], kar_model: ["none", "marion"] }, etiket: { iam_model: "Geliş açısı", spectral_model: "Spektral", soiling_model: "Kirlenme", kar_model: "Kar" }, not: {} },
+  tarife: { tarife: null },
+  "epias-uretim": { uygun: false, neden: "piyasa kimliği tanımlı değil", epias_santral_id: null, n_saat: 0, son: null },
+  "/v1/isler": { isler: [["tahmin", "2026-10-24T03:12:00Z", 412], ["karne", "2026-10-24T02:05:00Z", 88], ["alarm", "2026-10-24T02:08:00Z", 12]].map(([is_, z, s]) => ({ is: is_, zaman: z, sure_sn: s, tamam: true })), pencere_saat: 24, gece_calisiyor: false, son_gece_isi: "2026-10-24T03:12:00Z", not: null, bayat_isler: [], seviye: null },
+  "/v1/hakkinda": { urun: "PVQuant", meteo_kaynak: "bölgesel hava tahmini", kaynaklar: [{ kimlik: "k1", ad: "Uzun dönem ışınım arşivi", kurum: "—", lisans: "CC BY 4.0", lisans_url: "https://example.org", veri_url: "https://example.org", not: "" }], kunye: "PVQuant 2026", uyarilar: [], yontem: "Fiziksel model + ölçümle kalibrasyon.", mevzuat: [], arsiv: { isinim: { son: "2026-10-23", nokta: 1, satir: 175000, ilk: "2006-01-01", son_ts: "2026-10-23T21:00:00Z" } } },
+};
+const DSG = { santral: 5, n_saat: 480, ayri_tl: 412300, net_tl: 301900, kazanc_tl: 110400, kazanc_pct: 26.8, sapma_net_mwh: 118.2, sapma_ayri_mwh: 161.5, pencere_gun: 30, fiyat: { epias_saat: 0, senaryo_saat: 480 }, not: "Senaryo fiyatıyla." };
+const PT = { durum: "ok", yontem: "bottom-up", tutarli: true, santral: 5, n_saat: 168, kapasite_kwp: 328732, gunler: Array.from({ length: 7 }, (_, i) => ({ gun: new Date(Date.UTC(2026, 9, 24 + i)).toISOString().slice(0, 10), p50_mwh: 1798.7 - i * 12, p10_mwh: 1600 - i * 10, p90_mwh: 1950 - i * 12, saat: 24 })), not: "Santral tahminleri toplanır." };
+http.createServer((req, res) => {
+  const url = new URL(req.url, "http://x"); const yol = url.pathname;
+  res.setHeader("Access-Control-Allow-Origin", "*"); res.setHeader("Access-Control-Allow-Headers", "authorization,content-type,if-none-match"); res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS"); res.setHeader("Access-Control-Expose-Headers", "etag");
+  if (req.method === "OPTIONS") { res.writeHead(204); return res.end(); }
+  if (yol === "/_log") { res.setHeader("content-type", "application/json"); return res.end(JSON.stringify(gunluk)); }
+  if (yol === "/_sifirla") { gunluk.length = 0; return res.end("ok"); }
+  gunluk.push({ t: Math.round(performance.now()), m: req.method, yol: yol + url.search });
+  const uc = yol.replace(/^\/v1\/plants\/[^/]+\//, "");
+  const gec = Math.round((GECIKME[yol] ?? GECIKME[uc] ?? 60) * CARPAN);
+  const yanit = (kod, govde, basliklar = {}) => setTimeout(() => { res.writeHead(kod, { "content-type": "application/json", ...basliklar }); res.end(govde === undefined ? "" : JSON.stringify(govde)); }, gec);
+  if (yol === "/v1/portfoy") return yanit(200, PORTFOY);
+  if (yol === "/v1/portfoy/tahmin") return yanit(200, PT);
+  if (yol === "/v1/portfoy/dsg") return yanit(200, DSG);
+  if (yol === "/v1/plants") return yanit(200, PLANTS);
+  if (yol === "/v1/oturum/yenile") return yanit(200, { token: "x." + Buffer.from('{"role":"admin"}').toString("base64url") + ".y", role: "admin", firma: "Deneme Lab", email: "deneme@example.com" });
+  if (yol === "/v1/api-anahtarlari") return yanit(200, { anahtarlar: [], kapsamlar: ["tahmin:oku", "kgup:oku"] });
+  if (yol === "/v1/webhooklar") return yanit(200, { webhooklar: [] });
+  if (yol === "/v1/paylasimlar") return yanit(200, { verilenler: [], alinanlar: [], izin_secenekleri: [{ deger: "tahmin:oku", etiket: "Tahmin okuma" }] });
+  if (yol === "/v1/plants-arsiv") return yanit(200, { santraller: [] });
+  if (yol === "/v1/takim") return yanit(200, { uyeler: [{ id: "u1", email: "deneme@example.com", rol: "admin", aktif: true, iki_adim: false, son_giris: null, olusturma: null }], roller: ["admin", "viewer"] });
+  if (yol === "/v1/iki-adim") return yanit(200, { aktif: false, kalan_kurtarma: 0 });
+  if (yol === "/v1/vitrin/basvurular") return yanit(200, { basvurular: [] });
+  if (yol === "/v1/kullanicilar") return yanit(200, []);
+  if (yol in VERI) return yanit(200, VERI[yol]);
+  if (/^\/v1\/plants\/[^/]+\//.test(yol)) {
+    if (uc === "forecast") return yanit(200, forecast(Math.min(384, Number(url.searchParams.get("hours") ?? 384))));
+    if (uc === "skill") return yanit(200, karne(url.searchParams.get("bucket") ?? "0-24", Number(url.searchParams.get("gun") ?? 60)));
+    if (uc === "damga") { if (req.headers["if-none-match"] === '"d1"') return yanit(304, undefined); return yanit(200, { son_scada: "2026-10-22T20:00:00Z", son_kosu: "2026-10-24T03:12:00Z", son_alarm: null, acik_alarm: 0, son_skill: GUN, son_kalibrasyon: "2026-10-01" }, { etag: '"d1"' }); }
+    if (uc in VERI) return yanit(200, VERI[uc]);
+  }
+  return yanit(404, { detail: "yok" });
+}).listen(PORT, "127.0.0.1", () => console.log("sahte panel api", PORT, "çarpan", CARPAN));

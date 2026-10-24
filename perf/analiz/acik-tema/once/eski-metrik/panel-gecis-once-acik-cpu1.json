@@ -1,0 +1,565 @@
+{
+  "etiket": "once",
+  "ayar": {
+    "TEMA": "acik",
+    "CPU": "1",
+    "AG": "hizli",
+    "TEKRAR": 3,
+    "base": "http://localhost:4274",
+    "API": "http://127.0.0.1:4807"
+  },
+  "soguk": {
+    "Portföy": {
+      "vurgu": 29,
+      "ilkIcerik": 30,
+      "tam": 30,
+      "h1": 50,
+      "tuval": 0,
+      "cls": 0,
+      "istek": 4
+    },
+    "Veri yükleme": {
+      "vurgu": 5,
+      "ilkIcerik": 6,
+      "h1": 15,
+      "tam": 15,
+      "tuval": 0,
+      "cls": 0.0609,
+      "istek": 5
+    },
+    "Kalibrasyon": {
+      "vurgu": 2,
+      "ilkIcerik": 3,
+      "tam": 3,
+      "h1": 640,
+      "tuval": 2,
+      "cls": 0,
+      "istek": 5
+    },
+    "Tahminler": {
+      "vurgu": 3,
+      "ilkIcerik": 3,
+      "tam": 3,
+      "h1": 327,
+      "tuval": 1,
+      "cls": 0,
+      "istek": 2
+    },
+    "Doğruluk": {
+      "vurgu": 31,
+      "ilkIcerik": 31,
+      "tam": 31,
+      "h1": 985,
+      "tuval": 2,
+      "cls": 0,
+      "istek": 8
+    },
+    "Aylık beklenti": {
+      "vurgu": 23,
+      "ilkIcerik": 23,
+      "tam": 24,
+      "h1": 864,
+      "tuval": 1,
+      "cls": 0,
+      "istek": 2
+    },
+    "Raporlar": {
+      "vurgu": 3,
+      "ilkIcerik": 4,
+      "tam": 4,
+      "h1": 11,
+      "tuval": 0,
+      "cls": 0.0092,
+      "istek": 0
+    },
+    "Hakkında": {
+      "vurgu": 2,
+      "ilkIcerik": 2,
+      "tam": 2,
+      "h1": 8,
+      "tuval": 0,
+      "cls": 0,
+      "istek": 1
+    }
+  },
+  "sicak": {
+    "Portföy": {
+      "vurgu": 3,
+      "h1": 35,
+      "ilkIcerik": 3,
+      "tam": 3,
+      "tuval": 0,
+      "cls": 0.0003,
+      "istek": 0,
+      "olcumler": [
+        {
+          "vurgu": 19,
+          "ilkIcerik": 19,
+          "tam": 19,
+          "h1": 48,
+          "tuval": 0,
+          "cls": 0.0003,
+          "istek": 0
+        },
+        {
+          "vurgu": 3,
+          "ilkIcerik": 3,
+          "tam": 3,
+          "h1": 24,
+          "tuval": 0,
+          "cls": 0.0003,
+          "istek": 0
+        },
+        {
+          "vurgu": 3,
+          "ilkIcerik": 3,
+          "tam": 3,
+          "h1": 35,
+          "tuval": 0,
+          "cls": 0.0003,
+          "istek": 0
+        }
+      ]
+    },
+    "Santralim": {
+      "vurgu": 3,
+      "h1": 49,
+      "ilkIcerik": 4,
+      "tam": 4,
+      "tuval": 1,
+      "cls": 0,
+      "istek": 0,
+      "olcumler": [
+        {
+          "vurgu": 3,
+          "ilkIcerik": 3,
+          "tam": 3,
+          "h1": 41,
+          "tuval": 1,
+          "cls": 0,
+          "istek": 0
+        },
+        {
+          "vurgu": 3,
+          "ilkIcerik": 4,
+          "tam": 4,
+          "h1": 49,
+          "tuval": 1,
+          "cls": 0,
+          "istek": 0
+        },
+        {
+          "vurgu": 36,
+          "ilkIcerik": 36,
+          "tam": 36,
+          "h1": 64,
+          "tuval": 1,
+          "cls": 0,
+          "istek": 0
+        }
+      ]
+    },
+    "Veri yükleme": {
+      "vurgu": 31,
+      "h1": 39,
+      "ilkIcerik": 31,
+      "tam": 32,
+      "tuval": 0,
+      "cls": 0,
+      "istek": 0,
+      "olcumler": [
+        {
+          "vurgu": 3,
+          "ilkIcerik": 3,
+          "tam": 4,
+          "h1": 12,
+          "tuval": 0,
+          "cls": 0,
+          "istek": 0
+        },
+        {
+          "vurgu": 44,
+          "ilkIcerik": 44,
+          "tam": 44,
+          "h1": 55,
+          "tuval": 0,
+          "cls": 0,
+          "istek": 0
+        },
+        {
+          "vurgu": 31,
+          "ilkIcerik": 31,
+          "tam": 32,
+          "h1": 39,
+          "tuval": 0,
+          "cls": 0.0678,
+          "istek": 0
+        }
+      ]
+    },
+    "Kalibrasyon": {
+      "vurgu": 22,
+      "h1": 49,
+      "ilkIcerik": 22,
+      "tam": 22,
+      "tuval": 2,
+      "cls": 0,
+      "istek": 0,
+      "olcumler": [
+        {
+          "vurgu": 43,
+          "ilkIcerik": 43,
+          "tam": 43,
+          "h1": 60,
+          "tuval": 2,
+          "cls": 0,
+          "istek": 0
+        },
+        {
+          "vurgu": 22,
+          "ilkIcerik": 22,
+          "tam": 22,
+          "h1": 49,
+          "tuval": 2,
+          "cls": 0,
+          "istek": 0
+        },
+        {
+          "vurgu": 5,
+          "ilkIcerik": 5,
+          "tam": 6,
+          "h1": 32,
+          "tuval": 2,
+          "cls": 0,
+          "istek": 0
+        }
+      ]
+    },
+    "Tahminler": {
+      "vurgu": 3,
+      "h1": 38,
+      "ilkIcerik": 3,
+      "tam": 3,
+      "tuval": 1,
+      "cls": 0,
+      "istek": 0,
+      "olcumler": [
+        {
+          "vurgu": 20,
+          "ilkIcerik": 20,
+          "tam": 21,
+          "h1": 46,
+          "tuval": 1,
+          "cls": 0,
+          "istek": 0
+        },
+        {
+          "vurgu": 3,
+          "ilkIcerik": 3,
+          "tam": 3,
+          "h1": 16,
+          "tuval": 1,
+          "cls": 0,
+          "istek": 0
+        },
+        {
+          "vurgu": 2,
+          "ilkIcerik": 2,
+          "tam": 2,
+          "h1": 38,
+          "tuval": 1,
+          "cls": 0,
+          "istek": 0
+        }
+      ]
+    },
+    "Doğruluk": {
+      "vurgu": 3,
+      "h1": 15,
+      "ilkIcerik": 3,
+      "tam": 3,
+      "tuval": 2,
+      "cls": 0,
+      "istek": 0,
+      "olcumler": [
+        {
+          "vurgu": 3,
+          "ilkIcerik": 3,
+          "tam": 3,
+          "h1": 24,
+          "tuval": 2,
+          "cls": 0,
+          "istek": 0
+        },
+        {
+          "vurgu": 2,
+          "ilkIcerik": 2,
+          "tam": 2,
+          "h1": 11,
+          "tuval": 2,
+          "cls": 0,
+          "istek": 0
+        },
+        {
+          "vurgu": 3,
+          "ilkIcerik": 3,
+          "tam": 3,
+          "h1": 15,
+          "tuval": 2,
+          "cls": 0,
+          "istek": 0
+        }
+      ]
+    },
+    "Aylık beklenti": {
+      "vurgu": 3,
+      "h1": 16,
+      "ilkIcerik": 3,
+      "tam": 3,
+      "tuval": 1,
+      "cls": 0,
+      "istek": 0,
+      "olcumler": [
+        {
+          "vurgu": 3,
+          "ilkIcerik": 3,
+          "tam": 3,
+          "h1": 16,
+          "tuval": 1,
+          "cls": 0,
+          "istek": 0
+        },
+        {
+          "vurgu": 2,
+          "ilkIcerik": 2,
+          "tam": 2,
+          "h1": 12,
+          "tuval": 1,
+          "cls": 0,
+          "istek": 0
+        },
+        {
+          "vurgu": 4,
+          "ilkIcerik": 4,
+          "tam": 4,
+          "h1": 20,
+          "tuval": 1,
+          "cls": 0,
+          "istek": 0
+        }
+      ]
+    },
+    "Raporlar": {
+      "vurgu": 4,
+      "h1": 11,
+      "ilkIcerik": 4,
+      "tam": 5,
+      "tuval": 0,
+      "cls": 0,
+      "istek": 0,
+      "olcumler": [
+        {
+          "vurgu": 2,
+          "ilkIcerik": 2,
+          "tam": 2,
+          "h1": 8,
+          "tuval": 0,
+          "cls": 0,
+          "istek": 0
+        },
+        {
+          "vurgu": 4,
+          "ilkIcerik": 4,
+          "tam": 5,
+          "h1": 11,
+          "tuval": 0,
+          "cls": 0.0092,
+          "istek": 0
+        },
+        {
+          "vurgu": 24,
+          "ilkIcerik": 25,
+          "tam": 25,
+          "h1": 35,
+          "tuval": 0,
+          "cls": 0,
+          "istek": 0
+        }
+      ]
+    },
+    "Hakkında": {
+      "vurgu": 9,
+      "h1": 19,
+      "ilkIcerik": 9,
+      "tam": 10,
+      "tuval": 0,
+      "cls": 0,
+      "istek": 0,
+      "olcumler": [
+        {
+          "vurgu": 9,
+          "ilkIcerik": 9,
+          "tam": 10,
+          "h1": 19,
+          "tuval": 0,
+          "cls": 0,
+          "istek": 0
+        },
+        {
+          "vurgu": 39,
+          "ilkIcerik": 39,
+          "tam": 40,
+          "h1": 57,
+          "tuval": 0,
+          "cls": 0,
+          "istek": 0
+        },
+        {
+          "vurgu": 2,
+          "ilkIcerik": 2,
+          "tam": 2,
+          "h1": 11,
+          "tuval": 0,
+          "cls": 0,
+          "istek": 0
+        }
+      ]
+    }
+  },
+  "dolmus": {
+    "Portföy": {
+      "vurgu": 18,
+      "ilkIcerik": 18,
+      "tam": 18,
+      "h1": 44,
+      "tuval": 0,
+      "cls": 0,
+      "istek": 11
+    },
+    "Santralim": {
+      "vurgu": 2,
+      "ilkIcerik": 2,
+      "tam": 2,
+      "h1": 281,
+      "tuval": 1,
+      "cls": 0.0865,
+      "istek": 11
+    },
+    "Veri yükleme": {
+      "vurgu": 2,
+      "ilkIcerik": 2,
+      "tam": 3,
+      "h1": 11,
+      "tuval": 0,
+      "cls": 0.0678,
+      "istek": 2
+    },
+    "Kalibrasyon": {
+      "vurgu": 24,
+      "ilkIcerik": 24,
+      "tam": 24,
+      "h1": 644,
+      "tuval": 2,
+      "cls": 0,
+      "istek": 5
+    },
+    "Tahminler": {
+      "vurgu": 21,
+      "ilkIcerik": 21,
+      "tam": 22,
+      "h1": 425,
+      "tuval": 1,
+      "cls": 0,
+      "istek": 5
+    },
+    "Doğruluk": {
+      "vurgu": 4,
+      "ilkIcerik": 4,
+      "tam": 4,
+      "h1": 926,
+      "tuval": 2,
+      "cls": 0,
+      "istek": 8
+    },
+    "Aylık beklenti": {
+      "vurgu": 1,
+      "ilkIcerik": 2,
+      "tam": 2,
+      "h1": 815,
+      "tuval": 1,
+      "cls": 0,
+      "istek": 3
+    },
+    "Raporlar": {
+      "vurgu": 2,
+      "ilkIcerik": 2,
+      "tam": 2,
+      "h1": 6,
+      "tuval": 0,
+      "cls": 0.0092,
+      "istek": 1
+    },
+    "Hakkında": {
+      "vurgu": 4,
+      "ilkIcerik": 4,
+      "h1": 13,
+      "tam": 179,
+      "tuval": 0,
+      "cls": 0,
+      "istek": 1
+    }
+  },
+  "geriDonus": [
+    {
+      "akis": "Doğruluk → Tahminler → Doğruluk",
+      "vurgu": 23,
+      "ilkIcerik": 23,
+      "tam": 23,
+      "h1": 42,
+      "tuval": 2,
+      "cls": 0
+    },
+    {
+      "akis": "Kalibrasyon → Santralim → Kalibrasyon",
+      "vurgu": 21,
+      "h1": 29,
+      "ilkIcerik": 30,
+      "tam": 30,
+      "tuval": 2,
+      "cls": 0
+    },
+    {
+      "akis": "Aylık beklenti → Raporlar → Aylık beklenti",
+      "vurgu": 2,
+      "ilkIcerik": 2,
+      "tam": 2,
+      "h1": 12,
+      "tuval": 1,
+      "cls": 0
+    },
+    {
+      "akis": "Portföy → Hakkında → Portföy",
+      "vurgu": 2,
+      "ilkIcerik": 2,
+      "tam": 2,
+      "h1": 18,
+      "tuval": 0,
+      "cls": 0.0003
+    }
+  ],
+  "hizli": [
+    {
+      "sureMs": 14961,
+      "heapMB": 15
+    },
+    {
+      "sureMs": 2997,
+      "heapMB": 18
+    },
+    {
+      "sureMs": 3015,
+      "heapMB": 18
+    }
+  ],
+  "hatalar": []
+}

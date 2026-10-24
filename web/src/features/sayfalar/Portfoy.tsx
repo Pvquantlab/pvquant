@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, rolum, bellektenOku } from "../../api/client";
 import type { PaylasimListesi, PaylasilanVeri, TakimUyesi, Portfoy as PortfoyT, PortfoyDsg, PortfoyTahmin, ApiAnahtar, Webhook } from "../../api/types";
-import { Kart, Kpi, Sayfa, sayiTr, gucTr, enerjiTr, SayfaIskeleti } from "./parcalar";
+import { Kart, Kpi, Sayfa, sayiTr, gucTr, enerjiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
 import { Meta } from "../../lib/Meta";
 
 /** 23.10 sekizinci tur — «76,3 MWh» gibi birimli dizgiyi sayı + soluk birim olarak basar; dizgi aynen (enerjiTr). */
@@ -229,11 +229,6 @@ function hatirlayarak<T>(yol: string, fn: () => Promise<T>): Promise<T> {
   // işleyiciler effect'te (bir mikro görev sonra) bağlanır; atılan render'da hiç bağlanmaz → «işlenmemiş ret» olmasın
   soz.catch(() => {});
   return soz;
-}
-
-/** 24.10 — kart gövdesi için boyutlu, hareketsiz yer tutucu (iskelet dili): içerik gelince yükseklik korunur, kayma olmaz. */
-function YerTutucu({ yukseklik }: { yukseklik: number }) {
-  return <div className="iskelet-alan" style={{ minHeight: yukseklik }} role="status" aria-live="polite" aria-label="Yükleniyor"><span className="gorsel-gizli">Yükleniyor…</span></div>;
 }
 
 /** v2.328 — vitrin "Karneni başlat" başvuruları. Yalnız yönetici görür; e-posta

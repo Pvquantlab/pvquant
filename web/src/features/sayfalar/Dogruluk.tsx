@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import type { EChartsOption } from "echarts";
-import { api } from "../../api/client";
+import { api, bellekten, ayniysaEskisi } from "../../api/client";
 import type { Karne, HataMatrisi, HataDagilimi, KonformalAyar, Backtest, Dengesizlik, Guvenilirlik } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
-import { Kpi, Kart, Sayfa, sayiTr, SayfaIskeleti } from "./parcalar";
+import { Kpi, Kart, Sayfa, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
 import { Meta } from "../../lib/Meta";
 
 const AY = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran",
@@ -22,42 +22,38 @@ const donemYaz = (a: string | null, b: string | null) => {
 };
 
 export function Dogruluk({ plantId }: { plantId: string }) {
-  const [k, setK] = useState<Karne | null>(null);
-  const [hm, setHm] = useState<HataMatrisi | null>(null);
-  const [hd, setHd] = useState<HataDagilimi | null>(null);
-  // v2.230: donem segmenti (mockup H'den; API gun'u zaten destekliyordu).
-  // Yalniz KARNEYI (KPI'lar + WMAPE panelleri) surer — matris/dagilim kendi
-  // pencerelerini ciplerinde soyler. Gecis sirasinda eski veri tutulur
-  // (k null'a dusmez), sayfa titremez.
+  // 24.10 açık tema geçiş turu — YEDİ İSTEK BAĞIMSIZ, BAYAT-ÖNCE (Portföy kalıbı, v2.476). v2.326'nın tek kapısı sayfayı en
+  // yavaş isteğe (geriye dönük sınav, güvenilirlik) bekletiyor; her dönüşte 60 sn dolunca iskelet geliyordu. Şimdi: karne
+  // (iki kova) gelir gelmez başlık + KPI'lar; her kart kendi yanıtını boyutlu yer tutucuyla bekler (kayma yok); bellekte son
+  // karne varsa sayfa onunla ANINDA çizilir, çip «güncelleniyor» der. undefined = henüz bilinmiyor, null = yok/alınamadı.
+  // Değerler ve hesaplar aynı; yalnız bekleme biçimi değişti.
   const [donem, setDonem] = useState<30 | 60 | 90>(60);
+  type Durum = "bekliyor" | "tamam" | "hata";
+  const [k, setK] = useState<Karne | null | undefined>(() => bellekten.karne(plantId, 60));
+  const [kD, setKD] = useState<Durum>("bekliyor");
+  const [hm, setHm] = useState<HataMatrisi | null | undefined>(undefined);
+  const [hd, setHd] = useState<HataDagilimi | null | undefined>(undefined);
   const { n, oku } = useTema();
-  const [kf, setKf] = useState<KonformalAyar>({ aktif: false });   // v2.252
-  const [bt, setBt] = useState<Backtest | null>(null);   // v2.253
-  const [dz, setDz] = useState<Dengesizlik | null>(null);   // v2.259
-  const [gv, setGv] = useState<Guvenilirlik | null>(null);   // v2.271
-  // v2.326: TEK KAPI (Portföy kalıbı) — yedi kaynak paralel gider, hepsi
-  // yerleşince sayfa bütün belirir. Dönem segmenti kapıya GİRMEZ: yalnız
-  // karneyi tazeler, eski veri tutulur, sayfa titremez (v2.230 kararı korunur).
-  const [hazir, setHazir] = useState(false);
+  const [kf, setKf] = useState<KonformalAyar | undefined>(undefined);   // v2.252
+  const [bt, setBt] = useState<Backtest | null | undefined>(undefined);   // v2.253
+  const [dz, setDz] = useState<Dengesizlik | null | undefined>(undefined);   // v2.259
+  const [gv, setGv] = useState<Guvenilirlik | null | undefined>(undefined);   // v2.271
+  // Dönem segmenti yalnız karneyi tazeler (v2.230 kararı korunur); santral değişince hepsi yeniden kurulur.
   useEffect(() => {
     let acik = true;
-    setHazir(false);
-    Promise.allSettled([api.karne(plantId, donem), api.konformal(plantId),
-      api.dengesizlik(plantId), api.backtest(plantId), api.guvenilirlik(plantId),
-      api.hataMatrisi(plantId), api.hataDagilimi(plantId)])
-      .then(([rk, rkf, rdz, rbt, rgv, rhm, rhd]) => {
-        if (!acik) return;
-        if (rk.status === "fulfilled") setK(rk.value);
-        if (rkf.status === "fulfilled") setKf(rkf.value);
-        if (rdz.status === "fulfilled") setDz(rdz.value);
-        if (rbt.status === "fulfilled") setBt(rbt.value);
-        if (rgv.status === "fulfilled") setGv(rgv.value);
-        if (rhm.status === "fulfilled") setHm(rhm.value);
-        if (rhd.status === "fulfilled") setHd(rhd.value);
-        setHazir(true);
-      });
+    setK(bellekten.karne(plantId, donem)); setKD("bekliyor");
+    setHm(undefined); setHd(undefined); setKf(undefined); setBt(undefined); setDz(undefined); setGv(undefined);
+    // Denendi, alınmadı (24.10, perf/analiz/acik-tema/deney): yanıt yazımlarını startTransition'a almak 4× CPU'da «tam»
+    // süresini uzattı (sıcak 211 → 471 ms); düz setState kaldı.
+    api.karne(plantId, donem).then((v) => { if (acik) { setK((e) => ayniysaEskisi(e, v)); setKD("tamam"); } }, () => { if (acik) { setK((e) => e ?? null); setKD("hata"); } });
+    api.konformal(plantId).then((v) => { if (acik) setKf(v); }, () => { if (acik) setKf({ aktif: false }); });
+    api.dengesizlik(plantId).then((v) => { if (acik) setDz(v); }, () => { if (acik) setDz(null); });
+    api.backtest(plantId).then((v) => { if (acik) setBt(v); }, () => { if (acik) setBt(null); });
+    api.guvenilirlik(plantId).then((v) => { if (acik) setGv(v); }, () => { if (acik) setGv(null); });
+    api.hataMatrisi(plantId).then((v) => { if (acik) setHm(v); }, () => { if (acik) setHm(null); });
+    api.hataDagilimi(plantId).then((v) => { if (acik) setHd(v); }, () => { if (acik) setHd(null); });
     return () => { acik = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- donem bilerek dışarıda: kapı yalnız santral değişince kurulur
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- donem bilerek dışarıda: istekler yalnız santral değişince kurulur
   }, [plantId]);
   const [ilkDonem, setIlkDonem] = useState(true);
   useEffect(() => {
@@ -171,6 +167,10 @@ export function Dogruluk({ plantId }: { plantId: string }) {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [k, n]);
+  // 24.10: iki ufuk seçeneği MEMO — önceden wmapePanel("0-24") her render'da yeni nesne üretiyor, EChart her state
+  // değişiminde (dönem, kart verisi gelişi) iki grafiği notMerge ile baştan kuruyordu. Seçenek yalnız karne/tema değişince değişir.
+  const wmape024 = useMemo(() => wmapePanel("0-24"), [wmapePanel]);
+  const wmape2472 = useMemo(() => wmapePanel("24-72"), [wmapePanel]);
 
   const matrisOption = useMemo<EChartsOption>(() => {
     const kenar = oku("--kenar"), soluk = oku("--soluk"), mono = oku("--mono");
@@ -377,6 +377,8 @@ export function Dogruluk({ plantId }: { plantId: string }) {
     return son - once;
   }, [k]);
 
+  const hazir = k !== undefined || kD !== "bekliyor";
+  const tazeleniyor = hazir && kD === "bekliyor";   // bayat karne ekranda, taze yanıt yolda
   if (!hazir) return <SayfaIskeleti kpi={4} kart={2} />;
   if (!k) return <div style={{ color: "var(--soluk)" }}>Doğruluk verisi alınamadı; sayfayı yenileyin.</div>;
 
@@ -423,7 +425,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
               onClick={() => setDonem(g)}>{g}g</button>
           ))}
         </span>
-        <span className="cip">Kapsanan dönem: {donemYaz(donemIlk, donemSon)}</span>
+        <span className="cip"><Meta items={[`Kapsanan dönem: ${donemYaz(donemIlk, donemSon)}`, tazeleniyor && "güncelleniyor", kD === "hata" && "güncellenemedi"]} /></span>
       </>}>
       <div className="ızgara satir-4" style={{ marginBottom: 14 }}>
         {/* v2.311: ?? 0 yokluğu ÖLÇÜME çeviriyordu — eşleşmiş gün yokken kanıt
@@ -448,7 +450,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
              ikinci={hd?.sd != null ? { etiket: "Standart sapma", deger: sayiTr(hd.sd, 2), birim: "MWh" } : undefined}
              alt={hd?.mu != null
                ? "hedef: sıfıra yakın ortalama, dar dağılım"
-               : "yeterli gün birikmedi"} />
+               : hd === undefined ? "hesaplanıyor" : "yeterli gün birikmedi"} />
       </div>
       {/* v2.247 (Dalga 1.2): kapasiteye normalize standart ölçütler — WMAPE'nin
           yanına, yerine değil. Eski kayıtlarda kolon boş → tire + neden. */}
@@ -489,13 +491,13 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           <div>
             <p style={{ fontSize: 14.5, fontWeight: 600, color: "var(--metin)",
                         margin: "0 0 4px" }}>0–24 saat ufku</p>
-            <EChart option={wmapePanel("0-24")} height={240}
+            <EChart option={wmape024} height={240}
               ariaLabel="0–24 saat ufku günlük tahmin hatası (WMAPE), referans tahminle" />
           </div>
           <div>
             <p style={{ fontSize: 14.5, fontWeight: 600, color: "var(--metin)",
                         margin: "0 0 4px" }}>24–72 saat ufku</p>
-            <EChart option={wmapePanel("24-72")} height={240}
+            <EChart option={wmape2472} height={240}
               ariaLabel="24–72 saat ufku günlük tahmin hatası (WMAPE), referans tahminle" />
           </div>
         </div>
@@ -516,7 +518,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           <span className="cip">{ol?.gun_sayisi ? <Meta items={[`${sayiTr(ol.gun_sayisi)} gün`, "0–24 saat"]} /> : "henüz birikmedi"}</span>
           {/* v2.252: bant kalibrasyonu durumu — q̂ negatifse bant daraltılıyor, pozitifse genişletiliyor */}
           <span className="cip" title="Yayımlanan P10–P90 aralığı, son dönemin sonuçlarından öğrenilen düzeltmeyle ayarlanır">
-            {kf.aktif
+            {kf === undefined ? "aralık ayarı: hesaplanıyor" : kf.aktif
               ? kf.kova_ort_q_kw && Object.keys(kf.kova_ort_q_kw).length > 0
                 /* v2.296: q̂ artık ufka göre — kova başına yön ve büyüklük tek çipte */
                 ? `aralık ayarı ufka göre: ${Object.entries(kf.kova_ort_q_kw)
@@ -594,6 +596,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           </div>
         )}
         {/* v2.271 (Dalga 1 tamamlayıcısı): kantil güvenilirliği + PIT + keskinlik — ham ↔ kalibre */}
+        {gv === undefined && <div style={{ marginTop: 14 }}><YerTutucu yukseklik={1060} /></div>}
         {gv && (gv.durum === "ok" && gvOption && pitOption ? (
           <div style={{ marginTop: 14 }}>
             {/* 24.10: beş çip → üç ölçüt grubu (örneklem · aralık ayarının etkisi · seviyeler); sayılar ve kaynak aynı */}
@@ -643,10 +646,10 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           Fiyat kaynağı (EPİAŞ / senaryo) ve segment (dengesizliği kim taşır) açıkça söylenir. */}
       <Kart baslik="Dengesizlik maliyeti — tahmin hatasının TL karşılığı"
         sag={<>
-          <span className="cip">{dz && dz.gun_sayisi ? <Meta items={[`${sayiTr(dz.gun_sayisi)} gün`, "KGÜP: bir gün önce 15:30'dan önceki tahmin (P50)"]} /> : "henüz karşılaştırılan gün yok"}</span>
+          <span className="cip">{dz === undefined ? "hesaplanıyor" : dz && dz.gun_sayisi ? <Meta items={[`${sayiTr(dz.gun_sayisi)} gün`, "KGÜP: bir gün önce 15:30'dan önceki tahmin (P50)"]} /> : "henüz karşılaştırılan gün yok"}</span>
           {dz && <span className="cip" title={dz.not}>{dz.fiyat.senaryo_saat > 0 ? "fiyat: senaryo (piyasa kimliği tanımlı değil)" : "fiyat: piyasa (EPİAŞ)"}</span>}
         </>}>
-        {dz && dz.toplam ? (
+        {dz === undefined ? <YerTutucu yukseklik={411} /> : dz && dz.toplam ? (
           <>
             <div className="ızgara satir-3" style={{ gap: 12 }}>
               <div className="kpi"><div className="kpi-et">PVQuant programıyla maliyet</div>
@@ -700,7 +703,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
             : hm && hm.gunler.length === 1
               ? `tek gün, ${donemYaz(hm.gunler[0], hm.gunler[0]).replace(/^\d+ – /, "")}`
               : "son 30 gün", "0–24 saat", hm?.tz ?? "—"]} /></span>}>
-        {hm && hm.gunler.length > 0 ? (
+        {hm === undefined ? <YerTutucu yukseklik={433} /> : hm && hm.gunler.length > 0 ? (
           <>
             <div className="grafik-kaydir"><div>
               <EChart option={matrisOption} height={360}
@@ -733,7 +736,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
             `std. sapma ${hd?.sd != null ? `${sayiTr(hd.sd, 2)} MWh` : "—"}`,
             hd?.p10 != null && hd?.p90 != null && `P10–P90: ${sayiTr(hd.p10, 2)} – ${sayiTr(hd.p90, 2)} MWh`]} />
         </span>}>
-        {hd && hd.kutular.length > 0 ? (
+        {hd === undefined ? <YerTutucu yukseklik={353} /> : hd && hd.kutular.length > 0 ? (
           <>
             <EChart option={dagOption} height={280}
               ariaLabel="Günlük tahmin sapması histogramı, yüzdelik çizgileriyle" />

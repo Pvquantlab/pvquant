@@ -135,3 +135,13 @@ Her satır: kalıp → dosya → kritik kural. Yeni mühürde yeni kalıp çıka
   fonksiyonunu zamanla (`docker compose exec api python -`), sonra sahte API'ye taşı (`betikler/sahte-api.mjs`) ve gerçek
   tıklamayla ölç (`betikler/portfoy-olcum.mjs`); Chrome eklentisi/canlı giriş yoksa tek dürüst yol bu. (7) «Henüz tahmin
   yok» ile sunucu hatası aynı metinse arayüz yalan söyler — hata ayrı dal.
+- **Açık tema geçiş turu (24.10.2026, sekizinci tur):** `docs/PANEL-TUR8-2026-10-24.md`. Dersler: (1) «Tema yavaş»
+  şikâyeti veri kapısıydı — oto kipte açık yüzlü sayfalar (Doğruluk/Kalibrasyon/Aylık) tek kapıda bekliyordu; önce tema
+  CSS'i değil bekleme biçimi ölçülür (`betikler/panel-gecis-olcum.mjs` + `sahte-api-panel.mjs`, gecikmeler VARSAYIM).
+  (2) Portföy kalıbı artık ortak: `bellekten.*` (client) + `YerTutucu` (parcalar) + «hesaplanıyor» (yolda) / «alınamadı»
+  (başarısız) ayrımı; yeni veri sayfası bu kalıpla açılır, allSettled kapısı test tarafından yasak (`test/panel/gecis.test.ts`).
+  (3) Tema gözlemcisi yalnız `data-tema` — `.tema-gecisi` sınıfı tetik değildir. (4) Grafik girdileri (`forecast/actual/plant/
+  features`) her zaman hafızalı/sabit referans; inline map yeni option kurdurur. (5) Taze yanıt bayatla aynıysa eski
+  referans korunur (`ayniysaEskisi`) — grafik ikinci kez çizilmez. (6) Ölçüm tuzağı: `startTransition` eski sayfayı ekranda
+  tutar; «içerik» ölçütü yeni sayfanın h1'i görünmeden sayılmaz. (7) Yer tutucu yüksekliği oturmuş kartla eşlenir
+  (`perf/analiz/acik-tema/kart-yukseklik.mjs`); 4× CPU'da kademeli yerleşme «tam» süresini uzatabilir, raporda saklanmaz.
