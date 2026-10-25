@@ -58,6 +58,13 @@ export interface IsKaydi { id: string; kod: string; is: string; tenant_id: strin
 export interface SantralEnvanter { id: string; ad: string; kapasite_kwp: number; tz: string; olusturma: string; tenant_id: string; kiraci: string; kiraci_durum: string;
   son_scada: string | null; son_kosu: string | null; son_hata: string | null; sorunlar: string[] }
 
+// 25.10 Faz 4 — kullanım: sayaç türleri (dis_api, webhook, webhook_hata) + türetilmiş sayımlar (rapor, kosu, scada_saat, yukleme)
+export interface KullanimToplam { dis_api: number; webhook: number; webhook_hata: number; rapor: number; kosu: number; scada_saat: number; yukleme: number }
+export interface KullanimKiraci { id: string; ad: string; plan: string; durum: string; etkin_anahtar: number; etkin_webhook: number; son_api_kullanim: string | null;
+  bu_ay: KullanimToplam; onceki_ay: KullanimToplam }
+export interface KullanimOzet { ay: string; onceki_ay: string; turler: string[]; kiracilar: KullanimKiraci[] }
+export interface KullanimGunler { ay: string; tenant_id: string; ad: string | null; gunler: ({ gun: string } & KullanimToplam)[] }
+
 /** Sorgu dizesi: boş/undefined alanlar atlanır. */
 const sorgu = (p: Record<string, unknown>): string => {
   const q = Object.entries(p).filter(([, v]) => v !== undefined && v !== "" && v !== false).map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join("&");
@@ -107,6 +114,9 @@ export const yonetim = {
     istek(`/isler${sorgu(p)}`),
   santraller: (sorunlu = false): Promise<{ santraller: SantralEnvanter[]; esik: { scada_saat: number; kosu_saat: number }; toplam: number }> =>
     istek(`/santraller${sorgu({ sorunlu })}`),
+  // 25.10 Faz 4 — kullanım (salt okunur); ay 'YYYY-MM', boşsa bu ay
+  kullanim: (ay?: string): Promise<KullanimOzet> => istek(`/kullanim${sorgu({ ay })}`),
+  kullanimGunler: (tenant_id: string, ay?: string): Promise<KullanimGunler> => istek(`/kullanim${sorgu({ tenant_id, ay })}`),
 };
 
 /** Göreli yaş: «3 dk önce», «5 saat önce», «2 gün önce»; null «—». Hüküm değil, okunurluk. */

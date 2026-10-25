@@ -1,8 +1,8 @@
 """v2.264 — Dalga 5.16: dışa dönük API anahtarları (DB destekli).
 
 Anahtar biçimi `pvq_<prefix8>_<secret>`; DB'de yalnız sha256(secret) (api_keys.key_hash) + prefix + kapsamlar.
-Doğrulama sabit-zamanlı; hata mesajları ayrıntısız (hangi parça yanlış söylenmez). Oran sınırı süreç içi
-token bucket (anahtar başına rpm). Anahtar arama kiracıyı ÖNCE bilemez → sistem_baglami: bu, db.py'deki
+Doğrulama sabit-zamanlı; hata mesajları ayrıntısız (hangi parça yanlış söylenmez). Oran sınırı 25.10 Faz 4'ten beri
+PAYLAŞIMLI 60 sn penceresi (hiz_pencere; süreç içi kova yalnız yedek/test yolu) + günlük dis_api sayacı (kullanim_sayac). Anahtar arama kiracıyı ÖNCE bilemez → sistem_baglami: bu, db.py'deki
 "yalnız auth_service" kuralının v2.264 istisnasıdır (API-anahtar kimlik doğrulaması da bir auth kapısıdır);
 yalnız prefix ile tek satır okunur, başka hiçbir veri okunmaz.
 """
@@ -96,6 +96,27 @@ def _kullanim_isle(anahtar_id) -> None:
         pass   # kullanım damgası kritik değil; kapı yanıtı gecikmesin
 
 
+def _kova_izin(prefix: str, rpm: int) -> bool:
+    """Süreç içi token bucket (v2.264 davranışı) — test yolu ve paylaşımlı pencerenin yedeği."""
+    kova = _kovalar.get(prefix)
+    if kova is None or kova.kapasite != rpm:
+        kova = _kovalar[prefix] = TokenBucket(kapasite=rpm, doldurma_per_sn=rpm / 60.0)
+    return kova.izin(prefix)
+
+
+def _paylasimli_izin(prefix: str, rpm: int, tenant_id) -> bool:
+    """25.10 Faz 4: 60 sn'lik paylaşımlı pencere (hiz_pencere) — anahtar başına rpm tüm işçilerde birlikte sayılır.
+    İzin verilen istek günlük dis_api sayacına yazılır (reddedilen yazılmaz). Pencere sayılamazsa (DB) kovaya düşer."""
+    from pvquant.services import kullanim_service
+    n = kullanim_service.pencere_say(f"anahtar:{prefix}")
+    if n == 0:
+        return _kova_izin(prefix, rpm)
+    if n > rpm:
+        return False
+    kullanim_service.say(tenant_id, "dis_api")
+    return True
+
+
 def dogrula(anahtar: str, kapsam: str, *, bul=None, simdi: datetime | None = None) -> dict:
     """PermissionError('gecersiz anahtar' | 'kapsam yetersiz') ya da RuntimeError('oran siniri').
     Döner {"tenant_id", "prefix", "kapsamlar", "id"}."""
@@ -114,10 +135,10 @@ def dogrula(anahtar: str, kapsam: str, *, bul=None, simdi: datetime | None = Non
     if kapsam not in kaps:
         raise PermissionError("kapsam yetersiz")
     rpm = int(k.get("rpm") or 120)
-    kova = _kovalar.get(prefix)
-    if kova is None or kova.kapasite != rpm:
-        kova = _kovalar[prefix] = TokenBucket(kapasite=rpm, doldurma_per_sn=rpm / 60.0)
-    if not kova.izin(prefix):
+    # 25.10 Faz 4: üretimde PAYLAŞIMLI pencere (tüm uvicorn işçileri aynı satırı sayar) + günlük dis_api sayacı;
+    # test/enjekte edilmiş aramada süreç içi kova (DB'siz). DB'ye ulaşılamazsa pencere 0 döner → kovaya düşülür.
+    izin = _paylasimli_izin(prefix, rpm, k["tenant_id"]) if bul is _kayit_bul else _kova_izin(prefix, rpm)
+    if not izin:
         raise RuntimeError("oran siniri")
     if bul is _kayit_bul:
         _kullanim_isle(k["id"])

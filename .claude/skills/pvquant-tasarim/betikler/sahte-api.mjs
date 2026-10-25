@@ -91,6 +91,18 @@ http.createServer((req, res) => {
       { id: "pl-4", ad: "Askıdaki GES", kapasite_kwp: 980, tz: "Europe/Istanbul", olusturma: "2026-08-15T10:00:00Z", tenant_id: "7c1d2e3f-0000-4000-8000-000000000003", kiraci: "Askıdaki Enerji", kiraci_durum: "suspended", son_scada: dkOnce(60 * 24 * 12), son_kosu: dkOnce(60 * 24 * 12), son_hata: null, sorunlar: ["scada_bayat", "kosu_bayat", "kiraci_askida"] }];
     const sorunlu = /sorunlu=true/.test(url.search);
     return yanit(200, { santraller: hepsi.filter((p) => !sorunlu || p.sorunlar.length > 0), esik: { scada_saat: 48, kosu_saat: 30 }, toplam: hepsi.length }); }
+  // ---- 25.10 Faz 4: kullanım (/v1/yonetim/kullanim[?ay][&tenant_id]) — sayaç + türetilmiş sayımlar
+  if (yol === "/v1/yonetim/kullanim") {
+    const ay = url.searchParams.get("ay") || new Date().toISOString().slice(0, 7); const tid = url.searchParams.get("tenant_id");
+    const T = (dis_api, webhook, webhook_hata, rapor, kosu, scada_saat, yukleme) => ({ dis_api, webhook, webhook_hata, rapor, kosu, scada_saat, yukleme });
+    if (tid) { const gunler = []; for (let d = 25; d >= 1; d--) gunler.push({ gun: `${ay}-${String(d).padStart(2, "0")}`, ...T(d % 3 === 0 ? 0 : 40 + d, d % 5 === 0 ? 1 : 0, d === 10 ? 1 : 0, d % 7 === 0 ? 1 : 0, 5, 120, d === 3 ? 1 : 0) });
+      return yanit(200, { ay, tenant_id: tid, ad: KIRACILAR.find((k) => k.id === tid)?.ad ?? "Kiracı", gunler }); }
+    const [oy, om] = ay.split("-").map(Number); const onceki = `${om === 1 ? oy - 1 : oy}-${String(om === 1 ? 12 : om - 1).padStart(2, "0")}`;
+    return yanit(200, { ay, onceki_ay: onceki, turler: ["dis_api", "webhook", "webhook_hata"], kiracilar: [
+      { id: KIRACILAR[1].id, ad: "Deneme Lab", plan: "pilot", durum: "active", etkin_anahtar: 2, etkin_webhook: 1, son_api_kullanim: dkOnce(42), bu_ay: T(1184, 25, 1, 3, 125, 3000, 2), onceki_ay: T(960, 30, 0, 4, 150, 3720, 3) },
+      { id: KIRACILAR[0].id, ad: "Meridyen Enerji", plan: "pilot", durum: "active", etkin_anahtar: 1, etkin_webhook: 0, son_api_kullanim: dkOnce(60 * 30), bu_ay: T(312, 0, 0, 1, 25, 600, 0), onceki_ay: T(280, 0, 0, 2, 31, 744, 1) },
+      { id: KIRACILAR[2].id, ad: "Askıdaki Enerji", plan: "standart", durum: "suspended", etkin_anahtar: 0, etkin_webhook: 0, son_api_kullanim: null, bu_ay: T(0, 0, 0, 0, 0, 0, 0), onceki_ay: T(12, 0, 0, 0, 10, 240, 0) }] });
+  }
   if (yol === "/v1/yonetim/denetim") return yanit(200, { kayitlar: [
       { id: 12, zaman: "2026-10-24T21:53:35Z", kapsam: "platform", aktor_id: "p1", aktor_eposta: "sahip@pvquant.com", tenant_id: null, eylem: "iki_adim_ac", nesne_tur: null, nesne_id: null, ayrinti: {}, ip: "78.177.165.74" },
       { id: 11, zaman: "2026-10-24T21:48:28Z", kapsam: "platform", aktor_id: null, aktor_eposta: "sahip@pvquant.com", tenant_id: null, eylem: "giris", nesne_tur: null, nesne_id: null, ayrinti: {}, ip: "78.177.165.74" },

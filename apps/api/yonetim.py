@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from apps.api.deps import platform_yetkisi
 from apps.api.hiz import limiter
-from pvquant.services import platform_service as ps, denetim_service as dz, basvuru_service, sistem_service as ss
+from pvquant.services import platform_service as ps, denetim_service as dz, basvuru_service, sistem_service as ss, kullanim_service as ks
 
 yonetim = APIRouter(prefix="/v1/yonetim", tags=["Platform yönetimi"])
 
@@ -279,3 +279,13 @@ def isler(saat: int = 48, yalniz_hata: bool = False, job: str | None = None, ten
 @yonetim.get("/santraller")
 def santraller(sorunlu: bool = False, c=Depends(platform_yetkisi())):
     return ss.santraller(c["sub"], sorunlu=sorunlu)
+
+
+# ---------------- kullanım (25.10 Faz 4) ----------------
+@yonetim.get("/kullanim")
+def kullanim(ay: str | None = None, tenant_id: str | None = None, c=Depends(platform_yetkisi())):
+    """Salt okunur: ay 'YYYY-MM' (boşsa bu ay). tenant_id verilirse o kiracının günlük kırılımı, yoksa tüm kiracıların ay özeti."""
+    try:
+        return ks.gunler(c["sub"], tenant_id, ay) if tenant_id else ks.ozet(c["sub"], ay)
+    except ValueError as e:
+        raise _hata(e)

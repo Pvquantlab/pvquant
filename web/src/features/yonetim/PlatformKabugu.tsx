@@ -11,6 +11,7 @@ const IKON: Record<YonetimSayfa, ReactNode> = {
   genel: <svg {...O}><rect x="3" y="3" width="6" height="6" rx="1.5"/><rect x="11" y="3" width="6" height="6" rx="1.5"/><rect x="3" y="11" width="6" height="6" rx="1.5"/><rect x="11" y="11" width="6" height="6" rx="1.5"/></svg>,
   sistem: <svg {...O}><path d="M2.5 10.5h3.2l2.1-5.5 3.4 10 2.1-4.5h4.2"/></svg>,
   musteriler: <svg {...O}><path d="M3 17V7l7-4 7 4v10"/><path d="M8 17v-5h4v5"/></svg>,
+  kullanim: <svg {...O}><path d="M3 16h14"/><path d="M5 13V9"/><path d="M9 13V5"/><path d="M13 13V7"/><path d="M17 13v-3"/></svg>,
   kullanicilar: <svg {...O}><circle cx="8" cy="7" r="3"/><path d="M2.5 17c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><path d="M14 9a2.5 2.5 0 1 0 0-5"/><path d="M15 12c1.8.4 3 1.9 3 4"/></svg>,
   basvurular: <svg {...O}><path d="M3 5h14v10H8l-5 3z"/></svg>,
   denetim: <svg {...O}><path d="M4 4h12v12H4z"/><path d="M7 8h6M7 11h6M7 14h3"/></svg>,

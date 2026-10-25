@@ -75,3 +75,19 @@ test("Faz 3: müşteri tarafı değişmedi — Isler tipi ve gece işleri kartı
   assert.doesNotMatch(kart, /ayrinti/);
   assert.match(kart, /ayrıntı sunucu günlüğünde/);
 });
+
+// ---------------- 25.10 Faz 4: kullanım ----------------
+test("Faz 4: Kullanım sayfası listede, kökte, istemcide; detayda kullanım kartı; müşteri tarafı değişmedi", () => {
+  const liste = oku("features/yonetim/sayfaListesi.ts");
+  assert.match(liste, /\{ id: "kullanim", ad: "Kullanım" \}/);
+  assert.match(oku("features/yonetim/Yonetim.tsx"), /\{sayfa === "kullanim" && <Kullanim \/>\}/);
+  const y = oku("api/yonetim.ts");
+  assert.ok(y.includes("istek(`/kullanim${sorgu({ ay })}`)") && y.includes("istek(`/kullanim${sorgu({ tenant_id, ay })}`)"));
+  const sayfa = oku("features/yonetim/Kullanim.tsx");
+  // altı sütun: sayaç türleri + türetilmiş sayımlar; plan sınırı/limit rozeti YOK (Faz 5)
+  for (const k of ['"dis_api"', '"webhook"', '"rapor"', '"kosu"', '"scada_saat"', '"yukleme"']) assert.ok(sayfa.includes(`k: ${k}`), k);
+  assert.doesNotMatch(sayfa, /asildi|aşıldı|limit_|rozet-limit/);   // limit rozeti/zorlaması yok
+  assert.match(oku("features/yonetim/sayfalar.tsx"), /<KullanimKarti tenantId=\{id\} \/>/);
+  // müşteri istemcisi kullanım ucu bilmez
+  assert.doesNotMatch(oku("api/client.ts"), /\/v1\/yonetim/);
+});

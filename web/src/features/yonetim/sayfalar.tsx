@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { yonetim, zamanTr, type Kiraci, type KiraciDetay, type Kullanici, type Operator, type Basvuru, type DenetimKaydi, type Ben } from "../../api/yonetim";
 import { Kart, Kpi, Sayfa, SayfaIskeleti, sayiTr, gucTr } from "../sayfalar/parcalar";
 import { Meta } from "../../lib/Meta";
+import { KullanimKarti } from "./Kullanim";
 
 /** 24.10 Faz 2 — platform sayfaları. Dil: müşteri panelinin bileşen dili (Kart/Kpi/Sayfa, table.veri.santral, .form-izgara,
  *  rozet, Meta). Sayılar uydurulmaz: her değer uçtan; boş durum .bos-durum; hata metni açık. */
@@ -147,6 +148,7 @@ function MusteriDetay({ id, geri }: { id: string; geri: () => void }) {
         <KullaniciTablosu satirlar={d.kullanicilar.map((u) => ({ ...u, tenant_id: id, firma: d.ad }))} firmaGoster={false}
           islem={(fn, m) => dene(fn, m)} sirGoster={(b, v) => setSir({ baslik: b, deger: v })} />
       </Kart>
+      <KullanimKarti tenantId={id} />
       <Kart baslik="Santraller" alt="Kapasite, saat dilimi, son SCADA verisi, son tahmin koşusu">
         {d.santraller.length === 0 ? <Bos bas="Santral yok." /> : (
           <div className="grafik-kaydir"><table className="veri sayisal santral">

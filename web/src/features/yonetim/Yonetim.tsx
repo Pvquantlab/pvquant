@@ -5,6 +5,7 @@ import { PlatformKabugu } from "./PlatformKabugu";
 import type { YonetimSayfa } from "./sayfaListesi";
 import { GenelBakis, Musteriler, Kullanicilar, Basvurular, Denetim, Operatorler, Hesap } from "./sayfalar";
 import { Sistem } from "./Sistem";
+import { Kullanim } from "./Kullanim";
 
 /** 24.10 Faz 2 — /yonetim kökü: jeton yok → giriş; jeton var ama 2FA kapalı → zorunlu kurulum; sonra kabuk + sayfalar.
  *  Sayfa seçimi müşteri panelindeki gibi durumla (URL /yonetim sabit). Örnek kipte yönetim yüzü yok. */
@@ -35,6 +36,7 @@ export function Yonetim() {
     <PlatformKabugu sayfa={sayfa} setSayfa={setSayfa} ben={ben} onCikis={cikis}>
       {sayfa === "genel" && <GenelBakis git={setSayfa} />}
       {sayfa === "sistem" && <Sistem />}
+      {sayfa === "kullanim" && <Kullanim />}
       {sayfa === "musteriler" && <Musteriler />}
       {sayfa === "kullanicilar" && <Kullanicilar />}
       {sayfa === "basvurular" && <Basvurular />}

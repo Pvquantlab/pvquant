@@ -38,7 +38,8 @@ def nabiz_yaz(bilesen: str = "worker", ayrinti: dict | None = None) -> None:
 
 
 def _yas_dk(zaman, simdi) -> int | None:
-    return None if zaman is None else int((simdi - zaman).total_seconds() // 60)
+    """Negatife düşmez: DB ile uygulama saati birkaç saniye kayarsa «-1 dk» yazmasın."""
+    return None if zaman is None else max(0, int((simdi - zaman).total_seconds() // 60))
 
 
 def ozet(aktor_id: str) -> dict:
@@ -75,7 +76,7 @@ def ozet(aktor_id: str) -> dict:
             return None
         if isinstance(z, str):
             z = dt.datetime.fromisoformat(z)
-        return round((simdi - z).total_seconds() / 3600, 1)
+        return max(0.0, round((simdi - z).total_seconds() / 3600, 1))
 
     def bayat_mi(yas: float | None, esik: int) -> bool:
         return yas is None or yas > esik

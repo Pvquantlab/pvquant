@@ -122,3 +122,19 @@ def test_sistem_uclari_kapsam_ve_suzgec(monkeypatch):
     for yol in ("/v1/yonetim/sistem", "/v1/yonetim/isler", "/v1/yonetim/santraller"):
         assert c.get(yol, headers=_musteri_jeton()).status_code == 403            # müşteri jetonu platform ucunu açamaz
         assert c.get(yol).status_code == 422                                      # başlık yok
+
+
+# ---------------- 25.10 Faz 4: kullanım ucu ----------------
+def test_kullanim_ucu(monkeypatch):
+    from pvquant.services import kullanim_service as ks
+    monkeypatch.setattr(ps, "oturum_durumu", lambda p: {"sv": 0, "aktif": True, "rol": "operator", "email": "o@pvq"})
+    monkeypatch.setattr(au, "oturum_durumu", lambda u: {"sv": 0, "aktif": True, "kiraci_durum": "active"})
+    monkeypatch.setattr(ks, "ozet", lambda a, ay=None: {"ay": ay or "bu", "kiracilar": [], "aktor": a})
+    monkeypatch.setattr(ks, "gunler", lambda a, t, ay=None: {"ay": ay or "bu", "tenant_id": t, "gunler": [{"gun": "2026-10-25", "dis_api": 3}]})
+    c = TestClient(api_main.app)
+    y = c.get("/v1/yonetim/kullanim?ay=2026-09", headers=_jeton(rol="operator"))
+    assert y.status_code == 200 and y.json() == {"ay": "2026-09", "kiracilar": [], "aktor": "p1"}
+    y = c.get("/v1/yonetim/kullanim?tenant_id=t1", headers=_jeton())
+    assert y.status_code == 200 and y.json()["gunler"][0]["dis_api"] == 3
+    assert c.get("/v1/yonetim/kullanim", headers=_musteri_jeton()).status_code == 403
+    assert c.get("/v1/yonetim/kullanim").status_code == 422

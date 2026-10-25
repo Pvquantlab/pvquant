@@ -97,6 +97,12 @@ def gonder(tenant_id, olay: str, govde: dict, plant_id: str | None = None, webho
             s.execute(text("UPDATE webhooks SET last_sent_at=now(), last_status=:d, fail_count = CASE WHEN :ok THEN 0 ELSE fail_count + 1 END WHERE id=:i"),
                       {"d": durum, "ok": ok, "i": r.id})
             sonuc.append({"id": str(r.id), "durum": durum, "ok": ok})
+    # 25.10 Faz 4: kullanım sayacı (teslim denemesi; hatalı olanlar ayrıca) — asla yükseltmez
+    if sonuc:
+        from pvquant.services import kullanim_service
+        kullanim_service.say(tenant_id, "webhook", len(sonuc))
+        if any(not x["ok"] for x in sonuc):
+            kullanim_service.say(tenant_id, "webhook_hata", sum(1 for x in sonuc if not x["ok"]))
     return sonuc
 
 

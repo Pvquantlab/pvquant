@@ -57,6 +57,7 @@ def istemci(monkeypatch):
     ak._kovalar.clear()
     monkeypatch.setattr(ak, "_kayit_bul", lambda p: _kayit("gizli", scopes=["tahmin:oku"]) if p == "abcd1234" else None)
     monkeypatch.setattr(ak, "_kullanim_isle", lambda i: None)
+    monkeypatch.setattr(ak, "_paylasimli_izin", lambda p, r, t: ak._kova_izin(p, r))   # 25.10 Faz 4: DB'siz → süreç içi kova
     from pvquant.services import plant_service, forecast_service
     monkeypatch.setattr(plant_service, "getir", lambda t, p: {"id": p, "name": "Konya GES", "capacity_kwp": 4514.0, "tz": "Europe/Istanbul"})
     monkeypatch.setattr(plant_service, "listele", lambda t: [{"id": "p1", "name": "Konya GES", "capacity_kwp": 4514.0, "tz": "Europe/Istanbul"}])
@@ -112,3 +113,24 @@ def test_gunluk_toplamlar_kurallari():
     assert g["2026-09-07"]["p10_kwh"] is None and g["2026-09-07"]["p90_kwh"] == 2880.0      # eksik saat → bant toplamı yok
     assert gunluk_toplamlar(df.iloc[:10], "Europe/Istanbul") == {}                            # <20 saat → gün yazılmaz
     assert gunluk_toplamlar(df.tz_localize(None), "Europe/Istanbul") == g                      # naive → UTC varsayımı
+
+
+def test_paylasimli_pencere_izni(monkeypatch):
+    """25.10 Faz 4: pencere sayımı rpm'i aşınca ret; izin verilen istek dis_api sayacına yazılır; DB yoksa (0) kovaya düşer."""
+    from pvquant.services import kullanim_service as ks
+    ak._kovalar.clear()
+    sayim = iter([1, 2, 3]); yazilan = []
+    monkeypatch.setattr(ks, "pencere_say", lambda a, saniye=60, simdi=None: next(sayim))
+    monkeypatch.setattr(ks, "say", lambda t, tur, adet=1: yazilan.append((t, tur, adet)))
+    assert ak._paylasimli_izin("ab", 2, "t1") is True and ak._paylasimli_izin("ab", 2, "t1") is True
+    assert ak._paylasimli_izin("ab", 2, "t1") is False                 # 3 > rpm 2
+    assert yazilan == [("t1", "dis_api", 1), ("t1", "dis_api", 1)]      # reddedilen sayılmaz
+    monkeypatch.setattr(ks, "pencere_say", lambda a, saniye=60, simdi=None: 0)
+    assert ak._paylasimli_izin("cd", 1, "t1") is True and ak._paylasimli_izin("cd", 1, "t1") is False   # kova yedeği
+    # dogrula üretim yolunda paylaşımlı izni kullanır (bul enjekte değilken)
+    monkeypatch.setattr(ak, "_kayit_bul", lambda p: _kayit("gizli", rpm=5))
+    monkeypatch.setattr(ak, "_kullanim_isle", lambda i: None)
+    cagri = []
+    monkeypatch.setattr(ak, "_paylasimli_izin", lambda p, r, t: cagri.append((p, r, t)) or True)
+    ak.dogrula("pvq_abcd1234_gizli", "tahmin:oku")
+    assert cagri == [("abcd1234", 5, "t1")]

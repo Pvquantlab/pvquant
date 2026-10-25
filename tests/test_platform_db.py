@@ -118,3 +118,43 @@ def test_faz3_sistem_izleme(temiz):
         with sistem_baglami() as s:
             s.execute(text("DELETE FROM jobs_log WHERE plant_id = :p"), {"p": plant_id})
             s.execute(text("DELETE FROM plants WHERE id = :p"), {"p": plant_id})
+
+
+def test_faz4_kullanim(temiz):
+    """25.10 Faz 4 — günlük sayaç UPSERT, paylaşımlı pencere (iki «süreç» aynı satırı sayar), ay özeti ve günlük kırılımda
+    türetilmiş sayımlar (report_log, forecast_runs) + sayaç türleri (DB'li)."""
+    import datetime as dt
+    from pvquant.services import kullanim_service as ks
+    e = temiz
+    pid = ps.ilk_sahip_olustur(f"sahip4-{e}@pvq.test", "cok-gizli-parola-123")
+    y = ps.kiraci_olustur(pid, f"Firma4 {e}", f"admin4-{e}@musteri.test")
+    tid = y["tenant_id"]
+    with sistem_baglami() as s:
+        plant_id = s.execute(text("INSERT INTO plants(tenant_id, name, capacity_kwp, lat, lon, tz) "
+                                  "VALUES (CAST(:t AS uuid), :n, 500, 38.0, 33.0, 'Europe/Istanbul') RETURNING id"), {"t": tid, "n": f"GES4 {e}"}).scalar()
+        s.execute(text("INSERT INTO forecast_runs(tenant_id, plant_id, mode, model) VALUES (CAST(:t AS uuid), :p, 'A', 'test')"), {"t": tid, "p": plant_id})
+        s.execute(text("INSERT INTO report_log(tenant_id, plant_id, mode) VALUES (CAST(:t AS uuid), :p, 'html')"), {"t": tid, "p": plant_id})
+    try:
+        ks.say(tid, "dis_api"); ks.say(tid, "dis_api", 2); ks.say(tid, "webhook"); ks.say(tid, "webhook_hata")
+        # paylaşımlı pencere: aynı anahtar + aynı pencere → ardışık sayım; eski pencere silinir
+        t0 = dt.datetime(2026, 10, 25, 12, 0, 10, tzinfo=dt.timezone.utc)
+        assert [ks.pencere_say(f"anahtar:{e}", simdi=t0), ks.pencere_say(f"anahtar:{e}", simdi=t0)] == [1, 2]
+        assert ks.pencere_say(f"anahtar:{e}", simdi=t0 + dt.timedelta(seconds=60)) == 1
+        with sistem_baglami() as s:
+            assert s.execute(text("SELECT count(*) FROM hiz_pencere WHERE anahtar = :a"), {"a": f"anahtar:{e}"}).scalar() == 1
+        bu_ay = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m")
+        o = ks.ozet(pid, bu_ay)
+        k = [x for x in o["kiracilar"] if x["id"] == tid][0]
+        assert o["ay"] == bu_ay and k["bu_ay"] == {"dis_api": 3, "webhook": 1, "webhook_hata": 1, "rapor": 1, "kosu": 1, "scada_saat": 0, "yukleme": 0}
+        assert k["onceki_ay"]["dis_api"] == 0 and k["etkin_anahtar"] == 0
+        g = ks.gunler(pid, tid, bu_ay)
+        bugun = dt.datetime.now(dt.timezone.utc).date().isoformat()
+        assert g["ad"] == f"Firma4 {e}" and g["gunler"][0]["gun"] == bugun and g["gunler"][0]["dis_api"] == 3 and g["gunler"][0]["kosu"] == 1
+        assert ks.gunler(pid, "00000000-0000-0000-0000-000000000000")["gunler"] == []
+    finally:
+        with sistem_baglami() as s:
+            s.execute(text("DELETE FROM kullanim_sayac WHERE tenant_id = CAST(:t AS uuid)"), {"t": tid})
+            s.execute(text("DELETE FROM hiz_pencere WHERE anahtar = :a"), {"a": f"anahtar:{e}"})
+            s.execute(text("DELETE FROM report_log WHERE plant_id = :p"), {"p": plant_id})
+            s.execute(text("DELETE FROM forecast_runs WHERE plant_id = :p"), {"p": plant_id})
+            s.execute(text("DELETE FROM plants WHERE id = :p"), {"p": plant_id})
