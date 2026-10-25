@@ -1,5 +1,9 @@
-# Faz 5 — Planlar (uyarı kipi) + kimliğe bürünme (26.10.2026) — BİRİKİYOR (commit yok)
-**Durum:** yerelde birikmiş; mühür kullanıcı «commitle» deyince (v2.492 önerilir; alembic `v2492_faz5_planlar`).
+# Faz 5 — Planlar (uyarı kipi) + kimliğe bürünme (26.10.2026) — CANLI v2.492
+**Durum:** v2.492 = ec6ec3e (26.10), CI #593 yeşil. Sunucu: `git pull`, api + web imajları, yönetici rolüyle `alembic upgrade head` →
+`v2492_faz5_planlar (head)` (planlar tohumu pilot 3/3/60/50/5000 [2 kiracı], standart, kurumsal sınırsız; `tenants_plan_fkey` var),
+`up -d --force-recreate api web`; worker değişmedi. Canlı index.html + **19/19 JS/CSS** birebir; `/yonetim` 200; `/v1/yonetim/planlar` 422/401;
+`/kiracilar/{tid}/temsil` bozuk jeton 401; müşteri `/v1/plants` 422, `/v1/auth/login` yanlış parola 401 (yeni `gecerli_kullanici` imzası canlıda);
+api log 0 hata. Gerçek hesapla Planlar sayfası, rozetler ve «Müşteri gözüyle aç» (yeni sekme + şerit) kullanıcıda; denetim izinde `kiraci_temsil`.
 
 Dayanak: `docs/YONETICI-PANELI-YOL-HARITASI-2026-10-24.md` §6 satır 4 ve §7 karar 2/5; denetim raporu O7 dışındaki tüm kalemler kapanmıştı.
 Tahmin/rapor/SCADA çekirdeği, RLS politikaları, müşteri uç sözleşmeleri DEĞİŞMEDİ; müşteri kabuğuna yalnız işaretle görünen bir şerit eklendi.
@@ -37,7 +41,7 @@ görebilsin ama hiçbir şeyi değiştiremesin (salt okunur, kısa, izli).
 - Kareler (sahte API, Chrome) 1440 + 375: Planlar 3 kart × 5 girdi, taşma 0; Müşteriler rozetleri «1 / 3», «5 / 3 aşıldı», «2 / 25»; Kullanım «1.184 / 5.000»,
   «3 / 50»; «Müşteri gözüyle aç» → yeni sekmede müşteri paneli, şerit «Platform görüntülemesi · Deneme Lab · salt okunur · 15 dk kaldı», Kapat → işaret ve
   jeton silindi; konsol 0.
-- Canlı: henüz dağıtılmadı.
+- Canlı: yukarıdaki Durum satırı.
 
 ## DAĞITIM NOTLARI (mühürde)
 `alembic upgrade head` (yönetici rolüyle; planlar + FK) · api + web imajları (worker değişmedi) · canlı kanıt: `/v1/yonetim/planlar` 422/401 kapıları,
