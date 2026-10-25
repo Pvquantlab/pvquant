@@ -80,3 +80,21 @@ def listele(*, tenant_id=None, eylem: str | None = None, kapsam: str | None = No
              "nesne_tur": r["nesne_tur"], "nesne_id": r["nesne_id"],
              "ayrinti": r["ayrinti"] if isinstance(r["ayrinti"], dict) else json.loads(r["ayrinti"] or "{}"),
              "ip": r["ip"], "kiraci_ad": r["kiraci_ad"]} for r in rows]
+
+
+# 26.10 denetim D6 — saklama: yalnız HACİMLİ ve sır taşımayan eylemler silinir; yazma eylemleri (kiraci_guncelle, operator_ekle, parola_sifirla_cli…)
+# kalıcıdır. Ayar 0 (varsayılan) → hiçbir şey silinmez.
+TEMIZLENEN_EYLEMLER = ("giris", "giris_basarisiz", "kiraci_goruntule")
+
+
+def temizle(ay: int | None = None) -> int:
+    """`ay` aydan eski TEMIZLENEN_EYLEMLER satırlarını siler; silinen satır sayısını döner. ay None → ayar; 0 → 0 (dokunmaz)."""
+    if ay is None:
+        from pvquant.config import get_settings
+        ay = int(get_settings().denetim_saklama_ay or 0)
+    if ay <= 0:
+        return 0
+    with sistem_baglami() as s:
+        return int(s.execute(text(
+            "DELETE FROM denetim_izi WHERE eylem = ANY(:e) AND zaman < now() - (:ay * interval '1 month')"),
+            {"e": list(TEMIZLENEN_EYLEMLER), "ay": ay}).rowcount)

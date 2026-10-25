@@ -72,7 +72,7 @@ export function Kpi({ etiket, deger, birim, alt, ton, ikinci }:
  *  (Santralim 1–7) kalır; ayraç CSS ile çizilir, ekran okuyucuya metin olarak gitmez. */
 const buyukHarf = (s: string) => s.length ? s[0].toLocaleUpperCase("tr-TR") + s.slice(1) : s;
 export function Kart({ baslik, alt, no, sag, children, ...rest }:
-  { baslik?: string; alt?: string; no?: string; sag?: ReactNode; children: ReactNode } & { style?: React.CSSProperties }) {
+  { baslik?: string; alt?: string; no?: string; sag?: ReactNode; children: ReactNode } & { style?: React.CSSProperties; id?: string }) {
   const [bas, ...kuyruk] = (baslik ?? "").split(" — ");
   const altMetin = alt ?? (kuyruk.length > 0 ? buyukHarf(kuyruk.join(" — ")) : undefined);
   return (

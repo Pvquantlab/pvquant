@@ -105,7 +105,7 @@ def ozet(aktor_id: str) -> dict:
 
 
 def isler(aktor_id: str, *, saat: int = 48, yalniz_hata: bool = False, job: str | None = None,
-          tenant_id: str | None = None, limit: int = 200) -> dict:
+          tenant_id: str | None = None, limit: int = 200, plant_id: str | None = None) -> dict:
     """Kiracılar arası iş kayıtları, hata ayrıntısı (jobs_log.detail) DAHİL. Kiracı ve santral adı birleştirilir;
     silinmiş santral/kiracı için ad None kalır (satır yine görünür)."""
     kosul, p = ["j.started >= now() - (:h * interval '1 hour')"], {"h": max(1, min(int(saat), 24 * 30)), "n": max(1, min(int(limit), 1000))}
@@ -115,6 +115,8 @@ def isler(aktor_id: str, *, saat: int = 48, yalniz_hata: bool = False, job: str 
         kosul.append("j.job = :j"); p["j"] = job
     if tenant_id:
         kosul.append("j.tenant_id = CAST(:t AS uuid)"); p["t"] = str(tenant_id)
+    if plant_id:   # 26.10 D2: envanterden «son hata» tıklaması
+        kosul.append("j.plant_id = CAST(:pl AS uuid)"); p["pl"] = str(plant_id)
     with platform_baglami(aktor_id) as s:
         rows = s.execute(text(
             "SELECT j.id, j.job, j.tenant_id, t.name AS kiraci, j.plant_id, p.name AS santral, j.started, j.finished, j.status, j.detail "

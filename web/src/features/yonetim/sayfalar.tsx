@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { yonetim, zamanTr, type Kiraci, type KiraciDetay, type Kullanici, type Operator, type Basvuru, type DenetimKaydi, type Ben } from "../../api/yonetim";
+import { yonetim, zamanTr, yasTr, type SistemOzet, type Kiraci, type KiraciDetay, type Kullanici, type Operator, type Basvuru, type DenetimKaydi, type Ben } from "../../api/yonetim";
 import { Kart, Kpi, Sayfa, SayfaIskeleti, sayiTr, gucTr } from "../sayfalar/parcalar";
 import { Meta } from "../../lib/Meta";
 import { KullanimKarti } from "./Kullanim";
@@ -33,12 +33,30 @@ function TekSeferlik({ baslik, deger, not }: { baslik: string; deger: string; no
 }
 
 // ---------------- Genel bakış ----------------
-export function GenelBakis({ git }: { git: (s: "musteriler" | "basvurular" | "denetim") => void }) {
+/** 26.10 D5 — sağlık şeridi: Sistem özetinden üç hüküm (zamanlayıcı, gece turu, yedek); tıklayınca Sistem sayfası. Hükümler uçtan. */
+function SaglikSeridi({ sis, git }: { sis: SistemOzet | null | "hata"; git: () => void }) {
+  if (sis === null) return <div className="plat-saglik" aria-busy="true"><span className="soluk">sistem durumu alınıyor…</span></div>;
+  if (sis === "hata") return <div className="plat-saglik"><span className="rozet rozet-kucuk rozet-uyari">sistem durumu alınamadı</span></div>;
+  const yedekSorun = sis.yedek.bayat || (sis.yedek.son_deneme ? !sis.yedek.son_deneme.tamam : false);
+  const R = ({ ok, ad, deger }: { ok: boolean; ad: string; deger: string }) => (
+    <span className={`rozet rozet-kucuk ${ok ? "rozet-ok" : "rozet-uyari"}`}>{ad}: {deger}</span>);
+  return (
+    <button type="button" className="plat-saglik plat-saglik--tikla" onClick={git} title="Sistem sayfasını aç">
+      <R ok={sis.nabiz.durum === "calisiyor"} ad="zamanlayıcı" deger={sis.nabiz.durum === "calisiyor" ? "çalışıyor" : sis.nabiz.durum === "sessiz" ? "sessiz" : "nabız yok"} />
+      <R ok={sis.gece_turu.taze} ad="gece turu" deger={sis.gece_turu.taze ? "taze" : "bayat"} />
+      <R ok={!yedekSorun} ad="yedek" deger={yasTr(sis.yedek.son_basarili)} />
+      <span className="soluk" style={{ fontSize: 13 }}>Sistem →</span>
+    </button>
+  );
+}
+export function GenelBakis({ git }: { git: (s: "musteriler" | "basvurular" | "denetim" | "sistem") => void }) {
   const [k, setK] = useState<Kiraci[] | null>(null);
+  const [sis, setSis] = useState<SistemOzet | null | "hata">(null);   // 26.10 D5: sağlık şeridi (aynı /sistem ucu)
   const [b, setB] = useState<Basvuru[] | null>(null);
   const [d, setD] = useState<DenetimKaydi[] | null>(null);
   const [hata, setHata] = useState<string | null>(null);
   useEffect(() => {
+    yonetim.sistem().then(setSis).catch(() => setSis("hata"));
     Promise.allSettled([yonetim.kiracilar(), yonetim.basvurular(), yonetim.denetim({ limit: 12, eylem_haric: "kiraci_goruntule" })]).then(([rk, rb, rd]) => {
       setK(rk.status === "fulfilled" ? rk.value.kiracilar : []); setB(rb.status === "fulfilled" ? rb.value.basvurular : []);
       setD(rd.status === "fulfilled" ? rd.value.kayitlar : []);
@@ -51,6 +69,7 @@ export function GenelBakis({ git }: { git: (s: "musteriler" | "basvurular" | "de
   return (
     <Sayfa baslik="Genel bakış" alt="Kiracılar, santraller ve son işlemler; tüm sayılar canlı veritabanından.">
       <Hata m={hata} />
+      <SaglikSeridi sis={sis} git={() => git("sistem")} />
       <div className="ızgara satir-4" style={{ marginBottom: 14 }}>
         <Kpi etiket="Kiracı" deger={sayiTr(k.length)} alt={`${sayiTr(etkin.length)} etkin, ${sayiTr(k.length - etkin.length)} askıda`} />
         <Kpi etiket="Etkin santral" deger={sayiTr(k.reduce((a, x) => a + x.santral, 0))} alt={kwp ? `${gucTr(kwp)} kWp kurulu güç` : "kurulu güç yok"} />
@@ -285,10 +304,10 @@ export function Operatorler({ ben }: { ben: Ben | null }) {
               <td><select className="girdi kucuk" value={o.rol} disabled={o.id === ben?.id} onChange={(e) => dene(() => yonetim.operatorGuncelle(o.id, { rol: e.target.value }), "Rol güncellendi.")}><option value="operator">Operatör</option><option value="sahip">Sahip</option></select></td>
               <td>{o.aktif ? <span className="rozet rozet-kucuk rozet-ok">etkin</span> : <span className="rozet rozet-kucuk rozet-notr">pasif</span>}</td>
               <td>{o.totp_aktif ? "açık" : <span className="bos">kapalı</span>}</td><td><Zaman s={o.son_giris} /></td>
-              <td><div className="dugme-sira">
+              <td>{o.id === ben?.id ? <span className="bos" title="Kendi hesabınız: rol ve durum başka bir sahip tarafından değiştirilir; parola ve 2FA Hesabım'da">—</span> : <div className="dugme-sira">
                 {o.totp_aktif && o.id !== ben?.id && <button className="dugme kucuk" onClick={() => dene(() => yonetim.operatorGuncelle(o.id, { iki_adim_sifirla: true }), "2FA sıfırlandı; operatör girişte yeniden kurar.")}>2FA sıfırla</button>}
                 {o.id !== ben?.id && <button className={`dugme kucuk${o.aktif ? " dugme-tehlike" : ""}`} onClick={() => dene(() => yonetim.operatorGuncelle(o.id, { aktif: !o.aktif }), o.aktif ? "Pasifleştirildi." : "Yeniden etkin.")}>{o.aktif ? "Pasifleştir" : "Etkinleştir"}</button>}
-              </div></td></tr>))}</tbody>
+              </div>}</td></tr>))}</tbody>
           </table></div>)}
       </Kart>
       <Kart baslik="Yeni operatör" alt="Geçici parola yalnız bir kez gösterilir">

@@ -644,6 +644,14 @@ def acilis_yedek():
     gece_yedek()
 
 
+def denetim_temizlik():
+    """26.10 denetim D6 — denetim izi saklama: PVQUANT_DENETIM_SAKLAMA_AY > 0 ise giriş/giriş_basarisiz/kiraci_goruntule satırlarının
+    N aydan eskisi silinir; yazma eylemleri kalıcı. Ayar 0 (varsayılan) hiçbir şey silmez; sonuç jobs_log detail'e yazılır."""
+    from pvquant.services import denetim_service
+    n = denetim_service.temizle()
+    return f"silinen: {n}" if n else "ayar 0 ya da silinecek satır yok"
+
+
 def gece_yedek():
     """v2.337 — gece veritabanı yedeği: scripts/yedek.sh'in birebir işi (pg_dump
     → gzip, en yeni N tutulur) ama artık ZAMANLAYICIYA bağlı ve jobs_log'da
@@ -722,6 +730,8 @@ if __name__ == "__main__":
                 "cron", day=cfg.worker_day_calibration, hour=cfg.worker_hour_calibration, minute=30)
     sch.add_job(_logla("aylik_bankable", aylik_bankable),                # v2.278
                 "cron", day=cfg.worker_day_calibration, hour=(cfg.worker_hour_calibration + 1) % 24, minute=0)
+    sch.add_job(_logla_tek("denetim_temizlik", denetim_temizlik),        # 26.10 denetim D6: aylık saklama (ayar 0 → dokunmaz)
+                "cron", day=cfg.worker_day_calibration, hour=(cfg.worker_hour_calibration + 2) % 24, minute=0)
     sch.add_job(_logla_tek("gece_yedek", gece_yedek),                    # v2.337: gece veritabanı yedeği
                 "cron", hour=cfg.yedek_saat, minute=15)
     sch.add_job(_logla_tek("acilis_yakalama", acilis_yakalama), "date",  # v2.336: tazelik yakalaması

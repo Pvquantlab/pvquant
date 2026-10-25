@@ -273,8 +273,8 @@ def sistem(c=Depends(platform_yetkisi())):
 
 @yonetim.get("/isler")
 def isler(saat: int = 48, yalniz_hata: bool = False, job: str | None = None, tenant_id: str | None = None, limit: int = 200,
-          c=Depends(platform_yetkisi())):
-    return ss.isler(c["sub"], saat=saat, yalniz_hata=yalniz_hata, job=job or None, tenant_id=tenant_id or None, limit=limit)
+          plant_id: str | None = None, c=Depends(platform_yetkisi())):
+    return ss.isler(c["sub"], saat=saat, yalniz_hata=yalniz_hata, job=job or None, tenant_id=tenant_id or None, limit=limit, plant_id=plant_id or None)
 
 
 @yonetim.get("/santraller")

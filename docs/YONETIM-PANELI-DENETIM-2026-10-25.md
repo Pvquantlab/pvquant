@@ -145,6 +145,22 @@ Sunucu 25.10: pull → api + web imajları → recreate (geçiş yok, worker de�
 - Testler: `test_goruntule_izi_gunde_tek`, `test_mutlak_oturum_siniri`, test_platform_db görüntüleme izi (DB'li), web +1. Kapılar: API 26/26,
   web 91/91, tsc 0, oxlint 16, DB testleri 3/3.
 
+## D turu (D2–D6) — BİRİKİYOR (commit yok, 26.10)
+- **D1 düştü:** iki sayfa da aynı `gucTr` biçimleyicisini kullanıyor; «2,4 / 2» farkı yalnız sahte veride vardı.
+- **D2:** `sistem_service.isler(plant_id=)` + `/isler?plant_id` (EK süzgeç); envanterde «Son hata» yaş olarak (`yasTr`), 7 günden eskisi soluk,
+  tıklayınca İş kayıtları o santrale süzülür (son 30 gün + yalnız başarısız, çip «santral: ad ×», × varsayılana döndürür ve yeniden yükler).
+- **D3:** Operatörler'de kendi satırınızda İşlem hücresi «—» (başlıkta açıklama: rol/durum başka sahip değiştirir, parola/2FA Hesabım'da).
+- **D4:** `scripts/platform_sahip.py --parola-sifirla <eposta>` (gizli girdi; `platform_service.parola_sifirla_cli`: parola + oturum sürümü,
+  2FA aynı; denetim `parola_sifirla_cli`). Mühürde sunucudan `/root/pvq_platform_parola.py` silinir.
+- **D5:** Genel bakış'ta sağlık şeridi (`SaglikSeridi`, aynı `/sistem` ucu): zamanlayıcı / gece turu / yedek rozetleri, hükümler uçtan; tıklayınca
+  Sistem. Alınamazsa tek uyarı rozeti.
+- **D6:** `PVQUANT_DENETIM_SAKLAMA_AY` (varsayılan 0 = silme yok); `denetim_service.temizle` yalnız `giris` / `giris_basarisiz` / `kiraci_goruntule`
+  satırlarının N aydan eskisini siler, yazma eylemleri kalıcı; worker aylık `denetim_temizlik` işi (kalibrasyon günü +2 sa), sonucu jobs_log'a yazar.
+  Ürün kararı: ayar sunucuda açılmadıkça hiçbir şey silinmez.
+- Kanıt: API 13/13 (+plant_id geçişi), DB 4/4 (CLI parola: eski 401/yeni giriş, sürüm +1; temizlik: 40 günlük giriş silindi, kiraci_guncelle ve
+  yeni giriş kaldı; ayar 0 → 0), web 92/92, tsc 0, oxlint 16. Kareler 1440/375: şerit 3 rozet, tıkla → Sistem; envanter «son hata» → iş kayıtları
+  5→1 satır, çip, pencere 720; × → 5 satır; Operatörler kendi satırı «—»; taşma 0, konsol 0.
+
 ## Sorunsuz bulunanlar
 - **Kapsam ayrımı ve yetki:** platform jetonu müşteri uçlarında 403, müşteri jetonu `/v1/yonetim` uçlarında 403; başlıksız 422; bozuk
   jeton 401; oturum sürümü (sv) ve aktiflik 60 sn önbellekle her istekte; sahip-only uçlar; son etkin sahip düşürülemez.

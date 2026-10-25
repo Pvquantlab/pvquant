@@ -119,3 +119,16 @@ test("O4 KPI metni gerçekleşen fiyat der; O6 genel bakış görüntüleme izin
   assert.match(kok, /if \(Date\.now\(\) - sonEtkilesim < BOSTA_DK \* 60 \* 1000\) void yonetim\.oturumYenile\(\)/);
   assert.match(kok, /addEventListener\("pointerdown", dokun/);
 });
+
+// ---------------- 26.10 D2/D3/D5 ----------------
+test("D turu: envanter son hata → iş kayıtları süzgeci, Operatörler kendi satırı, Genel bakış sağlık şeridi", () => {
+  const sis = oku("features/yonetim/Sistem.tsx");
+  assert.match(sis, /plant_id: ek\.plant === undefined \? santral\?\.id/);
+  assert.match(sis, /onClick=\{\(\) => santralSec\(p\.id, p\.ad\)\}/);
+  assert.match(sis, /<option value=\{720\}>son 30 gün<\/option>/);
+  const s = oku("features/yonetim/sayfalar.tsx");
+  assert.match(s, /Kendi hesabınız: rol ve durum başka bir sahip tarafından değiştirilir/);
+  assert.match(s, /<SaglikSeridi sis=\{sis\} git=\{\(\) => git\("sistem"\)\} \/>/);
+  assert.match(s, /ok=\{sis\.nabiz\.durum === "calisiyor"\}/);   // hüküm uçtan
+  assert.match(oku("api/yonetim.ts"), /plant_id\?: string \} = \{\}\)/);
+});

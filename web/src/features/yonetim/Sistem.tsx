@@ -24,6 +24,7 @@ export function Sistem() {
   const [o, setO] = useState<SistemOzet | null>(null);
   const [hata, setHata] = useState<string | null>(null);
   const [sayac, setSayac] = useState(0);
+  const [secSantral, setSecSantral] = useState<{ id: string; ad: string } | null>(null);   // 26.10 D2: envanterden «son hata» → iş kayıtları süzgeci
   useEffect(() => { yonetim.sistem().then(setO).catch((e) => setHata(mesajCikar(e))); }, [sayac]);
   if (!o && !hata) return <Sayfa baslik="Sistem"><SayfaIskeleti kpi={6} kart={2} /></Sayfa>;
   return (
@@ -50,8 +51,8 @@ export function Sistem() {
           <Kpi etiket="Yedek" deger={yasTr(o.yedek.son_basarili)} ton={o.yedek.bayat || (o.yedek.son_deneme ? !o.yedek.son_deneme.tamam : false) ? "uyari" : undefined}
             alt={o.yedek.son_deneme ? (o.yedek.son_deneme.tamam ? `son deneme başarılı; ${o.yedek.esik_saat} saatten eskisi bayat` : `son deneme düştü: ${o.yedek.son_deneme.ayrinti ?? "ayrıntı yok"}`) : "henüz yedek kaydı yok"} />
         </div>
-        <IsKayitlari />
-        <SantralEnvanteri />
+        <IsKayitlari santral={secSantral} temizle={() => setSecSantral(null)} />
+        <SantralEnvanteri santralSec={(id, ad) => { setSecSantral({ id, ad }); document.getElementById("is-kayitlari")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} />
         <div className="ızgara-cift">
           <Kart baslik="Üretici işler" alt={`tazelik ölçütü: son başarılı koşu ${o.gece_turu.esik_saat} saatten yeni`}>
             <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 13.5, minWidth: 0 }}>
@@ -82,20 +83,24 @@ const en_yeni = (zamanlar: (string | null)[]): string | null =>
   zamanlar.filter((z): z is string => !!z).sort().at(-1) ?? null;
 
 // ---------------- iş kayıtları (kiracılar arası, hata ayrıntısıyla) ----------------
-function IsKayitlari() {
+function IsKayitlari({ santral, temizle }: { santral: { id: string; ad: string } | null; temizle: () => void }) {
   const [saat, setSaat] = useState(48); const [yalnizHata, setYalnizHata] = useState(false); const [job, setJob] = useState(""); const [tenant, setTenant] = useState("");
   const [liste, setListe] = useState<IsKaydi[] | null>(null); const [turler, setTurler] = useState<{ kod: string; is: string }[]>([]);
   const [kiracilar, setKiracilar] = useState<Kiraci[]>([]); const [hata, setHata] = useState<string | null>(null);
-  const getir = () => yonetim.isler({ saat, yalniz_hata: yalnizHata, job: job || undefined, tenant_id: tenant || undefined, limit: 200 })
+  const getir = (ek: { saat?: number; yalniz_hata?: boolean; plant?: string | null } = {}) => yonetim.isler({ saat: ek.saat ?? saat, yalniz_hata: ek.yalniz_hata ?? yalnizHata, job: job || undefined,
+      tenant_id: tenant || undefined, limit: 200, plant_id: ek.plant === undefined ? santral?.id : ek.plant ?? undefined })
     .then((r) => { setListe(r.isler); setTurler(r.is_turleri); }).catch((e) => setHata(mesajCikar(e)));
   useEffect(() => { void getir(); yonetim.kiracilar().then((r) => setKiracilar(r.kiracilar)).catch(() => {}); }, []);   // eslint-disable-line react-hooks/exhaustive-deps
+  // 26.10 D2: envanterden santral seçilince son 30 gün + yalnız başarısız; temizlenince varsayılan pencere
+  useEffect(() => { if (santral) { setSaat(720); setYalnizHata(true); void getir({ saat: 720, yalniz_hata: true }); } }, [santral]);   // eslint-disable-line react-hooks/exhaustive-deps
   const hataSayisi = liste ? liste.filter((x) => !x.tamam).length : 0;
   return (
-    <Kart baslik="İş kayıtları" alt="tüm kiracılar; başarısız işin ayrıntısı burada görünür, müşteri panelinde görünmez"
-      sag={liste ? <span className="cip"><Meta items={[`${sayiTr(liste.length)} kayıt`, `${sayiTr(hataSayisi)} hata`]} /></span> : undefined}>
+    <Kart baslik="İş kayıtları" alt="tüm kiracılar; başarısız işin ayrıntısı burada görünür, müşteri panelinde görünmez" id="is-kayitlari"
+      sag={<span className="dugme-sira">{santral && <span className="rozet rozet-kucuk rozet-uyari">santral: {santral.ad} <button type="button" className="plat-rozet-kapat" aria-label="santral süzgecini kaldır" onClick={() => { temizle(); setSaat(48); setYalnizHata(false); void getir({ saat: 48, yalniz_hata: false, plant: null }); }}>×</button></span>}
+        {liste && <span className="cip"><Meta items={[`${sayiTr(liste.length)} kayıt`, `${sayiTr(hataSayisi)} hata`]} /></span>}</span>}>
       <form className="form-izgara" style={{ maxWidth: 900, marginBottom: 12 }} onSubmit={(e) => { e.preventDefault(); void getir(); }}>
         <label className="girdi-etiket">Pencere<select className="girdi" value={saat} onChange={(e) => setSaat(Number(e.target.value))}>
-          <option value={24}>son 24 saat</option><option value={48}>son 48 saat</option><option value={72}>son 72 saat</option><option value={168}>son 7 gün</option></select></label>
+          <option value={24}>son 24 saat</option><option value={48}>son 48 saat</option><option value={72}>son 72 saat</option><option value={168}>son 7 gün</option><option value={720}>son 30 gün</option></select></label>
         <label className="girdi-etiket">Durum<select className="girdi" value={yalnizHata ? "hata" : ""} onChange={(e) => setYalnizHata(e.target.value === "hata")}>
           <option value="">tümü</option><option value="hata">yalnız başarısız</option></select></label>
         <label className="girdi-etiket">İş<select className="girdi" value={job} onChange={(e) => setJob(e.target.value)}>
@@ -120,7 +125,7 @@ function IsKayitlari() {
 }
 
 // ---------------- santral envanteri ----------------
-function SantralEnvanteri() {
+function SantralEnvanteri({ santralSec }: { santralSec: (id: string, ad: string) => void }) {
   const [sorunlu, setSorunlu] = useState(false);
   const [veri, setVeri] = useState<{ santraller: SantralEnvanter[]; esik: { scada_saat: number; kosu_saat: number }; toplam: number } | null>(null);
   const [hata, setHata] = useState<string | null>(null);
@@ -135,7 +140,9 @@ function SantralEnvanteri() {
           <thead><tr><th>Kiracı</th><th>Santral</th><th>Kurulu güç<span className="birim">kWp</span></th><th>Son SCADA</th><th>Son koşu</th><th>Son hata</th><th>Sorun</th></tr></thead>
           <tbody>{veri.santraller.map((p) => (
             <tr key={p.id}><td className="ad">{p.kiraci}</td><td>{p.ad}</td><td>{p.kapasite_kwp ? gucTr(p.kapasite_kwp) : <span className="bos">—</span>}</td>
-              <td><Zaman s={p.son_scada} /></td><td><Zaman s={p.son_kosu} /></td><td><Zaman s={p.son_hata} /></td>
+              <td><Zaman s={p.son_scada} /></td><td><Zaman s={p.son_kosu} /></td>
+              <td>{p.son_hata ? <button type="button" className="plat-baglanti" title="İş kayıtlarında bu santralin hatalarını göster" onClick={() => santralSec(p.id, p.ad)}
+                style={Date.now() - new Date(p.son_hata).getTime() > 7 * 86400000 ? { color: "var(--soluk)" } : undefined}>{yasTr(p.son_hata)}</button> : <span className="bos">—</span>}</td>
               <td>{p.sorunlar.length === 0 ? <span className="rozet rozet-kucuk rozet-ok">yok</span>
                 : <span className="dugme-sira">{p.sorunlar.map((s) => <span key={s} className="rozet rozet-kucuk rozet-uyari">{SORUN_AD[s] ?? s}</span>)}</span>}</td></tr>))}</tbody>
         </table></div>)}

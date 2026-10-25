@@ -167,3 +167,29 @@ def test_faz4_kullanim(temiz):
             s.execute(text("DELETE FROM report_log WHERE plant_id = :p"), {"p": plant_id})
             s.execute(text("DELETE FROM forecast_runs WHERE plant_id = :p"), {"p": plant_id})
             s.execute(text("DELETE FROM plants WHERE id = :p"), {"p": plant_id})
+
+
+def test_d4_parola_sifirla_ve_d6_temizlik(temiz, monkeypatch):
+    """26.10 D4: CLI parola yenileme (oturumlar düşer, 2FA aynı); D6: saklama yalnız hacimli eylemleri ve yalnız N aydan eskisini siler."""
+    import datetime as dt
+    e = temiz
+    eposta = f"sahip6-{e}@pvq.test"
+    pid = ps.ilk_sahip_olustur(eposta, "cok-gizli-parola-123")
+    sv0 = ps.oturum_durumu(pid)["sv"]
+    with pytest.raises(ValueError):
+        ps.parola_sifirla_cli(eposta, "kisa")
+    assert ps.parola_sifirla_cli(eposta, "yeni-gizli-parola-456") == pid
+    assert ps.giris(eposta, "cok-gizli-parola-123") is None and ps.giris(eposta, "yeni-gizli-parola-456")["rol"] == "sahip"
+    assert ps.oturum_durumu(pid)["sv"] == sv0 + 1
+    with pytest.raises(ValueError):
+        ps.parola_sifirla_cli(f"yok-{e}@pvq.test", "yeni-gizli-parola-456")
+    # D6: eski giriş + eski kiracı_guncelle + yeni giriş; temizle(1) yalnız eski girişi siler; ayar 0 dokunmaz
+    with sistem_baglami() as s:
+        s.execute(text("INSERT INTO denetim_izi(zaman, kapsam, eylem, aktor_eposta) VALUES (now() - interval '40 days', 'platform', 'giris', :e), "
+                       "(now() - interval '40 days', 'platform', 'kiraci_guncelle', :e), (now(), 'platform', 'giris', :e)"), {"e": eposta})
+    monkeypatch.setattr("pvquant.config.get_settings", lambda: type("S", (), {"denetim_saklama_ay": 0})())
+    assert dz.temizle() == 0
+    assert dz.temizle(1) == 1
+    with sistem_baglami() as s:
+        kalan = s.execute(text("SELECT eylem FROM denetim_izi WHERE aktor_eposta = :e ORDER BY eylem"), {"e": eposta}).scalars().all()
+    assert kalan == ["giris", "kiraci_guncelle"]

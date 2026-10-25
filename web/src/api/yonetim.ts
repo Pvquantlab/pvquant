@@ -110,7 +110,7 @@ export const yonetim = {
     istek(`/denetim${sorgu(p)}`),
   // 25.10 Faz 3 — sistem izleme (salt okunur)
   sistem: (): Promise<SistemOzet> => istek("/sistem"),
-  isler: (p: { saat?: number; yalniz_hata?: boolean; job?: string; tenant_id?: string; limit?: number } = {}): Promise<{ isler: IsKaydi[]; pencere_saat: number; is_turleri: { kod: string; is: string }[] }> =>
+  isler: (p: { saat?: number; yalniz_hata?: boolean; job?: string; tenant_id?: string; limit?: number; plant_id?: string } = {}): Promise<{ isler: IsKaydi[]; pencere_saat: number; is_turleri: { kod: string; is: string }[] }> =>
     istek(`/isler${sorgu(p)}`),
   santraller: (sorunlu = false): Promise<{ santraller: SantralEnvanter[]; esik: { scada_saat: number; kosu_saat: number }; toplam: number }> =>
     istek(`/santraller${sorgu({ sorunlu })}`),

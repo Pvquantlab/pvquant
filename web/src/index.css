@@ -533,6 +533,12 @@ textarea.girdi { resize: vertical; min-height: 72px; line-height: 1.5; }
 :root[data-yuz="platform"] .plat-ayrinti-sutun { white-space: normal; min-width: 180px; }
 :root[data-yuz="platform"] td.plat-aktor { white-space: normal; overflow-wrap: anywhere; max-width: 210px; }   /* uzun e-posta 1440'ta kaydırma açmasın */
 .plat-ayrinti { display: inline-flex; flex-wrap: wrap; gap: 4px 6px; }
+/* 26.10 D2/D5 */
+.plat-baglanti { background: none; border: 0; padding: 0; font: inherit; color: var(--metin); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.plat-rozet-kapat { background: none; border: 0; padding: 0 0 0 4px; font: inherit; color: inherit; cursor: pointer; line-height: 1; }
+.plat-saglik { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 14px; padding: 10px 12px; border: 1px solid var(--kenar); border-radius: var(--rk); background: var(--kart); }
+.plat-saglik--tikla { width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.plat-saglik--tikla:hover { border-color: var(--marka); }
 .plat-ayrinti__cip { display: inline-flex; align-items: baseline; gap: 4px; font-family: var(--mono); font-size: 12px; color: var(--ikincil);
                      background: var(--yuzey); border: 1px solid var(--kenar); border-radius: 6px; padding: 1px 7px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .plat-ayrinti__cip b { font-weight: 500; color: var(--soluk); }

@@ -145,6 +145,19 @@ def iki_adim_dogrula(pid: str, kod: str) -> None:
     oturum_onbellegi_dusur(pid)   # kapı 60 sn beklemeden tam kapsamı açsın
 
 
+def parola_sifirla_cli(email: str, sifre: str) -> str:
+    """26.10 denetim D4 — kilitlenme çıkışı (sunucuda, gizli girdiyle): parola yenilenir, açık oturumlar düşer, 2FA aynı kalır. Döner id."""
+    if len(sifre or "") < 12:
+        raise PlatformHata("parola en az 12 karakter olmalı")
+    with sistem_baglami() as s:
+        pid = s.execute(text("UPDATE platform_kullanicilar SET pw_hash=:h, oturum_surumu = oturum_surumu + 1 WHERE email=:e AND aktif RETURNING id"),
+                        {"h": bcrypt.hash(sifre), "e": email.strip().lower()}).scalar()
+    if pid is None:
+        raise PlatformHata("etkin hesap bulunamadı")
+    oturum_onbellegi_dusur(str(pid))
+    return str(pid)
+
+
 # ---------------- platform kullanıcıları (operatörler) ----------------
 def ilk_sahip_olustur(email: str, sifre: str) -> str:
     """Kurulum/CLI: ilk 'sahip'. Zaten sahip varsa CLI yine açabilir (kilitlenme çıkışı) — denetim izine yazılır (çağıran)."""

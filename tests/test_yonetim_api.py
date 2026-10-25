@@ -117,7 +117,7 @@ def test_sistem_uclari_kapsam_ve_suzgec(monkeypatch):
     assert y.status_code == 200 and y.json()["aktor"] == "p1"
     y = c.get("/v1/yonetim/isler?saat=72&yalniz_hata=true&job=sabah_tahmin&tenant_id=t1&limit=50", headers=_jeton(rol="operator"))
     assert y.status_code == 200 and y.json()["isler"][0]["ayrinti"] == "KeyError: x"   # hata ayrıntısı platformda GÖRÜNÜR
-    assert gorulen == {"saat": 72, "yalniz_hata": True, "job": "sabah_tahmin", "tenant_id": "t1", "limit": 50}
+    assert gorulen == {"saat": 72, "yalniz_hata": True, "job": "sabah_tahmin", "tenant_id": "t1", "limit": 50, "plant_id": None}
     assert c.get("/v1/yonetim/santraller?sorunlu=true", headers=_jeton()).json()["sorunlu"] is True
     for yol in ("/v1/yonetim/sistem", "/v1/yonetim/isler", "/v1/yonetim/santraller"):
         assert c.get(yol, headers=_musteri_jeton()).status_code == 403            # müşteri jetonu platform ucunu açamaz
@@ -197,3 +197,14 @@ def test_mutlak_oturum_siniri(monkeypatch):
     assert y.status_code == 401 and "üst sınırı" in y.json()["detail"]                                 # 13 saat → 401
     assert c.post("/v1/yonetim/oturum/yenile", headers=_jeton(ilk=simdi - 7200)).status_code == 200
     assert gorulen["ilk"] == simdi - 7200                                                              # ilk yenilemede taşınır
+
+
+# ---------------- 26.10 D2: iş kayıtları santral süzgeci ----------------
+def test_isler_plant_id_suzgeci(monkeypatch):
+    from pvquant.services import sistem_service as ss
+    monkeypatch.setattr(ps, "oturum_durumu", lambda p: {"sv": 0, "aktif": True, "rol": "operator", "email": "o@pvq", "totp_aktif": True})
+    gorulen = {}
+    monkeypatch.setattr(ss, "isler", lambda a, **k: gorulen.update(k) or {"isler": [], "pencere_saat": k["saat"], "is_turleri": []})
+    c = TestClient(api_main.app)
+    assert c.get("/v1/yonetim/isler?saat=720&yalniz_hata=true&plant_id=pl-1", headers=_jeton(rol="operator")).status_code == 200
+    assert gorulen["plant_id"] == "pl-1" and gorulen["saat"] == 720 and gorulen["yalniz_hata"] is True
