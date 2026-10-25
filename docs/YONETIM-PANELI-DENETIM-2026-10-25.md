@@ -145,7 +145,11 @@ Sunucu 25.10: pull → api + web imajları → recreate (geçiş yok, worker de�
 - Testler: `test_goruntule_izi_gunde_tek`, `test_mutlak_oturum_siniri`, test_platform_db görüntüleme izi (DB'li), web +1. Kapılar: API 26/26,
   web 91/91, tsc 0, oxlint 16, DB testleri 3/3.
 
-## D turu (D2–D6) — BİRİKİYOR (commit yok, 26.10)
+## D turu (D2–D6) — CANLI v2.491 (449f30a, CI #591)
+Sunucu 26.10: pull → api + worker + web imajları → recreate; `/root/pvq_platform_parola.py` silindi (kalıcı yol: `scripts/platform_sahip.py
+--parola-sifirla`, imajda). Canlı index.html + 19/19 JS/CSS referansla birebir; `/yonetim` 200, `/v1/healthz` ok, `/isler?plant_id` kapısı 401;
+worker nabzı 23 sn; `denetim_saklama_ay = 0` (silme kapalı; açmak için `.env` `PVQUANT_DENETIM_SAKLAMA_AY=24` + worker recreate); api/worker log 0.
+Raporun açık kalemi: yalnız O7 (kiracı yöneticisi 2FA politikası — Faz 5 «Kuruluş ayarları» ile).
 - **D1 düştü:** iki sayfa da aynı `gucTr` biçimleyicisini kullanıyor; «2,4 / 2» farkı yalnız sahte veride vardı.
 - **D2:** `sistem_service.isler(plant_id=)` + `/isler?plant_id` (EK süzgeç); envanterde «Son hata» yaş olarak (`yasTr`), 7 günden eskisi soluk,
   tıklayınca İş kayıtları o santrale süzülür (son 30 gün + yalnız başarısız, çip «santral: ad ×», × varsayılana döndürür ve yeniden yükler).
