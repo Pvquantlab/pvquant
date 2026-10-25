@@ -111,7 +111,10 @@ değerler `grep '^VAR=' | cut -d= -f2-` ile okunur.
   `SELECT current_user, rolsuper` → pvq_api/false; `/v1/healthz`, giriş, Sistem sayfası; worker nabzı; gece yedeği bir sonraki
   01:15 UTC'de (ya da `acilis_yedek` 24 sa kuralı) yönetici URL'siyle.
 
-## Tablo turu O1+O2+O3 (+O5) — BİRİKİYOR (commit yok, 25.10)
+## Tablo turu O1+O2+O3 (+O5) — CANLI v2.489 (5785b94, CI #587)
+Sunucu 25.10: pull → api + worker + web imajları → recreate (geçiş yok). Canlı index.html + 19/19 JS/CSS referans derlemeyle birebir;
+`/yonetim` 200, `/v1/healthz` ok; worker nabzı 24 sn; `denetim_service.listele` canlı kayıtlarda kiracı adını döndürüyor (`giris` →
+«Deneme Lab»); api/worker log 0 hata. Gerçek hesapla Denetim/Genel bakış görünümü kullanıcıda.
 - **O1:** `denetim_service.listele` kiracı adını birleştirir (`kiraci_ad`, EK alan); Denetim/Genel bakış tablosunda Ayrıntı ham JSON yerine
   `anahtar: değer` çipleri (`AyrintiCipleri`, iç nesneler `eski.status` gibi düzleşir, uzun değer kısaltılır + başlıkta tamamı), Kiracı sütunu ad,
   Nesne «tür / id» iki satır, IP mono, Ayrıntı son sütun; Denetim süzgecinde kiracı SEÇİMİ (uuid girdisi kalktı); eylem çipi satır taban
