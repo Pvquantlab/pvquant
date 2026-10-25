@@ -82,3 +82,39 @@ def test_uctan_uca(temiz):
     if len(sahipler) == 1:
         with pytest.raises(ValueError):
             ps.operator_guncelle(pid, aktif=False)
+
+
+def test_faz3_sistem_izleme(temiz):
+    """25.10 Faz 3 — nabız yaz/oku, özet alanları, kiracılar arası iş kayıtları (ayrıntıyla) ve santral envanteri (DB'li)."""
+    from pvquant.services import sistem_service as ss
+    e = temiz
+    pid = ps.ilk_sahip_olustur(f"sahip3-{e}@pvq.test", "cok-gizli-parola-123")
+    ss.nabiz_yaz("worker", {"etiket": e, "is_sayisi": 21})
+    ss.nabiz_yaz("worker", {"etiket": e, "is_sayisi": 22})                       # ikinci yazım UPSERT: tek satır kalır
+    with sistem_baglami() as s:
+        assert s.execute(text("SELECT count(*) FROM sistem_nabiz WHERE bilesen='worker'")).scalar() == 1
+    o = ss.ozet(pid)
+    assert o["nabiz"]["durum"] == "calisiyor" and o["nabiz"]["ayrinti"]["is_sayisi"] == 22 and o["nabiz"]["yas_dk"] == 0
+    assert set(o) >= {"gece_turu", "isler_24", "meteo", "piyasa", "yedek", "db", "santral"}
+    assert isinstance(o["gece_turu"]["taze"], bool) and len(o["gece_turu"]["uretici_isler"]) == 3 and o["db"]["boyut_bayt"] > 0
+    # kiracı + santral + hatalı iş kaydı → platform iş listesinde kiracı/santral adı ve AYRINTI görünür
+    y = ps.kiraci_olustur(pid, f"Firma3 {e}", f"admin3-{e}@musteri.test")
+    with sistem_baglami() as s:
+        plant_id = s.execute(text("INSERT INTO plants(tenant_id, name, capacity_kwp, lat, lon, tz) "
+                                  "VALUES (CAST(:t AS uuid), :n, 1000, 37.0, 32.5, 'Europe/Istanbul') RETURNING id"),
+                             {"t": y["tenant_id"], "n": f"GES {e}"}).scalar()
+        s.execute(text("INSERT INTO jobs_log(job, tenant_id, plant_id, started, finished, status, detail) "
+                       "VALUES ('sabah_tahmin', CAST(:t AS uuid), :p, now() - interval '1 hour', now() - interval '59 minutes', 'error', :d)"),
+                  {"t": y["tenant_id"], "p": plant_id, "d": f"KeyError: {e}"})
+    try:
+        kayitlar = ss.isler(pid, saat=24, yalniz_hata=True, tenant_id=y["tenant_id"])["isler"]
+        assert len(kayitlar) == 1 and kayitlar[0]["ayrinti"] == f"KeyError: {e}" and kayitlar[0]["santral"] == f"GES {e}"
+        assert kayitlar[0]["kiraci"] == f"Firma3 {e}" and kayitlar[0]["tamam"] is False and kayitlar[0]["is"] == "Sabah tahmini"
+        assert ss.isler(pid, saat=24, job="gece_skill", tenant_id=y["tenant_id"])["isler"] == []
+        env = ss.santraller(pid, sorunlu=True)["santraller"]
+        bizim = [x for x in env if x["id"] == str(plant_id)][0]
+        assert {"scada_yok", "kosu_yok"} <= set(bizim["sorunlar"]) and bizim["kiraci"] == f"Firma3 {e}" and bizim["son_hata"]
+    finally:
+        with sistem_baglami() as s:
+            s.execute(text("DELETE FROM jobs_log WHERE plant_id = :p"), {"p": plant_id})
+            s.execute(text("DELETE FROM plants WHERE id = :p"), {"p": plant_id})

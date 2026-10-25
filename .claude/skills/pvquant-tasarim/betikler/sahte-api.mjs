@@ -56,6 +56,41 @@ http.createServer((req, res) => {
   if (yol === "/v1/yonetim/operatorler" && req.method === "POST") return yanit(201, { id: "p3", email: "yeni@pvquant.com", rol: "operator", aktif: true, totp_aktif: false, son_giris: null, olusturma: "2026-10-25T09:00:00Z", gecici_parola: "Xy9-ornek-gecici" });
   if (/^\/v1\/yonetim\/operatorler\//.test(yol)) return yanit(200, { tamam: true });
   if (yol === "/v1/yonetim/parola") return yanit(200, { tamam: true });
+  // ---- 25.10 Faz 3: sistem izleme (/v1/yonetim/{sistem,isler,santraller}) — zamanlar «şimdi»ye göre, hükümler uçtan
+  const dkOnce = (dk) => new Date(Date.now() - dk * 60000).toISOString();
+  const NABIZ_SESSIZ = !!process.env.NABIZ_SESSIZ;   // NABIZ_SESSIZ=1 → zamanlayıcı sessiz, gece turu bayat (uyarı tonları)
+  if (yol === "/v1/yonetim/sistem") return yanit(200, {
+    zaman: dkOnce(0),
+    nabiz: NABIZ_SESSIZ ? { durum: "sessiz", son: dkOnce(47), yas_dk: 47, ayrinti: { baslatma: dkOnce(900), is_sayisi: 21, aralik_dk: 5 }, aralik_dk: 5, sessiz_dk: 15 }
+                        : { durum: "calisiyor", son: dkOnce(3), yas_dk: 3, ayrinti: { baslatma: dkOnce(900), is_sayisi: 21, aralik_dk: 5 }, aralik_dk: 5, sessiz_dk: 15 },
+    gece_turu: NABIZ_SESSIZ ? { taze: false, bayat_isler: ["Sabah tahmini"], son: dkOnce(60 * 31), esik_saat: 30, uretici_isler: [
+        { kod: "sabah_tahmin", is: "Sabah tahmini", son_ok: dkOnce(60 * 55) }, { kod: "gece_skill", is: "Gece karnesi", son_ok: dkOnce(60 * 7) }, { kod: "gunluk_beklenti", is: "Günlük beklenti", son_ok: dkOnce(60 * 7) }] }
+      : { taze: true, bayat_isler: [], son: dkOnce(60 * 7), esik_saat: 30, uretici_isler: [
+        { kod: "sabah_tahmin", is: "Sabah tahmini", son_ok: dkOnce(60 * 7) }, { kod: "gece_skill", is: "Gece karnesi", son_ok: dkOnce(60 * 8) }, { kod: "gunluk_beklenti", is: "Günlük beklenti", son_ok: dkOnce(60 * 8) }] },
+    isler_24: { toplam: 86, hata: NABIZ_SESSIZ ? 4 : 1 },
+    meteo: { esik_saat: 36, kaynaklar: [
+      { kaynak: "ICON-EU", son_indirme: dkOnce(60 * 8), nokta: 6, satir: 184320, ilk: "2026-07-12T00:00:00+00:00", son_ts: dkOnce(-60 * 96), yas_saat: 8.1, bayat: false },
+      { kaynak: "GFS", son_indirme: dkOnce(60 * 8), nokta: 6, satir: 391680, ilk: "2026-07-12T00:00:00+00:00", son_ts: dkOnce(-60 * 384), yas_saat: 8.2, bayat: false },
+      { kaynak: "GEFS üyeleri", son_indirme: dkOnce(60 * 50), nokta: 6, satir: 1105920, ilk: "2026-08-01T00:00:00+00:00", son_ts: dkOnce(-60 * 200), yas_saat: 50.3, bayat: true }] },
+    piyasa: { son_ts: dkOnce(-60 * 23), son_guncelleme: dkOnce(60 * 8), satir: 2520, yas_saat: 8.0, esik_saat: 36, bayat: false },
+    yedek: { son_basarili: dkOnce(60 * 9), yas_saat: 9.2, esik_saat: 30, bayat: false, son_deneme: { zaman: dkOnce(60 * 9), tamam: true, ayrinti: null } },
+    db: { boyut_bayt: 2_914_000_000 }, santral: { etkin: 6, arsivli: 1 } });
+  if (yol === "/v1/yonetim/isler") { const hepsi = [
+      { id: "j1", kod: "sabah_tahmin", is: "Sabah tahmini", tenant_id: "e190f269-637e-4459-af54-27a7e08095c7", kiraci: "Deneme Lab", plant_id: "pl-1", santral: "Format Lab", zaman: dkOnce(60 * 7), sure_sn: 41.2, tamam: false, durum: "error", ayrinti: "KeyError: 'artik' — uzlastirma_service.py:76 (artiklar.reindex)" },
+      { id: "j2", kod: "sabah_tahmin", is: "Sabah tahmini", tenant_id: "19bf0a66-39dc-42e5-a9bb-269466de3f7a", kiraci: "Meridyen Enerji", plant_id: "pl-2", santral: "Karapınar 1", zaman: dkOnce(60 * 7 + 1), sure_sn: 38.9, tamam: true, durum: "ok", ayrinti: null },
+      { id: "j3", kod: "gece_meteo", is: "Hava verisi indirme", tenant_id: null, kiraci: null, plant_id: null, santral: null, zaman: dkOnce(60 * 8), sure_sn: 1312.4, tamam: true, durum: "ok", ayrinti: null },
+      { id: "j4", kod: "gece_skill", is: "Gece karnesi", tenant_id: "e190f269-637e-4459-af54-27a7e08095c7", kiraci: "Deneme Lab", plant_id: "pl-3", santral: "PVDAQ Golden 33", zaman: dkOnce(60 * 8 + 30), sure_sn: 6.1, tamam: true, durum: "ok", ayrinti: "yetersiz veri: 10 günde 3 geçerli gün, atlandı" },
+      { id: "j5", kod: "gece_yedek", is: "Veritabanı yedeği", tenant_id: null, kiraci: null, plant_id: null, santral: null, zaman: dkOnce(60 * 9), sure_sn: 12.7, tamam: true, durum: "ok", ayrinti: null }];
+    const yalnizHata = /yalniz_hata=true/.test(url.search); const isAdi = (url.searchParams.get("job") || ""); const kiraci = url.searchParams.get("tenant_id") || "";
+    return yanit(200, { isler: hepsi.filter((x) => (!yalnizHata || !x.tamam) && (!isAdi || x.kod === isAdi) && (!kiraci || x.tenant_id === kiraci)), pencere_saat: Number(url.searchParams.get("saat") || 48),
+      is_turleri: [{ kod: "gece_meteo", is: "Hava verisi indirme" }, { kod: "sabah_tahmin", is: "Sabah tahmini" }, { kod: "gece_skill", is: "Gece karnesi" }, { kod: "gece_yedek", is: "Veritabanı yedeği" }] }); }
+  if (yol === "/v1/yonetim/santraller") { const hepsi = [
+      { id: "pl-2", ad: "Karapınar 1", kapasite_kwp: 4514, tz: "Europe/Istanbul", olusturma: "2026-07-12T09:10:00Z", tenant_id: "19bf0a66-39dc-42e5-a9bb-269466de3f7a", kiraci: "Meridyen Enerji", kiraci_durum: "active", son_scada: dkOnce(60 * 3), son_kosu: dkOnce(60 * 7), son_hata: null, sorunlar: [] },
+      { id: "pl-1", ad: "Format Lab", kapasite_kwp: 1200, tz: "Europe/Istanbul", olusturma: "2026-09-02T14:30:00Z", tenant_id: "e190f269-637e-4459-af54-27a7e08095c7", kiraci: "Deneme Lab", kiraci_durum: "active", son_scada: dkOnce(60 * 70), son_kosu: dkOnce(60 * 31), son_hata: dkOnce(60 * 7), sorunlar: ["scada_bayat", "kosu_bayat"] },
+      { id: "pl-3", ad: "PVDAQ Golden 33", kapasite_kwp: 1.1, tz: "Etc/GMT+7", olusturma: "2026-09-05T10:00:00Z", tenant_id: "e190f269-637e-4459-af54-27a7e08095c7", kiraci: "Deneme Lab", kiraci_durum: "active", son_scada: null, son_kosu: dkOnce(60 * 7), son_hata: null, sorunlar: ["scada_yok"] },
+      { id: "pl-4", ad: "Askıdaki GES", kapasite_kwp: 980, tz: "Europe/Istanbul", olusturma: "2026-08-15T10:00:00Z", tenant_id: "7c1d2e3f-0000-4000-8000-000000000003", kiraci: "Askıdaki Enerji", kiraci_durum: "suspended", son_scada: dkOnce(60 * 24 * 12), son_kosu: dkOnce(60 * 24 * 12), son_hata: null, sorunlar: ["scada_bayat", "kosu_bayat", "kiraci_askida"] }];
+    const sorunlu = /sorunlu=true/.test(url.search);
+    return yanit(200, { santraller: hepsi.filter((p) => !sorunlu || p.sorunlar.length > 0), esik: { scada_saat: 48, kosu_saat: 30 }, toplam: hepsi.length }); }
   if (yol === "/v1/yonetim/denetim") return yanit(200, { kayitlar: [
       { id: 12, zaman: "2026-10-24T21:53:35Z", kapsam: "platform", aktor_id: "p1", aktor_eposta: "sahip@pvquant.com", tenant_id: null, eylem: "iki_adim_ac", nesne_tur: null, nesne_id: null, ayrinti: {}, ip: "78.177.165.74" },
       { id: 11, zaman: "2026-10-24T21:48:28Z", kapsam: "platform", aktor_id: null, aktor_eposta: "sahip@pvquant.com", tenant_id: null, eylem: "giris", nesne_tur: null, nesne_id: null, ayrinti: {}, ip: "78.177.165.74" },

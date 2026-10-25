@@ -101,3 +101,24 @@ def test_musteri_girisi_denetim_izine(monkeypatch, _ortam):
     c = TestClient(api_main.app)
     assert c.post("/v1/auth/login", json={"email": "a@b.c", "sifre": "x" * 10}).status_code == 200
     assert any(a[0] == "musteri" and a[1] == "giris" and k.get("tenant_id") == "t1" for a, k in _ortam)
+
+
+# ---------------- 25.10 Faz 3: sistem izleme uçları ----------------
+def test_sistem_uclari_kapsam_ve_suzgec(monkeypatch):
+    from pvquant.services import sistem_service as ss
+    monkeypatch.setattr(ps, "oturum_durumu", lambda p: {"sv": 0, "aktif": True, "rol": "operator", "email": "o@pvq"})
+    monkeypatch.setattr(au, "oturum_durumu", lambda u: {"sv": 0, "aktif": True, "kiraci_durum": "active"})
+    monkeypatch.setattr(ss, "ozet", lambda a: {"nabiz": {"durum": "calisiyor"}, "aktor": a})
+    gorulen = {}
+    monkeypatch.setattr(ss, "isler", lambda a, **k: gorulen.update(k) or {"isler": [{"kod": "sabah_tahmin", "ayrinti": "KeyError: x"}], "pencere_saat": k["saat"], "is_turleri": []})
+    monkeypatch.setattr(ss, "santraller", lambda a, **k: {"santraller": [], "esik": {"scada_saat": 48, "kosu_saat": 30}, "toplam": 0, "sorunlu": k["sorunlu"]})
+    c = TestClient(api_main.app)
+    y = c.get("/v1/yonetim/sistem", headers=_jeton(rol="operator"))                 # operatör de okur (salt okunur)
+    assert y.status_code == 200 and y.json()["aktor"] == "p1"
+    y = c.get("/v1/yonetim/isler?saat=72&yalniz_hata=true&job=sabah_tahmin&tenant_id=t1&limit=50", headers=_jeton(rol="operator"))
+    assert y.status_code == 200 and y.json()["isler"][0]["ayrinti"] == "KeyError: x"   # hata ayrıntısı platformda GÖRÜNÜR
+    assert gorulen == {"saat": 72, "yalniz_hata": True, "job": "sabah_tahmin", "tenant_id": "t1", "limit": 50}
+    assert c.get("/v1/yonetim/santraller?sorunlu=true", headers=_jeton()).json()["sorunlu"] is True
+    for yol in ("/v1/yonetim/sistem", "/v1/yonetim/isler", "/v1/yonetim/santraller"):
+        assert c.get(yol, headers=_musteri_jeton()).status_code == 403            # müşteri jetonu platform ucunu açamaz
+        assert c.get(yol).status_code == 422                                      # başlık yok

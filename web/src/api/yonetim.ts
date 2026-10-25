@@ -41,6 +41,29 @@ export interface Basvuru { id: string; eposta: string; santral_adi: string | nul
 export interface DenetimKaydi { id: number; zaman: string; kapsam: string; aktor_id: string | null; aktor_eposta: string | null; tenant_id: string | null;
   eylem: string; nesne_tur: string | null; nesne_id: string | null; ayrinti: Record<string, unknown>; ip: string | null }
 
+// 25.10 Faz 3 — sistem izleme. Bayatlık HÜKÜMLERİ (bayat, taze, durum) uçtan gelir; arayüz eşik uydurmaz.
+export interface SistemOzet {
+  zaman: string;
+  nabiz: { durum: "calisiyor" | "sessiz" | "yok"; son: string | null; yas_dk: number | null; ayrinti: Record<string, unknown>; aralik_dk: number; sessiz_dk: number };
+  gece_turu: { taze: boolean; bayat_isler: string[]; son: string | null; esik_saat: number; uretici_isler: { kod: string; is: string; son_ok: string | null }[] };
+  isler_24: { toplam: number; hata: number };
+  meteo: { esik_saat: number; kaynaklar: { kaynak: string; son_indirme: string | null; nokta: number | null; satir: number | null; ilk: string | null; son_ts: string | null; yas_saat: number | null; bayat: boolean }[] };
+  piyasa: { son_ts: string | null; son_guncelleme: string | null; satir: number; yas_saat: number | null; esik_saat: number; bayat: boolean };
+  yedek: { son_basarili: string | null; yas_saat: number | null; esik_saat: number; bayat: boolean; son_deneme: { zaman: string | null; tamam: boolean; ayrinti: string | null } | null };
+  db: { boyut_bayt: number };
+  santral: { etkin: number; arsivli: number };
+}
+export interface IsKaydi { id: string; kod: string; is: string; tenant_id: string | null; kiraci: string | null; plant_id: string | null; santral: string | null;
+  zaman: string; sure_sn: number | null; tamam: boolean; durum: string; ayrinti: string | null }
+export interface SantralEnvanter { id: string; ad: string; kapasite_kwp: number; tz: string; olusturma: string; tenant_id: string; kiraci: string; kiraci_durum: string;
+  son_scada: string | null; son_kosu: string | null; son_hata: string | null; sorunlar: string[] }
+
+/** Sorgu dizesi: boş/undefined alanlar atlanır. */
+const sorgu = (p: Record<string, unknown>): string => {
+  const q = Object.entries(p).filter(([, v]) => v !== undefined && v !== "" && v !== false).map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join("&");
+  return q ? "?" + q : "";
+};
+
 export const yonetim = {
   /** "hata" | "iki_adim" | { rol, email, iki_adim_kurulmali } — jeton depoya yazılır */
   giris: async (email: string, sifre: string, kod?: string): Promise<"hata" | "iki_adim" | { rol: string; email: string; iki_adim_kurulmali: boolean }> => {
@@ -76,11 +99,24 @@ export const yonetim = {
   kullaniciIkiAdimSifirla: (id: string): Promise<{ tamam: boolean }> => istek(`/kullanicilar/${id}/iki-adim-sifirla`, "POST"),
   basvurular: (): Promise<{ basvurular: Basvuru[] }> => istek("/basvurular"),
   basvuruOkundu: (id: string): Promise<{ tamam: boolean }> => istek(`/basvurular/${id}/okundu`, "POST"),
-  denetim: (p: { tenant_id?: string; eylem?: string; kapsam?: string; limit?: number; once_id?: number } = {}): Promise<{ kayitlar: DenetimKaydi[] }> => {
-    const q = Object.entries(p).filter(([, v]) => v !== undefined && v !== "").map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join("&");
-    return istek(`/denetim${q ? "?" + q : ""}`);
-  },
+  denetim: (p: { tenant_id?: string; eylem?: string; kapsam?: string; limit?: number; once_id?: number } = {}): Promise<{ kayitlar: DenetimKaydi[] }> =>
+    istek(`/denetim${sorgu(p)}`),
+  // 25.10 Faz 3 — sistem izleme (salt okunur)
+  sistem: (): Promise<SistemOzet> => istek("/sistem"),
+  isler: (p: { saat?: number; yalniz_hata?: boolean; job?: string; tenant_id?: string; limit?: number } = {}): Promise<{ isler: IsKaydi[]; pencere_saat: number; is_turleri: { kod: string; is: string }[] }> =>
+    istek(`/isler${sorgu(p)}`),
+  santraller: (sorunlu = false): Promise<{ santraller: SantralEnvanter[]; esik: { scada_saat: number; kosu_saat: number }; toplam: number }> =>
+    istek(`/santraller${sorgu({ sorunlu })}`),
 };
+
+/** Göreli yaş: «3 dk önce», «5 saat önce», «2 gün önce»; null «—». Hüküm değil, okunurluk. */
+export function yasTr(s: string | null | undefined, simdi = Date.now()): string {
+  if (!s) return "—";
+  const dk = Math.max(0, Math.round((simdi - new Date(s).getTime()) / 60000));
+  if (dk < 60) return `${dk} dk önce`;
+  if (dk < 48 * 60) return `${Math.round(dk / 60)} saat önce`;
+  return `${Math.round(dk / 1440)} gün önce`;
+}
 
 /** Tarih/saat kısa (tr-TR) — null «—» */
 export function zamanTr(s: string | null | undefined): string {

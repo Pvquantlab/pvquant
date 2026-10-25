@@ -47,3 +47,31 @@ test("zorunlu 2FA: jeton var ama totp kapalıysa kurulum ekranı, kabuk açılma
   assert.match(kok, /if \(kurulmali\) return <IkiAdimKurulum/);
   assert.match(kok, /setKurulmali\(!b\.totp_aktif\)/);
 });
+
+// ---------------- 25.10 Faz 3: sistem izleme ----------------
+test("Faz 3: Sistem sayfası listede, kökte ve istemcide; hükümler uçtan", () => {
+  const liste = oku("features/yonetim/sayfaListesi.ts");
+  assert.match(liste, /\{ id: "sistem", ad: "Sistem" \}/);
+  const kok = oku("features/yonetim/Yonetim.tsx");
+  assert.match(kok, /\{sayfa === "sistem" && <Sistem \/>\}/);
+  const y = oku("api/yonetim.ts");
+  for (const uc of ['istek("/sistem")', "istek(`/isler${sorgu(p)}`)", "istek(`/santraller${sorgu({ sorunlu })}`)"]) assert.ok(y.includes(uc), uc);
+  const sayfa = oku("features/yonetim/Sistem.tsx");
+  // bayatlık hükmü arayüzde HESAPLANMAZ: tonlar uçtan gelen durum/taze/bayat alanlarını okur
+  assert.match(sayfa, /ton=\{o\.nabiz\.durum === "calisiyor" \? undefined : "uyari"\}/);
+  assert.match(sayfa, /ton=\{o\.gece_turu\.taze \? undefined : "uyari"\}/);
+  assert.match(sayfa, /ton=\{o\.piyasa\.bayat \? "uyari" : undefined\}/);
+  assert.doesNotMatch(sayfa, /yas_saat\s*>\s*\d|yas_dk\s*>\s*\d/);
+  // hata ayrıntısı platformda görünür …
+  assert.match(sayfa, /\{x\.ayrinti \?\? "—"\}/);
+});
+
+test("Faz 3: müşteri tarafı değişmedi — Isler tipi ve gece işleri kartı hata ayrıntısı taşımaz", () => {
+  const tipler = oku("api/types.ts");
+  const isler = tipler.slice(tipler.indexOf("export interface Isler"), tipler.indexOf("export interface Isler") + 400);
+  assert.doesNotMatch(isler, /ayrinti|detail/);
+  const d = oku("features/sayfalar/Digerleri.tsx");
+  const kart = d.slice(d.indexOf("function GeceIsleriKarti"), d.indexOf("function GeceIsleriKarti") + 2600);
+  assert.doesNotMatch(kart, /ayrinti/);
+  assert.match(kart, /ayrıntı sunucu günlüğünde/);
+});

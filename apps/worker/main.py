@@ -727,6 +727,14 @@ if __name__ == "__main__":
                 run_date=dt.datetime.now(dt.timezone.utc) + dt.timedelta(seconds=20))
     sch.add_job(_logla_tek("acilis_yedek", acilis_yedek), "date",        # v2.339: yedek yakalaması
                 run_date=dt.datetime.now(dt.timezone.utc) + dt.timedelta(seconds=45))
+    # 25.10 Faz 3: zamanlayıcı NABZI — sistem_nabiz'e tek satır UPSERT, her NABIZ_ARALIK_DK dakikada. jobs_log'a
+    # yazılmaz (müşterinin «gece işleri» listesine sızardı). Nabız «zamanlayıcı ayakta» demektir; işler ayrı izlenir.
+    from pvquant.services.sistem_service import nabiz_yaz, NABIZ_ARALIK_DK
+    _baslatma = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
+    def _nabiz():
+        nabiz_yaz("worker", {"baslatma": _baslatma, "is_sayisi": len(sch.get_jobs()), "aralik_dk": NABIZ_ARALIK_DK})
+    sch.add_job(_nabiz, "interval", minutes=NABIZ_ARALIK_DK, id="nabiz")
+    _nabiz()                                                             # açılışta ilk nabız: tablo boş kalmaz
     print(f"PVQuant worker basladi (UTC cron: {cfg.worker_hour_skill:02d}:30 skill /"
           f" {cfg.worker_hour_forecast:02d}:00 tahmin / {cfg.worker_hour_alarm:02d}:00 alarm /"
           f" ay-{cfg.worker_day_calibration} {cfg.worker_hour_calibration:02d}:00 kal.)")

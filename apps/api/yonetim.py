@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from apps.api.deps import platform_yetkisi
 from apps.api.hiz import limiter
-from pvquant.services import platform_service as ps, denetim_service as dz, basvuru_service
+from pvquant.services import platform_service as ps, denetim_service as dz, basvuru_service, sistem_service as ss
 
 yonetim = APIRouter(prefix="/v1/yonetim", tags=["Platform yönetimi"])
 
@@ -260,3 +260,22 @@ def basvuru_okundu(bid: str, request: Request, c=Depends(platform_yetkisi())):
 def denetim(tenant_id: str | None = None, eylem: str | None = None, kapsam: str | None = None, limit: int = 100,
             once_id: int | None = None, c=Depends(platform_yetkisi())):
     return {"kayitlar": dz.listele(tenant_id=tenant_id, eylem=eylem, kapsam=kapsam, limit=limit, once_id=once_id)}
+
+
+# ---------------- sistem izleme (25.10 Faz 3) ----------------
+# Salt okunur uçlar: denetim izine yazılmaz (diğer GET'ler gibi). Hata ayrıntısı (jobs_log.detail) burada GÖRÜNÜR —
+# müşteri /v1/isler'de bilerek yoktur; platform personeli zaten günlüğe bakacak kişidir.
+@yonetim.get("/sistem")
+def sistem(c=Depends(platform_yetkisi())):
+    return ss.ozet(c["sub"])
+
+
+@yonetim.get("/isler")
+def isler(saat: int = 48, yalniz_hata: bool = False, job: str | None = None, tenant_id: str | None = None, limit: int = 200,
+          c=Depends(platform_yetkisi())):
+    return ss.isler(c["sub"], saat=saat, yalniz_hata=yalniz_hata, job=job or None, tenant_id=tenant_id or None, limit=limit)
+
+
+@yonetim.get("/santraller")
+def santraller(sorunlu: bool = False, c=Depends(platform_yetkisi())):
+    return ss.santraller(c["sub"], sorunlu=sorunlu)
