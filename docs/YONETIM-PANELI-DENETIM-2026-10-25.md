@@ -130,7 +130,10 @@ Sunucu 25.10: pull → api + worker + web imajları → recreate (geçiş yok). 
   375'te belge taşması 0, tablolar kart içinde kayar (tasarım kuralı); konsol 0. Ders: `{zamanTr(` regex'i şablon dizelerindeki `${zamanTr(`'i de
   yakaladı → iki yer elle geri alındı, test pini `[^$]\{zamanTr\(`.
 
-## O4 teyidi + O6 + O8 — BİRİKİYOR (commit yok, 25.10)
+## O4 teyidi + O6 + O8 — CANLI v2.490 (e482242, CI #589)
+Sunucu 25.10: pull → api + web imajları → recreate (geçiş yok, worker değişmedi). Canlı index.html + 19/19 JS/CSS referansla birebir; `/yonetim`
+200, `/v1/healthz` ok; api log 0 hata. Kanıt: gerçek sahip kimliğiyle sentetik jeton — `ilk` 13 sa önce → **401 «oturum üst sınırı doldu»**,
+1 sa önce → 200. `kiraci_goruntule` satırı ilk gerçek müşteri-detayı görüntülemesinde düşer (Denetim izi sayfasında görünür, Genel bakışta değil).
 - **O4 (teyit, kod çekirdeğe dokunmadı):** `piyasa_service.gece_piyasa` bilerek dün ve önceki 3 günün GERÇEKLEŞEN PTF/SMF'sini çeker
   (SMF teslimden sonra kesinleşir); sunucuda 20–24 Ekim günde 24 saat eksiksiz, her gece 00:15 UTC tazelenir. «Bir gün geride» tasarım.
   Sistem KPI alt metni «gerçekleşen PTF/SMF <gün> gününe kadar (gece dünü çeker; ileri fiyat değil)».
