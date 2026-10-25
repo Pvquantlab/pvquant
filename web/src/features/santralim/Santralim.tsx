@@ -305,7 +305,8 @@ export function Santralim({ plantId }: { plantId: string }) {
       {/* v2.198 — D "Rapor Odasi" yerlesimi: 1 Ozet seridi (kartsiz), 2 hero
           tam genislik, hava+kunye/saglik cifti, 3 parmak izi, 4 gunes yolu,
           5 yedi gun + 6 aylik. */}
-      <div className="ozet-bas"><span className="no">1</span> Özet
+      {/* 25.10 kullanıcı kararı: bölüm numaraları (1–7) kalktı; başlıklar ve sıra aynı */}
+      <div className="ozet-bas">Özet
         <span className="sag">tümü beklenen değer (P50); her gece gerçekleşenle sınanır</span></div>
       <div className="ozet">
         <div className="anlik">
@@ -355,7 +356,7 @@ export function Santralim({ plantId }: { plantId: string }) {
           <div className="dg">{o.hafta_mwh == null ? <span style={{ color: "var(--soluk)" }}>—</span>
                                 : (() => { const [d, b] = enerjiTr(o.hafta_mwh * 1000).split(" ");
                                            return <>{d} <small>{b}</small></>; })()}</div>
-          <div className="alt">ayrıntı 6. bölümde</div>
+          <div className="alt">ayrıntı «7 günlük görünüm» kartında</div>
         </div>
         <div>
           <div className="et">Model durumu</div>
@@ -372,7 +373,7 @@ export function Santralim({ plantId }: { plantId: string }) {
         </div>
       </div>
 
-      <Kart no="2" baslik="Bugün" alt="Saatlik üretim"
+      <Kart baslik="Bugün" alt="Saatlik üretim"
         sag={<span className="cip">saatlik çözünürlük</span>}
         style={{ marginBottom: 14 }}>
         {seri && dilim && grafikSantral && (
@@ -481,7 +482,7 @@ export function Santralim({ plantId }: { plantId: string }) {
         </Kart>
         </div>
         {/* v2.285 (tasarım çıtası): ayarlar veri tablosundan çıktı — her ayar ad + açıklama solda, kontroller sağda. */}
-        <Kart no="3" baslik="Santral ayarları"
+        <Kart baslik="Santral ayarları"
             sag={<span className="cip">değişiklikler bir sonraki tahminden itibaren geçerli</span>}>
           <div className="ayar">
             <div><div className="ayar-ad">Piyasa segmenti</div>
@@ -592,7 +593,7 @@ export function Santralim({ plantId }: { plantId: string }) {
       </div>
 
       {sam && sam.saatler.length > 0 && (
-        <Kart no="4" baslik="Saatlik üretim profili" alt="Saat × ay matrisi"
+        <Kart baslik="Saatlik üretim profili" alt="Saat × ay matrisi"
           sag={<span className="cip"><Meta items={["tüm geçerli SCADA", "kW", sam.tz]} /></span>}>
           <div style={{ overflowX: "auto" }}>
             <table style={{ borderCollapse: "collapse", width: "100%",
@@ -638,7 +639,7 @@ export function Santralim({ plantId }: { plantId: string }) {
       )}
 
       {gy && gy.egriler.length > 0 && (
-        <Kart no="5" baslik="Güneş yolu" alt="Yaz, ekinoks ve kış karşılaştırması"
+        <Kart baslik="Güneş yolu" alt="Yaz, ekinoks ve kış karşılaştırması"
           sag={<span className="cip"><Meta items={[`${gy.lat}°K`, gy.tz]} /></span>}>
           <EChart option={gyOption} height={300}
             ariaLabel="Azimut ve yükseklik düzleminde yaz gündönümü, ekinoks ve kış gündönümü güneş yolları, saat işaretleriyle" />
@@ -651,7 +652,7 @@ export function Santralim({ plantId }: { plantId: string }) {
 
       <div className="ızgara" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)",
                                        marginBottom: 14, alignItems: "start" }}>
-        <Kart no="6" baslik="7 günlük görünüm" sag={<span className="cip mono">
+        <Kart baslik="7 günlük görünüm" sag={<span className="cip mono">
           {o.hafta_mwh == null ? "—" : `${enerjiTr(o.hafta_mwh * 1000)} toplam`}</span>}>
           {/* v2.200 (D imzasi): profilli tablo — profil gun-ici P50 egrisi,
               tum gunler ayni olcekte; tepe = gunun en yuksek P50 saati */}
@@ -689,7 +690,7 @@ export function Santralim({ plantId }: { plantId: string }) {
             Profiller aynı ölçekte çizilir; kısa görünen gün, beklenen üretimi düşük olan gündür. Değerler beklenen (P50) tahmindir.
           </p>
         </Kart>
-        <Kart no="7" baslik="Aylık üretim" alt="Gerçekleşen üretim"
+        <Kart baslik="Aylık üretim" alt="Gerçekleşen üretim"
           sag={<span className="cip">son 12 ay</span>}>
           {/* v2.205: beklenti-P50 imleci (D bullet dili) — yalniz TAM
               kapsanmis aylarda; imlecin hakemi gun-oncesi arsiv */}
