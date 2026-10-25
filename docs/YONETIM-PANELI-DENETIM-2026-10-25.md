@@ -82,7 +82,14 @@ satır sağlık şeridi (Sistem özetinden 3 rozet).
 `denetim_izi` için saklama politikası yok (silme kodu yok). Başarısız giriş denemeleri (IP) dahil. **Öneri:** 24 ay saklama + aylık
 arşiv (ürün kararı).
 
-## Uygulananlar (birikiyor, commit yok)
+## Uygulananlar — CANLI v2.488 (2675f60, CI #585; testler CI'da pvq_api rolüyle)
+Sunucu 25.10: `.env` API_DB_PASSWORD (48 hex) → api + worker imajları → alembic yönetici rolüyle (`v2488_db_rolu (head)`) → `ALTER ROLE
+pvq_api PASSWORD` → `up -d --force-recreate api worker`. Kanıt: api konteynerinde sistem bağlamı `('pvq_api', rolsuper=False,
+bypassrls=True)`, kiracı bağlamı `('pvq_app', bypassrls=False)`; `/v1/auth/login` ve `/v1/yonetim/giris` yanlış parola 401 (denetim
+izine `giris_basarisiz` pvq_api ile yazıldı), `/v1/yonetim/sistem` ve `/v1/dis/santraller` bozuk kimlik 401, `/v1/healthz` ok,
+`/yonetim` 200; worker nabzı 26 sn; gece yedeği yönetici URL'siyle elle koşuldu → 36,8 MB, 14 yedek; api/worker logunda
+permission denied / traceback 0. Ders: `.env` `set -a; . ./.env` ile kaynak gösterilemez (`PVQ_SMTP_FROM=PVQuant <…>` tırnaksız) —
+değerler `grep '^VAR=' | cut -d= -f2-` ile okunur.
 - **Y2 (25.10):** `platform_service.oturum_durumu` artık `totp_aktif` taşır; `deps.platform_yetkisi` 2FA kurulu değilse yalnız
   `PLATFORM_KURULUM_YOLLARI` (`/ben`, `/iki-adim/baslat|dogrula`, `/parola`, `/oturum/yenile`) açar, diğer uçlar 403 «iki adımlı
   doğrulama kurulumu gerekli»; `iki_adim_dogrula` önbelleği düşürür (kurulum biter bitmez tam kapsam). Jeton biçimi değişmedi: açık
