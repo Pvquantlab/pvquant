@@ -1,4 +1,5 @@
 import { zamanTr } from "../../api/yonetim";
+import { sayiTr } from "../sayfalar/parcalar";
 
 /** 25.10 denetim tablo turu (O1/O3) — platform tablolarının ortak hücre bileşenleri.
  *  Zaman: tek tipografi (mono, tabular; CSS .zaman). AyrintiCipleri: denetim ayrıntısı ham JSON yerine anahtar: değer çipleri. */
@@ -23,4 +24,12 @@ export function AyrintiCipleri({ a }: { a: Record<string, unknown> }) {
         <span key={k} className="plat-ayrinti__cip" title={`${k}: ${tam}`}><b>{k}</b>{kisalt(v)}</span>); })}
     </span>
   );
+}
+
+/** 26.10 Faz 5 — kullanım/limit rozeti (UYARI kipi, zorlama yok): limit null → «sınırsız» soluk; ≥ %100 «aşıldı»; ≥ %80 uyarı; altı sakin. */
+export function LimitRozet({ kullanim, limit }: { kullanim: number; limit: number | null | undefined }) {
+  if (limit == null) return <span className="soluk" title="plan sınırsız">{sayiTr(kullanim)}</span>;
+  const oran = limit === 0 ? (kullanim > 0 ? 2 : 0) : kullanim / limit;
+  const sinif = oran >= 1 ? "rozet-uyari" : oran >= 0.8 ? "rozet-uyari plat-rozet-sari" : "rozet-notr";
+  return <span className={`rozet rozet-kucuk ${sinif}`} title={oran >= 1 ? "plan limiti aşıldı (uyarı; kısıt yok)" : `plan limiti ${sayiTr(limit)}`}>{sayiTr(kullanim)} / {sayiTr(limit)}{oran >= 1 && " aşıldı"}</span>;
 }

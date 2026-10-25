@@ -34,6 +34,9 @@ def test_basvurular_musteri_ucunda_yok(monkeypatch):
     assert c.post("/v1/vitrin/basvurular/b1/okundu").status_code == 404
 
 
+_REQ = type("R", (), {"method": "GET"})()   # 26.10 Faz 5: gecerli_kullanici(request, authorization)
+
+
 def _jeton(monkeypatch, **ek):
     monkeypatch.setenv("PVQ_JWT_SECRET", "test-sirri-0123456789abcdef-uzun")
     import datetime as dt
@@ -46,28 +49,28 @@ def test_gecerli_kullanici_surum_ve_durum(monkeypatch):
     durum = {"sv": 0, "aktif": True, "kiraci_durum": "active"}
     monkeypatch.setattr(au, "oturum_durumu", lambda u: dict(durum))
     # eski jeton (sv yok) sürüm 0'da geçerli — geriye uyumluluk
-    assert gecerli_kullanici(_jeton(monkeypatch))["sub"] == "u1"
+    assert gecerli_kullanici(_REQ, _jeton(monkeypatch))["sub"] == "u1"
     # sürüm eşleşiyor
     durum["sv"] = 3
-    assert gecerli_kullanici(_jeton(monkeypatch, sv=3))["role"] == "admin"
+    assert gecerli_kullanici(_REQ, _jeton(monkeypatch, sv=3))["role"] == "admin"
     # sürüm artmış (pasifleştirme/rol/parola) → 401
     with pytest.raises(Exception) as e:
-        gecerli_kullanici(_jeton(monkeypatch, sv=2))
+        gecerli_kullanici(_REQ, _jeton(monkeypatch, sv=2))
     assert e.value.status_code == 401
     # pasif kullanıcı → 401
     durum.update(sv=3, aktif=False)
     with pytest.raises(Exception) as e:
-        gecerli_kullanici(_jeton(monkeypatch, sv=3))
+        gecerli_kullanici(_REQ, _jeton(monkeypatch, sv=3))
     assert e.value.status_code == 401
     # askıdaki kiracı → 403
     durum.update(aktif=True, kiraci_durum="suspended")
     with pytest.raises(Exception) as e:
-        gecerli_kullanici(_jeton(monkeypatch, sv=3))
+        gecerli_kullanici(_REQ, _jeton(monkeypatch, sv=3))
     assert e.value.status_code == 403
     # kullanıcı yok → 401
     monkeypatch.setattr(au, "oturum_durumu", lambda u: None)
     with pytest.raises(Exception) as e:
-        gecerli_kullanici(_jeton(monkeypatch, sv=3))
+        gecerli_kullanici(_REQ, _jeton(monkeypatch, sv=3))
     assert e.value.status_code == 401
 
 

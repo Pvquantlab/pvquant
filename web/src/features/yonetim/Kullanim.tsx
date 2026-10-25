@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { yonetim, type KullanimOzet, type KullanimKiraci, type KullanimToplam, type KullanimGunler } from "../../api/yonetim";
+import { yonetim, type KullanimOzet, type KullanimKiraci, type KullanimToplam, type KullanimGunler, type Plan } from "../../api/yonetim";
 import { Zaman } from "./ortak";
 import { Kart, Sayfa, SayfaIskeleti, sayiTr } from "../sayfalar/parcalar";
 import { Meta } from "../../lib/Meta";
+import { LimitRozet } from "./ortak";
 
 /** 25.10 Faz 4 — KULLANIM: kiracı başına aylık sayımlar. dis_api / webhook sayaçtan (kullanim_sayac), rapor / koşu / SCADA saati /
  *  yükleme mevcut tablolardan türetilir; hepsi uçtan, arayüz toplar ve gösterir. Plan limiti yok (Faz 5): yalnız ölçüm. */
@@ -25,7 +26,10 @@ function aylar(n = 6): string[] {
 }
 const ayAdi = (ay: string) => new Date(Date.UTC(Number(ay.slice(0, 4)), Number(ay.slice(5, 7)) - 1, 1)).toLocaleDateString("tr-TR", { month: "long", year: "numeric", timeZone: "UTC" });
 /** Sayı; sıfır soluk «0» (gerçek sayım; «—» yalnız eksik değer içindir), webhook hücresi hata sayısını rozetle söyler */
-function Hucre({ k, t }: { k: keyof KullanimToplam; t: KullanimToplam }) {
+function Hucre({ k, t, plan }: { k: keyof KullanimToplam; t: KullanimToplam; plan?: Plan }) {
+  // 26.10 Faz 5: aylık limitli iki tür rozetle (uyarı kipi); plan bilinmiyorsa düz sayı
+  if (plan && k === "dis_api") return <LimitRozet kullanim={t.dis_api} limit={plan.aylik_dis_api_limit} />;
+  if (plan && k === "rapor") return <LimitRozet kullanim={t.rapor} limit={plan.aylik_rapor_limit} />;
   const n = t[k] === 0 ? <span className="bos">0</span> : sayiTr(t[k]);
   if (k === "webhook") return <>{n}{t.webhook_hata > 0 && <span className="rozet rozet-kucuk rozet-uyari" style={{ marginLeft: 6 }}>{sayiTr(t.webhook_hata)} hata</span>}</>;
   return <>{n}</>;
@@ -35,6 +39,8 @@ export function Kullanim() {
   const [ay, setAy] = useState(aylar()[0]);
   const [o, setO] = useState<KullanimOzet | null>(null); const [hata, setHata] = useState<string | null>(null);
   const [secili, setSecili] = useState<KullanimKiraci | null>(null);
+  const [planlar, setPlanlar] = useState<Record<string, Plan>>({});
+  useEffect(() => { yonetim.planlar().then((r) => setPlanlar(Object.fromEntries(r.planlar.map((p) => [p.ad, p])))).catch(() => {}); }, []);
   useEffect(() => { setO(null); setHata(null); yonetim.kullanim(ay).then(setO).catch((e) => setHata(mesajCikar(e))); }, [ay]);
   if (secili) return <KullanimDetay kiraci={secili} ay={ay} geri={() => setSecili(null)} />;
   const toplam = o ? o.kiracilar.reduce((a, k) => topla(a, k.bu_ay), BOS) : BOS;
@@ -52,7 +58,7 @@ export function Kullanim() {
               {o.kiracilar.map((k) => (
                 <tr key={k.id} className="satir-tikla" tabIndex={0} onClick={() => setSecili(k)} onKeyDown={(e) => { if (e.key === "Enter") setSecili(k); }}>
                   <td className="ad">{k.ad}{k.durum !== "active" && <span className="rozet rozet-kucuk rozet-uyari" style={{ marginLeft: 8 }}>askıda</span>}</td><td>{k.plan}</td>
-                  {KULLANIM_SUTUNLAR.map((c) => <td key={c.k}><Hucre k={c.k} t={k.bu_ay} /><span className="hucre-alt soluk" style={{ display: "block", fontSize: 12 }}>({sayiTr(k.onceki_ay[c.k])})</span></td>)}
+                  {KULLANIM_SUTUNLAR.map((c) => <td key={c.k}><Hucre k={c.k} t={k.bu_ay} plan={planlar[k.plan]} /><span className="hucre-alt soluk" style={{ display: "block", fontSize: 12 }}>({sayiTr(k.onceki_ay[c.k])})</span></td>)}
                   <td>{sayiTr(k.etkin_anahtar)}{k.etkin_webhook > 0 && <span className="hucre-alt soluk" style={{ display: "block", fontSize: 12 }}>{sayiTr(k.etkin_webhook)} webhook</span>}</td>
                   <td><Zaman s={k.son_api_kullanim} /></td>
                   <td><svg className="satir-ok" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M7 4l6 6-6 6"/></svg></td>

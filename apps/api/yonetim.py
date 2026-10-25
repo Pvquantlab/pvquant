@@ -292,3 +292,52 @@ def kullanim(request: Request, ay: str | None = None, tenant_id: str | None = No
         return ks.gunler(c["sub"], tenant_id, ay) if tenant_id else ks.ozet(c["sub"], ay)
     except ValueError as e:
         raise _hata(e)
+
+
+# ---------------- planlar + kimliğe bürünme (26.10 Faz 5) ----------------
+class PlanGuncelle(BaseModel):
+    baslik: str | None = None
+    notlar: str | None = None
+    santral_limit: int | None = None
+    kullanici_limit: int | None = None
+    api_rpm_limit: int | None = None
+    aylik_rapor_limit: int | None = None
+    aylik_dis_api_limit: int | None = None
+    sinirsiz: list[str] = []   # None «değiştirme» demek olduğundan sınırsız yapılacak alanlar adla gelir
+
+
+@yonetim.get("/planlar")
+def planlar(c=Depends(platform_yetkisi())):
+    """Herkes okur (rozetler için); yazma sahipte. Limitler yalnız UYARI: hiçbir müşteri ucu kısıtlanmaz."""
+    return {"planlar": ps.plan_listesi(), "limit_alanlari": list(ps.PLAN_LIMITLER)}
+
+
+@yonetim.put("/planlar/{ad}")
+def plan_guncelle(ad: str, p: PlanGuncelle, request: Request, c=Depends(platform_yetkisi("sahip"))):
+    limitler = {k: getattr(p, k) for k in ps.PLAN_LIMITLER if getattr(p, k) is not None}
+    for k in p.sinirsiz:
+        if k in ps.PLAN_LIMITLER:
+            limitler[k] = None
+    try:
+        y = ps.plan_guncelle(ad, baslik=p.baslik, notlar=p.notlar, **limitler)
+    except ValueError as e:
+        raise _hata(e)
+    if y is None:
+        raise HTTPException(404, "plan yok")
+    dz.kaydet("platform", "plan_guncelle", aktor_id=c["sub"], aktor_eposta=c["email"], nesne_tur="plan", nesne_id=ad,
+              ayrinti={"limitler": limitler, **({"baslik": p.baslik} if p.baslik is not None else {})}, ip=_ip(request))
+    return y
+
+
+@yonetim.post("/kiracilar/{tid}/temsil")
+def kiraci_temsil(tid: str, request: Request, c=Depends(platform_yetkisi("sahip"))):
+    """Sahip: kiracıyı müşteri gözüyle (viewer, salt okunur, 15 dk). Jeton yanıtta bir kez; denetim izine jeton YAZILMAZ."""
+    try:
+        y = ps.temsil_jetonu(c["sub"], tid)
+    except ValueError as e:
+        raise _hata(e)
+    if y is None:
+        raise HTTPException(404, "kiracı yok")
+    dz.kaydet("platform", "kiraci_temsil", aktor_id=c["sub"], aktor_eposta=c["email"], tenant_id=tid, nesne_tur="tenant", nesne_id=tid,
+              ayrinti={"sure_dk": y["sure_dk"], "rol": "viewer"}, ip=_ip(request))
+    return y

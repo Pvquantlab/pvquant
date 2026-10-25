@@ -65,6 +65,12 @@ export interface KullanimKiraci { id: string; ad: string; plan: string; durum: s
 export interface KullanimOzet { ay: string; onceki_ay: string; turler: string[]; kiracilar: KullanimKiraci[] }
 export interface KullanimGunler { ay: string; tenant_id: string; ad: string | null; gunler: ({ gun: string } & KullanimToplam)[] }
 
+// 26.10 Faz 5 — planlar (uyarı kipi) + kimliğe bürünme
+export type PlanLimitAlani = "santral_limit" | "kullanici_limit" | "api_rpm_limit" | "aylik_rapor_limit" | "aylik_dis_api_limit";
+export interface Plan { ad: string; baslik: string; santral_limit: number | null; kullanici_limit: number | null; api_rpm_limit: number | null;
+  aylik_rapor_limit: number | null; aylik_dis_api_limit: number | null; notlar: string | null; sira: number; guncelleme: string; kiraci: number }
+export interface Temsil { token: string; tenant_id: string; kiraci: string; sure_dk: number; bitis: string }
+
 /** Sorgu dizesi: boş/undefined alanlar atlanır. */
 const sorgu = (p: Record<string, unknown>): string => {
   const q = Object.entries(p).filter(([, v]) => v !== undefined && v !== "" && v !== false).map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join("&");
@@ -117,8 +123,11 @@ export const yonetim = {
   // 25.10 Faz 4 — kullanım (salt okunur); ay 'YYYY-MM', boşsa bu ay
   kullanim: (ay?: string): Promise<KullanimOzet> => istek(`/kullanim${sorgu({ ay })}`),
   kullanimGunler: (tenant_id: string, ay?: string): Promise<KullanimGunler> => istek(`/kullanim${sorgu({ tenant_id, ay })}`),
+  // 26.10 Faz 5
+  planlar: (): Promise<{ planlar: Plan[]; limit_alanlari: PlanLimitAlani[] }> => istek("/planlar"),
+  planGuncelle: (ad: string, g: Partial<Record<PlanLimitAlani, number>> & { baslik?: string; notlar?: string; sinirsiz?: PlanLimitAlani[] }): Promise<Plan> => istek(`/planlar/${ad}`, "PUT", g),
+  temsil: (tenant_id: string): Promise<Temsil> => istek(`/kiracilar/${tenant_id}/temsil`, "POST"),
 };
-
 /** Göreli yaş: «3 dk önce», «5 saat önce», «2 gün önce»; null «—». Hüküm değil, okunurluk. */
 export function yasTr(s: string | null | undefined, simdi = Date.now()): string {
   if (!s) return "—";

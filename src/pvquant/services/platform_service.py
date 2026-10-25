@@ -343,3 +343,60 @@ def davet_gonder(aktor_id: str, uid: str, saat: int = 24) -> dict | None:
         baglanti = _davet_baglantisi(s, uid, saat)
     gonderildi = _davet_postala(k["email"], k["firma"], baglanti, saat, ilk=False)
     return {"gonderildi": gonderildi, **({} if gonderildi else {"baglanti": baglanti})}
+
+
+# ---------------- 26.10 Faz 5: planlar (uyarı kipi) ----------------
+PLAN_LIMITLER = ("santral_limit", "kullanici_limit", "api_rpm_limit", "aylik_rapor_limit", "aylik_dis_api_limit")
+
+
+def plan_listesi() -> list[dict]:
+    with sistem_baglami() as s:
+        rows = s.execute(text("SELECT ad, baslik, santral_limit, kullanici_limit, api_rpm_limit, aylik_rapor_limit, aylik_dis_api_limit, notlar, sira, "
+                              "guncelleme, (SELECT count(*) FROM tenants t WHERE t.plan = p.ad) AS kiraci FROM planlar p ORDER BY sira, ad")).mappings().all()
+    return [{"ad": r["ad"], "baslik": r["baslik"], **{k: r[k] for k in PLAN_LIMITLER}, "notlar": r["notlar"], "sira": int(r["sira"]),
+             "guncelleme": r["guncelleme"].isoformat(), "kiraci": int(r["kiraci"])} for r in rows]
+
+
+def plan_guncelle(ad: str, *, baslik: str | None = None, notlar: str | None = None, **limitler) -> dict | None:
+    """Sahip: limitleri değiştirir (None = sınırsız; negatif reddedilir). Zorlama yok — rozetler yeni eşikle çizilir."""
+    alanlar = {k: v for k, v in limitler.items() if k in PLAN_LIMITLER}
+    for k, v in alanlar.items():
+        if v is not None and int(v) < 0:
+            raise PlatformHata(f"{k} negatif olamaz")
+    with sistem_baglami() as s:
+        eski = s.execute(text("SELECT ad FROM planlar WHERE ad = :a"), {"a": ad}).first()
+        if eski is None:
+            return None
+        setler = [f"{k} = :{k}" for k in alanlar] + (["baslik = :baslik"] if baslik is not None else []) + (["notlar = :notlar"] if notlar is not None else [])
+        if setler:
+            s.execute(text(f"UPDATE planlar SET {', '.join(setler)}, guncelleme = now() WHERE ad = :a"),
+                      {"a": ad, **{k: (None if v is None else int(v)) for k, v in alanlar.items()}, "baslik": baslik, "notlar": notlar})
+    return next((x for x in plan_listesi() if x["ad"] == ad), None)
+
+
+# ---------------- 26.10 Faz 5: kimliğe bürünme (salt okunur, 15 dk) ----------------
+TEMSIL_DK = 15
+
+
+def temsil_jetonu(aktor_id: str, tid: str) -> dict | None:
+    """Sahip → kiracıyı MÜŞTERİ GÖZÜYLE, salt okunur: kapsam müşteri, rol viewer, `temsil` = platform aktörü, 15 dk.
+    deps.gecerli_kullanici temsil jetonunu yalnız GET'te kabul eder; yazma kapıları ayrıca reddeder. Denetim izi çağıranda."""
+    with sistem_baglami() as s:
+        t = s.execute(text("SELECT id, name, status FROM tenants WHERE id = CAST(:t AS uuid)"), {"t": str(tid)}).first()
+        d = oturum_durumu(aktor_id)
+    if t is None:
+        return None
+    if t.status != "active":
+        raise PlatformHata("kiracı askıda; görüntüleme açılmaz")
+    if d is None or not d["aktif"]:
+        raise PlatformHata("aktör etkin değil")
+    bitis = dt.datetime.utcnow() + dt.timedelta(minutes=TEMSIL_DK)
+    token = jwt.encode({"sub": str(aktor_id), "tenant_id": str(t.id), "role": "viewer", "sv": int(d["sv"]),
+                        "temsil": str(aktor_id), "exp": bitis}, auth_service._sir(), algorithm="HS256")
+    return {"token": token, "tenant_id": str(t.id), "kiraci": t.name, "sure_dk": TEMSIL_DK,
+            "bitis": bitis.replace(tzinfo=dt.timezone.utc).isoformat()}
+
+
+def kiraci_durumu(tid: str) -> str | None:
+    with sistem_baglami() as s:
+        return s.execute(text("SELECT status FROM tenants WHERE id = CAST(:t AS uuid)"), {"t": str(tid)}).scalar()

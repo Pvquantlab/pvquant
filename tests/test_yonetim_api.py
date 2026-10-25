@@ -208,3 +208,43 @@ def test_isler_plant_id_suzgeci(monkeypatch):
     c = TestClient(api_main.app)
     assert c.get("/v1/yonetim/isler?saat=720&yalniz_hata=true&plant_id=pl-1", headers=_jeton(rol="operator")).status_code == 200
     assert gorulen["plant_id"] == "pl-1" and gorulen["saat"] == 720 and gorulen["yalniz_hata"] is True
+
+
+# ---------------- 26.10 Faz 5: planlar + kimliğe bürünme ----------------
+def test_planlar_uclari(monkeypatch, _ortam):
+    monkeypatch.setattr(ps, "oturum_durumu", lambda p: {"sv": 0, "aktif": True, "rol": "operator", "email": "o@pvq", "totp_aktif": True})
+    monkeypatch.setattr(ps, "plan_listesi", lambda: [{"ad": "pilot", "santral_limit": 3}])
+    gorulen = {}
+    monkeypatch.setattr(ps, "plan_guncelle", lambda ad, **k: gorulen.update({"ad": ad, **k}) or {"ad": ad})
+    c = TestClient(api_main.app)
+    assert c.get("/v1/yonetim/planlar", headers=_jeton(rol="operator")).json()["planlar"][0]["ad"] == "pilot"   # operatör okur
+    assert c.put("/v1/yonetim/planlar/pilot", json={"santral_limit": 5}, headers=_jeton(rol="operator")).status_code == 403   # yazma sahip
+    monkeypatch.setattr(ps, "oturum_durumu", lambda p: {"sv": 0, "aktif": True, "rol": "sahip", "email": "s@pvq", "totp_aktif": True})
+    y = c.put("/v1/yonetim/planlar/pilot", json={"santral_limit": 5, "sinirsiz": ["api_rpm_limit"]}, headers=_jeton())
+    assert y.status_code == 200 and gorulen == {"ad": "pilot", "baslik": None, "notlar": None, "santral_limit": 5, "api_rpm_limit": None}
+    assert any(a[1] == "plan_guncelle" for a, k in _ortam)
+
+
+def test_temsil_jetonu_salt_okunur(monkeypatch, _ortam):
+    import time as _t
+    monkeypatch.setattr(ps, "oturum_durumu", lambda p: {"sv": 0, "aktif": True, "rol": "sahip", "email": "s@pvq", "totp_aktif": True})
+    monkeypatch.setattr(ps, "kiraci_durumu", lambda t: "active")
+    from pvquant.services import plant_service
+    monkeypatch.setattr(plant_service, "listele", lambda t: [])
+    c = TestClient(api_main.app)
+    # uç: yalnız sahip; gerçek jeton üretimi (DB'siz: tenant araması monkeypatch)
+    monkeypatch.setattr(ps, "temsil_jetonu", lambda a, t: {"token": _jwt.encode({"sub": a, "tenant_id": t, "role": "viewer", "sv": 0, "temsil": a,
+                        "exp": dt.datetime.utcnow() + dt.timedelta(minutes=15)}, au._sir(), algorithm="HS256"), "tenant_id": t, "kiraci": "F", "sure_dk": 15, "bitis": "x"})
+    y = c.post("/v1/yonetim/kiracilar/t1/temsil", headers=_jeton())
+    assert y.status_code == 200 and y.json()["sure_dk"] == 15
+    kayit = [k for a, k in _ortam if a[1] == "kiraci_temsil"][0]
+    assert kayit["tenant_id"] == "t1" and "token" not in str(kayit)                       # jeton denetim izine yazılmaz
+    tj = {"Authorization": "Bearer " + y.json()["token"]}
+    assert c.get("/v1/plants", headers=tj).status_code == 200                              # GET açık (viewer)
+    assert c.post("/v1/oturum/yenile", headers=tj).status_code == 403                      # POST kapalı
+    assert c.get("/v1/api-anahtarlari", headers=tj).status_code == 403                     # yönetici ucu: rol viewer → 403
+    assert c.get("/v1/yonetim/ben", headers=tj).status_code == 403                         # platform ucu: kapsam yok
+    monkeypatch.setattr(ps, "oturum_durumu", lambda p: {"sv": 0, "aktif": True, "rol": "operator", "email": "o@pvq", "totp_aktif": True})
+    assert c.post("/v1/yonetim/kiracilar/t1/temsil", headers=_jeton(rol="operator")).status_code == 403   # operatör açamaz
+    monkeypatch.setattr(ps, "kiraci_durumu", lambda t: "suspended")
+    assert c.get("/v1/plants", headers=tj).status_code == 403                               # kiracı askıya alınınca görüntüleme de düşer

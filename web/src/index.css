@@ -539,6 +539,15 @@ textarea.girdi { resize: vertical; min-height: 72px; line-height: 1.5; }
 .plat-saglik { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 14px; padding: 10px 12px; border: 1px solid var(--kenar); border-radius: var(--rk); background: var(--kart); }
 .plat-saglik--tikla { width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; }
 .plat-saglik--tikla:hover { border-color: var(--marka); }
+.plat-rozet-sari { opacity: .8; }
+/* 26.10 Faz 5: müşteri kabuğunda platform görüntüleme şeridi — yalnız temsil işaretiyle görünür */
+.temsil-serit { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 8px 20px; font-size: 13.5px; color: #fff;
+                background: #B3261E; }
+.temsil-serit b { font-family: var(--display); font-weight: 600; letter-spacing: .02em; }
+.temsil-serit__ayrac { opacity: .6; }
+.temsil-serit__kapat { margin-left: auto; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.5); color: #fff; border-radius: var(--r-hap);
+                       padding: 3px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+.temsil-serit__kapat:hover { background: rgba(255,255,255,.26); }   /* 26.10 Faz 5: %80–100 arası — uyarı tonunun yumuşağı */
 .plat-ayrinti__cip { display: inline-flex; align-items: baseline; gap: 4px; font-family: var(--mono); font-size: 12px; color: var(--ikincil);
                      background: var(--yuzey); border: 1px solid var(--kenar); border-radius: 6px; padding: 1px 7px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .plat-ayrinti__cip b { font-weight: 500; color: var(--soluk); }

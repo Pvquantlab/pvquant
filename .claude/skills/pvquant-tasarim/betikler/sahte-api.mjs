@@ -103,6 +103,14 @@ http.createServer((req, res) => {
       { id: KIRACILAR[0].id, ad: "Meridyen Enerji", plan: "pilot", durum: "active", etkin_anahtar: 1, etkin_webhook: 0, son_api_kullanim: dkOnce(60 * 30), bu_ay: T(312, 0, 0, 1, 25, 600, 0), onceki_ay: T(280, 0, 0, 2, 31, 744, 1) },
       { id: KIRACILAR[2].id, ad: "Askıdaki Enerji", plan: "standart", durum: "suspended", etkin_anahtar: 0, etkin_webhook: 0, son_api_kullanim: null, bu_ay: T(0, 0, 0, 0, 0, 0, 0), onceki_ay: T(12, 0, 0, 0, 10, 240, 0) }] });
   }
+  // ---- 26.10 Faz 5: planlar + temsil
+  const PLANLAR = [
+    { ad: "pilot", baslik: "Pilot", santral_limit: 3, kullanici_limit: 3, api_rpm_limit: 60, aylik_rapor_limit: 50, aylik_dis_api_limit: 5000, notlar: null, sira: 1, guncelleme: "2026-10-26T00:00:00Z", kiraci: 2 },
+    { ad: "standart", baslik: "Standart", santral_limit: 25, kullanici_limit: 10, api_rpm_limit: 120, aylik_rapor_limit: 500, aylik_dis_api_limit: 50000, notlar: null, sira: 2, guncelleme: "2026-10-26T00:00:00Z", kiraci: 1 },
+    { ad: "kurumsal", baslik: "Kurumsal", santral_limit: null, kullanici_limit: null, api_rpm_limit: null, aylik_rapor_limit: null, aylik_dis_api_limit: null, notlar: null, sira: 3, guncelleme: "2026-10-26T00:00:00Z", kiraci: 0 }];
+  if (yol === "/v1/yonetim/planlar") return yanit(200, { planlar: PLANLAR, limit_alanlari: ["santral_limit", "kullanici_limit", "api_rpm_limit", "aylik_rapor_limit", "aylik_dis_api_limit"] });
+  if (/^\/v1\/yonetim\/planlar\//.test(yol)) return yanit(200, PLANLAR[0]);
+  if (/^\/v1\/yonetim\/kiracilar\/[^/]+\/temsil$/.test(yol)) return yanit(200, { token: "x." + Buffer.from('{"role":"viewer","temsil":"p1"}').toString("base64url") + ".y", tenant_id: KIRACILAR[1].id, kiraci: "Deneme Lab", sure_dk: 15, bitis: new Date(Date.now() + 15 * 60000).toISOString() });
   if (yol === "/v1/yonetim/denetim") return yanit(200, { kayitlar: [
       { id: 12, zaman: "2026-10-24T21:53:35Z", kapsam: "platform", aktor_id: "p1", aktor_eposta: "sahip@pvquant.com", tenant_id: null, eylem: "iki_adim_ac", nesne_tur: null, nesne_id: null, ayrinti: {}, ip: "78.177.165.74" },
       { id: 11, zaman: "2026-10-24T21:48:28Z", kapsam: "platform", aktor_id: null, aktor_eposta: "sahip@pvquant.com", tenant_id: null, eylem: "giris", nesne_tur: null, nesne_id: null, ayrinti: {}, ip: "78.177.165.74" },

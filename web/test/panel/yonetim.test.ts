@@ -132,3 +132,22 @@ test("D turu: envanter son hata → iş kayıtları süzgeci, Operatörler kendi
   assert.match(s, /ok=\{sis\.nabiz\.durum === "calisiyor"\}/);   // hüküm uçtan
   assert.match(oku("api/yonetim.ts"), /plant_id\?: string \} = \{\}\)/);
 });
+
+// ---------------- 26.10 Faz 5: planlar (uyarı kipi) + kimliğe bürünme ----------------
+test("Faz 5: Planlar sahip-only, limit rozetleri, temsil düğmesi sahipte, müşteri şeridi işaretle, müşteri istemcisi değişmedi", () => {
+  assert.match(oku("features/yonetim/sayfaListesi.ts"), /\{ id: "planlar", ad: "Planlar", sahip: true \}/);
+  assert.match(oku("features/yonetim/Yonetim.tsx"), /\{sayfa === "planlar" && ben\?\.rol === "sahip" && <Planlar \/>\}/);
+  const s = oku("features/yonetim/sayfalar.tsx");
+  assert.match(s, /<LimitRozet kullanim=\{k\.santral\} limit=\{planlar\[k\.plan\]\?\.santral_limit\} \/>/);
+  assert.match(s, /\{sahip && !askida && <button className="dugme" title="Kiracıyı müşteri gözüyle, salt okunur, 15 dakika/);
+  assert.match(oku("features/yonetim/Kullanim.tsx"), /<LimitRozet kullanim=\{t\.dis_api\} limit=\{plan\.aylik_dis_api_limit\} \/>/);
+  const y = oku("api/yonetim.ts");
+  assert.ok(y.includes('istek(`/kiracilar/${tenant_id}/temsil`, "POST")'));
+  assert.doesNotMatch(y, /pvq_token"/);                                            // platform istemcisi müşteri jetonuna dokunmaz (Faz 2 bekçisi korunur)
+  assert.match(oku("features/yonetim/temsil.ts"), /localStorage\.setItem\("pvq_temsil"/);   // temsil ayrı modülde
+  const kabuk = oku("shell/Kabuk.tsx");
+  assert.match(kabuk, /<TemsilSeridi \/>/);
+  assert.match(kabuk, /localStorage\.getItem\("pvq_temsil"\)/);
+  assert.match(kabuk, /if \(!t\) return null;/);                                   // olağan müşteri oturumunda çizilmez
+  assert.doesNotMatch(oku("api/client.ts"), /temsil|\/v1\/yonetim/);               // müşteri istemcisi bilmez
+});

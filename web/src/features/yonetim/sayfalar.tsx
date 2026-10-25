@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { yonetim, zamanTr, yasTr, type SistemOzet, type Kiraci, type KiraciDetay, type Kullanici, type Operator, type Basvuru, type DenetimKaydi, type Ben } from "../../api/yonetim";
+import { yonetim, zamanTr, yasTr, type Plan, type SistemOzet, type Kiraci, type KiraciDetay, type Kullanici, type Operator, type Basvuru, type DenetimKaydi, type Ben } from "../../api/yonetim";
 import { Kart, Kpi, Sayfa, SayfaIskeleti, sayiTr, gucTr } from "../sayfalar/parcalar";
 import { Meta } from "../../lib/Meta";
 import { KullanimKarti } from "./Kullanim";
-import { Zaman, AyrintiCipleri } from "./ortak";
+import { Zaman, AyrintiCipleri, LimitRozet } from "./ortak";
+import { temsilAc } from "./temsil";
 
 /** 24.10 Faz 2 — platform sayfaları. Dil: müşteri panelinin bileşen dili (Kart/Kpi/Sayfa, table.veri.santral, .form-izgara,
  *  rozet, Meta). Sayılar uydurulmaz: her değer uçtan; boş durum .bos-durum; hata metni açık. */
@@ -84,16 +85,17 @@ export function GenelBakis({ git }: { git: (s: "musteriler" | "basvurular" | "de
 }
 
 // ---------------- Müşteriler ----------------
-export function Musteriler() {
+export function Musteriler({ sahip = false }: { sahip?: boolean }) {
   const [liste, setListe] = useState<Kiraci[] | null>(null);
+  const [planlar, setPlanlar] = useState<Record<string, Plan>>({});   // 26.10 Faz 5: limit rozetleri (uyarı kipi)
   const [secili, setSecili] = useState<string | null>(null);
   const [hata, setHata] = useState<string | null>(null);
   const [firma, setFirma] = useState(""); const [eposta, setEposta] = useState(""); const [plan, setPlan] = useState("pilot");
   const [sonuc, setSonuc] = useState<{ tenant_id: string; davet_gonderildi: boolean; davet_baglantisi?: string } | null>(null);
   const [mesgul, setMesgul] = useState(false);
   const yenile = () => yonetim.kiracilar().then((r) => setListe(r.kiracilar)).catch((e) => setHata(mesajCikar(e)));
-  useEffect(() => { void yenile(); }, []);
-  if (secili) return <MusteriDetay id={secili} geri={() => { setSecili(null); void yenile(); }} />;
+  useEffect(() => { void yenile(); yonetim.planlar().then((r) => setPlanlar(Object.fromEntries(r.planlar.map((p) => [p.ad, p])))).catch(() => {}); }, []);
+  if (secili) return <MusteriDetay id={secili} geri={() => { setSecili(null); void yenile(); }} sahip={sahip} />;
   async function olustur() {
     setHata(null); setSonuc(null); setMesgul(true);
     try { const r = await yonetim.kiraciOlustur(firma, eposta, plan); setSonuc(r); setFirma(""); setEposta(""); void yenile(); }
@@ -109,8 +111,10 @@ export function Musteriler() {
             <thead><tr><th>Kiracı</th><th>Plan</th><th>Durum</th><th>Santral</th><th>Kurulu güç<span className="birim">kWp</span></th><th>Kullanıcı</th><th>Son giriş</th><th>Oluşturma</th><th aria-hidden="true"></th></tr></thead>
             <tbody>{liste.map((k) => (
               <tr key={k.id} className="satir-tikla" tabIndex={0} onClick={() => setSecili(k.id)} onKeyDown={(e) => { if (e.key === "Enter") setSecili(k.id); }}>
-                <td className="ad">{k.ad}</td><td>{k.plan}</td><td><DurumRozet durum={k.durum} /></td><td>{sayiTr(k.santral)}</td>
-                <td>{k.kurulu_guc_kwp ? gucTr(k.kurulu_guc_kwp) : <span className="bos">—</span>}</td><td>{sayiTr(k.kullanici)}</td>
+                <td className="ad">{k.ad}</td><td>{k.plan}</td><td><DurumRozet durum={k.durum} /></td>
+                <td><LimitRozet kullanim={k.santral} limit={planlar[k.plan]?.santral_limit} /></td>
+                <td>{k.kurulu_guc_kwp ? gucTr(k.kurulu_guc_kwp) : <span className="bos">—</span>}</td>
+                <td><LimitRozet kullanim={k.kullanici} limit={planlar[k.plan]?.kullanici_limit} /></td>
                 <td><Zaman s={k.son_giris} /></td><td><Zaman s={k.olusturma} /></td>
                 <td><svg className="satir-ok" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M7 4l6 6-6 6"/></svg></td>
               </tr>))}</tbody>
@@ -131,7 +135,7 @@ export function Musteriler() {
   );
 }
 
-function MusteriDetay({ id, geri }: { id: string; geri: () => void }) {
+function MusteriDetay({ id, geri, sahip }: { id: string; geri: () => void; sahip: boolean }) {
   const [d, setD] = useState<KiraciDetay | null>(null);
   const [hata, setHata] = useState<string | null>(null); const [mesaj, setMesaj] = useState<string | null>(null);
   const [notlar, setNotlar] = useState(""); const [onay, setOnay] = useState(false);
@@ -153,6 +157,8 @@ function MusteriDetay({ id, geri }: { id: string; geri: () => void }) {
             : onay
               ? <><button className="dugme dugme-tehlike" onClick={() => { setOnay(false); void dene(() => yonetim.kiraciGuncelle(id, { durum: "suspended" }), "Kiracı askıya alındı."); }}>Eminim, askıya al</button><button className="dugme" onClick={() => setOnay(false)}>Vazgeç</button></>
               : <button className="dugme dugme-tehlike" onClick={() => setOnay(true)}>Askıya al</button>}
+          {sahip && !askida && <button className="dugme" title="Kiracıyı müşteri gözüyle, salt okunur, 15 dakika; denetim izine yazılır"
+            onClick={() => dene(async () => { temsilAc(await yonetim.temsil(id)); }, "Görüntüleme oturumu yeni sekmede açıldı (15 dk, salt okunur).")}>Müşteri gözüyle aç</button>}
           <label className="girdi-etiket" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>Plan
             <select className="girdi kucuk" value={d.plan} onChange={(e) => dene(() => yonetim.kiraciGuncelle(id, { plan: e.target.value }), "Plan güncellendi.")}>
               {["pilot", "standart", "kurumsal", d.plan].filter((v, i, a) => a.indexOf(v) === i).map((p) => <option key={p} value={p}>{p}</option>)}

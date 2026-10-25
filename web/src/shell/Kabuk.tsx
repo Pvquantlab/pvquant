@@ -229,6 +229,7 @@ export function Kabuk({ sayfa, tiklanan, setSayfa, santral, plantId, onCikis, ch
         </div>
       </nav>
       <main>
+        <TemsilSeridi />
         <header className="ust">
           <button className="menu-dugme" aria-label="Menüyü aç"
             aria-expanded={menuAcik} onClick={() => setMenuAcik(true)}>
@@ -490,6 +491,30 @@ function YeniSantral({ kapat, eklendi }: { kapat: () => void; eklendi: (id: stri
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+
+/** 26.10 Faz 5 — platform sahibinin «müşteri gözüyle» görüntülemesi: yalnız localStorage `pvq_temsil` işareti varsa çizilir (platform
+ *  sekmesi yazar), salt okunur ve 15 dk; «Kapat» jetonu ve işareti siler. Olağan müşteri oturumunda hiç render edilmez. */
+function TemsilSeridi() {
+  const [t, setT] = useState<{ kiraci: string; bitis: string } | null>(() => {
+    try { const v = localStorage.getItem("pvq_temsil"); return v ? (JSON.parse(v) as { kiraci: string; bitis: string }) : null; } catch { return null; }
+  });
+  const [kalan, setKalan] = useState(0);
+  useEffect(() => {
+    if (!t) return;
+    const hesapla = () => setKalan(Math.max(0, Math.round((new Date(t.bitis).getTime() - Date.now()) / 60000)));
+    hesapla(); const z = setInterval(hesapla, 30000); return () => clearInterval(z);
+  }, [t]);
+  if (!t) return null;
+  const kapat = () => { localStorage.removeItem("pvq_temsil"); localStorage.removeItem("pvq_token"); setT(null); window.location.href = "/"; };
+  return (
+    <div className="temsil-serit" role="status">
+      <b>Platform görüntülemesi</b><span className="temsil-serit__ayrac" aria-hidden="true">·</span>{t.kiraci}<span className="temsil-serit__ayrac" aria-hidden="true">·</span>salt okunur
+      <span className="temsil-serit__ayrac" aria-hidden="true">·</span>{kalan > 0 ? `${kalan} dk kaldı` : "süre doldu"}
+      <button type="button" className="temsil-serit__kapat" onClick={kapat}>Kapat</button>
     </div>
   );
 }

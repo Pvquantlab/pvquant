@@ -16,6 +16,7 @@ const IKON: Record<YonetimSayfa, ReactNode> = {
   basvurular: <svg {...O}><path d="M3 5h14v10H8l-5 3z"/></svg>,
   denetim: <svg {...O}><path d="M4 4h12v12H4z"/><path d="M7 8h6M7 11h6M7 14h3"/></svg>,
   operatorler: <svg {...O}><path d="M10 3l6 2v5c0 3.5-2.5 6-6 7-3.5-1-6-3.5-6-7V5z"/><path d="M7.5 10l2 2 3-3.5"/></svg>,
+  planlar: <svg {...O}><rect x="3" y="4" width="14" height="12" rx="2"/><path d="M3 9h14M8 9v7"/></svg>,
   hesap: <svg {...O}><circle cx="10" cy="7" r="3.2"/><path d="M4 17c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/></svg>,
 };
 

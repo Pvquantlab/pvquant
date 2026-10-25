@@ -6,7 +6,7 @@ from pvquant.services import auth_service
 from pvquant.services.auth_service import token_coz
 
 
-def gecerli_kullanici(authorization: str = Header(...)):
+def gecerli_kullanici(request: Request, authorization: str = Header(...)):
     if not authorization.startswith("Bearer "):
         raise HTTPException(401, "Bearer token gerekli")
     c = token_coz(authorization.removeprefix("Bearer ").strip())
@@ -15,6 +15,18 @@ def gecerli_kullanici(authorization: str = Header(...)):
     # 24.10 Faz 1: platform (PVQuant personeli) jetonu müşteri uçlarını AÇAMAZ — iki yüz, iki kapsam.
     if c.get("kapsam") == "platform":
         raise HTTPException(403, "platform jetonu müşteri ucunda geçersiz")
+    # 26.10 Faz 5: KİMLİĞE BÜRÜNME jetonu (platform sahibi, müşteri gözüyle) — yalnız GET (salt okunur), rol viewer, 15 dk;
+    # `sub` platform aktörüdür: aktiflik/sürüm platform tablosundan, kiracı durumu tenants'tan. Yazma kapıları ayrıca reddeder.
+    if c.get("temsil"):
+        from pvquant.services import platform_service
+        if request.method != "GET":
+            raise HTTPException(403, "görüntüleme oturumu salt okunur")
+        d = platform_service.oturum_durumu(c["sub"])
+        if d is None or not d["aktif"] or int(c.get("sv", 0)) != d["sv"]:
+            raise HTTPException(401, "görüntüleme oturumu geçersiz")
+        if platform_service.kiraci_durumu(c["tenant_id"]) != "active":
+            raise HTTPException(403, "hesap askıda")
+        return {**c, "role": "viewer"}
     # 24.10 Faz 0: imza yetmez — oturum sürümü, aktiflik ve kiracı durumu DB'den (60 sn önbellek) doğrulanır.
     # `sv` iddiası olmayan eski jeton 0 sayılır: sürümü hiç artmamış kullanıcıda geçerli kalır (geriye uyumlu).
     d = auth_service.oturum_durumu(c["sub"])
@@ -89,6 +101,8 @@ def api_anahtari(kapsam: str):
 def yazma_yetkisi():
     """editor/admin isteyen endpoint'ler icin Depends(yazma_yetkisi())."""
     def _ic(claims=Depends(gecerli_kullanici)):
+        if claims.get("temsil"):
+            raise HTTPException(403, "görüntüleme oturumu salt okunur")   # 26.10 Faz 5
         if claims["role"] not in ("editor", "admin"):
             raise HTTPException(403, "editor/admin gerekli")
         return claims

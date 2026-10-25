@@ -193,3 +193,31 @@ def test_d4_parola_sifirla_ve_d6_temizlik(temiz, monkeypatch):
     with sistem_baglami() as s:
         kalan = s.execute(text("SELECT eylem FROM denetim_izi WHERE aktor_eposta = :e ORDER BY eylem"), {"e": eposta}).scalars().all()
     assert kalan == ["giris", "kiraci_guncelle"]
+
+
+def test_faz5_planlar_ve_temsil(temiz):
+    """26.10 Faz 5 — planlar tohumu + FK (bilinmeyen plan reddedilir), plan_guncelle (None = sınırsız), temsil jetonu (viewer, temsil, 15 dk;
+    askıdaki kiracıya açılmaz)."""
+    import jwt as _j
+    e = temiz
+    pid = ps.ilk_sahip_olustur(f"sahip5-{e}@pvq.test", "cok-gizli-parola-123")
+    planlar = {p["ad"]: p for p in ps.plan_listesi()}
+    assert {"pilot", "standart", "kurumsal"} <= set(planlar) and planlar["pilot"]["santral_limit"] == 3 and planlar["kurumsal"]["santral_limit"] is None
+    y = ps.kiraci_olustur(pid, f"Firma5 {e}", f"admin5-{e}@musteri.test", "pilot")
+    with pytest.raises(Exception):                                   # FK: bilinmeyen plan
+        with sistem_baglami() as s:
+            s.execute(text("UPDATE tenants SET plan = 'yok-boyle-plan' WHERE id = CAST(:t AS uuid)"), {"t": y["tenant_id"]})
+    assert ps.plan_guncelle("pilot", santral_limit=4)["santral_limit"] == 4
+    assert ps.plan_guncelle("pilot", santral_limit=None)["santral_limit"] is None
+    ps.plan_guncelle("pilot", santral_limit=3)
+    with pytest.raises(ValueError):
+        ps.plan_guncelle("pilot", santral_limit=-1)
+    assert ps.plan_guncelle("yok", santral_limit=1) is None
+    t = ps.temsil_jetonu(pid, y["tenant_id"])
+    c = _j.decode(t["token"], au._sir(), algorithms=["HS256"])
+    assert c["role"] == "viewer" and c["temsil"] == pid and c["tenant_id"] == y["tenant_id"] and t["sure_dk"] == 15 and t["kiraci"] == f"Firma5 {e}"
+    assert ps.temsil_jetonu(pid, "00000000-0000-0000-0000-000000000000") is None
+    ps.kiraci_guncelle(pid, y["tenant_id"], status="suspended")
+    with pytest.raises(ValueError):
+        ps.temsil_jetonu(pid, y["tenant_id"])
+    ps.kiraci_guncelle(pid, y["tenant_id"], status="active")
