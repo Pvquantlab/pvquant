@@ -1,5 +1,16 @@
-# Faz 4 — Kullanım sayaçları, paylaşımlı hız penceresi, `/yonetim` «Kullanım» sayfası (25.10.2026) — BİRİKİYOR (commit yok)
-**Durum:** yerelde birikmiş; mühür kullanıcı «commitle» deyince (v2.486 önerilir; alembic `v2486_faz4_kullanim`).
+# Faz 4 — Kullanım sayaçları, paylaşımlı hız penceresi, `/yonetim` «Kullanım» sayfası (25.10.2026) — CANLI v2.486 + v2.487
+**Durum:** v2.486 = d625e8c (25.10), CI #582 yeşil. Sunucu: `git pull`, api + worker + web imajları, yeni api imajıyla
+`docker compose run --rm --no-deps api alembic upgrade head` → `v2486_faz4_kullanim (head)`, `up -d --force-recreate api worker web`;
+`kullanim_sayac` ve `hiz_pencere` tabloları var; worker açılış nabzı 25 sn. Canlı index.html + **19/19 JS/CSS** referans derlemeyle
+birebir; `/yonetim` 200; `/v1/yonetim/kullanim` başlıksız 422 / bozuk jeton 401; `/v1/dis/santraller` anahtarsız 422 / bozuk anahtar 401;
+api ve worker loglarında hata 0. Salt okunur özet üretim verisinde çalıştı (Deneme Lab bu ay: koşu 375, SCADA 1.694 saat, yükleme 75;
+rapor/dış API/webhook 0 — henüz sayaç satırı yok).
+**Canlı doğrulamada yakalanan hata → v2.487:** sentetik anahtarla iki ardışık `pencere_say` 1, 1 döndü: pencere başı hesabı
+mikrosaniyeyi iki kez çıkarıyordu, her istek kendi penceresine düşüyor, dış API rpm sınırı fiilen sayılmıyordu. Düzeltme
+`pencere_basi()` (epoch'a yuvarlama), testler mikrosaniyeli.
+**v2.487** = 8896025 (25.10), CI #583 yeşil; sunucuda yalnız api + worker imajları yenilendi (geçiş yok, web değişmedi). Kanıt: üretim
+DB'sinde sentetik anahtarla üç ardışık `pencere_say` **1, 2, 3**, tek satır (sonra silindi); api/worker log 0 hata; worker nabzı 20 sn.
+Dış API anahtar sınırı artık canlıda tüm işçilerde birlikte sayılıyor. Kullanım sayfasının gerçek hesapla görünümü kullanıcıda.
 
 Dayanak: `docs/YONETICI-PANELI-YOL-HARITASI-2026-10-24.md` §6 «Kullanım + sınırlayıcılar»; Faz 3 defteri «KALAN» ilk kalemi.
 Tahmin/kalibrasyon/rapor/SCADA işleme servisleri, müşteri `/v1/*` sözleşmeleri ve ekranları, RLS politikaları, yetkiler DEĞİŞMEDİ.
@@ -41,7 +52,7 @@ Kiracının ne kadar kullandığı bilinmiyordu (anahtarda yalnız `last_used_at
   tam takım (DB'li, geçici timescale) **703 passed**, 0 hata.
 - Kareler (sahte API, Chrome kanalı) 1440 + 375: Kullanım listesi taşma 0, 11 sütun, 3 kiracı + Toplam; satır → günlük kırılım 25 satır;
   Müşteri detayında «Bu ay kullanım» kartı 6 satır; konsol 0.
-- Canlı: henüz dağıtılmadı.
+- Canlı: yukarıdaki Durum satırı.
 
 ## DAĞITIM NOTLARI (mühürde)
 `alembic upgrade head` (yeni api imajıyla `compose run --rm --no-deps api`) · **api + worker + web** imajları (webhook kancası worker'da
