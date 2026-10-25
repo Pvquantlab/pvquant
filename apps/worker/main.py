@@ -661,7 +661,8 @@ def gece_yedek():
         print("[yedek] kapalı (PVQ_YEDEK_KAPALI)")
         return
     _os.makedirs(cfg.yedek_dizin, exist_ok=True)
-    url = make_url(_os.environ["PVQ_DB_URL"])
+    # 25.10 v2.488: pg_dump yönetici rolüyle (pvquant) — uygulama rolü pvq_api timescale kataloglarını dökemez
+    url = make_url(_os.environ.get("PVQ_DB_ADMIN_URL") or _os.environ["PVQ_DB_URL"])
     ts = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%d_%H%M")
     hedef = _os.path.join(cfg.yedek_dizin, f"pvq_{ts}.sql.gz")
     ortam = {**_os.environ, "PGPASSWORD": url.password or ""}

@@ -1,6 +1,6 @@
 """API bagimlilik enjeksiyonu: token dogrulama + rol kontrolu."""
 import os
-from fastapi import Header, HTTPException, Depends
+from fastapi import Header, HTTPException, Depends, Request
 from pvquant.services import auth_service
 from pvquant.services.auth_service import token_coz
 
@@ -26,10 +26,15 @@ def gecerli_kullanici(authorization: str = Header(...)):
     return c  # {"sub","tenant_id","role","exp","sv"}
 
 
+# 2FA kurulmadan açık kalan platform uçları: kim olduğunu görme, kurulum, parola, oturum tazeleme
+PLATFORM_KURULUM_YOLLARI = frozenset({"/v1/yonetim/ben", "/v1/yonetim/iki-adim/baslat", "/v1/yonetim/iki-adim/dogrula",
+                                      "/v1/yonetim/parola", "/v1/yonetim/oturum/yenile"})
+
+
 def platform_yetkisi(rol: str | None = None):
     """24.10 Faz 1 — PLATFORM kapısı: yalnız `kapsam: platform` jetonu; platform_kullanicilar'dan aktiflik ve oturum
     sürümü (60 sn önbellek); `rol="sahip"` verilirse operatör 403. Müşteri jetonu burada 403: kapsamlar karışmaz."""
-    def _ic(authorization: str = Header(...)):
+    def _ic(request: Request, authorization: str = Header(...)):
         from pvquant.services import platform_service
         if not authorization.startswith("Bearer "):
             raise HTTPException(401, "Bearer token gerekli")
@@ -43,6 +48,10 @@ def platform_yetkisi(rol: str | None = None):
             raise HTTPException(401, "hesap etkin değil")
         if int(c.get("sv", 0)) != d["sv"]:
             raise HTTPException(401, "oturum geçersiz; yeniden giriş yapın")
+        # 25.10 denetim Y2: 2FA kurulu değilse jeton YALNIZ kurulum uçlarını açar (arayüz zaten dayatıyordu; artık API de).
+        # Durum DB'den (60 sn önbellek; kurulum/sıfırlama önbelleği düşürür) — jeton değişmez, açık oturumlar bozulmaz.
+        if not d.get("totp_aktif", False) and request.url.path not in PLATFORM_KURULUM_YOLLARI:
+            raise HTTPException(403, "iki adımlı doğrulama kurulumu gerekli")
         if rol == "sahip" and d["rol"] != "sahip":
             raise HTTPException(403, "sahip yetkisi gerekli")
         return {**c, "rol": d["rol"], "email": d["email"]}

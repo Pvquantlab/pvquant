@@ -68,9 +68,11 @@ def oturum_durumu(pid: str) -> dict | None:
     if k is not None and simdi - k[0] < ONBELLEK_SN:
         return k[1]
     with sistem_baglami() as s:
-        r = s.execute(text("SELECT oturum_surumu, aktif, rol, email FROM platform_kullanicilar WHERE id=:i"),
+        r = s.execute(text("SELECT oturum_surumu, aktif, rol, email, totp_aktif FROM platform_kullanicilar WHERE id=:i"),
                       {"i": str(pid)}).first()
-    d = None if r is None else {"sv": int(r.oturum_surumu), "aktif": bool(r.aktif), "rol": r.rol, "email": r.email}
+    # 25.10 denetim Y2: totp_aktif kapıda okunur — 2FA kurulmadan jeton yalnız kurulum uçlarını açar (deps.platform_yetkisi)
+    d = None if r is None else {"sv": int(r.oturum_surumu), "aktif": bool(r.aktif), "rol": r.rol, "email": r.email,
+                                "totp_aktif": bool(r.totp_aktif)}
     _onbellek[str(pid)] = (simdi, d)
     return d
 
@@ -138,6 +140,7 @@ def iki_adim_dogrula(pid: str, kod: str) -> None:
         if not pyotp.TOTP(r.totp_secret).verify((kod or "").replace(" ", ""), valid_window=1):
             raise PlatformHata("kod doğrulanamadı")
         s.execute(text("UPDATE platform_kullanicilar SET totp_aktif=true WHERE id=:i"), {"i": str(pid)})
+    oturum_onbellegi_dusur(pid)   # kapı 60 sn beklemeden tam kapsamı açsın
 
 
 # ---------------- platform kullanıcıları (operatörler) ----------------

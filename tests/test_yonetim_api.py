@@ -32,7 +32,7 @@ def _musteri_jeton():
 
 
 def test_kapsamlar_karismaz(monkeypatch):
-    monkeypatch.setattr(ps, "oturum_durumu", lambda p: {"sv": 0, "aktif": True, "rol": "sahip", "email": "s@pvq"})
+    monkeypatch.setattr(ps, "oturum_durumu", lambda p: {"sv": 0, "aktif": True, "rol": "sahip", "email": "s@pvq", "totp_aktif": True})
     monkeypatch.setattr(au, "oturum_durumu", lambda u: {"sv": 0, "aktif": True, "kiraci_durum": "active"})
     monkeypatch.setattr(ps, "ben", lambda p: {"id": "p1", "email": "s@pvq", "rol": "sahip", "totp_aktif": True})
     c = TestClient(api_main.app)
@@ -43,7 +43,7 @@ def test_kapsamlar_karismaz(monkeypatch):
 
 
 def test_platform_surum_ve_pasif(monkeypatch):
-    durum = {"sv": 2, "aktif": True, "rol": "operator", "email": "o@pvq"}
+    durum = {"sv": 2, "aktif": True, "rol": "operator", "email": "o@pvq", "totp_aktif": True}
     monkeypatch.setattr(ps, "oturum_durumu", lambda p: dict(durum))
     monkeypatch.setattr(ps, "ben", lambda p: {"id": "p1"})
     c = TestClient(api_main.app)
@@ -54,7 +54,7 @@ def test_platform_surum_ve_pasif(monkeypatch):
 
 
 def test_sahip_only_ve_operator(monkeypatch):
-    monkeypatch.setattr(ps, "oturum_durumu", lambda p: {"sv": 0, "aktif": True, "rol": "operator", "email": "o@pvq"})
+    monkeypatch.setattr(ps, "oturum_durumu", lambda p: {"sv": 0, "aktif": True, "rol": "operator", "email": "o@pvq", "totp_aktif": True})
     monkeypatch.setattr(ps, "operator_listesi", lambda: [])
     monkeypatch.setattr(ps, "kiraci_listesi", lambda a: [{"id": "t1", "ad": "A"}])
     c = TestClient(api_main.app)
@@ -63,7 +63,7 @@ def test_sahip_only_ve_operator(monkeypatch):
 
 
 def test_kiraci_olustur_ve_askiya_al(monkeypatch, _ortam):
-    monkeypatch.setattr(ps, "oturum_durumu", lambda p: {"sv": 0, "aktif": True, "rol": "sahip", "email": "s@pvq"})
+    monkeypatch.setattr(ps, "oturum_durumu", lambda p: {"sv": 0, "aktif": True, "rol": "sahip", "email": "s@pvq", "totp_aktif": True})
     monkeypatch.setattr(ps, "kiraci_olustur", lambda a, f, e, plan="pilot": {"tenant_id": "t9", "user_id": "u9", "davet_gonderildi": False, "davet_baglantisi": "https://x/parola-yenile?jeton=GIZLI"})
     monkeypatch.setattr(ps, "kiraci_guncelle", lambda a, t, **k: {"eski": {"name": "F", "plan": "pilot", "status": "active"}, "yeni": {"name": "F", "plan": "pilot", "status": k.get("status")}})
     c = TestClient(api_main.app)
@@ -78,7 +78,7 @@ def test_kiraci_olustur_ve_askiya_al(monkeypatch, _ortam):
 
 
 def test_basvurular_platforma_tasindi(monkeypatch, _ortam):
-    monkeypatch.setattr(ps, "oturum_durumu", lambda p: {"sv": 0, "aktif": True, "rol": "operator", "email": "o@pvq"})
+    monkeypatch.setattr(ps, "oturum_durumu", lambda p: {"sv": 0, "aktif": True, "rol": "operator", "email": "o@pvq", "totp_aktif": True})
     monkeypatch.setattr(basvuru_service, "listele", lambda n=100: [{"id": "b1"}])
     monkeypatch.setattr(basvuru_service, "okundu_isaretle", lambda i: True)
     c = TestClient(api_main.app)
@@ -106,7 +106,7 @@ def test_musteri_girisi_denetim_izine(monkeypatch, _ortam):
 # ---------------- 25.10 Faz 3: sistem izleme uçları ----------------
 def test_sistem_uclari_kapsam_ve_suzgec(monkeypatch):
     from pvquant.services import sistem_service as ss
-    monkeypatch.setattr(ps, "oturum_durumu", lambda p: {"sv": 0, "aktif": True, "rol": "operator", "email": "o@pvq"})
+    monkeypatch.setattr(ps, "oturum_durumu", lambda p: {"sv": 0, "aktif": True, "rol": "operator", "email": "o@pvq", "totp_aktif": True})
     monkeypatch.setattr(au, "oturum_durumu", lambda u: {"sv": 0, "aktif": True, "kiraci_durum": "active"})
     monkeypatch.setattr(ss, "ozet", lambda a: {"nabiz": {"durum": "calisiyor"}, "aktor": a})
     gorulen = {}
@@ -127,7 +127,7 @@ def test_sistem_uclari_kapsam_ve_suzgec(monkeypatch):
 # ---------------- 25.10 Faz 4: kullanım ucu ----------------
 def test_kullanim_ucu(monkeypatch):
     from pvquant.services import kullanim_service as ks
-    monkeypatch.setattr(ps, "oturum_durumu", lambda p: {"sv": 0, "aktif": True, "rol": "operator", "email": "o@pvq"})
+    monkeypatch.setattr(ps, "oturum_durumu", lambda p: {"sv": 0, "aktif": True, "rol": "operator", "email": "o@pvq", "totp_aktif": True})
     monkeypatch.setattr(au, "oturum_durumu", lambda u: {"sv": 0, "aktif": True, "kiraci_durum": "active"})
     monkeypatch.setattr(ks, "ozet", lambda a, ay=None: {"ay": ay or "bu", "kiracilar": [], "aktor": a})
     monkeypatch.setattr(ks, "gunler", lambda a, t, ay=None: {"ay": ay or "bu", "tenant_id": t, "gunler": [{"gun": "2026-10-25", "dis_api": 3}]})
@@ -138,3 +138,23 @@ def test_kullanim_ucu(monkeypatch):
     assert y.status_code == 200 and y.json()["gunler"][0]["dis_api"] == 3
     assert c.get("/v1/yonetim/kullanim", headers=_musteri_jeton()).status_code == 403
     assert c.get("/v1/yonetim/kullanim").status_code == 422
+
+
+# ---------------- 25.10 denetim Y2: 2FA kurulmadan jeton yalnız kurulum uçlarını açar ----------------
+def test_iki_adim_kurulmadan_kapsam_dar(monkeypatch):
+    durum = {"sv": 0, "aktif": True, "rol": "sahip", "email": "s@pvq", "totp_aktif": False}
+    monkeypatch.setattr(ps, "oturum_durumu", lambda p: dict(durum))
+    monkeypatch.setattr(ps, "ben", lambda p: {"id": "p1", "email": "s@pvq", "rol": "sahip", "totp_aktif": False})
+    monkeypatch.setattr(ps, "iki_adim_baslat", lambda p: {"secret": "S", "otpauth_uri": "otpauth://x"})
+    monkeypatch.setattr(ps, "kiraci_listesi", lambda a: [])
+    monkeypatch.setattr(ps, "operator_listesi", lambda: [])
+    monkeypatch.setattr(ps, "oturum_yenile", lambda p: {"token": "t2", "rol": "sahip", "email": "s@pvq", "iki_adim_kurulmali": True})
+    c = TestClient(api_main.app)
+    assert c.get("/v1/yonetim/ben", headers=_jeton()).status_code == 200                       # kurulum yolları açık
+    assert c.post("/v1/yonetim/iki-adim/baslat", headers=_jeton()).status_code == 200
+    assert c.post("/v1/yonetim/oturum/yenile", headers=_jeton()).status_code == 200
+    for yol in ("/v1/yonetim/kiracilar", "/v1/yonetim/sistem", "/v1/yonetim/kullanim", "/v1/yonetim/denetim", "/v1/yonetim/operatorler"):
+        y = c.get(yol, headers=_jeton())
+        assert y.status_code == 403 and "iki adımlı" in y.json()["detail"], yol                 # veri uçları kapalı
+    durum["totp_aktif"] = True                                                                 # kurulum bitti → tam kapsam
+    assert c.get("/v1/yonetim/kiracilar", headers=_jeton()).status_code == 200

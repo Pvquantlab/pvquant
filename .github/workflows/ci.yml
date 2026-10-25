@@ -49,8 +49,13 @@ jobs:
       - name: Sema (alembic upgrade head — 0001..0005, RLS dahil)
         run: alembic upgrade head
 
-      - name: Regresyon (tam grup — RLS uclusu servis DB'siyle kosar)
+      - name: Uygulama rolü pvq_api (v2.488 — testler süper kullanıcı OLMAYAN rolle koşar)
+        run: python -c "from sqlalchemy import create_engine, text; e=create_engine('postgresql+psycopg://pvquant:pvquant_dev@localhost:5432/pvquant'); c=e.connect(); c.execute(text(\"ALTER ROLE pvq_api PASSWORD 'pvq_api_ci'\")); c.commit()"
+
+      - name: Regresyon (tam grup — RLS uclusu servis DB'siyle, pvq_api rolüyle kosar)
         run: pytest -q
+        env:
+          PVQ_DB_URL: postgresql+psycopg://pvq_api:pvq_api_ci@localhost:5432/pvquant
       - name: Rapor kalkani (kanonik HTML md5 — v2.159)
         run: |
           cd reporting/html && rm -rf cikti && python3 uret.py > /dev/null

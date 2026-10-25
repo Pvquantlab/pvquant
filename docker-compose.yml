@@ -21,7 +21,9 @@ services:
   worker:
     build: .
     environment:
-      PVQ_DB_URL: postgresql+psycopg://pvquant:${DB_PASSWORD:?.env'de DB_PASSWORD tanimli olmali}@db:5432/pvquant
+      # 25.10 v2.488 (denetim Y1): uygulama süper kullanıcı DEĞİL — pvq_api (BYPASSRLS, rol/DB yönetimi yok). Yönetici URL'si yalnız gece pg_dump için.
+      PVQ_DB_URL: postgresql+psycopg://pvq_api:${API_DB_PASSWORD:?.env'de API_DB_PASSWORD tanimli olmali (ALTER ROLE pvq_api PASSWORD)}@db:5432/pvquant
+      PVQ_DB_ADMIN_URL: postgresql+psycopg://pvquant:${DB_PASSWORD:?.env'de DB_PASSWORD tanimli olmali}@db:5432/pvquant
       PVQ_SENTRY_DSN: ${PVQ_SENTRY_DSN:-}
       PVQ_SMTP_HOST: ${PVQ_SMTP_HOST:-}
       PVQ_SMTP_PORT: ${PVQ_SMTP_PORT:-}
@@ -53,7 +55,8 @@ services:
     command: ["uvicorn", "apps.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4",
               "--proxy-headers", "--forwarded-allow-ips", "*"]
     environment:
-      PVQ_DB_URL: postgresql+psycopg://pvquant:${DB_PASSWORD:?.env'de DB_PASSWORD tanimli olmali}@db:5432/pvquant
+      # 25.10 v2.488 (denetim Y1): pvq_api — süper kullanıcı değil; alembic dağıtım komutunda -e PVQ_DB_URL=<pvquant> ile koşar.
+      PVQ_DB_URL: postgresql+psycopg://pvq_api:${API_DB_PASSWORD:?.env'de API_DB_PASSWORD tanimli olmali (ALTER ROLE pvq_api PASSWORD)}@db:5432/pvquant
       PVQ_JWT_SECRET: ${PVQ_JWT_SECRET:-}
       PVQ_SENTRY_DSN: ${PVQ_SENTRY_DSN:-}
       # v2.334: başvuru teyidi/bildirimi api'den çıkar — worker'daki SMTP seti buraya da
