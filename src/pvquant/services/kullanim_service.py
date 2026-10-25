@@ -32,11 +32,18 @@ def say(tenant_id, tur: str, adet: int = 1) -> None:
         print(f"[kullanim] sayaç yazılamadı ({tur}): {type(e).__name__}: {e}")
 
 
+def pencere_basi(simdi: dt.datetime, saniye: int = PENCERE_SN) -> dt.datetime:
+    """Sabit pencerenin başı: epoch saniyesi `saniye`'ye yuvarlanır (mikrosaniye atılır). Aynı pencere içindeki her an aynı
+    başlangıcı verir — v2.486'da mikrosaniye iki kez çıkarılıyordu, her istek kendi satırına düşüyor ve sınır hiç dolmuyordu
+    (canlıda 25.10 yakalandı; yerel test mikrosaniyesiz zamanla maskelemişti)."""
+    epoch = int(simdi.timestamp())
+    return dt.datetime.fromtimestamp(epoch - epoch % saniye, tz=dt.timezone.utc)
+
+
 def pencere_say(anahtar: str, saniye: int = PENCERE_SN, simdi: dt.datetime | None = None) -> int:
     """Sabit pencerede paylaşımlı artış; pencere içindeki yeni toplamı döner. Eski pencereler silinir.
     DB'ye ulaşılamazsa 0 döner (kapı açık kalır: sayaç kesintisi müşteriyi kilitlemesin; olay günlükte)."""
-    simdi = simdi or dt.datetime.now(dt.timezone.utc)
-    bas = simdi - dt.timedelta(seconds=simdi.timestamp() % saniye, microseconds=simdi.microsecond)
+    bas = pencere_basi(simdi or dt.datetime.now(dt.timezone.utc), saniye)
     try:
         with sistem_baglami() as s:
             s.execute(text("DELETE FROM hiz_pencere WHERE anahtar = :a AND pencere < :p"), {"a": anahtar, "p": bas})

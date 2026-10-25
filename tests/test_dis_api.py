@@ -134,3 +134,14 @@ def test_paylasimli_pencere_izni(monkeypatch):
     monkeypatch.setattr(ak, "_paylasimli_izin", lambda p, r, t: cagri.append((p, r, t)) or True)
     ak.dogrula("pvq_abcd1234_gizli", "tahmin:oku")
     assert cagri == [("abcd1234", 5, "t1")]
+
+
+def test_pencere_basi_hizalama():
+    """v2.487: aynı 60 sn içindeki mikrosaniyeli anlar aynı pencere başını verir; sonraki dakika yeni pencere."""
+    import datetime as dt
+    from pvquant.services.kullanim_service import pencere_basi
+    a = dt.datetime(2026, 10, 25, 12, 0, 10, 345678, tzinfo=dt.timezone.utc)
+    b = a + dt.timedelta(seconds=49, microseconds=654321)                 # 12:00:59.999999 — aynı pencerenin son anı
+    assert pencere_basi(a) == pencere_basi(b) == dt.datetime(2026, 10, 25, 12, 0, 0, tzinfo=dt.timezone.utc)
+    assert pencere_basi(b + dt.timedelta(microseconds=1)) == dt.datetime(2026, 10, 25, 12, 1, 0, tzinfo=dt.timezone.utc)
+    assert pencere_basi(a, 300) == dt.datetime(2026, 10, 25, 12, 0, 0, tzinfo=dt.timezone.utc)

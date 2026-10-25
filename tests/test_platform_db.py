@@ -137,9 +137,11 @@ def test_faz4_kullanim(temiz):
     try:
         ks.say(tid, "dis_api"); ks.say(tid, "dis_api", 2); ks.say(tid, "webhook"); ks.say(tid, "webhook_hata")
         # paylaşımlı pencere: aynı anahtar + aynı pencere → ardışık sayım; eski pencere silinir
-        t0 = dt.datetime(2026, 10, 25, 12, 0, 10, tzinfo=dt.timezone.utc)
-        assert [ks.pencere_say(f"anahtar:{e}", simdi=t0), ks.pencere_say(f"anahtar:{e}", simdi=t0)] == [1, 2]
+        t0 = dt.datetime(2026, 10, 25, 12, 0, 10, 345678, tzinfo=dt.timezone.utc)   # mikrosaniyeli: v2.486 hizalama hatası burada yakalanır
+        t1 = t0 + dt.timedelta(seconds=7, microseconds=111)
+        assert [ks.pencere_say(f"anahtar:{e}", simdi=t0), ks.pencere_say(f"anahtar:{e}", simdi=t1)] == [1, 2]
         assert ks.pencere_say(f"anahtar:{e}", simdi=t0 + dt.timedelta(seconds=60)) == 1
+        assert ks.pencere_say(f"anahtar:{e}") == 1 and ks.pencere_say(f"anahtar:{e}") == 2       # gerçek saat, mikrosaniyeli
         with sistem_baglami() as s:
             assert s.execute(text("SELECT count(*) FROM hiz_pencere WHERE anahtar = :a"), {"a": f"anahtar:{e}"}).scalar() == 1
         bu_ay = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m")
