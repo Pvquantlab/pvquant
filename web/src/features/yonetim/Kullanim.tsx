@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { yonetim, zamanTr, type KullanimOzet, type KullanimKiraci, type KullanimToplam, type KullanimGunler } from "../../api/yonetim";
+import { yonetim, type KullanimOzet, type KullanimKiraci, type KullanimToplam, type KullanimGunler } from "../../api/yonetim";
+import { Zaman } from "./ortak";
 import { Kart, Sayfa, SayfaIskeleti, sayiTr } from "../sayfalar/parcalar";
 import { Meta } from "../../lib/Meta";
 
@@ -53,7 +54,7 @@ export function Kullanim() {
                   <td className="ad">{k.ad}{k.durum !== "active" && <span className="rozet rozet-kucuk rozet-uyari" style={{ marginLeft: 8 }}>askıda</span>}</td><td>{k.plan}</td>
                   {KULLANIM_SUTUNLAR.map((c) => <td key={c.k}><Hucre k={c.k} t={k.bu_ay} /><span className="hucre-alt soluk" style={{ display: "block", fontSize: 12 }}>({sayiTr(k.onceki_ay[c.k])})</span></td>)}
                   <td>{sayiTr(k.etkin_anahtar)}{k.etkin_webhook > 0 && <span className="hucre-alt soluk" style={{ display: "block", fontSize: 12 }}>{sayiTr(k.etkin_webhook)} webhook</span>}</td>
-                  <td>{zamanTr(k.son_api_kullanim)}</td>
+                  <td><Zaman s={k.son_api_kullanim} /></td>
                   <td><svg className="satir-ok" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M7 4l6 6-6 6"/></svg></td>
                 </tr>))}
               <tr><td className="ad">Toplam</td><td></td>{KULLANIM_SUTUNLAR.map((c) => <td key={c.k} style={{ fontWeight: 600 }}><Hucre k={c.k} t={toplam} /><span className="hucre-alt soluk" style={{ display: "block", fontSize: 12, fontWeight: 400 }}>({sayiTr(onceki[c.k])})</span></td>)}<td></td><td></td><td></td></tr>

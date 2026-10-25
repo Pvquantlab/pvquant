@@ -49,11 +49,13 @@ def listele(*, tenant_id=None, eylem: str | None = None, kapsam: str | None = No
         kosul.append("id < :o"); p["o"] = int(once_id)
     with sistem_baglami() as s:
         rows = s.execute(text(
-            "SELECT id, zaman, kapsam, aktor_id, aktor_eposta, tenant_id, eylem, nesne_tur, nesne_id, ayrinti, ip "
-            f"FROM denetim_izi WHERE {' AND '.join(kosul)} ORDER BY id DESC LIMIT :n"), p).mappings().all()
+            "SELECT d.id, d.zaman, d.kapsam, d.aktor_id, d.aktor_eposta, d.tenant_id, d.eylem, d.nesne_tur, d.nesne_id, d.ayrinti, d.ip, "
+            "t.name AS kiraci_ad "   # 25.10 denetim O1: ekranda uuid öneki yerine ad (EK alan; mevcut alanlar aynen)
+            f"FROM denetim_izi d LEFT JOIN tenants t ON t.id = d.tenant_id WHERE {' AND '.join('d.' + k if k != 'true' else k for k in kosul)} "
+            "ORDER BY d.id DESC LIMIT :n"), p).mappings().all()
     return [{"id": int(r["id"]), "zaman": r["zaman"].isoformat(), "kapsam": r["kapsam"],
              "aktor_id": str(r["aktor_id"]) if r["aktor_id"] else None, "aktor_eposta": r["aktor_eposta"],
              "tenant_id": str(r["tenant_id"]) if r["tenant_id"] else None, "eylem": r["eylem"],
              "nesne_tur": r["nesne_tur"], "nesne_id": r["nesne_id"],
              "ayrinti": r["ayrinti"] if isinstance(r["ayrinti"], dict) else json.loads(r["ayrinti"] or "{}"),
-             "ip": r["ip"]} for r in rows]
+             "ip": r["ip"], "kiraci_ad": r["kiraci_ad"]} for r in rows]

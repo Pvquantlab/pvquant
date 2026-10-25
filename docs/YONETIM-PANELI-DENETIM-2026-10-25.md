@@ -111,6 +111,22 @@ değerler `grep '^VAR=' | cut -d= -f2-` ile okunur.
   `SELECT current_user, rolsuper` → pvq_api/false; `/v1/healthz`, giriş, Sistem sayfası; worker nabzı; gece yedeği bir sonraki
   01:15 UTC'de (ya da `acilis_yedek` 24 sa kuralı) yönetici URL'siyle.
 
+## Tablo turu O1+O2+O3 (+O5) — BİRİKİYOR (commit yok, 25.10)
+- **O1:** `denetim_service.listele` kiracı adını birleştirir (`kiraci_ad`, EK alan); Denetim/Genel bakış tablosunda Ayrıntı ham JSON yerine
+  `anahtar: değer` çipleri (`AyrintiCipleri`, iç nesneler `eski.status` gibi düzleşir, uzun değer kısaltılır + başlıkta tamamı), Kiracı sütunu ad,
+  Nesne «tür / id» iki satır, IP mono, Ayrıntı son sütun; Denetim süzgecinde kiracı SEÇİMİ (uuid girdisi kalktı); eylem çipi satır taban
+  çizgisinde.
+- **O2:** `:root[data-yuz="platform"]` kapsamlı CSS: platform tablolarında tüm sütunlar sola yaslı içerik genişliğinde, son sütun kalanı alır
+  (ilk sütun artık boşluğu yutmuyor). Müşteri paneli tablo kuralları dokunulmadı (web testi pinler).
+- **O3:** `features/yonetim/ortak.tsx` `Zaman` bileşeni (`.zaman` mono tabular nowrap; `sar` ile dar hücrede kırılır) — sayfalar/Sistem/Kullanım
+  16 hücre tek tipografi; şablon dizelerindeki `${zamanTr}` metinler aynen.
+- **O5:** worker zamanlayıcısı ve tam turda `gece_meteo` / `gece_piyasa` `_logla_tek` ile TEK satır (iş gövdeleri değişmedi; «bugün çekildi»
+  bayrakları zaten vardı).
+- Kanıt: tsc 0 · web test 90/90 · build 0 · oxlint 16 · API testleri 10/10 · DB testleri (kiracı adı) taze timescale'de 4/4. Kareler (sahte API,
+  Chrome): **1920 ve 1440'ta beş sayfada belge taşması 0, hiçbir kaydırma alanında iç taşma yok** (önce Denetim/Genel bakış 91 px, meteo 21 px);
+  375'te belge taşması 0, tablolar kart içinde kayar (tasarım kuralı); konsol 0. Ders: `{zamanTr(` regex'i şablon dizelerindeki `${zamanTr(`'i de
+  yakaladı → iki yer elle geri alındı, test pini `[^$]\{zamanTr\(`.
+
 ## Sorunsuz bulunanlar
 - **Kapsam ayrımı ve yetki:** platform jetonu müşteri uçlarında 403, müşteri jetonu `/v1/yonetim` uçlarında 403; başlıksız 422; bozuk
   jeton 401; oturum sürümü (sv) ve aktiflik 60 sn önbellekle her istekte; sahip-only uçlar; son etkin sahip düşürülemez.

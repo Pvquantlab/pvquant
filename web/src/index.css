@@ -520,6 +520,23 @@ table.veri.dar th + th, table.veri.dar td + td { padding-left: 28px; }
               font-family: var(--display); font-weight: 500; text-decoration: underline; text-underline-offset: 3px; }
 .plat-cikis:hover { color: var(--metin); }
 textarea.girdi { resize: vertical; min-height: 72px; line-height: 1.5; }
+/* 25.10 denetim tablo turu (O1/O2/O3) — YALNIZ platform yüzü: müşteri paneli tablo kuralları dokunulmadı.
+   O2: geniş ekranda ilk sütun artık boşluğu yutmuyor; tüm sütunlar sola yaslı içerik genişliğinde, son sütun (ayrıntı/ok) kalanı alır.
+   O3: zaman hücreleri tek tipografi. O1: denetim ayrıntısı çipleri, eylem çipi satır taban çizgisinde. */
+:root[data-yuz="platform"] table.veri.santral th, :root[data-yuz="platform"] table.veri.santral td { text-align: left; width: 1%; white-space: nowrap; }
+:root[data-yuz="platform"] table.veri.santral th:last-child, :root[data-yuz="platform"] table.veri.santral td:last-child { width: auto; }
+:root[data-yuz="platform"] table.veri.santral td.ad { white-space: nowrap; }
+:root[data-yuz="platform"] table.veri th, :root[data-yuz="platform"] table.veri td { text-align: left; }
+:root[data-yuz="platform"] table.veri td .cip-kod { min-height: 0; padding: 2px 9px; vertical-align: baseline; }
+:root[data-yuz="platform"] .zaman { font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+:root[data-yuz="platform"] .zaman--sar { white-space: normal; }
+:root[data-yuz="platform"] .plat-ayrinti-sutun { white-space: normal; min-width: 180px; }
+:root[data-yuz="platform"] td.plat-aktor { white-space: normal; overflow-wrap: anywhere; max-width: 210px; }   /* uzun e-posta 1440'ta kaydırma açmasın */
+.plat-ayrinti { display: inline-flex; flex-wrap: wrap; gap: 4px 6px; }
+.plat-ayrinti__cip { display: inline-flex; align-items: baseline; gap: 4px; font-family: var(--mono); font-size: 12px; color: var(--ikincil);
+                     background: var(--yuzey); border: 1px solid var(--kenar); border-radius: 6px; padding: 1px 7px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.plat-ayrinti__cip b { font-weight: 500; color: var(--soluk); }
+.plat-ayrinti__cip b::after { content: ":"; }
 table.veri td .cip-kod, table.veri td .rozet { white-space: nowrap; }   /* 1 % genişlikli hücrede çip harf harf kırılmasın */
 table.veri td .dugme-sira { flex-wrap: nowrap; }                        /* işlem düğmeleri tek satır; dar ekranda tablo kayar */
 .grafik-kaydir > table { min-width: 620px; }                             /* doğrudan sarılan tablo da kaydırma alanı alır */

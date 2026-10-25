@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { yonetim, zamanTr, yasTr, type SistemOzet, type IsKaydi, type SantralEnvanter, type Kiraci } from "../../api/yonetim";
+import { Zaman } from "./ortak";
 import { Kart, Kpi, Sayfa, SayfaIskeleti, sayiTr, gucTr } from "../sayfalar/parcalar";
 import { Meta } from "../../lib/Meta";
 
@@ -53,12 +54,12 @@ export function Sistem() {
         <SantralEnvanteri />
         <div className="ızgara-cift">
           <Kart baslik="Üretici işler" alt={`tazelik ölçütü: son başarılı koşu ${o.gece_turu.esik_saat} saatten yeni`}>
-            <table className="veri" style={{ fontSize: 13.5 }}>
+            <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 13.5, minWidth: 0 }}>
               <thead><tr><th style={sol}>İş</th><th style={sol}>Son başarılı koşu</th><th>Durum</th></tr></thead>
               <tbody>{o.gece_turu.uretici_isler.map((u) => { const bayat = o.gece_turu.bayat_isler.includes(u.is); return (
-                <tr key={u.kod}><td style={sol}>{u.is}<span className="cip-kod" style={{ marginLeft: 8 }}>{u.kod}</span></td><td className="mono" style={sol}>{zamanTr(u.son_ok)}</td>
+                <tr key={u.kod}><td style={sol}>{u.is}<span className="cip-kod" style={{ marginLeft: 8 }}>{u.kod}</span></td><td className="mono" style={sol}><Zaman s={u.son_ok} /></td>
                   <td><span className={`rozet rozet-kucuk ${bayat ? "rozet-uyari" : "rozet-ok"}`}>{bayat ? "bayat" : "taze"}</span></td></tr>); })}</tbody>
-            </table>
+            </table></div>
           </Kart>
           <Kart baslik="Meteoroloji arşivi" alt="kaynak başına son indirme, nokta ve satır sayısı, kapsam">
             {o.meteo.kaynaklar.length === 0 ? <Bos bas="Arşivde kayıt yok." /> : (
@@ -66,7 +67,7 @@ export function Sistem() {
                 <thead><tr><th style={sol}>Kaynak</th><th style={sol}>Son indirme</th><th>Nokta</th><th>Satır</th><th style={sol}>Kapsam</th></tr></thead>
                 <tbody>{o.meteo.kaynaklar.map((k) => (
                   <tr key={k.kaynak}><td style={sol}>{k.kaynak}{k.bayat && <span className="rozet rozet-kucuk rozet-uyari" style={{ marginLeft: 8 }}>bayat</span>}</td>
-                    <td className="mono" style={sol}>{zamanTr(k.son_indirme)}</td><td className="mono">{k.nokta == null ? "—" : sayiTr(k.nokta)}</td>
+                    <td className="mono" style={sol}><Zaman s={k.son_indirme} sar /></td><td className="mono">{k.nokta == null ? "—" : sayiTr(k.nokta)}</td>
                     <td className="mono">{k.satir == null ? "—" : sayiTr(k.satir)}</td>
                     <td className="mono" style={sol}><span style={{ whiteSpace: "nowrap" }}>{tarihTr(k.ilk)}</span><br /><span style={{ whiteSpace: "nowrap" }}>→ {tarihTr(k.son_ts)}</span></td></tr>))}</tbody>
               </table></div>)}
@@ -108,7 +109,7 @@ function IsKayitlari() {
         <div className="grafik-kaydir"><table className="veri santral">
           <thead><tr><th>İş</th><th>Zaman</th><th>Kiracı</th><th>Santral</th><th>Süre</th><th>Durum</th><th style={AYRINTI}>Ayrıntı</th></tr></thead>
           <tbody>{liste.map((x) => (
-            <tr key={x.id}><td className="ad">{x.is}</td><td className="mono" style={{ whiteSpace: "nowrap" }}>{zamanTr(x.zaman)}</td>
+            <tr key={x.id}><td className="ad">{x.is}</td><td className="mono" style={{ whiteSpace: "nowrap" }}><Zaman s={x.zaman} /></td>
               <td style={{ whiteSpace: "nowrap" }}>{x.kiraci ?? (x.tenant_id ? x.tenant_id.slice(0, 8) : "—")}</td>
               <td style={{ whiteSpace: "nowrap" }}>{x.santral ?? (x.plant_id ? x.plant_id.slice(0, 8) : "—")}</td><td className="mono" style={{ whiteSpace: "nowrap" }}>{sureTr(x.sure_sn)}</td>
               <td><span className={`rozet rozet-kucuk ${x.tamam ? "rozet-ok" : "rozet-uyari"}`}>{x.tamam ? "tamam" : "başarısız"}</span></td>
@@ -134,7 +135,7 @@ function SantralEnvanteri() {
           <thead><tr><th>Kiracı</th><th>Santral</th><th>Kurulu güç<span className="birim">kWp</span></th><th>Son SCADA</th><th>Son koşu</th><th>Son hata</th><th>Sorun</th></tr></thead>
           <tbody>{veri.santraller.map((p) => (
             <tr key={p.id}><td className="ad">{p.kiraci}</td><td>{p.ad}</td><td>{p.kapasite_kwp ? gucTr(p.kapasite_kwp) : <span className="bos">—</span>}</td>
-              <td>{zamanTr(p.son_scada)}</td><td>{zamanTr(p.son_kosu)}</td><td>{zamanTr(p.son_hata)}</td>
+              <td><Zaman s={p.son_scada} /></td><td><Zaman s={p.son_kosu} /></td><td><Zaman s={p.son_hata} /></td>
               <td>{p.sorunlar.length === 0 ? <span className="rozet rozet-kucuk rozet-ok">yok</span>
                 : <span className="dugme-sira">{p.sorunlar.map((s) => <span key={s} className="rozet rozet-kucuk rozet-uyari">{SORUN_AD[s] ?? s}</span>)}</span>}</td></tr>))}</tbody>
         </table></div>)}

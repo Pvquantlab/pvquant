@@ -75,6 +75,7 @@ def test_uctan_uca(temiz):
                      nesne_tur="tenant", nesne_id=y["tenant_id"], ayrinti={"etiket": e})
     kayitlar = dz.listele(tenant_id=y["tenant_id"])
     assert kayitlar and kayitlar[0]["eylem"] == "kiraci_guncelle" and kayitlar[0]["ayrinti"]["etiket"] == e
+    assert kayitlar[0]["kiraci_ad"] == firma                      # 25.10 denetim O1: kiracı adı birleşik
     # operatör yönetimi: son sahip düşürülemez
     op = ps.operator_ekle(f"op-{e}@pvq.test", "operator")
     assert ps.operator_guncelle(op["id"], aktif=False)

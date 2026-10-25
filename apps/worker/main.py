@@ -573,8 +573,8 @@ def aylik_iklim(plant):
 def tam_tur():
     """v2.56 sırası — aylık kalibrasyon BİLEREK hariç (durum değiştiren ağır iş;
     takvimin/kullanıcının işi). --once ve açılış yakalaması (v2.336) ortak kullanır."""
-    _logla("gece_meteo", gece_meteo)()                  # v2.268 (Dalga 0): NWP arşivi önce
-    _logla("gece_piyasa", gece_piyasa)()                # v2.258 (kimlik yoksa atlar)
+    _logla_tek("gece_meteo", gece_meteo)()                  # v2.268 (Dalga 0): NWP arşivi önce
+    _logla_tek("gece_piyasa", gece_piyasa)()                # v2.258 (kimlik yoksa atlar)
     _logla("gece_epias_uretim", gece_epias_uretim)()    # v2.278 (kimlik/eşleme yoksa atlar)
     _logla("gece_hijyen", gece_hijyen)()                # v2.254 (skill'den once)
     _logla("gece_skill", gece_skill)()
@@ -698,12 +698,12 @@ if __name__ == "__main__":
         print("Tam tur bitti — kanit jobs_log'da.")
         raise SystemExit(0)
     sch = BlockingScheduler(timezone="UTC", job_defaults=dict(coalesce=True, misfire_grace_time=3600, max_instances=1))
-    sch.add_job(_logla("gece_meteo", gece_meteo), "cron",                # v2.268: tahminden 1 saat önce
+    sch.add_job(_logla_tek("gece_meteo", gece_meteo), "cron",   # v2.268: tahminden 1 saat önce; 25.10 O5: küresel iş TEK satır
                 hour=(cfg.worker_hour_forecast - 1) % 24, minute=0)
     sch.add_job(_logla("sabah_tahmin", sabah_tahmin), "cron", hour=cfg.worker_hour_forecast, minute=0)
     if cfg.gun_ici_guncelleme:                                              # v2.276: gün içi koşular (ICON taze)
         sch.add_job(_logla("gun_ici_tahmin", gun_ici_tahmin), "cron", hour=cfg.gun_ici_saatler, minute=30)
-    sch.add_job(_logla("gece_piyasa", gece_piyasa), "cron", hour=cfg.worker_hour_skill, minute=15)   # v2.258
+    sch.add_job(_logla_tek("gece_piyasa", gece_piyasa), "cron", hour=cfg.worker_hour_skill, minute=15)   # v2.258; 25.10 O5: tek satır
     sch.add_job(_logla("gece_epias_uretim", gece_epias_uretim), "cron", hour=cfg.worker_hour_skill, minute=18)   # v2.278
     sch.add_job(_logla("gece_hijyen", gece_hijyen), "cron", hour=cfg.worker_hour_skill, minute=20)   # v2.254
     sch.add_job(_logla("gece_skill", gece_skill), "cron", hour=cfg.worker_hour_skill, minute=30)

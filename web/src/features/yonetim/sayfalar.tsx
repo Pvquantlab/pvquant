@@ -3,6 +3,7 @@ import { yonetim, zamanTr, type Kiraci, type KiraciDetay, type Kullanici, type O
 import { Kart, Kpi, Sayfa, SayfaIskeleti, sayiTr, gucTr } from "../sayfalar/parcalar";
 import { Meta } from "../../lib/Meta";
 import { KullanimKarti } from "./Kullanim";
+import { Zaman, AyrintiCipleri } from "./ortak";
 
 /** 24.10 Faz 2 — platform sayfaları. Dil: müşteri panelinin bileşen dili (Kart/Kpi/Sayfa, table.veri.santral, .form-izgara,
  *  rozet, Meta). Sayılar uydurulmaz: her değer uçtan; boş durum .bos-durum; hata metni açık. */
@@ -91,7 +92,7 @@ export function Musteriler() {
               <tr key={k.id} className="satir-tikla" tabIndex={0} onClick={() => setSecili(k.id)} onKeyDown={(e) => { if (e.key === "Enter") setSecili(k.id); }}>
                 <td className="ad">{k.ad}</td><td>{k.plan}</td><td><DurumRozet durum={k.durum} /></td><td>{sayiTr(k.santral)}</td>
                 <td>{k.kurulu_guc_kwp ? gucTr(k.kurulu_guc_kwp) : <span className="bos">—</span>}</td><td>{sayiTr(k.kullanici)}</td>
-                <td>{zamanTr(k.son_giris)}</td><td>{zamanTr(k.olusturma)}</td>
+                <td><Zaman s={k.son_giris} /></td><td><Zaman s={k.olusturma} /></td>
                 <td><svg className="satir-ok" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M7 4l6 6-6 6"/></svg></td>
               </tr>))}</tbody>
           </table></div>)}
@@ -153,7 +154,7 @@ function MusteriDetay({ id, geri }: { id: string; geri: () => void }) {
         {d.santraller.length === 0 ? <Bos bas="Santral yok." /> : (
           <div className="grafik-kaydir"><table className="veri sayisal santral">
             <thead><tr><th>Santral</th><th>Kapasite<span className="birim">kWp</span></th><th>Saat dilimi</th><th>Son SCADA</th><th>Son koşu</th><th>Durum</th></tr></thead>
-            <tbody>{d.santraller.map((s) => (<tr key={s.id}><td className="ad">{s.ad}</td><td>{gucTr(s.kapasite_kwp)}</td><td>{s.tz}</td><td>{zamanTr(s.son_scada)}</td><td>{zamanTr(s.son_kosu)}</td>
+            <tbody>{d.santraller.map((s) => (<tr key={s.id}><td className="ad">{s.ad}</td><td>{gucTr(s.kapasite_kwp)}</td><td>{s.tz}</td><td><Zaman s={s.son_scada} /></td><td><Zaman s={s.son_kosu} /></td>
               <td>{s.arsivli ? <span className="rozet rozet-kucuk rozet-notr">arşivde</span> : <span className="rozet rozet-kucuk rozet-ok">etkin</span>}</td></tr>))}</tbody>
           </table></div>)}
       </Kart>
@@ -170,7 +171,7 @@ function KullaniciTablosu({ satirlar, firmaGoster, islem, sirGoster }:
       <tbody>{satirlar.map((u) => (
         <tr key={u.id}><td className="ad">{u.email}</td>{firmaGoster && <td>{u.firma}</td>}<td>{ROL_AD[u.rol] ?? u.rol}</td>
           <td>{u.aktif ? <span className="rozet rozet-kucuk rozet-ok">etkin</span> : <span className="rozet rozet-kucuk rozet-notr">pasif</span>}</td>
-          <td>{u.totp_aktif ? "açık" : <span className="bos">kapalı</span>}</td><td>{zamanTr(u.son_giris)}</td>
+          <td>{u.totp_aktif ? "açık" : <span className="bos">kapalı</span>}</td><td><Zaman s={u.son_giris} /></td>
           <td><div className="dugme-sira">
             <button className="dugme kucuk" onClick={() => islem(async () => { const r = await yonetim.kullaniciParolaBaglantisi(u.id); if (!r.gonderildi && r.baglanti) sirGoster("Parola belirleme bağlantısı (e-posta gönderilemedi)", r.baglanti); }, "Parola bağlantısı hazırlandı.")}>Parola bağlantısı</button>
             {u.totp_aktif && <button className="dugme kucuk" onClick={() => islem(() => yonetim.kullaniciIkiAdimSifirla(u.id), "2FA sıfırlandı.")}>2FA sıfırla</button>}
@@ -215,7 +216,7 @@ export function Basvurular() {
           <div className="grafik-kaydir"><table className="veri sayisal santral">
             <thead><tr><th>E-posta</th><th>Santral</th><th>Kurulu güç<span className="birim">kWp</span></th><th>Tarih</th><th>Durum</th><th>İşlem</th></tr></thead>
             <tbody>{liste.map((b) => (<tr key={b.id}><td className="ad">{b.eposta}</td><td>{b.santral_adi ?? <span className="bos">—</span>}</td>
-              <td>{b.kurulu_guc_kwp != null ? gucTr(b.kurulu_guc_kwp) : <span className="bos">—</span>}</td><td>{zamanTr(b.created_at)}</td>
+              <td>{b.kurulu_guc_kwp != null ? gucTr(b.kurulu_guc_kwp) : <span className="bos">—</span>}</td><td><Zaman s={b.created_at} /></td>
               <td>{b.okundu ? <span className="rozet rozet-kucuk rozet-notr">okundu</span> : <span className="rozet rozet-kucuk rozet-uyari">yeni</span>}</td>
               <td>{!b.okundu && <button className="dugme kucuk" onClick={() => yonetim.basvuruOkundu(b.id).then(yenile).catch((e) => setHata(mesajCikar(e)))}>Okundu işaretle</button>}</td></tr>))}</tbody>
           </table></div>)}
@@ -228,17 +229,20 @@ export function Basvurular() {
 function DenetimTablosu({ kayitlar }: { kayitlar: DenetimKaydi[] }) {
   return (
     <div className="grafik-kaydir"><table className="veri santral">
-      <thead><tr><th>Zaman</th><th>Kapsam</th><th>Eylem</th><th>Aktör</th><th>Kiracı</th><th>Nesne</th><th>Ayrıntı</th><th>IP</th></tr></thead>
-      <tbody>{kayitlar.map((k) => (<tr key={k.id}><td className="ad">{zamanTr(k.zaman)}</td><td>{k.kapsam}</td><td><span className="cip-kod">{k.eylem}</span></td>
-        <td>{k.aktor_eposta ?? (k.aktor_id ? k.aktor_id.slice(0, 8) : "—")}</td><td>{k.tenant_id ? k.tenant_id.slice(0, 8) : "—"}</td>
-        <td>{k.nesne_tur ? `${k.nesne_tur} ${k.nesne_id ? k.nesne_id.slice(0, 8) : ""}` : "—"}</td>
-        <td style={{ whiteSpace: "normal", maxWidth: 360, fontSize: 13 }}>{Object.keys(k.ayrinti).length ? JSON.stringify(k.ayrinti) : "—"}</td><td>{k.ip ?? "—"}</td></tr>))}</tbody>
+      <thead><tr><th>Zaman</th><th>Kapsam</th><th>Eylem</th><th>Aktör</th><th>Kiracı</th><th>Nesne</th><th>IP</th><th className="plat-ayrinti-sutun">Ayrıntı</th></tr></thead>
+      <tbody>{kayitlar.map((k) => (<tr key={k.id}><td className="ad"><Zaman s={k.zaman} /></td><td>{k.kapsam === "musteri" ? "müşteri" : k.kapsam}</td><td><span className="cip-kod">{k.eylem}</span></td>
+        <td className="plat-aktor">{k.aktor_eposta ?? (k.aktor_id ? k.aktor_id.slice(0, 8) : "—")}</td>
+        <td>{k.kiraci_ad ?? (k.tenant_id ? <span className="mono" title={k.tenant_id}>{k.tenant_id.slice(0, 8)}</span> : "—")}</td>
+        <td>{k.nesne_tur ? <>{k.nesne_tur}{k.nesne_id && <span className="mono soluk" title={k.nesne_id} style={{ display: "block", fontSize: 12 }}>{k.nesne_id.slice(0, 8)}</span>}</> : "—"}</td>
+        <td className="mono">{k.ip ?? "—"}</td><td className="plat-ayrinti-sutun"><AyrintiCipleri a={k.ayrinti} /></td></tr>))}</tbody>
     </table></div>
   );
 }
 export function Denetim() {
   const [kapsam, setKapsam] = useState(""); const [eylem, setEylem] = useState(""); const [tenant, setTenant] = useState("");
   const [liste, setListe] = useState<DenetimKaydi[] | null>(null); const [hata, setHata] = useState<string | null>(null);
+  const [kiracilar, setKiracilar] = useState<Kiraci[]>([]);
+  useEffect(() => { yonetim.kiracilar().then((r) => setKiracilar(r.kiracilar)).catch(() => {}); }, []);
   const getir = (onceId?: number) => yonetim.denetim({ kapsam: kapsam || undefined, eylem: eylem || undefined, tenant_id: tenant || undefined, limit: 100, once_id: onceId })
     .then((r) => setListe((e) => onceId && e ? [...e, ...r.kayitlar] : r.kayitlar)).catch((e) => setHata(mesajCikar(e)));
   useEffect(() => { void getir(); }, []);   // eslint-disable-line react-hooks/exhaustive-deps
@@ -247,7 +251,8 @@ export function Denetim() {
       <form className="form-izgara" style={{ maxWidth: 760, marginBottom: 14 }} onSubmit={(e) => { e.preventDefault(); void getir(); }}>
         <label className="girdi-etiket">Kapsam<select className="girdi" value={kapsam} onChange={(e) => setKapsam(e.target.value)}><option value="">tümü</option><option value="platform">platform</option><option value="musteri">müşteri</option></select></label>
         <label className="girdi-etiket">Eylem<input className="girdi" value={eylem} onChange={(e) => setEylem(e.target.value)} placeholder="ör. giris, kiraci_guncelle" /></label>
-        <label className="girdi-etiket">Kiracı kimliği<input className="girdi mono" value={tenant} onChange={(e) => setTenant(e.target.value)} placeholder="uuid" /></label>
+        <label className="girdi-etiket">Kiracı<select className="girdi" value={tenant} onChange={(e) => setTenant(e.target.value)}>
+          <option value="">tümü</option>{kiracilar.map((k) => <option key={k.id} value={k.id}>{k.ad}</option>)}</select></label>
         <button className="dugme" type="submit">Süz</button>
       </form>
       <Hata m={hata} />
@@ -279,7 +284,7 @@ export function Operatorler({ ben }: { ben: Ben | null }) {
             <tbody>{liste.map((o) => (<tr key={o.id}><td className="ad">{o.email}{o.id === ben?.id && <span className="rozet rozet-kucuk rozet-notr" style={{ marginLeft: 8 }}>siz</span>}</td>
               <td><select className="girdi kucuk" value={o.rol} disabled={o.id === ben?.id} onChange={(e) => dene(() => yonetim.operatorGuncelle(o.id, { rol: e.target.value }), "Rol güncellendi.")}><option value="operator">Operatör</option><option value="sahip">Sahip</option></select></td>
               <td>{o.aktif ? <span className="rozet rozet-kucuk rozet-ok">etkin</span> : <span className="rozet rozet-kucuk rozet-notr">pasif</span>}</td>
-              <td>{o.totp_aktif ? "açık" : <span className="bos">kapalı</span>}</td><td>{zamanTr(o.son_giris)}</td>
+              <td>{o.totp_aktif ? "açık" : <span className="bos">kapalı</span>}</td><td><Zaman s={o.son_giris} /></td>
               <td><div className="dugme-sira">
                 {o.totp_aktif && o.id !== ben?.id && <button className="dugme kucuk" onClick={() => dene(() => yonetim.operatorGuncelle(o.id, { iki_adim_sifirla: true }), "2FA sıfırlandı; operatör girişte yeniden kurar.")}>2FA sıfırla</button>}
                 {o.id !== ben?.id && <button className={`dugme kucuk${o.aktif ? " dugme-tehlike" : ""}`} onClick={() => dene(() => yonetim.operatorGuncelle(o.id, { aktif: !o.aktif }), o.aktif ? "Pasifleştirildi." : "Yeniden etkin.")}>{o.aktif ? "Pasifleştir" : "Etkinleştir"}</button>}

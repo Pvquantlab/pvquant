@@ -39,7 +39,7 @@ export interface Kullanici extends KiraciKullanici { tenant_id: string; firma: s
 export interface Operator { id: string; email: string; rol: string; aktif: boolean; totp_aktif: boolean; son_giris: string | null; olusturma: string }
 export interface Basvuru { id: string; eposta: string; santral_adi: string | null; kurulu_guc_kwp: number | null; okundu: boolean; created_at: string }
 export interface DenetimKaydi { id: number; zaman: string; kapsam: string; aktor_id: string | null; aktor_eposta: string | null; tenant_id: string | null;
-  eylem: string; nesne_tur: string | null; nesne_id: string | null; ayrinti: Record<string, unknown>; ip: string | null }
+  eylem: string; nesne_tur: string | null; nesne_id: string | null; ayrinti: Record<string, unknown>; ip: string | null; kiraci_ad?: string | null }
 
 // 25.10 Faz 3 — sistem izleme. Bayatlık HÜKÜMLERİ (bayat, taze, durum) uçtan gelir; arayüz eşik uydurmaz.
 export interface SistemOzet {

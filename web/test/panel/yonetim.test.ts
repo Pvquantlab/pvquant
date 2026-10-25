@@ -91,3 +91,21 @@ test("Faz 4: Kullanım sayfası listede, kökte, istemcide; detayda kullanım ka
   // müşteri istemcisi kullanım ucu bilmez
   assert.doesNotMatch(oku("api/client.ts"), /\/v1\/yonetim/);
 });
+
+// ---------------- 25.10 denetim tablo turu (O1/O2/O3) ----------------
+test("tablo turu: ayrıntı çipleri, kiracı adı ve seçimi, tek zaman tipografisi, yalnız platform CSS", () => {
+  const s = oku("features/yonetim/sayfalar.tsx");
+  assert.match(s, /<AyrintiCipleri a=\{k\.ayrinti\} \/>/);
+  assert.doesNotMatch(s, /JSON\.stringify\(k\.ayrinti\)/);
+  assert.match(s, /k\.kiraci_ad \?\?/);
+  assert.match(s, /<label className="girdi-etiket">Kiracı<select/);
+  for (const f of ["features/yonetim/sayfalar.tsx", "features/yonetim/Sistem.tsx", "features/yonetim/Kullanim.tsx"]) {
+    assert.doesNotMatch(oku(f), /[^$]\{zamanTr\(/, f);       // JSX hücrelerinde yalnız <Zaman/> (şablon dizeleri ${zamanTr} serbest)
+  }
+  const css = oku("index.css");
+  assert.match(css, /:root\[data-yuz="platform"\] table\.veri\.santral th, :root\[data-yuz="platform"\] table\.veri\.santral td \{ text-align: left;/);
+  assert.match(css, /:root\[data-yuz="platform"\] \.zaman \{ font-family: var\(--mono\)/);
+  // müşteri paneli tablo kuralı değişmedi
+  assert.match(css, /\ntable\.veri th \{ text-align: right;/);
+  assert.match(css, /\ntable\.veri\.santral th, table\.veri\.santral td \{ width: 1%; \}/);
+});
