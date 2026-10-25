@@ -1,5 +1,9 @@
-# Faz 3 — Sistem izleme: `/yonetim` «Sistem» sayfası (25.10.2026) — BİRİKİYOR (commit yok)
-**Durum:** yerelde birikmiş; mühür kullanıcı «commitle» deyince (v2.485 önerilir; alembic `v2485_faz3_sistem`).
+# Faz 3 — Sistem izleme: `/yonetim` «Sistem» sayfası (25.10.2026) — CANLI v2.485
+**Durum:** v2.485 = 856a88d (25.10), CI #580 yeşil (7 dk 11 s). Sunucu: `git pull`, api + worker + web imajları, yeni api imajıyla
+`docker compose run --rm --no-deps api alembic upgrade head` → `v2485_faz3_sistem (head)`, `up -d --force-recreate api worker web`.
+Canlı index.html + **19/19 JS/CSS** referans derlemeyle birebir; `/yonetim` 200; `/v1/yonetim/{sistem,isler,santraller}` başlıksız 422,
+bozuk jeton 401; `/v1/healthz` ok; api ve worker loglarında hata 0. Worker açılış nabzı `sistem_nabiz`'e 24 sn içinde düştü
+(`is_sayisi` 19, `aralik_dk` 5) ve 5 dk aralık işi tam zamanında tazeledi (13:34:54 → 13:39:54 UTC). Gerçek hesapla `/yonetim` → «Sistem» sayfasının gerçek veriyle görünümü kullanıcıda.
 
 Dayanak: `docs/YONETICI-PANELI-YOL-HARITASI-2026-10-24.md` §6 «Sistem izleme» satırı; Faz 2 defteri «KALAN» ilk kalemi.
 Tahmin/kalibrasyon/hesap servisleri, müşteri `/v1/*` sözleşmeleri (`/v1/isler`, `/v1/hakkinda` dahil), RLS politikaları ve
@@ -52,7 +56,7 @@ veri tazeliği, yedek yaşı, hangi iş hangi kiracıda neden düştü ve hangi 
   gece turu bayat). Düzeltilenler: iş tablosunda esnek sütun «Zaman» olmuştu (İş/Kiracı sıkışıyordu) → esnek sütun İş; meteo
   «Kapsam» saatli tarihle yarım kartı 121 px aşıyordu → yalnız tarih + 440 px taban (1440'ta 0 taşma, 375'te kart içi kaydırma);
   «Hava verisi» KPI alt metni bayat kaynağı adıyla; süre hücresi tek satır.
-- Canlı: henüz dağıtılmadı.
+- Canlı: yukarıdaki Durum satırı (sha 19/19, uç kapıları, log 0 hata, açılış nabzı).
 
 ## DAĞITIM NOTLARI (mühürde)
 `alembic upgrade head` (sistem_nabiz) · **api + worker + web** imajları (worker nabız için yeniden derlenmeli: `docker compose build
