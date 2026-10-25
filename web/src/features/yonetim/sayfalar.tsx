@@ -146,7 +146,7 @@ function MusteriDetay({ id, geri, sahip }: { id: string; geri: () => void; sahip
   if (!d) return <Sayfa baslik="Müşteri"><SayfaIskeleti kpi={3} kart={2} /></Sayfa>;
   const askida = d.durum !== "active";
   return (
-    <Sayfa baslik={d.ad} alt={`${d.plan} planı; oluşturma ${zamanTr(d.olusturma)}`} sag={<span className="cip"><Meta items={[askida ? "askıda" : "etkin", `${sayiTr(d.santraller.filter((s) => !s.arsivli).length)} santral`, `${sayiTr(d.kullanicilar.length)} kullanıcı`]} /></span>}>
+    <Sayfa baslik={d.ad} alt={`${d.plan} planı; oluşturma ${zamanTr(d.olusturma)}`} sag={<span className="cip"><Meta items={[askida ? "askıda" : "etkin", `${sayiTr(d.santraller.filter((s) => !s.arsivli).length)} santral`, `${sayiTr(d.kullanicilar.length)} kullanıcı`, ...(d.yonetici_2fa_zorunlu ? ["yönetici 2FA zorunlu"] : [])]} /></span>}>
       <button className="giris-bag" onClick={geri}>← Müşteriler</button>
       <Hata m={hata} />{mesaj && <p className="giris-bilgi" style={{ marginTop: 10 }}>{mesaj}</p>}
       {sir && <TekSeferlik baslik={sir.baslik} deger={sir.deger} />}

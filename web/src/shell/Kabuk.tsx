@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { api, type AlarmSatiri, rolum } from "../api/client";
+import { IkiAdimBolumu } from "../features/sayfalar/Kurulus";   // 26.10 Faz 6: 2FA kurulum kapısı
 import type { SantralOzeti, Kullanici } from "../api/types";
 import { useDamga } from "./useDamga";
 import { sayiTr, gucTr } from "../features/sayfalar/parcalar";
@@ -18,6 +19,7 @@ export const SAYFALAR = [
   { id: "dogruluk", ad: "Doğruluk", yuz: "acik" },
   { id: "aylik", ad: "Aylık beklenti", yuz: "acik" },
   { id: "raporlar", ad: "Raporlar", yuz: "acik" },
+  { id: "kurulus", ad: "Kuruluş", yuz: "acik" },        // 26.10 Faz 6: yönetim kartları Portföy'den buraya
   { id: "hakkinda", ad: "Hakkında", yuz: "acik" },      // v2.270
 ] as const;
 export type SayfaId = (typeof SAYFALAR)[number]["id"];
@@ -35,6 +37,7 @@ const IKONLAR: Record<SayfaId, ReactNode> = {
   dogruluk: <svg {...IKON_ORTAK}><path d="M4 3h12v14H4z"/><path d="M7.5 10l1.8 1.8 3.2-3.6"/></svg>,
   aylik: <svg {...IKON_ORTAK}><rect x="3" y="4" width="14" height="13" rx="1.5"/><path d="M3 8h14M7 4V2.5M13 4V2.5"/></svg>,
   raporlar: <svg {...IKON_ORTAK}><path d="M5 2.5h7L16 6v11.5H5z"/><path d="M12 2.5V6h4"/></svg>,
+  kurulus: <svg {...IKON_ORTAK}><path d="M3 17V8l7-4 7 4v9"/><path d="M7 17v-6h6v6"/><path d="M10 4v3"/></svg>,   // 26.10 Faz 6
   hakkinda: <svg {...IKON_ORTAK}><circle cx="10" cy="10" r="7"/><path d="M10 9v5M10 6.5v.5"/></svg>,
 };
 
@@ -121,9 +124,10 @@ export function Kabuk({ sayfa, tiklanan, setSayfa, santral, plantId, onCikis, ch
   // v2.355: aynı yanıt hesap kutusunu da doldurur — firma adı KODA GÖMÜLÜ DEĞİL,
   // sunucudan gelir (gömülü "Meridyen Enerji" her müşterinin panelinde görünüyordu).
   const [hesap, setHesap] = useState<{ firma: string; rol: string } | null>(null);
+  const [ikiAdimKurulmali, setIkiAdimKurulmali] = useState(false);   // 26.10 Faz 6 (O7): kiracı politikası → kurulum kapısı
   useEffect(() => {
     const tazele = () => api.oturumYenile().then((h) => {
-      if (h) setHesap({ firma: h.firma, rol: h.role });
+      if (h) { setHesap({ firma: h.firma, rol: h.role }); setIkiAdimKurulmali(!!h.iki_adim_kurulmali); }
     });
     tazele();
     const z = setInterval(tazele, 30 * 60 * 1000);
@@ -374,7 +378,7 @@ export function Kabuk({ sayfa, tiklanan, setSayfa, santral, plantId, onCikis, ch
             </div>
           );
         })()}
-        <div className="icerik">{children}</div>
+        <div className="icerik">{ikiAdimKurulmali ? <IkiAdimKapisi onTamam={() => setIkiAdimKurulmali(false)} /> : children}</div>
       </main>
       {/* v2.308: form üst şeridin İÇİNDE çiziliyordu — kendi karartma katmanının
           altında kalıp ekranın 224px yukarısına taşıyordu; her tıklama örtüye
@@ -515,6 +519,21 @@ function TemsilSeridi() {
       <b>Platform görüntülemesi</b><span className="temsil-serit__ayrac" aria-hidden="true">·</span>{t.kiraci}<span className="temsil-serit__ayrac" aria-hidden="true">·</span>salt okunur
       <span className="temsil-serit__ayrac" aria-hidden="true">·</span>{kalan > 0 ? `${kalan} dk kaldı` : "süre doldu"}
       <button type="button" className="temsil-serit__kapat" onClick={kapat}>Kapat</button>
+    </div>
+  );
+}
+
+/** 26.10 Faz 6 (O7) — kuruluş politikası «yöneticiler için 2FA zorunlu» açık ve bu yönetici 2FA'sız: panel yerine kurulum.
+ *  Sunucu zaten yalnız kurulum uçlarına izin verir; burası dürüst açıklama + mevcut iki adım bölümü. Kurulunca içerik açılır. */
+function IkiAdimKapisi({ onTamam }: { onTamam: () => void }) {
+  const [kontrol, setKontrol] = useState(0);
+  useEffect(() => { if (kontrol === 0) return; api.oturumYenile().then((h) => { if (h && !h.iki_adim_kurulmali) onTamam(); }); }, [kontrol, onTamam]);
+  return (
+    <div style={{ maxWidth: 720 }}>
+      <h1 className="sayfa-baslik" style={{ marginBottom: 6 }}>İki adımlı doğrulama gerekli</h1>
+      <p className="soluk" style={{ margin: "0 0 18px", fontSize: 15 }}>Kuruluşunuz yöneticiler için iki adımlı doğrulamayı zorunlu kıldı. Kurulumu tamamlayınca panel açılır.</p>
+      <IkiAdimBolumu />
+      <button className="dugme dugme-ana" style={{ marginTop: 14 }} onClick={() => setKontrol((k) => k + 1)}>Kurdum, devam et</button>
     </div>
   );
 }

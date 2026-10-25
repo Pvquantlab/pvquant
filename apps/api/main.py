@@ -1370,6 +1370,35 @@ def monthly(plant_id: str, claims=Depends(gecerli_kullanici)):
     }
 
 
+# ---------------------------------------------------------------- 26.10 Faz 6: kuruluş
+class KurulusAyar(BaseModel):
+    yonetici_2fa_zorunlu: bool
+
+
+@app.get("/v1/kurulus/denetim", tags=["Yönetim"])
+def kurulus_denetim(limit: int = 100, once_id: int | None = None, claims=Depends(yonetici_yetkisi())):
+    """Kiracı içi denetim izi (yalnız yönetici): kendi ekibinin eylemleri VE platformun bu kiracıda yaptıkları (kapsam sütunuyla).
+    tenant_id jetondan — sorgudan alınmaz."""
+    from pvquant.services import denetim_service
+    return {"kayitlar": denetim_service.listele(tenant_id=claims["tenant_id"], limit=limit, once_id=once_id)}
+
+
+@app.get("/v1/kurulus/ayarlar", tags=["Yönetim"])
+def kurulus_ayarlar(claims=Depends(yonetici_yetkisi())):
+    from pvquant.services import kurulus_service
+    return kurulus_service.ayarlar(claims["tenant_id"])
+
+
+@app.put("/v1/kurulus/ayarlar", tags=["Yönetim"])
+def kurulus_ayarlar_guncelle(a: KurulusAyar, request: Request, claims=Depends(yonetici_yetkisi())):
+    """«Yöneticiler için 2FA zorunlu»: açınca 2FA'sız yöneticiler bir sonraki istekte kurulum ekranına düşer (60 sn önbellek düşürülür)."""
+    from pvquant.services import kurulus_service
+    y = kurulus_service.ayar_guncelle(claims["tenant_id"], yonetici_2fa_zorunlu=a.yonetici_2fa_zorunlu)
+    _denetim.kaydet("musteri", "kurulus_ayar", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="tenant", nesne_id=claims["tenant_id"],
+                    ayrinti={"yonetici_2fa_zorunlu": a.yonetici_2fa_zorunlu}, ip=request.client.host if request.client else None)
+    return y
+
+
 @app.get("/v1/healthz")
 def healthz():
     return {"ok": True}

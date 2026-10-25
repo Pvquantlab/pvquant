@@ -115,9 +115,11 @@ def oturum_durumu(user_id: str) -> dict | None:
         return k[1]
     with sistem_baglami() as s:
         r = s.execute(text(
-            "SELECT u.oturum_surumu, u.aktif, t.status FROM users u JOIN tenants t ON t.id = u.tenant_id "
-            "WHERE u.id = :i"), {"i": str(user_id)}).first()
-    d = None if r is None else {"sv": int(r.oturum_surumu), "aktif": bool(r.aktif), "kiraci_durum": r.status}
+            "SELECT u.oturum_surumu, u.aktif, t.status, u.role, u.totp_aktif, t.yonetici_2fa_zorunlu FROM users u "
+            "JOIN tenants t ON t.id = u.tenant_id WHERE u.id = :i"), {"i": str(user_id)}).first()
+    # 26.10 Faz 6 (O7): kiracı «yöneticiler için 2FA zorunlu» politikası — kapı (deps) bu alanlarla karar verir, jeton değişmez
+    d = None if r is None else {"sv": int(r.oturum_surumu), "aktif": bool(r.aktif), "kiraci_durum": r.status,
+                                "iki_adim_kurulmali": bool(r.yonetici_2fa_zorunlu) and r.role == "admin" and not bool(r.totp_aktif)}
     _oturum_onbellegi[str(user_id)] = (simdi, d)
     return d
 
@@ -214,7 +216,8 @@ def oturum_yenile(user_id) -> dict | None:
         # v2.355: firma adı da döner — kabuğun hesap kutusu gerçek kiracıyı yazar
         # (koda gömülü "Meridyen Enerji" sabiti canlıda Deneme Lab girişiyle yakalandı).
         row = s.execute(text(
-            "SELECT u.id, u.tenant_id, u.role, u.aktif, u.email, u.oturum_surumu, t.name AS firma, t.status AS kiraci_durum "
+            "SELECT u.id, u.tenant_id, u.role, u.aktif, u.email, u.oturum_surumu, t.name AS firma, t.status AS kiraci_durum, "
+            "u.totp_aktif, t.yonetici_2fa_zorunlu "
             "FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.id=:i"),
             {"i": user_id}).first()
     if row is None or not row.aktif:
@@ -224,7 +227,8 @@ def oturum_yenile(user_id) -> dict | None:
     token = jwt.encode({
         "sub": str(row.id), "tenant_id": str(row.tenant_id), "role": row.role, "sv": int(row.oturum_surumu),
         "exp": dt.datetime.utcnow() + dt.timedelta(hours=JWT_SAAT)}, _sir(), algorithm="HS256")
-    return {"token": token, "role": row.role, "firma": row.firma, "email": row.email}
+    return {"token": token, "role": row.role, "firma": row.firma, "email": row.email,
+            "iki_adim_kurulmali": bool(row.yonetici_2fa_zorunlu) and row.role == "admin" and not bool(row.totp_aktif)}   # 26.10 Faz 6
 
 
 # ---- v2.335: "şifremi unuttum" — tek kullanımlık sıfırlama jetonu ----------

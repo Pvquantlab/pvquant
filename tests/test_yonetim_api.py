@@ -248,3 +248,36 @@ def test_temsil_jetonu_salt_okunur(monkeypatch, _ortam):
     assert c.post("/v1/yonetim/kiracilar/t1/temsil", headers=_jeton(rol="operator")).status_code == 403   # operatör açamaz
     monkeypatch.setattr(ps, "kiraci_durumu", lambda t: "suspended")
     assert c.get("/v1/plants", headers=tj).status_code == 403                               # kiracı askıya alınınca görüntüleme de düşer
+
+
+# ---------------- 26.10 Faz 6: kuruluş uçları + yönetici 2FA politikası kapısı ----------------
+def test_kurulus_uclari_ve_2fa_politikasi(monkeypatch, _ortam):
+    from pvquant.services import kurulus_service as kr, plant_service
+    durum = {"sv": 0, "aktif": True, "kiraci_durum": "active", "iki_adim_kurulmali": False}
+    monkeypatch.setattr(au, "oturum_durumu", lambda u: dict(durum))
+    monkeypatch.setattr(plant_service, "listele", lambda t: [])
+    gorulen = {}
+    monkeypatch.setattr(dz, "listele", lambda **k: gorulen.update(k) or [])
+    monkeypatch.setattr(kr, "ayarlar", lambda t: {"yonetici_2fa_zorunlu": False, "iki_adimsiz_yonetici": 1})
+    monkeypatch.setattr(kr, "ayar_guncelle", lambda t, **k: {"yonetici_2fa_zorunlu": k["yonetici_2fa_zorunlu"], "iki_adimsiz_yonetici": 1})
+    c = TestClient(api_main.app)
+    assert c.get("/v1/kurulus/denetim?once_id=5", headers=_musteri_jeton()).status_code == 200
+    assert gorulen["tenant_id"] == "t1" and gorulen["once_id"] == 5                      # kiracı jetondan, sorgudan değil
+    assert c.get("/v1/kurulus/ayarlar", headers=_musteri_jeton()).json()["yonetici_2fa_zorunlu"] is False
+    y = c.put("/v1/kurulus/ayarlar", json={"yonetici_2fa_zorunlu": True}, headers=_musteri_jeton())
+    assert y.status_code == 200 and y.json()["yonetici_2fa_zorunlu"] is True
+    assert any(a[0] == "musteri" and a[1] == "kurulus_ayar" and k["tenant_id"] == "t1" for a, k in _ortam)
+    editor = {"Authorization": "Bearer " + _jwt.encode({"sub": "u2", "tenant_id": "t1", "role": "editor", "sv": 0,
+                                                         "exp": dt.datetime.utcnow() + dt.timedelta(hours=1)}, au._sir(), algorithm="HS256")}
+    assert c.get("/v1/kurulus/ayarlar", headers=editor).status_code == 403                 # yalnız yönetici
+    # politika açık + yönetici 2FA'sız → yalnız kurulum uçları
+    durum["iki_adim_kurulmali"] = True
+    monkeypatch.setattr(au, "oturum_yenile", lambda u: {"token": "t", "role": "admin", "firma": "F", "email": "a@b", "iki_adim_kurulmali": True})
+    assert c.post("/v1/oturum/yenile", headers=_musteri_jeton()).json()["iki_adim_kurulmali"] is True
+    from pvquant.services import iki_adim_service
+    monkeypatch.setattr(iki_adim_service, "durum", lambda u: {"aktif": False})
+    assert c.get("/v1/iki-adim", headers=_musteri_jeton()).status_code == 200                # kurulum ucu açık
+    y = c.get("/v1/plants", headers=_musteri_jeton())
+    assert y.status_code == 403 and "iki adımlı" in y.json()["detail"]                      # veri ucu kapalı
+    durum["iki_adim_kurulmali"] = False
+    assert c.get("/v1/plants", headers=_musteri_jeton()).status_code == 200

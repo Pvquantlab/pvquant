@@ -335,3 +335,8 @@ export interface RaporJson {
     warnings: string[];
   };
 }
+
+/** 26.10 Faz 6 — kuruluş: kiracı içi denetim izi kaydı (platform tipiyle aynı alanlar) ve ayarlar. */
+export interface DenetimKaydi { id: number; zaman: string; kapsam: string; aktor_id: string | null; aktor_eposta: string | null; tenant_id: string | null;
+  eylem: string; nesne_tur: string | null; nesne_id: string | null; ayrinti: Record<string, unknown>; ip: string | null }
+export interface KurulusAyarlar { yonetici_2fa_zorunlu: boolean; iki_adimsiz_yonetici: number }

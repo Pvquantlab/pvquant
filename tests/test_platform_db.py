@@ -221,3 +221,24 @@ def test_faz5_planlar_ve_temsil(temiz):
     with pytest.raises(ValueError):
         ps.temsil_jetonu(pid, y["tenant_id"])
     ps.kiraci_guncelle(pid, y["tenant_id"], status="active")
+
+
+def test_faz6_kurulus_politikasi(temiz):
+    """26.10 Faz 6 — kuruluş ayarı: politika açılınca 2FA'sız yöneticide oturum_durumu.iki_adim_kurulmali True, editörde False; kiracı
+    detayında alan; kapanınca False."""
+    from pvquant.services import kurulus_service as kr
+    e = temiz
+    pid = ps.ilk_sahip_olustur(f"sahip7-{e}@pvq.test", "cok-gizli-parola-123")
+    y = ps.kiraci_olustur(pid, f"Firma7 {e}", f"admin7-{e}@musteri.test")
+    tid, uid = y["tenant_id"], y["user_id"]
+    assert kr.ayarlar(tid) == {"yonetici_2fa_zorunlu": False, "iki_adimsiz_yonetici": 1}
+    assert au.oturum_durumu(uid)["iki_adim_kurulmali"] is False
+    assert kr.ayar_guncelle(tid, yonetici_2fa_zorunlu=True)["yonetici_2fa_zorunlu"] is True
+    assert au.oturum_durumu(uid)["iki_adim_kurulmali"] is True                               # önbellek düşürüldü, DB'den
+    assert ps.kiraci_detay(pid, tid)["yonetici_2fa_zorunlu"] is True
+    with sistem_baglami() as s:
+        s.execute(text("UPDATE users SET totp_aktif = true WHERE id = CAST(:u AS uuid)"), {"u": uid})
+    au.oturum_onbellegi_dusur()
+    assert au.oturum_durumu(uid)["iki_adim_kurulmali"] is False                              # 2FA kurulunca kapı açılır
+    assert kr.ayarlar(tid)["iki_adimsiz_yonetici"] == 0
+    kr.ayar_guncelle(tid, yonetici_2fa_zorunlu=False)

@@ -117,6 +117,12 @@ http.createServer((req, res) => {
       { id: 10, zaman: "2026-10-24T20:30:21Z", kapsam: "platform", aktor_id: null, aktor_eposta: "yok@pvquant.invalid", tenant_id: null, eylem: "giris_basarisiz", nesne_tur: null, nesne_id: null, ayrinti: {}, ip: "78.177.165.74" },
       { id: 9, zaman: "2026-10-24T20:15:00Z", kapsam: "musteri", aktor_id: "u1", aktor_eposta: "deneme@example.com", tenant_id: KIRACILAR[1].id, kiraci_ad: "Deneme Lab", eylem: "giris", nesne_tur: null, nesne_id: null, ayrinti: {}, ip: "78.177.165.74" },
       { id: 8, zaman: "2026-10-24T20:00:00Z", kapsam: "platform", aktor_id: "p1", aktor_eposta: "sahip@pvquant.com", tenant_id: KIRACILAR[2].id, kiraci_ad: "Askıdaki Enerji", eylem: "kiraci_guncelle", nesne_tur: "tenant", nesne_id: KIRACILAR[2].id, ayrinti: { eski: { status: "active" }, yeni: { status: "suspended" } }, ip: "78.177.165.74" }] });
+  // ---- 26.10 Faz 6: kuruluş (müşteri)
+  if (yol === "/v1/kurulus/ayarlar") return yanit(200, { yonetici_2fa_zorunlu: req.method === "PUT", iki_adimsiz_yonetici: 1 });
+  if (yol === "/v1/kurulus/denetim") return yanit(200, { kayitlar: [
+      { id: 31, zaman: dkOnce(12), kapsam: "musteri", aktor_id: "u1", aktor_eposta: "deneme@example.com", tenant_id: KIRACILAR[1].id, eylem: "giris", nesne_tur: null, nesne_id: null, ayrinti: {}, ip: "78.177.165.74" },
+      { id: 30, zaman: dkOnce(60 * 5), kapsam: "platform", aktor_id: "p1", aktor_eposta: "yonetim@pvquant.com", tenant_id: KIRACILAR[1].id, eylem: "kiraci_temsil", nesne_tur: "tenant", nesne_id: KIRACILAR[1].id, ayrinti: { sure_dk: 15, rol: "viewer" }, ip: "78.177.165.74" },
+      { id: 29, zaman: dkOnce(60 * 30), kapsam: "musteri", aktor_id: "u1", aktor_eposta: "deneme@example.com", tenant_id: KIRACILAR[1].id, eylem: "kurulus_ayar", nesne_tur: "tenant", nesne_id: KIRACILAR[1].id, ayrinti: { yonetici_2fa_zorunlu: true }, ip: "78.177.165.74" }] });
   if (yol === "/v1/portfoy") return yanit(200, PORTFOY);
   if (yol === "/v1/portfoy/tahmin") return yanit(process.env.TAHMIN_OK ? 200 : 500, process.env.TAHMIN_OK ? { durum: "ok", yontem: "bottom-up", tutarli: true, gunler: [{ gun: "2026-10-24", p50_mwh: 1798.7, p10_mwh: 1600, p90_mwh: 1950, saat: 24 }], not: "Santral tahminleri toplanır." } : { detail: "Internal Server Error" });
   if (yol === "/v1/portfoy/dsg") return yanit(200, DSG);

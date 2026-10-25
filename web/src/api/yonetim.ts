@@ -33,7 +33,7 @@ export interface Kiraci { id: string; ad: string; plan: string; durum: string; o
   santral: number; kurulu_guc_kwp: number; kullanici: number; son_giris: string | null }
 export interface KiraciKullanici { id: string; email: string; rol: string; aktif: boolean; totp_aktif: boolean; son_giris: string | null; olusturma: string }
 export interface KiraciSantral { id: string; ad: string; kapasite_kwp: number; tz: string; arsivli: boolean; olusturma: string; son_scada: string | null; son_kosu: string | null }
-export interface KiraciDetay { id: string; ad: string; plan: string; durum: string; notlar: string | null; olusturma: string; guncelleme: string | null;
+export interface KiraciDetay { id: string; ad: string; plan: string; durum: string; notlar: string | null; olusturma: string; guncelleme: string | null; yonetici_2fa_zorunlu?: boolean;
   kullanicilar: KiraciKullanici[]; santraller: KiraciSantral[] }
 export interface Kullanici extends KiraciKullanici { tenant_id: string; firma: string }
 export interface Operator { id: string; email: string; rol: string; aktif: boolean; totp_aktif: boolean; son_giris: string | null; olusturma: string }

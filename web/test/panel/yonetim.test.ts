@@ -151,3 +151,19 @@ test("Faz 5: Planlar sahip-only, limit rozetleri, temsil düğmesi sahipte, mü�
   assert.match(kabuk, /if \(!t\) return null;/);                                   // olağan müşteri oturumunda çizilmez
   assert.doesNotMatch(oku("api/client.ts"), /temsil|\/v1\/yonetim/);               // müşteri istemcisi bilmez
 });
+
+// ---------------- 26.10 Faz 6: Kuruluş sayfası ----------------
+test("Faz 6: Kuruluş menüde ve App'te; Portföy yönetim kartlarını çizmez; Kabuk 2FA kapısı; platform rozeti", () => {
+  const kabuk = oku("shell/Kabuk.tsx");
+  assert.match(kabuk, /\{ id: "kurulus", ad: "Kuruluş", yuz: "acik" \}/);
+  assert.match(kabuk, /ikiAdimKurulmali \? <IkiAdimKapisi onTamam=/);
+  const app = oku("App.tsx");
+  assert.match(app, /\{sayfa === "kurulus" && <Kurulus santralYenile=\{santralYenile\} \/>\}/);
+  const portfoy = oku("features/sayfalar/Portfoy.tsx");
+  for (const b of ["<DisErisim", "<SantralArsivi", "<Paylasimlar", "<HesapVeEkip", "function DisErisim", "function HesapVeEkip"]) assert.doesNotMatch(portfoy, new RegExp(b), b);
+  const kurulus = oku("features/sayfalar/Kurulus.tsx");
+  for (const b of ["function DisErisim", "function Paylasimlar", "function HesapVeEkip", "function SantralArsivi", "export function IkiAdimBolumu", "function KurulusDenetim", "function Politika"]) assert.match(kurulus, new RegExp(b), b);
+  assert.match(kurulus, /\{yonetici && <DisErisim/);                                   // yazma kartları rolle
+  assert.match(oku("api/client.ts"), /kurulusAyarGuncelle: \(yonetici_2fa_zorunlu: boolean\)/);
+  assert.match(oku("features/yonetim/sayfalar.tsx"), /"yönetici 2FA zorunlu"/);
+});

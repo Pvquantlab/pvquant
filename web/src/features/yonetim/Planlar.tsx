@@ -6,8 +6,8 @@ import { Zaman } from "./ortak";
 /** 26.10 Faz 5 — PLANLAR (sahip): limitler UYARI kipi — rozetleri besler, hiçbir müşteri ucunu kısıtlamaz. Boş alan = sınırsız. */
 const ALANLAR: { k: PlanLimitAlani; ad: string; birim: string }[] = [
   { k: "santral_limit", ad: "Santral", birim: "adet" }, { k: "kullanici_limit", ad: "Kullanıcı", birim: "adet" },
-  { k: "api_rpm_limit", ad: "Dış API", birim: "istek/dk" }, { k: "aylik_rapor_limit", ad: "Rapor", birim: "adet/ay" },
-  { k: "aylik_dis_api_limit", ad: "Dış API", birim: "istek/ay" }];
+  { k: "api_rpm_limit", ad: "Dış API hızı", birim: "istek/dk" }, { k: "aylik_rapor_limit", ad: "Rapor", birim: "adet/ay" },
+  { k: "aylik_dis_api_limit", ad: "Dış API aylık", birim: "istek/ay" }];
 const mesajCikar = (e: unknown) => String((e as Error).message ?? e);
 
 export function Planlar() {
@@ -26,8 +26,8 @@ export function Planlar() {
     <Sayfa baslik="Planlar" alt="Limitler yalnız uyarı: Müşteriler ve Kullanım sayfalarında rozet olarak görünür, hiçbir uç kısıtlanmaz. Boş alan sınırsız.">
       {hata && <p role="alert" className="giris-hata" style={{ marginTop: 10 }}>{hata}</p>}{mesaj && <p className="giris-bilgi" style={{ marginTop: 0 }}>{mesaj}</p>}
       {!liste ? <SayfaIskeleti kpi={0} kart={2} /> : liste.map((p) => (
-        <Kart key={p.ad} baslik={p.baslik} alt={`${p.ad}; ${sayiTr(p.kiraci)} kiracı; son değişiklik ${p.guncelleme.slice(0, 10)}`}
-          sag={<span className="cip"><Zaman s={p.guncelleme} /></span>}>
+        <Kart key={p.ad} baslik={p.baslik} alt={`${p.ad}; ${sayiTr(p.kiraci)} kiracı`}
+          sag={<span className="cip" title="son değişiklik"><Zaman s={p.guncelleme} /></span>}>   {/* tek tarih, yerel saat (UTC kesiti çiple çelişiyordu) */}
           <form className="form-izgara" onSubmit={(e) => { e.preventDefault(); void kaydet(p); }}>
             {ALANLAR.map((a) => (
               <label key={a.k} className="girdi-etiket">{a.ad}<span className="birim" style={{ marginLeft: 4 }}>{a.birim}</span>

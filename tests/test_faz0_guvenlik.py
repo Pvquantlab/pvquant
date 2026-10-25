@@ -83,6 +83,7 @@ def test_oturum_durumu_onbellegi(monkeypatch):
 
             class _R:
                 oturum_surumu, aktif, status = 2, True, "active"
+                role, totp_aktif, yonetici_2fa_zorunlu = "admin", False, False   # 26.10 Faz 6 alanları
             return type("X", (), {"first": lambda self: _R()})()
 
     class _B:
@@ -90,7 +91,7 @@ def test_oturum_durumu_onbellegi(monkeypatch):
         def __exit__(self, *a): return False
     monkeypatch.setattr(au, "sistem_baglami", lambda: _B())
     au.oturum_onbellegi_dusur()
-    assert au.oturum_durumu("u9") == {"sv": 2, "aktif": True, "kiraci_durum": "active"}
+    assert au.oturum_durumu("u9") == {"sv": 2, "aktif": True, "kiraci_durum": "active", "iki_adim_kurulmali": False}
     au.oturum_durumu("u9"); au.oturum_durumu("u9")
     assert sayac["n"] == 1                       # 60 sn içinde tek sorgu
     au.oturum_onbellegi_dusur("u9"); au.oturum_durumu("u9")

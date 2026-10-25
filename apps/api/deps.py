@@ -6,6 +6,10 @@ from pvquant.services import auth_service
 from pvquant.services.auth_service import token_coz
 
 
+# 26.10 Faz 6: 2FA kurulmadan açık kalan müşteri uçları (kurulum, oturum tazeleme, kim olduğunu görme)
+MUSTERI_KURULUM_YOLLARI = frozenset({"/v1/iki-adim", "/v1/iki-adim/baslat", "/v1/iki-adim/dogrula", "/v1/oturum/yenile", "/v1/hakkinda"})
+
+
 def gecerli_kullanici(request: Request, authorization: str = Header(...)):
     if not authorization.startswith("Bearer "):
         raise HTTPException(401, "Bearer token gerekli")
@@ -36,6 +40,9 @@ def gecerli_kullanici(request: Request, authorization: str = Header(...)):
         raise HTTPException(403, "hesap askıda")
     if int(c.get("sv", 0)) != d["sv"]:
         raise HTTPException(401, "oturum geçersiz; yeniden giriş yapın")
+    # 26.10 Faz 6 (O7): kiracı politikası «yöneticiler için 2FA zorunlu» açık ve yönetici 2FA'sız → yalnız kurulum uçları
+    if d.get("iki_adim_kurulmali") and request.url.path not in MUSTERI_KURULUM_YOLLARI:
+        raise HTTPException(403, "iki adımlı doğrulama zorunlu; önce kurun")
     return c  # {"sub","tenant_id","role","exp","sv"}
 
 

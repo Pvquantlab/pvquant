@@ -230,7 +230,7 @@ def kiraci_listesi(aktor_id: str) -> list[dict]:
 
 def kiraci_detay(aktor_id: str, tid: str) -> dict | None:
     with platform_baglami(aktor_id) as s:
-        t = s.execute(text("SELECT id, name, plan, status, created_at, updated_at, notlar FROM tenants WHERE id=:t"),
+        t = s.execute(text("SELECT id, name, plan, status, created_at, updated_at, notlar, yonetici_2fa_zorunlu FROM tenants WHERE id=:t"),
                       {"t": str(tid)}).mappings().first()
         if t is None:
             return None
@@ -244,7 +244,7 @@ def kiraci_detay(aktor_id: str, tid: str) -> dict | None:
             "FROM plants p WHERE p.tenant_id=:t ORDER BY p.name"), {"t": str(tid)}).mappings().all()
     iso = lambda v: v.isoformat() if v else None  # noqa: E731
     return {"id": str(t["id"]), "ad": t["name"], "plan": t["plan"], "durum": t["status"], "notlar": t["notlar"],
-            "olusturma": iso(t["created_at"]), "guncelleme": iso(t["updated_at"]),
+            "olusturma": iso(t["created_at"]), "guncelleme": iso(t["updated_at"]), "yonetici_2fa_zorunlu": bool(t["yonetici_2fa_zorunlu"]),
             "kullanicilar": [{"id": str(u["id"]), "email": u["email"], "rol": u["role"], "aktif": bool(u["aktif"]),
                               "totp_aktif": bool(u["totp_aktif"]), "son_giris": iso(u["last_login"]), "olusturma": iso(u["created_at"])}
                              for u in kullanicilar],

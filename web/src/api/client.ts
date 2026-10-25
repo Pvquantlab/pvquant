@@ -1,4 +1,4 @@
-import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson } from "./types";
+import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -626,14 +626,18 @@ export const api = {
   /** v2.300: kayan oturum — geçerli jetonla yenisi (rol/durum sunucudan taze). Sessiz: hata yutulur,
       401 zaten genel sözleşmeyle girişe düşürür.
       v2.355: yanıt artık hesap kimliğini de taşır (firma/rol/e-posta) — kabuk bunu çizer. */
-  oturumYenile: async (): Promise<{ role: string; firma: string; email: string } | null> => {
+  oturumYenile: async (): Promise<{ role: string; firma: string; email: string; iki_adim_kurulmali?: boolean } | null> => {
     if (TABAN == null) return null;
     try {
-      const y = await gonder<{ token: string; role: string; firma: string; email: string }>(`/v1/oturum/yenile`, "POST");
+      const y = await gonder<{ token: string; role: string; firma: string; email: string; iki_adim_kurulmali?: boolean }>(`/v1/oturum/yenile`, "POST");
       if (y?.token) localStorage.setItem("pvq_token", y.token);
-      return y ? { role: y.role, firma: y.firma, email: y.email } : null;
+      return y ? { role: y.role, firma: y.firma, email: y.email, iki_adim_kurulmali: !!y.iki_adim_kurulmali } : null;
     } catch { return null; /* ağ hatası: mevcut jetonla devam */ }
   },
+  // 26.10 Faz 6 — kuruluş (yalnız yönetici)
+  kurulusDenetim: (onceId?: number): Promise<{ kayitlar: DenetimKaydi[] }> => getir(`/v1/kurulus/denetim?limit=100${onceId ? `&once_id=${onceId}` : ""}`),
+  kurulusAyarlar: (): Promise<KurulusAyarlar> => getir(`/v1/kurulus/ayarlar`),
+  kurulusAyarGuncelle: (yonetici_2fa_zorunlu: boolean): Promise<KurulusAyarlar> => gonder(`/v1/kurulus/ayarlar`, "PUT", { yonetici_2fa_zorunlu }),
   /** v2.299: ekip yönetimi (yalnız yönetici) + kendi parolası (herkes). */
   takim: async (): Promise<{ uyeler: TakimUyesi[]; roller: string[] }> => {
     if (TABAN == null) return { uyeler: [], roller: [] };

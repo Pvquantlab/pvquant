@@ -53,6 +53,7 @@ const VeriYukleme = lazy(() => import("./features/sayfalar/Digerleri").then((m) 
 const Kalibrasyon = lazy(() => import("./features/sayfalar/Digerleri").then((m) => ({ default: m.Kalibrasyon })));
 const Raporlar = lazy(() => import("./features/sayfalar/Digerleri").then((m) => ({ default: m.Raporlar })));
 const Portfoy = lazy(() => import("./features/sayfalar/Portfoy").then((m) => ({ default: m.Portfoy })));
+const Kurulus = lazy(() => import("./features/sayfalar/Kurulus").then((m) => ({ default: m.Kurulus })));   // 26.10 Faz 6
 const Hakkinda = lazy(() => import("./features/sayfalar/Hakkinda").then((m) => ({ default: m.Hakkinda })));
 /** 24.10 performans turu: panel açılınca öteki sayfa parçaları BOŞ ZAMANDA sırayla indirilir — ilk ziyarette
  *  parça inişi (yavaş ağda ~200 ms) kalmaz; ilk boyamayı geciktirmez (idle + 1,5 sn sonra), veri tasarrufu/2G'de
@@ -199,7 +200,8 @@ export default function App() {
           uç çağırır ve boş kimlikte 404/asılı istek üretirdi. Portföy istisna:
           santral eklemenin ikinci yolu orada. */}
       {!plantId && sayfa !== "portfoy" && <SantralYok />}
-      {sayfa === "portfoy" && <Portfoy onSec={(id) => { santralSec(id); sayfaSec("santralim"); }} santralYenile={santralYenile} />}
+      {sayfa === "portfoy" && <Portfoy onSec={(id) => { santralSec(id); sayfaSec("santralim"); }} />}
+      {sayfa === "kurulus" && <Kurulus santralYenile={santralYenile} />}   {/* 26.10 Faz 6 */}
       {plantId && sayfa === "santralim" && <Santralim plantId={plantId} />}
       {plantId && sayfa === "veri" && <VeriYukleme plantId={plantId}
         santralimeGit={() => sayfaSec("santralim")}
