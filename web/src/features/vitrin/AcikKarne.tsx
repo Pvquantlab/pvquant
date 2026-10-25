@@ -40,7 +40,7 @@ export function AcikKarne({ durum }: { durum: DogrulamaDurumu }) {
           <a className="vt-dugme vt-dugme--gece vt-dugme--ok" href="#basla">Karnenizi başlatın</a>
           <a className="vt-bag" href="/yontem">Yöntemin tamamı</a>
         </div>
-        <p className="vt-kunye vt-karne__ilkeler">Geçmiş sonuç değiştirilmez; yenisi eklenir. Veriniz sizindir — dilediğiniz an dışa aktarır ya da silersiniz.</p>
+        <p className="vt-kunye vt-karne__ilkeler">Geçmiş sonuç değiştirilmez; yenisi eklenir. Veriniz sizindir: dilediğiniz an dışa aktarır ya da silersiniz.</p>
       </div>
     </section>
   );

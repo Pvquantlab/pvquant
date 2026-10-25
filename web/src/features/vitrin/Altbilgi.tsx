@@ -15,10 +15,10 @@ const DOGRULUK = [
 ] as const;
 
 const ILKELER = [
-  "Veriniz sizindir — dilediğiniz an dışa aktarır ya da silersiniz",
+  "Veriniz sizindir: dilediğiniz an dışa aktarır ya da silersiniz",
   "Geçmiş sonuç değiştirilmez; yenisi eklenir",
   "Kurumlar arası paylaşım yalnız sizin izninizle açılır ve denetim iziyle kayda geçer",
-  "Hava tahmini bir aya uzatılmaz — aylık beklenti iklim geçmişinden gelir",
+  "Hava tahmini bir aya uzatılmaz; aylık beklenti iklim geçmişinden gelir",
   "Bu sayfa vaat etmez; karne panelde canlıdır",
 ] as const;
 

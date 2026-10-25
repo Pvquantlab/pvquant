@@ -67,7 +67,7 @@ const PANELLER: readonly Panel[] = [
   {
     ad: "Hakkında", gruplar: [
       { ad: "Biz", ogeler: [
-        { ad: "İlkeler", aciklama: "Çalışma ilkelerimiz — beş cümle, altbilgide", hedef: "#ilkeler" },
+        { ad: "İlkeler", aciklama: "Çalışma ilkelerimiz: beş cümle, altbilgide", hedef: "#ilkeler" },
         { ad: "Veri kaynakları ve lisanslar", aciklama: "Lisans atıfları panelde, Hakkında sayfasında" },
       ] },
       { ad: "Kayıt", ogeler: [
