@@ -1,6 +1,9 @@
-# Faz 6 — Müşteri paneli: «Kuruluş» sayfası, kiracı içi denetim izi, yönetici 2FA politikası (26.10.2026) — BİRİKİYOR (commit yok)
-**Durum:** yerelde birikmiş; mühür kullanıcı «commitle» deyince (v2.493 önerilir; alembic `v2493_faz6_kurulus`). Planlar sayfası rötuşu
-(tarih tutarsızlığı + «Dış API hızı/aylık» etiketleri) bu mühürle gider.
+# Faz 6 — Müşteri paneli: «Kuruluş» sayfası, kiracı içi denetim izi, yönetici 2FA politikası (26.10.2026) — CANLI v2.493
+**Durum:** v2.493 = 1551c3f (26.10), CI #595 yeşil. Sunucu: `git pull`, api + web imajları, yönetici rolüyle `alembic upgrade head` →
+`v2493_faz6_kurulus (head)` (politika her iki kiracıda kapalı), `up -d --force-recreate api web`; worker değişmedi. Canlı index.html + **20/20
+JS/CSS** (yeni Kuruluş parçası dahil) referansla birebir; `/` 200, `/v1/healthz` ok; `/v1/kurulus/ayarlar` 422, `/v1/kurulus/denetim` bozuk jeton
+401; `/v1/auth/login` ve `/v1/yonetim/giris` yanlış parola 401; api log 0. Planlar rötuşu aynı mühürde. Gerçek hesapla Kuruluş sayfası, politika
+kutusu ve denetim izi kullanıcıda.
 
 Dayanak: `docs/YONETICI-PANELI-YOL-HARITASI-2026-10-24.md` §6 satır 5; denetim raporu O7. Tahmin/rapor/SCADA çekirdeği, RLS, mevcut uç
 sözleşmeleri DEĞİŞMEDİ (ek uçlar + ek sütun). Müşteri panelinde navigasyon değişti: yönetim kartları Portföy'den «Kuruluş»a taşındı.
@@ -35,7 +38,7 @@ yönetici hesaplarında 2FA politikası yoktu (O7). Politika isteğe bağlı: zo
   (Hesap ve ekip, Güvenlik politikası, Dış erişim, Kuruluşlar arası paylaşım, Santral arşivi, Denetim izi), politika kutusu, 3 denetim satırı
   (ekibiniz/platform), menüde «Kuruluş»; belge taşması 0. Konsol: yalnız sahte API'nin karşılamadığı santral uçlarının 404'leri (`/v1/plants/a1/*`,
   Santralim ilk sayfa) — sayfa istisnası yok; bu uçlar canlıda gerçek.
-- Canlı: henüz dağıtılmadı.
+- Canlı: yukarıdaki Durum satırı.
 
 ## DAĞITIM NOTLARI (mühürde)
 `alembic upgrade head` (yönetici rolüyle) · api + web imajları (worker değişmedi). Canlı kanıt: `/v1/kurulus/ayarlar` 422/401/403 kapıları; gerçek
