@@ -76,6 +76,12 @@ def test_uctan_uca(temiz):
     kayitlar = dz.listele(tenant_id=y["tenant_id"])
     assert kayitlar and kayitlar[0]["eylem"] == "kiraci_guncelle" and kayitlar[0]["ayrinti"]["etiket"] == e
     assert kayitlar[0]["kiraci_ad"] == firma                      # 25.10 denetim O1: kiracı adı birleşik
+    # 25.10 O6: görüntüleme izi günde tek satır; eylem_haric süzgeci dışlar
+    assert dz.goruntule_kaydet(pid, sahip_eposta, y["tenant_id"]) is True
+    assert dz.goruntule_kaydet(pid, sahip_eposta, y["tenant_id"]) is False
+    goruntule = [k for k in dz.listele(tenant_id=y["tenant_id"]) if k["eylem"] == "kiraci_goruntule"]
+    assert len(goruntule) == 1 and goruntule[0]["aktor_eposta"] == sahip_eposta
+    assert all(k["eylem"] != "kiraci_goruntule" for k in dz.listele(tenant_id=y["tenant_id"], eylem_haric="kiraci_goruntule"))
     # operatör yönetimi: son sahip düşürülemez
     op = ps.operator_ekle(f"op-{e}@pvq.test", "operator")
     assert ps.operator_guncelle(op["id"], aktif=False)

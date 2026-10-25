@@ -38,8 +38,10 @@ class PlatformHata(ValueError):
 
 
 # ---------------- kimlik ----------------
-def _jeton(row) -> str:
+def _jeton(row, ilk: int | None = None) -> str:
+    """ilk: oturumun İLK giriş anı (epoch sn) — yenilemelerde taşınır; deps.platform_yetkisi MUTLAK_SAAT sonra 401 (25.10 O8)."""
     return jwt.encode({"sub": str(row.id), "kapsam": "platform", "rol": row.rol, "sv": int(row.oturum_surumu),
+                       "ilk": int(ilk or time.time()),
                        "exp": dt.datetime.utcnow() + dt.timedelta(hours=JWT_SAAT)}, auth_service._sir(), algorithm="HS256")
 
 
@@ -89,13 +91,13 @@ def _surum_artir(s, pid) -> None:
     oturum_onbellegi_dusur(pid)
 
 
-def oturum_yenile(pid: str) -> dict | None:
+def oturum_yenile(pid: str, ilk: int | None = None) -> dict | None:
     with sistem_baglami() as s:
         row = s.execute(text("SELECT id, email, rol, aktif, totp_aktif, oturum_surumu FROM platform_kullanicilar WHERE id=:i"),
                         {"i": str(pid)}).first()
     if row is None or not row.aktif:
         return None
-    return {"token": _jeton(row), "rol": row.rol, "email": row.email, "iki_adim_kurulmali": not row.totp_aktif}
+    return {"token": _jeton(row, ilk), "rol": row.rol, "email": row.email, "iki_adim_kurulmali": not row.totp_aktif}
 
 
 def ben(pid: str) -> dict | None:

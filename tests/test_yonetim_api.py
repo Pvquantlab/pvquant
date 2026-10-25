@@ -148,7 +148,7 @@ def test_iki_adim_kurulmadan_kapsam_dar(monkeypatch):
     monkeypatch.setattr(ps, "iki_adim_baslat", lambda p: {"secret": "S", "otpauth_uri": "otpauth://x"})
     monkeypatch.setattr(ps, "kiraci_listesi", lambda a: [])
     monkeypatch.setattr(ps, "operator_listesi", lambda: [])
-    monkeypatch.setattr(ps, "oturum_yenile", lambda p: {"token": "t2", "rol": "sahip", "email": "s@pvq", "iki_adim_kurulmali": True})
+    monkeypatch.setattr(ps, "oturum_yenile", lambda p, ilk=None: {"token": "t2", "rol": "sahip", "email": "s@pvq", "iki_adim_kurulmali": True})
     c = TestClient(api_main.app)
     assert c.get("/v1/yonetim/ben", headers=_jeton()).status_code == 200                       # kurulum yolları açık
     assert c.post("/v1/yonetim/iki-adim/baslat", headers=_jeton()).status_code == 200
@@ -158,3 +158,42 @@ def test_iki_adim_kurulmadan_kapsam_dar(monkeypatch):
         assert y.status_code == 403 and "iki adımlı" in y.json()["detail"], yol                 # veri uçları kapalı
     durum["totp_aktif"] = True                                                                 # kurulum bitti → tam kapsam
     assert c.get("/v1/yonetim/kiracilar", headers=_jeton()).status_code == 200
+
+
+# ---------------- 25.10 denetim O6 + O8 ----------------
+def test_goruntule_izi_gunde_tek(monkeypatch, _ortam):
+    monkeypatch.setattr(ps, "oturum_durumu", lambda p: {"sv": 0, "aktif": True, "rol": "operator", "email": "o@pvq", "totp_aktif": True})
+    monkeypatch.setattr(ps, "kiraci_detay", lambda a, t: {"id": t, "ad": "F"})
+    from pvquant.services import kullanim_service as ks
+    monkeypatch.setattr(ks, "gunler", lambda a, t, ay=None: {"gunler": []})
+    var = {"v": False}
+    monkeypatch.setattr(dz, "_goruntule_bugun_var", lambda a, t: var["v"])
+    c = TestClient(api_main.app)
+    assert c.get("/v1/yonetim/kiracilar/t1", headers=_jeton(rol="operator")).status_code == 200
+    assert c.get("/v1/yonetim/kullanim?tenant_id=t1", headers=_jeton(rol="operator")).status_code == 200
+    goruntule = [k for a, k in _ortam if a[1] == "kiraci_goruntule"]
+    assert len(goruntule) == 2 and goruntule[0]["tenant_id"] == "t1" and goruntule[0]["aktor_eposta"] == "o@pvq"
+    var["v"] = True                                                                     # bugün zaten var → yazılmaz
+    assert c.get("/v1/yonetim/kiracilar/t1", headers=_jeton(rol="operator")).status_code == 200
+    assert len([k for a, k in _ortam if a[1] == "kiraci_goruntule"]) == 2
+    # genel bakış süzgeci: eylem_haric servise iletilir
+    gorulen = {}
+    monkeypatch.setattr(dz, "listele", lambda **k: gorulen.update(k) or [])
+    assert c.get("/v1/yonetim/denetim?eylem_haric=kiraci_goruntule", headers=_jeton()).status_code == 200
+    assert gorulen["eylem_haric"] == "kiraci_goruntule"
+
+
+def test_mutlak_oturum_siniri(monkeypatch):
+    import time as _t
+    monkeypatch.setattr(ps, "oturum_durumu", lambda p: {"sv": 0, "aktif": True, "rol": "sahip", "email": "s@pvq", "totp_aktif": True})
+    monkeypatch.setattr(ps, "ben", lambda p: {"id": "p1"})
+    gorulen = {}
+    monkeypatch.setattr(ps, "oturum_yenile", lambda p, ilk=None: gorulen.update({"ilk": ilk}) or {"token": "t2", "rol": "sahip", "email": "s@pvq", "iki_adim_kurulmali": False})
+    c = TestClient(api_main.app)
+    simdi = int(_t.time())
+    assert c.get("/v1/yonetim/ben", headers=_jeton(ilk=simdi - 3600)).status_code == 200              # 1 saatlik oturum
+    assert c.get("/v1/yonetim/ben", headers=_jeton()).status_code == 200                              # eski jeton (ilk yok) doğal ömrüyle
+    y = c.get("/v1/yonetim/ben", headers=_jeton(ilk=simdi - 13 * 3600))
+    assert y.status_code == 401 and "üst sınırı" in y.json()["detail"]                                 # 13 saat → 401
+    assert c.post("/v1/yonetim/oturum/yenile", headers=_jeton(ilk=simdi - 7200)).status_code == 200
+    assert gorulen["ilk"] == simdi - 7200                                                              # ilk yenilemede taşınır

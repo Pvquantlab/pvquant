@@ -39,7 +39,7 @@ export function GenelBakis({ git }: { git: (s: "musteriler" | "basvurular" | "de
   const [d, setD] = useState<DenetimKaydi[] | null>(null);
   const [hata, setHata] = useState<string | null>(null);
   useEffect(() => {
-    Promise.allSettled([yonetim.kiracilar(), yonetim.basvurular(), yonetim.denetim({ limit: 12 })]).then(([rk, rb, rd]) => {
+    Promise.allSettled([yonetim.kiracilar(), yonetim.basvurular(), yonetim.denetim({ limit: 12, eylem_haric: "kiraci_goruntule" })]).then(([rk, rb, rd]) => {
       setK(rk.status === "fulfilled" ? rk.value.kiracilar : []); setB(rb.status === "fulfilled" ? rb.value.basvurular : []);
       setD(rd.status === "fulfilled" ? rd.value.kayitlar : []);
       const h = [rk, rb, rd].find((r) => r.status === "rejected") as PromiseRejectedResult | undefined; if (h) setHata(mesajCikar(h.reason));
@@ -57,7 +57,7 @@ export function GenelBakis({ git }: { git: (s: "musteriler" | "basvurular" | "de
         <Kpi etiket="Etkin kullanıcı" deger={sayiTr(k.reduce((a, x) => a + x.kullanici, 0))} alt="tüm kiracılar" />
         <Kpi etiket="Okunmamış başvuru" deger={sayiTr(b.filter((x) => !x.okundu).length)} alt={`${sayiTr(b.length)} toplam`} ton={b.some((x) => !x.okundu) ? "uyari" : undefined} />
       </div>
-      <Kart baslik="Son işlemler" alt="Denetim izinin son 12 kaydı" sag={<button className="dugme kucuk" onClick={() => git("denetim")}>Tümü</button>}>
+      <Kart baslik="Son işlemler" alt="Denetim izinin son 12 kaydı; görüntüleme izleri (kiraci_goruntule) yalnız Denetim izi sayfasında" sag={<button className="dugme kucuk" onClick={() => git("denetim")}>Tümü</button>}>
         {d.length === 0 ? <Bos bas="Henüz kayıt yok." /> : <DenetimTablosu kayitlar={d} />}
       </Kart>
     </Sayfa>

@@ -9,6 +9,8 @@ import { Kullanim } from "./Kullanim";
 
 /** 24.10 Faz 2 — /yonetim kökü: jeton yok → giriş; jeton var ama 2FA kapalı → zorunlu kurulum; sonra kabuk + sayfalar.
  *  Sayfa seçimi müşteri panelindeki gibi durumla (URL /yonetim sabit). Örnek kipte yönetim yüzü yok. */
+const BOSTA_DK = 30;
+
 export function Yonetim() {
   const [jeton, setJeton] = useState(() => !!platformJeton());
   const [ben, setBen] = useState<Ben | null>(null);
@@ -24,8 +26,13 @@ export function Yonetim() {
   useEffect(() => {
     if (!jeton) return;
     yonetim.ben().then((b) => { setBen(b); setKurulmali(!b.totp_aktif); }).catch(() => { platformCikis(); setJeton(false); });
-    const z = setInterval(() => { void yonetim.oturumYenile(); }, 30 * 60 * 1000);
-    return () => clearInterval(z);
+    // 25.10 O8: yenileme yalnız son 30 dk içinde etkileşim varsa — açık unutulan sekme oturumu süresiz uzatmaz (jeton 4 sa'de biter);
+    // sunucu ayrıca ilk girişten 12 sa sonra mutlak sınır koyar.
+    let sonEtkilesim = Date.now();
+    const dokun = () => { sonEtkilesim = Date.now(); };
+    window.addEventListener("pointerdown", dokun, { passive: true }); window.addEventListener("keydown", dokun, { passive: true });
+    const z = setInterval(() => { if (Date.now() - sonEtkilesim < BOSTA_DK * 60 * 1000) void yonetim.oturumYenile(); }, 30 * 60 * 1000);
+    return () => { clearInterval(z); window.removeEventListener("pointerdown", dokun); window.removeEventListener("keydown", dokun); };
   }, [jeton]);
   if (PTABAN == null) return <div className="giris giris--tek"><div className="giris-form-alan"><div className="giris-form"><h2 className="giris-h2">Örnek kip</h2><p className="giris-aciklama">Yönetim yüzü yalnız gerçek sunucuya bağlıyken açılır.</p></div></div></div>;
   if (!jeton) return <PlatformGiris onGiris={(b) => { setKurulmali(b.iki_adim_kurulmali); setJeton(true); }} />;

@@ -130,6 +130,18 @@ Sunucu 25.10: pull → api + worker + web imajları → recreate (geçiş yok). 
   375'te belge taşması 0, tablolar kart içinde kayar (tasarım kuralı); konsol 0. Ders: `{zamanTr(` regex'i şablon dizelerindeki `${zamanTr(`'i de
   yakaladı → iki yer elle geri alındı, test pini `[^$]\{zamanTr\(`.
 
+## O4 teyidi + O6 + O8 — BİRİKİYOR (commit yok, 25.10)
+- **O4 (teyit, kod çekirdeğe dokunmadı):** `piyasa_service.gece_piyasa` bilerek dün ve önceki 3 günün GERÇEKLEŞEN PTF/SMF'sini çeker
+  (SMF teslimden sonra kesinleşir); sunucuda 20–24 Ekim günde 24 saat eksiksiz, her gece 00:15 UTC tazelenir. «Bir gün geride» tasarım.
+  Sistem KPI alt metni «gerçekleşen PTF/SMF <gün> gününe kadar (gece dünü çeker; ileri fiyat değil)».
+- **O6:** `denetim_service.goruntule_kaydet` — `kiraci_detay` ve kiracıya özel `kullanim` okumalarında `kiraci_goruntule` izi, aynı aktör +
+  kiracı için günde TEK satır (`_goruntule_bugun_var`); asla yükseltmez. `listele(eylem_haric=)` + `/denetim?eylem_haric=`; Genel bakış «Son
+  işlemler» görüntüleme izini dışlar (yalnız Denetim izi sayfasında). Liste uçları izlenmez.
+- **O8:** jetona `ilk` (ilk giriş epoch) iddiası; `oturum/yenile` taşır; `deps.PLATFORM_MUTLAK_SAAT = 12` — ilk girişten 12 sa sonra 401 «oturum
+  üst sınırı doldu». Eski jetonlar (`ilk` yok) 4 sa ömrüyle biter. İstemci: 30 dk etkileşim (pointerdown/keydown) yoksa yenileme durur.
+- Testler: `test_goruntule_izi_gunde_tek`, `test_mutlak_oturum_siniri`, test_platform_db görüntüleme izi (DB'li), web +1. Kapılar: API 26/26,
+  web 91/91, tsc 0, oxlint 16, DB testleri 3/3.
+
 ## Sorunsuz bulunanlar
 - **Kapsam ayrımı ve yetki:** platform jetonu müşteri uçlarında 403, müşteri jetonu `/v1/yonetim` uçlarında 403; başlıksız 422; bozuk
   jeton 401; oturum sürümü (sv) ve aktiflik 60 sn önbellekle her istekte; sahip-only uçlar; son etkin sahip düşürülemez.

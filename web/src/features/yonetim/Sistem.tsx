@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { yonetim, zamanTr, yasTr, type SistemOzet, type IsKaydi, type SantralEnvanter, type Kiraci } from "../../api/yonetim";
+import { yonetim, yasTr, type SistemOzet, type IsKaydi, type SantralEnvanter, type Kiraci } from "../../api/yonetim";
 import { Zaman } from "./ortak";
 import { Kart, Kpi, Sayfa, SayfaIskeleti, sayiTr, gucTr } from "../sayfalar/parcalar";
 import { Meta } from "../../lib/Meta";
@@ -46,7 +46,7 @@ export function Sistem() {
               : o.meteo.kaynaklar.some((k) => k.bayat) ? `bayat: ${o.meteo.kaynaklar.filter((k) => k.bayat).map((k) => `${k.kaynak} (${k.yas_saat == null ? "hiç" : sayiTr(k.yas_saat, 0) + " saat"})`).join(", ")}`
               : `${sayiTr(o.meteo.kaynaklar.length)} kaynak; ${o.meteo.esik_saat} saatten eskisi bayat`} />
           <Kpi etiket="Piyasa fiyatı" deger={yasTr(o.piyasa.son_guncelleme)} ton={o.piyasa.bayat ? "uyari" : undefined}
-            alt={o.piyasa.son_ts ? `veri ${zamanTr(o.piyasa.son_ts)} saatine kadar; ${sayiTr(o.piyasa.satir)} saat` : "piyasa_fiyat tablosu boş"} />
+            alt={o.piyasa.son_ts ? `gerçekleşen PTF/SMF ${tarihTr(o.piyasa.son_ts)} gününe kadar (gece dünü çeker; ileri fiyat değil); ${sayiTr(o.piyasa.satir)} saat` : "piyasa_fiyat tablosu boş"} />
           <Kpi etiket="Yedek" deger={yasTr(o.yedek.son_basarili)} ton={o.yedek.bayat || (o.yedek.son_deneme ? !o.yedek.son_deneme.tamam : false) ? "uyari" : undefined}
             alt={o.yedek.son_deneme ? (o.yedek.son_deneme.tamam ? `son deneme başarılı; ${o.yedek.esik_saat} saatten eskisi bayat` : `son deneme düştü: ${o.yedek.son_deneme.ayrinti ?? "ayrıntı yok"}`) : "henüz yedek kaydı yok"} />
         </div>

@@ -109,3 +109,13 @@ test("tablo turu: ayrıntı çipleri, kiracı adı ve seçimi, tek zaman tipogra
   assert.match(css, /\ntable\.veri th \{ text-align: right;/);
   assert.match(css, /\ntable\.veri\.santral th, table\.veri\.santral td \{ width: 1%; \}/);
 });
+
+// ---------------- 25.10 denetim O4/O6/O8 ----------------
+test("O4 KPI metni gerçekleşen fiyat der; O6 genel bakış görüntüleme izini dışlar; O8 boşta yenileme durur", () => {
+  assert.match(oku("features/yonetim/Sistem.tsx"), /gerçekleşen PTF\/SMF/);
+  assert.match(oku("features/yonetim/sayfalar.tsx"), /eylem_haric: "kiraci_goruntule"/);
+  const kok = oku("features/yonetim/Yonetim.tsx");
+  assert.match(kok, /const BOSTA_DK = 30;/);
+  assert.match(kok, /if \(Date\.now\(\) - sonEtkilesim < BOSTA_DK \* 60 \* 1000\) void yonetim\.oturumYenile\(\)/);
+  assert.match(kok, /addEventListener\("pointerdown", dokun/);
+});

@@ -106,7 +106,7 @@ export const yonetim = {
   kullaniciIkiAdimSifirla: (id: string): Promise<{ tamam: boolean }> => istek(`/kullanicilar/${id}/iki-adim-sifirla`, "POST"),
   basvurular: (): Promise<{ basvurular: Basvuru[] }> => istek("/basvurular"),
   basvuruOkundu: (id: string): Promise<{ tamam: boolean }> => istek(`/basvurular/${id}/okundu`, "POST"),
-  denetim: (p: { tenant_id?: string; eylem?: string; kapsam?: string; limit?: number; once_id?: number } = {}): Promise<{ kayitlar: DenetimKaydi[] }> =>
+  denetim: (p: { tenant_id?: string; eylem?: string; kapsam?: string; limit?: number; once_id?: number; eylem_haric?: string } = {}): Promise<{ kayitlar: DenetimKaydi[] }> =>
     istek(`/denetim${sorgu(p)}`),
   // 25.10 Faz 3 — sistem izleme (salt okunur)
   sistem: (): Promise<SistemOzet> => istek("/sistem"),

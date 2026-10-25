@@ -45,7 +45,7 @@ def giris(request: Request, g: YGiris):
 
 @yonetim.post("/oturum/yenile")
 def oturum_yenile(c=Depends(platform_yetkisi())):
-    y = ps.oturum_yenile(c["sub"])
+    y = ps.oturum_yenile(c["sub"], ilk=c.get("ilk"))   # 25.10 O8: ilk giriş zamanı yenilemede taşınır (mutlak üst sınır)
     if y is None:
         raise HTTPException(401, "hesap etkin değil")
     return y
@@ -171,10 +171,11 @@ def kiraci_olustur(p: KiraciIstek, request: Request, c=Depends(platform_yetkisi(
 
 
 @yonetim.get("/kiracilar/{tid}")
-def kiraci(tid: str, c=Depends(platform_yetkisi())):
+def kiraci(tid: str, request: Request, c=Depends(platform_yetkisi())):
     d = ps.kiraci_detay(c["sub"], tid)
     if d is None:
         raise HTTPException(404, "kiracı yok")
+    dz.goruntule_kaydet(c["sub"], c["email"], tid, ip=_ip(request))   # 25.10 O6: okuma izi, günde tek
     return d
 
 
@@ -258,8 +259,8 @@ def basvuru_okundu(bid: str, request: Request, c=Depends(platform_yetkisi())):
 # ---------------- denetim izi ----------------
 @yonetim.get("/denetim")
 def denetim(tenant_id: str | None = None, eylem: str | None = None, kapsam: str | None = None, limit: int = 100,
-            once_id: int | None = None, c=Depends(platform_yetkisi())):
-    return {"kayitlar": dz.listele(tenant_id=tenant_id, eylem=eylem, kapsam=kapsam, limit=limit, once_id=once_id)}
+            once_id: int | None = None, eylem_haric: str | None = None, c=Depends(platform_yetkisi())):
+    return {"kayitlar": dz.listele(tenant_id=tenant_id, eylem=eylem, kapsam=kapsam, limit=limit, once_id=once_id, eylem_haric=eylem_haric or None)}
 
 
 # ---------------- sistem izleme (25.10 Faz 3) ----------------
@@ -283,9 +284,11 @@ def santraller(sorunlu: bool = False, c=Depends(platform_yetkisi())):
 
 # ---------------- kullanım (25.10 Faz 4) ----------------
 @yonetim.get("/kullanim")
-def kullanim(ay: str | None = None, tenant_id: str | None = None, c=Depends(platform_yetkisi())):
+def kullanim(request: Request, ay: str | None = None, tenant_id: str | None = None, c=Depends(platform_yetkisi())):
     """Salt okunur: ay 'YYYY-MM' (boşsa bu ay). tenant_id verilirse o kiracının günlük kırılımı, yoksa tüm kiracıların ay özeti."""
     try:
+        if tenant_id:
+            dz.goruntule_kaydet(c["sub"], c["email"], tenant_id, ip=_ip(request))   # 25.10 O6
         return ks.gunler(c["sub"], tenant_id, ay) if tenant_id else ks.ozet(c["sub"], ay)
     except ValueError as e:
         raise _hata(e)

@@ -36,9 +36,30 @@ def kaydet(kapsam: str, eylem: str, *, aktor_id=None, aktor_eposta: str | None =
         return False
 
 
+def _goruntule_bugun_var(aktor_id, tenant_id) -> bool:
+    with sistem_baglami() as s:
+        return s.execute(text("SELECT 1 FROM denetim_izi WHERE eylem = 'kiraci_goruntule' AND aktor_id = CAST(:a AS uuid) "
+                              "AND tenant_id = CAST(:t AS uuid) AND zaman >= CURRENT_DATE LIMIT 1"),
+                         {"a": str(aktor_id), "t": str(tenant_id)}).first() is not None
+
+
+def goruntule_kaydet(aktor_id, aktor_eposta: str | None, tenant_id, ip: str | None = None) -> bool:
+    """25.10 denetim O6: platform personelinin kiracı verisi OKUMASI — aynı aktör + kiracı için günde TEK satır (sayfa yenilemeleri
+    şişirmesin). Asla yükseltmez; kaydı atlamak okuma akışını kesmez."""
+    try:
+        if _goruntule_bugun_var(aktor_id, tenant_id):
+            return False
+    except Exception:  # noqa: BLE001
+        return False
+    return kaydet("platform", "kiraci_goruntule", aktor_id=aktor_id, aktor_eposta=aktor_eposta, tenant_id=tenant_id,
+                  nesne_tur="tenant", nesne_id=str(tenant_id), ip=ip)
+
+
 def listele(*, tenant_id=None, eylem: str | None = None, kapsam: str | None = None, limit: int = 100,
-            once_id: int | None = None) -> list[dict]:
+            once_id: int | None = None, eylem_haric: str | None = None) -> list[dict]:
     kosul, p = ["true"], {"n": max(1, min(int(limit), 500))}
+    if eylem_haric:
+        kosul.append("eylem <> :eh"); p["eh"] = eylem_haric
     if tenant_id:
         kosul.append("tenant_id = :t"); p["t"] = str(tenant_id)
     if eylem:

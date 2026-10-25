@@ -1,5 +1,6 @@
 """API bagimlilik enjeksiyonu: token dogrulama + rol kontrolu."""
 import os
+import time
 from fastapi import Header, HTTPException, Depends, Request
 from pvquant.services import auth_service
 from pvquant.services.auth_service import token_coz
@@ -31,6 +32,9 @@ PLATFORM_KURULUM_YOLLARI = frozenset({"/v1/yonetim/ben", "/v1/yonetim/iki-adim/b
                                       "/v1/yonetim/parola", "/v1/yonetim/oturum/yenile"})
 
 
+PLATFORM_MUTLAK_SAAT = 12   # 25.10 O8: ilk girişten itibaren mutlak oturum sınırı (yenileme bunu uzatamaz)
+
+
 def platform_yetkisi(rol: str | None = None):
     """24.10 Faz 1 — PLATFORM kapısı: yalnız `kapsam: platform` jetonu; platform_kullanicilar'dan aktiflik ve oturum
     sürümü (60 sn önbellek); `rol="sahip"` verilirse operatör 403. Müşteri jetonu burada 403: kapsamlar karışmaz."""
@@ -48,6 +52,8 @@ def platform_yetkisi(rol: str | None = None):
             raise HTTPException(401, "hesap etkin değil")
         if int(c.get("sv", 0)) != d["sv"]:
             raise HTTPException(401, "oturum geçersiz; yeniden giriş yapın")
+        if c.get("ilk") and time.time() - int(c["ilk"]) > PLATFORM_MUTLAK_SAAT * 3600:
+            raise HTTPException(401, "oturum üst sınırı doldu; yeniden giriş yapın")   # 25.10 O8
         # 25.10 denetim Y2: 2FA kurulu değilse jeton YALNIZ kurulum uçlarını açar (arayüz zaten dayatıyordu; artık API de).
         # Durum DB'den (60 sn önbellek; kurulum/sıfırlama önbelleği düşürür) — jeton değişmez, açık oturumlar bozulmaz.
         if not d.get("totp_aktif", False) and request.url.path not in PLATFORM_KURULUM_YOLLARI:
