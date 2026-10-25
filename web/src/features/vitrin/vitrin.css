@@ -1646,7 +1646,8 @@
 .vt-karne-pencere .vt-egri__eksen-baslik { fill: #FFFFFF; }
 .vt-alt .vt-logo, .vt-alt__tanim, .vt-alt__vurgu-yok { color: #FFFFFF; }
 .vt-alt__liste a, .vt-alt__liste button { color: rgba(255, 255, 255, .9); }
-.vt-alt__ilke, .vt-alt__alt { color: rgba(255, 255, 255, .78); }
+.vt-alt__alt { color: rgba(255, 255, 255, .78); }
+.vt-alt__ilke { color: rgba(255, 255, 255, .9); }   /* 25.10 kullanıcı: «İlkeler» maddeleri yandaki bağlantılarla aynı parlaklıkta */
 .vt-alt__baslik { color: rgba(255, 255, 255, .75); }
 .vt-mega__metin b { color: #FFFFFF; }
 .vt-mega__metin > span:not(.vt-kunye) { color: rgba(255, 255, 255, .72); }
