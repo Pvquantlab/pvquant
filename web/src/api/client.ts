@@ -189,6 +189,7 @@ export async function giris(email: string, sifre: string, kod?: string):
 
 export function cikis(): void {
   localStorage.removeItem("pvq_token");
+  localStorage.removeItem("pvq_temsil");   // 26.10 denetim-2: görüntüleme işareti oturumla birlikte gider (süresi dolan temsil sonraki girişte şerit bırakmasın)
   bellekte.clear();   // v2.325: hesap sınırı — sonraki oturum önceki hesabın verisini bellekte bulmasın
 }
 

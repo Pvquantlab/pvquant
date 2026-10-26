@@ -91,7 +91,7 @@ export function Musteriler({ sahip = false }: { sahip?: boolean }) {
   const [secili, setSecili] = useState<string | null>(null);
   const [hata, setHata] = useState<string | null>(null);
   const [firma, setFirma] = useState(""); const [eposta, setEposta] = useState(""); const [plan, setPlan] = useState("pilot");
-  const [sonuc, setSonuc] = useState<{ tenant_id: string; davet_gonderildi: boolean; davet_baglantisi?: string } | null>(null);
+  const [sonuc, setSonuc] = useState<{ tenant_id: string; davet_gonderildi: boolean; davet_baglantisi?: string; not?: string } | null>(null);
   const [mesgul, setMesgul] = useState(false);
   const yenile = () => yonetim.kiracilar().then((r) => setListe(r.kiracilar)).catch((e) => setHata(mesajCikar(e)));
   useEffect(() => { void yenile(); yonetim.planlar().then((r) => setPlanlar(Object.fromEntries(r.planlar.map((p) => [p.ad, p])))).catch(() => {}); }, []);
@@ -129,7 +129,9 @@ export function Musteriler({ sahip = false }: { sahip?: boolean }) {
         </form>
         {sonuc && (sonuc.davet_gonderildi
           ? <p className="giris-bilgi">Kiracı açıldı; davet e-postası gönderildi.</p>
-          : <TekSeferlik baslik="Davet bağlantısı (e-posta gönderilemedi, elden iletin)" deger={sonuc.davet_baglantisi ?? ""} />)}
+          : sonuc.davet_baglantisi
+            ? <TekSeferlik baslik="Davet bağlantısı (e-posta gönderilemedi, elden iletin)" deger={sonuc.davet_baglantisi} />
+            : <p className="giris-hata">Kiracı açıldı, ancak davet e-postası gönderilemedi. {sonuc.not ?? "Bağlantıyı yalnız sahip görebilir."}</p>)}
       </Kart>
     </Sayfa>
   );
@@ -198,7 +200,12 @@ function KullaniciTablosu({ satirlar, firmaGoster, islem, sirGoster }:
           <td>{u.aktif ? <span className="rozet rozet-kucuk rozet-ok">etkin</span> : <span className="rozet rozet-kucuk rozet-notr">pasif</span>}</td>
           <td>{u.totp_aktif ? "açık" : <span className="bos">kapalı</span>}</td><td><Zaman s={u.son_giris} /></td>
           <td><div className="dugme-sira">
-            <button className="dugme kucuk" onClick={() => islem(async () => { const r = await yonetim.kullaniciParolaBaglantisi(u.id); if (!r.gonderildi && r.baglanti) sirGoster("Parola belirleme bağlantısı (e-posta gönderilemedi)", r.baglanti); }, "Parola bağlantısı hazırlandı.")}>Parola bağlantısı</button>
+            <button className="dugme kucuk" onClick={() => islem(async () => {
+              const r = await yonetim.kullaniciParolaBaglantisi(u.id);
+              if (r.gonderildi) return "Parola bağlantısı e-postalandı.";
+              if (r.baglanti) { sirGoster("Parola belirleme bağlantısı (e-posta gönderilemedi)", r.baglanti); return "E-posta gönderilemedi; bağlantıyı elden iletin."; }
+              throw new Error(r.not ?? "E-posta gönderilemedi; bağlantıyı yalnız sahip görebilir.");   // 26.10 denetim-3: operatöre bağlantı yok
+            }, "Parola bağlantısı hazırlandı.")}>Parola bağlantısı</button>
             {u.totp_aktif && <button className="dugme kucuk" onClick={() => islem(() => yonetim.kullaniciIkiAdimSifirla(u.id), "2FA sıfırlandı.")}>2FA sıfırla</button>}
             <button className={`dugme kucuk${u.aktif ? " dugme-tehlike" : ""}`} onClick={() => islem(() => yonetim.kullaniciGuncelle(u.id, { aktif: !u.aktif }), u.aktif ? "Kullanıcı pasifleştirildi." : "Kullanıcı yeniden etkin.")}>{u.aktif ? "Pasifleştir" : "Etkinleştir"}</button>
           </div></td></tr>))}</tbody>
@@ -213,7 +220,8 @@ export function Kullanicilar() {
   const [sir, setSir] = useState<{ baslik: string; deger: string } | null>(null);
   const ara = (s: string) => yonetim.kullanicilar(s).then((r) => setListe(r.kullanicilar)).catch((e) => setHata(mesajCikar(e)));
   useEffect(() => { void ara(""); }, []);
-  const islem = async (fn: () => Promise<unknown>, m: string) => { setHata(null); setMesaj(null); setSir(null); try { await fn(); setMesaj(m); await ara(q); } catch (e) { setHata(mesajCikar(e)); } };
+  const islem = async (fn: () => Promise<unknown>, m: string) => { setHata(null); setMesaj(null); setSir(null);
+    try { const r = await fn(); setMesaj(typeof r === "string" ? r : m); await ara(q); } catch (e) { setHata(mesajCikar(e)); } };   // fn metin dönerse mesaj odur
   return (
     <Sayfa baslik="Kullanıcılar" alt="Tüm kiracıların kullanıcıları; e-posta ya da firma adıyla arayın." sag={liste ? <span className="cip"><Meta items={[`${sayiTr(liste.length)} kullanıcı`]} /></span> : undefined}>
       <form className="form-izgara" style={{ maxWidth: 560, marginBottom: 14 }} onSubmit={(e) => { e.preventDefault(); void ara(q); }}>
@@ -298,30 +306,47 @@ export function Operatorler({ ben }: { ben: Ben | null }) {
   const yenile = () => yonetim.operatorler().then((r) => setListe(r.operatorler)).catch((e) => setHata(mesajCikar(e)));
   useEffect(() => { void yenile(); }, []);
   const dene = async (fn: () => Promise<unknown>, m: string) => { setHata(null); setMesaj(null); try { await fn(); setMesaj(m); await yenile(); } catch (e) { setHata(mesajCikar(e)); } };
+  // 26.10 denetim-3: hassas işlemler (sahip yapma, başkasının 2FA'sını sıfırlama, sahip hesabı açma) parola + kod ister — jeton yetmez
+  const [onay, setOnay] = useState<{ baslik: string; gonder: (d: { sifre: string; kod: string }) => Promise<unknown>; mesaj: string } | null>(null);
+  const [oSifre, setOSifre] = useState(""); const [oKod, setOKod] = useState("");
+  const onayla = (baslik: string, gonder: (d: { sifre: string; kod: string }) => Promise<unknown>, mesaj: string) => { setHata(null); setMesaj(null); setOSifre(""); setOKod(""); setOnay({ baslik, gonder, mesaj }); };
   return (
     <Sayfa baslik="Operatörler" alt="Platform personeli; yalnız sahip yönetir. Son etkin sahip düşürülemez.">
       <Hata m={hata} />{mesaj && <p className="giris-bilgi" style={{ marginTop: 0 }}>{mesaj}</p>}
+      {onay && (
+        <Kart baslik="Yeniden doğrulama" alt={onay.baslik}>
+          <form className="form-izgara" style={{ maxWidth: 640 }} onSubmit={(e) => { e.preventDefault(); const o = onay; setOnay(null); void dene(() => o.gonder({ sifre: oSifre, kod: oKod }), o.mesaj); }}>
+            <label className="girdi-etiket">Parolanız<input className="girdi" type="password" autoComplete="current-password" value={oSifre} onChange={(e) => setOSifre(e.target.value)} required /></label>
+            <label className="girdi-etiket">Doğrulama kodu<input className="girdi" inputMode="numeric" autoComplete="one-time-code" value={oKod} onChange={(e) => setOKod(e.target.value)} required /></label>
+            <div className="dugme-sira"><button className="dugme dugme-ana" type="submit">Onayla</button><button className="dugme" type="button" onClick={() => setOnay(null)}>Vazgeç</button></div>
+          </form>
+        </Kart>)}
       {gecici && <TekSeferlik baslik={`${gecici.email} için geçici parola`} deger={gecici.parola} not="Yalnız bu ekranda görünür; operatör ilk girişte parolasını değiştirir ve 2FA kurar." />}
       <Kart baslik="Personel">
         {!liste ? <SayfaIskeleti kpi={0} kart={1} /> : (
           <div className="grafik-kaydir"><table className="veri sayisal santral">
             <thead><tr><th>E-posta</th><th>Rol</th><th>Durum</th><th>2FA</th><th>Son giriş</th><th>İşlem</th></tr></thead>
             <tbody>{liste.map((o) => (<tr key={o.id}><td className="ad">{o.email}{o.id === ben?.id && <span className="rozet rozet-kucuk rozet-notr" style={{ marginLeft: 8 }}>siz</span>}</td>
-              <td><select className="girdi kucuk" value={o.rol} disabled={o.id === ben?.id} onChange={(e) => dene(() => yonetim.operatorGuncelle(o.id, { rol: e.target.value }), "Rol güncellendi.")}><option value="operator">Operatör</option><option value="sahip">Sahip</option></select></td>
+              <td><select className="girdi kucuk" value={o.rol} disabled={o.id === ben?.id} onChange={(e) => { const rol = e.target.value;
+                if (rol === "sahip") onayla(`${o.email} sahip yapılacak`, (d) => yonetim.operatorGuncelle(o.id, { rol, ...d }), "Rol güncellendi.");
+                else void dene(() => yonetim.operatorGuncelle(o.id, { rol }), "Rol güncellendi."); }}><option value="operator">Operatör</option><option value="sahip">Sahip</option></select></td>
               <td>{o.aktif ? <span className="rozet rozet-kucuk rozet-ok">etkin</span> : <span className="rozet rozet-kucuk rozet-notr">pasif</span>}</td>
               <td>{o.totp_aktif ? "açık" : <span className="bos">kapalı</span>}</td><td><Zaman s={o.son_giris} /></td>
               <td>{o.id === ben?.id ? <span className="bos" title="Kendi hesabınız: rol ve durum başka bir sahip tarafından değiştirilir; parola ve 2FA Hesabım'da">—</span> : <div className="dugme-sira">
-                {o.totp_aktif && o.id !== ben?.id && <button className="dugme kucuk" onClick={() => dene(() => yonetim.operatorGuncelle(o.id, { iki_adim_sifirla: true }), "2FA sıfırlandı; operatör girişte yeniden kurar.")}>2FA sıfırla</button>}
+                {o.totp_aktif && o.id !== ben?.id && <button className="dugme kucuk" onClick={() => onayla(`${o.email} için 2FA sıfırlanacak`, (d) => yonetim.operatorGuncelle(o.id, { iki_adim_sifirla: true, ...d }), "2FA sıfırlandı; operatör girişte yeniden kurar.")}>2FA sıfırla</button>}
                 {o.id !== ben?.id && <button className={`dugme kucuk${o.aktif ? " dugme-tehlike" : ""}`} onClick={() => dene(() => yonetim.operatorGuncelle(o.id, { aktif: !o.aktif }), o.aktif ? "Pasifleştirildi." : "Yeniden etkin.")}>{o.aktif ? "Pasifleştir" : "Etkinleştir"}</button>}
               </div>}</td></tr>))}</tbody>
           </table></div>)}
       </Kart>
       <Kart baslik="Yeni operatör" alt="Geçici parola yalnız bir kez gösterilir">
-        <form className="form-izgara" onSubmit={(e) => { e.preventDefault(); void dene(async () => { const r = await yonetim.operatorEkle(eposta, rol); setGecici({ email: r.email, parola: r.gecici_parola }); setEposta(""); }, "Operatör eklendi."); }}>
+        <form className="form-izgara" onSubmit={(e) => { e.preventDefault();
+          const ekle = async (d?: { sifre: string; kod: string }) => { const r = await yonetim.operatorEkle(eposta, rol, d); setGecici({ email: r.email, parola: r.gecici_parola }); setEposta(""); };
+          if (rol === "sahip") onayla(`${eposta} sahip olarak eklenecek`, ekle, "Sahip eklendi."); else void dene(() => ekle(), "Operatör eklendi."); }}>
           <label className="girdi-etiket">E-posta<input className="girdi" type="email" value={eposta} onChange={(e) => setEposta(e.target.value)} required /></label>
           <label className="girdi-etiket">Rol<select className="girdi" value={rol} onChange={(e) => setRol(e.target.value)}><option value="operator">Operatör</option><option value="sahip">Sahip</option></select></label>
           <button className="dugme dugme-ana" type="submit">Ekle</button>
         </form>
+        {rol === "sahip" && <p className="uc-not">Sahip eklerken parolanız ve doğrulama kodunuz yeniden sorulur.</p>}
       </Kart>
     </Sayfa>
   );

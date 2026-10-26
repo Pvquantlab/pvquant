@@ -58,7 +58,9 @@ export function Santralim({ plantId }: { plantId: string }) {
   const [gy, setGy] = useState<GunesYolu | null>(null);
   const [sam, setSam] = useState<SaatAyMatrisi | null>(null);
   const { n, oku } = useTema();
-  useEffect(() => { setO(bellekten.ozet(plantId) ?? null); api.ozet(plantId).then((v) => setO((e) => ayniysaEskisi(e, v))); }, [plantId]);
+  const [oHata, setOHata] = useState(false);   // 26.10 denetim-3: özet alınamazsa iskelet sonsuza dek kalıyordu (yakalanmamış ret)
+  useEffect(() => { setO(bellekten.ozet(plantId) ?? null); setOHata(false);
+    api.ozet(plantId).then((v) => setO((e) => ayniysaEskisi(e, v)), () => setOHata(true)); }, [plantId]);
   useEffect(() => { setSeri(bellekten.tahmin(plantId, "16d") ?? null); api.tahmin(plantId, "16d").then((v) => setSeri((e) => ayniysaEskisi(e, v))).catch(() => {}); }, [plantId]);   // v2.365: kosusuz santralda 404 gurultusuz // v2.166: D1 — tam seri cek, istemcide "24h" dilimle (Tahminler kalibi)
   useEffect(() => { api.gunesYolu(plantId).then(setGy).catch(() => {}); }, [plantId]);
   useEffect(() => { api.saatAyMatrisi(plantId).then(setSam).catch(() => {}); }, [plantId]);
@@ -280,7 +282,7 @@ export function Santralim({ plantId }: { plantId: string }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gy, n]);
 
-  if (!o) return <SayfaIskeleti kpi={4} kart={2} />;
+  if (!o) return oHata ? <div style={{ color: "var(--soluk)" }}>Santral özeti alınamadı; sayfayı yenileyin.</div> : <SayfaIskeleti kpi={4} kart={2} />;
 
   const s = o.saglik;
   // v2.198 (D ozet seridi): anlik guc = simdiDegeri; gece/veri yokken "—".

@@ -19,7 +19,7 @@ export const SAYFALAR = [
   { id: "dogruluk", ad: "Doğruluk", yuz: "acik" },
   { id: "aylik", ad: "Aylık beklenti", yuz: "acik" },
   { id: "raporlar", ad: "Raporlar", yuz: "acik" },
-  { id: "kurulus", ad: "Kuruluş", yuz: "acik" },        // 26.10 Faz 6: yönetim kartları Portföy'den buraya
+  { id: "kurulus", ad: "Ayarlar", yuz: "acik" },        // 26.10 Faz 6: yönetim kartları Portföy'den buraya (ad kullanıcı kararı: «Ayarlar»; kimlik kurulus kalır)
   { id: "hakkinda", ad: "Hakkında", yuz: "acik" },      // v2.270
 ] as const;
 export type SayfaId = (typeof SAYFALAR)[number]["id"];
@@ -504,7 +504,14 @@ function YeniSantral({ kapat, eklendi }: { kapat: () => void; eklendi: (id: stri
  *  sekmesi yazar), salt okunur ve 15 dk; «Kapat» jetonu ve işareti siler. Olağan müşteri oturumunda hiç render edilmez. */
 function TemsilSeridi() {
   const [t, setT] = useState<{ kiraci: string; bitis: string } | null>(() => {
-    try { const v = localStorage.getItem("pvq_temsil"); return v ? (JSON.parse(v) as { kiraci: string; bitis: string }) : null; } catch { return null; }
+    try {
+      const v = localStorage.getItem("pvq_temsil"); if (!v) return null;
+      // 26.10 denetim-2: işaret var ama elimizdeki jeton temsil jetonu değilse (gerçek kullanıcı girişi) işaret bayattır — sil, şerit çizme
+      const j = localStorage.getItem("pvq_token") ?? "";
+      const g = JSON.parse(atob(j.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))) as { temsil?: string };
+      if (!g.temsil) { localStorage.removeItem("pvq_temsil"); return null; }
+      return JSON.parse(v) as { kiraci: string; bitis: string };
+    } catch { localStorage.removeItem("pvq_temsil"); return null; }
   });
   const [kalan, setKalan] = useState(0);
   useEffect(() => {
@@ -531,7 +538,7 @@ function IkiAdimKapisi({ onTamam }: { onTamam: () => void }) {
   return (
     <div style={{ maxWidth: 720 }}>
       <h1 className="sayfa-baslik" style={{ marginBottom: 6 }}>İki adımlı doğrulama gerekli</h1>
-      <p className="soluk" style={{ margin: "0 0 18px", fontSize: 15 }}>Kuruluşunuz yöneticiler için iki adımlı doğrulamayı zorunlu kıldı. Kurulumu tamamlayınca panel açılır.</p>
+      <p className="soluk" style={{ margin: "0 0 18px", fontSize: 15 }}>Hesabınızın yöneticisi iki adımlı doğrulamayı yöneticiler için zorunlu kıldı. Kurulumu tamamlayınca panel açılır.</p>
       <IkiAdimBolumu />
       <button className="dugme dugme-ana" style={{ marginTop: 14 }} onClick={() => setKontrol((k) => k + 1)}>Kurdum, devam et</button>
     </div>

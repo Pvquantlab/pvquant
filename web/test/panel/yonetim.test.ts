@@ -149,13 +149,13 @@ test("Faz 5: Planlar sahip-only, limit rozetleri, temsil düğmesi sahipte, mü�
   assert.match(kabuk, /<TemsilSeridi \/>/);
   assert.match(kabuk, /localStorage\.getItem\("pvq_temsil"\)/);
   assert.match(kabuk, /if \(!t\) return null;/);                                   // olağan müşteri oturumunda çizilmez
-  assert.doesNotMatch(oku("api/client.ts"), /temsil|\/v1\/yonetim/);               // müşteri istemcisi bilmez
+  assert.doesNotMatch(oku("api/client.ts"), /temsilAc|\/v1\/yonetim/);             // müşteri istemcisi platform uçlarını bilmez (çıkışta pvq_temsil temizliği serbest)
 });
 
 // ---------------- 26.10 Faz 6: Kuruluş sayfası ----------------
-test("Faz 6: Kuruluş menüde ve App'te; Portföy yönetim kartlarını çizmez; Kabuk 2FA kapısı; platform rozeti", () => {
+test("Faz 6: Ayarlar (kimlik kurulus) menüde ve App'te; Portföy yönetim kartlarını çizmez; Kabuk 2FA kapısı; platform rozeti", () => {
   const kabuk = oku("shell/Kabuk.tsx");
-  assert.match(kabuk, /\{ id: "kurulus", ad: "Kuruluş", yuz: "acik" \}/);
+  assert.match(kabuk, /\{ id: "kurulus", ad: "Ayarlar", yuz: "acik" \}/);
   assert.match(kabuk, /ikiAdimKurulmali \? <IkiAdimKapisi onTamam=/);
   const app = oku("App.tsx");
   assert.match(app, /\{sayfa === "kurulus" && <Kurulus santralYenile=\{santralYenile\} \/>\}/);

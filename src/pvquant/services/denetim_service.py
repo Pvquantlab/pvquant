@@ -83,7 +83,8 @@ def listele(*, tenant_id=None, eylem: str | None = None, kapsam: str | None = No
 
 
 # 26.10 denetim D6 — saklama: yalnız HACİMLİ ve sır taşımayan eylemler silinir; yazma eylemleri (kiraci_guncelle, operator_ekle, parola_sifirla_cli…)
-# kalıcıdır. Ayar 0 (varsayılan) → hiçbir şey silinmez.
+# kalıcıdır. Ayar 0 (varsayılan) → hiçbir şey silinmez. 26.10 denetim-3: yalnız PLATFORM kapsamı — müşterinin Ayarlar'daki
+# kiracı içi denetim izi (ekip girişleri, kapsam musteri) bu temizlikle silinmez.
 TEMIZLENEN_EYLEMLER = ("giris", "giris_basarisiz", "kiraci_goruntule")
 
 
@@ -96,5 +97,5 @@ def temizle(ay: int | None = None) -> int:
         return 0
     with sistem_baglami() as s:
         return int(s.execute(text(
-            "DELETE FROM denetim_izi WHERE eylem = ANY(:e) AND zaman < now() - (:ay * interval '1 month')"),
+            "DELETE FROM denetim_izi WHERE kapsam = 'platform' AND eylem = ANY(:e) AND zaman < now() - (:ay * interval '1 month')"),
             {"e": list(TEMIZLENEN_EYLEMLER), "ay": ay}).rowcount)

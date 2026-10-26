@@ -6,6 +6,8 @@ from pvquant.services import auth_service
 from pvquant.services.auth_service import token_coz
 
 
+# 26.10 denetim-2: GET olduğu hâlde yazan/sayan uçlar — kimliğe bürünme bunları da açamaz
+TEMSIL_YASAK_GET_SONEKLERI = ("/report", "/scada/disa")   # 26.10 denetim-3: ham SCADA dışa aktarımı görüntüleme değildir
 # 26.10 Faz 6: 2FA kurulmadan açık kalan müşteri uçları (kurulum, oturum tazeleme, kim olduğunu görme)
 MUSTERI_KURULUM_YOLLARI = frozenset({"/v1/iki-adim", "/v1/iki-adim/baslat", "/v1/iki-adim/dogrula", "/v1/oturum/yenile", "/v1/hakkinda"})
 
@@ -23,8 +25,8 @@ def gecerli_kullanici(request: Request, authorization: str = Header(...)):
     # `sub` platform aktörüdür: aktiflik/sürüm platform tablosundan, kiracı durumu tenants'tan. Yazma kapıları ayrıca reddeder.
     if c.get("temsil"):
         from pvquant.services import platform_service
-        if request.method != "GET":
-            raise HTTPException(403, "görüntüleme oturumu salt okunur")
+        if request.method != "GET" or request.url.path.endswith(TEMSIL_YASAK_GET_SONEKLERI):
+            raise HTTPException(403, "görüntüleme oturumu salt okunur")   # rapor üretimi GET ama report_log'a yazar ve kullanım sayar
         d = platform_service.oturum_durumu(c["sub"])
         if d is None or not d["aktif"] or int(c.get("sv", 0)) != d["sv"]:
             raise HTTPException(401, "görüntüleme oturumu geçersiz")
@@ -86,6 +88,8 @@ def platform_yetkisi(rol: str | None = None):
 def yonetici_yetkisi():
     """v2.264: yalnız admin (API anahtarı ve webhook yönetimi)."""
     def _ic(claims=Depends(gecerli_kullanici)):
+        if claims.get("temsil"):
+            raise HTTPException(403, "görüntüleme oturumu salt okunur")   # 26.10 denetim-2: rol viewer olsa da açıkça
         if claims["role"] != "admin":
             raise HTTPException(403, "admin gerekli")
         return claims

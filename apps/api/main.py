@@ -44,7 +44,7 @@ app.add_middleware(
 
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from apps.api.hiz import limiter   # 24.10 Faz 1: yonetim yönlendiricisiyle paylaşılır
+from apps.api.hiz import limiter, paylasimli_sinir   # 24.10 Faz 1: yonetim yönlendiricisiyle paylaşılır
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -64,6 +64,7 @@ class GirisIstek(BaseModel):
 @app.post("/v1/auth/login")
 @limiter.limit("5/minute")
 def login(request: Request, g: GirisIstek):
+    paylasimli_sinir(request, "giris", 5, 60)   # 26.10 denetim-3: işçiler arası 5/dk/IP (slowapi süreç başınaydı)
     try:
         r = auth_service.giris(g.email, g.sifre, g.kod)
     except auth_service.KiraciAskida:
@@ -1380,7 +1381,13 @@ def kurulus_denetim(limit: int = 100, once_id: int | None = None, claims=Depends
     """Kiracı içi denetim izi (yalnız yönetici): kendi ekibinin eylemleri VE platformun bu kiracıda yaptıkları (kapsam sütunuyla).
     tenant_id jetondan — sorgudan alınmaz."""
     from pvquant.services import denetim_service
-    return {"kayitlar": denetim_service.listele(tenant_id=claims["tenant_id"], limit=limit, once_id=once_id)}
+    kayitlar = denetim_service.listele(tenant_id=claims["tenant_id"], limit=limit, once_id=once_id)
+    # 26.10 denetim-2: platform satırlarında personel e-postası/IP ve platforma özel alanlar (notlar) müşteriye verilmez
+    for k in kayitlar:
+        if k["kapsam"] == "platform":
+            k["aktor_eposta"] = None; k["ip"] = None; k["aktor_id"] = None
+            k["ayrinti"] = {a: v for a, v in (k.get("ayrinti") or {}).items() if "notlar" not in a}   # durum/plan değişimi kalır, not içeriği/işareti gitmez
+    return {"kayitlar": kayitlar}
 
 
 @app.get("/v1/kurulus/ayarlar", tags=["Yönetim"])

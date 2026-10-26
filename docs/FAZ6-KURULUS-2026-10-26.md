@@ -9,6 +9,8 @@ Dayanak: `docs/YONETICI-PANELI-YOL-HARITASI-2026-10-24.md` §6 satır 5; denetim
 sözleşmeleri DEĞİŞMEDİ (ek uçlar + ek sütun). Müşteri panelinde navigasyon değişti: yönetim kartları Portföy'den «Kuruluş»a taşındı.
 
 ## NE
+0. **Ad (26.10, kullanıcı kararı):** menü ve sayfa başlığı «Ayarlar» — Türkiye'deki SaaS alışkanlığı («Kuruluş» resmî duruyordu). İç kimlik
+   `kurulus`, uçlar `/v1/kurulus/*` ve dosya adı aynen; yalnız görünen ad değişti (birikiyor, bir sonraki mühürle).
 1. **Şema** `alembic/versions/v2493_faz6_kurulus.py`: `tenants.yonetici_2fa_zorunlu BOOLEAN NOT NULL DEFAULT false` — varsayılan kapalı, hiçbir
    kiracının davranışı değişmez.
 2. **Kimlik yolu** `auth_service.oturum_durumu` / `oturum_yenile`: `iki_adim_kurulmali` = politika açık ∧ rol admin ∧ TOTP kapalı (60 sn önbellek;

@@ -59,12 +59,19 @@ class KiraciAskida(Exception):
     Hesap varlığı sızdırılmaz: parola YANLIŞSA yine None (hatalı) döner, askı yalnız doğru parolaya söylenir."""
 
 
+_KUKLA_HASH = bcrypt.hash("kukla-" + "x" * 16)   # yalnız zamanlama eşitlemek için; hiçbir parolayla eşleşmez
+
+
 def giris(email, sifre, kod=None) -> dict | None:
     with sistem_baglami() as s:
         row = s.execute(text(
             "SELECT u.id, u.tenant_id, u.pw_hash, u.role, u.aktif, u.totp_aktif, u.oturum_surumu, t.status AS kiraci_durum "
             "FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.email=:e"), {"e": email.lower()}).first()
-        if not row or not row.aktif or not bcrypt.verify(sifre, row.pw_hash):
+        if not row:
+            bcrypt.verify(sifre or "", _KUKLA_HASH)   # 26.10 denetim-3: hesap yokken de bcrypt koşar — zamanlamayla varlık sızmasın
+            return None
+        dogru = bcrypt.verify(sifre, row.pw_hash)   # 26.10 denetim-3: pasif hesapta da koşar — zamanlama pasifliği ele vermesin
+        if not row.aktif or not dogru:
             return None   # v2.299: pasif hesap da 'hatalı' der — hesap varlığı sızdırılmaz
     if row.kiraci_durum != "active":
         raise KiraciAskida()   # 24.10 Faz 0: askıdaki kiracı giremez (parola doğrulandıktan sonra)

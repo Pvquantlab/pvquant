@@ -45,14 +45,18 @@ http.createServer((req, res) => {
       { id: "u1", email: "deneme@example.com", rol: "admin", aktif: true, totp_aktif: true, son_giris: "2026-10-24T20:15:00Z", olusturma: "2026-09-02T14:20:00Z", tenant_id: KIRACILAR[1].id, firma: "Deneme Lab" },
       { id: "u3", email: "ops@meridyen.example", rol: "admin", aktif: true, totp_aktif: false, son_giris: "2026-10-24T18:10:00Z", olusturma: "2026-07-12T09:00:00Z", tenant_id: KIRACILAR[0].id, firma: "Meridyen Enerji" },
       { id: "u2", email: "izleyici@example.com", rol: "viewer", aktif: false, totp_aktif: false, son_giris: null, olusturma: "2026-09-10T10:00:00Z", tenant_id: KIRACILAR[1].id, firma: "Deneme Lab" }] });
-  if (/^\/v1\/yonetim\/kullanicilar\//.test(yol)) return yanit(200, yol.endsWith("parola-sifirlama") ? { gonderildi: false, baglanti: "https://pvquant.com/parola-yenile?jeton=ORNEK" } : { tamam: true });
+  // 26.10 denetim-3: posta gitmezse bağlantı yalnız sahibe; OPERATOR=1 ile operatör yanıtı (bağlantısız, yalnız not) taklit edilir
+  if (/^\/v1\/yonetim\/kullanicilar\//.test(yol)) return yanit(200, yol.endsWith("parola-sifirlama")
+    ? (process.env.OPERATOR ? { gonderildi: false, not: "posta gönderilemedi; bağlantıyı yalnız sahip görebilir, sahipten isteyin" } : { gonderildi: false, baglanti: "https://pvquant.com/parola-yenile?jeton=ORNEK" })
+    : { tamam: true });
   if (yol === "/v1/yonetim/basvurular") return yanit(200, { basvurular: [
       { id: "b1", eposta: "ali@gunesenerji.example", santral_adi: "Konya 2 GES", kurulu_guc_kwp: 9800, okundu: false, created_at: "2026-10-24T11:05:00Z" },
       { id: "b2", eposta: "info@tarimsal.example", santral_adi: null, kurulu_guc_kwp: null, okundu: true, created_at: "2026-10-19T08:40:00Z" }] });
   if (/^\/v1\/yonetim\/basvurular\//.test(yol)) return yanit(200, { tamam: true });
   if (yol === "/v1/yonetim/operatorler" && req.method === "GET") return yanit(200, { operatorler: [
       { id: "p1", email: "sahip@pvquant.com", rol: "sahip", aktif: true, totp_aktif: true, son_giris: "2026-10-24T21:48:28Z", olusturma: "2026-10-24T20:40:00Z" },
-      { id: "p2", email: "destek@pvquant.com", rol: "operator", aktif: true, totp_aktif: false, son_giris: null, olusturma: "2026-10-25T08:00:00Z" }], roller: ["operator", "sahip"] });
+      { id: "p2", email: "destek@pvquant.com", rol: "operator", aktif: true, totp_aktif: false, son_giris: null, olusturma: "2026-10-25T08:00:00Z" },
+      { id: "p4", email: "nobet@pvquant.com", rol: "operator", aktif: true, totp_aktif: true, son_giris: "2026-10-26T06:10:00Z", olusturma: "2026-10-25T12:00:00Z" }], roller: ["operator", "sahip"] });   // 26.10: 2FA'lı operatör («2FA sıfırla» + yeniden doğrulama kartı)
   if (yol === "/v1/yonetim/operatorler" && req.method === "POST") return yanit(201, { id: "p3", email: "yeni@pvquant.com", rol: "operator", aktif: true, totp_aktif: false, son_giris: null, olusturma: "2026-10-25T09:00:00Z", gecici_parola: "Xy9-ornek-gecici" });
   if (/^\/v1\/yonetim\/operatorler\//.test(yol)) return yanit(200, { tamam: true });
   if (yol === "/v1/yonetim/parola") return yanit(200, { tamam: true });

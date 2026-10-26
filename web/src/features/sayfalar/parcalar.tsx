@@ -112,8 +112,8 @@ export function Sayfa({ baslik, alt, sag, children }:
   { baslik: string; alt?: string; sag?: ReactNode; children: ReactNode }) {
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "space-between",
-                    alignItems: "flex-start", gap: 20, marginBottom: 24 }}>
+      <div className="sayfa-bas" style={{ display: "flex", justifyContent: "space-between",
+                    alignItems: "flex-start", gap: 20, marginBottom: 24 }}>   {/* 26.10 denetim-2: ≤560'ta sarar (Tahminler ufuk sekmesi 375'te taşıyordu) */}
         <div>
           {/* 22.10: boyut CSS'ten (h1 = --t-baslik 26 px); açıklama 14 px gövde */}
           <h1>{baslik}</h1>

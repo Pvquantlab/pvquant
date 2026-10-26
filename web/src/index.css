@@ -540,6 +540,8 @@ textarea.girdi { resize: vertical; min-height: 72px; line-height: 1.5; }
 .plat-saglik--tikla { width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; }
 .plat-saglik--tikla:hover { border-color: var(--marka); }
 .plat-rozet-sari { opacity: .8; }
+/* 26.10 denetim-2: sayfa başlığı sağ yuvası dar ekranda alta sarar — Tahminler'de «güncellenemedi» çipi + 4 ufuk sekmesi 375'te 132 px taşıyordu */
+@media (max-width: 560px) { .sayfa-bas { flex-wrap: wrap; } }
 /* 26.10 Faz 5: müşteri kabuğunda platform görüntüleme şeridi — yalnız temsil işaretiyle görünür */
 .temsil-serit { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 8px 20px; font-size: 13.5px; color: #fff;
                 background: #B3261E; }

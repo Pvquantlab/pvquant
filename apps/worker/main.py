@@ -647,9 +647,10 @@ def acilis_yedek():
 def denetim_temizlik():
     """26.10 denetim D6 — denetim izi saklama: PVQUANT_DENETIM_SAKLAMA_AY > 0 ise giriş/giriş_basarisiz/kiraci_goruntule satırlarının
     N aydan eskisi silinir; yazma eylemleri kalıcı. Ayar 0 (varsayılan) hiçbir şey silmez; sonuç jobs_log detail'e yazılır."""
-    from pvquant.services import denetim_service
+    from pvquant.services import denetim_service, kullanim_service
     n = denetim_service.temizle()
-    return f"silinen: {n}" if n else "ayar 0 ya da silinecek satır yok"
+    hp = kullanim_service.pencere_temizle()   # 26.10 denetim-3: eski hız pencereleri (IP/anahtar başına kalıcı satır birikmesin)
+    return (f"silinen: {n}" if n else "ayar 0 ya da silinecek satır yok") + f"; hız penceresi: {hp}"
 
 
 def gece_yedek():

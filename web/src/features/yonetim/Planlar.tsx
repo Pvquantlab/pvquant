@@ -31,7 +31,7 @@ export function Planlar() {
           <form className="form-izgara" onSubmit={(e) => { e.preventDefault(); void kaydet(p); }}>
             {ALANLAR.map((a) => (
               <label key={a.k} className="girdi-etiket">{a.ad}<span className="birim" style={{ marginLeft: 4 }}>{a.birim}</span>
-                <input className="girdi" type="number" min={0} inputMode="numeric" placeholder="sınırsız" value={deger(p, a.k)}
+                <input className="girdi" type="number" min={0} step={1} inputMode="numeric" placeholder="sınırsız" value={deger(p, a.k)}
                   onChange={(e) => setTaslak((t) => ({ ...t, [p.ad]: { ...(t[p.ad] ?? {}), [a.k]: e.target.value } }))} /></label>))}
             <button className="dugme dugme-ana" type="submit" disabled={!taslak[p.ad]}>Kaydet</button>
           </form>

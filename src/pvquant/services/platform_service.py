@@ -45,6 +45,9 @@ def _jeton(row, ilk: int | None = None) -> str:
                        "exp": dt.datetime.utcnow() + dt.timedelta(hours=JWT_SAAT)}, auth_service._sir(), algorithm="HS256")
 
 
+_KUKLA_HASH = bcrypt.hash("kukla-" + "x" * 16)   # yalnız zamanlama eşitlemek için; hiçbir parolayla eşleşmez
+
+
 def giris(email: str, sifre: str, kod: str | None = None) -> dict | None:
     """None = hatalı (varlık sızdırılmaz); {"iki_adim_gerekli": True} = parola doğru, kod şart;
     {token, rol, email, iki_adim_kurulmali} = oturum açıldı."""
@@ -52,7 +55,11 @@ def giris(email: str, sifre: str, kod: str | None = None) -> dict | None:
         row = s.execute(text(
             "SELECT id, email, pw_hash, rol, aktif, totp_secret, totp_aktif, oturum_surumu "
             "FROM platform_kullanicilar WHERE email=:e"), {"e": (email or "").strip().lower()}).first()
-        if not row or not row.aktif or not bcrypt.verify(sifre or "", row.pw_hash):
+        if not row:
+            bcrypt.verify(sifre or "", _KUKLA_HASH)   # 26.10 denetim-3: hesap yokken de bcrypt koşar — zamanlamayla varlık sızmasın
+            return None
+        dogru = bcrypt.verify(sifre or "", row.pw_hash)   # pasif hesapta da koşar (kısa devre 6 ms ↔ 280 ms varlığı ele veriyordu)
+        if not row.aktif or not dogru:
             return None
     if row.totp_aktif:
         if not kod:
@@ -62,6 +69,20 @@ def giris(email: str, sifre: str, kod: str | None = None) -> dict | None:
     with sistem_baglami() as s:
         s.execute(text("UPDATE platform_kullanicilar SET last_login=now() WHERE id=:i"), {"i": row.id})
     return {"token": _jeton(row), "rol": row.rol, "email": row.email, "iki_adim_kurulmali": not row.totp_aktif}
+
+
+def yeniden_dogrula(pid: str, sifre: str | None, kod: str | None) -> bool:
+    """26.10 denetim-3 (bağımsız kontrol 1.1): hassas sahip işlemleri (sahip hesabı açma/yükseltme, başkasının 2FA'sını sıfırlama)
+    çalınmış bir JETONLA yapılamasın — aktörün parolası + TOTP kodu yeniden istenir. 2FA kurulu değilse (platform kapısı zaten
+    yalnız kurulum uçlarını açar) parola yetmez: False."""
+    with sistem_baglami() as s:
+        r = s.execute(text("SELECT pw_hash, totp_secret, totp_aktif, aktif FROM platform_kullanicilar WHERE id=:i"), {"i": str(pid)}).first()
+    if r is None or not r.aktif or not r.totp_aktif:
+        bcrypt.verify(sifre or "", _KUKLA_HASH)
+        return False
+    if not bcrypt.verify(sifre or "", r.pw_hash):
+        return False
+    return bool(kod) and pyotp.TOTP(r.totp_secret).verify((kod or "").replace(" ", ""), valid_window=1)
 
 
 def oturum_durumu(pid: str) -> dict | None:
@@ -156,6 +177,13 @@ def parola_sifirla_cli(email: str, sifre: str) -> str:
         raise PlatformHata("etkin hesap bulunamadı")
     oturum_onbellegi_dusur(str(pid))
     return str(pid)
+
+
+def _plan_dogrula(plan: str | None) -> None:
+    """26.10 denetim-2: bilinmeyen plan FK hatasıyla 500 vermesin — 422 «plan yok»."""
+    with sistem_baglami() as s:
+        if s.execute(text("SELECT 1 FROM planlar WHERE ad = :a"), {"a": plan or ""}).first() is None:
+            raise PlatformHata(f"plan yok: {plan}")
 
 
 # ---------------- platform kullanıcıları (operatörler) ----------------
@@ -273,12 +301,13 @@ def _davet_postala(eposta: str, firma: str, baglanti: str, saat: int, ilk: bool)
     return posta_service.gonder(eposta, "PVQuant — hesabınız hazır" if ilk else "PVQuant — parola belirleme", govde)
 
 
-def kiraci_olustur(aktor_id: str, firma: str, yonetici_eposta: str, plan: str = "pilot") -> dict:
+def kiraci_olustur(aktor_id: str, firma: str, yonetici_eposta: str, plan: str = "pilot", rol: str | None = None) -> dict:
     firma = (firma or "").strip(); eposta = (yonetici_eposta or "").strip().lower()
     if len(firma) < 2:
         raise PlatformHata("firma adı gerekli")
     if "@" not in eposta:
         raise PlatformHata("geçerli yönetici e-postası gerekli")
+    _plan_dogrula(plan)
     with platform_baglami(aktor_id) as s:
         if s.execute(text("SELECT 1 FROM users WHERE email=:e"), {"e": eposta}).first():
             raise PlatformHata("bu e-posta başka bir hesapta kayıtlı")
@@ -290,18 +319,36 @@ def kiraci_olustur(aktor_id: str, firma: str, yonetici_eposta: str, plan: str = 
                         {"t": tid, "e": eposta, "h": bcrypt.hash(secrets.token_urlsafe(24))}).scalar()
         baglanti = _davet_baglantisi(s, uid, DAVET_SAAT)
     gonderildi = _davet_postala(eposta, firma, baglanti, DAVET_SAAT, ilk=True)
-    return {"tenant_id": str(tid), "user_id": str(uid), "davet_gonderildi": gonderildi,
-            **({} if gonderildi else {"davet_baglantisi": baglanti, "not": "posta yapılandırılmamış ya da gönderilemedi; bağlantıyı elden iletin"})}
+    return {"tenant_id": str(tid), "user_id": str(uid), "davet_gonderildi": gonderildi, **_baglanti_yaniti(gonderildi, baglanti, rol, "davet_baglantisi")}
+
+
+def _baglanti_yaniti(gonderildi: bool, baglanti: str, rol: str | None, anahtar: str) -> dict:
+    """26.10 denetim-3: posta gitmezse parola belirleme bağlantısı YALNIZ sahibe yanıtta düşer. Operatöre düşerse 24–72 saatlik
+    bağlantıyla tam yazma yetkili müşteri hesabına girebilirdi (Faz 5'in «yalnız sahip, salt okunur» modeli boşa çıkar)."""
+    if gonderildi:
+        return {}
+    if rol == "sahip":
+        return {anahtar: baglanti, "not": "posta yapılandırılmamış ya da gönderilemedi; bağlantıyı elden iletin"}
+    return {"not": "posta gönderilemedi; bağlantıyı yalnız sahip görebilir, sahipten isteyin"}
 
 
 def kiraci_guncelle(aktor_id: str, tid: str, *, status: str | None = None, plan: str | None = None,
                     ad: str | None = None, notlar: str | None = None) -> dict | None:
     if status is not None and status not in ("active", "suspended"):
         raise PlatformHata("durum: active | suspended")
+    if plan is not None:
+        _plan_dogrula(plan)
+    if ad is not None:
+        ad = ad.strip()                     # 26.10 denetim-3 (1.3): oluşturmadaki kırpma + uzunluk kuralı güncellemede de
+        if len(ad) < 2:
+            raise PlatformHata("firma adı gerekli")
     with platform_baglami(aktor_id) as s:
         eski = s.execute(text("SELECT name, plan, status FROM tenants WHERE id=:t"), {"t": str(tid)}).mappings().first()
         if eski is None:
             return None
+        if ad is not None and s.execute(text("SELECT 1 FROM tenants WHERE lower(name)=lower(:n) AND id<>:t"),
+                                        {"n": ad, "t": str(tid)}).first():
+            raise PlatformHata("bu adla bir kiracı zaten var")   # 26.10 denetim-3: oluşturmadaki benzersizlik güncellemede de
         s.execute(text("UPDATE tenants SET name=COALESCE(:n, name), plan=COALESCE(:p, plan), status=COALESCE(:s, status), "
                        "notlar=COALESCE(:no, notlar), updated_at=now() WHERE id=:t"),
                   {"n": ad, "p": plan, "s": status, "no": notlar, "t": str(tid)})
@@ -334,19 +381,28 @@ def kullanici_getir(aktor_id: str, uid: str) -> dict | None:
                                    "aktif": bool(r["aktif"]), "firma": r["firma"]}
 
 
-def davet_gonder(aktor_id: str, uid: str, saat: int = 24) -> dict | None:
-    """Operatör eliyle parola belirleme bağlantısı (destek: 'parolamı unuttum' çalışmayanlar). Kullanıcı etkin olmalı."""
+def davet_gonder(aktor_id: str, uid: str, saat: int = 24, rol: str | None = None) -> dict | None:
+    """Operatör eliyle parola belirleme bağlantısı (destek: 'parolamı unuttum' çalışmayanlar). Kullanıcı etkin olmalı.
+    Posta gitmezse bağlantı yalnız sahibe döner (_baglanti_yaniti)."""
+    from pvquant.services import posta_service
     k = kullanici_getir(aktor_id, uid)
     if k is None or not k["aktif"]:
         return None
+    if rol != "sahip" and not posta_service.yapilandirildi():
+        # 26.10 denetim-3 (bağımsız kontrol 3): operatör göremeyeceği jetonu üretmesin — müşterinin bekleyen bağlantısı da bozulmasın
+        return {"gonderildi": False, **_baglanti_yaniti(False, "", rol, "baglanti")}
     with platform_baglami(aktor_id) as s:
         baglanti = _davet_baglantisi(s, uid, saat)
     gonderildi = _davet_postala(k["email"], k["firma"], baglanti, saat, ilk=False)
-    return {"gonderildi": gonderildi, **({} if gonderildi else {"baglanti": baglanti})}
+    if not gonderildi and rol != "sahip":
+        with platform_baglami(aktor_id) as s:   # posta arızası: kimsenin görmeyeceği canlı jeton DB'de kalmasın
+            s.execute(text("DELETE FROM parola_sifirlama WHERE user_id=:u AND used_at IS NULL"), {"u": str(uid)})
+    return {"gonderildi": gonderildi, **_baglanti_yaniti(gonderildi, baglanti, rol, "baglanti")}
 
 
 # ---------------- 26.10 Faz 5: planlar (uyarı kipi) ----------------
 PLAN_LIMITLER = ("santral_limit", "kullanici_limit", "api_rpm_limit", "aylik_rapor_limit", "aylik_dis_api_limit")
+LIMIT_UST = 1_000_000_000   # planlar sütunları INTEGER; «sınırsız» için None kullanılır
 
 
 def plan_listesi() -> list[dict]:
@@ -363,6 +419,10 @@ def plan_guncelle(ad: str, *, baslik: str | None = None, notlar: str | None = No
     for k, v in alanlar.items():
         if v is not None and int(v) < 0:
             raise PlatformHata(f"{k} negatif olamaz")
+        if v is not None and int(v) > LIMIT_UST:
+            raise PlatformHata(f"{k} en çok {LIMIT_UST}")   # 26.10 denetim-3: INTEGER taşması 500 veriyordu
+    if baslik is not None and not baslik.strip():
+        raise PlatformHata("başlık boş olamaz")
     with sistem_baglami() as s:
         eski = s.execute(text("SELECT ad FROM planlar WHERE ad = :a"), {"a": ad}).first()
         if eski is None:

@@ -42,15 +42,32 @@ def test_uctan_uca(temiz):
     ps.iki_adim_dogrula(pid, pyotp.TOTP(k["secret"]).now())
     assert ps.giris(sahip_eposta, "cok-gizli-parola-123") == {"iki_adim_gerekli": True}
     assert ps.giris(sahip_eposta, "cok-gizli-parola-123", pyotp.TOTP(k["secret"]).now())["iki_adim_kurulmali"] is False
+    # 26.10 denetim-3: hassas işlem yeniden doğrulaması — parola + kod; yalnız parola / yanlış kod / yanlış parola geçmez
+    assert ps.yeniden_dogrula(pid, "cok-gizli-parola-123", pyotp.TOTP(k["secret"]).now()) is True
+    assert ps.yeniden_dogrula(pid, "cok-gizli-parola-123", None) is False
+    assert ps.yeniden_dogrula(pid, "cok-gizli-parola-123", "000000") is False
+    assert ps.yeniden_dogrula(pid, "yanlis", pyotp.TOTP(k["secret"]).now()) is False
+    assert ps.yeniden_dogrula(str(uuid.uuid4()), "x", "000000") is False
     # kiracı oluştur (posta kapalı → bağlantı döner), listede görünür
     firma = f"Firma {e}"; admin_eposta = f"admin-{e}@musteri.test"
-    y = ps.kiraci_olustur(pid, firma, admin_eposta)
+    y = ps.kiraci_olustur(pid, firma, admin_eposta, rol="sahip")                  # uç aktörün rolünü geçirir
     assert y["davet_gonderildi"] is False and "davet_baglantisi" in y
+    yo = ps.kiraci_olustur(pid, f"Operatorlu {e}", f"op-{e}@musteri.test", rol="operator")
+    assert yo["davet_gonderildi"] is False and "davet_baglantisi" not in yo and "sahip" in yo["not"]   # 26.10 denetim-3: operatöre bağlantı yok
     assert any(x["id"] == y["tenant_id"] and x["kullanici"] == 1 for x in ps.kiraci_listesi(pid))
     d = ps.kiraci_detay(pid, y["tenant_id"])
     assert d["kullanicilar"][0]["email"] == admin_eposta and d["kullanicilar"][0]["rol"] == "admin"
     with pytest.raises(ValueError):
         ps.kiraci_olustur(pid, firma, f"baska-{e}@musteri.test")     # aynı ad
+    y2 = ps.kiraci_olustur(pid, f"Ikinci {e}", f"ikinci-{e}@musteri.test")
+    with pytest.raises(ValueError):
+        ps.kiraci_guncelle(pid, y2["tenant_id"], ad=firma.upper())  # 26.10 denetim-3: güncellemede de ad benzersiz (büyük/küçük bağımsız)
+    with pytest.raises(ValueError):
+        ps.kiraci_guncelle(pid, y2["tenant_id"], ad=" " + firma)        # baştaki boşlukla da atlanmaz (kırpılır)
+    with pytest.raises(ValueError):
+        ps.kiraci_guncelle(pid, y2["tenant_id"], ad="")                 # boş ad reddedilir
+    assert ps.kiraci_guncelle(pid, y2["tenant_id"], ad=f"Ikinci {e}")["yeni"]["name"] == f"Ikinci {e}"   # kendi adı serbest
+    assert ps.giris(f"yok-{e}@pvq.test", "x") is None and au.giris(f"yok-{e}@musteri.test", "x") is None   # kukla hash yolu hatasız
     # davet bağlantısıyla parola belirle → müşteri girişi çalışır
     jeton = y["davet_baglantisi"].split("jeton=")[1]
     au.parola_sifirla(jeton, "musteri-parola-123")
@@ -68,7 +85,13 @@ def test_uctan_uca(temiz):
     assert au.giris(admin_eposta, "musteri-parola-123")["role"] == "admin"
     # kullanıcı arama + destek bağlantısı
     assert any(u["email"] == admin_eposta for u in ps.kullanici_ara(pid, e))
-    dv = ps.davet_gonder(pid, y["user_id"], saat=24)
+    with sistem_baglami() as s_:
+        once = s_.execute(text("SELECT token_hash FROM parola_sifirlama WHERE user_id=:u AND used_at IS NULL"), {"u": y["user_id"]}).scalars().all()
+    assert "baglanti" not in ps.davet_gonder(pid, y["user_id"], saat=24, rol="operator")   # 26.10 denetim-3: operatöre bağlantı yok
+    with sistem_baglami() as s_:
+        sonra = s_.execute(text("SELECT token_hash FROM parola_sifirlama WHERE user_id=:u AND used_at IS NULL"), {"u": y["user_id"]}).scalars().all()
+    assert sonra == once                                                 # posta yokken operatör jeton ÜRETMEZ, bekleyeni bozmaz
+    dv = ps.davet_gonder(pid, y["user_id"], saat=24, rol="sahip")
     assert dv["gonderildi"] is False and "baglanti" in dv
     # denetim izi: yaz/oku, kiracıya göre süz
     assert dz.kaydet("platform", "kiraci_guncelle", aktor_id=pid, aktor_eposta=sahip_eposta, tenant_id=y["tenant_id"],
@@ -105,7 +128,7 @@ def test_faz3_sistem_izleme(temiz):
     assert set(o) >= {"gece_turu", "isler_24", "meteo", "piyasa", "yedek", "db", "santral"}
     assert isinstance(o["gece_turu"]["taze"], bool) and len(o["gece_turu"]["uretici_isler"]) == 3 and o["db"]["boyut_bayt"] > 0
     # kiracı + santral + hatalı iş kaydı → platform iş listesinde kiracı/santral adı ve AYRINTI görünür
-    y = ps.kiraci_olustur(pid, f"Firma3 {e}", f"admin3-{e}@musteri.test")
+    y = ps.kiraci_olustur(pid, f"Firma3 {e}", f"admin3-{e}@musteri.test", rol="sahip")
     with sistem_baglami() as s:
         plant_id = s.execute(text("INSERT INTO plants(tenant_id, name, capacity_kwp, lat, lon, tz) "
                                   "VALUES (CAST(:t AS uuid), :n, 1000, 37.0, 32.5, 'Europe/Istanbul') RETURNING id"),
@@ -134,7 +157,7 @@ def test_faz4_kullanim(temiz):
     from pvquant.services import kullanim_service as ks
     e = temiz
     pid = ps.ilk_sahip_olustur(f"sahip4-{e}@pvq.test", "cok-gizli-parola-123")
-    y = ps.kiraci_olustur(pid, f"Firma4 {e}", f"admin4-{e}@musteri.test")
+    y = ps.kiraci_olustur(pid, f"Firma4 {e}", f"admin4-{e}@musteri.test", rol="sahip")
     tid = y["tenant_id"]
     with sistem_baglami() as s:
         plant_id = s.execute(text("INSERT INTO plants(tenant_id, name, capacity_kwp, lat, lon, tz) "
@@ -186,13 +209,14 @@ def test_d4_parola_sifirla_ve_d6_temizlik(temiz, monkeypatch):
     # D6: eski giriş + eski kiracı_guncelle + yeni giriş; temizle(1) yalnız eski girişi siler; ayar 0 dokunmaz
     with sistem_baglami() as s:
         s.execute(text("INSERT INTO denetim_izi(zaman, kapsam, eylem, aktor_eposta) VALUES (now() - interval '40 days', 'platform', 'giris', :e), "
-                       "(now() - interval '40 days', 'platform', 'kiraci_guncelle', :e), (now(), 'platform', 'giris', :e)"), {"e": eposta})
+                       "(now() - interval '40 days', 'platform', 'kiraci_guncelle', :e), (now(), 'platform', 'giris', :e), "
+                       "(now() - interval '40 days', 'musteri', 'giris', :e)"), {"e": eposta})   # 26.10 denetim-3: eski MÜŞTERİ girişi
     monkeypatch.setattr("pvquant.config.get_settings", lambda: type("S", (), {"denetim_saklama_ay": 0})())
     assert dz.temizle() == 0
-    assert dz.temizle(1) == 1
+    assert dz.temizle(1) == 1                                            # yalnız eski PLATFORM girişi; müşteri Ayarlar izi kalır
     with sistem_baglami() as s:
         kalan = s.execute(text("SELECT eylem FROM denetim_izi WHERE aktor_eposta = :e ORDER BY eylem"), {"e": eposta}).scalars().all()
-    assert kalan == ["giris", "kiraci_guncelle"]
+    assert kalan == ["giris", "giris", "kiraci_guncelle"]
 
 
 def test_faz5_planlar_ve_temsil(temiz):
@@ -203,7 +227,7 @@ def test_faz5_planlar_ve_temsil(temiz):
     pid = ps.ilk_sahip_olustur(f"sahip5-{e}@pvq.test", "cok-gizli-parola-123")
     planlar = {p["ad"]: p for p in ps.plan_listesi()}
     assert {"pilot", "standart", "kurumsal"} <= set(planlar) and planlar["pilot"]["santral_limit"] == 3 and planlar["kurumsal"]["santral_limit"] is None
-    y = ps.kiraci_olustur(pid, f"Firma5 {e}", f"admin5-{e}@musteri.test", "pilot")
+    y = ps.kiraci_olustur(pid, f"Firma5 {e}", f"admin5-{e}@musteri.test", "pilot", rol="sahip")
     with pytest.raises(Exception):                                   # FK: bilinmeyen plan
         with sistem_baglami() as s:
             s.execute(text("UPDATE tenants SET plan = 'yok-boyle-plan' WHERE id = CAST(:t AS uuid)"), {"t": y["tenant_id"]})
@@ -213,6 +237,10 @@ def test_faz5_planlar_ve_temsil(temiz):
     with pytest.raises(ValueError):
         ps.plan_guncelle("pilot", santral_limit=-1)
     assert ps.plan_guncelle("yok", santral_limit=1) is None
+    with pytest.raises(ValueError):                                  # 26.10 denetim-2: bilinmeyen plan 500 değil 422
+        ps.kiraci_olustur(pid, f"Firma5b {e}", f"admin5b-{e}@musteri.test", "yok-plan")
+    with pytest.raises(ValueError):
+        ps.kiraci_guncelle(pid, y["tenant_id"], plan="yok-plan")
     t = ps.temsil_jetonu(pid, y["tenant_id"])
     c = _j.decode(t["token"], au._sir(), algorithms=["HS256"])
     assert c["role"] == "viewer" and c["temsil"] == pid and c["tenant_id"] == y["tenant_id"] and t["sure_dk"] == 15 and t["kiraci"] == f"Firma5 {e}"
@@ -229,7 +257,7 @@ def test_faz6_kurulus_politikasi(temiz):
     from pvquant.services import kurulus_service as kr
     e = temiz
     pid = ps.ilk_sahip_olustur(f"sahip7-{e}@pvq.test", "cok-gizli-parola-123")
-    y = ps.kiraci_olustur(pid, f"Firma7 {e}", f"admin7-{e}@musteri.test")
+    y = ps.kiraci_olustur(pid, f"Firma7 {e}", f"admin7-{e}@musteri.test", rol="sahip")
     tid, uid = y["tenant_id"], y["user_id"]
     assert kr.ayarlar(tid) == {"yonetici_2fa_zorunlu": False, "iki_adimsiz_yonetici": 1}
     assert au.oturum_durumu(uid)["iki_adim_kurulmali"] is False
@@ -242,3 +270,37 @@ def test_faz6_kurulus_politikasi(temiz):
     assert au.oturum_durumu(uid)["iki_adim_kurulmali"] is False                              # 2FA kurulunca kapı açılır
     assert kr.ayarlar(tid)["iki_adimsiz_yonetici"] == 0
     kr.ayar_guncelle(tid, yonetici_2fa_zorunlu=False)
+
+
+def test_faz5_temsil_uctan_uca_get_ler(temiz, monkeypatch):
+    """26.10 denetim-2 (2. aşama) — GERÇEK DB + gerçek kapı: temsil jetonuyla müşteri GET uçları 500 vermez; yazanlar ve rapor 403;
+    platform ucu 403; kiracı askıya alınınca 403."""
+    import jwt as _j
+    from fastapi.testclient import TestClient
+    import apps.api.main as api_main
+    e = temiz
+    pid = ps.ilk_sahip_olustur(f"sahip8-{e}@pvq.test", "cok-gizli-parola-123")
+    y = ps.kiraci_olustur(pid, f"Firma8 {e}", f"admin8-{e}@musteri.test", rol="sahip")
+    with sistem_baglami() as s:
+        plant_id = s.execute(text("INSERT INTO plants(tenant_id, name, capacity_kwp, lat, lon, tz) VALUES (CAST(:t AS uuid), :n, 500, 38.0, 33.0, 'Europe/Istanbul') RETURNING id"),
+                             {"t": y["tenant_id"], "n": f"GES8 {e}"}).scalar()
+    try:
+        t = ps.temsil_jetonu(pid, y["tenant_id"]); tj = {"Authorization": "Bearer " + t["token"]}
+        c = TestClient(api_main.app)
+        kodlar = {}
+        for yol in ("/v1/plants", "/v1/portfoy", "/v1/isler", "/v1/hakkinda", "/v1/iki-adim", "/v1/takim", "/v1/paylasimlar", "/v1/plants-arsiv",
+                    f"/v1/plants/{plant_id}/summary", f"/v1/plants/{plant_id}/forecast", "/v1/kurulus/ayarlar", "/v1/api-anahtarlari"):
+            kodlar[yol] = c.get(yol, headers=tj).status_code
+        assert all(k < 500 for k in kodlar.values()), kodlar                                   # hiçbir GET 500 vermez
+        assert kodlar["/v1/plants"] == 200 and kodlar["/v1/hakkinda"] == 200
+        assert kodlar["/v1/takim"] == 403 and kodlar["/v1/kurulus/ayarlar"] == 403 and kodlar["/v1/api-anahtarlari"] == 403   # yönetici uçları
+        assert c.post("/v1/oturum/yenile", headers=tj).status_code == 403
+        assert c.get(f"/v1/plants/{plant_id}/report?fmt=html", headers=tj).status_code == 403
+        assert c.get("/v1/yonetim/ben", headers=tj).status_code == 403
+        ps.kiraci_guncelle(pid, y["tenant_id"], status="suspended")
+        assert c.get("/v1/plants", headers=tj).status_code == 403
+        ps.kiraci_guncelle(pid, y["tenant_id"], status="active")
+    finally:
+        with sistem_baglami() as s:
+            s.execute(text("DELETE FROM denetim_izi WHERE tenant_id = CAST(:t AS uuid)"), {"t": y["tenant_id"]})
+            s.execute(text("DELETE FROM plants WHERE id = :p"), {"p": plant_id})

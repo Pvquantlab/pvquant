@@ -40,6 +40,13 @@ def pencere_basi(simdi: dt.datetime, saniye: int = PENCERE_SN) -> dt.datetime:
     return dt.datetime.fromtimestamp(epoch - epoch % saniye, tz=dt.timezone.utc)
 
 
+def pencere_temizle(saat: int = 1) -> int:
+    """26.10 denetim-3: pencere_say yalnız aynı anahtarın eski satırlarını siler; bir kez görülen her IP/anahtar süresiz kalıyordu.
+    Worker günlük temizlikte `saat` saatten eski tüm pencereleri siler; silinen satır sayısını döner."""
+    with sistem_baglami() as s:
+        return int(s.execute(text("DELETE FROM hiz_pencere WHERE pencere < now() - make_interval(hours => :h)"), {"h": int(saat)}).rowcount)
+
+
 def pencere_say(anahtar: str, saniye: int = PENCERE_SN, simdi: dt.datetime | None = None) -> int:
     """Sabit pencerede paylaşımlı artış; pencere içindeki yeni toplamı döner. Eski pencereler silinir.
     DB'ye ulaşılamazsa 0 döner (kapı açık kalır: sayaç kesintisi müşteriyi kilitlemesin; olay günlükte)."""

@@ -99,8 +99,9 @@ export const yonetim = {
   ikiAdimBaslat: (): Promise<{ secret: string; otpauth_uri: string }> => istek("/iki-adim/baslat", "POST"),
   ikiAdimDogrula: (kod: string): Promise<{ tamam: boolean }> => istek("/iki-adim/dogrula", "POST", { kod }),
   operatorler: (): Promise<{ operatorler: Operator[]; roller: string[] }> => istek("/operatorler"),
-  operatorEkle: (email: string, rol: string): Promise<Operator & { gecici_parola: string }> => istek("/operatorler", "POST", { email, rol }),
-  operatorGuncelle: (id: string, g: { rol?: string; aktif?: boolean; iki_adim_sifirla?: boolean }): Promise<{ tamam: boolean }> => istek(`/operatorler/${id}`, "PUT", g),
+  // 26.10 denetim-3: rol=sahip ve iki_adim_sifirla için aktörün parolası + kodu (yeniden doğrulama; çalınmış jeton yetmez)
+  operatorEkle: (email: string, rol: string, dogrulama?: { sifre: string; kod: string }): Promise<Operator & { gecici_parola: string }> => istek("/operatorler", "POST", { email, rol, ...dogrulama }),
+  operatorGuncelle: (id: string, g: { rol?: string; aktif?: boolean; iki_adim_sifirla?: boolean; sifre?: string; kod?: string }): Promise<{ tamam: boolean }> => istek(`/operatorler/${id}`, "PUT", g),
   kiracilar: (): Promise<{ kiracilar: Kiraci[] }> => istek("/kiracilar"),
   kiraciOlustur: (firma: string, yonetici_eposta: string, plan: string): Promise<{ tenant_id: string; user_id: string; davet_gonderildi: boolean; davet_baglantisi?: string; not?: string }> =>
     istek("/kiracilar", "POST", { firma, yonetici_eposta, plan }),
@@ -108,7 +109,7 @@ export const yonetim = {
   kiraciGuncelle: (id: string, g: { ad?: string; plan?: string; durum?: string; notlar?: string }): Promise<{ tamam: boolean }> => istek(`/kiracilar/${id}`, "PUT", g),
   kullanicilar: (q = "", limit = 100): Promise<{ kullanicilar: Kullanici[] }> => istek(`/kullanicilar?q=${encodeURIComponent(q)}&limit=${limit}`),
   kullaniciGuncelle: (id: string, g: { aktif?: boolean; rol?: string }): Promise<{ tamam: boolean }> => istek(`/kullanicilar/${id}`, "PUT", g),
-  kullaniciParolaBaglantisi: (id: string): Promise<{ gonderildi: boolean; baglanti?: string }> => istek(`/kullanicilar/${id}/parola-sifirlama`, "POST"),
+  kullaniciParolaBaglantisi: (id: string): Promise<{ gonderildi: boolean; baglanti?: string; not?: string }> => istek(`/kullanicilar/${id}/parola-sifirlama`, "POST"),
   kullaniciIkiAdimSifirla: (id: string): Promise<{ tamam: boolean }> => istek(`/kullanicilar/${id}/iki-adim-sifirla`, "POST"),
   basvurular: (): Promise<{ basvurular: Basvuru[] }> => istek("/basvurular"),
   basvuruOkundu: (id: string): Promise<{ tamam: boolean }> => istek(`/basvurular/${id}/okundu`, "POST"),

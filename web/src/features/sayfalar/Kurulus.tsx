@@ -16,7 +16,7 @@ export function Kurulus({ santralYenile }: { santralYenile?: () => void }) {
   useEffect(() => { api.santraller().then((l: SantralKisa[]) => setSantraller(l.map((s) => ({ id: s.id, ad: s.name })))).catch(() => {}); }, []);
   const yonetici = rolum() === "admin";
   return (
-    <Sayfa baslik="Kuruluş" alt="Hesap, ekip, dış erişim, kuruluşlar arası paylaşım, santral arşivi ve kiracı içi denetim izi.">
+    <Sayfa baslik="Ayarlar" alt="Hesap ve ekip, güvenlik politikası, dış erişim, kuruluşlar arası paylaşım, santral arşivi ve denetim izi.">
       <HesapVeEkip />
       {yonetici && <Politika />}
       {yonetici && <DisErisim santraller={santraller} />}

@@ -10,7 +10,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from apps.api.deps import platform_yetkisi
-from apps.api.hiz import limiter
+from apps.api.hiz import limiter, paylasimli_sinir
+import uuid as _uuid_mod
 from pvquant.services import platform_service as ps, denetim_service as dz, basvuru_service, sistem_service as ss, kullanim_service as ks
 
 yonetim = APIRouter(prefix="/v1/yonetim", tags=["Platform yönetimi"])
@@ -24,6 +25,16 @@ def _hata(e: Exception) -> HTTPException:
     return HTTPException(422, str(e))
 
 
+def _uuid(v: str | None, ad: str = "kimlik") -> str | None:
+    """26.10 denetim-3: biçimsiz UUID DB'de CAST hatasına (500) dönüyordu → 422. Boş/None olduğu gibi geçer."""
+    if v is None or v == "":
+        return None
+    try:
+        return str(_uuid_mod.UUID(str(v)))
+    except (ValueError, AttributeError, TypeError):
+        raise HTTPException(422, f"{ad} geçersiz")
+
+
 # ---------------- kimlik ----------------
 class YGiris(BaseModel):
     email: str
@@ -34,6 +45,7 @@ class YGiris(BaseModel):
 @yonetim.post("/giris")
 @limiter.limit("5/minute")
 def giris(request: Request, g: YGiris):
+    paylasimli_sinir(request, "ygiris", 5, 60)   # 26.10 denetim-3: işçiler arası 5/dk/IP
     r = ps.giris(g.email, g.sifre, g.kod)
     if r is None:
         dz.kaydet("platform", "giris_basarisiz", aktor_eposta=(g.email or "").lower()[:255], ip=_ip(request))
@@ -99,12 +111,25 @@ def iki_adim_dogrula(k: Kod, request: Request, c=Depends(platform_yetkisi())):
 class OperatorIstek(BaseModel):
     email: str
     rol: str = "operator"
+    sifre: str | None = None   # 26.10 denetim-3: rol=sahip için aktörün parolası + kodu (yeniden doğrulama)
+    kod: str | None = None
 
 
 class OperatorGuncelle(BaseModel):
     rol: str | None = None
     aktif: bool | None = None
     iki_adim_sifirla: bool = False
+    sifre: str | None = None   # 26.10 denetim-3: rol=sahip ya da iki_adim_sifirla için yeniden doğrulama
+    kod: str | None = None
+
+
+YENIDEN_DOGRULAMA_MESAJI = "yeniden doğrulama gerekli: parolanız ve iki adımlı doğrulama kodunuz"
+
+
+def _yeniden_dogrula(c: dict, sifre: str | None, kod: str | None) -> None:
+    """Hassas sahip işlemleri çalınmış jetonla yapılamasın (bağımsız kontrol 1.1: ikinci sahip açıp kurbanın 2FA'sını sıfırlama)."""
+    if not ps.yeniden_dogrula(c["sub"], sifre, kod):
+        raise HTTPException(403, YENIDEN_DOGRULAMA_MESAJI)
 
 
 @yonetim.get("/operatorler")
@@ -114,7 +139,9 @@ def operatorler(c=Depends(platform_yetkisi("sahip"))):
 
 @yonetim.post("/operatorler", status_code=201)
 def operator_ekle(p: OperatorIstek, request: Request, c=Depends(platform_yetkisi("sahip"))):
-    """Geçici parola YALNIZ bu yanıtta."""
+    """Geçici parola YALNIZ bu yanıtta. rol=sahip: aktörün parolası + kodu şart."""
+    if p.rol == "sahip":
+        _yeniden_dogrula(c, p.sifre, p.kod)
     try:
         y = ps.operator_ekle(p.email, p.rol)
     except ValueError as e:
@@ -126,13 +153,20 @@ def operator_ekle(p: OperatorIstek, request: Request, c=Depends(platform_yetkisi
 
 @yonetim.put("/operatorler/{pid}")
 def operator_guncelle(pid: str, p: OperatorGuncelle, request: Request, c=Depends(platform_yetkisi("sahip"))):
+    pid = _uuid(pid, "operatör kimliği")
+    if p.iki_adim_sifirla and pid == c["sub"]:
+        # 26.10 denetim-3: kendi 2FA'sını sıfırlamak yeniden kimlik doğrulaması olmadan yasak — ele geçirilmiş oturum TOTP'yi
+        # kendi cihazına taşıyamasın; başka bir sahip sıfırlar (platform_service belge notuyla tutarlı)
+        raise HTTPException(403, "kendi iki adımlı doğrulamanızı sıfırlayamazsınız; başka bir sahip sıfırlar")
+    if p.iki_adim_sifirla or p.rol == "sahip":
+        _yeniden_dogrula(c, p.sifre, p.kod)
     try:
         if not ps.operator_guncelle(pid, rol=p.rol, aktif=p.aktif, iki_adim_sifirla=p.iki_adim_sifirla):
             raise HTTPException(404, "operatör yok")
     except ValueError as e:
         raise _hata(e)
     dz.kaydet("platform", "operator_guncelle", aktor_id=c["sub"], aktor_eposta=c["email"], nesne_tur="platform_user", nesne_id=pid,
-              ayrinti=p.model_dump(), ip=_ip(request))
+              ayrinti=p.model_dump(exclude={"sifre", "kod"}), ip=_ip(request))   # parola/kod denetim izine ASLA
     return {"tamam": True}
 
 
@@ -160,18 +194,20 @@ def kiraci_olustur(p: KiraciIstek, request: Request, c=Depends(platform_yetkisi(
     """Kiracı + ilk yönetici; parola rastgele, kimseye gösterilmez; 72 saatlik davet bağlantısı e-postalanır
     (posta yoksa bağlantı bir kez yanıtta — denetim izine yazılmaz)."""
     try:
-        y = ps.kiraci_olustur(c["sub"], p.firma, p.yonetici_eposta, p.plan)
+        y = ps.kiraci_olustur(c["sub"], p.firma, p.yonetici_eposta, p.plan, rol=c.get("rol"))
     except ValueError as e:
         raise _hata(e)
     dz.kaydet("platform", "kiraci_olustur", aktor_id=c["sub"], aktor_eposta=c["email"], tenant_id=y["tenant_id"],
               nesne_tur="tenant", nesne_id=y["tenant_id"],
-              ayrinti={"firma": p.firma, "yonetici_eposta": p.yonetici_eposta.lower(), "plan": p.plan, "davet_gonderildi": y["davet_gonderildi"]},
+              ayrinti={"firma": p.firma, "yonetici_eposta": p.yonetici_eposta.lower(), "plan": p.plan, "davet_gonderildi": y["davet_gonderildi"],
+                       "baglanti_gosterildi": "davet_baglantisi" in y},   # 26.10 denetim-3: bağlantı elden verildiyse iz
               ip=_ip(request))
     return y
 
 
 @yonetim.get("/kiracilar/{tid}")
 def kiraci(tid: str, request: Request, c=Depends(platform_yetkisi())):
+    tid = _uuid(tid, "kiracı kimliği")
     d = ps.kiraci_detay(c["sub"], tid)
     if d is None:
         raise HTTPException(404, "kiracı yok")
@@ -182,6 +218,7 @@ def kiraci(tid: str, request: Request, c=Depends(platform_yetkisi())):
 @yonetim.put("/kiracilar/{tid}")
 def kiraci_guncelle(tid: str, p: KiraciGuncelle, request: Request, c=Depends(platform_yetkisi())):
     """Askıya alma (durum=suspended): kiracının tüm oturumları ≤60 sn içinde düşer, giriş 403 «hesap askıda»."""
+    tid = _uuid(tid, "kiracı kimliği")
     try:
         y = ps.kiraci_guncelle(c["sub"], tid, status=p.durum, plan=p.plan, ad=p.ad, notlar=p.notlar)
     except ValueError as e:
@@ -208,6 +245,7 @@ def kullanicilar(q: str = "", limit: int = 100, c=Depends(platform_yetkisi())):
 def kullanici_guncelle(uid: str, p: KullaniciGuncelle, request: Request, c=Depends(platform_yetkisi())):
     """Mevcut kiracı kuralıyla (son etkin yönetici düşürülemez) — auth_service.kullanici_guncelle."""
     from pvquant.services import auth_service
+    uid = _uuid(uid, "kullanıcı kimliği")
     k = ps.kullanici_getir(c["sub"], uid)
     if k is None:
         raise HTTPException(404, "kullanıcı yok")
@@ -222,18 +260,23 @@ def kullanici_guncelle(uid: str, p: KullaniciGuncelle, request: Request, c=Depen
 
 @yonetim.post("/kullanicilar/{uid}/parola-sifirlama")
 def kullanici_parola_sifirlama(uid: str, request: Request, c=Depends(platform_yetkisi())):
-    """Destek: 24 saatlik parola belirleme bağlantısı e-postalanır (posta yoksa bağlantı bir kez yanıtta)."""
-    y = ps.davet_gonder(c["sub"], uid, saat=24)
+    """Destek: 24 saatlik parola belirleme bağlantısı e-postalanır. Posta gitmezse bağlantı YALNIZ sahibe bir kez yanıtta
+    (26.10 denetim-3: operatör bu yoldan tam yetkili müşteri hesabına giremesin); gösterildiyse denetim ayrıntısında iz."""
+    uid = _uuid(uid, "kullanıcı kimliği")
+    k = ps.kullanici_getir(c["sub"], uid)
+    y = ps.davet_gonder(c["sub"], uid, saat=24, rol=c.get("rol")) if k else None
     if y is None:
         raise HTTPException(404, "kullanıcı yok ya da pasif")
-    dz.kaydet("platform", "parola_sifirlama_gonder", aktor_id=c["sub"], aktor_eposta=c["email"], nesne_tur="user", nesne_id=uid,
-              ayrinti={"gonderildi": y["gonderildi"]}, ip=_ip(request))
+    dz.kaydet("platform", "parola_sifirlama_gonder", aktor_id=c["sub"], aktor_eposta=c["email"], tenant_id=k["tenant_id"],
+              nesne_tur="user", nesne_id=uid, ayrinti={"gonderildi": y["gonderildi"], "baglanti_gosterildi": "baglanti" in y},
+              ip=_ip(request))
     return y
 
 
 @yonetim.post("/kullanicilar/{uid}/iki-adim-sifirla")
 def kullanici_iki_adim_sifirla(uid: str, request: Request, c=Depends(platform_yetkisi())):
     from pvquant.services import iki_adim_service
+    uid = _uuid(uid, "kullanıcı kimliği")
     k = ps.kullanici_getir(c["sub"], uid)
     if k is None or not iki_adim_service.yonetici_sifirla(k["tenant_id"], uid):
         raise HTTPException(404, "kullanıcı yok")
@@ -250,6 +293,7 @@ def basvurular(c=Depends(platform_yetkisi())):
 
 @yonetim.post("/basvurular/{bid}/okundu")
 def basvuru_okundu(bid: str, request: Request, c=Depends(platform_yetkisi())):
+    bid = _uuid(bid, "başvuru kimliği")   # 26.10 denetim-3 (bağımsız kontrol 1.2)
     if not basvuru_service.okundu_isaretle(bid):
         raise HTTPException(404, "başvuru yok")
     dz.kaydet("platform", "basvuru_okundu", aktor_id=c["sub"], aktor_eposta=c["email"], nesne_tur="basvuru", nesne_id=bid, ip=_ip(request))
@@ -260,7 +304,7 @@ def basvuru_okundu(bid: str, request: Request, c=Depends(platform_yetkisi())):
 @yonetim.get("/denetim")
 def denetim(tenant_id: str | None = None, eylem: str | None = None, kapsam: str | None = None, limit: int = 100,
             once_id: int | None = None, eylem_haric: str | None = None, c=Depends(platform_yetkisi())):
-    return {"kayitlar": dz.listele(tenant_id=tenant_id, eylem=eylem, kapsam=kapsam, limit=limit, once_id=once_id, eylem_haric=eylem_haric or None)}
+    return {"kayitlar": dz.listele(tenant_id=_uuid(tenant_id, "kiracı kimliği"), eylem=eylem, kapsam=kapsam, limit=limit, once_id=once_id, eylem_haric=eylem_haric or None)}
 
 
 # ---------------- sistem izleme (25.10 Faz 3) ----------------
@@ -274,7 +318,8 @@ def sistem(c=Depends(platform_yetkisi())):
 @yonetim.get("/isler")
 def isler(saat: int = 48, yalniz_hata: bool = False, job: str | None = None, tenant_id: str | None = None, limit: int = 200,
           plant_id: str | None = None, c=Depends(platform_yetkisi())):
-    return ss.isler(c["sub"], saat=saat, yalniz_hata=yalniz_hata, job=job or None, tenant_id=tenant_id or None, limit=limit, plant_id=plant_id or None)
+    return ss.isler(c["sub"], saat=saat, yalniz_hata=yalniz_hata, job=job or None, tenant_id=_uuid(tenant_id, "kiracı kimliği"), limit=limit,
+                    plant_id=_uuid(plant_id, "santral kimliği"))
 
 
 @yonetim.get("/santraller")
@@ -286,6 +331,7 @@ def santraller(sorunlu: bool = False, c=Depends(platform_yetkisi())):
 @yonetim.get("/kullanim")
 def kullanim(request: Request, ay: str | None = None, tenant_id: str | None = None, c=Depends(platform_yetkisi())):
     """Salt okunur: ay 'YYYY-MM' (boşsa bu ay). tenant_id verilirse o kiracının günlük kırılımı, yoksa tüm kiracıların ay özeti."""
+    tenant_id = _uuid(tenant_id, "kiracı kimliği")
     try:
         if tenant_id:
             dz.goruntule_kaydet(c["sub"], c["email"], tenant_id, ip=_ip(request))   # 25.10 O6
@@ -332,6 +378,7 @@ def plan_guncelle(ad: str, p: PlanGuncelle, request: Request, c=Depends(platform
 @yonetim.post("/kiracilar/{tid}/temsil")
 def kiraci_temsil(tid: str, request: Request, c=Depends(platform_yetkisi("sahip"))):
     """Sahip: kiracıyı müşteri gözüyle (viewer, salt okunur, 15 dk). Jeton yanıtta bir kez; denetim izine jeton YAZILMAZ."""
+    tid = _uuid(tid, "kiracı kimliği")
     try:
         y = ps.temsil_jetonu(c["sub"], tid)
     except ValueError as e:
