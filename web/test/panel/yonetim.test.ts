@@ -35,7 +35,7 @@ test("platform yüzü: koyu sabit, data-yuz=platform, nötr vurgu jetonu, sahip-
   const kok = oku("features/yonetim/Yonetim.tsx");
   assert.match(kok, /kok\.dataset\.tema = "koyu"; kok\.dataset\.yuz = "platform";/);
   const css = oku("index.css");
-  assert.match(css, /:root\[data-yuz="platform"\] \{ --marka: #5B8DEF;/);
+  assert.match(css, /:root\[data-yuz="platform"\] \{ --plat-vurgu: #5B8DEF;/);
   const liste = oku("features/yonetim/sayfaListesi.ts");
   assert.match(liste, /\{ id: "operatorler", ad: "Operatörler", sahip: true \}/);
   const kabuk = oku("features/yonetim/PlatformKabugu.tsx");
@@ -104,7 +104,7 @@ test("tablo turu: ayrıntı çipleri, müşteri adı ve seçimi, tek zaman tipog
   }
   const css = oku("index.css");
   assert.match(css, /:root\[data-yuz="platform"\] table\.veri\.santral th, :root\[data-yuz="platform"\] table\.veri\.santral td \{ text-align: left;/);
-  assert.match(css, /:root\[data-yuz="platform"\] \.zaman \{ font-family: var\(--mono\)/);
+  assert.match(css, /:root\[data-yuz="platform"\] \.zaman \{ font-family: var\(--font\); font-variant-numeric: tabular-nums/);   // 26.10 görsel uyum: gövde ailesi, tabular
   // müşteri paneli tablo kuralı değişmedi
   assert.match(css, /\ntable\.veri th \{ text-align: right;/);
   assert.match(css, /\ntable\.veri\.santral th, table\.veri\.santral td \{ width: 1%; \}/);
@@ -166,4 +166,32 @@ test("Faz 6: Ayarlar (kimlik kurulus) menüde ve App'te; Portföy yönetim kartl
   assert.match(kurulus, /\{yonetici && <DisErisim/);                                   // yazma kartları rolle
   assert.match(oku("api/client.ts"), /kurulusAyarGuncelle: \(yonetici_2fa_zorunlu: boolean\)/);
   assert.match(oku("features/yonetim/sayfalar.tsx"), /"yönetici 2FA zorunlu"/);
+});
+
+// ---------------- 26.10 görsel uyum turu (platform = müşteri tasarım sistemi) ----------------
+test("görsel uyum: platform tablolarında zaman/sayı gövde ailesi tabular, mono yalnız kimlik/IP/kod/hata; rozet tam boy; süzgeç formu kart içinde; vurgu jetonu", () => {
+  const yon = ["features/yonetim/sayfalar.tsx", "features/yonetim/Sistem.tsx", "features/yonetim/Kullanim.tsx", "features/yonetim/ortak.tsx", "features/yonetim/Planlar.tsx"];
+  for (const f of yon) {
+    const s = oku(f);
+    assert.doesNotMatch(s, /rozet-kucuk/, f);                                   // tablo rozeti müşteri paneliyle aynı kesim (12,5 px)
+    assert.doesNotMatch(s, /className="(?:[\w-]+ )?mono(?: [\w-]+)?"[^>]*><Zaman /, f);   // zaman hücresi mono sarmalda değil
+  }
+  const sis = oku("features/yonetim/Sistem.tsx");
+  assert.doesNotMatch(sis, /fontSize: 13\.5, minWidth/);                       // tablo puntosu ortak 14 px
+  assert.match(sis, /<table className="veri sayisal" style=\{\{ minWidth: 0 \}\}>/);
+  assert.match(sis, /<td className="mono" style=\{\{ \.\.\.AYRINTI/);           // hata ayrıntısı (teknik metin) mono kalır
+  const say = oku("features/yonetim/sayfalar.tsx");
+  assert.match(say, /<td className="mono">\{k\.ip \?\? "—"\}<\/td>/);          // IP mono kalır
+  assert.match(say, /<Kart baslik="Kayıtlar"[^>]*>\n\s*\{\/\* 26\.10 görsel uyum[^]*?<form className="form-izgara"/);   // Denetim süzgeci kartta
+  assert.match(say, /<Kart baslik="Sonuçlar"[^>]*>\n\s*\{\/\* 26\.10 görsel uyum[^]*?<form className="form-izgara"/);   // Kullanıcılar süzgeci kartta
+  const css = oku("index.css");
+  assert.match(css, /:root\[data-yuz="platform"\] \{ --plat-vurgu: #5B8DEF; --plat-vurgu-acik: #9DBBFF;/);
+  assert.match(css, /--marka: var\(--plat-vurgu\); --marka-koyu: var\(--plat-vurgu-acik\);/);
+  assert.match(css, /:root\[data-yuz="platform"\] \.rozet-ok \{ color: var\(--marka-koyu\); \}/);   // 4,2 → 7,2:1
+  assert.match(css, /\.plat-rozet \{[^}]*color: var\(--plat-vurgu-acik, #9DBBFF\)/);
+  assert.doesNotMatch(css, /\.plat-rozet-sari \{ opacity/);
+  assert.match(css, /:root\[data-yuz="platform"\] table\.veri td \.cip-kod \{ min-height: 0; font-size: 12\.5px;[^}]*border-radius: 6px; background: var\(--yuzey\)/);
+  // müşteri paneli jetonları ve kuralları değişmedi
+  assert.match(css, /\[data-tema="koyu"\] \{\n[^]*?--zemin: #0B0E15; --kart: #181B23;/);
+  assert.match(css, /\n\.rozet-kucuk \{ font-size: 11\.5px; padding: 2px 8px; \}/);
 });

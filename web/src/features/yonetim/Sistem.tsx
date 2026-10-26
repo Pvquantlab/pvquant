@@ -56,22 +56,22 @@ export function Sistem() {
         <SantralEnvanteri santralSec={(id, ad) => { setSecSantral({ id, ad }); document.getElementById("is-kayitlari")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} />
         <div className="ızgara-cift">
           <Kart baslik="Üretici işler" alt={`tazelik ölçütü: son başarılı koşu ${o.gece_turu.esik_saat} saatten yeni`}>
-            <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 13.5, minWidth: 0 }}>
+            <div className="grafik-kaydir"><table className="veri sayisal" style={{ minWidth: 0 }}>
               <thead><tr><th style={sol}>İş</th><th style={sol}>Son başarılı koşu</th><th>Durum</th></tr></thead>
               <tbody>{o.gece_turu.uretici_isler.map((u) => { const bayat = o.gece_turu.bayat_isler.includes(u.is); return (
-                <tr key={u.kod}><td style={sol}>{u.is}<span className="cip-kod" style={{ marginLeft: 8 }}>{u.kod}</span></td><td className="mono" style={sol}><Zaman s={u.son_ok} /></td>
-                  <td><span className={`rozet rozet-kucuk ${bayat ? "rozet-uyari" : "rozet-ok"}`}>{tazelik(bayat)}</span></td></tr>); })}</tbody>
+                <tr key={u.kod}><td style={sol}>{u.is}<span className="cip-kod" style={{ marginLeft: 8 }}>{u.kod}</span></td><td style={sol}><Zaman s={u.son_ok} /></td>
+                  <td><span className={`rozet ${bayat ? "rozet-uyari" : "rozet-ok"}`}>{tazelik(bayat)}</span></td></tr>); })}</tbody>
             </table></div>
           </Kart>
           <Kart baslik="Meteoroloji arşivi" alt="kaynak başına son indirme, nokta ve satır sayısı, kapsam">
             {o.meteo.kaynaklar.length === 0 ? <Bos bas="Arşivde kayıt yok." /> : (
-              <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 13.5, minWidth: 440 }}>
+              <div className="grafik-kaydir"><table className="veri sayisal" style={{ minWidth: 440 }}>
                 <thead><tr><th style={sol}>Kaynak</th><th style={sol}>Son indirme</th><th>Nokta</th><th>Satır</th><th style={sol}>Kapsam</th></tr></thead>
                 <tbody>{o.meteo.kaynaklar.map((k) => (
-                  <tr key={k.kaynak}><td style={sol}>{k.kaynak}{k.bayat && <span className="rozet rozet-kucuk rozet-uyari" style={{ marginLeft: 8 }}>{SOZLUK.tazelik.eski}</span>}</td>
-                    <td className="mono" style={sol}><Zaman s={k.son_indirme} sar /></td><td className="mono">{k.nokta == null ? "—" : sayiTr(k.nokta)}</td>
-                    <td className="mono">{k.satir == null ? "—" : sayiTr(k.satir)}</td>
-                    <td className="mono" style={sol}><span style={{ whiteSpace: "nowrap" }}>{tarihTr(k.ilk)}</span><br /><span style={{ whiteSpace: "nowrap" }}>→ {tarihTr(k.son_ts)}</span></td></tr>))}</tbody>
+                  <tr key={k.kaynak}><td style={sol}>{k.kaynak}{k.bayat && <span className="rozet rozet-uyari" style={{ marginLeft: 8 }}>{SOZLUK.tazelik.eski}</span>}</td>
+                    <td style={sol}><Zaman s={k.son_indirme} sar /></td><td>{k.nokta == null ? "—" : sayiTr(k.nokta)}</td>
+                    <td>{k.satir == null ? "—" : sayiTr(k.satir)}</td>
+                    <td style={sol}><span style={{ whiteSpace: "nowrap" }}>{tarihTr(k.ilk)}</span><br /><span style={{ whiteSpace: "nowrap" }}>→ {tarihTr(k.son_ts)}</span></td></tr>))}</tbody>
               </table></div>)}
           </Kart>
         </div>
@@ -97,7 +97,7 @@ function IsKayitlari({ santral, temizle }: { santral: { id: string; ad: string }
   const hataSayisi = liste ? liste.filter((x) => !x.tamam).length : 0;
   return (
     <Kart baslik="İş kayıtları" alt="tüm müşteriler; başarısız işin ayrıntısı burada görünür, müşteri panelinde görünmez" id="is-kayitlari"
-      sag={<span className="dugme-sira">{santral && <span className="rozet rozet-kucuk rozet-uyari">santral: {santral.ad} <button type="button" className="plat-rozet-kapat" aria-label="santral süzgecini kaldır" onClick={() => { temizle(); setSaat(48); setYalnizHata(false); void getir({ saat: 48, yalniz_hata: false, plant: null }); }}>×</button></span>}
+      sag={<span className="dugme-sira">{santral && <span className="rozet rozet-uyari">santral: {santral.ad} <button type="button" className="plat-rozet-kapat" aria-label="santral süzgecini kaldır" onClick={() => { temizle(); setSaat(48); setYalnizHata(false); void getir({ saat: 48, yalniz_hata: false, plant: null }); }}>×</button></span>}
         {liste && <span className="cip"><Meta items={[`${sayiTr(liste.length)} kayıt`, `${sayiTr(hataSayisi)} hata`]} /></span>}</span>}>
       <form className="form-izgara" style={{ maxWidth: 900, marginBottom: 12 }} onSubmit={(e) => { e.preventDefault(); void getir(); }}>
         <label className="girdi-etiket">Pencere<select className="girdi" value={saat} onChange={(e) => setSaat(Number(e.target.value))}>
@@ -115,10 +115,10 @@ function IsKayitlari({ santral, temizle }: { santral: { id: string; ad: string }
         <div className="grafik-kaydir"><table className="veri santral">
           <thead><tr><th>İş</th><th>Zaman</th><th>Müşteri</th><th>Santral</th><th>Süre</th><th>Durum</th><th style={AYRINTI}>Ayrıntı</th></tr></thead>
           <tbody>{liste.map((x) => (
-            <tr key={x.id}><td className="ad">{x.is}</td><td className="mono" style={{ whiteSpace: "nowrap" }}><Zaman s={x.zaman} /></td>
+            <tr key={x.id}><td className="ad">{x.is}</td><td style={{ whiteSpace: "nowrap" }}><Zaman s={x.zaman} /></td>
               <td style={{ whiteSpace: "nowrap" }}>{x.kiraci ?? (x.tenant_id ? x.tenant_id.slice(0, 8) : "—")}</td>
-              <td style={{ whiteSpace: "nowrap" }}>{x.santral ?? (x.plant_id ? x.plant_id.slice(0, 8) : "—")}</td><td className="mono" style={{ whiteSpace: "nowrap" }}>{sureTr(x.sure_sn)}</td>
-              <td><span className={`rozet rozet-kucuk ${x.tamam ? "rozet-ok" : "rozet-uyari"}`}>{isDurumu(x.tamam)}</span></td>
+              <td style={{ whiteSpace: "nowrap" }}>{x.santral ?? (x.plant_id ? x.plant_id.slice(0, 8) : "—")}</td><td style={{ whiteSpace: "nowrap" }}>{sureTr(x.sure_sn)}</td>
+              <td><span className={`rozet ${x.tamam ? "rozet-ok" : "rozet-uyari"}`}>{isDurumu(x.tamam)}</span></td>
               <td className="mono" style={{ ...AYRINTI, fontSize: 12.5, color: x.tamam ? "var(--ikincil)" : undefined }}>{x.ayrinti ?? "—"}</td></tr>))}</tbody>
         </table></div>)}
     </Kart>
@@ -144,8 +144,8 @@ function SantralEnvanteri({ santralSec }: { santralSec: (id: string, ad: string)
               <td><Zaman s={p.son_scada} /></td><td><Zaman s={p.son_kosu} /></td>
               <td>{p.son_hata ? <button type="button" className="plat-baglanti" title="İş kayıtlarında bu santralin hatalarını göster" onClick={() => santralSec(p.id, p.ad)}
                 style={Date.now() - new Date(p.son_hata).getTime() > 7 * 86400000 ? { color: "var(--soluk)" } : undefined}>{yasTr(p.son_hata)}</button> : <span className="bos">—</span>}</td>
-              <td>{p.sorunlar.length === 0 ? <span className="rozet rozet-kucuk rozet-ok">yok</span>
-                : <span className="dugme-sira">{p.sorunlar.map((s) => <span key={s} className="rozet rozet-kucuk rozet-uyari">{sorunAdi(s)}</span>)}</span>}</td></tr>))}</tbody>
+              <td>{p.sorunlar.length === 0 ? <span className="rozet rozet-ok">yok</span>
+                : <span className="dugme-sira">{p.sorunlar.map((s) => <span key={s} className="rozet rozet-uyari">{sorunAdi(s)}</span>)}</span>}</td></tr>))}</tbody>
         </table></div>)}
       {veri && sorunlu && veri.santraller.length > 0 && <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>{sayiTr(veri.santraller.length)} / {sayiTr(veri.toplam)} etkin santralde sorun var.</p>}
     </Kart>

@@ -31,7 +31,7 @@ function Hucre({ k, t, plan }: { k: keyof KullanimToplam; t: KullanimToplam; pla
   if (plan && k === "dis_api") return <LimitRozet kullanim={t.dis_api} limit={plan.aylik_dis_api_limit} />;
   if (plan && k === "rapor") return <LimitRozet kullanim={t.rapor} limit={plan.aylik_rapor_limit} />;
   const n = t[k] === 0 ? <span className="bos">0</span> : sayiTr(t[k]);
-  if (k === "webhook") return <>{n}{t.webhook_hata > 0 && <span className="rozet rozet-kucuk rozet-uyari" style={{ marginLeft: 6 }}>{sayiTr(t.webhook_hata)} hata</span>}</>;
+  if (k === "webhook") return <>{n}{t.webhook_hata > 0 && <span className="rozet rozet-uyari" style={{ marginLeft: 6 }}>{sayiTr(t.webhook_hata)} hata</span>}</>;
   return <>{n}</>;
 }
 
@@ -57,7 +57,7 @@ export function Kullanim() {
             <tbody>
               {o.kiracilar.map((k) => (
                 <tr key={k.id} className="satir-tikla" tabIndex={0} onClick={() => setSecili(k)} onKeyDown={(e) => { if (e.key === "Enter") setSecili(k); }}>
-                  <td className="ad">{k.ad}{k.durum !== "active" && <span className="rozet rozet-kucuk rozet-uyari" style={{ marginLeft: 8 }}>askıda</span>}</td><td>{k.plan}</td>
+                  <td className="ad">{k.ad}{k.durum !== "active" && <span className="rozet rozet-uyari" style={{ marginLeft: 8 }}>askıda</span>}</td><td>{k.plan}</td>
                   {KULLANIM_SUTUNLAR.map((c) => <td key={c.k}><Hucre k={c.k} t={k.bu_ay} plan={planlar[k.plan]} /><span className="hucre-alt soluk" style={{ display: "block", fontSize: 12 }}>({sayiTr(k.onceki_ay[c.k])})</span></td>)}
                   <td>{sayiTr(k.etkin_anahtar)}{k.etkin_webhook > 0 && <span className="hucre-alt soluk" style={{ display: "block", fontSize: 12 }}>{sayiTr(k.etkin_webhook)} webhook</span>}</td>
                   <td><Zaman s={k.son_api_kullanim} /></td>
@@ -82,7 +82,7 @@ function KullanimDetay({ kiraci, ay, geri }: { kiraci: KullanimKiraci; ay: strin
         {!g ? <SayfaIskeleti kpi={0} kart={1} /> : g.gunler.length === 0 ? <Bos bas="Bu ay kayıt yok." /> : (
           <div className="grafik-kaydir"><table className="veri sayisal santral">
             <thead><tr><th>Gün</th>{KULLANIM_SUTUNLAR.map((c) => <th key={c.k}>{c.ad}{c.birim && <span className="birim">{c.birim}</span>}</th>)}</tr></thead>
-            <tbody>{g.gunler.map((d) => (<tr key={d.gun}><td className="ad mono">{new Date(d.gun + "T00:00:00Z").toLocaleDateString("tr-TR", { timeZone: "UTC" })}</td>
+            <tbody>{g.gunler.map((d) => (<tr key={d.gun}><td className="ad">{new Date(d.gun + "T00:00:00Z").toLocaleDateString("tr-TR", { timeZone: "UTC" })}</td>
               {KULLANIM_SUTUNLAR.map((c) => <td key={c.k}><Hucre k={c.k} t={d} /></td>)}</tr>))}</tbody>
           </table></div>)}
       </Kart>
@@ -98,7 +98,7 @@ export function KullanimKarti({ tenantId }: { tenantId: string }) {
   return (
     <Kart baslik="Bu ay kullanım" alt={g && g !== "hata" ? `${ayAdi(g.ay)}; ayrıntı Kullanım sayfasında` : undefined}>
       {g === null ? <SayfaIskeleti kpi={0} kart={1} /> : g === "hata" ? <Bos bas="Kullanım verisi alınamadı." /> : (
-        <dl className="kunye">{KULLANIM_SUTUNLAR.map((c) => (<div key={c.k}><dt>{c.ad}{c.birim ? ` (${c.birim})` : ""}</dt><dd className="mono"><Hucre k={c.k} t={t} /></dd></div>))}</dl>)}
+        <dl className="kunye">{KULLANIM_SUTUNLAR.map((c) => (<div key={c.k}><dt>{c.ad}{c.birim ? ` (${c.birim})` : ""}</dt><dd><Hucre k={c.k} t={t} /></dd></div>))}</dl>)}
     </Kart>
   );
 }

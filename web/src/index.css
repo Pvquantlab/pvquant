@@ -503,12 +503,18 @@ table.veri.dar th + th, table.veri.dar td + td { padding-left: 28px; }
 /* ---------- 24.10 Faz 2: PLATFORM yüzü (/yonetim) ----------
    Müşteri kabuğunun ızgarası/sınıfları aynen; vurgu rengi nötr lacivert (marka yeşili müşteriye kalır) — yanlış pencerede
    işlem riskine karşı ilk bakışta ayırt edilir. Yüz koyu sabit (PlatformKabugu data-tema=koyu). */
-:root[data-yuz="platform"] { --marka: #5B8DEF; --marka-koyu: #9DBBFF; --marka-zemin: rgba(91,141,239,.16); --yan-aktif: rgba(91,141,239,.18); }
+/* 26.10 görsel uyum turu: platform vurgusu TEK jeton ailesi (--plat-vurgu*), müşteri paletinin --marka yuvalarına bağlanır;
+   zemin/yan/kart/kenar/metin jetonları müşteri koyu yüzüyle birebir (ÖLÇÜLDÜ: body #0B0E15 · yan #10131B · kart #181B23 iki panelde aynı).
+   Kontrast (kart #181B23 üstünde): --plat-vurgu-acik #9DBBFF 10,6:1 · --plat-vurgu #5B8DEF 5,2:1; rozet-ok metni aşağıda --marka-koyu'ya
+   bağlandı (önce --marka ile kendi tintinde 4,2:1 — AA altı). */
+:root[data-yuz="platform"] { --plat-vurgu: #5B8DEF; --plat-vurgu-acik: #9DBBFF; --plat-vurgu-zemin: rgba(91,141,239,.16); --plat-vurgu-kenar: rgba(91,141,239,.35);
+  --marka: var(--plat-vurgu); --marka-koyu: var(--plat-vurgu-acik); --marka-zemin: var(--plat-vurgu-zemin); --marka-r: 91,141,239; --yan-aktif: rgba(91,141,239,.18); }
+:root[data-yuz="platform"] .rozet-ok { color: var(--marka-koyu); }
 .plat-rozet { display: inline-flex; align-items: center; font-family: var(--display); font-size: 11px; font-weight: 600; letter-spacing: .12em;
-              text-transform: uppercase; color: #9DBBFF; background: rgba(91,141,239,.16); border: 1px solid rgba(91,141,239,.35);
+              text-transform: uppercase; color: var(--plat-vurgu-acik, #9DBBFF); background: var(--plat-vurgu-zemin, rgba(91,141,239,.16)); border: 1px solid var(--plat-vurgu-kenar, rgba(91,141,239,.35));
               border-radius: var(--r-hap); padding: 2px 9px; vertical-align: middle; }
-.plat-ust-rozet { font-family: var(--display); font-size: 11px; font-weight: 600; letter-spacing: .14em; color: #9DBBFF;
-                  border: 1px solid rgba(91,141,239,.45); border-radius: var(--r-hap); padding: 4px 10px; }
+.plat-ust-rozet { font-family: var(--display); font-size: 11px; font-weight: 600; letter-spacing: .14em; color: var(--plat-vurgu-acik, #9DBBFF);
+                  border: 1px solid var(--plat-vurgu-kenar, rgba(91,141,239,.35)); border-radius: var(--r-hap); padding: 4px 10px; }
 .plat-yan-rozet { display: flex; align-items: center; gap: 8px; margin: 2px 6px 14px; }
 .plat-yan-not { font-size: 12px; color: var(--yan-metin); }
 .plat-giris-marka { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-size: 20px; font-weight: 600; color: var(--metin); margin-bottom: 22px; }
@@ -527,8 +533,10 @@ textarea.girdi { resize: vertical; min-height: 72px; line-height: 1.5; }
 :root[data-yuz="platform"] table.veri.santral th:last-child, :root[data-yuz="platform"] table.veri.santral td:last-child { width: auto; }
 :root[data-yuz="platform"] table.veri.santral td.ad { white-space: nowrap; }
 :root[data-yuz="platform"] table.veri th, :root[data-yuz="platform"] table.veri td { text-align: left; }
-:root[data-yuz="platform"] table.veri td .cip-kod { min-height: 0; padding: 2px 9px; vertical-align: baseline; }
-:root[data-yuz="platform"] .zaman { font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* 26.10 görsel uyum turu: tabloda eylem/iş kodu .kod diliyle (mono 12,5 px, hafif zemin, 6 px köşe) — hap değil, çıplak mono da değil;
+   zaman hücreleri gövde ailesinde tabular (müşteri Ekip tablosunun «Son giriş» kesimi); mono yalnız kimlik/IP/kod/hata metninde kalır. */
+:root[data-yuz="platform"] table.veri td .cip-kod { min-height: 0; font-size: 12.5px; padding: 1px 7px; border: 0; border-radius: 6px; background: var(--yuzey); vertical-align: baseline; }
+:root[data-yuz="platform"] .zaman { font-family: var(--font); font-variant-numeric: tabular-nums; white-space: nowrap; }
 :root[data-yuz="platform"] .zaman--sar { white-space: normal; }
 :root[data-yuz="platform"] .plat-ayrinti-sutun { white-space: normal; min-width: 180px; }
 :root[data-yuz="platform"] td.plat-aktor { white-space: normal; overflow-wrap: anywhere; max-width: 210px; }   /* uzun e-posta 1440'ta kaydırma açmasın */
@@ -539,7 +547,13 @@ textarea.girdi { resize: vertical; min-height: 72px; line-height: 1.5; }
 .plat-saglik { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 14px; padding: 10px 12px; border: 1px solid var(--kenar); border-radius: var(--rk); background: var(--kart); }
 .plat-saglik--tikla { width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; }
 .plat-saglik--tikla:hover { border-color: var(--marka); }
-.plat-rozet-sari { opacity: .8; }
+.plat-rozet-sari { background: var(--amber-zemin); color: var(--amber-metin); }   /* 26.10 görsel uyum: saydamlık yerine amber jetonu (koyu yüzde 8,3:1) */
+/* 26.10 görsel uyum (375 px ölçümü): kart başlığının sağ yuvasındaki sayaç çipi («5 kayıt | 1 hata») dar ekranda sözcük sözcük
+   dikey kırılıyordu (.meta ≤560 kuralı) — platform yüzünde başlık satırı sarar, çip tek parça kalır; müşteri paneli kuralı dokunulmadı. */
+@media (max-width: 560px) {
+  :root[data-yuz="platform"] .kart-bas { flex-wrap: wrap; }
+  :root[data-yuz="platform"] .kart-bas .cip, :root[data-yuz="platform"] .kart-bas .meta > span { white-space: nowrap; }
+}
 /* 26.10 denetim-2: sayfa başlığı sağ yuvası dar ekranda alta sarar — Tahminler'de «güncellenemedi» çipi + 4 ufuk sekmesi 375'te 132 px taşıyordu */
 @media (max-width: 560px) { .sayfa-bas { flex-wrap: wrap; } }
 /* 26.10 Faz 5: müşteri kabuğunda platform görüntüleme şeridi — yalnız temsil işaretiyle görünür */

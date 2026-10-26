@@ -30,7 +30,7 @@ export function Planlar() {
           sag={<span className="cip" title="son değişiklik"><Zaman s={p.guncelleme} /></span>}>   {/* tek tarih, yerel saat (UTC kesiti çiple çelişiyordu) */}
           <form className="form-izgara" onSubmit={(e) => { e.preventDefault(); void kaydet(p); }}>
             {ALANLAR.map((a) => (
-              <label key={a.k} className="girdi-etiket">{a.ad}<span className="birim" style={{ marginLeft: 4 }}>{a.birim}</span>
+              <label key={a.k} className="girdi-etiket"><span>{a.ad} <span className="soluk">{a.birim}</span></span>   {/* 26.10 görsel uyum: etiket+birim tek satır (flex sütununda ayrı satıra düşüyordu) */}
                 <input className="girdi" type="number" min={0} step={1} inputMode="numeric" placeholder="sınırsız" value={deger(p, a.k)}
                   onChange={(e) => setTaslak((t) => ({ ...t, [p.ad]: { ...(t[p.ad] ?? {}), [a.k]: e.target.value } }))} /></label>))}
             <button className="dugme dugme-ana" type="submit" disabled={!taslak[p.ad]}>Kaydet</button>

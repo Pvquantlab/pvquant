@@ -13,5 +13,5 @@ export function LimitRozet({ kullanim, limit }: { kullanim: number; limit: numbe
   if (limit == null) return <span className="soluk" title="plan sınırsız">{sayiTr(kullanim)}</span>;
   const oran = limit === 0 ? (kullanim > 0 ? 2 : 0) : kullanim / limit;
   const sinif = oran >= 1 ? "rozet-uyari" : oran >= 0.8 ? "rozet-uyari plat-rozet-sari" : "rozet-notr";
-  return <span className={`rozet rozet-kucuk ${sinif}`} title={oran >= 1 ? "plan limiti aşıldı (uyarı; kısıt yok)" : `plan limiti ${sayiTr(limit)}`}>{sayiTr(kullanim)} / {sayiTr(limit)}{oran >= 1 && " aşıldı"}</span>;
+  return <span className={`rozet ${sinif}`} title={oran >= 1 ? "plan limiti aşıldı (uyarı; kısıt yok)" : `plan limiti ${sayiTr(limit)}`}>{sayiTr(kullanim)} / {sayiTr(limit)}{oran >= 1 && " aşıldı"}</span>;
 }
