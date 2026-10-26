@@ -533,10 +533,15 @@ textarea.girdi { resize: vertical; min-height: 72px; line-height: 1.5; }
 :root[data-yuz="platform"] table.veri.santral th:last-child, :root[data-yuz="platform"] table.veri.santral td:last-child { width: auto; }
 :root[data-yuz="platform"] table.veri.santral td.ad { white-space: nowrap; }
 :root[data-yuz="platform"] table.veri th, :root[data-yuz="platform"] table.veri td { text-align: left; }
-/* 26.10 görsel uyum turu: tabloda eylem/iş kodu .kod diliyle (mono 12,5 px, hafif zemin, 6 px köşe) — hap değil, çıplak mono da değil;
-   zaman hücreleri gövde ailesinde tabular (müşteri Ekip tablosunun «Son giriş» kesimi); mono yalnız kimlik/IP/kod/hata metninde kalır. */
-:root[data-yuz="platform"] table.veri td .cip-kod { min-height: 0; font-size: 12.5px; padding: 1px 7px; border: 0; border-radius: 6px; background: var(--yuzey); vertical-align: baseline; }
+/* 26.10 görsel uyum turu: zaman hücreleri gövde ailesinde tabular (müşteri Ekip tablosunun «Son giriş» kesimi).
+   27.10: platform tablolarında mono KALMADI — eylem/iş kodu .rozet.rozet-notr (Inter Tight 500 12,5 px, kenarlı hap), kimlik/IP düz
+   gövde metni; denetim ayrıntı çipleri (müşteri Kuruluş'la ortak bileşen) yalnız platform yüzünde aynı rozet kesimine alınır. */
 :root[data-yuz="platform"] .zaman { font-family: var(--font); font-variant-numeric: tabular-nums; white-space: nowrap; }
+:root[data-yuz="platform"] .plat-ayrinti__cip { font-family: var(--display); font-size: 12.5px; font-weight: 500; line-height: 1.3; color: var(--ikincil);
+                                               border-radius: var(--r-hap); padding: 4px 10px; font-variant-numeric: tabular-nums; }   /* rozetle aynı 26 px */
+:root[data-yuz="platform"] .plat-ayrinti__cip b { font-weight: 500; color: var(--soluk); }
+/* 27.10: üst çubuk tarihi de platformda gövde ailesi tabular — platform yüzünde mono metin düğümü 0 (müşteri kabuğu dokunulmadı) */
+:root[data-yuz="platform"] .ust-tarih { font-family: var(--font); font-variant-numeric: tabular-nums; }
 :root[data-yuz="platform"] .zaman--sar { white-space: normal; }
 :root[data-yuz="platform"] .plat-ayrinti-sutun { white-space: normal; min-width: 180px; }
 :root[data-yuz="platform"] td.plat-aktor { white-space: normal; overflow-wrap: anywhere; max-width: 210px; }   /* uzun e-posta 1440'ta kaydırma açmasın */

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { hesapDurumu, tazelik } from "../../lib/sozluk";
+import { hesapDurumu, tazelik, eylemAdi, SOZLUK } from "../../lib/sozluk";
 import { yonetim, zamanTr, yasTr, type Plan, type SistemOzet, type Kiraci, type KiraciDetay, type Kullanici, type Operator, type Basvuru, type DenetimKaydi, type Ben } from "../../api/yonetim";
 import { Kart, Kpi, Sayfa, SayfaIskeleti, sayiTr, gucTr } from "../sayfalar/parcalar";
 import { Meta } from "../../lib/Meta";
@@ -78,7 +78,7 @@ export function GenelBakis({ git }: { git: (s: "musteriler" | "basvurular" | "de
         <Kpi etiket="Etkin kullanıcı" deger={sayiTr(k.reduce((a, x) => a + x.kullanici, 0))} alt="tüm müşteriler" />
         <Kpi etiket="Okunmamış başvuru" deger={sayiTr(b.filter((x) => !x.okundu).length)} alt={`${sayiTr(b.length)} toplam`} ton={b.some((x) => !x.okundu) ? "uyari" : undefined} />
       </div>
-      <Kart baslik="Son işlemler" alt="Denetim izinin son 12 kaydı; görüntüleme izleri (kiraci_goruntule) yalnız Denetim izi sayfasında" sag={<button className="dugme kucuk" onClick={() => git("denetim")}>Tümü</button>}>
+      <Kart baslik="Son işlemler" alt={`Denetim izinin son 12 kaydı; «${eylemAdi("kiraci_goruntule")}» izleri yalnız Denetim izi sayfasında`} sag={<button className="dugme kucuk" onClick={() => git("denetim")}>Tümü</button>}>
         {d.length === 0 ? <Bos bas="Henüz kayıt yok." /> : <DenetimTablosu kayitlar={d} />}
       </Kart>
     </Sayfa>
@@ -266,11 +266,11 @@ function DenetimTablosu({ kayitlar }: { kayitlar: DenetimKaydi[] }) {
   return (
     <div className="grafik-kaydir"><table className="veri santral">
       <thead><tr><th>Zaman</th><th>Kapsam</th><th>Eylem</th><th>Aktör</th><th>Müşteri</th><th>Nesne</th><th>IP</th><th className="plat-ayrinti-sutun">Ayrıntı</th></tr></thead>
-      <tbody>{kayitlar.map((k) => (<tr key={k.id}><td className="ad"><Zaman s={k.zaman} /></td><td>{k.kapsam === "musteri" ? "müşteri" : k.kapsam}</td><td><span className="cip-kod">{k.eylem}</span></td>
+      <tbody>{kayitlar.map((k) => (<tr key={k.id}><td className="ad"><Zaman s={k.zaman} /></td><td>{k.kapsam === "musteri" ? "müşteri" : k.kapsam}</td><td><span className="rozet rozet-notr" title={k.eylem}>{eylemAdi(k.eylem)}</span></td>
         <td className="plat-aktor">{k.aktor_eposta ?? (k.aktor_id ? k.aktor_id.slice(0, 8) : "—")}</td>
-        <td>{k.kiraci_ad ?? (k.tenant_id ? <span className="mono" title={k.tenant_id}>{k.tenant_id.slice(0, 8)}</span> : "—")}</td>
-        <td>{k.nesne_tur ? <>{k.nesne_tur}{k.nesne_id && <span className="mono soluk" title={k.nesne_id} style={{ display: "block", fontSize: 12 }}>{k.nesne_id.slice(0, 8)}</span>}</> : "—"}</td>
-        <td className="mono">{k.ip ?? "—"}</td><td className="plat-ayrinti-sutun"><AyrintiCipleri a={k.ayrinti} /></td></tr>))}</tbody>
+        <td>{k.kiraci_ad ?? (k.tenant_id ? <span title={k.tenant_id}>{k.tenant_id.slice(0, 8)}</span> : "—")}</td>
+        <td>{k.nesne_tur ? <>{k.nesne_tur}{k.nesne_id && <span className="soluk" title={k.nesne_id} style={{ display: "block", fontSize: 12.5 }}>{k.nesne_id.slice(0, 8)}</span>}</> : "—"}</td>
+        <td>{k.ip ?? "—"}</td><td className="plat-ayrinti-sutun"><AyrintiCipleri a={k.ayrinti} /></td></tr>))}</tbody>
     </table></div>
   );
 }
@@ -289,7 +289,8 @@ export function Denetim() {
         {/* 26.10 görsel uyum: süzgeç formu kartın içinde (Sistem/İş kayıtları ile aynı kalıp) */}
         <form className="form-izgara" style={{ maxWidth: 760, marginTop: 0, marginBottom: 16 }} onSubmit={(e) => { e.preventDefault(); void getir(); }}>
           <label className="girdi-etiket">Kapsam<select className="girdi" value={kapsam} onChange={(e) => setKapsam(e.target.value)}><option value="">tümü</option><option value="platform">platform</option><option value="musteri">müşteri</option></select></label>
-          <label className="girdi-etiket">Eylem<input className="girdi" value={eylem} onChange={(e) => setEylem(e.target.value)} placeholder="ör. giris, kiraci_guncelle" /></label>
+          <label className="girdi-etiket">Eylem<select className="girdi" value={eylem} onChange={(e) => setEylem(e.target.value)}>
+          <option value="">tümü</option>{Object.entries(SOZLUK.eylem).map(([kod, ad]) => <option key={kod} value={kod}>{ad}</option>)}</select></label>
           <label className="girdi-etiket">Müşteri<select className="girdi" value={tenant} onChange={(e) => setTenant(e.target.value)}>
             <option value="">tümü</option>{kiracilar.map((k) => <option key={k.id} value={k.id}>{k.ad}</option>)}</select></label>
           <button className="dugme" type="submit">Süz</button>

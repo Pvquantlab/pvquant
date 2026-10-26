@@ -61,3 +61,36 @@ pytest koşulmadı: Python tarafında değişiklik yok (yalnız web/ ve betik).
 - Müşteri panelinin Kuruluş denetim tablosu zamanları hâlâ mono (`className="mono"`); müşteri paneli bu turda bilerek
   değiştirilmedi — istenirse aynı kesime (gövde tabular) alınır.
 - Firefox/WebKit koşulmadı (yalnız Chrome); açık tema platformda yok (yüz koyu sabit, tasarım kararı).
+
+## 27.10 — tipografi tamamlama turu (yerel, commit edilmedi)
+Kullanıcı bulgusu: Eylem / Ayrıntı sütunlarındaki mono çipler tablonun geri kalanıyla bütünleşmiyor. Platform tablolarında mono
+tamamen kalktı; teknik değerlerin içeriği değişmedi, yalnız görünümü.
+- `sayfalar.tsx` Denetim tablosu: eylem = mevcut `rozet rozet-notr` (Inter Tight 500 12,5 px, kenarlı hap — «pasif/okundu» rozetiyle aynı);
+  tenant/nesne kimliği ve IP düz gövde metni (tablo tabular).
+- `Sistem.tsx`: üretici iş kodu aynı nötr rozet; iş hatası ayrıntısı gövde ailesi 13,5 px.
+- `index.css` (yalnız `data-yuz="platform"`): denetim ayrıntı çipleri `.plat-ayrinti__cip` rozet kesimine (Inter Tight 500 12,5 px, hap,
+  4 px 10 px → 26 px, rozetle aynı yükseklik); üst çubuk tarihi gövde ailesi tabular. Müşteri Kuruluş sayfasındaki aynı bileşen
+  dokunulmadı (bekçi testi `.plat-ayrinti__cip … var(--mono)` kuralını pinler). Artık kullanılmayan platform `.cip-kod` tablo kuralı silindi.
+- Testler: 3 pin yeni gerçeğe göre güncellendi.
+
+Üç aşamalı görsel kontrol (sahte API + vite preview, Chrome):
+1. 1440 px, 10 platform sayfası: mono metin düğümü **0** (önce sayfa başına 1–16); Denetim'de `.rozet` ve `.plat-ayrinti__cip` hesaplanmış stil
+   birebir (Inter Tight 12,5 px 500, lh 16,25, #D2D5DC, yüzey .07, 999 px, 4 px 10 px, 26 px). Müşteri sayfalarında mono değişmedi
+   (Santralim 24, Ayarlar 21 — referans).
+2. 375/768/1024/1440/1920: 50 platform ölçümü taşma 0, iskelet 0, alert 0; 375'te Denetim tablosu kaydırmalı, rozetler tek parça.
+3. Kareler gözle (Genel bakış, Denetim izi, Sistem 1440; Denetim 375): tek yazı ailesi; kapılar `tsc -b` 0, build tamam, web 99/99,
+   oxlint 16/0. pytest koşulmadı (Python değişmedi).
+
+## 27.10 — eylem sözlüğü turu (yerel, commit edilmedi)
+Teknik işlem kodları yerine Türkçe adlar; kodlar API/DB sözleşmesi olarak aynen kalır (süzgeç değeri, `title`, denetim yazımı değişmedi).
+- `web/src/lib/sozluk.ts` — `SOZLUK.eylem` (29 kod: 16 platform + 13 müşteri; kaynak `denetim_service.EYLEMLER_*`, tüm `kaydet(...)`
+  çağrıları ve sunucu CLI betikleri `parola_sifirla_cli`/`eposta_degistir_cli`) + `eylemAdi(kod)` (bilinmeyen kod olduğu gibi).
+- `sayfalar.tsx` — Denetim/Genel bakış tablosunda eylem = Türkçe ad (nötr rozet, kod `title`'da); Eylem süzgeci serbest metin yerine
+  sözlükten seçim (değer = kod); Genel bakış alt metni «kiraci_goruntule» yerine sözlük adı.
+- `Sistem.tsx` — Üretici işler: ad zaten `ISIM_TR` Türkçesi; yanındaki kod çipi kalktı (kod `title`'da).
+- Bekçi: `yonetim.test.ts` yeni test arka uçtaki her eylem kodunu (tuple'lar + kaydet çağrıları) sözlükle kıyaslar; eksik varsa kırmızı.
+Üç kontrol turu (sahte API + üretim derlemesi, Chrome): (1) görünür metinde alt çizgili kod taraması 10 sayfa — kalan yalnız Sistem'deki
+iş hatası metni «uzlastirma_service.py:76» (gerçek hata ayrıntısı, çevrilmez); (2) 375/768/1440 → 30 ölçüm taşma 0, alert 0, mono 0,
+rozet Inter Tight 500 12,5 px / 26 px, en uzun ad «İki adımlı doğrulama açıldı» 161 px tek satır; (3) kareler gözle (Denetim 1440/375,
+Genel bakış, Sistem 768) + yerel dev sunucu (canlı API) hatasız açıldı. Kapılar: tsc 0, web 100/100, oxlint 16/0. Müşteri Kuruluş
+denetim tablosu kod gösterir (bu turda dokunulmadı; aynı `eylemAdi` ile bağlanabilir).

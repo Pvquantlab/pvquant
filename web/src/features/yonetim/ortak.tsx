@@ -3,7 +3,7 @@ import { sayiTr } from "../sayfalar/parcalar";
 export { AyrintiCipleri } from "../../lib/AyrintiCipleri";   // 26.10 Faz 6: müşteri Kuruluş sayfasıyla ortak
 
 /** 25.10 denetim tablo turu (O1/O3) — platform tablolarının ortak hücre bileşenleri.
- *  Zaman: tek tipografi (mono, tabular; CSS .zaman). AyrintiCipleri: denetim ayrıntısı ham JSON yerine anahtar: değer çipleri. */
+ *  Zaman: tek tipografi (gövde ailesi, tabular; CSS .zaman — 26.10 görsel uyum). AyrintiCipleri: denetim ayrıntısı ham JSON yerine anahtar: değer çipleri. */
 export function Zaman({ s, sar }: { s: string | null | undefined; sar?: boolean }) {
   return <span className={sar ? "zaman zaman--sar" : "zaman"}>{zamanTr(s)}</span>;   // sar: dar hücrede tarih/saat iki satıra kırılabilir
 }

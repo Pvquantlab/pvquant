@@ -179,9 +179,11 @@ test("görsel uyum: platform tablolarında zaman/sayı gövde ailesi tabular, mo
   const sis = oku("features/yonetim/Sistem.tsx");
   assert.doesNotMatch(sis, /fontSize: 13\.5, minWidth/);                       // tablo puntosu ortak 14 px
   assert.match(sis, /<table className="veri sayisal" style=\{\{ minWidth: 0 \}\}>/);
-  assert.match(sis, /<td className="mono" style=\{\{ \.\.\.AYRINTI/);           // hata ayrıntısı (teknik metin) mono kalır
+  assert.doesNotMatch(sis, /className="mono"/);                                // 27.10: platform tablolarında mono yok
+  assert.match(sis, /<span title=\{u\.kod\}>\{u\.is\}<\/span>/);   // 27.10: Türkçe ad, kod başlıkta
   const say = oku("features/yonetim/sayfalar.tsx");
-  assert.match(say, /<td className="mono">\{k\.ip \?\? "—"\}<\/td>/);          // IP mono kalır
+  assert.doesNotMatch(say, /className="mono/);                                  // 27.10: kimlik/IP düz gövde metni
+  assert.match(say, /<td><span className="rozet rozet-notr" title=\{k\.eylem\}>\{eylemAdi\(k\.eylem\)\}<\/span><\/td>/);   // eylem = Türkçe ad, nötr rozet
   assert.match(say, /<Kart baslik="Kayıtlar"[^>]*>\n\s*\{\/\* 26\.10 görsel uyum[^]*?<form className="form-izgara"/);   // Denetim süzgeci kartta
   assert.match(say, /<Kart baslik="Sonuçlar"[^>]*>\n\s*\{\/\* 26\.10 görsel uyum[^]*?<form className="form-izgara"/);   // Kullanıcılar süzgeci kartta
   const css = oku("index.css");
@@ -190,8 +192,30 @@ test("görsel uyum: platform tablolarında zaman/sayı gövde ailesi tabular, mo
   assert.match(css, /:root\[data-yuz="platform"\] \.rozet-ok \{ color: var\(--marka-koyu\); \}/);   // 4,2 → 7,2:1
   assert.match(css, /\.plat-rozet \{[^}]*color: var\(--plat-vurgu-acik, #9DBBFF\)/);
   assert.doesNotMatch(css, /\.plat-rozet-sari \{ opacity/);
-  assert.match(css, /:root\[data-yuz="platform"\] table\.veri td \.cip-kod \{ min-height: 0; font-size: 12\.5px;[^}]*border-radius: 6px; background: var\(--yuzey\)/);
+  assert.match(css, /:root\[data-yuz="platform"\] \.plat-ayrinti__cip \{ font-family: var\(--display\); font-size: 12\.5px; font-weight: 500;/);
+  assert.match(css, /\n\.plat-ayrinti__cip \{ display: inline-flex;[^}]*font-family: var\(--mono\)/);   // müşteri Kuruluş çipi değişmedi
   // müşteri paneli jetonları ve kuralları değişmedi
   assert.match(css, /\[data-tema="koyu"\] \{\n[^]*?--zemin: #0B0E15; --kart: #181B23;/);
   assert.match(css, /\n\.rozet-kucuk \{ font-size: 11\.5px; padding: 2px 8px; \}/);
+});
+
+// ---------------- 27.10 eylem sözlüğü ----------------
+test("eylem sözlüğü: arka uçtaki her denetim eylem kodu Türkçe karşılık taşır; süzgeç sözlükten seçer, değer koddur", () => {
+  const kok = (p: string) => readFileSync(new URL(`../../../${p}`, import.meta.url), "utf8");
+  const soz = oku("lib/sozluk.ts");
+  const blok = soz.slice(soz.indexOf("eylem: {"), soz.indexOf("} as Record<string, string>,\n} as const;"));   // yalnız eylem bloğu
+  const sozlukKodlari = new Set([...blok.matchAll(/([a-z0-9_]+): "[^"]+"/g)].map((m) => m[1]));
+  const ds = kok("src/pvquant/services/denetim_service.py");
+  const kodlar = new Set<string>();
+  for (const m of ds.matchAll(/EYLEMLER_(?:PLATFORM|MUSTERI) = \(([^)]*)\)/g)) for (const k of m[1].matchAll(/"([a-z0-9_]+)"/g)) kodlar.add(k[1]);
+  for (const f of ["apps/api/yonetim.py", "apps/api/main.py", "src/pvquant/services/platform_service.py", "src/pvquant/services/denetim_service.py"]) {
+    for (const m of kok(f).matchAll(/kaydet\(\s*"(?:platform|musteri)",\s*"([a-z0-9_]+)"/g)) kodlar.add(m[1]);
+  }
+  assert.ok(kodlar.size >= 25, `arka uçta ${kodlar.size} kod bulundu`);
+  const eksik = [...kodlar].filter((k) => !sozlukKodlari.has(k));
+  assert.deepEqual(eksik, [], "sözlükte karşılığı olmayan eylem kodları");
+  assert.match(soz, /export const eylemAdi = \(kod: string\) => SOZLUK\.eylem\[kod\] \?\? kod;/);   // bilinmeyen kod olduğu gibi
+  const say = oku("features/yonetim/sayfalar.tsx");
+  assert.match(say, /Object\.entries\(SOZLUK\.eylem\)\.map\(\(\[kod, ad\]\) => <option key=\{kod\} value=\{kod\}>\{ad\}<\/option>\)/);
+  assert.doesNotMatch(say, /placeholder="ör\. giris/);
 });

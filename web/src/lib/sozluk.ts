@@ -17,9 +17,26 @@ export const SOZLUK = {
   /** hesap ve kullanıcı durumları */
   hesapDurumu: { active: "etkin", suspended: "askıda" } as Record<string, string>,
   kullaniciDurumu: { aktif: "etkin", pasif: "pasif" },
+  /** 27.10 — denetim izi eylem kodları (denetim_izi.eylem; kaynak denetim_service.EYLEMLER_* + kaydet çağrıları + sunucu CLI betikleri).
+   *  Kod API/DB sözleşmesidir, değişmez; burada yalnız görünen Türkçe karşılığı. Sözlükte olmayan kod olduğu gibi gösterilir. */
+  eylem: {
+    // platform (PVQuant personeli)
+    giris: "Giriş", giris_basarisiz: "Başarısız giriş",
+    kiraci_olustur: "Müşteri hesabı açıldı", kiraci_guncelle: "Müşteri güncellendi", kiraci_goruntule: "Müşteri görüntülendi",
+    kiraci_temsil: "Müşteri gözüyle görüntüleme", kullanici_guncelle: "Kullanıcı güncellendi",
+    parola_sifirlama_gonder: "Parola bağlantısı gönderildi", parola_sifirla_cli: "Parola sıfırlandı (sunucu)", eposta_degistir_cli: "E-posta değiştirildi (sunucu)",
+    iki_adim_ac: "İki adımlı doğrulama açıldı", iki_adim_sifirla: "İki adımlı doğrulama sıfırlandı",
+    basvuru_okundu: "Başvuru okundu", operator_ekle: "Operatör eklendi", operator_guncelle: "Operatör güncellendi", plan_guncelle: "Plan güncellendi",
+    // müşteri (kuruluş ekibi)
+    takim_ekle: "Ekip üyesi eklendi", takim_guncelle: "Ekip üyesi güncellendi", takim_iki_adim_sifirla: "Ekip üyesi 2FA sıfırlandı",
+    anahtar_uret: "API anahtarı üretildi", anahtar_iptal: "API anahtarı iptal edildi", webhook_ekle: "Webhook eklendi", webhook_sil: "Webhook silindi",
+    santral_arsivle: "Santral arşivlendi", santral_geri_al: "Santral arşivden alındı", scada_sil: "SCADA verisi silindi",
+    parola_degistir: "Parola değiştirildi", kurulus_ayar: "Kuruluş ayarı değiştirildi",
+  } as Record<string, string>,
 } as const;
 
 export const isDurumu = (tamam: boolean) => (tamam ? SOZLUK.isDurumu.tamam : SOZLUK.isDurumu.basarisiz);
 export const tazelik = (bayat: boolean) => (bayat ? SOZLUK.tazelik.eski : SOZLUK.tazelik.guncel);
 export const sorunAdi = (kod: string) => SOZLUK.sorun[kod] ?? kod;
 export const hesapDurumu = (durum: string) => SOZLUK.hesapDurumu[durum] ?? durum;
+export const eylemAdi = (kod: string) => SOZLUK.eylem[kod] ?? kod;

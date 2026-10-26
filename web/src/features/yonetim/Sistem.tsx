@@ -59,7 +59,7 @@ export function Sistem() {
             <div className="grafik-kaydir"><table className="veri sayisal" style={{ minWidth: 0 }}>
               <thead><tr><th style={sol}>İş</th><th style={sol}>Son başarılı koşu</th><th>Durum</th></tr></thead>
               <tbody>{o.gece_turu.uretici_isler.map((u) => { const bayat = o.gece_turu.bayat_isler.includes(u.is); return (
-                <tr key={u.kod}><td style={sol}>{u.is}<span className="cip-kod" style={{ marginLeft: 8 }}>{u.kod}</span></td><td style={sol}><Zaman s={u.son_ok} /></td>
+                <tr key={u.kod}><td style={sol}><span title={u.kod}>{u.is}</span></td><td style={sol}><Zaman s={u.son_ok} /></td>
                   <td><span className={`rozet ${bayat ? "rozet-uyari" : "rozet-ok"}`}>{tazelik(bayat)}</span></td></tr>); })}</tbody>
             </table></div>
           </Kart>
@@ -119,7 +119,7 @@ function IsKayitlari({ santral, temizle }: { santral: { id: string; ad: string }
               <td style={{ whiteSpace: "nowrap" }}>{x.kiraci ?? (x.tenant_id ? x.tenant_id.slice(0, 8) : "—")}</td>
               <td style={{ whiteSpace: "nowrap" }}>{x.santral ?? (x.plant_id ? x.plant_id.slice(0, 8) : "—")}</td><td style={{ whiteSpace: "nowrap" }}>{sureTr(x.sure_sn)}</td>
               <td><span className={`rozet ${x.tamam ? "rozet-ok" : "rozet-uyari"}`}>{isDurumu(x.tamam)}</span></td>
-              <td className="mono" style={{ ...AYRINTI, fontSize: 12.5, color: x.tamam ? "var(--ikincil)" : undefined }}>{x.ayrinti ?? "—"}</td></tr>))}</tbody>
+              <td style={{ ...AYRINTI, fontSize: 13.5, color: x.tamam ? "var(--ikincil)" : undefined }}>{x.ayrinti ?? "—"}</td></tr>))}</tbody>
         </table></div>)}
     </Kart>
   );
