@@ -62,7 +62,7 @@ pytest koşulmadı: Python tarafında değişiklik yok (yalnız web/ ve betik).
   değiştirilmedi — istenirse aynı kesime (gövde tabular) alınır.
 - Firefox/WebKit koşulmadı (yalnız Chrome); açık tema platformda yok (yüz koyu sabit, tasarım kararı).
 
-## 27.10 — tipografi tamamlama turu (yerel, commit edilmedi)
+## 27.10 — tipografi tamamlama turu = v2.498 CANLI (2b32e98, CI #604 4 dk 23 sn; yalnız web imajı)
 Kullanıcı bulgusu: Eylem / Ayrıntı sütunlarındaki mono çipler tablonun geri kalanıyla bütünleşmiyor. Platform tablolarında mono
 tamamen kalktı; teknik değerlerin içeriği değişmedi, yalnız görünümü.
 - `sayfalar.tsx` Denetim tablosu: eylem = mevcut `rozet rozet-notr` (Inter Tight 500 12,5 px, kenarlı hap — «pasif/okundu» rozetiyle aynı);
@@ -81,7 +81,8 @@ tamamen kalktı; teknik değerlerin içeriği değişmedi, yalnız görünümü.
 3. Kareler gözle (Genel bakış, Denetim izi, Sistem 1440; Denetim 375): tek yazı ailesi; kapılar `tsc -b` 0, build tamam, web 99/99,
    oxlint 16/0. pytest koşulmadı (Python değişmedi).
 
-## 27.10 — eylem sözlüğü turu (yerel, commit edilmedi)
+## 27.10 — eylem sözlüğü turu = v2.498 CANLI
+**Canlı kanıt:** index.html birebir, 22/22 JS/CSS sha256 referans derlemeyle aynı, `/yonetim` 200, canlı `sozluk-*.js` parçasında Türkçe eylem adları; sunucuda `git pull` + `docker compose build web` + `up -d --force-recreate web` (api/worker/alembic dokunulmadı). CI durumu bu kez tarayıcı panelinden okundu (anonim curl tuzağı yok).
 Teknik işlem kodları yerine Türkçe adlar; kodlar API/DB sözleşmesi olarak aynen kalır (süzgeç değeri, `title`, denetim yazımı değişmedi).
 - `web/src/lib/sozluk.ts` — `SOZLUK.eylem` (29 kod: 16 platform + 13 müşteri; kaynak `denetim_service.EYLEMLER_*`, tüm `kaydet(...)`
   çağrıları ve sunucu CLI betikleri `parola_sifirla_cli`/`eposta_degistir_cli`) + `eylemAdi(kod)` (bilinmeyen kod olduğu gibi).
