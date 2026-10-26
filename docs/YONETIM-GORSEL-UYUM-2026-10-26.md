@@ -1,4 +1,10 @@
-# Yönetici paneli görsel uyum turu — 26.10.2026 (yerel, commit edilmedi)
+# Yönetici paneli görsel uyum turu — 26.10.2026 = v2.497 CANLI
+
+**Mühür:** 0555bde (v2.497), CI #602 yeşil (test 4 dk 22 sn + web), sunucuda `git pull` + `docker compose build web` +
+`up -d --force-recreate web` (23:50; api/worker/alembic dokunulmadı). **Canlı kanıt:** index.html birebir, 22/22 JS/CSS sha256
+referans derlemeyle aynı, `/yonetim` 200, canlı CSS'te `--plat-vurgu`, `.zaman{font-family:var(--font)}`, `.rozet-ok{color:var(--marka-koyu)}`;
+canlı Yonetim parçasında `rozet-kucuk` 0. DERS: anonim `curl` ile çekilen Actions HTML'i bayat/eksik «In progress» etiketi verdi, CI
+çoktan bitmişken 40 dk beklendi — CI durumunu tarayıcı panelinden (oturumlu) oku, metin işaretlerine güvenme.
 
 Müşteri paneli tasarım referansı alındı; /yonetim yüzü aynı jeton ve bileşen diline oturtuldu. İş mantığı, API, veri akışı
 dokunulmadı; müşteri paneli CSS kuralları değişmedi (ölçümle doğrulandı, aşağıda).
