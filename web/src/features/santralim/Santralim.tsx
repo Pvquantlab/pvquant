@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useDamgaSurumu } from "../../shell/damgaOlay";
 import type { PrKarti, Saglik, AlarmKurallari, FizikTerimleri, FizikOnizleme, Kullanilabilirlik, Tarife } from "../../api/types";
 import { SEGMENTLER } from "../../api/types";
 import type { EChartsOption } from "echarts";
@@ -58,22 +59,23 @@ export function Santralim({ plantId }: { plantId: string }) {
   const [gy, setGy] = useState<GunesYolu | null>(null);
   const [sam, setSam] = useState<SaatAyMatrisi | null>(null);
   const { n, oku } = useTema();
+  const ds = useDamgaSurumu();   // 26.10 eşzamanlama: damga (yeni koşu/ölçüm/fiyat/iş) değişince veri efektleri yeniden koşar
   const [oHata, setOHata] = useState(false);   // 26.10 denetim-3: özet alınamazsa iskelet sonsuza dek kalıyordu (yakalanmamış ret)
   useEffect(() => { setO(bellekten.ozet(plantId) ?? null); setOHata(false);
-    api.ozet(plantId).then((v) => setO((e) => ayniysaEskisi(e, v)), () => setOHata(true)); }, [plantId]);
-  useEffect(() => { setSeri(bellekten.tahmin(plantId, "16d") ?? null); api.tahmin(plantId, "16d").then((v) => setSeri((e) => ayniysaEskisi(e, v))).catch(() => {}); }, [plantId]);   // v2.365: kosusuz santralda 404 gurultusuz // v2.166: D1 — tam seri cek, istemcide "24h" dilimle (Tahminler kalibi)
-  useEffect(() => { api.gunesYolu(plantId).then(setGy).catch(() => {}); }, [plantId]);
-  useEffect(() => { api.saatAyMatrisi(plantId).then(setSam).catch(() => {}); }, [plantId]);
-  useEffect(() => { api.pr(plantId).then(setPr).catch(() => {}); }, [plantId]);   // v2.249
+    api.ozet(plantId).then((v) => setO((e) => ayniysaEskisi(e, v)), () => setOHata(true)); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setSeri(bellekten.tahmin(plantId, "16d") ?? null); api.tahmin(plantId, "16d").then((v) => setSeri((e) => ayniysaEskisi(e, v))).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps   // v2.365: kosusuz santralda 404 gurultusuz // v2.166: D1 — tam seri cek, istemcide "24h" dilimle (Tahminler kalibi)
+  useEffect(() => { api.gunesYolu(plantId).then(setGy).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { api.saatAyMatrisi(plantId).then(setSam).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { api.pr(plantId).then(setPr).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps   // v2.249
   const [sg, setSg] = useState<Saglik | null>(null);   // v2.256
   const [seg, setSeg] = useState<{ segment: string | null; dengesizlik_sahibi: string | null } | null>(null);   // v2.260
-  useEffect(() => { api.dengesizlik(plantId, 14).then((d) => d && setSeg({ segment: d.segment.segment, dengesizlik_sahibi: d.segment.dengesizlik_sahibi })).catch(() => {}); }, [plantId]);
-  useEffect(() => { api.saglik(plantId).then(setSg).catch(() => {}); }, [plantId]);
+  useEffect(() => { api.dengesizlik(plantId, 14).then((d) => d && setSeg({ segment: d.segment.segment, dengesizlik_sahibi: d.segment.dengesizlik_sahibi })).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { api.saglik(plantId).then(setSg).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   // v2.274 (Dalga 3 tamamlayıcısı): fizik terimleri — santral bazında aç/kapa + "açsam ne değişir?" önizlemesi
   const [ft, setFt] = useState<FizikTerimleri | null>(null);
   const [ftOn, setFtOn] = useState<FizikOnizleme | null>(null);
   const [ftMesaj, setFtMesaj] = useState<string | null>(null);
-  useEffect(() => { api.fizikTerimleri(plantId).then(setFt).catch(() => {}); }, [plantId]);
+  useEffect(() => { api.fizikTerimleri(plantId).then(setFt).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   const [ftSon, setFtSon] = useState<Record<string, string>>({});
   const ftDegistir = (k: string, v: string) => {
     setFtMesaj(null); setFtOn(null); setFtSon({ [k]: v });
@@ -94,7 +96,7 @@ export function Santralim({ plantId }: { plantId: string }) {
   };
   // v2.281: kullanılabilirlik (otomatik tespit) + tarife/gelir yapılandırması
   const [ku, setKu] = useState<Kullanilabilirlik | null>(null);
-  useEffect(() => { api.kullanilabilirlik(plantId).then(setKu).catch(() => {}); }, [plantId]);
+  useEffect(() => { api.kullanilabilirlik(plantId).then(setKu).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   const [tarife, setTarife] = useState<Tarife>({ tip: "sabit" });
   const [tarifeMesaj, setTarifeMesaj] = useState<string | null>(null);
   // v2.312: sayı alanları METİN olarak yaşar. Doğrudan Number(e.target.value) yazmak
@@ -102,7 +104,7 @@ export function Santralim({ plantId }: { plantId: string }) {
   // için kutuda "NaN" görünüyordu; (b) alan silinince Number("")=0 → kutu 0'a atlıyor
   // ve Kaydet'e basılırsa 0 TL/MWh KAYDEDİLİYORDU.
   const [tarifeMetin, setTarifeMetin] = useState<Record<string, string>>({});
-  useEffect(() => { api.tarife(plantId).then((t) => { if (t) { setTarife(t); setTarifeMetin({}); } }).catch(() => {}); }, [plantId]);
+  useEffect(() => { api.tarife(plantId).then((t) => { if (t) { setTarife(t); setTarifeMetin({}); } }).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   /** "1250,5" ve "1.250,5" Türkçe yazımlarını okur; boş/bozuk girdi undefined döner (0 uydurmaz). */
   const sayiOku = (s: string): number | undefined => {
     const t = s.trim().replace(/\s/g, "");
@@ -136,7 +138,7 @@ export function Santralim({ plantId }: { plantId: string }) {
       .catch((e) => setTarifeMesaj(String((e as Error).message ?? e)));
   };
   const [ak, setAk] = useState<AlarmKurallari | null>(null);   // v2.265: ek alarm kuralları (opt-in)
-  useEffect(() => { api.alarmKurallari(plantId).then(setAk).catch(() => {}); }, [plantId]);
+  useEffect(() => { api.alarmKurallari(plantId).then(setAk).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   const akDegistir = (kural: string, acik: boolean) => {
     if (!ak) return;
     const k = acik ? [...ak.secili, kural] : ak.secili.filter((x) => x !== kural);

@@ -130,15 +130,4 @@ export const yonetim = {
   temsil: (tenant_id: string): Promise<Temsil> => istek(`/kiracilar/${tenant_id}/temsil`, "POST"),
 };
 /** Göreli yaş: «3 dk önce», «5 saat önce», «2 gün önce»; null «—». Hüküm değil, okunurluk. */
-export function yasTr(s: string | null | undefined, simdi = Date.now()): string {
-  if (!s) return "—";
-  const dk = Math.max(0, Math.round((simdi - new Date(s).getTime()) / 60000));
-  if (dk < 60) return `${dk} dk önce`;
-  if (dk < 48 * 60) return `${Math.round(dk / 60)} saat önce`;
-  return `${Math.round(dk / 1440)} gün önce`;
-}
-
-/** Tarih/saat kısa (tr-TR) — null «—» */
-export function zamanTr(s: string | null | undefined): string {
-  return s ? new Date(s).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }) : "—";
-}
+export { yasTr, zamanTr } from "../lib/bicim";   // 26.10 ortak sözlük: iki panel aynı biçimleyici

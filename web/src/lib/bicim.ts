@@ -15,3 +15,18 @@ export function sayiBicimi(yerel: string, secenek: Intl.NumberFormatOptions): In
   if (!b) { b = new Intl.NumberFormat(yerel, secenek); sayilar.set(k, b); }
   return b;
 }
+
+
+/** 26.10 ortak sözlük — göreli yaş: «3 dk önce», «10 saat önce», «2 gün önce» (iki panel aynı eşikler: 60 dk, 48 saat). */
+export function yasTr(s: string | null | undefined, simdi = Date.now()): string {
+  if (!s) return "—";
+  const dk = Math.max(0, Math.round((simdi - new Date(s).getTime()) / 60000));
+  if (dk < 60) return `${dk} dk önce`;
+  if (dk < 48 * 60) return `${Math.round(dk / 60)} saat önce`;
+  return `${Math.round(dk / 1440)} gün önce`;
+}
+
+/** 26.10 ortak sözlük — kısa tarih-saat «26.10.2026 12:33» (tarayıcının yerel saati; iki panel de yerel saat gösterir). */
+export function zamanTr(s: string | null | undefined): string {
+  return s ? new Date(s).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }) : "—";
+}

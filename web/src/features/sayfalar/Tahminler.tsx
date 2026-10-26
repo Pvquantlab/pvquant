@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useDamgaSurumu } from "../../shell/damgaOlay";
 import { api, bellekten, ayniysaEskisi } from "../../api/client";
 import type { SantralOzeti, TahminSerisi, KgupOnizleme, Nowcast } from "../../api/types";
 import { Kart, Sayfa, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
@@ -31,6 +32,7 @@ const UFUK = { "24h": "24s", "72h": "72s", "7d": "7g", "16d": "15g" } as const;
 const GRAFIK_OZELLIKLERI = { exportButtons: true } as const;  // v2.228: PNG/CSV — SaaS eylemi
 
 export function Tahminler({ plantId }: { plantId: string }) {
+  const ds = useDamgaSurumu();   // 26.10 eşzamanlama
   const [ufuk, setUfuk] = useState<Ufuk>("7d");
   // 24.10 açık tema geçiş turu — BEŞ İSTEK BAĞIMSIZ, BAYAT-ÖNCE (Portföy kalıbı). v2.327'nin tek kapısı grafiği KGÜP
   // önizleme/nowcast/koşu listesine bekletiyordu. Şimdi grafik, tahmin serisi + özet gelir gelmez; program, kısa ufuk ve
@@ -62,7 +64,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
       setBantYazisi((!b ? "" : b.kaynak === "gefs" ? `${sayiTr(b.uye ?? 0)} üyeli hava tahmini topluluğundan türetilen aralık` : "model aralığı") + sy + gi || null);
     }, () => { if (acik) setBantYazisi(null); });
     return () => { acik = false; };
-  }, [plantId]);
+  }, [plantId, ds]);   // 26.10 eşzamanlama: damga değişince yeniden çekilir
   // sayfa, seri ve özet ikisi de bilinince (bellekten ya da ağdan) çizilir; biri alınamadıysa boş durum
   const hazir = (seri !== undefined || cekD.seri !== "bekliyor") && (ozet !== undefined || cekD.ozet !== "bekliyor");
   const tazeleniyor = hazir && (cekD.seri === "bekliyor" || cekD.ozet === "bekliyor");

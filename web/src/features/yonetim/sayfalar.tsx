@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { hesapDurumu, tazelik } from "../../lib/sozluk";
 import { yonetim, zamanTr, yasTr, type Plan, type SistemOzet, type Kiraci, type KiraciDetay, type Kullanici, type Operator, type Basvuru, type DenetimKaydi, type Ben } from "../../api/yonetim";
 import { Kart, Kpi, Sayfa, SayfaIskeleti, sayiTr, gucTr } from "../sayfalar/parcalar";
 import { Meta } from "../../lib/Meta";
@@ -13,7 +14,7 @@ function Hata({ m }: { m: string | null }) { return m ? <p role="alert" classNam
 function Bos({ bas, alt }: { bas: string; alt?: string }) { return <div className="bos-durum"><div className="bos-bas">{bas}</div>{alt && <p>{alt}</p>}</div>; }
 const mesajCikar = (e: unknown) => String((e as Error).message ?? e);
 function DurumRozet({ durum }: { durum: string }) {
-  return <span className={`rozet rozet-kucuk ${durum === "active" ? "rozet-ok" : "rozet-uyari"}`}>{durum === "active" ? "etkin" : durum === "suspended" ? "askıda" : durum}</span>;
+  return <span className={`rozet rozet-kucuk ${durum === "active" ? "rozet-ok" : "rozet-uyari"}`}>{hesapDurumu(durum)}</span>;
 }
 const ROL_AD: Record<string, string> = { admin: "Yönetici", editor: "Editör", viewer: "İzleyici", sahip: "Sahip", operator: "Operatör" };
 
@@ -44,7 +45,7 @@ function SaglikSeridi({ sis, git }: { sis: SistemOzet | null | "hata"; git: () =
   return (
     <button type="button" className="plat-saglik plat-saglik--tikla" onClick={git} title="Sistem sayfasını aç">
       <R ok={sis.nabiz.durum === "calisiyor"} ad="zamanlayıcı" deger={sis.nabiz.durum === "calisiyor" ? "çalışıyor" : sis.nabiz.durum === "sessiz" ? "sessiz" : "nabız yok"} />
-      <R ok={sis.gece_turu.taze} ad="gece turu" deger={sis.gece_turu.taze ? "taze" : "bayat"} />
+      <R ok={sis.gece_turu.taze} ad="gece işlemleri" deger={tazelik(!sis.gece_turu.taze)} />
       <R ok={!yedekSorun} ad="yedek" deger={yasTr(sis.yedek.son_basarili)} />
       <span className="soluk" style={{ fontSize: 13 }}>Sistem →</span>
     </button>
@@ -180,7 +181,7 @@ function MusteriDetay({ id, geri, sahip }: { id: string; geri: () => void; sahip
       <Kart baslik="Santraller" alt="Kapasite, saat dilimi, son SCADA verisi, son tahmin koşusu">
         {d.santraller.length === 0 ? <Bos bas="Santral yok." /> : (
           <div className="grafik-kaydir"><table className="veri sayisal santral">
-            <thead><tr><th>Santral</th><th>Kapasite<span className="birim">kWp</span></th><th>Saat dilimi</th><th>Son SCADA</th><th>Son koşu</th><th>Durum</th></tr></thead>
+            <thead><tr><th>Santral</th><th>Kapasite<span className="birim">kWp</span></th><th>Saat dilimi</th><th>Son veri<span className="birim">SCADA</span></th><th>Son tahmin</th><th>Durum</th></tr></thead>
             <tbody>{d.santraller.map((s) => (<tr key={s.id}><td className="ad">{s.ad}</td><td>{gucTr(s.kapasite_kwp)}</td><td>{s.tz}</td><td><Zaman s={s.son_scada} /></td><td><Zaman s={s.son_kosu} /></td>
               <td>{s.arsivli ? <span className="rozet rozet-kucuk rozet-notr">arşivde</span> : <span className="rozet rozet-kucuk rozet-ok">etkin</span>}</td></tr>))}</tbody>
           </table></div>)}

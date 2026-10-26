@@ -3,6 +3,7 @@
  *  node sahte-api.mjs [port=4807] ; GET /_log istek günlüğü (zaman, yol), POST /_sifirla günlüğü temizler. */
 import http from "node:http";
 const PORT = Number(process.argv[2] ?? 4807);
+let DAMGA_SURUM = 1;   // 26.10 eşzamanlama sınaması
 const LAT = { "/v1/portfoy": 270, "/v1/portfoy/tahmin": 400, "/v1/portfoy/dsg": 1000, "/v1/plants": 60, "/v1/oturum/yenile": 60 };
 const gunluk = [];
 const santral = (id, ad, kwp, wm, b, y, al, son, kes) => ({ id, ad, kapasite_kwp: kwp, tz: "Europe/Istanbul", segment: null, son_olcum: son, kesinti_gun: kes, wmape_30g: wm, bugun_kwh: b, yarin_kwh: y, acik_alarm: al, son_kosu: "2026-10-23T15:42:00Z" });
@@ -15,13 +16,13 @@ const DSG = { santral: 5, n_saat: 480, ayri_tl: 412300, net_tl: 301900, kazanc_t
 const PLANTS = PORTFOY.santraller.map((s) => ({ id: s.id, name: s.ad, capacity_kwp: s.kapasite_kwp, tz: s.tz }));
 http.createServer((req, res) => {
   const url = new URL(req.url, "http://x"); const yol = url.pathname; const t = performance.now();
-  res.setHeader("Access-Control-Allow-Origin", "*"); res.setHeader("Access-Control-Allow-Headers", "authorization,content-type"); res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+  res.setHeader("Access-Control-Allow-Origin", "*"); res.setHeader("Access-Control-Allow-Headers", "authorization,content-type,if-none-match"); res.setHeader("Access-Control-Expose-Headers", "ETag"); res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
   if (req.method === "OPTIONS") { res.writeHead(204); return res.end(); }
   if (yol === "/_log") { res.setHeader("content-type", "application/json"); return res.end(JSON.stringify(gunluk)); }
   if (yol === "/_sifirla") { gunluk.length = 0; return res.end("ok"); }
   gunluk.push({ t: Math.round(performance.now()), m: req.method, yol: yol + url.search });
   const gec = LAT[yol] ?? 60;
-  const yanit = (kod, govde) => setTimeout(() => { res.writeHead(kod, { "content-type": "application/json" }); res.end(JSON.stringify(govde)); }, gec);
+  const yanit = (kod, govde, ek = {}) => setTimeout(() => { res.writeHead(kod, { "content-type": "application/json", "cache-control": "no-cache", ...ek }); res.end(JSON.stringify(govde)); }, gec);
   // ---- 24.10 Faz 2: platform yönetimi (/v1/yonetim/*) — kareler için; PLATFORM_2FA=1 → sahip 2FA açık
   const PJ = "x." + Buffer.from('{"sub":"p1","kapsam":"platform","rol":"sahip","sv":0}').toString("base64url") + ".y";
   const totpAcik = !!process.env.PLATFORM_2FA;
@@ -131,6 +132,21 @@ http.createServer((req, res) => {
   if (yol === "/v1/portfoy/tahmin") return yanit(process.env.TAHMIN_OK ? 200 : 500, process.env.TAHMIN_OK ? { durum: "ok", yontem: "bottom-up", tutarli: true, gunler: [{ gun: "2026-10-24", p50_mwh: 1798.7, p10_mwh: 1600, p90_mwh: 1950, saat: 24 }], not: "Santral tahminleri toplanır." } : { detail: "Internal Server Error" });
   if (yol === "/v1/portfoy/dsg") return yanit(200, DSG);
   if (yol === "/v1/plants") return yanit(200, PLANTS);
+  // 26.10 eşzamanlama sınaması: damga ucu (ETag/304) + kontrol ucu; __kontrol/damga her çağrıda damgayı değiştirir, özetin
+  // bugün beklenen değeri de sürümle artar → tarayıcı testi «damga değişince sayfa yeniden çekti mi» sorusunu ölçer
+  if (yol === "/__kontrol/damga") { DAMGA_SURUM += 1; return yanit(200, { surum: DAMGA_SURUM }); }
+  if (/^\/v1\/plants\/[^/]+\/damga$/.test(yol)) {
+    const et = `W/"sahte-${DAMGA_SURUM}"`;
+    if (req.headers["if-none-match"] === et) { res.writeHead(304, { ETag: et }); return res.end(); }
+    return yanit(200, { son_kosu: `2026-10-26T09:33:00+00:00`, surum: DAMGA_SURUM }, { ETag: et });
+  }
+  if (/^\/v1\/plants\/[^/]+\/summary$/.test(yol)) return yanit(200, {   // OzetYanit biçimi (client.ts uyarlaOzet); bugün değeri damga sürümüyle artar
+    plant: { id: "a1", name: "Edikli GES", capacity_kwp: 15230, ac_limit_kw: 10000, lat: 38.2856, lon: 34.9628, tz: "Europe/Istanbul", tilt: 25, azimuth: 180, panel_tech: "bifacial" },
+    mode: null, sapma_pct: null, anlati: "Yarın beklenen üretim bugünden %36 düşük.", bugun_kwh: 69760 + DAMGA_SURUM, yarin_kwh: 44891, yarin_hava: "2,8 kWh/m² ışınım",
+    hafta_mwh: 359.1, model_alt: "", kalibrasyon_tarihi: null,
+    hava: [{ gun: "BUGÜN", derece: 20.4, kwhm2: 4.0 }, { gun: "YARIN", derece: 16.8, kwhm2: 2.8 }, { gun: "ÇAR", derece: 18.0, kwhm2: 3.5 }],
+    gunler: [{ etiket: "Pzt", mwh: 69.8 }, { etiket: "Sal", mwh: 44.9 }], saglik: { son_scada: "2026-10-25T20:00:00+00:00", islenen_saat: 24, anomali: 0 },
+    aylik: [{ ay: "2026-09", mwh: 1800, saglam_saat: 700, kapsam_pct: 97, beklenti_mwh: 1750 }], damga_surum: DAMGA_SURUM });
   if (yol === "/v1/oturum/yenile") return yanit(200, { token: "x." + Buffer.from('{"role":"admin"}').toString("base64url") + ".y", role: "admin", firma: "Deneme Lab", email: "deneme@example.com" });
   if (yol === "/v1/api-anahtarlari") return yanit(200, { anahtarlar: [], kapsamlar: ["tahmin:oku", "kgup:oku"] });
   if (yol === "/v1/webhooklar") return yanit(200, { webhooklar: [] });
@@ -140,7 +156,7 @@ http.createServer((req, res) => {
   if (yol === "/v1/iki-adim") return yanit(200, { aktif: false, kalan_kurtarma: 0 });
   if (yol === "/v1/vitrin/basvurular") return yanit(200, { basvurular: [] });
   if (yol === "/v1/kullanicilar") return yanit(200, []);
-  if (/^\/v1\/plants\/[^/]+\/alerts/.test(yol) || /alarm/.test(yol)) return yanit(200, []);
+  if (/^\/v1\/plants\/[^/]+\/alerts/.test(yol) || /\/alarmlar/.test(yol)) return yanit(200, []);   // 26.10: alarm-kurallari nesne bekler → 404 (sayfa null yolu)
   if (/^\/v1\/plants\/[^/]+\/runs/.test(yol) || /kosu/.test(yol)) return yanit(200, []);
   return yanit(404, { detail: "yok" });
 }).listen(PORT, "127.0.0.1", () => console.log("sahte api", PORT));

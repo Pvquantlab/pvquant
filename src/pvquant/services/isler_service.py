@@ -23,6 +23,7 @@ ISIM_TR = {
     "gece_yedek": "Veritabanı yedeği",           # v2.337
     "acilis_yedek": "Açılış yedek yakalaması",   # v2.339
     "iklim_yakalama": "İklim beklentisi ilk doldurma",  # v2.359
+    "denetim_temizlik": "Denetim izi temizliği",   # 26.10 eşzamanlama: v2.491'den beri etiketsizdi, platform tablosunda ham kod görünüyordu
 }
 # her gece koşması beklenen çekirdek grup — hiçbiri son 24 saatte yoksa işçi uyarısı verilir
 GECE_GRUBU = ("gece_meteo", "sabah_tahmin", "gece_skill", "gunluk_beklenti")

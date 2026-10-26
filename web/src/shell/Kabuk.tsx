@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { SOZLUK } from "../lib/sozluk";
 import { api, type AlarmSatiri, rolum } from "../api/client";
 import { IkiAdimBolumu } from "../features/sayfalar/Kurulus";   // 26.10 Faz 6: 2FA kurulum kapısı
 import type { SantralOzeti, Kullanici } from "../api/types";
@@ -358,13 +359,13 @@ export function Kabuk({ sayfa, tiklanan, setSayfa, santral, plantId, onCikis, ch
                 {sg.son_scada === null
                   ? "SCADA verisi henüz yüklenmedi"
                   : <Meta items={[
-                      <span key="son-veri"><span className="meta-et">son veri</span>{sg.son_scada}</span>,
+                      <span key="son-veri"><span className="meta-et">{SOZLUK.sonVeri}</span>{sg.son_scada}</span>,
                       gecikti ? <span key="gecikme" className="meta-uyari">{sg.kesinti_gun} gündür yeni veri yok</span> : "veri akışı sağlıklı",
                     ]} />}
               </span>
               {sonKosu !== undefined && (
                 <span>{sonKosu
-                  ? `son tahmin ${trKosu(sonKosu)}` : "henüz tahmin yok"}</span>
+                  ? `${SOZLUK.sonTahmin} ${trKosu(sonKosu)}` : "henüz tahmin yok"}</span>
               )}
               <span className="tele-sag">
                 {/* v2.265: 'tazelenir' iddiası ancak damga yoklaması gerçekten çalışıyorsa yazılır */}
@@ -372,7 +373,7 @@ export function Kabuk({ sayfa, tiklanan, setSayfa, santral, plantId, onCikis, ch
                   `model ${ozet.model_adi}${ozet.mod ? `, Mod ${ozet.mod}` : ""}`,
                   ozet.son_kalibrasyon && `kalibrasyon ${ozet.son_kalibrasyon}`,
                   ozet.sapma_pct !== null && `sapma %${sayiTr(ozet.sapma_pct, 2)}`,
-                  sonYoklama && `son kontrol ${sonYoklama.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}`,
+                  sonYoklama && `${SOZLUK.sonKontrol} ${sonYoklama.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}`,
                 ]} />
               </span>
             </div>

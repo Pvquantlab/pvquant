@@ -84,6 +84,13 @@ function getir<T>(yol: string): Promise<T> {
  *  yolun bellekteki SON başarılı yanıtını yaşına bakmadan döner; getir'in 60 sn tazelik kuralı DEĞİŞMEZ. Sayfa dönüşte
  *  önce bunu çizer, getir ile tazeler ve tazelenirken bunu söyler («güncelleniyor»). Hesap sınırı aynı: cikis() ve her
  *  yazma belleği boşaltır; örnek kipte bellek yoktur (undefined). */
+/** 26.10 eşzamanlama — damga değişince çağrılır: kayıtlar SİLİNMEZ, yaşı sıfırlanır; bayat-önce okuyucu (bellekten) son yanıtı
+ *  çizmeye devam eder, getir ise 60 sn kuralına takılmadan ağa çıkar. Eski kusur: damga değişimi 60 sn içinde gelirse yeniden
+ *  çekim bellekten dönüyor, panel yeni koşuyu/ölçümü bir sonraki değişime dek göremiyordu. */
+export function bellekEskit(): void {
+  for (const [k, v] of bellekte) bellekte.set(k, { veri: v.veri, zaman: 0 });
+}
+
 export function bellektenOku<T>(yol: string): T | undefined {
   if (TABAN == null) return undefined;
   return bellekte.get(yol)?.veri as T | undefined;

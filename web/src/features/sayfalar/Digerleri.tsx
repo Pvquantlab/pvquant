@@ -1,4 +1,6 @@
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
+import { isDurumu } from "../../lib/sozluk";
+import { useDamgaSurumu } from "../../shell/damgaOlay";
 import type { EChartsOption } from "echarts";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
@@ -623,6 +625,7 @@ export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
 }
 
 export function Kalibrasyon({ plantId }: { plantId: string }) {
+  const ds = useDamgaSurumu();   // 26.10 eşzamanlama
   // 24.10 açık tema geçiş turu — BEŞ İSTEK BAĞIMSIZ, BAYAT-ÖNCE (Portföy kalıbı). v2.327'nin tek kapısı KPI'ları en yavaş
   // isteğe (hava verisi tutarlılığı, hijyen) bekletiyordu. Şimdi kalibrasyon özeti gelir gelmez başlık + KPI'lar + sonuç
   // kartları; hijyen/kayma/kayıp zinciri/güç matrisi kartları kendi yanıtlarını boyutlu yer tutucuyla bekler. Bellekte son
@@ -644,7 +647,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
     api.kayipAgaci(plantId).then((v) => { if (acik) setKa(v); }, () => { if (acik) setKa(null); });
     api.gucMatrisi(plantId).then((v) => { if (acik) setGm(v); }, () => { if (acik) setGm(null); });
     return () => { acik = false; };
-  }, [plantId]);
+  }, [plantId, ds]);   // 26.10 eşzamanlama
   const yuklendi = k !== undefined || kD !== "bekliyor";
   const tazeleniyor = yuklendi && kD === "bekliyor";
   const sr = (a: string, b: string) => <tr key={a}><td>{a}</td><td className="mono">{b}</td></tr>;
@@ -877,9 +880,10 @@ export function Raporlar({ plantId }: { plantId: string }) {
   const [uretilen, setUretilen] = useState<string | null>(null);
   const [hata, setHata] = useState<string | null>(null);
 
+  const ds = useDamgaSurumu();   // 26.10 eşzamanlama
   useEffect(() => {
     api.kosular(plantId).then(setKosular).catch(() => {});
-  }, [plantId]);
+  }, [plantId, ds]);
 
   const MODEL_AD: Record<string, string> = {
     hybrid_residual: "Hibrit", barhdadi_bennis: "Fizik",
@@ -1065,7 +1069,8 @@ function VerinizSizindirKarti({ plantId }: { plantId: string }) {
  *  Hata ayrıntısı bilerek yok (yalnız günlükte); hüküm tamam/düştü. */
 function GeceIsleriKarti() {
   const [j, setJ] = useState<Isler | null>(null);
-  useEffect(() => { api.isler().then(setJ).catch(() => {}); }, []);
+  const ds = useDamgaSurumu();   // 26.10 eşzamanlama: yeni iş kaydı damgayı değiştirir
+  useEffect(() => { api.isler().then(setJ).catch(() => {}); }, [ds]);
   if (!j) return null;
   const zaman = (t: string) => new Date(t).toLocaleString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   return (
@@ -1084,7 +1089,7 @@ function GeceIsleriKarti() {
               <td style={{ textAlign: "left" }}>{x.is}</td>
               <td className="mono" style={{ textAlign: "left" }}>{zaman(x.zaman)}</td>
               <td className="mono">{x.sure_sn == null ? "—" : x.sure_sn >= 60 ? `${sayiTr(x.sure_sn / 60, 1)} dk` : `${sayiTr(x.sure_sn, 1)} sn`}</td>
-              <td style={{ color: x.tamam ? undefined : "var(--uyari-metin)", fontWeight: x.tamam ? undefined : 600 }}>{x.tamam ? "tamam" : "başarısız"}</td>
+              <td style={{ color: x.tamam ? undefined : "var(--uyari-metin)", fontWeight: x.tamam ? undefined : 600 }}>{isDurumu(x.tamam)}</td>
             </tr>))}</tbody>
         </table></div>
       )}

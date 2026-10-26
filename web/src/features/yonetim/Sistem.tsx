@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { SOZLUK, isDurumu, tazelik, sorunAdi } from "../../lib/sozluk";
 import { yonetim, yasTr, type SistemOzet, type IsKaydi, type SantralEnvanter, type Kiraci } from "../../api/yonetim";
 import { Zaman } from "./ortak";
 import { Kart, Kpi, Sayfa, SayfaIskeleti, sayiTr, gucTr } from "../sayfalar/parcalar";
@@ -13,7 +14,7 @@ function Hata({ m }: { m: string | null }) { return m ? <p role="alert" classNam
 function Bos({ bas, alt }: { bas: string; alt?: string }) { return <div className="bos-durum"><div className="bos-bas">{bas}</div>{alt && <p>{alt}</p>}</div>; }
 const boyutTr = (bayt: number) => bayt >= 1024 ** 3 ? `${sayiTr(bayt / 1024 ** 3, 2)} GB` : `${sayiTr(bayt / 1024 ** 2, 1)} MB`;
 const sureTr = (sn: number | null) => sn == null ? "—" : sn >= 60 ? `${sayiTr(sn / 60, 1)} dk` : `${sayiTr(sn, 1)} sn`;
-const SORUN_AD: Record<string, string> = { scada_yok: "SCADA yok", scada_bayat: "SCADA eski", kosu_yok: "koşu yok", kosu_bayat: "koşu eski", kiraci_askida: "müşteri askıda" };
+// 26.10 ortak sözlük: sorun adları, tazelik ve iş durumu sözcükleri lib/sozluk'tan (müşteri paneliyle aynı dil)
 const sol = { textAlign: "left" as const };
 /** Ayrıntı sütunu: .santral tablosunda öbür sütunlar 1 % (içerik genişliği); hata metni okunacak gerçek yer ister. */
 const AYRINTI = { textAlign: "left" as const, whiteSpace: "normal" as const, width: "38%", minWidth: 240 };
@@ -28,28 +29,28 @@ export function Sistem() {
   useEffect(() => { yonetim.sistem().then(setO).catch((e) => setHata(mesajCikar(e))); }, [sayac]);
   if (!o && !hata) return <Sayfa baslik="Sistem"><SayfaIskeleti kpi={6} kart={2} /></Sayfa>;
   return (
-    <Sayfa baslik="Sistem" alt="Zamanlayıcı, gece turu, veri tazeliği ve yedek; tüm müşterilerin iş kayıtları ve santralleri."
+    <Sayfa baslik="Sistem" alt="Zamanlayıcı, gece işlemleri, veri tazeliği ve yedek; tüm müşterilerin iş kayıtları ve santralleri."
       sag={<span className="dugme-sira">{o && <span className="cip"><Meta items={[`veritabanı ${boyutTr(o.db.boyut_bayt)}`, `${sayiTr(o.santral.etkin)} etkin santral`, `${sayiTr(o.santral.arsivli)} arşivli`]} /></span>}
         <button className="dugme kucuk" onClick={() => { setO(null); setHata(null); setSayac((x) => x + 1); }}>Yenile</button></span>}>
       <Hata m={hata} />
       {o && <>
         <div className="ızgara satir-3" style={{ marginBottom: 14 }}>
-          <Kpi etiket="Zamanlayıcı" deger={o.nabiz.durum === "calisiyor" ? "çalışıyor" : o.nabiz.durum === "sessiz" ? "sessiz" : "nabız yok"}
+          <Kpi etiket={SOZLUK.kaynak.zamanlayici} deger={o.nabiz.durum === "calisiyor" ? "çalışıyor" : o.nabiz.durum === "sessiz" ? "sessiz" : "nabız yok"}
             ton={o.nabiz.durum === "calisiyor" ? undefined : "uyari"}
             alt={o.nabiz.son ? `son nabız ${yasTr(o.nabiz.son)}; her ${sayiTr(o.nabiz.aralik_dk)} dk beklenir` : "worker henüz nabız yazmadı (eski imaj ya da kapalı)"} />
-          <Kpi etiket="Gece turu" deger={o.gece_turu.taze ? "taze" : "bayat"} ton={o.gece_turu.taze ? undefined : "uyari"}
+          <Kpi etiket={SOZLUK.kaynak.geceIsleri} deger={tazelik(!o.gece_turu.taze)} ton={o.gece_turu.taze ? undefined : "uyari"}
             alt={o.gece_turu.taze ? `son üretici iş ${yasTr(o.gece_turu.son)}` : `${o.gece_turu.esik_saat} saattir koşmayan: ${o.gece_turu.bayat_isler.join(", ")}`} />
           <Kpi etiket="İşler" deger={sayiTr(o.isler_24.hata)} birim="hata" ton={o.isler_24.hata > 0 ? "uyari" : undefined}
             alt={`son 24 saatte ${sayiTr(o.isler_24.toplam)} iş kaydı`} />
           <Kpi etiket="Hava verisi" deger={o.meteo.kaynaklar.length ? yasTr(en_yeni(o.meteo.kaynaklar.map((k) => k.son_indirme))) : "arşiv yok"}
             ton={o.meteo.kaynaklar.length === 0 || o.meteo.kaynaklar.some((k) => k.bayat) ? "uyari" : undefined}
             alt={o.meteo.kaynaklar.length === 0 ? "meteo_arsiv tablosu boş"
-              : o.meteo.kaynaklar.some((k) => k.bayat) ? `bayat: ${o.meteo.kaynaklar.filter((k) => k.bayat).map((k) => `${k.kaynak} (${k.yas_saat == null ? "hiç" : sayiTr(k.yas_saat, 0) + " saat"})`).join(", ")}`
-              : `${sayiTr(o.meteo.kaynaklar.length)} kaynak; ${o.meteo.esik_saat} saatten eskisi bayat`} />
-          <Kpi etiket="Piyasa fiyatı" deger={yasTr(o.piyasa.son_guncelleme)} ton={o.piyasa.bayat ? "uyari" : undefined}
+              : o.meteo.kaynaklar.some((k) => k.bayat) ? `eski: ${o.meteo.kaynaklar.filter((k) => k.bayat).map((k) => `${k.kaynak} (${k.yas_saat == null ? "hiç" : sayiTr(k.yas_saat, 0) + " saat"})`).join(", ")}`
+              : `${sayiTr(o.meteo.kaynaklar.length)} kaynak; ${o.meteo.esik_saat} saatten eskisi eski sayılır`} />
+          <Kpi etiket={SOZLUK.kaynak.piyasaKisa} deger={yasTr(o.piyasa.son_guncelleme)} ton={o.piyasa.bayat ? "uyari" : undefined}
             alt={o.piyasa.son_ts ? `gerçekleşen PTF/SMF ${tarihTr(o.piyasa.son_ts)} gününe kadar (gece dünü çeker; ileri fiyat değil); ${sayiTr(o.piyasa.satir)} saat` : "piyasa_fiyat tablosu boş"} />
-          <Kpi etiket="Yedek" deger={yasTr(o.yedek.son_basarili)} ton={o.yedek.bayat || (o.yedek.son_deneme ? !o.yedek.son_deneme.tamam : false) ? "uyari" : undefined}
-            alt={o.yedek.son_deneme ? (o.yedek.son_deneme.tamam ? `son deneme başarılı; ${o.yedek.esik_saat} saatten eskisi bayat` : `son deneme düştü: ${o.yedek.son_deneme.ayrinti ?? "ayrıntı yok"}`) : "henüz yedek kaydı yok"} />
+          <Kpi etiket={SOZLUK.kaynak.yedek} deger={yasTr(o.yedek.son_basarili)} ton={o.yedek.bayat || (o.yedek.son_deneme ? !o.yedek.son_deneme.tamam : false) ? "uyari" : undefined}
+            alt={o.yedek.son_deneme ? (o.yedek.son_deneme.tamam ? `son deneme başarılı; ${o.yedek.esik_saat} saatten eskisi eski sayılır` : `son deneme başarısız: ${o.yedek.son_deneme.ayrinti ?? "ayrıntı yok"}`) : "henüz yedek kaydı yok"} />
         </div>
         <IsKayitlari santral={secSantral} temizle={() => setSecSantral(null)} />
         <SantralEnvanteri santralSec={(id, ad) => { setSecSantral({ id, ad }); document.getElementById("is-kayitlari")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} />
@@ -59,7 +60,7 @@ export function Sistem() {
               <thead><tr><th style={sol}>İş</th><th style={sol}>Son başarılı koşu</th><th>Durum</th></tr></thead>
               <tbody>{o.gece_turu.uretici_isler.map((u) => { const bayat = o.gece_turu.bayat_isler.includes(u.is); return (
                 <tr key={u.kod}><td style={sol}>{u.is}<span className="cip-kod" style={{ marginLeft: 8 }}>{u.kod}</span></td><td className="mono" style={sol}><Zaman s={u.son_ok} /></td>
-                  <td><span className={`rozet rozet-kucuk ${bayat ? "rozet-uyari" : "rozet-ok"}`}>{bayat ? "bayat" : "taze"}</span></td></tr>); })}</tbody>
+                  <td><span className={`rozet rozet-kucuk ${bayat ? "rozet-uyari" : "rozet-ok"}`}>{tazelik(bayat)}</span></td></tr>); })}</tbody>
             </table></div>
           </Kart>
           <Kart baslik="Meteoroloji arşivi" alt="kaynak başına son indirme, nokta ve satır sayısı, kapsam">
@@ -67,7 +68,7 @@ export function Sistem() {
               <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 13.5, minWidth: 440 }}>
                 <thead><tr><th style={sol}>Kaynak</th><th style={sol}>Son indirme</th><th>Nokta</th><th>Satır</th><th style={sol}>Kapsam</th></tr></thead>
                 <tbody>{o.meteo.kaynaklar.map((k) => (
-                  <tr key={k.kaynak}><td style={sol}>{k.kaynak}{k.bayat && <span className="rozet rozet-kucuk rozet-uyari" style={{ marginLeft: 8 }}>bayat</span>}</td>
+                  <tr key={k.kaynak}><td style={sol}>{k.kaynak}{k.bayat && <span className="rozet rozet-kucuk rozet-uyari" style={{ marginLeft: 8 }}>{SOZLUK.tazelik.eski}</span>}</td>
                     <td className="mono" style={sol}><Zaman s={k.son_indirme} sar /></td><td className="mono">{k.nokta == null ? "—" : sayiTr(k.nokta)}</td>
                     <td className="mono">{k.satir == null ? "—" : sayiTr(k.satir)}</td>
                     <td className="mono" style={sol}><span style={{ whiteSpace: "nowrap" }}>{tarihTr(k.ilk)}</span><br /><span style={{ whiteSpace: "nowrap" }}>→ {tarihTr(k.son_ts)}</span></td></tr>))}</tbody>
@@ -117,7 +118,7 @@ function IsKayitlari({ santral, temizle }: { santral: { id: string; ad: string }
             <tr key={x.id}><td className="ad">{x.is}</td><td className="mono" style={{ whiteSpace: "nowrap" }}><Zaman s={x.zaman} /></td>
               <td style={{ whiteSpace: "nowrap" }}>{x.kiraci ?? (x.tenant_id ? x.tenant_id.slice(0, 8) : "—")}</td>
               <td style={{ whiteSpace: "nowrap" }}>{x.santral ?? (x.plant_id ? x.plant_id.slice(0, 8) : "—")}</td><td className="mono" style={{ whiteSpace: "nowrap" }}>{sureTr(x.sure_sn)}</td>
-              <td><span className={`rozet rozet-kucuk ${x.tamam ? "rozet-ok" : "rozet-uyari"}`}>{x.tamam ? "tamam" : "başarısız"}</span></td>
+              <td><span className={`rozet rozet-kucuk ${x.tamam ? "rozet-ok" : "rozet-uyari"}`}>{isDurumu(x.tamam)}</span></td>
               <td className="mono" style={{ ...AYRINTI, fontSize: 12.5, color: x.tamam ? "var(--ikincil)" : undefined }}>{x.ayrinti ?? "—"}</td></tr>))}</tbody>
         </table></div>)}
     </Kart>
@@ -137,14 +138,14 @@ function SantralEnvanteri({ santralSec }: { santralSec: (id: string, ad: string)
       <Hata m={hata} />
       {!veri ? <SayfaIskeleti kpi={0} kart={1} /> : veri.santraller.length === 0 ? <Bos bas={sorunlu ? "Sorunlu santral yok." : "Etkin santral yok."} alt={sorunlu ? `${sayiTr(veri.toplam)} etkin santralin hepsi veri alıyor ve koşuyor.` : undefined} /> : (
         <div className="grafik-kaydir"><table className="veri sayisal santral">
-          <thead><tr><th>Müşteri</th><th>Santral</th><th>Kurulu güç<span className="birim">kWp</span></th><th>Son SCADA</th><th>Son koşu</th><th>Son hata</th><th>Sorun</th></tr></thead>
+          <thead><tr><th>Müşteri</th><th>Santral</th><th>Kurulu güç<span className="birim">kWp</span></th><th>Son veri<span className="birim">SCADA</span></th><th>Son tahmin</th><th>Son hata</th><th>Sorun</th></tr></thead>
           <tbody>{veri.santraller.map((p) => (
             <tr key={p.id}><td className="ad">{p.kiraci}</td><td>{p.ad}</td><td>{p.kapasite_kwp ? gucTr(p.kapasite_kwp) : <span className="bos">—</span>}</td>
               <td><Zaman s={p.son_scada} /></td><td><Zaman s={p.son_kosu} /></td>
               <td>{p.son_hata ? <button type="button" className="plat-baglanti" title="İş kayıtlarında bu santralin hatalarını göster" onClick={() => santralSec(p.id, p.ad)}
                 style={Date.now() - new Date(p.son_hata).getTime() > 7 * 86400000 ? { color: "var(--soluk)" } : undefined}>{yasTr(p.son_hata)}</button> : <span className="bos">—</span>}</td>
               <td>{p.sorunlar.length === 0 ? <span className="rozet rozet-kucuk rozet-ok">yok</span>
-                : <span className="dugme-sira">{p.sorunlar.map((s) => <span key={s} className="rozet rozet-kucuk rozet-uyari">{SORUN_AD[s] ?? s}</span>)}</span>}</td></tr>))}</tbody>
+                : <span className="dugme-sira">{p.sorunlar.map((s) => <span key={s} className="rozet rozet-kucuk rozet-uyari">{sorunAdi(s)}</span>)}</span>}</td></tr>))}</tbody>
         </table></div>)}
       {veri && sorunlu && veri.santraller.length > 0 && <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>{sayiTr(veri.santraller.length)} / {sayiTr(veri.toplam)} etkin santralde sorun var.</p>}
     </Kart>

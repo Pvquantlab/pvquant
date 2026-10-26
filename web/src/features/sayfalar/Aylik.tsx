@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useDamgaSurumu } from "../../shell/damgaOlay";
 import type { EChartsOption } from "echarts";
 import { api, bellekten, ayniysaEskisi } from "../../api/client";
 import type { AylikBeklenti, SantralOzeti, Bankable } from "../../api/types";
@@ -15,6 +16,7 @@ const AYLAR = ["Oca", "Şub", "Mar", "Nis", "May", "Haz",
  *  serpilisi + P10-P90 bandi + gerceklesen uretim cubugu (ozet'ten).
  *  NWP aya UZATILMAZ — beklenti iklimden gelir (sartname). */
 export function Aylik({ plantId }: { plantId: string }) {
+  const ds = useDamgaSurumu();   // 26.10 eşzamanlama
   // 24.10 açık tema geçiş turu — ÜÇ İSTEK BAĞIMSIZ, BAYAT-ÖNCE (Portföy kalıbı). v2.327'nin tek kapısı KPI'ları ve ışınım
   // grafiğini en yavaş isteğe (yıllık beklenti hesabı) bekletiyordu. Şimdi aylık beklenti gelir gelmez sayfa; yıllık beklenti
   // ve gerçekleşen üretim kartları kendi yanıtlarını bekler. Bellekte son yanıt varsa anında çizilir. undefined = yolda.
@@ -35,7 +37,7 @@ export function Aylik({ plantId }: { plantId: string }) {
     api.ozet(plantId).then((v) => { if (acik) setO((e) => ayniysaEskisi(e, v)); }, () => { if (acik) setO((e) => e ?? null); });
     api.bankable(plantId).then((v) => { if (acik) setBk(v); }, () => { if (acik) setBk(null); });
     return () => { acik = false; };
-  }, [plantId]);
+  }, [plantId, ds]);   // 26.10 eşzamanlama
   const hazir = b !== undefined || bD !== "bekliyor";
   const birikiyor = hazir && b === null;   // aylık beklenti ucu yok/alınamadı → «birikiyor» kartı (eski davranış)
   const tazeleniyor = hazir && bD === "bekliyor";

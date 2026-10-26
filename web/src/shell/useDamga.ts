@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { api } from "../api/client";
+import { bellekEskit, api } from "../api/client";
+import { damgaYay } from "./damgaOlay";
 import type { Damga } from "../api/types";
 
 /** v2.265 (Dalga 5.17) — otomatik tazeleme, dürüst ve ucuz: sunucudaki değişim damgasını yoklar
@@ -18,7 +19,10 @@ export function useDamga(plantId: string | undefined, { gorunurSn = 60, arkaPlan
       try {
         const r = await api.damga(plantId, etag.current);
         if (iptal) return;
-        if (r.degisti) { const ilk = etag.current === null; etag.current = r.etag; setDamga(r.veri); if (!ilk) setSurum((s) => s + 1); }
+        if (r.degisti) {
+          const ilk = etag.current === null; etag.current = r.etag; setDamga(r.veri);
+          if (!ilk) { bellekEskit(); damgaYay(); setSurum((s) => s + 1); }   // 26.10: önce bellek eskir, sonra sayfalar ve Kabuk yeniden çeker
+        }
         hata.current = 0; setSonYoklama(new Date());
       } catch { hata.current += 1; }
       if (iptal) return;

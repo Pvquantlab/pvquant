@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useDamgaSurumu } from "../../shell/damgaOlay";
 import type { EChartsOption } from "echarts";
 import { api, bellekten, ayniysaEskisi } from "../../api/client";
 import type { Karne, HataMatrisi, HataDagilimi, KonformalAyar, Backtest, Dengesizlik, Guvenilirlik } from "../../api/types";
@@ -22,6 +23,7 @@ const donemYaz = (a: string | null, b: string | null) => {
 };
 
 export function Dogruluk({ plantId }: { plantId: string }) {
+  const ds = useDamgaSurumu();   // 26.10 eşzamanlama
   // 24.10 açık tema geçiş turu — YEDİ İSTEK BAĞIMSIZ, BAYAT-ÖNCE (Portföy kalıbı, v2.476). v2.326'nın tek kapısı sayfayı en
   // yavaş isteğe (geriye dönük sınav, güvenilirlik) bekletiyor; her dönüşte 60 sn dolunca iskelet geliyordu. Şimdi: karne
   // (iki kova) gelir gelmez başlık + KPI'lar; her kart kendi yanıtını boyutlu yer tutucuyla bekler (kayma yok); bellekte son
@@ -53,8 +55,8 @@ export function Dogruluk({ plantId }: { plantId: string }) {
     api.hataMatrisi(plantId).then((v) => { if (acik) setHm(v); }, () => { if (acik) setHm(null); });
     api.hataDagilimi(plantId).then((v) => { if (acik) setHd(v); }, () => { if (acik) setHd(null); });
     return () => { acik = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- donem bilerek dışarıda: istekler yalnız santral değişince kurulur
-  }, [plantId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- donem bilerek dışarıda: istekler yalnız santral (ya da damga) değişince kurulur
+  }, [plantId, ds]);
   const [ilkDonem, setIlkDonem] = useState(true);
   useEffect(() => {
     if (ilkDonem) { setIlkDonem(false); return; }   // ilk değer kapıda çekildi
