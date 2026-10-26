@@ -4,7 +4,7 @@ import { Zaman } from "./ortak";
 import { Kart, Kpi, Sayfa, SayfaIskeleti, sayiTr, gucTr } from "../sayfalar/parcalar";
 import { Meta } from "../../lib/Meta";
 
-/** 25.10 Faz 3 — SİSTEM: zamanlayıcı nabzı, gece turu tazeliği, hava/piyasa/yedek yaşı; kiracılar arası iş kayıtları (hata
+/** 25.10 Faz 3 — SİSTEM: zamanlayıcı nabzı, gece turu tazeliği, hava/piyasa/yedek yaşı; müşteriler arası iş kayıtları (hata
  *  AYRINTISIYLA — müşteri panelinde bilerek yok); santral envanteri (sorun süzgeci); meteoroloji arşivi.
  *  Bayatlık hükümleri (durum/taze/bayat) ve eşikler uçtan gelir; arayüz yalnız okur ve renklendirir. Her sayı gerçek. */
 
@@ -13,7 +13,7 @@ function Hata({ m }: { m: string | null }) { return m ? <p role="alert" classNam
 function Bos({ bas, alt }: { bas: string; alt?: string }) { return <div className="bos-durum"><div className="bos-bas">{bas}</div>{alt && <p>{alt}</p>}</div>; }
 const boyutTr = (bayt: number) => bayt >= 1024 ** 3 ? `${sayiTr(bayt / 1024 ** 3, 2)} GB` : `${sayiTr(bayt / 1024 ** 2, 1)} MB`;
 const sureTr = (sn: number | null) => sn == null ? "—" : sn >= 60 ? `${sayiTr(sn / 60, 1)} dk` : `${sayiTr(sn, 1)} sn`;
-const SORUN_AD: Record<string, string> = { scada_yok: "SCADA yok", scada_bayat: "SCADA eski", kosu_yok: "koşu yok", kosu_bayat: "koşu eski", kiraci_askida: "kiracı askıda" };
+const SORUN_AD: Record<string, string> = { scada_yok: "SCADA yok", scada_bayat: "SCADA eski", kosu_yok: "koşu yok", kosu_bayat: "koşu eski", kiraci_askida: "müşteri askıda" };
 const sol = { textAlign: "left" as const };
 /** Ayrıntı sütunu: .santral tablosunda öbür sütunlar 1 % (içerik genişliği); hata metni okunacak gerçek yer ister. */
 const AYRINTI = { textAlign: "left" as const, whiteSpace: "normal" as const, width: "38%", minWidth: 240 };
@@ -28,7 +28,7 @@ export function Sistem() {
   useEffect(() => { yonetim.sistem().then(setO).catch((e) => setHata(mesajCikar(e))); }, [sayac]);
   if (!o && !hata) return <Sayfa baslik="Sistem"><SayfaIskeleti kpi={6} kart={2} /></Sayfa>;
   return (
-    <Sayfa baslik="Sistem" alt="Zamanlayıcı, gece turu, veri tazeliği ve yedek; tüm kiracıların iş kayıtları ve santralleri."
+    <Sayfa baslik="Sistem" alt="Zamanlayıcı, gece turu, veri tazeliği ve yedek; tüm müşterilerin iş kayıtları ve santralleri."
       sag={<span className="dugme-sira">{o && <span className="cip"><Meta items={[`veritabanı ${boyutTr(o.db.boyut_bayt)}`, `${sayiTr(o.santral.etkin)} etkin santral`, `${sayiTr(o.santral.arsivli)} arşivli`]} /></span>}
         <button className="dugme kucuk" onClick={() => { setO(null); setHata(null); setSayac((x) => x + 1); }}>Yenile</button></span>}>
       <Hata m={hata} />
@@ -82,7 +82,7 @@ export function Sistem() {
 const en_yeni = (zamanlar: (string | null)[]): string | null =>
   zamanlar.filter((z): z is string => !!z).sort().at(-1) ?? null;
 
-// ---------------- iş kayıtları (kiracılar arası, hata ayrıntısıyla) ----------------
+// ---------------- iş kayıtları (müşteriler arası, hata ayrıntısıyla) ----------------
 function IsKayitlari({ santral, temizle }: { santral: { id: string; ad: string } | null; temizle: () => void }) {
   const [saat, setSaat] = useState(48); const [yalnizHata, setYalnizHata] = useState(false); const [job, setJob] = useState(""); const [tenant, setTenant] = useState("");
   const [liste, setListe] = useState<IsKaydi[] | null>(null); const [turler, setTurler] = useState<{ kod: string; is: string }[]>([]);
@@ -95,7 +95,7 @@ function IsKayitlari({ santral, temizle }: { santral: { id: string; ad: string }
   useEffect(() => { if (santral) { setSaat(720); setYalnizHata(true); void getir({ saat: 720, yalniz_hata: true }); } }, [santral]);   // eslint-disable-line react-hooks/exhaustive-deps
   const hataSayisi = liste ? liste.filter((x) => !x.tamam).length : 0;
   return (
-    <Kart baslik="İş kayıtları" alt="tüm kiracılar; başarısız işin ayrıntısı burada görünür, müşteri panelinde görünmez" id="is-kayitlari"
+    <Kart baslik="İş kayıtları" alt="tüm müşteriler; başarısız işin ayrıntısı burada görünür, müşteri panelinde görünmez" id="is-kayitlari"
       sag={<span className="dugme-sira">{santral && <span className="rozet rozet-kucuk rozet-uyari">santral: {santral.ad} <button type="button" className="plat-rozet-kapat" aria-label="santral süzgecini kaldır" onClick={() => { temizle(); setSaat(48); setYalnizHata(false); void getir({ saat: 48, yalniz_hata: false, plant: null }); }}>×</button></span>}
         {liste && <span className="cip"><Meta items={[`${sayiTr(liste.length)} kayıt`, `${sayiTr(hataSayisi)} hata`]} /></span>}</span>}>
       <form className="form-izgara" style={{ maxWidth: 900, marginBottom: 12 }} onSubmit={(e) => { e.preventDefault(); void getir(); }}>
@@ -105,14 +105,14 @@ function IsKayitlari({ santral, temizle }: { santral: { id: string; ad: string }
           <option value="">tümü</option><option value="hata">yalnız başarısız</option></select></label>
         <label className="girdi-etiket">İş<select className="girdi" value={job} onChange={(e) => setJob(e.target.value)}>
           <option value="">tümü</option>{turler.map((t) => <option key={t.kod} value={t.kod}>{t.is}</option>)}</select></label>
-        <label className="girdi-etiket">Kiracı<select className="girdi" value={tenant} onChange={(e) => setTenant(e.target.value)}>
+        <label className="girdi-etiket">Müşteri<select className="girdi" value={tenant} onChange={(e) => setTenant(e.target.value)}>
           <option value="">tümü</option>{kiracilar.map((k) => <option key={k.id} value={k.id}>{k.ad}</option>)}</select></label>
         <button className="dugme" type="submit">Süz</button>
       </form>
       <Hata m={hata} />
       {!liste ? <SayfaIskeleti kpi={0} kart={1} /> : liste.length === 0 ? <Bos bas="Süzgece uyan iş kaydı yok." /> : (
         <div className="grafik-kaydir"><table className="veri santral">
-          <thead><tr><th>İş</th><th>Zaman</th><th>Kiracı</th><th>Santral</th><th>Süre</th><th>Durum</th><th style={AYRINTI}>Ayrıntı</th></tr></thead>
+          <thead><tr><th>İş</th><th>Zaman</th><th>Müşteri</th><th>Santral</th><th>Süre</th><th>Durum</th><th style={AYRINTI}>Ayrıntı</th></tr></thead>
           <tbody>{liste.map((x) => (
             <tr key={x.id}><td className="ad">{x.is}</td><td className="mono" style={{ whiteSpace: "nowrap" }}><Zaman s={x.zaman} /></td>
               <td style={{ whiteSpace: "nowrap" }}>{x.kiraci ?? (x.tenant_id ? x.tenant_id.slice(0, 8) : "—")}</td>
@@ -137,7 +137,7 @@ function SantralEnvanteri({ santralSec }: { santralSec: (id: string, ad: string)
       <Hata m={hata} />
       {!veri ? <SayfaIskeleti kpi={0} kart={1} /> : veri.santraller.length === 0 ? <Bos bas={sorunlu ? "Sorunlu santral yok." : "Etkin santral yok."} alt={sorunlu ? `${sayiTr(veri.toplam)} etkin santralin hepsi veri alıyor ve koşuyor.` : undefined} /> : (
         <div className="grafik-kaydir"><table className="veri sayisal santral">
-          <thead><tr><th>Kiracı</th><th>Santral</th><th>Kurulu güç<span className="birim">kWp</span></th><th>Son SCADA</th><th>Son koşu</th><th>Son hata</th><th>Sorun</th></tr></thead>
+          <thead><tr><th>Müşteri</th><th>Santral</th><th>Kurulu güç<span className="birim">kWp</span></th><th>Son SCADA</th><th>Son koşu</th><th>Son hata</th><th>Sorun</th></tr></thead>
           <tbody>{veri.santraller.map((p) => (
             <tr key={p.id}><td className="ad">{p.kiraci}</td><td>{p.ad}</td><td>{p.kapasite_kwp ? gucTr(p.kapasite_kwp) : <span className="bos">—</span>}</td>
               <td><Zaman s={p.son_scada} /></td><td><Zaman s={p.son_kosu} /></td>

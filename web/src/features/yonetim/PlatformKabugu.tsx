@@ -57,7 +57,7 @@ export function PlatformKabugu({ sayfa, setSayfa, ben, onCikis, children }:
             Platform<span className="ust-yol-ayrac" aria-hidden="true">/</span><b style={{ color: "var(--metin)" }}>{YSAYFALAR.find((s) => s.id === sayfa)?.ad}</b>
             <span className="mono ust-tarih" style={{ color: "var(--soluk)", marginLeft: 14 }}>{bugun}</span>
           </div>
-          <div className="ust-arac"><span className="plat-ust-rozet" title="Kiracılar arası yetkili alan">PLATFORM</span></div>
+          <div className="ust-arac"><span className="plat-ust-rozet" title="Müşteriler arası yetkili alan">PLATFORM</span></div>
         </header>
         <div className="icerik">{children}</div>
       </main>

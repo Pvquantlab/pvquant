@@ -312,7 +312,7 @@ def kiraci_olustur(aktor_id: str, firma: str, yonetici_eposta: str, plan: str = 
         if s.execute(text("SELECT 1 FROM users WHERE email=:e"), {"e": eposta}).first():
             raise PlatformHata("bu e-posta başka bir hesapta kayıtlı")
         if s.execute(text("SELECT 1 FROM tenants WHERE lower(name)=lower(:n)"), {"n": firma}).first():
-            raise PlatformHata("bu adla bir kiracı zaten var")
+            raise PlatformHata("bu adla bir müşteri zaten var")
         tid = s.execute(text("INSERT INTO tenants(name, plan) VALUES(:n, :p) RETURNING id"), {"n": firma, "p": plan}).scalar()
         # ilk yönetici: parola RASTGELE ve kimseye gösterilmez — davet bağlantısıyla kendisi belirler
         uid = s.execute(text("INSERT INTO users(tenant_id, email, pw_hash, role) VALUES(:t, :e, :h, 'admin') RETURNING id"),
@@ -348,7 +348,7 @@ def kiraci_guncelle(aktor_id: str, tid: str, *, status: str | None = None, plan:
             return None
         if ad is not None and s.execute(text("SELECT 1 FROM tenants WHERE lower(name)=lower(:n) AND id<>:t"),
                                         {"n": ad, "t": str(tid)}).first():
-            raise PlatformHata("bu adla bir kiracı zaten var")   # 26.10 denetim-3: oluşturmadaki benzersizlik güncellemede de
+            raise PlatformHata("bu adla bir müşteri zaten var")   # 26.10 denetim-3: oluşturmadaki benzersizlik güncellemede de
         s.execute(text("UPDATE tenants SET name=COALESCE(:n, name), plan=COALESCE(:p, plan), status=COALESCE(:s, status), "
                        "notlar=COALESCE(:no, notlar), updated_at=now() WHERE id=:t"),
                   {"n": ad, "p": plan, "s": status, "no": notlar, "t": str(tid)})
@@ -447,7 +447,7 @@ def temsil_jetonu(aktor_id: str, tid: str) -> dict | None:
     if t is None:
         return None
     if t.status != "active":
-        raise PlatformHata("kiracı askıda; görüntüleme açılmaz")
+        raise PlatformHata("müşteri askıda; görüntüleme açılmaz")
     if d is None or not d["aktif"]:
         raise PlatformHata("aktör etkin değil")
     bitis = dt.datetime.utcnow() + dt.timedelta(minutes=TEMSIL_DK)

@@ -5,7 +5,7 @@ import { Kart, Sayfa, SayfaIskeleti, sayiTr } from "../sayfalar/parcalar";
 import { Meta } from "../../lib/Meta";
 import { LimitRozet } from "./ortak";
 
-/** 25.10 Faz 4 — KULLANIM: kiracı başına aylık sayımlar. dis_api / webhook sayaçtan (kullanim_sayac), rapor / koşu / SCADA saati /
+/** 25.10 Faz 4 — KULLANIM: müşteri başına aylık sayımlar. dis_api / webhook sayaçtan (kullanim_sayac), rapor / koşu / SCADA saati /
  *  yükleme mevcut tablolardan türetilir; hepsi uçtan, arayüz toplar ve gösterir. Plan limiti yok (Faz 5): yalnız ölçüm. */
 
 const mesajCikar = (e: unknown) => String((e as Error).message ?? e);
@@ -46,14 +46,14 @@ export function Kullanim() {
   const toplam = o ? o.kiracilar.reduce((a, k) => topla(a, k.bu_ay), BOS) : BOS;
   const onceki = o ? o.kiracilar.reduce((a, k) => topla(a, k.onceki_ay), BOS) : BOS;
   return (
-    <Sayfa baslik="Kullanım" alt="Kiracı başına aylık sayımlar; dış API ve webhook sayaçtan, rapor, koşu, SCADA ve yükleme kayıtlardan. Plan sınırı yok, yalnız ölçüm."
+    <Sayfa baslik="Kullanım" alt="Müşteri başına aylık sayımlar; dış API ve webhook sayaçtan, rapor, koşu, SCADA ve yükleme kayıtlardan. Plan sınırı yok, yalnız ölçüm."
       sag={<label className="girdi-etiket" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>Ay
         <select className="girdi kucuk" value={ay} onChange={(e) => setAy(e.target.value)}>{aylar().map((a) => <option key={a} value={a}>{ayAdi(a)}</option>)}</select></label>}>
       <Hata m={hata} />
-      <Kart baslik={ayAdi(ay)} alt={o ? `${sayiTr(o.kiracilar.length)} kiracı; satır günlük kırılımı açar; parantez içi önceki ay (${ayAdi(o.onceki_ay)})` : undefined}>
-        {!o ? <SayfaIskeleti kpi={0} kart={1} /> : o.kiracilar.length === 0 ? <Bos bas="Kiracı yok." /> : (
+      <Kart baslik={ayAdi(ay)} alt={o ? `${sayiTr(o.kiracilar.length)} müşteri; satır günlük kırılımı açar; parantez içi önceki ay (${ayAdi(o.onceki_ay)})` : undefined}>
+        {!o ? <SayfaIskeleti kpi={0} kart={1} /> : o.kiracilar.length === 0 ? <Bos bas="Müşteri yok." /> : (
           <div className="grafik-kaydir"><table className="veri sayisal santral">
-            <thead><tr><th>Kiracı</th><th>Plan</th>{KULLANIM_SUTUNLAR.map((c) => <th key={c.k}>{c.ad}{c.birim && <span className="birim">{c.birim}</span>}</th>)}<th>Anahtar</th><th>Son API kullanımı</th><th aria-hidden="true"></th></tr></thead>
+            <thead><tr><th>Müşteri</th><th>Plan</th>{KULLANIM_SUTUNLAR.map((c) => <th key={c.k}>{c.ad}{c.birim && <span className="birim">{c.birim}</span>}</th>)}<th>Anahtar</th><th>Son API kullanımı</th><th aria-hidden="true"></th></tr></thead>
             <tbody>
               {o.kiracilar.map((k) => (
                 <tr key={k.id} className="satir-tikla" tabIndex={0} onClick={() => setSecili(k)} onKeyDown={(e) => { if (e.key === "Enter") setSecili(k); }}>

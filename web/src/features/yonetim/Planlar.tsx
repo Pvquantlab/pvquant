@@ -26,7 +26,7 @@ export function Planlar() {
     <Sayfa baslik="Planlar" alt="Limitler yalnız uyarı: Müşteriler ve Kullanım sayfalarında rozet olarak görünür, hiçbir uç kısıtlanmaz. Boş alan sınırsız.">
       {hata && <p role="alert" className="giris-hata" style={{ marginTop: 10 }}>{hata}</p>}{mesaj && <p className="giris-bilgi" style={{ marginTop: 0 }}>{mesaj}</p>}
       {!liste ? <SayfaIskeleti kpi={0} kart={2} /> : liste.map((p) => (
-        <Kart key={p.ad} baslik={p.baslik} alt={`${p.ad}; ${sayiTr(p.kiraci)} kiracı`}
+        <Kart key={p.ad} baslik={p.baslik} alt={`${p.ad}; ${sayiTr(p.kiraci)} müşteri`}
           sag={<span className="cip" title="son değişiklik"><Zaman s={p.guncelleme} /></span>}>   {/* tek tarih, yerel saat (UTC kesiti çiple çelişiyordu) */}
           <form className="form-izgara" onSubmit={(e) => { e.preventDefault(); void kaydet(p); }}>
             {ALANLAR.map((a) => (

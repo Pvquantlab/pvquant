@@ -124,7 +124,7 @@ export function Kabuk({ sayfa, tiklanan, setSayfa, santral, plantId, onCikis, ch
   // v2.355: aynı yanıt hesap kutusunu da doldurur — firma adı KODA GÖMÜLÜ DEĞİL,
   // sunucudan gelir (gömülü "Meridyen Enerji" her müşterinin panelinde görünüyordu).
   const [hesap, setHesap] = useState<{ firma: string; rol: string } | null>(null);
-  const [ikiAdimKurulmali, setIkiAdimKurulmali] = useState(false);   // 26.10 Faz 6 (O7): kiracı politikası → kurulum kapısı
+  const [ikiAdimKurulmali, setIkiAdimKurulmali] = useState(false);   // 26.10 Faz 6 (O7): müşteri politikası → kurulum kapısı
   useEffect(() => {
     const tazele = () => api.oturumYenile().then((h) => {
       if (h) { setHesap({ firma: h.firma, rol: h.role }); setIkiAdimKurulmali(!!h.iki_adim_kurulmali); }
@@ -211,7 +211,7 @@ export function Kabuk({ sayfa, tiklanan, setSayfa, santral, plantId, onCikis, ch
         ))}
         <div className="yan-alt">
           <div className="hesap">
-            {/* v2.355: gerçek kiracı — yüklenene dek sessiz tire, asla başka firmanın adı değil */}
+            {/* v2.355: gerçek müşteri — yüklenene dek sessiz tire, asla başka firmanın adı değil */}
             <div className="avatar" aria-hidden="true">
               {(hesap?.firma ?? "").split(/\s+/).slice(0, 2).map((k) => k[0] ?? "").join("").toUpperCase() || "·"}
             </div>

@@ -210,7 +210,7 @@ def kiraci(tid: str, request: Request, c=Depends(platform_yetkisi())):
     tid = _uuid(tid, "kiracı kimliği")
     d = ps.kiraci_detay(c["sub"], tid)
     if d is None:
-        raise HTTPException(404, "kiracı yok")
+        raise HTTPException(404, "müşteri yok")
     dz.goruntule_kaydet(c["sub"], c["email"], tid, ip=_ip(request))   # 25.10 O6: okuma izi, günde tek
     return d
 
@@ -224,7 +224,7 @@ def kiraci_guncelle(tid: str, p: KiraciGuncelle, request: Request, c=Depends(pla
     except ValueError as e:
         raise _hata(e)
     if y is None:
-        raise HTTPException(404, "kiracı yok")
+        raise HTTPException(404, "müşteri yok")
     dz.kaydet("platform", "kiraci_guncelle", aktor_id=c["sub"], aktor_eposta=c["email"], tenant_id=tid, nesne_tur="tenant", nesne_id=tid,
               ayrinti={"eski": y["eski"], "yeni": y["yeni"], "notlar_degisti": p.notlar is not None}, ip=_ip(request))
     return {"tamam": True, **y}
@@ -384,7 +384,7 @@ def kiraci_temsil(tid: str, request: Request, c=Depends(platform_yetkisi("sahip"
     except ValueError as e:
         raise _hata(e)
     if y is None:
-        raise HTTPException(404, "kiracı yok")
+        raise HTTPException(404, "müşteri yok")
     dz.kaydet("platform", "kiraci_temsil", aktor_id=c["sub"], aktor_eposta=c["email"], tenant_id=tid, nesne_tur="tenant", nesne_id=tid,
               ayrinti={"sure_dk": y["sure_dk"], "rol": "viewer"}, ip=_ip(request))
     return y

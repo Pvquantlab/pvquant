@@ -93,12 +93,12 @@ test("Faz 4: Kullanım sayfası listede, kökte, istemcide; detayda kullanım ka
 });
 
 // ---------------- 25.10 denetim tablo turu (O1/O2/O3) ----------------
-test("tablo turu: ayrıntı çipleri, kiracı adı ve seçimi, tek zaman tipografisi, yalnız platform CSS", () => {
+test("tablo turu: ayrıntı çipleri, müşteri adı ve seçimi, tek zaman tipografisi, yalnız platform CSS", () => {
   const s = oku("features/yonetim/sayfalar.tsx");
   assert.match(s, /<AyrintiCipleri a=\{k\.ayrinti\} \/>/);
   assert.doesNotMatch(s, /JSON\.stringify\(k\.ayrinti\)/);
   assert.match(s, /k\.kiraci_ad \?\?/);
-  assert.match(s, /<label className="girdi-etiket">Kiracı<select/);
+  assert.match(s, /<label className="girdi-etiket">Müşteri<select/);   // 26.10: görünen ad «müşteri» (kimlikler kiraci)
   for (const f of ["features/yonetim/sayfalar.tsx", "features/yonetim/Sistem.tsx", "features/yonetim/Kullanim.tsx"]) {
     assert.doesNotMatch(oku(f), /[^$]\{zamanTr\(/, f);       // JSX hücrelerinde yalnız <Zaman/> (şablon dizeleri ${zamanTr} serbest)
   }
@@ -139,7 +139,7 @@ test("Faz 5: Planlar sahip-only, limit rozetleri, temsil düğmesi sahipte, mü�
   assert.match(oku("features/yonetim/Yonetim.tsx"), /\{sayfa === "planlar" && ben\?\.rol === "sahip" && <Planlar \/>\}/);
   const s = oku("features/yonetim/sayfalar.tsx");
   assert.match(s, /<LimitRozet kullanim=\{k\.santral\} limit=\{planlar\[k\.plan\]\?\.santral_limit\} \/>/);
-  assert.match(s, /\{sahip && !askida && <button className="dugme" title="Kiracıyı müşteri gözüyle, salt okunur, 15 dakika/);
+  assert.match(s, /\{sahip && !askida && <button className="dugme" title="Bu hesabın panelini müşteri gözüyle, salt okunur, 15 dakika/);
   assert.match(oku("features/yonetim/Kullanim.tsx"), /<LimitRozet kullanim=\{t\.dis_api\} limit=\{plan\.aylik_dis_api_limit\} \/>/);
   const y = oku("api/yonetim.ts");
   assert.ok(y.includes('istek(`/kiracilar/${tenant_id}/temsil`, "POST")'));

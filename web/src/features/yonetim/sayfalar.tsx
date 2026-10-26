@@ -68,13 +68,13 @@ export function GenelBakis({ git }: { git: (s: "musteriler" | "basvurular" | "de
   const etkin = k.filter((x) => x.durum === "active");
   const kwp = k.reduce((a, x) => a + x.kurulu_guc_kwp, 0);
   return (
-    <Sayfa baslik="Genel bakış" alt="Kiracılar, santraller ve son işlemler; tüm sayılar canlı veritabanından.">
+    <Sayfa baslik="Genel bakış" alt="Müşteriler, santraller ve son işlemler; tüm sayılar canlı veritabanından.">
       <Hata m={hata} />
       <SaglikSeridi sis={sis} git={() => git("sistem")} />
       <div className="ızgara satir-4" style={{ marginBottom: 14 }}>
-        <Kpi etiket="Kiracı" deger={sayiTr(k.length)} alt={`${sayiTr(etkin.length)} etkin, ${sayiTr(k.length - etkin.length)} askıda`} />
+        <Kpi etiket="Müşteri" deger={sayiTr(k.length)} alt={`${sayiTr(etkin.length)} etkin, ${sayiTr(k.length - etkin.length)} askıda`} />
         <Kpi etiket="Etkin santral" deger={sayiTr(k.reduce((a, x) => a + x.santral, 0))} alt={kwp ? `${gucTr(kwp)} kWp kurulu güç` : "kurulu güç yok"} />
-        <Kpi etiket="Etkin kullanıcı" deger={sayiTr(k.reduce((a, x) => a + x.kullanici, 0))} alt="tüm kiracılar" />
+        <Kpi etiket="Etkin kullanıcı" deger={sayiTr(k.reduce((a, x) => a + x.kullanici, 0))} alt="tüm müşteriler" />
         <Kpi etiket="Okunmamış başvuru" deger={sayiTr(b.filter((x) => !x.okundu).length)} alt={`${sayiTr(b.length)} toplam`} ton={b.some((x) => !x.okundu) ? "uyari" : undefined} />
       </div>
       <Kart baslik="Son işlemler" alt="Denetim izinin son 12 kaydı; görüntüleme izleri (kiraci_goruntule) yalnız Denetim izi sayfasında" sag={<button className="dugme kucuk" onClick={() => git("denetim")}>Tümü</button>}>
@@ -103,12 +103,12 @@ export function Musteriler({ sahip = false }: { sahip?: boolean }) {
     setMesgul(false);
   }
   return (
-    <Sayfa baslik="Müşteriler" alt="Kiracı kuruluşlar; satır detayı açar." sag={liste ? <span className="cip"><Meta items={[`${sayiTr(liste.length)} kiracı`]} /></span> : undefined}>
+    <Sayfa baslik="Müşteriler" alt="Müşteri kuruluşları; satır detayı açar." sag={liste ? <span className="cip"><Meta items={[`${sayiTr(liste.length)} müşteri`]} /></span> : undefined}>
       <Hata m={hata} />
-      <Kart baslik="Kiracılar" alt={liste ? "ad, plan, durum, santral, kurulu güç, etkin kullanıcı, son giriş" : undefined}>
-        {!liste ? <SayfaIskeleti kpi={0} kart={1} /> : liste.length === 0 ? <Bos bas="Henüz kiracı yok." alt="Aşağıdaki formla ilk kiracıyı açın." /> : (
+      <Kart baslik="Müşteri hesapları" alt={liste ? "ad, plan, durum, santral, kurulu güç, etkin kullanıcı, son giriş" : undefined}>
+        {!liste ? <SayfaIskeleti kpi={0} kart={1} /> : liste.length === 0 ? <Bos bas="Henüz müşteri yok." alt="Aşağıdaki formla ilk müşteri hesabını açın." /> : (
           <div className="grafik-kaydir"><table className="veri sayisal santral">
-            <thead><tr><th>Kiracı</th><th>Plan</th><th>Durum</th><th>Santral</th><th>Kurulu güç<span className="birim">kWp</span></th><th>Kullanıcı</th><th>Son giriş</th><th>Oluşturma</th><th aria-hidden="true"></th></tr></thead>
+            <thead><tr><th>Müşteri</th><th>Plan</th><th>Durum</th><th>Santral</th><th>Kurulu güç<span className="birim">kWp</span></th><th>Kullanıcı</th><th>Son giriş</th><th>Oluşturma</th><th aria-hidden="true"></th></tr></thead>
             <tbody>{liste.map((k) => (
               <tr key={k.id} className="satir-tikla" tabIndex={0} onClick={() => setSecili(k.id)} onKeyDown={(e) => { if (e.key === "Enter") setSecili(k.id); }}>
                 <td className="ad">{k.ad}</td><td>{k.plan}</td><td><DurumRozet durum={k.durum} /></td>
@@ -120,18 +120,18 @@ export function Musteriler({ sahip = false }: { sahip?: boolean }) {
               </tr>))}</tbody>
           </table></div>)}
       </Kart>
-      <Kart baslik="Yeni kiracı" alt="Firma ve ilk yönetici; yönetici parolasını davet bağlantısıyla kendisi belirler (72 saat)">
+      <Kart baslik="Yeni müşteri" alt="Firma ve ilk yönetici; yönetici parolasını davet bağlantısıyla kendisi belirler (72 saat)">
         <form className="form-izgara" onSubmit={(e) => { e.preventDefault(); void olustur(); }}>
           <label className="girdi-etiket">Firma adı<input className="girdi" value={firma} onChange={(e) => setFirma(e.target.value)} placeholder="ör. Güneş Enerji A.Ş." required /></label>
           <label className="girdi-etiket">İlk yönetici e-postası<input className="girdi" type="email" value={eposta} onChange={(e) => setEposta(e.target.value)} placeholder="yonetici@firma.com" required /></label>
           <label className="girdi-etiket">Plan<select className="girdi" value={plan} onChange={(e) => setPlan(e.target.value)}><option value="pilot">pilot</option><option value="standart">standart</option><option value="kurumsal">kurumsal</option></select></label>
-          <button className="dugme dugme-ana" type="submit" disabled={mesgul}>{mesgul ? "Açılıyor…" : "Kiracıyı aç"}</button>
+          <button className="dugme dugme-ana" type="submit" disabled={mesgul}>{mesgul ? "Açılıyor…" : "Hesabı aç"}</button>
         </form>
         {sonuc && (sonuc.davet_gonderildi
-          ? <p className="giris-bilgi">Kiracı açıldı; davet e-postası gönderildi.</p>
+          ? <p className="giris-bilgi">Müşteri hesabı açıldı; davet e-postası gönderildi.</p>
           : sonuc.davet_baglantisi
             ? <TekSeferlik baslik="Davet bağlantısı (e-posta gönderilemedi, elden iletin)" deger={sonuc.davet_baglantisi} />
-            : <p className="giris-hata">Kiracı açıldı, ancak davet e-postası gönderilemedi. {sonuc.not ?? "Bağlantıyı yalnız sahip görebilir."}</p>)}
+            : <p className="giris-hata">Müşteri hesabı açıldı, ancak davet e-postası gönderilemedi. {sonuc.not ?? "Bağlantıyı yalnız sahip görebilir."}</p>)}
       </Kart>
     </Sayfa>
   );
@@ -152,14 +152,14 @@ function MusteriDetay({ id, geri, sahip }: { id: string; geri: () => void; sahip
       <button className="giris-bag" onClick={geri}>← Müşteriler</button>
       <Hata m={hata} />{mesaj && <p className="giris-bilgi" style={{ marginTop: 10 }}>{mesaj}</p>}
       {sir && <TekSeferlik baslik={sir.baslik} deger={sir.deger} />}
-      <Kart baslik="Durum ve plan" alt="Askıya alma kiracının tüm oturumlarını bir dakika içinde düşürür; giriş «hesap askıda» der">
+      <Kart baslik="Durum ve plan" alt="Askıya alma müşterinin tüm oturumlarını bir dakika içinde düşürür; giriş «hesap askıda» der">
         <div className="dugme-sira">
           {askida
-            ? <button className="dugme dugme-ana" onClick={() => dene(() => yonetim.kiraciGuncelle(id, { durum: "active" }), "Kiracı yeniden etkin.")}>Etkinleştir</button>
+            ? <button className="dugme dugme-ana" onClick={() => dene(() => yonetim.kiraciGuncelle(id, { durum: "active" }), "Müşteri yeniden etkin.")}>Etkinleştir</button>
             : onay
-              ? <><button className="dugme dugme-tehlike" onClick={() => { setOnay(false); void dene(() => yonetim.kiraciGuncelle(id, { durum: "suspended" }), "Kiracı askıya alındı."); }}>Eminim, askıya al</button><button className="dugme" onClick={() => setOnay(false)}>Vazgeç</button></>
+              ? <><button className="dugme dugme-tehlike" onClick={() => { setOnay(false); void dene(() => yonetim.kiraciGuncelle(id, { durum: "suspended" }), "Müşteri askıya alındı."); }}>Eminim, askıya al</button><button className="dugme" onClick={() => setOnay(false)}>Vazgeç</button></>
               : <button className="dugme dugme-tehlike" onClick={() => setOnay(true)}>Askıya al</button>}
-          {sahip && !askida && <button className="dugme" title="Kiracıyı müşteri gözüyle, salt okunur, 15 dakika; denetim izine yazılır"
+          {sahip && !askida && <button className="dugme" title="Bu hesabın panelini müşteri gözüyle, salt okunur, 15 dakika; denetim izine yazılır"
             onClick={() => dene(async () => { temsilAc(await yonetim.temsil(id)); }, "Görüntüleme oturumu yeni sekmede açıldı (15 dk, salt okunur).")}>Müşteri gözüyle aç</button>}
           <label className="girdi-etiket" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>Plan
             <select className="girdi kucuk" value={d.plan} onChange={(e) => dene(() => yonetim.kiraciGuncelle(id, { plan: e.target.value }), "Plan güncellendi.")}>
@@ -172,7 +172,7 @@ function MusteriDetay({ id, geri, sahip }: { id: string; geri: () => void; sahip
           <button className="dugme kucuk" style={{ marginTop: 8 }} onClick={() => dene(() => yonetim.kiraciGuncelle(id, { notlar }), "Notlar kaydedildi.")}>Notları kaydet</button>
         </div>
       </Kart>
-      <Kart baslik="Kullanıcılar" alt="Rol, durum, 2FA, son giriş; işlemler kiracı kuralına tabidir (son etkin yönetici düşürülemez)">
+      <Kart baslik="Kullanıcılar" alt="Rol, durum, 2FA, son giriş; işlemler müşteri kuralına tabidir (son etkin yönetici düşürülemez)">
         <KullaniciTablosu satirlar={d.kullanicilar.map((u) => ({ ...u, tenant_id: id, firma: d.ad }))} firmaGoster={false}
           islem={(fn, m) => dene(fn, m)} sirGoster={(b, v) => setSir({ baslik: b, deger: v })} />
       </Kart>
@@ -194,7 +194,7 @@ function KullaniciTablosu({ satirlar, firmaGoster, islem, sirGoster }:
   if (satirlar.length === 0) return <Bos bas="Kullanıcı yok." />;
   return (
     <div className="grafik-kaydir"><table className="veri sayisal santral">
-      <thead><tr><th>E-posta</th>{firmaGoster && <th>Kiracı</th>}<th>Rol</th><th>Durum</th><th>2FA</th><th>Son giriş</th><th>İşlem</th></tr></thead>
+      <thead><tr><th>E-posta</th>{firmaGoster && <th>Müşteri</th>}<th>Rol</th><th>Durum</th><th>2FA</th><th>Son giriş</th><th>İşlem</th></tr></thead>
       <tbody>{satirlar.map((u) => (
         <tr key={u.id}><td className="ad">{u.email}</td>{firmaGoster && <td>{u.firma}</td>}<td>{ROL_AD[u.rol] ?? u.rol}</td>
           <td>{u.aktif ? <span className="rozet rozet-kucuk rozet-ok">etkin</span> : <span className="rozet rozet-kucuk rozet-notr">pasif</span>}</td>
@@ -223,7 +223,7 @@ export function Kullanicilar() {
   const islem = async (fn: () => Promise<unknown>, m: string) => { setHata(null); setMesaj(null); setSir(null);
     try { const r = await fn(); setMesaj(typeof r === "string" ? r : m); await ara(q); } catch (e) { setHata(mesajCikar(e)); } };   // fn metin dönerse mesaj odur
   return (
-    <Sayfa baslik="Kullanıcılar" alt="Tüm kiracıların kullanıcıları; e-posta ya da firma adıyla arayın." sag={liste ? <span className="cip"><Meta items={[`${sayiTr(liste.length)} kullanıcı`]} /></span> : undefined}>
+    <Sayfa baslik="Kullanıcılar" alt="Tüm müşterilerin kullanıcıları; e-posta ya da firma adıyla arayın." sag={liste ? <span className="cip"><Meta items={[`${sayiTr(liste.length)} kullanıcı`]} /></span> : undefined}>
       <form className="form-izgara" style={{ maxWidth: 560, marginBottom: 14 }} onSubmit={(e) => { e.preventDefault(); void ara(q); }}>
         <label className="girdi-etiket">Ara<input className="girdi" value={q} onChange={(e) => setQ(e.target.value)} placeholder="e-posta ya da firma" /></label>
         <button className="dugme" type="submit">Ara</button>
@@ -262,7 +262,7 @@ export function Basvurular() {
 function DenetimTablosu({ kayitlar }: { kayitlar: DenetimKaydi[] }) {
   return (
     <div className="grafik-kaydir"><table className="veri santral">
-      <thead><tr><th>Zaman</th><th>Kapsam</th><th>Eylem</th><th>Aktör</th><th>Kiracı</th><th>Nesne</th><th>IP</th><th className="plat-ayrinti-sutun">Ayrıntı</th></tr></thead>
+      <thead><tr><th>Zaman</th><th>Kapsam</th><th>Eylem</th><th>Aktör</th><th>Müşteri</th><th>Nesne</th><th>IP</th><th className="plat-ayrinti-sutun">Ayrıntı</th></tr></thead>
       <tbody>{kayitlar.map((k) => (<tr key={k.id}><td className="ad"><Zaman s={k.zaman} /></td><td>{k.kapsam === "musteri" ? "müşteri" : k.kapsam}</td><td><span className="cip-kod">{k.eylem}</span></td>
         <td className="plat-aktor">{k.aktor_eposta ?? (k.aktor_id ? k.aktor_id.slice(0, 8) : "—")}</td>
         <td>{k.kiraci_ad ?? (k.tenant_id ? <span className="mono" title={k.tenant_id}>{k.tenant_id.slice(0, 8)}</span> : "—")}</td>
@@ -284,7 +284,7 @@ export function Denetim() {
       <form className="form-izgara" style={{ maxWidth: 760, marginBottom: 14 }} onSubmit={(e) => { e.preventDefault(); void getir(); }}>
         <label className="girdi-etiket">Kapsam<select className="girdi" value={kapsam} onChange={(e) => setKapsam(e.target.value)}><option value="">tümü</option><option value="platform">platform</option><option value="musteri">müşteri</option></select></label>
         <label className="girdi-etiket">Eylem<input className="girdi" value={eylem} onChange={(e) => setEylem(e.target.value)} placeholder="ör. giris, kiraci_guncelle" /></label>
-        <label className="girdi-etiket">Kiracı<select className="girdi" value={tenant} onChange={(e) => setTenant(e.target.value)}>
+        <label className="girdi-etiket">Müşteri<select className="girdi" value={tenant} onChange={(e) => setTenant(e.target.value)}>
           <option value="">tümü</option>{kiracilar.map((k) => <option key={k.id} value={k.id}>{k.ad}</option>)}</select></label>
         <button className="dugme" type="submit">Süz</button>
       </form>

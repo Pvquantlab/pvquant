@@ -9,7 +9,7 @@ import { AyrintiCipleri } from "../../lib/AyrintiCipleri";
 const KAPSAM_AD: Record<string, string> = { "tahmin:oku": "Tahmin okuma", "kgup:oku": "KGÜP programı okuma" };
 
 /** 26.10 Faz 6 — KURULUŞ: Portföy'den taşınan yönetim kartları (Dış erişim, Kuruluşlar arası paylaşım, Hesap ve ekip, Santral arşivi —
- *  bileşenler ve mantıkları AYNEN), + kiracı içi denetim izi (yalnız yönetici) + «yöneticiler için 2FA zorunlu» politikası.
+ *  bileşenler ve mantıkları AYNEN), + müşteri içi denetim izi (yalnız yönetici) + «yöneticiler için 2FA zorunlu» politikası.
  *  Portföy artık yalnız analitik. Yazma kontrolleri rolle (admin/editor) gizli — kural değişmedi. */
 export function Kurulus({ santralYenile }: { santralYenile?: () => void }) {
   const [santraller, setSantraller] = useState<{ id: string; ad: string }[]>([]);
@@ -49,7 +49,7 @@ function Politika() {
   );
 }
 
-/** Kiracı içi denetim izi — kendi ekibinizin eylemleri ve platformun bu kiracıda yaptıkları (kapsam sütunu). */
+/** Müşteri içi denetim izi — kendi ekibinizin eylemleri ve platformun bu müşteride yaptıkları (kapsam sütunu). */
 function KurulusDenetim() {
   const [liste, setListe] = useState<DenetimKaydi[] | null>(null); const [hata, setHata] = useState<string | null>(null);
   const getir = (onceId?: number) => api.kurulusDenetim(onceId).then((r) => setListe((e) => onceId && e ? [...e, ...r.kayitlar] : r.kayitlar)).catch((e) => setHata(String((e as Error).message ?? e)));
