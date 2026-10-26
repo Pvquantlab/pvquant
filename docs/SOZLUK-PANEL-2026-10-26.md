@@ -1,4 +1,4 @@
-# İki panel ortak sözlüğü ve eşzamanlama (26.10.2026) — YERELDE, commit yok
+# İki panel ortak sözlüğü ve eşzamanlama (26.10.2026) — v2.496 CANLI (cdfdb9a, CI #600)
 Kapsam: platform paneli (/yonetim) ↔ müşteri/santral paneli. Kaynak dil müşteri panelinin «piyasa dili» (v2.462); platform buna uyar.
 API alan adları ve uçlar SÖZLEŞMEDİR, değişmedi (`bayat`, `taze`, `tamam`, `kosu`, `/v1/yonetim/kiracilar`, jobs_log eylem kodları).
 
@@ -181,3 +181,8 @@ worker içe aktarıldı; zamanlanan iş 20 | etiketsiz []
 - KANITLANAMAYAN / KAPSAM DIŞI: canlı sistemde gerçek worker tetiklemesiyle uçtan uca tazeleme (sahte API ile ölçüldü; canlı doğrulama dağıtım sonrası);
   Firefox/WebKit koşulmadı (Chrome); müşteri paneli metinleri (piyasa dili) bilerek değiştirilmedi, platform ona uydu.
 - Dağıtım gerekirse: api + web imajları (damga_service, isler_service etiketi; web); alembic ve .env değişikliği YOK. Commit/push/dağıtım ONAY BEKLİYOR.
+
+## 6. Mühür ve canlı kanıt (26.10)
+v2.496 = cdfdb9a, CI #600 yeşil, ssh dağıtım api + web (alembic/.env yok). Sunucu HEAD cdfdb9a; index.html + **22/22 JS/CSS** referansla sha256 birebir;
+sözlük metinleri canlı `sozluk-*.js` parçasında («bayat» kalıntısı 0); api konteynerinde `damga_service.hesapla` gerçek santralda 9 alan döndü
+(son_piyasa 26.10 00:15, son_is 09:33, son_meteo 03:00, santral_ozu) ve ETag iki çağrıda sabit; api log 0 traceback, 4 işçi açıldı.
