@@ -1,4 +1,4 @@
-# Üç aşamalı denetim — yönetici paneli fazları 0–6 (26.10.2026) — YERELDE, commit yok
+# Üç aşamalı denetim — yönetici paneli fazları 0–6 (26.10.2026) — v2.494 CANLI (2abaf24, CI #597)
 Kapsam: Faz 0 güvenlik tabanı, Faz 1 platform kimliği, Faz 2 `/yonetim` arayüzü, Faz 3 sistem izleme, Faz 4 kullanım, Faz 5 planlar + kimliğe
 bürünme, Faz 6 Ayarlar/denetim izi/2FA politikası; ek: 13 canlı ekran görüntüsü. Yöntem: (1) kod denetimi + düzeltme, (2) uçtan uca yeniden
 test (gerçek DB + tarayıcı, iki tema), (3) bağımsız ajanla üçüncü denetim + kritik testlerin yeniden koşulması. Müşteri verisi ve canlı sistem
@@ -92,7 +92,7 @@ tarayıcı 50 ölçüm: taşma 0, iskelet 0, hata 0, geçiş medyan 80 ms / p90 
 operatör kipi), 2FA sıfırla → yeniden doğrulama kartı → PUT gövdesi sifre+kod → başarı mesajı.
 Tam Python takımı (son koşu, gerçek DB 5433, tüm düzeltmelerle): **725 passed, 1 skipped, 0 failed (7 dk 3 sn)**.
 
-## Commit planı (ONAY BEKLİYOR — commit/push/dağıtım yapılmadı)
+## Mühür ve dağıtım (26.10, 02:05 UTC)
 Tek mühür önerisi **v2.494 = ÜÇ AŞAMALI DENETİM + «Ayarlar»**: 24 dosya. Dağıtım gerekirse: api + worker + web imajları; alembic değişikliği YOK;
 .env değişikliği YOK. Canlıda smoke: `/v1/yonetim/giris` 6 ardışık → 429; `PUT /operatorler/{kendi} iki_adim_sifirla` 403; `/kiracilar/abc` 422.
 
@@ -101,3 +101,11 @@ Tek mühür önerisi **v2.494 = ÜÇ AŞAMALI DENETİM + «Ayarlar»**: 24 dosya
   olması (httpOnly çerez); 60 sn oturum önbelleği (askıya alma ≤60 sn gecikir, belgeli); `users`/`tenants` RLS'siz (fazlar öncesi tasarım,
   kod süzgeçli); `datetime.utcnow()` DeprecationWarning (Python 3.14); `tests/test_modb_rapor.py::test_matrissiz_girdi_kosullu` tam takımda
   bir kez kaldı, yeniden koşuda geçti (sıra bağımlı; rapor üretici, kapsam dışı).
+
+**v2.494 = 2abaf24, CI #597 yeşil, ssh dağıtım:** `git pull` → `docker compose build api worker web` → `up -d --force-recreate api worker web`;
+alembic ve .env değişmedi. Canlı kanıt: sunucu HEAD 2abaf24; index.html + **20/20 JS/CSS** referans derlemeyle (`VITE_API_URL=. … --emptyOutDir`)
+sha256 birebir (DERS: referans klasörü proje dışındaysa vite eski parçaları silmez → 18 sahte «fark»; `--emptyOutDir` şart); `/v1/yonetim/giris`
+6 ardışık → **401×5, 429** (4 işçili canlıda; `hiz_pencere` satırı `ygiris:<ip>` adet 5 — 6. isteği süreç içi slowapi kesti, DB penceresi de
+yazıyor); `/kiracilar/abc`, `/basvurular/abc/okundu`, `PUT /operatorler/abc` jetonsuz 422 (başlık doğrulaması); `/yonetim` 200; api log 0
+traceback; worker açılış + nabız 02:04:22 UTC; başarısız denemeler denetim izinde gerçek IP ile. Yeniden doğrulama kartı ve parola bağlantısı
+akışı gerçek hesapla kullanıcı tarafından teyit edilecek.
