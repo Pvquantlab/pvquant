@@ -167,3 +167,6 @@ Her satır: kalıp → dosya → kritik kural. Yeni mühürde yeni kalıp çıka
   bağlantısı, geçici parola) `.plat-tek-seferlik` + kopyala; denetim izine yazılmaz. Tablo tuzakları: 1 % genişlikli hücrede
   `.cip-kod` harf harf kırılır → nowrap; işlem düğmeleri `.dugme-sira` tek satır; `.grafik-kaydir` doğrudan tabloyu sararsa
   min-width tabloya. Playwright: önbellekteki Chromium sürümü paketle uyuşmazsa `channel: "chrome"` (kurulu Chrome) ile çalışır.
+- **Platform açık teması (27.10.2026, biriktirildi):** ikinci yüz için aday paletler önce yalnız `data-palet` jeton blokları + localStorage
+  önizleme anahtarı + üst çubukta geçici palet seçici olarak sunuldu (sahte API kareleri + ölçülmüş WCAG tablosu + gerçek veride tıklanabilir
+  önizleme); karar verilince seçilen blok kalıcı yüz oldu, adaylar/anahtar/seçici silindi. Kalıp: «önce önizlenebilir aday, sonra kalıcı jeton».

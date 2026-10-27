@@ -19,7 +19,7 @@
   <body>
     <!-- 24.10 performans turu: kalıcı tema seçimi ilk boyamadan ÖNCE uygulanır (panel yeniden yüklenince açık→koyu
          yanıp sönmesi olmasın). Yalnız oturum jetonu varken: vitrinin kökü dokunulmaz kalır; «oto» kipini Kabuk kurar. -->
-    <script>(function(){try{if(!localStorage.getItem("pvq_token"))return;var k=localStorage.getItem("pvq_tema");if(k==="koyu"||k==="acik")document.documentElement.dataset.tema=k;}catch(e){}})();</script>
+    <script>(function(){try{var d=document.documentElement;if(location.pathname.indexOf("/yonetim")===0&&localStorage.getItem("pvq_platform_token")){d.dataset.yuz="platform";d.dataset.tema=localStorage.getItem("pvq_platform_tema")==="koyu"?"koyu":"acik";return;}if(!localStorage.getItem("pvq_token"))return;var k=localStorage.getItem("pvq_tema");if(k==="koyu"||k==="acik")d.dataset.tema=k;}catch(e){}})();</script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

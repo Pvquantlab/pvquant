@@ -11,6 +11,7 @@ import { Planlar } from "./Planlar";
 /** 24.10 Faz 2 — /yonetim kökü: jeton yok → giriş; jeton var ama 2FA kapalı → zorunlu kurulum; sonra kabuk + sayfalar.
  *  Sayfa seçimi müşteri panelindeki gibi durumla (URL /yonetim sabit). Örnek kipte yönetim yüzü yok. */
 const BOSTA_DK = 30;
+function platformTemasi(): "acik" | "koyu" { try { return localStorage.getItem("pvq_platform_tema") === "koyu" ? "koyu" : "acik"; } catch { return "acik"; } }
 
 export function Yonetim() {
   const [jeton, setJeton] = useState(() => !!platformJeton());
@@ -18,12 +19,19 @@ export function Yonetim() {
   const [kurulmali, setKurulmali] = useState<boolean | null>(null);
   const [sayfa, setSayfa] = useState<YonetimSayfa>("genel");
   useEffect(() => { platformDusunce_kaydet(() => { setJeton(false); setBen(null); setKurulmali(null); }); return () => platformDusunce_kaydet(null); }, []);
-  // Platform yüzü KOYU sabit ve nötr lacivert vurgu — giriş ekranı dahil (müşteri temasına dönüş: ayrılırken eski değerler)
+  // Platform yüzü data-yuz=platform (nötr lacivert vurgu) — giriş ekranı dahil; müşteri temasına dönüş: ayrılırken eski değerler.
+  // 27.10: yüz artık seçilebilir — `pvq_platform_tema` açık (Claude Ivory, varsayılan) | koyu; üst çubukta Açık/Koyu (index.css açık yüz bloğu).
+  const [temaKipi, setTemaKipi] = useState<"acik" | "koyu">(platformTemasi);
   useEffect(() => {
     const kok = document.documentElement; const eskiTema = kok.dataset.tema; const eskiYuz = kok.dataset.yuz;
-    kok.dataset.tema = "koyu"; kok.dataset.yuz = "platform";
+    kok.dataset.yuz = "platform";
     return () => { if (eskiTema) kok.dataset.tema = eskiTema; else delete kok.dataset.tema; if (eskiYuz) kok.dataset.yuz = eskiYuz; else delete kok.dataset.yuz; };
   }, []);
+  useEffect(() => {   // tema geçişi atomik (müşteri Kabuk kalıbı, v2.320): ~120 ms transition'lar susar
+    const kok = document.documentElement; kok.classList.add("tema-gecisi"); kok.dataset.tema = temaKipi;
+    const id = window.setTimeout(() => kok.classList.remove("tema-gecisi"), 120); return () => window.clearTimeout(id);
+  }, [temaKipi]);
+  const temaSec = (k: "acik" | "koyu") => { setTemaKipi(k); try { localStorage.setItem("pvq_platform_tema", k); } catch { /* gizli pencere */ } };
   useEffect(() => {
     if (!jeton) return;
     yonetim.ben().then((b) => { setBen(b); setKurulmali(!b.totp_aktif); }).catch(() => { platformCikis(); setJeton(false); });
@@ -41,7 +49,7 @@ export function Yonetim() {
   if (kurulmali) return <IkiAdimKurulum email={ben?.email ?? ""} onTamam={() => { setKurulmali(false); yonetim.ben().then(setBen).catch(() => {}); }} />;
   const cikis = () => { platformCikis(); setJeton(false); setBen(null); setKurulmali(null); setSayfa("genel"); };
   return (
-    <PlatformKabugu sayfa={sayfa} setSayfa={setSayfa} ben={ben} onCikis={cikis}>
+    <PlatformKabugu sayfa={sayfa} setSayfa={setSayfa} ben={ben} onCikis={cikis} tema={{ kip: temaKipi, sec: temaSec }}>
       {sayfa === "genel" && <GenelBakis git={setSayfa} />}
       {sayfa === "sistem" && <Sistem />}
       {sayfa === "kullanim" && <Kullanim />}

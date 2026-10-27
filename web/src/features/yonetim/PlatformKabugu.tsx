@@ -20,8 +20,10 @@ const IKON: Record<YonetimSayfa, ReactNode> = {
   hesap: <svg {...O}><circle cx="10" cy="7" r="3.2"/><path d="M4 17c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/></svg>,
 };
 
-export function PlatformKabugu({ sayfa, setSayfa, ben, onCikis, children }:
-  { sayfa: YonetimSayfa; setSayfa: (s: YonetimSayfa) => void; ben: Ben | null; onCikis: () => void; children: ReactNode }) {
+export function PlatformKabugu({ sayfa, setSayfa, ben, onCikis, tema, children }:
+  { sayfa: YonetimSayfa; setSayfa: (s: YonetimSayfa) => void; ben: Ben | null; onCikis: () => void; children: ReactNode;
+    /** 27.10: yüz seçimi — açık (Claude Ivory) | koyu; müşteri Kabuk'un .seg kalıbı, «Oto» yok (platformda sayfa yüzü ayrımı yok) */
+    tema: { kip: "acik" | "koyu"; sec: (k: "acik" | "koyu") => void } }) {
   const [menuAcik, setMenuAcik] = useState(false);
   useEffect(() => { document.title = `${YSAYFALAR.find((s) => s.id === sayfa)?.ad ?? "Platform"} — Platform | PVQuant`; }, [sayfa]);
   useEffect(() => { document.body.style.overflow = menuAcik ? "hidden" : ""; return () => { document.body.style.overflow = ""; }; }, [menuAcik]);
@@ -57,7 +59,12 @@ export function PlatformKabugu({ sayfa, setSayfa, ben, onCikis, children }:
             Platform<span className="ust-yol-ayrac" aria-hidden="true">/</span><b style={{ color: "var(--metin)" }}>{YSAYFALAR.find((s) => s.id === sayfa)?.ad}</b>
             <span className="mono ust-tarih" style={{ color: "var(--soluk)", marginLeft: 14 }}>{bugun}</span>
           </div>
-          <div className="ust-arac"><span className="plat-ust-rozet" title="Müşteriler arası yetkili alan">PLATFORM</span></div>
+          <div className="ust-arac">
+            <div className="seg" role="group" aria-label="Tema">
+              <button type="button" aria-pressed={tema.kip === "acik"} onClick={() => tema.sec("acik")}>Açık</button>
+              <button type="button" aria-pressed={tema.kip === "koyu"} onClick={() => tema.sec("koyu")}>Koyu</button>
+            </div>
+            <span className="plat-ust-rozet" title="Müşteriler arası yetkili alan">PLATFORM</span></div>
         </header>
         <div className="icerik">{children}</div>
       </main>

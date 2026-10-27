@@ -31,9 +31,10 @@ test("müşteri paneli: GelenTalepler ve başvuru uçları yok", () => {
   assert.doesNotMatch(client, /\/v1\/vitrin\/basvurular/);
 });
 
-test("platform yüzü: koyu sabit, data-yuz=platform, nötr vurgu jetonu, sahip-only sayfa", () => {
+test("platform yüzü: data-yuz=platform, yüz seçilebilir (açık varsayılan), nötr vurgu jetonu, sahip-only sayfa", () => {
   const kok = oku("features/yonetim/Yonetim.tsx");
-  assert.match(kok, /kok\.dataset\.tema = "koyu"; kok\.dataset\.yuz = "platform";/);
+  assert.match(kok, /kok\.dataset\.yuz = "platform";/);
+  assert.match(kok, /localStorage\.getItem\("pvq_platform_tema"\) === "koyu" \? "koyu" : "acik"/);   // 27.10: açık varsayılan
   const css = oku("index.css");
   assert.match(css, /:root\[data-yuz="platform"\] \{ --plat-vurgu: #5B8DEF;/);
   const liste = oku("features/yonetim/sayfaListesi.ts");
@@ -218,4 +219,25 @@ test("eylem sözlüğü: arka uçtaki her denetim eylem kodu Türkçe karşılı
   const say = oku("features/yonetim/sayfalar.tsx");
   assert.match(say, /Object\.entries\(SOZLUK\.eylem\)\.map\(\(\[kod, ad\]\) => <option key=\{kod\} value=\{kod\}>\{ad\}<\/option>\)/);
   assert.doesNotMatch(say, /placeholder="ör\. giris/);
+});
+
+// ---------------- 27.10 platform açık yüzü (Claude Ivory) ----------------
+test("platform açık yüzü: Claude Ivory jetonları, Açık/Koyu seçici, ilk boyama betiği, önizleme kalıntısı yok, müşteri/koyu dokunulmadı", () => {
+  const css = oku("index.css");
+  assert.match(css, /:root\[data-yuz="platform"\]\[data-tema="acik"\] \{\n  --zemin: #F0EEE6; --yan: #F5F4EE; --kart: #FAF9F5;/);
+  assert.match(css, /--metin: #1F1E1D; --ikincil: #45443F; --soluk: #66645E;/);
+  assert.match(css, /--plat-vurgu: #3D6BCB; --plat-vurgu-acik: #2A52A8;/);
+  assert.doesNotMatch(css, /data-palet|ÖNİZLEME/);
+  assert.match(css, /^:root \{[^]*?--zemin: #E8EAEE; --kart: #FFFFFF;/);                   // müşteri açık yüzü aynen (dosya başı)
+  assert.match(css, /\[data-tema="koyu"\] \{\n[^]*?--zemin: #0B0E15; --kart: #181B23;/);   // koyu yüz aynen
+  const kab = oku("features/yonetim/PlatformKabugu.tsx");
+  assert.match(kab, /<div className="seg" role="group" aria-label="Tema">/);
+  assert.match(kab, /aria-pressed=\{tema\.kip === "acik"\}[^]*?aria-pressed=\{tema\.kip === "koyu"\}/);
+  assert.doesNotMatch(kab, /onizleme|PALET/);
+  const kok = oku("features/yonetim/Yonetim.tsx");
+  assert.match(kok, /localStorage\.setItem\("pvq_platform_tema", k\)/);
+  assert.match(kok, /kok\.classList\.add\("tema-gecisi"\)/);
+  assert.doesNotMatch(kok, /onizleme|paletler/);
+  const html = readFileSync(new URL("../../index.html", import.meta.url), "utf8");
+  assert.match(html, /localStorage\.getItem\("pvq_platform_token"\)\)\{d\.dataset\.yuz="platform";d\.dataset\.tema=localStorage\.getItem\("pvq_platform_tema"\)==="koyu"\?"koyu":"acik";return;\}/);
 });
