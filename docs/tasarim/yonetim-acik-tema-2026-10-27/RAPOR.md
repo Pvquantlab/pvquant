@@ -123,7 +123,8 @@ betiği `data-tema="acik"`) · Koyu tık → #0B0E15, yenilemede kalıcı · Aç
 `data-yuz` yok. Kapılar: `tsc -b` 0, web **101/101**, oxlint 16/0, `npm run build` tamam. pytest koşulmadı (Python değişmedi).
 Kareler: `kalici-acik-denetim-1440.png`, `kalici-koyu-genel-1440.png`, `kalici-acik-giris-1440.png`, `platform-sistem-1440.png`, `platform-genel_bakış-375.png`.
 
-## Düzeltme (27.10 gece) — «Ara yol» (yerel, commit edilmedi)
+## Düzeltme (27.10 gece) — «Ara yol» = v2.500 CANLI (c174b87, CI #608 4 dk 20 sn; yalnız web imajı)
+**Canlı kanıt:** index.html birebir, 22/22 JS/CSS sha256 referans derlemeyle aynı, `/yonetim` 200, canlı CSS'te `data-tema=acik]{--zemin:#f7f7f8;--yan:#fbfbfc;--kart:#fff`, eski fildişi (#F0EEE6) canlıda 0. Sunucuda `git pull` + `docker compose build web` + `up -d --force-recreate web`; api/worker/alembic dokunulmadı. DERS: referans derleme için `.env.local`'ı kenara almak gerekmez — kabuk ortamındaki `VITE_API_URL=.` .env dosyalarını ezer; park/geri koyma dev sunucuyu yeniden başlatıp Vite bağımlılık önbelleğini bayatlatıyor (504 «Outdated Optimize Dep», boş sayfa).
 Kullanıcı claude.ai'nin güncel Chrome yüzünü gösterdi; ölçüldü: sayfa/girdi/kart hepsi **#FFFFFF** (ayrım yalnız kenarlıkla). Claude Ivory
 (v2.499) yerine istenen ara yol: beyaz his + nefes. Yeni açık yüz jetonları: zemin **#F7F7F8** · yan #FBFBFC · kart #FFFFFF · kenar #D9D9DE ·
 yuzey rgba(10,10,10,.05) · mürekkep #0A0A0A / #3F3F42 / #66666B (masaüstü örneklemesi) · vurgu #3D6BCB / #2A52A8. Kontrast: metin/kart
