@@ -52,14 +52,12 @@ Kaynak dosyalar (gerçek değerler HER ZAMAN oradan okunur, burası harita):
   açık); ızgara koyu `--chart-grid` .14 / `--izgara` .11, açık .13 / .12; açık `--ch-dusuk` #7F8B9A (≥3:1 grafik nesnesi);
   kontroller: `.dugme` ≥32 px, sekme/segment 30 px; açıklama paragrafı `p.soluk` 13,5 px.
   Tema üçlüsü oto|açık|koyu (`pvq_tema`).
-- **Platform yüzü /yonetim açık teması «Claude Ivory» (27.10.2026, `docs/tasarim/yonetim-acik-tema-2026-10-27/RAPOR.md`):** kullanıcı
-  5 aday (Soft Warm / Cool Slate / Neutral Pearl / Claude Ivory / Claude White) arasından seçti. `:root[data-yuz="platform"][data-tema="acik"]`:
-  zemin **#F0EEE6** / yan #F5F4EE / kart #FAF9F5 (saf beyaz yok), kenar #DDD9CE, mürekkep #1F1E1D / #45443F / #66645E, vurgu laciverti
-  açık kesim #3D6BCB (mürekkep) / #2A52A8 (tint üstü metin 6,0:1). BİLİNÇLİ SAPMA: kart/zemin 1,10 (< 1,15) — fildişi zemin birebir
-  istendi, ayrımı kenar (1,34) taşır. Platformda tema ikilisi açık|koyu (`pvq_platform_tema`, açık varsayılan; «Oto» yok — sayfa yüzü
-  ayrımı yok). Koyu yüz jetonları değişmedi. Claude'un terakotası (#C96442) KULLANILMAZ: kart üstünde 3,7:1 ve uyarı kırmızısı ailesine yakın. Birincil düğme `.dugme-ana` = vitrinin dolu hapı: açıkta mürekkep/beyaz yazı,
-  koyuda beyaz/mürekkep yazı; yeşil `--marka` seçim/durum/odak rengi olarak kalır (nav aktif, rozet-ok, odak halkası, amblem).
-  Giriş ekranı sol yüzü: #0B0E15 + jua radyal ışıkları (lavanta/camgöbeği), vurgu düz gök mavisi #8FD3FF.
+- **Platform yüzü /yonetim açık teması «Ara yol» (27.10.2026 gece, `docs/tasarim/yonetim-acik-tema-2026-10-27/RAPOR.md`):** kullanıcı
+  5 aday arasından önce Claude Ivory'yi seçti (v2.499), sonra claude.ai'nin güncel Chrome yüzünün saf beyaz olduğunu ölçünce «beyaz his +
+  nefes» ara yolunu istedi. `:root[data-yuz="platform"][data-tema="acik"]`: zemin **#F7F7F8** / yan #FBFBFC / kart #FFFFFF, kenar #D9D9DE,
+  nötr mürekkep #0A0A0A / #3F3F42 / #66666B (Mac masaüstü uygulaması örneklemesi), vurgu laciverti #3D6BCB (mürekkep) / #2A52A8 (tint üstü
+  metin 6,2:1). BİLİNÇLİ SAPMA: kart/zemin 1,07 (< 1,15) — ayrımı kenar (1,41) taşır. Platformda tema ikilisi açık|koyu (`pvq_platform_tema`,
+  açık varsayılan; «Oto» yok). Koyu yüz jetonları değişmedi. Claude'un terakotası KULLANILMAZ (kart üstünde 3,7:1, uyarı ailesine yakın).
 - Vitrin (13.10 jua katmanı): üç zemin — beyaz / krem #FEF0E6 / koyu #0B0E15; hero = zemin → video →
   dikey perde (`--vt-jua-perde`, mobil ayrı) → içerik. Koyu yüzeylerde pembe/camgöbeği radyal ışık
   (`--vt-jua-isik`, opaklık .35). Gren ve fotoğraf zeminleri KALKTI. Üst çubuk yüzen cam hap

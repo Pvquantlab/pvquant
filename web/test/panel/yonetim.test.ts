@@ -222,10 +222,10 @@ test("eylem sözlüğü: arka uçtaki her denetim eylem kodu Türkçe karşılı
 });
 
 // ---------------- 27.10 platform açık yüzü (Claude Ivory) ----------------
-test("platform açık yüzü: Claude Ivory jetonları, Açık/Koyu seçici, ilk boyama betiği, önizleme kalıntısı yok, müşteri/koyu dokunulmadı", () => {
+test("platform açık yüzü: «ara yol» jetonları, Açık/Koyu seçici, ilk boyama betiği, önizleme kalıntısı yok, müşteri/koyu dokunulmadı", () => {
   const css = oku("index.css");
-  assert.match(css, /:root\[data-yuz="platform"\]\[data-tema="acik"\] \{\n  --zemin: #F0EEE6; --yan: #F5F4EE; --kart: #FAF9F5;/);
-  assert.match(css, /--metin: #1F1E1D; --ikincil: #45443F; --soluk: #66645E;/);
+  assert.match(css, /:root\[data-yuz="platform"\]\[data-tema="acik"\] \{\n  --zemin: #F7F7F8; --yan: #FBFBFC; --kart: #FFFFFF;/);
+  assert.match(css, /--metin: #0A0A0A; --ikincil: #3F3F42; --soluk: #66666B;/);
   assert.match(css, /--plat-vurgu: #3D6BCB; --plat-vurgu-acik: #2A52A8;/);
   assert.doesNotMatch(css, /data-palet|ÖNİZLEME/);
   assert.match(css, /^:root \{[^]*?--zemin: #E8EAEE; --kart: #FFFFFF;/);                   // müşteri açık yüzü aynen (dosya başı)

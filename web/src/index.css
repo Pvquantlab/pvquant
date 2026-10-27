@@ -1022,20 +1022,20 @@ select.girdi { font-family: var(--font); }
 html.vt-sayfa body { background: #FFFFFF; }
 
 /* ============================================================
-   27.10 — PLATFORM AÇIK YÜZÜ («Claude Ivory»; kullanıcı 5 aday arasından seçti, docs/tasarim/yonetim-acik-tema-2026-10-27/RAPOR.md)
-   Kaynak: claude.ai açık yüzünün fildişi zemini — zemin #F0EEE6 / yan #F5F4EE / kart #FAF9F5 (saf beyaz yok), sıcak-nötr mürekkep
-   #1F1E1D / #45443F / #66645E; vurgu platform laciverti açık yüz kesimi #3D6BCB (mürekkep) / #2A52A8 (tint üstü metin, 6,0:1).
-   Ölçülen: metin/kart 15,8 · ikincil 9,3 · soluk/kart 5,6 · soluk/zemin 5,1 · nav aktif 5,6 · rozet-ok 6,0 · uyarı 4,8 · amber 4,8 (AA).
-   BİLİNÇLİ SAPMA: kart/zemin 1,10 (< 1,15 hedefi) — kullanıcı fildişi zemini birebir istedi; ayrımı kenar (#DDD9CE, 1,34) taşır.
+   27.10 — PLATFORM AÇIK YÜZÜ «Ara yol» (kullanıcı 27.10 gece: claude.ai'nin güncel Chrome yüzü saf beyaz ölçüldü; Claude Ivory yerine
+   beyaz his + nefes): zemin #F7F7F8 / yan #FBFBFC / kart #FFFFFF, kenar #D9D9DE (kart ayrımını kenar taşır, 1,41), nötr mürekkep
+   #0A0A0A / #3F3F42 / #66666B (masaüstü uygulaması örneklemesi), vurgu laciverti #3D6BCB / #2A52A8 (tint üstü metin 6,2:1).
+   Ölçülen: metin/kart 19,8 · ikincil 10,5 · soluk/kart 5,7 · soluk/zemin 5,4 · nav aktif 5,8 · rozet-ok 6,2 · uyarı 4,8 · amber 4,8 (AA).
+   BİLİNÇLİ SAPMA: kart/zemin 1,07 (< 1,15) — beyaz his istendi. Önceki «Claude Ivory» (#F0EEE6/#F5F4EE/#FAF9F5) v2.499'da canlıydı.
    Yüz seçimi: Yonetim.tsx `pvq_platform_tema` (açık varsayılan; üst çubukta Açık/Koyu). Koyu yüz [data-tema=koyu] blokları aynen.
    ============================================================ */
 :root[data-yuz="platform"][data-tema="acik"] {
-  --zemin: #F0EEE6; --yan: #F5F4EE; --kart: #FAF9F5; --yuzey: rgba(31,30,29,.05); --yuzey2: rgba(31,30,29,.09);
-  --kenar: #DDD9CE; --izgara: rgba(31,30,29,.11); --yan-cizgi: rgba(31,30,29,.12);
-  --metin: #1F1E1D; --ikincil: #45443F; --soluk: #66645E; --yan-metin: #45443F;
+  --zemin: #F7F7F8; --yan: #FBFBFC; --kart: #FFFFFF; --yuzey: rgba(10,10,10,.05); --yuzey2: rgba(10,10,10,.09);
+  --kenar: #D9D9DE; --izgara: rgba(10,10,10,.10); --yan-cizgi: rgba(10,10,10,.10);
+  --metin: #0A0A0A; --ikincil: #3F3F42; --soluk: #66666B; --yan-metin: #3F3F42;
   --plat-vurgu: #3D6BCB; --plat-vurgu-acik: #2A52A8; --plat-vurgu-zemin: rgba(61,107,203,.12); --plat-vurgu-kenar: rgba(61,107,203,.35);
-  --marka: var(--plat-vurgu); --marka-koyu: var(--plat-vurgu-acik); --marka-zemin: var(--plat-vurgu-zemin); --marka-r: 61,107,203; --yan-aktif: rgba(61,107,203,.13);
-  --notr: #6E6B63; --notr-acik: #948F85;
+  --marka: var(--plat-vurgu); --marka-koyu: var(--plat-vurgu-acik); --marka-zemin: var(--plat-vurgu-zemin); --marka-r: 61,107,203; --yan-aktif: rgba(61,107,203,.12);
+  --notr: #6B6B70; --notr-acik: #93939A;
   --uyari-metin: #B8421F; --basari-metin: #15803D; --amber-metin: #9A5C07; --uyari-zemin: #FBEEEA; --amber-zemin: #FDF1DE; --cubuk-vurgu: #166534;
 }
 /* açık yüzde birincil düğme mürekkep hap (müşteri açık temasıyla aynı kural); koyu kuralı [data-tema=koyu] zaten uygulanmaz */

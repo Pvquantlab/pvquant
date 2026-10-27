@@ -122,3 +122,11 @@ Doğrulama (sahte API, Chrome): 10 platform sayfası × 375/768/1024/1440/1920 =
 betiği `data-tema="acik"`) · Koyu tık → #0B0E15, yenilemede kalıcı · Açık tık geri · çıkış sonrası giriş ekranı açık · müşteri paneli
 `data-yuz` yok. Kapılar: `tsc -b` 0, web **101/101**, oxlint 16/0, `npm run build` tamam. pytest koşulmadı (Python değişmedi).
 Kareler: `kalici-acik-denetim-1440.png`, `kalici-koyu-genel-1440.png`, `kalici-acik-giris-1440.png`, `platform-sistem-1440.png`, `platform-genel_bakış-375.png`.
+
+## Düzeltme (27.10 gece) — «Ara yol» (yerel, commit edilmedi)
+Kullanıcı claude.ai'nin güncel Chrome yüzünü gösterdi; ölçüldü: sayfa/girdi/kart hepsi **#FFFFFF** (ayrım yalnız kenarlıkla). Claude Ivory
+(v2.499) yerine istenen ara yol: beyaz his + nefes. Yeni açık yüz jetonları: zemin **#F7F7F8** · yan #FBFBFC · kart #FFFFFF · kenar #D9D9DE ·
+yuzey rgba(10,10,10,.05) · mürekkep #0A0A0A / #3F3F42 / #66666B (masaüstü örneklemesi) · vurgu #3D6BCB / #2A52A8. Kontrast: metin/kart
+19,8 · ikincil 10,5 · soluk/kart 5,7 · soluk/zemin 5,3 · nav aktif 6,0 · rozet-ok 6,2 · vurgu/kart 5,0 · uyarı 4,8 · amber 4,8 — AA üstü;
+kart/zemin **1,07** (bilinçli sapma, kenar 1,41 taşır). Ölçüm: 10 sayfa × 5 genişlik = 50, taşma 0, alert 0, hepsi acik/platform; müşteri 25
+ölçüm değişmedi. Kapılar: tsc 0, web 101/101, oxlint 16/0, build tamam. Kareler `arayol-*.png`. jetonlar.md satırı güncellendi.
