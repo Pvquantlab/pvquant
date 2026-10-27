@@ -104,7 +104,8 @@ yoğun kullanımından kaçın» ve kart/zemin ≥1,15 ilkelerinden sapar; uzun 
 ayrışmaz (yalnız çerçeve). Beyaz his isteniyorsa ara yol: zemin #F7F7F8 (yan ile aynı), kart #FFFFFF → kart/zemin 1,07; ya da Neutral
 Pearl (zemin #E9E9EC, kart #FAFAFB) zaten «beyaz ama yorulmayan» cevaptır.
 
-## KARAR (27.10 akşam): Claude Ivory — kalıcı uygulama (yerel, commit edilmedi)
+## KARAR (27.10 akşam): Claude Ivory — kalıcı uygulama = v2.499 CANLI (610072f, CI #606 5 dk 38 sn; yalnız web imajı)
+**Canlı kanıt:** index.html birebir (ilk boyama betiği platform jetonunu okuyor), 22/22 JS/CSS sha256 referans derlemeyle aynı, `/yonetim` 200, canlı CSS'te `data-tema=acik]{--zemin:#f0eee6;--yan:#f5f4ee;--kart:#faf9f5`, canlı Yonetim parçasında `pvq_platform_tema` var ve `onizleme` kalıntısı 0. Sunucuda `git pull` + `docker compose build web` + `up -d --force-recreate web`; api/worker/alembic dokunulmadı.
 Kullanıcı gerçek veride üst çubuk seçicisiyle 5 adayı gezip **Claude Ivory**'yi seçti. Uygulama:
 - `web/src/index.css`: aday blokları, `data-palet` ve önizleme notu kalktı; tek kalıcı blok `:root[data-yuz="platform"][data-tema="acik"]`
   (zemin #F0EEE6 / yan #F5F4EE / kart #FAF9F5 / kenar #DDD9CE / mürekkep #1F1E1D-#45443F-#66645E / vurgu #3D6BCB-#2A52A8) + açık yüz
