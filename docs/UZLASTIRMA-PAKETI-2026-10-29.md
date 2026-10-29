@@ -108,3 +108,16 @@ birebir (referans edc184b geçici çalışma ağacından); api ve worker kapsay�
 Kalıcı öneri: CI'dan ssh ile dağıtım işi (gizli anahtar GitHub'da; açık karar).
 
 Ayrıntı: `PVQuant_Ilk_Uygulama/02` M19–M21, `03` §7f, `04` (TPYS şablonu EPİAŞ Yardım Masası yanıtına bağlı).
+
+# Yedinci paket — v2.507 (30.10.2026, canlı): gün içi revize program önerisi (F-10) + EPİAŞ piyasa verisi durumu kartı
+
+Commit `74dee5a`, CI #622 (3 dk 58 s). Dağıtım: api + worker + web imajları (yeni cron `kgup_revizyon_kontrol`, saat 04–15 UTC :10), alembic yok.
+Canlı: index.html ve 22/22 JS/CSS birebir (referans 74dee5a geçici çalışma ağacından); `revizyon_service.oner` api ve worker kapsayıcılarında;
+worker günlüğünde iş kaydı; `GET …/kgup/revizyon` kimliksiz 422; `GET /v1/piyasa/durum` kimlik tanımlı; api günlüğü hatasız.
+
+Kapsam: revizyon_service (program ↔ güncel beklenti, eşik max(%10·program, %2·kurulu), revizyon son anı = teslimat − 30 dk, kayıt yazmaz),
+seçimlik alarm «Program revizyonu önerisi», Tahminler › «Bugünün programı — revizyon önerisi» kartı, Santralim alarm sözlüğü/eşikleri,
+Ayarlar › «EPİAŞ piyasa verisi bağlantısı» kartı. İnceleme düzeltmeleri: sahte API GİP örneği arka uçla hizalandı (11:00/11:30);
+alarm açıklaması «07:10–18:10 arası her saat».
+
+Ayrıntı: `PVQuant_Ilk_Uygulama/02` M21, `03` §7g, `04` #15 ve #12 kapandı.
