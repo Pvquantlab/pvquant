@@ -24,17 +24,17 @@ const KARTLAR: readonly {
   { ad: "Teslim programı", etiket: "Bir gün önce, teslim saati", resim: tlTeslim,
     metin: "Yarının saatlik programı ve emre amadelik bildirimi teslim saatinden önce hazırdır; bir gecikme olursa alarm sizi uyarır.",
     kunye: ["saatlik", "emre amadelik", "alarm uyarısı"] },
-  { ad: "Dengesizlik maliyeti", etiket: "Ay boyunca, gün gün", resim: tlSapma,
-    metin: "Tahmin hatasının size aylık kaç TL'ye mal olduğunu, basit yönteme göre farkı ve teminata etkisini tek yerde görürsünüz.",
-    kunye: ["TL, aylık", "basit yönteme karşı", "teminat etkisi"] },
-  { ad: "Hazır şablonla dışa aktarım", etiket: "Teslimle birlikte", resim: tlSablon,
-    metin: "Tahmin aralığını toplayıcınızın ya da DSG'nin şablonunda indirirsiniz; biçimi elle düzeltmeniz gerekmez. İsterseniz API anahtarıyla doğrudan sisteminize akar.",
-    kunye: ["CSV / XLSX", "saatlik ya da 15 dk", "API anahtarı"] },
+  { ad: "Uzlaştırma kalemleri", etiket: "Ay boyunca, gün gün", resim: tlSapma,
+    metin: "Dengesizlik tutarı (EDT) ve KGÜP sapması (KÜPST) ayrı kalem olarak izlenir; hesap yürürlükteki formülle, fiyat kaynağı ve kural sürümü etiketiyle yapılır ve pilotla doğrulanmaktadır.",
+    kunye: ["EDT ve KÜPST ayrı", "kural ve kaynak etiketi", "basit yönteme karşı"] },
+  { ad: "Dosya ve API ile dışa aktarım", etiket: "Teslimle birlikte", resim: tlSablon,
+    metin: "Programı ve tahmin aralığını CSV/XLSX olarak indirirsiniz; TPYS ya da DSG şablonuna birebir uyum pilotta teyit edilir. İsterseniz API anahtarıyla doğrudan sisteminize akar.",
+    kunye: ["CSV / XLSX", "saatlik (15 dk veri hazır)", "API anahtarı"] },
   { ad: "Alarm kuralları", etiket: "Gece ve gündüz", resim: tlAlarm, genis: true,
     metin: "Gece ekran başında kimse yokken kurallar izler; sabah gece karnesi ve açık alarmlar hazırdır.",
-    kunye: ["8 kural", "veri, teslim, performans", "gece karnesi"] },
+    kunye: ["2 varsayılan + seçilebilir kural", "veri, program hazırlığı, performans", "gece karnesi"] },
   { ad: "Gün içi güncelleme", etiket: "Sabah hesabından itibaren", resim: tlAralik, genis: true,
-    metin: "İyimser–kötümser aralık gün içinde güncellendikçe önceki hâlleri kayıtta kalır; sabah hesabı bitince sisteminize otomatik bildirim gider.",
+    metin: "İyimser–kötümser aralık gün içinde güncellendikçe önceki hâlleri kayıtta kalır; gün içi piyasa revizyon penceresi panelde gösterilir, sabah hesabı bitince sisteminize bildirim gider.",
     kunye: ["iyimser–kötümser", "gün içi güncelleme", "sabah bildirimi (webhook)"] },
 ];
 
@@ -57,8 +57,8 @@ export function TurkiyePiyasasi() {
       <div className="vt-kap">
         <div className="vt-para-ust">
           <div className="vt-bolum-bas">
-            <h2 className="vt-h2" id="vt-para-baslik">Dengesizlik maliyetinizi her gün TL olarak görün.</h2>
-            <p className="vt-giris">Elektrik piyasasında her santral, ertesi gün saat saat ne üreteceğini önceden bildirir: üretim programı (KGÜP). Gerçekleşen üretim bu programdan saptığında aradaki fark dengesizlik maliyeti olarak santrale yansır. PVQuant programınızı hazırlar, gün içi düzeltme fırsatlarını izler ve dengesizliğin size maliyetini her gün TL olarak raporlar.</p>
+            <h2 className="vt-h2" id="vt-para-baslik">Uzlaştırma kalemlerinizi yürürlükteki kuralla izleyin.</h2>
+            <p className="vt-giris">Elektrik piyasasında dengeden sorumlu her santral, ertesi gün saat saat ne üreteceğini önceden bildirir: üretim programı (KGÜP). Program sapması KGÜP sapma tutarına (KÜPST), piyasa pozisyonundan sapma dengesizlik tutarına (EDT) dönüşür; lisanssız santralde bu kalemler santral sahibine değil görevli tedarik şirketi ya da toplayıcı portföyüne yansır. PVQuant programınızı hazırlar, gün içi düzeltme fırsatlarını izler ve iki kalemi yürürlükteki formül ve fiyat kaynağı etiketiyle ayrı ayrı raporlar.</p>
           </div>
           <div className="vt-sahne vt-sahne--resim" aria-hidden="true">
             <Levha src={tlSahne} alt="" width="2000" height="2000" loading="lazy" decoding="async"
@@ -75,7 +75,7 @@ export function TurkiyePiyasasi() {
             </article>
           ))}
         </div>
-        <p className="vt-not">Dengesizlik maliyetinin TL karşılığı panelde, kendi santralinizin verisiyle hesaplanır.</p>
+        <p className="vt-not">Uzlaştırma kalemlerinin TL karşılığı panelde, kendi santralinizin verisiyle ve yürürlükteki kuralla yeniden hesaplanır; resmî uzlaştırma sonucu değildir.</p>
       </div>
     </section>
   );

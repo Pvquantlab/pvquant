@@ -6,7 +6,7 @@ from sqlalchemy import text
 from apscheduler.schedulers.blocking import BlockingScheduler
 from pvquant.db import sistem_baglami, tenant_baglami
 from pvquant.services import forecast_service, calib_service, plant_service
-from pvquant.services.alarm_service import tara as alarm_tara
+from pvquant.services.alarm_service import tara as alarm_tara, kgup_kontrol as alarm_kgup_kontrol
 
 import os as _os
 try:
@@ -253,7 +253,8 @@ def gece_meteo(_plant=None):
 
 def gun_ici_tahmin(plant):
     """v2.276 (Dalga 5) — gün içi güncelleme: ICON-EU taze koşusu (ECMWF omurgası arşivden) → tüm santraller için yeni koşu.
-    GİP revizyonu (kapanış+30 dk) için; KGÜP kuralı D-1 15:30 kesimini kullandığından etkilenmez."""
+    GİP revizyonu (kapanış+30 dk) için. 09:30 UTC (12:30 TSİ) koşusu 15:30 kesiminden ÖNCE bittiği için ertesi günün KGÜP kaynağıdır
+    (kgup_service.kaynak_kosu_df: kesim öncesi son koşu); 15:30 UTC koşusu ise gün içi revizyon içindir."""
     from pvquant.config import get_settings as _gs
     if _gs().meteo_kaynak != "acik" or not _gs().gun_ici_guncelleme:
         return
@@ -725,6 +726,7 @@ if __name__ == "__main__":
     sch.add_job(_logla("rapor_alanlari", rapor_alanlari),                # v2.103 (B1+B5)
                 "cron", hour=cfg.worker_hour_skill, minute=45)
     sch.add_job(_logla("alarm", alarm_tara), "cron", hour=cfg.worker_hour_alarm, minute=0)
+    sch.add_job(_logla("kgup_teslim_kontrol", alarm_kgup_kontrol), "cron", hour=12, minute=35)   # 29.10: 15:35 TSİ (Türkiye UTC+3 sabit) — KGÜP gecikti kuralı
     sch.add_job(_logla("aylik_kalibrasyon", aylik_kalibrasyon),
                 "cron", day=cfg.worker_day_calibration, hour=cfg.worker_hour_calibration, minute=0)
     sch.add_job(_logla("aylik_iklim", aylik_iklim),                      # v2.77-C

@@ -486,6 +486,10 @@ tr.satir-tikla { cursor: pointer; }
 .tanim-listesi b { font-weight: 500; color: var(--ikincil); }
 .tanim-listesi li > .kod { justify-self: start; }
 @media (max-width: 560px) { .tanim-listesi li { grid-template-columns: 1fr; gap: 0; } }
+/* 29.10: Portföy «Yarının programı» listesi — santral adı için daha geniş sütun; rozet metinle aynı satırda, satır arası 6px */
+@media (min-width: 561px) { .program-listesi li { grid-template-columns: minmax(120px, 200px) minmax(0, 1fr); align-items: baseline; } }
+.program-listesi li + li { margin-top: 6px; }
+.program-listesi .rozet { vertical-align: baseline; }
 table.veri.dar { width: auto; min-width: 0; }
 table.veri.dar th + th, table.veri.dar td + td { padding-left: 28px; }
 .rozet-notr { background: var(--yuzey); color: var(--ikincil); border: 1px solid var(--kenar); }

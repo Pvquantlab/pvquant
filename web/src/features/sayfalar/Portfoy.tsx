@@ -87,6 +87,35 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
              ikinci={t ? { etiket: "Veri gecikmiş", deger: sayiTr(t.veri_gecikmis), birim: "santral" } : undefined}
              alt={t && t.santral > 0 ? "alarm: son 7 günde okunmamış kayıt; gecikme: son ölçüm 2 günden eski" : ""} ton={t && (t.acik_alarm > 0 || t.veri_gecikmis > 0) ? "uyari" : undefined} />
       </div>
+      {/* 29.10 (05 §3, 08 #10): operasyon kararı ilk ekranda — yarının programı hazır mı; yalnız program yükümlülüğü olan
+          santraller «hazır/eksik» alır; yükümlülüğü olmayana zorunlu operasyon gibi sunulmaz; segment seçilmemişse söylenir */}
+      {p && p.santraller.length > 0 && p.santraller.some((r) => r.program) && (
+        <Kart baslik="Yarının programı (KGÜP)" alt="Bildirim penceresi 14:00–15:30; kaynak, 15:30 kesiminden önce verilmiş son tahmin"
+          sag={<span className="cip">{t && t.program_yukumlu != null ? <Meta items={[`${sayiTr(t.program_hazir ?? 0)} / ${sayiTr(t.program_yukumlu)} hazır`, (t.program_segment_yok ?? 0) > 0 && `${sayiTr(t.program_segment_yok ?? 0)} santralde segment seçilmedi`]} /> : "—"}</span>}>
+          <ul className="tanim-listesi program-listesi">
+            {p.santraller.map((r) => {
+              const pr = r.program;
+              if (!pr) return null;
+              const rozet = pr.yukumlu === null ? ["rozet-notr", "segment seçilmedi"]
+                : pr.yukumlu === false ? ["rozet-notr", "program yükümlülüğü yok"]
+                : pr.hazir === true ? ["rozet-ok", "hazır"]
+                : pr.hazir === false ? ["rozet-uyari", "15:30 öncesi tahmin yok"]
+                : ["rozet-notr", "kontrol edilemedi"];
+              // tek hücre: rozet + notlar (tanim-listesi iki sütunlu ızgaradır; birden çok çocuk hücrelere dağılıyordu)
+              return (
+                <li key={r.id}><b>{r.ad}</b>
+                  <span>
+                    <span className={`rozet ${rozet[0]} rozet-kucuk`}>{rozet[1]}</span>
+                    {pr.hazir && pr.run_at && <span className="soluk"> · tahmin {tarih(pr.run_at)}</span>}
+                    {pr.not && pr.yukumlu === true && pr.hazir !== false && <span className="soluk"> · {pr.not}</span>}
+                    {pr.yukumlu === false && r.segment && <span className="soluk"> · dengesizliği taşıyan: GTŞ/toplayıcı portföyü</span>}
+                    {pr.yukumlu && <span className="soluk"> · bildirim penceresi {pr.teslim.durum === "pencere_acik" ? `açık, ${sayiTr(pr.teslim.dakika_kaldi)} dk kaldı` : pr.teslim.durum === "erken" ? "henüz açılmadı" : "kapandı"}</span>}
+                  </span>
+                </li>);
+            })}
+          </ul>
+        </Kart>
+      )}
       {/* 23.10 sekizinci tur — kurumsal veri tablosu: veri sütunları içerik genişliğinde (width:1%) ve 28 px oluklu, ad
           sütunu kalan alanı alır; birimler soluk küçük (.birim); ölçüm tarihi üstte, «N gün eski» rozeti altta (eşik aynı:
           kesinti_gun > 2); alarm sayısı >0 rozet; «satıra tıkla» çipi kalktı — tıklanabilirlik hover/odak zemini,
@@ -167,7 +196,8 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
         )}
       </Kart>
       {/* v2.276 (Dalga 5): DSG/toplayıcı netleştirmesi — portföy tek dengesizlik hesabına girerse ne kazanılır */}
-      <Kart baslik="Dengeden sorumlu grup (DSG) netleştirmesi — portföy dengesizliği" sag={<span className="cip">{dsg ? <Meta items={[`${sayiTr(dsg.pencere_gun)} gün`, dsg.fiyat.senaryo_saat > 0 ? "senaryo fiyatı" : "piyasa fiyatı (EPİAŞ)", dsgD === "bekliyor" && "güncelleniyor", dsgD === "hata" && "güncellenemedi"]} /> : "—"}</span>}>
+      {/* 29.10 (05 §5, F-08 sonraki paket): DSG görünümü GÖSTERGE — yalnız EDT kaybı, %5 üye eşiği ve KÜPST ayrımı uygulanmaz */}
+      <Kart baslik="DSG netleşme göstergesi — portföy dengesizliği (yalnız EDT)" sag={<><span className="rozet rozet-notr rozet-kucuk" title="Yürürlükteki %5 üye eşiği (Karar 13869) ve KÜPST'ün netleşmemesi bu görünümde uygulanmaz; varsayımsal yeniden hesap">gösterge</span><span className="cip">{dsg ? <Meta items={[`${sayiTr(dsg.pencere_gun)} gün`, dsg.fiyat.senaryo_saat > 0 ? "senaryo fiyatı" : "piyasa fiyatı (EPİAŞ)", dsgD === "bekliyor" && "güncelleniyor", dsgD === "hata" && "güncellenemedi"]} /> : "—"}</span></>}>
         {dsg === undefined && dsgD === "bekliyor" ? <YerTutucu yukseklik={124} />
          : !dsg && dsgD === "hata" ? <p className="soluk" style={{ margin: 0 }}>DSG hesabı şu anda alınamadı (sunucu hatası).</p>
          : !dsg ? <p className="soluk" style={{ margin: 0 }}>Veri yok.</p> : dsg.ayri_tl == null ? (
@@ -175,9 +205,9 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
         ) : (
           <>
             <div className="ızgara satir-3" style={{ marginBottom: 10 }}>
-              <Kpi etiket="Santraller ayrı ayrı" deger={sayiTr(dsg.ayri_tl / 1000, 1)} birim="bin TL" alt={`${sayiTr(dsg.santral)} santral, ${sayiTr(dsg.sapma_ayri_mwh ?? 0, 1)} MWh sapma`} />
-              <Kpi etiket="Portföy netleşmiş" deger={sayiTr((dsg.net_tl ?? 0) / 1000, 1)} birim="bin TL" alt={`${sayiTr(dsg.sapma_net_mwh ?? 0, 1)} MWh net sapma`} />
-              <Kpi etiket="Netleşme kazancı" deger={sayiTr((dsg.kazanc_tl ?? 0) / 1000, 1)} birim="bin TL" alt={dsg.kazanc_pct != null ? `ayrı maliyetin %${sayiTr(dsg.kazanc_pct, 1)}'i` : "—"} />
+              <Kpi etiket="Santraller ayrı ayrı (EDT kaybı)" deger={sayiTr(dsg.ayri_tl / 1000, 1)} birim="bin TL" alt={`${sayiTr(dsg.santral)} santral, ${sayiTr(dsg.sapma_ayri_mwh ?? 0, 1)} MWh sapma`} />
+              <Kpi etiket="Portföy netleşmiş (EDT kaybı)" deger={sayiTr((dsg.net_tl ?? 0) / 1000, 1)} birim="bin TL" alt={`${sayiTr(dsg.sapma_net_mwh ?? 0, 1)} MWh net sapma`} />
+              <Kpi etiket="Netleşme farkı (varsayımsal)" deger={sayiTr((dsg.kazanc_tl ?? 0) / 1000, 1)} birim="bin TL" alt={dsg.kazanc_pct != null ? `ayrı EDT kaybının %${sayiTr(dsg.kazanc_pct, 1)}'i; eşiksiz gösterge` : "—"} />
             </div>
             <p className="soluk" style={{ fontSize: 14, margin: 0 }}>{dsg.not}</p>
           </>

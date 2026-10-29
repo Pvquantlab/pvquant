@@ -31,7 +31,7 @@ const PANELLER: readonly Panel[] = [
       ] },
       { ad: "Operasyon", rozet: "operasyon", ogeler: [
         { ad: "Portföy", aciklama: "Bütün santralleriniz tek tabloda; sapma ve uyarı öne çıkar", ikon: "portfoy" },
-        { ad: "Alarmlar", aciklama: "Veri gelmedi, doğruluk düştü, KGÜP teslim saati kaçtı… sekiz kural", ikon: "alarm" },
+        { ad: "Alarmlar", aciklama: "Veri gelmedi, doğruluk düştü: iki kural varsayılan; program hazırlığı ve performans kuralları seçilebilir", ikon: "alarm" },
         { ad: "Raporlar", aciklama: "16 sayfalık PDF, Excel doğruluk şeridi, JSON çıktı", ikon: "rapor" },
       ] },
       { ad: "Veri", rozet: "veri", ogeler: [
@@ -56,10 +56,10 @@ const PANELLER: readonly Panel[] = [
     ad: "Türkiye piyasası", alt: ["Türkiye piyasası bölümü", "/yontem#para"], gruplar: [
       { ad: "Program", rozet: "tahmin", ogeler: [
         { ad: "Üretim programı (KGÜP)", aciklama: "Program her gün hazır; teslim saati ve gün içi düzeltme fırsatı izlenir", hedef: "/yontem#para" },
-        { ad: "Dengesizlik maliyeti (TL)", aciklama: "Tahmin hatasının her gün TL karşılığı, basit yöntemle kıyaslı", hedef: "/yontem#para" },
+        { ad: "Uzlaştırma kalemleri (EDT ve KÜPST)", aciklama: "Yürürlükteki kuralla ayrı ayrı yeniden hesap; basit yöntemle kıyaslı, kaynak etiketli", hedef: "/yontem#para" },
       ] },
       { ad: "Bağlantı", rozet: "veri", ogeler: [
-        { ad: "Toplayıcı / DSG şablonları", aciklama: "Saatlik ya da 15 dakikalık şablona tek tıkla dışa aktarım", hedef: "/yontem#para" },
+        { ad: "Toplayıcı / DSG dosyaları", aciklama: "Saatlik program ve aralık CSV/XLSX; şablona birebir uyum pilotta teyit edilir", hedef: "/yontem#para" },
         { ad: "Kamuya açık üretim kaydı bağlantısı", aciklama: "Dosya yüklemeden gerçekleşen üretim akışı", hedef: "/yontem#para" },
       ] },
     ],

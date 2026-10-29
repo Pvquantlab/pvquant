@@ -22,6 +22,25 @@ const donemYaz = (a: string | null, b: string | null) => {
     : `${x.getDate()} ${AY[x.getMonth()]} – ${y.getDate()} ${AY[y.getMonth()]} ${y.getFullYear()}`;
 };
 
+/** 29.10 — her TL alanının yanındaki kaynak/kural etiketi (F_PRD §4.1: etiketsiz TL yok). */
+function fiyatEtiketi(dz: Dengesizlik): string {
+  const yon = (dz.fiyat.yon_eksik_saat ?? 0) > 0 ? ` · ${sayiTr(dz.fiyat.yon_eksik_saat ?? 0)} saat yön eksik` : "";
+  return dz.fiyat.senaryo_saat > 0
+    ? `senaryo fiyatı (${sayiTr(dz.fiyat.senaryo_saat)} saat); yön varsayımı: dengede${yon}`
+    : `EPİAŞ saatlik fiyat ve sistem yönü${yon}`;
+}
+function kupstEtiketi(dz: Dengesizlik): string {
+  if (dz.toplam?.kupst_tl == null) {
+    if (!dz.segment.segment) return "segment seçilmedi; hesaplanamaz";
+    if (dz.segment.segment === "lisanssiz_dagitim") return "portföy UEVÇB'sinde hesaplanır (GTŞ/toplayıcı)";
+    return "katsayı doğrulanamadı; hesaplanamaz";
+  }
+  const k = dz.kural;
+  return k && k.kupst_m != null && k.kupst_n != null
+    ? `tolerans %${sayiTr(k.kupst_m * 100, 0)}, n ${sayiTr(k.kupst_n, 2)}; ${k.kupst_net_sapma ? "net sapma (Karar 14907)" : "brüt sapma"}`
+    : "kural tablosundan";
+}
+
 export function Dogruluk({ plantId }: { plantId: string }) {
   const ds = useDamgaSurumu();   // 26.10 eşzamanlama
   // 24.10 açık tema geçiş turu — YEDİ İSTEK BAĞIMSIZ, BAYAT-ÖNCE (Portföy kalıbı, v2.476). v2.326'nın tek kapısı sayfayı en
@@ -635,7 +654,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
             <p className="soluk" style={{ marginTop: 8, marginBottom: 0, fontSize: 14 }}>
               Nasıl okunur: nokta köşegenin altındaysa o seviye olması gerekenden düşük, üstündeyse yüksek demektir.
               P10 için düşük kalmak alt sınırın, P90 için yüksek kalmak üst sınırın fazla temkinli olduğunu gösterir; ikisi birden aralığın fazla geniş olduğunu söyler.
-              PIT sütunları %10 çizgisine yakın olmalıdır: ortada tepe aralık fazla geniş, kenarlarda tepe aralık fazla dar demektir. Aralık puanı, genişlik ile aralık dışı kalma cezasının toplamıdır.
+              PIT sütunları %10 çizgisine yakın olmalıdır: ortada tepe aralık fazla geniş, kenarlarda tepe aralık fazla dar demektir. Aralık puanı, genişlik ile aralık dışı kalma puanının toplamıdır.
             </p>
           </div>
         ) : gv.durum !== "ok" ? (
@@ -644,52 +663,69 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           </p>
         ) : null)}
       </Kart>
-      {/* v2.259 (Dalga 4.12): karnenin TL dili — DUY dengesizlik formülüyle PVQuant programı vs naif program.
-          Fiyat kaynağı (EPİAŞ / senaryo) ve segment (dengesizliği kim taşır) açıkça söylenir. */}
-      <Kart baslik="Dengesizlik maliyeti — tahmin hatasının TL karşılığı"
+      {/* 29.10 (F-01/F-02/F-03/F-09): uzlaştırma kalemleri — EDT ve KÜPST AYRI, tek sayı yok; her TL'nin yanında kural sürümü ve
+          fiyat kaynağı; hesaplanamayan saat (yön eksik / segment yok) açıkça; «tasarruf/ceza» yok; teminat sadeleştirilmiş gösterge */}
+      <Kart baslik="Uzlaştırma kalemleri — dengesizlik tutarı (EDT) ve KGÜP sapması (KÜPST)"
         sag={<>
-          <span className="cip">{dz === undefined ? "hesaplanıyor" : dz && dz.gun_sayisi ? <Meta items={[`${sayiTr(dz.gun_sayisi)} gün`, "KGÜP: bir gün önce 15:30'dan önceki tahmin (P50)"]} /> : "henüz karşılaştırılan gün yok"}</span>
-          {dz && <span className="cip" title={dz.not}>{dz.fiyat.senaryo_saat > 0 ? "fiyat: senaryo (piyasa kimliği tanımlı değil)" : "fiyat: piyasa (EPİAŞ)"}</span>}
+          <span className="cip">{dz === undefined ? "hesaplanıyor" : dz && dz.gun_sayisi ? <Meta items={[`${sayiTr(dz.gun_sayisi)} gün`, "program: bir gün önce 15:30'dan önceki tahmin (P50)"]} /> : "henüz karşılaştırılan gün yok"}</span>
+          {dz?.kural && <span className="cip" title={`${dz.kural.edt_dayanak}; KÜPST: ${dz.kural.kupst_dayanak}`}>kural: DUY m.110 ({dz.kural.rejim}){dz.kural.V != null ? ` · V ${sayiTr(dz.kural.V)} TL/MWh` : ""}</span>}
+          {/* 29.10: rozet metni kısa (375 px'te başlık satırı taşıyordu); ayrıntı title ve KPI alt etiketinde */}
+          {dz && <span className={`rozet ${dz.fiyat.senaryo_saat > 0 ? "rozet-uyari" : "rozet-ok"} rozet-kucuk`} title={dz.fiyat.senaryo_saat > 0 ? "Senaryo fiyatı: EPİAŞ kimliği tanımlı değil. " + dz.not : dz.not}>{dz.fiyat.senaryo_saat > 0 ? "senaryo fiyatı" : "fiyat: EPİAŞ"}</span>}
         </>}>
         {dz === undefined ? <YerTutucu yukseklik={411} /> : dz && dz.toplam ? (
           <>
-            <div className="ızgara satir-3" style={{ gap: 12 }}>
-              <div className="kpi"><div className="kpi-et">PVQuant programıyla maliyet</div>
-                <div className="kpi-dg mono">{sayiTr(dz.toplam.pvquant_tl / 1000, 1)} <small>bin TL</small></div>
-                <div className="kpi-alt">{dz.toplam.gelir_oran_pct != null ? `gelirin %${sayiTr(dz.toplam.gelir_oran_pct, 2)}'i` : "—"}</div></div>
-              <div className="kpi"><div className="kpi-et">Referans programla maliyet</div>
-                <div className="kpi-dg mono">{dz.toplam.naif_tl != null ? <>{sayiTr(dz.toplam.naif_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div>
-                <div className="kpi-alt">dün aynı saat programı</div></div>
-              <div className="kpi"><div className="kpi-et">PVQuant ile sağlanan tasarruf</div>
-                <div className="kpi-dg mono" style={{ color: (dz.toplam.kurtarilan_tl ?? 0) > 0 ? "var(--basari-metin)" : undefined }}>
-                  {dz.toplam.kurtarilan_tl != null ? <>{sayiTr(dz.toplam.kurtarilan_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div>
-                <div className="kpi-alt">{dz.segment.santral_tasir === false ? `dengesizliği ${dz.segment.dengesizlik_sahibi} taşır` : dz.segment.segment ? "dengesizlik santralde" : "segment belirtilmedi (Santralim › Santral ayarları)"}</div></div>
+            <div className="ızgara satir-4" style={{ gap: 12 }}>
+              <div className="kpi"><div className="kpi-et">Programa göre kayıp (EDT)</div>
+                <div className="kpi-dg mono">{dz.toplam.dengesizlik_tl != null ? <>{sayiTr(dz.toplam.dengesizlik_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div>
+                <div className="kpi-alt">{fiyatEtiketi(dz)}</div></div>
+              <div className="kpi"><div className="kpi-et">KGÜP sapması (KÜPST)</div>
+                <div className="kpi-dg mono">{dz.toplam.kupst_tl != null ? <>{sayiTr(dz.toplam.kupst_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div>
+                <div className="kpi-alt">{kupstEtiketi(dz)}</div></div>
+              <div className="kpi"><div className="kpi-et">Uzlaştırma kalemleri toplamı</div>
+                <div className="kpi-dg mono">{dz.toplam.pvquant_tl != null ? <>{sayiTr(dz.toplam.pvquant_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div>
+                <div className="kpi-alt">{dz.toplam.pvquant_tl != null ? `kayıp + KÜPST${dz.toplam.gelir_oran_pct != null ? `; gelirin %${sayiTr(dz.toplam.gelir_oran_pct, 2)}'i` : ""}` : "KÜPST hesaplanamadığı için toplam verilmez"}</div></div>
+              <div className="kpi"><div className="kpi-et">Referans programa göre fark</div>
+                <div className="kpi-dg mono">{dz.toplam.kurtarilan_tl != null ? <>{sayiTr(dz.toplam.kurtarilan_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div>
+                <div className="kpi-alt">varsayımsal; referans = dün aynı saat programı{dz.toplam.naif_tl != null ? ` (${sayiTr(dz.toplam.naif_tl / 1000, 1)} bin TL)` : ""}</div></div>
             </div>
+            <p className="soluk" style={{ marginTop: 8, marginBottom: 0, fontSize: 13.5 }}>
+              {dz.segment.santral_tasir === false ? `Bu segmentte dengesizliği ${dz.segment.dengesizlik_sahibi} taşır; tutarlar santral sahibine yansımaz.`
+                : dz.segment.segment ? "Dengesizlik santralde." : "Segment belirtilmedi (Santralim › Santral ayarları); KÜPST hesaplanamaz."}
+              {(dz.hesaplanamayan_saat ?? 0) > 0 && ` ${sayiTr(dz.hesaplanamayan_saat ?? 0)} saat hesaplanamadı (${(dz.fiyat.yon_eksik_saat ?? 0) > 0 ? "sistem yönü verisi eksik" : "KÜPST katsayısı yok"}); bu saatler toplamda 0 sayılmadı.`}
+            </p>
             <div className="grafik-kaydir" style={{ marginTop: 12 }}>
               <table className="veri" style={{ fontSize: 13.5 }}>
-                <thead><tr><th>Ay</th><th>Üretim (MWh)</th><th>Sapma (MWh)</th><th>PVQuant (TL)</th><th>KÜPST (TL)</th><th>Referans (TL)</th><th>Tasarruf (TL)</th><th>Gelirin %'si</th><th>TL/MWh</th></tr></thead>
+                <thead><tr><th>Ay</th><th>Üretim (MWh)</th><th>Sapma (MWh)</th><th>EDT borç (TL)</th><th>EDT alacak (TL)</th><th>Kayıp (TL)</th><th>KÜPST (TL)</th><th>Toplam (TL)</th><th>Referans (TL)</th><th>Fark (TL)</th><th>Hesaplanamayan saat</th></tr></thead>
                 <tbody className="mono">
                   {dz.aylar.map((a) => (
-                    <tr key={a.ay}><td>{a.ay}</td><td>{sayiTr(a.uretim_mwh, 1)}</td><td>{sayiTr(a.sapma_mwh, 1)}</td><td>{sayiTr(a.pvquant_tl)}</td>
-                      <td>{a.kupst_tl != null ? (dz.katsayilar && dz.katsayilar.kupst_n > 0 ? sayiTr(a.kupst_tl) : "—") : "—"}</td>
+                    <tr key={a.ay} title={a.kural_surumu ? `kural: ${a.kural_surumu}` : undefined}><td>{a.ay}</td><td>{sayiTr(a.uretim_mwh, 1)}</td><td>{sayiTr(a.sapma_mwh, 1)}</td>
+                      <td>{a.edtb_tl != null ? sayiTr(a.edtb_tl) : "—"}</td><td>{a.edta_tl != null ? sayiTr(a.edta_tl) : "—"}</td>
+                      <td>{a.dengesizlik_tl != null ? sayiTr(a.dengesizlik_tl) : "—"}</td>
+                      <td>{a.kupst_tl != null ? sayiTr(a.kupst_tl) : "—"}</td>
+                      <td>{a.pvquant_tl != null ? sayiTr(a.pvquant_tl) : "—"}</td>
                       <td>{a.naif_tl != null ? sayiTr(a.naif_tl) : "—"}</td><td>{a.kurtarilan_tl != null ? sayiTr(a.kurtarilan_tl) : "—"}</td>
-                      <td>{a.gelir_oran_pct != null ? `%${sayiTr(a.gelir_oran_pct, 2)}` : "—"}</td><td>{a.tl_per_mwh != null ? sayiTr(a.tl_per_mwh, 1) : "—"}</td></tr>
+                      <td>{a.hesaplanamayan_saat ? sayiTr(a.hesaplanamayan_saat) : "0"}</td></tr>
                   ))}
                 </tbody>
               </table>
             </div>
             <p style={{ marginTop: 10, marginBottom: 0, fontSize: 13.5 }}>
-              {dz.toplam?.teminat_tl != null && <>Teminat tahmini: <b>{sayiTr(dz.toplam.teminat_tl / 1000, 1)} bin TL</b> (son 3 ayın en
-              yüksek aylık negatif dengesizlik gideri; sadeleştirilmiş hesap). </>}
+              {dz.toplam?.teminat_tl != null && <>Teminat göstergesi: <b>{sayiTr(dz.toplam.teminat_tl / 1000, 1)} bin TL</b> (son 3 ayın en
+              yüksek aylık EDT borcu; sadeleştirilmiş gösterge, Teminat Usul ve Esasları ile doğrulanmadı). </>}
               {dz.oneri && (dz.oneri.durum === "ok" && dz.oneri.kantil
                 ? <>Önerilen program seviyesi: <b>{dz.oneri.kantil.toUpperCase()}</b> (saatlerin
-                    %{sayiTr((dz.oneri.acik_saat_orani ?? 0) * 100, 0)}'inde üretim beklenenin altında kaldı); eksik üretim cezası ile fazla üretim kaybının dengesidir.</>
+                    %{sayiTr((dz.oneri.acik_saat_orani ?? 0) * 100, 0)}'inde sistem enerji açığındaydı); eksik üretimin birim maliyeti ile fazla üretimin birim maliyetinin dengesidir.</>
                 : <span className="soluk">Önerilen program seviyesi: — ({dz.oneri.not})</span>)}
             </p>
             <p className="soluk" style={{ marginTop: 8, marginBottom: 0, fontSize: 14 }}>
-              Ne gösterir: saatlik üretim programı ile gerçekleşen üretim arasındaki farkın, piyasa kurallarına göre (pozitif dengesizlik
-              min(PTF, SMF)×0,97; negatif dengesizlik max(PTF, SMF)×1,03) TL karşılığı; kusursuz programa göre kayıp. Neye bakmalı: PVQuant sütunu
-              referans sütunundan ne kadar küçükse tahminin parasal değeri o kadar büyüktür. {dz.fiyat.senaryo_saat > 0 && "Senaryo fiyatı EPDK 2025 yıllık ortalamasıdır; piyasa (EPİAŞ) kimliği tanımlanınca gerçek saatlik fiyatlarla hesaplanır."}
+              Ne gösterir: saatlik üretim programı ile gerçekleşen üretim arasındaki farkın, {dz.kural?.rejim === "2026"
+                ? <>1.1.2026'dan yürürlükteki DUY m.110 formülüyle TL karşılığı: eksik üretimde max(V, PTF, SMF)×(1+k), tavanda AFL×1,05×(1+k);
+                    fazla üretimde min(PTF, SMF)×(1−l), fiyat V'nin altındaysa −B×(1+l) (fazla üretim borç doğurur); k ve l sistem yönüne göre
+                    (açık 0,06/0,03; fazla 0,03/0,06; dengede 0,03). KÜPST: tolerans üstü sapma × max(750; PTF; SMF) × n{dz.kural.kupst_net_sapma ? ", net sapma (1.11.2026'dan)" : ""}.</>
+                : <>2025 formülüyle TL karşılığı: fazla üretim min(PTF, SMF)×0,97; eksik üretim max(PTF, SMF)×1,03; KÜPST tolerans üstü sapma × max(750; PTF; SMF) × n.</>}
+              {" "}Referans sütunu «dün aynı saat» programının aynı kuralla kaybıdır; fark varsayımsaldır. Bu bir yeniden hesaptır, EPİAŞ uzlaştırma sonucu değildir.
+              {dz.fiyat.senaryo_saat > 0 && " Senaryo fiyatı EPDK 2025 yıllık ortalamasıdır ve sistem yönü taşımaz (k = l = 0,03 varsayıldı); piyasa (EPİAŞ) kimliği tanımlanınca gerçek saatlik fiyat ve yönle hesaplanır."}
+              {dz.kural?.belirsiz_2027 && " 1.1.2027 sonrası m.110 metni hukuken belirsiz; 2026 kuralı sürdürüldü."}
             </p>
           </>
         ) : (

@@ -21,6 +21,7 @@ def test_duy_formulu_isaretleri():
     assert s.dengesizlik_maliyeti.iloc[12] == pytest.approx(2650 * 1.03 - 2650)   # negatif: max(PTF,SMF)·1,03 − PTF
     assert s.dengesizlik_maliyeti.iloc[13] == pytest.approx(2650 - 2500 * 0.97)   # pozitif: PTF − min·0,97
     assert s.dengesizlik_maliyeti.drop(s.index[[12, 13]]).abs().max() < 1e-9
+    assert s.kupst.isna().all() and (s.durum == "kupst_hesaplanamaz").all()     # segment yok → KÜPST 0 DEĞİL, hesaplanamaz
     k2 = d.Katsayilar(kupst_n=0.03, kupst_tolerans=0.0)
     s2 = d.saatlik(kg, gercek, ptf, smf, k2); assert s2.kupst.iloc[12] == pytest.approx(2650 * 0.03) and s2.kupst.iloc[0] == 0
 
@@ -28,17 +29,18 @@ def test_duy_formulu_isaretleri():
 def test_karne_ve_kiyas_kurtarir():
     idx, gercek, pvq, ptf, smf = _ay(hata=0.08)
     naif = gercek.shift(24).fillna(gercek.mean())
-    k = d.kiyas(naif, pvq, gercek, ptf, smf)
+    k = d.kiyas(naif, pvq, gercek, ptf, smf, segment="lisansli_serbest")      # 2025 Temmuz → 2025 rejimi, KÜPST 13025
     assert len(k) == 1 and k.kurtarilan_tl.iloc[0] > 0 and 0 < k.kurtarilan_oran.iloc[0] < 1
-    a = d.aylik_karne(d.saatlik(pvq, gercek, ptf, smf)); assert 0 < a.maliyet_gelir_orani.iloc[0] < 0.05
-    assert d.teminat(d.saatlik(pvq, gercek, ptf, smf)) > 0
+    a = d.aylik_karne(d.saatlik(pvq, gercek, ptf, smf, segment="lisansli_serbest")); assert 0 < a.maliyet_gelir_orani.iloc[0] < 0.05
+    assert d.teminat(d.saatlik(pvq, gercek, ptf, smf, segment="lisansli_serbest")) > 0
 
 
 def test_dsg_netlesme_maliyeti_dusurur():
     idx, g1, p1, ptf, smf = _ay(seed=1); _, g2, p2, _, _ = _ay(seed=2)
-    ayri = d.saatlik(p1, g1, ptf, smf).toplam_maliyet.sum() + d.saatlik(p2, g2, ptf, smf).toplam_maliyet.sum()
+    # GÖSTERGE: yalnız EDT (dengesizlik_maliyeti); KÜPST netleşmez ve %5 eşik uygulanmaz (F-08 sonraki paket)
+    ayri = d.saatlik(p1, g1, ptf, smf).dengesizlik_maliyeti.sum() + d.saatlik(p2, g2, ptf, smf).dengesizlik_maliyeti.sum()
     K, G = d.dsg_netlestir({"a": p1, "b": p2}, {"a": g1, "b": g2})
-    assert d.saatlik(K, G, ptf, smf).toplam_maliyet.sum() < ayri
+    assert d.saatlik(K, G, ptf, smf).dengesizlik_maliyeti.sum() < ayri
 
 
 def test_optimal_kantil_ve_spread():
@@ -93,7 +95,14 @@ def test_kgup_program_ve_dosya(tmp_path):
     s2 = kgup.program_uret(buyuk, "2025-07-15", "UEVCB-2", 600.0); assert len(s2.sicrama_saatleri) >= 1
     c = kgup.ceyrek_dilimle(s2); assert len(c) == 24 + 3 * len(s2.sicrama_saatleri)
     yol = kgup.tpys_csv(c, tmp_path / "kgup.csv"); metin = yol.read_text(encoding="utf-8-sig")
-    assert metin.splitlines()[0].startswith("Tarih;Saat;UEVCB;KGUP_MWh;EAK_MWh") and "," in metin.splitlines()[1]
+    assert metin.splitlines()[0] == "Tarih;Saat;UEVCB;KGUP_MWh;EAK_MW;Ceyrek" and "," in metin.splitlines()[1]
+    assert yol.read_bytes().startswith(b"\xef\xbb\xbf") and yol.read_bytes() == kgup.csv_baytlari(c)        # BOM tek yerde, SHA bu baytlarla
+    # çeyrek satırlarda EAK bölünmez (güç), KGÜP çeyreğe bölünür
+    sic = s2.sicrama_saatleri[0]; q = c[(c["saat"] == sic) & c["ceyrek"].notna()]
+    assert len(q) == 4 and (q["eak_mw"] == s2.tablo.loc[s2.tablo["saat"] == sic, "eak_mw"].iloc[0]).all()
+    # eksik saat: 0 yazılmaz, eksik listesi döner
+    eksik = kgup.program_uret(pvq.iloc[:-30], "2025-07-31", "UEVCB-3", 10.0)
+    assert eksik.eksik_saatler and "dosya üretilmez" in eksik.uyarilar[0]
 
 
 def test_teslim_ve_revizyon():

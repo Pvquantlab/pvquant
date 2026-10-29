@@ -88,7 +88,7 @@ def bant_genisligi(alt: pd.Series, ust: pd.Series, kapasite: float | None = None
 
 
 def aralik_skoru(gercek: pd.Series, alt: pd.Series, ust: pd.Series, alpha: float = 0.2) -> float:
-    """Winkler/aralık skoru (küçük iyi): genişlik + (2/α)·kapsam dışı ceza."""
+    """Winkler/aralık skoru (küçük iyi): genişlik + (2/α)·aralık dışı kalma puanı."""
     idx = gercek.dropna().index.intersection(alt.index).intersection(ust.index)
     g, a, u = gercek.loc[idx].values, alt.loc[idx].values, ust.loc[idx].values
     s = (u - a) + (2 / alpha) * (a - g) * (g < a) + (2 / alpha) * (g - u) * (g > u)

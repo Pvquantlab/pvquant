@@ -28,6 +28,9 @@ import {
  */
 
 const UFUK = { "24h": "24s", "72h": "72s", "7d": "7g", "16d": "15g" } as const;
+// 29.10 (F-05 #4): panelin önerdiği her kantil indirilebilir
+const KGUP_KANTILLER = ["p10", "p25", "p50", "p75", "p90"] as const;
+type KgupKantil = (typeof KGUP_KANTILLER)[number];
 // 24.10: grafik özellikleri sabit nesne — her render'da yeni {} üretilip option'ın yeniden kurulmasını önler
 const GRAFIK_OZELLIKLERI = { exportButtons: true } as const;  // v2.228: PNG/CSV — SaaS eylemi
 
@@ -44,6 +47,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
   const [cekD, setCekD] = useState<{ seri: Durum; ozet: Durum }>({ seri: "bekliyor", ozet: "bekliyor" });
   const [kgup, setKgup] = useState<KgupOnizleme | null | undefined>(undefined);   // v2.260
   const [kgupHata, setKgupHata] = useState<string | null>(null);
+  const [kgupKantil, setKgupKantil] = useState<KgupKantil>("p50");   // 29.10
   const [nc, setNc] = useState<Nowcast | null | undefined>(undefined);   // v2.266
   // v2.273: son koşunun bant kaynağı (ensemble üyeleri / model) — dip notta dürüstçe söylenir
   const [bantYazisi, setBantYazisi] = useState<string | null>(null);
@@ -127,6 +131,71 @@ export function Tahminler({ plantId }: { plantId: string }) {
         </>
       }
     >
+      {/* v2.260 (Dalga 4.13): KGÜP bildirim dosyası — D-1 15:30 öncesi koşudan saatlik program (TPYS CSV) */}
+      {/* 23.10 altıncı tur: hiyerarşi — (1) program özeti: büyük değer + seviye/tahmin zamanı + teslim günü ve
+          bildirim durumu rozeti; (2) indirme düğmeleri iki etiketli küme (bildirim dosyası · toplayıcı);
+          (3) piyasa takvimi kuralı açılır alanda. Düğmelerin onClick'leri ve api çağrıları aynen. */}
+      {/* 29.10 (05 §5, 08 #10): KGÜP kartı ilk ekranda, tek birincil eylem (.dugme-ana), kantil seçimi (P10/P25/P50/P75/P90),
+          dosya özeti (SHA-256) ve «indirilen dosya teslim sayılmaz» notu; şablon durumu açık */}
+      <Kart baslik="Üretim programı (KGÜP) — yarının saatlik programı"
+        sag={<span className="cip">{kgup ? <Meta items={[`teslim günü ${new Date(kgup.teslim.hedef_gun + "T12:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}`, `teyit ${kgup.teslim.teyit_saati.slice(0, 5)}`]} /> : kgup === undefined ? "hesaplanıyor" : "tahmin bekleniyor"}</span>}>
+        {kgup === undefined ? (
+          /* 24.10: yanıt yoldayken «program henüz yok» yazılmaz — yer tutucu (önce boş durum görünüp sonra doluyordu) */
+          <YerTutucu yukseklik={140} />
+        ) : kgup ? (
+          <>
+            <div className="program-ozet">
+              <span className="sayi-buyuk">{sayiTr(kgup.toplam_mwh, 1)} <small style={{ fontSize: 15, fontWeight: 400, color: "var(--soluk)" }}>MWh</small></span>
+              <span className="soluk" style={{ fontSize: 13.5 }}><Meta items={[kgup.kantil.toUpperCase(), `tahmin ${kgup.kosu.run_at ? new Date(kgup.kosu.run_at).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }) : "—"}`]} /></span>
+              <span className={`rozet ${kgup.teslim.durum === "pencere_acik" ? "rozet-ok" : "rozet-notr"}`}>
+                bildirim saati {kgup.teslim.durum === "pencere_acik" ? "açık" : kgup.teslim.durum === "erken" ? "henüz açılmadı" : "kapandı"} (14:00–15:30)
+              </span>
+              {kgup.oneri && kgup.oneri.durum === "ok" && kgup.oneri.kantil &&
+                <span className="cip" title={kgup.oneri.not ?? ""}>önerilen seviye {kgup.oneri.kantil.toUpperCase()}</span>}
+              {kgup.eak && <span className="cip" title="Emre amade kapasite; ayarlardan değiştirilir">EAK {sayiTr(kgup.eak.eak_mw, 2)} MW ({({ gecici: "geçici kısıt", eak_alani: "EAK alanı", ac_tavani: "AC sınırı", kurulu_guc: "kurulu güç" } as Record<string, string>)[kgup.eak.kaynak] ?? kgup.eak.kaynak})</span>}
+            </div>
+            <div className="dugme-grubu">
+              <div>
+                <div className="etiket-ust">Bildirim dosyası</div>
+                <div className="dugme-sira">
+                  <select className="girdi" aria-label="Program seviyesi (kantil)" value={kgupKantil} onChange={(e) => setKgupKantil(e.target.value as KgupKantil)}>
+                    {KGUP_KANTILLER.map((k) => <option key={k} value={k}>{k.toUpperCase()}{k === "p50" ? " (beklenen)" : k === "p10" ? " (temkinli)" : k === "p90" ? " (iddialı)" : ""}</option>)}
+                  </select>
+                  <button className="dugme dugme-ana" onClick={() => { setKgupHata(null); api.kgupIndir(plantId, undefined, kgupKantil).catch((e) => setKgupHata(String(e.message ?? e))); }}>CSV indir</button>
+                </div>
+              </div>
+              {/* v2.275: toplayıcı/DSG çıktısı — bantlı saatlik ve 15 dk (2027 hazırlığı) */}
+              <div>
+                <div className="etiket-ust">Toplayıcı / DSG</div>
+                <div className="dugme-sira">
+                  <button className="dugme" onClick={() => { setKgupHata(null); api.toplayiciIndir(plantId, "xlsx", 60).catch((e) => setKgupHata(String(e.message ?? e))); }}>Toplayıcı (Excel, saatlik)</button>
+                  <button className="dugme" onClick={() => { setKgupHata(null); api.toplayiciIndir(plantId, "csv", 15).catch((e) => setKgupHata(String(e.message ?? e))); }}>Toplayıcı (CSV, 15 dk)</button>
+                </div>
+              </div>
+            </div>
+            {kgupHata && <p style={{ color: "var(--uyari-metin)", fontSize: 13.5, margin: "8px 0 0" }}>{kgupHata}</p>}
+            <p className="soluk" style={{ fontSize: 13.5, margin: "8px 0 0" }}>
+              {kgup.bildirim ?? "Dosya PVQuant'ta üretildi; TPYS'ye gönderim ve kabul müşterinin sisteminden yapılır — indirilen dosya teslim edilmiş sayılmaz."}
+              {kgup.sablon && ` Biçim: ${kgup.sablon.durum}.`}{kgup.sha256 && ` Dosya özeti (SHA-256) ${kgup.sha256.slice(0, 12)}….`}
+            </p>
+            {kgup.uyarilar.length > 0 && <ul className="not-listesi uyari">{kgup.uyarilar.map((u) => <li key={u}>{u}</li>)}</ul>}
+            {kgup.sicrama_saatleri.length > 0 && <p style={{ fontSize: 13.5, margin: "8px 0 0" }}>≥200 MWh ani değişim: saat {kgup.sicrama_saatleri.join(", ")}; dosyada 15 dakikalık adımlar.</p>}
+            <details className="aciklama">
+              <summary>Piyasa takvimi ve program kuralı</summary>
+              <p>
+                {kgup.gip && `${kgup.gip.kural} Örnek: ${kgup.gip.ornek_teslimat} teslimatı için kapı ${kgup.gip.ornek_kapi}, revizyon son ${kgup.gip.ornek_revizyon_son}. `}
+                Program, teslim saatinden (bir gün önce 15:30) önce verilmiş son tahminin saatlik beklenen (P50) değeridir; KGÜP ≤ emre amade kapasite ≤ kurulu güç
+                kuralı uygulanır. CSV kolon adları TPYS şablonuyla eşlenmelidir (resmî şablon teyit edilemedi); dosya bir öneridir, bildirim TPYS'de yapılır.
+              </p>
+            </details>
+          </>
+        ) : (
+          <div className="bos-durum">
+            <div className="bos-bas">Yarın için program henüz yok</div>
+            <p>Teslim saatinden önce verilmiş tahmin yok; sabah tahmini üretildiğinde burada görünür.</p>
+          </div>
+        )}
+      </Kart>
       {(!seri || !ozet) && (
         <Kart baslik="Saatlik tahmin ve P10–P90 aralığı">
           <div className="bos-durum">
@@ -212,63 +281,6 @@ export function Tahminler({ plantId }: { plantId: string }) {
           </Kart>
         </div>
       )}
-      {/* v2.260 (Dalga 4.13): KGÜP bildirim dosyası — D-1 15:30 öncesi koşudan saatlik program (TPYS CSV) */}
-      {/* 23.10 altıncı tur: hiyerarşi — (1) program özeti: büyük değer + seviye/tahmin zamanı + teslim günü ve
-          bildirim durumu rozeti; (2) indirme düğmeleri iki etiketli küme (bildirim dosyası · toplayıcı);
-          (3) piyasa takvimi kuralı açılır alanda. Düğmelerin onClick'leri ve api çağrıları aynen. */}
-      <Kart baslik="Üretim programı (KGÜP) — yarının saatlik programı"
-        sag={<span className="cip">{kgup ? <Meta items={[`teslim günü ${new Date(kgup.teslim.hedef_gun + "T12:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}`, `teyit ${kgup.teslim.teyit_saati.slice(0, 5)}`]} /> : kgup === undefined ? "hesaplanıyor" : "tahmin bekleniyor"}</span>}>
-        {kgup === undefined ? (
-          /* 24.10: yanıt yoldayken «program henüz yok» yazılmaz — yer tutucu (önce boş durum görünüp sonra doluyordu) */
-          <YerTutucu yukseklik={140} />
-        ) : kgup ? (
-          <>
-            <div className="program-ozet">
-              <span className="sayi-buyuk">{sayiTr(kgup.toplam_mwh, 1)} <small style={{ fontSize: 15, fontWeight: 400, color: "var(--soluk)" }}>MWh</small></span>
-              <span className="soluk" style={{ fontSize: 13.5 }}><Meta items={[kgup.kantil.toUpperCase(), `tahmin ${kgup.kosu.run_at ? new Date(kgup.kosu.run_at).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }) : "—"}`]} /></span>
-              <span className={`rozet ${kgup.teslim.durum === "pencere_acik" ? "rozet-ok" : "rozet-notr"}`}>
-                bildirim saati {kgup.teslim.durum === "pencere_acik" ? "açık" : kgup.teslim.durum === "erken" ? "henüz açılmadı" : "kapandı"} (14:00–15:30)
-              </span>
-              {kgup.oneri && kgup.oneri.durum === "ok" && kgup.oneri.kantil &&
-                <span className="cip" title={kgup.oneri.not ?? ""}>önerilen seviye {kgup.oneri.kantil.toUpperCase()}</span>}
-              {kgup.eak && <span className="cip" title="Emre amade kapasite; ayarlardan değiştirilir">EAK {sayiTr(kgup.eak.eak_mw, 2)} MW ({({ gecici: "geçici kısıt", eak_alani: "EAK alanı", ac_tavani: "AC sınırı", kurulu_guc: "kurulu güç" } as Record<string, string>)[kgup.eak.kaynak] ?? kgup.eak.kaynak})</span>}
-            </div>
-            <div className="dugme-grubu">
-              <div>
-                <div className="etiket-ust">Bildirim dosyası</div>
-                <div className="dugme-sira">
-                  <button className="dugme" onClick={() => { setKgupHata(null); api.kgupIndir(plantId).catch((e) => setKgupHata(String(e.message ?? e))); }}>CSV indir (TPYS)</button>
-                  <button className="dugme" onClick={() => { setKgupHata(null); api.kgupIndir(plantId, undefined, "p10").catch((e) => setKgupHata(String(e.message ?? e))); }}>Temkinli (P10) indir</button>
-                </div>
-              </div>
-              {/* v2.275: toplayıcı/DSG çıktısı — bantlı saatlik ve 15 dk (2027 hazırlığı) */}
-              <div>
-                <div className="etiket-ust">Toplayıcı / DSG</div>
-                <div className="dugme-sira">
-                  <button className="dugme" onClick={() => { setKgupHata(null); api.toplayiciIndir(plantId, "xlsx", 60).catch((e) => setKgupHata(String(e.message ?? e))); }}>Toplayıcı (Excel, saatlik)</button>
-                  <button className="dugme" onClick={() => { setKgupHata(null); api.toplayiciIndir(plantId, "csv", 15).catch((e) => setKgupHata(String(e.message ?? e))); }}>Toplayıcı (CSV, 15 dk)</button>
-                </div>
-              </div>
-            </div>
-            {kgupHata && <p style={{ color: "var(--uyari-metin)", fontSize: 13.5, margin: "8px 0 0" }}>{kgupHata}</p>}
-            {kgup.uyarilar.length > 0 && <ul className="not-listesi uyari">{kgup.uyarilar.map((u) => <li key={u}>{u}</li>)}</ul>}
-            {kgup.sicrama_saatleri.length > 0 && <p style={{ fontSize: 13.5, margin: "8px 0 0" }}>≥200 MWh ani değişim: saat {kgup.sicrama_saatleri.join(", ")}; dosyada 15 dakikalık adımlar.</p>}
-            <details className="aciklama">
-              <summary>Piyasa takvimi ve program kuralı</summary>
-              <p>
-                {kgup.gip && `${kgup.gip.kural} Örnek: ${kgup.gip.ornek_teslimat} teslimatı için kapı ${kgup.gip.ornek_kapi}, revizyon son ${kgup.gip.ornek_revizyon_son}. `}
-                Program, teslim saatinden (bir gün önce 15:30) önce verilmiş son tahminin saatlik beklenen (P50) değeridir; KGÜP ≤ emre amade kapasite ≤ kurulu güç
-                kuralı uygulanır. CSV kolon adları TPYS şablonuyla eşlenmelidir (resmî şablon teyit edilemedi); dosya bir öneridir, bildirim TPYS'de yapılır.
-              </p>
-            </details>
-          </>
-        ) : (
-          <div className="bos-durum">
-            <div className="bos-bas">Yarın için program henüz yok</div>
-            <p>Teslim saatinden önce verilmiş tahmin yok; sabah tahmini üretildiğinde burada görünür.</p>
-          </div>
-        )}
-      </Kart>
       {/* v2.266 (Dalga 5.18): kısa ufuk — ölçüm persistansı; uydu değil. Canlı SCADA yoksa dürüstçe tire. */}
       <Kart baslik="Önümüzdeki 6 saat — son ölçümlere göre düzeltme"
         sag={<span className="cip">{nc === undefined ? "hesaplanıyor" : nc?.durum === "ok" ? <Meta items={[`düzeltme oranı ${sayiTr(nc.oran ?? 0, 2)}`, `son ${sayiTr(nc.n_saat)} saat`]} /> : nc?.durum === "gece" ? "gece: beklenen (P50)" : "canlı ölçüm gerektirir"}</span>}>

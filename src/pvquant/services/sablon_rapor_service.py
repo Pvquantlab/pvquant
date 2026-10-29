@@ -1,8 +1,8 @@
-"""v2.281 — Tablo 3.5 satır 4: şablon raporlar — kapasite testi, fatura/uzlaştırma özeti, kullanılabilirlik (HTML).
+"""v2.281 — Tablo 3.5 satır 4: şablon raporlar — kapasite testi, tahmini fatura ve dengesizlik özeti (simülasyon; EPİAŞ uzlaştırması değildir), kullanılabilirlik (HTML).
 
 pvquant.ext.platform.rapor_sablon üzerinden; 16 sayfalık ana rapora ek, kısa ve tek amaçlı belgeler. Kapasite testi
 ölçülen düzlem ışınımı (POA) ister — yoksa dürüstçe 409 (uydurma ışınımla test yapılmaz). Fatura: aylık SCADA üretimi ×
-tarife (params_json.tarife; PTF tipi için EPİAŞ/senaryo fiyatı) − dengesizlik (simülatör). Künye satırı kaynak_service'ten.
+tarife (params_json.tarife; PTF tipi için EPİAŞ/senaryo fiyatı) − uzlaştırma kalemleri (simülatör, yürürlükteki kural); mutabakat DEĞİLDİR. Künye satırı kaynak_service'ten.
 """
 from __future__ import annotations
 

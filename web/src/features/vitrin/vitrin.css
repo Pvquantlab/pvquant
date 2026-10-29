@@ -886,6 +886,24 @@
 /* ═══ CİLA-ek 7: rakip analizi dalga 1 — Ö1/Ö2/Ö8 + hijyen ═══ */
 /* Ö2(b) — hero mikro metni: eylemin dürüst sınırı birincil düğmenin altında */
 .vt-hero__mikro { margin: 10px 0 0; font: 400 12px/18px var(--vt-mono); color: var(--vt-ikincil); max-width: 52ch; }
+/* 29.10: «Kimin için» künyesi (04 §2) — mikro künyeyle aynı dil, üstünde etiket; hero--video'da gece ikincil renk */
+.vt-hero__kimin { margin: 18px 0 0; font: 500 13px/20px var(--vt-sans); color: var(--vt-ikincil); max-width: 60ch; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.vt-hero__kimin-et { font: 600 11px/16px var(--vt-sans); letter-spacing: .06em; text-transform: uppercase; color: var(--vt-metin); }
+/* video sahnesinde arkasız metin okunmuyordu (kullanıcı, 29.10): mikro künyeyle aynı koyu hap zemini; ikinci tur: etiket küçük
+   açık rozet, öğeler arasında belirgin dikey ayraç, hafif bulanık zemin + ince kenar, masaüstünde tek satır */
+.vt-hero--video .vt-hero__kimin { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; width: fit-content; max-width: none; margin-top: 14px;
+  padding: 7px 18px 7px 8px; border-radius: 999px; background: rgba(11, 14, 21, .72); border: 1px solid rgba(255, 255, 255, .14);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); color: rgba(255, 255, 255, .94); font: 500 14px/20px var(--vt-sans); }
+.vt-hero--video .vt-hero__kimin-et { padding: 3px 10px; border-radius: 999px; background: rgba(255, 255, 255, .16); color: #FFFFFF; font: 700 10.5px/14px var(--vt-sans); letter-spacing: .08em; }
+.vt-hero--video .vt-hero__kimin .meta > span { white-space: nowrap; }
+.vt-hero--video .vt-hero__kimin .meta > span::before { background: #FFFFFF; opacity: .55; height: 12px; }
+@media (max-width: 760px) {
+  .vt-hero--video .vt-hero__kimin { width: 100%; padding: 10px 14px; border-radius: 14px; justify-content: center; text-align: center; background: rgba(11, 14, 21, .8); }
+  /* dar ekranda her öğe kendi satırında: ayraç çizgisi gereksiz (ortalanınca kırpma şeridi dışına taşıyordu) */
+  .vt-hero--video .vt-hero__kimin .meta { justify-content: center; margin-left: 0; clip-path: none; }
+  .vt-hero--video .vt-hero__kimin .meta > span { white-space: normal; margin-left: 0; flex-basis: 100%; justify-content: center; }
+  .vt-hero--video .vt-hero__kimin .meta > span::before { display: none; }
+}
 /* Ö8 — iş kartı kalıbı: masa etiketi, iş sonucu başlığı, etiket–değer künyesi */
 .vt-is__ust { display: flex; align-items: center; gap: 10px; margin-bottom: 2px; }
 .vt-is__masa { font: 500 11.5px/1 var(--vt-mono); letter-spacing: 0.07em; text-transform: uppercase; color: var(--vt-ucuncul); }
@@ -2011,4 +2029,20 @@
    değiştirmesin diye dolgu yok. */
 @media (pointer: fine) {
   .vt .vt-kabuk-dolgu { height: 100vh; }
+}
+
+/* 29.10 (kullanıcı: «daha dengeli»): hero altındaki iki künye — «Kimin için» ve mikro künye — tek aile: eşit genişlik, aynı zemin
+   (koyu, bulanık, ince kenar), aynı köşe ve iç boşluk, aynı yazı; dikey ritim 10 px. Önceki hap kuralları bu blokla ezilir. */
+.vt-hero--video .vt-hero__kimin, .vt-hero--video .vt-hero__mikro {
+  box-sizing: border-box; width: 100%; max-width: 680px; margin: 0; padding: 10px 16px; border-radius: 18px;
+  background: rgba(11, 14, 21, .7); border: 1px solid rgba(255, 255, 255, .14); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  color: rgba(255, 255, 255, .92); font: 500 14px/20px var(--vt-sans); letter-spacing: 0; text-shadow: none; text-align: left; }
+.vt-hero--video .vt-hero__kimin { margin-top: 18px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
+.vt-hero--video .vt-hero__mikro { margin-top: -8px; flex-basis: auto; }   /* kapsayıcı gap 20 px ile birlikte iki hap arası ≈12 px */
+.vt-hero--video .vt-hero__kimin-et { padding: 3px 10px; border-radius: 999px; background: rgba(255, 255, 255, .16); color: #FFFFFF; font: 700 10.5px/14px var(--vt-sans); letter-spacing: .08em; }
+.vt-hero--video .vt-hero__kimin .meta > span::before, .vt-hero--video .vt-hero__mikro .meta > span::before { background: #FFFFFF; opacity: .5; height: 12px; }
+@media (max-width: 760px) {
+  .vt-hero--video .vt-hero__kimin, .vt-hero--video .vt-hero__mikro { max-width: none; border-radius: 14px; padding: 10px 14px; text-align: center; background: rgba(11, 14, 21, .8); }
+  .vt-hero--video .vt-hero__kimin { justify-content: center; }
+  .vt-hero--video .vt-hero__mikro .meta { justify-content: center; }
 }

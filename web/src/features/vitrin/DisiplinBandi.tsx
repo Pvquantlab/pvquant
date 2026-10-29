@@ -8,9 +8,9 @@
  *  forecast_horizon_days, alarm_service kuralları, BULGU_DEFTERI kayıtları. */
 import { Meta } from "../../lib/Meta";
 const RAKAMLAR = [
-  ["700", "otomatik test", "testlerin tamamı her sürümde koşar", "#vt-dipnot-1", "sayım kuralı"],
+  ["800", "otomatik test", "testlerin tamamı her sürümde koşar", "#vt-dipnot-1", "sayım kuralı"],
   ["15 gün", "tahmin ufku", "15 güne dek her saat için iyimser–kötümser aralık", "/yontem#yt-tanimlar", "aralığın tanımı"],
-  ["8", "alarm kuralı", "veri akışı, program teslimi ve üretim performansı izlenir", "#isler", "operasyon nöbeti"],
+  ["2 + 6", "alarm kuralı", "ikisi varsayılan izler; altısı santrale göre açılır", "#isler", "operasyon nöbeti"],
   ["32", "kapatılmış bulgu kaydı", "bulundu, düzeltildi, kayda geçti", "", ""],
 ] as const;
 
@@ -29,8 +29,8 @@ export function DisiplinBandi() {
             </div>
           ))}
         </div>
-        <p className="vt-kunye vt-disiplin__kunye"><Meta items={["04.10.2026 itibarıyla", "kaynak: yazılım deposu, otomatik test takımı ve bulgu kayıt defteri"]} /></p>
-        <p className="vt-kunye vt-disiplin__dipnot" id="vt-dipnot-1">Sayım kuralı: 04.10.2026 sürümündeki iki test takımının (hesaplama motoru + arayüz) toplamı, aşağı yuvarlanmış; her sürümde iki takım da baştan sona koşar.</p>
+        <p className="vt-kunye vt-disiplin__kunye"><Meta items={["29.10.2026 itibarıyla", "kaynak: yazılım deposu, otomatik test takımı ve bulgu kayıt defteri"]} /></p>
+        <p className="vt-kunye vt-disiplin__dipnot" id="vt-dipnot-1">Sayım kuralı: 29.10.2026 sürümündeki iki test takımının (hesaplama motoru 748 + arayüz 102) toplamı, yüzlüğe aşağı yuvarlanmış; her sürümde iki takım da baştan sona koşar.</p>
       </div>
     </section>
   );

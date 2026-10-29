@@ -716,8 +716,8 @@ def _kgup_yaniti(tenant_id: str, plant_id: str, gun: str | None, kantil: str, fm
     """v2.260/v2.264 — panel ve dış API'nin ortak KGÜP gövdesi."""
     from datetime import date, timedelta
     from pvquant.services import kgup_service, plant_service
-    if kantil not in ("p10", "p50", "p90"):
-        raise HTTPException(422, "kantil p10|p50|p90")
+    if kantil not in kgup_service.KANTILLER:
+        raise HTTPException(422, "kantil p10|p25|p50|p75|p90")
     row = plant_service.getir(tenant_id, plant_id)
     if row is None:
         raise HTTPException(404, "santral yok")
@@ -731,10 +731,10 @@ def _kgup_yaniti(tenant_id: str, plant_id: str, gun: str | None, kantil: str, fm
                                       "params_json": pj},   # v2.275: EAK alanı / geçici kısıt params_json'dan
                           g, kantil)
     if "hata" in r:
-        raise HTTPException(409, r["hata"])
+        raise HTTPException(int(r.get("kod", 409)), r["hata"] + (f" (eksik saatler: {r['eksik_saatler']})" if r.get("eksik_saatler") else ""))
     if fmt == "json":
         return {k: v for k, v in r.items() if k != "csv"}
-    return Response(content=r["csv"].encode("utf-8-sig"), media_type="text/csv; charset=utf-8",
+    return Response(content=r["csv"].encode("utf-8-sig"), media_type="text/csv; charset=utf-8",   # BOM burada ve ext.kgup.csv_baytlari'nda aynı (SHA-256 dosya baytlarıyla)
                     headers={"Content-Disposition": f'attachment; filename="{r["dosya_adi"]}"'})
 
 
@@ -949,8 +949,9 @@ class EakIstek(BaseModel):
     eak_kw: float | None = None                 # kalıcı EAK alanı (kW); None → AC tavanı/kurulu güç
     gecici_kw: float | None = None              # geçici kısıt (bakım/arıza), kW
     gecici_bitis: str | None = None             # YYYY-MM-DD (dâhil)
-    kupst_n: float | None = None                # KÜPST katsayısı (Kurul kararı)
-    kupst_tolerans: float | None = None         # KGÜP oranı (0–0,5)
+    kupst_n: float | None = None                # KÜPST katsayısı geçersiz kılma (verilmezse kural tablosu)
+    kupst_tolerans: float | None = None         # KGÜP oranı (0–0,5) geçersiz kılma
+    dengeleme_birimi: bool | None = None        # 29.10 (F-05): 15 dk dilimleme yalnız dengeleme birimi (DUY m.69(3))
 
 
 class EpiasIstek(BaseModel):
@@ -1013,10 +1014,13 @@ def eak_ayarla(plant_id: str, p: EakIstek, claims=Depends(yazma_yetkisi())):
         if not (0 <= p.kupst_tolerans <= 0.5):
             raise HTTPException(422, "kupst_tolerans 0–0,5")
         an["kupst_tolerans"] = float(p.kupst_tolerans)
+    if "dengeleme_birimi" in verilen:
+        an["dengeleme_birimi"] = bool(p.dengeleme_birimi)
     pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **an)
     row["params_json"] = pj
     return {"eak_bugun": kgup_service.eak_etkin(row, pd.Timestamp.now(tz="Europe/Istanbul").date()),
-            "eak_kw": pj.get("eak_kw"), "eak_gecici": pj.get("eak_gecici"), "kupst_n": pj.get("kupst_n"), "kupst_tolerans": pj.get("kupst_tolerans")}
+            "eak_kw": pj.get("eak_kw"), "eak_gecici": pj.get("eak_gecici"), "kupst_n": pj.get("kupst_n"), "kupst_tolerans": pj.get("kupst_tolerans"),
+            "dengeleme_birimi": bool(pj.get("dengeleme_birimi"))}
 
 
 def _toplayici_yaniti(tenant_id: str, plant_id: str, gun: str | None, fmt: str, adim: int):
@@ -1046,9 +1050,23 @@ def dis_toplayici(plant_id: str, gun: str | None = None, fmt: str = "csv", adim:
     return _toplayici_yaniti(anahtar["tenant_id"], plant_id, gun, fmt, adim)
 
 
+@app.get("/v1/kurallar")
+def kurallar_tablosu(tarih: str | None = None, segment: str | None = "lisansli_serbest", claims=Depends(gecerli_kullanici)):
+    """29.10.2026 (F-01) — uzlaştırma kuralı ve parametre sürüm tablosu (salt okunur): tarih verilirse o günün kuralı, yoksa tüm satırlar."""
+    from pvquant.services import dengesizlik_service
+    from pvquant.ext.turkiye import kurallar as kr
+    if tarih:
+        try:
+            from datetime import date as _d
+            return dengesizlik_service.kural_ozeti(segment, _d.fromisoformat(tarih))
+        except ValueError:
+            raise HTTPException(422, "tarih YYYY-MM-DD olmalı")
+    return {"segment": segment, "satirlar": kr.tablo(segment)}
+
+
 @app.get("/v1/plants/{plant_id}/dengesizlik")
 def dengesizlik(plant_id: str, gun: int = 90, claims=Depends(gecerli_kullanici)):
-    """v2.259 — karnenin TL dili: PVQuant programı vs naif program dengesizlik maliyeti (DUY), aylık + toplam."""
+    """v2.259 — karnenin TL dili: PVQuant programı vs referans program uzlaştırma kalemleri (EDT + KÜPST, yürürlükteki kural), aylık + toplam."""
     from pvquant.services import dengesizlik_service, plant_service
     if not (14 <= gun <= 365):
         raise HTTPException(422, "gun 14-365 araliginda olmali")

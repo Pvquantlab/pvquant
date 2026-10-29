@@ -1,8 +1,9 @@
 """v2.258 — Dalga 4.14: EPİAŞ Şeffaflık fiyat entegrasyonu (PTF / SMF / sistem yönü).
 
 Kimlik: Settings.epias_kullanici / epias_sifre (env PVQUANT_EPIAS_*). Varsa gece işi son günleri çeker ve
-piyasa_fiyat tablosuna yazar (kaynak='epias'). Yoksa hiçbir şey uydurulmaz: simülatör 'senaryo' fiyatıyla
-çalışır (EPDK 2025 yıllık ağırlıklı ortalamaları — PTF 2.651,81 / SMF 2.524,09 TL/MWh) ve UI bunu söyler.
+piyasa_fiyat tablosuna yazar (kaynak='epias', yon='acik'|'fazla'|'dengede'). Yoksa hiçbir şey uydurulmaz: simülatör
+'senaryo' fiyatıyla çalışır (EPDK 2025 yıllık ağırlıklı ortalamaları — PTF 2.651,81 / SMF 2.524,09 TL/MWh; sistem yönü YOK)
+ve UI her TL alanında bunu söyler (senaryo rozeti). Geçmişi toplu doldurma: geri_doldur() (F-04; zamanlayıcıya bağlanmadı).
 İstemci: pvquant.ext.turkiye.epias (TGT önbellekli, CAS limitleri, İstanbul→UTC).
 """
 from __future__ import annotations
@@ -71,6 +72,18 @@ def gece_piyasa(gun: int = 3) -> dict:
     return {"durum": "ok", "yazilan": n}
 
 
+def geri_doldur(bas: str, bitis: str, parca_gun: int = 7, istemci=None) -> dict:
+    """F-04: geçmiş fiyat/yön doldurma (gün gün, parça parça). Kimlik yoksa atlar. Zamanlayıcıya bağlı değil; elle/CLI."""
+    if istemci is None and not kimlik_var():
+        return {"durum": "kimlik_yok", "yazilan": 0}
+    b = date.fromisoformat(bas); e = date.fromisoformat(bitis); yazilan = 0; parcalar = 0
+    while b <= e:
+        p_bitis = min(b + timedelta(days=parca_gun - 1), e)
+        yazilan += kaydet(fiyat_cek(b.isoformat(), p_bitis.isoformat(), istemci)); parcalar += 1
+        b = p_bitis + timedelta(days=1)
+    return {"durum": "ok", "yazilan": yazilan, "parca": parcalar}
+
+
 def fiyatlar(index: pd.DatetimeIndex) -> pd.DataFrame:
     """Verilen saatler için fiyat: tabloda varsa EPİAŞ, eksik saatler senaryo (kaynak kolonu söyler)."""
     from sqlalchemy import text
@@ -93,6 +106,7 @@ def durum() -> dict:
     from sqlalchemy import text
     from pvquant.db import sistem_baglami
     with sistem_baglami() as s:
-        r = s.execute(text("SELECT max(ts_utc), count(*) FROM piyasa_fiyat WHERE kaynak='epias'")).first()
+        r = s.execute(text("SELECT max(ts_utc), count(*), count(yon) FROM piyasa_fiyat WHERE kaynak='epias'")).first()
     return {"kimlik": kimlik_var(), "son_fiyat": r[0].isoformat() if r and r[0] else None, "saat": int(r[1] or 0) if r else 0,
+            "yon_saat": int(r[2] or 0) if r else 0,
             "senaryo": {"ptf": SENARYO_PTF, "smf": SENARYO_SMF, "ad": SENARYO_AD}}

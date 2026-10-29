@@ -170,10 +170,12 @@ export function Hero({ kabuk = false }: { kabuk?: boolean } = {}) {
       <div className="vt-kap vt-hero__ic">
         <div className="vt-hero__sol">
           <h1 className="vt-h1 vt-hero__baslik" id="vt-hero-baslik"><span className="vt-h1__vurgu">Güneş santraliniz için</span> saatlik üretim tahmini ve günlük doğruluk karnesi.</h1>
-          <p className="vt-giris vt-hero__giris">PVQuant, santralinizin saat saat ne üreteceğini 15 gün öncesinden söyler ve her saate bir iyimser–kötümser aralık ekler. Üretim programınız (KGÜP) teslim saatinden önce hazır olur; tahmin hatasının size kaç TL&#39;ye mal olduğunu her gün panelde görürsünüz. Her tahmin, <a className="vt-bag vt-bag--metin" href="#karne">ertesi gün gerçekleşen üretimle karşılaştırılır</a>.</p>
+          <p className="vt-giris vt-hero__giris">PVQuant, santralinizin saat saat ne üreteceğini 15 gün öncesinden söyler ve her saate bir iyimser–kötümser aralık ekler. Üretim programınız (KGÜP) teslim saatinden önce hazır olur; uzlaştırma kalemlerini (dengesizlik tutarı ve KGÜP sapması) yürürlükteki kuralla ayrı ayrı izlersiniz. Her tahmin, <a className="vt-bag vt-bag--metin" href="#karne">ertesi gün gerçekleşen üretimle karşılaştırılır</a>.</p>
           <div className="vt-eylemler vt-hero__eylem">
             <a className="vt-dugme vt-dugme--dolu vt-dugme--ok vt-dugme--buyuk" href="#basla">Karnenizi başlatın</a>
-            <a className="vt-dugme vt-dugme--gece-cizgi vt-dugme--buyuk" href="/yontem#para">Dengesizlik maliyeti nasıl hesaplanır</a>
+            <a className="vt-dugme vt-dugme--gece-cizgi vt-dugme--buyuk" href="/yontem#para">Uzlaştırma kalemleri nasıl hesaplanır</a>
+            {/* 29.10 (04 §2): dürüst daraltma — lisanssız sahibini adreslemeyen «Kimin için» künyesi */}
+            <p className="vt-hero__kimin"><span className="vt-hero__kimin-et">Kimin için</span><Meta items={["lisanslı GES sahipleri", "DSG ve enerji ticareti masaları", "toplayıcı ve görevli tedarik portföyleri"]} /></p>
             <p className="vt-hero__mikro"><Meta items={["başvuru", "kurulumu biz yaparız", "veri yüklemeniz gerekmez", "doğruluk karneniz ilk günden birikmeye başlar"]} /></p>
           </div>
         </div>

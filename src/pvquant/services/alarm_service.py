@@ -165,6 +165,19 @@ def tara(plant: dict) -> None:
                 _kaydet_ve_gonder(s, tid, pid, rule, msg, {"bilgi": "info", "uyari": "warning", "kritik": "critical"}[siddet])
 
 
+def kgup_kontrol(plant: dict) -> None:
+    """29.10.2026 (F-11 N2 / 08 #7): «kgup_teslim_gecikti» kuralı yalnız 15:30 TSİ SONRASINDA anlamlıdır; gece alarm taraması
+    (04:00 UTC) bu koşulu hiç göremiyordu → kural seçili olsa da tetiklenemiyordu. Worker bu işi 12:35 UTC'de (15:35 TSİ) koşar."""
+    if "kgup_teslim_gecikti" not in secili_kurallar(plant):
+        return
+    tid, pid = plant["tenant_id"], plant["id"]
+    baglam = _baglam(tid, plant, ["kgup_teslim_gecikti"])
+    with tenant_baglami(tid) as s:
+        for rule, siddet, msg in ek_alarmlar(plant, baglam):
+            if rule == "kgup_teslim_gecikti":
+                _kaydet_ve_gonder(s, tid, pid, rule, msg, "critical")
+
+
 def listele(tenant_id, plant_id, n: int = 20):
     """Alarm listesi — SUNUM için ham okuma (yeni→eski); hesap yok,
     üretici worker'daki tara()'dır. RLS tenant_baglami'nda."""

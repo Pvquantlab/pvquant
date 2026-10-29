@@ -51,17 +51,22 @@ def test_eak_etkin():
 
 
 def test_kupst_katsayilari():
+    """29.10.2026 (F-01/F-03): varsayılan KÜPST katsayısı kodda sabit DEĞİL, kural tablosundan (tarih + segment); params_json yalnız geçersiz kılar."""
     k = dz.katsayilar({"segment": "lisansli_serbest"})
-    assert k.kupst_n == 0.03 and k.kupst_tolerans == 0.10 and k.kupst_kgup_yukumlu
-    assert dz.katsayilar({"segment": "lisanssiz_dagitim"}).kupst_n == 0.0
+    assert k.kupst_n is None and k.kupst_tolerans is None and k.kupst_kgup_yukumlu
+    assert dz.katsayilar({"segment": "lisanssiz_dagitim"}).kupst_n is None and not dz.katsayilar({"segment": "lisanssiz_dagitim"}).kupst_kgup_yukumlu
     assert dz.katsayilar({"segment": "lisansli_yekdem", "kupst_n": 0.05, "kupst_tolerans": 0.08}).kupst_n == 0.05
-    assert dz.katsayilar(None).kupst_n == 0.0
+    assert dz.katsayilar(None).kupst_n is None
+    from datetime import date
+    from pvquant.ext.turkiye import kurallar as kr
+    assert kr.kural(date(2026, 6, 1), "lisansli_serbest").kupst.m == 0.08 and kr.kural(date(2026, 6, 1), "lisansli_serbest").kupst.n == 0.05
     # KÜPST toleransın ÜSTÜNDEKİ sapmadan hesaplanır
     ix = pd.date_range("2026-08-01", periods=3, freq="h", tz="UTC")
     fiyat = pd.DataFrame({"ptf": 2000.0, "smf": 2500.0, "kaynak": "senaryo"}, index=ix)
     df = pd.DataFrame({"ts_utc": ix, "gercek_kw": [1000.0, 1000.0, 1000.0], "kgup_kw": [1000.0, 1050.0, 1500.0], "naif_kw": np.nan})
-    r = dz.hesapla_df(df, fiyat, dz.katsayilar({"segment": "lisansli_serbest"}))
-    assert r["toplam"]["kupst_tl"] == round((0.5 - 0.1 * 1.5) * 2500 * 0.03, 0) and r["katsayilar"]["kupst_tolerans"] == 0.1
+    r = dz.hesapla_df(df, fiyat, dz.katsayilar({"segment": "lisansli_serbest"}), segment="lisansli_serbest")
+    # Ağustos 2026 → Karar 14029: m 0,08, n 0,05; taban 750 < fiyat; saat 2: sapma 0,05 ≤ 0,084 → 0; saat 3: (0,5 − 0,08·1,5)·2500·0,05 = 47,5
+    assert r["toplam"]["kupst_tl"] == round((0.5 - 0.08 * 1.5) * 2500 * 0.05, 0) and r["katsayilar"]["kupst_tolerans"] == 0.08 and r["katsayilar"]["kupst_n"] == 0.05
 
 
 @pytest.fixture()

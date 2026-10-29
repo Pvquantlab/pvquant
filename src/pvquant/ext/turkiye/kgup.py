@@ -1,11 +1,15 @@
 """KGÜP bildirim dosyası — saatlik program, teslim kuralları, 15 dk bayrağı, EAK, gün içi revizyon, teklif kantili.
 
-DUY md. 68–69 (RG 29/12/2025): D+1 KGÜP her gün 14:00–15:30 (İstanbul) TEİAŞ TPYS'ye; TEİAŞ 17:00'a kadar teyit.
-Saatlik MWh (24 satır; Türkiye'de yaz saati yok). Ardışık iki saat farkı ≥ 200 MWh ise ikinci saat 15 dk'lık
-dilimlerle (md. 69(3)). Gün içi güncelleme: GİP kapı kapanışı (teslimattan 1 s önce) + 30 dk'ya kadar (md. 69(1)).
-Emre amade kapasite (EAK) de 15:30'a kadar (md. 69/A). TPYS CSV şablonu resmi olarak TEYİT EDİLEMEDİ → kolonlar
-parametrik (`Sablon`); kullanıcı TPYS'den indirdiği şablonla eşler.
-Teklif: KGÜP olarak P50 yerine 'optimal kantil' (dengesizlik.optimal_teklif_kantili) seçilebilir.
+DUY m.68–69, m.69/A (son değişiklik RG 19.10.2026-33405; 29.10.2026'da konsolide metinden okundu): KGÜP ve EAK her gün
+15:30'a kadar Sistem İşletmecisine (TPYS); PYS erişimi olmayanlar 14:30'a kadar BYTM'ye; TEİAŞ 17:00'a kadar teyit (m.69(4)).
+Saatlik MWh (24 satır; Türkiye'de yaz saati yok). 15 dk dilimleme YALNIZ dengeleme güç piyasası kapsamındaki DENGELEME BİRİMİ
+için, ardışık iki saat farkı ≥ 200 MWh ise (m.69(3)); GES dengeleme birimi olmaktan muaf (m.22(4)) → varsayılan dilimleme yok,
+`dengeleme_birimi` bayrağıyla açılır. Gün içi güncelleme: GİP kapı kapanışı + 30 dk'ya kadar (m.69(1)).
+EAK = güç (MW), saat başına bir değer (m.4(1), m.69/A(1)); çeyrek satırlarda BÖLÜNMEZ. KGÜP (MWh) ≤ EAK (MW×1 s) ≤ kurulu güç.
+Eksik tahmin saati 0 yazılmaz: dosya üretilmez, eksik saatler bildirilir (KGÜP 0 olan saatte üretimin tamamı sapma sayılır).
+TPYS CSV şablonu resmî olarak TEYİT EDİLEMEDİ (TPYS girişi gerekir) → kolonlar parametrik (`Sablon`; params_json.kgup_sablon
+ile eşlenir); ekranda «resmî şablonla karşılaştırılmadı» notu kalır. Dosya üretimi = bildirim DEĞİLDİR; gönderim müşterinin TPYS'sinden.
+Teklif: KGÜP olarak P50 yerine kantil (P10/P25/P50/P75/P90) seçilebilir; öneri dengesizlik.optimal_teklif_kantili.
 """
 from __future__ import annotations
 
@@ -20,12 +24,23 @@ TESLIM_BAS, TESLIM_SON, TEYIT = (14, 0), (15, 30), (17, 0)
 SICRAMA_ESIK_MWH = 200.0
 
 
+SABLON_DURUMU = "resmî TPYS şablonuyla karşılaştırılmadı; sütun adları/sırası pilotta doğrulanacak"
+TAKVIM = {"pencere_acilis": "14:00", "bytm_son": "14:30", "son": "15:30", "teyit": "17:00"}   # m.69(1), (4); EPİAŞ KGÜP sayfası
+
+
 @dataclass
 class Sablon:
-    """TPYS CSV kolon adları — TEİAŞ şablonuyla eşlenir (teyit edilemedi; varsayılanlar açıklayıcı)."""
-    tarih: str = "Tarih"; saat: str = "Saat"; uevcb: str = "UEVCB"; kgup: str = "KGUP_MWh"; eak: str = "EAK_MWh"
+    """TPYS CSV kolon adları — TEİAŞ şablonuyla eşlenir (teyit edilemedi; varsayılanlar açıklayıcı). EAK birimi MW."""
+    tarih: str = "Tarih"; saat: str = "Saat"; uevcb: str = "UEVCB"; kgup: str = "KGUP_MWh"; eak: str = "EAK_MW"
     ceyrek: str = "Ceyrek"       # 15 dk satırları için 0/15/30/45
     ayrac: str = ";"; ondalik: str = ","; tarih_bicim: str = "%d.%m.%Y"
+
+    @classmethod
+    def params_json_dan(cls, pj: dict | None) -> "Sablon":
+        """params_json.kgup_sablon: {"kgup": "KGUP", "eak": "EAK", "ayrac": ";", ...} — yalnız bilinen alanlar."""
+        e = (pj or {}).get("kgup_sablon") or {}
+        alanlar = {f for f in cls.__dataclass_fields__}
+        return cls(**{k: str(v) for k, v in e.items() if k in alanlar and v})
 
 
 @dataclass
@@ -33,6 +48,7 @@ class KgupSonucu:
     tablo: pd.DataFrame
     sicrama_saatleri: list[int]
     uyarilar: list[str] = field(default_factory=list)
+    eksik_saatler: list[int] = field(default_factory=list)   # tahmini olmayan saatler (dosya üretilmez)
 
 
 def piyasa_gunu(gun: str | pd.Timestamp) -> pd.DatetimeIndex:
@@ -48,8 +64,9 @@ def program_uret(tahmin_mw: pd.Series, gun: str, uevcb: str, kurulu_guc_mw: floa
     kaynak.index = kaynak.index.tz_convert(IST) if kaynak.index.tz is not None else kaynak.index.tz_localize("UTC").tz_convert(IST)
     k = kaynak.reindex(idx)
     uyar = []
-    if k.isna().any():
-        uyar.append(f"{int(k.isna().sum())} saat tahmin yok → 0 yazıldı"); k = k.fillna(0.0)
+    eksik = [int(h) for h in np.where(k.isna().values)[0]]
+    if eksik:
+        uyar.append(f"{len(eksik)} saat tahmin yok (saat {', '.join(map(str, eksik))}) → dosya üretilmez; 0 yazılmaz"); k = k.fillna(0.0)
     k = k.clip(lower=0.0, upper=kurulu_guc_mw)
     if eak_mw is None:
         eak = pd.Series(kurulu_guc_mw, index=idx)
@@ -63,12 +80,13 @@ def program_uret(tahmin_mw: pd.Series, gun: str, uevcb: str, kurulu_guc_mw: floa
     k = pd.concat([k, eak], axis=1).min(axis=1)   # KGÜP ≤ EAK
     fark = k.diff().abs().fillna(0.0)
     sicrama = [int(h) for h in np.where(fark.values >= SICRAMA_ESIK_MWH)[0]]
-    tablo = pd.DataFrame({"tarih": idx.date, "saat": idx.hour, "uevcb": uevcb, "kgup_mwh": np.round(k.values, 3), "eak_mwh": np.round(eak.values, 3)})
-    return KgupSonucu(tablo, sicrama, uyar)
+    tablo = pd.DataFrame({"tarih": idx.date, "saat": idx.hour, "uevcb": uevcb, "kgup_mwh": np.round(k.values, 3), "eak_mw": np.round(eak.values, 3)})
+    return KgupSonucu(tablo, sicrama, uyar, eksik)
 
 
 def ceyrek_dilimle(sonuc: KgupSonucu, tahmin_15dk_mw: pd.Series | None = None) -> pd.DataFrame:
-    """≥200 MWh sıçrama saatlerini 15 dk'lık dört satıra açar (md. 69(3)); 15 dk tahmin yoksa doğrusal geçiş."""
+    """≥200 MWh sıçrama saatlerini 15 dk'lık dört satıra açar (m.69(3)) — YALNIZ dengeleme birimi için çağrılır.
+    KGÜP çeyrek değeri MWh/4; EAK güçtür, çeyrek satırda saatlik EAK aynen yazılır (bölünmez). 15 dk tahmin yoksa doğrusal geçiş."""
     t = sonuc.tablo.copy(); satirlar = []
     for i, r in t.iterrows():
         if r["saat"] in sonuc.sicrama_saatleri:
@@ -79,20 +97,30 @@ def ceyrek_dilimle(sonuc: KgupSonucu, tahmin_15dk_mw: pd.Series | None = None) -
                     v = float(tahmin_15dk_mw.reindex([ts.tz_convert(tahmin_15dk_mw.index.tz or 'UTC')]).iloc[0]) / 4.0
                 else:
                     v = (onceki + (r["kgup_mwh"] - onceki) * (q + 1) / 4.0) / 4.0
-                satirlar.append({**r, "ceyrek": q * 15, "kgup_mwh": round(v, 3), "eak_mwh": round(r["eak_mwh"] / 4.0, 3)})
+                satirlar.append({**r, "ceyrek": q * 15, "kgup_mwh": round(v, 3), "eak_mw": round(r["eak_mw"], 3)})
         else:
             satirlar.append({**r, "ceyrek": None})
     return pd.DataFrame(satirlar)
 
 
 def tpys_csv(tablo: pd.DataFrame, yol: str | Path, sablon: Sablon = Sablon()) -> Path:
+    yol = Path(yol); yol.parent.mkdir(parents=True, exist_ok=True)
+    yol.write_bytes(csv_baytlari(tablo, sablon))
+    return yol
+
+
+def csv_metni(tablo: pd.DataFrame, sablon: Sablon = Sablon()) -> str:
+    """TPYS CSV gövdesi (BOM'suz metin; BOM yalnız csv_baytlari'nda — tek yerde)."""
     df = pd.DataFrame({sablon.tarih: pd.to_datetime(tablo["tarih"]).dt.strftime(sablon.tarih_bicim), sablon.saat: tablo["saat"].astype(int),
-                       sablon.uevcb: tablo["uevcb"], sablon.kgup: tablo["kgup_mwh"], sablon.eak: tablo["eak_mwh"]})
+                       sablon.uevcb: tablo["uevcb"], sablon.kgup: tablo["kgup_mwh"], sablon.eak: tablo["eak_mw"]})
     if "ceyrek" in tablo and tablo["ceyrek"].notna().any():
         df[sablon.ceyrek] = tablo["ceyrek"].astype("Int64")
-    yol = Path(yol); yol.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(yol, sep=sablon.ayrac, decimal=sablon.ondalik, index=False, encoding="utf-8-sig")
-    return yol
+    return df.to_csv(sep=sablon.ayrac, decimal=sablon.ondalik, index=False, float_format="%.3f")
+
+
+def csv_baytlari(tablo: pd.DataFrame, sablon: Sablon = Sablon()) -> bytes:
+    """Dosyanın baytları: UTF-8 BOM + gövde (her üretim yolunda aynı; SHA-256 bu baytlar üzerinden)."""
+    return csv_metni(tablo, sablon).encode("utf-8-sig")
 
 
 def teslim_durumu(simdi: pd.Timestamp | None = None) -> dict:
@@ -121,6 +149,6 @@ def dogrula(sonuc: KgupSonucu, kurulu_guc_mw: float) -> list[str]:
     if len(t) != 24: h.append(f"satır sayısı {len(t)} ≠ 24")
     if (t["kgup_mwh"] < 0).any(): h.append("negatif KGÜP")
     if (t["kgup_mwh"] > kurulu_guc_mw + 1e-9).any(): h.append("KGÜP > kurulu güç")
-    if (t["kgup_mwh"] > t["eak_mwh"] + 1e-9).any(): h.append("KGÜP > EAK")
+    if (t["kgup_mwh"] > t["eak_mw"] + 1e-9).any(): h.append("KGÜP > EAK")
     if t["saat"].tolist() != list(range(24)): h.append("saat sırası bozuk")
     return h

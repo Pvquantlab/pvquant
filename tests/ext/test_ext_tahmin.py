@@ -149,8 +149,10 @@ def test_15dk_enerji_korur():
     geri = alt_saatlik.saatlige_topla(s15).reindex(idx)
     g = saatlik > 50
     assert np.allclose(geri[g], saatlik[g], rtol=0.02) and (s15 >= 0).all()
-    uz = alt_saatlik.uzlastirma_15dk(s15 / 100, (s15 / 100) * 0.9, pd.Series(2600.0, index=idx), pd.Series(2500.0, index=idx))
-    assert uz.pozitif_gelir.sum() > 0
+    # F-17: EDM saatlik kalır, 15 dk yalnız fiyatı etkiler (SMF_N/SMF_P); çeyrek SMF'ler verilir
+    q = pd.Series(np.tile([2400.0, 2600.0, 2500.0, 2300.0], 48), index=pd.date_range(idx[0], periods=192, freq="15min", tz="UTC"))
+    uz = alt_saatlik.uzlastirma_15dk(geri * 1.1 / 100, geri / 100, pd.Series(2600.0, index=idx), q, yon="fazla", segment="lisansli_serbest")
+    assert (uz.smf.reindex(idx) == 2300.0).all() and uz.edt_poz.sum() > 0 and np.allclose(uz.p_poz.dropna(), 2300.0 * 0.94)
 
 
 # --- portfoy ---

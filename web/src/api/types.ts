@@ -47,9 +47,13 @@ export interface SantralKisa { id: string; name: string; capacity_kwp: number; t
 export interface Portfoy {
   gun: string;
   santraller: { id: string; ad: string; kapasite_kwp: number; tz: string; segment: string | null; son_olcum: string | null; kesinti_gun: number | null;
-                wmape_30g: number | null; bugun_kwh: number | null; yarin_kwh: number | null; acik_alarm: number; son_kosu: string | null }[];
+                wmape_30g: number | null; bugun_kwh: number | null; yarin_kwh: number | null; acik_alarm: number; son_kosu: string | null;
+                /** 29.10: yarının programı — yükümlü mü, 15:30 kesimi öncesi tahmin var mı */
+                program?: { yukumlu: boolean | null; hazir: boolean | null; run_at: string | null; not: string | null;
+                            teslim: { hedef_gun: string; durum: string; dakika_kaldi: number; teyit_saati: string } } }[];
   toplam: { santral: number; kapasite_kwp: number; bugun_kwh: number | null; yarin_kwh: number | null; wmape_agirlikli: number | null;
-            wmape_kapsanan_kwp: number; acik_alarm: number; veri_gecikmis: number } | null;
+            wmape_kapsanan_kwp: number; acik_alarm: number; veri_gecikmis: number;
+            program_yukumlu?: number; program_hazir?: number; program_segment_yok?: number } | null;
 }
 /** v2.270 — Hakkında: veri kaynakları ve lisanslar (Anayasa v2.245 istisnası — yalnız bu sayfa, rapor künyesi, README). */
 export interface Hakkinda {
@@ -117,14 +121,19 @@ export interface PortfoyTahmin {
 }
 /** /portfoy/dsg — v2.276: DSG netleştirmesi. */
 export interface PortfoyDsg {
+  /** 29.10: gösterge — yalnız EDT kaybı; %5 üye eşiği ve KÜPST ayrımı uygulanmaz (F-08). 'kazanc_tl' = netleşme farkı (sözleşme adı). */
+  gosterge?: boolean;
   santral: number; n_saat: number; ayri_tl: number | null; net_tl: number | null; kazanc_tl: number | null; kazanc_pct?: number | null;
   santral_tl?: Record<string, number>; uretim_mwh?: number; sapma_net_mwh?: number; sapma_ayri_mwh?: number;
   pencere_gun: number; fiyat: { epias_saat: number; senaryo_saat: number }; not: string;
 }
 /** /kgup?fmt=json — v2.260 önizleme; /segment — v2.260. */
 export interface KgupOnizleme {
-  gun: string; kantil: string; kosu: { run_at?: string; mode?: string }; uyarilar: string[]; sicrama_saatleri: number[];
-  toplam_mwh: number; satirlar: { saat: number; kgup_mwh: number; eak_mwh: number }[]; dosya_adi: string;
+  gun: string; kantil: string; kosu: { run_at?: string; mode?: string; kesim?: string; run_id?: string }; uyarilar: string[]; sicrama_saatleri: number[];
+  toplam_mwh: number; satirlar: { saat: number; kgup_mwh: number; eak_mwh: number; eak_mw?: number }[]; dosya_adi: string;
+  /** 29.10 (F-05/F-06): dosya özeti, şablon durumu, takvim, bildirim notu, dengeleme birimi bayrağı */
+  sha256?: string; sablon?: { durum: string; kolonlar: string[]; ayrac: string; ondalik: string };
+  takvim?: { pencere_acilis: string; bytm_son: string; son: string; teyit: string }; bildirim?: string; dengeleme_birimi?: boolean;
   /** v2.275: o gün için etkin EAK ve kaynağı (gecici | eak_alani | ac_tavani | kurulu_guc) */
   eak?: { eak_mw: number; kaynak: string; bitis?: string };
   /** v2.287: GİP revizyon kapısı + önerilen kantil */
@@ -137,16 +146,26 @@ export const SEGMENTLER: { deger: string; etiket: string }[] = [
   { deger: "yeka", etiket: "YEKA" }, { deger: "lisanssiz_iletim", etiket: "Lisanssız (iletim bağlantılı)" },
   { deger: "lisanssiz_dagitim", etiket: "Lisanssız (dağıtım, GTŞ/toplayıcı)" }, { deger: "oz_tuketim_saatlik", etiket: "Öz tüketim (saatlik mahsup)" },
 ];
-/** /dengesizlik — v2.259: karnenin TL dili. */
+/** /dengesizlik — v2.259: karnenin TL dili. 29.10 (F-01/02/03): EDT ve KÜPST ayrı; kural sürümü; hesaplanamayan saat;
+ *  pvquant_tl/kupst_tl KÜPST hesaplanamıyorsa null (0 değil). 'kurtarilan_tl' = referans programa göre fark (sözleşme adı). */
+export interface DengesizlikKural {
+  tarih: string; kural_surumu: string; rejim: "2025" | "2026"; edt_dayanak: string; k: Record<string, number>; l: Record<string, number>;
+  V: number | null; B: number | null; AFL: number | null; aylik_toplama: string;
+  kupst_m: number | null; kupst_n: number | null; kupst_n_ariza: number | null; kupst_ariza_esigi: number | null; kupst_taban: number;
+  kupst_net_sapma: boolean; kupst_birim: string; kupst_dayanak: string; dsg_esik: number; dsg_dayanak: string; belirsiz_2027: boolean;
+}
 export interface Dengesizlik {
   gun_sayisi: number; pencere_gun: number; not: string;
-  aylar: { ay: string; uretim_mwh: number; sapma_mwh: number; referans_gelir_tl: number; pvquant_tl: number; naif_tl: number | null;
-           kurtarilan_tl: number | null; gelir_oran_pct: number | null; tl_per_mwh: number | null; kupst_tl?: number; dengesizlik_tl?: number }[];
-  toplam: { pvquant_tl: number; naif_tl: number | null; kurtarilan_tl: number | null; gelir_oran_pct: number | null; referans_gelir_tl: number; kupst_tl?: number; teminat_tl?: number } | null;
-  /** v2.287: önerilen bildirim kantili (senaryo fiyatta null + not) */
+  aylar: { ay: string; uretim_mwh: number; sapma_mwh: number; referans_gelir_tl: number; pvquant_tl: number | null; naif_tl: number | null;
+           kurtarilan_tl: number | null; gelir_oran_pct: number | null; tl_per_mwh: number | null; kupst_tl?: number | null; dengesizlik_tl?: number;
+           edt_neg_tl?: number | null; edt_poz_tl?: number | null; edta_tl?: number | null; edtb_tl?: number | null; hesaplanamayan_saat?: number; kural_surumu?: string }[];
+  toplam: { pvquant_tl: number | null; naif_tl: number | null; kurtarilan_tl: number | null; gelir_oran_pct: number | null; referans_gelir_tl: number;
+            kupst_tl?: number | null; teminat_tl?: number; dengesizlik_tl?: number; edt_neg_tl?: number; edt_poz_tl?: number; edta_tl?: number; edtb_tl?: number } | null;
+  /** v2.287: önerilen bildirim kantili (senaryo fiyatta null + not; yön verisi yoksa durum 'yon_eksik') */
   oneri?: { durum: string; kantil: string | null; tau?: number; n_saat?: number; acik_saat_orani?: number; not?: string };
-  katsayilar?: { k: number; l: number; kupst_n: number; kupst_tolerans?: number };
-  fiyat: { epias_saat: number; senaryo_saat: number };
+  katsayilar?: { k: number; l: number; kupst_n: number | null; kupst_tolerans?: number | null; k_yon?: Record<string, number>; l_yon?: Record<string, number> };
+  fiyat: { epias_saat: number; senaryo_saat: number; yon_varsayilan_saat?: number; yon_eksik_saat?: number };
+  hesaplanamayan_saat?: number; kural_surumu?: string | null; kural?: DengesizlikKural;
   segment: { segment: string | null; kgup_yukumlu: boolean | null; dengesizlik_sahibi: string | null; santral_tasir: boolean | null };
 }
 /** /saglik — v2.256: bozunma ve performans eğilimi. */

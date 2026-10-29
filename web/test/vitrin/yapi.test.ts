@@ -99,7 +99,7 @@ test("kanıt şeridi: uydurma hedef yok; kapalı/hata tek güçlü dilde, zayıf
 test("Türkiye piyasası: elle yazılmış TL ve kurulu güç dipnotu yok", () => {
   const piyasa = oku("../../src/features/vitrin/TurkiyePiyasasi.tsx");
   assert.doesNotMatch(piyasa, /25,4 bin TL|4,5 MW/);
-  assert.match(piyasa, /Dengesizlik maliyetinin TL karşılığı panelde, kendi santralinizin verisiyle hesaplanır\./);
+  assert.match(piyasa, /Uzlaştırma kalemlerinin TL karşılığı panelde, kendi santralinizin verisiyle ve yürürlükteki kuralla yeniden hesaplanır; resmî uzlaştırma sonucu değildir\./);
   assert.match(piyasa, /id="para"/);
 });
 
@@ -127,8 +127,21 @@ test("başvuru: hitap 'siz', bal küpü yerinde, uç aynı; SSS altı soru (Ö13
     .filter((g) => g.isFile())
     .map((g) => readFileSync(new URL(g.name, vitrinKok), "utf8")).join("\n");
   assert.doesNotMatch(tum, /Kendi karneni başlat/);
-  assert.equal((oku("../../src/features/vitrin/Sss.tsx").match(/^\s*\["/gm) ?? []).length, 6);
+  assert.equal((oku("../../src/features/vitrin/Sss.tsx").match(/^\s*\["/gm) ?? []).length, 7);   // 29.10: lisanssız sorusu eklendi
   assert.match(oku("../../src/features/vitrin/Sss.tsx"), /Tahminlerinize neden güvenelim\?/);
+});
+
+test("29.10 vaat kuralı: vitrinde doğrulanamayan iddia yok (ceza/tasarruf/teminat/garanti/8 kural/şablona uygun/her gün TL)", () => {
+  const kok = new URL("../../src/features/vitrin/", import.meta.url);
+  const YASAK = [/\bceza/i, /tasarruf(?!u)/i, /teminat/i, /garanti/i, /\b8 kural|sekiz alarm|"8"\]/i, /şablonuna uygun/i, /her gün TL/i, /rakiplerde yok/i, /kaç TL/i, /kurtar(ılan|dı|ır)/i];
+  for (const ad of readdirSync(kok).filter((a) => /\.(tsx|ts)$/.test(a))) {
+    const metin = readFileSync(new URL(ad, kok), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`])\/\/[^\n]*/g, "$1");
+    for (const d of YASAK) assert.doesNotMatch(metin, d, `${ad}: ${d}`);
+  }
+  // bölüm sırası (04 §3.4): karne Hero'dan sonra, dört adımdan önce
+  const vitrin = oku("../../src/features/vitrin/Vitrin.tsx");
+  assert.ok(vitrin.indexOf("<AcikKarne") < vitrin.indexOf("<DortAdim"), "Açık karne Dört adımdan önce olmalı");
+  assert.match(oku("../../src/features/vitrin/Hero.tsx"), /vt-hero__kimin/);
 });
 
 test("disiplin dipnotu otomasyon iddia etmez; sayım kuralını açıkça söyler (inceleme C1)", () => {

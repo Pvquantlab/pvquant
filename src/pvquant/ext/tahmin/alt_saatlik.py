@@ -1,9 +1,14 @@
-"""Alt-saatlik (15 dk) tahmin — saatlikten indirgeme ve uzlaştırma yardımcıları.
+"""Alt-saatlik (15 dk) tahmin — saatlikten indirgeme ve 15 dk fiyat kavramı yardımcıları.
 
 Saatlik P50'yi 15 dakikaya indirirken gök açıklığı endeksi saat içinde sabit tutulur ve
 açık gök 15 dk profiliyle çarpılır (enerji korunur, doğuş/batış eğriliği doğru). İsteğe bağlı
 kt değişkenliği (bulutlu saatlerde) log-normal gürültüyle eklenir; kantiller aynı yolla indirilir.
-Ters yönde `saatlige_topla` ve 15 dk uzlaştırma için `uzlastirma_15dk` (DUY 2027 hazırlığı).
+Ters yönde `saatlige_topla`.
+
+15 dk uzlaştırma (F-17 kavram düzeltmesi): yürürlükteki DUY m.110(2)'de EDM SAATLİK kalır; 15 dk DGP uzlaştırması
+(m.91(2), Geçici 40) başlayınca yalnız FİYAT saat içi çeyreklerin en kötüsüne bağlanır: SMF_N = max(SMF_ç), SMF_P = min(SMF_ç).
+15 dk başlamadıysa SMF_N = SMF_P = saatlik SMF. Başlangıç en erken 1.1.2027 (Geçici 40); fiilî tarih EPİAŞ/TEİAŞ duyurusuna bağlı.
+`uzlastirma_15dk` bu tanıma göre yeniden yazıldı: 15 dk sapmayı 15 dk fiyatla uzlaştırmaz.
 """
 from __future__ import annotations
 
@@ -46,11 +51,20 @@ def saatlige_topla(seri_15: pd.Series, enerji: bool = False) -> pd.Series:
     return r.sum() if enerji else r.mean()
 
 
-def uzlastirma_15dk(uretim_mw_15: pd.Series, program_mw_15: pd.Series, ptf: pd.Series, smf: pd.Series, k: float = 0.03, l: float = 0.03) -> pd.DataFrame:
-    """15 dk uzlaştırma dönemi: MWh = MW/4; dengesizlik tutarı DUY formülüyle (15 dk SMF varsa o kullanılır)."""
-    idx = uretim_mw_15.index.intersection(program_mw_15.index)
-    sap = (uretim_mw_15.loc[idx] - program_mw_15.loc[idx]) / 4.0
-    p = ptf.reindex(idx, method="ffill"); s = smf.reindex(idx, method="ffill")
-    poz = sap.clip(lower=0) * pd.concat([p, s], axis=1).min(axis=1) * (1 - l)
-    neg = (-sap).clip(lower=0) * pd.concat([p, s], axis=1).max(axis=1) * (1 + k)
-    return pd.DataFrame({"sapma_mwh": sap, "pozitif_gelir": poz, "negatif_gider": neg})
+def smf_n_p(smf_ceyrek: pd.Series) -> pd.DataFrame:
+    """Çeyrek SMF serisi (15 dk index) → saatlik SMF_N = max, SMF_P = min (DUY m.110(2))."""
+    s = smf_ceyrek.dropna().astype(float)
+    g = s.groupby(s.index.floor("h"))
+    return pd.DataFrame({"smf_n": g.max(), "smf_p": g.min()})
+
+
+def uzlastirma_15dk(uretim_mwh_saat: pd.Series, program_mwh_saat: pd.Series, ptf: pd.Series, smf_ceyrek: pd.Series,
+                    yon=None, segment: str | None = None) -> pd.DataFrame:
+    """15 dk DGP uzlaştırması BAŞLADIĞINDA: EDM saatlik (üretim − program), fiyat çeyreklerin en kötüsü (SMF_N/SMF_P).
+    smf_ceyrek saatlik verilirse SMF_N = SMF_P = SMF (15 dk başlamamış hâl; F-02 ile aynı sonuç)."""
+    from pvquant.ext.turkiye import dengesizlik as d
+    np_ = smf_n_p(smf_ceyrek)
+    idx = uretim_mwh_saat.index.intersection(program_mwh_saat.index)
+    smf_saat = np_["smf_p"].reindex(idx).fillna(np_["smf_n"].reindex(idx))
+    return d.saatlik(program_mwh_saat.loc[idx], uretim_mwh_saat.loc[idx], ptf.reindex(idx), smf_saat,
+                     yon=yon, segment=segment, smf_n=np_["smf_n"].reindex(idx), smf_p=np_["smf_p"].reindex(idx))

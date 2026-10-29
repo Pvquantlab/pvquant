@@ -1,12 +1,15 @@
-"""v2.260 — Dalga 4.13: KGÜP bildirim dosyası (saatlik program) — teslim edilebilir koşudan.
+"""v2.260 — Dalga 4.13: KGÜP bildirim dosyası (saatlik program) — teslim edilebilir koşudan. 29.10.2026 (F-05/F-06):
+eksik saatte 0 yazılmaz (422 + saat listesi), EAK MW, 15 dk yalnız dengeleme birimi, P25/P75, şablon eşlemesi, SHA-256 + kaynak künyesi.
 
 Program günü D için kaynak koşu: D-1 15:30 (İstanbul) öncesinde verilmiş son koşu (dengesizlik simülatörüyle aynı
-kural); bugün için henüz 15:30 geçmediyse en son koşu. Kantil seçimi p50 (varsayılan) | p10 | p90 (temkinli/iddialı).
-Dosya: pvquant.ext.turkiye.kgup (KGÜP ≤ EAK ≤ kurulu güç, ≥200 MWh sıçramada 15 dk dilimleme, TPYS CSV — kolonlar
-parametrik; resmi şablon teyit edilemedi). Tire ilkesi: koşu yoksa 409, 24 saatin tamamı yoksa eksik saatler 0 + uyarı.
+kural); bugün için henüz 15:30 geçmediyse en son koşu. Kantil: p50 (varsayılan) | p10 | p25 | p75 | p90.
+Dosya: pvquant.ext.turkiye.kgup (KGÜP ≤ EAK ≤ kurulu güç; 15 dk dilimleme yalnız params_json.dengeleme_birimi=true ve ≥200 MWh
+sıçramada; TPYS CSV — kolonlar params_json.kgup_sablon ile eşlenir; resmî şablon teyit edilemedi). Koşu yoksa 409; eksik saat → 422.
+Sürüm arşivi (F-06, kgup_surum tablosu) bu sürümde YOK — göç taslağı alembic/taslak/; yanıt SHA-256 ve kaynak künyesini zaten taşır.
 """
 from __future__ import annotations
 
+import hashlib
 import io
 from datetime import date
 
@@ -21,7 +24,7 @@ def kaynak_kosu_df(tenant_id, plant_id, gun: date, kantil: str = "p50", tum_kant
     """DB: D-1 15:30 IST öncesi son koşunun D günü saatleri (UTC). Döner (df[ts_utc, kw], koşu bilgisi)."""
     from sqlalchemy import text
     from pvquant.db import tenant_baglami
-    kol = {"p50": "p50_kw", "p10": "p10_kw", "p90": "p90_kw"}[kantil]
+    kol = {"p50": "p50_kw", "p10": "p10_kw", "p25": "p25_kw", "p75": "p75_kw", "p90": "p90_kw"}[kantil]
     d0 = pd.Timestamp(gun, tz=IST); d1 = d0 + pd.Timedelta(days=1)
     kesim = d0 - pd.Timedelta(hours=8, minutes=30)   # D-1 15:30 IST
     simdi = pd.Timestamp.now(tz=IST)
@@ -34,7 +37,7 @@ def kaynak_kosu_df(tenant_id, plant_id, gun: date, kantil: str = "p50", tum_kant
                       {"p": plant_id, "k": kesim.to_pydatetime(), "a": d0.tz_convert("UTC").to_pydatetime(), "b": d1.tz_convert("UTC").to_pydatetime()}).first()
         if r is None:
             return pd.DataFrame(columns=["ts_utc", "kw"]), None
-        secim = "ts_utc, p50_kw, p10_kw, p90_kw" if tum_kantiller else f"ts_utc, {kol} AS kw"   # v2.275: toplayıcı çıktısı bandı da ister
+        secim = "ts_utc, p50_kw, p10_kw, p25_kw, p75_kw, p90_kw" if tum_kantiller else f"ts_utc, {kol} AS kw"   # v2.275: toplayıcı çıktısı bandı da ister
         df = pd.read_sql(text(f"SELECT {secim} FROM forecast_values WHERE run_id=:r AND plant_id=:p AND ts_utc >= :a AND ts_utc < :b ORDER BY ts_utc"),
                          s.connection(), params={"r": r.id, "p": plant_id, "a": d0.tz_convert("UTC").to_pydatetime(), "b": d1.tz_convert("UTC").to_pydatetime()}, parse_dates=["ts_utc"])
     df["ts_utc"] = pd.to_datetime(df["ts_utc"], utc=True)
@@ -63,24 +66,33 @@ def eak_etkin(plant: dict, gun: date) -> dict:
     return {"eak_mw": round(kap, 3), "kaynak": "kurulu_guc"}
 
 
+KANTILLER = ("p10", "p25", "p50", "p75", "p90")
+
+
 def uret(tenant_id, plant: dict, gun: date, kantil: str = "p50", uevcb: str | None = None) -> dict:
-    """Program tablosu + doğrulama + TPYS CSV metni. Koşu yoksa {'hata': ...}."""
+    """Program tablosu + doğrulama + TPYS CSV metni. Koşu yoksa {'hata': ..., 'kod': 409}; eksik saat varsa {'hata', 'kod': 422, 'eksik_saatler'}."""
+    import json as _j
     df, kosu = kaynak_kosu_df(tenant_id, plant["id"], gun, kantil)
     if kosu is None:
-        return {"hata": "bu gün için teslim penceresi öncesinde verilmiş koşu yok", "gun": gun.isoformat()}
+        return {"hata": "bu gün için teslim penceresi öncesinde verilmiş koşu yok", "gun": gun.isoformat(), "kod": 409}
+    pj = plant.get("params_json") or {}
+    if isinstance(pj, str):
+        pj = _j.loads(pj)
     seri = pd.Series(df["kw"].values, index=pd.DatetimeIndex(df["ts_utc"])) / 1000.0   # kW → MW
     kap = float(plant["capacity_kwp"]) / 1000.0
     eak_bilgi = eak_etkin(plant, gun); eak = eak_bilgi["eak_mw"]   # v2.275: EAK alanı / geçici kısıt
     son = kg.program_uret(seri, gun.isoformat(), uevcb or plant.get("uevcb") or str(plant["id"])[:8].upper(), kap, eak_mw=eak, kantil=None)
+    if son.eksik_saatler:
+        return {"hata": f"tahmini olmayan saat var (saat {', '.join(map(str, son.eksik_saatler))}); KGÜP 0 yazılmaz, dosya üretilmedi",
+                "gun": gun.isoformat(), "kod": 422, "eksik_saatler": son.eksik_saatler, "kosu": kosu}
     hatalar = kg.dogrula(son, kap)
-    tablo = kg.ceyrek_dilimle(son) if son.sicrama_saatleri else son.tablo
-    buf = io.StringIO()
-    sab = kg.Sablon()
-    csv_df = pd.DataFrame({sab.tarih: pd.to_datetime(tablo["tarih"]).dt.strftime(sab.tarih_bicim), sab.saat: tablo["saat"].astype(int),
-                           sab.uevcb: tablo["uevcb"], sab.kgup: tablo["kgup_mwh"], sab.eak: tablo["eak_mwh"]})
-    if "ceyrek" in tablo and tablo["ceyrek"].notna().any():
-        csv_df[sab.ceyrek] = tablo["ceyrek"].astype("Int64")
-    csv_df.to_csv(buf, sep=sab.ayrac, decimal=sab.ondalik, index=False)
+    dengeleme_birimi = bool(pj.get("dengeleme_birimi"))
+    tablo = kg.ceyrek_dilimle(son) if (son.sicrama_saatleri and dengeleme_birimi) else son.tablo
+    sab = kg.Sablon.params_json_dan(pj)
+    baytlar = kg.csv_baytlari(tablo, sab)
+    uyarilar = son.uyarilar + hatalar + [kg.SABLON_DURUMU]
+    if son.sicrama_saatleri and not dengeleme_birimi:
+        uyarilar.append(f"≥200 MWh saatlik değişim var (saat {', '.join(map(str, son.sicrama_saatleri))}); santral dengeleme birimi değil, 15 dk satırı üretilmedi (DUY m.69(3))")
     # v2.287: gün içi revizyon kapısı (md. 69(1)) — öğlen örneğiyle; öneri kantili dengesizlik servisinden
     ogle = kg.gun_ici_revizyon_penceresi(pd.Timestamp(gun).tz_localize("Europe/Istanbul") + pd.Timedelta(hours=12))
     gip = {"kural": "Her teslimat saatinin gün içi piyasa kapısı 1 saat önce kapanır; KGÜP revizyonu kapanış + 30 dakikaya kadar.",
@@ -92,9 +104,12 @@ def uret(tenant_id, plant: dict, gun: date, kantil: str = "p50", uevcb: str | No
         oneri = dengesizlik_service.oneri_kantili(piyasa_service.fiyatlar(idx), dengesizlik_service.katsayilar(plant.get("params_json")))
     except Exception:   # noqa: BLE001 — öneri süsleme; KGÜP üretimi düşmez
         oneri = None
-    return {"gun": gun.isoformat(), "kantil": kantil, "kosu": kosu, "uyarilar": son.uyarilar + hatalar, "sicrama_saatleri": son.sicrama_saatleri,
-            "gip": gip, "oneri": oneri,
+    return {"gun": gun.isoformat(), "kantil": kantil, "kosu": kosu, "uyarilar": uyarilar, "sicrama_saatleri": son.sicrama_saatleri,
+            "dengeleme_birimi": dengeleme_birimi, "gip": gip, "oneri": oneri,
             "toplam_mwh": round(float(son.tablo["kgup_mwh"].sum()), 3), "eak": eak_bilgi,   # v2.275
-            "satirlar": [{"saat": int(r.saat), "kgup_mwh": float(r.kgup_mwh), "eak_mwh": float(r.eak_mwh)} for r in son.tablo.itertuples()],
-            "csv": buf.getvalue(), "dosya_adi": f"KGUP_{(uevcb or 'UEVCB')}_{gun.isoformat()}_{kantil}.csv",
-            "teslim": kg.teslim_durumu()}
+            "satirlar": [{"saat": int(r.saat), "kgup_mwh": float(r.kgup_mwh), "eak_mw": float(r.eak_mw), "eak_mwh": float(r.eak_mw)}   # eak_mwh: eski alan adı (aynı değer, MW); yeni istemciler eak_mw okur
+                         for r in son.tablo.itertuples()],
+            "csv": baytlar.decode("utf-8-sig"), "dosya_adi": f"KGUP_{(uevcb or 'UEVCB')}_{gun.isoformat()}_{kantil}.csv",
+            "sha256": hashlib.sha256(baytlar).hexdigest(), "sablon": {"durum": kg.SABLON_DURUMU, "kolonlar": [sab.tarih, sab.saat, sab.uevcb, sab.kgup, sab.eak], "ayrac": sab.ayrac, "ondalik": sab.ondalik},
+            "takvim": kg.TAKVIM, "teslim": kg.teslim_durumu(),
+            "bildirim": "Dosya PVQuant'ta üretildi; TPYS'ye gönderim ve kabul müşterinin sisteminden yapılır — indirilen dosya teslim edilmiş sayılmaz."}

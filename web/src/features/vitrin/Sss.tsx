@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-/** SSS (v2.384 + rakip analizi Ö13). İlk beş soru v2.383 vitrininden aynen; altıncı soru en yakın
+/** SSS (v2.384 + rakip analizi Ö13; 29.10: yedinci soru — lisanssız sahibine dürüst cevap, 04 §3.5). İlk beş soru v2.383 vitrininden aynen; altıncı soru en yakın
  *  rakibin kendi SSS'sinde sorduğu güven sorusunun bizim kanıt düzenimizle cevabı (dört adım
  *  diliyle + «güven bizden değil karneden» + Açık karne bağı). Model/kütüphane adı yok. */
 const SORULAR = [
@@ -14,6 +14,8 @@ const SORULAR = [
    "Tüm doğruluk değerleri ölçüme dayanır: tahminler her gece, gerçekleşen üretimle aynı yöntemle karşılaştırılır; sonuçlar panelde birikir ve geçmiş kayıtlar değiştirilemez. Bu sayfadaki Açık karne, aynı hesaplamanın kamuya açık örneğidir; yöntem tanımları karne bloğunun hemen altında yer alır."],
   ["Verilerimizin güvenliği nasıl sağlanıyor?",
    "Verileriniz kurumunuza aittir; dilediğiniz zaman tamamını dışa aktarabilir veya silebilirsiniz. Hesaplar birbirinden yalıtılmıştır; kurumlar arası paylaşım yalnızca sizin onayınızla açılır ve tüm erişimler denetim kaydına işlenir. Veri iletimi TLS ile şifrelenir."],
+  ["Dengeden sorumlu değilsem (lisanssız santral) PVQuant bana ne sağlar?",
+   "Dağıtıma bağlı lisanssız santralde dengesizlik tutarı ve KGÜP sapması size değil görevli tedarik şirketine ya da toplayıcı portföyüne yansır. PVQuant bu durumda saatlik üretim beklentisi, doğruluk karnesi ve performans takibi sağlar; program dosyasını portföy yöneticiniz için üretir. TL kalemleri yalnız dengeden sorumlu segmentlerde gösterilir."],
   ["Tahminlerinize neden güvenelim?",
    <>Tahminin nasıl oluştuğu açıktır: santralinizin yapısından başlar, geçmiş üretiminizle size özel ayarlanır, iyimser–kötümser aralık geçmiş hatalara göre kurulur ve her gece sonuç ölçülür. Güven bizden değil karneden gelir: tahmin her gece basit yönteme ve sıkı referansa karşı aynı kuralla sınanır; geçmiş değiştirilmez. Referans santralin karnesi 30 sınav günü dolduğunda <a className="vt-bag vt-bag--metin" href="#karne">bu sayfadaki Açık karnede</a> herkese açıktır.</>],
 ] as const satisfies readonly (readonly [string, ReactNode])[];

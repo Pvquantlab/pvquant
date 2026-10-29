@@ -84,7 +84,7 @@ def fatura(uretim_mwh: pd.Series, gelir_tl: pd.Series, dengesizlik_tl: pd.Series
     df = pd.DataFrame(kalem); ara = df["Tutar (TL)"].sum()
     df = pd.concat([df, pd.DataFrame([{"Kalem": "Ara toplam", "Tutar (TL)": ara}, {"Kalem": f"KDV (%{kdv*100:.0f})", "Tutar (TL)": ara * kdv},
                                       {"Kalem": "Genel toplam", "Tutar (TL)": ara * (1 + kdv)}])], ignore_index=True)
-    return Rapor("Fatura özeti", donem, santral, [("Kalemler", df), ("Not", "e-Fatura (UBL-TR) için muhasebe entegrasyonu ayrı; bu özet bilgilendirme amaçlıdır.")]), df
+    return Rapor("Tahmini fatura ve dengesizlik özeti (simülasyon — EPİAŞ uzlaştırması değildir)", donem, santral, [("Kalemler", df), ("Not", "e-Fatura (UBL-TR) için muhasebe entegrasyonu ayrı; bu özet bilgilendirme amaçlıdır.")]), df
 
 
 def kullanilabilirlik_raporu(zaman: dict, enerji: dict, birim: pd.DataFrame | None, sozlesme: dict | None, santral: str = "", donem: str = "") -> Rapor:

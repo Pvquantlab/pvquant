@@ -17,7 +17,7 @@ import { Levha } from "./Levha";
 const AYNA = [
   ["Hava tahminini üretime kim çeviriyor?", "Her saat için iyimser, beklenen ve kötümser üretim; 15 gün ileriye."],
   ["Tahmin tuttu mu, kim ölçüyor?", "Her gece gerçekleşen üretimle karşılaştırılır; sonuç panelde gün gün birikir."],
-  ["Dengesizlik maliyetini ne zaman görüyorsunuz?", "Panelde her gün TL olarak; gün öncesi teklifinizi hangi seviyeden vermeniz gerektiği önerisiyle."],
+  ["Programı hangi seviyeden vereceğinizi kim söylüyor?", "İyimser–kötümser aralıktan siz seçersiniz; gerçekleşmeyle fark her sabah karnede, uzlaştırma kalemleri yürürlükteki kuralla panelde."],
 ] as const;
 const ADIM: readonly {
   no: string; baslik: string; cumle: ReactNode; etiket: string;
@@ -61,7 +61,7 @@ export function DortAdim({ onPanel }: { onPanel?: () => void }) {
             </article>
           </Fragment>))}
         </div>
-        <p className="vt-not vt-adim__cikis">Sonuç, kullandığınız kanala gider: üretim programı dosyası (CSV/XLSX, toplayıcı şablonuna uygun), doğrudan sisteminize API ile ve her sabah otomatik bildirimle; <a className="vt-bag vt-bag--metin" href="#isler">işinize göre ayrıntısı iş birimi kartlarında</a>.</p>
+        <p className="vt-not vt-adim__cikis">Sonuç, kullandığınız kanala gider: üretim programı dosyası (CSV/XLSX; TPYS şablonuna uyum pilotta doğrulanır), doğrudan sisteminize API ile ve her sabah otomatik bildirimle; <a className="vt-bag vt-bag--metin" href="#isler">işinize göre ayrıntısı iş birimi kartlarında</a>.</p>
         <div className="vt-ayna" role="table" aria-label="Tahmini kendiniz işlerseniz ve PVQuant ile karşılaştırması">
           <div className="vt-ayna__bas" role="row">
             <span role="columnheader">Tahmini kendiniz işlerseniz</span>

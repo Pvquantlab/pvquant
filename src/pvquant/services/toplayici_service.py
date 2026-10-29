@@ -1,9 +1,9 @@
 """v2.275 — Dalga 4 tamamlayıcısı: toplayıcı / DSG çıktı biçimi (smartPulse, Volue vb.) ve 15 dakikalık hazırlık.
 
-Toplayıcılar üye santralden saatlik (2027'den itibaren 15 dk) MW program ve bant ister. Resmî smartPulse/Volue şablonları
+Toplayıcılar üye santralden saatlik MW program ve bant ister (15 dk DGP uzlaştırması en erken 1.1.2027, DUY Geçici 40; fiilî tarih duyuruya bağlı). Resmî smartPulse/Volue şablonları
 kamuya açık değil (teyit edilemedi); bu çıktı genel bir şablondur: Tarih;Saat;[Ceyrek];UEVCB;P10_MW;P50_MW;P90_MW;EAK_MW.
 Kolon adları params_json.toplayici_sablon ile eşlenebilir (ör. {"P50_MW": "Forecast"}). 15 dk: saatlik seri açık gök
-profiliyle enerji korunarak bölünür (pvquant.ext.tahmin.alt_saatlik) — 15 dk uzlaştırma (1.1.2027) için hazırlık.
+profiliyle enerji korunarak bölünür (pvquant.ext.tahmin.alt_saatlik) — 15 dk veri hazırlığı (uzlaştırma kavramı: alt_saatlik docstring).
 """
 from __future__ import annotations
 

@@ -28,6 +28,12 @@ const YASAK: [RegExp, string][] = [
   [/AC tavanı/i, "AC sınırı"],
   [/uzlaştırılmış/i, "santral tahminleriyle tutarlı"],
   [/API ayakta/i, "bağlantınızı kontrol edin"],
+  // 29.10 (F-09): vaat ve terim kuralı — «ceza» yalnız 6446 md.16; «tasarruf/kazanç/kurtarılan» TL çıktısında yok
+  [/\bceza/i, "tutar / maliyet (ceza yalnız 6446 md.16 için)"],
+  [/tasarruf/i, "referansa göre fark (varsayımsal)"],
+  [/kurtar(ılan|dı|ır)/i, "referansa göre fark"],
+  [/netleşme kazancı/i, "netleşme farkı (varsayımsal)"],
+  [/garanti/i, "ölçülen"],
 ];
 
 /** Yorumları (// … ve /* … *\/) ayıkla — kod notlarındaki tarihçe dili testin konusu değil. */

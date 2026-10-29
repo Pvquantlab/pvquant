@@ -21,7 +21,7 @@ function SablonDugmeleri({ plantId }: { plantId: string }) {
       {/* 24.10 sekizinci tur: dört düğme indirme EYLEMİ olarak netleşti — grup etiketi + indirme ikonu + «… şablonunu
           indir» erişilebilir ad; onClick/api.raporSablonIndir ve şablon adları aynen */}
       <div className="dugme-sira">
-        {([["kapasite-testi", "Kapasite testi"], ["fatura", "Fatura ve uzlaştırma özeti (son ay)"],
+        {([["kapasite-testi", "Kapasite testi"], ["fatura", "Tahmini fatura ve dengesizlik özeti (son ay, simülasyon)"],
            ["kullanilabilirlik", "Kullanılabilirlik (30 gün)"], ["beklenen-gerceklesen", "Beklenen – gerçekleşen (aylık)"]] as const).map(([ad, etiket]) => (
           <button key={ad} className="dugme dugme-indir" onClick={() => indir(ad)} aria-label={`${etiket} şablonunu indir`}>
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 2v7m0 0L4.5 6.5M7 9l2.5-2.5M2.5 11.5h9" /></svg>
@@ -30,7 +30,7 @@ function SablonDugmeleri({ plantId }: { plantId: string }) {
       </div>
       {hata && <p style={{ color: "var(--uyari-metin)", fontSize: 13.5, margin: "8px 0 0" }}>{hata}</p>}
       <p className="soluk" style={{ fontSize: 14, margin: "8px 0 0" }}>
-        Kapasite testi ölçülen düzlem ışınımı gerektirir; fatura özeti santral ayarlarındaki tarifeyi ve dengesizlik hesabını kullanır; kullanılabilirlik raporu otomatik arıza tespitine dayanır.
+        Kapasite testi ölçülen düzlem ışınımı gerektirir; tahmini fatura özeti santral ayarlarındaki tarifeyi ve uzlaştırma kalemi yeniden hesabını kullanır (EPİAŞ uzlaştırması değildir); kullanılabilirlik raporu otomatik arıza tespitine dayanır.
       </p>
     </>
   );

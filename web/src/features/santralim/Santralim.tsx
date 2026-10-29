@@ -87,10 +87,11 @@ export function Santralim({ plantId }: { plantId: string }) {
   };
   // v2.275 (Dalga 4 tamamlayıcısı): EAK alanı + geçici kısıt — KGÜP ve toplayıcı çıktısı bunu okur
   const [eakKw, setEakKw] = useState<string>(""); const [gecKw, setGecKw] = useState<string>(""); const [gecBitis, setGecBitis] = useState<string>("");
+  const [dengelemeBirimi, setDengelemeBirimi] = useState<boolean>(false);   // 29.10 (F-05): 15 dk dilimleme yalnız dengeleme birimi
   const [eakMesaj, setEakMesaj] = useState<string | null>(null);
   const eakKaydet = () => {
     setEakMesaj(null);
-    api.eakAyarla(plantId, { eak_kw: eakKw ? Number(eakKw) : null, gecici_kw: gecKw ? Number(gecKw) : null, gecici_bitis: gecBitis || null })
+    api.eakAyarla(plantId, { eak_kw: eakKw ? Number(eakKw) : null, gecici_kw: gecKw ? Number(gecKw) : null, gecici_bitis: gecBitis || null, dengeleme_birimi: dengelemeBirimi })
       .then((r) => setEakMesaj(`Kaydedildi. Bugün EAK ${sayiTr(r.eak_bugun.eak_mw, 2)} MW (${r.eak_bugun.kaynak})`))
       .catch((e) => setEakMesaj(String((e as Error).message ?? e)));
   };
@@ -546,6 +547,8 @@ export function Santralim({ plantId }: { plantId: string }) {
                 <input className="girdi" style={{ width: 100 }} inputMode="numeric" value={gecKw} onChange={(e) => setGecKw(e.target.value)} /></label>
               <label className="girdi-etiket">Kısıt bitişi
                 <input className="girdi" type="date" value={gecBitis} onChange={(e) => setGecBitis(e.target.value)} /></label>
+              <label className="ayar-satir" title="Yalnız dengeleme güç piyasası kapsamındaki dengeleme birimi için ≥200 MWh saatlik değişimde 15 dakikalık program satırı üretilir (DUY m.69(3)); güneş santrali varsayılan olarak dengeleme birimi değildir (m.22(4))">
+                <input type="checkbox" checked={dengelemeBirimi} onChange={(e) => setDengelemeBirimi(e.target.checked)} /> Dengeleme birimi (15 dk program satırı)</label>
               <button className="dugme" onClick={eakKaydet}>Kaydet</button>
               {eakMesaj && <span className={`ayar-durum ${eakMesaj.startsWith("Kayded") ? "ok" : "hata"}`}>{eakMesaj}</span>}
             </div>

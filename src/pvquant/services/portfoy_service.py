@@ -4,6 +4,8 @@ Satır başına: kurulu güç, son ölçüm, 30 günlük WMAPE (0–24 s), bugü
 açık alarm (son 7 gün, okunmamış), son koşu. Toplamlar: kapasite, beklenen toplamı (bir santral eksikse
 toplam da eksik — sessiz eksik toplam yok; pvquant.ext.platform.portfoy kuralı), kapasite-ağırlıklı WMAPE,
 açık alarm toplamı. Hiyerarşik uzlaştırma (MinT) ileride; bu dalga yalnız toplama ve görüntüleme.
+29.10.2026 (05 §3, 08 #10): «program durumu» — yarının KGÜP kaynağı var mı (15:30 kesimi öncesi koşu), bildirim penceresi,
+yalnız KGÜP yükümlü segmentte; program yükümlülüğü olmayan santrale zorunlu operasyon gibi sunulmaz (segment yoksa «segment seçilmedi»).
 """
 from __future__ import annotations
 
@@ -55,6 +57,24 @@ def _son_kosu_gunleri(s, plant_id: str, tz: str) -> dict[str, dict]:
     return gunluk_toplamlar(df, tz)
 
 
+def _program_durumu(tenant_id, p: dict, yarin: date) -> dict:
+    """Yarının programı: segment KGÜP yükümlü mü, kaynak koşu var mı (kgup_service kesim kuralı), teslim penceresi."""
+    from pvquant.ext.turkiye import kgup as kg
+    from pvquant.services import dengesizlik_service, kgup_service
+    seg = dengesizlik_service.segment_bilgisi(p.get("params_json"))
+    teslim = kg.teslim_durumu()
+    if not seg["segment"]:
+        return {"yukumlu": None, "hazir": None, "run_at": None, "teslim": teslim, "not": "segment seçilmedi"}
+    if not seg["kgup_yukumlu"]:
+        return {"yukumlu": False, "hazir": None, "run_at": None, "teslim": teslim, "not": f"program yükümlülüğü yok ({seg['dengesizlik_sahibi']})"}
+    try:
+        _, kosu = kgup_service.kaynak_kosu_df(tenant_id, str(p["id"]), yarin)
+    except Exception:   # noqa: BLE001 — portföy özeti düşmez; durum bilinmiyor
+        return {"yukumlu": True, "hazir": None, "run_at": None, "teslim": teslim, "not": "kontrol edilemedi"}
+    return {"yukumlu": True, "hazir": kosu is not None, "run_at": (kosu or {}).get("run_at"), "teslim": teslim,
+            "not": None if kosu else "15:30 kesimi öncesinde verilmiş tahmin yok"}
+
+
 def ozet(tenant_id) -> dict:
     from sqlalchemy import text
     from pvquant.db import tenant_baglami
@@ -90,6 +110,7 @@ def ozet(tenant_id) -> dict:
             "yarin_kwh": (bek.get(pid, {}).get(yarin.isoformat()) or {}).get("p50_kwh"),
             "acik_alarm": alarm.get(pid, 0),
             "son_kosu": kosu.get(pid).isoformat() if kosu.get(pid) else None,
+            "program": _program_durumu(tenant_id, p, yarin),   # 29.10
         })
     P = pf.Portfoy({r["id"]: pf.SantralKaydi(r["id"], r["ad"], r["kapasite_kwp"] / 1000.0, "", r["segment"] or "") for r in satirlar})
     karneler = {r["id"]: {"wmape": r["wmape_30g"]} for r in satirlar if r["wmape_30g"] is not None}
@@ -101,5 +122,9 @@ def ozet(tenant_id) -> dict:
         "wmape_kapsanan_kwp": (float(kpi["kapsanan_kapasite_mw"]) * 1000.0 if kpi is not None else 0.0),
         "acik_alarm": int(sum(r["acik_alarm"] for r in satirlar)),
         "veri_gecikmis": int(sum(1 for r in satirlar if r["kesinti_gun"] is None or r["kesinti_gun"] > 2)),
+        # 29.10: program durumu özeti — yalnız yükümlü santraller sayılır
+        "program_yukumlu": int(sum(1 for r in satirlar if r["program"]["yukumlu"])),
+        "program_hazir": int(sum(1 for r in satirlar if r["program"]["hazir"])),
+        "program_segment_yok": int(sum(1 for r in satirlar if r["program"]["yukumlu"] is None)),
     }
     return {"santraller": satirlar, "toplam": toplam, "gun": bugun.isoformat()}

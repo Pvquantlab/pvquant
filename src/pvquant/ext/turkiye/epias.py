@@ -1,8 +1,10 @@
 """EPİAŞ Şeffaflık entegrasyonu — TGT, uç noktalar, önbellek, UTC hizalama, gerçekleşen üretim adaptörü.
 
-Doküman: https://seffaflik.epias.com.tr/electricity-service/technical/tr/index.html (swagger v1.15.x)
-Kimlik: POST https://giris.epias.com.tr/cas/v1/tickets (username/password form gövdesi) → TGT (~2 s geçerli).
-CAS limiti: TGT 100/dk, ST 1.500/dk → TGT önbelleklenir (100 dk). Veri servisleri: POST + JSON gövde
+Doküman: https://seffaflik.epias.com.tr/electricity-service/technical/tr/index.html (v1.16.4; Faz 2 B-012)
+Kimlik: POST https://giris.epias.com.tr/cas/v1/tickets (username/password form gövdesi) → TGT (Şeffaflık dokümanı 2 saat;
+CAS duyuruları 8 saat diyor — kısa olan esas). CAS limiti: TGT 100/dk (28.07.2025 duyurusu); veri servisi limiti DOĞRULANAMADI
+→ TGT önbelleklenir (100 dk). Sistem yönü (system-direction) METİN döner («Enerji Açığı/Fazlası/Dengede»); sayıya çevrilmez,
+kurallar.yon_normalize ile 'acik'|'fazla'|'dengede' olarak saklanır (29.10.2026: önceki sürüm sayıya çevirip NaN yazıyordu). Veri servisleri: POST + JSON gövde
 {"startDate": "YYYY-MM-DDT00:00:00+03:00", "endDate": "...T23:00:00+03:00", ...}; yanıt {"items":[...]}.
 Şifre koda yazılmaz: EPIAS_KULLANICI / EPIAS_SIFRE. Ağsız test için `transport` (httpx.MockTransport) enjekte edilir.
 Önbellek: yerel CSV (gün bazlı) — aynı günü ikinci kez çekmez (fiyatlar kesinleştikten sonra değişmez).
@@ -122,7 +124,21 @@ class Istemci:
     # --- kısayollar ---
     def ptf(self, b, e): return self.seri("ptf", b, e)
     def smf(self, b, e): return self.seri("smf", b, e)
-    def sistem_yonu(self, b, e): return self.seri("sistem_yonu", b, e)
+    def sistem_yonu(self, b, e) -> pd.Series:
+        """Sistem yönü: EPİAŞ metni → 'acik' | 'fazla' | 'dengede' (bilinmeyen → None). Index UTC saatlik."""
+        from pvquant.ext.turkiye.kurallar import yon_normalize
+        satirlar = self.ham("sistem_yonu", b, e)
+        if not satirlar:
+            return pd.Series(dtype=object, name="sistem_yonu")
+        df = pd.DataFrame(satirlar)
+        zaman_kolon = next((c for c in ("date", "time", "hour", "datetime") if c in df), None)
+        alan = next((c for c in ("systemDirection", "direction", "systemDirectionName", "yon") if c in df), None)
+        if zaman_kolon is None or alan is None:
+            raise ValueError(f"sistem yönü kolonu bulunamadı: {list(df.columns)[:8]}")
+        t = pd.to_datetime(df[zaman_kolon], utc=False)
+        t = t.dt.tz_localize(IST) if t.dt.tz is None else t.dt.tz_convert(IST)
+        s = pd.Series([yon_normalize(v) for v in df[alan]], index=pd.DatetimeIndex(t).tz_convert("UTC"), name="sistem_yonu", dtype=object).sort_index()
+        return s[~s.index.duplicated(keep="last")]
     def kgup(self, b, e, **ek): return self.seri("kgup", b, e, **ek)
     def gercek_zamanli_uretim(self, b, e, **ek): return self.seri("gercek_zamanli_uretim", b, e, **ek)
 

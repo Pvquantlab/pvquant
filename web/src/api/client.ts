@@ -786,7 +786,7 @@ export const api = {
   },
   epiasUretimAyarla: (p: string, epias_santral_id: number | null): Promise<EpiasUretim> => gonder(`/v1/plants/${p}/epias-uretim`, "PUT", { epias_santral_id }),
   /** v2.275: EAK alanı / geçici kısıt / KÜPST katsayıları. */
-  eakAyarla: (p: string, g: { eak_kw?: number | null; gecici_kw?: number | null; gecici_bitis?: string | null; kupst_n?: number | null; kupst_tolerans?: number | null }):
+  eakAyarla: (p: string, g: { eak_kw?: number | null; gecici_kw?: number | null; gecici_bitis?: string | null; kupst_n?: number | null; kupst_tolerans?: number | null; dengeleme_birimi?: boolean | null }):
     Promise<{ eak_bugun: { eak_mw: number; kaynak: string; bitis?: string }; eak_kw: number | null; eak_gecici: { kw: number; bitis: string } | null; kupst_n: number | null; kupst_tolerans: number | null }> =>
     gonder(`/v1/plants/${p}/eak`, "PUT", g),
   segmentAyarla: async (p: string, segment: string, uevcb?: string): Promise<{ segment: string | null; dengesizlik_sahibi: string | null; kgup_yukumlu: boolean | null }> => {
