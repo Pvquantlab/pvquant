@@ -24,6 +24,7 @@ ISIM_TR = {
     "acilis_yedek": "Açılış yedek yakalaması",   # v2.339
     "iklim_yakalama": "İklim beklentisi ilk doldurma",  # v2.359
     "denetim_temizlik": "Denetim izi temizliği",
+    "kgup_arsiv_temizlik": "KGÜP arşivi saklama temizliği",   # 29.10 F-06: aylık, varsayılan 24 ay
     "kgup_teslim_kontrol": "Program bildirimi kontrolü (15:35)",   # 29.10: KGÜP gecikti kuralı 15:30 sonrası ayrı iş   # 26.10 eşzamanlama: v2.491'den beri etiketsizdi, platform tablosunda ham kod görünüyordu
 }
 # her gece koşması beklenen çekirdek grup — hiçbiri son 24 saatte yoksa işçi uyarısı verilir

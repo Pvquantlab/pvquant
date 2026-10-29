@@ -50,10 +50,12 @@ export interface Portfoy {
                 wmape_30g: number | null; bugun_kwh: number | null; yarin_kwh: number | null; acik_alarm: number; son_kosu: string | null;
                 /** 29.10: yarının programı — yükümlü mü, 15:30 kesimi öncesi tahmin var mı */
                 program?: { yukumlu: boolean | null; hazir: boolean | null; run_at: string | null; not: string | null;
-                            teslim: { hedef_gun: string; durum: string; dakika_kaldi: number; teyit_saati: string } } }[];
+                            teslim: { hedef_gun: string; durum: string; dakika_kaldi: number; teyit_saati: string };
+                            /** 29.10: müşterinin yarın için yüklediği (bildirdiğini beyan ettiği) KGÜP dosyası var mı — TPYS kabulü doğrulanmaz */
+                            bildirilen?: boolean; bildirim_zamani?: string | null } }[];
   toplam: { santral: number; kapasite_kwp: number; bugun_kwh: number | null; yarin_kwh: number | null; wmape_agirlikli: number | null;
             wmape_kapsanan_kwp: number; acik_alarm: number; veri_gecikmis: number;
-            program_yukumlu?: number; program_hazir?: number; program_segment_yok?: number } | null;
+            program_yukumlu?: number; program_hazir?: number; program_segment_yok?: number; program_bildirilen?: number } | null;
 }
 /** v2.270 — Hakkında: veri kaynakları ve lisanslar (Anayasa v2.245 istisnası — yalnız bu sayfa, rapor künyesi, README). */
 export interface Hakkinda {
@@ -120,6 +122,7 @@ export interface PortfoyTahmin {
   santral_bugun_mwh?: Record<string, number>;
 }
 /** /portfoy/dsg — v2.276: DSG netleştirmesi. */
+export type DsgAnahtar = "sapma" | "esit" | "uretim";
 export interface PortfoyDsg {
   /** v2.502 (F-08): yürürlükteki kural — üye eşiği × PH grupta, aşan kısım bireysel; KÜPST üye bazında toplanır. gosterge=false.
    *  'kazanc_tl' = netleşme farkı (sözleşme adı; vaat değil). edt_* işaretli (negatif = katılımcı öder). */
@@ -127,7 +130,11 @@ export interface PortfoyDsg {
   santral: number; n_saat: number; ayri_tl: number | null; net_tl: number | null; kazanc_tl: number | null; kazanc_pct?: number | null;
   edt_tek_tl?: number; edt_dsg_tl?: number; edt_grup_tl?: number; edt_bireysel_tl?: number; netlesme_farki_tl?: number; kupst_uye_tl?: number | null;
   esik?: number; esik_kaynak?: string; kural_surumu?: string; hesaplanamayan_saat?: number; disi?: string[]; segment_yok?: string[];
-  uyeler?: Record<string, { kayip_tl: number; edt_tek_tl: number; edt_bireysel_tl: number; kupst_tl: number | null; sapma_mwh: number; grup_payi_mwh: number }>;
+  /** 29.10: üye başına dağıtım — edt_dsg_tl = bireysel + pay × grup; netlesme_farki_tl = edt_dsg − edt_tek; pay_pct ortalama saatlik pay */
+  uyeler?: Record<string, { kayip_tl: number; edt_tek_tl: number; edt_bireysel_tl: number; kupst_tl: number | null; sapma_mwh: number; grup_payi_mwh: number;
+                            edt_dsg_tl?: number; netlesme_farki_tl?: number; pay_pct?: number }>;
+  /** 29.10: grubun EDT'sinin üyelere dağıtım anahtarı (sapma | esit | uretim; sözleşmesel) ve Türkçe etiketi */
+  dagitim_anahtari?: DsgAnahtar; dagitim_etiket?: string;
   santral_tl?: Record<string, number>; uretim_mwh?: number; sapma_net_mwh?: number; sapma_ayri_mwh?: number;
   pencere_gun: number; fiyat: { epias_saat: number; senaryo_saat: number }; not: string;
 }

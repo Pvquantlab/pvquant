@@ -138,3 +138,20 @@ def test_bildirilen_yukleme_ve_kiyas_kapilari(monkeypatch):
         assert c.get(f"/v1/plants/{PLANT}/kgup/kiyas?gun=x").status_code == 422
     finally:
         api_main.app.dependency_overrides.clear()
+
+
+def test_temizle_saklama(kiraci, monkeypatch):
+    """29.10 F-06 saklama — teslim günü N aydan eski satırlar silinir; 0 dokunmaz; 1–14 tabana (15) çekilir; taze kayıt kalır."""
+    tid, pid = kiraci
+    from dateutil.relativedelta import relativedelta
+    bugun = date.today()
+    for gun in (bugun - relativedelta(months=40), bugun - relativedelta(months=16), bugun - relativedelta(days=1)):
+        ka.kaydet(tid, pid, _ornek(gun=gun.isoformat()))
+    assert len(ka.listele(tid, pid)) == 3
+    assert ka.temizle(0) == 0 and len(ka.listele(tid, pid)) == 3
+    assert ka.temizle(24) == 1 and {r["teslim_gunu"] for r in ka.listele(tid, pid)} == {(bugun - relativedelta(months=16)).isoformat(), (bugun - relativedelta(days=1)).isoformat()}
+    assert ka.temizle(3) == 1                                                        # taban 15 ay → 16 aylık silinir, dünkü kalır
+    assert [r["teslim_gunu"] for r in ka.listele(tid, pid)] == [(bugun - relativedelta(days=1)).isoformat()]
+    monkeypatch.setattr("pvquant.config.get_settings", lambda: type("S", (), {"kgup_saklama_ay": 0})())
+    assert ka.temizle() == 0                                                         # ayar 0 → dokunmaz
+    assert ka.SAKLAMA_TABAN_AY == 15

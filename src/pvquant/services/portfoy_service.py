@@ -57,22 +57,25 @@ def _son_kosu_gunleri(s, plant_id: str, tz: str) -> dict[str, dict]:
     return gunluk_toplamlar(df, tz)
 
 
-def _program_durumu(tenant_id, p: dict, yarin: date) -> dict:
-    """Yarının programı: segment KGÜP yükümlü mü, kaynak koşu var mı (kgup_service kesim kuralı), teslim penceresi."""
+def _program_durumu(tenant_id, p: dict, yarin: date, bildirim=None) -> dict:
+    """Yarının programı: segment KGÜP yükümlü mü, kaynak koşu var mı (kgup_service kesim kuralı), teslim penceresi.
+    29.10 (v2.503 tamamlayıcı): `bildirim` = müşterinin yarın için panele yüklediği (TPYS'ye bildirdiğini beyan ettiği) KGÜP dosyasının
+    kayıt zamanı (kgup_surum.kaynak='musteri') → «bildirildi» rozeti; beyan kaydıdır, TPYS kabulü doğrulanmaz."""
     from pvquant.ext.turkiye import kgup as kg
     from pvquant.services import dengesizlik_service, kgup_service
     seg = dengesizlik_service.segment_bilgisi(p.get("params_json"))
     teslim = kg.teslim_durumu()
+    b = {"bildirilen": bildirim is not None, "bildirim_zamani": (bildirim.isoformat() if hasattr(bildirim, "isoformat") else bildirim) if bildirim is not None else None}
     if not seg["segment"]:
-        return {"yukumlu": None, "hazir": None, "run_at": None, "teslim": teslim, "not": "segment seçilmedi"}
+        return {"yukumlu": None, "hazir": None, "run_at": None, "teslim": teslim, "not": "segment seçilmedi", **b}
     if not seg["kgup_yukumlu"]:
-        return {"yukumlu": False, "hazir": None, "run_at": None, "teslim": teslim, "not": f"program yükümlülüğü yok ({seg['dengesizlik_sahibi']})"}
+        return {"yukumlu": False, "hazir": None, "run_at": None, "teslim": teslim, "not": f"program yükümlülüğü yok ({seg['dengesizlik_sahibi']})", **b}
     try:
         _, kosu = kgup_service.kaynak_kosu_df(tenant_id, str(p["id"]), yarin)
     except Exception:   # noqa: BLE001 — portföy özeti düşmez; durum bilinmiyor
-        return {"yukumlu": True, "hazir": None, "run_at": None, "teslim": teslim, "not": "kontrol edilemedi"}
+        return {"yukumlu": True, "hazir": None, "run_at": None, "teslim": teslim, "not": "kontrol edilemedi", **b}
     return {"yukumlu": True, "hazir": kosu is not None, "run_at": (kosu or {}).get("run_at"), "teslim": teslim,
-            "not": None if kosu else "15:30 kesimi öncesinde verilmiş tahmin yok"}
+            "not": None if kosu else "15:30 kesimi öncesinde verilmiş tahmin yok", **b}
 
 
 def ozet(tenant_id) -> dict:
@@ -97,6 +100,9 @@ def ozet(tenant_id) -> dict:
             "SELECT plant_id, count(*) AS n FROM alerts WHERE created_at >= now() - interval '7 days' AND acked_by IS NULL GROUP BY plant_id"))}
         kosu = {str(r.plant_id): r.son for r in s.execute(text(
             "SELECT plant_id, max(run_at) AS son FROM forecast_runs r WHERE EXISTS (SELECT 1 FROM forecast_values v WHERE v.run_id=r.id) GROUP BY plant_id"))}
+        # 29.10: yarın için müşterinin yüklediği (bildirdiğini beyan ettiği) KGÜP dosyası — «bildirildi» rozeti; tek sorgu, santral başına son kayıt
+        bildirim = {str(r.plant_id): r.son for r in s.execute(text(
+            "SELECT plant_id, max(olusturma) AS son FROM kgup_surum WHERE kaynak='musteri' AND teslim_gunu=:g GROUP BY plant_id"), {"g": yarin})}
     satirlar = []
     for p in santraller:
         pid = str(p["id"]); pj = p.get("params_json") or {}
@@ -110,7 +116,7 @@ def ozet(tenant_id) -> dict:
             "yarin_kwh": (bek.get(pid, {}).get(yarin.isoformat()) or {}).get("p50_kwh"),
             "acik_alarm": alarm.get(pid, 0),
             "son_kosu": kosu.get(pid).isoformat() if kosu.get(pid) else None,
-            "program": _program_durumu(tenant_id, p, yarin),   # 29.10
+            "program": _program_durumu(tenant_id, p, yarin, bildirim.get(pid)),   # 29.10
         })
     P = pf.Portfoy({r["id"]: pf.SantralKaydi(r["id"], r["ad"], r["kapasite_kwp"] / 1000.0, "", r["segment"] or "") for r in satirlar})
     karneler = {r["id"]: {"wmape": r["wmape_30g"]} for r in satirlar if r["wmape_30g"] is not None}
@@ -126,5 +132,6 @@ def ozet(tenant_id) -> dict:
         "program_yukumlu": int(sum(1 for r in satirlar if r["program"]["yukumlu"])),
         "program_hazir": int(sum(1 for r in satirlar if r["program"]["hazir"])),
         "program_segment_yok": int(sum(1 for r in satirlar if r["program"]["yukumlu"] is None)),
+        "program_bildirilen": int(sum(1 for r in satirlar if r["program"].get("bildirilen"))),   # 29.10: müşteri dosyası yüklenmiş santral
     }
     return {"santraller": satirlar, "toplam": toplam, "gun": bugun.isoformat()}

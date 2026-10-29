@@ -28,8 +28,23 @@ export const enerjiTr = (kwh: number | null | undefined): string => {
   return Math.abs(kwh) < 10_000 ? `${sayiTr(kwh, 0)} kWh` : `${sayiTr(kwh / 1000, 1)} MWh`;
 };
 
-export function Kpi({ etiket, deger, birim, alt, ton, ikinci }:
+/** 29.10 dil turu — bilgi simgesi: kısa açıklama fareyle/odakla (title), ekran okuyucuya aria-label; tasarım dili
+ *  değişmez (soluk mürekkep, kenar çizgisi). Metin ana görünümde yer kaplamaz. */
+export function Bilgi({ metin }: { metin: string }) {
+  return <span className="bilgi" role="img" tabIndex={0} aria-label={metin} title={metin}>i</span>;
+}
+
+/** 29.10 dil turu — etiket + bilgi simgesi: simge son sözcüğe bağlı kalır (dar KPI'da tek başına alt satıra düşmez). */
+export function BilgiliEtiket({ metin, bilgi }: { metin: string; bilgi: string }) {
+  const i = metin.lastIndexOf(" ");
+  const bas = i > 0 ? metin.slice(0, i + 1) : "", son = i > 0 ? metin.slice(i + 1) : metin;
+  return <>{bas}<span style={{ whiteSpace: "nowrap" }}>{son}<Bilgi metin={bilgi} /></span></>;
+}
+
+export function Kpi({ etiket, deger, birim, alt, ton, ikinci, bilgi }:
   { etiket: string; deger: string; birim?: string; alt?: ReactNode;
+    /** 29.10: etiketin yanında bilgi simgesi (kısa açıklama) */
+    bilgi?: string;
     ton?: "amber" | "uyari";
     /** 23.10 yedinci tur: aynı karttaki İKİNCİ değer (yarın, standart sapma, veri gecikmiş) kendi etiketiyle ayrı
      *  satırda — «1.914,2 · 1.827,6» gibi iki sayı tek noktalama ile birleştirilmez. */
@@ -47,7 +62,7 @@ export function Kpi({ etiket, deger, birim, alt, ton, ikinci }:
     : undefined;
   return (
     <div className="kpi" style={st}>
-      <div className="kpi-et">{etiket}</div>
+      <div className="kpi-et">{bilgi ? <BilgiliEtiket metin={etiket} bilgi={bilgi} /> : etiket}</div>
       {/* 22.10 tek tasarım sistemi: KPI değeri .kpi-dg (Inter Tight 500, tabular) — mono sınıfı kalktı */}
       <div className="kpi-dg"
            style={ton === "amber" ? { color: "var(--amber-metin)" } : ton === "uyari" ? { color: "var(--uyari-metin)" } : undefined}>

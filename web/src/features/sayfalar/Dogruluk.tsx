@@ -5,7 +5,7 @@ import { api, bellekten, ayniysaEskisi } from "../../api/client";
 import type { Karne, HataMatrisi, HataDagilimi, KonformalAyar, Backtest, Dengesizlik, DengesizlikGeriTest, Guvenilirlik } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
-import { Kpi, Kart, Sayfa, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
+import { BilgiliEtiket, Kpi, Kart, Sayfa, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
 import { Meta } from "../../lib/Meta";
 
 const AY = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran",
@@ -24,20 +24,20 @@ const donemYaz = (a: string | null, b: string | null) => {
 
 /** 29.10 — her TL alanının yanındaki kaynak/kural etiketi (F_PRD §4.1: etiketsiz TL yok). */
 function fiyatEtiketi(dz: Dengesizlik): string {
-  const yon = (dz.fiyat.yon_eksik_saat ?? 0) > 0 ? ` · ${sayiTr(dz.fiyat.yon_eksik_saat ?? 0)} saat yön eksik` : "";
+  const yon = (dz.fiyat.yon_eksik_saat ?? 0) > 0 ? ` · ${sayiTr(dz.fiyat.yon_eksik_saat ?? 0)} saatte sistem yönü verisi yok` : "";
   return dz.fiyat.senaryo_saat > 0
-    ? `senaryo fiyatı (${sayiTr(dz.fiyat.senaryo_saat)} saat); yön varsayımı: dengede${yon}`
-    : `EPİAŞ saatlik fiyat ve sistem yönü${yon}`;
+    ? `senaryo fiyatı (${sayiTr(dz.fiyat.senaryo_saat)} saat) · sistem yönü dengede varsayıldı${yon}`
+    : `EPİAŞ saatlik fiyat ve sistem yönü ile${yon}`;
 }
 function kupstEtiketi(dz: Dengesizlik): string {
   if (dz.toplam?.kupst_tl == null) {
     if (!dz.segment.segment) return "segment seçilmedi; hesaplanamaz";
-    if (dz.segment.segment === "lisanssiz_dagitim") return "portföy UEVÇB'sinde hesaplanır (GTŞ/toplayıcı)";
+    if (dz.segment.segment === "lisanssiz_dagitim") return "tedarikçi/toplayıcı portföyünde hesaplanır";
     return "katsayı doğrulanamadı; hesaplanamaz";
   }
   const k = dz.kural;
   return k && k.kupst_m != null && k.kupst_n != null
-    ? `tolerans %${sayiTr(k.kupst_m * 100, 0)}, n ${sayiTr(k.kupst_n, 2)}; ${k.kupst_net_sapma ? "net sapma (Karar 14907)" : "brüt sapma"}`
+    ? `tolerans %${sayiTr(k.kupst_m * 100, 0)} · katsayı n ${sayiTr(k.kupst_n, 2)} · ${k.kupst_net_sapma ? "net sapma (Karar 14907)" : "brüt sapma"}`
     : "kural tablosundan";
 }
 
@@ -666,9 +666,9 @@ export function Dogruluk({ plantId }: { plantId: string }) {
       </Kart>
       {/* 29.10 (F-01/F-02/F-03/F-09): uzlaştırma kalemleri — EDT ve KÜPST AYRI, tek sayı yok; her TL'nin yanında kural sürümü ve
           fiyat kaynağı; hesaplanamayan saat (yön eksik / segment yok) açıkça; «tasarruf/ceza» yok; teminat sadeleştirilmiş gösterge */}
-      <Kart baslik="Uzlaştırma kalemleri — dengesizlik tutarı (EDT) ve KGÜP sapması (KÜPST)"
+      <Kart baslik="Uzlaştırma kalemleri — enerji dengesizlik tutarı ve KGÜP sapma tutarı, son dönem"
         sag={<>
-          <span className="cip">{dz === undefined ? "hesaplanıyor" : dz && dz.gun_sayisi ? <Meta items={[`${sayiTr(dz.gun_sayisi)} gün`, "program: bir gün önce 15:30'dan önceki tahmin (P50)"]} /> : "henüz karşılaştırılan gün yok"}</span>
+          <span className="cip">{dz === undefined ? "hesaplanıyor" : dz && dz.gun_sayisi ? <Meta items={[`${sayiTr(dz.gun_sayisi)} gün`, "program = bir gün önce 15:30'dan önceki tahmin (P50)"]} /> : "henüz karşılaştırılan gün yok"}</span>
           {dz?.kural && <span className="cip" title={`${dz.kural.edt_dayanak}; KÜPST: ${dz.kural.kupst_dayanak}`}>kural: DUY m.110 ({dz.kural.rejim}){dz.kural.V != null ? ` · V ${sayiTr(dz.kural.V)} TL/MWh` : ""}</span>}
           {/* 29.10: rozet metni kısa (375 px'te başlık satırı taşıyordu); ayrıntı title ve KPI alt etiketinde */}
           {dz && <span className={`rozet ${dz.fiyat.senaryo_saat > 0 ? "rozet-uyari" : "rozet-ok"} rozet-kucuk`} title={dz.fiyat.senaryo_saat > 0 ? "Senaryo fiyatı: EPİAŞ kimliği tanımlı değil. " + dz.not : dz.not}>{dz.fiyat.senaryo_saat > 0 ? "senaryo fiyatı" : "fiyat: EPİAŞ"}</span>}
@@ -676,27 +676,27 @@ export function Dogruluk({ plantId }: { plantId: string }) {
         {dz === undefined ? <YerTutucu yukseklik={411} /> : dz && dz.toplam ? (
           <>
             <div className="ızgara satir-4" style={{ gap: 12 }}>
-              <div className="kpi"><div className="kpi-et">Programa göre kayıp (EDT)</div>
+              <div className="kpi"><div className="kpi-et"><BilgiliEtiket metin="Dengesizlik maliyeti · EDT" bilgi="Saatlik üretim programı ile gerçekleşen üretim arasındaki farkın EPİAŞ uzlaştırmasındaki karşılığı, enerji dengesizlik tutarı: eksik üretim borç, fazla üretim alacak yazar; gösterilen değer net maliyettir." /></div>
                 <div className="kpi-dg mono">{dz.toplam.dengesizlik_tl != null ? <>{sayiTr(dz.toplam.dengesizlik_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div>
                 <div className="kpi-alt">{fiyatEtiketi(dz)}</div></div>
-              <div className="kpi"><div className="kpi-et">KGÜP sapması (KÜPST)</div>
+              <div className="kpi"><div className="kpi-et"><BilgiliEtiket metin="KGÜP sapma tutarı · KÜPST" bilgi="Kesinleşmiş gün öncesi üretim programından tolerans üstü sapmanın tutarı. Enerji dengesizlik tutarından ayrı bir kalemdir; alacakla netleşmez." /></div>
                 <div className="kpi-dg mono">{dz.toplam.kupst_tl != null ? <>{sayiTr(dz.toplam.kupst_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div>
                 <div className="kpi-alt">{kupstEtiketi(dz)}</div></div>
-              <div className="kpi"><div className="kpi-et">Uzlaştırma kalemleri toplamı</div>
+              <div className="kpi"><div className="kpi-et"><BilgiliEtiket metin="Uzlaştırma kalemleri toplamı" bilgi="Dengesizlik maliyeti ile KÜPST toplamı. KÜPST hesaplanamıyorsa toplam verilmez." /></div>
                 <div className="kpi-dg mono">{dz.toplam.pvquant_tl != null ? <>{sayiTr(dz.toplam.pvquant_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div>
-                <div className="kpi-alt">{dz.toplam.pvquant_tl != null ? `kayıp + KÜPST${dz.toplam.gelir_oran_pct != null ? `; gelirin %${sayiTr(dz.toplam.gelir_oran_pct, 2)}'i` : ""}` : "KÜPST hesaplanamadığı için toplam verilmez"}</div></div>
-              <div className="kpi"><div className="kpi-et">Referans programa göre fark</div>
+                <div className="kpi-alt">{dz.toplam.pvquant_tl != null ? `dengesizlik maliyeti + KÜPST${dz.toplam.gelir_oran_pct != null ? ` · gelirin %${sayiTr(dz.toplam.gelir_oran_pct, 2)}'i` : ""}` : "KÜPST hesaplanamadığı için toplam verilmez"}</div></div>
+              <div className="kpi"><div className="kpi-et"><BilgiliEtiket metin="Referans programa göre fark · varsayımsal" bilgi="Dünün aynı saatteki üretimini program kabul eden basit referansın aynı kuralla maliyeti ile PVQuant programının maliyeti arasındaki fark. Varsayımsal bir karşılaştırmadır." /></div>
                 <div className="kpi-dg mono">{dz.toplam.kurtarilan_tl != null ? <>{sayiTr(dz.toplam.kurtarilan_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div>
-                <div className="kpi-alt">varsayımsal; referans = dün aynı saat programı{dz.toplam.naif_tl != null ? ` (${sayiTr(dz.toplam.naif_tl / 1000, 1)} bin TL)` : ""}</div></div>
+                <div className="kpi-alt">referans: dün aynı saat{dz.toplam.naif_tl != null ? `, ${sayiTr(dz.toplam.naif_tl / 1000, 1)} bin TL` : ""}</div></div>
             </div>
             <p className="soluk" style={{ marginTop: 8, marginBottom: 0, fontSize: 13.5 }}>
               {dz.segment.santral_tasir === false ? `Bu segmentte dengesizliği ${dz.segment.dengesizlik_sahibi} taşır; tutarlar santral sahibine yansımaz.`
-                : dz.segment.segment ? "Dengesizlik santralde." : "Segment belirtilmedi (Santralim › Santral ayarları); KÜPST hesaplanamaz."}
-              {(dz.hesaplanamayan_saat ?? 0) > 0 && ` ${sayiTr(dz.hesaplanamayan_saat ?? 0)} saat hesaplanamadı (${(dz.fiyat.yon_eksik_saat ?? 0) > 0 ? "sistem yönü verisi eksik" : "KÜPST katsayısı yok"}); bu saatler toplamda 0 sayılmadı.`}
+                : dz.segment.segment ? "Dengesizliği santral taşır; tutarlar santral sahibine yansır." : "Segment seçilmedi; Santralim › Santral ayarlarından seçilir. KÜPST hesaplanamaz."}
+              {(dz.hesaplanamayan_saat ?? 0) > 0 && ` ${sayiTr(dz.hesaplanamayan_saat ?? 0)} saat hesaplanamadı; neden: ${(dz.fiyat.yon_eksik_saat ?? 0) > 0 ? "sistem yönü verisi eksik" : "KÜPST katsayısı yok"}. Bu saatler toplama 0 olarak alınmadı.`}
             </p>
             <div className="grafik-kaydir" style={{ marginTop: 12 }}>
               <table className="veri" style={{ fontSize: 13.5 }}>
-                <thead><tr><th>Ay</th><th>Üretim (MWh)</th><th>Sapma (MWh)</th><th>EDT borç (TL)</th><th>EDT alacak (TL)</th><th>Kayıp (TL)</th><th>KÜPST (TL)</th><th>Toplam (TL)</th><th>Referans (TL)</th><th>Fark (TL)</th><th>Hesaplanamayan saat</th></tr></thead>
+                <thead><tr><th>Ay</th><th>Üretim (MWh)</th><th>Sapma (MWh)</th><th>EDT borç (TL)</th><th>EDT alacak (TL)</th><th>Dengesizlik maliyeti (TL)</th><th>KÜPST (TL)</th><th>Toplam (TL)</th><th>Referans (TL)</th><th>Fark (TL)</th><th>Hesaplanamayan saat</th></tr></thead>
                 <tbody className="mono">
                   {dz.aylar.map((a) => (
                     <tr key={a.ay} title={a.kural_surumu ? `kural: ${a.kural_surumu}` : undefined}><td>{a.ay}</td><td>{sayiTr(a.uretim_mwh, 1)}</td><td>{sayiTr(a.sapma_mwh, 1)}</td>
@@ -712,32 +712,38 @@ export function Dogruluk({ plantId }: { plantId: string }) {
             </div>
             <p style={{ marginTop: 10, marginBottom: 0, fontSize: 13.5 }}>
               {dz.toplam?.teminat_tl != null && <>Teminat göstergesi: <b>{sayiTr(dz.toplam.teminat_tl / 1000, 1)} bin TL</b> (son 3 ayın en
-              yüksek aylık EDT borcu; sadeleştirilmiş gösterge, Teminat Usul ve Esasları ile doğrulanmadı). </>}
+              yüksek aylık dengesizlik borcu; sadeleştirilmiş göstergedir, EPİAŞ Teminat Usul ve Esasları ile doğrulanmamıştır). </>}
               {dz.oneri && (dz.oneri.durum === "ok" && dz.oneri.kantil
                 ? <>Önerilen program seviyesi: <b>{dz.oneri.kantil.toUpperCase()}</b> (saatlerin
                     %{sayiTr((dz.oneri.acik_saat_orani ?? 0) * 100, 0)}'inde sistem enerji açığındaydı); eksik üretimin birim maliyeti ile fazla üretimin birim maliyetinin dengesidir.</>
                 : <span className="soluk">Önerilen program seviyesi: — ({dz.oneri.not})</span>)}
             </p>
             <p className="soluk" style={{ marginTop: 8, marginBottom: 0, fontSize: 14 }}>
-              Ne gösterir: saatlik üretim programı ile gerçekleşen üretim arasındaki farkın, {dz.kural?.rejim === "2026"
+              Bu kart yürürlükteki kuralla yapılan bir yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir. Referans sütunu, dünün aynı saatteki üretimini program kabul eden basit referansın aynı kuralla maliyetidir; fark varsayımsaldır.
+              {dz.fiyat.senaryo_saat > 0 && " Senaryo fiyatı: EPİAŞ piyasa fiyatı bağlı olmadığından EPDK 2025 yıllık ortalaması kullanılmış, sistem yönü dengede varsayılmıştır; piyasa kimliği tanımlandığında gerçek saatlik fiyat ve yönle hesaplanır."}
+              {dz.kural?.belirsiz_2027 && " 1.1.2027 sonrası kural metni hukuken belirsiz; 2026 kuralı sürdürüldü."}
+            </p>
+            <details className="aciklama">
+              <summary>Hesap yöntemi ve formüller</summary>
+              <p style={{ margin: "6px 0 0" }}>
+              Saatlik üretim programı ile gerçekleşen üretim arasındaki farkın, {dz.kural?.rejim === "2026"
                 ? <>1.1.2026'dan yürürlükteki DUY m.110 formülüyle TL karşılığı: eksik üretimde max(V, PTF, SMF)×(1+k), tavanda AFL×1,05×(1+k);
                     fazla üretimde min(PTF, SMF)×(1−l), fiyat V'nin altındaysa −B×(1+l) (fazla üretim borç doğurur); k ve l sistem yönüne göre
                     (açık 0,06/0,03; fazla 0,03/0,06; dengede 0,03). KÜPST: tolerans üstü sapma × max(750; PTF; SMF) × n{dz.kural.kupst_net_sapma ? ", net sapma (1.11.2026'dan)" : ""}.</>
                 : <>2025 formülüyle TL karşılığı: fazla üretim min(PTF, SMF)×0,97; eksik üretim max(PTF, SMF)×1,03; KÜPST tolerans üstü sapma × max(750; PTF; SMF) × n.</>}
-              {" "}Referans sütunu «dün aynı saat» programının aynı kuralla kaybıdır; fark varsayımsaldır. Bu bir yeniden hesaptır, EPİAŞ uzlaştırma sonucu değildir.
-              {dz.fiyat.senaryo_saat > 0 && " Senaryo fiyatı EPDK 2025 yıllık ortalamasıdır ve sistem yönü taşımaz (k = l = 0,03 varsayıldı); piyasa (EPİAŞ) kimliği tanımlanınca gerçek saatlik fiyat ve yönle hesaplanır."}
-              {dz.kural?.belirsiz_2027 && " 1.1.2027 sonrası m.110 metni hukuken belirsiz; 2026 kuralı sürdürüldü."}
-            </p>
+              {dz.fiyat.senaryo_saat > 0 && " Senaryo fiyatında k = l = 0,03 varsayıldı."} Kısaltmalar: PTF piyasa takas fiyatı, SMF sistem marjinal fiyatı, V ve B DUY m.110 taban/borç parametreleri, AFL aylık fiyat limiti, k ve l sistem yönüne bağlı katsayılar, n KÜPST katsayısı.
+              </p>
+            </details>
           </>
         ) : (
           <p className="soluk" style={{ margin: 0 }}>Bir gün önce 15:30'dan önce verilmiş tahmin ile gerçekleşen üretimin karşılaştırılabildiği gün henüz yok; tahminler ve ölçümler biriktikçe burada görünür.</p>
         )}
       </Kart>
       {/* v2.503 (F-07): 12 aylık geri test — aylık tablo + karşı-olgu sütunları; istek yalnız kart açılınca (ağır sorgu) */}
-      <Kart baslik="Uzlaştırma kalemleri geri testi — son 12 ay (varsayımsal yeniden hesap)"
+      <Kart baslik="Uzlaştırma kalemleri geri testi — son 12 ay, varsayımsal yeniden hesap"
         sag={<span className="cip">{gt ? <Meta items={[`${sayiTr(gt.gun_sayisi)} gün`, gt.mekanizma && gt.mekanizma.senaryo_saat > 0 ? `senaryo fiyatı ${sayiTr(gt.mekanizma.senaryo_saat)} saat` : "fiyat: EPİAŞ"]} /> : gt === null ? "alınamadı" : "kapalı"}</span>}>
         <details className="aciklama genis" onToggle={(e) => { if ((e.currentTarget as HTMLDetailsElement).open && gt === undefined) api.dengesizlikGeriTest(plantId).then((v) => setGt(v), () => setGt(null)); }}>
-          <summary>Aylık tablo ve karşı-olgu sütunları</summary>
+          <summary>Aylık tablo ve kural karşılaştırmaları</summary>
           {gt === undefined ? <p className="soluk">açılınca hesaplanır…</p>
            : gt === null ? <p className="soluk">Geri test alınamadı (sunucu hatası ya da örnek kip).</p>
            : !gt.toplam || gt.aylar.length === 0 ? <p className="soluk">Karşılaştırılabilir gün yok; tahmin ve ölçüm biriktikçe oluşur.</p>
@@ -745,15 +751,15 @@ export function Dogruluk({ plantId }: { plantId: string }) {
             <>
               <p className="soluk" style={{ fontSize: 13.5, margin: "0 0 8px" }}>{gt.baslik} Kural: {gt.kural_surumu ?? "—"}.</p>
               <div className="ızgara satir-4" style={{ gap: 12, marginBottom: 10 }}>
-                <div className="kpi"><div className="kpi-et">Yürürlükteki kural</div><div className="kpi-dg mono">{gt.toplam.toplam_tl != null ? <>{sayiTr(gt.toplam.toplam_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div>
+                <div className="kpi"><div className="kpi-et"><BilgiliEtiket metin="Yürürlükteki kuralla toplam" bilgi="Her saat, o gün yürürlükte olan kuralla hesaplanan dengesizlik maliyeti ile KÜPST toplamı." /></div><div className="kpi-dg mono">{gt.toplam.toplam_tl != null ? <>{sayiTr(gt.toplam.toplam_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div>
                   <div className="kpi-alt">eksik {gt.toplam.eksik_tl != null ? sayiTr(gt.toplam.eksik_tl / 1000, 1) : "—"} · fazla {gt.toplam.fazla_tl != null ? sayiTr(gt.toplam.fazla_tl / 1000, 1) : "—"} · KÜPST {gt.toplam.kupst_tl != null ? sayiTr(gt.toplam.kupst_tl / 1000, 1) : "—"} bin TL</div></div>
-                <div className="kpi"><div className="kpi-et">2026 kuralı tüm döneme</div><div className="kpi-dg mono">{gt.toplam.karsi_2026_tl != null ? <>{sayiTr(gt.toplam.karsi_2026_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div><div className="kpi-alt">karşı-olgu; 2025 saatleri de yeni formülle</div></div>
-                <div className="kpi"><div className="kpi-et">2026 kuralı, V = 100</div><div className="kpi-dg mono">{gt.toplam.karsi_v100_tl != null ? <>{sayiTr(gt.toplam.karsi_v100_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div><div className="kpi-alt">karşı-olgu; 1.11.2026 kuralı bütün döneme</div></div>
-                <div className="kpi"><div className="kpi-et">Referans programa göre fark</div><div className="kpi-dg mono">{gt.toplam.referans_fark_tl != null ? <>{sayiTr(gt.toplam.referans_fark_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div><div className="kpi-alt">varsayımsal; dün aynı saat programı{gt.toplam.referans_tl != null ? ` (${sayiTr(gt.toplam.referans_tl / 1000, 1)} bin TL)` : ""}</div></div>
+                <div className="kpi"><div className="kpi-et"><BilgiliEtiket metin="2026 kuralı tüm döneme uygulansaydı" bilgi="Varsayımsal karşılaştırma: 2025 saatleri de 1.1.2026 formülüyle hesaplanır." /></div><div className="kpi-dg mono">{gt.toplam.karsi_2026_tl != null ? <>{sayiTr(gt.toplam.karsi_2026_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div><div className="kpi-alt">varsayımsal karşılaştırma</div></div>
+                <div className="kpi"><div className="kpi-et"><BilgiliEtiket metin="1.11.2026 kuralı, V = 100, tüm döneme" bilgi="Varsayımsal karşılaştırma: taban parametresi V = 100 TL/MWh olan 1.11.2026 kuralı bütün döneme uygulanır." /></div><div className="kpi-dg mono">{gt.toplam.karsi_v100_tl != null ? <>{sayiTr(gt.toplam.karsi_v100_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div><div className="kpi-alt">varsayımsal karşılaştırma</div></div>
+                <div className="kpi"><div className="kpi-et"><BilgiliEtiket metin="Referans programa göre fark · varsayımsal" bilgi="Dünün aynı saatteki üretimini program kabul eden basit referansın maliyeti ile PVQuant programının maliyeti arasındaki fark; varsayımsaldır." /></div><div className="kpi-dg mono">{gt.toplam.referans_fark_tl != null ? <>{sayiTr(gt.toplam.referans_fark_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div><div className="kpi-alt">referans: dün aynı saat{gt.toplam.referans_tl != null ? `, ${sayiTr(gt.toplam.referans_tl / 1000, 1)} bin TL` : ""}</div></div>
               </div>
               <div className="grafik-kaydir">
                 <table className="veri" style={{ fontSize: 13 }}>
-                  <thead><tr><th>Ay</th><th>Gün</th><th>Üretim (MWh)</th><th>Sapma (MWh)</th><th>Eksik (TL)</th><th>Fazla (TL)</th><th>KÜPST (TL)</th><th>Toplam (TL)</th><th>2026 tüm döneme</th><th>V = 100</th><th>Referans (TL)</th><th>Hesaplanamayan saat</th></tr></thead>
+                  <thead><tr><th>Ay</th><th>Gün</th><th>Üretim (MWh)</th><th>Sapma (MWh)</th><th>Eksik üretim (TL)</th><th>Fazla üretim (TL)</th><th>KÜPST (TL)</th><th>Toplam (TL)</th><th>2026 kuralı tüm döneme</th><th>V = 100 kuralı</th><th>Referans (TL)</th><th>Hesaplanamayan saat</th></tr></thead>
                   <tbody className="mono">
                     {gt.aylar.map((a) => (
                       <tr key={a.ay} title={`kural: ${a.kural_surumu}`}><td>{a.ay}</td><td>{sayiTr(a.gun)}</td><td>{sayiTr(a.uretim_mwh, 1)}</td><td>{sayiTr(a.sapma_mwh, 1)}</td>
@@ -765,9 +771,9 @@ export function Dogruluk({ plantId }: { plantId: string }) {
               </div>
               {gt.mekanizma && (
                 <p className="soluk" style={{ fontSize: 13.5, margin: "8px 0 0" }}>
-                  Mekanizma: {sayiTr(gt.mekanizma.saat)} saat; sistem açık {sayiTr(gt.mekanizma.acik_saat)}, fazla {sayiTr(gt.mekanizma.fazla_saat)}, dengede {sayiTr(gt.mekanizma.dengede_saat)};
-                  B dalı (fazla üretim borç) {sayiTr(gt.mekanizma.b_dali_saat)} saat{gt.mekanizma.b_dali_tl != null ? ` / ${sayiTr(gt.mekanizma.b_dali_tl)} TL` : ""}; AFL dalı {sayiTr(gt.mekanizma.afl_dali_saat)} saat;
-                  V tabanı {sayiTr(gt.mekanizma.v_tabani_saat)} saat.{gt.mekanizma.yon_varsayilan_saat > 0 ? ` Senaryo saatlerinde yön varsayımı dengede (${sayiTr(gt.mekanizma.yon_varsayilan_saat)}).` : ""}{gt.mekanizma.yon_eksik_saat > 0 ? ` ${sayiTr(gt.mekanizma.yon_eksik_saat)} saat yön eksik, hesaplanmadı.` : ""}
+                  Saat dağılımı: {sayiTr(gt.mekanizma.saat)} saat; sistem enerji açığında {sayiTr(gt.mekanizma.acik_saat)}, fazlasında {sayiTr(gt.mekanizma.fazla_saat)}, dengede {sayiTr(gt.mekanizma.dengede_saat)}.
+                  Fazla üretimin borç yazdığı saat, B dalı: {sayiTr(gt.mekanizma.b_dali_saat)}{gt.mekanizma.b_dali_tl != null ? `, ${sayiTr(gt.mekanizma.b_dali_tl)} TL` : ""}. Aylık fiyat limiti AFL'nin uygulandığı saat: {sayiTr(gt.mekanizma.afl_dali_saat)}.
+                  Taban fiyat V'nin uygulandığı saat: {sayiTr(gt.mekanizma.v_tabani_saat)}.{gt.mekanizma.yon_varsayilan_saat > 0 ? ` Senaryo fiyatlı ${sayiTr(gt.mekanizma.yon_varsayilan_saat)} saatte sistem yönü dengede varsayıldı.` : ""}{gt.mekanizma.yon_eksik_saat > 0 ? ` ${sayiTr(gt.mekanizma.yon_eksik_saat)} saatte sistem yönü verisi yok, hesaplanmadı.` : ""}
                 </p>
               )}
             </>

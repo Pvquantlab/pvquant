@@ -151,3 +151,22 @@ def getir(tenant_id, plant_id, surum_id) -> dict | None:
     if hashlib.sha256(b).hexdigest() != r.sha256:
         raise RuntimeError("arşiv bütünlüğü bozuk: sha256 uyuşmuyor")
     return {"dosya": b, "dosya_adi": r.dosya_adi, "sha256": r.sha256, "surum": int(r.surum), "teslim_gunu": r.teslim_gunu.isoformat()}
+
+
+SAKLAMA_TABAN_AY = 15   # itiraz 12 ay (m.133(5)) + fatura itirazı + pay; v2502 göç notu
+
+
+def temizle(ay: int | None = None) -> int:
+    """29.10 (F-06 saklama) — teslim günü `ay` aydan eski kgup_surum satırlarını siler; silinen sayısını döner.
+    ay None → ayar (kgup_saklama_ay, varsayılan 24); 0 → dokunmaz; 1–14 → SAKLAMA_TABAN_AY'a çekilir (itiraz penceresi
+    kapanmadan kayıt silinmez). Uygulama rolü (pvq_app) DELETE yetkisiz olduğundan iş bağlantı rolüyle (sistem_baglami) koşar;
+    yalnız worker'ın aylık işi çağırır."""
+    if ay is None:
+        from pvquant.config import get_settings
+        ay = int(get_settings().kgup_saklama_ay or 0)
+    if ay <= 0:
+        return 0
+    ay = max(int(ay), SAKLAMA_TABAN_AY)
+    from pvquant.db import sistem_baglami
+    with sistem_baglami() as s:
+        return int(s.execute(text("DELETE FROM kgup_surum WHERE teslim_gunu < current_date - (:ay * interval '1 month')"), {"ay": ay}).rowcount)

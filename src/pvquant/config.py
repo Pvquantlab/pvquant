@@ -97,6 +97,7 @@ class Settings(BaseSettings):
     yedek_sayisi: int = 14                  # v2.337: saklanan yedek adedi (host betigiyle ayni)
     yedek_dizin: str = "/app/yedekler"      # v2.337: worker'a bagli ana makine klasoru
     denetim_saklama_ay: int = 0             # 26.10 denetim D6: 0 = silme YOK; >0 → giris/giris_basarisiz/kiraci_goruntule N aydan eskisi aylık silinir
+    kgup_saklama_ay: int = 24               # 29.10 F-06: KGÜP sürüm arşivi saklama (ay); 0 = silme YOK; 1–14 → 15'e çekilir (itiraz 12 ay + fatura itirazı + pay, m.133(5))
     forecast_horizon_days: int = 15         # v2.156 (kullanıcı kararı 18 Ağu):
                                             # open-meteo RADYASYON ufku ~15 gündür;
                                             # 16. gün NaN dönüyor ve eski fillna(0)

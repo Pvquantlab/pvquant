@@ -697,12 +697,16 @@ def portfoy_tahmin(gun: int = 7, claims=Depends(gecerli_kullanici)):
 
 
 @app.get("/v1/portfoy/dsg")
-def portfoy_dsg(gun: int = 30, claims=Depends(gecerli_kullanici)):
-    """v2.276 — DSG/toplayıcı portföy netleştirmesi: santral başına ayrı dengesizlik ↔ portföyün netleşmiş dengesizliği."""
+def portfoy_dsg(gun: int = 30, anahtar: str = "sapma", claims=Depends(gecerli_kullanici)):
+    """v2.276 — DSG/toplayıcı portföy netleştirmesi: santral başına ayrı dengesizlik ↔ portföyün netleşmiş dengesizliği.
+    29.10: `anahtar` — grubun EDT'sinin üyelere dağıtımı (sapma | esit | uretim; sözleşmesel)."""
+    from pvquant.ext.turkiye import dengesizlik as _d
     from pvquant.services import dengesizlik_service
     if not (14 <= gun <= 365):
         raise HTTPException(422, "gun 14-365")
-    return dengesizlik_service.dsg_ozet(claims["tenant_id"], gun=gun)
+    if anahtar not in _d.DAGITIM_ANAHTARLARI:
+        raise HTTPException(422, "anahtar " + "|".join(_d.DAGITIM_ANAHTARLARI))
+    return dengesizlik_service.dsg_ozet(claims["tenant_id"], gun=gun, dagitim_anahtari=anahtar)
 
 
 @app.get("/v1/portfoy")

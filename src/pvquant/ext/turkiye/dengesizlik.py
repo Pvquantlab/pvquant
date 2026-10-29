@@ -190,16 +190,26 @@ def dsg_netlestir(programlar: dict[str, pd.Series], gerceklesenler: dict[str, pd
     return K, G
 
 
+DAGITIM_ANAHTARLARI = ("sapma", "esit", "uretim")   # 29.10: grubun EDT'sinin üyelere paylaşımı — sözleşmesel parametre
+DAGITIM_ETIKET = {"sapma": "sapma payına göre", "esit": "eşit", "uretim": "üretime göre"}
+
+
 def dsg_saatlik(programlar: dict[str, pd.Series], gerceklesenler: dict[str, pd.Series], ptf: pd.Series, smf: pd.Series, *,
                 yon=None, segmentler: dict[str, str | None] | None = None, pozisyonlar: dict[str, pd.Series] | None = None,
-                esik_oran: float | None = None, ariza_sayilari: dict[str, int] | None = None) -> dict:
+                esik_oran: float | None = None, ariza_sayilari: dict[str, int] | None = None,
+                dagitim_anahtari: str = "sapma") -> dict:
     """F-08 (v2.502) — DSG netleşmesi, DUY m.111(3)-(5) + Karar 13869: her üye için PH = max(UEVM, satış) (saf satıcı GES: max(A, F));
     üyenin |EDM|'sinin esik × PH kadarı grupta netleşir, aşan kısım üyenin kendi P(−)/P(+)'sıyla bireysel kalır; grubun net EDM'si
     grup fiyatıyla (aynı saatlik birim fiyat). Eşik tarihe göre kural tablosundan (%10 → %5, 2027 varsayım) ya da esik_oran.
     KÜPST üye UEVÇB'si bazında (segment/tarih/arıza) hesaplanır ve TOPLANIR, netleşmez (m.110(6)). Dengesizlik taşımayan
     segmentteki üye (dağıtım lisanssız, öz tüketim) portföye GİRMEZ, 'disi' listesinde döner. Toplayıcı DSG'de yer alamaz (m.20(4)).
+    Üyelere dağıtım (29.10): grubun EDT'si üyelere `dagitim_anahtari` ile paylaştırılır — "sapma" (saatlik |grup payı| oranı; varsayılan),
+    "esit" (1/n), "uretim" (saatlik gerçekleşen üretim oranı). Anahtar SÖZLEŞMESELDİR (DSG sözleşmesi belirler), mevzuat sabitlemez;
+    pay sıfıra bölünürse eşit dağıtılır. Üye: edt_dsg = edt_bireysel + pay × edt_grup; netlesme_farki = edt_dsg − edt_tek; Σ üye = grup.
     Dönüş: {"saatlik": DataFrame (edt_tek, edt_dsg, edt_grup, edt_bireysel, netlesme_farki, kayip_tek, kayip_dsg, kupst_uye, esik, kural_surumu, durum),
-            "uyeler": {ad: DataFrame}, "disi": [ad…], "esik_kaynak": str}."""
+            "uyeler": {ad: DataFrame (…, uretim, pay, edt_dsg, netlesme_farki)}, "disi": [ad…], "esik_kaynak": str, "dagitim_anahtari": str}."""
+    if dagitim_anahtari not in DAGITIM_ANAHTARLARI:
+        raise ValueError(f"dagitim_anahtari {'|'.join(DAGITIM_ANAHTARLARI)}")
     segmentler = segmentler or {}
     disi = [ad for ad in programlar if segmentler.get(ad) in ("lisanssiz_dagitim", "oz_tuketim_saatlik")]
     uyeler = [ad for ad in programlar if ad not in disi]
@@ -228,10 +238,20 @@ def dsg_saatlik(programlar: dict[str, pd.Series], gerceklesenler: dict[str, pd.S
         k_tek = edm.clip(lower=0) * (P - f["p_poz"]) + (-edm).clip(lower=0) * (f["p_neg"] - P)
         k_br = birey.clip(lower=0) * (P - f["p_poz"]) + (-birey).clip(lower=0) * (f["p_neg"] - P)
         uye = saatlik(programlar[ad].loc[idx], A, P, S, yon=yon, segment=segmentler.get(ad), ariza_sayisi=(ariza_sayilari or {}).get(ad, 0))
-        detay[ad] = pd.DataFrame({"edm": edm, "ph": ph, "grup_payi": grup, "bireysel": birey, "edt_tek": tek, "edt_bireysel": br, "kupst": uye["kupst"]})
+        detay[ad] = pd.DataFrame({"edm": edm, "ph": ph, "grup_payi": grup, "bireysel": birey, "edt_tek": tek, "edt_bireysel": br, "kupst": uye["kupst"], "uretim": A})
         grup_edm += grup; birey_edt += br; tek_edt += tek; kayip_tek += k_tek; kayip_birey += k_br
         kupst_top += uye["kupst"].fillna(0.0); kupst_eksik |= uye["kupst"].isna()
     grup_edt = grup_edm.clip(lower=0) * f["p_poz"] - (-grup_edm).clip(lower=0) * f["p_neg"]
+    # üyelere dağıtım: anahtar sütunu (|grup payı| / üretim / 1) saatlik normalize; toplam 0 olan saatte eşit pay
+    n = len(uyeler)
+    agirlik = {ad: (detay[ad]["grup_payi"].abs() if dagitim_anahtari == "sapma" else detay[ad]["uretim"].clip(lower=0) if dagitim_anahtari == "uretim"
+                    else pd.Series(1.0, index=idx)) for ad in uyeler}
+    toplam_agirlik = sum(agirlik.values())
+    for ad in uyeler:
+        pay = (agirlik[ad] / toplam_agirlik).where(toplam_agirlik > 0, 1.0 / n)
+        detay[ad]["pay"] = pay
+        detay[ad]["edt_dsg"] = detay[ad]["edt_bireysel"] + pay * grup_edt
+        detay[ad]["netlesme_farki"] = detay[ad]["edt_dsg"] - detay[ad]["edt_tek"]
     kayip_grup = grup_edm.clip(lower=0) * (P - f["p_poz"]) + (-grup_edm).clip(lower=0) * (f["p_neg"] - P)
     out = pd.DataFrame({"ptf": P, "smf": S, "yon": f["yon"], "p_neg": f["p_neg"], "p_poz": f["p_poz"], "esik": esik,
                         "grup_edm": grup_edm, "edt_grup": grup_edt, "edt_bireysel": birey_edt, "edt_dsg": grup_edt + birey_edt,
@@ -239,7 +259,7 @@ def dsg_saatlik(programlar: dict[str, pd.Series], gerceklesenler: dict[str, pd.S
                         "kayip_tek": kayip_tek, "kayip_dsg": kayip_grup + kayip_birey,
                         "kupst_uye": kupst_top.where(~kupst_eksik, np.nan), "kural_surumu": f["kural_surumu"],
                         "durum": np.where(f["yon_eksik"].values, "yon_eksik", np.where(kupst_eksik.values, "kupst_hesaplanamaz", "ok"))})
-    return {"saatlik": out, "uyeler": detay, "disi": disi, "esik_kaynak": esik_kaynak}
+    return {"saatlik": out, "uyeler": detay, "disi": disi, "esik_kaynak": esik_kaynak, "dagitim_anahtari": dagitim_anahtari}
 
 
 def teminat(saatlik_df: pd.DataFrame, risk_katsayisi: float = 1.0, ay: int = 3) -> float:

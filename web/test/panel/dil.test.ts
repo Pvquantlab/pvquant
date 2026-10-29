@@ -34,6 +34,12 @@ const YASAK: [RegExp, string][] = [
   [/kurtar(ılan|dı|ır)/i, "referansa göre fark"],
   [/netleşme kazancı/i, "netleşme farkı (varsayımsal)"],
   [/garanti/i, "ölçülen"],
+  // 29.10 dil turu (DSG/uzlaştırma kartları): tek sözlük — «maliyet/tutar», «santral», «varsayımsal karşılaştırma»
+  [/EDT kaybı/i, "dengesizlik maliyeti"],
+  [/karşı-olgu/i, "varsayımsal karşılaştırma"],
+  [/katılımcı öder/i, "santral öder"],
+  [/bireysel kalan/i, "santralde kalan"],
+  [/dengeleme grubu/i, "Dengeden Sorumlu Grup (DSG)"],   // DSG'nin resmî açılımı
 ];
 
 /** Yorumları (// … ve /* … *\/) ayıkla — kod notlarındaki tarihçe dili testin konusu değil. */

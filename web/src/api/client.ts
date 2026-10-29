@@ -1,4 +1,4 @@
-import type { KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar } from "./types";
+import type { DsgAnahtar, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -89,6 +89,11 @@ function getir<T>(yol: string): Promise<T> {
  *  çekim bellekten dönüyor, panel yeni koşuyu/ölçümü bir sonraki değişime dek göremiyordu. */
 export function bellekEskit(): void {
   for (const [k, v] of bellekte) bellekte.set(k, { veri: v.veri, zaman: 0 });
+}
+
+/** 29.10: Portföy DSG yolu — varsayılan anahtar yolda yazılmaz (bellek anahtarı eski yolla aynı kalsın) */
+export function dsgYolu(gun = 30, anahtar: DsgAnahtar = "sapma"): string {
+  return `/v1/portfoy/dsg?gun=${gun}${anahtar === "sapma" ? "" : `&anahtar=${anahtar}`}`;
 }
 
 export function bellektenOku<T>(yol: string): T | undefined {
@@ -536,9 +541,9 @@ export const api = {
     if (TABAN == null) return null;
     return getir<PortfoyTahmin>(`/v1/portfoy/tahmin?gun=${gun}`);
   },
-  portfoyDsg: async (gun = 30): Promise<PortfoyDsg | null> => {
+  portfoyDsg: async (gun = 30, anahtar: DsgAnahtar = "sapma"): Promise<PortfoyDsg | null> => {   // 29.10: üyelere dağıtım anahtarı
     if (TABAN == null) return null;
-    return getir<PortfoyDsg>(`/v1/portfoy/dsg?gun=${gun}`);
+    return getir<PortfoyDsg>(dsgYolu(gun, anahtar));
   },
   portfoy: async (): Promise<Portfoy | null> => {
     if (TABAN == null) return null;

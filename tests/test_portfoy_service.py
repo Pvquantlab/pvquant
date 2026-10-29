@@ -22,3 +22,18 @@ def istemci(monkeypatch):
 
 def test_portfoy_kapisi(istemci):
     j = istemci.get("/v1/portfoy").json(); assert j["toplam"]["santral"] == 1 and j["santraller"][0]["ad"] == "A"
+
+
+def test_program_durumu_bildirildi(monkeypatch):
+    """29.10 — müşterinin yarın için yüklediği KGÜP dosyası «bildirildi» rozeti olarak döner; yoksa False; TPYS kabulü doğrulanmaz."""
+    from datetime import date, datetime, timezone
+    from pvquant.services import kgup_service, portfoy_service
+    monkeypatch.setattr(kgup_service, "kaynak_kosu_df", lambda t, p, g: (None, {"run_at": "2026-10-24T09:30:00+00:00"}))
+    p = {"id": "a", "params_json": {"segment": "lisansli_serbest"}}
+    z = datetime(2026, 10, 24, 13, 2, tzinfo=timezone.utc)
+    r = portfoy_service._program_durumu("t", p, date(2026, 10, 25), z)
+    assert r["yukumlu"] is True and r["hazir"] is True and r["bildirilen"] is True and r["bildirim_zamani"] == z.isoformat()
+    r0 = portfoy_service._program_durumu("t", p, date(2026, 10, 25))
+    assert r0["bildirilen"] is False and r0["bildirim_zamani"] is None
+    s = portfoy_service._program_durumu("t", {"id": "a", "params_json": {}}, date(2026, 10, 25), z)
+    assert s["yukumlu"] is None and s["bildirilen"] is True                            # segment seçilmemiş olsa da beyan görünür

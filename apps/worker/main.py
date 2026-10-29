@@ -596,7 +596,9 @@ def _logla_tek(job, fn):
         bas = dt.datetime.now(dt.timezone.utc)
         durum, det = "ok", ""
         try:
-            fn()
+            r = fn()
+            if isinstance(r, str):   # 29.10: temizlik işleri sonucunu (silinen sayısı) döner — detail'e yazılsın
+                det = r
         except Exception as e:
             durum, det = "error", f"{type(e).__name__}: {e}"
             traceback.print_exc()
@@ -652,6 +654,16 @@ def denetim_temizlik():
     n = denetim_service.temizle()
     hp = kullanim_service.pencere_temizle()   # 26.10 denetim-3: eski hız pencereleri (IP/anahtar başına kalıcı satır birikmesin)
     return (f"silinen: {n}" if n else "ayar 0 ya da silinecek satır yok") + f"; hız penceresi: {hp}"
+
+
+def kgup_arsiv_temizlik():
+    """29.10 F-06 saklama — KGÜP sürüm arşivinde teslim günü PVQUANT_KGUP_SAKLAMA_AY (varsayılan 24, taban 15) aydan eski satırlar
+    aylık silinir; ayar 0 hiçbir şey silmez. Sonuç jobs_log detail'e yazılır."""
+    from pvquant.services import kgup_arsiv_service
+    from pvquant.config import get_settings
+    ay = int(get_settings().kgup_saklama_ay or 0)
+    n = kgup_arsiv_service.temizle()
+    return f"saklama {max(ay, kgup_arsiv_service.SAKLAMA_TABAN_AY)} ay; silinen: {n}" if ay > 0 else "ayar 0 — silme yok"
 
 
 def gece_yedek():
@@ -735,6 +747,8 @@ if __name__ == "__main__":
                 "cron", day=cfg.worker_day_calibration, hour=(cfg.worker_hour_calibration + 1) % 24, minute=0)
     sch.add_job(_logla_tek("denetim_temizlik", denetim_temizlik),        # 26.10 denetim D6: aylık saklama (ayar 0 → dokunmaz)
                 "cron", day=cfg.worker_day_calibration, hour=(cfg.worker_hour_calibration + 2) % 24, minute=0)
+    sch.add_job(_logla_tek("kgup_arsiv_temizlik", kgup_arsiv_temizlik),  # 29.10 F-06: KGÜP arşivi saklama (varsayılan 24 ay, taban 15; 0 → dokunmaz)
+                "cron", day=cfg.worker_day_calibration, hour=(cfg.worker_hour_calibration + 2) % 24, minute=20)
     sch.add_job(_logla_tek("gece_yedek", gece_yedek),                    # v2.337: gece veritabanı yedeği
                 "cron", hour=cfg.yedek_saat, minute=15)
     sch.add_job(_logla_tek("acilis_yakalama", acilis_yakalama), "date",  # v2.336: tazelik yakalaması

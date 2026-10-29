@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
-import { api, bellektenOku } from "../../api/client";
-import type { Portfoy as PortfoyT, PortfoyDsg, PortfoyTahmin } from "../../api/types";
-import { Kart, Kpi, Sayfa, sayiTr, gucTr, enerjiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
+import { useEffect, useRef, useState } from "react";
+import { api, bellektenOku, dsgYolu } from "../../api/client";
+import type { DsgAnahtar, Portfoy as PortfoyT, PortfoyDsg, PortfoyTahmin } from "../../api/types";
+import { Bilgi, Kart, Kpi, Sayfa, sayiTr, gucTr, enerjiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
 import { Meta } from "../../lib/Meta";
 
 /** 23.10 sekizinci tur — «76,3 MWh» gibi birimli dizgiyi sayı + soluk birim olarak basar; dizgi aynen (enerjiTr). */
@@ -45,6 +45,15 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
     istekler.dsg.then((v) => { if (acik) { setDsg(v); setDsgD("tamam"); } }, () => { if (acik) { setDsg((e) => e ?? null); setDsgD("hata"); } });
     return () => { acik = false; };
   }, [istekler]);
+  // 29.10: üyelere dağıtım anahtarı (sözleşmesel) — seçim değişince DSG yeniden çekilir; varsayılan yol bellek anahtarıyla aynı
+  const [anahtar, setAnahtar] = useState<DsgAnahtar>("sapma");
+  const ilkAnahtar = useRef(true);
+  useEffect(() => {
+    if (ilkAnahtar.current) { ilkAnahtar.current = false; return; }   // ilk yükleme istekler.dsg ile geldi; «sapma»ya geri dönüş de yeniden çeker
+    let acik = true; setDsgD("bekliyor");
+    hatirlayarak(dsgYolu(30, anahtar), () => api.portfoyDsg(30, anahtar)).then((v) => { if (acik) { setDsg(v); setDsgD("tamam"); } }, () => { if (acik) { setDsgD("hata"); } });
+    return () => { acik = false; };
+  }, [anahtar]);
   const hazir = p !== undefined || pD !== "bekliyor";
   const tazeleniyor = hazir && (pD === "bekliyor" || ptD === "bekliyor" || dsgD === "bekliyor");
   const t = p?.toplam ?? null;
@@ -90,8 +99,8 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
       {/* 29.10 (05 §3, 08 #10): operasyon kararı ilk ekranda — yarının programı hazır mı; yalnız program yükümlülüğü olan
           santraller «hazır/eksik» alır; yükümlülüğü olmayana zorunlu operasyon gibi sunulmaz; segment seçilmemişse söylenir */}
       {p && p.santraller.length > 0 && p.santraller.some((r) => r.program) && (
-        <Kart baslik="Yarının programı (KGÜP)" alt="Bildirim penceresi 14:00–15:30; kaynak, 15:30 kesiminden önce verilmiş son tahmin"
-          sag={<span className="cip">{t && t.program_yukumlu != null ? <Meta items={[`${sayiTr(t.program_hazir ?? 0)} / ${sayiTr(t.program_yukumlu)} hazır`, (t.program_segment_yok ?? 0) > 0 && `${sayiTr(t.program_segment_yok ?? 0)} santralde segment seçilmedi`]} /> : "—"}</span>}>
+        <Kart baslik="Yarının üretim programı, KGÜP" alt="EPİAŞ bildirim penceresi 14:00–15:30; program, 15:30 kesiminden önce verilmiş son tahminden üretilir"
+          sag={<span className="cip">{t && t.program_yukumlu != null ? <Meta items={[`${sayiTr(t.program_hazir ?? 0)} / ${sayiTr(t.program_yukumlu)} hazır`, (t.program_bildirilen ?? 0) > 0 && `${sayiTr(t.program_bildirilen ?? 0)} bildirildi`, (t.program_segment_yok ?? 0) > 0 && `${sayiTr(t.program_segment_yok ?? 0)} santralde segment seçilmedi`]} /> : "—"}</span>}>
           <ul className="tanim-listesi program-listesi">
             {p.santraller.map((r) => {
               const pr = r.program;
@@ -106,9 +115,11 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
                 <li key={r.id}><b>{r.ad}</b>
                   <span>
                     <span className={`rozet ${rozet[0]} rozet-kucuk`}>{rozet[1]}</span>
+                    {pr.bildirilen && <span className="rozet rozet-ok rozet-kucuk" style={{ marginLeft: 6 }} title="Panele yüklenen, TPYS'ye bildirildiği beyan edilen dosya; TPYS kabulü doğrulanmaz">bildirildi</span>}
                     {pr.hazir && pr.run_at && <span className="soluk"> · tahmin {tarih(pr.run_at)}</span>}
+                    {pr.bildirilen && pr.bildirim_zamani && <span className="soluk"> · dosya {tarih(pr.bildirim_zamani)}</span>}
                     {pr.not && pr.yukumlu === true && pr.hazir !== false && <span className="soluk"> · {pr.not}</span>}
-                    {pr.yukumlu === false && r.segment && <span className="soluk"> · dengesizliği taşıyan: GTŞ/toplayıcı portföyü</span>}
+                    {pr.yukumlu === false && r.segment && <span className="soluk"> · dengesizliği tedarikçi/toplayıcı portföyü taşır</span>}
                     {pr.yukumlu && <span className="soluk"> · bildirim penceresi {pr.teslim.durum === "pencere_acik" ? `açık, ${sayiTr(pr.teslim.dakika_kaldi)} dk kaldı` : pr.teslim.durum === "erken" ? "henüz açılmadı" : "kapandı"}</span>}
                   </span>
                 </li>);
@@ -198,32 +209,59 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
       {/* v2.276 (Dalga 5): DSG/toplayıcı netleştirmesi — portföy tek dengesizlik hesabına girerse ne kazanılır */}
       {/* v2.502 (F-08): DSG netleşmesi yürürlükteki kuralla — üye eşiği × PH grupta, aşan kısım bireysel; KÜPST üye bazında, netleşmez.
           Eski sunucu (gosterge !== false) hâlâ «gösterge» rozeti alır. */}
-      <Kart baslik={dsg?.gosterge === false ? "DSG netleşmesi — portföy dengesizliği (yürürlükteki kural)" : "DSG netleşme göstergesi — portföy dengesizliği (yalnız EDT)"}
+      <Kart baslik={dsg?.gosterge === false ? "Dengeden Sorumlu Grup (DSG) hesabı — santrallerinizin enerji dengesizlik tutarı: tek başına ve DSG içinde netleştirilmiş" : "Dengeden Sorumlu Grup (DSG) göstergesi — yalnız enerji dengesizlik tutarı, eşik uygulanmadan"}
         sag={<>{dsg?.gosterge !== false && <span className="rozet rozet-notr rozet-kucuk" title="Yürürlükteki %5 üye eşiği (Karar 13869) ve KÜPST'ün netleşmemesi bu görünümde uygulanmaz; varsayımsal yeniden hesap">gösterge</span>}
-          {dsg?.gosterge === false && dsg.esik != null && <span className="cip" title={dsg.esik_kaynak ?? ""}>üye eşiği %{sayiTr(dsg.esik * 100, 0)}</span>}
-          <span className="cip">{dsg ? <Meta items={[`${sayiTr(dsg.pencere_gun)} gün`, dsg.fiyat.senaryo_saat > 0 ? "senaryo fiyatı" : "piyasa fiyatı (EPİAŞ)", dsgD === "bekliyor" && "güncelleniyor", dsgD === "hata" && "güncellenemedi"]} /> : "—"}</span></>}>
+          {dsg?.gosterge === false && dsg.esik != null && <span className="cip" title={`Her santralin sapmasının bu oran ile PH çarpımı kadarı DSG içinde netleşir; aşan kısım santralin kendisinde kalır. ${dsg.esik_kaynak ?? ""}`}>üye eşiği %{sayiTr(dsg.esik * 100, 0)}</span>}
+          <span className="cip" title={dsg && dsg.fiyat.senaryo_saat > 0 ? "Senaryo fiyatı: EPİAŞ piyasa fiyatı bağlı olmadığından EPDK yıllık ortalaması kullanılmış, sistem yönü dengede varsayılmıştır." : "Saatlik PTF, SMF ve sistem yönü EPİAŞ verisinden alınır."}>{dsg ? <Meta items={[`son ${sayiTr(dsg.pencere_gun)} gün`, dsg.fiyat.senaryo_saat > 0 ? "senaryo fiyatı" : "piyasa fiyatı (EPİAŞ)", dsgD === "bekliyor" && "güncelleniyor", dsgD === "hata" && "güncellenemedi"]} /> : "—"}</span></>}>
         {dsg === undefined && dsgD === "bekliyor" ? <YerTutucu yukseklik={124} />
-         : !dsg && dsgD === "hata" ? <p className="soluk" style={{ margin: 0 }}>DSG hesabı şu anda alınamadı (sunucu hatası).</p>
+         : !dsg && dsgD === "hata" ? <p className="soluk" style={{ margin: 0 }}>Dengeden Sorumlu Grup hesabı şu anda alınamadı; sunucu hatası.</p>
          : !dsg ? <p className="soluk" style={{ margin: 0 }}>Veri yok.</p> : dsg.ayri_tl == null ? (
-          <p className="soluk" style={{ margin: 0 }}>{dsg.not ?? "Ortak saat yetersiz."}</p>
+          <p className="soluk" style={{ margin: 0 }}>{dsg.not === "ortak saat yetersiz" ? "Santrallerin ortak ölçüm saati henüz yeterli değil; en az 24 saat gerekir, ölçümler biriktikçe hesaplanır." : dsg.not === "portföyde dengesizlik taşıyan üye yok" ? "Portföyde dengesizliğini kendisi taşıyan santral bulunmuyor; DSG hesabı bu segmentlerde uygulanmaz." : dsg.not ?? "Santrallerin ortak ölçüm saati henüz yeterli değil."}</p>
         ) : (
           <>
             <div className="ızgara satir-3" style={{ marginBottom: 10 }}>
-              <Kpi etiket="Santraller ayrı ayrı (EDT kaybı)" deger={sayiTr(dsg.ayri_tl / 1000, 1)} birim="bin TL" alt={`${sayiTr(dsg.santral)} santral, ${sayiTr(dsg.sapma_ayri_mwh ?? 0, 1)} MWh sapma`} />
-              <Kpi etiket="Portföy netleşmiş (EDT kaybı)" deger={sayiTr((dsg.net_tl ?? 0) / 1000, 1)} birim="bin TL" alt={`${sayiTr(dsg.sapma_net_mwh ?? 0, 1)} MWh net sapma`} />
-              <Kpi etiket="Netleşme farkı (varsayımsal)" deger={sayiTr((dsg.kazanc_tl ?? 0) / 1000, 1)} birim="bin TL" alt={dsg.kazanc_pct != null ? `ayrı EDT kaybının %${sayiTr(dsg.kazanc_pct, 1)}'i${dsg.gosterge === false ? "; eşikli" : "; eşiksiz gösterge"}` : "—"} />
+              <Kpi etiket="Tek başına dengesizlik maliyeti" bilgi="Her santralin kendi dengesizliğini tek başına ödemesi hâlinde oluşacak toplam maliyet. Enerji dengesizlik tutarı, EDT, yürürlükteki kuralla yeniden hesaplanır." deger={sayiTr(dsg.ayri_tl / 1000, 1)} birim="bin TL" alt={`${sayiTr(dsg.santral)} santral · ${sayiTr(dsg.sapma_ayri_mwh ?? 0, 1)} MWh sapma`} />
+              <Kpi etiket="DSG içinde netleştirilmiş maliyet" bilgi="Santrallerin sapmaları Dengeden Sorumlu Grup içinde birbirini kısmen karşılar; geriye kalan dengesizliğin maliyetidir." deger={sayiTr((dsg.net_tl ?? 0) / 1000, 1)} birim="bin TL" alt={`${sayiTr(dsg.sapma_net_mwh ?? 0, 1)} MWh net sapma`} />
+              <Kpi etiket="Netleşme farkı · varsayımsal" bilgi="Tek başına maliyet ile DSG içindeki maliyet arasındaki fark. Yürürlükteki kuralla yapılan yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir." deger={sayiTr((dsg.kazanc_tl ?? 0) / 1000, 1)} birim="bin TL" alt={dsg.kazanc_pct != null ? `tek başına maliyetin %${sayiTr(dsg.kazanc_pct, 1)}'i${dsg.gosterge === false ? " · eşik kuralı uygulandı" : " · eşik uygulanmadan, gösterge"}` : "—"} />
             </div>
             {dsg.gosterge === false && (
               <div className="ızgara satir-3" style={{ marginBottom: 10 }}>
-                <Kpi etiket="EDT tek başına (net)" deger={sayiTr((dsg.edt_tek_tl ?? 0) / 1000, 1)} birim="bin TL" alt="negatif = katılımcı öder" />
-                <Kpi etiket="EDT grupta (net)" deger={sayiTr((dsg.edt_dsg_tl ?? 0) / 1000, 1)} birim="bin TL" alt={`grup ${sayiTr((dsg.edt_grup_tl ?? 0) / 1000, 1)} + bireysel ${sayiTr((dsg.edt_bireysel_tl ?? 0) / 1000, 1)} bin TL`} />
-                <Kpi etiket="KÜPST üye toplamı" deger={dsg.kupst_uye_tl != null ? sayiTr(dsg.kupst_uye_tl / 1000, 1) : "—"} birim={dsg.kupst_uye_tl != null ? "bin TL" : undefined} alt={dsg.kupst_uye_tl != null ? "üye UEVÇB'si bazında; netleşmez" : "segment seçilmedi; hesaplanamadı"} />
+                <Kpi etiket="Enerji dengesizlik tutarı · tek başına" bilgi="EPİAŞ uzlaştırmasındaki enerji dengesizlik tutarı, EDT: eksik üretim borç, fazla üretim alacak yazar; gösterilen değer ikisinin netidir. Eksi tutar santralin ödediği, artı tutar aldığı tutardır." deger={sayiTr((dsg.edt_tek_tl ?? 0) / 1000, 1)} birim="bin TL" alt="eksi = santral öder · artı = santral alır" />
+                <Kpi etiket="Enerji dengesizlik tutarı · DSG içinde" bilgi="DSG içinde netleşen kısmın tutarı ile eşiği aşıp santralin kendisinde kalan kısmın tutarının toplamı; grubun net ödeyeceği ya da alacağı tutardır." deger={sayiTr((dsg.edt_dsg_tl ?? 0) / 1000, 1)} birim="bin TL" alt={`DSG içinde netleşen ${sayiTr((dsg.edt_grup_tl ?? 0) / 1000, 1)} + santralde kalan ${sayiTr((dsg.edt_bireysel_tl ?? 0) / 1000, 1)} bin TL`} />
+                <Kpi etiket="KGÜP sapma tutarı · KÜPST" bilgi="Kesinleşmiş gün öncesi üretim programından tolerans üstü sapmanın tutarı, KÜPST. Her santral kendi uzlaştırmaya esas veriş çekiş birimi için öder; DSG içinde netleşmez ve enerji dengesizlik tutarından ayrı bir kalemdir." deger={dsg.kupst_uye_tl != null ? sayiTr(dsg.kupst_uye_tl / 1000, 1) : "—"} birim={dsg.kupst_uye_tl != null ? "bin TL" : undefined} alt={dsg.kupst_uye_tl != null ? "üyelerin toplamı · santral başına ödenir · DSG içinde netleşmez" : "üyelerin toplamı · segment seçilmedi; hesaplanamadı"} />
               </div>
+            )}
+            {dsg.gosterge === false && dsg.uyeler && Object.keys(dsg.uyeler).length > 1 && (
+              <details className="aciklama genis" style={{ marginBottom: 10 }}>
+                <summary>DSG maliyetinin üyelere dağılımı — {dsg.dagitim_etiket ?? "sapma payına göre"}</summary>
+                <div style={{ display: "flex", margin: "8px 0", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                  <label className="soluk" htmlFor="dsg-anahtar">Dağıtım anahtarı<Bilgi metin="Grubun net enerji dengesizlik tutarı üyelere bu anahtarla paylaştırılır. Anahtar DSG sözleşmesinde belirlenir; mevzuat sabitlemez. Sapma payına göre: netleşen sapmadaki pay. Eşit: her santrale aynı pay. Üretime göre: gerçekleşen üretim oranı." /></label>
+                  <select id="dsg-anahtar" className="girdi" value={anahtar} onChange={(e) => setAnahtar(e.target.value as DsgAnahtar)} aria-label="DSG üyelere dağıtım anahtarı">
+                    <option value="sapma">sapma payına göre</option>
+                    <option value="esit">eşit</option>
+                    <option value="uretim">üretime göre</option>
+                  </select>
+                </div>
+                <div style={{ overflowX: "auto" }}>
+                  <table className="veri" style={{ fontSize: 13.5 }}>
+                    <thead><tr><th>Santral</th><th>Sapma (MWh)</th><th>Pay</th><th>Tek başına EDT</th><th>DSG içinde EDT</th><th>Fark</th></tr></thead>
+                    <tbody>
+                      {Object.entries(dsg.uyeler).map(([ad, u]) => (
+                        <tr key={ad}><td>{ad}</td><td>{sayiTr(u.sapma_mwh, 1)}</td><td>{u.pay_pct != null ? `%${sayiTr(u.pay_pct, 1)}` : "—"}</td>
+                          <td>{sayiTr(u.edt_tek_tl / 1000, 1)} <span className="birim">bin TL</span></td>
+                          <td>{u.edt_dsg_tl != null ? sayiTr(u.edt_dsg_tl / 1000, 1) : "—"} <span className="birim">bin TL</span></td>
+                          <td>{u.netlesme_farki_tl != null ? sayiTr(u.netlesme_farki_tl / 1000, 1) : "—"} <span className="birim">bin TL</span></td></tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="soluk" style={{ fontSize: 13, margin: "6px 0 0" }}>DSG içinde EDT, santralde kalan kısım ile grubun net tutarından alınan payın toplamıdır. Fark, DSG içindeki tutar ile tek başına tutar arasındaki farktır; eksi tutar santralin ödediği tutardır. Santrallerin toplamı grup toplamına eşittir. Bu hesap varsayımsaldır; EPİAŞ uzlaştırma sonucu değildir.</p>
+              </details>
             )}
             {dsg.gosterge === false && ((dsg.disi?.length ?? 0) > 0 || (dsg.segment_yok?.length ?? 0) > 0) && (
               <p className="soluk" style={{ fontSize: 13.5, margin: "0 0 8px" }}>
-                {(dsg.disi?.length ?? 0) > 0 && `Portföy dışı (dengesizlik taşımaz): ${dsg.disi!.join(", ")}. `}
-                {(dsg.segment_yok?.length ?? 0) > 0 && `Segment seçilmedi (lisanslı güneş varsayıldı, KÜPST hesaplanamadı): ${dsg.segment_yok!.join(", ")}.`}
+                {(dsg.disi?.length ?? 0) > 0 && `DSG kapsamı dışındaki santraller, dengesizliğini kendisi taşımayanlar: ${dsg.disi!.join(", ")}. `}
+                {(dsg.segment_yok?.length ?? 0) > 0 && `Segmenti seçilmemiş santraller, lisanslı güneş varsayıldı ve KÜPST hesaplanamadı; Santralim › Santral ayarlarından seçilir: ${dsg.segment_yok!.join(", ")}.`}
               </p>
             )}
             <p className="soluk" style={{ fontSize: 14, margin: 0 }}>{dsg.not}</p>
