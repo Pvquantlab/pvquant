@@ -18,10 +18,16 @@ def _prog(sapma_kw):
 
 def test_dsg_netlesme():
     fiyat = pd.DataFrame({"ptf": 2000.0, "smf": 2500.0, "kaynak": "senaryo"}, index=pd.date_range("2026-08-01", periods=48, freq="h", tz="UTC"))
-    r = dz.dsg_hesapla_df({"A": _prog(+200), "B": _prog(-200)}, fiyat)      # A fazla, B açık → net sıfır
-    assert r["santral"] == 2 and r["ayri_tl"] > 0 and r["net_tl"] == 0 and r["kazanc_tl"] == r["ayri_tl"] and r["kazanc_pct"] == 100.0
-    tek = dz.dsg_hesapla_df({"A": _prog(+200)}, fiyat)
+    # v2.502 (F-08): yürürlükteki kural — yalnız eşik (Ağustos 2026: %5 × PH) kadarı netleşir; A fazla / B açık tam netleşmez
+    r = dz.dsg_hesapla_df({"A": _prog(+200), "B": _prog(-200)}, fiyat, segmentler={"A": "lisansli_serbest", "B": "lisansli_serbest"})
+    assert r["santral"] == 2 and r["ayri_tl"] > r["net_tl"] > 0 and r["kazanc_tl"] == r["ayri_tl"] - r["net_tl"] and r["esik"] == 0.05
+    assert r["gosterge"] is False and r["kupst_uye_tl"] is not None and r["netlesme_farki_tl"] > 0 and r["disi"] == []
+    # eşik: A için PH = max(1,0; 0,8) = 1,0 → grup +0,05; B için PH = max(1,0; 1,2) = 1,2 → grup −0,06; grup net −0,01 MWh/saat × 48 = 0,48 → 0,5
+    assert r["sapma_net_mwh"] == 0.5 and r["sapma_ayri_mwh"] == 19.2
+    tek = dz.dsg_hesapla_df({"A": _prog(+200)}, fiyat, segmentler={"A": "lisansli_serbest"})
     assert tek["kazanc_tl"] == 0                                                  # tek santral: netleşme yok
+    disi = dz.dsg_hesapla_df({"A": _prog(+200), "B": _prog(-200)}, fiyat, segmentler={"A": "lisansli_serbest", "B": "lisanssiz_dagitim"})
+    assert disi["disi"] == ["B"] and disi["santral"] == 1                        # dengesizlik taşımayan üye portföy dışı
     assert dz.dsg_hesapla_df({}, fiyat)["ayri_tl"] is None
     assert dz.dsg_hesapla_df({"A": _prog(100).iloc[:10], "B": _prog(50)}, fiyat)["not"] == "ortak saat yetersiz"
 

@@ -20,6 +20,8 @@ def istemci(monkeypatch):
                 "satirlar": [{"saat": h, "kgup_mwh": 1.0, "eak_mwh": 9.0} for h in range(24)], "csv": "Tarih;Saat;UEVCB;KGUP_MWh;EAK_MWh\n01.07.2025;0;UEVCB-1;0,0;9,0\n",
                 "dosya_adi": f"KGUP_UEVCB-1_{gun.isoformat()}_{kantil}.csv", "teslim": {"durum": "erken"}}
     monkeypatch.setattr(kgup_service, "uret", _uret)
+    from pvquant.services import kgup_arsiv_service
+    monkeypatch.setattr(kgup_arsiv_service, "kaydet", lambda t, p, r, indiren=None: {"id": "s", "surum": 1, "sha256": "0" * 64, "yeni": True})   # v2.502: arşiv DB'siz
     monkeypatch.setattr(plant_service, "params_birlestir", lambda t, p, **k: {"segment": k.get("segment"), "uevcb": k.get("uevcb"), "eski": 1})
     yield TestClient(api_main.app)
     api_main.app.dependency_overrides.clear()

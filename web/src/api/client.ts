@@ -1,4 +1,4 @@
-import type { SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar } from "./types";
+import type { KgupSurum, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -725,6 +725,22 @@ export const api = {
     if (TABAN == null) throw new Error("Örnek kipte KGÜP dosyası yok.");
     const jeton = localStorage.getItem("pvq_token");
     const y = await fetch(`${TABAN}/v1/plants/${p}/kgup?kantil=${kantil}${gun ? `&gun=${gun}` : ""}`, { headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
+    if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise<void>(() => {}); }
+    if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
+    const cd = y.headers.get("Content-Disposition") ?? ""; const es = /filename="([^"]+)"/.exec(cd);
+    const url = URL.createObjectURL(await y.blob()); const a = document.createElement("a");
+    a.href = url; a.download = es ? es[1] : "KGUP.csv"; a.click(); URL.revokeObjectURL(url);
+  },
+  /** v2.502 (F-06): sürüm geçmişi; örnek kipte boş liste. */
+  kgupSurumler: async (p: string, gun?: string): Promise<KgupSurum[]> => {
+    if (TABAN == null) return [];
+    try { return (await getir<{ surumler: KgupSurum[] }>(`/v1/plants/${p}/kgup/surumler${gun ? `?gun=${gun}` : ""}`)).surumler; } catch { return []; }
+  },
+  /** v2.502: arşivdeki dosyayı bayt bayt indir. */
+  kgupSurumIndir: async (p: string, surumId: string): Promise<void> => {
+    if (TABAN == null) throw new Error("Örnek kipte arşiv yok.");
+    const jeton = localStorage.getItem("pvq_token");
+    const y = await fetch(`${TABAN}/v1/plants/${p}/kgup/surumler/${surumId}`, { headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
     if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise<void>(() => {}); }
     if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
     const cd = y.headers.get("Content-Disposition") ?? ""; const es = /filename="([^"]+)"/.exec(cd);

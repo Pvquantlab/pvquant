@@ -176,3 +176,36 @@ def test_optimal_kantil_tarihli():
     assert d.optimal_teklif_kantili(2650, 2650, 2650, tarih=date(2026, 6, 1)) == pytest.approx(0.5, abs=0.01)
     assert d.optimal_teklif_kantili(2650, 2650, 2650, tarih=date(2025, 6, 1)) == pytest.approx(0.5, abs=0.01)
     assert 0.05 <= d.optimal_teklif_kantili(2650, 3400, 2500, tarih=date(2026, 6, 1)) < 0.5
+
+
+# ---------------------------------------------------------------- F-08: DSG netleşmesi (T-14) ---------------------------
+def test_t14_dsg_esik_ve_kupst_netlesmez():
+    """T-14: 26.01.2026 00:00, PTF 2.876 / SMF 3.170, açık; 4 üye F 5,0; A 4,6 / 5,2 / 5,5 / 4,0; eşik %5, PH = max(A, F).
+    Tek başına −2.751,48; grup net EDM −0,025 → −84,01; bireysel −2.396,49; DSG −2.480,50; fark 270,98; Σ üye KÜPST 110,95 (netleşmez)."""
+    i = _saat("2026-01-26 00:00")
+    A = {"u1": 4.6, "u2": 5.2, "u3": 5.5, "u4": 4.0}
+    r = d.dsg_saatlik({u: pd.Series([5.0], index=i) for u in A}, {u: pd.Series([a], index=i) for u, a in A.items()},
+                      pd.Series([2876.0], index=i), pd.Series([3170.0], index=i), yon="acik", segmentler={u: "lisansli_serbest" for u in A})
+    s = r["saatlik"].iloc[0]
+    _yakin(s.p_neg, 3360.20); _yakin(s.p_poz, 2789.72); assert s.esik == 0.05
+    _yakin(s.edt_tek, -2751.48); _yakin(s.edt_grup, -84.01); _yakin(s.edt_bireysel, -2396.49); _yakin(s.edt_dsg, -2480.50); _yakin(s.netlesme_farki, 270.98)
+    _yakin(s.kupst_uye, 110.95)
+    k = {u: float(r["uyeler"][u]["kupst"].iloc[0]) for u in A}; _yakin(k["u1"], 0); _yakin(k["u2"], 0); _yakin(k["u3"], 15.85); _yakin(k["u4"], 95.10)
+    assert s.durum == "ok" and r["disi"] == []
+    # grup sapmasından KÜPST hesaplanmaz: tek sayı 0 değil üyelerin toplamı
+    assert s.kupst_uye > 0
+    # kayıp tutarlılığı: tek başına kayıp = Σ üye kayıp; DSG kaybı daha küçük, fark = netlesme_farki
+    _yakin(float(s.kayip_tek - s.kayip_dsg), 270.98)
+
+
+def test_dsg_esik_tarihe_gore_ve_dengesizlik_tasimayan_uye_disi():
+    i = _saat("2025-06-10 12:00")
+    r = d.dsg_saatlik({"a": pd.Series([10.0], index=i), "b": pd.Series([10.0], index=i)}, {"a": pd.Series([9.0], index=i), "b": pd.Series([11.0], index=i)},
+                      pd.Series([2000.0], index=i), pd.Series([2500.0], index=i), yon="acik",
+                      segmentler={"a": "lisansli_serbest", "b": "lisanssiz_dagitim"})
+    assert r["disi"] == ["b"] and r["saatlik"].iloc[0].esik == 0.10 and "%10" in r["esik_kaynak"]
+    r27 = d.dsg_saatlik({"a": pd.Series([10.0], index=_saat("2027-02-01 12:00"))}, {"a": pd.Series([9.0], index=_saat("2027-02-01 12:00"))},
+                        pd.Series([2000.0], index=_saat("2027-02-01 12:00")), pd.Series([2500.0], index=_saat("2027-02-01 12:00")), yon="acik")
+    assert r27["saatlik"].iloc[0].esik == 0.05 and "VARSAYILDI" in r27["esik_kaynak"]
+    r_p = d.dsg_saatlik({"a": pd.Series([10.0], index=i)}, {"a": pd.Series([9.0], index=i)}, pd.Series([2000.0], index=i), pd.Series([2500.0], index=i), esik_oran=0.2)
+    assert r_p["saatlik"].iloc[0].esik == 0.2 and r_p["esik_kaynak"] == "parametre"

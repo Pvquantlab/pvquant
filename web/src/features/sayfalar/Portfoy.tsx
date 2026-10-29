@@ -196,8 +196,12 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
         )}
       </Kart>
       {/* v2.276 (Dalga 5): DSG/toplayıcı netleştirmesi — portföy tek dengesizlik hesabına girerse ne kazanılır */}
-      {/* 29.10 (05 §5, F-08 sonraki paket): DSG görünümü GÖSTERGE — yalnız EDT kaybı, %5 üye eşiği ve KÜPST ayrımı uygulanmaz */}
-      <Kart baslik="DSG netleşme göstergesi — portföy dengesizliği (yalnız EDT)" sag={<><span className="rozet rozet-notr rozet-kucuk" title="Yürürlükteki %5 üye eşiği (Karar 13869) ve KÜPST'ün netleşmemesi bu görünümde uygulanmaz; varsayımsal yeniden hesap">gösterge</span><span className="cip">{dsg ? <Meta items={[`${sayiTr(dsg.pencere_gun)} gün`, dsg.fiyat.senaryo_saat > 0 ? "senaryo fiyatı" : "piyasa fiyatı (EPİAŞ)", dsgD === "bekliyor" && "güncelleniyor", dsgD === "hata" && "güncellenemedi"]} /> : "—"}</span></>}>
+      {/* v2.502 (F-08): DSG netleşmesi yürürlükteki kuralla — üye eşiği × PH grupta, aşan kısım bireysel; KÜPST üye bazında, netleşmez.
+          Eski sunucu (gosterge !== false) hâlâ «gösterge» rozeti alır. */}
+      <Kart baslik={dsg?.gosterge === false ? "DSG netleşmesi — portföy dengesizliği (yürürlükteki kural)" : "DSG netleşme göstergesi — portföy dengesizliği (yalnız EDT)"}
+        sag={<>{dsg?.gosterge !== false && <span className="rozet rozet-notr rozet-kucuk" title="Yürürlükteki %5 üye eşiği (Karar 13869) ve KÜPST'ün netleşmemesi bu görünümde uygulanmaz; varsayımsal yeniden hesap">gösterge</span>}
+          {dsg?.gosterge === false && dsg.esik != null && <span className="cip" title={dsg.esik_kaynak ?? ""}>üye eşiği %{sayiTr(dsg.esik * 100, 0)}</span>}
+          <span className="cip">{dsg ? <Meta items={[`${sayiTr(dsg.pencere_gun)} gün`, dsg.fiyat.senaryo_saat > 0 ? "senaryo fiyatı" : "piyasa fiyatı (EPİAŞ)", dsgD === "bekliyor" && "güncelleniyor", dsgD === "hata" && "güncellenemedi"]} /> : "—"}</span></>}>
         {dsg === undefined && dsgD === "bekliyor" ? <YerTutucu yukseklik={124} />
          : !dsg && dsgD === "hata" ? <p className="soluk" style={{ margin: 0 }}>DSG hesabı şu anda alınamadı (sunucu hatası).</p>
          : !dsg ? <p className="soluk" style={{ margin: 0 }}>Veri yok.</p> : dsg.ayri_tl == null ? (
@@ -207,8 +211,21 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
             <div className="ızgara satir-3" style={{ marginBottom: 10 }}>
               <Kpi etiket="Santraller ayrı ayrı (EDT kaybı)" deger={sayiTr(dsg.ayri_tl / 1000, 1)} birim="bin TL" alt={`${sayiTr(dsg.santral)} santral, ${sayiTr(dsg.sapma_ayri_mwh ?? 0, 1)} MWh sapma`} />
               <Kpi etiket="Portföy netleşmiş (EDT kaybı)" deger={sayiTr((dsg.net_tl ?? 0) / 1000, 1)} birim="bin TL" alt={`${sayiTr(dsg.sapma_net_mwh ?? 0, 1)} MWh net sapma`} />
-              <Kpi etiket="Netleşme farkı (varsayımsal)" deger={sayiTr((dsg.kazanc_tl ?? 0) / 1000, 1)} birim="bin TL" alt={dsg.kazanc_pct != null ? `ayrı EDT kaybının %${sayiTr(dsg.kazanc_pct, 1)}'i; eşiksiz gösterge` : "—"} />
+              <Kpi etiket="Netleşme farkı (varsayımsal)" deger={sayiTr((dsg.kazanc_tl ?? 0) / 1000, 1)} birim="bin TL" alt={dsg.kazanc_pct != null ? `ayrı EDT kaybının %${sayiTr(dsg.kazanc_pct, 1)}'i${dsg.gosterge === false ? "; eşikli" : "; eşiksiz gösterge"}` : "—"} />
             </div>
+            {dsg.gosterge === false && (
+              <div className="ızgara satir-3" style={{ marginBottom: 10 }}>
+                <Kpi etiket="EDT tek başına (net)" deger={sayiTr((dsg.edt_tek_tl ?? 0) / 1000, 1)} birim="bin TL" alt="negatif = katılımcı öder" />
+                <Kpi etiket="EDT grupta (net)" deger={sayiTr((dsg.edt_dsg_tl ?? 0) / 1000, 1)} birim="bin TL" alt={`grup ${sayiTr((dsg.edt_grup_tl ?? 0) / 1000, 1)} + bireysel ${sayiTr((dsg.edt_bireysel_tl ?? 0) / 1000, 1)} bin TL`} />
+                <Kpi etiket="KÜPST üye toplamı" deger={dsg.kupst_uye_tl != null ? sayiTr(dsg.kupst_uye_tl / 1000, 1) : "—"} birim={dsg.kupst_uye_tl != null ? "bin TL" : undefined} alt={dsg.kupst_uye_tl != null ? "üye UEVÇB'si bazında; netleşmez" : "segment seçilmedi; hesaplanamadı"} />
+              </div>
+            )}
+            {dsg.gosterge === false && ((dsg.disi?.length ?? 0) > 0 || (dsg.segment_yok?.length ?? 0) > 0) && (
+              <p className="soluk" style={{ fontSize: 13.5, margin: "0 0 8px" }}>
+                {(dsg.disi?.length ?? 0) > 0 && `Portföy dışı (dengesizlik taşımaz): ${dsg.disi!.join(", ")}. `}
+                {(dsg.segment_yok?.length ?? 0) > 0 && `Segment seçilmedi (lisanslı güneş varsayıldı, KÜPST hesaplanamadı): ${dsg.segment_yok!.join(", ")}.`}
+              </p>
+            )}
             <p className="soluk" style={{ fontSize: 14, margin: 0 }}>{dsg.not}</p>
           </>
         )}

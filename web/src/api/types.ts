@@ -121,9 +121,13 @@ export interface PortfoyTahmin {
 }
 /** /portfoy/dsg — v2.276: DSG netleştirmesi. */
 export interface PortfoyDsg {
-  /** 29.10: gösterge — yalnız EDT kaybı; %5 üye eşiği ve KÜPST ayrımı uygulanmaz (F-08). 'kazanc_tl' = netleşme farkı (sözleşme adı). */
+  /** v2.502 (F-08): yürürlükteki kural — üye eşiği × PH grupta, aşan kısım bireysel; KÜPST üye bazında toplanır. gosterge=false.
+   *  'kazanc_tl' = netleşme farkı (sözleşme adı; vaat değil). edt_* işaretli (negatif = katılımcı öder). */
   gosterge?: boolean;
   santral: number; n_saat: number; ayri_tl: number | null; net_tl: number | null; kazanc_tl: number | null; kazanc_pct?: number | null;
+  edt_tek_tl?: number; edt_dsg_tl?: number; edt_grup_tl?: number; edt_bireysel_tl?: number; netlesme_farki_tl?: number; kupst_uye_tl?: number | null;
+  esik?: number; esik_kaynak?: string; kural_surumu?: string; hesaplanamayan_saat?: number; disi?: string[]; segment_yok?: string[];
+  uyeler?: Record<string, { kayip_tl: number; edt_tek_tl: number; edt_bireysel_tl: number; kupst_tl: number | null; sapma_mwh: number; grup_payi_mwh: number }>;
   santral_tl?: Record<string, number>; uretim_mwh?: number; sapma_net_mwh?: number; sapma_ayri_mwh?: number;
   pencere_gun: number; fiyat: { epias_saat: number; senaryo_saat: number }; not: string;
 }
@@ -140,6 +144,12 @@ export interface KgupOnizleme {
   gip?: { kural: string; ornek_teslimat: string; ornek_kapi: string; ornek_revizyon_son: string };
   oneri?: { durum: string; kantil: string | null; tau?: number; not?: string } | null;
   teslim: { hedef_gun: string; durum: string; dakika_kaldi: number; teyit_saati: string };
+}
+/** /kgup/surumler — v2.502 (F-06): indirilen dosyaların değiştirilemez sürüm kaydı. */
+export interface KgupSurum {
+  id: string; teslim_gunu: string; surum: number; kantil: string; run_id: string | null; run_at: string | null; kesim: string | null;
+  eak_mw: number | null; eak_kaynak: string | null; toplam_mwh: number | null; sha256: string; dosya_adi: string; olusturma: string;
+  indiren: string | null; bayt: number;
 }
 export const SEGMENTLER: { deger: string; etiket: string }[] = [
   { deger: "lisansli_serbest", etiket: "Lisanslı (serbest piyasa)" }, { deger: "lisansli_yekdem", etiket: "Lisanslı (YEKDEM)" },

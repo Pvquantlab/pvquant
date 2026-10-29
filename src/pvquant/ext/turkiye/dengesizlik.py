@@ -185,10 +185,61 @@ def kiyas(kgup_a: pd.Series, kgup_b: pd.Series, gerceklesen: pd.Series, ptf: pd.
 
 
 def dsg_netlestir(programlar: dict[str, pd.Series], gerceklesenler: dict[str, pd.Series]) -> tuple[pd.Series, pd.Series]:
-    """DSG portföyü: saatlik KGÜP ve gerçekleşen toplamları. GÖSTERGE: %5 üye eşiği (Karar 13869) ve KÜPST'ün netleşmemesi
-    uygulanmaz — F-08 (sonraki paket). Ekranda «gösterge» etiketiyle sunulur."""
+    """Eski gösterge: saatlik KGÜP ve gerçekleşen toplamları (eşiksiz). Yürürlükteki hesap için dsg_saatlik() kullanılır."""
     K = pd.concat(programlar.values(), axis=1).sum(axis=1); G = pd.concat(gerceklesenler.values(), axis=1).sum(axis=1)
     return K, G
+
+
+def dsg_saatlik(programlar: dict[str, pd.Series], gerceklesenler: dict[str, pd.Series], ptf: pd.Series, smf: pd.Series, *,
+                yon=None, segmentler: dict[str, str | None] | None = None, pozisyonlar: dict[str, pd.Series] | None = None,
+                esik_oran: float | None = None, ariza_sayilari: dict[str, int] | None = None) -> dict:
+    """F-08 (v2.502) — DSG netleşmesi, DUY m.111(3)-(5) + Karar 13869: her üye için PH = max(UEVM, satış) (saf satıcı GES: max(A, F));
+    üyenin |EDM|'sinin esik × PH kadarı grupta netleşir, aşan kısım üyenin kendi P(−)/P(+)'sıyla bireysel kalır; grubun net EDM'si
+    grup fiyatıyla (aynı saatlik birim fiyat). Eşik tarihe göre kural tablosundan (%10 → %5, 2027 varsayım) ya da esik_oran.
+    KÜPST üye UEVÇB'si bazında (segment/tarih/arıza) hesaplanır ve TOPLANIR, netleşmez (m.110(6)). Dengesizlik taşımayan
+    segmentteki üye (dağıtım lisanssız, öz tüketim) portföye GİRMEZ, 'disi' listesinde döner. Toplayıcı DSG'de yer alamaz (m.20(4)).
+    Dönüş: {"saatlik": DataFrame (edt_tek, edt_dsg, edt_grup, edt_bireysel, netlesme_farki, kayip_tek, kayip_dsg, kupst_uye, esik, kural_surumu, durum),
+            "uyeler": {ad: DataFrame}, "disi": [ad…], "esik_kaynak": str}."""
+    segmentler = segmentler or {}
+    disi = [ad for ad in programlar if segmentler.get(ad) in ("lisanssiz_dagitim", "oz_tuketim_saatlik")]
+    uyeler = [ad for ad in programlar if ad not in disi]
+    idx = None
+    for ad in uyeler:
+        i = _hizala(programlar[ad], gerceklesenler[ad], ptf, smf)
+        idx = i if idx is None else idx.intersection(i)
+    if idx is None or len(idx) == 0:
+        return {"saatlik": pd.DataFrame(), "uyeler": {}, "disi": disi, "esik_kaynak": ""}
+    P = ptf.loc[idx].astype(float); S = smf.loc[idx].astype(float)
+    f = birim_fiyatlar(P, S, yon)
+    prm = kr.parametre_cercevesi(idx)
+    esik = pd.Series(esik_oran, index=idx, dtype=float) if esik_oran is not None else prm["dsg_esik"].astype(float)
+    esik_kaynak = "parametre" if esik_oran is not None else kr.kural(idx[0]).dsg_dayanak
+    grup_edm = pd.Series(0.0, index=idx); birey_edt = pd.Series(0.0, index=idx); tek_edt = pd.Series(0.0, index=idx)
+    kayip_tek = pd.Series(0.0, index=idx); kayip_birey = pd.Series(0.0, index=idx); kupst_top = pd.Series(0.0, index=idx)
+    kupst_eksik = pd.Series(False, index=idx); detay = {}
+    for ad in uyeler:
+        F = (pozisyonlar or {}).get(ad, programlar[ad]).reindex(idx).astype(float).fillna(programlar[ad].reindex(idx).astype(float))
+        A = gerceklesenler[ad].loc[idx].astype(float); edm = A - F
+        ph = pd.concat([A, F], axis=1).max(axis=1)
+        grup = edm.clip(lower=-esik * ph, upper=esik * ph); birey = edm - grup
+        # tek başına (netleşme olmasaydı) ve bireysel kalan kısım — aynı saatlik birim fiyatlarla
+        tek = edm.clip(lower=0) * f["p_poz"] - (-edm).clip(lower=0) * f["p_neg"]
+        br = birey.clip(lower=0) * f["p_poz"] - (-birey).clip(lower=0) * f["p_neg"]
+        k_tek = edm.clip(lower=0) * (P - f["p_poz"]) + (-edm).clip(lower=0) * (f["p_neg"] - P)
+        k_br = birey.clip(lower=0) * (P - f["p_poz"]) + (-birey).clip(lower=0) * (f["p_neg"] - P)
+        uye = saatlik(programlar[ad].loc[idx], A, P, S, yon=yon, segment=segmentler.get(ad), ariza_sayisi=(ariza_sayilari or {}).get(ad, 0))
+        detay[ad] = pd.DataFrame({"edm": edm, "ph": ph, "grup_payi": grup, "bireysel": birey, "edt_tek": tek, "edt_bireysel": br, "kupst": uye["kupst"]})
+        grup_edm += grup; birey_edt += br; tek_edt += tek; kayip_tek += k_tek; kayip_birey += k_br
+        kupst_top += uye["kupst"].fillna(0.0); kupst_eksik |= uye["kupst"].isna()
+    grup_edt = grup_edm.clip(lower=0) * f["p_poz"] - (-grup_edm).clip(lower=0) * f["p_neg"]
+    kayip_grup = grup_edm.clip(lower=0) * (P - f["p_poz"]) + (-grup_edm).clip(lower=0) * (f["p_neg"] - P)
+    out = pd.DataFrame({"ptf": P, "smf": S, "yon": f["yon"], "p_neg": f["p_neg"], "p_poz": f["p_poz"], "esik": esik,
+                        "grup_edm": grup_edm, "edt_grup": grup_edt, "edt_bireysel": birey_edt, "edt_dsg": grup_edt + birey_edt,
+                        "edt_tek": tek_edt, "netlesme_farki": (grup_edt + birey_edt) - tek_edt,
+                        "kayip_tek": kayip_tek, "kayip_dsg": kayip_grup + kayip_birey,
+                        "kupst_uye": kupst_top.where(~kupst_eksik, np.nan), "kural_surumu": f["kural_surumu"],
+                        "durum": np.where(f["yon_eksik"].values, "yon_eksik", np.where(kupst_eksik.values, "kupst_hesaplanamaz", "ok"))})
+    return {"saatlik": out, "uyeler": detay, "disi": disi, "esik_kaynak": esik_kaynak}
 
 
 def teminat(saatlik_df: pd.DataFrame, risk_katsayisi: float = 1.0, ay: int = 3) -> float:

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
 import { api, bellekten, ayniysaEskisi } from "../../api/client";
-import type { SantralOzeti, TahminSerisi, KgupOnizleme, Nowcast } from "../../api/types";
+import type { SantralOzeti, TahminSerisi, KgupOnizleme, KgupSurum, Nowcast } from "../../api/types";
 import { Kart, Sayfa, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
 import { Meta } from "../../lib/Meta";
 import ProductionForecastChart, { type ActualPoint, type ForecastPoint, type Plant } from "./ProductionForecastChart";
@@ -48,6 +48,8 @@ export function Tahminler({ plantId }: { plantId: string }) {
   const [kgup, setKgup] = useState<KgupOnizleme | null | undefined>(undefined);   // v2.260
   const [kgupHata, setKgupHata] = useState<string | null>(null);
   const [kgupKantil, setKgupKantil] = useState<KgupKantil>("p50");   // 29.10
+  const [surumler, setSurumler] = useState<KgupSurum[] | undefined>(undefined);   // v2.502 (F-06): indirilen dosyaların sürüm geçmişi
+  const surumleriYenile = () => { api.kgupSurumler(plantId).then((v) => setSurumler(v)); };
   const [nc, setNc] = useState<Nowcast | null | undefined>(undefined);   // v2.266
   // v2.273: son koşunun bant kaynağı (ensemble üyeleri / model) — dip notta dürüstçe söylenir
   const [bantYazisi, setBantYazisi] = useState<string | null>(null);
@@ -58,6 +60,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
     api.tahmin(plantId, "16d").then((v) => { if (acik) { setSeri((e) => ayniysaEskisi(e, v)); setCekD((d) => ({ ...d, seri: "tamam" })); } }, () => { if (acik) { setSeri((e) => e ?? null); setCekD((d) => ({ ...d, seri: "hata" })); } });
     api.ozet(plantId).then((v) => { if (acik) { setOzet((e) => ayniysaEskisi(e, v)); setCekD((d) => ({ ...d, ozet: "tamam" })); } }, () => { if (acik) { setOzet((e) => e ?? null); setCekD((d) => ({ ...d, ozet: "hata" })); } });
     api.kgupOnizleme(plantId).then((v) => { if (acik) setKgup(v); }, () => { if (acik) setKgup(null); });
+    api.kgupSurumler(plantId).then((v) => { if (acik) setSurumler(v); });
     api.nowcast(plantId).then((v) => { if (acik) setNc(v); }, () => { if (acik) setNc(null); });
     api.kosular(plantId).then((k) => {
       if (!acik) return;
@@ -161,7 +164,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
                   <select className="girdi" aria-label="Program seviyesi (kantil)" value={kgupKantil} onChange={(e) => setKgupKantil(e.target.value as KgupKantil)}>
                     {KGUP_KANTILLER.map((k) => <option key={k} value={k}>{k.toUpperCase()}{k === "p50" ? " (beklenen)" : k === "p10" ? " (temkinli)" : k === "p90" ? " (iddialı)" : ""}</option>)}
                   </select>
-                  <button className="dugme dugme-ana" onClick={() => { setKgupHata(null); api.kgupIndir(plantId, undefined, kgupKantil).catch((e) => setKgupHata(String(e.message ?? e))); }}>CSV indir</button>
+                  <button className="dugme dugme-ana" onClick={() => { setKgupHata(null); api.kgupIndir(plantId, undefined, kgupKantil).then(surumleriYenile).catch((e) => setKgupHata(String(e.message ?? e))); }}>CSV indir</button>
                 </div>
               </div>
               {/* v2.275: toplayıcı/DSG çıktısı — bantlı saatlik ve 15 dk (2027 hazırlığı) */}
@@ -180,6 +183,32 @@ export function Tahminler({ plantId }: { plantId: string }) {
             </p>
             {kgup.uyarilar.length > 0 && <ul className="not-listesi uyari">{kgup.uyarilar.map((u) => <li key={u}>{u}</li>)}</ul>}
             {kgup.sicrama_saatleri.length > 0 && <p style={{ fontSize: 13.5, margin: "8px 0 0" }}>≥200 MWh ani değişim: saat {kgup.sicrama_saatleri.join(", ")}; dosyada 15 dakikalık adımlar.</p>}
+            {/* v2.502 (F-06): sürüm geçmişi — her indirme değiştirilemez kayıt; aynı içerik yeni sürüm açmaz; dosya bayt bayt geri alınır */}
+            <details className="aciklama">
+              <summary>Sürüm geçmişi{surumler && surumler.length > 0 ? ` (${sayiTr(surumler.length)} kayıt)` : ""}</summary>
+              {surumler === undefined ? <p className="soluk">yükleniyor…</p>
+               : surumler.length === 0 ? <p className="soluk">Henüz indirilmiş dosya yok. Her «CSV indir» sürüm olarak saklanır; aynı içerik yeniden indirilince yeni sürüm açılmaz.</p>
+               : (
+                <div className="grafik-kaydir">
+                  <table className="veri" style={{ fontSize: 13 }}>
+                    <thead><tr><th>Teslim günü</th><th>Sürüm</th><th>Seviye</th><th>Tahmin</th><th>Toplam (MWh)</th><th>İndiren</th><th>İndirme</th><th>Özet (SHA-256)</th><th aria-hidden="true" /></tr></thead>
+                    <tbody>
+                      {surumler.map((v) => (
+                        <tr key={v.id}>
+                          <td>{new Date(v.teslim_gunu + "T12:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}</td>
+                          <td>{v.surum}</td><td>{v.kantil.toUpperCase()}</td>
+                          <td>{v.run_at ? new Date(v.run_at).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }) : "—"}</td>
+                          <td>{v.toplam_mwh != null ? sayiTr(v.toplam_mwh, 1) : "—"}</td>
+                          <td>{v.indiren ?? "API"}</td>
+                          <td>{new Date(v.olusturma).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" })}</td>
+                          <td title={v.sha256}>{v.sha256.slice(0, 12)}…</td>
+                          <td><button className="dugme" onClick={() => { setKgupHata(null); api.kgupSurumIndir(plantId, v.id).catch((e) => setKgupHata(String(e.message ?? e))); }}>İndir</button></td>
+                        </tr>))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </details>
             <details className="aciklama">
               <summary>Piyasa takvimi ve program kuralı</summary>
               <p>

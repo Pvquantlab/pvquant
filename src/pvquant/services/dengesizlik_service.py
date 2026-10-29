@@ -226,10 +226,13 @@ def oneri_kantili(fiyat: pd.DataFrame, kat: d.Katsayilar | None = None) -> dict:
             "not": f"Eksik üretimin birim maliyeti ile fazla üretimin birim maliyetinin dengesi; son {len(f)} saatin fiyat ve sistem yönünden."}
 
 
-def dsg_hesapla_df(programlar: dict[str, pd.DataFrame], fiyat: pd.DataFrame, kat: d.Katsayilar = d.Katsayilar()) -> dict:
-    """SAF. programlar[santral] = program_df çıktısı (ts_utc, gercek_kw, kgup_kw). Santral başına ayrı EDT kaybı toplamı ↔ portföyün
-    NETLEŞMİŞ (KGÜP toplamı vs gerçekleşen toplamı) kaybı; fark = netleşme farkı (GÖSTERGE; 'kazanc_tl' alan adı sözleşmedir)."""
-    K: dict[str, pd.Series] = {}; G: dict[str, pd.Series] = {}; ayri = {}
+def dsg_hesapla_df(programlar: dict[str, pd.DataFrame], fiyat: pd.DataFrame, kat: d.Katsayilar | None = None,
+                   segmentler: dict[str, str | None] | None = None, ariza_sayilari: dict[str, int] | None = None) -> dict:
+    """SAF (v2.502, F-08). programlar[santral] = program_df çıktısı (ts_utc, gercek_kw, kgup_kw). Yürürlükteki DSG kuralı:
+    üye eşiği (%10 / %5 / 2027 varsayım) PH = max(A, F) ile; aşan kısım bireysel; KÜPST üye bazında toplanır, netleşmez;
+    dengesizlik taşımayan segment portföy dışı. Alan adları sözleşme: ayri_tl = tek başına kayıp, net_tl = DSG kaybı,
+    kazanc_tl = fark (ayri − net; «netleşme farkı», vaat değil). Ek: edt_tek_tl, edt_dsg_tl, netlesme_farki_tl, kupst_uye_tl, esik."""
+    K: dict[str, pd.Series] = {}; G: dict[str, pd.Series] = {}
     for ad, df in programlar.items():
         if df is None or df.empty:
             continue
@@ -237,48 +240,62 @@ def dsg_hesapla_df(programlar: dict[str, pd.DataFrame], fiyat: pd.DataFrame, kat
         if x.empty:
             continue
         K[ad] = x["kgup_kw"].astype(float) / 1000.0; G[ad] = x["gercek_kw"].astype(float) / 1000.0
+    bos = {"santral": 0, "n_saat": 0, "ayri_tl": None, "net_tl": None, "kazanc_tl": None, "gosterge": False}
     if not K:
-        return {"santral": 0, "n_saat": 0, "ayri_tl": None, "net_tl": None, "kazanc_tl": None}
+        return bos
     idx = None
     for ad in K:
         idx = K[ad].index if idx is None else idx.intersection(K[ad].index)
     if idx is None or len(idx) < 24:
-        return {"santral": len(K), "n_saat": int(len(idx) if idx is not None else 0), "ayri_tl": None, "net_tl": None, "kazanc_tl": None,
-                "not": "ortak saat yetersiz"}
+        return {**bos, "santral": len(K), "n_saat": int(len(idx) if idx is not None else 0), "not": "ortak saat yetersiz"}
     f = fiyat.reindex(idx); ptf = f["ptf"].astype(float); smf = f["smf"].astype(float)
-    yon, _ = _yon_ve_kaynak(f)
-    # GÖSTERGE: yalnız EDT kaybı (dengesizlik_maliyeti); KÜPST üye UEVÇB'sinde kalır ve netleşmez, %5 üye eşiği uygulanmaz (F-08)
-    ayri_tl = 0.0
-    for ad in K:
-        ayri[ad] = float(d.saatlik(K[ad].loc[idx], G[ad].loc[idx], ptf, smf, kat, yon=yon)["dengesizlik_maliyeti"].sum())
-        ayri_tl += ayri[ad]
-    Kn, Gn = d.dsg_netlestir({a: K[a].loc[idx] for a in K}, {a: G[a].loc[idx] for a in G})
-    net_tl = float(d.saatlik(Kn, Gn, ptf, smf, kat, yon=yon)["dengesizlik_maliyeti"].sum())
-    return {"santral": len(K), "n_saat": int(len(idx)), "ayri_tl": round(ayri_tl, 0), "net_tl": round(net_tl, 0),
-            "kazanc_tl": round(ayri_tl - net_tl, 0), "kazanc_pct": (round(100 * (ayri_tl - net_tl) / ayri_tl, 1) if ayri_tl > 0 else None),
-            "santral_tl": {a: round(v, 0) for a, v in ayri.items()},
-            "uretim_mwh": round(float(Gn.sum()), 1), "sapma_net_mwh": round(float((Gn - Kn).abs().sum()), 1),
-            "sapma_ayri_mwh": round(float(sum((G[a].loc[idx] - K[a].loc[idx]).abs().sum() for a in K)), 1)}
+    yon, fiyat_ozeti = _yon_ve_kaynak(f)
+    r = d.dsg_saatlik({a: K[a].loc[idx] for a in K}, {a: G[a].loc[idx] for a in G}, ptf, smf, yon=yon, segmentler=segmentler, ariza_sayilari=ariza_sayilari)
+    sa = r["saatlik"]
+    if sa.empty:
+        return {**bos, "santral": len(K), "disi": r["disi"], "not": "portföyde dengesizlik taşıyan üye yok"}
+    ayri = float(sa["kayip_tek"].sum()); net = float(sa["kayip_dsg"].sum())
+    kupst = float(sa["kupst_uye"].sum(min_count=1)) if sa["kupst_uye"].notna().all() else None
+    uye = {a: {"kayip_tl": round(float((v["edm"].clip(lower=0) * (sa["ptf"] - sa["p_poz"]) + (-v["edm"]).clip(lower=0) * (sa["p_neg"] - sa["ptf"])).sum()), 0),
+               "edt_tek_tl": round(float(v["edt_tek"].sum()), 0), "edt_bireysel_tl": round(float(v["edt_bireysel"].sum()), 0),
+               "kupst_tl": (round(float(v["kupst"].sum()), 0) if v["kupst"].notna().all() else None),
+               "sapma_mwh": round(float(v["edm"].abs().sum()), 1), "grup_payi_mwh": round(float(v["grup_payi"].abs().sum()), 1)} for a, v in r["uyeler"].items()}
+    return {"santral": len(r["uyeler"]), "n_saat": int(len(idx)), "ayri_tl": round(ayri, 0), "net_tl": round(net, 0),
+            "kazanc_tl": round(ayri - net, 0), "kazanc_pct": (round(100 * (ayri - net) / ayri, 1) if ayri > 0 else None),
+            "edt_tek_tl": round(float(sa["edt_tek"].sum()), 0), "edt_dsg_tl": round(float(sa["edt_dsg"].sum()), 0),
+            "edt_grup_tl": round(float(sa["edt_grup"].sum()), 0), "edt_bireysel_tl": round(float(sa["edt_bireysel"].sum()), 0),
+            "netlesme_farki_tl": round(float(sa["netlesme_farki"].sum()), 0), "kupst_uye_tl": (round(kupst, 0) if kupst is not None else None),
+            "esik": float(sa["esik"].iloc[-1]), "esik_kaynak": r["esik_kaynak"], "kural_surumu": " | ".join(sorted(set(sa["kural_surumu"]))),
+            "hesaplanamayan_saat": int((sa["durum"] != "ok").sum()), "disi": r["disi"], "gosterge": False,
+            "santral_tl": {a: v["kayip_tl"] for a, v in uye.items()}, "uyeler": uye,
+            "uretim_mwh": round(float(sum(G[a].loc[idx].sum() for a in r["uyeler"])), 1),
+            "sapma_net_mwh": round(float(sa["grup_edm"].abs().sum()), 1),
+            "sapma_ayri_mwh": round(float(sum((G[a].loc[idx] - K[a].loc[idx]).abs().sum() for a in r["uyeler"])), 1),
+            "fiyat": fiyat_ozeti}
 
 
 def dsg_ozet(tenant_id, gun: int = 30) -> dict:
-    """Kiracının tüm santralleri: DSG (dengeleme sorumlusu grup) netleşmesi — portföy tek dengesizlik hesabına girerse ne kazanılır."""
+    """Kiracının santralleri: DSG netleşmesi (yürürlükteki kural, F-08). Dengesizlik taşımayan segmentler portföy dışı; segment seçilmemiş
+    santral lisanslı güneş kabul edilir ve KÜPST hesaplanamaz olarak işaretlenir."""
     from sqlalchemy import text
     from pvquant.db import tenant_baglami
     from pvquant.services import piyasa_service
     with tenant_baglami(tenant_id) as s:
         santraller = [dict(r._mapping) for r in s.execute(text("SELECT id, name, params_json FROM plants WHERE NOT archived ORDER BY name"))]
     programlar = {p["name"]: program_df(tenant_id, str(p["id"]), gun) for p in santraller}
+    segmentler = {p["name"]: segment_bilgisi(p.get("params_json"))["segment"] for p in santraller}
+    ariza = {p["name"]: int(_pj(p.get("params_json")).get("ariza_sayisi_ay") or 0) for p in santraller}
     idx = pd.DatetimeIndex([], tz="UTC")
     for df in programlar.values():
         if df is not None and not df.empty:
             idx = idx.union(pd.DatetimeIndex(df["ts_utc"]))
-    fiyat = piyasa_service.fiyatlar(idx) if len(idx) else pd.DataFrame(columns=["ptf", "smf", "kaynak"])
-    out = dsg_hesapla_df(programlar, fiyat)
+    fiyat = piyasa_service.fiyatlar(idx) if len(idx) else pd.DataFrame(columns=["ptf", "smf", "yon", "kaynak"])
+    out = dsg_hesapla_df(programlar, fiyat, segmentler=segmentler, ariza_sayilari=ariza)
     out["pencere_gun"] = gun
-    out["fiyat"] = {"epias_saat": int((fiyat["kaynak"] == "epias").sum()) if len(fiyat) else 0, "senaryo_saat": int((fiyat["kaynak"] == "senaryo").sum()) if len(fiyat) else 0}
-    out["gosterge"] = True
-    out["not"] = ("Tek santral: netleşme yok (fark 0) — ikinci santral bağlanınca burada görünür." if out["santral"] <= 1
-                  else "Gösterge: aynı saatte bir santralin fazlası ötekinin açığını kapatırsa portföy dengesizliği azalır. Yürürlükteki %5 üye "
-                       "eşiği (Karar 13869) ve KÜPST'ün netleşmemesi bu görünümde uygulanmaz; yalnız EDT kaybı, KÜPST hariç. Varsayımsal yeniden hesap.")
+    out.setdefault("fiyat", {"epias_saat": int((fiyat["kaynak"] == "epias").sum()) if len(fiyat) else 0, "senaryo_saat": int((fiyat["kaynak"] == "senaryo").sum()) if len(fiyat) else 0})
+    out["segment_yok"] = [p["name"] for p in santraller if not segmentler[p["name"]]]
+    out["not"] = ("Tek üye: netleşme yok (fark 0) — ikinci santral bağlanınca burada görünür." if out["santral"] <= 1
+                  else f"DUY m.111(3)-(5): her üyenin dengesizliğinin eşik (%{out.get('esik', 0.05) * 100:.0f} × PH) kadarı grupta netleşir, aşan kısım bireysel kalır; "
+                       "KÜPST üye bazında toplanır, netleşmez. Varsayımsal yeniden hesap (üye satışı = KGÜP varsayıldı); EPİAŞ uzlaştırma sonucu değildir."
+                       + (f" Senaryo fiyatı: {out['fiyat']['senaryo_saat']} saat, yön varsayımı dengede." if out["fiyat"].get("senaryo_saat") else ""))
     return out

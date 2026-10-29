@@ -712,8 +712,8 @@ def portfoy(claims=Depends(gecerli_kullanici)):
     return portfoy_service.ozet(claims["tenant_id"])
 
 
-def _kgup_yaniti(tenant_id: str, plant_id: str, gun: str | None, kantil: str, fmt: str):
-    """v2.260/v2.264 — panel ve dış API'nin ortak KGÜP gövdesi."""
+def _kgup_yaniti(tenant_id: str, plant_id: str, gun: str | None, kantil: str, fmt: str, indiren=None):
+    """v2.260/v2.264 — panel ve dış API'nin ortak KGÜP gövdesi. v2.502: CSV indirme arşive yazılır (kgup_arsiv_service; aynı içerik yeni sürüm açmaz)."""
     from datetime import date, timedelta
     from pvquant.services import kgup_service, plant_service
     if kantil not in kgup_service.KANTILLER:
@@ -734,14 +734,45 @@ def _kgup_yaniti(tenant_id: str, plant_id: str, gun: str | None, kantil: str, fm
         raise HTTPException(int(r.get("kod", 409)), r["hata"] + (f" (eksik saatler: {r['eksik_saatler']})" if r.get("eksik_saatler") else ""))
     if fmt == "json":
         return {k: v for k, v in r.items() if k != "csv"}
+    from pvquant.services import kgup_arsiv_service
+    arsiv = kgup_arsiv_service.kaydet(tenant_id, str(row["id"]), r, indiren=indiren)   # v2.502: değiştirilemez sürüm kaydı
     return Response(content=r["csv"].encode("utf-8-sig"), media_type="text/csv; charset=utf-8",   # BOM burada ve ext.kgup.csv_baytlari'nda aynı (SHA-256 dosya baytlarıyla)
-                    headers={"Content-Disposition": f'attachment; filename="{r["dosya_adi"]}"'})
+                    headers={"Content-Disposition": f'attachment; filename="{r["dosya_adi"]}"', "X-PVQ-Surum": str(arsiv["surum"]), "X-PVQ-SHA256": arsiv["sha256"]})
 
 
 @app.get("/v1/plants/{plant_id}/kgup")
 def kgup_dosyasi(plant_id: str, gun: str | None = None, kantil: str = "p50", fmt: str = "csv", claims=Depends(gecerli_kullanici)):
-    """v2.260 — KGÜP saatlik program (D-1 15:30 öncesi koşudan). fmt=csv → TPYS CSV eki; fmt=json → önizleme."""
-    return _kgup_yaniti(claims["tenant_id"], plant_id, gun, kantil, fmt)
+    """v2.260 — KGÜP saatlik program (D-1 15:30 öncesi koşudan). fmt=csv → TPYS CSV eki (arşive yazılır); fmt=json → önizleme."""
+    return _kgup_yaniti(claims["tenant_id"], plant_id, gun, kantil, fmt, indiren=claims.get("sub"))
+
+
+@app.get("/v1/plants/{plant_id}/kgup/surumler")
+def kgup_surumler(plant_id: str, gun: str | None = None, n: int = 30, claims=Depends(gecerli_kullanici)):
+    """v2.502 (F-06) — indirilen KGÜP dosyalarının sürüm geçmişi (yeni → eski); kayıt değiştirilemez."""
+    from datetime import date as _d
+    from pvquant.services import kgup_arsiv_service, plant_service
+    if plant_service.getir(claims["tenant_id"], plant_id) is None:
+        raise HTTPException(404, "santral yok")
+    if not (1 <= n <= 200):
+        raise HTTPException(422, "n 1-200")
+    try:
+        g = _d.fromisoformat(gun) if gun else None
+    except ValueError:
+        raise HTTPException(422, "gun YYYY-MM-DD olmalı")
+    return {"surumler": kgup_arsiv_service.listele(claims["tenant_id"], plant_id, g, n)}
+
+
+@app.get("/v1/plants/{plant_id}/kgup/surumler/{surum_id}")
+def kgup_surum_dosyasi(plant_id: str, surum_id: str, claims=Depends(gecerli_kullanici)):
+    """v2.502 (F-06) — arşivdeki dosyanın kendisi (bayt bayt; SHA-256 doğrulanır)."""
+    from pvquant.services import kgup_arsiv_service, plant_service
+    if plant_service.getir(claims["tenant_id"], plant_id) is None:
+        raise HTTPException(404, "santral yok")
+    r = kgup_arsiv_service.getir(claims["tenant_id"], plant_id, surum_id)
+    if r is None:
+        raise HTTPException(404, "sürüm yok")
+    return Response(content=r["dosya"], media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="{r["dosya_adi"]}"', "X-PVQ-Surum": str(r["surum"]), "X-PVQ-SHA256": r["sha256"]})
 
 
 # ------------------------------------------------------------------ v2.264: Dış API (X-API-Key) --------------
@@ -789,8 +820,20 @@ def dis_tahmin(plant_id: str, request: Request, anahtar=Depends(api_anahtari("ta
 
 @app.get("/v1/dis/santral/{plant_id}/kgup", tags=["Dış API"])
 def dis_kgup(plant_id: str, gun: str | None = None, kantil: str = "p50", fmt: str = "json", anahtar=Depends(api_anahtari("kgup:oku"))):
-    """KGÜP saatlik program (D-1 15:30 öncesi koşudan); gün verilmezse İstanbul yarını. fmt=csv → TPYS CSV."""
+    """KGÜP saatlik program (D-1 15:30 öncesi koşudan); gün verilmezse İstanbul yarını. fmt=csv → TPYS CSV (arşive yazılır)."""
     return _kgup_yaniti(anahtar["tenant_id"], plant_id, gun, kantil, fmt)
+
+
+@app.get("/v1/dis/santral/{plant_id}/kgup/surumler", tags=["Dış API"])
+def dis_kgup_surumler(plant_id: str, gun: str | None = None, n: int = 30, anahtar=Depends(api_anahtari("kgup:oku"))):
+    """v2.502 (F-06) — KGÜP sürüm geçmişi (indirilen dosyalar: sürüm, kaynak koşu, kesim, SHA-256)."""
+    from datetime import date as _d
+    from pvquant.services import kgup_arsiv_service
+    try:
+        g = _d.fromisoformat(gun) if gun else None
+    except ValueError:
+        raise HTTPException(422, "gun YYYY-MM-DD olmalı")
+    return {"surumler": kgup_arsiv_service.listele(anahtar["tenant_id"], plant_id, g, max(1, min(n, 200)))}
 
 
 # ------------------------------------------------------------------ v2.264: Yönetim (admin) -----------------
