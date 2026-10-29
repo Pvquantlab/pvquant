@@ -121,3 +121,15 @@ Ayarlar › «EPİAŞ piyasa verisi bağlantısı» kartı. İnceleme düzeltmel
 alarm açıklaması «07:10–18:10 arası her saat».
 
 Ayrıntı: `PVQuant_Ilk_Uygulama/02` M21, `03` §7g, `04` #15 ve #12 kapandı.
+
+# Sekizinci paket — v2.508 (30.10.2026, canlı): geri testte WMAPE hata duyarlılığı (04 #2)
+
+Commit `e059569`, CI #624 (7 dk 27 s). Dağıtım: api + worker + web imajları (üç imaj aynı Dockerfile'dan; sürüm kayması olmasın diye hepsi), alembic yok.
+Canlı: index.html ve 22/22 JS/CSS birebir (referans e059569 geçici çalışma ağacından); `backtest_service.wmape_duyarlilik_df` api kapsayıcısında;
+api günlüğü hatasız.
+
+Kapsam: santralin kendi saatlik hata deseni hedef WMAPE'ye ölçeklenir (5/8/12/15/20 + gerçek), 0–kurulu güç kırpması, rastgele üretim yok;
+`maliyet_geri_test_df` çıktısına `duyarlilik`; Doğruluk › geri test kartı › «Hata duyarlılığı · varsayımsal» açılır tablosu, «öngörü ya da
+taahhüt değildir» notu. Testler: `tests/test_duyarlilik.py` (2), tam takım 778/1 atlandı.
+
+Ayrıntı: `PVQuant_Ilk_Uygulama/02` M22, `04` #2 kapandı.
