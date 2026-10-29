@@ -182,14 +182,26 @@ def _gun(tarih) -> date:
     return ts.date()
 
 
-def parametre_cercevesi(index: pd.DatetimeIndex, segment: str | None = None, ariza_sayisi: int = 0, portfoy: bool = False) -> pd.DataFrame:
-    """Saatlik index (UTC ya da saat dilimli) → her saat için yürürlükteki parametreler (vektörel hesap için)."""
+def parametre_cercevesi(index: pd.DatetimeIndex, segment: str | None = None, ariza_sayisi: int = 0, portfoy: bool = False, *,
+                        karsi_olgu: str | None = None) -> pd.DataFrame:
+    """Saatlik index (UTC ya da saat dilimli) → her saat için yürürlükteki parametreler (vektörel hesap için).
+    karsi_olgu (F-07 geri test sütunları, C iş kolu tanımı): '2026' → bütün saatlere 2026 kuralı — EDT formülü (yöne bağlı k/l, V 150 /
+    1.11.2026'dan 100, B, o saatin AFL'si) VE KÜPST katsayıları Karar 14029/14907 (tarihe göre; 2025 saatlerinde 14029 brüt);
+    '2026_V100' → ayrıca V = 100 bütün dönemde. DSG eşiği tarihli kalır."""
     idx = pd.DatetimeIndex(index)
     yerel = idx.tz_convert(IST) if idx.tz is not None else idx.tz_localize("UTC").tz_convert(IST)
     gunler = pd.Series(yerel.date, index=idx)
     satirlar = {}
     for g in gunler.unique():
         r = kural(g, segment, portfoy)
+        if karsi_olgu in ("2026", "2026_V100"):
+            g26 = max(g, date(2026, 1, 1))
+            e = edt_kurali(g26); kp = kupst_kurali(g26, segment, portfoy)
+            v = 100.0 if karsi_olgu == "2026_V100" else e.V
+            e = EdtKurali(e.rejim, e.k, e.l, v, e.B, afl(g), e.toplama,            # AFL o saatin gerçek tavanı (3.000/3.400/4.500)
+                          e.dayanak + ("; karşı-olgu: 2026 kuralı tüm döneme, V = 100" if karsi_olgu == "2026_V100" else "; karşı-olgu: 2026 kuralı tüm döneme"),
+                          (e.surum.replace("V150", "V100") if karsi_olgu == "2026_V100" else e.surum) + "-karsi-olgu")
+            r = Kural(r.tarih, r.segment, e, kp, r.dsg_esik, r.dsg_dayanak, r.belirsiz_2027)
         satirlar[g] = {"rejim": r.edt.rejim, "surum": r.surum,
                        "k_acik": r.edt.k["acik"], "k_fazla": r.edt.k["fazla"], "k_dengede": r.edt.k["dengede"],
                        "l_acik": r.edt.l["acik"], "l_fazla": r.edt.l["fazla"], "l_dengede": r.edt.l["dengede"],

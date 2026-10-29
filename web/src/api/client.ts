@@ -1,4 +1,4 @@
-import type { KgupSurum, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar } from "./types";
+import type { KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -736,6 +736,19 @@ export const api = {
     if (TABAN == null) return [];
     try { return (await getir<{ surumler: KgupSurum[] }>(`/v1/plants/${p}/kgup/surumler${gun ? `?gun=${gun}` : ""}`)).surumler; } catch { return []; }
   },
+  /** v2.503: müşterinin bildirdiği KGÜP dosyasını yükle (beyan; TPYS kabulü doğrulanmaz) → kayıt + kıyas. */
+  kgupBildirilenYukle: async (p: string, gun: string, dosya: File): Promise<{ kayit: { surum: number; sha256: string; yeni: boolean; toplam_mwh: number }; kiyas: KgupKiyas }> => {
+    if (TABAN == null) throw new Error("Örnek kipte yükleme yok.");
+    const jeton = localStorage.getItem("pvq_token"); const fd = new FormData(); fd.append("dosya", dosya);
+    const y = await fetch(`${TABAN}/v1/plants/${p}/kgup/bildirilen?gun=${gun}`, { method: "POST", body: fd, headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
+    if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise(() => {}); }
+    if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
+    return y.json();
+  },
+  kgupKiyas: async (p: string, gun: string): Promise<KgupKiyas | null> => {
+    if (TABAN == null) return null;
+    try { return await getir<KgupKiyas>(`/v1/plants/${p}/kgup/kiyas?gun=${gun}`); } catch { return null; }
+  },
   /** v2.502: arşivdeki dosyayı bayt bayt indir. */
   kgupSurumIndir: async (p: string, surumId: string): Promise<void> => {
     if (TABAN == null) throw new Error("Örnek kipte arşiv yok.");
@@ -810,6 +823,11 @@ export const api = {
     const y = await fetch(`${TABAN}/v1/plants/${p}/segment`, { method: "PUT", headers: { "Content-Type": "application/json", ...(jeton ? { Authorization: `Bearer ${jeton}` } : {}) }, body: JSON.stringify({ segment, uevcb }) });
     if (!y.ok) throw new Error(`${y.status} segment`);
     return y.json();
+  },
+  /** v2.503 (F-07): 12 aylık uzlaştırma kalemleri geri testi — kapı yok/hata → null. */
+  dengesizlikGeriTest: async (p: string, gun = 365): Promise<DengesizlikGeriTest | null> => {
+    if (TABAN == null) return null;
+    try { return await getir<DengesizlikGeriTest>(`/v1/plants/${p}/dengesizlik/geri-test?gun=${gun}`); } catch { return null; }
   },
   /** v2.259: dengesizlik simülatörü — kapı yok/hata → null. */
   dengesizlik: async (p: string, gun = 90): Promise<Dengesizlik | null> => {

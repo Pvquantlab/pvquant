@@ -79,9 +79,8 @@ logs/
 
 # Local SCADA/test data (not committed)
 data/
-
-# Local SCADA/test data (not committed)
-data/
+# ... but repository test fixtures under tests/data/ are tracked
+!tests/data/
 frontend/app.py.faz1_backup
 data/santraller/
 *.bak_adim3_*

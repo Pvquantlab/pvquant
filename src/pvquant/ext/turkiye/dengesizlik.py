@@ -55,13 +55,13 @@ def _yon_serisi(yon, idx: pd.DatetimeIndex) -> pd.Series:
 
 
 def birim_fiyatlar(ptf: pd.Series, smf: pd.Series, yon, *, smf_n: pd.Series | None = None, smf_p: pd.Series | None = None,
-                   segment: str | None = None) -> pd.DataFrame:
+                   segment: str | None = None, karsi_olgu: str | None = None) -> pd.DataFrame:
     """SAF. Saat başına P(−), P(+), dal etiketleri, k/l ve kural sürümü. yon: Series|str|None ('acik'|'fazla'|'dengede')."""
     idx = pd.DatetimeIndex(ptf.index)
     P = ptf.astype(float); S = smf.astype(float).reindex(idx)
     SN = (smf_n.astype(float).reindex(idx) if smf_n is not None else S).fillna(S)
     SP = (smf_p.astype(float).reindex(idx) if smf_p is not None else S).fillna(S)
-    prm = kr.parametre_cercevesi(idx, segment)
+    prm = kr.parametre_cercevesi(idx, segment, karsi_olgu=karsi_olgu)
     y = _yon_serisi(yon, idx)
     eski = prm["rejim"].eq("2025").values
     # k/l: 2025 sabit 0,03; 2026 yöne göre; yön yoksa NaN
@@ -91,14 +91,14 @@ def birim_fiyatlar(ptf: pd.Series, smf: pd.Series, yon, *, smf_n: pd.Series | No
 def saatlik(kgup_mwh: pd.Series, gerceklesen_mwh: pd.Series, ptf: pd.Series, smf: pd.Series, kat: Katsayilar | None = None, *,
             yon=None, segment: str | None = None, ariza_sayisi: int = 0, smf_n: pd.Series | None = None, smf_p: pd.Series | None = None,
             pozisyon_mwh: pd.Series | None = None, budup_mwh: pd.Series | None = None, uecm_mwh: pd.Series | None = None,
-            portfoy: bool = False) -> pd.DataFrame:
+            portfoy: bool = False, karsi_olgu: str | None = None) -> pd.DataFrame:
     """Saatlik uzlaştırma kalemleri. Girdiler MWh; index saat dilimli (UTC önerilir) — kural teslim gününe (İstanbul) göre seçilir.
     yon: sistem yönü (Series/str; 'acik'|'fazla'|'dengede' ya da EPİAŞ metni). 2026 saatlerinde yön yoksa EDT NaN ve durum 'yon_eksik'."""
     kat = kat or Katsayilar()
     idx = _hizala(kgup_mwh, gerceklesen_mwh, ptf, smf)
     K, G, P, S = (x.loc[idx].astype(float) for x in (kgup_mwh, gerceklesen_mwh, ptf, smf))
     poz_ser = pozisyon_mwh.reindex(idx).astype(float).fillna(K) if pozisyon_mwh is not None else K
-    f = birim_fiyatlar(P, S, yon, smf_n=smf_n, smf_p=smf_p, segment=segment)
+    f = birim_fiyatlar(P, S, yon, smf_n=smf_n, smf_p=smf_p, segment=segment, karsi_olgu=karsi_olgu)
     edm = G - poz_ser
     poz, neg = edm.clip(lower=0), (-edm).clip(lower=0)
     edt_poz = poz * f["p_poz"]            # katılımcı alır (negatifse öder)
@@ -108,7 +108,7 @@ def saatlik(kgup_mwh: pd.Series, gerceklesen_mwh: pd.Series, ptf: pd.Series, smf
     referans_gelir = G * P
     kayip = referans_gelir - gerceklesen_gelir      # = poz·(PTF − P(+)) + neg·(P(−) − PTF)
     # --- KÜPST ---
-    prm = kr.parametre_cercevesi(idx, segment, ariza_sayisi, portfoy)
+    prm = kr.parametre_cercevesi(idx, segment, ariza_sayisi, portfoy, karsi_olgu=karsi_olgu)
     m = prm["m"].values.astype(float); n = prm["n"].values.astype(float)
     if kat.kupst_tolerans is not None:
         m = np.full(len(idx), float(kat.kupst_tolerans))

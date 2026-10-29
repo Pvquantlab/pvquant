@@ -1,6 +1,6 @@
 """PVQuant API — ince katman: HTTP -> services -> HTTP."""
 import pandas as pd
-from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi import FastAPI, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import Response   # v2.261: /kgup CSV eki modül düzeyinde kullanır
 from pydantic import BaseModel
 from apps.api.deps import gecerli_kullanici, yazma_yetkisi, yonetici_yetkisi, api_anahtari
@@ -762,6 +762,47 @@ def kgup_surumler(plant_id: str, gun: str | None = None, n: int = 30, claims=Dep
     return {"surumler": kgup_arsiv_service.listele(claims["tenant_id"], plant_id, g, n)}
 
 
+@app.post("/v1/plants/{plant_id}/kgup/bildirilen")
+def kgup_bildirilen_yukle(plant_id: str, gun: str, dosya: UploadFile = File(...), claims=Depends(yazma_yetkisi())):
+    """v2.503 (F-06) — müşterinin TPYS'ye bildirdiğini beyan ettiği KGÜP dosyası: doğrulanır, 'musteri' kaynağıyla değiştirilemez kayıt;
+    TPYS kabulü doğrulanmaz (beyan). Yanıt: kayıt + öneriyle kıyas."""
+    from datetime import date as _d
+    from pvquant.services import kgup_arsiv_service, plant_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    try:
+        g = _d.fromisoformat(gun)
+    except ValueError:
+        raise HTTPException(422, "gun YYYY-MM-DD olmalı")
+    b = dosya.file.read()
+    if not b or len(b) > 2_000_000:
+        raise HTTPException(422, "dosya boş ya da 2 MB'tan büyük")
+    pj = row.get("params_json") or {}
+    if isinstance(pj, str):
+        import json as _j; pj = _j.loads(pj)
+    from pvquant.ext.turkiye.kgup import Sablon
+    try:
+        k = kgup_arsiv_service.musteri_kaydet(claims["tenant_id"], str(row["id"]), g, b, dosya.filename or "bildirilen.csv", indiren=claims.get("sub"), sablon=Sablon.params_json_dan(pj))
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    return {"kayit": k, "kiyas": kgup_arsiv_service.kiyas(claims["tenant_id"], str(row["id"]), g)}
+
+
+@app.get("/v1/plants/{plant_id}/kgup/kiyas")
+def kgup_kiyas(plant_id: str, gun: str, claims=Depends(gecerli_kullanici)):
+    """v2.503 (F-06) — teslim günü için son PVQuant önerisi ↔ müşterinin bildirdiği KGÜP: saat saat fark."""
+    from datetime import date as _d
+    from pvquant.services import kgup_arsiv_service, plant_service
+    if plant_service.getir(claims["tenant_id"], plant_id) is None:
+        raise HTTPException(404, "santral yok")
+    try:
+        g = _d.fromisoformat(gun)
+    except ValueError:
+        raise HTTPException(422, "gun YYYY-MM-DD olmalı")
+    return kgup_arsiv_service.kiyas(claims["tenant_id"], plant_id, g)
+
+
 @app.get("/v1/plants/{plant_id}/kgup/surumler/{surum_id}")
 def kgup_surum_dosyasi(plant_id: str, surum_id: str, claims=Depends(gecerli_kullanici)):
     """v2.502 (F-06) — arşivdeki dosyanın kendisi (bayt bayt; SHA-256 doğrulanır)."""
@@ -1105,6 +1146,19 @@ def kurallar_tablosu(tarih: str | None = None, segment: str | None = "lisansli_s
         except ValueError:
             raise HTTPException(422, "tarih YYYY-MM-DD olmalı")
     return {"segment": segment, "satirlar": kr.tablo(segment)}
+
+
+@app.get("/v1/plants/{plant_id}/dengesizlik/geri-test")
+def dengesizlik_geri_test(plant_id: str, gun: int = 365, claims=Depends(gecerli_kullanici)):
+    """v2.503 (F-07) — uzlaştırma kalemleri geri testi: aylık tablo, karşı-olgu sütunları (2026 kuralı tüm döneme, V = 100), mekanizma kırılımı.
+    Varsayımsal yeniden hesap; EPİAŞ uzlaştırma sonucu değildir."""
+    from pvquant.services import backtest_service, plant_service
+    if not (30 <= gun <= 730):
+        raise HTTPException(422, "gun 30-730")
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    return backtest_service.maliyet_geri_test(claims["tenant_id"], {"id": str(row["id"]), "params_json": row.get("params_json")}, gun=gun)
 
 
 @app.get("/v1/plants/{plant_id}/dengesizlik")

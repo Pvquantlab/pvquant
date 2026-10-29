@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
 import { api, bellekten, ayniysaEskisi } from "../../api/client";
-import type { SantralOzeti, TahminSerisi, KgupOnizleme, KgupSurum, Nowcast } from "../../api/types";
+import type { SantralOzeti, TahminSerisi, KgupOnizleme, KgupSurum, KgupKiyas, Nowcast } from "../../api/types";
 import { Kart, Sayfa, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
 import { Meta } from "../../lib/Meta";
 import ProductionForecastChart, { type ActualPoint, type ForecastPoint, type Plant } from "./ProductionForecastChart";
@@ -50,6 +50,13 @@ export function Tahminler({ plantId }: { plantId: string }) {
   const [kgupKantil, setKgupKantil] = useState<KgupKantil>("p50");   // 29.10
   const [surumler, setSurumler] = useState<KgupSurum[] | undefined>(undefined);   // v2.502 (F-06): indirilen dosyaların sürüm geçmişi
   const surumleriYenile = () => { api.kgupSurumler(plantId).then((v) => setSurumler(v)); };
+  const [kiyas, setKiyas] = useState<KgupKiyas | null>(null);   // v2.503: bildirilen ↔ öneri
+  const [yukleMesaj, setYukleMesaj] = useState<string | null>(null);
+  const bildirilenYukle = (gun: string, dosya: File) => {
+    setYukleMesaj(null);
+    api.kgupBildirilenYukle(plantId, gun, dosya).then((r) => { setKiyas(r.kiyas); setYukleMesaj(r.kayit.yeni ? `Kaydedildi: bildirilen sürüm ${r.kayit.surum}, ${sayiTr(r.kayit.toplam_mwh, 1)} MWh.` : "Aynı içerik zaten kayıtlı."); surumleriYenile(); })
+      .catch((e) => setYukleMesaj(String((e as Error).message ?? e)));
+  };
   const [nc, setNc] = useState<Nowcast | null | undefined>(undefined);   // v2.266
   // v2.273: son koşunun bant kaynağı (ensemble üyeleri / model) — dip notta dürüstçe söylenir
   const [bantYazisi, setBantYazisi] = useState<string | null>(null);
@@ -184,19 +191,20 @@ export function Tahminler({ plantId }: { plantId: string }) {
             {kgup.uyarilar.length > 0 && <ul className="not-listesi uyari">{kgup.uyarilar.map((u) => <li key={u}>{u}</li>)}</ul>}
             {kgup.sicrama_saatleri.length > 0 && <p style={{ fontSize: 13.5, margin: "8px 0 0" }}>≥200 MWh ani değişim: saat {kgup.sicrama_saatleri.join(", ")}; dosyada 15 dakikalık adımlar.</p>}
             {/* v2.502 (F-06): sürüm geçmişi — her indirme değiştirilemez kayıt; aynı içerik yeni sürüm açmaz; dosya bayt bayt geri alınır */}
-            <details className="aciklama">
+            <details className="aciklama genis">
               <summary>Sürüm geçmişi{surumler && surumler.length > 0 ? ` (${sayiTr(surumler.length)} kayıt)` : ""}</summary>
               {surumler === undefined ? <p className="soluk">yükleniyor…</p>
                : surumler.length === 0 ? <p className="soluk">Henüz indirilmiş dosya yok. Her «CSV indir» sürüm olarak saklanır; aynı içerik yeniden indirilince yeni sürüm açılmaz.</p>
                : (
                 <div className="grafik-kaydir">
                   <table className="veri" style={{ fontSize: 13 }}>
-                    <thead><tr><th>Teslim günü</th><th>Sürüm</th><th>Seviye</th><th>Tahmin</th><th>Toplam (MWh)</th><th>İndiren</th><th>İndirme</th><th>Özet (SHA-256)</th><th aria-hidden="true" /></tr></thead>
+                    <thead><tr><th>Teslim günü</th><th>Kaynak</th><th>Sürüm</th><th>Seviye</th><th>Tahmin</th><th>Toplam (MWh)</th><th>İndiren</th><th>Kayıt</th><th>Özet (SHA-256)</th><th aria-hidden="true" /></tr></thead>
                     <tbody>
                       {surumler.map((v) => (
                         <tr key={v.id}>
                           <td>{new Date(v.teslim_gunu + "T12:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}</td>
-                          <td>{v.surum}</td><td>{v.kantil.toUpperCase()}</td>
+                          <td>{v.kaynak === "musteri" ? <span className="rozet rozet-notr rozet-kucuk" title="Müşteri beyanı; TPYS kabulü doğrulanmadı">bildirilen</span> : "öneri"}</td>
+                          <td>{v.surum}</td><td>{v.kantil === "bildirilen" ? "—" : v.kantil.toUpperCase()}</td>
                           <td>{v.run_at ? new Date(v.run_at).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }) : "—"}</td>
                           <td>{v.toplam_mwh != null ? sayiTr(v.toplam_mwh, 1) : "—"}</td>
                           <td>{v.indiren ?? "API"}</td>
@@ -208,6 +216,34 @@ export function Tahminler({ plantId }: { plantId: string }) {
                   </table>
                 </div>
               )}
+            </details>
+            {/* v2.503 (F-06): müşterinin TPYS'ye bildirdiği dosya — beyan kaydı + öneriyle saat saat kıyas */}
+            <details className="aciklama genis" onToggle={(e) => { if ((e.currentTarget as HTMLDetailsElement).open && kiyas === null) api.kgupKiyas(plantId, kgup.gun).then((v) => { if (v) setKiyas(v); }); }}>
+              <summary>Bildirilen KGÜP ile kıyas</summary>
+              <p className="soluk" style={{ fontSize: 13.5, margin: "0 0 8px" }}>
+                TPYS'ye yüklediğiniz dosyayı buraya da yükleyin; beyan olarak değiştirilemez biçimde saklanır ve PVQuant önerisiyle saat saat kıyaslanır. TPYS kabulü burada doğrulanmaz.
+              </p>
+              <label className="girdi-etiket">Bildirilen dosya ({new Date(kgup.gun + "T12:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" })} için)
+                <input className="girdi" type="file" accept=".csv,text/csv" onChange={(e) => { const f = e.target.files?.[0]; if (f) bildirilenYukle(kgup.gun, f); e.target.value = ""; }} /></label>
+              {yukleMesaj && <p style={{ fontSize: 13.5, margin: "8px 0 0", color: yukleMesaj.startsWith("Kaydedildi") || yukleMesaj.startsWith("Aynı") ? undefined : "var(--uyari-metin)" }}>{yukleMesaj}</p>}
+              {kiyas && kiyas.ozet && (
+                <>
+                  <p style={{ fontSize: 13.5, margin: "8px 0 6px" }}>
+                    {kiyas.ozet.ayni ? "Bildirilen program öneriyle aynı." : <>Fark: {sayiTr(kiyas.ozet.farkli_saat)} saatte; toplam {sayiTr(kiyas.ozet.fark_toplam_mwh, 3)} MWh (mutlak {sayiTr(kiyas.ozet.fark_mutlak_mwh, 3)} MWh); en büyük saat {kiyas.ozet.en_buyuk_fark_saat}: {sayiTr(kiyas.ozet.en_buyuk_fark_mwh, 3)} MWh.</>}
+                    {kiyas.oneri && ` Öneri sürüm ${kiyas.oneri.surum}`}{kiyas.bildirilen && ` · bildirilen sürüm ${kiyas.bildirilen.surum}`}
+                  </p>
+                  {!kiyas.ozet.ayni && (
+                    <div className="grafik-kaydir">
+                      <table className="veri sayisal" style={{ fontSize: 13 }}>
+                        <thead><tr><th>Saat</th><th>Öneri (MWh)</th><th>Bildirilen (MWh)</th><th>Fark (MWh)</th></tr></thead>
+                        <tbody>{kiyas.saatler.filter((h) => Math.abs(h.fark_mwh) > 0.0005).map((h) => (
+                          <tr key={h.saat}><td>{h.saat}</td><td>{sayiTr(h.oneri_mwh, 3)}</td><td>{sayiTr(h.bildirilen_mwh, 3)}</td><td>{sayiTr(h.fark_mwh, 3)}</td></tr>))}</tbody>
+                      </table>
+                    </div>
+                  )}
+                </>
+              )}
+              {kiyas && !kiyas.ozet && <p className="soluk" style={{ fontSize: 13.5, margin: "8px 0 0" }}>{kiyas.bildirilen ? "Bu gün için indirilmiş öneri yok; kıyas yapılamadı." : "Bu gün için bildirilen dosya henüz yüklenmedi."}</p>}
             </details>
             <details className="aciklama">
               <summary>Piyasa takvimi ve program kuralı</summary>

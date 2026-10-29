@@ -133,3 +133,79 @@ def ufuk_kova_sinavi(tenant_id, plant: dict, gun: int = 90) -> dict:
     from pvquant.services.konformal_service import gecmis_band_df
     df = gecmis_band_df(tenant_id, plant["id"], gun, ufuk_ust_saat=168)
     return ufuk_kova_sinavi_df(df, float(plant["capacity_kwp"]))
+
+
+# ---------------- v2.503 (F-07): uzlaştırma kalemleri geri testi — 12 ay, yürürlükteki kural + karşı-olgu sütunları ----------------
+def maliyet_geri_test_df(df: pd.DataFrame, fiyat: pd.DataFrame, segment: str | None = None, ariza_sayisi: int = 0) -> dict:
+    """SAF. df: ts_utc, gercek_kw, kgup_kw (D-1 15:30 öncesi koşunun P50'si), naif_kw. fiyat: ptf/smf/yon/kaynak.
+    Aylık (C T4 biçimi): üretim, sapma, eksik/fazla kayıp, KÜPST, toplam, referans programa göre fark; karşı-olgu sütunları
+    «2026 kuralı tüm döneme» ve «2026 + V = 100» (C iş kolu tanımı: EDT formülü + KÜPST 2026 katsayıları). Mekanizma kırılımı (C T5):
+    sistem açık/fazla saatleri, B dalı, AFL dalı, V tabanı, düşük fiyat saatleri, senaryo saat sayısı. Başlık: geçmiş verinin
+    VARSAYIMSAL yeniden hesabı — EPİAŞ uzlaştırma sonucu değildir."""
+    from pvquant.ext.turkiye import dengesizlik as d
+    from pvquant.services.dengesizlik_service import _yon_ve_kaynak, _r0, IST
+    bos = {"gun_sayisi": 0, "aylar": [], "toplam": None, "mekanizma": None, "baslik": "Geçmiş verinin varsayımsal yeniden hesabı; EPİAŞ uzlaştırma sonucu değildir."}
+    if df is None or df.empty:
+        return bos
+    x = df.dropna(subset=["gercek_kw", "kgup_kw"]).copy().set_index("ts_utc")
+    if x.empty:
+        return bos
+    f = fiyat.reindex(x.index); yon, fiyat_ozeti = _yon_ve_kaynak(f)
+    ger = x["gercek_kw"].astype(float) / 1000.0; kg = x["kgup_kw"].astype(float) / 1000.0
+    ptf = f["ptf"].astype(float); smf = f["smf"].astype(float)
+    ortak = dict(yon=yon, segment=segment, ariza_sayisi=ariza_sayisi)
+    yur = d.saatlik(kg, ger, ptf, smf, **ortak)
+    ko26 = d.saatlik(kg, ger, ptf, smf, karsi_olgu="2026", **ortak)
+    kov = d.saatlik(kg, ger, ptf, smf, karsi_olgu="2026_V100", **ortak)
+    naif_var = x["naif_kw"].notna()
+    naif = d.saatlik(x.loc[naif_var, "naif_kw"].astype(float) / 1000.0, ger[naif_var], ptf[naif_var], smf[naif_var], yon=yon[naif_var], segment=segment, ariza_sayisi=ariza_sayisi) if naif_var.sum() >= 24 else None
+    eksik = ((-yur["sapma"]).clip(lower=0) * (yur["p_neg"] - yur["ptf"]))
+    fazla = (yur["sapma"].clip(lower=0) * (yur["ptf"] - yur["p_poz"]))
+    yerel = yur.index.tz_convert(IST)
+    ay = pd.Series(yerel.strftime("%Y-%m"), index=yur.index)
+    def top(s): return s.sum(min_count=1)
+    aylar = []
+    for a, g in yur.groupby(ay):
+        i = g.index
+        kup = g["kupst"]; toplam = (g["dengesizlik_maliyeti"] + kup)
+        aylar.append({"ay": a, "gun": int(pd.Series(i.tz_convert(IST).date).nunique()), "uretim_mwh": round(float(g["gerceklesen"].sum()), 1),
+                      "sapma_mwh": round(float(g["sapma"].abs().sum()), 1),
+                      "eksik_tl": _r0(top(eksik.loc[i])), "fazla_tl": _r0(top(fazla.loc[i])), "kupst_tl": _r0(top(kup)) if kup.notna().all() else None,
+                      "toplam_tl": _r0(top(toplam)) if kup.notna().all() else None,
+                      "karsi_2026_tl": _r0(top(ko26.loc[i, "dengesizlik_maliyeti"] + ko26.loc[i, "kupst"])) if ko26.loc[i, "kupst"].notna().all() else None,
+                      "karsi_v100_tl": _r0(top(kov.loc[i, "dengesizlik_maliyeti"] + kov.loc[i, "kupst"])) if kov.loc[i, "kupst"].notna().all() else None,
+                      "referans_tl": (_r0(top(naif.loc[naif.index.intersection(i), "toplam_maliyet"])) if naif is not None else None),
+                      "hesaplanamayan_saat": int((g["durum"] != "ok").sum()), "kural_surumu": " | ".join(sorted(set(g["kural_surumu"])))})
+    kup_ok = yur["kupst"].notna().all()
+    toplam = {"eksik_tl": _r0(top(eksik)), "fazla_tl": _r0(top(fazla)), "kupst_tl": _r0(top(yur["kupst"])) if kup_ok else None,
+              "toplam_tl": _r0(top(yur["dengesizlik_maliyeti"] + yur["kupst"])) if kup_ok else None,
+              "karsi_2026_tl": _r0(top(ko26["dengesizlik_maliyeti"] + ko26["kupst"])) if ko26["kupst"].notna().all() else None,
+              "karsi_v100_tl": _r0(top(kov["dengesizlik_maliyeti"] + kov["kupst"])) if kov["kupst"].notna().all() else None,
+              "referans_tl": (_r0(top(naif["toplam_maliyet"])) if naif is not None else None),
+              "uretim_mwh": round(float(yur["gerceklesen"].sum()), 1), "referans_gelir_tl": _r0(top(yur["referans_gelir"]))}
+    if toplam["toplam_tl"] is not None and toplam["uretim_mwh"]:
+        toplam["tl_per_mwh"] = round(toplam["toplam_tl"] / toplam["uretim_mwh"], 1)
+    if toplam["toplam_tl"] is not None and toplam["referans_tl"] is not None:
+        toplam["referans_fark_tl"] = _r0(toplam["referans_tl"] - toplam["toplam_tl"])
+    dal = yur["dal"]
+    mekanizma = {"saat": int(len(yur)), "acik_saat": int((yur["yon"] == "acik").sum()), "fazla_saat": int((yur["yon"] == "fazla").sum()),
+                 "dengede_saat": int((yur["yon"] == "dengede").sum()), "b_dali_saat": int((dal == "B").sum()), "afl_dali_saat": int((dal == "AFL").sum()),
+                 "v_tabani_saat": int((dal == "V").sum()), "b_dali_tl": _r0(top(fazla[dal == "B"])), "afl_dali_tl": _r0(top(eksik[dal == "AFL"])),
+                 "senaryo_saat": fiyat_ozeti["senaryo_saat"], "yon_varsayilan_saat": fiyat_ozeti["yon_varsayilan_saat"], "yon_eksik_saat": fiyat_ozeti["yon_eksik_saat"],
+                 "hesaplanamayan_saat": int((yur["durum"] != "ok").sum())}
+    return {"gun_sayisi": int(pd.Series(yur.index.tz_convert(IST).date).nunique()), "aylar": aylar, "toplam": toplam, "mekanizma": mekanizma,
+            "kural_surumu": " | ".join(sorted(set(yur["kural_surumu"]))), "fiyat": fiyat_ozeti,
+            "baslik": "Geçmiş verinin varsayımsal yeniden hesabı (yürürlükteki kural saat bazında); EPİAŞ uzlaştırma sonucu değildir."
+                      + (f" Senaryo fiyatı kullanılan saat: {fiyat_ozeti['senaryo_saat']}." if fiyat_ozeti["senaryo_saat"] else "")}
+
+
+def maliyet_geri_test(tenant_id, plant: dict, gun: int = 365) -> dict:
+    """F-07: son `gun` günün programı (D-1 15:30 öncesi koşu) ↔ gerçekleşen, yürürlükteki kural + karşı-olgu; referans = dün aynı saat."""
+    from pvquant.services import dengesizlik_service as dz, piyasa_service
+    df = dz.program_df(tenant_id, plant["id"], gun)
+    idx = pd.DatetimeIndex(df["ts_utc"]) if not df.empty else pd.DatetimeIndex([], tz="UTC")
+    fiyat = piyasa_service.fiyatlar(idx)
+    seg = dz.segment_bilgisi(plant.get("params_json")); pj = dz._pj(plant.get("params_json"))
+    out = maliyet_geri_test_df(df, fiyat, segment=seg["segment"], ariza_sayisi=int(pj.get("ariza_sayisi_ay") or 0))
+    out["pencere_gun"] = gun; out["segment"] = seg
+    return out

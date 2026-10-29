@@ -102,3 +102,33 @@ def test_oneri_kantili_ve_teminat():
     g = pd.DataFrame({"ts_utc": ix, "gercek_kw": 800.0, "kgup_kw": 1000.0, "naif_kw": np.nan})
     out = dz.hesapla_df(g, f, segment="lisansli_serbest")
     assert out["toplam"]["teminat_tl"] > 0
+
+
+def test_geri_test_kapisi(monkeypatch):
+    """v2.503 (F-07): /dengesizlik/geri-test kapısı — gün aralığı 30–730, servis yanıtı aynen."""
+    api_main.app.dependency_overrides[gecerli_kullanici] = lambda: {"sub": "u", "tenant_id": "t", "role": "viewer", "exp": 0}
+    try:
+        from pvquant.services import plant_service, backtest_service
+        monkeypatch.setattr(plant_service, "getir", lambda t, p: {"id": p, "params_json": {"segment": "lisansli_serbest"}})
+        monkeypatch.setattr(backtest_service, "maliyet_geri_test", lambda t, pl, gun=365: {"gun_sayisi": 200, "aylar": [], "toplam": {"toplam_tl": 1.0}, "mekanizma": None, "baslik": "x", "pencere_gun": gun})
+        c = TestClient(api_main.app)
+        assert c.get(f"/v1/plants/{PLANT}/dengesizlik/geri-test").json()["pencere_gun"] == 365
+        assert c.get(f"/v1/plants/{PLANT}/dengesizlik/geri-test?gun=10").status_code == 422
+    finally:
+        api_main.app.dependency_overrides.clear()
+
+
+def test_geri_test_df_karsi_olgu_ve_mekanizma():
+    """SAF: 2025 saatinde karşı-olgu 2026 sütunu yürürlükten farklı; 2026 saatinde eşit; mekanizma sayaçları tutarlı."""
+    from pvquant.services import backtest_service as bt
+    ts = pd.date_range("2025-12-30", periods=96, freq="h", tz="Europe/Istanbul").tz_convert("UTC")
+    g = np.full(96, 1000.0); kg = np.where(np.arange(96) % 2 == 0, 800.0, 1200.0)
+    df = pd.DataFrame({"ts_utc": ts, "gercek_kw": g, "kgup_kw": kg, "naif_kw": np.nan})
+    f = pd.DataFrame({"ptf": 100.0, "smf": 3000.0, "yon": "acik", "kaynak": "epias"}, index=ts)    # PTF 100 < V → 2026'da B dalı
+    r = bt.maliyet_geri_test_df(df, f, segment="lisansli_serbest")
+    assert [a["ay"] for a in r["aylar"]] == ["2025-12", "2026-01"] and r["gun_sayisi"] == 4
+    a25, a26 = r["aylar"]
+    assert a25["karsi_2026_tl"] != a25["toplam_tl"] and a26["karsi_2026_tl"] == a26["toplam_tl"]   # 2025: karşı-olgu farklı; 2026: aynı
+    assert a26["karsi_v100_tl"] < a26["toplam_tl"]                                                # V=100 B dalını daraltır
+    m = r["mekanizma"]; assert m["saat"] == 96 and m["acik_saat"] == 96 and m["b_dali_saat"] == 24 and m["hesaplanamayan_saat"] == 0
+    assert "EPİAŞ uzlaştırma sonucu değildir" in r["baslik"]

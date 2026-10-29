@@ -150,6 +150,16 @@ export interface KgupSurum {
   id: string; teslim_gunu: string; surum: number; kantil: string; run_id: string | null; run_at: string | null; kesim: string | null;
   eak_mw: number | null; eak_kaynak: string | null; toplam_mwh: number | null; sha256: string; dosya_adi: string; olusturma: string;
   indiren: string | null; bayt: number;
+  /** v2.503: pvquant (öneri/indirilen) | musteri (bildirildiği beyan edilen) */
+  kaynak?: "pvquant" | "musteri";
+}
+/** /kgup/kiyas — v2.503: son öneri ↔ müşterinin bildirdiği KGÜP, saat saat. */
+export interface KgupKiyas {
+  gun: string;
+  oneri: { id: string; surum: number; sha256: string; zaman: string; toplam_mwh: number | null; kantil: string } | null;
+  bildirilen: { id: string; surum: number; sha256: string; zaman: string; toplam_mwh: number | null; kantil: string } | null;
+  saatler: { saat: number; oneri_mwh: number; bildirilen_mwh: number; fark_mwh: number }[];
+  ozet: { fark_toplam_mwh: number; fark_mutlak_mwh: number; en_buyuk_fark_saat: number; en_buyuk_fark_mwh: number; farkli_saat: number; ayni: boolean } | null;
 }
 export const SEGMENTLER: { deger: string; etiket: string }[] = [
   { deger: "lisansli_serbest", etiket: "Lisanslı (serbest piyasa)" }, { deger: "lisansli_yekdem", etiket: "Lisanslı (YEKDEM)" },
@@ -177,6 +187,18 @@ export interface Dengesizlik {
   fiyat: { epias_saat: number; senaryo_saat: number; yon_varsayilan_saat?: number; yon_eksik_saat?: number };
   hesaplanamayan_saat?: number; kural_surumu?: string | null; kural?: DengesizlikKural;
   segment: { segment: string | null; kgup_yukumlu: boolean | null; dengesizlik_sahibi: string | null; santral_tasir: boolean | null };
+}
+/** /dengesizlik/geri-test — v2.503 (F-07): 12 aylık uzlaştırma kalemleri geri testi; karşı-olgu sütunları; varsayımsal yeniden hesap. */
+export interface DengesizlikGeriTest {
+  gun_sayisi: number; pencere_gun?: number; baslik: string; kural_surumu?: string;
+  aylar: { ay: string; gun: number; uretim_mwh: number; sapma_mwh: number; eksik_tl: number | null; fazla_tl: number | null; kupst_tl: number | null;
+           toplam_tl: number | null; karsi_2026_tl: number | null; karsi_v100_tl: number | null; referans_tl: number | null; hesaplanamayan_saat: number; kural_surumu: string }[];
+  toplam: { eksik_tl: number | null; fazla_tl: number | null; kupst_tl: number | null; toplam_tl: number | null; karsi_2026_tl: number | null; karsi_v100_tl: number | null;
+            referans_tl: number | null; uretim_mwh: number; referans_gelir_tl: number | null; tl_per_mwh?: number; referans_fark_tl?: number | null } | null;
+  mekanizma: { saat: number; acik_saat: number; fazla_saat: number; dengede_saat: number; b_dali_saat: number; afl_dali_saat: number; v_tabani_saat: number;
+               b_dali_tl: number | null; afl_dali_tl: number | null; senaryo_saat: number; yon_varsayilan_saat: number; yon_eksik_saat: number; hesaplanamayan_saat: number } | null;
+  fiyat?: { epias_saat: number; senaryo_saat: number; yon_varsayilan_saat?: number; yon_eksik_saat?: number };
+  segment?: { segment: string | null; kgup_yukumlu: boolean | null; dengesizlik_sahibi: string | null; santral_tasir: boolean | null };
 }
 /** /saglik — v2.256: bozunma ve performans eğilimi. */
 export interface Saglik {

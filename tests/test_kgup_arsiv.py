@@ -16,7 +16,8 @@ PLANT = "22222222-2222-2222-2222-222222222222"
 
 
 def _ornek(gun="2026-10-25", kantil="p50", satir="0,5"):
-    csv = f"Tarih;Saat;UEVCB;KGUP_MWh;EAK_MW\n25.10.2026;0;UEVCB-1;{satir};9,000\n"
+    """24 saatlik örnek dosya: saat 0 = `satir`, diğer saatler 0,000 (kıyas testleri 24 saat ister)."""
+    csv = "Tarih;Saat;UEVCB;KGUP_MWh;EAK_MW\n" + "\n".join(f"25.10.2026;{h};UEVCB-1;{satir if h == 0 else '0,000'};9,000" for h in range(24)) + "\n"
     return {"gun": gun, "kantil": kantil, "csv": csv, "sha256": hashlib.sha256(csv.encode("utf-8-sig")).hexdigest(),
             "kosu": {"run_id": str(uuid.uuid4()), "run_at": "2026-10-24T06:12:00+00:00", "kesim": "2026-10-24T12:30:00+00:00"},
             "eak": {"eak_mw": 9.0, "kaynak": "ac_tavani"}, "toplam_mwh": 40.5, "dosya_adi": f"KGUP_UEVCB-1_{gun}_{kantil}.csv",
@@ -82,3 +83,58 @@ def test_csv_indirme_arsive_yazar_ve_surum_uclari(istemci):
     assert c.get(f"/v1/plants/{PLANT}/kgup/surumler?gun=2026-13-01").status_code == 422
     d = c.get(f"/v1/plants/{PLANT}/kgup/surumler/s1"); assert d.status_code == 200 and d.content.startswith(b"\xef\xbb\xbf") and d.headers["X-PVQ-Surum"] == "3"
     assert c.get(f"/v1/plants/{PLANT}/kgup/surumler/yok").status_code == 404
+
+
+# ---------------------------------------------------------------- v2.503: müşteri KGÜP içe alma + kıyas ------------------------
+def test_csv_oku_sablon_ve_ceyrek():
+    sat = "\n".join(f"25.10.2026;{h};UEVCB-1;{str(round(h*0.5,3)).replace('.', ',')};9,000" for h in range(24))
+    t = ka.csv_oku(("Tarih;Saat;UEVCB;KGUP_MWh;EAK_MW\n" + sat + "\n").encode("utf-8-sig"))
+    assert t["saat"].tolist() == list(range(24)) and t.kgup_mwh[3] == 1.5 and t.eak_mw[0] == 9.0
+    # virgül ayraç + nokta ondalık, farklı başlık adları
+    t2 = ka.csv_oku(("Date,Hour,UEVCB,Program_MWh\n" + "\n".join(f"2026-10-25,{h},X,{h*0.25}" for h in range(24))).encode())
+    assert t2.kgup_mwh[4] == 1.0 and t2["eak_mw"] is None or t2["eak_mw"].isna().all()
+    # çeyrek satırlar saatliğe toplanır
+    q = "Tarih;Saat;UEVCB;KGUP_MWh;EAK_MW;Ceyrek\n" + "\n".join(f"25.10.2026;{h};U;0,250;9,000;{m}" for h in range(24) for m in (0, 15, 30, 45))
+    t3 = ka.csv_oku(q.encode()); assert len(t3) == 24 and t3.kgup_mwh[0] == 1.0 and t3.eak_mw[0] == 9.0
+    with pytest.raises(ValueError):
+        ka.csv_oku(b"Tarih;Saat;UEVCB;KGUP_MWh;EAK_MW\n25.10.2026;0;U;1,0;9,0\n")            # 24 saat yok
+    with pytest.raises(ValueError):
+        ka.csv_oku(("Tarih;Saat;UEVCB;KGUP_MWh;EAK_MW\n" + "\n".join(f"25.10.2026;{h};U;-1;9" for h in range(24))).encode())   # negatif
+
+
+def test_musteri_kaydet_ve_kiyas(kiraci):
+    tid, pid = kiraci
+    o = ka.kaydet(tid, pid, _ornek(satir="0,5"))                                       # öneri (pvquant) sürüm 1
+    sat = "\n".join(f"25.10.2026;{h};UEVCB-1;{'0,700' if h == 0 else '0,000'};9,000" for h in range(24))
+    b = ("Tarih;Saat;UEVCB;KGUP_MWh;EAK_MW\n" + sat + "\n").encode("utf-8-sig")
+    m = ka.musteri_kaydet(tid, pid, date(2026, 10, 25), b, "tpys.csv", indiren=None)
+    assert m["yeni"] and m["surum"] == 1 and m["kaynak"] == "musteri" and m["toplam_mwh"] == 0.7
+    assert not ka.musteri_kaydet(tid, pid, date(2026, 10, 25), b, "tpys.csv")["yeni"]  # aynı içerik
+    l = ka.listele(tid, pid, date(2026, 10, 25)); assert sorted((x["kaynak"], x["surum"]) for x in l) == [("musteri", 1), ("pvquant", 1)]
+    k = ka.kiyas(tid, pid, date(2026, 10, 25))
+    assert k["oneri"]["surum"] == 1 and k["bildirilen"]["surum"] == 1 and k["ozet"]["farkli_saat"] == 1 and k["ozet"]["en_buyuk_fark_saat"] == 0
+    assert k["ozet"]["fark_toplam_mwh"] == pytest.approx(0.2) and not k["ozet"]["ayni"] and k["saatler"][0]["fark_mwh"] == pytest.approx(0.2)
+    assert ka.kiyas(tid, pid, date(2026, 10, 26))["ozet"] is None
+    with pytest.raises(ValueError):
+        ka.musteri_kaydet(tid, pid, date(2026, 10, 25), b"Tarih;Saat\n", "bozuk.csv")
+    assert o["kaynak"] == "pvquant"
+
+
+def test_bildirilen_yukleme_ve_kiyas_kapilari(monkeypatch):
+    from apps.api.deps import yazma_yetkisi
+    api_main.app.dependency_overrides[gecerli_kullanici] = lambda: {"sub": "u1", "tenant_id": "t", "role": "editor", "exp": 0}
+    try:
+        from pvquant.services import plant_service
+        monkeypatch.setattr(plant_service, "getir", lambda t, p: {"id": p, "params_json": {}})
+        kayit = {}
+        monkeypatch.setattr(ka, "musteri_kaydet", lambda t, p, g, b, ad, indiren=None, sablon=None: kayit.setdefault("m", {"id": "m1", "surum": 1, "sha256": "b" * 64, "yeni": True, "kaynak": "musteri", "toplam_mwh": 12.0, "satir": 24, "bayt": len(b)}))
+        monkeypatch.setattr(ka, "kiyas", lambda t, p, g: {"gun": g.isoformat(), "oneri": None, "bildirilen": {"surum": 1}, "saatler": [], "ozet": None})
+        c = TestClient(api_main.app)
+        r = c.post(f"/v1/plants/{PLANT}/kgup/bildirilen?gun=2026-10-25", files={"dosya": ("tpys.csv", b"Tarih;Saat\n0;1\n", "text/csv")})
+        assert r.status_code == 200 and r.json()["kayit"]["surum"] == 1 and r.json()["kiyas"]["gun"] == "2026-10-25" and kayit["m"]["bayt"] > 0
+        assert c.post(f"/v1/plants/{PLANT}/kgup/bildirilen?gun=2026-13-25", files={"dosya": ("t.csv", b"x", "text/csv")}).status_code == 422
+        assert c.post(f"/v1/plants/{PLANT}/kgup/bildirilen?gun=2026-10-25", files={"dosya": ("t.csv", b"", "text/csv")}).status_code == 422
+        assert c.get(f"/v1/plants/{PLANT}/kgup/kiyas?gun=2026-10-25").json()["bildirilen"]["surum"] == 1
+        assert c.get(f"/v1/plants/{PLANT}/kgup/kiyas?gun=x").status_code == 422
+    finally:
+        api_main.app.dependency_overrides.clear()

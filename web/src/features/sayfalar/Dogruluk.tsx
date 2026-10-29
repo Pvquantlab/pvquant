@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
 import type { EChartsOption } from "echarts";
 import { api, bellekten, ayniysaEskisi } from "../../api/client";
-import type { Karne, HataMatrisi, HataDagilimi, KonformalAyar, Backtest, Dengesizlik, Guvenilirlik } from "../../api/types";
+import type { Karne, HataMatrisi, HataDagilimi, KonformalAyar, Backtest, Dengesizlik, DengesizlikGeriTest, Guvenilirlik } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
 import { Kpi, Kart, Sayfa, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
@@ -59,11 +59,12 @@ export function Dogruluk({ plantId }: { plantId: string }) {
   const [bt, setBt] = useState<Backtest | null | undefined>(undefined);   // v2.253
   const [dz, setDz] = useState<Dengesizlik | null | undefined>(undefined);   // v2.259
   const [gv, setGv] = useState<Guvenilirlik | null | undefined>(undefined);   // v2.271
+  const [gt, setGt] = useState<DengesizlikGeriTest | null | undefined>(undefined);   // v2.503 (F-07): 12 ay geri test, kart açılınca
   // Dönem segmenti yalnız karneyi tazeler (v2.230 kararı korunur); santral değişince hepsi yeniden kurulur.
   useEffect(() => {
     let acik = true;
     setK(bellekten.karne(plantId, donem)); setKD("bekliyor");
-    setHm(undefined); setHd(undefined); setKf(undefined); setBt(undefined); setDz(undefined); setGv(undefined);
+    setHm(undefined); setHd(undefined); setKf(undefined); setBt(undefined); setDz(undefined); setGv(undefined); setGt(undefined);
     // Denendi, alınmadı (24.10, perf/analiz/acik-tema/deney): yanıt yazımlarını startTransition'a almak 4× CPU'da «tam»
     // süresini uzattı (sıcak 211 → 471 ms); düz setState kaldı.
     api.karne(plantId, donem).then((v) => { if (acik) { setK((e) => ayniysaEskisi(e, v)); setKD("tamam"); } }, () => { if (acik) { setK((e) => e ?? null); setKD("hata"); } });
@@ -731,6 +732,47 @@ export function Dogruluk({ plantId }: { plantId: string }) {
         ) : (
           <p className="soluk" style={{ margin: 0 }}>Bir gün önce 15:30'dan önce verilmiş tahmin ile gerçekleşen üretimin karşılaştırılabildiği gün henüz yok; tahminler ve ölçümler biriktikçe burada görünür.</p>
         )}
+      </Kart>
+      {/* v2.503 (F-07): 12 aylık geri test — aylık tablo + karşı-olgu sütunları; istek yalnız kart açılınca (ağır sorgu) */}
+      <Kart baslik="Uzlaştırma kalemleri geri testi — son 12 ay (varsayımsal yeniden hesap)"
+        sag={<span className="cip">{gt ? <Meta items={[`${sayiTr(gt.gun_sayisi)} gün`, gt.mekanizma && gt.mekanizma.senaryo_saat > 0 ? `senaryo fiyatı ${sayiTr(gt.mekanizma.senaryo_saat)} saat` : "fiyat: EPİAŞ"]} /> : gt === null ? "alınamadı" : "kapalı"}</span>}>
+        <details className="aciklama genis" onToggle={(e) => { if ((e.currentTarget as HTMLDetailsElement).open && gt === undefined) api.dengesizlikGeriTest(plantId).then((v) => setGt(v), () => setGt(null)); }}>
+          <summary>Aylık tablo ve karşı-olgu sütunları</summary>
+          {gt === undefined ? <p className="soluk">açılınca hesaplanır…</p>
+           : gt === null ? <p className="soluk">Geri test alınamadı (sunucu hatası ya da örnek kip).</p>
+           : !gt.toplam || gt.aylar.length === 0 ? <p className="soluk">Karşılaştırılabilir gün yok; tahmin ve ölçüm biriktikçe oluşur.</p>
+           : (
+            <>
+              <p className="soluk" style={{ fontSize: 13.5, margin: "0 0 8px" }}>{gt.baslik} Kural: {gt.kural_surumu ?? "—"}.</p>
+              <div className="ızgara satir-4" style={{ gap: 12, marginBottom: 10 }}>
+                <div className="kpi"><div className="kpi-et">Yürürlükteki kural</div><div className="kpi-dg mono">{gt.toplam.toplam_tl != null ? <>{sayiTr(gt.toplam.toplam_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div>
+                  <div className="kpi-alt">eksik {gt.toplam.eksik_tl != null ? sayiTr(gt.toplam.eksik_tl / 1000, 1) : "—"} · fazla {gt.toplam.fazla_tl != null ? sayiTr(gt.toplam.fazla_tl / 1000, 1) : "—"} · KÜPST {gt.toplam.kupst_tl != null ? sayiTr(gt.toplam.kupst_tl / 1000, 1) : "—"} bin TL</div></div>
+                <div className="kpi"><div className="kpi-et">2026 kuralı tüm döneme</div><div className="kpi-dg mono">{gt.toplam.karsi_2026_tl != null ? <>{sayiTr(gt.toplam.karsi_2026_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div><div className="kpi-alt">karşı-olgu; 2025 saatleri de yeni formülle</div></div>
+                <div className="kpi"><div className="kpi-et">2026 kuralı, V = 100</div><div className="kpi-dg mono">{gt.toplam.karsi_v100_tl != null ? <>{sayiTr(gt.toplam.karsi_v100_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div><div className="kpi-alt">karşı-olgu; 1.11.2026 kuralı bütün döneme</div></div>
+                <div className="kpi"><div className="kpi-et">Referans programa göre fark</div><div className="kpi-dg mono">{gt.toplam.referans_fark_tl != null ? <>{sayiTr(gt.toplam.referans_fark_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div><div className="kpi-alt">varsayımsal; dün aynı saat programı{gt.toplam.referans_tl != null ? ` (${sayiTr(gt.toplam.referans_tl / 1000, 1)} bin TL)` : ""}</div></div>
+              </div>
+              <div className="grafik-kaydir">
+                <table className="veri" style={{ fontSize: 13 }}>
+                  <thead><tr><th>Ay</th><th>Gün</th><th>Üretim (MWh)</th><th>Sapma (MWh)</th><th>Eksik (TL)</th><th>Fazla (TL)</th><th>KÜPST (TL)</th><th>Toplam (TL)</th><th>2026 tüm döneme</th><th>V = 100</th><th>Referans (TL)</th><th>Hesaplanamayan saat</th></tr></thead>
+                  <tbody className="mono">
+                    {gt.aylar.map((a) => (
+                      <tr key={a.ay} title={`kural: ${a.kural_surumu}`}><td>{a.ay}</td><td>{sayiTr(a.gun)}</td><td>{sayiTr(a.uretim_mwh, 1)}</td><td>{sayiTr(a.sapma_mwh, 1)}</td>
+                        <td>{a.eksik_tl != null ? sayiTr(a.eksik_tl) : "—"}</td><td>{a.fazla_tl != null ? sayiTr(a.fazla_tl) : "—"}</td><td>{a.kupst_tl != null ? sayiTr(a.kupst_tl) : "—"}</td>
+                        <td>{a.toplam_tl != null ? sayiTr(a.toplam_tl) : "—"}</td><td>{a.karsi_2026_tl != null ? sayiTr(a.karsi_2026_tl) : "—"}</td><td>{a.karsi_v100_tl != null ? sayiTr(a.karsi_v100_tl) : "—"}</td>
+                        <td>{a.referans_tl != null ? sayiTr(a.referans_tl) : "—"}</td><td>{a.hesaplanamayan_saat ? sayiTr(a.hesaplanamayan_saat) : "0"}</td></tr>))}
+                  </tbody>
+                </table>
+              </div>
+              {gt.mekanizma && (
+                <p className="soluk" style={{ fontSize: 13.5, margin: "8px 0 0" }}>
+                  Mekanizma: {sayiTr(gt.mekanizma.saat)} saat; sistem açık {sayiTr(gt.mekanizma.acik_saat)}, fazla {sayiTr(gt.mekanizma.fazla_saat)}, dengede {sayiTr(gt.mekanizma.dengede_saat)};
+                  B dalı (fazla üretim borç) {sayiTr(gt.mekanizma.b_dali_saat)} saat{gt.mekanizma.b_dali_tl != null ? ` / ${sayiTr(gt.mekanizma.b_dali_tl)} TL` : ""}; AFL dalı {sayiTr(gt.mekanizma.afl_dali_saat)} saat;
+                  V tabanı {sayiTr(gt.mekanizma.v_tabani_saat)} saat.{gt.mekanizma.yon_varsayilan_saat > 0 ? ` Senaryo saatlerinde yön varsayımı dengede (${sayiTr(gt.mekanizma.yon_varsayilan_saat)}).` : ""}{gt.mekanizma.yon_eksik_saat > 0 ? ` ${sayiTr(gt.mekanizma.yon_eksik_saat)} saat yön eksik, hesaplanmadı.` : ""}
+                </p>
+              )}
+            </>
+          )}
+        </details>
       </Kart>
       {/* v2.311: rozet "son 30 gün" diyordu ama pencerede yalnız EŞLEŞMİŞ günler
           var (canlıda 2 gün); rozet gerçekten çizileni söylesin. */}
