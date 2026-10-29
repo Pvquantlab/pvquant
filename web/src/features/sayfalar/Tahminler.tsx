@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
 import { api, bellekten, ayniysaEskisi } from "../../api/client";
-import type { SantralOzeti, TahminSerisi, KgupOnizleme, KgupSurum, KgupKiyas, Nowcast } from "../../api/types";
+import type { KgupRevizyon, SantralOzeti, TahminSerisi, KgupOnizleme, KgupSurum, KgupKiyas, Nowcast } from "../../api/types";
 import { Kart, Sayfa, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
 import { Meta } from "../../lib/Meta";
 import ProductionForecastChart, { type ActualPoint, type ForecastPoint, type Plant } from "./ProductionForecastChart";
@@ -72,6 +72,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
       .catch((e) => setYukleMesaj(String((e as Error).message ?? e)));
   };
   const [nc, setNc] = useState<Nowcast | null | undefined>(undefined);   // v2.266
+  const [rv, setRv] = useState<KgupRevizyon | null | undefined>(undefined);   // v2.507 (F-10)
   // v2.273: son koşunun bant kaynağı (ensemble üyeleri / model) — dip notta dürüstçe söylenir
   const [bantYazisi, setBantYazisi] = useState<string | null>(null);
   useEffect(() => {
@@ -81,6 +82,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
     api.tahmin(plantId, "16d").then((v) => { if (acik) { setSeri((e) => ayniysaEskisi(e, v)); setCekD((d) => ({ ...d, seri: "tamam" })); } }, () => { if (acik) { setSeri((e) => e ?? null); setCekD((d) => ({ ...d, seri: "hata" })); } });
     api.ozet(plantId).then((v) => { if (acik) { setOzet((e) => ayniysaEskisi(e, v)); setCekD((d) => ({ ...d, ozet: "tamam" })); } }, () => { if (acik) { setOzet((e) => e ?? null); setCekD((d) => ({ ...d, ozet: "hata" })); } });
     api.kgupOnizleme(plantId).then((v) => { if (acik) setKgup(v); }, () => { if (acik) setKgup(null); });
+    setRv(undefined); api.kgupRevizyon(plantId).then((v) => { if (acik) setRv(v); }, () => { if (acik) setRv(null); });
     api.kgupSurumler(plantId).then((v) => { if (acik) setSurumler(v); });
     api.nowcast(plantId).then((v) => { if (acik) setNc(v); }, () => { if (acik) setNc(null); });
     api.kosular(plantId).then((k) => {
@@ -373,6 +375,36 @@ export function Tahminler({ plantId }: { plantId: string }) {
           </Kart>
         </div>
       )}
+      {/* v2.507 (F-10): bugünün programı ↔ güncel beklenti — eşik üstü ve revize edilebilir saatler; yol gösterici, kayıt yazmaz */}
+      <Kart baslik="Bugünün programı — revizyon önerisi"
+        sag={<span className="cip">{rv === undefined ? "hesaplanıyor" : rv?.durum === "ok" ? <Meta items={[rv.oneri_saatleri.length ? `${sayiTr(rv.oneri_saatleri.length)} saat öneri` : "öneri yok", `eşik %${sayiTr(rv.esik_oran * 100, 0)}`, rv.program_kaynagi ?? ""]} /> : rv?.durum === "gun_bitti" ? "gün bitti" : rv?.durum === "program_yok" ? "bugün için program yok" : "tahmin yok"}</span>}>
+        {rv === undefined ? <YerTutucu yukseklik={160} />
+         : !rv || rv.durum !== "ok" ? (
+          <div className="bos-durum">
+            <div className="bos-bas">{rv?.durum === "gun_bitti" ? "Bugünün revizyon pencereleri kapandı." : rv?.durum === "program_yok" ? "Bugün için bildirilmiş ya da indirilmiş program bulunamadı." : "Güncel tahmin olmadığından kıyas yapılamadı."}</div>
+            <p>Program kaynağı sırasıyla: panele yüklenen bildirilen dosya, indirilen son öneri, 15:30 kesimi öncesi tahmin. Her saatin revizyon son anı GİP kapı kapanışı + 30 dakikadır.</p>
+          </div>
+        ) : (
+          <>
+            {rv.oneri_saatleri.length > 0
+              ? <p style={{ fontSize: 14, margin: "0 0 8px" }}><b>Öneri:</b> saat {rv.oneri_saatleri.map((h) => `${String(h).padStart(2, "0")}:00`).join(", ")} için program güncel beklentiden eşik üstü sapıyor; bu saatlerde fark {sayiTr(rv.saatler.filter((u) => u.oneri).reduce((a, u) => a + (u.fark_mwh ?? 0), 0), 1)} MWh.{rv.ilk_revizyon_son && <> İlk saat için revizyon son anı <b>{new Date(rv.ilk_revizyon_son).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</b>.</>}</p>
+              : <p className="soluk" style={{ fontSize: 14, margin: "0 0 8px" }}>Kalan saatlerde program ile güncel beklenti arasındaki fark eşiğin altında; revizyon gerekmiyor.</p>}
+            <div className="grafik-kaydir">
+              <table className="veri" style={{ fontSize: 13.5 }}>
+                <thead><tr><th>Saat</th><th>Program (MWh)</th><th>Güncel beklenti (MWh)</th><th>Fark (MWh)</th><th>Eşik (MWh)</th><th>Revizyon son anı</th><th></th></tr></thead>
+                <tbody className="mono">
+                  {rv.saatler.map((u) => (
+                    <tr key={u.saat}><td>{String(u.saat).padStart(2, "0")}:00</td><td>{sayiTr(u.program_mwh, 3)}</td><td>{u.beklenen_mwh != null ? sayiTr(u.beklenen_mwh, 3) : "—"}</td>
+                      <td>{u.fark_mwh != null ? sayiTr(u.fark_mwh, 3) : "—"}</td><td>{sayiTr(u.esik_mwh, 3)}</td>
+                      <td>{new Date(u.revizyon_son).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}{!u.revize_mumkun && <span className="soluk"> (geçti)</span>}</td>
+                      <td>{u.oneri ? <span className="rozet rozet-uyari rozet-kucuk">revize et</span> : u.revize_mumkun && (u.program_mwh > 0 || (u.beklenen_mwh ?? 0) > 0) ? <span className="rozet rozet-ok rozet-kucuk">uygun</span> : ""}</td></tr>))}
+                </tbody>
+              </table>
+            </div>
+            <p className="soluk" style={{ fontSize: 13.5, margin: "8px 0 0" }}>Program: {rv.program_kaynagi}. Güncel beklenti: {rv.beklenen_kaynagi}. {rv.not}</p>
+          </>
+        )}
+      </Kart>
       {/* v2.266 (Dalga 5.18): kısa ufuk — ölçüm persistansı; uydu değil. Canlı SCADA yoksa dürüstçe tire. */}
       <Kart baslik="Önümüzdeki 6 saat — son ölçümlere göre düzeltme"
         sag={<span className="cip">{nc === undefined ? "hesaplanıyor" : nc?.durum === "ok" ? <Meta items={[`düzeltme oranı ${sayiTr(nc.oran ?? 0, 2)}`, `son ${sayiTr(nc.n_saat)} saat`]} /> : nc?.durum === "gece" ? "gece: beklenen (P50)" : "canlı ölçüm gerektirir"}</span>}>

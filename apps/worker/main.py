@@ -6,7 +6,7 @@ from sqlalchemy import text
 from apscheduler.schedulers.blocking import BlockingScheduler
 from pvquant.db import sistem_baglami, tenant_baglami
 from pvquant.services import forecast_service, calib_service, plant_service
-from pvquant.services.alarm_service import tara as alarm_tara, kgup_kontrol as alarm_kgup_kontrol
+from pvquant.services.alarm_service import tara as alarm_tara, kgup_kontrol as alarm_kgup_kontrol, kgup_revizyon_kontrol as alarm_kgup_revizyon
 
 import os as _os
 try:
@@ -747,6 +747,7 @@ if __name__ == "__main__":
                 "cron", hour=cfg.worker_hour_skill, minute=45)
     sch.add_job(_logla("alarm", alarm_tara), "cron", hour=cfg.worker_hour_alarm, minute=0)
     sch.add_job(_logla("kgup_teslim_kontrol", alarm_kgup_kontrol), "cron", hour=12, minute=35)   # 29.10: 15:35 TSİ (Türkiye UTC+3 sabit) — KGÜP gecikti kuralı
+    sch.add_job(_logla("kgup_revizyon_kontrol", alarm_kgup_revizyon), "cron", hour="4-15", minute=10)   # 30.10 v2.507 (F-10): gündüz saat başı +10 (07:10–18:10 TSİ)
     sch.add_job(_logla("aylik_kalibrasyon", aylik_kalibrasyon),
                 "cron", day=cfg.worker_day_calibration, hour=cfg.worker_hour_calibration, minute=0)
     sch.add_job(_logla("aylik_iklim", aylik_iklim),                      # v2.77-C

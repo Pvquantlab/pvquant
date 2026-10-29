@@ -826,6 +826,17 @@ def kgup_sablon_sifirla(plant_id: str, claims=Depends(yazma_yetkisi())):
     return {"sablon": kgup_service.sablon_ozeti(pj)}
 
 
+@app.get("/v1/plants/{plant_id}/kgup/revizyon")
+def kgup_revizyon(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """v2.507 (F-10) — bugünün programı ↔ güncel beklenti: eşik üstü sapan ve revizyon süresi geçmemiş saatler (GİP kapısı + 30 dk).
+    Yol göstericidir; kayıt yazmaz, revizyon TPYS'de yapılır."""
+    from pvquant.services import plant_service, revizyon_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    return revizyon_service.oner(claims["tenant_id"], row)
+
+
 @app.get("/v1/plants/{plant_id}/kgup/kiyas")
 def kgup_kiyas(plant_id: str, gun: str, claims=Depends(gecerli_kullanici)):
     """v2.503 (F-06) — teslim günü için son PVQuant önerisi ↔ müşterinin bildirdiği KGÜP: saat saat fark."""

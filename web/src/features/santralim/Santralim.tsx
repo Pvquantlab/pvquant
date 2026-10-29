@@ -17,6 +17,7 @@ const KURAL_ADI: Record<string, string> = {
   veri_gelmedi: "Veri gelmedi", skill_dustu: "Tahmin doğruluğu düştü", pr_dustu: "Performans oranı düştü",
   clipping_orani_yuksek: "Kırpma oranı yüksek", iletisim_kesintisi: "İletişim kesintisi", kullanilabilirlik_dustu: "Kullanılabilirlik düştü",
   kgup_teslim_gecikti: "Program bildirimi hazırlanamadı", dengesizlik_asimi: "Dengesizlik maliyeti yüksek",
+  kgup_revizyon_onerisi: "Program revizyonu önerisi",
 };
 const KURAL_ACIKLAMA: Record<string, string> = {
   veri_gelmedi: "Son SCADA verisi 48 saatten eskiyse. Her santralde sabittir.",
@@ -27,6 +28,7 @@ const KURAL_ACIKLAMA: Record<string, string> = {
   kullanilabilirlik_dustu: "Son 30 günün kullanılabilirliği eşiğin altına düşerse.",
   kgup_teslim_gecikti: "Yarının programı için 15:30 kesiminden önce verilmiş tahmin yoksa; 15:35'te kontrol edilir.",
   dengesizlik_asimi: "Son 30 günün dengesizlik maliyeti gelirin eşik oranını aşarsa.",
+  kgup_revizyon_onerisi: "Gün içinde her saat (07:10–18:10) kontrol: bugünün programı güncel beklentiden eşik oranı kadar sapıyorsa ve o saat için revizyon süresi (GİP kapısı + 30 dk) geçmediyse.",
 };
 import { tarihBicimi } from "../../lib/bicim";
 import { t0Hesapla, simdiDegeri, simdiGercegi, dilimle } from "../sayfalar/tahminPencere";
@@ -600,7 +602,7 @@ export function Santralim({ plantId }: { plantId: string }) {
           </div>
           <div className="ayar">
             <div><div className="ayar-ad">Alarm kuralları</div>
-              <div className="ayar-aciklama">Veri kesintisi ve tahmin doğruluğu düşüşü her santralde sabittir; ek kurallar seçime bağlıdır ve gece taramasında çalışır.</div></div>
+              <div className="ayar-aciklama">Veri kesintisi ve tahmin doğruluğu düşüşü her santralde sabittir; ek kurallar seçime bağlıdır. Performans, kırpma, iletişim, kullanılabilirlik ve dengesizlik kuralları gece taramasında; program kuralları gün içinde çalışır (15:35 ve 07:10–18:10 arası her saat).</div></div>
             <div className="ayar-kontrol">
               {ak ? <>
                 {ak.secilebilir.map((k) => (
@@ -616,6 +618,7 @@ export function Santralim({ plantId }: { plantId: string }) {
                       : k === "kullanilabilirlik_dustu" ? `<%${sayiTr((ak.esik.kullanilabilirlik_esik ?? 0.97) * 100, 0)}`
                       : k === "kgup_teslim_gecikti" ? "15:30 sonrası"
                       : k === "dengesizlik_asimi" ? `>%${sayiTr((ak.esik.dengesizlik_esik ?? 0.03) * 100, 0)} gelir`
+                      : k === "kgup_revizyon_onerisi" ? `>%${sayiTr((ak.esik.revizyon_esik ?? 0.10) * 100, 0)} program`
                       : ""}</span>
                   </label>))}
               </> : <span className="ayar-durum">—</span>}

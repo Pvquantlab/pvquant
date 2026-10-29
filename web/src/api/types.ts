@@ -154,6 +154,16 @@ export interface KgupOnizleme {
   oneri?: { durum: string; kantil: string | null; tau?: number; not?: string } | null;
   teslim: { hedef_gun: string; durum: string; dakika_kaldi: number; teyit_saati: string };
 }
+/** /kgup/revizyon — v2.507 (F-10): bugünün programı ↔ güncel beklenti; eşik üstü ve revize edilebilir saatler. Yol gösterici, kayıt yazmaz. */
+/** /piyasa/durum — EPİAŞ kimliği tanımlı mı, son fiyat saati, fiyat/yön saat sayısı, senaryo değerleri. */
+export interface PiyasaDurum { kimlik: boolean; son_fiyat: string | null; saat: number; yon_saat?: number; senaryo: { ptf: number; smf: number; ad: string } }
+export interface KgupRevizyon {
+  durum: "ok" | "program_yok" | "tahmin_yok" | "gun_bitti"; gun: string; simdi: string; esik_oran: number; not: string;
+  program_kaynagi: string | null; beklenen_kaynagi: string | null; toplam_fark_mwh?: number; ilk_revizyon_son?: string | null; taban_mwh?: number;
+  saatler: { saat: number; ts: string; program_mwh: number; beklenen_mwh: number | null; fark_mwh: number | null; fark_oran: number | null;
+             esik_mwh: number; revizyon_son: string; revize_mumkun: boolean; oneri: boolean }[];
+  oneri_saatleri: number[];
+}
 /** /kgup/surumler — v2.502 (F-06): indirilen dosyaların değiştirilemez sürüm kaydı. */
 export interface KgupSurum {
   id: string; teslim_gunu: string; surum: number; kantil: string; run_id: string | null; run_at: string | null; kesim: string | null;

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, rolum, bellektenOku } from "../../api/client";
-import type { PaylasimListesi, PaylasilanVeri, TakimUyesi, ApiAnahtar, Webhook, SantralKisa, DenetimKaydi, KurulusAyarlar } from "../../api/types";
+import type { PiyasaDurum, PaylasimListesi, PaylasilanVeri, TakimUyesi, ApiAnahtar, Webhook, SantralKisa, DenetimKaydi, KurulusAyarlar } from "../../api/types";
 import { Kart, Sayfa, sayiTr, gucTr, SayfaIskeleti } from "./parcalar";
 import { Meta } from "../../lib/Meta";
 import { AyrintiCipleri } from "../../lib/AyrintiCipleri";
@@ -19,11 +19,33 @@ export function Kurulus({ santralYenile }: { santralYenile?: () => void }) {
     <Sayfa baslik="Ayarlar" alt="Hesap ve ekip, güvenlik politikası, dış erişim, kuruluşlar arası paylaşım, santral arşivi ve denetim izi.">
       <HesapVeEkip />
       {yonetici && <Politika />}
+      {yonetici && <PiyasaVerisi />}
       {yonetici && <DisErisim santraller={santraller} />}
       <Paylasimlar santraller={santraller} />
       {yonetici && <SantralArsivi santralYenile={santralYenile} />}
       {yonetici && <KurulusDenetim />}
     </Sayfa>
+  );
+}
+
+/** v2.507 (04 #12, karar gerektirmeyen kısım) — piyasa verisi bağlantısının DURUMU: EPİAŞ kimliği tanımlı mı, kaç saat fiyat ve
+ *  sistem yönü var, son fiyat saati. Kimlik sunucu ayarında tutulur; panelden girilmez (sır saklama kararı ayrı). */
+function PiyasaVerisi() {
+  const [d, setD] = useState<PiyasaDurum | null | undefined>(undefined);
+  useEffect(() => { api.piyasaDurum().then(setD).catch(() => setD(null)); }, []);
+  const zaman = (t: string | null) => t ? new Date(t).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }) : "—";
+  return (
+    <Kart baslik="EPİAŞ piyasa verisi bağlantısı" alt="Şeffaflık Platformu'ndan saatlik PTF, SMF ve sistem yönü; uzlaştırma kartları bu veriyle hesaplanır, bağlantı yoksa senaryo fiyatı kullanılır ve ekranda yazılır"
+      sag={d ? <span className={`rozet ${d.kimlik ? "rozet-ok" : "rozet-uyari"} rozet-kucuk`}>{d.kimlik ? "kimlik tanımlı" : "kimlik tanımlı değil"}</span> : undefined}>
+      {d === undefined ? <SayfaIskeleti kpi={0} kart={1} /> : !d ? <p className="soluk" style={{ margin: 0 }}>Durum alınamadı.</p> : (
+        <ul className="tanim-listesi" style={{ marginTop: 0, paddingTop: 0, borderTop: 0 }}>
+          <li><b>Saatlik fiyat</b><span>{sayiTr(d.saat)} saat PTF ve SMF</span></li>
+          <li><b>Sistem yönü</b><span>{sayiTr(d.yon_saat ?? 0)} saat</span></li>
+          <li><b>Son fiyat</b><span>{zaman(d.son_fiyat)}</span></li>
+          <li><b>Bağlantı yoksa</b><span>{d.senaryo.ad}: PTF {sayiTr(d.senaryo.ptf, 2)} · SMF {sayiTr(d.senaryo.smf, 2)} TL/MWh; ekranda «senaryo fiyatı» rozeti görünür</span></li>
+          <li><b>Kimlik</b><span className="soluk">Sunucu ayarında tutulur; değiştirmek için PVQuant ekibine yazın.</span></li>
+        </ul>)}
+    </Kart>
   );
 }
 

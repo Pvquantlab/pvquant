@@ -1,4 +1,4 @@
-import type { DsgAnahtar, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar } from "./types";
+import type { DsgAnahtar, KgupRevizyon, PiyasaDurum, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -760,6 +760,16 @@ export const api = {
     return y.json();
   },
   kgupSablonSifirla: (p: string): Promise<{ sablon: NonNullable<KgupOnizleme["sablon"]> }> => gonder(`/v1/plants/${p}/kgup/sablon`, "DELETE"),
+  /** v2.507 (F-10): bugünün programı için revizyon önerisi */
+  kgupRevizyon: async (p: string): Promise<KgupRevizyon | null> => {
+    if (TABAN == null) return null;
+    return getir<KgupRevizyon>(`/v1/plants/${p}/kgup/revizyon`);
+  },
+  /** v2.507: piyasa verisi bağlantısı (EPİAŞ kimliği, son fiyat, yön saati) */
+  piyasaDurum: async (): Promise<PiyasaDurum | null> => {
+    if (TABAN == null) return null;
+    return getir<PiyasaDurum>(`/v1/piyasa/durum`);
+  },
   kgupKiyas: async (p: string, gun: string): Promise<KgupKiyas | null> => {
     if (TABAN == null) return null;
     try { return await getir<KgupKiyas>(`/v1/plants/${p}/kgup/kiyas?gun=${gun}`); } catch { return null; }

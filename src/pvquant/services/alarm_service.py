@@ -19,13 +19,14 @@ from pvquant.ext.platform.alarm import KUTUPHANE
 
 # v2.265: seçilebilir ek kurallar (ürün kararı: yalnız bu üçü; ping/KGÜP/dengesizlik kuralları veri kaynağı olmadan açılmaz)
 EK_KURALLAR = ("pr_dustu", "clipping_orani_yuksek", "iletisim_kesintisi", "kullanilabilirlik_dustu",
-               "kgup_teslim_gecikti", "dengesizlik_asimi")   # v2.288: kütüphanenin tamamı seçilebilir
+               "kgup_teslim_gecikti", "dengesizlik_asimi", "kgup_revizyon_onerisi")   # v2.288: kütüphanenin tamamı seçilebilir; v2.507: F-10 revizyon
 ESIK_VARSAYILAN = {"pr_esik": 0.70, "clipping_esik": 0.15, "iletisim_esik_saat": 6, "kullanilabilirlik_esik": 0.97,
-                   "dengesizlik_esik": 0.03}
+                   "dengesizlik_esik": 0.03, "revizyon_esik": 0.10}
 KURAL_ETIKET = {"veri_gelmedi": "Veri gelmedi", "skill_dustu": "Tahmin doğruluğu düştü", "pr_dustu": "Performans oranı düştü",   # 29.10: «isabet» iç terim (panel dili)
                 "clipping_orani_yuksek": "Kırpma oranı yüksek", "iletisim_kesintisi": "İletişim kesintisi",
                 "kullanilabilirlik_dustu": "Kullanılabilirlik düştü",
-                "kgup_teslim_gecikti": "Program bildirimi hazırlanamadı", "dengesizlik_asimi": "Dengesizlik maliyeti yüksek"}
+                "kgup_teslim_gecikti": "Program bildirimi hazırlanamadı", "dengesizlik_asimi": "Dengesizlik maliyeti yüksek",
+                "kgup_revizyon_onerisi": "Program revizyonu önerisi"}   # v2.507 (F-10): bugünün programı güncel beklentiden eşik kadar sapıyor
 
 
 def _pj(plant: dict) -> dict:
@@ -50,6 +51,13 @@ def ek_alarmlar(plant: dict, baglam: dict) -> list[tuple[str, str, str]]:
     b = {**esikler(plant), **baglam}
     out = []
     for ad in secili_kurallar(plant):
+        if ad == "kgup_revizyon_onerisi":   # v2.507 (F-10): kütüphane dışı kural — koşul ve mesaj revizyon_service bağlamından
+            saatler = b.get("revizyon_oneri_saatleri") or []
+            if saatler:
+                son = str(b.get("revizyon_ilk_son") or "")[11:16]
+                out.append((ad, "warning", f"{plant.get('name', '')}: bugünün programı güncel beklentiden eşik üstü sapıyor — saat {', '.join(f'{h:02d}:00' for h in saatler)}"
+                            f" (toplam {float(b.get('revizyon_toplam_fark_mwh') or 0):+.1f} MWh); ilk saat için revizyon son anı {son} (GİP kapısı + 30 dk)"))
+            continue
         k = KUTUPHANE[ad]
         # iletisim_kesintisi kütüphanede 'ping dakikası' ister; üründe canlı ping yok → SCADA tazeliği saat cinsinden
         kosul = ((b.get("son_scada_saat_once") or 0) > b["iletisim_esik_saat"]) if ad == "iletisim_kesintisi" else k.kosul(b)
@@ -107,6 +115,14 @@ def _baglam(tenant_id, plant: dict, secili: list[str]) -> dict:
         with tenant_baglami(tenant_id) as s:
             saat = s.execute(text("SELECT EXTRACT(EPOCH FROM (now() - max(ts_utc)))/3600 FROM scada_hourly WHERE plant_id=:p"), {"p": pid}).scalar()
         b["son_scada_saat_once"] = round(float(saat), 1) if saat is not None else None
+    if "kgup_revizyon_onerisi" in secili:   # v2.507 (F-10)
+        try:
+            from pvquant.services import revizyon_service
+            r = revizyon_service.oner(tenant_id, {**plant, "id": pid})
+            b["revizyon_oneri_saatleri"] = r.get("oneri_saatleri") or []
+            b["revizyon_toplam_fark_mwh"] = r.get("toplam_fark_mwh"); b["revizyon_ilk_son"] = r.get("ilk_revizyon_son")
+        except Exception:   # noqa: BLE001 — öneri hesaplanamazsa alarm düşmez
+            b["revizyon_oneri_saatleri"] = []
     return b
 
 
@@ -176,6 +192,19 @@ def kgup_kontrol(plant: dict) -> None:
         for rule, siddet, msg in ek_alarmlar(plant, baglam):
             if rule == "kgup_teslim_gecikti":
                 _kaydet_ve_gonder(s, tid, pid, rule, msg, "critical")
+
+
+def kgup_revizyon_kontrol(plant: dict) -> None:
+    """v2.507 (F-10): gün içi saatlik kontrol — «kgup_revizyon_onerisi» seçiliyse bugünün programı ile güncel beklenti kıyaslanır;
+    eşik üstü ve revize edilebilir saat varsa alarm (günde 1 spam kilidi _kaydet_ve_gonder'de)."""
+    if "kgup_revizyon_onerisi" not in secili_kurallar(plant):
+        return
+    tid, pid = plant["tenant_id"], plant["id"]
+    baglam = _baglam(tid, plant, ["kgup_revizyon_onerisi"])
+    with tenant_baglami(tid) as s:
+        for rule, siddet, msg in ek_alarmlar(plant, baglam):
+            if rule == "kgup_revizyon_onerisi":
+                _kaydet_ve_gonder(s, tid, pid, rule, msg, siddet)
 
 
 def listele(tenant_id, plant_id, n: int = 20):
