@@ -750,6 +750,16 @@ export const api = {
     if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
     return y.json();
   },
+  /** 29.10 (v2.506): dışa aktarma biçimini müşterinin EPYS dosyasından öğren / sıfırla */
+  kgupSablonOgren: async (p: string, dosya: File): Promise<{ sablon: NonNullable<KgupOnizleme["sablon"]>; eslesme: Record<string, string>; eslesmeyen: string[]; uyarilar: string[] }> => {
+    if (TABAN == null) throw new Error("Örnek kipte yükleme yok.");
+    const jeton = localStorage.getItem("pvq_token"); const fd = new FormData(); fd.append("dosya", dosya);
+    const y = await fetch(`${TABAN}/v1/plants/${p}/kgup/sablon`, { method: "POST", body: fd, headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
+    if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise(() => {}); }
+    if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
+    return y.json();
+  },
+  kgupSablonSifirla: (p: string): Promise<{ sablon: NonNullable<KgupOnizleme["sablon"]> }> => gonder(`/v1/plants/${p}/kgup/sablon`, "DELETE"),
   kgupKiyas: async (p: string, gun: string): Promise<KgupKiyas | null> => {
     if (TABAN == null) return null;
     try { return await getir<KgupKiyas>(`/v1/plants/${p}/kgup/kiyas?gun=${gun}`); } catch { return null; }

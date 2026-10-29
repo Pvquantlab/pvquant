@@ -59,7 +59,7 @@ const PANELLER: readonly Panel[] = [
         { ad: "Uzlaştırma kalemleri (EDT ve KÜPST)", aciklama: "Yürürlükteki kuralla ayrı ayrı yeniden hesap; basit yöntemle kıyaslı, kaynak etiketli", hedef: "/yontem#para" },
       ] },
       { ad: "Bağlantı", rozet: "veri", ogeler: [
-        { ad: "Toplayıcı / DSG dosyaları", aciklama: "Saatlik program ve aralık CSV/XLSX; şablona birebir uyum pilotta teyit edilir", hedef: "/yontem#para" },
+        { ad: "Toplayıcı / DSG dosyaları", aciklama: "Saatlik program ve aralık CSV/XLSX; biçim örnek dosyanızdan öğrenilir", hedef: "/yontem#para" },
         { ad: "Kamuya açık üretim kaydı bağlantısı", aciklama: "Dosya yüklemeden gerçekleşen üretim akışı", hedef: "/yontem#para" },
       ] },
     ],

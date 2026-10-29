@@ -793,6 +793,39 @@ def kgup_bildirilen_yukle(plant_id: str, gun: str, dosya: UploadFile = File(...)
     return {"kayit": k, "kiyas": kgup_arsiv_service.kiyas(claims["tenant_id"], str(row["id"]), g)}
 
 
+@app.post("/v1/plants/{plant_id}/kgup/sablon")
+def kgup_sablon_ogren(plant_id: str, dosya: UploadFile = File(...), claims=Depends(yazma_yetkisi())):
+    """29.10 (v2.506) — müşterinin EPYS/TPYS'den indirdiği KGÜP dosyasından (CSV/Excel, ≤2 MB) dışa aktarma biçimi öğrenilir:
+    kolon adları/sırası, ayraç, ondalık, tarih biçimi → params_json.kgup_sablon; sonraki CSV indirmeleri bu biçimde çıkar."""
+    from datetime import datetime, timezone
+    from pvquant.ext.turkiye import kgup as kg
+    from pvquant.services import kgup_service, plant_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    b = dosya.file.read()
+    if not b or len(b) > 2_000_000:
+        raise HTTPException(422, "dosya boş ya da 2 MB'tan büyük")
+    try:
+        r = kg.sablon_ogren(b, dosya.filename or "sablon")
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    kaynak = {"dosya": dosya.filename or "sablon", "zaman": datetime.now(timezone.utc).isoformat(timespec="seconds"), "bicim": r["bicim"]}
+    pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, kgup_sablon=r["sablon"], kgup_sablon_kaynak=kaynak)
+    return {"sablon": kgup_service.sablon_ozeti(pj), "eslesme": r["eslesme"], "eslesmeyen": r["eslesmeyen"], "uyarilar": r["uyarilar"]}
+
+
+@app.delete("/v1/plants/{plant_id}/kgup/sablon")
+def kgup_sablon_sifirla(plant_id: str, claims=Depends(yazma_yetkisi())):
+    """29.10 (v2.506) — öğrenilen şablonu kaldırır; varsayılan beş kolona dönülür."""
+    from pvquant.services import kgup_service, plant_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, kgup_sablon=None, kgup_sablon_kaynak=None)
+    return {"sablon": kgup_service.sablon_ozeti(pj)}
+
+
 @app.get("/v1/plants/{plant_id}/kgup/kiyas")
 def kgup_kiyas(plant_id: str, gun: str, claims=Depends(gecerli_kullanici)):
     """v2.503 (F-06) — teslim günü için son PVQuant önerisi ↔ müşterinin bildirdiği KGÜP: saat saat fark."""

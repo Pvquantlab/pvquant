@@ -69,6 +69,21 @@ def eak_etkin(plant: dict, gun: date) -> dict:
 KANTILLER = ("p10", "p25", "p50", "p75", "p90")
 
 
+def _pj(pj) -> dict:
+    import json as _j
+    return _j.loads(pj) if isinstance(pj, str) else (pj or {})
+
+
+def sablon_ozeti(pj, sab=None) -> dict:
+    """29.10 (v2.506): dışa aktarma şablonunun durumu — müşteri dosyasından öğrenildiyse kaynağı söyler, yoksa «karşılaştırılmadı» notu."""
+    from pvquant.ext.turkiye import kgup as kg
+    pj = _pj(pj) if not isinstance(pj, dict) else pj
+    sab = sab or kg.Sablon.params_json_dan(pj)
+    kaynak = pj.get("kgup_sablon_kaynak") or None
+    durum = (f"müşteri dosyasından öğrenildi: {kaynak.get('dosya', '?')} ({str(kaynak.get('zaman', ''))[:10]})" if kaynak else kg.SABLON_DURUMU)
+    return {"durum": durum, "kolonlar": [getattr(sab, r) for r in sab.roller()], "ayrac": sab.ayrac, "ondalik": sab.ondalik, "kaynak": kaynak}
+
+
 def uret(tenant_id, plant: dict, gun: date, kantil: str = "p50", uevcb: str | None = None) -> dict:
     """Program tablosu + doğrulama + TPYS CSV metni. Koşu yoksa {'hata': ..., 'kod': 409}; eksik saat varsa {'hata', 'kod': 422, 'eksik_saatler'}."""
     import json as _j
@@ -110,6 +125,6 @@ def uret(tenant_id, plant: dict, gun: date, kantil: str = "p50", uevcb: str | No
             "satirlar": [{"saat": int(r.saat), "kgup_mwh": float(r.kgup_mwh), "eak_mw": float(r.eak_mw), "eak_mwh": float(r.eak_mw)}   # eak_mwh: eski alan adı (aynı değer, MW); yeni istemciler eak_mw okur
                          for r in son.tablo.itertuples()],
             "csv": baytlar.decode("utf-8-sig"), "dosya_adi": f"KGUP_{(uevcb or 'UEVCB')}_{gun.isoformat()}_{kantil}.csv",
-            "sha256": hashlib.sha256(baytlar).hexdigest(), "sablon": {"durum": kg.SABLON_DURUMU, "kolonlar": [sab.tarih, sab.saat, sab.uevcb, sab.kgup, sab.eak], "ayrac": sab.ayrac, "ondalik": sab.ondalik},
+            "sha256": hashlib.sha256(baytlar).hexdigest(), "sablon": sablon_ozeti(plant.get("params_json"), sab),
             "takvim": kg.TAKVIM, "teslim": kg.teslim_durumu(),
             "bildirim": "Dosya PVQuant'ta üretildi; TPYS'ye gönderim ve kabul müşterinin sisteminden yapılır — indirilen dosya teslim edilmiş sayılmaz."}

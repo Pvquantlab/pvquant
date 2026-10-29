@@ -52,6 +52,20 @@ export function Tahminler({ plantId }: { plantId: string }) {
   const surumleriYenile = () => { api.kgupSurumler(plantId).then((v) => setSurumler(v)); };
   const [kiyas, setKiyas] = useState<KgupKiyas | null>(null);   // v2.503: bildirilen ↔ öneri
   const [yukleMesaj, setYukleMesaj] = useState<string | null>(null);
+  // 29.10 (v2.506): dışa aktarma biçimi müşterinin EPYS/TPYS dosyasından öğrenilir — resmî şablon elimizde olmadan birebir biçim
+  const [sablonMesaj, setSablonMesaj] = useState<string | null>(null);
+  const sablonOgren = (dosya: File) => {
+    setSablonMesaj(null);
+    api.kgupSablonOgren(plantId, dosya).then((r) => {
+      setSablonMesaj(`Öğrenildi: ${r.sablon.kolonlar.join(" · ")}; ayraç «${r.sablon.ayrac}», ondalık «${r.sablon.ondalik}».${r.eslesmeyen.length ? ` Yazılmayan kolonlar: ${r.eslesmeyen.join(", ")}.` : ""}${r.uyarilar.length ? ` ${r.uyarilar.join(" ")}` : ""}`);
+      api.kgupOnizleme(plantId).then((v) => setKgup(v)).catch(() => {});
+    }).catch((e) => setSablonMesaj(String((e as Error).message ?? e)));
+  };
+  const sablonSifirla = () => {
+    setSablonMesaj(null);
+    api.kgupSablonSifirla(plantId).then(() => { setSablonMesaj("Varsayılan biçime dönüldü."); api.kgupOnizleme(plantId).then((v) => setKgup(v)).catch(() => {}); })
+      .catch((e) => setSablonMesaj(String((e as Error).message ?? e)));
+  };
   const bildirilenYukle = (gun: string, dosya: File) => {
     setYukleMesaj(null);
     api.kgupBildirilenYukle(plantId, gun, dosya).then((r) => { setKiyas(r.kiyas); setYukleMesaj(r.kayit.yeni ? `Kaydedildi: bildirilen sürüm ${r.kayit.surum}, ${sayiTr(r.kayit.toplam_mwh, 1)} MWh.` : "Aynı içerik zaten kayıtlı."); surumleriYenile(); })
@@ -186,7 +200,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
             {kgupHata && <p style={{ color: "var(--uyari-metin)", fontSize: 13.5, margin: "8px 0 0" }}>{kgupHata}</p>}
             <p className="soluk" style={{ fontSize: 13.5, margin: "8px 0 0" }}>
               {kgup.bildirim ?? "Dosya PVQuant'ta üretildi; TPYS'ye gönderim ve kabul müşterinin sisteminden yapılır — indirilen dosya teslim edilmiş sayılmaz."}
-              {kgup.sablon && ` Biçim: ${kgup.sablon.durum}.`}{kgup.sha256 && ` Dosya özeti (SHA-256) ${kgup.sha256.slice(0, 12)}….`}
+              {kgup.sablon && ` Dosya biçimi: ${kgup.sablon.kaynak ? "müşteri dosyasından öğrenildi" : "varsayılan şablon"}.`}{kgup.sha256 && ` Dosya özeti (SHA-256): ${kgup.sha256.slice(0, 12)}…`}
             </p>
             {kgup.uyarilar.length > 0 && <ul className="not-listesi uyari">{kgup.uyarilar.map((u) => <li key={u}>{u}</li>)}</ul>}
             {kgup.sicrama_saatleri.length > 0 && <p style={{ fontSize: 13.5, margin: "8px 0 0" }}>≥200 MWh ani değişim: saat {kgup.sicrama_saatleri.join(", ")}; dosyada 15 dakikalık adımlar.</p>}
@@ -229,8 +243,8 @@ export function Tahminler({ plantId }: { plantId: string }) {
               {kiyas && kiyas.ozet && (
                 <>
                   <p style={{ fontSize: 13.5, margin: "8px 0 6px" }}>
-                    {kiyas.ozet.ayni ? "Bildirilen program öneriyle aynı." : <>Fark: {sayiTr(kiyas.ozet.farkli_saat)} saatte; toplam {sayiTr(kiyas.ozet.fark_toplam_mwh, 3)} MWh (mutlak {sayiTr(kiyas.ozet.fark_mutlak_mwh, 3)} MWh); en büyük saat {kiyas.ozet.en_buyuk_fark_saat}: {sayiTr(kiyas.ozet.en_buyuk_fark_mwh, 3)} MWh.</>}
-                    {kiyas.oneri && ` Öneri sürüm ${kiyas.oneri.surum}`}{kiyas.bildirilen && ` · bildirilen sürüm ${kiyas.bildirilen.surum}`}
+                    {kiyas.ozet.ayni ? "Bildirilen program öneriyle aynı." : <>Bildirilen program öneriden {sayiTr(kiyas.ozet.farkli_saat)} saatte ayrılıyor: toplam fark {sayiTr(kiyas.ozet.fark_toplam_mwh, 3)} MWh, mutlak {sayiTr(kiyas.ozet.fark_mutlak_mwh, 3)} MWh; en büyük fark {String(kiyas.ozet.en_buyuk_fark_saat).padStart(2, "0")}:00 saatinde {sayiTr(kiyas.ozet.en_buyuk_fark_mwh, 3)} MWh.</>}
+                    {kiyas.oneri && ` Kıyaslanan: öneri sürüm ${kiyas.oneri.surum}`}{kiyas.bildirilen && `, bildirilen sürüm ${kiyas.bildirilen.surum}.`}
                   </p>
                   {!kiyas.ozet.ayni && (
                     <div className="grafik-kaydir">
@@ -245,12 +259,25 @@ export function Tahminler({ plantId }: { plantId: string }) {
               )}
               {kiyas && !kiyas.ozet && <p className="soluk" style={{ fontSize: 13.5, margin: "8px 0 0" }}>{kiyas.bildirilen ? "Bu gün için indirilmiş öneri yok; kıyas yapılamadı." : "Bu gün için bildirilen dosya henüz yüklenmedi."}</p>}
             </details>
+            <details className="aciklama genis">
+              <summary>Bildirim dosyası biçimi{kgup.sablon?.kaynak ? " · müşteri dosyasından" : " · varsayılan"}</summary>
+              <p className="soluk" style={{ fontSize: 13.5, margin: "0 0 8px" }}>
+                {kgup.sablon ? <>Şu anki biçim: {kgup.sablon.kolonlar.join(" · ")}; ayraç «{kgup.sablon.ayrac}», ondalık «{kgup.sablon.ondalik}». {kgup.sablon.durum.charAt(0).toLocaleUpperCase("tr-TR") + kgup.sablon.durum.slice(1)}.</> : "Biçim bilgisi yok."}
+                {" "}Bir KGÜP dosyası seçin (CSV ya da Excel); kolon adları, sırası, ayraç ve ondalık o dosyadan öğrenilir ve sonraki indirmeler aynı biçimde çıkar.
+              </p>
+              <div className="dugme-sira" style={{ alignItems: "flex-end", flexWrap: "wrap", gap: 8 }}>
+                <label className="girdi-etiket">Örnek dosya
+                  <input className="girdi" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(e) => { const f = e.target.files?.[0]; if (f) sablonOgren(f); e.target.value = ""; }} /></label>
+                {kgup.sablon?.kaynak && <button className="dugme" onClick={sablonSifirla}>Varsayılana dön</button>}
+              </div>
+              {sablonMesaj && <p style={{ fontSize: 13.5, margin: "8px 0 0", color: sablonMesaj.startsWith("Öğrenildi") || sablonMesaj.startsWith("Varsayılan") ? undefined : "var(--uyari-metin)" }}>{sablonMesaj}</p>}
+            </details>
             <details className="aciklama">
               <summary>Piyasa takvimi ve program kuralı</summary>
               <p>
                 {kgup.gip && `${kgup.gip.kural} Örnek: ${kgup.gip.ornek_teslimat} teslimatı için kapı ${kgup.gip.ornek_kapi}, revizyon son ${kgup.gip.ornek_revizyon_son}. `}
                 Program, teslim saatinden (bir gün önce 15:30) önce verilmiş son tahminin saatlik beklenen (P50) değeridir; KGÜP ≤ emre amade kapasite ≤ kurulu güç
-                kuralı uygulanır. CSV kolon adları TPYS şablonuyla eşlenmelidir (resmî şablon teyit edilemedi); dosya bir öneridir, bildirim TPYS'de yapılır.
+                kuralı uygulanır. Dosya biçimi «Bildirim dosyası biçimi» alanından EPYS dosyanızla eşlenir; dosya bir öneridir, bildirim TPYS'de yapılır.
               </p>
             </details>
           </>

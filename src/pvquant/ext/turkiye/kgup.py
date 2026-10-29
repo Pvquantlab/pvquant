@@ -24,7 +24,7 @@ TESLIM_BAS, TESLIM_SON, TEYIT = (14, 0), (15, 30), (17, 0)
 SICRAMA_ESIK_MWH = 200.0
 
 
-SABLON_DURUMU = "resmî TPYS şablonuyla karşılaştırılmadı; sütun adları/sırası pilotta doğrulanacak"
+SABLON_DURUMU = "resmî TPYS şablonuyla henüz karşılaştırılmadı; EPYS'den indirdiğiniz bir dosyayı yükleyerek biçimi eşleyebilirsiniz"   # 29.10 dil: «pilotta» iç terim
 TAKVIM = {"pencere_acilis": "14:00", "bytm_son": "14:30", "son": "15:30", "teyit": "17:00"}   # m.69(1), (4); EPİAŞ KGÜP sayfası
 
 
@@ -34,6 +34,11 @@ class Sablon:
     tarih: str = "Tarih"; saat: str = "Saat"; uevcb: str = "UEVCB"; kgup: str = "KGUP_MWh"; eak: str = "EAK_MW"
     ceyrek: str = "Ceyrek"       # 15 dk satırları için 0/15/30/45
     ayrac: str = ";"; ondalik: str = ","; tarih_bicim: str = "%d.%m.%Y"
+    sira: str = "tarih,saat,uevcb,kgup,eak"   # 29.10 (v2.506): kolon sırası — müşteri şablonundan öğrenilir; listede olmayan rol yazılmaz
+
+    def roller(self) -> list[str]:
+        r = [x.strip() for x in (self.sira or "").split(",") if x.strip() in ROLLER]
+        return r if "kgup" in r else ["tarih", "saat", "uevcb", "kgup", "eak"]
 
     @classmethod
     def params_json_dan(cls, pj: dict | None) -> "Sablon":
@@ -110,12 +115,86 @@ def tpys_csv(tablo: pd.DataFrame, yol: str | Path, sablon: Sablon = Sablon()) ->
 
 
 def csv_metni(tablo: pd.DataFrame, sablon: Sablon = Sablon()) -> str:
-    """TPYS CSV gövdesi (BOM'suz metin; BOM yalnız csv_baytlari'nda — tek yerde)."""
-    df = pd.DataFrame({sablon.tarih: pd.to_datetime(tablo["tarih"]).dt.strftime(sablon.tarih_bicim), sablon.saat: tablo["saat"].astype(int),
-                       sablon.uevcb: tablo["uevcb"], sablon.kgup: tablo["kgup_mwh"], sablon.eak: tablo["eak_mw"]})
+    """TPYS CSV gövdesi (BOM'suz metin; BOM yalnız csv_baytlari'nda — tek yerde). 29.10 (v2.506): kolon sırası ve kümesi şablonun
+    `sira`sından (müşteri dosyasından öğrenilmiş olabilir); varsayılan beş kolon aynı sırayla — eski çıktı bayt bayt aynı."""
+    deger = {"tarih": pd.to_datetime(tablo["tarih"]).dt.strftime(sablon.tarih_bicim), "saat": tablo["saat"].astype(int),
+             "uevcb": tablo["uevcb"], "kgup": tablo["kgup_mwh"], "eak": tablo["eak_mw"]}
+    df = pd.DataFrame({getattr(sablon, rol): deger[rol] for rol in sablon.roller()})
     if "ceyrek" in tablo and tablo["ceyrek"].notna().any():
         df[sablon.ceyrek] = tablo["ceyrek"].astype("Int64")
     return df.to_csv(sep=sablon.ayrac, decimal=sablon.ondalik, index=False, float_format="%.3f")
+
+
+ROLLER = ("tarih", "saat", "uevcb", "kgup", "eak")
+# başlık ipuçları (küçük harf, Türkçe karakterler sadeleştirilmiş): rol → aranan parçalar; ilk eşleşen başlık alınır
+_IPUCU = {"tarih": ("tarih", "date", "gun"), "saat": ("saat", "hour", "donem", "period", "zaman"),
+          "uevcb": ("uevcb", "birim", "unit", "santral"), "kgup": ("kgup", "program", "plan", "mwh", "miktar", "uretim"),
+          "eak": ("eak", "emre", "kapasite", "capacity", "mw"), "ceyrek": ("ceyrek", "dakika", "minute")}
+
+
+def _sade(s: str) -> str:
+    return str(s).strip().lower().translate(str.maketrans("çğıöşüâî", "cgiosuai"))
+
+
+def sablon_ogren(b: bytes, dosya_adi: str = "") -> dict:
+    """29.10 (v2.506) — müşterinin EPYS/TPYS'den indirdiği KGÜP dosyasından (CSV ya da Excel) biçimi öğrenir: kolon adları ve sırası,
+    ayraç, ondalık, tarih biçimi. Resmî şablon elimizde olmadan dışa aktarma müşterinin dosyasıyla birebir aynı biçime gelir.
+    Zorunlu roller: saat ve kgup; bulunamazsa ValueError (başlıklar hata metninde). Dönüş: {sablon, eslesme, eslesmeyen, bicim, uyarilar}."""
+    uyar: list[str] = []
+    if b[:2] == b"PK":   # xlsx (zip)
+        import io
+        from openpyxl import load_workbook
+        wb = load_workbook(io.BytesIO(b), read_only=True, data_only=True); ws = wb.worksheets[0]
+        satirlar = [[("" if c is None else str(c)) for c in r] for r in ws.iter_rows(values_only=True, max_row=30)]
+        satirlar = [r for r in satirlar if any(x.strip() for x in r)]
+        if not satirlar:
+            raise ValueError("Excel sayfası boş")
+        baslik = [x.strip() for x in satirlar[0]]; ornek = satirlar[1] if len(satirlar) > 1 else []
+        ayrac, ondalik, bicim = ";", ",", "xlsx"
+        uyar.append("Excel dosyası: dışa aktarma CSV'dir (aynı kolon adları ve sırası; ayraç «;», ondalık «,»)")
+    else:
+        metin = b.decode("utf-8-sig", errors="replace"); hatlar = [h for h in metin.splitlines() if h.strip()]
+        if not hatlar:
+            raise ValueError("dosya boş")
+        ilk = hatlar[0]; ayrac = max((";", ",", "\t", "|"), key=lambda a: ilk.count(a))
+        if ilk.count(ayrac) == 0:
+            raise ValueError("ayraç bulunamadı (; , sekme ya da | bekleniyor)")
+        baslik = [x.strip().strip('"') for x in ilk.split(ayrac)]
+        ornek = [x.strip().strip('"') for x in hatlar[1].split(ayrac)] if len(hatlar) > 1 else []
+        sayisal = " ".join(x for x in ornek if any(ch.isdigit() for ch in x))
+        ondalik = "," if ("," in sayisal and ayrac != ",") else "."
+        bicim = "csv"
+    eslesme: dict[str, str] = {}; kullanilan: set[str] = set()
+    for rol, ipuclari in _IPUCU.items():
+        for h in baslik:
+            if h in kullanilan or not h:
+                continue
+            sade = _sade(h)
+            if rol == "eak" and "kgup" in sade:
+                continue
+            if any(ip in sade for ip in ipuclari):
+                eslesme[rol] = h; kullanilan.add(h); break
+    eksik = [r for r in ("saat", "kgup") if r not in eslesme]
+    if eksik:
+        raise ValueError(f"şablonda zorunlu kolon bulunamadı: {', '.join(eksik)}; başlıklar: {', '.join(baslik)}")
+    eslesmeyen = [h for h in baslik if h and h not in kullanilan]
+    if eslesmeyen:
+        uyar.append(f"eşlenmeyen kolon(lar) yazılmaz: {', '.join(eslesmeyen)}")
+    tarih_bicim = "%d.%m.%Y"
+    if "tarih" in eslesme and ornek:
+        i = baslik.index(eslesme["tarih"]); v = ornek[i] if i < len(ornek) else ""
+        if len(v) >= 10 and v[4] == "-": tarih_bicim = "%Y-%m-%d"
+        elif len(v) >= 10 and v[2] == "/": tarih_bicim = "%d/%m/%Y"
+    sira = [rol for rol in baslik_rolleri(baslik, eslesme)]
+    sab = {rol: eslesme[rol] for rol in eslesme if rol in Sablon.__dataclass_fields__}
+    sab.update({"ayrac": ayrac, "ondalik": ondalik, "tarih_bicim": tarih_bicim, "sira": ",".join(sira)})
+    return {"sablon": sab, "eslesme": eslesme, "eslesmeyen": eslesmeyen, "bicim": bicim, "uyarilar": uyar, "dosya_adi": dosya_adi}
+
+
+def baslik_rolleri(baslik: list[str], eslesme: dict[str, str]) -> list[str]:
+    """Başlık sırasına göre rol listesi (yalnız eşleşen roller; ceyrek hariç — o ayrı sütun olarak eklenir)."""
+    ters = {h: rol for rol, h in eslesme.items() if rol in ROLLER}
+    return [ters[h] for h in baslik if h in ters]
 
 
 def csv_baytlari(tablo: pd.DataFrame, sablon: Sablon = Sablon()) -> bytes:

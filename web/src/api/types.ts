@@ -143,7 +143,9 @@ export interface KgupOnizleme {
   gun: string; kantil: string; kosu: { run_at?: string; mode?: string; kesim?: string; run_id?: string }; uyarilar: string[]; sicrama_saatleri: number[];
   toplam_mwh: number; satirlar: { saat: number; kgup_mwh: number; eak_mwh: number; eak_mw?: number }[]; dosya_adi: string;
   /** 29.10 (F-05/F-06): dosya özeti, şablon durumu, takvim, bildirim notu, dengeleme birimi bayrağı */
-  sha256?: string; sablon?: { durum: string; kolonlar: string[]; ayrac: string; ondalik: string };
+  sha256?: string; sablon?: { durum: string; kolonlar: string[]; ayrac: string; ondalik: string;
+                              /** 29.10 (v2.506): müşteri dosyasından öğrenildiyse kaynağı */
+                              kaynak?: { dosya: string; zaman: string; bicim: string } | null };
   takvim?: { pencere_acilis: string; bytm_son: string; son: string; teyit: string }; bildirim?: string; dengeleme_birimi?: boolean;
   /** v2.275: o gün için etkin EAK ve kaynağı (gecici | eak_alani | ac_tavani | kurulu_guc) */
   eak?: { eak_mw: number; kaynak: string; bitis?: string };
