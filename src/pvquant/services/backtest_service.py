@@ -136,7 +136,56 @@ def ufuk_kova_sinavi(tenant_id, plant: dict, gun: int = 90) -> dict:
 
 
 # ---------------- v2.503 (F-07): uzlaştırma kalemleri geri testi — 12 ay, yürürlükteki kural + karşı-olgu sütunları ----------------
-def maliyet_geri_test_df(df: pd.DataFrame, fiyat: pd.DataFrame, segment: str | None = None, ariza_sayisi: int = 0) -> dict:
+DUYARLILIK_SEVIYELERI = (5.0, 8.0, 12.0, 15.0, 20.0)   # C iş kolu T1 seviyeleri (WMAPE %)
+
+
+def wmape_pct(program_mw: pd.Series, gercek_mw: pd.Series) -> float | None:
+    """Pencere WMAPE'si: Σ|program − gerçek| / Σ gerçek × 100 (saatlik, tüm saatler)."""
+    g = gercek_mw.astype(float); top = float(g.sum())
+    return (float((program_mw.astype(float) - g).abs().sum()) / top * 100.0) if top > 0 else None
+
+
+def wmape_duyarlilik_df(df: pd.DataFrame, fiyat: pd.DataFrame, segment: str | None = None, ariza_sayisi: int = 0,
+                        seviyeler=DUYARLILIK_SEVIYELERI, kurulu_guc_mw: float | None = None) -> dict | None:
+    """v2.508 (04 #2) — SAF, VARSAYIMSAL: santralin kendi hata deseni ölçeklenerek «tahmin hatası şu WMAPE seviyesinde olsaydı» uzlaştırma
+    kalemleri. Hedef w için program_w = gerçek − (gerçek − program) × (w / WMAPE_gerçek); 0 ile kurulu güç arasına kırpılır (kırpma elde
+    edilen WMAPE'yi hedeften biraz saptırabilir; «wmape_elde» ayrıca verilir). C iş kolunun tohumlu AR(1)+Laplace üretecinden farkı: burada
+    rastgele çekim yok, santralin gerçek hata örüntüsü korunur. Gerçek WMAPE 0 ya da üretim 0 ise None."""
+    from pvquant.ext.turkiye import dengesizlik as d
+    from pvquant.services.dengesizlik_service import _yon_ve_kaynak, _r0
+    if df is None or df.empty:
+        return None
+    x = df.dropna(subset=["gercek_kw", "kgup_kw"]).copy().set_index("ts_utc")
+    if x.empty:
+        return None
+    f = fiyat.reindex(x.index); yon, _ = _yon_ve_kaynak(f)
+    ger = x["gercek_kw"].astype(float) / 1000.0; kg = x["kgup_kw"].astype(float) / 1000.0
+    ptf = f["ptf"].astype(float); smf = f["smf"].astype(float)
+    w0 = wmape_pct(kg, ger)
+    if not w0:
+        return None
+    hata = ger - kg; uretim = float(ger.sum()); satirlar = []
+    for w in list(seviyeler) + [round(w0, 2)]:
+        gercek_satir = (w == round(w0, 2))
+        prog = kg.copy() if gercek_satir else (ger - hata * (w / w0))   # gerçek seviye: program aynen (ölçek 1, yuvarlama sapması yok)
+        prog = prog.clip(lower=0.0)
+        if kurulu_guc_mw:
+            prog = prog.clip(upper=kurulu_guc_mw)
+        r = d.saatlik(prog, ger, ptf, smf, yon=yon, segment=segment, ariza_sayisi=ariza_sayisi)
+        eksik = float(((-r["sapma"]).clip(lower=0) * (r["p_neg"] - r["ptf"])).sum()); fazla = float((r["sapma"].clip(lower=0) * (r["ptf"] - r["p_poz"])).sum())
+        kup_ok = r["kupst"].notna().all(); kup = float(r["kupst"].sum()) if kup_ok else None
+        toplam = (float(r["dengesizlik_maliyeti"].sum()) + kup) if kup is not None else None
+        satirlar.append({"wmape_hedef": float(w), "wmape_elde": round(wmape_pct(prog, ger) or 0.0, 2), "gercek": gercek_satir,
+                         "eksik_tl": _r0(eksik), "fazla_tl": _r0(fazla), "kupst_tl": (_r0(kup) if kup is not None else None),
+                         "toplam_tl": (_r0(toplam) if toplam is not None else None),
+                         "tl_per_mwh": (round(toplam / uretim, 1) if (toplam is not None and uretim > 0) else None)})
+    satirlar.sort(key=lambda r: r["wmape_hedef"])
+    return {"yontem": "santralin kendi hata deseni hedef WMAPE'ye ölçeklendi; 0 ile kurulu güç arasına kırpıldı; rastgele üretim yok",
+            "wmape_gercek": round(w0, 2), "seviyeler": satirlar, "uretim_mwh": round(uretim, 1),
+            "not": "Varsayımsal duyarlılık: aynı fiyat ve yön geçmişinde tahmin hatası farklı olsaydı uzlaştırma kalemleri ne olurdu. Gelecek için öngörü ya da taahhüt değildir."}
+
+
+def maliyet_geri_test_df(df: pd.DataFrame, fiyat: pd.DataFrame, segment: str | None = None, ariza_sayisi: int = 0, kurulu_guc_mw: float | None = None) -> dict:
     """SAF. df: ts_utc, gercek_kw, kgup_kw (D-1 15:30 öncesi koşunun P50'si), naif_kw. fiyat: ptf/smf/yon/kaynak.
     Aylık (C T4 biçimi): üretim, sapma, eksik/fazla kayıp, KÜPST, toplam, referans programa göre fark; karşı-olgu sütunları
     «2026 kuralı tüm döneme» ve «2026 + V = 100» (C iş kolu tanımı: EDT formülü + KÜPST 2026 katsayıları). Mekanizma kırılımı (C T5):
@@ -193,7 +242,9 @@ def maliyet_geri_test_df(df: pd.DataFrame, fiyat: pd.DataFrame, segment: str | N
                  "v_tabani_saat": int((dal == "V").sum()), "b_dali_tl": _r0(top(fazla[dal == "B"])), "afl_dali_tl": _r0(top(eksik[dal == "AFL"])),
                  "senaryo_saat": fiyat_ozeti["senaryo_saat"], "yon_varsayilan_saat": fiyat_ozeti["yon_varsayilan_saat"], "yon_eksik_saat": fiyat_ozeti["yon_eksik_saat"],
                  "hesaplanamayan_saat": int((yur["durum"] != "ok").sum())}
+    duyarlilik = wmape_duyarlilik_df(df, fiyat, segment=segment, ariza_sayisi=ariza_sayisi, kurulu_guc_mw=kurulu_guc_mw)   # v2.508 (04 #2)
     return {"gun_sayisi": int(pd.Series(yur.index.tz_convert(IST).date).nunique()), "aylar": aylar, "toplam": toplam, "mekanizma": mekanizma,
+            "duyarlilik": duyarlilik,
             "kural_surumu": " | ".join(sorted(set(yur["kural_surumu"]))), "fiyat": fiyat_ozeti,
             "baslik": "Geçmiş verinin varsayımsal yeniden hesabı (yürürlükteki kural saat bazında); EPİAŞ uzlaştırma sonucu değildir."
                       + (f" Senaryo fiyatı kullanılan saat: {fiyat_ozeti['senaryo_saat']}." if fiyat_ozeti["senaryo_saat"] else "")}
@@ -206,6 +257,7 @@ def maliyet_geri_test(tenant_id, plant: dict, gun: int = 365) -> dict:
     idx = pd.DatetimeIndex(df["ts_utc"]) if not df.empty else pd.DatetimeIndex([], tz="UTC")
     fiyat = piyasa_service.fiyatlar(idx)
     seg = dz.segment_bilgisi(plant.get("params_json")); pj = dz._pj(plant.get("params_json"))
-    out = maliyet_geri_test_df(df, fiyat, segment=seg["segment"], ariza_sayisi=int(pj.get("ariza_sayisi_ay") or 0))
+    out = maliyet_geri_test_df(df, fiyat, segment=seg["segment"], ariza_sayisi=int(pj.get("ariza_sayisi_ay") or 0),
+                               kurulu_guc_mw=(float(plant.get("capacity_kwp") or 0) / 1000.0) or None)
     out["pencere_gun"] = gun; out["segment"] = seg
     return out

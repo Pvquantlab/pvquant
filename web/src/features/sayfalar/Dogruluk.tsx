@@ -769,6 +769,26 @@ export function Dogruluk({ plantId }: { plantId: string }) {
                   </tbody>
                 </table>
               </div>
+              {gt.duyarlilik && gt.duyarlilik.seviyeler.length > 0 && (
+                <details className="aciklama genis" style={{ marginTop: 10 }}>
+                  <summary>Hata duyarlılığı · varsayımsal (gerçek WMAPE %{sayiTr(gt.duyarlilik.wmape_gercek, 1)})</summary>
+                  <p className="soluk" style={{ fontSize: 13.5, margin: "0 0 8px" }}>Aynı fiyat ve sistem yönü geçmişinde tahmin hatası farklı bir seviyede olsaydı uzlaştırma kalemleri ne olurdu: santralin kendi saatlik hata deseni hedef seviyeye ölçeklenir, rastgele üretim yoktur. Gelecek için öngörü ya da taahhüt değildir.</p>
+                  <div className="grafik-kaydir">
+                    <table className="veri" style={{ fontSize: 13 }}>
+                      <thead><tr><th>WMAPE hedef</th><th>Elde edilen</th><th>Eksik üretim (TL)</th><th>Fazla üretim (TL)</th><th>KÜPST (TL)</th><th>Toplam (TL)</th><th>TL/MWh</th></tr></thead>
+                      <tbody className="mono">
+                        {gt.duyarlilik.seviyeler.map((r) => (
+                          <tr key={r.wmape_hedef} style={r.gercek ? { fontWeight: 600 } : undefined}>
+                            <td>%{sayiTr(r.wmape_hedef, 1)}{r.gercek ? " (gerçek)" : ""}</td><td>%{sayiTr(r.wmape_elde, 1)}</td>
+                            <td>{r.eksik_tl != null ? sayiTr(r.eksik_tl) : "—"}</td><td>{r.fazla_tl != null ? sayiTr(r.fazla_tl) : "—"}</td>
+                            <td>{r.kupst_tl != null ? sayiTr(r.kupst_tl) : "—"}</td><td>{r.toplam_tl != null ? sayiTr(r.toplam_tl) : "—"}</td>
+                            <td>{r.tl_per_mwh != null ? sayiTr(r.tl_per_mwh, 1) : "—"}</td></tr>))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="soluk" style={{ fontSize: 13, margin: "6px 0 0" }}>Yöntem: {gt.duyarlilik.yontem}. Elde edilen WMAPE, 0 ile kurulu güç arasına kırpma yüzünden hedeften biraz sapabilir.</p>
+                </details>
+              )}
               {gt.mekanizma && (
                 <p className="soluk" style={{ fontSize: 13.5, margin: "8px 0 0" }}>
                   Saat dağılımı: {sayiTr(gt.mekanizma.saat)} saat; sistem enerji açığında {sayiTr(gt.mekanizma.acik_saat)}, fazlasında {sayiTr(gt.mekanizma.fazla_saat)}, dengede {sayiTr(gt.mekanizma.dengede_saat)}.

@@ -218,6 +218,9 @@ export interface DengesizlikGeriTest {
                b_dali_tl: number | null; afl_dali_tl: number | null; senaryo_saat: number; yon_varsayilan_saat: number; yon_eksik_saat: number; hesaplanamayan_saat: number } | null;
   fiyat?: { epias_saat: number; senaryo_saat: number; yon_varsayilan_saat?: number; yon_eksik_saat?: number };
   segment?: { segment: string | null; kgup_yukumlu: boolean | null; dengesizlik_sahibi: string | null; santral_tasir: boolean | null };
+  /** v2.508 (04 #2): hata duyarlılığı — santralin kendi hata deseni hedef WMAPE'ye ölçeklenir; varsayımsal */
+  duyarlilik?: { yontem: string; wmape_gercek: number; uretim_mwh: number; not: string;
+                 seviyeler: { wmape_hedef: number; wmape_elde: number; gercek: boolean; eksik_tl: number | null; fazla_tl: number | null; kupst_tl: number | null; toplam_tl: number | null; tl_per_mwh: number | null }[] } | null;
 }
 /** /saglik — v2.256: bozunma ve performans eğilimi. */
 export interface Saglik {
