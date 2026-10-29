@@ -36,6 +36,9 @@ UC = {
     "uevcb_listesi": ("/v1/generation/data/uevcb-list", None),
 }
 IST = "Europe/Istanbul"
+# 29.10 (v2.505, canlı sınama): liste uçları GET'tir (POST → 404 «Method not found or disabled»); KGÜP uçları `region` ister (yoksa 400).
+UC_GET = {"santral_listesi"}
+VARSAYILAN_EK = {"kgup": {"region": "TR1"}, "kgup_ilk": {"region": "TR1"}}
 
 
 @dataclass
@@ -65,10 +68,14 @@ class Istemci:
 
     def ham(self, ad: str, baslangic: str, bitis: str, **ek) -> list[dict]:
         yol, _ = UC[ad]
+        ek = {**VARSAYILAN_EK.get(ad, {}), **ek}
         govde = {"startDate": f"{baslangic}T00:00:00+03:00", "endDate": f"{bitis}T23:00:00+03:00", **ek}
         for deneme in range(3):
             with self._http() as c:
-                r = c.post(KOK + yol, json=govde, headers={"TGT": self.tgt(), "Content-Type": "application/json"})
+                if ad in UC_GET:
+                    r = c.get(KOK + yol, headers={"TGT": self.tgt(), "Accept": "application/json"})
+                else:
+                    r = c.post(KOK + yol, json=govde, headers={"TGT": self.tgt(), "Content-Type": "application/json"})
             if r.status_code == 429:
                 time.sleep(15 * (deneme + 1)); continue
             if r.status_code == 401 and deneme == 0:
@@ -140,6 +147,9 @@ class Istemci:
         s = pd.Series([yon_normalize(v) for v in df[alan]], index=pd.DatetimeIndex(t).tz_convert("UTC"), name="sistem_yonu", dtype=object).sort_index()
         return s[~s.index.duplicated(keep="last")]
     def kgup(self, b, e, **ek): return self.seri("kgup", b, e, **ek)
+    def santral_listesi(self) -> list[dict]:
+        """29.10 (v2.505): Şeffaflık santral listesi (GET; id, name, eic, shortName) — EPİAŞ santral kimliği eşlemesi için."""
+        return self.ham("santral_listesi", "1970-01-01", "1970-01-01")
     def gercek_zamanli_uretim(self, b, e, **ek): return self.seri("gercek_zamanli_uretim", b, e, **ek)
 
     def fiyat_paketi(self, b, e) -> pd.DataFrame:

@@ -93,3 +93,12 @@ def test_kapilar(istemci):
     y = istemci.get("/v1/plants/p1/toplayici?fmt=csv&adim=15&gun=2026-09-07")
     assert y.status_code == 200 and "T_2026-09-07_15.csv" in y.headers["content-disposition"]
     assert istemci.get("/v1/plants/p1/toplayici?fmt=pdf").status_code == 422
+
+
+def test_ariza_sayisi_ay_kapisi(istemci):
+    """29.10 (v2.505, 04 #13): aylık arıza kaydı sayısı EAK formundan params_json'a; 0–999; null temizler; verilmezse dokunulmaz."""
+    j = istemci.put("/v1/plants/p1/eak", json={"ariza_sayisi_ay": 31}).json()
+    assert j["ariza_sayisi_ay"] == 31
+    assert istemci.put("/v1/plants/p1/eak", json={"eak_kw": 2000}).json()["ariza_sayisi_ay"] == 31          # alan geçmeyince korunur
+    assert istemci.put("/v1/plants/p1/eak", json={"ariza_sayisi_ay": 1000}).status_code == 422
+    assert istemci.put("/v1/plants/p1/eak", json={"ariza_sayisi_ay": None}).json()["ariza_sayisi_ay"] == 0   # null = temizle

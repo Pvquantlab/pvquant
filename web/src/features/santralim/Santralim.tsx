@@ -10,6 +10,24 @@ import { useTema } from "../../lib/useTema";
 import { Kart, Sayfa, sayiTr, sayiTrN, gucTr, enerjiTr, isiTonu, isiMetni, SayfaIskeleti } from "../sayfalar/parcalar";
 import ProductionForecastChart, { type ActualPoint, type ForecastPoint, type Plant } from "../sayfalar/ProductionForecastChart";
 import { Meta } from "../../lib/Meta";
+
+/** 29.10 dil turu — alarm kuralı adları ve açıklamaları (arka uç KURAL_ETIKET ile aynı; sunucu etiket göndermese de kod görünmez).
+ *  test/panel/alarm-sozluk.test.ts arka uçla kıyaslar. */
+const KURAL_ADI: Record<string, string> = {
+  veri_gelmedi: "Veri gelmedi", skill_dustu: "Tahmin doğruluğu düştü", pr_dustu: "Performans oranı düştü",
+  clipping_orani_yuksek: "Kırpma oranı yüksek", iletisim_kesintisi: "İletişim kesintisi", kullanilabilirlik_dustu: "Kullanılabilirlik düştü",
+  kgup_teslim_gecikti: "Program bildirimi hazırlanamadı", dengesizlik_asimi: "Dengesizlik maliyeti yüksek",
+};
+const KURAL_ACIKLAMA: Record<string, string> = {
+  veri_gelmedi: "Son SCADA verisi 48 saatten eskiyse. Her santralde sabittir.",
+  skill_dustu: "Günlük tahmin hatası 7 gün üst üste 30 günlük ortalamanın 1,5 katını aşarsa. Her santralde sabittir.",
+  pr_dustu: "Performans oranı eşiğin altına düşerse.",
+  clipping_orani_yuksek: "Kırpma oranı eşiği aşarsa.",
+  iletisim_kesintisi: "Son ölçüm eşikten daha uzun süredir gelmiyorsa.",
+  kullanilabilirlik_dustu: "Son 30 günün kullanılabilirliği eşiğin altına düşerse.",
+  kgup_teslim_gecikti: "Yarının programı için 15:30 kesiminden önce verilmiş tahmin yoksa; 15:35'te kontrol edilir.",
+  dengesizlik_asimi: "Son 30 günün dengesizlik maliyeti gelirin eşik oranını aşarsa.",
+};
 import { tarihBicimi } from "../../lib/bicim";
 import { t0Hesapla, simdiDegeri, simdiGercegi, dilimle } from "../sayfalar/tahminPencere";
 import { Cubuklar } from "./Cubuklar";
@@ -88,11 +106,12 @@ export function Santralim({ plantId }: { plantId: string }) {
   // v2.275 (Dalga 4 tamamlayıcısı): EAK alanı + geçici kısıt — KGÜP ve toplayıcı çıktısı bunu okur
   const [eakKw, setEakKw] = useState<string>(""); const [gecKw, setGecKw] = useState<string>(""); const [gecBitis, setGecBitis] = useState<string>("");
   const [dengelemeBirimi, setDengelemeBirimi] = useState<boolean>(false);   // 29.10 (F-05): 15 dk dilimleme yalnız dengeleme birimi
+  const [arizaAy, setArizaAy] = useState<string>("");   // 29.10 (v2.505): bu ay bildirilen arıza kaydı — KÜPST katsayısı eşiğinde yükselir
   const [eakMesaj, setEakMesaj] = useState<string | null>(null);
   const eakKaydet = () => {
     setEakMesaj(null);
-    api.eakAyarla(plantId, { eak_kw: eakKw ? Number(eakKw) : null, gecici_kw: gecKw ? Number(gecKw) : null, gecici_bitis: gecBitis || null, dengeleme_birimi: dengelemeBirimi })
-      .then((r) => setEakMesaj(`Kaydedildi. Bugün EAK ${sayiTr(r.eak_bugun.eak_mw, 2)} MW (${r.eak_bugun.kaynak})`))
+    api.eakAyarla(plantId, { eak_kw: eakKw ? Number(eakKw) : null, gecici_kw: gecKw ? Number(gecKw) : null, gecici_bitis: gecBitis || null, dengeleme_birimi: dengelemeBirimi, ...(arizaAy !== "" ? { ariza_sayisi_ay: Number(arizaAy) } : {}) })
+      .then((r) => setEakMesaj(`Kaydedildi. Bugün EAK ${sayiTr(r.eak_bugun.eak_mw, 2)} MW (${r.eak_bugun.kaynak})${r.ariza_sayisi_ay != null ? `; bu ay arıza kaydı ${sayiTr(r.ariza_sayisi_ay)}` : ""}`))
       .catch((e) => setEakMesaj(String((e as Error).message ?? e)));
   };
   // v2.281: kullanılabilirlik (otomatik tespit) + tarife/gelir yapılandırması
@@ -547,6 +566,8 @@ export function Santralim({ plantId }: { plantId: string }) {
                 <input className="girdi" style={{ width: 100 }} inputMode="numeric" value={gecKw} onChange={(e) => setGecKw(e.target.value)} /></label>
               <label className="girdi-etiket">Kısıt bitişi
                 <input className="girdi" type="date" value={gecBitis} onChange={(e) => setGecBitis(e.target.value)} /></label>
+              <label className="girdi-etiket" title="Bu ay EPİAŞ'a bildirilen arıza kaydı sayısı. Kural tablosundaki eşiğe ulaşınca KGÜP sapma tutarı katsayısı yükselir (2026: 30 kayıtta n 0,05 → 0,08); uzlaştırma kartları bu değeri okur.">Bu ay arıza kaydı (adet)
+                <input className="girdi" style={{ width: 90 }} inputMode="numeric" placeholder="0" value={arizaAy} onChange={(e) => setArizaAy(e.target.value.replace(/[^0-9]/g, ""))} /></label>
               <label className="ayar-satir" title="Yalnız dengeleme güç piyasası kapsamındaki dengeleme birimi için ≥200 MWh saatlik değişimde 15 dakikalık program satırı üretilir (DUY m.69(3)); güneş santrali varsayılan olarak dengeleme birimi değildir (m.22(4))">
                 <input type="checkbox" checked={dengelemeBirimi} onChange={(e) => setDengelemeBirimi(e.target.checked)} /> Dengeleme birimi (15 dk program satırı)</label>
               <button className="dugme" onClick={eakKaydet}>Kaydet</button>
@@ -583,15 +604,19 @@ export function Santralim({ plantId }: { plantId: string }) {
             <div className="ayar-kontrol">
               {ak ? <>
                 {ak.secilebilir.map((k) => (
-                  <label key={k} className="ayar-onay">
+                  <label key={k} className="ayar-onay" title={KURAL_ACIKLAMA[k] ?? ""}>
                     <input type="checkbox" checked={ak.secili.includes(k)} onChange={(e) => akDegistir(k, e.target.checked)} />
-                    {ak.etiket[k] ?? k}
-                    <span className="mono">{k === "pr_dustu" ? `<${sayiTr(ak.esik.pr_esik, 2)}`
+                    {ak.etiket[k] ?? KURAL_ADI[k] ?? k}
+                    {/* 29.10 dil turu: eşikler birimli ve kurala özgü — «>6 s» her sabit kurala düşüyordu (veri 48 saat, doğruluk 7 gün × 1,5) */}
+                    <span className="mono">{k === "veri_gelmedi" ? "48 saat"
+                      : k === "skill_dustu" ? "7 gün, ×1,5"
+                      : k === "pr_dustu" ? `<${sayiTr(ak.esik.pr_esik, 2)}`
                       : k === "clipping_orani_yuksek" ? `>%${sayiTr(ak.esik.clipping_esik * 100, 0)}`
+                      : k === "iletisim_kesintisi" ? `>${sayiTr(ak.esik.iletisim_esik_saat, 0)} saat`
                       : k === "kullanilabilirlik_dustu" ? `<%${sayiTr((ak.esik.kullanilabilirlik_esik ?? 0.97) * 100, 0)}`
-                      : k === "kgup_teslim_gecikti" ? "15:30"
+                      : k === "kgup_teslim_gecikti" ? "15:30 sonrası"
                       : k === "dengesizlik_asimi" ? `>%${sayiTr((ak.esik.dengesizlik_esik ?? 0.03) * 100, 0)} gelir`
-                      : `>${sayiTr(ak.esik.iletisim_esik_saat, 0)} s`}</span>
+                      : ""}</span>
                   </label>))}
               </> : <span className="ayar-durum">—</span>}
             </div>

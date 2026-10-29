@@ -1040,6 +1040,7 @@ class EakIstek(BaseModel):
     kupst_n: float | None = None                # KÜPST katsayısı geçersiz kılma (verilmezse kural tablosu)
     kupst_tolerans: float | None = None         # KGÜP oranı (0–0,5) geçersiz kılma
     dengeleme_birimi: bool | None = None        # 29.10 (F-05): 15 dk dilimleme yalnız dengeleme birimi (DUY m.69(3))
+    ariza_sayisi_ay: int | None = None          # 29.10 (v2.505, 04 #13): bu ay bildirilen arıza kaydı sayısı — KÜPST n katsayısı eşiğinde (kural tablosu) yükselir
 
 
 class EpiasIstek(BaseModel):
@@ -1104,11 +1105,15 @@ def eak_ayarla(plant_id: str, p: EakIstek, claims=Depends(yazma_yetkisi())):
         an["kupst_tolerans"] = float(p.kupst_tolerans)
     if "dengeleme_birimi" in verilen:
         an["dengeleme_birimi"] = bool(p.dengeleme_birimi)
+    if "ariza_sayisi_ay" in verilen:
+        if p.ariza_sayisi_ay is not None and not (0 <= p.ariza_sayisi_ay <= 999):
+            raise HTTPException(422, "ariza_sayisi_ay 0–999")
+        an["ariza_sayisi_ay"] = int(p.ariza_sayisi_ay) if p.ariza_sayisi_ay is not None else None
     pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **an)
     row["params_json"] = pj
     return {"eak_bugun": kgup_service.eak_etkin(row, pd.Timestamp.now(tz="Europe/Istanbul").date()),
             "eak_kw": pj.get("eak_kw"), "eak_gecici": pj.get("eak_gecici"), "kupst_n": pj.get("kupst_n"), "kupst_tolerans": pj.get("kupst_tolerans"),
-            "dengeleme_birimi": bool(pj.get("dengeleme_birimi"))}
+            "dengeleme_birimi": bool(pj.get("dengeleme_birimi")), "ariza_sayisi_ay": int(pj.get("ariza_sayisi_ay") or 0)}
 
 
 def _toplayici_yaniti(tenant_id: str, plant_id: str, gun: str | None, fmt: str, adim: int):

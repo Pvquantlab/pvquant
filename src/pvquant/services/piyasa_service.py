@@ -53,8 +53,10 @@ def kaydet(df: pd.DataFrame) -> int:
                  "yon": (None if r.get("yon") is None or (isinstance(r.get("yon"), float) and pd.isna(r.get("yon"))) else str(r.yon)),
                  "k": r.get("kaynak", "epias")} for ts, r in df.iterrows()]
     with sistem_baglami() as s:
+        # 29.10 (v2.505): eksik alan mevcut değeri SİLMEZ — gün öncesi PTF (smf/yön henüz yok) ya da yön ucu boş dönen parça, dolu satırı boşaltmasın
         s.execute(text("INSERT INTO piyasa_fiyat(ts_utc, ptf, smf, yon, kaynak, guncelleme) VALUES(:ts,:ptf,:smf,:yon,:k,now()) "
-                       "ON CONFLICT (ts_utc) DO UPDATE SET ptf=EXCLUDED.ptf, smf=EXCLUDED.smf, yon=EXCLUDED.yon, kaynak=EXCLUDED.kaynak, guncelleme=now()"), satirlar)
+                       "ON CONFLICT (ts_utc) DO UPDATE SET ptf=COALESCE(EXCLUDED.ptf, piyasa_fiyat.ptf), smf=COALESCE(EXCLUDED.smf, piyasa_fiyat.smf), "
+                       "yon=COALESCE(EXCLUDED.yon, piyasa_fiyat.yon), kaynak=EXCLUDED.kaynak, guncelleme=now()"), satirlar)
     return len(satirlar)
 
 
@@ -72,16 +74,42 @@ def gece_piyasa(gun: int = 3) -> dict:
     return {"durum": "ok", "yazilan": n}
 
 
-def geri_doldur(bas: str, bitis: str, parca_gun: int = 7, istemci=None) -> dict:
-    """F-04: geçmiş fiyat/yön doldurma (gün gün, parça parça). Kimlik yoksa atlar. Zamanlayıcıya bağlı değil; elle/CLI."""
+def geri_doldur(bas: str, bitis: str, parca_gun: int = 7, istemci=None, bugun: date | None = None) -> dict:
+    """F-04: geçmiş fiyat/yön doldurma (gün gün, parça parça). Kimlik yoksa atlar. Zamanlayıcıya bağlı değil; elle/CLI.
+    29.10 (v2.505, canlı ders): bitiş en çok DÜN — bugünün saatleri SMF/yön ucunda henüz yok, 400 dönüyor ve koşu son parçada
+    düşüyordu. Parça hatası koşuyu durdurmaz: hatalı parçalar `hatali` listesinde döner (durum 'kismi'), diğerleri yazılır."""
     if istemci is None and not kimlik_var():
         return {"durum": "kimlik_yok", "yazilan": 0}
-    b = date.fromisoformat(bas); e = date.fromisoformat(bitis); yazilan = 0; parcalar = 0
+    dun = (bugun or date.today()) - timedelta(days=1)
+    b = date.fromisoformat(bas); e = min(date.fromisoformat(bitis), dun); yazilan = 0; parcalar = 0; hatali: list[dict] = []
     while b <= e:
         p_bitis = min(b + timedelta(days=parca_gun - 1), e)
-        yazilan += kaydet(fiyat_cek(b.isoformat(), p_bitis.isoformat(), istemci)); parcalar += 1
+        try:
+            yazilan += kaydet(fiyat_cek(b.isoformat(), p_bitis.isoformat(), istemci))
+        except Exception as x:   # noqa: BLE001 — bir parça (EPİAŞ 400/zaman aşımı) tüm doldurmayı düşürmesin
+            hatali.append({"bas": b.isoformat(), "bitis": p_bitis.isoformat(), "hata": f"{type(x).__name__}: {str(x)[:160]}"})
+        parcalar += 1
         b = p_bitis + timedelta(days=1)
-    return {"durum": "ok", "yazilan": yazilan, "parca": parcalar}
+    return {"durum": "kismi" if hatali else "ok", "yazilan": yazilan, "parca": parcalar, "hatali": hatali, "bitis": e.isoformat()}
+
+
+def gun_oncesi_ptf(istemci=None, bugun: date | None = None) -> dict:
+    """29.10 (v2.505): gün öncesi piyasası sonuçlandıktan sonra (TSİ ~14:00) BUGÜN ve YARIN için yalnız PTF çekilir; SMF/yön bu saatler
+    için henüz yoktur, satır kaynak='epias_gop' ile yazılır (uzlaştırma/yön sayımlarına 'epias' olarak girmez). Gece işi aynı saatleri
+    tam satırla (PTF/SMF/yön, kaynak='epias') üzerine yazar. Yarın henüz yayımlanmamışsa 'henuz_yok' döner, hata değildir."""
+    if istemci is None and not kimlik_var():
+        return {"durum": "kimlik_yok", "yazilan": 0}
+    c = istemci or _istemci()
+    g = bugun or date.today(); yarin = g + timedelta(days=1)
+    try:
+        ptf = c.ptf(g.isoformat(), yarin.isoformat())
+    except Exception as x:   # noqa: BLE001 — EPİAŞ 400 (henüz yayımlanmadı) ya da ağ
+        return {"durum": "henuz_yok", "yazilan": 0, "hata": f"{type(x).__name__}: {str(x)[:160]}"}
+    if ptf is None or len(ptf) == 0:
+        return {"durum": "henuz_yok", "yazilan": 0}
+    df = pd.DataFrame({"ptf": ptf.astype(float)}); df["smf"] = float("nan"); df["yon"] = None; df["kaynak"] = "epias_gop"
+    yarin_saat = int((df.index.tz_convert("Europe/Istanbul").date == yarin).sum())
+    return {"durum": "ok", "yazilan": kaydet(df), "yarin_saat": yarin_saat}
 
 
 def fiyatlar(index: pd.DatetimeIndex) -> pd.DataFrame:

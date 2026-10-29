@@ -276,6 +276,13 @@ def gece_epias_uretim(plant):
         print("gece_epias_uretim:", plant.get("name"), r)
 
 
+def gun_oncesi_ptf(_plant=None):
+    """29.10 (v2.505): GÖP sonuçlandıktan sonra (11:35 UTC = 14:35 TSİ) bugün+yarın PTF (kaynak epias_gop); kimlik yoksa atlar."""
+    from pvquant.services import piyasa_service
+    r = piyasa_service.gun_oncesi_ptf()
+    return f"{r.get('durum')}; yazılan {r.get('yazilan', 0)}" + (f"; yarın {r['yarin_saat']} saat" if r.get("yarin_saat") is not None else "")
+
+
 def gece_piyasa(_plant=None):
     """v2.258 — EPİAŞ fiyatları (tenant'sız, günde bir kez yeter; _logla santral döngüsünden çağırır,
     ikinci santralde tekrar çekmemek için 'bugün çekildi' bayrağı)."""
@@ -726,6 +733,7 @@ if __name__ == "__main__":
     if cfg.gun_ici_guncelleme:                                              # v2.276: gün içi koşular (ICON taze)
         sch.add_job(_logla("gun_ici_tahmin", gun_ici_tahmin), "cron", hour=cfg.gun_ici_saatler, minute=30)
     sch.add_job(_logla_tek("gece_piyasa", gece_piyasa), "cron", hour=cfg.worker_hour_skill, minute=15)   # v2.258; 25.10 O5: tek satır
+    sch.add_job(_logla_tek("gun_oncesi_ptf", gun_oncesi_ptf), "cron", hour=11, minute=35)   # 29.10 v2.505: GÖP sonrası yarının PTF'si (14:35 TSİ)
     sch.add_job(_logla("gece_epias_uretim", gece_epias_uretim), "cron", hour=cfg.worker_hour_skill, minute=18)   # v2.278
     sch.add_job(_logla("gece_hijyen", gece_hijyen), "cron", hour=cfg.worker_hour_skill, minute=20)   # v2.254
     sch.add_job(_logla("gece_skill", gece_skill), "cron", hour=cfg.worker_hour_skill, minute=30)

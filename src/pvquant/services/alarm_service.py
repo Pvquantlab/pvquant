@@ -22,7 +22,7 @@ EK_KURALLAR = ("pr_dustu", "clipping_orani_yuksek", "iletisim_kesintisi", "kulla
                "kgup_teslim_gecikti", "dengesizlik_asimi")   # v2.288: kütüphanenin tamamı seçilebilir
 ESIK_VARSAYILAN = {"pr_esik": 0.70, "clipping_esik": 0.15, "iletisim_esik_saat": 6, "kullanilabilirlik_esik": 0.97,
                    "dengesizlik_esik": 0.03}
-KURAL_ETIKET = {"veri_gelmedi": "Veri gelmedi", "skill_dustu": "İsabet düştü", "pr_dustu": "Performans oranı düştü",
+KURAL_ETIKET = {"veri_gelmedi": "Veri gelmedi", "skill_dustu": "Tahmin doğruluğu düştü", "pr_dustu": "Performans oranı düştü",   # 29.10: «isabet» iç terim (panel dili)
                 "clipping_orani_yuksek": "Kırpma oranı yüksek", "iletisim_kesintisi": "İletişim kesintisi",
                 "kullanilabilirlik_dustu": "Kullanılabilirlik düştü",
                 "kgup_teslim_gecikti": "Program bildirimi hazırlanamadı", "dengesizlik_asimi": "Dengesizlik maliyeti yüksek"}
