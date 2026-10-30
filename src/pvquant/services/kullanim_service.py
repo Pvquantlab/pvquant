@@ -81,7 +81,9 @@ def _onceki_ay(ilk: dt.date) -> str:
 
 
 def _ay_toplamlari(s, ilk: dt.date, son: dt.date) -> dict[str, dict]:
-    """Kiracı → {dis_api, webhook, webhook_hata, rapor, kosu, scada_saat, yukleme} — [ilk, son) aralığı."""
+    """Kiracı → {dis_api, webhook, webhook_hata, rapor, kosu, scada_saat, yukleme, kgup, kgup_bildirilen} — [ilk, son) aralığı.
+    v2.516 (#6): kgup = PVQuant önerisinin yeni sürümü (kgup_surum kaynak=pvquant; aynı içerik yeni sürüm açmaz), kgup_bildirilen = müşterinin
+    yüklediği beyan dosyası (kaynak=musteri); ikisi de oluşturma gününe göre."""
     sayac = s.execute(text(
         "SELECT tenant_id, tur, sum(adet) AS n FROM kullanim_sayac WHERE gun >= :a AND gun < :b GROUP BY tenant_id, tur"),
         {"a": ilk, "b": son}).mappings().all()
@@ -93,7 +95,9 @@ def _ay_toplamlari(s, ilk: dt.date, son: dt.date) -> dict[str, dict]:
                       {"a": ilk, "b": son}).mappings().all()
     yukleme = s.execute(text("SELECT tenant_id, count(*) AS n FROM ingestion_batches WHERE created_at >= :a AND created_at < :b GROUP BY tenant_id"),
                         {"a": ilk, "b": son}).mappings().all()
-    bos = lambda: {"dis_api": 0, "webhook": 0, "webhook_hata": 0, "rapor": 0, "kosu": 0, "scada_saat": 0, "yukleme": 0}  # noqa: E731
+    kgup = s.execute(text("SELECT tenant_id, kaynak, count(*) AS n FROM kgup_surum WHERE olusturma >= :a AND olusturma < :b "
+                          "AND kaynak IN ('pvquant', 'musteri') GROUP BY tenant_id, kaynak"), {"a": ilk, "b": son}).mappings().all()
+    bos = lambda: {"dis_api": 0, "webhook": 0, "webhook_hata": 0, "rapor": 0, "kosu": 0, "scada_saat": 0, "yukleme": 0, "kgup": 0, "kgup_bildirilen": 0}  # noqa: E731
     out: dict[str, dict] = {}
     for r in sayac:
         if r["tur"] in TURLER:
@@ -101,6 +105,8 @@ def _ay_toplamlari(s, ilk: dt.date, son: dt.date) -> dict[str, dict]:
     for ad, rows in (("rapor", rapor), ("kosu", kosu), ("scada_saat", scada), ("yukleme", yukleme)):
         for r in rows:
             out.setdefault(str(r["tenant_id"]), bos())[ad] = int(r["n"])
+    for r in kgup:
+        out.setdefault(str(r["tenant_id"]), bos())["kgup" if r["kaynak"] == "pvquant" else "kgup_bildirilen"] = int(r["n"])
     return out
 
 
@@ -117,7 +123,7 @@ def ozet(aktor_id: str, ay: str | None = None) -> dict:
             "FROM tenants t ORDER BY t.name")).mappings().all()
         bu = _ay_toplamlari(s, ilk, son)
         onceki = _ay_toplamlari(s, o_ilk, ilk)
-    bos = {"dis_api": 0, "webhook": 0, "webhook_hata": 0, "rapor": 0, "kosu": 0, "scada_saat": 0, "yukleme": 0}
+    bos = {"dis_api": 0, "webhook": 0, "webhook_hata": 0, "rapor": 0, "kosu": 0, "scada_saat": 0, "yukleme": 0, "kgup": 0, "kgup_bildirilen": 0}
     return {"ay": etiket, "onceki_ay": o_etiket, "turler": list(TURLER),
             "kiracilar": [{"id": str(k["id"]), "ad": k["name"], "plan": k["plan"], "durum": k["status"],
                            "etkin_anahtar": int(k["anahtar"]), "etkin_webhook": int(k["webhook"]),
@@ -143,13 +149,17 @@ def gunler(aktor_id: str, tenant_id: str, ay: str | None = None) -> dict:
                                "WHERE tenant_id = CAST(:t AS uuid) AND ts_utc >= :a AND ts_utc < :b AND flag = 'valid' GROUP BY 1"), p).mappings().all()
         yukleme = s.execute(text("SELECT CAST(created_at AT TIME ZONE 'UTC' AS date) AS gun, count(*) AS n FROM ingestion_batches "
                                  "WHERE tenant_id = CAST(:t AS uuid) AND created_at >= :a AND created_at < :b GROUP BY 1"), p).mappings().all()
+        kgup = s.execute(text("SELECT CAST(olusturma AT TIME ZONE 'UTC' AS date) AS gun, kaynak, count(*) AS n FROM kgup_surum "
+                              "WHERE tenant_id = CAST(:t AS uuid) AND olusturma >= :a AND olusturma < :b AND kaynak IN ('pvquant', 'musteri') GROUP BY 1, 2"), p).mappings().all()
     g: dict[dt.date, dict] = {}
-    bos = lambda: {"dis_api": 0, "webhook": 0, "webhook_hata": 0, "rapor": 0, "kosu": 0, "scada_saat": 0, "yukleme": 0}  # noqa: E731
+    bos = lambda: {"dis_api": 0, "webhook": 0, "webhook_hata": 0, "rapor": 0, "kosu": 0, "scada_saat": 0, "yukleme": 0, "kgup": 0, "kgup_bildirilen": 0}  # noqa: E731
     for r in sayac:
         if r["tur"] in TURLER:
             g.setdefault(r["gun"], bos())[r["tur"]] = int(r["adet"])
     for alan, rows in (("rapor", rapor), ("kosu", kosu), ("scada_saat", scada), ("yukleme", yukleme)):
         for r in rows:
             g.setdefault(r["gun"], bos())[alan] = int(r["n"])
+    for r in kgup:
+        g.setdefault(r["gun"], bos())["kgup" if r["kaynak"] == "pvquant" else "kgup_bildirilen"] = int(r["n"])
     return {"ay": etiket, "tenant_id": str(tenant_id), "ad": ad,
             "gunler": [{"gun": d.isoformat(), **g[d]} for d in sorted(g, reverse=True)]}

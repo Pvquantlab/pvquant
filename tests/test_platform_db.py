@@ -1,6 +1,7 @@
 """24.10 Faz 1 — platform kimliği ve kiracı yönetimi UÇTAN UCA (DB'li; CI'da ve yerel timescale ile koşar).
 İlk sahip → giriş → jeton kapsamı → 2FA kurulumu → kiracı oluşturma (posta kapalı: davet bağlantısı döner) → davetle parola
 belirleme → müşteri girişi → askıya alma → müşteri girişi 403 (KiraciAskida) ve açık jetonların düşmesi → denetim izi."""
+import datetime as dt
 import os
 import uuid
 import jwt as _jwt
@@ -127,6 +128,13 @@ def test_faz3_sistem_izleme(temiz):
     assert o["nabiz"]["durum"] == "calisiyor" and o["nabiz"]["ayrinti"]["is_sayisi"] == 22 and o["nabiz"]["yas_dk"] == 0
     assert set(o) >= {"gece_turu", "isler_24", "meteo", "piyasa", "yedek", "db", "santral"}
     assert isinstance(o["gece_turu"]["taze"], bool) and len(o["gece_turu"]["uretici_isler"]) == 3 and o["db"]["boyut_bayt"] > 0
+    # v2.516 (#3/#4): izlenen işler listesi ve durum sözlüğü; piyasa kartında kimlik ve yön kapsamı alanları
+    iz = o["izlenen"]
+    assert len(iz["isler"]) == len(ss.IZLENEN_ISLER) and {x["durum"] for x in iz["isler"]} <= {"ok", "esik_asimi", "henuz_yok", "beklenmiyor"}
+    assert all(x["is"] != x["kod"] for x in iz["isler"]) and set(iz["bayat"]) <= {x["is"] for x in iz["isler"]}
+    assert set(o["piyasa"]) >= {"kimlik", "yon_son", "yon_saat_7g", "saat_7g", "yon_bayat", "gop_son"} and isinstance(o["piyasa"]["yon_bayat"], bool)
+    assert ss._izlenen({"kgup_arsiv_temizlik": None}, dt.datetime.now(dt.timezone.utc), 0)["isler"][-2]["durum"] == "henuz_yok"   # aylık, hiç koşmadı → uyarı değil
+    assert "etkin santral yok" in (ss._izlenen({}, dt.datetime.now(dt.timezone.utc), 0)["isler"][1]["not"] or "")                  # santral başına iş, santral yok
     # kiracı + santral + hatalı iş kaydı → platform iş listesinde kiracı/santral adı ve AYRINTI görünür
     y = ps.kiraci_olustur(pid, f"Firma3 {e}", f"admin3-{e}@musteri.test", rol="sahip")
     with sistem_baglami() as s:
@@ -143,6 +151,16 @@ def test_faz3_sistem_izleme(temiz):
         assert ss.isler(pid, saat=24, job="gece_skill", tenant_id=y["tenant_id"])["isler"] == []
         env = ss.santraller(pid, sorunlu=True)["santraller"]
         bizim = [x for x in env if x["id"] == str(plant_id)][0]
+        # v2.516 (#5): açık alarm özeti — okunmamış ve 7 günden yeni; kural etiketi Türkçe
+        with sistem_baglami() as s2:
+            s2.execute(text("INSERT INTO alerts(tenant_id, plant_id, rule, message, severity) VALUES (CAST(:t AS uuid), :p, 'kgup_teslim_gecikti', :m, 'warning')"),
+                       {"t": y["tenant_id"], "p": plant_id, "m": f"test {e}"})
+        al = ss.alarmlar(pid)
+        kural = [k for k in al["kurallar"] if k["kural"] == "kgup_teslim_gecikti"][0]
+        assert al["acik"] >= 1 and al["pencere_gun"] == 7 and kural["adet"] >= 1 and kural["etiket"] == "Program bildirimi hazırlanamadı"
+        with sistem_baglami() as s2:
+            s2.execute(text("UPDATE alerts SET acked_by = CAST(:u AS uuid) WHERE plant_id = :p"), {"u": y.get("user_id") or pid, "p": plant_id})
+        assert ss.alarmlar(pid)["acik"] == al["acik"] - 1   # okunan alarm açık sayılmaz
         # v2.515: segment seçilmemiş santral «segment_yok»; yarın için KGÜP arşivi boş; müşteri detayında da segment/uevcb alanı
         assert "segment_yok" in bizim["sorunlar"] and bizim["segment"] is None and bizim["uevcb"] is None and bizim["kgup_yukumlu"] is None
         assert bizim["kgup_yarin"]["oneri_surum"] is None and bizim["kgup_yarin"]["bildirilen"] is False and bizim["kgup_yarin"]["eak"] is False
@@ -156,6 +174,7 @@ def test_faz3_sistem_izleme(temiz):
         assert {"scada_yok", "kosu_yok"} <= set(bizim["sorunlar"]) and bizim["kiraci"] == f"Firma3 {e}" and bizim["son_hata"]
     finally:
         with sistem_baglami() as s:
+            s.execute(text("DELETE FROM alerts WHERE plant_id = :p"), {"p": plant_id})
             s.execute(text("DELETE FROM jobs_log WHERE plant_id = :p"), {"p": plant_id})
             s.execute(text("DELETE FROM plants WHERE id = :p"), {"p": plant_id})
 
@@ -174,6 +193,11 @@ def test_faz4_kullanim(temiz):
                                   "VALUES (CAST(:t AS uuid), :n, 500, 38.0, 33.0, 'Europe/Istanbul') RETURNING id"), {"t": tid, "n": f"GES4 {e}"}).scalar()
         s.execute(text("INSERT INTO forecast_runs(tenant_id, plant_id, mode, model) VALUES (CAST(:t AS uuid), :p, 'A', 'test')"), {"t": tid, "p": plant_id})
         s.execute(text("INSERT INTO report_log(tenant_id, plant_id, mode) VALUES (CAST(:t AS uuid), :p, 'html')"), {"t": tid, "p": plant_id})
+        # v2.516 (#6): KGÜP öneri sürümü (pvquant) ve bildirilen dosya (musteri) kullanım sayımına girer; EAK girmez
+        for kaynak in ("pvquant", "musteri", "eak"):
+            s.execute(text("INSERT INTO kgup_surum(tenant_id, plant_id, teslim_gunu, surum, kantil, sha256, dosya, dosya_adi, kaynak) "
+                           "VALUES (CAST(:t AS uuid), :p, CURRENT_DATE + 1, 1, 'p50', repeat('a', 64), '\\x00'::bytea, 'KGUP.csv', :k)"),
+                      {"t": tid, "p": plant_id, "k": kaynak})
     try:
         ks.say(tid, "dis_api"); ks.say(tid, "dis_api", 2); ks.say(tid, "webhook"); ks.say(tid, "webhook_hata")
         # paylaşımlı pencere: aynı anahtar + aynı pencere → ardışık sayım; eski pencere silinir
@@ -187,17 +211,20 @@ def test_faz4_kullanim(temiz):
         bu_ay = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m")
         o = ks.ozet(pid, bu_ay)
         k = [x for x in o["kiracilar"] if x["id"] == tid][0]
-        assert o["ay"] == bu_ay and k["bu_ay"] == {"dis_api": 3, "webhook": 1, "webhook_hata": 1, "rapor": 1, "kosu": 1, "scada_saat": 0, "yukleme": 0}
+        assert o["ay"] == bu_ay and k["bu_ay"] == {"dis_api": 3, "webhook": 1, "webhook_hata": 1, "rapor": 1, "kosu": 1, "scada_saat": 0, "yukleme": 0,
+                                                   "kgup": 1, "kgup_bildirilen": 1}
         assert k["onceki_ay"]["dis_api"] == 0 and k["etkin_anahtar"] == 0
         g = ks.gunler(pid, tid, bu_ay)
         bugun = dt.datetime.now(dt.timezone.utc).date().isoformat()
         assert g["ad"] == f"Firma4 {e}" and g["gunler"][0]["gun"] == bugun and g["gunler"][0]["dis_api"] == 3 and g["gunler"][0]["kosu"] == 1
+        assert g["gunler"][0]["kgup"] == 1 and g["gunler"][0]["kgup_bildirilen"] == 1
         assert ks.gunler(pid, "00000000-0000-0000-0000-000000000000")["gunler"] == []
     finally:
         with sistem_baglami() as s:
             s.execute(text("DELETE FROM kullanim_sayac WHERE tenant_id = CAST(:t AS uuid)"), {"t": tid})
             s.execute(text("DELETE FROM hiz_pencere WHERE anahtar = :a"), {"a": f"anahtar:{e}"})
             s.execute(text("DELETE FROM report_log WHERE plant_id = :p"), {"p": plant_id})
+            s.execute(text("DELETE FROM kgup_surum WHERE plant_id = :p"), {"p": plant_id})
             s.execute(text("DELETE FROM forecast_runs WHERE plant_id = :p"), {"p": plant_id})
             s.execute(text("DELETE FROM plants WHERE id = :p"), {"p": plant_id})
 

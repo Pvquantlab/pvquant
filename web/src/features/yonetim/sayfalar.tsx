@@ -1,7 +1,7 @@
 import { SEGMENTLER } from "../../api/types";
 import { useEffect, useState } from "react";
 import { hesapDurumu, tazelik, eylemAdi, SOZLUK, segmentKisa } from "../../lib/sozluk";
-import { yonetim, zamanTr, yasTr, type Plan, type SistemOzet, type Kiraci, type KiraciDetay, type Kullanici, type Operator, type Basvuru, type DenetimKaydi, type Ben } from "../../api/yonetim";
+import { yonetim, zamanTr, yasTr, type Plan, type SistemOzet, type Kiraci, type KiraciDetay, type Kullanici, type Operator, type Basvuru, type DenetimKaydi, type Ben, type AlarmOzet } from "../../api/yonetim";
 import { Kart, Kpi, Sayfa, SayfaIskeleti, sayiTr, gucTr } from "../sayfalar/parcalar";
 import { Meta } from "../../lib/Meta";
 import { KullanimKarti } from "./Kullanim";
@@ -41,12 +41,13 @@ function SaglikSeridi({ sis, git }: { sis: SistemOzet | null | "hata"; git: () =
   if (sis === null) return <div className="plat-saglik" aria-busy="true"><span className="soluk">sistem durumu alınıyor…</span></div>;
   if (sis === "hata") return <div className="plat-saglik"><span className="rozet rozet-uyari">sistem durumu alınamadı</span></div>;
   const yedekSorun = sis.yedek.bayat || (sis.yedek.son_deneme ? !sis.yedek.son_deneme.tamam : false);
+  const isSorun = !sis.gece_turu.taze || (sis.izlenen?.bayat.length ?? 0) > 0;   // v2.516 (#3): izlenen işler de şeride girer
   const R = ({ ok, ad, deger }: { ok: boolean; ad: string; deger: string }) => (
     <span className={`rozet ${ok ? "rozet-ok" : "rozet-uyari"}`}>{ad}: {deger}</span>);
   return (
     <button type="button" className="plat-saglik plat-saglik--tikla" onClick={git} title="Sistem sayfasını aç">
       <R ok={sis.nabiz.durum === "calisiyor"} ad="zamanlayıcı" deger={sis.nabiz.durum === "calisiyor" ? "çalışıyor" : sis.nabiz.durum === "sessiz" ? "sessiz" : "nabız yok"} />
-      <R ok={sis.gece_turu.taze} ad="gece işlemleri" deger={tazelik(!sis.gece_turu.taze)} />
+      <R ok={!isSorun} ad="gece işlemleri" deger={tazelik(isSorun)} />
       <R ok={!yedekSorun} ad="yedek" deger={yasTr(sis.yedek.son_basarili)} />
       <span className="soluk" style={{ fontSize: 13 }}>Sistem →</span>
     </button>
@@ -55,11 +56,13 @@ function SaglikSeridi({ sis, git }: { sis: SistemOzet | null | "hata"; git: () =
 export function GenelBakis({ git }: { git: (s: "musteriler" | "basvurular" | "denetim" | "sistem") => void }) {
   const [k, setK] = useState<Kiraci[] | null>(null);
   const [sis, setSis] = useState<SistemOzet | null | "hata">(null);   // 26.10 D5: sağlık şeridi (aynı /sistem ucu)
+  const [al, setAl] = useState<AlarmOzet | null | "hata">(null);   // v2.516 (#5): müşteriler arası açık alarm
   const [b, setB] = useState<Basvuru[] | null>(null);
   const [d, setD] = useState<DenetimKaydi[] | null>(null);
   const [hata, setHata] = useState<string | null>(null);
   useEffect(() => {
     yonetim.sistem().then(setSis).catch(() => setSis("hata"));
+    yonetim.alarmlar().then(setAl).catch(() => setAl("hata"));
     Promise.allSettled([yonetim.kiracilar(), yonetim.basvurular(), yonetim.denetim({ limit: 12, eylem_haric: "kiraci_goruntule" })]).then(([rk, rb, rd]) => {
       setK(rk.status === "fulfilled" ? rk.value.kiracilar : []); setB(rb.status === "fulfilled" ? rb.value.basvurular : []);
       setD(rd.status === "fulfilled" ? rd.value.kayitlar : []);
@@ -73,11 +76,15 @@ export function GenelBakis({ git }: { git: (s: "musteriler" | "basvurular" | "de
     <Sayfa baslik="Genel bakış" alt="Müşteriler, santraller ve son işlemler; tüm sayılar canlı veritabanından.">
       <Hata m={hata} />
       <SaglikSeridi sis={sis} git={() => git("sistem")} />
-      <div className="ızgara satir-4" style={{ marginBottom: 14 }}>
+      <div className="ızgara satir-5" style={{ marginBottom: 14 }}>
         <Kpi etiket="Müşteri" deger={sayiTr(k.length)} alt={`${sayiTr(etkin.length)} etkin, ${sayiTr(k.length - etkin.length)} askıda`} />
         <Kpi etiket="Etkin santral" deger={sayiTr(k.reduce((a, x) => a + x.santral, 0))} alt={kwp ? `${gucTr(kwp)} kWp kurulu güç` : "kurulu güç yok"} />
         <Kpi etiket="Etkin kullanıcı" deger={sayiTr(k.reduce((a, x) => a + x.kullanici, 0))} alt="tüm müşteriler" />
         <Kpi etiket="Okunmamış başvuru" deger={sayiTr(b.filter((x) => !x.okundu).length)} alt={`${sayiTr(b.length)} toplam`} ton={b.some((x) => !x.okundu) ? "uyari" : undefined} />
+        {/* v2.516 (#5): açık alarm = okunmamış ve 7 günden yeni (müşteri panelindeki tanım); kural etiketi arka uçtan */}
+        <Kpi etiket="Açık alarm" deger={al && al !== "hata" ? sayiTr(al.acik) : "—"} ton={al && al !== "hata" && al.acik > 0 ? "uyari" : undefined}
+          alt={al === "hata" ? "alarm özeti alınamadı" : !al ? "alınıyor…" : al.acik === 0 ? `son ${sayiTr(al.pencere_gun)} günde okunmamış alarm yok`
+            : `${al.kurallar[0].etiket} ${sayiTr(al.kurallar[0].adet)}${al.kurallar.length > 1 ? `, +${sayiTr(al.kurallar.length - 1)} kural` : ""} · ${sayiTr(al.musteri)} müşteri`} />
       </div>
       <Kart baslik="Son işlemler" alt={`Denetim izinin son 12 kaydı; «${eylemAdi("kiraci_goruntule")}» izleri yalnız Denetim izi sayfasında`} sag={<button className="dugme kucuk" onClick={() => git("denetim")}>Tümü</button>}>
         {d.length === 0 ? <Bos bas="Henüz kayıt yok." /> : <DenetimTablosu kayitlar={d} />}

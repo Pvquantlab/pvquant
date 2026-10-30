@@ -16,7 +16,11 @@ EYLEMLER_PLATFORM = ("giris", "giris_basarisiz", "kiraci_olustur", "kiraci_gunce
                      "parola_sifirlama_gonder", "iki_adim_sifirla", "basvuru_okundu", "operator_ekle", "operator_guncelle",
                      "iki_adim_ac")
 EYLEMLER_MUSTERI = ("giris", "takim_ekle", "takim_guncelle", "takim_iki_adim_sifirla", "anahtar_uret", "anahtar_iptal",
-                    "webhook_ekle", "webhook_sil", "santral_arsivle", "santral_geri_al", "scada_sil", "parola_degistir")
+                    "webhook_ekle", "webhook_sil", "santral_arsivle", "santral_geri_al", "scada_sil", "parola_degistir",
+                    "kgup_indir", "eak_indir", "kgup_bildirilen_yukle", "kgup_sablon_ogren", "kgup_sablon_sifirla",
+                    "santral_segment", "eak_ayar")
+# v2.516 (yönetim boşlukları #7): uzlaştırma katmanının müşteri eylemleri de izde — «değiştirilemez kayıt» vaadi denetimde görünür.
+# Ayrıntıya dosya içeriği ya da sır yazılmaz: gün, sürüm, kantil, kanal, dosya adı, biçim, segment/UEVÇB ve EAK alanları.
 
 
 def kaydet(kapsam: str, eylem: str, *, aktor_id=None, aktor_eposta: str | None = None, tenant_id=None,

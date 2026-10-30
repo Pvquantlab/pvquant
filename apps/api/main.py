@@ -757,9 +757,13 @@ def _kgup_yaniti(tenant_id: str, plant_id: str, gun: str | None, kantil: str, fm
         r_eak = {**r, "csv": r["eak_csv"], "bom": False, "dosya_adi": r["eak_dosya_adi"], "sha256": r["eak_sha256"], "kantil": "eak",
                  "toplam_mwh": None, "sablon": {"durum": "TPYS EAK.csv", "kolonlar": list(EAK_KOLONLAR)}}
         arsiv = kgup_arsiv_service.kaydet(tenant_id, str(row["id"]), r_eak, indiren=indiren, kaynak="eak")
+        _denetim.kaydet("musteri", "eak_indir", aktor_id=indiren, tenant_id=tenant_id, nesne_tur="plant", nesne_id=row["id"],   # v2.516 (#7)
+                        ayrinti={"gun": g.isoformat(), "surum": arsiv["surum"], "yeni_surum": bool(arsiv.get("yeni")), "kanal": "panel" if indiren else "api"})
         return Response(content=kgup_arsiv_service.baytlar(r_eak), media_type="text/csv; charset=utf-8",
                         headers={"Content-Disposition": f'attachment; filename="{r["eak_dosya_adi"]}"', "X-PVQ-Surum": str(arsiv["surum"]), "X-PVQ-SHA256": arsiv["sha256"]})
     arsiv = kgup_arsiv_service.kaydet(tenant_id, str(row["id"]), r, indiren=indiren)   # v2.502: değiştirilemez sürüm kaydı
+    _denetim.kaydet("musteri", "kgup_indir", aktor_id=indiren, tenant_id=tenant_id, nesne_tur="plant", nesne_id=row["id"],   # v2.516 (#7)
+                    ayrinti={"gun": g.isoformat(), "kantil": kantil, "surum": arsiv["surum"], "yeni_surum": bool(arsiv.get("yeni")), "kanal": "panel" if indiren else "api"})
     return Response(content=kgup_arsiv_service.baytlar(r), media_type="text/csv; charset=utf-8",   # baytlar tek yerde (BOM yalnız şablon isterse; SHA-256 bu baytlarla)
                     headers={"Content-Disposition": f'attachment; filename="{r["dosya_adi"]}"', "X-PVQ-Surum": str(arsiv["surum"]), "X-PVQ-SHA256": arsiv["sha256"]})
 
@@ -810,6 +814,8 @@ def kgup_bildirilen_yukle(plant_id: str, gun: str, dosya: UploadFile = File(...)
         k = kgup_arsiv_service.musteri_kaydet(claims["tenant_id"], str(row["id"]), g, b, dosya.filename or "bildirilen.csv", indiren=claims.get("sub"), sablon=Sablon.params_json_dan(pj))
     except ValueError as e:
         raise HTTPException(422, str(e))
+    _denetim.kaydet("musteri", "kgup_bildirilen_yukle", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"],   # v2.516 (#7)
+                    ayrinti={"gun": g.isoformat(), "surum": k.get("surum"), "dosya": (dosya.filename or "bildirilen.csv")[:80]})
     return {"kayit": k, "kiyas": kgup_arsiv_service.kiyas(claims["tenant_id"], str(row["id"]), g)}
 
 
@@ -832,6 +838,8 @@ def kgup_sablon_ogren(plant_id: str, dosya: UploadFile = File(...), claims=Depen
         raise HTTPException(422, str(e))
     kaynak = {"dosya": dosya.filename or "sablon", "zaman": datetime.now(timezone.utc).isoformat(timespec="seconds"), "bicim": r["bicim"]}
     pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, kgup_sablon=r["sablon"], kgup_sablon_kaynak=kaynak)
+    _denetim.kaydet("musteri", "kgup_sablon_ogren", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"],   # v2.516 (#7)
+                    ayrinti={"dosya": kaynak["dosya"][:80], "bicim": r["bicim"]})
     return {"sablon": kgup_service.sablon_ozeti(pj), "eslesme": r["eslesme"], "eslesmeyen": r["eslesmeyen"], "uyarilar": r["uyarilar"]}
 
 
@@ -843,6 +851,7 @@ def kgup_sablon_sifirla(plant_id: str, claims=Depends(yazma_yetkisi())):
     if row is None:
         raise HTTPException(404, "santral yok")
     pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, kgup_sablon=None, kgup_sablon_kaynak=None)
+    _denetim.kaydet("musteri", "kgup_sablon_sifirla", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"])   # v2.516 (#7)
     return {"sablon": kgup_service.sablon_ozeti(pj)}
 
 
@@ -1094,6 +1103,8 @@ def segment_ayarla(plant_id: str, p: SegmentIstek, claims=Depends(yazma_yetkisi(
     if p.uevcb:
         anahtarlar["uevcb"] = p.uevcb.strip()[:32]
     pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **anahtarlar)
+    _denetim.kaydet("musteri", "santral_segment", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=plant_id,   # v2.516 (#7)
+                    ayrinti=dict(anahtarlar))
     return {"params_json": {k: v for k, v in pj.items() if k in ("segment", "uevcb")}, **dengesizlik_service.segment_bilgisi(pj)}
 
 
@@ -1177,6 +1188,7 @@ def eak_ayarla(plant_id: str, p: EakIstek, claims=Depends(yazma_yetkisi())):
             raise HTTPException(422, "ariza_sayisi_ay 0–999")
         an["ariza_sayisi_ay"] = int(p.ariza_sayisi_ay) if p.ariza_sayisi_ay is not None else None
     pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **an)
+    _denetim.kaydet("musteri", "eak_ayar", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"], ayrinti=dict(an))   # v2.516 (#7)
     row["params_json"] = pj
     return {"eak_bugun": kgup_service.eak_etkin(row, pd.Timestamp.now(tz="Europe/Istanbul").date()),
             "eak_kw": pj.get("eak_kw"), "eak_gecici": pj.get("eak_gecici"), "kupst_n": pj.get("kupst_n"), "kupst_tolerans": pj.get("kupst_tolerans"),

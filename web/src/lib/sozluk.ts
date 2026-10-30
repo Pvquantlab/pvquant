@@ -36,6 +36,10 @@ export const SOZLUK = {
     anahtar_uret: "API anahtarı üretildi", anahtar_iptal: "API anahtarı iptal edildi", webhook_ekle: "Webhook eklendi", webhook_sil: "Webhook silindi",
     santral_arsivle: "Santral arşivlendi", santral_geri_al: "Santral arşivden alındı", scada_sil: "SCADA verisi silindi",
     parola_degistir: "Parola değiştirildi", kurulus_ayar: "Kuruluş ayarı değiştirildi",
+    // v2.516 (#7) — uzlaştırma katmanı
+    kgup_indir: "KGÜP dosyası indirildi", eak_indir: "EAK dosyası indirildi", kgup_bildirilen_yukle: "Bildirilen KGÜP yüklendi",
+    kgup_sablon_ogren: "KGÜP şablonu öğrenildi", kgup_sablon_sifirla: "KGÜP şablonu sıfırlandı",
+    santral_segment: "Segment / UEVÇB ayarlandı", eak_ayar: "EAK ayarı değiştirildi",
   } as Record<string, string>,
 } as const;
 

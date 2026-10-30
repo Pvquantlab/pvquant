@@ -60,8 +60,8 @@ test("Faz 3: Sistem sayfası listede, kökte ve istemcide; hükümler uçtan", (
   const sayfa = oku("features/yonetim/Sistem.tsx");
   // bayatlık hükmü arayüzde HESAPLANMAZ: tonlar uçtan gelen durum/taze/bayat alanlarını okur
   assert.match(sayfa, /ton=\{o\.nabiz\.durum === "calisiyor" \? undefined : "uyari"\}/);
-  assert.match(sayfa, /ton=\{o\.gece_turu\.taze \? undefined : "uyari"\}/);
-  assert.match(sayfa, /ton=\{o\.piyasa\.bayat \? "uyari" : undefined\}/);
+  assert.match(sayfa, /ton=\{o\.gece_turu\.taze && !\(o\.izlenen\?\.bayat\.length\) \? undefined : "uyari"\}/);   // v2.516: izlenen işler de hükme girer
+  assert.match(sayfa, /ton=\{o\.piyasa\.bayat \|\| o\.piyasa\.kimlik === false \|\| o\.piyasa\.yon_bayat \? "uyari" : undefined\}/);   // v2.516: kimlik ve yön kapsamı da hükme girer
   assert.doesNotMatch(sayfa, /yas_saat\s*>\s*\d|yas_dk\s*>\s*\d/);
   // hata ayrıntısı platformda görünür …
   assert.match(sayfa, /\{x\.ayrinti \?\? "—"\}/);

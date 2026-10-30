@@ -280,8 +280,9 @@ h2 { font-size: var(--t-bolum); line-height: 1.2; }
 
 .ızgara { display: grid; gap: 16px; }
 .satir-4 { grid-template-columns: repeat(4, minmax(0,1fr)); }
+.satir-5 { grid-template-columns: repeat(5, minmax(0,1fr)); }   /* v2.516: Genel bakış beş KPI */
 .satir-3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
-@media (max-width: 1100px) { .satir-4, .satir-3 { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media (max-width: 1100px) { .satir-4, .satir-3, .satir-5 { grid-template-columns: repeat(2, minmax(0,1fr)); } }
 
 /* ---------- rozet / cip ---------- */
 .rozet { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px;
@@ -549,7 +550,7 @@ textarea.girdi { resize: vertical; min-height: 72px; line-height: 1.5; }
    gövde metni; denetim ayrıntı çipleri (müşteri Kuruluş'la ortak bileşen) yalnız platform yüzünde aynı rozet kesimine alınır. */
 :root[data-yuz="platform"] .zaman { font-family: var(--font); font-variant-numeric: tabular-nums; white-space: nowrap; }
 :root[data-yuz="platform"] .plat-ayrinti__cip { font-family: var(--display); font-size: 12.5px; font-weight: 500; line-height: 1.3; color: var(--ikincil);
-                                               border-radius: var(--r-hap); padding: 4px 10px; font-variant-numeric: tabular-nums; }   /* rozetle aynı 26 px */
+                                               border-radius: var(--r-hap); padding: 4px 9px; font-variant-numeric: tabular-nums; }   /* rozetle aynı 26 px; v2.516: 9 px — en geniş çip (e-posta, 171 px) 185 px sütuna tek satır sığsın */
 :root[data-yuz="platform"] .plat-ayrinti__cip b { font-weight: 500; color: var(--soluk); }
 /* 27.10: üst çubuk tarihi de platformda gövde ailesi tabular — platform yüzünde mono metin düğümü 0 (müşteri kabuğu dokunulmadı) */
 :root[data-yuz="platform"] .ust-tarih { font-family: var(--font); font-variant-numeric: tabular-nums; }
@@ -594,7 +595,7 @@ textarea.girdi { resize: vertical; min-height: 72px; line-height: 1.5; }
 .temsil-serit__kapat:hover { background: rgba(255,255,255,.26); }   /* 26.10 Faz 5: %80–100 arası — uyarı tonunun yumuşağı */
 /* 31.10 (v2.515): çip kelime ortasından kırılmıyor («email: sah m» / «kayn ak: scr ahi» görünümü); çipler kendi aralarında sarar, uzun değer yalnız
    çip 100 % genişliği aşarsa kırılır. Ayrıntı sütunu da 180 → 260 px. */
-.plat-ayrinti__cip { display: inline-flex; align-items: baseline; gap: 4px; font-family: var(--mono); font-size: 12px; color: var(--ikincil);
+.plat-ayrinti__cip { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px; font-family: var(--mono); font-size: 12px; color: var(--ikincil);   /* v2.516: uzun değer (UEVÇB kodu) anahtarın altına iner, sütun büyümez */
                      background: var(--yuzey); border: 1px solid var(--kenar); border-radius: 6px; padding: 1px 7px; max-width: 100%;
                      white-space: normal; overflow-wrap: normal; word-break: keep-all; }
 .plat-ayrinti__cip b { white-space: nowrap; }
@@ -918,7 +919,7 @@ body { background: var(--zemin); }
   .icerik { padding: 16px 16px 56px; }   /* 22.10: kenar nefesi 16 px (12 idi) */
 }
 @media (max-width: 700px) {
-  .satir-3, .satir-4 { grid-template-columns: minmax(0, 1fr); }
+  .satir-3, .satir-4, .satir-5 { grid-template-columns: minmax(0, 1fr); }
 }
 /* 22.10 web-design-guidelines denetimi: mobilde girdi yazısı ≥16 px (iOS odakta yakınlaştırmasın — giriş ekranı
    kuralı panele de); dokunma hedeflerinde çift dokunma yakınlaştırması kapalı */

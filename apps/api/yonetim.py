@@ -315,6 +315,12 @@ def sistem(c=Depends(platform_yetkisi())):
     return ss.ozet(c["sub"])
 
 
+@yonetim.get("/alarmlar")
+def alarmlar(c=Depends(platform_yetkisi())):
+    """v2.516 (#5): müşteriler arası açık alarm özeti — okunmamış ve 7 günden yeni (müşteri panelindeki tanım); kural etiketi arka uçtan."""
+    return ss.alarmlar(c["sub"])
+
+
 @yonetim.get("/isler")
 def isler(saat: int = 48, yalniz_hata: bool = False, job: str | None = None, tenant_id: str | None = None, limit: int = 200,
           plant_id: str | None = None, c=Depends(platform_yetkisi())):

@@ -77,9 +77,25 @@ http.createServer((req, res) => {
       { kaynak: "ICON-EU", son_indirme: dkOnce(60 * 8), nokta: 6, satir: 184320, ilk: "2026-07-12T00:00:00+00:00", son_ts: dkOnce(-60 * 96), yas_saat: 8.1, bayat: false },
       { kaynak: "GFS", son_indirme: dkOnce(60 * 8), nokta: 6, satir: 391680, ilk: "2026-07-12T00:00:00+00:00", son_ts: dkOnce(-60 * 384), yas_saat: 8.2, bayat: false },
       { kaynak: "GEFS üyeleri", son_indirme: dkOnce(60 * 50), nokta: 6, satir: 1105920, ilk: "2026-08-01T00:00:00+00:00", son_ts: dkOnce(-60 * 200), yas_saat: 50.3, bayat: true }] },
-    piyasa: { son_ts: dkOnce(-60 * 23), son_guncelleme: dkOnce(60 * 8), satir: 2520, yas_saat: 8.0, esik_saat: 36, bayat: false },
+    // v2.516 inceleme: gerçekleşen fiyat DÜNÜN son saatine kadar (gece dünü çeker); ileri tarih yalnız gün öncesi PTF (gop_son = yarın)
+    piyasa: { son_ts: dkOnce(60 * 26), son_guncelleme: dkOnce(60 * 8), satir: 2520, yas_saat: 8.0, esik_saat: 36, bayat: false,
+      // v2.516 (#4): kimlik + yön kapsamı + gün öncesi PTF ufku; NABIZ_SESSIZ=1 → yön 2 gündür eksik (uyarı tonu)
+      kimlik: true, yon_son: NABIZ_SESSIZ ? dkOnce(60 * 74) : dkOnce(60 * 26), yon_saat_7g: NABIZ_SESSIZ ? 96 : 168, saat_7g: 168, yon_bayat: !!NABIZ_SESSIZ, gop_son: dkOnce(-60 * 20) },
+    // v2.516 (#3): izlenen işler — durum uçtan; NABIZ_SESSIZ=1 → «Rapor alanları» 50 saattir koşmamış (bayat)
+    izlenen: (() => { const L = [["gun_ici_tahmin", "Gün içi güncelleme", "gün içi", 30, 60 * 2], ["kgup_revizyon_kontrol", "Program revizyonu kontrolü (gün içi)", "gün içi", 30, 60 * 3],
+        ["kgup_teslim_kontrol", "Program bildirimi kontrolü (15:35)", "günlük", 36, 60 * 20], ["gun_oncesi_ptf", "Gün öncesi fiyatı (yarının PTF'si)", "günlük", 36, 60 * 21],
+        ["gece_piyasa", "Piyasa fiyatları", "günlük", 36, 60 * 8], ["gece_epias_uretim", "Gerçekleşen üretim çekimi", "günlük", 36, 60 * 8], ["alarm", "Alarm taraması", "günlük", 36, 60 * 4],
+        ["gece_hijyen", "Veri hijyeni", "günlük", 36, 60 * 8], ["gece_ufuk_sigma", "Ufuk belirsizliği", "günlük", 36, 60 * 8], ["gece_konformal", "Bant kalibrasyonu", "günlük", 36, 60 * 8],
+        ["rapor_alanlari", "Rapor alanları", "günlük", 36, NABIZ_SESSIZ ? 60 * 50 : 60 * 8], ["kgup_arsiv_temizlik", "KGÜP arşivi saklama temizliği", "aylık", 840, null], ["denetim_temizlik", "Denetim izi temizliği", "aylık", 840, 60 * 24 * 20]];
+      const isler = L.map(([kod, is, siklik, esik, dk]) => { const yas = dk == null ? null : dk / 60; const durum = dk == null ? "henuz_yok" : yas > esik ? "esik_asimi" : "ok";
+        return { kod, is, siklik, esik_saat: esik, son_ok: dk == null ? null : dkOnce(dk), yas_saat: yas, durum, not: null }; });
+      return { isler, bayat: isler.filter((x) => x.durum === "bayat").map((x) => x.is) }; })(),
     yedek: { son_basarili: dkOnce(60 * 9), yas_saat: 9.2, esik_saat: 30, bayat: false, son_deneme: { zaman: dkOnce(60 * 9), tamam: true, ayrinti: null } },
     db: { boyut_bayt: 2_914_000_000 }, santral: { etkin: 6, arsivli: 1 } });
+  // v2.516 (#5): müşteriler arası açık alarm özeti
+  if (yol === "/v1/yonetim/alarmlar") return yanit(200, { acik: 6, musteri: 2, santral: 3, en_eski: dkOnce(60 * 60), pencere_gun: 7, kurallar: [
+      { kural: "kgup_teslim_gecikti", etiket: "Program bildirimi hazırlanamadı", adet: 3, musteri: 2 }, { kural: "veri_gelmedi", etiket: "Veri gelmedi", adet: 2, musteri: 1 },
+      { kural: "skill_dustu", etiket: "Tahmin doğruluğu düştü", adet: 1, musteri: 1 }] });
   if (yol === "/v1/yonetim/isler") { const hepsi = [
       { id: "j1", kod: "sabah_tahmin", is: "Sabah tahmini", tenant_id: "e190f269-637e-4459-af54-27a7e08095c7", kiraci: "Deneme Lab", plant_id: "pl-1", santral: "Format Lab", zaman: dkOnce(60 * 7), sure_sn: 41.2, tamam: false, durum: "error", ayrinti: "KeyError: 'artik' — uzlastirma_service.py:76 (artiklar.reindex)" },
       { id: "j2", kod: "sabah_tahmin", is: "Sabah tahmini", tenant_id: "19bf0a66-39dc-42e5-a9bb-269466de3f7a", kiraci: "Meridyen Enerji", plant_id: "pl-2", santral: "Karapınar 1", zaman: dkOnce(60 * 7 + 1), sure_sn: 38.9, tamam: true, durum: "ok", ayrinti: null },
@@ -99,13 +115,13 @@ http.createServer((req, res) => {
   // ---- 25.10 Faz 4: kullanım (/v1/yonetim/kullanim[?ay][&tenant_id]) — sayaç + türetilmiş sayımlar
   if (yol === "/v1/yonetim/kullanim") {
     const ay = url.searchParams.get("ay") || new Date().toISOString().slice(0, 7); const tid = url.searchParams.get("tenant_id");
-    const T = (dis_api, webhook, webhook_hata, rapor, kosu, scada_saat, yukleme) => ({ dis_api, webhook, webhook_hata, rapor, kosu, scada_saat, yukleme });
-    if (tid) { const gunler = []; for (let d = 25; d >= 1; d--) gunler.push({ gun: `${ay}-${String(d).padStart(2, "0")}`, ...T(d % 3 === 0 ? 0 : 40 + d, d % 5 === 0 ? 1 : 0, d === 10 ? 1 : 0, d % 7 === 0 ? 1 : 0, 5, 120, d === 3 ? 1 : 0) });
+    const T = (dis_api, webhook, webhook_hata, rapor, kosu, scada_saat, yukleme, kgup = 0, kgup_bildirilen = 0) => ({ dis_api, webhook, webhook_hata, rapor, kosu, scada_saat, yukleme, kgup, kgup_bildirilen });   // v2.516 (#6)
+    if (tid) { const gunler = []; for (let d = 25; d >= 1; d--) gunler.push({ gun: `${ay}-${String(d).padStart(2, "0")}`, ...T(d % 3 === 0 ? 0 : 40 + d, d % 5 === 0 ? 1 : 0, d === 10 ? 1 : 0, d % 7 === 0 ? 1 : 0, 5, 120, d === 3 ? 1 : 0, d % 2 === 0 ? 1 : 0, d % 6 === 0 ? 1 : 0) });
       return yanit(200, { ay, tenant_id: tid, ad: KIRACILAR.find((k) => k.id === tid)?.ad ?? "Kiracı", gunler }); }
     const [oy, om] = ay.split("-").map(Number); const onceki = `${om === 1 ? oy - 1 : oy}-${String(om === 1 ? 12 : om - 1).padStart(2, "0")}`;
     return yanit(200, { ay, onceki_ay: onceki, turler: ["dis_api", "webhook", "webhook_hata"], kiracilar: [
-      { id: KIRACILAR[1].id, ad: "Deneme Lab", plan: "pilot", durum: "active", etkin_anahtar: 2, etkin_webhook: 1, son_api_kullanim: dkOnce(42), bu_ay: T(1184, 25, 1, 3, 125, 3000, 2), onceki_ay: T(960, 30, 0, 4, 150, 3720, 3) },
-      { id: KIRACILAR[0].id, ad: "Meridyen Enerji", plan: "pilot", durum: "active", etkin_anahtar: 1, etkin_webhook: 0, son_api_kullanim: dkOnce(60 * 30), bu_ay: T(312, 0, 0, 1, 25, 600, 0), onceki_ay: T(280, 0, 0, 2, 31, 744, 1) },
+      { id: KIRACILAR[1].id, ad: "Deneme Lab", plan: "pilot", durum: "active", etkin_anahtar: 2, etkin_webhook: 1, son_api_kullanim: dkOnce(42), bu_ay: T(1184, 25, 1, 3, 125, 3000, 2, 18, 4), onceki_ay: T(960, 30, 0, 4, 150, 3720, 3, 12, 0) },
+      { id: KIRACILAR[0].id, ad: "Meridyen Enerji", plan: "pilot", durum: "active", etkin_anahtar: 1, etkin_webhook: 0, son_api_kullanim: dkOnce(60 * 30), bu_ay: T(312, 0, 0, 1, 25, 600, 0, 22, 20), onceki_ay: T(280, 0, 0, 2, 31, 744, 1, 25, 23) },
       { id: KIRACILAR[2].id, ad: "Askıdaki Enerji", plan: "standart", durum: "suspended", etkin_anahtar: 0, etkin_webhook: 0, son_api_kullanim: null, bu_ay: T(0, 0, 0, 0, 0, 0, 0), onceki_ay: T(12, 0, 0, 0, 10, 240, 0) }] });
   }
   // ---- 26.10 Faz 5: planlar + temsil
@@ -117,6 +133,9 @@ http.createServer((req, res) => {
   if (/^\/v1\/yonetim\/planlar\//.test(yol)) return yanit(200, PLANLAR[0]);
   if (/^\/v1\/yonetim\/kiracilar\/[^/]+\/temsil$/.test(yol)) return yanit(200, { token: "x." + Buffer.from('{"role":"viewer","temsil":"p1"}').toString("base64url") + ".y", tenant_id: KIRACILAR[1].id, kiraci: "Deneme Lab", sure_dk: 15, bitis: new Date(Date.now() + 15 * 60000).toISOString() });
   if (yol === "/v1/yonetim/denetim") return yanit(200, { kayitlar: [
+      // v2.516 (#7): uzlaştırma katmanının müşteri eylemleri izde
+      { id: 16, zaman: "2026-10-24T23:40:00Z", kapsam: "musteri", aktor_id: "u1", aktor_eposta: "operasyon@meridyen.example", tenant_id: "19bf0a66-39dc-42e5-a9bb-269466de3f7a", kiraci_ad: "Meridyen Enerji", eylem: "kgup_indir", nesne_tur: "plant", nesne_id: "pl-2", ayrinti: { gun: "2026-10-25", kantil: "p50", surum: 2, yeni_surum: true, kanal: "panel" }, ip: "78.177.165.74" },
+      { id: 15, zaman: "2026-10-24T23:12:00Z", kapsam: "musteri", aktor_id: "u1", aktor_eposta: "operasyon@meridyen.example", tenant_id: "19bf0a66-39dc-42e5-a9bb-269466de3f7a", kiraci_ad: "Meridyen Enerji", eylem: "santral_segment", nesne_tur: "plant", nesne_id: "pl-2", ayrinti: { segment: "lisansli_serbest", uevcb: "40X000000000123A" }, ip: "78.177.165.74" },
       { id: 13, zaman: "2026-10-24T22:10:00Z", kapsam: "platform", aktor_id: null, aktor_eposta: "smoke-denetim@pvquant.invalid", tenant_id: null, eylem: "giris_basarisiz", nesne_tur: null, nesne_id: null, ayrinti: {}, ip: "78.177.165.74" },
       { id: 14, zaman: "2026-10-24T22:05:00Z", kapsam: "platform", aktor_id: null, aktor_eposta: "cli", tenant_id: null, eylem: "operator_ekle", nesne_tur: "platform_user", nesne_id: "90985188", ayrinti: { rol: "sahip", email: "sahip@pvquant.com", kaynak: "script" }, ip: null },
       { id: 12, zaman: "2026-10-24T21:53:35Z", kapsam: "platform", aktor_id: "p1", aktor_eposta: "sahip@pvquant.com", tenant_id: null, eylem: "iki_adim_ac", nesne_tur: null, nesne_id: null, ayrinti: {}, ip: "78.177.165.74" },

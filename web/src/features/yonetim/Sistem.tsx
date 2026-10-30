@@ -39,8 +39,12 @@ export function Sistem() {
           <Kpi etiket={SOZLUK.kaynak.zamanlayici} deger={o.nabiz.durum === "calisiyor" ? "çalışıyor" : o.nabiz.durum === "sessiz" ? "sessiz" : "nabız yok"}
             ton={o.nabiz.durum === "calisiyor" ? undefined : "uyari"}
             alt={o.nabiz.son ? `son nabız ${yasTr(o.nabiz.son)}; her ${sayiTr(o.nabiz.aralik_dk)} dk beklenir` : "worker henüz nabız yazmadı (eski imaj ya da kapalı)"} />
-          <Kpi etiket={SOZLUK.kaynak.geceIsleri} deger={tazelik(!o.gece_turu.taze)} ton={o.gece_turu.taze ? undefined : "uyari"}
-            alt={o.gece_turu.taze ? `son üretici iş ${yasTr(o.gece_turu.son)}` : `${o.gece_turu.esik_saat} saattir koşmayan: ${o.gece_turu.bayat_isler.join(", ")}`} />
+          {/* v2.516 (#3): hüküm = üretici işler (müşteri ölçütü) + izlenen uzlaştırma/piyasa/bakım işleri (her biri kendi eşiğiyle) */}
+          <Kpi etiket={SOZLUK.kaynak.geceIsleri} deger={tazelik(!o.gece_turu.taze || (o.izlenen?.bayat.length ?? 0) > 0)}
+            ton={o.gece_turu.taze && !(o.izlenen?.bayat.length) ? undefined : "uyari"}
+            alt={!o.gece_turu.taze ? `${o.gece_turu.esik_saat} saattir koşmayan: ${o.gece_turu.bayat_isler.join(", ")}`
+              : o.izlenen && o.izlenen.bayat.length > 0 ? `eşiğini aşan izlenen iş: ${o.izlenen.bayat.join(", ")}`
+              : `son üretici iş ${yasTr(o.gece_turu.son)}${o.izlenen ? "; izlenen işlerde eşik aşımı yok" : ""}`} />
           <Kpi etiket="İşler" deger={sayiTr(o.isler_24.hata)} birim="hata" ton={o.isler_24.hata > 0 ? "uyari" : undefined}
             alt={`son 24 saatte ${sayiTr(o.isler_24.toplam)} iş kaydı`} />
           <Kpi etiket="Hava verisi" deger={o.meteo.kaynaklar.length ? yasTr(en_yeni(o.meteo.kaynaklar.map((k) => k.son_indirme))) : "arşiv yok"}
@@ -48,21 +52,37 @@ export function Sistem() {
             alt={o.meteo.kaynaklar.length === 0 ? "meteo_arsiv tablosu boş"
               : o.meteo.kaynaklar.some((k) => k.bayat) ? `eski: ${o.meteo.kaynaklar.filter((k) => k.bayat).map((k) => `${k.kaynak} (${k.yas_saat == null ? "hiç" : sayiTr(k.yas_saat, 0) + " saat"})`).join(", ")}`
               : `${sayiTr(o.meteo.kaynaklar.length)} kaynak; ${o.meteo.esik_saat} saatten eskisi eski sayılır`} />
-          <Kpi etiket={SOZLUK.kaynak.piyasaKisa} deger={yasTr(o.piyasa.son_guncelleme)} ton={o.piyasa.bayat ? "uyari" : undefined}
-            alt={o.piyasa.son_ts ? `gerçekleşen PTF/SMF ${tarihTr(o.piyasa.son_ts)} gününe kadar (gece dünü çeker; ileri fiyat değil); ${sayiTr(o.piyasa.satir)} saat` : "piyasa_fiyat tablosu boş"} />
+          {/* v2.516 (#4): yön kapsamı ve EPİAŞ kimliği de hükme girer — 29.10'da yön 0 saatti, kart «güncel» duruyordu */}
+          <Kpi etiket={SOZLUK.kaynak.piyasaKisa} deger={yasTr(o.piyasa.son_guncelleme)}
+            ton={o.piyasa.bayat || o.piyasa.kimlik === false || o.piyasa.yon_bayat ? "uyari" : undefined}
+            alt={o.piyasa.kimlik === false ? "EPİAŞ kimliği tanımlı değil: fiyat ve yön çekilemez, uzlaştırma senaryo fiyatıyla hesaplanır"
+              : !o.piyasa.son_ts ? "piyasa_fiyat tablosu boş"
+              : `gerçekleşen PTF/SMF ${tarihTr(o.piyasa.son_ts)} gününe kadar (ileri fiyat değil); yön ${o.piyasa.yon_son ? `${tarihTr(o.piyasa.yon_son)} gününe kadar` : "yok"}${o.piyasa.yon_bayat ? " (eksik)" : ""}, son 7 günde ${sayiTr(o.piyasa.yon_saat_7g ?? 0)} saat${o.piyasa.gop_son ? `; gün öncesi PTF ${tarihTr(o.piyasa.gop_son)}` : ""}`} />
           <Kpi etiket={SOZLUK.kaynak.yedek} deger={yasTr(o.yedek.son_basarili)} ton={o.yedek.bayat || (o.yedek.son_deneme ? !o.yedek.son_deneme.tamam : false) ? "uyari" : undefined}
             alt={o.yedek.son_deneme ? (o.yedek.son_deneme.tamam ? `son deneme başarılı; ${o.yedek.esik_saat} saatten eskisi eski sayılır` : `son deneme başarısız: ${o.yedek.son_deneme.ayrinti ?? "ayrıntı yok"}`) : "henüz yedek kaydı yok"} />
         </div>
         <IsKayitlari santral={secSantral} temizle={() => setSecSantral(null)} />
         <SantralEnvanteri santralSec={(id, ad) => { setSecSantral({ id, ad }); document.getElementById("is-kayitlari")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} />
         <div className="ızgara-cift">
-          <Kart baslik="Üretici işler" alt={`tazelik ölçütü: son başarılı koşu ${o.gece_turu.esik_saat} saatten yeni`}>
+          <Kart baslik="Üretici ve izlenen işler" alt={`üretici işler (müşteri ölçütü): son başarılı koşu ${o.gece_turu.esik_saat} saatten yeni; izlenen işler kendi eşiğiyle`}>
             <div className="grafik-kaydir"><table className="veri sayisal" style={{ minWidth: 0 }}>
               <thead><tr><th style={sol}>İş</th><th style={sol}>Son başarılı koşu</th><th>Durum</th></tr></thead>
               <tbody>{o.gece_turu.uretici_isler.map((u) => { const bayat = o.gece_turu.bayat_isler.includes(u.is); return (
                 <tr key={u.kod}><td style={sol}><span title={u.kod}>{u.is}</span></td><td style={sol}><Zaman s={u.son_ok} /></td>
                   <td><span className={`rozet ${bayat ? "rozet-uyari" : "rozet-ok"}`}>{tazelik(bayat)}</span></td></tr>); })}</tbody>
             </table></div>
+            {/* v2.516 (#3): izlenen işler — uzlaştırma, piyasa ve bakım; durum kodu uçtan (ok / esik_asimi / henuz_yok / beklenmiyor), sözcük sözlükten */}
+            {o.izlenen && <>
+              <p className="soluk" style={{ fontSize: 13, margin: "14px 0 6px" }}>İzlenen işler: gün içi 30, günlük 36 saat, aylık 35 gün eşiği; müşteri hükmüne girmez, platform kartını uyarır.</p>
+              <div className="grafik-kaydir"><table className="veri sayisal" style={{ minWidth: 0 }}>
+                <thead><tr><th style={sol}>İş</th><th style={sol}>Sıklık</th><th style={sol}>Son başarılı koşu</th><th>Durum</th></tr></thead>
+                <tbody>{o.izlenen.isler.map((u) => (
+                  <tr key={u.kod}><td style={{ ...sol, whiteSpace: "normal", minWidth: 150 }}><span title={u.kod}>{u.is}</span></td><td style={sol}>{u.siklik}</td>
+                    <td style={sol}><Zaman s={u.son_ok} /></td>
+                    <td>{u.durum === "ok" ? <span className="rozet rozet-ok">{SOZLUK.tazelik.guncel}</span>
+                      : u.durum === "esik_asimi" ? <span className="rozet rozet-uyari" title={u.son_ok ? `${sayiTr(u.yas_saat ?? 0, 0)} saat önce; eşik ${sayiTr(u.esik_saat)} saat` : "hiç başarılı koşu yok"}>{SOZLUK.tazelik.eski}</span>
+                      : <span className="rozet rozet-notr" title={u.not ?? undefined}>{u.durum === "henuz_yok" ? "henüz koşmadı" : "beklenmiyor"}</span>}</td></tr>))}</tbody>
+              </table></div></>}
           </Kart>
           <Kart baslik="Meteoroloji arşivi" alt="kaynak başına son indirme, nokta ve satır sayısı, kapsam">
             {o.meteo.kaynaklar.length === 0 ? <Bos bas="Arşivde kayıt yok." /> : (

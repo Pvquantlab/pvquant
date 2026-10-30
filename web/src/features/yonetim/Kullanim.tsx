@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { yonetim, type KullanimOzet, type KullanimKiraci, type KullanimToplam, type KullanimGunler, type Plan } from "../../api/yonetim";
-import { Zaman } from "./ortak";
+import { yonetim, zamanTr, type KullanimOzet, type KullanimKiraci, type KullanimToplam, type KullanimGunler, type Plan } from "../../api/yonetim";
 import { Kart, Sayfa, SayfaIskeleti, sayiTr } from "../sayfalar/parcalar";
 import { Meta } from "../../lib/Meta";
 import { LimitRozet } from "./ortak";
@@ -13,11 +12,14 @@ function Hata({ m }: { m: string | null }) { return m ? <p role="alert" classNam
 function Bos({ bas, alt }: { bas: string; alt?: string }) { return <div className="bos-durum"><div className="bos-bas">{bas}</div>{alt && <p>{alt}</p>}</div>; }
 const KULLANIM_SUTUNLAR: { k: keyof KullanimToplam; ad: string; birim?: string }[] = [
   { k: "dis_api", ad: "Dış API", birim: "istek" }, { k: "webhook", ad: "Webhook", birim: "teslim" }, { k: "rapor", ad: "Rapor" },
-  { k: "kosu", ad: "Tahmin koşusu" }, { k: "scada_saat", ad: "SCADA", birim: "saat" }, { k: "yukleme", ad: "Yükleme" }];
-const BOS: KullanimToplam = { dis_api: 0, webhook: 0, webhook_hata: 0, rapor: 0, kosu: 0, scada_saat: 0, yukleme: 0 };
+  { k: "kosu", ad: "Tahmin koşusu" }, { k: "scada_saat", ad: "SCADA", birim: "saat" }, { k: "yukleme", ad: "Yükleme" },
+  // v2.516 (#6): uzlaştırma katmanı kullanılıyor mu — öneri sürümü (aynı içerik yeni sürüm açmaz) ve müşterinin yüklediği beyan dosyası
+  { k: "kgup", ad: "KGÜP", birim: "sürüm" }, { k: "kgup_bildirilen", ad: "Bildirilen KGÜP", birim: "dosya" }];
+const BOS: KullanimToplam = { dis_api: 0, webhook: 0, webhook_hata: 0, rapor: 0, kosu: 0, scada_saat: 0, yukleme: 0, kgup: 0, kgup_bildirilen: 0 };
 const topla = (a: KullanimToplam, b: KullanimToplam): KullanimToplam =>
   ({ dis_api: a.dis_api + b.dis_api, webhook: a.webhook + b.webhook, webhook_hata: a.webhook_hata + b.webhook_hata, rapor: a.rapor + b.rapor,
-     kosu: a.kosu + b.kosu, scada_saat: a.scada_saat + b.scada_saat, yukleme: a.yukleme + b.yukleme });
+     kosu: a.kosu + b.kosu, scada_saat: a.scada_saat + b.scada_saat, yukleme: a.yukleme + b.yukleme,
+     kgup: (a.kgup ?? 0) + (b.kgup ?? 0), kgup_bildirilen: (a.kgup_bildirilen ?? 0) + (b.kgup_bildirilen ?? 0) });
 /** Son 6 ay 'YYYY-MM' (bu ay önce) */
 function aylar(n = 6): string[] {
   const s = new Date(); const out: string[] = [];
@@ -46,24 +48,25 @@ export function Kullanim() {
   const toplam = o ? o.kiracilar.reduce((a, k) => topla(a, k.bu_ay), BOS) : BOS;
   const onceki = o ? o.kiracilar.reduce((a, k) => topla(a, k.onceki_ay), BOS) : BOS;
   return (
-    <Sayfa baslik="Kullanım" alt="Müşteri başına aylık sayımlar; dış API ve webhook sayaçtan, rapor, koşu, SCADA ve yükleme kayıtlardan. Plan sınırı yok, yalnız ölçüm."
+    <Sayfa baslik="Kullanım" alt="Müşteri başına aylık sayımlar; dış API ve webhook sayaçtan; rapor, koşu, SCADA, yükleme ve KGÜP sürümleri kayıtlardan. Plan sınırı yok, yalnız ölçüm."
       sag={<label className="girdi-etiket" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>Ay
         <select className="girdi kucuk" value={ay} onChange={(e) => setAy(e.target.value)}>{aylar().map((a) => <option key={a} value={a}>{ayAdi(a)}</option>)}</select></label>}>
       <Hata m={hata} />
-      <Kart baslik={ayAdi(ay)} alt={o ? `${sayiTr(o.kiracilar.length)} müşteri; satır günlük kırılımı açar; parantez içi önceki ay (${ayAdi(o.onceki_ay)})` : undefined}>
+      <Kart baslik={ayAdi(ay)} alt={o ? `${sayiTr(o.kiracilar.length)} müşteri; satır günlük kırılımı açar; parantez içi önceki ay (${ayAdi(o.onceki_ay)}); etkin anahtar, webhook ve son API kullanımı müşteri adının altında` : undefined}>
         {!o ? <SayfaIskeleti kpi={0} kart={1} /> : o.kiracilar.length === 0 ? <Bos bas="Müşteri yok." /> : (
           <div className="grafik-kaydir"><table className="veri sayisal santral">
-            <thead><tr><th>Müşteri</th><th>Plan</th>{KULLANIM_SUTUNLAR.map((c) => <th key={c.k}>{c.ad}{c.birim && <span className="birim">{c.birim}</span>}</th>)}<th>Anahtar</th><th>Son API kullanımı</th><th aria-hidden="true"></th></tr></thead>
+            <thead><tr><th>Müşteri</th><th>Plan</th>{KULLANIM_SUTUNLAR.map((c) => <th key={c.k}>{c.ad}{c.birim && <span className="birim">{c.birim}</span>}</th>)}<th aria-hidden="true"></th></tr></thead>
             <tbody>
               {o.kiracilar.map((k) => (
                 <tr key={k.id} className="satir-tikla" tabIndex={0} onClick={() => setSecili(k)} onKeyDown={(e) => { if (e.key === "Enter") setSecili(k); }}>
-                  <td className="ad">{k.ad}{k.durum !== "active" && <span className="rozet rozet-uyari" style={{ marginLeft: 8 }}>askıda</span>}</td><td>{k.plan}</td>
+                  {/* v2.516 (#6): anahtar/webhook ve son API kullanımı adın altında künye — iki yeni KGÜP sütunu 1440 px'te kaydırma açmasın */}
+                  <td className="ad">{k.ad}{k.durum !== "active" && <span className="rozet rozet-uyari" style={{ marginLeft: 8 }}>askıda</span>}
+                    <div className="kunye-not" style={{ fontWeight: 400 }}>{sayiTr(k.etkin_anahtar)} anahtar{k.etkin_webhook > 0 ? ` · ${sayiTr(k.etkin_webhook)} webhook` : ""}</div>
+                    <div className="kunye-not" style={{ fontWeight: 400 }}>son API {k.son_api_kullanim ? zamanTr(k.son_api_kullanim) : "yok"}</div></td><td>{k.plan}</td>
                   {KULLANIM_SUTUNLAR.map((c) => <td key={c.k}><Hucre k={c.k} t={k.bu_ay} plan={planlar[k.plan]} /><span className="hucre-alt soluk" style={{ display: "block", fontSize: 12 }}>({sayiTr(k.onceki_ay[c.k])})</span></td>)}
-                  <td>{sayiTr(k.etkin_anahtar)}{k.etkin_webhook > 0 && <span className="hucre-alt soluk" style={{ display: "block", fontSize: 12 }}>{sayiTr(k.etkin_webhook)} webhook</span>}</td>
-                  <td><Zaman s={k.son_api_kullanim} /></td>
                   <td><svg className="satir-ok" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M7 4l6 6-6 6"/></svg></td>
                 </tr>))}
-              <tr><td className="ad">Toplam</td><td></td>{KULLANIM_SUTUNLAR.map((c) => <td key={c.k} style={{ fontWeight: 600 }}><Hucre k={c.k} t={toplam} /><span className="hucre-alt soluk" style={{ display: "block", fontSize: 12, fontWeight: 400 }}>({sayiTr(onceki[c.k])})</span></td>)}<td></td><td></td><td></td></tr>
+              <tr><td className="ad">Toplam</td><td></td>{KULLANIM_SUTUNLAR.map((c) => <td key={c.k} style={{ fontWeight: 600 }}><Hucre k={c.k} t={toplam} /><span className="hucre-alt soluk" style={{ display: "block", fontSize: 12, fontWeight: 400 }}>({sayiTr(onceki[c.k])})</span></td>)}<td></td></tr>
             </tbody>
           </table></div>)}
       </Kart>

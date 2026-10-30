@@ -50,7 +50,12 @@ export interface SistemOzet {
   gece_turu: { taze: boolean; bayat_isler: string[]; son: string | null; esik_saat: number; uretici_isler: { kod: string; is: string; son_ok: string | null }[] };
   isler_24: { toplam: number; hata: number };
   meteo: { esik_saat: number; kaynaklar: { kaynak: string; son_indirme: string | null; nokta: number | null; satir: number | null; ilk: string | null; son_ts: string | null; yas_saat: number | null; bayat: boolean }[] };
-  piyasa: { son_ts: string | null; son_guncelleme: string | null; satir: number; yas_saat: number | null; esik_saat: number; bayat: boolean };
+  piyasa: { son_ts: string | null; son_guncelleme: string | null; satir: number; yas_saat: number | null; esik_saat: number; bayat: boolean;
+    /** v2.516 (#4): EPİAŞ kimliği var mı (null = bilinmiyor), yön kapsamı (son yönlü saat, 7 günde yönlü/toplam saat, yön eksik mi), gün öncesi PTF ufku */
+    kimlik?: boolean | null; yon_son?: string | null; yon_saat_7g?: number; saat_7g?: number; yon_bayat?: boolean; gop_son?: string | null };
+  /** v2.516 (#3): platform izleme listesi — uzlaştırma/piyasa/bakım işleri, her biri kendi eşiğiyle; hüküm uçtan */
+  izlenen?: { isler: { kod: string; is: string; siklik: string; esik_saat: number; son_ok: string | null; yas_saat: number | null;
+    durum: "ok" | "esik_asimi" | "henuz_yok" | "beklenmiyor"; not: string | null }[]; bayat: string[] };
   yedek: { son_basarili: string | null; yas_saat: number | null; esik_saat: number; bayat: boolean; son_deneme: { zaman: string | null; tamam: boolean; ayrinti: string | null } | null };
   db: { boyut_bayt: number };
   santral: { etkin: number; arsivli: number };
@@ -64,7 +69,12 @@ export interface SantralEnvanter { id: string; ad: string; kapasite_kwp: number;
   kgup_yarin?: { gun: string; oneri_surum: number | null; bildirilen: boolean; eak: boolean } }
 
 // 25.10 Faz 4 — kullanım: sayaç türleri (dis_api, webhook, webhook_hata) + türetilmiş sayımlar (rapor, kosu, scada_saat, yukleme)
-export interface KullanimToplam { dis_api: number; webhook: number; webhook_hata: number; rapor: number; kosu: number; scada_saat: number; yukleme: number }
+export interface KullanimToplam { dis_api: number; webhook: number; webhook_hata: number; rapor: number; kosu: number; scada_saat: number; yukleme: number;
+  /** v2.516 (#6): KGÜP öneri sürümü (kgup_surum kaynak=pvquant) ve müşterinin yüklediği bildirilen dosya (kaynak=musteri) */
+  kgup: number; kgup_bildirilen: number }
+/** v2.516 (#5): müşteriler arası açık alarm özeti — okunmamış ve pencere_gun günden yeni; etiket arka uçtan */
+export interface AlarmOzet { acik: number; musteri: number; santral: number; en_eski: string | null; pencere_gun: number;
+  kurallar: { kural: string; etiket: string; adet: number; musteri: number }[] }
 export interface KullanimKiraci { id: string; ad: string; plan: string; durum: string; etkin_anahtar: number; etkin_webhook: number; son_api_kullanim: string | null;
   bu_ay: KullanimToplam; onceki_ay: KullanimToplam }
 export interface KullanimOzet { ay: string; onceki_ay: string; turler: string[]; kiracilar: KullanimKiraci[] }
@@ -122,6 +132,7 @@ export const yonetim = {
     istek(`/denetim${sorgu(p)}`),
   // 25.10 Faz 3 — sistem izleme (salt okunur)
   sistem: (): Promise<SistemOzet> => istek("/sistem"),
+  alarmlar: (): Promise<AlarmOzet> => istek("/alarmlar"),
   isler: (p: { saat?: number; yalniz_hata?: boolean; job?: string; tenant_id?: string; limit?: number; plant_id?: string } = {}): Promise<{ isler: IsKaydi[]; pencere_saat: number; is_turleri: { kod: string; is: string }[] }> =>
     istek(`/isler${sorgu(p)}`),
   santraller: (sorunlu = false): Promise<{ santraller: SantralEnvanter[]; esik: { scada_saat: number; kosu_saat: number }; toplam: number; yarin?: string }> =>
