@@ -864,10 +864,12 @@ export function buildChartOption(input: BuildInput): EChartsOption {
             {
               type: "text",
               // Dar ekranda «AC 3.560» (12 px mono ≈ 62 px) 52 px'lik eksen sütununa sığmayıp eksen çizgisi ve
-              // «şimdi» noktasının üstüne taşıyordu (24.10 üç motor turu, 375 px). Sol pay dar kipte 60 px, etiket
-              // 11 px (≈ 53 px) → sütunda kalır; sağ uca almak P90 tepesine biniyordu.
-              left: 4,
-              top: 34 + input.plotHeightPx * (1 - acVal / yMax) - 6,
+              // «şimdi» noktasının üstüne taşıyordu (24.10 üç motor turu, 375 px); sağ uca almak P90 tepesine biniyordu.
+              // 31.10 (v2.514): eksen sütununda kalınca ekranın ortasındaki «Güç [kW]» eksen başlığıyla çakışıyordu
+              // (AC = tavanın yarısı). Etiket artık çizim alanının SAĞ kenarında, kesikli çizginin hemen ÜSTÜNDE:
+              // AC üstünde hiçbir seri bulunmaz (kırpık) ve «şimdi» çizgisi sağ uca nadiren gelir; eksen sütunu başlığa kalır.
+              right: (narrow ? 12 : 16) + 6,
+              top: 34 + input.plotHeightPx * (1 - acVal / yMax) - (narrow ? 14 : 16),
               style: {
                 text: `AC ${nfKw.format(acVal)}`,
                 fill: T.acLimit,
