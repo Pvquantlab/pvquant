@@ -244,3 +244,19 @@ Commit `ee14d9e`, CI #640 (4 dk 9 s). Dağıtım: yalnız web imajı (ssh); api 
 web günlüğü hatasız. Kullanıcı canlıda görmüştü: AC sınırı tavanın yarısına denk gelince (10.000 / 20.000) eksen sütunundaki «AC 10.000»
 etiketi dikey «Güç [kW]» başlığının üstüne biniyordu. Etiket artık çizim alanının sağ kenarında, kesikli çizginin hemen üstünde (AC üstünde seri
 bulunmaz; «şimdi» çizgisi sağ uca nadiren gelir); 1280 ve 375 px önizlemede doğrulandı. Ayrıntı: `PVQuant_Ilk_Uygulama/02` M27.
+
+# On beşinci paket — v2.515 (31.10.2026 gece, canlı): yönetim panelinde santral envanteri uzlaştırma hazırlığı + denetim tabloları düzeni
+
+Commit `7e224e1`, CI #642 (7 dk 39 s). Dağıtım: api + web imajı (ssh; ev ağından 22. port kapalı olduğu için kullanıcı ağ değiştirdi); göç yok —
+pvq_api BYPASSRLS ve varsayılan ayrıcalıklarla `kgup_surum`'u okur. Canlı: index.html ve 23/23 JS/CSS birebir (referans 7e224e1); api ve web
+günlüğü hatasız; api kapsayıcısında `sistem_service` yeni kodu taşıyor (kgup_yarin). Not: referans derleme proje dışındaki klasöre yazılınca Vite
+klasörü boşaltmıyor; eski parçalar «farklı» sayıldı → referans klasörü her mühürde silinip yeniden derlenir.
+Kapsam: `sistem_service.santraller` → segment / uevcb / kgup_yukumlu + `kgup_yarin` (yarının İstanbul teslim günü: öneri sürümü / bildirilen / EAK)
++ «segment_yok» bayrağı; `platform_service.kiraci_detay` santral segmenti. Sistem › Santral envanteri yedi sütun: kurulu güç adın altında künye,
+«Segment / UEVÇB» tek hücre (düz mono kod), «KGÜP yarın» rozetleri, son hata bağlantısı Sorun'un altında; Müşteri detayı › Santraller aynı hücre.
+Denetim izi / Son işlemler: ayrıntı çipleri keep-all, aktör e-postası yalnız «@» sonrasında kırılır, platform santral tablolarında oluk 14 px.
+İnceleme düzeltmeleri (kullanıcı ekranları): envanter 1438 px'te 1527 px'e taşıyordu → dokuz sütun yediye, 1045/1045 kaydırmasız; UEVÇB kodu
+çipin 12 px boşluğuyla içeri kayıyordu → `.kunye-not.kod-duz`. DERS: aynı sayfada birden çok `table.veri.santral` var; ölçümde tabloyu thead
+metniyle seç (ilk «1047/1047» iddiası Üretici işler tablosuna denk gelmişti).
+Kalan: 04 D #3–#7 (üretici işler tazeliği, piyasa kartı yön/kimlik, açık alarm KPI, kullanım KGÜP sütunları, denetim izine yeni eylemler).
+Ayrıntı: `PVQuant_Ilk_Uygulama/02` M28, `04` D.
