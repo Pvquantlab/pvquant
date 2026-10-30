@@ -90,3 +90,19 @@ def test_dsg_dagitim_anahtari():
     assert sapma["B"]["pay_pct"] > sapma["C"]["pay_pct"]                                  # |grup payı| B (0,06) > C (0,05×1,0) → B'nin payı büyük
     with pytest.raises(ValueError):
         dz.dsg_hesapla_df(prog, fiyat, segmentler=seg, dagitim_anahtari="x")
+
+
+def test_portfoy_kupst_ucu(istemci, monkeypatch):
+    """v2.511 (04 #14): UEVÇB bazlı KÜPST ucu — kapı, anahtar sözleşmesi, segmentsiz portföyde açık not (servis sahte; motor test_portfoy_kupst.py)."""
+    from pvquant.ext.turkiye import dengesizlik as d
+    monkeypatch.setattr(dz, "portfoy_kupst_ozet", lambda t, gun=30, dagitim_anahtari="sapma": {
+        "santral": 0, "uevcbler": [], "kupst_toplam_tl": None, "dagitim_anahtari": dagitim_anahtari,
+        "dagitim_etiket": d.PORTFOY_ANAHTAR_ETIKET[dagitim_anahtari], "etiket": d.PORTFOY_ETIKET, "pencere_gun": gun,
+        "fiyat": {"epias_saat": 0, "senaryo_saat": 0}, "not": "portföyde dağıtıma bağlı lisanssız santral yok"})
+    j = istemci.get("/v1/portfoy/kupst?gun=30").json()
+    assert j["dagitim_anahtari"] == "sapma" and "mevzuatta tanımsız" in j["etiket"] and j["pencere_gun"] == 30
+    assert "uevcbler" in j and ("kupst_toplam_tl" in j)
+    assert istemci.get("/v1/portfoy/kupst?gun=5").status_code == 422
+    assert istemci.get("/v1/portfoy/kupst?gun=30&anahtar=yok").status_code == 422
+    assert istemci.get("/v1/portfoy/kupst?gun=30&anahtar=kurulu").json()["dagitim_etiket"] == "kurulu güç payına göre"
+

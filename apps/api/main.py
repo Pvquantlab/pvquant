@@ -709,6 +709,19 @@ def portfoy_dsg(gun: int = 30, anahtar: str = "sapma", claims=Depends(gecerli_ku
     return dengesizlik_service.dsg_ozet(claims["tenant_id"], gun=gun, dagitim_anahtari=anahtar)
 
 
+@app.get("/v1/portfoy/kupst")
+def portfoy_kupst(gun: int = 30, anahtar: str = "sapma", claims=Depends(gecerli_kullanici)):
+    """31.10 (v2.511, 04 #14) — toplayıcı/GTŞ portföyü: dağıtıma bağlı lisanssız santrallerin KÜPST'si UEVÇB bazında (params_json.uevcb);
+    `anahtar` santrallere dağılım (sapma | uretim | kurulu | esit; sözleşmesel, mevzuatta tanımsız)."""
+    from pvquant.ext.turkiye import dengesizlik as _d
+    from pvquant.services import dengesizlik_service
+    if not (14 <= gun <= 365):
+        raise HTTPException(422, "gun 14-365")
+    if anahtar not in _d.PORTFOY_ANAHTARLARI:
+        raise HTTPException(422, "anahtar " + "|".join(_d.PORTFOY_ANAHTARLARI))
+    return dengesizlik_service.portfoy_kupst_ozet(claims["tenant_id"], gun=gun, dagitim_anahtari=anahtar)
+
+
 @app.get("/v1/portfoy")
 def portfoy(claims=Depends(gecerli_kullanici)):
     """v2.263 — kiracının tüm santralleri: kapasite, son ölçüm, 30g WMAPE, bugün/yarın beklenen, açık alarm; toplamlar."""

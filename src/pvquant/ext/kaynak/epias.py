@@ -28,7 +28,7 @@ UC = {
     "dengesizlik_miktar": "/v1/markets/imbalance/data/imbalance-quantity",
     "dengesizlik_tutar": "/v1/markets/imbalance/data/imbalance-amount",
     "gip_aof": "/v1/markets/idm/data/weighted-average-price",
-    "yek_dengesizlik_maliyeti": "/v1/renewables/data/imbalance-cost",
+    "yek_dengesizlik_maliyeti": "/v1/renewables/data/imbalance-cost",   # 31.10.2026 canlı sınama: yalnız ≤30.04.2016 veri (sonrası 400 SEF1181) — güncel kaynak değil
     "res_uretim_tahmin": "/v1/renewables/data/res-generation-and-forecast",
 }
 

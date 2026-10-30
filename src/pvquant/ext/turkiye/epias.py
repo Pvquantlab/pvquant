@@ -32,7 +32,7 @@ UC = {
     "dengesizlik_miktar": ("/v1/markets/imbalance/data/imbalance-quantity", "positiveImbalance"),
     "dengesizlik_tutar": ("/v1/markets/imbalance/data/imbalance-amount", "positiveImbalance"),
     "gip_aof": ("/v1/markets/idm/data/weighted-average-price", "wap"),
-    "yek_dengesizlik": ("/v1/renewables/data/imbalance-cost", "imbalanceCost"),   # gövde {startDate,endDate} şemayla uyumlu; 400'ün nedeni belgede yok, canlı sınanmadı → «doğrulanmamış kaynak»
+    "yek_dengesizlik": ("/v1/renewables/data/imbalance-cost", "imbalanceCost"),   # ESKİ DÖNEM UCU (31.10.2026 canlı sınama): yalnız ≤30.04.2016 veri; sonrası 400 (BUS)SEF1181 «Seçtiğiniz tarihlerde veri bulunmamaktadır» → güncel YEKDEM kaynağı DEĞİL
     "santral_listesi": ("/v1/generation/data/powerplant-list", None),
     "uevcb_listesi": ("/v1/generation/data/uevcb-list", None),                     # UevcbListRequestDto: required [organizationId, startDate]; endDate ŞEMADA YOK (swagger v1.15.8)
     "organizasyon_listesi": ("/v1/generation/data/organization-list", None),       # OrganizationListRequestDto: required [startDate, endDate] → organizationId kaynağı
@@ -42,8 +42,9 @@ IST = "Europe/Istanbul"
 # 29.10 (v2.505, canlı sınama): liste uçları GET'tir (POST → 404 «Method not found or disabled»); KGÜP uçları `region` ister (yoksa 400).
 UC_GET = {"santral_listesi"}
 VARSAYILAN_EK = {"kgup": {"region": "TR1"}, "kgup_ilk": {"region": "TR1"}}
-# 31.10 (v2.510, 04 #11): şemasında endDate olmayan uçlar — gövde yalnız startDate + ek alanlar (uevcb-list 400'ünün belgeyle tutarlı nedeni:
-# zorunlu organizationId gönderilmiyordu). Canlı sınama bekliyor.
+# 31.10 (v2.510, 04 #11): şemasında endDate olmayan uçlar — gövde yalnız startDate + ek alanlar. CANLI SINAMA 31.10.2026 (sunucu, kayıtlı kimlik):
+# organization-list 692 kuruluş; uevcb-list {organizationId,startDate} → 200 (eski gövde → 400 teyit); uevcb-list-by-power-plant-id → 200;
+# powerplant-list 1832 santral.
 UC_BITIS_YOK = {"uevcb_listesi", "uevcb_santraldan"}
 UC_ZORUNLU = {"uevcb_listesi": ("organizationId",), "uevcb_santraldan": ("powerPlantId",)}
 

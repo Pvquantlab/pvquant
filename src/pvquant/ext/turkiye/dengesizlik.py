@@ -265,6 +265,67 @@ def dsg_saatlik(programlar: dict[str, pd.Series], gerceklesenler: dict[str, pd.S
     return {"saatlik": out, "uyeler": detay, "disi": disi, "esik_kaynak": esik_kaynak, "dagitim_anahtari": dagitim_anahtari}
 
 
+# ---------------------------------------------------------------- toplayıcı/GTŞ portföyü: KÜPST UEVÇB bazında (04 #14, v2.511) -------
+PORTFOY_ANAHTARLARI = ("sapma", "uretim", "kurulu", "esit")
+PORTFOY_ANAHTAR_ETIKET = {"sapma": "sapma payına göre", "uretim": "üretim payına göre", "kurulu": "kurulu güç payına göre", "esit": "eşit"}
+PORTFOY_ETIKET = "Santrallere dağılım mevzuatta tanımsız; sözleşmeye bağlıdır (Toplayıcılık Yön. Md.4(1)(j)); seçilen anahtar bir hak doğurmaz"
+UEVCB_TANIMSIZ = "UEVÇB kodu girilmedi (tek birim varsayıldı)"
+
+
+def portfoy_kupst_saatlik(programlar: dict[str, pd.Series], gerceklesenler: dict[str, pd.Series], ptf: pd.Series, smf: pd.Series, *,
+                          uevcb: dict[str, str] | None = None, kurulu_guc: dict[str, float] | None = None,
+                          dagitim_anahtari: str = "sapma") -> dict:
+    """Dağıtıma bağlı lisanssız santraller: KÜPST santralde değil GTŞ/toplayıcı UEVÇB'sinde (DUY m.69(11), m.110(6)(b)(3), RG 19.10.2026-33405).
+    UEVÇB başına program ve gerçekleşen TOPLANIR; sapma BRÜT (Karar 14907 Md.1(3): sadece üretim miktarı); KÜPSM = max(|ΣG − ΣK| − m·ΣK, 0),
+    KÜPST = KÜPSM·max(750, PTF, SMF)·n; m/n kural tablosundan (`kupst_kurali(…, portfoy=True)`: 14907 0,25 / 0,01 1.11.2026'dan; öncesi
+    belirsiz → NaN, durum 'kupst_hesaplanamaz'). Üyelere dağılım `dagitim_anahtari` (sapma: |G_i − K_i| payı; uretim: G_i payı; kurulu:
+    kurulu güç payı; esit) — mevzuatta anahtar YOK (31.10.2026 araştırması bulgular/14.md §14.4), sözleşmeseldir; Σ üye = UEVÇB.
+    uevcb: santral → UEVÇB kodu (boş/None → UEVCB_TANIMSIZ grubu). Dönüş: {"uevcbler": {kod: {"saatlik": df, "uyeler": {ad: df},
+    "kural_dayanak": str}}, "dagitim_anahtari", "etiket"}."""
+    if dagitim_anahtari not in PORTFOY_ANAHTARLARI:
+        raise ValueError(f"dagitim_anahtari {'|'.join(PORTFOY_ANAHTARLARI)}")
+    uevcb = uevcb or {}; kurulu_guc = kurulu_guc or {}
+    gruplar: dict[str, list[str]] = {}
+    for ad in programlar:
+        kod = (uevcb.get(ad) or "").strip() or UEVCB_TANIMSIZ
+        gruplar.setdefault(kod, []).append(ad)
+    out: dict[str, dict] = {}
+    for kod, uyeler in gruplar.items():
+        idx = None
+        for ad in uyeler:
+            i = _hizala(programlar[ad], gerceklesenler[ad], ptf, smf)
+            idx = i if idx is None else idx.intersection(i)
+        if idx is None or len(idx) == 0:
+            out[kod] = {"saatlik": pd.DataFrame(), "uyeler": {}, "kural_dayanak": ""}
+            continue
+        P = ptf.loc[idx].astype(float); S = smf.loc[idx].astype(float)
+        K = {ad: programlar[ad].loc[idx].astype(float) for ad in uyeler}
+        G = {ad: gerceklesenler[ad].loc[idx].astype(float) for ad in uyeler}
+        K_top = sum(K.values()); G_top = sum(G.values())
+        prm = kr.parametre_cercevesi(idx, "lisanssiz_dagitim", 0, True)
+        m = prm["m"].astype(float); n = prm["n"].astype(float); taban = prm["taban"].astype(float)
+        udups = (G_top - K_top).abs()
+        kupsm = (udups - m * K_top).clip(lower=0.0)
+        kupst = kupsm * np.maximum.reduce([taban.values, P.values, S.values]) * n
+        kupst = pd.Series(np.asarray(kupst, dtype=float), index=idx)
+        hesaplanamaz = n.isna() | m.isna()
+        kupst = kupst.where(~hesaplanamaz, np.nan)
+        agirlik = {ad: ((G[ad] - K[ad]).abs() if dagitim_anahtari == "sapma" else G[ad].clip(lower=0) if dagitim_anahtari == "uretim"
+                        else pd.Series(float(kurulu_guc.get(ad, 0.0) or 0.0), index=idx) if dagitim_anahtari == "kurulu"
+                        else pd.Series(1.0, index=idx)) for ad in uyeler}
+        toplam_agirlik = sum(agirlik.values()); n_uye = len(uyeler)
+        detay = {}
+        for ad in uyeler:
+            pay = (agirlik[ad] / toplam_agirlik).where(toplam_agirlik > 0, 1.0 / n_uye)
+            detay[ad] = pd.DataFrame({"kgup": K[ad], "gerceklesen": G[ad], "sapma": G[ad] - K[ad], "pay": pay, "kupst": pay * kupst})
+        g = kr.kural(idx[0], "lisanssiz_dagitim", portfoy=True)
+        out[kod] = {"saatlik": pd.DataFrame({"kgup": K_top, "gerceklesen": G_top, "udups": udups, "kupsm": kupsm, "kupst": kupst,
+                                             "m": m, "n": n, "taban": taban, "ptf": P, "smf": S, "kural_surumu": prm["surum"],
+                                             "durum": np.where(hesaplanamaz.values, "kupst_hesaplanamaz", "ok")}),
+                    "uyeler": detay, "kural_dayanak": g.kupst.dayanak}
+    return {"uevcbler": out, "dagitim_anahtari": dagitim_anahtari, "etiket": PORTFOY_ETIKET + " — " + PORTFOY_ANAHTAR_ETIKET[dagitim_anahtari]}
+
+
 def teminat(saatlik_df: pd.DataFrame, risk_katsayisi: float = 1.0, ay: int = 3) -> float:
     """Son `ay` ayın en yüksek aylık EDT(−) × risk katsayısı — SADELEŞTİRİLMİŞ GÖSTERGE (Teminat U&E ile doğrulanmadı)."""
     a = saatlik_df["edt_neg"].resample("ME").sum().tail(ay)

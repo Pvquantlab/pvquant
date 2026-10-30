@@ -288,6 +288,72 @@ def dsg_hesapla_df(programlar: dict[str, pd.DataFrame], fiyat: pd.DataFrame, kat
             "fiyat": fiyat_ozeti}
 
 
+def portfoy_kupst_ozet(tenant_id, gun: int = 30, dagitim_anahtari: str = "sapma") -> dict:
+    """04 #14 (v2.511): dağıtıma bağlı lisanssız santrallerin KÜPST'si GTŞ/toplayıcı UEVÇB'si bazında (params_json.uevcb ile gruplanır;
+    boş kod → tek birim varsayımı etiketiyle). Santrallere dağılım anahtarı sözleşmeseldir; mevzuatta tanımsız."""
+    from sqlalchemy import text
+    from pvquant.db import tenant_baglami
+    from pvquant.services import piyasa_service
+    if dagitim_anahtari not in d.PORTFOY_ANAHTARLARI:
+        raise ValueError("anahtar " + "|".join(d.PORTFOY_ANAHTARLARI))
+    with tenant_baglami(tenant_id) as s:
+        santraller = [dict(r._mapping) for r in s.execute(text("SELECT id, name, capacity_kwp, params_json FROM plants WHERE NOT archived ORDER BY name"))]
+    uyeler = [p for p in santraller if segment_bilgisi(p.get("params_json"))["segment"] == "lisanssiz_dagitim"]
+    bos = {"santral": 0, "uevcbler": [], "kupst_toplam_tl": None, "dagitim_anahtari": dagitim_anahtari,
+           "dagitim_etiket": d.PORTFOY_ANAHTAR_ETIKET[dagitim_anahtari], "etiket": d.PORTFOY_ETIKET, "pencere_gun": gun,
+           "fiyat": {"epias_saat": 0, "senaryo_saat": 0}}
+    if not uyeler:
+        return {**bos, "not": "portföyde dağıtıma bağlı lisanssız santral yok"}
+    programlar = {p["name"]: program_df(tenant_id, str(p["id"]), gun) for p in uyeler}
+    K: dict[str, pd.Series] = {}; G: dict[str, pd.Series] = {}
+    for ad, df in programlar.items():
+        if df is None or df.empty:
+            continue
+        x = df.dropna(subset=["gercek_kw", "kgup_kw"]).set_index("ts_utc")
+        if x.empty:
+            continue
+        K[ad] = x["kgup_kw"].astype(float) / 1000.0; G[ad] = x["gercek_kw"].astype(float) / 1000.0
+    if not K:
+        return {**bos, "santral": len(uyeler), "not": "ortak saat yetersiz"}
+    idx = pd.DatetimeIndex([], tz="UTC")
+    for k in K.values():
+        idx = idx.union(k.index)
+    fiyat = piyasa_service.fiyatlar(idx)
+    f = fiyat.reindex(idx); ptf = f["ptf"].astype(float); smf = f["smf"].astype(float)
+    _, fiyat_ozeti = _yon_ve_kaynak(f)
+    uevcb = {p["name"]: (_pj(p.get("params_json")).get("uevcb") or "") for p in uyeler}
+    kurulu = {p["name"]: float(p.get("capacity_kwp") or 0) / 1000.0 for p in uyeler}
+    r = d.portfoy_kupst_saatlik(K, G, ptf, smf, uevcb=uevcb, kurulu_guc=kurulu, dagitim_anahtari=dagitim_anahtari)
+    cikti = []; toplam = 0.0; toplam_var = False
+    for kod, g in r["uevcbler"].items():
+        sa = g["saatlik"]
+        if sa.empty or len(sa) < 24:
+            cikti.append({"kod": kod, "kod_tanimsiz": kod == d.UEVCB_TANIMSIZ, "santraller": list(g["uyeler"].keys()) or [a for a in K if (uevcb.get(a) or "") == ("" if kod == d.UEVCB_TANIMSIZ else kod)],
+                          "n_saat": int(len(sa)), "kupst_tl": None, "not": "ortak saat yetersiz"})
+            continue
+        ok = sa["durum"].eq("ok")
+        kupst = float(sa.loc[ok, "kupst"].sum()) if ok.any() else None
+        if kupst is not None:
+            toplam += kupst; toplam_var = True
+        uye = {}
+        for ad, v in g["uyeler"].items():
+            k_ad = float(v.loc[ok, "kupst"].sum()) if ok.any() else None
+            uye[ad] = {"kupst_tl": (round(k_ad, 0) if k_ad is not None else None),
+                       "pay_pct": (round(100 * k_ad / kupst, 1) if (k_ad is not None and kupst) else round(100 * float(v["pay"].mean()), 1)),
+                       "sapma_mwh": round(float(v["sapma"].abs().sum()), 1), "uretim_mwh": round(float(v["gerceklesen"].sum()), 1),
+                       "kurulu_mw": round(kurulu.get(ad, 0.0), 3)}
+        cikti.append({"kod": kod, "kod_tanimsiz": kod == d.UEVCB_TANIMSIZ, "santraller": list(g["uyeler"].keys()), "n_saat": int(len(sa)),
+                      "kupst_tl": (round(kupst, 0) if kupst is not None else None), "udups_mwh": round(float(sa.loc[ok, "udups"].sum()), 1),
+                      "kupsm_mwh": round(float(sa.loc[ok, "kupsm"].sum()), 1), "uretim_mwh": round(float(sa["gerceklesen"].sum()), 1),
+                      "hesaplanamayan_saat": int((~ok).sum()), "kural_dayanak": g["kural_dayanak"],
+                      "kural_surumu": " | ".join(sorted(set(sa["kural_surumu"]))), "uyeler": uye})
+    return {**bos, "santral": len(uyeler), "uevcbler": cikti, "kupst_toplam_tl": (round(toplam, 0) if toplam_var else None),
+            "etiket": r["etiket"], "fiyat": fiyat_ozeti,
+            "not": ("KGÜP sapma tutarı santralde değil, görevli tedarik şirketi ya da toplayıcı UEVÇB'sinde hesaplanır; sapma UEVÇB toplamında "
+                    "brüt alınır. Katsayılar 1.11.2026'dan Karar 14907 (tolerans 0,25; fiyat katsayısı 0,01); öncesi belirsiz, o saatler hesaplanmadı. "
+                    "Bu bir yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir.")}
+
+
 def dsg_ozet(tenant_id, gun: int = 30, dagitim_anahtari: str = "sapma") -> dict:
     """Kiracının santralleri: DSG netleşmesi (yürürlükteki kural, F-08). Dengesizlik taşımayan segmentler portföy dışı; segment seçilmemiş
     santral lisanslı güneş kabul edilir ve KÜPST hesaplanamaz olarak işaretlenir."""

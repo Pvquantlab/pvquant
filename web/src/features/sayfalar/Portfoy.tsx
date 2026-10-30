@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { api, bellektenOku, dsgYolu } from "../../api/client";
-import type { DsgAnahtar, Portfoy as PortfoyT, PortfoyDsg, PortfoyTahmin } from "../../api/types";
+import { api, bellektenOku, dsgYolu, kupstYolu } from "../../api/client";
+import type { DsgAnahtar, Portfoy as PortfoyT, PortfoyAnahtar, PortfoyDsg, PortfoyKupst, PortfoyTahmin } from "../../api/types";
 import { Bilgi, Kart, Kpi, Sayfa, sayiTr, gucTr, enerjiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
 import { Meta } from "../../lib/Meta";
 
@@ -54,6 +54,15 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
     hatirlayarak(dsgYolu(30, anahtar), () => api.portfoyDsg(30, anahtar)).then((v) => { if (acik) { setDsg(v); setDsgD("tamam"); } }, () => { if (acik) { setDsgD("hata"); } });
     return () => { acik = false; };
   }, [anahtar]);
+  // v2.511 (04 #14): toplayıcı/GTŞ portföyü KÜPST — UEVÇB bazında; anahtar değişince yeniden çekilir
+  const [kupst, setKupst] = useState<PortfoyKupst | null | undefined>(() => bellektenOku<PortfoyKupst>(kupstYolu(30)));
+  const [kupstD, setKupstD] = useState<"bekliyor" | "tamam" | "hata">("bekliyor");
+  const [kAnahtar, setKAnahtar] = useState<PortfoyAnahtar>("sapma");
+  useEffect(() => {
+    let acik = true; setKupstD("bekliyor");
+    hatirlayarak(kupstYolu(30, kAnahtar), () => api.portfoyKupst(30, kAnahtar)).then((v) => { if (acik) { setKupst(v); setKupstD("tamam"); } }, () => { if (acik) { setKupst((e) => e ?? null); setKupstD("hata"); } });
+    return () => { acik = false; };
+  }, [kAnahtar]);
   const hazir = p !== undefined || pD !== "bekliyor";
   const tazeleniyor = hazir && (pD === "bekliyor" || ptD === "bekliyor" || dsgD === "bekliyor");
   const t = p?.toplam ?? null;
@@ -268,6 +277,52 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
           </>
         )}
       </Kart>
+      {/* v2.511 (04 #14): toplayıcı/GTŞ portföyü — dağıtıma bağlı lisanssız santrallerin KÜPST'si UEVÇB bazında (DUY m.69(11), m.110(6)(b)(3);
+          Karar 14907 0,25 / 0,01, 1.11.2026'dan). Santrallere dağılım mevzuatta tanımsız → kullanıcı anahtarı, etiketli. */}
+      {kupst && kupst.santral > 0 && (
+        <Kart baslik="Toplayıcı / görevli tedarik şirketi portföyü — KGÜP sapma tutarı (KÜPST), uzlaştırmaya esas veriş çekiş birimi bazında"
+          sag={<span className="cip" title={kupst.fiyat.senaryo_saat > 0 ? "Senaryo fiyatı: EPİAŞ piyasa fiyatı bağlı olmadığından EPDK yıllık ortalaması kullanılmıştır." : "Saatlik PTF ve SMF EPİAŞ verisinden alınır."}><Meta items={[`son ${sayiTr(kupst.pencere_gun)} gün`, kupst.fiyat.senaryo_saat > 0 ? "senaryo fiyatı" : "piyasa fiyatı (EPİAŞ)", kupstD === "bekliyor" && "güncelleniyor", kupstD === "hata" && "güncellenemedi"]} /></span>}>
+          {kupst.uevcbler.length === 0 ? <p className="soluk" style={{ margin: 0 }}>{kupst.not === "ortak saat yetersiz" ? "Santrallerin ölçüm saati henüz yeterli değil; en az 24 saat gerekir." : kupst.not}</p> : (
+            <>
+              <div className="ızgara satir-3" style={{ marginBottom: 10 }}>
+                <Kpi etiket="KGÜP sapma tutarı · KÜPST, birim toplamı" bilgi="Dağıtım sistemine bağlı lisanssız santrallerde KÜPST santralin kendisinde değil, görevli tedarik şirketi ya da toplayıcı adına açılan uzlaştırmaya esas veriş çekiş biriminde hesaplanır; birimdeki santrallerin programı ve üretimi toplanır, sapma brüt alınır." deger={kupst.kupst_toplam_tl != null ? sayiTr(kupst.kupst_toplam_tl / 1000, 1) : "—"} birim={kupst.kupst_toplam_tl != null ? "bin TL" : undefined} alt={kupst.kupst_toplam_tl != null ? `${sayiTr(kupst.uevcbler.length)} birim · ${sayiTr(kupst.santral)} santral` : "1.11.2026 öncesi katsayı belirsiz; hesaplanmadı"} />
+                <Kpi etiket="Tolerans üstü sapma" bilgi="Birim toplamında |üretim − program| toplamından toleransın (programın %25'i) düşülmüş kısmı; KÜPST bu miktar üzerinden hesaplanır." deger={sayiTr(kupst.uevcbler.reduce((a, u) => a + (u.kupsm_mwh ?? 0), 0), 1)} birim="MWh" alt={`brüt sapma ${sayiTr(kupst.uevcbler.reduce((a, u) => a + (u.udups_mwh ?? 0), 0), 1)} MWh`} />
+                <Kpi etiket="Kural" bilgi={kupst.uevcbler[0]?.kural_dayanak ?? ""} deger="0,25 / 0,01" alt="tolerans / fiyat katsayısı · Karar 14907 · 1.11.2026'dan" />
+              </div>
+              {kupst.uevcbler.map((u) => (
+                <details key={u.kod} className="aciklama genis" style={{ marginBottom: 10 }}>
+                  <summary>{u.kod_tanimsiz ? "UEVÇB kodu girilmedi (tek birim varsayıldı)" : `UEVÇB ${u.kod}`} — {u.santraller.length} santral · {u.kupst_tl != null ? `${sayiTr(u.kupst_tl / 1000, 1)} bin TL` : "hesaplanamadı"} — santrallere dağılım {kupst.dagitim_etiket}</summary>
+                  <div style={{ display: "flex", margin: "8px 0", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    <label className="soluk" htmlFor={`kupst-anahtar-${u.kod}`}>Dağıtım anahtarı<Bilgi metin="Birimin KÜPST'si santrallere bu anahtarla paylaştırılır. Mevzuatta bir anahtar tanımlı değildir; paylaşım sözleşmeye bağlıdır ve seçilen anahtar bir hak doğurmaz. Sapma payına göre: |üretim − program| oranı. Üretim payına göre: gerçekleşen üretim oranı. Kurulu güç payına göre: kurulu güç oranı. Eşit: her santrale aynı pay." /></label>
+                    <select id={`kupst-anahtar-${u.kod}`} className="girdi" value={kAnahtar} onChange={(e) => setKAnahtar(e.target.value as PortfoyAnahtar)} aria-label="KÜPST santrallere dağılım anahtarı">
+                      <option value="sapma">sapma payına göre</option>
+                      <option value="uretim">üretim payına göre</option>
+                      <option value="kurulu">kurulu güç payına göre</option>
+                      <option value="esit">eşit</option>
+                    </select>
+                    <span className="rozet rozet-notr rozet-kucuk" title={kupst.etiket}>mevzuatta tanımsız · sözleşmeye bağlı</span>
+                  </div>
+                  {u.uyeler && (
+                    <div style={{ overflowX: "auto" }}>
+                      <table className="veri" style={{ fontSize: 13.5 }}>
+                        <thead><tr><th>Santral</th><th>Kurulu güç (MW)</th><th>Üretim (MWh)</th><th>Sapma (MWh)</th><th>Pay</th><th>KÜPST payı</th></tr></thead>
+                        <tbody>
+                          {Object.entries(u.uyeler).map(([ad, m]) => (
+                            <tr key={ad}><td>{ad}</td><td>{sayiTr(m.kurulu_mw, 2)}</td><td>{sayiTr(m.uretim_mwh, 1)}</td><td>{sayiTr(m.sapma_mwh, 1)}</td><td>%{sayiTr(m.pay_pct, 1)}</td>
+                              <td>{m.kupst_tl != null ? sayiTr(m.kupst_tl / 1000, 1) : "—"} <span className="birim">bin TL</span></td></tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  <p className="soluk" style={{ fontSize: 13, margin: "6px 0 0" }}>Birim toplamı: brüt sapma {sayiTr(u.udups_mwh ?? 0, 1)} MWh, tolerans üstü {sayiTr(u.kupsm_mwh ?? 0, 1)} MWh, {sayiTr(u.n_saat)} saat{(u.hesaplanamayan_saat ?? 0) > 0 ? `, ${sayiTr(u.hesaplanamayan_saat ?? 0)} saat hesaplanamadı (1.11.2026 öncesi katsayı belirsiz)` : ""}. Santral paylarının toplamı birim toplamına eşittir.</p>
+                </details>
+              ))}
+              <p className="soluk" style={{ fontSize: 14, margin: 0 }}>{kupst.not}</p>
+            </>
+          )}
+        </Kart>
+      )}
       {/* 26.10 Faz 6: Dış erişim, Kuruluşlar arası paylaşım, Hesap ve ekip, Santral arşivi → «Kuruluş» sayfası (Kurulus.tsx) */}
     </Sayfa>
   );

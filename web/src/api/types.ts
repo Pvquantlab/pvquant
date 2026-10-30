@@ -123,6 +123,15 @@ export interface PortfoyTahmin {
 }
 /** /portfoy/dsg — v2.276: DSG netleştirmesi. */
 export type DsgAnahtar = "sapma" | "esit" | "uretim";
+/** v2.511 (04 #14): toplayıcı/GTŞ portföyü — KÜPST UEVÇB bazında; santrallere dağılım anahtarı sözleşmesel (mevzuatta tanımsız) */
+export type PortfoyAnahtar = "sapma" | "uretim" | "kurulu" | "esit";
+export interface PortfoyKupst {
+  santral: number; kupst_toplam_tl: number | null; dagitim_anahtari: PortfoyAnahtar; dagitim_etiket: string; etiket: string;
+  pencere_gun: number; fiyat: { epias_saat: number; senaryo_saat: number }; not?: string;
+  uevcbler: { kod: string; kod_tanimsiz: boolean; santraller: string[]; n_saat: number; kupst_tl: number | null; not?: string;
+              udups_mwh?: number; kupsm_mwh?: number; uretim_mwh?: number; hesaplanamayan_saat?: number; kural_dayanak?: string; kural_surumu?: string;
+              uyeler?: Record<string, { kupst_tl: number | null; pay_pct: number; sapma_mwh: number; uretim_mwh: number; kurulu_mw: number }> }[];
+}
 export interface PortfoyDsg {
   /** v2.502 (F-08): yürürlükteki kural — üye eşiği × PH grupta, aşan kısım bireysel; KÜPST üye bazında toplanır. gosterge=false.
    *  'kazanc_tl' = netleşme farkı (sözleşme adı; vaat değil). edt_* işaretli (negatif = katılımcı öder). */

@@ -9,7 +9,7 @@ const PORT = Number(process.argv[2] ?? 4807);
 const CARPAN = Number(process.env.YAVAS ?? 1);
 /** uç → gecikme (ms); anahtar yol öneki (sorgu hariç) */
 const GECIKME = {
-  "/v1/plants": 60, "/v1/oturum/yenile": 60, "/v1/portfoy": 270, "/v1/portfoy/tahmin": 400, "/v1/portfoy/dsg": 1000,
+  "/v1/plants": 60, "/v1/oturum/yenile": 60, "/v1/portfoy": 270, "/v1/portfoy/tahmin": 400, "/v1/portfoy/dsg": 1000, "/v1/portfoy/kupst": 700,
   summary: 250, forecast: 350, skill: 300, runs: 80, alarmlar: 80, "alarm-kurallari": 80, nowcast: 150, kgup: 300, konformal: 120,
   dengesizlik: 500, backtest: 900, guvenilirlik: 700, "hata-matrisi": 400, "hata-dagilimi": 350, kalibrasyon: 200, hijyen: 300,
   kayma: 600, "kayip-agaci": 250, "guc-matrisi": 250, monthly: 300, bankable: 800, "saat-ay-matrisi": 400, "gunes-yolu": 300,
@@ -136,6 +136,16 @@ http.createServer((req, res) => {
     mekanizma: { saat: 7488, acik_saat: 0, fazla_saat: 0, dengede_saat: 7488, b_dali_saat: 0, afl_dali_saat: 0, v_tabani_saat: 0, b_dali_tl: 0, afl_dali_tl: 0, senaryo_saat: 7488, yon_varsayilan_saat: 7488, yon_eksik_saat: 0, hesaplanamayan_saat: 0 } });
   if (yol === "/v1/portfoy") return yanit(200, PORTFOY);
   if (yol === "/v1/portfoy/tahmin") return yanit(200, PT);
+  if (yol === "/v1/portfoy/kupst") {   // v2.511 (04 #14): UEVÇB bazlı KÜPST, anahtar sözleşmesel
+    const a = url.searchParams.get("anahtar") || "sapma"; const et = { sapma: "sapma payına göre", uretim: "üretim payına göre", kurulu: "kurulu güç payına göre", esit: "eşit" };
+    const pay = { sapma: [62.5, 37.5], uretim: [48.1, 51.9], kurulu: [60.0, 40.0], esit: [50.0, 50.0] }[a] || [62.5, 37.5]; const top = 4120;   // 121,2 MWh × ~3.400 TL/MWh × 0,01
+    return yanit(200, { santral: 2, kupst_toplam_tl: top, dagitim_anahtari: a, dagitim_etiket: et[a] || et.sapma,
+      etiket: "Santrallere dağılım mevzuatta tanımsız; sözleşmeye bağlıdır (Toplayıcılık Yön. Md.4(1)(j)); seçilen anahtar bir hak doğurmaz — " + (et[a] || et.sapma),
+      pencere_gun: 30, fiyat: { epias_saat: 720, senaryo_saat: 0 },
+      uevcbler: [{ kod: "40W-GTS-LUM-GES-01", kod_tanimsiz: false, santraller: ["Format Lab", "Edikli GES"], n_saat: 720, kupst_tl: top, udups_mwh: 184.2, kupsm_mwh: 121.2, uretim_mwh: 9860.4, hesaplanamayan_saat: 0,
+        kural_dayanak: "Karar 14907 Md.2(1)(ç) piyasa katılımcısı bazlı, Md.3(1)(e); UEVÇB: DUY m.110(6)(b)(3) (RG 19.10.2026-33405 Md.22); Md.1(3) brüt", kural_surumu: "edt-2026-V100-edta_ayrik+kupst-14907-dagitim",
+        uyeler: { "Format Lab": { kupst_tl: Math.round(top * pay[0] / 100), pay_pct: pay[0], sapma_mwh: 142.6, uretim_mwh: 4740.1, kurulu_mw: 15.23 }, "Edikli GES": { kupst_tl: Math.round(top * pay[1] / 100), pay_pct: pay[1], sapma_mwh: 85.5, uretim_mwh: 5120.3, kurulu_mw: 10.15 } } }],
+      not: "KGÜP sapma tutarı santralde değil, görevli tedarik şirketi ya da toplayıcı UEVÇB'sinde hesaplanır; sapma UEVÇB toplamında brüt alınır. Katsayılar 1.11.2026'dan Karar 14907 (tolerans 0,25; fiyat katsayısı 0,01); öncesi belirsiz, o saatler hesaplanmadı. Bu bir yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir." }); }
   if (yol === "/v1/portfoy/dsg") { const a = url.searchParams.get("anahtar") || "sapma"; const et = { sapma: "sapma payına göre", esit: "eşit", uretim: "üretime göre" }[a] || a;
     const pay = a === "esit" ? [33.3, 33.3, 33.3] : a === "uretim" ? [45.1, 36.2, 18.7] : [42.8, 34.7, 22.5];
     const uyeler = Object.fromEntries(Object.entries(DSG.uyeler).map(([k, v], i) => [k, { ...v, pay_pct: pay[i], netlesme_farki_tl: Math.round(40400 * pay[i] / 100), edt_dsg_tl: Math.round(v.edt_tek_tl + 40400 * pay[i] / 100) }]));
