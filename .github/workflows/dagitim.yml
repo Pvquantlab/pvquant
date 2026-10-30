@@ -1,0 +1,79 @@
+# PVQuant dağıtımı (v2.509) — yalnız elle tetiklenir, yalnız main dalından.
+# Neden: dağıtım bugüne dek geliştiricinin bilgisayarından ssh ile yapılıyordu; 30.10.2026'da port 22
+# tek bir IP'ye kapandı ve v2.506 saatlerce bekledi. Bu iş GitHub runner'ından aynı komutu koşar.
+# Sırlar depoda değil, GitHub gizli değişkenlerinde (docs/CI-DAGITIM.md):
+#   DEPLOY_SSH_KEY     — yalnız dağıtım için üretilmiş özel anahtar (public kısmı sunucuda authorized_keys)
+#   DEPLOY_HOST        — sunucu adresi
+#   DEPLOY_KNOWN_HOSTS — `ssh-keyscan` çıktısı (StrictHostKeyChecking=yes ile sunucu kimliği sabitlenir)
+# Otomatik tetikleme bilerek yok: önce CI yeşili (ci.yml), sonra bu iş elle.
+name: Dağıtım
+
+on:
+  workflow_dispatch:
+    inputs:
+      imajlar:
+        description: "Yeniden derlenecek imajlar (api ve worker aynı Dockerfile'dan ayrı etiketlerdir)"
+        type: choice
+        default: "api worker web"
+        options:
+          - "api worker web"
+          - "api web"
+          - "web"
+
+concurrency:
+  group: dagitim-canli
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: "Canlıya dağıt (${{ inputs.imajlar }})"
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      IMAJLAR: ${{ inputs.imajlar }}
+
+    steps:
+      - name: Gizli değişkenler tanımlı mı
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          eksik=0
+          for ad in DEPLOY_SSH_KEY DEPLOY_HOST DEPLOY_KNOWN_HOSTS; do
+            if [ -z "${!ad}" ]; then echo "::error::$ad gizli değişkeni tanımlı değil"; eksik=1; fi
+          done
+          [ "$eksik" -eq 0 ]
+
+      - name: ssh anahtarı ve sunucu kimliği
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/dagitim && chmod 600 ~/.ssh/dagitim
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts && chmod 644 ~/.ssh/known_hosts
+          ssh-keygen -y -f ~/.ssh/dagitim > /dev/null   # anahtar biçimi doğru mu (değer yazdırılmaz)
+
+      - name: "Sunucuda: git pull → docker compose build → up -d"
+        run: |
+          ssh -i ~/.ssh/dagitim -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=20 \
+            "root@${DEPLOY_HOST}" "set -e
+              cd /opt/pvquant
+              git pull --ff-only
+              echo \"sunucu HEAD: \$(git log --oneline -1)\"
+              docker compose build ${IMAJLAR}
+              docker compose up -d
+              sleep 6
+              docker compose ps --format '{{.Name}} {{.Status}}'"
+
+      - name: Canlı doğrulama (HTTPS 200)
+        run: |
+          kod=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 https://pvquant.com/)
+          echo "pvquant.com → HTTP $kod"
+          [ "$kod" = "200" ]
+
+      - name: Anahtarı sil
+        if: always()
+        run: rm -f ~/.ssh/dagitim
