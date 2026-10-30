@@ -563,8 +563,8 @@ export function Santralim({ plantId }: { plantId: string }) {
             <div><div className="ayar-ad">Program sınırları</div>
               <div className="ayar-aciklama">Verilebilecek en yüksek güç, mevzuattaki adıyla emre amade kapasite (EAK): santralin o gün sisteme verebileceği en yüksek güç; üretim programı bu sınırı aşmaz. Geçici kısıt bakım ya da arıza içindir ve bitiş gününe kadar geçerlidir.</div></div>
             <div className="ayar-kontrol">
-              <label className="girdi-etiket" title="Mevzuattaki adı emre amade kapasite (EAK). Boş bırakılırsa inverter AC sınırı kullanılır.">Verilebilecek en yüksek güç (EAK), kW — boşsa AC sınırı
-                <input className="girdi" style={{ width: 140 }} inputMode="numeric" value={eakKw} onChange={(e) => setEakKw(e.target.value)} /></label>
+              <label className="girdi-etiket" title="Mevzuattaki adı emre amade kapasite (EAK). Boş bırakılırsa inverter AC sınırı kullanılır.">Verilebilecek en yüksek güç (EAK), kW
+                <input className="girdi" style={{ width: 150 }} inputMode="numeric" placeholder="boşsa AC sınırı" value={eakKw} onChange={(e) => setEakKw(e.target.value)} /></label>
               <label className="girdi-etiket">Geçici kısıt (kW)
                 <input className="girdi" style={{ width: 100 }} inputMode="numeric" value={gecKw} onChange={(e) => setGecKw(e.target.value)} /></label>
               <label className="girdi-etiket">Kısıt bitişi
