@@ -52,7 +52,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
   const surumleriYenile = () => { api.kgupSurumler(plantId).then((v) => setSurumler(v)); };
   const [kiyas, setKiyas] = useState<KgupKiyas | null>(null);   // v2.503: bildirilen ↔ öneri
   const [yukleMesaj, setYukleMesaj] = useState<string | null>(null);
-  // 29.10 (v2.506): dışa aktarma biçimi müşterinin EPYS/TPYS dosyasından öğrenilir — resmî şablon elimizde olmadan birebir biçim
+  // 29.10 (v2.506): dışa aktarma biçimi müşterinin dosyasından öğrenilebilir; v2.512: varsayılan artık resmî TPYS KGUP.csv ile birebir
   const [sablonMesaj, setSablonMesaj] = useState<string | null>(null);
   const sablonOgren = (dosya: File) => {
     setSablonMesaj(null);
@@ -187,7 +187,9 @@ export function Tahminler({ plantId }: { plantId: string }) {
                   <select className="girdi" aria-label="Program seviyesi (kantil)" value={kgupKantil} onChange={(e) => setKgupKantil(e.target.value as KgupKantil)}>
                     {KGUP_KANTILLER.map((k) => <option key={k} value={k}>{k.toUpperCase()}{k === "p50" ? " (beklenen)" : k === "p10" ? " (temkinli)" : k === "p90" ? " (iddialı)" : ""}</option>)}
                   </select>
-                  <button className="dugme dugme-ana" onClick={() => { setKgupHata(null); api.kgupIndir(plantId, undefined, kgupKantil).then(surumleriYenile).catch((e) => setKgupHata(String(e.message ?? e))); }}>CSV indir</button>
+                  <button className="dugme dugme-ana" onClick={() => { setKgupHata(null); api.kgupIndir(plantId, undefined, kgupKantil).then(surumleriYenile).catch((e) => setKgupHata(String(e.message ?? e))); }}>KGÜP (CSV)</button>
+                  {/* v2.512: EAK TPYS'de ayrı ekran ve ayrı dosya (EAK.csv; 09:00–15:30); kurulu güç farkı «kaynak yetersizliği» sütununda */}
+                  <button className="dugme" title="TPYS «EAK giriş» ekranı için ayrı dosya (EAK.csv biçimi); bildirim saati 09:00–15:30" onClick={() => { setKgupHata(null); api.kgupIndir(plantId, undefined, kgupKantil, "eak").catch((e) => setKgupHata(String(e.message ?? e))); }}>EAK (CSV)</button>
                 </div>
               </div>
               {/* v2.275: toplayıcı/DSG çıktısı — bantlı saatlik ve 15 dk (2027 hazırlığı) */}
@@ -202,7 +204,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
             {kgupHata && <p style={{ color: "var(--uyari-metin)", fontSize: 13.5, margin: "8px 0 0" }}>{kgupHata}</p>}
             <p className="soluk" style={{ fontSize: 13.5, margin: "8px 0 0" }}>
               {kgup.bildirim ?? "Dosya PVQuant'ta üretildi; TPYS'ye gönderim ve kabul müşterinin sisteminden yapılır — indirilen dosya teslim edilmiş sayılmaz."}
-              {kgup.sablon && ` Dosya biçimi: ${kgup.sablon.kaynak ? "müşteri dosyasından öğrenildi" : "varsayılan şablon"}.`}{kgup.sha256 && ` Dosya özeti (SHA-256): ${kgup.sha256.slice(0, 12)}…`}
+              {kgup.sablon && ` Dosya biçimi: ${kgup.sablon.kaynak ? "müşteri dosyasından öğrenildi" : "TPYS şablonu (KGUP.csv, EAK.csv)"}.`}{kgup.sha256 && ` Dosya özeti (SHA-256): ${kgup.sha256.slice(0, 12)}…`}
             </p>
             {kgup.uyarilar.length > 0 && <ul className="not-listesi uyari">{kgup.uyarilar.map((u) => <li key={u}>{u}</li>)}</ul>}
             {kgup.sicrama_saatleri.length > 0 && <p style={{ fontSize: 13.5, margin: "8px 0 0" }}>≥200 MWh ani değişim: saat {kgup.sicrama_saatleri.join(", ")}; dosyada 15 dakikalık adımlar.</p>}
@@ -253,7 +255,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
                       <table className="veri sayisal" style={{ fontSize: 13 }}>
                         <thead><tr><th>Saat</th><th>Öneri (MWh)</th><th>Bildirilen (MWh)</th><th>Fark (MWh)</th></tr></thead>
                         <tbody>{kiyas.saatler.filter((h) => Math.abs(h.fark_mwh) > 0.0005).map((h) => (
-                          <tr key={h.saat}><td>{h.saat}</td><td>{sayiTr(h.oneri_mwh, 3)}</td><td>{sayiTr(h.bildirilen_mwh, 3)}</td><td>{sayiTr(h.fark_mwh, 3)}</td></tr>))}</tbody>
+                          <tr key={h.saat}><td>{String(h.saat).padStart(2, "0")}:00</td><td>{sayiTr(h.oneri_mwh, 3)}</td><td>{sayiTr(h.bildirilen_mwh, 3)}</td><td>{sayiTr(h.fark_mwh, 3)}</td></tr>))}</tbody>
                       </table>
                     </div>
                   )}
@@ -265,7 +267,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
               <summary>Bildirim dosyası biçimi{kgup.sablon?.kaynak ? " · müşteri dosyasından" : " · varsayılan"}</summary>
               <p className="soluk" style={{ fontSize: 13.5, margin: "0 0 8px" }}>
                 {kgup.sablon ? <>Şu anki biçim: {kgup.sablon.kolonlar.join(" · ")}; ayraç «{kgup.sablon.ayrac}», ondalık «{kgup.sablon.ondalik}». {kgup.sablon.durum.charAt(0).toLocaleUpperCase("tr-TR") + kgup.sablon.durum.slice(1)}.</> : "Biçim bilgisi yok."}
-                {" "}Bir KGÜP dosyası seçin (CSV ya da Excel); kolon adları, sırası, ayraç ve ondalık o dosyadan öğrenilir ve sonraki indirmeler aynı biçimde çıkar.
+                {" "}Bir KGÜP dosyası seçin (CSV ya da Excel); kolon adları, sırası, ayraç ve ondalık o dosyadan öğrenilir ve sonraki KGÜP indirmeleri aynı biçimde çıkar. EAK dosyası her zaman TPYS EAK.csv biçimindedir.
               </p>
               <div className="dugme-sira" style={{ alignItems: "flex-end", flexWrap: "wrap", gap: 8 }}>
                 <label className="girdi-etiket">Örnek dosya
@@ -279,7 +281,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
               <p>
                 {kgup.gip && `${kgup.gip.kural} Örnek: ${kgup.gip.ornek_teslimat} teslimatı için kapı ${kgup.gip.ornek_kapi}, revizyon son ${kgup.gip.ornek_revizyon_son}. `}
                 Program, teslim saatinden (bir gün önce 15:30) önce verilmiş son tahminin saatlik beklenen (P50) değeridir; program ≤ verilebilecek en yüksek güç (EAK) ≤ kurulu güç
-                kuralı uygulanır. Dosya biçimi «Bildirim dosyası biçimi» alanından EPYS dosyanızla eşlenir; dosya bir öneridir, bildirim TPYS'de yapılır.
+                kuralı uygulanır. KGÜP dosyası TPYS şablonuyla (KGUP.csv) birebirdir, «Bildirim dosyası biçimi» alanından kendi dosyanızla değiştirilebilir; EAK ayrı dosyadır (TPYS EAK.csv, bildirim 09:00–15:30). Dosya bir öneridir, bildirim TPYS'de yapılır.
               </p>
             </details>
           </>

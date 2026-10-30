@@ -750,10 +750,13 @@ def _kgup_yaniti(tenant_id: str, plant_id: str, gun: str | None, kantil: str, fm
     if "hata" in r:
         raise HTTPException(int(r.get("kod", 409)), r["hata"] + (f" (eksik saatler: {r['eksik_saatler']})" if r.get("eksik_saatler") else ""))
     if fmt == "json":
-        return {k: v for k, v in r.items() if k != "csv"}
+        return {k: v for k, v in r.items() if k not in ("csv", "eak_csv")}
+    if fmt == "eak":   # v2.512: TPYS EAK.csv biçiminde EAK dosyası (ayrı ekran/servis); arşive yazılmaz
+        return Response(content=r["eak_csv"].encode("utf-8"), media_type="text/csv; charset=utf-8",
+                        headers={"Content-Disposition": f'attachment; filename="{r["eak_dosya_adi"]}"', "X-PVQ-SHA256": r["eak_sha256"]})
     from pvquant.services import kgup_arsiv_service
     arsiv = kgup_arsiv_service.kaydet(tenant_id, str(row["id"]), r, indiren=indiren)   # v2.502: değiştirilemez sürüm kaydı
-    return Response(content=r["csv"].encode("utf-8-sig"), media_type="text/csv; charset=utf-8",   # BOM burada ve ext.kgup.csv_baytlari'nda aynı (SHA-256 dosya baytlarıyla)
+    return Response(content=kgup_arsiv_service.baytlar(r), media_type="text/csv; charset=utf-8",   # baytlar tek yerde (BOM yalnız şablon isterse; SHA-256 bu baytlarla)
                     headers={"Content-Disposition": f'attachment; filename="{r["dosya_adi"]}"', "X-PVQ-Surum": str(arsiv["surum"]), "X-PVQ-SHA256": arsiv["sha256"]})
 
 

@@ -29,7 +29,7 @@ def istemci(monkeypatch):
 
 def test_kgup_csv_ve_json(istemci):
     r = istemci.get(f"/v1/plants/{PLANT}/kgup?gun=2025-07-01&kantil=p50")
-    assert r.status_code == 200 and r.headers["content-disposition"].endswith('KGUP_UEVCB-1_2025-07-01_p50.csv"') and r.text.startswith("\ufeffTarih;Saat")
+    assert r.status_code == 200 and r.headers["content-disposition"].endswith('KGUP_UEVCB-1_2025-07-01_p50.csv"') and r.text.startswith("Tarih;Saat")   # v2.512: BOM yalnız şablon isterse
     j = istemci.get(f"/v1/plants/{PLANT}/kgup?gun=2025-07-01&fmt=json").json()
     assert j["toplam_mwh"] == 40.5 and len(j["satirlar"]) == 24 and "csv" not in j
     assert istemci.get(f"/v1/plants/{PLANT}/kgup?gun=2030-01-01").status_code == 409

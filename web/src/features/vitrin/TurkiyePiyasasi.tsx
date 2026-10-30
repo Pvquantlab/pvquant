@@ -28,7 +28,7 @@ const KARTLAR: readonly {
     metin: "Dengesizlik tutarı (EDT) ve KGÜP sapması (KÜPST) ayrı kalem olarak izlenir; hesap yürürlükteki formülle, fiyat kaynağı ve kural sürümü etiketiyle yapılır ve pilotla doğrulanmaktadır.",
     kunye: ["EDT ve KÜPST ayrı", "kural ve kaynak etiketi", "basit yönteme karşı"] },
   { ad: "Dosya ve API ile dışa aktarım", etiket: "Teslimle birlikte", resim: tlSablon,
-    metin: "Programı ve tahmin aralığını CSV/XLSX olarak indirirsiniz; dosya biçimi, EPYS'den indirdiğiniz örnek dosyadan öğrenilir ve TPYS ya da DSG şablonunuzla birebir eşlenir. İsterseniz API anahtarıyla doğrudan sisteminize akar.",
+    metin: "Programı ve tahmin aralığını CSV/XLSX olarak indirirsiniz; KGÜP ve EAK dosyaları TPYS'nin resmî CSV şablonlarıyla birebirdir; isterseniz biçim kendi örnek dosyanızdan öğrenilir. İsterseniz API anahtarıyla doğrudan sisteminize akar.",
     kunye: ["CSV / XLSX", "saatlik (15 dk veri hazır)", "API anahtarı"] },
   { ad: "Alarm kuralları", etiket: "Gece ve gündüz", resim: tlAlarm, genis: true,
     metin: "Gece ekran başında kimse yokken kurallar izler; sabah gece karnesi ve açık alarmlar hazırdır.",

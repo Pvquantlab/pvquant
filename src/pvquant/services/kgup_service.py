@@ -4,7 +4,7 @@ eksik saatte 0 yazılmaz (422 + saat listesi), EAK MW, 15 dk yalnız dengeleme b
 Program günü D için kaynak koşu: D-1 15:30 (İstanbul) öncesinde verilmiş son koşu (dengesizlik simülatörüyle aynı
 kural); bugün için henüz 15:30 geçmediyse en son koşu. Kantil: p50 (varsayılan) | p10 | p25 | p75 | p90.
 Dosya: pvquant.ext.turkiye.kgup (KGÜP ≤ EAK ≤ kurulu güç; 15 dk dilimleme yalnız params_json.dengeleme_birimi=true ve ≥200 MWh
-sıçramada; TPYS CSV — kolonlar params_json.kgup_sablon ile eşlenir; resmî şablon teyit edilemedi). Koşu yoksa 409; eksik saat → 422.
+sıçramada; TPYS CSV — varsayılan biçim TPYS KGUP.csv ile birebir (v2.512), params_json.kgup_sablon ezer; EAK ayrı dosya (TPYS EAK.csv)). Koşu yoksa 409; eksik saat → 422.
 Sürüm arşivi (F-06, kgup_surum tablosu) bu sürümde YOK — göç taslağı alembic/taslak/; yanıt SHA-256 ve kaynak künyesini zaten taşır.
 """
 from __future__ import annotations
@@ -81,7 +81,8 @@ def sablon_ozeti(pj, sab=None) -> dict:
     sab = sab or kg.Sablon.params_json_dan(pj)
     kaynak = pj.get("kgup_sablon_kaynak") or None
     durum = (f"müşteri dosyasından öğrenildi: {kaynak.get('dosya', '?')} ({str(kaynak.get('zaman', ''))[:10]})" if kaynak else kg.SABLON_DURUMU)
-    return {"durum": durum, "kolonlar": [getattr(sab, r) for r in sab.roller()], "ayrac": sab.ayrac, "ondalik": sab.ondalik, "kaynak": kaynak}
+    return {"durum": durum, "kolonlar": [getattr(sab, r) for r in sab.roller()], "ayrac": sab.ayrac, "ondalik": sab.ondalik, "kaynak": kaynak,
+            "saat_bicim": sab.saat_bicim, "bom": bool(sab.bom), "eak_kolonlar": list(kg.EAK_KOLONLAR)}   # v2.512
 
 
 def uret(tenant_id, plant: dict, gun: date, kantil: str = "p50", uevcb: str | None = None) -> dict:
@@ -105,6 +106,7 @@ def uret(tenant_id, plant: dict, gun: date, kantil: str = "p50", uevcb: str | No
     tablo = kg.ceyrek_dilimle(son) if (son.sicrama_saatleri and dengeleme_birimi) else son.tablo
     sab = kg.Sablon.params_json_dan(pj)
     baytlar = kg.csv_baytlari(tablo, sab)
+    eak_metin = kg.eak_csv_metni(son.tablo, kap)   # v2.512: TPYS EAK.csv biçimi (ayrı ekran/servis); fark «kaynak yetersizliği»
     uyarilar = son.uyarilar + hatalar + [kg.SABLON_DURUMU]
     if son.sicrama_saatleri and not dengeleme_birimi:
         uyarilar.append(f"≥200 MWh saatlik değişim var (saat {', '.join(map(str, son.sicrama_saatleri))}); santral dengeleme birimi değil, 15 dk satırı üretilmedi (DUY m.69(3))")
@@ -124,7 +126,9 @@ def uret(tenant_id, plant: dict, gun: date, kantil: str = "p50", uevcb: str | No
             "toplam_mwh": round(float(son.tablo["kgup_mwh"].sum()), 3), "eak": eak_bilgi,   # v2.275
             "satirlar": [{"saat": int(r.saat), "kgup_mwh": float(r.kgup_mwh), "eak_mw": float(r.eak_mw), "eak_mwh": float(r.eak_mw)}   # eak_mwh: eski alan adı (aynı değer, MW); yeni istemciler eak_mw okur
                          for r in son.tablo.itertuples()],
-            "csv": baytlar.decode("utf-8-sig"), "dosya_adi": f"KGUP_{(uevcb or 'UEVCB')}_{gun.isoformat()}_{kantil}.csv",
+            "csv": baytlar.decode("utf-8-sig"), "bom": bool(sab.bom), "dosya_adi": f"KGUP_{(uevcb or 'UEVCB')}_{gun.isoformat()}_{kantil}.csv",
             "sha256": hashlib.sha256(baytlar).hexdigest(), "sablon": sablon_ozeti(plant.get("params_json"), sab),
+            "eak_csv": eak_metin, "eak_dosya_adi": f"EAK_{(uevcb or 'UEVCB')}_{gun.isoformat()}.csv",   # v2.512
+            "eak_sha256": hashlib.sha256(eak_metin.encode("utf-8")).hexdigest(),
             "takvim": kg.TAKVIM, "teslim": kg.teslim_durumu(),
             "bildirim": "Dosya PVQuant'ta üretildi; TPYS'ye gönderim ve kabul müşterinin sisteminden yapılır — indirilen dosya teslim edilmiş sayılmaz."}

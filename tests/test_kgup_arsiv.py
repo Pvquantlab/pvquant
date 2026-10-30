@@ -18,7 +18,7 @@ PLANT = "22222222-2222-2222-2222-222222222222"
 def _ornek(gun="2026-10-25", kantil="p50", satir="0,5"):
     """24 saatlik örnek dosya: saat 0 = `satir`, diğer saatler 0,000 (kıyas testleri 24 saat ister)."""
     csv = "Tarih;Saat;UEVCB;KGUP_MWh;EAK_MW\n" + "\n".join(f"25.10.2026;{h};UEVCB-1;{satir if h == 0 else '0,000'};9,000" for h in range(24)) + "\n"
-    return {"gun": gun, "kantil": kantil, "csv": csv, "sha256": hashlib.sha256(csv.encode("utf-8-sig")).hexdigest(),
+    return {"gun": gun, "kantil": kantil, "csv": csv, "bom": True, "sha256": hashlib.sha256(csv.encode("utf-8-sig")).hexdigest(),   # v2.512: BOM şablona bağlı
             "kosu": {"run_id": str(uuid.uuid4()), "run_at": "2026-10-24T06:12:00+00:00", "kesim": "2026-10-24T12:30:00+00:00"},
             "eak": {"eak_mw": 9.0, "kaynak": "ac_tavani"}, "toplam_mwh": 40.5, "dosya_adi": f"KGUP_UEVCB-1_{gun}_{kantil}.csv",
             "sablon": {"durum": "karşılaştırılmadı", "kolonlar": ["Tarih", "Saat", "UEVCB", "KGUP_MWh", "EAK_MW"]}}

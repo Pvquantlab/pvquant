@@ -40,7 +40,7 @@ def test_xlsx_ogren():
 def test_csv_metni_ogrenilen_sira_ve_varsayilan_degismez():
     t = _tablo()
     varsayilan = kg.csv_metni(t)
-    assert varsayilan.splitlines()[0] == "Tarih;Saat;UEVCB;KGUP_MWh;EAK_MW"            # eski çıktı birebir
+    assert varsayilan.splitlines()[:2] == ["Saat,Miktar", "00:00,1.25"]            # v2.512: varsayılan = TPYS KGUP.csv
     ogr = kg.sablon_ogren("Saat;KGÜP (MWh);EAK (MW);UEVÇB\n0;1,250;9,000;UEVCB-1\n".encode("utf-8-sig"))["sablon"]
     sab = kg.Sablon.params_json_dan({"kgup_sablon": ogr})
     m = kg.csv_metni(t, sab)
@@ -75,7 +75,7 @@ def test_sablon_kapilari(istemci):
     assert depo["params_json"]["kgup_sablon"]["sira"] == "saat,kgup,eak,uevcb"
     assert c.post("/v1/plants/p1/kgup/sablon", files={"dosya": ("k.csv", b"A;B\n1;2\n", "text/csv")}).status_code == 422
     s = c.delete("/v1/plants/p1/kgup/sablon").json()["sablon"]
-    assert s["kaynak"] is None and s["kolonlar"] == ["Tarih", "Saat", "UEVCB", "KGUP_MWh", "EAK_MW"] and "kgup_sablon" not in depo["params_json"]
+    assert s["kaynak"] is None and s["kolonlar"] == ["Saat", "Miktar"] and s["eak_kolonlar"][:3] == ["Saat", "Miktar", "ic_tuketim"] and "kgup_sablon" not in depo["params_json"]
 
 
 def test_epys_disa_aktarimi_uyarisi():
@@ -87,3 +87,52 @@ def test_epys_disa_aktarimi_uyarisi():
     b2 = "Tarih;Saat;UEVCB;KGUP_MWh;EAK_MW\n01.11.2026;0;40X;0,000;12\n".encode("utf-8-sig")
     assert not any("EPYS" in u for u in kgup.sablon_ogren(b2, "tpys.csv")["uyarilar"])
     assert "TPYS" in kgup.SABLON_DURUMU and "EPYS'den" not in kgup.SABLON_DURUMU
+
+
+# ---------------------------------------------------------------- v2.512: resmî TPYS şablonları (kullanıcı 30.10.2026'da indirdi) ------
+from pathlib import Path
+TPYS = Path(__file__).parent / "data" / "tpys"
+
+
+def _sifir():
+    idx = pd.date_range("2026-10-25", periods=24, freq="h", tz="Europe/Istanbul")
+    return pd.DataFrame({"tarih": idx.date, "saat": idx.hour, "uevcb": "U", "kgup_mwh": [0.0] * 24, "eak_mw": [0.0] * 24})
+
+
+def test_varsayilan_kgup_tpys_sablonuyla_bayt_bayt():
+    """KGUP.csv (TPYS ek 146797): «Saat,Miktar», 24 satır «HH:00,0», virgül, LF, BOM yok — varsayılan çıktı bayt bayt aynı."""
+    assert kg.csv_baytlari(_sifir()) == (TPYS / "KGUP.csv").read_bytes()
+    m = kg.csv_metni(_sifir().assign(kgup_mwh=[1.25] * 24))
+    assert m.splitlines()[1] == "00:00,1.25" and m.splitlines()[-1] == "23:00,1.25" and not m.startswith("\ufeff")
+
+
+def test_eak_dosyasi_tpys_sablonu():
+    """EAK.csv (TPYS ek 146796): 8 kolon, saat 0–23 tam sayı, boş hücre = yok, CRLF. Kurulu güç − EAK − iç tüketim → kaynak_yetersizligi."""
+    ref = (TPYS / "EAK.csv").read_bytes().decode()
+    t = _sifir().assign(eak_mw=[600.0] * 23 + [590.0])
+    e = kg.eak_csv_metni(t, 605.0, ic_tuketim_mw=5.0)
+    assert e.splitlines()[0] == ref.splitlines()[0] == ",".join(kg.EAK_KOLONLAR) and "\r\n" in e and len(e.splitlines()) == 25
+    assert e.splitlines()[1] == "0,600,5,,,,," and e.splitlines()[24] == "23,590,5,10,,,,"
+    gece = kg.eak_csv_metni(_sifir(), 12.5)
+    assert gece.splitlines()[1] == "0,0,,12.5,,,," and gece.splitlines()[0].startswith("Saat,Miktar")   # GES gece: EAK 0, kurulu gücün tamamı kaynak yetersizliği
+    with pytest.raises(ValueError):
+        kg.eak_csv_metni(_sifir(), 1.0, gerekce="x")
+    # EAK şablonu KGÜP şablonu olarak öğretilemez
+    with pytest.raises(ValueError):
+        kg.sablon_ogren((TPYS / "EAK.csv").read_bytes(), "EAK.csv")
+
+
+def test_tpys_kgup_ogrenme_ve_geri_okuma():
+    """Resmî KGUP.csv öğretilince varsayılanla aynı biçim çıkar; arşiv okuyucu «HH:00» saati ve eski «;» dosyasını da okur."""
+    from pvquant.services import kgup_arsiv_service as ka
+    s = kg.sablon_ogren((TPYS / "KGUP.csv").read_bytes(), "KGUP.csv")["sablon"]
+    assert s["ayrac"] == "," and s["ondalik"] == "." and s["saat_bicim"] == "%H:00" and s["bom"] == "" and s["kesir"] == "3" and s["sira"] == "saat,kgup" and s["kgup"] == "Miktar"
+    t = ka.csv_oku((TPYS / "KGUP.csv").read_bytes())
+    assert t["saat"].tolist() == list(range(24)) and float(t["kgup_mwh"].sum()) == 0.0
+    eski = ("Tarih;Saat;UEVCB;KGUP_MWh;EAK_MW\n" + "\n".join(f"25.10.2026;{h};U;1,250;9,000" for h in range(24)) + "\n").encode("utf-8-sig")
+    t2 = ka.csv_oku(eski)
+    assert abs(float(t2["kgup_mwh"].sum()) - 30.0) < 1e-6 and t2["eak_mw"][0] == 9.0
+    # v2.506–v2.511 arasında öğrenilmiş şablon (saat_bicim/bom yok): tam sayı saat ve BOM korunur
+    sab = kg.Sablon.params_json_dan({"kgup_sablon": {"ayrac": ";", "ondalik": ",", "sira": "saat,kgup", "kgup": "KGÜP (MWh)"}})
+    b = kg.csv_baytlari(_sifir(), sab)
+    assert b.startswith(b"\xef\xbb\xbf") and b.decode("utf-8-sig").splitlines()[1] == "0;0,000"

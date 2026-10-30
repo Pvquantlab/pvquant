@@ -94,9 +94,9 @@ def test_kgup_program_ve_dosya(tmp_path):
     buyuk = pvq * 60                                                     # 600 MW: sıçramalar ≥200 MWh
     s2 = kgup.program_uret(buyuk, "2025-07-15", "UEVCB-2", 600.0); assert len(s2.sicrama_saatleri) >= 1
     c = kgup.ceyrek_dilimle(s2); assert len(c) == 24 + 3 * len(s2.sicrama_saatleri)
-    yol = kgup.tpys_csv(c, tmp_path / "kgup.csv"); metin = yol.read_text(encoding="utf-8-sig")
-    assert metin.splitlines()[0] == "Tarih;Saat;UEVCB;KGUP_MWh;EAK_MW;Ceyrek" and "," in metin.splitlines()[1]
-    assert yol.read_bytes().startswith(b"\xef\xbb\xbf") and yol.read_bytes() == kgup.csv_baytlari(c)        # BOM tek yerde, SHA bu baytlarla
+    yol = kgup.tpys_csv(c, tmp_path / "kgup.csv"); metin = yol.read_text(encoding="utf-8")
+    assert metin.splitlines()[0] == "Saat,Miktar,Ceyrek" and metin.splitlines()[1].startswith("00:00,")   # v2.512: TPYS KGUP.csv biçimi
+    assert not yol.read_bytes().startswith(b"\xef\xbb\xbf") and yol.read_bytes() == kgup.csv_baytlari(c)   # BOM yok, SHA bu baytlarla
     # çeyrek satırlarda EAK bölünmez (güç), KGÜP çeyreğe bölünür
     sic = s2.sicrama_saatleri[0]; q = c[(c["saat"] == sic) & c["ceyrek"].notna()]
     assert len(q) == 4 and (q["eak_mw"] == s2.tablo.loc[s2.tablo["saat"] == sic, "eak_mw"].iloc[0]).all()

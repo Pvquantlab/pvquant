@@ -154,7 +154,11 @@ export interface KgupOnizleme {
   /** 29.10 (F-05/F-06): dosya özeti, şablon durumu, takvim, bildirim notu, dengeleme birimi bayrağı */
   sha256?: string; sablon?: { durum: string; kolonlar: string[]; ayrac: string; ondalik: string;
                               /** 29.10 (v2.506): müşteri dosyasından öğrenildiyse kaynağı */
-                              kaynak?: { dosya: string; zaman: string; bicim: string } | null };
+                              kaynak?: { dosya: string; zaman: string; bicim: string } | null;
+                              /** v2.512: saat yazımı («%H:00» TPYS), BOM, EAK dosyasının kolonları (TPYS EAK.csv) */
+                              saat_bicim?: string; bom?: boolean; eak_kolonlar?: string[] };
+  /** v2.512: EAK ayrı dosya (TPYS EAK.csv; ?fmt=eak) */
+  bom?: boolean; eak_dosya_adi?: string; eak_sha256?: string;
   takvim?: { pencere_acilis: string; bytm_son: string; son: string; teyit: string }; bildirim?: string; dengeleme_birimi?: boolean; luy_istisna?: boolean;
   /** v2.275: o gün için etkin EAK ve kaynağı (gecici | eak_alani | ac_tavani | kurulu_guc) */
   eak?: { eak_mw: number; kaynak: string; bitis?: string };

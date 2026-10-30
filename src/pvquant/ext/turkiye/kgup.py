@@ -7,11 +7,17 @@ için, ardışık iki saat farkı ≥ 200 MWh ise (m.69(3)); GES dengeleme birim
 `dengeleme_birimi` bayrağıyla açılır. Gün içi güncelleme: GİP kapı kapanışı + 30 dk'ya kadar (m.69(1)).
 EAK = güç (MW), saat başına bir değer (m.4(1), m.69/A(1)); çeyrek satırlarda BÖLÜNMEZ. KGÜP (MWh) ≤ EAK (MW×1 s) ≤ kurulu güç.
 Eksik tahmin saati 0 yazılmaz: dosya üretilmez, eksik saatler bildirilir (KGÜP 0 olan saatte üretimin tamamı sapma sayılır).
-TPYS CSV şablonu resmî olarak TEYİT EDİLEMEDİ: şablon EPYS'de değil TEİAŞ TPYS giriş sayfasında (Duyurular › «CSV Şablonları», 28.02.2018;
-KGUP.csv 146797, EAK.csv 146796; indirme CAPTCHA ister, oturum gerekmiyor görünüyor — 31.10.2026 araştırması bulgular/05.md) → kolonlar
-parametrik (`Sablon`; params_json.kgup_sablon ile eşlenir); ekranda «resmî şablonla karşılaştırılmadı» notu kalır. KGÜP/EAK girişi 1.2.2018'den
-beri TPYS'de; EPYS «DGP İşlemleri › KGÜP» yalnız okuma (fddp/list). Dosya üretimi = bildirim DEĞİLDİR; gönderim müşterinin TPYS'sinden
-(web servis kataloğu kamuya kapalı; erişim TPYS Admin › Web Servis Kullanıcı Talep, organizasyon başına ≤20 IP).
+TPYS CSV şablonları (31.10.2026, v2.512; TEİAŞ TPYS giriş sayfası › Duyurular › «CSV Şablonları», 28.02.2018; KGUP.csv 146797, EAK.csv 146796;
+kullanıcı CAPTCHA'yı çözerek indirdi → PVQuant_Acik_Konular_Arastirma/kaynaklar/ ve tests/data/tpys/): KGUP.csv = «Saat,Miktar», 24 satır
+«HH:00», virgül ayraç, BOM yok, LF; tarih ve UEVÇB dosyada YOK (TPYS ekranında seçilir). EAK.csv = «Saat,Miktar,ic_tuketim,kaynak_yetersizligi,
+iklim_verim,mucbir,dissal,guvenlik», saat 0–23 tam sayı, boş hücre = yok, CRLF. Ondalık ayraç şablonda örneklenmemiş (virgül ayraç → nokta
+varsayıldı). Varsayılan `Sablon` KGUP.csv ile bayt bayt aynı çıktı verir; müşteri şablonu (params_json.kgup_sablon) yine önce gelir.
+TPYS Bildirim Dokümanı (ek 648549, 19.02.2025): KGÜP ve EAK UEVÇB bazında, üretim pozitif; KGÜP 14:00–15:30, EAK 09:00–15:30; kurulu güç ile EAK
+farkı gerekçeyle girilir (kaynak yetersizliği / iklim-verim / mücbir / dışsal / güvenlik); GES gece saatlerinde KGÜP 0, EAK 0, kurulu gücün tamamı
+«kaynak yetersizliği»; iletime bağlı lisanssız bireysel bildirir ve EAK olarak KGÜP değerini girebilir; dağıtıma bağlı lisanssız için GTŞ K3
+UEVÇB'sine girer. Web servis: EAK «setEak», KGÜP «DGP Veri Giriş Servisi» (katalog TPYS içinden; TPYS Admin › Web Servis Kullanıcı Talep, ≤20 IP).
+KGÜP/EAK girişi 1.2.2018'den beri TPYS'de; EPYS «DGP İşlemleri › KGÜP» yalnız okuma (fddp/list). Dosya üretimi = bildirim DEĞİLDİR; gönderim
+müşterinin TPYS'sinden.
 Teklif: KGÜP olarak P50 yerine kantil (P10/P25/P50/P75/P90) seçilebilir; öneri dengesizlik.optimal_teklif_kantili.
 """
 from __future__ import annotations
@@ -27,29 +33,36 @@ TESLIM_BAS, TESLIM_SON, TEYIT = (14, 0), (15, 30), (17, 0)
 SICRAMA_ESIK_MWH = 200.0
 
 
-SABLON_DURUMU = ("resmî TPYS şablonuyla henüz karşılaştırılmadı; TPYS giriş sayfasındaki Duyurular › «CSV Şablonları» ekinden (KGUP.csv) "
-                 "ya da kendi bildirim dosyanızdan bir örnek yükleyerek biçimi eşleyebilirsiniz")   # 31.10 (v2.510): şablon EPYS'de değil TPYS'de
-TAKVIM = {"pencere_acilis": "14:00", "bytm_son": "14:30", "son": "15:30", "teyit": "17:00"}   # m.69(1), (4); EPİAŞ KGÜP sayfası
+SABLON_DURUMU = ("TPYS «CSV Şablonları» ekleriyle (KGUP.csv, EAK.csv; 28.02.2018 duyurusu, 30.10.2026'da indirildi) birebir; ondalık ayraç "
+                 "şablonda örneklenmemiş, nokta varsayıldı. Kendi bildirim dosyanızdan bir örnek yükleyerek biçimi değiştirebilirsiniz")   # v2.512
+TAKVIM = {"pencere_acilis": "14:00", "bytm_son": "14:30", "son": "15:30", "teyit": "17:00", "eak_acilis": "09:00"}   # m.69(1), (4); TPYS Bildirim Dokümanı: EAK 09:00–15:30
 
 
 @dataclass
 class Sablon:
-    """TPYS CSV kolon adları — TEİAŞ şablonuyla eşlenir (teyit edilemedi; varsayılanlar açıklayıcı). EAK birimi MW."""
-    tarih: str = "Tarih"; saat: str = "Saat"; uevcb: str = "UEVCB"; kgup: str = "KGUP_MWh"; eak: str = "EAK_MW"
-    ceyrek: str = "Ceyrek"       # 15 dk satırları için 0/15/30/45
-    ayrac: str = ";"; ondalik: str = ","; tarih_bicim: str = "%d.%m.%Y"
-    sira: str = "tarih,saat,uevcb,kgup,eak"   # 29.10 (v2.506): kolon sırası — müşteri şablonundan öğrenilir; listede olmayan rol yazılmaz
+    """KGÜP CSV biçimi — varsayılan TEİAŞ TPYS KGUP.csv (v2.512): «Saat,Miktar», saat «HH:00», virgül ayraç, nokta ondalık, BOM yok.
+    Müşteri dosyasından öğrenilen şablon (params_json.kgup_sablon) alanları ezer. EAK ayrı dosyadır (EAK_KOLONLAR, eak_csv_metni)."""
+    tarih: str = "Tarih"; saat: str = "Saat"; uevcb: str = "UEVCB"; kgup: str = "Miktar"; eak: str = "EAK_MW"
+    ceyrek: str = "Ceyrek"       # 15 dk satırları için 0/15/30/45 (TPYS şablonunda çeyrek satırı yok; dengeleme birimi biçimi doğrulanmadı)
+    ayrac: str = ","; ondalik: str = "."; tarih_bicim: str = "%d.%m.%Y"
+    saat_bicim: str = "%H:00"    # «%H:00» → 00:00…23:00 (TPYS); «%H» → 0…23 (v2.506–v2.511 arasında öğrenilmiş şablonlar)
+    bom: str = ""                # "1" → UTF-8 BOM ile yazılır (öğrenilmiş eski şablonlar); TPYS şablonu BOM'suz
+    kesir: str = ""              # "" → sade sayı (0, 1.25; TPYS şablonundaki gibi); "3" → sabit üç hane (0,000; öğrenilmiş şablonlar)
+    sira: str = "saat,kgup"      # 29.10 (v2.506): kolon sırası — müşteri şablonundan öğrenilir; listede olmayan rol yazılmaz
 
     def roller(self) -> list[str]:
         r = [x.strip() for x in (self.sira or "").split(",") if x.strip() in ROLLER]
-        return r if "kgup" in r else ["tarih", "saat", "uevcb", "kgup", "eak"]
+        return r if "kgup" in r else ["saat", "kgup"]
 
     @classmethod
     def params_json_dan(cls, pj: dict | None) -> "Sablon":
         """params_json.kgup_sablon: {"kgup": "KGUP", "eak": "EAK", "ayrac": ";", ...} — yalnız bilinen alanlar."""
         e = (pj or {}).get("kgup_sablon") or {}
         alanlar = {f for f in cls.__dataclass_fields__}
-        return cls(**{k: str(v) for k, v in e.items() if k in alanlar and v})
+        d = {k: str(v) for k, v in e.items() if k in alanlar and v}
+        if d:   # v2.506–v2.511 arasında öğrenilmiş şablon saat_bicim/bom bilmez: o günkü çıktı (tam sayı saat, BOM'lu) bayt bayt korunur
+            d.setdefault("saat_bicim", "%H"); d.setdefault("bom", "1"); d.setdefault("kesir", "3")
+        return cls(**d)
 
 
 @dataclass
@@ -119,14 +132,48 @@ def tpys_csv(tablo: pd.DataFrame, yol: str | Path, sablon: Sablon = Sablon()) ->
 
 
 def csv_metni(tablo: pd.DataFrame, sablon: Sablon = Sablon()) -> str:
-    """TPYS CSV gövdesi (BOM'suz metin; BOM yalnız csv_baytlari'nda — tek yerde). 29.10 (v2.506): kolon sırası ve kümesi şablonun
-    `sira`sından (müşteri dosyasından öğrenilmiş olabilir); varsayılan beş kolon aynı sırayla — eski çıktı bayt bayt aynı."""
-    deger = {"tarih": pd.to_datetime(tablo["tarih"]).dt.strftime(sablon.tarih_bicim), "saat": tablo["saat"].astype(int),
-             "uevcb": tablo["uevcb"], "kgup": tablo["kgup_mwh"], "eak": tablo["eak_mw"]}
+    """KGÜP CSV gövdesi (BOM'suz metin; BOM yalnız csv_baytlari'nda — tek yerde). 29.10 (v2.506): kolon sırası ve kümesi şablonun
+    `sira`sından (müşteri dosyasından öğrenilmiş olabilir). v2.512: varsayılan TPYS KGUP.csv — «Saat,Miktar», saat «HH:00», LF."""
+    saat = tablo["saat"].astype(int)
+    sayi = (lambda s: s) if sablon.kesir else (lambda s: s.map(lambda v: _sayi(v).replace(".", sablon.ondalik)))   # sade sayı metin olarak
+    deger = {"tarih": pd.to_datetime(tablo["tarih"]).dt.strftime(sablon.tarih_bicim),
+             "saat": saat.map(lambda h: f"{h:02d}:00") if ":" in sablon.saat_bicim else saat,
+             "uevcb": tablo["uevcb"], "kgup": sayi(tablo["kgup_mwh"]), "eak": sayi(tablo["eak_mw"])}
     df = pd.DataFrame({getattr(sablon, rol): deger[rol] for rol in sablon.roller()})
     if "ceyrek" in tablo and tablo["ceyrek"].notna().any():
         df[sablon.ceyrek] = tablo["ceyrek"].astype("Int64")
-    return df.to_csv(sep=sablon.ayrac, decimal=sablon.ondalik, index=False, float_format="%.3f")
+    return df.to_csv(sep=sablon.ayrac, decimal=sablon.ondalik, index=False, float_format=f"%.{sablon.kesir}f" if sablon.kesir else None, lineterminator="\n")
+
+
+EAK_KOLONLAR = ("Saat", "Miktar", "ic_tuketim", "kaynak_yetersizligi", "iklim_verim", "mucbir", "dissal", "guvenlik")   # TPYS EAK.csv (146796)
+EAK_GEREKCE = {"kaynak_yetersizligi": "kaynak yetersizliği", "iklim_verim": "iklim/verim", "mucbir": "mücbir sebep", "dissal": "dışsal", "guvenlik": "güvenlik"}
+
+
+def _sayi(v: float) -> str:
+    """TPYS şablonundaki gibi sade sayı: 600 → «600», 12.5 → «12.5», en çok 3 kesir hanesi."""
+    s = f"{float(v):.3f}".rstrip("0").rstrip(".")
+    return "0" if s in ("", "-0") else s
+
+
+def eak_csv_metni(tablo: pd.DataFrame, kurulu_guc_mw: float, ic_tuketim_mw: float = 0.0, gerekce: str = "kaynak_yetersizligi") -> str:
+    """v2.512 — TPYS EAK.csv (146796) biçiminde EAK dosyası: saat 0–23 tam sayı, Miktar = EAK (MW); kurulu güç − EAK − iç tüketim farkı
+    `gerekce` sütununa (TPYS Bildirim Dokümanı: başka bir neden yoksa «kaynak yetersizliği»; GES gece saatlerinde kurulu gücün tamamı),
+    öbür gerekçe hücreleri boş (şablondaki gibi). Arıza/bakım TPYS «Arıza ve Bakım bildirimleri» sayfasından ayrıca bildirilir. CRLF, BOM yok."""
+    if gerekce not in EAK_GEREKCE:
+        raise ValueError(f"gerekçe {sorted(EAK_GEREKCE)} içinden olmalı")
+    t = tablo.drop_duplicates("saat").sort_values("saat")   # çeyrek satırlarında EAK saatlik ve aynı (bölünmez)
+    hatlar = [",".join(EAK_KOLONLAR)]
+    for r in t.itertuples():
+        eak = float(r.eak_mw); eksik = max(float(kurulu_guc_mw) - eak - float(ic_tuketim_mw), 0.0)
+        hucre = dict.fromkeys(EAK_KOLONLAR, "")
+        hucre.update({"Saat": str(int(r.saat)), "Miktar": _sayi(eak), "ic_tuketim": _sayi(ic_tuketim_mw) if ic_tuketim_mw else "",
+                      gerekce: _sayi(eksik) if eksik >= 0.0005 else ""})
+        hatlar.append(",".join(hucre[k] for k in EAK_KOLONLAR))
+    return "\r\n".join(hatlar) + "\r\n"
+
+
+def eak_csv_baytlari(tablo: pd.DataFrame, kurulu_guc_mw: float, ic_tuketim_mw: float = 0.0) -> bytes:
+    return eak_csv_metni(tablo, kurulu_guc_mw, ic_tuketim_mw).encode("utf-8")
 
 
 ROLLER = ("tarih", "saat", "uevcb", "kgup", "eak")
@@ -154,12 +201,13 @@ def sablon_ogren(b: bytes, dosya_adi: str = "") -> dict:
         if not satirlar:
             raise ValueError("Excel sayfası boş")
         baslik = [x.strip() for x in satirlar[0]]; ornek = satirlar[1] if len(satirlar) > 1 else []
-        ayrac, ondalik, bicim = ";", ",", "xlsx"
+        ayrac, ondalik, bicim, bom = ";", ",", "xlsx", "1"
         uyar.append("Excel dosyası: dışa aktarma CSV'dir (aynı kolon adları ve sırası; ayraç «;», ondalık «,»)")
     else:
         metin = b.decode("utf-8-sig", errors="replace"); hatlar = [h for h in metin.splitlines() if h.strip()]
         if not hatlar:
             raise ValueError("dosya boş")
+        bom = "1" if b[:3] == b"\xef\xbb\xbf" else ""
         ilk = hatlar[0]; ayrac = max((";", ",", "\t", "|"), key=lambda a: ilk.count(a))
         if ilk.count(ayrac) == 0:
             raise ValueError("ayraç bulunamadı (; , sekme ya da | bekleniyor)")
@@ -168,6 +216,8 @@ def sablon_ogren(b: bytes, dosya_adi: str = "") -> dict:
         sayisal = " ".join(x for x in ornek if any(ch.isdigit() for ch in x))
         ondalik = "," if ("," in sayisal and ayrac != ",") else "."
         bicim = "csv"
+    if eak_sablonu_mu(baslik):   # v2.512: TPYS EAK.csv (Saat,Miktar,ic_tuketim,…) KGÜP şablonu değildir; EAK dosyası ayrı üretilir
+        raise ValueError("bu dosya TPYS EAK şablonu (EAK.csv; ic_tuketim/kaynak_yetersizligi kolonları); KGÜP dosyası yükleyin — EAK dosyası ayrıca üretilir")
     eslesme: dict[str, str] = {}; kullanilan: set[str] = set()
     for rol, ipuclari in _IPUCU.items():
         for h in baslik:
@@ -192,13 +242,23 @@ def sablon_ogren(b: bytes, dosya_adi: str = "") -> dict:
         i = baslik.index(eslesme["tarih"]); v = ornek[i] if i < len(ornek) else ""
         if len(v) >= 10 and v[4] == "-": tarih_bicim = "%Y-%m-%d"
         elif len(v) >= 10 and v[2] == "/": tarih_bicim = "%d/%m/%Y"
+    saat_bicim = "%H"
+    if "saat" in eslesme and ornek:
+        i = baslik.index(eslesme["saat"]); v = ornek[i] if i < len(ornek) else ""
+        if ":" in v: saat_bicim = "%H:00"   # TPYS KGUP.csv: «00:00»
     sira = [rol for rol in baslik_rolleri(baslik, eslesme)]
     sab = {rol: eslesme[rol] for rol in eslesme if rol in Sablon.__dataclass_fields__}
-    sab.update({"ayrac": ayrac, "ondalik": ondalik, "tarih_bicim": tarih_bicim, "sira": ",".join(sira)})
+    sab.update({"ayrac": ayrac, "ondalik": ondalik, "tarih_bicim": tarih_bicim, "saat_bicim": saat_bicim, "bom": bom, "kesir": "3", "sira": ",".join(sira)})
     return {"sablon": sab, "eslesme": eslesme, "eslesmeyen": eslesmeyen, "bicim": bicim, "uyarilar": uyar, "dosya_adi": dosya_adi}
 
 
 _EPYS_IZI = ("versiyon", "version", "bolge", "region", "santral", "powerplant")
+
+
+def eak_sablonu_mu(baslik: list[str]) -> bool:
+    """TPYS EAK.csv mi? (ic_tuketim ya da kaynak_yetersizligi kolonu)"""
+    sade = [_sade(h) for h in baslik if h]
+    return any(h in ("ic_tuketim", "kaynak_yetersizligi") for h in sade)
 
 
 def epys_disa_aktarim_mi(baslik: list[str]) -> bool:
@@ -214,8 +274,8 @@ def baslik_rolleri(baslik: list[str], eslesme: dict[str, str]) -> list[str]:
 
 
 def csv_baytlari(tablo: pd.DataFrame, sablon: Sablon = Sablon()) -> bytes:
-    """Dosyanın baytları: UTF-8 BOM + gövde (her üretim yolunda aynı; SHA-256 bu baytlar üzerinden)."""
-    return csv_metni(tablo, sablon).encode("utf-8-sig")
+    """Dosyanın baytları: gövde UTF-8; BOM yalnız şablon isterse (`bom`, öğrenilmiş eski şablonlar). SHA-256 bu baytlar üzerinden (her yolda aynı)."""
+    return csv_metni(tablo, sablon).encode("utf-8-sig" if sablon.bom else "utf-8")
 
 
 def teslim_durumu(simdi: pd.Timestamp | None = None) -> dict:

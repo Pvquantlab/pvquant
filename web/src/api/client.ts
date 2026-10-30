@@ -733,15 +733,16 @@ export const api = {
     if (TABAN == null) return null;
     try { return await getir<KgupOnizleme>(`/v1/plants/${p}/kgup?fmt=json&kantil=${kantil}${gun ? `&gun=${gun}` : ""}`); } catch { return null; }
   },
-  kgupIndir: async (p: string, gun?: string, kantil = "p50"): Promise<void> => {
+  /** v2.512: fmt "eak" → TPYS EAK.csv biçiminde EAK dosyası (ayrı ekran/servis; arşive yazılmaz) */
+  kgupIndir: async (p: string, gun?: string, kantil = "p50", fmt: "csv" | "eak" = "csv"): Promise<void> => {
     if (TABAN == null) throw new Error("Örnek kipte KGÜP dosyası yok.");
     const jeton = localStorage.getItem("pvq_token");
-    const y = await fetch(`${TABAN}/v1/plants/${p}/kgup?kantil=${kantil}${gun ? `&gun=${gun}` : ""}`, { headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
+    const y = await fetch(`${TABAN}/v1/plants/${p}/kgup?kantil=${kantil}${gun ? `&gun=${gun}` : ""}${fmt === "eak" ? "&fmt=eak" : ""}`, { headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
     if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise<void>(() => {}); }
     if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
     const cd = y.headers.get("Content-Disposition") ?? ""; const es = /filename="([^"]+)"/.exec(cd);
     const url = URL.createObjectURL(await y.blob()); const a = document.createElement("a");
-    a.href = url; a.download = es ? es[1] : "KGUP.csv"; a.click(); URL.revokeObjectURL(url);
+    a.href = url; a.download = es ? es[1] : (fmt === "eak" ? "EAK.csv" : "KGUP.csv"); a.click(); URL.revokeObjectURL(url);
   },
   /** v2.502 (F-06): sürüm geçmişi; örnek kipte boş liste. */
   kgupSurumler: async (p: string, gun?: string): Promise<KgupSurum[]> => {

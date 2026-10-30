@@ -61,7 +61,7 @@ export function DortAdim({ onPanel }: { onPanel?: () => void }) {
             </article>
           </Fragment>))}
         </div>
-        <p className="vt-not vt-adim__cikis">Sonuç, kullandığınız kanala gider: üretim programı dosyası (CSV/XLSX; biçim, yüklediğiniz EPYS örnek dosyasından öğrenilir), doğrudan sisteminize API ile ve her sabah otomatik bildirimle; <a className="vt-bag vt-bag--metin" href="#isler">işinize göre ayrıntısı iş birimi kartlarında</a>.</p>
+        <p className="vt-not vt-adim__cikis">Sonuç, kullandığınız kanala gider: üretim programı dosyası (TPYS şablonuyla birebir CSV; isterseniz biçim kendi örnek dosyanızdan öğrenilir), doğrudan sisteminize API ile ve her sabah otomatik bildirimle; <a className="vt-bag vt-bag--metin" href="#isler">işinize göre ayrıntısı iş birimi kartlarında</a>.</p>
         <div className="vt-ayna" role="table" aria-label="Tahmini kendiniz işlerseniz ve PVQuant ile karşılaştırması">
           <div className="vt-ayna__bas" role="row">
             <span role="columnheader">Tahmini kendiniz işlerseniz</span>

@@ -1,7 +1,7 @@
 """v2.502 — KGÜP sürüm arşivi (F-06): indirilen her KGÜP/EAK dosyası değiştirilemez kayıt; aynı içerik (SHA-256) yeniden
 indirilince yeni satır açılmaz (son sürüm döner), içerik değiştiyse sürüm numarası artar. Yaptırımdan koruma vaadi değil, kayıt tutma.
 
-Kayıt: kgup_service.uret() çıktısından (csv metni BOM'suz; baytlar = utf-8-sig, API'nin gönderdiğiyle ve sha256 ile birebir).
+Kayıt: kgup_service.uret() çıktısından (csv metni; baytlar = utf-8, BOM yalnız r["bom"] ise — v2.512; API'nin gönderdiğiyle ve sha256 ile birebir).
 Okuma: listele (gün/son N), getir (yeniden indirme — bayt bayt aynı dosya). Silme/güncelleme yok (DB yetkisi de yok).
 v2.503: kaynak = 'pvquant' | 'musteri' — müşterinin TPYS'ye bildirdiğini beyan ettiği dosya panelden yüklenir (csv_oku ile ayrıştırılır,
 aynı tabloda değiştirilemez kayıt), kiyas() öneriyle (son pvquant sürümü) saat saat farkı verir. Dosya içeriği doğrulanır (24 saat, sayısal);
@@ -22,8 +22,8 @@ from pvquant.db import tenant_baglami
 
 
 def baytlar(r: dict) -> bytes:
-    """uret() çıktısının dosya baytları (BOM dâhil) — sha256 alanıyla aynı kaynak."""
-    return r["csv"].encode("utf-8-sig")
+    """uret() çıktısının dosya baytları (BOM yalnız şablon isterse) — sha256 alanıyla aynı kaynak."""
+    return r["csv"].encode("utf-8-sig" if r.get("bom") else "utf-8")
 
 
 def kaydet(tenant_id, plant_id, r: dict, indiren=None, kaynak: str = "pvquant", dosya: bytes | None = None) -> dict:
@@ -59,10 +59,11 @@ def csv_oku(b: bytes, sablon=None) -> pd.DataFrame:
     kolonlar ada göre (büyük/küçük harf duyarsız; KGUP/EAK içeren başlıklar). 24 saat zorunlu; 96 çeyrek satırı saatlik toplama çevrilir."""
     from pvquant.ext.turkiye.kgup import Sablon
     sab = sablon or Sablon()
-    metin = b.decode("utf-8-sig", errors="replace")
-    ilk = metin.splitlines()[0] if metin.strip() else ""
+    metin = b.decode("utf-8-sig", errors="replace"); hatlar = [h for h in metin.splitlines() if h.strip()]
+    ilk = hatlar[0] if hatlar else ""; ikinci = hatlar[1] if len(hatlar) > 1 else ""
     ayrac = sab.ayrac if sab.ayrac in ilk else ("," if ilk.count(",") > ilk.count(";") else ";")
-    ondalik = sab.ondalik if ayrac != sab.ondalik else ("." if ayrac == "," else ",")
+    # v2.512: ayraç şablonunkinden farklıysa (eski ; dosyası yeni , şablonuyla) ondalık örnek satırdan — virgül ayraçta hep nokta
+    ondalik = sab.ondalik if (ayrac == sab.ayrac and ayrac != sab.ondalik) else ("." if ayrac == "," else ("," if "," in ikinci else "."))
     df = pd.read_csv(io.StringIO(metin), sep=ayrac, decimal=ondalik, dtype=str)
     df.columns = [str(c).strip() for c in df.columns]
     alt = {c.lower(): c for c in df.columns}
@@ -79,7 +80,10 @@ def csv_oku(b: bytes, sablon=None) -> pd.DataFrame:
         raise ValueError(f"saat/KGÜP kolonu bulunamadı: {list(df.columns)[:6]}")
     def sayi(ser):
         return pd.to_numeric(ser.astype(str).str.replace(" ", "").str.replace(".", "", regex=False).str.replace(",", ".", regex=False) if ondalik == "," else ser, errors="coerce")
-    out = pd.DataFrame({"saat": pd.to_numeric(df[k_saat], errors="coerce"), "kgup_mwh": sayi(df[k_kgup]),
+    saat = pd.to_numeric(df[k_saat], errors="coerce")
+    if saat.isna().any():   # v2.512: TPYS KGUP.csv saati «HH:00» yazar
+        saat = saat.fillna(pd.to_numeric(df[k_saat].astype(str).str.strip().str.split(":").str[0], errors="coerce"))
+    out = pd.DataFrame({"saat": saat, "kgup_mwh": sayi(df[k_kgup]),
                         "eak_mw": sayi(df[k_eak]) if k_eak else None})
     if k_ceyrek and df[k_ceyrek].notna().any() and len(out) > 24:
         out = out.groupby("saat", as_index=False).agg({"kgup_mwh": "sum", "eak_mw": "max"})
