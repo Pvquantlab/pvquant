@@ -144,3 +144,24 @@ aynı çıktığı için kapsayıcı yenilenmedi (beklenen: v2.508'den beri web 
 sırrı yazdıran adım yok.
 
 Neden: 30.10'da geliştirici IP'sinden port 22 saatlerce erişilemedi (dışarıdan açıktı); dağıtım tek makineye/IP'ye bağlı kalmamalı.
+
+# Onuncu paket — v2.510 (31.10.2026, canlı): mevzuat araştırması çelişkileri (Ç1–Ç5) + dayanak metinleri + Şeffaflık uç gövdeleri + panel dili
+
+Commit `676fb13` (CI #629, 7 dk 43 s) + rötuş `fb25a8d` (CI #630, 5 dk 51 s). Dağıtım: api + worker + web imajları (ssh ile; port 22 bu ağdan açıktı), alembic yok.
+Canlı: index.html ve 22/22 JS/CSS birebir (referans fb25a8d); `kurallar._AFL_ZINCIRI`, `kupst_kurali(luy_istisna=…)`, `epias.UC_ZORUNLU`
+api ve worker kapsayıcılarında; api günlüğü hatasız; `PUT /eak` kimliksiz 422.
+
+Kaynak: `~/Desktop/PVQuant_Acik_Konular_Arastirma` (Opus + ultracode; 17 araştırma + 17 doğrulama ajanı; 114 belge; OZET.md). Sonuç: 2023–2026
+sayısal parametrelerinde çelişki yok. İşlenenler: Ç1 `afl()` 1.9.2022 öncesi (RG künyeli 35 halka; 600–4.000, formüllü aylar 563–1.745);
+Ç2 lisanssızda net sapma yok (14907 Md.1(3)); Ç3 LÜY m.5(1)(ç),(d),(e) santral ayarı (14907 Md.5; motor → API → Santralim, yalnız iletim
+lisanssız segmentte görünür); Ç5 `kupst-7524`; `dsg_esigi()` etiketleri; `BELIRSIZ_2027_GEREKCE`; 2025 k/l dayanağı EPDK 4-16180 taslağı.
+`kgup.py`: şablon TPYS'de (CAPTCHA), EPYS dışa aktarımı uyarısı. `epias.py`: uevcb-list {organizationId, startDate}; organization-list ve
+uevcb-list-by-power-plant-id; «v1.16.4» notu düzeltildi.
+
+Panel dili (kullanıcı kararı): «Emre amade kapasite» kartı → «Program sınırları»; alan «Verilebilecek en yüksek güç (EAK), kW», yer tutucu
+«boşsa AC sınırı»; resmî terim açıklamada bir kez; «kullanılabilir güç» kullanılmadı (Kullanılabilirlik ölçütüyle çakışır).
+
+Hâlâ belirsiz/kullanıcıda: #9 2027 rejimi, #10 2027 DSG oranı (Kasım–Aralık RG izleme), #14 1.11.2026 öncesi portföy katsayısı, #5 TPYS
+şablon içeriği (CAPTCHA), #11 canlı sınama (uevcb-list, imbalance-cost), #12 kimlik girişi kararı.
+
+Ayrıntı: `PVQuant_Ilk_Uygulama/02` M23, `04` (#5, #8, #9, #10, #11, #14).
