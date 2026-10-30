@@ -184,3 +184,26 @@ değil; `epias.py` notları. #11 kapandı.
 
 Kalan (#14): `uevcb-list` ucundan otomatik UEVÇB eşlemesi (organizationId gerekir); 1.11.2026 öncesi için isteğe bağlı duyarlılık senaryosu.
 Ayrıntı: `PVQuant_Ilk_Uygulama/02` M24, `04` #11 ve #14.
+
+# On ikinci paket — v2.512 (31.10.2026, canlı): KGÜP dosyası TPYS resmî şablonuyla birebir (04 #5) + EAK ayrı dosya (TPYS EAK.csv)
+
+Commit `e1c4a55`, CI #634 (5 dk 38 s). Dağıtım: api + web imajları (ssh ile), alembic yok. Canlı: index.html ve 22/22 JS/CSS birebir (referans e1c4a55);
+api kapsayıcısında varsayılan KGÜP çıktısı 204 bayt «Saat,Miktar / 00:00,0 …» BOM'suz, EAK dosyası CRLF «0,0,,12.5,,,,», `TAKVIM.eak_acilis` 09:00;
+`GET /v1/plants/{id}/kgup?fmt=eak` kimliksiz 422; api günlüğü hatasız.
+
+Kaynak: kullanıcı 30.10.2026'da TPYS giriş sayfası › Duyurular › «CSV Şablonları» eklerini (KGUP.csv 146797, EAK.csv 146796) ve 19.02.2025 / 20.11.2025
+duyurularının docx eklerini (648549, 763302, 763303) CAPTCHA'yı çözerek indirdi (`PVQuant_Acik_Konular_Arastirma/kaynaklar/`, bulgular/05.md son bölüm);
+KGUP.csv ve EAK.csv `tests/data/tpys/` altında test sabiti.
+
+Bulgu: KGUP.csv = «Saat,Miktar», 24 satır «HH:00», virgül, LF, BOM yok; tarih ve UEVÇB dosyada yok. EAK.csv = 8 kolon (Saat 0–23 tam sayı, Miktar,
+ic_tuketim, kaynak_yetersizligi, iklim_verim, mucbir, dissal, guvenlik), boş hücre = yok, CRLF. PVQuant'ın eski varsayılanı (5 kolon, «;», «,», BOM)
+TPYS'ye olduğu gibi yüklenemezdi; EAK ayrı ekran (09:00–15:30) ve ayrı web servis (setEak).
+
+Kapsam: `Sablon` varsayılanı TPYS (saat_bicim «%H:00», bom boş, kesir boş); v2.506–v2.511 arasında öğrenilmiş müşteri şablonları eski çıktıyı
+bayt bayt korur. `eak_csv_metni`: kurulu güç − EAK − iç tüketim → «kaynak_yetersizligi» (TPYS Bildirim Dokümanı; GES gece kurulu gücün tamamı).
+`csv_oku` «HH:00» ve eski «;» dosyalarını okur. Panel: «KGÜP (CSV)» + «EAK (CSV)»; vitrin ve panel metinlerindeki «EPYS dosyasından öğrenilir» kaldırıldı.
+
+İnceleme düzeltmeleri: piyasa takvimi bölümündeki bayat EPYS cümlesi, biçim açıklaması (EAK ayrı), kıyas tablosunda saat «HH:00».
+
+Kalan (düşük): ondalık ayraç şablonda örneklenmemiş (nokta varsayıldı); dengeleme birimi çeyrek satırı TPYS'de doğrulanmadı; EAK dosyası arşivlenmiyor.
+Ayrıntı: `PVQuant_Ilk_Uygulama/02` M25, `04` #5.
