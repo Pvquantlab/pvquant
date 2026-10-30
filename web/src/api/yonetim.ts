@@ -32,7 +32,9 @@ export interface Ben { id: string; email: string; rol: "sahip" | "operator"; tot
 export interface Kiraci { id: string; ad: string; plan: string; durum: string; olusturma: string; guncelleme: string | null; notlar: string | null;
   santral: number; kurulu_guc_kwp: number; kullanici: number; son_giris: string | null }
 export interface KiraciKullanici { id: string; email: string; rol: string; aktif: boolean; totp_aktif: boolean; son_giris: string | null; olusturma: string }
-export interface KiraciSantral { id: string; ad: string; kapasite_kwp: number; tz: string; arsivli: boolean; olusturma: string; son_scada: string | null; son_kosu: string | null }
+export interface KiraciSantral { id: string; ad: string; kapasite_kwp: number; tz: string; arsivli: boolean; olusturma: string; son_scada: string | null; son_kosu: string | null;
+  /** v2.515: piyasa segmenti ve UEVÇB (params_json); segment yoksa KÜPST/DSG hesaplanamaz */
+  segment?: string | null; uevcb?: string | null; kgup_yukumlu?: boolean | null }
 export interface KiraciDetay { id: string; ad: string; plan: string; durum: string; notlar: string | null; olusturma: string; guncelleme: string | null; yonetici_2fa_zorunlu?: boolean;
   kullanicilar: KiraciKullanici[]; santraller: KiraciSantral[] }
 export interface Kullanici extends KiraciKullanici { tenant_id: string; firma: string }
@@ -56,7 +58,10 @@ export interface SistemOzet {
 export interface IsKaydi { id: string; kod: string; is: string; tenant_id: string | null; kiraci: string | null; plant_id: string | null; santral: string | null;
   zaman: string; sure_sn: number | null; tamam: boolean; durum: string; ayrinti: string | null }
 export interface SantralEnvanter { id: string; ad: string; kapasite_kwp: number; tz: string; olusturma: string; tenant_id: string; kiraci: string; kiraci_durum: string;
-  son_scada: string | null; son_kosu: string | null; son_hata: string | null; sorunlar: string[] }
+  son_scada: string | null; son_kosu: string | null; son_hata: string | null; sorunlar: string[];
+  /** v2.515: uzlaştırma hazırlığı — segment/UEVÇB ve yarının KGÜP arşivi (öneri sürümü, bildirilen, EAK) */
+  segment?: string | null; uevcb?: string | null; kgup_yukumlu?: boolean | null;
+  kgup_yarin?: { gun: string; oneri_surum: number | null; bildirilen: boolean; eak: boolean } }
 
 // 25.10 Faz 4 — kullanım: sayaç türleri (dis_api, webhook, webhook_hata) + türetilmiş sayımlar (rapor, kosu, scada_saat, yukleme)
 export interface KullanimToplam { dis_api: number; webhook: number; webhook_hata: number; rapor: number; kosu: number; scada_saat: number; yukleme: number }
@@ -119,7 +124,7 @@ export const yonetim = {
   sistem: (): Promise<SistemOzet> => istek("/sistem"),
   isler: (p: { saat?: number; yalniz_hata?: boolean; job?: string; tenant_id?: string; limit?: number; plant_id?: string } = {}): Promise<{ isler: IsKaydi[]; pencere_saat: number; is_turleri: { kod: string; is: string }[] }> =>
     istek(`/isler${sorgu(p)}`),
-  santraller: (sorunlu = false): Promise<{ santraller: SantralEnvanter[]; esik: { scada_saat: number; kosu_saat: number }; toplam: number }> =>
+  santraller: (sorunlu = false): Promise<{ santraller: SantralEnvanter[]; esik: { scada_saat: number; kosu_saat: number }; toplam: number; yarin?: string }> =>
     istek(`/santraller${sorgu({ sorunlu })}`),
   // 25.10 Faz 4 — kullanım (salt okunur); ay 'YYYY-MM', boşsa bu ay
   kullanim: (ay?: string): Promise<KullanimOzet> => istek(`/kullanim${sorgu({ ay })}`),

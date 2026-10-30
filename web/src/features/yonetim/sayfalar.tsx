@@ -1,5 +1,6 @@
+import { SEGMENTLER } from "../../api/types";
 import { useEffect, useState } from "react";
-import { hesapDurumu, tazelik, eylemAdi, SOZLUK } from "../../lib/sozluk";
+import { hesapDurumu, tazelik, eylemAdi, SOZLUK, segmentKisa } from "../../lib/sozluk";
 import { yonetim, zamanTr, yasTr, type Plan, type SistemOzet, type Kiraci, type KiraciDetay, type Kullanici, type Operator, type Basvuru, type DenetimKaydi, type Ben } from "../../api/yonetim";
 import { Kart, Kpi, Sayfa, SayfaIskeleti, sayiTr, gucTr } from "../sayfalar/parcalar";
 import { Meta } from "../../lib/Meta";
@@ -106,7 +107,7 @@ export function Musteriler({ sahip = false }: { sahip?: boolean }) {
   return (
     <Sayfa baslik="Müşteriler" alt="Müşteri kuruluşları; satır detayı açar." sag={liste ? <span className="cip"><Meta items={[`${sayiTr(liste.length)} müşteri`]} /></span> : undefined}>
       <Hata m={hata} />
-      <Kart baslik="Müşteri hesapları" alt={liste ? "ad, plan, durum, santral, kurulu güç, etkin kullanıcı, son giriş" : undefined}>
+      <Kart baslik="Müşteri hesapları" alt={liste ? "ad, plan, durum, santral, kurulu güç, etkin kullanıcı, son giriş, oluşturma" : undefined}>
         {!liste ? <SayfaIskeleti kpi={0} kart={1} /> : liste.length === 0 ? <Bos bas="Henüz müşteri yok." alt="Aşağıdaki formla ilk müşteri hesabını açın." /> : (
           <div className="grafik-kaydir"><table className="veri sayisal santral">
             <thead><tr><th>Müşteri</th><th>Plan</th><th>Durum</th><th>Santral</th><th>Kurulu güç<span className="birim">kWp</span></th><th>Kullanıcı</th><th>Son giriş</th><th>Oluşturma</th><th aria-hidden="true"></th></tr></thead>
@@ -178,11 +179,14 @@ function MusteriDetay({ id, geri, sahip }: { id: string; geri: () => void; sahip
           islem={(fn, m) => dene(fn, m)} sirGoster={(b, v) => setSir({ baslik: b, deger: v })} />
       </Kart>
       <KullanimKarti tenantId={id} />
-      <Kart baslik="Santraller" alt="Kapasite, saat dilimi, son SCADA verisi, son tahmin koşusu">
+      <Kart baslik="Santraller" alt="Kapasite, saat dilimi, piyasa segmenti, UEVÇB, son SCADA verisi, son tahmin koşusu">
         {d.santraller.length === 0 ? <Bos bas="Santral yok." /> : (
           <div className="grafik-kaydir"><table className="veri sayisal santral">
-            <thead><tr><th>Santral</th><th>Kapasite<span className="birim">kWp</span></th><th>Saat dilimi</th><th>Son veri<span className="birim">SCADA</span></th><th>Son tahmin</th><th>Durum</th></tr></thead>
-            <tbody>{d.santraller.map((s) => (<tr key={s.id}><td className="ad">{s.ad}</td><td>{gucTr(s.kapasite_kwp)}</td><td>{s.tz}</td><td><Zaman s={s.son_scada} /></td><td><Zaman s={s.son_kosu} /></td>
+            <thead><tr><th>Santral</th><th>Kapasite<span className="birim">kWp</span></th><th>Saat dilimi</th><th>Segment<span className="birim">UEVÇB</span></th><th>Son veri<span className="birim">SCADA</span></th><th>Son tahmin</th><th>Durum</th></tr></thead>
+            <tbody>{d.santraller.map((s) => (<tr key={s.id}><td className="ad">{s.ad}</td><td>{gucTr(s.kapasite_kwp)}</td><td>{s.tz}</td>
+              <td>{s.segment ? <span title={SEGMENTLER.find((x) => x.deger === s.segment)?.etiket ?? s.segment}>{segmentKisa(s.segment)}</span> : <span className="rozet rozet-uyari" title="Segment seçilmeden KÜPST ve DSG hesaplanamaz; müşteri Santralim › Santral ayarları'ndan seçer">seçilmedi</span>}
+                {s.uevcb && <div className="kunye-not kod-duz">{s.uevcb}</div>}</td>
+              <td><Zaman s={s.son_scada} /></td><td><Zaman s={s.son_kosu} /></td>
               <td>{s.arsivli ? <span className="rozet rozet-notr">arşivde</span> : <span className="rozet rozet-ok">etkin</span>}</td></tr>))}</tbody>
           </table></div>)}
       </Kart>
@@ -264,10 +268,10 @@ export function Basvurular() {
 // ---------------- Denetim izi ----------------
 function DenetimTablosu({ kayitlar }: { kayitlar: DenetimKaydi[] }) {
   return (
-    <div className="grafik-kaydir"><table className="veri santral">
+    <div className="grafik-kaydir"><table className="veri santral plat-denetim">
       <thead><tr><th>Zaman</th><th>Kapsam</th><th>Eylem</th><th>Aktör</th><th>Müşteri</th><th>Nesne</th><th>IP</th><th className="plat-ayrinti-sutun">Ayrıntı</th></tr></thead>
       <tbody>{kayitlar.map((k) => (<tr key={k.id}><td className="ad"><Zaman s={k.zaman} /></td><td>{k.kapsam === "musteri" ? "müşteri" : k.kapsam}</td><td><span className="rozet rozet-notr" title={k.eylem}>{eylemAdi(k.eylem)}</span></td>
-        <td className="plat-aktor">{k.aktor_eposta ?? (k.aktor_id ? k.aktor_id.slice(0, 8) : "—")}</td>
+        <td className="plat-aktor">{k.aktor_eposta ? k.aktor_eposta.replace("@", "@\u200b") : (k.aktor_id ? k.aktor_id.slice(0, 8) : "—")}</td>   {/* v2.515: uzun adres yalnız «@» sonrasında kırılır */}
         <td>{k.kiraci_ad ?? (k.tenant_id ? <span title={k.tenant_id}>{k.tenant_id.slice(0, 8)}</span> : "—")}</td>
         <td>{k.nesne_tur ? <>{k.nesne_tur}{k.nesne_id && <span className="soluk" title={k.nesne_id} style={{ display: "block", fontSize: 12.5 }}>{k.nesne_id.slice(0, 8)}</span>}</> : "—"}</td>
         <td>{k.ip ?? "—"}</td><td className="plat-ayrinti-sutun"><AyrintiCipleri a={k.ayrinti} /></td></tr>))}</tbody>

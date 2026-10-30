@@ -18,7 +18,7 @@ test("sözlük: iş durumu, tazelik, son veri/son tahmin ve sorun adları tek ye
 
 test("platform Sistem ve müşteri gece işleri kartı aynı sözcükleri sözlükten alır", () => {
   const sistem = oku("features/yonetim/Sistem.tsx"), dig = oku("features/sayfalar/Digerleri.tsx"), kabuk = oku("shell/Kabuk.tsx");
-  assert.match(sistem, /import \{ SOZLUK, isDurumu, tazelik, sorunAdi \} from "\.\.\/\.\.\/lib\/sozluk"/);
+  assert.match(sistem, /import \{ SOZLUK, isDurumu, tazelik, sorunAdi(?:, segmentKisa)? \} from "\.\.\/\.\.\/lib\/sozluk"/);
   assert.match(sistem, /\{isDurumu\(x\.tamam\)\}/); assert.match(sistem, /\{tazelik\(bayat\)\}/); assert.match(sistem, /\{sorunAdi\(s\)\}/);
   // eski sözcükler hiçbir dizge/şablon değerinde yok (kelime sınırıyla; kod kimlikleri .bayat/.taze ve yorumlar serbest)
   const metinler = (d: string) => (d.match(/"[^"\n]*"|`[^`]*`/g) ?? []).join(" ").replace(/\$\{[^}]*\}/g, "");   // ${…} kod ifadeleri dışarıda

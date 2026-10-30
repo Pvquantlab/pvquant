@@ -266,7 +266,7 @@ def kiraci_detay(aktor_id: str, tid: str) -> dict | None:
             "SELECT id, email, role, aktif, totp_aktif, last_login, created_at FROM users WHERE tenant_id=:t ORDER BY created_at"),
             {"t": str(tid)}).mappings().all()
         santraller = s.execute(text(
-            "SELECT p.id, p.name, p.capacity_kwp, p.tz, p.archived, p.created_at, "
+            "SELECT p.id, p.name, p.capacity_kwp, p.tz, p.archived, p.created_at, p.params_json, "
             "(SELECT max(ts_utc) FROM scada_hourly sh WHERE sh.plant_id=p.id AND sh.flag='valid') AS son_scada, "
             "(SELECT max(run_at) FROM forecast_runs r WHERE r.plant_id=p.id) AS son_kosu "
             "FROM plants p WHERE p.tenant_id=:t ORDER BY p.name"), {"t": str(tid)}).mappings().all()
@@ -278,7 +278,15 @@ def kiraci_detay(aktor_id: str, tid: str) -> dict | None:
                              for u in kullanicilar],
             "santraller": [{"id": str(p["id"]), "ad": p["name"], "kapasite_kwp": float(p["capacity_kwp"]), "tz": p["tz"],
                             "arsivli": bool(p["archived"]), "olusturma": iso(p["created_at"]), "son_scada": iso(p["son_scada"]),
-                            "son_kosu": iso(p["son_kosu"])} for p in santraller]}
+                            "son_kosu": iso(p["son_kosu"]),
+                            **{k: v for k, v in _segment(p["params_json"]).items()}} for p in santraller]}
+
+
+def _segment(params_json) -> dict:
+    """v2.515: santralın piyasa segmenti ve UEVÇB kodu (params_json) — platform tablolarında görünür; yoksa None."""
+    from pvquant.services.dengesizlik_service import segment_bilgisi
+    sb = segment_bilgisi(params_json)
+    return {"segment": sb["segment"], "uevcb": sb.get("uevcb"), "kgup_yukumlu": sb["kgup_yukumlu"]}
 
 
 def _davet_baglantisi(s, user_id, saat: int) -> str:

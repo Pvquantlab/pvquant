@@ -554,8 +554,20 @@ textarea.girdi { resize: vertical; min-height: 72px; line-height: 1.5; }
 /* 27.10: üst çubuk tarihi de platformda gövde ailesi tabular — platform yüzünde mono metin düğümü 0 (müşteri kabuğu dokunulmadı) */
 :root[data-yuz="platform"] .ust-tarih { font-family: var(--font); font-variant-numeric: tabular-nums; }
 :root[data-yuz="platform"] .zaman--sar { white-space: normal; }
-:root[data-yuz="platform"] .plat-ayrinti-sutun { white-space: normal; min-width: 180px; }
-:root[data-yuz="platform"] td.plat-aktor { white-space: normal; overflow-wrap: anywhere; max-width: 210px; }   /* uzun e-posta 1440'ta kaydırma açmasın */
+/* v2.515: denetim tablosu sekiz sütun — oluk 20 → 14 px (7 oluk ≈ 42 px) ki 1440 px'te kaydırmasız sığsın (ölçüldü: 1063 → ≤1047 px kap) */
+:root[data-yuz="platform"] table.veri.santral th + th, :root[data-yuz="platform"] table.veri.santral td + td { padding-left: 14px; }   /* v2.515 inceleme: 14 px oluk artık platformdaki her santral tablosunda (denetim, envanter, müşteri detayı) */
+/* v2.515 inceleme: santral envanteri 1440 px'te kaydırmasız — başlık birimi alt satırda, çip grupları kırılır (KGÜP/Sorun en az iki çip yan yana),
+   UEVÇB kodu çipsiz düz mono (.cip-kod'un 12 px iç boşluğu kodu içeri kaydırıyor, 28 px yüksekliği satırı şişiriyordu) */
+:root[data-yuz="platform"] table.veri.santral.plat-envanter th .birim { display: block; margin-left: 0; }
+:root[data-yuz="platform"] table.veri.santral.plat-envanter td.plat-cipler { white-space: normal; }
+:root[data-yuz="platform"] table.veri.santral.plat-envanter td.plat-cipler .dugme-sira { flex-wrap: wrap; }
+:root[data-yuz="platform"] table.veri.santral.plat-envanter td.plat-kgup { min-width: 150px; }    /* «öneri v2» 67 + «bildirildi» 61 + 6 aralık = 134 + 14 oluk (ölçüldü) */
+:root[data-yuz="platform"] table.veri.santral.plat-envanter td.plat-sorun { min-width: 210px; }   /* «segment seçilmedi» 123 + «veri eski» 65 + 6 = 194 + 14 oluk; 1440 px'te yedi sütun 1019 ≤ 1045 (ölçüldü) */
+.kod-duz, .kunye-not.kod-duz { font-family: var(--mono); font-size: 12.5px; letter-spacing: 0; }   /* .kunye-not (13.5 px) dosyada daha sonra geldiği için çift sınıf */
+/* v2.515: «table.veri.santral td → nowrap» kuralı (0,2,2) bu iki hücre kuralını (0,2,1) eziyordu — uzun aktör e-postası komşu sütuna taşıyor,
+   ayrıntı çipleri tek satıra zorlanıp tablo kaydırıyordu. Seçici artık tablo sınıfıyla (0,2,3). */
+:root[data-yuz="platform"] table.veri.santral td.plat-ayrinti-sutun, :root[data-yuz="platform"] .plat-ayrinti-sutun { white-space: normal; min-width: 176px; }   /* en geniş çip ≈ 171 px (ölçüldü) */
+:root[data-yuz="platform"] table.veri.santral td.plat-aktor, :root[data-yuz="platform"] td.plat-aktor { white-space: normal; overflow-wrap: normal; min-width: 160px; }   /* kırılma yalnız «@» sonrası (sayfalar.tsx zero-width space); 1440 px'te sekiz sütun kaydırmasız (ölçüldü) */   /* uzun e-posta 1440'ta kaydırma açmasın, komşu sütuna taşmasın */
 .plat-ayrinti { display: inline-flex; flex-wrap: wrap; gap: 4px 6px; }
 /* 26.10 D2/D5 */
 .plat-baglanti { background: none; border: 0; padding: 0; font: inherit; color: var(--metin); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
@@ -580,8 +592,12 @@ textarea.girdi { resize: vertical; min-height: 72px; line-height: 1.5; }
 .temsil-serit__kapat { margin-left: auto; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.5); color: #fff; border-radius: var(--r-hap);
                        padding: 3px 12px; font: inherit; font-size: 13px; cursor: pointer; }
 .temsil-serit__kapat:hover { background: rgba(255,255,255,.26); }   /* 26.10 Faz 5: %80–100 arası — uyarı tonunun yumuşağı */
+/* 31.10 (v2.515): çip kelime ortasından kırılmıyor («email: sah m» / «kayn ak: scr ahi» görünümü); çipler kendi aralarında sarar, uzun değer yalnız
+   çip 100 % genişliği aşarsa kırılır. Ayrıntı sütunu da 180 → 260 px. */
 .plat-ayrinti__cip { display: inline-flex; align-items: baseline; gap: 4px; font-family: var(--mono); font-size: 12px; color: var(--ikincil);
-                     background: var(--yuzey); border: 1px solid var(--kenar); border-radius: 6px; padding: 1px 7px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+                     background: var(--yuzey); border: 1px solid var(--kenar); border-radius: 6px; padding: 1px 7px; max-width: 100%;
+                     white-space: normal; overflow-wrap: normal; word-break: keep-all; }
+.plat-ayrinti__cip b { white-space: nowrap; }
 .plat-ayrinti__cip b { font-weight: 500; color: var(--soluk); }
 .plat-ayrinti__cip b::after { content: ":"; }
 table.veri td .cip-kod, table.veri td .rozet { white-space: nowrap; }   /* 1 % genişlikli hücrede çip harf harf kırılmasın */

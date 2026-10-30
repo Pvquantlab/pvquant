@@ -139,14 +139,26 @@ def santraller(aktor_id: str, *, sorunlu: bool = False) -> dict:
     simdi = dt.datetime.now(dt.timezone.utc)
     with platform_baglami(aktor_id) as s:
         rows = s.execute(text(
-            "SELECT p.id, p.name, p.capacity_kwp, p.tz, p.created_at, t.id AS tenant_id, t.name AS kiraci, t.status AS kiraci_durum, "
+            "SELECT p.id, p.name, p.capacity_kwp, p.tz, p.created_at, p.params_json, t.id AS tenant_id, t.name AS kiraci, t.status AS kiraci_durum, "
             "(SELECT max(ts_utc) FROM scada_hourly sh WHERE sh.plant_id = p.id AND sh.flag = 'valid') AS son_scada, "
             "(SELECT max(run_at) FROM forecast_runs r WHERE r.plant_id = p.id) AS son_kosu, "
             "(SELECT max(started) FROM jobs_log j WHERE j.plant_id = p.id AND j.status <> 'ok') AS son_hata "
             "FROM plants p JOIN tenants t ON t.id = p.tenant_id WHERE NOT p.archived ORDER BY t.name, p.name")).mappings().all()
+        # v2.515 (yönetim boşlukları #1): yarının (İstanbul) teslim günü için KGÜP arşivi — öneri sürümü, bildirilen, EAK. kgup_surum'u platform
+        # bağlamı pvq_api ile okur (v2488: BYPASSRLS + varsayılan ayrıcalıklar; göç gerekmez); dosya baytı değil, yalnız sayaçlar.
+        yarin = s.execute(text("SELECT (now() AT TIME ZONE 'Europe/Istanbul')::date + 1")).scalar()
+        arsiv = {}
+        for a in s.execute(text(
+                "SELECT plant_id, kaynak, max(surum) AS surum, max(olusturma) AS son FROM kgup_surum WHERE teslim_gunu = :g GROUP BY plant_id, kaynak"),
+                {"g": yarin}).mappings().all():
+            arsiv.setdefault(str(a["plant_id"]), {})[a["kaynak"]] = {"surum": int(a["surum"]), "son": _iso(a["son"])}
+    from pvquant.services.dengesizlik_service import segment_bilgisi
     cikti = []
     for r in rows:
         sorunlar = []
+        sb = segment_bilgisi(r["params_json"])
+        if sb["segment"] is None:
+            sorunlar.append("segment_yok")   # v2.515: segment seçilmeden KÜPST/DSG hesaplanamaz, KGÜP yükümlülüğü bilinmez
         if r["son_scada"] is None:
             sorunlar.append("scada_yok")
         elif (simdi - r["son_scada"]) > dt.timedelta(hours=SCADA_BAYAT_SAAT):
@@ -159,8 +171,12 @@ def santraller(aktor_id: str, *, sorunlu: bool = False) -> dict:
             sorunlar.append("kiraci_askida")
         if sorunlu and not sorunlar:
             continue
+        ar = arsiv.get(str(r["id"]), {})
         cikti.append({"id": str(r["id"]), "ad": r["name"], "kapasite_kwp": float(r["capacity_kwp"] or 0), "tz": r["tz"],
                       "olusturma": _iso(r["created_at"]), "tenant_id": str(r["tenant_id"]), "kiraci": r["kiraci"],
                       "kiraci_durum": r["kiraci_durum"], "son_scada": _iso(r["son_scada"]), "son_kosu": _iso(r["son_kosu"]),
-                      "son_hata": _iso(r["son_hata"]), "sorunlar": sorunlar})
-    return {"santraller": cikti, "esik": {"scada_saat": SCADA_BAYAT_SAAT, "kosu_saat": KOSU_BAYAT_SAAT}, "toplam": len(rows)}
+                      "son_hata": _iso(r["son_hata"]), "sorunlar": sorunlar,
+                      "segment": sb["segment"], "uevcb": sb.get("uevcb"), "kgup_yukumlu": sb["kgup_yukumlu"],   # v2.515
+                      "kgup_yarin": {"gun": yarin.isoformat(), "oneri_surum": (ar.get("pvquant") or {}).get("surum"),
+                                     "bildirilen": "musteri" in ar, "eak": "eak" in ar}})
+    return {"santraller": cikti, "esik": {"scada_saat": SCADA_BAYAT_SAAT, "kosu_saat": KOSU_BAYAT_SAAT}, "toplam": len(rows), "yarin": yarin.isoformat()}

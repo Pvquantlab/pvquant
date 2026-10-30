@@ -13,7 +13,11 @@ export const SOZLUK = {
   kaynak: { hava: "Hava verisi", piyasa: "Piyasa fiyatları (PTF/SMF)", piyasaKisa: "Piyasa fiyatları", yedek: "Yedek",
             zamanlayici: "Zamanlayıcı", geceIsleri: "Gece işlemleri", isKayitlari: "İş kayıtları" },
   /** santral envanteri sorun kodları (sistem_service.santraller) */
-  sorun: { scada_yok: "veri yok", scada_bayat: "veri eski", kosu_yok: "tahmin yok", kosu_bayat: "tahmin eski", kiraci_askida: "müşteri askıda" } as Record<string, string>,
+  sorun: { scada_yok: "veri yok", scada_bayat: "veri eski", kosu_yok: "tahmin yok", kosu_bayat: "tahmin eski", kiraci_askida: "müşteri askıda",
+           segment_yok: "segment seçilmedi" } as Record<string, string>,   // v2.515: segment yoksa KÜPST/DSG hesaplanamaz
+  /** v2.515: platform tablolarında kısa segment adı (müşteri paneli SEGMENTLER'in uzun etiketini kullanır) */
+  segmentKisa: { lisansli_serbest: "Lisanslı serbest", lisansli_yekdem: "Lisanslı YEKDEM", yeka: "YEKA", lisanssiz_iletim: "Lisanssız iletim",
+                 lisanssiz_dagitim: "Lisanssız dağıtım", oz_tuketim_saatlik: "Öz tüketim" } as Record<string, string>,
   /** hesap ve kullanıcı durumları */
   hesapDurumu: { active: "etkin", suspended: "askıda" } as Record<string, string>,
   kullaniciDurumu: { aktif: "etkin", pasif: "pasif" },
@@ -38,5 +42,6 @@ export const SOZLUK = {
 export const isDurumu = (tamam: boolean) => (tamam ? SOZLUK.isDurumu.tamam : SOZLUK.isDurumu.basarisiz);
 export const tazelik = (bayat: boolean) => (bayat ? SOZLUK.tazelik.eski : SOZLUK.tazelik.guncel);
 export const sorunAdi = (kod: string) => SOZLUK.sorun[kod] ?? kod;
+export const segmentKisa = (kod: string) => SOZLUK.segmentKisa[kod] ?? kod;
 export const hesapDurumu = (durum: string) => SOZLUK.hesapDurumu[durum] ?? durum;
 export const eylemAdi = (kod: string) => SOZLUK.eylem[kod] ?? kod;

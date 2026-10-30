@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { SOZLUK, isDurumu, tazelik, sorunAdi } from "../../lib/sozluk";
+import { SOZLUK, isDurumu, tazelik, sorunAdi, segmentKisa } from "../../lib/sozluk";
+import { SEGMENTLER } from "../../api/types";
 import { yonetim, yasTr, type SistemOzet, type IsKaydi, type SantralEnvanter, type Kiraci } from "../../api/yonetim";
 import { Zaman } from "./ortak";
 import { Kart, Kpi, Sayfa, SayfaIskeleti, sayiTr, gucTr } from "../sayfalar/parcalar";
@@ -128,7 +129,7 @@ function IsKayitlari({ santral, temizle }: { santral: { id: string; ad: string }
 // ---------------- santral envanteri ----------------
 function SantralEnvanteri({ santralSec }: { santralSec: (id: string, ad: string) => void }) {
   const [sorunlu, setSorunlu] = useState(false);
-  const [veri, setVeri] = useState<{ santraller: SantralEnvanter[]; esik: { scada_saat: number; kosu_saat: number }; toplam: number } | null>(null);
+  const [veri, setVeri] = useState<{ santraller: SantralEnvanter[]; esik: { scada_saat: number; kosu_saat: number }; toplam: number; yarin?: string } | null>(null);
   const [hata, setHata] = useState<string | null>(null);
   useEffect(() => { setVeri(null); yonetim.santraller(sorunlu).then(setVeri).catch((e) => setHata(mesajCikar(e))); }, [sorunlu]);
   return (
@@ -137,15 +138,29 @@ function SantralEnvanteri({ santralSec }: { santralSec: (id: string, ad: string)
         <input type="checkbox" checked={sorunlu} onChange={(e) => setSorunlu(e.target.checked)} />yalnız sorunlu</label>}>
       <Hata m={hata} />
       {!veri ? <SayfaIskeleti kpi={0} kart={1} /> : veri.santraller.length === 0 ? <Bos bas={sorunlu ? "Sorunlu santral yok." : "Etkin santral yok."} alt={sorunlu ? `${sayiTr(veri.toplam)} etkin santralin hepsi veri alıyor ve koşuyor.` : undefined} /> : (
-        <div className="grafik-kaydir"><table className="veri sayisal santral">
-          <thead><tr><th>Müşteri</th><th>Santral</th><th>Kurulu güç<span className="birim">kWp</span></th><th>Son veri<span className="birim">SCADA</span></th><th>Son tahmin</th><th>Son hata</th><th>Sorun</th></tr></thead>
+        <div className="grafik-kaydir"><table className="veri sayisal santral plat-envanter">
+          <thead><tr><th>Müşteri</th><th>Santral<span className="birim">kurulu güç kWp</span></th>
+            <th title="Piyasa segmenti ve altında UEVÇB kodu (müşteri Santralim › Santral ayarları'ndan seçer); segment yoksa KÜPST/DSG hesaplanamaz">Segment<span className="birim">UEVÇB</span></th>
+            <th title={veri.yarin ? `Yarının (${veri.yarin}) teslim günü için KGÜP arşivi: PVQuant önerisi sürümü, müşterinin bildirdiğini beyan ettiği dosya, EAK dosyası` : undefined}>KGÜP<span className="birim">yarın</span></th>
+            <th>Son veri<span className="birim">SCADA</span></th><th>Son tahmin</th><th>Sorun<span className="birim">son hata</span></th></tr></thead>
           <tbody>{veri.santraller.map((p) => (
-            <tr key={p.id}><td className="ad">{p.kiraci}</td><td>{p.ad}</td><td>{p.kapasite_kwp ? gucTr(p.kapasite_kwp) : <span className="bos">—</span>}</td>
+            <tr key={p.id}><td className="ad">{p.kiraci}</td><td>{p.ad}<div className="kunye-not">{p.kapasite_kwp ? `${gucTr(p.kapasite_kwp)} kWp` : "kurulu güç girilmemiş"}</div></td>
+              {/* v2.515 (yönetim boşlukları #1): segment + UEVÇB tek hücrede, yarının KGÜP arşivi — müşteri panelinin uzlaştırma katmanı platform gözünden */}
+              <td>{p.segment ? <span title={SEGMENTLER.find((x) => x.deger === p.segment)?.etiket ?? p.segment}>{segmentKisa(p.segment)}</span> : <span className="bos">—</span>}
+                {p.uevcb && <div className="kunye-not kod-duz">{p.uevcb}</div>}</td>
+              <td className="plat-cipler plat-kgup">{p.kgup_yukumlu === false ? <span className="soluk">yükümlü değil</span>
+                : !p.kgup_yarin || (p.kgup_yarin.oneri_surum == null && !p.kgup_yarin.bildirilen && !p.kgup_yarin.eak) ? <span className="bos">—</span>
+                : <span className="dugme-sira">
+                    {p.kgup_yarin.oneri_surum != null && <span className="rozet rozet-notr" title="PVQuant'ın ürettiği ve indirilen KGÜP dosyası (son sürüm)">öneri v{p.kgup_yarin.oneri_surum}</span>}
+                    {p.kgup_yarin.bildirilen && <span className="rozet rozet-ok" title="Müşterinin TPYS'ye bildirdiğini beyan ettiği dosya; TPYS kabulü doğrulanmaz">bildirildi</span>}
+                    {p.kgup_yarin.eak && <span className="rozet rozet-notr" title="TPYS EAK.csv biçiminde EAK dosyası indirildi">EAK</span>}
+                  </span>}</td>
               <td><Zaman s={p.son_scada} /></td><td><Zaman s={p.son_kosu} /></td>
-              <td>{p.son_hata ? <button type="button" className="plat-baglanti" title="İş kayıtlarında bu santralin hatalarını göster" onClick={() => santralSec(p.id, p.ad)}
-                style={Date.now() - new Date(p.son_hata).getTime() > 7 * 86400000 ? { color: "var(--soluk)" } : undefined}>{yasTr(p.son_hata)}</button> : <span className="bos">—</span>}</td>
-              <td>{p.sorunlar.length === 0 ? <span className="rozet rozet-ok">yok</span>
-                : <span className="dugme-sira">{p.sorunlar.map((s) => <span key={s} className="rozet rozet-uyari">{sorunAdi(s)}</span>)}</span>}</td></tr>))}</tbody>
+              {/* v2.515 inceleme: «Kurulu güç» santral adının, «Son hata» sorun çiplerinin altına künye olarak indi — 1440 px'te dokuz sütun kaydırıyordu */}
+              <td className="plat-cipler plat-sorun">{p.sorunlar.length === 0 ? <span className="rozet rozet-ok">yok</span>
+                : <span className="dugme-sira">{p.sorunlar.map((s) => <span key={s} className="rozet rozet-uyari">{sorunAdi(s)}</span>)}</span>}
+                {p.son_hata && <div className="kunye-not"><button type="button" className="plat-baglanti" title="İş kayıtlarında bu santralin hatalarını göster (başarısız biten son iş)" onClick={() => santralSec(p.id, p.ad)}
+                  style={Date.now() - new Date(p.son_hata).getTime() > 7 * 86400000 ? { color: "var(--soluk)" } : undefined}>son hata {yasTr(p.son_hata)}</button></div>}</td></tr>))}</tbody>
         </table></div>)}
       {veri && sorunlu && veri.santraller.length > 0 && <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>{sayiTr(veri.santraller.length)} / {sayiTr(veri.toplam)} etkin santralde sorun var.</p>}
     </Kart>

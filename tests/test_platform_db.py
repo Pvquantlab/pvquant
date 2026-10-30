@@ -143,6 +143,16 @@ def test_faz3_sistem_izleme(temiz):
         assert ss.isler(pid, saat=24, job="gece_skill", tenant_id=y["tenant_id"])["isler"] == []
         env = ss.santraller(pid, sorunlu=True)["santraller"]
         bizim = [x for x in env if x["id"] == str(plant_id)][0]
+        # v2.515: segment seçilmemiş santral «segment_yok»; yarın için KGÜP arşivi boş; müşteri detayında da segment/uevcb alanı
+        assert "segment_yok" in bizim["sorunlar"] and bizim["segment"] is None and bizim["uevcb"] is None and bizim["kgup_yukumlu"] is None
+        assert bizim["kgup_yarin"]["oneri_surum"] is None and bizim["kgup_yarin"]["bildirilen"] is False and bizim["kgup_yarin"]["eak"] is False
+        assert len(bizim["kgup_yarin"]["gun"]) == 10
+        dsan = [x for x in ps.kiraci_detay(pid, y["tenant_id"])["santraller"] if x["id"] == str(plant_id)][0]
+        assert dsan["segment"] is None and "uevcb" in dsan and "kgup_yukumlu" in dsan
+        with sistem_baglami() as s2:
+            s2.execute(text("UPDATE plants SET params_json = '{\"segment\": \"lisansli_serbest\", \"uevcb\": \"40X0000000000001A\"}'::jsonb WHERE id = :p"), {"p": plant_id})
+        bizim2 = [x for x in ss.santraller(pid)["santraller"] if x["id"] == str(plant_id)][0]
+        assert "segment_yok" not in bizim2["sorunlar"] and bizim2["segment"] == "lisansli_serbest" and bizim2["uevcb"] == "40X0000000000001A" and bizim2["kgup_yukumlu"] is True
         assert {"scada_yok", "kosu_yok"} <= set(bizim["sorunlar"]) and bizim["kiraci"] == f"Firma3 {e}" and bizim["son_hata"]
     finally:
         with sistem_baglami() as s:
