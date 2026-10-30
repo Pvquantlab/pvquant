@@ -1,6 +1,7 @@
 """EPİAŞ Şeffaflık entegrasyonu — TGT, uç noktalar, önbellek, UTC hizalama, gerçekleşen üretim adaptörü.
 
-Doküman: https://seffaflik.epias.com.tr/electricity-service/technical/tr/index.html (v1.16.4; Faz 2 B-012)
+Doküman: https://seffaflik.epias.com.tr/electricity-service/technical/tr/index.html (Wayback'te en yeni v1.15.15, TR 21.05.2026 / EN 06.06.2026;
+önceki «v1.16.4» notu hiçbir anlık görüntüde yok — doğrulanamadı; resmî changelog yok, şema swagger.json info.version ile izlenir — 31.10.2026 bulgular/11.md)
 Kimlik: POST https://giris.epias.com.tr/cas/v1/tickets (username/password form gövdesi) → TGT (Şeffaflık dokümanı 2 saat;
 CAS duyuruları 8 saat diyor — kısa olan esas). CAS limiti: TGT 100/dk (28.07.2025 duyurusu); veri servisi limiti DOĞRULANAMADI
 → TGT önbelleklenir (100 dk). Sistem yönü (system-direction) METİN döner («Enerji Açığı/Fazlası/Dengede»); sayıya çevrilmez,
@@ -31,14 +32,20 @@ UC = {
     "dengesizlik_miktar": ("/v1/markets/imbalance/data/imbalance-quantity", "positiveImbalance"),
     "dengesizlik_tutar": ("/v1/markets/imbalance/data/imbalance-amount", "positiveImbalance"),
     "gip_aof": ("/v1/markets/idm/data/weighted-average-price", "wap"),
-    "yek_dengesizlik": ("/v1/renewables/data/imbalance-cost", "imbalanceCost"),
+    "yek_dengesizlik": ("/v1/renewables/data/imbalance-cost", "imbalanceCost"),   # gövde {startDate,endDate} şemayla uyumlu; 400'ün nedeni belgede yok, canlı sınanmadı → «doğrulanmamış kaynak»
     "santral_listesi": ("/v1/generation/data/powerplant-list", None),
-    "uevcb_listesi": ("/v1/generation/data/uevcb-list", None),
+    "uevcb_listesi": ("/v1/generation/data/uevcb-list", None),                     # UevcbListRequestDto: required [organizationId, startDate]; endDate ŞEMADA YOK (swagger v1.15.8)
+    "organizasyon_listesi": ("/v1/generation/data/organization-list", None),       # OrganizationListRequestDto: required [startDate, endDate] → organizationId kaynağı
+    "uevcb_santraldan": ("/v1/markets/data/uevcb-list-by-power-plant-id", None),  # UevcbRequestDto: required [powerPlantId, startDate]
 }
 IST = "Europe/Istanbul"
 # 29.10 (v2.505, canlı sınama): liste uçları GET'tir (POST → 404 «Method not found or disabled»); KGÜP uçları `region` ister (yoksa 400).
 UC_GET = {"santral_listesi"}
 VARSAYILAN_EK = {"kgup": {"region": "TR1"}, "kgup_ilk": {"region": "TR1"}}
+# 31.10 (v2.510, 04 #11): şemasında endDate olmayan uçlar — gövde yalnız startDate + ek alanlar (uevcb-list 400'ünün belgeyle tutarlı nedeni:
+# zorunlu organizationId gönderilmiyordu). Canlı sınama bekliyor.
+UC_BITIS_YOK = {"uevcb_listesi", "uevcb_santraldan"}
+UC_ZORUNLU = {"uevcb_listesi": ("organizationId",), "uevcb_santraldan": ("powerPlantId",)}
 
 
 @dataclass
@@ -69,7 +76,11 @@ class Istemci:
     def ham(self, ad: str, baslangic: str, bitis: str, **ek) -> list[dict]:
         yol, _ = UC[ad]
         ek = {**VARSAYILAN_EK.get(ad, {}), **ek}
-        govde = {"startDate": f"{baslangic}T00:00:00+03:00", "endDate": f"{bitis}T23:00:00+03:00", **ek}
+        eksik = [z for z in UC_ZORUNLU.get(ad, ()) if z not in ek]
+        if eksik:
+            raise ValueError(f"EPİAŞ {ad}: zorunlu alan eksik: {', '.join(eksik)} (şema v1.15.8)")
+        govde = {"startDate": f"{baslangic}T00:00:00+03:00", **ek} if ad in UC_BITIS_YOK else \
+                {"startDate": f"{baslangic}T00:00:00+03:00", "endDate": f"{bitis}T23:00:00+03:00", **ek}
         for deneme in range(3):
             with self._http() as c:
                 if ad in UC_GET:
@@ -150,6 +161,19 @@ class Istemci:
     def santral_listesi(self) -> list[dict]:
         """29.10 (v2.505): Şeffaflık santral listesi (GET; id, name, eic, shortName) — EPİAŞ santral kimliği eşlemesi için."""
         return self.ham("santral_listesi", "1970-01-01", "1970-01-01")
+
+    # 31.10 (v2.510, 04 #11): şemaya uygun gövdeler — canlı sınama bekliyor (bulgular/11.md §11.1-A)
+    def organizasyon_listesi(self, baslangic: str, bitis: str) -> list[dict]:
+        """POST organization-list {startDate, endDate} → [{organizationId, organizationName, ...}]; uevcb_listesi için organizationId kaynağı."""
+        return self.ham("organizasyon_listesi", baslangic, bitis)
+
+    def uevcb_listesi(self, organizasyon_id: int, baslangic: str) -> list[dict]:
+        """POST uevcb-list {organizationId, startDate} (endDate şemada yok) → [{id, eic, name}]."""
+        return self.ham("uevcb_listesi", baslangic, baslangic, organizationId=int(organizasyon_id))
+
+    def uevcb_santraldan(self, santral_id: int, baslangic: str) -> list[dict]:
+        """POST uevcb-list-by-power-plant-id {powerPlantId, startDate}; powerplant-list (GET) id'sinden UEVÇB'ye geçiş."""
+        return self.ham("uevcb_santraldan", baslangic, baslangic, powerPlantId=int(santral_id))
     def gercek_zamanli_uretim(self, b, e, **ek): return self.seri("gercek_zamanli_uretim", b, e, **ek)
 
     def fiyat_paketi(self, b, e) -> pd.DataFrame:

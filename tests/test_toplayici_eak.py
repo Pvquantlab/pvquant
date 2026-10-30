@@ -102,3 +102,7 @@ def test_ariza_sayisi_ay_kapisi(istemci):
     assert istemci.put("/v1/plants/p1/eak", json={"eak_kw": 2000}).json()["ariza_sayisi_ay"] == 31          # alan geçmeyince korunur
     assert istemci.put("/v1/plants/p1/eak", json={"ariza_sayisi_ay": 1000}).status_code == 422
     assert istemci.put("/v1/plants/p1/eak", json={"ariza_sayisi_ay": None}).json()["ariza_sayisi_ay"] == 0   # null = temizle
+    # 31.10 (v2.510, Ç3): LÜY istisnası bayrağı — geçmeyince korunur
+    assert istemci.put("/v1/plants/p1/eak", json={"luy_istisna": True}).json()["luy_istisna"] is True
+    assert istemci.put("/v1/plants/p1/eak", json={"eak_kw": 2000}).json()["luy_istisna"] is True
+    assert istemci.put("/v1/plants/p1/eak", json={"luy_istisna": False}).json()["luy_istisna"] is False

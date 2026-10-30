@@ -76,3 +76,14 @@ def test_sablon_kapilari(istemci):
     assert c.post("/v1/plants/p1/kgup/sablon", files={"dosya": ("k.csv", b"A;B\n1;2\n", "text/csv")}).status_code == 422
     s = c.delete("/v1/plants/p1/kgup/sablon").json()["sablon"]
     assert s["kaynak"] is None and s["kolonlar"] == ["Tarih", "Saat", "UEVCB", "KGUP_MWh", "EAK_MW"] and "kgup_sablon" not in depo["params_json"]
+
+
+def test_epys_disa_aktarimi_uyarisi():
+    """v2.510 (04 #5): EPYS «KGÜP Listeleme» dışa aktarımı (Tarih/Versiyon/Bölge/Santral/UEVÇB/Miktar) yükleme şablonu değildir → uyarı."""
+    from pvquant.ext.turkiye import kgup
+    b = "Tarih;Versiyon;Bölge;Santral;UEVÇB;Saat;Miktar KGUP MWh\n01.11.2026;1;TR1;Edikli GES;40X;0;0,000\n".encode("utf-8-sig")
+    r = kgup.sablon_ogren(b, "epys.csv")
+    assert any("EPYS" in u and "TPYS" in u for u in r["uyarilar"]), r["uyarilar"]
+    b2 = "Tarih;Saat;UEVCB;KGUP_MWh;EAK_MW\n01.11.2026;0;40X;0,000;12\n".encode("utf-8-sig")
+    assert not any("EPYS" in u for u in kgup.sablon_ogren(b2, "tpys.csv")["uyarilar"])
+    assert "TPYS" in kgup.SABLON_DURUMU and "EPYS'den" not in kgup.SABLON_DURUMU

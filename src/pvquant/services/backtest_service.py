@@ -146,7 +146,7 @@ def wmape_pct(program_mw: pd.Series, gercek_mw: pd.Series) -> float | None:
 
 
 def wmape_duyarlilik_df(df: pd.DataFrame, fiyat: pd.DataFrame, segment: str | None = None, ariza_sayisi: int = 0,
-                        seviyeler=DUYARLILIK_SEVIYELERI, kurulu_guc_mw: float | None = None) -> dict | None:
+                        seviyeler=DUYARLILIK_SEVIYELERI, kurulu_guc_mw: float | None = None, luy_istisna: bool = False) -> dict | None:
     """v2.508 (04 #2) — SAF, VARSAYIMSAL: santralin kendi hata deseni ölçeklenerek «tahmin hatası şu WMAPE seviyesinde olsaydı» uzlaştırma
     kalemleri. Hedef w için program_w = gerçek − (gerçek − program) × (w / WMAPE_gerçek); 0 ile kurulu güç arasına kırpılır (kırpma elde
     edilen WMAPE'yi hedeften biraz saptırabilir; «wmape_elde» ayrıca verilir). C iş kolunun tohumlu AR(1)+Laplace üretecinden farkı: burada
@@ -171,7 +171,7 @@ def wmape_duyarlilik_df(df: pd.DataFrame, fiyat: pd.DataFrame, segment: str | No
         prog = prog.clip(lower=0.0)
         if kurulu_guc_mw:
             prog = prog.clip(upper=kurulu_guc_mw)
-        r = d.saatlik(prog, ger, ptf, smf, yon=yon, segment=segment, ariza_sayisi=ariza_sayisi)
+        r = d.saatlik(prog, ger, ptf, smf, yon=yon, segment=segment, ariza_sayisi=ariza_sayisi, luy_istisna=luy_istisna)
         eksik = float(((-r["sapma"]).clip(lower=0) * (r["p_neg"] - r["ptf"])).sum()); fazla = float((r["sapma"].clip(lower=0) * (r["ptf"] - r["p_poz"])).sum())
         kup_ok = r["kupst"].notna().all(); kup = float(r["kupst"].sum()) if kup_ok else None
         toplam = (float(r["dengesizlik_maliyeti"].sum()) + kup) if kup is not None else None
@@ -185,7 +185,8 @@ def wmape_duyarlilik_df(df: pd.DataFrame, fiyat: pd.DataFrame, segment: str | No
             "not": "Varsayımsal duyarlılık: aynı fiyat ve yön geçmişinde tahmin hatası farklı olsaydı uzlaştırma kalemleri ne olurdu. Gelecek için öngörü ya da taahhüt değildir."}
 
 
-def maliyet_geri_test_df(df: pd.DataFrame, fiyat: pd.DataFrame, segment: str | None = None, ariza_sayisi: int = 0, kurulu_guc_mw: float | None = None) -> dict:
+def maliyet_geri_test_df(df: pd.DataFrame, fiyat: pd.DataFrame, segment: str | None = None, ariza_sayisi: int = 0, kurulu_guc_mw: float | None = None,
+                         luy_istisna: bool = False) -> dict:
     """SAF. df: ts_utc, gercek_kw, kgup_kw (D-1 15:30 öncesi koşunun P50'si), naif_kw. fiyat: ptf/smf/yon/kaynak.
     Aylık (C T4 biçimi): üretim, sapma, eksik/fazla kayıp, KÜPST, toplam, referans programa göre fark; karşı-olgu sütunları
     «2026 kuralı tüm döneme» ve «2026 + V = 100» (C iş kolu tanımı: EDT formülü + KÜPST 2026 katsayıları). Mekanizma kırılımı (C T5):
@@ -202,12 +203,12 @@ def maliyet_geri_test_df(df: pd.DataFrame, fiyat: pd.DataFrame, segment: str | N
     f = fiyat.reindex(x.index); yon, fiyat_ozeti = _yon_ve_kaynak(f)
     ger = x["gercek_kw"].astype(float) / 1000.0; kg = x["kgup_kw"].astype(float) / 1000.0
     ptf = f["ptf"].astype(float); smf = f["smf"].astype(float)
-    ortak = dict(yon=yon, segment=segment, ariza_sayisi=ariza_sayisi)
+    ortak = dict(yon=yon, segment=segment, ariza_sayisi=ariza_sayisi, luy_istisna=luy_istisna)
     yur = d.saatlik(kg, ger, ptf, smf, **ortak)
     ko26 = d.saatlik(kg, ger, ptf, smf, karsi_olgu="2026", **ortak)
     kov = d.saatlik(kg, ger, ptf, smf, karsi_olgu="2026_V100", **ortak)
     naif_var = x["naif_kw"].notna()
-    naif = d.saatlik(x.loc[naif_var, "naif_kw"].astype(float) / 1000.0, ger[naif_var], ptf[naif_var], smf[naif_var], yon=yon[naif_var], segment=segment, ariza_sayisi=ariza_sayisi) if naif_var.sum() >= 24 else None
+    naif = d.saatlik(x.loc[naif_var, "naif_kw"].astype(float) / 1000.0, ger[naif_var], ptf[naif_var], smf[naif_var], yon=yon[naif_var], segment=segment, ariza_sayisi=ariza_sayisi, luy_istisna=luy_istisna) if naif_var.sum() >= 24 else None
     eksik = ((-yur["sapma"]).clip(lower=0) * (yur["p_neg"] - yur["ptf"]))
     fazla = (yur["sapma"].clip(lower=0) * (yur["ptf"] - yur["p_poz"]))
     yerel = yur.index.tz_convert(IST)
@@ -242,7 +243,7 @@ def maliyet_geri_test_df(df: pd.DataFrame, fiyat: pd.DataFrame, segment: str | N
                  "v_tabani_saat": int((dal == "V").sum()), "b_dali_tl": _r0(top(fazla[dal == "B"])), "afl_dali_tl": _r0(top(eksik[dal == "AFL"])),
                  "senaryo_saat": fiyat_ozeti["senaryo_saat"], "yon_varsayilan_saat": fiyat_ozeti["yon_varsayilan_saat"], "yon_eksik_saat": fiyat_ozeti["yon_eksik_saat"],
                  "hesaplanamayan_saat": int((yur["durum"] != "ok").sum())}
-    duyarlilik = wmape_duyarlilik_df(df, fiyat, segment=segment, ariza_sayisi=ariza_sayisi, kurulu_guc_mw=kurulu_guc_mw)   # v2.508 (04 #2)
+    duyarlilik = wmape_duyarlilik_df(df, fiyat, segment=segment, ariza_sayisi=ariza_sayisi, kurulu_guc_mw=kurulu_guc_mw, luy_istisna=luy_istisna)   # v2.508 (04 #2)
     return {"gun_sayisi": int(pd.Series(yur.index.tz_convert(IST).date).nunique()), "aylar": aylar, "toplam": toplam, "mekanizma": mekanizma,
             "duyarlilik": duyarlilik,
             "kural_surumu": " | ".join(sorted(set(yur["kural_surumu"]))), "fiyat": fiyat_ozeti,
@@ -258,6 +259,6 @@ def maliyet_geri_test(tenant_id, plant: dict, gun: int = 365) -> dict:
     fiyat = piyasa_service.fiyatlar(idx)
     seg = dz.segment_bilgisi(plant.get("params_json")); pj = dz._pj(plant.get("params_json"))
     out = maliyet_geri_test_df(df, fiyat, segment=seg["segment"], ariza_sayisi=int(pj.get("ariza_sayisi_ay") or 0),
-                               kurulu_guc_mw=(float(plant.get("capacity_kwp") or 0) / 1000.0) or None)
+                               kurulu_guc_mw=(float(plant.get("capacity_kwp") or 0) / 1000.0) or None, luy_istisna=bool(pj.get("luy_istisna")))
     out["pencere_gun"] = gun; out["segment"] = seg
     return out

@@ -22,8 +22,8 @@ const KARTLAR: readonly {
   resim: string; genis?: true;
 }[] = [
   { ad: "Teslim programı", etiket: "Bir gün önce, teslim saati", resim: tlTeslim,
-    metin: "Yarının saatlik programı ve emre amadelik bildirimi teslim saatinden önce hazırdır; bir gecikme olursa alarm sizi uyarır.",
-    kunye: ["saatlik", "emre amadelik", "alarm uyarısı"] },
+    metin: "Yarının saatlik programı ve verilebilecek en yüksek güç (EAK) bildirimi teslim saatinden önce hazırdır; bir gecikme olursa alarm sizi uyarır.",
+    kunye: ["saatlik", "EAK", "alarm uyarısı"] },
   { ad: "Uzlaştırma kalemleri", etiket: "Ay boyunca, gün gün", resim: tlSapma,
     metin: "Dengesizlik tutarı (EDT) ve KGÜP sapması (KÜPST) ayrı kalem olarak izlenir; hesap yürürlükteki formülle, fiyat kaynağı ve kural sürümü etiketiyle yapılır ve pilotla doğrulanmaktadır.",
     kunye: ["EDT ve KÜPST ayrı", "kural ve kaynak etiketi", "basit yönteme karşı"] },

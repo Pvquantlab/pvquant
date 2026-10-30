@@ -70,7 +70,7 @@ def _r0(v):
 
 
 def hesapla_df(df: pd.DataFrame, fiyat: pd.DataFrame, kat: d.Katsayilar | None = None, segment: str | None = None,
-               ariza_sayisi: int = 0) -> dict:
+               ariza_sayisi: int = 0, luy_istisna: bool = False) -> dict:
     """SAF. df: ts_utc, gercek_kw, kgup_kw, naif_kw (kW ≈ kWh/saat → MWh = /1000). fiyat: aynı ts index'li ptf/smf/yon/kaynak.
     Çıktı: aylar[] ve toplam — EDT (edt_neg/edt_poz/edta/edtb), kayıp (dengesizlik_tl), KÜPST (kupst_tl) AYRI;
     pvquant_tl = kayıp + KÜPST («uzlaştırma kalemleri toplamı»; KÜPST hesaplanamıyorsa None)."""
@@ -86,7 +86,7 @@ def hesapla_df(df: pd.DataFrame, fiyat: pd.DataFrame, kat: d.Katsayilar | None =
     yon, fiyat_ozeti = _yon_ve_kaynak(f)
     ger = x["gercek_kw"].astype(float) / 1000.0; kg = x["kgup_kw"].astype(float) / 1000.0
     ptf = f["ptf"].astype(float); smf = f["smf"].astype(float)
-    pv = d.saatlik(kg, ger, ptf, smf, kat, yon=yon, segment=segment, ariza_sayisi=ariza_sayisi)
+    pv = d.saatlik(kg, ger, ptf, smf, kat, yon=yon, segment=segment, ariza_sayisi=ariza_sayisi, luy_istisna=luy_istisna)
     ay_pv = d.aylik_karne(pv)
     naif_var = x["naif_kw"].notna(); ay_naif = None
     if naif_var.sum() >= 24:
@@ -158,14 +158,15 @@ def katsayilar(params_json) -> d.Katsayilar:
                         kupst_kgup_yukumlu=bool(seg["kgup_yukumlu"]) if seg["kgup_yukumlu"] is not None else True)
 
 
-def kural_ozeti(segment: str | None, tarih=None) -> dict:
+def kural_ozeti(segment: str | None, tarih=None, luy_istisna: bool = False) -> dict:
     """Ekran etiketi için yürürlükteki kural (tarih verilmezse bugün, İstanbul)."""
-    r = kr.kural(tarih or pd.Timestamp.now(tz=IST).date(), segment)
+    r = kr.kural(tarih or pd.Timestamp.now(tz=IST).date(), segment, luy_istisna=luy_istisna)
     return {"tarih": r.tarih.isoformat(), "kural_surumu": r.surum, "rejim": r.edt.rejim, "edt_dayanak": r.edt.dayanak,
             "k": r.edt.k, "l": r.edt.l, "V": r.edt.V, "B": r.edt.B, "AFL": r.edt.AFL, "aylik_toplama": r.edt.toplama,
             "kupst_m": r.kupst.m, "kupst_n": r.kupst.n, "kupst_n_ariza": r.kupst.n_ariza, "kupst_ariza_esigi": r.kupst.ariza_esigi,
             "kupst_taban": r.kupst.taban, "kupst_net_sapma": r.kupst.net_sapma, "kupst_birim": r.kupst.birim, "kupst_dayanak": r.kupst.dayanak,
-            "dsg_esik": r.dsg_esik, "dsg_dayanak": r.dsg_dayanak, "belirsiz_2027": r.belirsiz_2027}
+            "dsg_esik": r.dsg_esik, "dsg_dayanak": r.dsg_dayanak, "belirsiz_2027": r.belirsiz_2027,
+            "belirsiz_2027_gerekce": kr.BELIRSIZ_2027_GEREKCE if r.belirsiz_2027 else None}
 
 
 def simulasyon(tenant_id, plant: dict, gun: int = 90) -> dict:
@@ -176,12 +177,12 @@ def simulasyon(tenant_id, plant: dict, gun: int = 90) -> dict:
     pj = _pj(plant.get("params_json"))
     seg = segment_bilgisi(plant.get("params_json"))
     kat = katsayilar(plant.get("params_json"))
-    ariza = int(pj.get("ariza_sayisi_ay") or 0)
-    out = hesapla_df(df, fiyat, kat, segment=seg["segment"], ariza_sayisi=ariza)
+    ariza = int(pj.get("ariza_sayisi_ay") or 0); luy = bool(pj.get("luy_istisna"))   # 31.10 (v2.510, Ç3): LÜY m.5(1)(ç),(d),(e) istisnası
+    out = hesapla_df(df, fiyat, kat, segment=seg["segment"], ariza_sayisi=ariza, luy_istisna=luy)
     out["oneri"] = oneri_kantili(fiyat, kat)   # v2.287
     out["pencere_gun"] = gun
-    out["segment"] = seg
-    out["kural"] = kural_ozeti(seg["segment"])
+    out["segment"] = seg; out["luy_istisna"] = luy
+    out["kural"] = kural_ozeti(seg["segment"], luy_istisna=luy)
     k = out["kural"]
     kupst_not = ("KÜPST: segment seçilmedi, hesaplanmadı; " if not seg["segment"]
                  else f"KÜPST: {k['kupst_dayanak']}; " if k["kupst_n"] is not None or seg["segment"] == "lisanssiz_dagitim"
@@ -235,7 +236,7 @@ def _para_payi(pay: pd.Series, edt_grup: pd.Series) -> float:
 
 def dsg_hesapla_df(programlar: dict[str, pd.DataFrame], fiyat: pd.DataFrame, kat: d.Katsayilar | None = None,
                    segmentler: dict[str, str | None] | None = None, ariza_sayilari: dict[str, int] | None = None,
-                   dagitim_anahtari: str = "sapma") -> dict:
+                   dagitim_anahtari: str = "sapma", luy_istisnalar: dict[str, bool] | None = None) -> dict:
     """SAF (v2.502, F-08). programlar[santral] = program_df çıktısı (ts_utc, gercek_kw, kgup_kw). Yürürlükteki DSG kuralı:
     üye eşiği (%10 / %5 / 2027 varsayım) PH = max(A, F) ile; aşan kısım bireysel; KÜPST üye bazında toplanır, netleşmez;
     dengesizlik taşımayan segment portföy dışı. Alan adları sözleşme: ayri_tl = tek başına kayıp, net_tl = DSG kaybı,
@@ -259,7 +260,7 @@ def dsg_hesapla_df(programlar: dict[str, pd.DataFrame], fiyat: pd.DataFrame, kat
         return {**bos, "santral": len(K), "n_saat": int(len(idx) if idx is not None else 0), "not": "ortak saat yetersiz"}
     f = fiyat.reindex(idx); ptf = f["ptf"].astype(float); smf = f["smf"].astype(float)
     yon, fiyat_ozeti = _yon_ve_kaynak(f)
-    r = d.dsg_saatlik({a: K[a].loc[idx] for a in K}, {a: G[a].loc[idx] for a in G}, ptf, smf, yon=yon, segmentler=segmentler, ariza_sayilari=ariza_sayilari,
+    r = d.dsg_saatlik({a: K[a].loc[idx] for a in K}, {a: G[a].loc[idx] for a in G}, ptf, smf, yon=yon, segmentler=segmentler, ariza_sayilari=ariza_sayilari, luy_istisnalar=luy_istisnalar,
                       dagitim_anahtari=dagitim_anahtari)
     sa = r["saatlik"]
     if sa.empty:
@@ -298,12 +299,13 @@ def dsg_ozet(tenant_id, gun: int = 30, dagitim_anahtari: str = "sapma") -> dict:
     programlar = {p["name"]: program_df(tenant_id, str(p["id"]), gun) for p in santraller}
     segmentler = {p["name"]: segment_bilgisi(p.get("params_json"))["segment"] for p in santraller}
     ariza = {p["name"]: int(_pj(p.get("params_json")).get("ariza_sayisi_ay") or 0) for p in santraller}
+    luy = {p["name"]: bool(_pj(p.get("params_json")).get("luy_istisna")) for p in santraller}   # 31.10 (v2.510, Ç3)
     idx = pd.DatetimeIndex([], tz="UTC")
     for df in programlar.values():
         if df is not None and not df.empty:
             idx = idx.union(pd.DatetimeIndex(df["ts_utc"]))
     fiyat = piyasa_service.fiyatlar(idx) if len(idx) else pd.DataFrame(columns=["ptf", "smf", "yon", "kaynak"])
-    out = dsg_hesapla_df(programlar, fiyat, segmentler=segmentler, ariza_sayilari=ariza, dagitim_anahtari=dagitim_anahtari)
+    out = dsg_hesapla_df(programlar, fiyat, segmentler=segmentler, ariza_sayilari=ariza, dagitim_anahtari=dagitim_anahtari, luy_istisnalar=luy)
     out["pencere_gun"] = gun
     out.setdefault("fiyat", {"epias_saat": int((fiyat["kaynak"] == "epias").sum()) if len(fiyat) else 0, "senaryo_saat": int((fiyat["kaynak"] == "senaryo").sum()) if len(fiyat) else 0})
     out["segment_yok"] = [p["name"] for p in santraller if not segmentler[p["name"]]]

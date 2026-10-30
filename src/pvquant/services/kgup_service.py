@@ -120,7 +120,7 @@ def uret(tenant_id, plant: dict, gun: date, kantil: str = "p50", uevcb: str | No
     except Exception:   # noqa: BLE001 — öneri süsleme; KGÜP üretimi düşmez
         oneri = None
     return {"gun": gun.isoformat(), "kantil": kantil, "kosu": kosu, "uyarilar": uyarilar, "sicrama_saatleri": son.sicrama_saatleri,
-            "dengeleme_birimi": dengeleme_birimi, "gip": gip, "oneri": oneri,
+            "dengeleme_birimi": dengeleme_birimi, "luy_istisna": bool(pj.get("luy_istisna")), "gip": gip, "oneri": oneri,
             "toplam_mwh": round(float(son.tablo["kgup_mwh"].sum()), 3), "eak": eak_bilgi,   # v2.275
             "satirlar": [{"saat": int(r.saat), "kgup_mwh": float(r.kgup_mwh), "eak_mw": float(r.eak_mw), "eak_mwh": float(r.eak_mw)}   # eak_mwh: eski alan adı (aynı değer, MW); yeni istemciler eak_mw okur
                          for r in son.tablo.itertuples()],

@@ -21,7 +21,7 @@ const ISLER: readonly {
   {
     masa: "Program teslimi",
     sonuc: "Üretim programınız (KGÜP) zamanında hazır olsun",
-    fayda: "Yarının saatlik programı ve emre amade kapasite panelden dosya olarak iner (CSV/XLSX); teslim penceresi ve gün içi düzeltme fırsatları izlenir.",
+    fayda: "Yarının saatlik programı ve verilebilecek en yüksek güç (EAK) panelden dosya olarak iner (CSV/XLSX); teslim penceresi ve gün içi düzeltme fırsatları izlenir.",
     kunye: [["Hazır", "bir gün önce, öğleden sonra"], ["Çözünürlük", "saatlik (15 dk veri hazır)"]],
     bag: ["/yontem#para", "Panelde nasıl görünür"],
     grup: "tahmin", ikon: "band", resim: isTeslim,

@@ -209,3 +209,58 @@ def test_dsg_esik_tarihe_gore_ve_dengesizlik_tasimayan_uye_disi():
     assert r27["saatlik"].iloc[0].esik == 0.05 and "VARSAYILDI" in r27["esik_kaynak"]
     r_p = d.dsg_saatlik({"a": pd.Series([10.0], index=i)}, {"a": pd.Series([9.0], index=i)}, pd.Series([2000.0], index=i), pd.Series([2500.0], index=i), esik_oran=0.2)
     assert r_p["saatlik"].iloc[0].esik == 0.2 and r_p["esik_kaynak"] == "parametre"
+
+
+# ---------------------------------------------------------------- v2.510: araştırma (31.10.2026) çelişkileri Ç1–Ç3, Ç5 ----------
+def test_c1_afl_zinciri_2015_2022():
+    """Ç1: 1.9.2022 öncesi AFL tek değer (4.800) değil; RG kararları + EPİAŞ aylık duyuruları (bulgular/08.md §8.2)."""
+    bekl = {date(2022, 9, 1): 4800.0, date(2022, 8, 31): 4000.0, date(2022, 8, 1): 4000.0, date(2022, 7, 1): 3750.0, date(2022, 6, 1): 3200.0,
+            date(2022, 5, 20): 2750.0, date(2022, 5, 19): 2500.0, date(2022, 4, 1): 2500.0, date(2022, 3, 31): 1745.0, date(2022, 3, 1): 1745.0,
+            date(2022, 1, 1): 1345.0, date(2021, 12, 1): 1217.0, date(2021, 10, 16): 1078.0, date(2021, 10, 15): 718.0, date(2021, 10, 1): 718.0,
+            date(2021, 5, 1): 578.0, date(2020, 11, 1): 566.0, date(2020, 10, 7): 563.0, date(2020, 10, 6): 2000.0, date(2020, 4, 1): 2000.0,
+            date(2020, 3, 31): 600.0, date(2020, 1, 1): 600.0, date(2019, 12, 31): 2000.0, date(2015, 7, 1): 2000.0}
+    for g, v in bekl.items():
+        assert kr.afl(g) == v, (g, kr.afl(g), v)
+    assert kr.afl(date(2023, 1, 1)) == 4200.0 and kr.afl(date(2026, 4, 4)) == 4500.0      # mevcut zincir bozulmadı
+    assert "doğrulanmadı" in kr.afl_dayanak(date(2018, 1, 1)) and "11083" in kr.afl_dayanak(date(2022, 8, 15))
+
+
+def test_c2_lisanssiz_net_sapma_yok():
+    """Ç2: Karar 14907 Md.1(3) — lisanssızlarda hesap yalnız üretim miktarıyla (UEÇM düşülmez)."""
+    g = date(2026, 11, 5)
+    assert kr.kural(g, "lisansli_serbest").kupst.net_sapma is True
+    assert kr.kural(g, "lisanssiz_iletim").kupst.net_sapma is False
+    assert kr.kural(g, "lisanssiz_dagitim", portfoy=True).kupst.net_sapma is False
+    i = _saat("2026-11-05 08:00")
+    r = _vek("2026-11-05 08:00", 3400.00, 3400.00, "fazla", 10, 12, segment="lisanssiz_iletim", uecm_mwh=pd.Series([0.3], index=i))
+    _yakin(r.kupst, 0.0)          # |12 − 10| = 2 ≤ 0,20·10 → KÜPSM 0 (brüt); net tanımla |11,7 − 10| = 1,7 de 0 verirdi — ayırt edici örnek:
+    r = _vek("2026-11-05 08:00", 3400.00, 3400.00, "fazla", 10, 12.5, segment="lisanssiz_iletim", uecm_mwh=pd.Series([0.3], index=i))
+    _yakin(r.kupst, 0.5 * 3400.0 * 0.02)   # brüt: |12,5 − 10| − 2 = 0,5 MWh; net olsaydı |12,2 − 10| − 2 = 0,2
+
+
+def test_c5_kupst_7524_etiketi():
+    """Ç5: 1.8.2020 öncesi Karar 7524 (m 0,1 / n 0,03; ilk 3 ay 0,015 penceresi tarihi bulunamadı)."""
+    assert kr.kural(date(2020, 7, 31), "lisansli_serbest").kupst.surum == "kupst-7524"
+    assert kr.kural(date(2020, 8, 1), "lisansli_serbest").kupst.surum == "kupst-9422"
+    assert kr.kural(date(2020, 7, 31), "lisansli_serbest").kupst.m == 0.10
+
+
+def test_c3_luy_istisnasi():
+    """Ç3: Karar 14907 Md.5 — LÜY m.5(1)(ç),(d),(e) kapsamındaki iletime bağlı lisanssız tesislere karar uygulanmaz (1.11.2026'dan)."""
+    g = date(2026, 11, 5)
+    k = kr.kural(g, "lisanssiz_iletim", luy_istisna=True).kupst
+    assert k.surum == "kupst-14907-luy-istisna" and k.m == 0.0 and k.n == 0.0 and "Md.5" in k.dayanak
+    assert kr.kural(date(2026, 10, 5), "lisanssiz_iletim", luy_istisna=True).kupst.surum == "kupst-14029-iletim"   # 14907 öncesi etkisiz
+    assert kr.kural(g, "lisansli_serbest", luy_istisna=True).kupst.surum == "kupst-14907"                       # yalnız iletim lisanssız
+    i = _saat("2026-11-05 08:00")
+    s = d.saatlik(pd.Series([10.0], index=i), pd.Series([13.0], index=i), pd.Series([3400.0], index=i), pd.Series([3400.0], index=i),
+                  yon="fazla", segment="lisanssiz_iletim", luy_istisna=True)
+    assert float(s.kupst.iloc[0]) == 0.0 and s.durum.iloc[0] == "ok"
+    c = kr.parametre_cercevesi(i, "lisanssiz_iletim", luy_istisna=True)
+    assert float(c["m"].iloc[0]) == 0.0 and float(c["n"].iloc[0]) == 0.0
+
+
+def test_dsg_2027_etiketi():
+    _, day = kr.dsg_esigi(date(2027, 3, 1))
+    assert "13869" in day and "1.12.2026" in day and "VARSAYILDI" in day
+    assert "1.1.2025" in kr.dsg_esigi(date(2025, 6, 1))[1]

@@ -7,8 +7,11 @@ için, ardışık iki saat farkı ≥ 200 MWh ise (m.69(3)); GES dengeleme birim
 `dengeleme_birimi` bayrağıyla açılır. Gün içi güncelleme: GİP kapı kapanışı + 30 dk'ya kadar (m.69(1)).
 EAK = güç (MW), saat başına bir değer (m.4(1), m.69/A(1)); çeyrek satırlarda BÖLÜNMEZ. KGÜP (MWh) ≤ EAK (MW×1 s) ≤ kurulu güç.
 Eksik tahmin saati 0 yazılmaz: dosya üretilmez, eksik saatler bildirilir (KGÜP 0 olan saatte üretimin tamamı sapma sayılır).
-TPYS CSV şablonu resmî olarak TEYİT EDİLEMEDİ (TPYS girişi gerekir) → kolonlar parametrik (`Sablon`; params_json.kgup_sablon
-ile eşlenir); ekranda «resmî şablonla karşılaştırılmadı» notu kalır. Dosya üretimi = bildirim DEĞİLDİR; gönderim müşterinin TPYS'sinden.
+TPYS CSV şablonu resmî olarak TEYİT EDİLEMEDİ: şablon EPYS'de değil TEİAŞ TPYS giriş sayfasında (Duyurular › «CSV Şablonları», 28.02.2018;
+KGUP.csv 146797, EAK.csv 146796; indirme CAPTCHA ister, oturum gerekmiyor görünüyor — 31.10.2026 araştırması bulgular/05.md) → kolonlar
+parametrik (`Sablon`; params_json.kgup_sablon ile eşlenir); ekranda «resmî şablonla karşılaştırılmadı» notu kalır. KGÜP/EAK girişi 1.2.2018'den
+beri TPYS'de; EPYS «DGP İşlemleri › KGÜP» yalnız okuma (fddp/list). Dosya üretimi = bildirim DEĞİLDİR; gönderim müşterinin TPYS'sinden
+(web servis kataloğu kamuya kapalı; erişim TPYS Admin › Web Servis Kullanıcı Talep, organizasyon başına ≤20 IP).
 Teklif: KGÜP olarak P50 yerine kantil (P10/P25/P50/P75/P90) seçilebilir; öneri dengesizlik.optimal_teklif_kantili.
 """
 from __future__ import annotations
@@ -24,7 +27,8 @@ TESLIM_BAS, TESLIM_SON, TEYIT = (14, 0), (15, 30), (17, 0)
 SICRAMA_ESIK_MWH = 200.0
 
 
-SABLON_DURUMU = "resmî TPYS şablonuyla henüz karşılaştırılmadı; EPYS'den indirdiğiniz bir dosyayı yükleyerek biçimi eşleyebilirsiniz"   # 29.10 dil: «pilotta» iç terim
+SABLON_DURUMU = ("resmî TPYS şablonuyla henüz karşılaştırılmadı; TPYS giriş sayfasındaki Duyurular › «CSV Şablonları» ekinden (KGUP.csv) "
+                 "ya da kendi bildirim dosyanızdan bir örnek yükleyerek biçimi eşleyebilirsiniz")   # 31.10 (v2.510): şablon EPYS'de değil TPYS'de
 TAKVIM = {"pencere_acilis": "14:00", "bytm_son": "14:30", "son": "15:30", "teyit": "17:00"}   # m.69(1), (4); EPİAŞ KGÜP sayfası
 
 
@@ -180,6 +184,9 @@ def sablon_ogren(b: bytes, dosya_adi: str = "") -> dict:
     eslesmeyen = [h for h in baslik if h and h not in kullanilan]
     if eslesmeyen:
         uyar.append(f"eşlenmeyen kolon(lar) yazılmaz: {', '.join(eslesmeyen)}")
+    if epys_disa_aktarim_mi(baslik):   # 31.10 (v2.510): EPYS KGÜP listesi (Tarih/Versiyon/Bölge/Santral/UEVÇB/Miktar) yükleme şablonu değildir
+        uyar.append("bu dosya EPYS «KGÜP Listeleme» dışa aktarımına benziyor (Versiyon/Bölge/Santral kolonları); TPYS yükleme şablonu değil — "
+                    "biçim yine de öğrenildi, TPYS'ye yüklemeden önce TPYS «CSV Şablonları» ekiyle karşılaştırın")
     tarih_bicim = "%d.%m.%Y"
     if "tarih" in eslesme and ornek:
         i = baslik.index(eslesme["tarih"]); v = ornek[i] if i < len(ornek) else ""
@@ -189,6 +196,15 @@ def sablon_ogren(b: bytes, dosya_adi: str = "") -> dict:
     sab = {rol: eslesme[rol] for rol in eslesme if rol in Sablon.__dataclass_fields__}
     sab.update({"ayrac": ayrac, "ondalik": ondalik, "tarih_bicim": tarih_bicim, "sira": ",".join(sira)})
     return {"sablon": sab, "eslesme": eslesme, "eslesmeyen": eslesmeyen, "bicim": bicim, "uyarilar": uyar, "dosya_adi": dosya_adi}
+
+
+_EPYS_IZI = ("versiyon", "version", "bolge", "region", "santral", "powerplant")
+
+
+def epys_disa_aktarim_mi(baslik: list[str]) -> bool:
+    """EPYS uzlaştırma listesi dışa aktarımı mı? (Versiyon/Bölge/Santral gibi en az iki iz) — yükleme şablonuyla karıştırılmasın."""
+    sade = [_sade(h) for h in baslik if h]
+    return sum(any(iz in h for h in sade) for iz in _EPYS_IZI) >= 2
 
 
 def baslik_rolleri(baslik: list[str], eslesme: dict[str, str]) -> list[str]:

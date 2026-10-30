@@ -1,6 +1,7 @@
 """Uzlaştırma kalemleri simülatörü — EDT (DUY m.110(1)-(2)) ve KÜPST (m.110(3)-(6)); kural TARİHE göre (kurallar.py, F-01).
 
-Saatlik (uzlaştırma dönemi u; 15 dk başlayana kadar saat):
+Saatlik (uzlaştırma dönemi u = saat, m.91(1) değişmedi; 15 dakikaya geçen yalnız DGP «ç» alt dönemi (m.91(2), Geçici 40: 1.1.2027'den önce
+başlamaz) — o zaman SMF_N/SMF_P çeyrek SMF'lerin max/min'i olur; 2026'da saat içinde tek SMF var, SMF_N = SMF_P = saatlik SMF):
   EDM = gerçekleşen − piyasa pozisyonu (pozisyon verilmezse KGÜP; MWh).
   2025 rejimi (≤31.12.2025): P(−) = max(PTF, SMF)·(1+k); P(+) = min(PTF, SMF)·(1−l); k = l = 0,03.
   2026 rejimi (≥1.1.2026): P(−) = max(V, PTF, SMF_N)·(1+k_yön); max(PTF, SMF_N) = AFL ise P(−) = AFL·1,05·(1+k_yön) [AFL dalı].
@@ -91,7 +92,7 @@ def birim_fiyatlar(ptf: pd.Series, smf: pd.Series, yon, *, smf_n: pd.Series | No
 def saatlik(kgup_mwh: pd.Series, gerceklesen_mwh: pd.Series, ptf: pd.Series, smf: pd.Series, kat: Katsayilar | None = None, *,
             yon=None, segment: str | None = None, ariza_sayisi: int = 0, smf_n: pd.Series | None = None, smf_p: pd.Series | None = None,
             pozisyon_mwh: pd.Series | None = None, budup_mwh: pd.Series | None = None, uecm_mwh: pd.Series | None = None,
-            portfoy: bool = False, karsi_olgu: str | None = None) -> pd.DataFrame:
+            portfoy: bool = False, karsi_olgu: str | None = None, luy_istisna: bool = False) -> pd.DataFrame:
     """Saatlik uzlaştırma kalemleri. Girdiler MWh; index saat dilimli (UTC önerilir) — kural teslim gününe (İstanbul) göre seçilir.
     yon: sistem yönü (Series/str; 'acik'|'fazla'|'dengede' ya da EPİAŞ metni). 2026 saatlerinde yön yoksa EDT NaN ve durum 'yon_eksik'."""
     kat = kat or Katsayilar()
@@ -108,7 +109,7 @@ def saatlik(kgup_mwh: pd.Series, gerceklesen_mwh: pd.Series, ptf: pd.Series, smf
     referans_gelir = G * P
     kayip = referans_gelir - gerceklesen_gelir      # = poz·(PTF − P(+)) + neg·(P(−) − PTF)
     # --- KÜPST ---
-    prm = kr.parametre_cercevesi(idx, segment, ariza_sayisi, portfoy, karsi_olgu=karsi_olgu)
+    prm = kr.parametre_cercevesi(idx, segment, ariza_sayisi, portfoy, karsi_olgu=karsi_olgu, luy_istisna=luy_istisna)
     m = prm["m"].values.astype(float); n = prm["n"].values.astype(float)
     if kat.kupst_tolerans is not None:
         m = np.full(len(idx), float(kat.kupst_tolerans))
@@ -197,6 +198,7 @@ DAGITIM_ETIKET = {"sapma": "sapma payına göre", "esit": "eşit", "uretim": "ü
 def dsg_saatlik(programlar: dict[str, pd.Series], gerceklesenler: dict[str, pd.Series], ptf: pd.Series, smf: pd.Series, *,
                 yon=None, segmentler: dict[str, str | None] | None = None, pozisyonlar: dict[str, pd.Series] | None = None,
                 esik_oran: float | None = None, ariza_sayilari: dict[str, int] | None = None,
+                luy_istisnalar: dict[str, bool] | None = None,
                 dagitim_anahtari: str = "sapma") -> dict:
     """F-08 (v2.502) — DSG netleşmesi, DUY m.111(3)-(5) + Karar 13869: her üye için PH = max(UEVM, satış) (saf satıcı GES: max(A, F));
     üyenin |EDM|'sinin esik × PH kadarı grupta netleşir, aşan kısım üyenin kendi P(−)/P(+)'sıyla bireysel kalır; grubun net EDM'si
@@ -237,7 +239,8 @@ def dsg_saatlik(programlar: dict[str, pd.Series], gerceklesenler: dict[str, pd.S
         br = birey.clip(lower=0) * f["p_poz"] - (-birey).clip(lower=0) * f["p_neg"]
         k_tek = edm.clip(lower=0) * (P - f["p_poz"]) + (-edm).clip(lower=0) * (f["p_neg"] - P)
         k_br = birey.clip(lower=0) * (P - f["p_poz"]) + (-birey).clip(lower=0) * (f["p_neg"] - P)
-        uye = saatlik(programlar[ad].loc[idx], A, P, S, yon=yon, segment=segmentler.get(ad), ariza_sayisi=(ariza_sayilari or {}).get(ad, 0))
+        uye = saatlik(programlar[ad].loc[idx], A, P, S, yon=yon, segment=segmentler.get(ad), ariza_sayisi=(ariza_sayilari or {}).get(ad, 0),
+                      luy_istisna=bool((luy_istisnalar or {}).get(ad, False)))
         detay[ad] = pd.DataFrame({"edm": edm, "ph": ph, "grup_payi": grup, "bireysel": birey, "edt_tek": tek, "edt_bireysel": br, "kupst": uye["kupst"], "uretim": A})
         grup_edm += grup; birey_edt += br; tek_edt += tek; kayip_tek += k_tek; kayip_birey += k_br
         kupst_top += uye["kupst"].fillna(0.0); kupst_eksik |= uye["kupst"].isna()

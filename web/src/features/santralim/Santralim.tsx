@@ -89,7 +89,7 @@ export function Santralim({ plantId }: { plantId: string }) {
   useEffect(() => { api.pr(plantId).then(setPr).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps   // v2.249
   const [sg, setSg] = useState<Saglik | null>(null);   // v2.256
   const [seg, setSeg] = useState<{ segment: string | null; dengesizlik_sahibi: string | null } | null>(null);   // v2.260
-  useEffect(() => { api.dengesizlik(plantId, 14).then((d) => d && setSeg({ segment: d.segment.segment, dengesizlik_sahibi: d.segment.dengesizlik_sahibi })).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { api.dengesizlik(plantId, 14).then((d) => { if (!d) return; setSeg({ segment: d.segment.segment, dengesizlik_sahibi: d.segment.dengesizlik_sahibi }); if (d.luy_istisna !== undefined) setLuyIstisna((v) => (v === null ? !!d.luy_istisna : v)); }).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { api.saglik(plantId).then(setSg).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   // v2.274 (Dalga 3 tamamlayıcısı): fizik terimleri — santral bazında aç/kapa + "açsam ne değişir?" önizlemesi
   const [ft, setFt] = useState<FizikTerimleri | null>(null);
@@ -109,11 +109,12 @@ export function Santralim({ plantId }: { plantId: string }) {
   const [eakKw, setEakKw] = useState<string>(""); const [gecKw, setGecKw] = useState<string>(""); const [gecBitis, setGecBitis] = useState<string>("");
   const [dengelemeBirimi, setDengelemeBirimi] = useState<boolean>(false);   // 29.10 (F-05): 15 dk dilimleme yalnız dengeleme birimi
   const [arizaAy, setArizaAy] = useState<string>("");   // 29.10 (v2.505): bu ay bildirilen arıza kaydı — KÜPST katsayısı eşiğinde yükselir
+  const [luyIstisna, setLuyIstisna] = useState<boolean | null>(null);   // 31.10 (v2.510, Ç3): null = dokunulmadı (gönderilmez); LÜY m.5(1)(ç),(d),(e)
   const [eakMesaj, setEakMesaj] = useState<string | null>(null);
   const eakKaydet = () => {
     setEakMesaj(null);
-    api.eakAyarla(plantId, { eak_kw: eakKw ? Number(eakKw) : null, gecici_kw: gecKw ? Number(gecKw) : null, gecici_bitis: gecBitis || null, dengeleme_birimi: dengelemeBirimi, ...(arizaAy !== "" ? { ariza_sayisi_ay: Number(arizaAy) } : {}) })
-      .then((r) => setEakMesaj(`Kaydedildi. Bugün EAK ${sayiTr(r.eak_bugun.eak_mw, 2)} MW (${r.eak_bugun.kaynak})${r.ariza_sayisi_ay != null ? `; bu ay arıza kaydı ${sayiTr(r.ariza_sayisi_ay)}` : ""}`))
+    api.eakAyarla(plantId, { eak_kw: eakKw ? Number(eakKw) : null, gecici_kw: gecKw ? Number(gecKw) : null, gecici_bitis: gecBitis || null, dengeleme_birimi: dengelemeBirimi, ...(arizaAy !== "" ? { ariza_sayisi_ay: Number(arizaAy) } : {}), ...(luyIstisna !== null ? { luy_istisna: luyIstisna } : {}) })
+      .then((r) => setEakMesaj(`Kaydedildi. Bugün verilebilecek en yüksek güç ${sayiTr(r.eak_bugun.eak_mw, 2)} MW (${r.eak_bugun.kaynak})${r.ariza_sayisi_ay != null ? `; bu ay arıza kaydı ${sayiTr(r.ariza_sayisi_ay)}` : ""}`))
       .catch((e) => setEakMesaj(String((e as Error).message ?? e)));
   };
   // v2.281: kullanılabilirlik (otomatik tespit) + tarife/gelir yapılandırması
@@ -559,10 +560,10 @@ export function Santralim({ plantId }: { plantId: string }) {
             </div>
           </div>
           <div className="ayar">
-            <div><div className="ayar-ad">Emre amade kapasite</div>
-              <div className="ayar-aciklama">Üretim programı dosyaları bu sınırı aşmaz. Geçici kısıt bakım ya da arıza içindir ve bitiş gününe kadar geçerlidir.</div></div>
+            <div><div className="ayar-ad">Program sınırları</div>
+              <div className="ayar-aciklama">Verilebilecek en yüksek güç, mevzuattaki adıyla emre amade kapasite (EAK): santralin o gün sisteme verebileceği en yüksek güç; üretim programı bu sınırı aşmaz. Geçici kısıt bakım ya da arıza içindir ve bitiş gününe kadar geçerlidir.</div></div>
             <div className="ayar-kontrol">
-              <label className="girdi-etiket">EAK (kW), boşsa AC sınırı
+              <label className="girdi-etiket" title="Mevzuattaki adı emre amade kapasite (EAK). Boş bırakılırsa inverter AC sınırı kullanılır.">Verilebilecek en yüksek güç (EAK), kW — boşsa AC sınırı
                 <input className="girdi" style={{ width: 140 }} inputMode="numeric" value={eakKw} onChange={(e) => setEakKw(e.target.value)} /></label>
               <label className="girdi-etiket">Geçici kısıt (kW)
                 <input className="girdi" style={{ width: 100 }} inputMode="numeric" value={gecKw} onChange={(e) => setGecKw(e.target.value)} /></label>
@@ -572,6 +573,9 @@ export function Santralim({ plantId }: { plantId: string }) {
                 <input className="girdi" style={{ width: 90 }} inputMode="numeric" placeholder="0" value={arizaAy} onChange={(e) => setArizaAy(e.target.value.replace(/[^0-9]/g, ""))} /></label>
               <label className="ayar-satir" title="Yalnız dengeleme güç piyasası kapsamındaki dengeleme birimi için ≥200 MWh saatlik değişimde 15 dakikalık program satırı üretilir (DUY m.69(3)); güneş santrali varsayılan olarak dengeleme birimi değildir (m.22(4))">
                 <input type="checkbox" checked={dengelemeBirimi} onChange={(e) => setDengelemeBirimi(e.target.checked)} /> Dengeleme birimi (15 dk program satırı)</label>
+              {seg?.segment === "lisanssiz_iletim" && (   /* v2.510 (Ç3): yalnız iletime bağlı lisanssız segmentte anlamlı (Karar 14907 Md.5) */
+                <label className="ayar-satir" title="Tesis Lisanssız Elektrik Üretim Yönetmeliği m.5(1) (ç), (d) ya da (e) bendi kapsamındaysa (şebekeye enerji vermeyen öz tüketim tesisi, verimli kojenerasyon, mikrokojenerasyon) EPDK Karar 14907 Md.5 gereği 1.11.2026'dan itibaren KGÜP sapma tutarı uygulanmaz; uzlaştırma kartları bu saatlerde KÜPST'yi 0 gösterir.">
+                  <input type="checkbox" checked={!!luyIstisna} onChange={(e) => setLuyIstisna(e.target.checked)} /> LÜY m.5(1) (ç)/(d)/(e) kapsamında (KÜPST uygulanmaz)</label>)}
               <button className="dugme" onClick={eakKaydet}>Kaydet</button>
               {eakMesaj && <span className={`ayar-durum ${eakMesaj.startsWith("Kayded") ? "ok" : "hata"}`}>{eakMesaj}</span>}
             </div>

@@ -178,7 +178,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
               </span>
               {kgup.oneri && kgup.oneri.durum === "ok" && kgup.oneri.kantil &&
                 <span className="cip" title={kgup.oneri.not ?? ""}>önerilen seviye {kgup.oneri.kantil.toUpperCase()}</span>}
-              {kgup.eak && <span className="cip" title="Emre amade kapasite; ayarlardan değiştirilir">EAK {sayiTr(kgup.eak.eak_mw, 2)} MW ({({ gecici: "geçici kısıt", eak_alani: "EAK alanı", ac_tavani: "AC sınırı", kurulu_guc: "kurulu güç" } as Record<string, string>)[kgup.eak.kaynak] ?? kgup.eak.kaynak})</span>}
+              {kgup.eak && <span className="cip" title="Verilebilecek en yüksek güç (mevzuatta emre amade kapasite, EAK); Santral ayarları › Program sınırları">EAK {sayiTr(kgup.eak.eak_mw, 2)} MW ({({ gecici: "geçici kısıt", eak_alani: "EAK alanı", ac_tavani: "AC sınırı", kurulu_guc: "kurulu güç" } as Record<string, string>)[kgup.eak.kaynak] ?? kgup.eak.kaynak})</span>}
             </div>
             <div className="dugme-grubu">
               <div>
@@ -278,7 +278,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
               <summary>Piyasa takvimi ve program kuralı</summary>
               <p>
                 {kgup.gip && `${kgup.gip.kural} Örnek: ${kgup.gip.ornek_teslimat} teslimatı için kapı ${kgup.gip.ornek_kapi}, revizyon son ${kgup.gip.ornek_revizyon_son}. `}
-                Program, teslim saatinden (bir gün önce 15:30) önce verilmiş son tahminin saatlik beklenen (P50) değeridir; KGÜP ≤ emre amade kapasite ≤ kurulu güç
+                Program, teslim saatinden (bir gün önce 15:30) önce verilmiş son tahminin saatlik beklenen (P50) değeridir; program ≤ verilebilecek en yüksek güç (EAK) ≤ kurulu güç
                 kuralı uygulanır. Dosya biçimi «Bildirim dosyası biçimi» alanından EPYS dosyanızla eşlenir; dosya bir öneridir, bildirim TPYS'de yapılır.
               </p>
             </details>

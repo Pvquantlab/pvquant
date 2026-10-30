@@ -146,7 +146,7 @@ export interface KgupOnizleme {
   sha256?: string; sablon?: { durum: string; kolonlar: string[]; ayrac: string; ondalik: string;
                               /** 29.10 (v2.506): müşteri dosyasından öğrenildiyse kaynağı */
                               kaynak?: { dosya: string; zaman: string; bicim: string } | null };
-  takvim?: { pencere_acilis: string; bytm_son: string; son: string; teyit: string }; bildirim?: string; dengeleme_birimi?: boolean;
+  takvim?: { pencere_acilis: string; bytm_son: string; son: string; teyit: string }; bildirim?: string; dengeleme_birimi?: boolean; luy_istisna?: boolean;
   /** v2.275: o gün için etkin EAK ve kaynağı (gecici | eak_alani | ac_tavani | kurulu_guc) */
   eak?: { eak_mw: number; kaynak: string; bitis?: string };
   /** v2.287: GİP revizyon kapısı + önerilen kantil */
@@ -193,7 +193,7 @@ export interface DengesizlikKural {
   kupst_m: number | null; kupst_n: number | null; kupst_n_ariza: number | null; kupst_ariza_esigi: number | null; kupst_taban: number;
   kupst_net_sapma: boolean; kupst_birim: string; kupst_dayanak: string; dsg_esik: number; dsg_dayanak: string; belirsiz_2027: boolean;
 }
-export interface Dengesizlik {
+export interface Dengesizlik { luy_istisna?: boolean;   // v2.510 (Ç3): santral ayarı, Santralim onay kutusunu doldurur
   gun_sayisi: number; pencere_gun: number; not: string;
   aylar: { ay: string; uretim_mwh: number; sapma_mwh: number; referans_gelir_tl: number; pvquant_tl: number | null; naif_tl: number | null;
            kurtarilan_tl: number | null; gelir_oran_pct: number | null; tl_per_mwh: number | null; kupst_tl?: number | null; dengesizlik_tl?: number;
