@@ -237,3 +237,10 @@ Kapsayıcıda `kurallar.GECICI_M39_DIPNOT` var, `dsg_ozet` dipnota ekliyor, `ure
 Kullanıcının canlı incelemesi bulmuştu: cümle `simulasyon()`'daki ilk `out["not"]` bloğuna girmişti (etkisiz); şablon durumu v2.510 kalıntısı
 olarak kırmızı uyarı listesindeydi. DERS: sahte API dipnotu fixture'dan verdiği için önizleme servis metnini doğrulamaz; yama anchor'u fonksiyona
 özgü seçilmeli. Ayrıntı: `PVQuant_Ilk_Uygulama/02` M26 rötuş.
+
+# On dördüncü paket — v2.514 (31.10.2026, canlı): tahmin grafiğinde «AC …» etiketi eksen başlığıyla çakışmıyor
+
+Commit `ee14d9e`, CI #640 (4 dk 9 s). Dağıtım: yalnız web imajı (ssh); api ve göç yok. Canlı: index.html ve 22/22 JS/CSS birebir (referans ee14d9e);
+web günlüğü hatasız. Kullanıcı canlıda görmüştü: AC sınırı tavanın yarısına denk gelince (10.000 / 20.000) eksen sütunundaki «AC 10.000»
+etiketi dikey «Güç [kW]» başlığının üstüne biniyordu. Etiket artık çizim alanının sağ kenarında, kesikli çizginin hemen üstünde (AC üstünde seri
+bulunmaz; «şimdi» çizgisi sağ uca nadiren gelir); 1280 ve 375 px önizlemede doğrulandı. Ayrıntı: `PVQuant_Ilk_Uygulama/02` M27.
