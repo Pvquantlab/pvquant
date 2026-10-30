@@ -207,3 +207,25 @@ bayt bayt korur. `eak_csv_metni`: kurulu güç − EAK − iç tüketim → «ka
 
 Kalan (düşük): ondalık ayraç şablonda örneklenmemiş (nokta varsayıldı); dengeleme birimi çeyrek satırı TPYS'de doğrulanmadı; EAK dosyası arşivlenmiyor.
 Ayrıntı: `PVQuant_Ilk_Uygulama/02` M25, `04` #5.
+
+# On üçüncü paket — v2.513 (31.10.2026 gece, canlı): bülten fiyatlarının birincil doğrulaması (04 #4) + geçici m.39 etiketi + EAK dosyası arşivi + EPİAŞ'tan UEVÇB arama (04 #14 kalan)
+
+Commit `7679d83`, CI #636 (5 dk 39 s). Dağıtım: api + web imajları (ssh ile) + **`alembic upgrade head` DB sahibiyle → v2513_kgup_surum_eak**
+(ilk denemede temiz; `alembic current` = head). Canlı: index.html ve 22/22 JS/CSS birebir (referans 7679d83); api kapsayıcısında `gecici_m39_notu`
+(2026 metin / 2027 None), `piyasa_service.uevcb_ara`, `kaydet` kaynak kapısı «pvquant|musteri|eak»; `GET /v1/epias/uevcb-ara` ve `?fmt=eak` kimliksiz 422;
+api günlüğü hatasız. Not: `.env` kaynaklanırken 47. satır (`PVQ_SMTP_FROM=PVQuant <…>`) kabuk hatası veriyor; önceki satırlar (DB_PASSWORD) yüklendiği için
+göç çalıştı — ileride o satır tırnaklanmalı.
+
+#4 (KAPANDI): EPİAŞ Günlük Bülten 26.01.2026 ve 26.10.2026 PDF'leri web-fetch ile indirildi (ssh o saatte IP engeliyle kapalıydı, sunucuya gerek
+kalmadı); `pdftotext -layout` ile «Saat PTF SMF Sistem Yönü» ve «Saatlik Kontrat … Dengesizlik Fiyatı (pozitif/negatif)» tabloları okundu;
+`birim_fiyatlar()` bültenin PTF/SMF/yönüyle 45/45 saatte ±0,011 TL içinde (en büyük fark 0,0043 TL; AFL 3.400/4.500 dalları dâhil; V/B dalı yok).
+Üç saatte metin çıkarımı yön okunu düşürdü; o saatlerde bülten fiyatını üç yönden yalnız biri tutturuyor. Şeffaflık API'sinde «ptf-smf-sdf» ucu yok
+(rapor adı); bülten birincil kaynak. Kanıt `PVQuant_Ilk_Uygulama/kanit/bulten-kiyas-*`.
+
+Kapsam: `GECICI_M39_NOT/gecici_m39_notu` → `dsg_ozet.gecici_m39` + dipnot cümlesi; Portföy DSG çipi «· dağıtım/GTŞ DSG'sinde %100». EAK dosyası
+`?fmt=eak` ile KGÜP gibi değiştirilemez sürüm kaydı (kaynak 'eak', kantil 'eak'); sürüm geçmişinde «EAK» rozeti. `piyasa_service.kuruluslar()`
+(6 saat önbellek) + `uevcb_ara()`; `GET /v1/epias/uevcb-ara?kurulus=`; `segment_bilgisi.uevcb`; Santralim «UEVÇB kodu» ayarı (kod + Kaydet,
+EPİAŞ'ta ara → aday → kaydet).
+
+İnceleme düzeltmeleri: girdi+düğme satırları, adaylar tek satır, «Kaydedilemedi» yeşil boyanıyordu; DSG dipnotuna m.39 cümlesi; sahte EAK satırı.
+Kalan (isteğe bağlı): 1.11.2026 öncesi dönem için toplayıcı KÜPST duyarlılık senaryosu. Ayrıntı: `PVQuant_Ilk_Uygulama/02` M26, `04` #4 ve #14.
