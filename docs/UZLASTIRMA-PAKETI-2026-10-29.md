@@ -133,3 +133,12 @@ Kapsam: santralin kendi saatlik hata deseni hedef WMAPE'ye ölçeklenir (5/8/12/
 taahhüt değildir» notu. Testler: `tests/test_duyarlilik.py` (2), tam takım 778/1 atlandı.
 
 Ayrıntı: `PVQuant_Ilk_Uygulama/02` M22, `04` #2 kapandı.
+
+# Dokuzuncu paket — v2.509 (30.10.2026 gece): CI'dan ssh ile dağıtım işi
+
+Commit `de04917`, CI #626 (4 dk 6 s). Sunucu dağıtımı yok (imaj değişmedi; yalnız `.github/workflows/dagitim.yml` + `docs/CI-DAGITIM.md`).
+`Dağıtım` iş akışı Actions listesinde; ilk gerçek koşu gizli değişkenler (DEPLOY_SSH_KEY / DEPLOY_HOST / DEPLOY_KNOWN_HOSTS) eklendikten
+sonra elle tetiklenecek ve o koşunun günlüğü buraya işlenecek. Kapılar: `yaml.safe_load` iki iş akışında geçerli, actionlint 0 hata,
+sırrı yazdıran adım yok.
+
+Neden: 30.10'da geliştirici IP'sinden port 22 saatlerce erişilemedi (dışarıdan açıktı); dağıtım tek makineye/IP'ye bağlı kalmamalı.
