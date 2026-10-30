@@ -195,8 +195,6 @@ def simulasyon(tenant_id, plant: dict, gun: int = 90) -> dict:
                      else f"fiyat: {piyasa_service.SENARYO_AD} (EPİAŞ kimliği yok); senaryo saatinde sistem yönü yok → k = l = 0,03 varsayımı")
                   + ("; 1.1.2027 m.110 metni hukuken belirsiz (varsayılan: 2026 rejimi sürer)" if k["belirsiz_2027"] else "")
                   + ". Bu bir yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir.")
-    if out.get("gecici_m39") and out["santral"] > 1:   # v2.513: dağıtım/GTŞ DSG'lerinde 1.1.2027'ye kadar %100 (DUY Geçici m.39)
-        out["not"] += " Dağıtım şirketi ya da görevli tedarik şirketinin kurduğu DSG'lerde üye eşiği 1.1.2027'ye kadar %100 (DUY Geçici m.39); DSG'niz bu türdeyse netleşme farkı burada gösterilenden büyüktür."
     return out
 
 
@@ -387,4 +385,6 @@ def dsg_ozet(tenant_id, gun: int = 30, dagitim_anahtari: str = "sapma") -> dict:
                        "santralin satışı KGÜP'e eşit varsayılmıştır. EPİAŞ uzlaştırma sonucu değildir."
                        + (f" Senaryo fiyatlı {out['fiyat']['senaryo_saat']} saatte sistem yönü dengede varsayılmıştır." if out["fiyat"].get("senaryo_saat") else "")
                        + (f" Üyelere dağıtım: {out['dagitim_etiket']}; anahtar DSG sözleşmesinde belirlenir." if out.get("dagitim_etiket") else ""))
+    if out.get("gecici_m39") and out["santral"] > 1:   # v2.513 rötuş: dağıtım/GTŞ DSG'lerinde 1.1.2027'ye kadar %100 (DUY Geçici m.39) — dsg_ozet dipnotu
+        out["not"] += " " + kr.GECICI_M39_DIPNOT
     return out

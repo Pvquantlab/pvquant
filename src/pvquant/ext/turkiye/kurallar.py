@@ -246,6 +246,8 @@ def dsg_esigi(tarih: date) -> tuple[float, str]:
 GECICI_M39_NOT = ("DUY Geçici m.39: dağıtım şirketi ya da görevli tedarik şirketinin kurduğu DSG'lerde üye eşiği 1.1.2027'ye kadar %100 "
                   "(RG 17.12.2024-32755 Md.29); DSG'niz bu türdeyse burada gösterilen genel oran yerine %100 uygulanır")
 GECICI_M39_BITIS = date(2027, 1, 1)
+GECICI_M39_DIPNOT = ("Dağıtım şirketi ya da görevli tedarik şirketinin kurduğu DSG'lerde üye eşiği 1.1.2027'ye kadar %100 (DUY Geçici m.39); "
+                     "DSG'niz bu türdeyse netleşme farkı burada gösterilenden büyüktür.")
 
 
 def gecici_m39_notu(tarih: date) -> str | None:

@@ -107,7 +107,7 @@ def uret(tenant_id, plant: dict, gun: date, kantil: str = "p50", uevcb: str | No
     sab = kg.Sablon.params_json_dan(pj)
     baytlar = kg.csv_baytlari(tablo, sab)
     eak_metin = kg.eak_csv_metni(son.tablo, kap)   # v2.512: TPYS EAK.csv biçimi (ayrı ekran/servis); fark «kaynak yetersizliği»
-    uyarilar = son.uyarilar + hatalar + [kg.SABLON_DURUMU]
+    uyarilar = son.uyarilar + hatalar   # v2.513 rötuş: şablon durumu artık uyarı değil (sablon.durum alanında; v2.512'den beri TPYS ile birebir)
     if son.sicrama_saatleri and not dengeleme_birimi:
         uyarilar.append(f"≥200 MWh saatlik değişim var (saat {', '.join(map(str, son.sicrama_saatleri))}); santral dengeleme birimi değil, 15 dk satırı üretilmedi (DUY m.69(3))")
     # v2.287: gün içi revizyon kapısı (md. 69(1)) — öğlen örneğiyle; öneri kantili dengesizlik servisinden

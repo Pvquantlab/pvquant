@@ -272,3 +272,4 @@ def test_gecici_m39_notu():
     from pvquant.ext.turkiye import kurallar as kr
     assert kr.gecici_m39_notu(date(2026, 12, 31)) == kr.GECICI_M39_NOT and "%100" in kr.GECICI_M39_NOT and "32755" in kr.GECICI_M39_NOT
     assert kr.gecici_m39_notu(date(2027, 1, 1)) is None
+    assert "Geçici m.39" in kr.GECICI_M39_DIPNOT and "%100" in kr.GECICI_M39_DIPNOT
