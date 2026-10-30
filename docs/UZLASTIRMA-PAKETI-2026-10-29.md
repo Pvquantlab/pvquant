@@ -229,3 +229,11 @@ EPİAŞ'ta ara → aday → kaydet).
 
 İnceleme düzeltmeleri: girdi+düğme satırları, adaylar tek satır, «Kaydedilemedi» yeşil boyanıyordu; DSG dipnotuna m.39 cümlesi; sahte EAK satırı.
 Kalan (isteğe bağlı): 1.11.2026 öncesi dönem için toplayıcı KÜPST duyarlılık senaryosu. Ayrıntı: `PVQuant_Ilk_Uygulama/02` M26, `04` #4 ve #14.
+
+## v2.513 rötuş (31.10.2026 gece, canlı): DSG dipnotunda geçici m.39 cümlesi doğru yere; KGÜP kartında şablon durumu uyarı değil
+
+Commit `d1d52a9`, CI #638 (7 dk 19 s). Dağıtım: yalnız api imajı (ssh; ev ağından 22. port kapalı olduğu için kullanıcı ağ değiştirdi); web ve göç yok.
+Kapsayıcıda `kurallar.GECICI_M39_DIPNOT` var, `dsg_ozet` dipnota ekliyor, `uret` uyarı listesinde `SABLON_DURUMU` yok; günlük hatasız.
+Kullanıcının canlı incelemesi bulmuştu: cümle `simulasyon()`'daki ilk `out["not"]` bloğuna girmişti (etkisiz); şablon durumu v2.510 kalıntısı
+olarak kırmızı uyarı listesindeydi. DERS: sahte API dipnotu fixture'dan verdiği için önizleme servis metnini doğrulamaz; yama anchor'u fonksiyona
+özgü seçilmeli. Ayrıntı: `PVQuant_Ilk_Uygulama/02` M26 rötuş.
