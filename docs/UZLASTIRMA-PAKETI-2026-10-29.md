@@ -165,3 +165,22 @@ Hâlâ belirsiz/kullanıcıda: #9 2027 rejimi, #10 2027 DSG oranı (Kasım–Ara
 şablon içeriği (CAPTCHA), #11 canlı sınama (uevcb-list, imbalance-cost), #12 kimlik girişi kararı.
 
 Ayrıntı: `PVQuant_Ilk_Uygulama/02` M23, `04` (#5, #8, #9, #10, #11, #14).
+
+# On birinci paket — v2.511 (31.10.2026, canlı): toplayıcı/GTŞ portföyünde KÜPST UEVÇB bazında (04 #14) + Şeffaflık uçları canlı sınama (#11)
+
+Commit `8e3739f`, CI #632 (7 dk 32 s). Dağıtım: api + web imajları (ssh ile), alembic yok. Canlı: index.html ve 22/22 JS/CSS birebir (referans 8e3739f);
+`dengesizlik.portfoy_kupst_saatlik` api kapsayıcısında; `GET /v1/portfoy/kupst` kimliksiz 422; api günlüğü hatasız.
+
+Kapsam: dağıtıma bağlı lisanssız santraller `params_json.uevcb` ile UEVÇB'ye gruplanır (boş kod → «tek birim varsayıldı»); birim başına program ve
+üretim toplanır, sapma brüt (Karar 14907 Md.1(3)); KÜPSM = max(|ΣG − ΣK| − m·ΣK, 0), KÜPST = KÜPSM·max(750, PTF, SMF)·n (1.11.2026'dan 0,25 / 0,01;
+öncesi hesaplanamaz). Santrallere dağılım anahtarı sapma | üretim | kurulu güç | eşit, «mevzuatta tanımsız · sözleşmeye bağlı» etiketiyle
+(bulgular/14.md §14.4: mevzuatta anahtar yok). Portföy sayfasında kart, yalnız bu segmentte santral varsa.
+
+#11 canlı sınama (sunucu, kayıtlı kimlik, yalnız okuma): organization-list 692 kuruluş; uevcb-list {organizationId, startDate} 200, eski gövde 400
+(neden teyit); uevcb-list-by-power-plant-id 200; imbalance-cost yalnız ≤30.04.2016 (sonrası 400 (BUS)SEF1181) → eski uç, güncel YEKDEM kaynağı
+değil; `epias.py` notları. #11 kapandı.
+
+İnceleme düzeltmeleri: sahte verinin KÜPST büyüklüğü katsayıyla tutarsızdı (41,2 → 4,1 bin TL); dört dağıtım anahtarı tarayıcıda doğrulandı.
+
+Kalan (#14): `uevcb-list` ucundan otomatik UEVÇB eşlemesi (organizationId gerekir); 1.11.2026 öncesi için isteğe bağlı duyarlılık senaryosu.
+Ayrıntı: `PVQuant_Ilk_Uygulama/02` M24, `04` #11 ve #14.
