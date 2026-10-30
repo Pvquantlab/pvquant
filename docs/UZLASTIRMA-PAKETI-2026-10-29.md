@@ -260,3 +260,19 @@ Denetim izi / Son işlemler: ayrıntı çipleri keep-all, aktör e-postası yaln
 metniyle seç (ilk «1047/1047» iddiası Üretici işler tablosuna denk gelmişti).
 Kalan: 04 D #3–#7 (üretici işler tazeliği, piyasa kartı yön/kimlik, açık alarm KPI, kullanım KGÜP sütunları, denetim izine yeni eylemler).
 Ayrıntı: `PVQuant_Ilk_Uygulama/02` M28, `04` D.
+
+# On altıncı paket — v2.516 (31.10.2026 gece, canlı): yönetim paneli boşlukları #3–#7 — izlenen işler, piyasa kartı, açık alarm, kullanım, denetim
+
+Commit `8273ebc`, CI #644 (7 dk 31 s). Dağıtım: api + web imajı (ssh; ev ağından 22. port kapalı, kullanıcı ağ değiştirdi); göç yok (alerts, kgup_surum,
+jobs_log mevcut tablolar). Canlı: index.html ve 23/23 JS/CSS birebir (referans 8273ebc, klasör silinip derlendi); api ve web günlüğü hatasız; api
+kapsayıcısında `IZLENEN_ISLER` (13) ve `alarmlar` doğrulandı.
+Kapsam: (#3) `sistem_service.IZLENEN_ISLER` — gün içi tahmin ve revizyon kontrolü 30 sa, günlük işler 36 sa, aylık temizlikler 35 gün; durum kodu
+ok / esik_asimi / henuz_yok / beklenmiyor; müşteri hükmü (URETEN_ISLER) değişmedi; Sistem KPI'ı ve Genel bakış şeridi izlenen aşımlarını uyarı sayar,
+kartta ikinci tablo. (#4) piyasa özeti kimlik / yön ufku / 7 günlük yönlü saat / gün öncesi PTF ufku; yön fiyatın 24 saatten fazla gerisindeyse ya da
+kimlik yoksa kart uyarır. (#5) `alarmlar` + `GET /v1/yonetim/alarmlar` — okunmamış ve 7 günden yeni (müşteri tanımı), kural etiketi arka uçtan; Genel
+bakış beşinci KPI. (#6) kullanım ay toplamı ve günlük kırılımda kgup (kaynak pvquant) ve kgup_bildirilen (kaynak musteri); anahtar/webhook/son API
+müşteri adının altına künye (1440'ta 1060/1060). (#7) EYLEMLER_MUSTERI +7 ve altı uçta denetim kaydı (ayrıntı: gün, sürüm, yeni_surum, kantil, kanal,
+dosya adı, biçim, segment/UEVÇB, EAK alanları; içerik ve sır yok); SOZLUK.eylem +7; uzun ayrıntı değeri çipte anahtarın altına iner.
+İnceleme düzeltmeleri: sahte piyasa fixture'ı gerçekleşen fiyatı yarına uzatıyordu (düne çekildi); «yeni: true» → `yeni_surum`. DERS: dil bekçisi
+dizgelerde «taze/bayat» yasaklar — API durum kodlarını görünen Türkçe sözcük yapma; bekçi testleri ton ifadelerini kilitler, değişince testi niyetle
+güncelle. 04 D listesi (#1–#7) kapandı. Ayrıntı: `PVQuant_Ilk_Uygulama/02` M29, `04` D.
