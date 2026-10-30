@@ -264,3 +264,11 @@ def test_dsg_2027_etiketi():
     _, day = kr.dsg_esigi(date(2027, 3, 1))
     assert "13869" in day and "1.12.2026" in day and "VARSAYILDI" in day
     assert "1.1.2025" in kr.dsg_esigi(date(2025, 6, 1))[1]
+
+
+def test_gecici_m39_notu():
+    """v2.513 (bulgular/10.md (e)): dağıtım/GTŞ DSG'lerinde üye eşiği 1.1.2027'ye kadar %100 — ekran notu yalnız 2027 öncesi."""
+    from datetime import date
+    from pvquant.ext.turkiye import kurallar as kr
+    assert kr.gecici_m39_notu(date(2026, 12, 31)) == kr.GECICI_M39_NOT and "%100" in kr.GECICI_M39_NOT and "32755" in kr.GECICI_M39_NOT
+    assert kr.gecici_m39_notu(date(2027, 1, 1)) is None

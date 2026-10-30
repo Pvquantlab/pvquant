@@ -240,6 +240,19 @@ def dsg_esigi(tarih: date) -> tuple[float, str]:
                   "RG yayımı Aralık sonuna sarkabilir; yön riski aşağı — %5 VARSAYILDI")
 
 
+# DUY Geçici m.39 (RG 17.12.2024-32755 Md.29; bulgular/10.md (e)): dağıtım lisansı sahipleri ile bölgelerindeki görevli tedarik şirketlerinin
+# kurduğu DSG'lerde m.111(5) oranı «1/1/2027 tarihine kadar yüzde yüz olarak uygulanır» — bu gruplarda üye eşiği %100 (bireysel kısım yok).
+# PVQuant müşterisinin DSG'si hangi türde bilinmiyor; motor genel oranı uygular, ekran notu olarak söylenir. 1.1.2027'de hüküm biter.
+GECICI_M39_NOT = ("DUY Geçici m.39: dağıtım şirketi ya da görevli tedarik şirketinin kurduğu DSG'lerde üye eşiği 1.1.2027'ye kadar %100 "
+                  "(RG 17.12.2024-32755 Md.29); DSG'niz bu türdeyse burada gösterilen genel oran yerine %100 uygulanır")
+GECICI_M39_BITIS = date(2027, 1, 1)
+
+
+def gecici_m39_notu(tarih: date) -> str | None:
+    """Geçici m.39 yürürlükteyken (1.1.2027 öncesi) ekran notu; sonrası None."""
+    return GECICI_M39_NOT if tarih < GECICI_M39_BITIS else None
+
+
 # 1.1.2027 belirsizlik bayrağının gerekçesi (31.10.2026 araştırması, bulgular/09.md): ekran/rapor notu için tek kaynak.
 BELIRSIZ_2027_GEREKCE = (
     "(i) m.110(1)-(2): RG 21.1.2025-32789 Md.13 1.1.2027'de yürürlüğe girer, ama 33122/33405 aynı fıkraları sonradan yeniden yazdı; "

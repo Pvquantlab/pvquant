@@ -134,11 +134,13 @@ def segment_bilgisi(params_json) -> dict:
         seg = sg.Segment(ad) if ad else None
     except ValueError:
         seg = None
+    uevcb = (pj.get("uevcb") or None)   # v2.513 (04 #14): UEVÇB kodu panelde görünür/düzenlenir
     if seg is None:
-        return {"segment": None, "kgup_yukumlu": None, "dengesizlik_sahibi": None, "santral_tasir": None}
+        return {"segment": None, "kgup_yukumlu": None, "dengesizlik_sahibi": None, "santral_tasir": None, "uevcb": uevcb}
     k = sg.KURALLAR.loc[seg]
     st = sg.Santral("x", seg, 1.0)
-    return {"segment": seg.value, "kgup_yukumlu": bool(k["kgup_yukumlu"]), "dengesizlik_sahibi": str(k["dengesizlik_sahibi"]), "santral_tasir": st.dengesizlik_tasir_mi()}
+    return {"segment": seg.value, "kgup_yukumlu": bool(k["kgup_yukumlu"]), "dengesizlik_sahibi": str(k["dengesizlik_sahibi"]), "santral_tasir": st.dengesizlik_tasir_mi(),
+            "uevcb": uevcb}
 
 
 def katsayilar(params_json) -> d.Katsayilar:
@@ -193,6 +195,8 @@ def simulasyon(tenant_id, plant: dict, gun: int = 90) -> dict:
                      else f"fiyat: {piyasa_service.SENARYO_AD} (EPİAŞ kimliği yok); senaryo saatinde sistem yönü yok → k = l = 0,03 varsayımı")
                   + ("; 1.1.2027 m.110 metni hukuken belirsiz (varsayılan: 2026 rejimi sürer)" if k["belirsiz_2027"] else "")
                   + ". Bu bir yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir.")
+    if out.get("gecici_m39") and out["santral"] > 1:   # v2.513: dağıtım/GTŞ DSG'lerinde 1.1.2027'ye kadar %100 (DUY Geçici m.39)
+        out["not"] += " Dağıtım şirketi ya da görevli tedarik şirketinin kurduğu DSG'lerde üye eşiği 1.1.2027'ye kadar %100 (DUY Geçici m.39); DSG'niz bu türdeyse netleşme farkı burada gösterilenden büyüktür."
     return out
 
 
@@ -279,6 +283,7 @@ def dsg_hesapla_df(programlar: dict[str, pd.DataFrame], fiyat: pd.DataFrame, kat
             "edt_grup_tl": round(float(sa["edt_grup"].sum()), 0), "edt_bireysel_tl": round(float(sa["edt_bireysel"].sum()), 0),
             "netlesme_farki_tl": round(float(sa["netlesme_farki"].sum()), 0), "kupst_uye_tl": (round(kupst, 0) if kupst is not None else None),
             "esik": float(sa["esik"].iloc[-1]), "esik_kaynak": r["esik_kaynak"], "kural_surumu": " | ".join(sorted(set(sa["kural_surumu"]))),
+            "gecici_m39": kr.gecici_m39_notu(pd.Timestamp(idx[-1]).tz_convert(IST).date()),   # v2.513: dağıtım/GTŞ DSG'lerinde %100 (1.1.2027'ye kadar)
             "dagitim_anahtari": r["dagitim_anahtari"], "dagitim_etiket": d.DAGITIM_ETIKET[r["dagitim_anahtari"]],
             "hesaplanamayan_saat": int((sa["durum"] != "ok").sum()), "disi": r["disi"], "gosterge": False,
             "santral_tl": {a: v["kayip_tl"] for a, v in uye.items()}, "uyeler": uye,

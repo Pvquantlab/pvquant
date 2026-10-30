@@ -23,6 +23,48 @@ def kimlik_var() -> bool:
     return bool(s.epias_kullanici and s.epias_sifre)
 
 
+# v2.513 (04 #14 kalan): UEVÇB kodunu EPİAŞ Şeffaflık'tan kuruluş adıyla bulma — organization-list (692 kuruluş, 6 saat önbellek) içinde
+# ad araması, eşleşen her kuruluş için uevcb-list {organizationId, startDate} (31.10 canlı sınama: 200). Yalnız okuma; sonuç panelde seçilir.
+_ORG_ONBELLEK: dict = {"zaman": None, "liste": []}
+ORG_ONBELLEK_SAAT = 6
+
+
+def _sade(s) -> str:
+    return str(s or "").strip().lower().translate(str.maketrans("çğıöşüâîû", "cgiosuaiu"))
+
+
+def kuruluslar(simdi: pd.Timestamp | None = None) -> list[dict]:
+    """EPİAŞ kuruluş listesi (organizationId, organizationName); 6 saat bellek önbelleği."""
+    simdi = simdi or pd.Timestamp.now(tz="UTC")
+    z = _ORG_ONBELLEK["zaman"]
+    if z is not None and (simdi - z) < pd.Timedelta(hours=ORG_ONBELLEK_SAAT) and _ORG_ONBELLEK["liste"]:
+        return _ORG_ONBELLEK["liste"]
+    g = simdi.tz_convert("Europe/Istanbul").strftime("%Y-%m-%d")
+    liste = _istemci().organizasyon_listesi(g, g) or []
+    _ORG_ONBELLEK.update({"zaman": simdi, "liste": liste})
+    return liste
+
+
+def uevcb_ara(metin: str, en_cok: int = 5) -> dict:
+    """Kuruluş adında `metin` geçen en çok `en_cok` kuruluş ve her birinin UEVÇB'leri. Kimlik yoksa durum 'kimlik_yok'."""
+    if not kimlik_var():
+        return {"durum": "kimlik_yok", "kuruluslar": [], "toplam_kurulus": 0}
+    m = _sade(metin)
+    liste = kuruluslar()
+    esl = [o for o in liste if m and m in _sade(o.get("organizationName") or o.get("name"))][:en_cok]
+    g = pd.Timestamp.now(tz="Europe/Istanbul").strftime("%Y-%m-%d")
+    c = _istemci(); out = []
+    for o in esl:
+        oid = o.get("organizationId") or o.get("id"); ad = o.get("organizationName") or o.get("name")
+        try:
+            uev = c.uevcb_listesi(int(oid), g) or []; hata = None
+        except Exception as e:   # noqa: BLE001 — bir kuruluşun UEVÇB listesi düşerse ötekiler gelir
+            uev, hata = [], str(e)[:120]
+        out.append({"kurulus": ad, "kurulus_id": oid, "hata": hata,
+                    "uevcbler": [{"id": u.get("id"), "eic": u.get("eic"), "name": u.get("name")} for u in uev]})
+    return {"durum": "ok", "kuruluslar": out, "toplam_kurulus": len(liste)}
+
+
 def _istemci():
     from pvquant.config import get_settings
     from pvquant.ext.turkiye.epias import Istemci

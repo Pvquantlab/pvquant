@@ -139,6 +139,8 @@ export interface PortfoyDsg {
   santral: number; n_saat: number; ayri_tl: number | null; net_tl: number | null; kazanc_tl: number | null; kazanc_pct?: number | null;
   edt_tek_tl?: number; edt_dsg_tl?: number; edt_grup_tl?: number; edt_bireysel_tl?: number; netlesme_farki_tl?: number; kupst_uye_tl?: number | null;
   esik?: number; esik_kaynak?: string; kural_surumu?: string; hesaplanamayan_saat?: number; disi?: string[]; segment_yok?: string[];
+  /** v2.513: DUY Geçici m.39 — dağıtım/GTŞ DSG'lerinde üye eşiği 1.1.2027'ye kadar %100 (ekran notu; 2027'den sonra null) */
+  gecici_m39?: string | null;
   /** 29.10: üye başına dağıtım — edt_dsg_tl = bireysel + pay × grup; netlesme_farki_tl = edt_dsg − edt_tek; pay_pct ortalama saatlik pay */
   uyeler?: Record<string, { kayip_tl: number; edt_tek_tl: number; edt_bireysel_tl: number; kupst_tl: number | null; sapma_mwh: number; grup_payi_mwh: number;
                             edt_dsg_tl?: number; netlesme_farki_tl?: number; pay_pct?: number }>;
@@ -170,6 +172,8 @@ export interface KgupOnizleme {
 /** /kgup/revizyon — v2.507 (F-10): bugünün programı ↔ güncel beklenti; eşik üstü ve revize edilebilir saatler. Yol gösterici, kayıt yazmaz. */
 /** /piyasa/durum — EPİAŞ kimliği tanımlı mı, son fiyat saati, fiyat/yön saat sayısı, senaryo değerleri. */
 export interface PiyasaDurum { kimlik: boolean; son_fiyat: string | null; saat: number; yon_saat?: number; senaryo: { ptf: number; smf: number; ad: string } }
+/** v2.513 (04 #14): /epias/uevcb-ara — kuruluş adıyla UEVÇB adayları (EPİAŞ Şeffaflık organization-list + uevcb-list) */
+export interface UevcbArama { durum: string; toplam_kurulus: number; kuruluslar: { kurulus: string; kurulus_id: number | string; hata?: string | null; uevcbler: { id: number | string; eic: string | null; name: string | null }[] }[] }
 export interface KgupRevizyon {
   durum: "ok" | "program_yok" | "tahmin_yok" | "gun_bitti"; gun: string; simdi: string; esik_oran: number; not: string;
   program_kaynagi: string | null; beklenen_kaynagi: string | null; toplam_fark_mwh?: number; ilk_revizyon_son?: string | null; taban_mwh?: number;
@@ -182,8 +186,8 @@ export interface KgupSurum {
   id: string; teslim_gunu: string; surum: number; kantil: string; run_id: string | null; run_at: string | null; kesim: string | null;
   eak_mw: number | null; eak_kaynak: string | null; toplam_mwh: number | null; sha256: string; dosya_adi: string; olusturma: string;
   indiren: string | null; bayt: number;
-  /** v2.503: pvquant (öneri/indirilen) | musteri (bildirildiği beyan edilen) */
-  kaynak?: "pvquant" | "musteri";
+  /** v2.503: pvquant (öneri/indirilen) | musteri (bildirildiği beyan edilen) | v2.513: eak (TPYS EAK.csv dosyası) */
+  kaynak?: "pvquant" | "musteri" | "eak";
 }
 /** /kgup/kiyas — v2.503: son öneri ↔ müşterinin bildirdiği KGÜP, saat saat. */
 export interface KgupKiyas {
@@ -218,7 +222,7 @@ export interface Dengesizlik { luy_istisna?: boolean;   // v2.510 (Ç3): santral
   katsayilar?: { k: number; l: number; kupst_n: number | null; kupst_tolerans?: number | null; k_yon?: Record<string, number>; l_yon?: Record<string, number> };
   fiyat: { epias_saat: number; senaryo_saat: number; yon_varsayilan_saat?: number; yon_eksik_saat?: number };
   hesaplanamayan_saat?: number; kural_surumu?: string | null; kural?: DengesizlikKural;
-  segment: { segment: string | null; kgup_yukumlu: boolean | null; dengesizlik_sahibi: string | null; santral_tasir: boolean | null };
+  segment: { segment: string | null; kgup_yukumlu: boolean | null; dengesizlik_sahibi: string | null; santral_tasir: boolean | null; uevcb?: string | null };
 }
 /** /dengesizlik/geri-test — v2.503 (F-07): 12 aylık uzlaştırma kalemleri geri testi; karşı-olgu sütunları; varsayımsal yeniden hesap. */
 export interface DengesizlikGeriTest {

@@ -85,6 +85,20 @@ def test_csv_indirme_arsive_yazar_ve_surum_uclari(istemci):
     assert c.get(f"/v1/plants/{PLANT}/kgup/surumler/yok").status_code == 404
 
 
+def test_eak_dosyasi_arsivlenir(kiraci):
+    """v2.513: EAK dosyası (TPYS EAK.csv) kaynak 'eak' ile değiştirilemez kayıt; sürüm sayacı KGÜP'ten ayrı; kıyasa girmez."""
+    tid, pid = kiraci
+    eak = "Saat,Miktar,ic_tuketim,kaynak_yetersizligi,iklim_verim,mucbir,dissal,guvenlik\r\n" + "".join(f"{h},9,,1,,,,\r\n" for h in range(24))
+    r = {**_ornek(), "csv": eak, "bom": False, "sha256": hashlib.sha256(eak.encode()).hexdigest(), "kantil": "eak", "toplam_mwh": None, "dosya_adi": "EAK_UEVCB-1_2026-10-25.csv"}
+    k1 = ka.kaydet(tid, pid, r, kaynak="eak"); k2 = ka.kaydet(tid, pid, r, kaynak="eak")
+    assert k1["yeni"] and k1["surum"] == 1 and k1["kaynak"] == "eak" and not k2["yeni"]
+    kg = ka.kaydet(tid, pid, _ornek()); assert kg["surum"] == 1                      # KGÜP sayacı ayrı
+    l = ka.listele(tid, pid); assert {x["kaynak"] for x in l} == {"eak", "pvquant"} and next(x for x in l if x["kaynak"] == "eak")["kantil"] == "eak"
+    g = ka.getir(tid, pid, k1["id"]); assert g["dosya"] == eak.encode() and not g["dosya"].startswith(b"\xef\xbb\xbf")
+    with pytest.raises(ValueError):
+        ka.kaydet(tid, pid, r, kaynak="baska")
+
+
 # ---------------------------------------------------------------- v2.503: müşteri KGÜP içe alma + kıyas ------------------------
 def test_csv_oku_sablon_ve_ceyrek():
     sat = "\n".join(f"25.10.2026;{h};UEVCB-1;{str(round(h*0.5,3)).replace('.', ',')};9,000" for h in range(24))

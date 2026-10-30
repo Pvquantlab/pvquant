@@ -751,10 +751,14 @@ def _kgup_yaniti(tenant_id: str, plant_id: str, gun: str | None, kantil: str, fm
         raise HTTPException(int(r.get("kod", 409)), r["hata"] + (f" (eksik saatler: {r['eksik_saatler']})" if r.get("eksik_saatler") else ""))
     if fmt == "json":
         return {k: v for k, v in r.items() if k not in ("csv", "eak_csv")}
-    if fmt == "eak":   # v2.512: TPYS EAK.csv biçiminde EAK dosyası (ayrı ekran/servis); arşive yazılmaz
-        return Response(content=r["eak_csv"].encode("utf-8"), media_type="text/csv; charset=utf-8",
-                        headers={"Content-Disposition": f'attachment; filename="{r["eak_dosya_adi"]}"', "X-PVQ-SHA256": r["eak_sha256"]})
     from pvquant.services import kgup_arsiv_service
+    if fmt == "eak":   # v2.512: TPYS EAK.csv biçiminde EAK dosyası (ayrı ekran/servis); v2.513: KGÜP gibi arşivlenir (kaynak 'eak')
+        from pvquant.ext.turkiye.kgup import EAK_KOLONLAR
+        r_eak = {**r, "csv": r["eak_csv"], "bom": False, "dosya_adi": r["eak_dosya_adi"], "sha256": r["eak_sha256"], "kantil": "eak",
+                 "toplam_mwh": None, "sablon": {"durum": "TPYS EAK.csv", "kolonlar": list(EAK_KOLONLAR)}}
+        arsiv = kgup_arsiv_service.kaydet(tenant_id, str(row["id"]), r_eak, indiren=indiren, kaynak="eak")
+        return Response(content=kgup_arsiv_service.baytlar(r_eak), media_type="text/csv; charset=utf-8",
+                        headers={"Content-Disposition": f'attachment; filename="{r["eak_dosya_adi"]}"', "X-PVQ-Surum": str(arsiv["surum"]), "X-PVQ-SHA256": arsiv["sha256"]})
     arsiv = kgup_arsiv_service.kaydet(tenant_id, str(row["id"]), r, indiren=indiren)   # v2.502: değiştirilemez sürüm kaydı
     return Response(content=kgup_arsiv_service.baytlar(r), media_type="text/csv; charset=utf-8",   # baytlar tek yerde (BOM yalnız şablon isterse; SHA-256 bu baytlarla)
                     headers={"Content-Disposition": f'attachment; filename="{r["dosya_adi"]}"', "X-PVQ-Surum": str(arsiv["surum"]), "X-PVQ-SHA256": arsiv["sha256"]})
@@ -1251,6 +1255,22 @@ def piyasa_durum(claims=Depends(gecerli_kullanici)):
     """v2.258 — EPİAŞ entegrasyonunun durumu: kimlik var mı, son fiyat saati, senaryo değerleri."""
     from pvquant.services import piyasa_service
     return piyasa_service.durum()
+
+
+@app.get("/v1/epias/uevcb-ara")
+def epias_uevcb_ara(kurulus: str, claims=Depends(gecerli_kullanici)):
+    """v2.513 (04 #14 kalan) — EPİAŞ Şeffaflık organization-list + uevcb-list ile UEVÇB adayları (kuruluş adı araması; yalnız okuma).
+    Kimlik tanımlı değilse 503; arama en az 3 karakter."""
+    from pvquant.services import piyasa_service
+    if len(kurulus.strip()) < 3:
+        raise HTTPException(422, "kurulus en az 3 karakter")
+    try:
+        r = piyasa_service.uevcb_ara(kurulus.strip())
+    except Exception as e:   # noqa: BLE001 — EPİAŞ erişim hatası panele düz metin
+        raise HTTPException(502, f"EPİAŞ erişilemedi: {str(e)[:120]}")
+    if r["durum"] == "kimlik_yok":
+        raise HTTPException(503, "EPİAŞ kimliği tanımlı değil")
+    return r
 
 
 @app.get("/v1/piyasa/fiyat")

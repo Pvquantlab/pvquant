@@ -6,6 +6,7 @@ Okuma: listele (gün/son N), getir (yeniden indirme — bayt bayt aynı dosya). 
 v2.503: kaynak = 'pvquant' | 'musteri' — müşterinin TPYS'ye bildirdiğini beyan ettiği dosya panelden yüklenir (csv_oku ile ayrıştırılır,
 aynı tabloda değiştirilemez kayıt), kiyas() öneriyle (son pvquant sürümü) saat saat farkı verir. Dosya içeriği doğrulanır (24 saat, sayısal);
 TPYS'nin kabul ettiği doğrulanamaz — beyan kaydıdır.
+v2.513: kaynak = 'eak' — TPYS EAK.csv biçimindeki EAK dosyası da indirilince arşivlenir (kantil 'eak'; kıyasa girmez; göç v2513).
 """
 from __future__ import annotations
 
@@ -29,8 +30,8 @@ def baytlar(r: dict) -> bytes:
 def kaydet(tenant_id, plant_id, r: dict, indiren=None, kaynak: str = "pvquant", dosya: bytes | None = None) -> dict:
     """uret() çıktısını (ya da kaynak='musteri' için okunmuş dosyayı) arşivler. Dönüş: {id, surum, sha256, yeni(bool)}.
     Aynı gün + kaynak + sha → mevcut kayıt (yeni=False). Sürüm sayacı (gün, kaynak) bazında."""
-    if kaynak not in ("pvquant", "musteri"):
-        raise ValueError("kaynak pvquant|musteri")
+    if kaynak not in ("pvquant", "musteri", "eak"):
+        raise ValueError("kaynak pvquant|musteri|eak")
     b = dosya if dosya is not None else baytlar(r); sha = hashlib.sha256(b).hexdigest()
     if r.get("sha256") and r["sha256"] != sha:
         raise ValueError("sha256 uyuşmuyor: yanıt ile dosya baytları farklı")

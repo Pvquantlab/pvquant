@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
 import type { PrKarti, Saglik, AlarmKurallari, FizikTerimleri, FizikOnizleme, Kullanilabilirlik, Tarife } from "../../api/types";
 import { SEGMENTLER } from "../../api/types";
+import type { UevcbArama } from "../../api/types";
 import type { EChartsOption } from "echarts";
 import { api, bellekten, ayniysaEskisi } from "../../api/client";
 import type { SantralOzeti, TahminSerisi, GunesYolu, SaatAyMatrisi } from "../../api/types";
@@ -89,7 +90,20 @@ export function Santralim({ plantId }: { plantId: string }) {
   useEffect(() => { api.pr(plantId).then(setPr).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps   // v2.249
   const [sg, setSg] = useState<Saglik | null>(null);   // v2.256
   const [seg, setSeg] = useState<{ segment: string | null; dengesizlik_sahibi: string | null } | null>(null);   // v2.260
-  useEffect(() => { api.dengesizlik(plantId, 14).then((d) => { if (!d) return; setSeg({ segment: d.segment.segment, dengesizlik_sahibi: d.segment.dengesizlik_sahibi }); if (d.luy_istisna !== undefined) setLuyIstisna((v) => (v === null ? !!d.luy_istisna : v)); }).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // v2.513 (04 #14 kalan): UEVÇB kodu panelde görünür/düzenlenir; EPİAŞ Şeffaflık'tan kuruluş adıyla aranır (organization-list + uevcb-list)
+  const [uevcb, setUevcb] = useState<string>("");
+  const [uevcbMesaj, setUevcbMesaj] = useState<string | null>(null);
+  const [uevcbArama, setUevcbArama] = useState<string>("");
+  const [uevcbAday, setUevcbAday] = useState<UevcbArama | null | "yok">(null);
+  const uevcbKaydet = (kod: string) => {
+    if (!seg?.segment) { setUevcbMesaj("Önce piyasa segmentini seçin."); return; }
+    api.segmentAyarla(plantId, seg.segment, kod.trim() || undefined).then(() => { setUevcb(kod.trim()); setUevcbMesaj(kod.trim() ? `Kaydedildi: ${kod.trim()}` : "Kaydedildi."); }).catch((e) => setUevcbMesaj(`Kaydedilemedi: ${String(e.message ?? e)}`));
+  };
+  const uevcbAra = () => {
+    setUevcbMesaj(null); setUevcbAday(null);
+    api.uevcbAra(uevcbArama).then((r) => setUevcbAday(r ?? "yok")).catch((e) => { setUevcbAday("yok"); setUevcbMesaj(`Arama yapılamadı: ${String(e.message ?? e)}`); });
+  };
+  useEffect(() => { api.dengesizlik(plantId, 14).then((d) => { if (!d) return; setSeg({ segment: d.segment.segment, dengesizlik_sahibi: d.segment.dengesizlik_sahibi }); setUevcb(d.segment.uevcb ?? ""); if (d.luy_istisna !== undefined) setLuyIstisna((v) => (v === null ? !!d.luy_istisna : v)); }).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { api.saglik(plantId).then(setSg).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   // v2.274 (Dalga 3 tamamlayıcısı): fizik terimleri — santral bazında aç/kapa + "açsam ne değişir?" önizlemesi
   const [ft, setFt] = useState<FizikTerimleri | null>(null);
@@ -517,12 +531,38 @@ export function Santralim({ plantId }: { plantId: string }) {
             <div className="ayar-kontrol">
               <label className="girdi-etiket">Segment
                 <select className="girdi" value={seg?.segment ?? ""}
-                  onChange={(e) => api.segmentAyarla(plantId, e.target.value).then((r) => setSeg({ segment: r.segment, dengesizlik_sahibi: r.dengesizlik_sahibi })).catch(() => {})}>
+                  onChange={(e) => api.segmentAyarla(plantId, e.target.value, uevcb || undefined).then((r) => setSeg({ segment: r.segment, dengesizlik_sahibi: r.dengesizlik_sahibi })).catch(() => {})}>
                   <option value="" disabled>seçiniz</option>
                   {SEGMENTLER.map((x) => <option key={x.deger} value={x.deger}>{x.etiket}</option>)}
                 </select>
               </label>
               {seg?.dengesizlik_sahibi && <span className="ayar-durum">dengesizlik: {seg.dengesizlik_sahibi}</span>}
+            </div>
+          </div>
+          {/* v2.513 (04 #14 kalan): UEVÇB kodu — KGÜP/EAK dosya adı ve toplayıcı portföyü KÜPST gruplaması bu koda bağlı; EPİAŞ'tan arama */}
+          <div className="ayar">
+            <div><div className="ayar-ad">UEVÇB kodu</div>
+              <div className="ayar-aciklama">Uzlaştırmaya esas veriş-çekiş birimi. KGÜP ve EAK dosya adında, toplayıcı portföyünde KÜPST gruplamasında kullanılır. Kodu biliyorsanız yazın; bilmiyorsanız EPİAŞ Şeffaflık'ta kuruluş adıyla arayıp seçin.</div></div>
+            <div className="ayar-kontrol">
+              <div className="dugme-sira" style={{ alignItems: "flex-end" }}>
+                <label className="girdi-etiket">UEVÇB
+                  <input className="girdi" value={uevcb} maxLength={32} placeholder="örn. 40X000000000123A" onChange={(e) => setUevcb(e.target.value)} /></label>
+                <button className="dugme" onClick={() => uevcbKaydet(uevcb)}>Kaydet</button>
+              </div>
+              <div className="dugme-sira" style={{ alignItems: "flex-end" }}>
+                <label className="girdi-etiket">EPİAŞ'ta ara (kuruluş adı)
+                  <input className="girdi" value={uevcbArama} minLength={3} placeholder="en az 3 harf" onChange={(e) => setUevcbArama(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && uevcbArama.trim().length >= 3) uevcbAra(); }} /></label>
+                <button className="dugme" disabled={uevcbArama.trim().length < 3} onClick={uevcbAra}>Ara</button>
+              </div>
+              {uevcbAday === "yok" && <span className="ayar-durum">Örnek kipte ya da EPİAŞ kimliği tanımlı değilken arama yapılamaz.</span>}
+              {uevcbAday && uevcbAday !== "yok" && uevcbAday.kuruluslar.length === 0 && <span className="ayar-durum">Bu adla kuruluş bulunamadı ({sayiTr(uevcbAday.toplam_kurulus)} kuruluş tarandı).</span>}
+              {uevcbAday && uevcbAday !== "yok" && uevcbAday.kuruluslar.map((k) => (
+                <div key={String(k.kurulus_id)} style={{ display: "grid", gap: 6 }}>
+                  <span className="soluk" style={{ fontSize: 13 }}>{k.kurulus}</span>
+                  {k.uevcbler.length === 0 && <span className="soluk">{k.hata ? `UEVÇB listesi alınamadı: ${k.hata}` : "UEVÇB kaydı yok"}</span>}
+                  {k.uevcbler.map((u) => <button key={String(u.id)} className="dugme" style={{ display: "block", width: "100%", textAlign: "left" }} title="Bu UEVÇB'yi santrale kaydet" onClick={() => uevcbKaydet(u.eic ?? String(u.id))}><span className="mono">{u.eic ?? String(u.id)}</span>{u.name ? <span className="soluk"> · {u.name}</span> : null}</button>)}
+                </div>))}
+              {uevcbMesaj && <span className={`ayar-durum ${uevcbMesaj.startsWith("Kaydedildi") ? "ok" : "hata"}`}>{uevcbMesaj}</span>}
             </div>
           </div>
           <div className="ayar">
