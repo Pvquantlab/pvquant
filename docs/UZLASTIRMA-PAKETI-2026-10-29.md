@@ -137,8 +137,10 @@ Ayrıntı: `PVQuant_Ilk_Uygulama/02` M22, `04` #2 kapandı.
 # Dokuzuncu paket — v2.509 (30.10.2026 gece): CI'dan ssh ile dağıtım işi
 
 Commit `de04917`, CI #626 (4 dk 6 s). Sunucu dağıtımı yok (imaj değişmedi; yalnız `.github/workflows/dagitim.yml` + `docs/CI-DAGITIM.md`).
-`Dağıtım` iş akışı Actions listesinde; ilk gerçek koşu gizli değişkenler (DEPLOY_SSH_KEY / DEPLOY_HOST / DEPLOY_KNOWN_HOSTS) eklendikten
-sonra elle tetiklenecek ve o koşunun günlüğü buraya işlenecek. Kapılar: `yaml.safe_load` iki iş akışında geçerli, actionlint 0 hata,
+`Dağıtım` iş akışı Actions listesinde. **İlk gerçek koşu (30.10 gece, Dağıtım #1, imaj `web`): BAŞARILI, 18 s** — gizli değişkenler
+kullanıcı tarafından eklendi (yalnız dağıtım için ed25519 anahtar, sunucuda `authorized_keys`), beş adım yeşil (gizli değişken kontrolü, ssh
+anahtarı + sabit sunucu kimliği, sunucuda pull/build/up, HTTPS 200, anahtar silme); sunucu HEAD `ef52c84`'e çekildi; web imajı önbellekten
+aynı çıktığı için kapsayıcı yenilenmedi (beklenen: v2.508'den beri web kaynağı değişmedi). Dağıtım artık tek makineye/IP'ye bağlı değil. Kapılar: `yaml.safe_load` iki iş akışında geçerli, actionlint 0 hata,
 sırrı yazdıran adım yok.
 
 Neden: 30.10'da geliştirici IP'sinden port 22 saatlerce erişilemedi (dışarıdan açıktı); dağıtım tek makineye/IP'ye bağlı kalmamalı.
