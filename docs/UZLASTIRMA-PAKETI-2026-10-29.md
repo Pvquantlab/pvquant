@@ -317,3 +317,32 @@ tarihi (kısmi ya da tam)»; fatura 7 gün ve itiraz 60 gün «belirsiz»; «san
 SINIR: dinî bayramlar 2026–2027 için tanımlı (2028 Diyanet yayımlayınca eklenir; dipnot söylüyor); alarm üretimi P7a, ilerleme raporu vb. P3b, EPYS
 mutabakatı ve DSG/UEVÇB'de bildirilen KGÜP P2b.
 Testler: test_takvim.py 12; tam takım 816 passed, 1 skipped (318 s). Sıradaki: v2.519 = P7a alarm (takvim olayları hazır), sonra P5a YEKDEM.
+
+# On dokuzuncu paket — v2.519 (01.11.2026 gece, canlı): alarm — kural bazlı sıklık, santral alıcıları, webhook alarm.yeni, takvim/piyasa/hatırlatma kuralları; Santral ayarları kartı kurumsal dil ve sunum turu
+
+Commit `c56fafb`, CI #650 (7 dk 27 s). Dağıtım: api + worker + web imajı (ssh; 22. port açıktı); göç yok (alıcılar ve eşikler params_json'da). Canlı:
+index.html ve 24/24 JS/CSS birebir (25/25; referans klasörü silinip derlendi); api kapsayıcısında 12 seçimlik kural, yeni etiketler, 23 saatlik
+kilit, webhook olayları (tahmin.yeni, alarm.yeni), dört yeni iş sözlükte ve izleme listesinde, dosya adı düzeltmesi; worker «basladi» satırı ve dört
+giriş noktası (iletisim_kontrol, hatirlatma_teminat, ptf_kontrol, hatirlatma_avans); api/worker/web günlüğü hatasız.
+Kaynak: GES sahibi ihtiyaç araştırması yol haritası P7a (K-08, ENV-F03, B13, IH-009/011/031/032, A7) + kullanıcının üç brief'i (Santral ayarları
+kurumsal dil, ikinci tur, son kalite kontrolü).
+Alarm: yeni seçimlik kurallar takvim_son_tarih (Takvim'deki her son tarih için N gün kala; olay başına tek alarm, aynı mesaj 60 gün içinde ikinci
+kez yazılmaz), ptf_dusuk_saat (yarının gün öncesi PTF'si eşik altında; 0 → sıfır ve negatif, lisanslı YEKDEM'de tarifedeki YEK fiyatı; senaryo
+fiyatı sayılmaz), ariza_sayaci_yaklasti (elle girilen aylık arıza ≥ eşik), teminat_hatirlatma (iş günü 10:15) ve avans_hatirlatma (iş günü 14:45;
+yalnız lisanslı). kgup_teslim_gecikti «bildirildi» beyanına bakar (tahmin yoksa kritik, bildirilen dosya yoksa uyarı). Alıcılar: santral e-posta
+listesi (≤10) ∪ PVQ_ALARM_TO; her alarmda webhook «alarm.yeni». Spam kilidi 24 → 23 saat (zamanlayıcı sapmasında günlük işin bir günü sessizce
+atlaması — v0'dan beri gizli kusur). Worker: iletişim her saat :50, teminat 07:15 UTC, PTF 11:40 UTC, avans 11:45 UTC; gece taraması gün içi
+kurallarını atlar. API: KuralIstek.alicilar; webhook olay listesi. Sahte fixture gerçek API şekline çekildi.
+Santral ayarları (Santralim): altı bölüm iki cümlelik açıklama + bilgi düğmesi «Ayrıntı» (aria-expanded/aria-controls, Tab + Enter; gövde satırın
+altında tam genişlik: ne işe yarar / ne zaman değiştirilir / neyi etkiler / ne zaman geçerli); etiketlerde birim, aralık, zorunlu/isteğe bağlı;
+yanıltıcı «bir sonraki tahminden itibaren» çipi kalktı; alarm kuralları dört konu grubunda, her kuralın altında düz koşul cümlesi ve kontrol
+saati («Son ölçüm 48 saatten eskiyse. Kontrol: her gece 07:00»), sabit iki kural işaretli-değiştirilemez (gerçek API secilebilir'e koymaz; panel
+ayrıca çizer), dokuz eşik düzenlenebilir (oranlar panelde yüzde), bildirim alıcıları; program sınırları ve tarife formları hizalı; seçenek metinleri
+kısa; «açık (fiziksel)». Sayfa ızgarası 1:1 → 1:1,45 (ÖLÇÜLDÜ: 1440 px'te ayarlar kartı 542 → 641 px; 70 öğe taşıyordu). Lisanssız dağıtım ifadesi
+kural tablosuyla eşlendi (sapma tutarı santrale değil GTŞ/toplayıcı UEVÇB'sine; dağılım sözleşmesel). Dil ve alarm sözlüğü bekçileri.
+kgup_service.uret: dosya adı santralın UEVÇB kodunu kullanır (API parametre geçmediğinden ad «KGUP_UEVCB_…» kalıyordu; yalnız ad).
+İnceleme turları: P7a inceleme 10 bulgu (02 M32-inceleme), dil turu (M33), ikinci tur (M33-ikinci), son kontrol (M33-son).
+Doğrulanamayan: lisanssız dağıtımda GTŞ/toplayıcı UEVÇB'sine KÜPST'nin EPİAŞ'ça fiilî uygulaması (kural tablosunda «belirsiz»; panel kesinlik
+iddia etmez). Sonraya: SMS/push (B13), sıfır üretim olay alarmı ve arıza sayacının olay kaydından sayılması (P1), md.23(6) (P5a), aynı sunum
+kalıbı Kuruluş/Ayarlar sayfalarına.
+Testler: test_alarm_p7a 10 (+ senkron/isler bekçileri); tam takım 826 passed, 1 skipped (380 s). Sıradaki: v2.520 = P5a YEKDEM.
