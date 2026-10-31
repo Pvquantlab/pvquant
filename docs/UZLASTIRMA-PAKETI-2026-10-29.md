@@ -294,3 +294,26 @@ verisi eksik / KÜPST katsayısı yok»), «D-1 … koşu» → «bir gün önce
 tanımı «gerçekleşen üretim ile piyasa pozisyonu (varsayılanı program)». Sahte fixture: üye KÜPST toplamı null (gerçek API `kupst_eksik`).
 SINIR (karar 31.10): DSG (`dsg_ozet`) ve UEVÇB KÜPST (`kupst_ozet`) hesapları hâlâ `program_df` P50 önerisiyle; bildirilen KGÜP'e bağlanması P2b'de.
 Testler: +2 (bildirilen program/pozisyon/döküm; gop_esas); tam takım 804 passed, 1 skipped (365 s). Sıradaki: v2.518 = P3a takvim, sonra P7a alarm, P5a YEKDEM.
+
+# On sekizinci paket — v2.518 (01.11.2026 gece, canlı): Takvim — uzlaştırma, nakit ve mevzuat tarihleri (DUY m.132 zinciri, günlük piyasa saatleri, yıllık son tarihler) + santral tarih alanları
+
+Commit `8e00f01`, CI #648 (7 dk 14 s). Dağıtım: api + web imajı (ssh; 22. port açıktı); göç yok (tarih alanları params_json'da). Canlı: index.html ve
+24/24 JS/CSS birebir (25/25; yeni Takvim parçası dâhil; referans klasörü silinip derlendi); api kapsayıcısında `ext/turkiye/takvim` doğrulandı
+(Ekim 2026 dönemi 16.11 / 24.11 / GTŞ 7.12; 13 günlük adım, `gunler` alanı); api ve web günlüğü hatasız.
+Kaynak: GES sahibi ihtiyaç araştırması yol haritası P3a. Kapsam: `takvim.py` saf modül — resmî tatiller (2429 + Diyanet 2026–2027), iş günü;
+`donem_takvimi` fatura dönemi başına DUY m.81(1) sayaç 10'u, m.132/A ön bildirim 11'i (EPİAŞ hafta sonu da yayımlıyor), m.132/B itiraz 12'si 17:30 ve
+sonuç 14'ü 16:00 (kaydırma kuralı yok → «belirsiz», hafta sonu rozeti), nihai bildirim 15'i (hafta sonu/tatilde izleyen iş günü), m.132/C fatura 7 gün,
+m.132/Ç ödeme 6. ve tahsilat 7. iş günü, m.133 yazılı itiraz 60 gün; lisanssızda LÜY m.23(3) GTŞ bildirimi 6'sı, m.25/m.26 GTŞ ödemesi izleyen ayın
+5. iş günü. `gunluk_saatler` 13 adım (her gün: EAK 09:00, KGÜP 14:00–15:30, BYTM 14:30, teyit 17:00, GİP; iş günü: teminat 10:30/11:00/16:30/17:00,
+avans 14:30/15:00/17:00, ESY devreye alma 11:00). `sabit_tarihler`: 30.11 YEKDEM, 10.12 ön / 31.12 nihai YEK listesi, 30.4 planlı devre dışı, LÜY
+işletim bedeli Temmuz/Aralık son iş günü, 1.12.2026 DSG kararı, 10.12.2026 AYM, 18.12.2026 LÜY Geçici 14, 1.1.2027 (m.110, Geçici m.39, SKTT),
+30.4.2027 cezai şart. Santral tarihleri (10 alan, PUT /kunye-tarihler, denetim santral_tarihler) ve türeyenler: lisans kalan süre, lisans bedeli
+muafiyeti (ilk kabul + 8 yıl, m.43(4)), YEKDEM süresi (5905-27 / 7189 CK / kullanıcı yılı), poliçe kalan. Her olay kaynak_turu (mevzuat | hesaplanan |
+duyuru | kunye = «santral tarihi») ve kaydirma (is_gunu | yok | belirsiz). Web: yeni sayfa «Takvim» (4 kart), `table.veri.takvim`.
+İnceleme (01.11, kullanıcı kareleri × DUY/Lisans Yön. metinleri, pdftotext): tarih hesapları doğru; 9 metin/dayanak bulgusu düzeltildi — m.69(1)/(4)
+atıfları; «her iş günü» yerine her gün / iş günü ayrımı («Günler» sütunu); araştırma numaraları görünür metinden çıktı (bekçi testi); «bitiş − 6 ay»
+türetmesi kaldırıldı (m.26(2) erken sona erdirme süresidir, lisans m.26(1)(a) ile kendiliğinden biter); m.47 «teminat altına alma»; «İlk kabul
+tarihi (kısmi ya da tam)»; fatura 7 gün ve itiraz 60 gün «belirsiz»; «santral tarihi» rozeti; dipnot yeniden yazıldı.
+SINIR: dinî bayramlar 2026–2027 için tanımlı (2028 Diyanet yayımlayınca eklenir; dipnot söylüyor); alarm üretimi P7a, ilerleme raporu vb. P3b, EPYS
+mutabakatı ve DSG/UEVÇB'de bildirilen KGÜP P2b.
+Testler: test_takvim.py 12; tam takım 816 passed, 1 skipped (318 s). Sıradaki: v2.519 = P7a alarm (takvim olayları hazır), sonra P5a YEKDEM.
