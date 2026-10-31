@@ -442,3 +442,17 @@ export interface RaporJson {
 export interface DenetimKaydi { id: number; zaman: string; kapsam: string; aktor_id: string | null; aktor_eposta: string | null; tenant_id: string | null;
   eylem: string; nesne_tur: string | null; nesne_id: string | null; ayrinti: Record<string, unknown>; ip: string | null }
 export interface KurulusAyarlar { yonetici_2fa_zorunlu: boolean; iki_adimsiz_yonetici: number }
+
+/** v2.518 (P3a): piyasa ve mevzuat takvimi — olay (kaynak_turu: mevzuat | hesaplanan | duyuru | kunye [Santral tarihleri formundan];
+ *  kaydirma: is_gunu | yok | belirsiz) */
+export type TakvimOlay = { kod: string; ad: string; tarih: string; saat: string | null; kaynak: string; kaynak_turu: "mevzuat" | "hesaplanan" | "duyuru" | "kunye";
+  kaydirma: "is_gunu" | "yok" | "belirsiz"; kapsam: string[]; donem: string | null; not: string | null; hafta_sonu: boolean; tatil: boolean; kalan_gun?: number };
+export type KunyeTarihler = { alanlar: Record<string, string | number | null>;
+  turetilen: { lisans_kalan_gun: number | null; lisans_bedeli_muafiyet_bitis: string | null;
+    yekdem: { rejim: string; ilk_yil: number; son_yil: number; yek_bitis?: string; yerli_katki_bitis?: string; kaynak: string; kaynak_turu: string } | null;
+    police_kalan_gun: number | null };
+  etiketler: Record<string, string> };
+export type Takvim = { bugun: string; pencere_gun: number; segment: string | null; kgup_yukumlu: boolean | null; yaklasan: TakvimOlay[];
+  donemler: { donem: string; olaylar: TakvimOlay[] }[];
+  gunluk: { saat: string; ad: string; kaynak: string; kapsam: string[]; not: string | null; gunler: "her gün" | "iş günü" }[];
+  kunye: KunyeTarihler; tatil_kaynak: string; tatil_yillari: number[]; not: string };

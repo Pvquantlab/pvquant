@@ -1108,6 +1108,50 @@ def segment_ayarla(plant_id: str, p: SegmentIstek, claims=Depends(yazma_yetkisi(
     return {"params_json": {k: v for k, v in pj.items() if k in ("segment", "uevcb")}, **dengesizlik_service.segment_bilgisi(pj)}
 
 
+class KunyeTarihIstek(BaseModel):
+    """v2.518 (P3a): santral künyesinin tarih alanları (params_json). Hepsi isteğe bağlı; None alanı siler. YYYY-MM-DD."""
+    lisans_yururluk: str | None = None
+    lisans_bitis: str | None = None
+    kabul_tarihi: str | None = None
+    isletmeye_giris: str | None = None
+    police_bitis: str | None = None
+    ced_karar_tarihi: str | None = None
+    baglanti_anlasmasi: str | None = None
+    toplayici_giris: str | None = None
+    toplayici_cikis: str | None = None
+    yekdem_baslangic_yili: int | None = None
+
+
+@app.get("/v1/plants/{plant_id}/takvim")
+def takvim(plant_id: str, gun: int = 90, claims=Depends(gecerli_kullanici)):
+    """v2.518 (P3a) — piyasa ve mevzuat takvimi: yaklaşan son tarihler (segmente göre), aylık uzlaştırma/fatura zinciri (DUY m.132),
+    günlük piyasa saatleri, künye tarihleri ve türeyenleri. Saf hesap ext/turkiye/takvim.py; EPİAŞ duyurusuyla değişebilir."""
+    from pvquant.services import plant_service, takvim_service
+    if not (7 <= gun <= 400):
+        raise HTTPException(422, "gun 7–400 aralığında olmalı")
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    return takvim_service.ozet({"id": str(row["id"]), "params_json": row.get("params_json")}, gun=gun)
+
+
+@app.put("/v1/plants/{plant_id}/kunye-tarihler")
+def kunye_tarihler_ayarla(plant_id: str, p: KunyeTarihIstek, claims=Depends(yazma_yetkisi())):
+    """v2.518 (P3a) — künye tarih alanları params_json'a yazılır (göç yok); türeyenler (lisans −6 ay, YEKDEM son yılı, poliçe) yanıtta."""
+    from pvquant.services import plant_service, takvim_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    try:
+        alanlar = takvim_service.kunye_dogrula(p.model_dump(exclude_unset=True))
+    except ValueError as e:
+        raise HTTPException(422, f"{e}: YYYY-MM-DD biçiminde tarih (YEKDEM başlangıç yılı 2005–2100) olmalı; bitiş yürürlükten önce olamaz")
+    pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **alanlar)
+    _denetim.kaydet("musteri", "santral_tarihler", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=plant_id,
+                    ayrinti={k: v for k, v in alanlar.items()})   # v2.518 (P3a): yalnız tarih alanları, sır yok
+    return {"kunye": takvim_service.ozet({"id": plant_id, "params_json": pj}, gun=7)["kunye"]}
+
+
 class EakIstek(BaseModel):
     eak_kw: float | None = None                 # kalıcı EAK alanı (kW); None → AC tavanı/kurulu güç
     gecici_kw: float | None = None              # geçici kısıt (bakım/arıza), kW

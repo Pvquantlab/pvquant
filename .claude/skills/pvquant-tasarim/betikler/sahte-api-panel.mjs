@@ -5,6 +5,8 @@
  *  sayfa kendi isteğini bekler.
  *  node sahte-api-panel.mjs [port=4807] ; ortam: YAVAS=<çarpan> (varsayılan 1) ; GET /_log istek günlüğü, POST /_sifirla. */
 import http from "node:http";
+import { readFileSync } from "node:fs";
+const TAKVIM = JSON.parse(readFileSync(new URL("./sahte-takvim.json", import.meta.url), "utf-8"));   // v2.518 (P3a)
 const PORT = Number(process.argv[2] ?? 4807);
 const CARPAN = Number(process.env.YAVAS ?? 1);
 /** uç → gecikme (ms); anahtar yol öneki (sorgu hariç) */
@@ -161,6 +163,10 @@ http.createServer((req, res) => {
     const pay = a === "esit" ? [33.3, 33.3, 33.3] : a === "uretim" ? [45.1, 36.2, 18.7] : [42.8, 34.7, 22.5];
     const uyeler = Object.fromEntries(Object.entries(DSG.uyeler).map(([k, v], i) => [k, { ...v, pay_pct: pay[i], netlesme_farki_tl: Math.round(40400 * pay[i] / 100), edt_dsg_tl: Math.round(v.edt_tek_tl + 40400 * pay[i] / 100) }]));
     return yanit(200, { ...DSG, dagitim_anahtari: a, dagitim_etiket: et, uyeler, not: DSG.not + ` Üyelere dağıtım: ${et}; anahtar DSG sözleşmesinde belirlenir. Dağıtım şirketi ya da görevli tedarik şirketinin kurduğu DSG'lerde üye eşiği 1.1.2027'ye kadar %100 (DUY Geçici m.39); DSG'niz bu türdeyse netleşme farkı burada gösterilenden büyüktür.` }); }
+  // v2.518 (P3a): takvim — gerçek servisten (bugün 31.10.2026, lisanslı serbest) dökülmüş fixture; künye PUT alanları fixture'a işlenir
+  if (/\/v1\/plants\/[^/]+\/takvim$/.test(yol)) return yanit(200, TAKVIM);
+  if (/\/v1\/plants\/[^/]+\/kunye-tarihler$/.test(yol) && req.method === "PUT") { let g = ""; req.on("data", (c) => { g += c; }); req.on("end", () => { let b = {}; try { b = JSON.parse(g || "{}"); } catch { /* yok */ }
+    for (const k of Object.keys(b)) TAKVIM.kunye.alanlar[k] = b[k]; res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" }); res.end(JSON.stringify({ kunye: TAKVIM.kunye })); }); return; }
   if (yol === "/v1/plants") return yanit(200, PLANTS);
   if (yol === "/v1/oturum/yenile") return yanit(200, { token: "x." + Buffer.from('{"role":"admin"}').toString("base64url") + ".y", role: "admin", firma: "Deneme Lab", email: "deneme@example.com" });
   if (yol === "/v1/api-anahtarlari") return yanit(200, { anahtarlar: [], kapsamlar: ["tahmin:oku", "kgup:oku"] });

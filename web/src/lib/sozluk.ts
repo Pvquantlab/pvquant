@@ -40,6 +40,7 @@ export const SOZLUK = {
     kgup_indir: "KGÜP dosyası indirildi", eak_indir: "EAK dosyası indirildi", kgup_bildirilen_yukle: "Bildirilen KGÜP yüklendi",
     kgup_sablon_ogren: "KGÜP şablonu öğrenildi", kgup_sablon_sifirla: "KGÜP şablonu sıfırlandı",
     santral_segment: "Segment / UEVÇB ayarlandı", eak_ayar: "EAK ayarı değiştirildi",
+    santral_tarihler: "Santral tarihleri ayarlandı",   // v2.518 (P3a)
   } as Record<string, string>,
 } as const;
 

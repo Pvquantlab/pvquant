@@ -1,4 +1,4 @@
-import type { DengesizlikSaatlik, DsgAnahtar, KgupRevizyon, PiyasaDurum, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar, PortfoyAnahtar, PortfoyKupst, UevcbArama } from "./types";
+import type { DengesizlikSaatlik, DsgAnahtar, KgupRevizyon, PiyasaDurum, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar, PortfoyAnahtar, PortfoyKupst, UevcbArama , Takvim, KunyeTarihler } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -852,6 +852,9 @@ export const api = {
     try { return await getir<EpiasUretim>(`/v1/plants/${p}/epias-uretim`); } catch { return null; }
   },
   epiasUretimAyarla: (p: string, epias_santral_id: number | null): Promise<EpiasUretim> => gonder(`/v1/plants/${p}/epias-uretim`, "PUT", { epias_santral_id }),
+  /** v2.518 (P3a): piyasa ve mevzuat takvimi (yaklaşan, aylık zincir, günlük saatler, künye tarihleri) ve künye tarih ayarı. */
+  takvim: (p: string, gun = 90): Promise<Takvim> => getir<Takvim>(`/v1/plants/${p}/takvim?gun=${gun}`),
+  kunyeTarihler: (p: string, g: Record<string, string | number | null>): Promise<{ kunye: KunyeTarihler }> => gonder(`/v1/plants/${p}/kunye-tarihler`, "PUT", g),
   /** v2.275: EAK alanı / geçici kısıt / KÜPST katsayıları. */
   eakAyarla: (p: string, g: { eak_kw?: number | null; gecici_kw?: number | null; gecici_bitis?: string | null; kupst_n?: number | null; kupst_tolerans?: number | null; dengeleme_birimi?: boolean | null; ariza_sayisi_ay?: number | null; luy_istisna?: boolean | null;
     pozisyon_kaynagi?: "program" | "uretim" | "sabit" | null; pozisyon_sabit_mwh?: number | null }):

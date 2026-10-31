@@ -444,6 +444,11 @@ table.veri.santral { font-size: 14px; }
 table.veri.santral th, table.veri.santral td { width: 1%; }                 /* içerik genişliği */
 table.veri.santral th:first-child, table.veri.santral td:first-child { width: auto; }
 table.veri.santral th + th, table.veri.santral td + td { padding-left: 20px; }
+/* v2.518 (P3a) Takvim tabloları: metin sola; tarih/saat/dönem/dayanak/kalan sütunları içerik genişliğinde ve kırılmaz; «Ne» sütunu esner */
+table.veri.takvim th, table.veri.takvim td { text-align: left; white-space: nowrap; }
+table.veri.takvim th.esnek, table.veri.takvim td.esnek, table.veri.takvim th.sar, table.veri.takvim td.sar { white-space: normal; }   /* sarılan sütunlar; ötekiler içerik genişliğinde */
+table.veri.takvim .hucre-alt { display: block; margin-top: 3px; }
+table.veri.takvim th + th, table.veri.takvim td + td { padding-left: 18px; }
 /* tarih sütunları esnek: yer varsa tek satır, dar ekranda yalnız tarih ile saat arasında kırılır (ad sütunuyla paylaşır) */
 table.veri.santral th.tarih-saat, table.veri.santral td.tarih-saat { width: auto; white-space: normal; }
 table.veri.santral td .tarih-saat { white-space: normal; }
