@@ -1117,6 +1117,8 @@ class EakIstek(BaseModel):
     dengeleme_birimi: bool | None = None        # 29.10 (F-05): 15 dk dilimleme yalnız dengeleme birimi (DUY m.69(3))
     ariza_sayisi_ay: int | None = None          # 29.10 (v2.505, 04 #13): bu ay bildirilen arıza kaydı sayısı — KÜPST n katsayısı eşiğinde (kural tablosu) yükselir
     luy_istisna: bool | None = None             # 31.10 (v2.510, Ç3): tesis LÜY m.5(1)(ç),(d),(e) kapsamında → Karar 14907 Md.5, iletime bağlı lisanssızda KÜPST uygulanmaz
+    pozisyon_kaynagi: str | None = None         # v2.517 (P2a): piyasa pozisyonu — program | uretim (üretildiği kadar satış) | sabit (baz yük MWh/saat)
+    pozisyon_sabit_mwh: float | None = None     # v2.517 (P2a): pozisyon_kaynagi = sabit için saatlik MWh
 
 
 class EpiasIstek(BaseModel):
@@ -1147,9 +1149,10 @@ def epias_uretim_ayarla(plant_id: str, p: EpiasIstek, claims=Depends(yazma_yetki
 
 @app.put("/v1/plants/{plant_id}/eak")
 def eak_ayarla(plant_id: str, p: EakIstek, claims=Depends(yazma_yetkisi())):
-    """v2.275 — EAK alanı (emre amade kapasite) + geçici kısıt + KÜPST katsayıları; params_json'a yazılır, KGÜP/toplayıcı çıktısı ve simülatör okur."""
+    """v2.275 — EAK alanı (emre amade kapasite) + geçici kısıt + KÜPST katsayıları; params_json'a yazılır, KGÜP/toplayıcı çıktısı ve simülatör okur.
+    v2.517 (P2a): piyasa pozisyonu ayarı (program | uretim | sabit MWh/saat) — uzlaştırma hesabının EDM tabanı."""
     from datetime import date as _d
-    from pvquant.services import kgup_service
+    from pvquant.services import kgup_service, dengesizlik_service
     row = plant_service.getir(claims["tenant_id"], plant_id)
     if row is None:
         raise HTTPException(404, "santral yok")
@@ -1187,13 +1190,22 @@ def eak_ayarla(plant_id: str, p: EakIstek, claims=Depends(yazma_yetkisi())):
         if p.ariza_sayisi_ay is not None and not (0 <= p.ariza_sayisi_ay <= 999):
             raise HTTPException(422, "ariza_sayisi_ay 0–999")
         an["ariza_sayisi_ay"] = int(p.ariza_sayisi_ay) if p.ariza_sayisi_ay is not None else None
+    if "pozisyon_kaynagi" in verilen:   # v2.517 (P2a)
+        if p.pozisyon_kaynagi is not None and p.pozisyon_kaynagi not in ("program", "uretim", "sabit"):
+            raise HTTPException(422, "pozisyon_kaynagi program, uretim ya da sabit olmalı")
+        an["pozisyon_kaynagi"] = p.pozisyon_kaynagi
+    if "pozisyon_sabit_mwh" in verilen:
+        if p.pozisyon_sabit_mwh is not None and not (0 <= p.pozisyon_sabit_mwh <= kap / 1000.0):
+            raise HTTPException(422, f"pozisyon_sabit_mwh 0–{kap / 1000.0:g} MWh/saat aralığında olmalı")
+        an["pozisyon_sabit_mwh"] = float(p.pozisyon_sabit_mwh) if p.pozisyon_sabit_mwh is not None else None
     pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **an)
     _denetim.kaydet("musteri", "eak_ayar", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"], ayrinti=dict(an))   # v2.516 (#7)
     row["params_json"] = pj
     return {"eak_bugun": kgup_service.eak_etkin(row, pd.Timestamp.now(tz="Europe/Istanbul").date()),
             "eak_kw": pj.get("eak_kw"), "eak_gecici": pj.get("eak_gecici"), "kupst_n": pj.get("kupst_n"), "kupst_tolerans": pj.get("kupst_tolerans"),
             "dengeleme_birimi": bool(pj.get("dengeleme_birimi")), "ariza_sayisi_ay": int(pj.get("ariza_sayisi_ay") or 0),
-            "luy_istisna": bool(pj.get("luy_istisna"))}
+            "luy_istisna": bool(pj.get("luy_istisna")),
+            "pozisyon": dengesizlik_service.pozisyon_ayari(pj)}   # v2.517 (P2a)
 
 
 def _toplayici_yaniti(tenant_id: str, plant_id: str, gun: str | None, fmt: str, adim: int):
@@ -1255,11 +1267,41 @@ def dengesizlik(plant_id: str, gun: int = 90, claims=Depends(gecerli_kullanici))
     """v2.259 — karnenin TL dili: PVQuant programı vs referans program uzlaştırma kalemleri (EDT + KÜPST, yürürlükteki kural), aylık + toplam."""
     from pvquant.services import dengesizlik_service, plant_service
     if not (14 <= gun <= 365):
-        raise HTTPException(422, "gun 14-365 araliginda olmali")
+        raise HTTPException(422, "gun 14–365 aralığında olmalı")
     row = plant_service.getir(claims["tenant_id"], plant_id)
     if row is None:
         raise HTTPException(404, "santral yok")
     return dengesizlik_service.simulasyon(claims["tenant_id"], {"id": str(row["id"]), "params_json": row.get("params_json")}, gun=gun)
+
+
+@app.get("/v1/plants/{plant_id}/dengesizlik/saatlik")
+def dengesizlik_saatlik(plant_id: str, gun: int = 90, fmt: str = "json", n: int = 48, claims=Depends(gecerli_kullanici)):
+    """v2.517 (P2a, B12) — saatlik uzlaştırma dökümü: program (bildirilen/öneri), pozisyon, gerçekleşen, sapma, fiyat, yön, EDT borç/alacak,
+    KÜPSM, KÜPST, kural sürümü, durum. fmt=csv (;-ayraçlı, BOM'lu) ve fmt=xlsx (Saatlik + Aylar) indirilir; fmt=json son n satırı döner.
+    Yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir."""
+    from fastapi.responses import Response
+    from pvquant.services import dengesizlik_service, plant_service
+    if not (14 <= gun <= 365):
+        raise HTTPException(422, "gun 14–365 aralığında olmalı")
+    if fmt not in ("json", "csv", "xlsx"):
+        raise HTTPException(422, "fmt json, csv ya da xlsx olmalı")
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    df, ozet = dengesizlik_service.dokum(claims["tenant_id"], {"id": str(row["id"]), "params_json": row.get("params_json")}, gun=gun)
+    ad = f"pvquant_uzlastirma_saatlik_{row['name'].replace(' ', '_')}_{gun}g"
+    if fmt == "csv":
+        return Response(dengesizlik_service.dokum_csv(df), media_type="text/csv; charset=utf-8",
+                        headers={"Content-Disposition": f'attachment; filename="{ad}.csv"'})
+    if fmt == "xlsx":
+        b = dengesizlik_service.dokum_xlsx(df, f"{row['name']} — saatlik uzlaştırma dökümü, son {gun} gün (yeniden hesap)", ozet.get("aylar"))
+        return Response(b, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        headers={"Content-Disposition": f'attachment; filename="{ad}.xlsx"'})
+    son = df.tail(max(1, min(int(n), 2000)))
+    return {"satir": int(len(df)), "kolonlar": dengesizlik_service.DOKUM_KOLONLAR, "not": dengesizlik_service.DOKUM_NOTU,
+            "program": ozet.get("program"), "toplam": ozet.get("toplam"),
+            "satirlar": [{k: (None if (isinstance(v, float) and v != v) else (float(v) if hasattr(v, "item") and not isinstance(v, str) else v)) for k, v in r.items()}
+                         for r in son.to_dict(orient="records")]}
 
 
 @app.get("/v1/piyasa/durum")

@@ -1,4 +1,4 @@
-import type { DsgAnahtar, KgupRevizyon, PiyasaDurum, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar, PortfoyAnahtar, PortfoyKupst, UevcbArama } from "./types";
+import type { DengesizlikSaatlik, DsgAnahtar, KgupRevizyon, PiyasaDurum, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar, PortfoyAnahtar, PortfoyKupst, UevcbArama } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -619,7 +619,7 @@ export const api = {
     const y = await fetch(`${TABAN}/v1/plants/${p}/scada/disa${q ? `?${q}` : ""}`,
       { headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
     if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise<void>(() => {}); }
-    if (!y.ok) throw new Error(`${y.status} dışa aktarma`);
+    if (!y.ok) throw new Error(`Dışa aktarma başarısız (${y.status}).`);
     const es = /filename="([^"]+)"/.exec(y.headers.get("Content-Disposition") ?? "");
     const url = URL.createObjectURL(await y.blob()); const a = document.createElement("a");
     a.href = url; a.download = es ? es[1] : "pvquant_scada.csv"; a.click(); URL.revokeObjectURL(url);
@@ -853,7 +853,8 @@ export const api = {
   },
   epiasUretimAyarla: (p: string, epias_santral_id: number | null): Promise<EpiasUretim> => gonder(`/v1/plants/${p}/epias-uretim`, "PUT", { epias_santral_id }),
   /** v2.275: EAK alanı / geçici kısıt / KÜPST katsayıları. */
-  eakAyarla: (p: string, g: { eak_kw?: number | null; gecici_kw?: number | null; gecici_bitis?: string | null; kupst_n?: number | null; kupst_tolerans?: number | null; dengeleme_birimi?: boolean | null; ariza_sayisi_ay?: number | null; luy_istisna?: boolean | null }):
+  eakAyarla: (p: string, g: { eak_kw?: number | null; gecici_kw?: number | null; gecici_bitis?: string | null; kupst_n?: number | null; kupst_tolerans?: number | null; dengeleme_birimi?: boolean | null; ariza_sayisi_ay?: number | null; luy_istisna?: boolean | null;
+    pozisyon_kaynagi?: "program" | "uretim" | "sabit" | null; pozisyon_sabit_mwh?: number | null }):
     Promise<{ eak_bugun: { eak_mw: number; kaynak: string; bitis?: string }; eak_kw: number | null; eak_gecici: { kw: number; bitis: string } | null; kupst_n: number | null; kupst_tolerans: number | null; dengeleme_birimi?: boolean; ariza_sayisi_ay?: number; luy_istisna?: boolean }> =>
     gonder(`/v1/plants/${p}/eak`, "PUT", g),
   segmentAyarla: async (p: string, segment: string, uevcb?: string): Promise<{ segment: string | null; dengesizlik_sahibi: string | null; kgup_yukumlu: boolean | null }> => {
@@ -868,6 +869,19 @@ export const api = {
     try { return await getir<DengesizlikGeriTest>(`/v1/plants/${p}/dengesizlik/geri-test?gun=${gun}`); } catch { return null; }
   },
   /** v2.259: dengesizlik simülatörü — kapı yok/hata → null. */
+  /** v2.517 (P2a): saatlik uzlaştırma dökümü — JSON önizleme (son n satır) ve CSV/XLSX indirme. */
+  dengesizlikSaatlik: async (p: string, gun = 90, n = 48): Promise<DengesizlikSaatlik | null> => {
+    try { return await getir<DengesizlikSaatlik>(`/v1/plants/${p}/dengesizlik/saatlik?gun=${gun}&n=${n}`); } catch { return null; }
+  },
+  dengesizlikSaatlikIndir: async (p: string, fmt: "csv" | "xlsx", gun = 90): Promise<void> => {
+    const jeton = localStorage.getItem("pvq_token");
+    const y = await fetch(`${TABAN}/v1/plants/${p}/dengesizlik/saatlik?gun=${gun}&fmt=${fmt}`, { headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
+    if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise<void>(() => {}); }
+    if (!y.ok) throw new Error(`Dışa aktarma başarısız (${y.status}).`);
+    const es = /filename="([^"]+)"/.exec(y.headers.get("Content-Disposition") ?? "");
+    const url = URL.createObjectURL(await y.blob()); const a = document.createElement("a");
+    a.href = url; a.download = es ? es[1] : `pvquant_uzlastirma_saatlik.${fmt}`; a.click(); URL.revokeObjectURL(url);
+  },
   dengesizlik: async (p: string, gun = 90): Promise<Dengesizlik | null> => {
     if (TABAN == null) return null;
     try { return await getir<Dengesizlik>(`/v1/plants/${p}/dengesizlik?gun=${gun}`); } catch { return null; }

@@ -221,7 +221,7 @@ export function Tahminler({ plantId }: { plantId: string }) {
                       {surumler.map((v) => (
                         <tr key={v.id}>
                           <td>{new Date(v.teslim_gunu + "T12:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}</td>
-                          <td>{v.kaynak === "musteri" ? <span className="rozet rozet-notr rozet-kucuk" title="Müşteri beyanı; TPYS kabulü doğrulanmadı">bildirilen</span> : v.kaynak === "eak" ? <span className="rozet rozet-notr rozet-kucuk" title="TPYS EAK.csv biçiminde emre amade kapasite dosyası (v2.513)">EAK</span> : "öneri"}</td>
+                          <td>{v.kaynak === "musteri" ? <span className="rozet rozet-notr rozet-kucuk" title="Müşteri beyanı; TPYS kabulü doğrulanmadı">bildirilen</span> : v.kaynak === "eak" ? <span className="rozet rozet-notr rozet-kucuk" title="TPYS EAK.csv biçiminde emre amade kapasite dosyası (v2.513)">EAK</span> : <>öneri{v.gop_esas && <span className="rozet rozet-ok rozet-kucuk" style={{ marginLeft: 6 }} title="Gün öncesi piyasası teklif kapanışından (bir gün önce 12:30) önce indirilen son öneri; GÖP teklifine esas alınabilecek sürüm">GÖP'e esas</span>}</>}</td>
                           <td>{v.surum}</td><td>{v.kantil === "bildirilen" || v.kantil === "eak" ? "—" : v.kantil.toUpperCase()}</td>
                           <td>{v.run_at ? new Date(v.run_at).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }) : "—"}</td>
                           <td>{v.toplam_mwh != null ? sayiTr(v.toplam_mwh, 1) : "—"}</td>

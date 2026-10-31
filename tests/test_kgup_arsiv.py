@@ -169,3 +169,15 @@ def test_temizle_saklama(kiraci, monkeypatch):
     monkeypatch.setattr("pvquant.config.get_settings", lambda: type("S", (), {"kgup_saklama_ay": 0})())
     assert ka.temizle() == 0                                                         # ayar 0 → dokunmaz
     assert ka.SAKLAMA_TABAN_AY == 15
+
+
+def test_v2517_gop_esas_isareti(kiraci):
+    """v2.517 (P2a, IH-001): teslim günü başına GÖP teklif kapanışından (D-1 12:30 İstanbul) önce indirilen son öneri «GÖP'e esas»."""
+    tid, pid = kiraci
+    r1 = ka.kaydet(tid, pid, _ornek()); r2 = ka.kaydet(tid, pid, _ornek(satir="0,7")); r3 = ka.kaydet(tid, pid, _ornek(satir="0,8"))
+    with sistem_baglami() as s:
+        s.execute(text("UPDATE kgup_surum SET olusturma = '2026-10-24 07:00+00' WHERE id = :i"), {"i": r1["id"]})   # 10:00 TSİ
+        s.execute(text("UPDATE kgup_surum SET olusturma = '2026-10-24 09:00+00' WHERE id = :i"), {"i": r2["id"]})   # 12:00 TSİ — kapanıştan önce son
+        s.execute(text("UPDATE kgup_surum SET olusturma = '2026-10-24 10:00+00' WHERE id = :i"), {"i": r3["id"]})   # 13:00 TSİ — kapanıştan sonra
+    l = {x["surum"]: x for x in ka.listele(tid, pid, date(2026, 10, 25))}
+    assert (l[1]["gop_esas"], l[2]["gop_esas"], l[3]["gop_esas"]) == (False, True, False)

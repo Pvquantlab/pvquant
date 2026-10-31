@@ -253,13 +253,16 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
                 </div>
                 <div style={{ overflowX: "auto" }}>
                   <table className="veri" style={{ fontSize: 13.5 }}>
-                    <thead><tr><th>Santral</th><th>Sapma (MWh)</th><th>Pay</th><th>Tek başına EDT</th><th>DSG içinde EDT</th><th>Fark</th></tr></thead>
+                    <thead><tr><th>Santral</th><th>Sapma (MWh)</th><th>Pay</th><th>Tek başına EDT</th><th>DSG içinde EDT</th><th>Fark</th><th title="Eşiği aşan, DSG içinde netleşmeyip santralin kendisinde kalan enerji dengesizlik tutarı">Santralde kalan EDT</th><th title="KGÜP sapma tutarı; santral başına ödenir, DSG içinde netleşmez">KÜPST</th></tr></thead>
                     <tbody>
                       {Object.entries(dsg.uyeler).map(([ad, u]) => (
                         <tr key={ad}><td>{ad}</td><td>{sayiTr(u.sapma_mwh, 1)}</td><td>{u.pay_pct != null ? `%${sayiTr(u.pay_pct, 1)}` : "—"}</td>
                           <td>{sayiTr(u.edt_tek_tl / 1000, 1)} <span className="birim">bin TL</span></td>
                           <td>{u.edt_dsg_tl != null ? sayiTr(u.edt_dsg_tl / 1000, 1) : "—"} <span className="birim">bin TL</span></td>
-                          <td>{u.netlesme_farki_tl != null ? sayiTr(u.netlesme_farki_tl / 1000, 1) : "—"} <span className="birim">bin TL</span></td></tr>
+                          <td>{u.netlesme_farki_tl != null ? sayiTr(u.netlesme_farki_tl / 1000, 1) : "—"} <span className="birim">bin TL</span></td>
+                          {/* v2.517 (P2a, IH-036): üye satırında santralde kalan EDT ve KÜPST (önce yalnız API'de) */}
+                          <td>{u.edt_bireysel_tl != null ? sayiTr(u.edt_bireysel_tl / 1000, 1) : "—"} <span className="birim">bin TL</span></td>
+                          <td>{u.kupst_tl != null ? <>{sayiTr(u.kupst_tl / 1000, 1)} <span className="birim">bin TL</span></> : <span className="soluk" title="segment seçilmedi; hesaplanamadı">—</span>}</td></tr>
                       ))}
                     </tbody>
                   </table>

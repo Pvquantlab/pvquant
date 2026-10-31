@@ -69,35 +69,111 @@ def _r0(v):
     return None if v is None or (isinstance(v, float) and np.isnan(v)) else round(float(v), 0)
 
 
-def hesapla_df(df: pd.DataFrame, fiyat: pd.DataFrame, kat: d.Katsayilar | None = None, segment: str | None = None,
-               ariza_sayisi: int = 0, luy_istisna: bool = False) -> dict:
-    """SAF. df: ts_utc, gercek_kw, kgup_kw, naif_kw (kW ≈ kWh/saat → MWh = /1000). fiyat: aynı ts index'li ptf/smf/yon/kaynak.
-    Çıktı: aylar[] ve toplam — EDT (edt_neg/edt_poz/edta/edtb), kayıp (dengesizlik_tl), KÜPST (kupst_tl) AYRI;
-    pvquant_tl = kayıp + KÜPST («uzlaştırma kalemleri toplamı»; KÜPST hesaplanamıyorsa None)."""
+def pozisyon_ayari(params_json) -> dict:
+    """v2.517 (P2a): piyasa pozisyonu (EDM = gerçekleşen − pozisyon) nereden alınır? 'program' (varsayılan: bildirilen/önerilen KGÜP;
+    satış programa eşit varsayımı), 'uretim' (üretildiği kadar satış, pay-as-produced ikili anlaşma: dengesizlik alıcıda, yalnız KÜPST kalır),
+    'sabit' (her saat sabit MWh baz yük satışı). params_json.pozisyon_kaynagi / pozisyon_sabit_mwh."""
+    pj = _pj(params_json); k = pj.get("pozisyon_kaynagi") or "program"
+    if k not in ("program", "uretim", "sabit"):
+        k = "program"
+    sabit = pj.get("pozisyon_sabit_mwh")
+    try:
+        sabit = float(sabit) if sabit is not None else None
+    except (TypeError, ValueError):
+        sabit = None
+    if k == "sabit" and sabit is None:
+        k = "program"
+    sabit_tr = f"{sabit:g}".replace(".", ",") if sabit is not None else ""   # dil: ondalık virgül
+    etiket = {"program": "pozisyon = program (satış programa eşit varsayımı)", "uretim": "pozisyon = gerçekleşen üretim (üretildiği kadar satış; dengesizlik alıcıda)",
+              "sabit": f"pozisyon = sabit {sabit_tr} MWh/saat (baz yük satışı)" if sabit is not None else ""}[k]
+    return {"kaynak": k, "sabit_mwh": sabit, "etiket": etiket}
+
+
+def bildirilen_serisi(tenant_id, plant_id, params_json=None, gun: int = 90) -> pd.Series:
+    """v2.517 (P2a): müşterinin TPYS'ye bildirdiğini beyan ettiği KGÜP dosyaları (kgup_surum kaynak='musteri', teslim günü başına son sürüm)
+    → saatlik MWh serisi (UTC index; İstanbul günü 00:00'dan 24 saat). Dosya yoksa boş seri: o saatlerde program PVQuant önerisine düşer.
+    TPYS kabulü doğrulanmaz (beyan); hesaba giren program «bildirilen» etiketiyle taşınır."""
+    from sqlalchemy import text
+    from pvquant.db import tenant_baglami
+    from pvquant.services import kgup_arsiv_service as ka
+    from pvquant.ext.turkiye.kgup import Sablon
+    with tenant_baglami(tenant_id) as s:
+        rows = s.execute(text(
+            "SELECT DISTINCT ON (teslim_gunu) teslim_gunu, dosya FROM kgup_surum WHERE plant_id=:p AND kaynak='musteri' "
+            "AND teslim_gunu >= (CURRENT_DATE - (:g * INTERVAL '1 day')) ORDER BY teslim_gunu, surum DESC"), {"p": plant_id, "g": int(gun)}).fetchall()
+    sab = Sablon.params_json_dan(_pj(params_json))
+    parcalar = []
+    for r in rows:
+        try:
+            t = ka.csv_oku(bytes(r.dosya), sab)
+        except Exception:  # noqa: BLE001 — şablon sonradan değiştiyse sezgisel okuma
+            try:
+                t = ka.csv_oku(bytes(r.dosya))
+            except Exception:  # noqa: BLE001 — okunamayan dosya hesaba girmez
+                continue
+        idx = pd.date_range(pd.Timestamp(r.teslim_gunu).tz_localize(IST), periods=24, freq="h").tz_convert("UTC")
+        parcalar.append(pd.Series(t["kgup_mwh"].values[:len(idx)].astype(float), index=idx))
+    return pd.concat(parcalar).sort_index() if parcalar else pd.Series(dtype=float)
+
+
+def saatlik_hesap(df: pd.DataFrame, fiyat: pd.DataFrame, kat: d.Katsayilar | None = None, segment: str | None = None,
+                  ariza_sayisi: int = 0, luy_istisna: bool = False, bildirilen_mwh: pd.Series | None = None,
+                  pozisyon: dict | None = None):
+    """SAF çekirdek (v2.517): program = bildirilen KGÜP (varsa) yoksa PVQuant önerisi; pozisyon ayara göre. Dönüş (pv, fiyat_ozeti, x, ay_naif)
+    ya da hepsi None (boş)."""
     kat = kat or d.Katsayilar()
-    bos = {"gun_sayisi": 0, "aylar": [], "toplam": None, "hesaplanamayan_saat": 0, "kural_surumu": None,
-           "fiyat": {"epias_saat": 0, "senaryo_saat": 0, "yon_varsayilan_saat": 0, "yon_eksik_saat": 0}}
     if df is None or df.empty:
-        return bos
+        return None, None, None, None
     x = df.dropna(subset=["gercek_kw", "kgup_kw"]).copy().set_index("ts_utc")
     if x.empty:
-        return bos
+        return None, None, None, None
     f = fiyat.reindex(x.index)
     yon, fiyat_ozeti = _yon_ve_kaynak(f)
-    ger = x["gercek_kw"].astype(float) / 1000.0; kg = x["kgup_kw"].astype(float) / 1000.0
+    ger = x["gercek_kw"].astype(float) / 1000.0; oneri = x["kgup_kw"].astype(float) / 1000.0
+    if bildirilen_mwh is not None and len(bildirilen_mwh):
+        b = bildirilen_mwh.reindex(x.index).astype(float)
+        prog = b.where(b.notna(), oneri); kaynak = np.where(b.notna(), "bildirilen", "oneri")
+    else:
+        prog = oneri; kaynak = np.full(len(x), "oneri", dtype=object)
+    poz = pozisyon or {"kaynak": "program", "sabit_mwh": None}
+    poz_s = (ger if poz["kaynak"] == "uretim" else pd.Series(float(poz["sabit_mwh"]), index=x.index) if poz["kaynak"] == "sabit" else None)
     ptf = f["ptf"].astype(float); smf = f["smf"].astype(float)
-    pv = d.saatlik(kg, ger, ptf, smf, kat, yon=yon, segment=segment, ariza_sayisi=ariza_sayisi, luy_istisna=luy_istisna)
-    ay_pv = d.aylik_karne(pv)
+    pv = d.saatlik(prog, ger, ptf, smf, kat, yon=yon, segment=segment, ariza_sayisi=ariza_sayisi, luy_istisna=luy_istisna,
+                   pozisyon_mwh=poz_s, budup_mwh=prog)
+    pv["program_kaynak"] = kaynak; pv["oneri"] = oneri.values
     naif_var = x["naif_kw"].notna(); ay_naif = None
     if naif_var.sum() >= 24:
         xn = x[naif_var]
         nv = d.saatlik(xn["naif_kw"].astype(float) / 1000.0, ger.loc[xn.index], ptf.loc[xn.index], smf.loc[xn.index], kat,
                        yon=yon.loc[xn.index], segment=segment, ariza_sayisi=ariza_sayisi)
         ay_naif = d.aylik_karne(nv)
+    return pv, fiyat_ozeti, x, ay_naif
+
+
+def hesapla_df(df: pd.DataFrame, fiyat: pd.DataFrame, kat: d.Katsayilar | None = None, segment: str | None = None,
+               ariza_sayisi: int = 0, luy_istisna: bool = False, bildirilen_mwh: pd.Series | None = None,
+               pozisyon: dict | None = None) -> dict:
+    """SAF. df: ts_utc, gercek_kw, kgup_kw (PVQuant önerisi), naif_kw (kW ≈ kWh/saat → MWh = /1000). fiyat: aynı ts index'li ptf/smf/yon/kaynak.
+    v2.517 (P2a): bildirilen_mwh verilirse o saatlerde program = müşterinin bildirdiği KGÜP (BUDÜP), kalanında öneri; pozisyon ayara göre.
+    Çıktı: aylar[] ve toplam — EDT (edt_neg/edt_poz/edta/edtb), kayıp (dengesizlik_tl), KÜPST (kupst_tl) AYRI; tolerans dışı saat ve KÜPSM MWh;
+    pvquant_tl = kayıp + KÜPST («uzlaştırma kalemleri toplamı»; KÜPST hesaplanamıyorsa None); program: kaynak sayımı ve pozisyon ayarı."""
+    kat = kat or d.Katsayilar()
+    poz = pozisyon or {"kaynak": "program", "sabit_mwh": None, "etiket": "pozisyon = program (satış programa eşit varsayımı)"}
+    bos = {"gun_sayisi": 0, "aylar": [], "toplam": None, "hesaplanamayan_saat": 0, "kural_surumu": None,
+           "fiyat": {"epias_saat": 0, "senaryo_saat": 0, "yon_varsayilan_saat": 0, "yon_eksik_saat": 0},
+           "program": {"bildirilen_saat": 0, "oneri_saat": 0, "bildirilen_gun": 0, "pozisyon": poz}}
+    pv, fiyat_ozeti, x, ay_naif = saatlik_hesap(df, fiyat, kat, segment, ariza_sayisi, luy_istisna, bildirilen_mwh, poz)
+    if pv is None:
+        return bos
+    ay_pv = d.aylik_karne(pv)
+    pvl = pv.copy(); pvl.index = pvl.index.tz_convert(IST)
+    ek = pvl.assign(tol=(pvl["kupsm"] > 1e-9).astype(int), bil=(pvl["program_kaynak"] == "bildirilen").astype(int)).resample("ME").agg(
+        {"tol": "sum", "kupsm": "sum", "bil": "sum"})
     out_ay = []
     for ay, r in ay_pv.iterrows():
         kn = (float(ay_naif.loc[ay, "toplam_maliyet"]) if ay_naif is not None and ay in ay_naif.index else None)
         top = _r0(r["toplam_maliyet"])
+        e = ek.loc[ay] if ay in ek.index else None
         out_ay.append({"ay": ay.strftime("%Y-%m"), "uretim_mwh": round(float(r["gerceklesen"]), 1), "sapma_mwh": round(float(r["sapma"]), 1),
                        "kupst_tl": _r0(r["kupst"]), "dengesizlik_tl": _r0(r["dengesizlik_maliyeti"]),   # v2.275; kayıp (programa göre)
                        "edt_neg_tl": _r0(r["edt_neg"]), "edt_poz_tl": _r0(r["edt_poz"]), "edta_tl": _r0(r["edta"]), "edtb_tl": _r0(r["edtb"]),
@@ -105,12 +181,16 @@ def hesapla_df(df: pd.DataFrame, fiyat: pd.DataFrame, kat: d.Katsayilar | None =
                        "naif_tl": _r0(kn), "kurtarilan_tl": (_r0(kn - float(r["toplam_maliyet"])) if kn is not None and top is not None else None),
                        "gelir_oran_pct": round(float(r["maliyet_gelir_orani"]) * 100, 2) if pd.notna(r["maliyet_gelir_orani"]) else None,
                        "tl_per_mwh": round(float(r["tl_per_mwh"]), 1) if pd.notna(r["tl_per_mwh"]) else None,
-                       "hesaplanamayan_saat": int(r["hesaplanamayan_saat"]), "kural_surumu": str(r["kural_surumu"])})
+                       "hesaplanamayan_saat": int(r["hesaplanamayan_saat"]), "kural_surumu": str(r["kural_surumu"]),
+                       # v2.517 (P2a): tolerans dışı saat (KÜPSM > 0) ve KÜPSM toplamı; bildirilen programla hesaplanan saat
+                       "tolerans_disi_saat": int(e["tol"]) if e is not None else 0, "kupsm_mwh": round(float(e["kupsm"]), 3) if e is not None else 0.0,
+                       "bildirilen_saat": int(e["bil"]) if e is not None else 0})
     top_pv = float(pv["toplam_maliyet"].sum(min_count=1)) if pv["toplam_maliyet"].notna().any() else float("nan")
     top_ref = float(pv["referans_gelir"].sum())
     teminat_tl = round(d.teminat(pv), 0)   # v2.287: sadeleştirilmiş gösterge (Teminat U&E ile doğrulanmadı)
     top_naif = float(ay_naif["toplam_maliyet"].sum(min_count=1)) if ay_naif is not None and ay_naif["toplam_maliyet"].notna().any() else None
     kupst_top = float(pv["kupst"].sum(min_count=1)) if pv["kupst"].notna().any() and not pv["kupst"].isna().any() else None
+    bil = int((pv["program_kaynak"] == "bildirilen").sum())
     return {"gun_sayisi": int(pd.Series(x.index.tz_convert(IST).date).nunique()), "aylar": out_ay,
             "toplam": {"pvquant_tl": _r0(top_pv), "kupst_tl": _r0(kupst_top),   # v2.275
                        "dengesizlik_tl": round(float(pv["dengesizlik_maliyeti"].sum()), 0),
@@ -119,7 +199,11 @@ def hesapla_df(df: pd.DataFrame, fiyat: pd.DataFrame, kat: d.Katsayilar | None =
                        "teminat_tl": teminat_tl,   # v2.287
                        "naif_tl": _r0(top_naif),
                        "kurtarilan_tl": (_r0(top_naif - top_pv) if top_naif is not None and not np.isnan(top_pv) else None),
-                       "gelir_oran_pct": round(top_pv / top_ref * 100, 2) if top_ref and not np.isnan(top_pv) else None, "referans_gelir_tl": round(top_ref, 0)},
+                       "gelir_oran_pct": round(top_pv / top_ref * 100, 2) if top_ref and not np.isnan(top_pv) else None, "referans_gelir_tl": round(top_ref, 0),
+                       "tolerans_disi_saat": int((pv["kupsm"] > 1e-9).sum()), "kupsm_mwh": round(float(pv["kupsm"].sum()), 3)},   # v2.517
+            "program": {"bildirilen_saat": bil, "oneri_saat": int(len(pv) - bil),
+                        "bildirilen_gun": int(pd.Series(pv.index[pv["program_kaynak"] == "bildirilen"].tz_convert(IST).date).nunique()) if bil else 0,
+                        "pozisyon": poz},   # v2.517 (P2a)
             "fiyat": fiyat_ozeti, "hesaplanamayan_saat": int((pv["durum"] != "ok").sum()),
             "kural_surumu": " | ".join(sorted(set(pv["kural_surumu"]))),
             "katsayilar": {"k": 0.03, "l": 0.03, "k_yon": {"acik": 0.06, "fazla": 0.03, "dengede": 0.03} if (pv["rejim"] == "2026").any() else {"acik": 0.03, "fazla": 0.03, "dengede": 0.03},
@@ -127,6 +211,97 @@ def hesapla_df(df: pd.DataFrame, fiyat: pd.DataFrame, kat: d.Katsayilar | None =
                            "kupst_n": (float(pv["kupst_n"].iloc[-1]) if pd.notna(pv["kupst_n"].iloc[-1]) else None),
                            "kupst_tolerans": (float(pv["kupst_m"].iloc[-1]) if pd.notna(pv["kupst_m"].iloc[-1]) else None)}}
 
+
+DOKUM_KOLONLAR = ["zaman", "program_mwh", "program_kaynak", "pozisyon_mwh", "gerceklesen_mwh", "sapma_mwh", "ptf_tl_mwh", "smf_tl_mwh", "yon",
+                  "k", "l", "fiyat_eksik_tl_mwh", "fiyat_fazla_tl_mwh", "edt_borc_tl", "edt_alacak_tl", "edt_net_tl", "kupsm_mwh", "kupst_tl",
+                  "toplam_tl", "kural_surumu", "durum"]
+
+
+def dokum_df(pv: pd.DataFrame) -> pd.DataFrame:
+    """v2.517 (P2a): saatlik uzlaştırma dökümü (İstanbul saati). Her satır: program ve kaynağı, pozisyon, gerçekleşen, sapma, fiyatlar, yön,
+    yöne bağlı k/l, EDT borç/alacak/net, KÜPSM (tolerans üstü sapma MWh), KÜPST, toplam, kural sürümü, durum (ok / yon_eksik / kupst_hesaplanamaz)."""
+    if pv is None or pv.empty:
+        return pd.DataFrame(columns=DOKUM_KOLONLAR)
+    z = pv.index.tz_convert(IST)
+    out = pd.DataFrame({"zaman": [t.strftime("%Y-%m-%d %H:%M") for t in z],
+                        "program_mwh": pv["kgup"].round(3).values, "program_kaynak": pv["program_kaynak"].values,
+                        "pozisyon_mwh": pv["pozisyon"].round(3).values, "gerceklesen_mwh": pv["gerceklesen"].round(3).values,
+                        "sapma_mwh": pv["sapma"].round(3).values, "ptf_tl_mwh": pv["ptf"].round(2).values, "smf_tl_mwh": pv["smf"].round(2).values,
+                        "yon": pv["yon"].values, "k": pv["k"].values, "l": pv["l"].values,
+                        "fiyat_eksik_tl_mwh": pv["p_neg"].round(2).values, "fiyat_fazla_tl_mwh": pv["p_poz"].round(2).values,
+                        "edt_borc_tl": pv["edt_neg"].round(2).values, "edt_alacak_tl": pv["edt_poz"].round(2).values, "edt_net_tl": pv["edt_net"].round(2).values,
+                        "kupsm_mwh": pv["kupsm"].round(3).values, "kupst_tl": pv["kupst"].round(2).values, "toplam_tl": pv["toplam_maliyet"].round(2).values,
+                        "kural_surumu": pv["kural_surumu"].values, "durum": pv["durum"].values})
+    return out[DOKUM_KOLONLAR]
+
+
+DOKUM_NOTU = ("Yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir. program_kaynak: bildirilen = TPYS'ye bildirildiği beyan edilerek yüklenen KGÜP "
+              "(TPYS kabulü doğrulanmaz); oneri = PVQuant'ın bir gün önce 15:30'dan önceki son tahmininin P50'si. sapma = gerçekleşen − pozisyon (EDM). "
+              "edt_borc = eksik üretim tutarı (öder), edt_alacak = fazla üretim tutarı (alır; düşük fiyat saatinde negatif olabilir). "
+              "kupsm = tolerans (m × program) üstündeki sapma MWh; kupst = kupsm × max(taban; PTF; SMF) × n. Saatler Türkiye saatidir (Europe/Istanbul).")
+
+
+def dokum_csv(df: pd.DataFrame) -> str:
+    """UTF-8 BOM'lu, noktalı virgül ayraçlı, ondalık virgüllü CSV (Türkçe Excel doğrudan açar); ilk satır not."""
+    import io
+    buf = io.StringIO()
+    buf.write("# " + DOKUM_NOTU + "\n")
+    df.to_csv(buf, sep=";", decimal=",", index=False, lineterminator="\n")
+    return "\ufeff" + buf.getvalue()
+
+
+def dokum_xlsx(df: pd.DataFrame, baslik: str, aylar: list[dict] | None = None) -> bytes:
+    """İki sayfa: Saatlik (döküm) ve Aylar (özet) + Not."""
+    import io
+    import xlsxwriter
+    buf = io.BytesIO()
+    wb = xlsxwriter.Workbook(buf, {"in_memory": True})
+    kalin = wb.add_format({"bold": True}); sayi3 = wb.add_format({"num_format": "#,##0.000"}); para = wb.add_format({"num_format": "#,##0.00"})
+    ws = wb.add_worksheet("Saatlik")
+    ws.write(0, 0, baslik, kalin); ws.write(1, 0, DOKUM_NOTU)
+    for j, c in enumerate(DOKUM_KOLONLAR):
+        ws.write(3, j, c, kalin)
+    for i, row in enumerate(df.itertuples(index=False), start=4):
+        for j, v in enumerate(row):
+            if isinstance(v, (float, np.floating)):
+                if np.isnan(v):
+                    continue
+                ws.write_number(i, j, float(v), sayi3 if DOKUM_KOLONLAR[j].endswith("_mwh") else para)
+            elif isinstance(v, (int, np.integer)):
+                ws.write_number(i, j, int(v))
+            else:
+                ws.write(i, j, "" if v is None else str(v))
+    ws.set_column(0, 0, 17); ws.set_column(1, len(DOKUM_KOLONLAR) - 1, 13)
+    if aylar:
+        wa = wb.add_worksheet("Aylar")
+        kol = ["ay", "uretim_mwh", "sapma_mwh", "edt_neg_tl", "edt_poz_tl", "edta_tl", "edtb_tl", "dengesizlik_tl", "kupst_tl", "pvquant_tl",
+               "tolerans_disi_saat", "kupsm_mwh", "bildirilen_saat", "hesaplanamayan_saat", "kural_surumu"]
+        for j, c in enumerate(kol):
+            wa.write(0, j, c, kalin)
+        for i, a in enumerate(aylar, start=1):
+            for j, c in enumerate(kol):
+                v = a.get(c)
+                if isinstance(v, (int, float)) and not isinstance(v, bool):
+                    wa.write_number(i, j, float(v))
+                else:
+                    wa.write(i, j, "" if v is None else str(v))
+        wa.set_column(0, len(kol) - 1, 14)
+    wb.close()
+    return buf.getvalue()
+
+
+def dokum(tenant_id, plant: dict, gun: int = 90) -> tuple[pd.DataFrame, dict]:
+    """v2.517 (P2a): simülasyonla aynı girdilerden saatlik döküm + ay özeti (dışa aktarım için)."""
+    from pvquant.services import piyasa_service
+    df = program_df(tenant_id, plant["id"], gun)
+    idx = pd.DatetimeIndex(df["ts_utc"]) if not df.empty else pd.DatetimeIndex([], tz="UTC")
+    fiyat = piyasa_service.fiyatlar(idx)
+    pj = _pj(plant.get("params_json")); seg = segment_bilgisi(plant.get("params_json")); kat = katsayilar(plant.get("params_json"))
+    ariza = int(pj.get("ariza_sayisi_ay") or 0); luy = bool(pj.get("luy_istisna"))
+    bil = bildirilen_serisi(tenant_id, plant["id"], pj, gun); poz = pozisyon_ayari(pj)
+    pv, _, _, _ = saatlik_hesap(df, fiyat, kat, seg["segment"], ariza, luy, bil, poz)
+    ozet = hesapla_df(df, fiyat, kat, segment=seg["segment"], ariza_sayisi=ariza, luy_istisna=luy, bildirilen_mwh=bil, pozisyon=poz)
+    return dokum_df(pv), ozet
 
 def segment_bilgisi(params_json) -> dict:
     pj = _pj(params_json); ad = pj.get("segment")
@@ -180,7 +355,8 @@ def simulasyon(tenant_id, plant: dict, gun: int = 90) -> dict:
     seg = segment_bilgisi(plant.get("params_json"))
     kat = katsayilar(plant.get("params_json"))
     ariza = int(pj.get("ariza_sayisi_ay") or 0); luy = bool(pj.get("luy_istisna"))   # 31.10 (v2.510, Ç3): LÜY m.5(1)(ç),(d),(e) istisnası
-    out = hesapla_df(df, fiyat, kat, segment=seg["segment"], ariza_sayisi=ariza, luy_istisna=luy)
+    bil = bildirilen_serisi(tenant_id, plant["id"], pj, gun); poz = pozisyon_ayari(pj)   # v2.517 (P2a): fiilî bildirim ve pozisyon ayarı
+    out = hesapla_df(df, fiyat, kat, segment=seg["segment"], ariza_sayisi=ariza, luy_istisna=luy, bildirilen_mwh=bil, pozisyon=poz)
     out["oneri"] = oneri_kantili(fiyat, kat)   # v2.287
     out["pencere_gun"] = gun
     out["segment"] = seg; out["luy_istisna"] = luy
@@ -189,7 +365,11 @@ def simulasyon(tenant_id, plant: dict, gun: int = 90) -> dict:
     kupst_not = ("KÜPST: segment seçilmedi, hesaplanmadı; " if not seg["segment"]
                  else f"KÜPST: {k['kupst_dayanak']}; " if k["kupst_n"] is not None or seg["segment"] == "lisanssiz_dagitim"
                  else "KÜPST: katsayı doğrulanamadı, hesaplanmadı; ")
-    out["not"] = ("Program: bir gün önce 15:30'dan önce verilmiş son tahminin P50'si; referans: dün aynı saat. "
+    pr = out["program"]
+    program_not = (f"Program: {pr['bildirilen_gun']} günde bildirilen KGÜP ({pr['bildirilen_saat']} saat; TPYS'ye bildirildiği beyan edilen dosya, kabulü doğrulanmaz), "
+                   f"kalan {pr['oneri_saat']} saatte PVQuant önerisi (bir gün önce 15:30'dan önceki son tahminin P50'si)" if pr["bildirilen_saat"]
+                   else "Program: PVQuant önerisi (bir gün önce 15:30'dan önceki son tahminin P50'si); bildirilen KGÜP dosyası yüklenirse hesap ona göre yapılır")
+    out["not"] = (program_not + f"; {pr['pozisyon']['etiket']}; referans: dün aynı saat. "
                   f"Kural: {k['edt_dayanak']}; " + kupst_not
                   + ("fiyat: EPİAŞ (gerçek saatlik)" if out["fiyat"]["senaryo_saat"] == 0 and out["fiyat"]["epias_saat"] > 0
                      else f"fiyat: {piyasa_service.SENARYO_AD} (EPİAŞ kimliği yok); senaryo saatinde sistem yönü yok → k = l = 0,03 varsayımı")

@@ -132,3 +132,35 @@ def test_geri_test_df_karsi_olgu_ve_mekanizma():
     assert a26["karsi_v100_tl"] < a26["toplam_tl"]                                                # V=100 B dalını daraltır
     m = r["mekanizma"]; assert m["saat"] == 96 and m["acik_saat"] == 96 and m["b_dali_saat"] == 24 and m["hesaplanamayan_saat"] == 0
     assert "EPİAŞ uzlaştırma sonucu değildir" in r["baslik"]
+
+
+def test_v2517_bildirilen_program_pozisyon_ve_dokum():
+    """v2.517 (P2a): bildirilen KGÜP varsa program odur (BUDÜP), kalanında öneri; pozisyon ayarı EDM tabanını değiştirir, KÜPST'i değil;
+    saatlik döküm kolonları ve CSV/XLSX biçimi."""
+    from pvquant.services import dengesizlik_service as dz
+    df = _df(gun=10, seed=1); ts = pd.DatetimeIndex(df.ts_utc); f = ps.senaryo_fiyat(ts)
+    ist = ts.tz_convert("Europe/Istanbul"); ilk3 = sorted(set(ist.date))[:3]; maske = np.isin(ist.date, ilk3)
+    bil = pd.Series(df.kgup_kw.values[maske] / 1000 * 1.2, index=ts[maske])      # ilk üç gün müşteri 1,2 katını bildirmiş
+    r0 = hesapla_df(df, f, segment="lisansli_serbest")
+    r1 = hesapla_df(df, f, segment="lisansli_serbest", bildirilen_mwh=bil, pozisyon=dz.pozisyon_ayari({}))
+    n_bil = int(maske.sum())
+    assert r1["program"] == {**r1["program"], "bildirilen_saat": n_bil, "bildirilen_gun": 3, "oneri_saat": len(ts) - n_bil}
+    assert r1["program"]["pozisyon"]["kaynak"] == "program" and r1["aylar"][0]["bildirilen_saat"] == n_bil
+    assert r1["toplam"]["kupst_tl"] != r0["toplam"]["kupst_tl"] and r1["toplam"]["dengesizlik_tl"] != r0["toplam"]["dengesizlik_tl"]
+    assert r0["program"]["bildirilen_saat"] == 0 and r0["program"]["oneri_saat"] == len(ts)
+    assert r1["toplam"]["tolerans_disi_saat"] >= 1 and r1["toplam"]["kupsm_mwh"] > 0 and r1["aylar"][0]["tolerans_disi_saat"] >= 1
+    # pozisyon = üretim (üretildiği kadar satış): EDT sıfır, KÜPST aynı
+    r2 = hesapla_df(df, f, segment="lisansli_serbest", pozisyon=dz.pozisyon_ayari({"pozisyon_kaynagi": "uretim"}))
+    assert r2["toplam"]["edt_neg_tl"] == 0 and r2["toplam"]["edt_poz_tl"] == 0 and r2["toplam"]["kupst_tl"] == r0["toplam"]["kupst_tl"]
+    # pozisyon = sabit 2 MWh/saat: KÜPST aynı, kayıp farklı; sabit değer yoksa ayar programa düşer
+    r3 = hesapla_df(df, f, segment="lisansli_serbest", pozisyon=dz.pozisyon_ayari({"pozisyon_kaynagi": "sabit", "pozisyon_sabit_mwh": 2.0}))
+    assert r3["program"]["pozisyon"]["kaynak"] == "sabit" and r3["toplam"]["kupst_tl"] == r0["toplam"]["kupst_tl"] and r3["toplam"]["dengesizlik_tl"] != r0["toplam"]["dengesizlik_tl"]
+    assert dz.pozisyon_ayari({"pozisyon_kaynagi": "sabit"})["kaynak"] == "program" and dz.pozisyon_ayari({"pozisyon_kaynagi": "x"})["kaynak"] == "program"
+    # döküm
+    pv, _, _, _ = dz.saatlik_hesap(df, f, segment="lisansli_serbest", bildirilen_mwh=bil)
+    dk = dz.dokum_df(pv)
+    assert list(dk.columns) == dz.DOKUM_KOLONLAR and len(dk) == len(ts) and set(dk.program_kaynak) == {"bildirilen", "oneri"}
+    assert dk.zaman.iloc[0] == "2025-07-01 00:00" and (dk.kupsm_mwh >= 0).all()
+    csv = dz.dokum_csv(dk); assert csv.startswith("﻿# ") and ";program_kaynak;" in csv and csv.count("\n") == len(dk) + 2
+    x = dz.dokum_xlsx(dk, "test", r1["aylar"]); assert x[:2] == b"PK" and len(x) > 2000
+    assert dz.dokum_df(None).empty and list(dz.dokum_df(None).columns) == dz.DOKUM_KOLONLAR

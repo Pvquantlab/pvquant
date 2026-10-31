@@ -138,11 +138,27 @@ def listele(tenant_id, plant_id, gun: date | None = None, n: int = 30) -> list[d
             "FROM kgup_surum k LEFT JOIN users u ON u.id = k.indiren "
             "WHERE k.plant_id=:p AND (CAST(:g AS date) IS NULL OR k.teslim_gunu = CAST(:g AS date)) ORDER BY k.teslim_gunu DESC, k.kaynak, k.surum DESC LIMIT :n"),
             {"p": plant_id, "g": gun, "n": n}).fetchall()
-    return [{"id": str(r.id), "teslim_gunu": r.teslim_gunu.isoformat(), "surum": int(r.surum), "kantil": r.kantil,
-             "run_id": str(r.run_id) if r.run_id else None, "run_at": r.run_at.isoformat() if r.run_at else None,
-             "kesim": r.kesim.isoformat() if r.kesim else None, "eak_mw": r.eak_mw, "eak_kaynak": r.eak_kaynak, "toplam_mwh": r.toplam_mwh,
-             "sha256": r.sha256, "dosya_adi": r.dosya_adi, "olusturma": r.olusturma.isoformat(), "indiren": r.indiren_eposta, "bayt": int(r.bayt), "kaynak": r.kaynak}
-            for r in rows]
+    out = [{"id": str(r.id), "teslim_gunu": r.teslim_gunu.isoformat(), "surum": int(r.surum), "kantil": r.kantil,
+            "run_id": str(r.run_id) if r.run_id else None, "run_at": r.run_at.isoformat() if r.run_at else None,
+            "kesim": r.kesim.isoformat() if r.kesim else None, "eak_mw": r.eak_mw, "eak_kaynak": r.eak_kaynak, "toplam_mwh": r.toplam_mwh,
+            "sha256": r.sha256, "dosya_adi": r.dosya_adi, "olusturma": r.olusturma.isoformat(), "indiren": r.indiren_eposta, "bayt": int(r.bayt), "kaynak": r.kaynak,
+            "gop_esas": False, "_olusturma": r.olusturma, "_gun": r.teslim_gunu} for r in rows]
+    # v2.517 (P2a, IH-001): teslim günü başına GÖP teklif kapanışından (D-1 12:30 İstanbul; EPİAŞ GÖP süreçleri) önce indirilen SON öneri «GÖP'e esas»
+    en_son: dict = {}
+    for x in out:
+        if x["kaynak"] != "pvquant":
+            continue
+        kapanis = (pd.Timestamp(x["_gun"]) - pd.Timedelta(days=1)).tz_localize("Europe/Istanbul") + pd.Timedelta(hours=12, minutes=30)
+        olus = pd.Timestamp(x["_olusturma"])
+        if olus.tzinfo is None:
+            olus = olus.tz_localize("UTC")
+        if olus <= kapanis and (x["_gun"] not in en_son or olus > en_son[x["_gun"]][0]):
+            en_son[x["_gun"]] = (olus, x)
+    for _, x in en_son.values():
+        x["gop_esas"] = True
+    for x in out:
+        x.pop("_olusturma", None); x.pop("_gun", None)
+    return out
 
 
 def getir(tenant_id, plant_id, surum_id) -> dict | None:

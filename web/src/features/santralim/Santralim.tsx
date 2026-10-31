@@ -103,7 +103,8 @@ export function Santralim({ plantId }: { plantId: string }) {
     setUevcbMesaj(null); setUevcbAday(null);
     api.uevcbAra(uevcbArama).then((r) => setUevcbAday(r ?? "yok")).catch((e) => { setUevcbAday("yok"); setUevcbMesaj(`Arama yapılamadı: ${String(e.message ?? e)}`); });
   };
-  useEffect(() => { api.dengesizlik(plantId, 14).then((d) => { if (!d) return; setSeg({ segment: d.segment.segment, dengesizlik_sahibi: d.segment.dengesizlik_sahibi }); setUevcb(d.segment.uevcb ?? ""); if (d.luy_istisna !== undefined) setLuyIstisna((v) => (v === null ? !!d.luy_istisna : v)); }).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { api.dengesizlik(plantId, 14).then((d) => { if (!d) return; setSeg({ segment: d.segment.segment, dengesizlik_sahibi: d.segment.dengesizlik_sahibi }); setUevcb(d.segment.uevcb ?? ""); if (d.luy_istisna !== undefined) setLuyIstisna((v) => (v === null ? !!d.luy_istisna : v));
+    if (d.program) { setPozKaynak((v) => v ?? d.program!.pozisyon.kaynak); if (d.program.pozisyon.sabit_mwh != null) setPozSabit((v) => v || String(d.program!.pozisyon.sabit_mwh)); } }).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { api.saglik(plantId).then(setSg).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   // v2.274 (Dalga 3 tamamlayıcısı): fizik terimleri — santral bazında aç/kapa + "açsam ne değişir?" önizlemesi
   const [ft, setFt] = useState<FizikTerimleri | null>(null);
@@ -124,10 +125,14 @@ export function Santralim({ plantId }: { plantId: string }) {
   const [dengelemeBirimi, setDengelemeBirimi] = useState<boolean>(false);   // 29.10 (F-05): 15 dk dilimleme yalnız dengeleme birimi
   const [arizaAy, setArizaAy] = useState<string>("");   // 29.10 (v2.505): bu ay bildirilen arıza kaydı — KÜPST katsayısı eşiğinde yükselir
   const [luyIstisna, setLuyIstisna] = useState<boolean | null>(null);   // 31.10 (v2.510, Ç3): null = dokunulmadı (gönderilmez); LÜY m.5(1)(ç),(d),(e)
+  // v2.517 (P2a): piyasa pozisyonu — EDM = gerçekleşen − pozisyon; program (satış programa eşit) | uretim (üretildiği kadar satış) | sabit MWh/saat
+  const [pozKaynak, setPozKaynak] = useState<"program" | "uretim" | "sabit" | null>(null);
+  const [pozSabit, setPozSabit] = useState<string>("");
   const [eakMesaj, setEakMesaj] = useState<string | null>(null);
   const eakKaydet = () => {
     setEakMesaj(null);
-    api.eakAyarla(plantId, { eak_kw: eakKw ? Number(eakKw) : null, gecici_kw: gecKw ? Number(gecKw) : null, gecici_bitis: gecBitis || null, dengeleme_birimi: dengelemeBirimi, ...(arizaAy !== "" ? { ariza_sayisi_ay: Number(arizaAy) } : {}), ...(luyIstisna !== null ? { luy_istisna: luyIstisna } : {}) })
+    api.eakAyarla(plantId, { eak_kw: eakKw ? Number(eakKw) : null, gecici_kw: gecKw ? Number(gecKw) : null, gecici_bitis: gecBitis || null, dengeleme_birimi: dengelemeBirimi, ...(arizaAy !== "" ? { ariza_sayisi_ay: Number(arizaAy) } : {}), ...(luyIstisna !== null ? { luy_istisna: luyIstisna } : {}),
+      ...(pozKaynak ? { pozisyon_kaynagi: pozKaynak, pozisyon_sabit_mwh: pozKaynak === "sabit" && pozSabit ? Number(pozSabit.replace(",", ".")) : null } : {}) })
       .then((r) => setEakMesaj(`Kaydedildi. Bugün verilebilecek en yüksek güç ${sayiTr(r.eak_bugun.eak_mw, 2)} MW (${r.eak_bugun.kaynak})${r.ariza_sayisi_ay != null ? `; bu ay arıza kaydı ${sayiTr(r.ariza_sayisi_ay)}` : ""}`))
       .catch((e) => setEakMesaj(String((e as Error).message ?? e)));
   };
@@ -601,7 +606,7 @@ export function Santralim({ plantId }: { plantId: string }) {
           </div>
           <div className="ayar">
             <div><div className="ayar-ad">Program sınırları</div>
-              <div className="ayar-aciklama">Verilebilecek en yüksek güç, mevzuattaki adıyla emre amade kapasite (EAK): santralin o gün sisteme verebileceği en yüksek güç; üretim programı bu sınırı aşmaz. Geçici kısıt bakım ya da arıza içindir ve bitiş gününe kadar geçerlidir.</div></div>
+              <div className="ayar-aciklama">Verilebilecek en yüksek güç, mevzuattaki adıyla emre amade kapasite (EAK): santralin o gün sisteme verebileceği en yüksek güç; üretim programı bu sınırı aşmaz. Geçici kısıt bakım ya da arıza içindir ve bitiş gününe kadar geçerlidir. Piyasa pozisyonu, Doğruluk sayfasındaki uzlaştırma hesabında enerji dengesizlik tutarının tabanıdır: satış programa eşitse «program», üretim olduğu gibi satılıyorsa «üretildiği kadar satış», baz yük satışıysa «sabit MWh/saat»; KGÜP sapma tutarı her durumda programa göre hesaplanır.</div></div>
             <div className="ayar-kontrol">
               <label className="girdi-etiket" title="Mevzuattaki adı emre amade kapasite (EAK). Boş bırakılırsa inverter AC sınırı kullanılır.">Verilebilecek en yüksek güç (EAK), kW
                 <input className="girdi" style={{ width: 150 }} inputMode="numeric" placeholder="boşsa AC sınırı" value={eakKw} onChange={(e) => setEakKw(e.target.value)} /></label>
@@ -616,6 +621,16 @@ export function Santralim({ plantId }: { plantId: string }) {
               {seg?.segment === "lisanssiz_iletim" && (   /* v2.510 (Ç3): yalnız iletime bağlı lisanssız segmentte anlamlı (Karar 14907 Md.5) */
                 <label className="ayar-satir" title="Tesis Lisanssız Elektrik Üretim Yönetmeliği m.5(1) (ç), (d) ya da (e) bendi kapsamındaysa (şebekeye enerji vermeyen öz tüketim tesisi, verimli kojenerasyon, mikrokojenerasyon) EPDK Karar 14907 Md.5 gereği 1.11.2026'dan itibaren KGÜP sapma tutarı uygulanmaz; uzlaştırma kartları bu saatlerde KÜPST'yi 0 gösterir.">
                   <input type="checkbox" checked={!!luyIstisna} onChange={(e) => setLuyIstisna(e.target.checked)} /> LÜY m.5(1) (ç)/(d)/(e) kapsamında (KÜPST uygulanmaz)</label>)}
+              {/* v2.517 (P2a): pozisyon ayarı — uzlaştırma kartı EDM'yi buna göre hesaplar; KÜPST programa göre kalır */}
+              <label className="girdi-etiket" title="Enerji dengesizlik tutarının tabanı: gerçekleşen üretim − piyasa pozisyonu. Program: satış bildirilen programa eşit varsayılır. Üretildiği kadar satış: üretim olduğu gibi satılır (ikili anlaşma, dengesizlik alıcıda), yalnız KGÜP sapma tutarı kalır. Sabit: her saat sabit MWh satış (baz yük).">Piyasa pozisyonu
+                <select className="girdi" value={pozKaynak ?? "program"} onChange={(e) => setPozKaynak(e.target.value as "program" | "uretim" | "sabit")} aria-label="Piyasa pozisyonu kaynağı">
+                  <option value="program">program (satış programa eşit)</option>
+                  <option value="uretim">üretildiği kadar satış</option>
+                  <option value="sabit">sabit MWh/saat (baz yük)</option>
+                </select></label>
+              {pozKaynak === "sabit" && (
+                <label className="girdi-etiket">Sabit satış (MWh/saat)
+                  <input className="girdi" style={{ width: 110 }} inputMode="decimal" placeholder="ör. 2,5" value={pozSabit} onChange={(e) => setPozSabit(e.target.value)} /></label>)}
               <button className="dugme" onClick={eakKaydet}>Kaydet</button>
               {eakMesaj && <span className={`ayar-durum ${eakMesaj.startsWith("Kayded") ? "ok" : "hata"}`}>{eakMesaj}</span>}
             </div>

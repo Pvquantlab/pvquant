@@ -186,6 +186,8 @@ export interface KgupSurum {
   id: string; teslim_gunu: string; surum: number; kantil: string; run_id: string | null; run_at: string | null; kesim: string | null;
   eak_mw: number | null; eak_kaynak: string | null; toplam_mwh: number | null; sha256: string; dosya_adi: string; olusturma: string;
   indiren: string | null; bayt: number;
+  /** v2.517 (P2a, IH-001): teslim günü için GÖP teklif kapanışından (D-1 12:30) önce indirilen son öneri */
+  gop_esas?: boolean;
   /** v2.503: pvquant (öneri/indirilen) | musteri (bildirildiği beyan edilen) | v2.513: eak (TPYS EAK.csv dosyası) */
   kaynak?: "pvquant" | "musteri" | "eak";
 }
@@ -210,13 +212,23 @@ export interface DengesizlikKural {
   kupst_m: number | null; kupst_n: number | null; kupst_n_ariza: number | null; kupst_ariza_esigi: number | null; kupst_taban: number;
   kupst_net_sapma: boolean; kupst_birim: string; kupst_dayanak: string; dsg_esik: number; dsg_dayanak: string; belirsiz_2027: boolean;
 }
+/** v2.517 (P2a): piyasa pozisyonu ayarı — EDM = gerçekleşen − pozisyon */
+export interface PozisyonAyari { kaynak: "program" | "uretim" | "sabit"; sabit_mwh: number | null; etiket: string }
+/** v2.517 (P2a): saatlik uzlaştırma dökümü (JSON önizleme; CSV/XLSX ayrı indirilir) */
+export interface DengesizlikSaatlik { satir: number; kolonlar: string[]; not: string; program?: Dengesizlik["program"]; toplam: Dengesizlik["toplam"];
+  satirlar: Record<string, string | number | null>[] }
 export interface Dengesizlik { luy_istisna?: boolean;   // v2.510 (Ç3): santral ayarı, Santralim onay kutusunu doldurur
   gun_sayisi: number; pencere_gun: number; not: string;
   aylar: { ay: string; uretim_mwh: number; sapma_mwh: number; referans_gelir_tl: number; pvquant_tl: number | null; naif_tl: number | null;
            kurtarilan_tl: number | null; gelir_oran_pct: number | null; tl_per_mwh: number | null; kupst_tl?: number | null; dengesizlik_tl?: number;
-           edt_neg_tl?: number | null; edt_poz_tl?: number | null; edta_tl?: number | null; edtb_tl?: number | null; hesaplanamayan_saat?: number; kural_surumu?: string }[];
+           edt_neg_tl?: number | null; edt_poz_tl?: number | null; edta_tl?: number | null; edtb_tl?: number | null; hesaplanamayan_saat?: number; kural_surumu?: string;
+           /** v2.517 (P2a): tolerans dışı saat (KÜPSM > 0), KÜPSM toplamı, bildirilen programla hesaplanan saat */
+           tolerans_disi_saat?: number; kupsm_mwh?: number; bildirilen_saat?: number }[];
   toplam: { pvquant_tl: number | null; naif_tl: number | null; kurtarilan_tl: number | null; gelir_oran_pct: number | null; referans_gelir_tl: number;
-            kupst_tl?: number | null; teminat_tl?: number; dengesizlik_tl?: number; edt_neg_tl?: number; edt_poz_tl?: number; edta_tl?: number; edtb_tl?: number } | null;
+            kupst_tl?: number | null; teminat_tl?: number; dengesizlik_tl?: number; edt_neg_tl?: number; edt_poz_tl?: number; edta_tl?: number; edtb_tl?: number;
+            tolerans_disi_saat?: number; kupsm_mwh?: number } | null;
+  /** v2.517 (P2a): programın kaynağı — bildirilen KGÜP (müşteri beyanı) saat/gün sayısı, kalan öneri; pozisyon ayarı (program | uretim | sabit) */
+  program?: { bildirilen_saat: number; oneri_saat: number; bildirilen_gun: number; pozisyon: PozisyonAyari };
   /** v2.287: önerilen bildirim kantili (senaryo fiyatta null + not; yön verisi yoksa durum 'yon_eksik') */
   oneri?: { durum: string; kantil: string | null; tau?: number; n_saat?: number; acik_saat_orani?: number; not?: string };
   katsayilar?: { k: number; l: number; kupst_n: number | null; kupst_tolerans?: number | null; k_yon?: Record<string, number>; l_yon?: Record<string, number> };
