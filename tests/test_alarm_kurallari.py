@@ -40,7 +40,7 @@ def istemci(monkeypatch):
     monkeypatch.setattr(al, "ata", lambda t, p, a, k: (_ for _ in ()).throw(ValueError("kullanıcı bu hesapta değil")) if k == "yabanci" else True)
     from pvquant.services import plant_service
     monkeypatch.setattr(plant_service, "getir", lambda t, p: {"id": p, "params_json": {"alarm_kurallari": ["pr_dustu"]}})
-    monkeypatch.setattr(al, "kural_ayarla", lambda t, p, k, e: al.kural_durumu({"params_json": {"alarm_kurallari": k, "alarm_esik": e or {}}}))
+    monkeypatch.setattr(al, "kural_ayarla", lambda t, p, k, e, alicilar=None: al.kural_durumu({"params_json": {"alarm_kurallari": k, "alarm_esik": e or {}}}))   # v2.519: alıcı kwarg
     yield TestClient(api_main.app), kayit
     api_main.app.dependency_overrides.clear()
 

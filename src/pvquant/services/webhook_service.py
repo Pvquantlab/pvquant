@@ -14,7 +14,7 @@ import pandas as pd
 
 from pvquant.ext.platform.api_anahtar import webhook_imzala
 
-OLAYLAR = ("tahmin.yeni", "deneme")
+OLAYLAR = ("tahmin.yeni", "alarm.yeni", "deneme")   # v2.519 (P7a): alarm.yeni — alerts satırı yazıldığında (alarm_service._bildir)
 ZAMAN_ASIMI_SN = 10.0
 
 

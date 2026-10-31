@@ -94,6 +94,7 @@ def uret(tenant_id, plant: dict, gun: date, kantil: str = "p50", uevcb: str | No
     pj = plant.get("params_json") or {}
     if isinstance(pj, str):
         pj = _j.loads(pj)
+    uevcb = uevcb or plant.get("uevcb") or None   # 01.11 son kontrol: API kwarg geçmiyor; dosya adı santralın kodunu kullanmıyordu (v2.513 niyeti)
     seri = pd.Series(df["kw"].values, index=pd.DatetimeIndex(df["ts_utc"])) / 1000.0   # kW → MW
     kap = float(plant["capacity_kwp"]) / 1000.0
     eak_bilgi = eak_etkin(plant, gun); eak = eak_bilgi["eak_mw"]   # v2.275: EAK alanı / geçici kısıt

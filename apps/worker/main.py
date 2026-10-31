@@ -7,6 +7,7 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 from pvquant.db import sistem_baglami, tenant_baglami
 from pvquant.services import forecast_service, calib_service, plant_service
 from pvquant.services.alarm_service import tara as alarm_tara, kgup_kontrol as alarm_kgup_kontrol, kgup_revizyon_kontrol as alarm_kgup_revizyon
+from pvquant.services.alarm_service import iletisim_kontrol as alarm_iletisim, ptf_kontrol as alarm_ptf, hatirlatma_teminat as alarm_teminat, hatirlatma_avans as alarm_avans   # v2.519 (P7a)
 
 import os as _os
 try:
@@ -748,6 +749,12 @@ if __name__ == "__main__":
     sch.add_job(_logla("alarm", alarm_tara), "cron", hour=cfg.worker_hour_alarm, minute=0)
     sch.add_job(_logla("kgup_teslim_kontrol", alarm_kgup_kontrol), "cron", hour=12, minute=35)   # 29.10: 15:35 TSİ (Türkiye UTC+3 sabit) — KGÜP gecikti kuralı
     sch.add_job(_logla("kgup_revizyon_kontrol", alarm_kgup_revizyon), "cron", hour="4-15", minute=10)   # 30.10 v2.507 (F-10): gündüz saat başı +10 (07:10–18:10 TSİ)
+    # 01.11 v2.519 (P7a): kural bazlı sıklık — iletişim kesintisi her saat (:50), teminat 07:15 UTC (10:15 TSİ) ve avans 11:45 UTC (14:45 TSİ)
+    # iş günü hatırlatmaları, PTF düşük saat 11:40 UTC (gün öncesi PTF işinden 5 dk sonra); takvim son tarihleri gece alarm taramasında
+    sch.add_job(_logla("iletisim_kontrol", alarm_iletisim), "cron", minute=50)
+    sch.add_job(_logla("teminat_hatirlatma", alarm_teminat), "cron", hour=7, minute=15)
+    sch.add_job(_logla("ptf_kontrol", alarm_ptf), "cron", hour=11, minute=40)
+    sch.add_job(_logla("avans_hatirlatma", alarm_avans), "cron", hour=11, minute=45)
     sch.add_job(_logla("aylik_kalibrasyon", aylik_kalibrasyon),
                 "cron", day=cfg.worker_day_calibration, hour=cfg.worker_hour_calibration, minute=0)
     sch.add_job(_logla("aylik_iklim", aylik_iklim),                      # v2.77-C

@@ -75,7 +75,8 @@ export interface Nowcast {
 /** v2.265 — alarm okundu/atama, kural seçimi, değişim damgası. */
 export interface Kullanici { id: string; email: string; rol: string }
 export interface AlarmKurallari { secili: string[]; secilebilir: string[]; esik: Record<string, number>;
-  etiket: Record<string, string>; varsayilan: string[] }
+  etiket: Record<string, string>; varsayilan: string[];
+  alicilar: string[]; ortam_alicisi: boolean }   // v2.519 (P7a): santral alıcıları (e-posta) + ortam adresi var mı
 export interface Damga { son_scada: string | null; son_kosu: string | null; son_alarm: string | null; acik_alarm: number;
   son_skill: string | null; son_kalibrasyon: string | null }
 /** v2.264 — dış erişim (yönetici). */

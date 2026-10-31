@@ -7,10 +7,17 @@ SMTP yoksa (PVQ_SMTP_HOST tanımsız) mail atlanır, alerts satırı yazılır.
 
 v2.265 (Dalga 5.17): EK KURALLAR yalnız santral bazında AÇIKÇA seçilirse (plants.params_json.alarm_kurallari)
 çalışır — varsayılan hâlâ iki kural. Kütüphane: pvquant.ext.platform.alarm.KUTUPHANE (pr_dustu,
-clipping_orani_yuksek, iletisim_kesintisi). Eşikler params_json.alarm_esik'ten. Okundu/atama: acked_by/acked_at/assigned_to."""
+clipping_orani_yuksek, iletisim_kesintisi). Eşikler params_json.alarm_esik'ten. Okundu/atama: acked_by/acked_at/assigned_to.
+
+v2.519 (P7a, yol haritası): kural bazlı sıklık (iletişim kesintisi saatlik, teminat 10:15 / avans 14:45 TSİ iş günü, PTF 14:40, takvim
+günlük), santral bazlı alıcılar (params_json.alarm_alicilar + PVQ_ALARM_TO) ve webhook olayı «alarm.yeni»; yeni kurallar takvim_son_tarih
+(olay başına tek alarm, mesaj birebir eşleşmesiyle), ptf_dusuk_saat (yarının gün öncesi PTF'si eşik/V altında), ariza_sayaci_yaklasti
+(elle girilen aylık arıza sayısı), teminat_hatirlatma / avans_hatirlatma; kgup_teslim_gecikti artık «bildirildi» beyanına da bakar."""
 from __future__ import annotations
 
 import os
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import text
 
@@ -19,14 +26,22 @@ from pvquant.ext.platform.alarm import KUTUPHANE
 
 # v2.265: seçilebilir ek kurallar (ürün kararı: yalnız bu üçü; ping/KGÜP/dengesizlik kuralları veri kaynağı olmadan açılmaz)
 EK_KURALLAR = ("pr_dustu", "clipping_orani_yuksek", "iletisim_kesintisi", "kullanilabilirlik_dustu",
-               "kgup_teslim_gecikti", "dengesizlik_asimi", "kgup_revizyon_onerisi")   # v2.288: kütüphanenin tamamı seçilebilir; v2.507: F-10 revizyon
+               "kgup_teslim_gecikti", "dengesizlik_asimi", "kgup_revizyon_onerisi",   # v2.288: kütüphanenin tamamı seçilebilir; v2.507: F-10 revizyon
+               "takvim_son_tarih", "ptf_dusuk_saat", "ariza_sayaci_yaklasti", "teminat_hatirlatma", "avans_hatirlatma")   # v2.519 (P7a)
 ESIK_VARSAYILAN = {"pr_esik": 0.70, "clipping_esik": 0.15, "iletisim_esik_saat": 6, "kullanilabilirlik_esik": 0.97,
-                   "dengesizlik_esik": 0.03, "revizyon_esik": 0.10}
+                   "dengesizlik_esik": 0.03, "revizyon_esik": 0.10,
+                   "takvim_gun_once": 3, "ptf_esik_tl_mwh": 0.0, "ariza_esik": 25}   # v2.519: gün, TL/MWh (0 → PTF ≤ 0; YEKDEM'de V), adet
+IST = ZoneInfo("Europe/Istanbul")
+AYLAR = ("Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara")
+GUNLER = ("Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz")
 KURAL_ETIKET = {"veri_gelmedi": "Veri gelmedi", "skill_dustu": "Tahmin doğruluğu düştü", "pr_dustu": "Performans oranı düştü",   # 29.10: «isabet» iç terim (panel dili)
                 "clipping_orani_yuksek": "Kırpma oranı yüksek", "iletisim_kesintisi": "İletişim kesintisi",
                 "kullanilabilirlik_dustu": "Kullanılabilirlik düştü",
                 "kgup_teslim_gecikti": "Program bildirimi hazırlanamadı", "dengesizlik_asimi": "Dengesizlik maliyeti yüksek",
-                "kgup_revizyon_onerisi": "Program revizyonu önerisi"}   # v2.507 (F-10): bugünün programı güncel beklentiden eşik kadar sapıyor
+                "kgup_revizyon_onerisi": "Program revizyonu önerisi",   # v2.507 (F-10): bugünün programı güncel beklentiden eşik kadar sapıyor
+                "takvim_son_tarih": "Yaklaşan son tarih", "ptf_dusuk_saat": "Yarın düşük fiyat saati",
+                "ariza_sayaci_yaklasti": "Arıza sayacı eşiğe yaklaştı", "teminat_hatirlatma": "Teminat saati hatırlatması",
+                "avans_hatirlatma": "Avans ödeme hatırlatması"}   # v2.519 (P7a)
 
 
 def _pj(plant: dict) -> dict:
@@ -46,6 +61,16 @@ def esikler(plant: dict) -> dict:
     return e
 
 
+def alicilar(plant: dict) -> list[str]:
+    """v2.519: santral bazlı alarm alıcıları (e-posta); PVQ_ALARM_TO ortam adresi her zaman eklenir (boşsa atlanır)."""
+    pj = _pj(plant)
+    out = [x.strip() for x in (pj.get("alarm_alicilar") or []) if isinstance(x, str) and x.strip()]
+    ortam = (os.environ.get("PVQ_ALARM_TO") or "").strip()
+    if ortam:
+        out.append(ortam)
+    return list(dict.fromkeys(out))
+
+
 def ek_alarmlar(plant: dict, baglam: dict) -> list[tuple[str, str, str]]:
     """SAF: seçili ek kurallar için (kural, şiddet, mesaj) — kütüphanenin koşul/mesajı, santralin eşikleri."""
     b = {**esikler(plant), **baglam}
@@ -58,14 +83,40 @@ def ek_alarmlar(plant: dict, baglam: dict) -> list[tuple[str, str, str]]:
                 out.append((ad, "warning", f"{plant.get('name', '')}: bugünün programı güncel beklentiden eşik üstü sapıyor — saat {', '.join(f'{h:02d}:00' for h in saatler)}"
                             f" (toplam {float(b.get('revizyon_toplam_fark_mwh') or 0):+.1f} MWh); ilk saat için revizyon son anı {son} (GİP kapısı + 30 dk)"))
             continue
+        if ad == "kgup_teslim_gecikti":   # v2.519 (P7a, A7): tahmin yoksa kritik; tahmin var ama bildirilen dosya beyanı yoksa uyarı
+            if b.get("kgup_gecikti"):
+                out.append((ad, "kritik", f"{plant.get('name', '')}: yarın için teslim penceresi (14:00–15:30) kapandı ve pencere öncesinde verilmiş tahmin yok — program dosyası üretilemedi"))
+            elif b.get("kgup_bildirildi") is False:
+                out.append((ad, "uyari", f"{plant.get('name', '')}: yarının program önerisi hazır ama TPYS'ye bildirdiğiniz dosya PVQuant'a yüklenmedi — bildirdiyseniz dosyayı Tahminler sayfasından yükleyin; yüklenen dosya beyanınız sayılır"))
+            continue
+        if ad == "ptf_dusuk_saat":   # v2.519 (P7a, IH-011)
+            saatler = b.get("ptf_dusuk_saatler") or []
+            if saatler:
+                esik = float(b.get("ptf_esik_kullanilan") if b.get("ptf_esik_kullanilan") is not None else b["ptf_esik_tl_mwh"])
+                out.append((ad, "uyari", f"{plant.get('name', '')}: yarın ({_tarih_tr(b.get('ptf_yarin'))}) {len(saatler)} saatte gün öncesi fiyat eşiğin altında "
+                            f"({'PTF ≤ 0' if esik <= 0 else 'PTF < ' + f'{esik:.0f} TL/MWh'}): saat {', '.join(f'{h:02d}:00' for h in saatler)}"))
+            continue
+        if ad == "ariza_sayaci_yaklasti":   # v2.519 (P7a, IH-009): elle girilen aylık arıza kaydı sayısı
+            n = b.get("ariza_sayisi_ay")
+            if n is not None and int(n) >= int(b["ariza_esik"]):
+                out.append((ad, "uyari", f"{plant.get('name', '')}: bu ay bildirilen arıza kaydı {int(n)} (uyarı eşiği {int(b['ariza_esik'])}); arıza eşiğinde KÜPST fiyat katsayısı yükselir (kural tablosu)"))
+            continue
+        if ad in ("teminat_hatirlatma", "avans_hatirlatma"):   # v2.519 (P7a, IH-031/IH-032): iş günü hatırlatması, zamanlayıcı tetikler
+            if b.get("hatirlatma") == ad:
+                msg = ("iş günü hatırlatması — teminat mektubu 10:30'a kadar EPİAŞ'a sunulur, 11:00'de GÖP ve GİP teminat kontrolü; eksik kalırsa işlem yasağı riski "
+                       "(Teminat Usul ve Esasları; tutarlar EPYS ve Takasbank'ta)" if ad == "teminat_hatirlatma" else
+                       "iş günü hatırlatması — günlük avans bildirimi 14:30'da yayımlandı; borç 15:00'a kadar ödenir (sonrası temerrüt: 6183 m.51 oranının %50'si, "
+                       "17:00 sonrası tam oran), alacak 17:00'a kadar EPİAŞ'tan gelir (DUY m.132/Ç, m.132/D)")
+                out.append((ad, "bilgi", f"{plant.get('name', '')}: {msg}"))
+            continue
+        if ad == "takvim_son_tarih":   # ayrı yazıcı: takvim_alarmlari (olay başına tek alarm)
+            continue
         k = KUTUPHANE[ad]
         # iletisim_kesintisi kütüphanede 'ping dakikası' ister; üründe canlı ping yok → SCADA tazeliği saat cinsinden
         kosul = ((b.get("son_scada_saat_once") or 0) > b["iletisim_esik_saat"]) if ad == "iletisim_kesintisi" else k.kosul(b)
         if kosul:
             if ad == "iletisim_kesintisi":
                 msg = f"son ölçüm {float(b.get('son_scada_saat_once') or 0):.0f} saat önce (eşik {float(b['iletisim_esik_saat']):.0f} s) — canlı bağlantı kesilmiş olabilir"
-            elif ad == "kgup_teslim_gecikti":
-                msg = "yarın için teslim penceresi (14:00–15:30) kapandı ve pencere öncesinde verilmiş koşu yok — program dosyası üretilemez"
             elif ad == "dengesizlik_asimi":
                 msg = f"son 30 günün dengesizlik maliyeti gelirin %{100 * float(b.get('dengesizlik_gelir_orani_ay') or 0):.1f}'i (eşik %{100 * float(b['dengesizlik_esik']):.0f})"
             else:
@@ -101,6 +152,9 @@ def _baglam(tenant_id, plant: dict, secili: list[str]) -> dict:
                 yarin = (simdi + _pd.Timedelta(days=1)).date()
                 _, kosu = kgup_service.kaynak_kosu_df(tenant_id, plant["id"], yarin)
                 b["kgup_gecikti"] = kosu is None
+                if kosu is not None:   # v2.519 (A7): bildirilen dosya beyanı (kgup_surum kaynak='musteri') var mı
+                    from pvquant.services import kgup_arsiv_service
+                    b["kgup_bildirildi"] = any(r.get("kaynak") == "musteri" for r in kgup_arsiv_service.listele(tenant_id, plant["id"], yarin))
         except Exception:   # noqa: BLE001
             b["kgup_gecikti"] = False
     if "dengesizlik_asimi" in secili:
@@ -115,6 +169,13 @@ def _baglam(tenant_id, plant: dict, secili: list[str]) -> dict:
         with tenant_baglami(tenant_id) as s:
             saat = s.execute(text("SELECT EXTRACT(EPOCH FROM (now() - max(ts_utc)))/3600 FROM scada_hourly WHERE plant_id=:p"), {"p": pid}).scalar()
         b["son_scada_saat_once"] = round(float(saat), 1) if saat is not None else None
+    if "ptf_dusuk_saat" in secili:   # v2.519 (P7a)
+        try:
+            b.update(ptf_baglam(plant))
+        except Exception as e:   # noqa: BLE001 — fiyat okunamazsa alarm düşmez
+            print("[alarm][ptf]", plant.get("name"), type(e).__name__, e); b["ptf_dusuk_saatler"] = []
+    if "ariza_sayaci_yaklasti" in secili:   # v2.519 (P7a): params_json.ariza_sayisi_ay (elle girilen)
+        b["ariza_sayisi_ay"] = _pj(plant).get("ariza_sayisi_ay")
     if "kgup_revizyon_onerisi" in secili:   # v2.507 (F-10)
         try:
             from pvquant.services import revizyon_service
@@ -126,25 +187,106 @@ def _baglam(tenant_id, plant: dict, secili: list[str]) -> dict:
     return b
 
 
-def _mail(konu: str, govde: str) -> None:
-    # v2.334: gövde posta_service'e taşındı (başvuru/parola ile ortak tek kapı);
-    # davranış aynı — SMTP yoksa sessiz atlanır, alıcı PVQ_ALARM_TO.
+def ptf_baglam(plant: dict, bugun: date | None = None, fiyatlar=None) -> dict:
+    """v2.519 (P7a, IH-011): yarının (İstanbul) 24 saatinde EPİAŞ gün öncesi PTF'si (kaynak epias / epias_gop) eşik altındaki saatler.
+    Eşik: alarm_esik.ptf_esik_tl_mwh (0 → PTF ≤ 0); lisanslı YEKDEM'de ve tarife yekdem ise eşik 0 bırakıldığında V = ABD senti/kWh × 10 × kur
+    (TL/MWh) kullanılır ve PTF < V aranır. Senaryo fiyatı sayılmaz (gün öncesi PTF gelmemişse alarm yok)."""
+    import pandas as pd
+    from pvquant.services import dengesizlik_service
+    pj = _pj(plant); e = esikler(plant)
+    yarin = (bugun or datetime.now(IST).date()) + timedelta(days=1)
+    idx = pd.date_range(pd.Timestamp(yarin).tz_localize(IST), periods=24, freq="h").tz_convert("UTC")
+    if fiyatlar is None:
+        from pvquant.services import piyasa_service
+        fiyatlar = piyasa_service.fiyatlar
+    f = fiyatlar(idx)
+    esik = float(e["ptf_esik_tl_mwh"]); v_ile = False
+    t = pj.get("tarife") or {}
+    if esik <= 0 and dengesizlik_service.segment_bilgisi(pj).get("segment") == "lisansli_yekdem" and t.get("tip") == "yekdem" \
+            and t.get("usd_cent_kwh") and t.get("kur_tl_usd"):
+        esik = float(t["usd_cent_kwh"]) * 10.0 * float(t["kur_tl_usd"]); v_ile = True
+    ger = f[f["kaynak"].isin(["epias", "epias_gop"])] if "kaynak" in f else f.iloc[0:0]
+    ptf = ger["ptf"].astype(float)
+    kosul = (ptf <= esik) if esik <= 0 else (ptf < esik)
+    saatler = sorted(int(h) for h in ger.index.tz_convert(IST).hour[kosul.values]) if len(ger) else []
+    return {"ptf_dusuk_saatler": saatler, "ptf_esik_kullanilan": esik, "ptf_v_ile": v_ile, "ptf_yarin": yarin.isoformat(), "ptf_veri_saat": int(len(ger))}
+
+
+def _tarih_tr(iso) -> str:
+    """ISO gün → «2 Kas 2026 Pzt» (alarm metni müşteri biçiminde)."""
+    try:
+        t = date.fromisoformat(str(iso)[:10])
+    except (TypeError, ValueError):
+        return str(iso or "")
+    return f"{t.day} {AYLAR[t.month - 1]} {t.year} {GUNLER[t.weekday()]}"
+
+
+def takvim_alarmlari(plant: dict, bugun: date | None = None) -> list[tuple[str, str, str]]:
+    """v2.519 (P7a): takvim_son_tarih — santralın segmentine göre yaklaşan olaylardan kalan gün ≤ takvim_gun_once olanlar; olay başına
+    deterministik mesaj (tarih + ad + dönem + dayanak), yazıcı aynı mesajı 60 gün içinde ikinci kez yazmaz. Şiddet: ≤1 gün uyarı, yoksa bilgi."""
+    from pvquant.services import takvim_service
+    n = int(esikler(plant)["takvim_gun_once"])
+    o = takvim_service.ozet(plant, gun=max(7, n), bugun=bugun)
+    if not o["segment"]:   # segment seçilmemişse takvim tüm segmentlerin tarihlerini verir — alarm üretilmez (Takvim sayfası bunu yazar)
+        return []
+    out = []
+    for ev in o["yaklasan"]:
+        if ev["kalan_gun"] > n:
+            continue
+        tarih = _tarih_tr(ev["tarih"]) + (f" {ev['saat']}" if ev.get("saat") else "")
+        donem = f" ({AYLAR[int(ev['donem'][5:7]) - 1]} {ev['donem'][:4]} dönemi)" if ev.get("donem") else ""
+        out.append(("takvim_son_tarih", "uyari" if ev["kalan_gun"] <= 1 else "bilgi",
+                    f"{plant.get('name', '')}: {tarih} — {ev['ad']}{donem}; dayanak: {ev['kaynak']}"))
+    return out
+
+
+def _bildir(plant: dict | None, rule: str, msg: str, severity: str) -> None:
+    """v2.519: alerts satırı yazıldıktan sonra e-posta (santral alıcıları + PVQ_ALARM_TO) ve webhook «alarm.yeni»; hiçbir hata yükselmez."""
     from pvquant.services import posta_service
-    if not posta_service.gonder(os.environ.get("PVQ_ALARM_TO", ""), konu, govde):
+    konu = f"[PVQuant] {KURAL_ETIKET.get(rule, rule)}"
+    kime = alicilar(plant or {})
+    sonuc = [posta_service.gonder(a, konu, msg) for a in kime]   # any() kısa devre yapmasın: her alıcıya dene
+    if not any(sonuc):
         print("[alarm][mail yok]", konu)
+    if plant and plant.get("tenant_id") and plant.get("id"):
+        try:
+            from pvquant.services import webhook_service
+            webhook_service.gonder(plant["tenant_id"], "alarm.yeni",
+                                   {"olay": "alarm.yeni", "santral_id": str(plant["id"]), "santral": plant.get("name"), "kural": rule,
+                                    "kural_adi": KURAL_ETIKET.get(rule, rule), "siddet": severity, "mesaj": msg,
+                                    "zaman": datetime.now(IST).isoformat(timespec="seconds")}, plant_id=str(plant["id"]))
+        except Exception as e:   # noqa: BLE001
+            print("[alarm][webhook atlandı]", rule, type(e).__name__, e)
 
 
-def _kaydet_ve_gonder(s, tid, pid, rule: str, msg: str, severity: str = "warning") -> None:
+def _kaydet_ve_gonder(s, tid, pid, rule: str, msg: str, severity: str = "warning", plant: dict | None = None) -> None:
+    # spam kilidi: günde 1 — pencere 23 saat (01.11 incelemesi): günlük iş bir gün 04:00:30'da, ertesi gün 04:00:20'de koşarsa
+    # 24 saatlik pencere bir önceki alarmı hâlâ «dün» sayıp o günü sessizce atlıyordu; saatlik iş için de en çok 1/23 saat yeterli.
     var = s.execute(text(
         "SELECT 1 FROM alerts WHERE plant_id=:p AND rule=:r "
-        "AND created_at > now()-interval '24 hours'"),
+        "AND created_at > now()-interval '23 hours'"),
         {"p": pid, "r": rule}).first()
-    if var:                                   # spam kilidi: günde 1
+    if var:
         return
     s.execute(text(
         "INSERT INTO alerts(tenant_id,plant_id,rule,message,severity) "
         "VALUES(:t,:p,:r,:m,:s)"), {"t": tid, "p": pid, "r": rule, "m": msg, "s": severity})
-    _mail(f"[PVQuant] {rule}", msg)
+    _bildir(plant or {"tenant_id": tid, "id": pid}, rule, msg, severity)
+
+
+def _kaydet_tekil(s, tid, pid, rule: str, msg: str, severity: str, plant: dict | None = None) -> bool:
+    """v2.519: olay başına tek alarm — aynı mesaj son 60 günde yazılmışsa atlanır (takvim olayları için)."""
+    var = s.execute(text("SELECT 1 FROM alerts WHERE plant_id=:p AND rule=:r AND message=:m AND created_at > now()-interval '60 days'"),
+                    {"p": pid, "r": rule, "m": msg}).first()
+    if var:
+        return False
+    s.execute(text("INSERT INTO alerts(tenant_id,plant_id,rule,message,severity) VALUES(:t,:p,:r,:m,:s)"),
+              {"t": tid, "p": pid, "r": rule, "m": msg, "s": severity})
+    _bildir(plant or {"tenant_id": tid, "id": pid}, rule, msg, severity)
+    return True
+
+
+SIDDET = {"bilgi": "info", "uyari": "warning", "kritik": "critical"}
 
 
 def tara(plant: dict) -> None:
@@ -159,7 +301,7 @@ def tara(plant: dict) -> None:
             if son < esik:
                 _kaydet_ve_gonder(s, tid, pid, "veri_gelmedi",
                     f"{plant['name']}: son SCADA verisi {son:%d.%m %H:%M} — "
-                    "48 saati aştı, yükleme aksadı.")
+                    "48 saati aştı, yükleme aksadı.", plant=plant)
         rows = s.execute(text(
             "SELECT date, mape FROM skill_daily WHERE plant_id=:p "
             "AND horizon_bucket='0-24' ORDER BY date DESC LIMIT 30"),
@@ -171,14 +313,19 @@ def tara(plant: dict) -> None:
                 _kaydet_ve_gonder(s, tid, pid, "skill_dustu",
                     f"{plant['name']}: 0-24s MAPE 7 gündür 30 günlük "
                     f"ortalamanın (%{ort:.0f}) 1.5 katının üzerinde — "
-                    "kalibrasyon/sensör kontrolü önerilir.")
+                    "kalibrasyon/sensör kontrolü önerilir.", plant=plant)
     # v2.265: ek kurallar — yalnız santral bazında açılmışsa; varsayılan iki kural değişmez
-    secili = secili_kurallar(plant)
+    # v2.519: gün içi kuralları (kgup_teslim_gecikti, kgup_revizyon_onerisi, ptf, hatırlatmalar) kendi zamanlayıcı işlerinde; gece taraması atlar
+    secili = [k for k in secili_kurallar(plant) if k not in ("kgup_teslim_gecikti", "kgup_revizyon_onerisi", "ptf_dusuk_saat",
+                                                              "teminat_hatirlatma", "avans_hatirlatma")]
     if secili:
         baglam = _baglam(tid, plant, secili)
         with tenant_baglami(tid) as s:
             for rule, siddet, msg in ek_alarmlar(plant, baglam):
-                _kaydet_ve_gonder(s, tid, pid, rule, msg, {"bilgi": "info", "uyari": "warning", "kritik": "critical"}[siddet])
+                _kaydet_ve_gonder(s, tid, pid, rule, msg, SIDDET[siddet], plant=plant)
+            if "takvim_son_tarih" in secili:   # v2.519 (P7a): olay başına tek alarm
+                for rule, siddet, msg in takvim_alarmlari(plant):
+                    _kaydet_tekil(s, tid, pid, rule, msg, SIDDET[siddet], plant=plant)
 
 
 def kgup_kontrol(plant: dict) -> None:
@@ -191,7 +338,7 @@ def kgup_kontrol(plant: dict) -> None:
     with tenant_baglami(tid) as s:
         for rule, siddet, msg in ek_alarmlar(plant, baglam):
             if rule == "kgup_teslim_gecikti":
-                _kaydet_ve_gonder(s, tid, pid, rule, msg, "critical")
+                _kaydet_ve_gonder(s, tid, pid, rule, msg, SIDDET[siddet], plant=plant)
 
 
 def kgup_revizyon_kontrol(plant: dict) -> None:
@@ -204,7 +351,52 @@ def kgup_revizyon_kontrol(plant: dict) -> None:
     with tenant_baglami(tid) as s:
         for rule, siddet, msg in ek_alarmlar(plant, baglam):
             if rule == "kgup_revizyon_onerisi":
-                _kaydet_ve_gonder(s, tid, pid, rule, msg, siddet)
+                _kaydet_ve_gonder(s, tid, pid, rule, msg, siddet, plant=plant)
+
+
+def _tek_kural(plant: dict, kural: str, baglam_ek: dict | None = None) -> None:
+    """v2.519: tek kuralın zamanlayıcı tetiklemesi — kural seçili değilse hiç dokunmaz; spam kilidi günde 1."""
+    if kural not in secili_kurallar(plant):
+        return
+    tid, pid = plant["tenant_id"], plant["id"]
+    baglam = {**_baglam(tid, plant, [kural]), **(baglam_ek or {})}
+    with tenant_baglami(tid) as s:
+        for rule, siddet, msg in ek_alarmlar(plant, baglam):
+            if rule == kural:
+                _kaydet_ve_gonder(s, tid, pid, rule, msg, SIDDET[siddet], plant=plant)
+
+
+def iletisim_kontrol(plant: dict) -> None:
+    """v2.519 (P7a, ENV-F03): «iletişim kesintisi» kritikken günde bir taranıyordu; worker bunu her saat koşar."""
+    _tek_kural(plant, "iletisim_kesintisi")
+
+
+def ptf_kontrol(plant: dict) -> None:
+    """v2.519 (P7a, IH-011): gün öncesi PTF işi (14:35 TSİ) bittikten sonra 14:40'ta — yarının düşük fiyat saatleri."""
+    _tek_kural(plant, "ptf_dusuk_saat")
+
+
+def hatirlatma(plant: dict, tur: str, bugun: date | None = None) -> None:
+    """v2.519 (P7a, IH-031/IH-032): iş günü hatırlatması — teminat 10:15 TSİ, avans 14:45 TSİ; yalnız lisanslı segment."""
+    from pvquant.ext.turkiye import takvim as tk
+    from pvquant.services import dengesizlik_service
+    kural = f"{tur}_hatirlatma"
+    if kural not in secili_kurallar(plant):
+        return
+    g = bugun or datetime.now(IST).date()
+    if not tk.is_gunu(g):
+        return
+    if dengesizlik_service.segment_bilgisi(plant.get("params_json")).get("segment") not in tk.LISANSLI:
+        return
+    _tek_kural(plant, kural, {"hatirlatma": kural})
+
+
+def hatirlatma_teminat(plant: dict) -> None:
+    hatirlatma(plant, "teminat")
+
+
+def hatirlatma_avans(plant: dict) -> None:
+    hatirlatma(plant, "avans")
 
 
 def listele(tenant_id, plant_id, n: int = 20):
@@ -252,14 +444,38 @@ def kullanicilar(tenant_id) -> list[dict]:
 
 
 def kural_durumu(plant: dict) -> dict:
+    pj = _pj(plant)
     return {"secili": secili_kurallar(plant), "secilebilir": list(EK_KURALLAR), "esik": esikler(plant),
-            "etiket": KURAL_ETIKET, "varsayilan": ["veri_gelmedi", "skill_dustu"]}
+            "etiket": KURAL_ETIKET, "varsayilan": ["veri_gelmedi", "skill_dustu"],
+            "alicilar": [x for x in (pj.get("alarm_alicilar") or []) if isinstance(x, str)],   # v2.519: santral alıcıları (ortam adresi hariç)
+            "ortam_alicisi": bool((os.environ.get("PVQ_ALARM_TO") or "").strip())}
 
 
-def kural_ayarla(tenant_id, plant_id, kurallar: list[str], esik: dict | None = None) -> dict:
+_EPOSTA = __import__("re").compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def kural_ayarla(tenant_id, plant_id, kurallar: list[str], esik: dict | None = None, alicilar: list[str] | None = None) -> dict:
     from pvquant.services import plant_service
     k = [x for x in EK_KURALLAR if x in (kurallar or [])]
     e = {kk: float(v) for kk, v in (esik or {}).items() if kk in ESIK_VARSAYILAN and v is not None}
+    if "takvim_gun_once" in e and not (1 <= e["takvim_gun_once"] <= 30):
+        raise ValueError("takvim_gun_once 1–30")
+    if "ptf_esik_tl_mwh" in e and not (0 <= e["ptf_esik_tl_mwh"] <= 10000):
+        raise ValueError("ptf_esik_tl_mwh 0–10000")
+    if "ariza_esik" in e and not (1 <= e["ariza_esik"] <= 30):
+        raise ValueError("ariza_esik 1–30")
+    for kk in ("takvim_gun_once", "ariza_esik"):
+        if kk in e:
+            e[kk] = int(e[kk])
+    ek = {}
+    if alicilar is not None:
+        a = list(dict.fromkeys(x.strip().lower() for x in alicilar if isinstance(x, str) and x.strip()))
+        if len(a) > 10:
+            raise ValueError("en çok 10 alıcı")
+        for x in a:
+            if not _EPOSTA.match(x):
+                raise ValueError(f"alıcı e-posta geçersiz: {x}")
+        ek["alarm_alicilar"] = a
     if "pr_esik" in e and not (0.3 <= e["pr_esik"] <= 1.0):
         raise ValueError("pr_esik 0,30–1,00")
     if "clipping_esik" in e and not (0.0 < e["clipping_esik"] <= 1.0):
@@ -270,5 +486,5 @@ def kural_ayarla(tenant_id, plant_id, kurallar: list[str], esik: dict | None = N
         raise ValueError("kullanilabilirlik_esik 0,5–1,0")
     if "dengesizlik_esik" in e and not (0.0 < e["dengesizlik_esik"] <= 0.5):
         raise ValueError("dengesizlik_esik 0–0,5")
-    pj = plant_service.params_birlestir(tenant_id, plant_id, alarm_kurallari=k, alarm_esik=e)
+    pj = plant_service.params_birlestir(tenant_id, plant_id, alarm_kurallari=k, alarm_esik=e, **ek)
     return kural_durumu({"params_json": pj})

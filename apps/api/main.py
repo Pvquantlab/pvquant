@@ -359,6 +359,7 @@ class AtaIstek(BaseModel):
 class KuralIstek(BaseModel):
     kurallar: list[str]
     esik: dict[str, float] | None = None
+    alicilar: list[str] | None = None   # v2.519 (P7a): santral bazlı alarm alıcıları (e-posta); None → dokunma
 
 
 @app.post("/v1/plants/{plant_id}/alarmlar/{alarm_id}/okundu")
@@ -543,7 +544,7 @@ def alarm_kurallari_ayarla(plant_id: str, p: KuralIstek, claims=Depends(yazma_ye
     if plant_service.getir(claims["tenant_id"], plant_id) is None:
         raise HTTPException(404, "santral yok")
     try:
-        return alarm_service.kural_ayarla(claims["tenant_id"], plant_id, p.kurallar, p.esik)
+        return alarm_service.kural_ayarla(claims["tenant_id"], plant_id, p.kurallar, p.esik, alicilar=p.alicilar)
     except ValueError as e:
         raise HTTPException(422, str(e))
 
@@ -999,7 +1000,7 @@ def anahtar_iptal(anahtar_id: str, claims=Depends(yonetici_yetkisi())):
 @app.get("/v1/webhooklar", tags=["Yönetim"])
 def webhook_listesi(claims=Depends(yonetici_yetkisi())):
     from pvquant.services import webhook_service
-    return {"webhooklar": webhook_service.listele(claims["tenant_id"]), "olaylar": ["tahmin.yeni"]}
+    return {"webhooklar": webhook_service.listele(claims["tenant_id"]), "olaylar": ["tahmin.yeni", "alarm.yeni"]}
 
 
 @app.post("/v1/webhooklar", tags=["Yönetim"], status_code=201)

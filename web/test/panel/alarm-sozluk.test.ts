@@ -16,7 +16,10 @@ test("alarm kuralı adları panel ve arka uçta birebir", () => {
   assert.ok(Object.keys(arka).length >= 8, "arka uç etiketleri okunamadı");
   assert.deepEqual(on, arka);
   assert.doesNotMatch(JSON.stringify(Object.values(arka)), /isabet/i);
-  // eşik metni her kurala özgü: sabit kuralların eski «>6 s» kalıntısı yok
+  // 01.11 ikinci dil turu: her kuralın görünür koşul cümlesi (KURAL_KOSULU) arka uç kural kümesiyle birebir; mono kısaltma kalmadı
+  const kosulBlok = tsx.slice(tsx.indexOf("const KURAL_KOSULU"), tsx.indexOf("};", tsx.indexOf("const KURAL_KOSULU")) + 2);
+  const kosulKodlari = [...kosulBlok.matchAll(/^\s{2}([a-z_]+):/gm)].map((m) => m[1]).sort();
+  assert.deepEqual(kosulKodlari, Object.keys(arka).sort());
   assert.doesNotMatch(tsx, /\} s`\}/);
-  assert.match(tsx, /k === "veri_gelmedi" \? "48 saat"/);
+  assert.doesNotMatch(tsx, /"15:30 sonrası"|">%3 gelir"/);
 });

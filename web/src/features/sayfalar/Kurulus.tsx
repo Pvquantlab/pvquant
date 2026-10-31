@@ -189,7 +189,7 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
             </div>)}
         </div>
         <div>
-          <div className="etiket-ust">Webhook alıcıları <span className="soluk">(tahmin.yeni)</span></div>
+          <div className="etiket-ust">Webhook alıcıları <span className="soluk">(tahmin.yeni, alarm.yeni; önceden eklenenler yalnız tahmin.yeni alır)</span></div>
           {webhooklar.length === 0 ? <p className="soluk" style={{ fontSize: 14, margin: 0 }}>Henüz alıcı yok.</p> : (
             <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 13 }}>
               <thead><tr><th>Adres</th><th>Santral</th><th>Son gönderim</th><th>Durum</th><th></th></tr></thead>

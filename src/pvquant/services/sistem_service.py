@@ -30,6 +30,10 @@ IZLENEN_ISLER = (
     ("gun_ici_tahmin", 30, "gün içi", True),            # ayar (gun_ici_guncelleme) kapalıysa beklenmez
     ("kgup_revizyon_kontrol", 30, "gün içi", True),     # 07:10–18:10 TSİ saat başı
     ("kgup_teslim_kontrol", 36, "günlük", True),        # 15:35 TSİ
+    ("iletisim_kontrol", 3, "gün içi", True),           # 01.11 v2.519 (P7a): her saat :50
+    ("ptf_kontrol", 36, "günlük", True),                # 01.11 v2.519 (P7a): 14:40 TSİ
+    ("teminat_hatirlatma", 36, "günlük", True),         # 01.11 v2.519 (P7a): 10:15 TSİ (hafta sonu da iz bırakır, kural içeride atlar)
+    ("avans_hatirlatma", 36, "günlük", True),           # 01.11 v2.519 (P7a): 14:45 TSİ
     ("gun_oncesi_ptf", 36, "günlük", False),            # 14:35 TSİ; «henuz_yok» da başarılı koşudur
     ("gece_piyasa", 36, "günlük", False),
     ("gece_epias_uretim", 36, "günlük", True),

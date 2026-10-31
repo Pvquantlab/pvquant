@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
 import type { PrKarti, Saglik, AlarmKurallari, FizikTerimleri, FizikOnizleme, Kullanilabilirlik, Tarife } from "../../api/types";
 import { SEGMENTLER } from "../../api/types";
@@ -19,18 +20,64 @@ const KURAL_ADI: Record<string, string> = {
   clipping_orani_yuksek: "Kırpma oranı yüksek", iletisim_kesintisi: "İletişim kesintisi", kullanilabilirlik_dustu: "Kullanılabilirlik düştü",
   kgup_teslim_gecikti: "Program bildirimi hazırlanamadı", dengesizlik_asimi: "Dengesizlik maliyeti yüksek",
   kgup_revizyon_onerisi: "Program revizyonu önerisi",
+  takvim_son_tarih: "Yaklaşan son tarih", ptf_dusuk_saat: "Yarın düşük fiyat saati",
+  ariza_sayaci_yaklasti: "Arıza sayacı eşiğe yaklaştı", teminat_hatirlatma: "Teminat saati hatırlatması",
+  avans_hatirlatma: "Avans ödeme hatırlatması",
 };
-const KURAL_ACIKLAMA: Record<string, string> = {
-  veri_gelmedi: "Son SCADA verisi 48 saatten eskiyse. Her santralde sabittir.",
-  skill_dustu: "Günlük tahmin hatası 7 gün üst üste 30 günlük ortalamanın 1,5 katını aşarsa. Her santralde sabittir.",
-  pr_dustu: "Performans oranı eşiğin altına düşerse.",
-  clipping_orani_yuksek: "Kırpma oranı eşiği aşarsa.",
-  iletisim_kesintisi: "Son ölçüm eşikten daha uzun süredir gelmiyorsa.",
-  kullanilabilirlik_dustu: "Son 30 günün kullanılabilirliği eşiğin altına düşerse.",
-  kgup_teslim_gecikti: "Yarının programı için 15:30 kesiminden önce verilmiş tahmin yoksa; 15:35'te kontrol edilir.",
-  dengesizlik_asimi: "Son 30 günün dengesizlik maliyeti gelirin eşik oranını aşarsa.",
-  kgup_revizyon_onerisi: "Gün içinde her saat (07:10–18:10) kontrol: bugünün programı güncel beklentiden eşik oranı kadar sapıyorsa ve o saat için revizyon süresi (GİP kapısı + 30 dk) geçmediyse.",
+/** 01.11 Santral ayarları dil turu: her ayar satırı = kısa açıklama (1–2 cümle) + «Ayrıntı» (yerleşik details: klavyeyle Tab + Enter/Boşluk
+ *  açılır; ne işe yarar / ne zaman değiştirilir / neyi etkiler). Ayar davranışları ve API değişmedi; yalnız metin ve sunum. */
+/** Bilgi simgesi: sol sütunda düğme (aria-expanded/aria-controls, Tab + Enter/Boşluk), açılınca gövde satırın altında tam genişlikte
+ *  (dar etiket sütununa sıkışmaz; uzun kontrol bloklarında da düğme açıklamanın hemen altında kalır). Aynı anda bir ayrıntı açık. */
+function ayrintiDugmesi(acik: string | null, ayarla: (v: string | null) => void, id: string) {
+  const bu = acik === id;
+  return (
+    <button type="button" className="ayar-ayrinti-dugme" aria-expanded={bu} aria-controls={`ayrinti-${id}`} onClick={() => ayarla(bu ? null : id)}>
+      <span className="bilgi" aria-hidden="true">i</span>{bu ? "Ayrıntıyı gizle" : "Ayrıntı"}
+    </button>);
+}
+function ayrintiGovdesi(acik: string | null, id: string, icerik: ReactNode) {
+  return acik === id ? <div id={`ayrinti-${id}`} className="ayar-ayrinti-govde" role="region" aria-label="Ayar ayrıntısı">{icerik}</div> : null;
+}
+/** Alarm kuralları konuya göre gruplanır; sözlükte olmayan yeni kural son gruba düşer (etiket bozulmaz). */
+const KURAL_GRUPLARI: { ad: string; kurallar: string[] }[] = [
+  { ad: "Veri ve model", kurallar: ["veri_gelmedi", "skill_dustu", "iletisim_kesintisi", "pr_dustu", "clipping_orani_yuksek", "kullanilabilirlik_dustu"] },
+  { ad: "Üretim programı", kurallar: ["kgup_teslim_gecikti", "kgup_revizyon_onerisi"] },
+  { ad: "Uzlaştırma ve piyasa", kurallar: ["dengesizlik_asimi", "ptf_dusuk_saat", "ariza_sayaci_yaklasti"] },
+  { ad: "Takvim ve hatırlatmalar", kurallar: ["takvim_son_tarih", "teminat_hatirlatma", "avans_hatirlatma"] },
+];
+/** 01.11 (ikinci dil turu): her kuralın koşulu düz cümle, güncel eşikle — kutunun altında ikinci satır (mono kısaltma «>%3 gelir» kalktı).
+ *  Ek türeten sayılarda Türkçe ek sorunu olmasın diye eşik parantezde yazılır. Kaynak: alarm_service.ek_alarmlar / tara / worker zamanları. */
+const KURAL_KOSULU: Record<string, (e: Record<string, number>) => string> = {
+  veri_gelmedi: () => "Son ölçüm 48 saatten eskiyse. Kontrol: her gece 07:00",
+  skill_dustu: () => "Günlük tahmin hatası 7 gün üst üste 30 günlük ortalamanın 1,5 katını aşınca. Kontrol: her gece 07:00",
+  iletisim_kesintisi: (e) => `Son ölçüm ${sayiTr(e.iletisim_esik_saat ?? 6, 0)} saatten eskiyse. Kontrol: her saat`,
+  pr_dustu: (e) => `30 günlük performans oranı eşiğin (%${sayiTr((e.pr_esik ?? 0.7) * 100, 0)}) altına düşünce. Kontrol: her gece 07:00`,
+  clipping_orani_yuksek: (e) => `Son 7 günde kırpılan saatlerin payı eşiği (%${sayiTr((e.clipping_esik ?? 0.15) * 100, 0)}) aşınca. Kontrol: her gece 07:00`,
+  kullanilabilirlik_dustu: (e) => `Son 30 günün kullanılabilirliği eşiğin (%${sayiTr((e.kullanilabilirlik_esik ?? 0.97) * 100, 0)}) altında kalınca. Kontrol: her gece 07:00`,
+  kgup_teslim_gecikti: () => "Yarının programı için 15:30'dan önce verilmiş tahmin yoksa kritik; tahmin var ama TPYS'ye bildirilen dosya yüklenmemişse uyarı. Kontrol: her gün 15:35",
+  kgup_revizyon_onerisi: (e) => `Bugünün programı güncel beklentiden eşik (%${sayiTr((e.revizyon_esik ?? 0.10) * 100, 0)}) kadar sapınca ve o saatin revizyon süresi geçmediyse. Kontrol: 07:10–18:10 arası saat başı`,
+  dengesizlik_asimi: (e) => `Son 30 günün dengesizlik maliyeti gelire oranla eşiği (%${sayiTr((e.dengesizlik_esik ?? 0.03) * 100, 0)}) aşınca. Kontrol: her gece 07:00`,
+  ptf_dusuk_saat: (e) => (e.ptf_esik_tl_mwh ?? 0) <= 0
+    ? "Yarın fiyatın sıfır ya da negatif olduğu saat varsa; YEKDEM'li santralde tarifedeki YEK fiyatının altı. Kontrol: her gün 14:40"
+    : `Yarın fiyatın ${sayiTr(e.ptf_esik_tl_mwh, 0)} TL/MWh altında olduğu saat varsa. Kontrol: her gün 14:40`,
+  ariza_sayaci_yaklasti: (e) => `Bu ayki arıza kaydı eşiğe (${sayiTr(e.ariza_esik ?? 25, 0)}) ulaşınca. Kontrol: her gece 07:00`,
+  takvim_son_tarih: (e) => `Takvim'deki her son tarih için ${sayiTr(e.takvim_gun_once ?? 3, 0)} gün kala, bir kez. Kontrol: her gece 07:00`,
+  teminat_hatirlatma: () => "Teminat mektubu 10:30'a kadar, teminat kontrolü 11:00. Kontrol: her iş günü 10:15; yalnız lisanslı santral",
+  avans_hatirlatma: () => "Avans borcu 15:00'a kadar, alacak 17:00'a kadar. Kontrol: her iş günü 14:45; yalnız lisanslı santral",
 };
+/** Eşik girişleri: API ondalık oran tutan eşikleri (performans, kırpma, kullanılabilirlik, dengesizlik, revizyon) panel yüzde gösterir ve
+ *  kaydederken 100'e böler; ötekiler sayı. Aralıklar alarm_service.kural_ayarla doğrulamasıyla aynı. */
+const ESIK_ALANLARI: { k: string; etiket: string; yuzde?: boolean; aralik: string }[] = [
+  { k: "pr_esik", etiket: "Performans oranı (%)", yuzde: true, aralik: "30–100" },
+  { k: "clipping_esik", etiket: "Kırpma oranı (%)", yuzde: true, aralik: "1–100" },
+  { k: "iletisim_esik_saat", etiket: "İletişim kesintisi (saat)", aralik: "1–48" },
+  { k: "kullanilabilirlik_esik", etiket: "Kullanılabilirlik (%)", yuzde: true, aralik: "50–100" },
+  { k: "dengesizlik_esik", etiket: "Dengesizlik maliyeti (gelirin %'si)", yuzde: true, aralik: "1–50" },
+  { k: "revizyon_esik", etiket: "Program revizyonu sapması (%)", yuzde: true, aralik: "1–100" },
+  { k: "takvim_gun_once", etiket: "Son tarihe kaç gün kala", aralik: "1–30" },
+  { k: "ptf_esik_tl_mwh", etiket: "Düşük fiyat eşiği (TL/MWh)", aralik: "0 = sıfır ve negatif fiyat" },
+  { k: "ariza_esik", etiket: "Arıza sayacı (adet)", aralik: "1–30" },
+];
 import { tarihBicimi } from "../../lib/bicim";
 import { t0Hesapla, simdiDegeri, simdiGercegi, dilimle } from "../sayfalar/tahminPencere";
 import { Cubuklar } from "./Cubuklar";
@@ -64,7 +111,7 @@ function GunProfili({ noktalar, tepe, vurgu }:
  *  görünür etikette doğru yazım kullanılır. Sözlükte olmayan ham değer
  *  alt-çizgisiz aynen basılır (yeni yöntem eklenince etiket bozulmaz). */
 const YONTEM_ADI: Record<string, string> = {
-  physical: "physical", ashrae: "ASHRAE", martin_ruiz: "Martin–Ruiz",
+  physical: "fiziksel", ashrae: "ASHRAE", martin_ruiz: "Martin–Ruiz",
   first_solar: "First Solar", kimber: "Kimber", nrel: "NREL",
 };
 
@@ -185,6 +232,25 @@ export function Santralim({ plantId }: { plantId: string }) {
     if (!ak) return;
     const k = acik ? [...ak.secili, kural] : ak.secili.filter((x) => x !== kural);
     api.alarmKurallariAyarla(plantId, k, ak.esik).then(setAk).catch(() => {});
+  };
+  // v2.519 (P7a): yeni kuralların eşikleri ve santral bazlı alıcılar — tek Kaydet; alıcılar yalnız burada gönderilir
+  const [akEsik, setAkEsik] = useState<Record<string, string>>({});
+  const [akAlici, setAkAlici] = useState("");
+  const [akMesaj, setAkMesaj] = useState<string | null>(null);
+  const [ayrinti, setAyrinti] = useState<string | null>(null);   // 01.11 dil turu: açık ayar ayrıntısı (satır kimliği)
+  useEffect(() => {
+    if (!ak) return;
+    setAkEsik(Object.fromEntries(ESIK_ALANLARI.map((a) => { const v = ak.esik[a.k]; return [a.k, v == null ? "" : String(a.yuzde ? Math.round(v * 1000) / 10 : v).replace(".", ",")]; })));
+    setAkAlici((ak.alicilar ?? []).join(", "));
+  }, [ak]);
+  const akKaydet = () => {
+    if (!ak) return;
+    const esik = { ...ak.esik };
+    for (const a of ESIK_ALANLARI) { const v = Number((akEsik[a.k] ?? "").replace(",", ".")); if (akEsik[a.k] !== "" && Number.isFinite(v)) esik[a.k] = a.yuzde ? v / 100 : v; }
+    const alicilar = akAlici.split(/[,;\s]+/).map((x) => x.trim()).filter(Boolean);
+    setAkMesaj(null);
+    api.alarmKurallariAyarla(plantId, ak.secili, esik, alicilar).then((r) => { setAk(r); setAkMesaj("Kaydedildi."); })
+      .catch((e) => setAkMesaj(String((e as Error).message ?? e)));
   };
   const t0 = useMemo(() => t0Hesapla(Date.now()), []);
   const nowVal = useMemo(
@@ -496,7 +562,7 @@ export function Santralim({ plantId }: { plantId: string }) {
             <div><dt>Performans oranı (PR, 30 gün)</dt>
               <dd>{pr?.durum === "ok" && pr.PR != null
                 ? <>%{sayiTr(pr.PR * 100, 1)}{pr.PR_sicaklik != null && ` (sıcaklık düzeltmeli %${sayiTr(pr.PR_sicaklik * 100, 1)})`}
-                    <span className="kunye-not">{sayiTr(pr.gun)} gün değerlendirildi{pr.son_olcum ? `, son ölçüm ${pr.son_olcum}` : ""}</span></>
+                    <span className="kunye-not">{sayiTr(pr.gun)} gün değerlendirildi{pr.son_olcum ? `, son ölçüm ${tarihBicimi("tr-TR", { day: "numeric", month: "short", year: "numeric" }).format(new Date(pr.son_olcum.length === 10 ? pr.son_olcum + "T00:00:00" : pr.son_olcum))}` : ""}</span></>
                 : pr?.durum === "poa_yok"
                   ? <><span className="kunye-durum eksik">Hesaplanamadı</span><span className="kunye-not">düzlem ışınımı (POA) ölçümü {pr.poa_orani != null ? `saatlerin %${sayiTr(pr.poa_orani * 100, 0)}'inde` : "yok"}; PR için en az %95 gerekir</span></>
                   : <><span className="kunye-durum eksik">Hesaplanamadı</span><span className="kunye-not">ölçüm birikmedi</span></>}</dd></div>
@@ -527,36 +593,55 @@ export function Santralim({ plantId }: { plantId: string }) {
           </p>
         </Kart>
         </div>
-        {/* v2.285 (tasarım çıtası): ayarlar veri tablosundan çıktı — her ayar ad + açıklama solda, kontroller sağda. */}
-        <Kart baslik="Santral ayarları"
-            sag={<span className="cip">değişiklikler bir sonraki tahminden itibaren geçerli</span>}>
+        {/* v2.285 (tasarım çıtası): ayarlar veri tablosundan çıktı — her ayar ad + açıklama solda, kontroller sağda.
+            01.11 dil turu: sol sütun = ad + 1–2 cümle + «Ayrıntı» (details); sağ sütun = yalnız karar vermeyi kolaylaştıran etiketler
+            (birim, aralık, zorunlu/isteğe bağlı) ve ne zaman geçerli olduğu. Kaynak: segment.KURALLAR, kgup_service.eak_etkin, tarife_service,
+            fizik_service, alarm_service — açıklamalar koddan doğrulandı, tahmin yok. */}
+        <Kart baslik="Santral ayarları" alt="Piyasa kimliği, satış tarifesi, üretim programı sınırları, fiziksel model terimleri ve alarm bildirimleri.">
           <div className="ayar">
             <div><div className="ayar-ad">Piyasa segmenti</div>
-              <div className="ayar-aciklama">Dengesizlik sorumluluğunu, üretim programı (KGÜP) yükümlülüğünü ve KÜPST uygulamasını belirler.</div></div>
+              <div className="ayar-aciklama">Santralinizin piyasadaki konumu. Dengesizlik sorumluluğu, program bildirimi yükümlülüğü ve sapma tutarı uygulaması buna göre belirlenir.</div>
+              {ayrintiDugmesi(ayrinti, setAyrinti, "segment")}
+              </div>
             <div className="ayar-kontrol">
-              <label className="girdi-etiket">Segment
+              <label className="girdi-etiket">Segment (uzlaştırma hesapları için gerekli)
                 <select className="girdi" value={seg?.segment ?? ""}
                   onChange={(e) => api.segmentAyarla(plantId, e.target.value, uevcb || undefined).then((r) => setSeg({ segment: r.segment, dengesizlik_sahibi: r.dengesizlik_sahibi })).catch(() => {})}>
                   <option value="" disabled>seçiniz</option>
                   {SEGMENTLER.map((x) => <option key={x.deger} value={x.deger}>{x.etiket}</option>)}
                 </select>
               </label>
-              {seg?.dengesizlik_sahibi && <span className="ayar-durum">dengesizlik: {seg.dengesizlik_sahibi}</span>}
+              {seg?.dengesizlik_sahibi && <span className="ayar-durum">Dengesizlik sorumlusu: {seg.dengesizlik_sahibi}</span>}
             </div>
+            {ayrintiGovdesi(ayrinti, "segment", <>
+                <p><b>Ne zaman değiştirilir:</b> lisans ya da YEKDEM durumu değiştiğinde (örneğin YEKDEM süresi bitince serbest piyasaya geçiş) ve toplayıcı ya da görevli tedarik şirketi (GTŞ) portföyüne giriş-çıkışta.</p>
+                <p><b>Neyi etkiler:</b> Doğruluk sayfasındaki uzlaştırma hesabı, Portföy'deki dengeden sorumlu grup (DSG) ve UEVÇB tabloları, Takvim'deki son tarihler ve alarm kuralları. Segment seçilmeden KÜPST ve DSG hesaplanamaz; Takvim tüm segmentlerin tarihlerini gösterir.</p>
+                <ul>
+                  <li><b>Lisanslı (serbest piyasa):</b> KGÜP bildirir; dengesizlik santralde ya da DSG'de; KÜPST uygulanır; gelir piyasa fiyatı (PTF) ya da ikili anlaşma.</li>
+                  <li><b>Lisanslı (YEKDEM):</b> KGÜP bildirir; gelir YEKDEM fiyatı; dengesizlik santralde ya da DSG'de; KÜPST uygulanır.</li>
+                  <li><b>YEKA:</b> KGÜP bildirir; sözleşme fiyatı; dengesizlik sözleşmeye göre.</li>
+                  <li><b>Lisanssız (iletim bağlantılı):</b> KGÜP'ü kendi UEVÇB'siyle bildirir; dengesizlik toplayıcı ya da GTŞ portföyünde; KÜPST uygulanır.</li>
+                  <li><b>Lisanssız (dağıtım):</b> programı GTŞ ya da toplayıcı bildirir; dengesizlik ve sapma tutarı santrale değil GTŞ/toplayıcı portföyüne (UEVÇB) yansır, santrale dağılımı sözleşmeye bağlıdır.</li>
+                  <li><b>Öz tüketim (saatlik mahsup):</b> dengesizlik yok; fazla enerji GTŞ fiyatıyla, eksik tüketim tarifeyle mahsuplaşır.</li>
+                </ul>
+                <p><b>Ne zaman geçerli:</b> seçim anında kaydedilir; sonraki hesaplar ve program dosyaları yeni segmenti kullanır.</p>
+              </>)}
           </div>
           {/* v2.513 (04 #14 kalan): UEVÇB kodu — KGÜP/EAK dosya adı ve toplayıcı portföyü KÜPST gruplaması bu koda bağlı; EPİAŞ'tan arama */}
           <div className="ayar">
             <div><div className="ayar-ad">UEVÇB kodu</div>
-              <div className="ayar-aciklama">Uzlaştırmaya esas veriş-çekiş birimi. KGÜP ve EAK dosya adında, toplayıcı portföyünde KÜPST gruplamasında kullanılır. Kodu biliyorsanız yazın; bilmiyorsanız EPİAŞ Şeffaflık'ta kuruluş adıyla arayıp seçin.</div></div>
+              <div className="ayar-aciklama">EPİAŞ'ın santralinizi uzlaştırmada tanıdığı birim kodu. Program dosyalarının adında ve toplayıcı portföyü hesaplarında kullanılır.</div>
+              {ayrintiDugmesi(ayrinti, setAyrinti, "uevcb")}
+              </div>
             <div className="ayar-kontrol">
               <div className="dugme-sira" style={{ alignItems: "flex-end" }}>
-                <label className="girdi-etiket">UEVÇB
+                <label className="girdi-etiket">UEVÇB kodu (isteğe bağlı)
                   <input className="girdi" value={uevcb} maxLength={32} placeholder="örn. 40X000000000123A" onChange={(e) => setUevcb(e.target.value)} /></label>
                 <button className="dugme" onClick={() => uevcbKaydet(uevcb)}>Kaydet</button>
               </div>
               <div className="dugme-sira" style={{ alignItems: "flex-end" }}>
-                <label className="girdi-etiket">EPİAŞ'ta ara (kuruluş adı)
-                  <input className="girdi" value={uevcbArama} minLength={3} placeholder="en az 3 harf" onChange={(e) => setUevcbArama(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && uevcbArama.trim().length >= 3) uevcbAra(); }} /></label>
+                <label className="girdi-etiket">EPİAŞ'ta ara (kuruluş adı, en az 3 harf)
+                  <input className="girdi" value={uevcbArama} minLength={3} placeholder="örn. Format Lab" onChange={(e) => setUevcbArama(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && uevcbArama.trim().length >= 3) uevcbAra(); }} /></label>
                 <button className="dugme" disabled={uevcbArama.trim().length < 3} onClick={uevcbAra}>Ara</button>
               </div>
               {uevcbAday === "yok" && <span className="ayar-durum">Örnek kipte ya da EPİAŞ kimliği tanımlı değilken arama yapılamaz.</span>}
@@ -569,24 +654,32 @@ export function Santralim({ plantId }: { plantId: string }) {
                 </div>))}
               {uevcbMesaj && <span className={`ayar-durum ${uevcbMesaj.startsWith("Kaydedildi") ? "ok" : "hata"}`}>{uevcbMesaj}</span>}
             </div>
+            {ayrintiGovdesi(ayrinti, "uevcb", <>
+                <p><b>Kısaltma:</b> uzlaştırmaya esas veriş-çekiş birimi.</p>
+                <p><b>Nereden bulunur:</b> EPYS ya da TPYS kayıtlarınızdan; bilmiyorsanız EPİAŞ Şeffaflık Platformu'nda kuruluş adıyla arayıp listeden seçin (arama, PVQuant'ta EPİAŞ kimliği tanımlıysa çalışır).</p>
+                <p><b>Neyi etkiler:</b> indirilen program ve EAK dosyalarının adı (KGUP_kod_gün_sürüm.csv, EAK_kod_gün.csv); dağıtıma bağlı lisanssız santrallerde sapma tutarı GTŞ ya da toplayıcının UEVÇB'si üzerinden gruplanır. Boş bırakılırsa dosya adında kod yerine «UEVCB» yazılır.</p>
+                <p><b>Ne zaman geçerli:</b> Kaydet'ten sonraki program dosyasında ve Portföy tablolarında.</p>
+              </>)}
           </div>
           <div className="ayar">
-            <div><div className="ayar-ad">Tarife</div>
-              <div className="ayar-aciklama">Fatura özeti ve yıllık gelir beklentisi bu tarifeyle hesaplanır; dengesizlik hesabını değiştirmez.</div></div>
+            <div><div className="ayar-ad">Satış tarifesi</div>
+              <div className="ayar-aciklama">Ürettiğiniz enerjinin satış fiyatı. Fatura özeti ve yıllık gelir beklentisinde kullanılır; dengesizlik hesaplarını etkilemez.</div>
+              {ayrintiDugmesi(ayrinti, setAyrinti, "tarife")}
+              </div>
             <div className="ayar-kontrol">
-              <label className="girdi-etiket">Tarife tipi
+              <label className="girdi-etiket">Tarife tipi (isteğe bağlı)
                 <select className="girdi" value={tarife.tip} onChange={(e) => setTarife({ ...tarife, tip: e.target.value as Tarife["tip"] })}>
                   <option value="sabit">sabit fiyat</option><option value="cok_zamanli">çok zamanlı (gündüz/puant/gece)</option><option value="ptf">piyasa (PTF) endeksli</option><option value="yekdem">YEKDEM (döviz endeksli)</option>
                 </select>
               </label>
               {tarife.tip === "sabit" &&
                 <label className="girdi-etiket">Fiyat (TL/MWh)
-                  <input className="girdi" style={{ width: 110 }} inputMode="decimal" {...tarifeSayi("tl_mwh")} /></label>}
+                  <input className="girdi" style={{ width: 110 }} inputMode="decimal" placeholder="örn. 2.400" {...tarifeSayi("tl_mwh")} /></label>}
               {tarife.tip === "ptf" && <>
-                <label className="girdi-etiket">Prim oranı
+                <label className="girdi-etiket">Prim oranı (0,05 = %5)
                   <input className="girdi" style={{ width: 90 }} inputMode="decimal" placeholder="0,05" {...tarifeSayi("prim_oran")} /></label>
                 <label className="girdi-etiket">Sabit ek (TL/MWh)
-                  <input className="girdi" style={{ width: 110 }} inputMode="decimal" {...tarifeSayi("sabit_ek_tl_mwh")} /></label></>}
+                  <input className="girdi" style={{ width: 110 }} inputMode="decimal" placeholder="0" {...tarifeSayi("sabit_ek_tl_mwh")} /></label></>}
               {tarife.tip === "cok_zamanli" && <>
                 <label className="girdi-etiket">Gündüz 06–17 (TL/MWh)
                   <input className="girdi" style={{ width: 110 }} inputMode="decimal" {...tarifeSayi("gunduz_tl_mwh")} /></label>
@@ -595,49 +688,81 @@ export function Santralim({ plantId }: { plantId: string }) {
                 <label className="girdi-etiket">Gece 22–06 (TL/MWh)
                   <input className="girdi" style={{ width: 110 }} inputMode="decimal" {...tarifeSayi("gece_tl_mwh")} /></label></>}
               {tarife.tip === "yekdem" && <>
-                <label className="girdi-etiket">USD cent/kWh
-                  <input className="girdi" style={{ width: 100 }} inputMode="decimal" {...tarifeSayi("usd_cent_kwh")} /></label>
+                <label className="girdi-etiket">YEK fiyatı (ABD senti/kWh)
+                  <input className="girdi" style={{ width: 100 }} inputMode="decimal" placeholder="örn. 10,8" {...tarifeSayi("usd_cent_kwh")} /></label>
                 <label className="girdi-etiket">Kur (TL/USD)
                   <input className="girdi" style={{ width: 90 }} inputMode="decimal" {...tarifeSayi("kur_tl_usd")} /></label></>}
-              <button className="dugme" onClick={tarifeKaydet}>Kaydet</button>
-              <button className="dugme" onClick={() => api.tarifeAyarla(plantId, null).then(() => setTarifeMesaj("Kaldırıldı.")).catch(() => {})}>Kaldır</button>
-              {tarifeMesaj && <span className={`ayar-durum ${tarifeMesaj.startsWith("Kayded") || tarifeMesaj.startsWith("Kald") ? "ok" : "hata"}`}>{tarifeMesaj}</span>}
+              <div className="satir-tam">
+                <button className="dugme" onClick={tarifeKaydet}>Kaydet</button>
+                <button className="dugme" onClick={() => api.tarifeAyarla(plantId, null).then(() => setTarifeMesaj("Kaldırıldı.")).catch(() => {})}>Kaldır</button>
+                {tarifeMesaj && <span className={`ayar-durum ${tarifeMesaj.startsWith("Kayded") || tarifeMesaj.startsWith("Kald") ? "ok" : "hata"}`}>{tarifeMesaj}</span>}
+              </div>
             </div>
+            {ayrintiGovdesi(ayrinti, "tarife", <>
+                <p><b>Ne zaman değiştirilir:</b> satış sözleşmeniz ya da YEKDEM fiyatınız değiştiğinde. Tarife girilmemişse gelir alanları boş kalır; tahmin ve uzlaştırma etkilenmez.</p>
+                <ul>
+                  <li><b>Sabit fiyat:</b> her saat aynı TL/MWh (0–100.000).</li>
+                  <li><b>Çok zamanlı:</b> gündüz 06–17, puant 17–22, gece 22–06 (Türkiye saati) için ayrı TL/MWh.</li>
+                  <li><b>Piyasa endeksli:</b> gün öncesi piyasa takas fiyatı (PTF) × (1 + prim oranı) + sabit ek; prim oranı −0,5 ile 1,0 arasında (0,05 = %5).</li>
+                  <li><b>YEKDEM:</b> YEK fiyatı (ABD senti/kWh) × girdiğiniz kur (TL/USD).</li>
+                </ul>
+                <p><b>Ne zaman geçerli:</b> Kaydet'ten sonraki rapor ve beklenti hesaplarında; «Kaldır» tarifeyi siler.</p>
+              </>)}
           </div>
           <div className="ayar">
-            <div><div className="ayar-ad">Program sınırları</div>
-              <div className="ayar-aciklama">Verilebilecek en yüksek güç, mevzuattaki adıyla emre amade kapasite (EAK): santralin o gün sisteme verebileceği en yüksek güç; üretim programı bu sınırı aşmaz. Geçici kısıt bakım ya da arıza içindir ve bitiş gününe kadar geçerlidir. Piyasa pozisyonu, Doğruluk sayfasındaki uzlaştırma hesabında enerji dengesizlik tutarının tabanıdır: satış programa eşitse «program», üretim olduğu gibi satılıyorsa «üretildiği kadar satış», baz yük satışıysa «sabit MWh/saat»; KGÜP sapma tutarı her durumda programa göre hesaplanır.</div></div>
+            <div><div className="ayar-ad">Üretim programı sınırları</div>
+              <div className="ayar-aciklama">Program dosyasının üst sınırı ve uzlaştırma hesabının varsayımları. Boş alanlarda AC sınırı ve varsayılan kurallar geçerlidir.</div>
+              {ayrintiDugmesi(ayrinti, setAyrinti, "program")}
+              </div>
             <div className="ayar-kontrol">
-              <label className="girdi-etiket" title="Mevzuattaki adı emre amade kapasite (EAK). Boş bırakılırsa inverter AC sınırı kullanılır.">Verilebilecek en yüksek güç (EAK), kW
-                <input className="girdi" style={{ width: 150 }} inputMode="numeric" placeholder="boşsa AC sınırı" value={eakKw} onChange={(e) => setEakKw(e.target.value)} /></label>
-              <label className="girdi-etiket">Geçici kısıt (kW)
-                <input className="girdi" style={{ width: 100 }} inputMode="numeric" value={gecKw} onChange={(e) => setGecKw(e.target.value)} /></label>
-              <label className="girdi-etiket">Kısıt bitişi
-                <input className="girdi" type="date" value={gecBitis} onChange={(e) => setGecBitis(e.target.value)} /></label>
-              <label className="girdi-etiket" title="Bu ay EPİAŞ'a bildirilen arıza kaydı sayısı. Kural tablosundaki eşiğe ulaşınca KGÜP sapma tutarı katsayısı yükselir (2026: 30 kayıtta n 0,05 → 0,08); uzlaştırma kartları bu değeri okur.">Bu ay arıza kaydı (adet)
-                <input className="girdi" style={{ width: 90 }} inputMode="numeric" placeholder="0" value={arizaAy} onChange={(e) => setArizaAy(e.target.value.replace(/[^0-9]/g, ""))} /></label>
-              <label className="ayar-satir" title="Yalnız dengeleme güç piyasası kapsamındaki dengeleme birimi için ≥200 MWh saatlik değişimde 15 dakikalık program satırı üretilir (DUY m.69(3)); güneş santrali varsayılan olarak dengeleme birimi değildir (m.22(4))">
-                <input type="checkbox" checked={dengelemeBirimi} onChange={(e) => setDengelemeBirimi(e.target.checked)} /> Dengeleme birimi (15 dk program satırı)</label>
-              {seg?.segment === "lisanssiz_iletim" && (   /* v2.510 (Ç3): yalnız iletime bağlı lisanssız segmentte anlamlı (Karar 14907 Md.5) */
-                <label className="ayar-satir" title="Tesis Lisanssız Elektrik Üretim Yönetmeliği m.5(1) (ç), (d) ya da (e) bendi kapsamındaysa (şebekeye enerji vermeyen öz tüketim tesisi, verimli kojenerasyon, mikrokojenerasyon) EPDK Karar 14907 Md.5 gereği 1.11.2026'dan itibaren KGÜP sapma tutarı uygulanmaz; uzlaştırma kartları bu saatlerde KÜPST'yi 0 gösterir.">
-                  <input type="checkbox" checked={!!luyIstisna} onChange={(e) => setLuyIstisna(e.target.checked)} /> LÜY m.5(1) (ç)/(d)/(e) kapsamında (KÜPST uygulanmaz)</label>)}
-              {/* v2.517 (P2a): pozisyon ayarı — uzlaştırma kartı EDM'yi buna göre hesaplar; KÜPST programa göre kalır */}
-              <label className="girdi-etiket" title="Enerji dengesizlik tutarının tabanı: gerçekleşen üretim − piyasa pozisyonu. Program: satış bildirilen programa eşit varsayılır. Üretildiği kadar satış: üretim olduğu gibi satılır (ikili anlaşma, dengesizlik alıcıda), yalnız KGÜP sapma tutarı kalır. Sabit: her saat sabit MWh satış (baz yük).">Piyasa pozisyonu
-                <select className="girdi" value={pozKaynak ?? "program"} onChange={(e) => setPozKaynak(e.target.value as "program" | "uretim" | "sabit")} aria-label="Piyasa pozisyonu kaynağı">
-                  <option value="program">program (satış programa eşit)</option>
-                  <option value="uretim">üretildiği kadar satış</option>
-                  <option value="sabit">sabit MWh/saat (baz yük)</option>
-                </select></label>
-              {pozKaynak === "sabit" && (
-                <label className="girdi-etiket">Sabit satış (MWh/saat)
-                  <input className="girdi" style={{ width: 110 }} inputMode="decimal" placeholder="ör. 2,5" value={pozSabit} onChange={(e) => setPozSabit(e.target.value)} /></label>)}
-              <button className="dugme" onClick={eakKaydet}>Kaydet</button>
-              {eakMesaj && <span className={`ayar-durum ${eakMesaj.startsWith("Kayded") ? "ok" : "hata"}`}>{eakMesaj}</span>}
+              <div className="form-izgara form-program">
+                <label className="girdi-etiket">Verilebilecek en yüksek güç (EAK), kW
+                  <input className="girdi" inputMode="numeric" placeholder="boşsa AC sınırı" value={eakKw} onChange={(e) => setEakKw(e.target.value)} /></label>
+                <label className="girdi-etiket">Geçici kısıt (kW, isteğe bağlı)
+                  <input className="girdi" inputMode="numeric" placeholder="ör. 8.000" value={gecKw} onChange={(e) => setGecKw(e.target.value)} /></label>
+                <label className="girdi-etiket">Kısıt bitişi (bitiş günü dâhil)
+                  <input className="girdi" type="date" value={gecBitis} onChange={(e) => setGecBitis(e.target.value)} /></label>
+                <label className="girdi-etiket">Bu ay arıza kaydı (adet)
+                  <input className="girdi" inputMode="numeric" placeholder="0" value={arizaAy} onChange={(e) => setArizaAy(e.target.value.replace(/[^0-9]/g, ""))} /></label>
+                {/* v2.517 (P2a): pozisyon ayarı — uzlaştırma kartı EDM'yi buna göre hesaplar; KÜPST programa göre kalır */}
+                <label className="girdi-etiket">Piyasa pozisyonu
+                  <select className="girdi" value={pozKaynak ?? "program"} onChange={(e) => setPozKaynak(e.target.value as "program" | "uretim" | "sabit")} aria-label="Piyasa pozisyonu kaynağı">
+                    <option value="program">programa eşit satış</option>
+                    <option value="uretim">üretildiği kadar satış</option>
+                    <option value="sabit">sabit miktar (baz yük)</option>
+                  </select></label>
+                {pozKaynak === "sabit" && (
+                  <label className="girdi-etiket">Sabit satış (MWh/saat)
+                    <input className="girdi" inputMode="decimal" placeholder="ör. 2,5" value={pozSabit} onChange={(e) => setPozSabit(e.target.value)} /></label>)}
+                <div className="onay-grubu form-tam">
+                  <label className="ayar-onay" title="Yalnız dengeleme güç piyasasındaki dengeleme birimleri için; ardışık saatler arasında 200 MWh ve üzeri farkta 15 dakikalık program satırları (DUY m.69(3)). Güneş santralleri varsayılan olarak dengeleme birimi değildir.">
+                    <input type="checkbox" checked={dengelemeBirimi} onChange={(e) => setDengelemeBirimi(e.target.checked)} /> Dengeleme birimi (15 dakikalık program satırları)</label>
+                  {seg?.segment === "lisanssiz_iletim" && (   /* v2.510 (Ç3): yalnız iletime bağlı lisanssız segmentte anlamlı (Karar 14907 Md.5) */
+                    <label className="ayar-onay" title="Tesis Lisanssız Elektrik Üretim Yönetmeliği m.5(1) (ç), (d) ya da (e) bendi kapsamındaysa (şebekeye enerji vermeyen öz tüketim tesisi, verimli kojenerasyon, mikrokojenerasyon) EPDK Karar 14907 Md.5 gereği 1.11.2026'dan itibaren KGÜP sapma tutarı uygulanmaz; uzlaştırma kartları bu saatlerde KÜPST'yi 0 gösterir.">
+                      <input type="checkbox" checked={!!luyIstisna} onChange={(e) => setLuyIstisna(e.target.checked)} /> LÜY m.5(1) (ç)/(d)/(e) kapsamında (KÜPST uygulanmaz)</label>)}
+                </div>
+                <div className="form-tam satir-tam">
+                  <button className="dugme" onClick={eakKaydet}>Kaydet</button>
+                  {eakMesaj && <span className={`ayar-durum ${eakMesaj.startsWith("Kayded") ? "ok" : "hata"}`}>{eakMesaj}</span>}
+                </div>
+              </div>
             </div>
+            {ayrintiGovdesi(ayrinti, "program", <>
+                <ul>
+                  <li><b>Verilebilecek en yüksek güç (EAK):</b> mevzuattaki adıyla emre amade kapasite; santralin o gün sisteme verebileceği en yüksek güç. Program hiçbir saatte bunu aşmaz. Boşsa AC sınırı, o da yoksa kurulu güç kullanılır; üst sınır kurulu güçtür.</li>
+                  <li><b>Geçici kısıt ve bitişi:</b> bakım ya da arıza süresince EAK yerine geçer; bitiş günü dâhil o güne kadar geçerlidir, sonra kendiliğinden kalkar.</li>
+                  <li><b>Bu ay arıza kaydı:</b> EPİAŞ'a bildirdiğiniz aylık arıza sayısı; elle girilir, ay değişince siz güncellersiniz. Kural tablosundaki eşikte (30 kayıt) sapma tutarı fiyat katsayısı yükselir; «Arıza sayacı eşiğe yaklaştı» alarmı bu sayıyı izler.</li>
+                  <li><b>Dengeleme birimi:</b> yalnız dengeleme güç piyasasına katılan dengeleme birimleri için. Ardışık iki saat arasında 200 MWh ve üzeri fark olduğunda program 15 dakikalık satırlarla üretilir (DUY m.69(3)). Güneş santralleri varsayılan olarak dengeleme birimi değildir; genellikle kapalı kalır.</li>
+                  <li><b>Piyasa pozisyonu:</b> Doğruluk sayfasındaki uzlaştırma hesabında dengesizliğin tabanı. Satışınız programa eşitse «programa eşit satış» (varsayılan); üretim olduğu gibi satılıyorsa (ikili anlaşma, dengesizlik alıcıda) «üretildiği kadar satış»; her saat sabit miktar satıyorsanız «sabit miktar» ve MWh/saat değeri. Sapma tutarı her durumda programa göre hesaplanır.</li>
+                </ul>
+                <p><b>Ne zaman geçerli:</b> Kaydet'ten sonraki program dosyasında ve uzlaştırma hesaplarında.</p>
+              </>)}
           </div>
           <div className="ayar">
-            <div><div className="ayar-ad">Fizik terimleri</div>
-              <div className="ayar-aciklama">Işınımın geliş açısı, spektrum, kirlenme ve kar etkileri. Seçim önce 7 günlük önizlemede gösterilir, "Uygula" ile kaydedilir.</div></div>
+            <div><div className="ayar-ad">Fiziksel model terimleri</div>
+              <div className="ayar-aciklama">Tahminde ışınım ve panel kayıplarının hesaplanma biçimi. Seçim 7 günlük önizlemede gösterilir; «Uygula» ile kaydedilir ve sonraki tahminlerde geçerli olur.</div>
+              {ayrintiDugmesi(ayrinti, setAyrinti, "fizik")}
+              </div>
             <div className="ayar-kontrol">
               {ft ? <>
                 {(["iam_model", "spectral_model", "soiling_model", "kar_model"] as const).map((k) => (
@@ -658,30 +783,70 @@ export function Santralim({ plantId }: { plantId: string }) {
                 {ftMesaj && <span className={`ayar-durum ${ftMesaj.startsWith("Kayded") ? "ok" : "hata"}`}>{ftMesaj}</span>}
               </> : <span className="ayar-durum">—</span>}
             </div>
+            {ayrintiGovdesi(ayrinti, "fizik", <>
+                <ul>
+                  <li><b>Geliş açısı kaybı:</b> cam yüzeyinden yansıma kaybı. Fiziksel: cam fiziğinden hesap; ASHRAE: tek katsayılı basit eğri; Martin–Ruiz: ölçüme dayalı deneysel eğri.</li>
+                  <li><b>Spektral düzeltme (First Solar):</b> hava kütlesi ve nemle spektrum düzeltmesi; nem verisi gerekir, hava kaynağında nem yoksa etkisizdir.</li>
+                  <li><b>Kirlenme (Kimber):</b> yağmurla sıfırlanan birikimli toz kaybı; yağış verisiyle çalışır.</li>
+                  <li><b>Kar örtüsü (NREL):</b> kar örtüsünün kayarak erime modeli; kar yağışı verisi gerekir, kaynakta yoksa etkisizdir.</li>
+                </ul>
+                <p><b>Ne zaman değiştirilir:</b> gerçekleşen üretimle tahmin arasında mevsimsel ya da sabah-akşam saatlerine özgü sapma görüyorsanız; önizlemedeki 7 günlük enerji farkını inceleyip uygulayın.</p>
+              </>)}
           </div>
           <div className="ayar">
-            <div><div className="ayar-ad">Alarm kuralları</div>
-              <div className="ayar-aciklama">Veri kesintisi ve tahmin doğruluğu düşüşü her santralde sabittir; ek kurallar seçime bağlıdır. Performans, kırpma, iletişim, kullanılabilirlik ve dengesizlik kuralları gece taramasında; program kuralları gün içinde çalışır (15:35 ve 07:10–18:10 arası her saat).</div></div>
+            <div><div className="ayar-ad">Alarm kuralları ve bildirimler</div>
+              <div className="ayar-aciklama">Hangi durumda uyarı üretileceği ve kime gideceği. İki temel kural her santralde açık; diğerleri seçime bağlıdır ve işaretlendiği anda geçerli olur.</div>
+              {ayrintiDugmesi(ayrinti, setAyrinti, "alarm")}
+              </div>
             <div className="ayar-kontrol">
               {ak ? <>
-                {ak.secilebilir.map((k) => (
-                  <label key={k} className="ayar-onay" title={KURAL_ACIKLAMA[k] ?? ""}>
-                    <input type="checkbox" checked={ak.secili.includes(k)} onChange={(e) => akDegistir(k, e.target.checked)} />
-                    {ak.etiket[k] ?? KURAL_ADI[k] ?? k}
-                    {/* 29.10 dil turu: eşikler birimli ve kurala özgü — «>6 s» her sabit kurala düşüyordu (veri 48 saat, doğruluk 7 gün × 1,5) */}
-                    <span className="mono">{k === "veri_gelmedi" ? "48 saat"
-                      : k === "skill_dustu" ? "7 gün, ×1,5"
-                      : k === "pr_dustu" ? `<${sayiTr(ak.esik.pr_esik, 2)}`
-                      : k === "clipping_orani_yuksek" ? `>%${sayiTr(ak.esik.clipping_esik * 100, 0)}`
-                      : k === "iletisim_kesintisi" ? `>${sayiTr(ak.esik.iletisim_esik_saat, 0)} saat`
-                      : k === "kullanilabilirlik_dustu" ? `<%${sayiTr((ak.esik.kullanilabilirlik_esik ?? 0.97) * 100, 0)}`
-                      : k === "kgup_teslim_gecikti" ? "15:30 sonrası"
-                      : k === "dengesizlik_asimi" ? `>%${sayiTr((ak.esik.dengesizlik_esik ?? 0.03) * 100, 0)} gelir`
-                      : k === "kgup_revizyon_onerisi" ? `>%${sayiTr((ak.esik.revizyon_esik ?? 0.10) * 100, 0)} program`
-                      : ""}</span>
-                  </label>))}
+                {/* 01.11 (P7a incelemesi + dil turu): sabit iki kural listede işaretli ve değiştirilemez (gerçek API secilebilir'e koymaz); kurallar konu gruplarında */}
+                <div className="kural-gruplar">
+                  {(() => {
+                    const hepsi = [...ak.varsayilan.filter((k) => !ak.secilebilir.includes(k)), ...ak.secilebilir];
+                    const yerlesen = new Set(KURAL_GRUPLARI.flatMap((g) => g.kurallar));
+                    return KURAL_GRUPLARI.map((g, gi) => {
+                      const kurallar = [...g.kurallar.filter((k) => hepsi.includes(k)), ...(gi === KURAL_GRUPLARI.length - 1 ? hepsi.filter((k) => !yerlesen.has(k)) : [])];
+                      if (kurallar.length === 0) return null;
+                      return (
+                        <div key={g.ad} className="kural-grup">
+                          <div className="etiket-ust">{g.ad}</div>
+                          <div className="kural-izgara">
+                            {kurallar.map((k) => { const sabit = ak.varsayilan.includes(k); return (
+                              <label key={k} className={`kural-satir${sabit ? " sabit" : ""}`}>
+                                <input type="checkbox" checked={sabit || ak.secili.includes(k)} disabled={sabit} onChange={(e) => akDegistir(k, e.target.checked)} />
+                                <span className="kural-metin">
+                                  <span className="kural-ad">{ak.etiket[k] ?? KURAL_ADI[k] ?? k}{sabit && <span className="soluk"> (her santralde açık)</span>}</span>
+                                  <span className="kural-kosul">{(KURAL_KOSULU[k] ?? (() => ""))(ak.esik)}</span>
+                                </span>
+                              </label>); })}
+                          </div>
+                        </div>);
+                    });
+                  })()}
+                </div>
+                {/* v2.519 (P7a) + 01.11 ikinci dil turu: tüm eşikler düzenlenebilir (yüzdeler panelde %, API'de oran); alıcılar; Kaydet hücreye yayılmaz */}
+                <div className="form-izgara form-alarm">
+                  <div className="etiket-ust form-tam">Eşikler</div>
+                  {ESIK_ALANLARI.map((a) => (
+                    <label key={a.k} className="girdi-etiket" title={`Geçerli aralık: ${a.aralik}`}>{a.etiket}
+                      <input className="girdi" inputMode="decimal" placeholder={a.aralik} value={akEsik[a.k] ?? ""} onChange={(e) => setAkEsik({ ...akEsik, [a.k]: e.target.value })} /></label>))}
+                  <p className="form-not form-tam">Kural cümlelerindeki değerler bu eşiklerden gelir. Düşük fiyat eşiği 0 ise sıfır ve negatif fiyatlı saatler sayılır; YEKDEM'li santralde tarifedeki YEK fiyatı kullanılır.</p>
+                  <div className="etiket-ust form-tam">Bildirim alıcıları</div>
+                  <label className="girdi-etiket form-tam">E-posta alıcıları (virgülle ayırın; en çok 10; isteğe bağlı)
+                    <input className="girdi" value={akAlici} onChange={(e) => setAkAlici(e.target.value)} placeholder="sahip@ornek.com, saha@ornek.com" /></label>
+                  <p className="form-not form-tam">Alarmlar paneldeki zile{ak.ortam_alicisi ? ", PVQuant izleme adresine" : ""} ve Kuruluş sayfasındaki «alarm.yeni» webhook alıcılarına da gider.</p>
+                  <div className="form-tam satir-tam">
+                    <button className="dugme kucuk" onClick={akKaydet}>Kaydet</button>
+                    {akMesaj && <span className={`ayar-durum ${akMesaj.startsWith("Kayded") ? "ok" : "hata"}`}>{akMesaj}</span>}
+                  </div>
+                </div>
               </> : <span className="ayar-durum">—</span>}
             </div>
+            {ayrintiGovdesi(ayrinti, "alarm", <>
+<p><b>Zilde:</b> her alarm paneldeki zile düşer; okundu işaretlenir ve bir ekip üyesine atanabilir.</p>
+                <p><b>Sıklık sınırı:</b> her kural aynı santralde günde en çok bir alarm üretir; yaklaşan son tarih kuralı her tarih için bir kez. Kuralın altındaki cümle ne zaman çalıştığını, kullandığı eşiği ve kontrol saatini söyler.</p>
+              </>)}
           </div>
         </Kart>
       </div>

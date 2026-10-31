@@ -574,8 +574,8 @@ export const api = {
     if (TABAN == null) return null;
     try { return await getir<AlarmKurallari>(`/v1/plants/${p}/alarm-kurallari`); } catch { return null; }
   },
-  alarmKurallariAyarla: (p: string, kurallar: string[], esik: Record<string, number>): Promise<AlarmKurallari> =>
-    gonder(`/v1/plants/${p}/alarm-kurallari`, "PUT", { kurallar, esik }),
+  alarmKurallariAyarla: (p: string, kurallar: string[], esik: Record<string, number>, alicilar?: string[]): Promise<AlarmKurallari> =>
+    gonder(`/v1/plants/${p}/alarm-kurallari`, "PUT", alicilar === undefined ? { kurallar, esik } : { kurallar, esik, alicilar }),   // v2.519: alıcılar yalnız verilince
   /** Damga: 304 → değişmedi (veri null). Ağ hatası fırlatır (çağıran geri çekilir). */
   damga: async (p: string, etag: string | null): Promise<{ etag: string | null; veri: Damga | null; degisti: boolean }> => {
     if (TABAN == null) return { etag: null, veri: null, degisti: false };
@@ -599,7 +599,7 @@ export const api = {
     return getir(`/v1/webhooklar`);
   },
   webhookEkle: (url: string, plant_id: string | null): Promise<Webhook & { secret: string }> =>
-    gonder(`/v1/webhooklar`, "POST", { url, plant_id, olaylar: ["tahmin.yeni"] }),
+    gonder(`/v1/webhooklar`, "POST", { url, plant_id, olaylar: ["tahmin.yeni", "alarm.yeni"] }),   // v2.519: yeni alıcılar alarm olayını da alır
   webhookSil: (id: string): Promise<{ silindi: boolean }> => gonder(`/v1/webhooklar/${id}`, "DELETE"),
   webhookDene: (id: string): Promise<{ durum: number; ok: boolean }> => gonder(`/v1/webhooklar/${id}/dene`, "POST"),
   /** v2.289: kuruluşlar arası paylaşım (kurmak admin; alınanları görmek herkese açık). */
