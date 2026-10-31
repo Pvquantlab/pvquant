@@ -276,3 +276,21 @@ dosya adı, biçim, segment/UEVÇB, EAK alanları; içerik ve sır yok); SOZLUK.
 İnceleme düzeltmeleri: sahte piyasa fixture'ı gerçekleşen fiyatı yarına uzatıyordu (düne çekildi); «yeni: true» → `yeni_surum`. DERS: dil bekçisi
 dizgelerde «taze/bayat» yasaklar — API durum kodlarını görünen Türkçe sözcük yapma; bekçi testleri ton ifadelerini kilitler, değişince testi niyetle
 güncelle. 04 D listesi (#1–#7) kapandı. Ayrıntı: `PVQuant_Ilk_Uygulama/02` M29, `04` D.
+
+# On yedinci paket — v2.517 (31.10.2026 gece, canlı): uzlaştırma hesabı fiilî programla — bildirilen KGÜP, piyasa pozisyonu, saatlik döküm (CSV/XLSX), GÖP'e esas sürüm, DSG üye KÜPST
+
+Commit `ee38ab7`, CI #646 (4 dk 44 s). Dağıtım: api + web imajı (ssh; bu kez 22. port açıktı, ağ değişimi gerekmedi); göç yok (params_json alanları,
+mevcut kgup_surum). Canlı: index.html ve 23/23 JS/CSS birebir (24/24; referans ee38ab7, klasör silinip derlendi); api ve web günlüğü hatasız; api
+kapsayıcısında `dokum_xlsx` / 21 kolon ve `pozisyon_ayari` («sabit 2,5 MWh/saat») doğrulandı, saatlik uç yönlendiriliyor.
+Kaynak: GES sahibi ihtiyaç araştırması yol haritası P2a (ENV-F02: program = PVQuant P50 varsayımı). Kapsam: `bildirilen_serisi` (kgup_surum
+kaynak='musteri', teslim günü başına son sürüm) + `pozisyon_ayari` (program | uretim | sabit MWh/saat); `saatlik_hesap` programı bildirilen varsa
+ondan kurar, budup = program, pozisyon ayrı; ay/toplamda tolerans_disi_saat, kupsm_mwh, bildirilen_saat ve yanıtta «program» bloğu. Saatlik döküm
+`dokum_df/dokum_csv/dokum_xlsx` + `GET /v1/plants/{id}/dengesizlik/saatlik?fmt=json|csv|xlsx` (gun 14–365; CSV BOM + «;» + ondalık virgül + ilk
+satır not; XLSX Saatlik + Aylar). EakIstek pozisyon_kaynagi / pozisyon_sabit_mwh (0–kurulu güç). `kgup_arsiv.listele` gop_esas (bir gün önce 12:30
+İstanbul kapanışından önceki son öneri). Web: Doğruluk çipi + 2 sütun + katlanır döküm (son 48 saat, indir); Santralim «Piyasa pozisyonu»; Tahminler
+«GÖP'e esas» rozeti; Portföy üye tablosunda «Santralde kalan EDT» ve «KÜPST».
+İnceleme (4 sayfa, kullanıcı kareleri) + dil turu: döküm yön/durum kodları müşteri diline («enerji açığı/fazlası/dengede», «hesaplandı / sistem yönü
+verisi eksik / KÜPST katsayısı yok»), «D-1 … koşu» → «bir gün önce 15:30'dan önceki son tahmin», ikinci kişi, ondalık virgül, 422 iletileri cümle; EDT
+tanımı «gerçekleşen üretim ile piyasa pozisyonu (varsayılanı program)». Sahte fixture: üye KÜPST toplamı null (gerçek API `kupst_eksik`).
+SINIR (karar 31.10): DSG (`dsg_ozet`) ve UEVÇB KÜPST (`kupst_ozet`) hesapları hâlâ `program_df` P50 önerisiyle; bildirilen KGÜP'e bağlanması P2b'de.
+Testler: +2 (bildirilen program/pozisyon/döküm; gop_esas); tam takım 804 passed, 1 skipped (365 s). Sıradaki: v2.518 = P3a takvim, sonra P7a alarm, P5a YEKDEM.
