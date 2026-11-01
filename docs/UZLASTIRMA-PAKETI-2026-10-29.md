@@ -412,3 +412,42 @@ yürürlüğü ve platform arayüzü; lisanslı GES'te EAK = KGÜP izni; dağıt
 Sonraya: P7b olay alarmları, P2b talimat → BUDÜP, P3b Takvim satırı, P1b ekipman bazlı olay (varlık ağacı), P8 kayıp enerji ve TL, kanıt eki (dosya).
 Testler: test_olay 6; tam takım 846 passed, 1 skipped (328 s); web tsc 0 / 103 / oxlint 0 / build; 1440/768/375 taşma 0. Sıradaki: v2.522 = dalga 2 devamı
 (P2b DSG/UEVÇB bağlanması ya da P7b olay alarmları).
+
+# Yirmi ikinci paket — v2.522 (02.11.2026 gece, canlı): mutabakat — EPİAŞ uzlaştırma bildirimi içe alma ve kalem kalem kıyas; teminat göstergesi mevzuat formülüyle; DSG/UEVÇB hesaplarında bildirilen KGÜP; DSG üye dağılımı belgesi
+
+Commit `780041b`, CI #656 (7 dk 30 s). Dağıtım: api + worker + web imajı (ssh; 22. port açıktı) + **`alembic upgrade head` → v2522_mutabakat DB sahibiyle**
+(parola `grep "^DB_PASSWORD=" .env | cut -d= -f2-`). Canlı: index.html ve 26 JS birebir (27/27); alembic_version v2522_mutabakat; `uzlastirma_bildirimi` boş,
+pvq_app yalnız SELECT/INSERT, üç inceleme kolonu (dosya_donem, dosya_surum, surum_kaynagi) var; api «startup complete»; worker «basladi»; mutabakat ve
+dsg.csv uçları kimlik olmadan 422 (yol canlıda var).
+Kaynak: yol haritası dalga 2 P2b (c)(d)(e) + v2.517'de P2b'ye bırakılan sınır (IH-027, IH-028, IH-033, IH-036; ENV-F01, K-05); bulgular 02-23/02-24
+(EPYS «Uzlaştırma Bildirimi» ekranı: aylık alacak/borç özeti, kalem kodları DAM/IDM/RES/IMBALANCE/BPM/RETROSPECTIVE/SIDE_PAYMENT/ZERO_BALANCE/MOF/KUPST/…;
+dosya başlıkları BULUNAMADI), 02-01/02-02 (takvim: ön bildirim izleyen ayın 11'i, nihai 15'i → iş günü; itiraz 12'si 17:30, faturaya 60 gün), 02-08
+(dengesizlik teminatı: 3 ayın en yüksek aylık negatif EDM × 12 ay ortalama SMF × risk katsayısı; katsayı BULUNAMADI), 02-27 (DSG iç fatura BULUNAMADI).
+Göç: `uzlastirma_bildirimi` (kiracı RLS; dönem, sürüm ön/nihai, yükleme kimliği, kalem kodu + dosyadaki ad, yön, tutar, dosya adı, SHA-256, dosyadan
+okunan dönem/sürüm, sürüm kaynağı dosya/kullanıcı/varsayılan, yükleyen; güncelleme ve silme yok — her yükleme yeni sürüm).
+mutabakat_service: dosya okuma CSV (ayraç/ondalık tanıma) ve XLSX (openpyxl) — başlık satırı («Uzlaştırma Kalemleri» + «Tutar (TL)» ya da ayrı
+alacak/borç sütunları), bölüm başlıkları, tip sütunu ya da işaret; dönem satır düzeyinde (etiket/değer ayrı hücre, gün.ay.yıl tam tarihler elenir) ve
+sürüm («Nihai Bildirim» / «Ön Uzlaştırma Bildirim») dosyadan; kalemler EPYS kodlarına ipuçlarıyla, tanınmayan «diğer» adıyla; dosyadaki durum kullanıcı
+seçiminden üstün (uyarı), dosyadaki dönem seçilenle çelişirse 422. Sürüm doğrulaması: takvim.donem_takvimi ile (Ekim 2026: ön 11.11, nihai 16.11; itiraz
+12.11 17:30 / 15.01.2027) — yükleme takvim tarihinden önceyse «takvimden önce»; EPİAŞ durumu dosyadan doğrulanamadığından resmî durum her zaman
+«doğrulanmadı». PVQuant kalemleri: dönem için dengesizlik_service.dokum (Doğruluk ile aynı hesap) → EDT alacak/borç, KÜPST, lisanslı YEKDEM'de YEK
+alacağı (kaba); güvenilirlik {gerçek, kısmi, senaryo, doğrulanamadı} + nedenler (dönemin kaç saati var, son üretim verisi, kaç saatte öneri program,
+hesaplanamayan saat; senaryo saatleri DÖNEM bazında — dokum özetine saat_fiyat_kaynak). Mutabakat: kalem satırları (EPİAŞ alacak/borç, PVQuant
+alacak/borç, fark net ve bileşen bazlı, durum uyumlu / fark / senaryo hesabı / yalnız bildirim / bildirimde yok / hesaplanamadı); uyum ölçütü PVQuant
+işletme ölçütü (bileşen başına %2 ya da 50 TL'nin büyüğü; mevzuat toleransı değil); özet aynı kapsamla (EPİAŞ toplamı ≠ karşılaştırılan kalemler:
+bildirim_kiyas_*, pvquant_*, fark); «Ne yapmalı» (EPYS saatlik detay, itiraz süreleri); yükleme tarihçesi (dönem + sürüm başına en yeni geçerli).
+dengesizlik_service: teminat_gostergesi (mevzuat formülü; katsayı params_json.teminat_risk_katsayisi, yoksa tutar yok; doğrulanmamış; eski
+sadeleştirilmiş gösterge kaldırıldı); program_bildirilenle + _pozisyon_serisi → dsg_ozet ve portfoy_kupst_ozet bildirilen KGÜP ve pozisyon ayarıyla
+(v2.517 sınırı kapandı; dipnot programın kaynağını söyler); dsg_uye_csv. API: GET/POST /v1/plants/{id}/mutabakat, GET /v1/portfoy/dsg.csv,
+EakIstek.teminat_risk_katsayisi; denetim eylemleri mutabakat_yukle, dsg_belge_indir.
+Web: «Mutabakat» sayfası (dönem/sürüm seçici; KPI EPİAŞ toplam alacak / EPİAŞ toplam borç / PVQuant yeniden hesaplanan tutar + aynı kalemlerde EPİAŞ /
+Hesaplama farkı; «EPİAŞ bildirimi yükleme» + tarihçe (takvim rozeti); «Hesaplamada kullanılan veriler» (güvenilirlik rozeti, saat/beklenen, son üretim
+verisi, program, fiyat, üretim kaynağı, sürüm uyarısı, «Ne yapmalı»); «Uzlaştırma kalemlerinin karşılaştırılması»); Santralim «Teminat risk katsayısı»;
+Doğruluk teminat cümlesi bileşenlerle; Portföy «Üye dağılımı (CSV)»; sahte API fixture durumu gerçek kuralla hesaplar.
+İnceleme turları (02.11): kullanıcı karesi (dönem tanıma ayrı hücre / tam tarih karışması, kuruşlu tutarlar, dönem düğmesi); brief (kapsam ayrımı,
+bileşen bazlı eşik, senaryo/kısmi/gerçek etiketi, sürüm takvimi, tarihçe) — 02 M36, M36-inceleme, M36-ikinci inceleme.
+Doğrulanamayan: EPYS dosyasının gerçek kolon başlıkları (örnek dosya yok; ipuçlu tanıma gerçek dosyayla sınanmalı), EPİAŞ «Uzlaştırma Durumu»nun
+resmî doğrulaması, UEVM sayaç verisi (P4), düzeltilmiş bildirim sürümleri, risk katsayısı ve Teminat U&E güncel metni, DSG iç fatura biçimi, tesis
+kimliği dosyadan. Sonraya (P2b-2): saatlik detay dosyaları (KÜPST Detay, Dengesizlik Uzlaştırma XLSX) içe alma ve saat bazında kıyas; YEKBED (P5b).
+Testler: test_mutabakat 9; tam takım 855 passed, 1 skipped (356 s); web tsc 0 / 103 / oxlint 0 / build; 1440/768/375 taşma 0. Sıradaki: v2.523 = dalga 2
+devamı (P4a sayaç izleme ya da P3b uyum takvimi).
