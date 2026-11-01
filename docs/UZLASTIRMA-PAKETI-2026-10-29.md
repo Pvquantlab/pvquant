@@ -346,3 +346,37 @@ Doğrulanamayan: lisanssız dağıtımda GTŞ/toplayıcı UEVÇB'sine KÜPST'nin
 iddia etmez). Sonraya: SMS/push (B13), sıfır üretim olay alarmı ve arıza sayacının olay kaydından sayılması (P1), md.23(6) (P5a), aynı sunum
 kalıbı Kuruluş/Ayarlar sayfalarına.
 Testler: test_alarm_p7a 10 (+ senkron/isler bekçileri); tam takım 826 passed, 1 skipped (380 s). Sıradaki: v2.520 = P5a YEKDEM.
+
+# Yirminci paket — v2.520 (01.11.2026 gece, canlı): YEKDEM katmanı — fiyat rejimi (Cetvel I / 7189), TCMB günlük kur arşivi, 7189 aylık ilan ve USD sınır kontrolü, YEK Yön. m.23(6) saat işareti
+
+Commit `cea37fa`, CI #652 (4 dk 45 s). Dağıtım: api + worker + web imajı (ssh; 22. port açıktı) + **`alembic upgrade head` → v2520_yekdem DB sahibiyle**
+(`.env`'deki `PVQ_SMTP_FROM=PVQuant <…>` satırı `set -a; . ./.env` ile kabuk hatası verdi → parola `grep "^DB_PASSWORD=" .env | cut -d= -f2-` ile okundu; DERS).
+Canlı: index.html ve 24/24 JS/CSS birebir (25/25); alembic_version v2520_yekdem, yekdem_fiyat 6 tohum satırı; worker «basladi», api «startup complete»;
+kur arşivi ilk doldurması sunucuda worker kapsayıcısından tetiklendi (`kur_service.gunluk()`; sonuç 02 M34 raporunda).
+Kaynak: GES sahibi ihtiyaç araştırması yol haritası P5a (IH-012, IH-041, K-12); bulgular 02-12 (EPİAŞ 01.10.2026 duyurusu: Ağustos 278,92 / Eylül 284,81 /
+Ekim 289,74 kr/kWh; yerli 75,80 / 77,40 / 78,74; depolamalı 328,98 / 335,93 / 341,74), 02-21 (kur: enerjinin sisteme verildiği günün TCMB döviz alış kuru,
+5346 m.3(1)(16), YEK Yön. m.3(1)(dd)), 02-22 (7189 Ek-2 aylık güncelleme; alt–üst sınır bir önceki ayın ortalama USD alış kuruyla 4,95–6,05 ¢), 01-14 (m.23(6)).
+Göç: kiracısız `doviz_kuru` (gün PK; USD/EUR alış, bülten) ve `yekdem_fiyat` (ay + tesis tipi PK; kr/kWh, yerli katkı, kaynak) + tohum.
+kur_service: TCMB today.xml / günlük arşiv (ForexBuying); bülteni olmayan gün (hafta sonu, resmî tatil, arefe yarım günü — `bulten_gunu`) önceki iş
+gününün kurunu taşır ve işaretler; aylık ortalama beklenen/eksik bülten günleriyle; geri doldurma ≤400 gün; worker `gece_kur` 13:05 UTC, ilk koşuda 13 ay.
+yekdem_service: rejim işletmeye giriş tarihinden (≤30.6.2021 Cetvel I; 1.7.2021–31.12.2030 7189; sonrası belirsiz) ya da seçimle; gün bazlı YEK fiyatı
+(Cetvel I ¢ × 10 × günün kuru + yerli ¢ 5 yıl; 7189 ilan × 10 + yerli katkı süresi içinde; ilan yoksa önceki ay işaretli; elle kur yalnız yedek); USD sınır
+kontrolü (kr ÷ kur = ¢; tabanda / içinde / tavanda ±0,02); m.23(6) işareti (PTF ya da SMF < V ve sistem fazlası saatinde program üstü üretim, PTF < YEK
+fiyatı → YEKDEM dışı MWh, fark = MWh × (YEK − 0,98 × PTF); 19.10.2026'dan; «belirsiz»; talimat saatleri dâhil değil); ilan kaydı kaynak + duyuru tarihi
+ister (gelecekte ya da dönemden önce → 422); kayıt durumu resmî duyuru / elle / doğrulanmadı; bekleyen dönem listesi.
+Bağlantılar: tarife_service yekdem alanları (rejim, tesis_tipi, yerli_katki, yerli_katki_usd_cent; ¢ ve kur isteğe bağlı), yapi/gelir_df/ortalama santralı
+alır (YekdemSeri); dengesizlik _girdiler/saatlik_pv/yekdem_eki → lisanslı YEKDEM dökümü 25 sütun; alarm ptf_dusuk_saat eşiği yarının YEK fiyatı; API
+GET /v1/plants/{id}/yekdem, GET /v1/yonetim/yekdem, PUT /v1/yonetim/yekdem-fiyat, POST /v1/yonetim/kur-doldur (denetim eylemleri yekdem_fiyat, kur_doldur).
+Web: Santralim tarife formu rejime göre (bilgi satırı: rejim + bugünkü fiyat); Doğruluk «YEKDEM» kartı (yalnız lisanslı YEKDEM) + dökümde dört ek sütun;
+Yönetim › Sistem «YEKDEM fiyatları ve döviz kuru» (ilan tablosu: geçerli dönem, kuruş/kWh, USD karşılığı, USD sınır kontrolü, kaynak, kayıt durumu, kayıt
+zamanı; resmî kaynak bağlantıları; ilan girişi; kur arşivi doldurma). Ayar satırı seçicileri 375 px'te kartı taşırıyordu (314/293) → sınırlandı.
+İnceleme turları (01.11): kullanıcı kareleri 9 bulgu (02 M34-inceleme); yönetim kartı brief'i (M34-ikinci inceleme: karedeki Kasım satırı sahte API'ye
+yazılan deneme girişiydi; kur eksikleri arşiv kapsamındandı → ilk doldurma, kaynak doğrulaması, kayıt durumu, bağlantılar); üçüncü inceleme (dönemden
+önceki duyuru tarihi reddi, kur ayı tamlığı, bekleyen dönem); son kontrol («Band» sözcüğü). DERS: sahte API'ye deneme kaydı yazma, kullanıcı kareyi gerçek sanır.
+Doğrulanamayan: tatil günü kur kuralı (önceki iş günü kuru taşındı ve işaretlendi), m.23(6) uygulaması (saatlik mi, hangi KGÜP sürümü, ilk fatura dönemi;
+YAT saatleri veri yok), Kasım 2026 ilanı (bekleyen; yönetimden girilir), depolamalı yerli katkı, EPİAŞ sitesine makineden erişim.
+Sonraya (P5b): YEKBED yeniden hesabı ve nihai bildirim kalemleriyle kıyas (P2b), yıllık YEKDEM içi / serbest kıyası (30 Kasım), talimat verisi, Cetvel II
+yerli katkı kalemleri, EPİAŞ ilanının otomatik çekimi (uç yok).
+Testler: test_yekdem 14; tam takım 839 passed, 1 failed (test_modb_rapor 17 dakikalık yüklü koşuda zaman aşımı; tek başına 9/9 geçti), 1 skipped; web tsc 0 /
+103 / oxlint 0 / build. Sıradaki: v2.521 = P1 olay kaydı ya da P2b (yol haritası dalga 2).
+
