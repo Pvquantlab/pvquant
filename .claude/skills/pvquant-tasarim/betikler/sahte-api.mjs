@@ -14,6 +14,21 @@ const PORTFOY = { gun: "2026-10-24", santraller: [
   toplam: { santral: 5, kapasite_kwp: 328732, bugun_kwh: 1798700, yarin_kwh: 1830200, wmape_agirlikli: 30.3, wmape_kapsanan_kwp: 327730, acik_alarm: 6, veri_gecikmis: 2 } };
 const DSG = { santral: 5, n_saat: 480, ayri_tl: 412300, net_tl: 301900, kazanc_tl: 110400, kazanc_pct: 26.8, sapma_net_mwh: 118.2, sapma_ayri_mwh: 161.5, pencere_gun: 30, fiyat: { epias_saat: 0, senaryo_saat: 480 }, not: "Senaryo fiyatıyla; EPİAŞ fiyatı bağlanınca gerçek fiyat kullanılır." };
 const PLANTS = PORTFOY.santraller.map((s) => ({ id: s.id, name: s.ad, capacity_kwp: s.kapasite_kwp, tz: s.tz }));
+// ---- v2.520 (P5a): YEKDEM ilanları modül kapsamında — PUT ile eklenen satır sonraki GET'te görünür (01.11 incelemesi)
+// ---- v2.520 (P5a): YEKDEM aylık ilanı + TCMB kur arşivi (gerçek servis çıktısından; band konumu Eylül ortalama kuruyla)
+const YF = (ay, tip, f, y, bant) => ({ ay, tesis_tipi: tip, fiyat_kr_kwh: f, yerli_katki_kr_kwh: y, kaynak: "EPİAŞ duyurusu 01.10.2026 (7189 sayılı CK Ek-2 aylık güncelleme)", guncelleme: "2026-11-01T00:09:50Z", kayit: { durum: "resmi", neden: "EPİAŞ duyurusu 01.10.2026" },
+  bant: bant ?? { durum: "kur_yok", usd_cent: null, kur_ortalama: null, kur_ayi: ay.slice(0, 5) + String(Number(ay.slice(5)) - 1).padStart(2, "0"), taban_cent: tip === "gunes" ? 4.95 : 5.85, tavan_cent: tip === "gunes" ? 6.05 : 7.15, taban_kr: null, tavan_kr: null } });
+const BANT_EKIM = { durum: "icinde", usd_cent: 5.967, kur_ortalama: 48.553, kur_ayi: "2026-09", taban_cent: 4.95, tavan_cent: 6.05, taban_kr: 240.34, tavan_kr: 293.75 };
+const BANT_EYLUL = { durum: "icinde", usd_cent: 5.961, kur_ortalama: 47.7783, kur_ayi: "2026-08", taban_cent: 4.95, tavan_cent: 6.05, taban_kr: 236.5, tavan_kr: 289.06 };
+const BANT_AGUSTOS = { durum: "icinde", usd_cent: 5.936, kur_ortalama: 46.9845, kur_ayi: "2026-07", taban_cent: 4.95, tavan_cent: 6.05, taban_kr: 232.57, tavan_kr: 284.26 };
+const YEKDEM_Y = { bugun: "2026-11-01", bekleyen: [{ ay: "2026-11", tesis_tipi: "gunes" }, { ay: "2026-11", tesis_tipi: "gunes_depolamali" }], fiyatlar: [YF("2026-10", "gunes", 289.74, 78.74, BANT_EKIM), YF("2026-10", "gunes_depolamali", 341.74, null, { ...BANT_EKIM, usd_cent: 7.038, taban_cent: 5.85, tavan_cent: 7.15, taban_kr: 284.04, tavan_kr: 347.15 }),
+    YF("2026-09", "gunes", 284.81, 77.40, BANT_EYLUL), YF("2026-09", "gunes_depolamali", 335.93, null, { ...BANT_EYLUL, usd_cent: 7.031, taban_cent: 5.85, tavan_cent: 7.15, taban_kr: 279.5, tavan_kr: 341.61 }),
+    YF("2026-08", "gunes", 278.92, 75.80, BANT_AGUSTOS), YF("2026-08", "gunes_depolamali", 328.98, null, { ...BANT_AGUSTOS, usd_cent: 7.002, taban_cent: 5.85, tavan_cent: 7.15, taban_kr: 274.86, tavan_kr: 335.94 })],
+  tesis_tipleri: ["gunes", "gunes_depolamali"], tesis_etiket: { gunes: "güneş", gunes_depolamali: "bütünleşik depolamalı güneş" }, bant_cent: { gunes: [4.95, 6.05], gunes_depolamali: [5.85, 7.15] },
+  baslangic_kr: { gunes: [106, 28.8], gunes_depolamali: [125, 38.45] }, kaynak_notu: "EPİAŞ aylık YEKDEM fiyat duyurusu (7189 sayılı CK Ek-2); kur TCMB",
+  kur: { son_gun: "2026-10-30", son_usd_alis: 49.7747, son_eur_alis: 55.7149, gun_sayisi: 85, ilk_gun: "2026-07-01", eksik_is_gunu_30: [], kaynak: "TCMB gösterge döviz alış kuru (today.xml ve günlük arşiv); iş günü 15:30 bülteni, yarım günlerde bülten yok", kaynak_url: "https://www.tcmb.gov.tr/kurlar/kurlar_tr.html" },
+  kaynaklar: { epias_url: "https://www.epias.com.tr/tum-duyurular/piyasa-duyurulari/elektrik/kayit-ve-uzlastirma/01-07-2021-tarihinden-31-12-2030-tarihine-kadar-isletmeye-girecek-yek-belgeli-yenilenebilir-enerji-kaynaklarina-dayali-elektrik-uretim-tesisleri-icin-uygulanacak-fiyatlar-hk-38/", epias_baslik: "EPİAŞ duyurusu (01.10.2026)", tcmb_url: "https://www.tcmb.gov.tr/kurlar/kurlar_tr.html", mevzuat: "7189 sayılı Cumhurbaşkanı Kararı (RG 1.5.2023-32177) Ek-1 fiyat ve sınırlar, Ek-2 aylık güncelleme" } };
+
 http.createServer((req, res) => {
   const url = new URL(req.url, "http://x"); const yol = url.pathname; const t = performance.now();
   res.setHeader("Access-Control-Allow-Origin", "*"); res.setHeader("Access-Control-Allow-Headers", "authorization,content-type,if-none-match"); res.setHeader("Access-Control-Expose-Headers", "ETag"); res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
@@ -64,6 +79,25 @@ http.createServer((req, res) => {
   // ---- 25.10 Faz 3: sistem izleme (/v1/yonetim/{sistem,isler,santraller}) — zamanlar «şimdi»ye göre, hükümler uçtan
   const dkOnce = (dk) => new Date(Date.now() - dk * 60000).toISOString();
   const NABIZ_SESSIZ = !!process.env.NABIZ_SESSIZ;   // NABIZ_SESSIZ=1 → zamanlayıcı sessiz, gece turu bayat (uyarı tonları)
+  if (yol === "/v1/yonetim/yekdem") return yanit(200, YEKDEM_Y);
+  if (yol === "/v1/yonetim/yekdem-fiyat" && req.method === "PUT") { let g = ""; req.on("data", (c) => { g += c; }); req.on("end", () => { let b = {}; try { b = JSON.parse(g || "{}"); } catch { /* yok */ }
+      const m = /(\d{1,2})\.(\d{1,2})\.(\d{4})/.exec(b.kaynak ?? ""); const kt = m ? new Date(+m[3], +m[2] - 1, +m[1]) : null;
+      const ret = (d) => { res.writeHead(422, { "Content-Type": "application/json; charset=utf-8" }); res.end(JSON.stringify({ detail: d })); };
+      if (!b.kaynak) return ret("kaynak gerekli: duyurunun adı ve tarihi (ör. «EPİAŞ duyurusu 01.10.2026»)");
+      if (!kt) return ret("kaynakta duyuru tarihi olmalı (gg.aa.yyyy)");
+      if (kt > new Date()) return ret(`kaynak tarihi (${m[0]}) bugünden sonra olamaz`);
+      const donem = new Date(+String(b.ay).slice(0, 4), +String(b.ay).slice(5, 7) - 1, 1);
+      if (new Date(kt.getFullYear(), kt.getMonth(), 1) < donem) return ret(`kaynak tarihi (${m[0]}) geçerli dönemden (${String(b.ay).slice(5, 7)}.${String(b.ay).slice(0, 4)}) önce: EPİAŞ bir ayın fiyatını o ayın başında ya da sonra ilan eder, bu duyuru o dönemi içeremez`);
+      const KUR = { "2026-10": 49.334, "2026-09": 48.553, "2026-08": 47.7783, "2026-07": 46.9845 };   // gerçek arşivden aylık ortalama USD alış
+      const onceki = `${donem.getMonth() === 0 ? donem.getFullYear() - 1 : donem.getFullYear()}-${String(donem.getMonth() === 0 ? 12 : donem.getMonth()).padStart(2, "0")}`;
+      const tip = b.tesis_tipi ?? "gunes"; const [taban, tavan] = tip === "gunes" ? [4.95, 6.05] : [5.85, 7.15]; const ko = KUR[onceki];
+      const bant = ko ? (() => { const c = Number(b.fiyat_kr_kwh) / ko; return { durum: c <= taban + 0.02 ? "tabanda" : c >= tavan - 0.02 ? "tavanda" : "icinde", usd_cent: +c.toFixed(3), kur_ortalama: ko, kur_ayi: onceki, taban_cent: taban, tavan_cent: tavan, taban_kr: +(taban * ko).toFixed(2), tavan_kr: +(tavan * ko).toFixed(2), kur_gun: 20, kur_beklenen: 20, kur_eksik_gun: [] }; })() : undefined;
+      const f = YF(b.ay, tip, Number(b.fiyat_kr_kwh), b.yerli_katki_kr_kwh ?? null, bant); f.kaynak = b.kaynak; f.guncelleme = new Date().toISOString();
+      f.kayit = /epia/i.test(b.kaynak.normalize("NFD").replace(/[\u0300-\u036f]/g, "")) ? { durum: "resmi", neden: `EPİAŞ duyurusu ${m[0]}` } : { durum: "elle", neden: "kaynak EPİAŞ duyurusu olarak yazılmadı" };
+      const i = YEKDEM_Y.fiyatlar.findIndex((x) => x.ay === f.ay && x.tesis_tipi === f.tesis_tipi); if (i >= 0) YEKDEM_Y.fiyatlar[i] = f; else YEKDEM_Y.fiyatlar.unshift(f);
+      YEKDEM_Y.bekleyen = YEKDEM_Y.bekleyen.filter((x) => !(x.ay === f.ay && x.tesis_tipi === f.tesis_tipi));
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" }); res.end(JSON.stringify(f)); }); return; }
+  if (yol === "/v1/yonetim/kur-doldur" && req.method === "POST") return yanit(200, { yazilan: 1, bulunamayan: ["2026-10-28"], bas: "2026-10-01", bit: "2026-10-31" });
   if (yol === "/v1/yonetim/sistem") return yanit(200, {
     zaman: dkOnce(0),
     nabiz: NABIZ_SESSIZ ? { durum: "sessiz", son: dkOnce(47), yas_dk: 47, ayrinti: { baslatma: dkOnce(900), is_sayisi: 21, aralik_dk: 5 }, aralik_dk: 5, sessiz_dk: 15 }

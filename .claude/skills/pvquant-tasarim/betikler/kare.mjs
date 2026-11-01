@@ -90,6 +90,7 @@ for (const w of GENISLIKLER) {
     await cdp("Page.navigate", { url: base + "/" });
     await bekleHazir("#root *", 8000);
     await js("localStorage.setItem('pvq_token', 'ornek-kip'); true");
+    if (process.env.SANTRAL) await js(`localStorage.setItem('pvq_plant', ${JSON.stringify(process.env.SANTRAL)}); true`);   // 01.11 v2.520: kare alınacak santral (ör. a3 = lisanslı YEKDEM)
     if (process.env.TEMA) await js(`localStorage.setItem('pvq_tema', ${JSON.stringify(process.env.TEMA)}); true`);
     else await js("localStorage.removeItem('pvq_tema'); true");
     await cdp("Page.navigate", { url: base + "/" });
@@ -102,6 +103,26 @@ for (const w of GENISLIKLER) {
       rapor[`${s}@${w}`] = o;
       await kare(s.replace(/\s/g, "_").toLowerCase(), w);
       process.stdout.write(`${o.tema} ${s}@${w}: taşma ${o.tasma}px · ${o.yukseklik}px\n`);
+    }
+  }
+  // 01.11 v2.520: platform yönetimi sayfaları — "yonetim:Sistem" gibi; sahte platform jetonu (sahte-api.mjs PLATFORM_2FA=1 ile), base dist-yonetim önizlemesi
+  const platformda = SAYFALAR.filter((s) => s.startsWith("yonetim:")).map((s) => s.slice(8));
+  if (platformda.length) {
+    await cdp("Page.navigate", { url: base + "/yonetim" });
+    await bekleHazir("#root *", 8000);
+    await js("localStorage.setItem('pvq_platform_token', 'x.' + btoa('{\"sub\":\"p1\",\"kapsam\":\"platform\",\"rol\":\"sahip\",\"sv\":0}').replace(/=+$/, '') + '.y'); true");
+    if (process.env.TEMA) await js(`localStorage.setItem('pvq_platform_tema', ${JSON.stringify(process.env.TEMA)}); true`);
+    await cdp("Page.navigate", { url: base + "/yonetim" });
+    if (!(await bekleHazir("button", 8000))) throw new Error("yönetim paneli açılmadı");
+    await uyut(1200);
+    for (const s of platformda) {
+      await js(`[...document.querySelectorAll("button")].find((b) => b.textContent.trim() === ${JSON.stringify(s)}).click(); true`);
+      await uyut(1500);
+      await js("window.scrollTo(0,0); true");
+      const o = await js(OZET);
+      rapor[`yonetim:${s}@${w}`] = o;
+      await kare("yonetim-" + s.replace(/\s/g, "_").toLowerCase(), w);
+      process.stdout.write(`yönetim ${s}@${w}: taşma ${o.tasma}px · ${o.yukseklik}px\n`);
     }
   }
   if (SAYFALAR.includes("giris")) {

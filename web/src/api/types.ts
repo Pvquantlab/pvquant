@@ -92,7 +92,24 @@ export interface KayipAgaci { durum: string; yil?: number; kaynak?: string; ghi_
   pr?: number | null; ozgul_kwh_kwp?: number; hesap_zamani?: string;
   satirlar?: { adim: string; etiket: string; giren_kwh: number; cikan_kwh: number; kayip_kwh: number; kayip_pct: number; kaynak: string }[] }
 export interface Tarife { tip: "sabit" | "ptf" | "yekdem" | "cok_zamanli"; tl_mwh?: number; prim_oran?: number; sabit_ek_tl_mwh?: number; usd_cent_kwh?: number; kur_tl_usd?: number;
-  gunduz_tl_mwh?: number; puant_tl_mwh?: number; gece_tl_mwh?: number; eskalasyon_yillik?: number }
+  gunduz_tl_mwh?: number; puant_tl_mwh?: number; gece_tl_mwh?: number; eskalasyon_yillik?: number;
+  // v2.520 (P5a): YEKDEM rejimi (işletmeye giriş tarihinden ya da seçim), tesis tipi, yerli katkı (7189: açık/kapalı; Cetvel I: ¢/kWh); kur yalnız yedek
+  rejim?: "otomatik" | "cetvel1" | "7189"; tesis_tipi?: "gunes" | "gunes_depolamali"; yerli_katki?: boolean; yerli_katki_usd_cent?: number }
+/** v2.520 (P5a): YEKDEM katmanı — rejim, bugünün YEK fiyatı, 7189 aylık ilanları (USD band konumu), kur arşivi, m.23(6) saat işareti (belirsiz). Yeniden hesaptır. */
+export interface YekdemBant { durum: "icinde" | "tabanda" | "tavanda" | "kur_yok"; usd_cent: number | null; kur_ortalama: number | null; kur_ayi: string; taban_cent: number; tavan_cent: number;
+  taban_kr: number | null; tavan_kr: number | null }
+export interface Yekdem {
+  bugun: string; pencere_gun: number; segment: string | null; uygulanir: boolean; tarife_yekdem: boolean;
+  rejim: { secim: string; isletmeye_giris: string | null; tesis_tipi: "gunes" | "gunes_depolamali"; rejim: "cetvel1" | "7189" | null; etiket: string; kaynak: string; kaynak_turu: "kullanici" | "hesaplanan" | "yok" };
+  fiyat: { gun: string; yek_tl_mwh: number | null; yerli_tl_mwh: number | null; toplam_tl_mwh: number | null; kaynak: string; kaynak_etiket: string; kur: number | null; kur_gunu: string | null;
+    onceki_gun: boolean; ay_fiyat_kr_kwh: number | null; usd_cent_kwh: number | null } | null;
+  kur: { son_gun: string | null; son_usd_alis: number | null; son_eur_alis: number | null; gun_sayisi: number; ilk_gun: string | null; eksik_is_gunu_30: string[]; kaynak: string } | null;
+  aylar: { ay: string; fiyat_kr_kwh: number | null; yerli_katki_kr_kwh: number | null; kaynak: string | null; bant: YekdemBant | null; durum: "ilan" | "ilan_yok" }[];
+  m23_6: { baslangic: string; etiket: string; pencere_gun: number; saat: number; aday_saat: number; fiyat_yok_saat: number; kapsam_saat: number; yekdem_disi_mwh: number; yekdem_disi_tl: number;
+    bildirilmemis_saat: number; ilk_saat: string | null; son_saat: string | null; not: string } | null;
+  not: string | null;
+  sabitler: { cetvel1_cent: number; bant_cent: [number, number]; baslangic_kr: [number, number]; yerli_yil: number; j: number };
+}
 /** /guc-matrisi — v2.283: IEC 61853 kalıbıyla modül davranışı. */
 export interface GucMatrisi {
   durum: string; kaynak?: string; gamma?: number; yil?: number; hesap_zamani?: string; not?: string;

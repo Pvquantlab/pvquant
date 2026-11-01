@@ -107,7 +107,7 @@ def hesapla(tenant_id, plant: dict, kaydet: bool = True) -> dict:
         t = tarife_service.tarife_getir(plant)
         if t:
             ptf_ort = piyasa_service.SENARYO_PTF if t["tip"] == "ptf" else None
-            f = tarife_service.ortalama_fiyat_tl_mwh(t, ptf_ort)
+            f = tarife_service.ortalama_fiyat_tl_mwh(t, ptf_ort, plant=plant)   # v2.520: YEKDEM bugünün fiyatı
             if f:
                 out["gelir"] = {"tip": t["tip"], "fiyat_tl_mwh": round(f, 1), "p50_tl": round(but["p50_kwh"] / 1000 * f, 0),
                                 "p90_1yil_tl": round(but["bir_yil"]["p90"] / 1000 * f, 0), "p90_nyil_tl": round(but["n_yil"]["p90"] / 1000 * f, 0),

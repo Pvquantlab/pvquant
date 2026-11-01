@@ -215,9 +215,10 @@ def hesapla_df(df: pd.DataFrame, fiyat: pd.DataFrame, kat: d.Katsayilar | None =
 DOKUM_KOLONLAR = ["zaman", "program_mwh", "program_kaynak", "pozisyon_mwh", "gerceklesen_mwh", "sapma_mwh", "ptf_tl_mwh", "smf_tl_mwh", "yon",
                   "k", "l", "fiyat_eksik_tl_mwh", "fiyat_fazla_tl_mwh", "edt_borc_tl", "edt_alacak_tl", "edt_net_tl", "kupsm_mwh", "kupst_tl",
                   "toplam_tl", "kural_surumu", "durum"]
+YEKDEM_KOLONLAR = ["yek_fiyat_tl_mwh", "m23_6", "yekdem_disi_mwh", "yekdem_disi_tl"]   # v2.520 (P5a): yalnız lisanslı YEKDEM + tarife yekdem
 
 
-def dokum_df(pv: pd.DataFrame) -> pd.DataFrame:
+def dokum_df(pv: pd.DataFrame, ek: pd.DataFrame | None = None) -> pd.DataFrame:
     """v2.517 (P2a): saatlik uzlaştırma dökümü (İstanbul saati). Her satır: program ve kaynağı, pozisyon, gerçekleşen, sapma, fiyatlar, yön,
     yöne bağlı k/l, EDT borç/alacak/net, KÜPSM (tolerans üstü sapma MWh), KÜPST, toplam, kural sürümü, durum (ok / yon_eksik / kupst_hesaplanamaz)."""
     if pv is None or pv.empty:
@@ -232,20 +233,34 @@ def dokum_df(pv: pd.DataFrame) -> pd.DataFrame:
                         "edt_borc_tl": pv["edt_neg"].round(2).values, "edt_alacak_tl": pv["edt_poz"].round(2).values, "edt_net_tl": pv["edt_net"].round(2).values,
                         "kupsm_mwh": pv["kupsm"].round(3).values, "kupst_tl": pv["kupst"].round(2).values, "toplam_tl": pv["toplam_maliyet"].round(2).values,
                         "kural_surumu": pv["kural_surumu"].values, "durum": pv["durum"].values})
-    return out[DOKUM_KOLONLAR]
+    out = out[DOKUM_KOLONLAR]
+    if ek is not None and not ek.empty:   # v2.520 (P5a): YEKDEM sütunları (yekdem_service.dokum_ek)
+        e = ek.reindex(pv.index)
+        out["yek_fiyat_tl_mwh"] = e["yek_fiyat_tl_mwh"].astype(float).round(2).values; out["m23_6"] = e["m23_6"].values
+        out["yekdem_disi_mwh"] = e["yekdem_disi_mwh"].astype(float).round(3).values; out["yekdem_disi_tl"] = e["yekdem_disi_tl"].astype(float).round(2).values
+    return out
 
 
 DOKUM_NOTU = ("Yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir. program_kaynak: bildirilen = TPYS'ye bildirildiği beyan edilerek yüklenen KGÜP "
               "(TPYS kabulü doğrulanmaz); oneri = PVQuant'ın bir gün önce 15:30'dan önceki son tahmininin P50'si. sapma = gerçekleşen − pozisyon (EDM). "
               "edt_borc = eksik üretim tutarı (öder), edt_alacak = fazla üretim tutarı (alır; düşük fiyat saatinde negatif olabilir). "
               "kupsm = tolerans (m × program) üstündeki sapma MWh; kupst = kupsm × max(taban; PTF; SMF) × n. Saatler Türkiye saatidir (Europe/Istanbul).")
+DOKUM_NOTU_YEKDEM = (" YEKDEM sütunları (lisanslı YEKDEM, tarife YEKDEM): yek_fiyat = o saatin YEK fiyatı (+ yerli katkı; Cetvel I günün TCMB alış kuruyla, 7189 "
+                     "ayın EPİAŞ ilanı); m23_6 = YEK Yön. m.23(6) işareti (evet: PTF ya da SMF < V ve sistem fazlası saatinde program üstü üretim ve PTF < YEK "
+                     "fiyatı → YEKDEM dışı; ptf_yek_ustu: şartlar var, PTF ≥ YEK fiyatı; kapsam_disi: 19.10.2026 öncesi; EPİAŞ uygulaması belirsiz, talimat "
+                     "saatleri dâhil değil); yekdem_disi_mwh = program üstü MWh; yekdem_disi_tl = MWh × (YEK fiyatı − 0,98 × PTF).")
+
+
+def dokum_notu(df: pd.DataFrame) -> str:
+    """v2.520: YEKDEM sütunları varsa not ekiyle."""
+    return DOKUM_NOTU + (DOKUM_NOTU_YEKDEM if "m23_6" in df.columns else "")
 
 
 def dokum_csv(df: pd.DataFrame) -> str:
     """UTF-8 BOM'lu, noktalı virgül ayraçlı, ondalık virgüllü CSV (Türkçe Excel doğrudan açar); ilk satır not."""
     import io
     buf = io.StringIO()
-    buf.write("# " + DOKUM_NOTU + "\n")
+    buf.write("# " + dokum_notu(df) + "\n")
     df.to_csv(buf, sep=";", decimal=",", index=False, lineterminator="\n")
     return "\ufeff" + buf.getvalue()
 
@@ -258,20 +273,21 @@ def dokum_xlsx(df: pd.DataFrame, baslik: str, aylar: list[dict] | None = None) -
     wb = xlsxwriter.Workbook(buf, {"in_memory": True})
     kalin = wb.add_format({"bold": True}); sayi3 = wb.add_format({"num_format": "#,##0.000"}); para = wb.add_format({"num_format": "#,##0.00"})
     ws = wb.add_worksheet("Saatlik")
-    ws.write(0, 0, baslik, kalin); ws.write(1, 0, DOKUM_NOTU)
-    for j, c in enumerate(DOKUM_KOLONLAR):
+    kol = list(df.columns)   # v2.520: YEKDEM sütunları varsa 25
+    ws.write(0, 0, baslik, kalin); ws.write(1, 0, dokum_notu(df))
+    for j, c in enumerate(kol):
         ws.write(3, j, c, kalin)
     for i, row in enumerate(df.itertuples(index=False), start=4):
         for j, v in enumerate(row):
             if isinstance(v, (float, np.floating)):
                 if np.isnan(v):
                     continue
-                ws.write_number(i, j, float(v), sayi3 if DOKUM_KOLONLAR[j].endswith("_mwh") else para)
+                ws.write_number(i, j, float(v), sayi3 if kol[j].endswith("_mwh") else para)
             elif isinstance(v, (int, np.integer)):
                 ws.write_number(i, j, int(v))
             else:
                 ws.write(i, j, "" if v is None else str(v))
-    ws.set_column(0, 0, 17); ws.set_column(1, len(DOKUM_KOLONLAR) - 1, 13)
+    ws.set_column(0, 0, 17); ws.set_column(1, len(kol) - 1, 13)
     if aylar:
         wa = wb.add_worksheet("Aylar")
         kol = ["ay", "uretim_mwh", "sapma_mwh", "edt_neg_tl", "edt_poz_tl", "edta_tl", "edtb_tl", "dengesizlik_tl", "kupst_tl", "pvquant_tl",
@@ -290,18 +306,42 @@ def dokum_xlsx(df: pd.DataFrame, baslik: str, aylar: list[dict] | None = None) -
     return buf.getvalue()
 
 
-def dokum(tenant_id, plant: dict, gun: int = 90) -> tuple[pd.DataFrame, dict]:
-    """v2.517 (P2a): simülasyonla aynı girdilerden saatlik döküm + ay özeti (dışa aktarım için)."""
+def _girdiler(tenant_id, plant: dict, gun: int) -> dict:
+    """v2.520: simülasyon, döküm ve YEKDEM özeti aynı girdilerden (program, fiyat, katsayılar, segment, bildirilen seri, pozisyon)."""
     from pvquant.services import piyasa_service
     df = program_df(tenant_id, plant["id"], gun)
     idx = pd.DatetimeIndex(df["ts_utc"]) if not df.empty else pd.DatetimeIndex([], tz="UTC")
     fiyat = piyasa_service.fiyatlar(idx)
     pj = _pj(plant.get("params_json")); seg = segment_bilgisi(plant.get("params_json")); kat = katsayilar(plant.get("params_json"))
-    ariza = int(pj.get("ariza_sayisi_ay") or 0); luy = bool(pj.get("luy_istisna"))
-    bil = bildirilen_serisi(tenant_id, plant["id"], pj, gun); poz = pozisyon_ayari(pj)
-    pv, _, _, _ = saatlik_hesap(df, fiyat, kat, seg["segment"], ariza, luy, bil, poz)
-    ozet = hesapla_df(df, fiyat, kat, segment=seg["segment"], ariza_sayisi=ariza, luy_istisna=luy, bildirilen_mwh=bil, pozisyon=poz)
-    return dokum_df(pv), ozet
+    return {"df": df, "fiyat": fiyat, "kat": kat, "segment": seg["segment"], "ariza_sayisi": int(pj.get("ariza_sayisi_ay") or 0),
+            "luy_istisna": bool(pj.get("luy_istisna")), "bildirilen_mwh": bildirilen_serisi(tenant_id, plant["id"], pj, gun), "pozisyon": pozisyon_ayari(pj), "pj": pj}
+
+
+def saatlik_pv(tenant_id, plant: dict, gun: int = 90) -> pd.DataFrame | None:
+    """v2.520 (P5a): saatlik hesap çıktısı (pv) — YEKDEM m.23(6) işareti için; boşsa None."""
+    g = _girdiler(tenant_id, plant, gun)
+    pv, _, _, _ = saatlik_hesap(g["df"], g["fiyat"], g["kat"], g["segment"], g["ariza_sayisi"], g["luy_istisna"], g["bildirilen_mwh"], g["pozisyon"])
+    return pv
+
+
+def yekdem_eki(pj: dict, segment: str | None, pv: pd.DataFrame | None) -> pd.DataFrame | None:
+    """v2.520 (P5a): lisanslı YEKDEM + tarife yekdem ise döküme YEKDEM sütunları; fiyat verisi/DB yoksa None (döküm 21 sütun kalır)."""
+    if pv is None or pv.empty or segment != "lisansli_yekdem" or (pj.get("tarife") or {}).get("tip") != "yekdem":
+        return None
+    try:
+        from pvquant.services import yekdem_service
+        return yekdem_service.dokum_ek(pj, pv)
+    except Exception:   # noqa: BLE001 — kur/ilan tablosu yoksa döküm YEKDEM'siz iner
+        return None
+
+
+def dokum(tenant_id, plant: dict, gun: int = 90) -> tuple[pd.DataFrame, dict]:
+    """v2.517 (P2a): simülasyonla aynı girdilerden saatlik döküm + ay özeti (dışa aktarım için). v2.520: lisanslı YEKDEM'de YEKDEM sütunları."""
+    g = _girdiler(tenant_id, plant, gun)
+    pv, _, _, _ = saatlik_hesap(g["df"], g["fiyat"], g["kat"], g["segment"], g["ariza_sayisi"], g["luy_istisna"], g["bildirilen_mwh"], g["pozisyon"])
+    ozet = hesapla_df(g["df"], g["fiyat"], g["kat"], segment=g["segment"], ariza_sayisi=g["ariza_sayisi"], luy_istisna=g["luy_istisna"],
+                      bildirilen_mwh=g["bildirilen_mwh"], pozisyon=g["pozisyon"])
+    return dokum_df(pv, yekdem_eki(g["pj"], g["segment"], pv)), ozet
 
 def segment_bilgisi(params_json) -> dict:
     pj = _pj(params_json); ad = pj.get("segment")

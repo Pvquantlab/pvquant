@@ -202,9 +202,17 @@ def ptf_baglam(plant: dict, bugun: date | None = None, fiyatlar=None) -> dict:
     f = fiyatlar(idx)
     esik = float(e["ptf_esik_tl_mwh"]); v_ile = False
     t = pj.get("tarife") or {}
-    if esik <= 0 and dengesizlik_service.segment_bilgisi(pj).get("segment") == "lisansli_yekdem" and t.get("tip") == "yekdem" \
-            and t.get("usd_cent_kwh") and t.get("kur_tl_usd"):
-        esik = float(t["usd_cent_kwh"]) * 10.0 * float(t["kur_tl_usd"]); v_ile = True
+    if esik <= 0 and dengesizlik_service.segment_bilgisi(pj).get("segment") == "lisansli_yekdem" and t.get("tip") == "yekdem":
+        # v2.520 (P5a): yarının YEK fiyatı (Cetvel I ¢ × TCMB kuru / 7189 aylık ilan; yoksa elle girilen kur × ¢)
+        try:
+            from pvquant.services import yekdem_service
+            g = yekdem_service.gun_fiyati(pj, yarin)
+        except Exception:   # noqa: BLE001
+            g = None
+        if g and g.get("toplam_tl_mwh"):
+            esik = float(g["toplam_tl_mwh"]); v_ile = True
+        elif t.get("usd_cent_kwh") and t.get("kur_tl_usd"):
+            esik = float(t["usd_cent_kwh"]) * 10.0 * float(t["kur_tl_usd"]); v_ile = True
     ger = f[f["kaynak"].isin(["epias", "epias_gop"])] if "kaynak" in f else f.iloc[0:0]
     ptf = ger["ptf"].astype(float)
     kosul = (ptf <= esik) if esik <= 0 else (ptf < esik)

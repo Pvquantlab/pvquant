@@ -315,7 +315,7 @@ def _excel_zenginlestir(tenant_id, plant: dict, ctx) -> None:
             idx = pd.DatetimeIndex(h.index)
             idx = idx.tz_localize("UTC") if idx.tz is None else idx
             ptf = piyasa_service.fiyatlar(idx)["ptf"] if t["tip"] == "ptf" else None
-            g = tarife_service.gelir_df(pd.Series(h.values, index=idx), t, ptf=ptf)
+            g = tarife_service.gelir_df(pd.Series(h.values, index=idx), t, ptf=ptf, plant=plant)   # v2.520: YEKDEM gün bazlı fiyat
             ctx.gelir = {"tip": t["tip"],
                          "toplam_tl": round(float(g["gelir_tl"].sum())),
                          "ort_fiyat_tl_mwh": round(float(g["fiyat_tl_mwh"].mean()))}

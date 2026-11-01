@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
 import type { EChartsOption } from "echarts";
 import { api, bellekten, ayniysaEskisi } from "../../api/client";
-import type { Karne, HataMatrisi, HataDagilimi, KonformalAyar, Backtest, Dengesizlik, DengesizlikGeriTest, DengesizlikSaatlik, Guvenilirlik } from "../../api/types";
+import type { Karne, HataMatrisi, HataDagilimi, KonformalAyar, Backtest, Dengesizlik, DengesizlikGeriTest, DengesizlikSaatlik, Guvenilirlik, Yekdem } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
 import { BilgiliEtiket, Kpi, Kart, Sayfa, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
@@ -34,6 +34,9 @@ function SaatlikDokum({ plantId, gun }: { plantId: string; gun: number }) {
   const YON: Record<string, string> = { acik: "enerji açığı", fazla: "enerji fazlası", dengede: "dengede" };
   const DURUM: Record<string, string> = { ok: "hesaplandı", yon_eksik: "sistem yönü verisi eksik", kupst_hesaplanamaz: "KÜPST katsayısı yok" };
   const kod = (v: string | number | null | undefined, s: Record<string, string>) => (v == null || v === "" ? "—" : (s[String(v)] ?? String(v)));
+  // v2.520 (P5a): lisanslı YEKDEM'de uç dört sütun daha döner — YEK fiyatı, m.23(6) işareti, YEKDEM dışı MWh ve fark tutarı
+  const yekdemli = !!sd && sd.kolonlar.includes("m23_6");
+  const M23: Record<string, string> = { evet: "YEKDEM dışı", hayir: "—", ptf_yek_ustu: "PTF ≥ YEK fiyatı", fiyat_yok: "fiyat yok", kapsam_disi: "kapsam dışı" };
   return (
     <details className="aciklama genis" style={{ marginTop: 10 }} onToggle={(e) => { if ((e.currentTarget as HTMLDetailsElement).open && sd === undefined) api.dengesizlikSaatlik(plantId, gun).then((v) => setSd(v), () => setSd(null)); }}>
       <summary>Saatlik döküm — program, gerçekleşen, fiyat, yön, EDT ve KÜPST saat saat; CSV / XLSX</summary>
@@ -45,14 +48,72 @@ function SaatlikDokum({ plantId, gun }: { plantId: string; gun: number }) {
       </div>
       {sd === undefined ? <p className="soluk">Yükleniyor…</p> : sd === null ? <p className="soluk">Döküm alınamadı.</p> : sd.satirlar.length === 0 ? <p className="soluk">Henüz karşılaştırılan saat yok.</p> : (
         <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 13 }}>
-          <thead><tr><th>Saat</th><th>Program (MWh)</th><th>Kaynak</th><th>Gerçekleşen (MWh)</th><th>Sapma (MWh)</th><th>PTF (TL/MWh)</th><th>SMF (TL/MWh)</th><th>Yön</th><th>EDT borç (TL)</th><th>EDT alacak (TL)</th><th title="KGÜP sapma miktarı: toleransın (m × program) üstündeki sapma">KÜPSM (MWh)</th><th title="KGÜP sapma tutarı">KÜPST (TL)</th><th>Durum</th></tr></thead>
+          <thead><tr><th>Saat</th><th>Program (MWh)</th><th>Kaynak</th><th>Gerçekleşen (MWh)</th><th>Sapma (MWh)</th><th>PTF (TL/MWh)</th><th>SMF (TL/MWh)</th><th>Yön</th><th>EDT borç (TL)</th><th>EDT alacak (TL)</th><th title="KGÜP sapma miktarı: toleransın (m × program) üstündeki sapma">KÜPSM (MWh)</th><th title="KGÜP sapma tutarı">KÜPST (TL)</th>{yekdemli && <><th title="O saatin YEK fiyatı (+ yerli katkı)">YEK fiyatı (TL/MWh)</th><th title="YEK Yön. m.23(6): düşük fiyat ve sistem fazlası saatinde program üstü üretim; EPİAŞ uygulaması belirsiz">m.23(6)</th><th>YEKDEM dışı (MWh)</th><th title="YEKDEM dışı MWh × (YEK fiyatı − 0,98 × PTF)">Fark (TL)</th></>}<th>Durum</th></tr></thead>
           <tbody className="mono">{sd.satirlar.map((r, i) => (
             <tr key={i}><td>{say(r.zaman)}</td><td>{say(r.program_mwh, 3)}</td><td>{r.program_kaynak === "bildirilen" ? <span className="rozet rozet-ok rozet-kucuk">bildirilen</span> : "öneri"}</td>
               <td>{say(r.gerceklesen_mwh, 3)}</td><td>{say(r.sapma_mwh, 3)}</td><td>{say(r.ptf_tl_mwh)}</td><td>{say(r.smf_tl_mwh)}</td><td>{kod(r.yon, YON)}</td>
-              <td>{say(r.edt_borc_tl)}</td><td>{say(r.edt_alacak_tl)}</td><td>{say(r.kupsm_mwh, 3)}</td><td>{say(r.kupst_tl)}</td><td>{r.durum === "ok" ? DURUM.ok : <span className="rozet rozet-uyari rozet-kucuk">{kod(r.durum, DURUM)}</span>}</td></tr>))}</tbody>
+              <td>{say(r.edt_borc_tl)}</td><td>{say(r.edt_alacak_tl)}</td><td>{say(r.kupsm_mwh, 3)}</td><td>{say(r.kupst_tl)}</td>
+              {yekdemli && <><td>{say(r.yek_fiyat_tl_mwh)}</td><td>{r.m23_6 === "evet" ? <span className="rozet rozet-uyari rozet-kucuk">YEKDEM dışı</span> : kod(r.m23_6, M23)}</td><td>{say(r.yekdem_disi_mwh, 3)}</td><td>{say(r.yekdem_disi_tl)}</td></>}
+              <td>{r.durum === "ok" ? DURUM.ok : <span className="rozet rozet-uyari rozet-kucuk">{kod(r.durum, DURUM)}</span>}</td></tr>))}</tbody>
         </table></div>)}
-      {sd && <p className="soluk" style={{ fontSize: 13, margin: "6px 0 0" }}>Yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir. Kaynak «bildirilen»: TPYS'ye bildirdiğinizi beyan ederek yüklediğiniz KGÜP (TPYS kabulü doğrulanmaz); «öneri»: PVQuant'ın bir gün önce 15:30'dan önceki son tahmininin P50'si. Sapma = gerçekleşen − pozisyon; KÜPSM = toleransı (m × program) aşan sapma miktarı; EDT alacak düşük fiyat saatinde eksi olabilir. Saatler Türkiye saatidir; indirilen dosyada 21 sütunun tümü ve bu not yer alır.</p>}
+      {sd && <p className="soluk" style={{ fontSize: 13, margin: "6px 0 0" }}>Yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir. Kaynak «bildirilen»: TPYS'ye bildirdiğinizi beyan ederek yüklediğiniz KGÜP (TPYS kabulü doğrulanmaz); «öneri»: PVQuant'ın bir gün önce 15:30'dan önceki son tahmininin P50'si. Sapma = gerçekleşen − pozisyon; KÜPSM = toleransı (m × program) aşan sapma miktarı; EDT alacak düşük fiyat saatinde eksi olabilir. Saatler Türkiye saatidir; indirilen dosyada {sayiTr(sd.kolonlar.length)} sütunun tümü ve bu not yer alır.{yekdemli && " YEKDEM sütunları: YEK fiyatı o saatin fiyatı (+ yerli katkı); m.23(6) «YEKDEM dışı» = PTF ya da SMF taban değerin altında ve sistem fazlası saatinde program üstü üretim, PTF < YEK fiyatı (EPİAŞ uygulaması belirsiz; talimat saatleri sayılmadı)."}</p>}
     </details>
+  );
+}
+
+/** v2.520 (P5a): YEKDEM katmanı — fiyat rejimi (işletmeye giriş tarihinden), bugünün YEK fiyatı (Cetvel I: ¢ × günün TCMB kuru; 7189: ayın EPİAŞ
+ *  ilanı + yerli katkı, USD band konumu) ve YEK Yön. m.23(6) saat işareti (belirsiz). Yalnız lisanslı YEKDEM segmentinde çizilir; yeniden hesaptır. */
+function YekdemKarti({ plantId, gun }: { plantId: string; gun: number }) {
+  const [yk, setYk] = useState<Yekdem | null | undefined>(undefined);
+  useEffect(() => { let acik = true; setYk(undefined); api.yekdem(plantId, gun).then((v) => { if (acik) setYk(v); }); return () => { acik = false; }; }, [plantId, gun]);
+  const BANT: Record<string, string> = { icinde: "sınırlar içinde", tabanda: "alt sınırda (kırpma)", tavanda: "üst sınırda (kırpma)", kur_yok: "kur verisi yok" };
+  const AYAD = (ay: string) => { const [y, m] = ay.split("-").map(Number); return `${AY[m - 1]} ${y}`; };
+  // «2026-10-20 11:00» (uçtan, Türkiye saati) → «20 Eki 2026 11:00»
+  const saatTr = (v: string | null) => { if (!v) return "—"; const [g, h] = v.split(" "); const d = new Date(g); return Number.isNaN(d.getTime()) ? v : `${d.getDate()} ${AY[d.getMonth()].slice(0, 3)} ${d.getFullYear()} ${h}`; };
+  const sol = { textAlign: "left" as const };
+  const rejimAlt = (r: Yekdem["rejim"]) => r.kaynak_turu === "hesaplanan" ? `işletmeye giriş ${r.isletmeye_giris ? new Date(r.isletmeye_giris).toLocaleDateString("tr-TR") : "—"} tarihinden`
+    : r.kaynak_turu === "kullanici" ? "Santral ayarları › Satış tarifesi'nde seçildi" : "işletmeye giriş tarihi girilmedi; Takvim › Santral tarihleri";
+  return (
+    <Kart baslik="YEKDEM — fiyat rejimi, günlük YEK fiyatı ve m.23(6) saatleri"
+      sag={<span className="cip">{yk ? <Meta items={[yk.rejim.etiket, `${sayiTr(yk.pencere_gun)} gün`]} /> : yk === null ? "alınamadı" : "hesaplanıyor"}</span>}>
+      {yk === undefined ? <YerTutucu yukseklik={220} /> : yk === null ? <p className="soluk" style={{ margin: 0 }}>YEKDEM bilgisi alınamadı.</p> : (
+        <>
+          <div className="ızgara satir-4" style={{ marginBottom: 12 }}>
+            <Kpi etiket="Fiyat rejimi" deger={yk.rejim.rejim === "cetvel1" ? "Cetvel I" : yk.rejim.rejim === "7189" ? "7189 sayılı CK" : "belirsiz"} ton={yk.rejim.rejim ? undefined : "uyari"}
+              alt={yk.rejim.rejim === "cetvel1" ? `ABD senti/kWh × günün TCMB alış kuru; ${rejimAlt(yk.rejim)}` : yk.rejim.rejim === "7189" ? `TL fiyat, aylık EPİAŞ ilanı; ${rejimAlt(yk.rejim)}` : yk.rejim.kaynak} />
+            <Kpi etiket={`YEK fiyatı (${yk.fiyat ? new Date(yk.fiyat.gun).toLocaleDateString("tr-TR") : "bugün"})`} deger={yk.fiyat?.toplam_tl_mwh != null ? sayiTr(yk.fiyat.toplam_tl_mwh, 0) : "—"} birim="TL/MWh"
+              ton={yk.fiyat?.toplam_tl_mwh != null ? undefined : "uyari"}
+              alt={yk.fiyat?.toplam_tl_mwh != null ? `${yk.fiyat.kaynak_etiket}${yk.fiyat.yerli_tl_mwh ? `; yerli katkı ${sayiTr(yk.fiyat.yerli_tl_mwh, 0)} TL/MWh dâhil` : ""}` : yk.fiyat ? yk.fiyat.kaynak_etiket : "rejim belirsiz; fiyat hesaplanmaz"} />
+            {yk.rejim.rejim === "cetvel1"
+              ? <Kpi etiket="TCMB alış kuru" deger={yk.fiyat?.kur != null ? sayiTr(yk.fiyat.kur, 4) : "—"} birim="TL/USD"
+                  alt={yk.fiyat?.kur_gunu ? `${new Date(yk.fiyat.kur_gunu).toLocaleDateString("tr-TR")} bülteni${yk.fiyat.onceki_gun ? " (önceki iş günü; tatil/hafta sonu)" : ""}; ${sayiTr(yk.sabitler.cetvel1_cent, 1)} ¢/kWh` : yk.kur?.son_gun ? `arşivde son bülten ${new Date(yk.kur.son_gun).toLocaleDateString("tr-TR")}` : "kur arşivi boş"} />
+              : <Kpi etiket="Aylık ilan" deger={yk.fiyat?.ay_fiyat_kr_kwh != null ? sayiTr(yk.fiyat.ay_fiyat_kr_kwh, 2) : "—"} birim="kr/kWh"
+                  alt={(() => { const son = [...yk.aylar].reverse().find((a) => a.durum === "ilan"); return son ? `son ilan ${AYAD(son.ay)}${son.bant ? `; USD sınır kontrolü: ${BANT[son.bant.durum] ?? son.bant.durum}${son.bant.usd_cent != null ? ` (${sayiTr(son.bant.usd_cent, 2)} ¢/kWh)` : ""}` : ""}` : "ilan yok"; })()} />}
+            <Kpi etiket="YEKDEM dışı üretim (m.23(6))" deger={yk.m23_6 ? sayiTr(yk.m23_6.yekdem_disi_mwh, 1) : "—"} birim="MWh" ton={yk.m23_6 && yk.m23_6.saat > 0 ? "uyari" : undefined}
+              alt={yk.m23_6 ? `${sayiTr(yk.m23_6.saat)} saat; fark ${sayiTr(yk.m23_6.yekdem_disi_tl / 1000, 1)} bin TL; EPİAŞ uygulaması belirsiz` : yk.uygulanir ? "tarife YEKDEM seçilmedi" : "segment lisanslı YEKDEM değil"} />
+          </div>
+          {yk.rejim.rejim === "7189" && yk.aylar.length > 0 && (
+            <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 13 }}>
+              <thead><tr><th style={sol}>Ay</th><th>Fiyat (kr/kWh)</th><th>Yerli katkı (kr/kWh)</th><th title="Bir önceki ayın ortalama TCMB USD alış kuruyla">USD karşılığı (¢/kWh)</th><th style={sol} title="7189 sayılı CK: fiyat, bir önceki ayın ortalama TCMB USD alış kuruyla ¢/kWh'a çevrilip alt–üst sınıra kırpılır">USD sınır kontrolü ({sayiTr(yk.sabitler.bant_cent[0], 2)}–{sayiTr(yk.sabitler.bant_cent[1], 2)} ¢)</th><th style={sol}>Kaynak</th></tr></thead>
+              <tbody>{yk.aylar.map((a) => (
+                <tr key={a.ay}><td style={sol}>{AYAD(a.ay)}</td><td className="mono">{a.fiyat_kr_kwh != null ? sayiTr(a.fiyat_kr_kwh, 2) : "—"}</td><td className="mono">{a.yerli_katki_kr_kwh != null ? sayiTr(a.yerli_katki_kr_kwh, 2) : "—"}</td>
+                  <td className="mono">{a.bant?.usd_cent != null ? sayiTr(a.bant.usd_cent, 2) : "—"}</td>
+                  <td style={sol}>{a.durum !== "ilan" ? <span className="soluk">henüz ilan edilmedi</span> : a.bant && a.bant.durum !== "kur_yok" ? <span className={`rozet rozet-kucuk ${a.bant.durum === "icinde" ? "rozet-ok" : "rozet-uyari"}`} title={`${AYAD(a.bant.kur_ayi)} ortalama USD alış kuru ${sayiTr(a.bant.kur_ortalama ?? 0, 4)} TL`}>{BANT[a.bant.durum]}</span> : <span className="soluk">{a.bant ? `${AYAD(a.bant.kur_ayi)} kuru arşivde yok; kontrol yapılamadı` : "kur verisi yok"}</span>}</td>
+                  <td style={{ ...sol, whiteSpace: "normal", minWidth: 220 }}>{a.kaynak ?? "—"}</td></tr>))}</tbody>
+            </table></div>)}
+          {yk.m23_6 && yk.m23_6.saat > 0 && <p style={{ margin: "10px 0 0", fontSize: 13.5 }}>
+            Son {sayiTr(yk.m23_6.pencere_gun)} günde {sayiTr(yk.m23_6.saat)} saatte program üstü üretim YEKDEM dışı sayıldı: {sayiTr(yk.m23_6.yekdem_disi_mwh, 1)} MWh, fark {sayiTr(yk.m23_6.yekdem_disi_tl)} TL (ilk {saatTr(yk.m23_6.ilk_saat)}, son {saatTr(yk.m23_6.son_saat)}).
+            {yk.m23_6.bildirilmemis_saat > 0 && <> Bu saatlerin {sayiTr(yk.m23_6.bildirilmemis_saat)} tanesinde bildirilen KGÜP yoktu; PVQuant önerisi program sayıldı. TPYS'ye hiç bildirilmediyse mevzuat KGÜP'ü 0 sayar ve o saatin tüm üretimi YEKDEM dışı kalır.</>}
+          </p>}
+          <p className="soluk" style={{ margin: "8px 0 0", fontSize: 13 }}>
+            {yk.not ? yk.not + " " : ""}Yeniden hesaptır; EPİAŞ YEKDEM uzlaştırması değildir.
+          </p>
+          <details className="aciklama">
+            <summary>m.23(6) dayanağı ve hesap yöntemi</summary>
+            <p style={{ margin: "6px 0 0" }}>{yk.m23_6 ? yk.m23_6.not : "m.23(6) işareti yalnız lisanslı YEKDEM segmentinde ve satış tarifesi YEKDEM seçiliyken üretilir. YEK Yön. m.23(6) (RG 19.10.2026-8): PTF ya da SMF taban değerin (V) altında ve sistem yönü enerji fazlası olan saatte programın üstündeki üretim, PTF o saatin YEK fiyatından düşükse YEKDEM dışında kalır."}</p>
+          </details>
+        </>)}
+    </Kart>
   );
 }
 
@@ -777,6 +838,8 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           <p className="soluk" style={{ margin: 0 }}>Bir gün önce 15:30'dan önce verilmiş tahmin ile gerçekleşen üretimin karşılaştırılabildiği gün henüz yok; tahminler ve ölçümler biriktikçe burada görünür.</p>
         )}
       </Kart>
+      {/* v2.520 (P5a): YEKDEM katmanı — yalnız lisanslı YEKDEM segmentinde (öbür segmentlerde fiyat yalnız tarife gelirine girer) */}
+      {dz?.segment.segment === "lisansli_yekdem" && <YekdemKarti plantId={plantId} gun={dz.pencere_gun} />}
       {/* v2.503 (F-07): 12 aylık geri test — aylık tablo + karşı-olgu sütunları; istek yalnız kart açılınca (ağır sorgu) */}
       <Kart baslik="Uzlaştırma kalemleri geri testi — son 12 ay, varsayımsal yeniden hesap"
         sag={<span className="cip">{gt ? <Meta items={[`${sayiTr(gt.gun_sayisi)} gün`, gt.mekanizma && gt.mekanizma.senaryo_saat > 0 ? `senaryo fiyatı ${sayiTr(gt.mekanizma.senaryo_saat)} saat` : "fiyat: EPİAŞ"]} /> : gt === null ? "alınamadı" : "kapalı"}</span>}>

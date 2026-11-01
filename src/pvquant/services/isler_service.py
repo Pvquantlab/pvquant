@@ -31,6 +31,7 @@ ISIM_TR = {
     "iletisim_kontrol": "İletişim kesintisi kontrolü (her saat)",      # 01.11 v2.519 (P7a)
     "teminat_hatirlatma": "Teminat saati hatırlatması (10:15)",       # 01.11 v2.519 (P7a): iş günü, lisanslı
     "ptf_kontrol": "Yarın düşük fiyat kontrolü (14:40)",              # 01.11 v2.519 (P7a)
+    "gece_kur": "Döviz kuru çekimi (TCMB, 16:05)",                     # 01.11 v2.520 (P5a)
     "avans_hatirlatma": "Avans ödeme hatırlatması (14:45)",           # 01.11 v2.519 (P7a): iş günü, lisanslı   # 29.10: KGÜP gecikti kuralı 15:30 sonrası ayrı iş   # 26.10 eşzamanlama: v2.491'den beri etiketsizdi, platform tablosunda ham kod görünüyordu
 }
 # her gece koşması beklenen çekirdek grup — hiçbiri son 24 saatte yoksa işçi uyarısı verilir

@@ -85,6 +85,16 @@ export type PlanLimitAlani = "santral_limit" | "kullanici_limit" | "api_rpm_limi
 export interface Plan { ad: string; baslik: string; santral_limit: number | null; kullanici_limit: number | null; api_rpm_limit: number | null;
   aylik_rapor_limit: number | null; aylik_dis_api_limit: number | null; notlar: string | null; sira: number; guncelleme: string; kiraci: number }
 export interface Temsil { token: string; tenant_id: string; kiraci: string; sure_dk: number; bitis: string }
+// v2.520 (P5a) — YEKDEM aylık fiyat ilanı (7189 sayılı CK) ve TCMB kur arşivi; band konumu uçtan (bir önceki ayın ortalama USD alış kuruyla)
+export interface YekdemFiyat { ay: string; tesis_tipi: string; fiyat_kr_kwh: number; yerli_katki_kr_kwh: number | null; kaynak: string | null; guncelleme: string | null;
+  bant: { durum: "icinde" | "tabanda" | "tavanda" | "kur_yok"; usd_cent: number | null; kur_ortalama: number | null; kur_ayi: string; taban_cent: number; tavan_cent: number; taban_kr: number | null; tavan_kr: number | null;
+    kur_gun?: number | null; kur_beklenen?: number | null; kur_eksik_gun?: string[] };
+  /** kayıt güvenilirliği uçtan: resmi (EPİAŞ duyurusu, tarihli, kayıt zamanıyla tutarlı) | elle | dogrulanmamis (kaynak yok / tarih yok / tarih gelecekte ya da kayıttan sonra) */
+  kayit: { durum: "resmi" | "elle" | "dogrulanmamis"; neden: string } }
+export interface YekdemYonetim { bugun: string; fiyatlar: YekdemFiyat[]; bekleyen: { ay: string; tesis_tipi: string }[]; tesis_tipleri: string[]; tesis_etiket: Record<string, string>; bant_cent: Record<string, [number, number]>;
+  baslangic_kr: Record<string, [number, number]>; kaynak_notu: string;
+  kaynaklar: { epias_url: string; epias_baslik: string; tcmb_url: string; mevzuat: string };
+  kur: { son_gun: string | null; son_usd_alis: number | null; son_eur_alis: number | null; gun_sayisi: number; ilk_gun: string | null; eksik_is_gunu_30: string[]; kaynak: string; kaynak_url?: string } }
 
 /** Sorgu dizesi: boş/undefined alanlar atlanır. */
 const sorgu = (p: Record<string, unknown>): string => {
@@ -144,6 +154,10 @@ export const yonetim = {
   planlar: (): Promise<{ planlar: Plan[]; limit_alanlari: PlanLimitAlani[] }> => istek("/planlar"),
   planGuncelle: (ad: string, g: Partial<Record<PlanLimitAlani, number>> & { baslik?: string; notlar?: string; sinirsiz?: PlanLimitAlani[] }): Promise<Plan> => istek(`/planlar/${ad}`, "PUT", g),
   temsil: (tenant_id: string): Promise<Temsil> => istek(`/kiracilar/${tenant_id}/temsil`, "POST"),
+  // v2.520 (P5a) — YEKDEM ilanı ve kur arşivi (operatör de yazar; denetim izine düşer)
+  yekdem: (): Promise<YekdemYonetim> => istek("/yekdem"),
+  yekdemFiyat: (g: { ay: string; tesis_tipi: string; fiyat_kr_kwh: number; yerli_katki_kr_kwh: number | null; kaynak: string | null }): Promise<YekdemFiyat> => istek("/yekdem-fiyat", "PUT", g),
+  kurDoldur: (bas: string, bit: string): Promise<{ yazilan: number; bulunamayan: string[]; bas: string; bit: string }> => istek("/kur-doldur", "POST", { bas, bit }),
 };
 /** Göreli yaş: «3 dk önce», «5 saat önce», «2 gün önce»; null «—». Hüküm değil, okunurluk. */
 export { yasTr, zamanTr } from "../lib/bicim";   // 26.10 ortak sözlük: iki panel aynı biçimleyici

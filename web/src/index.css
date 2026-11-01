@@ -1062,6 +1062,9 @@ select.girdi { font-family: var(--font); }
 .kural-kosul { font-size: 13px; color: var(--ikincil); line-height: 1.45; }   /* 01.11 son kontrol: küçük/soluk yazı → 13 px ikincil */
 .form-not { margin: 0; font-size: 12.5px; color: var(--soluk); line-height: 1.5; }
 .form-izgara.form-program { flex-basis: 100%; width: 100%; min-width: 0; max-width: 820px; margin-top: 0; }
+/* 01.11 v2.520 (P5a): ayar satırındaki seçiciler 375 px'te içerik genişliğine açılıp kartı taşırıyordu (rejim seçici 314 px / 293 px) → en çok sütun genişliği */
+.ayar-kontrol > .girdi-etiket { max-width: 100%; min-width: 0; }   /* esnek öğe içerik genişliğinin altına inemiyordu (min-width:auto) */
+.ayar-kontrol .girdi-etiket > select.girdi { max-width: 100%; }
 .ayar-kontrol .satir-tam { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
 .form-izgara.form-alarm { flex-basis: 100%; width: 100%; min-width: 0; max-width: 640px; margin-top: 10px; }
 .form-izgara .form-tam { grid-column: 1 / -1; }

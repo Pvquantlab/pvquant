@@ -284,6 +284,13 @@ def gun_oncesi_ptf(_plant=None):
     return f"{r.get('durum')}; yazılan {r.get('yazilan', 0)}" + (f"; yarın {r['yarin_saat']} saat" if r.get("yarin_saat") is not None else "")
 
 
+def gece_kur(_plant=None):
+    """v2.520 (P5a): TCMB gösterge döviz alış kuru (13:05 UTC = 16:05 TSİ; bülten iş günü 15:30'da) + son 10 günün eksik iş günleri.
+    Hafta sonu/tatilde yeni bülten yoktur (today.xml son iş gününü döner) — hata değil. Cetvel I YEKDEM fiyatı bu kurla TL'ye çevrilir."""
+    from pvquant.services import kur_service
+    return kur_service.gunluk()
+
+
 def gece_piyasa(_plant=None):
     """v2.258 — EPİAŞ fiyatları (tenant'sız, günde bir kez yeter; _logla santral döngüsünden çağırır,
     ikinci santralde tekrar çekmemek için 'bugün çekildi' bayrağı)."""
@@ -735,6 +742,7 @@ if __name__ == "__main__":
         sch.add_job(_logla("gun_ici_tahmin", gun_ici_tahmin), "cron", hour=cfg.gun_ici_saatler, minute=30)
     sch.add_job(_logla_tek("gece_piyasa", gece_piyasa), "cron", hour=cfg.worker_hour_skill, minute=15)   # v2.258; 25.10 O5: tek satır
     sch.add_job(_logla_tek("gun_oncesi_ptf", gun_oncesi_ptf), "cron", hour=11, minute=35)   # 29.10 v2.505: GÖP sonrası yarının PTF'si (14:35 TSİ)
+    sch.add_job(_logla_tek("gece_kur", gece_kur), "cron", hour=13, minute=5)   # 01.11 v2.520 (P5a): TCMB kuru 16:05 TSİ (bülten 15:30)
     sch.add_job(_logla("gece_epias_uretim", gece_epias_uretim), "cron", hour=cfg.worker_hour_skill, minute=18)   # v2.278
     sch.add_job(_logla("gece_hijyen", gece_hijyen), "cron", hour=cfg.worker_hour_skill, minute=20)   # v2.254
     sch.add_job(_logla("gece_skill", gece_skill), "cron", hour=cfg.worker_hour_skill, minute=30)

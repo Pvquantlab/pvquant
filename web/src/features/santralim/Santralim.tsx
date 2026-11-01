@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
-import type { PrKarti, Saglik, AlarmKurallari, FizikTerimleri, FizikOnizleme, Kullanilabilirlik, Tarife } from "../../api/types";
+import type { PrKarti, Saglik, AlarmKurallari, FizikTerimleri, FizikOnizleme, Kullanilabilirlik, Tarife, Yekdem } from "../../api/types";
 import { SEGMENTLER } from "../../api/types";
 import type { UevcbArama } from "../../api/types";
 import type { EChartsOption } from "echarts";
@@ -58,7 +58,7 @@ const KURAL_KOSULU: Record<string, (e: Record<string, number>) => string> = {
   kgup_revizyon_onerisi: (e) => `Bugünün programı güncel beklentiden eşik (%${sayiTr((e.revizyon_esik ?? 0.10) * 100, 0)}) kadar sapınca ve o saatin revizyon süresi geçmediyse. Kontrol: 07:10–18:10 arası saat başı`,
   dengesizlik_asimi: (e) => `Son 30 günün dengesizlik maliyeti gelire oranla eşiği (%${sayiTr((e.dengesizlik_esik ?? 0.03) * 100, 0)}) aşınca. Kontrol: her gece 07:00`,
   ptf_dusuk_saat: (e) => (e.ptf_esik_tl_mwh ?? 0) <= 0
-    ? "Yarın fiyatın sıfır ya da negatif olduğu saat varsa; YEKDEM'li santralde tarifedeki YEK fiyatının altı. Kontrol: her gün 14:40"
+    ? "Yarın fiyatın sıfır ya da negatif olduğu saat varsa; YEKDEM'li santralde yarının YEK fiyatının altı. Kontrol: her gün 14:40"
     : `Yarın fiyatın ${sayiTr(e.ptf_esik_tl_mwh, 0)} TL/MWh altında olduğu saat varsa. Kontrol: her gün 14:40`,
   ariza_sayaci_yaklasti: (e) => `Bu ayki arıza kaydı eşiğe (${sayiTr(e.ariza_esik ?? 25, 0)}) ulaşınca. Kontrol: her gece 07:00`,
   takvim_son_tarih: (e) => `Takvim'deki her son tarih için ${sayiTr(e.takvim_gun_once ?? 3, 0)} gün kala, bir kez. Kontrol: her gece 07:00`,
@@ -203,7 +203,11 @@ export function Santralim({ plantId }: { plantId: string }) {
   };
   const sayiYaz = (x: number | null | undefined) => (x == null ? "" : String(x).replace(".", ","));
   type TarifeSayiAlani = "tl_mwh" | "prim_oran" | "sabit_ek_tl_mwh" | "usd_cent_kwh"
-    | "kur_tl_usd" | "gunduz_tl_mwh" | "puant_tl_mwh" | "gece_tl_mwh";
+    | "kur_tl_usd" | "gunduz_tl_mwh" | "puant_tl_mwh" | "gece_tl_mwh" | "yerli_katki_usd_cent";
+  // v2.520 (P5a): YEKDEM rejimi ve bugünün fiyatı uçtan (işletmeye giriş tarihinden türetilir; seçim onu ezer) — form alanları rejime göre
+  const [yk, setYk] = useState<Yekdem | null>(null);
+  useEffect(() => { if (tarife.tip === "yekdem") api.yekdem(plantId, 14).then(setYk); else setYk(null); }, [plantId, ds, tarife.tip]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const rejimEtkin: "cetvel1" | "7189" | null = tarife.rejim === "cetvel1" || tarife.rejim === "7189" ? tarife.rejim : (yk?.rejim.rejim ?? null);
   const tarifeSayi = (alan: TarifeSayiAlani) => ({
     value: tarifeMetin[alan] ?? sayiYaz(tarife[alan]),
     onChange: (e: { target: { value: string } }) => {
@@ -663,13 +667,13 @@ export function Santralim({ plantId }: { plantId: string }) {
           </div>
           <div className="ayar">
             <div><div className="ayar-ad">Satış tarifesi</div>
-              <div className="ayar-aciklama">Ürettiğiniz enerjinin satış fiyatı. Fatura özeti ve yıllık gelir beklentisinde kullanılır; dengesizlik hesaplarını etkilemez.</div>
+              <div className="ayar-aciklama">Ürettiğiniz enerjinin satış fiyatı. Fatura özeti, yıllık gelir beklentisi ve lisanslı YEKDEM santralinde Doğruluk'taki YEKDEM kartında kullanılır; dengesizlik hesaplarını etkilemez.</div>
               {ayrintiDugmesi(ayrinti, setAyrinti, "tarife")}
               </div>
             <div className="ayar-kontrol">
               <label className="girdi-etiket">Tarife tipi (isteğe bağlı)
                 <select className="girdi" value={tarife.tip} onChange={(e) => setTarife({ ...tarife, tip: e.target.value as Tarife["tip"] })}>
-                  <option value="sabit">sabit fiyat</option><option value="cok_zamanli">çok zamanlı (gündüz/puant/gece)</option><option value="ptf">piyasa (PTF) endeksli</option><option value="yekdem">YEKDEM (döviz endeksli)</option>
+                  <option value="sabit">sabit fiyat</option><option value="cok_zamanli">çok zamanlı (gündüz/puant/gece)</option><option value="ptf">piyasa (PTF) endeksli</option><option value="yekdem">YEKDEM (YEK destek fiyatı)</option>
                 </select>
               </label>
               {tarife.tip === "sabit" &&
@@ -688,10 +692,38 @@ export function Santralim({ plantId }: { plantId: string }) {
                 <label className="girdi-etiket">Gece 22–06 (TL/MWh)
                   <input className="girdi" style={{ width: 110 }} inputMode="decimal" {...tarifeSayi("gece_tl_mwh")} /></label></>}
               {tarife.tip === "yekdem" && <>
-                <label className="girdi-etiket">YEK fiyatı (ABD senti/kWh)
-                  <input className="girdi" style={{ width: 100 }} inputMode="decimal" placeholder="örn. 10,8" {...tarifeSayi("usd_cent_kwh")} /></label>
-                <label className="girdi-etiket">Kur (TL/USD)
-                  <input className="girdi" style={{ width: 90 }} inputMode="decimal" {...tarifeSayi("kur_tl_usd")} /></label></>}
+                <label className="girdi-etiket">Fiyat rejimi
+                  <select className="girdi" value={tarife.rejim ?? "otomatik"} onChange={(e) => { setTarife({ ...tarife, rejim: e.target.value as Tarife["rejim"] }); setTarifeMesaj(null); }}>
+                    <option value="otomatik">işletmeye giriş tarihinden (otomatik)</option><option value="cetvel1">Cetvel I (ABD senti, günlük kur)</option><option value="7189">7189 sayılı CK (TL, aylık ilan)</option>
+                  </select></label>
+                {rejimEtkin === "7189" && <>
+                  <label className="girdi-etiket">Tesis tipi
+                    <select className="girdi" value={tarife.tesis_tipi ?? "gunes"} onChange={(e) => { setTarife({ ...tarife, tesis_tipi: e.target.value as Tarife["tesis_tipi"] }); setTarifeMesaj(null); }}>
+                      <option value="gunes">güneş</option><option value="gunes_depolamali">bütünleşik depolamalı güneş</option>
+                    </select></label>
+                  <div className="onay-grubu satir-tam">
+                    <label className="ayar-onay" title="7189 sayılı CK Ek-1: yerli aksam kullanan tesise işletmeye girişten 5 yıl (depolamalı 10 yıl) ek fiyat; EPİAŞ ilanındaki yerli katkı satırı">
+                      <input type="checkbox" checked={!!tarife.yerli_katki} onChange={(e) => { setTarife({ ...tarife, yerli_katki: e.target.checked }); setTarifeMesaj(null); }} /> Yerli katkı fiyatı uygulanıyor (işletmeye girişten 5 yıl)</label>
+                  </div></>}
+                {rejimEtkin === "cetvel1" && <>
+                  <label className="girdi-etiket">YEK fiyatı (ABD senti/kWh; boşsa 13,3)
+                    <input className="girdi" style={{ width: 100 }} inputMode="decimal" placeholder="13,3" {...tarifeSayi("usd_cent_kwh")} /></label>
+                  <label className="girdi-etiket">Yerli katkı (ABD senti/kWh, isteğe bağlı)
+                    <input className="girdi" style={{ width: 100 }} inputMode="decimal" placeholder="0" {...tarifeSayi("yerli_katki_usd_cent")} /></label>
+                  <label className="girdi-etiket">Yedek kur (TL/USD, isteğe bağlı)
+                    <input className="girdi" style={{ width: 90 }} inputMode="decimal" placeholder="TCMB kuru yoksa" {...tarifeSayi("kur_tl_usd")} /></label></>}
+                {rejimEtkin == null && <>
+                  <label className="girdi-etiket">YEK fiyatı (ABD senti/kWh)
+                    <input className="girdi" style={{ width: 100 }} inputMode="decimal" placeholder="örn. 13,3" {...tarifeSayi("usd_cent_kwh")} /></label>
+                  <label className="girdi-etiket">Kur (TL/USD)
+                    <input className="girdi" style={{ width: 90 }} inputMode="decimal" {...tarifeSayi("kur_tl_usd")} /></label></>}
+                <p className="form-not satir-tam">
+                  {yk == null ? "Rejim ve bugünkü fiyat yükleniyor…"
+                    : rejimEtkin == null ? "Rejim belirlenemedi: işletmeye giriş tarihini Takvim › Santral tarihleri'nde girin ya da rejimi seçin. O zamana kadar fiyat = YEK fiyatı × girdiğiniz kur."
+                    : <>Rejim: {rejimEtkin === "cetvel1" ? "Cetvel I" : "7189 sayılı CK"} ({tarife.rejim === "cetvel1" || tarife.rejim === "7189" ? "seçildi" : yk.rejim.kaynak_turu === "hesaplanan" ? `işletmeye giriş ${yk.rejim.isletmeye_giris ? new Date(yk.rejim.isletmeye_giris).toLocaleDateString("tr-TR") : ""} tarihinden` : "belirsiz"}).
+                      {" "}{yk.fiyat?.toplam_tl_mwh != null ? <>Bugünkü fiyat {sayiTr(yk.fiyat.toplam_tl_mwh, 0)} TL/MWh: {yk.fiyat.kaynak_etiket}{yk.fiyat.yerli_tl_mwh ? `; yerli katkı ${sayiTr(yk.fiyat.yerli_tl_mwh, 0)} TL/MWh dâhil` : ""}.</>
+                        : yk.fiyat ? <>Bugün fiyat hesaplanamadı: {yk.fiyat.kaynak_etiket}.</> : "Kaydedince bugünkü fiyat burada görünür."}</>}
+                </p></>}
               <div className="satir-tam">
                 <button className="dugme" onClick={tarifeKaydet}>Kaydet</button>
                 <button className="dugme" onClick={() => api.tarifeAyarla(plantId, null).then(() => setTarifeMesaj("Kaldırıldı.")).catch(() => {})}>Kaldır</button>
@@ -699,12 +731,12 @@ export function Santralim({ plantId }: { plantId: string }) {
               </div>
             </div>
             {ayrintiGovdesi(ayrinti, "tarife", <>
-                <p><b>Ne zaman değiştirilir:</b> satış sözleşmeniz ya da YEKDEM fiyatınız değiştiğinde. Tarife girilmemişse gelir alanları boş kalır; tahmin ve uzlaştırma etkilenmez.</p>
+                <p><b>Ne zaman değiştirilir:</b> satış sözleşmeniz ya da YEKDEM rejiminiz/yerli katkı durumunuz değiştiğinde. Tarife girilmemişse gelir alanları boş kalır; tahmin ve uzlaştırma etkilenmez. Lisanslı YEKDEM santralinde tarife YEKDEM seçilince Doğruluk sayfasında YEKDEM kartı (günlük fiyat, aylık ilan ve band, m.23(6) saatleri) açılır.</p>
                 <ul>
                   <li><b>Sabit fiyat:</b> her saat aynı TL/MWh (0–100.000).</li>
                   <li><b>Çok zamanlı:</b> gündüz 06–17, puant 17–22, gece 22–06 (Türkiye saati) için ayrı TL/MWh.</li>
                   <li><b>Piyasa endeksli:</b> gün öncesi piyasa takas fiyatı (PTF) × (1 + prim oranı) + sabit ek; prim oranı −0,5 ile 1,0 arasında (0,05 = %5).</li>
-                  <li><b>YEKDEM:</b> YEK fiyatı (ABD senti/kWh) × girdiğiniz kur (TL/USD).</li>
+                  <li><b>YEKDEM:</b> iki fiyat rejimi vardır ve işletmeye giriş tarihinden belirlenir (30.6.2021'e kadar Cetvel I, 1.7.2021–31.12.2030 arası 7189 sayılı CK). Cetvel I: YEK fiyatı (ABD senti/kWh, güneş 13,3) × enerjinin verildiği günün TCMB döviz alış kuru (tatil ve hafta sonunda önceki iş günü kuru); yerli katkı işletmeye girişten 5 yıl. 7189: EPİAŞ'ın her ay ilan ettiği TL fiyatı (+ yerli katkı, 5 yıl); ilan edilmemiş ay için önceki ayın fiyatı. Girdiğiniz kur yalnız TCMB kuru bulunmadığında kullanılır.</li>
                 </ul>
                 <p><b>Ne zaman geçerli:</b> Kaydet'ten sonraki rapor ve beklenti hesaplarında; «Kaldır» tarifeyi siler.</p>
               </>)}
@@ -831,7 +863,7 @@ export function Santralim({ plantId }: { plantId: string }) {
                   {ESIK_ALANLARI.map((a) => (
                     <label key={a.k} className="girdi-etiket" title={`Geçerli aralık: ${a.aralik}`}>{a.etiket}
                       <input className="girdi" inputMode="decimal" placeholder={a.aralik} value={akEsik[a.k] ?? ""} onChange={(e) => setAkEsik({ ...akEsik, [a.k]: e.target.value })} /></label>))}
-                  <p className="form-not form-tam">Kural cümlelerindeki değerler bu eşiklerden gelir. Düşük fiyat eşiği 0 ise sıfır ve negatif fiyatlı saatler sayılır; YEKDEM'li santralde tarifedeki YEK fiyatı kullanılır.</p>
+                  <p className="form-not form-tam">Kural cümlelerindeki değerler bu eşiklerden gelir. Düşük fiyat eşiği 0 ise sıfır ve negatif fiyatlı saatler sayılır; YEKDEM'li santralde yarının YEK fiyatı (Cetvel I günün kuruyla, 7189 aylık ilan) kullanılır.</p>
                   <div className="etiket-ust form-tam">Bildirim alıcıları</div>
                   <label className="girdi-etiket form-tam">E-posta alıcıları (virgülle ayırın; en çok 10; isteğe bağlı)
                     <input className="girdi" value={akAlici} onChange={(e) => setAkAlici(e.target.value)} placeholder="sahip@ornek.com, saha@ornek.com" /></label>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { SOZLUK, isDurumu, tazelik, sorunAdi, segmentKisa } from "../../lib/sozluk";
 import { SEGMENTLER } from "../../api/types";
-import { yonetim, yasTr, type SistemOzet, type IsKaydi, type SantralEnvanter, type Kiraci } from "../../api/yonetim";
+import { yonetim, yasTr, type SistemOzet, type IsKaydi, type SantralEnvanter, type Kiraci, type YekdemYonetim } from "../../api/yonetim";
 import { Zaman } from "./ortak";
 import { Kart, Kpi, Sayfa, SayfaIskeleti, sayiTr, gucTr } from "../sayfalar/parcalar";
 import { Meta } from "../../lib/Meta";
@@ -63,6 +63,7 @@ export function Sistem() {
         </div>
         <IsKayitlari santral={secSantral} temizle={() => setSecSantral(null)} />
         <SantralEnvanteri santralSec={(id, ad) => { setSecSantral({ id, ad }); document.getElementById("is-kayitlari")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} />
+        <YekdemFiyatlari />
         <div className="ızgara-cift">
           <Kart baslik="Üretici ve izlenen işler" alt={`üretici işler (müşteri ölçütü): son başarılı koşu ${o.gece_turu.esik_saat} saatten yeni; izlenen işler kendi eşiğiyle`}>
             <div className="grafik-kaydir"><table className="veri sayisal" style={{ minWidth: 0 }}>
@@ -98,6 +99,84 @@ export function Sistem() {
         </div>
       </>}
     </Sayfa>
+  );
+}
+
+// ---------------- v2.520 (P5a): YEKDEM aylık fiyat ilanı (7189 sayılı CK) + TCMB kur arşivi ----------------
+/** EPİAŞ'ın aylık ilanı elle girilir (EPİAŞ'ta uç yok); band konumu uçtan (bir önceki ayın ortalama USD alış kuru). Kur arşivi worker'la (16:05 TSİ)
+ *  dolar; eksik iş günleri buradan tamamlanır. Müşteri panelindeki YEKDEM fiyatı ve m.23(6) işareti bu tablolardan beslenir. */
+function YekdemFiyatlari() {
+  const [o, setO] = useState<YekdemYonetim | null>(null); const [hata, setHata] = useState<string | null>(null); const [mesaj, setMesaj] = useState<string | null>(null);
+  const [form, setForm] = useState({ ay: "", tesis_tipi: "gunes", fiyat: "", yerli: "", kaynak: "" });
+  const [kur, setKur] = useState({ bas: "", bit: "" });
+  const yukle = () => yonetim.yekdem().then((v) => { setO(v); setHata(null); }).catch((e) => setHata(mesajCikar(e)));
+  useEffect(() => { void yukle(); }, []);
+  const sayiOku = (t: string): number | null => { const x = t.trim(); if (x === "") return null; const n = Number(x.includes(",") ? x.replace(/\./g, "").replace(",", ".") : x); return Number.isFinite(n) ? n : NaN; };
+  const kaydet = () => {
+    setMesaj(null); const f = sayiOku(form.fiyat); const y = sayiOku(form.yerli);
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(form.ay)) { setMesaj("Geçerli dönem YYYY-AA biçiminde olmalı (ör. 2026-11)."); return; }
+    if (f == null || Number.isNaN(f) || Number.isNaN(y)) { setMesaj("Fiyat (ve varsa yerli katkı) sayı olmalı; ör. 289,74."); return; }
+    if (!/\d{1,2}\.\d{1,2}\.\d{4}/.test(form.kaynak)) { setMesaj("Kaynak alanına duyurunun adı ve tarihi yazılmalı; ör. «EPİAŞ duyurusu 01.10.2026»."); return; }
+    yonetim.yekdemFiyat({ ay: form.ay, tesis_tipi: form.tesis_tipi, fiyat_kr_kwh: f, yerli_katki_kr_kwh: y, kaynak: form.kaynak.trim() })
+      .then((r) => { setMesaj(`Kaydedildi: ${AYAD(r.ay)} ${o?.tesis_etiket[r.tesis_tipi] ?? r.tesis_tipi} ${sayiTr(r.fiyat_kr_kwh, 2)} kuruş/kWh.`); setForm({ ...form, fiyat: "", yerli: "", kaynak: "" }); void yukle(); })
+      .catch((e) => setMesaj(mesajCikar(e)));
+  };
+  const doldur = () => {
+    setMesaj(null);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(kur.bas) || !/^\d{4}-\d{2}-\d{2}$/.test(kur.bit)) { setMesaj("Başlangıç ve bitiş YYYY-AA-GG biçiminde olmalı."); return; }
+    yonetim.kurDoldur(kur.bas, kur.bit).then((r) => { setMesaj(`${sayiTr(r.yazilan)} bülten yazıldı${r.bulunamayan.length ? `; TCMB'de bülteni olmayan iş günü: ${r.bulunamayan.map(tarihTr).join(", ")}` : ""}.`); void yukle(); })
+      .catch((e) => setMesaj(mesajCikar(e)));
+  };
+  const AYLAR = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+  const AYAD = (ay: string) => { const [y, m] = ay.split("-").map(Number); return m >= 1 && m <= 12 ? `${AYLAR[m - 1]} ${y}` : ay; };
+  const SINIR: Record<string, string> = { icinde: "sınırlar içinde", tabanda: "alt sınırda (kırpma)", tavanda: "üst sınırda (kırpma)" };
+  const KAYIT: Record<string, string> = { resmi: "resmî duyuru", elle: "elle giriş", dogrulanmamis: "doğrulanmadı" };
+  return (
+    <Kart baslik="YEKDEM fiyatları ve döviz kuru" alt="7189 sayılı CK kapsamındaki tesisler için EPİAŞ'ın aylık ilan ettiği fiyat (kuruş/kWh) ve TCMB gösterge alış kuru arşivi; müşteri panelindeki YEKDEM fiyatı ve m.23(6) işareti bu kayıtlardan hesaplanır">
+      <Hata m={hata} />
+      {!o && !hata ? <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p> : o && <>
+        <p style={{ fontSize: 13.5, margin: "0 0 8px" }}>
+          Resmî kaynaklar: <a href={o.kaynaklar.epias_url} target="_blank" rel="noreferrer">EPİAŞ fiyat duyurusu</a> · <a href={o.kaynaklar.tcmb_url} target="_blank" rel="noreferrer">TCMB gösterge kurları</a> · {o.kaynaklar.mevzuat}.
+        </p>
+        <p className="soluk" style={{ fontSize: 13.5, margin: "0 0 10px" }}>
+          Kayıt durumu kaynağın tarihinden türetilir: «resmî duyuru» = EPİAŞ duyurusu, tarihli, dönemle ve kayıt zamanıyla tutarlı; «doğrulanmadı» = kaynak ya da tarih eksik, tarih gelecekte, dönemden önce ya da kayıttan sonra.
+          {o.bekleyen.length > 0 && <> <span className="rozet rozet-notr">bekleyen</span> {o.bekleyen.map((b) => `${AYAD(b.ay)} ${o.tesis_etiket[b.tesis_tipi] ?? b.tesis_tipi}`).join(", ")}: EPİAŞ ilanı henüz girilmedi; müşteri paneli önceki ayın fiyatını işaretli olarak taşır.</>}
+        </p>
+        <div className="grafik-kaydir"><table className="veri sayisal" style={{ minWidth: 0 }}>
+          <thead><tr><th style={sol}>Geçerli dönem</th><th style={sol}>Tesis tipi</th><th>Fiyat (kuruş/kWh)</th><th>Yerli katkı (kuruş/kWh)</th><th title="Bir önceki ayın ortalama TCMB USD alış kuruyla">USD karşılığı (¢/kWh)</th><th style={sol} title="7189 sayılı CK Ek-2: fiyat alt–üst sınır dışına çıkarsa kırpılır">USD sınır kontrolü</th><th style={sol}>Kaynak</th><th style={sol}>Kayıt durumu</th><th style={sol}>Kayıt zamanı</th></tr></thead>
+          <tbody>{o.fiyatlar.length === 0 ? <tr><td colSpan={9} style={sol}>İlan girilmedi.</td></tr> : o.fiyatlar.map((f) => (
+            <tr key={`${f.ay}/${f.tesis_tipi}`}><td style={sol}>{AYAD(f.ay)}</td><td style={sol}>{o.tesis_etiket[f.tesis_tipi] ?? f.tesis_tipi}</td><td>{sayiTr(f.fiyat_kr_kwh, 2)}</td>
+              <td>{f.yerli_katki_kr_kwh != null ? sayiTr(f.yerli_katki_kr_kwh, 2) : "—"}</td><td>{f.bant.usd_cent != null ? sayiTr(f.bant.usd_cent, 2) : "—"}</td>
+              <td style={sol}>{f.bant.durum === "kur_yok" ? <span className="soluk" title="Kur arşivini doldurun; worker ilk koşuda 13 ayı tamamlar">{AYAD(f.bant.kur_ayi)} kuru arşivde yok</span>
+                : <span className={`rozet ${f.bant.durum === "icinde" && !(f.bant.kur_eksik_gun?.length) ? "rozet-ok" : "rozet-uyari"}`} title={`${sayiTr(f.bant.taban_cent, 2)}–${sayiTr(f.bant.tavan_cent, 2)} ¢/kWh; ${AYAD(f.bant.kur_ayi)} ortalama USD alış kuru ${f.bant.kur_ortalama != null ? sayiTr(f.bant.kur_ortalama, 4) : "—"} TL (${sayiTr(f.bant.kur_gun ?? 0)}/${sayiTr(f.bant.kur_beklenen ?? 0)} bülten)`}>{SINIR[f.bant.durum] ?? f.bant.durum}{f.bant.kur_eksik_gun?.length ? ` (kur arşivi ${sayiTr(f.bant.kur_eksik_gun.length)} gün eksik)` : ""}</span>}</td>
+              <td style={{ ...sol, whiteSpace: "normal", minWidth: 180 }} title={f.kaynak ?? undefined}>{(f.kaynak ?? "—").replace(/\s*\(7189 sayılı CK Ek-2 aylık güncelleme\)/, "")}</td>
+              <td style={sol}><span className={`rozet ${f.kayit.durum === "resmi" ? "rozet-ok" : f.kayit.durum === "elle" ? "rozet-notr" : "rozet-uyari"}`} title={f.kayit.neden}>{KAYIT[f.kayit.durum]}</span></td>
+              <td style={sol}><Zaman s={f.guncelleme} /></td></tr>))}</tbody>
+        </table></div>
+        <p className="etiket-ust" style={{ margin: "14px 0 6px" }}>Aylık ilan girişi</p>
+        <div className="form-izgara">
+          <label className="girdi-etiket">Geçerli dönem (YYYY-AA)<input className="girdi" value={form.ay} placeholder="2026-11" onChange={(e) => setForm({ ...form, ay: e.target.value })} /></label>
+          <label className="girdi-etiket">Tesis tipi<select className="girdi" value={form.tesis_tipi} onChange={(e) => setForm({ ...form, tesis_tipi: e.target.value })}>
+            {o.tesis_tipleri.map((t) => <option key={t} value={t}>{o.tesis_etiket[t] ?? t}</option>)}</select></label>
+          <label className="girdi-etiket">Fiyat (kuruş/kWh)<input className="girdi" inputMode="decimal" value={form.fiyat} placeholder="ör. 289,74" onChange={(e) => setForm({ ...form, fiyat: e.target.value })} /></label>
+          <label className="girdi-etiket">Yerli katkı (kuruş/kWh, isteğe bağlı)<input className="girdi" inputMode="decimal" value={form.yerli} placeholder="ör. 78,74" onChange={(e) => setForm({ ...form, yerli: e.target.value })} /></label>
+          <label className="girdi-etiket">Kaynak (duyurunun adı ve tarihi, zorunlu)<input className="girdi" value={form.kaynak} placeholder="EPİAŞ duyurusu 01.10.2026" onChange={(e) => setForm({ ...form, kaynak: e.target.value })} /></label>
+          <div className="form-tam dugme-sira"><button className="dugme" onClick={kaydet}>İlanı kaydet</button></div>
+        </div>
+        <p className="etiket-ust" style={{ margin: "14px 0 6px" }}>Kur arşivi</p>
+        <p className="soluk" style={{ fontSize: 13.5, margin: "0 0 8px" }}>
+          {o.kur.son_gun ? <>Son bülten {tarihTr(o.kur.son_gun)} (USD alış {o.kur.son_usd_alis != null ? sayiTr(o.kur.son_usd_alis, 4) : "—"} TL); {sayiTr(o.kur.gun_sayisi)} bülten{o.kur.ilk_gun ? `, ${tarihTr(o.kur.ilk_gun)} tarihinden` : ""}.</> : "Arşiv boş; worker ilk koşuda son 13 ayı TCMB'den tamamlar."}
+          {" "}Son 30 günde TCMB bülteni eksik iş günü: {o.kur.eksik_is_gunu_30.length ? o.kur.eksik_is_gunu_30.map(tarihTr).join(", ") : "yok"}. Hafta sonu, resmî tatil ve arefe yarım günlerinde bülten yayımlanmaz; o günler için önceki iş gününün kuru uygulanır.
+        </p>
+        <div className="form-izgara">
+          <label className="girdi-etiket">Başlangıç (YYYY-AA-GG)<input className="girdi" value={kur.bas} placeholder="2026-08-01" onChange={(e) => setKur({ ...kur, bas: e.target.value })} /></label>
+          <label className="girdi-etiket">Bitiş (YYYY-AA-GG)<input className="girdi" value={kur.bit} placeholder="2026-10-31" onChange={(e) => setKur({ ...kur, bit: e.target.value })} /></label>
+          <div className="form-tam dugme-sira"><button className="dugme" onClick={doldur}>Eksik iş günlerini TCMB'den doldur</button>
+            {mesaj && <span className={`ayar-durum ${mesaj.startsWith("Kayded") || /bülten yazıldı/.test(mesaj) ? "ok" : "hata"}`}>{mesaj}</span>}</div>
+        </div>
+        <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>Alt–üst sınır: güneş {sayiTr(o.bant_cent.gunes[0], 2)}–{sayiTr(o.bant_cent.gunes[1], 2)}, bütünleşik depolamalı {sayiTr(o.bant_cent.gunes_depolamali[0], 2)}–{sayiTr(o.bant_cent.gunes_depolamali[1], 2)} ¢/kWh; başlangıç fiyatları {sayiTr(o.baslangic_kr.gunes[0], 2)} / {sayiTr(o.baslangic_kr.gunes_depolamali[0], 2)} kuruş/kWh (7189 sayılı CK Ek-1). Birimler: fiyat kuruş/kWh (×10 = TL/MWh); USD karşılığı = kuruş/kWh ÷ bir önceki ayın ortalama TL/USD alış kuru. Her kayıt denetim izine düşer; aynı dönem ve tesis tipi için yeni kayıt eskisinin üzerine yazar.</p>
+      </>}
+    </Kart>
   );
 }
 

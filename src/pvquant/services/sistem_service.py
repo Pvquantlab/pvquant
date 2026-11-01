@@ -36,6 +36,7 @@ IZLENEN_ISLER = (
     ("avans_hatirlatma", 36, "günlük", True),           # 01.11 v2.519 (P7a): 14:45 TSİ
     ("gun_oncesi_ptf", 36, "günlük", False),            # 14:35 TSİ; «henuz_yok» da başarılı koşudur
     ("gece_piyasa", 36, "günlük", False),
+    ("gece_kur", 36, "günlük", False),                  # 01.11 v2.520 (P5a): 16:05 TSİ; hafta sonu da iz bırakır (yeni bülten yok)
     ("gece_epias_uretim", 36, "günlük", True),
     ("alarm", 36, "günlük", True),
     ("gece_hijyen", 36, "günlük", True),

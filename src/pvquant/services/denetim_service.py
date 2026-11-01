@@ -14,7 +14,7 @@ from pvquant.db import sistem_baglami
 
 EYLEMLER_PLATFORM = ("giris", "giris_basarisiz", "kiraci_olustur", "kiraci_guncelle", "kullanici_guncelle",
                      "parola_sifirlama_gonder", "iki_adim_sifirla", "basvuru_okundu", "operator_ekle", "operator_guncelle",
-                     "iki_adim_ac")
+                     "iki_adim_ac", "yekdem_fiyat", "kur_doldur")   # v2.520 (P5a): aylık YEKDEM ilanı girişi, kur arşivi doldurma
 EYLEMLER_MUSTERI = ("giris", "takim_ekle", "takim_guncelle", "takim_iki_adim_sifirla", "anahtar_uret", "anahtar_iptal",
                     "webhook_ekle", "webhook_sil", "santral_arsivle", "santral_geri_al", "scada_sil", "parola_degistir",
                     "kgup_indir", "eak_indir", "kgup_bildirilen_yukle", "kgup_sablon_ogren", "kgup_sablon_sifirla",

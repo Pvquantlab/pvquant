@@ -69,7 +69,7 @@ def fatura(tenant_id, plant: dict, ay: str | None = None) -> rs.Rapor:
         raise ValueError("tarife tanımlı değil — Santralim › künye › Tarife")
     idx = pd.DatetimeIndex(df.index); idx = idx.tz_localize("UTC") if idx.tz is None else idx
     ptf = piyasa_service.fiyatlar(idx)["ptf"] if t["tip"] == "ptf" else None
-    g = tarife_service.gelir_df(pd.Series(df["power_kw"].values, index=idx), t, ptf=ptf)
+    g = tarife_service.gelir_df(pd.Series(df["power_kw"].values, index=idx), t, ptf=ptf, plant=plant)   # v2.520: YEKDEM gün bazlı fiyat
     deng = None
     try:
         sim = dengesizlik_service.simulasyon(tenant_id, plant, gun=45)

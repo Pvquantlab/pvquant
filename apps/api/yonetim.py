@@ -381,6 +381,56 @@ def plan_guncelle(ad: str, p: PlanGuncelle, request: Request, c=Depends(platform
     return y
 
 
+# ---------------- v2.520 (P5a): YEKDEM aylık fiyat ilanı ve TCMB kur arşivi ----------------
+class YekdemFiyatIstek(BaseModel):
+    ay: str                                  # YYYY-MM
+    tesis_tipi: str = "gunes"                # gunes | gunes_depolamali
+    fiyat_kr_kwh: float
+    yerli_katki_kr_kwh: float | None = None
+    kaynak: str | None = None                # ör. «EPİAŞ duyurusu 02.11.2026»
+
+
+class KurDoldurIstek(BaseModel):
+    bas: str                                 # YYYY-MM-DD
+    bit: str
+
+
+@yonetim.get("/yekdem")
+def yekdem_fiyatlar(c=Depends(platform_yetkisi())):
+    """7189 sayılı CK aylık ilanları (band konumuyla) + TCMB kur arşivi durumu; operatör de okur."""
+    from pvquant.services import yekdem_service
+    return yekdem_service.yonetim_ozeti()
+
+
+@yonetim.put("/yekdem-fiyat")
+def yekdem_fiyat_kaydet(p: YekdemFiyatIstek, request: Request, c=Depends(platform_yetkisi())):
+    """EPİAŞ'ın aylık YEKDEM fiyat ilanını girer/düzeltir (ay + tesis tipi başına tek satır). Denetim izine değerler yazılır."""
+    from pvquant.services import yekdem_service
+    try:
+        y = yekdem_service.fiyat_kaydet(p.ay, p.tesis_tipi, p.fiyat_kr_kwh, p.yerli_katki_kr_kwh, p.kaynak)
+    except ValueError as e:
+        raise _hata(e)
+    dz.kaydet("platform", "yekdem_fiyat", aktor_id=c["sub"], aktor_eposta=c["email"], nesne_tur="yekdem_fiyat", nesne_id=f"{y['ay']}/{y['tesis_tipi']}",
+              ayrinti={"ay": y["ay"], "tesis_tipi": y["tesis_tipi"], "fiyat_kr_kwh": y["fiyat_kr_kwh"], "yerli_katki_kr_kwh": y["yerli_katki_kr_kwh"], "kaynak": y["kaynak"]}, ip=_ip(request))
+    return y
+
+
+@yonetim.post("/kur-doldur")
+def kur_doldur(p: KurDoldurIstek, request: Request, c=Depends(platform_yetkisi())):
+    """TCMB arşivinden eksik iş günlerini doldurur (tek seferde en çok 400 gün); TCMB'ye ulaşılamazsa 502."""
+    from datetime import date as _date
+    from pvquant.services import kur_service
+    try:
+        r = kur_service.geri_doldur(_date.fromisoformat(p.bas), _date.fromisoformat(p.bit))
+    except ValueError as e:
+        raise _hata(e)
+    except RuntimeError as e:
+        raise HTTPException(502, f"TCMB'ye ulaşılamadı: {e}")
+    dz.kaydet("platform", "kur_doldur", aktor_id=c["sub"], aktor_eposta=c["email"], nesne_tur="doviz_kuru", nesne_id=f"{p.bas}/{p.bit}",
+              ayrinti={"yazilan": r["yazilan"], "bulunamayan": r["bulunamayan"]}, ip=_ip(request))
+    return r
+
+
 @yonetim.post("/kiracilar/{tid}/temsil")
 def kiraci_temsil(tid: str, request: Request, c=Depends(platform_yetkisi("sahip"))):
     """Sahip: kiracıyı müşteri gözüyle (viewer, salt okunur, 15 dk). Jeton yanıtta bir kez; denetim izine jeton YAZILMAZ."""

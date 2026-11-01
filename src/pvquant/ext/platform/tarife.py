@@ -2,7 +2,7 @@
 
 Tarife nesneleri saatlik fiyat (TL/MWh) üretir; `gelir()` üretimle çarpar. Çok zamanlı (ToU) dilimler İstanbul saatiyle
 (varsayılan Türkiye: gündüz 06–17, puant 17–22, gece 22–06). PTF-endeksli: PTF × (1+prim) + sabit ek. YEKDEM:
-USD-cent/kWh × kur (aylık TL; pvquant.ext.turkiye.segment ile uyumlu). Eskalasyon: yıllık % ya da TÜFE endeksi serisi.
+USD-cent/kWh × kur (aylık TL; pvquant.ext.turkiye.segment ile uyumlu); YekdemSeri (v2.520) gün bazlı fiyat. Eskalasyon: yıllık % ya da TÜFE endeksi serisi.
 Doğrulama: negatif fiyat, boşluklu dilim, tarih çakışması.
 """
 from __future__ import annotations
@@ -68,6 +68,16 @@ class Yekdem:
     def fiyat(self, idx: pd.DatetimeIndex, **_) -> pd.Series:
         kur = self.kur_tl_usd if isinstance(self.kur_tl_usd, (int, float)) else self.kur_tl_usd.reindex(_ist(idx).to_period("M").to_timestamp().tz_localize(IST), method="ffill").values
         return pd.Series(self.usd_cent_kwh * 10.0 * np.asarray(kur, float), index=idx)   # cent/kWh → USD/MWh ×10 → TL
+
+
+@dataclass
+class YekdemSeri:
+    """v2.520 (P5a): gün bazlı YEK fiyatı (TL/MWh) — Cetvel I: ¢/kWh × 10 × günün TCMB alış kuru; 7189: ayın EPİAŞ ilanı × 10 (+ yerli katkı).
+    gunluk_tl_mwh: tz'siz gün indeksli seri (yekdem_service.gunluk_fiyat_serisi['toplam_tl_mwh']); fiyatı olmayan gün NaN."""
+    gunluk_tl_mwh: pd.Series
+    def fiyat(self, idx: pd.DatetimeIndex, **_) -> pd.Series:
+        gunler = pd.DatetimeIndex(_ist(idx).date)
+        return pd.Series(self.gunluk_tl_mwh.reindex(gunler).astype(float).values, index=idx)
 
 
 @dataclass

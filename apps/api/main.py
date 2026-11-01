@@ -1343,10 +1343,24 @@ def dengesizlik_saatlik(plant_id: str, gun: int = 90, fmt: str = "json", n: int 
         return Response(b, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         headers={"Content-Disposition": f'attachment; filename="{ad}.xlsx"'})
     son = df.tail(max(1, min(int(n), 2000)))
-    return {"satir": int(len(df)), "kolonlar": dengesizlik_service.DOKUM_KOLONLAR, "not": dengesizlik_service.DOKUM_NOTU,
+    return {"satir": int(len(df)), "kolonlar": list(df.columns), "not": dengesizlik_service.dokum_notu(df),   # v2.520: YEKDEM'de 25 sütun
             "program": ozet.get("program"), "toplam": ozet.get("toplam"),
             "satirlar": [{k: (None if (isinstance(v, float) and v != v) else (float(v) if hasattr(v, "item") and not isinstance(v, str) else v)) for k, v in r.items()}
                          for r in son.to_dict(orient="records")]}
+
+
+@app.get("/v1/plants/{plant_id}/yekdem")
+def yekdem_ozet(plant_id: str, gun: int = 90, claims=Depends(gecerli_kullanici)):
+    """v2.520 (P5a) — YEKDEM katmanı: fiyat rejimi (Cetvel I / 7189; işletmeye giriş tarihinden ya da tarifedeki seçim), bugünün YEK fiyatı
+    (Cetvel I: ¢ × günün TCMB alış kuru; 7189: ayın EPİAŞ ilanı + yerli katkı, USD band konumu), kur arşivi durumu ve YEK Yön. m.23(6) saat
+    işareti (belirsiz; yalnız lisanslı YEKDEM + tarife YEKDEM). Yeniden hesaptır; EPİAŞ YEKDEM uzlaştırması değildir."""
+    from pvquant.services import plant_service, yekdem_service
+    if not (14 <= gun <= 365):
+        raise HTTPException(422, "gun 14–365 aralığında olmalı")
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    return yekdem_service.ozet(claims["tenant_id"], {"id": str(row["id"]), "params_json": row.get("params_json")}, gun=gun)
 
 
 @app.get("/v1/piyasa/durum")
