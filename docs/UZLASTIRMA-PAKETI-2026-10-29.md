@@ -380,3 +380,35 @@ yerli katkı kalemleri, EPİAŞ ilanının otomatik çekimi (uç yok).
 Testler: test_yekdem 14; tam takım 839 passed, 1 failed (test_modb_rapor 17 dakikalık yüklü koşuda zaman aşımı; tek başına 9/9 geçti), 1 skipped; web tsc 0 /
 103 / oxlint 0 / build. Sıradaki: v2.521 = P1 olay kaydı ya da P2b (yol haritası dalga 2).
 
+
+# Yirmi birinci paket — v2.521 (02.11.2026 gece, canlı): olay kaydı — planlı bakım, arıza, talimat (YAL/YAT), acil durum kesmesi, şebeke kesintisi, hasar; EAK dosyasında saatlik düşüm ve gerekçe sütunu, aylık arıza sayacı, kullanılabilirlik istisnası, dâhilî bilgi geri sayımı
+
+Commit `45e3090`, CI #654 (7 dk 24 s). Dağıtım: api + worker + web imajı (ssh; 22. port açıktı) + **`alembic upgrade head` → v2521_olay DB sahibiyle**
+(parola `grep "^DB_PASSWORD=" .env | cut -d= -f2-`; `.env` source edilmedi). Canlı: index.html ve 25 JS birebir (26/26); alembic_version v2521_olay; olay
+tablosu boş; pvq_app SELECT/INSERT/UPDATE (DELETE yok); api «startup complete»; worker «basladi»; olaylar uçları kimlik olmadan 422 (yol canlıda var).
+Kaynak: GES sahibi ihtiyaç araştırması yol haritası dalga 2 P1a (IH-086, IH-017, IH-009, IH-003, IH-085, IH-103, IH-076); bulgular 01-18 (TPYS EAK gerekçe
+sütunları: kaynak yetersizliği, iklim/verim, mücbir, dışsal, güvenlik; başka neden yoksa «kaynak yetersizliği»; arıza/bakım TPYS «Arıza ve Bakım
+bildirimleri» sayfasından ayrıca; Karar 14029/14907: UEVÇB'de ayda 30 ve üzeri arıza kaydı KÜPST n 0,05 → 0,08), 01-19 (Karar 14967: tesis 30 MW / portföy
+50 MW, olaydan en geç 1 saat içinde Dâhilî Bilgi Platformu; yürürlük metinde yok → «belirsiz»), 03-10 (ESY m.52–54 bakım bildirimi), DUY m.69/A (EAK'yi
+arıza/bakım kaydıyla düşürmeyi itiyat etmek Kanun m.16'ya gider → kayıt gerekçeli, tür ve başlangıç değiştirilemez, silme yok).
+Göç: `olay` (kiracı RLS; tür, başlangıç/bitiş, devre dışı kW, neden, EAK gerekçe sütunu, belge no, durum açık/kapalı/iptal, oluşturan; DELETE yetkisi yok).
+olay_service: tür → kural tablosu (EAK'yi düşürür mü, varsayılan gerekçe sütunu, kullanılabilirlik istisnası, arıza sayacı); doğrulama (başlangıç ≤400 gün
+ileri, bitiş > başlangıç, devre dışı güç 0–AC sınırı, gerekçe türe uygun); ekle (çakışan kayıt uyarısı; engel değil) / güncelle (bitiş, kW, gerekçe, iptal;
+tür ve başlangıç değişmez) / listele / aralık; görünen evre planlı / sürüyor / bitti / geçersiz (DB durumu ayrı); saatlik etki (Türkiye günü 24 saat, saat
+içinde kısmen süren olay süreyle orantılı, «tesisin tamamı» = günün EAK tabanı — AC sınırı / EAK alanı / kurulu güç, kWp değil; birden çok olay toplanır,
+taban sınırlar; bitişi girilmemiş olay gün sonuna kadar); istisna saatleri (planlı bakım, talimat, acil kesme, kesinti); aylık arıza sayısı olay ∨ elle
+giriş (kaynak etiketi); dâhilî bilgi 1 saat geri sayımı; özet; hasar dosyası CSV (; ayraç, BOM, evre sütunu).
+Bağlantılar: kgup.eak_csv_metni gerekçe payları (olayın sütunu önce, kalan kaynak yetersizliği); kgup_service.uret saatlik EAK serisi (program tavanı,
+eak.kaynak «+olay»); kullanılabilirlik istisna saatleri «kısıntı» gibi dışarıda; dengesizlik/portföy/alarm arıza sayısı olay kaydından; denetim eylemleri
+olay_ekle / olay_guncelle; API GET/POST /v1/plants/{id}/olaylar, PUT /olaylar/{olay_id}, GET /olaylar.csv.
+Web: «Olay kaydı» sayfası (KPI: süren olay + planlı, aylık arıza kaydı n/30, bugün kapasite düşümü saat + taban, dâhilî bilgi açıklaması; yeni olay formu;
+tür etkileri tablosu; olay listesi Bitir / Geçersiz say; CSV; «Bu sayfa nasıl çalışır»); Santralim arıza alanı notu; sahte API fixture; kare.mjs.
+İnceleme turları (01–02.11): kareler (evre: ileri tarihli bakım «açık» değil «planlı»); brief 1 (kısmi saat orantılı, AC tabanı, çakışma uyarısı, CSV evre,
+dil); brief 2 — bağımsız hesap testleri (gece yarısı kesimi, 20/60, ileri tarihli bakım, taban, toplam, geçersiz) geçti; hatalar: hasar «mücbir sebep»i
+otomatik seçiyordu (fiziksel tür ≠ mevzuat gerekçesi → varsayılan kaynak yetersizliği, seçim kullanıcıda), çakışma uyarısı «iki kez düşürmez» diyordu
+(gerçekte toplanır, ekipman kimliği yok → dürüst metin), dosyada «iptal» / ekranda «geçersiz», giriş sınırı kWp (→ AC), «Bitir» saat dilimsiz (→ UTC).
+Doğrulanamayan: mücbir sebep resmî koşulları ve TPYS'nin gerekçe sütunlarını değerlendirmesi; ekipman bazlı çakışma (model ekipman tutmuyor); Karar 14967
+yürürlüğü ve platform arayüzü; lisanslı GES'te EAK = KGÜP izni; dağıtıma bağlı bakım bildirim süresi; EAK.csv arıza sütunu.
+Sonraya: P7b olay alarmları, P2b talimat → BUDÜP, P3b Takvim satırı, P1b ekipman bazlı olay (varlık ağacı), P8 kayıp enerji ve TL, kanıt eki (dosya).
+Testler: test_olay 6; tam takım 846 passed, 1 skipped (328 s); web tsc 0 / 103 / oxlint 0 / build; 1440/768/375 taşma 0. Sıradaki: v2.522 = dalga 2 devamı
+(P2b DSG/UEVÇB bağlanması ya da P7b olay alarmları).
