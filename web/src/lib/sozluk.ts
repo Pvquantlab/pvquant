@@ -42,6 +42,7 @@ export const SOZLUK = {
     kgup_sablon_ogren: "KGÜP şablonu öğrenildi", kgup_sablon_sifirla: "KGÜP şablonu sıfırlandı",
     santral_segment: "Segment / UEVÇB ayarlandı", eak_ayar: "EAK ayarı değiştirildi",
     santral_tarihler: "Santral tarihleri ayarlandı",   // v2.518 (P3a)
+    olay_ekle: "Olay kaydı açıldı", olay_guncelle: "Olay kaydı güncellendi",   // v2.521 (P1a)
   } as Record<string, string>,
 } as const;
 

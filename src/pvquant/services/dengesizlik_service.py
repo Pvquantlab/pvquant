@@ -313,7 +313,7 @@ def _girdiler(tenant_id, plant: dict, gun: int) -> dict:
     idx = pd.DatetimeIndex(df["ts_utc"]) if not df.empty else pd.DatetimeIndex([], tz="UTC")
     fiyat = piyasa_service.fiyatlar(idx)
     pj = _pj(plant.get("params_json")); seg = segment_bilgisi(plant.get("params_json")); kat = katsayilar(plant.get("params_json"))
-    return {"df": df, "fiyat": fiyat, "kat": kat, "segment": seg["segment"], "ariza_sayisi": int(pj.get("ariza_sayisi_ay") or 0),
+    return {"df": df, "fiyat": fiyat, "kat": kat, "segment": seg["segment"], "ariza_sayisi": _ariza(tenant_id, plant),
             "luy_istisna": bool(pj.get("luy_istisna")), "bildirilen_mwh": bildirilen_serisi(tenant_id, plant["id"], pj, gun), "pozisyon": pozisyon_ayari(pj), "pj": pj}
 
 
@@ -342,6 +342,15 @@ def dokum(tenant_id, plant: dict, gun: int = 90) -> tuple[pd.DataFrame, dict]:
     ozet = hesapla_df(g["df"], g["fiyat"], g["kat"], segment=g["segment"], ariza_sayisi=g["ariza_sayisi"], luy_istisna=g["luy_istisna"],
                       bildirilen_mwh=g["bildirilen_mwh"], pozisyon=g["pozisyon"])
     return dokum_df(pv, yekdem_eki(g["pj"], g["segment"], pv)), ozet
+
+def _ariza(tenant_id, plant: dict) -> int:
+    """v2.521 (P1a): aylık arıza sayısı = olay kaydındaki arıza olayları ile Santral ayarlarındaki elle girilen sayının büyüğü (olay_service)."""
+    try:
+        from pvquant.services import olay_service
+        return int(olay_service.ariza_sayisi_etkin(tenant_id, {"id": plant["id"], "params_json": plant.get("params_json")})["sayi"])
+    except Exception:   # noqa: BLE001 — olay tablosu yoksa elle giriş
+        return int(_pj(plant.get("params_json")).get("ariza_sayisi_ay") or 0)
+
 
 def segment_bilgisi(params_json) -> dict:
     pj = _pj(params_json); ad = pj.get("segment")
@@ -394,7 +403,7 @@ def simulasyon(tenant_id, plant: dict, gun: int = 90) -> dict:
     pj = _pj(plant.get("params_json"))
     seg = segment_bilgisi(plant.get("params_json"))
     kat = katsayilar(plant.get("params_json"))
-    ariza = int(pj.get("ariza_sayisi_ay") or 0); luy = bool(pj.get("luy_istisna"))   # 31.10 (v2.510, Ç3): LÜY m.5(1)(ç),(d),(e) istisnası
+    ariza = _ariza(tenant_id, plant); luy = bool(pj.get("luy_istisna"))   # 31.10 (v2.510, Ç3): LÜY; v2.521: olay kaydı ∨ elle m.5(1)(ç),(d),(e) istisnası
     bil = bildirilen_serisi(tenant_id, plant["id"], pj, gun); poz = pozisyon_ayari(pj)   # v2.517 (P2a): fiilî bildirim ve pozisyon ayarı
     out = hesapla_df(df, fiyat, kat, segment=seg["segment"], ariza_sayisi=ariza, luy_istisna=luy, bildirilen_mwh=bil, pozisyon=poz)
     out["oneri"] = oneri_kantili(fiyat, kat)   # v2.287
@@ -587,7 +596,7 @@ def dsg_ozet(tenant_id, gun: int = 30, dagitim_anahtari: str = "sapma") -> dict:
         santraller = [dict(r._mapping) for r in s.execute(text("SELECT id, name, params_json FROM plants WHERE NOT archived ORDER BY name"))]
     programlar = {p["name"]: program_df(tenant_id, str(p["id"]), gun) for p in santraller}
     segmentler = {p["name"]: segment_bilgisi(p.get("params_json"))["segment"] for p in santraller}
-    ariza = {p["name"]: int(_pj(p.get("params_json")).get("ariza_sayisi_ay") or 0) for p in santraller}
+    ariza = {p["name"]: _ariza(tenant_id, p) for p in santraller}   # v2.521 (P1a): olay kaydındaki arıza sayısı ∨ elle giriş
     luy = {p["name"]: bool(_pj(p.get("params_json")).get("luy_istisna")) for p in santraller}   # 31.10 (v2.510, Ç3)
     idx = pd.DatetimeIndex([], tz="UTC")
     for df in programlar.values():

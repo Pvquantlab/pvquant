@@ -1349,6 +1349,84 @@ def dengesizlik_saatlik(plant_id: str, gun: int = 90, fmt: str = "json", n: int 
                          for r in son.to_dict(orient="records")]}
 
 
+class OlayIstek(BaseModel):
+    """v2.521 (P1a): olay kaydı. baslangic/bitis ISO (Türkiye saati ya da saat dilimli); etkilenen_kw boş = tesisin tamamı."""
+    tur: str
+    baslangic: str
+    bitis: str | None = None
+    etkilenen_kw: float | None = None
+    neden: str | None = None
+    eak_gerekcesi: str | None = None
+    kanit: str | None = None
+
+
+class OlayGuncelle(BaseModel):
+    bitis: str | None = None
+    etkilenen_kw: float | None = None
+    neden: str | None = None
+    eak_gerekcesi: str | None = None
+    kanit: str | None = None
+    durum: str | None = None            # iptal için
+
+
+@app.get("/v1/plants/{plant_id}/olaylar")
+def olaylar(plant_id: str, gun: int = 90, claims=Depends(gecerli_kullanici)):
+    """v2.521 (P1a) — olay kaydı: son N günün olayları, açık olaylar, aylık arıza sayacı (olay ∨ elle; eşik 30), bugünkü EAK etkisi,
+    dâhilî bilgi 1 saat hatırlatması (Karar 14967, yürürlük belirsiz)."""
+    from pvquant.services import olay_service
+    if not (7 <= gun <= 400):
+        raise HTTPException(422, "gun 7–400 aralığında olmalı")
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    return olay_service.ozet(claims["tenant_id"], {"id": str(row["id"]), "name": row["name"], "capacity_kwp": row["capacity_kwp"], "ac_limit_kw": row.get("ac_limit_kw"),
+                                                    "params_json": row.get("params_json")}, gun=gun)
+
+
+@app.get("/v1/plants/{plant_id}/olaylar.csv")
+def olaylar_csv(plant_id: str, gun: int = 365, claims=Depends(gecerli_kullanici)):
+    """v2.521 (P1a) — hasar / sigorta dosyası: olay listesi CSV (; ayraç, BOM)."""
+    from pvquant.services import olay_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    metin = olay_service.csv_metni(olay_service.listele(claims["tenant_id"], str(row["id"]), max(7, min(gun, 400)), iptal_dahil=True), row["name"])
+    return Response(metin, media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="pvquant_olay_kaydi_{row["name"].replace(" ", "_")}.csv"'})
+
+
+@app.post("/v1/plants/{plant_id}/olaylar", status_code=201)
+def olay_ekle(plant_id: str, p: OlayIstek, claims=Depends(yazma_yetkisi())):
+    from pvquant.services import olay_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    try:
+        o = olay_service.ekle(claims["tenant_id"], {"id": str(row["id"]), "capacity_kwp": row["capacity_kwp"], "ac_limit_kw": row.get("ac_limit_kw")}, p.model_dump(), olusturan=claims["sub"])
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    _denetim.kaydet("musteri", "olay_ekle", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="olay", nesne_id=o["id"],
+                    ayrinti={"tur": o["tur"], "baslangic": o["baslangic"], "bitis": o["bitis"], "etkilenen_kw": o["etkilenen_kw"], "plant_id": plant_id})
+    return o
+
+
+@app.put("/v1/plants/{plant_id}/olaylar/{olay_id}")
+def olay_guncelle(plant_id: str, olay_id: str, p: OlayGuncelle, claims=Depends(yazma_yetkisi())):
+    from pvquant.services import olay_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    try:
+        o = olay_service.guncelle(claims["tenant_id"], {"id": str(row["id"]), "capacity_kwp": row["capacity_kwp"], "ac_limit_kw": row.get("ac_limit_kw")}, olay_id, p.model_dump(exclude_unset=True))
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    if o is None:
+        raise HTTPException(404, "olay yok")
+    _denetim.kaydet("musteri", "olay_guncelle", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="olay", nesne_id=o["id"],
+                    ayrinti={k: v for k, v in p.model_dump(exclude_unset=True).items()})
+    return o
+
+
 @app.get("/v1/plants/{plant_id}/yekdem")
 def yekdem_ozet(plant_id: str, gun: int = 90, claims=Depends(gecerli_kullanici)):
     """v2.520 (P5a) — YEKDEM katmanı: fiyat rejimi (Cetvel I / 7189; işletmeye giriş tarihinden ya da tarifedeki seçim), bugünün YEK fiyatı

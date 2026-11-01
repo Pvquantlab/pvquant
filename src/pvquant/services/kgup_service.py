@@ -98,7 +98,18 @@ def uret(tenant_id, plant: dict, gun: date, kantil: str = "p50", uevcb: str | No
     seri = pd.Series(df["kw"].values, index=pd.DatetimeIndex(df["ts_utc"])) / 1000.0   # kW → MW
     kap = float(plant["capacity_kwp"]) / 1000.0
     eak_bilgi = eak_etkin(plant, gun); eak = eak_bilgi["eak_mw"]   # v2.275: EAK alanı / geçici kısıt
-    son = kg.program_uret(seri, gun.isoformat(), uevcb or plant.get("uevcb") or str(plant["id"])[:8].upper(), kap, eak_mw=eak, kantil=None)
+    # v2.521 (P1a): olay kaydı (planlı bakım, arıza, acil kesme, şebeke kesintisi, hasar) saat bazında EAK'yi düşürür; gerekçe sütunu olaydan
+    from pvquant.services import olay_service
+    etki = olay_service.saatlik_etki(tenant_id, plant, gun)
+    gerekce_saat = {h: {g: kw / 1000.0 for g, kw in v["gerekce"].items()} for h, v in etki["saatler"].items()}
+    if etki["saatler"]:
+        idx_ist = pd.date_range(pd.Timestamp(gun).tz_localize("Europe/Istanbul"), periods=24, freq="h")
+        eak_seri = pd.Series([max(eak - etki["saatler"].get(h, {"toplam_kw": 0.0})["toplam_kw"] / 1000.0, 0.0) for h in range(24)], index=idx_ist)
+        eak_bilgi = {**eak_bilgi, "olay_saat": len(etki["saatler"]), "olay_en_cok_mw": round(max(v["toplam_kw"] for v in etki["saatler"].values()) / 1000.0, 3),
+                     "kaynak": eak_bilgi["kaynak"] + "+olay"}
+    else:
+        eak_seri = eak
+    son = kg.program_uret(seri, gun.isoformat(), uevcb or plant.get("uevcb") or str(plant["id"])[:8].upper(), kap, eak_mw=eak_seri, kantil=None)
     if son.eksik_saatler:
         return {"hata": f"tahmini olmayan saat var (saat {', '.join(map(str, son.eksik_saatler))}); KGÜP 0 yazılmaz, dosya üretilmedi",
                 "gun": gun.isoformat(), "kod": 422, "eksik_saatler": son.eksik_saatler, "kosu": kosu}
@@ -107,7 +118,7 @@ def uret(tenant_id, plant: dict, gun: date, kantil: str = "p50", uevcb: str | No
     tablo = kg.ceyrek_dilimle(son) if (son.sicrama_saatleri and dengeleme_birimi) else son.tablo
     sab = kg.Sablon.params_json_dan(pj)
     baytlar = kg.csv_baytlari(tablo, sab)
-    eak_metin = kg.eak_csv_metni(son.tablo, kap)   # v2.512: TPYS EAK.csv biçimi (ayrı ekran/servis); fark «kaynak yetersizliği»
+    eak_metin = kg.eak_csv_metni(son.tablo, kap, gerekce_saat=gerekce_saat)   # v2.512: TPYS EAK.csv; fark «kaynak yetersizliği»; v2.521: olay gerekçesi
     uyarilar = son.uyarilar + hatalar   # v2.513 rötuş: şablon durumu artık uyarı değil (sablon.durum alanında; v2.512'den beri TPYS ile birebir)
     if son.sicrama_saatleri and not dengeleme_birimi:
         uyarilar.append(f"≥200 MWh saatlik değişim var (saat {', '.join(map(str, son.sicrama_saatleri))}); santral dengeleme birimi değil, 15 dk satırı üretilmedi (DUY m.69(3))")

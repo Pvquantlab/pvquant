@@ -106,6 +106,47 @@ const DSG = { gosterge: false, santral: 3, dagitim_anahtari: "sapma", dagitim_et
             "Format Lab": { kayip_tl: 138600, edt_tek_tl: -133900, edt_bireysel_tl: -116200, kupst_tl: null, sapma_mwh: 54.3, grup_payi_mwh: 11.5, edt_dsg_tl: -120600, netlesme_farki_tl: 13300, pay_pct: 34.7 },
             "PVDAQ Golden 33": { kayip_tl: 102500, edt_tek_tl: -98900, edt_bireysel_tl: -85100, kupst_tl: null, sapma_mwh: 40.1, grup_payi_mwh: 8.4, edt_dsg_tl: -87900, netlesme_farki_tl: 11000, pay_pct: 22.5 } }, n_saat: 480, ayri_tl: 412300, net_tl: 371900, kazanc_tl: 40400, kazanc_pct: 9.8, edt_tek_tl: -398200, edt_dsg_tl: -357800, edt_grup_tl: -12600, edt_bireysel_tl: -345200, netlesme_farki_tl: 40400, kupst_uye_tl: null, esik: 0.05, esik_kaynak: "Karar 13869 (RG 18.10.2025), 1.1.2026'dan %5", kural_surumu: "edt-2026-V150-edta_ayrik+kupst-14029", hesaplanamayan_saat: 0, disi: ["Kıvanç 2 GES"], segment_yok: ["Format Lab", "PVDAQ Golden 33"], sapma_net_mwh: 118.2, sapma_ayri_mwh: 161.5, pencere_gun: 30, fiyat: { epias_saat: 0, senaryo_saat: 480 }, not: "Her santralin sapmasının eşik oranı kadarı, %5 × PH, DSG içinde netleşir; aşan kısım santralin kendisinde kalır. KÜPST santral başına ödenir ve DSG içinde netleşmez. Dayanak: DUY m.111. Bu rakamlar yürürlükteki kuralla yapılmış varsayımsal bir yeniden hesaptır; santralin satışı KGÜP'e eşit varsayılmıştır. EPİAŞ uzlaştırma sonucu değildir. Senaryo fiyatlı 480 saatte sistem yönü dengede varsayılmıştır." };
 const PT = { durum: "ok", yontem: "bottom-up", tutarli: true, santral: 5, n_saat: 168, kapasite_kwp: 328732, gunler: Array.from({ length: 7 }, (_, i) => ({ gun: new Date(Date.UTC(2026, 9, 24 + i)).toISOString().slice(0, 10), p50_mwh: 1798.7 - i * 12, p10_mwh: 1600 - i * 10, p90_mwh: 1950 - i * 12, saat: 24 })), not: "Santral tahminleri toplanır." };
+// v2.521 (P1a): olay kaydı fixture (gerçek servis şekli); a1 için; türler ve kurallar olay_service.TUR_KURAL ile birebir
+const OLAY_ETIKET = { planli_bakim: "Planlı bakım", ariza: "Arıza", talimat_yat: "Yük atma talimatı (YAT)", talimat_yal: "Yük alma talimatı (YAL)", acil_kesme: "Acil durum kesmesi", sebeke_kesintisi: "Şebeke kesintisi", hasar: "Hasar" };
+const OLAY_KURAL = {
+  planli_bakim: { eak_dusur: true, gerekce: "kaynak_yetersizligi", istisna: true, sayac: false, not: "EAK düşer; TPYS Arıza ve Bakım bildirimi ayrıca; kullanılabilirlik hesabında istisna" },
+  ariza: { eak_dusur: true, gerekce: "kaynak_yetersizligi", istisna: false, sayac: true, not: "EAK düşer; aylık arıza sayacına girer (30 ve üzeri KÜPST n 0,08); kullanılabilirlikte arıza" },
+  talimat_yat: { eak_dusur: false, gerekce: null, istisna: true, sayac: false, not: "EAK değişmez; program sapması talimattan (BUDÜP, P2b); kullanılabilirlikte istisna" },
+  talimat_yal: { eak_dusur: false, gerekce: null, istisna: true, sayac: false, not: "EAK değişmez; program sapması talimattan (BUDÜP, P2b)" },
+  acil_kesme: { eak_dusur: true, gerekce: "dissal", istisna: true, sayac: false, not: "Sistem İşletmecisi kesmesi: EAK dışsal gerekçeyle düşer; kullanılabilirlikte istisna" },
+  sebeke_kesintisi: { eak_dusur: true, gerekce: "dissal", istisna: true, sayac: false, not: "Şebeke kaynaklı: EAK dışsal gerekçeyle düşer; kullanılabilirlikte istisna" },
+  hasar: { eak_dusur: true, gerekce: "kaynak_yetersizligi", istisna: false, sayac: false, not: "Hasar dosyası için kayıt; EAK düşer. Hasar tek başına mücbir sebep değildir: «mücbir sebep» gerekçesi yalnız mevzuattaki koşullar sağlanıyorsa seçilir" } };
+// 02.11 üçüncü inceleme: bugünkü saatlik etki olay_service.saatlik_etki ile aynı mantık (Türkiye günü, kısmi saat orantılı, bitişi girilmemiş olay gün sonuna kadar, taban 12.000 kW AC)
+const OLAY_TABAN_KW = 12000;
+const olayBugun = () => new Date(Date.now() + 3 * 3600000).toISOString().slice(0, 10);
+const olaySaatlikEtki = (gunIso) => { const g0 = new Date(gunIso + "T00:00+03:00").getTime(), g1 = g0 + 86400000; const saatler = {};
+  for (const o of OLAYLAR) { if (o.durum === "iptal" || !OLAY_KURAL[o.tur].eak_dusur) continue; const ob = new Date(o.baslangic).getTime(), oe = o.bitis ? new Date(o.bitis).getTime() : g1; if (ob >= g1 || oe <= g0) continue;
+    const kw = o.etkilenen_kw ?? OLAY_TABAN_KW;
+    for (let h = 0; h < 24; h++) { const s0 = g0 + h * 3600000, s1 = s0 + 3600000; const kes = (Math.min(oe, s1) - Math.max(ob, s0)) / 3600000; if (kes <= 0) continue; const oran = Math.min(1, kes);
+      const d = saatler[h] ?? (saatler[h] = { toplam_kw: 0, oran: 0 }); d.toplam_kw = Math.min(OLAY_TABAN_KW, d.toplam_kw + kw * oran); d.oran = Math.max(d.oran, oran); } }
+  return saatler; };
+const olayEvre = (o) => o.durum === "iptal" ? "iptal" : new Date(o.baslangic) > new Date() ? "planli" : (!o.bitis || new Date(o.bitis) > new Date()) ? "suruyor" : "bitti";
+const OLAY = (id, tur, bas, bit, kw, neden, kanit) => { const o = { id, plant_id: "a1", tur, tur_etiket: OLAY_ETIKET[tur], baslangic: bas, bitis: bit, etkilenen_kw: kw, neden, eak_gerekcesi: OLAY_KURAL[tur].gerekce, kanit, durum: bit && new Date(bit) < new Date() ? "kapali" : "acik", olusturma: bas, guncelleme: null, kural: OLAY_KURAL[tur] }; o.acik = o.durum === "acik"; o.evre = olayEvre(o); return o; };
+const OLAYLAR = [
+  OLAY("o1", "ariza", "2026-11-01T09:40+03:00", null, 2400, "İnvertör 3 DC izolasyon hatası", null),
+  OLAY("o2", "planli_bakim", "2026-11-05T08:00+03:00", "2026-11-05T17:00+03:00", null, "Yıllık trafo bakımı (TEİAŞ'a 7 gün önce bildirildi)", "bakım planı 2026-11"),
+  OLAY("o3", "sebeke_kesintisi", "2026-10-28T14:10+03:00", "2026-10-28T16:45+03:00", null, "TEİAŞ hat arızası, OG fider açtı", "TEİAŞ kesinti kaydı 48213"),
+  OLAY("o4", "ariza", "2026-10-21T11:05+03:00", "2026-10-21T13:30+03:00", 1200, "String izleyici 7 arızası", "servis raporu SR-1182"),
+  OLAY("o5", "talimat_yat", "2026-10-19T12:00+03:00", "2026-10-19T14:00+03:00", 5000, "YAT talimatı (enerji fazlası)", "talimat no 2026-10-19-4471"),
+  OLAY("o6", "ariza", "2026-10-12T09:00+03:00", "2026-10-12T09:50+03:00", 800, "Kombiner kutusu sigorta", null) ];
+const olayOzeti = () => { for (const o of OLAYLAR) o.evre = olayEvre(o); const acik = OLAYLAR.filter((o) => o.evre === "suruyor"); const bugun = olayBugun(); const ay = bugun.slice(0, 7);
+  const kasim = OLAYLAR.filter((o) => o.tur === "ariza" && o.durum !== "iptal" && o.baslangic.startsWith(ay)).length; const etki = olaySaatlikEtki(bugun); const saatler = Object.values(etki);
+  return { bugun, pencere_gun: 90, olaylar: OLAYLAR.filter((o) => o.durum !== "iptal"), acik: acik.length, planli: OLAYLAR.filter((o) => o.evre === "planli").length,
+    ariza_sayaci: { sayi: Math.max(kasim, 0), olay: kasim, elle: 0, kaynak: kasim ? "olay kaydı" : "yok", esik: 30, uyari: 25, ay },
+    eak_bugun: { saat_sayisi: saatler.length, en_cok_kw: Math.max(0, ...saatler.map((v) => v.toplam_kw)), taban_kw: OLAY_TABAN_KW, kismi_saat: saatler.filter((v) => v.oran < 1).length, suren: acik.filter((o) => OLAY_KURAL[o.tur].eak_dusur && !o.bitis).length },
+    aciklama: { kapasite: "Planlı bakım, arıza, acil kesme, şebeke kesintisi ve hasar o saatlerde verilebilecek gücü (EAK) ve programın tavanını düşürür; saat içinde kısmen süren olay süreyle orantılı düşer; bitişi girilmemiş olay gün sonuna kadar sayılır. Birden çok olay toplanır (ayrı ekipmanlar için doğrudur; aynı ekipmanı anlatan iki kayıt iki kez düşer, kayıt ekipman ayrımı tutmaz), toplam günün EAK tabanını (AC sınırı ya da EAK alanı) aşmaz. Talimatlar (YAL/YAT) kapasiteyi değiştirmez.",
+      sayac: "Yalnız «arıza» türü aylık sayaca girer. Ayda 30 ve üzeri arıza kaydı KGÜP sapma tutarı katsayısını 0,05'ten 0,08'e çıkarır (Karar 14907); 25'te uyarı alarmı.",
+      kullanilabilirlik: "Planlı bakım, talimat, acil kesme ve şebeke kesintisi saatleri kullanılabilirlik hesabından düşülür (santralın elinde değil); arıza ve hasar arıza sayılır.",
+      islem: "«Bitir» olayın bittiğini işler, kayıt hesaplarda kalır. «Geçersiz say» yanlış kaydı hesaplardan çıkarır; kayıt silinmez, dosyada «geçersiz» olarak görünür. Başlangıç ve tür değiştirilemez; yanlışsa kaydı geçersiz sayıp yenisini açın. Her ekleme ve değişiklik denetim izinde tutulur.",
+      gerekce: "EAK gerekçesi TPYS EAK dosyasındaki sütundur; tür için varsayılan önerilir, kayıt girilirken değiştirilebilir. «Mücbir sebep» yalnız mevzuattaki koşullar sağlanıyorsa seçilir; hasar tek başına mücbir sebep değildir." },
+    dahili_bilgi: [], turler: Object.keys(OLAY_KURAL).map((k) => ({ kod: k, etiket: OLAY_ETIKET[k], ...OLAY_KURAL[k] })),
+    gerekceler: [["kaynak_yetersizligi", "kaynak yetersizliği"], ["iklim_verim", "iklim / verim"], ["mucbir", "mücbir sebep"], ["dissal", "dışsal"], ["guvenlik", "güvenlik"]].map(([kod, etiket]) => ({ kod, etiket })),
+    not: "Olay kaydı santralın kendi kaydıdır; TPYS Arıza ve Bakım bildirimi, Dâhilî Bilgi Platformu açıklaması ve TEİAŞ bildirimleri ayrıca yapılır." }; };
 http.createServer((req, res) => {
   const url = new URL(req.url, "http://x"); const yol = url.pathname;
   res.setHeader("Access-Control-Allow-Origin", "*"); res.setHeader("Access-Control-Allow-Headers", "authorization,content-type,if-none-match"); res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS"); res.setHeader("Access-Control-Expose-Headers", "etag");
@@ -134,6 +175,19 @@ http.createServer((req, res) => {
   const YEKDEM_DISI = { ...YEKDEM, segment: "lisansli_serbest", uygulanir: false, tarife_yekdem: false, fiyat: null, aylar: [], m23_6: null,
     rejim: { secim: "otomatik", isletmeye_giris: null, tesis_tipi: "gunes", rejim: null, etiket: "belirsiz", kaynak: "işletmeye giriş tarihi girilmedi (Takvim › Santral tarihleri) ve tarifede rejim seçilmedi", kaynak_turu: "yok" },
     not: "Santral segmenti lisanslı YEKDEM değil; YEKDEM fiyatı yalnız tarife gelir hesabında kullanılır, m.23(6) işareti üretilmez." };
+  // v2.521 (P1a): olay kaydı — modül kapsamında (POST/PUT sonraki GET'te görünür); bugün 01.11.2026
+  if (/^\/v1\/plants\/[^/]+\/olaylar$/.test(yol) && req.method === "GET") return yanit(200, olayOzeti());
+  if (/^\/v1\/plants\/[^/]+\/olaylar$/.test(yol) && req.method === "POST") { let g = ""; req.on("data", (c) => { g += c; }); req.on("end", () => { let b = {}; try { b = JSON.parse(g || "{}"); } catch { /* yok */ }
+      const k = OLAY_KURAL[b.tur] || OLAY_KURAL.ariza; const o = { id: "o" + (OLAYLAR.length + 1), plant_id: "a1", tur: b.tur, tur_etiket: OLAY_ETIKET[b.tur] ?? b.tur, baslangic: b.baslangic + "+03:00", bitis: b.bitis ? b.bitis + "+03:00" : null,
+        etkilenen_kw: b.etkilenen_kw ?? null, neden: b.neden ?? null, eak_gerekcesi: k.eak_dusur ? (b.eak_gerekcesi ?? k.gerekce) : null, kanit: b.kanit ?? null, durum: b.bitis && new Date(b.bitis + "+03:00") < new Date() ? "kapali" : "acik", olusturma: new Date().toISOString(), guncelleme: null, kural: k };
+      o.acik = o.durum === "acik"; o.evre = olayEvre(o);
+      const cak = OLAYLAR.filter((x) => x.durum !== "iptal" && new Date(x.baslangic) < new Date(o.bitis ?? "2100-01-01") && (!x.bitis || new Date(x.bitis) > new Date(o.baslangic)));
+      if (cak.length) { o.uyari = `Aynı saatlerde ${cak.length} kayıt daha var (${cak.slice(0, 3).map((x) => x.tur_etiket).join(", ")}). Kayıtlar toplanır: ayrı ekipmanlar için doğrudur; aynı ekipman için ikinci kayıt kapasiteyi iki kez düşürür (toplam günün EAK tabanını aşmaz). Yanlış girdiyseniz kaydı geçersiz sayın.`; o.cakisan = cak.map((x) => x.id); }
+      OLAYLAR.unshift(o); res.writeHead(201, { "Content-Type": "application/json; charset=utf-8" }); res.end(JSON.stringify(o)); }); return; }
+  if (/^\/v1\/plants\/[^/]+\/olaylar\/[^/]+$/.test(yol) && req.method === "PUT") { let g = ""; req.on("data", (c) => { g += c; }); req.on("end", () => { let b = {}; try { b = JSON.parse(g || "{}"); } catch { /* yok */ }
+      const id = yol.split("/").pop(); const o = OLAYLAR.find((x) => x.id === id); if (!o) { res.writeHead(404); return res.end(); }
+      if (b.bitis !== undefined) o.bitis = b.bitis ? b.bitis + "+03:00" : null; if (b.durum === "iptal") o.durum = "iptal"; else o.durum = (!o.bitis || new Date(o.bitis) > new Date()) ? "acik" : "kapali"; o.acik = o.durum === "acik"; o.evre = olayEvre(o); o.guncelleme = new Date().toISOString();
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" }); res.end(JSON.stringify(o)); }); return; }
   if (/^\/v1\/plants\/a3\/yekdem/.test(yol)) return yanit(200, YEKDEM);
   if (/^\/v1\/plants\/[^/]+\/yekdem/.test(yol)) return yanit(200, YEKDEM_DISI);
   if (/^\/v1\/plants\/a3\/dengesizlik$/.test(yol.split("?")[0])) return yanit(200, { ...VERI.dengesizlik, segment: { ...VERI.dengesizlik.segment, segment: "lisansli_yekdem" } });

@@ -474,3 +474,18 @@ export type Takvim = { bugun: string; pencere_gun: number; segment: string | nul
   donemler: { donem: string; olaylar: TakvimOlay[] }[];
   gunluk: { saat: string; ad: string; kaynak: string; kapsam: string[]; not: string | null; gunler: "her gün" | "iş günü" }[];
   kunye: KunyeTarihler; tatil_kaynak: string; tatil_yillari: number[]; not: string };
+/** v2.521 (P1a): olay kaydı — planlı bakım, arıza, talimat, acil kesme, şebeke kesintisi, hasar; EAK/program, arıza sayacı ve kullanılabilirlik bunlardan beslenir. */
+export type OlayTur = "planli_bakim" | "ariza" | "talimat_yat" | "talimat_yal" | "acil_kesme" | "sebeke_kesintisi" | "hasar";
+export interface OlayKural { eak_dusur: boolean; gerekce: string | null; istisna: boolean; sayac: boolean; not: string }
+export interface Olay { id: string; plant_id: string; tur: OlayTur; tur_etiket: string; baslangic: string; bitis: string | null; etkilenen_kw: number | null; neden: string | null;
+  eak_gerekcesi: string | null; kanit: string | null; durum: "acik" | "kapali" | "iptal"; acik: boolean; evre: "planli" | "suruyor" | "bitti" | "iptal"; olusturma: string; guncelleme: string | null; kural: OlayKural }
+export interface OlayOzet { bugun: string; pencere_gun: number; olaylar: Olay[]; acik: number; planli: number;
+  ariza_sayaci: { sayi: number; olay: number; elle: number; kaynak: string; esik: number; uyari: number; ay: string };
+  eak_bugun: { saat_sayisi: number; en_cok_kw: number; taban_kw: number; kismi_saat: number; suren: number };
+  aciklama: { kapasite: string; sayac: string; kullanilabilirlik: string; islem: string; gerekce: string };
+  dahili_bilgi: { olay_id: string; tur: string; esik: string; etkilenen_kw: number; son_saat: string; kalan_dk: number; gecti: boolean; yururluk: string; not: string }[];
+  turler: ({ kod: OlayTur; etiket: string } & OlayKural)[]; gerekceler: { kod: string; etiket: string }[]; not: string }
+/** ekleme yanıtı: aynı saatlerde başka kayıt varsa uyarı (engel değil) */
+export type OlayYanit = Olay & { uyari?: string; cakisan?: string[] };
+export interface OlayGiris { tur: OlayTur; baslangic: string; bitis?: string | null; etkilenen_kw?: number | null; neden?: string | null; eak_gerekcesi?: string | null; kanit?: string | null }
+

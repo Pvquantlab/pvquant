@@ -174,8 +174,12 @@ def _baglam(tenant_id, plant: dict, secili: list[str]) -> dict:
             b.update(ptf_baglam(plant))
         except Exception as e:   # noqa: BLE001 — fiyat okunamazsa alarm düşmez
             print("[alarm][ptf]", plant.get("name"), type(e).__name__, e); b["ptf_dusuk_saatler"] = []
-    if "ariza_sayaci_yaklasti" in secili:   # v2.519 (P7a): params_json.ariza_sayisi_ay (elle girilen)
-        b["ariza_sayisi_ay"] = _pj(plant).get("ariza_sayisi_ay")
+    if "ariza_sayaci_yaklasti" in secili:   # v2.519 (P7a): elle girilen aylık sayı; v2.521 (P1a): olay kaydındaki arıza olayları ile büyüğü
+        from pvquant.services import olay_service
+        try:
+            b["ariza_sayisi_ay"] = olay_service.ariza_sayisi_etkin(tenant_id, plant)["sayi"] or None
+        except Exception:   # noqa: BLE001
+            b["ariza_sayisi_ay"] = _pj(plant).get("ariza_sayisi_ay")
     if "kgup_revizyon_onerisi" in secili:   # v2.507 (F-10)
         try:
             from pvquant.services import revizyon_service

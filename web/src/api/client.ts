@@ -1,4 +1,4 @@
-import type { DengesizlikSaatlik, DsgAnahtar, KgupRevizyon, PiyasaDurum, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar, PortfoyAnahtar, PortfoyKupst, UevcbArama , Takvim, KunyeTarihler, Yekdem } from "./types";
+import type { DengesizlikSaatlik, DsgAnahtar, KgupRevizyon, PiyasaDurum, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar, PortfoyAnahtar, PortfoyKupst, UevcbArama , Takvim, KunyeTarihler, Yekdem, Olay, OlayOzet, OlayGiris, OlayYanit } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -854,6 +854,19 @@ export const api = {
   epiasUretimAyarla: (p: string, epias_santral_id: number | null): Promise<EpiasUretim> => gonder(`/v1/plants/${p}/epias-uretim`, "PUT", { epias_santral_id }),
   /** v2.518 (P3a): piyasa ve mevzuat takvimi (yaklaşan, aylık zincir, günlük saatler, künye tarihleri) ve künye tarih ayarı. */
   takvim: (p: string, gun = 90): Promise<Takvim> => getir<Takvim>(`/v1/plants/${p}/takvim?gun=${gun}`),
+  /** v2.521 (P1a): olay kaydı — liste/özet, ekleme, güncelleme (kapatma/iptal), hasar dosyası CSV. */
+  olaylar: (p: string, gun = 90): Promise<OlayOzet> => getir<OlayOzet>(`/v1/plants/${p}/olaylar?gun=${gun}`),
+  olayEkle: (p: string, g: OlayGiris): Promise<OlayYanit> => gonder(`/v1/plants/${p}/olaylar`, "POST", g),
+  olayGuncelle: (p: string, id: string, g: Partial<OlayGiris> & { durum?: "iptal" }): Promise<Olay> => gonder(`/v1/plants/${p}/olaylar/${id}`, "PUT", g),
+  olaylarIndir: async (p: string, gun = 365): Promise<void> => {
+    const jeton = localStorage.getItem("pvq_token");
+    const y = await fetch(`${TABAN}/v1/plants/${p}/olaylar.csv?gun=${gun}`, { headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
+    if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise<void>(() => {}); }
+    if (!y.ok) throw new Error(`Dışa aktarma başarısız (${y.status}).`);
+    const es = /filename="([^"]+)"/.exec(y.headers.get("Content-Disposition") ?? "");
+    const url = URL.createObjectURL(await y.blob()); const a = document.createElement("a");
+    a.href = url; a.download = es?.[1] ?? "pvquant_olay_kaydi.csv"; a.click(); URL.revokeObjectURL(url);
+  },
   /** v2.520 (P5a): YEKDEM katmanı — rejim, bugünün YEK fiyatı, aylık ilan ve band, kur, m.23(6) işareti; alınamazsa null. */
   yekdem: async (p: string, gun = 90): Promise<Yekdem | null> => {
     try { return await getir<Yekdem>(`/v1/plants/${p}/yekdem?gun=${gun}`); } catch { return null; }

@@ -155,7 +155,8 @@ def _sayi(v: float) -> str:
     return "0" if s in ("", "-0") else s
 
 
-def eak_csv_metni(tablo: pd.DataFrame, kurulu_guc_mw: float, ic_tuketim_mw: float = 0.0, gerekce: str = "kaynak_yetersizligi") -> str:
+def eak_csv_metni(tablo: pd.DataFrame, kurulu_guc_mw: float, ic_tuketim_mw: float = 0.0, gerekce: str = "kaynak_yetersizligi",
+                  gerekce_saat: dict | None = None) -> str:
     """v2.512 — TPYS EAK.csv (146796) biçiminde EAK dosyası: saat 0–23 tam sayı, Miktar = EAK (MW); kurulu güç − EAK − iç tüketim farkı
     `gerekce` sütununa (TPYS Bildirim Dokümanı: başka bir neden yoksa «kaynak yetersizliği»; GES gece saatlerinde kurulu gücün tamamı),
     öbür gerekçe hücreleri boş (şablondaki gibi). Arıza/bakım TPYS «Arıza ve Bakım bildirimleri» sayfasından ayrıca bildirilir. CRLF, BOM yok."""
@@ -166,8 +167,18 @@ def eak_csv_metni(tablo: pd.DataFrame, kurulu_guc_mw: float, ic_tuketim_mw: floa
     for r in t.itertuples():
         eak = float(r.eak_mw); eksik = max(float(kurulu_guc_mw) - eak - float(ic_tuketim_mw), 0.0)
         hucre = dict.fromkeys(EAK_KOLONLAR, "")
-        hucre.update({"Saat": str(int(r.saat)), "Miktar": _sayi(eak), "ic_tuketim": _sayi(ic_tuketim_mw) if ic_tuketim_mw else "",
-                      gerekce: _sayi(eksik) if eksik >= 0.0005 else ""})
+        hucre.update({"Saat": str(int(r.saat)), "Miktar": _sayi(eak), "ic_tuketim": _sayi(ic_tuketim_mw) if ic_tuketim_mw else ""})
+        # v2.521 (P1a): olay kaydından gelen saatlik düşüm kendi gerekçe sütununa (dışsal, mücbir…), kalan eksik varsayılan gerekçeye
+        paylar: dict = {}
+        for g, mw in sorted(((gerekce_saat or {}).get(int(r.saat)) or {}).items(), key=lambda kv: kv[0] == gerekce):   # özel gerekçeler önce, varsayılan son
+            if g in EAK_GEREKCE and mw > 0:
+                pay = min(float(mw), eksik - sum(paylar.values()))
+                if pay >= 0.0005:
+                    paylar[g] = paylar.get(g, 0.0) + pay
+        kalan = eksik - sum(paylar.values())
+        if kalan >= 0.0005:
+            paylar[gerekce] = paylar.get(gerekce, 0.0) + kalan
+        hucre.update({g: _sayi(mw) for g, mw in paylar.items()})
         hatlar.append(",".join(hucre[k] for k in EAK_KOLONLAR))
     return "\r\n".join(hatlar) + "\r\n"
 

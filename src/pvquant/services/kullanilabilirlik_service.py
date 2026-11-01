@@ -49,6 +49,21 @@ def hesapla(tenant_id, plant: dict, gun: int = 30) -> dict:
             s.connection(), params={"p": plant["id"], "g": gun}, parse_dates=["ts_utc"])
     if not df.empty:
         df = df.sort_values("ts_utc").drop_duplicates("ts_utc", keep="last")
+        # v2.521 (P1a): olay kaydındaki istisna türleri (planlı bakım, talimat, acil kesme, şebeke kesintisi) arıza sayılmaz — 'kisinti' gibi dışarıda
+        from pvquant.services import olay_service
+        ts = pd.to_datetime(df["ts_utc"], utc=True)
+        istisna = olay_service.istisna_saatleri(tenant_id, plant["id"], ts.min().to_pydatetime(), (ts.max() + pd.Timedelta(hours=1)).to_pydatetime())
+        if istisna:
+            maske = ts.isin(list(istisna)).values
+            df["flag"] = df.get("flag", pd.Series("", index=df.index)).astype(str).where(~maske, "kisinti")
+            olay_saat = int(maske.sum())
+        else:
+            olay_saat = 0
+    else:
+        olay_saat = 0
     out = hesapla_df(df, float(plant["capacity_kwp"]))
     out["pencere_gun"] = gun
+    out["olay_istisna_saat"] = olay_saat
+    if olay_saat and out.get("not"):
+        out["not"] = out["not"].replace("olay günlüğü yok — şebeke kesintisi ayrılamaz", f"olay kaydındaki {olay_saat} istisna saati (planlı bakım, talimat, kesinti) dışarıda")
     return out
