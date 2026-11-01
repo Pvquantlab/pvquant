@@ -150,9 +150,35 @@ def saatlik_hesap(df: pd.DataFrame, fiyat: pd.DataFrame, kat: d.Katsayilar | Non
     return pv, fiyat_ozeti, x, ay_naif
 
 
+def teminat_gostergesi(pv: pd.DataFrame, risk_katsayisi: float | None = None) -> dict:
+    """v2.522 (P2b, IH-033/K-05): EPİAŞ dengesizlik teminatı tanımıyla gösterge — geçmiş 3 ayın aylık en yüksek negatif enerji dengesizlik
+    miktarının mutlak değeri (MWh) × geçmiş 12 aylık dönemin aylık ortalama SMF'lerinin aritmetik ortalaması × risk katsayısı (02-08; EPİAŞ teminat
+    sayfası). Risk katsayısı değeri BULUNAMADI → Santral ayarlarından girilir; girilmemişse tutar yok. Aylık «ağırlıklı ortalama SMF» ağırlığı
+    kaynakta tanımlanmamış → saatlik SMF'nin aylık düz ortalaması (işaretli). Kalem 'doğrulanmamış' etiketiyle sunulur; EPYS/Takasbank esastır."""
+    bos = {"edm_neg_max_mwh": None, "edm_ay": None, "smf_ort_tl_mwh": None, "smf_ay_sayisi": 0, "risk_katsayisi": risk_katsayisi, "tutar_tl": None,
+           "dogrulanmis": False, "formul": "3 ayın en yüksek aylık negatif EDM (MWh) × 12 aylık ortalama SMF (TL/MWh) × risk katsayısı",
+           "not": "EPİAŞ dengesizlik teminatı tanımı (Teminat Usul ve Esasları; risk katsayısı değeri kaynakta yok → Santral ayarlarından girilir). Gösterge; EPYS ve Takasbank tutarları esastır."}
+    if pv is None or pv.empty:
+        return bos
+    x = pv.copy(); x.index = x.index.tz_convert(IST)
+    edm_neg = (-x["sapma"]).clip(lower=0).resample("ME").sum()
+    ay_basi = pd.Timestamp.now(tz=IST).normalize().replace(day=1)
+    tam = edm_neg[edm_neg.index < ay_basi]   # yalnız kapanmış aylar
+    son3 = (tam if len(tam) else edm_neg).tail(3)
+    smf_ay = x["smf"].astype(float).resample("ME").mean().dropna().tail(12)
+    if son3.empty or smf_ay.empty:
+        return bos
+    en = son3.idxmax()
+    out = {**bos, "edm_neg_max_mwh": round(float(son3.max()), 1), "edm_ay": en.strftime("%Y-%m"), "ay_sayisi": int(len(son3)),
+           "smf_ort_tl_mwh": round(float(smf_ay.mean()), 2), "smf_ay_sayisi": int(len(smf_ay))}
+    if risk_katsayisi is not None and risk_katsayisi > 0:
+        out["tutar_tl"] = round(float(son3.max()) * float(smf_ay.mean()) * float(risk_katsayisi), 0)
+    return out
+
+
 def hesapla_df(df: pd.DataFrame, fiyat: pd.DataFrame, kat: d.Katsayilar | None = None, segment: str | None = None,
                ariza_sayisi: int = 0, luy_istisna: bool = False, bildirilen_mwh: pd.Series | None = None,
-               pozisyon: dict | None = None) -> dict:
+               pozisyon: dict | None = None, risk_katsayisi: float | None = None) -> dict:
     """SAF. df: ts_utc, gercek_kw, kgup_kw (PVQuant önerisi), naif_kw (kW ≈ kWh/saat → MWh = /1000). fiyat: aynı ts index'li ptf/smf/yon/kaynak.
     v2.517 (P2a): bildirilen_mwh verilirse o saatlerde program = müşterinin bildirdiği KGÜP (BUDÜP), kalanında öneri; pozisyon ayara göre.
     Çıktı: aylar[] ve toplam — EDT (edt_neg/edt_poz/edta/edtb), kayıp (dengesizlik_tl), KÜPST (kupst_tl) AYRI; tolerans dışı saat ve KÜPSM MWh;
@@ -187,7 +213,8 @@ def hesapla_df(df: pd.DataFrame, fiyat: pd.DataFrame, kat: d.Katsayilar | None =
                        "bildirilen_saat": int(e["bil"]) if e is not None else 0})
     top_pv = float(pv["toplam_maliyet"].sum(min_count=1)) if pv["toplam_maliyet"].notna().any() else float("nan")
     top_ref = float(pv["referans_gelir"].sum())
-    teminat_tl = round(d.teminat(pv), 0)   # v2.287: sadeleştirilmiş gösterge (Teminat U&E ile doğrulanmadı)
+    teminat = teminat_gostergesi(pv, risk_katsayisi)   # v2.522 (P2b): mevzuat formülü (3 ay en yüksek negatif EDM × 12 ay SMF ort. × risk katsayısı); doğrulanmadı
+    teminat_tl = teminat["tutar_tl"]
     top_naif = float(ay_naif["toplam_maliyet"].sum(min_count=1)) if ay_naif is not None and ay_naif["toplam_maliyet"].notna().any() else None
     kupst_top = float(pv["kupst"].sum(min_count=1)) if pv["kupst"].notna().any() and not pv["kupst"].isna().any() else None
     bil = int((pv["program_kaynak"] == "bildirilen").sum())
@@ -196,7 +223,8 @@ def hesapla_df(df: pd.DataFrame, fiyat: pd.DataFrame, kat: d.Katsayilar | None =
                        "dengesizlik_tl": round(float(pv["dengesizlik_maliyeti"].sum()), 0),
                        "edt_neg_tl": round(float(pv["edt_neg"].fillna(0).sum()), 0), "edt_poz_tl": round(float(pv["edt_poz"].fillna(0).sum()), 0),
                        "edta_tl": round(float(ay_pv["edta"].sum()), 0), "edtb_tl": round(float(ay_pv["edtb"].sum()), 0),
-                       "teminat_tl": teminat_tl,   # v2.287
+                       "teminat_tl": teminat_tl,   # v2.287 → v2.522 mevzuat formülü (katsayı yoksa None)
+                       "teminat": teminat,   # v2.522 (P2b)
                        "naif_tl": _r0(top_naif),
                        "kurtarilan_tl": (_r0(top_naif - top_pv) if top_naif is not None and not np.isnan(top_pv) else None),
                        "gelir_oran_pct": round(top_pv / top_ref * 100, 2) if top_ref and not np.isnan(top_pv) else None, "referans_gelir_tl": round(top_ref, 0),
@@ -341,7 +369,48 @@ def dokum(tenant_id, plant: dict, gun: int = 90) -> tuple[pd.DataFrame, dict]:
     pv, _, _, _ = saatlik_hesap(g["df"], g["fiyat"], g["kat"], g["segment"], g["ariza_sayisi"], g["luy_istisna"], g["bildirilen_mwh"], g["pozisyon"])
     ozet = hesapla_df(g["df"], g["fiyat"], g["kat"], segment=g["segment"], ariza_sayisi=g["ariza_sayisi"], luy_istisna=g["luy_istisna"],
                       bildirilen_mwh=g["bildirilen_mwh"], pozisyon=g["pozisyon"])
-    return dokum_df(pv, yekdem_eki(g["pj"], g["segment"], pv)), ozet
+    df = dokum_df(pv, yekdem_eki(g["pj"], g["segment"], pv))
+    if pv is not None and not pv.empty and "kaynak" in g["fiyat"]:   # v2.522 (P2b): mutabakat için saat bazında fiyat kaynağı (epias / senaryo); dışa aktarıma girmez
+        ozet["saat_fiyat_kaynak"] = [str(k) for k in g["fiyat"]["kaynak"].reindex(pv.index).fillna("yok").values]
+    return df, ozet
+
+def _risk_katsayisi(pj: dict) -> float | None:
+    """v2.522 (P2b): params_json.teminat_risk_katsayisi (0–10); yoksa None → teminat tutarı verilmez."""
+    try:
+        v = float(pj.get("teminat_risk_katsayisi")) if pj.get("teminat_risk_katsayisi") not in (None, "") else None
+    except (TypeError, ValueError):
+        return None
+    return v if v is not None and 0 < v <= 10 else None
+
+
+def program_bildirilenle(tenant_id, plant_id: str, pj: dict, df: pd.DataFrame, gun: int) -> tuple[pd.DataFrame, dict]:
+    """v2.522 (P2b; v2.517 sınırı kapandı): DSG ve UEVÇB KÜPST hesaplarında program = müşterinin bildirdiği KGÜP (varsa; kgup_surum kaynak
+    'musteri'), kalan saatlerde PVQuant önerisi. program_df çıktısının kgup_kw sütunu bildirilen MWh × 1000 ile değiştirilir; kaynak sayımı döner."""
+    if df is None or df.empty:
+        return df, {"bildirilen_saat": 0, "oneri_saat": 0}
+    try:
+        bil = bildirilen_serisi(tenant_id, plant_id, pj, gun)
+    except Exception:   # noqa: BLE001 — arşiv tablosu yoksa öneriyle
+        bil = pd.Series(dtype=float)
+    if bil is None or not len(bil):
+        return df, {"bildirilen_saat": 0, "oneri_saat": int(len(df))}
+    x = df.copy(); ts = pd.DatetimeIndex(x["ts_utc"])
+    b = bil.reindex(ts).astype(float)
+    m = b.notna().values
+    x.loc[m, "kgup_kw"] = (b[m] * 1000.0).values
+    return x, {"bildirilen_saat": int(m.sum()), "oneri_saat": int(len(x) - m.sum())}
+
+
+def _pozisyon_serisi(pj: dict, df: pd.DataFrame) -> pd.Series | None:
+    """v2.522 (P2b): DSG hesabında üyenin piyasa pozisyonu ayara göre (program | uretim | sabit); 'program' ise None (K kullanılır)."""
+    poz = pozisyon_ayari(pj)
+    if df is None or df.empty or poz["kaynak"] == "program":
+        return None
+    x = df.dropna(subset=["gercek_kw", "kgup_kw"]).set_index("ts_utc")
+    if poz["kaynak"] == "uretim":
+        return x["gercek_kw"].astype(float) / 1000.0
+    return pd.Series(float(poz["sabit_mwh"] or 0.0), index=x.index)
+
 
 def _ariza(tenant_id, plant: dict) -> int:
     """v2.521 (P1a): aylık arıza sayısı = olay kaydındaki arıza olayları ile Santral ayarlarındaki elle girilen sayının büyüğü (olay_service)."""
@@ -405,7 +474,8 @@ def simulasyon(tenant_id, plant: dict, gun: int = 90) -> dict:
     kat = katsayilar(plant.get("params_json"))
     ariza = _ariza(tenant_id, plant); luy = bool(pj.get("luy_istisna"))   # 31.10 (v2.510, Ç3): LÜY; v2.521: olay kaydı ∨ elle m.5(1)(ç),(d),(e) istisnası
     bil = bildirilen_serisi(tenant_id, plant["id"], pj, gun); poz = pozisyon_ayari(pj)   # v2.517 (P2a): fiilî bildirim ve pozisyon ayarı
-    out = hesapla_df(df, fiyat, kat, segment=seg["segment"], ariza_sayisi=ariza, luy_istisna=luy, bildirilen_mwh=bil, pozisyon=poz)
+    out = hesapla_df(df, fiyat, kat, segment=seg["segment"], ariza_sayisi=ariza, luy_istisna=luy, bildirilen_mwh=bil, pozisyon=poz,
+                     risk_katsayisi=_risk_katsayisi(pj))   # v2.522 (P2b): teminat risk katsayısı Santral ayarlarından
     out["oneri"] = oneri_kantili(fiyat, kat)   # v2.287
     out["pencere_gun"] = gun
     out["segment"] = seg; out["luy_istisna"] = luy
@@ -467,7 +537,8 @@ def _para_payi(pay: pd.Series, edt_grup: pd.Series) -> float:
 
 def dsg_hesapla_df(programlar: dict[str, pd.DataFrame], fiyat: pd.DataFrame, kat: d.Katsayilar | None = None,
                    segmentler: dict[str, str | None] | None = None, ariza_sayilari: dict[str, int] | None = None,
-                   dagitim_anahtari: str = "sapma", luy_istisnalar: dict[str, bool] | None = None) -> dict:
+                   dagitim_anahtari: str = "sapma", luy_istisnalar: dict[str, bool] | None = None,
+                   pozisyonlar: dict[str, pd.Series] | None = None) -> dict:
     """SAF (v2.502, F-08). programlar[santral] = program_df çıktısı (ts_utc, gercek_kw, kgup_kw). Yürürlükteki DSG kuralı:
     üye eşiği (%10 / %5 / 2027 varsayım) PH = max(A, F) ile; aşan kısım bireysel; KÜPST üye bazında toplanır, netleşmez;
     dengesizlik taşımayan segment portföy dışı. Alan adları sözleşme: ayri_tl = tek başına kayıp, net_tl = DSG kaybı,
@@ -491,8 +562,9 @@ def dsg_hesapla_df(programlar: dict[str, pd.DataFrame], fiyat: pd.DataFrame, kat
         return {**bos, "santral": len(K), "n_saat": int(len(idx) if idx is not None else 0), "not": "ortak saat yetersiz"}
     f = fiyat.reindex(idx); ptf = f["ptf"].astype(float); smf = f["smf"].astype(float)
     yon, fiyat_ozeti = _yon_ve_kaynak(f)
+    poz = {a: v.reindex(idx) for a, v in (pozisyonlar or {}).items() if v is not None and a in K}   # v2.522: üye pozisyon ayarı (uretim/sabit)
     r = d.dsg_saatlik({a: K[a].loc[idx] for a in K}, {a: G[a].loc[idx] for a in G}, ptf, smf, yon=yon, segmentler=segmentler, ariza_sayilari=ariza_sayilari, luy_istisnalar=luy_istisnalar,
-                      dagitim_anahtari=dagitim_anahtari)
+                      dagitim_anahtari=dagitim_anahtari, pozisyonlar=poz or None)
     sa = r["saatlik"]
     if sa.empty:
         return {**bos, "santral": len(K), "disi": r["disi"], "not": "portföyde dengesizlik taşıyan üye yok"}
@@ -536,7 +608,9 @@ def portfoy_kupst_ozet(tenant_id, gun: int = 30, dagitim_anahtari: str = "sapma"
            "fiyat": {"epias_saat": 0, "senaryo_saat": 0}}
     if not uyeler:
         return {**bos, "not": "portföyde dağıtıma bağlı lisanssız santral yok"}
-    programlar = {p["name"]: program_df(tenant_id, str(p["id"]), gun) for p in uyeler}
+    programlar = {}; program_kaynak = {}
+    for p in uyeler:   # v2.522 (P2b): program = bildirilen KGÜP (varsa), kalan öneri
+        programlar[p["name"]], program_kaynak[p["name"]] = program_bildirilenle(tenant_id, str(p["id"]), _pj(p.get("params_json")), program_df(tenant_id, str(p["id"]), gun), gun)
     K: dict[str, pd.Series] = {}; G: dict[str, pd.Series] = {}
     for ad, df in programlar.items():
         if df is None or df.empty:
@@ -545,6 +619,8 @@ def portfoy_kupst_ozet(tenant_id, gun: int = 30, dagitim_anahtari: str = "sapma"
         if x.empty:
             continue
         K[ad] = x["kgup_kw"].astype(float) / 1000.0; G[ad] = x["gercek_kw"].astype(float) / 1000.0
+    bos["program"] = {"bildirilen_saat": sum(v["bildirilen_saat"] for v in program_kaynak.values()), "oneri_saat": sum(v["oneri_saat"] for v in program_kaynak.values()),
+                      "santral": program_kaynak}
     if not K:
         return {**bos, "santral": len(uyeler), "not": "ortak saat yetersiz"}
     idx = pd.DatetimeIndex([], tz="UTC")
@@ -594,7 +670,11 @@ def dsg_ozet(tenant_id, gun: int = 30, dagitim_anahtari: str = "sapma") -> dict:
     from pvquant.services import piyasa_service
     with tenant_baglami(tenant_id) as s:
         santraller = [dict(r._mapping) for r in s.execute(text("SELECT id, name, params_json FROM plants WHERE NOT archived ORDER BY name"))]
-    programlar = {p["name"]: program_df(tenant_id, str(p["id"]), gun) for p in santraller}
+    programlar = {}; program_kaynak = {}; pozisyonlar = {}
+    for p in santraller:   # v2.522 (P2b; v2.517 sınırı): program = bildirilen KGÜP (varsa) + pozisyon ayarı
+        pj_p = _pj(p.get("params_json"))
+        programlar[p["name"]], program_kaynak[p["name"]] = program_bildirilenle(tenant_id, str(p["id"]), pj_p, program_df(tenant_id, str(p["id"]), gun), gun)
+        pozisyonlar[p["name"]] = _pozisyon_serisi(pj_p, programlar[p["name"]])
     segmentler = {p["name"]: segment_bilgisi(p.get("params_json"))["segment"] for p in santraller}
     ariza = {p["name"]: _ariza(tenant_id, p) for p in santraller}   # v2.521 (P1a): olay kaydındaki arıza sayısı ∨ elle giriş
     luy = {p["name"]: bool(_pj(p.get("params_json")).get("luy_istisna")) for p in santraller}   # 31.10 (v2.510, Ç3)
@@ -603,17 +683,37 @@ def dsg_ozet(tenant_id, gun: int = 30, dagitim_anahtari: str = "sapma") -> dict:
         if df is not None and not df.empty:
             idx = idx.union(pd.DatetimeIndex(df["ts_utc"]))
     fiyat = piyasa_service.fiyatlar(idx) if len(idx) else pd.DataFrame(columns=["ptf", "smf", "yon", "kaynak"])
-    out = dsg_hesapla_df(programlar, fiyat, segmentler=segmentler, ariza_sayilari=ariza, dagitim_anahtari=dagitim_anahtari, luy_istisnalar=luy)
+    out = dsg_hesapla_df(programlar, fiyat, segmentler=segmentler, ariza_sayilari=ariza, dagitim_anahtari=dagitim_anahtari, luy_istisnalar=luy,
+                         pozisyonlar=pozisyonlar)
     out["pencere_gun"] = gun
+    out["program"] = {"bildirilen_saat": sum(v["bildirilen_saat"] for v in program_kaynak.values()), "oneri_saat": sum(v["oneri_saat"] for v in program_kaynak.values()),
+                      "santral": program_kaynak, "pozisyon_ayarli": [a for a, v in pozisyonlar.items() if v is not None]}   # v2.522 (P2b)
     out.setdefault("fiyat", {"epias_saat": int((fiyat["kaynak"] == "epias").sum()) if len(fiyat) else 0, "senaryo_saat": int((fiyat["kaynak"] == "senaryo").sum()) if len(fiyat) else 0})
     out["segment_yok"] = [p["name"] for p in santraller if not segmentler[p["name"]]]
     # 29.10 dil turu: müşteri dili — kural kısa, varsayım açık, dayanak sonda
     out["not"] = ("Dengeden Sorumlu Grup içinde tek santral var; karşılıklı netleşecek sapma bulunmadığından fark sıfırdır. İkinci santral bağlandığında burada görünür." if out["santral"] <= 1
                   else f"Her santralin sapmasının eşik oranı kadarı, %{out.get('esik', 0.05) * 100:.0f} × PH, DSG içinde netleşir; aşan kısım santralin kendisinde kalır. "
                        "KÜPST santral başına ödenir ve DSG içinde netleşmez. Dayanak: DUY m.111. Bu rakamlar yürürlükteki kuralla yapılmış varsayımsal bir yeniden hesaptır; "
-                       "santralin satışı KGÜP'e eşit varsayılmıştır. EPİAŞ uzlaştırma sonucu değildir."
+                       + ("program bildirilen KGÜP'tür (yüklü saatlerde), kalan saatlerde PVQuant önerisi; " if out["program"]["bildirilen_saat"] else "bildirilen KGÜP yüklü değil, program PVQuant önerisidir; ")
+                       + ("satış Santral ayarlarındaki pozisyon ayarına göre alınmıştır. " if out["program"]["pozisyon_ayarli"] else "satış programa eşit varsayılmıştır. ")
+                       + "EPİAŞ uzlaştırma sonucu değildir."
                        + (f" Senaryo fiyatlı {out['fiyat']['senaryo_saat']} saatte sistem yönü dengede varsayılmıştır." if out["fiyat"].get("senaryo_saat") else "")
                        + (f" Üyelere dağıtım: {out['dagitim_etiket']}; anahtar DSG sözleşmesinde belirlenir." if out.get("dagitim_etiket") else ""))
     if out.get("gecici_m39") and out["santral"] > 1:   # v2.513 rötuş: dağıtım/GTŞ DSG'lerinde 1.1.2027'ye kadar %100 (DUY Geçici m.39) — dsg_ozet dipnotu
         out["not"] += " " + kr.GECICI_M39_DIPNOT
     return out
+
+
+def dsg_uye_csv(ozet: dict) -> str:
+    """v2.522 (P2b, IH-036): üyelere dağıtım belgesi — DSG özetinden üye satırları (; ayraç, ondalık virgül, BOM; ilk satır not). Dağıtım anahtarı
+    sözleşmeseldir; tutarlar yeniden hesaptır, EPİAŞ sonucu değildir."""
+    import io as _io
+    kol = ["santral", "edt_tek_basina_tl", "edt_bireysel_tl", "edt_dsg_tl", "netlesme_farki_tl", "kupst_tl", "pay_pct", "sapma_mwh", "grup_payi_mwh"]
+    satirlar = [{"santral": ad, "edt_tek_basina_tl": v.get("edt_tek_tl"), "edt_bireysel_tl": v.get("edt_bireysel_tl"), "edt_dsg_tl": v.get("edt_dsg_tl"),
+                 "netlesme_farki_tl": v.get("netlesme_farki_tl"), "kupst_tl": v.get("kupst_tl"), "pay_pct": v.get("pay_pct"), "sapma_mwh": v.get("sapma_mwh"),
+                 "grup_payi_mwh": v.get("grup_payi_mwh")} for ad, v in (ozet.get("uyeler") or {}).items()]
+    buf = _io.StringIO()
+    buf.write(f"# PVQuant DSG üye dağılımı; son {ozet.get('pencere_gun')} gün; dağıtım anahtarı: {ozet.get('dagitim_etiket')}; üye eşiği {ozet.get('esik')}; "
+              f"kural {ozet.get('kural_surumu')}; yeniden hesap, EPİAŞ uzlaştırma sonucu değildir; eksi EDT = üye öder\n")
+    pd.DataFrame(satirlar, columns=kol).to_csv(buf, sep=";", decimal=",", index=False, lineterminator="\n")
+    return "\ufeff" + buf.getvalue()

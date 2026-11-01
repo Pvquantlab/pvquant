@@ -243,8 +243,10 @@ export interface Dengesizlik { luy_istisna?: boolean;   // v2.510 (Ç3): santral
            /** v2.517 (P2a): tolerans dışı saat (KÜPSM > 0), KÜPSM toplamı, bildirilen programla hesaplanan saat */
            tolerans_disi_saat?: number; kupsm_mwh?: number; bildirilen_saat?: number }[];
   toplam: { pvquant_tl: number | null; naif_tl: number | null; kurtarilan_tl: number | null; gelir_oran_pct: number | null; referans_gelir_tl: number;
-            kupst_tl?: number | null; teminat_tl?: number; dengesizlik_tl?: number; edt_neg_tl?: number; edt_poz_tl?: number; edta_tl?: number; edtb_tl?: number;
-            tolerans_disi_saat?: number; kupsm_mwh?: number } | null;
+            kupst_tl?: number | null; teminat_tl?: number | null; dengesizlik_tl?: number; edt_neg_tl?: number; edt_poz_tl?: number; edta_tl?: number; edtb_tl?: number;
+            tolerans_disi_saat?: number; kupsm_mwh?: number;
+            /** v2.522 (P2b): dengesizlik teminatı göstergesi — mevzuat formülü; risk katsayısı Santral ayarlarından, yoksa tutar yok */
+            teminat?: { edm_neg_max_mwh: number | null; edm_ay: string | null; ay_sayisi?: number; smf_ort_tl_mwh: number | null; smf_ay_sayisi: number; risk_katsayisi: number | null; tutar_tl: number | null; dogrulanmis: boolean; formul: string; not: string } } | null;
   /** v2.517 (P2a): programın kaynağı — bildirilen KGÜP (müşteri beyanı) saat/gün sayısı, kalan öneri; pozisyon ayarı (program | uretim | sabit) */
   program?: { bildirilen_saat: number; oneri_saat: number; bildirilen_gun: number; pozisyon: PozisyonAyari };
   /** v2.287: önerilen bildirim kantili (senaryo fiyatta null + not; yön verisi yoksa durum 'yon_eksik') */
@@ -485,6 +487,25 @@ export interface OlayOzet { bugun: string; pencere_gun: number; olaylar: Olay[];
   aciklama: { kapasite: string; sayac: string; kullanilabilirlik: string; islem: string; gerekce: string };
   dahili_bilgi: { olay_id: string; tur: string; esik: string; etkilenen_kw: number; son_saat: string; kalan_dk: number; gecti: boolean; yururluk: string; not: string }[];
   turler: ({ kod: OlayTur; etiket: string } & OlayKural)[]; gerekceler: { kod: string; etiket: string }[]; not: string }
+/** v2.522 (P2b-1): EPİAŞ uzlaştırma bildirimiyle kalem kalem mutabakat */
+export type MutabakatDurum = "uyumlu" | "fark" | "senaryo" | "hesaplanamaz" | "bildirimde_yok" | "hesap_yok";
+export interface MutabakatSatir { kod: string; etiket: string; hesaplanir: boolean; kalem_ad: string | null; bildirim_alacak_tl: number | null; bildirim_borc_tl: number | null;
+  pvquant_alacak_tl: number | null; pvquant_borc_tl: number | null; pvquant_not: string | null; kaba: boolean; fark_tl: number | null; fark_pct: number | null;
+  fark_alacak_tl?: number | null; fark_borc_tl?: number | null; bilesen_notu?: string | null; durum: MutabakatDurum }
+/** sürüm etiketi ↔ resmî takvim (DUY m.132/A–B); EPİAŞ durumu dosyadan doğrulanamaz → resmi_durum her zaman «dogrulanmadi» */
+export interface SurumDogrulama { durum: "takvim_uyumlu" | "takvimden_once"; resmi_durum: "dogrulanmadi"; beklenen_tarih: string; on_bildirim: string; nihai_bildirim: string; itiraz_son: string; itiraz_60: string; aciklama: string; kaynak: string }
+export interface MutabakatGuvenilirlik { durum: "gercek" | "kismi" | "senaryo" | "veri_yok"; etiket: string; nedenler: string[] }
+export interface Mutabakat { donem: string; donem_etiket: string;
+  bildirim: { yukleme_id: string; surum: string; surum_etiket: string; zaman: string; dosya_adi: string | null; sha256?: string | null; surum_kaynagi?: string | null; dosya_surum?: string | null; surum_dogrulama?: SurumDogrulama } | null;
+  satirlar: MutabakatSatir[];
+  ozet: { bildirim_alacak_tl: number | null; bildirim_borc_tl: number | null; bildirim_kiyas_alacak_tl: number | null; bildirim_kiyas_borc_tl: number | null; bildirim_kiyas_net_tl: number | null;
+    pvquant_alacak_tl: number | null; pvquant_borc_tl: number | null; pvquant_net_tl: number | null; fark_tl: number | null; uyumlu: number; farkli: number; senaryo: number; kiyaslanan: number; kapsam: string | null };
+  uyum: { pct: number; tl: number; not: string }; guvenilirlik: MutabakatGuvenilirlik; eylem: string | null;
+  pvquant: { saat: number; beklenen_saat?: number; son_saat?: string; hesaplanamayan_saat?: number; bildirilen_saat?: number; senaryo_saat?: number; senaryo_kapsam?: string; kural_surumu?: string; hata?: string }; not: string; program_notu: string | null }
+export interface MutabakatOzet { bugun: string;
+  donemler: { donem: string; surum: string; surum_etiket: string; yukleme_id: string; zaman: string; dosya_adi: string | null; sha256?: string | null; kalem_sayisi: number; surum_kaynagi?: string | null; dosya_surum?: string | null; gecerli: boolean; surum_dogrulama: SurumDogrulama }[];
+  secili: Mutabakat; surumler: { kod: string; etiket: string }[]; kalemler: { kod: string; etiket: string; hesaplanir: boolean; epys: string }[]; guvenilirlik_etiketleri: Record<string, string> }
+export interface MutabakatYukleme { yukleme_id: string; donem: string; surum: string; surum_kaynagi: string; kalem_sayisi: number; bicim: string; sha256: string; uyarilar: string[]; taninmayan: string[]; dosya_adi: string; surum_dogrulama: SurumDogrulama }
 /** ekleme yanıtı: aynı saatlerde başka kayıt varsa uyarı (engel değil) */
 export type OlayYanit = Olay & { uyari?: string; cakisan?: string[] };
 export interface OlayGiris { tur: OlayTur; baslangic: string; bitis?: string | null; etkilenen_kw?: number | null; neden?: string | null; eak_gerekcesi?: string | null; kanit?: string | null }

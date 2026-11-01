@@ -125,6 +125,40 @@ const olaySaatlikEtki = (gunIso) => { const g0 = new Date(gunIso + "T00:00+03:00
     for (let h = 0; h < 24; h++) { const s0 = g0 + h * 3600000, s1 = s0 + 3600000; const kes = (Math.min(oe, s1) - Math.max(ob, s0)) / 3600000; if (kes <= 0) continue; const oran = Math.min(1, kes);
       const d = saatler[h] ?? (saatler[h] = { toplam_kw: 0, oran: 0 }); d.toplam_kw = Math.min(OLAY_TABAN_KW, d.toplam_kw + kw * oran); d.oran = Math.max(d.oran, oran); } }
   return saatler; };
+const MUT_ESIK = (x) => Math.max(50, Math.abs(x ?? 0) * 0.02);
+const MUT_SATIR = (kod, etiket, hesaplanir, ba, bb, pa, pb, durum, notu) => { const fa = pa != null || ba != null ? (pa ?? 0) - (ba ?? 0) : null, fb = pb != null || bb != null ? (pb ?? 0) - (bb ?? 0) : null;
+  if (durum === "auto") durum = Math.abs(fa) <= MUT_ESIK(ba) && Math.abs(fb) <= MUT_ESIK(bb) ? "uyumlu" : "fark";   // gerçek kural: bileşen başına
+  const netB = (ba ?? 0) - (bb ?? 0), netP = (pa ?? 0) - (pb ?? 0); const kiyas = durum === "uyumlu" || durum === "fark" || durum === "senaryo";
+  return { kod, etiket, hesaplanir, kalem_ad: etiket, bildirim_alacak_tl: ba, bildirim_borc_tl: bb, pvquant_alacak_tl: pa, pvquant_borc_tl: pb, pvquant_not: notu ?? null, kaba: false,
+    fark_tl: kiyas ? Math.round((netP - netB) * 100) / 100 : null, fark_pct: kiyas && netB !== 0 ? Math.round(1000 * (netP - netB) / Math.abs(netB)) / 10 : null,
+    fark_alacak_tl: kiyas ? fa : null, fark_borc_tl: kiyas ? fb : null, bilesen_notu: null, durum }; };
+const MUT_NOT = "Mutabakat PVQuant'ın yeniden hesabı ile EPİAŞ bildirimini kalem kalem yan yana koyar; EPİAŞ sonucu esastır. Yalnız santral verisinden hesaplanabilen kalemler (enerji dengesizlik tutarı, KGÜP sapma tutarı, lisanslı YEKDEM'de YEK alacağı) yeniden hesaplanır; GÖP, GİP, DGP, GDDK, fark tutarı, SBDT, PİÜ, faiz ve zam kalemleri yalnız bildirimden gösterilir. Fark kaynakları: program sürümü (bildirilen KGÜP yüklü değilse PVQuant önerisi), sayaç verisi (SCADA ≠ UEVM), fiyat kaynağı (senaryo saatleri), EPİAŞ'ın geriye dönük düzeltmeleri.";
+const MUT_UYUM_NOT = "Uyum ölçütü PVQuant'ın işletme ölçütüdür, mevzuatta bir tolerans değildir: kalemin alacak ve borç bileşenleri ayrı ayrı bakılır; her biri için |fark| bildirim tutarının %2'sini ya da 50 TL'yi (hangisi büyükse) aşmıyorsa «uyumlu». Net tutar eşleşse bile bileşenler sapıyorsa «fark var».";
+const MUT_KALEMLER = [["dam", "GÖP", false, "DAM"], ["idm", "GİP", false, "IDM"], ["res", "YEK", true, "RES"], ["imbalance", "Dengesizlik", true, "IMBALANCE"], ["bpm", "DGP", false, "BPM"], ["retrospective", "GDDK", false, "RETROSPECTIVE"], ["side_payment", "Fark tutarı", false, "SIDE_PAYMENT"], ["zero_balance", "SBDT", false, "ZERO_BALANCE_ADJUSTMENT"], ["mof", "PİÜ", false, "MOF"], ["kupst", "KÜPST", true, "KUPST"], ["rbs", "RBS", false, "RBS"], ["default_interest", "Temerrüt faizi", false, "DEFAULT_INTEREST"], ["late_fee", "Gecikme zammı", false, "LATE_FEE"], ["refund_overdue_interest", "Ödenmeyen alacak iade faizi", false, "REFUND_OVERDUE_RECEIVABLES_INTEREST"], ["overdue", "Ödenmeyen alacak", false, "OVERDUE_RECEIVABLES"], ["summary", "Toplam", false, "SUMMARY"]].map(([kod, etiket, hesaplanir, epys]) => ({ kod, etiket, hesaplanir, epys }));
+// Ekim 2026 nihai bildirim 02.11'de yüklendi: resmî takvimde nihai 16.11.2026 (15'i Pazar) → «takvimden önce»; üretim verisi 22.10'a kadar → kısmi karşılaştırma (528/744 saat)
+const MUT_SD = { durum: "takvimden_once", resmi_durum: "dogrulanmadi", beklenen_tarih: "2026-11-16", on_bildirim: "2026-11-11", nihai_bildirim: "2026-11-16", itiraz_son: "2026-11-12 17:30", itiraz_60: "2027-01-15",
+  aciklama: "Nihai bildirim resmî takvime göre en erken 16.11.2026 tarihinde yayımlanır; yükleme 02.11.2026. Sürüm etiketi takvimle çelişiyor; EPİAŞ'ın uzlaştırma durumu doğrulanmadı.", kaynak: "DUY m.132/A(1), m.132/B(1), m.133 (Takvim sayfasıyla aynı hesap); 02-01/02-02 EPİAŞ duyuru düzeni" };
+const MUT_GUVEN = { durum: "kismi", etiket: "Kısmi karşılaştırma", nedenler: ["dönemin 744 saatinden 528 saati için üretim ve program verisi var (son veri 2026-10-22 23:00)", "216 saatte bildirilen KGÜP yok, PVQuant önerisi kullanıldı"] };
+const MUTABAKAT = (donem) => { const d = donem || "2026-10"; const var_ = d === "2026-10";
+  const satirlar = var_ ? [
+    MUT_SATIR("imbalance", "Dengesizlik", true, 151234.1, 262100, 148910.4, 269380.2, "auto", "saatlik EDT toplamı (alacak: fazla üretim; borç: eksik üretim)"),   // borç +7.280 > eşik 5.242 → fark var
+    MUT_SATIR("kupst", "KÜPST", true, null, 14320.75, 0, 14402.5, "auto", "KÜPSM × max(taban; PTF; SMF) × n"),   // +81,75 ≤ 286,42 → uyumlu
+    MUT_SATIR("dam", "GÖP", false, 1250000.5, null, null, null, "hesaplanamaz"), MUT_SATIR("mof", "PİÜ", false, null, 1200, null, null, "hesaplanamaz"),
+    MUT_SATIR("late_fee", "Gecikme zammı", false, null, 0, null, null, "hesaplanamaz"), MUT_SATIR("summary", "Toplam", false, 1401234.6, 277620.75, null, null, "hesaplanamaz") ] : [];
+  const kiyas = satirlar.filter((s) => s.hesaplanir && s.fark_tl != null); const top = (f) => kiyas.length ? Math.round(kiyas.reduce((a, s) => a + (f(s) ?? 0), 0) * 100) / 100 : null;
+  const bildirim = var_ ? { yukleme_id: "y1", surum: "nihai", surum_etiket: "nihai bildirim", zaman: "2026-11-02T09:12+03:00", dosya_adi: "uzlastirma_bildirimi_2026_10.csv", sha256: "3fa1".padEnd(64, "0"), surum_kaynagi: "dosya", dosya_surum: "nihai", surum_dogrulama: MUT_SD } : null;
+  return { bugun: "2026-11-02", donemler: [{ donem: "2026-10", surum: "nihai", surum_etiket: "nihai bildirim", yukleme_id: "y1", zaman: "2026-11-02T09:12+03:00", dosya_adi: "uzlastirma_bildirimi_2026_10.csv", kalem_sayisi: 10, surum_kaynagi: "dosya", dosya_surum: "nihai", gecerli: true, surum_dogrulama: MUT_SD }],
+    surumler: [{ kod: "on", etiket: "ön bildirim" }, { kod: "nihai", etiket: "nihai bildirim" }], kalemler: MUT_KALEMLER,
+    guvenilirlik_etiketleri: { gercek: "Gerçek verilerle karşılaştırma", kismi: "Kısmi karşılaştırma", senaryo: "Senaryo hesabı", veri_yok: "Gerçek verilerle doğrulanamadı" },
+    secili: { donem: d, donem_etiket: d.slice(5) + "." + d.slice(0, 4), bildirim, satirlar,
+      ozet: { bildirim_alacak_tl: var_ ? 1401234.6 : null, bildirim_borc_tl: var_ ? 277620.75 : null,
+        bildirim_kiyas_alacak_tl: top((s) => s.bildirim_alacak_tl), bildirim_kiyas_borc_tl: top((s) => s.bildirim_borc_tl), bildirim_kiyas_net_tl: top((s) => (s.bildirim_alacak_tl ?? 0) - (s.bildirim_borc_tl ?? 0)),
+        pvquant_alacak_tl: top((s) => s.pvquant_alacak_tl), pvquant_borc_tl: top((s) => s.pvquant_borc_tl), pvquant_net_tl: top((s) => (s.pvquant_alacak_tl ?? 0) - (s.pvquant_borc_tl ?? 0)),
+        fark_tl: top((s) => s.fark_tl), uyumlu: kiyas.filter((s) => s.durum === "uyumlu").length, farkli: kiyas.filter((s) => s.durum === "fark").length, senaryo: 0, kiyaslanan: kiyas.length, kapsam: kiyas.length ? kiyas.map((s) => s.etiket).join(", ") : null },
+      uyum: { pct: 2, tl: 50, not: MUT_UYUM_NOT }, guvenilirlik: var_ ? MUT_GUVEN : { durum: "veri_yok", etiket: "Gerçek verilerle doğrulanamadı", nedenler: ["dönem için saatlik üretim ve program verisi yok"] },
+      eylem: var_ ? "Fark var: EPYS'deki saatlik detaylarla (dengesizlik uzlaştırma, KÜPST detay) ve PVQuant dökümüyle saat bazında karşılaştırın; program sürümü, sayaç (UEVM ≠ SCADA) ve fiyat kaynağı en sık nedenlerdir. İtiraz: ön bildirime 2026.11.12 17:30'a kadar (DUY m.132/B(1)), faturaya tebliğden itibaren 60 gün yazılı (m.133; 2027-01-15)." : null,
+      pvquant: var_ ? { saat: 528, beklenen_saat: 744, son_saat: "2026-10-22 23:00", hesaplanamayan_saat: 0, bildirilen_saat: 312, senaryo_saat: 0, senaryo_kapsam: "donem", kural_surumu: "edt-2026-V150-edta_ayrik+kupst-14029" } : { saat: 0, beklenen_saat: 720 }, not: MUT_NOT,
+      program_notu: null } }; };
 const olayEvre = (o) => o.durum === "iptal" ? "iptal" : new Date(o.baslangic) > new Date() ? "planli" : (!o.bitis || new Date(o.bitis) > new Date()) ? "suruyor" : "bitti";
 const OLAY = (id, tur, bas, bit, kw, neden, kanit) => { const o = { id, plant_id: "a1", tur, tur_etiket: OLAY_ETIKET[tur], baslangic: bas, bitis: bit, etkilenen_kw: kw, neden, eak_gerekcesi: OLAY_KURAL[tur].gerekce, kanit, durum: bit && new Date(bit) < new Date() ? "kapali" : "acik", olusturma: bas, guncelleme: null, kural: OLAY_KURAL[tur] }; o.acik = o.durum === "acik"; o.evre = olayEvre(o); return o; };
 const OLAYLAR = [
@@ -175,6 +209,10 @@ http.createServer((req, res) => {
   const YEKDEM_DISI = { ...YEKDEM, segment: "lisansli_serbest", uygulanir: false, tarife_yekdem: false, fiyat: null, aylar: [], m23_6: null,
     rejim: { secim: "otomatik", isletmeye_giris: null, tesis_tipi: "gunes", rejim: null, etiket: "belirsiz", kaynak: "işletmeye giriş tarihi girilmedi (Takvim › Santral tarihleri) ve tarifede rejim seçilmedi", kaynak_turu: "yok" },
     not: "Santral segmenti lisanslı YEKDEM değil; YEKDEM fiyatı yalnız tarife gelir hesabında kullanılır, m.23(6) işareti üretilmez." };
+  // v2.522 (P2b-1): mutabakat — a1 için Ekim 2026 nihai bildirim fixture'ı (gerçek servis şekli; kalemler 02-23 ekran adlarıyla)
+  if (/^\/v1\/plants\/[^/]+\/mutabakat$/.test(yol) && req.method === "GET") return yanit(200, MUTABAKAT(url.searchParams.get("donem")));
+  if (/^\/v1\/plants\/[^/]+\/mutabakat$/.test(yol) && req.method === "POST") { req.on("data", () => {}); req.on("end", () => { res.writeHead(201, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({ yukleme_id: "y2", donem: "2026-10", surum: "nihai", surum_kaynagi: "dosya", kalem_sayisi: 10, bicim: "csv", sha256: "0".repeat(64), uyarilar: [], taninmayan: [], dosya_adi: "bildirim.csv", surum_dogrulama: MUT_SD })); }); return; }
   // v2.521 (P1a): olay kaydı — modül kapsamında (POST/PUT sonraki GET'te görünür); bugün 01.11.2026
   if (/^\/v1\/plants\/[^/]+\/olaylar$/.test(yol) && req.method === "GET") return yanit(200, olayOzeti());
   if (/^\/v1\/plants\/[^/]+\/olaylar$/.test(yol) && req.method === "POST") { let g = ""; req.on("data", (c) => { g += c; }); req.on("end", () => { let b = {}; try { b = JSON.parse(g || "{}"); } catch { /* yok */ }

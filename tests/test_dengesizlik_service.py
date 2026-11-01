@@ -101,7 +101,9 @@ def test_oneri_kantili_ve_teminat():
     # teminat: negatif gider yoğun ay tavan olur
     g = pd.DataFrame({"ts_utc": ix, "gercek_kw": 800.0, "kgup_kw": 1000.0, "naif_kw": np.nan})
     out = dz.hesapla_df(g, f, segment="lisansli_serbest")
-    assert out["toplam"]["teminat_tl"] > 0
+    # v2.522 (P2b): mevzuat formülü — risk katsayısı yoksa tutar None, bileşenler dolu; katsayı verilince tutar > 0
+    assert out["toplam"]["teminat_tl"] is None and out["toplam"]["teminat"]["edm_neg_max_mwh"] > 0 and out["toplam"]["teminat"]["dogrulanmis"] is False
+    assert dz.hesapla_df(g, f, segment="lisansli_serbest", risk_katsayisi=1.0)["toplam"]["teminat_tl"] > 0
 
 
 def test_geri_test_kapisi(monkeypatch):

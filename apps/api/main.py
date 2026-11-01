@@ -710,6 +710,23 @@ def portfoy_dsg(gun: int = 30, anahtar: str = "sapma", claims=Depends(gecerli_ku
     return dengesizlik_service.dsg_ozet(claims["tenant_id"], gun=gun, dagitim_anahtari=anahtar)
 
 
+@app.get("/v1/portfoy/dsg.csv")
+def portfoy_dsg_csv(gun: int = 30, anahtar: str = "sapma", claims=Depends(gecerli_kullanici)):
+    """v2.522 (P2b, IH-036) — DSG üye dağılımı belgesi: üye başına EDT tek başına / bireysel / DSG içinde, netleşme farkı, KÜPST, pay (CSV)."""
+    from fastapi.responses import Response
+    from pvquant.ext.turkiye import dengesizlik as _d
+    from pvquant.services import dengesizlik_service
+    if not (14 <= gun <= 365):
+        raise HTTPException(422, "gun 14-365")
+    if anahtar not in _d.DAGITIM_ANAHTARLARI:
+        raise HTTPException(422, "anahtar " + "|".join(_d.DAGITIM_ANAHTARLARI))
+    o = dengesizlik_service.dsg_ozet(claims["tenant_id"], gun=gun, dagitim_anahtari=anahtar)
+    _denetim.kaydet("musteri", "dsg_belge_indir", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="tenant", nesne_id=claims["tenant_id"],
+                    ayrinti={"gun": gun, "anahtar": anahtar, "uye": len(o.get("uyeler") or {})})
+    return Response(dengesizlik_service.dsg_uye_csv(o), media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="pvquant_dsg_uye_dagilimi_{gun}g_{anahtar}.csv"'})
+
+
 @app.get("/v1/portfoy/kupst")
 def portfoy_kupst(gun: int = 30, anahtar: str = "sapma", claims=Depends(gecerli_kullanici)):
     """31.10 (v2.511, 04 #14) — toplayıcı/GTŞ portföyü: dağıtıma bağlı lisanssız santrallerin KÜPST'si UEVÇB bazında (params_json.uevcb);
@@ -1164,6 +1181,7 @@ class EakIstek(BaseModel):
     luy_istisna: bool | None = None             # 31.10 (v2.510, Ç3): tesis LÜY m.5(1)(ç),(d),(e) kapsamında → Karar 14907 Md.5, iletime bağlı lisanssızda KÜPST uygulanmaz
     pozisyon_kaynagi: str | None = None         # v2.517 (P2a): piyasa pozisyonu — program | uretim (üretildiği kadar satış) | sabit (baz yük MWh/saat)
     pozisyon_sabit_mwh: float | None = None     # v2.517 (P2a): pozisyon_kaynagi = sabit için saatlik MWh
+    teminat_risk_katsayisi: float | None = None  # v2.522 (P2b): EPİAŞ dengesizlik teminatı risk katsayısı (değeri kaynakta yok; müşteri girer)
 
 
 class EpiasIstek(BaseModel):
@@ -1243,6 +1261,10 @@ def eak_ayarla(plant_id: str, p: EakIstek, claims=Depends(yazma_yetkisi())):
         if p.pozisyon_sabit_mwh is not None and not (0 <= p.pozisyon_sabit_mwh <= kap / 1000.0):
             raise HTTPException(422, f"pozisyon_sabit_mwh 0–{kap / 1000.0:g} MWh/saat aralığında olmalı")
         an["pozisyon_sabit_mwh"] = float(p.pozisyon_sabit_mwh) if p.pozisyon_sabit_mwh is not None else None
+    if "teminat_risk_katsayisi" in verilen:   # v2.522 (P2b)
+        if p.teminat_risk_katsayisi is not None and not (0 < p.teminat_risk_katsayisi <= 10):
+            raise HTTPException(422, "teminat_risk_katsayisi 0–10 aralığında olmalı")
+        an["teminat_risk_katsayisi"] = float(p.teminat_risk_katsayisi) if p.teminat_risk_katsayisi is not None else None
     pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **an)
     _denetim.kaydet("musteri", "eak_ayar", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"], ayrinti=dict(an))   # v2.516 (#7)
     row["params_json"] = pj
@@ -1250,7 +1272,8 @@ def eak_ayarla(plant_id: str, p: EakIstek, claims=Depends(yazma_yetkisi())):
             "eak_kw": pj.get("eak_kw"), "eak_gecici": pj.get("eak_gecici"), "kupst_n": pj.get("kupst_n"), "kupst_tolerans": pj.get("kupst_tolerans"),
             "dengeleme_birimi": bool(pj.get("dengeleme_birimi")), "ariza_sayisi_ay": int(pj.get("ariza_sayisi_ay") or 0),
             "luy_istisna": bool(pj.get("luy_istisna")),
-            "pozisyon": dengesizlik_service.pozisyon_ayari(pj)}   # v2.517 (P2a)
+            "pozisyon": dengesizlik_service.pozisyon_ayari(pj),   # v2.517 (P2a)
+            "teminat_risk_katsayisi": pj.get("teminat_risk_katsayisi")}   # v2.522 (P2b)
 
 
 def _toplayici_yaniti(tenant_id: str, plant_id: str, gun: str | None, fmt: str, adim: int):
@@ -1425,6 +1448,40 @@ def olay_guncelle(plant_id: str, olay_id: str, p: OlayGuncelle, claims=Depends(y
     _denetim.kaydet("musteri", "olay_guncelle", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="olay", nesne_id=o["id"],
                     ayrinti={k: v for k, v in p.model_dump(exclude_unset=True).items()})
     return o
+
+
+@app.get("/v1/plants/{plant_id}/mutabakat")
+def mutabakat_ozet(plant_id: str, donem: str | None = None, surum: str | None = None, claims=Depends(gecerli_kullanici)):
+    """v2.522 (P2b-1) — EPİAŞ uzlaştırma bildirimiyle kalem kalem mutabakat: yüklenmiş dönemler + seçilen dönemin bildirim ↔ PVQuant tablosu.
+    Yeniden hesap EPİAŞ sonucu değildir."""
+    from pvquant.services import mutabakat_service
+    if surum is not None and surum not in mutabakat_service.SURUMLER:
+        raise HTTPException(422, "surum on ya da nihai olmalı")
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    try:
+        return mutabakat_service.ozet(claims["tenant_id"], {"id": str(row["id"]), "name": row["name"], "params_json": row.get("params_json")}, donem=donem, surum=surum)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+
+
+@app.post("/v1/plants/{plant_id}/mutabakat", status_code=201)
+def mutabakat_yukle(plant_id: str, donem: str | None = None, surum: str | None = None, dosya: UploadFile = File(...), claims=Depends(yazma_yetkisi())):
+    """v2.522 (P2b-1) — EPYS «Uzlaştırma Bildirimi» dosyası (CSV/XLSX, ≤2 MB): kalemler tanınır ve dönem + sürümle saklanır (her yükleme yeni sürüm,
+    silme yok). Dönem/sürüm verilmezse dosyadan okunur."""
+    from pvquant.services import mutabakat_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    b = dosya.file.read()
+    try:
+        k = mutabakat_service.kaydet(claims["tenant_id"], {"id": str(row["id"])}, b, dosya.filename or "bildirim.csv", donem=donem, surum=surum, yukleyen=claims.get("sub"))
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    _denetim.kaydet("musteri", "mutabakat_yukle", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"],
+                    ayrinti={"donem": k["donem"], "surum": k["surum"], "kalem": k["kalem_sayisi"], "dosya": (dosya.filename or "")[:80], "sha256": k["sha256"][:16]})
+    return k
 
 
 @app.get("/v1/plants/{plant_id}/yekdem")

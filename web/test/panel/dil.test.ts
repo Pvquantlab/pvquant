@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 const DOSYALAR = [
   "shell/Kabuk.tsx", "App.tsx",
-  "features/sayfalar/Portfoy.tsx", "features/sayfalar/Dogruluk.tsx", "features/sayfalar/Tahminler.tsx", "features/sayfalar/Takvim.tsx", "features/sayfalar/Olaylar.tsx",
+  "features/sayfalar/Portfoy.tsx", "features/sayfalar/Dogruluk.tsx", "features/sayfalar/Tahminler.tsx", "features/sayfalar/Takvim.tsx", "features/sayfalar/Olaylar.tsx", "features/sayfalar/Mutabakat.tsx",
   "features/sayfalar/Aylik.tsx", "features/sayfalar/Digerleri.tsx", "features/sayfalar/Hakkinda.tsx",
   "features/sayfalar/JsonOnizleme.tsx", "features/santralim/Santralim.tsx", "features/giris/Giris.tsx",
 ];

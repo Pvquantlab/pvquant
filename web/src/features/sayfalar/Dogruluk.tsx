@@ -810,8 +810,12 @@ export function Dogruluk({ plantId }: { plantId: string }) {
             </div>
             <SaatlikDokum plantId={plantId} gun={dz.pencere_gun} />
             <p style={{ marginTop: 10, marginBottom: 0, fontSize: 13.5 }}>
-              {dz.toplam?.teminat_tl != null && <>Teminat göstergesi: <b>{sayiTr(dz.toplam.teminat_tl / 1000, 1)} bin TL</b> (son 3 ayın en
-              yüksek aylık dengesizlik borcu; sadeleştirilmiş göstergedir, EPİAŞ Teminat Usul ve Esasları ile doğrulanmamıştır). </>}
+              {dz.toplam?.teminat && (dz.toplam.teminat.tutar_tl != null
+                ? <>Dengesizlik teminatı göstergesi: <b>{sayiTr(dz.toplam.teminat.tutar_tl / 1000, 1)} bin TL</b> ({sayiTr(dz.toplam.teminat.edm_neg_max_mwh ?? 0, 1)} MWh en yüksek aylık negatif dengesizlik
+                    miktarı ({dz.toplam.teminat.edm_ay}) × {sayiTr(dz.toplam.teminat.smf_ort_tl_mwh ?? 0, 0)} TL/MWh {sayiTr(dz.toplam.teminat.smf_ay_sayisi)} aylık ortalama SMF × risk katsayısı {sayiTr(dz.toplam.teminat.risk_katsayisi ?? 0, 2)};
+                    EPİAŞ dengesizlik teminatı tanımı, doğrulanmamış gösterge; EPYS ve Takasbank tutarları esastır). </>
+                : <>Dengesizlik teminatı göstergesi: risk katsayısı girilmedi (Santralim › Üretim programı sınırları); formül {dz.toplam.teminat.formul}{dz.toplam.teminat.edm_neg_max_mwh != null
+                    ? `; ${sayiTr(dz.toplam.teminat.edm_neg_max_mwh, 1)} MWh (${dz.toplam.teminat.edm_ay}) × ${sayiTr(dz.toplam.teminat.smf_ort_tl_mwh ?? 0, 0)} TL/MWh` : ""}. </>)}
               {dz.oneri && (dz.oneri.durum === "ok" && dz.oneri.kantil
                 ? <>Önerilen program seviyesi: <b>{dz.oneri.kantil.toUpperCase()}</b> (saatlerin
                     %{sayiTr((dz.oneri.acik_saat_orani ?? 0) * 100, 0)}'inde sistem enerji açığındaydı); eksik üretimin birim maliyeti ile fazla üretimin birim maliyetinin dengesidir.</>

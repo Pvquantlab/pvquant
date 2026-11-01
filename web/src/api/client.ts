@@ -1,4 +1,4 @@
-import type { DengesizlikSaatlik, DsgAnahtar, KgupRevizyon, PiyasaDurum, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar, PortfoyAnahtar, PortfoyKupst, UevcbArama , Takvim, KunyeTarihler, Yekdem, Olay, OlayOzet, OlayGiris, OlayYanit } from "./types";
+import type { DengesizlikSaatlik, DsgAnahtar, KgupRevizyon, PiyasaDurum, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar, PortfoyAnahtar, PortfoyKupst, UevcbArama , Takvim, KunyeTarihler, Yekdem, Olay, OlayOzet, OlayGiris, OlayYanit, MutabakatOzet, MutabakatYukleme } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -768,6 +768,27 @@ export const api = {
     return y.json();
   },
   kgupSablonSifirla: (p: string): Promise<{ sablon: NonNullable<KgupOnizleme["sablon"]> }> => gonder(`/v1/plants/${p}/kgup/sablon`, "DELETE"),
+  /** v2.522 (P2b-1): EPİAŞ uzlaştırma bildirimiyle mutabakat — dönem listesi + seçili dönemin kalem tablosu */
+  mutabakat: (p: string, donem?: string | null, surum?: string | null): Promise<MutabakatOzet> =>
+    getir<MutabakatOzet>(`/v1/plants/${p}/mutabakat${donem ? `?donem=${donem}${surum ? `&surum=${surum}` : ""}` : surum ? `?surum=${surum}` : ""}`),
+  /** v2.522: EPYS «Uzlaştırma Bildirimi» dosyasını yükle (CSV/XLSX; dönem ve sürüm boşsa dosyadan okunur) */
+  mutabakatYukle: async (p: string, dosya: File, donem?: string | null, surum?: string | null): Promise<MutabakatYukleme> => {
+    if (TABAN == null) throw new Error("Örnek kipte yükleme yok.");
+    const jeton = localStorage.getItem("pvq_token"); const fd = new FormData(); fd.append("dosya", dosya);
+    const q = [donem ? `donem=${donem}` : "", surum ? `surum=${surum}` : ""].filter(Boolean).join("&");
+    const y = await fetch(`${TABAN}/v1/plants/${p}/mutabakat${q ? `?${q}` : ""}`, { method: "POST", body: fd, headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
+    if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise(() => {}); }
+    if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
+    return y.json();
+  },
+  /** v2.522 (P2b, IH-036): DSG üye dağılımı belgesi (CSV) */
+  portfoyDsgIndir: async (gun = 30, anahtar: DsgAnahtar = "sapma"): Promise<void> => {
+    if (TABAN == null) throw new Error("Örnek kipte indirme yok.");
+    const jeton = localStorage.getItem("pvq_token");
+    const y = await fetch(`${TABAN}/v1/portfoy/dsg.csv?gun=${gun}&anahtar=${anahtar}`, { headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
+    if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
+    const b = await y.blob(); const u = URL.createObjectURL(b); const a = document.createElement("a"); a.href = u; a.download = `pvquant_dsg_uye_dagilimi_${gun}g_${anahtar}.csv`; a.click(); URL.revokeObjectURL(u);
+  },
   /** v2.507 (F-10): bugünün programı için revizyon önerisi */
   kgupRevizyon: async (p: string): Promise<KgupRevizyon | null> => {
     if (TABAN == null) return null;
