@@ -1484,6 +1484,80 @@ def mutabakat_yukle(plant_id: str, donem: str | None = None, surum: str | None =
     return k
 
 
+class SayacAyarIstek(BaseModel):
+    """v2.523 (P4a): sayaç türü ve lisanssız SCADA durumu; yalnız istekte geçen alanlar değişir, null temizler."""
+    sayac_turu: str | None = None                   # 15dk_endeks | diger
+    scada_durum: str | None = None                  # bagli | kopuk | yok (lisanssız, LÜY m.21(7))
+    scada_kopukluk_baslangic: str | None = None     # YYYY-MM-DD
+    uzaktan_acma_var: bool | None = None            # uzaktan açma-kapama yeteneği envanterde
+    sistem_kullanim_bedeli_tl_ay: float | None = None   # Karar 14909 bedel göstergesi girdisi (dağıtım faturasından)
+
+
+def _sayac_plant(row) -> dict:
+    return {"id": str(row["id"]), "name": row["name"], "capacity_kwp": row["capacity_kwp"], "ac_limit_kw": row.get("ac_limit_kw"), "params_json": row.get("params_json")}
+
+
+@app.get("/v1/plants/{plant_id}/sayac")
+def sayac_ozet(plant_id: str, gun: int = 30, claims=Depends(gecerli_kullanici)):
+    """v2.523 (P4a) — Sayaç izleme: veri geliş beklentisi (Ölçüm Sist. Yön. m.8), eksik saat, 12. gün 17:30 geri sayımı, SCADA ↔ sayaç günlük farkı,
+    kaynak/nitelik etiketi, yükleme tarihçesi; lisanssızda SCADA durumu ve Karar 14909 bedel göstergesi."""
+    from pvquant.services import sayac_service
+    if not (7 <= gun <= 400):
+        raise HTTPException(422, "gun 7–400 aralığında olmalı")
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    return sayac_service.ozet(claims["tenant_id"], _sayac_plant(row), gun=gun)
+
+
+@app.get("/v1/plants/{plant_id}/sayac.csv")
+def sayac_csv(plant_id: str, gun: int = 30, claims=Depends(gecerli_kullanici)):
+    """v2.523 (P4a) — günlük SCADA ↔ sayaç tablosu CSV (; ayraç, BOM)."""
+    from pvquant.services import sayac_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    f = sayac_service.fark(claims["tenant_id"], _sayac_plant(row), gun=max(7, min(gun, 400)))
+    return Response(sayac_service.fark_csv(f, row["name"]), media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="pvquant_sayac_scada_{sayac_service._sade(row["name"]).replace(" ", "_")}_{f["pencere_gun"]}g.csv"'})   # ASCII ad (Türkçe karakter başlıkta olmaz)
+
+
+@app.post("/v1/plants/{plant_id}/sayac", status_code=201)
+def sayac_yukle(plant_id: str, kaynak: str = "osos", dosya: UploadFile = File(...), claims=Depends(yazma_yetkisi())):
+    """v2.523 (P4a) — OSOS / MASS / EPYS sayaç dışa aktarımı (CSV/XLSX, ≤8 MB): saatlik veriş kWh (dakikalık dilimler toplanır), nitelik etiketi;
+    aynı saat + kaynak yeniden yüklenirse güncellenir (düzeltme), yükleme tarihçesi tutulur."""
+    from pvquant.services import sayac_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    b = dosya.file.read()
+    try:
+        k = sayac_service.kaydet(claims["tenant_id"], {"id": str(row["id"])}, b, dosya.filename or "sayac.csv", kaynak=kaynak, yukleyen=claims.get("sub"))
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    _denetim.kaydet("musteri", "sayac_yukle", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"],
+                    ayrinti={"kaynak": kaynak, "n_saat": k["n_saat"], "bas": k["bas"], "bit": k["bit"], "dosya": (dosya.filename or "")[:80], "sha256": k["sha256"][:16]})
+    return k
+
+
+@app.put("/v1/plants/{plant_id}/sayac-ayar")
+def sayac_ayar(plant_id: str, p: SayacAyarIstek, claims=Depends(yazma_yetkisi())):
+    """v2.523 (P4a) — sayaç türü (15 dk endeks / diğer), lisanssız SCADA durumu, kopukluk başlangıcı, uzaktan açma yeteneği, aylık sistem kullanım bedeli."""
+    from pvquant.services import sayac_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    try:
+        an = sayac_service.ayar_dogrula(p.model_dump(exclude_unset=True))
+    except ValueError as e:
+        raise HTTPException(422, f"{e} alanı geçersiz")
+    if an:
+        pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **an)
+        row["params_json"] = pj
+        _denetim.kaydet("musteri", "sayac_ayar", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"], ayrinti=an)
+    return sayac_service.ozet(claims["tenant_id"], _sayac_plant(row), gun=30)
+
+
 @app.get("/v1/plants/{plant_id}/yekdem")
 def yekdem_ozet(plant_id: str, gun: int = 90, claims=Depends(gecerli_kullanici)):
     """v2.520 (P5a) — YEKDEM katmanı: fiyat rejimi (Cetvel I / 7189; işletmeye giriş tarihinden ya da tarifedeki seçim), bugünün YEK fiyatı

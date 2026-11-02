@@ -44,6 +44,7 @@ export const SOZLUK = {
     santral_tarihler: "Santral tarihleri ayarlandı",   // v2.518 (P3a)
     olay_ekle: "Olay kaydı açıldı", olay_guncelle: "Olay kaydı güncellendi",   // v2.521 (P1a)
     mutabakat_yukle: "Uzlaştırma bildirimi yüklendi", dsg_belge_indir: "DSG üye dağılımı belgesi indirildi",   // v2.522 (P2b)
+    sayac_yukle: "Sayaç dosyası yüklendi", sayac_ayar: "Sayaç ve SCADA ayarı değişti",   // v2.523 (P4a)
   } as Record<string, string>,
 } as const;
 

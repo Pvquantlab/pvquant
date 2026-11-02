@@ -117,7 +117,7 @@ def test_saatlik_etki_istisna_ve_dahili(kiraci):
     assert os_.dahili_bilgi({"tur": "talimat_yat", "etkilenen_kw": None, "baslangic": datetime(2026, 11, 10, 9, 30, tzinfo=IST)}, 40000) is None
     o = os_.ozet(tid, plant, 90, bugun=date(2026, 11, 10))
     assert o["acik"] == 0 and o["planli"] == 5 and o["eak_bugun"]["saat_sayisi"] == 3 and o["eak_bugun"]["kismi_saat"] == 1 and o["eak_bugun"]["en_cok_kw"] == 40000   # 10.11 kayıtları «planlı»
-    assert o["ariza_sayaci"]["sayi"] == 2 and len(o["turler"]) == 7 and set(o["aciklama"]) == {"kapasite", "sayac", "kullanilabilirlik", "islem", "gerekce"} and o["eak_bugun"]["suren"] == 0
+    assert o["ariza_sayaci"]["sayi"] == 2 and len(o["turler"]) == 8 and set(o["aciklama"]) == {"kapasite", "sayac", "kullanilabilirlik", "islem", "gerekce"} and o["eak_bugun"]["suren"] == 0
     csv = os_.csv_metni(o["olaylar"], "Olay GES"); assert csv.startswith("\ufeffsantral;tur;") and "Şebeke kesintisi" in csv and csv.count("\n") == 6 and ";evre;" in csv and "planlı" in csv
 
 

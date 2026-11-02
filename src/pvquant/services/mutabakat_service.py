@@ -377,9 +377,36 @@ def pvquant_kalemleri(tenant_id, plant: dict, donem: date, bugun: date | None = 
         if yf.notna().any():
             out["res"] = {"alacak_tl": round(float((g * yf.fillna(0)).sum() - disi.sum()), 2), "borc_tl": 0.0,
                           "not": "kaba: gerçekleşen MWh × günün YEK fiyatı − m.23(6) dışı tutar; EPİAŞ YEKBED kalemleri (ÖYO/ÖYT, KB) hesaplanmaz", "kaba": True}
+    sayac = _sayac_kapsami(tenant_id, plant, donem)   # v2.523 (P4a): sayaç verisi hesaba GİRMEZ; yalnız kapsam ve SCADA ile farkı söylenir
+    if sayac and sayac.get("yuklu"):
+        nedenler.append(f"sayaç verisi {sayac['yuklu']}/{sayac['toplam_saat']} saat ({sayac['olculmus']} ölçülmüş)" + (f"; ölçülmüş saatlerde sayaç − SCADA {sayac['olc_fark_pct']:+.1f} %" if sayac.get("olc_fark_pct") is not None else "")
+                        + "; hesap SCADA ile yapıldı, uzlaştırmaya esas sayaç (UEVM) değildir")
     return {"kalemler": out, "saat": saat, "beklenen_saat": beklenen, "son_saat": x["zaman"].max(), "hesaplanamayan_saat": hes_yok, "bildirilen_saat": bildirilen,
             "senaryo_saat": senaryo_saat, "senaryo_kapsam": senaryo_kapsam, "kural_surumu": " | ".join(sorted(set(x["kural_surumu"].astype(str)))),
-            "guvenilirlik": {"durum": durum, "etiket": GUVENILIRLIK_ETIKET[durum], "nedenler": nedenler}}
+            "sayac": sayac, "guvenilirlik": {"durum": durum, "etiket": GUVENILIRLIK_ETIKET[durum], "nedenler": nedenler}}
+
+
+def _sayac_kapsami(tenant_id, plant: dict, donem: date) -> dict | None:
+    """v2.523 (P4a): dönem için yüklü sayaç saatleri (ölçülmüş / tahmini) ve ölçülmüş saatlerde SCADA ile fark. Tablo yoksa None; hesaba girmez."""
+    try:
+        from pvquant.services import sayac_service
+        bas = datetime.combine(donem, datetime.min.time(), tzinfo=IST); bit = datetime.combine(ay_sonu := _ay_ekle(donem), datetime.min.time(), tzinfo=IST)
+        sy = sayac_service.sayac_oku(tenant_id, plant["id"], bas, bit)
+        toplam = int((bit - bas).total_seconds() // 3600)
+        if sy.empty:
+            return {"toplam_saat": toplam, "yuklu": 0, "olculmus": 0, "tahmini": 0, "olc_fark_pct": None}
+        sc = sayac_service.scada_oku(tenant_id, plant["id"], bas, bit)
+        j = sayac_service._birlestir(sc, sy)
+        t = int(sy["nitelik"].isin(["tahmini", "doldurulmus", "yok"]).sum())
+        olc = sayac_service._kiyas(float(j["olc_scada"].sum()), float(j["olc_sayac"].sum()), int(j["olculmus"].sum())) if (not j.empty and j["olculmus"].any()) else None
+        del ay_sonu
+        return {"toplam_saat": toplam, "yuklu": int(len(sy)), "olculmus": int(len(sy)) - t, "tahmini": t, "olc_fark_pct": (olc["fark_pct"] if olc else None)}
+    except Exception:   # noqa: BLE001 — sayaç tablosu yoksa (eski DB) mutabakat etkilenmez
+        return None
+
+
+def _ay_ekle(d: date) -> date:
+    return date(d.year + 1, 1, 1) if d.month == 12 else date(d.year, d.month + 1, 1)
 
 
 def mutabakat(tenant_id, plant: dict, donem, surum: str | None = None, bugun: date | None = None) -> dict:

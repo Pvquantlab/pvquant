@@ -477,7 +477,7 @@ export type Takvim = { bugun: string; pencere_gun: number; segment: string | nul
   gunluk: { saat: string; ad: string; kaynak: string; kapsam: string[]; not: string | null; gunler: "her gün" | "iş günü" }[];
   kunye: KunyeTarihler; tatil_kaynak: string; tatil_yillari: number[]; not: string };
 /** v2.521 (P1a): olay kaydı — planlı bakım, arıza, talimat, acil kesme, şebeke kesintisi, hasar; EAK/program, arıza sayacı ve kullanılabilirlik bunlardan beslenir. */
-export type OlayTur = "planli_bakim" | "ariza" | "talimat_yat" | "talimat_yal" | "acil_kesme" | "sebeke_kesintisi" | "hasar";
+export type OlayTur = "planli_bakim" | "ariza" | "talimat_yat" | "talimat_yal" | "acil_kesme" | "sebeke_kesintisi" | "hasar" | "uzaktan_acma";   // v2.523 (P4a): uzaktan açma yapılamadı
 export interface OlayKural { eak_dusur: boolean; gerekce: string | null; istisna: boolean; sayac: boolean; not: string }
 export interface Olay { id: string; plant_id: string; tur: OlayTur; tur_etiket: string; baslangic: string; bitis: string | null; etkilenen_kw: number | null; neden: string | null;
   eak_gerekcesi: string | null; kanit: string | null; durum: "acik" | "kapali" | "iptal"; acik: boolean; evre: "planli" | "suruyor" | "bitti" | "iptal"; olusturma: string; guncelleme: string | null; kural: OlayKural }
@@ -487,6 +487,43 @@ export interface OlayOzet { bugun: string; pencere_gun: number; olaylar: Olay[];
   aciklama: { kapasite: string; sayac: string; kullanilabilirlik: string; islem: string; gerekce: string };
   dahili_bilgi: { olay_id: string; tur: string; esik: string; etkilenen_kw: number; son_saat: string; kalan_dk: number; gecti: boolean; yururluk: string; not: string }[];
   turler: ({ kod: OlayTur; etiket: string } & OlayKural)[]; gerekceler: { kod: string; etiket: string }[]; not: string }
+/** v2.523 (P4a): sayaç izleme — OSOS/MASS/EPYS sayaç serisi (SCADA'dan ayrı), geliş beklentisi, SCADA ↔ sayaç farkı, lisanssız SCADA durumu */
+export type SayacKaynak = "osos" | "mass" | "epys" | "elle";
+export type SayacNitelik = "olculmus" | "tahmini" | "doldurulmus" | "elle" | "yok";
+export interface SayacYukleme { yukleme_id: string; kaynak: SayacKaynak; kaynak_etiket: string; dosya_adi: string | null; sha256: string | null; bicim: string | null; bas: string | null; bit: string | null;
+  n_saat: number; n_satir: number; nitelik_sayim: Record<string, number>; uyarilar: string[]; zaman: string }
+export interface SayacYuklemeYanit { yukleme_id: string; kaynak: SayacKaynak; kaynak_etiket: string; dosya_adi: string; sha256: string; bicim: string; bas: string; bit: string; n_saat: number; n_satir: number;
+  cozunurluk_dk: number; nitelik_sayim: Record<string, number>; toplam_veris_kwh: number; kolonlar: { zaman: string; veris: string; cekis: string | null; nitelik: string | null }; uyarilar: string[];
+  atlanan?: { okunamayan: number; gelecek: number; negatif: number; yinelenen: number } }
+export interface SayacGun { gun: string; scada_kwh: number | null; sayac_kwh: number | null; ortak_scada_kwh: number | null; ortak_sayac_kwh: number | null; fark_kwh: number | null; fark_pct: number | null;
+  saat_scada: number; saat_sayac: number; saat_ortak: number; saat_tahmini: number; saat_olculmus: number; olc_fark_pct: number | null }
+/** toplam çifti: fark = sayaç − SCADA; yüzde SCADA toplamına oranla */
+export interface SayacKiyas { saat: number; scada_kwh: number | null; sayac_kwh: number | null; fark_kwh: number | null; fark_pct: number | null }
+export interface SayacFark { pencere_gun: number; bas: string; bit: string; gunler: SayacGun[];
+  /** yalnız ölçülmüş sayaç saatleri ↔ tahmini/doldurulmuş dâhil bütün ortak saatler; kapsam = ortak saat / pencere */
+  olculmus: SayacKiyas; tahmini_dahil: SayacKiyas; kapsam: { pencere_saat: number; ortak_saat: number; ortak_pct: number | null; yalniz_scada_saat: number; yalniz_sayac_saat: number; ikisi_de_yok_saat: number };
+  toplam: { scada_kwh: number; sayac_kwh: number; ortak_scada_kwh: number | null; ortak_sayac_kwh: number | null; saat_scada: number; saat_sayac: number; saat_ortak: number; saat_tahmini: number; fark_kwh: number | null; fark_pct: number | null };
+  en_buyuk_fark: { gun: string; fark_kwh: number; fark_pct: number } | null; kaynak_sayim: Record<string, number>; sayac_kaynak_sayim: Record<string, number>; pencere_saat: number; aciklama: string }
+export interface SayacDonemKapsam { vadesi_gelen: number; yuklu: number; olculmus: number; tahmini: number; eksik: number; tam_ay: boolean }
+export interface SayacDonem { donem: string; sayac_veri: string; itiraz_son: string; kalan_saat: number; gecti: boolean; hafta_sonu: boolean; not: string | null; kaynak: string; kapsam: SayacDonemKapsam }
+/** bu ayın saat sınıflandırması: vadesi gelen (m.8(2) saat + 2 sa) / vadesi gelmemiş / yüklü (ölçülmüş, tahmini) / eksik (vadesi gelen ama PVQuant'ta yok) */
+export interface SayacSiniflama { gecen_saat: number; vadesi_gelen: number | null; vadesi_gelmemis: number | null; yuklu: number; yuklu_olculmus: number; yuklu_tahmini: number; eksik: number | null; not: string }
+export interface SayacGelis { sayac_turu: string | null; sayac_turu_etiket: string | null;
+  beklenen: { kural: string; dayanak: string | null; kesinlik: "belirsiz" | "mevzuat" | null; not: string | null; son_beklenen_saat: string | null; son_beklenen_dilim: string | null };
+  son_sayac: string | null; son_scada: string | null; son_sayac_saat_once: number | null; ay: string; ay_sayac_saat: number; ay_beklenen_saat: number | null; ay_eksik_saat: number | null;
+  siniflama: SayacSiniflama; donemler: SayacDonem[]; kaynak: string }
+export interface SayacBedelKalem { kod: string; etiket: string; kat: number; birim: string; tutar_tl: number | null; kesinlik?: string; not?: string;
+  /** askı (LÜY Geçici m.14): (f)/(g) kapsamda; (ç) doğrulanmadı */ aski?: "kapsamda" | "dogrulanmadi" }
+export interface SayacScada { yukumlu: boolean; esik_kw: number; kurulu_kw: number; kurulu_kaynak: string;
+  /** anlaşma tarafı: dağıtıma bağlı (Dağıtım Sistemine Bağlantı Anlaşması, Karar 14909) ya da iletime bağlı (TEİAŞ; gösterge yok); m.75(4) kapsamı 900 kW+ */
+  anlasma: "dagitim" | "iletim"; m75_kapsam: boolean; m75_esik_kw: number;
+  durum: string | null; durum_etiket: string; durum_kaynagi: "beyan"; kopukluk_baslangic: string | null; kopukluk_gun: number | null;
+  uzaktan_acma_var: boolean | null; uzaktan_acma_ay: number; bedel_tl_ay: number | null; kalemler: SayacBedelKalem[]; uygulanmayan: string[]; toplam_tl: number | null;
+  toplam_aski_tl: number | null; toplam_aski_disi_tl: number | null; aski_kapsami: string; tutar_niteligi: "varsayimsal";
+  aski_bitis: string; aski_kesinlik: string; aski_gecti: boolean; aski_kalan_gun: number; kaynak: string; dayanak_yukumluluk: string; not: string }
+export interface SayacAyar { sayac_turu?: string | null; scada_durum?: string | null; scada_kopukluk_baslangic?: string | null; uzaktan_acma_var?: boolean | null; sistem_kullanim_bedeli_tl_ay?: number | null }
+export interface SayacOzet { bugun: string; pencere_gun: number; segment: string | null; ayar: Required<SayacAyar>; gelis: SayacGelis; fark: SayacFark; scada: SayacScada | null; scada_notu: string | null; yuklemeler: SayacYukleme[];
+  kaynaklar: { kod: SayacKaynak; etiket: string }[]; nitelikler: { kod: SayacNitelik; etiket: string }[]; sayac_turleri: { kod: string; etiket: string }[]; scada_durumlari: { kod: string; etiket: string }[]; not: string }
 /** v2.522 (P2b-1): EPİAŞ uzlaştırma bildirimiyle kalem kalem mutabakat */
 export type MutabakatDurum = "uyumlu" | "fark" | "senaryo" | "hesaplanamaz" | "bildirimde_yok" | "hesap_yok";
 export interface MutabakatSatir { kod: string; etiket: string; hesaplanir: boolean; kalem_ad: string | null; bildirim_alacak_tl: number | null; bildirim_borc_tl: number | null;
@@ -501,7 +538,9 @@ export interface Mutabakat { donem: string; donem_etiket: string;
   ozet: { bildirim_alacak_tl: number | null; bildirim_borc_tl: number | null; bildirim_kiyas_alacak_tl: number | null; bildirim_kiyas_borc_tl: number | null; bildirim_kiyas_net_tl: number | null;
     pvquant_alacak_tl: number | null; pvquant_borc_tl: number | null; pvquant_net_tl: number | null; fark_tl: number | null; uyumlu: number; farkli: number; senaryo: number; kiyaslanan: number; kapsam: string | null };
   uyum: { pct: number; tl: number; not: string }; guvenilirlik: MutabakatGuvenilirlik; eylem: string | null;
-  pvquant: { saat: number; beklenen_saat?: number; son_saat?: string; hesaplanamayan_saat?: number; bildirilen_saat?: number; senaryo_saat?: number; senaryo_kapsam?: string; kural_surumu?: string; hata?: string }; not: string; program_notu: string | null }
+  pvquant: { saat: number; beklenen_saat?: number; son_saat?: string; hesaplanamayan_saat?: number; bildirilen_saat?: number; senaryo_saat?: number; senaryo_kapsam?: string; kural_surumu?: string; hata?: string;
+    /** v2.523 (P4a): dönemin sayaç kapsamı — hesaba girmez, yalnız bilgi */
+    sayac?: { toplam_saat: number; yuklu: number; olculmus: number; tahmini: number; olc_fark_pct: number | null } | null }; not: string; program_notu: string | null }
 export interface MutabakatOzet { bugun: string;
   donemler: { donem: string; surum: string; surum_etiket: string; yukleme_id: string; zaman: string; dosya_adi: string | null; sha256?: string | null; kalem_sayisi: number; surum_kaynagi?: string | null; dosya_surum?: string | null; gecerli: boolean; surum_dogrulama: SurumDogrulama }[];
   secili: Mutabakat; surumler: { kod: string; etiket: string }[]; kalemler: { kod: string; etiket: string; hesaplanir: boolean; epys: string }[]; guvenilirlik_etiketleri: Record<string, string> }

@@ -27,9 +27,10 @@ from sqlalchemy import text
 from pvquant.db import tenant_baglami
 
 IST = ZoneInfo("Europe/Istanbul")
-TURLER = ("planli_bakim", "ariza", "talimat_yat", "talimat_yal", "acil_kesme", "sebeke_kesintisi", "hasar")
+TURLER = ("planli_bakim", "ariza", "talimat_yat", "talimat_yal", "acil_kesme", "sebeke_kesintisi", "hasar", "uzaktan_acma")   # v2.523 (P4a): uzaktan açma yapılamadı
 TUR_ETIKET = {"planli_bakim": "Planlı bakım", "ariza": "Arıza", "talimat_yat": "Yük atma talimatı (YAT)", "talimat_yal": "Yük alma talimatı (YAL)",
-              "acil_kesme": "Acil durum kesmesi", "sebeke_kesintisi": "Şebeke kesintisi", "hasar": "Hasar"}
+              "acil_kesme": "Acil durum kesmesi", "sebeke_kesintisi": "Şebeke kesintisi", "hasar": "Hasar",
+              "uzaktan_acma": "Uzaktan açma yapılamadı"}   # v2.523 (P4a)
 GEREKCELER = ("kaynak_yetersizligi", "iklim_verim", "mucbir", "dissal", "guvenlik")
 GEREKCE_ETIKET = {"kaynak_yetersizligi": "kaynak yetersizliği", "iklim_verim": "iklim / verim", "mucbir": "mücbir sebep", "dissal": "dışsal", "guvenlik": "güvenlik"}
 # tür → EAK'yi düşürür mü, EAK.csv varsayılan gerekçe sütunu, kullanılabilirlik istisnası mı, arıza sayacına girer mi, açıklama
@@ -41,6 +42,7 @@ TUR_KURAL = {
     "acil_kesme":      {"eak_dusur": True,  "gerekce": "dissal",              "istisna": True,  "sayac": False, "not": "Sistem İşletmecisi kesmesi: EAK dışsal gerekçeyle düşer; kullanılabilirlikte istisna"},
     "sebeke_kesintisi": {"eak_dusur": True, "gerekce": "dissal",              "istisna": True,  "sayac": False, "not": "Şebeke kaynaklı: EAK dışsal gerekçeyle düşer; kullanılabilirlikte istisna"},
     "hasar":           {"eak_dusur": True,  "gerekce": "kaynak_yetersizligi", "istisna": False, "sayac": False, "not": "Hasar dosyası için kayıt; EAK düşer. Hasar tek başına mücbir sebep değildir: «mücbir sebep» gerekçesi yalnız mevzuattaki koşullar sağlanıyorsa seçilir"},
+    "uzaktan_acma":    {"eak_dusur": False, "gerekce": None,                  "istisna": False, "sayac": False, "not": "Lisanssız tesiste acil durum talimatında uzaktan açma yapılamadı (LÜY m.21(7) SCADA bağlantısı); EAK değişmez; Sayaç sayfasındaki Karar 14909 bedel göstergesine girer (ay içinde en çok üç kat)"},   # v2.523 (P4a)
 }
 DURUMLAR = ("acik", "kapali", "iptal")
 DAHILI_TESIS_KW = 30_000.0      # Karar 14967 Asgari Veriler Listesi sıra 1: tesis bazında 30 MW ve üzeri

@@ -113,7 +113,9 @@ export function Mutabakat({ plantId }: { plantId: string }) {
             <li><b>Saat:</b> {sayiTr(m.pvquant.saat)}{m.pvquant.beklenen_saat ? ` / ${sayiTr(m.pvquant.beklenen_saat)} (dönemin saati)` : ""}{m.pvquant.son_saat ? `; son üretim verisi ${m.pvquant.son_saat}` : ""}{m.pvquant.hesaplanamayan_saat ? `; ${sayiTr(m.pvquant.hesaplanamayan_saat)} saat hesaplanamadı` : ""}</li>
             <li><b>Program:</b> {m.pvquant.bildirilen_saat ? `${sayiTr(m.pvquant.bildirilen_saat)} saatte bildirilen KGÜP (TPYS'ye bildirildiği beyan edilen dosya)${m.pvquant.bildirilen_saat < m.pvquant.saat ? `, kalan ${sayiTr(m.pvquant.saat - m.pvquant.bildirilen_saat)} saatte PVQuant önerisi` : ""}` : "PVQuant önerisi (bildirilen KGÜP yüklü değil)"}</li>
             <li><b>Fiyat:</b> {m.pvquant.senaryo_saat ? `${sayiTr(m.pvquant.senaryo_saat)} saatte senaryo fiyatı (EPİAŞ fiyat verisi yok; sistem yönü dengede varsayıldı)` : "EPİAŞ saatlik PTF, SMF ve sistem yönü"}</li>
-            <li><b>Üretim:</b> SCADA ölçümü (geçerli bayraklı saatler); EPİAŞ uzlaştırmaya esas sayaç verisi (UEVM) değildir</li>
+            <li><b>Üretim:</b> SCADA ölçümü (geçerli bayraklı saatler); EPİAŞ uzlaştırmaya esas sayaç verisi (UEVM) değildir.{" "}
+              {m.pvquant.sayac?.yuklu ? <>Sayaç sayfasında dönem için {sayiTr(m.pvquant.sayac.yuklu)} / {sayiTr(m.pvquant.sayac.toplam_saat)} saat sayaç verisi var ({sayiTr(m.pvquant.sayac.olculmus)} ölçülmüş{m.pvquant.sayac.tahmini ? `, ${sayiTr(m.pvquant.sayac.tahmini)} tahmini/doldurulmuş` : ""}){m.pvquant.sayac.olc_fark_pct != null ? `; ölçülmüş saatlerde sayaç − SCADA ${m.pvquant.sayac.olc_fark_pct < 0 ? "−" : "+"}%${sayiTr(Math.abs(m.pvquant.sayac.olc_fark_pct), 1)}` : ""}; hesap yine SCADA ile yapıldı.</>
+                : <>Dönem için sayaç verisi yüklenmedi (Sayaç sayfası); SCADA brüt üretimdir, sayaç net veriştir.</>}</li>
             {m.pvquant.kural_surumu && <li><b>Kural:</b> {m.pvquant.kural_surumu}</li>}
             {g.nedenler.length > 0 && <li><b>{g.etiket}:</b> {g.nedenler.join("; ")}</li>}
             {m.pvquant.hata && <li className="soluk">Hesap alınamadı: {m.pvquant.hata}</li>}

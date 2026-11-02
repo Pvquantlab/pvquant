@@ -1,4 +1,4 @@
-import type { DengesizlikSaatlik, DsgAnahtar, KgupRevizyon, PiyasaDurum, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar, PortfoyAnahtar, PortfoyKupst, UevcbArama , Takvim, KunyeTarihler, Yekdem, Olay, OlayOzet, OlayGiris, OlayYanit, MutabakatOzet, MutabakatYukleme } from "./types";
+import type { DengesizlikSaatlik, DsgAnahtar, KgupRevizyon, PiyasaDurum, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar, PortfoyAnahtar, PortfoyKupst, UevcbArama , Takvim, KunyeTarihler, Yekdem, Olay, OlayOzet, OlayGiris, OlayYanit, MutabakatOzet, MutabakatYukleme, SayacOzet, SayacYuklemeYanit, SayacAyar, SayacKaynak } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -780,6 +780,26 @@ export const api = {
     if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise(() => {}); }
     if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
     return y.json();
+  },
+  /** v2.523 (P4a): sayaç izleme — geliş beklentisi, SCADA ↔ sayaç farkı, yüklemeler, lisanssız SCADA durumu */
+  sayac: (p: string, gun = 30): Promise<SayacOzet> => getir<SayacOzet>(`/v1/plants/${p}/sayac?gun=${gun}`),
+  sayacAyar: (p: string, g: SayacAyar): Promise<SayacOzet> => gonder(`/v1/plants/${p}/sayac-ayar`, "PUT", g),
+  /** v2.523: OSOS / MASS / EPYS sayaç dışa aktarımını yükle (CSV/XLSX) */
+  sayacYukle: async (p: string, dosya: File, kaynak: SayacKaynak): Promise<SayacYuklemeYanit> => {
+    if (TABAN == null) throw new Error("Örnek kipte yükleme yok.");
+    const jeton = localStorage.getItem("pvq_token"); const fd = new FormData(); fd.append("dosya", dosya);
+    const y = await fetch(`${TABAN}/v1/plants/${p}/sayac?kaynak=${kaynak}`, { method: "POST", body: fd, headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
+    if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise(() => {}); }
+    if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
+    return y.json();
+  },
+  /** v2.523: günlük SCADA ↔ sayaç tablosu (CSV) */
+  sayacIndir: async (p: string, gun = 30): Promise<void> => {
+    if (TABAN == null) throw new Error("Örnek kipte indirme yok.");
+    const jeton = localStorage.getItem("pvq_token");
+    const y = await fetch(`${TABAN}/v1/plants/${p}/sayac.csv?gun=${gun}`, { headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
+    if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
+    const b = await y.blob(); const u = URL.createObjectURL(b); const a = document.createElement("a"); a.href = u; a.download = `pvquant_sayac_scada_${gun}g.csv`; a.click(); URL.revokeObjectURL(u);
   },
   /** v2.522 (P2b, IH-036): DSG üye dağılımı belgesi (CSV) */
   portfoyDsgIndir: async (gun = 30, anahtar: DsgAnahtar = "sapma"): Promise<void> => {

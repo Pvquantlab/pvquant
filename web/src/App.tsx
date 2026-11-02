@@ -51,6 +51,7 @@ const Dogruluk = lazy(() => import("./features/sayfalar/Dogruluk").then((m) => (
 const Takvim = lazy(() => import("./features/sayfalar/Takvim").then((m) => ({ default: m.Takvim })));   // v2.518 (P3a)
 const Olaylar = lazy(() => import("./features/sayfalar/Olaylar").then((m) => ({ default: m.Olaylar })));   // v2.521 (P1a)
 const Mutabakat = lazy(() => import("./features/sayfalar/Mutabakat").then((m) => ({ default: m.Mutabakat })));   // v2.522 (P2b-1)
+const Sayac = lazy(() => import("./features/sayfalar/Sayac").then((m) => ({ default: m.Sayac })));   // v2.523 (P4a)
 const Aylik = lazy(() => import("./features/sayfalar/Aylik").then((m) => ({ default: m.Aylik })));
 const VeriYukleme = lazy(() => import("./features/sayfalar/Digerleri").then((m) => ({ default: m.VeriYukleme })));
 const Kalibrasyon = lazy(() => import("./features/sayfalar/Digerleri").then((m) => ({ default: m.Kalibrasyon })));
@@ -215,6 +216,7 @@ export default function App() {
       {plantId && sayfa === "takvim" && <Takvim plantId={plantId} />}
       {plantId && sayfa === "olaylar" && <Olaylar plantId={plantId} />}
       {plantId && sayfa === "mutabakat" && <Mutabakat plantId={plantId} />}
+      {plantId && sayfa === "sayac" && <Sayac plantId={plantId} />}
       {plantId && sayfa === "aylik" && <Aylik plantId={plantId} />}
       {plantId && sayfa === "raporlar" && <Raporlar plantId={plantId} />}
       {sayfa === "hakkinda" && <Hakkinda />}
