@@ -529,3 +529,47 @@ mekanik güç ≈ kWp; m.16 bent eşlemeleri çıkarım, 2027 tutarları yok; m.
 destek süresi içinde YEKDEM'e yeniden giriş hakkı (YEK Yön. m.5 metninden; uygulama teyidi yok); DSG türü ve bağlantı türü alanları (P3c adayı); toplayıcı
 lisansı takvimi, piyasadan alım sınırı (Karar 14626), YEK-G yıllık kaydı, siber güvenlik öz denetimi kapsam dışı; uyum tarihleri için alarm sınıfa göre (P7b).
 Tahmin motoru, kalibrasyon ve uzlaştırma formülleri değişmedi.
+
+# Yirmi beşinci paket — v2.525 (02.11.2026 gece, canlı): Raporlama — dönem raporu (ay / çeyrek / yıl; geçmiş dönem yeniden üretilebilir), zamanlanmış aylık e-posta gönderimi, panel derin bağlantıları (#sayfa/santral)
+
+Commit `461a7b4`, CI #662 (5 dk 38 s). Dağıtım: api + worker + web imajı (ssh; 22. port açıktı); **göç yok** (ayar params_json.rapor_gonderim). Canlı: index.html ve JS/CSS birebir (25/25);
+api «startup complete»; worker «basladi»; `rapor-donem` ve `rapor-gonderim` uçları kimlik olmadan 422/401 döner.
+Kaynak: yol haritası dalga 2 «raporlama / dönem seçici» — IH-096 aylık O&M raporu (geçmiş herhangi bir aralık için yeniden üretim; çeyrek/yıl özeti), IH-105
+finansör çıktısı ve zamanlanmış gönderim, IH-107 yıllık özet; envanter B14 (zamanlanmış rapor yoktu), B17 (dönem seçici yoktu), B16 (derin bağlantı yoktu),
+ENV-F05-5 (rapor ucu açıklaması üç şablon sayıyordu). Türk O&M aylık rapor şablonu ve finansörün beklediği biçim BULUNAMADI (04-24, 05-40); içerik SPE Tablo 10
+asgarisine yakın tutuldu.
+aylik_rapor_service: `donem_cozumle` (YYYY-MM ay, YYYY-QN çeyrek, YYYY yıl; verilmezse son tam ay; süren dönem bugüne kırpılır ve etiketlenir; gelecek dönem
+ValueError → 422), `gunluk` (Türkiye günü; geçerli SCADA kWh — energy_kwh yoksa power_kw; saat sayısı; POA toplamı; forecast_daily P50/P10/P90; sapma yalnız
+iki değer de varsa), `olaylar` (olay_service.aralik; dönem içi süre), `kullanilabilirlik_olay` (1 − Σ(arıza/hasar süresi × devre dışı güç / kapasite) /
+dönem saati; planlı bakım, talimat, acil kesme, şebeke kesintisi istisna; SCADA tabanlı olan Doğruluk'ta kalır), `pr_temel` (IEC 61724-1 temel PR =
+(E/P_stc)/(H/G_stc); sıcaklık düzeltmesiz; POA ölçümü olan ≥ 10 gün; yoksa «ölçülen düzlem ışınımı yok»), `uzlastirma` (yalnız ay döneminde:
+mutabakat_service.pvquant_kalemleri — Mutabakat ile aynı hesap — ve yüklü EPİAŞ bildirimi yan yana; güvenilirlik ve nedenler; sayaç kapsamı), `veri`
+(özet: üretim, beklenen, ortak gün, sapma, kapsam, olay/arıza, en iyi/en düşük gün; **veri durumu** tam ≥ %99,5 ölçülü saat | kısmi | yok, metniyle;
+ölçüm yoksa üretim ve beklenen «yok» (None), 0 değil; `kaynaklar` listesi; günlük tablo ay döneminde, aylık tablo çeyrek/yıl), `rapor` (rs.Rapor: Özet —
+ilk satır veri durumu —, Günlük/Aylık üretim ve beklenti, Olay kaydı, Uzlaştırma kalemleri + not, Performans oranı, Notlar + kaynaklar; künye + üretim
+zamanı), `html` (şablon raporlarla ortak kabuk `sablon_rapor_service.html_sar`). Zamanlanmış gönderim: `gonderim_ayari` / `gonderim_dogrula` (aktif, ayın
+günü 1–28, en çok 10 e-posta), `alicilar` (boşsa alarm alıcıları), `gonder` (HTML gövdeli e-posta — posta_service `html` parametresi, multipart/alternative;
+durumlar gonderildi / gonderim_hatasi / rapor_hatasi / posta_yapilandirilmadi / alici_yok; sonuç params_json.rapor_gonderim.son_* + deneme sayacı ve denetim
+izi), `gonderilmeli_mi` (aktif ∧ bugün ≥ gün ∧ dönem gönderilmemiş; **başarısızlık dönemi kapatmaz**: günde bir, en çok GONDERIM_DENEME = 3 yeniden deneme;
+elle «Şimdi gönder» aynı sayaçla yazılır, yineleme yok). Worker `rapor_gonderimi` her gün 05:10 UTC (08:10 TSİ); ISIM_TR «Dönem raporu gönderimi (08:10)».
+API: GET `/v1/plants/{id}/rapor-donem?donem&fmt=html|json` (HTML indirme + denetim «rapor_donem_indir»; JSON önizleme), GET/PUT `rapor-gonderim`
+(«rapor_gonderim_ayar»), POST `rapor-gonderim/dene` («rapor_gonderim»); rapor-sablon açıklaması dört şablonu sayar.
+Web: Raporlar — «Dönem raporu» kartı (seçici: son 12 ay, son 4 çeyrek, bu yıl/geçen yıl; Önizle → veri durumu rozeti + üretim zamanı + 4 KPI + uzlaştırma
+tablosu PVQuant ↔ EPİAŞ + notlar; HTML indir), «Zamanlanmış gönderim» kartı (açık/kapalı rozeti, gün, alıcılar, Kaydet, «Şimdi gönder (ay)», son gönderim
+«Eylül 2026 raporu, 03.10.2026 08:10 — gönderildi», SMTP yoksa dürüst not); sayfa üst cümlesi mimariye uygun (tahmin bölümleri arşivden, üretim/olay/
+uzlaştırma/kalibrasyon kayıtlardan); Tahmin geçmişi «Tahmin modu» A/B/C açıklamalı, adlar mono değil; PDF/Excel/JSON kartlarında düğmeler alta hizalı;
+`.kart-arac` şeridi 900 px altında başlığın altına kırılır; App derin bağlantı `#sayfa/santral` (yüklemede okunur, sayfa/santral değişince replaceState,
+hashchange; yonetim/yontem dışında); sahte API rotaları; sözlük eylemleri.
+Üç inceleme turu (02 M39): son gönderim etiketi ve tarih biçimi, «Şimdi gönder (ay)», «gönderilemedi», dar ekran şeridi; brief ile ikinci tur (veri
+bütünlüğü / gönderim / biçim / arayüz, 3 geçiş): veri durumu sınıfı, ölçümsüz dönem, kaynak listesi, yeniden deneme + rapor_hatasi, üst cümle, mod
+etiketleri, kart hizası; son kontrol: yeni kusur yok.
+Testler: tests/test_aylik_rapor.py 4 (dönem çözümleme 8 durum + yıl geçişi; Ekim 2026 fixture'ı: 20 gün × 10 sa × 100 kWh, 12 gün POA 600 W/m², 31 gün
+P50 1.100, arıza 4 sa 500 kW + planlı bakım 3 sa → üretim 20.000, beklenen 34.100, sapma −9,1 %, kapsam %26,9 «kısmi», kullanılabilirlik 1 − 2/744,
+PR (12000/1200)/72; HTML bölümleri + «Kısmi: 200/744» + «Kaynaklar:»; Eylül boş dönem → üretim None «yok»; çeyrek aylık tablo; ayar doğrulama; günü gelme
+kuralı; gönderim SMTP yok/var → params_json; yeniden deneme: hata → deneme 1, bugün denendiyse bekle, 3'te dur, rapor hatası ayrı durum → deneme 2; API
+200/422/404 + denetim). tests/test_olay.py saat bağımlı sabit tarih (02.11 09:30) gelecek ayın ilk günlerine taşındı. Tam takım 871 passed / 1 skipped;
+web tsc 0, 103, oxlint 0, build; 1440/768/375 taşma 0 (`kanit/raporlar-donem-{1440,768,375}-2026-11-02.jpg`).
+Doğrulanamayan / sonraya: gerçek SMTP teslimi (test monkeypatch); Ekim 2026 canlı kapsamı; 16 sayfa PDF / Excel / JSON / standart PDF bu turda elle
+üretilmedi (mevcut testler yeşil); dönem raporu ile Doğruluk günlük toplamlarının çapraz kıyası; PDF eki (HTML gövde); EPI, düzeltmeli PR, kayıp TL, yıl yıl
+P-değeri (P8 kalanı, dalga 3); API kapsamları ve panel/API eşitliği (P10 kalanı); dönem seçicinin Doğruluk/Mutabakat'a taşınması.
+Tahmin motoru, kalibrasyon ve uzlaştırma formülleri değişmedi.
