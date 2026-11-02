@@ -50,6 +50,7 @@ UYUM_PCT = 2.0      # PVQuant işletme ölçütü (mevzuat toleransı değil): k
 UYUM_TL = 50.0
 UYUM_NOTU = ("Uyum ölçütü PVQuant'ın işletme ölçütüdür, mevzuatta bir tolerans değildir: kalemin alacak ve borç bileşenleri ayrı ayrı bakılır; her biri için "
              "|fark| bildirim tutarının %2'sini ya da 50 TL'yi (hangisi büyükse) aşmıyorsa «uyumlu». Net tutar eşleşse bile bileşenler sapıyorsa «fark var».")
+DOGRULAMA = {"gercek": "tam", "kismi": "kismi", "senaryo": "senaryo", "veri_yok": "yok"}   # 02.11 inceleme: satır/özet hükmünün doğrulama niteliği
 GUVENILIRLIK_ETIKET = {"gercek": "Gerçek verilerle karşılaştırma", "kismi": "Kısmi karşılaştırma", "senaryo": "Senaryo hesabı", "veri_yok": "Gerçek verilerle doğrulanamadı"}
 SURUM_KAYNAGI = ("dosya", "kullanici", "varsayilan")
 NOT = ("Mutabakat PVQuant'ın yeniden hesabı ile EPİAŞ bildirimini kalem kalem yan yana koyar; EPİAŞ sonucu esastır. Yalnız santral verisinden "
@@ -332,15 +333,17 @@ def bildirim(tenant_id, plant_id, donem: date, surum: str | None = None) -> dict
             "kalemler": [{"kod": r.kalem, "kalem_ad": r.kalem_ad, "yon": r.yon, "tutar_tl": float(r.tutar_tl)} for r in rows]}
 
 
-def pvquant_kalemleri(tenant_id, plant: dict, donem: date, bugun: date | None = None) -> dict:
-    """Dönem için PVQuant yeniden hesabı (dengesizlik_service.dokum ile aynı girdiler): EDT alacak/borç, KÜPST, YEK alacağı (lisanslı YEKDEM, kaba)."""
+def pvquant_kalemleri(tenant_id, plant: dict, donem: date, bugun: date | None = None, uretim: str | None = None) -> dict:
+    """Dönem için PVQuant yeniden hesabı (dengesizlik_service.dokum ile aynı girdiler): EDT alacak/borç, KÜPST, YEK alacağı (lisanslı YEKDEM, kaba).
+    v2.526 (P4a-2): uretim scada | sayac (verilmezse santral ayarı uzlastirma_girdi); sayaçla hesapta SCADA'lı hesapla fark da verilir (kiyas)."""
     from pvquant.services import dengesizlik_service
     b = bugun or datetime.now(IST).date()
     gun = max(14, min(365, (b - donem).days + 1))
+    uretim = uretim if uretim in dengesizlik_service.URETIM_SECENEKLERI else dengesizlik_service.uretim_secimi(plant.get("params_json"))
     try:
-        df, ozet = dengesizlik_service.dokum(tenant_id, plant, gun=gun)
+        df, ozet = dengesizlik_service.dokum(tenant_id, plant, gun=gun, uretim="sayac") if uretim == "sayac" else dengesizlik_service.dokum(tenant_id, plant, gun=gun)
     except Exception as e:   # noqa: BLE001
-        return {"kalemler": {}, "saat": 0, "hata": str(e)[:200]}
+        return {"kalemler": {}, "saat": 0, "hata": str(e)[:200], "uretim_kaynak": {"secim": uretim}}
     beklenen = calendar.monthrange(donem.year, donem.month)[1] * 24
     bos = {"kalemler": {}, "saat": 0, "beklenen_saat": beklenen, "guvenilirlik": {"durum": "veri_yok", "etiket": GUVENILIRLIK_ETIKET["veri_yok"],
            "nedenler": ["dönem için saatlik üretim ve program verisi yok"]}}
@@ -377,13 +380,42 @@ def pvquant_kalemleri(tenant_id, plant: dict, donem: date, bugun: date | None = 
         if yf.notna().any():
             out["res"] = {"alacak_tl": round(float((g * yf.fillna(0)).sum() - disi.sum()), 2), "borc_tl": 0.0,
                           "not": "kaba: gerçekleşen MWh × günün YEK fiyatı − m.23(6) dışı tutar; EPİAŞ YEKBED kalemleri (ÖYO/ÖYT, KB) hesaplanmaz", "kaba": True}
-    sayac = _sayac_kapsami(tenant_id, plant, donem)   # v2.523 (P4a): sayaç verisi hesaba GİRMEZ; yalnız kapsam ve SCADA ile farkı söylenir
-    if sayac and sayac.get("yuklu"):
+    sayac = _sayac_kapsami(tenant_id, plant, donem)   # v2.523 (P4a): dönemin sayaç kapsamı ve SCADA ile farkı
+    # v2.526 (P4a-2): üretim kaynağı — dönem saatlerinde kaç saat sayaç (ölçülmüş / tahmini), kaç saat SCADA; sayaçla hesapta SCADA'lı hesapla fark
+    uk = {"secim": uretim, "etiket": dengesizlik_service.URETIM_SECENEKLERI[uretim], "sayac_olculmus_saat": 0, "sayac_tahmini_saat": 0, "scada_saat": saat, "kiyas": None}
+    suk = ozet.get("saat_uretim_kaynak") if isinstance(ozet, dict) else None
+    if suk is not None and len(suk) == len(df):
+        don = [k for k, m in zip(suk, maske.values) if m]
+        uk["sayac_olculmus_saat"] = sum(1 for k in don if k == "sayac_olculmus"); uk["sayac_tahmini_saat"] = sum(1 for k in don if k == "sayac_tahmini")
+        uk["scada_saat"] = saat - uk["sayac_olculmus_saat"] - uk["sayac_tahmini_saat"]
+    if uretim == "sayac":
+        sy_saat = uk["sayac_olculmus_saat"] + uk["sayac_tahmini_saat"]
+        # 02.11 inceleme: yüklü sayaç saatlerinin hesaba giremeyeni (SCADA satırı yok ya da hesap penceresi dışı) sessizce kaybolmaz, sayılır
+        uk["sayac_kullanilmayan_saat"] = max(0, int(sayac["yuklu"]) - sy_saat) if (sayac and sayac.get("yuklu")) else 0
+        if uk["sayac_kullanilmayan_saat"]:
+            nedenler.append(f"yüklü {sayac['yuklu']} sayaç saatinden {uk['sayac_kullanilmayan_saat']} saat hesaba girmedi (o saatte SCADA satırı yok; program ve fiyat satırı SCADA'dan kurulur)")
+        if sy_saat == 0:
+            nedenler.append("üretim girdisi «sayaç» seçili ama dönem saatlerinde sayaç verisi yok; hesap SCADA ile yapıldı")
+        else:
+            durum = durum if durum == "senaryo" else ("kismi" if (uk["sayac_tahmini_saat"] or uk["scada_saat"]) else durum)
+            nedenler.append(f"hesap {sy_saat} saatte sayaç verisiyle ({uk['sayac_olculmus_saat']} ölçülmüş, {uk['sayac_tahmini_saat']} tahmini nitelikli)"
+                            + (f", {uk['scada_saat']} saatte SCADA" if uk["scada_saat"] else "") + "; sayaç dosyasının uzlaştırmaya esas UEVM ile aynı olduğu doğrulanmaz")
+            try:   # aynı dönem SCADA ile: EDT net ve KÜPST farkı (sayaç − SCADA) — sayaç farkının uzlaştırmaya yansıması
+                dfs, _ = dengesizlik_service.dokum(tenant_id, plant, gun=gun)
+                xs = dfs[dfs["zaman"].str.startswith(ay)] if dfs is not None and not dfs.empty else None
+                if xs is not None and not xs.empty:
+                    en = lambda f: float(pd.to_numeric(f["edt_alacak_tl"], errors="coerce").fillna(0).sum() - pd.to_numeric(f["edt_borc_tl"], errors="coerce").fillna(0).sum())   # noqa: E731
+                    ku = lambda f: float(pd.to_numeric(f["kupst_tl"], errors="coerce").fillna(0).sum())   # noqa: E731
+                    uk["kiyas"] = {"edt_net_fark_tl": round(en(x) - en(xs), 2), "kupst_fark_tl": round(ku(x) - ku(xs), 2), "scada_saat": int(len(xs)),
+                                   "not": "sayaçla hesap − SCADA ile hesap (aynı dönem, aynı program ve fiyat); dengesizlik netinde artı sayaçla daha lehte, KÜPST borcunda artı daha aleyhte"}
+            except Exception as e:   # noqa: BLE001 — kıyas alınamazsa hesap sonucu etkilenmez
+                uk["kiyas"] = {"hata": str(e)[:120]}
+    elif sayac and sayac.get("yuklu"):
         nedenler.append(f"sayaç verisi {sayac['yuklu']}/{sayac['toplam_saat']} saat ({sayac['olculmus']} ölçülmüş)" + (f"; ölçülmüş saatlerde sayaç − SCADA {sayac['olc_fark_pct']:+.1f} %" if sayac.get("olc_fark_pct") is not None else "")
-                        + "; hesap SCADA ile yapıldı, uzlaştırmaya esas sayaç (UEVM) değildir")
+                        + "; hesap SCADA ile yapıldı (Sayaç › uzlaştırma girdisi ayarıyla sayaç seçilebilir), uzlaştırmaya esas sayaç (UEVM) değildir")
     return {"kalemler": out, "saat": saat, "beklenen_saat": beklenen, "son_saat": x["zaman"].max(), "hesaplanamayan_saat": hes_yok, "bildirilen_saat": bildirilen,
             "senaryo_saat": senaryo_saat, "senaryo_kapsam": senaryo_kapsam, "kural_surumu": " | ".join(sorted(set(x["kural_surumu"].astype(str)))),
-            "sayac": sayac, "guvenilirlik": {"durum": durum, "etiket": GUVENILIRLIK_ETIKET[durum], "nedenler": nedenler}}
+            "sayac": sayac, "uretim_kaynak": uk, "guvenilirlik": {"durum": durum, "etiket": GUVENILIRLIK_ETIKET[durum], "nedenler": nedenler}}
 
 
 def _sayac_kapsami(tenant_id, plant: dict, donem: date) -> dict | None:
@@ -409,11 +441,11 @@ def _ay_ekle(d: date) -> date:
     return date(d.year + 1, 1, 1) if d.month == 12 else date(d.year, d.month + 1, 1)
 
 
-def mutabakat(tenant_id, plant: dict, donem, surum: str | None = None, bugun: date | None = None) -> dict:
-    """Kalem tablosu: bildirim (alacak/borç) ↔ PVQuant; fark ve durum (uyumlu / fark / hesaplanamaz / bildirimde_yok / hesap_yok)."""
+def mutabakat(tenant_id, plant: dict, donem, surum: str | None = None, bugun: date | None = None, uretim: str | None = None) -> dict:
+    """Kalem tablosu: bildirim (alacak/borç) ↔ PVQuant; fark ve durum (uyumlu / fark / hesaplanamaz / bildirimde_yok / hesap_yok). v2.526: uretim scada | sayac."""
     d = _donem(donem)
     bil = bildirim(tenant_id, plant["id"], d, surum)
-    pv = pvquant_kalemleri(tenant_id, plant, d, bugun)
+    pv = pvquant_kalemleri(tenant_id, plant, d, bugun, uretim)
     guven = pv.get("guvenilirlik") or {"durum": "veri_yok", "etiket": GUVENILIRLIK_ETIKET["veri_yok"], "nedenler": []}
     bil_k: dict[str, dict] = {}
     for k in (bil or {}).get("kalemler", []):
@@ -431,6 +463,7 @@ def mutabakat(tenant_id, plant: dict, donem, surum: str | None = None, bugun: da
                  "bildirim_alacak_tl": (round(b["alacak_tl"], 2) if b else None), "bildirim_borc_tl": (round(b["borc_tl"], 2) if b else None),
                  "pvquant_alacak_tl": (p.get("alacak_tl") if p else None), "pvquant_borc_tl": (p.get("borc_tl") if p else None),
                  "pvquant_not": (p or {}).get("not"), "kaba": bool((p or {}).get("kaba"))}
+        satir["dogrulama"] = None
         if not hesaplanir:
             satir.update({"fark_tl": None, "fark_pct": None, "durum": "hesaplanamaz"})
         elif b is None:
@@ -444,8 +477,10 @@ def mutabakat(tenant_id, plant: dict, donem, surum: str | None = None, bugun: da
             esik = lambda x: max(UYUM_TL, abs(x) * UYUM_PCT / 100)   # noqa: E731
             uyumlu = abs(fa) <= esik(ba) and abs(fb) <= esik(bb)
             durum = "senaryo" if guven["durum"] == "senaryo" else ("hesap_yok" if guven["durum"] == "veri_yok" else ("uyumlu" if uyumlu else "fark"))
+            # 02.11 inceleme: «uyumlu / fark var» hükmü yalnız gerçek verilerle (tam ay, EPİAŞ fiyatı, bildirilen KGÜP) doğrulanmış sayılır;
+            # kısmi kapsamda hüküm korunur ama «kısmi» nitelikli — EPİAŞ tutarı bütün ayı, PVQuant tutarı yalnız hesaplanan saatleri kapsar
             satir.update({"fark_tl": round(fark, 2), "fark_pct": (round(100 * fark / taban, 1) if taban > 0 else None),
-                          "fark_alacak_tl": round(fa, 2), "fark_borc_tl": round(fb, 2), "durum": durum,
+                          "fark_alacak_tl": round(fa, 2), "fark_borc_tl": round(fb, 2), "durum": durum, "dogrulama": DOGRULAMA.get(guven["durum"]),
                           "bilesen_notu": ("net tutar eşleşiyor ama alacak ve borç bileşenleri ayrı ayrı sapıyor" if (not uyumlu and abs(fark) <= esik(net_b)) else None)})
         satirlar.append(satir)
     hes = [s for s in satirlar if s["hesaplanir"]]
@@ -462,16 +497,20 @@ def mutabakat(tenant_id, plant: dict, donem, surum: str | None = None, bugun: da
             "fark_tl": round(sum((s["fark_tl"] or 0) for s in kiyas), 2) if kiyas else None,
             "uyumlu": sum(1 for s in hes if s["durum"] == "uyumlu"), "farkli": sum(1 for s in hes if s["durum"] == "fark"),
             "senaryo": sum(1 for s in hes if s["durum"] == "senaryo"), "kiyaslanan": len(kiyas),
-            "kapsam": ", ".join(s["etiket"] for s in kiyas) or None}
+            "kapsam": ", ".join(s["etiket"] for s in kiyas) or None,
+            "dogrulama": DOGRULAMA.get(guven["durum"]), "kapsam_saat": int(pv.get("saat") or 0), "beklenen_saat": pv.get("beklenen_saat")}   # 02.11 inceleme
     sd = (bil or {}).get("surum_dogrulama")
+    kismi_on = (f"Kapsam kısmi ({ozet['kapsam_saat']}/{ozet['beklenen_saat']} saat; {'; '.join(guven['nedenler'])}): EPİAŞ tutarı bütün ayı, PVQuant tutarı yalnız hesaplanan "
+                "saatleri kapsar; fark doğrulanmış sayılmaz — eksik saatleri (SCADA/sayaç) ve bildirilen KGÜP'ü tamamlayıp yeniden bakın. " if guven["durum"] == "kismi" else "")
     if ozet["farkli"]:
-        eylem = ("Fark var: EPYS'deki saatlik detaylarla (dengesizlik uzlaştırma, KÜPST detay) ve PVQuant dökümüyle saat bazında karşılaştırın; program sürümü, sayaç (UEVM ≠ SCADA) "
+        eylem = kismi_on + ("Fark var: EPYS'deki saatlik detaylarla (dengesizlik uzlaştırma, KÜPST detay) ve PVQuant dökümüyle saat bazında karşılaştırın; program sürümü, sayaç (UEVM ≠ SCADA) "
                  "ve fiyat kaynağı en sık nedenlerdir. İtiraz: ön bildirime " + (sd["itiraz_son"].replace("-", ".") if sd else "izleyen ayın 12'si 17:30") + "'a kadar (DUY m.132/B(1)), "
                  "faturaya tebliğden itibaren 60 gün yazılı (m.133; " + (sd["itiraz_60"] if sd else "") + ").")
     elif ozet["senaryo"]:
         eylem = "Senaryo hesabı: EPİAŞ fiyat verisi bağlanmadan mutabakat sonucu çıkarılamaz; farklar bilgi amaçlıdır."
     elif ozet["kiyaslanan"]:
-        eylem = "Karşılaştırılan kalemler uyum ölçütü içinde; işlem gerekmez. Yalnız bildirimden gelen kalemleri EPYS'de kontrol edin."
+        eylem = ("Karşılaştırılan kalemler uyum ölçütü içinde" + ("; ancak kapsam kısmi, uyum tam ay verisiyle kesinleşir" if guven["durum"] == "kismi" else "; işlem gerekmez")
+                 + ". Yalnız bildirimden gelen kalemleri EPYS'de kontrol edin.")
     else:
         eylem = None
     return {"donem": d.isoformat()[:7], "donem_etiket": d.strftime("%m.%Y"), "bildirim": ({k: v for k, v in bil.items() if k != "kalemler"} if bil else None),
@@ -481,13 +520,16 @@ def mutabakat(tenant_id, plant: dict, donem, surum: str | None = None, bugun: da
                              if pv.get("saat") and not pv.get("bildirilen_saat") else None)}
 
 
-def ozet(tenant_id, plant: dict, donem=None, surum: str | None = None, bugun: date | None = None) -> dict:
-    """Müşteri ucu: dönem listesi + seçilen dönemin (varsayılan: son yüklenen, yoksa önceki ay) mutabakatı."""
+def ozet(tenant_id, plant: dict, donem=None, surum: str | None = None, bugun: date | None = None, uretim: str | None = None) -> dict:
+    """Müşteri ucu: dönem listesi + seçilen dönemin (varsayılan: son yüklenen, yoksa önceki ay) mutabakatı. v2.526: uretim seçimi ve seçenekleri."""
+    from pvquant.services import dengesizlik_service
     b = bugun or datetime.now(IST).date()
     liste = donemler(tenant_id, plant["id"])
     if donem is None:
         donem = liste[0]["donem"] if liste else (b.replace(day=1) - timedelta(days=1)).strftime("%Y-%m")
-    m = mutabakat(tenant_id, plant, donem, surum, b)
+    m = mutabakat(tenant_id, plant, donem, surum, b, uretim)
     return {"bugun": b.isoformat(), "donemler": liste, "secili": m, "surumler": [{"kod": s, "etiket": SURUM_ETIKET[s]} for s in SURUMLER],
+            "uretim_ayari": dengesizlik_service.uretim_secimi(plant.get("params_json")),
+            "uretim_secenekleri": [{"kod": k, "etiket": v} for k, v in dengesizlik_service.URETIM_SECENEKLERI.items()],
             "guvenilirlik_etiketleri": GUVENILIRLIK_ETIKET,
             "kalemler": [{"kod": k[0], "etiket": k[1], "hesaplanir": k[3], "epys": k[4]} for k in KALEMLER]}

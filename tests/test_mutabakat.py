@@ -124,12 +124,15 @@ def test_mutabakat_kalemler(kiraci, monkeypatch):
     assert m["ozet"]["bildirim_kiyas_net_tl"] == round(151234.1 - 262100 - 14320.75, 2) and m["ozet"]["pvquant_net_tl"] == round(151200 - 262080 - 14400, 2)
     assert abs(m["ozet"]["fark_tl"] - (m["ozet"]["pvquant_net_tl"] - m["ozet"]["bildirim_kiyas_net_tl"])) < 0.01 and m["ozet"]["kapsam"] == "Dengesizlik, KÜPST"
     # güvenilirlik: 48/744 saat → kısmi (eksik saat + 24 saatte öneri); sürüm doğrulaması: 02.11 yüklemesi nihai takviminden (16.11) önce
-    assert m["guvenilirlik"]["durum"] == "kismi" and len(m["guvenilirlik"]["nedenler"]) == 2 and m["eylem"].startswith("Karşılaştırılan kalemler uyum")
+    assert m["guvenilirlik"]["durum"] == "kismi" and len(m["guvenilirlik"]["nedenler"]) == 2 and m["eylem"].startswith("Karşılaştırılan kalemler uyum") and "kapsam kısmi" in m["eylem"]
+    # 02.11 inceleme: kısmi kapsamda hüküm «kısmi» nitelikli (özet ve satır); hesaplanamayan satırda nitelik yok
+    assert m["ozet"]["dogrulama"] == "kismi" and m["ozet"]["kapsam_saat"] == 48 and m["ozet"]["beklenen_saat"] == 744 and s["imbalance"]["dogrulama"] == "kismi" and s["dam"]["dogrulama"] is None
     assert m["bildirim"]["surum_dogrulama"]["durum"] == "takvimden_once" and m["bildirim"]["surum_dogrulama"]["beklenen_tarih"] == "2026-11-16"
     # bileşen eşiği: net eşleşse de alacak ve borç ayrı ayrı sapıyorsa «fark» (alacak 100k / borç 211k → net aynı)
     monkeypatch.setattr(dz, "dokum", lambda t, p, gun: (_dokum(edt_borc=4397.6, edt_alacak=2087.6, kupst=300.0), {"fiyat": {"senaryo_saat": 0}}))
     mb = ms.mutabakat(tid, plant, "2026-10", bugun=date(2026, 11, 2)); sb = {r["kod"]: r for r in mb["satirlar"]}
     assert sb["imbalance"]["durum"] == "fark" and abs(sb["imbalance"]["fark_tl"]) <= 50 and sb["imbalance"]["bilesen_notu"] and sb["imbalance"]["fark_alacak_tl"] < -50000
+    assert mb["eylem"].startswith("Kapsam kısmi (48/744 saat") and "fark doğrulanmış sayılmaz" in mb["eylem"] and "Fark var:" in mb["eylem"]
     # senaryo fiyatı (dönem içinde) → satır durumu «senaryo», uyumlu/fark verilmez; KÜPST hesaplanamıyor → hesap_yok
     df3 = _dokum(edt_borc=9000.0, edt_alacak=100.0, kupst=None)
     monkeypatch.setattr(dz, "dokum", lambda t, p, gun: (df3, {"fiyat": {"senaryo_saat": 10}, "saat_fiyat_kaynak": ["senaryo"] * 10 + ["epias"] * (len(df3) - 10)}))
@@ -140,10 +143,40 @@ def test_mutabakat_kalemler(kiraci, monkeypatch):
     df4 = _dokum(saat=744, bildirilen=744); df4["zaman"] = [t.strftime("%Y-%m-%d %H:%M") for t in pd.date_range("2026-10-01 00:00", periods=744, freq="h")]
     monkeypatch.setattr(dz, "dokum", lambda t, p, gun: (df4, {"fiyat": {"senaryo_saat": 0}, "saat_fiyat_kaynak": ["epias"] * 744}))
     m4 = ms.mutabakat(tid, plant, "2026-10", bugun=date(2026, 11, 2)); assert m4["guvenilirlik"]["durum"] == "gercek" and m4["pvquant"]["saat"] == 744
+    assert m4["ozet"]["dogrulama"] == "tam" and {r["dogrulama"] for r in m4["satirlar"] if r["hesaplanir"] and r["durum"] in ("uyumlu", "fark")} == {"tam"} and not m4["eylem"].startswith("Kapsam kısmi")   # tam ay: fark var ama kapsam niteliği yok
+    assert m2["ozet"]["dogrulama"] == "senaryo" and s2["imbalance"]["dogrulama"] == "senaryo"
     # bildirimi olmayan dönem: yalnız PVQuant satırları «bildirimde_yok»
     m3 = ms.mutabakat(tid, plant, "2026-09", bugun=date(2026, 11, 2)); assert m3["bildirim"] is None and all(r["durum"] == "bildirimde_yok" for r in m3["satirlar"])
     m5 = ms.mutabakat(tid, plant, "2026-06", bugun=date(2026, 11, 2)); assert m5["guvenilirlik"]["durum"] == "veri_yok" and m5["satirlar"] == [] and m5["eylem"] is None
     o = ms.ozet(tid, plant, bugun=date(2026, 11, 2)); assert o["secili"]["donem"] == "2026-10" and len(o["kalemler"]) == 16 and o["donemler"][0]["donem"] == "2026-10"
+
+
+def test_pvquant_kalemleri_sayac_girdisi(kiraci, monkeypatch):
+    """v2.526 (P4a-2): uretim='sayac' → döküm sayaçla; saat sayımı, güvenilirlik nedeni ve SCADA'lı hesapla fark (kiyas)."""
+    tid, plant = kiraci
+    suk = ["sayac_olculmus"] * 40 + ["sayac_tahmini"] * 4 + ["scada"] * 4
+    def dok(t, p, gun, uretim=None):
+        if uretim == "sayac":
+            return _dokum(edt_borc=5460.0, edt_alacak=3300.0, kupst=310.0), {"fiyat": {"senaryo_saat": 0}, "saat_uretim_kaynak": suk, "uretim_kaynak": {"secim": "sayac"}}
+        return _dokum(edt_borc=5460.0, edt_alacak=3150.0, kupst=300.0), {"fiyat": {"senaryo_saat": 0}, "saat_uretim_kaynak": ["scada"] * 48}
+    monkeypatch.setattr(dz, "dokum", dok)
+    pv = ms.pvquant_kalemleri(tid, plant, date(2026, 10, 1), bugun=date(2026, 11, 2), uretim="sayac")
+    uk = pv["uretim_kaynak"]; assert uk["secim"] == "sayac" and (uk["sayac_olculmus_saat"], uk["sayac_tahmini_saat"], uk["scada_saat"]) == (40, 4, 4)
+    assert uk["kiyas"]["edt_net_fark_tl"] == 7200.0 and uk["kiyas"]["kupst_fark_tl"] == 480.0 and uk["kiyas"]["scada_saat"] == 48 and uk["sayac_kullanilmayan_saat"] == 0
+    # 02.11 inceleme: yüklü sayaç saatlerinin hesaba giremeyeni sayılır ve nedenlerde söylenir
+    monkeypatch.setattr(ms, "_sayac_kapsami", lambda t, p, d: {"toplam_saat": 744, "yuklu": 60, "olculmus": 55, "tahmini": 5, "olc_fark_pct": -3.0})
+    pvk = ms.pvquant_kalemleri(tid, plant, date(2026, 10, 1), bugun=date(2026, 11, 2), uretim="sayac")
+    assert pvk["uretim_kaynak"]["sayac_kullanilmayan_saat"] == 16 and any("60 sayaç saatinden 16 saat hesaba girmedi" in n for n in pvk["guvenilirlik"]["nedenler"])
+    monkeypatch.setattr(ms, "_sayac_kapsami", lambda t, p, d: None)
+    assert pv["kalemler"]["imbalance"]["alacak_tl"] == 48 * 3300.0 and pv["guvenilirlik"]["durum"] == "kismi" and any(n.startswith("hesap 44 saatte sayaç") for n in pv["guvenilirlik"]["nedenler"])
+    # santral ayarı da aynı yolu seçer; varsayılan SCADA'da kıyas yok, sayaç notu ayara yönlendirir
+    pv2 = ms.pvquant_kalemleri(tid, {**plant, "params_json": {"uzlastirma_girdi": "sayac"}}, date(2026, 10, 1), bugun=date(2026, 11, 2)); assert pv2["uretim_kaynak"]["secim"] == "sayac"
+    pv3 = ms.pvquant_kalemleri(tid, plant, date(2026, 10, 1), bugun=date(2026, 11, 2)); assert pv3["uretim_kaynak"]["secim"] == "scada" and pv3["uretim_kaynak"]["kiyas"] is None and pv3["uretim_kaynak"]["scada_saat"] == 48
+    # sayaç seçili ama dönemde sayaç saati yok → SCADA ile, dürüst neden
+    monkeypatch.setattr(dz, "dokum", lambda t, p, gun, uretim=None: (_dokum(), {"fiyat": {"senaryo_saat": 0}, "saat_uretim_kaynak": ["scada"] * 48}))
+    pv4 = ms.pvquant_kalemleri(tid, plant, date(2026, 10, 1), bugun=date(2026, 11, 2), uretim="sayac")
+    assert pv4["uretim_kaynak"]["sayac_olculmus_saat"] == 0 and any("sayaç verisi yok" in n for n in pv4["guvenilirlik"]["nedenler"])
+    o = ms.ozet(tid, plant, "2026-10", bugun=date(2026, 11, 2), uretim="sayac"); assert o["uretim_ayari"] == "scada" and o["secili"]["pvquant"]["uretim_kaynak"]["secim"] == "sayac" and len(o["uretim_secenekleri"]) == 2
 
 
 def test_teminat_gostergesi():
@@ -195,6 +228,9 @@ def test_api_mutabakat_uclari(kiraci, monkeypatch):
         j = g.json(); assert j["secili"]["donem"] == "2026-10" and j["secili"]["ozet"]["uyumlu"] == 2 and len(j["donemler"]) == 1 and j["surumler"][0]["kod"] == "on"
         assert j["secili"]["guvenilirlik"]["durum"] == "kismi" and j["guvenilirlik_etiketleri"]["senaryo"] == "Senaryo hesabı"
         assert c.get("/v1/plants/00000000-0000-0000-0000-000000000000/mutabakat").status_code == 404
+        assert c.get(f"/v1/plants/{plant['id']}/mutabakat?uretim=uevm").status_code == 422   # v2.526
+        monkeypatch.setattr(dz, "dokum", lambda t, p, gun, uretim=None: (_dokum(edt_borc=5460.0, edt_alacak=3150.0, kupst=300.0), {"fiyat": {"senaryo_saat": 0}, "saat_uretim_kaynak": ["sayac_olculmus"] * 48}))
+        g2 = c.get(f"/v1/plants/{plant['id']}/mutabakat?donem=2026-10&uretim=sayac"); assert g2.status_code == 200 and g2.json()["secili"]["pvquant"]["uretim_kaynak"]["secim"] == "sayac" and g2.json()["uretim_ayari"] == "scada"
     finally:
         api_main.app.dependency_overrides.clear()
 

@@ -526,9 +526,14 @@ export interface SayacScada { yukumlu: boolean; esik_kw: number; kurulu_kw: numb
   uzaktan_acma_var: boolean | null; uzaktan_acma_ay: number; bedel_tl_ay: number | null; kalemler: SayacBedelKalem[]; uygulanmayan: string[]; toplam_tl: number | null;
   toplam_aski_tl: number | null; toplam_aski_disi_tl: number | null; aski_kapsami: string; tutar_niteligi: "varsayimsal";
   aski_bitis: string; aski_kesinlik: string; aski_gecti: boolean; aski_kalan_gun: number; kaynak: string; dayanak_yukumluluk: string; not: string }
-export interface SayacAyar { sayac_turu?: string | null; scada_durum?: string | null; scada_kopukluk_baslangic?: string | null; uzaktan_acma_var?: boolean | null; sistem_kullanim_bedeli_tl_ay?: number | null }
+export interface SayacAyar { sayac_turu?: string | null; scada_durum?: string | null; scada_kopukluk_baslangic?: string | null; uzaktan_acma_var?: boolean | null; sistem_kullanim_bedeli_tl_ay?: number | null;
+  /** v2.526 (P4a-2): uzlaştırma yeniden hesabında gerçekleşen üretim kaynağı */ uzlastirma_girdi?: "scada" | "sayac" | null }
 export interface SayacOzet { bugun: string; pencere_gun: number; segment: string | null; ayar: Required<SayacAyar>; gelis: SayacGelis; fark: SayacFark; scada: SayacScada | null; scada_notu: string | null; yuklemeler: SayacYukleme[];
-  kaynaklar: { kod: SayacKaynak; etiket: string }[]; nitelikler: { kod: SayacNitelik; etiket: string }[]; sayac_turleri: { kod: string; etiket: string }[]; scada_durumlari: { kod: string; etiket: string }[]; not: string }
+  kaynaklar: { kod: SayacKaynak; etiket: string }[]; nitelikler: { kod: SayacNitelik; etiket: string }[]; sayac_turleri: { kod: string; etiket: string }[]; scada_durumlari: { kod: string; etiket: string }[];
+  uretim_secenekleri: { kod: "scada" | "sayac"; etiket: string }[]; not: string }
+/** v2.526 (P4a-2): yeniden hesapta üretim kaynağı sayımı ve sayaç ↔ SCADA kıyası */
+export interface UretimKaynak { secim: "scada" | "sayac"; etiket?: string; sayac_olculmus_saat: number; sayac_tahmini_saat: number; scada_saat: number; sayac_kullanilmayan_saat?: number;
+  kiyas?: { edt_net_fark_tl?: number; kupst_fark_tl?: number; scada_saat?: number; not?: string; hata?: string } | null }
 /** v2.525 (raporlama): dönem raporu (ay / çeyrek / yıl) önizlemesi ve zamanlanmış gönderim ayarı */
 export interface RaporDonem { tur: "ay" | "ceyrek" | "yil"; kod: string; bas: string; bit: string; etiket: string; kirpildi: boolean; saat: number }
 export interface RaporDonemVeri { donem: RaporDonem; santral: string; kapasite_kwp: number; ac_kw: number | null;
@@ -548,7 +553,8 @@ export interface RaporGonderimSonuc { durum: "gonderildi" | "gonderim_hatasi" | 
 export type MutabakatDurum = "uyumlu" | "fark" | "senaryo" | "hesaplanamaz" | "bildirimde_yok" | "hesap_yok";
 export interface MutabakatSatir { kod: string; etiket: string; hesaplanir: boolean; kalem_ad: string | null; bildirim_alacak_tl: number | null; bildirim_borc_tl: number | null;
   pvquant_alacak_tl: number | null; pvquant_borc_tl: number | null; pvquant_not: string | null; kaba: boolean; fark_tl: number | null; fark_pct: number | null;
-  fark_alacak_tl?: number | null; fark_borc_tl?: number | null; bilesen_notu?: string | null; durum: MutabakatDurum }
+  fark_alacak_tl?: number | null; fark_borc_tl?: number | null; bilesen_notu?: string | null; durum: MutabakatDurum;
+  /** 02.11 inceleme: hükmün doğrulama niteliği — tam (gerçek verilerle) | kismi | senaryo; hesaplanamayan satırda null */ dogrulama?: "tam" | "kismi" | "senaryo" | "yok" | null }
 /** sürüm etiketi ↔ resmî takvim (DUY m.132/A–B); EPİAŞ durumu dosyadan doğrulanamaz → resmi_durum her zaman «dogrulanmadi» */
 export interface SurumDogrulama { durum: "takvim_uyumlu" | "takvimden_once"; resmi_durum: "dogrulanmadi"; beklenen_tarih: string; on_bildirim: string; nihai_bildirim: string; itiraz_son: string; itiraz_60: string; aciklama: string; kaynak: string }
 export interface MutabakatGuvenilirlik { durum: "gercek" | "kismi" | "senaryo" | "veri_yok"; etiket: string; nedenler: string[] }
@@ -556,14 +562,16 @@ export interface Mutabakat { donem: string; donem_etiket: string;
   bildirim: { yukleme_id: string; surum: string; surum_etiket: string; zaman: string; dosya_adi: string | null; sha256?: string | null; surum_kaynagi?: string | null; dosya_surum?: string | null; surum_dogrulama?: SurumDogrulama } | null;
   satirlar: MutabakatSatir[];
   ozet: { bildirim_alacak_tl: number | null; bildirim_borc_tl: number | null; bildirim_kiyas_alacak_tl: number | null; bildirim_kiyas_borc_tl: number | null; bildirim_kiyas_net_tl: number | null;
-    pvquant_alacak_tl: number | null; pvquant_borc_tl: number | null; pvquant_net_tl: number | null; fark_tl: number | null; uyumlu: number; farkli: number; senaryo: number; kiyaslanan: number; kapsam: string | null };
+    pvquant_alacak_tl: number | null; pvquant_borc_tl: number | null; pvquant_net_tl: number | null; fark_tl: number | null; uyumlu: number; farkli: number; senaryo: number; kiyaslanan: number; kapsam: string | null;
+    dogrulama?: "tam" | "kismi" | "senaryo" | "yok" | null; kapsam_saat?: number; beklenen_saat?: number | null };
   uyum: { pct: number; tl: number; not: string }; guvenilirlik: MutabakatGuvenilirlik; eylem: string | null;
   pvquant: { saat: number; beklenen_saat?: number; son_saat?: string; hesaplanamayan_saat?: number; bildirilen_saat?: number; senaryo_saat?: number; senaryo_kapsam?: string; kural_surumu?: string; hata?: string;
     /** v2.523 (P4a): dönemin sayaç kapsamı — hesaba girmez, yalnız bilgi */
-    sayac?: { toplam_saat: number; yuklu: number; olculmus: number; tahmini: number; olc_fark_pct: number | null } | null }; not: string; program_notu: string | null }
+    sayac?: { toplam_saat: number; yuklu: number; olculmus: number; tahmini: number; olc_fark_pct: number | null } | null; uretim_kaynak?: UretimKaynak }; not: string; program_notu: string | null }
 export interface MutabakatOzet { bugun: string;
   donemler: { donem: string; surum: string; surum_etiket: string; yukleme_id: string; zaman: string; dosya_adi: string | null; sha256?: string | null; kalem_sayisi: number; surum_kaynagi?: string | null; dosya_surum?: string | null; gecerli: boolean; surum_dogrulama: SurumDogrulama }[];
-  secili: Mutabakat; surumler: { kod: string; etiket: string }[]; kalemler: { kod: string; etiket: string; hesaplanir: boolean; epys: string }[]; guvenilirlik_etiketleri: Record<string, string> }
+  secili: Mutabakat; surumler: { kod: string; etiket: string }[]; kalemler: { kod: string; etiket: string; hesaplanir: boolean; epys: string }[]; guvenilirlik_etiketleri: Record<string, string>;
+  uretim_ayari: "scada" | "sayac"; uretim_secenekleri: { kod: "scada" | "sayac"; etiket: string }[] }
 export interface MutabakatYukleme { yukleme_id: string; donem: string; surum: string; surum_kaynagi: string; kalem_sayisi: number; bicim: string; sha256: string; uyarilar: string[]; taninmayan: string[]; dosya_adi: string; surum_dogrulama: SurumDogrulama }
 /** ekleme yanıtı: aynı saatlerde başka kayıt varsa uyarı (engel değil) */
 export type OlayYanit = Olay & { uyari?: string; cakisan?: string[] };

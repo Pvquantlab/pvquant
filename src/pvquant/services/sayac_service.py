@@ -559,6 +559,11 @@ def ayar_dogrula(g: dict) -> dict:
         if v is not None and not isinstance(v, bool):
             raise ValueError("uzaktan_acma_var")
         out["uzaktan_acma_var"] = v
+    if "uzlastirma_girdi" in g:   # v2.526 (P4a-2): uzlaştırma yeniden hesabında gerçekleşen üretim kaynağı
+        v = g["uzlastirma_girdi"]
+        if v not in (None, "", "scada", "sayac"):
+            raise ValueError("uzlastirma_girdi")
+        out["uzlastirma_girdi"] = v or None
     if "sistem_kullanim_bedeli_tl_ay" in g:
         v = g["sistem_kullanim_bedeli_tl_ay"]
         if v in (None, ""):
@@ -589,7 +594,9 @@ def ozet(tenant_id, plant: dict, gun: int = 30, simdi: datetime | None = None) -
     return {"bugun": bugun.isoformat(), "pencere_gun": gun, "segment": seg["segment"],
             "ayar": {"sayac_turu": pj.get("sayac_turu") if pj.get("sayac_turu") in SAYAC_TURLERI else None, "scada_durum": pj.get("scada_durum") if pj.get("scada_durum") in SCADA_DURUMLARI else None,
                      "scada_kopukluk_baslangic": pj.get("scada_kopukluk_baslangic") or None, "uzaktan_acma_var": pj.get("uzaktan_acma_var") if isinstance(pj.get("uzaktan_acma_var"), bool) else None,
-                     "sistem_kullanim_bedeli_tl_ay": pj.get("sistem_kullanim_bedeli_tl_ay")},
+                     "sistem_kullanim_bedeli_tl_ay": pj.get("sistem_kullanim_bedeli_tl_ay"),
+                     "uzlastirma_girdi": dengesizlik_service.uretim_secimi(pj)},   # v2.526 (P4a-2)
+            "uretim_secenekleri": [{"kod": k, "etiket": v} for k, v in dengesizlik_service.URETIM_SECENEKLERI.items()],
             "gelis": gelis(tenant_id, plant, pj, now), "fark": fark(tenant_id, plant, gun, bugun), "scada": scada_durumu(plant, pj, seg["segment"], bugun, uz, uz_gunler),
             "scada_notu": (None if seg["segment"] in LISANSSIZ else
                            "Segment seçilmedi (Santralim › Santral ayarları); SCADA yükümlülüğü belirlenemedi." if not seg["segment"] else

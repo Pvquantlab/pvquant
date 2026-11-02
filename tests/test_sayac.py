@@ -157,6 +157,30 @@ def test_kaydet_oku_fark_gelis(kiraci):
     g3 = ss.gelis(tid, plant, {}, simdi=datetime(2026, 10, 20, 9, tzinfo=timezone.utc)); assert g3["sayac_turu"] is None and "seçin" in g3["beklenen"]["not"]
 
 
+def test_program_df_sayac_girdisi(kiraci):
+    """v2.526 (P4a-2): uzlaştırma girdisi «sayaç» — sayaç satırı olan saatlerde gerçekleşen sayaçtan (öncelik epys), niteliğe göre kaynak etiketi; kalan saat SCADA."""
+    from pvquant.services import dengesizlik_service as dz
+    tid, plant = kiraci
+    ss.kaydet(tid, plant, CSV_OSOS, "osos_ekim.csv", "osos")                                                   # 08–10 TSİ = 05–07 UTC
+    ss.kaydet(tid, plant, "Zaman;Veriş (kWh)\n01.10.2026 08:00;600\n".encode("utf-8"), "epys.csv", "epys")   # 08 TSİ epys öncelikli, ölçülmüş
+    with sistem_baglami() as s:
+        for h, kwh in ((5, 700.0), (6, 750.0), (7, 800.0), (8, 900.0)):
+            s.execute(text("INSERT INTO scada_hourly(tenant_id, plant_id, ts_utc, power_kw, energy_kwh, flag) VALUES(:t, :p, :ts, :k, :k, 'valid')"),
+                      {"t": tid, "p": plant["id"], "ts": datetime(2026, 10, 1, h, tzinfo=timezone.utc), "k": kwh})
+    d0 = dz.program_df(tid, plant["id"], 30); assert list(d0["gercek_kw"]) == [700.0, 750.0, 800.0, 900.0] and set(d0["uretim_kaynak"]) == {"scada"}
+    d1 = dz.program_df(tid, plant["id"], 30, uretim="sayac")
+    assert list(d1["gercek_kw"]) == [600.0, 700.0, 200.0, 900.0] and list(d1["uretim_kaynak"]) == ["sayac_olculmus", "sayac_tahmini", "sayac_tahmini", "scada"]
+    assert dz.uretim_secimi({"uzlastirma_girdi": "sayac"}) == "sayac" and dz.uretim_secimi({}) == "scada" and dz.uretim_secimi({"uzlastirma_girdi": "x"}) == "scada"
+    # ayar: santral seçimi döküm girdilerine iner
+    g = dz._girdiler(tid, {**plant, "params_json": {**plant["params_json"], "uzlastirma_girdi": "sayac"}}, 30)
+    assert g["uretim"] == "sayac" and list(g["df"]["gercek_kw"])[:3] == [600.0, 700.0, 200.0]
+    assert ss.ayar_dogrula({"uzlastirma_girdi": "sayac"}) == {"uzlastirma_girdi": "sayac"} and ss.ayar_dogrula({"uzlastirma_girdi": ""}) == {"uzlastirma_girdi": None}
+    with pytest.raises(ValueError, match="uzlastirma_girdi"):
+        ss.ayar_dogrula({"uzlastirma_girdi": "uevm"})
+    o = ss.ozet(tid, {**plant, "params_json": {**plant["params_json"], "uzlastirma_girdi": "sayac"}}, 30)
+    assert o["ayar"]["uzlastirma_girdi"] == "sayac" and [x["kod"] for x in o["uretim_secenekleri"]] == ["scada", "sayac"]
+
+
 def test_scada_durumu_ve_gosterge():
     plant = {"id": "x", "capacity_kwp": 1200.0, "ac_limit_kw": 1000.0}
     assert ss.scada_durumu(plant, {}, "lisansli_serbest", date(2026, 11, 2)) is None

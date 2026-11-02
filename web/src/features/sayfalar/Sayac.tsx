@@ -34,10 +34,11 @@ export function Sayac({ plantId }: { plantId: string }) {
   const [kaynak, setKaynak] = useState<SayacKaynak>("osos");
   const [yukleniyor, setYukleniyor] = useState(false);
   const [tur, setTur] = useState<string>("");
+  const [girdi, setGirdi] = useState<"scada" | "sayac">("scada");   // v2.526 (P4a-2): uzlaştırma yeniden hesabında üretim kaynağı
   const [scada, setScada] = useState<{ durum: string; bas: string; uzaktan: boolean | null; bedel: string }>({ durum: "", bas: "", uzaktan: null, bedel: "" });
   const [ayarDurum, setAyarDurum] = useState<{ metin: string; ton: "ok" | "hata" } | null>(null);
   const [scadaDurumIleti, setScadaDurumIleti] = useState<{ metin: string; ton: "ok" | "hata" } | null>(null);
-  const yukle = () => api.sayac(plantId, gun).then((y) => { setO(y); setTur(y.ayar.sayac_turu ?? "");
+  const yukle = () => api.sayac(plantId, gun).then((y) => { setO(y); setTur(y.ayar.sayac_turu ?? ""); setGirdi(y.ayar.uzlastirma_girdi === "sayac" ? "sayac" : "scada");
     setScada({ durum: y.ayar.scada_durum ?? "", bas: y.ayar.scada_kopukluk_baslangic ?? "", uzaktan: y.ayar.uzaktan_acma_var, bedel: y.ayar.sistem_kullanim_bedeli_tl_ay != null ? String(y.ayar.sistem_kullanim_bedeli_tl_ay).replace(".", ",") : "" }); }, () => setO(null));
   useEffect(() => { setO(undefined); void yukle(); }, [plantId, ds, gun]);   // eslint-disable-line react-hooks/exhaustive-deps
   const gonder = () => {
@@ -114,8 +115,11 @@ export function Sayac({ plantId }: { plantId: string }) {
           sag={g.beklenen.kesinlik ? <span className={`rozet rozet-kucuk ${g.beklenen.kesinlik === "mevzuat" ? "rozet-ok" : "rozet-notr"}`} title={g.beklenen.not ?? g.beklenen.dayanak ?? ""}>{g.beklenen.kesinlik === "mevzuat" ? "mevzuat" : "belirsiz"}</span> : undefined}>
           <div className="form-izgara">
             <label className="girdi-etiket">Sayaç türü<select className="girdi" value={tur} onChange={(e) => setTur(e.target.value)}>
-              <option value="">seçilmedi</option>{o.sayac_turleri.map((s) => <option key={s.kod} value={s.kod}>{s.etiket}</option>)}</select></label>
-            <div className="dugme-sira" style={{ alignSelf: "end" }}><button className="dugme" onClick={() => ayarKaydet({ sayac_turu: tur || null })}>Kaydet</button>
+              <option value="">seçilmedi</option>{o.sayac_turleri.map((s) => <option key={s.kod} value={s.kod}>{s.kod === "sayac" ? "sayaç (yüklü saatlerde; kalanı SCADA)" : "SCADA ölçümü"}</option>)}</select></label>
+            <label className="girdi-etiket" title="Mutabakat ve dönem raporundaki uzlaştırma yeniden hesabında gerçekleşen üretimin kaynağı. Sayaç seçilirse yüklü sayaç saatlerinde sayacın veriş kWh'si, kalan saatlerde SCADA kullanılır; sayaç dosyasının uzlaştırmaya esas UEVM ile aynı olduğu doğrulanmaz.">
+              Uzlaştırma yeniden hesabında üretim<select className="girdi" value={girdi} onChange={(e) => setGirdi(e.target.value === "sayac" ? "sayac" : "scada")}>
+              {(o.uretim_secenekleri ?? [{ kod: "scada", etiket: "SCADA ölçümü" }, { kod: "sayac", etiket: "sayaç verisi (yüklü saatlerde; kalan saatler SCADA)" }]).map((s) => <option key={s.kod} value={s.kod}>{s.kod === "sayac" ? "sayaç (yüklü saatlerde; kalanı SCADA)" : "SCADA ölçümü"}</option>)}</select></label>
+            <div className="dugme-sira" style={{ alignSelf: "end" }}><button className="dugme" onClick={() => ayarKaydet({ sayac_turu: tur || null, uzlastirma_girdi: girdi })}>Kaydet</button>
               {ayarDurum && <span className={`ayar-durum ${ayarDurum.ton}`}>{ayarDurum.metin}</span>}</div>
           </div>
           <ul className="not-listesi" style={{ fontSize: 13.5, marginTop: 10 }}>
@@ -156,7 +160,7 @@ export function Sayac({ plantId }: { plantId: string }) {
             <div>
               <div className="form-izgara">
                 <label className="girdi-etiket">Bağlantı durumu<select className="girdi" value={scada.durum} onChange={(e) => setScada({ ...scada, durum: e.target.value })}>
-                  <option value="">girilmedi</option>{o.scada_durumlari.map((s) => <option key={s.kod} value={s.kod}>{s.etiket}</option>)}</select></label>
+                  <option value="">girilmedi</option>{o.scada_durumlari.map((s) => <option key={s.kod} value={s.kod}>{s.kod === "sayac" ? "sayaç (yüklü saatlerde; kalanı SCADA)" : "SCADA ölçümü"}</option>)}</select></label>
                 {scada.durum === "kopuk" && <label className="girdi-etiket">Kopukluk başlangıcı<input className="girdi" type="date" value={scada.bas} onChange={(e) => setScada({ ...scada, bas: e.target.value })} /></label>}
                 <label className="girdi-etiket">Aylık sistem kullanım bedeli (TL)<input className="girdi" inputMode="decimal" placeholder="dağıtım faturasından" value={scada.bedel} onChange={(e) => setScada({ ...scada, bedel: e.target.value.replace(/[^0-9.,]/g, "") })} /></label>
                 <label className="girdi-etiket form-tam" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>

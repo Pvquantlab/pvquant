@@ -27,10 +27,12 @@ from pvquant.ext.platform.alarm import KUTUPHANE
 # v2.265: seçilebilir ek kurallar (ürün kararı: yalnız bu üçü; ping/KGÜP/dengesizlik kuralları veri kaynağı olmadan açılmaz)
 EK_KURALLAR = ("pr_dustu", "clipping_orani_yuksek", "iletisim_kesintisi", "kullanilabilirlik_dustu",
                "kgup_teslim_gecikti", "dengesizlik_asimi", "kgup_revizyon_onerisi",   # v2.288: kütüphanenin tamamı seçilebilir; v2.507: F-10 revizyon
-               "takvim_son_tarih", "ptf_dusuk_saat", "ariza_sayaci_yaklasti", "teminat_hatirlatma", "avans_hatirlatma")   # v2.519 (P7a)
+               "takvim_son_tarih", "ptf_dusuk_saat", "ariza_sayaci_yaklasti", "teminat_hatirlatma", "avans_hatirlatma",   # v2.519 (P7a)
+               "sayac_eksik_saat")   # v2.526 (P7b): vadesi gelen sayaç saatleri PVQuant'a yüklenmedi
 ESIK_VARSAYILAN = {"pr_esik": 0.70, "clipping_esik": 0.15, "iletisim_esik_saat": 6, "kullanilabilirlik_esik": 0.97,
                    "dengesizlik_esik": 0.03, "revizyon_esik": 0.10,
-                   "takvim_gun_once": 3, "ptf_esik_tl_mwh": 0.0, "ariza_esik": 25}   # v2.519: gün, TL/MWh (0 → PTF ≤ 0; YEKDEM'de V), adet
+                   "takvim_gun_once": 3, "ptf_esik_tl_mwh": 0.0, "ariza_esik": 25,   # v2.519: gün, TL/MWh (0 → PTF ≤ 0; YEKDEM'de V), adet
+                   "sayac_eksik_esik_saat": 24}   # v2.526 (P7b): vadesi gelip yüklenmemiş sayaç saati (adet)
 IST = ZoneInfo("Europe/Istanbul")
 AYLAR = ("Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara")
 GUNLER = ("Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz")
@@ -41,7 +43,8 @@ KURAL_ETIKET = {"veri_gelmedi": "Veri gelmedi", "skill_dustu": "Tahmin doğrulu�
                 "kgup_revizyon_onerisi": "Program revizyonu önerisi",   # v2.507 (F-10): bugünün programı güncel beklentiden eşik kadar sapıyor
                 "takvim_son_tarih": "Yaklaşan son tarih", "ptf_dusuk_saat": "Yarın düşük fiyat saati",
                 "ariza_sayaci_yaklasti": "Arıza sayacı eşiğe yaklaştı", "teminat_hatirlatma": "Teminat saati hatırlatması",
-                "avans_hatirlatma": "Avans ödeme hatırlatması"}   # v2.519 (P7a)
+                "avans_hatirlatma": "Avans ödeme hatırlatması",   # v2.519 (P7a)
+                "sayac_eksik_saat": "Sayaç verisi eksik"}   # v2.526 (P7b)
 
 
 def _pj(plant: dict) -> dict:
@@ -108,6 +111,12 @@ def ek_alarmlar(plant: dict, baglam: dict) -> list[tuple[str, str, str]]:
                        "iş günü hatırlatması — günlük avans bildirimi 14:30'da yayımlandı; borç 15:00'a kadar ödenir (sonrası temerrüt: 6183 m.51 oranının %50'si, "
                        "17:00 sonrası tam oran), alacak 17:00'a kadar EPİAŞ'tan gelir (DUY m.132/Ç, m.132/D)")
                 out.append((ad, "bilgi", f"{plant.get('name', '')}: {msg}"))
+            continue
+        if ad == "sayac_eksik_saat":   # v2.526 (P7b): vadesi gelen (m.8(2)) ama PVQuant'a yüklenmemiş sayaç saati eşiği aşınca
+            n = b.get("sayac_eksik_saat")
+            if n is not None and int(n) >= int(b["sayac_eksik_esik_saat"]):
+                out.append((ad, "uyari", f"{plant.get('name', '')}: {b.get('sayac_eksik_donem') or 'bu ay'} için vadesi gelen {int(b.get('sayac_vadesi_gelen') or 0)} sayaç saatinden "
+                            f"{int(n)} saat PVQuant'a yüklenmedi (eşik {int(b['sayac_eksik_esik_saat'])}); EPİAŞ'a ulaşıp ulaşmadığı PVQuant'tan görülmez — OSOS/MASS/EPYS dosyasını Sayaç sayfasından yükleyin"))
             continue
         if ad == "takvim_son_tarih":   # ayrı yazıcı: takvim_alarmlari (olay başına tek alarm)
             continue
@@ -180,6 +189,20 @@ def _baglam(tenant_id, plant: dict, secili: list[str]) -> dict:
             b["ariza_sayisi_ay"] = olay_service.ariza_sayisi_etkin(tenant_id, plant)["sayi"] or None
         except Exception:   # noqa: BLE001
             b["ariza_sayisi_ay"] = _pj(plant).get("ariza_sayisi_ay")
+    if "sayac_eksik_saat" in secili:   # v2.526 (P7b): 15 dk sayaçta bu ayın vadesi gelen eksik saati; diğer sayaçta veri günü geçmiş önceki dönemin eksiği
+        try:
+            from pvquant.services import sayac_service
+            g = sayac_service.gelis(tenant_id, plant, _pj(plant))
+            sn = g.get("siniflama") or {}
+            if g.get("sayac_turu") == "15dk_endeks":
+                b["sayac_eksik_saat"] = sn.get("eksik"); b["sayac_vadesi_gelen"] = sn.get("vadesi_gelen"); b["sayac_eksik_donem"] = f"{g.get('ay')} (bu ay)"
+            else:
+                d0 = (g.get("donemler") or [None])[0]
+                gecti = bool(d0 and d0.get("sayac_veri") and date.fromisoformat(d0["sayac_veri"]) < datetime.now(IST).date())
+                b["sayac_eksik_saat"] = (d0["kapsam"]["eksik"] if (d0 and gecti) else None)
+                b["sayac_vadesi_gelen"] = (d0["kapsam"]["vadesi_gelen"] if d0 else None); b["sayac_eksik_donem"] = (f"{d0['donem']} dönemi" if d0 else None)
+        except Exception as e:   # noqa: BLE001 — sayaç tablosu yoksa alarm düşmez
+            print("[alarm][sayac]", plant.get("name"), type(e).__name__, e); b["sayac_eksik_saat"] = None
     if "kgup_revizyon_onerisi" in secili:   # v2.507 (F-10)
         try:
             from pvquant.services import revizyon_service
@@ -476,7 +499,9 @@ def kural_ayarla(tenant_id, plant_id, kurallar: list[str], esik: dict | None = N
         raise ValueError("ptf_esik_tl_mwh 0–10000")
     if "ariza_esik" in e and not (1 <= e["ariza_esik"] <= 30):
         raise ValueError("ariza_esik 1–30")
-    for kk in ("takvim_gun_once", "ariza_esik"):
+    if "sayac_eksik_esik_saat" in e and not (1 <= e["sayac_eksik_esik_saat"] <= 744):
+        raise ValueError("sayac_eksik_esik_saat 1–744")
+    for kk in ("takvim_gun_once", "ariza_esik", "sayac_eksik_esik_saat"):
         if kk in e:
             e[kk] = int(e[kk])
     ek = {}

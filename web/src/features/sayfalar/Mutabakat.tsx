@@ -29,14 +29,15 @@ export function Mutabakat({ plantId }: { plantId: string }) {
   const [o, setO] = useState<MutabakatOzet | null | undefined>(undefined);
   const [donem, setDonem] = useState<string | null>(null);
   const [surum, setSurum] = useState<string | null>(null);
+  const [uretim, setUretim] = useState<string | null>(null);   // v2.526 (P4a-2): boş = santral ayarı
   const [mesaj, setMesaj] = useState<{ metin: string; ton: "ok" | "hata" | "uyari" } | null>(null);
   const [dosya, setDosya] = useState<File | null>(null);
   const [dosyaAnahtar, setDosyaAnahtar] = useState(0);   // yükleme sonrası dosya alanı sıfırlanır
   const [yukDonem, setYukDonem] = useState(oncekiAy());
   const [yukSurum, setYukSurum] = useState("");
   const [yukleniyor, setYukleniyor] = useState(false);
-  const yukle = () => api.mutabakat(plantId, donem, surum).then(setO, () => setO(null));
-  useEffect(() => { setO(undefined); void yukle(); }, [plantId, ds, donem, surum]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const yukle = () => api.mutabakat(plantId, donem, surum, uretim).then(setO, () => setO(null));
+  useEffect(() => { setO(undefined); void yukle(); }, [plantId, ds, donem, surum, uretim]);   // eslint-disable-line react-hooks/exhaustive-deps
   const gonder = () => {
     if (!dosya) { setMesaj({ metin: "Önce EPYS'den indirdiğiniz bildirim dosyasını seçin (CSV ya da XLSX).", ton: "hata" }); return; }
     setMesaj(null); setYukleniyor(true);
@@ -59,7 +60,7 @@ export function Mutabakat({ plantId }: { plantId: string }) {
       <td className="mono">{s.hesaplanir ? tl(s.pvquant_alacak_tl) : "—"}</td><td className="mono">{s.hesaplanir ? tl(s.pvquant_borc_tl) : "—"}</td>
       <td className="mono" style={{ whiteSpace: "nowrap" }} title={s.fark_alacak_tl != null ? `alacak farkı ${sayiTr(s.fark_alacak_tl, 2)} TL; borç farkı ${sayiTr(s.fark_borc_tl ?? 0, 2)} TL` : undefined}>
         {s.fark_tl != null ? `${s.fark_tl > 0 ? "+" : ""}${sayiTr(s.fark_tl, 2)}${yuzde(s.fark_pct)}` : "—"}</td>
-      <td><span className={`rozet rozet-kucuk ${DURUM[s.durum].sinif}`} title={s.bilesen_notu ?? s.pvquant_not ?? undefined}>{DURUM[s.durum].etiket}</span>{s.bilesen_notu ? <div className="soluk" style={{ fontSize: 12, marginTop: 2 }}>{s.bilesen_notu}</div> : null}</td>
+      <td><span className={`rozet rozet-kucuk ${DURUM[s.durum].sinif}`} title={s.dogrulama === "kismi" ? "Kısmi kapsam: EPİAŞ tutarı bütün ayı, PVQuant tutarı yalnız hesaplanan saatleri kapsar; hüküm tam ay verisiyle kesinleşir" : (s.bilesen_notu ?? s.pvquant_not ?? undefined)}>{DURUM[s.durum].etiket}{s.dogrulama === "kismi" && (s.durum === "uyumlu" || s.durum === "fark") ? " · kısmi" : ""}</span>{s.bilesen_notu ? <div className="soluk" style={{ fontSize: 12, marginTop: 2 }}>{s.bilesen_notu}</div> : null}</td>
     </tr>);
   return (
     <Sayfa baslik="Mutabakat" alt="EPİAŞ uzlaştırma bildirimini PVQuant'ın yeniden hesabıyla kalem kalem karşılaştırın. EPİAŞ bildirimi esastır; PVQuant tutarları yeniden hesaptır, fark bilgi amaçlıdır."
@@ -67,7 +68,9 @@ export function Mutabakat({ plantId }: { plantId: string }) {
         <select className="girdi" value={m.donem} onChange={(e) => setDonem(e.target.value)} aria-label="Fatura dönemi">
           {donemler.map((d) => <option key={d} value={d}>{ayAd(d)}</option>)}</select>
         <select className="girdi" value={surum ?? ""} onChange={(e) => setSurum(e.target.value || null)} aria-label="Bildirim sürümü">
-          <option value="">son yüklenen sürüm</option>{o.surumler.map((s) => <option key={s.kod} value={s.kod}>{s.etiket}</option>)}</select></span>}>
+          <option value="">son yüklenen sürüm</option>{o.surumler.map((s) => <option key={s.kod} value={s.kod}>{s.etiket}</option>)}</select>
+        <select className="girdi" style={{ maxWidth: "calc(100vw - 48px)" }} value={uretim ?? ""} onChange={(e) => setUretim(e.target.value || null)} aria-label="Üretim girdisi" title="Yeniden hesapta gerçekleşen üretimin kaynağı. «Santral ayarı» Sayaç sayfasındaki kalıcı seçimdir; öbür ikisi bu sayfada geçici görünümdür (ayarla aynı olan seçenek aynı sonucu verir).">
+          <option value="">üretim: santral ayarı — {o.uretim_ayari === "sayac" ? "sayaç" : "SCADA"}</option>{o.uretim_secenekleri.map((s) => <option key={s.kod} value={s.kod}>üretim: {s.kod === "sayac" ? "sayaç, yüklü saatlerde" : "SCADA"} (geçici)</option>)}</select></span>}>
       <div className="ızgara satir-4" style={{ marginBottom: 14 }}>
         <Kpi etiket={`EPİAŞ toplam alacak (${m.donem_etiket})`} bilgi="EPİAŞ bildirimindeki bütün alacak kalemlerinin toplamı (GÖP, GİP, YEK, dengesizlik, …); «Toplam» satırı hariç. PVQuant bu toplamın yalnız bir bölümünü yeniden hesaplar."
           deger={binTl(oz.bildirim_alacak_tl)} birim={oz.bildirim_alacak_tl != null ? "bin TL" : undefined}
@@ -82,7 +85,7 @@ export function Mutabakat({ plantId }: { plantId: string }) {
         <Kpi etiket="Hesaplama farkı" bilgi="PVQuant net − EPİAŞ net, yalnız karşılaştırılan kalemlerde. Artı: PVQuant daha çok alacak hesaplıyor; eksi: daha çok borç. Uyum ölçütü PVQuant'ın işletme ölçütüdür, mevzuat toleransı değildir."
           deger={oz.fark_tl != null ? `${oz.fark_tl > 0 ? "+" : ""}${binTl(oz.fark_tl)}` : "—"} birim={oz.fark_tl != null ? "bin TL" : undefined}
           ton={oz.farkli > 0 ? "amber" : undefined}
-          alt={oz.kiyaslanan ? (g.durum === "senaryo" ? `${sayiTr(oz.kiyaslanan)} kalem; senaryo hesabı, uyum sınıflandırması yapılmadı` : `${sayiTr(oz.kiyaslanan)} kalem: ${sayiTr(oz.uyumlu)} uyumlu, ${sayiTr(oz.farkli)} farklı; ölçüt bileşen başına %${sayiTr(m.uyum.pct)} ya da ${sayiTr(m.uyum.tl)} TL`) : "kıyaslanacak kalem yok"} />
+          alt={oz.kiyaslanan ? (g.durum === "senaryo" ? `${sayiTr(oz.kiyaslanan)} kalem; senaryo hesabı, uyum sınıflandırması yapılmadı` : g.durum === "kismi" ? `${sayiTr(oz.kiyaslanan)} kalem: ${sayiTr(oz.uyumlu)} uyumlu, ${sayiTr(oz.farkli)} farklı — kapsam kısmi (${sayiTr(oz.kapsam_saat ?? m.pvquant.saat)}/${sayiTr(oz.beklenen_saat ?? 0)} saat), fark doğrulanmış değil` : `${sayiTr(oz.kiyaslanan)} kalem: ${sayiTr(oz.uyumlu)} uyumlu, ${sayiTr(oz.farkli)} farklı; ölçüt bileşen başına %${sayiTr(m.uyum.pct)} ya da ${sayiTr(m.uyum.tl)} TL`) : "kıyaslanacak kalem yok"} />
       </div>
       <div className="ızgara-cift">
         <Kart baslik="EPİAŞ bildirimi yükleme" alt="EPYS › Uzlaştırma › Uzlaştırma Bildirimi ekranından indirdiğiniz dosya (CSV ya da XLSX). Dönem ve uzlaştırma durumu dosyadan okunur; okunamazsa buradaki seçim geçerlidir.">
@@ -107,15 +110,23 @@ export function Mutabakat({ plantId }: { plantId: string }) {
                   <td style={{ ...sol, whiteSpace: "normal" }}>{d.dosya_adi ?? "—"}</td><td className="mono">{sayiTr(d.kalem_sayisi)}</td></tr>))}</tbody>
             </table></div>)}
         </Kart>
-        <Kart baslik="Hesaplamada kullanılan veriler" alt="Dönem için PVQuant'ın saatlik uzlaştırma dökümü (Doğruluk › Uzlaştırma kalemleri ile aynı hesap); sonucun güvenilirliği buradaki verilere bağlıdır"
+        <Kart baslik="Hesaplamada kullanılan veriler" alt={m.pvquant.uretim_kaynak?.secim === "sayac"
+            ? "Dönem için PVQuant'ın saatlik uzlaştırma dökümü, üretim sayaçtan (Doğruluk sayfasındaki 90 günlük hesap SCADA ile kalır); sonucun güvenilirliği buradaki verilere bağlıdır"
+            : "Dönem için PVQuant'ın saatlik uzlaştırma dökümü (Doğruluk › Uzlaştırma kalemleri ile aynı hesap); sonucun güvenilirliği buradaki verilere bağlıdır"}
           sag={<span className={`rozet rozet-kucuk ${GUVEN_SINIF[g.durum]}`} title={g.nedenler.join("; ") || "dönemin bütün saatleri EPİAŞ fiyatı ve bildirilen KGÜP ile hesaplandı"}>{g.etiket}</span>}>
           <ul className="not-listesi" style={{ fontSize: 13.5 }}>
             <li><b>Saat:</b> {sayiTr(m.pvquant.saat)}{m.pvquant.beklenen_saat ? ` / ${sayiTr(m.pvquant.beklenen_saat)} (dönemin saati)` : ""}{m.pvquant.son_saat ? `; son üretim verisi ${m.pvquant.son_saat}` : ""}{m.pvquant.hesaplanamayan_saat ? `; ${sayiTr(m.pvquant.hesaplanamayan_saat)} saat hesaplanamadı` : ""}</li>
             <li><b>Program:</b> {m.pvquant.bildirilen_saat ? `${sayiTr(m.pvquant.bildirilen_saat)} saatte bildirilen KGÜP (TPYS'ye bildirildiği beyan edilen dosya)${m.pvquant.bildirilen_saat < m.pvquant.saat ? `, kalan ${sayiTr(m.pvquant.saat - m.pvquant.bildirilen_saat)} saatte PVQuant önerisi` : ""}` : "PVQuant önerisi (bildirilen KGÜP yüklü değil)"}</li>
             <li><b>Fiyat:</b> {m.pvquant.senaryo_saat ? `${sayiTr(m.pvquant.senaryo_saat)} saatte senaryo fiyatı (EPİAŞ fiyat verisi yok; sistem yönü dengede varsayıldı)` : "EPİAŞ saatlik PTF, SMF ve sistem yönü"}</li>
-            <li><b>Üretim:</b> SCADA ölçümü (geçerli bayraklı saatler); EPİAŞ uzlaştırmaya esas sayaç verisi (UEVM) değildir.{" "}
-              {m.pvquant.sayac?.yuklu ? <>Sayaç sayfasında dönem için {sayiTr(m.pvquant.sayac.yuklu)} / {sayiTr(m.pvquant.sayac.toplam_saat)} saat sayaç verisi var ({sayiTr(m.pvquant.sayac.olculmus)} ölçülmüş{m.pvquant.sayac.tahmini ? `, ${sayiTr(m.pvquant.sayac.tahmini)} tahmini/doldurulmuş` : ""}){m.pvquant.sayac.olc_fark_pct != null ? `; ölçülmüş saatlerde sayaç − SCADA ${m.pvquant.sayac.olc_fark_pct < 0 ? "−" : "+"}%${sayiTr(Math.abs(m.pvquant.sayac.olc_fark_pct), 1)}` : ""}; hesap yine SCADA ile yapıldı.</>
-                : <>Dönem için sayaç verisi yüklenmedi (Sayaç sayfası); SCADA brüt üretimdir, sayaç net veriştir.</>}</li>
+            {(() => { const uk = m.pvquant.uretim_kaynak; const sy = m.pvquant.sayac;   // v2.526 (P4a-2): seçilen üretim kaynağı ve sayaç ↔ SCADA kıyası
+              if (uk?.secim === "sayac" && uk.sayac_olculmus_saat + uk.sayac_tahmini_saat > 0) return (
+                <li><b>Üretim:</b> {sayiTr(uk.sayac_olculmus_saat + uk.sayac_tahmini_saat)} saatte sayaç verisi ({sayiTr(uk.sayac_olculmus_saat)} ölçülmüş{uk.sayac_tahmini_saat ? `, ${sayiTr(uk.sayac_tahmini_saat)} tahmini nitelikli` : ""}){uk.scada_saat ? `, ${sayiTr(uk.scada_saat)} saatte SCADA` : ""}{uk.sayac_kullanilmayan_saat ? `; yüklü sayaç saatlerinden ${sayiTr(uk.sayac_kullanilmayan_saat)} saat SCADA satırı olmadığından hesaba girmedi` : ""}; sayaç dosyasının uzlaştırmaya esas UEVM ile aynı olduğu doğrulanmaz.
+                  {uk.kiyas && uk.kiyas.edt_net_fark_tl != null ? <> Aynı dönem SCADA ile hesaba göre: dengesizlik neti {uk.kiyas.edt_net_fark_tl >= 0 ? "+" : "−"}{sayiTr(Math.abs(uk.kiyas.edt_net_fark_tl), 2)} TL ({uk.kiyas.edt_net_fark_tl >= 0 ? "sayaçla daha lehte" : "sayaçla daha aleyhte"}){uk.kiyas.kupst_fark_tl ? <>, KÜPST borcu {uk.kiyas.kupst_fark_tl >= 0 ? "+" : "−"}{sayiTr(Math.abs(uk.kiyas.kupst_fark_tl), 2)} TL ({uk.kiyas.kupst_fark_tl >= 0 ? "daha aleyhte" : "daha lehte"})</> : null}.</> : null}</li>);
+              return (
+                <li><b>Üretim:</b> SCADA ölçümü (geçerli bayraklı saatler); EPİAŞ uzlaştırmaya esas sayaç verisi (UEVM) değildir.{" "}
+                  {uk?.secim === "sayac" ? <>Üretim girdisi «sayaç» seçili ama dönem saatlerinde sayaç verisi yok. </> : null}
+                  {sy?.yuklu ? <>Sayaç sayfasında dönem için {sayiTr(sy.yuklu)} / {sayiTr(sy.toplam_saat)} saat sayaç verisi var ({sayiTr(sy.olculmus)} ölçülmüş{sy.tahmini ? `, ${sayiTr(sy.tahmini)} tahmini/doldurulmuş` : ""}){sy.olc_fark_pct != null ? `; ölçülmüş saatlerde sayaç − SCADA ${sy.olc_fark_pct < 0 ? "−" : "+"}%${sayiTr(Math.abs(sy.olc_fark_pct), 1)}` : ""}; hesabı sayaçla görmek için yukarıdan «üretim: sayaç» seçin ya da Sayaç sayfasında kalıcı ayarlayın.</>
+                    : <>Dönem için sayaç verisi yüklenmedi (Sayaç sayfası); SCADA brüt üretimdir, sayaç net veriştir.</>}</li>); })()}
             {m.pvquant.kural_surumu && <li><b>Kural:</b> {m.pvquant.kural_surumu}</li>}
             {g.nedenler.length > 0 && <li><b>{g.etiket}:</b> {g.nedenler.join("; ")}</li>}
             {m.pvquant.hata && <li className="soluk">Hesap alınamadı: {m.pvquant.hata}</li>}

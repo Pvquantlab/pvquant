@@ -55,6 +55,18 @@ def test_ptf_dusuk_saat_mesaj_ve_baglam():
     assert bs["ptf_dusuk_saatler"] == [10, 11, 12, 13] and "PTF < 100" in al.ek_alarmlar(_p(["ptf_dusuk_saat"]), bs)[0][2]
 
 
+def test_sayac_eksik_saat_kurali():
+    """v2.526 (P7b): vadesi gelen ama yüklenmemiş sayaç saati eşiği aşınca uyarı; eşik doğrulaması 1–744."""
+    assert "sayac_eksik_saat" in al.EK_KURALLAR and al.ESIK_VARSAYILAN["sayac_eksik_esik_saat"] == 24 and al.KURAL_ETIKET["sayac_eksik_saat"] == "Sayaç verisi eksik"
+    p = _p(["sayac_eksik_saat"], {"sayac_eksik_esik_saat": 12})
+    r = al.ek_alarmlar(p, {"sayac_eksik_saat": 20, "sayac_vadesi_gelen": 100, "sayac_eksik_donem": "2026-11 (bu ay)"})
+    assert r[0][0] == "sayac_eksik_saat" and r[0][1] == "uyari" and "100 sayaç saatinden 20 saat" in r[0][2] and "eşik 12" in r[0][2] and "2026-11" in r[0][2]
+    assert al.ek_alarmlar(p, {"sayac_eksik_saat": 11}) == [] and al.ek_alarmlar(p, {"sayac_eksik_saat": None}) == [] and al.ek_alarmlar(p, {}) == []
+    for kotu in ({"sayac_eksik_esik_saat": 0}, {"sayac_eksik_esik_saat": 745}):
+        with pytest.raises(ValueError, match="sayac_eksik_esik_saat"):
+            al.kural_ayarla("t", "p", ["sayac_eksik_saat"], kotu)
+
+
 def test_ariza_sayaci_ve_hatirlatma_mesajlari():
     p = _p(["ariza_sayaci_yaklasti"], {"ariza_esik": 20})
     r = al.ek_alarmlar(p, {"ariza_sayisi_ay": 22})

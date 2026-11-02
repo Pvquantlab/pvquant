@@ -21,7 +21,7 @@ const KURAL_ADI: Record<string, string> = {
   kgup_teslim_gecikti: "Program bildirimi hazırlanamadı", dengesizlik_asimi: "Dengesizlik maliyeti yüksek",
   kgup_revizyon_onerisi: "Program revizyonu önerisi",
   takvim_son_tarih: "Yaklaşan son tarih", ptf_dusuk_saat: "Yarın düşük fiyat saati",
-  ariza_sayaci_yaklasti: "Arıza sayacı eşiğe yaklaştı", teminat_hatirlatma: "Teminat saati hatırlatması",
+  ariza_sayaci_yaklasti: "Arıza sayacı eşiğe yaklaştı", teminat_hatirlatma: "Teminat saati hatırlatması", sayac_eksik_saat: "Sayaç verisi eksik",
   avans_hatirlatma: "Avans ödeme hatırlatması",
 };
 /** 01.11 Santral ayarları dil turu: her ayar satırı = kısa açıklama (1–2 cümle) + «Ayrıntı» (yerleşik details: klavyeyle Tab + Enter/Boşluk
@@ -64,6 +64,7 @@ const KURAL_KOSULU: Record<string, (e: Record<string, number>) => string> = {
   takvim_son_tarih: (e) => `Takvim'deki her son tarih için ${sayiTr(e.takvim_gun_once ?? 3, 0)} gün kala, bir kez. Kontrol: her gece 07:00`,
   teminat_hatirlatma: () => "Teminat mektubu 10:30'a kadar, teminat kontrolü 11:00. Kontrol: her iş günü 10:15; yalnız lisanslı santral",
   avans_hatirlatma: () => "Avans borcu 15:00'a kadar, alacak 17:00'a kadar. Kontrol: her iş günü 14:45; yalnız lisanslı santral",
+  sayac_eksik_saat: (e) => `Vadesi gelen (Ölçüm Sist. Yön. m.8(2)) ama PVQuant'a yüklenmemiş sayaç saati eşiğe (${sayiTr(e.sayac_eksik_esik_saat ?? 24, 0)} saat) ulaşınca; aylık okumalı sayaçta veri günü geçmiş dönemin eksiği. Kontrol: her gece 07:00`,   // v2.526 (P7b)
 };
 /** Eşik girişleri: API ondalık oran tutan eşikleri (performans, kırpma, kullanılabilirlik, dengesizlik, revizyon) panel yüzde gösterir ve
  *  kaydederken 100'e böler; ötekiler sayı. Aralıklar alarm_service.kural_ayarla doğrulamasıyla aynı. */
@@ -77,6 +78,7 @@ const ESIK_ALANLARI: { k: string; etiket: string; yuzde?: boolean; aralik: strin
   { k: "takvim_gun_once", etiket: "Son tarihe kaç gün kala", aralik: "1–30" },
   { k: "ptf_esik_tl_mwh", etiket: "Düşük fiyat eşiği (TL/MWh)", aralik: "0 = sıfır ve negatif fiyat" },
   { k: "ariza_esik", etiket: "Arıza sayacı (adet)", aralik: "1–30" },
+  { k: "sayac_eksik_esik_saat", etiket: "Eksik sayaç saati (adet)", aralik: "1–744" },   // v2.526 (P7b)
 ];
 import { tarihBicimi } from "../../lib/bicim";
 import { t0Hesapla, simdiDegeri, simdiGercegi, dilimle } from "../sayfalar/tahminPencere";

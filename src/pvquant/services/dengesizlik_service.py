@@ -32,8 +32,19 @@ def _pj(v) -> dict:
     return v or {}
 
 
-def program_df(tenant_id, plant_id, gun: int = 90) -> pd.DataFrame:
-    """DB: ts_utc, gercek_kw, kgup_kw (D-1 15:30 IST öncesi son koşu), naif_kw (dün-aynı-saat)."""
+URETIM_SECENEKLERI = {"scada": "SCADA ölçümü", "sayac": "sayaç verisi (yüklü saatlerde; kalan saatler SCADA)"}   # v2.526 (P4a-2)
+
+
+def uretim_secimi(pj) -> str:
+    """v2.526 (P4a-2): uzlaştırma yeniden hesabında gerçekleşen üretim kaynağı — params_json.uzlastirma_girdi (scada | sayac); varsayılan scada."""
+    v = (_pj(pj) if not isinstance(pj, dict) else pj).get("uzlastirma_girdi")
+    return v if v in URETIM_SECENEKLERI else "scada"
+
+
+def program_df(tenant_id, plant_id, gun: int = 90, uretim: str = "scada") -> pd.DataFrame:
+    """DB: ts_utc, gercek_kw, kgup_kw (D-1 15:30 IST öncesi son koşu), naif_kw (dün-aynı-saat), uretim_kaynak (scada | sayac_olculmus | sayac_tahmini).
+    v2.526 (P4a-2): uretim='sayac' → sayaç satırı olan saatlerde gercek_kw sayacın veriş kWh'si (1 saat = kW); sayaç olmayan saatlerde SCADA kalır.
+    SCADA'da olmayan saat sayaçla eklenmez (program ve fiyat o saat için SCADA satırından kurulur; sonraya)."""
     from sqlalchemy import text
     from pvquant.db import tenant_baglami
     with tenant_baglami(tenant_id) as s:
@@ -50,6 +61,15 @@ def program_df(tenant_id, plant_id, gun: int = 90) -> pd.DataFrame:
             s.connection(), params={"p": plant_id, "g": gun}, parse_dates=["ts_utc"])
     if not df.empty:
         df["ts_utc"] = pd.to_datetime(df["ts_utc"], utc=True)
+    df["uretim_kaynak"] = "scada"
+    if uretim == "sayac" and not df.empty:
+        from pvquant.services import sayac_service
+        sy = sayac_service.sayac_oku(tenant_id, plant_id, df["ts_utc"].min().to_pydatetime(), (df["ts_utc"].max() + pd.Timedelta(hours=1)).to_pydatetime())
+        if not sy.empty:
+            es = df["ts_utc"].map(sy["veris_kwh"]); var = es.notna()
+            nit = df["ts_utc"].map(sy["nitelik"])
+            df.loc[var, "gercek_kw"] = pd.to_numeric(es[var], errors="coerce").astype(float)
+            df.loc[var, "uretim_kaynak"] = np.where(nit[var].isin(["tahmini", "doldurulmus", "yok"]), "sayac_tahmini", "sayac_olculmus")
     return df
 
 
@@ -269,6 +289,9 @@ def dokum_df(pv: pd.DataFrame, ek: pd.DataFrame | None = None) -> pd.DataFrame:
     return out
 
 
+DOKUM_NOTU_SAYAC = (" uretim_kaynak: sayac_olculmus = o saatin gerçekleşeni yüklü sayaç dosyasındaki ölçülmüş veriş kWh (EPYS > OSOS > MASS > elle), "
+                    "sayac_tahmini = sayaç satırı tahmini/doldurulmuş/veri yok nitelikli, scada = sayaç satırı yok, SCADA ölçümü. Sayaç verisi uzlaştırmaya esas "
+                    "UEVM ile aynı olup olmadığı PVQuant'tan doğrulanmaz.")
 DOKUM_NOTU = ("Yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir. program_kaynak: bildirilen = TPYS'ye bildirildiği beyan edilerek yüklenen KGÜP "
               "(TPYS kabulü doğrulanmaz); oneri = PVQuant'ın bir gün önce 15:30'dan önceki son tahmininin P50'si. sapma = gerçekleşen − pozisyon (EDM). "
               "edt_borc = eksik üretim tutarı (öder), edt_alacak = fazla üretim tutarı (alır; düşük fiyat saatinde negatif olabilir). "
@@ -281,7 +304,7 @@ DOKUM_NOTU_YEKDEM = (" YEKDEM sütunları (lisanslı YEKDEM, tarife YEKDEM): yek
 
 def dokum_notu(df: pd.DataFrame) -> str:
     """v2.520: YEKDEM sütunları varsa not ekiyle."""
-    return DOKUM_NOTU + (DOKUM_NOTU_YEKDEM if "m23_6" in df.columns else "")
+    return DOKUM_NOTU + (DOKUM_NOTU_YEKDEM if "m23_6" in df.columns else "") + (DOKUM_NOTU_SAYAC if "uretim_kaynak" in df.columns else "")
 
 
 def dokum_csv(df: pd.DataFrame) -> str:
@@ -334,15 +357,17 @@ def dokum_xlsx(df: pd.DataFrame, baslik: str, aylar: list[dict] | None = None) -
     return buf.getvalue()
 
 
-def _girdiler(tenant_id, plant: dict, gun: int) -> dict:
-    """v2.520: simülasyon, döküm ve YEKDEM özeti aynı girdilerden (program, fiyat, katsayılar, segment, bildirilen seri, pozisyon)."""
+def _girdiler(tenant_id, plant: dict, gun: int, uretim: str | None = None) -> dict:
+    """v2.520: simülasyon, döküm ve YEKDEM özeti aynı girdilerden (program, fiyat, katsayılar, segment, bildirilen seri, pozisyon).
+    v2.526: uretim (scada | sayac) verilmezse santral ayarı (uzlastirma_girdi)."""
     from pvquant.services import piyasa_service
-    df = program_df(tenant_id, plant["id"], gun)
+    uretim = uretim if uretim in URETIM_SECENEKLERI else uretim_secimi(plant.get("params_json"))
+    df = program_df(tenant_id, plant["id"], gun, uretim)
     idx = pd.DatetimeIndex(df["ts_utc"]) if not df.empty else pd.DatetimeIndex([], tz="UTC")
     fiyat = piyasa_service.fiyatlar(idx)
     pj = _pj(plant.get("params_json")); seg = segment_bilgisi(plant.get("params_json")); kat = katsayilar(plant.get("params_json"))
     return {"df": df, "fiyat": fiyat, "kat": kat, "segment": seg["segment"], "ariza_sayisi": _ariza(tenant_id, plant),
-            "luy_istisna": bool(pj.get("luy_istisna")), "bildirilen_mwh": bildirilen_serisi(tenant_id, plant["id"], pj, gun), "pozisyon": pozisyon_ayari(pj), "pj": pj}
+            "luy_istisna": bool(pj.get("luy_istisna")), "bildirilen_mwh": bildirilen_serisi(tenant_id, plant["id"], pj, gun), "pozisyon": pozisyon_ayari(pj), "pj": pj, "uretim": uretim}
 
 
 def saatlik_pv(tenant_id, plant: dict, gun: int = 90) -> pd.DataFrame | None:
@@ -363,15 +388,24 @@ def yekdem_eki(pj: dict, segment: str | None, pv: pd.DataFrame | None) -> pd.Dat
         return None
 
 
-def dokum(tenant_id, plant: dict, gun: int = 90) -> tuple[pd.DataFrame, dict]:
-    """v2.517 (P2a): simülasyonla aynı girdilerden saatlik döküm + ay özeti (dışa aktarım için). v2.520: lisanslı YEKDEM'de YEKDEM sütunları."""
-    g = _girdiler(tenant_id, plant, gun)
+def dokum(tenant_id, plant: dict, gun: int = 90, uretim: str | None = None) -> tuple[pd.DataFrame, dict]:
+    """v2.517 (P2a): simülasyonla aynı girdilerden saatlik döküm + ay özeti (dışa aktarım için). v2.520: lisanslı YEKDEM'de YEKDEM sütunları.
+    v2.526 (P4a-2): uretim='sayac' (ya da santral ayarı) → sayaç satırı olan saatlerde gerçekleşen sayaçtan; döküme «uretim_kaynak» sütunu ve özete sayım."""
+    g = _girdiler(tenant_id, plant, gun, uretim)
     pv, _, _, _ = saatlik_hesap(g["df"], g["fiyat"], g["kat"], g["segment"], g["ariza_sayisi"], g["luy_istisna"], g["bildirilen_mwh"], g["pozisyon"])
     ozet = hesapla_df(g["df"], g["fiyat"], g["kat"], segment=g["segment"], ariza_sayisi=g["ariza_sayisi"], luy_istisna=g["luy_istisna"],
                       bildirilen_mwh=g["bildirilen_mwh"], pozisyon=g["pozisyon"])
     df = dokum_df(pv, yekdem_eki(g["pj"], g["segment"], pv))
     if pv is not None and not pv.empty and "kaynak" in g["fiyat"]:   # v2.522 (P2b): mutabakat için saat bazında fiyat kaynağı (epias / senaryo); dışa aktarıma girmez
         ozet["saat_fiyat_kaynak"] = [str(k) for k in g["fiyat"]["kaynak"].reindex(pv.index).fillna("yok").values]
+    uk = {"secim": g["uretim"], "etiket": URETIM_SECENEKLERI[g["uretim"]], "sayac_olculmus_saat": 0, "sayac_tahmini_saat": 0, "scada_saat": 0}
+    if pv is not None and not pv.empty and "uretim_kaynak" in g["df"].columns:
+        kaynak = g["df"].set_index("ts_utc")["uretim_kaynak"].reindex(pv.index).fillna("scada")
+        uk["sayac_olculmus_saat"] = int((kaynak == "sayac_olculmus").sum()); uk["sayac_tahmini_saat"] = int((kaynak == "sayac_tahmini").sum()); uk["scada_saat"] = int((kaynak == "scada").sum())
+        ozet["saat_uretim_kaynak"] = [str(k) for k in kaynak.values]
+        if g["uretim"] == "sayac":
+            df["uretim_kaynak"] = kaynak.values   # dışa aktarımda hangi saatin sayaç, hangisinin SCADA olduğu görünür
+    ozet["uretim_kaynak"] = uk
     return df, ozet
 
 def _risk_katsayisi(pj: dict) -> float | None:

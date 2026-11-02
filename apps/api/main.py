@@ -1347,7 +1347,7 @@ def dengesizlik(plant_id: str, gun: int = 90, claims=Depends(gecerli_kullanici))
 
 
 @app.get("/v1/plants/{plant_id}/dengesizlik/saatlik")
-def dengesizlik_saatlik(plant_id: str, gun: int = 90, fmt: str = "json", n: int = 48, claims=Depends(gecerli_kullanici)):
+def dengesizlik_saatlik(plant_id: str, gun: int = 90, fmt: str = "json", n: int = 48, uretim: str | None = None, claims=Depends(gecerli_kullanici)):
     """v2.517 (P2a, B12) — saatlik uzlaştırma dökümü: program (bildirilen/öneri), pozisyon, gerçekleşen, sapma, fiyat, yön, EDT borç/alacak,
     KÜPSM, KÜPST, kural sürümü, durum. fmt=csv (;-ayraçlı, BOM'lu) ve fmt=xlsx (Saatlik + Aylar) indirilir; fmt=json son n satırı döner.
     Yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir."""
@@ -1357,10 +1357,12 @@ def dengesizlik_saatlik(plant_id: str, gun: int = 90, fmt: str = "json", n: int 
         raise HTTPException(422, "gun 14–365 aralığında olmalı")
     if fmt not in ("json", "csv", "xlsx"):
         raise HTTPException(422, "fmt json, csv ya da xlsx olmalı")
+    if uretim is not None and uretim not in ("scada", "sayac"):   # v2.526 (P4a-2): verilmezse santral ayarı
+        raise HTTPException(422, "uretim scada ya da sayac olmalı")
     row = plant_service.getir(claims["tenant_id"], plant_id)
     if row is None:
         raise HTTPException(404, "santral yok")
-    df, ozet = dengesizlik_service.dokum(claims["tenant_id"], {"id": str(row["id"]), "params_json": row.get("params_json")}, gun=gun)
+    df, ozet = dengesizlik_service.dokum(claims["tenant_id"], {"id": str(row["id"]), "params_json": row.get("params_json")}, gun=gun, uretim=uretim)
     ad = f"pvquant_uzlastirma_saatlik_{row['name'].replace(' ', '_')}_{gun}g"
     if fmt == "csv":
         return Response(dengesizlik_service.dokum_csv(df), media_type="text/csv; charset=utf-8",
@@ -1371,7 +1373,7 @@ def dengesizlik_saatlik(plant_id: str, gun: int = 90, fmt: str = "json", n: int 
                         headers={"Content-Disposition": f'attachment; filename="{ad}.xlsx"'})
     son = df.tail(max(1, min(int(n), 2000)))
     return {"satir": int(len(df)), "kolonlar": list(df.columns), "not": dengesizlik_service.dokum_notu(df),   # v2.520: YEKDEM'de 25 sütun
-            "program": ozet.get("program"), "toplam": ozet.get("toplam"),
+            "program": ozet.get("program"), "toplam": ozet.get("toplam"), "uretim_kaynak": ozet.get("uretim_kaynak"),   # v2.526 (P4a-2)
             "satirlar": [{k: (None if (isinstance(v, float) and v != v) else (float(v) if hasattr(v, "item") and not isinstance(v, str) else v)) for k, v in r.items()}
                          for r in son.to_dict(orient="records")]}
 
@@ -1455,17 +1457,19 @@ def olay_guncelle(plant_id: str, olay_id: str, p: OlayGuncelle, claims=Depends(y
 
 
 @app.get("/v1/plants/{plant_id}/mutabakat")
-def mutabakat_ozet(plant_id: str, donem: str | None = None, surum: str | None = None, claims=Depends(gecerli_kullanici)):
+def mutabakat_ozet(plant_id: str, donem: str | None = None, surum: str | None = None, uretim: str | None = None, claims=Depends(gecerli_kullanici)):
     """v2.522 (P2b-1) — EPİAŞ uzlaştırma bildirimiyle kalem kalem mutabakat: yüklenmiş dönemler + seçilen dönemin bildirim ↔ PVQuant tablosu.
-    Yeniden hesap EPİAŞ sonucu değildir."""
+    Yeniden hesap EPİAŞ sonucu değildir. v2.526 (P4a-2): uretim=scada|sayac — gerçekleşen üretim kaynağı (verilmezse santral ayarı)."""
     from pvquant.services import mutabakat_service
     if surum is not None and surum not in mutabakat_service.SURUMLER:
         raise HTTPException(422, "surum on ya da nihai olmalı")
+    if uretim is not None and uretim not in ("scada", "sayac"):
+        raise HTTPException(422, "uretim scada ya da sayac olmalı")
     row = plant_service.getir(claims["tenant_id"], plant_id)
     if row is None:
         raise HTTPException(404, "santral yok")
     try:
-        return mutabakat_service.ozet(claims["tenant_id"], {"id": str(row["id"]), "name": row["name"], "params_json": row.get("params_json")}, donem=donem, surum=surum)
+        return mutabakat_service.ozet(claims["tenant_id"], {"id": str(row["id"]), "name": row["name"], "params_json": row.get("params_json")}, donem=donem, surum=surum, uretim=uretim)
     except ValueError as e:
         raise HTTPException(422, str(e))
 
@@ -1493,6 +1497,7 @@ class SayacAyarIstek(BaseModel):
     sayac_turu: str | None = None                   # 15dk_endeks | diger
     scada_durum: str | None = None                  # bagli | kopuk | yok (lisanssız, LÜY m.21(7))
     scada_kopukluk_baslangic: str | None = None     # YYYY-MM-DD
+    uzlastirma_girdi: str | None = None             # v2.526 (P4a-2): scada | sayac — uzlaştırma yeniden hesabında gerçekleşen üretim kaynağı
     uzaktan_acma_var: bool | None = None            # uzaktan açma-kapama yeteneği envanterde
     sistem_kullanim_bedeli_tl_ay: float | None = None   # Karar 14909 bedel göstergesi girdisi (dağıtım faturasından)
 

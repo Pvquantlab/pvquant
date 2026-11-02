@@ -769,8 +769,9 @@ export const api = {
   },
   kgupSablonSifirla: (p: string): Promise<{ sablon: NonNullable<KgupOnizleme["sablon"]> }> => gonder(`/v1/plants/${p}/kgup/sablon`, "DELETE"),
   /** v2.522 (P2b-1): EPİAŞ uzlaştırma bildirimiyle mutabakat — dönem listesi + seçili dönemin kalem tablosu */
-  mutabakat: (p: string, donem?: string | null, surum?: string | null): Promise<MutabakatOzet> =>
-    getir<MutabakatOzet>(`/v1/plants/${p}/mutabakat${donem ? `?donem=${donem}${surum ? `&surum=${surum}` : ""}` : surum ? `?surum=${surum}` : ""}`),
+  mutabakat: (p: string, donem?: string | null, surum?: string | null, uretim?: string | null): Promise<MutabakatOzet> => {
+    const q = [donem ? `donem=${donem}` : "", surum ? `surum=${surum}` : "", uretim ? `uretim=${uretim}` : ""].filter(Boolean).join("&");   // v2.526: uretim scada | sayac
+    return getir<MutabakatOzet>(`/v1/plants/${p}/mutabakat${q ? `?${q}` : ""}`); },
   /** v2.522: EPYS «Uzlaştırma Bildirimi» dosyasını yükle (CSV/XLSX; dönem ve sürüm boşsa dosyadan okunur) */
   mutabakatYukle: async (p: string, dosya: File, donem?: string | null, surum?: string | null): Promise<MutabakatYukleme> => {
     if (TABAN == null) throw new Error("Örnek kipte yükleme yok.");
