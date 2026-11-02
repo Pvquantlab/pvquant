@@ -647,3 +647,30 @@ Doğrulanamayan / sonraya: EPYS XLSX'in gerçek başlıkları ve sayfa düzeni (
 saklanır, kıyaslanmaz; DSG üyeleri için grup bazlı saatlik EDT kapsam dışı («pozisyon» sınıfına düşer); saatlik toplam ↔ aylık bildirim kalemi köprüsü; birleşik eş
 kapsamlı toplam (dengesizlik + KÜPST) bileşen/işaret uyumu belgelenmeden verilmez.
 Tahmin motoru, kalibrasyon ve uzlaştırma formülleri değişmedi.
+
+# Yirmi sekizinci paket — v2.528 (03.11.2026, canlı): Dış API rezerve dört kapsam canlı, Hakkında kural tablosu (panel/API eşitliği), alarm adları tek sözlük, Portföy segment etiketi; üç inceleme turu (kural tablosu dönem bütünlüğü, webhook SSRF, portföy tutarlılığı)
+
+Commit `717a77b`, CI #668 (6 dk 7 s). Dağıtım: api + worker + web imajı (ssh); göç yok. Canlı: index.html ve JS/CSS birebir (25/25); api «startup complete»; worker «basladi».
+Kaynak: yol haritası dalga 2 P10 kalanı — envanter «rezerve API kapsamları» (ENV-100), ENV-F04 (kural tablosu yalnız API'de), ENV-F05-3/4 (ham segment kodu, zilde «Alarm»).
+api_anahtar_service: `CANLI_KAPSAMLAR` altı kapsam + `KAPSAM_ACIKLAMA` (GET /v1/api-anahtarlari `kapsam_aciklama`). Dış API (X-API-Key): GET `/v1/dis/santral/{id}/gerceklesen?bas&bit&kaynak=scada|sayac`
+(«gerceklesen:oku»; saatlik kWh UTC; SCADA geçerli ölçüm + kaynak etiketi ya da yüklü sayaç verisi + nitelik; ≤92 gün, varsayılan son 7 gün; «UEVM değildir»), GET `…/alarmlar?n» («alarm:oku»; kural
+kodu + Türkçe adı), GET `…/rapor-donem?donem&fmt=json|html` («rapor:indir»; panelle aynı hesap; denetim aktör yok + anahtar öneki), PUT `…/ayarlar` («santral:yaz»; yalnız sayaç ayarı alanları,
+panelin ayar_dogrula'sı; boş 422). Kapsam yoksa 403, geçersiz anahtar 401, oran 429. `docs/api/dis-api.md` güncel.
+Web: Hakkında «Uzlaştırma kuralı sürüm tablosu» kartı (GET /v1/kurallar; geçerlilik, sürüm, rejim, k/l sistem açığı/fazlası, V, KÜPST m/n, DSG eşiği, dayanak; 2027 «belirsiz» rozeti);
+alarm kuralı adları `web/src/lib/alarmSozluk.ts` (Santralim + zil; bekçi testi arka uç KURAL_ETIKET ile kıyaslar); Portföy «Segment» kısa etiket; Ayarlar kapsam listesi altı kapsam + açıklama ipucu + API uçları.
+Üç inceleme turu (02 M42): (1) yedi kare → sahte API: segment alanı, güvenlik politikası/denetim rotaları. (2) brief «Portföy, Ayarlar ve Hakkında: kapsamlı teknik denetim» (3 geçiş, 13 bölüm) →
+**kural tablosu dönem bütünlüğü (gerçek kusur):** `kr.tablo` el yazımı sınır listesi 1.2.2023 Karar 11589-2 geçişini atlıyordu (satır m 0,10 derken motor 0,12; hesap doğruydu) → sınırlar motor
+gün gün taranarak imzadan türetilir (`donem_sinirlari`; AFL imza dışı, satırda AFL başı/sonu + `AFL_degisken`), tablo 9 → 7 satır; **webhook SSRF (gerçek kusur):** `url_gecerli` https'li iç ağ /
+özel IP / 169.254 meta veri / `.internal` kabul ediyordu → `_ic_adres` reddi (ad çözümü yok, bilinen sınır); **43,5 MWh (1.830,2 ↔ 1.786,7):** gerçek kodda özet kartı ve günlük tablo aynı koşu
+seçimi (`ORDER BY run_at DESC LIMIT 1`, ≥20 saat), fark sahte sabitlerdendi; koşusu olmayan santral `santral_eksik` ile tabloda söylenir; WMAPE kartı «kapasite ağırlıklı · N santral ölçüm yetersiz»;
+sahte Hakkında kaynak satırı gerçek atıf şekline (ECMWF/DWD CC BY 4.0). (3) yedi kare → sahte API: DSG üyeleri (dengesizlik taşıyan dört santral) ve fiyat kaynağı KÜPST kartıyla aynı (EPİAŞ),
+UEVÇB tek lisanssız üye, ekip son giriş, günlük tablo notu.
+Gözlemler (kusur değil): alarm toplamı satır sorgusuyla aynı, yineleme kilidi 23 sa / 60 gün; «bildirildi» beyan; DSG «varsayımsal kıyas»; EPİAŞ senaryo saatleri her kartta sayıyla; 2FA TOTP +
+kurtarma + yönetici sıfırlama; parola ≥10 bcrypt + oturum sürümü; giriş 5/dk; API anahtarı HMAC/kapsam/süre/rpm/iptal; paylaşım süre/iptal/izin/denetim; arşivli santral listelerden düşer, kimlikle
+okuma aynı kiracıda.
+Testler: tests/test_dis_api.py +1 ve SSRF (14 kötü / 2 iyi adres); tests/test_kurallar_gecis.py 4 (dönemler bitişik/çakışmasız; her gün 2023-01-01 → 2027-06-01 üç segmentte satır = kural();
+sınır günleri 1.1.2026 rejim, 19.10.2026 toplama, 1.11.2026 V 150 → 100, 2027 belirsiz; saatlik çerçeve 31.10 → 1.11 İstanbul gününe göre; 2025 dilimine bugünkü kural sızmaz);
+tests/test_portfoy_tutarlilik.py 1. Tam takım 884 geçti / 1 atlandı; web tsc 0, 103, oxlint 0, build; Portföy / Hakkında / Ayarlar 1440/768/375 taşma 0 (`kanit/*-2026-11-03.jpg`).
+Doğrulanamayan / sonraya: webhook adının özel IP'ye çözülmesi (ağ katmanı); API anahtarı döndürme ucu (bugün yeni anahtar + eski iptal); portföy KÜPST `kural_dayanak` metni dönemin ilk saatinden
+(sürüm sütunu saat bazında doğru); EPİAŞ durum kartında son başarılı istek / son hata alanı yok; meteoroloji arşivinde son deneme ↔ son başarılı indirme ayrımı yok; `santral:yaz` künye/segment/tarife
+alanlarını kapsamaz (bilinçli); canlı EPİAŞ bağlantısı ve arşiv tazeliği bu turda doğrulanmadı.
