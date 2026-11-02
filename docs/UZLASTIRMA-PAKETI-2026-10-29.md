@@ -451,3 +451,43 @@ resmî doğrulaması, UEVM sayaç verisi (P4), düzeltilmiş bildirim sürümler
 kimliği dosyadan. Sonraya (P2b-2): saatlik detay dosyaları (KÜPST Detay, Dengesizlik Uzlaştırma XLSX) içe alma ve saat bazında kıyas; YEKBED (P5b).
 Testler: test_mutabakat 9; tam takım 855 passed, 1 skipped (356 s); web tsc 0 / 103 / oxlint 0 / build; 1440/768/375 taşma 0. Sıradaki: v2.523 = dalga 2
 devamı (P4a sayaç izleme ya da P3b uyum takvimi).
+
+# Yirmi üçüncü paket — v2.523 (02.11.2026 gece, canlı): Sayaç — OSOS/MASS/EPYS sayaç verisi SCADA'dan ayrı içe alma, veri geliş beklentisi ve 12. gün geri sayımı, SCADA ile sayaç farkı, kaynak/nitelik etiketi; lisanssızda SCADA bağlantı durumu ve Karar 14909 bedel göstergesi
+
+Commit `a2b8ef3`, CI #658 (5 dk 41 s). Dağıtım: api + worker + web imajı (ssh; 22. port açıktı) + **`alembic upgrade head` → v2523_sayac DB sahibiyle**
+(parola `grep "^DB_PASSWORD=" .env | cut -d= -f2-`). Canlı: index.html ve 27 JS birebir (28/28); alembic_version v2523_sayac; `sayac_saatlik` ve `sayac_yukleme` boş, pvq_app
+SELECT/INSERT(/UPDATE); `olay.tur` CHECK'inde uzaktan_acma; api «startup complete»; worker «basladi»; sayac / sayac.csv / sayac-ayar uçları kimlik olmadan 422.
+Kaynak: yol haritası dalga 2 P4 (a) kademesi (IH-019, IH-020, IH-022, IH-057; 01-15/03-20 Ölçüm Sist. Yön. m.8(2)–(3); 02-09 DUY m.81(1), m.82(4); 01-16
+LÜY m.21(7), DUY m.75(4), Karar 14909; 06-44 MASS, 06-46 BEDAŞ OSOS portal metinleri; Açık Konular 14.md s.279 Karar 14909 / LÜY Geçici m.14 askısı).
+Göç: `sayac_saatlik` (saat UTC + kaynak osos/mass/epys/elle; veriş ve çekiş kWh; nitelik ölçülmüş/tahmini/doldurulmuş/elle/yok; dilim sayısı; yükleme
+kimliği; PK saat+kaynak; yeniden yükleme = düzeltme, silme yok) ve `sayac_yukleme` tarihçesi (dosya, SHA-256, aralık, saat/satır, nitelik sayımı,
+uyarılar); kiracı RLS; `olay.tur` CHECK'ine «uzaktan_acma». SCADA tablosu dokunulmadı; sayaç serisi tahmin ve uzlaştırma hesabına GİRMEZ.
+sayac_service: dosya tanıma CSV/XLSX (başlık ipuçları: zaman/tarih/saat/profil tarihi; veriş/üretim/kWh/MWh; çekiş; durum → EDAŞ kodları Estimated /
+FilledByDiff / ManuelData / NoData / BackupMeterData niteliğe; ayrı tarih+saat, «08:00-09:00», «24:00», Excel tarih hücresi; 10/15/30 dk dilimler saate,
+saatin niteliği en zayıf dilim; endeks sütunu değer sayılmaz; yinelenen dilimde son satır; gelecek tarihli ve negatif satırlar alınmaz; belirsiz veriş
+sütunu uyarısı; başlıksız yedek yalnız satırların ≥ %90'ı zaman;kWh ise), kayıt + tarihçe, aynı saatte kaynak önceliği epys > osos > mass > elle,
+SCADA okuma (kaynak etiketi scada_dosya / epias_seffaflik), fark (günlük Türkiye günü; yalnız ortak saatler; «yalnız ölçülmüş» ↔ «tahmini dâhil» ayrı;
+kapsam ortak/pencere, yalnız SCADA, yalnız sayaç, ikisi de yok; en büyük fark günü; kaynak sayımı), geliş (15 dk sayaç: saat + 2 sa m.8(2) «belirsiz»,
+dilim sonundan koruyucu; diğer: m.8(3) takvim; sınıflandırma geçen / vadesi gelen / vadesi gelmemiş / yüklü (ölçülmüş, tahmini) / eksik; dönem 10. gün
+ve 12. gün 17:30 geri sayımı takvim.donem_takvimi'nden + dönem kapsamı), SCADA durumu (LÜY m.21(7) 50 kW; anlaşma tarafı dağıtım/iletim; durum beyan;
+kopukluk gün sayacı; uzaktan açma olayları olay kaydından; Karar 14909 m.16(1): (f) yalnız m.75(4) 900 kW+ ve askıda, (g) ihlal başına bir kat en çok üç
+askıda, (ç) bu ayın 30 günü aşan günleri (g) günleri hariç «belirsiz» ve askı doğrulanmadı; tutar varsayımsal, bedel girilmezse yok; iletime bağlıda
+gösterge yok; lisanslıda kart yerine not), ayar doğrulama (kopukluk başlangıcı gelecekte olamaz), günlük CSV.
+mutabakat_service: `_sayac_kapsami` — dönemin yüklü/ölçülmüş/tahmini sayaç saati ve ölçülmüş saatlerde SCADA farkı güvenilirlik nedenlerine ve «Üretim»
+satırına; hesap SCADA ile. olay_service: tür «Uzaktan açma yapılamadı» (EAK düşmez, istisna değil, sayaca girmez).
+API: GET/POST `/v1/plants/{id}/sayac` (kaynak; dosya ≤8 MB), GET `sayac.csv`, PUT `sayac-ayar` (sayac_turu, scada_durum, scada_kopukluk_baslangic,
+uzaktan_acma_var, sistem_kullanim_bedeli_tl_ay); denetim eylemleri sayac_yukle, sayac_ayar.
+Web: «Sayaç» sayfası (KPI son sayaç verisi / eksik saat sınıflandırmalı / SCADA–sayaç farkı ölçülmüş + tahmini dâhil + kapsam / düzeltme son anı + dönem
+kapsamı; yükleme + tarihçe; geliş beklentisi + sayaç türü + dönem satırları; günlük tablo «Ölçülmüş fark» sütunu + CSV; lisanssızda SCADA kartı: beyan rozeti,
+m.75(4) kapsamı, bedel tablosu «varsayımsal», askı ayrımı, uygulanmayan maddeler); Mutabakat «Üretim» satırı sayaç kapsamı; sahte API SAYAC segment'e bağlı
+(a1 lisanslı → not, a4 lisanssız → kart), gelis gerçek saate bağlı, saat bazlı ölçülmüş; dil: «ceza» yerine «bedel maddesi».
+Üç inceleme turu (02 M37 + inceleme/ikinci/üçüncü): sahte toplam tutarsızlıkları, pencere 720 sa, 441 ↔ 408 (gün bazlı dışlama → saat bazlı), Karar 14909
+kapsam/askı ayrımı, tesis sınıfı, içe alma sıkılaştırma, beyan/varsayımsal etiketleri.
+Testler: tests/test_sayac.py 9 (OSOS 15 dk + nitelik; MASS ayrı saat + XLSX MWh + endeks reddi + başlıksız + yinelenen/gelecek/negatif + belirsiz sütun;
+zaman/nitelik; fark_df saf + ölçülmüş = ortak − tahmini; kayıt-yeniden yükleme-öncelik-fark-geliş-sınıflandırma-ay sınırı-dönem kapsamı (test DB); SCADA
+durumu + (f)/(g)/(ç) kuralları + iletim + askı ayrımı; ayar doğrulama; olay türü + özet + lisanslı/segment notu; API 201/422/404 + CSV); test_olay tür 8;
+test_mutabakat 9; tam takım 864 passed / 1 skipped; web tsc 0, 103, oxlint 0; 1440/768/375 (a1) + 1440/375 (a4) taşma 0 (`kanit/sayac-*-2026-11-02.jpg`).
+Doğrulanamayan / sonraya: OSOS/MASS/EPYS resmî sütun başlıkları (portal JS metinlerinden türetildi; gerçek dosyayla sınanmalı); «2 saat»in sayım başlangıcı
+(01-15 BULUNAMADI); askı tarihi 30.4.2027 ikincil kaynak, (ç) askı kapsamı; (ç) günlük %1 sayım yöntemi; GTŞ/toplayıcı portföy üyeliği beyan edilmiyor;
+EPİAŞ'a fiilî geliş ve geç geliş ölçülemez; sayaç verisi uzlaştırma girdisi değil (P4a-2); eksik saat alarmı P7b; inverter/protokol alımı P4b. Tahmin
+motoru, kalibrasyon ve uzlaştırma formülleri değişmedi.
