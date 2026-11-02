@@ -466,13 +466,18 @@ export interface KurulusAyarlar { yonetici_2fa_zorunlu: boolean; iki_adimsiz_yon
 /** v2.518 (P3a): piyasa ve mevzuat takvimi — olay (kaynak_turu: mevzuat | hesaplanan | duyuru | kunye [Santral tarihleri formundan];
  *  kaydirma: is_gunu | yok | belirsiz) */
 export type TakvimOlay = { kod: string; ad: string; tarih: string; saat: string | null; kaynak: string; kaynak_turu: "mevzuat" | "hesaplanan" | "duyuru" | "kunye";
-  kaydirma: "is_gunu" | "yok" | "belirsiz"; kapsam: string[]; donem: string | null; not: string | null; hafta_sonu: boolean; tatil: boolean; kalan_gun?: number };
+  kaydirma: "is_gunu" | "yok" | "belirsiz"; kapsam: string[]; donem: string | null; not: string | null; hafta_sonu: boolean; tatil: boolean; kalan_gun?: number;
+  /** v2.524 (P3b): kaçırılınca — ilgili madde ve ihtar süresi; bent eşlemesi «çıkarım» etiketli, tutar yok */ sonuc?: string | null; sonuc_kisa?: string | null;
+  /** işlem gerekli (santral) / takip edilmeli (başkasının adımı) / mevzuat değişikliği / doğrulama gerekli (koşul PVQuant'ta kayıtlı değil) */ islem?: "islem" | "takip" | "mevzuat" | "dogrulama"; sorumlu?: string | null };
+/** v2.524 (P3b): olay kaydındaki planlı bakım için TEİAŞ bildirim son anı (Elektrik Şebeke Yön. m.54) */
+export type TakvimBakim = { olay_id: string; baslangic: string; bitis: string | null; etkilenen_kw: number | null; sure_saat: number | null; kural: string; son_an: string | null; gecti: boolean; kaynak: string };
 export type KunyeTarihler = { alanlar: Record<string, string | number | null>;
-  turetilen: { lisans_kalan_gun: number | null; lisans_bedeli_muafiyet_bitis: string | null;
+  turetilen: { lisans_kalan_gun: number | null; lisans_bedeli_muafiyet_bitis: string | null; ilerleme_raporu_yukumlu?: boolean; isg_sonraki_kontrol?: string | null;
     yekdem: { rejim: string; ilk_yil: number; son_yil: number; yek_bitis?: string; yerli_katki_bitis?: string; kaynak: string; kaynak_turu: string } | null;
     police_kalan_gun: number | null };
   etiketler: Record<string, string> };
 export type Takvim = { bugun: string; pencere_gun: number; segment: string | null; kgup_yukumlu: boolean | null; yaklasan: TakvimOlay[];
+  uyum: TakvimOlay[]; bakim: TakvimBakim[]; uyum_not: string; bakim_kaynak: string; yaklasan_piyasa?: TakvimOlay[]; islem_etiketleri?: Record<string, string>;   // v2.524 (P3b)
   donemler: { donem: string; olaylar: TakvimOlay[] }[];
   gunluk: { saat: string; ad: string; kaynak: string; kapsam: string[]; not: string | null; gunler: "her gün" | "iş günü" }[];
   kunye: KunyeTarihler; tatil_kaynak: string; tatil_yillari: number[]; not: string };

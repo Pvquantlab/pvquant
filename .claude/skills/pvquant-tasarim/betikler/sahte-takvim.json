@@ -1,5 +1,5 @@
 {
- "bugun": "2026-11-01",
+ "bugun": "2026-11-02",
  "pencere_gun": 90,
  "segment": "lisansli_serbest",
  "kgup_yukumlu": true,
@@ -22,9 +22,13 @@
    ],
    "donem": "2026-10",
    "not": null,
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "takip",
+   "sorumlu": "şebeke işletmecisi",
    "hafta_sonu": false,
    "tatil": false,
-   "kalan_gun": 9
+   "kalan_gun": 8
   },
   {
    "kod": "on_bildirim",
@@ -42,9 +46,13 @@
    ],
    "donem": "2026-10",
    "not": null,
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "takip",
+   "sorumlu": "EPİAŞ",
    "hafta_sonu": false,
    "tatil": false,
-   "kalan_gun": 10
+   "kalan_gun": 9
   },
   {
    "kod": "itiraz_son",
@@ -62,9 +70,13 @@
    ],
    "donem": "2026-10",
    "not": null,
+   "sonuc": "Bu andan sonra gelen sayaç düzeltmesi ve itiraz o ayın uzlaştırmasına girmez (DUY m.82(4), m.132/B(1)); sonrası 60 günlük fatura itirazı (m.133)",
+   "sonuc_kisa": "Düzeltme o aya girmez (m.82(4))",
+   "islem": "islem",
+   "sorumlu": "santral",
    "hafta_sonu": false,
    "tatil": false,
-   "kalan_gun": 11
+   "kalan_gun": 10
   },
   {
    "kod": "itiraz_sonuc",
@@ -82,9 +94,13 @@
    ],
    "donem": "2026-10",
    "not": null,
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "takip",
+   "sorumlu": "EPİAŞ",
    "hafta_sonu": true,
    "tatil": false,
-   "kalan_gun": 13
+   "kalan_gun": 12
   },
   {
    "kod": "nihai_bildirim",
@@ -102,9 +118,13 @@
    ],
    "donem": "2026-10",
    "not": "15'i Pazar; izleyen iş gününe kaydırıldı.",
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "takip",
+   "sorumlu": "EPİAŞ",
    "hafta_sonu": false,
    "tatil": false,
-   "kalan_gun": 15
+   "kalan_gun": 14
   },
   {
    "kod": "fatura_duzenleme",
@@ -121,10 +141,14 @@
     "lisanssiz_iletim"
    ],
    "donem": "2026-10",
-   "not": null,
+   "not": "Yalnız dönem sonucu alacaklıysa.",
+   "sonuc": "Fatura süresinde düzenlenmezse EPİAŞ ödemesi gecikir (m.132/C)",
+   "sonuc_kisa": "EPİAŞ ödemesi gecikir",
+   "islem": "islem",
+   "sorumlu": "santral",
    "hafta_sonu": false,
    "tatil": false,
-   "kalan_gun": 22
+   "kalan_gun": 21
   },
   {
    "kod": "borc_odeme",
@@ -141,10 +165,14 @@
     "lisanssiz_iletim"
    ],
    "donem": "2026-10",
-   "not": null,
+   "not": "Yalnız dönem sonucu borçluysa.",
+   "sonuc": "Temerrüt faizi (6183 m.51 oranı) ve teminattan mahsup (DUY m.132/D, m.132/E)",
+   "sonuc_kisa": "Temerrüt + teminat mahsubu",
+   "islem": "islem",
+   "sorumlu": "santral",
    "hafta_sonu": false,
    "tatil": false,
-   "kalan_gun": 23
+   "kalan_gun": 22
   },
   {
    "kod": "alacak_tahsil",
@@ -162,28 +190,13 @@
    ],
    "donem": "2026-10",
    "not": null,
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "takip",
+   "sorumlu": "EPİAŞ",
    "hafta_sonu": false,
    "tatil": false,
-   "kalan_gun": 24
-  },
-  {
-   "kod": "yekdem_basvuru",
-   "ad": "YEKDEM 2027 başvurusu ve vazgeçme son günü (yıl içinde çıkılamaz)",
-   "tarih": "2026-11-30",
-   "saat": null,
-   "kaynak": "YEK Yön. m.5(1)–(2), m.4(2); EPDK 2027 YEKDEM duyurusu (19.10.2026)",
-   "kaynak_turu": "mevzuat",
-   "kaydirma": "yok",
-   "kapsam": [
-    "lisansli_serbest",
-    "lisansli_yekdem",
-    "yeka"
-   ],
-   "donem": null,
-   "not": null,
-   "hafta_sonu": false,
-   "tatil": false,
-   "kalan_gun": 29
+   "kalan_gun": 23
   },
   {
    "kod": "dsg_2027_orani",
@@ -200,9 +213,13 @@
    ],
    "donem": null,
    "not": "Karar çıkınca Doğruluk ve Portföy'deki DSG eşiği güncellenir.",
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "takip",
+   "sorumlu": "Kurul",
    "hafta_sonu": false,
    "tatil": false,
-   "kalan_gun": 30
+   "kalan_gun": 29
   },
   {
    "kod": "sayac_veri",
@@ -222,28 +239,13 @@
    ],
    "donem": "2026-11",
    "not": null,
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "takip",
+   "sorumlu": "şebeke işletmecisi",
    "hafta_sonu": false,
    "tatil": false,
-   "kalan_gun": 39
-  },
-  {
-   "kod": "yek_on_liste",
-   "ad": "Ön YEK listesi (2027): Aralık'ın ilk 10 günü; itiraz 5 gün",
-   "tarih": "2026-12-10",
-   "saat": null,
-   "kaynak": "YEK Yön. m.6",
-   "kaynak_turu": "hesaplanan",
-   "kaydirma": "yok",
-   "kapsam": [
-    "lisansli_serbest",
-    "lisansli_yekdem",
-    "yeka"
-   ],
-   "donem": null,
-   "not": null,
-   "hafta_sonu": false,
-   "tatil": false,
-   "kalan_gun": 39
+   "kalan_gun": 38
   },
   {
    "kod": "on_bildirim",
@@ -261,9 +263,13 @@
    ],
    "donem": "2026-11",
    "not": null,
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "takip",
+   "sorumlu": "EPİAŞ",
    "hafta_sonu": false,
    "tatil": false,
-   "kalan_gun": 40
+   "kalan_gun": 39
   },
   {
    "kod": "itiraz_son",
@@ -281,9 +287,13 @@
    ],
    "donem": "2026-11",
    "not": "Hafta sonuna denk gelirse EPİAŞ'ın uygulaması metinde yazılı değil; EPİAŞ duyurusuna bakın.",
+   "sonuc": "Bu andan sonra gelen sayaç düzeltmesi ve itiraz o ayın uzlaştırmasına girmez (DUY m.82(4), m.132/B(1)); sonrası 60 günlük fatura itirazı (m.133)",
+   "sonuc_kisa": "Düzeltme o aya girmez (m.82(4))",
+   "islem": "islem",
+   "sorumlu": "santral",
    "hafta_sonu": true,
    "tatil": false,
-   "kalan_gun": 41
+   "kalan_gun": 40
   },
   {
    "kod": "itiraz_sonuc",
@@ -301,9 +311,13 @@
    ],
    "donem": "2026-11",
    "not": null,
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "takip",
+   "sorumlu": "EPİAŞ",
    "hafta_sonu": false,
    "tatil": false,
-   "kalan_gun": 43
+   "kalan_gun": 42
   },
   {
    "kod": "nihai_bildirim",
@@ -321,9 +335,13 @@
    ],
    "donem": "2026-11",
    "not": null,
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "takip",
+   "sorumlu": "EPİAŞ",
    "hafta_sonu": false,
    "tatil": false,
-   "kalan_gun": 44
+   "kalan_gun": 43
   },
   {
    "kod": "police_bitis",
@@ -343,9 +361,13 @@
    ],
    "donem": null,
    "not": null,
+   "sonuc": "Lisanslıda Lisans Yön. m.47 sigorta yükümlülüğüne aykırılık → 6446 m.16(1)(b) (eşleme çıkarım); her tesiste hasar teminatsız kalır",
+   "sonuc_kisa": "Hasar teminatsız; lisanslıda m.16(1)(b)",
+   "islem": "islem",
+   "sorumlu": "santral",
    "hafta_sonu": true,
    "tatil": false,
-   "kalan_gun": 49
+   "kalan_gun": 48
   },
   {
    "kod": "fatura_duzenleme",
@@ -362,10 +384,14 @@
     "lisanssiz_iletim"
    ],
    "donem": "2026-11",
-   "not": null,
+   "not": "Yalnız dönem sonucu alacaklıysa.",
+   "sonuc": "Fatura süresinde düzenlenmezse EPİAŞ ödemesi gecikir (m.132/C)",
+   "sonuc_kisa": "EPİAŞ ödemesi gecikir",
+   "islem": "islem",
+   "sorumlu": "santral",
    "hafta_sonu": false,
    "tatil": false,
-   "kalan_gun": 51
+   "kalan_gun": 50
   },
   {
    "kod": "borc_odeme",
@@ -382,10 +408,14 @@
     "lisanssiz_iletim"
    ],
    "donem": "2026-11",
-   "not": null,
+   "not": "Yalnız dönem sonucu borçluysa.",
+   "sonuc": "Temerrüt faizi (6183 m.51 oranı) ve teminattan mahsup (DUY m.132/D, m.132/E)",
+   "sonuc_kisa": "Temerrüt + teminat mahsubu",
+   "islem": "islem",
+   "sorumlu": "santral",
    "hafta_sonu": false,
    "tatil": false,
-   "kalan_gun": 52
+   "kalan_gun": 51
   },
   {
    "kod": "alacak_tahsil",
@@ -403,28 +433,13 @@
    ],
    "donem": "2026-11",
    "not": null,
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "takip",
+   "sorumlu": "EPİAŞ",
    "hafta_sonu": false,
    "tatil": false,
-   "kalan_gun": 53
-  },
-  {
-   "kod": "yek_nihai_liste",
-   "ad": "Nihai YEK listesi (2027) 31 Aralık'a kadar",
-   "tarih": "2026-12-31",
-   "saat": null,
-   "kaynak": "YEK Yön. m.7(1)",
-   "kaynak_turu": "mevzuat",
-   "kaydirma": "yok",
-   "kapsam": [
-    "lisansli_serbest",
-    "lisansli_yekdem",
-    "yeka"
-   ],
-   "donem": null,
-   "not": null,
-   "hafta_sonu": false,
-   "tatil": false,
-   "kalan_gun": 60
+   "kalan_gun": 52
   },
   {
    "kod": "gecici_m39_bitis",
@@ -440,10 +455,14 @@
     "yeka"
    ],
    "donem": null,
-   "not": null,
+   "not": "Yalnız dağıtım şirketi ya da görevli tedarik şirketinin kurduğu DSG üyelerini etkiler; DSG'nizin türü PVQuant'ta kayıtlı değil.",
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "dogrulama",
+   "sorumlu": "DSG yöneticisi",
    "hafta_sonu": false,
    "tatil": true,
-   "kalan_gun": 61
+   "kalan_gun": 60
   },
   {
    "kod": "m110_2027",
@@ -462,10 +481,14 @@
     "oz_tuketim_saatlik"
    ],
    "donem": null,
-   "not": "Yeni Kurul kararı çıkana kadar hesap yürürlükteki kuralla; 1.1.2027 etiketi «belirsiz».",
+   "not": "Yürürlük tarihi yazılı; uygulama ayrıntıları (DGP 15 dk, tek k/l, «ç» bazlı KÜPSM) Kurul kararı çıkana kadar belirsiz. Hesap yürürlükteki kuralla.",
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "mevzuat",
+   "sorumlu": "Kurul",
    "hafta_sonu": false,
    "tatil": true,
-   "kalan_gun": 61
+   "kalan_gun": 60
   },
   {
    "kod": "sayac_veri",
@@ -485,9 +508,13 @@
    ],
    "donem": "2026-12",
    "not": null,
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "takip",
+   "sorumlu": "şebeke işletmecisi",
    "hafta_sonu": true,
    "tatil": false,
-   "kalan_gun": 70
+   "kalan_gun": 69
   },
   {
    "kod": "on_bildirim",
@@ -505,9 +532,13 @@
    ],
    "donem": "2026-12",
    "not": null,
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "takip",
+   "sorumlu": "EPİAŞ",
    "hafta_sonu": false,
    "tatil": false,
-   "kalan_gun": 71
+   "kalan_gun": 70
   },
   {
    "kod": "itiraz_son",
@@ -525,9 +556,13 @@
    ],
    "donem": "2026-12",
    "not": null,
+   "sonuc": "Bu andan sonra gelen sayaç düzeltmesi ve itiraz o ayın uzlaştırmasına girmez (DUY m.82(4), m.132/B(1)); sonrası 60 günlük fatura itirazı (m.133)",
+   "sonuc_kisa": "Düzeltme o aya girmez (m.82(4))",
+   "islem": "islem",
+   "sorumlu": "santral",
    "hafta_sonu": false,
    "tatil": false,
-   "kalan_gun": 72
+   "kalan_gun": 71
   },
   {
    "kod": "itiraz_sonuc",
@@ -545,9 +580,13 @@
    ],
    "donem": "2026-12",
    "not": null,
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "takip",
+   "sorumlu": "EPİAŞ",
    "hafta_sonu": false,
    "tatil": false,
-   "kalan_gun": 74
+   "kalan_gun": 73
   },
   {
    "kod": "itiraz_60",
@@ -564,10 +603,14 @@
     "lisanssiz_iletim"
    ],
    "donem": "2026-10",
-   "not": null,
+   "not": "İsteğe bağlı hak: yalnız faturaya itiraz edilecekse; zorunlu adım değildir.",
+   "sonuc": "Süre geçince faturaya itiraz edilemez (m.133(1))",
+   "sonuc_kisa": "İtiraz hakkı düşer",
+   "islem": "takip",
+   "sorumlu": "santral",
    "hafta_sonu": false,
    "tatil": false,
-   "kalan_gun": 75
+   "kalan_gun": 74
   },
   {
    "kod": "nihai_bildirim",
@@ -585,9 +628,13 @@
    ],
    "donem": "2026-12",
    "not": null,
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "takip",
+   "sorumlu": "EPİAŞ",
    "hafta_sonu": false,
    "tatil": false,
-   "kalan_gun": 75
+   "kalan_gun": 74
   },
   {
    "kod": "fatura_duzenleme",
@@ -604,10 +651,14 @@
     "lisanssiz_iletim"
    ],
    "donem": "2026-12",
-   "not": null,
+   "not": "Yalnız dönem sonucu alacaklıysa.",
+   "sonuc": "Fatura süresinde düzenlenmezse EPİAŞ ödemesi gecikir (m.132/C)",
+   "sonuc_kisa": "EPİAŞ ödemesi gecikir",
+   "islem": "islem",
+   "sorumlu": "santral",
    "hafta_sonu": false,
    "tatil": false,
-   "kalan_gun": 82
+   "kalan_gun": 81
   },
   {
    "kod": "borc_odeme",
@@ -624,10 +675,14 @@
     "lisanssiz_iletim"
    ],
    "donem": "2026-12",
-   "not": null,
+   "not": "Yalnız dönem sonucu borçluysa.",
+   "sonuc": "Temerrüt faizi (6183 m.51 oranı) ve teminattan mahsup (DUY m.132/D, m.132/E)",
+   "sonuc_kisa": "Temerrüt + teminat mahsubu",
+   "islem": "islem",
+   "sorumlu": "santral",
    "hafta_sonu": false,
    "tatil": false,
-   "kalan_gun": 85
+   "kalan_gun": 84
   },
   {
    "kod": "alacak_tahsil",
@@ -645,9 +700,36 @@
    ],
    "donem": "2026-12",
    "not": null,
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "takip",
+   "sorumlu": "EPİAŞ",
    "hafta_sonu": false,
    "tatil": false,
-   "kalan_gun": 86
+   "kalan_gun": 85
+  },
+  {
+   "kod": "ilerleme_raporu",
+   "ad": "İlerleme raporu (Ocak sonu; kurulu gücün tamamı kabul edilene kadar)",
+   "tarih": "2027-01-31",
+   "saat": null,
+   "kaynak": "Lisans Yön. m.30(2)(ç): her yılın Ocak ve Temmuz ayları içinde; EPDK bildirim tablosu «ay sonuna kadar», muhatap Elektrik Piyasası Dairesi",
+   "kaynak_turu": "mevzuat",
+   "kaydirma": "belirsiz",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka"
+   ],
+   "donem": null,
+   "not": "Tam kabul tarihini Santral tarihleri formuna girince bu satır kalkar. Son gün hafta sonuna denk gelirse kaydırma kuralı metinde yok; önceki iş gününde tamamlayın.",
+   "sonuc": "6446 m.16(1)(b) idari yaptırımı (eşleme çıkarım), ihtar 30 gün; önce EPDK uyarısı ve 7 gün süre",
+   "sonuc_kisa": "6446 m.16(1)(b) · ihtar 30 gün (çıkarım)",
+   "islem": "islem",
+   "sorumlu": "santral",
+   "hafta_sonu": true,
+   "tatil": false,
+   "kalan_gun": 90
   }
  ],
  "donemler": [
@@ -672,6 +754,10 @@
      ],
      "donem": "2026-10",
      "not": null,
+     "sonuc": null,
+     "sonuc_kisa": null,
+     "islem": "takip",
+     "sorumlu": "şebeke işletmecisi",
      "hafta_sonu": false,
      "tatil": false
     },
@@ -691,6 +777,10 @@
      ],
      "donem": "2026-10",
      "not": null,
+     "sonuc": null,
+     "sonuc_kisa": null,
+     "islem": "takip",
+     "sorumlu": "EPİAŞ",
      "hafta_sonu": false,
      "tatil": false
     },
@@ -710,6 +800,10 @@
      ],
      "donem": "2026-10",
      "not": null,
+     "sonuc": "Bu andan sonra gelen sayaç düzeltmesi ve itiraz o ayın uzlaştırmasına girmez (DUY m.82(4), m.132/B(1)); sonrası 60 günlük fatura itirazı (m.133)",
+     "sonuc_kisa": "Düzeltme o aya girmez (m.82(4))",
+     "islem": "islem",
+     "sorumlu": "santral",
      "hafta_sonu": false,
      "tatil": false
     },
@@ -729,6 +823,10 @@
      ],
      "donem": "2026-10",
      "not": null,
+     "sonuc": null,
+     "sonuc_kisa": null,
+     "islem": "takip",
+     "sorumlu": "EPİAŞ",
      "hafta_sonu": true,
      "tatil": false
     },
@@ -748,6 +846,10 @@
      ],
      "donem": "2026-10",
      "not": "15'i Pazar; izleyen iş gününe kaydırıldı.",
+     "sonuc": null,
+     "sonuc_kisa": null,
+     "islem": "takip",
+     "sorumlu": "EPİAŞ",
      "hafta_sonu": false,
      "tatil": false
     },
@@ -766,7 +868,11 @@
       "lisanssiz_iletim"
      ],
      "donem": "2026-10",
-     "not": null,
+     "not": "Yalnız dönem sonucu alacaklıysa.",
+     "sonuc": "Fatura süresinde düzenlenmezse EPİAŞ ödemesi gecikir (m.132/C)",
+     "sonuc_kisa": "EPİAŞ ödemesi gecikir",
+     "islem": "islem",
+     "sorumlu": "santral",
      "hafta_sonu": false,
      "tatil": false
     },
@@ -785,7 +891,11 @@
       "lisanssiz_iletim"
      ],
      "donem": "2026-10",
-     "not": null,
+     "not": "Yalnız dönem sonucu borçluysa.",
+     "sonuc": "Temerrüt faizi (6183 m.51 oranı) ve teminattan mahsup (DUY m.132/D, m.132/E)",
+     "sonuc_kisa": "Temerrüt + teminat mahsubu",
+     "islem": "islem",
+     "sorumlu": "santral",
      "hafta_sonu": false,
      "tatil": false
     },
@@ -805,6 +915,10 @@
      ],
      "donem": "2026-10",
      "not": null,
+     "sonuc": null,
+     "sonuc_kisa": null,
+     "islem": "takip",
+     "sorumlu": "EPİAŞ",
      "hafta_sonu": false,
      "tatil": false
     },
@@ -823,7 +937,11 @@
       "lisanssiz_iletim"
      ],
      "donem": "2026-10",
-     "not": null,
+     "not": "İsteğe bağlı hak: yalnız faturaya itiraz edilecekse; zorunlu adım değildir.",
+     "sonuc": "Süre geçince faturaya itiraz edilemez (m.133(1))",
+     "sonuc_kisa": "İtiraz hakkı düşer",
+     "islem": "takip",
+     "sorumlu": "santral",
      "hafta_sonu": false,
      "tatil": false
     },
@@ -841,6 +959,10 @@
      ],
      "donem": "2026-10",
      "not": null,
+     "sonuc": null,
+     "sonuc_kisa": null,
+     "islem": "takip",
+     "sorumlu": "şebeke işletmecisi",
      "hafta_sonu": false,
      "tatil": false
     },
@@ -858,6 +980,10 @@
      ],
      "donem": "2026-10",
      "not": null,
+     "sonuc": null,
+     "sonuc_kisa": null,
+     "islem": "takip",
+     "sorumlu": "GTŞ",
      "hafta_sonu": false,
      "tatil": false
     }
@@ -884,6 +1010,10 @@
      ],
      "donem": "2026-11",
      "not": null,
+     "sonuc": null,
+     "sonuc_kisa": null,
+     "islem": "takip",
+     "sorumlu": "şebeke işletmecisi",
      "hafta_sonu": false,
      "tatil": false
     },
@@ -903,6 +1033,10 @@
      ],
      "donem": "2026-11",
      "not": null,
+     "sonuc": null,
+     "sonuc_kisa": null,
+     "islem": "takip",
+     "sorumlu": "EPİAŞ",
      "hafta_sonu": false,
      "tatil": false
     },
@@ -922,6 +1056,10 @@
      ],
      "donem": "2026-11",
      "not": "Hafta sonuna denk gelirse EPİAŞ'ın uygulaması metinde yazılı değil; EPİAŞ duyurusuna bakın.",
+     "sonuc": "Bu andan sonra gelen sayaç düzeltmesi ve itiraz o ayın uzlaştırmasına girmez (DUY m.82(4), m.132/B(1)); sonrası 60 günlük fatura itirazı (m.133)",
+     "sonuc_kisa": "Düzeltme o aya girmez (m.82(4))",
+     "islem": "islem",
+     "sorumlu": "santral",
      "hafta_sonu": true,
      "tatil": false
     },
@@ -941,6 +1079,10 @@
      ],
      "donem": "2026-11",
      "not": null,
+     "sonuc": null,
+     "sonuc_kisa": null,
+     "islem": "takip",
+     "sorumlu": "EPİAŞ",
      "hafta_sonu": false,
      "tatil": false
     },
@@ -960,6 +1102,10 @@
      ],
      "donem": "2026-11",
      "not": null,
+     "sonuc": null,
+     "sonuc_kisa": null,
+     "islem": "takip",
+     "sorumlu": "EPİAŞ",
      "hafta_sonu": false,
      "tatil": false
     },
@@ -978,7 +1124,11 @@
       "lisanssiz_iletim"
      ],
      "donem": "2026-11",
-     "not": null,
+     "not": "Yalnız dönem sonucu alacaklıysa.",
+     "sonuc": "Fatura süresinde düzenlenmezse EPİAŞ ödemesi gecikir (m.132/C)",
+     "sonuc_kisa": "EPİAŞ ödemesi gecikir",
+     "islem": "islem",
+     "sorumlu": "santral",
      "hafta_sonu": false,
      "tatil": false
     },
@@ -997,7 +1147,11 @@
       "lisanssiz_iletim"
      ],
      "donem": "2026-11",
-     "not": null,
+     "not": "Yalnız dönem sonucu borçluysa.",
+     "sonuc": "Temerrüt faizi (6183 m.51 oranı) ve teminattan mahsup (DUY m.132/D, m.132/E)",
+     "sonuc_kisa": "Temerrüt + teminat mahsubu",
+     "islem": "islem",
+     "sorumlu": "santral",
      "hafta_sonu": false,
      "tatil": false
     },
@@ -1017,6 +1171,10 @@
      ],
      "donem": "2026-11",
      "not": null,
+     "sonuc": null,
+     "sonuc_kisa": null,
+     "islem": "takip",
+     "sorumlu": "EPİAŞ",
      "hafta_sonu": false,
      "tatil": false
     },
@@ -1035,7 +1193,11 @@
       "lisanssiz_iletim"
      ],
      "donem": "2026-11",
-     "not": null,
+     "not": "İsteğe bağlı hak: yalnız faturaya itiraz edilecekse; zorunlu adım değildir.",
+     "sonuc": "Süre geçince faturaya itiraz edilemez (m.133(1))",
+     "sonuc_kisa": "İtiraz hakkı düşer",
+     "islem": "takip",
+     "sorumlu": "santral",
      "hafta_sonu": true,
      "tatil": false
     },
@@ -1053,6 +1215,10 @@
      ],
      "donem": "2026-11",
      "not": null,
+     "sonuc": null,
+     "sonuc_kisa": null,
+     "islem": "takip",
+     "sorumlu": "şebeke işletmecisi",
      "hafta_sonu": true,
      "tatil": false
     },
@@ -1070,6 +1236,10 @@
      ],
      "donem": "2026-11",
      "not": null,
+     "sonuc": null,
+     "sonuc_kisa": null,
+     "islem": "takip",
+     "sorumlu": "GTŞ",
      "hafta_sonu": false,
      "tatil": false
     }
@@ -1096,6 +1266,10 @@
      ],
      "donem": "2026-12",
      "not": null,
+     "sonuc": null,
+     "sonuc_kisa": null,
+     "islem": "takip",
+     "sorumlu": "şebeke işletmecisi",
      "hafta_sonu": true,
      "tatil": false
     },
@@ -1115,6 +1289,10 @@
      ],
      "donem": "2026-12",
      "not": null,
+     "sonuc": null,
+     "sonuc_kisa": null,
+     "islem": "takip",
+     "sorumlu": "EPİAŞ",
      "hafta_sonu": false,
      "tatil": false
     },
@@ -1134,6 +1312,10 @@
      ],
      "donem": "2026-12",
      "not": null,
+     "sonuc": "Bu andan sonra gelen sayaç düzeltmesi ve itiraz o ayın uzlaştırmasına girmez (DUY m.82(4), m.132/B(1)); sonrası 60 günlük fatura itirazı (m.133)",
+     "sonuc_kisa": "Düzeltme o aya girmez (m.82(4))",
+     "islem": "islem",
+     "sorumlu": "santral",
      "hafta_sonu": false,
      "tatil": false
     },
@@ -1153,6 +1335,10 @@
      ],
      "donem": "2026-12",
      "not": null,
+     "sonuc": null,
+     "sonuc_kisa": null,
+     "islem": "takip",
+     "sorumlu": "EPİAŞ",
      "hafta_sonu": false,
      "tatil": false
     },
@@ -1172,6 +1358,10 @@
      ],
      "donem": "2026-12",
      "not": null,
+     "sonuc": null,
+     "sonuc_kisa": null,
+     "islem": "takip",
+     "sorumlu": "EPİAŞ",
      "hafta_sonu": false,
      "tatil": false
     },
@@ -1190,7 +1380,11 @@
       "lisanssiz_iletim"
      ],
      "donem": "2026-12",
-     "not": null,
+     "not": "Yalnız dönem sonucu alacaklıysa.",
+     "sonuc": "Fatura süresinde düzenlenmezse EPİAŞ ödemesi gecikir (m.132/C)",
+     "sonuc_kisa": "EPİAŞ ödemesi gecikir",
+     "islem": "islem",
+     "sorumlu": "santral",
      "hafta_sonu": false,
      "tatil": false
     },
@@ -1209,7 +1403,11 @@
       "lisanssiz_iletim"
      ],
      "donem": "2026-12",
-     "not": null,
+     "not": "Yalnız dönem sonucu borçluysa.",
+     "sonuc": "Temerrüt faizi (6183 m.51 oranı) ve teminattan mahsup (DUY m.132/D, m.132/E)",
+     "sonuc_kisa": "Temerrüt + teminat mahsubu",
+     "islem": "islem",
+     "sorumlu": "santral",
      "hafta_sonu": false,
      "tatil": false
     },
@@ -1229,6 +1427,10 @@
      ],
      "donem": "2026-12",
      "not": null,
+     "sonuc": null,
+     "sonuc_kisa": null,
+     "islem": "takip",
+     "sorumlu": "EPİAŞ",
      "hafta_sonu": false,
      "tatil": false
     },
@@ -1247,7 +1449,11 @@
       "lisanssiz_iletim"
      ],
      "donem": "2026-12",
-     "not": null,
+     "not": "İsteğe bağlı hak: yalnız faturaya itiraz edilecekse; zorunlu adım değildir.",
+     "sonuc": "Süre geçince faturaya itiraz edilemez (m.133(1))",
+     "sonuc_kisa": "İtiraz hakkı düşer",
+     "islem": "takip",
+     "sorumlu": "santral",
      "hafta_sonu": false,
      "tatil": false
     },
@@ -1265,6 +1471,10 @@
      ],
      "donem": "2026-12",
      "not": null,
+     "sonuc": null,
+     "sonuc_kisa": null,
+     "islem": "takip",
+     "sorumlu": "şebeke işletmecisi",
      "hafta_sonu": false,
      "tatil": false
     },
@@ -1282,6 +1492,10 @@
      ],
      "donem": "2026-12",
      "not": null,
+     "sonuc": null,
+     "sonuc_kisa": null,
+     "islem": "takip",
+     "sorumlu": "GTŞ",
      "hafta_sonu": false,
      "tatil": false
     }
@@ -1458,16 +1672,20 @@
    "lisans_yururluk": "2015-03-31",
    "lisans_bitis": "2064-03-31",
    "kabul_tarihi": "2016-05-10",
+   "tam_kabul_tarihi": null,
    "isletmeye_giris": "2016-05-10",
    "police_bitis": "2026-12-20",
    "ced_karar_tarihi": null,
    "baglanti_anlasmasi": null,
    "toplayici_giris": null,
    "toplayici_cikis": null,
+   "isg_son_kontrol": "2026-03-12",
+   "ortaklik_degisikligi": null,
+   "izin_iptali": null,
    "yekdem_baslangic_yili": null
   },
   "turetilen": {
-   "lisans_kalan_gun": 13665,
+   "lisans_kalan_gun": 13664,
    "lisans_bedeli_muafiyet_bitis": "2024-05-10",
    "yekdem": {
     "rejim": "5905-27",
@@ -1476,7 +1694,9 @@
     "kaynak": "EPDK Kurul Kararı 5905-27 (02.12.2015): 1 Kasım–31 Ekim grubu, izleyen yıldan 10 yıl",
     "kaynak_turu": "mevzuat"
    },
-   "police_kalan_gun": 49
+   "police_kalan_gun": 48,
+   "ilerleme_raporu_yukumlu": true,
+   "isg_sonraki_kontrol": "2027-03-12"
   },
   "etiketler": {
    "lisans_yururluk": "Lisans yürürlük tarihi",
@@ -1488,7 +1708,11 @@
    "baglanti_anlasmasi": "Bağlantı anlaşması tarihi",
    "toplayici_giris": "Toplayıcı portföyüne giriş",
    "toplayici_cikis": "Toplayıcı portföyünden çıkış",
-   "yekdem_baslangic_yili": "YEKDEM başlangıç yılı"
+   "yekdem_baslangic_yili": "YEKDEM başlangıç yılı",
+   "tam_kabul_tarihi": "Tam kabul tarihi (kurulu gücün tamamı)",
+   "isg_son_kontrol": "Son İSG periyodik kontrol tarihi",
+   "ortaklik_degisikligi": "Son ortaklık yapısı değişikliği",
+   "izin_iptali": "Lisansa esas izin/ruhsat iptali tarihi"
   }
  },
  "tatil_kaynak": "Resmî tatiller: 2429 sayılı Kanun (sabit günler) ve Diyanet takvimi (dinî bayramlar); yarım günler iş günü sayıldı.",
@@ -1496,5 +1720,982 @@
   2026,
   2027
  ],
- "not": "Tarihler mevzuattan (DUY m.132, m.133; YEK Yönetmeliği; LÜY) ve iş günü hesabından türetilmiştir; EPİAŞ ve EPDK duyurusuyla değişebilir. «mevzuat» etiketi metinde yazılı günü, «hesaplanan» iş günü kaydırmasını ya da gün ekleme hesabını, «santral tarihi» Santral tarihleri formuna girdiğiniz tarihi gösterir; «hafta sonu» ve «tatil» uyarısı, metinde kaydırma kuralı bulunmayan bir son tarihin tatile denk geldiğini belirtir. Avans, teminat ve fatura tutarları burada hesaplanmaz; EPYS ve Takasbank bildirimleri esastır."
+ "not": "Tarihler mevzuattan (DUY m.132, m.133; YEK Yönetmeliği; LÜY) ve iş günü hesabından türetilmiştir; EPİAŞ ve EPDK duyurusuyla değişebilir. «mevzuat» etiketi metinde yazılı günü, «hesaplanan» iş günü kaydırmasını ya da gün ekleme hesabını, «santral tarihi» Santral tarihleri formuna girdiğiniz tarihi gösterir; «hafta sonu» ve «tatil» uyarısı, metinde kaydırma kuralı bulunmayan bir son tarihin tatile denk geldiğini belirtir. Avans, teminat ve fatura tutarları burada hesaplanmaz; EPYS ve Takasbank bildirimleri esastır.",
+ "uyum": [
+  {
+   "kod": "police_bitis",
+   "ad": "Sigorta poliçesi bitişi (yenileme)",
+   "tarih": "2026-12-20",
+   "saat": null,
+   "kaynak": "Lisans Yön. m.47: tesis varlıkları doğal afet, yangın, kaza, hırsızlık, üçüncü şahıs mali sorumluluğu, terör ve sabotaja karşı teminat altına alınır (sigorta); poliçe tarihi Santral tarihleri formundan",
+   "kaynak_turu": "kunye",
+   "kaydirma": "yok",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim",
+    "lisanssiz_dagitim",
+    "oz_tuketim_saatlik"
+   ],
+   "donem": null,
+   "not": null,
+   "sonuc": "Lisanslıda Lisans Yön. m.47 sigorta yükümlülüğüne aykırılık → 6446 m.16(1)(b) (eşleme çıkarım); her tesiste hasar teminatsız kalır",
+   "sonuc_kisa": "Hasar teminatsız; lisanslıda m.16(1)(b)",
+   "islem": "islem",
+   "sorumlu": "santral",
+   "hafta_sonu": true,
+   "tatil": false,
+   "kalan_gun": 48
+  },
+  {
+   "kod": "ilerleme_raporu",
+   "ad": "İlerleme raporu (Ocak sonu; kurulu gücün tamamı kabul edilene kadar)",
+   "tarih": "2027-01-31",
+   "saat": null,
+   "kaynak": "Lisans Yön. m.30(2)(ç): her yılın Ocak ve Temmuz ayları içinde; EPDK bildirim tablosu «ay sonuna kadar», muhatap Elektrik Piyasası Dairesi",
+   "kaynak_turu": "mevzuat",
+   "kaydirma": "belirsiz",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka"
+   ],
+   "donem": null,
+   "not": "Tam kabul tarihini Santral tarihleri formuna girince bu satır kalkar. Son gün hafta sonuna denk gelirse kaydırma kuralı metinde yok; önceki iş gününde tamamlayın.",
+   "sonuc": "6446 m.16(1)(b) idari yaptırımı (eşleme çıkarım), ihtar 30 gün; önce EPDK uyarısı ve 7 gün süre",
+   "sonuc_kisa": "6446 m.16(1)(b) · ihtar 30 gün (çıkarım)",
+   "islem": "islem",
+   "sorumlu": "santral",
+   "hafta_sonu": true,
+   "tatil": false,
+   "kalan_gun": 90
+  },
+  {
+   "kod": "lisans_bedeli_taksit",
+   "ad": "Yıllık lisans bedeli taksiti (ayın ilk 5 iş günü içinde; önceki yılın üretimi üzerinden)",
+   "tarih": "2027-02-05",
+   "saat": null,
+   "kaynak": "Lisans Yön. m.43(5)(a), (7)(a): Şubat, Haziran ve Ekim'in ilk beş iş günü, üç eşit taksit; m.43(8): gecikmede 6183 m.51 zammı",
+   "kaynak_turu": "hesaplanan",
+   "kaydirma": "yok",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka"
+   ],
+   "donem": null,
+   "not": "Birim bedel yılın Kurul kararıyla belirlenir; tutar burada hesaplanmaz.",
+   "sonuc": "6183 sayılı Kanun m.51 gecikme zammı (Lisans Yön. m.43(8))",
+   "sonuc_kisa": "Gecikme zammı (6183 m.51)",
+   "islem": "islem",
+   "sorumlu": "santral",
+   "hafta_sonu": false,
+   "tatil": false,
+   "kalan_gun": 95
+  },
+  {
+   "kod": "isg_periyodik_kontrol",
+   "ad": "İSG periyodik kontrol (elektrik, topraklama, yıldırımdan korunma, trafo, akü tesisatı; yılda bir)",
+   "tarih": "2027-03-12",
+   "saat": null,
+   "kaynak": "İş Ekipmanlarının Kullanımında Sağlık ve Güvenlik Şartları Yön. Ek-III 2.3.1–2.3.2, Tablo-3: standartta süre yoksa 1 yıl; son kontrol tarihi Santral tarihleri formundan",
+   "kaynak_turu": "kunye",
+   "kaydirma": "yok",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim",
+    "lisanssiz_dagitim",
+    "oz_tuketim_saatlik"
+   ],
+   "donem": null,
+   "not": null,
+   "sonuc": "6331 sayılı Kanun idari yaptırımı (tutar doğrulanmadı)",
+   "sonuc_kisa": "6331 yaptırımı",
+   "islem": "islem",
+   "sorumlu": "santral",
+   "hafta_sonu": false,
+   "tatil": false,
+   "kalan_gun": 130
+  },
+  {
+   "kod": "planli_devre_disi",
+   "ad": "2028 yılı planlı devre dışı taleplerinin TEİAŞ'a bildirimi",
+   "tarih": "2027-04-30",
+   "saat": null,
+   "kaynak": "Elektrik Şebeke Yönetmeliği m.52: içinde bulunulan yılın 30 Nisan'ına kadar; iletime bağlı üretim tesisi",
+   "kaynak_turu": "mevzuat",
+   "kaydirma": "belirsiz",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim"
+   ],
+   "donem": null,
+   "not": "Bildirilmeyen bakım yıllık plana girmez; 48 saati aşan devre dışılar plana bağlıdır. Son gün hafta sonuna denk gelirse kaydırma kuralı metinde yok; önceki iş gününde tamamlayın.",
+   "sonuc": "Lisans Yön. m.30(2)(b) bakım takvimi yükümlülüğü → 6446 m.16(1)(b) (eşleme çıkarım), ihtar 30 gün",
+   "sonuc_kisa": "6446 m.16(1)(b) · ihtar 30 gün (çıkarım)",
+   "islem": "dogrulama",
+   "sorumlu": "santral",
+   "hafta_sonu": false,
+   "tatil": false,
+   "kalan_gun": 179
+  },
+  {
+   "kod": "lisans_bedeli_taksit",
+   "ad": "Yıllık lisans bedeli taksiti (ayın ilk 5 iş günü içinde; önceki yılın üretimi üzerinden)",
+   "tarih": "2027-06-07",
+   "saat": null,
+   "kaynak": "Lisans Yön. m.43(5)(a), (7)(a): Şubat, Haziran ve Ekim'in ilk beş iş günü, üç eşit taksit; m.43(8): gecikmede 6183 m.51 zammı",
+   "kaynak_turu": "hesaplanan",
+   "kaydirma": "yok",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka"
+   ],
+   "donem": null,
+   "not": "Birim bedel yılın Kurul kararıyla belirlenir; tutar burada hesaplanmaz.",
+   "sonuc": "6183 sayılı Kanun m.51 gecikme zammı (Lisans Yön. m.43(8))",
+   "sonuc_kisa": "Gecikme zammı (6183 m.51)",
+   "islem": "islem",
+   "sorumlu": "santral",
+   "hafta_sonu": false,
+   "tatil": false,
+   "kalan_gun": 217
+  },
+  {
+   "kod": "ilerleme_raporu",
+   "ad": "İlerleme raporu (Temmuz sonu; kurulu gücün tamamı kabul edilene kadar)",
+   "tarih": "2027-07-31",
+   "saat": null,
+   "kaynak": "Lisans Yön. m.30(2)(ç): her yılın Ocak ve Temmuz ayları içinde; EPDK bildirim tablosu «ay sonuna kadar», muhatap Elektrik Piyasası Dairesi",
+   "kaynak_turu": "mevzuat",
+   "kaydirma": "belirsiz",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka"
+   ],
+   "donem": null,
+   "not": "Tam kabul tarihini Santral tarihleri formuna girince bu satır kalkar. Son gün hafta sonuna denk gelirse kaydırma kuralı metinde yok; önceki iş gününde tamamlayın.",
+   "sonuc": "6446 m.16(1)(b) idari yaptırımı (eşleme çıkarım), ihtar 30 gün; önce EPDK uyarısı ve 7 gün süre",
+   "sonuc_kisa": "6446 m.16(1)(b) · ihtar 30 gün (çıkarım)",
+   "islem": "islem",
+   "sorumlu": "santral",
+   "hafta_sonu": true,
+   "tatil": false,
+   "kalan_gun": 271
+  },
+  {
+   "kod": "planli_devre_disi_itiraz",
+   "ad": "TEİAŞ'ın 2028 planlı devre dışı taslağına itiraz son günü (31 Temmuz)",
+   "tarih": "2027-07-31",
+   "saat": null,
+   "kaynak": "Elektrik Şebeke Yönetmeliği m.52: TEİAŞ ilk taslağı 30 Haziran'a kadar hazırlar; taraf 31 Temmuz'a kadar itiraz eder; iletime bağlı üretim tesisi",
+   "kaynak_turu": "mevzuat",
+   "kaydirma": "belirsiz",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim"
+   ],
+   "donem": null,
+   "not": "Dağıtıma bağlı lisanslı tesiste uygulanıp uygulanmadığı doğrulanmadı (orta güven). Son gün hafta sonuna denk gelirse kaydırma kuralı metinde yok; önceki iş gününde tamamlayın.",
+   "sonuc": "İtiraz edilmezse taslak plan bu haliyle nihaileşir; nihai plana uyma zorunluluğu (m.52(6))",
+   "sonuc_kisa": "Taslak nihaileşir",
+   "islem": "dogrulama",
+   "sorumlu": "santral",
+   "hafta_sonu": true,
+   "tatil": false,
+   "kalan_gun": 271
+  },
+  {
+   "kod": "planli_devre_disi_alternatif",
+   "ad": "2028 planlı devre dışı için alternatif önerinin TEİAŞ'a bildirimi (31 Ağustos)",
+   "tarih": "2027-08-31",
+   "saat": null,
+   "kaynak": "Elektrik Şebeke Yönetmeliği m.52: itiraz eden taraf alternatifini 31 Ağustos'a kadar bildirir; iletime bağlı üretim tesisi",
+   "kaynak_turu": "mevzuat",
+   "kaydirma": "belirsiz",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim"
+   ],
+   "donem": null,
+   "not": "Dağıtıma bağlı lisanslı tesiste uygulanıp uygulanmadığı doğrulanmadı (orta güven). Son gün hafta sonuna denk gelirse kaydırma kuralı metinde yok; önceki iş gününde tamamlayın.",
+   "sonuc": "Alternatif bildirilmezse TEİAŞ taslağı esas alır; nihai plana uyma zorunluluğu (m.52(6))",
+   "sonuc_kisa": "TEİAŞ taslağı esas alınır",
+   "islem": "dogrulama",
+   "sorumlu": "santral",
+   "hafta_sonu": false,
+   "tatil": false,
+   "kalan_gun": 302
+  },
+  {
+   "kod": "lisans_bedeli_taksit",
+   "ad": "Yıllık lisans bedeli taksiti (ayın ilk 5 iş günü içinde; önceki yılın üretimi üzerinden)",
+   "tarih": "2027-10-07",
+   "saat": null,
+   "kaynak": "Lisans Yön. m.43(5)(a), (7)(a): Şubat, Haziran ve Ekim'in ilk beş iş günü, üç eşit taksit; m.43(8): gecikmede 6183 m.51 zammı",
+   "kaynak_turu": "hesaplanan",
+   "kaydirma": "yok",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka"
+   ],
+   "donem": null,
+   "not": "Birim bedel yılın Kurul kararıyla belirlenir; tutar burada hesaplanmaz.",
+   "sonuc": "6183 sayılı Kanun m.51 gecikme zammı (Lisans Yön. m.43(8))",
+   "sonuc_kisa": "Gecikme zammı (6183 m.51)",
+   "islem": "islem",
+   "sorumlu": "santral",
+   "hafta_sonu": false,
+   "tatil": false,
+   "kalan_gun": 339
+  },
+  {
+   "kod": "planli_devre_disi_nihai",
+   "ad": "TEİAŞ 2028 nihai planlı devre dışı programını yayımlar (31 Ekim'e kadar); yayımdan sonra nihai plana uyulur",
+   "tarih": "2027-10-31",
+   "saat": null,
+   "kaynak": "Elektrik Şebeke Yönetmeliği m.52: ilk taslak 30 Eylül, nihai plan 31 Ekim (TEİAŞ'ın adımı); m.52(6): kullanıcı nihai plana uymak zorunda; iletime bağlı üretim tesisi",
+   "kaynak_turu": "mevzuat",
+   "kaydirma": "yok",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim"
+   ],
+   "donem": null,
+   "not": "TEİAŞ'ın yayım adımıdır, santralin bildirim son günü değildir. Dağıtıma bağlı lisanslı tesiste uygulanıp uygulanmadığı doğrulanmadı (orta güven).",
+   "sonuc": "Nihai plana uyulmaması: Lisans Yön. m.30(2)(b) bakım takvimi yükümlülüğü → 6446 m.16(1)(b) (eşleme çıkarım), ihtar 30 gün",
+   "sonuc_kisa": "Plana uyulmazsa 6446 m.16(1)(b) · ihtar 30 gün (çıkarım)",
+   "islem": "takip",
+   "sorumlu": "TEİAŞ",
+   "hafta_sonu": true,
+   "tatil": false,
+   "kalan_gun": 363
+  }
+ ],
+ "bakim": [
+  {
+   "olay_id": "o3",
+   "baslangic": "2026-11-10T09:00:00+03:00",
+   "bitis": "2026-11-10T13:00:00+03:00",
+   "etkilenen_kw": 4000,
+   "sure_saat": 4.0,
+   "kural": "8 saatten kısa: en az 24 saat önce",
+   "son_an": "2026-11-09T09:00:00+03:00",
+   "gecti": false,
+   "kaynak": "Elektrik Şebeke Yönetmeliği m.54: 8 saatten kısa planlı devre dışı en az 24 saat önce, 8–48 saat arası en az 7 takvim günü önce bildirilir; 48 saati aşanlar yıllık plana (m.52, 30 Nisan) girer; iletime bağlı üretim tesisi"
+  },
+  {
+   "olay_id": "o4",
+   "baslangic": "2026-11-24T08:00:00+03:00",
+   "bitis": "2026-11-25T18:00:00+03:00",
+   "etkilenen_kw": null,
+   "sure_saat": 34.0,
+   "kural": "8–48 saat: en az 7 takvim günü önce",
+   "son_an": "2026-11-17T08:00:00+03:00",
+   "gecti": false,
+   "kaynak": "Elektrik Şebeke Yönetmeliği m.54: 8 saatten kısa planlı devre dışı en az 24 saat önce, 8–48 saat arası en az 7 takvim günü önce bildirilir; 48 saati aşanlar yıllık plana (m.52, 30 Nisan) girer; iletime bağlı üretim tesisi"
+  }
+ ],
+ "uyum_not": "«İşlem gerekli» santralin yapacağı adımdır; «takip edilmeli» başkasının (EPİAŞ, EPDK, TEİAŞ, şebeke işletmecisi) adımıdır; «doğrulama gerekli» koşulu PVQuant'ta kayıtlı olmayan (bağlantı türü, DSG türü, mekanik güç, YEKDEM süresi) satırdır. Uyum takvimi 12 ay ileriye bakar: lisans ve bildirim yükümlülükleri (ilerleme raporu, lisans bedeli taksitleri, BDB-02, TEİAŞ bakım planı), santral tarihlerinden türeyenler (İSG periyodik kontrol, ortaklık değişikliği, izin iptali, lisanssız 10 yıl) ve olay kaydındaki planlı bakımların bildirim son anı. «Aykırılıkta» sütunu ilgili maddeyi ve ihtar süresini söyler; bent eşlemesi Kurul takdirine bağlı olduğundan «çıkarım» etiketlidir, tutar yazılmaz (yıllık tebliğle değişir). Toplayıcı lisansının kendi takvimi (Mart/Temmuz/Kasım taksitleri, fiyat bildirimi), piyasadan alım sınırı (Karar 14626) ve YEK-G kaydı burada yok.",
+ "bakim_kaynak": "Elektrik Şebeke Yönetmeliği m.54: 8 saatten kısa planlı devre dışı en az 24 saat önce, 8–48 saat arası en az 7 takvim günü önce bildirilir; 48 saati aşanlar yıllık plana (m.52, 30 Nisan) girer; iletime bağlı üretim tesisi",
+ "yaklasan_piyasa": [
+  {
+   "kod": "sayac_veri",
+   "ad": "Sayaç değerlerinin PYS'ye aktarımı (şebeke işletmecisi; üretici kontrol eder)",
+   "tarih": "2026-11-10",
+   "saat": null,
+   "kaynak": "DUY m.81(1): dönem sonunu izleyen ilk 10 gün",
+   "kaynak_turu": "mevzuat",
+   "kaydirma": "yok",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim",
+    "lisanssiz_dagitim",
+    "oz_tuketim_saatlik"
+   ],
+   "donem": "2026-10",
+   "not": null,
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "takip",
+   "sorumlu": "şebeke işletmecisi",
+   "hafta_sonu": false,
+   "tatil": false,
+   "kalan_gun": 8
+  },
+  {
+   "kod": "on_bildirim",
+   "ad": "Ön uzlaştırma bildirimi (itiraz penceresi açılır)",
+   "tarih": "2026-11-11",
+   "saat": null,
+   "kaynak": "DUY m.132/A(1): en geç ayın 11'i; EPİAŞ hafta sonu da yayımlıyor (Eylül 2026 dönemi: 11.10.2026 Pazar)",
+   "kaynak_turu": "mevzuat",
+   "kaydirma": "yok",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim"
+   ],
+   "donem": "2026-10",
+   "not": null,
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "takip",
+   "sorumlu": "EPİAŞ",
+   "hafta_sonu": false,
+   "tatil": false,
+   "kalan_gun": 9
+  },
+  {
+   "kod": "itiraz_son",
+   "ad": "Ön bildirime itiraz ve sayaç verisi düzeltme son anı",
+   "tarih": "2026-11-12",
+   "saat": "17:30",
+   "kaynak": "DUY m.132/B(1); m.82(4): ayın 12'si 17:30; itiraz sayaç okuyan kurum / yardim.epias.com.tr üzerinden",
+   "kaynak_turu": "mevzuat",
+   "kaydirma": "belirsiz",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim"
+   ],
+   "donem": "2026-10",
+   "not": null,
+   "sonuc": "Bu andan sonra gelen sayaç düzeltmesi ve itiraz o ayın uzlaştırmasına girmez (DUY m.82(4), m.132/B(1)); sonrası 60 günlük fatura itirazı (m.133)",
+   "sonuc_kisa": "Düzeltme o aya girmez (m.82(4))",
+   "islem": "islem",
+   "sorumlu": "santral",
+   "hafta_sonu": false,
+   "tatil": false,
+   "kalan_gun": 10
+  },
+  {
+   "kod": "itiraz_sonuc",
+   "ad": "EPİAŞ itirazları sonuçlandırır",
+   "tarih": "2026-11-14",
+   "saat": "16:00",
+   "kaynak": "DUY m.132/B(1): ayın 14'ü 16:00",
+   "kaynak_turu": "mevzuat",
+   "kaydirma": "belirsiz",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim"
+   ],
+   "donem": "2026-10",
+   "not": null,
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "takip",
+   "sorumlu": "EPİAŞ",
+   "hafta_sonu": true,
+   "tatil": false,
+   "kalan_gun": 12
+  },
+  {
+   "kod": "nihai_bildirim",
+   "ad": "Nihai uzlaştırma bildirimi = fatura tebliği",
+   "tarih": "2026-11-16",
+   "saat": null,
+   "kaynak": "DUY m.132/A(1), m.132/C(1): ayın 15'i; hafta sonu/tatilde izleyen iş günü",
+   "kaynak_turu": "hesaplanan",
+   "kaydirma": "is_gunu",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim"
+   ],
+   "donem": "2026-10",
+   "not": "15'i Pazar; izleyen iş gününe kaydırıldı.",
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "takip",
+   "sorumlu": "EPİAŞ",
+   "hafta_sonu": false,
+   "tatil": false,
+   "kalan_gun": 14
+  },
+  {
+   "kod": "fatura_duzenleme",
+   "ad": "Fatura düzenleme son günü (alacaklıysa EPİAŞ'a kesilecek fatura)",
+   "tarih": "2026-11-23",
+   "saat": null,
+   "kaynak": "DUY m.132/C(1), (5): nihai bildirimden itibaren 7 gün; hafta sonu kuralı yazılı değil",
+   "kaynak_turu": "hesaplanan",
+   "kaydirma": "belirsiz",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim"
+   ],
+   "donem": "2026-10",
+   "not": "Yalnız dönem sonucu alacaklıysa.",
+   "sonuc": "Fatura süresinde düzenlenmezse EPİAŞ ödemesi gecikir (m.132/C)",
+   "sonuc_kisa": "EPİAŞ ödemesi gecikir",
+   "islem": "islem",
+   "sorumlu": "santral",
+   "hafta_sonu": false,
+   "tatil": false,
+   "kalan_gun": 21
+  },
+  {
+   "kod": "borc_odeme",
+   "ad": "Borçlu katılımcının fatura ödemesi (6. iş günü; sonrası temerrüt, teminat mahsubu)",
+   "tarih": "2026-11-24",
+   "saat": null,
+   "kaynak": "DUY m.132/Ç(8), m.132/E(1): tebliği izleyen 6. iş günü",
+   "kaynak_turu": "hesaplanan",
+   "kaydirma": "yok",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim"
+   ],
+   "donem": "2026-10",
+   "not": "Yalnız dönem sonucu borçluysa.",
+   "sonuc": "Temerrüt faizi (6183 m.51 oranı) ve teminattan mahsup (DUY m.132/D, m.132/E)",
+   "sonuc_kisa": "Temerrüt + teminat mahsubu",
+   "islem": "islem",
+   "sorumlu": "santral",
+   "hafta_sonu": false,
+   "tatil": false,
+   "kalan_gun": 22
+  },
+  {
+   "kod": "alacak_tahsil",
+   "ad": "EPİAŞ'ın alacaklıya ödemesi (en geç 7. iş günü; tahsilat oranında)",
+   "tarih": "2026-11-25",
+   "saat": null,
+   "kaynak": "DUY m.132/Ç(9): tebliği izleyen 7. iş günü içinde; tahsil edilen tutarların net alacaklara oranına göre",
+   "kaynak_turu": "hesaplanan",
+   "kaydirma": "yok",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim"
+   ],
+   "donem": "2026-10",
+   "not": null,
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "takip",
+   "sorumlu": "EPİAŞ",
+   "hafta_sonu": false,
+   "tatil": false,
+   "kalan_gun": 23
+  },
+  {
+   "kod": "dsg_2027_orani",
+   "ad": "DSG 2027 üye eşiği için Kurul karar son günü",
+   "tarih": "2026-12-01",
+   "saat": null,
+   "kaynak": "DUY m.111(5): yıllık karar en geç 1 Aralık",
+   "kaynak_turu": "mevzuat",
+   "kaydirma": "yok",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka"
+   ],
+   "donem": null,
+   "not": "Karar çıkınca Doğruluk ve Portföy'deki DSG eşiği güncellenir.",
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "takip",
+   "sorumlu": "Kurul",
+   "hafta_sonu": false,
+   "tatil": false,
+   "kalan_gun": 29
+  },
+  {
+   "kod": "sayac_veri",
+   "ad": "Sayaç değerlerinin PYS'ye aktarımı (şebeke işletmecisi; üretici kontrol eder)",
+   "tarih": "2026-12-10",
+   "saat": null,
+   "kaynak": "DUY m.81(1): dönem sonunu izleyen ilk 10 gün",
+   "kaynak_turu": "mevzuat",
+   "kaydirma": "yok",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim",
+    "lisanssiz_dagitim",
+    "oz_tuketim_saatlik"
+   ],
+   "donem": "2026-11",
+   "not": null,
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "takip",
+   "sorumlu": "şebeke işletmecisi",
+   "hafta_sonu": false,
+   "tatil": false,
+   "kalan_gun": 38
+  },
+  {
+   "kod": "on_bildirim",
+   "ad": "Ön uzlaştırma bildirimi (itiraz penceresi açılır)",
+   "tarih": "2026-12-11",
+   "saat": null,
+   "kaynak": "DUY m.132/A(1): en geç ayın 11'i; EPİAŞ hafta sonu da yayımlıyor (Eylül 2026 dönemi: 11.10.2026 Pazar)",
+   "kaynak_turu": "mevzuat",
+   "kaydirma": "yok",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim"
+   ],
+   "donem": "2026-11",
+   "not": null,
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "takip",
+   "sorumlu": "EPİAŞ",
+   "hafta_sonu": false,
+   "tatil": false,
+   "kalan_gun": 39
+  },
+  {
+   "kod": "itiraz_son",
+   "ad": "Ön bildirime itiraz ve sayaç verisi düzeltme son anı",
+   "tarih": "2026-12-12",
+   "saat": "17:30",
+   "kaynak": "DUY m.132/B(1); m.82(4): ayın 12'si 17:30; itiraz sayaç okuyan kurum / yardim.epias.com.tr üzerinden",
+   "kaynak_turu": "mevzuat",
+   "kaydirma": "belirsiz",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim"
+   ],
+   "donem": "2026-11",
+   "not": "Hafta sonuna denk gelirse EPİAŞ'ın uygulaması metinde yazılı değil; EPİAŞ duyurusuna bakın.",
+   "sonuc": "Bu andan sonra gelen sayaç düzeltmesi ve itiraz o ayın uzlaştırmasına girmez (DUY m.82(4), m.132/B(1)); sonrası 60 günlük fatura itirazı (m.133)",
+   "sonuc_kisa": "Düzeltme o aya girmez (m.82(4))",
+   "islem": "islem",
+   "sorumlu": "santral",
+   "hafta_sonu": true,
+   "tatil": false,
+   "kalan_gun": 40
+  },
+  {
+   "kod": "itiraz_sonuc",
+   "ad": "EPİAŞ itirazları sonuçlandırır",
+   "tarih": "2026-12-14",
+   "saat": "16:00",
+   "kaynak": "DUY m.132/B(1): ayın 14'ü 16:00",
+   "kaynak_turu": "mevzuat",
+   "kaydirma": "belirsiz",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim"
+   ],
+   "donem": "2026-11",
+   "not": null,
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "takip",
+   "sorumlu": "EPİAŞ",
+   "hafta_sonu": false,
+   "tatil": false,
+   "kalan_gun": 42
+  },
+  {
+   "kod": "nihai_bildirim",
+   "ad": "Nihai uzlaştırma bildirimi = fatura tebliği",
+   "tarih": "2026-12-15",
+   "saat": null,
+   "kaynak": "DUY m.132/A(1), m.132/C(1): ayın 15'i; hafta sonu/tatilde izleyen iş günü",
+   "kaynak_turu": "mevzuat",
+   "kaydirma": "is_gunu",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim"
+   ],
+   "donem": "2026-11",
+   "not": null,
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "takip",
+   "sorumlu": "EPİAŞ",
+   "hafta_sonu": false,
+   "tatil": false,
+   "kalan_gun": 43
+  },
+  {
+   "kod": "fatura_duzenleme",
+   "ad": "Fatura düzenleme son günü (alacaklıysa EPİAŞ'a kesilecek fatura)",
+   "tarih": "2026-12-22",
+   "saat": null,
+   "kaynak": "DUY m.132/C(1), (5): nihai bildirimden itibaren 7 gün; hafta sonu kuralı yazılı değil",
+   "kaynak_turu": "hesaplanan",
+   "kaydirma": "belirsiz",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim"
+   ],
+   "donem": "2026-11",
+   "not": "Yalnız dönem sonucu alacaklıysa.",
+   "sonuc": "Fatura süresinde düzenlenmezse EPİAŞ ödemesi gecikir (m.132/C)",
+   "sonuc_kisa": "EPİAŞ ödemesi gecikir",
+   "islem": "islem",
+   "sorumlu": "santral",
+   "hafta_sonu": false,
+   "tatil": false,
+   "kalan_gun": 50
+  },
+  {
+   "kod": "borc_odeme",
+   "ad": "Borçlu katılımcının fatura ödemesi (6. iş günü; sonrası temerrüt, teminat mahsubu)",
+   "tarih": "2026-12-23",
+   "saat": null,
+   "kaynak": "DUY m.132/Ç(8), m.132/E(1): tebliği izleyen 6. iş günü",
+   "kaynak_turu": "hesaplanan",
+   "kaydirma": "yok",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim"
+   ],
+   "donem": "2026-11",
+   "not": "Yalnız dönem sonucu borçluysa.",
+   "sonuc": "Temerrüt faizi (6183 m.51 oranı) ve teminattan mahsup (DUY m.132/D, m.132/E)",
+   "sonuc_kisa": "Temerrüt + teminat mahsubu",
+   "islem": "islem",
+   "sorumlu": "santral",
+   "hafta_sonu": false,
+   "tatil": false,
+   "kalan_gun": 51
+  },
+  {
+   "kod": "alacak_tahsil",
+   "ad": "EPİAŞ'ın alacaklıya ödemesi (en geç 7. iş günü; tahsilat oranında)",
+   "tarih": "2026-12-24",
+   "saat": null,
+   "kaynak": "DUY m.132/Ç(9): tebliği izleyen 7. iş günü içinde; tahsil edilen tutarların net alacaklara oranına göre",
+   "kaynak_turu": "hesaplanan",
+   "kaydirma": "yok",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim"
+   ],
+   "donem": "2026-11",
+   "not": null,
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "takip",
+   "sorumlu": "EPİAŞ",
+   "hafta_sonu": false,
+   "tatil": false,
+   "kalan_gun": 52
+  },
+  {
+   "kod": "gecici_m39_bitis",
+   "ad": "DUY Geçici m.39 sona erer: dağıtım ve GTŞ DSG'lerinde %100 üye eşiği biter, genel eşik uygulanır",
+   "tarih": "2027-01-01",
+   "saat": null,
+   "kaynak": "DUY Geçici m.39",
+   "kaynak_turu": "mevzuat",
+   "kaydirma": "yok",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka"
+   ],
+   "donem": null,
+   "not": "Yalnız dağıtım şirketi ya da görevli tedarik şirketinin kurduğu DSG üyelerini etkiler; DSG'nizin türü PVQuant'ta kayıtlı değil.",
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "dogrulama",
+   "sorumlu": "DSG yöneticisi",
+   "hafta_sonu": false,
+   "tatil": true,
+   "kalan_gun": 60
+  },
+  {
+   "kod": "m110_2027",
+   "ad": "DUY m.110 yeni rejim (15 dk DGP, tek k/l, «ç» bazlı KÜPSM) — uygulama belirsiz",
+   "tarih": "2027-01-01",
+   "saat": null,
+   "kaynak": "RG 21.1.2025-32789 Md.13, Md.20(b); 31.10.2026'ya kadar yeni Kurul kararı yok",
+   "kaynak_turu": "mevzuat",
+   "kaydirma": "yok",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim",
+    "lisanssiz_dagitim",
+    "oz_tuketim_saatlik"
+   ],
+   "donem": null,
+   "not": "Yürürlük tarihi yazılı; uygulama ayrıntıları (DGP 15 dk, tek k/l, «ç» bazlı KÜPSM) Kurul kararı çıkana kadar belirsiz. Hesap yürürlükteki kuralla.",
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "mevzuat",
+   "sorumlu": "Kurul",
+   "hafta_sonu": false,
+   "tatil": true,
+   "kalan_gun": 60
+  },
+  {
+   "kod": "sayac_veri",
+   "ad": "Sayaç değerlerinin PYS'ye aktarımı (şebeke işletmecisi; üretici kontrol eder)",
+   "tarih": "2027-01-10",
+   "saat": null,
+   "kaynak": "DUY m.81(1): dönem sonunu izleyen ilk 10 gün",
+   "kaynak_turu": "mevzuat",
+   "kaydirma": "yok",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim",
+    "lisanssiz_dagitim",
+    "oz_tuketim_saatlik"
+   ],
+   "donem": "2026-12",
+   "not": null,
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "takip",
+   "sorumlu": "şebeke işletmecisi",
+   "hafta_sonu": true,
+   "tatil": false,
+   "kalan_gun": 69
+  },
+  {
+   "kod": "on_bildirim",
+   "ad": "Ön uzlaştırma bildirimi (itiraz penceresi açılır)",
+   "tarih": "2027-01-11",
+   "saat": null,
+   "kaynak": "DUY m.132/A(1): en geç ayın 11'i; EPİAŞ hafta sonu da yayımlıyor (Eylül 2026 dönemi: 11.10.2026 Pazar)",
+   "kaynak_turu": "mevzuat",
+   "kaydirma": "yok",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim"
+   ],
+   "donem": "2026-12",
+   "not": null,
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "takip",
+   "sorumlu": "EPİAŞ",
+   "hafta_sonu": false,
+   "tatil": false,
+   "kalan_gun": 70
+  },
+  {
+   "kod": "itiraz_son",
+   "ad": "Ön bildirime itiraz ve sayaç verisi düzeltme son anı",
+   "tarih": "2027-01-12",
+   "saat": "17:30",
+   "kaynak": "DUY m.132/B(1); m.82(4): ayın 12'si 17:30; itiraz sayaç okuyan kurum / yardim.epias.com.tr üzerinden",
+   "kaynak_turu": "mevzuat",
+   "kaydirma": "belirsiz",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim"
+   ],
+   "donem": "2026-12",
+   "not": null,
+   "sonuc": "Bu andan sonra gelen sayaç düzeltmesi ve itiraz o ayın uzlaştırmasına girmez (DUY m.82(4), m.132/B(1)); sonrası 60 günlük fatura itirazı (m.133)",
+   "sonuc_kisa": "Düzeltme o aya girmez (m.82(4))",
+   "islem": "islem",
+   "sorumlu": "santral",
+   "hafta_sonu": false,
+   "tatil": false,
+   "kalan_gun": 71
+  },
+  {
+   "kod": "itiraz_sonuc",
+   "ad": "EPİAŞ itirazları sonuçlandırır",
+   "tarih": "2027-01-14",
+   "saat": "16:00",
+   "kaynak": "DUY m.132/B(1): ayın 14'ü 16:00",
+   "kaynak_turu": "mevzuat",
+   "kaydirma": "belirsiz",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim"
+   ],
+   "donem": "2026-12",
+   "not": null,
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "takip",
+   "sorumlu": "EPİAŞ",
+   "hafta_sonu": false,
+   "tatil": false,
+   "kalan_gun": 73
+  },
+  {
+   "kod": "itiraz_60",
+   "ad": "Faturaya yazılı itiraz süresi sonu (60 gün; ödemeyi durdurmaz)",
+   "tarih": "2027-01-15",
+   "saat": null,
+   "kaynak": "DUY m.133(1)–(2): tebliğden itibaren 60 gün, yazılı; ölçüm itirazı TEİAŞ/dağıtıma, LÜYTOB GTŞ'ye, diğerleri EPİAŞ'a; hafta sonu kuralı yazılı değil",
+   "kaynak_turu": "hesaplanan",
+   "kaydirma": "belirsiz",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim"
+   ],
+   "donem": "2026-10",
+   "not": "İsteğe bağlı hak: yalnız faturaya itiraz edilecekse; zorunlu adım değildir.",
+   "sonuc": "Süre geçince faturaya itiraz edilemez (m.133(1))",
+   "sonuc_kisa": "İtiraz hakkı düşer",
+   "islem": "takip",
+   "sorumlu": "santral",
+   "hafta_sonu": false,
+   "tatil": false,
+   "kalan_gun": 74
+  },
+  {
+   "kod": "nihai_bildirim",
+   "ad": "Nihai uzlaştırma bildirimi = fatura tebliği",
+   "tarih": "2027-01-15",
+   "saat": null,
+   "kaynak": "DUY m.132/A(1), m.132/C(1): ayın 15'i; hafta sonu/tatilde izleyen iş günü",
+   "kaynak_turu": "mevzuat",
+   "kaydirma": "is_gunu",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim"
+   ],
+   "donem": "2026-12",
+   "not": null,
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "takip",
+   "sorumlu": "EPİAŞ",
+   "hafta_sonu": false,
+   "tatil": false,
+   "kalan_gun": 74
+  },
+  {
+   "kod": "fatura_duzenleme",
+   "ad": "Fatura düzenleme son günü (alacaklıysa EPİAŞ'a kesilecek fatura)",
+   "tarih": "2027-01-22",
+   "saat": null,
+   "kaynak": "DUY m.132/C(1), (5): nihai bildirimden itibaren 7 gün; hafta sonu kuralı yazılı değil",
+   "kaynak_turu": "hesaplanan",
+   "kaydirma": "belirsiz",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim"
+   ],
+   "donem": "2026-12",
+   "not": "Yalnız dönem sonucu alacaklıysa.",
+   "sonuc": "Fatura süresinde düzenlenmezse EPİAŞ ödemesi gecikir (m.132/C)",
+   "sonuc_kisa": "EPİAŞ ödemesi gecikir",
+   "islem": "islem",
+   "sorumlu": "santral",
+   "hafta_sonu": false,
+   "tatil": false,
+   "kalan_gun": 81
+  },
+  {
+   "kod": "borc_odeme",
+   "ad": "Borçlu katılımcının fatura ödemesi (6. iş günü; sonrası temerrüt, teminat mahsubu)",
+   "tarih": "2027-01-25",
+   "saat": null,
+   "kaynak": "DUY m.132/Ç(8), m.132/E(1): tebliği izleyen 6. iş günü",
+   "kaynak_turu": "hesaplanan",
+   "kaydirma": "yok",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim"
+   ],
+   "donem": "2026-12",
+   "not": "Yalnız dönem sonucu borçluysa.",
+   "sonuc": "Temerrüt faizi (6183 m.51 oranı) ve teminattan mahsup (DUY m.132/D, m.132/E)",
+   "sonuc_kisa": "Temerrüt + teminat mahsubu",
+   "islem": "islem",
+   "sorumlu": "santral",
+   "hafta_sonu": false,
+   "tatil": false,
+   "kalan_gun": 84
+  },
+  {
+   "kod": "alacak_tahsil",
+   "ad": "EPİAŞ'ın alacaklıya ödemesi (en geç 7. iş günü; tahsilat oranında)",
+   "tarih": "2027-01-26",
+   "saat": null,
+   "kaynak": "DUY m.132/Ç(9): tebliği izleyen 7. iş günü içinde; tahsil edilen tutarların net alacaklara oranına göre",
+   "kaynak_turu": "hesaplanan",
+   "kaydirma": "yok",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim"
+   ],
+   "donem": "2026-12",
+   "not": null,
+   "sonuc": null,
+   "sonuc_kisa": null,
+   "islem": "takip",
+   "sorumlu": "EPİAŞ",
+   "hafta_sonu": false,
+   "tatil": false,
+   "kalan_gun": 85
+  }
+ ],
+ "islem_etiketleri": {
+  "islem": "işlem gerekli",
+  "takip": "takip edilmeli",
+  "mevzuat": "mevzuat değişikliği",
+  "dogrulama": "doğrulama gerekli"
+ }
 }

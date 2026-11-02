@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
 import { api } from "../../api/client";
-import type { Takvim as TakvimTipi, TakvimOlay, KunyeTarihler } from "../../api/types";
-import { Kart, Sayfa, sayiTr, SayfaIskeleti } from "./parcalar";
+import type { Takvim as TakvimTipi, TakvimOlay, TakvimBakim, KunyeTarihler } from "../../api/types";
+import { Bilgi, Kart, Sayfa, sayiTr, SayfaIskeleti } from "./parcalar";
 import { Meta } from "../../lib/Meta";
 import { tarihBicimi } from "../../lib/bicim";
 import { segmentKisa } from "../../lib/sozluk";
@@ -20,6 +20,18 @@ const KAYNAK_ACIKLAMA: Record<string, string> = { mevzuat: "Metinde yazılı gü
   duyuru: "EPİAŞ ya da EPDK'nın fiilî yayım kalıbı", kunye: "Santral tarihleri formuna girdiğiniz tarih ya da ondan türeyen" };
 const gunKalan = (n: number) => `${sayiTr(n)} gün${n > 730 ? ` (${sayiTr(n / 365.25, 1)} yıl)` : ""}`;
 
+const ISLEM_SINIF: Record<string, string> = { islem: "rozet-dikkat", takip: "rozet-notr", mevzuat: "rozet-notr", dogrulama: "rozet-uyari" };
+const ISLEM_AD: Record<string, string> = { islem: "işlem gerekli", takip: "takip", mevzuat: "mevzuat değişikliği", dogrulama: "doğrulama gerekli" };
+/** v2.524 (P3b): satırın sınıfı — işlem gerekli (santral), takip (başkasının adımı), mevzuat değişikliği, doğrulama gerekli (koşul kayıtlı değil) */
+function IslemRozeti({ o }: { o: TakvimOlay }) {
+  if (!o.islem) return null;
+  return <span className={`rozet rozet-kucuk ${ISLEM_SINIF[o.islem]}`} title={`${ISLEM_AD[o.islem]}${o.sorumlu ? ` · ${o.sorumlu}` : ""}${o.not ? `: ${o.not}` : ""}`}>{ISLEM_AD[o.islem]}</span>;
+}
+/** ad + (varsa) not ipucu — uzun açıklama satırı yerine bilgi simgesi */
+function OlayAdi({ o }: { o: TakvimOlay }) {
+  return <>{o.ad}{o.not ? <Bilgi metin={o.not} /> : null}</>;
+}
+
 function KaynakRozeti({ o }: { o: TakvimOlay }) {
   return <span className={`rozet rozet-kucuk ${o.kaynak_turu === "mevzuat" ? "rozet-ok" : "rozet-notr"}`} title={`${KAYNAK_ACIKLAMA[o.kaynak_turu]}: ${o.kaynak}`}>{KAYNAK_TURU[o.kaynak_turu]}</span>;
 }
@@ -31,8 +43,9 @@ function GunUyarisi({ o }: { o: TakvimOlay }) {
   return null;
 }
 
-const KUNYE_SIRA = ["lisans_yururluk", "lisans_bitis", "kabul_tarihi", "isletmeye_giris", "yekdem_baslangic_yili", "police_bitis", "ced_karar_tarihi",
-  "baglanti_anlasmasi", "toplayici_giris", "toplayici_cikis"];
+const KUNYE_SIRA = ["lisans_yururluk", "lisans_bitis", "kabul_tarihi", "tam_kabul_tarihi", "isletmeye_giris", "yekdem_baslangic_yili", "police_bitis", "ced_karar_tarihi",
+  "baglanti_anlasmasi", "toplayici_giris", "toplayici_cikis", "isg_son_kontrol", "ortaklik_degisikligi", "izin_iptali"];   // v2.524 (P3b): +4
+const saatTr = (iso: string | null | undefined) => iso ? tarihBicimi("tr-TR", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(iso)) : "—";
 
 function KunyeFormu({ plantId, kunye, bugun, onKaydet }: { plantId: string; kunye: KunyeTarihler; bugun: string; onKaydet: (k: KunyeTarihler) => void }) {
   const [v, setV] = useState<Record<string, string>>(() => Object.fromEntries(KUNYE_SIRA.map((k) => [k, kunye.alanlar[k] == null ? "" : String(kunye.alanlar[k])])));
@@ -75,6 +88,12 @@ function KunyeFormu({ plantId, kunye, bugun, onKaydet }: { plantId: string; kuny
         <div><dt>Sigorta poliçesi</dt><dd>{t.police_kalan_gun != null
           ? <><span className="kunye-sayi">{t.police_kalan_gun < 0 ? `${sayiTr(-t.police_kalan_gun)} gün önce bitti` : `${sayiTr(t.police_kalan_gun)} gün kaldı`}</span><span className="kunye-not">tesis varlıklarının doğal afet, yangın, kaza, hırsızlık, mali sorumluluk, terör ve sabotaja karşı teminat altına alınması zorunlu (Lisans Yönetmeliği m.47)</span></>
           : <><span className="kunye-durum eksik">Belirtilmedi</span><span className="kunye-not">poliçe bitiş tarihini girin</span></>}</dd></div>
+        <div><dt>İlerleme raporu</dt><dd>{t.ilerleme_raporu_yukumlu === false
+          ? <><span className="kunye-sayi">yükümlülük bitti</span><span className="kunye-not">kurulu gücün tamamı kabul edildi (tam kabul tarihi girildi)</span></>
+          : <><span className="kunye-sayi">her yıl Ocak ve Temmuz sonu</span><span className="kunye-not">kurulu gücün tamamı kabul edilene kadar (Lisans Yönetmeliği m.30(2)(ç)); tamamı kabul edildiyse tam kabul tarihini girin</span></>}</dd></div>
+        <div><dt>İSG periyodik kontrol</dt><dd>{t.isg_sonraki_kontrol
+          ? <><span className="kunye-sayi">{tarihKisa(t.isg_sonraki_kontrol)}{gecti(t.isg_sonraki_kontrol) ? " (geçti)" : ""}</span><span className="kunye-not">elektrik, topraklama, yıldırımdan korunma, trafo ve akü tesisatı yılda bir (İş Ekipmanları Yönetmeliği Ek-III)</span></>
+          : <><span className="kunye-durum eksik">Belirtilmedi</span><span className="kunye-not">son periyodik kontrol tarihini girin</span></>}</dd></div>
       </dl>
     </>
   );
@@ -95,23 +114,55 @@ export function Takvim({ plantId }: { plantId: string }) {
   const hepsi = t.donemler.flatMap((d) => d.olaylar);
   const ilkOlay = (kod: string) => hepsi.find((o) => o.kod === kod && o.kaynak_turu === "mevzuat") ?? hepsi.find((o) => o.kod === kod)!;
   const yillar = t.tatil_yillari.length === 2 ? t.tatil_yillari.join(" ve ") : t.tatil_yillari.join(", ");
+  const yaklasan = t.yaklasan_piyasa ?? t.yaklasan;   // v2.524: uyum tarihleri yalnız Uyum kartında
   return (
     <Sayfa baslik="Takvim" alt="Uzlaştırma, nakit ve mevzuat tarihleri; santralinizin segmentine göre.">
-      <Kart baslik="Yaklaşan son tarihler" alt={`Önümüzdeki ${sayiTr(t.pencere_gun)} gün`}
+      <Kart baslik="Yaklaşan son tarihler" alt={`Önümüzdeki ${sayiTr(t.pencere_gun)} gün: uzlaştırma, nakit ve piyasa tarihleri. Lisans ve uyum tarihleri aşağıdaki Uyum takviminde.`}
             sag={<Meta items={[`bugün ${tarihKisa(t.bugun)}`, segmentAdi, t.segment ? undefined : "tüm segmentlerin tarihleri gösteriliyor"]} />}>
-        {t.yaklasan.length === 0 ? <div className="bos-durum"><div className="bos-bas">Bu pencerede tarih yok</div><p>Takvim boş; segment ve santral tarihleri girildikçe dolar.</p></div> : (
+        {yaklasan.length === 0 ? <div className="bos-durum"><div className="bos-bas">Bu pencerede tarih yok</div><p>Takvim boş; segment ve santral tarihleri girildikçe dolar.</p></div> : (
           <div className="grafik-kaydir"><table className="veri takvim">
-            <thead><tr><th>Tarih</th><th>Saat</th><th className="esnek">Ne</th><th>Dönem</th><th>Dayanak</th><th>Kalan</th></tr></thead>
-            <tbody>{t.yaklasan.map((o, i) => (
+            <thead><tr><th>Tarih</th><th>Saat</th><th className="esnek">Ne</th><th title="Adımı yapan taraf">Kim</th><th>Dönem</th><th>Dayanak</th><th>Kalan</th></tr></thead>
+            <tbody>{yaklasan.map((o, i) => (
               <tr key={`${o.kod}-${o.tarih}-${i}`} style={(o.kalan_gun ?? 99) <= 7 ? { fontWeight: 500 } : undefined}>
                 <td><span className="kunye-sayi">{tarihKisa(o.tarih)}</span> <span className="soluk">{gunAdi(o.tarih)}</span> <GunUyarisi o={o} /></td>
                 <td>{o.saat ?? "—"}</td>
-                <td className="esnek" title={o.not ?? undefined}>{o.ad}</td>
+                <td className="esnek"><OlayAdi o={o} /> <IslemRozeti o={o} /></td>
+                <td className="soluk">{o.sorumlu ?? "—"}</td>
                 <td>{o.donem ? donemAdi(o.donem) : "—"}</td>
                 <td><KaynakRozeti o={o} /></td>
                 <td>{o.kalan_gun === 0 ? "bugün" : `${sayiTr(o.kalan_gun ?? 0)} gün`}</td></tr>))}</tbody>
           </table></div>)}
         <p className="soluk" style={{ fontSize: 13, margin: "8px 0 0" }}>{t.not} {t.tatil_kaynak}{t.tatil_yillari.length ? ` Dinî bayramlar ${yillar} için tanımlı.` : ""}</p>
+      </Kart>
+
+      <Kart baslik="Uyum takvimi" alt="Önümüzdeki 12 ay: lisans ve bildirim yükümlülükleri, santral tarihlerinden türeyenler, olay kaydındaki planlı bakımların bildirim son anı."
+            sag={<Meta items={[`${sayiTr(t.uyum.length)} tarih`, t.bakim.length ? `${sayiTr(t.bakim.length)} planlı bakım` : undefined]} />}>
+        {t.uyum.length === 0 ? <div className="bos-durum"><div className="bos-bas">Bu segment için uyum tarihi yok</div><p>Santral tarihleri girildikçe liste dolar.</p></div> : (
+          <div className="grafik-kaydir"><table className="veri takvim">
+            <thead><tr><th>Tarih</th><th className="esnek">Ne</th><th title="Adımı yapan taraf">Kim</th><th>Dayanak</th><th title="Yükümlülük kaçırılınca ilgili madde ve ihtar süresi; bent eşlemesi Kurul takdirine bağlı («çıkarım»), tutar yazılmaz; tam metin ipucunda">Aykırılıkta</th><th>Kalan</th></tr></thead>
+            <tbody>{t.uyum.map((o, i) => (
+              <tr key={`${o.kod}-${o.tarih}-${i}`} style={(o.kalan_gun ?? 99) <= 14 ? { fontWeight: 500 } : undefined}>
+                <td><span className="kunye-sayi">{tarihKisa(o.tarih)}</span> <span className="soluk">{gunAdi(o.tarih)}</span> <GunUyarisi o={o} /></td>
+                <td className="esnek" title={o.kaynak}><OlayAdi o={o} /> <IslemRozeti o={o} /></td>
+                <td className="soluk">{o.sorumlu ?? "—"}</td>
+                <td><KaynakRozeti o={o} /></td>
+                <td className="soluk" style={{ fontSize: 12.5, whiteSpace: "nowrap" }} title={o.sonuc ?? undefined}>{o.sonuc_kisa ?? o.sonuc ?? "—"}</td>
+                <td>{o.kalan_gun === 0 ? "bugün" : `${sayiTr(o.kalan_gun ?? 0)} gün`}</td></tr>))}</tbody>
+          </table></div>)}
+        {t.bakim.length > 0 && (
+          <div className="grafik-kaydir" style={{ marginTop: 10 }}><table className="veri takvim">
+            <thead><tr><th>Planlı bakım</th><th>Süre</th><th className="esnek">Bildirim kuralı</th><th>Bildirim son anı</th></tr></thead>
+            <tbody>{t.bakim.map((b: TakvimBakim) => (
+              <tr key={b.olay_id} style={b.gecti ? { opacity: 0.7 } : undefined}>
+                <td><span className="kunye-sayi">{saatTr(b.baslangic)}</span>{b.etkilenen_kw != null ? <span className="soluk"> · {sayiTr(b.etkilenen_kw)} kW</span> : null}</td>
+                <td className="mono">{b.sure_saat != null ? `${sayiTr(b.sure_saat, 1)} sa` : "—"}</td>
+                <td className="esnek" title={b.kaynak}>{b.kural}</td>
+                <td>{b.son_an ? <><span className="kunye-sayi">{saatTr(b.son_an)}</span>{b.gecti ? <span className="soluk"> (geçti)</span> : null}</> : <span className="soluk">yıllık plan / süre yok</span>}</td></tr>))}</tbody>
+          </table></div>)}
+        <details className="aciklama" style={{ marginTop: 8 }}>
+          <summary>Sınıflar, dayanaklar ve kapsam dışı olanlar</summary>
+          <p className="soluk" style={{ fontSize: 13, margin: "6px 0 0" }}>{t.uyum_not}{t.bakim.length ? ` ${t.bakim_kaynak}.` : ""}</p>
+        </details>
       </Kart>
 
       <Kart baslik="Aylık uzlaştırma ve fatura takvimi" alt="Fatura dönemi takvim ayıdır; adımlar izleyen ayda (DUY m.132, m.133; lisanssızda LÜY m.23, m.25, m.26).">
@@ -122,7 +173,7 @@ export function Takvim({ plantId }: { plantId: string }) {
               const ornek = ilkOlay(kod);
               return (
                 <tr key={kod}>
-                  <td className="esnek" title={ornek.kaynak}>{ornek.ad}</td>
+                  <td className="esnek" title={ornek.kaynak}>{ornek.ad}{ornek.sorumlu ? <span className="soluk"> · {ornek.sorumlu}</span> : null}</td>
                   {t.donemler.map((d) => { const o = d.olaylar.find((x) => x.kod === kod); return (
                     <td key={d.donem}>{o ? <><span className="kunye-sayi">{tarihKisa(o.tarih)}</span> <span className="soluk">{gunAdi(o.tarih)}</span>{(o.saat || (o.kaydirma === "belirsiz" && (o.hafta_sonu || o.tatil)) || (o.kaydirma === "is_gunu" && o.not)) ? <span className="hucre-alt">{o.saat ? <span className="kunye-sayi">{o.saat}</span> : null}{o.saat ? " " : ""}<GunUyarisi o={o} /></span> : null}</> : "—"}</td>); })}
                   <td><KaynakRozeti o={ornek} /></td>
@@ -146,7 +197,7 @@ export function Takvim({ plantId }: { plantId: string }) {
         </table></div>
       </Kart>
 
-      <Kart baslik="Santral tarihleri" alt="Lisans, kabul, işletmeye giriş ve poliçe tarihleri; türeyen son tarihler yukarıdaki listeye «santral tarihi» etiketiyle girer.">
+      <Kart baslik="Santral tarihleri" alt="Lisans, kabul, işletmeye giriş, poliçe, İSG kontrolü, ortaklık değişikliği ve izin iptali tarihleri; türeyen son tarihler yukarıdaki listelere «santral tarihi» etiketiyle girer.">
         <KunyeFormu plantId={plantId} kunye={t.kunye} bugun={t.bugun} onKaydet={(k) => { setT({ ...t, kunye: k }); api.takvim(plantId, 90).then((v) => setT(v), () => {}); }} />
       </Kart>
     </Sayfa>

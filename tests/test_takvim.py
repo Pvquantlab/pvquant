@@ -69,6 +69,7 @@ def test_kunye_turet_ve_olaylar():
     assert t["yekdem"]["son_yil"] == 2026 and t["police_kalan_gun"] == 50
     ol = tk.kunye_olaylari(pj, date(2026, 10, 31), "lisansli_yekdem"); kodlar = {o["kod"] for o in ol}
     assert {"lisans_bitis", "police_bitis", "lisans_bedeli_muafiyet", "yekdem_son_yil"} == kodlar
+    assert "m.47" in next(o for o in ol if o["kod"] == "police_bitis")["sonuc"]   # v2.524: «Aykırılıkta»
     assert all(o["kaynak_turu"] == "kunye" for o in ol)        # tarih müşterinin girdisi → «santral tarihi» rozeti
     assert "yekdem_son_yil" not in {o["kod"] for o in tk.kunye_olaylari(pj, date(2026, 10, 31), "lisansli_serbest")}
     assert tk.kunye_turet({"lisans_bitis": "bozuk"}, date(2026, 10, 31))["alanlar"]["lisans_bitis"] is None
@@ -110,8 +111,13 @@ def test_gorunur_metinde_arastirma_numarasi_yok():
     desen = re.compile(r"\b0[1-8]-\d\d\b|araştırma|U&E|\bESY\b")
     b = date(2026, 11, 1)
     havuz = tk.donem_takvimi(2026, 11) + tk.sabit_tarihler(b) + tk.gunluk_saatler() + \
-        tk.kunye_olaylari({"lisans_bitis": "2064-03-31", "kabul_tarihi": "2016-05-10", "isletmeye_giris": "2016-05-10", "police_bitis": "2026-12-20"}, b, "lisansli_yekdem")
+        tk.kunye_olaylari({"lisans_bitis": "2064-03-31", "kabul_tarihi": "2016-05-10", "isletmeye_giris": "2016-05-10", "police_bitis": "2026-12-20"}, b, "lisansli_yekdem") + \
+        tk.uyum_olaylari({"isg_son_kontrol": "2026-03-01", "ortaklik_degisikligi": "2026-09-15", "izin_iptali": "2026-10-01", "isletmeye_giris": "2017-06-01"}, b, "lisanssiz_dagitim", 150000.0)   # v2.524
     for o in havuz:
+        for alan in ("ad", "kaynak", "not", "sonuc"):
+            v = o.get(alan)
+            assert not (v and desen.search(v)), (o.get("kod"), alan, v)
+    for o in []:
         for alan in ("ad", "kaynak", "not"):
             v = o.get(alan)
             assert not (v and desen.search(v)), (o.get("kod"), alan, v)
@@ -167,3 +173,86 @@ def test_api_takvim_ve_kunye(istemci):
     k = r.json()["kunye"]; assert k["alanlar"]["lisans_bitis"] == "2064-03-31" and k["turetilen"]["lisans_kalan_gun"] > 13000 and k["turetilen"]["yekdem"]["son_yil"] == 2026
     assert istemci.put(f"/v1/plants/{PLANT}/kunye-tarihler", json={"kabul_tarihi": "10/05/2016"}).status_code == 422
     assert istemci.get("/v1/plants/00000000-0000-0000-0000-000000000000/takvim").status_code == 404
+
+
+# ---------------- v2.524 (P3b): lisans, bildirim ve uyum takvimi ----------------
+def test_uyum_olaylari_yillik():
+    b = date(2026, 11, 2)
+    y = tk.yaklasan(b, {}, "lisansli_serbest", 365, capacity_kwp=150000.0)
+    k = {(o["kod"], o["tarih"]) for o in y}
+    # ilerleme raporu: tam kabul girilmedi → Ocak/Temmuz sonu; lisans bedeli taksiti: kabul yok → gösterilir, not «kabul tarihi girilmedi»
+    assert ("ilerleme_raporu", "2027-01-31") in k and ("ilerleme_raporu", "2027-07-31") in k
+    assert ("lisans_bedeli_taksit", "2027-02-05") in k and ("lisans_bedeli_taksit", "2027-06-07") in k and ("lisans_bedeli_taksit", "2027-10-07") in k   # 5. iş günü
+    assert ("bdb02", "2027-05-15") in k and ("planli_devre_disi_nihai", "2027-10-31") in k and ("planli_devre_disi", "2027-04-30") in k
+    ir = next(o for o in y if o["kod"] == "ilerleme_raporu"); assert ir["sonuc"].startswith("6446 m.16(1)(b)") and "çıkarım" in ir["sonuc"] and "girilmedi" in ir["not"]
+    tk_ = next(o for o in y if o["kod"] == "lisans_bedeli_taksit"); assert tk_["kaynak_turu"] == "hesaplanan" and tk_["kaydirma"] == "yok" and "girilmedi" in tk_["not"] and "6183" in tk_["sonuc"]
+    # hafta sonuna düşen son günler «belirsiz» (31 Oca 2027 Pazar, 15 May 2027 Cumartesi, 31 Tem 2027 Cumartesi); TEİAŞ adımları: 31 Tem itiraz, 31 Ağu alternatif, 31 Eki yayım
+    assert ir["kaydirma"] == "belirsiz" and ir["hafta_sonu"] and next(o for o in y if o["kod"] == "bdb02")["hafta_sonu"]
+    assert ("planli_devre_disi_itiraz", "2027-07-31") in k and ("planli_devre_disi_alternatif", "2027-08-31") in k
+    nihai = next(o for o in y if o["kod"] == "planli_devre_disi_nihai"); assert "TEİAŞ'ın yayım adımıdır" in nihai["not"] and nihai["sonuc"].startswith("Nihai plana uyulmaması")
+    assert next(o for o in y if o["kod"] == "yekdem_basvuru")["sonuc"].startswith("Süresinde başvurulmazsa 2027")
+    # tam kabul girildi → ilerleme raporu yok; kabul 2025 → muafiyet 2033, taksit yok; 50 MW → BDB-02 yok
+    y2 = tk.yaklasan(b, {"kabul_tarihi": "2025-01-01", "tam_kabul_tarihi": "2025-06-01"}, "lisansli_serbest", 365, capacity_kwp=50000.0)
+    k2 = {o["kod"] for o in y2}; assert "ilerleme_raporu" not in k2 and "lisans_bedeli_taksit" not in k2 and "bdb02" not in k2
+    # kabul 2016 → muafiyet 2024 geçti → taksitler var, not «birim bedel»
+    y3 = tk.yaklasan(b, {"kabul_tarihi": "2016-05-10"}, "lisansli_yekdem", 365)
+    t3 = [o for o in y3 if o["kod"] == "lisans_bedeli_taksit"]; assert len(t3) == 3 and "Birim bedel" in t3[0]["not"]
+    # 2026 taksitleri: Şubat 6 (1 Şubat Pazar), Haziran 5, Ekim 7
+    u = tk.uyum_olaylari({"kabul_tarihi": "2016-05-10"}, date(2026, 1, 1), "lisansli_serbest")
+    assert [o["tarih"] for o in u if o["kod"] == "lisans_bedeli_taksit" and o["tarih"] < "2027"] == ["2026-02-06", "2026-06-05", "2026-10-07"]
+    # lisanssızda ilerleme raporu/taksit yok; 10 yıl alım süresi var
+    ls = tk.yaklasan(b, {"isletmeye_giris": "2017-06-01"}, "lisanssiz_dagitim", 365)
+    kl = {o["kod"]: o for o in ls}; assert "ilerleme_raporu" not in kl and "lisans_bedeli_taksit" not in kl and kl["luy_alim_suresi"]["tarih"] == "2027-06-01" and kl["luy_alim_suresi"]["kaynak_turu"] == "kunye"
+    assert "luy_alim_suresi" not in {o["kod"] for o in tk.yaklasan(b, {"isletmeye_giris": "2017-06-01"}, "lisansli_serbest", 365)}
+
+
+def test_uyum_kunye_turevleri_ve_bakim_bildirimi():
+    from datetime import datetime, timezone
+    b = date(2026, 11, 2)
+    u = {o["kod"]: o for o in tk.uyum_olaylari({"isg_son_kontrol": "2026-03-01", "ortaklik_degisikligi": "2026-09-15", "izin_iptali": "2026-10-01"}, b, "lisansli_serbest")}
+    assert u["isg_periyodik_kontrol"]["tarih"] == "2027-03-01" and u["ortaklik_bildirim"]["tarih"] == "2027-03-15" and u["izin_iptali_bildirim"]["tarih"] == "2026-12-01"
+    assert u["ortaklik_bildirim"]["sonuc"].startswith("6446 m.16(1)(ç)") and all(u[k]["kaynak_turu"] == "kunye" for k in ("isg_periyodik_kontrol", "ortaklik_bildirim", "izin_iptali_bildirim"))
+    t = tk.kunye_turet({"isg_son_kontrol": "2026-03-01"}, b)["turetilen"]; assert t["isg_sonraki_kontrol"] == "2027-03-01" and t["ilerleme_raporu_yukumlu"]
+    assert not tk.kunye_turet({"tam_kabul_tarihi": "2020-01-01"}, b)["turetilen"]["ilerleme_raporu_yukumlu"]
+    # ESY m.54: < 8 sa → 24 sa önce; 8–48 sa → 7 gün önce; > 48 sa → yıllık plan; süre yoksa kural seçilemez
+    bas = datetime(2026, 11, 20, 9, tzinfo=timezone.utc)
+    assert tk.bakim_bildirim(bas, bas.replace(hour=15))["son_an"] == "2026-11-19T09:00:00+00:00"
+    assert tk.bakim_bildirim(bas, datetime(2026, 11, 21, 9, tzinfo=timezone.utc))["son_an"] == "2026-11-13T09:00:00+00:00"
+    assert tk.bakim_bildirim(bas, datetime(2026, 11, 23, 10, tzinfo=timezone.utc))["son_an"] is None and tk.bakim_bildirim(bas, None)["kural"] == "süre girilmedi"
+    assert ts.kunye_dogrula({"tam_kabul_tarihi": "2025-06-01", "isg_son_kontrol": "", "ortaklik_degisikligi": "2026-09-15"}) == {"tam_kabul_tarihi": "2025-06-01", "isg_son_kontrol": None, "ortaklik_degisikligi": "2026-09-15"}
+    o = ts.ozet({"id": "p", "params_json": {"segment": "lisansli_serbest", "isg_son_kontrol": "2026-03-01"}, "capacity_kwp": 150000.0}, gun=45, bugun=b)
+    kod = {x["kod"] for x in o["uyum"]}; assert {"ilerleme_raporu", "lisans_bedeli_taksit", "bdb02", "isg_periyodik_kontrol", "planli_devre_disi"} <= kod and "on_bildirim" not in kod
+    assert o["bakim"] == [] and "Aykırılıkta" in o["uyum_not"] and all(x["tarih"] <= "2027-11-02" for x in o["uyum"])
+
+
+def test_islem_sinifi_sorumlu_ve_yekdem_uygunlugu():
+    b = date(2026, 11, 2)
+    # sınıf ve sorumlu: dönem adımları
+    d = {o["kod"]: o for o in tk.donem_takvimi(2026, 10)}
+    assert d["itiraz_son"]["islem"] == "islem" and d["itiraz_son"]["sorumlu"] == "santral" and d["itiraz_son"]["sonuc_kisa"]
+    assert d["on_bildirim"]["islem"] == "takip" and d["on_bildirim"]["sorumlu"] == "EPİAŞ" and d["sayac_veri"]["sorumlu"] == "şebeke işletmecisi" and d["gts_odeme"]["sorumlu"] == "GTŞ"
+    assert all(o["islem"] in tk.ISLEMLER for o in tk.donem_takvimi(2026, 11) + tk.sabit_tarihler(b) + tk.uyum_olaylari({}, b, "lisansli_serbest", 150000.0))
+    # 1 Ocak 2027: m.110 mevzuat değişikliği; Geçici m.39 doğrulama (DSG türü bilinmiyor)
+    sb = {o["kod"]: o for o in tk.sabit_tarihler(b)}
+    assert sb["m110_2027"]["islem"] == "mevzuat" and sb["gecici_m39_bitis"]["islem"] == "dogrulama" and sb["luy_cezai_sart"]["islem"] == "mevzuat"
+    # YEKDEM uygunluğu: a1 (işletmeye giriş 10.05.2016 → 2017–2026) için 2027 başvurusu ve listeleri düşer
+    y1 = {o["kod"] for o in tk.yaklasan(b, {"isletmeye_giris": "2016-05-10"}, "lisansli_serbest", 90)}
+    assert not ({"yekdem_basvuru", "yek_on_liste", "yek_nihai_liste"} & y1) and "dsg_2027_orani" in y1
+    # 7189 rejimi (giriş 2022) → 2027 için uygun; lisanslı serbestte «isteğe bağlı» notu, lisanslı YEKDEM'de işlem
+    y2 = {o["kod"]: o for o in tk.yaklasan(b, {"isletmeye_giris": "2022-03-01"}, "lisansli_serbest", 90)}
+    assert y2["yekdem_basvuru"]["islem"] == "islem" and "İsteğe bağlı" in y2["yekdem_basvuru"]["not"] and y2["yek_on_liste"]["islem"] == "takip"
+    y3 = {o["kod"]: o for o in tk.yaklasan(b, {"isletmeye_giris": "2022-03-01"}, "lisansli_yekdem", 90)}
+    assert y3["yekdem_basvuru"]["islem"] == "islem" and not y3["yekdem_basvuru"]["not"]
+    # tarih yok → doğrulama gerekli; YEKA → yok; kullanıcı başlangıç yılı 2017 → son yıl 2026 → düşer
+    y4 = {o["kod"]: o for o in tk.yaklasan(b, {}, "lisansli_serbest", 90)}
+    assert y4["yekdem_basvuru"]["islem"] == "dogrulama" and "girilmedi" in y4["yekdem_basvuru"]["not"]
+    assert "yekdem_basvuru" not in {o["kod"] for o in tk.yaklasan(b, {"isletmeye_giris": "2022-03-01"}, "yeka", 90)}
+    assert "yekdem_basvuru" not in {o["kod"] for o in tk.yaklasan(b, {"yekdem_baslangic_yili": 2017}, "lisansli_yekdem", 90)}
+    # planlı devre dışı: lisanslıda bağlantı türü bilinmiyor → doğrulama; iletime bağlı lisanssızda işlem
+    u1 = next(o for o in tk.yaklasan(b, {}, "lisansli_serbest", 365) if o["kod"] == "planli_devre_disi"); assert u1["islem"] == "dogrulama"
+    u2 = next(o for o in tk.yaklasan(b, {}, "lisanssiz_iletim", 365) if o["kod"] == "planli_devre_disi"); assert u2["islem"] == "islem"
+    assert next(o for o in tk.yaklasan(b, {}, "lisanssiz_iletim", 365) if o["kod"] == "planli_devre_disi_itiraz")["islem"] == "islem"
+    # servis: Yaklaşan (piyasa) uyum tarihlerini taşımaz; alarm için tam liste kalır
+    o = ts.ozet({"id": "p", "params_json": {"segment": "lisansli_serbest", "isletmeye_giris": "2016-05-10", "police_bitis": "2026-12-20"}, "capacity_kwp": 15230.0}, gun=90, bugun=b)
+    assert "police_bitis" in {x["kod"] for x in o["yaklasan"]} and "police_bitis" not in {x["kod"] for x in o["yaklasan_piyasa"]} and "on_bildirim" in {x["kod"] for x in o["yaklasan_piyasa"]}
+    assert o["islem_etiketleri"]["dogrulama"] == "doğrulama gerekli" and "yekdem_basvuru" not in {x["kod"] for x in o["uyum"]}

@@ -506,6 +506,7 @@ tr.satir-tikla { cursor: pointer; }
 table.veri.dar { width: auto; min-width: 0; }
 table.veri.dar th + th, table.veri.dar td + td { padding-left: 28px; }
 .rozet-notr { background: var(--yuzey); color: var(--ikincil); border: 1px solid var(--kenar); }
+.rozet-dikkat { background: var(--amber-zemin); color: var(--amber-koyu, #8a5a00); }   /* v2.524 (P3b): «işlem gerekli» / «doğrulama gerekli» */
 /* grafik üst şeridi: şimdi hapı · lejant · dışa aktarma tek satırda; dar ekranda sarar */
 .grafik-serit { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 8px; }
 

@@ -345,7 +345,10 @@ http.createServer((req, res) => {
     if (b.esik && typeof b.esik === "object") Object.assign(ak.esik, b.esik); if (Array.isArray(b.alicilar)) ak.alicilar = b.alicilar.map((x) => String(x).trim().toLowerCase()).filter(Boolean);
     res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" }); res.end(JSON.stringify(ak)); }); return; }
   // v2.518 (P3a): takvim — gerçek servisten (bugün 31.10.2026, lisanslı serbest) dökülmüş fixture; künye PUT alanları fixture'a işlenir
-  if (/\/v1\/plants\/[^/]+\/takvim$/.test(yol)) return yanit(200, TAKVIM);
+  if (/\/v1\/plants\/[^/]+\/takvim$/.test(yol)) {   // v2.524 (P3b): bugün ve kalan günler gerçek saate bağlı (fixture 02.11.2026 tabanlı; geçen tarihler düşer)
+    const bugun = new Date(Date.now() + 3 * 3600e3).toISOString().slice(0, 10); const gun = (iso) => Math.round((Date.parse(iso + "T00:00:00Z") - Date.parse(bugun + "T00:00:00Z")) / 86400e3);
+    const taze = (xs) => xs.map((o) => ({ ...o, kalan_gun: gun(o.tarih) })).filter((o) => o.kalan_gun >= 0);
+    return yanit(200, { ...TAKVIM, bugun, yaklasan: taze(TAKVIM.yaklasan), yaklasan_piyasa: taze(TAKVIM.yaklasan_piyasa ?? TAKVIM.yaklasan), uyum: taze(TAKVIM.uyum), bakim: TAKVIM.bakim.map((b) => ({ ...b, gecti: !!b.son_an && b.son_an.slice(0, 10) < bugun })) }); }
   if (/\/v1\/plants\/[^/]+\/kunye-tarihler$/.test(yol) && req.method === "PUT") { let g = ""; req.on("data", (c) => { g += c; }); req.on("end", () => { let b = {}; try { b = JSON.parse(g || "{}"); } catch { /* yok */ }
     for (const k of Object.keys(b)) TAKVIM.kunye.alanlar[k] = b[k]; res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" }); res.end(JSON.stringify({ kunye: TAKVIM.kunye })); }); return; }
   if (yol === "/v1/plants") return yanit(200, PLANTS);

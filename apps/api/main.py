@@ -1138,6 +1138,10 @@ class KunyeTarihIstek(BaseModel):
     toplayici_giris: str | None = None
     toplayici_cikis: str | None = None
     yekdem_baslangic_yili: int | None = None
+    tam_kabul_tarihi: str | None = None       # v2.524 (P3b): kurulu gücün tamamının kabulü (ilerleme raporu biter)
+    isg_son_kontrol: str | None = None        # v2.524 (P3b): İSG periyodik kontrol (yılda bir)
+    ortaklik_degisikligi: str | None = None   # v2.524 (P3b): Lisans Yön. m.57(2) 6 ay
+    izin_iptali: str | None = None            # v2.524 (P3b): Lisans Yön. m.30(2) 2 ay
 
 
 @app.get("/v1/plants/{plant_id}/takvim")
@@ -1150,7 +1154,7 @@ def takvim(plant_id: str, gun: int = 90, claims=Depends(gecerli_kullanici)):
     row = plant_service.getir(claims["tenant_id"], plant_id)
     if row is None:
         raise HTTPException(404, "santral yok")
-    return takvim_service.ozet({"id": str(row["id"]), "params_json": row.get("params_json")}, gun=gun)
+    return takvim_service.ozet({"id": str(row["id"]), "params_json": row.get("params_json"), "capacity_kwp": row.get("capacity_kwp")}, gun=gun, tenant_id=claims["tenant_id"])   # v2.524 (P3b): uyum + bakım
 
 
 @app.put("/v1/plants/{plant_id}/kunye-tarihler")
