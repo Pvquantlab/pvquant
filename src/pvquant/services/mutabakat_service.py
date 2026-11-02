@@ -502,6 +502,12 @@ def mutabakat(tenant_id, plant: dict, donem, surum: str | None = None, bugun: da
     sd = (bil or {}).get("surum_dogrulama")
     kismi_on = (f"Kapsam kısmi ({ozet['kapsam_saat']}/{ozet['beklenen_saat']} saat; {'; '.join(guven['nedenler'])}): EPİAŞ tutarı bütün ayı, PVQuant tutarı yalnız hesaplanan "
                 "saatleri kapsar; fark doğrulanmış sayılmaz — eksik saatleri (SCADA/sayaç) ve bildirilen KGÜP'ü tamamlayıp yeniden bakın. " if guven["durum"] == "kismi" else "")
+    from pvquant.services import saatlik_detay_service
+    saatlik = saatlik_detay_service.ozet_kisa(tenant_id, plant, d, uretim, bugun)   # v2.527 (P2b-2): yüklüyse eş kapsamlı kıyas özeti
+    es = ""
+    if saatlik and saatlik.get("yuklu") and saatlik.get("ortak_saat") and saatlik.get("toplam") and saatlik["toplam"].get("edt_net_fark_tl") is not None:
+        t = saatlik["toplam"]; es = (f"Eş kapsamlı kıyas (EPYS saatlik detayı, ortak {saatlik['ortak_saat']} saat): dengesizlik neti EPİAŞ {t['edt_net_epias_tl']:,.2f} TL, "
+                                      f"PVQuant {t['edt_net_pvquant_tl']:,.2f} TL, fark {t['edt_net_fark_tl']:+,.2f} TL — ayrıntı «Saatlik detay kıyası» kartında. ").replace(",", "X").replace(".", ",").replace("X", ".")
     if ozet["farkli"]:
         eylem = kismi_on + ("Fark var: EPYS'deki saatlik detaylarla (dengesizlik uzlaştırma, KÜPST detay) ve PVQuant dökümüyle saat bazında karşılaştırın; program sürümü, sayaç (UEVM ≠ SCADA) "
                  "ve fiyat kaynağı en sık nedenlerdir. İtiraz: ön bildirime " + (sd["itiraz_son"].replace("-", ".") if sd else "izleyen ayın 12'si 17:30") + "'a kadar (DUY m.132/B(1)), "
@@ -513,9 +519,11 @@ def mutabakat(tenant_id, plant: dict, donem, surum: str | None = None, bugun: da
                  + ". Yalnız bildirimden gelen kalemleri EPYS'de kontrol edin.")
     else:
         eylem = None
+    if es:   # eş kapsamlı kıyas bildirim olmasa da anlamlıdır; kapsam notundan SONRA gelir (aylık tablo kısmi, saatlik kıyas eş kapsamlı)
+        eylem = (kismi_on + es + eylem[len(kismi_on):]) if (eylem and kismi_on and eylem.startswith(kismi_on)) else es + (eylem or "")
     return {"donem": d.isoformat()[:7], "donem_etiket": d.strftime("%m.%Y"), "bildirim": ({k: v for k, v in bil.items() if k != "kalemler"} if bil else None),
             "satirlar": satirlar, "ozet": ozet, "uyum": {"pct": UYUM_PCT, "tl": UYUM_TL, "not": UYUM_NOTU}, "guvenilirlik": guven, "eylem": eylem,
-            "pvquant": {k: v for k, v in pv.items() if k != "kalemler"}, "not": NOT,
+            "pvquant": {k: v for k, v in pv.items() if k != "kalemler"}, "saatlik_detay": saatlik, "not": NOT,
             "program_notu": ("bildirilen KGÜP yüklü saat yok: hesap PVQuant önerisiyle; mutabakat için bildirilen programı yükleyin (Tahminler › bildirilen KGÜP)"
                              if pv.get("saat") and not pv.get("bildirilen_saat") else None)}
 

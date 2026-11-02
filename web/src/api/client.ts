@@ -1,4 +1,4 @@
-import type { DengesizlikSaatlik, DsgAnahtar, KgupRevizyon, PiyasaDurum, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar, PortfoyAnahtar, PortfoyKupst, UevcbArama , Takvim, KunyeTarihler, Yekdem, Olay, OlayOzet, OlayGiris, OlayYanit, MutabakatOzet, MutabakatYukleme, SayacOzet, SayacYuklemeYanit, SayacAyar, SayacKaynak, RaporDonemVeri, RaporGonderim, RaporGonderimSonuc } from "./types";
+import type { DengesizlikSaatlik, DsgAnahtar, KgupRevizyon, PiyasaDurum, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar, PortfoyAnahtar, PortfoyKupst, UevcbArama , Takvim, KunyeTarihler, Yekdem, Olay, OlayOzet, OlayGiris, OlayYanit, MutabakatOzet, MutabakatYukleme, SaatlikKiyas, SaatlikYuklemeYanit, SayacOzet, SayacYuklemeYanit, SayacAyar, SayacKaynak, RaporDonemVeri, RaporGonderim, RaporGonderimSonuc } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -773,6 +773,26 @@ export const api = {
     const q = [donem ? `donem=${donem}` : "", surum ? `surum=${surum}` : "", uretim ? `uretim=${uretim}` : ""].filter(Boolean).join("&");   // v2.526: uretim scada | sayac
     return getir<MutabakatOzet>(`/v1/plants/${p}/mutabakat${q ? `?${q}` : ""}`); },
   /** v2.522: EPYS «Uzlaştırma Bildirimi» dosyasını yükle (CSV/XLSX; dönem ve sürüm boşsa dosyadan okunur) */
+  /** v2.527 (P2b-2): EPYS saatlik detayı — kıyas, yükleme, CSV */
+  saatlikKiyas: (p: string, donem?: string | null, uretim?: string | null): Promise<SaatlikKiyas> => {
+    const q = [donem ? `donem=${donem}` : "", uretim ? `uretim=${uretim}` : ""].filter(Boolean).join("&");
+    return getir<SaatlikKiyas>(`/v1/plants/${p}/mutabakat/saatlik${q ? `?${q}` : ""}`); },
+  saatlikYukle: async (p: string, dosya: File, donem?: string | null): Promise<SaatlikYuklemeYanit> => {
+    if (TABAN == null) throw new Error("Örnek kipte yükleme yok.");
+    const jeton = localStorage.getItem("pvq_token"); const fd = new FormData(); fd.append("dosya", dosya);
+    const y = await fetch(`${TABAN}/v1/plants/${p}/mutabakat/saatlik${donem ? `?donem=${donem}` : ""}`, { method: "POST", body: fd, headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
+    if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise<SaatlikYuklemeYanit>(() => {}); }
+    if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
+    return (await y.json()) as SaatlikYuklemeYanit; },
+  saatlikKiyasIndir: async (p: string, donem: string, uretim?: string | null): Promise<void> => {
+    if (TABAN == null) throw new Error("Örnek kipte indirme yok.");
+    const jeton = localStorage.getItem("pvq_token");
+    const y = await fetch(`${TABAN}/v1/plants/${p}/mutabakat/saatlik?donem=${donem}&fmt=csv${uretim ? `&uretim=${uretim}` : ""}`, { headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
+    if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise<void>(() => {}); }
+    if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
+    const cd = y.headers.get("Content-Disposition") ?? ""; const es = /filename="([^"]+)"/.exec(cd);
+    const url = URL.createObjectURL(await y.blob()); const a = document.createElement("a");
+    a.href = url; a.download = es ? es[1] : `saatlik_kiyas_${donem}.csv`; a.click(); URL.revokeObjectURL(url); },
   mutabakatYukle: async (p: string, dosya: File, donem?: string | null, surum?: string | null): Promise<MutabakatYukleme> => {
     if (TABAN == null) throw new Error("Örnek kipte yükleme yok.");
     const jeton = localStorage.getItem("pvq_token"); const fd = new FormData(); fd.append("dosya", dosya);

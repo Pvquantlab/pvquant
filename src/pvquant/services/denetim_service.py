@@ -22,7 +22,8 @@ EYLEMLER_MUSTERI = ("giris", "takim_ekle", "takim_guncelle", "takim_iki_adim_sif
                     "olay_ekle", "olay_guncelle",   # v2.521 (P1a): olay kaydı
                     "mutabakat_yukle", "dsg_belge_indir",   # v2.522 (P2b): uzlaştırma bildirimi yükleme, DSG üye belgesi
                     "sayac_yukle", "sayac_ayar",   # v2.523 (P4a): sayaç dosyası yükleme, sayaç/SCADA ayarı
-                    "rapor_donem_indir", "rapor_gonderim_ayar", "rapor_gonderim")   # v2.525 (raporlama): dönem raporu, zamanlanmış gönderim
+                    "rapor_donem_indir", "rapor_gonderim_ayar", "rapor_gonderim",
+                    "mutabakat_saatlik_yukle", "mutabakat_saatlik_indir")   # v2.527 (P2b-2): EPYS saatlik detay yükleme / kıyas indirme   # v2.525 (raporlama): dönem raporu, zamanlanmış gönderim
 # v2.516 (yönetim boşlukları #7): uzlaştırma katmanının müşteri eylemleri de izde — «değiştirilemez kayıt» vaadi denetimde görünür.
 # Ayrıntıya dosya içeriği ya da sır yazılmaz: gün, sürüm, kantil, kanal, dosya adı, biçim, segment/UEVÇB ve EAK alanları.
 

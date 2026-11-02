@@ -45,6 +45,7 @@ export const SOZLUK = {
     olay_ekle: "Olay kaydı açıldı", olay_guncelle: "Olay kaydı güncellendi",   // v2.521 (P1a)
     mutabakat_yukle: "Uzlaştırma bildirimi yüklendi", dsg_belge_indir: "DSG üye dağılımı belgesi indirildi",   // v2.522 (P2b)
     sayac_yukle: "Sayaç dosyası yüklendi", sayac_ayar: "Sayaç ve SCADA ayarı değişti",   // v2.523 (P4a)
+    mutabakat_saatlik_yukle: "EPYS saatlik detayı yüklendi", mutabakat_saatlik_indir: "Saatlik kıyas indirildi",   // v2.527 (P2b-2)
     rapor_donem_indir: "Dönem raporu indirildi", rapor_gonderim_ayar: "Rapor gönderim ayarı değişti", rapor_gonderim: "Dönem raporu e-postayla gönderildi",   // v2.525
   } as Record<string, string>,
 } as const;

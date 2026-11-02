@@ -1492,6 +1492,55 @@ def mutabakat_yukle(plant_id: str, donem: str | None = None, surum: str | None =
     return k
 
 
+@app.post("/v1/plants/{plant_id}/mutabakat/saatlik", status_code=201)
+def mutabakat_saatlik_yukle(plant_id: str, donem: str | None = None, dosya: UploadFile = File(...), claims=Depends(yazma_yetkisi())):
+    """v2.527 (P2b-2) — EPYS saatlik detay dosyası (Uzlaştırma Dönemi Detay / Dengesizlik Uzlaştırma / KÜPST Detay; XLSX ya da CSV, ≤5 MB): saatlik PTF, SMF,
+    UEVM, KUDÜP/BUDÜP, EDM/EDT, KÜPSM/KÜPST satırları dönemle saklanır (her yükleme yeni sürüm, silme yok). Dönem verilmezse dosyadan."""
+    from pvquant.services import saatlik_detay_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    b = dosya.file.read()
+    try:
+        k = saatlik_detay_service.kaydet(claims["tenant_id"], {"id": str(row["id"])}, b, dosya.filename or "saatlik.xlsx", donem=donem, yukleyen=claims.get("sub"))
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    _denetim.kaydet("musteri", "mutabakat_saatlik_yukle", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"],
+                    ayrinti={"donem": k["donem"], "saat": k["saat"], "ekran": k["kaynak_ekran"], "dosya": (dosya.filename or "")[:80], "sha256": k["sha256"][:16]})
+    return k
+
+
+@app.get("/v1/plants/{plant_id}/mutabakat/saatlik")
+def mutabakat_saatlik(plant_id: str, donem: str | None = None, uretim: str | None = None, fmt: str = "json", claims=Depends(gecerli_kullanici)):
+    """v2.527 (P2b-2) — eş kapsamlı saatlik kıyas: yüklü EPYS saatlik detayı ↔ PVQuant dökümü yalnız ortak saatlerde (fiyat, üretim, program, EDT, KÜPST;
+    fark ayrıştırması; en büyük farklı saatler). fmt=csv saatlik satırları indirir. donem verilmezse son yüklenen dönem."""
+    from datetime import datetime, timedelta
+    from fastapi.responses import Response
+    from pvquant.services import saatlik_detay_service, mutabakat_service
+    if fmt not in ("json", "csv"):
+        raise HTTPException(422, "fmt json ya da csv olmalı")
+    if uretim is not None and uretim not in ("scada", "sayac"):
+        raise HTTPException(422, "uretim scada ya da sayac olmalı")
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    plant = {"id": str(row["id"]), "name": row["name"], "params_json": row.get("params_json")}
+    try:
+        if donem is None:
+            y = saatlik_detay_service.yuklemeler(claims["tenant_id"], plant["id"], 1)
+            donem = y[0]["donem"] if y else (datetime.now(mutabakat_service.IST).date().replace(day=1) - timedelta(days=1)).strftime("%Y-%m")
+        d = mutabakat_service._donem(donem)
+        k = saatlik_detay_service.kiyas(claims["tenant_id"], plant, d, uretim)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    if fmt == "csv":
+        _denetim.kaydet("musteri", "mutabakat_saatlik_indir", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"], ayrinti={"donem": k["donem"]})
+        ad = f"pvquant_saatlik_kiyas_{mutabakat_service._sade(row['name']).replace(' ', '_')}_{k['donem']}.csv"
+        return Response(saatlik_detay_service.kiyas_csv(k), media_type="text/csv; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{ad}"'})
+    k["yuklemeler_tum"] = saatlik_detay_service.yuklemeler(claims["tenant_id"], plant["id"])
+    return k
+
+
 class SayacAyarIstek(BaseModel):
     """v2.523 (P4a): sayaç türü ve lisanssız SCADA durumu; yalnız istekte geçen alanlar değişir, null temizler."""
     sayac_turu: str | None = None                   # 15dk_endeks | diger

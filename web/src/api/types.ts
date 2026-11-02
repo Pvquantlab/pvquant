@@ -567,11 +567,27 @@ export interface Mutabakat { donem: string; donem_etiket: string;
   uyum: { pct: number; tl: number; not: string }; guvenilirlik: MutabakatGuvenilirlik; eylem: string | null;
   pvquant: { saat: number; beklenen_saat?: number; son_saat?: string; hesaplanamayan_saat?: number; bildirilen_saat?: number; senaryo_saat?: number; senaryo_kapsam?: string; kural_surumu?: string; hata?: string;
     /** v2.523 (P4a): dönemin sayaç kapsamı — hesaba girmez, yalnız bilgi */
-    sayac?: { toplam_saat: number; yuklu: number; olculmus: number; tahmini: number; olc_fark_pct: number | null } | null; uretim_kaynak?: UretimKaynak }; not: string; program_notu: string | null }
+    sayac?: { toplam_saat: number; yuklu: number; olculmus: number; tahmini: number; olc_fark_pct: number | null } | null; uretim_kaynak?: UretimKaynak };
+  /** v2.527 (P2b-2): dönem için yüklü EPYS saatlik detayı varsa eş kapsamlı kıyas özeti */ saatlik_detay?: SaatlikOzet | null; not: string; program_notu: string | null }
 export interface MutabakatOzet { bugun: string;
   donemler: { donem: string; surum: string; surum_etiket: string; yukleme_id: string; zaman: string; dosya_adi: string | null; sha256?: string | null; kalem_sayisi: number; surum_kaynagi?: string | null; dosya_surum?: string | null; gecerli: boolean; surum_dogrulama: SurumDogrulama }[];
   secili: Mutabakat; surumler: { kod: string; etiket: string }[]; kalemler: { kod: string; etiket: string; hesaplanir: boolean; epys: string }[]; guvenilirlik_etiketleri: Record<string, string>;
   uretim_ayari: "scada" | "sayac"; uretim_secenekleri: { kod: "scada" | "sayac"; etiket: string }[] }
+/** v2.527 (P2b-2): EPYS saatlik detayı ↔ PVQuant dökümü eş kapsamlı kıyas */
+export interface SaatlikKiyasToplam { edt_net_epias_tl: number | null; edt_net_pvquant_tl: number; edt_net_fark_tl: number | null; edt_poz_epias_tl: number | null; edt_neg_epias_tl: number | null;
+  edt_poz_pvquant_tl: number; edt_neg_pvquant_tl: number; kupst_epias_tl: number | null; kupst_pvquant_tl: number; kupst_fark_tl: number | null; uevm_mwh: number | null; gerceklesen_pvquant_mwh: number; fark_isareti: string }
+export interface SaatlikAyristirma { fiyat_farki_saat: number; uretim_farki_saat: number; program_farki_saat: number; pozisyon_farki_saat?: number; yuvarlama_saat?: number; kural_farki_saat: number; edt_farki_saat: number | null; uyumlu_saat: number | null;
+  fiyat_karsilastirildi: boolean; uretim_karsilastirildi: boolean; program_karsilastirildi: boolean; pozisyon_karsilastirildi?: boolean; edt_karsilastirildi: boolean; not: string }
+export interface SaatlikSatir { zaman: string; ptf_epias: number | null; ptf_pvquant: number | null; smf_epias: number | null; smf_pvquant: number | null; uevm_mwh: number | null; gerceklesen_pvquant_mwh: number | null;
+  budup_mwh: number | null; program_pvquant_mwh: number | null; program_kaynak: string | null; edm_epias_mwh?: number | null; sapma_pvquant_mwh?: number | null; yon?: string | null; durum_pvquant?: string | null;
+  edt_net_epias_tl: number | null; edt_net_pvquant_tl: number | null; edt_fark_tl: number | null;
+  kupst_epias_tl: number | null; kupst_pvquant_tl: number | null; nedenler: string[] }
+export interface SaatlikYukleme { donem: string; yukleme_id: string; kaynak_ekran: string; zaman: string; dosya_adi: string | null; sha256?: string | null; saat: number; bas: string; bit: string; versiyon?: string | null }
+export interface SaatlikKiyas { donem: string; yuklu: boolean; yuklemeler: SaatlikYukleme[]; epias_saat: number; pv_saat?: number; ortak_saat: number; yalniz_epias_saat?: number; yalniz_pvquant_saat?: number;
+  kolonlar: string[]; uretim?: string | null; toplam: SaatlikKiyasToplam | null; ayristirma: SaatlikAyristirma | null; en_buyuk: SaatlikSatir[]; satirlar: SaatlikSatir[]; not: string;
+  tolerans: { fiyat_tl_mwh: number; mwh: number; tl: number }; neden_aciklama?: Record<string, string>; yuklemeler_tum?: SaatlikYukleme[] }
+export interface SaatlikYuklemeYanit { yukleme_id: string; donem: string; saat: number; kolonlar: string[]; kolon_etiketleri: string[]; kaynak_ekran: string; bicim: string; sha256: string; uyarilar: string[]; dosya_adi: string }
+export interface SaatlikOzet { yuklu: boolean; epias_saat: number; pv_saat?: number; ortak_saat: number; toplam?: SaatlikKiyasToplam | null; ayristirma?: SaatlikAyristirma | null; uretim?: string | null }
 export interface MutabakatYukleme { yukleme_id: string; donem: string; surum: string; surum_kaynagi: string; kalem_sayisi: number; bicim: string; sha256: string; uyarilar: string[]; taninmayan: string[]; dosya_adi: string; surum_dogrulama: SurumDogrulama }
 /** ekleme yanıtı: aynı saatlerde başka kayıt varsa uyarı (engel değil) */
 export type OlayYanit = Olay & { uyari?: string; cakisan?: string[] };
