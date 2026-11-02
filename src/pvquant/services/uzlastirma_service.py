@@ -67,11 +67,11 @@ def portfoy_tahmini(tenant_id, gun: int = 7) -> dict:
             "JOIN scada_hourly s ON s.plant_id=f.plant_id AND s.ts_utc=f.ts_utc AND s.flag='valid' JOIN plants p ON p.id=f.plant_id "
             "WHERE f.ts_utc >= now() - interval '60 days' AND f.ts_utc - r.run_at BETWEEN INTERVAL '0 hour' AND INTERVAL '24 hour' "
             "AND s.power_kw > 0.02 * p.capacity_kwp"), s.connection(), parse_dates=["ts_utc"])
-    tahminler = {}
+    tahminler = {}; santral_eksik: list[str] = []   # 03.11: koşusu olmayan santral tabloda YOK — özet kartı «—» der, tablo adını söyler
     for p in santraller:
         df = forecast_service.son_kosu(tenant_id, str(p["id"]))
         if df is None or df.empty:
-            continue
+            santral_eksik.append(p["name"]); continue
         d = pd.DataFrame({"p50": df["p50_kw"], "p10": df["p10_kw"], "p90": df["p90_kw"]})
         d.index = pd.DatetimeIndex(d.index); d.index = d.index.tz_localize("UTC") if d.index.tz is None else d.index
         tahminler[p["name"]] = d
@@ -88,6 +88,7 @@ def portfoy_tahmini(tenant_id, gun: int = 7) -> dict:
     santral_gunluk = {a: round(float(uz[f"{a}__p50"].groupby(yerel.date).sum().iloc[0]) / 1000.0, 1) for a in tahminler if f"{a}__p50" in uz}
     return {"durum": "ok", **meta, "kapasite_kwp": float(sum(p["capacity_kwp"] for p in santraller)), "gunler": gunler,
             "santral_bugun_mwh": santral_gunluk, "artik_gun": int(art["ts_utc"].dt.date.nunique()) if not art.empty else 0,
+            "santral_eksik": santral_eksik,
             "not": ("Tek santral: portföy = santral; uzlaştırma gerekmez." if len(tahminler) == 1 else
                     ("Santral artıklarının büzülmüş kovaryansıyla en küçük kareler; toplam korunur." if meta["yontem"].startswith("MinT") else
                      (f"Artık geçmişi olmayan santral: {', '.join(meta['artik_eksik'])} (geçerli SCADA ölçümü yok); "

@@ -136,6 +136,7 @@ export interface EpiasUretim { uygun: boolean; neden: string; epias_santral_id: 
 /** /portfoy/tahmin — v2.280: hiyerarşik uzlaştırılmış portföy tahmini. */
 export interface PortfoyTahmin {
   durum: string; santral?: number; yontem?: string; tutarli?: boolean; n_saat?: number; kapasite_kwp?: number; artik_gun?: number; not?: string;
+  santral_eksik?: string[];   // 03.11: koşusu olmayan santraller (tabloda yok; özet kartı «—» gösterir)
   gunler?: { gun: string; p50_mwh: number; p10_mwh: number; p90_mwh: number; saat: number }[];
   santral_bugun_mwh?: Record<string, number>;
 }
@@ -588,6 +589,12 @@ export interface SaatlikKiyas { donem: string; yuklu: boolean; yuklemeler: Saatl
   tolerans: { fiyat_tl_mwh: number; mwh: number; tl: number }; neden_aciklama?: Record<string, string>; yuklemeler_tum?: SaatlikYukleme[] }
 export interface SaatlikYuklemeYanit { yukleme_id: string; donem: string; saat: number; kolonlar: string[]; kolon_etiketleri: string[]; kaynak_ekran: string; bicim: string; sha256: string; uyarilar: string[]; dosya_adi: string }
 export interface SaatlikOzet { yuklu: boolean; epias_saat: number; pv_saat?: number; ortak_saat: number; toplam?: SaatlikKiyasToplam | null; ayristirma?: SaatlikAyristirma | null; uretim?: string | null }
+/** v2.528 (P10): uzlaştırma kuralı sürüm tablosu (ext/turkiye/kurallar.tablo) */
+export interface KuralSatiri { gecerlilik_bas: string; gecerlilik_bitis: string | null; rejim: string; kural_surumu: string;
+  /** sistem yönüne göre katsayılar: { acik, fazla, dengede } */ k: Record<string, number> | null; l: Record<string, number> | null; V: number | null; B: number | null; AFL: number | null;
+  aylik_toplama: string | null; kupst: { m: number | null; n: number | null; n_ariza: number | null; ariza_esigi: number | null; taban: number | null; net_sapma: boolean | null; birim: string | null; dayanak: string | null };
+  dsg_esik: number | null; dsg_dayanak: string | null; edt_dayanak: string | null; belirsiz_2027: boolean }
+export interface KuralTablosu { segment: string; satirlar: KuralSatiri[] }
 export interface MutabakatYukleme { yukleme_id: string; donem: string; surum: string; surum_kaynagi: string; kalem_sayisi: number; bicim: string; sha256: string; uyarilar: string[]; taninmayan: string[]; dosya_adi: string; surum_dogrulama: SurumDogrulama }
 /** ekleme yanıtı: aynı saatlerde başka kayıt varsa uyarı (engel değil) */
 export type OlayYanit = Olay & { uyari?: string; cakisan?: string[] };

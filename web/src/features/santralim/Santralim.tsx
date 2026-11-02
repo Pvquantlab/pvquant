@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { ALARM_KURALI } from "../../lib/alarmSozluk";
 import type { ReactNode } from "react";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
 import type { PrKarti, Saglik, AlarmKurallari, FizikTerimleri, FizikOnizleme, Kullanilabilirlik, Tarife, Yekdem } from "../../api/types";
@@ -15,15 +16,7 @@ import { Meta } from "../../lib/Meta";
 
 /** 29.10 dil turu — alarm kuralı adları ve açıklamaları (arka uç KURAL_ETIKET ile aynı; sunucu etiket göndermese de kod görünmez).
  *  test/panel/alarm-sozluk.test.ts arka uçla kıyaslar. */
-const KURAL_ADI: Record<string, string> = {
-  veri_gelmedi: "Veri gelmedi", skill_dustu: "Tahmin doğruluğu düştü", pr_dustu: "Performans oranı düştü",
-  clipping_orani_yuksek: "Kırpma oranı yüksek", iletisim_kesintisi: "İletişim kesintisi", kullanilabilirlik_dustu: "Kullanılabilirlik düştü",
-  kgup_teslim_gecikti: "Program bildirimi hazırlanamadı", dengesizlik_asimi: "Dengesizlik maliyeti yüksek",
-  kgup_revizyon_onerisi: "Program revizyonu önerisi",
-  takvim_son_tarih: "Yaklaşan son tarih", ptf_dusuk_saat: "Yarın düşük fiyat saati",
-  ariza_sayaci_yaklasti: "Arıza sayacı eşiğe yaklaştı", teminat_hatirlatma: "Teminat saati hatırlatması", sayac_eksik_saat: "Sayaç verisi eksik",
-  avans_hatirlatma: "Avans ödeme hatırlatması",
-};
+const KURAL_ADI: Record<string, string> = ALARM_KURALI;   // v2.528 (P10): tek kaynak lib/alarmSozluk.ts (zil de aynı adları kullanır)
 /** 01.11 Santral ayarları dil turu: her ayar satırı = kısa açıklama (1–2 cümle) + «Ayrıntı» (yerleşik details: klavyeyle Tab + Enter/Boşluk
  *  açılır; ne işe yarar / ne zaman değiştirilir / neyi etkiler). Ayar davranışları ve API değişmedi; yalnız metin ve sunum. */
 /** Bilgi simgesi: sol sütunda düğme (aria-expanded/aria-controls, Tab + Enter/Boşluk), açılınca gövde satırın altında tam genişlikte

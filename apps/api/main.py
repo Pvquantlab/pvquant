@@ -922,6 +922,16 @@ def _son_kosu_kimligi(tenant_id: str, plant_id: str):
             {"p": plant_id}).first()
 
 
+class SayacAyarIstek(BaseModel):
+    """v2.523 (P4a): sayaç türü ve lisanssız SCADA durumu; yalnız istekte geçen alanlar değişir, null temizler."""
+    sayac_turu: str | None = None                   # 15dk_endeks | diger
+    scada_durum: str | None = None                  # bagli | kopuk | yok (lisanssız, LÜY m.21(7))
+    scada_kopukluk_baslangic: str | None = None     # YYYY-MM-DD
+    uzlastirma_girdi: str | None = None             # v2.526 (P4a-2): scada | sayac — uzlaştırma yeniden hesabında gerçekleşen üretim kaynağı
+    uzaktan_acma_var: bool | None = None            # uzaktan açma-kapama yeteneği envanterde
+    sistem_kullanim_bedeli_tl_ay: float | None = None   # Karar 14909 bedel göstergesi girdisi (dağıtım faturasından)
+
+
 @app.get("/v1/dis/santraller", tags=["Dış API"])
 def dis_santraller(anahtar=Depends(api_anahtari("tahmin:oku"))):
     """Anahtarın kiracısındaki santraller (kimlik, ad, kurulu güç, saat dilimi)."""
@@ -972,6 +982,97 @@ def dis_kgup_surumler(plant_id: str, gun: str | None = None, n: int = 30, anahta
     return {"surumler": kgup_arsiv_service.listele(anahtar["tenant_id"], plant_id, g, max(1, min(n, 200)))}
 
 
+@app.get("/v1/dis/santral/{plant_id}/gerceklesen", tags=["Dış API"])
+def dis_gerceklesen(plant_id: str, bas: str | None = None, bit: str | None = None, kaynak: str = "scada", anahtar=Depends(api_anahtari("gerceklesen:oku"))):
+    """v2.528 (P10) — gerçekleşen üretim, saatlik kWh (UTC saat başı). kaynak=scada: geçerli SCADA ölçümü (brüt; kaynak etiketi scada_dosya /
+    epias_seffaflik); kaynak=sayac: yüklü sayaç verisi (net veriş; kaynak epys/osos/mass/elle, nitelik ölçülmüş/tahmini). bas–bit Türkiye günü
+    (dâhil), en çok 92 gün; verilmezse son 7 gün. Uzlaştırmaya esas UEVM değildir."""
+    from datetime import date as _d, datetime as _dt, timedelta as _td
+    from pvquant.services import sayac_service
+    if kaynak not in ("scada", "sayac"):
+        raise HTTPException(422, "kaynak scada ya da sayac olmalı")
+    row = plant_service.getir(anahtar["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    try:
+        b1 = _d.fromisoformat(bit) if bit else _dt.now(sayac_service.IST).date()
+        b0 = _d.fromisoformat(bas) if bas else b1 - _td(days=6)
+    except ValueError:
+        raise HTTPException(422, "bas/bit YYYY-MM-DD olmalı")
+    if b0 > b1 or (b1 - b0).days > 91:
+        raise HTTPException(422, "aralık en çok 92 gün ve bas ≤ bit olmalı")
+    t0 = _dt.combine(b0, _dt.min.time(), tzinfo=sayac_service.IST); t1 = _dt.combine(b1 + _td(days=1), _dt.min.time(), tzinfo=sayac_service.IST)
+    if kaynak == "scada":
+        df = sayac_service.scada_oku(anahtar["tenant_id"], plant_id, t0, t1)
+        saatlik = [{"ts": ts.isoformat(), "kwh": (None if pd.isna(r.kwh) else round(float(r.kwh), 3)), "kaynak": r.kaynak} for ts, r in df.iterrows()]
+    else:
+        df = sayac_service.sayac_oku(anahtar["tenant_id"], plant_id, t0, t1)
+        saatlik = [{"ts": ts.isoformat(), "kwh": (None if pd.isna(r.veris_kwh) else round(float(r.veris_kwh), 3)), "cekis_kwh": (None if pd.isna(r.cekis_kwh) else round(float(r.cekis_kwh), 3)),
+                    "kaynak": r.kaynak, "nitelik": r.nitelik} for ts, r in df.iterrows()]
+    return {"santral_id": str(row["id"]), "santral": row["name"], "kaynak": kaynak, "birim": "kWh", "bas": b0.isoformat(), "bit": b1.isoformat(), "saat": len(saatlik),
+            "not": ("SCADA brüt üretimdir; EPİAŞ uzlaştırmaya esas sayaç (UEVM) değildir." if kaynak == "scada" else
+                    "Yüklü sayaç dosyasıdır (net veriş); uzlaştırmaya esas UEVM ile aynılığı doğrulanmaz. nitelik tahmini/doldurulmuş saatler EDAŞ kodundan."),
+            "saatlik": saatlik}
+
+
+@app.get("/v1/dis/santral/{plant_id}/alarmlar", tags=["Dış API"])
+def dis_alarmlar(plant_id: str, n: int = 20, anahtar=Depends(api_anahtari("alarm:oku"))):
+    """v2.528 (P10) — alarm listesi (yeni → eski; en çok 200): kural kodu + Türkçe adı, şiddet, mesaj, zaman, okunma/atama."""
+    from pvquant.services import alarm_service
+    row = plant_service.getir(anahtar["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    rows = alarm_service.listele(anahtar["tenant_id"], plant_id, max(1, min(int(n), 200)))
+    return {"santral_id": str(row["id"]), "santral": row["name"], "alarmlar": [{**r, "kural_adi": alarm_service.KURAL_ETIKET.get(r["kural"], r["kural"])} for r in rows]}
+
+
+@app.get("/v1/dis/santral/{plant_id}/rapor-donem", tags=["Dış API"])
+def dis_rapor_donem(plant_id: str, donem: str | None = None, fmt: str = "json", anahtar=Depends(api_anahtari("rapor:indir"))):
+    """v2.528 (P10) — dönem raporu: donem YYYY-MM | YYYY-QN | YYYY (verilmezse son tam ay); fmt json (veri) | html (indirilebilir).
+    Panelin Raporlar › Dönem raporu ile aynı hesap; denetim izine düşer."""
+    from pvquant.services import aylik_rapor_service
+    if fmt not in ("html", "json"):
+        raise HTTPException(422, "fmt html ya da json olmalı")
+    row = plant_service.getir(anahtar["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    plant = {"id": str(row["id"]), "name": row["name"], "capacity_kwp": row.get("capacity_kwp"), "ac_limit_kw": row.get("ac_limit_kw"), "params_json": row.get("params_json")}
+    try:
+        if fmt == "json":
+            v = aylik_rapor_service.veri(anahtar["tenant_id"], plant, donem); kod = v["donem"]["kod"]
+        else:
+            r, v = aylik_rapor_service.rapor(anahtar["tenant_id"], plant, donem); kod = v["donem"]["kod"]
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    _denetim.kaydet("musteri", "rapor_donem_indir", aktor_id=None, tenant_id=anahtar["tenant_id"], nesne_tur="plant", nesne_id=row["id"],
+                    ayrinti={"donem": kod, "fmt": fmt, "api_anahtar": anahtar["prefix"]})
+    if fmt == "json":
+        return v
+    from pvquant.services.mutabakat_service import _sade
+    ad = f"PVQuant_donem_raporu_{_sade(row['name']).replace(' ', '_')}_{kod}.html"
+    return Response(aylik_rapor_service.html(r).encode("utf-8"), media_type="text/html; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{ad}"'})
+
+
+@app.put("/v1/dis/santral/{plant_id}/ayarlar", tags=["Dış API"])
+def dis_ayarlar(plant_id: str, p: SayacAyarIstek, anahtar=Depends(api_anahtari("santral:yaz"))):
+    """v2.528 (P10) — santral ayarı yazma (sayaç ayarı alanları: sayac_turu, scada_durum, scada_kopukluk_baslangic, uzaktan_acma_var,
+    sistem_kullanim_bedeli_tl_ay, uzlastirma_girdi). Yalnız istekte geçen alanlar değişir, null temizler; panelin PUT sayac-ayar ile aynı doğrulama.
+    Künye/segment/tarife bu kapsamda değildir (panelden)."""
+    from pvquant.services import sayac_service
+    row = plant_service.getir(anahtar["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    try:
+        an = sayac_service.ayar_dogrula(p.model_dump(exclude_unset=True))
+    except ValueError as e:
+        raise HTTPException(422, f"{e} alanı geçersiz")
+    if not an:
+        raise HTTPException(422, "değişecek alan yok")
+    pj = plant_service.params_birlestir(anahtar["tenant_id"], plant_id, **an)
+    _denetim.kaydet("musteri", "sayac_ayar", aktor_id=None, tenant_id=anahtar["tenant_id"], nesne_tur="plant", nesne_id=row["id"], ayrinti={**an, "api_anahtar": anahtar["prefix"]})
+    return {"santral_id": str(row["id"]), "degisen": an, "ayar": {k: (pj or {}).get(k) for k in ("sayac_turu", "scada_durum", "scada_kopukluk_baslangic", "uzaktan_acma_var", "sistem_kullanim_bedeli_tl_ay", "uzlastirma_girdi")}}
+
+
 # ------------------------------------------------------------------ v2.264: Yönetim (admin) -----------------
 class AnahtarIstek(BaseModel):
     ad: str = ""
@@ -989,7 +1090,8 @@ class WebhookIstek(BaseModel):
 @app.get("/v1/api-anahtarlari", tags=["Yönetim"])
 def anahtar_listesi(claims=Depends(yonetici_yetkisi())):
     from pvquant.services import api_anahtar_service
-    return {"anahtarlar": api_anahtar_service.listele(claims["tenant_id"]), "kapsamlar": list(api_anahtar_service.CANLI_KAPSAMLAR)}
+    return {"anahtarlar": api_anahtar_service.listele(claims["tenant_id"]), "kapsamlar": list(api_anahtar_service.CANLI_KAPSAMLAR),
+            "kapsam_aciklama": dict(api_anahtar_service.KAPSAM_ACIKLAMA)}   # v2.528 (P10)
 
 
 @app.post("/v1/api-anahtarlari", tags=["Yönetim"], status_code=201)
@@ -1539,16 +1641,6 @@ def mutabakat_saatlik(plant_id: str, donem: str | None = None, uretim: str | Non
         return Response(saatlik_detay_service.kiyas_csv(k), media_type="text/csv; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{ad}"'})
     k["yuklemeler_tum"] = saatlik_detay_service.yuklemeler(claims["tenant_id"], plant["id"])
     return k
-
-
-class SayacAyarIstek(BaseModel):
-    """v2.523 (P4a): sayaç türü ve lisanssız SCADA durumu; yalnız istekte geçen alanlar değişir, null temizler."""
-    sayac_turu: str | None = None                   # 15dk_endeks | diger
-    scada_durum: str | None = None                  # bagli | kopuk | yok (lisanssız, LÜY m.21(7))
-    scada_kopukluk_baslangic: str | None = None     # YYYY-MM-DD
-    uzlastirma_girdi: str | None = None             # v2.526 (P4a-2): scada | sayac — uzlaştırma yeniden hesabında gerçekleşen üretim kaynağı
-    uzaktan_acma_var: bool | None = None            # uzaktan açma-kapama yeteneği envanterde
-    sistem_kullanim_bedeli_tl_ay: float | None = None   # Karar 14909 bedel göstergesi girdisi (dağıtım faturasından)
 
 
 def _sayac_plant(row) -> dict:

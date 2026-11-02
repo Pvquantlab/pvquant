@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { SOZLUK } from "../../lib/sozluk";
 import { api, bellektenOku, dsgYolu, kupstYolu } from "../../api/client";
 import type { DsgAnahtar, Portfoy as PortfoyT, PortfoyAnahtar, PortfoyDsg, PortfoyKupst, PortfoyTahmin } from "../../api/types";
 import { Bilgi, Kart, Kpi, Sayfa, sayiTr, gucTr, enerjiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
@@ -100,7 +101,7 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
              alt={t && (t.bugun_kwh == null || t.yarin_kwh == null) ? "bir santralde tahmin yok; toplam gösterilmez" : "tüm santrallerin beklenen (P50) toplamı"} />;
         })()}
         <Kpi etiket="30 günlük tahmin hatası (WMAPE)" deger={t?.wmape_agirlikli != null ? `%${sayiTr(t.wmape_agirlikli, 1)}` : "—"}
-             alt={t ? `${sayiTr(t.wmape_kapsanan_kwp / 1000, 2)} MWp değerlendirmede` : ""} />
+             alt={t ? `${sayiTr(t.wmape_kapsanan_kwp / 1000, 2)} MWp değerlendirmede, kapasite ağırlıklı${(() => { const e = (p?.santraller ?? []).filter((r) => r.wmape_30g == null).length; return e > 0 ? ` · ${sayiTr(e)} santral ölçüm yetersiz` : ""; })()}` : ""} />
         <Kpi etiket="Açık alarm" deger={t ? sayiTr(t.acik_alarm) : "—"}
              ikinci={t ? { etiket: "Veri gecikmiş", deger: sayiTr(t.veri_gecikmis), birim: "santral" } : undefined}
              alt={t && t.santral > 0 ? "alarm: son 7 günde okunmamış kayıt; gecikme: son ölçüm 2 günden eski" : ""} ton={t && (t.acik_alarm > 0 || t.veri_gecikmis > 0) ? "uyari" : undefined} />
@@ -160,7 +161,7 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
                       onKeyDown={(e) => { if (e.key === "Enter") onSec(r.id); }}>
                     <td className="ad">{r.ad}</td>
                     <td>{sayiTr(r.kapasite_kwp)}</td>
-                    <td>{r.segment ?? <span className="bos" title="Piyasa segmenti seçilmedi">—</span>}</td>
+                    <td>{r.segment ? (SOZLUK.segmentKisa[r.segment] ?? r.segment) : <span className="bos" title="Piyasa segmenti seçilmedi">—</span>}</td>
                     <td>
                       <div className="tarih-saat"><TarihSaat metin={tarih(r.son_olcum)} /></div>
                       {eski && <div className="hucre-alt"><span className="rozet rozet-uyari rozet-kucuk" title="Son ölçüm 2 günden eski">{sayiTr(r.kesinti_gun!)} gün eski</span></div>}
@@ -211,7 +212,8 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
                   </>); })()}
               </table>
             </div>
-            <p className="soluk" style={{ fontSize: 14, margin: "10px 0 0" }}>Santral tahminleri toplanır; toplam, santral tahminleriyle çelişmez. {pt.not}{pt.artik_gun ? ` Düzeltme geçmişi ${sayiTr(pt.artik_gun)} gün.` : ""}</p>
+            <p className="soluk" style={{ fontSize: 14, margin: "10px 0 0" }}>Santral tahminleri toplanır; toplam, santral tahminleriyle çelişmez. {pt.not}{pt.artik_gun ? ` Düzeltme geçmişi ${sayiTr(pt.artik_gun)} gün.` : ""}
+              {(pt.santral_eksik?.length ?? 0) > 0 && <> Tahmini olmayan santral tabloda yok: {pt.santral_eksik!.join(", ")}; özet kartı bu yüzden toplam göstermez.</>}</p>
           </>
         )}
       </Kart>

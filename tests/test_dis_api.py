@@ -102,6 +102,12 @@ def test_webhook_imza_ve_url():
     assert json.loads(b) == {"a": 1, "b": "ç"} and h["X-PVQ-Event"] == "tahmin.yeni"
     assert webhook_dogrula("whsec_abc", b, h) and not webhook_dogrula("whsec_baska", b, h)
     assert wh.url_gecerli("https://ornek.com/hook") and wh.url_gecerli("http://localhost:9000/x") and not wh.url_gecerli("http://ornek.com/x")
+    # 03.11 (SSRF): https olsa da iç ağ / özel IP / meta veri / iç ad alanı reddedilir; genel IP ve alan adı geçer
+    for kotu in ("https://127.0.0.1/x", "https://10.0.0.5/x", "https://172.16.3.4/x", "https://192.168.1.1/x", "https://169.254.169.254/latest",
+                 "https://100.64.0.1/x", "https://0.0.0.0/x", "https://[::1]/x", "https://[fd00::1]/x", "https://localhost/x",
+                 "https://api.svc.internal/x", "https://db.local/x", "https://metadata.google.internal/x", "http://10.0.0.5/x"):
+        assert not wh.url_gecerli(kotu), kotu
+    assert wh.url_gecerli("https://8.8.8.8/x") and wh.url_gecerli("https://hooks.ornek.com.tr/pvq")
 
 
 def test_gunluk_toplamlar_kurallari():
@@ -145,3 +151,52 @@ def test_pencere_basi_hizalama():
     assert pencere_basi(a) == pencere_basi(b) == dt.datetime(2026, 10, 25, 12, 0, 0, tzinfo=dt.timezone.utc)
     assert pencere_basi(b + dt.timedelta(microseconds=1)) == dt.datetime(2026, 10, 25, 12, 1, 0, tzinfo=dt.timezone.utc)
     assert pencere_basi(a, 300) == dt.datetime(2026, 10, 25, 12, 0, 0, tzinfo=dt.timezone.utc)
+
+
+def test_yeni_kapsamlar_gerceklesen_alarm_rapor_ayar(monkeypatch):
+    """v2.528 (P10): rezerve kapsamlar canlı — gerceklesen:oku, alarm:oku, rapor:indir, santral:yaz; kapsam yoksa 403; doğrulama ve denetim."""
+    ak._kovalar.clear()
+    tum = ["tahmin:oku", "kgup:oku", "gerceklesen:oku", "alarm:oku", "rapor:indir", "santral:yaz"]
+    monkeypatch.setattr(ak, "_kayit_bul", lambda p: _kayit("gizli", scopes=tum) if p == "abcd1234" else (_kayit("dar", scopes=["tahmin:oku"]) if p == "dar00000" else None))
+    monkeypatch.setattr(ak, "_kullanim_isle", lambda i: None)
+    monkeypatch.setattr(ak, "_paylasimli_izin", lambda p, r, t: ak._kova_izin(p, r))
+    from pvquant.services import plant_service, sayac_service, alarm_service, aylik_rapor_service
+    monkeypatch.setattr(plant_service, "getir", lambda t, p: {"id": p, "name": "Konya GES", "capacity_kwp": 4514.0, "tz": "Europe/Istanbul", "params_json": {}} if p == "p1" else None)
+    ix = pd.date_range("2026-10-01 05:00", periods=3, freq="h", tz="UTC")
+    monkeypatch.setattr(sayac_service, "scada_oku", lambda t, p, a, b: pd.DataFrame({"kwh": [700.0, 750.0, float("nan")], "flag": "valid", "kaynak": ["scada_dosya", "scada_dosya", "epias_seffaflik"]}, index=ix))
+    monkeypatch.setattr(sayac_service, "sayac_oku", lambda t, p, a, b: pd.DataFrame({"kaynak": ["epys"], "veris_kwh": [600.0], "cekis_kwh": [0.0], "nitelik": ["olculmus"], "n_dilim": [4]}, index=ix[:1]))
+    monkeypatch.setattr(alarm_service, "listele", lambda t, p, n: [{"id": "a1", "kural": "sayac_eksik_saat", "siddet": "warning", "mesaj": "m", "zaman": "2026-11-03T04:00:00+00:00", "okundu": False, "okuyan": None, "okunma": None, "atanan_id": None, "atanan": None}][:n])
+    monkeypatch.setattr(aylik_rapor_service, "veri", lambda t, p, d=None, bugun=None: {"donem": {"kod": d or "2026-10", "etiket": "Ekim 2026"}, "ozet": {"uretim_kwh": 1.0}})
+    class R:
+        def markdown(self): return "x"
+    monkeypatch.setattr(aylik_rapor_service, "rapor", lambda t, p, d=None, bugun=None: (R(), {"donem": {"kod": d or "2026-10", "etiket": "Ekim 2026"}}))
+    monkeypatch.setattr(aylik_rapor_service, "html", lambda r: "<!doctype html><p>rapor</p>")
+    yazilan = {}
+    monkeypatch.setattr(plant_service, "params_birlestir", lambda t, p, **k: yazilan.update(k) or {"segment": "lisansli_serbest", **k})
+    kayit = []
+    monkeypatch.setattr(api_main._denetim, "kaydet", lambda *a, **k: kayit.append((a, k)))
+    c = TestClient(api_main.app); H = {"X-API-Key": "pvq_abcd1234_gizli"}; DAR = {"X-API-Key": "pvq_dar00000_dar"}
+    try:
+        # gerçekleşen: SCADA ve sayaç; aralık doğrulaması; dar kapsam 403
+        g = c.get("/v1/dis/santral/p1/gerceklesen?bas=2026-10-01&bit=2026-10-01", headers=H); assert g.status_code == 200, g.text
+        j = g.json(); assert j["kaynak"] == "scada" and j["birim"] == "kWh" and j["saat"] == 3 and j["saatlik"][0]["kwh"] == 700.0 and j["saatlik"][2]["kwh"] is None and "UEVM" in j["not"]
+        s2 = c.get("/v1/dis/santral/p1/gerceklesen?bas=2026-10-01&bit=2026-10-01&kaynak=sayac", headers=H).json(); assert s2["saat"] == 1 and s2["saatlik"][0]["nitelik"] == "olculmus" and s2["saatlik"][0]["kaynak"] == "epys"
+        assert c.get("/v1/dis/santral/p1/gerceklesen?kaynak=uevm", headers=H).status_code == 422 and c.get("/v1/dis/santral/p1/gerceklesen?bas=2026-01-01&bit=2026-06-01", headers=H).status_code == 422
+        assert c.get("/v1/dis/santral/p1/gerceklesen?bas=2026-10-02&bit=2026-10-01", headers=H).status_code == 422 and c.get("/v1/dis/santral/p1/gerceklesen", headers=DAR).status_code == 403
+        assert c.get("/v1/dis/santral/yok/gerceklesen", headers=H).status_code == 404
+        # alarmlar
+        a = c.get("/v1/dis/santral/p1/alarmlar?n=5", headers=H); assert a.status_code == 200 and a.json()["alarmlar"][0]["kural_adi"] == "Sayaç verisi eksik" and c.get("/v1/dis/santral/p1/alarmlar", headers=DAR).status_code == 403
+        # rapor: json ve html + denetim izi (aktör yok, anahtar öneki var)
+        r = c.get("/v1/dis/santral/p1/rapor-donem?donem=2026-10", headers=H); assert r.status_code == 200 and r.json()["donem"]["kod"] == "2026-10"
+        assert kayit[-1][0][1] == "rapor_donem_indir" and kayit[-1][1]["aktor_id"] is None and kayit[-1][1]["ayrinti"]["api_anahtar"] == "abcd1234"
+        h = c.get("/v1/dis/santral/p1/rapor-donem?donem=2026-10&fmt=html", headers=H); assert h.status_code == 200 and h.text.startswith("<!doctype") and "attachment" in h.headers["content-disposition"]
+        assert c.get("/v1/dis/santral/p1/rapor-donem?fmt=pdf", headers=H).status_code == 422 and c.get("/v1/dis/santral/p1/rapor-donem", headers=DAR).status_code == 403
+        # ayar yazma: doğrulama, değişen alan, denetim; boş istek 422; dar kapsam 403
+        y = c.put("/v1/dis/santral/p1/ayarlar", json={"uzlastirma_girdi": "sayac", "sayac_turu": "15dk_endeks"}, headers=H); assert y.status_code == 200, y.text
+        assert y.json()["degisen"] == {"uzlastirma_girdi": "sayac", "sayac_turu": "15dk_endeks"} and yazilan == {"uzlastirma_girdi": "sayac", "sayac_turu": "15dk_endeks"} and kayit[-1][0][1] == "sayac_ayar"
+        assert c.put("/v1/dis/santral/p1/ayarlar", json={"uzlastirma_girdi": "uevm"}, headers=H).status_code == 422 and c.put("/v1/dis/santral/p1/ayarlar", json={}, headers=H).status_code == 422
+        assert c.put("/v1/dis/santral/p1/ayarlar", json={"uzlastirma_girdi": "scada"}, headers=DAR).status_code == 403
+        # kapsam listesi ve açıklamalar
+        assert set(ak.CANLI_KAPSAMLAR) == set(tum) and set(ak.KAPSAM_ACIKLAMA) == set(tum)
+    finally:
+        api_main.app.dependency_overrides.clear()

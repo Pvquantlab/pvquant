@@ -9,8 +9,12 @@ const oku = (p: string) => readFileSync(new URL(p, import.meta.url), "utf8");
 test("alarm kuralı adları panel ve arka uçta birebir", () => {
   const py = oku("../../../src/pvquant/services/alarm_service.py");
   const tsx = oku("../../src/features/santralim/Santralim.tsx");
+  const sozluk = oku("../../src/lib/alarmSozluk.ts");   // v2.528 (P10): adlar tek yerde (lib/alarmSozluk ALARM_KURALI); Santralim ve zil buradan okur
   const pyBlok = py.slice(py.indexOf("KURAL_ETIKET = {"), py.indexOf("}", py.indexOf("KURAL_ETIKET = {")) + 1).replace(/#[^\n]*/g, "");
-  const tsBlok = tsx.slice(tsx.indexOf("const KURAL_ADI"), tsx.indexOf("};", tsx.indexOf("const KURAL_ADI")) + 1);
+  const tsBlok = sozluk.slice(sozluk.indexOf("ALARM_KURALI"), sozluk.indexOf("};", sozluk.indexOf("ALARM_KURALI")) + 1);
+  assert.match(tsx, /const KURAL_ADI[^\n]*ALARM_KURALI/, "Santralim KURAL_ADI sözlükten gelmeli");
+  const kabuk = oku("../../src/shell/Kabuk.tsx");
+  assert.match(kabuk, /ALARM_KURALI\[x\.kural\]/, "zil de sözlükten okumalı (ENV-F05-4)");
   const cift = (s: string) => Object.fromEntries([...s.matchAll(/["']?([a-z_]+)["']?\s*:\s*"([^"]+)"/g)].map((m) => [m[1], m[2]]));
   const arka = cift(pyBlok), on = cift(tsBlok);
   assert.ok(Object.keys(arka).length >= 8, "arka uç etiketleri okunamadı");

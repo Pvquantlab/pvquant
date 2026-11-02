@@ -18,11 +18,32 @@ OLAYLAR = ("tahmin.yeni", "alarm.yeni", "deneme")   # v2.519 (P7a): alarm.yeni �
 ZAMAN_ASIMI_SN = 10.0
 
 
+GELISTIRME_HOSTLAR = ("localhost", "127.0.0.1", "host.docker.internal")
+_IC_SONEKLER = (".localhost", ".internal", ".local", ".lan", ".home", ".corp")   # 03.11: genel ağ dışı ad alanları
+
+
+def _ic_adres(host: str) -> bool:
+    """03.11 (v2.528 inceleme, SSRF): hedef sunucunun kendi ağı — döngü, özel (RFC 1918), bağlantı-yerel / bulut meta veri
+    (169.254.x), paylaşımlı (100.64/10), 0.0.0.0, IPv6 eşdeğerleri ve iç ad alanları. Ad çözümü YAPILMAZ (dış ağa
+    çıkılmaz); adı özel IP'ye çözülen hedef bu süzgeçten geçer — bilinen sınır, gönderimde ağ katmanı sorumludur."""
+    import ipaddress
+    h = (host or "").strip().lower().rstrip(".")
+    if not h or h in GELISTIRME_HOSTLAR or h.endswith(_IC_SONEKLER) or h == "metadata.google.internal":
+        return True
+    try:
+        ip = ipaddress.ip_address(h.strip("[]"))
+    except ValueError:
+        return False
+    return (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast or ip.is_reserved or ip.is_unspecified
+            or ip in ipaddress.ip_network("100.64.0.0/10"))
+
+
 def url_gecerli(url: str) -> bool:
+    """https ve genel ağda bir adres; http yalnız geliştirme ana makineleri (localhost/127.0.0.1/host.docker.internal)."""
     u = urlparse((url or "").strip())
     if u.scheme == "https" and u.netloc:
-        return True
-    return u.scheme == "http" and u.hostname in ("localhost", "127.0.0.1", "host.docker.internal")   # yalnız geliştirme
+        return not _ic_adres(u.hostname or "")
+    return u.scheme == "http" and u.hostname in GELISTIRME_HOSTLAR   # yalnız geliştirme
 
 
 def istek_hazirla(secret: str, olay: str, govde: dict, zaman: int | None = None) -> tuple[bytes, dict]:
@@ -37,7 +58,7 @@ def ekle(tenant_id, url: str, plant_id: str | None = None, olaylar: list[str] | 
     from sqlalchemy import text
     from pvquant.db import tenant_baglami
     if not url_gecerli(url):
-        raise ValueError("url https:// ile başlamalı")
+        raise ValueError("url https:// ile başlamalı ve genel ağda bir adres olmalı (iç ağ / özel IP kabul edilmez)")
     ol = sorted(set(olaylar or ["tahmin.yeni"]))
     if not set(ol) <= set(OLAYLAR):
         raise ValueError(f"bilinmeyen olay: {sorted(set(ol) - set(OLAYLAR))}")

@@ -1,0 +1,257 @@
+{
+"segment": "lisansli_serbest",
+"satirlar": [
+{
+"gecerlilik_bas": "2023-01-01",
+"gecerlilik_bitis": "2023-01-31",
+"rejim": "2025",
+"kural_surumu": "edt-2025+kupst-9422",
+"k": {
+"acik": 0.03,
+"fazla": 0.03,
+"dengede": 0.03
+},
+"l": {
+"acik": 0.03,
+"fazla": 0.03,
+"dengede": 0.03
+},
+"V": null,
+"B": null,
+"AFL": null,
+"AFL_son": 4200.0,
+"AFL_degisken": true,
+"aylik_toplama": "net",
+"kupst": {
+"m": 0.1,
+"n": 0.03,
+"n_ariza": null,
+"ariza_esigi": null,
+"taban": 0.0,
+"net_sapma": false,
+"birim": "santral",
+"dayanak": "Karar 9422 (RG 3.7.2020-31174; 1.8.2020'den)"
+},
+"dsg_esik": 0.1,
+"dsg_dayanak": "DUY m.111(5), RG 17.12.2024-32755 Md.24 (%10; yürürlük 1.1.2025)",
+"edt_dayanak": "DUY m.110 (RG 2.2.2020-31027 Md.32); k = l = 0,03 — EPDK 4-16180 (22.09.2025) k/l karar taslağı «Mevcut Metin»: 01/05/2015'ten 0,03 (asıl karar no bulunamadı); 2.2.2020 öncesi formül farklı, 1.12.2011–30.4.2015 k = l = 0 (geçici m.21) — kapsam dışı",
+"belirsiz_2027": false
+},
+{
+"gecerlilik_bas": "2023-02-01",
+"gecerlilik_bitis": "2024-12-31",
+"rejim": "2025",
+"kural_surumu": "edt-2025+kupst-11589",
+"k": {
+"acik": 0.03,
+"fazla": 0.03,
+"dengede": 0.03
+},
+"l": {
+"acik": 0.03,
+"fazla": 0.03,
+"dengede": 0.03
+},
+"V": null,
+"B": null,
+"AFL": null,
+"AFL_son": 3000.0,
+"AFL_degisken": true,
+"aylik_toplama": "net",
+"kupst": {
+"m": 0.12,
+"n": 0.03,
+"n_ariza": null,
+"ariza_esigi": null,
+"taban": 0.0,
+"net_sapma": false,
+"birim": "santral",
+"dayanak": "Karar 11589-2 (RG 27.1.2023-32086)"
+},
+"dsg_esik": 0.1,
+"dsg_dayanak": "DUY m.111(5), RG 17.12.2024-32755 Md.24 (%10; yürürlük 1.1.2025)",
+"edt_dayanak": "DUY m.110 (RG 2.2.2020-31027 Md.32); k = l = 0,03 — EPDK 4-16180 (22.09.2025) k/l karar taslağı «Mevcut Metin»: 01/05/2015'ten 0,03 (asıl karar no bulunamadı); 2.2.2020 öncesi formül farklı, 1.12.2011–30.4.2015 k = l = 0 (geçici m.21) — kapsam dışı",
+"belirsiz_2027": false
+},
+{
+"gecerlilik_bas": "2025-01-01",
+"gecerlilik_bitis": "2025-12-31",
+"rejim": "2025",
+"kural_surumu": "edt-2025+kupst-13025",
+"k": {
+"acik": 0.03,
+"fazla": 0.03,
+"dengede": 0.03
+},
+"l": {
+"acik": 0.03,
+"fazla": 0.03,
+"dengede": 0.03
+},
+"V": null,
+"B": null,
+"AFL": null,
+"AFL_son": 3400.0,
+"AFL_degisken": true,
+"aylik_toplama": "net",
+"kupst": {
+"m": 0.1,
+"n": 0.03,
+"n_ariza": 0.05,
+"ariza_esigi": 40,
+"taban": 750.0,
+"net_sapma": false,
+"birim": "santral",
+"dayanak": "Karar 13025 Md.2(1)(c) YEK satırı, Md.3(1) (RG 17.12.2024-32755 s.3); taban DUY m.110(3)"
+},
+"dsg_esik": 0.1,
+"dsg_dayanak": "DUY m.111(5), RG 17.12.2024-32755 Md.24 (%10; yürürlük 1.1.2025)",
+"edt_dayanak": "DUY m.110 (RG 2.2.2020-31027 Md.32); k = l = 0,03 — EPDK 4-16180 (22.09.2025) k/l karar taslağı «Mevcut Metin»: 01/05/2015'ten 0,03 (asıl karar no bulunamadı); 2.2.2020 öncesi formül farklı, 1.12.2011–30.4.2015 k = l = 0 (geçici m.21) — kapsam dışı",
+"belirsiz_2027": false
+},
+{
+"gecerlilik_bas": "2026-01-01",
+"gecerlilik_bitis": "2026-10-18",
+"rejim": "2026",
+"kural_surumu": "edt-2026-V150-edta_net+kupst-14029",
+"k": {
+"acik": 0.06,
+"fazla": 0.03,
+"dengede": 0.03
+},
+"l": {
+"acik": 0.03,
+"fazla": 0.06,
+"dengede": 0.03
+},
+"V": 150.0,
+"B": 100.0,
+"AFL": 3400.0,
+"AFL_son": 4500.0,
+"AFL_degisken": true,
+"aylik_toplama": "edta_net",
+"kupst": {
+"m": 0.08,
+"n": 0.05,
+"n_ariza": 0.08,
+"ariza_esigi": 30,
+"taban": 750.0,
+"net_sapma": false,
+"birim": "santral",
+"dayanak": "Karar 14029 Md.2(1)(ç), Md.3(1) (RG 29.12.2025-33122)"
+},
+"dsg_esik": 0.05,
+"dsg_dayanak": "Karar 13869 (RG 18.10.2025-33051), 1.1.2026'dan %5",
+"edt_dayanak": "DUY m.110(1)-(2) (RG 29.12.2025-33122 Md.17); Karar 14030 (k/l); V = 150 başlangıç; EDTA = max(ΣΣEDT(+);0), EDTB = ΣΣEDT(−) − min(ΣΣEDT(+);0) (RG 33122 Md.17); AFL 3400: Karar 13423 (RG 5.4.2025-32861)",
+"belirsiz_2027": false
+},
+{
+"gecerlilik_bas": "2026-10-19",
+"gecerlilik_bitis": "2026-10-31",
+"rejim": "2026",
+"kural_surumu": "edt-2026-V150-edta_ayrik+kupst-14029",
+"k": {
+"acik": 0.06,
+"fazla": 0.03,
+"dengede": 0.03
+},
+"l": {
+"acik": 0.03,
+"fazla": 0.06,
+"dengede": 0.03
+},
+"V": 150.0,
+"B": 100.0,
+"AFL": 4500.0,
+"AFL_son": 4500.0,
+"AFL_degisken": false,
+"aylik_toplama": "edta_ayrik",
+"kupst": {
+"m": 0.08,
+"n": 0.05,
+"n_ariza": 0.08,
+"ariza_esigi": 30,
+"taban": 750.0,
+"net_sapma": false,
+"birim": "santral",
+"dayanak": "Karar 14029 Md.2(1)(ç), Md.3(1) (RG 29.12.2025-33122)"
+},
+"dsg_esik": 0.05,
+"dsg_dayanak": "Karar 13869 (RG 18.10.2025-33051), 1.1.2026'dan %5",
+"edt_dayanak": "DUY m.110(1)-(2) (RG 29.12.2025-33122 Md.17); Karar 14030 (k/l); V = 150 başlangıç; EDTA/EDTB dönem bazlı max/min (RG 19.10.2026-33405 Md.22); AFL 4500: Karar 14459 (RG 3.4.2026-33213 s.47)",
+"belirsiz_2027": false
+},
+{
+"gecerlilik_bas": "2026-11-01",
+"gecerlilik_bitis": "2026-12-31",
+"rejim": "2026",
+"kural_surumu": "edt-2026-V100-edta_ayrik+kupst-14907",
+"k": {
+"acik": 0.06,
+"fazla": 0.03,
+"dengede": 0.03
+},
+"l": {
+"acik": 0.03,
+"fazla": 0.06,
+"dengede": 0.03
+},
+"V": 100.0,
+"B": 100.0,
+"AFL": 4500.0,
+"AFL_son": 4500.0,
+"AFL_degisken": false,
+"aylik_toplama": "edta_ayrik",
+"kupst": {
+"m": 0.08,
+"n": 0.05,
+"n_ariza": 0.08,
+"ariza_esigi": 30,
+"taban": 750.0,
+"net_sapma": true,
+"birim": "santral",
+"dayanak": "Karar 14907 Md.1(1) net sapma, Md.2(1)(f), Md.3(1)(b) (RG 19.10.2026-33405)"
+},
+"dsg_esik": 0.05,
+"dsg_dayanak": "Karar 13869 (RG 18.10.2025-33051), 1.1.2026'dan %5",
+"edt_dayanak": "DUY m.110(1)-(2) (RG 29.12.2025-33122 Md.17); Karar 14030 (k/l); Karar 14911 (V = 100); EDTA/EDTB dönem bazlı max/min (RG 19.10.2026-33405 Md.22); AFL 4500: Karar 14459 (RG 3.4.2026-33213 s.47)",
+"belirsiz_2027": false
+},
+{
+"gecerlilik_bas": "2027-01-01",
+"gecerlilik_bitis": null,
+"rejim": "2026",
+"kural_surumu": "edt-2026-V100-edta_ayrik+kupst-14907",
+"k": {
+"acik": 0.06,
+"fazla": 0.03,
+"dengede": 0.03
+},
+"l": {
+"acik": 0.03,
+"fazla": 0.06,
+"dengede": 0.03
+},
+"V": 100.0,
+"B": 100.0,
+"AFL": 4500.0,
+"AFL_son": 4500.0,
+"AFL_degisken": false,
+"aylik_toplama": "edta_ayrik",
+"kupst": {
+"m": 0.08,
+"n": 0.05,
+"n_ariza": 0.08,
+"ariza_esigi": 30,
+"taban": 750.0,
+"net_sapma": true,
+"birim": "santral",
+"dayanak": "Karar 14907 Md.1(1) net sapma, Md.2(1)(f), Md.3(1)(b) (RG 19.10.2026-33405)"
+},
+"dsg_esik": 0.05,
+"dsg_dayanak": "Karar 13869 yürürlükte (süre sınırı yok, %5); DUY m.111(5) uyarınca yıllık düşürme kararı en geç 1.12.2026'da alınır, RG yayımı Aralık sonuna sarkabilir; yön riski aşağı — %5 VARSAYILDI",
+"edt_dayanak": "DUY m.110(1)-(2) (RG 29.12.2025-33122 Md.17); Karar 14030 (k/l); Karar 14911 (V = 100); EDTA/EDTB dönem bazlı max/min (RG 19.10.2026-33405 Md.22); AFL 4500: Karar 14459 (RG 3.4.2026-33213 s.47)",
+"belirsiz_2027": true
+}
+]
+}

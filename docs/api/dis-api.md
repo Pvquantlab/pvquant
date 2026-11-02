@@ -8,7 +8,7 @@ Müşteri sistemlerinin (SCADA/EMS, ticaret masası, portföy yazılımı) PVQua
 - Yönetici, panelde **Kuruluş › Dış erişim** kartından anahtar üretir. Anahtar `pvq_<önek>_<sır>` biçimindedir ve
   **yalnız bir kez** gösterilir; sunucu yalnız sha256 özetini saklar.
 - Her istekte başlık: `X-API-Key: pvq_…`
-- Kapsamlar: `tahmin:oku` (santral listesi + saatlik tahmin), `kgup:oku` (KGÜP programı). Kapsam dışı → 403.
+- Kapsamlar: `tahmin:oku` (santral listesi + saatlik tahmin), `kgup:oku` (KGÜP programı, sürüm geçmişi, toplayıcı dosyası), `gerceklesen:oku` (gerçekleşen üretim), `alarm:oku` (alarm listesi), `rapor:indir` (dönem raporu), `santral:yaz` (sayaç ayarı alanları). Kapsam dışı → 403. (v2.528: dört kapsam canlıya alındı.)
 - Oran sınırı anahtar başına dakikada `rpm` (varsayılan 120) → aşımda 429. Geçersiz/iptal/süresi dolmuş → 401.
 
 ## Uçlar
@@ -19,6 +19,11 @@ Müşteri sistemlerinin (SCADA/EMS, ticaret masası, portföy yazılımı) PVQua
 | `GET /v1/dis/santral/{id}/tahmin` | tahmin:oku | Son koşunun saatlik P10/P50/P90 (kW, UTC) + koşu kimliği |
 | `GET /v1/dis/santral/{id}/kgup?gun=YYYY-MM-DD&kantil=p50&fmt=json|csv` | kgup:oku | KGÜP saatlik program (CSV ya da JSON; `kantil` p10/p25/p50/p75/p90); gün verilmezse İstanbul yarını. Tahmini eksik saat varsa **422** (0 yazılmaz). JSON `sha256`, `kosu`, `sablon.durum` taşır; dosya biçimi resmî TPYS şablonuyla karşılaştırılmadı, gönderim müşterinin TPYS'sinden |
 | `GET /v1/dis/santral/{id}/toplayici?gun=YYYY-MM-DD&fmt=csv|xlsx|json&adim=60|15` | kgup:oku | Toplayıcı/DSG program dosyası: P10/P50/P90 MW + EAK; `adim=15` ile çeyrek saatlik veri (15 dk DGP uzlaştırması en erken 1.1.2027, DUY Geçici 40; fiilî tarih EPİAŞ/TEİAŞ duyurusuna bağlı). Kolon adları santralın `toplayici_sablon` eşlemesiyle değiştirilebilir |
+| `GET /v1/dis/santral/{id}/kgup/surumler?gun=&n=` | kgup:oku | KGÜP sürüm geçmişi (indirilen dosyalar: sürüm, kaynak koşu, kesim, SHA-256) |
+| `GET /v1/dis/santral/{id}/gerceklesen?bas=YYYY-MM-DD&bit=YYYY-MM-DD&kaynak=scada|sayac` | gerceklesen:oku | Saatlik gerçekleşen üretim, kWh, UTC saat başı. `scada`: geçerli SCADA ölçümü (brüt; kaynak scada_dosya / epias_seffaflik). `sayac`: yüklü sayaç verisi (net veriş; kaynak epys/osos/mass/elle, nitelik ölçülmüş/tahmini). En çok 92 gün; verilmezse son 7 Türkiye günü. Uzlaştırmaya esas UEVM değildir. |
+| `GET /v1/dis/santral/{id}/alarmlar?n=20` | alarm:oku | Alarm listesi (yeni → eski, en çok 200): kural kodu + Türkçe adı, şiddet, mesaj, zaman, okunma/atama |
+| `GET /v1/dis/santral/{id}/rapor-donem?donem=YYYY-MM|YYYY-QN|YYYY&fmt=json|html` | rapor:indir | Dönem raporu (panelin Raporlar › Dönem raporu ile aynı hesap): üretim, gün başı beklentisi, olay kaydı, kullanılabilirlik, temel PR, ay döneminde uzlaştırma kalemleri; `html` indirilebilir dosya. Denetim izine düşer. |
+| `PUT /v1/dis/santral/{id}/ayarlar` (JSON gövde) | santral:yaz | Sayaç ayarı alanları: `sayac_turu` (15dk_endeks|diger), `scada_durum` (bagli|kopuk|yok), `scada_kopukluk_baslangic` (YYYY-MM-DD), `uzaktan_acma_var` (bool), `sistem_kullanim_bedeli_tl_ay`, `uzlastirma_girdi` (scada|sayac). Yalnız gönderilen alanlar değişir, null temizler; boş gövde 422. Künye/segment/tarife bu kapsamda değildir. |
 
 `tahmin` yanıtı `ETag: W/"<koşu id>"` taşır. `If-None-Match` ile aynı değeri gönderirseniz koşu değişmediyse
 **304** döner (gövde yok) — 60 saniyede bir yoklamak ucuzdur. Bant yoksa `p10_kw`/`p90_kw` `null` gelir.

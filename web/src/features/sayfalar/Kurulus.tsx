@@ -6,7 +6,8 @@ import { Meta } from "../../lib/Meta";
 import { AyrintiCipleri } from "../../lib/AyrintiCipleri";
 
 /** 23.10 sekizinci tur — kapsam tanımlayıcısının kullanıcı dili (değer ve yetki anlamı aynı; bilinmeyen kapsam kodla kalır). */
-const KAPSAM_AD: Record<string, string> = { "tahmin:oku": "Tahmin okuma", "kgup:oku": "KGÜP programı okuma" };
+const KAPSAM_AD: Record<string, string> = { "tahmin:oku": "Tahmin okuma", "kgup:oku": "KGÜP programı okuma",
+  "gerceklesen:oku": "Gerçekleşen üretim okuma", "alarm:oku": "Alarm okuma", "rapor:indir": "Dönem raporu indirme", "santral:yaz": "Santral ayarı yazma" };   // v2.528 (P10): rezerve kapsamlar canlı
 
 /** 26.10 Faz 6 — KURULUŞ: Portföy'den taşınan yönetim kartları (Dış erişim, Kuruluşlar arası paylaşım, Hesap ve ekip, Santral arşivi —
  *  bileşenler ve mantıkları AYNEN), + müşteri içi denetim izi (yalnız yönetici) + «yöneticiler için 2FA zorunlu» politikası.
@@ -124,6 +125,7 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
   // 24.10: dönüşte bellekteki son listeyle başlar — «Henüz anahtar yok» yanıp sönmesi biter; yenile() tazeler
   const [anahtarlar, setAnahtarlar] = useState<ApiAnahtar[]>(() => bellektenOku<{ anahtarlar: ApiAnahtar[] }>("/v1/api-anahtarlari")?.anahtarlar ?? []);
   const [kapsamlar, setKapsamlar] = useState<string[]>(() => bellektenOku<{ kapsamlar: string[] }>("/v1/api-anahtarlari")?.kapsamlar ?? []);
+  const [kapsamAciklama, setKapsamAciklama] = useState<Record<string, string>>(() => bellektenOku<{ kapsam_aciklama?: Record<string, string> }>("/v1/api-anahtarlari")?.kapsam_aciklama ?? {});
   const [webhooklar, setWebhooklar] = useState<Webhook[]>(() => bellektenOku<{ webhooklar: Webhook[] }>("/v1/webhooklar")?.webhooklar ?? []);
   const [ad, setAd] = useState(""); const [secili, setSecili] = useState<string[]>(["tahmin:oku"]);
   const [yeniAnahtar, setYeniAnahtar] = useState<string | null>(null);
@@ -131,7 +133,7 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
   const [yeniSir, setYeniSir] = useState<string | null>(null);
   const [hata, setHata] = useState<string | null>(null); const [mesaj, setMesaj] = useState<string | null>(null);
   const yenile = () => {
-    api.apiAnahtarlari().then((r) => { setAnahtarlar(r.anahtarlar); setKapsamlar(r.kapsamlar); }).catch((e) => setHata(String(e.message ?? e)));
+    api.apiAnahtarlari().then((r) => { setAnahtarlar(r.anahtarlar); setKapsamlar(r.kapsamlar); setKapsamAciklama(r.kapsam_aciklama ?? {}); }).catch((e) => setHata(String(e.message ?? e)));
     api.webhooklar().then((r) => setWebhooklar(r.webhooklar)).catch(() => {});
   };
   useEffect(yenile, []);
@@ -174,7 +176,7 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
                 {kapsamlar.map((k) => (
                   <label key={k} className="ayar-onay onay-kapsam">
                     <input type="checkbox" checked={secili.includes(k)} onChange={(e) => setSecili(e.target.checked ? [...secili, k] : secili.filter((x) => x !== k))} />
-                    <span className="onay-metin"><span className="onay-ad">{KAPSAM_AD[k] ?? k}</span><span className="kod">{k}</span></span>
+                    <span className="onay-metin" title={kapsamAciklama[k] ?? undefined}><span className="onay-ad">{KAPSAM_AD[k] ?? k}</span><span className="kod">{k}</span></span>
                   </label>))}
               </div>
             </div>
@@ -234,6 +236,11 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
           <UcKopyala yol="/v1/dis/santraller" />
           <UcKopyala yol="/v1/dis/santral/{id}/tahmin" />
           <UcKopyala yol="/v1/dis/santral/{id}/kgup" />
+          <UcKopyala yol="/v1/dis/santral/{id}/kgup/surumler" />
+          <UcKopyala yol="/v1/dis/santral/{id}/gerceklesen" />
+          <UcKopyala yol="/v1/dis/santral/{id}/alarmlar" />
+          <UcKopyala yol="/v1/dis/santral/{id}/rapor-donem" />
+          <UcKopyala yol="/v1/dis/santral/{id}/ayarlar" />
         </div>
         <ul className="tanim-listesi">
           <li><b>Önbellek</b>tahmin ucu ETag ile 304 döner.</li>

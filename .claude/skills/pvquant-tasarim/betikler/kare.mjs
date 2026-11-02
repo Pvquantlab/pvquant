@@ -9,7 +9,7 @@ import http from "node:http";
 const [port, base, dizin, genislikArg, sayfaArg] = process.argv.slice(2);
 if (!port || !base || !dizin) { console.error("kullanım: node kare.mjs <port> <base> <dizin> [genişlikler] [sayfalar]"); process.exit(2); }
 const GENISLIKLER = (genislikArg ?? "375,768,1024,1440,1920").split(",").map(Number);
-const PANEL = ["Portföy", "Santralim", "Veri yükleme", "Kalibrasyon", "Tahminler", "Doğruluk", "Takvim", "Olay kaydı", "Mutabakat", "Sayaç", "Aylık beklenti", "Raporlar", "Hakkında"];   // 01.11: Takvim (v2.518), Olay kaydı (v2.521)
+const PANEL = ["Portföy", "Santralim", "Veri yükleme", "Kalibrasyon", "Tahminler", "Doğruluk", "Takvim", "Olay kaydı", "Mutabakat", "Sayaç", "Aylık beklenti", "Raporlar", "Ayarlar", "Hakkında"];   // 03.11 v2.528: Ayarlar (Kuruluş) sayfası da karede   // 01.11: Takvim (v2.518), Olay kaydı (v2.521)
 const SAYFALAR = sayfaArg && sayfaArg !== "-" ? sayfaArg.split(",") : [...PANEL, "vitrin", "yontem"];
 fs.mkdirSync(dizin, { recursive: true });
 

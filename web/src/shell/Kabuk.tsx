@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { SOZLUK } from "../lib/sozluk";
+import { ALARM_KURALI } from "../lib/alarmSozluk";
 import { api, type AlarmSatiri, rolum } from "../api/client";
 import { IkiAdimBolumu } from "../features/sayfalar/Kurulus";   // 26.10 Faz 6: 2FA kurulum kapısı
 import type { SantralOzeti, Kullanici } from "../api/types";
@@ -305,14 +306,7 @@ export function Kabuk({ sayfa, tiklanan, setSayfa, santral, plantId, onCikis, ch
                   alarmlar.map((x) => (
                     <div key={x.id} className="zil-satir">
                       <div className="zil-ust">
-                        <b>{{ veri_gelmedi: "Veri gelmedi",
-                              skill_dustu: "Tahmin doğruluğu düştü",
-                              pr_dustu: "Performans oranı düştü",           // v2.265
-                              clipping_orani_yuksek: "Kırpma oranı yüksek",
-                              iletisim_kesintisi: "İletişim kesintisi",
-                              kullanilabilirlik_dustu: "Kullanılabilirlik düştü",           // v2.288
-                              kgup_teslim_gecikti: "Program bildirimi hazırlanamadı",
-                              dengesizlik_asimi: "Dengesizlik maliyeti yüksek" }[x.kural] ?? "Alarm"}</b>
+                        <b>{ALARM_KURALI[x.kural] ?? "Alarm"}</b>
                         <span className="mono">{(() => {
                           const d = new Date(x.zaman);
                           return isNaN(+d) ? "—" : d.toLocaleDateString("tr-TR",

@@ -34,7 +34,7 @@ lisanssız m/n; GTŞ/toplayıcı UEVÇB'si 1.11.2026 öncesi; 2027 DSG oranı (k
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 
 import pandas as pd
 
@@ -314,16 +314,44 @@ def parametre_cercevesi(index: pd.DatetimeIndex, segment: str | None = None, ari
     return out
 
 
+TABLO_BAS = date(2023, 1, 1)
+TABLO_UFUK = date(2027, 1, 1)
+
+
+def _imza(r: "Kural") -> tuple:
+    """Tablo satırını belirleyen alanlar (AFL hariç — fiyat tavanı ayrı zincir, satırda başlangıç/son değeriyle verilir)."""
+    return (r.surum, r.edt.rejim, tuple(sorted(r.edt.k.items())), tuple(sorted(r.edt.l.items())), r.edt.V, r.edt.toplama,
+            r.kupst.m, r.kupst.n, r.kupst.n_ariza, r.kupst.ariza_esigi, r.kupst.taban, r.kupst.net_sapma, r.dsg_esik, r.belirsiz_2027)
+
+
+def donem_sinirlari(segment: str | None = "lisansli_serbest", bas: date = TABLO_BAS, ufuk: date = TABLO_UFUK) -> list[date]:
+    """03.11 (v2.528 inceleme): dönem sınırları elle yazılmaz, kural motoru GÜN GÜN taranır ve imza değiştiği gün yeni dönem
+    açılır. Böylece Hakkında tablosu motorun bir tarihe uyguladığı kuralla çelişemez (eski liste 1.2.2023 Karar 11589-2
+    geçişini atlıyor, 2023 satırı 17 ay boyunca m = 0,10 gösteriyordu; motor 0,12 uyguluyordu)."""
+    out = [bas]; son = _imza(kural(bas, segment)); g = bas
+    while g < ufuk:
+        g = g + timedelta(days=1)
+        imza = _imza(kural(g, segment))
+        if imza != son:
+            out.append(g); son = imza
+    if ufuk not in out:
+        out.append(ufuk)   # 2027: «belirsiz» satırı imzayla zaten açılır; güvence
+    return out
+
+
 def tablo(segment: str | None = "lisansli_serbest") -> list[dict]:
-    """Yönetici ekranı / API için salt okunur satırlar: parametre, geçerlilik, değer, dayanak."""
-    sinirlar = [date(2023, 1, 1), date(2024, 7, 1), date(2025, 1, 1), date(2025, 4, 5), date(2026, 1, 1), date(2026, 4, 4),
-                date(2026, 10, 19), date(2026, 11, 1), date(2027, 1, 1)]
+    """Yönetici ekranı / API için salt okunur satırlar: parametre, geçerlilik, değer, dayanak.
+    AFL: dönem başı ve dönem sonu değeri (fiyat tavanı dönem içinde değişebilir; saatlik hesap kendi gününün tavanını alır)."""
+    sinirlar = donem_sinirlari(segment)
     out = []
     for i, bas in enumerate(sinirlar):
-        bitis = (sinirlar[i + 1] - pd.Timedelta(days=1)).isoformat() if i + 1 < len(sinirlar) else None
+        bitis_d = (sinirlar[i + 1] - timedelta(days=1)) if i + 1 < len(sinirlar) else None
+        bitis = bitis_d.isoformat() if bitis_d else None
         r = kural(bas, segment)
+        afl_son = afl(bitis_d) if bitis_d else afl(max(bas, pd.Timestamp.now(tz=IST).date()))
         out.append({"gecerlilik_bas": bas.isoformat(), "gecerlilik_bitis": bitis, "rejim": r.edt.rejim, "kural_surumu": r.surum,
-                    "k": r.edt.k, "l": r.edt.l, "V": r.edt.V, "B": r.edt.B, "AFL": r.edt.AFL, "aylik_toplama": r.edt.toplama,
+                    "k": r.edt.k, "l": r.edt.l, "V": r.edt.V, "B": r.edt.B, "AFL": r.edt.AFL, "AFL_son": afl_son,
+                    "AFL_degisken": afl_son != r.edt.AFL, "aylik_toplama": r.edt.toplama,
                     "kupst": {"m": r.kupst.m, "n": r.kupst.n, "n_ariza": r.kupst.n_ariza, "ariza_esigi": r.kupst.ariza_esigi,
                               "taban": r.kupst.taban, "net_sapma": r.kupst.net_sapma, "birim": r.kupst.birim, "dayanak": r.kupst.dayanak},
                     "dsg_esik": r.dsg_esik, "dsg_dayanak": r.dsg_dayanak, "edt_dayanak": r.edt.dayanak,
