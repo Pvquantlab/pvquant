@@ -613,3 +613,37 @@ ozet), test_mutabakat +1 (40/4/4 saat; kiyas EDT +7.200 / KÜPST +480; «kısmi�
 Doğrulanamayan / sonraya: sayaç dosyasının UEVM ile aynılığı (EPYS dışa aktarımı birebir sınanmadı); SCADA'sız saatlerin sayaçla eklenmesi; resmî saatlik
 tutar yok → eş kapsamlı karşılaştırma üretilmedi, orantılı paylaştırma yapılmadı (P2b-2); Doğruluk 90 günlük simülasyon SCADA ile kalır; 15 dk DGP geçişi.
 Tahmin motoru, kalibrasyon ve uzlaştırma formülleri değişmedi.
+
+# Yirmi yedinci paket — v2.527 (03.11.2026 gece, canlı): Mutabakat — EPYS saatlik detay dosyası içe alma, eş kapsamlı saatlik kıyas ve fark ayrıştırması (fiyat / üretim / program / EDM-pozisyon / yuvarlama / kural-yön)
+
+Commit `55b2ef7`, CI #666 (4 dk 31 s). Dağıtım: api + worker + web imajı (ssh; 22. port açıktı); **göç `v2527_saatlik_detay` canlıda DB sahibiyle** (uzlastirma_saatlik,
+RLS, pvq_app SELECT/INSERT). Canlı: index.html ve JS/CSS birebir (25/25); api «startup complete»; worker «basladi»; `mutabakat/saatlik` ucu kimlik olmadan 422.
+Kaynak: yol haritası dalga 2 P2b-2 (02 M36/M40'ta sonraya bırakılan) ve 02.11 Mutabakat brief'inin «eş kapsamlı karşılaştırma» boşluğu; IH-028 (EPYS dökümlerinin içe
+aktarımı: saatlik detay XLSX — UEVM, KUDÜP, BUDÜP, YALM/YATM, PTF, SMF, KÜPSM/KÜPST, EDM/EDT), 02-24 (EPYS detay ekranları kolonları; resmî dosya başlıkları görülmedi).
+saatlik_detay_service: `dosya_oku` (CSV/XLSX 20.000 satıra kadar; başlık = tarih (+saat) sütunu + ≥2 bilinen ölçüm sütunu; dd.mm.yyyy[ HH:MM], yyyy-mm-dd[ HH:MM:SS],
+«HH:00-HH:00», 0–23; Türkiye saati → UTC saat başı; yinelenen saat son satır; dönem ilk satırdan, çok ay uyarısı; ekran türü sütunlardan detay | dengesizlik | kupst),
+`kaydet` (≤5 MB; dönem uyuşmazlığı/gelecek 422; her yükleme yeni yukleme_id, silme yok), `yuklemeler`, `oku` (ekran bazında en son yükleme, saat bazında dış birleşim,
+«detay» öncelikli), `kiyas` (PVQuant dökümü dönem dilimi UTC'ye çevrilir; yalnız ortak saatler; toplamlar EDT net/pozitif/negatif ve KÜPST EPİAŞ ↔ PVQuant, UEVM ↔
+gerçekleşen; ayrıştırma sırası: fiyat |ΔPTF/SMF| > 0,01 TL/MWh → üretim |UEVM − gerçekleşen| > 0,5 kWh → program |BUDÜP − program| > 0,5 kWh → EDM/pozisyon (üretim ve
+program eşitken EPİAŞ EDM ≠ PVQuant sapması: İA / pozisyon / DSG payı) → yuvarlama (girdiler tolerans içinde, sıfır değil, |ΔEDT| ≤ 5 TL) → kalan kural/yön (k/l, sürüm,
+hesap); satırda EDM/sapma ve PVQuant'ın sistem yönü; `neden_aciklama`; en büyük 10 saat; saatlik satırlar), `kiyas_csv`, `ozet_kisa`. mutabakat_service: yanıta
+`saatlik_detay` özeti; eylem metninde kapsam notundan SONRA «Eş kapsamlı kıyas (ortak N saat): dengesizlik neti EPİAŞ / PVQuant / fark» (bildirim olmasa da).
+API: POST `/v1/plants/{id}/mutabakat/saatlik` (dosya, donem; denetim «mutabakat_saatlik_yukle»), GET `…/mutabakat/saatlik?donem&uretim&fmt=json|csv»
+(«mutabakat_saatlik_indir»); sözlük etiketleri.
+Web: Mutabakat — «Saatlik detay kıyası (EPYS)» kartı (yükleme formu; KPI'lar: ortak saat, dengesizlik neti EPİAŞ, dengesizlik neti PVQuant, **eş kapsamlı dengesizlik
+farkı** + KÜPST borcu ayrı satır; fark ayrıştırması cümlesi; en büyük farklı 10 saat tablosu — PTF, UEVM/gerçekleşen, BUDÜP/program, EDM/sapma · yön, EDT net, fark,
+neden + ipuçları; CSV); «Hesaplama farkı (aylık bildirim)» KPI'sında ikincil satır «saatlik eş kapsamlı, N saat (yalnız dengesizlik)» — iki ölçü ayrı etiketli, birleşik
+eş kapsamlı toplam HESAPLANMADI; sürüm durumu üç yerde aynı: «nihai bildirim (dosyada) — resmî doğrulama bekleniyor» (KPI altı, çip, veri kartı + resmî yayın tarihi);
+«Hesaplamada kullanılan veriler» sadeleşti (Kapsam, Üretim, Program, Fiyat, Bildirim sürümü, Ne yapmalı; «Ayrıntılar» açılır: kural sürümü, güvenilirlik nedenleri,
+sayaç ↔ SCADA, sürüm takvimi); sahte API (a1 Ekim 2026: 744 EPİAŞ saati, 528 ortak; sayaç/SCADA dalı).
+Üç inceleme turu (02 M41): KPI karışması (eş kapsamlı fark ikincil satır) + eylem sırası; brief (mali kapsam / saatlik kıyas / KÜPST / sürüm / kaynak / arayüz, 3 geçiş)
+→ neden sınıfları, etiketler, sürüm durumu, kart sadeleştirme; son kontrol: yeni kusur yok. Oturum yenilenince scratchpad silindi (sahte derleme, sahte API, önizleme,
+commit taslağı, başsız Chrome, test DB yeniden kuruldu).
+Testler: tests/test_saatlik_detay.py 4 (CSV 48 saat tanıma, XLSX tek hücre tarih-saat, yalnız KÜPST ekranı, başlıksız hata, yinelenen/çok ay, _zaman biçimleri;
+kayıt + dönem uyuşmazlığı + gelecek; ekran bazında son yükleme birleşimi 48+1 «detay» öncelikli; kıyas 72 PVQuant ↔ 48 EPİAŞ → ortak 48, ayrıştırma 10/10/5/5/2/5,
+EDT farkı 37 saat, toplam −427 TL, CSV 50 satır + EDM/sapma/yön sütunları; mutabakat özeti + eylem; döküm yoksa ortak 0; API 201/422/200/csv/404). Tam takım 878 passed / 1 skipped;
+web tsc 0, 103, oxlint 0, build; Mutabakat 1440/768/375 taşma 0 (`kanit/mutabakat-saatlik-detay-{1440,768,375}-2026-11-02.jpg`).
+Doğrulanamayan / sonraya: EPYS XLSX'in gerçek başlıkları ve sayfa düzeni (BULUNAMADI; tanıma esnek, gerçek dosyayla sınanmalı); UEÇM / ikili anlaşma / YEK sütunları
+saklanır, kıyaslanmaz; DSG üyeleri için grup bazlı saatlik EDT kapsam dışı («pozisyon» sınıfına düşer); saatlik toplam ↔ aylık bildirim kalemi köprüsü; birleşik eş
+kapsamlı toplam (dengesizlik + KÜPST) bileşen/işaret uyumu belgelenmeden verilmez.
+Tahmin motoru, kalibrasyon ve uzlaştırma formülleri değişmedi.
