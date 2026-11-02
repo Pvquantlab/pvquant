@@ -573,3 +573,43 @@ Doğrulanamayan / sonraya: gerçek SMTP teslimi (test monkeypatch); Ekim 2026 ca
 üretilmedi (mevcut testler yeşil); dönem raporu ile Doğruluk günlük toplamlarının çapraz kıyası; PDF eki (HTML gövde); EPI, düzeltmeli PR, kayıp TL, yıl yıl
 P-değeri (P8 kalanı, dalga 3); API kapsamları ve panel/API eşitliği (P10 kalanı); dönem seçicinin Doğruluk/Mutabakat'a taşınması.
 Tahmin motoru, kalibrasyon ve uzlaştırma formülleri değişmedi.
+
+# Yirmi altıncı paket — v2.526 (02.11.2026 gece, canlı): Sayaç verisi uzlaştırma girdisi — Mutabakat ve dökümde SCADA ya da yüklü sayaç saatleri, SCADA ile fark kıyası, hükümde doğrulama niteliği; «Sayaç verisi eksik» alarmı
+
+Commit `d554cee`, CI #664 (7 dk 56 s). Dağıtım: api + worker + web imajı (ssh; 22. port açıktı); **göç yok** (ayar params_json.uzlastirma_girdi; alarm kuralı/eşiği params_json.alarm_*).
+Canlı: index.html ve JS/CSS birebir (25/25); api «startup complete»; worker «basladi»; `mutabakat?uretim=` ucu kimlik olmadan 422/401 döner.
+Kaynak: yol haritası dalga 2 P4a-2 (02 M37'de sonraya bırakılan «sayaç → uzlaştırma girdisi») + P7b (sayaç eksik saat alarmı); IH-052/IH-054 (UEVM ≠ SCADA farkının
+uzlaştırmaya yansıması), IH-055 (12. gün düzeltme penceresi için eksik sayaç verisi uyarısı).
+dengesizlik_service: `URETIM_SECENEKLERI` (scada | sayac), `uretim_secimi(pj)` (params_json.uzlastirma_girdi; varsayılan scada); `program_df(..., uretim)` — «sayac»
+seçilince sayaç satırı olan saatlerde gercek_kw sayacın veriş kWh'si (öncelik EPYS > OSOS > MASS > elle), `uretim_kaynak` sütunu (scada | sayac_olculmus |
+sayac_tahmini — tahmini/doldurulmuş/veri yok nitelikleri); SCADA'da olmayan saat sayaçla EKLENMEZ (program ve fiyat satırı SCADA'dan kurulur; sonraya);
+`_girdiler(..., uretim)` ayarı okur; `dokum(..., uretim)` özete `uretim_kaynak` sayımı + `saat_uretim_kaynak`; sayaçla dökümde `uretim_kaynak` sütunu ve not
+(DOKUM_NOTU_SAYAC); SCADA'lı döküm 21/25 sütun aynen. Uzlaştırma formülleri değişmedi; yalnız gerçekleşen serinin kaynağı seçilir.
+mutabakat_service: `pvquant_kalemleri(..., uretim)` — seçim parametre > santral ayarı > SCADA; sayaçla hesapta güvenilirlik nedeni («hesap N saatte sayaç
+verisiyle (ölçülmüş/tahmini), M saatte SCADA; UEVM ile aynılığı doğrulanmaz»; tahmini ya da SCADA tamamlaması varsa en az «kısmi»), yüklü sayaç saatlerinin
+SCADA satırı olmayanı sayılır (`sayac_kullanilmayan_saat`, «yüklü N sayaç saatinden M saat hesaba girmedi»), sayaç seçili-veri yok nedeni; `kiyas` (aynı dönem
+SCADA ile hesaba göre dengesizlik neti ve KÜPST borcu farkı; dengesizlikte artı lehte, KÜPST'te artı aleyhte). **Doğrulama niteliği** (02.11 ikinci inceleme):
+satır ve özette `dogrulama` tam | kismi | senaryo | yok — kısmi kapsamda «uyumlu / fark var» hükmü korunur ama niteliklidir (EPİAŞ tutarı bütün ayı, PVQuant
+tutarı yalnız hesaplanan saatleri kapsar); eylem metni «Kapsam kısmi (saat/beklenen; nedenler): … fark doğrulanmış sayılmaz» ile başlar, uyumlu-kısmi «tam ay
+verisiyle kesinleşir»; `ozet.kapsam_saat/beklenen_saat`. Eşik kuralı doğrulandı: bileşen başına |fark| ≤ max(%2 × bildirim, 50 TL), sıfır bildirimde 50 TL,
+yüzde paydası |bildirim neti|; KÜPST örneği 81,75 TL ≤ 286,42 → uyumlu; işletme ölçütü (UYUM_NOTU). Sürüm: dosya/kullanıcı etiketi, resmî durum
+«doğrulanmadı», takvim çelişkisi satır + notta; dosya ve tarihçe korunur (değişiklik gerekmedi). `mutabakat/ozet(..., uretim)` + `uretim_ayari`, `uretim_secenekleri`.
+sayac_service: `ayar_dogrula` uzlastirma_girdi; `ozet.ayar.uzlastirma_girdi` + `uretim_secenekleri`.
+alarm_service (P7b): kural `sayac_eksik_saat` («Sayaç verisi eksik»; eşik `sayac_eksik_esik_saat` 24, 1–744): 15 dk sayaçta bu ayın vadesi gelen (m.8(2)) ama
+yüklenmemiş saati; aylık okumalı sayaçta veri günü geçmiş önceki dönemin eksiği; gece taraması, günde en çok bir; «EPİAŞ'a ulaşıp ulaşmadığı PVQuant'tan görülmez».
+API: GET `mutabakat?uretim=scada|sayac` (422 başka değer), GET `dengesizlik/saatlik?uretim=` (döküm CSV/XLSX/JSON; JSON'da `uretim_kaynak`), PUT `sayac-ayar`
+`uzlastirma_girdi`.
+Web: Mutabakat — başlıkta üçüncü seçici «üretim: santral ayarı — sayaç / SCADA (geçici) / sayaç, yüklü saatlerde (geçici)» (kalıcı seçim Sayaç sayfasında;
+ayarla aynı seçenek aynı sonucu verir — fare ipucunda), «Üretim» satırı seçime göre (saat sayımı, hesaba girmeyen sayaç saatleri, SCADA ile fark cümlesi;
+SCADA'da yönlendirme), kart altı sayaçla «Doğruluk'taki 90 günlük hesap SCADA ile kalır», rozet «fark var · kısmi» / «uyumlu · kısmi», Hesaplama farkı KPI altı
+«kapsam kısmi (528/744 saat), fark doğrulanmış değil»; Sayaç — «Veri geliş beklentisi» kartında «Uzlaştırma yeniden hesabında üretim» seçici; Santralim —
+alarm kuralı açıklaması + eşik alanı «Eksik sayaç saati (adet)» + KURAL_ADI (web bekçisi arka uçla birebir); sahte API (a1 ayarı «sayaç», ?uretim= dalı, alarm).
+Üç inceleme turu (02 M40): sahte sayım tutarsızlığı; brief (mali karşılaştırılabilirlik / kaynak / sürüm / eşik; 3 geçiş) → doğrulama niteliği, kullanılmayan
+sayaç saati, seçici etiketleri (375'te 80 px taşma → kısaltma + select en fazla görünüm genişliği); son kontrol: Türkçe sayı eki → ek gerektirmeyen cümleler.
+Testler: test_sayac +1 (program_df sayaç girdisi 08–10 TSİ → 600/700/200 kWh, kaynak etiketleri, SCADA saati kalır; uretim_secimi; _girdiler ayarı; ayar_dogrula;
+ozet), test_mutabakat +1 (40/4/4 saat; kiyas EDT +7.200 / KÜPST +480; «kısmi»; santral ayarı; SCADA varsayılan kıyassız; sayaç seçili-veri yok; kullanılmayan
+16 saat; ozet seçenekleri) + doğrulama niteliği (kısmi/tam/senaryo satır ve özet, eylem ön eki) + API ?uretim 422/200, test_alarm_p7a +1 (kural, eşik, mesaj,
+1–744). Tam takım 874 passed / 1 skipped; web tsc 0, 103, oxlint 0, build; Mutabakat ve Sayaç 1440/768/375 taşma 0 (`kanit/mutabakat-sayac-girdi-*`, `kanit/sayac-girdi-ayar-*`).
+Doğrulanamayan / sonraya: sayaç dosyasının UEVM ile aynılığı (EPYS dışa aktarımı birebir sınanmadı); SCADA'sız saatlerin sayaçla eklenmesi; resmî saatlik
+tutar yok → eş kapsamlı karşılaştırma üretilmedi, orantılı paylaştırma yapılmadı (P2b-2); Doğruluk 90 günlük simülasyon SCADA ile kalır; 15 dk DGP geçişi.
+Tahmin motoru, kalibrasyon ve uzlaştırma formülleri değişmedi.
