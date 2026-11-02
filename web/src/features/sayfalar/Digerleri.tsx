@@ -11,7 +11,7 @@ import type { KalibrasyonOzeti, Kayma, Hijyen, EpiasUretim, KayipAgaci, GucMatri
 import { Kart, Sayfa, Kpi, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
 import { Meta } from "../../lib/Meta";
 import { JsonOnizleme } from "./JsonOnizleme";   // v2.351: JSON panel içi önizleme
-import type { RaporJson } from "../../api/types";
+import type { RaporJson, RaporDonemVeri, RaporGonderim } from "../../api/types";
 
 function SablonDugmeleri({ plantId }: { plantId: string }) {
   const [hata, setHata] = useState<string | null>(null);
@@ -873,6 +873,112 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
   );
 }
 
+
+/** v2.525 (raporlama; IH-096/105/107, B14/B17) — Dönem raporu: ay / çeyrek / yıl seçici, geçmiş dönem yeniden üretilebilir; önizleme (özet)
+ *  ve HTML indirme. Zamanlanmış gönderim: ayın gününde önceki ayın raporu alıcılara e-posta (SMTP yoksa dürüstçe söylenir). */
+const DONEM_AYLAR = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+function donemSecenekleri(): { kod: string; etiket: string }[] {
+  const d = new Date(); const y = d.getFullYear(), m = d.getMonth() + 1; const out: { kod: string; etiket: string }[] = [];
+  for (let i = 1; i <= 12; i++) { let yy = y, mm = m - i; while (mm <= 0) { mm += 12; yy -= 1; } out.push({ kod: `${yy}-${String(mm).padStart(2, "0")}`, etiket: `${DONEM_AYLAR[mm - 1]} ${yy}` }); }
+  const qBu = Math.ceil(m / 12 * 4);
+  for (let i = 0; i < 4; i++) { let q = qBu - i, yy = y; while (q <= 0) { q += 4; yy -= 1; } if (i > 0 || m % 3 !== 1) out.push({ kod: `${yy}-Q${q}`, etiket: `${yy} ${q}. çeyrek` }); }
+  out.push({ kod: String(y), etiket: `${y} yılı (bugüne kadar)` }, { kod: String(y - 1), etiket: `${y - 1} yılı` });
+  return out;
+}
+const donemOncekiAy = () => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; };
+const GONDERIM_DURUM: Record<string, string> = { gonderildi: "gönderildi", gonderim_hatasi: "gönderilemedi (e-posta)", rapor_hatasi: "rapor üretilemedi", posta_yapilandirilmadi: "e-posta sunucusu yapılandırılmadı", alici_yok: "alıcı yok" };
+const VERI_DURUMU: Record<string, { etiket: string; sinif: string }> = { tam: { etiket: "tam veri", sinif: "rozet-ok" }, kismi: { etiket: "kısmi veri", sinif: "rozet-dikkat" }, yok: { etiket: "veri yok", sinif: "rozet-notr" } };
+const zamanTr = (iso: string) => { const d = new Date(iso); const iki = (x: number) => String(x).padStart(2, "0"); return `${iki(d.getDate())}.${iki(d.getMonth() + 1)}.${d.getFullYear()} ${iki(d.getHours())}:${iki(d.getMinutes())}`; };   // panelin diğer tarihleriyle aynı biçim (gg.aa.yyyy ss:dd)
+/** 02.11 inceleme: dönem kodu (2026-09 | 2026-Q3 | 2026) ekranda ham görünmez — seçicideki etiketin aynısı. */
+function donemEtiket(kod: string): string {
+  const ay = /^(\d{4})-(\d{2})$/.exec(kod); if (ay) return `${DONEM_AYLAR[Number(ay[2]) - 1] ?? ay[2]} ${ay[1]}`;
+  const q = /^(\d{4})-Q([1-4])$/.exec(kod); if (q) return `${q[1]} ${q[2]}. çeyrek`;
+  return /^\d{4}$/.test(kod) ? `${kod} yılı` : kod;
+}
+
+function DonemRaporuKarti({ plantId }: { plantId: string }) {
+  const [donem, setDonem] = useState(donemOncekiAy());
+  const [v, setV] = useState<RaporDonemVeri | null>(null);
+  const [mesgul, setMesgul] = useState<"onizle" | "indir" | null>(null);
+  const [hata, setHata] = useState<string | null>(null);
+  const secenekler = useMemo(donemSecenekleri, []);
+  const dene = async (ne: "onizle" | "indir") => {
+    setHata(null); setMesgul(ne);
+    try { if (ne === "onizle") setV(await api.raporDonem(plantId, donem)); else await api.raporDonemIndir(plantId, donem); }
+    catch (e) { setHata(String((e as Error).message ?? e)); } finally { setMesgul(null); }
+  };
+  const oz = v?.ozet; const yuzde = (p: number | null | undefined) => p == null ? "—" : `${p < 0 ? "−" : "+"}%${sayiTr(Math.abs(p), 1)}`;
+  return (
+    <Kart baslik="Dönem raporu" alt="Ay, çeyrek ya da yıl seçin; geçmiş her dönem yeniden üretilebilir. İçerik: üretim ve gün başı beklentisi, olay kaydı, olay kaydına göre kullanılabilirlik, ölçülen ışınım varsa performans oranı, ay döneminde uzlaştırma kalemleri (yeniden hesap) ve yüklü EPİAŞ bildirimi."
+      sag={<span className="dugme-sira kart-arac">
+        <select className="girdi" value={donem} onChange={(e) => { setDonem(e.target.value); setV(null); }} aria-label="Dönem">
+          {secenekler.map((s) => <option key={s.kod} value={s.kod}>{s.etiket}</option>)}</select>
+        <button className="dugme" disabled={mesgul !== null} onClick={() => dene("onizle")}>{mesgul === "onizle" ? "Hazırlanıyor…" : "Önizle"}</button>
+        <button className="dugme" disabled={mesgul !== null} onClick={() => dene("indir")}>{mesgul === "indir" ? "Hazırlanıyor…" : "HTML indir"}</button></span>}>
+      {hata && <p className="ayar-durum hata" style={{ margin: "0 0 8px" }}>{hata}</p>}
+      {v && oz && (
+        <>
+          <p style={{ margin: "0 0 10px", fontSize: 13.5, lineHeight: 1.5 }}>
+            <span className={`rozet rozet-kucuk ${VERI_DURUMU[oz.veri_durumu]?.sinif ?? "rozet-notr"}`} style={{ marginRight: 8 }}>{VERI_DURUMU[oz.veri_durumu]?.etiket ?? oz.veri_durumu}</span>
+            <span className="soluk">{oz.veri_durumu_metni} Üretim zamanı {zamanTr(v.uretim_zamani)}; «HTML indir» aynı veriden o anda yeniden üretilir.</span>
+          </p>
+          <div className="ızgara satir-4" style={{ marginBottom: 12 }}>
+            <Kpi etiket={`Üretim (${v.donem.etiket})`} deger={oz.uretim_kwh != null ? sayiTr(oz.uretim_kwh / 1000, 1) : "—"} birim={oz.uretim_kwh != null ? "MWh" : undefined} alt={oz.uretim_kwh != null ? `${sayiTr(oz.saat)} / ${sayiTr(oz.beklenen_saat)} saat veri (%${sayiTr(oz.kapsam_pct ?? 0, 0)})` : "dönemde SCADA ölçümü yok"} />
+            <Kpi etiket="Beklenti (gün başı P50)" deger={oz.beklenen_kwh != null ? sayiTr(oz.beklenen_kwh / 1000, 1) : "—"} birim={oz.beklenen_kwh != null ? "MWh" : undefined} alt={oz.beklenen_kwh == null ? "arşivde gün başı tahmini yok" : oz.sapma_pct != null ? `sapma ${yuzde(oz.sapma_pct)} (${sayiTr(oz.ortak_gun)} ortak gün)` : "ortak gün yok"} />
+            <Kpi etiket="Kullanılabilirlik (olay kaydı)" deger={v.kullanilabilirlik ? `%${sayiTr(v.kullanilabilirlik.oran * 100, 1)}` : "—"} alt={v.kullanilabilirlik ? `${sayiTr(oz.olay)} olay, ${sayiTr(oz.ariza)} arıza/hasar; ${sayiTr(v.kullanilabilirlik.ariza_esdeger_saat, 1)} eşdeğer saat` : "olay kaydı yok"} />
+            <Kpi etiket="Performans oranı (temel)" deger={v.pr ? sayiTr(v.pr.pr, 3) : "—"} alt={v.pr ? `${sayiTr(v.pr.gun)} gün ölçülen ışınımla; sıcaklık düzeltmesiz` : "ölçülen düzlem ışınımı yok"} />
+          </div>
+          {v.uzlastirma?.satirlar && v.uzlastirma.satirlar.length > 0 && (
+            <div className="grafik-kaydir" style={{ marginBottom: 8 }}><table className="veri" style={{ fontSize: 13.5 }}>
+              <thead><tr><th style={{ textAlign: "left" }}>Uzlaştırma kalemi (yeniden hesap)</th><th>PVQuant alacak (TL)</th><th>PVQuant borç (TL)</th><th>EPİAŞ alacak (TL)</th><th>EPİAŞ borç (TL)</th></tr></thead>
+              <tbody>{v.uzlastirma.satirlar.map((r) => <tr key={r.kalem}><td style={{ textAlign: "left" }}>{r.kalem}</td>
+                <td className="mono">{r.pvquant_alacak_tl != null ? sayiTr(r.pvquant_alacak_tl, 2) : "—"}</td><td className="mono">{r.pvquant_borc_tl != null ? sayiTr(r.pvquant_borc_tl, 2) : "—"}</td>
+                <td className="mono">{r.epias_alacak_tl != null ? sayiTr(r.epias_alacak_tl, 2) : "—"}</td><td className="mono">{r.epias_borc_tl != null ? sayiTr(r.epias_borc_tl, 2) : "—"}</td></tr>)}</tbody>
+            </table>
+            <p className="soluk" style={{ fontSize: 13, margin: "6px 0 0" }}>{v.uzlastirma.guvenilirlik}{v.uzlastirma.nedenler?.length ? `: ${v.uzlastirma.nedenler.join("; ")}` : ""}{v.uzlastirma.bildirim ? `. EPİAŞ bildirimi: ${v.uzlastirma.bildirim.surum}.` : ". EPİAŞ bildirimi yüklenmedi (Mutabakat)."}</p></div>)}
+          <p className="soluk" style={{ fontSize: 13, margin: 0 }}>{v.notlar.join(" ")} Tam rapor (günlük tablo, olay listesi, notlar) «HTML indir» ile.</p>
+        </>)}
+      {!v && !hata && <p className="soluk" style={{ fontSize: 14, margin: 0 }}>Önizleme için dönem seçip «Önizle»ye basın; dosya «HTML indir» ile iner.</p>}
+    </Kart>
+  );
+}
+
+function GonderimKarti({ plantId }: { plantId: string }) {
+  const [g, setG] = useState<RaporGonderim | null | undefined>(undefined);
+  const [aktif, setAktif] = useState(false); const [gun, setGun] = useState("3"); const [alicilar, setAlicilar] = useState("");
+  const [durum, setDurum] = useState<{ metin: string; ton: "ok" | "hata" } | null>(null); const [mesgul, setMesgul] = useState(false);
+  const ds = useDamgaSurumu();
+  useEffect(() => { api.raporGonderim(plantId).then((r) => { setG(r); setAktif(r.aktif); setGun(String(r.gun)); setAlicilar(r.alicilar.join(", ")); }, () => setG(null)); }, [plantId, ds]);
+  const kaydet = () => {
+    const n = Number(gun); if (!Number.isInteger(n) || n < 1 || n > 28) { setDurum({ metin: "Gün 1–28 arasında olmalı.", ton: "hata" }); return; }
+    const al = alicilar.split(/[,;\s]+/).map((x) => x.trim()).filter(Boolean);
+    setDurum(null); setMesgul(true);
+    api.raporGonderimAyarla(plantId, { aktif, gun: n, alicilar: al }).then((r) => { setG(r); setDurum({ metin: "Kaydedildi.", ton: "ok" }); }).catch((e) => setDurum({ metin: String((e as Error).message ?? e), ton: "hata" })).finally(() => setMesgul(false));
+  };
+  const simdi = () => { setDurum(null); setMesgul(true);
+    api.raporGonderimDene(plantId).then((r) => { setDurum({ metin: `${r.etiket}: ${GONDERIM_DURUM[r.durum] ?? r.durum} (${sayiTr(r.alici)} alıcı).`, ton: r.durum === "gonderildi" ? "ok" : "hata" }); return api.raporGonderim(plantId).then(setG); })
+      .catch((e) => setDurum({ metin: String((e as Error).message ?? e), ton: "hata" })).finally(() => setMesgul(false)); };
+  if (g === undefined) return <Kart baslik="Zamanlanmış gönderim"><YerTutucu yukseklik={80} /></Kart>;
+  if (g === null) return <Kart baslik="Zamanlanmış gönderim"><p className="soluk" style={{ margin: 0 }}>Ayar alınamadı.</p></Kart>;
+  return (
+    <Kart baslik="Zamanlanmış gönderim" alt="Her ay seçtiğiniz günde önceki ayın dönem raporu e-postayla gönderilir. Alıcı girilmezse alarm alıcıları kullanılır."
+      sag={<span className={`rozet rozet-kucuk ${g.aktif ? "rozet-ok" : "rozet-notr"}`}>{g.aktif ? `açık · ayın ${sayiTr(g.gun)}. günü` : "kapalı"}</span>}>
+      <div className="form-izgara">
+        <label className="girdi-etiket" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}><input type="checkbox" checked={aktif} onChange={(e) => setAktif(e.target.checked)} /> Aylık gönderim açık</label>
+        <label className="girdi-etiket">Ayın günü (1–28)<input className="girdi" inputMode="numeric" value={gun} onChange={(e) => setGun(e.target.value.replace(/[^0-9]/g, ""))} /></label>
+        <label className="girdi-etiket form-tam">Alıcılar (virgülle; boşsa alarm alıcıları{g.varsayilan_alicilar.length ? `: ${g.varsayilan_alicilar.join(", ")}` : ""})
+          <input className="girdi" value={alicilar} onChange={(e) => setAlicilar(e.target.value)} placeholder="ornek@sirket.com, mali@sirket.com" /></label>
+        <div className="form-tam dugme-sira"><button className="dugme" disabled={mesgul} onClick={kaydet}>Kaydet</button>
+          <button className="dugme" disabled={mesgul} onClick={simdi} title="Son tam ayın raporunu alıcılara şimdi gönderir">Şimdi gönder ({donemEtiket(donemOncekiAy())})</button>
+          {durum && <span className={`ayar-durum ${durum.ton}`}>{durum.metin}</span>}</div>
+      </div>
+      <p className="soluk" style={{ fontSize: 13, margin: "8px 0 0" }}>
+        {g.son_gonderim ? `Son gönderim: ${g.son_donem ? donemEtiket(g.son_donem) + " raporu, " : ""}${zamanTr(g.son_gonderim)} — ${GONDERIM_DURUM[g.son_durum ?? ""] ?? g.son_durum ?? ""}.` : "Henüz gönderim yok."}
+        {!g.posta_yapilandirildi ? " E-posta sunucusu bu kurulumda yapılandırılmadı; ayar saklanır, gönderim yapılmaz." : ""}
+      </p>
+    </Kart>
+  );
+}
 export function Raporlar({ plantId }: { plantId: string }) {
   // v2.94: Hazirla canlandi — tek uretim kapisi HTTP'den; gecmis kosular
   // sabit ornek degil, forecast_runs'tan gercek liste.
@@ -889,6 +995,8 @@ export function Raporlar({ plantId }: { plantId: string }) {
     hybrid_residual: "Hibrit", barhdadi_bennis: "Fizik",
     backtest: "Geriye dönük",
   };
+  // 02.11 inceleme: «Mod C» çıplak kodu müşteri yüzünde açıklanır (forecast_service: A = fizik, B = kalibre fizik, C = fizik + öğrenilmiş düzeltme); kod fare ipucunda kalır
+  const MOD_AD: Record<string, string> = { A: "A — fizik (kalibresiz)", B: "B — kalibre fizik", C: "C — fizik + öğrenilmiş düzeltme" };
   const tarihTr = (iso: string) => {
     const d = new Date(iso);
     const iki = (x: number) => String(x).padStart(2, "0");
@@ -937,7 +1045,11 @@ export function Raporlar({ plantId }: { plantId: string }) {
   ];
   return (
     <Sayfa baslik="Raporlar"
-      alt="Tüm raporlar tahmin arşivinden üretilir; tahminler güncellenmez, yenisi eklenir.">
+      alt="Tahmin bölümleri tahmin arşivinden üretilir (tahminler güncellenmez, yenisi eklenir); üretim, olay, uzlaştırma ve kalibrasyon bölümleri ilgili kayıtlardan o anda alınır. Her rapor dönemini, veri kapsamını ve üretim zamanını taşır.">
+      <DonemRaporuKarti plantId={plantId} />
+      <div style={{ height: 14 }} />
+      <GonderimKarti plantId={plantId} />
+      <div style={{ height: 14 }} />
       <Kart baslik="16 sayfalık müşteri raporu">
         <div style={{ fontSize: 14, color: "var(--ikincil)", lineHeight: 1.6 }}>
           Kapaktan eklere tam rapor: doğruluk karnesi, hata dağılımı,
@@ -967,9 +1079,9 @@ export function Raporlar({ plantId }: { plantId: string }) {
       </Kart>
       <div className="ızgara satir-3" style={{ margin: "14px 0 14px" }}>
         {kartlar.map(([ad, fmt, alt]) => (
-          <Kart key={ad} baslik={ad}>
-            <div style={{ fontSize: 14, color: "var(--ikincil)", minHeight: 38 }}>{alt}</div>
-            <button className="dugme" disabled={uretilen !== null}
+          <Kart key={ad} baslik={ad} style={{ display: "flex", flexDirection: "column" }}>
+            <div style={{ fontSize: 14, color: "var(--ikincil)", flex: "1 1 auto" }}>{alt}</div>
+            <button className="dugme" disabled={uretilen !== null} aria-label={`${ad}: hazırla ve indir`}
               onClick={() => hazirla(fmt)}
               style={{ width: "100%", marginTop: 14 }}>
               {uretilen === fmt ? "Hazırlanıyor…" : "Hazırla"}
@@ -997,12 +1109,12 @@ export function Raporlar({ plantId }: { plantId: string }) {
           </p>
         ) : (
           <table className="veri">
-            <thead><tr><th>Tarih</th><th>Mod</th><th>Model</th></tr></thead>
-            <tbody className="mono">
+            <thead><tr><th>Tahmin tarihi</th><th>Tahmin modu</th><th>Model</th></tr></thead>
+            <tbody>
               {kosular.map((r) => (
                 <tr key={r.run_at}>
-                  <td>{tarihTr(r.run_at)}</td>
-                  <td>{r.mode}</td>
+                  <td className="mono">{tarihTr(r.run_at)}</td>
+                  <td title={`Mod ${r.mode}`}>{MOD_AD[r.mode] ?? `Mod ${r.mode}`}</td>
                   <td>{MODEL_AD[r.model] ?? "Model"}</td>
                 </tr>
               ))}

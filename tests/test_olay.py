@@ -51,22 +51,27 @@ def test_dogrula():
 
 def test_ekle_guncelle_listele_ve_sayac(kiraci):
     tid, plant = kiraci
-    o1 = os_.ekle(tid, plant, {"tur": "ariza", "baslangic": "2026-11-02T09:30", "etkilenen_kw": 1500, "neden": "invertör 3"})
-    assert o1["acik"] and o1["durum"] == "acik" and o1["baslangic"].startswith("2026-11-02T09:30") and o1["tur_etiket"] == "Arıza"
+    # 02.11 v2.525: test saat bağımlıydı (02.11 09:30 sabit; o saat geçince «planlı» → «sürüyor»). Gelecek olaylar gelecek ayın
+    # ilk günlerine (aynı ay içinde kalır, en az 1 gün ileride); geçmiş olaylar Ekim 2026 sabit.
+    bugun = datetime.now(IST).date()
+    g1 = (bugun.replace(day=1) + timedelta(days=32)).replace(day=1)   # gelecek ayın 1'i
+    G = lambda n, hm: f"{(g1 + timedelta(days=n)).isoformat()}T{hm}"
+    o1 = os_.ekle(tid, plant, {"tur": "ariza", "baslangic": G(0, "09:30"), "etkilenen_kw": 1500, "neden": "invertör 3"})
+    assert o1["acik"] and o1["durum"] == "acik" and o1["baslangic"].startswith(G(0, "09:30")) and o1["tur_etiket"] == "Arıza"
     o2 = os_.ekle(tid, plant, {"tur": "planli_bakim", "baslangic": "2026-11-05T08:00", "bitis": "2026-11-05T17:00", "etkilenen_kw": 40000})
     o3 = os_.ekle(tid, plant, {"tur": "ariza", "baslangic": "2026-10-20T09:30", "bitis": "2026-10-20T11:00"})
     assert o3["durum"] == "kapali"
     o4 = os_.ekle(tid, plant, {"tur": "ariza", "baslangic": "2026-10-25T09:30"}); assert o4["durum"] == "acik"   # geçmişte başlayan açık olay
     assert o4["evre"] == "suruyor" and o1["evre"] == "planli" and o3["evre"] == "bitti"   # evre: görünen; DB durumu acik/kapali
-    assert os_.ariza_sayisi(tid, plant["id"], date(2026, 11, 1)) == 1 and os_.ariza_sayisi(tid, plant["id"], date(2026, 10, 1)) == 2
-    e = os_.ariza_sayisi_etkin(tid, plant, date(2026, 11, 1)); assert e == {"sayi": 2, "olay": 1, "elle": 2, "kaynak": "elle giriş"}
-    os_.ekle(tid, plant, {"tur": "ariza", "baslangic": "2026-11-03T09:30", "bitis": "2026-11-03T10:00"}); os_.ekle(tid, plant, {"tur": "ariza", "baslangic": "2026-11-04T09:30", "bitis": "2026-11-04T10:00"})
-    assert os_.ariza_sayisi_etkin(tid, plant, date(2026, 11, 1)) == {"sayi": 3, "olay": 3, "elle": 2, "kaynak": "olay kaydı"}
+    assert os_.ariza_sayisi(tid, plant["id"], g1) == 1 and os_.ariza_sayisi(tid, plant["id"], date(2026, 10, 1)) == 2
+    e = os_.ariza_sayisi_etkin(tid, plant, g1); assert e == {"sayi": 2, "olay": 1, "elle": 2, "kaynak": "elle giriş"}
+    os_.ekle(tid, plant, {"tur": "ariza", "baslangic": G(1, "09:30"), "bitis": G(1, "10:00")}); os_.ekle(tid, plant, {"tur": "ariza", "baslangic": G(2, "09:30"), "bitis": G(2, "10:00")})
+    assert os_.ariza_sayisi_etkin(tid, plant, g1) == {"sayi": 3, "olay": 3, "elle": 2, "kaynak": "olay kaydı"}
     # kapatma, iptal, geçersiz güncelleme
     k = os_.guncelle(tid, plant, o4["id"], {"bitis": "2026-10-25T12:00", "kanit": "servis raporu 1234"}); assert k["durum"] == "kapali" and k["kanit"] == "servis raporu 1234"
-    k2 = os_.guncelle(tid, plant, o1["id"], {"bitis": "2026-11-02T12:00"}); assert k2["durum"] == "acik"   # bitiş gelecekte → hâlâ açık
+    k2 = os_.guncelle(tid, plant, o1["id"], {"bitis": G(0, "12:00")}); assert k2["durum"] == "acik"   # bitiş gelecekte → hâlâ açık
     with pytest.raises(ValueError):
-        os_.guncelle(tid, plant, o1["id"], {"bitis": "2026-11-02T09:00"})
+        os_.guncelle(tid, plant, o1["id"], {"bitis": G(0, "09:00")})
     ip = os_.guncelle(tid, plant, o2["id"], {"durum": "iptal"}); assert ip["durum"] == "iptal"
     assert os_.guncelle(tid, plant, str(uuid.uuid4()), {"neden": "x"}) is None
     liste = os_.listele(tid, plant["id"], 400); assert len(liste) == 5 and all(x["durum"] != "iptal" for x in liste)

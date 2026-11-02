@@ -3,6 +3,7 @@ import { cikis, oturumDusunce_kaydet } from "./api/client";
 import { Vitrin } from "./features/vitrin/Vitrin";
 import { Yontem } from "./features/vitrin/Yontem";
 import type { SayfaId } from "./shell/Kabuk";
+import { SAYFALAR } from "./shell/Kabuk";
 import { api } from "./api/client";
 import type { SantralKisa } from "./api/types";
 
@@ -94,15 +95,24 @@ function SantralYok() {
   );
 }
 
+/** v2.525 (B16): «#takvim/<santral>» → {sayfa, santral}; bilinmeyen sayfa adı yok sayılır */
+function hashBaglanti(): { sayfa?: SayfaId; santral?: string } {
+  const h = window.location.hash.replace(/^#\/?/, "");
+  if (!h) return {};
+  const [sayfa, santral] = h.split("/");
+  const bilinen = SAYFALAR.some((s) => s.id === sayfa);
+  return { sayfa: bilinen ? (sayfa as SayfaId) : undefined, santral: santral && /^[A-Za-z0-9-]{1,40}$/.test(santral) ? santral : undefined };
+}
+
 export default function App() {
-  const [sayfa, setSayfa] = useState<SayfaId>("santralim");
+  const [sayfa, setSayfa] = useState<SayfaId>(() => hashBaglanti().sayfa ?? "santralim");
   // v2.263: santral seçimi gerçek — liste girişten sonra /v1/plants'ten.
   // v2.353: SABİT VARSAYILAN KİMLİK ÖLDÜ. Geliştirme kalıntısı bir UUID
   // ("1242a0a8-…", yerel Konya GES) varsayılandı; TAZE KURULUMDA panel o
   // santrali isteyip 404 alıyor ve sonsuz "Yükleniyor..."da kalıyordu —
   // yani her YENİ MÜŞTERİ bu duvara çarpardı (22 Eyl 2026 canlı kurulumda
   // yakalandı). Seçim artık yalnız gerçek listeden ya da localStorage'dan.
-  const [plantId, setPlantId] = useState<string>(() => localStorage.getItem("pvq_plant") || "");
+  const [plantId, setPlantId] = useState<string>(() => hashBaglanti().santral || localStorage.getItem("pvq_plant") || "");   // v2.525 (B16): #sayfa/santral derin bağlantısı
   const [santraller, setSantraller] = useState<SantralKisa[]>([]);
   // v2.83: oturum kalicidir — jeton varsa panelden basla; hukmu sunucu verir
   // (curuk/olmus jeton ilk cagrida 401 yer, oturumDusunce girise dusurur).
@@ -154,7 +164,7 @@ export default function App() {
   // 24.10 Portföy geçiş turu: yan menü vurgusu ACİL güncelleme, içerik GEÇİŞ — tıklanan satır aynı karede seçili görünür;
   // içerik parçası/verisi gelene dek eski sayfa yerinde kalır. Eskiden vurgu da geçişle beklediğinden ilk ziyarette
   // (parça inene dek) tıklamanın görünür karşılığı yoktu.
-  const [secili, setSecili] = useState<SayfaId>("santralim");
+  const [secili, setSecili] = useState<SayfaId>(() => hashBaglanti().sayfa ?? "santralim");
   const sayfaSec = (s: SayfaId) => { setSecili(s); startTransition(() => setSayfa(s)); };
   // v2.353: kalıcılık TEK yerde — seçim nereden değişirse değişsin (kullanıcı
   // tıklaması, otomatik ilk santral, son santral arşivlenince boşalma) depo
@@ -163,6 +173,16 @@ export default function App() {
     if (plantId) localStorage.setItem("pvq_plant", plantId);
     else localStorage.removeItem("pvq_plant");
   }, [plantId]);
+  // v2.525 (P10 B16): derin bağlantı — adres çubuğu #sayfa/santral'ı izler (panelde, yonetim/yontem dışında; replaceState: geçmişe kayıt eklemez, elle yazılan/yapıştırılan adres sayfayı seçer)
+  useEffect(() => {
+    if (!girdi || window.location.pathname !== "/") return;
+    const hedef = `#${sayfa}${plantId ? `/${plantId}` : ""}`;
+    if (window.location.hash !== hedef) history.replaceState(history.state, "", hedef);
+  }, [girdi, sayfa, plantId]);
+  useEffect(() => {
+    const din = () => { const h = hashBaglanti(); if (h.sayfa && h.sayfa !== sayfa) { setSecili(h.sayfa); startTransition(() => setSayfa(h.sayfa as SayfaId)); } if (h.santral && h.santral !== plantId) setPlantId(h.santral); };
+    window.addEventListener("hashchange", din); return () => window.removeEventListener("hashchange", din);
+  }, [sayfa, plantId]);
   // v2.353: yedek ad "Konya GES" idi — başka müşterinin panelinde bizim
   // referans santralimizin adı görünürdü. Ad yoksa dürüst tire.
   const santralAd = santraller.find((x) => x.id === plantId)?.name ?? "—";

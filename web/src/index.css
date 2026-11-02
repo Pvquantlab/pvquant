@@ -218,6 +218,13 @@ h2 { font-size: var(--t-bolum); line-height: 1.2; }
    (13,5/400, --ikincil, ayrı satır); grafik/tablo grup başlığı .etiket-ust. Numara .kart-no yalnız gerçek sırada,
    ayraç CSS. Kart başlığı sağ slot (.kart-bas > *:last-child) ilk satırın taban çizgisine hizalı kalır. */
 .kart-baslik { min-width: 0; flex: 1 1 auto; }
+/* 02.11 v2.525 inceleme: başlık sağında seçici + düğme şeridi (.kart-arac) taşıyan kart, 900 px altında şeridi başlığın
+   altına kırar — yoksa başlık/alt metin dar bir sütuna sıkışıyordu (375'te «Dönem raporu»). Rozet taşıyan kartlar etkilenmez. */
+.kart-bas > .kart-arac { flex: 0 0 auto; flex-wrap: nowrap; }   /* geniş ekranda şerit tek satır; açıklama metni kırılır */
+@media (max-width: 900px) {
+  .kart-bas:has(> .kart-arac) { flex-wrap: wrap; }
+  .kart-bas > .kart-arac { flex: 1 1 100%; flex-wrap: wrap; }
+}
 .kart-alt { margin: 3px 0 0; font-family: var(--font); font-size: var(--t-ikincil); font-weight: 400;
             color: var(--ikincil); letter-spacing: 0; line-height: 1.45; max-width: 80ch; overflow-wrap: anywhere; }
 /* işlem listesi: ad solda, işlem düğmesi sağda (santral arşivi) — ad ile işlem noktalamayla değil hizalamayla ayrılır */

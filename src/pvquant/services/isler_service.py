@@ -32,7 +32,8 @@ ISIM_TR = {
     "teminat_hatirlatma": "Teminat saati hatırlatması (10:15)",       # 01.11 v2.519 (P7a): iş günü, lisanslı
     "ptf_kontrol": "Yarın düşük fiyat kontrolü (14:40)",              # 01.11 v2.519 (P7a)
     "gece_kur": "Döviz kuru çekimi (TCMB, 16:05)",                     # 01.11 v2.520 (P5a)
-    "avans_hatirlatma": "Avans ödeme hatırlatması (14:45)",           # 01.11 v2.519 (P7a): iş günü, lisanslı   # 29.10: KGÜP gecikti kuralı 15:30 sonrası ayrı iş   # 26.10 eşzamanlama: v2.491'den beri etiketsizdi, platform tablosunda ham kod görünüyordu
+    "avans_hatirlatma": "Avans ödeme hatırlatması (14:45)",
+    "rapor_gonderimi": "Dönem raporu gönderimi (08:10)",             # 02.11 v2.525: ayın seçilen günü, önceki ayın raporu e-postayla           # 01.11 v2.519 (P7a): iş günü, lisanslı   # 29.10: KGÜP gecikti kuralı 15:30 sonrası ayrı iş   # 26.10 eşzamanlama: v2.491'den beri etiketsizdi, platform tablosunda ham kod görünüyordu
 }
 # her gece koşması beklenen çekirdek grup — hiçbiri son 24 saatte yoksa işçi uyarısı verilir
 GECE_GRUBU = ("gece_meteo", "sabah_tahmin", "gece_skill", "gunluk_beklenti")

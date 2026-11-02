@@ -124,9 +124,13 @@ def uret(tenant_id, plant: dict, ad: str, **p) -> tuple[bytes, str]:
         raise KeyError(ad)
     r = {"kapasite-testi": kapasite_testi, "fatura": fatura, "kullanilabilirlik": kullanilabilirlik,
          "beklenen-gerceklesen": beklenen_gerceklesen}[ad](tenant_id, plant, **p)
-    html = ("<!doctype html><html lang='tr'><head><meta charset='utf-8'><title>" + r.baslik + "</title>"
+    return html_sar(r).encode("utf-8"), f"{ad}_{plant['name'].replace(' ', '_')}_{date.today().isoformat()}.html"
+
+
+def html_sar(r: rs.Rapor) -> str:
+    """Şablon ve dönem raporlarının ortak HTML kabuğu (v2.525: aylik_rapor_service de kullanır)."""
+    return ("<!doctype html><html lang='tr'><head><meta charset='utf-8'><title>" + r.baslik + "</title>"
             "<style>body{font-family:'IBM Plex Sans',system-ui,sans-serif;max-width:860px;margin:32px auto;color:#101D30}"
             "table{border-collapse:collapse;font-size:13px}td,th{padding:6px 10px;border-bottom:1px solid #DDE3EA;text-align:right}"
             "th:first-child,td:first-child{text-align:left}h1{font-size:22px}h2{font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:#45586F}"
             "small{color:#45586F}</style></head><body>" + r.html() + "</body></html>")
-    return html.encode("utf-8"), f"{ad}_{plant['name'].replace(' ', '_')}_{date.today().isoformat()}.html"

@@ -1812,7 +1812,7 @@ def tarife_ayarla(plant_id: str, p: TarifeIstek, claims=Depends(yazma_yetkisi())
 
 @app.get("/v1/plants/{plant_id}/rapor-sablon/{ad}")
 def rapor_sablon_uc(plant_id: str, ad: str, ay: str | None = None, gun: int = 30, claims=Depends(gecerli_kullanici)):
-    """v2.281 — şablon raporlar (HTML): kapasite-testi | fatura | kullanilabilirlik."""
+    """v2.281 — şablon raporlar (HTML): kapasite-testi | fatura (ay=YYYY-MM) | kullanilabilirlik (gun) | beklenen-gerceklesen (gun). (ENV-F05-5: dördü de burada.)"""
     from pvquant.services import sablon_rapor_service
     row = plant_service.getir(claims["tenant_id"], plant_id)
     if row is None:
@@ -1825,6 +1825,83 @@ def rapor_sablon_uc(plant_id: str, ad: str, ay: str | None = None, gun: int = 30
     except ValueError as e:
         raise HTTPException(409, str(e))
     return Response(content=icerik, media_type="text/html; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{dosya}"'})
+
+
+class RaporGonderimIstek(BaseModel):
+    """v2.525: zamanlanmış dönem raporu — aktif, ayın günü (1–28), alıcılar (boşsa alarm alıcıları)."""
+    aktif: bool | None = None
+    gun: int | None = None
+    alicilar: list[str] | None = None
+
+
+@app.get("/v1/plants/{plant_id}/rapor-donem")
+def rapor_donem(plant_id: str, donem: str | None = None, fmt: str = "html", claims=Depends(gecerli_kullanici)):
+    """v2.525 — dönem raporu: donem YYYY-MM (ay) | YYYY-QN (çeyrek) | YYYY (yıl); verilmezse son tam ay. fmt html (indirilebilir) | json (önizleme).
+    İçerik: üretim ve gün başı beklentisi, olaylar, olay kaydına göre kullanılabilirlik, POA varsa temel PR, ay döneminde uzlaştırma kalemleri (yeniden hesap) ve EPİAŞ bildirimi."""
+    from pvquant.services import aylik_rapor_service
+    if fmt not in ("html", "json"):
+        raise HTTPException(422, "fmt html ya da json olmalı")
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    plant = {"id": str(row["id"]), "name": row["name"], "capacity_kwp": row["capacity_kwp"], "ac_limit_kw": row.get("ac_limit_kw"), "params_json": row.get("params_json")}
+    try:
+        if fmt == "json":
+            return aylik_rapor_service.veri(claims["tenant_id"], plant, donem)
+        r, v = aylik_rapor_service.rapor(claims["tenant_id"], plant, donem)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    _denetim.kaydet("musteri", "rapor_donem_indir", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"], ayrinti={"donem": v["donem"]["kod"]})
+    from pvquant.services.mutabakat_service import _sade
+    ad = f"PVQuant_donem_raporu_{_sade(row['name']).replace(' ', '_')}_{v['donem']['kod']}.html"
+    return Response(aylik_rapor_service.html(r).encode("utf-8"), media_type="text/html; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{ad}"'})
+
+
+@app.get("/v1/plants/{plant_id}/rapor-gonderim")
+def rapor_gonderim_oku(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """v2.525 — zamanlanmış gönderim ayarı ve son gönderim durumu."""
+    from pvquant.services import aylik_rapor_service, alarm_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    g = aylik_rapor_service.gonderim_ayari(alarm_service._pj(row))
+    g["varsayilan_alicilar"] = alarm_service.alicilar(row); g["posta_yapilandirildi"] = __import__("pvquant.services.posta_service", fromlist=["yapilandirildi"]).yapilandirildi()
+    return g
+
+
+@app.put("/v1/plants/{plant_id}/rapor-gonderim")
+def rapor_gonderim_ayarla(plant_id: str, p: RaporGonderimIstek, claims=Depends(yazma_yetkisi())):
+    from pvquant.services import aylik_rapor_service, alarm_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    try:
+        an = aylik_rapor_service.gonderim_dogrula(p.model_dump(exclude_unset=True))
+    except ValueError as e:
+        raise HTTPException(422, f"{e} alanı geçersiz (gün 1–28; alıcı e-posta adresi, en çok 10)")
+    g = aylik_rapor_service.gonderim_ayari(alarm_service._pj(row)); g.update(an)
+    pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, rapor_gonderim={k: g[k] for k in g if k in ("aktif", "gun", "alicilar", "son_gonderim", "son_durum", "son_donem")})
+    _denetim.kaydet("musteri", "rapor_gonderim_ayar", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"],
+                    ayrinti={k: (len(v) if k == "alicilar" else v) for k, v in an.items()})
+    row["params_json"] = pj
+    out = aylik_rapor_service.gonderim_ayari(pj); out["varsayilan_alicilar"] = alarm_service.alicilar(row)
+    from pvquant.services import posta_service
+    out["posta_yapilandirildi"] = posta_service.yapilandirildi()
+    return out
+
+
+@app.post("/v1/plants/{plant_id}/rapor-gonderim/dene")
+def rapor_gonderim_dene(plant_id: str, donem: str | None = None, claims=Depends(yazma_yetkisi())):
+    """v2.525 — dönem raporunu şimdi alıcılara gönder (SMTP yapılandırılmamışsa dürüstçe «yapılandırılmadı»)."""
+    from pvquant.services import aylik_rapor_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    plant = {"id": str(row["id"]), "name": row["name"], "capacity_kwp": row["capacity_kwp"], "ac_limit_kw": row.get("ac_limit_kw"), "params_json": row.get("params_json")}
+    try:
+        return aylik_rapor_service.gonder(claims["tenant_id"], plant, donem, kaynak="elle")
+    except ValueError as e:
+        raise HTTPException(422, str(e))
 
 
 @app.get("/v1/plants/{plant_id}/guc-matrisi")

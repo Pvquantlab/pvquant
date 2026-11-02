@@ -25,14 +25,19 @@ def yapilandirildi() -> bool:
     return bool(os.environ.get("PVQ_SMTP_HOST"))
 
 
-def gonder(kime: str, konu: str, govde: str) -> bool:
+def gonder(kime: str, konu: str, govde: str, html: str | None = None) -> bool:
     """True = SMTP sunucusu mektubu kabul etti; False = yapılandırma yok ya da
-    gönderim hatası (ayrıntı log'da, çağırana sızdırılmaz)."""
+    gönderim hatası (ayrıntı log'da, çağırana sızdırılmaz). v2.525: `html` verilirse
+    düz metin + HTML (multipart/alternative) — dönem raporu gövdesi."""
     host = os.environ.get("PVQ_SMTP_HOST")
     if not host or not kime:
         return False
     try:
-        m = MIMEText(govde, "plain", "utf-8")
+        if html:
+            from email.mime.multipart import MIMEMultipart
+            m = MIMEMultipart("alternative"); m.attach(MIMEText(govde, "plain", "utf-8")); m.attach(MIMEText(html, "html", "utf-8"))
+        else:
+            m = MIMEText(govde, "plain", "utf-8")
         m["Subject"] = konu
         m["From"] = os.environ.get("PVQ_SMTP_FROM") or os.environ.get("PVQ_SMTP_USER", "")
         m["To"] = kime

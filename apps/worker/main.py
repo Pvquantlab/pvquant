@@ -540,6 +540,19 @@ def rapor_alanlari(plant, pencere_gun: int = 120):
                 {"t": tid, "p": pid, "k": k, "v": _json.dumps(v)})
 
 
+def rapor_gonderimi(plant):
+    """v2.525 (raporlama): zamanlanmış dönem raporu — her gün bakar; aktif, günü gelmiş ve bu ay için henüz gönderilmemiş santrala önceki ayın raporunu e-postalar."""
+    from pvquant.services import aylik_rapor_service
+    import json as _j
+    pj = plant.get("params_json") or {}
+    pj = _j.loads(pj) if isinstance(pj, str) else pj
+    bugun = dt.datetime.now(dt.timezone(dt.timedelta(hours=3))).date()
+    if not aylik_rapor_service.gonderilmeli_mi(pj, bugun):
+        return "atlandı (aktif değil, günü gelmedi ya da gönderildi)"
+    r = aylik_rapor_service.gonder(plant["tenant_id"], {**plant, "params_json": pj}, None, bugun)
+    return f"{r['donem']}: {r['durum']} ({r['alici']} alıcı)"
+
+
 def aylik_kalibrasyon(plant):
     # v2.380 (bulgu 31): bayat veriyle cron kalibrasyonu koşmaz — mevcut ayar
     # korunur, sebep günlüğe. Elle (panel) kalibrasyon bu eşiğe takılmaz.
@@ -763,6 +776,7 @@ if __name__ == "__main__":
     sch.add_job(_logla("teminat_hatirlatma", alarm_teminat), "cron", hour=7, minute=15)
     sch.add_job(_logla("ptf_kontrol", alarm_ptf), "cron", hour=11, minute=40)
     sch.add_job(_logla("avans_hatirlatma", alarm_avans), "cron", hour=11, minute=45)
+    sch.add_job(_logla("rapor_gonderimi", rapor_gonderimi), "cron", hour=5, minute=10)   # v2.525: 08:10 TSİ; ayın gönderim gününde önceki ayın raporu
     sch.add_job(_logla("aylik_kalibrasyon", aylik_kalibrasyon),
                 "cron", day=cfg.worker_day_calibration, hour=cfg.worker_hour_calibration, minute=0)
     sch.add_job(_logla("aylik_iklim", aylik_iklim),                      # v2.77-C

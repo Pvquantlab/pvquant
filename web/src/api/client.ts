@@ -1,4 +1,4 @@
-import type { DengesizlikSaatlik, DsgAnahtar, KgupRevizyon, PiyasaDurum, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar, PortfoyAnahtar, PortfoyKupst, UevcbArama , Takvim, KunyeTarihler, Yekdem, Olay, OlayOzet, OlayGiris, OlayYanit, MutabakatOzet, MutabakatYukleme, SayacOzet, SayacYuklemeYanit, SayacAyar, SayacKaynak } from "./types";
+import type { DengesizlikSaatlik, DsgAnahtar, KgupRevizyon, PiyasaDurum, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar, PortfoyAnahtar, PortfoyKupst, UevcbArama , Takvim, KunyeTarihler, Yekdem, Olay, OlayOzet, OlayGiris, OlayYanit, MutabakatOzet, MutabakatYukleme, SayacOzet, SayacYuklemeYanit, SayacAyar, SayacKaynak, RaporDonemVeri, RaporGonderim, RaporGonderimSonuc } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -801,6 +801,21 @@ export const api = {
     if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
     const b = await y.blob(); const u = URL.createObjectURL(b); const a = document.createElement("a"); a.href = u; a.download = `pvquant_sayac_scada_${gun}g.csv`; a.click(); URL.revokeObjectURL(u);
   },
+  /** v2.525 (raporlama): dönem raporu — önizleme (JSON) ve HTML indirme; donem YYYY-MM | YYYY-QN | YYYY */
+  raporDonem: (p: string, donem: string): Promise<RaporDonemVeri> => getir<RaporDonemVeri>(`/v1/plants/${p}/rapor-donem?donem=${donem}&fmt=json`),
+  raporDonemIndir: async (p: string, donem: string): Promise<void> => {
+    if (TABAN == null) throw new Error("Örnek kipte rapor üretimi yok.");
+    const jeton = localStorage.getItem("pvq_token");
+    const y = await fetch(`${TABAN}/v1/plants/${p}/rapor-donem?donem=${donem}`, { headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
+    if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise<void>(() => {}); }
+    if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
+    const cd = y.headers.get("Content-Disposition") ?? ""; const es = /filename="([^"]+)"/.exec(cd);
+    const url = URL.createObjectURL(await y.blob()); const a = document.createElement("a");
+    a.href = url; a.download = es ? es[1] : `donem_raporu_${donem}.html`; a.click(); URL.revokeObjectURL(url);
+  },
+  raporGonderim: (p: string): Promise<RaporGonderim> => getir<RaporGonderim>(`/v1/plants/${p}/rapor-gonderim`),
+  raporGonderimAyarla: (p: string, g: { aktif?: boolean; gun?: number; alicilar?: string[] }): Promise<RaporGonderim> => gonder(`/v1/plants/${p}/rapor-gonderim`, "PUT", g),
+  raporGonderimDene: (p: string, donem?: string | null): Promise<RaporGonderimSonuc> => gonder(`/v1/plants/${p}/rapor-gonderim/dene${donem ? `?donem=${donem}` : ""}`, "POST"),
   /** v2.522 (P2b, IH-036): DSG üye dağılımı belgesi (CSV) */
   portfoyDsgIndir: async (gun = 30, anahtar: DsgAnahtar = "sapma"): Promise<void> => {
     if (TABAN == null) throw new Error("Örnek kipte indirme yok.");

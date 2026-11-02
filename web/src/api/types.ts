@@ -529,6 +529,21 @@ export interface SayacScada { yukumlu: boolean; esik_kw: number; kurulu_kw: numb
 export interface SayacAyar { sayac_turu?: string | null; scada_durum?: string | null; scada_kopukluk_baslangic?: string | null; uzaktan_acma_var?: boolean | null; sistem_kullanim_bedeli_tl_ay?: number | null }
 export interface SayacOzet { bugun: string; pencere_gun: number; segment: string | null; ayar: Required<SayacAyar>; gelis: SayacGelis; fark: SayacFark; scada: SayacScada | null; scada_notu: string | null; yuklemeler: SayacYukleme[];
   kaynaklar: { kod: SayacKaynak; etiket: string }[]; nitelikler: { kod: SayacNitelik; etiket: string }[]; sayac_turleri: { kod: string; etiket: string }[]; scada_durumlari: { kod: string; etiket: string }[]; not: string }
+/** v2.525 (raporlama): dönem raporu (ay / çeyrek / yıl) önizlemesi ve zamanlanmış gönderim ayarı */
+export interface RaporDonem { tur: "ay" | "ceyrek" | "yil"; kod: string; bas: string; bit: string; etiket: string; kirpildi: boolean; saat: number }
+export interface RaporDonemVeri { donem: RaporDonem; santral: string; kapasite_kwp: number; ac_kw: number | null;
+  ozet: { uretim_kwh: number | null; beklenen_kwh: number | null; veri_durumu: "tam" | "kismi" | "yok"; veri_durumu_metni: string; ortak_gun: number; sapma_pct: number | null; gun_sayisi: number; veri_gun: number; saat: number; beklenen_saat: number; kapsam_pct: number | null;
+    olay: number; ariza: number; en_iyi_gun: { gun: string; kwh: number } | null; en_dusuk_gun: { gun: string; kwh: number } | null };
+  gunler: { gun: string; kwh: number | null; saat: number; p50_kwh: number | null; p10_kwh: number | null; p90_kwh: number | null; sapma_pct: number | null }[];
+  aylar: { ay: string; uretim_kwh: number; beklenen_kwh: number; saat: number; gun: number; sapma_pct: number | null }[] | null;
+  olaylar: { tur: string; etiket: string; baslangic: string; bitis: string | null; sure_saat: number; etkilenen_kw: number; neden: string | null; istisna: boolean; ariza: boolean }[];
+  kullanilabilirlik: { oran: number; ariza_esdeger_saat: number; istisna_esdeger_saat: number; saat: number; not: string } | null;
+  pr: { pr: number; gun: number; e_kwh: number; h_kwh_m2: number; not: string } | null;
+  uzlastirma: { satirlar?: { kalem: string; pvquant_alacak_tl: number | null; pvquant_borc_tl: number | null; epias_alacak_tl: number | null; epias_borc_tl: number | null }[]; saat?: number;
+    guvenilirlik?: string | null; nedenler?: string[]; bildirim?: { surum: string; zaman: string } | null; hata?: string | null } | null;
+  notlar: string[]; kaynaklar: string[]; uretim_zamani: string }
+export interface RaporGonderim { aktif: boolean; gun: number; alicilar: string[]; son_gonderim?: string | null; son_durum?: string | null; son_donem?: string | null; deneme?: number; varsayilan_alicilar: string[]; posta_yapilandirildi: boolean }
+export interface RaporGonderimSonuc { durum: "gonderildi" | "gonderim_hatasi" | "rapor_hatasi" | "posta_yapilandirilmadi" | "alici_yok"; donem: string; etiket: string; alici: number; zaman: string }
 /** v2.522 (P2b-1): EPİAŞ uzlaştırma bildirimiyle kalem kalem mutabakat */
 export type MutabakatDurum = "uyumlu" | "fark" | "senaryo" | "hesaplanamaz" | "bildirimde_yok" | "hesap_yok";
 export interface MutabakatSatir { kod: string; etiket: string; hesaplanir: boolean; kalem_ad: string | null; bildirim_alacak_tl: number | null; bildirim_borc_tl: number | null;
