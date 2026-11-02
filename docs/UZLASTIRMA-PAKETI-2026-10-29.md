@@ -491,3 +491,41 @@ Doğrulanamayan / sonraya: OSOS/MASS/EPYS resmî sütun başlıkları (portal JS
 (01-15 BULUNAMADI); askı tarihi 30.4.2027 ikincil kaynak, (ç) askı kapsamı; (ç) günlük %1 sayım yöntemi; GTŞ/toplayıcı portföy üyeliği beyan edilmiyor;
 EPİAŞ'a fiilî geliş ve geç geliş ölçülemez; sayaç verisi uzlaştırma girdisi değil (P4a-2); eksik saat alarmı P7b; inverter/protokol alımı P4b. Tahmin
 motoru, kalibrasyon ve uzlaştırma formülleri değişmedi.
+
+# Yirmi dördüncü paket — v2.524 (02.11.2026 gece, canlı): Takvim — lisans, bildirim ve uyum takvimi; sorumlu taraf ve işlem sınıfı; YEKDEM uygunluğu; olay kaydından bakım bildirim son anı; «Aykırılıkta»
+
+Commit `3ddc19e`, CI #660 (5 dk 53 s). Dağıtım: api + worker + web imajı (ssh; 22. port açıktı); **göç yok** (künye alanları params_json). Canlı: index.html ve 27 JS birebir (28/28);
+api «startup complete»; worker «basladi»; takvim ucu `uyum`, `bakim`, `yaklasan_piyasa`, `islem_etiketleri` alanlarını döner (kimlik olmadan 422).
+Kaynak: yol haritası P3 (P3a'da bırakılan uyum satırları): IH-068 EPDK periyodik bildirimler (03-01), IH-069 ilerleme raporu (03-02 Lisans Yön. m.30(2)(ç)),
+IH-070 lisans bedeli taksitleri (03-03 m.43(4), (5)(a), (7)(a), (8)), IH-074 olay anı sayaçları (03-08 m.57(2), 03-09 m.30(2)), IH-075 planlı devre dışı
+(03-10 Şebeke Yön. m.52, m.54), IH-078 poliçe (m.47), IH-079 İSG periyodik kontrol (03-21 İş Ekipmanları Yön. Ek-III), IH-077 «kaçırılınca» (03-14 6446
+m.16; bent eşlemesi çıkarım, tutar yok), 03-18 lisanssız 10 yıl (LÜY m.26(4), m.33(7)), YEKDEM uygunluğu (03-12 Karar 5905-27 / 7189; YEK Yön. m.5–7).
+ext/turkiye/takvim: `_olay(..., sonuc, sonuc_kisa, islem, sorumlu)` — işlem sınıfı (islem / takip / mevzuat / dogrulama) ve sorumlu taraf her olayda;
+`uyum_olaylari(pj, bugun, segment, capacity_kwp)`: ilerleme raporu (Ocak/Temmuz sonu; tam kabule kadar; hafta sonu «belirsiz»), lisans bedeli taksitleri
+(Şubat/Haziran/Ekim 5. iş günü — `_n_inci_is_gunu`; ilk kabul + 8 yıl muafiyeti bitince; kabul yoksa doğrulama), BDB-02 (15 Mayıs; kurulu güç ≥ 100 MW,
+mekanik güç kWp ile yaklaşıldı → doğrulama), TEİAŞ bakım planı adımları (30 Nisan talep, 31 Temmuz itiraz, 31 Ağustos alternatif, 31 Ekim TEİAŞ yayımı;
+lisanslıda bağlantı türü kayıtlı değil → doğrulama, iletime bağlı lisanssızda işlem), İSG periyodik kontrol (+1 yıl), ortaklık değişikliği bildirimi
+(+6 ay), izin/ruhsat iptali bildirimi (+2 ay), lisanssız 10 yıllık alım süresi; `bakim_bildirim(bas, bit)` Şebeke Yön. m.54 (< 8 sa → 24 sa, 8–48 sa → 7 gün,
+> 48 sa → yıllık plan); `yekdem_uygunluk` (YEKA'da yok; destek süresi hedef yıldan önce bitmişse satır düşer; tarih yoksa doğrulama; lisanslı serbestte
+«isteğe bağlı» notu); `yaklasan(..., capacity_kwp)` uyum olaylarını ve süzgeci taşır; dönem adımlarına kısa sonuçlar («Düzeltme o aya girmez», «Temerrüt +
+teminat mahsubu», «EPİAŞ ödemesi gecikir», «İtiraz hakkı düşer» — 60 gün itirazı isteğe bağlı hak: takip); sabit tarihler sınıflı (m.110 mevzuat değişikliği,
+Geçici m.39 doğrulama — DSG türü kayıtlı değil, Karar 15005 öz tüketim, Karar 14909 askısı mevzuat). Künye +4 alan: tam_kabul_tarihi, isg_son_kontrol,
+ortaklik_degisikligi, izin_iptali (`kunye_turet` → ilerleme_raporu_yukumlu, isg_sonraki_kontrol).
+takvim_service: `ozet(plant, gun, bugun, tenant_id)` → `uyum` (12 ay; UYUM_KODLAR), `bakim` (olay kaydındaki planlı bakımlar → bildirim son anı),
+`yaklasan_piyasa` (uyum tarihleri hariç; sayfa bunu gösterir, alarm tam `yaklasan`ı kullanmaya devam eder), `islem_etiketleri`, `uyum_not`, `bakim_kaynak`.
+API: KunyeTarihIstek +4 alan; GET takvim kiracı ve kurulu güçle.
+Web: Takvim — «Uyum takvimi» kartı (Tarih / Ne + işlem rozeti + not ipucu / Kim / Dayanak / «Aykırılıkta» kısa biçim / Kalan; planlı bakım tablosu;
+sınıflar ve kapsam dışı olanlar açılır alanda), Yaklaşan'da işlem rozeti + «Kim» sütunu + uyum tarihleri hariç, aylık tabloda adım yanında sorumlu, Santral
+tarihleri formu +4 alan, künye listesinde «İlerleme raporu» ve «İSG periyodik kontrol»; `.rozet-dikkat` (amber «işlem gerekli»), «doğrulama gerekli»
+rozet-uyari; sahte takvim fixture'ı gerçek motordan üretilir, sahte API bugünü ve kalan günleri gerçek saatten hesaplar.
+İki inceleme turu (02 M38 + inceleme + ikinci inceleme): taksit kaydırma rozeti, hafta sonu belirsiz, TEİAŞ adımları, «Aykırılıkta» boşlukları, sahte saat;
+sorumlu/işlem sınıfı, YEKDEM uygunluğu, 1 Ocak 2027 sınıfları, tekrar ve okunabilirlik; son kontrol: 60 gün itirazı takip.
+Testler: tests/test_takvim.py 15 (yıllık uyum tarihleri; 5. iş günü 2026: 6 Şub / 5 Haz / 7 Eki, 2027: 5 Şub / 7 Haz / 7 Eki; tam kabul → ilerleme raporu
+kalkar; 8 yıl muafiyeti; BDB-02 eşiği; hafta sonu belirsiz; TEİAŞ adımları; künye türevleri +1 yıl / +6 ay / +2 ay; bakım bildirimi üç kural + süre yok;
+sınıf/sorumlu; YEKDEM uygunluğu 6 durum; planlı devre dışı sınıfı; `yaklasan_piyasa`; görünür metin bekçisi uyum olaylarını ve sonuçları da tarar;
+kunye_dogrula; servis ozet); alarm P7a 10; tam takım 867 passed / 1 skipped; web tsc 0, 103, oxlint 0, build; 1440/768/375 taşma 0 (`kanit/takvim-uyum-{1440,768,375}-2026-11-02.jpg`).
+Doğrulanamayan / sonraya: EPDK ilerleme raporu ve BDB-02 son günü hafta sonuna gelince uygulama; dağıtıma bağlı lisanslı tesiste Şebeke Yön. m.52;
+mekanik güç ≈ kWp; m.16 bent eşlemeleri çıkarım, 2027 tutarları yok; m.43(4) yıl sayımı; DUY m.110 1.1.2027 uygulama ayrıntıları; serbest piyasadaki tesisin
+destek süresi içinde YEKDEM'e yeniden giriş hakkı (YEK Yön. m.5 metninden; uygulama teyidi yok); DSG türü ve bağlantı türü alanları (P3c adayı); toplayıcı
+lisansı takvimi, piyasadan alım sınırı (Karar 14626), YEK-G yıllık kaydı, siber güvenlik öz denetimi kapsam dışı; uyum tarihleri için alarm sınıfa göre (P7b).
+Tahmin motoru, kalibrasyon ve uzlaştırma formülleri değişmedi.
