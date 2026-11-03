@@ -87,6 +87,7 @@ export interface Webhook { id: string; plant_id: string | null; santral: string 
   son_gonderim: string | null; son_durum: number | null; hata_sayisi: number }
 /** v2.281 — kullanılabilirlik, kayıp ağacı, tarife. */
 export interface Kullanilabilirlik { durum: string; mumkun_saat?: number; veri_orani?: number; haric_saat?: number; ariza_saat?: number;
+  ariza_olay_sayisi?: number; mtbf_saat?: number | null; mttr_saat?: number | null;   // 04.11 v2.531 (ENV-F10): olay kaydındaki arızalardan
   A_t?: number | null; A_e?: number | null; kayip_kwh?: number; not?: string; pencere_gun?: number }
 export interface KayipAgaci { durum: string; yil?: number; kaynak?: string; ghi_kwh_m2?: number; poa_kwh_m2?: number; nominal_dc_kwh?: number; sebeke_kwh?: number;
   pr?: number | null; ozgul_kwh_kwp?: number; hesap_zamani?: string;

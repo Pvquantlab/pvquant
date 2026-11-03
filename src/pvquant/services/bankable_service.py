@@ -79,7 +79,7 @@ def hesapla(tenant_id, plant: dict, kaydet: bool = True) -> dict:
         olcumle = False
     try:
         from pvquant.services import saglik_service
-        sg = saglik_service.hesapla(tenant_id, plant)
+        sg = saglik_service.saglik(tenant_id, plant)   # 04.11 v2.531 (ENV-F05-1): önceki ad `hesapla` modülde yoktu → σ hep 0 kalıyordu
         ga = sg.get("bozunma_ga")
         if ga and len(ga) == 2:
             deg_sigma = abs(float(ga[1]) - float(ga[0])) / 2.0 / 100.0

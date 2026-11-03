@@ -102,7 +102,7 @@ function KayipAgaciKarti({ plantId, ilkVeri }: { plantId: string; ilkVeri: Kayip
   const [mesaj, setMesaj] = useState<string | null>(null);
   const hesapla = () => { setMesaj("Hesaplanıyor (tipik yıl ışınımı, ~10 s)…"); api.kayipAgaciHesapla(plantId).then((r) => { setK(r); setMesaj(null); }).catch((e) => setMesaj(String((e as Error).message ?? e))); };
   return (
-    <Kart baslik="Kayıp zinciri" alt="Yatay ışınımdan şebekeye, adım adım" sag={<span style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+    <Kart baslik="Kayıp zinciri" alt="Yatay ışınımdan şebekeye, adım adım; tipik yıl ışınımı (uzun dönem arşivi) ve tipik varsayılanlarla hesaplanır, gerçekleşen üretim değildir — her satır kaynağını söyler" sag={<span style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
       {k?.durum === "ok" && <span className="cip"><Meta items={[`tipik yıl ${k.yil}`, `PR %${sayiTr((k.pr ?? 0) * 100, 0)}`, `${sayiTr(k.ozgul_kwh_kwp ?? 0, 0)} kWh/kWp`]} /></span>}
       <button className="dugme kucuk" onClick={hesapla}>{k?.durum === "ok" ? "Yenile" : "Hesapla"}</button></span>}>
       {/* 23.10 altıncı tur: boş durum iki kademe — başlık satırı + «Hesapla» yönlendirmesi */}

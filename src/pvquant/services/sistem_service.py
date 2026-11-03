@@ -43,6 +43,9 @@ IZLENEN_ISLER = (
     ("gece_ufuk_sigma", 36, "günlük", True),
     ("gece_konformal", 36, "günlük", True),
     ("rapor_alanlari", 36, "günlük", True),
+    ("aylik_kalibrasyon", 24 * 35, "aylık", True),      # 04.11 v2.531 (ENV-F06): üç aylık üretici iş izlenir; santral başına koşar
+    ("aylik_iklim", 24 * 35, "aylık", True),
+    ("aylik_bankable", 24 * 35, "aylık", True),
     ("kgup_arsiv_temizlik", 24 * 35, "aylık", False),   # ayın 1'i; hiç koşmamışsa «henüz koşmadı» (uyarı değil)
     ("denetim_temizlik", 24 * 35, "aylık", False),
 )

@@ -46,7 +46,7 @@ const KURAL_KOSULU: Record<string, (e: Record<string, number>) => string> = {
   iletisim_kesintisi: (e) => `Son ölçüm ${sayiTr(e.iletisim_esik_saat ?? 6, 0)} saatten eskiyse. Kontrol: her saat`,
   pr_dustu: (e) => `30 günlük performans oranı eşiğin (%${sayiTr((e.pr_esik ?? 0.7) * 100, 0)}) altına düşünce. Kontrol: her gece 07:00`,
   clipping_orani_yuksek: (e) => `Son 7 günde kırpılan saatlerin payı eşiği (%${sayiTr((e.clipping_esik ?? 0.15) * 100, 0)}) aşınca. Kontrol: her gece 07:00`,
-  kullanilabilirlik_dustu: (e) => `Son 30 günün kullanılabilirliği eşiğin (%${sayiTr((e.kullanilabilirlik_esik ?? 0.97) * 100, 0)}) altında kalınca. Kontrol: her gece 07:00`,
+  kullanilabilirlik_dustu: (e) => `Son 30 günün teknik kullanılabilirliği eşiğin (%${sayiTr((e.kullanilabilirlik_esik ?? 0.97) * 100, 0)}) altında kalınca. Kontrol: her gece 07:00`,
   kgup_teslim_gecikti: () => "Yarının programı için 15:30'dan önce verilmiş tahmin yoksa kritik; tahmin var ama TPYS'ye bildirilen dosya yüklenmemişse uyarı. Kontrol: her gün 15:35",
   kgup_revizyon_onerisi: (e) => `Bugünün programı güncel beklentiden eşik (%${sayiTr((e.revizyon_esik ?? 0.10) * 100, 0)}) kadar sapınca ve o saatin revizyon süresi geçmediyse. Kontrol: 07:10–18:10 arası saat başı`,
   dengesizlik_asimi: (e) => `Son 30 günün dengesizlik maliyeti gelire oranla eşiği (%${sayiTr((e.dengesizlik_esik ?? 0.03) * 100, 0)}) aşınca. Kontrol: her gece 07:00`,
@@ -581,10 +581,11 @@ export function Santralim({ plantId }: { plantId: string }) {
                   ? <>eğilim %{sayiTr(sg.egim_yuzde_yil, 1)}/yıl<span className="kunye-not">{sayiTr(sg.gun)} gün; {sg.not || "bozunma için ≥13 ay"}</span></>
                   : <><span className="kunye-durum eksik">Hesaplanamadı</span><span className="kunye-not">{sg?.not || "ölçüm birikmedi"}</span></>}</dd></div>
             {/* v2.281: kullanılabilirlik — otomatik arıza tespiti (olay günlüğü yok; dürüst not) */}
-            <div><dt>Kullanılabilirlik (30 gün)</dt>
+            {/* 04.11 v2.531 (K-07, ENV-F10): teknik kullanılabilirlik (IEC 61724-3); sözleşmesel tanım O&M sözleşmesine göre ayrı — MTBF/MTTR olay kaydındaki arızalardan */}
+            <div><dt>Teknik kullanılabilirlik (30 gün)</dt>
               <dd>{ku?.durum === "ok" && ku.A_t != null
                 ? <>%{sayiTr(ku.A_t * 100, 1)} zaman, {ku.A_e != null ? `%${sayiTr(ku.A_e * 100, 1)} enerji` : "—"}
-                    <span className="kunye-not">{sayiTr(ku.ariza_saat ?? 0)} arıza saati, veri %{sayiTr((ku.veri_orani ?? 0) * 100, 0)}, otomatik tespit</span></>
+                    <span className="kunye-not">{sayiTr(ku.ariza_saat ?? 0)} arıza saati, veri %{sayiTr((ku.veri_orani ?? 0) * 100, 0)}, otomatik tespit; sözleşmesel tanım O&amp;M sözleşmenize göre ayrı{(ku.ariza_olay_sayisi ?? 0) > 0 && ku.mtbf_saat != null ? ` · olay kaydı: ${sayiTr(ku.ariza_olay_sayisi ?? 0)} arıza, MTBF ${sayiTr(ku.mtbf_saat, 0)} sa, MTTR ${sayiTr(ku.mttr_saat ?? 0, 1)} sa` : ""}</span></>
                 : <><span className="kunye-durum eksik">Hesaplanamadı</span><span className="kunye-not">{ku?.durum === "yetersiz" ? "üretim mümkün saat yetersiz" : "ölçüm/beklenti birikmedi"}</span></>}</dd></div>
           </dl>
           <p className="kunye-dip">

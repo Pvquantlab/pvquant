@@ -1,6 +1,6 @@
 """v2.77-A — aylik iklim beklentisi (Kitap KUTU-2 / Sartname yontemi).
 
-Yontem: 20 yillik saatlik GHI arsivi -> yil-ay toplamlari -> her ayin
+Yontem: en cok 19 yillik (PVGIS-SARAH3 2005-2023; arsiv_isinim.PVGIS_SON_YIL) saatlik GHI arsivi -> yil-ay toplamlari -> her ayin
 yillar-arasi dagilimindan P10/50/90. Iki SAF fonksiyon (DB'siz/agsiz test)
 + bir ince ag sargisi. Olcum (arsiv probu, 31 Tem): 20 yil tek cagri,
 175.320 satir / 3,2 sn / %0 bosluk — parcalama gerekmez.

@@ -3,7 +3,7 @@
 Işınım: PVGIS-SARAH3 son tam yılı (2023) saatlik; transpozisyon/IAM/ışınım seviyesi/sıcaklık adımları saatlikten hesaplanır
 (pvquant.ext.standart.kayip_agaci); kirlenme/kar santral ayarından, kırpma ve kısıntı son 30 günün hijyen özetinden,
 kullanılabilirlik otomatik tespitten; gölge/uyumsuzluk/kablo/evirici PVsyst tipik varsayılan — her satır kaynağını söyler
-(hesaplanan | ayar | ölçüm | varsayılan). Sonuç params_json.kayip_agaci'nda saklanır (ayda bir; panelden yenile).
+(hesaplanan | ayar | ölçüm | varsayılan). Sonuç params_json.kayip_agaci'nda saklanır; zamanlanmış iş YOK, panelden «Yenile» ile üretilir (04.11 v2.531, B20).
 """
 from __future__ import annotations
 
@@ -56,7 +56,7 @@ def hesapla(tenant_id, plant: dict, kaydet: bool = True) -> dict:
         h = hijyen_service.ozet(tenant_id, plant["id"], 30)
         ek["kirpma"] = round(h["kirpma_saat"] / h["saat"] * 0.3, 4) if h.get("saat") else 0.0; kay["kirpma"] = "ölçüm (son 30 gün, kırpma saati payı×0,3)"
         ek["kisinti"] = 0.0; kay["kisinti"] = "ölçüm (kısıntı yok)" if not h.get("kisinti_saat") else "ölçüm"
-        if h.get("kisinti_kayip_kwh") and h.get("beklenen_saat"):
+        if h.get("kisinti_kayip_kwh") and h.get("kisinti_aranabildi"):   # 04.11 v2.531 (ENV-F05-2): ozet() 'beklenen_saat' değil 'kisinti_aranabildi' döndürür
             ek["kisinti"] = min(0.2, float(h["kisinti_kayip_kwh"]) / max(1.0, float(plant["capacity_kwp"]) * 5 * 30))
     except Exception:   # noqa: BLE001
         kay["kirpma"] = kay["kisinti"] = "hesaplanamadı"

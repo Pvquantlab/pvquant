@@ -13,6 +13,40 @@ import pandas as pd
 MIN_MUMKUN_SAAT = 40
 
 
+def mtbf_ozeti(olaylar: list[dict], bas: pd.Timestamp, bit: pd.Timestamp) -> dict:
+    """SAF. Olay kaydındaki 'ariza' olaylarından ext.standart.kullanilabilirlik.mtbf_mttr (IEC 61724-3 tanımı): MTBF = (dönem − toplam onarım) /
+    arıza sayısı, MTTR = ortalama onarım süresi. Açık arıza (bitiş yok) dönem sonuna kadar sayılır. Arıza yoksa saatler None."""
+    from pvquant.ext.standart import kullanilabilirlik as kl
+    ol = []
+    for o in olaylar:
+        if o.get("tur") != "ariza" or not o.get("baslangic"):
+            continue
+        b0 = max(pd.Timestamp(o["baslangic"]).tz_convert("UTC") if pd.Timestamp(o["baslangic"]).tzinfo else pd.Timestamp(o["baslangic"], tz="UTC"), bas)
+        b1 = pd.Timestamp(o["bitis"]) if o.get("bitis") else bit
+        b1 = b1.tz_convert("UTC") if b1.tzinfo else b1.tz_localize("UTC")
+        b1 = min(b1, bit)
+        if b1 > b0:
+            ol.append(kl.Olay(b0, b1, "ariza"))
+    r = kl.mtbf_mttr(ol, bas, bit)
+    tam = lambda v: (round(float(v), 1) if v == v else None)   # noqa: E731 — NaN → None
+    return {"ariza_olay_sayisi": int(r["ariza_sayisi"]), "mtbf_saat": tam(r["MTBF_saat"]), "mttr_saat": tam(r["MTTR_saat"])}
+
+
+def ariza_istatistigi(tenant_id, plant_id, df: pd.DataFrame) -> dict:
+    """Pencere = df'nin saat aralığı; olay kaydı yoksa ya da hata olursa sıfır/None (hesabı düşürmez)."""
+    bos = {"ariza_olay_sayisi": 0, "mtbf_saat": None, "mttr_saat": None}
+    if df is None or df.empty:
+        return bos
+    try:
+        from pvquant.services import olay_service
+        ts = pd.to_datetime(df["ts_utc"], utc=True)
+        bas, bit = ts.min(), ts.max() + pd.Timedelta(hours=1)
+        olaylar = olay_service.aralik(tenant_id, plant_id, bas.to_pydatetime(), bit.to_pydatetime(), turler=("ariza",))
+        return mtbf_ozeti(olaylar, bas, bit)
+    except Exception:   # noqa: BLE001
+        return bos
+
+
 def hesapla_df(df: pd.DataFrame, capacity_kwp: float) -> dict:
     """SAF. df: ts_utc, beklenen_kw (fizik, 0–24 s), power_kw (NaN = satır yok), flag."""
     if df is None or df.empty:
@@ -64,6 +98,7 @@ def hesapla(tenant_id, plant: dict, gun: int = 30) -> dict:
     out = hesapla_df(df, float(plant["capacity_kwp"]))
     out["pencere_gun"] = gun
     out["olay_istisna_saat"] = olay_saat
+    out.update(ariza_istatistigi(tenant_id, plant["id"], df))   # 04.11 v2.531 (ENV-F10): olay kaydındaki arızalardan MTBF/MTTR
     if olay_saat and out.get("not"):
         out["not"] = out["not"].replace("olay günlüğü yok — şebeke kesintisi ayrılamaz", f"olay kaydındaki {olay_saat} istisna saati (planlı bakım, talimat, kesinti) dışarıda")
     return out
