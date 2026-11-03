@@ -698,3 +698,18 @@ Testler: tests/test_dogrulama_v2529.py 4 (eşik None/0,10/0,05 + tablo + saatlik
 Etkilenen 12 modül 66 geçti; tam takım 888 geçti / 1 atlandı; web tsc 0, 103, build; Hakkında 1440/375 taşma 0 (`kanit/hakkinda-dsg-esigi-2025-oncesi-2026-11-04.jpg`).
 Sonraya: etki matrisindeki diğer 53 değer değişikliği satırı (AFL 2015–2019 DK-016/031/082, saatlik çerçeve DK-180/195, eşik etiketleri DK-239, YEKDEM DK-288/294/314/315, teminat DK-527/528/533, segment
 DK-644/653/654/662/668/785, saatlik detay DK-430, sayaç DK-374/382/383 …) kanıt düzeyine göre (A hesapta, B/C etiket); 02.02.2020 öncesi m.111 sürümleri okunmadı; arşivin 31/40/50 + KK3 kapanışı.
+
+# Otuzuncu paket — v2.530 (04.11.2026, canlı): Vitrin metin düzeltmeleri K-09…K-11 (veri yükleme vaadi, dosya biçimleri, TPYS şablon düzeni, 15 dk dilim, alarm kuralı sayısı, bülten sınaması)
+
+Commit `91cd8dc`, CI #672 (5 dk 11 s). Dağıtım: yalnız web imajı (ssh); göç yok; arka uç değişmedi. Canlı: index.html ve JS/CSS birebir (25/25).
+Kaynak: YOL-HARITASI-2026-10-31 «Vitrin ve iletişim düzeltmeleri (hemen; kod değil metin)» — dalga 1'de açık kalan tek kalem.
+Değişen ifadeler: Hero mikro künyesi «veri yüklemeniz gerekmez» → «piyasa kimliği olan lisanslı santralde veri yüklemeniz gerekmez»; başvuru formu «Başvuru için veri yüklemeniz gerekmez»;
+İş ızgarası / Türkiye piyasası / üst çubuk «CSV/XLSX» → «KGÜP ve EAK CSV; toplayıcı dosyası XLSX»; Dört adım ve Türkiye piyasası «TPYS şablonuyla birebir» → «TPYS CSV şablonu düzeninde; ondalık
+ayraç şablonda örneklenmediğinden nokta varsayılır, isterseniz biçim kendi örnek dosyanızdan öğrenilir» (kgup.SABLON_DURUMU ile aynı dil); «saatlik (15 dk veri hazır)» → «saatlik; dengeleme biriminde
+15 dk dilim» (kgup.ceyrek_dilimle yalnız dengeleme birimi ve ≥200 MWh sıçrama saatleri — ilk yazım «15 dk profile bölünmüş» inceleme turunda fazla iddia bulundu); Disiplin bandı «2 + 6 alarm kuralı»
+→ «2 + 13» (alarm_service: 2 varsayılan + 13 ek = 15); Türkiye piyasası «pilotla doğrulanmaktadır» → «hesap piyasa işletmecisinin aylık bülten değerleriyle sınanmıştır (45 kalem, en çok 0,011 TL fark)»
+(v2.513 bülten doğrulaması). «Kimin için» listesi P6 kararına kadar aynı; rakamlar bandı 29.10.2026 tarihli kaldı (888 + 103 güncellemesi sonraki pakette).
+Bekçi dersi: gizlilik bekçisi (`web/test/vitrin/gizlilik.test.ts`) vitrin dosyalarında kurum adını (EPİAŞ/Şeffaflık) yasaklar → «piyasa kimliği», «piyasa işletmecisi».
+İnceleme (02 M44): iki tur — /yontem kartları ve ana sayfa; tek düzeltme 15 dk ifadesi. Not: TurkiyePiyasasi kartları /yontem sayfasında; sahte API'nin giriş ucu yok, önizleme örnek jetonla.
+Testler: web tsc 0, npm test 103 (vaat kuralı, gizlilik ve dil bekçileri), oxlint 0, build; «/» ve «/yontem» sayfa metninden yeni ifadeler var / eski ifadeler ve kurum adı yok;
+`kanit/vitrin-k09-k11-{1440,375,yontem-1440}-2026-11-04.jpg`. Arka uç testleri koşulmadı (Python dosyası değişmedi).
