@@ -713,3 +713,22 @@ Bekçi dersi: gizlilik bekçisi (`web/test/vitrin/gizlilik.test.ts`) vitrin dosy
 İnceleme (02 M44): iki tur — /yontem kartları ve ana sayfa; tek düzeltme 15 dk ifadesi. Not: TurkiyePiyasasi kartları /yontem sayfasında; sahte API'nin giriş ucu yok, önizleme örnek jetonla.
 Testler: web tsc 0, npm test 103 (vaat kuralı, gizlilik ve dil bekçileri), oxlint 0, build; «/» ve «/yontem» sayfa metninden yeni ifadeler var / eski ifadeler ve kurum adı yok;
 `kanit/vitrin-k09-k11-{1440,375,yontem-1440}-2026-11-04.jpg`. Arka uç testleri koşulmadı (Python dosyası değişmedi).
+
+# Otuz birinci paket — v2.531 (04.11.2026, canlı): Sessiz kusur düzeltmeleri (P8) — bankable bozunma σ, kayıp zinciri kısıntı anahtarı, MTBF/MTTR olay kaydına bağlı, aylık üretici işler izlemede, teknik kullanılabilirlik ve kayıp zinciri etiketleri, vitrin rakamları 04.11
+
+Commit `bebc613`, CI #674 (7 dk 41 s). Dağıtım: api + worker + web imajı (ssh); göç yok. Canlı: index.html ve JS/CSS birebir (25/25); api «startup complete»; worker «basladi».
+Kaynak: YOL-HARITASI P8 «sessiz kusurlar (düzeltme)»; UYGULAMA-ENVANTERI ENV-F05-1/2, F06, F09, F10, K-06, K-07, B20. Formül değişmedi.
+ENV-F05-1: `bankable_service.hesapla` var olmayan `saglik_service.hesapla`'yı çağırıyor, try/except yutuyor, bozunma belirsizliği (σ) hep 0 kalıyordu → `saglik_service.saglik`; bozunma güven aralığı olan
+santralde σ bileşeni bütçeye girer. ENV-F05-2: `kayip_service` hijyen özetinde olmayan `beklenen_saat` anahtarını okuyor, kısıntı payı hep 0 → `kisinti_aranabildi`. B20: docstring «ayda bir» →
+zamanlanmış iş yok, panelden «Yenile». ENV-F10: `kullanilabilirlik_service.mtbf_ozeti` (saf) + `ariza_istatistigi` — olay kaydındaki «ariza» olaylarından `ext.standart.kullanilabilirlik.mtbf_mttr`
+(IEC 61724-3: MTBF = (dönem − toplam onarım)/arıza sayısı, MTTR = ortalama onarım); açık arıza pencere sonuna kadar, planlı bakım/talimat sayılmaz; yanıt `ariza_olay_sayisi`, `mtbf_saat`, `mttr_saat`.
+ENV-F06: `IZLENEN_ISLER`'e aylik_kalibrasyon / aylik_iklim / aylik_bankable (aylık, santral başına; temizlik işlerinin önünde — test_faz3_sistem_izleme dizin bazlı). ENV-F09: iklim_service docstring 20 → en çok
+19 yıl (2005–2023); ekran zaten veriden yıl sayısı yazıyor. Web: Santralim «Teknik kullanılabilirlik (30 gün)» + «sözleşmesel tanım O&M sözleşmenize göre ayrı» + olay kaydından MTBF/MTTR satırı
+(yalnız arıza varsa) + alarm koşul cümlesi «teknik kullanılabilirliği» (K-07); Kayıp zinciri kartı altı «tipik yıl ışınımı ve tipik varsayılanlarla hesaplanır, gerçekleşen üretim değildir» (K-06); vitrin
+rakamlar bandı 04.11 sayımı («900 otomatik test» = 892 + 103 yüzlüğe aşağı; bulgu sayısı 29.10 defterinden işaretli). ENV-119 `kurtarilan_tl`: etiket zaten «Referans programa göre fark · varsayımsal», alan adı sözleşme.
+İnceleme (02 M45): altı kare — alarm koşul cümlesi hizalandı; sahte API kayıp zinciri tablosu nota uymuyordu → ardışık zincir, şebeke/PR/özgül satırlardan.
+Testler: tests/test_sessiz_kusurlar_v2531.py 4 (işlev adı var olan fonksiyona; anahtar hijyen özetiyle aynı; MTBF/MTTR deterministik 2 arıza → MTTR 74 sa, MTBF 46 sa; izleme listesi + ISIM_TR).
+Tam takım 892 geçti / 1 atlandı (ilk koşuda 1 başarısız: dizin bazlı test, sıralamayla çözüldü); web tsc 0, 103, oxlint 0, build; Santralim 1440/375 taşma 0
+(`kanit/santralim-teknik-kullanilabilirlik-mtbf-2026-11-04.jpg`, `kanit/vitrin-rakamlar-0411-2026-11-04.jpg`).
+Doğrulanamayan / sonraya: bankable σ etkisi canlı santralde ≥13 ay ölçüm ister; MTBF yalnız olay kaydına girilen arızalardan (otomatik tespit edilen arıza saatleri olay değildir); kullanılabilirlik
+istisna/birim bazlı kütüphane (zaman/enerji tabanlı, `birim_bazli`, `sozlesme`) hâlâ bağlı değil → P8a performans katmanı; «32 kapatılmış bulgu» yeniden sayılmadı.
