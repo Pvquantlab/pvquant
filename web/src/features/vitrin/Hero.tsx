@@ -176,7 +176,7 @@ export function Hero({ kabuk = false }: { kabuk?: boolean } = {}) {
             <a className="vt-dugme vt-dugme--gece-cizgi vt-dugme--buyuk" href="/yontem#para">Uzlaştırma kalemleri nasıl hesaplanır</a>
             {/* 29.10 (04 §2): dürüst daraltma — lisanssız sahibini adreslemeyen «Kimin için» künyesi */}
             <p className="vt-hero__kimin"><span className="vt-hero__kimin-et">Kimin için</span><Meta items={["lisanslı GES sahipleri", "DSG ve enerji ticareti masaları", "toplayıcı ve görevli tedarik portföyleri"]} /></p>
-            <p className="vt-hero__mikro"><Meta items={["başvuru", "kurulumu biz yaparız", "veri yüklemeniz gerekmez", "doğruluk karneniz ilk günden birikmeye başlar"]} /></p>
+            <p className="vt-hero__mikro"><Meta items={["başvuru", "kurulumu biz yaparız", "piyasa kimliği olan lisanslı santralde veri yüklemeniz gerekmez", "doğruluk karneniz ilk günden birikmeye başlar"]} /></p>
           </div>
         </div>
       </div>

@@ -73,7 +73,7 @@ function BasvuruFormu() {
         {durum === "gidiyor" ? "Gönderiliyor…" : "Karnemi başlat"}
       </button>
       {durum !== "bos" && durum !== "gidiyor" && <p className="vt-uyari" role="alert">{durum}</p>}
-      <p className="vt-kunye vt-form__not">Veri yüklemeniz gerekmez; e-postanız yalnız dönüş için kullanılır.</p>
+      <p className="vt-kunye vt-form__not">Başvuru için veri yüklemeniz gerekmez; e-postanız yalnız dönüş için kullanılır.</p>
     </form>
   );
 }

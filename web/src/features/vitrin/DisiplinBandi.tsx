@@ -10,7 +10,7 @@ import { Meta } from "../../lib/Meta";
 const RAKAMLAR = [
   ["800", "otomatik test", "testlerin tamamı her sürümde koşar", "#vt-dipnot-1", "sayım kuralı"],
   ["15 gün", "tahmin ufku", "15 güne dek her saat için iyimser–kötümser aralık", "/yontem#yt-tanimlar", "aralığın tanımı"],
-  ["2 + 6", "alarm kuralı", "ikisi varsayılan izler; altısı santrale göre açılır", "#isler", "operasyon nöbeti"],
+  ["2 + 13", "alarm kuralı", "ikisi varsayılan izler; on üçü santrale göre açılır", "#isler", "operasyon nöbeti"]   /* 04.11 K-11: kural sayısı alarm_service.KURAL_ETIKET ile (2 varsayılan + 13 ek) */,
   ["32", "kapatılmış bulgu kaydı", "bulundu, düzeltildi, kayda geçti", "", ""],
 ] as const;
 
