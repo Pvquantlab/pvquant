@@ -674,3 +674,27 @@ tests/test_portfoy_tutarlilik.py 1. Tam takım 884 geçti / 1 atlandı; web tsc 
 Doğrulanamayan / sonraya: webhook adının özel IP'ye çözülmesi (ağ katmanı); API anahtarı döndürme ucu (bugün yeni anahtar + eski iptal); portföy KÜPST `kural_dayanak` metni dönemin ilk saatinden
 (sürüm sütunu saat bazında doğru); EPİAŞ durum kartında son başarılı istek / son hata alanı yok; meteoroloji arşivinde son deneme ↔ son başarılı indirme ayrımı yok; `santral:yaz` künye/segment/tarife
 alanlarını kapsamaz (bilinçli); canlı EPİAŞ bağlantısı ve arşiv tazeliği bu turda doğrulanmadı.
+
+# Yirmi dokuzuncu paket — v2.529 (04.11.2026, canlı): Doğrulama düzeltmeleri — kapsamlı doğrulama arşivinin A kanıtlı çürütmeleri koda (1.1.2025 öncesi DSG üye eşiği yok, 2024 ve öncesi KGÜP kesimi 16:00, AFL/1.11.2026 çıkarım/teminat/segment etiketleri)
+
+Commit `36384c4`, CI #670 (6 dk 27 s). Dağıtım: api + worker + web imajı (ssh); göç yok. Canlı: index.html ve JS/CSS birebir (25/25); api «startup complete»; worker «basladi».
+Kaynak: `~/Desktop/PVQuant_Kapsamli_Dogrulama_Arastirmasi` (Opus, 03–04.11.2026; 1.040 DK, 15 küme raporu, 1.151 kaynak; 31/40/50 ve KK3 girdi yürüyüşü henüz eksik — pazar). Yalnız kanıt düzeyi A çürütmeler ve
+etiket düzeltmeleri; uzlaştırma formülleri değişmedi.
+DK-249 (ÇÜRÜTÜLDÜ, A): m.111(3)-(5) RG 17.12.2024-32755 Md.24 ile eklendi, Md.30 ile 1.1.2025 yürürlük; EPDK 19.12.2023 konsolidesinde m.111 yalnız (1)-(2) → 1.1.2025 öncesi üye eşiği yok. `kurallar.dsg_esigi`
+1.1.2025 öncesi `None` + dayanak; `Kural.dsg_esik: float | None`; `dengesizlik.dsg_saatlik` eşik yoksa sapmanın tamamını grupta netleştirir (`edt_bireysel` 0); `dsg_ozet` esik `None`, kart cümlesi
+«Bu dönemde üye eşiği yoktur …» (`_esik_cumlesi`), CSV başlığı «yok (1.1.2025 öncesi)»; Hakkında tablosunda 2023–2024 satırları «—» (dayanak ipucunda) + tablo altı görünür not. C geri testi (27.10.2025–26.10.2026)
+hedefleri değişmedi.
+DK-154 (ÇÜRÜTÜLDÜ, A): RG 14.04.2009-27200 m.69(1) asıl metin ve 19.12.2023 sürümü «16:00»; 15:30 RG 32755 Md.17/18/20 ile 1.1.2025'ten. `kurallar.kgup_kesim(tarih)` → (16,0)/(15,30) + dayanak;
+`kgup_service.kaynak_kosu_df` ve `dengesizlik_service.program_df` SQL'i (`CASE WHEN CAST(… AS date) < '2025-01-01'`; `::date` yazımı text() bağlı parametresiyle karıştığından CAST) tarihe bağlı.
+DK-044 (KISMEN, A): AFL Karar 11933 etiketi «yürürlük maddesi yok — Usul ve Esaslar Md.4(5) lafzen 1.8.2023, EPİAŞ 4.7.2023 teslim gününden uyguladı; uygulama tarihi esas alındı»; değer/tarih aynı.
+DK-002 (A, tarih çıkarım): Karar 14911 ve 14907 Md.7 «yayımı takip eden fatura dönemi»; 1.11.2026 kararda yazmaz, EPİAŞ uygulama duyurusu bulunamadı → edt_kurali ve kupst-14907 dayanaklarına «1.11.2026 çıkarım»;
+sınır değişmedi (41_Acik_Sorular EPİAŞ-01).
+DK-537 (ÇÜRÜTÜLDÜ, yalnız C): Teminat Hesaplama Yöntemi m.7 «aylık ağırlıklı ortalama SMF» piyasa geneli dengesizlik ağırlıklı; kod düz aylık ortalama → docstring düzeltildi, yanıta `smf_agirlik`, not
+«SMF ortalaması ağırlıksız, yaklaşık»; hesap değişmedi (ağırlık verisi yok).
+DK-292 / DK-652 (ÇÜRÜTÜLDÜ, A): `segment.KURALLAR` fiyat etiketleri «YEK fiyatı: Cetvel I (USD cent × günlük TCMB kuru) ya da 7189 CK aylık ilan», «LÜY fiyatı (GTŞ alımı, 10 yıl) / sonrası CK 11415»;
+`gelir()` docstring'ine çağrılmadığı ve iki dalın düzeltilmeden bağlanmaması uyarısı (gelir tarife_service'ten).
+İnceleme (02 M43): bir kare — tablo doğru; «—»nin anlamı yalnız ipucundaydı → görünür not. Sahte API'nin giriş ucu yok; önizleme örnek jetonla.
+Testler: tests/test_dogrulama_v2529.py 4 (eşik None/0,10/0,05 + tablo + saatlik çerçeve 30–31.12.2024; 2024 DSG tam netleşme ↔ 2025 %10 bireysel kalan; kesim 16:00/15:30; etiketler lafzen/çıkarım).
+Etkilenen 12 modül 66 geçti; tam takım 888 geçti / 1 atlandı; web tsc 0, 103, build; Hakkında 1440/375 taşma 0 (`kanit/hakkinda-dsg-esigi-2025-oncesi-2026-11-04.jpg`).
+Sonraya: etki matrisindeki diğer 53 değer değişikliği satırı (AFL 2015–2019 DK-016/031/082, saatlik çerçeve DK-180/195, eşik etiketleri DK-239, YEKDEM DK-288/294/314/315, teminat DK-527/528/533, segment
+DK-644/653/654/662/668/785, saatlik detay DK-430, sayaç DK-374/382/383 …) kanıt düzeyine göre (A hesapta, B/C etiket); 02.02.2020 öncesi m.111 sürümleri okunmadı; arşivin 31/40/50 + KK3 kapanışı.
