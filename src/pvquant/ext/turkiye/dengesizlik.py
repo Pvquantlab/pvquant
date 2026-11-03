@@ -233,7 +233,7 @@ def dsg_saatlik(programlar: dict[str, pd.Series], gerceklesenler: dict[str, pd.S
         F = (pozisyonlar or {}).get(ad, programlar[ad]).reindex(idx).astype(float).fillna(programlar[ad].reindex(idx).astype(float))
         A = gerceklesenler[ad].loc[idx].astype(float); edm = A - F
         ph = pd.concat([A, F], axis=1).max(axis=1)
-        grup = edm.clip(lower=-esik * ph, upper=esik * ph); birey = edm - grup
+        grup = edm.clip(lower=-esik * ph, upper=esik * ph).where(esik.notna(), edm); birey = edm - grup   # eşik yok (1.1.2025 öncesi) → tamamı grupta netleşir
         # tek başına (netleşme olmasaydı) ve bireysel kalan kısım — aynı saatlik birim fiyatlarla
         tek = edm.clip(lower=0) * f["p_poz"] - (-edm).clip(lower=0) * f["p_neg"]
         br = birey.clip(lower=0) * f["p_poz"] - (-birey).clip(lower=0) * f["p_neg"]
@@ -327,7 +327,8 @@ def portfoy_kupst_saatlik(programlar: dict[str, pd.Series], gerceklesenler: dict
 
 
 def teminat(saatlik_df: pd.DataFrame, risk_katsayisi: float = 1.0, ay: int = 3) -> float:
-    """Son `ay` ayın en yüksek aylık EDT(−) × risk katsayısı — SADELEŞTİRİLMİŞ GÖSTERGE (Teminat U&E ile doğrulanmadı)."""
+    """Son `ay` ayın en yüksek aylık EDT(−) × risk katsayısı — SADELEŞTİRİLMİŞ GÖSTERGE (Teminat Hesaplama Yöntemi m.7 ile birebir değil; servis katmanı
+    teminat_gostergesi SMF'yi düz aylık ortalamayla alır, Yöntem ağırlıklı ortalama ister — 03.11.2026 doğrulama DK-537)."""
     a = saatlik_df["edt_neg"].resample("ME").sum().tail(ay)
     return float(a.max() * risk_katsayisi) if len(a) else 0.0
 

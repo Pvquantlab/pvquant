@@ -229,7 +229,7 @@ export interface DengesizlikKural {
   tarih: string; kural_surumu: string; rejim: "2025" | "2026"; edt_dayanak: string; k: Record<string, number>; l: Record<string, number>;
   V: number | null; B: number | null; AFL: number | null; aylik_toplama: string;
   kupst_m: number | null; kupst_n: number | null; kupst_n_ariza: number | null; kupst_ariza_esigi: number | null; kupst_taban: number;
-  kupst_net_sapma: boolean; kupst_birim: string; kupst_dayanak: string; dsg_esik: number; dsg_dayanak: string; belirsiz_2027: boolean;
+  kupst_net_sapma: boolean; kupst_birim: string; kupst_dayanak: string; dsg_esik: number | null; dsg_dayanak: string; belirsiz_2027: boolean;
 }
 /** v2.517 (P2a): piyasa pozisyonu ayarı — EDM = gerçekleşen − pozisyon */
 export interface PozisyonAyari { kaynak: "program" | "uretim" | "sabit"; sabit_mwh: number | null; etiket: string }

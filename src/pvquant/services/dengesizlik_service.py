@@ -54,7 +54,9 @@ def program_df(tenant_id, plant_id, gun: int = 90, uretim: str = "scada") -> pd.
             "SELECT g.ts_utc, g.power_kw AS gercek_kw, "
             " (SELECT f.p50_kw FROM forecast_values f JOIN forecast_runs r ON r.id=f.run_id "
             "   WHERE f.plant_id=:p AND f.ts_utc=g.ts_utc "
-            "   AND r.run_at <= ((date_trunc('day', g.ts_utc AT TIME ZONE 'Europe/Istanbul') - INTERVAL '1 day' + INTERVAL '15 hours 30 minutes') AT TIME ZONE 'Europe/Istanbul') "
+            "   AND r.run_at <= ((date_trunc('day', g.ts_utc AT TIME ZONE 'Europe/Istanbul') - INTERVAL '1 day' "
+            "     + (CASE WHEN CAST(g.ts_utc AT TIME ZONE 'Europe/Istanbul' AS date) < DATE '2025-01-01' THEN INTERVAL '16 hours' ELSE INTERVAL '15 hours 30 minutes' END)) "   # 03.11: 2024 ve öncesi teslim günü kesimi 16:00 (DK-154); ::date yazımı text() bağlı parametresiyle karışır
+            "     AT TIME ZONE 'Europe/Istanbul') "
             "   ORDER BY r.run_at DESC LIMIT 1) AS kgup_kw, "
             " (SELECT s2.power_kw FROM scada_hourly s2 WHERE s2.plant_id=:p AND s2.flag='valid' AND s2.ts_utc = g.ts_utc - INTERVAL '24 hour') AS naif_kw "
             "FROM g ORDER BY g.ts_utc"),
@@ -173,11 +175,13 @@ def saatlik_hesap(df: pd.DataFrame, fiyat: pd.DataFrame, kat: d.Katsayilar | Non
 def teminat_gostergesi(pv: pd.DataFrame, risk_katsayisi: float | None = None) -> dict:
     """v2.522 (P2b, IH-033/K-05): EPİAŞ dengesizlik teminatı tanımıyla gösterge — geçmiş 3 ayın aylık en yüksek negatif enerji dengesizlik
     miktarının mutlak değeri (MWh) × geçmiş 12 aylık dönemin aylık ortalama SMF'lerinin aritmetik ortalaması × risk katsayısı (02-08; EPİAŞ teminat
-    sayfası). Risk katsayısı değeri BULUNAMADI → Santral ayarlarından girilir; girilmemişse tutar yok. Aylık «ağırlıklı ortalama SMF» ağırlığı
-    kaynakta tanımlanmamış → saatlik SMF'nin aylık düz ortalaması (işaretli). Kalem 'doğrulanmamış' etiketiyle sunulur; EPYS/Takasbank esastır."""
+    sayfası). Risk katsayısı değeri BULUNAMADI → Santral ayarlarından girilir; girilmemişse tutar yok. Teminat Hesaplama Yöntemi m.7'deki «aylık
+    ağırlıklı ortalama SMF» piyasa geneli dengesizlik miktarıyla ağırlıklıdır (03.11.2026 doğrulama arşivi DK-537); o veri burada yok → saatlik SMF'nin
+    aylık düz ortalaması alınır ve «yaklaşık» diye etiketlenir. Kalem 'doğrulanmamış' etiketiyle sunulur; EPYS/Takasbank esastır."""
     bos = {"edm_neg_max_mwh": None, "edm_ay": None, "smf_ort_tl_mwh": None, "smf_ay_sayisi": 0, "risk_katsayisi": risk_katsayisi, "tutar_tl": None,
            "dogrulanmis": False, "formul": "3 ayın en yüksek aylık negatif EDM (MWh) × 12 aylık ortalama SMF (TL/MWh) × risk katsayısı",
-           "not": "EPİAŞ dengesizlik teminatı tanımı (Teminat Usul ve Esasları; risk katsayısı değeri kaynakta yok → Santral ayarlarından girilir). Gösterge; EPYS ve Takasbank tutarları esastır."}
+           "smf_agirlik": "düz aylık ortalama (yaklaşık; Yöntem m.7 piyasa geneli dengesizlik ağırlıklı ortalama ister)",
+           "not": "EPİAŞ dengesizlik teminatı tanımı (Teminat Hesaplama Yöntemi; risk katsayısı değeri kaynakta yok → Santral ayarlarından girilir; SMF ortalaması ağırlıksız, yaklaşık). Gösterge; EPYS ve Takasbank tutarları esastır."}
     if pv is None or pv.empty:
         return bos
     x = pv.copy(); x.index = x.index.tz_convert(IST)
@@ -615,7 +619,7 @@ def dsg_hesapla_df(programlar: dict[str, pd.DataFrame], fiyat: pd.DataFrame, kat
             "edt_tek_tl": round(float(sa["edt_tek"].sum()), 0), "edt_dsg_tl": round(float(sa["edt_dsg"].sum()), 0),
             "edt_grup_tl": round(float(sa["edt_grup"].sum()), 0), "edt_bireysel_tl": round(float(sa["edt_bireysel"].sum()), 0),
             "netlesme_farki_tl": round(float(sa["netlesme_farki"].sum()), 0), "kupst_uye_tl": (round(kupst, 0) if kupst is not None else None),
-            "esik": float(sa["esik"].iloc[-1]), "esik_kaynak": r["esik_kaynak"], "kural_surumu": " | ".join(sorted(set(sa["kural_surumu"]))),
+            "esik": (float(sa["esik"].iloc[-1]) if pd.notna(sa["esik"].iloc[-1]) else None), "esik_kaynak": r["esik_kaynak"],   # None → eşik yok (1.1.2025 öncesi) "kural_surumu": " | ".join(sorted(set(sa["kural_surumu"]))),
             "gecici_m39": kr.gecici_m39_notu(pd.Timestamp(idx[-1]).tz_convert(IST).date()),   # v2.513: dağıtım/GTŞ DSG'lerinde %100 (1.1.2027'ye kadar)
             "dagitim_anahtari": r["dagitim_anahtari"], "dagitim_etiket": d.DAGITIM_ETIKET[r["dagitim_anahtari"]],
             "hesaplanamayan_saat": int((sa["durum"] != "ok").sum()), "disi": r["disi"], "gosterge": False,
@@ -696,6 +700,13 @@ def portfoy_kupst_ozet(tenant_id, gun: int = 30, dagitim_anahtari: str = "sapma"
                     "Bu bir yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir.")}
 
 
+def _esik_cumlesi(esik) -> str:
+    """DSG kartı ilk cümlesi; eşik None → 1.1.2025 öncesi kural (üye eşiği yok, tam netleşme) — 03.11.2026 doğrulama DK-249."""
+    if esik is None:
+        return "Bu dönemde üye eşiği yoktur (1.1.2025 öncesi, DUY m.111(3)-(5) henüz yok): santrallerin sapmaları DSG içinde tamamen netleşir. "
+    return f"Her santralin sapmasının eşik oranı kadarı, %{esik * 100:.0f} × PH, DSG içinde netleşir; aşan kısım santralin kendisinde kalır. "
+
+
 def dsg_ozet(tenant_id, gun: int = 30, dagitim_anahtari: str = "sapma") -> dict:
     """Kiracının santralleri: DSG netleşmesi (yürürlükteki kural, F-08). Dengesizlik taşımayan segmentler portföy dışı; segment seçilmemiş
     santral lisanslı güneş kabul edilir ve KÜPST hesaplanamaz olarak işaretlenir."""
@@ -726,8 +737,8 @@ def dsg_ozet(tenant_id, gun: int = 30, dagitim_anahtari: str = "sapma") -> dict:
     out["segment_yok"] = [p["name"] for p in santraller if not segmentler[p["name"]]]
     # 29.10 dil turu: müşteri dili — kural kısa, varsayım açık, dayanak sonda
     out["not"] = ("Dengeden Sorumlu Grup içinde tek santral var; karşılıklı netleşecek sapma bulunmadığından fark sıfırdır. İkinci santral bağlandığında burada görünür." if out["santral"] <= 1
-                  else f"Her santralin sapmasının eşik oranı kadarı, %{out.get('esik', 0.05) * 100:.0f} × PH, DSG içinde netleşir; aşan kısım santralin kendisinde kalır. "
-                       "KÜPST santral başına ödenir ve DSG içinde netleşmez. Dayanak: DUY m.111. Bu rakamlar yürürlükteki kuralla yapılmış varsayımsal bir yeniden hesaptır; "
+                  else _esik_cumlesi(out.get("esik"))
+                       + "KÜPST santral başına ödenir ve DSG içinde netleşmez. Dayanak: DUY m.111. Bu rakamlar yürürlükteki kuralla yapılmış varsayımsal bir yeniden hesaptır; "
                        + ("program bildirilen KGÜP'tür (yüklü saatlerde), kalan saatlerde PVQuant önerisi; " if out["program"]["bildirilen_saat"] else "bildirilen KGÜP yüklü değil, program PVQuant önerisidir; ")
                        + ("satış Santral ayarlarındaki pozisyon ayarına göre alınmıştır. " if out["program"]["pozisyon_ayarli"] else "satış programa eşit varsayılmıştır. ")
                        + "EPİAŞ uzlaştırma sonucu değildir."
@@ -747,7 +758,7 @@ def dsg_uye_csv(ozet: dict) -> str:
                  "netlesme_farki_tl": v.get("netlesme_farki_tl"), "kupst_tl": v.get("kupst_tl"), "pay_pct": v.get("pay_pct"), "sapma_mwh": v.get("sapma_mwh"),
                  "grup_payi_mwh": v.get("grup_payi_mwh")} for ad, v in (ozet.get("uyeler") or {}).items()]
     buf = _io.StringIO()
-    buf.write(f"# PVQuant DSG üye dağılımı; son {ozet.get('pencere_gun')} gün; dağıtım anahtarı: {ozet.get('dagitim_etiket')}; üye eşiği {ozet.get('esik')}; "
+    buf.write(f"# PVQuant DSG üye dağılımı; son {ozet.get('pencere_gun')} gün; dağıtım anahtarı: {ozet.get('dagitim_etiket')}; üye eşiği {ozet.get('esik') if ozet.get('esik') is not None else 'yok (1.1.2025 öncesi)'}; "
               f"kural {ozet.get('kural_surumu')}; yeniden hesap, EPİAŞ uzlaştırma sonucu değildir; eksi EDT = üye öder\n")
     pd.DataFrame(satirlar, columns=kol).to_csv(buf, sep=";", decimal=",", index=False, lineterminator="\n")
     return "\ufeff" + buf.getvalue()

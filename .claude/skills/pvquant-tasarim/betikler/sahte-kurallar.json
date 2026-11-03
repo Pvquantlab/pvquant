@@ -32,8 +32,8 @@
 "birim": "santral",
 "dayanak": "Karar 9422 (RG 3.7.2020-31174; 1.8.2020'den)"
 },
-"dsg_esik": 0.1,
-"dsg_dayanak": "DUY m.111(5), RG 17.12.2024-32755 Md.24 (%10; yürürlük 1.1.2025)",
+"dsg_esik": null,
+"dsg_dayanak": "DUY m.111(3)-(5) 1.1.2025'ten (RG 17.12.2024-32755 Md.24, Md.30); öncesinde üye eşiği yok — sapmalar DSG içinde tamamen netleşir",
 "edt_dayanak": "DUY m.110 (RG 2.2.2020-31027 Md.32); k = l = 0,03 — EPDK 4-16180 (22.09.2025) k/l karar taslağı «Mevcut Metin»: 01/05/2015'ten 0,03 (asıl karar no bulunamadı); 2.2.2020 öncesi formül farklı, 1.12.2011–30.4.2015 k = l = 0 (geçici m.21) — kapsam dışı",
 "belirsiz_2027": false
 },
@@ -68,8 +68,8 @@
 "birim": "santral",
 "dayanak": "Karar 11589-2 (RG 27.1.2023-32086)"
 },
-"dsg_esik": 0.1,
-"dsg_dayanak": "DUY m.111(5), RG 17.12.2024-32755 Md.24 (%10; yürürlük 1.1.2025)",
+"dsg_esik": null,
+"dsg_dayanak": "DUY m.111(3)-(5) 1.1.2025'ten (RG 17.12.2024-32755 Md.24, Md.30); öncesinde üye eşiği yok — sapmalar DSG içinde tamamen netleşir",
 "edt_dayanak": "DUY m.110 (RG 2.2.2020-31027 Md.32); k = l = 0,03 — EPDK 4-16180 (22.09.2025) k/l karar taslağı «Mevcut Metin»: 01/05/2015'ten 0,03 (asıl karar no bulunamadı); 2.2.2020 öncesi formül farklı, 1.12.2011–30.4.2015 k = l = 0 (geçici m.21) — kapsam dışı",
 "belirsiz_2027": false
 },
@@ -210,11 +210,11 @@
 "taban": 750.0,
 "net_sapma": true,
 "birim": "santral",
-"dayanak": "Karar 14907 Md.1(1) net sapma, Md.2(1)(f), Md.3(1)(b) (RG 19.10.2026-33405)"
+"dayanak": "Karar 14907 Md.1(1) net sapma, Md.2(1)(f), Md.3(1)(b) (RG 19.10.2026-33405); Md.7 «takip eden fatura dönemi» → 1.11.2026 çıkarım"
 },
 "dsg_esik": 0.05,
 "dsg_dayanak": "Karar 13869 (RG 18.10.2025-33051), 1.1.2026'dan %5",
-"edt_dayanak": "DUY m.110(1)-(2) (RG 29.12.2025-33122 Md.17); Karar 14030 (k/l); Karar 14911 (V = 100); EDTA/EDTB dönem bazlı max/min (RG 19.10.2026-33405 Md.22); AFL 4500: Karar 14459 (RG 3.4.2026-33213 s.47)",
+"edt_dayanak": "DUY m.110(1)-(2) (RG 29.12.2025-33122 Md.17); Karar 14030 (k/l); Karar 14911 (V = 100; «yayımı takip eden fatura dönemi» → 1.11.2026 çıkarım, EPİAŞ uygulama duyurusu bulunamadı); EDTA/EDTB dönem bazlı max/min (RG 19.10.2026-33405 Md.22); AFL 4500: Karar 14459 (RG 3.4.2026-33213 s.47)",
 "belirsiz_2027": false
 },
 {
@@ -246,11 +246,11 @@
 "taban": 750.0,
 "net_sapma": true,
 "birim": "santral",
-"dayanak": "Karar 14907 Md.1(1) net sapma, Md.2(1)(f), Md.3(1)(b) (RG 19.10.2026-33405)"
+"dayanak": "Karar 14907 Md.1(1) net sapma, Md.2(1)(f), Md.3(1)(b) (RG 19.10.2026-33405); Md.7 «takip eden fatura dönemi» → 1.11.2026 çıkarım"
 },
 "dsg_esik": 0.05,
 "dsg_dayanak": "Karar 13869 yürürlükte (süre sınırı yok, %5); DUY m.111(5) uyarınca yıllık düşürme kararı en geç 1.12.2026'da alınır, RG yayımı Aralık sonuna sarkabilir; yön riski aşağı — %5 VARSAYILDI",
-"edt_dayanak": "DUY m.110(1)-(2) (RG 29.12.2025-33122 Md.17); Karar 14030 (k/l); Karar 14911 (V = 100); EDTA/EDTB dönem bazlı max/min (RG 19.10.2026-33405 Md.22); AFL 4500: Karar 14459 (RG 3.4.2026-33213 s.47)",
+"edt_dayanak": "DUY m.110(1)-(2) (RG 29.12.2025-33122 Md.17); Karar 14030 (k/l); Karar 14911 (V = 100; «yayımı takip eden fatura dönemi» → 1.11.2026 çıkarım, EPİAŞ uygulama duyurusu bulunamadı); EDTA/EDTB dönem bazlı max/min (RG 19.10.2026-33405 Md.22); AFL 4500: Karar 14459 (RG 3.4.2026-33213 s.47)",
 "belirsiz_2027": true
 }
 ]

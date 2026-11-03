@@ -88,7 +88,7 @@ class Kural:
     segment: str | None
     edt: EdtKurali
     kupst: KupstKurali
-    dsg_esik: float
+    dsg_esik: float | None        # None → üye eşiği yok (1.1.2025 öncesi: sapmalar DSG içinde tamamen netleşir)
     dsg_dayanak: str
     belirsiz_2027: bool
 
@@ -105,7 +105,7 @@ _AFL_ZINCIRI: tuple[tuple[date, float, str], ...] = (
     (date(2026, 4, 4), 4500.0, "Karar 14459 (RG 3.4.2026-33213 s.47)"),
     (date(2025, 4, 5), 3400.0, "Karar 13423 (RG 5.4.2025-32861)"),
     (date(2024, 7, 1), 3000.0, "Karar 12716 (RG 29.6.2024-32587 s.26)"),
-    (date(2023, 7, 4), 2700.0, "Karar 11933 (RG 4.7.2023-32238; yürürlük maddesi yok, EPİAŞ 4.7.2023 teslim gününden)"),
+    (date(2023, 7, 4), 2700.0, "Karar 11933 (RG 4.7.2023-32238; yürürlük maddesi yok — Usul ve Esaslar Md.4(5) lafzen 1.8.2023, EPİAŞ 4.7.2023 teslim gününden uyguladı; uygulama tarihi esas alındı)"),
     (date(2023, 4, 1), 2600.0, "Karar 11772 (RG 31.3.2023-32149 s.5)"),
     (date(2023, 3, 1), 3050.0, "Karar 11682 (RG 1.3.2023-32119; karar tarihi 28.2.2023, EPİAŞ 1.3.2023 teslim gününden)"),
     (date(2023, 2, 1), 3650.0, "Karar 11588 (RG 27.1.2023-32086)"),
@@ -140,6 +140,18 @@ _AFL_ZINCIRI: tuple[tuple[date, float, str], ...] = (
 )
 
 
+KGUP_KESIM_DEGISIM = date(2025, 1, 1)
+
+
+def kgup_kesim(tarih: date) -> tuple[tuple[int, int], str]:
+    """Teslim günü D için D-1 son KGÜP bildirim saati (İstanbul) ve dayanağı. 03.11.2026 doğrulama arşivi DK-154 / 11_KGUP_TPYS §3 (kanıt A):
+    1.1.2025'ten 15:30 (RG 17.12.2024-32755 Md.17, 18, 20; DUY m.69(1)); öncesinde 16:00 (RG 14.04.2009-27200 m.69(1) asıl metin; EPDK 19.12.2023
+    sürümü). Geri test ve yeniden hesaplarda 2024 ve öncesi teslim günleri için program kesimi 16:00 alınır."""
+    if tarih < KGUP_KESIM_DEGISIM:
+        return (16, 0), "DUY m.69(1) (RG 14.04.2009-27200): 31.12.2024'e kadar D-1 16:00"
+    return (15, 30), "DUY m.69(1) (RG 17.12.2024-32755 Md.17): 1.1.2025'ten D-1 15:30"
+
+
 def afl(tarih: date) -> float:
     """Azami fiyat limiti (TL/MWh), teslim günü bazında. Zincir `_AFL_ZINCIRI`; 1.7.2015 öncesi 2.000 (kapsam dışı, doğrulanmadı)."""
     for bas, deger, _ in _AFL_ZINCIRI:
@@ -170,7 +182,7 @@ def edt_kurali(tarih: date) -> EdtKurali:
     v = v_degeri(tarih)
     return EdtKurali("2026", {"acik": 0.06, "fazla": 0.03, "dengede": 0.03}, {"acik": 0.03, "fazla": 0.06, "dengede": 0.03},
                      v, 100.0, afl(tarih), toplama,
-                     "DUY m.110(1)-(2) (RG 29.12.2025-33122 Md.17); Karar 14030 (k/l); " + ("Karar 14911 (V = 100)" if v == 100.0 else "V = 150 başlangıç")
+                     "DUY m.110(1)-(2) (RG 29.12.2025-33122 Md.17); Karar 14030 (k/l); " + ("Karar 14911 (V = 100; «yayımı takip eden fatura dönemi» → 1.11.2026 çıkarım, EPİAŞ uygulama duyurusu bulunamadı)" if v == 100.0 else "V = 150 başlangıç")
                      + ("; EDTA/EDTB dönem bazlı max/min (RG 19.10.2026-33405 Md.22)" if toplama == "edta_ayrik"
                         else "; EDTA = max(ΣΣEDT(+);0), EDTB = ΣΣEDT(−) − min(ΣΣEDT(+);0) (RG 33122 Md.17)")
                      + f"; AFL {afl(tarih):.0f}: {afl_dayanak(tarih)}",
@@ -218,7 +230,7 @@ def kupst_kurali(tarih: date, segment: str | None, portfoy: bool = False, luy_is
                            "yükümlülük hukuken RG 21.1.2025-32789 m.69(10), fiilen TPYS 11.03.2025", "kupst-2025-iletim-belirsiz")
     # lisanslı güneş (serbest / YEKDEM / YEKA)
     if tarih >= date(2026, 11, 1):
-        return KupstKurali(0.08, 0.05, 0.08, 30, taban, True, birim, "Karar 14907 Md.1(1) net sapma, Md.2(1)(f), Md.3(1)(b) (RG 19.10.2026-33405)", "kupst-14907")
+        return KupstKurali(0.08, 0.05, 0.08, 30, taban, True, birim, "Karar 14907 Md.1(1) net sapma, Md.2(1)(f), Md.3(1)(b) (RG 19.10.2026-33405); Md.7 «takip eden fatura dönemi» → 1.11.2026 çıkarım", "kupst-14907")
     if tarih >= date(2026, 1, 1):
         return KupstKurali(0.08, 0.05, 0.08, 30, taban, False, birim, "Karar 14029 Md.2(1)(ç), Md.3(1) (RG 29.12.2025-33122)", "kupst-14029")
     if tarih >= date(2025, 1, 1):
@@ -231,7 +243,12 @@ def kupst_kurali(tarih: date, segment: str | None, portfoy: bool = False, luy_is
                        "Karar 7524 (RG 18.1.2018-30305); ilk 3 ay n 0,015 penceresinin tarihi bulunamadı — 0,03 kullanıldı", "kupst-7524")
 
 
-def dsg_esigi(tarih: date) -> tuple[float, str]:
+def dsg_esigi(tarih: date) -> tuple[float | None, str]:
+    """DSG üye dengesizlik oranı eşiği. 03.11.2026 doğrulama arşivi DK-249 (kanıt A): m.111(3)-(5) RG 17.12.2024-32755 Md.24 ile
+    eklendi, Md.30 ile 1.1.2025'te yürürlüğe girdi; 2023 sürümünde m.111 yalnız (1)-(2) → 1.1.2025 öncesinde üye eşiği YOK (eşiksiz netleşme).
+    02.02.2020 öncesi m.111 sürümleri okunmadı (kapsam dışı)."""
+    if tarih < date(2025, 1, 1):
+        return None, "DUY m.111(3)-(5) 1.1.2025'ten (RG 17.12.2024-32755 Md.24, Md.30); öncesinde üye eşiği yok — sapmalar DSG içinde tamamen netleşir"
     if tarih < date(2026, 1, 1):
         return 0.10, "DUY m.111(5), RG 17.12.2024-32755 Md.24 (%10; yürürlük 1.1.2025)"
     if tarih < date(2027, 1, 1):

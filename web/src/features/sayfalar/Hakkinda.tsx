@@ -81,13 +81,13 @@ export function Hakkinda() {
                     <td className="mono" title={r.l ? `dengede ${sayiMi(r.l.dengede)}` : undefined}>{yonlu(r.l)}</td>
                     <td className="mono">{sayiMi(r.V, 0)}</td>
                     <td className="mono">{sayiMi(r.kupst.m, 2)} / {sayiMi(r.kupst.n, 2)}{r.kupst.n_ariza != null ? ` (${sayiTr(r.kupst.n_ariza, 2)})` : ""}</td>
-                    <td className="mono">{sayiMi(r.dsg_esik, 2)}</td>
+                    <td className="mono" title={r.dsg_dayanak ?? undefined}>{sayiMi(r.dsg_esik, 2)}</td>   {/* 04.11 v2.529: 1.1.2025 öncesi eşik yok → «—», dayanak ipucunda */}
                     <td className="soluk" style={sol}>{r.edt_dayanak}{r.kupst.dayanak ? `; ${r.kupst.dayanak}` : ""}</td>
                   </tr>))}
               </tbody>
             </table>
           </div>
-          <p className="soluk" style={{ fontSize: 14, margin: "10px 0 0" }}>Katsayılar Santralim › Santral ayarları'ndan değiştirilebilir; bu tablo yürürlükteki varsayılanları gösterir. Dış API: GET /v1/kurallar.</p>
+          <p className="soluk" style={{ fontSize: 14, margin: "10px 0 0" }}>{kurallar.satirlar.some((r) => r.dsg_esik == null) && <>DSG eşiği «—»: 1.1.2025 öncesinde üye eşiği yoktu, sapmalar DSG içinde tamamen netleşir (DUY m.111(3)-(5) 1.1.2025'ten). </>}Katsayılar Santralim › Santral ayarları'ndan değiştirilebilir; bu tablo yürürlükteki varsayılanları gösterir. Dış API: GET /v1/kurallar.</p>
         </Kart>
       )}
       {h && Object.keys(h.arsiv).length > 0 && (

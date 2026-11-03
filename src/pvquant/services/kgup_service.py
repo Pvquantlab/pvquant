@@ -16,6 +16,7 @@ from datetime import date
 import pandas as pd
 
 from pvquant.ext.turkiye import kgup as kg
+from pvquant.ext.turkiye import kurallar as kr
 
 IST = "Europe/Istanbul"
 
@@ -26,7 +27,8 @@ def kaynak_kosu_df(tenant_id, plant_id, gun: date, kantil: str = "p50", tum_kant
     from pvquant.db import tenant_baglami
     kol = {"p50": "p50_kw", "p10": "p10_kw", "p25": "p25_kw", "p75": "p75_kw", "p90": "p90_kw"}[kantil]
     d0 = pd.Timestamp(gun, tz=IST); d1 = d0 + pd.Timedelta(days=1)
-    kesim = d0 - pd.Timedelta(hours=8, minutes=30)   # D-1 15:30 IST
+    (kh, km), _ = kr.kgup_kesim(gun)                  # 03.11: 1.1.2025'ten D-1 15:30, öncesinde 16:00 (DK-154)
+    kesim = (d0 - pd.Timedelta(days=1)).replace(hour=kh, minute=km)
     simdi = pd.Timestamp.now(tz=IST)
     if kesim > simdi:
         kesim = simdi

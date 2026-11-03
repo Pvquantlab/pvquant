@@ -30,10 +30,10 @@ class Segment(str, Enum):
 
 KURALLAR = pd.DataFrame([
     {"segment": Segment.LISANSLI_SERBEST, "kgup_yukumlu": True, "dengesizlik_sahibi": "santral/DSG", "kupst": True, "fiyat": "PTF / ikili anlaşma", "uzlastirma": "saatlik"},
-    {"segment": Segment.LISANSLI_YEKDEM, "kgup_yukumlu": True, "dengesizlik_sahibi": "santral/DSG (YEKDEM içi dağılım: parametre)", "kupst": True, "fiyat": "YEKDEM sabit", "uzlastirma": "aylık (gelir) + saatlik (dengesizlik)"},
+    {"segment": Segment.LISANSLI_YEKDEM, "kgup_yukumlu": True, "dengesizlik_sahibi": "santral/DSG (YEKDEM içi dağılım: parametre)", "kupst": True, "fiyat": "YEK fiyatı: Cetvel I (USD cent × günlük TCMB kuru) ya da 7189 CK aylık ilan (yekdem_service)", "uzlastirma": "aylık (gelir) + saatlik (dengesizlik)"},
     {"segment": Segment.YEKA, "kgup_yukumlu": True, "dengesizlik_sahibi": "sözleşmeye göre", "kupst": True, "fiyat": "YEKA sözleşme", "uzlastirma": "sözleşme"},
-    {"segment": Segment.LISANSSIZ_ILETIM, "kgup_yukumlu": True, "dengesizlik_sahibi": "toplayıcı/GTŞ portföyü", "kupst": True, "fiyat": "YEKDEM (10 yıl) / PTF", "uzlastirma": "saatlik"},
-    {"segment": Segment.LISANSSIZ_DAGITIM, "kgup_yukumlu": False, "dengesizlik_sahibi": "GTŞ/toplayıcı (santral taşımaz)", "kupst": False, "fiyat": "YEKDEM (10 yıl) / toplayıcı sözleşmesi", "uzlastirma": "saatlik mahsup"},
+    {"segment": Segment.LISANSSIZ_ILETIM, "kgup_yukumlu": True, "dengesizlik_sahibi": "toplayıcı/GTŞ portföyü", "kupst": True, "fiyat": "LÜY fiyatı (GTŞ alımı, 10 yıl) / sonrası CK 11415 formülü", "uzlastirma": "saatlik"},
+    {"segment": Segment.LISANSSIZ_DAGITIM, "kgup_yukumlu": False, "dengesizlik_sahibi": "GTŞ/toplayıcı (santral taşımaz)", "kupst": False, "fiyat": "LÜY fiyatı (GTŞ alımı, 10 yıl) / toplayıcı sözleşmesi", "uzlastirma": "saatlik mahsup"},
     {"segment": Segment.OZ_TUKETIM_SAATLIK, "kgup_yukumlu": False, "dengesizlik_sahibi": "yok (mahsuplaşma)", "kupst": False, "fiyat": "saatlik net: fazla GTŞ fiyatı, eksik tarife", "uzlastirma": "saatlik mahsup"},
 ]).set_index("segment")
 
@@ -60,7 +60,10 @@ class Santral:
 
 def gelir(santral: Santral, uretim_mwh: pd.Series, ptf: pd.Series | None = None, tuketim_mwh: pd.Series | None = None,
           gts_fiyat_tl_mwh: float | None = None, tarife_tl_mwh: float | None = None) -> pd.DataFrame:
-    """Saatlik brüt gelir (dengesizlik hariç — o `dengesizlik.saatlik` ile ayrı eklenir)."""
+    """Saatlik brüt gelir (dengesizlik hariç — o `dengesizlik.saatlik` ile ayrı eklenir).
+    03.11.2026 doğrulama arşivi DK-292 / DK-652 (kanıt A): bu fonksiyon hiçbir servisçe çağrılmaz (gelir tarife_service → ext.turkiye.tarife.gelir);
+    YEKDEM dalı tek sabit fiyat varsayar (gerçekte Cetvel I günlük kur ya da 7189 aylık ilan — yekdem_service), iletime bağlı lisanssız dalı
+    PTF'ye düşer (gerçekte LÜY fiyatıyla GTŞ alımı 10 yıl, sonrası CK 11415). Yeni kullanıma bağlanmadan önce bu iki dal düzeltilmelidir."""
     s = santral.segment
     idx = uretim_mwh.index
     if s in (Segment.LISANSLI_SERBEST, Segment.LISANSSIZ_ILETIM) and santral.sozlesme_fiyat_tl_mwh is None:
