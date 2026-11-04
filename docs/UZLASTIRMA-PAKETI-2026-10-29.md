@@ -874,3 +874,36 @@ Testler: tests/test_v2536_iklim_yakalama.py 5; tam takım .venv 929 geçti / 1 a
 Canlı doğrulama: dağıtım sonrası 5 santral için tek seferlik iklim hesabı (5/5 santralde 12 aylık beklenti yazıldı, Colorado ERA5 yedeğiyle (19:25 TSİ)); Hakkında arşiv kartı ve Aylık beklenti iklim katmanı.
 Dersler: worker 03:45–06:30 TSİ arasında yeniden yaratılmaz; bağımlılık sürüklenmesi (imaj pip'ten en yenisini alır) → üst sınır + imaj sürümleriyle ayrı venv'de tam takım.
 Sonraya: EK-2 ifade düzeltmeleri (v2.537), EK-3 değer satırları, lock dosyası (uv/pip-tools) kararı, Mutabakat'ta kupst_kaynak.
+
+# Otuz yedinci paket — v2.537 (04.11.2026, canlı): EK-2 ifade düzeltmeleri (26 dosya) + Sayaç sayfası doğrulama ve müşteri dili turu (hesap aynı)
+
+Commit `036faef`, CI #686. Dağıtım: api + worker + web imajı (ssh); göç yok. Canlı: index.html ve JS/CSS birebir (25/25 aynı).
+Kaynak: 04.11 kaynak teyidi `EK2_etiket_ifade.md` (arşiv etki türü «etiket-ifade», kanıt A/B; takvim satırları v2.535'te kapanmıştı). Hiçbir hesap, katsayı, tarih değişmedi;
+yalnız açıklama, etiket ve docstring'ler. Görünen metinlerde düzeltilenler: YEKDEM m.23(6) notunda yanlış künye «RG 19.10.2026-8» → 33405 (Doğruluk sayfası); sayaç kaynak etiketleri
+OSOS/MASS «bilgi amaçlı, uzlaştırmaya esas UEVM değil» + MASS açılımı (Millî Akıllı Sayaç Sistemi); «diğer sayaç (aylık bildirim, saatlik değer)»; sayaç düzeltme yolu DUY m.82(3)/(4);
+m.8(3)–m.81(1) eşitlemesi «yorum» (kesinlik belirsiz); kural tablosu dayanaklarında GTŞ (m.69(11)+m.110(3)) / toplayıcı (m.110(6)(b)(3)) ayrımı, m.132/Ç(18) yansıtma, 19.10.2026 öncesi
+münferit birim, %5 payın yorum olduğu; segment «dengesizlik_sahibi» etiketleri («santral EDT/KÜPST taşımaz; talimat tutarları ve LÜY Ek m.4 tahsilatı yansıtılabilir»; YEKDEM portföy
+dengesizliği 01.05.2016'dan mülga); DSG notu «aşan kısım DST'ye yansıtılır, üyeye aktarımı sözleşmesel»; 2027 varsayımının hukuki dayanağı olmadığı; senaryo «dengede» notu; olay kaydı
+açıklamaları (25 ürün ön uyarısı, sayaç EPİAŞ sayımına vekil, şebeke kesintisi/hasar çıkarım, mücbir sebep Lisans Yön. m.35); Excel «CO₂ TASARRUFU» → «KAÇINILAN CO₂ (şebeke karması, varsayım)»;
+Hakkında geçici m.40 notu; mutabakat GDDK/RBS/m.132/A(4). Docstring/yorumlar: SMF_N = SMF_P çıkarım, BUDÜP = KGÜP varsayımı, KÜPST paydası KÜPSM, DSG docstring güncel davranış,
+m.110(6) → m.110(3)-(4), DUY m.20(4), YEKA 5346 m.4(2), lisanssız dağıtım «sahip bildirmez, GTŞ/toplayıcı UEVÇB'si», öz tüketim LÜY m.4(1)(ö)/m.26(5), saat değişimi yok (yaz saati
+yıl boyu), m.22(4)(c)+depolama, EAK m.69/A(1) (m.4(1) kalktı), KGÜP ≤ EAK ürün kuralı, kurulu güç DC/AC bulunamadı, gece EAK iletime bağlı lisanssız, TPYS duyuru atıfları, m.69/A(2),
+PBD, BELIRSIZ_2027_GEREKCE (Md.13 tek EDT_f, ilişki belirsiz, üç ay çıkarım, kanıt kesimi), depolamalı YEKDEM kapsam notu, SMF aritmetik ortalama + kaynak, NASA POWER/Open-Meteo,
+DSG grup payı «olası neden», nowcast τ=2 saat, alarm 24 sa ürün parametresi, mcp = nihai PTF, Şeffaflık üretimi UEVM değil, kısıt tazmin hükmü yok, KDV notu, çok zamanlı tarife kaynağı,
+CAMS/NASA gecikme etiketi. Uygulanmayan EK-2 satırları (sonraya; kod/veri gerektirir): DK-241/252 PH katılımcı bazı, DK-186 KGÜP eksik saat duyarlılığı, DK-850 15 dk yaklaşık etiketi,
+DK-267 UEVÇB gruplaması, DK-695 portföy üyeliği beyanı, DK-397/389 sayaç ayar notu ve OSF matris ayrıştırıcı, DK-200 depolamalı segment, DK-614/627 dâhilî bilgi geri sayımı,
+DK-317 YEKDEM gelir notu, DK-367 rapor kaynak etiketi, DK-478 SMF «bekleniyor», DK-792 GİP ücreti, DK-888 kış dilimleri, DK-008/150/889 belge tarafı.
+İnceleme (kullanıcı, Sayaç ekranı): «Sayaç türü» ve «Bağlantı durumu» açılır listelerinde her seçenek «SCADA ölçümü» görünüyordu — v2.526'da üretim seçiminden kopyalanan yanlış üçlü;
+v2.537'de her seçenek kendi etiketini gösterir (kayıt değeri doğruydu, canlıda 2 gündür yanlış etiket). Testler: ilgili 14 modül 96 geçti; test_sayac diğer sayaç beklentisi «belirsiz»; sahte-kurallar.json motordan yeniden üretildi; tam takım 934 passed, 1 skipped, 155 warnings in 329.27s (0:05:29); web tsc 0, 103, build;
+Sayaç/Doğruluk/Hakkında 1440 taşma 0.
+Sayaç sayfası turu (04.11 brifi): kod/veri denetimi — her kart değeri servis alanına bağlandı (gelis.siniflama, fark.olculmus/tahmini_dahil/kapsam, donemler[].kapsam); sayısal
+kimlikler: SCADA 456 = 19 gün × 24, sayaç/ortak 450 (10 Ekim 18 saat), ölçülmüş 441 = 450 − 9 tahmini, ikisi de yok 264 = 720 − 456, kapsam %63 = 450/720, vadesi gelen 90 = 92 geçen − 2,
+düzeltme 12 Kas 17:30 = Takvim `donem_takvimi` (DUY m.132/B(1), m.82(4)) — sahte veride yalnız Ekim kapsamı 528 tutarsızdı (1–22 Ekim ama 10 Ekim 18 saat) → 522/222; servis hesabı DB'den
+tek kaynaklı, tutarsızlık üretmez. Formül doğrulaması (tests/test_sayac_v2537.py 4): fark yüzdesi paydası ortak SCADA (günlük toplam değil), tahmini/doldurulmuş/elle/veri-yok saatler
+ölçülmüş kıyasa girmez, SCADA 0'da yüzde yok, çok günlü pencerede ortak/yalnız SCADA/yalnız sayaç toplamları tamamlayıcı. İçe alma: ayraç/kodlama/XLSX, ayrı tarih-saat, 15 dk → saat
+(dilim başı), MWh çarpanı, yinelenen dilimde son satır, gelecek/negatif/okunamayan satır sayımı, endeks sütunu reddi, 8 MB sınırı, (plant, saat, kaynak) üzerine güncelleme — silme yok
+(mevcut testler). Mevzuat: m.8(2)/(3), m.81(1), m.82(3)-(4); 12. gün Takvim motoruyla tek kaynak; «eksik» = PVQuant'a yüklenmemiş, EPİAŞ eksikliği iddia edilmez. Dil: kart adları,
+eyleme dönük alt metinler, «Bu sayfa nasıl çalışır» beş soru + teknik ayrıntı açılır alanı; «Sayaç türü»/«Bağlantı durumu» seçenek etiketleri (v2.526 kopya hatası) düzeltildi. İkinci inceleme: yükleme aralığı gün biçimleyicisi saatli damganın UTC gününü kesiyordu («30 Eyl» = 1 Ekim 00:00 TSİ) → yerel gün; sahte veride Eylül kapsamı 0/720 ve ilk yükleme 354 saat hizalandı.
+Yapılmayan: resmî OSOS/MASS/EPYS sütun şablonları elimizde yok (dosya ipuçlarıyla tanınır, belgeli); yükleme geri bildirimi zaten alınan/atlanan sayımları veriyor, ayrı tablo yapılmadı;
+raporlarda ölçüm kaynağı etiketi (DK-367) sonraya. Rapor: `~/Desktop/PVQuant_Kaynak_Teyit_2026-11-04/SAYAC_DOGRULAMA_RAPORU.md`.
+Sonraya: EK-3 değer satırları; lock dosyası kararı; Mutabakat'ta kupst_kaynak.
