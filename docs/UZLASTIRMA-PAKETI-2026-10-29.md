@@ -761,3 +761,27 @@ takvim yılı mı açık); DK-660 LÜY Ek m.4 (talimat verisi yok); DK-315 depol
 Testler: tests/test_dogrulama_v2532.py 7 (saat profili saf çekirdek — sistematik öğle saatleri, eşik altı sabah, boş/kısa pencere; AFL 6851 sınır günleri; 2949 grubu; süre doldu Cetvel I/kullanıcı yılı/2949/7189; 7189 yedek dal hatası; m.23(6) KGÜP = 0 okuması; UEÇM net sapma
 KÜPSM = 0,3 − 0,08 ve 1.11 öncesi etkisiz), test_sayac çekiş sütunu, test_yekdem 2045 → sure_doldu. Tam takım 899 geçti / 1 atlandı (7 dk 10 s); web tsc 0, 103, oxlint 0, build.
 Doğruluk (a3) ve Kalibrasyon 1440/375 taşma 0 (`kanit/dogruluk-m23-6-kgup0-2026-11-04.jpg`, `kanit/kalibrasyon-saat-profili-2026-11-04.jpg`). Sahte API tarihinde (29.10) net sapma yok → UEÇM etiketi canlı veride 1.11 sonrası görünür.
+
+# Otuz üçüncü paket — v2.533 (04.11.2026, canlı): P8a performans katmanı I — gerçekleşen kayıp ayrışımı (kWh / TL / EPI), PR'da kırpma işareti, kullanılabilirlik sözleşme eşiği ve açığı
+
+Commit `4110dbb`, CI #678. Dağıtım: api + web imajı (ssh); göç yok. Canlı: index.html ve JS/CSS birebir (25/25); api «startup complete»; /kayip-ayrisimi kimliksiz 422.
+Kaynak: YOL-HARITASI P8 (IH-087 kayıp ayrıştırma kWh ve TL; IH-084 kırpma işaretli PR; IH-083 EPI «kısmen»); K-07 sözleşmesel kullanılabilirlik; ENV-F10 kütüphanenin `sozlesme()` dalı.
+P8'in kalanı (ölçülen havayla beklenen seri, yıl yıl P-değeri ve bütçe kıyası, sensör envanteri) P8b'ye.
+Kayıp ayrışımı: `kayip_ayrisimi_service.hesapla_df` (saf) — üretim mümkün saatlerde (beklenti > %2 kapasite) neden ataması öncelik sırasıyla olay kaydı (talimat YAT/YAL,
+planlı bakım, şebeke kesintisi/acil kesme/uzaktan açma → şebeke, arıza/hasar), hijyen «kisinti», AC kırpma (kWh HESAPLANMAZ: beklenti AC sınırını içerir), otomatik arıza
+(beklenti > %10, üretim < %0,5), ölçüm yok, kalan «açıklanmayan sapma» (kayıp toplamına girmez); kayıp = max(beklenen − gerçek, 0); TL = kWh × saatin satış fiyatı
+(`tarife_service.yapi` — sabit / çok zamanlı / PTF endeksli / YEKDEM gün fiyatı; tarife yoksa PTF, senaryo saatleri sayılır); EPI = Σgerçek/Σbeklenen; satırda `kpi_disi`
+(olay_service TUR_KURAL istisnası, kısıt/kırpma evet, arıza hayır). Uç `/v1/plants/{id}/kayip-ayrisimi?gun`. Dürüstlük notu yanıtta: beklenen hava tahmini girdili fizik
+modeli (saha ışınım sensörü akışı yok), TL gelir kaybı tahmini, fatura/uzlaştırma kalemi değil.
+PR: `pr_karti` sorgusuna `kirpma`; `pr_hesapla` kırpılan saat sayısı ve kırpma dışı PR (≥ 24 kalan saatte yeniden hesap). Santralim PR satırı: «AC sınırında kırpılan N saat dışında %x».
+Kullanılabilirlik: `hesapla_df` → `beklenen_kwh`; `sozlesme_acigi` — `params_json.kullanilabilirlik_sozlesme` (0,5–1; PlantAyar alanı, 422 doğrulama) girildiyse
+`kl.sozlesme(A_t, eşik, beklenen_kwh, birim fiyat)`; birim fiyat tarife ortalaması (`ortalama_fiyat_tl_mwh`) yoksa PTF 30 gün ortalaması (senaryo işaretli), yoksa TL yok.
+Santralim künyesi: «sözleşme eşiği %98: açık 0,6 puan ≈ 14,5 MWh / 38.320 TL, fiyat: … — kıyas tabanı, alacak değil» ya da «karşılanıyor»; Santral ayarlarında
+«Kullanılabilirlik sözleşme eşiği (%)» + açıklama. Dil: «garanti» sözcüğü bekçide yasak → «sözleşme eşiği».
+Web: Kalibrasyon «Gerçekleşen kayıp ayrışımı» kartı (EPI, nedeni bilinen kayıp, TL; neden tablosu kaynak / saat / kWh / TL / KPI'dan dışlanır) Veri temizliği ile Hava verisi
+tutarlılığı arasında. Sahte API: kayip-ayrisimi, pr kırpma alanları, kullanilabilirlik.sozlesme.
+Testler: tests/test_performans_v2533.py 4 (3 günlük sentetik: talimat/kısıt/kırpma/otomatik arıza/ölçüm yok/açıklanmayan satırları, TL = kWh × 2.000, EPI; olay önceliği
+talimat > arıza, açık olay pencere sonuna; PR kırpma 90 saat → kırpma dışı PR ≈ kırpmasız; sözleşme 0,98 − 0,95 = 3 puan → 3.000 kWh / 6.000 TL, fiyatsız → TL yok);
+tam takım 903 geçti / 1 atlandı (5 dk 44 s); web tsc 0, 103, oxlint 16 uyarı (hepsi eski), build. Kalibrasyon ve Santralim 1440/375 taşma 0 (`kanit/kalibrasyon-kayip-ayrisimi-2026-11-04.jpg`).
+Doğrulanamayan / sonraya: kırpma kaybının DC potansiyeli (DC ölçümü yok); talimat/ticari kapatma ayrımı olay kaydındaki türe bağlı (ticari kapatma türü yok);
+gerçekleşen kirlenme kaybı yok; beklenen seri ölçülen havayla değil → P8b; sözleşme istisna listesi sözleşmeye göre seçilemiyor (olay türü istisnaları sabit).
