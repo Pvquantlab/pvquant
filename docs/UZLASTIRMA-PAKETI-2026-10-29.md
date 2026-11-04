@@ -807,3 +807,53 @@ bütçe oranı, 2026 cari ytd payı, pay yok / seri dışı yıl / boş; bankabl
 Aylık beklenti 1440/375 taşma 0 (`kanit/aylik-p-degerleri-2026-11-04.jpg`).
 Doğrulanamayan / sonraya: hava düzeltmeli kıyas (ölçülen ışınım yok); bozunma varsayılanı %0,5 sektör tipik (kaynak etiketli); cari yıl payı GHI'dan (üretim payı değil,
 sıcaklık/kırpma mevsimselliği yok); aylık P-kıyası yok (yalnız yıl); P-değeri TL kıyası bankable gelir kartında kaldı.
+
+
+# Otuz beşinci paket — v2.535 (04.11.2026, canlı): Kaynak künyesi hizalama I — dayanak sicili, 20 dosyada yayım bloğu, Hakkında mevzuat listesi, Takvim yayım ipucu, künye bekçisi; Hakkında doğrulama turu (durum rozeti, arşiv işi tazeliği, lisans doğrulama, KÜPST geçersiz kılma işareti); Takvim doğrulama turu (segment kapsamı, sonuç metinleri, kaydırma, tatil uyarısı)
+
+Commit `e49a818`, CI #682. Dağıtım: api + web imajı (ssh); göç yok. Canlı: index.html ve JS/CSS birebir (25/25 aynı).
+Kaynak: 04.11.2026 kaynak teyidi (`~/Desktop/PVQuant_Kaynak_Teyit_2026-11-04`, RAPOR.md + EK-1): doğrulama arşivinin koda işaret ettiği 581 satırın 100'ünde değer doğru,
+birincil künye (RG tarih-sayı, karar no) yoktu; Hakkında mevzuat listesi künyesiz ve eksikti. Hesap değişmedi.
+Sicil: `ext/turkiye/kunye.py` — 33 giriş (kısa ad → künye): DUY (RG 14.04.2009-27200 + 12 değişiklik), LÜY, Lisans Yön., YEK Yön., 5346, 6446, CK 7189/2949/3453/11415,
+Ölçüm Sist. Yön., AFL U&E, Teminat U&E, Şebeke Yön., Toplayıcılık Yön., Şeffaflık Yön., Kurul kararları 13025/14029/14030/14907/14911/13869/14967/14968/13995/14982,
+5905-27, OSOS U&E, 2429, BKK 2016/9154, AYM 2024/133, TPYS dokümanı, GİP kapı kapanışı; `kunye()`, `blok()`, `bul()`. Her RG sayısı arşiv envanterinin kopyası
+`tests/data/kunye_envanteri.json` (140 sayı → tarih) ile eş; arşivde tarihi doğrulanmayan iki RG (32840, 33116) sicile alınmadı.
+Dosya blokları: 20 dosyada `DAYANAK_KUNYELERI` literal metni (sicilden üretildi; yorum satırı anahtar listesini taşır, bekçi testi literal = `kunye.blok(anahtarlar)` eşitliğini sınar):
+kurallar, takvim, dengesizlik, kgup, segment, epias (ext/turkiye); yekdem, sayac, mutabakat, dengesizlik, olay, kur, piyasa, kgup, takvim, alarm, saatlik_detay servisleri; reporting/schemas;
+platform/tarife; kaynak/epias. İlk denemede blok çalışma zamanında üretiliyordu (kaynak metninde RG sayısı görünmüyordu) → literal.
+Görünen künyeler: Takvim olaylarına `dayanak` listesi (`_olay`: kaynak metnindeki anılışlar → RG yayımı; web rozet ipucunda «Yayım: …»); mutabakat KÜPST kalemine `dayanak`
+(DUY m.110(4), m.113(2), RG 19.10.2026-33405; DK-229); sayaç `GELIS_KAYNAK` Ölçüm Sist. Yön. RG 28.12.2023-32413 / 21.01.2026-33144 (DK-394); segment modül başlığı künyeli; Takvim günlük saatlerde teminat satırlarının dayanağı Teminat U&E m.7(3), (10)(a) (DK-131) ve GİP kapanışı dayanağı DUY m.66/A(1)(f) + EPİAŞ 28.08.2018 duyurusu (DK-114/779, «GİP Usul ve Esasları» etiketi kalktı).
+Hakkında › Mevzuat ve standart dayanağı: 7 → 14 satır, «Yayım (Resmî Gazete tarih-sayı, karar)» sütunu; eklenen satırlar: dengesizlik katsayıları/fiyat sınırları kararları, YEKDEM
+(5346/YEK Yön./CK 7189/2949/5905-27), Lisans Yön. ve 6446, Ölçüm Sist. Yön. ve sayaç usul-esasları, Teminat U&E, Şeffaflık veri listesi, resmî tatil/saat dilimi.
+Dil: bekçi «künye» sözcüğünü yasaklıyor → ekranlarda «yayım»; kod/alan adlarında künye kaldı.
+Sonuç (teyit betiği yeniden koşuldu): künyesi tam satır 148 → 291 (581 içinde); EK-1 100 → 45 kalan — kalanlar madde düzeyinde atıf (kod maddeyi başka biçimde anıyor ya da anmıyor)
+ve ikincil karar numaraları (13423, 14908, 7522/7667, 10163/11326/5707, 3465; RG 31487/32282); v2.536 ifade paketiyle birlikte ele alınır.
+Testler: tests/test_kunye_bekcisi.py 4 (koddaki her «RG tarih-sayı» envanterle eş — mevcut atıflarda uyumsuzluk çıkmadı; sicil ↔ envanter; dosya blokları ↔ sicil; Hakkında listesi
+künyeli, takvim dayanak); etkilenen 7 modül 129 geçti; tam takım 926 geçti, 1 atlandı; web tsc 0, 103, build; Hakkında ve Takvim 1440/375 taşma 0 (`kanit/hakkinda-mevzuat-yayim-2026-11-04.jpg`).
+Sahte API: Hakkında mevzuat 4 satır künyeli; sahte-takvim.json 103 olaya `dayanak`. ruff (CI dışı) ile segment.py'deki kullanılmayan numpy içe aktarımı kaldırıldı.
+Hakkında doğrulama turu (04.11 brifi, aynı paket): `kurallar.dogrulama_durumu()` satır durumunu dayanak metnindeki işaretlerden türetir («bulunamadı/doğrulanmadı/taslağı» → doğrulama gerekli;
+«çıkarım» → çıkarım; 2027 → belirsiz; aksi → doğrulandı) — lisanslı serbest tabloda 2023–2025 üç satır (k = l = 0,03 yalnız EPDK 4-16180 taslağı «Mevcut Metin» + EPİAŞ Wayback; Kurul kararı künyesi
+bulunamadı) ve 1.11.2026 satırı (Karar 14911 V = 100 «takip eden fatura dönemi» çıkarımı, EPİAŞ duyurusu bulunamadı) «doğrulama gerekli», 1.1.2026 ve 19.10.2026 «doğrulandı», 2027 «belirsiz»;
+web «Durum» sütunu + başlıkta «4 satır doğrulama gerekli» + dayanak açılır metinde (EDT/KÜPST/DSG + durum notu). Değerler değişmedi, gizlenmedi.
+Arşiv kartı: «Son indirme» aslında `max(kosu_zamani)` (model başlangıcı) idi → «Son model tahmini»; `kaynak_service.is_tazeligi()` `jobs_log`'dan gece_meteo son başarılı / son deneme / durum
+(kayıt yoksa None, «iş günlüğünde kayıt yok»); GEFS ayrı iş değil (aynı işin içinde). Lisans: `atif.LISANS_DOGRULAMA` — ECMWF (CC BY 4.0 + ECMWF Terms of Use; 0,25° kullanılır, 0,1° ürün
+20.10.2026'dan var, kullanılmaz), DWD (yasal bildirim CC BY 4.0), NOAA (kamu malı) 04.11.2026 okundu; PVGIS/EPİAŞ okunmadı → «doğrulama kaydı yok». Resmî/senaryo: `hesapla_df.katsayilar.kupst_gecersiz_kilma`
+ve `kupst_kaynak`; `dokum` notu; Doğruluk KÜPST etiketi uygulanan değer + «santral ayarı (resmî tablo …)», kural çipi «KÜPST: santral ayarı»; Hakkında DUY/KÜPST notları ve dipnotlar: k/l, V, B, AFL,
+DSG eşiği ayarlardan değişmez, yalnız KÜPST n/tolerans. Sahte API GFS/PVGIS satırı (`kullanilan_kaynaklar` ile eş), `isler`, `kupst_kaynak`; sahte-kurallar.json motordan üretildi. İnceleme (04.11): kaynak açıklamalarındaki «günde 2/8 koşu» → «güncelleme» (müşteri dili; koşu iç terim).
+Testler: tests/test_hakkinda_v2535.py 6 (durum türetme, tabloda durum, sahte tablo = motor, geçersiz kılma işareti + k/l sabit, lisans kayıtları, boş jobs_log → None); ilgili 8 modül 49;
+Hakkında 1440/375 ve Doğruluk 1440 taşma 0 (`kanit/hakkinda-dogrulama-durumu-arsiv-isi-2026-11-04.jpg`, `kanit/dogruluk-kupst-kaynak-2026-11-04.jpg`).
+Rapor: `~/Desktop/PVQuant_Kaynak_Teyit_2026-11-04/HAKKINDA_DOGRULAMA_RAPORU.md` (12 bölüm). Kanıt sınırı: canlı jobs_log/worker günlüğü bu oturumdan okunamadı; canlı tazelik mühür sonrası ekrandan.
+Takvim doğrulama turu (04.11 brifi, aynı paket): el hesabıyla doğrulanan zincir — Ekim 2026 (11.11, 12.11 17:30, 14.11 Cmt, 16.11 Pzt nihai, 23.11, 24.11, 25.11, 15.01.2027),
+Kasım 2026 (12.12 Cmt belirsiz, 15.12, 23.12, 24.12, 13.02.2027 Cmt), Aralık 2026 (10.01 Paz sayaç, 15.01, 22.01, 25.01, 26.01, 16.03), Nisan 2027 (15.05 Cmt → 17.05 Kurban → 20.05 Per; 28.05; 31.05),
+Şubat 2027 (10–11.03 Ramazan «tatil» işaretli, kaydırma yok), Ocak 2028 artık yıl (29.02 iş günü) — hepsi motorla birebir; 2026–2027 Diyanet bayramları doğru, 2028 tanımsız →
+servis `tatil_eksik_yillar` + web uyarısı. Düzeltmeler (Kaynak teyidi EK-2/EK-3 arşiv bulguları): iletime bağlı lisanssız EPİAŞ tarafı değil (UZLASTIRMA_TARAFI = lisanslı, GTS_ODEME = lisanssız;
+DK-784/540; segment.KURALLAR ile eş), LÜY m.23(3) 6'sı yalnız 12.05.2019 öncesi → doğrulama (DK-690), sonuç metinleri dayanaklı (DK-575/552/557), 12'si hafta sonu EPİAŞ örnekli (DK-561),
+LÜYTOB açılımı, ön YEK listesi «kesinleşir» kalktı (DK-335), YEKDEM 30 Kasım iş gününe kayar + duyuru tarihi kalktı (DK-302/279), LÜY işletim bedeli «6183» → m.36(3) (DK-671/700),
+izin iptali m.30(2)(ı) ve 7 gün uyarısı yalnız bildirim tablosunda (DK-583/593), ilerleme raporu kabul yoksa doğrulama, BDB-02 «>» + şirket düzeyi (DK-580), ESY m.51(1) kapsam notları
+(DK-567/736/752), bakım 48+ sa çıkarım (DK-568), 11:00 teminat m.132/E(4) kalktı (DK-131), 2027 GÖP ötelemesi notu (DK-853/854), Geçici m.39 lafzı takvim+kurallar+sahte (DK-244/260),
+AYM/CK 11415 (DK-663/571), LÜY Geçici m.14 (DK-570/666), YEKA doğrulama gerekli (DK-337), DSG 2027 kararı «yasal son gün, izlenmez». Modüller arası: sayaç 12. gün, Mutabakat sürüm takvimi,
+alarm takvim_son_tarih aynı `tk.donem_takvimi`/`takvim_service.ozet`'i kullanır; kgup.TAKVIM saatleri ile tek kaynak (test). Web: Yaklaşan açıklaması ve günlük saat dayanakları açılır alanda.
+Testler: tests/test_takvim_v2535.py 10; test_takvim YEKA beklentisi güncellendi; takvim/kunye/alarm/sayaç/mutabakat/kurallar/dil/hakkında 78 geçti; Takvim 1440/768/375 taşma 0
+(`kanit/takvim-dogrulama-turu-1440-2026-11-04.jpg`, `-375-`). Rapor: `~/Desktop/PVQuant_Kaynak_Teyit_2026-11-04/TAKVIM_DOGRULAMA_RAPORU.md` (14 bölüm). Yapılmayan: 2028 Diyanet listesi
+(doğrulanmadı), lisans yenileme penceresi m.25(2) (metin teyitsiz), ölçüm itirazı 15 gün + 5 iş günü satırı, ≥100 MWe siber güvenlik/YEK-G satırları (EK-3; sonraya).
+Sonraya: EK-2 ifade düzeltmeleri (v2.536); EK-3 bugün yapılabilir değer satırları (v2.537); kalan 45 künye satırı madde atıflarıyla birlikte; Mutabakat ekranında kupst_kaynak görünürlüğü.
