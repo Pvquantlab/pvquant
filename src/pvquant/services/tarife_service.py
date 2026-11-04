@@ -81,13 +81,19 @@ def dogrula(t: dict) -> dict:
 
 
 def _yekdem_tarife(t: dict, plant: dict | None, bas, bit):
-    """v2.520: plant + gün aralığı verildiyse gün bazlı seri (yekdem_service); hiç fiyatı yoksa ya da plant yoksa eski ¢ × elle kur."""
+    """v2.520: plant + gün aralığı verildiyse gün bazlı seri (yekdem_service); hiç fiyatı yoksa ya da plant yoksa eski ¢ × elle kur.
+    v2.532 (03.11.2026 doğrulama arşivi DK-294, kanıt A): 7189 rejiminde fiyat TL bazlı aylık EPİAŞ ilanıdır (Ek-2 güncelleme + USD sınır kontrolü);
+    ilan yoksa ¢ × kur yedek dalı KULLANILMAZ — hata verilir. Yedek dal yalnız Cetvel I (ya da rejimi türetilemeyen) tesiste kalır."""
     if plant is not None and bas is not None and bit is not None:
         from pvquant.services import yekdem_service
         pj = yekdem_service._pj(plant)
-        s = yekdem_service.gunluk_fiyat_serisi({**pj, "tarife": {**(pj.get("tarife") or {}), **t}}, bas, bit)
+        pj2 = {**pj, "tarife": {**(pj.get("tarife") or {}), **t}}
+        s = yekdem_service.gunluk_fiyat_serisi(pj2, bas, bit)
         if s["toplam_tl_mwh"].notna().any():
             return tf.YekdemSeri(s["toplam_tl_mwh"])
+        if yekdem_service.rejim_turet(pj2)["rejim"] == "7189":
+            raise ValueError("7189 sayılı CK rejiminde YEK fiyatı aylık EPİAŞ ilanıdır; bu dönem için ilan kayıtlı değil, ¢ × kur ile fiyat üretilmez "
+                             "(Yönetim › Fiyat ve kur'dan ilan girilir)")
     if t.get("usd_cent_kwh") and t.get("kur_tl_usd"):
         return tf.Yekdem(float(t["usd_cent_kwh"]), float(t["kur_tl_usd"]))
     raise ValueError("YEKDEM fiyatı için TCMB kuru ya da aylık EPİAŞ ilanı yok; Santral ayarları › Satış tarifesi'nde yedek kur girilebilir")

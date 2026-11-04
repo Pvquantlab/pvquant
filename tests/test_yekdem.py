@@ -194,7 +194,8 @@ def test_gunluk_fiyat_serisi_cetvel1_7189_ve_yedek_kur():
         assert s7["kaynak"].iloc[0] == "epias_ilan" and abs(s7["toplam_tl_mwh"].iloc[0] - (2897.4 + 787.4)) < 1e-6 and s7["ay_fiyat_kr_kwh"].iloc[0] == 289.74
         pj7b = {"isletmeye_giris": "2021-08-01", "tarife": {"tip": "yekdem", "yerli_katki": True}}     # yerli katkı 1.8.2026'da bitti
         assert ys.gunluk_fiyat_serisi(pj7b, date(2026, 10, 31), date(2026, 10, 31))["toplam_tl_mwh"].iloc[0] == 2897.4
-        s45 = ys.gunluk_fiyat_serisi(pj7, date(2045, 1, 1), date(2045, 1, 1)); assert s45["kaynak"].iloc[0] == "onceki_ay" and s45["yek_tl_mwh"].iloc[0] > 0
+        s31 = ys.gunluk_fiyat_serisi(pj7, date(2031, 12, 1), date(2031, 12, 1)); assert s31["kaynak"].iloc[0] == "onceki_ay" and s31["yek_tl_mwh"].iloc[0] > 0
+        assert ys.gunluk_fiyat_serisi(pj7, date(2045, 1, 1), date(2045, 1, 1))["kaynak"].iloc[0] == "sure_doldu"   # v2.532: 10 yıl doldu (DK-285)
         assert ys.gunluk_fiyat_serisi({"tarife": {"tip": "yekdem"}}, date(2026, 10, 31), date(2026, 10, 31))["kaynak"].iloc[0] == "rejim_yok"
         assert ys.saatlik_yek_fiyati(pj7, pd.date_range("2026-10-30 21:00", periods=3, freq="h", tz="UTC")).round(1).tolist() == [3684.8] * 3
     finally:

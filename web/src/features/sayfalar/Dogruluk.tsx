@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
 import type { EChartsOption } from "echarts";
 import { api, bellekten, ayniysaEskisi } from "../../api/client";
-import type { Karne, HataMatrisi, HataDagilimi, KonformalAyar, Backtest, Dengesizlik, DengesizlikGeriTest, DengesizlikSaatlik, Guvenilirlik, Yekdem } from "../../api/types";
+import type { Karne, HataDagilimi, KonformalAyar, Backtest, Dengesizlik, DengesizlikGeriTest, DengesizlikSaatlik, Guvenilirlik, Yekdem } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
 import { BilgiliEtiket, Kpi, Kart, Sayfa, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
@@ -103,7 +103,9 @@ function YekdemKarti({ plantId, gun }: { plantId: string; gun: number }) {
             </table></div>)}
           {yk.m23_6 && yk.m23_6.saat > 0 && <p style={{ margin: "10px 0 0", fontSize: 13.5 }}>
             Son {sayiTr(yk.m23_6.pencere_gun)} günde {sayiTr(yk.m23_6.saat)} saatte program üstü üretim YEKDEM dışı sayıldı: {sayiTr(yk.m23_6.yekdem_disi_mwh, 1)} MWh, fark {sayiTr(yk.m23_6.yekdem_disi_tl)} TL (ilk {saatTr(yk.m23_6.ilk_saat)}, son {saatTr(yk.m23_6.son_saat)}).
-            {yk.m23_6.bildirilmemis_saat > 0 && <> Bu saatlerin {sayiTr(yk.m23_6.bildirilmemis_saat)} tanesinde bildirilen KGÜP yoktu; PVQuant önerisi program sayıldı. TPYS'ye hiç bildirilmediyse mevzuat KGÜP'ü 0 sayar ve o saatin tüm üretimi YEKDEM dışı kalır.</>}
+            {yk.m23_6.bildirilmemis_saat > 0 && <> Bu saatlerin {sayiTr(yk.m23_6.bildirilmemis_saat)} tanesinde bildirilen KGÜP yoktu; PVQuant önerisi program sayıldı.</>}
+            {/* v2.532 (DK-301): KGÜP = 0 okuması sayıyla — dosya yüklenmedi ≠ EPİAŞ'a bildirilmedi; iki okuma yan yana */}
+            {(yk.m23_6.kgup0_saat ?? 0) > 0 && <> Bildirilen KGÜP yüklenmemiş saatlerde KGÜP hiç bildirilmediyse mevzuat KGÜP'ü 0 sayar: o okumayla {sayiTr(yk.m23_6.kgup0_saat ?? 0)} saatte üretimin tamamı ({sayiTr(yk.m23_6.kgup0_mwh ?? 0, 1)} MWh, fark {sayiTr(yk.m23_6.kgup0_tl ?? 0)} TL) YEKDEM dışı kalır; bildirdiyseniz dosyayı yükleyin, hesap ona göre yapılır.</>}
           </p>}
           <p className="soluk" style={{ margin: "8px 0 0", fontSize: 13 }}>
             {yk.not ? yk.not + " " : ""}Yeniden hesaptır; EPİAŞ YEKDEM uzlaştırması değildir.
@@ -129,9 +131,11 @@ function kupstEtiketi(dz: Dengesizlik): string {
     if (dz.segment.segment === "lisanssiz_dagitim") return "tedarikçi/toplayıcı portföyünde hesaplanır";
     return "katsayı doğrulanamadı; hesaplanamaz";
   }
-  const k = dz.kural;
+  const k = dz.kural; const p = dz.program;
+  // v2.532 (DK-180/195): net sapmada UEÇM kaynağı açıkça — sayaç çekişi yoksa «0 varsayıldı» (net sapma = brüt sapma)
+  const uecm = k?.kupst_net_sapma ? (p?.uecm_saat ? `; UEÇM ${sayiTr(p.uecm_saat)} saatte sayaç çekişinden` : "; UEÇM verisi yok, 0 varsayıldı") : "";
   return k && k.kupst_m != null && k.kupst_n != null
-    ? `tolerans %${sayiTr(k.kupst_m * 100, 0)} · katsayı n ${sayiTr(k.kupst_n, 2)} · ${k.kupst_net_sapma ? "net sapma (Karar 14907)" : "brüt sapma"}`
+    ? `tolerans %${sayiTr(k.kupst_m * 100, 0)} · katsayı n ${sayiTr(k.kupst_n, 2)} · ${k.kupst_net_sapma ? `net sapma (Karar 14907${uecm})` : "brüt sapma"}`
     : "kural tablosundan";
 }
 
@@ -146,7 +150,6 @@ export function Dogruluk({ plantId }: { plantId: string }) {
   type Durum = "bekliyor" | "tamam" | "hata";
   const [k, setK] = useState<Karne | null | undefined>(() => bellekten.karne(plantId, 60));
   const [kD, setKD] = useState<Durum>("bekliyor");
-  const [hm, setHm] = useState<HataMatrisi | null | undefined>(undefined);
   const [hd, setHd] = useState<HataDagilimi | null | undefined>(undefined);
   const { n, oku } = useTema();
   const [kf, setKf] = useState<KonformalAyar | undefined>(undefined);   // v2.252
@@ -158,7 +161,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
   useEffect(() => {
     let acik = true;
     setK(bellekten.karne(plantId, donem)); setKD("bekliyor");
-    setHm(undefined); setHd(undefined); setKf(undefined); setBt(undefined); setDz(undefined); setGv(undefined); setGt(undefined);
+    setHd(undefined); setKf(undefined); setBt(undefined); setDz(undefined); setGv(undefined); setGt(undefined);
     // Denendi, alınmadı (24.10, perf/analiz/acik-tema/deney): yanıt yazımlarını startTransition'a almak 4× CPU'da «tam»
     // süresini uzattı (sıcak 211 → 471 ms); düz setState kaldı.
     api.karne(plantId, donem).then((v) => { if (acik) { setK((e) => ayniysaEskisi(e, v)); setKD("tamam"); } }, () => { if (acik) { setK((e) => e ?? null); setKD("hata"); } });
@@ -166,7 +169,6 @@ export function Dogruluk({ plantId }: { plantId: string }) {
     api.dengesizlik(plantId).then((v) => { if (acik) setDz(v); }, () => { if (acik) setDz(null); });
     api.backtest(plantId).then((v) => { if (acik) setBt(v); }, () => { if (acik) setBt(null); });
     api.guvenilirlik(plantId).then((v) => { if (acik) setGv(v); }, () => { if (acik) setGv(null); });
-    api.hataMatrisi(plantId).then((v) => { if (acik) setHm(v); }, () => { if (acik) setHm(null); });
     api.hataDagilimi(plantId).then((v) => { if (acik) setHd(v); }, () => { if (acik) setHd(null); });
     return () => { acik = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- donem bilerek dışarıda: istekler yalnız santral (ya da damga) değişince kurulur
@@ -214,7 +216,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
         markLine: { silent: true, symbol: "none", lineStyle: { color: soluk, type: "dashed" }, data: [{ yAxis: 0.1 }], label: { show: false } } }],
     };
   }, [gv, n, oku]);   // eslint-disable-line react-hooks/exhaustive-deps
-  // v2.326: hataMatrisi/hataDagilimi artık tek kapının içinde çekiliyor (yukarıda).
+  // v2.326: hataDagilimi tek kapının içinde çekiliyor (yukarıda). 04.11 v2.532: saat × gün hata haritası kaldırıldı; saat profili Kalibrasyon'da.
 
   // v2.225 (H "Rapor Dili"): Solargis grameri — gunluk degerler NOKTA,
   // 7 gun egilimi TEK kalin cizgi, naif INCE gri cizgi (alan degil).
@@ -288,94 +290,6 @@ export function Dogruluk({ plantId }: { plantId: string }) {
   const wmape024 = useMemo(() => wmapePanel("0-24"), [wmapePanel]);
   const wmape2472 = useMemo(() => wmapePanel("24-72"), [wmapePanel]);
 
-  const matrisOption = useMemo<EChartsOption>(() => {
-    const kenar = oku("--kenar"), soluk = oku("--soluk"), mono = oku("--mono");
-    const gunler = hm?.gunler ?? [], saatler = hm?.saatler ?? [];
-    const veri: [number, number, number][] = [];
-    let tepe = 0;
-    const mutlak: number[] = [];
-    (hm?.hucreler ?? []).forEach((satir, si) => satir.forEach((v, gi) => {
-      if (v !== null) { veri.push([gi, si, v]); mutlak.push(Math.abs(v)); }
-    }));
-    // skala siniri P95: tek uc deger govdeyi soldurmasin (uc, renk tavaninda kirpilir)
-    mutlak.sort((a, b) => a - b);
-    tepe = mutlak.length ? mutlak[Math.floor(0.85 * (mutlak.length - 1))] : 0;
-    // v2.225 (H): sag marj — saat basina ortalama |hata| profili; matrisin
-    // saat imzasini tek bakista ozetler (Solargis kucuk-marj dili).
-    const profil = saatler.map((_, si) => {
-      const xs = (hm?.hucreler?.[si] ?? [])
-        .filter((v): v is number => v !== null).map(Math.abs);
-      return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
-    });
-    return {
-      grid: [
-        { left: 56, right: 168, top: 26, bottom: 64 },
-        { right: 12, width: 128, top: 26, bottom: 64 },
-      ],
-      animation: false,
-      tooltip: { backgroundColor: oku("--kart"), borderColor: kenar,
-        borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 13 },
-        formatter: (p0: unknown) => {
-          const p1 = p0 as { seriesType: string; value: unknown; name: string };
-          if (p1.seriesType === "bar") {
-            return `${p1.name}: ort. hata ${sayiTr(Number(p1.value), 0)} kW`;
-          }
-          const [gi, si, v] = p1.value as [number, number, number];
-          const yon = v >= 0 ? "fazla tahmin" : "eksik tahmin";
-          return `${gunler[gi]} ${saatler[si]}<br/>${v >= 0 ? "+" : ""}${sayiTr(v, 1)} kW (${yon})`;
-        } },
-      xAxis: [
-        { type: "category", data: gunler, gridIndex: 0, axisTick: { show: false },
-          axisLine: { lineStyle: { color: kenar } },
-          /* v2.311: yalnız gün numarası basılıyordu ("09", "10") — hangi ay
-             olduğu okunmuyordu. Ay, ilk sütunda ve ay değişiminde yazılır;
-             kalabalık 30 sütunlu pencerede yine sade kalır. */
-          axisLabel: { color: soluk, fontFamily: mono, fontSize: 12,
-            formatter: (t: string, i: number) => {
-              const oncekiAy = i > 0 ? gunler[i - 1]?.slice(5, 7) : null;
-              return oncekiAy === t.slice(5, 7)
-                ? t.slice(8) : `${t.slice(8)}.${t.slice(5, 7)}`;
-            } } },
-        { type: "value", gridIndex: 1, splitLine: { show: false },
-          axisLine: { show: false }, axisTick: { show: false },
-          axisLabel: { show: false },
-          name: "ort. hata (kW)", nameLocation: "end" as const, nameGap: 6,
-          nameTextStyle: { color: soluk, fontFamily: mono, fontSize: 12,
-                           align: "right" as const, verticalAlign: "bottom" as const,
-                           padding: [0, 0, -34, 0] } },
-      ],
-      yAxis: [
-        { type: "category", data: saatler, gridIndex: 0, axisTick: { show: false },
-          axisLine: { show: false },
-          axisLabel: { color: soluk, fontFamily: mono, fontSize: 12 } },
-        { type: "category", data: saatler, gridIndex: 1, show: false },
-      ],
-      // v2.225 (H): rampa "alacakaranlik" — celik mavi ↔ sicak altin,
-      // dusuk kroma (goz yormaz); sektor teamulu korunur (mavi=eksik,
-      // sicak=fazla), sifir civari zemin gibi sessiz. Koyu temada uclar
-      // parlak, sifir civari koyu (algi tersinmesin). Lejant SAYISAL:
-      // uc degerler metinde (grafik kurali — renk tek basina konusmasin).
-      visualMap: { min: -tepe || -1, max: tepe || 1, calculable: false,
-        orient: "horizontal", left: "center", bottom: 0, itemWidth: 10, itemHeight: 90,
-        seriesIndex: 0,
-        text: [`fazla +${sayiTr(tepe, 0)} kW`, `eksik −${sayiTr(tepe, 0)} kW`],
-        textStyle: { color: soluk, fontSize: 13 },
-        inRange: { color: document.documentElement.dataset.tema === "koyu"
-          ? ["#7FB0DE", "#5A87B4", "#3D608A", "#263D5C",
-             "#14213A", "#4A3418", "#755324", "#A47334", "#D49A4C"]
-          : ["#2F4F76", "#587DA6", "#92AECB", "#CBDAE8",
-             "#FBFCFE", "#F0DDBE", "#D3A15D", "#A06E33", "#6E4A1E"] } },
-      series: [
-        { type: "heatmap", data: veri, xAxisIndex: 0, yAxisIndex: 0,
-          itemStyle: { borderColor: oku("--izgara"), borderWidth: 1 },
-          emphasis: { itemStyle: { borderColor: soluk } } },
-        { type: "bar", data: profil, xAxisIndex: 1, yAxisIndex: 1,
-          barWidth: "62%", itemStyle: { color: oku("--ch-dusuk") },
-          emphasis: { itemStyle: { color: soluk } } },
-      ],
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hm, n]);
 
   // v2.225 (H): cubuklar TAHMIN MAVISI (sapma tahminin urunudur; amber
   // yalniz gerceklesene ayrili), yesil egri kumulatif pay (sag eksen),
@@ -832,7 +746,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
               Gerçekleşen üretim ile saatlik piyasa pozisyonu (varsayılanı üretim programı) arasındaki farkın, {dz.kural?.rejim === "2026"
                 ? <>1.1.2026'dan yürürlükteki DUY m.110 formülüyle TL karşılığı: eksik üretimde max(V, PTF, SMF)×(1+k), tavanda AFL×1,05×(1+k);
                     fazla üretimde min(PTF, SMF)×(1−l), fiyat V'nin altındaysa −B×(1+l) (fazla üretim borç doğurur); k ve l sistem yönüne göre
-                    (açık 0,06/0,03; fazla 0,03/0,06; dengede 0,03). KÜPST: tolerans üstü sapma × max(750; PTF; SMF) × n{dz.kural.kupst_net_sapma ? ", net sapma (1.11.2026'dan)" : ""}.</>
+                    (açık 0,06/0,03; fazla 0,03/0,06; dengede 0,03). KÜPST: tolerans üstü sapma × max(750; PTF; SMF) × n{dz.kural.kupst_net_sapma ? ", net sapma (1.11.2026'dan: |(üretim − UEÇM) − program|; UEÇM sayaç çekişinden, yoksa 0)" : ""}.</>
                 : <>2025 formülüyle TL karşılığı: fazla üretim min(PTF, SMF)×0,97; eksik üretim max(PTF, SMF)×1,03; KÜPST tolerans üstü sapma × max(750; PTF; SMF) × n.</>}
               {dz.fiyat.senaryo_saat > 0 && " Senaryo fiyatında k = l = 0,03 varsayıldı."} Kısaltmalar: PTF piyasa takas fiyatı, SMF sistem marjinal fiyatı, V ve B DUY m.110 taban/borç parametreleri, AFL aylık fiyat limiti, k ve l sistem yönüne bağlı katsayılar, n KÜPST katsayısı.
               </p>
@@ -904,39 +818,6 @@ export function Dogruluk({ plantId }: { plantId: string }) {
             </>
           )}
         </details>
-      </Kart>
-      {/* v2.311: rozet "son 30 gün" diyordu ama pencerede yalnız EŞLEŞMİŞ günler
-          var (canlıda 2 gün); rozet gerçekten çizileni söylesin. */}
-      <Kart baslik="Saat × gün hata haritası"
-        sag={<span className="cip"><Meta items={[
-          hm && hm.gunler.length > 1
-            ? `${sayiTr(hm.gunler.length)} gün, ${donemYaz(hm.gunler[0], hm.gunler[hm.gunler.length - 1])}`
-            : hm && hm.gunler.length === 1
-              ? `tek gün, ${donemYaz(hm.gunler[0], hm.gunler[0]).replace(/^\d+ – /, "")}`
-              : "son 30 gün", "0–24 saat", hm?.tz ?? "—"]} /></span>}>
-        {hm === undefined ? <YerTutucu yukseklik={433} /> : hm && hm.gunler.length > 0 ? (
-          <>
-            <div className="grafik-kaydir"><div>
-              <EChart option={matrisOption} height={360}
-                ariaLabel="Saat ve gün kırılımında işaretli tahmin hatası haritası" />
-            </div></div>
-            <p style={{ fontSize: 13, color: "var(--soluk)", margin: "12px 0 0" }}>
-              <b style={{ color: "var(--ikincil)" }}>Ne gösterir:</b>{" "}
-              her hücre bir gün ve saattir: altın tonlar fazla tahmin
-              (tahmin &gt; gerçekleşen), mavi tonlar eksik tahmin; renk koyulaştıkça
-              hata büyür, sıfıra yakın hücreler zemin gibi sessiz kalır.{" "}
-              <b style={{ color: "var(--ikincil)" }}>Neye bakmalı:</b> tek renkli dikey
-              bir sütun, bulutun beklenenden erken ya da geç geldiği tek bir gündür; aynı
-              saat satırında gün gün tekrar eden renk ise sistematik sapmayı gösterir ve
-              kalibrasyonun ilk hedefidir. Sağdaki profil aynı bilginin saat özetidir.
-            </p>
-          </>
-        ) : (
-          <p style={{ fontSize: 14, color: "var(--soluk)", margin: 0 }}>
-            Harita için henüz karşılaştırılabilir tahmin–gerçekleşen çifti birikmedi; SCADA
-            yüklemeleri sürdükçe burası kendiliğinden dolar.
-          </p>
-        )}
       </Kart>
       <Kart baslik="Günlük sapma dağılımı (tahmin − gerçekleşen)"
         sag={<span className="cip">

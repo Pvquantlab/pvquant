@@ -10,9 +10,13 @@ Rejim (işletmeye giriş tarihinden türetilir; Santral ayarları › Satış ta
             çevrilip 4,95–6,05 (depolamalı 5,85–7,15) bandına kırpılır. EPİAŞ her ay ilan eder (yekdem_fiyat; Ağustos–Ekim 2026 tohum,
             EPİAŞ 01.10.2026 duyurusu). PVQuant formülü yeniden hesaplamaz: ilanı kullanır, band konumunu kurla gösterir.
   31.12.2030 sonrası işletmeye giriş: fiyat kararı yok → «belirsiz».
+  Süre sınırı (v2.532; 03.11.2026 doğrulama arşivi DK-287/DK-285, kanıt A): Cetvel I fiyatı son yararlanma yılının sonuna kadar (takvim.yekdem_suresi:
+  Karar 5905-27 grubu / CK 2949 / kullanıcı başlangıç yılı); 7189 fiyatı işletmeye girişten 10 yıl. Sonrası fiyat yok (kaynak «sure_doldu»).
 m.23(6) (YEK Yön., RG 19.10.2026-8): acil durum/YAT talimatı verilen ya da (PTF veya SMF < V ve sistem yönü enerji fazlası) saatlerde
 KGÜP'ün üstündeki üretim, PTF < YEK fiyatı (+ yerli katkı) ise YEKDEM dışında kalır; KGÜP bildirilmemişse KGÜP = 0. EPİAŞ'ın uygulaması
 (saatlik mi, hangi KGÜP sürümü, ilk fatura dönemi) BULUNAMADI → işaret «belirsiz» etiketlidir; talimat saatleri (veri yok) dâhil değil.
+Bildirilen KGÜP dosyası yüklenmemiş saatte PVQuant önerisi program sayılır (dosya yüklenmedi ≠ EPİAŞ'a bildirilmedi); v2.532 (DK-301, kanıt A):
+o saatler için mevzuat okuması (KGÜP = 0 → üretimin tamamı dışarıda) ayrıca kgup0_mwh / kgup0_tl sütunlarında ve özette verilir.
 YEKDEM dışı kalan MWh için fark = YEK fiyatı − j × PTF (j = 0,980, güneş; Karar 7667): YEKDEM içinde kalsaydı YEK fiyatı alır, PTF × j
 öderdi (YEK Yön. m.18/1). Hesap çekirdeği (ext/turkiye/dengesizlik.py) değişmez; bu modül yalnız fiyat ve işaret üretir.
 """
@@ -42,14 +46,15 @@ BANT_TOLERANS_CENT = 0.02                              # ilan edilen fiyat band 
 REJIM_ETIKET = {"cetvel1": "Cetvel I (ABD senti/kWh × günün TCMB kuru)", "7189": "7189 sayılı CK (TL, aylık EPİAŞ ilanı)", None: "belirsiz"}
 KAYNAK_ETIKET = {"tcmb": "günün TCMB alış kuru", "tcmb_onceki_gun": "önceki iş gününün TCMB alış kuru; tatil ya da hafta sonu",
                  "elle": "elle girilen yedek kur", "kur_yok": "kur yok", "epias_ilan": "EPİAŞ aylık ilanı", "onceki_ay": "önceki ayın ilanı; bu ay henüz ilan edilmedi",
-                 "fiyat_yok": "aylık ilan yok", "rejim_yok": "rejim belirsiz"}
+                 "fiyat_yok": "aylık ilan yok", "rejim_yok": "rejim belirsiz", "sure_doldu": "destek süresi doldu; YEK fiyatı yok"}
 EPIAS_DUYURU_URL = ("https://www.epias.com.tr/tum-duyurular/piyasa-duyurulari/elektrik/kayit-ve-uzlastirma/01-07-2021-tarihinden-31-12-2030-tarihine-kadar-"
                     "isletmeye-girecek-yek-belgeli-yenilenebilir-enerji-kaynaklarina-dayali-elektrik-uretim-tesisleri-icin-uygulanacak-fiyatlar-hk-38/")
 EPIAS_DUYURU_BASLIK = "EPİAŞ duyurusu: 01.07.2021–31.12.2030 arasında işletmeye girecek YEK belgeli tesisler için uygulanacak fiyatlar (01.10.2026)"
 _TARIH_RE = re.compile(r"(\d{1,2})\.(\d{1,2})\.(\d{4})|(\d{4})-(\d{2})-(\d{2})")
 M23_6_NOTU = ("YEK Yön. m.23(6) (RG 19.10.2026-8, 19.10.2026'dan): PTF ya da SMF taban değerin (V) altında ve sistem yönü enerji fazlası olan saatte "
               "programın (KGÜP) üstündeki üretim, PTF o saatin YEK fiyatından (+ yerli katkı) düşükse YEKDEM dışında kalır; KGÜP bildirilmemişse "
-              "mevzuat KGÜP'ü 0 sayar. Acil durum ya da yük atma talimatı (YAT) verilen saatler de kapsamdadır; talimat verisi PVQuant'ta olmadığından sayılmadı. "
+              "mevzuat KGÜP'ü 0 sayar (bildirilen KGÜP yüklenmemiş saatlerde PVQuant önerisi program sayılır; KGÜP = 0 okuması ayrıca verilir). "
+              "Acil durum ya da yük atma talimatı (YAT) verilen saatler de kapsamdadır; talimat verisi PVQuant'ta olmadığından sayılmadı. "
               "EPİAŞ'ın uygulaması (saatlik mi, hangi KGÜP sürümü, ilk fatura dönemi) doğrulanamadı: işaret bilgi amaçlıdır, uzlaştırma sonucu değildir. "
               "Fark tutarı = YEKDEM dışı MWh × (YEK fiyatı − 0,98 × PTF).")
 
@@ -101,7 +106,8 @@ def rejim_turet(pj: dict) -> dict:
                 "kaynak": "işletmeye giriş tarihi girilmedi (Takvim › Santral tarihleri) ve tarifede rejim seçilmedi"}
     if giris <= CETVEL1_SON_GIRIS:
         return {**out, "rejim": "cetvel1", "etiket": REJIM_ETIKET["cetvel1"], "kaynak_turu": "hesaplanan",
-                "kaynak": "5346 sayılı Kanun m.6 ve I sayılı Cetvel: 30.6.2021'e kadar işletmeye giren tesisler (işletmeye giriş tarihinden türetildi)"}
+                "kaynak": ("5346 sayılı Kanun m.6 ve I sayılı Cetvel: 31.12.2020'ye kadar işletmeye giren tesisler; 1.1–30.6.2021 girişliler CK 2949 "
+                           "(RG 18.9.2020-31248) ile Cetvel I, 31.12.2030'a kadar (işletmeye giriş tarihinden türetildi)")}
     if giris <= CK7189_SON_GIRIS:
         return {**out, "rejim": "7189", "etiket": REJIM_ETIKET["7189"], "kaynak_turu": "hesaplanan",
                 "kaynak": "7189 sayılı CK (RG 1.5.2023-32177): 1.7.2021–31.12.2030 arasında işletmeye giren tesisler (işletmeye giriş tarihinden türetildi)"}
@@ -241,10 +247,28 @@ def bant_kontrol(ay, tesis_tipi: str, fiyat_kr_kwh: float, kur_ort: float | None
 _KOLONLAR = ["yek_tl_mwh", "yerli_tl_mwh", "toplam_tl_mwh", "kaynak", "kur", "kur_gunu", "ay_fiyat_kr_kwh", "usd_cent_kwh"]
 
 
+def _sure_doldu(pj: dict, rejim: str | None, giris: date | None, gun_dizisi: np.ndarray) -> np.ndarray:
+    """v2.532: gün bazında destek süresi dolmuş mu? Cetvel I: takvim.yekdem_suresi son yılı (Karar 5905-27 / CK 2949 / kullanıcı başlangıç yılı);
+    7189: işletmeye girişten 10 yıl (Ek-1). Süre türetilemiyorsa (giriş ve başlangıç yılı yok) sınır uygulanmaz."""
+    hic = np.zeros(len(gun_dizisi), bool)
+    if rejim == "7189":
+        return (gun_dizisi >= _yil_ekle(giris, 10)) if giris else hic
+    if rejim == "cetvel1":
+        from pvquant.ext.turkiye import takvim as tk
+        yb = pj.get("yekdem_baslangic_yili")
+        try:
+            y = tk.yekdem_suresi(giris, int(yb) if yb else None)
+        except (TypeError, ValueError):
+            y = None
+        return (gun_dizisi > date(int(y["son_yil"]), 12, 31)) if y else hic
+    return hic
+
+
 def gunluk_fiyat_serisi(pj: dict, bas: date, bit: date) -> pd.DataFrame:
     """Gün indeksli (tz'siz Timestamp) YEK fiyatı: yek_tl_mwh, yerli_tl_mwh, toplam_tl_mwh (TL/MWh; NaN = fiyat yok), kaynak (gün başına
     kod), kur / kur_gunu (Cetvel I), ay_fiyat_kr_kwh / usd_cent_kwh. Cetvel I: ¢ × 10 × günün kuru (kur yoksa elle girilen kur; o da yoksa
-    NaN). 7189: ayın ilanı × 10 (+ yerli katkı, süresi içinde); ay ilan edilmemişse önceki ayın ilanı (kaynak onceki_ay)."""
+    NaN). 7189: ayın ilanı × 10 (+ yerli katkı, süresi içinde); ay ilan edilmemişse önceki ayın ilanı (kaynak onceki_ay).
+    v2.532: destek süresi dolan günlerde fiyat NaN, kaynak sure_doldu (_sure_doldu)."""
     pj = _pj(pj); t = pj.get("tarife") or {}; r = rejim_turet(pj)
     gunler = pd.date_range(pd.Timestamp(bas), pd.Timestamp(bit), freq="D")
     out = pd.DataFrame(index=gunler, columns=_KOLONLAR)
@@ -255,6 +279,7 @@ def gunluk_fiyat_serisi(pj: dict, bas: date, bit: date) -> pd.DataFrame:
     if len(gunler) == 0 or r["rejim"] is None:
         return out
     gun_dizisi = np.asarray([g.date() for g in gunler])
+    sure_doldu = _sure_doldu(pj, r["rejim"], giris, gun_dizisi)
     if r["rejim"] == "cetvel1":
         cent = float(t.get("usd_cent_kwh") or CETVEL1_CENT)
         yerli_cent = float(t.get("yerli_katki_usd_cent") or 0.0)
@@ -274,6 +299,8 @@ def gunluk_fiyat_serisi(pj: dict, bas: date, bit: date) -> pd.DataFrame:
         out["yek_tl_mwh"] = cent * 10.0 * kur.values
         yerli_gecerli = (gun_dizisi < _yil_ekle(giris, YERLI_YIL["gunes"])) if giris else np.ones(len(gunler), bool)
         out["yerli_tl_mwh"] = np.where(yerli_gecerli & (yerli_cent > 0), yerli_cent * 10.0 * kur.values, 0.0)
+        if sure_doldu.any():   # v2.532 (DK-287): son yararlanma yılından sonra Cetvel I fiyatı yok
+            out.loc[sure_doldu, ["yek_tl_mwh", "yerli_tl_mwh"]] = np.nan; out.loc[sure_doldu, "kaynak"] = "sure_doldu"
     else:   # 7189
         try:
             ilanlar = {f["ay"]: f for f in fiyat_listesi(tip)}
@@ -295,6 +322,8 @@ def gunluk_fiyat_serisi(pj: dict, bas: date, bit: date) -> pd.DataFrame:
             fiyat[i] = f["fiyat_kr_kwh"]
             if yerli_ac and yerli_gecerli[i] and f.get("yerli_katki_kr_kwh"):
                 yerli[i] = f["yerli_katki_kr_kwh"]
+        if sure_doldu.any():   # v2.532 (DK-285/DK-287): 7189 Ek-1 YEK fiyatı işletmeye girişten 10 yıl
+            fiyat[sure_doldu] = np.nan; yerli[sure_doldu] = 0.0; kaynak[sure_doldu] = "sure_doldu"
         out["ay_fiyat_kr_kwh"] = fiyat; out["kaynak"] = kaynak
         out["yek_tl_mwh"] = fiyat * 10.0                    # kr/kWh → TL/MWh
         out["yerli_tl_mwh"] = np.where(np.isnan(fiyat), np.nan, yerli * 10.0)
@@ -335,10 +364,12 @@ def saatlik_yek_fiyati(pj: dict, idx: pd.DatetimeIndex) -> pd.Series:
 # ---------------- m.23(6) ----------------
 def m23_6_isaretle(pv: pd.DataFrame, yek_tl_mwh: pd.Series) -> pd.DataFrame:
     """pv: dengesizlik_service.saatlik_hesap çıktısı (UTC indeks; ptf, smf, yon, kgup, gerceklesen). yek_tl_mwh: saat başına YEK fiyatı.
-    Dönüş (pv indeksinde): yek_fiyat_tl_mwh, m23_6 (evet | hayir | ptf_yek_ustu | fiyat_yok | kapsam_disi), yekdem_disi_mwh, yekdem_disi_tl."""
+    Dönüş (pv indeksinde): yek_fiyat_tl_mwh, m23_6 (evet | hayir | ptf_yek_ustu | fiyat_yok | kapsam_disi), yekdem_disi_mwh, yekdem_disi_tl;
+    v2.532 (DK-301): kgup0_mwh / kgup0_tl = bildirilen KGÜP yüklenmemiş saatlerde (program_kaynak ≠ bildirilen) mevzuat okuması — KGÜP = 0, o saatin
+    üretiminin tamamı dışarıda (bildirilen saatlerde ve pv'de program_kaynak yoksa 0)."""
     from pvquant.ext.turkiye import kurallar as kr
     if pv is None or pv.empty:
-        return pd.DataFrame(columns=["yek_fiyat_tl_mwh", "m23_6", "yekdem_disi_mwh", "yekdem_disi_tl"])
+        return pd.DataFrame(columns=["yek_fiyat_tl_mwh", "m23_6", "yekdem_disi_mwh", "yekdem_disi_tl", "kgup0_mwh", "kgup0_tl"])
     gunler = pv.index.tz_convert(IST).date
     v = pd.Series([kr.v_degeri(d) for d in gunler], index=pv.index, dtype=float)
     yek = yek_tl_mwh.reindex(pv.index).astype(float)
@@ -352,7 +383,12 @@ def m23_6_isaretle(pv: pd.DataFrame, yek_tl_mwh: pd.Series) -> pd.DataFrame:
     mwh = ustu.where(disi, 0.0)
     tl = (mwh * (yek - J * ptf)).where(disi, 0.0)
     isaret = np.where(~yururluk, "kapsam_disi", np.where(disi, "evet", np.where(aday & yek.isna(), "fiyat_yok", np.where(aday, "ptf_yek_ustu", "hayir"))))
-    return pd.DataFrame({"yek_fiyat_tl_mwh": yek.values, "m23_6": isaret, "yekdem_disi_mwh": mwh.values, "yekdem_disi_tl": tl.values}, index=pv.index)
+    ger = pv["gerceklesen"].astype(float).clip(lower=0.0)
+    bildirilmemis = (pv["program_kaynak"].astype(str) != "bildirilen") if "program_kaynak" in pv else pd.Series(False, index=pv.index)
+    disi0 = yururluk & dusuk & fazla_yon & bildirilmemis & (ger > 1e-9) & yek.notna() & (ptf < yek)
+    mwh0 = ger.where(disi0, 0.0); tl0 = (mwh0 * (yek - J * ptf)).where(disi0, 0.0)
+    return pd.DataFrame({"yek_fiyat_tl_mwh": yek.values, "m23_6": isaret, "yekdem_disi_mwh": mwh.values, "yekdem_disi_tl": tl.values,
+                         "kgup0_mwh": mwh0.values, "kgup0_tl": tl0.values}, index=pv.index)
 
 
 def dokum_ek(pj: dict, pv: pd.DataFrame) -> pd.DataFrame:
@@ -368,6 +404,9 @@ def m23_6_ozeti(pv: pd.DataFrame, ek: pd.DataFrame, gun: int) -> dict:
             "fiyat_yok_saat": int((ek["m23_6"] == "fiyat_yok").sum()), "kapsam_saat": int((ek["m23_6"] != "kapsam_disi").sum()),
             "yekdem_disi_mwh": round(float(ek["yekdem_disi_mwh"].sum()), 3), "yekdem_disi_tl": round(float(ek["yekdem_disi_tl"].sum()), 2),
             "bildirilmemis_saat": bildirilmemis,
+            "kgup0_saat": int((ek["kgup0_mwh"] > 1e-9).sum()) if "kgup0_mwh" in ek else 0,   # v2.532 (DK-301): KGÜP = 0 okuması
+            "kgup0_mwh": round(float(ek["kgup0_mwh"].sum()), 3) if "kgup0_mwh" in ek else 0.0,
+            "kgup0_tl": round(float(ek["kgup0_tl"].sum()), 2) if "kgup0_tl" in ek else 0.0,
             "ilk_saat": saatler.min().tz_convert(IST).strftime("%Y-%m-%d %H:%M") if len(saatler) else None,
             "son_saat": saatler.max().tz_convert(IST).strftime("%Y-%m-%d %H:%M") if len(saatler) else None, "not": M23_6_NOTU}
 

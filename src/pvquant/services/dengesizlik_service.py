@@ -44,6 +44,7 @@ def uretim_secimi(pj) -> str:
 def program_df(tenant_id, plant_id, gun: int = 90, uretim: str = "scada") -> pd.DataFrame:
     """DB: ts_utc, gercek_kw, kgup_kw (D-1 15:30 IST öncesi son koşu), naif_kw (dün-aynı-saat), uretim_kaynak (scada | sayac_olculmus | sayac_tahmini).
     v2.526 (P4a-2): uretim='sayac' → sayaç satırı olan saatlerde gercek_kw sayacın veriş kWh'si (1 saat = kW); sayaç olmayan saatlerde SCADA kalır.
+    v2.532 (DK-180/DK-195): sayaç satırında çekiş varsa cekis_kw sütunu (UEÇM; 1.11.2026'dan net sapmada düşülür), yoksa NaN.
     SCADA'da olmayan saat sayaçla eklenmez (program ve fiyat o saat için SCADA satırından kurulur; sonraya)."""
     from sqlalchemy import text
     from pvquant.db import tenant_baglami
@@ -63,7 +64,7 @@ def program_df(tenant_id, plant_id, gun: int = 90, uretim: str = "scada") -> pd.
             s.connection(), params={"p": plant_id, "g": gun}, parse_dates=["ts_utc"])
     if not df.empty:
         df["ts_utc"] = pd.to_datetime(df["ts_utc"], utc=True)
-    df["uretim_kaynak"] = "scada"
+    df["uretim_kaynak"] = "scada"; df["cekis_kw"] = np.nan
     if uretim == "sayac" and not df.empty:
         from pvquant.services import sayac_service
         sy = sayac_service.sayac_oku(tenant_id, plant_id, df["ts_utc"].min().to_pydatetime(), (df["ts_utc"].max() + pd.Timedelta(hours=1)).to_pydatetime())
@@ -72,6 +73,8 @@ def program_df(tenant_id, plant_id, gun: int = 90, uretim: str = "scada") -> pd.
             nit = df["ts_utc"].map(sy["nitelik"])
             df.loc[var, "gercek_kw"] = pd.to_numeric(es[var], errors="coerce").astype(float)
             df.loc[var, "uretim_kaynak"] = np.where(nit[var].isin(["tahmini", "doldurulmus", "yok"]), "sayac_tahmini", "sayac_olculmus")
+            if "cekis_kwh" in sy.columns:   # v2.532: çekiş → UEÇM (yalnız sayaç satırı olan saatlerde)
+                df.loc[var, "cekis_kw"] = pd.to_numeric(df["ts_utc"].map(sy["cekis_kwh"])[var], errors="coerce").astype(float).values
     return df
 
 
@@ -142,7 +145,8 @@ def saatlik_hesap(df: pd.DataFrame, fiyat: pd.DataFrame, kat: d.Katsayilar | Non
                   ariza_sayisi: int = 0, luy_istisna: bool = False, bildirilen_mwh: pd.Series | None = None,
                   pozisyon: dict | None = None):
     """SAF çekirdek (v2.517): program = bildirilen KGÜP (varsa) yoksa PVQuant önerisi; pozisyon ayara göre. Dönüş (pv, fiyat_ozeti, x, ay_naif)
-    ya da hepsi None (boş)."""
+    ya da hepsi None (boş). v2.532 (DK-180/DK-195, Karar 14907): df'te cekis_kw varsa o saatlerde UEÇM = çekiş MWh, motor 1.11.2026'dan net sapmada
+    düşer; yoksa UEÇM 0 (net sapma brüt sapmaya eşit) — pv'ye uecm sütunu."""
     kat = kat or d.Katsayilar()
     if df is None or df.empty:
         return None, None, None, None
@@ -160,9 +164,10 @@ def saatlik_hesap(df: pd.DataFrame, fiyat: pd.DataFrame, kat: d.Katsayilar | Non
     poz = pozisyon or {"kaynak": "program", "sabit_mwh": None}
     poz_s = (ger if poz["kaynak"] == "uretim" else pd.Series(float(poz["sabit_mwh"]), index=x.index) if poz["kaynak"] == "sabit" else None)
     ptf = f["ptf"].astype(float); smf = f["smf"].astype(float)
+    uecm = (pd.to_numeric(x["cekis_kw"], errors="coerce").astype(float) / 1000.0) if "cekis_kw" in x.columns else pd.Series(np.nan, index=x.index)
     pv = d.saatlik(prog, ger, ptf, smf, kat, yon=yon, segment=segment, ariza_sayisi=ariza_sayisi, luy_istisna=luy_istisna,
-                   pozisyon_mwh=poz_s, budup_mwh=prog)
-    pv["program_kaynak"] = kaynak; pv["oneri"] = oneri.values
+                   pozisyon_mwh=poz_s, budup_mwh=prog, uecm_mwh=uecm.fillna(0.0))
+    pv["program_kaynak"] = kaynak; pv["oneri"] = oneri.values; pv["uecm"] = uecm.values
     naif_var = x["naif_kw"].notna(); ay_naif = None
     if naif_var.sum() >= 24:
         xn = x[naif_var]
@@ -181,7 +186,9 @@ def teminat_gostergesi(pv: pd.DataFrame, risk_katsayisi: float | None = None) ->
     bos = {"edm_neg_max_mwh": None, "edm_ay": None, "smf_ort_tl_mwh": None, "smf_ay_sayisi": 0, "risk_katsayisi": risk_katsayisi, "tutar_tl": None,
            "dogrulanmis": False, "formul": "3 ayın en yüksek aylık negatif EDM (MWh) × 12 aylık ortalama SMF (TL/MWh) × risk katsayısı",
            "smf_agirlik": "düz aylık ortalama (yaklaşık; Yöntem m.7 piyasa geneli dengesizlik ağırlıklı ortalama ister)",
-           "not": "EPİAŞ dengesizlik teminatı tanımı (Teminat Hesaplama Yöntemi; risk katsayısı değeri kaynakta yok → Santral ayarlarından girilir; SMF ortalaması ağırlıksız, yaklaşık). Gösterge; EPYS ve Takasbank tutarları esastır."}
+           "not": ("EPİAŞ dengesizlik teminatı tanımı (Teminat Hesaplama Yöntemi; risk katsayısının başlangıç değeri 1,5 — Teminat Usul ve Esasları Geçici m.1; "
+                   "güncel değer piyasa işletmecisinin katılımcı portalında ilan edilir, kamuya açık kaynakta bulunamadı → Santral ayarlarından girilir; "
+                   "SMF ortalaması ağırlıksız, yaklaşık). Gösterge; EPYS ve Takasbank tutarları esastır.")}
     if pv is None or pv.empty:
         return bos
     x = pv.copy(); x.index = x.index.tz_convert(IST)
@@ -242,6 +249,8 @@ def hesapla_df(df: pd.DataFrame, fiyat: pd.DataFrame, kat: d.Katsayilar | None =
     top_naif = float(ay_naif["toplam_maliyet"].sum(min_count=1)) if ay_naif is not None and ay_naif["toplam_maliyet"].notna().any() else None
     kupst_top = float(pv["kupst"].sum(min_count=1)) if pv["kupst"].notna().any() and not pv["kupst"].isna().any() else None
     bil = int((pv["program_kaynak"] == "bildirilen").sum())
+    uecm_saat = int(pv["uecm"].notna().sum()) if "uecm" in pv else 0   # v2.532: çekişi bilinen saat (sayaç satırı)
+    net_saat = int(pv["net_sapma"].astype(bool).sum()) if "net_sapma" in pv else 0
     return {"gun_sayisi": int(pd.Series(x.index.tz_convert(IST).date).nunique()), "aylar": out_ay,
             "toplam": {"pvquant_tl": _r0(top_pv), "kupst_tl": _r0(kupst_top),   # v2.275
                        "dengesizlik_tl": round(float(pv["dengesizlik_maliyeti"].sum()), 0),
@@ -255,7 +264,11 @@ def hesapla_df(df: pd.DataFrame, fiyat: pd.DataFrame, kat: d.Katsayilar | None =
                        "tolerans_disi_saat": int((pv["kupsm"] > 1e-9).sum()), "kupsm_mwh": round(float(pv["kupsm"].sum()), 3)},   # v2.517
             "program": {"bildirilen_saat": bil, "oneri_saat": int(len(pv) - bil),
                         "bildirilen_gun": int(pd.Series(pv.index[pv["program_kaynak"] == "bildirilen"].tz_convert(IST).date).nunique()) if bil else 0,
-                        "pozisyon": poz},   # v2.517 (P2a)
+                        "pozisyon": poz,
+                        "uecm_saat": uecm_saat, "net_sapma_saat": net_saat,   # v2.532 (DK-180/195): UEÇM sayaç çekişinden; kalan saatlerde 0
+                        "uecm_etiketi": (f"UEÇM {uecm_saat} saatte sayaç çekişinden, kalan {len(pv) - uecm_saat} saatte 0 varsayıldı" if uecm_saat
+                                         else "UEÇM (uzlaştırmaya esas çekiş miktarı) verisi yok, 0 varsayıldı: net sapma brüt sapmaya eşit")
+                        if net_saat else None},   # v2.517 (P2a)
             "fiyat": fiyat_ozeti, "hesaplanamayan_saat": int((pv["durum"] != "ok").sum()),
             "kural_surumu": " | ".join(sorted(set(pv["kural_surumu"]))),
             "katsayilar": {"k": 0.03, "l": 0.03, "k_yon": {"acik": 0.06, "fazla": 0.03, "dengede": 0.03} if (pv["rejim"] == "2026").any() else {"acik": 0.03, "fazla": 0.03, "dengede": 0.03},
@@ -295,7 +308,8 @@ def dokum_df(pv: pd.DataFrame, ek: pd.DataFrame | None = None) -> pd.DataFrame:
 
 DOKUM_NOTU_SAYAC = (" uretim_kaynak: sayac_olculmus = o saatin gerçekleşeni yüklü sayaç dosyasındaki ölçülmüş veriş kWh (EPYS > OSOS > MASS > elle), "
                     "sayac_tahmini = sayaç satırı tahmini/doldurulmuş/veri yok nitelikli, scada = sayaç satırı yok, SCADA ölçümü. Sayaç verisi uzlaştırmaya esas "
-                    "UEVM ile aynı olup olmadığı PVQuant'tan doğrulanmaz.")
+                    "UEVM ile aynı olup olmadığı PVQuant'tan doğrulanmaz. 1.11.2026'dan net sapmada (Karar 14907) sayaç satırındaki çekiş UEÇM olarak düşülür; "
+                    "çekiş sütunu olmayan saatlerde UEÇM 0 varsayılır.")
 DOKUM_NOTU = ("Yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir. program_kaynak: bildirilen = TPYS'ye bildirildiği beyan edilerek yüklenen KGÜP "
               "(TPYS kabulü doğrulanmaz); oneri = PVQuant'ın bir gün önce 15:30'dan önceki son tahmininin P50'si. sapma = gerçekleşen − pozisyon (EDM). "
               "edt_borc = eksik üretim tutarı (öder), edt_alacak = fazla üretim tutarı (alır; düşük fiyat saatinde negatif olabilir). "

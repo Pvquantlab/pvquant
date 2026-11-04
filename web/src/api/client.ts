@@ -1,4 +1,4 @@
-import type { DengesizlikSaatlik, DsgAnahtar, KgupRevizyon, PiyasaDurum, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , HataMatrisi , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar, PortfoyAnahtar, PortfoyKupst, UevcbArama , Takvim, KunyeTarihler, Yekdem, Olay, OlayOzet, OlayGiris, OlayYanit, MutabakatOzet, MutabakatYukleme, SaatlikKiyas, SaatlikYuklemeYanit, KuralTablosu, SayacOzet, SayacYuklemeYanit, SayacAyar, SayacKaynak, RaporDonemVeri, RaporGonderim, RaporGonderimSonuc } from "./types";
+import type { DengesizlikSaatlik, DsgAnahtar, KgupRevizyon, PiyasaDurum, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , SaatProfili , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar, PortfoyAnahtar, PortfoyKupst, UevcbArama , Takvim, KunyeTarihler, Yekdem, Olay, OlayOzet, OlayGiris, OlayYanit, MutabakatOzet, MutabakatYukleme, SaatlikKiyas, SaatlikYuklemeYanit, KuralTablosu, SayacOzet, SayacYuklemeYanit, SayacAyar, SayacKaynak, RaporDonemVeri, RaporGonderim, RaporGonderimSonuc } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -1045,10 +1045,10 @@ export const api = {
       p10: null, p50: null, p90: null, birim: "MWh/gun", kova: "0-24", tz: "UTC" };
     return getir<HataDagilimi>(`/v1/plants/${p}/hata-dagilimi?gun=${gun}&kova=0-24`);
   },
-  hataMatrisi: async (p: string, gun = 30): Promise<HataMatrisi> => {
-    if (TABAN == null) return { gunler: [], saatler: [], hucreler: [],
-      metrik: "isaretli_hata", birim: "kW", kova: "0-24", tz: "UTC" };
-    return getir<HataMatrisi>(`/v1/plants/${p}/hata-matrisi?gun=${gun}&kova=0-24`);
+  saatProfili: async (p: string, gun = 30): Promise<SaatProfili> => {   // v2.532: saat × gün matrisi yerine saat profili (Kalibrasyon)
+    if (TABAN == null) return { saatler: [], profil: [], gun_sayisi: 0, ilk_gun: null, son_gun: null, sistematik: [], esik_kw: 0,
+      metrik: "isaretli_hata", birim: "kW", tz: "UTC" };
+    return getir<SaatProfili>(`/v1/plants/${p}/saat-profili?gun=${gun}&kova=0-24`);
   },
   aylik: async (p: string): Promise<AylikBeklenti> => {
     if (TABAN == null) return ornekAylik;

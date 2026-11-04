@@ -107,7 +107,9 @@ export interface Yekdem {
   kur: { son_gun: string | null; son_usd_alis: number | null; son_eur_alis: number | null; gun_sayisi: number; ilk_gun: string | null; eksik_is_gunu_30: string[]; kaynak: string } | null;
   aylar: { ay: string; fiyat_kr_kwh: number | null; yerli_katki_kr_kwh: number | null; kaynak: string | null; bant: YekdemBant | null; durum: "ilan" | "ilan_yok" }[];
   m23_6: { baslangic: string; etiket: string; pencere_gun: number; saat: number; aday_saat: number; fiyat_yok_saat: number; kapsam_saat: number; yekdem_disi_mwh: number; yekdem_disi_tl: number;
-    bildirilmemis_saat: number; ilk_saat: string | null; son_saat: string | null; not: string } | null;
+    bildirilmemis_saat: number; ilk_saat: string | null; son_saat: string | null; not: string;
+    /** v2.532 (DK-301): bildirilen KGÜP yüklenmemiş saatlerde mevzuat okuması — KGÜP = 0, üretimin tamamı dışarıda */
+    kgup0_saat?: number; kgup0_mwh?: number; kgup0_tl?: number } | null;
   not: string | null;
   sabitler: { cetvel1_cent: number; bant_cent: [number, number]; baslangic_kr: [number, number]; yerli_yil: number; j: number };
 }
@@ -250,7 +252,9 @@ export interface Dengesizlik { luy_istisna?: boolean;   // v2.510 (Ç3): santral
             /** v2.522 (P2b): dengesizlik teminatı göstergesi — mevzuat formülü; risk katsayısı Santral ayarlarından, yoksa tutar yok */
             teminat?: { edm_neg_max_mwh: number | null; edm_ay: string | null; ay_sayisi?: number; smf_ort_tl_mwh: number | null; smf_ay_sayisi: number; risk_katsayisi: number | null; tutar_tl: number | null; dogrulanmis: boolean; formul: string; not: string } } | null;
   /** v2.517 (P2a): programın kaynağı — bildirilen KGÜP (müşteri beyanı) saat/gün sayısı, kalan öneri; pozisyon ayarı (program | uretim | sabit) */
-  program?: { bildirilen_saat: number; oneri_saat: number; bildirilen_gun: number; pozisyon: PozisyonAyari };
+  program?: { bildirilen_saat: number; oneri_saat: number; bildirilen_gun: number; pozisyon: PozisyonAyari;
+    /** v2.532 (DK-180/195): net sapma saatlerinde UEÇM kaynağı — sayaç çekişi bilinen saat sayısı; yoksa 0 varsayıldı */
+    uecm_saat?: number; net_sapma_saat?: number; uecm_etiketi?: string | null };
   /** v2.287: önerilen bildirim kantili (senaryo fiyatta null + not; yön verisi yoksa durum 'yon_eksik') */
   oneri?: { durum: string; kantil: string | null; tau?: number; n_saat?: number; acik_saat_orani?: number; not?: string };
   katsayilar?: { k: number; l: number; kupst_n: number | null; kupst_tolerans?: number | null; k_yon?: Record<string, number>; l_yon?: Record<string, number> };
@@ -382,11 +386,14 @@ export interface HataDagilimi {
   birim: string; kova: string; tz: string;
 }
 
-/** /hata-matrisi yaniti — apps/api/main.py v2.111 ile birebir. */
-export interface HataMatrisi {
-  gunler: string[]; saatler: string[];
-  hucreler: (number | null)[][];        // [saat][gun], p50 - gercek, kW
-  metrik: string; birim: string; kova: string; tz: string;
+/** /saat-profili yanıtı — apps/api/main.py v2.532 ile birebir (saat × gün matrisi 04.11.2026'da kaldırıldı; Kalibrasyon sayfası). */
+export interface SaatProfili {
+  saatler: string[];
+  profil: { saat: string; ort_hata_kw: number | null; ort_mutlak_kw: number | null; n: number }[];   // p50 − gerçek, kW; saat başına ortalama
+  gun_sayisi: number; ilk_gun: string | null; son_gun: string | null;
+  /** |ortalama işaretli hata| ≥ %5 kapasite ve n ≥ 5 olan saatler */
+  sistematik: { saat: string; yon: "fazla" | "eksik"; ort_hata_kw: number; n: number }[];
+  esik_kw: number; metrik: string; birim: string; tz: string;
 }
 
 /** /monthly yaniti — apps/api/main.py v2.78-B ile birebir. */

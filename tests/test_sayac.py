@@ -170,6 +170,7 @@ def test_program_df_sayac_girdisi(kiraci):
     d0 = dz.program_df(tid, plant["id"], 30); assert list(d0["gercek_kw"]) == [700.0, 750.0, 800.0, 900.0] and set(d0["uretim_kaynak"]) == {"scada"}
     d1 = dz.program_df(tid, plant["id"], 30, uretim="sayac")
     assert list(d1["gercek_kw"]) == [600.0, 700.0, 200.0, 900.0] and list(d1["uretim_kaynak"]) == ["sayac_olculmus", "sayac_tahmini", "sayac_tahmini", "scada"]
+    assert d0["cekis_kw"].isna().all() and d1["cekis_kw"].notna().sum() >= 1 and d1["cekis_kw"].iloc[3] != d1["cekis_kw"].iloc[3]   # v2.532: çekiş → UEÇM; SCADA saatinde NaN
     assert dz.uretim_secimi({"uzlastirma_girdi": "sayac"}) == "sayac" and dz.uretim_secimi({}) == "scada" and dz.uretim_secimi({"uzlastirma_girdi": "x"}) == "scada"
     # ayar: santral seçimi döküm girdilerine iner
     g = dz._girdiler(tid, {**plant, "params_json": {**plant["params_json"], "uzlastirma_girdi": "sayac"}}, 30)

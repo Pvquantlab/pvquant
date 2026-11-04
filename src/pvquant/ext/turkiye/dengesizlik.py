@@ -135,7 +135,7 @@ def saatlik(kgup_mwh: pd.Series, gerceklesen_mwh: pd.Series, ptf: pd.Series, smf
                          "referans_gelir": referans_gelir, "gerceklesen_gelir": gerceklesen_gelir,
                          "dengesizlik_maliyeti": kayip, "kupsm": kupsm, "kupst_m": m, "kupst_n": n, "kupst": kupst_s,
                          "toplam_maliyet": toplam, "kural_surumu": f["kural_surumu"], "rejim": f["rejim"], "durum": durum,
-                         "belirsiz_2027": f["belirsiz_2027"]})
+                         "belirsiz_2027": f["belirsiz_2027"], "net_sapma": net, "uecm": uecm.values})   # v2.532: net sapma bayrağı ve UEÇM (MWh)
 
 
 def _toplama(grup: pd.DataFrame) -> tuple[float, float]:
@@ -328,7 +328,9 @@ def portfoy_kupst_saatlik(programlar: dict[str, pd.Series], gerceklesenler: dict
 
 def teminat(saatlik_df: pd.DataFrame, risk_katsayisi: float = 1.0, ay: int = 3) -> float:
     """Son `ay` ayın en yüksek aylık EDT(−) × risk katsayısı — SADELEŞTİRİLMİŞ GÖSTERGE (Teminat Hesaplama Yöntemi m.7 ile birebir değil; servis katmanı
-    teminat_gostergesi SMF'yi düz aylık ortalamayla alır, Yöntem ağırlıklı ortalama ister — 03.11.2026 doğrulama DK-537)."""
+    teminat_gostergesi SMF'yi düz aylık ortalamayla alır, Yöntem ağırlıklı ortalama ister — 03.11.2026 doğrulama DK-537).
+    risk_katsayisi varsayılanı 1,0 KAYNAKSIZDIR (DK-528): birincil metindeki tek değer Teminat Usul ve Esasları Geçici m.1 başlangıç değeri 1,5; güncel
+    değer bulunamadı. Servis katmanı varsayılan kullanmaz (katsayı girilmezse tutar None)."""
     a = saatlik_df["edt_neg"].resample("ME").sum().tail(ay)
     return float(a.max() * risk_katsayisi) if len(a) else 0.0
 

@@ -372,6 +372,8 @@ def _tarih(v) -> date | None:
 
 def yekdem_suresi(isletmeye_giris: date | None, baslangic_yili: int | None = None) -> dict | None:
     """EPDK Kurul Kararı 5905-27: işletmeye giriş 1 Kasım–31 Ekim gruplarının izleyen yıldan başlayarak 10 yıl (01.11.2015–31.10.2016 → 2017–2026).
+    1.1.2021–30.6.2021 arasında işletmeye girenlerde CK 2949 m.1(1) (RG 18.9.2020-31248): I sayılı Cetvel fiyatları 31.12.2030'a kadar
+    (ilk yıl 2022, son yıl 2030; EPDK SSS «2022'den başlayarak 9 takvim yılı») — v2.532, 03.11.2026 doğrulama arşivi DK-306/DK-304 (kanıt A).
     30.6.2021 sonrası tesislerde 7189 sayılı CK Ek-1: 10 yıl YEK fiyatı + 5 yıl yerli katkı, işletmeye giriş tarihinden (hesaplanan).
     `baslangic_yili` verilmişse (kullanıcı girdisi) son yıl = başlangıç + 9."""
     if baslangic_yili:
@@ -383,6 +385,9 @@ def yekdem_suresi(isletmeye_giris: date | None, baslangic_yili: int | None = Non
         return {"rejim": "7189", "yek_bitis": yil_ekle(isletmeye_giris, 10).isoformat(), "yerli_katki_bitis": yil_ekle(isletmeye_giris, 5).isoformat(),
                 "ilk_yil": isletmeye_giris.year, "son_yil": yil_ekle(isletmeye_giris, 10).year,
                 "kaynak": "7189 sayılı CK Ek-1: 10 yıl YEK fiyatı, 5 yıl yerli katkı; işletmeye giriş tarihinden (hesaplanan)", "kaynak_turu": "hesaplanan"}   # 08-04
+    if isletmeye_giris >= date(2021, 1, 1):   # v2.532: CK 2949 grubu — Cetvel I 31.12.2030'a kadar
+        return {"rejim": "2949", "ilk_yil": 2022, "son_yil": 2030,
+                "kaynak": "CK 2949 m.1(1) (RG 18.9.2020-31248): 1.1–30.6.2021 arasında işletmeye girenlerde I sayılı Cetvel fiyatları 31.12.2030'a kadar", "kaynak_turu": "mevzuat"}
     grup_bitis = isletmeye_giris.year if isletmeye_giris.month <= 10 else isletmeye_giris.year + 1
     return {"rejim": "5905-27", "ilk_yil": grup_bitis + 1, "son_yil": grup_bitis + 10,
             "kaynak": "EPDK Kurul Kararı 5905-27 (02.12.2015): 1 Kasım–31 Ekim grubu, izleyen yıldan 10 yıl", "kaynak_turu": "mevzuat"}

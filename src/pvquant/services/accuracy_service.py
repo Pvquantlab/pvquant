@@ -1,4 +1,4 @@
-"""Dogruluk sunum hesaplari. hata_matrisi: saat x gun isaretli hata matrisi.
+"""Dogruluk/Kalibrasyon sunum hesaplari. saat_profili: saat basina ortalama isaretli hata (v2.532; eski hata_matrisi kaldirildi).
 Kurallar gece_skill ile ozdes (tek kural kitabi): flag='valid' eslesme,
 ufuk = ts_utc - run_at, gunduz = power > %2 kapasite. Hesap hafif tutulur;
 agir skorlar worker'da (tek uretici o), burada ham eslesme + pivot var."""
@@ -12,10 +12,51 @@ _KOVALAR = {"0-24": (0, 24), "24-72": (24, 72),
 _SAAT_ILK, _SAAT_SON = 5, 20          # rapor s06 ile ayni iskelet (05-20 yerel)
 
 
-def hata_matrisi(tenant_id, plant_id, gun: int = 30, kova: str = "0-24"):
-    """Dunle biten N tam YEREL gunun saat x gun isaretli hatasi (p50 - gercek, kW).
-    Gece / verisiz / bayrakli hucreler None. Ayni hucreye birden cok gozlem
-    duserse ortalama (kural belirsizligi olmasin)."""
+def saat_profili_hesapla(df: pd.DataFrame, kapasite_kwp: float, tz: str, gun: int, bugun=None) -> dict:
+    """SAF (v2.532): eşleşmiş saatlik çiftlerden (ts_utc, p50_kw, power_kw) saat başına ortalama İŞARETLİ hata (p50 − gerçek, kW)
+    ve ortalama mutlak hata; dünle biten N tam yerel gün, gündüz (> %2 kapasite), 05–20 yerel. Aynı saate birden çok gözlem düşerse
+    önce saatlik ortalama (çoklu-koşu savunması, hata_dagilimi ile özdeş). `sistematik`: |ortalama işaretli hata| ≥ %5 kapasite ve
+    n ≥ 5 olan saatler (yön: fazla | eksik). Eski saat × gün matrisi (v2.111 hata_matrisi) 04.11.2026'da kaldırıldı: müşteri için
+    karar üretmiyordu; kalibrasyonun teşhis bilgisi olan saat profili Kalibrasyon sayfasına taşındı."""
+    saatler = ["%02d\u2013%02d" % (h, h + 1) for h in range(_SAAT_ILK, _SAAT_SON)]
+    esik = 0.05 * float(kapasite_kwp)
+    bos = {"saatler": saatler, "profil": [{"saat": a, "ort_hata_kw": None, "ort_mutlak_kw": None, "n": 0} for a in saatler],
+           "gun_sayisi": 0, "ilk_gun": None, "son_gun": None, "sistematik": [], "esik_kw": round(esik, 1),
+           "metrik": "isaretli_hata", "birim": "kW", "tz": tz}
+    if df is None or df.empty:
+        return bos
+    if df.ts_utc.dt.tz is None:
+        yerel = df.ts_utc.dt.tz_localize("UTC").dt.tz_convert(tz)
+    else:
+        yerel = df.ts_utc.dt.tz_convert(tz)
+    df = df.assign(y_gun=yerel.dt.date, y_saat=yerel.dt.hour)
+    dun = ((bugun if bugun is not None else pd.Timestamp.now(tz=tz)) - pd.Timedelta(days=1)).date()
+    ilk = dun - pd.Timedelta(days=gun - 1)
+    df = df[(df.y_gun >= ilk) & (df.y_gun <= dun)]
+    df = df[(df.y_saat >= _SAAT_ILK) & (df.y_saat < _SAAT_SON)]
+    df = df[df.power_kw > 0.02 * float(kapasite_kwp)]
+    if df.empty:
+        return bos
+    df = (df.groupby(["y_gun", "y_saat"], as_index=False).agg(p50_kw=("p50_kw", "mean"), power_kw=("power_kw", "mean")))
+    df = df.assign(hata=df.p50_kw - df.power_kw, mutlak=(df.p50_kw - df.power_kw).abs())
+    g = df.groupby("y_saat").agg(ort=("hata", "mean"), mut=("mutlak", "mean"), n=("hata", "size"))
+    profil = []; sistematik = []
+    for h, ad in zip(range(_SAAT_ILK, _SAAT_SON), saatler):
+        if h in g.index:
+            ort, mut, n = float(g.loc[h, "ort"]), float(g.loc[h, "mut"]), int(g.loc[h, "n"])
+            profil.append({"saat": ad, "ort_hata_kw": round(ort, 1), "ort_mutlak_kw": round(mut, 1), "n": n})
+            if n >= 5 and abs(ort) >= esik:
+                sistematik.append({"saat": ad, "yon": "fazla" if ort > 0 else "eksik", "ort_hata_kw": round(ort, 1), "n": n})
+        else:
+            profil.append({"saat": ad, "ort_hata_kw": None, "ort_mutlak_kw": None, "n": 0})
+    gunler = sorted(df.y_gun.unique())
+    return {"saatler": saatler, "profil": profil, "gun_sayisi": len(gunler), "ilk_gun": gunler[0].isoformat(), "son_gun": gunler[-1].isoformat(),
+            "sistematik": sistematik, "esik_kw": round(esik, 1), "metrik": "isaretli_hata", "birim": "kW", "tz": tz}
+
+
+def saat_profili(tenant_id, plant_id, gun: int = 30, kova: str = "0-24"):
+    """Saat başına ortalama işaretli hata (Kalibrasyon sayfası). Kurallar hata_dagilimi ile özdeş: flag='valid' eşleşme, ufuk kovası,
+    gündüz > %2 kapasite, dünle biten N tam yerel gün."""
     if kova not in _KOVALAR:
         raise ValueError("bilinmeyen kova: %s" % kova)
     lo, hi = _KOVALAR[kova]
@@ -36,38 +77,10 @@ def hata_matrisi(tenant_id, plant_id, gun: int = 30, kova: str = "0-24"):
             s.connection(), params={"p": plant_id, "g": gun},
             parse_dates=["ts_utc", "run_at"])
     tz = p["tz"] or "UTC"
-    saatler = ["%02d\u2013%02d" % (h, h + 1) for h in range(_SAAT_ILK, _SAAT_SON)]
-    bos = {"gunler": [], "saatler": saatler, "hucreler": [],
-           "metrik": "isaretli_hata", "birim": "kW", "kova": kova, "tz": tz}
-    if df.empty:
-        return bos
-    ufuk = (df.ts_utc - df.run_at).dt.total_seconds() / 3600
-    df = df[(ufuk > lo) & (ufuk <= hi)]
-    if df.empty:
-        return bos
-    if df.ts_utc.dt.tz is None:                       # surucu naive verdiyse
-        yerel = df.ts_utc.dt.tz_localize("UTC").dt.tz_convert(tz)
-    else:                                             # psycopg3: zaten aware
-        yerel = df.ts_utc.dt.tz_convert(tz)
-    df = df.assign(y_gun=yerel.dt.date, y_saat=yerel.dt.hour)
-    # dunle biten N tam yerel gun
-    dun = (pd.Timestamp.now(tz=tz) - pd.Timedelta(days=1)).date()
-    ilk = dun - pd.Timedelta(days=gun - 1)
-    df = df[(df.y_gun >= ilk) & (df.y_gun <= dun)]
-    df = df[(df.y_saat >= _SAAT_ILK) & (df.y_saat < _SAAT_SON)]
-    df = df[df.power_kw > 0.02 * float(p["capacity_kwp"])]      # gunduz
-    if df.empty:
-        return bos
-    df = df.assign(hata=df.p50_kw - df.power_kw)
-    piv = df.pivot_table(index="y_saat", columns="y_gun",
-                         values="hata", aggfunc="mean")
-    gunler = sorted(df.y_gun.unique())
-    piv = piv.reindex(index=range(_SAAT_ILK, _SAAT_SON), columns=gunler)
-    hucreler = [[None if pd.isna(v) else round(float(v), 1) for v in satir]
-                for satir in piv.values]
-    return {"gunler": [g.isoformat() for g in gunler], "saatler": saatler,
-            "hucreler": hucreler, "metrik": "isaretli_hata", "birim": "kW",
-            "kova": kova, "tz": tz}
+    if not df.empty:
+        ufuk = (df.ts_utc - df.run_at).dt.total_seconds() / 3600
+        df = df[(ufuk > lo) & (ufuk <= hi)]
+    return saat_profili_hesapla(df, float(p["capacity_kwp"]), tz, gun)
 
 
 def hata_dagilimi(tenant_id, plant_id, gun: int = 120, kova: str = "0-24",
@@ -118,7 +131,7 @@ def hata_dagilimi(tenant_id, plant_id, gun: int = 120, kova: str = "0-24",
     if df.empty:
         return bos
     # coklu-kosu savunmasi: ayni saate birden cok gozlem duserse ortala
-    # (heatmap'in mean'iyle ozdes — iki panel ayni sayiyi soyler)
+    # (saat profilinin mean'iyle ozdes — iki panel ayni sayiyi soyler)
     df = (df.groupby(["y_gun", "ts_utc"], as_index=False)
             .agg(p50_kw=("p50_kw", "mean"), power_kw=("power_kw", "mean")))
     g = df.groupby("y_gun").agg(n=("power_kw", "size"),

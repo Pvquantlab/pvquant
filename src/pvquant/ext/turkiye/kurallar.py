@@ -29,7 +29,7 @@ bulgular/08–14 — her kararı RG PDF'inden ikinci kez doğruladı, çelişkil
     kararları yok → hukuken BELİRSİZ (`BELIRSIZ_2027_GEREKCE`). Varsayılan: 2026 rejimi sürer, her 2027 sonucu «belirsiz» bayrağı taşır.
   - DUY son değişiklik RG 21.10.2026-33407 (m.132/E, teminat; uzlaştırmaya etkisiz).
 Doğrulanamayanlar: 2025 k = l = 0,03'ü koyan kararın numarası (değer EPDK 4-16180 taslağı «Mevcut Metin» ile teyitli); 2025 iletime bağlı
-lisanssız m/n; GTŞ/toplayıcı UEVÇB'si 1.11.2026 öncesi; 2027 DSG oranı (karar en geç 1.12.2026); Karar 7524 0,015 penceresi; 2016–2019 AFL.
+lisanssız m/n; GTŞ/toplayıcı UEVÇB'si 1.11.2026 öncesi; 2027 DSG oranı (karar en geç 1.12.2026); Karar 7524 0,015 penceresi; 2016 ve 2018–2019 AFL (2017: Karar 6851, v2.532).
 """
 from __future__ import annotations
 
@@ -100,7 +100,9 @@ class Kural:
 # ---------------------------------------------------------------- tarihli parametreler --------------------------------
 # AFL zinciri — her halka RG karar PDF'inden okundu (31.10.2026 araştırması, bulgular/08.md §8.2). Tarih = EPİAŞ'ın uyguladığı teslim günü;
 # RG yürürlüğü yayım günü olan kararlarda (9598, 10489, 10978) EPİAŞ ertesi teslim gününden uyguladı. Formüllü dönem (7.10.2020–31.3.2022)
-# EPİAŞ aylık duyurularından (Wayback; PTF serisinden yeniden hesaplanmadı). 1.7.2015–31.12.2019: 2.000 (geçici 1(2); 2016–2019 doğrulanmadı).
+# EPİAŞ aylık duyurularından (Wayback; PTF serisinden yeniden hesaplanmadı). 1.7.2015–31.12.2019: 2.000 (geçici 1(2)); 7.1.2017–28.2.2017 teslim
+# günleri 500 (Karar 6851; 03.11.2026 doğrulama arşivi DK-016 / 10_Uzlastirma_Dengesizlik Ç-1 — RG lafzı 6.1.2017 ve 1.3.2017 günleri açık, EPİAŞ
+# uygulama günü esas alındı); 2016 ve 2018–2019 ara kararı doğrulanmadı.
 _AFL_ZINCIRI: tuple[tuple[date, float, str], ...] = (
     (date(2026, 4, 4), 4500.0, "Karar 14459 (RG 3.4.2026-33213 s.47)"),
     (date(2025, 4, 5), 3400.0, "Karar 13423 (RG 5.4.2025-32861)"),
@@ -136,7 +138,9 @@ _AFL_ZINCIRI: tuple[tuple[date, float, str], ...] = (
     (date(2020, 10, 7), 563.0, "Karar 9598 (RG 6.10.2020-31266); EPİAŞ 7–31.10.2020 duyurusu"),
     (date(2020, 4, 1), 2000.0, "Karar 9021 süresi doldu → geçici 1(2) 2.000 (EPİAŞ 25.3.2020 duyurusu)"),
     (date(2020, 1, 1), 600.0, "Karar 9021 (RG 28.12.2019-30992; 1.1–31.3.2020, GÖP ve DGP)"),
-    (date(2015, 7, 1), 2000.0, "Karar 5629-16 geçici 1(2) (RG 21.6.2015-29393); 2016–2019 ara kararı doğrulanmadı"),
+    (date(2017, 3, 1), 2000.0, "Karar 6851 süreli hükmü bitti → geçici 1(2) 2.000 (EPİAŞ 24.2.2017 duyurusu: 1.3.2017 teslim gününden); 2018–2019 ara kararı doğrulanmadı"),   # v2.532 DK-016
+    (date(2017, 1, 7), 500.0, "Karar 6851 Geçici 1(3) (RG 6.1.2017-29940; lafzen 06.01–01.03.2017, EPİAŞ 5.1.2017 duyurusu: 7.1.2017 teslim gününden)"),   # v2.532 DK-016
+    (date(2015, 7, 1), 2000.0, "Karar 5629-16 geçici 1(2) (RG 21.6.2015-29393); 2016 ve 2018–2019 ara kararı doğrulanmadı"),
 )
 
 

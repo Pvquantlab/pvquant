@@ -13,7 +13,7 @@ const CARPAN = Number(process.env.YAVAS ?? 1);
 const GECIKME = {
   "/v1/plants": 60, "/v1/oturum/yenile": 60, "/v1/portfoy": 270, "/v1/portfoy/tahmin": 400, "/v1/portfoy/dsg": 1000, "/v1/portfoy/kupst": 700,
   summary: 250, forecast: 350, skill: 300, runs: 80, alarmlar: 80, "alarm-kurallari": 80, nowcast: 150, kgup: 300, konformal: 120,
-  dengesizlik: 500, backtest: 900, guvenilirlik: 700, "hata-matrisi": 400, "hata-dagilimi": 350, kalibrasyon: 200, hijyen: 300,
+  dengesizlik: 500, backtest: 900, guvenilirlik: 700, "saat-profili": 150, "hata-dagilimi": 350, kalibrasyon: 200, hijyen: 300,
   kayma: 600, "kayip-agaci": 250, "guc-matrisi": 250, monthly: 300, bankable: 800, "saat-ay-matrisi": 400, "gunes-yolu": 300,
   pr: 200, saglik: 300, kullanilabilirlik: 200, "fizik-terimleri": 100, tarife: 80, "epias-uretim": 100, damga: 40,
   "/v1/isler": 100, "/v1/hakkinda": 150,
@@ -74,7 +74,8 @@ const VERI = {
     aylar: ["2026-08", "2026-09", "2026-10"].map((ay, i) => ({ ay, uretim_mwh: 1900 - i * 120, sapma_mwh: 160 - i * 10, referans_gelir_tl: 5100000 - i * 300000, pvquant_tl: 212000 - i * 9000, dengesizlik_tl: 198000 - i * 8000, kupst_tl: 14000 - i * 1000, edt_neg_tl: 260000 - i * 9000, edt_poz_tl: 150000 - i * 5000, edta_tl: 150000 - i * 5000, edtb_tl: 260000 - i * 9000, naif_tl: 318000 - i * 12000, kurtarilan_tl: 106000 - i * 3000, gelir_oran_pct: 4.1, tl_per_mwh: 112, hesaplanamayan_saat: 0, kural_surumu: i === 2 ? "edt-2026-V150-edta_ayrik+kupst-14029" : "edt-2026-V150-edta_net+kupst-14029", tolerans_disi_saat: 38 - i * 4, kupsm_mwh: 16.1 - i * 2.2, bildirilen_saat: i === 2 ? 312 : 0 })),
     toplam: { pvquant_tl: 609000, dengesizlik_tl: 570000, kupst_tl: 39000, edt_neg_tl: 753000, edt_poz_tl: 435000, edta_tl: 435000, edtb_tl: 753000, naif_tl: 918000, kurtarilan_tl: 309000, gelir_oran_pct: 4.0, referans_gelir_tl: 14700000, teminat_tl: 240000, tolerans_disi_saat: 96, kupsm_mwh: 41.2 },
     // v2.517 (P2a): program kaynağı ve pozisyon ayarı
-    program: { bildirilen_saat: 312, oneri_saat: 1704, bildirilen_gun: 13, pozisyon: { kaynak: "program", sabit_mwh: null, etiket: "pozisyon = program (satış programa eşit varsayımı)" } },
+    program: { bildirilen_saat: 312, oneri_saat: 1704, bildirilen_gun: 13, pozisyon: { kaynak: "program", sabit_mwh: null, etiket: "pozisyon = program (satış programa eşit varsayımı)" },
+               uecm_saat: 0, net_sapma_saat: 72, uecm_etiketi: "UEÇM (uzlaştırmaya esas çekiş miktarı) verisi yok, 0 varsayıldı: net sapma brüt sapmaya eşit" },
     oneri: { durum: "senaryo", kantil: null, not: "Senaryo fiyatta sistem yönü dağılımı temsili değildir; öneri gerçek fiyat akışıyla (piyasa kimliği) anlamlanır." },
     katsayilar: { k: 0.03, l: 0.03, k_yon: { acik: 0.06, fazla: 0.03, dengede: 0.03 }, l_yon: { acik: 0.03, fazla: 0.06, dengede: 0.03 }, kupst_n: 0.05, kupst_tolerans: 0.08 },
     fiyat: { epias_saat: 0, senaryo_saat: 2016, yon_varsayilan_saat: 2016, yon_eksik_saat: 0 }, hesaplanamayan_saat: 0, kural_surumu: "edt-2026-V150-edta_ayrik+kupst-14029 | edt-2026-V150-edta_net+kupst-14029",
@@ -82,7 +83,12 @@ const VERI = {
     segment: { segment: "lisansli_serbest", kgup_yukumlu: true, dengesizlik_sahibi: "santral", santral_tasir: true, uevcb: "40X000000000123A" } },   // p2 için lisanssiz_iletim (aşağıda)
   backtest: { pencere: 8, picp_ham_ort: 0.71, picp_kal_ort: 0.79, hedef: 0.8, hukum: "hedefe yakın", satirlar: Array.from({ length: 8 }, (_, i) => ({ baslangic: GUNLER30[i * 3], n_test: 60 + i, picp_ham: +(0.66 + 0.08 * r(i, 7)).toFixed(2), picp_kal: +(0.76 + 0.06 * r(i, 8)).toFixed(2), bant_ham_n: 0.19, bant_kal_n: 0.23, q_ort: -150 })), kova_sinav: { pencere: 8, hedef: 0.8, hukum: "ufka göre daha iyi", kovalar: [{ kova: "0-24", n: 420, picp_ham: 0.72, picp_tek: 0.78, picp_kova: 0.8 }, { kova: "24-72", n: 410, picp_ham: 0.69, picp_tek: 0.74, picp_kova: 0.79 }] } },
   guvenilirlik: { durum: "ok", n_saat: 1180, gun_sayisi: 58, min_saat: 72, pencere_gun: 60, guvenilirlik: { ham: [0.1, 0.25, 0.5, 0.75, 0.9].map((t) => ({ tau: t, gozlenen: +(t * 0.9 + 0.03).toFixed(3), sapma: 0.02, n: 1180 })), kalibre: [0.1, 0.25, 0.5, 0.75, 0.9].map((t) => ({ tau: t, gozlenen: +(t * 0.98 + 0.008).toFixed(3), sapma: 0.01, n: 1180 })) }, pit: Array.from({ length: 10 }, (_, i) => ({ kutu: `${i * 10}–${i * 10 + 10}`, oran: +(0.08 + 0.04 * r(i, 9)).toFixed(3) })), pit_max_sapma: 0.03, keskinlik: { ham: 0.21, kalibre: 0.23 }, aralik_skoru_n: { ham: 0.071, kalibre: 0.064 }, picp80: { ham: 0.71, kalibre: 0.79 } },
-  "hata-matrisi": { gunler: GUNLER30, saatler: SAAT, hucreler: SAAT.map((_, s) => GUNLER30.map((_, g) => PROFIL[s] === 0 ? null : Math.round((r(s * 31 + g, 10) - 0.5) * 2 * PROFIL[s] * 2600))), metrik: "isaretli_hata", birim: "kW", kova: "0-24", tz: "Europe/Istanbul" },
+  "saat-profili": (() => { /* 04.11 v2.532: saat × gün matrisi yerine saat profili; 05–20 yerel, öğle fazla tahmin (AC sınırı) imzası */
+    const saatler = Array.from({ length: 15 }, (_, i) => `${String(5 + i).padStart(2, "0")}\u2013${String(6 + i).padStart(2, "0")}`);
+    const ort = [null, -40, -95, -60, 20, 110, 380, 640, 690, 610, 330, 90, -30, -70, null];
+    const profil = saatler.map((saat, i) => ({ saat, ort_hata_kw: ort[i], ort_mutlak_kw: ort[i] == null ? null : Math.abs(ort[i]) + 260, n: ort[i] == null ? 0 : 29 }));
+    return { saatler, profil, gun_sayisi: 30, ilk_gun: GUNLER30[0], son_gun: GUNLER30[29], sistematik: profil.filter((x) => x.n >= 5 && Math.abs(x.ort_hata_kw) >= 600).map((x) => ({ saat: x.saat, yon: x.ort_hata_kw > 0 ? "fazla" : "eksik", ort_hata_kw: x.ort_hata_kw, n: x.n })),
+             esik_kw: 600, metrik: "isaretli_hata", birim: "kW", tz: "Europe/Istanbul" }; })(),
   "hata-dagilimi": { kutular: Array.from({ length: 14 }, (_, i) => ({ lo: -14 + i * 2, hi: -12 + i * 2, adet: Math.round(14 * Math.exp(-((i - 6.5) ** 2) / 8)) })), mu: -0.42, sd: 5.1, ndays: 88, p10: -6.8, p50: -0.3, p90: 5.9, birim: "MWh/gun", kova: "0-24", tz: "Europe/Istanbul" },
   kalibrasyon: { mode: "C", eta_bos: 0.912, bg: 0.071, fizik_terimleri: { iam: "physical", spektral: "none", kt_referans: "ineichen", kirlenme: "none", kar: "none" }, gecerli_saat: 4812, tarih: "2026-10-01T02:10:00Z", mape_once: 31.2, mape_sonra: 22.6, wmape_once: 24.1, wmape_sonra: 17.3, sapma_once: -8.4, sapma_sonra: -1.4, uyarilar: [] },
   hijyen: { pencere_gun: 30, son_olcum: "2026-10-22T20:00:00Z", saat: 720, kirpma_saat: 38, kirpma_gun: 9, kisinti_saat: 6, kisinti_gun: 2, kisinti_kayip_kwh: 41200, beklenen_kapsama: 0.97, kisinti_aranabildi: true },
@@ -270,7 +276,7 @@ http.createServer((req, res) => {
     aylar: [YAY("2026-08", 278.92, 75.80, { durum: "icinde", usd_cent: 5.936, kur_ortalama: 46.9845, kur_ayi: "2026-07", taban_cent: 4.95, tavan_cent: 6.05, taban_kr: 232.57, tavan_kr: 284.26 }),
       YAY("2026-09", 284.81, 77.40, { durum: "icinde", usd_cent: 5.961, kur_ortalama: 47.7783, kur_ayi: "2026-08", taban_cent: 4.95, tavan_cent: 6.05, taban_kr: 236.5, tavan_kr: 289.06 }),
       YAY("2026-10", 289.74, 78.74, { durum: "icinde", usd_cent: 5.967, kur_ortalama: 48.553, kur_ayi: "2026-09", taban_cent: 4.95, tavan_cent: 6.05, taban_kr: 240.34, tavan_kr: 293.75 }), YAY("2026-11", null, null)],
-    m23_6: { baslangic: "2026-10-19", etiket: "belirsiz", pencere_gun: 90, saat: 7, aday_saat: 11, fiyat_yok_saat: 0, kapsam_saat: 312, yekdem_disi_mwh: 9.4, yekdem_disi_tl: 33812.5, bildirilmemis_saat: 2, ilk_saat: "2026-10-20 11:00", son_saat: "2026-10-30 13:00", not: M23_NOT },
+    m23_6: { baslangic: "2026-10-19", etiket: "belirsiz", pencere_gun: 90, saat: 7, aday_saat: 11, fiyat_yok_saat: 0, kapsam_saat: 312, yekdem_disi_mwh: 9.4, yekdem_disi_tl: 33812.5, bildirilmemis_saat: 2, kgup0_saat: 2, kgup0_mwh: 14.9, kgup0_tl: 53104.2, ilk_saat: "2026-10-20 11:00", son_saat: "2026-10-30 13:00", not: M23_NOT },
     not: "7189 fiyatı EPİAŞ'ın aylık ilanıdır; ilan edilmemiş ay için önceki ayın fiyatı taşınır ve işaretlenir. USD sınır kontrolü bir önceki ayın ortalama TCMB USD alış kuruyla yapılır.",
     sabitler: { cetvel1_cent: 13.3, bant_cent: [4.95, 6.05], baslangic_kr: [106, 28.8], yerli_yil: 5, j: 0.98 } };
   const YEKDEM_DISI = { ...YEKDEM, segment: "lisansli_serbest", uygulanir: false, tarife_yekdem: false, fiyat: null, aylar: [], m23_6: null,

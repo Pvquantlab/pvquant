@@ -7,7 +7,7 @@ import { useTema } from "../../lib/useTema";
 import { api, bellekten, ayniysaEskisi, rolum, RaporDenetimHata, type DenetimBulgusu, EslemeHatasi, type EslemeVerisi,
          type ScadaOnizleme, type ScadaKayit,
          type KosuSatiri , CihazBazliHatasi} from "../../api/client";
-import type { KalibrasyonOzeti, Kayma, Hijyen, EpiasUretim, KayipAgaci, GucMatrisi, Isler } from "../../api/types";
+import type { KalibrasyonOzeti, Kayma, Hijyen, EpiasUretim, KayipAgaci, GucMatrisi, Isler, SaatProfili } from "../../api/types";
 import { Kart, Sayfa, Kpi, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
 import { Meta } from "../../lib/Meta";
 import { JsonOnizleme } from "./JsonOnizleme";   // v2.351: JSON panel içi önizleme
@@ -624,6 +624,32 @@ export function VeriYukleme({ plantId, santralimeGit, tahminlereGit }:
   );
 }
 
+/** 04.11 v2.532: sistematik saatleri bitişik aralıklara toplar — «10–14 saatlerinde ortalama +420 kW fazla tahmin». */
+function sistematikCumlesi(sp: SaatProfili): string {
+  const gruplar: { bas: string; son: string; yon: "fazla" | "eksik"; toplam: number; adet: number }[] = [];
+  const sira = sp.saatler;
+  for (const x of sp.sistematik) {
+    const i = sira.indexOf(x.saat); const son = gruplar[gruplar.length - 1];
+    if (son && son.yon === x.yon && sira.indexOf(son.son) === i - 1) { son.son = x.saat; son.toplam += x.ort_hata_kw; son.adet += 1; }
+    else gruplar.push({ bas: x.saat, son: x.saat, yon: x.yon, toplam: x.ort_hata_kw, adet: 1 });
+  }
+  const aralik = (g: typeof gruplar[number]) => `${g.bas.split("–")[0]}–${g.son.split("–")[1]}`;
+  return gruplar.map((g) => `${aralik(g)} saatlerinde ortalama ${g.toplam / g.adet >= 0 ? "+" : "−"}${sayiTr(Math.abs(g.toplam / g.adet), 0)} kW ${g.yon} tahmin`).join("; ") + " (sistematik).";
+}
+
+
+/** İpucu yalnız gözlenen örüntüye göre: 10–16 arasında fazla tahmin → AC sınırı/kırpma; 05–10 arasında eksik tahmin → sis/gölgeleme. */
+function sistematikIpucu(sp: SaatProfili): string {
+  const saat = (x: string) => Number(x.split("–")[0]);
+  const ogleFazla = sp.sistematik.some((x) => x.yon === "fazla" && saat(x.saat) >= 10 && saat(x.saat) < 16);
+  const sabahEksik = sp.sistematik.some((x) => x.yon === "eksik" && saat(x.saat) < 10);
+  const p: string[] = [];
+  if (ogleFazla) p.push("Öğle saatlerinde sürekli fazla tahmin çoğu zaman AC sınırı ya da kırpma ayarına işaret eder; Santral ayarlarındaki AC sınırını kontrol edin.");
+  if (sabahEksik) p.push("Sabah saatlerinde sürekli eksik tahmin yerel sis ya da gölgelemeye işaret eder.");
+  return p.length ? " " + p.join(" ") : "";
+}
+
+
 export function Kalibrasyon({ plantId }: { plantId: string }) {
   const ds = useDamgaSurumu();   // 26.10 eşzamanlama
   // 24.10 açık tema geçiş turu — BEŞ İSTEK BAĞIMSIZ, BAYAT-ÖNCE (Portföy kalıbı). v2.327'nin tek kapısı KPI'ları en yavaş
@@ -637,15 +663,17 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
   const [hj, setHj] = useState<Hijyen | null | undefined>(undefined);  // v2.254
   const [ka, setKa] = useState<KayipAgaci | null | undefined>(undefined);
   const [gm, setGm] = useState<GucMatrisi | null | undefined>(undefined);
+  const [sp, setSp] = useState<SaatProfili | null | undefined>(undefined);   // 04.11 v2.532: saat profili (Doğruluk'taki saat × gün haritasının yerine)
   useEffect(() => {
     let acik = true;
     setK(bellekten.kalibrasyon(plantId)); setKD("bekliyor");
-    setHj(undefined); setKy(undefined); setKa(undefined); setGm(undefined);
+    setHj(undefined); setKy(undefined); setKa(undefined); setGm(undefined); setSp(undefined);
     api.kalibrasyon(plantId).then((v) => { if (acik) { setK((e) => ayniysaEskisi(e, v)); setKD("tamam"); } }, () => { if (acik) { setK((e) => e ?? null); setKD("hata"); } });
     api.hijyen(plantId).then((v) => { if (acik) setHj(v); }, () => { if (acik) setHj(null); });
     api.kayma(plantId).then((v) => { if (acik) setKy(v); }, () => { if (acik) setKy(null); });
     api.kayipAgaci(plantId).then((v) => { if (acik) setKa(v); }, () => { if (acik) setKa(null); });
     api.gucMatrisi(plantId).then((v) => { if (acik) setGm(v); }, () => { if (acik) setGm(null); });
+    api.saatProfili(plantId).then((v) => { if (acik) setSp(v); }, () => { if (acik) setSp(null); });
     return () => { acik = false; };
   }, [plantId, ds]);   // 26.10 eşzamanlama
   const yuklendi = k !== undefined || kD !== "bekliyor";
@@ -656,6 +684,28 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
     ? Math.round((1 - k.mape_sonra / k.mape_once) * 100) : null;
   const AY = ["Oca","Şub","Mar","Nis","May","Haz","Tem","Ağu","Eyl","Eki","Kas","Ara"];
   const { n, oku } = useTema();
+  // 04.11 v2.532: saate göre ortalama işaretli sapma — yatay çubuk; sıfır çizgisi, sağ fazla / sol eksik tahmin. Tek renk (sapma tahminin
+  // ürünü: tahmin mavisi); yön rakamla ve ipucuyla söylenir, renk tek başına konuşmaz.
+  const profilOption = useMemo<EChartsOption | null>(() => {
+    if (!sp || !sp.profil.length) return null;
+    const kenar = oku("--kenar"), soluk = oku("--soluk"), mono = oku("--mono");
+    const saatler = sp.profil.map((x) => x.saat);
+    const degerler = sp.profil.map((x) => x.ort_hata_kw);
+    const tepe = Math.max(100, Math.ceil(Math.max(...degerler.map((v) => Math.abs(v ?? 0))) / 100) * 100);   // eksen ucu yuvarlak (±700, ±1.200)
+    return {
+      animation: false, grid: { left: 64, right: 24, top: 8, bottom: 30 },
+      tooltip: { backgroundColor: oku("--kart"), borderColor: kenar, borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 13 },
+        formatter: (p0: unknown) => { const q = p0 as { dataIndex: number }; const x = sp.profil[q.dataIndex];
+          return x.ort_hata_kw == null ? `${x.saat}: veri yok` : `${x.saat}: ${x.ort_hata_kw >= 0 ? "+" : ""}${sayiTr(x.ort_hata_kw, 0)} kW (${x.ort_hata_kw >= 0 ? "fazla" : "eksik"} tahmin), ${sayiTr(x.n)} gün`; } },
+      xAxis: { type: "value", min: -tepe, max: tepe, interval: tepe / 2, axisLabel: { color: soluk, fontFamily: mono, fontSize: 12, formatter: (v: number) => `${v > 0 ? "+" : ""}${sayiTr(v, 0)}` },
+        splitLine: { lineStyle: { color: kenar } }, name: "ort. sapma (kW) · sağ fazla, sol eksik tahmin", nameLocation: "middle", nameGap: 22,
+        nameTextStyle: { color: soluk, fontSize: 12 } },
+      yAxis: { type: "category", data: saatler, inverse: true, axisTick: { show: false }, axisLine: { show: false }, axisLabel: { color: soluk, fontFamily: mono, fontSize: 12 } },
+      series: [{ type: "bar", data: degerler, barWidth: "58%", itemStyle: { color: oku("--chart-p50-future") },
+        markLine: { silent: true, symbol: "none", lineStyle: { color: soluk, width: 1 }, label: { show: false }, data: [{ xAxis: 0 }] } }],
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sp, n]);
   const selale = useMemo(() => {
     const yap = (once: number | null, sonra: number | null, _birim: string): EChartsOption | null => {
       if (once === null || sonra === null) return null;
@@ -865,6 +915,23 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
             <div className="bos-bas">{ky ? "Karşılaştırma henüz yapılamadı" : "Karşılaştırma şu anda alınamadı"}</div>
             <p>{ky ? (ky.not ? ky.not : "Ortak saat yetersiz; en az 48 saat gerekir.") : "Sunucu yanıt vermedi; sayfayı yenileyin."}</p>
           </div>
+        )}
+      </Kart>
+      {/* 04.11 v2.532: Doğruluk'taki saat × gün hata haritası kaldırıldı — müşteri için karar üretmiyordu, 720 hücre bir çubuk grafiğin
+          söylediğini söylüyordu. Haritanın tek işe yarar bilgisi (saate göre sistematik sapma) kalibrasyonun teşhis girdisi olarak burada. */}
+      <Kart baslik="Saate göre ortalama sapma" alt="Tahmin − gerçekleşen, son 30 ölçüm günü; sistematik sapma kalibrasyonun ilk hedefidir"
+        sag={<span className="cip" title={sp ? `saat dilimi ${sp.tz}` : undefined}>{sp ? <Meta items={[sp.gun_sayisi ? `${sayiTr(sp.gun_sayisi)} gün` : "veri yok", sp.ilk_gun && sp.son_gun && `${tarihTr(sp.ilk_gun)} – ${tarihTr(sp.son_gun)}`, "0–24 saat ufku"]} /> : sp === undefined ? "hesaplanıyor" : "alınamadı"}</span>}>
+        {sp === undefined ? <YerTutucu yukseklik={330} /> : sp && sp.gun_sayisi > 0 && profilOption ? (
+          <>
+            <EChart option={profilOption} height={300} ariaLabel="Saate göre ortalama tahmin sapması, yatay çubuk" />
+            <p style={{ fontSize: 13.5, margin: "10px 0 0" }}>
+              {sp.sistematik.length
+                ? <>{sistematikCumlesi(sp)} Kalibrasyon bu saatleri hedefler.{sistematikIpucu(sp)}</>
+                : <>Hiçbir saatte sistematik sapma yok (ölçüt: ortalama sapma kurulu gücün %5'i olan {sayiTr(sp.esik_kw, 0)} kW'ı aşan ve en az 5 gün gözlenen saat).</>}
+            </p>
+          </>
+        ) : (
+          <p className="soluk" style={{ margin: 0 }}>{sp ? "Henüz karşılaştırılabilir tahmin–gerçekleşen çifti birikmedi; ölçüm yüklemeleri sürdükçe dolar." : "Saat profili şu anda alınamadı."}</p>
         )}
       </Kart>
       <KayipAgaciKarti plantId={plantId} ilkVeri={ka} />
