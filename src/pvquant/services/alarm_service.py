@@ -23,6 +23,12 @@ from sqlalchemy import text
 
 from pvquant.db import tenant_baglami
 from pvquant.ext.platform.alarm import KUTUPHANE
+# v2.535 dayanak künyeleri [KARAR_13995, OLCUM] — bu dosyadaki madde atıflarının birincil yayımı (RG tarih-sayı, karar no); metin kunye.py sicilinden üretildi,
+# tests/test_kunye_bekcisi.py sicille eş tutar (kaynak: 03.11.2026 doğrulama arşivi 03_Kaynak_Envanteri).
+DAYANAK_KUNYELERI = (
+    'Karar 13995: Akıllı Sayaç Sistemlerinin Yaygınlaştırılmasına ve Kullanımına İlişkin Usul ve Esaslar, Karar 13995, RG 05.12.2025-33098; '
+    'Ölçüm Sist. Yön.: Elektrik Piyasası Ölçüm Sistemleri Yönetmeliği, RG 28.12.2023-32413; değişiklikler RG 07.06.2024-32569, 25.09.2024-32673, 21.12.2024-32759, 21.01.2026-33144'
+)
 
 # v2.265: seçilebilir ek kurallar (ürün kararı: yalnız bu üçü; ping/KGÜP/dengesizlik kuralları veri kaynağı olmadan açılmaz)
 EK_KURALLAR = ("pr_dustu", "clipping_orani_yuksek", "iletisim_kesintisi", "kullanilabilirlik_dustu",

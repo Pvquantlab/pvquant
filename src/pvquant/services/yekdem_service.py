@@ -29,6 +29,16 @@ from zoneinfo import ZoneInfo
 
 import numpy as np
 import pandas as pd
+# v2.535 dayanak künyeleri [YEK_YON, 5346, CK7189, CK2949, CK3453, KARAR_5905] — bu dosyadaki madde atıflarının birincil yayımı (RG tarih-sayı, karar no); metin kunye.py sicilinden üretildi,
+# tests/test_kunye_bekcisi.py sicille eş tutar (kaynak: 03.11.2026 doğrulama arşivi 03_Kaynak_Envanteri).
+DAYANAK_KUNYELERI = (
+    'YEK Yön.: Yenilenebilir Enerji Kaynaklarının Belgelendirilmesi ve Desteklenmesine İlişkin Yönetmelik, RG 01.10.2013-28782; değişiklikler RG 29.04.2016-29698 (m.16–17 mülga), 23.08.2019-30867, 19.08.2021-31573, 29.12.2025-33122, 19.10.2026-33405 (m.23(6)); '
+    '5346: 5346 sayılı Yenilenebilir Enerji Kaynaklarının Elektrik Enerjisi Üretimi Amaçlı Kullanımına İlişkin Kanun, RG 18.05.2005-25819; '
+    '7189 sayılı CK: 7189 sayılı Cumhurbaşkanı Kararı (1.7.2021–31.12.2030 işletmeye girecek YEK belgeli tesisler), RG 01.05.2023-32177; düzeltme RG 04.05.2023-32180; '
+    'CK 2949: 2949 sayılı Cumhurbaşkanı Kararı (1.1–30.6.2021 işletmeye girenler), RG 18.09.2020-31248; '
+    'CK 3453: 3453 sayılı Cumhurbaşkanı Kararı, RG 30.01.2021-31380 (7189 ile yürürlükten kalktı); '
+    "Karar 5905-27: EPDK Kurul Kararı 5905-27 (02.12.2015; YEKDEM yararlanma yılları) — EPDK listesi, RG'de yayımlanmaz"
+)
 
 IST = ZoneInfo("Europe/Istanbul")
 REJIMLER = ("otomatik", "cetvel1", "7189")

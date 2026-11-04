@@ -246,7 +246,8 @@ def test_islem_sinifi_sorumlu_ve_yekdem_uygunlugu():
     # tarih yok → doğrulama gerekli; YEKA → yok; kullanıcı başlangıç yılı 2017 → son yıl 2026 → düşer
     y4 = {o["kod"]: o for o in tk.yaklasan(b, {}, "lisansli_serbest", 90)}
     assert y4["yekdem_basvuru"]["islem"] == "dogrulama" and "girilmedi" in y4["yekdem_basvuru"]["not"]
-    assert "yekdem_basvuru" not in {o["kod"] for o in tk.yaklasan(b, {"isletmeye_giris": "2022-03-01"}, "yeka", 90)}
+    yk = {o["kod"]: o for o in tk.yaklasan(b, {"isletmeye_giris": "2022-03-01"}, "yeka", 90)}
+    assert yk["yekdem_basvuru"]["islem"] == "dogrulama"   # v2.535 (DK-337): YEKA'da satır silinmez, «doğrulama gerekli» (şartnameye bağlı)
     assert "yekdem_basvuru" not in {o["kod"] for o in tk.yaklasan(b, {"yekdem_baslangic_yili": 2017}, "lisansli_yekdem", 90)}
     # planlı devre dışı: lisanslıda bağlantı türü bilinmiyor → doğrulama; iletime bağlı lisanssızda işlem
     u1 = next(o for o in tk.yaklasan(b, {}, "lisansli_serbest", 365) if o["kod"] == "planli_devre_disi"); assert u1["islem"] == "dogrulama"

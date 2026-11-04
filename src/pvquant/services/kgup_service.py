@@ -17,6 +17,13 @@ import pandas as pd
 
 from pvquant.ext.turkiye import kgup as kg
 from pvquant.ext.turkiye import kurallar as kr
+# v2.535 dayanak künyeleri [DUY, GIP_KAPI, TPYS] — bu dosyadaki madde atıflarının birincil yayımı (RG tarih-sayı, karar no); metin kunye.py sicilinden üretildi,
+# tests/test_kunye_bekcisi.py sicille eş tutar (kaynak: 03.11.2026 doğrulama arşivi 03_Kaynak_Envanteri).
+DAYANAK_KUNYELERI = (
+    'DUY: Elektrik Piyasası Dengeleme ve Uzlaştırma Yönetmeliği, RG 14.04.2009-27200; değişiklikler RG 28.03.2015-29309, 30.10.2016-29873, 18.01.2018-30305, 09.08.2019-30857, 02.02.2020-31027, 19.11.2022-32018, 19.12.2023-32404, 17.12.2024-32755, 21.01.2025-32789, 29.12.2025-33122, 19.10.2026-33405, 21.10.2026-33407; '
+    "GİP kapı kapanışı: DUY m.66/A(1)(f) yetkisiyle EPİAŞ duyurusu 28.08.2018 (01.10.2018'den teslimattan 60 dk önce); KGÜP revizyonu kapanış + 30 dk DUY m.69(1); "
+    'TPYS Bildirim Dokümanı: EPİAŞ TPYS Bildirim Dokümanı (EAK ve KGÜP), duyuru 19.02.2025 (ek 648549); KGUP.csv / EAK.csv şablonları 28.02.2018; dayanak DUY RG 17.12.2024-32755'
+)
 
 IST = "Europe/Istanbul"
 

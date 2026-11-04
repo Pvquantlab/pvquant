@@ -19,6 +19,14 @@ import numpy as np
 import pandas as pd
 
 from pvquant.ext.turkiye import dengesizlik as d, kurallar as kr, segment as sg
+# v2.535 dayanak künyeleri [DUY, KARAR_14968, KARAR_14907, TUE] — bu dosyadaki madde atıflarının birincil yayımı (RG tarih-sayı, karar no); metin kunye.py sicilinden üretildi,
+# tests/test_kunye_bekcisi.py sicille eş tutar (kaynak: 03.11.2026 doğrulama arşivi 03_Kaynak_Envanteri).
+DAYANAK_KUNYELERI = (
+    'DUY: Elektrik Piyasası Dengeleme ve Uzlaştırma Yönetmeliği, RG 14.04.2009-27200; değişiklikler RG 28.03.2015-29309, 30.10.2016-29873, 18.01.2018-30305, 09.08.2019-30857, 02.02.2020-31027, 19.11.2022-32018, 19.12.2023-32404, 17.12.2024-32755, 21.01.2025-32789, 29.12.2025-33122, 19.10.2026-33405, 21.10.2026-33407; '
+    "Karar 14968: EPDK Kurul Kararı 14968 (Şeffaflık Platformu veri listesi, 1.1.2027'den), RG 20.10.2026-33406; öncesi Karar 10711; "
+    'Karar 14907: EPDK Kurul Kararı 14907 (KÜPST, 1.11.2026 çıkarım), RG 19.10.2026-33405; '
+    'Teminat U&E: Teminat Usul ve Esasları, Karar 6282-3, RG 28.05.2016-29725; son değişiklik Karar 14954, RG 21.10.2026-33407'
+)
 
 IST = "Europe/Istanbul"
 
@@ -274,7 +282,12 @@ def hesapla_df(df: pd.DataFrame, fiyat: pd.DataFrame, kat: d.Katsayilar | None =
             "katsayilar": {"k": 0.03, "l": 0.03, "k_yon": {"acik": 0.06, "fazla": 0.03, "dengede": 0.03} if (pv["rejim"] == "2026").any() else {"acik": 0.03, "fazla": 0.03, "dengede": 0.03},
                            "l_yon": {"acik": 0.03, "fazla": 0.06, "dengede": 0.03} if (pv["rejim"] == "2026").any() else {"acik": 0.03, "fazla": 0.03, "dengede": 0.03},
                            "kupst_n": (float(pv["kupst_n"].iloc[-1]) if pd.notna(pv["kupst_n"].iloc[-1]) else None),
-                           "kupst_tolerans": (float(pv["kupst_m"].iloc[-1]) if pd.notna(pv["kupst_m"].iloc[-1]) else None)}}
+                           "kupst_tolerans": (float(pv["kupst_m"].iloc[-1]) if pd.notna(pv["kupst_m"].iloc[-1]) else None),
+                           # v2.535 (resmî/senaryo ayrımı): KÜPST n/tolerans santral ayarından geçersiz kılındıysa açıkça işaretlenir;
+                           # k/l, V, B, AFL ve DSG eşiği her durumda kural tablosundandır (ayarlardan değişmez)
+                           "kupst_gecersiz_kilma": bool(kat.kupst_n is not None or kat.kupst_tolerans is not None),
+                           "kupst_kaynak": ("santral ayarı (geçersiz kılma)" if (kat.kupst_n is not None or kat.kupst_tolerans is not None)
+                                            else "kural tablosu")}}
 
 
 DOKUM_KOLONLAR = ["zaman", "program_mwh", "program_kaynak", "pozisyon_mwh", "gerceklesen_mwh", "sapma_mwh", "ptf_tl_mwh", "smf_tl_mwh", "yon",
@@ -536,6 +549,9 @@ def simulasyon(tenant_id, plant: dict, gun: int = 90) -> dict:
     kupst_not = ("KÜPST: segment seçilmedi, hesaplanmadı; " if not seg["segment"]
                  else f"KÜPST: {k['kupst_dayanak']}; " if k["kupst_n"] is not None or seg["segment"] == "lisanssiz_dagitim"
                  else "KÜPST: katsayı doğrulanamadı, hesaplanmadı; ")
+    if (out.get("katsayilar") or {}).get("kupst_gecersiz_kilma"):   # v2.535: senaryo parametresi resmî tabloyla karıştırılmaz
+        kupst_not += (f"KÜPST tolerans/n santral ayarından geçersiz kılındı (uygulanan: %{(out['katsayilar']['kupst_tolerans'] or 0) * 100:.0f} / "
+                      f"{out['katsayilar']['kupst_n']}; resmî tablo: %{(k['kupst_m'] or 0) * 100:.0f} / {k['kupst_n']}); ")
     pr = out["program"]
     program_not = (f"Program: {pr['bildirilen_gun']} günde bildirilen KGÜP ({pr['bildirilen_saat']} saat; TPYS'ye bildirildiği beyan edilen dosya, kabulü doğrulanmaz), "
                    f"kalan {pr['oneri_saat']} saatte PVQuant önerisi (bir gün önce 15:30'dan önceki son tahminin P50'si)" if pr["bildirilen_saat"]

@@ -33,7 +33,8 @@ function OlayAdi({ o }: { o: TakvimOlay }) {
 }
 
 function KaynakRozeti({ o }: { o: TakvimOlay }) {
-  return <span className={`rozet rozet-kucuk ${o.kaynak_turu === "mevzuat" ? "rozet-ok" : "rozet-notr"}`} title={`${KAYNAK_ACIKLAMA[o.kaynak_turu]}: ${o.kaynak}`}>{KAYNAK_TURU[o.kaynak_turu]}</span>;
+  // v2.535: ipucuna Resmî Gazete yayımı (tarih-sayı) — kaynak metni maddeyi, yayım satırı metnin hangi RG ile geldiğini söyler
+  return <span className={`rozet rozet-kucuk ${o.kaynak_turu === "mevzuat" ? "rozet-ok" : "rozet-notr"}`} title={`${KAYNAK_ACIKLAMA[o.kaynak_turu]}: ${o.kaynak}${o.dayanak?.length ? `\n\nYayım: ${o.dayanak.join(" · ")}` : ""}`}>{KAYNAK_TURU[o.kaynak_turu]}</span>;
 }
 
 function GunUyarisi({ o }: { o: TakvimOlay }) {
@@ -132,7 +133,13 @@ export function Takvim({ plantId }: { plantId: string }) {
                 <td><KaynakRozeti o={o} /></td>
                 <td>{o.kalan_gun === 0 ? "bugün" : `${sayiTr(o.kalan_gun ?? 0)} gün`}</td></tr>))}</tbody>
           </table></div>)}
-        <p className="soluk" style={{ fontSize: 13, margin: "8px 0 0" }}>{t.not} {t.tatil_kaynak}{t.tatil_yillari.length ? ` Dinî bayramlar ${yillar} için tanımlı.` : ""}</p>
+        {/* v2.535 Takvim doğrulama turu: etiket/kaydırma açıklaması açılır alanda; bayramı tanımsız yıl uyarısı gizlenmez */}
+        {(t.tatil_eksik_yillar?.length ?? 0) > 0 && (
+          <p style={{ fontSize: 13, margin: "8px 0 0" }}><span className="rozet rozet-uyari rozet-kucuk">tatil takvimi eksik</span> {t.tatil_eksik_yillar!.join(", ")} yılı dinî bayramları henüz tanımlı değil; o yıla düşen iş günü hesapları bayram günlerini iş günü sayar.</p>)}
+        <details className="aciklama" style={{ marginTop: 8 }}>
+          <summary>Etiketler, kaydırma kuralları ve tatil takvimi</summary>
+          <p className="soluk" style={{ fontSize: 13, margin: "6px 0 0" }}>{t.not} {t.tatil_kaynak}{t.tatil_yillari.length ? ` Dinî bayramlar ${yillar} için tanımlı.` : ""}</p>
+        </details>
       </Kart>
 
       <Kart baslik="Uyum takvimi" alt="Önümüzdeki 12 ay: lisans ve bildirim yükümlülükleri, santral tarihlerinden türeyenler, olay kaydındaki planlı bakımların bildirim son anı."
@@ -193,7 +200,8 @@ export function Takvim({ plantId }: { plantId: string }) {
             <td>{/^\d\d:\d\d$/.test(g.saat) ? <span className="kunye-sayi">{g.saat}</span> : g.saat}</td>
             <td className="soluk">{g.gunler}</td>
             <td className="esnek" title={g.not ?? undefined}>{g.ad}{g.not ? <span className="soluk"> ({g.not})</span> : null}</td>
-            <td className="sar soluk">{g.kaynak}</td></tr>)}</tbody>
+            {/* v2.535: madde atfı açılır metinde — satır kısa, tam dayanak tıklayınca */}
+            <td className="sar soluk" style={{ fontSize: 12.5, minWidth: 160, maxWidth: 360 }}><details><summary style={{ cursor: "pointer" }}>{g.kaynak.split(/[;:(]/)[0].trim()}</summary><div style={{ marginTop: 4 }}>{g.kaynak}</div></details></td></tr>)}</tbody>
         </table></div>
       </Kart>
 

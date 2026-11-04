@@ -21,6 +21,12 @@ import pandas as pd
 from sqlalchemy import text
 
 from pvquant.db import tenant_baglami
+# v2.535 dayanak künyeleri [DUY, KARAR_14907] — bu dosyadaki madde atıflarının birincil yayımı (RG tarih-sayı, karar no); metin kunye.py sicilinden üretildi,
+# tests/test_kunye_bekcisi.py sicille eş tutar (kaynak: 03.11.2026 doğrulama arşivi 03_Kaynak_Envanteri).
+DAYANAK_KUNYELERI = (
+    'DUY: Elektrik Piyasası Dengeleme ve Uzlaştırma Yönetmeliği, RG 14.04.2009-27200; değişiklikler RG 28.03.2015-29309, 30.10.2016-29873, 18.01.2018-30305, 09.08.2019-30857, 02.02.2020-31027, 19.11.2022-32018, 19.12.2023-32404, 17.12.2024-32755, 21.01.2025-32789, 29.12.2025-33122, 19.10.2026-33405, 21.10.2026-33407; '
+    'Karar 14907: EPDK Kurul Kararı 14907 (KÜPST, 1.11.2026 çıkarım), RG 19.10.2026-33405'
+)
 
 IST = ZoneInfo("Europe/Istanbul")
 SURUMLER = ("on", "nihai")
@@ -373,7 +379,8 @@ def pvquant_kalemleri(tenant_id, plant: dict, donem: date, bugun: date | None = 
     kupst_s = pd.to_numeric(x["kupst_tl"], errors="coerce")
     out = {"imbalance": {"alacak_tl": round(edt_alacak, 2), "borc_tl": round(edt_borc, 2), "not": "saatlik EDT toplamı (alacak: fazla üretim; borç: eksik üretim)"},
            "kupst": {"alacak_tl": 0.0, "borc_tl": (round(float(kupst_s.sum()), 2) if kupst_s.notna().any() and not kupst_s.isna().all() else None),
-                     "not": "KÜPSM × max(taban; PTF; SMF) × n" if kupst_s.notna().any() else "KÜPST hesaplanamadı (segment/katsayı yok)"}}
+                     "not": "KÜPSM × max(taban; PTF; SMF) × n" if kupst_s.notna().any() else "KÜPST hesaplanamadı (segment/katsayı yok)",
+                     "dayanak": "KÜPST yalnız borç kalemidir: DUY m.110(4) ve m.113(2) (RG 19.10.2026-33405); katsayılar Karar 14907 (RG 19.10.2026-33405)"}}   # v2.535 (DK-229)
     if "yek_fiyat_tl_mwh" in x.columns:
         yf = pd.to_numeric(x["yek_fiyat_tl_mwh"], errors="coerce"); g = pd.to_numeric(x["gerceklesen_mwh"], errors="coerce").fillna(0)
         disi = pd.to_numeric(x.get("yekdem_disi_tl", 0), errors="coerce").fillna(0)

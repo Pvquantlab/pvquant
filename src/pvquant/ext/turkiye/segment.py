@@ -1,6 +1,8 @@
 """Segmentasyon — santral tipine göre dengesizlik sorumluluğu, KGÜP yükümlülüğü ve gelir formülü.
 
-Segmentler (kaynak: DUY md. 69/110–111, LÜY RG 02.04.2026, YEK Kanunu/YEKDEM Yön.):
+Segmentler (kaynak: DUY m.69, m.110–111 (RG 14.04.2009-27200; son değişiklik RG 19.10.2026-33405); LÜY (RG 12.05.2019-30772; değişiklik RG 02.04.2026-33212);
+5346 sayılı Kanun (RG 18.05.2005-25819) ve YEK Yön. (RG 01.10.2013-28782); CK 7189 (RG 01.05.2023-32177) / CK 2949 (RG 18.09.2020-31248) / CK 11415
+(RG 13.06.2026-33279) — tam künyeler kunye.py; v2.535):
   LISANSLI_SERBEST      : gelir = üretim·PTF (ikili anlaşma varsa sözleşme fiyatı); dengesizlik + KÜPST santralde (ya da DSG'de)
   LISANSLI_YEKDEM       : gelir = üretim·YEKDEM fiyatı (TL/MWh, aylık uzlaştırma); dengesizlik AYRI hesaplanır (santral/DSG) — YEKDEM içi
                           dağılım ayrıntısı teyit edilemedi → parametre
@@ -15,8 +17,19 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
-import numpy as np
 import pandas as pd
+# v2.535 dayanak künyeleri [DUY, LUY, YEK_YON, 5346, CK7189, CK2949, CK11415, KARAR_14907] — bu dosyadaki madde atıflarının birincil yayımı (RG tarih-sayı, karar no); metin kunye.py sicilinden üretildi,
+# tests/test_kunye_bekcisi.py sicille eş tutar (kaynak: 03.11.2026 doğrulama arşivi 03_Kaynak_Envanteri).
+DAYANAK_KUNYELERI = (
+    'DUY: Elektrik Piyasası Dengeleme ve Uzlaştırma Yönetmeliği, RG 14.04.2009-27200; değişiklikler RG 28.03.2015-29309, 30.10.2016-29873, 18.01.2018-30305, 09.08.2019-30857, 02.02.2020-31027, 19.11.2022-32018, 19.12.2023-32404, 17.12.2024-32755, 21.01.2025-32789, 29.12.2025-33122, 19.10.2026-33405, 21.10.2026-33407; '
+    'LÜY: Elektrik Piyasasında Lisanssız Elektrik Üretim Yönetmeliği, RG 12.05.2019-30772; değişiklikler RG 09.05.2021-31479, 02.04.2026-33212, 19.10.2026-33405; '
+    'YEK Yön.: Yenilenebilir Enerji Kaynaklarının Belgelendirilmesi ve Desteklenmesine İlişkin Yönetmelik, RG 01.10.2013-28782; değişiklikler RG 29.04.2016-29698 (m.16–17 mülga), 23.08.2019-30867, 19.08.2021-31573, 29.12.2025-33122, 19.10.2026-33405 (m.23(6)); '
+    '5346: 5346 sayılı Yenilenebilir Enerji Kaynaklarının Elektrik Enerjisi Üretimi Amaçlı Kullanımına İlişkin Kanun, RG 18.05.2005-25819; '
+    '7189 sayılı CK: 7189 sayılı Cumhurbaşkanı Kararı (1.7.2021–31.12.2030 işletmeye girecek YEK belgeli tesisler), RG 01.05.2023-32177; düzeltme RG 04.05.2023-32180; '
+    'CK 2949: 2949 sayılı Cumhurbaşkanı Kararı (1.1–30.6.2021 işletmeye girenler), RG 18.09.2020-31248; '
+    'CK 11415: 11415 sayılı Cumhurbaşkanı Kararı (on yılı dolan lisanssız tesiste fiyat), RG 13.06.2026-33279; '
+    'Karar 14907: EPDK Kurul Kararı 14907 (KÜPST, 1.11.2026 çıkarım), RG 19.10.2026-33405'
+)
 
 
 class Segment(str, Enum):

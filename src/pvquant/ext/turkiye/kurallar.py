@@ -33,10 +33,26 @@ lisanssız m/n; GTŞ/toplayıcı UEVÇB'si 1.11.2026 öncesi; 2027 DSG oranı (k
 """
 from __future__ import annotations
 
+import re
+
 from dataclasses import dataclass
 from datetime import date, timedelta
 
 import pandas as pd
+# v2.535 dayanak künyeleri [DUY, LUY, KARAR_14907, KARAR_14968, KARAR_14029, KARAR_14030, KARAR_14911, KARAR_13869, KARAR_13025, AFL_UE] — bu dosyadaki madde atıflarının birincil yayımı (RG tarih-sayı, karar no); metin kunye.py sicilinden üretildi,
+# tests/test_kunye_bekcisi.py sicille eş tutar (kaynak: 03.11.2026 doğrulama arşivi 03_Kaynak_Envanteri).
+DAYANAK_KUNYELERI = (
+    'DUY: Elektrik Piyasası Dengeleme ve Uzlaştırma Yönetmeliği, RG 14.04.2009-27200; değişiklikler RG 28.03.2015-29309, 30.10.2016-29873, 18.01.2018-30305, 09.08.2019-30857, 02.02.2020-31027, 19.11.2022-32018, 19.12.2023-32404, 17.12.2024-32755, 21.01.2025-32789, 29.12.2025-33122, 19.10.2026-33405, 21.10.2026-33407; '
+    'LÜY: Elektrik Piyasasında Lisanssız Elektrik Üretim Yönetmeliği, RG 12.05.2019-30772; değişiklikler RG 09.05.2021-31479, 02.04.2026-33212, 19.10.2026-33405; '
+    'Karar 14907: EPDK Kurul Kararı 14907 (KÜPST, 1.11.2026 çıkarım), RG 19.10.2026-33405; '
+    "Karar 14968: EPDK Kurul Kararı 14968 (Şeffaflık Platformu veri listesi, 1.1.2027'den), RG 20.10.2026-33406; öncesi Karar 10711; "
+    'Karar 14029: EPDK Kurul Kararı 14029 (KÜPST 2026), RG 29.12.2025-33122; '
+    'Karar 14030: EPDK Kurul Kararı 14030 (yöne bağlı k/l, 1.1.2026), RG 29.12.2025-33122; '
+    'Karar 14911: EPDK Kurul Kararı 14911 (DUY m.110 V = 100 TL/MWh), RG 19.10.2026-33405; '
+    'Karar 13869: EPDK Kurul Kararı 13869 (DSG üye dengesizlik oranı %5), RG 18.10.2025-33051; '
+    'Karar 13025: EPDK Kurul Kararı 13025 (KÜPST 2025), RG 17.12.2024-32755; '
+    "AFL U&E: GÖP ve DGP'de Asgari ve Azami Fiyat Limitlerinin Belirlenmesine İlişkin Usul ve Esaslar, Karar 5629-16, RG 21.06.2015-29393; Karar 6851 RG 06.01.2017-29940; Karar 14459 RG 03.04.2026-33213"
+)
 
 IST = "Europe/Istanbul"
 YONLER = ("acik", "fazla", "dengede")
@@ -264,10 +280,10 @@ def dsg_esigi(tarih: date) -> tuple[float | None, str]:
 # DUY Geçici m.39 (RG 17.12.2024-32755 Md.29; bulgular/10.md (e)): dağıtım lisansı sahipleri ile bölgelerindeki görevli tedarik şirketlerinin
 # kurduğu DSG'lerde m.111(5) oranı «1/1/2027 tarihine kadar yüzde yüz olarak uygulanır» — bu gruplarda üye eşiği %100 (bireysel kısım yok).
 # PVQuant müşterisinin DSG'si hangi türde bilinmiyor; motor genel oranı uygular, ekran notu olarak söylenir. 1.1.2027'de hüküm biter.
-GECICI_M39_NOT = ("DUY Geçici m.39: dağıtım şirketi ya da görevli tedarik şirketinin kurduğu DSG'lerde üye eşiği 1.1.2027'ye kadar %100 "
+GECICI_M39_NOT = ("DUY Geçici m.39: dağıtım şirketi ile bölgesindeki görevli tedarik şirketinin birlikte kurduğu DSG'lerde üye eşiği 1.1.2027'ye kadar %100 "
                   "(RG 17.12.2024-32755 Md.29); DSG'niz bu türdeyse burada gösterilen genel oran yerine %100 uygulanır")
 GECICI_M39_BITIS = date(2027, 1, 1)
-GECICI_M39_DIPNOT = ("Dağıtım şirketi ya da görevli tedarik şirketinin kurduğu DSG'lerde üye eşiği 1.1.2027'ye kadar %100 (DUY Geçici m.39); "
+GECICI_M39_DIPNOT = ("Dağıtım şirketi ile bölgesindeki görevli tedarik şirketinin birlikte kurduğu DSG'lerde üye eşiği 1.1.2027'ye kadar %100 (DUY Geçici m.39); "
                      "DSG'niz bu türdeyse netleşme farkı burada gösterilenden büyüktür.")
 
 
@@ -360,6 +376,28 @@ def donem_sinirlari(segment: str | None = "lisansli_serbest", bas: date = TABLO_
     return out
 
 
+# v2.535 (Hakkında doğrulama turu, 04.11.2026): satırın kaynak durumu dayanak metnindeki işaretlerden TÜRETİLİR; elle etiket yok.
+# Metinde «bulunamadı» / «doğrulanmadı» / «taslağı» geçen bir dayanak → doğrulama gerekli; yalnız «çıkarım» → çıkarım; aksi → doğrulandı.
+_DOGRULAMA_ISARETLERI = ("bulunamadı", "doğrulanmadı", "taslağı")
+DOGRULAMA_DURUMLARI = ("dogrulandi", "cikarim", "dogrulama_gerekli", "belirsiz")
+
+
+def dogrulama_durumu(edt_dayanak: str | None, kupst_dayanak: str | None, belirsiz_2027: bool = False) -> tuple[str, str]:
+    """(durum, not). durum ∈ DOGRULAMA_DURUMLARI. Not, hangi dayanak parçasının eksik olduğunu söyler (ekranda açılır metin)."""
+    notlar: list[str] = []
+    for ad, metin in (("EDT", edt_dayanak or ""), ("KÜPST", kupst_dayanak or "")):
+        for parca in re.split(r"[;—]", metin):
+            if any(i in parca for i in _DOGRULAMA_ISARETLERI):
+                notlar.append(f"{ad}: {parca.strip().strip('()«» ')}")
+    if belirsiz_2027:
+        return "belirsiz", "1.1.2027 sonrası uygulama ayrıntıları henüz belirsiz (DUY m.110); varsayılan: 2026 rejimi sürer" + ("; " + "; ".join(notlar) if notlar else "")
+    if notlar:
+        return "dogrulama_gerekli", "; ".join(notlar)
+    if "çıkarım" in (edt_dayanak or "") + (kupst_dayanak or ""):
+        return "cikarim", "yürürlük tarihi «yayımı takip eden fatura dönemi» ifadesinden çıkarım; sayısal değerler birincil kaynaktan"
+    return "dogrulandi", "birincil kaynak (Resmî Gazete yayımı / Kurul kararı) künyeli"
+
+
 def tablo(segment: str | None = "lisansli_serbest") -> list[dict]:
     """Yönetici ekranı / API için salt okunur satırlar: parametre, geçerlilik, değer, dayanak.
     AFL: dönem başı ve dönem sonu değeri (fiyat tavanı dönem içinde değişebilir; saatlik hesap kendi gününün tavanını alır)."""
@@ -377,6 +415,7 @@ def tablo(segment: str | None = "lisansli_serbest") -> list[dict]:
                               "taban": r.kupst.taban, "net_sapma": r.kupst.net_sapma, "birim": r.kupst.birim, "dayanak": r.kupst.dayanak},
                     "dsg_esik": r.dsg_esik, "dsg_dayanak": r.dsg_dayanak, "edt_dayanak": r.edt.dayanak,
                     "belirsiz_2027": r.belirsiz_2027})
+        out[-1]["dogrulama"], out[-1]["dogrulama_notu"] = dogrulama_durumu(r.edt.dayanak, r.kupst.dayanak, r.belirsiz_2027)   # v2.535
     return out
 
 

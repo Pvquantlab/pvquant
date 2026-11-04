@@ -20,13 +20,36 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 import calendar
+from pvquant.ext.turkiye import kunye as _kunye   # v2.535: dayanak künyesi sicili
+# v2.535 dayanak künyeleri [DUY, LISANS, LUY, YEK_YON, 5346, 6446, SEBEKE, 2429, KARAR_14907, KARAR_14911, AYM, TPYS, GIP_KAPI, CK2949, CK7189, KARAR_5905] — bu dosyadaki madde atıflarının birincil yayımı (RG tarih-sayı, karar no); metin kunye.py sicilinden üretildi,
+# tests/test_kunye_bekcisi.py sicille eş tutar (kaynak: 03.11.2026 doğrulama arşivi 03_Kaynak_Envanteri).
+DAYANAK_KUNYELERI = (
+    'DUY: Elektrik Piyasası Dengeleme ve Uzlaştırma Yönetmeliği, RG 14.04.2009-27200; değişiklikler RG 28.03.2015-29309, 30.10.2016-29873, 18.01.2018-30305, 09.08.2019-30857, 02.02.2020-31027, 19.11.2022-32018, 19.12.2023-32404, 17.12.2024-32755, 21.01.2025-32789, 29.12.2025-33122, 19.10.2026-33405, 21.10.2026-33407; '
+    'Lisans Yön.: Elektrik Piyasası Lisans Yönetmeliği, RG 02.11.2013-28809; değişiklikler RG 24.02.2017-29989, 10.03.2022-31774, 17.12.2024-32755, 29.04.2026-33238, 19.10.2026-33405; '
+    'LÜY: Elektrik Piyasasında Lisanssız Elektrik Üretim Yönetmeliği, RG 12.05.2019-30772; değişiklikler RG 09.05.2021-31479, 02.04.2026-33212, 19.10.2026-33405; '
+    'YEK Yön.: Yenilenebilir Enerji Kaynaklarının Belgelendirilmesi ve Desteklenmesine İlişkin Yönetmelik, RG 01.10.2013-28782; değişiklikler RG 29.04.2016-29698 (m.16–17 mülga), 23.08.2019-30867, 19.08.2021-31573, 29.12.2025-33122, 19.10.2026-33405 (m.23(6)); '
+    '5346: 5346 sayılı Yenilenebilir Enerji Kaynaklarının Elektrik Enerjisi Üretimi Amaçlı Kullanımına İlişkin Kanun, RG 18.05.2005-25819; '
+    '6446: 6446 sayılı Elektrik Piyasası Kanunu, RG 30.03.2013-28603; m.16 idari para cezası tebliğleri RG 27.11.2025-33090, 25.12.2025-33118; '
+    'Şebeke Yön.: Elektrik Şebeke Yönetmeliği, RG 28.05.2014-29013 (mükerrer); son değişiklik RG 29.12.2025-33122; '
+    '2429: 2429 sayılı Ulusal Bayram ve Genel Tatiller Hakkında Kanun, RG 19.03.1981-17284; '
+    'Karar 14907: EPDK Kurul Kararı 14907 (KÜPST, 1.11.2026 çıkarım), RG 19.10.2026-33405; '
+    'Karar 14911: EPDK Kurul Kararı 14911 (DUY m.110 V = 100 TL/MWh), RG 19.10.2026-33405; '
+    'AYM 2024/133: Anayasa Mahkemesi 26.11.2025, E.2024/133 K.2025/233 (5346 m.6(2) kısmi iptal; yürürlük 10.12.2026), RG 10.03.2026-33192; '
+    'TPYS Bildirim Dokümanı: EPİAŞ TPYS Bildirim Dokümanı (EAK ve KGÜP), duyuru 19.02.2025 (ek 648549); KGUP.csv / EAK.csv şablonları 28.02.2018; dayanak DUY RG 17.12.2024-32755; '
+    "GİP kapı kapanışı: DUY m.66/A(1)(f) yetkisiyle EPİAŞ duyurusu 28.08.2018 (01.10.2018'den teslimattan 60 dk önce); KGÜP revizyonu kapanış + 30 dk DUY m.69(1); "
+    'CK 2949: 2949 sayılı Cumhurbaşkanı Kararı (1.1–30.6.2021 işletmeye girenler), RG 18.09.2020-31248; '
+    '7189 sayılı CK: 7189 sayılı Cumhurbaşkanı Kararı (1.7.2021–31.12.2030 işletmeye girecek YEK belgeli tesisler), RG 01.05.2023-32177; düzeltme RG 04.05.2023-32180; '
+    "Karar 5905-27: EPDK Kurul Kararı 5905-27 (02.12.2015; YEKDEM yararlanma yılları) — EPDK listesi, RG'de yayımlanmaz"
+)
 
 # ---- segment kapsamları (ext/turkiye/segment.Segment değerleri; burada metin olarak, bağımlılık yok) ----
 LISANSLI = ("lisansli_serbest", "lisansli_yekdem", "yeka")
 LISANSSIZ = ("lisanssiz_iletim", "lisanssiz_dagitim", "oz_tuketim_saatlik")
 KGUP_BILDIREN = LISANSLI + ("lisanssiz_iletim",)          # 03 tablosu: iletime bağlı lisanssız da bildirir; dağıtımda GTŞ/toplayıcı
-UZLASTIRMA_TARAFI = LISANSLI + ("lisanssiz_iletim",)       # EPİAŞ uzlaştırma bildirimi/faturası doğrudan katılımcıya
-GTS_ODEME = ("lisanssiz_dagitim", "oz_tuketim_saatlik")     # LÜY: ödeme GTŞ'den, izleyen ayın 5. iş günü
+UZLASTIRMA_TARAFI = LISANSLI                              # EPİAŞ uzlaştırma bildirimi/faturası doğrudan katılımcıya (lisanslı)
+# v2.535 Takvim doğrulama turu (DK-784, DK-540): iletime bağlı lisanssız da GTŞ/toplayıcı portföyündedir (DUY m.75(4), segment.KURALLAR
+# «dengesizlik_sahibi: toplayıcı/GTŞ portföyü») — EPİAŞ itiraz/fatura son günleri ona gösterilmez; ödeme GTŞ'den.
+GTS_ODEME = LISANSSIZ                                        # LÜY: ödeme GTŞ'den, izleyen ayın 5. iş günü
 HEPSI = LISANSLI + LISANSSIZ
 
 # ---- resmî tatiller ----
@@ -68,7 +91,7 @@ def is_gunu_ekle(d: date, n: int) -> date:
 
 
 def ay_ekle(d: date, n: int) -> date:
-    """Takvim ayı ekle/çıkar; gün ay sonunu aşarsa ay sonuna kırp (lisans bitişi − 6 ay)."""
+    """Takvim ayı ekle/çıkar; gün ay sonunu aşarsa ay sonuna kırp (ortaklık değişikliği + 6 ay, izin iptali + 2 ay)."""
     y, m = divmod(d.month - 1 + n, 12)
     y += d.year; m += 1
     return date(y, m, min(d.day, calendar.monthrange(y, m)[1]))
@@ -92,6 +115,7 @@ def _olay(kod, ad, tarih, *, saat=None, kaynak, kaynak_turu, kaydirma="yok", kap
     doğrulanmamış mı (dogrulama). `sorumlu`: adımı yapan taraf (santral / EPİAŞ / EPDK / TEİAŞ / şebeke işletmecisi / GTŞ / Kurul)."""
     assert islem in ISLEMLER
     return {"kod": kod, "ad": ad, "tarih": tarih.isoformat(), "saat": saat, "kaynak": kaynak, "kaynak_turu": kaynak_turu,
+            "dayanak": [d["kunye"] for d in _kunye.bul(kaynak)],   # v2.535: kaynak metnindeki anılışların birincil künyesi (RG tarih-sayı)
             "kaydirma": kaydirma, "kapsam": list(kapsam), "donem": donem, "not": not_, "sonuc": sonuc, "sonuc_kisa": sonuc_kisa,
             "islem": islem, "sorumlu": sorumlu, "hafta_sonu": tarih.weekday() >= 5, "tatil": resmi_tatil(tarih)}
 
@@ -116,7 +140,8 @@ def donem_takvimi(yil: int, ay: int) -> list[dict]:
               kaynak_turu="mevzuat", kaydirma="belirsiz", kapsam=UZLASTIRMA_TARAFI, donem=donem, islem="islem", sorumlu="santral",
               sonuc="Bu andan sonra gelen sayaç düzeltmesi ve itiraz o ayın uzlaştırmasına girmez (DUY m.82(4), m.132/B(1)); sonrası 60 günlük fatura itirazı (m.133)",
               sonuc_kisa="Düzeltme o aya girmez (m.82(4))",
-              not_="Hafta sonuna denk gelirse EPİAŞ'ın uygulaması metinde yazılı değil; EPİAŞ duyurusuna bakın." if itiraz.weekday() >= 5 else None),
+              not_=("Hafta sonuna denk geliyor; metinde kaydırma kuralı yok. EPİAŞ geçmiş dönemlerde 12'si 17:30'u kaydırmadan uyguladı "
+                    "(12.07.2025 Cumartesi, 12.04.2026 Pazar); o ayın duyurusuna bakın.") if itiraz.weekday() >= 5 else None),
         _olay("itiraz_sonuc", "EPİAŞ itirazları sonuçlandırır", g(14), saat="16:00",
               kaynak="DUY m.132/B(1): ayın 14'ü 16:00", kaynak_turu="mevzuat", kaydirma="belirsiz", kapsam=UZLASTIRMA_TARAFI, donem=donem, islem="takip", sorumlu="EPİAŞ"),
         _olay("nihai_bildirim", "Nihai uzlaştırma bildirimi = fatura tebliği", nihai,
@@ -126,20 +151,23 @@ def donem_takvimi(yil: int, ay: int) -> list[dict]:
         _olay("fatura_duzenleme", "Fatura düzenleme son günü (alacaklıysa EPİAŞ'a kesilecek fatura)", nihai + timedelta(days=7),
               kaynak="DUY m.132/C(1), (5): nihai bildirimden itibaren 7 gün; hafta sonu kuralı yazılı değil", kaynak_turu="hesaplanan", kaydirma="belirsiz",
               kapsam=UZLASTIRMA_TARAFI, donem=donem, islem="islem", sorumlu="santral", not_="Yalnız dönem sonucu alacaklıysa.",
-              sonuc="Fatura süresinde düzenlenmezse EPİAŞ ödemesi gecikir (m.132/C)", sonuc_kisa="EPİAŞ ödemesi gecikir"),
+              sonuc="Sonuç metinde yazılı değil; fatura gecikirse EPİAŞ ödemesi gecikebilir (çıkarım, m.132/Ç(14))", sonuc_kisa="Ödeme gecikebilir (çıkarım)"),
         _olay("borc_odeme", "Borçlu katılımcının fatura ödemesi (6. iş günü; sonrası temerrüt, teminat mahsubu)", is_gunu_ekle(nihai, 6),
               kaynak="DUY m.132/Ç(8), m.132/E(1): tebliği izleyen 6. iş günü", kaynak_turu="hesaplanan", kapsam=UZLASTIRMA_TARAFI, donem=donem, islem="islem", sorumlu="santral",
-              not_="Yalnız dönem sonucu borçluysa.", sonuc="Temerrüt faizi (6183 m.51 oranı) ve teminattan mahsup (DUY m.132/D, m.132/E)", sonuc_kisa="Temerrüt + teminat mahsubu"),
+              not_="Yalnız dönem sonucu borçluysa.", sonuc="DUY m.132/E: temerrüt faizi (6183 m.51 oranı) ve teminattan mahsup (m.132/D)", sonuc_kisa="Temerrüt + teminat mahsubu (m.132/E)"),
         _olay("alacak_tahsil", "EPİAŞ'ın alacaklıya ödemesi (en geç 7. iş günü; tahsilat oranında)", is_gunu_ekle(nihai, 7),
               kaynak="DUY m.132/Ç(9): tebliği izleyen 7. iş günü içinde; tahsil edilen tutarların net alacaklara oranına göre",
               kaynak_turu="hesaplanan", kapsam=UZLASTIRMA_TARAFI, donem=donem, islem="takip", sorumlu="EPİAŞ"),
         _olay("itiraz_60", "Faturaya yazılı itiraz süresi sonu (60 gün; ödemeyi durdurmaz)", nihai + timedelta(days=60),
-              kaynak="DUY m.133(1)–(2): tebliğden itibaren 60 gün, yazılı; ölçüm itirazı TEİAŞ/dağıtıma, LÜYTOB GTŞ'ye, diğerleri EPİAŞ'a; hafta sonu kuralı yazılı değil",
+              kaynak="DUY m.133(1)–(2): tebliğden itibaren 60 gün, yazılı; ölçüm itirazı TEİAŞ/dağıtıma, lisanssız üreticiye ödenecek toplam bedel (LÜYTOB) itirazı GTŞ'ye, diğerleri EPİAŞ'a; hafta sonu kuralı yazılı değil",
               kaynak_turu="hesaplanan", kaydirma="belirsiz", kapsam=UZLASTIRMA_TARAFI, donem=donem, islem="takip", sorumlu="santral",
-              not_="İsteğe bağlı hak: yalnız faturaya itiraz edilecekse; zorunlu adım değildir.", sonuc="Süre geçince faturaya itiraz edilemez (m.133(1))", sonuc_kisa="İtiraz hakkı düşer"),
+              not_="İsteğe bağlı hak: yalnız faturaya itiraz edilecekse; zorunlu adım değildir. Geriye dönük düzeltme talebi m.133(5) ile 12 ayla sınırlıdır.",
+              sonuc="60 günlük itiraz süresi biter (m.133(1)); m.133(5) 12 aylık geriye dönük düzeltme kuralı ayrıca", sonuc_kisa="60 günlük süre biter (m.133(1))"),
         # lisanssız (dağıtım): şebeke işletmecisi → GTŞ bildirimi ve GTŞ ödemesi
         _olay("gts_bildirim", "Şebeke işletmecisi ihtiyaç fazlasını GTŞ'ye bildirir", g(6),
-              kaynak="LÜY m.23(3): her ayın 6'sına kadar", kaynak_turu="mevzuat", kapsam=GTS_ODEME, donem=donem, islem="takip", sorumlu="şebeke işletmecisi"),
+              kaynak="LÜY m.23(3): her ayın 6'sına kadar (12.05.2019 öncesi tesisler); sonrası için m.26(2) düzenlenmiş takvime bağlı", kaynak_turu="mevzuat",
+              kapsam=GTS_ODEME, donem=donem, islem="dogrulama", sorumlu="şebeke işletmecisi",
+              not_="Ayın 6'sı kuralı 12.05.2019 öncesi tesisler içindir; sonraki tesislerde bildirim çağrı mektubu/sözleşme takvimine bağlıdır ve PVQuant'ta kayıtlı değildir."),
     ]
     # GTŞ ödemesi: EPİAŞ'ın GTŞ'ye ödediği ayı (nihai + 7 iş günü, izleyen ay) izleyen ayın 5. iş günü — 02-16: Ekim 2026 → 7.12.2026
     epias_gts = is_gunu_ekle(nihai, 7)
@@ -166,15 +194,17 @@ def gunluk_saatler() -> list[dict]:
     teminat, ESY bildirimi — m.132(1) «her işgünü», m.132/Ç(1)–(6) hafta sonu kuralları). Sıralı. Kaynaklar: 01-01, 02-05, 02-06, 02-07, 03-10."""
     s = lambda saat, ad, kaynak, kapsam=HEPSI, not_=None, gunler="iş günü": {"saat": saat, "ad": ad, "kaynak": kaynak, "kapsam": list(kapsam), "not": not_, "gunler": gunler}   # noqa: E731
     HER_GUN = "her gün"
-    TEMINAT = "EPİAŞ Teminat Usul ve Esasları süreç sayfası"
+    TEMINAT = "Teminat Usul ve Esasları m.7(3), m.7(10)(a) (Karar 6282-3, RG 28.05.2016-29725); EPİAŞ süreç sayfası"   # v2.535 (DK-131): saatlerin maddesi
     return [
         s("09:00", "EAK bildirimi açılır (TPYS, 09:00–15:30)", "TPYS Bildirim Dokümanı; DUY m.69(1)", KGUP_BILDIREN, gunler=HER_GUN),
         s("10:30", "Teminat mektubunun EPİAŞ'a sunulma son anı (11:00 kontrolü için)", TEMINAT, LISANSLI),
-        s("11:00", "Teminat kontrolü (GÖP + GİP); eksikse işlem yasağı riski", "DUY m.132/E(4); " + TEMINAT, LISANSLI,
+        s("11:00", "Teminat kontrolü (GÖP + GİP); eksikse işlem yasağı riski", TEMINAT, LISANSLI,   # v2.535 (DK-131): m.132/E(4) temerrüt sonrası tamamlama hükmüdür, günlük kontrolün dayanağı değil
           "Üç iş günü üst üste eksik kalan katılımcıya Teminat Usul ve Esasları'ndaki tedbirler uygulanır."),
         s("11:00", "Devre dışı ünitelerin devreye alma tahmini (Millî Yük Tevzi Merkezi'ne yazılı; izleyen 2.–14. gün)",
-          "Elektrik Şebeke Yönetmeliği m.53(1)(a): iletime bağlı üretim tesisi", LISANSLI + ("lisanssiz_iletim",)),
-        s("14:00", "Program (KGÜP) bildirim penceresi açılır (GÖP sonuçları kesinleşince)", "DUY m.68(1); TPYS Bildirim Dokümanı", KGUP_BILDIREN, gunler=HER_GUN),
+          "Elektrik Şebeke Yönetmeliği m.53(1)(a); kapsam m.51(1): iletime doğrudan bağlı üretim tesisi", LISANSLI + ("lisanssiz_iletim",),
+          "yalnız iletime doğrudan bağlı tesis; dağıtıma bağlıysa uygulanmaz"),   # v2.535 (DK-752)
+        s("14:00", "Program (KGÜP) bildirim penceresi açılır (GÖP sonuçları kesinleşince)", "DUY m.68(1); TPYS Bildirim Dokümanı", KGUP_BILDIREN,
+          "1.1.2027'den DUY m.50(2): frekans kontrol rezervi tedariki gecikirse GÖP süreçleri ötelenebilir, pencere daralabilir; EPİAŞ duyurusuna bakın", gunler=HER_GUN),   # v2.535 (DK-854)
         s("14:30", "Günlük avans bildirimi (bir önceki günün GÖP/GİP işlemleri)", "DUY m.132(1): her iş günü; hafta sonu ve tatil için izleyen ilk iş günü", LISANSLI),
         s("14:30", "PYS erişimi olmayan katılımcının program ve EAK'yi Bölgesel Yük Tevzi Merkezi'ne (BYTM) bildirme son saati", "DUY m.69(1)", KGUP_BILDIREN, gunler=HER_GUN),
         s("15:00", "Avans borcu ödeme son anı; sonrası temerrüt (6183 m.51 oranının %50'si)", "DUY m.132/Ç(1), (3), (5); m.132/D(1), (3)", LISANSLI),
@@ -183,7 +213,7 @@ def gunluk_saatler() -> list[dict]:
         s("17:00", "Sistem işletmecisinin program (KGÜP) teyidi", "DUY m.69(4)", KGUP_BILDIREN, gunler=HER_GUN),
         s("17:00", "EPİAŞ'ın alacaklıya avans ödemesi; GİP teminat kontrolü; 17:00 sonrası ödemede temerrüt faizi tam oran",
           "DUY m.132/Ç(2), (4), (6); m.132/D(3); " + TEMINAT, LISANSLI),
-        s("gün içi", "GİP kapı kapanışı teslimattan 1 saat önce; program (KGÜP) revizyonu kapanış + 30 dk", "DUY m.69(1); GİP Usul ve Esasları", KGUP_BILDIREN, gunler=HER_GUN),
+        s("gün içi", "GİP kapı kapanışı teslimattan 1 saat önce; program (KGÜP) revizyonu kapanış + 30 dk", "DUY m.69(1) (+30 dk); GİP kapanışı 60 dk: DUY m.66/A(1)(f) yetkisi, EPİAŞ duyurusu 28.08.2018 (01.10.2018'den)", KGUP_BILDIREN, gunler=HER_GUN),
     ]
 
 
@@ -193,48 +223,55 @@ def sabit_tarihler(bugun: date) -> list[dict]:
     out = []
     for yil in (bugun.year, bugun.year + 1):
         out += [
-            _olay("yekdem_basvuru", f"YEKDEM {yil + 1} başvurusu ve vazgeçme son günü (yıl içinde çıkılamaz)", date(yil, 11, 30),
-                  kaynak="YEK Yön. m.5(1)–(2), m.4(2); EPDK 2027 YEKDEM duyurusu (19.10.2026)", kaynak_turu="mevzuat", kaydirma="yok",
+            _olay("yekdem_basvuru", f"YEKDEM {yil + 1} başvurusu ve vazgeçme son günü (yıl içinde çıkılamaz)", is_gununa_kaydir(date(yil, 11, 30)),
+                  kaynak="YEK Yön. m.5(1)–(2), m.4(2); 5346 m.6; EPDK yıllık YEKDEM duyurusu (hafta sonu/tatilde izleyen iş günü, EPDK uygulaması)",   # v2.535 (DK-302/279)
+                  kaynak_turu="hesaplanan" if not is_gunu(date(yil, 11, 30)) else "mevzuat", kaydirma="is_gunu",
+                  not_="30 Kasım hafta sonu/tatile denk geliyor; EPDK uygulamasına göre izleyen iş günü." if not is_gunu(date(yil, 11, 30)) else None,
                   kapsam=LISANSLI, islem="islem", sorumlu="santral", sonuc_kisa=f"{yil + 1}'de YEKDEM yok",
                   sonuc=f"Süresinde başvurulmazsa {yil + 1} yılında YEKDEM'den yararlanılamaz (YEK Yön. m.5); yıl içinde giriş yok"),
-            _olay("yek_on_liste", f"Ön YEK listesi ({yil + 1}): Aralık'ın ilk 10 günü; itiraz 5 gün", date(yil, 12, 10),
-                  kaynak="YEK Yön. m.6", kaynak_turu="hesaplanan", kapsam=LISANSLI, islem="takip", sorumlu="EPDK", sonuc_kisa="İtiraz 5 gün",
-                  sonuc="Ön listeye 5 gün içinde itiraz edilmezse liste bu haliyle kesinleşir (YEK Yön. m.6–7)"),
+            _olay("yek_on_liste", f"Ön YEK listesi ({yil + 1}): Aralık'ın ilk 10 günü içinde ilan; düzeltme için 5 gün içinde yazılı itiraz", date(yil, 12, 10),
+                  kaynak="YEK Yön. m.6", kaynak_turu="hesaplanan", kapsam=LISANSLI, islem="takip", sorumlu="EPDK", sonuc_kisa="Yazılı itiraz 5 gün (m.6)",
+                  sonuc="Lisans sahibi ilana konu bilgilerin düzeltilmesi için 5 gün içinde yazılı itiraz edebilir (YEK Yön. m.6); nihai liste 31 Aralık'a kadar Kurul kararıyla (m.7)"),
             _olay("yek_nihai_liste", f"Nihai YEK listesi ({yil + 1}) 31 Aralık'a kadar", date(yil, 12, 31),
                   kaynak="YEK Yön. m.7(1)", kaynak_turu="mevzuat", kapsam=LISANSLI, islem="takip", sorumlu="EPDK"),
             _olay("planli_devre_disi", f"{yil + 1} yılı planlı devre dışı taleplerinin TEİAŞ'a bildirimi", date(yil, 4, 30),
                   kaynak="Elektrik Şebeke Yönetmeliği m.52: içinde bulunulan yılın 30 Nisan'ına kadar; iletime bağlı üretim tesisi",   # 03-10
                   kaynak_turu="mevzuat", kaydirma="belirsiz", kapsam=LISANSLI + ("lisanssiz_iletim",), sonuc=M30_B, sonuc_kisa=M16_KISA,
                   islem="islem", sorumlu="santral",
-                  not_="Bildirilmeyen bakım yıllık plana girmez; 48 saati aşan devre dışılar plana bağlıdır." + HAFTA_SONU_NOT),
+                  not_="Bildirilmeyen bakım yıllık plana girmez; 48 saati aşan devre dışılar plana bağlıdır (çıkarım: m.54 48 saate kadarını düzenler). "
+                       "Yalnız iletime doğrudan bağlı tesis (m.51(1)); dağıtıma bağlıysa bakım takvimi dağıtım şirketine (Lisans Yön. m.30(2)(b))." + HAFTA_SONU_NOT),
             _olay("luy_isletim_bedeli_tem", "Lisanssız yıllık işletim bedeli, 1. taksit (Temmuz son iş günü)", _son_is_gunu(yil, 7),
                   kaynak="LÜY m.36(2): Temmuz son iş günü mesai bitimi", kaynak_turu="hesaplanan", kapsam=LISANSSIZ, islem="islem", sorumlu="santral",   # 03-17
-                  sonuc="Ödenmezse 6183 m.51 gecikme zammı; sistem kullanım bedeli ödenmezse bildirimsiz ayırma riski (LÜY)", sonuc_kisa="Gecikme zammı"),
+                  sonuc="Sonuç LÜY m.36(2)'de yazılı değil; sistem kullanım bedeli ödenmezse bildirimsiz ayırma (LÜY m.36(3))", sonuc_kisa="m.36(3) ayırma riski"),
             _olay("luy_isletim_bedeli_ara", "Lisanssız yıllık işletim bedeli, 2. taksit (Aralık son iş günü)", _son_is_gunu(yil, 12),
                   kaynak="LÜY m.36(2): Aralık son iş günü mesai bitimi", kaynak_turu="hesaplanan", kapsam=LISANSSIZ, islem="islem", sorumlu="santral",
-                  sonuc="Ödenmezse 6183 m.51 gecikme zammı", sonuc_kisa="Gecikme zammı"),
+                  sonuc="Sonuç LÜY m.36(2)'de yazılı değil; sistem kullanım bedeli ödenmezse bildirimsiz ayırma (LÜY m.36(3))", sonuc_kisa="m.36(3) ayırma riski"),
         ]
     out += [
         _olay("dsg_2027_orani", "DSG 2027 üye eşiği için Kurul karar son günü", date(2026, 12, 1),
               kaynak="DUY m.111(5): yıllık karar en geç 1 Aralık", kaynak_turu="mevzuat", kapsam=LISANSLI, islem="takip", sorumlu="Kurul",   # 08-01
-              not_="Karar çıkınca Doğruluk ve Portföy'deki DSG eşiği güncellenir."),
-        _olay("aym_luy_10yil", "AYM iptali yürürlükte: 10 yılı dolan lisanssızın lisanslıya geçiş hükmü kalkıyor; sonrası belirsiz", date(2026, 12, 10),
-              kaynak="AYM kararı 26.11.2025, E.2024/133 K.2025/233 (RG 10.3.2026); 5346 m.6", kaynak_turu="mevzuat", kapsam=LISANSSIZ, islem="mevzuat", sorumlu="Cumhurbaşkanlığı / EPDK"),   # 08-14
+              not_="Kurul'un yasal son günüdür, kararın çıkıp çıkmadığı PVQuant'ta izlenmez; karar yayımlanınca Doğruluk ve Portföy'deki DSG eşiği kural motorunda güncellenir."),
+        _olay("aym_luy_10yil", "AYM iptali yürürlükte: 5346 m.6(2) 1.–2. cümle (10 yılı dolan lisanssızın lisanslıya geçiş yolu) kalkıyor; fiyat hükmü (3. cümle, CK 11415) yürürlükte", date(2026, 12, 10),
+              kaynak="AYM kararı 26.11.2025, E.2024/133 K.2025/233 (RG 10.3.2026); 5346 m.6(2); CK 11415 (13.06.2026'dan fiyat rejimi)", kaynak_turu="mevzuat", kapsam=LISANSSIZ, islem="mevzuat",
+              sorumlu="Cumhurbaşkanlığı / EPDK", not_="İptal yalnız lisanslıya geçiş yolunu kapsar; 10 yıl sonrası satış fiyatı CK 11415 formülüyle sürer."),   # v2.535 (DK-663/571)
         _olay("luy_gecici14", "LÜY Geçici 14: bağlantı anlaşması revizyonu başvuru süresi sonu (19.10.2026 + 60 gün)", date(2026, 12, 18),
               kaynak="LÜY Geçici m.14 (RG 19.10.2026-33405): yayımdan itibaren 60 gün; metinde tarih yazmıyor", kaynak_turu="hesaplanan",   # 08-11
-              kapsam=("lisanssiz_dagitim",), islem="dogrulama", sorumlu="santral", not_="Revizyonun hangi anlaşmalar için zorunlu olduğu doğrulanmadı; dağıtım şirketinizin duyurusuna bakın."),
+              kapsam=("lisanssiz_dagitim",), islem="dogrulama", sorumlu="santral",
+              not_="Yükümlülük DUY m.75(4) kapsamındaki (GTŞ/toplayıcı portföyündeki) lisanssız üreticiler içindir; hangi anlaşmalar için zorunlu olduğu doğrulanmadı; "
+                   "yayım günü sayılırsa temkinli son gün 17.12.2026. Dağıtım şirketinizin duyurusuna bakın."),
         _olay("m110_2027", "DUY m.110 yeni rejim (15 dk DGP, tek k/l, «ç» bazlı KÜPSM) — uygulama belirsiz", date(2027, 1, 1),
               kaynak="RG 21.1.2025-32789 Md.13, Md.20(b); 31.10.2026'ya kadar yeni Kurul kararı yok", kaynak_turu="mevzuat",   # 08-01
-              kapsam=HEPSI, islem="mevzuat", sorumlu="Kurul", not_="Yürürlük tarihi yazılı; uygulama ayrıntıları (DGP 15 dk, tek k/l, «ç» bazlı KÜPSM) Kurul kararı çıkana kadar belirsiz. Hesap yürürlükteki kuralla."),
+              kapsam=HEPSI, islem="mevzuat", sorumlu="Kurul", not_="Yürürlük tarihi yazılı; uygulama ayrıntıları (DGP 15 dk, tek k/l, «ç» bazlı KÜPSM) Kurul kararı çıkana kadar belirsiz. Hesap yürürlükteki kuralla. "
+                                                                 "Aynı değişikliğin Md.5'i ile 1.1.2027'den DUY m.50(2): frekans kontrol rezervi tedariki gecikirse GÖP süreçleri ötelenebilir; KGÜP penceresi daralabilir."),
         _olay("gecici_m39_bitis", "DUY Geçici m.39 sona erer: dağıtım ve GTŞ DSG'lerinde %100 üye eşiği biter, genel eşik uygulanır", date(2027, 1, 1),
               kaynak="DUY Geçici m.39", kaynak_turu="mevzuat", kapsam=LISANSLI, islem="dogrulama", sorumlu="DSG yöneticisi",
-              not_="Yalnız dağıtım şirketi ya da görevli tedarik şirketinin kurduğu DSG üyelerini etkiler; DSG'nizin türü PVQuant'ta kayıtlı değil."),
+              not_="Yalnız dağıtım şirketi ile bölgesindeki görevli tedarik şirketinin birlikte kurduğu DSG'lerin üyelerini etkiler; DSG'nizin türü PVQuant'ta kayıtlı değil."),
         _olay("sktt_2027", "SKTT 2027 tüketim limitleri yürürlükte (Karar 15005)", date(2027, 1, 1),
               kaynak="RG 31.10.2026-33416, Karar 15005", kaynak_turu="mevzuat", kapsam=("oz_tuketim_saatlik",), islem="mevzuat", sorumlu="EPDK"),
         _olay("luy_cezai_sart", "Karar 14909 lisanssız SCADA/uzaktan kontrol cezai şart askısının sonu", date(2027, 4, 30),
-              kaynak="LÜY Geçici m.14 (RG 19.10.2026-33405): bağlantı anlaşması 16/1-f, g cezai şartları 30.4.2027'ye kadar uygulanmaz; tarih kısmen teyitli",   # 08-11
+              kaynak="LÜY Geçici m.14(2) (RG 19.10.2026-33405): bağlantı anlaşması 16/1-f, g cezai şartları 30.4.2027'ye kadar uygulanmaz",   # v2.535 (DK-570): birincil metin
               kaynak_turu="mevzuat", kapsam=("lisanssiz_dagitim", "oz_tuketim_saatlik"), islem="mevzuat", sorumlu="dağıtım şirketi",
-              not_="Askı bitince bağlantı anlaşmasının 16/1-f, g bedel maddeleri uygulanır; tarih ikincil kaynaktan."),
+              not_="Askı bitince bağlantı anlaşmasının 16/1-f, g bedel maddeleri uygulanır (Geçici m.14(2))."),
     ]
     return out
 
@@ -258,7 +295,8 @@ def _n_inci_is_gunu(yil: int, ay: int, n: int) -> date:
 
 
 # ---- v2.524 (P3b): lisans, bildirim ve uyum takvimi ----
-M16_B = "6446 m.16(1)(b) idari yaptırımı (eşleme çıkarım), ihtar 30 gün; önce EPDK uyarısı ve 7 gün süre"
+M16_B = "6446 m.16(1)(b) idari yaptırımı (eşleme çıkarım), ihtar 30 gün; önce EPDK uyarısı ve 7 gün süre (Bildirim Yükümlülük Tablosu)"
+M16_B_SADE = "6446 m.16(1)(b) idari yaptırımı (eşleme çıkarım), ihtar 30 gün"   # v2.535 (DK-593): 7 günlük uyarı yalnız bildirim tablosundaki yükümlülüklerde
 M30_B = "Lisans Yön. m.30(2)(b) bakım takvimi yükümlülüğü → 6446 m.16(1)(b) (eşleme çıkarım), ihtar 30 gün"
 M16_KISA = "6446 m.16(1)(b) · ihtar 30 gün (çıkarım)"
 HAFTA_SONU_NOT = " Son gün hafta sonuna denk gelirse kaydırma kuralı metinde yok; önceki iş gününde tamamlayın."
@@ -282,7 +320,7 @@ def uyum_olaylari(pj: dict | None, bugun: date, segment: str | None, capacity_kw
             for ay, ad in ((1, "Ocak"), (7, "Temmuz")):
                 out.append(_olay("ilerleme_raporu", f"İlerleme raporu ({ad} sonu; kurulu gücün tamamı kabul edilene kadar)", date(yil, ay, calendar.monthrange(yil, ay)[1]),
                                  kaynak="Lisans Yön. m.30(2)(ç): her yılın Ocak ve Temmuz ayları içinde; EPDK bildirim tablosu «ay sonuna kadar», muhatap Elektrik Piyasası Dairesi",
-                                 kaynak_turu="mevzuat", kaydirma="belirsiz", kapsam=LISANSLI, sonuc=M16_B, sonuc_kisa=M16_KISA, islem="islem", sorumlu="santral",
+                                 kaynak_turu="mevzuat", kaydirma="belirsiz", kapsam=LISANSLI, sonuc=M16_B, sonuc_kisa=M16_KISA, islem=("islem" if kabul else "dogrulama"), sorumlu="santral",   # v2.535: kabul tarihi yoksa yükümlülük doğrulanmamış
                                  not_=("Tam kabul tarihini Santral tarihleri formuna girince bu satır kalkar." if kabul else
                                        "Kabul tarihleri girilmedi; kurulu gücün tamamı kabul edildiyse tam kabul tarihini girin, satır kalkar.") + HAFTA_SONU_NOT))
         for ay in (2, 6, 10):
@@ -294,14 +332,16 @@ def uyum_olaylari(pj: dict | None, bugun: date, segment: str | None, capacity_kw
                                  islem=("islem" if muafiyet_bitis else "dogrulama"), sorumlu="santral",
                                  not_=("Birim bedel yılın Kurul kararıyla belirlenir; tutar burada hesaplanmaz." if muafiyet_bitis else
                                        "İlk kabul tarihi girilmedi; yenilenebilir tesiste ilk kabulden sonraki 8 yıl bedel alınmaz (m.43(4)).")))
-        if capacity_kwp is not None and float(capacity_kwp) >= BDB02_ESIK_KW:
+        if capacity_kwp is not None and float(capacity_kwp) > BDB02_ESIK_KW:   # v2.535 (DK-580): «üzeri» → >
             out.append(_olay("bdb02", "BDB-02 bağımsız denetim raporu bildirimi (100 MW mekanik üzeri tesis)", date(yil, 5, 15),
-                             kaynak="EPDK Elektrik Piyasası Bildirim Yükümlülük Tablosu: BDB-02, yıllık, Mayıs'ın 15. gününe kadar; muhatap Denetim Dairesi",
+                             kaynak="EPDK Elektrik Piyasası Bildirim Yükümlülük Tablosu (v15, Karar 13721): BDB-02, yıllık, Mayıs'ın 15. gününe kadar; muhatap Denetim Dairesi",
                              kaynak_turu="mevzuat", kaydirma="belirsiz", kapsam=LISANSLI, sonuc="6446 m.16(1)(a) idari yaptırımı (eşleme çıkarım), ihtar 15 gün", sonuc_kisa="6446 m.16(1)(a) · ihtar 15 gün (çıkarım)",
                              islem="dogrulama", sorumlu="santral",
-                             not_="Mekanik güç kurulu güce (kWp) göre yaklaşıldı; tesisin mekanik gücü 100 MW altındaysa yükümlülük yoktur." + HAFTA_SONU_NOT))
+                             not_="Mekanik güç kurulu güce (kWp) göre yaklaşıldı; yükümlülük şirket düzeyindedir (aynı şirketin başka bir tesisi eşiği aşıyorsa da geçerli); "
+                                  "tesisin mekanik gücü 100 MW ve altındaysa bu tesisten doğmaz." + HAFTA_SONU_NOT))
         ILETIM = LISANSLI + ("lisanssiz_iletim",)
-        DAG_NOT = "Dağıtıma bağlı lisanslı tesiste uygulanıp uygulanmadığı doğrulanmadı (orta güven)."
+        DAG_NOT = ("Elektrik Şebeke Yönetmeliği m.51(1) uyarınca iletime doğrudan bağlı üretim tesislerine uygulanır; dağıtıma bağlı lisanslı tesiste yıllık bakım takvimi "
+                   "dağıtım şirketine bildirilir (Lisans Yön. m.30(2)(b), tarih yazılı değil); bağlantı türü PVQuant'ta kayıtlı değil.")   # v2.535 (DK-567/736/752)
         out.append(_olay("planli_devre_disi_itiraz", f"TEİAŞ'ın {yil + 1} planlı devre dışı taslağına itiraz son günü (31 Temmuz)", date(yil, 7, 31),
                          kaynak="Elektrik Şebeke Yönetmeliği m.52: TEİAŞ ilk taslağı 30 Haziran'a kadar hazırlar; taraf 31 Temmuz'a kadar itiraz eder; iletime bağlı üretim tesisi",
                          kaynak_turu="mevzuat", kaydirma="belirsiz", kapsam=ILETIM, sonuc="İtiraz edilmezse taslak plan bu haliyle nihaileşir; nihai plana uyma zorunluluğu (m.52(6))",
@@ -324,18 +364,20 @@ def uyum_olaylari(pj: dict | None, bugun: date, segment: str | None, capacity_kw
                          kaynak_turu="kunye", kapsam=LISANSLI, sonuc="6446 m.16(1)(ç) idari yaptırımı (eşleme çıkarım), ihtar 30 gün", sonuc_kisa="6446 m.16(1)(ç) · ihtar 30 gün (çıkarım)", islem="islem", sorumlu="santral"))
     if izin:
         out.append(_olay("izin_iptali_bildirim", "Lisansa esas izin/ruhsat iptalinin EPDK'ya bildirimi (iptalden itibaren en geç 2 ay)", ay_ekle(izin, 2),
-                         kaynak="Lisans Yön. m.30(2): lisansa esas izin ya da ruhsatın iptali en geç iki ay içinde bildirilir; iptal tarihi Santral tarihleri formundan",
-                         kaynak_turu="kunye", kapsam=LISANSLI, sonuc=M16_B, sonuc_kisa=M16_KISA, islem="islem", sorumlu="santral"))
+                         kaynak="Lisans Yön. m.30(2)(ı): lisansa esas izin ya da ruhsatın iptali en geç iki ay içinde bildirilir (sürenin iptal tarihinden mi tebliğden mi işlediği metinde açık değil); iptal tarihi Santral tarihleri formundan",
+                         kaynak_turu="kunye", kapsam=LISANSLI, sonuc=M16_B_SADE, sonuc_kisa=M16_KISA, islem="islem", sorumlu="santral"))
     if giris and (segment in LISANSSIZ or segment is None):
         bitis = yil_ekle(giris, 10)
         out.append(_olay("luy_alim_suresi", "Lisanssız 10 yıllık alım süresinin sonu (ilk enerji + 10 yıl); şebeke işletmecisi 2 ay kala EPİAŞ'a bildirir", bitis,
                          kaynak="LÜY m.26(4): ihtiyaç fazlası on yıl süreyle satın alınır (m.19(2) ilk enerji tarihinden); m.33(7): bitime iki ay kala bildirim; ilk enerji tarihi Santral tarihleri formundan",
-                         kaynak_turu="kunye", kapsam=LISANSSIZ, islem="takip", sorumlu="şebeke işletmecisi", not_="Sonrası için 5346 m.6(2) hükümlerinin iptali 10.12.2026'da yürürlüğe giriyor; sonrası belirsiz."))
+                         kaynak_turu="kunye", kapsam=LISANSSIZ, islem="takip", sorumlu="şebeke işletmecisi",
+                         not_="10 yıl sonrası satış fiyatı 13.06.2026'dan CK 11415 formülüyle (5346 m.6(2) 3. cümle); AYM iptali (10.12.2026) yalnız m.6(2) 1.–2. cümleleri (lisanslıya geçiş yolu) kapsar."))
     return out
 
 
 BAKIM_BILDIRIM_KAYNAK = ("Elektrik Şebeke Yönetmeliği m.54: 8 saatten kısa planlı devre dışı en az 24 saat önce, 8–48 saat arası en az 7 takvim günü önce bildirilir; "
-                         "48 saati aşanlar yıllık plana (m.52, 30 Nisan) girer; iletime bağlı üretim tesisi")
+                         "48 saati aşanlar m.54 kapsamı dışındadır: yıllık plan (m.52, 30 Nisan) ya da nihai plan değişikliği (m.52(5)) — çıkarım; "
+                         "yalnız iletime doğrudan bağlı üretim tesisi (m.51(1))")   # v2.535 (DK-568)
 
 
 def bakim_bildirim(baslangic, bitis) -> dict:
@@ -347,7 +389,7 @@ def bakim_bildirim(baslangic, bitis) -> dict:
         return {"sure_saat": round(sure, 1), "kural": "8 saatten kısa: en az 24 saat önce", "son_an": (baslangic - timedelta(hours=24)).isoformat(), "kaynak": BAKIM_BILDIRIM_KAYNAK}
     if sure <= 48:
         return {"sure_saat": round(sure, 1), "kural": "8–48 saat: en az 7 takvim günü önce", "son_an": (baslangic - timedelta(days=7)).isoformat(), "kaynak": BAKIM_BILDIRIM_KAYNAK}
-    return {"sure_saat": round(sure, 1), "kural": "48 saatten uzun: yıllık planlı devre dışı programında (30 Nisan)", "son_an": None, "kaynak": BAKIM_BILDIRIM_KAYNAK}
+    return {"sure_saat": round(sure, 1), "kural": "48 saatten uzun: m.54 dışı; yıllık plan (30 Nisan) ya da plan değişikliği (m.52(5), çıkarım)", "son_an": None, "kaynak": BAKIM_BILDIRIM_KAYNAK}
 
 
 # ---- künye tarihleri ve türeyenler ----
@@ -478,9 +520,9 @@ def yekdem_uygunluk(o: dict, segment: str | None, yk: dict | None, yil: int) -> 
     işletmeye giriş ya da başlangıç yılı girilmemişse «doğrulama gerekli». Hedef yıl = takvim yılı + 1 (30 Kasım {yıl} → {yıl+1} YEKDEM listesi)."""
     if o["kod"] not in YEKDEM_KODLAR:
         return o
-    if segment == "yeka":
-        return None
-    hedef = yil + 1 if o["kod"] == "yekdem_basvuru" else yil + 1
+    if segment == "yeka":   # v2.535 (DK-337): silmek yerine doğrulama gerekli
+        return {**o, "islem": "dogrulama", "not": "YEKA tesisleri YEKDEM'den sözleşme/şartname koşullarıyla yararlanır; yıllık başvuru takviminin bu tesise uygulanıp uygulanmadığı doğrulanmadı."}
+    hedef = yil + 1
     if yk is None:
         return {**o, "islem": "dogrulama", "not": "İşletmeye giriş tarihi ya da YEKDEM başlangıç yılı girilmedi (Santral tarihleri); destek süresi bilinmediğinden "
                                                   "bu tesise uygulanıp uygulanmadığı doğrulanamadı."}

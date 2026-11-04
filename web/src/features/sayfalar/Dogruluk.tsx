@@ -134,8 +134,12 @@ function kupstEtiketi(dz: Dengesizlik): string {
   const k = dz.kural; const p = dz.program;
   // v2.532 (DK-180/195): net sapmada UEÇM kaynağı açıkça — sayaç çekişi yoksa «0 varsayıldı» (net sapma = brüt sapma)
   const uecm = k?.kupst_net_sapma ? (p?.uecm_saat ? `; UEÇM ${sayiTr(p.uecm_saat)} saatte sayaç çekişinden` : "; UEÇM verisi yok, 0 varsayıldı") : "";
-  return k && k.kupst_m != null && k.kupst_n != null
-    ? `tolerans %${sayiTr(k.kupst_m * 100, 0)} · katsayı n ${sayiTr(k.kupst_n, 2)} · ${k.kupst_net_sapma ? `net sapma (Karar 14907${uecm})` : "brüt sapma"}`
+  // v2.535 (resmî/senaryo ayrımı): santral ayarı geçersiz kılmışsa UYGULANAN değer yazılır, resmî tablo değeri yanında
+  const g = dz.katsayilar?.kupst_gecersiz_kilma ? dz.katsayilar : null;
+  const m = g?.kupst_tolerans ?? k?.kupst_m; const n = g?.kupst_n ?? k?.kupst_n;
+  const ayar = g && k ? ` · santral ayarı (resmî tablo %${sayiTr((k.kupst_m ?? 0) * 100, 0)} / n ${sayiTr(k.kupst_n ?? 0, 2)})` : "";
+  return k && m != null && n != null
+    ? `tolerans %${sayiTr(m * 100, 0)} · katsayı n ${sayiTr(n, 2)} · ${k.kupst_net_sapma ? `net sapma (Karar 14907${uecm})` : "brüt sapma"}${ayar}`
     : "kural tablosundan";
 }
 
@@ -680,7 +684,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           <span className="cip" title={dz?.program ? `${sayiTr(dz.program.bildirilen_saat)} saat bildirilen KGÜP, ${sayiTr(dz.program.oneri_saat)} saat PVQuant önerisi; ${dz.program.pozisyon.etiket}` : undefined}>{dz === undefined ? "hesaplanıyor" : dz && dz.gun_sayisi ? <Meta items={[`${sayiTr(dz.gun_sayisi)} gün`,
             dz.program && dz.program.bildirilen_saat > 0 ? `program: ${sayiTr(dz.program.bildirilen_gun)} gün bildirilen KGÜP, kalanı öneri` : "program: PVQuant önerisi (bir gün önce 15:30'dan önceki tahmin, P50)",
             dz.program && dz.program.pozisyon.kaynak !== "program" && (dz.program.pozisyon.kaynak === "uretim" ? "pozisyon: üretildiği kadar satış" : `pozisyon: sabit ${sayiTr(dz.program.pozisyon.sabit_mwh ?? 0, 1)} MWh/saat`)]} /> : "henüz karşılaştırılan gün yok"}</span>
-          {dz?.kural && <span className="cip" title={`${dz.kural.edt_dayanak}; KÜPST: ${dz.kural.kupst_dayanak}`}>kural: DUY m.110 ({dz.kural.rejim}){dz.kural.V != null ? ` · V ${sayiTr(dz.kural.V)} TL/MWh` : ""}</span>}
+          {dz?.kural && <span className="cip" title={`${dz.kural.edt_dayanak}; KÜPST: ${dz.kural.kupst_dayanak}${dz.katsayilar?.kupst_gecersiz_kilma ? "; KÜPST n/tolerans santral ayarından geçersiz kılındı" : ""}`}>kural: DUY m.110 ({dz.kural.rejim}){dz.kural.V != null ? ` · V ${sayiTr(dz.kural.V)} TL/MWh` : ""}{dz.katsayilar?.kupst_gecersiz_kilma ? " · KÜPST: santral ayarı" : ""}</span>}
           {/* 29.10: rozet metni kısa (375 px'te başlık satırı taşıyordu); ayrıntı title ve KPI alt etiketinde */}
           {dz && <span className={`rozet ${dz.fiyat.senaryo_saat > 0 ? "rozet-uyari" : "rozet-ok"} rozet-kucuk`} title={dz.fiyat.senaryo_saat > 0 ? "Senaryo fiyatı: EPİAŞ kimliği tanımlı değil. " + dz.not : dz.not}>{dz.fiyat.senaryo_saat > 0 ? "senaryo fiyatı" : "fiyat: EPİAŞ"}</span>}
         </>}>

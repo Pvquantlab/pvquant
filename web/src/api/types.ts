@@ -62,10 +62,14 @@ export interface Portfoy {
 /** v2.270 — Hakkında: veri kaynakları ve lisanslar (Anayasa v2.245 istisnası — yalnız bu sayfa, rapor künyesi, README). */
 export interface Hakkinda {
   urun: string; meteo_kaynak: string;
-  kaynaklar: { kimlik: string; ad: string; kurum: string; lisans: string; lisans_url: string; veri_url: string; not: string }[];
+  kaynaklar: { kimlik: string; ad: string; kurum: string; lisans: string; lisans_url: string; veri_url: string; not: string;
+    /** v2.535: lisans sayfasının son doğrulama tarihi (ISO) ve notu — yalnız gerçekten okunan sayfalar; yoksa null */
+    lisans_dogrulama?: string | null; lisans_notu?: string | null }[];
   kunye: string; uyarilar: string[]; yontem: string;
+  /** v2.535: indirme işinin günlüğü — arşivdeki model tahmin saatinden ayrı: son başarılı, son deneme ve durumu */
+  isler?: Record<string, { ad: string; son_basarili: string | null; son_deneme: string | null; son_durum: string | null; son_ayrinti: string | null }>;
   /** v2.295: mevzuat/standart dayanağı — madde referansları tek yerde. */
-  mevzuat?: { ad: string; kapsam: string; not: string }[];
+  mevzuat?: { ad: string; kapsam: string; not: string; kunye?: string }[];   // v2.535: birincil yayım bilgisi (RG tarih-sayı, karar no)
   arsiv: Record<string, { son: string | null; nokta: number; satir: number; ilk: string | null; son_ts: string | null }>;
 }
 /** v2.266 — kısa ufuk (0–6 s), ölçüm persistansı; uydu değil. */
@@ -275,7 +279,9 @@ export interface Dengesizlik { luy_istisna?: boolean;   // v2.510 (Ç3): santral
     uecm_saat?: number; net_sapma_saat?: number; uecm_etiketi?: string | null };
   /** v2.287: önerilen bildirim kantili (senaryo fiyatta null + not; yön verisi yoksa durum 'yon_eksik') */
   oneri?: { durum: string; kantil: string | null; tau?: number; n_saat?: number; acik_saat_orani?: number; not?: string };
-  katsayilar?: { k: number; l: number; kupst_n: number | null; kupst_tolerans?: number | null; k_yon?: Record<string, number>; l_yon?: Record<string, number> };
+  katsayilar?: { k: number; l: number; kupst_n: number | null; kupst_tolerans?: number | null; k_yon?: Record<string, number>; l_yon?: Record<string, number>;
+    /** v2.535: KÜPST n/tolerans santral ayarından geçersiz kılındı mı (resmî tablo `kural` alanında kalır) */
+    kupst_gecersiz_kilma?: boolean; kupst_kaynak?: string };
   fiyat: { epias_saat: number; senaryo_saat: number; yon_varsayilan_saat?: number; yon_eksik_saat?: number };
   hesaplanamayan_saat?: number; kural_surumu?: string | null; kural?: DengesizlikKural;
   segment: { segment: string | null; kgup_yukumlu: boolean | null; dengesizlik_sahibi: string | null; santral_tasir: boolean | null; uevcb?: string | null };
@@ -493,6 +499,7 @@ export interface KurulusAyarlar { yonetici_2fa_zorunlu: boolean; iki_adimsiz_yon
 /** v2.518 (P3a): piyasa ve mevzuat takvimi — olay (kaynak_turu: mevzuat | hesaplanan | duyuru | kunye [Santral tarihleri formundan];
  *  kaydirma: is_gunu | yok | belirsiz) */
 export type TakvimOlay = { kod: string; ad: string; tarih: string; saat: string | null; kaynak: string; kaynak_turu: "mevzuat" | "hesaplanan" | "duyuru" | "kunye";
+  /** v2.535: kaynak metnindeki anılışların Resmî Gazete yayımları (tarih-sayı) */ dayanak?: string[];
   kaydirma: "is_gunu" | "yok" | "belirsiz"; kapsam: string[]; donem: string | null; not: string | null; hafta_sonu: boolean; tatil: boolean; kalan_gun?: number;
   /** v2.524 (P3b): kaçırılınca — ilgili madde ve ihtar süresi; bent eşlemesi «çıkarım» etiketli, tutar yok */ sonuc?: string | null; sonuc_kisa?: string | null;
   /** işlem gerekli (santral) / takip edilmeli (başkasının adımı) / mevzuat değişikliği / doğrulama gerekli (koşul PVQuant'ta kayıtlı değil) */ islem?: "islem" | "takip" | "mevzuat" | "dogrulama"; sorumlu?: string | null };
@@ -507,7 +514,9 @@ export type Takvim = { bugun: string; pencere_gun: number; segment: string | nul
   uyum: TakvimOlay[]; bakim: TakvimBakim[]; uyum_not: string; bakim_kaynak: string; yaklasan_piyasa?: TakvimOlay[]; islem_etiketleri?: Record<string, string>;   // v2.524 (P3b)
   donemler: { donem: string; olaylar: TakvimOlay[] }[];
   gunluk: { saat: string; ad: string; kaynak: string; kapsam: string[]; not: string | null; gunler: "her gün" | "iş günü" }[];
-  kunye: KunyeTarihler; tatil_kaynak: string; tatil_yillari: number[]; not: string };
+  kunye: KunyeTarihler; tatil_kaynak: string; tatil_yillari: number[]; not: string;
+  /** v2.535: dinî bayramı tanımlı olmayan yıla düşen tarih varsa o yıllar (iş günü hesabı bayramı iş günü sayar) */
+  tatil_eksik_yillar?: number[] };
 /** v2.521 (P1a): olay kaydı — planlı bakım, arıza, talimat, acil kesme, şebeke kesintisi, hasar; EAK/program, arıza sayacı ve kullanılabilirlik bunlardan beslenir. */
 export type OlayTur = "planli_bakim" | "ariza" | "talimat_yat" | "talimat_yal" | "acil_kesme" | "sebeke_kesintisi" | "hasar" | "uzaktan_acma";   // v2.523 (P4a): uzaktan açma yapılamadı
 export interface OlayKural { eak_dusur: boolean; gerekce: string | null; istisna: boolean; sayac: boolean; not: string }
@@ -619,7 +628,9 @@ export interface SaatlikOzet { yuklu: boolean; epias_saat: number; pv_saat?: num
 export interface KuralSatiri { gecerlilik_bas: string; gecerlilik_bitis: string | null; rejim: string; kural_surumu: string;
   /** sistem yönüne göre katsayılar: { acik, fazla, dengede } */ k: Record<string, number> | null; l: Record<string, number> | null; V: number | null; B: number | null; AFL: number | null;
   aylik_toplama: string | null; kupst: { m: number | null; n: number | null; n_ariza: number | null; ariza_esigi: number | null; taban: number | null; net_sapma: boolean | null; birim: string | null; dayanak: string | null };
-  dsg_esik: number | null; dsg_dayanak: string | null; edt_dayanak: string | null; belirsiz_2027: boolean }
+  dsg_esik: number | null; dsg_dayanak: string | null; edt_dayanak: string | null; belirsiz_2027: boolean;
+  /** v2.535: satırın kaynak durumu — dayanak metnindeki işaretlerden türetilir (kurallar.dogrulama_durumu) */
+  dogrulama?: "dogrulandi" | "cikarim" | "dogrulama_gerekli" | "belirsiz"; dogrulama_notu?: string }
 export interface KuralTablosu { segment: string; satirlar: KuralSatiri[] }
 export interface MutabakatYukleme { yukleme_id: string; donem: string; surum: string; surum_kaynagi: string; kalem_sayisi: number; bicim: string; sha256: string; uyarilar: string[]; taninmayan: string[]; dosya_adi: string; surum_dogrulama: SurumDogrulama }
 /** ekleme yanıtı: aynı saatlerde başka kayıt varsa uyarı (engel değil) */

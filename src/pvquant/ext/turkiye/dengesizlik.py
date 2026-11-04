@@ -29,6 +29,21 @@ import numpy as np
 import pandas as pd
 
 from pvquant.ext.turkiye import kurallar as kr
+# v2.535 dayanak künyeleri [DUY, KARAR_13025, KARAR_14029, KARAR_14030, KARAR_14907, KARAR_14911, KARAR_13869, AFL_UE, TUE, TOPLAYICI, YAZ_SAATI] — bu dosyadaki madde atıflarının birincil yayımı (RG tarih-sayı, karar no); metin kunye.py sicilinden üretildi,
+# tests/test_kunye_bekcisi.py sicille eş tutar (kaynak: 03.11.2026 doğrulama arşivi 03_Kaynak_Envanteri).
+DAYANAK_KUNYELERI = (
+    'DUY: Elektrik Piyasası Dengeleme ve Uzlaştırma Yönetmeliği, RG 14.04.2009-27200; değişiklikler RG 28.03.2015-29309, 30.10.2016-29873, 18.01.2018-30305, 09.08.2019-30857, 02.02.2020-31027, 19.11.2022-32018, 19.12.2023-32404, 17.12.2024-32755, 21.01.2025-32789, 29.12.2025-33122, 19.10.2026-33405, 21.10.2026-33407; '
+    'Karar 13025: EPDK Kurul Kararı 13025 (KÜPST 2025), RG 17.12.2024-32755; '
+    'Karar 14029: EPDK Kurul Kararı 14029 (KÜPST 2026), RG 29.12.2025-33122; '
+    'Karar 14030: EPDK Kurul Kararı 14030 (yöne bağlı k/l, 1.1.2026), RG 29.12.2025-33122; '
+    'Karar 14907: EPDK Kurul Kararı 14907 (KÜPST, 1.11.2026 çıkarım), RG 19.10.2026-33405; '
+    'Karar 14911: EPDK Kurul Kararı 14911 (DUY m.110 V = 100 TL/MWh), RG 19.10.2026-33405; '
+    'Karar 13869: EPDK Kurul Kararı 13869 (DSG üye dengesizlik oranı %5), RG 18.10.2025-33051; '
+    "AFL U&E: GÖP ve DGP'de Asgari ve Azami Fiyat Limitlerinin Belirlenmesine İlişkin Usul ve Esaslar, Karar 5629-16, RG 21.06.2015-29393; Karar 6851 RG 06.01.2017-29940; Karar 14459 RG 03.04.2026-33213; "
+    'Teminat U&E: Teminat Usul ve Esasları, Karar 6282-3, RG 28.05.2016-29725; son değişiklik Karar 14954, RG 21.10.2026-33407; '
+    'Toplayıcılık Yön.: Elektrik Piyasasında Toplayıcılık Faaliyeti Yönetmeliği, RG 17.12.2024-32755; değişiklik RG 29.12.2025-33122; '
+    'BKK 2016/9154: Bütün Yurtta Yaz Saati Uygulanması Hakkında Karar (2016/9154), RG 08.09.2016-29825 — yıl boyu UTC+3; 697 sayılı Kanun RG 02.01.1926-260'
+)
 
 
 @dataclass

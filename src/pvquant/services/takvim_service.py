@@ -7,6 +7,13 @@ from zoneinfo import ZoneInfo
 
 from pvquant.ext.turkiye import takvim as tk
 from pvquant.services import dengesizlik_service
+# v2.535 dayanak künyeleri [LISANS, KARAR_5905, DUY] — bu dosyadaki madde atıflarının birincil yayımı (RG tarih-sayı, karar no); metin kunye.py sicilinden üretildi,
+# tests/test_kunye_bekcisi.py sicille eş tutar (kaynak: 03.11.2026 doğrulama arşivi 03_Kaynak_Envanteri).
+DAYANAK_KUNYELERI = (
+    'Lisans Yön.: Elektrik Piyasası Lisans Yönetmeliği, RG 02.11.2013-28809; değişiklikler RG 24.02.2017-29989, 10.03.2022-31774, 17.12.2024-32755, 29.04.2026-33238, 19.10.2026-33405; '
+    "Karar 5905-27: EPDK Kurul Kararı 5905-27 (02.12.2015; YEKDEM yararlanma yılları) — EPDK listesi, RG'de yayımlanmaz; "
+    'DUY: Elektrik Piyasası Dengeleme ve Uzlaştırma Yönetmeliği, RG 14.04.2009-27200; değişiklikler RG 28.03.2015-29309, 30.10.2016-29873, 18.01.2018-30305, 09.08.2019-30857, 02.02.2020-31027, 19.11.2022-32018, 19.12.2023-32404, 17.12.2024-32755, 21.01.2025-32789, 29.12.2025-33122, 19.10.2026-33405, 21.10.2026-33407'
+)
 
 IST = ZoneInfo("Europe/Istanbul")
 
@@ -53,8 +60,11 @@ def ozet(plant: dict, gun: int = 90, bugun: date | None = None, tenant_id=None) 
     seg = dengesizlik_service.segment_bilgisi(pj)
     b = bugun or bugun_ist()
     kap = plant.get("capacity_kwp")
-    uyum = [o for o in tk.yaklasan(b, pj, seg["segment"], 365, kap) if o["kod"] in tk.UYUM_KODLAR]   # v2.524 (P3b): 12 ay, dönem adımları hariç
-    return {"bugun": b.isoformat(), "pencere_gun": gun, "segment": seg["segment"], "kgup_yukumlu": seg["kgup_yukumlu"],
+    uzun = tk.yaklasan(b, pj, seg["segment"], 365, kap)
+    uyum = [o for o in uzun if o["kod"] in tk.UYUM_KODLAR]   # v2.524 (P3b): 12 ay, dönem adımları hariç
+    # v2.535 Takvim doğrulama turu: dinî bayramı tanımlı olmayan yıla düşen tarih varsa iş günü hesabı o yılın bayramlarını iş günü sayar — açıkça söylenir
+    tatil_eksik = sorted({int(o["tarih"][:4]) for o in uzun} - set(tk.DINI_BAYRAM))
+    return {"bugun": b.isoformat(), "pencere_gun": gun, "segment": seg["segment"], "kgup_yukumlu": seg["kgup_yukumlu"], "tatil_eksik_yillar": tatil_eksik,
             "yaklasan": tk.yaklasan(b, pj, seg["segment"], gun, kap),
             "yaklasan_piyasa": [o for o in tk.yaklasan(b, pj, seg["segment"], gun, kap) if o["kod"] not in tk.UYUM_KODLAR],   # sayfa: uyum tarihleri yalnız Uyum kartında (tekrar yok)
             "islem_etiketleri": tk.ISLEM_ETIKET, "uyum": uyum, "bakim": _bakim_satirlari(tenant_id, plant, b), "uyum_not": UYUM_NOT, "bakim_kaynak": tk.BAKIM_BILDIRIM_KAYNAK,

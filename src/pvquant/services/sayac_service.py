@@ -24,6 +24,16 @@ from sqlalchemy import text
 from pvquant.db import tenant_baglami
 from pvquant.ext.turkiye import takvim as tk
 from pvquant.services.mutabakat_service import _sade, _satirlar, _sayi
+# v2.535 dayanak künyeleri [OLCUM, KARAR_13995, KARAR_14982, OSOS_UE, LUY, DUY] — bu dosyadaki madde atıflarının birincil yayımı (RG tarih-sayı, karar no); metin kunye.py sicilinden üretildi,
+# tests/test_kunye_bekcisi.py sicille eş tutar (kaynak: 03.11.2026 doğrulama arşivi 03_Kaynak_Envanteri).
+DAYANAK_KUNYELERI = (
+    'Ölçüm Sist. Yön.: Elektrik Piyasası Ölçüm Sistemleri Yönetmeliği, RG 28.12.2023-32413; değişiklikler RG 07.06.2024-32569, 25.09.2024-32673, 21.12.2024-32759, 21.01.2026-33144; '
+    'Karar 13995: Akıllı Sayaç Sistemlerinin Yaygınlaştırılmasına ve Kullanımına İlişkin Usul ve Esaslar, Karar 13995, RG 05.12.2025-33098; '
+    'Karar 14982: EPDK Kurul Kararı 14982 (dağıtım şirketi mobil uygulaması), RG 24.10.2026-33410; '
+    'OSOS U&E: OSOS Kapsamına Giren Tesislere İlişkin Usul ve Esaslar, RG 08.08.2015-29439; '
+    'LÜY: Elektrik Piyasasında Lisanssız Elektrik Üretim Yönetmeliği, RG 12.05.2019-30772; değişiklikler RG 09.05.2021-31479, 02.04.2026-33212, 19.10.2026-33405; '
+    'DUY: Elektrik Piyasası Dengeleme ve Uzlaştırma Yönetmeliği, RG 14.04.2009-27200; değişiklikler RG 28.03.2015-29309, 30.10.2016-29873, 18.01.2018-30305, 09.08.2019-30857, 02.02.2020-31027, 19.11.2022-32018, 19.12.2023-32404, 17.12.2024-32755, 21.01.2025-32789, 29.12.2025-33122, 19.10.2026-33405, 21.10.2026-33407'
+)
 
 IST = ZoneInfo("Europe/Istanbul")
 
@@ -45,7 +55,7 @@ SCADA_ESIK_KW = 50.0            # LÜY m.21(7): 50 kW ve üzeri lisanssız tesis
 LISANSSIZ = ("lisanssiz_iletim", "lisanssiz_dagitim", "oz_tuketim_saatlik")
 ASKI_BITIS = date(2027, 4, 30)   # LÜY Geçici m.14(2) askısı — ikincil kaynaktan, kısmen teyit (01-16)
 UZAKTAN_ACMA_TUR = "uzaktan_acma"
-GELIS_KAYNAK = ("Elektrik Piyasası Ölçüm Sistemleri Yönetmeliği m.8(2): 15 dakikalık endeks alınabilen sayaçların veriş-çekiş değerleri EPİAŞ ile en geç ilgili "
+GELIS_KAYNAK = ("Elektrik Piyasası Ölçüm Sistemleri Yönetmeliği (RG 28.12.2023-32413; son değişiklik RG 21.01.2026-33144) m.8(2): 15 dakikalık endeks alınabilen sayaçların veriş-çekiş değerleri EPİAŞ ile en geç ilgili "
                 "saatin 2 saat sonrasında paylaşılır; m.8(3): diğer sayaçlar ayın uzlaştırma takvimindeki son güne kadar. DUY m.81(1): sayaç değerleri dönem sonunu "
                 "izleyen ilk 10 gün içinde PYS'ye; m.82(4): 12. gün 17:30'dan sonraki düzeltme o ayın hesabına girmez.")
 DAGITIMA_BAGLI = ("lisanssiz_dagitim", "oz_tuketim_saatlik")   # Dağıtım Sistemine Bağlantı Anlaşması tarafı; iletime bağlı lisanssızda anlaşma TEİAŞ'la (kapsam dışı)

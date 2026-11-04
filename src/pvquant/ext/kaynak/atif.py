@@ -38,6 +38,14 @@ KAYNAKLAR: dict[str, KaynakBilgisi] = {
         "GEÇİŞ TAMAMLANANA KADAR: ücretsiz katman ticari üründe uyumluluk borcu"),
 }
 
+# v2.535 (Hakkında doğrulama turu): lisans sayfası son ne zaman, hangi metinle doğrulandı. Yalnız bu oturumda GERÇEKTEN
+# okunan sayfalar yazılır; okunmayan kaynak burada yoktur (ekranda «—»). Tarih ISO; not ekranda lisansın altında görünür.
+LISANS_DOGRULAMA: dict[str, tuple[str, str]] = {
+    "ecmwf": ("2026-11-04", "ECMWF açık veri sayfası: CC BY 4.0 + ECMWF Terms of Use; 0,25° ürün kullanılır (0,1° ürün 20.10.2026'dan var, kullanılmaz)"),
+    "icon": ("2026-11-04", "DWD yasal bildirim sayfası: açık mekânsal veri CC BY 4.0, kaynak gösterimi şart"),
+    "gfs": ("2026-11-04", "NOAA/NWS sorumluluk reddi sayfası: ABD federal verisi kamu malı, atıf tavsiye edilir"),
+}
+
 
 def kunye(kullanilan: list[str], urun: str = "PVQuant") -> str:
     """Künye metni (TR). Lisansın üç şartı: kaynak adı, lisans + bağlantı, 'işlenmiştir' notu."""
