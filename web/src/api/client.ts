@@ -1,4 +1,4 @@
-import type { DengesizlikSaatlik, DsgAnahtar, KgupRevizyon, PiyasaDurum, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , SaatProfili , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , Kullanilabilirlik , KayipAyrisimi , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar, PortfoyAnahtar, PortfoyKupst, UevcbArama , Takvim, KunyeTarihler, Yekdem, Olay, OlayOzet, OlayGiris, OlayYanit, MutabakatOzet, MutabakatYukleme, SaatlikKiyas, SaatlikYuklemeYanit, KuralTablosu, SayacOzet, SayacYuklemeYanit, SayacAyar, SayacKaynak, RaporDonemVeri, RaporGonderim, RaporGonderimSonuc } from "./types";
+import type { DengesizlikSaatlik, DsgAnahtar, KgupRevizyon, PiyasaDurum, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , SaatProfili , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , PDegerleri , Kullanilabilirlik , KayipAyrisimi , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar, PortfoyAnahtar, PortfoyKupst, UevcbArama , Takvim, KunyeTarihler, Yekdem, Olay, OlayOzet, OlayGiris, OlayYanit, MutabakatOzet, MutabakatYukleme, SaatlikKiyas, SaatlikYuklemeYanit, KuralTablosu, SayacOzet, SayacYuklemeYanit, SayacAyar, SayacKaynak, RaporDonemVeri, RaporGonderim, RaporGonderimSonuc } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -929,6 +929,10 @@ export const api = {
     try { return await getir<Bankable>(`/v1/plants/${p}/bankable`); } catch { return null; }
   },
   bankableHesapla: (p: string): Promise<Bankable> => gonder(`/v1/plants/${p}/bankable/hesapla`, "POST"),
+  pDegerleri: async (p: string): Promise<PDegerleri | null> => {   // v2.534 (P8b-1)
+    if (TABAN == null) return null;
+    try { return await getir<PDegerleri>(`/v1/plants/${p}/p-degerleri`); } catch { return null; }
+  },
   /** v2.278: EPİAŞ gerçekleşen üretim — durum ve santral eşlemesi. */
   epiasUretim: async (p: string): Promise<EpiasUretim | null> => {
     if (TABAN == null) return null;
@@ -957,7 +961,7 @@ export const api = {
   kunyeTarihler: (p: string, g: Record<string, string | number | null>): Promise<{ kunye: KunyeTarihler }> => gonder(`/v1/plants/${p}/kunye-tarihler`, "PUT", g),
   /** v2.275: EAK alanı / geçici kısıt / KÜPST katsayıları. */
   eakAyarla: (p: string, g: { eak_kw?: number | null; gecici_kw?: number | null; gecici_bitis?: string | null; kupst_n?: number | null; kupst_tolerans?: number | null; dengeleme_birimi?: boolean | null; ariza_sayisi_ay?: number | null; luy_istisna?: boolean | null;
-    pozisyon_kaynagi?: "program" | "uretim" | "sabit" | null; pozisyon_sabit_mwh?: number | null; teminat_risk_katsayisi?: number | null; kullanilabilirlik_sozlesme?: number | null }):
+    pozisyon_kaynagi?: "program" | "uretim" | "sabit" | null; pozisyon_sabit_mwh?: number | null; teminat_risk_katsayisi?: number | null; kullanilabilirlik_sozlesme?: number | null; butce_kwh_yil?: number | null }):
     Promise<{ eak_bugun: { eak_mw: number; kaynak: string; bitis?: string }; eak_kw: number | null; eak_gecici: { kw: number; bitis: string } | null; kupst_n: number | null; kupst_tolerans: number | null; dengeleme_birimi?: boolean; ariza_sayisi_ay?: number; luy_istisna?: boolean }> =>
     gonder(`/v1/plants/${p}/eak`, "PUT", g),
   segmentAyarla: async (p: string, segment: string, uevcb?: string): Promise<{ segment: string | null; dengesizlik_sahibi: string | null; kgup_yukumlu: boolean | null }> => {

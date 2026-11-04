@@ -167,7 +167,8 @@ export function Santralim({ plantId }: { plantId: string }) {
   const [dengelemeBirimi, setDengelemeBirimi] = useState<boolean>(false);   // 29.10 (F-05): 15 dk dilimleme yalnız dengeleme birimi
   const [arizaAy, setArizaAy] = useState<string>("");   // 29.10 (v2.505): bu ay bildirilen arıza kaydı — KÜPST katsayısı eşiğinde yükselir
   const [teminatKat, setTeminatKat] = useState<string>("");   // v2.522 (P2b): dengesizlik teminatı risk katsayısı (değeri kaynakta yok; müşteri girer)
-  const [kullSoz, setKullSoz] = useState<string>("");         // v2.533 (P8a, K-07): O&M sözleşmesindeki kullanılabilirlik eşiği (%); açık kWh/TL kıyas tabanı
+  const [kullSoz, setKullSoz] = useState<string>("");
+  const [butceMwh, setButceMwh] = useState<string>("");       // v2.534 (P8b-1): finansal modeldeki yıllık bütçe (MWh); P-değeri kıyasında bütçe oranı         // v2.533 (P8a, K-07): O&M sözleşmesindeki kullanılabilirlik eşiği (%); açık kWh/TL kıyas tabanı
   const [luyIstisna, setLuyIstisna] = useState<boolean | null>(null);   // 31.10 (v2.510, Ç3): null = dokunulmadı (gönderilmez); LÜY m.5(1)(ç),(d),(e)
   // v2.517 (P2a): piyasa pozisyonu — EDM = gerçekleşen − pozisyon; program (satış programa eşit) | uretim (üretildiği kadar satış) | sabit MWh/saat
   const [pozKaynak, setPozKaynak] = useState<"program" | "uretim" | "sabit" | null>(null);
@@ -175,7 +176,7 @@ export function Santralim({ plantId }: { plantId: string }) {
   const [eakMesaj, setEakMesaj] = useState<string | null>(null);
   const eakKaydet = () => {
     setEakMesaj(null);
-    api.eakAyarla(plantId, { eak_kw: eakKw ? Number(eakKw) : null, gecici_kw: gecKw ? Number(gecKw) : null, gecici_bitis: gecBitis || null, dengeleme_birimi: dengelemeBirimi, ...(arizaAy !== "" ? { ariza_sayisi_ay: Number(arizaAy) } : {}), ...(teminatKat !== "" ? { teminat_risk_katsayisi: Number(teminatKat.replace(",", ".")) } : {}), ...(kullSoz !== "" ? { kullanilabilirlik_sozlesme: (() => { const v = Number(kullSoz.replace(",", ".")); return v > 1 ? v / 100 : v; })() } : {}), ...(luyIstisna !== null ? { luy_istisna: luyIstisna } : {}),
+    api.eakAyarla(plantId, { eak_kw: eakKw ? Number(eakKw) : null, gecici_kw: gecKw ? Number(gecKw) : null, gecici_bitis: gecBitis || null, dengeleme_birimi: dengelemeBirimi, ...(arizaAy !== "" ? { ariza_sayisi_ay: Number(arizaAy) } : {}), ...(teminatKat !== "" ? { teminat_risk_katsayisi: Number(teminatKat.replace(",", ".")) } : {}), ...(kullSoz !== "" ? { kullanilabilirlik_sozlesme: (() => { const v = Number(kullSoz.replace(",", ".")); return v > 1 ? v / 100 : v; })() } : {}), ...(butceMwh !== "" ? { butce_kwh_yil: Number(butceMwh.replace(/\./g, "").replace(",", ".")) * 1000 } : {}), ...(luyIstisna !== null ? { luy_istisna: luyIstisna } : {}),
       ...(pozKaynak ? { pozisyon_kaynagi: pozKaynak, pozisyon_sabit_mwh: pozKaynak === "sabit" && pozSabit ? Number(pozSabit.replace(",", ".")) : null } : {}) })
       .then((r) => setEakMesaj(`Kaydedildi. Bugün verilebilecek en yüksek güç ${sayiTr(r.eak_bugun.eak_mw, 2)} MW (${r.eak_bugun.kaynak})${r.ariza_sayisi_ay != null ? `; bu ay arıza kaydı ${sayiTr(r.ariza_sayisi_ay)}` : ""}`))
       .catch((e) => setEakMesaj(String((e as Error).message ?? e)));
@@ -759,6 +760,9 @@ export function Santralim({ plantId }: { plantId: string }) {
                 {/* v2.533 (P8a): O&M sözleşmesindeki kullanılabilirlik eşiği — teknik kullanılabilirlikle kıyas, açık kWh/TL */}
                 <label className="girdi-etiket">Kullanılabilirlik sözleşme eşiği (%, isteğe bağlı)
                   <input className="girdi" inputMode="decimal" placeholder="ör. 98" value={kullSoz} onChange={(e) => setKullSoz(e.target.value.replace(/[^0-9.,]/g, ""))} /></label>
+                {/* v2.534 (P8b-1): finansal modeldeki yıllık bütçe — Aylık beklenti › Yıl yıl P-değerleri kartında bütçe oranı */}
+                <label className="girdi-etiket">Yıllık üretim bütçesi (MWh, isteğe bağlı)
+                  <input className="girdi" inputMode="decimal" placeholder="ör. 24.000" value={butceMwh} onChange={(e) => setButceMwh(e.target.value.replace(/[^0-9.,]/g, ""))} /></label>
                 {/* v2.517 (P2a): pozisyon ayarı — uzlaştırma kartı EDM'yi buna göre hesaplar; KÜPST programa göre kalır */}
                 <label className="girdi-etiket">Piyasa pozisyonu
                   <select className="girdi" value={pozKaynak ?? "program"} onChange={(e) => setPozKaynak(e.target.value as "program" | "uretim" | "sabit")} aria-label="Piyasa pozisyonu kaynağı">
@@ -787,6 +791,7 @@ export function Santralim({ plantId }: { plantId: string }) {
                   <li><b>Verilebilecek en yüksek güç (EAK):</b> mevzuattaki adıyla emre amade kapasite; santralin o gün sisteme verebileceği en yüksek güç. Program hiçbir saatte bunu aşmaz. Boşsa AC sınırı, o da yoksa kurulu güç kullanılır; üst sınır kurulu güçtür.</li>
                   <li><b>Geçici kısıt ve bitişi:</b> bakım ya da arıza süresince EAK yerine geçer; bitiş günü dâhil o güne kadar geçerlidir, sonra kendiliğinden kalkar.</li>
                   <li><b>Kullanılabilirlik sözleşme eşiği:</b> O&amp;M sözleşmenizdeki kullanılabilirlik eşiği (ör. %98). Girilirse Santral bilgileri kartı, son 30 günün teknik kullanılabilirliği bu eşiğin altında kaldığında açığı enerji ve satış fiyatıyla TL olarak gösterir. Sözleşmenizdeki tanım, istisna listesi ve tazmin formülü farklı olabilir; bu değer kıyas tabanıdır, alacak değildir. Alarm kurallarındaki «Kullanılabilirlik (%)» eşiği ayrıdır: o uyarı üretir, bu açığı hesaplar.</li>
+                  <li><b>Yıllık üretim bütçesi:</b> finansal modelinizdeki yıllık üretim (MWh). Girilirse Aylık beklenti sayfasındaki «Yıl yıl P-değerleri» kartı tamamlanmış yılların ve cari yılın gerçekleşenini bütçeye oranlar (hava düzeltmesiz). Girilmezse kıyas yalnız P50/P90'a göredir.</li>
                   <li><b>Teminat risk katsayısı:</b> EPİAŞ dengesizlik teminatı formülündeki katsayı (3 ayın en yüksek aylık negatif dengesizlik miktarı × 12 aylık ortalama SMF × katsayı). Değeri Teminat Usul ve Esasları kaynağında yer almıyor; EPYS'deki teminat hesabınızdan alıp girin. Girilmezse Doğruluk'taki teminat göstergesi tutar vermez.</li>
                   <li><b>Bu ay arıza kaydı:</b> EPİAŞ'a bildirdiğiniz aylık arıza sayısı. Olay kaydı sayfasına girilen arıza olayları otomatik sayılır; bu alan yedektir, ikisinin büyüğü kullanılır. Kural tablosundaki eşikte (30 kayıt) sapma tutarı fiyat katsayısı yükselir; «Arıza sayacı eşiğe yaklaştı» alarmı bu sayıyı izler.</li>
                   <li><b>Dengeleme birimi:</b> yalnız dengeleme güç piyasasına katılan dengeleme birimleri için. Ardışık iki saat arasında 200 MWh ve üzeri fark olduğunda program 15 dakikalık satırlarla üretilir (DUY m.69(3)). Güneş santralleri varsayılan olarak dengeleme birimi değildir; genellikle kapalı kalır.</li>

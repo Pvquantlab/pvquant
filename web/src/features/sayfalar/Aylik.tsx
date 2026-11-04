@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
 import type { EChartsOption } from "echarts";
 import { api, bellekten, ayniysaEskisi } from "../../api/client";
-import type { AylikBeklenti, SantralOzeti, Bankable } from "../../api/types";
+import type { AylikBeklenti, SantralOzeti, Bankable, PDegerleri } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
 import { Cubuklar } from "../santralim/Cubuklar";
@@ -27,6 +27,7 @@ export function Aylik({ plantId }: { plantId: string }) {
   // v2.278: bankable yıllık beklenti — saklı sonuç; "yenile" 1–2 dk sürer (19 yıl × fizik koşusu)
   const [bk, setBk] = useState<Bankable | null | undefined>(undefined);
   const [bkMesaj, setBkMesaj] = useState<string | null>(null);
+  const [pd, setPd] = useState<PDegerleri | null | undefined>(undefined);   // 04.11 v2.534 (P8b-1): yıl yıl P-değerleri ve gerçekleşen kıyası
   const bkYenile = () => { setBkMesaj("Hesaplanıyor: 19 yıllık fiziksel model hesabı, 1–2 dakika…"); api.bankableHesapla(plantId).then((r) => { setBk(r); setBkMesaj(null); }).catch((e) => setBkMesaj(String((e as Error).message ?? e))); };
   const { n, oku } = useTema();
 
@@ -36,6 +37,7 @@ export function Aylik({ plantId }: { plantId: string }) {
     api.aylik(plantId).then((v) => { if (acik) { setB((e) => ayniysaEskisi(e, v)); setBD("tamam"); } }, () => { if (acik) { setB((e) => e ?? null); setBD("hata"); } });
     api.ozet(plantId).then((v) => { if (acik) setO((e) => ayniysaEskisi(e, v)); }, () => { if (acik) setO((e) => e ?? null); });
     api.bankable(plantId).then((v) => { if (acik) setBk(v); }, () => { if (acik) setBk(null); });
+    setPd(undefined); api.pDegerleri(plantId).then((v) => { if (acik) setPd(v); }, () => { if (acik) setPd(null); });
     return () => { acik = false; };
   }, [plantId, ds]);   // 26.10 eşzamanlama
   const hazir = b !== undefined || bD !== "bekliyor";
@@ -212,6 +214,36 @@ export function Aylik({ plantId }: { plantId: string }) {
             </p>
             {bkMesaj && <p className="soluk" style={{ fontSize: 14, margin: "6px 0 0" }}>{bkMesaj}</p>}
           </>
+        )}
+      </Kart>
+      {/* 04.11 v2.534 (P8b-1; IH-098/099): yıl yıl P-değerleri (bozunma dâhil, biçim etiketli) ve gerçekleşen kıyası — hava düzeltmesiz, etiketli */}
+      <Kart baslik="Yıl yıl P-değerleri ve gerçekleşen" alt="n. yıl P50 / P75 / P90 / P99 (bozunma dâhil); tamamlanmış yıllar ve cari yıl gerçekleşenle kıyas, hava düzeltmesiz"
+        sag={pd?.durum === "ok" ? <span className="cip"><Meta items={[`yıl 1 = ${pd.ilk_yil ?? "—"} (${pd.ilk_yil_kaynak ?? "—"})`, `${sayiTr(pd.n_yil ?? 0)} yıl`, `bozunma %${sayiTr(pd.bozunma_yuzde_yil ?? 0, 2)}/yıl`]} /></span> : undefined}>
+        {pd === undefined ? <YerTutucu yukseklik={260} /> : pd?.durum === "ok" && pd.satirlar ? (
+          <>
+            <div className="grafik-kaydir">
+              <table className="veri" style={{ fontSize: 13.5 }}>
+                <thead><tr><th>Yıl</th><th>Takvim yılı</th><th>P50 (MWh)</th><th>P75 (MWh)</th><th>P90 (MWh)</th><th>P99 (MWh)</th><th>Gerçekleşen (MWh)</th><th>Gerçekleşen / P50</th><th>Konum</th>{pd.butce_kwh_yil ? <th>Bütçeye göre</th> : null}</tr></thead>
+                <tbody>
+                  {pd.satirlar.map((r) => { const k = (pd.kiyas ?? []).find((x) => x.yil === r.takvim_yili); const KON = { ustu: "P50 üstü", arasi: "P50–P90 arası", alti: "P90 altı" } as const;
+                    return (<tr key={r.n}><td className="mono">{r.n}</td><td className="mono">{r.takvim_yili ?? "—"}</td><td className="mono">{sayiTr(r.p50 / 1000, 0)}</td><td className="mono">{sayiTr(r.p75 / 1000, 0)}</td><td className="mono">{sayiTr(r.p90 / 1000, 0)}</td><td className="mono">{sayiTr(r.p99 / 1000, 0)}</td>
+                      <td className="mono">{k ? <>{sayiTr(k.gerceklesen_kwh / 1000, 0)}{k.durum === "cari_yil" ? <span className="soluk"> (yıl başından bugüne)</span> : k.durum === "kapsam_yetersiz" ? <span className="soluk"> (kapsam %{sayiTr(k.kapsam_pct ?? 0, 0)})</span> : null}</> : "—"}</td>
+                      <td className="mono">{k?.oran_p50 != null ? `%${sayiTr(k.oran_p50 * 100, 1)}` : "—"}</td>
+                      <td>{k?.konum ? <span className={`rozet rozet-kucuk ${k.konum === "alti" ? "rozet-uyari" : "rozet-ok"}`}>{KON[k.konum]}{k.durum === "cari_yil" ? " (ışınım payıyla)" : ""}</span> : k?.durum === "kapsam_yetersiz" ? <span className="soluk">kapsam yetersiz</span> : k?.durum === "cari_pay_yok" ? <span className="soluk">iklim payı yok</span> : "—"}</td>
+                      {pd.butce_kwh_yil ? <td className="mono">{k?.butce_orani != null ? `%${sayiTr(k.butce_orani * 100, 1)}` : "—"}</td> : null}</tr>);
+                  })}
+                  {pd.omur_ortalamasi && <tr><td colSpan={2}><b>Ömür ortalaması ({sayiTr(pd.omur_ortalamasi.n_yil)} yıl)</b></td><td className="mono">{sayiTr(pd.omur_ortalamasi.p50 / 1000, 0)}</td><td className="mono">{sayiTr(pd.omur_ortalamasi.p75 / 1000, 0)}</td><td className="mono">{sayiTr(pd.omur_ortalamasi.p90 / 1000, 0)}</td><td className="mono">{sayiTr(pd.omur_ortalamasi.p99 / 1000, 0)}</td><td colSpan={pd.butce_kwh_yil ? 4 : 3} className="soluk">yıllar arası oynaklık √N ile küçülür</td></tr>}
+                  {pd.omur_toplami && <tr><td colSpan={2}><b>Ömür toplamı ({sayiTr(pd.omur_toplami.n_yil)} yıl)</b></td><td className="mono">{sayiTr(pd.omur_toplami.p50 / 1000, 0)}</td><td className="mono">{sayiTr(pd.omur_toplami.p75 / 1000, 0)}</td><td className="mono">{sayiTr(pd.omur_toplami.p90 / 1000, 0)}</td><td className="mono">{sayiTr(pd.omur_toplami.p99 / 1000, 0)}</td><td colSpan={pd.butce_kwh_yil ? 4 : 3} className="soluk">biçim: ömür toplamı (yıl n ile karıştırılmasın)</td></tr>}
+                </tbody>
+              </table>
+            </div>
+            <p className="soluk" style={{ fontSize: 13, margin: "10px 0 0" }}>
+              Bozunma: {pd.bozunma_kaynak}. Belirsizlik tek yıl %{sayiTr((pd.sigma_1yil ?? 0) * 100, 1)}, ömür ortalaması %{sayiTr((pd.sigma_nyil ?? 0) * 100, 1)}.
+              {pd.butce_kwh_yil ? ` Bütçe: ${sayiTr(pd.butce_kwh_yil / 1000, 0)} MWh/yıl (Santral ayarları).` : " Yıllık bütçe girilmedi (Santral ayarları); bütçe sütunu için finansal modeldeki değeri girin."}{" "}{pd.not}
+            </p>
+          </>
+        ) : (
+          <p className="soluk" style={{ margin: 0 }}>{pd?.not ?? "P-değeri serisi şu anda alınamadı."}</p>
         )}
       </Kart>
       <Kart baslik="Aylık yatay ışınım (GHI) — uzun dönem P50 ve P10–P90 aralığı">

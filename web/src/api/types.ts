@@ -129,6 +129,15 @@ export interface GucMatrisi {
   cser?: number | null; e_dc_kwh_kwp?: number; h_poa_kwh_m2?: number;
   dusuk_isinim_kayip_pct?: number; sicaklik_50_kayip_pct?: number;
 }
+/** /p-degerleri — v2.534 (P8b-1; IH-098/099): yıl yıl P50/P75/P90/P99 serisi (bozunma dâhil, biçim etiketli) ve gerçekleşen kıyası (hava düzeltmesiz) */
+export interface PDegerSatiri { n: number; takvim_yili: number | null; bicim: string; p50: number; p75: number; p90: number; p95: number; p99: number }
+export interface PDegerleri { durum: "ok" | "bankable_yok"; not?: string; bugun?: string; p50_kwh?: number; bankable_hesap_zamani?: string; bankable_donem?: string;
+  ilk_yil?: number | null; ilk_yil_kaynak?: string | null; n_yil?: number; bozunma_yuzde_yil?: number; bozunma_kaynak?: string; butce_kwh_yil?: number | null;
+  sigma_1yil?: number; sigma_nyil?: number; satirlar?: PDegerSatiri[];
+  omur_ortalamasi?: { bicim: string; n_yil: number; p50: number; p75: number; p90: number; p95: number; p99: number };
+  omur_toplami?: { bicim: string; n_yil: number; p50: number; p75: number; p90: number; p95: number; p99: number };
+  kiyas?: { yil: number; n: number; durum: "tam_yil" | "kapsam_yetersiz" | "cari_yil" | "cari_pay_yok"; kapsam_pct?: number; ytd_pay?: number | null; gerceklesen_kwh: number;
+    p50_kwh: number; p90_kwh: number; oran_p50: number | null; oran_p90: number | null; konum: "ustu" | "arasi" | "alti" | null; butce_orani: number | null }[] }
 /** /bankable — v2.278: yıllık P50/P90 (1 ve 10 yıl), belirsizlik bütçesi, TMY. */
 export interface Bankable {
   durum: string; hesap_zamani?: string; kaynak?: string; donem?: string; mod?: string; not?: string;

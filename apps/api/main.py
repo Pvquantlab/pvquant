@@ -1288,6 +1288,7 @@ class EakIstek(BaseModel):
     pozisyon_sabit_mwh: float | None = None     # v2.517 (P2a): pozisyon_kaynagi = sabit için saatlik MWh
     teminat_risk_katsayisi: float | None = None  # v2.522 (P2b): EPİAŞ dengesizlik teminatı risk katsayısı (değeri kaynakta yok; müşteri girer)
     kullanilabilirlik_sozlesme: float | None = None  # v2.533 (P8a): O&M sözleşmesindeki kullanılabilirlik eşiği (0,5–1); açık kWh/TL kıyas tabanı
+    butce_kwh_yil: float | None = None            # v2.534 (P8b-1): finansal modeldeki yıllık bütçe (kWh); P-değeri kıyasında bütçe oranı
 
 
 class EpiasIstek(BaseModel):
@@ -1375,6 +1376,10 @@ def eak_ayarla(plant_id: str, p: EakIstek, claims=Depends(yazma_yetkisi())):
         if p.kullanilabilirlik_sozlesme is not None and not (0.5 <= p.kullanilabilirlik_sozlesme <= 1.0):
             raise HTTPException(422, "kullanilabilirlik_sozlesme 0,5–1,0 aralığında olmalı")
         an["kullanilabilirlik_sozlesme"] = float(p.kullanilabilirlik_sozlesme) if p.kullanilabilirlik_sozlesme is not None else None
+    if "butce_kwh_yil" in verilen:   # v2.534 (P8b-1)
+        if p.butce_kwh_yil is not None and not (0 < p.butce_kwh_yil <= kap * 8760):
+            raise HTTPException(422, "butce_kwh_yil 0 ile kurulu güç × 8760 arasında olmalı")
+        an["butce_kwh_yil"] = float(p.butce_kwh_yil) if p.butce_kwh_yil is not None else None
     pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **an)
     _denetim.kaydet("musteri", "eak_ayar", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"], ayrinti=dict(an))   # v2.516 (#7)
     row["params_json"] = pj
@@ -1384,7 +1389,8 @@ def eak_ayarla(plant_id: str, p: EakIstek, claims=Depends(yazma_yetkisi())):
             "luy_istisna": bool(pj.get("luy_istisna")),
             "pozisyon": dengesizlik_service.pozisyon_ayari(pj),   # v2.517 (P2a)
             "teminat_risk_katsayisi": pj.get("teminat_risk_katsayisi"),   # v2.522 (P2b)
-            "kullanilabilirlik_sozlesme": pj.get("kullanilabilirlik_sozlesme")}   # v2.533 (P8a)
+            "kullanilabilirlik_sozlesme": pj.get("kullanilabilirlik_sozlesme"),   # v2.533 (P8a)
+            "butce_kwh_yil": pj.get("butce_kwh_yil")}   # v2.534 (P8b-1)
 
 
 def _toplayici_yaniti(tenant_id: str, plant_id: str, gun: str | None, fmt: str, adim: int):
@@ -1922,6 +1928,16 @@ def kayip_ayrisimi_uc(plant_id: str, gun: int = 30, claims=Depends(gecerli_kulla
     if row is None:
         raise HTTPException(404, "santral yok")
     return kayip_ayrisimi_service.hesapla(claims["tenant_id"], row, gun=max(7, min(gun, 365)))
+
+
+@app.get("/v1/plants/{plant_id}/p-degerleri")
+def p_degerleri_uc(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """v2.534 (P8b-1; IH-098/099): yıl yıl P50/P75/P90/P99 serisi (bozunma dâhil, biçim etiketli) ve gerçekleşen kıyası (hava düzeltmesiz)."""
+    from pvquant.services import pdeger_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    return pdeger_service.hesapla(claims["tenant_id"], row)
 
 
 @app.get("/v1/plants/{plant_id}/kayip-agaci")
