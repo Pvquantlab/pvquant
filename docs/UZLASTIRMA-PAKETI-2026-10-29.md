@@ -857,3 +857,20 @@ Testler: tests/test_takvim_v2535.py 10; test_takvim YEKA beklentisi güncellendi
 (`kanit/takvim-dogrulama-turu-1440-2026-11-04.jpg`, `-375-`). Rapor: `~/Desktop/PVQuant_Kaynak_Teyit_2026-11-04/TAKVIM_DOGRULAMA_RAPORU.md` (14 bölüm). Yapılmayan: 2028 Diyanet listesi
 (doğrulanmadı), lisans yenileme penceresi m.25(2) (metin teyitsiz), ölçüm itirazı 15 gün + 5 iş günü satırı, ≥100 MWe siber güvenlik/YEK-G satırları (EK-3; sonraya).
 Sonraya: EK-2 ifade düzeltmeleri (v2.536); EK-3 bugün yapılabilir değer satırları (v2.537); kalan 45 künye satırı madde atıflarıyla birlikte; Mutabakat ekranında kupst_kaynak görünürlüğü.
+
+# Otuz altıncı paket — v2.536 (04.11.2026, canlı): İklim beklentisi düzeltmesi, PVGIS-ERA5 yedeği, açılış yakalamasında cron slotu, bağımlılık üst sınırları
+
+Commit `6ee1d1f`, CI #684. Dağıtım: api + worker + web imajı (ssh, 03:45–06:30 TSİ dışında); göç yok. Canlı: index.html ve JS/CSS birebir (25/25 aynı).
+Kaynak: 04.11 canlı olay zinciri. v2.532 dağıtımı (05:03 TSİ) worker'ı gece_meteo (04:00) ortasında ve sabah_tahmin (05:00) başlarken yeniden yarattı; eski
+konteyner düzgünce durdu (OOM değil), iş günlüğünde iz kalmadı; yeni worker'ın açılış yakalaması 30 saat ölçütüyle 3 Kasım koşularını «taze» saydı. Hakkında'daki yeni
+indirme işi satırı (v2.535) bunu görünür kıldı. Telafi: sunucuda bağımsız tam tur (`nohup docker compose run --rm -T worker python -m apps.worker.main --once`,
+09:38–12:50 TSİ; ICON/GEFS 4 Kasım 00Z arşivlendi, sabah tahmini ve alarm koştu). Turun günlüğü ikinci kusuru açığa çıkardı: iklim_yakalama 5 santralin 5'inde düştü —
+4'ü «cannot insert time, already exists» (PVGIS indeksi «time» adlı; pandas 3'te yıl/ay anahtarları aynı adı taşıyınca reset_index düşer; yerelde 0.15.2/3.0.3 ve imajda
+0.16.1/3.1.0 yeniden üretildi), 1'i PVGIS-SARAH3 kapsam dışı (Colorado; PVGIS «PVGIS-ERA5» öneriyor). Canlıda hiçbir santralin iklim beklentisi yoktu.
+Düzeltmeler: `iklim_service.aylik_toplamlar` anahtar adları açık; `arsiv_isinim._pvgis_cek` kapsam hatasında ERA5 (attrs kaynak/etiket, başka hata yükselir);
+`isler_service.kacan_isler` (saf) + `kacan_isler_db`: bugünkü cron slotu geçmiş ve o slottan sonra başarılı koşu yoksa kaçmış (5 dk pay); worker `acilis_yakalama`
+30 saat + slot ölçütü (gece_meteo, sabah_tahmin, gece_skill, gunluk_beklenti); pyproject pandas <3.2, pvlib <0.17.
+Testler: tests/test_v2536_iklim_yakalama.py 5; tam takım .venv 929 geçti / 1 atlandı (yakalama testi slot ölçütüne uyarlandı); imaj sürümleriyle (.venv-imaj pvlib 0.16.1 / pandas 3.1.0) 929 geçti / 1 atlandı. Web değişmedi.
+Canlı doğrulama: dağıtım sonrası 5 santral için tek seferlik iklim hesabı (5/5 santralde 12 aylık beklenti yazıldı, Colorado ERA5 yedeğiyle (19:25 TSİ)); Hakkında arşiv kartı ve Aylık beklenti iklim katmanı.
+Dersler: worker 03:45–06:30 TSİ arasında yeniden yaratılmaz; bağımlılık sürüklenmesi (imaj pip'ten en yenisini alır) → üst sınır + imaj sürümleriyle ayrı venv'de tam takım.
+Sonraya: EK-2 ifade düzeltmeleri (v2.537), EK-3 değer satırları, lock dosyası (uv/pip-tools) kararı, Mutabakat'ta kupst_kaynak.
