@@ -2,12 +2,13 @@
 
 Tek tablo (olay; RLS kiracı), olay türüne bağlı kurallar (TUR_KURAL): EAK'yi düşürür mü (TPYS EAK.csv'de hangi gerekçe sütununa yazılır),
 kullanılabilirlik hesabında istisna mı (planlı bakım, şebeke kesintisi, talimat, acil kesme: santralın elinde değil), aylık arıza sayacına
-girer mi (Karar 14029/14907: UEVÇB'de ayda 30 ve üzeri arıza kaydı KÜPST n katsayısını 0,05 → 0,08 yapar; alarm eşiği 25).
+girer mi (Karar 14029/14907: UEVÇB'de ayda 30 ve üzeri arıza kaydı KÜPST n katsayısını 0,05 → 0,08 yapar; 25 ürün ön uyarısıdır, m.69/A itiyat ölçütü değildir; sayaç EPİAŞ sayımına vekildir,
+TPYS Arıza ve Bakım bildirimi sayısıyla eşleşmesi doğrulanmadı).
 Dayanak (GES sahibi araştırması): 01-18 (EAK gerekçe sütunları: kaynak yetersizliği, iklim/verim, mücbir, dışsal, güvenlik; arıza ve bakım
 TPYS «Arıza ve Bakım bildirimleri» sayfasından ayrıca girilir — PVQuant bunu yapmaz, dosya adı ve kaydı tutar), 01-19 (Karar 14967: tesis bazında
 ≥30 MW, portföy bazında ≥50 MW güç değişimi olayın ortaya çıkışından en geç 1 saat içinde Dâhilî Bilgi Platformu'nda; yürürlük tarihi metinde
-yok → «belirsiz»), 03-10 (ESY m.52–54: kısa planlı devre dışı 24 saat / 7 gün önceden; yıllık plan 30 Nisan), DUY m.69/A (EAK'yi arıza/bakım
-kaydıyla düşürmeyi itiyat etmek Kanun m.16'ya gider — kayıt gerekçeli ve değiştirilemez tutulur).
+yok → «belirsiz»), 03-10 (ESY m.52–54: kısa planlı devre dışı 24 saat / 7 gün önceden; yıllık plan 30 Nisan), DUY m.69/A(2) (EAK'yi arıza/bakım
+kaydıyla düşürmeyi itiyat etmek Kanun m.16'ya gider — «kayıt değiştirilemez/silinemez» ürün tasarımıdır; destekleyici hükümler m.69/A(2)–(3), PBD Yön. m.10(1)(ç), m.12(2)).
 Talimat olayları (YAL/YAT) EAK'yi değiştirmez; BUDÜP hesabına bağlanması P2b. Silme yok: «iptal» durumu; geçmiş kayıt korunur.
 02.11 üçüncü inceleme: hasar türü «mücbir sebep»i otomatik seçmez (fiziksel tür ≠ mevzuattaki gerekçe; TPYS dokümanı başka neden yoksa «kaynak
 yetersizliği» der, 01-18); devre dışı güç sınırı AC tabanı (ac_limit_kw) — kWp değil; çakışma uyarısı dürüst (kayıtlar toplanır, ekipman kimliği
@@ -341,13 +342,13 @@ def ozet(tenant_id, plant: dict, gun: int = 90, bugun: date | None = None) -> di
             "not": "Olay kaydı santralın kendi kaydıdır; TPYS Arıza ve Bakım bildirimi, Dâhilî Bilgi Platformu açıklaması ve TEİAŞ bildirimleri ayrıca yapılır.",
             "aciklama": {"kapasite": "Planlı bakım, arıza, acil kesme, şebeke kesintisi ve hasar o saatlerde verilebilecek gücü (EAK) ve programın tavanını düşürür; saat içinde kısmen süren olay "
                                      "süreyle orantılı düşer; bitişi girilmemiş olay gün sonuna kadar sayılır. Birden çok olay toplanır (ayrı ekipmanlar için doğrudur; aynı ekipmanı "
-                                     "anlatan iki kayıt iki kez düşer, kayıt ekipman ayrımı tutmaz), toplam günün EAK tabanını (AC sınırı ya da EAK alanı) aşmaz. Talimatlar (YAL/YAT) kapasiteyi değiştirmez.",
-                         "sayac": "Yalnız «arıza» türü aylık sayaca girer. Ayda 30 ve üzeri arıza kaydı KGÜP sapma tutarı katsayısını 0,05'ten 0,08'e çıkarır (Karar 14907); 25'te uyarı alarmı.",
+                                     "anlatan iki kayıt iki kez düşer, kayıt ekipman ayrımı tutmaz), toplam günün EAK tabanını (AC sınırı ya da EAK alanı) aşmaz. Talimatlar (YAL/YAT) kapasiteyi değiştirmez. Şebeke kesintisi ve hasarın EAK'yi düşürmesi tanımdan çıkarım, acil kesme varsayımdır (TEİAŞ teyidine kadar); tür → gerekçe eşlemesi ürün varsayılanıdır.",
+                         "sayac": "Yalnız «arıza» türü aylık sayaca girer. Ayda 30 ve üzeri arıza kaydı KGÜP sapma tutarı katsayısını 0,05'ten 0,08'e çıkarır (Karar 14907); 25'te ürün ön uyarısı (mevzuat eşiği değil). Sayaç EPİAŞ sayımına vekildir.",
                          "kullanilabilirlik": "Planlı bakım, talimat, acil kesme ve şebeke kesintisi saatleri kullanılabilirlik hesabından düşülür (santralın elinde değil); arıza ve hasar arıza sayılır.",
                          "islem": "«Bitir» olayın bittiğini işler, kayıt hesaplarda kalır. «Geçersiz say» yanlış kaydı hesaplardan çıkarır; kayıt silinmez, dosyada «geçersiz» olarak görünür. "
                                   "Başlangıç ve tür değiştirilemez; yanlışsa kaydı geçersiz sayıp yenisini açın. Her ekleme ve değişiklik denetim izinde tutulur.",
-                         "gerekce": "EAK gerekçesi TPYS EAK dosyasındaki sütundur; tür için varsayılan önerilir, kayıt girilirken değiştirilebilir. «Mücbir sebep» yalnız mevzuattaki koşullar "
-                                    "sağlanıyorsa seçilir; hasar tek başına mücbir sebep değildir."}}
+                         "gerekce": "EAK gerekçesi TPYS EAK dosyasındaki sütundur; tür için varsayılan önerilir, kayıt girilirken değiştirilebilir. «Mücbir sebep» yalnız mevzuattaki koşullar (Lisans Yön. m.35(2)–(3)) "
+                                    "sağlanıyorsa seçilir; EAK sütunu ile EPDK'ya m.35 başvurusu ayrı süreçlerdir; hasar tek başına mücbir sebep değildir."}}
 
 
 def csv_metni(olaylar: list[dict], plant_ad: str) -> str:

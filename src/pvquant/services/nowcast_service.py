@@ -3,7 +3,7 @@
 Gerçek uydu bulut-hareket nowcast'ı (EUMETSAT gerçek zamanlı lisans + işlem altyapısı) bu dalgada yok; bunun
 yerine pvquant.ext.kaynak.nowcast'ın rampalı harman matematiği GÜÇ uzayında uygulanır: son 3 saatin
 ölçülen/tahmin oranı (r) ileri taşınır, ufuk h için w(h)=exp(-h/τ) ağırlığıyla P50'ye harmanlanır
-(τ=2 s; ötesi P50). Koşul: SCADA tazeliği ≤ 3 saat — dosya yüklemeli santralde bu katman dürüstçe "—" der.
+(τ=2 saat; ötesi P50). Koşul: SCADA tazeliği ≤ 3 saat — dosya yüklemeli santralde bu katman dürüstçe "—" der.
 Model çekirdeğine dokunmaz; yalnız sunum katmanı, kayıt yazmaz.
 """
 from __future__ import annotations

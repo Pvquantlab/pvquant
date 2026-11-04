@@ -56,7 +56,7 @@ MEVZUAT = [
     {"ad": "DUY — Dengeleme ve Uzlaştırma Yönetmeliği", "kapsam": "KGÜP bildirimi (m.69, 69/A) · dengesizlik fiyatlandırması (m.110–111) · uzlaştırma ve fatura takvimi (m.132–133)",
      "kunye": _kunye.kunye("DUY"), "not": "Pozitif/negatif dengesizlik katsayıları (k/l), V ve fiyat sınırları kural tablosundan (kural motoru) gelir; santral ayarından değişmez."},
     {"ad": "DUY geçici m.40", "kapsam": "15 dakikalık uzlaştırma dönemi", "kunye": "RG 21.01.2025-32789 Md.19; 15 dakikalık DGP en erken 1.1.2027 (RG 19.10.2026-33405 Geçici m.40)",
-     "not": "Altyapı en geç 1 Ocak 2027; 15 dakikalık program çıktısı üründe hazırdır."},
+     "not": "Altyapı en geç 1.1.2027'ye kadar tamamlanır; uygulama 1.1.2027'den önce başlatılmaz; fiilî başlangıç duyurulmadı. 15 dakikalık çıktı saatlik tahminin profille bölünmesidir."},
     {"ad": "KÜPST — Kurul kararları", "kapsam": "KGÜP bildirmekle yükümlü birimlerde ayrı sapma kalemi",
      "kunye": _kunye.kunye("KARAR_13025") + " · " + _kunye.kunye("KARAR_14029") + " · " + _kunye.kunye("KARAR_14907"),
      "not": "Katsayı (n) ve tolerans santral ayarından geçersiz kılınabilir (Doğruluk'ta etiketlenir); yalnız yükümlü segmentlerde işler."},

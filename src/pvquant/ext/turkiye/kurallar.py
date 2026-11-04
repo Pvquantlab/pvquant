@@ -14,7 +14,7 @@ bulgular/08–14 — her kararı RG PDF'inden ikinci kez doğruladı, çelişkil
   - Karar 14911 (RG 19.10.2026): V = 100 TL/MWh, yayımı takip eden fatura döneminden (Kasım 2026 → 1.11.2026).
   - DUY m.110(3) (RG 17.12.2024-32755): KÜPST = Σ KÜPSM·max(750; NPTF; SMF)·n.
   - Karar 14029 (RG 29.12.2025; 1.1.2026): UDÜPS = |UEVM − BUDÜP|; KÜPSM = UDÜPS − m·BUDÜP (UDÜPS > m·BUDÜP ise, değilse 0);
-    m güneş 0,08, iletime bağlı lisanssız 0,20; n YEK: aylık arıza ≥30 ise 0,08 değilse 0,05; iletime bağlı lisanssız 0,02; topluluk 0,05.
+    m güneş 0,08, iletime bağlı lisanssız 0,20; n YEK: aylık arıza ≥30 ise 0,08 değilse 0,05; iletime bağlı lisanssız 0,02; topluluk 0,05 (künye Karar 14907 Md.2(1)(b); 14029 değeriyle aynı).
   - Karar 14907 (RG 19.10.2026; yayımı takip eden fatura dönemi → 1.11.2026): UDÜPS = |(UEVM − UEÇM) − BUDÜP| (net); m/n güneşte aynı;
     dağıtıma bağlı lisanssız («piyasa katılımcısı bazlı»; UEVÇB DUY m.110(6)(b)(3)) m 0,25 / n 0,01; iletime bağlı lisanssız 0,20 / 0,02
     (14029'dan sürer); Md.1(3): lisanssızlarda yalnız üretim miktarı (net sapma yok → Ç2); Md.5: LÜY m.5(1)(ç),(d),(e) kapsamındaki iletime
@@ -212,8 +212,8 @@ def edt_kurali(tarih: date) -> EdtKurali:
 def kupst_kurali(tarih: date, segment: str | None, portfoy: bool = False, luy_istisna: bool = False) -> KupstKurali:
     """Segment: ext.turkiye.segment.Segment değeri (str). portfoy=True → dağıtıma bağlı lisanssız için GTŞ/toplayıcı UEVÇB katsayısı.
     luy_istisna=True → tesis LÜY m.5(1)(ç),(d),(e) kapsamında (öz tüketim YEK / verimli kojenerasyon / mikrokojenerasyon):
-    Karar 14907 Md.5 gereği iletime bağlı lisanssıza 1.11.2026'dan karar uygulanmaz (KÜPST 0). Santral ayarı; LÜY bent harfleri
-    2019 ilk metninden, güncel harflendirme doğrulanmadı (31.10.2026)."""
+    Karar 14907 Md.5 gereği iletime bağlı lisanssıza 1.11.2026'dan karar uygulanmaz (KÜPST 0 — yorum). Santral ayarı: yalnız (ç) aynı ölçüm
+    noktası / (d) kojenerasyon / (e) mikrokojenerasyon; (h) türü öz tüketim istisna dışı. Harflendirme güncel konsolide metinle teyitli (03.11.2026)."""
     birim = KUPST_BIRIMI.get(segment or "", "yok")
     taban = 750.0 if tarih >= date(2025, 1, 1) else 0.0
     # 14907 Md.1(1) net sapma (UEÇM düşülür) yalnız lisanslıda; Md.1(3): lisanssızlarda «sadece üretim miktarı» (31.10.2026 araştırması Ç2)
@@ -232,8 +232,9 @@ def kupst_kurali(tarih: date, segment: str | None, portfoy: bool = False, luy_is
                                "belirsiz (EPİAŞ uygulaması bulunamadı); KGÜP yükümlülüğü 11.03.2025'ten (TPYS); özel katsayı Karar 14907 ile 1.11.2026'dan",
                                "kupst-dagitim-portfoy-belirsiz")
         return KupstKurali(0.0, 0.0, None, None, taban, net, birim,
-                           "Dağıtıma bağlı lisanssız: KÜPST santral sahibinde değil, GTŞ/toplayıcı UEVÇB'sinde hesaplanır (DUY m.69(11), m.110(6)(b)(3), "
-                           "RG 19.10.2026-33405 ile 19.10.2026'dan; öncesinde toplayıcı için eski m.110(6) (1.1.2025), GTŞ için m.69(2) + TPYS 11.03.2025)",
+                           "Dağıtıma bağlı lisanssız: KÜPST santral sahibinde değil, GTŞ/toplayıcı UEVÇB'sinde hesaplanır (GTŞ: DUY m.69(11) + m.110(3); toplayıcı: m.110(6)(b)(3); "
+                           "RG 19.10.2026-33405 ile 19.10.2026'dan; üreticiye yansıtma m.132/Ç(18) olası — GTŞ'de yansıtma hükmü yok, toplayıcıda hizmet anlaşmasına bağlı; "
+                           "öncesinde toplayıcı için eski m.110(6) tesis bazında münferit (1.1.2025), GTŞ için m.69(2) + TPYS 11.03.2025)",
                            "kupst-dagitim-santral-0")
     if segment == "lisanssiz_iletim":
         if tarih >= date(2026, 11, 1) and luy_istisna:
@@ -272,7 +273,7 @@ def dsg_esigi(tarih: date) -> tuple[float | None, str]:
     if tarih < date(2026, 1, 1):
         return 0.10, "DUY m.111(5), RG 17.12.2024-32755 Md.24 (%10; yürürlük 1.1.2025)"
     if tarih < date(2027, 1, 1):
-        return 0.05, "Karar 13869 (RG 18.10.2025-33051), 1.1.2026'dan %5"
+        return 0.05, "Karar 13869 (RG 18.10.2025-33051), 1.1.2026'dan %5 (grupta sayılan payın %5 alınması yorum)"
     return 0.05, ("Karar 13869 yürürlükte (süre sınırı yok, %5); DUY m.111(5) uyarınca yıllık düşürme kararı en geç 1.12.2026'da alınır, "
                   "RG yayımı Aralık sonuna sarkabilir; yön riski aşağı — %5 VARSAYILDI")
 
@@ -294,11 +295,11 @@ def gecici_m39_notu(tarih: date) -> str | None:
 
 # 1.1.2027 belirsizlik bayrağının gerekçesi (31.10.2026 araştırması, bulgular/09.md): ekran/rapor notu için tek kaynak.
 BELIRSIZ_2027_GEREKCE = (
-    "(i) m.110(1)-(2): RG 21.1.2025-32789 Md.13 1.1.2027'de yürürlüğe girer, ama 33122/33405 aynı fıkraları sonradan yeniden yazdı; "
-    "tek k/l kararı yok (üç aylık duyuru süresi 1.10.2026'da doldu). (ii) m.110(3)-(4): Md.13 KÜPST'yi 15 dakikalık «ç» bazına alır; "
+    "(i) m.110(1)-(2): RG 21.1.2025-32789 Md.13 (tek EDT_f; V/B/AFL ve EDTA/EDTB kalkar) yürürlük tarihi RG'de 1.1.2027 yazılı, ama 33122/33405 aynı "
+    "fıkraları sonradan yeniden yazdı — ilişkisi hukuken belirsiz; tek k/l kararı yok (üç aylık duyuru süresinin 1.10.2026'da dolması çıkarım). (ii) m.110(3)-(4): Md.13 KÜPST'yi 15 dakikalık «ç» bazına alır; "
     "«ç» bazlı KÜPSM yöntem kararı yok (14907 «u» bazlı). (iii) m.91(2) + Geçici 40: 15 dakikalık DGP 1.1.2027'den önce başlamaz, "
     "fiilî başlangıç ilan edilmedi. (iv) SMF_N/SMF_P çeyrek SMF ister; Karar 14968 Şeffaflık'ta SMF'yi yalnız saatlik listeler. "
-    "Varsayılan: 2026 rejimi sürer, sonuçlar «belirsiz» etiketi taşır; Kasım–Aralık 2026 RG'leri izlenir."
+    "Varsayılan: 2026 rejimi sürer, sonuçlar «belirsiz» etiketi taşır; Kasım–Aralık 2026 RG'leri izlenir (kanıt kesimi 03.11.2026)."
 )
 
 

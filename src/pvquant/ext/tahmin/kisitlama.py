@@ -8,6 +8,7 @@
   metriklere giren saatler. Kısıtlı saatler ATILMAZ, bayraklanır (tire ilkesi).
 - `kisitsiz_senaryo`: "kısıtlama olmasaydı" üretimi = beklenen ile gerçekleşenin kısıt saatlerinde
   beklenenle değiştirilmesi (kayıp muhasebesi için).
+- Not (v2.537 DK-751): kısıt kayıtlı bağlantı için mevzuatta tazmin hükmü bulunmadı; kayıp tutarı tazmin beklentisi değildir.
 """
 from __future__ import annotations
 

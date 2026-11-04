@@ -54,7 +54,7 @@ TOL_TL = 0.5
 TOL_YUVARLAMA_TL = 5.0    # girdiler tolerans içinde ama sıfır değilken küçük tutar farkı: yuvarlama/ondalık
 NEDEN_ACIKLAMA = {"fiyat": "PTF ya da SMF farklı (fiyat kaynağı / sürümü)", "uretim": "UEVM ile PVQuant gerçekleşeni (SCADA ya da yüklü sayaç) farklı",
                   "program": "BUDÜP ile PVQuant programı (bildirilen KGÜP ya da öneri) farklı",
-                  "pozisyon": "üretim ve program eşit ama EPİAŞ'ın dengesizlik miktarı (EDM) PVQuant sapmasından farklı — ikili anlaşma / piyasa pozisyonu ya da DSG grup payı",
+                  "pozisyon": "üretim ve program eşit ama EPİAŞ'ın dengesizlik miktarı (EDM) PVQuant sapmasından farklı — ikili anlaşma / piyasa pozisyonu (olası neden: DSG grup payı — dosya içeriği bilinmeden kesinleştirilemez)",
                   "yuvarlama": "girdiler tolerans içinde (ondalık farkı) ve tutar farkı küçük — yuvarlama",
                   "kural": "fiyat, üretim, program ve miktar eşitken tutar farklı — sistem yönü (k/l katsayıları), kural sürümü ya da hesap"}
 NOT = ("Saatlik detay kıyası EPYS'den indirilen saatlik detay dosyasıyla PVQuant dökümünü yalnız iki tarafta da bulunan saatlerde karşılaştırır (eş kapsamlı); "

@@ -38,12 +38,12 @@ KALEMLER = [
     ("res",          "YEK",                        ("yek", "yekdem", "res"),                              True,  "RES"),
     ("imbalance",    "Dengesizlik",                ("dengesizlik", "imbalance"),                          True,  "IMBALANCE"),
     ("bpm",          "DGP",                        ("dgp", "dengeleme guc", "bpm"),                       False, "BPM"),
-    ("retrospective", "GDDK",                      ("gddk", "geriye donuk", "retrospective"),             False, "RETROSPECTIVE"),
+    ("retrospective", "GDDK",                      ("gddk", "geriye donuk", "gecmise donuk", "retrospective"),             False, "RETROSPECTIVE"),
     ("side_payment", "Fark tutarı",                ("fark tutar", "side payment", "side_payment"),        False, "SIDE_PAYMENT"),
     ("zero_balance", "SBDT",                       ("sbdt", "sifir bakiye", "zero balance", "zero_balance"), False, "ZERO_BALANCE_ADJUSTMENT"),
     ("mof",          "PİÜ",                        ("piu", "piyasa isletim", "mof"),                      False, "MOF"),
     ("kupst",        "KÜPST",                      ("kupst", "sapma tutar"),                              True,  "KUPST"),
-    ("rbs",          "RBS",                        ("rbs",),                                              False, "RBS"),
+    ("rbs",          "RBS (Kaynak Bazında Destekleme)",                        ("rbs",),                                              False, "RBS"),
     ("default_interest", "Temerrüt faizi",         ("temerrut", "default interest", "default_interest"),  False, "DEFAULT_INTEREST"),
     ("late_fee",     "Gecikme zammı",              ("gecikme zam", "late fee", "late_fee"),               False, "LATE_FEE"),
     ("refund_overdue_interest", "Ödenmeyen alacak iade faizi", ("iade faiz", "refund overdue", "refund_overdue"), False, "REFUND_OVERDUE_RECEIVABLES_INTEREST"),
@@ -60,9 +60,9 @@ DOGRULAMA = {"gercek": "tam", "kismi": "kismi", "senaryo": "senaryo", "veri_yok"
 GUVENILIRLIK_ETIKET = {"gercek": "Gerçek verilerle karşılaştırma", "kismi": "Kısmi karşılaştırma", "senaryo": "Senaryo hesabı", "veri_yok": "Gerçek verilerle doğrulanamadı"}
 SURUM_KAYNAGI = ("dosya", "kullanici", "varsayilan")
 NOT = ("Mutabakat PVQuant'ın yeniden hesabı ile EPİAŞ bildirimini kalem kalem yan yana koyar; EPİAŞ sonucu esastır. Yalnız santral verisinden "
-       "hesaplanabilen kalemler (enerji dengesizlik tutarı, KGÜP sapma tutarı, lisanslı YEKDEM'de YEK alacağı) yeniden hesaplanır; GÖP, GİP, DGP, "
+       "hesaplanabilen kalemler (DUY m.132/A(4) sınıflaması; pozisyonsuz tek santral varsayımı) (enerji dengesizlik tutarı, KGÜP sapma tutarı, lisanslı YEKDEM'de YEK alacağı) yeniden hesaplanır; GÖP, GİP, DGP, "
        "GDDK, fark tutarı, SBDT, PİÜ, faiz ve zam kalemleri yalnız bildirimden gösterilir. Fark kaynakları: program sürümü (bildirilen KGÜP yüklü "
-       "değilse PVQuant önerisi), sayaç verisi (SCADA ≠ UEVM), fiyat kaynağı (senaryo saatleri), EPİAŞ'ın geriye dönük düzeltmeleri.")
+       "değilse PVQuant önerisi), sayaç verisi (SCADA ≠ UEVM), fiyat kaynağı (senaryo saatleri), geçmişe dönük düzeltme kalemi (DUY m.134(1); «GDDK» kısaltması mevzuatta yok).")
 
 
 def _sade(s) -> str:

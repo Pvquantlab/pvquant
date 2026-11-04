@@ -147,7 +147,7 @@
 "dayanak": "Karar 14029 Md.2(1)(ç), Md.3(1) (RG 29.12.2025-33122)"
 },
 "dsg_esik": 0.05,
-"dsg_dayanak": "Karar 13869 (RG 18.10.2025-33051), 1.1.2026'dan %5",
+"dsg_dayanak": "Karar 13869 (RG 18.10.2025-33051), 1.1.2026'dan %5 (grupta sayılan payın %5 alınması yorum)",
 "edt_dayanak": "DUY m.110(1)-(2) (RG 29.12.2025-33122 Md.17); Karar 14030 (k/l); V = 150 başlangıç; EDTA = max(ΣΣEDT(+);0), EDTB = ΣΣEDT(−) − min(ΣΣEDT(+);0) (RG 33122 Md.17); AFL 3400: Karar 13423 (RG 5.4.2025-32861)",
 "belirsiz_2027": false,
 "dogrulama": "dogrulandi",
@@ -185,7 +185,7 @@
 "dayanak": "Karar 14029 Md.2(1)(ç), Md.3(1) (RG 29.12.2025-33122)"
 },
 "dsg_esik": 0.05,
-"dsg_dayanak": "Karar 13869 (RG 18.10.2025-33051), 1.1.2026'dan %5",
+"dsg_dayanak": "Karar 13869 (RG 18.10.2025-33051), 1.1.2026'dan %5 (grupta sayılan payın %5 alınması yorum)",
 "edt_dayanak": "DUY m.110(1)-(2) (RG 29.12.2025-33122 Md.17); Karar 14030 (k/l); V = 150 başlangıç; EDTA/EDTB dönem bazlı max/min (RG 19.10.2026-33405 Md.22); AFL 4500: Karar 14459 (RG 3.4.2026-33213 s.47)",
 "belirsiz_2027": false,
 "dogrulama": "dogrulandi",
@@ -223,7 +223,7 @@
 "dayanak": "Karar 14907 Md.1(1) net sapma, Md.2(1)(f), Md.3(1)(b) (RG 19.10.2026-33405); Md.7 «takip eden fatura dönemi» → 1.11.2026 çıkarım"
 },
 "dsg_esik": 0.05,
-"dsg_dayanak": "Karar 13869 (RG 18.10.2025-33051), 1.1.2026'dan %5",
+"dsg_dayanak": "Karar 13869 (RG 18.10.2025-33051), 1.1.2026'dan %5 (grupta sayılan payın %5 alınması yorum)",
 "edt_dayanak": "DUY m.110(1)-(2) (RG 29.12.2025-33122 Md.17); Karar 14030 (k/l); Karar 14911 (V = 100; «yayımı takip eden fatura dönemi» → 1.11.2026 çıkarım, EPİAŞ uygulama duyurusu bulunamadı); EDTA/EDTB dönem bazlı max/min (RG 19.10.2026-33405 Md.22); AFL 4500: Karar 14459 (RG 3.4.2026-33213 s.47)",
 "belirsiz_2027": false,
 "dogrulama": "dogrulama_gerekli",

@@ -110,7 +110,7 @@ def build_excel(ctx) -> bytes:
 
     # KPI blokları — v2.346: metin KPI'ları Türkçe sayı biçiminde.
     # v2.349 (rakip paritesi): BEKLENEN GELİR (tarife künyeden; tanımsızsa "—")
-    # ve CO₂ TASARRUFU eklendi. CO₂ faktörü BELGELİ VARSAYIMDIR ve etikette
+    # ve KAÇINILAN CO₂ eklendi (v2.537: «tasarruf» değil, üretim karması yoğunluğuyla kaçınılan emisyon). CO₂ faktörü BELGELİ VARSAYIMDIR ve etikette
     # açıkça gösterilir: Türkiye şebeke üretim karması için yaygın kullanılan
     # yaklaşık değer; kesin faktör yıla/karmaya göre değişir (dürüst kaba hesap).
     _CO2_T_MWH = 0.44
@@ -123,7 +123,7 @@ def build_excel(ctx) -> bytes:
          f"%{sayi_tr(ctx.mape_pct, 1)}" if ctx.mape_pct is not None else "—"),
         ("BEKLENEN GELİR (DÖNEM)",
          f"{sayi_tr(gelir['toplam_tl'] / 1000.0, 1)} bin TL" if gelir else "—"),
-        (f"CO₂ TASARRUFU · {sayi_tr(_CO2_T_MWH, 2)} t/MWh",
+        (f"KAÇINILAN CO₂ · {sayi_tr(_CO2_T_MWH, 2)} t/MWh (şebeke karması yoğunluğu, varsayım)",
          f"{sayi_tr(ctx.total_mwh * _CO2_T_MWH, 1)} t"),
     ]
     for k, (et, dg) in enumerate(kpis):

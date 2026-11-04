@@ -2,10 +2,13 @@
 
 DUY m.68–69, m.69/A (son değişiklik RG 19.10.2026-33405; 29.10.2026'da konsolide metinden okundu): KGÜP ve EAK her gün
 15:30'a kadar Sistem İşletmecisine (TPYS); PYS erişimi olmayanlar 14:30'a kadar BYTM'ye; TEİAŞ 17:00'a kadar teyit (m.69(4)).
-Saatlik MWh (24 satır; Türkiye'de yaz saati yok). 15 dk dilimleme YALNIZ dengeleme güç piyasası kapsamındaki DENGELEME BİRİMİ
-için, ardışık iki saat farkı ≥ 200 MWh ise (m.69(3)); GES dengeleme birimi olmaktan muaf (m.22(4)) → varsayılan dilimleme yok,
+Saatlik MWh (24 satır; Türkiye'de saat değişimi yok — yaz saati yıl boyu, UTC+3). 15 dk dilimleme YALNIZ dengeleme güç piyasası kapsamındaki DENGELEME BİRİMİ
+için, ardışık iki saat farkı ≥ 200 MWh ise (m.69(3)); GES dengeleme birimi olmaktan muaf (m.22(4)(c); 19.10.2026'dan tek yönlü YAL/YAT seçeneği; bünyede ≥30 MW depolama
+varsa m.22(2)(ç) — bayrak bunları ayırmaz) → varsayılan dilimleme yok,
 `dengeleme_birimi` bayrağıyla açılır. Gün içi güncelleme: GİP kapı kapanışı + 30 dk'ya kadar (m.69(1)).
-EAK = güç (MW), saat başına bir değer (m.4(1), m.69/A(1)); çeyrek satırlarda BÖLÜNMEZ. KGÜP (MWh) ≤ EAK (MW×1 s) ≤ kurulu güç.
+EAK = güç (MW), uzlaştırma dönemi (şu an saat) başına bir değer (m.69/A(1); TPYS Bildirim Dokümanı); çeyrek satırlarda BÖLÜNMEZ. KGÜP (MWh) ≤ EAK (MW×1 s)
+≤ kurulu güç — ürün kuralı/çıkarım; TPYS'deki «kurulu güç»ün GES için elektriksel mi DC mi olduğu BULUNAMADI (ürün capacity_kwp kullanır).
+2027'de KGÜP çözünürlüğü (33405 m.69(1)-(2) + m.91(2)) belirsiz.
 Eksik tahmin saati 0 yazılmaz: dosya üretilmez, eksik saatler bildirilir (KGÜP 0 olan saatte üretimin tamamı sapma sayılır).
 TPYS CSV şablonları (31.10.2026, v2.512; TEİAŞ TPYS giriş sayfası › Duyurular › «CSV Şablonları», 28.02.2018; KGUP.csv 146797, EAK.csv 146796;
 kullanıcı CAPTCHA'yı çözerek indirdi → PVQuant_Acik_Konular_Arastirma/kaynaklar/ ve tests/data/tpys/): KGUP.csv = «Saat,Miktar», 24 satır
@@ -13,10 +16,11 @@ kullanıcı CAPTCHA'yı çözerek indirdi → PVQuant_Acik_Konular_Arastirma/kay
 iklim_verim,mucbir,dissal,guvenlik», saat 0–23 tam sayı, boş hücre = yok, CRLF. Ondalık ayraç şablonda örneklenmemiş (virgül ayraç → nokta
 varsayıldı). Varsayılan `Sablon` KGUP.csv ile bayt bayt aynı çıktı verir; müşteri şablonu (params_json.kgup_sablon) yine önce gelir.
 TPYS Bildirim Dokümanı (ek 648549, 19.02.2025): KGÜP ve EAK UEVÇB bazında, üretim pozitif; KGÜP 14:00–15:30, EAK 09:00–15:30; kurulu güç ile EAK
-farkı gerekçeyle girilir (kaynak yetersizliği / iklim-verim / mücbir / dışsal / güvenlik); GES gece saatlerinde KGÜP 0, EAK 0, kurulu gücün tamamı
-«kaynak yetersizliği»; iletime bağlı lisanssız bireysel bildirir ve EAK olarak KGÜP değerini girebilir; dağıtıma bağlı lisanssız için GTŞ K3
+farkı gerekçeyle girilir (kaynak yetersizliği / iklim-verim / mücbir / dışsal / güvenlik); iletime bağlı lisanssız GES için gece saatlerinde KGÜP 0, EAK 0, kurulu gücün
+tamamı «kaynak yetersizliği» (lisanslı GES'te gece EAK değeri ürün tercihidir); iletime bağlı lisanssız bireysel bildirir ve EAK olarak KGÜP değerini girebilir; dağıtıma bağlı lisanssız için GTŞ K3
 UEVÇB'sine girer. Web servis: EAK «setEak», KGÜP «DGP Veri Giriş Servisi» (katalog TPYS içinden; TPYS Admin › Web Servis Kullanıcı Talep, ≤20 IP).
-KGÜP/EAK girişi 1.2.2018'den beri TPYS'de; EPYS «DGP İşlemleri › KGÜP» yalnız okuma (fddp/list). Dosya üretimi = bildirim DEĞİLDİR; gönderim
+KGÜP/EAK girişi 1.2.2018'den beri TPYS'de (EPİAŞ duyuruları 12.01.2018 ve 31.01.2018); EPYS «DGP İşlemleri › KGÜP» yalnız okuma (fddp/list; ön yüz
+paketine göre çıkarım). Dosya üretimi = bildirim DEĞİLDİR; gönderim
 müşterinin TPYS'sinden.
 Teklif: KGÜP olarak P50 yerine kantil (P10/P25/P50/P75/P90) seçilebilir; öneri dengesizlik.optimal_teklif_kantili.
 """
@@ -166,7 +170,7 @@ def _sayi(v: float) -> str:
 def eak_csv_metni(tablo: pd.DataFrame, kurulu_guc_mw: float, ic_tuketim_mw: float = 0.0, gerekce: str = "kaynak_yetersizligi",
                   gerekce_saat: dict | None = None) -> str:
     """v2.512 — TPYS EAK.csv (146796) biçiminde EAK dosyası: saat 0–23 tam sayı, Miktar = EAK (MW); kurulu güç − EAK − iç tüketim farkı
-    `gerekce` sütununa (TPYS Bildirim Dokümanı: başka bir neden yoksa «kaynak yetersizliği»; GES gece saatlerinde kurulu gücün tamamı),
+    `gerekce` sütununa (TPYS Bildirim Dokümanı, iletime bağlı lisanssız için: başka bir neden yoksa «kaynak yetersizliği»; gece kurulu gücün tamamı — ürün varsayılanı, TEİAŞ teyidi yok),
     öbür gerekçe hücreleri boş (şablondaki gibi). Arıza/bakım TPYS «Arıza ve Bakım bildirimleri» sayfasından ayrıca bildirilir. CRLF, BOM yok."""
     if gerekce not in EAK_GEREKCE:
         raise ValueError(f"gerekçe {sorted(EAK_GEREKCE)} içinden olmalı")

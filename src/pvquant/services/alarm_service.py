@@ -38,7 +38,7 @@ EK_KURALLAR = ("pr_dustu", "clipping_orani_yuksek", "iletisim_kesintisi", "kulla
 ESIK_VARSAYILAN = {"pr_esik": 0.70, "clipping_esik": 0.15, "iletisim_esik_saat": 6, "kullanilabilirlik_esik": 0.97,
                    "dengesizlik_esik": 0.03, "revizyon_esik": 0.10,
                    "takvim_gun_once": 3, "ptf_esik_tl_mwh": 0.0, "ariza_esik": 25,   # v2.519: gün, TL/MWh (0 → PTF ≤ 0; YEKDEM'de V), adet
-                   "sayac_eksik_esik_saat": 24}   # v2.526 (P7b): vadesi gelip yüklenmemiş sayaç saati (adet)
+                   "sayac_eksik_esik_saat": 24}   # v2.526 (P7b): vadesi gelip yüklenmemiş sayaç saati (adet) — ürün parametresi, mevzuat eşiği değil
 IST = ZoneInfo("Europe/Istanbul")
 AYLAR = ("Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara")
 GUNLER = ("Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz")

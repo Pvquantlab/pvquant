@@ -152,7 +152,7 @@ def test_kaydet_oku_fark_gelis(kiraci):
     assert g["son_sayac"].startswith("2026-10-01T07:00") and g["son_scada"].startswith("2026-10-01T07:00") and g["donemler"][0]["donem"] == "2026-09"
     assert g["donemler"][0]["itiraz_son"] == "2026-10-12 17:30" and g["donemler"][0]["sayac_veri"] == "2026-10-10" and not g["donemler"][0]["gecti"] and len(g["donemler"]) == 1
     g2 = ss.gelis(tid, plant, {"sayac_turu": "diger"}, simdi=datetime(2026, 10, 20, 9, tzinfo=timezone.utc))
-    assert g2["ay_eksik_saat"] is None and g2["beklenen"]["kesinlik"] == "mevzuat" and g2["donemler"][0]["gecti"] and g2["donemler"][1]["donem"] == "2026-10"
+    assert g2["ay_eksik_saat"] is None and g2["beklenen"]["kesinlik"] == "belirsiz" and g2["donemler"][0]["gecti"] and g2["donemler"][1]["donem"] == "2026-10"
     assert g2["donemler"][1]["kapsam"]["vadesi_gelen"] == 0 and not g2["donemler"][1]["kapsam"]["tam_ay"]   # diğer sayaç: süren ay henüz vadesi gelmedi
     g3 = ss.gelis(tid, plant, {}, simdi=datetime(2026, 10, 20, 9, tzinfo=timezone.utc)); assert g3["sayac_turu"] is None and "seçin" in g3["beklenen"]["not"]
 

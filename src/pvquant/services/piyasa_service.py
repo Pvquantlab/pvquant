@@ -2,7 +2,7 @@
 
 Kimlik: Settings.epias_kullanici / epias_sifre (env PVQUANT_EPIAS_*). Varsa gece işi son günleri çeker ve
 piyasa_fiyat tablosuna yazar (kaynak='epias', yon='acik'|'fazla'|'dengede'). Yoksa hiçbir şey uydurulmaz: simülatör
-'senaryo' fiyatıyla çalışır (EPDK 2025 yıllık ağırlıklı ortalamaları — PTF 2.651,81 / SMF 2.524,09 TL/MWh; sistem yönü YOK)
+'senaryo' fiyatıyla çalışır (EPDK Aralık 2025 Sektör Raporu 2025 yıllık ortalamaları — PTF 2.651,81 ağırlıklı / SMF 2.524,09 aritmetik TL/MWh; sistem yönü YOK, V/B dalı çalışmaz, k = l = 0,03)
 ve UI her TL alanında bunu söyler (senaryo rozeti). Geçmişi toplu doldurma: geri_doldur() (F-04; zamanlayıcıya bağlanmadı).
 İstemci: pvquant.ext.turkiye.epias (TGT önbellekli, CAS limitleri, İstanbul→UTC).
 """
@@ -18,8 +18,8 @@ DAYANAK_KUNYELERI = (
     "Karar 14968: EPDK Kurul Kararı 14968 (Şeffaflık Platformu veri listesi, 1.1.2027'den), RG 20.10.2026-33406; öncesi Karar 10711"
 )
 
-SENARYO_PTF = 2651.81   # EPDK 2025 yıllık ağırlıklı ortalama, TL/MWh
-SENARYO_SMF = 2524.09
+SENARYO_PTF = 2651.81   # EPDK 2025 yıllık ağırlıklı ortalama PTF (Aralık 2025 Sektör Raporu), TL/MWh
+SENARYO_SMF = 2524.09   # 2025 yıllık ARİTMETİK ortalama SMF (Aralık 2025 Sektör Raporu; Gelişim Raporu 2.525,58) — v2.537 DK-780/796
 SENARYO_AD = "senaryo (EPDK 2025 ortalaması)"
 
 

@@ -560,7 +560,7 @@ def simulasyon(tenant_id, plant: dict, gun: int = 90) -> dict:
                   f"Kural: {k['edt_dayanak']}; " + kupst_not
                   + ("fiyat: EPİAŞ (gerçek saatlik)" if out["fiyat"]["senaryo_saat"] == 0 and out["fiyat"]["epias_saat"] > 0
                      else f"fiyat: {piyasa_service.SENARYO_AD} (EPİAŞ kimliği yok); senaryo saatinde sistem yönü yok → k = l = 0,03 varsayımı")
-                  + ("; 1.1.2027 m.110 metni hukuken belirsiz (varsayılan: 2026 rejimi sürer)" if k["belirsiz_2027"] else "")
+                  + ("; 1.1.2027 m.110 metni hukuken belirsiz (varsayılan: 2026 rejimi sürer — hukuki dayanağı olmayan varsayım)" if k["belirsiz_2027"] else "")
                   + ". Bu bir yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir.")
     return out
 
@@ -608,7 +608,7 @@ def dsg_hesapla_df(programlar: dict[str, pd.DataFrame], fiyat: pd.DataFrame, kat
                    dagitim_anahtari: str = "sapma", luy_istisnalar: dict[str, bool] | None = None,
                    pozisyonlar: dict[str, pd.Series] | None = None) -> dict:
     """SAF (v2.502, F-08). programlar[santral] = program_df çıktısı (ts_utc, gercek_kw, kgup_kw). Yürürlükteki DSG kuralı:
-    üye eşiği (%10 / %5 / 2027 varsayım) PH = max(A, F) ile; aşan kısım bireysel; KÜPST üye bazında toplanır, netleşmez;
+    üye eşiği (%10 / %5 — 2026+ payın %5 alınması yorum / 2027 varsayım) PH = max(A, F) ile; aşan kısım bireysel EDT olarak DST'ye yansıtılır; KÜPST üye bazında toplanır, netleşmez;
     dengesizlik taşımayan segment portföy dışı. Alan adları sözleşme: ayri_tl = tek başına kayıp, net_tl = DSG kaybı,
     kazanc_tl = fark (ayri − net; «netleşme farkı», vaat değil). Ek: edt_tek_tl, edt_dsg_tl, netlesme_farki_tl, kupst_uye_tl, esik.
     29.10: `dagitim_anahtari` (sapma | esit | uretim; sözleşmesel) ile üye başına edt_dsg_tl / netlesme_farki_tl / pay_pct; Σ üye = grup."""
@@ -734,7 +734,7 @@ def _esik_cumlesi(esik) -> str:
     """DSG kartı ilk cümlesi; eşik None → 1.1.2025 öncesi kural (üye eşiği yok, tam netleşme) — 03.11.2026 doğrulama DK-249."""
     if esik is None:
         return "Bu dönemde üye eşiği yoktur (1.1.2025 öncesi, DUY m.111(3)-(5) henüz yok): santrallerin sapmaları DSG içinde tamamen netleşir. "
-    return f"Her santralin sapmasının eşik oranı kadarı, %{esik * 100:.0f} × PH, DSG içinde netleşir; aşan kısım santralin kendisinde kalır. "
+    return f"Her santralin sapmasının eşik oranı kadarı, %{esik * 100:.0f} × PH, DSG içinde netleşir; aşan kısmın tutarı mevzuat gereği DST'ye ayrıca yansıtılır; üyeye aktarımı sözleşmeye bağlıdır. "
 
 
 def dsg_ozet(tenant_id, gun: int = 30, dagitim_anahtari: str = "sapma") -> dict:
@@ -772,7 +772,7 @@ def dsg_ozet(tenant_id, gun: int = 30, dagitim_anahtari: str = "sapma") -> dict:
                        + ("program bildirilen KGÜP'tür (yüklü saatlerde), kalan saatlerde PVQuant önerisi; " if out["program"]["bildirilen_saat"] else "bildirilen KGÜP yüklü değil, program PVQuant önerisidir; ")
                        + ("satış Santral ayarlarındaki pozisyon ayarına göre alınmıştır. " if out["program"]["pozisyon_ayarli"] else "satış programa eşit varsayılmıştır. ")
                        + "EPİAŞ uzlaştırma sonucu değildir."
-                       + (f" Senaryo fiyatlı {out['fiyat']['senaryo_saat']} saatte sistem yönü dengede varsayılmıştır." if out["fiyat"].get("senaryo_saat") else "")
+                       + (f" Senaryo fiyatlı {out['fiyat']['senaryo_saat']} saatte sistem yönü dengede varsayılmıştır (senaryo SMF ≠ PTF ile tutarsız; maliyet alt sınır niteliğinde)." if out["fiyat"].get("senaryo_saat") else "")
                        + (f" Üyelere dağıtım: {out['dagitim_etiket']}; anahtar DSG sözleşmesinde belirlenir." if out.get("dagitim_etiket") else ""))
     if out.get("gecici_m39") and out["santral"] > 1:   # v2.513 rötuş: dağıtım/GTŞ DSG'lerinde 1.1.2027'ye kadar %100 (DUY Geçici m.39) — dsg_ozet dipnotu
         out["not"] += " " + kr.GECICI_M39_DIPNOT

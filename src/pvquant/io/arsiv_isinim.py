@@ -2,9 +2,9 @@
 
 Sıra (kapsama yeterliyse ilk uyan kazanır; her sonuç MeteoData.kaynak ile etiketlenir):
   1. meteo_arsiv — kendi NWP koşularımızın ≤24 s öncülü saatleri ('servis meteosu'; eğitim = servis, kayma yok)
-  2. CAMS Radiation (Copernicus, CC BY 4.0; ~2 gün gecikme; PVQUANT_CAMS_EMAIL kayıtlı e-posta ister)
+  2. CAMS Radiation (Copernicus, CC BY 4.0; ~2 gün gecikme — gözlem, sağlayıcı belgesinde yok; PVQUANT_CAMS_EMAIL kayıtlı e-posta ister)
   3. PVGIS-SARAH3 (JRC, CC BY 4.0; 2005–2023 saatlik; kayıt istemez) — yalnız 2023 sonuna kadar
-  4. NASA POWER — ışınımı aylar gecikmeli gelir; yalnız eski dönem ve son çare (kaba 1°)
+  4. NASA POWER — ışınımı aylar gecikmeli gelir (NASA_GECIKME_GUN eşiği PVQuant seçimi); yalnız eski dönem ve son çare (kaba 1°)
 Hiçbiri kapsamıyorsa None: çağıran dürüstçe hata verir ("CAMS e-postası tanımlayın ya da arşiv biriksin"),
 sessizce Open-Meteo'ya dönmez (v2.270 ile kapatıldı).
 """

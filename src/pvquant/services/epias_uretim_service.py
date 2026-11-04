@@ -4,6 +4,7 @@ Lisanslı santralın saatlik gerçek zamanlı üretimi Şeffaflık Platformu'nda
 ve scada_hourly'ye 'epias' kaynaklı bir yükleme partisi olarak yazılır — yalnız SCADA'nın OLMADIĞI saatlere (ON CONFLICT DO
 NOTHING: kullanıcı yüklemesi her zaman önceliklidir). Santral eşlemesi params_json.epias_santral_id (Şeffaflık powerPlantId;
 santral listesi ucundan bulunur). Saatlik MWh → ortalama kW. Kimlik ya da eşleme yoksa dürüstçe atlanır; durum panelde söylenir.
+Şeffaflık gerçekleşen üretimi UEVM değildir; uzlaştırma yeniden hesabında kullanılmaz (yalnız SCADA'sız saatlerde gerçekleşen kaynağı) — v2.537 DK-480.
 Karne/skill/alarm bu satırları SCADA gibi kullanır — kaynak parti kaydında (ingestion_batches.filename='epias_realtime') görünür.
 """
 from __future__ import annotations

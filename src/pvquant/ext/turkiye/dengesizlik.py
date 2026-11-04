@@ -1,7 +1,7 @@
 """Uzlaştırma kalemleri simülatörü — EDT (DUY m.110(1)-(2)) ve KÜPST (m.110(3)-(6)); kural TARİHE göre (kurallar.py, F-01).
 
 Saatlik (uzlaştırma dönemi u = saat, m.91(1) değişmedi; 15 dakikaya geçen yalnız DGP «ç» alt dönemi (m.91(2), Geçici 40: 1.1.2027'den önce
-başlamaz) — o zaman SMF_N/SMF_P çeyrek SMF'lerin max/min'i olur; 2026'da saat içinde tek SMF var, SMF_N = SMF_P = saatlik SMF):
+başlamaz) — o zaman SMF_N/SMF_P çeyrek SMF'lerin max/min'i olur; 2026'da saat içinde tek SMF var, SMF_N = SMF_P = saatlik SMF — çıkarım, metinde açık hüküm yok):
   EDM = gerçekleşen − piyasa pozisyonu (pozisyon verilmezse KGÜP; MWh).
   2025 rejimi (≤31.12.2025): P(−) = max(PTF, SMF)·(1+k); P(+) = min(PTF, SMF)·(1−l); k = l = 0,03.
   2026 rejimi (≥1.1.2026): P(−) = max(V, PTF, SMF_N)·(1+k_yön); max(PTF, SMF_N) = AFL ise P(−) = AFL·1,05·(1+k_yön) [AFL dalı].
@@ -11,12 +11,14 @@ başlamaz) — o zaman SMF_N/SMF_P çeyrek SMF'lerin max/min'i olur; 2026'da saa
   Programa göre kayıp (karne dili, C §2.2) = eksikte |EDM|·(P(−) − PTF), fazlada EDM·(PTF − P(+)) → «dengesizlik_maliyeti».
   Referans (kusursuz program) geliri = gerçekleşen·PTF; gerçekleşen gelir = pozisyon·PTF + EDT(+) − EDT(−).
 KÜPST: UDÜPS = |UEVM − BUDÜP| (≤31.10.2026) ya da |(UEVM − UEÇM) − BUDÜP| (1.11.2026'dan, Karar 14907); KÜPSM = max(0, UDÜPS − m·BUDÜP);
-  KÜPST = KÜPSM·max(taban 750; PTF; SMF)·n. m/n segment, tarih ve aylık arıza sayısına göre (kurallar.py). BUDÜP verilmezse KGÜP.
+  KÜPST = KÜPSM·max(taban 750; nihai PTF; SMF)·n — payda toleransı aşan MWh (KÜPSM). m/n segment, tarih ve aylık arıza sayısına göre (kurallar.py).
+  BUDÜP verilmezse KGÜP (varsayım: talimat ve SRDM/SFHM yok → KGÜP = KUDÜP; talimatlı saatte tolerans tabanı eksik kalır — v2.537 DK-189).
   m/n doğrulanamıyorsa (segment seçilmemiş, 2025 iletime bağlı lisanssız) KÜPST NaN + durum «kupst_hesaplanamaz» — 0 YAZILMAZ.
 Aylık (m.110(1)): 2025 tek net EDT; 1.1–18.10.2026 EDTA = max(ΣEDT(+);0), EDTB = ΣEDT(−) − min(ΣEDT(+);0);
   19.10.2026'dan dönem bazında (B borcu alacakla netleşmez): EDTA = Σ max(EDT(+);0), EDTB = ΣEDT(−) − Σ min(EDT(+);0).
 EDT ve KÜPST hiçbir yerde tek sayı olarak sunulmaz; toplam yalnız «uzlaştırma kalemleri toplamı» (toplam_maliyet = kayıp + KÜPST).
-DSG: portföy sapmaları saatlik toplanır (dsg_netlestir) — %5 üye eşiği ve KÜPST ayrımı F-08 (sonraki paket), bu görünüm GÖSTERGEDİR.
+DSG (dsg_saatlik): üye PH = max(UEVM, satış); eşik tarihe göre (%10 → %5); eşik altı grup içinde netleşir, aşan bireysel EDT DST faturasına girer
+  (üyeye aktarımı sözleşmesel); KÜPST üye bazında toplanır, netleşmez (DUY m.110(3)-(4)). v2.537 DK-255: docstring güncel davranışa çekildi.
 Teminat: son 3 ayın en yüksek aylık EDT(−) × risk katsayısı — sadeleştirilmiş gösterge, Teminat U&E ile doğrulanmadı.
 Kıyas: iki program (ör. referans vs PVQuant) → aylık kalem farkı (kolon adı 'kurtarilan_tl' API sözleşmesidir; ekranda «referansa göre fark»).
 """
@@ -192,7 +194,7 @@ def aylik_karne(saatlik_df: pd.DataFrame, tz: str = "Europe/Istanbul") -> pd.Dat
 def kiyas(kgup_a: pd.Series, kgup_b: pd.Series, gerceklesen: pd.Series, ptf: pd.Series, smf: pd.Series,
           kat: Katsayilar | None = None, ad_a: str = "referans", ad_b: str = "pvquant", **ek) -> pd.DataFrame:
     """İki program (ör. referans «dün aynı saat» vs PVQuant P50) → aylık kalem toplamı ve FARK ('kurtarilan_tl' sütun adı sözleşmedir;
-    anlamı «a programına göre b programının farkı»; vaat değil, varsayımsal kıyastır)."""
+    anlamı «a programına göre b programının farkı»; vaat değil, varsayımsal kıyastır; panel ve API'de anlamı «referansa göre fark, varsayımsal» — v2.537 DK-019)."""
     A = aylik_karne(saatlik(kgup_a, gerceklesen, ptf, smf, kat, **ek)); B = aylik_karne(saatlik(kgup_b, gerceklesen, ptf, smf, kat, **ek))
     out = pd.DataFrame({f"{ad_a}_tl": A["toplam_maliyet"], f"{ad_b}_tl": B["toplam_maliyet"]})
     out["kurtarilan_tl"] = out[f"{ad_a}_tl"] - out[f"{ad_b}_tl"]
@@ -217,9 +219,10 @@ def dsg_saatlik(programlar: dict[str, pd.Series], gerceklesenler: dict[str, pd.S
                 dagitim_anahtari: str = "sapma") -> dict:
     """F-08 (v2.502) — DSG netleşmesi, DUY m.111(3)-(5) + Karar 13869: her üye için PH = max(UEVM, satış) (saf satıcı GES: max(A, F));
     üyenin |EDM|'sinin esik × PH kadarı grupta netleşir, aşan kısım üyenin kendi P(−)/P(+)'sıyla bireysel kalır; grubun net EDM'si
-    grup fiyatıyla (aynı saatlik birim fiyat). Eşik tarihe göre kural tablosundan (%10 → %5, 2027 varsayım) ya da esik_oran.
-    KÜPST üye UEVÇB'si bazında (segment/tarih/arıza) hesaplanır ve TOPLANIR, netleşmez (m.110(6)). Dengesizlik taşımayan
-    segmentteki üye (dağıtım lisanssız, öz tüketim) portföye GİRMEZ, 'disi' listesinde döner. Toplayıcı DSG'de yer alamaz (m.20(4)).
+    grup fiyatıyla (aynı saatlik birim fiyat). Eşik tarihe göre kural tablosundan (%10 → %5 — 2026+ için grupta sayılan payın %5 alınması yorumdur; 2027 varsayım) ya da esik_oran.
+    KÜPST üye UEVÇB'si bazında (segment/tarih/arıza) hesaplanır ve TOPLANIR, netleşmez (DUY m.110(3)-(4); m.110(6) yalnız toplayıcı portföyü). Eşiği aşan bireysel EDT DST faturasına girer,
+    üyeye aktarımı sözleşmeseldir. Dengesizlik taşımayan
+    segmentteki üye (dağıtım lisanssız, öz tüketim) portföye GİRMEZ, 'disi' listesinde döner. Toplayıcı DSG'de yer alamaz (DUY m.20(4)); iletime bağlı lisanssızın DSG üyeliği varsayımı doğrulanmadı.
     Üyelere dağıtım (29.10): grubun EDT'si üyelere `dagitim_anahtari` ile paylaştırılır — "sapma" (saatlik |grup payı| oranı; varsayılan),
     "esit" (1/n), "uretim" (saatlik gerçekleşen üretim oranı). Anahtar SÖZLEŞMESELDİR (DSG sözleşmesi belirler), mevzuat sabitlemez;
     pay sıfıra bölünürse eşit dağıtılır. Üye: edt_dsg = edt_bireysel + pay × edt_grup; netlesme_farki = edt_dsg − edt_tek; Σ üye = grup.
@@ -290,7 +293,8 @@ UEVCB_TANIMSIZ = "UEVÇB kodu girilmedi (tek birim varsayıldı)"
 def portfoy_kupst_saatlik(programlar: dict[str, pd.Series], gerceklesenler: dict[str, pd.Series], ptf: pd.Series, smf: pd.Series, *,
                           uevcb: dict[str, str] | None = None, kurulu_guc: dict[str, float] | None = None,
                           dagitim_anahtari: str = "sapma") -> dict:
-    """Dağıtıma bağlı lisanssız santraller: KÜPST santralde değil GTŞ/toplayıcı UEVÇB'sinde (DUY m.69(11), m.110(6)(b)(3), RG 19.10.2026-33405).
+    """Dağıtıma bağlı lisanssız santraller: KÜPST santralde değil GTŞ/toplayıcı UEVÇB'sinde (GTŞ: DUY m.69(11) + m.110(3); toplayıcı: m.110(6)(b)(3); RG 19.10.2026-33405);
+    üreticiye yansıtma m.132/Ç(18) ile olasıdır.
     UEVÇB başına program ve gerçekleşen TOPLANIR; sapma BRÜT (Karar 14907 Md.1(3): sadece üretim miktarı); KÜPSM = max(|ΣG − ΣK| − m·ΣK, 0),
     KÜPST = KÜPSM·max(750, PTF, SMF)·n; m/n kural tablosundan (`kupst_kurali(…, portfoy=True)`: 14907 0,25 / 0,01 1.11.2026'dan; öncesi
     belirsiz → NaN, durum 'kupst_hesaplanamaz'). Üyelere dağılım `dagitim_anahtari` (sapma: |G_i − K_i| payı; uretim: G_i payı; kurulu:

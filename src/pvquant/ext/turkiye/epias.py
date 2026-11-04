@@ -30,7 +30,7 @@ DAYANAK_KUNYELERI = (
 TGT_URL = "https://giris.epias.com.tr/cas/v1/tickets"
 KOK = "https://seffaflik.epias.com.tr/electricity-service"
 UC = {
-    "ptf": ("/v1/markets/dam/data/mcp", "price"),
+    "ptf": ("/v1/markets/dam/data/mcp", "price"),   # mcp = nihai PTF (DUY NPTF; tek teklif bölgesi TR1) — v2.537 DK-441
     "smf": ("/v1/markets/bpm/data/system-marginal-price", "systemMarginalPrice"),
     "sistem_yonu": ("/v1/markets/bpm/data/system-direction", "systemDirection"),
     "kgup": ("/v1/generation/data/dpp", "toplam"),

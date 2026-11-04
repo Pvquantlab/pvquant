@@ -67,7 +67,7 @@ def dogrula(t: dict) -> dict:
         if y is not None:
             out["yerli_katki_usd_cent"] = y
         out["yerli_katki"] = bool(t.get("yerli_katki"))
-    else:   # cok_zamanli — gündüz 06–17 / puant 17–22 / gece 22–06 (İstanbul)
+    else:   # cok_zamanli — gündüz 06–17 / puant 17–22 / gece 22–06 (İstanbul; EPDK Tarife Uygulamaları U&E m.18(2), güncellenmiş sayaç dilimleri; eskalasyon kullanıcı varsayımı)
         for ad2 in ("gunduz_tl_mwh", "puant_tl_mwh", "gece_tl_mwh"):
             v = float(t.get(ad2) or 0)
             if not (0 < v < 100000):

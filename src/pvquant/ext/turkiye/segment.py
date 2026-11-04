@@ -4,13 +4,19 @@ Segmentler (kaynak: DUY m.69, m.110–111 (RG 14.04.2009-27200; son değişiklik
 5346 sayılı Kanun (RG 18.05.2005-25819) ve YEK Yön. (RG 01.10.2013-28782); CK 7189 (RG 01.05.2023-32177) / CK 2949 (RG 18.09.2020-31248) / CK 11415
 (RG 13.06.2026-33279) — tam künyeler kunye.py; v2.535):
   LISANSLI_SERBEST      : gelir = üretim·PTF (ikili anlaşma varsa sözleşme fiyatı); dengesizlik + KÜPST santralde (ya da DSG'de)
-  LISANSLI_YEKDEM       : gelir = üretim·YEKDEM fiyatı (TL/MWh, aylık uzlaştırma); dengesizlik AYRI hesaplanır (santral/DSG) — YEKDEM içi
-                          dağılım ayrıntısı teyit edilemedi → parametre
-  YEKA                  : sözleşme fiyatı; dengesizlik sözleşmeye göre (parametre)
-  LISANSSIZ_ILETIM      : KGÜP bildirir (md. 69(10)); dengesizlik toplayıcı/GTŞ portföyünde, KÜPST toplayıcı portföyünde
-  LISANSSIZ_DAGITIM     : KGÜP yok; ihtiyaç fazlası GTŞ/toplayıcı alır (10 yıl YEKDEM); doğrudan dengesizlik YOK — toplayıcı taşır
-  OZ_TUKETIM_SAATLIK    : 1 Mayıs 2026 saatlik mahsuplaşma: saatlik net = üretim − tüketim; fazla GTŞ fiyatıyla, eksik tarifeyle
-Çıktı: kurallar tablosu + saatlik gelir hesabı; dengesizlik simülatörüne 'kimin cebinden' bilgisi.
+  LISANSLI_YEKDEM       : gelir = üretim·YEKDEM fiyatı (TL/MWh, aylık uzlaştırma); dengesizlik AYRI hesaplanır (santral/DSG); YEKDEM portföy
+                          dengesizliği 01.05.2016'dan mülga (RG 29.04.2016-29698), pay 1,0; m.23(6) dışı üretim 19.10.2026'dan (yekdem_service)
+  YEKA                  : yarışma fiyatı; şartname süresince YEKDEM kapsamında (5346 m.4(2)); dengesizlik ve KÜPST santralde (YEK Yön. m.23(1)),
+                          şartname özel hükmü varsa parametre (sözleşme hükmü doğrulanmadı)
+  LISANSSIZ_ILETIM      : KGÜP bildirir (DUY m.69(10)); dengesizlik toplayıcı/GTŞ portföyünde (dengesizlik_tasir_mi True — kaynaksız, doğrulanmadı),
+                          KÜPST toplayıcı portföyünde
+  LISANSSIZ_DAGITIM     : santral sahibi KGÜP bildirmez, KGÜP GTŞ/toplayıcı UEVÇB'sinden (DUY m.69(11)); KÜPST portföy UEVÇB'sinde 1.11.2026'dan
+                          (Karar 14907); ihtiyaç fazlasını GTŞ/toplayıcı alır (10 yıl, sonrası CK 11415); EDT/KÜPST santralde değil — talimat tutarları
+                          (DUY m.75(3)) ve LÜY Ek m.4 tahsilatı yansıtılabilir
+  OZ_TUKETIM_SAATLIK    : 1 Mayıs 2026 saatlik mahsuplaşma (LÜY m.4(1)(ö), RG 02.04.2026-33212; mesken aylık m.26(20)): saatlik net = üretim − tüketim;
+                          model fazlayı GTŞ fiyatıyla, eksiği tarifeyle değerler — (ç)/(d) bendi tesislerinde fazlaya ödeme yok (m.26(5)), modellenmedi; fiilî uygulama teyitsiz
+Çıktı: kurallar tablosu + saatlik gelir hesabı; dengesizlik simülatörüne 'kimin cebinden' bilgisi. GTŞ/toplayıcı portföy netleşmesi modellenmez
+(tek santral, üst sınır). KÜPST santral bazında hesaplanır (DUY m.110(6)(b)(2)); tahakkuk GTŞ/toplayıcıya, yansıtma m.132/Ç(18). Toplayıcı portföyü DSG değildir (DUY m.20(4)).
 """
 from __future__ import annotations
 
@@ -43,10 +49,10 @@ class Segment(str, Enum):
 
 KURALLAR = pd.DataFrame([
     {"segment": Segment.LISANSLI_SERBEST, "kgup_yukumlu": True, "dengesizlik_sahibi": "santral/DSG", "kupst": True, "fiyat": "PTF / ikili anlaşma", "uzlastirma": "saatlik"},
-    {"segment": Segment.LISANSLI_YEKDEM, "kgup_yukumlu": True, "dengesizlik_sahibi": "santral/DSG (YEKDEM içi dağılım: parametre)", "kupst": True, "fiyat": "YEK fiyatı: Cetvel I (USD cent × günlük TCMB kuru) ya da 7189 CK aylık ilan (yekdem_service)", "uzlastirma": "aylık (gelir) + saatlik (dengesizlik)"},
+    {"segment": Segment.LISANSLI_YEKDEM, "kgup_yukumlu": True, "dengesizlik_sahibi": "santral/DSG (YEKDEM portföy dengesizliği 01.05.2016'dan mülga)", "kupst": True, "fiyat": "YEK fiyatı: Cetvel I (USD cent × günlük TCMB kuru) ya da 7189 CK aylık ilan (yekdem_service)", "uzlastirma": "aylık (gelir) + saatlik (dengesizlik)"},
     {"segment": Segment.YEKA, "kgup_yukumlu": True, "dengesizlik_sahibi": "sözleşmeye göre", "kupst": True, "fiyat": "YEKA sözleşme", "uzlastirma": "sözleşme"},
     {"segment": Segment.LISANSSIZ_ILETIM, "kgup_yukumlu": True, "dengesizlik_sahibi": "toplayıcı/GTŞ portföyü", "kupst": True, "fiyat": "LÜY fiyatı (GTŞ alımı, 10 yıl) / sonrası CK 11415 formülü", "uzlastirma": "saatlik"},
-    {"segment": Segment.LISANSSIZ_DAGITIM, "kgup_yukumlu": False, "dengesizlik_sahibi": "GTŞ/toplayıcı (santral taşımaz)", "kupst": False, "fiyat": "LÜY fiyatı (GTŞ alımı, 10 yıl) / toplayıcı sözleşmesi", "uzlastirma": "saatlik mahsup"},
+    {"segment": Segment.LISANSSIZ_DAGITIM, "kgup_yukumlu": False, "dengesizlik_sahibi": "GTŞ/toplayıcı (santral EDT/KÜPST taşımaz; talimat tutarları ve LÜY Ek m.4 tahsilatı yansıtılabilir)", "kupst": False, "fiyat": "LÜY fiyatı (GTŞ alımı, 10 yıl) / toplayıcı sözleşmesi", "uzlastirma": "saatlik mahsup"},
     {"segment": Segment.OZ_TUKETIM_SAATLIK, "kgup_yukumlu": False, "dengesizlik_sahibi": "yok (mahsuplaşma)", "kupst": False, "fiyat": "saatlik net: fazla GTŞ fiyatı, eksik tarife", "uzlastirma": "saatlik mahsup"},
 ]).set_index("segment")
 
@@ -59,7 +65,7 @@ class Santral:
     yekdem_fiyat_tl_mwh: float | None = None
     sozlesme_fiyat_tl_mwh: float | None = None
     dsg: str | None = None            # DSG/toplayıcı adı
-    yekdem_dengesizlik_payi: float = 1.0   # YEKDEM içi: santralin taşıdığı dengesizlik payı (teyit edilemedi → parametre)
+    yekdem_dengesizlik_payi: float = 1.0   # YEKDEM içi pay: YEKDEM portföy dengesizliği 01.05.2016'dan mülga → 1,0 (parametre geriye uyum için kaldı)
 
     def kural(self) -> pd.Series:
         return KURALLAR.loc[self.segment]

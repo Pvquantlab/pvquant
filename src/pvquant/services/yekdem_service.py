@@ -7,14 +7,15 @@ Rejim (işletmeye giriş tarihinden türetilir; Santral ayarları › Satış ta
   7189    — 1.7.2021–31.12.2030 arasında işletmeye girenler: 7189 sayılı CK (RG 1.5.2023-32177) Ek-1 güneş 106,00 TL kr/kWh başlangıç,
             10 yıl; yerli katkı 28,80 kr/kWh, 5 yıl; bütünleşik depolamalı 125,00 kr (yerli 38,45, 10 yıl). Ek-2: aylık güncelleme
             (%25 ÜFE, %15 TÜFE, %30 USD, %30 Avro); hesaplanan TL fiyat bir önceki ayın günlük USD alış kuru ortalamasıyla ¢/kWh'a
-            çevrilip 4,95–6,05 (depolamalı 5,85–7,15) bandına kırpılır. EPİAŞ her ay ilan eder (yekdem_fiyat; Ağustos–Ekim 2026 tohum,
+            çevrilip 4,95–6,05 (depolamalı 5,85–7,15) bandına kırpılır. Kapsam notu (v2.537): yalnız «bütünleşik depolamalı» türü
+            fiyat/band seçiminde tanınır; 6446 m.7(10)-(11) depolamalı tesis, m.8(11) 1/5/2023 sınırı, sanal kayıt ve YEK Yön. m.8(10)/(13) dışlamaları modellenmedi. EPİAŞ her ay ilan eder (yekdem_fiyat; Ağustos–Ekim 2026 tohum,
             EPİAŞ 01.10.2026 duyurusu). PVQuant formülü yeniden hesaplamaz: ilanı kullanır, band konumunu kurla gösterir.
   31.12.2030 sonrası işletmeye giriş: fiyat kararı yok → «belirsiz».
   Süre sınırı (v2.532; 03.11.2026 doğrulama arşivi DK-287/DK-285, kanıt A): Cetvel I fiyatı son yararlanma yılının sonuna kadar (takvim.yekdem_suresi:
   Karar 5905-27 grubu / CK 2949 / kullanıcı başlangıç yılı); 7189 fiyatı işletmeye girişten 10 yıl. Sonrası fiyat yok (kaynak «sure_doldu»).
-m.23(6) (YEK Yön., RG 19.10.2026-8): acil durum/YAT talimatı verilen ya da (PTF veya SMF < V ve sistem yönü enerji fazlası) saatlerde
+m.23(6) (YEK Yön., RG 19.10.2026-33405): acil durum/YAT talimatı verilen ya da (PTF veya SMF < V ve sistem yönü enerji fazlası) saatlerde
 KGÜP'ün üstündeki üretim, PTF < YEK fiyatı (+ yerli katkı) ise YEKDEM dışında kalır; KGÜP bildirilmemişse KGÜP = 0. EPİAŞ'ın uygulaması
-(saatlik mi, hangi KGÜP sürümü, ilk fatura dönemi) BULUNAMADI → işaret «belirsiz» etiketlidir; talimat saatleri (veri yok) dâhil değil.
+(ilk fatura dönemi ve EPİAŞ hesap kalemi) BULUNAMADI; dönem bazı ve DGP başlangıcındaki KGÜP sürümü metinden okunur → işaret «belirsiz» etiketlidir; talimat saatleri (veri yok) dâhil değil.
 Bildirilen KGÜP dosyası yüklenmemiş saatte PVQuant önerisi program sayılır (dosya yüklenmedi ≠ EPİAŞ'a bildirilmedi); v2.532 (DK-301, kanıt A):
 o saatler için mevzuat okuması (KGÜP = 0 → üretimin tamamı dışarıda) ayrıca kgup0_mwh / kgup0_tl sütunlarında ve özette verilir.
 YEKDEM dışı kalan MWh için fark = YEK fiyatı − j × PTF (j = 0,980, güneş; Karar 7667): YEKDEM içinde kalsaydı YEK fiyatı alır, PTF × j
@@ -61,11 +62,11 @@ EPIAS_DUYURU_URL = ("https://www.epias.com.tr/tum-duyurular/piyasa-duyurulari/el
                     "isletmeye-girecek-yek-belgeli-yenilenebilir-enerji-kaynaklarina-dayali-elektrik-uretim-tesisleri-icin-uygulanacak-fiyatlar-hk-38/")
 EPIAS_DUYURU_BASLIK = "EPİAŞ duyurusu: 01.07.2021–31.12.2030 arasında işletmeye girecek YEK belgeli tesisler için uygulanacak fiyatlar (01.10.2026)"
 _TARIH_RE = re.compile(r"(\d{1,2})\.(\d{1,2})\.(\d{4})|(\d{4})-(\d{2})-(\d{2})")
-M23_6_NOTU = ("YEK Yön. m.23(6) (RG 19.10.2026-8, 19.10.2026'dan): PTF ya da SMF taban değerin (V) altında ve sistem yönü enerji fazlası olan saatte "
+M23_6_NOTU = ("YEK Yön. m.23(6) (RG 19.10.2026-33405, 19.10.2026'dan): PTF ya da SMF taban değerin (V) altında ve sistem yönü enerji fazlası olan saatte "
               "programın (KGÜP) üstündeki üretim, PTF o saatin YEK fiyatından (+ yerli katkı) düşükse YEKDEM dışında kalır; KGÜP bildirilmemişse "
               "mevzuat KGÜP'ü 0 sayar (bildirilen KGÜP yüklenmemiş saatlerde PVQuant önerisi program sayılır; KGÜP = 0 okuması ayrıca verilir). "
               "Acil durum ya da yük atma talimatı (YAT) verilen saatler de kapsamdadır; talimat verisi PVQuant'ta olmadığından sayılmadı. "
-              "EPİAŞ'ın uygulaması (saatlik mi, hangi KGÜP sürümü, ilk fatura dönemi) doğrulanamadı: işaret bilgi amaçlıdır, uzlaştırma sonucu değildir. "
+              "Uzlaştırma dönemi bazında ve DGP başlangıcında bildirilen KGÜP ile (metin); EPİAŞ'ın ilk fatura dönemi ve hesap kalemi doğrulanamadı: işaret bilgi amaçlıdır, uzlaştırma sonucu değildir. "
               "Fark tutarı = YEKDEM dışı MWh × (YEK fiyatı − 0,98 × PTF).")
 
 

@@ -29,13 +29,13 @@ KAYNAKLAR: dict[str, KaynakBilgisi] = {
         "1940→, 0.25°, saatlik; ssrd/t2m/u10/v10/tcc; ~5 gün gecikme"),
     "nasa_power": KaynakBilgisi("NASA POWER", "NASA LaRC", "Açık (NASA veri politikası)",
         "https://power.larc.nasa.gov/docs/services/", "https://power.larc.nasa.gov/", True,
-        "2001→ saatlik; 1° ışınım (kaba); atıf önerilir"),
+        "2001→ saatlik; 1° ışınım (kaba); atıf ve yeniden dağıtım bildirimi istenir"),
     "epias": KaynakBilgisi("EPİAŞ Şeffaflık Platformu", "EPİAŞ", "Kullanım şartları (kayıtlı erişim)",
         "https://seffaflik.epias.com.tr/", "https://seffaflik.epias.com.tr/electricity-service/technical/tr/index.html", True,
         "PTF/SMF/KGÜP/gerçek zamanlı üretim/dengesizlik; TGT kimlik; CAS limitleri"),
     "open_meteo": KaynakBilgisi("Open-Meteo", "Open-Meteo", "CC BY 4.0 (veri); ücretsiz katman ticari ✗",
         "https://open-meteo.com/en/terms", "https://open-meteo.com/", False,
-        "GEÇİŞ TAMAMLANANA KADAR: ücretsiz katman ticari üründe uyumluluk borcu"),
+        "KULLANILMIYOR: varsayılan kaynak açık NWP (meteo_kaynak=acik); ücretsiz katman ticari kurulumda açılırsa şartlar ihlal edilir"),
 }
 
 # v2.535 (Hakkında doğrulama turu): lisans sayfası son ne zaman, hangi metinle doğrulandı. Yalnız bu oturumda GERÇEKTEN
