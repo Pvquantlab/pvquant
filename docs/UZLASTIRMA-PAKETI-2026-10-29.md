@@ -732,3 +732,32 @@ Tam takım 892 geçti / 1 atlandı (ilk koşuda 1 başarısız: dizin bazlı tes
 (`kanit/santralim-teknik-kullanilabilirlik-mtbf-2026-11-04.jpg`, `kanit/vitrin-rakamlar-0411-2026-11-04.jpg`).
 Doğrulanamayan / sonraya: bankable σ etkisi canlı santralde ≥13 ay ölçüm ister; MTBF yalnız olay kaydına girilen arızalardan (otomatik tespit edilen arıza saatleri olay değildir); kullanılabilirlik
 istisna/birim bazlı kütüphane (zaman/enerji tabanlı, `birim_bazli`, `sozlesme`) hâlâ bağlı değil → P8a performans katmanı; «32 kapatılmış bulgu» yeniden sayılmadı.
+
+# Otuz ikinci paket — v2.532 (04.11.2026, canlı): Doğrulama düzeltmeleri II — AFL 2017 halkası, YEKDEM süre sınırı ve CK 2949, 7189 yedek dal kapalı, m.23(6) KGÜP = 0 okuması, sayaç çekişinden UEÇM, teminat katsayısı notu; saat × gün hata haritası kaldırıldı, saat profili Kalibrasyon'da
+
+Commit `f396f9c`, CI #676. Dağıtım: api + web imajı (ssh); göç yok. Canlı: index.html ve JS/CSS birebir (25/25); api «startup complete», worker «basladi»; /hata-matrisi canlıda 404, /saat-profili kimliksiz 422.
+Kaynak: 03.11.2026 doğrulama arşivinin 04.11 kapanışı (1.040 DK; 40_Yonetici_Degerlendirmesi «en yüksek etkili 10 bulgu», 30 etki matrisi #1–#25). Ölçüt: kanıt A, müşteriye görünen yolda,
+yürürlükte ya da geriye dönük hesapta. Formül çekirdeği değişmedi; UEÇM girdisi motorda zaten vardı (uecm_mwh), servis geçirmiyordu.
+DK-016/DK-082 (KISMEN, A): `_AFL_ZINCIRI`'ne Karar 6851 Geçici 1(3) (RG 6.1.2017-29940) — 7.1.2017–28.2.2017 teslim günleri 500 TL/MWh, 1.3.2017'den 2.000; RG lafzı 6.1.2017 ve 1.3.2017
+günleri açık (EPİAŞ 5.1.2017 ve 24.2.2017 duyuruları esas; 41 EPİAŞ-158 sorusu). 2016 ve 2018–2019 ara kararı hâlâ doğrulanmadı (etiket).
+DK-306/DK-304 (A): `takvim.yekdem_suresi` 1.1–30.6.2021 girişli tesiste CK 2949 m.1(1) (RG 18.9.2020-31248) — Cetvel I 31.12.2030'a kadar (ilk yıl 2022, son yıl 2030; eski kod 5905-27
+grubuyla 2031 veriyordu). `rejim_turet` kaynak cümlesi CK 2949'u söyler.
+DK-287/DK-285 (A): `yekdem_service.gunluk_fiyat_serisi` destek süresi dolan günlerde fiyat üretmez (kaynak `sure_doldu`): Cetvel I → takvim son yararlanma yılı (5905-27 / 2949 / kullanıcı
+başlangıç yılı); 7189 → işletmeye girişten 10 yıl (Ek-1). Süre türetilemiyorsa sınır yok.
+DK-294 (KISMEN, A): `tarife_service._yekdem_tarife` 7189 rejiminde ilan yoksa ¢ × elle kur üretmez, açık hata («ilan Yönetim › Fiyat ve kur'dan girilir»); yedek dal yalnız Cetvel I'de.
+DK-301 (A): m.23(6) işaretinde bildirilen KGÜP yüklenmemiş saatler için mevzuat okuması ayrı sütun (kgup0_mwh/kgup0_tl: KGÜP = 0 → üretimin tamamı, program altı saatler dâhil) ve özette
+kgup0_saat/mwh/tl; Doğruluk cümlesi iki okumayı yan yana verir («dosya yüklenmedi ≠ EPİAŞ'a bildirilmedi» — 14 raporu §9 tutumu). Program okuması değişmedi.
+DK-180/DK-195/DK-192 (A): `program_df` sayaç satırındaki çekişi `cekis_kw` olarak taşır; `saatlik_hesap` 1.11.2026'dan net sapmada UEÇM olarak düşer (motor `uecm_mwh`); pv'ye `uecm` ve `net_sapma`
+sütunu; program özetinde `uecm_saat`, `net_sapma_saat`, `uecm_etiketi` («UEÇM verisi yok, 0 varsayıldı: net sapma brüt sapmaya eşit» ya da «N saatte sayaç çekişinden»); KÜPST etiketi ve
+döküm notu bunu söyler. Gece KGÜP = 0 saatinde çekişin KÜPSM'e girmesi (DK-192 çıkarımı) motor formülünün sonucudur, ayrı kural eklenmedi.
+DK-528 (KISMEN, A): teminat notu «risk katsayısının başlangıç değeri 1,5 — Teminat U&E Geçici m.1; güncel değer katılımcı portalında, kamuya açık kaynakta bulunamadı»; motor varsayılanı 1,0
+kaynaksız diye işaretli, servis varsayılan kullanmaz (değişmedi).
+Hata haritası (kullanıcı kararı, 04.11): Doğruluk'taki saat × gün hata haritası (v2.111, 720 hücre + visualMap) kaldırıldı — müşteri için karar üretmiyor, günlük sütun = WMAPE grafiği,
+saat profili tek özetiydi; 1440'ta sayfa 4.028 → 3.842 px. Haritanın işe yarar bilgisi (saate göre sistematik sapma) Kalibrasyon sayfasına «Saate göre ortalama sapma» kartı olarak taşındı:
+accuracy_service.saat_profili_hesapla (saf; saat başına ortalama işaretli hata, mutlak hata, n; sistematik = |ort| ≥ %5 kapasite ve n ≥ 5) + /saat-profili ucu (/hata-matrisi kalktı);
+kart yatay çubuk + bitişik saat aralıklarıyla cümle («12–15 saatlerinde ortalama +647 kW fazla tahmin»), AC sınırı/kırpma ve sabah sis ipucu. ECharts'tan HeatmapChart ve VisualMapComponent çıktı.
+Alınmayanlar: `gelir()` yolundaki lisanssız satırları (DK-644/652/653/654/662/668/785) — fonksiyon bağlı değil; DK-326 (YEKBED net/brüt, kanıt E); DK-322 yerli katkı süre başlangıcı (gün mü
+takvim yılı mı açık); DK-660 LÜY Ek m.4 (talimat verisi yok); DK-315 depolamalı (veri yok).
+Testler: tests/test_dogrulama_v2532.py 7 (saat profili saf çekirdek — sistematik öğle saatleri, eşik altı sabah, boş/kısa pencere; AFL 6851 sınır günleri; 2949 grubu; süre doldu Cetvel I/kullanıcı yılı/2949/7189; 7189 yedek dal hatası; m.23(6) KGÜP = 0 okuması; UEÇM net sapma
+KÜPSM = 0,3 − 0,08 ve 1.11 öncesi etkisiz), test_sayac çekiş sütunu, test_yekdem 2045 → sure_doldu. Tam takım 899 geçti / 1 atlandı (7 dk 10 s); web tsc 0, 103, oxlint 0, build.
+Doğruluk (a3) ve Kalibrasyon 1440/375 taşma 0 (`kanit/dogruluk-m23-6-kgup0-2026-11-04.jpg`, `kanit/kalibrasyon-saat-profili-2026-11-04.jpg`). Sahte API tarihinde (29.10) net sapma yok → UEÇM etiketi canlı veride 1.11 sonrası görünür.
