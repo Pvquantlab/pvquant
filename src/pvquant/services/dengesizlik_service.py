@@ -326,7 +326,9 @@ DOKUM_NOTU_SAYAC = (" uretim_kaynak: sayac_olculmus = o saatin gerçekleşeni y�
 DOKUM_NOTU = ("Yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir. program_kaynak: bildirilen = TPYS'ye bildirildiği beyan edilerek yüklenen KGÜP "
               "(TPYS kabulü doğrulanmaz); oneri = PVQuant'ın bir gün önce 15:30'dan önceki son tahmininin P50'si. sapma = gerçekleşen − pozisyon (EDM). "
               "edt_borc = eksik üretim tutarı (öder), edt_alacak = fazla üretim tutarı (alır; düşük fiyat saatinde negatif olabilir). "
-              "kupsm = tolerans (m × program) üstündeki sapma MWh; kupst = kupsm × max(taban; PTF; SMF) × n. Saatler Türkiye saatidir (Europe/Istanbul).")
+              "kupsm = tolerans (m × program) üstündeki sapma MWh; kupst = kupsm × max(taban; PTF; SMF) × n. Saatler Türkiye saatidir (Europe/Istanbul). "
+              "DUY m.71(3): teklifin gerçek zamandan yarım saat öncesine kadar talimatlandırılması ya da UEVÇB'nin kısıt listesine alınması hâlinde KGÜP o saatte "
+              "kesinleşmiş program sayılır; PVQuant kısıt listesini ve T−30 talimatlarını veri olarak almaz, bu saatler dökümde ayrıca işaretlenmez (program sapması olduğu gibi görünür).")
 DOKUM_NOTU_YEKDEM = (" YEKDEM sütunları (lisanslı YEKDEM, tarife YEKDEM): yek_fiyat = o saatin YEK fiyatı (+ yerli katkı; Cetvel I günün TCMB alış kuruyla, 7189 "
                      "ayın EPİAŞ ilanı); m23_6 = YEK Yön. m.23(6) işareti (evet: PTF ya da SMF < V ve sistem fazlası saatinde program üstü üretim ve PTF < YEK "
                      "fiyatı → YEKDEM dışı; ptf_yek_ustu: şartlar var, PTF ≥ YEK fiyatı; kapsam_disi: 19.10.2026 öncesi; EPİAŞ uygulaması belirsiz, talimat "

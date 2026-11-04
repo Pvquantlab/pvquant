@@ -8,13 +8,18 @@ Segmentler (kaynak: DUY m.69, m.110–111 (RG 14.04.2009-27200; son değişiklik
                           dengesizliği 01.05.2016'dan mülga (RG 29.04.2016-29698), pay 1,0; m.23(6) dışı üretim 19.10.2026'dan (yekdem_service)
   YEKA                  : yarışma fiyatı; şartname süresince YEKDEM kapsamında (5346 m.4(2)); dengesizlik ve KÜPST santralde (YEK Yön. m.23(1)),
                           şartname özel hükmü varsa parametre (sözleşme hükmü doğrulanmadı)
-  LISANSSIZ_ILETIM      : KGÜP bildirir (DUY m.69(10)); dengesizlik toplayıcı/GTŞ portföyünde (dengesizlik_tasir_mi True — kaynaksız, doğrulanmadı),
-                          KÜPST toplayıcı portföyünde
+  LISANSSIZ_ILETIM      : KGÜP bildirir (DUY m.69(10)); dengesizlik toplayıcı/GTŞ portföyünde — v2.538 (EK-3 DK-653/DK-785, kanıt A): EDT'nin tesis
+                          sahibine yansıtılmasına dair açık hüküm DUY'da bulunamadı, yansıyan kalemler talimat tutarlarıdır (m.75(3)); bu yüzden
+                          dengesizlik_tasir_mi False (eski «santral taşır, pay 1,0» varsayımı kaynaksızdı), yansıtma sözleşme konusudur;
+                          KÜPST santral bazında hesaplanır (Karar 14907 m.2(1)(c): 0,02; m.3(1)(d) tolerans 0,20; 1.11.2026)
   LISANSSIZ_DAGITIM     : santral sahibi KGÜP bildirmez, KGÜP GTŞ/toplayıcı UEVÇB'sinden (DUY m.69(11)); KÜPST portföy UEVÇB'sinde 1.11.2026'dan
                           (Karar 14907); ihtiyaç fazlasını GTŞ/toplayıcı alır (10 yıl, sonrası CK 11415); EDT/KÜPST santralde değil — talimat tutarları
                           (DUY m.75(3)) ve LÜY Ek m.4 tahsilatı yansıtılabilir
   OZ_TUKETIM_SAATLIK    : 1 Mayıs 2026 saatlik mahsuplaşma (LÜY m.4(1)(ö), RG 02.04.2026-33212; mesken aylık m.26(20)): saatlik net = üretim − tüketim;
-                          model fazlayı GTŞ fiyatıyla, eksiği tarifeyle değerler — (ç)/(d) bendi tesislerinde fazlaya ödeme yok (m.26(5)), modellenmedi; fiilî uygulama teyitsiz
+                          model fazlayı GTŞ fiyatıyla, eksiği tarifeyle değerler — (ç)/(d) bendi tesislerinde fazlaya ödeme yok (m.26(5)), modellenmedi; fiilî uygulama teyitsiz.
+                          v2.538 KAPSAM SINIRI (EK-3 DK-662/DK-668/DK-696, kanıt A): LÜY m.26(17) iki kat sınırı (12.5.2019 ve sonrası çağrı mektuplu
+                          tesiste yıllık üretimin ilişkili tüketimin iki katını aşan kısmına ödeme yok) ve m.26(20) mesken aylık mahsup istisnası
+                          modellenmedi; öz tüketim/saatlik mahsup hesabı ürün yüzeyine bağlı DEĞİL (gelir() çağrılmaz, tüketim verisi girişi yok)
 Çıktı: kurallar tablosu + saatlik gelir hesabı; dengesizlik simülatörüne 'kimin cebinden' bilgisi. GTŞ/toplayıcı portföy netleşmesi modellenmez
 (tek santral, üst sınır). KÜPST santral bazında hesaplanır (DUY m.110(6)(b)(2)); tahakkuk GTŞ/toplayıcıya, yansıtma m.132/Ç(18). Toplayıcı portföyü DSG değildir (DUY m.20(4)).
 """
@@ -51,7 +56,7 @@ KURALLAR = pd.DataFrame([
     {"segment": Segment.LISANSLI_SERBEST, "kgup_yukumlu": True, "dengesizlik_sahibi": "santral/DSG", "kupst": True, "fiyat": "PTF / ikili anlaşma", "uzlastirma": "saatlik"},
     {"segment": Segment.LISANSLI_YEKDEM, "kgup_yukumlu": True, "dengesizlik_sahibi": "santral/DSG (YEKDEM portföy dengesizliği 01.05.2016'dan mülga)", "kupst": True, "fiyat": "YEK fiyatı: Cetvel I (USD cent × günlük TCMB kuru) ya da 7189 CK aylık ilan (yekdem_service)", "uzlastirma": "aylık (gelir) + saatlik (dengesizlik)"},
     {"segment": Segment.YEKA, "kgup_yukumlu": True, "dengesizlik_sahibi": "sözleşmeye göre", "kupst": True, "fiyat": "YEKA sözleşme", "uzlastirma": "sözleşme"},
-    {"segment": Segment.LISANSSIZ_ILETIM, "kgup_yukumlu": True, "dengesizlik_sahibi": "toplayıcı/GTŞ portföyü", "kupst": True, "fiyat": "LÜY fiyatı (GTŞ alımı, 10 yıl) / sonrası CK 11415 formülü", "uzlastirma": "saatlik"},
+    {"segment": Segment.LISANSSIZ_ILETIM, "kgup_yukumlu": True, "dengesizlik_sahibi": "toplayıcı/GTŞ portföyü (EDT'nin tesis sahibine yansıtılmasına dair açık hüküm bulunamadı; talimat tutarları DUY m.75(3) ile yansıtılır)", "kupst": True, "fiyat": "LÜY fiyatı (GTŞ alımı, 10 yıl) / sonrası CK 11415 formülü", "uzlastirma": "saatlik"},
     {"segment": Segment.LISANSSIZ_DAGITIM, "kgup_yukumlu": False, "dengesizlik_sahibi": "GTŞ/toplayıcı (santral EDT/KÜPST taşımaz; talimat tutarları ve LÜY Ek m.4 tahsilatı yansıtılabilir)", "kupst": False, "fiyat": "LÜY fiyatı (GTŞ alımı, 10 yıl) / toplayıcı sözleşmesi", "uzlastirma": "saatlik mahsup"},
     {"segment": Segment.OZ_TUKETIM_SAATLIK, "kgup_yukumlu": False, "dengesizlik_sahibi": "yok (mahsuplaşma)", "kupst": False, "fiyat": "saatlik net: fazla GTŞ fiyatı, eksik tarife", "uzlastirma": "saatlik mahsup"},
 ]).set_index("segment")
@@ -71,7 +76,9 @@ class Santral:
         return KURALLAR.loc[self.segment]
 
     def dengesizlik_tasir_mi(self) -> bool:
-        return self.segment in (Segment.LISANSLI_SERBEST, Segment.LISANSLI_YEKDEM, Segment.YEKA, Segment.LISANSSIZ_ILETIM)
+        """Santralin cebinden çıkan dengesizlik var mı. v2.538 (DK-653/DK-785): iletime bağlı lisanssız çıkarıldı — EDT GTŞ/toplayıcı
+        portföyünde (KURALLAR tablosuyla tutarlı); sahibe yansıtma sözleşmeye bağlı, mevzuatta açık hüküm bulunamadı."""
+        return self.segment in (Segment.LISANSLI_SERBEST, Segment.LISANSLI_YEKDEM, Segment.YEKA)
 
     def kgup_gerekli_mi(self) -> bool:
         return bool(self.kural()["kgup_yukumlu"])
@@ -82,7 +89,9 @@ def gelir(santral: Santral, uretim_mwh: pd.Series, ptf: pd.Series | None = None,
     """Saatlik brüt gelir (dengesizlik hariç — o `dengesizlik.saatlik` ile ayrı eklenir).
     03.11.2026 doğrulama arşivi DK-292 / DK-652 (kanıt A): bu fonksiyon hiçbir servisçe çağrılmaz (gelir tarife_service → ext.turkiye.tarife.gelir);
     YEKDEM dalı tek sabit fiyat varsayar (gerçekte Cetvel I günlük kur ya da 7189 aylık ilan — yekdem_service), iletime bağlı lisanssız dalı
-    PTF'ye düşer (gerçekte LÜY fiyatıyla GTŞ alımı 10 yıl, sonrası CK 11415). Yeni kullanıma bağlanmadan önce bu iki dal düzeltilmelidir."""
+    PTF'ye düşer (gerçekte LÜY fiyatıyla GTŞ alımı 10 yıl, sonrası CK 11415). Yeni kullanıma bağlanmadan önce bu iki dal düzeltilmelidir.
+    v2.538 (EK-3 DK-662/DK-668/DK-696, kanıt A): öz tüketim dalı LÜY m.26(17) iki kat sınırını (sınır aşıldıktan sonra fazlaya gelir 0) ve m.26(20)
+    mesken aylık mahsup istisnasını (saatlik formül mesken grubuna uygulanmaz) içermez; bağlanırken bu iki kural eklenmelidir."""
     s = santral.segment
     idx = uretim_mwh.index
     if s in (Segment.LISANSLI_SERBEST, Segment.LISANSSIZ_ILETIM) and santral.sozlesme_fiyat_tl_mwh is None:

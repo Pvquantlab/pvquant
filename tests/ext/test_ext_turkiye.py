@@ -65,6 +65,10 @@ def test_segment_kurallari_ve_gelir():
     assert (r.net_mwh == gercek / 20 - 0.2).all() and r.gelir_tl.sum() > 0
     y = segment.Santral("D", segment.Segment.LISANSLI_YEKDEM, 5.0, yekdem_fiyat_tl_mwh=3684.0, yekdem_dengesizlik_payi=0.5)
     assert segment.dengesizlik_paylastir(y, pd.Series(100.0, index=idx)).iloc[0] == 50.0
+    # v2.538 (EK-3 DK-653/DK-785): iletime bağlı lisanssız — EDT GTŞ/toplayıcı portföyünde, santral taşımaz (tabloyla tutarlı)
+    il = segment.Santral("E", segment.Segment.LISANSSIZ_ILETIM, 3.0)
+    assert il.kgup_gerekli_mi() and not il.dengesizlik_tasir_mi() and segment.dengesizlik_paylastir(il, pd.Series(100.0, index=idx)).sum() == 0
+    assert "m.75(3)" in str(il.kural()["dengesizlik_sahibi"])
 
 
 def test_epias_sahte_tasiyici_ve_utc():

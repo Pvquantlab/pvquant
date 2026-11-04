@@ -117,12 +117,13 @@ def test_saatlik_etki_istisna_ve_dahili(kiraci):
     # dâhilî bilgi: 10 MW tesis eşiği altı; 30 MW üstü eşik; portföy 50 MW
     assert os_.dahili_bilgi({"tur": "ariza", "etkilenen_kw": 10000, "baslangic": datetime(2026, 11, 10, 9, 30, tzinfo=IST)}, 40000) is None
     d = os_.dahili_bilgi({"tur": "ariza", "etkilenen_kw": None, "baslangic": datetime(2026, 11, 10, 9, 30, tzinfo=IST)}, 40000, simdi=datetime(2026, 11, 10, 9, 50, tzinfo=IST))
-    assert d["esik"] == "tesis 30 MW" and d["son_saat"].startswith("2026-11-10T10:30") and d["kalan_dk"] == 40 and not d["gecti"] and d["yururluk"] == "belirsiz"
+    assert d["esik"] == "tesis 30 MW" and d["son_saat"].startswith("2026-11-10T10:30") and d["kalan_dk"] == 40 and not d["gecti"]
+    assert d["yururluk"] == "01.01.2027" and d["basladi"] is False and "henüz yok" in d["yururluk_notu"]   # v2.538 (DK-613): 2026 olayı yürürlükten önce
     assert os_.dahili_bilgi({"tur": "ariza", "etkilenen_kw": 10000, "baslangic": datetime(2026, 11, 10, 9, 30, tzinfo=IST)}, 40000, portfoy_kw=52000)["esik"] == "portföy 50 MW"
     assert os_.dahili_bilgi({"tur": "talimat_yat", "etkilenen_kw": None, "baslangic": datetime(2026, 11, 10, 9, 30, tzinfo=IST)}, 40000) is None
     o = os_.ozet(tid, plant, 90, bugun=date(2026, 11, 10))
     assert o["acik"] == 0 and o["planli"] == 5 and o["eak_bugun"]["saat_sayisi"] == 3 and o["eak_bugun"]["kismi_saat"] == 1 and o["eak_bugun"]["en_cok_kw"] == 40000   # 10.11 kayıtları «planlı»
-    assert o["ariza_sayaci"]["sayi"] == 2 and len(o["turler"]) == 8 and set(o["aciklama"]) == {"kapasite", "sayac", "kullanilabilirlik", "islem", "gerekce"} and o["eak_bugun"]["suren"] == 0
+    assert o["ariza_sayaci"]["sayi"] == 2 and len(o["turler"]) == 8 and set(o["aciklama"]) == {"kapasite", "sayac", "kullanilabilirlik", "islem", "gerekce", "talimat"} and o["eak_bugun"]["suren"] == 0
     csv = os_.csv_metni(o["olaylar"], "Olay GES"); assert csv.startswith("\ufeffsantral;tur;") and "Şebeke kesintisi" in csv and csv.count("\n") == 6 and ";evre;" in csv and "planlı" in csv
 
 

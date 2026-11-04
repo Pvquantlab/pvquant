@@ -53,7 +53,12 @@ SAYAC_TURLERI = {"15dk_endeks": "15 dakikalık endeks alınabilen sayaç", "dige
 SCADA_DURUMLARI = {"bagli": "bağlı", "kopuk": "bağlantı kopuk / arızalı", "yok": "entegrasyon yok"}
 SCADA_ESIK_KW = 50.0            # LÜY m.21(7): 50 kW ve üzeri lisanssız tesis şebeke işletmecisinin SCADA'sına bağlanır (01-16)
 LISANSSIZ = ("lisanssiz_iletim", "lisanssiz_dagitim", "oz_tuketim_saatlik")
-ASKI_BITIS = date(2027, 4, 30)   # LÜY Geçici m.14(2) askısı — ikincil kaynaktan, kısmen teyit (01-16)
+ASKI_BITIS = date(2027, 4, 30)   # LÜY Geçici m.14(2): «16 ncı maddesinin birinci fıkrasının (f) ve (g) bentleri kapsamındaki cezai şartlar, 30/4/2027 tarihine kadar uygulanmaz» — v2.538 (EK-3 DK-656/DK-658, kanıt A: LÜY konsolide metni, RG 19.10.2026-33405 Md.6); (ç) askıda değil
+ASKI_KAPSAMI = ("Askı (LÜY Geçici m.14(2), RG 19.10.2026-33405) yalnız Bağlantı Anlaşması m.16(1)'in (f) ve (g) bentleri içindir ve 30.4.2027'ye kadar sürer; "
+                "(ç) bendi (arızalı SCADA'nın uyarıya rağmen bir ayda onarılmaması) askıda değildir.")
+UYARI_NOTU = ("(ç) sayımı dağıtım şirketinin yazılı ve kalıcı veri saklayıcısı ile uyarısından başlar (Karar 14909 m.16(1)(ç)); «1 ay» takvim ayı olarak sayıldı "
+              "(sayım yöntemi karar metninde yok — yorum). Günlük %1'in bir aylık sürenin sonrasındaki günler için sayıldığı okuması da yorumdur; bu ayın "
+              "süre sonrasındaki günleri sayıldı, (g) uygulanan günler hariç.")
 UZAKTAN_ACMA_TUR = "uzaktan_acma"
 GELIS_KAYNAK = ("Elektrik Piyasası Ölçüm Sistemleri Yönetmeliği (RG 28.12.2023-32413; son değişiklik RG 21.01.2026-33144) m.8(2): 15 dakikalık endeks alınabilen sayaçların veriş-çekiş değerleri EPİAŞ ile en geç ilgili "
                 "saatin 2 saat sonrasında paylaşılır; m.8(3): diğer sayaçlar ayın uzlaştırma takvimindeki son güne kadar. DUY m.81(1): sayaç değerleri dönem sonunu "
@@ -481,10 +486,19 @@ def _kurulu_kw(plant: dict) -> float:
     return float(plant.get("ac_limit_kw") or plant.get("capacity_kwp") or 0.0)
 
 
+def _ay_ekle(d: date, n: int = 1) -> date:
+    """Takvim ayı ekle; gün ay sonunu aşarsa ay sonuna kırp (v2.538, (ç) «1 ay» yorumu)."""
+    import calendar
+    y, m = d.year + (d.month - 1 + n) // 12, (d.month - 1 + n) % 12 + 1
+    return date(y, m, min(d.day, calendar.monthrange(y, m)[1]))
+
+
 def scada_durumu(plant: dict, pj: dict, segment: str | None, bugun: date, uzaktan_acma_ay: int = 0, uzaktan_acma_gunleri: set | None = None) -> dict | None:
     """Lisanssız tesiste SCADA yükümlülüğü (LÜY m.21(7): 50 kW ve üzeri), beyan edilen bağlantı durumu, kopukluk gün sayacı, bu ayın uzaktan açma olayları ve
     Karar 14909 bedel göstergesi (aylık sistem kullanım bedeli girilmişse; yalnız dağıtıma bağlı lisanssız — Dağıtım Sistemine Bağlantı Anlaşması tarafı).
-    (f) yalnız DUY m.75(4) kapsamı (900 kW ve üzeri); (ç) yalnız bu ayın 30 günü aşan günleri, (g) uygulanan günler hariç. Lisanslı segmentte None."""
+    (f) yalnız DUY m.75(4) kapsamı (900 kW ve üzeri); (ç) v2.538 (DK-656): sayım dağıtım şirketinin uyarı tarihinden (scada_uyari_tarihi, beyan) + 1 takvim ayı;
+    uyarı tarihi girilmemişse (ç) üretilmez. (ç) askıda değil (LÜY Geçici m.14(2) yalnız (f) ve (g)). DK-735: AC sınırı girilmemişse 900 kW kıyası DC kWp ile
+    yapılır ve «belirsiz» işaretlenir. Lisanslı segmentte None."""
     if segment not in LISANSSIZ:
         return None
     kw = _kurulu_kw(plant)
@@ -494,6 +508,8 @@ def scada_durumu(plant: dict, pj: dict, segment: str | None, bugun: date, uzakta
     durum = pj.get("scada_durum") if pj.get("scada_durum") in SCADA_DURUMLARI else None
     bas = tk._tarih(pj.get("scada_kopukluk_baslangic"))
     kopuk_gun = (bugun - bas).days if (durum == "kopuk" and bas) else None
+    uyari = tk._tarih(pj.get("scada_uyari_tarihi"))   # v2.538 (DK-656): dağıtım şirketinin yazılı uyarı tarihi (beyan)
+    ac_var = bool(plant.get("ac_limit_kw"))
     bedel = pj.get("sistem_kullanim_bedeli_tl_ay")
     try:
         bedel = float(bedel) if bedel not in (None, "") else None
@@ -504,23 +520,26 @@ def scada_durumu(plant: dict, pj: dict, segment: str | None, bugun: date, uzakta
         if durum == "yok":
             if m75:
                 kalemler.append({"kod": "entegrasyon_yok", "etiket": "SCADA entegrasyonu yok — m.16(1)(f)", "kat": 1.0, "birim": "aylık bedelin bir katı / ay", "tutar_tl": (bedel if bedel else None), "aski": "kapsamda",
-                                 "not": "Yalnız DUY m.75(4) kapsamındaki tesisler (GTŞ/toplayıcı portföyünde, 900 kW ve üzeri); portföy üyeliği beyan edilmedi, kurulu güce göre sayıldı."})
+                                 **({} if ac_var else {"kesinlik": "belirsiz"}),   # v2.538 (DK-735): m.75(4)(ç) elektriksel kurulu güce bağlı; DC kWp ile kıyas yorumdur
+                                 "not": "Yalnız DUY m.75(4) kapsamındaki tesisler (GTŞ/toplayıcı portföyünde, 900 kW ve üzeri); portföy üyeliği beyan edilmedi, kurulu güce göre sayıldı."
+                                        + ("" if ac_var else " AC sınırı girilmedi: 900 kW kıyası DC kurulu güçle (kWp) yapıldı; m.75(4)(ç) elektriksel kurulu güce bağlıdır, Santral ayarlarına AC sınırını girin.")})
             else:
                 uygulanmayan.append(f"m.16(1)(f) SCADA entegrasyonu yok: kurulu güç {kw:,.0f} kW < {M75_ESIK_KW:,.0f} kW (DUY m.75(4) kapsamı dışı), gösterge uygulanmadı".replace(",", "."))
         if uzaktan_acma_ay:
             kat = min(3.0, float(uzaktan_acma_ay))
             kalemler.append({"kod": "uzaktan_acma", "etiket": f"uzaktan açma yapılamadı — m.16(1)(g) ({uzaktan_acma_ay} olay; ay içinde en çok 3 kat)", "kat": kat, "birim": "ihlal başına bir kat",
                              "tutar_tl": (round(bedel * kat, 2) if bedel else None), "aski": "kapsamda"})
-        if durum == "kopuk" and bas is not None and kopuk_gun is not None and kopuk_gun > 30:
-            ay_bas = _ay_bas(bugun); esik_gun = bas + timedelta(days=30)
+        if durum == "kopuk" and uyari is None:
+            uygulanmayan.append("m.16(1)(ç) arızalı SCADA onarım süresi: dağıtım şirketinin yazılı uyarı tarihi girilmedi; (ç) sayımı uyarıyla başlar (Karar 14909), kopukluk başlangıcı sayım başlangıcı değildir — uyarı geldiyse tarihini girin")
+        if durum == "kopuk" and uyari is not None:
+            ay_bas = _ay_bas(bugun); esik_gun = _ay_ekle(uyari, 1)   # v2.538 (DK-656): uyarı + 1 takvim ayı (yorum)
             gunler = [ay_bas + timedelta(days=i) for i in range((bugun - ay_bas).days + 1)]
             sayilan = [g for g in gunler if g > esik_gun and g not in (uzaktan_acma_gunleri or set())]
             g = len(sayilan)
             if g:
-                kalemler.append({"kod": "onarim_gecikti", "etiket": f"arızalı SCADA bir ayda onarılmadı — m.16(1)(ç) (bu ay {g} gün; günlük %1)", "kat": round(g * 0.01, 2), "birim": "bedelin %1'i / gün",
-                                 "tutar_tl": (round(bedel * g * 0.01, 2) if bedel else None), "kesinlik": "belirsiz", "aski": "dogrulanmadi",
-                                 "not": "(ç) Karar 14909'dan önce de anlaşmadaydı; LÜY Geçici m.14 askısının (ç)'yi kapsayıp kapsamadığı doğrulanmadı. Günlük %1'in bir aylık sürenin "
-                                        "sonrasındaki günler için mi, bütün günler için mi sayıldığı karar metninden açık değil; burada bu ayın 30 günü aşan günleri sayıldı, (g) uygulanan günler hariç."})
+                kalemler.append({"kod": "onarim_gecikti", "etiket": f"arızalı SCADA uyarıdan sonra bir ayda onarılmadı — m.16(1)(ç) (bu ay {g} gün; günlük %1)", "kat": round(g * 0.01, 2), "birim": "bedelin %1'i / gün",
+                                 "tutar_tl": (round(bedel * g * 0.01, 2) if bedel else None), "kesinlik": "belirsiz", "aski": "askida_degil", "uyari_tarihi": uyari.isoformat(), "sure_sonu": esik_gun.isoformat(),
+                                 "not": UYARI_NOTU + " (ç) askıda değildir: LÜY Geçici m.14(2) yalnız (f) ve (g) bentlerini erteler."})
     elif yukumlu and not anlasma:
         uygulanmayan.append("İletime bağlı lisanssız tesis: bağlantı anlaşması TEİAŞ'la; Karar 14909 dağıtım bağlantı anlaşmasına ilişkindir, gösterge uygulanmadı (TEİAŞ anlaşmasındaki hükümler doğrulanmadı)")
     toplam = round(sum(k["tutar_tl"] for k in kalemler if k["tutar_tl"] is not None), 2) if bedel and kalemler else None
@@ -529,15 +548,16 @@ def scada_durumu(plant: dict, pj: dict, segment: str | None, bugun: date, uzakta
     return {"yukumlu": yukumlu, "esik_kw": SCADA_ESIK_KW, "kurulu_kw": kw, "kurulu_kaynak": "AC sınırı" if plant.get("ac_limit_kw") else "kurulu güç (kWp)",
             "anlasma": "dagitim" if anlasma else "iletim", "m75_kapsam": m75, "m75_esik_kw": M75_ESIK_KW,
             "durum": durum, "durum_etiket": SCADA_DURUMLARI.get(durum) if durum else "girilmedi", "durum_kaynagi": "beyan",
-            "kopukluk_baslangic": bas.isoformat() if bas else None, "kopukluk_gun": kopuk_gun,
+            "kopukluk_baslangic": bas.isoformat() if bas else None, "kopukluk_gun": kopuk_gun, "m75_kesinlik": ("teyit" if ac_var else "belirsiz"),
+            "uyari_tarihi": uyari.isoformat() if uyari else None, "uyari_sure_sonu": (_ay_ekle(uyari, 1).isoformat() if uyari else None),
             "uzaktan_acma_var": pj.get("uzaktan_acma_var") if isinstance(pj.get("uzaktan_acma_var"), bool) else None, "uzaktan_acma_ay": int(uzaktan_acma_ay),
             "bedel_tl_ay": bedel, "kalemler": kalemler, "uygulanmayan": uygulanmayan, "toplam_tl": toplam, "toplam_aski_tl": toplam_aski, "toplam_aski_disi_tl": toplam_aski_disi, "tutar_niteligi": "varsayimsal",
-            "aski_kapsami": "Askı (LÜY Geçici m.14) Karar 14909'un eklediği (f) ve (g) içindir; (ç) anlaşmada önceden vardı, askı kapsamı doğrulanmadı.",
-            "aski_bitis": ASKI_BITIS.isoformat(), "aski_kesinlik": "kismen_teyit", "aski_gecti": bugun > ASKI_BITIS, "aski_kalan_gun": (ASKI_BITIS - bugun).days,
+            "aski_kapsami": ASKI_KAPSAMI,
+            "aski_bitis": ASKI_BITIS.isoformat(), "aski_kesinlik": "teyit", "aski_gecti": bugun > ASKI_BITIS, "aski_kalan_gun": (ASKI_BITIS - bugun).days,
             "kaynak": BEDEL_KAYNAK, "dayanak_yukumluluk": "LÜY m.21(7): kurulu gücü 50 kW ve üzeri lisanssız tesis şebeke işletmecisinin SCADA'sına bağlanır; ekipman üreticiye ait",
             "not": ("Bağlantı durumu beyandır (bu sayfada girilir); PVQuant şebeke işletmecisinin SCADA'sına bağlı değildir, bağlantı sağlığını ölçmez. Gösterge, girdiğiniz aylık "
                     "sistem kullanım bedeliyle Karar 14909 bedel maddelerinin kaba uygulamasıdır: varsayımsal tutardır, tebliğ edilmiş bir borç değildir; dağıtım şirketinin "
-                    "faturası ya da tebligatı esastır. Bedel girilmezse tutar verilmez. Askı süresi bitene kadar (30.4.2027; tarih kısmen teyit) bedel uygulanmaz.")}
+                    "faturası ya da tebligatı esastır. Bedel girilmezse tutar verilmez. (f) ve (g) askı süresi bitene kadar (30.4.2027, LÜY Geçici m.14(2)) uygulanmaz; (ç) askıda değildir.")}
 
 
 def ayar_dogrula(g: dict) -> dict:
@@ -565,6 +585,18 @@ def ayar_dogrula(g: dict) -> dict:
             if d > datetime.now(IST).date():
                 raise ValueError("scada_kopukluk_baslangic")   # gelecekte başlayan kopukluk olmaz
             out["scada_kopukluk_baslangic"] = d.isoformat()
+    if "scada_uyari_tarihi" in g:   # v2.538 (DK-656): dağıtım şirketinin yazılı uyarı tarihi — (ç) sayımının başlangıcı
+        v = g["scada_uyari_tarihi"]
+        if v in (None, ""):
+            out["scada_uyari_tarihi"] = None
+        else:
+            try:
+                d = date.fromisoformat(str(v)[:10])
+            except ValueError:
+                raise ValueError("scada_uyari_tarihi")
+            if d > datetime.now(IST).date():
+                raise ValueError("scada_uyari_tarihi")
+            out["scada_uyari_tarihi"] = d.isoformat()
     if "uzaktan_acma_var" in g:
         v = g["uzaktan_acma_var"]
         if v is not None and not isinstance(v, bool):
@@ -604,7 +636,8 @@ def ozet(tenant_id, plant: dict, gun: int = 30, simdi: datetime | None = None) -
     uz = len(uz_olaylar); uz_gunler = {o["baslangic"].astimezone(IST).date() for o in uz_olaylar if o.get("baslangic")}
     return {"bugun": bugun.isoformat(), "pencere_gun": gun, "segment": seg["segment"],
             "ayar": {"sayac_turu": pj.get("sayac_turu") if pj.get("sayac_turu") in SAYAC_TURLERI else None, "scada_durum": pj.get("scada_durum") if pj.get("scada_durum") in SCADA_DURUMLARI else None,
-                     "scada_kopukluk_baslangic": pj.get("scada_kopukluk_baslangic") or None, "uzaktan_acma_var": pj.get("uzaktan_acma_var") if isinstance(pj.get("uzaktan_acma_var"), bool) else None,
+                     "scada_kopukluk_baslangic": pj.get("scada_kopukluk_baslangic") or None, "scada_uyari_tarihi": pj.get("scada_uyari_tarihi") or None,
+                     "uzaktan_acma_var": pj.get("uzaktan_acma_var") if isinstance(pj.get("uzaktan_acma_var"), bool) else None,
                      "sistem_kullanim_bedeli_tl_ay": pj.get("sistem_kullanim_bedeli_tl_ay"),
                      "uzlastirma_girdi": dengesizlik_service.uretim_secimi(pj)},   # v2.526 (P4a-2)
             "uretim_secenekleri": [{"kod": k, "etiket": v} for k, v in dengesizlik_service.URETIM_SECENEKLERI.items()],

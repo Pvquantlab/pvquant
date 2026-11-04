@@ -444,6 +444,40 @@ def _sayac_kapsami(tenant_id, plant: dict, donem: date) -> dict | None:
         return None
 
 
+ITIRAZ_DAYANAK = ("DUY m.133(1): fatura itirazı tebliğden itibaren 60 gün içinde yazılı; m.133(3)(a)–(b): ölçüm değerlerine itirazı TEİAŞ/dağıtım şirketi 15 gün içinde "
+                  "sonuçlandırır, EPİAŞ bildirilen sonucu 5 iş günü içinde işler; m.133(4)(b): ölçüm dışı itirazlar 20 iş günü; m.133(5) (RG 29.12.2025-33122, "
+                  "01.01.2026): 60 gün içinde yapılmayan ve başvuru tarihi itibarıyla en fazla 12 ay önceki fatura dönemine ait itirazlar, başvuruyu izleyen 3 ay "
+                  "içinde sonuçlandırılır; düzeltme sonraki faturaya GDDK kalemi olarak yansır (m.133(7), m.134(1)). Lisanssız üretici: GTŞ/toplayıcı işlemine "
+                  "bildirimden itibaren 3 iş günü içinde itiraz, 5 iş günü içinde inceleme (LÜY m.27).")   # v2.538 (EK-3 DK-557/DK-395, kanıt A)
+
+
+def _gun_tr(iso: str) -> str:
+    """YYYY-MM-DD → GG.AA.YYYY (v2.538; görünen metinde ISO tarih yok)."""
+    return ".".join(reversed(iso[:10].split("-")))
+
+
+def itiraz_takvimi(donem: date, segment: str | None, bugun: date | None = None) -> dict:
+    """v2.538 (EK-3 DK-557/DK-395): dönemin itiraz süreleri — ön bildirime itiraz (m.132/B(1)), faturaya 60 gün (m.133(1)), geriye dönük 12 ay penceresi
+    (m.133(5); «başvuru tarihi itibarıyla en fazla 12 ay önceki fatura dönemi» → bu dönem için son başvuru = dönem + 12 ay sonu, sayım yöntemi metinde yok:
+    çıkarım), inceleme süreleri (ölçüm 15 gün + 5 iş günü; ölçüm dışı 20 iş günü; geriye dönük 3 ay). Lisanssızda muhatap GTŞ/toplayıcı (LÜY m.27)."""
+    from pvquant.ext.turkiye import takvim as tk
+    d = donem.replace(day=1); b = bugun or datetime.now(IST).date()
+    t = {o["kod"]: o for o in tk.donem_takvimi(d.year, d.month)}
+    import calendar
+    y, m = d.year + (d.month - 1 + 12) // 12, (d.month - 1 + 12) % 12 + 1
+    gd_son = date(y, m, calendar.monthrange(y, m)[1])
+    lisanssiz = segment in ("lisanssiz_dagitim", "lisanssiz_iletim")
+    out = {"donem": d.strftime("%Y-%m"), "on_bildirim_itiraz_son": t["itiraz_son"]["tarih"] + " 17:30", "fatura_itiraz_60_gun": t["itiraz_60"]["tarih"],
+           "geriye_donuk": {"pencere_ay": 12, "son_basvuru": gd_son.isoformat(), "gecti": b > gd_son, "kalan_gun": (gd_son - b).days, "sonuc_ay": 3, "kesinlik": "cikarim",
+                            "not": "Başvuru tarihi itibarıyla en fazla 12 ay önceki fatura dönemine ait itiraz başvuruları başvuruyu izleyen 3 ay içinde sonuçlandırılır (DUY m.133(5)); "
+                                   "bu dönem için son başvuru günü dönem + 12 ayın son günü olarak hesaplandı (sayım yöntemi metinde yok — çıkarım). Düzeltme GDDK kalemiyle sonraki faturaya yansır."},
+           "inceleme": {"olcum_teias_dagitim_gun": 15, "olcum_epias_is_gunu": 5, "olcum_disi_is_gunu": 20, "dayanak": "DUY m.133(3)(a)–(b), m.133(4)(b)"},
+           "lisanssiz": ({"itiraz_is_gunu": 3, "inceleme_is_gunu": 5, "muhatap": "görevli tedarik şirketi / toplayıcı", "dayanak": "LÜY m.27",
+                          "not": "Lisanssız tesis EPİAŞ uzlaştırma bildiriminin tarafı değildir; itiraz GTŞ/toplayıcının ödeme işlemine, bildirimden itibaren 3 iş günü içinde yapılır."} if lisanssiz else None),
+           "dayanak": ITIRAZ_DAYANAK}
+    return out
+
+
 def _ay_ekle(d: date) -> date:
     return date(d.year + 1, 1, 1) if d.month == 12 else date(d.year, d.month + 1, 1)
 
@@ -511,14 +545,16 @@ def mutabakat(tenant_id, plant: dict, donem, surum: str | None = None, bugun: da
                 "saatleri kapsar; fark doğrulanmış sayılmaz — eksik saatleri (SCADA/sayaç) ve bildirilen KGÜP'ü tamamlayıp yeniden bakın. " if guven["durum"] == "kismi" else "")
     from pvquant.services import saatlik_detay_service
     saatlik = saatlik_detay_service.ozet_kisa(tenant_id, plant, d, uretim, bugun)   # v2.527 (P2b-2): yüklüyse eş kapsamlı kıyas özeti
+    from pvquant.services import dengesizlik_service as _dz
+    itiraz = itiraz_takvimi(d, _dz.segment_bilgisi(plant.get("params_json")).get("segment"), bugun)   # v2.538 (DK-557/DK-395)
     es = ""
     if saatlik and saatlik.get("yuklu") and saatlik.get("ortak_saat") and saatlik.get("toplam") and saatlik["toplam"].get("edt_net_fark_tl") is not None:
         t = saatlik["toplam"]; es = (f"Eş kapsamlı kıyas (EPYS saatlik detayı, ortak {saatlik['ortak_saat']} saat): dengesizlik neti EPİAŞ {t['edt_net_epias_tl']:,.2f} TL, "
                                       f"PVQuant {t['edt_net_pvquant_tl']:,.2f} TL, fark {t['edt_net_fark_tl']:+,.2f} TL — ayrıntı «Saatlik detay kıyası» kartında. ").replace(",", "X").replace(".", ",").replace("X", ".")
     if ozet["farkli"]:
         eylem = kismi_on + ("Fark var: EPYS'deki saatlik detaylarla (dengesizlik uzlaştırma, KÜPST detay) ve PVQuant dökümüyle saat bazında karşılaştırın; program sürümü, sayaç (UEVM ≠ SCADA) "
-                 "ve fiyat kaynağı en sık nedenlerdir. İtiraz: ön bildirime " + (sd["itiraz_son"].replace("-", ".") if sd else "izleyen ayın 12'si 17:30") + "'a kadar (DUY m.132/B(1)), "
-                 "faturaya tebliğden itibaren 60 gün yazılı (m.133; " + (sd["itiraz_60"] if sd else "") + ").")
+                 "ve fiyat kaynağı en sık nedenlerdir. İtiraz: ön bildirime " + (_gun_tr(sd["itiraz_son"][:10]) + " " + sd["itiraz_son"][11:] if sd else "izleyen ayın 12'si 17:30") + "'a kadar (DUY m.132/B(1)), "
+                 "faturaya tebliğden itibaren 60 gün yazılı (m.133(1); " + (_gun_tr(sd["itiraz_60"]) if sd else "takvim") + "); süreler «İtiraz süreleri» alanında.")   # v2.538: gün.ay.yıl
     elif ozet["senaryo"]:
         eylem = "Senaryo hesabı: EPİAŞ fiyat verisi bağlanmadan mutabakat sonucu çıkarılamaz; farklar bilgi amaçlıdır."
     elif ozet["kiyaslanan"]:
@@ -530,7 +566,7 @@ def mutabakat(tenant_id, plant: dict, donem, surum: str | None = None, bugun: da
         eylem = (kismi_on + es + eylem[len(kismi_on):]) if (eylem and kismi_on and eylem.startswith(kismi_on)) else es + (eylem or "")
     return {"donem": d.isoformat()[:7], "donem_etiket": d.strftime("%m.%Y"), "bildirim": ({k: v for k, v in bil.items() if k != "kalemler"} if bil else None),
             "satirlar": satirlar, "ozet": ozet, "uyum": {"pct": UYUM_PCT, "tl": UYUM_TL, "not": UYUM_NOTU}, "guvenilirlik": guven, "eylem": eylem,
-            "pvquant": {k: v for k, v in pv.items() if k != "kalemler"}, "saatlik_detay": saatlik, "not": NOT,
+            "pvquant": {k: v for k, v in pv.items() if k != "kalemler"}, "saatlik_detay": saatlik, "not": NOT, "itiraz": itiraz,
             "program_notu": ("bildirilen KGÜP yüklü saat yok: hesap PVQuant önerisiyle; mutabakat için bildirilen programı yükleyin (Tahminler › bildirilen KGÜP)"
                              if pv.get("saat") and not pv.get("bildirilen_saat") else None)}
 

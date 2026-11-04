@@ -193,15 +193,19 @@ def test_scada_durumu_ve_gosterge():
     # (f) yalnız m.75(4) kapsamı (900 kW+): 500 kW tesiste entegrasyon yok → gösterge yok, açıklama var
     orta = ss.scada_durumu({"id": "z", "capacity_kwp": 600.0, "ac_limit_kw": 500.0}, {"scada_durum": "yok", "sistem_kullanim_bedeli_tl_ay": 5000}, "lisanssiz_dagitim", date(2026, 11, 2))
     assert orta["yukumlu"] and not orta["m75_kapsam"] and orta["kalemler"] == [] and "m.75(4) kapsamı dışı" in orta["uygulanmayan"][0]
-    # kopuk 18.09'dan beri (45 gün): (ç) yalnız bu ayın 30 günü aşan günleri (19.10 sonrası → Kasım 1–2 = 2 gün), (g) uygulanan 1 Kasım hariç → 1 gün
-    pj = {"scada_durum": "kopuk", "scada_kopukluk_baslangic": "2026-09-18", "sistem_kullanim_bedeli_tl_ay": 12000, "uzaktan_acma_var": True}
+    # v2.538 (DK-656): kopuk 18.09'dan beri (45 gün); dağıtım şirketi uyarısı 18.09 → bir aylık süre 18.10'da dolar; (ç) bu ayın süre sonrası günleri
+    # (Kasım 1–2 = 2 gün), (g) uygulanan 1 Kasım hariç → 1 gün; (ç) askıda değil
+    pj = {"scada_durum": "kopuk", "scada_kopukluk_baslangic": "2026-09-18", "scada_uyari_tarihi": "2026-09-18", "sistem_kullanim_bedeli_tl_ay": 12000, "uzaktan_acma_var": True}
     e = ss.scada_durumu(plant, pj, "lisanssiz_dagitim", date(2026, 11, 2), uzaktan_acma_ay=2, uzaktan_acma_gunleri={date(2026, 11, 1)})
-    assert e["kopukluk_gun"] == 45 and {k["kod"] for k in e["kalemler"]} == {"uzaktan_acma", "onarim_gecikti"}
+    assert e["kopukluk_gun"] == 45 and {k["kod"] for k in e["kalemler"]} == {"uzaktan_acma", "onarim_gecikti"} and e["uyari_sure_sonu"] == "2026-10-18"
     k = {x["kod"]: x for x in e["kalemler"]}
     assert k["uzaktan_acma"]["tutar_tl"] == 24000.0 and k["onarim_gecikti"]["tutar_tl"] == 120.0 and k["onarim_gecikti"]["kesinlik"] == "belirsiz" and e["toplam_tl"] == 24120.0
-    assert k["uzaktan_acma"]["aski"] == "kapsamda" and k["onarim_gecikti"]["aski"] == "dogrulanmadi" and e["toplam_aski_tl"] == 24000.0 and e["toplam_aski_disi_tl"] == 120.0
-    # 30 gün aşılmamış kopukluk → (ç) yok
-    assert [x["kod"] for x in ss.scada_durumu(plant, {**pj, "scada_kopukluk_baslangic": "2026-10-20"}, "lisanssiz_dagitim", date(2026, 11, 2))["kalemler"]] == []
+    assert k["uzaktan_acma"]["aski"] == "kapsamda" and k["onarim_gecikti"]["aski"] == "askida_degil" and e["toplam_aski_tl"] == 24000.0 and e["toplam_aski_disi_tl"] == 120.0
+    assert e["aski_kesinlik"] == "teyit" and "(ç) bendi" in e["aski_kapsami"]
+    # uyarı tarihi girilmemişse (ç) üretilmez, eksik girdi notu düşer; uyarı yeni ise süre dolmamış → (ç) yok
+    u = ss.scada_durumu(plant, {k2: v for k2, v in pj.items() if k2 != "scada_uyari_tarihi"}, "lisanssiz_dagitim", date(2026, 11, 2))
+    assert [x["kod"] for x in u["kalemler"]] == [] and any("uyarı tarihi girilmedi" in n for n in u["uygulanmayan"])
+    assert [x["kod"] for x in ss.scada_durumu(plant, {**pj, "scada_uyari_tarihi": "2026-10-20"}, "lisanssiz_dagitim", date(2026, 11, 2))["kalemler"]] == []
     # iletime bağlı lisanssız: anlaşma TEİAŞ'la, gösterge uygulanmaz
     y = ss.scada_durumu(plant, {"scada_durum": "yok", "sistem_kullanim_bedeli_tl_ay": 12000}, "lisanssiz_iletim", date(2026, 11, 2), uzaktan_acma_ay=5)
     assert y["kalemler"] == [] and y["anlasma"] == "iletim" and "TEİAŞ" in y["uygulanmayan"][0]

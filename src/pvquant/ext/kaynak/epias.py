@@ -89,12 +89,22 @@ class SeffaflikIstemci:
     def kgup(self, b, e, **ek): return self.sorgu("kgup", b, e, **ek)
 
 
+ESKI_FORMUL_SON = "2025-12-31"   # v2.538 (DK-023): sabit k = l = 0,03'ün son teslim günü (RG 02.02.2020-31027 Md.32; 1.1.2026'dan Karar 14030)
+
+
 def dengesizlik_maliyeti(kgup_mwh: pd.Series, gerceklesen_mwh: pd.Series, ptf: pd.Series, smf: pd.Series,
                          k: float = 0.03, l: float = 0.03) -> pd.DataFrame:
-    """DUY md. 110–111: sapma = gerçekleşen − KGÜP (saatlik MWh).
-    Pozitif dengesizlik geliri = min(PTF,SMF)·(1−l)·sapma; negatif dengesizlik gideri = max(PTF,SMF)·(1+k)·|sapma|.
-    'maliyet' = PTF ile satılsaydı elde edilecek gelire göre kayıp (TL). KÜPST ayrı hesaplanır (Kurul katsayıları)."""
+    """DUY md. 110–111 ESKİ formülü (RG 02.02.2020-31027 Md.32; yalnız 31.12.2025'e kadarki teslim günleri): sapma = gerçekleşen − KGÜP (saatlik MWh).
+    Pozitif dengesizlik geliri = min(PTF,SMF)·(1−l)·sapma; negatif dengesizlik gideri = max(PTF,SMF)·(1+k)·|sapma|; sabit k = l = 0,03.
+    'maliyet' = PTF ile satılsaydı elde edilecek gelire göre kayıp (TL). KÜPST ayrı hesaplanır (Kurul katsayıları).
+    v2.538 (EK-3 DK-023): 1.1.2026'dan k ve l sistem yönüne bağlıdır (Karar 14030, RG 29.12.2025-33122) ve KÜPST netleşmesi vardır; bu fonksiyon
+    üretim yolunda çağrılmaz, 2026 ve sonrası saat içeren seri için ValueError verir — güncel hesap ext.turkiye.dengesizlik.saatlik() ve
+    ext.turkiye.kurallar (tarihe göre katsayı)."""
     idx = kgup_mwh.index.intersection(gerceklesen_mwh.index).intersection(ptf.index).intersection(smf.index)
+    if len(idx) and isinstance(idx, pd.DatetimeIndex):
+        son = idx.max(); son = son.tz_convert("Europe/Istanbul") if son.tzinfo is not None else son.tz_localize("Europe/Istanbul")
+        if son >= pd.Timestamp(ESKI_FORMUL_SON, tz="Europe/Istanbul") + pd.Timedelta(days=1):
+            raise ValueError("dengesizlik_maliyeti eski formüldür (k = l = 0,03; 31.12.2025'e kadar): 2026 ve sonrası için ext.turkiye.dengesizlik.saatlik() kullanın")
     sap = (gerceklesen_mwh - kgup_mwh).loc[idx]
     poz = sap.clip(lower=0.0); neg = (-sap).clip(lower=0.0)
     gelir_poz = poz * pd.concat([ptf.loc[idx], smf.loc[idx]], axis=1).min(axis=1) * (1 - l)

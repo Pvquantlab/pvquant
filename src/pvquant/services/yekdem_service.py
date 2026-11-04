@@ -256,6 +256,19 @@ def bant_kontrol(ay, tesis_tipi: str, fiyat_kr_kwh: float, kur_ort: float | None
 
 # ---------------- gün bazlı fiyat serisi ----------------
 _KOLONLAR = ["yek_tl_mwh", "yerli_tl_mwh", "toplam_tl_mwh", "kaynak", "kur", "kur_gunu", "ay_fiyat_kr_kwh", "usd_cent_kwh"]
+# v2.538 (EK-3 DK-297, DK-323, DK-675; kanıt A): YEKDEM hesabının modellemediği kurallar — ürün yüzeyinde kapsam sınırı olarak gösterilir
+KAPSAM_SINIRLARI = (
+    {"kod": "y_katsayisi", "etiket": "Kapasite artışı (y katsayısı)",
+     "metin": "YEK Yön. m.12(3)–(4) (RG 23.08.2019-30867): kapasite artışı yapılmış YEKDEM tesisinde YEK fiyatı, uzlaştırmaya esas veriş miktarının y katsayısıyla çarpılan "
+              "payına uygulanır. PVQuant y katsayısını modellemez (y = 1 varsayar); kapasite artışı yapılmış tesiste YEK alacağı fazla hesaplanır."},
+    {"kod": "kurulu_guc_asimi", "etiket": "Kabul edilmiş kurulu gücü aşan veriş",
+     "metin": "YEK Yön. m.12: kabul edilmiş elektriksel kurulu gücün üstündeki veriş YEKDEM bedelinden ayrı işleme konur. PVQuant AC sınırı üstündeki saatleri ayırmaz; "
+              "evirici sınırı nedeniyle güneşte seyrek beklenir (çıkarım)."},
+    {"kod": "depolama", "etiket": "Bütünleşik depolama",
+     "metin": "LÜY Ek m.3(2) (RG 02.04.2026-33212): depodan verilen miktar tespit edilemezse ihtiyaç fazlası enerjinin tamamı için ödeme yapılmaz; şebekeden çekilen kadar "
+              "enerjinin önce depodan verildiği kabulü ve bu kısmın YEKDEM dışı (PTF) değerlenmesi PVQuant'ta modellenmedi — «bütünleşik depolamalı güneş» tipi yalnız 7189 fiyat "
+              "bandını seçer, depo çıkışını ayırmaz."},
+)
 
 
 def _sure_doldu(pj: dict, rejim: str | None, giris: date | None, gun_dizisi: np.ndarray) -> np.ndarray:
@@ -475,7 +488,7 @@ def ozet(tenant_id, plant: dict, gun: int = 90, bugun: date | None = None) -> di
     if r["rejim"] == "7189":
         notlar.append("7189 fiyatı EPİAŞ'ın aylık ilanıdır; ilan edilmemiş ay için önceki ayın fiyatı taşınır ve işaretlenir. USD sınır kontrolü bir önceki ayın ortalama TCMB USD alış kuruyla yapılır.")
     return {"bugun": b.isoformat(), "pencere_gun": gun, "segment": seg, "uygulanir": uygulanir, "tarife_yekdem": tarife_yekdem, "rejim": r, "fiyat": fiyat,
-            "kur": kur, "aylar": aylar, "m23_6": m23, "not": " ".join(notlar) or None,
+            "kur": kur, "aylar": aylar, "m23_6": m23, "not": " ".join(notlar) or None, "kapsam_sinirlari": list(KAPSAM_SINIRLARI) if uygulanir else [],
             "sabitler": {"cetvel1_cent": CETVEL1_CENT, "bant_cent": BANT_CENT[r["tesis_tipi"]], "baslangic_kr": BASLANGIC_KR[r["tesis_tipi"]], "yerli_yil": YERLI_YIL[r["tesis_tipi"]], "j": J}}
 
 

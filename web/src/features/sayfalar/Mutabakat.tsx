@@ -207,6 +207,18 @@ export function Mutabakat({ plantId }: { plantId: string }) {
               {sy?.yuklu && sy.olc_fark_pct != null ? <> Ölçülmüş saatlerde sayaç − SCADA {sy.olc_fark_pct < 0 ? "−" : "+"}%{sayiTr(Math.abs(sy.olc_fark_pct), 1)}.</> : null}</p>
             {sd && <p style={{ margin: "6px 0 0", color: sd.durum === "takvimden_once" ? "var(--amber-koyu, #8a5a00)" : undefined }}><b>Sürüm:</b> {sd.aciklama}</p>}
           </details>
+          {m.itiraz && <details className="aciklama" style={{ marginTop: 6 }}>   {/* v2.538 (EK-3 DK-557/DK-395): itiraz süreleri ve geriye dönük düzeltme penceresi */}
+            <summary>İtiraz süreleri ve geriye dönük düzeltme ({m.donem_etiket})</summary>
+            <ul className="not-listesi" style={{ fontSize: 13.5, marginTop: 6 }}>
+              <li><b>Ön bildirime itiraz:</b> {m.itiraz.on_bildirim_itiraz_son.split(" ")[0].split("-").reverse().join(".")} 17:30'a kadar (DUY m.132/B(1))</li>
+              <li><b>Faturaya itiraz:</b> tebliğden itibaren 60 gün içinde yazılı; takvime göre {m.itiraz.fatura_itiraz_60_gun.split("-").reverse().join(".")} (m.133(1))</li>
+              <li><b>Geriye dönük itiraz:</b> başvuru tarihinden en fazla {sayiTr(m.itiraz.geriye_donuk.pencere_ay)} ay önceki fatura dönemi; bu dönem için son başvuru {m.itiraz.geriye_donuk.son_basvuru.split("-").reverse().join(".")}
+                {m.itiraz.geriye_donuk.gecti ? " (geçti)" : ` (${sayiTr(m.itiraz.geriye_donuk.kalan_gun)} gün kaldı)`}; sonuç {sayiTr(m.itiraz.geriye_donuk.sonuc_ay)} ay içinde, düzeltme GDDK kalemiyle sonraki faturada (m.133(5), (7); m.134(1)) — son gün çıkarımdır, sayım yöntemi metinde yok</li>
+              <li><b>İnceleme süreleri:</b> ölçüm değerlerine itirazı TEİAŞ/dağıtım şirketi {sayiTr(m.itiraz.inceleme.olcum_teias_dagitim_gun)} gün içinde sonuçlandırır, EPİAŞ sonucu {sayiTr(m.itiraz.inceleme.olcum_epias_is_gunu)} iş günü içinde işler; ölçüm dışı itirazlar {sayiTr(m.itiraz.inceleme.olcum_disi_is_gunu)} iş günü ({m.itiraz.inceleme.dayanak})</li>
+              {m.itiraz.lisanssiz && <li><b>Lisanssız tesis:</b> {m.itiraz.lisanssiz.not} İnceleme {sayiTr(m.itiraz.lisanssiz.inceleme_is_gunu)} iş günü ({m.itiraz.lisanssiz.dayanak}).</li>}
+            </ul>
+            <p className="soluk" style={{ margin: "6px 0 0", fontSize: 13 }}>{m.itiraz.dayanak}</p>
+          </details>}
           <details className="aciklama" style={{ marginTop: 6 }}>
             <summary>Bu sayfa nasıl çalışır</summary>
             <p style={{ margin: "6px 0 0" }}>{m.not}</p>

@@ -37,11 +37,11 @@ export function Sayac({ plantId }: { plantId: string }) {
   const [yukleniyor, setYukleniyor] = useState(false);
   const [tur, setTur] = useState<string>("");
   const [girdi, setGirdi] = useState<"scada" | "sayac">("scada");   // v2.526 (P4a-2): uzlaştırma yeniden hesabında üretim kaynağı
-  const [scada, setScada] = useState<{ durum: string; bas: string; uzaktan: boolean | null; bedel: string }>({ durum: "", bas: "", uzaktan: null, bedel: "" });
+  const [scada, setScada] = useState<{ durum: string; bas: string; uyari: string; uzaktan: boolean | null; bedel: string }>({ durum: "", bas: "", uyari: "", uzaktan: null, bedel: "" });   // v2.538: uyari = dağıtım şirketi uyarı tarihi
   const [ayarDurum, setAyarDurum] = useState<{ metin: string; ton: "ok" | "hata" } | null>(null);
   const [scadaDurumIleti, setScadaDurumIleti] = useState<{ metin: string; ton: "ok" | "hata" } | null>(null);
   const yukle = () => api.sayac(plantId, gun).then((y) => { setO(y); setTur(y.ayar.sayac_turu ?? ""); setGirdi(y.ayar.uzlastirma_girdi === "sayac" ? "sayac" : "scada");
-    setScada({ durum: y.ayar.scada_durum ?? "", bas: y.ayar.scada_kopukluk_baslangic ?? "", uzaktan: y.ayar.uzaktan_acma_var, bedel: y.ayar.sistem_kullanim_bedeli_tl_ay != null ? String(y.ayar.sistem_kullanim_bedeli_tl_ay).replace(".", ",") : "" }); }, () => setO(null));
+    setScada({ durum: y.ayar.scada_durum ?? "", bas: y.ayar.scada_kopukluk_baslangic ?? "", uyari: y.ayar.scada_uyari_tarihi ?? "", uzaktan: y.ayar.uzaktan_acma_var, bedel: y.ayar.sistem_kullanim_bedeli_tl_ay != null ? String(y.ayar.sistem_kullanim_bedeli_tl_ay).replace(".", ",") : "" }); }, () => setO(null));
   useEffect(() => { setO(undefined); void yukle(); }, [plantId, ds, gun]);   // eslint-disable-line react-hooks/exhaustive-deps
   const gonder = () => {
     if (!dosya) { setMesaj({ metin: "Önce sayaç dışa aktarım dosyasını seçin (CSV ya da XLSX).", ton: "hata" }); return; }
@@ -57,7 +57,8 @@ export function Sayac({ plantId }: { plantId: string }) {
   const scadaKaydet = () => {
     const bedel = sayiOku(scada.bedel);
     if (bedel === undefined || (bedel != null && bedel < 0)) { setScadaDurumIleti({ metin: "Aylık sistem kullanım bedeli sayı olmalı (TL).", ton: "hata" }); return; }
-    ayarKaydet({ scada_durum: scada.durum || null, scada_kopukluk_baslangic: scada.durum === "kopuk" ? (scada.bas || null) : null, uzaktan_acma_var: scada.uzaktan, sistem_kullanim_bedeli_tl_ay: bedel }, setScadaDurumIleti);
+    ayarKaydet({ scada_durum: scada.durum || null, scada_kopukluk_baslangic: scada.durum === "kopuk" ? (scada.bas || null) : null, scada_uyari_tarihi: scada.durum === "kopuk" ? (scada.uyari || null) : null,
+      uzaktan_acma_var: scada.uzaktan, sistem_kullanim_bedeli_tl_ay: bedel }, setScadaDurumIleti);
   };
   if (o === undefined) return <Sayfa baslik="Sayaç"><SayfaIskeleti kpi={4} kart={2} /></Sayfa>;
   if (o === null) return <Sayfa baslik="Sayaç"><p className="soluk">Sayaç bilgisi alınamadı.</p></Sayfa>;
@@ -155,7 +156,7 @@ export function Sayac({ plantId }: { plantId: string }) {
       </Kart>
       {!sc && o.scada_notu && <p className="form-not soluk" style={{ margin: "14px 0 0", fontSize: 13.5 }}><b>SCADA bağlantı durumu:</b> {o.scada_notu}</p>}
       {sc && (
-        <Kart baslik="SCADA bağlantı durumu" alt="Lisanssız tesis (LÜY m.21(7)); durum beyandır. Karar 14909 bedel göstergesi varsayımsaldır; (f)/(g) askısı 30.4.2027 (tarih kısmen teyit)."
+        <Kart baslik="SCADA bağlantı durumu" alt="Lisanssız tesis (LÜY m.21(7)); durum beyandır. Karar 14909 bedel göstergesi varsayımsaldır; (f) ve (g) 30.4.2027'ye kadar uygulanmaz (LÜY Geçici m.14(2)), (ç) askıda değildir."
           sag={<span className={`rozet rozet-kucuk ${!sc.yukumlu ? "rozet-notr" : sc.durum === "bagli" ? "rozet-ok" : sc.durum ? "rozet-uyari" : "rozet-notr"}`} title={`${sc.dayanak_yukumluluk}. Durum kaynağı: beyan (bu formda girilir).`}>
             {!sc.yukumlu ? `${sayiTr(sc.esik_kw)} kW altı; yükümlülük yok` : `${sc.durum_etiket} · beyan`}</span>}>
           <div className="ızgara-cift">
@@ -164,6 +165,7 @@ export function Sayac({ plantId }: { plantId: string }) {
                 <label className="girdi-etiket">Bağlantı durumu<select className="girdi" value={scada.durum} onChange={(e) => setScada({ ...scada, durum: e.target.value })}>
                   <option value="">girilmedi</option>{o.scada_durumlari.map((s) => <option key={s.kod} value={s.kod}>{s.etiket}</option>)}</select></label>   {/* v2.537: etiket s.etiket (bağlı / kopuk / entegrasyon yok) */}
                 {scada.durum === "kopuk" && <label className="girdi-etiket">Kopukluk başlangıcı<input className="girdi" type="date" value={scada.bas} onChange={(e) => setScada({ ...scada, bas: e.target.value })} /></label>}
+                {scada.durum === "kopuk" && <label className="girdi-etiket" title="Dağıtım şirketinin yazılı ve kalıcı veri saklayıcısı ile gönderdiği onarım uyarısının tarihi; (ç) bendinin bir aylık süresi bu tarihten başlar (Karar 14909)">Dağıtım şirketi uyarı tarihi<input className="girdi" type="date" value={scada.uyari} onChange={(e) => setScada({ ...scada, uyari: e.target.value })} /></label>}   {/* v2.538 (DK-656) */}
                 <label className="girdi-etiket">Aylık sistem kullanım bedeli (TL)<input className="girdi" inputMode="decimal" placeholder="dağıtım faturasından" value={scada.bedel} onChange={(e) => setScada({ ...scada, bedel: e.target.value.replace(/[^0-9.,]/g, "") })} /></label>
                 <label className="girdi-etiket form-tam" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   <input type="checkbox" checked={!!scada.uzaktan} onChange={(e) => setScada({ ...scada, uzaktan: e.target.checked })} /> Uzaktan açma-kapama yeteneği var</label>
@@ -172,17 +174,19 @@ export function Sayac({ plantId }: { plantId: string }) {
               <ul className="not-listesi" style={{ fontSize: 13.5, marginTop: 10 }}>
                 <li><b>Yükümlülük:</b> {sc.kurulu_kaynak} {sayiTr(sc.kurulu_kw, 0)} kW {sc.yukumlu ? "≥" : "<"} {sayiTr(sc.esik_kw)} kW → {sc.yukumlu ? "SCADA bağlantısı zorunlu" : "bağlantı yükümlülüğü yok"} (LÜY m.21(7)); anlaşma tarafı {sc.anlasma === "dagitim" ? "dağıtım şirketi" : "TEİAŞ (iletim)"}; DUY m.75(4) kapsamı (900 kW ve üzeri): {sc.m75_kapsam ? "içinde" : "dışında"}</li>
                 <li><b>Durum kaynağı:</b> beyan (bu form); PVQuant şebeke işletmecisinin SCADA'sına bağlı değildir. PVQuant'taki SCADA dosyası tazeliği ayrı bir göstergedir.</li>
-                {sc.kopukluk_gun != null && <li><b>Kopukluk sayacı:</b> <span style={sc.kopukluk_gun > 30 ? amber : undefined}>{sayiTr(sc.kopukluk_gun)} gün</span> ({gunTr(sc.kopukluk_baslangic)} tarihinden beri); bir ay içinde onarılmazsa günlük bedel maddesi başlar</li>}
+                {sc.kopukluk_gun != null && <li><b>Kopukluk sayacı:</b> <span style={sc.kopukluk_gun > 30 ? amber : undefined}>{sayiTr(sc.kopukluk_gun)} gün</span> ({gunTr(sc.kopukluk_baslangic)} tarihinden beri; bilgi sayacı)</li>}
+                {sc.durum === "kopuk" && sc.uyari_tarihi && <li><b>Onarım süresi (ç):</b> dağıtım şirketi uyarısı {gunTr(sc.uyari_tarihi)}; bir aylık süre {gunTr(sc.uyari_sure_sonu)} tarihinde dolar, sonrasında her gün için bedelin %1'i (askıda değil)</li>}   {/* v2.538 (DK-656); uyarı tarihi yoksa arka ucun «uygulanmayan» notu tablo altında */}
                 <li><b>Uzaktan açma-kapama yeteneği:</b> {sc.uzaktan_acma_var == null ? "girilmedi" : sc.uzaktan_acma_var ? "var" : "yok"} (envanter bilgisi; DUY m.75(4) acil durum talimatı 900 kW ve üzerinden başlar)</li>
                 <li><b>Uzaktan açma olayları (bu ay):</b> {sayiTr(sc.uzaktan_acma_ay)} — Olay kaydı › «Uzaktan açma yapılamadı» türüyle girilir</li>
-                <li><b>Askı:</b> (f) ve (g) {gunTr(sc.aski_bitis)} tarihine kadar uygulanmaz ({sc.aski_gecti ? "süre doldu" : `${sayiTr(sc.aski_kalan_gun)} gün kaldı`}; tarih ikincil kaynaktan, kısmen teyit); (ç) için askı doğrulanmadı</li>
+                <li><b>Askı:</b> (f) ve (g) {gunTr(sc.aski_bitis)} tarihine kadar uygulanmaz ({sc.aski_gecti ? "süre doldu" : `${sayiTr(sc.aski_kalan_gun)} gün kaldı`}; LÜY Geçici m.14(2), RG 19.10.2026-33405); (ç) askıda değil</li>
+                {sc.m75_kesinlik === "belirsiz" && sc.m75_kapsam && <li className="soluk"><b>900 kW kıyası:</b> AC sınırı girilmedi, DC kurulu güçle (kWp) yapıldı; DUY m.75(4)(ç) elektriksel kurulu güce bağlıdır — Santral ayarlarına AC sınırını girin</li>}   {/* v2.538 (DK-735) */}
               </ul>
             </div>
             <div>
               <table className="veri" style={{ fontSize: 13.5 }}>
                 <thead><tr><th style={sol}>Karar 14909 bedel göstergesi</th><th>Kat</th><th title="Varsayımsal: girdiğiniz bedelle kaba uygulama; tebliğ edilmiş borç değildir">Varsayımsal tutar (TL)</th></tr></thead>
                 <tbody>{sc.kalemler.length === 0 ? <tr><td style={sol} colSpan={3} className="soluk">{!sc.yukumlu ? "Yükümlülük yok." : sc.anlasma === "iletim" ? "İletime bağlı tesis: dağıtım bağlantı anlaşması bedel maddeleri uygulanmaz." : "Bu ay için bedel maddesi tetiklenmedi (durum bağlı ya da 30 gün aşılmadı, uzaktan açma olayı yok)."}</td></tr>
-                  : sc.kalemler.map((k) => <tr key={k.kod}><td style={sol}>{k.etiket}{k.kesinlik === "belirsiz" ? <span className="soluk" title={k.not ?? ""}> · belirsiz</span> : null}<div className="soluk" style={{ fontSize: 12 }}>{k.birim}{k.aski === "kapsamda" ? " · askıda" : k.aski === "dogrulanmadi" ? " · askı doğrulanmadı" : ""}</div></td>
+                  : sc.kalemler.map((k) => <tr key={k.kod}><td style={sol}>{k.etiket}{k.kesinlik === "belirsiz" ? <span className="soluk" title={k.not ?? ""}> · belirsiz</span> : null}<div className="soluk" style={{ fontSize: 12 }}>{k.birim}{k.aski === "kapsamda" ? " · askıda" : k.aski === "askida_degil" ? " · askıda değil" : k.aski === "dogrulanmadi" ? " · askı doğrulanmadı" : ""}</div></td>
                     <td className="mono">{sayiTr(k.kat, 2)}</td><td className="mono">{k.tutar_tl != null ? sayiTr(k.tutar_tl, 2) : "bedel girilmedi"}</td></tr>)}
                   {sc.kalemler.length > 0 && <tr style={{ fontWeight: 600 }}><td style={sol}>Toplam · varsayımsal{sc.toplam_aski_tl && !sc.aski_gecti ? <span className="soluk" style={{ fontWeight: 400 }}> ({sayiTr(sc.toplam_aski_tl, 2)} TL askı bitince{sc.toplam_aski_disi_tl ? `; ${sayiTr(sc.toplam_aski_disi_tl, 2)} TL askı doğrulanmadı` : ""})</span> : null}</td><td /><td className="mono">{sc.toplam_tl != null ? sayiTr(sc.toplam_tl, 2) : "—"}</td></tr>}</tbody>
               </table>

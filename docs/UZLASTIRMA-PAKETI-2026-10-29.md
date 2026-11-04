@@ -907,3 +907,27 @@ eyleme dönük alt metinler, «Bu sayfa nasıl çalışır» beş soru + teknik 
 Yapılmayan: resmî OSOS/MASS/EPYS sütun şablonları elimizde yok (dosya ipuçlarıyla tanınır, belgeli); yükleme geri bildirimi zaten alınan/atlanan sayımları veriyor, ayrı tablo yapılmadı;
 raporlarda ölçüm kaynağı etiketi (DK-367) sonraya. Rapor: `~/Desktop/PVQuant_Kaynak_Teyit_2026-11-04/SAYAC_DOGRULAMA_RAPORU.md`.
 Sonraya: EK-3 değer satırları; lock dosyası kararı; Mutabakat'ta kupst_kaynak.
+
+# Otuz sekizinci paket — v2.538 (05.11.2026) — EK-3 kanıtlı satırlar I
+
+**Kapsam.** 03.11.2026 doğrulama arşivinin EK-3 değer/yükümlülük tablosu (63 satır) tarandı; birincil metni arşivde okunmuş, A kanıtlı, veri ya da göç gerektirmeyen 16 satır uygulandı. Kural: C/D/E kanıtlı satır birincil metin okunmadan uygulanmaz.
+
+**Uygulanan satırlar.**
+| DK | Konu | Uygulama |
+|---|---|---|
+| DK-613 | Dâhilî bilgi 1 saat kuralı yürürlüğü | «belirsiz» → 01.01.2027 (Yön. RG 14.02.2026-33168 m.16, RG 23.05.2026-33262 ile; Karar 14967'de ayrı yürürlük yok → çıkarım). 2027 öncesi olayda `basladi=False`, hatırlatma bilgi amaçlı. |
+| DK-733/740 | Talimat tutarı yansıtması | Olay kaydı açıklaması segmente göre: lisanssızda DUY m.75(3) zinciri + LÜY Ek m.4(1) + m.107(3); lisanslıda DGP uzlaştırması. |
+| DK-656/658 | SCADA (ç) askı kapsamı ve sayım | LÜY Geçici m.14(2) metni: askı yalnız (f),(g); 30.4.2027 teyit. (ç) askıda değil; sayım dağıtım şirketi uyarı tarihinden (yeni ayar) + 1 takvim ayı (yorum). Uyarı tarihi yoksa (ç) üretilmez. |
+| DK-735 | 900 kW kıyası | AC sınırı yoksa DC kWp ile kıyas → «belirsiz» işareti ve uyarı. |
+| DK-557/395 | İtiraz süreleri | Mutabakat `itiraz_takvimi()`: m.132/B(1), m.133(1), m.133(5) 12 ay + 3 ay (son başvuru çıkarım), m.133(3)–(4) inceleme süreleri, LÜY m.27 lisanssız. |
+| DK-297/323/675 | YEKDEM kapsam sınırları | `KAPSAM_SINIRLARI`: y katsayısı (m.12(3)–(4)), kurulu güç aşımı (m.12), depolama (LÜY Ek m.3(2)); Doğruluk › YEKDEM kartında açılır liste. |
+| DK-653/785 | İletime bağlı lisanssız EDT | `dengesizlik_tasir_mi` False (tabloyla tutarlı); EDT yansıtma hükmü bulunamadı, talimat tutarı m.75(3). |
+| DK-662/668/696 | Öz tüketim kapsam sınırı | m.26(17) iki kat sınırı, m.26(20) mesken istisnası modellenmedi; gelir() bağlı değil — docstring ve segment notu. |
+| DK-023 | İkinci EPİAŞ istemcisi k=l=0,03 | Eski formül künyesi (RG 02.02.2020-31027; ≤31.12.2025); 2026+ seride ValueError. |
+| DK-134 | Kısıt listesi | Döküm notuna DUY m.71(3): kısıt/T−30 saatlerinde KGÜP kesinleşir, PVQuant işaretlemez. |
+
+**Uygulanmayan (04'e).** DK-612 (YEK-G Ek sıra 17–18: Karar 14967 OCR metni boş, birincil okuma yok), DK-629 (PBD Yön. m.7/6 toplayıcı alıcısı — metin okunmadı), DK-333 (m.23(9) 1.1–18.10.2026 tatil işareti — mülga tarihi arşivde çelişkili: 33122 / 33405), DK-1019 (CO₂ 0,44 → kaynaklı değer, kanıt B), DK-258/252/261 (DSG gruplaması `dsg` alanına göre — hesap değişikliği, ayrı paket), DK-056 (YAL/YAT saatlerinde «hesap güvenilmez» işareti), DK-741/743 (acil kesme sona erme bildirimi, gerekçe son günü — yeni alan/göç), DK-206, DK-804.
+
+**İnceleme (05.11).** Sahte API süreci yamadan önce başlamıştı (eski veri); yeniden başlatıldı. SCADA kartında (ç) notu iki kez görünüyordu, sol satır yalnız uyarı tarihi girilince kalır. Mutabakat «Ne yapmalı» itiraz tarihleri gün.ay.yıl yapıldı.
+
+**Kanıt.** pytest tam takım; `tests/test_ek3_v2538.py` 11 test; web tsc/npm test 103/oxlint 16/build; sahte API kareleri (4 sayfa, taşma yok). Göç yok. Formül değişikliği yok.

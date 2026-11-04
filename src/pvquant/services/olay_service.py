@@ -48,7 +48,7 @@ TUR_KURAL = {
     "ariza":           {"eak_dusur": True,  "gerekce": "kaynak_yetersizligi", "istisna": False, "sayac": True,  "not": "EAK düşer; aylık arıza sayacına girer (30 ve üzeri KÜPST n 0,08); kullanılabilirlikte arıza"},
     "talimat_yat":     {"eak_dusur": False, "gerekce": None,                  "istisna": True,  "sayac": False, "not": "EAK değişmez; program sapması talimattan (BUDÜP, P2b); kullanılabilirlikte istisna"},
     "talimat_yal":     {"eak_dusur": False, "gerekce": None,                  "istisna": True,  "sayac": False, "not": "EAK değişmez; program sapması talimattan (BUDÜP, P2b)"},
-    "acil_kesme":      {"eak_dusur": True,  "gerekce": "dissal",              "istisna": True,  "sayac": False, "not": "Sistem İşletmecisi kesmesi: EAK dışsal gerekçeyle düşer; kullanılabilirlikte istisna"},
+    "acil_kesme":      {"eak_dusur": True,  "gerekce": "dissal",              "istisna": True,  "sayac": False, "not": "Sistem İşletmecisi kesmesi: EAK dışsal gerekçeyle düşer; kullanılabilirlikte istisna; lisanssızda talimat tutarı GTŞ/toplayıcı üzerinden yansıtılır (DUY m.75(3)), yerine getirilmeyen kısma ödeme yok (LÜY Ek m.4)"},
     "sebeke_kesintisi": {"eak_dusur": True, "gerekce": "dissal",              "istisna": True,  "sayac": False, "not": "Şebeke kaynaklı: EAK dışsal gerekçeyle düşer; kullanılabilirlikte istisna"},
     "hasar":           {"eak_dusur": True,  "gerekce": "kaynak_yetersizligi", "istisna": False, "sayac": False, "not": "Hasar dosyası için kayıt; EAK düşer. Hasar tek başına mücbir sebep değildir: «mücbir sebep» gerekçesi yalnız mevzuattaki koşullar sağlanıyorsa seçilir"},
     "uzaktan_acma":    {"eak_dusur": False, "gerekce": None,                  "istisna": False, "sayac": False, "not": "Lisanssız tesiste acil durum talimatında uzaktan açma yapılamadı (LÜY m.21(7) SCADA bağlantısı); EAK değişmez; Sayaç sayfasındaki Karar 14909 bedel göstergesine girer (ay içinde en çok üç kat)"},   # v2.523 (P4a)
@@ -57,9 +57,20 @@ DURUMLAR = ("acik", "kapali", "iptal")
 DAHILI_TESIS_KW = 30_000.0      # Karar 14967 Asgari Veriler Listesi sıra 1: tesis bazında 30 MW ve üzeri
 DAHILI_PORTFOY_KW = 50_000.0    # portföy bazında 50 MW ve üzeri
 DAHILI_SURE_SAAT = 1
+DAHILI_YURURLUK = date(2027, 1, 1)   # v2.538 (EK-3 DK-613, kanıt A): Şeffaflık ve Piyasa Bozucu Davranışlar Yön. (RG 14.02.2026-33168) m.16 yürürlüğü RG 23.05.2026-33262 ile 1.1.2027
+DAHILI_YURURLUK_ETIKET = "01.01.2027"
+DAHILI_YURURLUK_NOTU = ("Yürürlük: Enerji Piyasalarında ve Çevresel Piyasalarda Şeffaflığa ve Piyasa Bozucu Davranışlara İlişkin Yönetmelik (RG 14.02.2026-33168) "
+                        "m.16 ile 1.1.2027 (RG 23.05.2026-33262 ile ertelendi); Karar 14967'de ayrı yürürlük fıkrası yok, 1 saat kuralının başlangıcı "
+                        "Yönetmelik yürürlüğünden çıkarımdır.")
 DAHILI_NOTU = ("Karar 14967 (RG 20.10.2026-33406) m.4(a): arıza ve bakım dâhil kapasite kullanımı değişiklikleri, olayın ortaya çıkışından en geç 1 saat "
-               "içinde Dâhilî Bilgi Platformu'nda açıklanır; eşik tesis bazında 30 MW, portföy bazında 50 MW. Yürürlük tarihi karar metninde yok "
-               "(belirsiz); platform arayüzü doğrulanmadı. Bu geri sayım hatırlatmadır, bildirim yerine geçmez.")
+               "içinde Dâhilî Bilgi Platformu'nda açıklanır; eşik tesis bazında 30 MW, portföy bazında 50 MW. " + DAHILI_YURURLUK_NOTU +
+               " Platform arayüzü doğrulanmadı. Bu geri sayım hatırlatmadır, bildirim yerine geçmez.")
+TALIMAT_NOTU_LISANSSIZ = ("Acil durum talimatının (DUY m.75) tutarı m.75(3) uyarınca ilgili toplayıcıya ya da görevli tedarik şirketine, onlardan tesis "
+                          "sahibine yansıtılır; talimatın yerine getirilmeyen kısmına karşılık gelen üretim için ödeme yapılmaz (LÜY Ek m.4(1), RG 19.10.2026-33405). "
+                          "Yerine getirilen talimat miktarı uzlaştırmaya esas veriş miktarı ve KGÜP ile tespit edilir (DUY m.107(3), m.104(3)). PVQuant talimat "
+                          "tutarını hesaplamaz; GTŞ/toplayıcı bildirimi ya da faturası esastır.")   # v2.538 (EK-3 DK-733/DK-740, kanıt A)
+TALIMAT_NOTU_LISANSLI = ("YAL/YAT talimat tutarları dengeleme güç piyasası uzlaştırmasında hesaplanır (DUY m.75–78); PVQuant talimat miktarını veri olarak "
+                         "almaz, talimat saatlerinde program sapması talimattan sayılır ve kullanılabilirlik istisnasına girer.")
 
 
 def _tarih(v) -> datetime | None:
@@ -305,7 +316,8 @@ def ariza_sayisi_etkin(tenant_id, plant: dict, ay: date | None = None) -> dict:
 
 def dahili_bilgi(olay: dict, kapasite_kw: float, portfoy_kw: float | None = None, simdi: datetime | None = None) -> dict | None:
     """Karar 14967 1 saat kuralı: etkilenen güç (boşsa kurulu güç) tesis eşiğinde ya da portföy açık olay toplamı portföy eşiğinde ise
-    son açıklama saati ve kalan süre; eşik altındaysa None. Yürürlük «belirsiz»."""
+    son açıklama saati ve kalan süre; eşik altındaysa None. v2.538 (DK-613): yürürlük 01.01.2027 (çıkarım); olay başlangıcı bu tarihten
+    önceyse `basladi` False ve hatırlatma bilgi amaçlıdır (zorunlu süre henüz yok)."""
     if olay.get("tur") not in ("planli_bakim", "ariza", "acil_kesme", "sebeke_kesintisi", "hasar"):
         return None
     kw = float(olay["etkilenen_kw"]) if olay.get("etkilenen_kw") else float(kapasite_kw or 0)
@@ -314,8 +326,12 @@ def dahili_bilgi(olay: dict, kapasite_kw: float, portfoy_kw: float | None = None
         return None
     bas = olay["baslangic"] if isinstance(olay["baslangic"], datetime) else datetime.fromisoformat(olay["baslangic"])
     son = bas + timedelta(hours=DAHILI_SURE_SAAT); now = simdi or datetime.now(timezone.utc)
+    basladi = bas.astimezone(IST).date() >= DAHILI_YURURLUK
     return {"esik": "tesis 30 MW" if tesis else "portföy 50 MW", "etkilenen_kw": kw, "son_saat": son.astimezone(IST).isoformat(timespec="minutes"),
-            "kalan_dk": int((son - now).total_seconds() // 60), "gecti": now > son, "yururluk": "belirsiz", "not": DAHILI_NOTU}
+            "kalan_dk": int((son - now).total_seconds() // 60), "gecti": now > son, "yururluk": DAHILI_YURURLUK_ETIKET, "basladi": basladi,
+            "yururluk_notu": DAHILI_YURURLUK_NOTU if basladi else ("Yükümlülük 01.01.2027'de başlar (çıkarım): bu olay için zorunlu 1 saatlik süre henüz yok; "
+                                                                   "hatırlatma bilgi amaçlıdır. " + DAHILI_YURURLUK_NOTU),
+            "not": DAHILI_NOTU}
 
 
 def ozet(tenant_id, plant: dict, gun: int = 90, bugun: date | None = None) -> dict:
@@ -333,11 +349,15 @@ def ozet(tenant_id, plant: dict, gun: int = 90, bugun: date | None = None) -> di
             dahili.append({"olay_id": o["id"], "tur": o["tur_etiket"], **d})
     sayac = ariza_sayisi_etkin(tenant_id, plant, b)
     etki = saatlik_etki(tenant_id, plant, b)
+    from pvquant.services import dengesizlik_service
+    seg = dengesizlik_service.segment_bilgisi(plant.get("params_json")).get("segment")   # v2.538 (DK-733/DK-740): talimat notu segmente göre
+    lisanssiz = seg in ("lisanssiz_dagitim", "lisanssiz_iletim")
     return {"bugun": b.isoformat(), "pencere_gun": gun, "olaylar": olaylar, "acik": len(acik), "planli": len(planli), "ariza_sayaci": {**sayac, "esik": 30, "uyari": 25, "ay": b.strftime("%Y-%m")},
             "eak_bugun": {"saat_sayisi": len(etki["saatler"]), "en_cok_kw": max((v["toplam_kw"] for v in etki["saatler"].values()), default=0.0),
                           "taban_kw": etki["taban_kw"], "kismi_saat": sum(1 for v in etki["saatler"].values() if v["oran"] < 1.0),
                           "suren": sum(1 for o in acik if o["kural"]["eak_dusur"] and not o["bitis"])},   # bitişi girilmemiş: gün sonuna kadar sayılır
-            "dahili_bilgi": dahili, "turler": [{"kod": t, "etiket": TUR_ETIKET[t], **TUR_KURAL[t]} for t in TURLER],
+            "dahili_bilgi": dahili, "dahili_yururluk": {"tarih": DAHILI_YURURLUK.isoformat(), "etiket": DAHILI_YURURLUK_ETIKET, "basladi": b >= DAHILI_YURURLUK, "not": DAHILI_YURURLUK_NOTU},
+            "segment": seg, "turler": [{"kod": t, "etiket": TUR_ETIKET[t], **TUR_KURAL[t]} for t in TURLER],
             "gerekceler": [{"kod": g, "etiket": GEREKCE_ETIKET[g]} for g in GEREKCELER],
             "not": "Olay kaydı santralın kendi kaydıdır; TPYS Arıza ve Bakım bildirimi, Dâhilî Bilgi Platformu açıklaması ve TEİAŞ bildirimleri ayrıca yapılır.",
             "aciklama": {"kapasite": "Planlı bakım, arıza, acil kesme, şebeke kesintisi ve hasar o saatlerde verilebilecek gücü (EAK) ve programın tavanını düşürür; saat içinde kısmen süren olay "
@@ -348,7 +368,8 @@ def ozet(tenant_id, plant: dict, gun: int = 90, bugun: date | None = None) -> di
                          "islem": "«Bitir» olayın bittiğini işler, kayıt hesaplarda kalır. «Geçersiz say» yanlış kaydı hesaplardan çıkarır; kayıt silinmez, dosyada «geçersiz» olarak görünür. "
                                   "Başlangıç ve tür değiştirilemez; yanlışsa kaydı geçersiz sayıp yenisini açın. Her ekleme ve değişiklik denetim izinde tutulur.",
                          "gerekce": "EAK gerekçesi TPYS EAK dosyasındaki sütundur; tür için varsayılan önerilir, kayıt girilirken değiştirilebilir. «Mücbir sebep» yalnız mevzuattaki koşullar (Lisans Yön. m.35(2)–(3)) "
-                                    "sağlanıyorsa seçilir; EAK sütunu ile EPDK'ya m.35 başvurusu ayrı süreçlerdir; hasar tek başına mücbir sebep değildir."}}
+                                    "sağlanıyorsa seçilir; EAK sütunu ile EPDK'ya m.35 başvurusu ayrı süreçlerdir; hasar tek başına mücbir sebep değildir.",
+                         "talimat": TALIMAT_NOTU_LISANSSIZ if lisanssiz else TALIMAT_NOTU_LISANSLI}}
 
 
 def csv_metni(olaylar: list[dict], plant_ad: str) -> str:

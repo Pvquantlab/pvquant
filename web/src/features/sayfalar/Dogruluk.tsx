@@ -110,6 +110,10 @@ function YekdemKarti({ plantId, gun }: { plantId: string; gun: number }) {
           <p className="soluk" style={{ margin: "8px 0 0", fontSize: 13 }}>
             {yk.not ? yk.not + " " : ""}Yeniden hesaptır; EPİAŞ YEKDEM uzlaştırması değildir.
           </p>
+          {yk.kapsam_sinirlari && yk.kapsam_sinirlari.length > 0 && <details className="aciklama">   {/* v2.538 (EK-3 DK-297/DK-323/DK-675) */}
+            <summary>Bu hesabın kapsamadığı kurallar ({sayiTr(yk.kapsam_sinirlari.length)})</summary>
+            <ul className="not-listesi" style={{ fontSize: 13.5, marginTop: 6 }}>{yk.kapsam_sinirlari.map((k) => <li key={k.kod}><b>{k.etiket}:</b> {k.metin}</li>)}</ul>
+          </details>}
           <details className="aciklama">
             <summary>m.23(6) dayanağı ve hesap yöntemi</summary>
             <p style={{ margin: "6px 0 0" }}>{yk.m23_6 ? yk.m23_6.not : "m.23(6) işareti yalnız lisanslı YEKDEM segmentinde ve satış tarifesi YEKDEM seçiliyken üretilir. YEK Yön. m.23(6) (RG 19.10.2026-8): PTF ya da SMF taban değerin (V) altında ve sistem yönü enerji fazlası olan saatte programın üstündeki üretim, PTF o saatin YEK fiyatından düşükse YEKDEM dışında kalır."}</p>

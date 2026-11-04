@@ -125,6 +125,7 @@ export interface Yekdem {
     kgup0_saat?: number; kgup0_mwh?: number; kgup0_tl?: number } | null;
   not: string | null;
   sabitler: { cetvel1_cent: number; bant_cent: [number, number]; baslangic_kr: [number, number]; yerli_yil: number; j: number };
+  /** v2.538 (EK-3 DK-297/DK-323/DK-675): YEKDEM hesabının modellemediği kurallar (kapsam sınırı) */ kapsam_sinirlari?: { kod: string; etiket: string; metin: string }[];
 }
 /** /guc-matrisi — v2.283: IEC 61853 kalıbıyla modül davranışı. */
 export interface GucMatrisi {
@@ -525,8 +526,11 @@ export interface Olay { id: string; plant_id: string; tur: OlayTur; tur_etiket: 
 export interface OlayOzet { bugun: string; pencere_gun: number; olaylar: Olay[]; acik: number; planli: number;
   ariza_sayaci: { sayi: number; olay: number; elle: number; kaynak: string; esik: number; uyari: number; ay: string };
   eak_bugun: { saat_sayisi: number; en_cok_kw: number; taban_kw: number; kismi_saat: number; suren: number };
-  aciklama: { kapasite: string; sayac: string; kullanilabilirlik: string; islem: string; gerekce: string };
-  dahili_bilgi: { olay_id: string; tur: string; esik: string; etkilenen_kw: number; son_saat: string; kalan_dk: number; gecti: boolean; yururluk: string; not: string }[];
+  aciklama: { kapasite: string; sayac: string; kullanilabilirlik: string; islem: string; gerekce: string;
+    /** v2.538 (EK-3 DK-733/DK-740): talimat tutarının yansıtılması — segmente göre lisanssız / lisanslı metni */ talimat?: string };
+  /** v2.538 (EK-3 DK-613): 1 saat kuralının yürürlüğü 01.01.2027 (çıkarım); basladi = olay başlangıcı yürürlükten sonra */
+  dahili_bilgi: { olay_id: string; tur: string; esik: string; etkilenen_kw: number; son_saat: string; kalan_dk: number; gecti: boolean; yururluk: string; basladi?: boolean; yururluk_notu?: string; not: string }[];
+  dahili_yururluk?: { tarih: string; etiket: string; basladi: boolean; not: string }; segment?: string | null;
   turler: ({ kod: OlayTur; etiket: string } & OlayKural)[]; gerekceler: { kod: string; etiket: string }[]; not: string }
 /** v2.523 (P4a): sayaç izleme — OSOS/MASS/EPYS sayaç serisi (SCADA'dan ayrı), geliş beklentisi, SCADA ↔ sayaç farkı, lisanssız SCADA durumu */
 export type SayacKaynak = "osos" | "mass" | "epys" | "elle";
@@ -554,15 +558,17 @@ export interface SayacGelis { sayac_turu: string | null; sayac_turu_etiket: stri
   son_sayac: string | null; son_scada: string | null; son_sayac_saat_once: number | null; ay: string; ay_sayac_saat: number; ay_beklenen_saat: number | null; ay_eksik_saat: number | null;
   siniflama: SayacSiniflama; donemler: SayacDonem[]; kaynak: string }
 export interface SayacBedelKalem { kod: string; etiket: string; kat: number; birim: string; tutar_tl: number | null; kesinlik?: string; not?: string;
-  /** askı (LÜY Geçici m.14): (f)/(g) kapsamda; (ç) doğrulanmadı */ aski?: "kapsamda" | "dogrulanmadi" }
+  /** askı (LÜY Geçici m.14(2)): (f)/(g) kapsamda; (ç) askıda değil (v2.538, DK-656) */ aski?: "kapsamda" | "askida_degil" | "dogrulanmadi"; uyari_tarihi?: string; sure_sonu?: string }
 export interface SayacScada { yukumlu: boolean; esik_kw: number; kurulu_kw: number; kurulu_kaynak: string;
   /** anlaşma tarafı: dağıtıma bağlı (Dağıtım Sistemine Bağlantı Anlaşması, Karar 14909) ya da iletime bağlı (TEİAŞ; gösterge yok); m.75(4) kapsamı 900 kW+ */
   anlasma: "dagitim" | "iletim"; m75_kapsam: boolean; m75_esik_kw: number;
   durum: string | null; durum_etiket: string; durum_kaynagi: "beyan"; kopukluk_baslangic: string | null; kopukluk_gun: number | null;
+  /** v2.538 (DK-735): 900 kW kıyası AC sınırıyla (teyit) ya da DC kWp ile (belirsiz); (DK-656) dağıtım şirketi uyarı tarihi ve (ç) süre sonu */
+  m75_kesinlik?: "teyit" | "belirsiz"; uyari_tarihi?: string | null; uyari_sure_sonu?: string | null;
   uzaktan_acma_var: boolean | null; uzaktan_acma_ay: number; bedel_tl_ay: number | null; kalemler: SayacBedelKalem[]; uygulanmayan: string[]; toplam_tl: number | null;
   toplam_aski_tl: number | null; toplam_aski_disi_tl: number | null; aski_kapsami: string; tutar_niteligi: "varsayimsal";
   aski_bitis: string; aski_kesinlik: string; aski_gecti: boolean; aski_kalan_gun: number; kaynak: string; dayanak_yukumluluk: string; not: string }
-export interface SayacAyar { sayac_turu?: string | null; scada_durum?: string | null; scada_kopukluk_baslangic?: string | null; uzaktan_acma_var?: boolean | null; sistem_kullanim_bedeli_tl_ay?: number | null;
+export interface SayacAyar { sayac_turu?: string | null; scada_durum?: string | null; scada_kopukluk_baslangic?: string | null; scada_uyari_tarihi?: string | null; uzaktan_acma_var?: boolean | null; sistem_kullanim_bedeli_tl_ay?: number | null;
   /** v2.526 (P4a-2): uzlaştırma yeniden hesabında gerçekleşen üretim kaynağı */ uzlastirma_girdi?: "scada" | "sayac" | null }
 export interface SayacOzet { bugun: string; pencere_gun: number; segment: string | null; ayar: Required<SayacAyar>; gelis: SayacGelis; fark: SayacFark; scada: SayacScada | null; scada_notu: string | null; yuklemeler: SayacYukleme[];
   kaynaklar: { kod: SayacKaynak; etiket: string }[]; nitelikler: { kod: SayacNitelik; etiket: string }[]; sayac_turleri: { kod: string; etiket: string }[]; scada_durumlari: { kod: string; etiket: string }[];
@@ -604,7 +610,12 @@ export interface Mutabakat { donem: string; donem_etiket: string;
   pvquant: { saat: number; beklenen_saat?: number; son_saat?: string; hesaplanamayan_saat?: number; bildirilen_saat?: number; senaryo_saat?: number; senaryo_kapsam?: string; kural_surumu?: string; hata?: string;
     /** v2.523 (P4a): dönemin sayaç kapsamı — hesaba girmez, yalnız bilgi */
     sayac?: { toplam_saat: number; yuklu: number; olculmus: number; tahmini: number; olc_fark_pct: number | null } | null; uretim_kaynak?: UretimKaynak };
-  /** v2.527 (P2b-2): dönem için yüklü EPYS saatlik detayı varsa eş kapsamlı kıyas özeti */ saatlik_detay?: SaatlikOzet | null; not: string; program_notu: string | null }
+  /** v2.527 (P2b-2): dönem için yüklü EPYS saatlik detayı varsa eş kapsamlı kıyas özeti */ saatlik_detay?: SaatlikOzet | null; not: string; program_notu: string | null;
+  /** v2.538 (EK-3 DK-557/DK-395): dönemin itiraz süreleri ve geriye dönük 12 ay penceresi (DUY m.133; lisanssızda LÜY m.27) */ itiraz?: MutabakatItiraz }
+export interface MutabakatItiraz { donem: string; on_bildirim_itiraz_son: string; fatura_itiraz_60_gun: string;
+  geriye_donuk: { pencere_ay: number; son_basvuru: string; gecti: boolean; kalan_gun: number; sonuc_ay: number; kesinlik: "cikarim"; not: string };
+  inceleme: { olcum_teias_dagitim_gun: number; olcum_epias_is_gunu: number; olcum_disi_is_gunu: number; dayanak: string };
+  lisanssiz: { itiraz_is_gunu: number; inceleme_is_gunu: number; muhatap: string; dayanak: string; not: string } | null; dayanak: string }
 export interface MutabakatOzet { bugun: string;
   donemler: { donem: string; surum: string; surum_etiket: string; yukleme_id: string; zaman: string; dosya_adi: string | null; sha256?: string | null; kalem_sayisi: number; surum_kaynagi?: string | null; dosya_surum?: string | null; gecerli: boolean; surum_dogrulama: SurumDogrulama }[];
   secili: Mutabakat; surumler: { kod: string; etiket: string }[]; kalemler: { kod: string; etiket: string; hesaplanir: boolean; epys: string }[]; guvenilirlik_etiketleri: Record<string, string>;

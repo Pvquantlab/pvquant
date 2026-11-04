@@ -926,6 +926,7 @@ class SayacAyarIstek(BaseModel):
     sayac_turu: str | None = None                   # 15dk_endeks | diger
     scada_durum: str | None = None                  # bagli | kopuk | yok (lisanssız, LÜY m.21(7))
     scada_kopukluk_baslangic: str | None = None     # YYYY-MM-DD
+    scada_uyari_tarihi: str | None = None           # v2.538 (DK-656): dağıtım şirketinin yazılı SCADA onarım uyarısı tarihi (YYYY-MM-DD); (ç) sayımı buradan başlar
     uzlastirma_girdi: str | None = None             # v2.526 (P4a-2): scada | sayac — uzlaştırma yeniden hesabında gerçekleşen üretim kaynağı
     uzaktan_acma_var: bool | None = None            # uzaktan açma-kapama yeteneği envanterde
     sistem_kullanim_bedeli_tl_ay: float | None = None   # Karar 14909 bedel göstergesi girdisi (dağıtım faturasından)
@@ -1054,7 +1055,7 @@ def dis_rapor_donem(plant_id: str, donem: str | None = None, fmt: str = "json", 
 
 @app.put("/v1/dis/santral/{plant_id}/ayarlar", tags=["Dış API"])
 def dis_ayarlar(plant_id: str, p: SayacAyarIstek, anahtar=Depends(api_anahtari("santral:yaz"))):
-    """v2.528 (P10) — santral ayarı yazma (sayaç ayarı alanları: sayac_turu, scada_durum, scada_kopukluk_baslangic, uzaktan_acma_var,
+    """v2.528 (P10) — santral ayarı yazma (sayaç ayarı alanları: sayac_turu, scada_durum, scada_kopukluk_baslangic, scada_uyari_tarihi (v2.538), uzaktan_acma_var,
     sistem_kullanim_bedeli_tl_ay, uzlastirma_girdi). Yalnız istekte geçen alanlar değişir, null temizler; panelin PUT sayac-ayar ile aynı doğrulama.
     Künye/segment/tarife bu kapsamda değildir (panelden)."""
     from pvquant.services import sayac_service
@@ -1069,7 +1070,7 @@ def dis_ayarlar(plant_id: str, p: SayacAyarIstek, anahtar=Depends(api_anahtari("
         raise HTTPException(422, "değişecek alan yok")
     pj = plant_service.params_birlestir(anahtar["tenant_id"], plant_id, **an)
     _denetim.kaydet("musteri", "sayac_ayar", aktor_id=None, tenant_id=anahtar["tenant_id"], nesne_tur="plant", nesne_id=row["id"], ayrinti={**an, "api_anahtar": anahtar["prefix"]})
-    return {"santral_id": str(row["id"]), "degisen": an, "ayar": {k: (pj or {}).get(k) for k in ("sayac_turu", "scada_durum", "scada_kopukluk_baslangic", "uzaktan_acma_var", "sistem_kullanim_bedeli_tl_ay", "uzlastirma_girdi")}}
+    return {"santral_id": str(row["id"]), "degisen": an, "ayar": {k: (pj or {}).get(k) for k in ("sayac_turu", "scada_durum", "scada_kopukluk_baslangic", "scada_uyari_tarihi", "uzaktan_acma_var", "sistem_kullanim_bedeli_tl_ay", "uzlastirma_girdi")}}
 
 
 # ------------------------------------------------------------------ v2.264: Yönetim (admin) -----------------
