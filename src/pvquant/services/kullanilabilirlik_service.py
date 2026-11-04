@@ -65,6 +65,7 @@ def hesapla_df(df: pd.DataFrame, capacity_kwp: float) -> dict:
     E = float(x.loc[var & ~haric, "power_kw"].astype(float).sum())
     A_e = E / (E + float(kayip)) if (E + float(kayip)) > 0 else None
     return {"durum": "ok", "mumkun_saat": int(len(x)), "veri_orani": round(float(var.mean()), 3), "haric_saat": int(haric.sum()),
+            "beklenen_kwh": round(float(x.loc[var & ~haric, "beklenen_kw"].astype(float).sum()), 1),   # v2.533: sözleşme açığı tabanı
             "ariza_saat": int(ariza.sum()), "A_t": (round(float(A_t), 4) if A_t is not None else None),
             "A_e": (round(float(A_e), 4) if A_e is not None else None), "kayip_kwh": round(float(kayip), 1),
             "not": "arıza saatleri otomatik tespit (beklenti >%10 iken üretim ≈0); olay günlüğü yok — şebeke kesintisi ayrılamaz"}
@@ -101,4 +102,45 @@ def hesapla(tenant_id, plant: dict, gun: int = 30) -> dict:
     out.update(ariza_istatistigi(tenant_id, plant["id"], df))   # 04.11 v2.531 (ENV-F10): olay kaydındaki arızalardan MTBF/MTTR
     if olay_saat and out.get("not"):
         out["not"] = out["not"].replace("olay günlüğü yok — şebeke kesintisi ayrılamaz", f"olay kaydındaki {olay_saat} istisna saati (planlı bakım, talimat, kesinti) dışarıda")
+    out["sozlesme"] = sozlesme_acigi(plant, out)   # 04.11 v2.533 (P8a, K-07): sözleşme eşiği girildiyse açık (kWh, TL)
     return out
+
+
+def sozlesme_acigi(plant: dict, out: dict) -> dict | None:
+    """v2.533 (P8a): params_json.kullanilabilirlik_sozlesme (0,5–1) girildiyse ext.standart.kullanilabilirlik.sozlesme — eşik altı kalan pay ×
+    penceredeki beklenen enerji × birim satış fiyatı (tarife ortalaması; yoksa PTF ortalaması). O&M sözleşmesindeki tanım, istisna listesi ve
+    tazmin formülü farklı olabilir: bu değer kıyas tabanıdır, alacak değildir. Eşik yoksa None."""
+    import json
+    pj = plant.get("params_json") or {}
+    if isinstance(pj, str):
+        try:
+            pj = json.loads(pj)
+        except ValueError:
+            pj = {}
+    esik = pj.get("kullanilabilirlik_sozlesme")
+    if esik in (None, "") or out.get("durum") != "ok" or out.get("A_t") is None:
+        return None
+    from pvquant.ext.standart import kullanilabilirlik as kl
+    fiyat, kaynak = _birim_fiyat(plant)
+    r = kl.sozlesme(float(out["A_t"]), float(esik), float(out.get("beklenen_kwh") or 0.0), (fiyat / 1000.0) if fiyat else 0.0)
+    return {"esik": float(esik), "A_gercek": round(r["A_gercek"], 4), "acik_puan": round(r["acik_puan"], 4), "acik_kwh": round(r["acik_kwh"], 1),
+            "acik_tl": (round(r["acik_tl"], 0) if fiyat else None), "fiyat_tl_mwh": (round(fiyat, 1) if fiyat else None), "fiyat_kaynak": kaynak,
+            "not": "teknik kullanılabilirlik (otomatik tespit, olay kaydı istisnaları) ile sözleşme eşiğinin farkı; O&M sözleşmenizdeki tanım, istisna listesi ve tazmin formülü farklı olabilir — kıyas tabanıdır, alacak değildir"}
+
+
+def _birim_fiyat(plant: dict) -> tuple[float | None, str]:
+    """Birim satış fiyatı (TL/MWh): tarife ortalaması (sabit / YEKDEM gün fiyatı / PTF endeksli), yoksa son 30 gün PTF ortalaması; alınamazsa None."""
+    try:
+        from pvquant.services import piyasa_service, tarife_service
+        idx = pd.date_range(pd.Timestamp.now(tz="UTC").floor("h") - pd.Timedelta(days=30), periods=24 * 30, freq="h")
+        f = piyasa_service.fiyatlar(idx); ptf_ort = float(f["ptf"].astype(float).mean()) if len(f) else None
+        t = tarife_service.tarife_getir(plant)
+        if t and t.get("tip"):
+            v = tarife_service.ortalama_fiyat_tl_mwh(t, ptf_ort=ptf_ort, plant=plant)
+            if v:
+                return float(v), f"tarife ({t['tip']})"
+        if ptf_ort:
+            return ptf_ort, "PTF 30 gün ortalaması" + (" (senaryo fiyat)" if (f["kaynak"].astype(str) != "epias").any() else "")
+    except Exception:   # noqa: BLE001 — DB/fiyat yoksa TL verilmez
+        pass
+    return None, "fiyat yok"

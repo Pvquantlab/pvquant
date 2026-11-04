@@ -4,7 +4,7 @@ Kaynak: scada_hourly (power_kw, poa_wm2, t_module, flag='valid') + plants.capaci
 Hesap: pvquant.ext.standart.iec61724 (Y_r/Y_f/PR/PR′). Tire ilkesi: POA ölçümü gündüz
 saatlerinin %95'inden azında varsa PR YAZILMAZ — 'poa_yok' döner (GHI ile uydurulmaz;
 IEC düzlem-içi ışınım ister). t_module yoksa PR′ None, PR yine verilir.
-Model çekirdeğine dokunmaz; yalnız ölçümden hesap.
+Model çekirdeğine dokunmaz; yalnız ölçümden hesap. 04.11 v2.533 (P8a): kırpma saatleri sayılır, PR_kirpma_disi ayrıca verilir.
 """
 from __future__ import annotations
 
@@ -44,9 +44,16 @@ def pr_hesapla(df: pd.DataFrame, capacity_kwp: float, min_poa_orani: float = 0.9
     # birkaç gece saatinden ibaret kalır (Y_r≈0.0015) — iloc[-1] o dejenere
     # gruptan PR %1.088 okuyordu (24 Eyl canlı, PVDAQ Golden 33'te yakalandı).
     pr_w = y.get("PR_yillik_agirlikli") if t_cell is not None else None
+    # 04.11 v2.533 (P8a, IH-084): AC sınırında kırpılan saatler işaretli — kırpma dışı PR ayrıca (kırpma PR'ı düşürür, panel fiziğini anlatmaz)
+    kirp = kesit["kirpma"].fillna(False).astype(bool) if "kirpma" in kesit else pd.Series(False, index=kesit.index)
+    kirpma_saat = int(kirp.sum()); pr_kd = y["PR"]
+    if kirpma_saat and (~kirp).sum() >= 24:
+        k2 = iec61724.kpi(e[~kirp], poa[~kirp], capacity_kwp, t_cell=(t_cell[~kirp] if t_cell is not None else None), gamma=gamma, donem="YE", min_veri_orani=0.0)
+        pr_kd = iec61724.yillik_ozet(k2)["PR"]
     return {"durum": "ok", "gun": gun, "saat": int(len(kesit)), "poa_orani": round(oran, 3),
             "Y_r": _f(y["Y_r"]), "Y_f": _f(y["Y_f"]), "PR": _f(y["PR"]),
-            "PR_sicaklik": _f(pr_w), "CF": _f(y["CF"]), "t_ref": _f(k.attrs.get("t_ref"))}
+            "PR_sicaklik": _f(pr_w), "CF": _f(y["CF"]), "t_ref": _f(k.attrs.get("t_ref")),
+            "kirpma_saat": kirpma_saat, "PR_kirpma_disi": _f(pr_kd)}
 
 
 def pr_karti(tenant_id, plant_id, gun: int = 30) -> dict:
@@ -59,7 +66,7 @@ def pr_karti(tenant_id, plant_id, gun: int = 30) -> dict:
         cap = s.execute(text("SELECT capacity_kwp FROM plants WHERE id=:p"), {"p": plant_id}).scalar()
         son = s.execute(text("SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p AND flag='valid'"), {"p": plant_id}).scalar()
         df = pd.read_sql(text(
-            "SELECT ts_utc, power_kw, poa_wm2, t_module FROM scada_hourly "
+            "SELECT ts_utc, power_kw, poa_wm2, t_module, kirpma FROM scada_hourly "
             "WHERE plant_id=:p AND flag='valid' AND ts_utc >= :son - (:g * INTERVAL '1 day') AND ts_utc <= :son ORDER BY ts_utc"),
             s.connection(), params={"p": plant_id, "g": gun, "son": son}, parse_dates=["ts_utc"]) if son is not None else pd.DataFrame()
     out = pr_hesapla(df, float(cap) if cap is not None else 0.0)

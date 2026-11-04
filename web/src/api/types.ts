@@ -31,6 +31,8 @@ export interface PrKarti {
   CF: number | null; t_ref: number | null; pencere_gun: number;
   /** v2.251: pencerenin bitisi = son gecerli olcum gunu (takvim degil). */
   son_olcum?: string | null;
+  /** v2.533 (P8a, IH-084): AC sınırında kırpılan saat sayısı ve kırpma dışı PR */
+  kirpma_saat?: number; PR_kirpma_disi?: number | null;
 }
 
 /** /konformal yaniti — v2.252 (bant kalibrasyon ayarı özeti). */
@@ -88,7 +90,14 @@ export interface Webhook { id: string; plant_id: string | null; santral: string 
 /** v2.281 — kullanılabilirlik, kayıp ağacı, tarife. */
 export interface Kullanilabilirlik { durum: string; mumkun_saat?: number; veri_orani?: number; haric_saat?: number; ariza_saat?: number;
   ariza_olay_sayisi?: number; mtbf_saat?: number | null; mttr_saat?: number | null;   // 04.11 v2.531 (ENV-F10): olay kaydındaki arızalardan
-  A_t?: number | null; A_e?: number | null; kayip_kwh?: number; not?: string; pencere_gun?: number }
+  A_t?: number | null; A_e?: number | null; kayip_kwh?: number; not?: string; pencere_gun?: number; beklenen_kwh?: number;
+  /** v2.533 (P8a, K-07): Santral ayarlarındaki sözleşme eşiği girildiyse açık (kWh, TL) — kıyas tabanı, alacak değil */
+  sozlesme?: { esik: number; A_gercek: number; acik_puan: number; acik_kwh: number; acik_tl: number | null; fiyat_tl_mwh: number | null; fiyat_kaynak: string; not: string } | null }
+/** v2.533 (P8a, IH-087): gerçekleşen kayıp ayrışımı — nedene göre saat / kWh / TL; beklenen = fizik modeli (hava tahmini girdili) */
+export interface KayipAyrisimi { durum: "ok" | "yetersiz" | "veri_yok"; pencere_gun?: number; son_olcum?: string | null; mumkun_saat?: number; veri_saat?: number;
+  uretim_kwh?: number; beklenen_kwh?: number; epi?: number | null; toplam_kayip_kwh?: number; toplam_kayip_tl?: number; fiyatsiz_saat?: number; olay_saat?: number;
+  fiyat?: { kaynak: string; tip: string | null; senaryo_saat: number; etiket: string }; not?: string;
+  satirlar?: { neden: string; etiket: string; kaynak: string; kpi_disi: boolean | null; saat: number; kayip_kwh: number | null; kayip_tl: number | null; not: string }[] }
 export interface KayipAgaci { durum: string; yil?: number; kaynak?: string; ghi_kwh_m2?: number; poa_kwh_m2?: number; nominal_dc_kwh?: number; sebeke_kwh?: number;
   pr?: number | null; ozgul_kwh_kwp?: number; hesap_zamani?: string;
   satirlar?: { adim: string; etiket: string; giren_kwh: number; cikan_kwh: number; kayip_kwh: number; kayip_pct: number; kaynak: string }[] }

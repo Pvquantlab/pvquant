@@ -1287,6 +1287,7 @@ class EakIstek(BaseModel):
     pozisyon_kaynagi: str | None = None         # v2.517 (P2a): piyasa pozisyonu — program | uretim (üretildiği kadar satış) | sabit (baz yük MWh/saat)
     pozisyon_sabit_mwh: float | None = None     # v2.517 (P2a): pozisyon_kaynagi = sabit için saatlik MWh
     teminat_risk_katsayisi: float | None = None  # v2.522 (P2b): EPİAŞ dengesizlik teminatı risk katsayısı (değeri kaynakta yok; müşteri girer)
+    kullanilabilirlik_sozlesme: float | None = None  # v2.533 (P8a): O&M sözleşmesindeki kullanılabilirlik eşiği (0,5–1); açık kWh/TL kıyas tabanı
 
 
 class EpiasIstek(BaseModel):
@@ -1370,6 +1371,10 @@ def eak_ayarla(plant_id: str, p: EakIstek, claims=Depends(yazma_yetkisi())):
         if p.teminat_risk_katsayisi is not None and not (0 < p.teminat_risk_katsayisi <= 10):
             raise HTTPException(422, "teminat_risk_katsayisi 0–10 aralığında olmalı")
         an["teminat_risk_katsayisi"] = float(p.teminat_risk_katsayisi) if p.teminat_risk_katsayisi is not None else None
+    if "kullanilabilirlik_sozlesme" in verilen:   # v2.533 (P8a)
+        if p.kullanilabilirlik_sozlesme is not None and not (0.5 <= p.kullanilabilirlik_sozlesme <= 1.0):
+            raise HTTPException(422, "kullanilabilirlik_sozlesme 0,5–1,0 aralığında olmalı")
+        an["kullanilabilirlik_sozlesme"] = float(p.kullanilabilirlik_sozlesme) if p.kullanilabilirlik_sozlesme is not None else None
     pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **an)
     _denetim.kaydet("musteri", "eak_ayar", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"], ayrinti=dict(an))   # v2.516 (#7)
     row["params_json"] = pj
@@ -1378,7 +1383,8 @@ def eak_ayarla(plant_id: str, p: EakIstek, claims=Depends(yazma_yetkisi())):
             "dengeleme_birimi": bool(pj.get("dengeleme_birimi")), "ariza_sayisi_ay": int(pj.get("ariza_sayisi_ay") or 0),
             "luy_istisna": bool(pj.get("luy_istisna")),
             "pozisyon": dengesizlik_service.pozisyon_ayari(pj),   # v2.517 (P2a)
-            "teminat_risk_katsayisi": pj.get("teminat_risk_katsayisi")}   # v2.522 (P2b)
+            "teminat_risk_katsayisi": pj.get("teminat_risk_katsayisi"),   # v2.522 (P2b)
+            "kullanilabilirlik_sozlesme": pj.get("kullanilabilirlik_sozlesme")}   # v2.533 (P8a)
 
 
 def _toplayici_yaniti(tenant_id: str, plant_id: str, gun: str | None, fmt: str, adim: int):
@@ -1906,6 +1912,16 @@ def kullanilabilirlik_uc(plant_id: str, gun: int = 30, claims=Depends(gecerli_ku
     if row is None:
         raise HTTPException(404, "santral yok")
     return kullanilabilirlik_service.hesapla(claims["tenant_id"], row, gun=max(7, min(gun, 365)))
+
+
+@app.get("/v1/plants/{plant_id}/kayip-ayrisimi")
+def kayip_ayrisimi_uc(plant_id: str, gun: int = 30, claims=Depends(gecerli_kullanici)):
+    """v2.533 (P8a; IH-087): gerçekleşen kayıp ayrışımı — nedene göre saat / kWh / TL (satış fiyatıyla), EPI; beklenen = fizik modeli."""
+    from pvquant.services import kayip_ayrisimi_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    return kayip_ayrisimi_service.hesapla(claims["tenant_id"], row, gun=max(7, min(gun, 365)))
 
 
 @app.get("/v1/plants/{plant_id}/kayip-agaci")
