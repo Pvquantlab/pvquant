@@ -20,7 +20,9 @@ def aylik_toplamlar(df: pd.DataFrame, tz: str | None = None) -> pd.DataFrame:
         return pd.DataFrame(columns=["yil", "ay", "ghi_kwh_m2"])
     idx = df.index.tz_convert(tz) if tz else df.index
     idx = idx.tz_localize(None)
-    g = df["ghi"].groupby([idx.year, idx.month]).sum() / 1000.0
+    # v2.536 (04.11 canlı bulgusu): PVGIS indeksi «time» adlıdır; pandas 3'te idx.year/idx.month aynı adı taşıyınca reset_index
+    # «cannot insert time, already exists» ile düşüyordu (canlıda 5 santralin 4'ünde iklim beklentisi hiç yazılamadı). Adlar açıkça verilir.
+    g = df["ghi"].groupby([pd.Index(idx.year, name="yil"), pd.Index(idx.month, name="ay")]).sum() / 1000.0
     out = g.rename("ghi_kwh_m2").reset_index()
     out.columns = ["yil", "ay", "ghi_kwh_m2"]
     return out

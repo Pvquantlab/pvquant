@@ -70,6 +70,38 @@ def bayat_isler(saat: int = 30, tenant_id=None) -> list[str]:
             or (simdi - pd.Timestamp(son[is_])) >= pd.Timedelta(hours=saat)]
 
 
+def kacan_isler(son_ok: dict, slotlar: dict, simdi=None) -> list[str]:
+    """v2.536 (04.11 canlı bulgusu): işçi yeniden yaratıldığında yeni süreç kaçırdığı cron ateşlemesini bilmez; 30 saatlik tazelik
+    ölçütü dünkü koşuyu «taze» sayar (v2.532 dağıtımı 05:03 TSİ'de gece_meteo ve sabah_tahmin'i kesti, yakalama dokunmadı).
+    SAF: `son_ok` {iş: son başarılı başlangıç (UTC)}, `slotlar` {iş: (saat, dakika) UTC}. Bir işin en son geçmiş slotu (bugün geçtiyse
+    bugünkü, yoksa dünkü) ile ondan sonra başlamış başarılı koşusu yoksa iş kaçmıştır. Slot henüz gelmediyse kaçmış sayılmaz."""
+    simdi = pd.Timestamp(simdi) if simdi is not None else pd.Timestamp.now(tz="UTC")
+    if simdi.tz is None:
+        simdi = simdi.tz_localize("UTC")
+    out = []
+    for is_, (hh, mm) in slotlar.items():
+        slot = simdi.normalize() + pd.Timedelta(hours=hh, minutes=mm)
+        if slot > simdi:
+            slot -= pd.Timedelta(days=1)
+        son = son_ok.get(is_)
+        son = pd.Timestamp(son) if son is not None else None
+        if son is not None and son.tz is None:
+            son = son.tz_localize("UTC")
+        if son is None or son < slot - pd.Timedelta(minutes=5):   # 5 dk: cron ateşlemesi ile started damgası arasındaki pay
+            out.append(is_)
+    return out
+
+
+def kacan_isler_db(slotlar: dict, simdi=None) -> list[str]:
+    """kacan_isler'in jobs_log okuyan sargısı (tenant'sız ve tenant'lı satırlar; yalnız status='ok')."""
+    from sqlalchemy import text
+    from pvquant.db import sistem_baglami
+    with sistem_baglami() as s:
+        rows = s.execute(text("SELECT job, max(started) AS son FROM jobs_log WHERE job = ANY(:g) AND status = 'ok' GROUP BY job"),
+                         {"g": list(slotlar)}).all()
+    return kacan_isler({r.job: r.son for r in rows}, slotlar, simdi)
+
+
 def ozet(tenant_id, saat: int = 48) -> dict:
     from sqlalchemy import text
     from pvquant.db import sistem_baglami

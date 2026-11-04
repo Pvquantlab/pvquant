@@ -650,12 +650,18 @@ def acilis_yakalama():
     v2.339: ölçüt İŞ BAZINA indi (isler_service.bayat_isler) — "grubun biri koştu"
     demek yetmiyordu: 18 Eyl'de gece_skill koştuğu için grup taze sayıldı ve
     sabah_tahmin'in 10 gündür koşmadığı gözden kaçtı."""
-    from pvquant.services.isler_service import bayat_isler
-    bayat = bayat_isler(30)
-    if not bayat:
+    from pvquant.services.isler_service import bayat_isler, kacan_isler_db
+    from pvquant.config import get_settings as _gs
+    cfg = _gs()
+    # v2.536 (04.11 canlı bulgusu): 30 saat ölçütü dağıtımla kesilen gece turunu görmedi (v2.532, 05:03 TSİ: gece_meteo ve sabah_tahmin
+    # kesildi, dünkü koşular «taze» sayıldı). Ek ölçüt: bugünkü cron slotu geçmiş ve o slottan sonra başarılı koşu yoksa iş KAÇMIŞTIR.
+    slotlar = {"gece_meteo": ((cfg.worker_hour_forecast - 1) % 24, 0), "sabah_tahmin": (cfg.worker_hour_forecast, 0),
+               "gece_skill": (cfg.worker_hour_skill, 30), "gunluk_beklenti": (cfg.worker_hour_skill, 40)}
+    bayat = bayat_isler(30); kacan = [k for k in kacan_isler_db(slotlar) if k not in bayat]
+    if not bayat and not kacan:
         print("[yakalama] üretici gece işleri taze — tur gerekmiyor")
         return
-    print(f"[yakalama] bayat iş(ler): {', '.join(bayat)} — tam tur başlıyor")
+    print(f"[yakalama] bayat iş(ler): {', '.join(bayat) or '—'}; slotu kaçan: {', '.join(kacan) or '—'} — tam tur başlıyor")
     tam_tur()
 
 

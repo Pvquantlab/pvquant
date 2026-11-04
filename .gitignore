@@ -25,6 +25,7 @@ MANIFEST
 
 # Virtual environments
 .venv/
+.venv-imaj/   # v2.536: imaj sürümleriyle (pvlib 0.16.1 / pandas 3.1.0) ayrı sınama ortamı
 venv/
 ENV/
 env/

@@ -37,12 +37,19 @@ def test_acilis_yakalama_esigi(monkeypatch):
     monkeypatch.setattr(wm, "tam_tur", lambda: kosulan.append(1))
 
     monkeypatch.setattr(js, "bayat_isler", lambda saat=30, tenant_id=None: [])
+    monkeypatch.setattr(js, "kacan_isler_db", lambda slotlar, simdi=None: [])   # v2.536: slot ölçütü de taze
     wm.acilis_yakalama()
     assert kosulan == []                       # taze — dokunmadı
 
     monkeypatch.setattr(js, "bayat_isler", lambda saat=30, tenant_id=None: ["sabah_tahmin"])
     wm.acilis_yakalama()
     assert kosulan == [1]                      # tek bir iş bile bayatsa tur koşar
+
+    # v2.536 (04.11 canlı bulgusu): 30 saat ölçütü taze dese bile bugünkü cron slotu kaçmışsa tur koşar (v2.532 dağıtımı 05:03 TSİ senaryosu)
+    monkeypatch.setattr(js, "bayat_isler", lambda saat=30, tenant_id=None: [])
+    monkeypatch.setattr(js, "kacan_isler_db", lambda slotlar, simdi=None: ["gece_meteo", "sabah_tahmin"] if "gece_meteo" in slotlar else [])
+    wm.acilis_yakalama()
+    assert kosulan == [1, 1]
 
 
 def test_bayat_isler_is_bazinda(monkeypatch):

@@ -44,8 +44,7 @@ def pvgis_df(lat: float, lon: float, yil_bas: int, yil_son: int) -> pd.DataFrame
     yil_bas = max(yil_bas, PVGIS_ILK_YIL); yil_son = min(yil_son, PVGIS_SON_YIL)
     if yil_bas > yil_son:
         return pd.DataFrame()
-    df, _ = pvlib.iotools.get_pvgis_hourly(lat, lon, start=yil_bas, end=yil_son, raddatabase="PVGIS-SARAH3", components=True,
-                                           surface_tilt=0, surface_azimuth=180, outputformat="json", map_variables=True)
+    df, veritabani = _pvgis_cek(lat, lon, yil_bas, yil_son)
     an = pd.DatetimeIndex(df.index)
     if an.tz is None:
         an = an.tz_localize("UTC")
@@ -70,7 +69,30 @@ def pvgis_df(lat: float, lon: float, yil_bas: int, yil_son: int) -> pd.DataFrame
     out["dni"] = np.where(sp["apparent_elevation"].values > 2.0, (out["ghi"].values - out["dhi"].values) / cosz, 0.0)
     out["temp_air"] = np.interp(ns(orta), ns(an), df["temp_air"].values.astype(float))
     out["wind_speed_10m"] = np.interp(ns(orta), ns(an), df["wind_speed"].values.astype(float))
+    out.attrs["kaynak"] = PVGIS_KAYNAK[veritabani]; out.attrs["etiket"] = PVGIS_ETIKET[veritabani]
     return out
+
+
+PVGIS_KAYNAK = {"PVGIS-SARAH3": "pvgis-sarah3", "PVGIS-ERA5": "pvgis-era5"}
+PVGIS_ETIKET = {"PVGIS-SARAH3": "PVGIS-SARAH3 (JRC)", "PVGIS-ERA5": "PVGIS-ERA5 (JRC; SARAH-3 kapsamı dışı)"}
+
+
+def _pvgis_cek(lat: float, lon: float, yil_bas: int, yil_son: int):
+    """v2.536 (04.11 canlı bulgusu): SARAH-3 Meteosat alanıyla sınırlı — alan dışındaki nokta için PVGIS «Location out of the spatial
+    coverage … (PVGIS-ERA5)» döndürür; o zaman aynı çağrı PVGIS-ERA5 ile yinelenir (aynı sütunlar; damga saat ortası :30, kt taşıması
+    bunu anlık örnek olarak doğru ele alır). Döner (df, veritabanı adı)."""
+    import pvlib
+    import requests
+    ortak = dict(start=yil_bas, end=yil_son, components=True, surface_tilt=0, surface_azimuth=180, outputformat="json", map_variables=True)
+    try:
+        df, _ = pvlib.iotools.get_pvgis_hourly(lat, lon, raddatabase="PVGIS-SARAH3", **ortak)
+        return df, "PVGIS-SARAH3"
+    except requests.HTTPError as e:
+        if "spatial coverage" not in str(e):
+            raise
+        print(f"[meteo][uyari] PVGIS-SARAH3 kapsam dışı ({lat}, {lon}) → PVGIS-ERA5")
+        df, _ = pvlib.iotools.get_pvgis_hourly(lat, lon, raddatabase="PVGIS-ERA5", **ortak)
+        return df, "PVGIS-ERA5"
 
 
 def cams_df(lat: float, lon: float, start: str, end: str, email: str) -> pd.DataFrame:
@@ -122,7 +144,7 @@ def gecmis(lat: float, lon: float, start_date: str, end_date: str, asgari_kapsam
         try:
             df = pvgis_df(lat, lon, a.year, b.year).loc[str(a.date()):str(b.date())]
             if len(df) >= asgari_kapsama * beklenen:
-                return _md(df, lat, lon, "pvgis-sarah3", "PVGIS-SARAH3 (JRC)")
+                return _md(df, lat, lon, df.attrs.get("kaynak", "pvgis-sarah3"), df.attrs.get("etiket", "PVGIS-SARAH3 (JRC)"))   # v2.536: ERA5 yedeği etiketli
         except Exception as e:   # noqa: BLE001
             print(f"[meteo][uyari] PVGIS alınamadı: {type(e).__name__}: {e}")
     if (pd.Timestamp.now() - b).days > NASA_GECIKME_GUN:
