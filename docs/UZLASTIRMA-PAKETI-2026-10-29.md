@@ -931,3 +931,5 @@ Sonraya: EK-3 değer satırları; lock dosyası kararı; Mutabakat'ta kupst_kayn
 **İnceleme (05.11).** Sahte API süreci yamadan önce başlamıştı (eski veri); yeniden başlatıldı. SCADA kartında (ç) notu iki kez görünüyordu, sol satır yalnız uyarı tarihi girilince kalır. Mutabakat «Ne yapmalı» itiraz tarihleri gün.ay.yıl yapıldı.
 
 **Kanıt.** pytest tam takım; `tests/test_ek3_v2538.py` 11 test; web tsc/npm test 103/oxlint 16/build; sahte API kareleri (4 sayfa, taşma yok). Göç yok. Formül değişikliği yok.
+
+**Mühür.** 79d9108 (05.11 02:4x TSİ), CI #688 yeşil; ssh dağıtım api+worker+web 02:56–02:58 TSİ (worker penceresi dışında); canlı 25/25 birebir; göç yok. Raporlar: 02 M52, 00 otuz sekizinci paket, 04 E satırı; kanıt `kanit/ek3-*-2026-11-05.jpg`.
