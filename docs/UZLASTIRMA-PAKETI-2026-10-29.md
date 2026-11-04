@@ -785,3 +785,25 @@ talimat > arıza, açık olay pencere sonuna; PR kırpma 90 saat → kırpma dı
 tam takım 903 geçti / 1 atlandı (5 dk 44 s); web tsc 0, 103, oxlint 16 uyarı (hepsi eski), build. Kalibrasyon ve Santralim 1440/375 taşma 0 (`kanit/kalibrasyon-kayip-ayrisimi-2026-11-04.jpg`).
 Doğrulanamayan / sonraya: kırpma kaybının DC potansiyeli (DC ölçümü yok); talimat/ticari kapatma ayrımı olay kaydındaki türe bağlı (ticari kapatma türü yok);
 gerçekleşen kirlenme kaybı yok; beklenen seri ölçülen havayla değil → P8b; sözleşme istisna listesi sözleşmeye göre seçilemiyor (olay türü istisnaları sabit).
+
+# Otuz dördüncü paket — v2.534 (04.11.2026, canlı): P8b-1 — yıl yıl P-değeri serisi ve gerçekleşen kıyası, yıllık bütçe ayarı
+
+Commit `91f3223`, CI #680. Dağıtım: api + web imajı (ssh); göç yok. Canlı: index.html ve JS/CSS birebir (25/25); api «startup complete»; /p-degerleri kimliksiz 422.
+Kaynak: YOL-HARITASI P8 — IH-098 (P50/P75/P90/P95/P99; biçim etiketi yıl n / ömür ortalaması / ömür toplamı; σ bileşenleri; yıl yıl seri degradasyon dâhil) ve
+IH-099 (gerçekleşen / P-değerleri / bütçe kıyası). P8b'nin kalanı (ölçülen havayla beklenen seri ve hava düzeltmeli kıyas, sensör envanteri) saha sensörü akışı gelince.
+Seri: `pdeger_service.yil_yil_seri` (saf) — P50_n = bankable P50 × (1 − d)^(n−1); P_q,n = P50_n × (1 − z_q σ₁) (σ₁ = bankable sigma_toplam); d = saglik_service YoY
+bozunması (negatifse mutlak değeri; ±GA etikette) yoksa %0,5/yıl VARSAYILAN etiketli; ömür ortalaması σ_N = √(σ₁² − σ_ya² + σ_ya²/N) (bankable n_yil ile aynı kural);
+ömür toplamı = N × ortalama. Yıl 1 = params isletmeye_giris yılı, yoksa ilk ölçüm yılı; N = bankable N_yil (10), cari yıl aşarsa uzar.
+Kıyas: `gerceklesen_kiyas` (saf) — scada_hourly yıllık toplam (COALESCE(energy_kwh, power_kw), santral saat dilimi); tamamlanmış yıl kapsaması ≥ %90 ise oran_p50/oran_p90
+ve konum (P50 üstü / P50–P90 arası / P90 altı), azsa «kapsam yetersiz»; cari yıl: iklim_beklenti aylık GHI P50 paylarıyla (bulunduğumuz ay gün oranıyla) yıl başından bugüne
+P50/P90, pay yoksa kıyas yok; `params_json.butce_kwh_yil` varsa bütçe oranı (cari yılda aynı payla). Uç `/p-degerleri`; yanıt notu «hava düzeltmesiz …
+finans raporu için bağımsız doğrulama gerekir».
+Ayar: PlantAyar `butce_kwh_yil` (0 < x ≤ kurulu güç × 8760, 422); Santralim «Yıllık üretim bütçesi (MWh)» girdisi (×1000) + açıklama maddesi.
+Web: Aylık beklenti sayfasında bankable kartının altında «Yıl yıl P-değerleri ve gerçekleşen»: yıl / takvim yılı / P50–P99 / gerçekleşen (cari yılda «yıl başından bugüne»,
+kapsam yetersizde yüzde) / gerçekleşen÷P50 / konum rozeti («ışınım payıyla» eki) / bütçeye göre (bütçe girildiyse); ömür ortalaması ve toplamı satırları biçim notuyla;
+dip not bozunma kaynağı, σ₁/σ_N, bütçe durumu, yanıt notu. Sahte API p-degerleri (yıl 1 = 2022, bozunma ölçülmüş %0,60, bütçe 24.000 MWh).
+Testler: tests/test_pdeger_v2534.py 3 (seri: bozunma çarpanı, P sırası, ömür ortalaması P90 > yıl ortalaması; kıyas: 2023 kapsam yetersiz, 2024 P50 üstü, 2025 arası +
+bütçe oranı, 2026 cari ytd payı, pay yok / seri dışı yıl / boş; bankable yoksa durum). Tam takım 906 geçti / 1 atlandı (6 dk 19 s); web tsc 0, 103, oxlint 16 eski uyarı, build;
+Aylık beklenti 1440/375 taşma 0 (`kanit/aylik-p-degerleri-2026-11-04.jpg`).
+Doğrulanamayan / sonraya: hava düzeltmeli kıyas (ölçülen ışınım yok); bozunma varsayılanı %0,5 sektör tipik (kaynak etiketli); cari yıl payı GHI'dan (üretim payı değil,
+sıcaklık/kırpma mevsimselliği yok); aylık P-kıyası yok (yalnız yıl); P-değeri TL kıyası bankable gelir kartında kaldı.
