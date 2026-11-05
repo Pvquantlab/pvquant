@@ -1210,6 +1210,7 @@ class SegmentIstek(BaseModel):
     uevcb: str | None = None
     dsg_kodu: str | None = None             # v2.539 (DK-258): DSG adı/kodu (beyan); aynı kod = aynı grup; "" temizler
     toplayici_portfoyu: bool | None = None  # v2.539 (DK-261): toplayıcı portföyünde → DSG dışı (DUY m.20(4))
+    yek_g_kayitli: bool | None = None       # v2.540 (DK-612): YEK-G sisteminde kayıtlı (beyan) → Karar 14967 Ek sıra 17 eşiksiz arıza hatırlatması
 
 
 @app.put("/v1/plants/{plant_id}/segment")
@@ -1228,10 +1229,12 @@ def segment_ayarla(plant_id: str, p: SegmentIstek, claims=Depends(yazma_yetkisi(
         anahtarlar["dsg_kodu"] = p.dsg_kodu.strip()[:32] or None
     if p.toplayici_portfoyu is not None:
         anahtarlar["toplayici_portfoyu"] = bool(p.toplayici_portfoyu)
+    if p.yek_g_kayitli is not None:
+        anahtarlar["yek_g_kayitli"] = bool(p.yek_g_kayitli)
     pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **anahtarlar)
     _denetim.kaydet("musteri", "santral_segment", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=plant_id,   # v2.516 (#7)
                     ayrinti=dict(anahtarlar))
-    return {"params_json": {k: v for k, v in pj.items() if k in ("segment", "uevcb", "dsg_kodu", "toplayici_portfoyu")}, **dengesizlik_service.segment_bilgisi(pj)}
+    return {"params_json": {k: v for k, v in pj.items() if k in ("segment", "uevcb", "dsg_kodu", "toplayici_portfoyu", "yek_g_kayitli")}, **dengesizlik_service.segment_bilgisi(pj)}
 
 
 class KunyeTarihIstek(BaseModel):

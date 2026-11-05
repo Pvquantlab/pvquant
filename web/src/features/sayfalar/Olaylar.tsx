@@ -67,7 +67,7 @@ export function Olaylar({ plantId }: { plantId: string }) {
         <Kpi etiket="Bugün kapasite düşümü" deger={sayiTr(o.eak_bugun.saat_sayisi)} birim="saat" ton={o.eak_bugun.saat_sayisi > 0 ? "amber" : undefined}
           alt={o.eak_bugun.saat_sayisi > 0 ? `en çok ${sayiTr(o.eak_bugun.en_cok_kw, 0)} kW (taban ${sayiTr(o.eak_bugun.taban_kw, 0)} kW)${o.eak_bugun.kismi_saat > 0 ? `; ${sayiTr(o.eak_bugun.kismi_saat)} saatte kısmi süre, orantılı` : ""}${o.eak_bugun.suren > 0 ? "; bitişi girilmemiş olay gün sonuna kadar sayılır" : ""}` : "bugün kapasiteyi düşüren olay yok"} />
         <Kpi etiket="Dâhilî bilgi açıklaması" deger={dahili ? (dahili.gecti ? "süre doldu" : `${sayiTr(dahili.kalan_dk)} dk`) : "—"} ton={dahili ? (dahili.basladi === false ? "amber" : "uyari") : undefined}
-          alt={dahili ? `${dahili.tur}, ${dahili.esik} eşiği: en geç ${saatTr(dahili.son_saat)} (1 saat kuralı; yürürlük ${dahili.yururluk}${dahili.basladi === false ? " — henüz başlamadı, bilgi amaçlı" : ""})`
+          alt={dahili ? `${dahili.tur}, ${dahili.esik}${dahili.kosul ? " (YEK-G: açıklanıp açıklanmayacağı sizin değerlendirmenizde)" : " eşiği"}: en geç ${saatTr(dahili.son_saat)} (1 saat kuralı; yürürlük ${dahili.yururluk}${dahili.basladi === false ? " — henüz başlamadı, bilgi amaçlı" : ""})`
             : `1 saat kuralı (yürürlük ${o.dahili_yururluk?.etiket ?? "01.01.2027"}): tesis 30 MW / portföy 50 MW eşiğinde süren olay yok`} />   {/* v2.538 (DK-613) */}
       </div>
       <div className="ızgara-cift">
@@ -103,6 +103,7 @@ export function Olaylar({ plantId }: { plantId: string }) {
             <p style={{ margin: "6px 0 0" }}><b>Bitir / geçersiz say:</b> {o.aciklama.islem}</p>
             {o.aciklama.talimat && <p style={{ margin: "6px 0 0" }}><b>Talimat tutarı:</b> {o.aciklama.talimat}</p>}   {/* v2.538 (DK-733/DK-740) */}
             {o.dahili_yururluk && <p style={{ margin: "6px 0 0" }}><b>Dâhilî bilgi açıklaması:</b> {o.dahili_yururluk.not}</p>}   {/* v2.538 (DK-613) */}
+            {o.yek_g_kayitli && o.yek_g_notu && <p style={{ margin: "6px 0 0" }}><b>YEK-G kaydı:</b> {o.yek_g_notu}</p>}   {/* v2.540 (DK-612) */}
             <p style={{ margin: "6px 0 0" }}>{o.not}</p>
           </details>
         </Kart>

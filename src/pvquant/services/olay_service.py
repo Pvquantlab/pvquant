@@ -62,8 +62,12 @@ DAHILI_YURURLUK_ETIKET = "01.01.2027"
 DAHILI_YURURLUK_NOTU = ("Yürürlük: Enerji Piyasalarında ve Çevresel Piyasalarda Şeffaflığa ve Piyasa Bozucu Davranışlara İlişkin Yönetmelik (RG 14.02.2026-33168) "
                         "m.16 ile 1.1.2027 (RG 23.05.2026-33262 ile ertelendi); Karar 14967'de ayrı yürürlük fıkrası yok, 1 saat kuralının başlangıcı "
                         "Yönetmelik yürürlüğünden çıkarımdır.")
+DAHILI_YEK_G_NOTU = ("Karar 14967 Ek sıra 17 (kanıt: RG 20.10.2026-33406 metni): YEK-G sisteminde yer alan tesislerin arıza veya plansız bakım nedeniyle emre amade "
+                     "olamaması bilgisi eşiksizdir (yükümlü: üretim lisansı sahibi, toplayıcı). Fıkra 3(b): eşik öngörülmeyen veriler dâhilî bilgi tanımının "
+                     "unsurlarını sağladıkları takdirde açıklanır — değerlendirme piyasa katılımcısınındır; açıklanacaksa fıkra 4(a) uyarınca en geç 1 saat içinde.")   # v2.540 (EK-3 DK-612)
 DAHILI_NOTU = ("Karar 14967 (RG 20.10.2026-33406) m.4(a): arıza ve bakım dâhil kapasite kullanımı değişiklikleri, olayın ortaya çıkışından en geç 1 saat "
-               "içinde Dâhilî Bilgi Platformu'nda açıklanır; eşik tesis bazında 30 MW, portföy bazında 50 MW. " + DAHILI_YURURLUK_NOTU +
+               "içinde Dâhilî Bilgi Platformu'nda açıklanır; eşik tesis bazında 30 MW, portföy bazında 50 MW (Ek sıra 1); YEK-G sistemindeki tesiste arıza/plansız "
+               "bakım eşiksiz (Ek sıra 17, fıkra 3(b) koşuluyla). " + DAHILI_YURURLUK_NOTU +
                " Platform arayüzü doğrulanmadı. Bu geri sayım hatırlatmadır, bildirim yerine geçmez.")
 TALIMAT_NOTU_LISANSSIZ = ("Acil durum talimatının (DUY m.75) tutarı m.75(3) uyarınca ilgili toplayıcıya ya da görevli tedarik şirketine, onlardan tesis "
                           "sahibine yansıtılır; talimatın yerine getirilmeyen kısmına karşılık gelen üretim için ödeme yapılmaz (LÜY Ek m.4(1), RG 19.10.2026-33405). "
@@ -314,7 +318,7 @@ def ariza_sayisi_etkin(tenant_id, plant: dict, ay: date | None = None) -> dict:
     return {"sayi": max(elle, olay), "olay": olay, "elle": elle, "kaynak": "olay kaydı" if olay >= elle and olay > 0 else ("elle giriş" if elle > 0 else "yok")}
 
 
-def dahili_bilgi(olay: dict, kapasite_kw: float, portfoy_kw: float | None = None, simdi: datetime | None = None) -> dict | None:
+def dahili_bilgi(olay: dict, kapasite_kw: float, portfoy_kw: float | None = None, simdi: datetime | None = None, yek_g: bool = False) -> dict | None:
     """Karar 14967 1 saat kuralı: etkilenen güç (boşsa kurulu güç) tesis eşiğinde ya da portföy açık olay toplamı portföy eşiğinde ise
     son açıklama saati ve kalan süre; eşik altındaysa None. v2.538 (DK-613): yürürlük 01.01.2027 (çıkarım); olay başlangıcı bu tarihten
     önceyse `basladi` False ve hatırlatma bilgi amaçlıdır (zorunlu süre henüz yok)."""
@@ -322,13 +326,15 @@ def dahili_bilgi(olay: dict, kapasite_kw: float, portfoy_kw: float | None = None
         return None
     kw = float(olay["etkilenen_kw"]) if olay.get("etkilenen_kw") else float(kapasite_kw or 0)
     tesis = kw >= DAHILI_TESIS_KW; portfoy = portfoy_kw is not None and portfoy_kw >= DAHILI_PORTFOY_KW
-    if not (tesis or portfoy):
+    yek_g_sira17 = bool(yek_g) and olay.get("tur") == "ariza" and not (tesis or portfoy)   # v2.540 (DK-612): eşik altı arıza, YEK-G kayıtlı tesis
+    if not (tesis or portfoy or yek_g_sira17):
         return None
     bas = olay["baslangic"] if isinstance(olay["baslangic"], datetime) else datetime.fromisoformat(olay["baslangic"])
     son = bas + timedelta(hours=DAHILI_SURE_SAAT); now = simdi or datetime.now(timezone.utc)
     basladi = bas.astimezone(IST).date() >= DAHILI_YURURLUK
-    return {"esik": "tesis 30 MW" if tesis else "portföy 50 MW", "etkilenen_kw": kw, "son_saat": son.astimezone(IST).isoformat(timespec="minutes"),
+    return {"esik": "tesis 30 MW" if tesis else ("portföy 50 MW" if portfoy else "YEK-G sıra 17 (eşik yok)"), "etkilenen_kw": kw, "son_saat": son.astimezone(IST).isoformat(timespec="minutes"),
             "kalan_dk": int((son - now).total_seconds() // 60), "gecti": now > son, "yururluk": DAHILI_YURURLUK_ETIKET, "basladi": basladi,
+            "kosul": (DAHILI_YEK_G_NOTU if yek_g_sira17 else None),
             "yururluk_notu": DAHILI_YURURLUK_NOTU if basladi else ("Yükümlülük 01.01.2027'de başlar (çıkarım): bu olay için zorunlu 1 saatlik süre henüz yok; "
                                                                    "hatırlatma bilgi amaçlıdır. " + DAHILI_YURURLUK_NOTU),
             "not": DAHILI_NOTU}
@@ -342,9 +348,13 @@ def ozet(tenant_id, plant: dict, gun: int = 90, bugun: date | None = None) -> di
     planli = [o for o in olaylar if o["evre"] == "planli"]
     kap = _sinir_kw(plant) or 0.0   # tesisin tamamı = AC sınırı (varsa); kWp değil
     portfoy_kw = sum((float(o["etkilenen_kw"]) if o["etkilenen_kw"] else kap) for o in acik)
+    pj0 = plant.get("params_json") or {}
+    if isinstance(pj0, str):
+        pj0 = json.loads(pj0)
+    yek_g = bool(pj0.get("yek_g_kayitli"))   # v2.540 (DK-612): beyan
     dahili = []
     for o in acik:
-        d = dahili_bilgi(o, kap, portfoy_kw if len(acik) > 1 else None)
+        d = dahili_bilgi(o, kap, portfoy_kw if len(acik) > 1 else None, yek_g=yek_g)
         if d:
             dahili.append({"olay_id": o["id"], "tur": o["tur_etiket"], **d})
     sayac = ariza_sayisi_etkin(tenant_id, plant, b)
@@ -357,6 +367,7 @@ def ozet(tenant_id, plant: dict, gun: int = 90, bugun: date | None = None) -> di
                           "taban_kw": etki["taban_kw"], "kismi_saat": sum(1 for v in etki["saatler"].values() if v["oran"] < 1.0),
                           "suren": sum(1 for o in acik if o["kural"]["eak_dusur"] and not o["bitis"])},   # bitişi girilmemiş: gün sonuna kadar sayılır
             "dahili_bilgi": dahili, "dahili_yururluk": {"tarih": DAHILI_YURURLUK.isoformat(), "etiket": DAHILI_YURURLUK_ETIKET, "basladi": b >= DAHILI_YURURLUK, "not": DAHILI_YURURLUK_NOTU},
+            "yek_g_kayitli": yek_g, "yek_g_notu": DAHILI_YEK_G_NOTU,
             "segment": seg, "turler": [{"kod": t, "etiket": TUR_ETIKET[t], **TUR_KURAL[t]} for t in TURLER],
             "gerekceler": [{"kod": g, "etiket": GEREKCE_ETIKET[g]} for g in GEREKCELER],
             "not": "Olay kaydı santralın kendi kaydıdır; TPYS Arıza ve Bakım bildirimi, Dâhilî Bilgi Platformu açıklaması ve TEİAŞ bildirimleri ayrıca yapılır.",

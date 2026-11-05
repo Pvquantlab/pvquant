@@ -947,3 +947,11 @@ Sonraya: EK-3 değer satırları; lock dosyası kararı; Mutabakat'ta kupst_kayn
 **Kanıt.** tests/test_ek3_v2539.py 4; tam takım; web kapıları; kareler.
 
 **Mühür.** 3ad3aa6 (05.11 03:40 TSİ), CI #690 yeşil; ssh dağıtım api+web 03:52–03:53 TSİ (worker yeniden yaratılmadı: 03:45–06:30 gece işleri penceresi; worker tarafındaki servis değişikliği yalnız DSG gruplaması ve döküm notu, gece işlerini etkilemez — 06:30 sonrası `docker compose build worker && up -d worker`); canlı 25/25 birebir; göç yok. Raporlar: 02 M53, 00 otuz dokuzuncu paket, 04 E satırı; kanıt `kanit/ek3b-*-2026-11-05.jpg`.
+
+# Kırkıncı paket — v2.540 (05.11.2026) — EK-3 birincil metin okumaları: YEK-G sıra 17, m.23(9), ETKB CO₂
+
+**Okunan metinler.** Karar 14967 (RG 20.10.2026-33406, görüntüden): sıra 17 YEK-G eşiksiz arıza/plansız bakım; fıkra 3(a)/(b), 4(a); yürürlük fıkrası yok. YEK Yön. değişiklikleri: RG 29.12.2025-33122 Md.7–8 ((9) eklendi, 1.1.2026) ve RG 19.10.2026-33405 Md.5/7 ((9) kaldırıldı, 19.10.2026). ETKB EVÇED emisyon faktörleri bilgi formu (2022; yayım 06.12.2024): üretim 0,438 tCO₂/MWh.
+
+**Uygulama.** `yek_g_kayitli` beyanı + Olay kaydında eşik altı arıza hatırlatması (3(b) şartı etiketli); `m23_9` işareti ve döküm sütunları, YEKDEM kartı özeti (yarım günler ve KGÜP'süz tatil saatleri yorum); Excel CO₂ 0,438 ve kaynak etiketi. Dil bekçisi iki sözcük yakaladı («Koşu», «Garanti») → düzeltildi.
+
+**Kanıt.** tests/test_ek3_v2540.py 4; tam takım; web kapıları; kareler. Göç yok. Arşiv: EK3 satırları DOĞRULANDI/A, `EK3_BIRINCIL_OKUMALAR_2026-11-05.md`.

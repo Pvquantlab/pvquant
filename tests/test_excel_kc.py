@@ -363,7 +363,7 @@ def test_gelir_co2_kpi_ve_tarife_kunyesi():
     ws = _wb(_ctx())["Ozet"]
     assert ws.cell(5, 10).value == "BEKLENEN GELİR (DÖNEM)"
     assert ws.cell(6, 10).value == "—"                    # tarife yok → dürüst
-    assert "0,44 t/MWh" in ws.cell(5, 12).value           # faktör etikette
+    assert "0,438 t/MWh" in ws.cell(5, 12).value and "ETKB" in ws.cell(5, 12).value   # v2.540 (DK-1019): ETKB 2022 faktörü etikette
     ctx = _ctx(gelir={"tip": "sabit", "toplam_tl": 97400, "ort_fiyat_tl_mwh": 2450})
     wb = _wb(ctx)
     assert wb["Ozet"].cell(6, 10).value == "97,4 bin TL"

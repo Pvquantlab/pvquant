@@ -234,8 +234,8 @@ def test_dokum_yekdem_sutunlari():
     ek = ys.m23_6_isaretle(pv, pd.Series(3000.0, index=pv.index))
     dk = dz.dokum_df(pv, ek)
     assert list(dk.columns) == dz.DOKUM_KOLONLAR + dz.YEKDEM_KOLONLAR and (dk["yekdem_disi_mwh"] >= 0).all() and "evet" in set(dk["m23_6"])
-    assert dk["yekdem_disi_mwh"].sum() > 0 and dz.dokum_notu(dk).endswith("0,98 × PTF).") and "m23_6" not in dz.dokum_notu(dz.dokum_df(pv))
-    csv = dz.dokum_csv(dk); assert ";yekdem_disi_tl\n" in csv.split("\n")[1] + "\n" and csv.count("\n") == len(dk) + 2
+    assert dk["yekdem_disi_mwh"].sum() > 0 and dz.dokum_notu(dk).endswith("yaklaşık.") and "m23_6" not in dz.dokum_notu(dz.dokum_df(pv))
+    csv = dz.dokum_csv(dk); assert ";m23_9_tl\n" in csv.split("\n")[1] + "\n" and csv.count("\n") == len(dk) + 2
     x = dz.dokum_xlsx(dk, "test"); assert x[:2] == b"PK"
     assert list(dz.dokum_df(pv).columns) == dz.DOKUM_KOLONLAR and list(dz.dokum_df(pv, ek.iloc[0:0]).columns) == dz.DOKUM_KOLONLAR
     assert dz.yekdem_eki({"tarife": {"tip": "sabit"}}, "lisansli_yekdem", pv) is None and dz.yekdem_eki({"tarife": {"tip": "yekdem"}}, "lisansli_serbest", pv) is None

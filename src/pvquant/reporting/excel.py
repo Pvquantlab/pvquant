@@ -25,6 +25,13 @@ IEC_KOLONLAR = [
 ]
 
 
+# v2.540 (EK-3 DK-1019): ETKB EVÇED bilgi formu ETKB-EVÇED-FRM-042 Rev.01 — hesaplama dönemi 2022, yayım 06.12.2024 (enerji.gov.tr › İklim Değişikliği Hakkında › Belge & Dosyalar, EK-4.pdf)
+CO2_T_MWH = 0.438          # Türkiye geneli elektrik üretimi emisyon faktörü, tCO₂/MWh (yalnız CO₂; tCO₂-eşd. 0,442)
+CO2_KAYNAK_KISA = "ETKB üretim emisyon faktörü 2022, şebeke ortalaması; yaklaşım"
+CO2_KAYNAK = ("ETKB EVÇED «Türkiye Elektrik Üretimi ve Elektrik Tüketim Noktası Emisyon Faktörleri Bilgi Formu» (ETKB-EVÇED-FRM-042 Rev.01; hesaplama dönemi 2022, "
+              "yayım 06.12.2024): Türkiye geneli elektrik üretimi emisyon faktörü 0,438 tCO₂/MWh (0,442 tCO₂-eşd./MWh). Kaçınılan emisyon şebeke ortalamasıyla "
+              "hesaplanır; marjinal santral yaklaşımı değildir, yıl ve karma değiştikçe güncellenir.")
+
 def build_excel(ctx) -> bytes:
     buf = BytesIO()
     wb = xlsxwriter.Workbook(buf, {"in_memory": True,
@@ -110,10 +117,10 @@ def build_excel(ctx) -> bytes:
 
     # KPI blokları — v2.346: metin KPI'ları Türkçe sayı biçiminde.
     # v2.349 (rakip paritesi): BEKLENEN GELİR (tarife künyeden; tanımsızsa "—")
-    # ve KAÇINILAN CO₂ eklendi (v2.537: «tasarruf» değil, üretim karması yoğunluğuyla kaçınılan emisyon). CO₂ faktörü BELGELİ VARSAYIMDIR ve etikette
-    # açıkça gösterilir: Türkiye şebeke üretim karması için yaygın kullanılan
-    # yaklaşık değer; kesin faktör yıla/karmaya göre değişir (dürüst kaba hesap).
-    _CO2_T_MWH = 0.44
+    # ve KAÇINILAN CO₂ eklendi (v2.537: «tasarruf» değil, üretim karması yoğunluğuyla kaçınılan emisyon). v2.540 (EK-3 DK-1019, kanıt A): faktör ETKB
+    # EVÇED «Türkiye Elektrik Üretimi ve Elektrik Tüketim Noktası Emisyon Faktörleri Bilgi Formu» (ETKB-EVÇED-FRM-042, hesaplama dönemi 2022, yayım
+    # 06.12.2024): Türkiye geneli elektrik üretimi emisyon faktörü 0,438 tCO₂/MWh (0,442 tCO₂-eşd./MWh). Şebeke ortalamasıyla «kaçınılan» hesabı yaklaşımdır.
+    _CO2_T_MWH = CO2_T_MWH
     gelir = getattr(ctx, "gelir", None)
     kpis = [
         ("TOPLAM (P50)", f"{sayi_tr(ctx.total_mwh, 1)} MWh"),
@@ -123,7 +130,7 @@ def build_excel(ctx) -> bytes:
          f"%{sayi_tr(ctx.mape_pct, 1)}" if ctx.mape_pct is not None else "—"),
         ("BEKLENEN GELİR (DÖNEM)",
          f"{sayi_tr(gelir['toplam_tl'] / 1000.0, 1)} bin TL" if gelir else "—"),
-        (f"KAÇINILAN CO₂ · {sayi_tr(_CO2_T_MWH, 2)} t/MWh (şebeke karması yoğunluğu, varsayım)",
+        (f"KAÇINILAN CO₂ · {sayi_tr(_CO2_T_MWH, 3)} t/MWh ({CO2_KAYNAK_KISA})",
          f"{sayi_tr(ctx.total_mwh * _CO2_T_MWH, 1)} t"),
     ]
     for k, (et, dg) in enumerate(kpis):

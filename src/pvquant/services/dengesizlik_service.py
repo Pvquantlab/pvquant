@@ -293,7 +293,7 @@ def hesapla_df(df: pd.DataFrame, fiyat: pd.DataFrame, kat: d.Katsayilar | None =
 DOKUM_KOLONLAR = ["zaman", "program_mwh", "program_kaynak", "pozisyon_mwh", "gerceklesen_mwh", "sapma_mwh", "ptf_tl_mwh", "smf_tl_mwh", "yon",
                   "k", "l", "fiyat_eksik_tl_mwh", "fiyat_fazla_tl_mwh", "edt_borc_tl", "edt_alacak_tl", "edt_net_tl", "kupsm_mwh", "kupst_tl",
                   "toplam_tl", "kural_surumu", "durum"]
-YEKDEM_KOLONLAR = ["yek_fiyat_tl_mwh", "m23_6", "yekdem_disi_mwh", "yekdem_disi_tl"]   # v2.520 (P5a): yalnız lisanslı YEKDEM + tarife yekdem
+YEKDEM_KOLONLAR = ["yek_fiyat_tl_mwh", "m23_6", "yekdem_disi_mwh", "yekdem_disi_tl", "m23_9", "m23_9_mwh", "m23_9_tl"]   # v2.520 (P5a): yalnız lisanslı YEKDEM + tarife yekdem; v2.540: m.23(9)
 
 
 def dokum_df(pv: pd.DataFrame, ek: pd.DataFrame | None = None) -> pd.DataFrame:
@@ -316,6 +316,8 @@ def dokum_df(pv: pd.DataFrame, ek: pd.DataFrame | None = None) -> pd.DataFrame:
         e = ek.reindex(pv.index)
         out["yek_fiyat_tl_mwh"] = e["yek_fiyat_tl_mwh"].astype(float).round(2).values; out["m23_6"] = e["m23_6"].values
         out["yekdem_disi_mwh"] = e["yekdem_disi_mwh"].astype(float).round(3).values; out["yekdem_disi_tl"] = e["yekdem_disi_tl"].astype(float).round(2).values
+        if "m23_9" in e.columns:   # v2.540 (DK-333): m.23(9) tatil günü sütunları
+            out["m23_9"] = e["m23_9"].values; out["m23_9_mwh"] = e["m23_9_mwh"].astype(float).round(3).values; out["m23_9_tl"] = e["m23_9_tl"].astype(float).round(2).values
     return out
 
 
@@ -366,7 +368,9 @@ def _talimat_olaylari(tenant_id, plant: dict, idx: pd.DatetimeIndex) -> list[dic
 DOKUM_NOTU_YEKDEM = (" YEKDEM sütunları (lisanslı YEKDEM, tarife YEKDEM): yek_fiyat = o saatin YEK fiyatı (+ yerli katkı; Cetvel I günün TCMB alış kuruyla, 7189 "
                      "ayın EPİAŞ ilanı); m23_6 = YEK Yön. m.23(6) işareti (evet: PTF ya da SMF < V ve sistem fazlası saatinde program üstü üretim ve PTF < YEK "
                      "fiyatı → YEKDEM dışı; ptf_yek_ustu: şartlar var, PTF ≥ YEK fiyatı; kapsam_disi: 19.10.2026 öncesi; EPİAŞ uygulaması belirsiz, talimat "
-                     "saatleri dâhil değil); yekdem_disi_mwh = program üstü MWh; yekdem_disi_tl = MWh × (YEK fiyatı − 0,98 × PTF).")
+                     "saatleri dâhil değil); yekdem_disi_mwh = program üstü MWh; yekdem_disi_tl = MWh × (YEK fiyatı − 0,98 × PTF). m23_9 = YEK Yön. m.23(9) "
+                     "işareti (1.1–18.10.2026 arası Pazar hariç tatil günlerinde bildirilen KGÜP üstü üretim YEK UEVM'ye girmez; evet | kgup_yok: KGÜP bildirilmemiş, "
+                     "tespit yorumu | hayir | kapsam_disi); m23_9_mwh program üstü MWh, m23_9_tl = MWh × (YEK fiyatı − PTF), yaklaşık.")
 
 
 def dokum_notu(df: pd.DataFrame) -> str:
@@ -538,12 +542,14 @@ def segment_bilgisi(params_json) -> dict:
     uevcb = (pj.get("uevcb") or None)   # v2.513 (04 #14): UEVÇB kodu panelde görünür/düzenlenir
     if seg is None:
         return {"segment": None, "kgup_yukumlu": None, "dengesizlik_sahibi": None, "santral_tasir": None, "uevcb": uevcb,
-                "dsg_kodu": (str(pj.get("dsg_kodu")).strip() or None) if pj.get("dsg_kodu") else None, "toplayici_portfoyu": bool(pj.get("toplayici_portfoyu"))}
+                "dsg_kodu": (str(pj.get("dsg_kodu")).strip() or None) if pj.get("dsg_kodu") else None, "toplayici_portfoyu": bool(pj.get("toplayici_portfoyu")),
+                "yek_g_kayitli": bool(pj.get("yek_g_kayitli"))}
     k = sg.KURALLAR.loc[seg]
     st = sg.Santral("x", seg, 1.0)
     return {"segment": seg.value, "kgup_yukumlu": bool(k["kgup_yukumlu"]), "dengesizlik_sahibi": str(k["dengesizlik_sahibi"]), "santral_tasir": st.dengesizlik_tasir_mi(),
             "uevcb": uevcb, "dsg_kodu": (str(pj.get("dsg_kodu")).strip() or None) if pj.get("dsg_kodu") else None,   # v2.539 (DK-258): DSG adı/kodu (beyan)
-            "toplayici_portfoyu": bool(pj.get("toplayici_portfoyu"))}   # v2.539 (DK-261): toplayıcı portföyünde → DSG dışı (DUY m.20(4))
+            "toplayici_portfoyu": bool(pj.get("toplayici_portfoyu")),   # v2.539 (DK-261): toplayıcı portföyünde → DSG dışı (DUY m.20(4))
+            "yek_g_kayitli": bool(pj.get("yek_g_kayitli"))}   # v2.540 (DK-612): YEK-G sisteminde kayıtlı (beyan) → dâhilî bilgi sıra 17 eşiksiz
 
 
 def katsayilar(params_json) -> d.Katsayilar:

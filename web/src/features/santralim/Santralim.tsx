@@ -138,6 +138,15 @@ export function Santralim({ plantId }: { plantId: string }) {
   const [dsgKodu, setDsgKodu] = useState<string>("");
   const [toplayici, setToplayici] = useState<boolean>(false);
   const [dsgMesaj, setDsgMesaj] = useState<string | null>(null);
+  // v2.540 (EK-3 DK-612): YEK-G sisteminde kayıtlı tesis (beyan) → Olay kaydında eşik altı arıza için dâhilî bilgi hatırlatması (Karar 14967 Ek sıra 17)
+  const [yekG, setYekG] = useState<boolean>(false);
+  const [yekGMesaj, setYekGMesaj] = useState<string | null>(null);
+  const yekGKaydet = (v: boolean) => {
+    if (!seg?.segment) { setYekGMesaj("Önce piyasa segmentini seçin."); return; }
+    setYekG(v);
+    api.segmentAyarla(plantId, seg.segment, uevcb || undefined, { yek_g_kayitli: v }).then(() => setYekGMesaj(v ? "Kaydedildi: YEK-G sisteminde kayıtlı." : "Kaydedildi: YEK-G kaydı yok."))
+      .catch((e) => setYekGMesaj(`Kaydedilemedi: ${String(e.message ?? e)}`));
+  };
   const dsgKaydet = () => {
     if (!seg?.segment) { setDsgMesaj("Önce piyasa segmentini seçin."); return; }
     api.segmentAyarla(plantId, seg.segment, uevcb || undefined, { dsg_kodu: dsgKodu.trim(), toplayici_portfoyu: toplayici })
@@ -155,7 +164,7 @@ export function Santralim({ plantId }: { plantId: string }) {
     setUevcbMesaj(null); setUevcbAday(null);
     api.uevcbAra(uevcbArama).then((r) => setUevcbAday(r ?? "yok")).catch((e) => { setUevcbAday("yok"); setUevcbMesaj(`Arama yapılamadı: ${String(e.message ?? e)}`); });
   };
-  useEffect(() => { api.dengesizlik(plantId, 14).then((d) => { if (!d) return; setSeg({ segment: d.segment.segment, dengesizlik_sahibi: d.segment.dengesizlik_sahibi }); setUevcb(d.segment.uevcb ?? ""); setDsgKodu(d.segment.dsg_kodu ?? ""); setToplayici(!!d.segment.toplayici_portfoyu); if (d.luy_istisna !== undefined) setLuyIstisna((v) => (v === null ? !!d.luy_istisna : v));
+  useEffect(() => { api.dengesizlik(plantId, 14).then((d) => { if (!d) return; setSeg({ segment: d.segment.segment, dengesizlik_sahibi: d.segment.dengesizlik_sahibi }); setUevcb(d.segment.uevcb ?? ""); setDsgKodu(d.segment.dsg_kodu ?? ""); setToplayici(!!d.segment.toplayici_portfoyu); setYekG(!!d.segment.yek_g_kayitli); if (d.luy_istisna !== undefined) setLuyIstisna((v) => (v === null ? !!d.luy_istisna : v));
     if (d.program) { setPozKaynak((v) => v ?? d.program!.pozisyon.kaynak); if (d.program.pozisyon.sabit_mwh != null) setPozSabit((v) => v || String(d.program!.pozisyon.sabit_mwh)); } }).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { api.saglik(plantId).then(setSg).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   // v2.274 (Dalga 3 tamamlayıcısı): fizik terimleri — santral bazında aç/kapa + "açsam ne değişir?" önizlemesi
@@ -660,6 +669,22 @@ export function Santralim({ plantId }: { plantId: string }) {
                 <p><b>Ne işe yarar:</b> Kod girilmezse dengesizliğini kendisi taşıyan bütün santralleriniz tek DSG varsayılır. Kod girilince yalnız aynı kodlu santraller birlikte netleşir; kodsuz kalan santral, başka santrallerde kod varken hesap dışı tutulur.</p>
                 <p><b>Toplayıcı portföyü:</b> Toplayıcı DSG'de yer alamaz (DUY m.20(4)); portföyüne geçen santral DSG'den çıkar. Bu işaret beyandır, PVQuant toplayıcı sözleşmesini görmez.</p>
                 <p><b>Eşik:</b> Üye eşiği piyasa katılımcısı düzeyinde uygulanır (DUY m.111); aynı katılımcının birden çok santrali varsa PVQuant her santrali ayrı üye sayar, bireysel tutar fazla görünebilir (çıkarım).</p>
+              </>)}
+          </div>
+          {/* v2.540 (EK-3 DK-612): YEK-G kaydı — Dâhilî Bilgi Platformu Asgarî Veriler Listesi sıra 17 (eşiksiz arıza/plansız bakım) */}
+          <div className="ayar">
+            <div><div className="ayar-ad">YEK-G sistemi kaydı</div>
+              <div className="ayar-aciklama">Tesisiniz YEK-G (yenilenebilir enerji kaynak belgesi) sisteminde kayıtlıysa, Dâhilî Bilgi Platformu'nda arıza ve plansız bakım bilgisi eşiksiz açıklanır; Olay kaydı eşik altı arızada da hatırlatır.</div>
+              {ayrintiDugmesi(ayrinti, setAyrinti, "yekg")}
+              </div>
+            <div className="ayar-kontrol">
+              <label className="girdi-etiket" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <input type="checkbox" checked={yekG} onChange={(e) => yekGKaydet(e.target.checked)} /> YEK-G sisteminde kayıtlı</label>
+              {yekGMesaj && <span className={`ayar-durum ${yekGMesaj.startsWith("Kaydedildi") ? "ok" : "hata"}`}>{yekGMesaj}</span>}
+            </div>
+            {ayrintiGovdesi(ayrinti, "yekg", <>
+                <p><b>Dayanak:</b> Karar 14967 (RG 20.10.2026-33406) Ek sıra 17: YEK-G sisteminde yer alan yenilenebilir tesislerin arıza veya plansız bakım nedeniyle emre amade olamaması bilgisi; eşik yok, yükümlü üretim lisansı sahibi ve toplayıcı. Sıra 1'deki 30 MW / 50 MW eşiği bu satır için geçerli değildir.</p>
+                <p><b>Şart:</b> Fıkra 3(b) uyarınca eşiksiz veriler, dâhilî bilgi tanımının unsurlarını sağladıkları takdirde açıklanır; değerlendirme sizindir. Açıklanacaksa fıkra 4(a) uyarınca en geç 1 saat içinde. Yürürlük 1.1.2027 (çıkarım).</p>
               </>)}
           </div>
           {/* v2.513 (04 #14 kalan): UEVÇB kodu — KGÜP/EAK dosya adı ve toplayıcı portföyü KÜPST gruplaması bu koda bağlı; EPİAŞ'tan arama */}

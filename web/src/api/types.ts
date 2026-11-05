@@ -122,7 +122,9 @@ export interface Yekdem {
   m23_6: { baslangic: string; etiket: string; pencere_gun: number; saat: number; aday_saat: number; fiyat_yok_saat: number; kapsam_saat: number; yekdem_disi_mwh: number; yekdem_disi_tl: number;
     bildirilmemis_saat: number; ilk_saat: string | null; son_saat: string | null; not: string;
     /** v2.532 (DK-301): bildirilen KGÜP yüklenmemiş saatlerde mevzuat okuması — KGÜP = 0, üretimin tamamı dışarıda */
-    kgup0_saat?: number; kgup0_mwh?: number; kgup0_tl?: number } | null;
+    kgup0_saat?: number; kgup0_mwh?: number; kgup0_tl?: number;
+    /** v2.540 (EK-3 DK-333): YEK Yön. m.23(9) tatil günü işareti, 1.1–18.10.2026 (RG 33122 → RG 33405 ile mülga) */
+    m23_9?: { baslangic: string; bitis: string; kapsam_saat: number; saat: number; kgup_yok_saat: number; mwh: number; tl: number; ilk_saat: string | null; son_saat: string | null; etiket: string; not: string } } | null;
   not: string | null;
   sabitler: { cetvel1_cent: number; bant_cent: [number, number]; baslangic_kr: [number, number]; yerli_yil: number; j: number };
   /** v2.538 (EK-3 DK-297/DK-323/DK-675): YEKDEM hesabının modellemediği kurallar (kapsam sınırı) */ kapsam_sinirlari?: { kod: string; etiket: string; metin: string }[];
@@ -290,7 +292,7 @@ export interface Dengesizlik { luy_istisna?: boolean;   // v2.510 (Ç3): santral
   fiyat: { epias_saat: number; senaryo_saat: number; yon_varsayilan_saat?: number; yon_eksik_saat?: number };
   hesaplanamayan_saat?: number; kural_surumu?: string | null; kural?: DengesizlikKural;
   segment: { segment: string | null; kgup_yukumlu: boolean | null; dengesizlik_sahibi: string | null; santral_tasir: boolean | null; uevcb?: string | null;
-    /** v2.539 (EK-3 DK-258/261): DSG adı/kodu (beyan) ve toplayıcı portföyü işareti */ dsg_kodu?: string | null; toplayici_portfoyu?: boolean };
+    /** v2.539 (EK-3 DK-258/261): DSG adı/kodu (beyan) ve toplayıcı portföyü işareti; v2.540 (DK-612): YEK-G kaydı */ dsg_kodu?: string | null; toplayici_portfoyu?: boolean; yek_g_kayitli?: boolean };
 }
 /** /dengesizlik/geri-test — v2.503 (F-07): 12 aylık uzlaştırma kalemleri geri testi; karşı-olgu sütunları; varsayımsal yeniden hesap. */
 export interface DengesizlikGeriTest {
@@ -534,8 +536,9 @@ export interface OlayOzet { bugun: string; pencere_gun: number; olaylar: Olay[];
   aciklama: { kapasite: string; sayac: string; kullanilabilirlik: string; islem: string; gerekce: string;
     /** v2.538 (EK-3 DK-733/DK-740): talimat tutarının yansıtılması — segmente göre lisanssız / lisanslı metni */ talimat?: string };
   /** v2.538 (EK-3 DK-613): 1 saat kuralının yürürlüğü 01.01.2027 (çıkarım); basladi = olay başlangıcı yürürlükten sonra */
-  dahili_bilgi: { olay_id: string; tur: string; esik: string; etkilenen_kw: number; son_saat: string; kalan_dk: number; gecti: boolean; yururluk: string; basladi?: boolean; yururluk_notu?: string; not: string }[];
+  dahili_bilgi: { olay_id: string; tur: string; esik: string; etkilenen_kw: number; son_saat: string; kalan_dk: number; gecti: boolean; yururluk: string; basladi?: boolean; yururluk_notu?: string; kosul?: string | null; not: string }[];
   dahili_yururluk?: { tarih: string; etiket: string; basladi: boolean; not: string }; segment?: string | null;
+  /** v2.540 (EK-3 DK-612): YEK-G sisteminde kayıtlı tesiste arıza/plansız bakım eşiksiz (Karar 14967 Ek sıra 17; fıkra 3(b) koşulu) */ yek_g_kayitli?: boolean; yek_g_notu?: string;
   turler: ({ kod: OlayTur; etiket: string } & OlayKural)[]; gerekceler: { kod: string; etiket: string }[]; not: string }
 /** v2.523 (P4a): sayaç izleme — OSOS/MASS/EPYS sayaç serisi (SCADA'dan ayrı), geliş beklentisi, SCADA ↔ sayaç farkı, lisanssız SCADA durumu */
 export type SayacKaynak = "osos" | "mass" | "epys" | "elle";

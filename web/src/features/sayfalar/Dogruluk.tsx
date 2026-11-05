@@ -108,6 +108,10 @@ function YekdemKarti({ plantId, gun }: { plantId: string; gun: number }) {
             {/* v2.532 (DK-301): KGÜP = 0 okuması sayıyla — dosya yüklenmedi ≠ EPİAŞ'a bildirilmedi; iki okuma yan yana */}
             {(yk.m23_6.kgup0_saat ?? 0) > 0 && <> Bildirilen KGÜP yüklenmemiş saatlerde KGÜP hiç bildirilmediyse mevzuat KGÜP'ü 0 sayar: o okumayla {sayiTr(yk.m23_6.kgup0_saat ?? 0)} saatte üretimin tamamı ({sayiTr(yk.m23_6.kgup0_mwh ?? 0, 1)} MWh, fark {sayiTr(yk.m23_6.kgup0_tl ?? 0)} TL) YEKDEM dışı kalır; bildirdiyseniz dosyayı yükleyin, hesap ona göre yapılır.</>}
           </p>}
+          {yk.m23_6?.m23_9 && yk.m23_6.m23_9.kapsam_saat > 0 && <p style={{ margin: "8px 0 0", fontSize: 13.5 }}>   {/* v2.540 (EK-3 DK-333) */}
+            <b>m.23(9) tatil günleri (1.1–18.10.2026):</b> pencerede {sayiTr(yk.m23_6.m23_9.kapsam_saat)} tatil saati; {sayiTr(yk.m23_6.m23_9.saat)} saatte bildirilen program üstü üretim YEK UEVM dışı: {sayiTr(yk.m23_6.m23_9.mwh, 1)} MWh, fark {sayiTr(yk.m23_6.m23_9.tl / 1000, 1)} bin TL (yaklaşık)
+            {yk.m23_6.m23_9.kgup_yok_saat > 0 ? `; ${sayiTr(yk.m23_6.m23_9.kgup_yok_saat)} tatil saatinde bildirilen KGÜP yoktu (tespit yorumu, sayılmadı)` : ""}. Bu fıkra 19.10.2026'da kalktı.
+          </p>}
           <p className="soluk" style={{ margin: "8px 0 0", fontSize: 13 }}>
             {yk.not ? yk.not + " " : ""}Yeniden hesaptır; EPİAŞ YEKDEM uzlaştırması değildir.
           </p>
@@ -116,7 +120,8 @@ function YekdemKarti({ plantId, gun }: { plantId: string; gun: number }) {
             <ul className="not-listesi" style={{ fontSize: 13.5, marginTop: 6 }}>{yk.kapsam_sinirlari.map((k) => <li key={k.kod}><b>{k.etiket}:</b> {k.metin}</li>)}</ul>
           </details>}
           <details className="aciklama">
-            <summary>m.23(6) dayanağı ve hesap yöntemi</summary>
+            <summary>m.23(6) ve m.23(9) dayanağı ve hesap yöntemi</summary>
+            {yk.m23_6?.m23_9 && <p style={{ margin: "6px 0 0" }}><b>m.23(9), {yk.m23_6.m23_9.baslangic.split("-").reverse().join(".")} – {yk.m23_6.m23_9.bitis.split("-").reverse().join(".")}:</b> {yk.m23_6.m23_9.not}</p>}   {/* v2.540 (DK-333) */}
             <p style={{ margin: "6px 0 0" }}>{yk.m23_6 ? yk.m23_6.not : "m.23(6) işareti yalnız lisanslı YEKDEM segmentinde ve satış tarifesi YEKDEM seçiliyken üretilir. YEK Yön. m.23(6) (RG 19.10.2026-8): PTF ya da SMF taban değerin (V) altında ve sistem yönü enerji fazlası olan saatte programın üstündeki üretim, PTF o saatin YEK fiyatından düşükse YEKDEM dışında kalır."}</p>
           </details>
         </>)}

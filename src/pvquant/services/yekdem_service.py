@@ -53,6 +53,21 @@ BASLANGIC_KR = {"gunes": (106.00, 28.80), "gunes_depolamali": (125.00, 38.45)}  
 YERLI_YIL = {"gunes": 5, "gunes_depolamali": 10}                                # yerli katkı süresi (yıl)
 J = 0.980                                              # YEKDEM tolerans katsayısı, güneş (Karar 7667; YEK Yön. m.18/1)
 M23_6_BASLANGIC = date(2026, 10, 19)
+# v2.540 (EK-3 DK-333, kanıt A): YEK Yön. m.23(9) — RG 29.12.2025-33122 Md.7 ile eklendi (Md.8: yürürlük 1.1.2026), RG 19.10.2026-33405 Md.5 ile yürürlükten
+# kaldırıldı (Md.7: yayımı tarihinde). Metin: «Pazar günleri hariç olmak üzere, 2429 sayılı Kanunda yer alan tatil günlerinde; bildirilmiş olan KGÜP'ün üzerinde
+# üretim yapılarak sisteme verilmesi halinde, KGÜP'ün üzerindeki üretim miktarı YEK UEVM hesaplamalarına dâhil edilmez ve … YEK bedeli ödemesi yapılmaz.»
+M23_9_BASLANGIC = date(2026, 1, 1)
+M23_9_BITIS = date(2026, 10, 18)
+M23_9_NOTU = ("YEK Yön. m.23(9) (RG 29.12.2025-33122 Md.7, 1.1.2026 – RG 19.10.2026-33405 Md.5 ile 19.10.2026'da kalktı): Pazar hariç 2429 sayılı Kanun tatil "
+              "günlerinde bildirilen KGÜP'ün üstündeki üretim YEK UEVM'ye girmez, YEK bedeli ödenmez. İşaret yalnız 1.1–18.10.2026 arasındaki tam tatil günleri "
+              "için; arife ve 28 Ekim yarım günleri sayılmadı (yorum). KGÜP bildirilmemiş tatil saatleri «kgup_yok» ile ayrı sayılır (metin «bildirilmiş olan KGÜP» "
+              "der; tespit yorumu). Fark tutarı YEK fiyatı − PTF ile yaklaşık (m.23(6)'daki 0,98 çarpanı bu fıkra için metinde yok).")
+
+
+def m23_9_gunu(d: date) -> bool:
+    """v2.540: m.23(9) uygulanan gün — 1.1–18.10.2026 arasında, Pazar değil, 2429 sayılı Kanun tatili (takvim.resmi_tatil; yarım günler hariç)."""
+    from pvquant.ext.turkiye import takvim as tk
+    return M23_9_BASLANGIC <= d <= M23_9_BITIS and d.weekday() != 6 and tk.resmi_tatil(d)
 BANT_TOLERANS_CENT = 0.02                              # ilan edilen fiyat band sınırına bu kadar yakınsa «sınırda» (kırpma devrede)
 REJIM_ETIKET = {"cetvel1": "Cetvel I (ABD senti/kWh × günün TCMB kuru)", "7189": "7189 sayılı CK (TL, aylık EPİAŞ ilanı)", None: "belirsiz"}
 KAYNAK_ETIKET = {"tcmb": "günün TCMB alış kuru", "tcmb_onceki_gun": "önceki iş gününün TCMB alış kuru; tatil ya da hafta sonu",
@@ -389,11 +404,12 @@ def saatlik_yek_fiyati(pj: dict, idx: pd.DatetimeIndex) -> pd.Series:
 def m23_6_isaretle(pv: pd.DataFrame, yek_tl_mwh: pd.Series) -> pd.DataFrame:
     """pv: dengesizlik_service.saatlik_hesap çıktısı (UTC indeks; ptf, smf, yon, kgup, gerceklesen). yek_tl_mwh: saat başına YEK fiyatı.
     Dönüş (pv indeksinde): yek_fiyat_tl_mwh, m23_6 (evet | hayir | ptf_yek_ustu | fiyat_yok | kapsam_disi), yekdem_disi_mwh, yekdem_disi_tl;
+    v2.540 (DK-333): m23_9 (evet | kgup_yok | hayir | kapsam_disi), m23_9_mwh, m23_9_tl — 1.1–18.10.2026 tatil günlerinde bildirilen KGÜP üstü üretim;
     v2.532 (DK-301): kgup0_mwh / kgup0_tl = bildirilen KGÜP yüklenmemiş saatlerde (program_kaynak ≠ bildirilen) mevzuat okuması — KGÜP = 0, o saatin
     üretiminin tamamı dışarıda (bildirilen saatlerde ve pv'de program_kaynak yoksa 0)."""
     from pvquant.ext.turkiye import kurallar as kr
     if pv is None or pv.empty:
-        return pd.DataFrame(columns=["yek_fiyat_tl_mwh", "m23_6", "yekdem_disi_mwh", "yekdem_disi_tl", "kgup0_mwh", "kgup0_tl"])
+        return pd.DataFrame(columns=["yek_fiyat_tl_mwh", "m23_6", "yekdem_disi_mwh", "yekdem_disi_tl", "kgup0_mwh", "kgup0_tl", "m23_9", "m23_9_mwh", "m23_9_tl"])
     gunler = pv.index.tz_convert(IST).date
     v = pd.Series([kr.v_degeri(d) for d in gunler], index=pv.index, dtype=float)
     yek = yek_tl_mwh.reindex(pv.index).astype(float)
@@ -411,8 +427,14 @@ def m23_6_isaretle(pv: pd.DataFrame, yek_tl_mwh: pd.Series) -> pd.DataFrame:
     bildirilmemis = (pv["program_kaynak"].astype(str) != "bildirilen") if "program_kaynak" in pv else pd.Series(False, index=pv.index)
     disi0 = yururluk & dusuk & fazla_yon & bildirilmemis & (ger > 1e-9) & yek.notna() & (ptf < yek)
     mwh0 = ger.where(disi0, 0.0); tl0 = (mwh0 * (yek - J * ptf)).where(disi0, 0.0)
+    # v2.540 (DK-333): m.23(9) tatil günü işareti — bildirilen KGÜP üstü üretim (1.1–18.10.2026, Pazar hariç tam tatil günleri)
+    tatil = pd.Series([m23_9_gunu(d) for d in gunler], index=pv.index)
+    evet9 = tatil & ~bildirilmemis & (ustu > 1e-9)
+    kgup_yok9 = tatil & bildirilmemis & (ger > 1e-9)
+    isaret9 = np.where(~tatil, "kapsam_disi", np.where(evet9, "evet", np.where(kgup_yok9, "kgup_yok", "hayir")))
+    mwh9 = ustu.where(evet9, 0.0); tl9 = (mwh9 * (yek.fillna(0.0) - ptf)).where(evet9, 0.0)
     return pd.DataFrame({"yek_fiyat_tl_mwh": yek.values, "m23_6": isaret, "yekdem_disi_mwh": mwh.values, "yekdem_disi_tl": tl.values,
-                         "kgup0_mwh": mwh0.values, "kgup0_tl": tl0.values}, index=pv.index)
+                         "kgup0_mwh": mwh0.values, "kgup0_tl": tl0.values, "m23_9": isaret9, "m23_9_mwh": mwh9.values, "m23_9_tl": tl9.values}, index=pv.index)
 
 
 def dokum_ek(pj: dict, pv: pd.DataFrame) -> pd.DataFrame:
@@ -424,7 +446,7 @@ def m23_6_ozeti(pv: pd.DataFrame, ek: pd.DataFrame, gun: int) -> dict:
     evet = ek["m23_6"] == "evet"; aday = ek["m23_6"].isin(["evet", "ptf_yek_ustu", "fiyat_yok"])
     bildirilmemis = int((evet & (pv["program_kaynak"].astype(str) != "bildirilen")).sum()) if "program_kaynak" in pv else 0
     saatler = ek.index[evet]
-    return {"baslangic": M23_6_BASLANGIC.isoformat(), "etiket": "belirsiz", "pencere_gun": gun, "saat": int(evet.sum()), "aday_saat": int(aday.sum()),
+    out = {"baslangic": M23_6_BASLANGIC.isoformat(), "etiket": "belirsiz", "pencere_gun": gun, "saat": int(evet.sum()), "aday_saat": int(aday.sum()),
             "fiyat_yok_saat": int((ek["m23_6"] == "fiyat_yok").sum()), "kapsam_saat": int((ek["m23_6"] != "kapsam_disi").sum()),
             "yekdem_disi_mwh": round(float(ek["yekdem_disi_mwh"].sum()), 3), "yekdem_disi_tl": round(float(ek["yekdem_disi_tl"].sum()), 2),
             "bildirilmemis_saat": bildirilmemis,
@@ -433,6 +455,14 @@ def m23_6_ozeti(pv: pd.DataFrame, ek: pd.DataFrame, gun: int) -> dict:
             "kgup0_tl": round(float(ek["kgup0_tl"].sum()), 2) if "kgup0_tl" in ek else 0.0,
             "ilk_saat": saatler.min().tz_convert(IST).strftime("%Y-%m-%d %H:%M") if len(saatler) else None,
             "son_saat": saatler.max().tz_convert(IST).strftime("%Y-%m-%d %H:%M") if len(saatler) else None, "not": M23_6_NOTU}
+    if "m23_9" in ek.columns:   # v2.540 (DK-333): m.23(9) tatil günü özeti
+        e9 = ek["m23_9"] == "evet"; ky9 = ek["m23_9"] == "kgup_yok"; kapsam9 = ek["m23_9"] != "kapsam_disi"
+        s9 = ek.index[e9]
+        out["m23_9"] = {"baslangic": M23_9_BASLANGIC.isoformat(), "bitis": M23_9_BITIS.isoformat(), "kapsam_saat": int(kapsam9.sum()), "saat": int(e9.sum()),
+                        "kgup_yok_saat": int(ky9.sum()), "mwh": round(float(ek.loc[e9, "m23_9_mwh"].sum()), 3), "tl": round(float(ek.loc[e9, "m23_9_tl"].sum()), 2),
+                        "ilk_saat": (s9[0].tz_convert(IST).strftime("%Y-%m-%d %H:%M") if len(s9) else None), "son_saat": (s9[-1].tz_convert(IST).strftime("%Y-%m-%d %H:%M") if len(s9) else None),
+                        "etiket": "belirsiz", "not": M23_9_NOTU}
+    return out
 
 
 # ---------------- özetler ----------------
