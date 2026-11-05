@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ALARM_KURALI } from "../../lib/alarmSozluk";
 import type { ReactNode } from "react";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
-import type { PrKarti, Saglik, AlarmKurallari, FizikTerimleri, FizikOnizleme, Kullanilabilirlik, Tarife, Yekdem, Sensorler, Sensor } from "../../api/types";
+import type { PrKarti, Saglik, AlarmKurallari, FizikTerimleri, FizikOnizleme, Kullanilabilirlik, Tarife, Yekdem, Sensorler, Sensor, Depolama } from "../../api/types";
 import { SEGMENTLER } from "../../api/types";
 import type { UevcbArama } from "../../api/types";
 import type { EChartsOption } from "echarts";
@@ -31,6 +31,9 @@ function ayrintiDugmesi(acik: string | null, ayarla: (v: string | null) => void,
 function ayrintiGovdesi(acik: string | null, id: string, icerik: ReactNode) {
   return acik === id ? <div id={`ayrinti-${id}`} className="ayar-ayrinti-govde" role="region" aria-label="Ayar ayrıntısı">{icerik}</div> : null;
 }
+/** v2.543 (P9): depolama bağlantı şekli seçenekleri — ext/turkiye/depolama.KONFIGURASYONLAR ile birebir (sunucu yanıtı varsa o esas). */
+const DEPOLAMA_KONF: Record<string, string> = { ek1a: "EK-1a — üretim barası; depolama ayrı kolda", ek1b: "EK-1b — aynı barada birden çok depolama ünitesi", ek1c: "EK-1c — iki üretim barası, ayrı trafo ve ölçü",
+  ek1c_dagitim: "EK-1ç — dağıtım şebekesine bağlantı", ek2: "EK-2 — üretim ve depolama ayrı trafo ve ölçüyle" };
 /** v2.542 (P8b-2, IH-092): sensör envanteri seçenekleri — performans_service.SENSOR_TURLERI / OLCUMLER ile birebir (sunucu yanıtı varsa o esas). */
 const SENSOR_TURLERI: Record<string, string> = { piranometre: "Piranometre (termopil)", referans_hucre: "Referans hücre (fotovoltaik)", uydu: "Uydu türevli ışınım (saha sensörü değil)",
   modul_sicaklik: "Modül sıcaklık sensörü", meteo_istasyonu: "Meteoroloji istasyonu (hava sıcaklığı, rüzgâr)" };
@@ -153,6 +156,19 @@ export function Santralim({ plantId }: { plantId: string }) {
   const [ldyeum, setLdyeum] = useState<string>("");         // v2.541 (DK-804): lisanstaki yıllık üretim miktarı (MWh)
   // v2.540 (EK-3 DK-612): YEK-G sisteminde kayıtlı tesis (beyan) → Olay kaydında eşik altı arıza için dâhilî bilgi hatırlatması (Karar 14967 Ek sıra 17)
   const [yekG, setYekG] = useState<boolean>(false);
+  // v2.543 (P9 hazırlık): depolama ünitesi beyanı — dengeleme birimi eşiği (30 MW), emre amadelik eşiği (%85/%80), ayrı UEVÇB; hesap yok
+  const [dep, setDep] = useState<Depolama | null>(null);
+  const [df, setDf] = useState<{ guc: string; kap: string; konf: string; uevcb: string; kabul: string; but: boolean }>({ guc: "", kap: "", konf: "", uevcb: "", kabul: "", but: false });
+  const [depMesaj, setDepMesaj] = useState<string | null>(null);
+  const depDoldur = (d: Depolama | null | undefined) => { if (!d) return; setDep(d); setDf({ guc: d.guc_mw != null ? String(d.guc_mw) : "", kap: d.kapasite_mwh != null ? String(d.kapasite_mwh) : "", konf: d.konfigurasyon ?? "", uevcb: d.uevcb ?? "", kabul: d.kabul_tarihi ?? "", but: !!d.butunlesik }); };
+  const depKaydet = (sil = false) => {
+    if (!seg?.segment) { setDepMesaj("Önce piyasa segmentini seçin."); return; }
+    setDepMesaj(null);
+    const g = sil ? { depolama_gucu_mw: null } : { depolama_gucu_mw: df.guc ? Number(df.guc.replace(",", ".")) : null, depolama_kapasite_mwh: df.kap ? Number(df.kap.replace(",", ".")) : null,
+      depolama_konfigurasyon: df.konf || null, depolama_uevcb: df.uevcb || null, depolama_kabul_tarihi: df.kabul || null, depolama_butunlesik: df.but };
+    api.segmentAyarla(plantId, seg.segment, uevcb || undefined, { depolama: g }).then((r) => { const d = (r as unknown as { depolama?: Depolama }).depolama; depDoldur(d); setDepMesaj(d?.var ? `Kaydedildi: ${sayiTr(d.guc_mw ?? 0, 1)} MW depolama ünitesi.` : "Kaydedildi: depolama beyanı kaldırıldı."); })
+      .catch((e) => setDepMesaj(`Kaydedilemedi: ${String((e as Error).message ?? e)}`));
+  };
   const [yekGMesaj, setYekGMesaj] = useState<string | null>(null);
   const yekGKaydet = (v: boolean) => {
     if (!seg?.segment) { setYekGMesaj("Önce piyasa segmentini seçin."); return; }
@@ -185,7 +201,7 @@ export function Santralim({ plantId }: { plantId: string }) {
     setUevcbMesaj(null); setUevcbAday(null);
     api.uevcbAra(uevcbArama).then((r) => setUevcbAday(r ?? "yok")).catch((e) => { setUevcbAday("yok"); setUevcbMesaj(`Arama yapılamadı: ${String(e.message ?? e)}`); });
   };
-  useEffect(() => { api.dengesizlik(plantId, 14).then((d) => { if (!d) return; setSeg({ segment: d.segment.segment, dengesizlik_sahibi: d.segment.dengesizlik_sahibi }); setUevcb(d.segment.uevcb ?? ""); setDsgKodu(d.segment.dsg_kodu ?? ""); setToplayici(!!d.segment.toplayici_portfoyu); setYekG(!!d.segment.yek_g_kayitli); setKatilimci(d.segment.piyasa_katilimcisi ?? ""); setLdyeum(d.segment.lisans_yillik_uretim_mwh != null ? String(d.segment.lisans_yillik_uretim_mwh) : ""); setGtsAdi(d.segment.gts_toplayici_adi ?? ""); if (d.luy_istisna !== undefined) setLuyIstisna((v) => (v === null ? !!d.luy_istisna : v));
+  useEffect(() => { api.dengesizlik(plantId, 14).then((d) => { if (!d) return; setSeg({ segment: d.segment.segment, dengesizlik_sahibi: d.segment.dengesizlik_sahibi }); setUevcb(d.segment.uevcb ?? ""); setDsgKodu(d.segment.dsg_kodu ?? ""); setToplayici(!!d.segment.toplayici_portfoyu); setYekG(!!d.segment.yek_g_kayitli); depDoldur(d.segment.depolama); setKatilimci(d.segment.piyasa_katilimcisi ?? ""); setLdyeum(d.segment.lisans_yillik_uretim_mwh != null ? String(d.segment.lisans_yillik_uretim_mwh) : ""); setGtsAdi(d.segment.gts_toplayici_adi ?? ""); if (d.luy_istisna !== undefined) setLuyIstisna((v) => (v === null ? !!d.luy_istisna : v));
     if (d.program) { setPozKaynak((v) => v ?? d.program!.pozisyon.kaynak); if (d.program.pozisyon.sabit_mwh != null) setPozSabit((v) => v || String(d.program!.pozisyon.sabit_mwh)); } }).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { api.saglik(plantId).then(setSg).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   // v2.274 (Dalga 3 tamamlayıcısı): fizik terimleri — santral bazında aç/kapa + "açsam ne değişir?" önizlemesi
@@ -726,6 +742,47 @@ export function Santralim({ plantId }: { plantId: string }) {
             {ayrintiGovdesi(ayrinti, "yekg", <>
                 <p><b>Dayanak:</b> Karar 14967 (RG 20.10.2026-33406) Ek sıra 17: YEK-G sisteminde yer alan yenilenebilir tesislerin arıza veya plansız bakım nedeniyle emre amade olamaması bilgisi; eşik yok, yükümlü üretim lisansı sahibi ve toplayıcı. Sıra 1'deki 30 MW / 50 MW eşiği bu satır için geçerli değildir.</p>
                 <p><b>Şart:</b> Fıkra 3(b) uyarınca eşiksiz veriler, dâhilî bilgi tanımının unsurlarını sağladıkları takdirde açıklanır; değerlendirme sizindir. Açıklanacaksa fıkra 4(a) uyarınca en geç 1 saat içinde. Yürürlük 1.1.2027 (çıkarım).</p>
+              </>)}
+          </div>
+          {/* v2.543 (P9 hazırlık): depolama ünitesi beyanı — eşikler mevzuattan (DUY m.22, m.81/A), hesap ilk depolamalı müşteriyle */}
+          <div className="ayar">
+            <div><div className="ayar-ad">Depolama ünitesi</div>
+              <div className="ayar-aciklama">Tesisle bütünleşik ya da bağlı depolama ünitesi varsa gücünü, bağlantı şeklini ve kabul tarihini girin. 30 MW ve üzeri ünite ilişkili UEVÇB'yi dengeleme birimi yapar; emre amadelik eşiği kabulden itibaren ilk 5 yıl %85, sonra %80.</div>
+              {ayrintiDugmesi(ayrinti, setAyrinti, "depolama")}
+              </div>
+            <div className="ayar-kontrol">
+              <div className="dugme-sira" style={{ alignItems: "flex-end", flexWrap: "wrap" }}>
+                <label className="girdi-etiket">Depolama gücü (MW)
+                  <input className="girdi" inputMode="decimal" style={{ width: 110 }} placeholder="ör. 12" value={df.guc} onChange={(e) => setDf({ ...df, guc: e.target.value.replace(/[^0-9.,]/g, "") })} /></label>
+                <label className="girdi-etiket">Kapasite (MWh, isteğe bağlı)
+                  <input className="girdi" inputMode="decimal" style={{ width: 120 }} placeholder="ör. 24" value={df.kap} onChange={(e) => setDf({ ...df, kap: e.target.value.replace(/[^0-9.,]/g, "") })} /></label>
+                <label className="girdi-etiket">Bağlantı şekli (Depolama Yön. EK)
+                  <select className="girdi" value={df.konf} aria-label="Bağlantı konfigürasyonu" onChange={(e) => setDf({ ...df, konf: e.target.value })}>
+                    <option value="">beyan yok</option>{Object.entries(dep?.konfigurasyonlar ?? DEPOLAMA_KONF).map(([k, v]) => <option key={k} value={k}>{v.split(" — ")[0]}</option>)}</select></label>
+                <label className="girdi-etiket">Depolama UEVÇB kodu
+                  <input className="girdi" maxLength={32} placeholder="ayrı UEVÇB" value={df.uevcb} onChange={(e) => setDf({ ...df, uevcb: e.target.value })} /></label>
+                <label className="girdi-etiket">Depolama kabul tarihi
+                  <input className="girdi" type="date" value={df.kabul} onChange={(e) => setDf({ ...df, kabul: e.target.value })} /></label>
+                <label className="ayar-onay" title="Üretimle bütünleşik depolama (7189 Ek-1 (e) satırı; EK-1c eşdeğerlik şartı aranmaz)">
+                  <input type="checkbox" checked={df.but} onChange={(e) => setDf({ ...df, but: e.target.checked })} /> üretimle bütünleşik</label>
+                <button className="dugme" onClick={() => depKaydet(false)}>Kaydet</button>
+                {dep?.var && <button className="dugme" onClick={() => depKaydet(true)}>Beyanı kaldır</button>}
+              </div>
+              {depMesaj && <span className={`ayar-durum ${depMesaj.startsWith("Kaydedildi") ? "ok" : "hata"}`}>{depMesaj}</span>}
+              {dep?.var && (
+                <div style={{ display: "grid", gap: 4, fontSize: 13 }}>
+                  <span><span className={`rozet rozet-kucuk ${dep.dengeleme_birimi.yukumlu ? "rozet-uyari" : "rozet-ok"}`}>{dep.dengeleme_birimi.yukumlu ? "dengeleme birimi" : "dengeleme birimi değil"}</span> <span className="soluk">{dep.dengeleme_birimi.not}</span></span>
+                  {dep.emre_amadelik && <span><span className={`rozet rozet-kucuk ${dep.emre_amadelik.oran != null ? "rozet-notr" : "rozet-uyari"}`}>{dep.emre_amadelik.oran != null ? `emre amadelik eşiği %${sayiTr(dep.emre_amadelik.oran * 100, 0)}` : "kabul tarihi yok"}</span> <span className="soluk">{dep.emre_amadelik.not} {dep.emre_amadelik.sonuc}</span></span>}
+                  {dep.uevcb ? <span className="soluk">Depolama UEVÇB {dep.uevcb}. {dep.uevcb_notu}</span> : <span className="soluk">{dep.uevcb_notu}</span>}
+                </div>)}
+            </div>
+            {ayrintiGovdesi(ayrinti, "depolama", <>
+                <p><b>Dengeleme birimi:</b> DUY m.22(2)(ç) — işletmedeki elektriksel kurulu gücü 30 MW ve üzeri depolama ünitesi bulunan tesislerin ilişkili UEVÇB'leri dengeleme birimidir; m.22(4)(i) 30 MW altı muaf; m.22(4)(c) güneş tesisi talep ve onayla yük alma/yük atma yönünde dengeleme birimi olabilir. Eşik tesisin değil depolama ünitesinin gücüne bağlıdır. Yükümlüyseniz «Üretim programı sınırları»ndaki «Dengeleme birimi» işaretini açın.</p>
+                <p><b>Emre amadelik:</b> DUY m.81/A(2)(b) — kabul tarihinden itibaren ilk beş yıl %85, sonraki yıllarda %80; (2)(a) EK-1 bağlantı şeklinde çalışabilir olmak. (3) Şart sağlanmayan uzlaştırma döneminde tesisten sisteme verilen enerjinin tamamı uzlaştırmada dikkate alınmaz (YEKDEM'e bedelsiz katkı); (4) veriş sıfırsa uygulanmaz; tespit fatura dönemi bazında. {dep?.emre_amadelik?.olcum_notu ?? "Oranın ölçüm yöntemi mevzuatta yazmıyor; PVQuant oran hesaplamaz."}</p>
+                <p><b>Ayrı UEVÇB ve bağlantı şekli:</b> DUY m.21(8) depolama ünitesine bağlı ölçüm noktalarını ayrı UEVÇB altına kaydettirir; Depolama Yönetmeliği EK-1a/1b/1c/1ç ve EK-2 tek hat şemalarını, m.4(4) emre amadeliği «EK-1 şekline uygun çalışabilir olma» olarak tanımlar (RG 29.12.2025-33122, 1.1.2026).</p>
+                <p><b>YEKDEM:</b> {dep?.yekdem_notu ?? "7189 sayılı CK Ek-1 (e) bütünleşik depolama fiyatı yalnız depolandıktan sonra sisteme verilen enerjiye uygulanır."}</p>
+                <p><b>Uzlaştırma çözünürlüğü:</b> {dep?.smf_cozunurluk?.etiket ?? "Saatlik; 15 dakikalık geçiş tarihi belirsiz."}</p>
+                <p><b>Sınır:</b> {dep?.not ?? "Hazırlık katmanı; hesap yok."}</p>
               </>)}
           </div>
           {/* v2.513 (04 #14 kalan): UEVÇB kodu — KGÜP/EAK dosya adı ve toplayıcı portföyü KÜPST gruplaması bu koda bağlı; EPİAŞ'tan arama */}

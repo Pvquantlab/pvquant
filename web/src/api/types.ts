@@ -294,7 +294,9 @@ export interface Dengesizlik { luy_istisna?: boolean;   // v2.510 (Ç3): santral
     kupst_gecersiz_kilma?: boolean; kupst_kaynak?: string };
   fiyat: { epias_saat: number; senaryo_saat: number; yon_varsayilan_saat?: number; yon_eksik_saat?: number };
   hesaplanamayan_saat?: number; kural_surumu?: string | null; kural?: DengesizlikKural;
+  /** v2.543 (P9, IH-109): uzlaştırma dönemi / SMF çözünürlüğü — saatlik; 15 dk geçişi belirsiz etiketli */ cozunurluk?: { deger: string; kesinlik: string; gecis_hukuki: string; etiket: string };
   segment: { segment: string | null; kgup_yukumlu: boolean | null; dengesizlik_sahibi: string | null; santral_tasir: boolean | null; uevcb?: string | null;
+    /** v2.543 (P9): depolama ünitesi beyanı ve kural eşikleri (hazırlık) */ depolama?: Depolama;
     /** v2.539 (EK-3 DK-258/261): DSG adı/kodu (beyan) ve toplayıcı portföyü işareti; v2.540 (DK-612): YEK-G kaydı */ dsg_kodu?: string | null; toplayici_portfoyu?: boolean; yek_g_kayitli?: boolean;
     /** v2.541: aynı kodlu santraller DSG'de tek üye (DK-252); lisanstaki yıllık üretim (LDYEÜM, Karar 14626; DK-804) */ piyasa_katilimcisi?: string | null; lisans_yillik_uretim_mwh?: number | null;
     /** v2.541 (EK-2 DK-267): UEVÇB kodu yoksa portföy KÜPST gruplaması bu ada göre */ gts_toplayici_adi?: string | null };
@@ -686,3 +688,10 @@ export interface Sensor { tur: string; olcum: string; marka_model?: string | nul
   kalibrasyon_periyodu_ay?: number; not?: string | null; vade?: string | null; kalan_gun?: number | null; durum?: "gecti" | "yaklasiyor" | "uygun" | "tarih_yok" }
 export interface Sensorler { sensorler: Sensor[]; isinim: IsinimKaynagi; turler: Record<string, string>; olcumler: Record<string, string>; siniflar: string[];
   varsayilan_periyot_ay: number; yaklasan_gun: number; not: string }
+
+/** v2.543 (P9 hazırlık): depolama ünitesi beyanı, dengeleme birimi eşiği (DUY m.22, 30 MW), emre amadelik eşiği (DUY m.81/A %85/%80; ölçüm belirsiz). */
+export interface Depolama { var: boolean; guc_mw: number | null; kapasite_mwh: number | null; konfigurasyon: string | null; konfigurasyon_etiketi: string | null;
+  konfigurasyonlar: Record<string, string>; uevcb: string | null; uevcb_notu: string; kabul_tarihi: string | null; butunlesik: boolean | null;
+  dengeleme_birimi: { yukumlu: boolean | null; esik_mw: number; kesinlik: string; dayanak: string; not: string };
+  emre_amadelik: { oran: number | null; yil: number | null; gecis_tarihi: string | null; ilk_yil: number; oran_ilk: number; oran_sonra: number; esik_kesinlik: string; olcum_kesinlik: string; olcum_notu: string; dayanak: string; sonuc: string; not: string } | null;
+  yekdem_notu: string; smf_cozunurluk: { deger: string; kesinlik: string; gecis_hukuki: string; etiket: string }; not: string; dayanaklar?: string[] }

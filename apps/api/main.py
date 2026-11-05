@@ -1214,6 +1214,8 @@ class SegmentIstek(BaseModel):
     piyasa_katilimcisi: str | None = None   # v2.541 (DK-252): aynı kodlu santraller DSG hesabında tek üye; "" temizler
     lisans_yillik_uretim_mwh: float | None = None   # v2.541 (DK-804): lisansa dercedilen yıllık üretim miktarı (LDYEÜM, MWh); 0/None temizler
     gts_toplayici_adi: str | None = None    # v2.541 (DK-267): GTŞ/toplayıcı adı; UEVÇB kodu yoksa portföy KÜPST gruplaması bu ada göre; "" temizler
+    # v2.543 (P9 hazırlık): depolama ünitesi beyanı — güç verilirse hepsi birlikte doğrulanır; güç None/0 → alanlar silinir
+    depolama: dict | None = None
 
 
 @app.put("/v1/plants/{plant_id}/segment")
@@ -1242,10 +1244,17 @@ def segment_ayarla(plant_id: str, p: SegmentIstek, claims=Depends(yazma_yetkisi(
         anahtarlar["lisans_yillik_uretim_mwh"] = float(p.lisans_yillik_uretim_mwh) or None
     if p.gts_toplayici_adi is not None:
         anahtarlar["gts_toplayici_adi"] = p.gts_toplayici_adi.strip()[:64] or None
+    if p.depolama is not None:   # v2.543 (P9)
+        from pvquant.ext.turkiye import depolama as _dep
+        try:
+            anahtarlar.update(_dep.dogrula(p.depolama))
+        except ValueError as e:
+            raise HTTPException(422, str(e)) from e
     pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **anahtarlar)
     _denetim.kaydet("musteri", "santral_segment", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=plant_id,   # v2.516 (#7)
                     ayrinti=dict(anahtarlar))
-    return {"params_json": {k: v for k, v in pj.items() if k in ("segment", "uevcb", "dsg_kodu", "toplayici_portfoyu", "yek_g_kayitli", "piyasa_katilimcisi", "lisans_yillik_uretim_mwh", "gts_toplayici_adi")}, **dengesizlik_service.segment_bilgisi(pj)}
+    return {"params_json": {k: v for k, v in pj.items() if k in ("segment", "uevcb", "dsg_kodu", "toplayici_portfoyu", "yek_g_kayitli", "piyasa_katilimcisi", "lisans_yillik_uretim_mwh", "gts_toplayici_adi", "depolama_gucu_mw", "depolama_kapasite_mwh", "depolama_konfigurasyon", "depolama_uevcb", "depolama_kabul_tarihi", "depolama_butunlesik")}, **dengesizlik_service.segment_bilgisi(pj),
+            "depolama": dengesizlik_service.segment_bilgisi(pj)["depolama"]}   # v2.543 (P9)
 
 
 class KunyeTarihIstek(BaseModel):
@@ -2024,6 +2033,21 @@ def performans_uc(plant_id: str, ay: int = 12, claims=Depends(gecerli_kullanici)
     if row is None:
         raise HTTPException(404, "santral yok")
     return performans_service.ozet(claims["tenant_id"], row, ay=ay)
+
+
+@app.get("/v1/plants/{plant_id}/depolama")
+def depolama_uc(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """v2.543 (P9 hazırlık; IH-109/111/112/113): depolama ünitesi beyanı, dengeleme birimi eşiği (DUY m.22, 30 MW), emre amadelik eşiği (DUY m.81/A,
+    %85/%80; ölçüm yöntemi belirsiz), ayrı UEVÇB notu, 7189 Ek-1 (e) notu ve SMF çözünürlüğü. Hesap yok; beyan ve kural parametreleri."""
+    from pvquant.ext.turkiye import depolama
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    pj = row.get("params_json") or {}
+    if isinstance(pj, str):
+        import json as _j
+        pj = _j.loads(pj)
+    return {**depolama.ozet(pj), "dayanaklar": list(depolama.DAYANAKLAR)}
 
 
 @app.get("/v1/plants/{plant_id}/kayip-agaci")

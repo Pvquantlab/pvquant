@@ -53,6 +53,8 @@ def kullanilan_kaynaklar() -> list[str]:
 # 03.11.2026 doğrulama arşivi 03_Kaynak_Envanteri ile eş) — Hakkında sayfası arşivle aynı kaynakları anar.
 # Katsayılar burada YAZILMAZ (sabitlenmesin) — kod parametriktir, burası yalnız dayanağı gösterir.
 MEVZUAT = [
+    {"ad": "Depolama Faaliyetleri Yönetmeliği ve DUY depolama hükümleri", "kapsam": "depolama ünitesi beyanı · emre amadelik eşiği %85/%80 (DUY m.81/A) · 30 MW dengeleme birimi eşiği (DUY m.22) · ayrı UEVÇB (DUY m.21(8)) · EK-1 konfigürasyonları",
+     "kunye": _kunye.kunye("DEPOLAMA_YON"), "not": "Hazırlık katmanı (v2.543): eşikler mevzuat metninden; emre amadelik ölçüm yöntemi ve 15 dakikalık geçiş tarihi belirsiz etiketli. Oran hesabı ve hibrit akış ayrımı ilk depolamalı müşteriyle."},   # v2.543 (P9)
     {"ad": "DUY — Dengeleme ve Uzlaştırma Yönetmeliği", "kapsam": "KGÜP bildirimi (m.69, 69/A) · dengesizlik fiyatlandırması (m.110–111) · uzlaştırma ve fatura takvimi (m.132–133)",
      "kunye": _kunye.kunye("DUY"), "not": "Pozitif/negatif dengesizlik katsayıları (k/l), V ve fiyat sınırları kural tablosundan (kural motoru) gelir; santral ayarından değişmez."},
     {"ad": "DUY geçici m.40", "kapsam": "15 dakikalık uzlaştırma dönemi", "kunye": "RG 21.01.2025-32789 Md.19; 15 dakikalık DGP en erken 1.1.2027 (RG 19.10.2026-33405 Geçici m.40)",

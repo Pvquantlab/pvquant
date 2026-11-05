@@ -695,6 +695,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
             dz.program && dz.program.bildirilen_saat > 0 ? `program: ${sayiTr(dz.program.bildirilen_gun)} gün bildirilen KGÜP, kalanı öneri` : "program: PVQuant önerisi (bir gün önce 15:30'dan önceki tahmin, P50)",
             dz.program && dz.program.pozisyon.kaynak !== "program" && (dz.program.pozisyon.kaynak === "uretim" ? "pozisyon: üretildiği kadar satış" : `pozisyon: sabit ${sayiTr(dz.program.pozisyon.sabit_mwh ?? 0, 1)} MWh/saat`)]} /> : "henüz karşılaştırılan gün yok"}</span>
           {dz?.kural && <span className="cip" title={`${dz.kural.edt_dayanak}; KÜPST: ${dz.kural.kupst_dayanak}${dz.katsayilar?.kupst_gecersiz_kilma ? "; KÜPST n/tolerans santral ayarından geçersiz kılındı" : ""}`}>kural: DUY m.110 ({dz.kural.rejim}){dz.kural.V != null ? ` · V ${sayiTr(dz.kural.V)} TL/MWh` : ""}{dz.katsayilar?.kupst_gecersiz_kilma ? " · KÜPST: santral ayarı" : ""}</span>}
+          {dz?.cozunurluk && <span className="cip" title={dz.cozunurluk.etiket}>uzlaştırma {dz.cozunurluk.deger}</span>}   {/* v2.543 (P9, IH-109): 15 dk geçişi belirsiz */}
           {/* 29.10: rozet metni kısa (375 px'te başlık satırı taşıyordu); ayrıntı title ve KPI alt etiketinde */}
           {dz && <span className={`rozet ${dz.fiyat.senaryo_saat > 0 ? "rozet-uyari" : "rozet-ok"} rozet-kucuk`} title={dz.fiyat.senaryo_saat > 0 ? "Senaryo fiyatı: EPİAŞ kimliği tanımlı değil. " + dz.not : dz.not}>{dz.fiyat.senaryo_saat > 0 ? "senaryo fiyatı" : "fiyat: EPİAŞ"}</span>}
         </>}>

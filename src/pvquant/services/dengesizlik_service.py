@@ -259,7 +259,9 @@ def hesapla_df(df: pd.DataFrame, fiyat: pd.DataFrame, kat: d.Katsayilar | None =
     bil = int((pv["program_kaynak"] == "bildirilen").sum())
     uecm_saat = int(pv["uecm"].notna().sum()) if "uecm" in pv else 0   # v2.532: çekişi bilinen saat (sayaç satırı)
     net_saat = int(pv["net_sapma"].astype(bool).sum()) if "net_sapma" in pv else 0
+    from pvquant.ext.turkiye import depolama as _dep
     return {"gun_sayisi": int(pd.Series(x.index.tz_convert(IST).date).nunique()), "aylar": out_ay,
+            "cozunurluk": _dep.SMF_COZUNURLUK,   # v2.543 (P9, IH-109): uzlaştırma dönemi/SMF çözünürlüğü saatlik; 15 dk geçişi belirsiz etiketli
             "toplam": {"pvquant_tl": _r0(top_pv), "kupst_tl": _r0(kupst_top),   # v2.275
                        "dengesizlik_tl": round(float(pv["dengesizlik_maliyeti"].sum()), 0),
                        "edt_neg_tl": round(float(pv["edt_neg"].fillna(0).sum()), 0), "edt_poz_tl": round(float(pv["edt_poz"].fillna(0).sum()), 0),
@@ -564,6 +566,11 @@ def _ariza(tenant_id, plant: dict) -> int:
         return int(_pj(plant.get("params_json")).get("ariza_sayisi_ay") or 0)
 
 
+def _depolama_ozet(pj: dict) -> dict:
+    from pvquant.ext.turkiye import depolama
+    return depolama.ozet(pj)
+
+
 def segment_bilgisi(params_json) -> dict:
     pj = _pj(params_json); ad = pj.get("segment")
     try:
@@ -576,7 +583,8 @@ def segment_bilgisi(params_json) -> dict:
                 "dsg_kodu": (str(pj.get("dsg_kodu")).strip() or None) if pj.get("dsg_kodu") else None, "toplayici_portfoyu": bool(pj.get("toplayici_portfoyu")),
                 "yek_g_kayitli": bool(pj.get("yek_g_kayitli")), "piyasa_katilimcisi": (str(pj.get("piyasa_katilimcisi")).strip() or None) if pj.get("piyasa_katilimcisi") else None,
                 "lisans_yillik_uretim_mwh": _sayi_veya_none(pj.get("lisans_yillik_uretim_mwh")),
-                "gts_toplayici_adi": (str(pj.get("gts_toplayici_adi")).strip() or None) if pj.get("gts_toplayici_adi") else None}
+                "gts_toplayici_adi": (str(pj.get("gts_toplayici_adi")).strip() or None) if pj.get("gts_toplayici_adi") else None,
+                "depolama": _depolama_ozet(pj)}   # v2.543 (P9): depolama ünitesi beyanı ve kural eşikleri
     k = sg.KURALLAR.loc[seg]
     st = sg.Santral("x", seg, 1.0)
     return {"segment": seg.value, "kgup_yukumlu": bool(k["kgup_yukumlu"]), "dengesizlik_sahibi": str(k["dengesizlik_sahibi"]), "santral_tasir": st.dengesizlik_tasir_mi(),
@@ -585,7 +593,8 @@ def segment_bilgisi(params_json) -> dict:
             "yek_g_kayitli": bool(pj.get("yek_g_kayitli")),   # v2.540 (DK-612): YEK-G sisteminde kayıtlı (beyan) → dâhilî bilgi sıra 17 eşiksiz
             "piyasa_katilimcisi": (str(pj.get("piyasa_katilimcisi")).strip() or None) if pj.get("piyasa_katilimcisi") else None,   # v2.541 (DK-252): aynı katılımcının santralleri DSG'de birlikte
             "lisans_yillik_uretim_mwh": _sayi_veya_none(pj.get("lisans_yillik_uretim_mwh")),   # v2.541 (DK-804): lisansa dercedilen yıllık üretim (LDYEÜM), Karar 14626
-            "gts_toplayici_adi": (str(pj.get("gts_toplayici_adi")).strip() or None) if pj.get("gts_toplayici_adi") else None}   # v2.541 (EK-2 DK-267): UEVÇB kodu yoksa ada göre gruplama
+            "gts_toplayici_adi": (str(pj.get("gts_toplayici_adi")).strip() or None) if pj.get("gts_toplayici_adi") else None,
+                "depolama": _depolama_ozet(pj)}   # v2.543 (P9): depolama ünitesi beyanı ve kural eşikleri   # v2.541 (EK-2 DK-267): UEVÇB kodu yoksa ada göre gruplama
 
 
 def katsayilar(params_json) -> d.Katsayilar:

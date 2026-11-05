@@ -15,6 +15,8 @@ KUNYE: dict[str, tuple[str, str]] = {
     "LUY": ("LÜY", "Elektrik Piyasasında Lisanssız Elektrik Üretim Yönetmeliği, RG 12.05.2019-30772; değişiklikler RG 09.05.2021-31479, 02.04.2026-33212, 19.10.2026-33405"),
     "LISANS": ("Lisans Yön.", "Elektrik Piyasası Lisans Yönetmeliği, RG 02.11.2013-28809; değişiklikler RG 24.02.2017-29989, 10.03.2022-31774, 17.12.2024-32755, "
                               "29.04.2026-33238, 19.10.2026-33405"),
+    "DEPOLAMA_YON": ("Depolama Yön.", "Elektrik Piyasasında Depolama Faaliyetleri Yönetmeliği, RG 09.05.2021-31479; değişiklikler RG 29.12.2025-33122 (m.4(4) emre amade tanımı, "
+                                     "m.5(7), EK-1a/1b/1c/1ç ve EK-2; 1.1.2026), 19.10.2026-33405 (m.6(1))"),   # v2.543 (P9)
     "YEK_YON": ("YEK Yön.", "Yenilenebilir Enerji Kaynaklarının Belgelendirilmesi ve Desteklenmesine İlişkin Yönetmelik, RG 01.10.2013-28782; değişiklikler "
                             "RG 29.04.2016-29698 (m.16–17 mülga), 23.08.2019-30867, 19.08.2021-31573, 29.12.2025-33122, 19.10.2026-33405 (m.23(6))"),
     "5346": ("5346", "5346 sayılı Yenilenebilir Enerji Kaynaklarının Elektrik Enerjisi Üretimi Amaçlı Kullanımına İlişkin Kanun, RG 18.05.2005-25819"),
