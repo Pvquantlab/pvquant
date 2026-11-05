@@ -973,3 +973,5 @@ Sonraya: EK-3 değer satırları; lock dosyası kararı; Mutabakat'ta kupst_kayn
 **İnceleme (05.11).** Dokuz ekran; tür notundaki «P2b» iç kodu kaldırıldı, sahte tür notları motorla eşitlendi, boş açıklamalı satırda ayraç düzeni.
 
 **Kanıt.** tests/test_ek3_v2541.py 2; tam takım; web kapıları; kare.
+
+**Mühür.** 58f2698 (05.11 06:54 TSİ) + rötuş e0f2c52 (07:04), CI #694 web kırmızı (`tsc -b`: YEÜM tipinde `pencere_gun` eksik; yerel kapı `tsc --noEmit` değil `npm run build`) → CI #695 yeşil; ssh dağıtım api+web 07:12 TSİ, göç `v2541_olay` DB sahibiyle (head v2541_olay; olay.bildirim_zamani / talimat_mw + CHECK doğrulandı); worker yeniden yaratılmadı: 06:4x TSİ açılış yakalaması «slotu kaçan: gece_meteo» ile tam tur başlattı, tur sürerken yaratma turu keser (04.11 v2.532 olayı) — jobs_log’da bu turun `alarm` satırı düşünce `docker compose up -d worker` (imaj kurulu); canlı 25/25 birebir; healthz ok. Raporlar: 02 M55, 00 kırk birinci paket, 04 E satırı; kanıt `kanit/ek3d-*-2026-11-05.jpg`.
