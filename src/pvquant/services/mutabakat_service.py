@@ -380,7 +380,8 @@ def pvquant_kalemleri(tenant_id, plant: dict, donem: date, bugun: date | None = 
     out = {"imbalance": {"alacak_tl": round(edt_alacak, 2), "borc_tl": round(edt_borc, 2), "not": "saatlik EDT toplamı (alacak: fazla üretim; borç: eksik üretim)"},
            "kupst": {"alacak_tl": 0.0, "borc_tl": (round(float(kupst_s.sum()), 2) if kupst_s.notna().any() and not kupst_s.isna().all() else None),
                      "not": "KÜPSM × max(taban; PTF; SMF) × n" if kupst_s.notna().any() else "KÜPST hesaplanamadı (segment/katsayı yok)",
-                     "dayanak": "KÜPST yalnız borç kalemidir: DUY m.110(4) ve m.113(2) (RG 19.10.2026-33405); katsayılar Karar 14907 (RG 19.10.2026-33405)"}}   # v2.535 (DK-229)
+                     "dayanak": "KÜPST yalnız borç kalemidir: DUY m.110(4) ve m.113(2) (RG 19.10.2026-33405); katsayılar Karar 14907 (RG 19.10.2026-33405)",
+                     "katsayi_kaynagi": (ozet.get("katsayilar") or {}).get("kupst_kaynak")}}   # v2.535 (DK-229); v2.541: katsayı kaynağı (kural tablosu | santral ayarı)
     if "yek_fiyat_tl_mwh" in x.columns:
         yf = pd.to_numeric(x["yek_fiyat_tl_mwh"], errors="coerce"); g = pd.to_numeric(x["gerceklesen_mwh"], errors="coerce").fillna(0)
         disi = pd.to_numeric(x.get("yekdem_disi_tl", 0), errors="coerce").fillna(0)
@@ -422,6 +423,7 @@ def pvquant_kalemleri(tenant_id, plant: dict, donem: date, bugun: date | None = 
                         + "; hesap SCADA ile yapıldı (Sayaç › uzlaştırma girdisi ayarıyla sayaç seçilebilir), uzlaştırmaya esas sayaç (UEVM) değildir")
     return {"kalemler": out, "saat": saat, "beklenen_saat": beklenen, "son_saat": x["zaman"].max(), "hesaplanamayan_saat": hes_yok, "bildirilen_saat": bildirilen,
             "senaryo_saat": senaryo_saat, "senaryo_kapsam": senaryo_kapsam, "kural_surumu": " | ".join(sorted(set(x["kural_surumu"].astype(str)))),
+            "kupst_kaynak": (ozet.get("katsayilar") or {}).get("kupst_kaynak"), "kupst_gecersiz_kilma": bool((ozet.get("katsayilar") or {}).get("kupst_gecersiz_kilma")),   # v2.541
             "sayac": sayac, "uretim_kaynak": uk, "guvenilirlik": {"durum": durum, "etiket": GUVENILIRLIK_ETIKET[durum], "nedenler": nedenler}}
 
 

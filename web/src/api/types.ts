@@ -175,7 +175,7 @@ export type PortfoyAnahtar = "sapma" | "uretim" | "kurulu" | "esit";
 export interface PortfoyKupst {
   santral: number; kupst_toplam_tl: number | null; dagitim_anahtari: PortfoyAnahtar; dagitim_etiket: string; etiket: string;
   pencere_gun: number; fiyat: { epias_saat: number; senaryo_saat: number }; not?: string;
-  uevcbler: { kod: string; kod_tanimsiz: boolean; santraller: string[]; n_saat: number; kupst_tl: number | null; not?: string;
+  uevcbler: { kod: string; kod_tanimsiz: boolean; /** v2.541 (DK-267) */ kod_kaynagi?: "uevcb" | "gts_adi" | "tanimsiz"; santraller: string[]; n_saat: number; kupst_tl: number | null; not?: string;
               udups_mwh?: number; kupsm_mwh?: number; uretim_mwh?: number; hesaplanamayan_saat?: number; kural_dayanak?: string; kural_surumu?: string;
               uyeler?: Record<string, { kupst_tl: number | null; pay_pct: number; sapma_mwh: number; uretim_mwh: number; kurulu_mw: number }> }[];
 }
@@ -197,6 +197,7 @@ export interface PortfoyDsg {
   pencere_gun: number; fiyat: { epias_saat: number; senaryo_saat: number }; not: string;
   /** v2.539 (EK-3 DK-258/261): DSG grupları santral kaydındaki koda göre; grup = gösterilen grup, varsayım = kod girilmemiş tek grup; dışarıda kalanlar nedeniyle */
   grup?: string | null; grup_kaynagi?: "beyan" | "varsayim"; disi_nedenleri?: Record<string, string>; katilimci_notu?: string;
+  /** v2.541 (DK-252): aynı piyasa katılımcısı kodunu taşıyan santraller tek üye olarak toplandı */ katilimci_gruplari?: Record<string, string[]>;
   gruplar?: { kod: string | null; santral: number; uyeler: string[]; n_saat: number | null; ayri_tl: number | null; net_tl: number | null; kazanc_tl: number | null; not?: string | null; secili: boolean }[];
 }
 /** /kgup?fmt=json — v2.260 önizleme; /segment — v2.260. */
@@ -266,7 +267,7 @@ export interface DengesizlikKural {
 export interface PozisyonAyari { kaynak: "program" | "uretim" | "sabit"; sabit_mwh: number | null; etiket: string }
 /** v2.517 (P2a): saatlik uzlaştırma dökümü (JSON önizleme; CSV/XLSX ayrı indirilir) */
 export interface DengesizlikSaatlik { satir: number; kolonlar: string[]; not: string; program?: Dengesizlik["program"]; toplam: Dengesizlik["toplam"];
-  /** v2.539 (EK-3 DK-056): Olay kaydındaki talimat/acil kesme saatleri (yat | yal | acil) işaretli; hesap değişmez */ talimat_saat?: number; talimat_notu?: string | null;
+  /** v2.539 (EK-3 DK-056): Olay kaydındaki talimat/acil kesme saatleri (yat | yal | acil) işaretli; hesap değişmez; v2.541: miktar girilmiş saat sayısı (BUDÜP sütunları) */ talimat_saat?: number; talimat_notu?: string | null; talimat_mw_saat?: number;
   satirlar: Record<string, string | number | null>[] }
 export interface Dengesizlik { luy_istisna?: boolean;   // v2.510 (Ç3): santral ayarı, Santralim onay kutusunu doldurur
   gun_sayisi: number; pencere_gun: number; not: string;
@@ -277,6 +278,8 @@ export interface Dengesizlik { luy_istisna?: boolean;   // v2.510 (Ç3): santral
            tolerans_disi_saat?: number; kupsm_mwh?: number; bildirilen_saat?: number }[];
   toplam: { pvquant_tl: number | null; naif_tl: number | null; kurtarilan_tl: number | null; gelir_oran_pct: number | null; referans_gelir_tl: number;
             kupst_tl?: number | null; teminat_tl?: number | null; dengesizlik_tl?: number; edt_neg_tl?: number; edt_poz_tl?: number; edta_tl?: number; edtb_tl?: number;
+            /** v2.541 (EK-3 DK-804, Karar 14626): takvim yılı negatif dengesizlik miktarı ↔ YEÜM (LDYEÜM girildiyse); yalnız (d) kalemi, alt sınır */
+            yeum?: { yil: number; negatif_dengesizlik_mwh: number | null; saat: number; ldyeum_mwh: number | null; yeum_mwh: number | null; oran_pct: number | null; kapsam: string; kalemler_disinda: string[]; not: string };
             tolerans_disi_saat?: number; kupsm_mwh?: number;
             /** v2.522 (P2b): dengesizlik teminatı göstergesi — mevzuat formülü; risk katsayısı Santral ayarlarından, yoksa tutar yok */
             teminat?: { edm_neg_max_mwh: number | null; edm_ay: string | null; ay_sayisi?: number; smf_ort_tl_mwh: number | null; smf_ay_sayisi: number; risk_katsayisi: number | null; tutar_tl: number | null; dogrulanmis: boolean; formul: string; not: string } } | null;
@@ -292,7 +295,9 @@ export interface Dengesizlik { luy_istisna?: boolean;   // v2.510 (Ç3): santral
   fiyat: { epias_saat: number; senaryo_saat: number; yon_varsayilan_saat?: number; yon_eksik_saat?: number };
   hesaplanamayan_saat?: number; kural_surumu?: string | null; kural?: DengesizlikKural;
   segment: { segment: string | null; kgup_yukumlu: boolean | null; dengesizlik_sahibi: string | null; santral_tasir: boolean | null; uevcb?: string | null;
-    /** v2.539 (EK-3 DK-258/261): DSG adı/kodu (beyan) ve toplayıcı portföyü işareti; v2.540 (DK-612): YEK-G kaydı */ dsg_kodu?: string | null; toplayici_portfoyu?: boolean; yek_g_kayitli?: boolean };
+    /** v2.539 (EK-3 DK-258/261): DSG adı/kodu (beyan) ve toplayıcı portföyü işareti; v2.540 (DK-612): YEK-G kaydı */ dsg_kodu?: string | null; toplayici_portfoyu?: boolean; yek_g_kayitli?: boolean;
+    /** v2.541: aynı kodlu santraller DSG'de tek üye (DK-252); lisanstaki yıllık üretim (LDYEÜM, Karar 14626; DK-804) */ piyasa_katilimcisi?: string | null; lisans_yillik_uretim_mwh?: number | null;
+    /** v2.541 (EK-2 DK-267): UEVÇB kodu yoksa portföy KÜPST gruplaması bu ada göre */ gts_toplayici_adi?: string | null };
 }
 /** /dengesizlik/geri-test — v2.503 (F-07): 12 aylık uzlaştırma kalemleri geri testi; karşı-olgu sütunları; varsayımsal yeniden hesap. */
 export interface DengesizlikGeriTest {
@@ -524,17 +529,22 @@ export type Takvim = { bugun: string; pencere_gun: number; segment: string | nul
   gunluk: { saat: string; ad: string; kaynak: string; kapsam: string[]; not: string | null; gunler: "her gün" | "iş günü" }[];
   kunye: KunyeTarihler; tatil_kaynak: string; tatil_yillari: number[]; not: string;
   /** v2.535: dinî bayramı tanımlı olmayan yıla düşen tarih varsa o yıllar (iş günü hesabı bayramı iş günü sayar) */
-  tatil_eksik_yillar?: number[] };
+  tatil_eksik_yillar?: number[];
+  /** v2.541 (EK-2 DK-659): lisanssız tesiste LÜY rejimi — ölçüt çağrı mektubuna hak kazanma tarihi (12.05.2019) */
+  luy_rejimi?: { rejim: "m25" | "m26" | null; etiket: string; olcut: string | null; tarih: string | null; kesinlik: "teyit" | "yorum" | "belirsiz"; not: string } | null };
 /** v2.521 (P1a): olay kaydı — planlı bakım, arıza, talimat, acil kesme, şebeke kesintisi, hasar; EAK/program, arıza sayacı ve kullanılabilirlik bunlardan beslenir. */
 export type OlayTur = "planli_bakim" | "ariza" | "talimat_yat" | "talimat_yal" | "acil_kesme" | "sebeke_kesintisi" | "hasar" | "uzaktan_acma";   // v2.523 (P4a): uzaktan açma yapılamadı
 export interface OlayKural { eak_dusur: boolean; gerekce: string | null; istisna: boolean; sayac: boolean; not: string }
 export interface Olay { id: string; plant_id: string; tur: OlayTur; tur_etiket: string; baslangic: string; bitis: string | null; etkilenen_kw: number | null; neden: string | null;
-  eak_gerekcesi: string | null; kanit: string | null; durum: "acik" | "kapali" | "iptal"; acik: boolean; evre: "planli" | "suruyor" | "bitti" | "iptal"; olusturma: string; guncelleme: string | null; kural: OlayKural }
+  eak_gerekcesi: string | null; kanit: string | null; durum: "acik" | "kapali" | "iptal"; acik: boolean; evre: "planli" | "suruyor" | "bitti" | "iptal"; olusturma: string; guncelleme: string | null; kural: OlayKural;
+  /** v2.541 (EK-3 DK-741/743): acil kesmede şebeke işletmecisinin sona erme bildirimi (LÜY m.21(8), 15 dk) ve gecikmesi; YAL/YAT talimat miktarı (kayıt) ve gerekçe son günü (DUY m.71/A, 3 iş günü) */
+  bildirim_zamani?: string | null; bildirim_gecikme_dk?: number | null; bildirim_15dk_asildi?: boolean | null; talimat_mw?: number | null; gerekce_son_gunu?: string | null }
 export interface OlayOzet { bugun: string; pencere_gun: number; olaylar: Olay[]; acik: number; planli: number;
   ariza_sayaci: { sayi: number; olay: number; elle: number; kaynak: string; esik: number; uyari: number; ay: string };
   eak_bugun: { saat_sayisi: number; en_cok_kw: number; taban_kw: number; kismi_saat: number; suren: number };
   aciklama: { kapasite: string; sayac: string; kullanilabilirlik: string; islem: string; gerekce: string;
-    /** v2.538 (EK-3 DK-733/DK-740): talimat tutarının yansıtılması — segmente göre lisanssız / lisanslı metni */ talimat?: string };
+    /** v2.538 (EK-3 DK-733/DK-740): talimat tutarının yansıtılması — segmente göre lisanssız / lisanslı metni */ talimat?: string;
+    /** v2.541 (DK-741/743): sona erme bildirimi ve gerekçe süresi */ bildirim?: string };
   /** v2.538 (EK-3 DK-613): 1 saat kuralının yürürlüğü 01.01.2027 (çıkarım); basladi = olay başlangıcı yürürlükten sonra */
   dahili_bilgi: { olay_id: string; tur: string; esik: string; etkilenen_kw: number; son_saat: string; kalan_dk: number; gecti: boolean; yururluk: string; basladi?: boolean; yururluk_notu?: string; kosul?: string | null; not: string }[];
   dahili_yururluk?: { tarih: string; etiket: string; basladi: boolean; not: string }; segment?: string | null;
@@ -616,6 +626,7 @@ export interface Mutabakat { donem: string; donem_etiket: string;
     dogrulama?: "tam" | "kismi" | "senaryo" | "yok" | null; kapsam_saat?: number; beklenen_saat?: number | null };
   uyum: { pct: number; tl: number; not: string }; guvenilirlik: MutabakatGuvenilirlik; eylem: string | null;
   pvquant: { saat: number; beklenen_saat?: number; son_saat?: string; hesaplanamayan_saat?: number; bildirilen_saat?: number; senaryo_saat?: number; senaryo_kapsam?: string; kural_surumu?: string; hata?: string;
+    /** v2.541: KÜPST katsayılarının kaynağı (kural tablosu | santral ayarı (geçersiz kılma)) */ kupst_kaynak?: string | null; kupst_gecersiz_kilma?: boolean;
     /** v2.523 (P4a): dönemin sayaç kapsamı — hesaba girmez, yalnız bilgi */
     sayac?: { toplam_saat: number; yuklu: number; olculmus: number; tahmini: number; olc_fark_pct: number | null } | null; uretim_kaynak?: UretimKaynak };
   /** v2.527 (P2b-2): dönem için yüklü EPYS saatlik detayı varsa eş kapsamlı kıyas özeti */ saatlik_detay?: SaatlikOzet | null; not: string; program_notu: string | null;
@@ -654,5 +665,6 @@ export interface KuralTablosu { segment: string; satirlar: KuralSatiri[] }
 export interface MutabakatYukleme { yukleme_id: string; donem: string; surum: string; surum_kaynagi: string; kalem_sayisi: number; bicim: string; sha256: string; uyarilar: string[]; taninmayan: string[]; dosya_adi: string; surum_dogrulama: SurumDogrulama }
 /** ekleme yanıtı: aynı saatlerde başka kayıt varsa uyarı (engel değil) */
 export type OlayYanit = Olay & { uyari?: string; cakisan?: string[] };
-export interface OlayGiris { tur: OlayTur; baslangic: string; bitis?: string | null; etkilenen_kw?: number | null; neden?: string | null; eak_gerekcesi?: string | null; kanit?: string | null }
+export interface OlayGiris { tur: OlayTur; baslangic: string; bitis?: string | null; etkilenen_kw?: number | null; neden?: string | null; eak_gerekcesi?: string | null; kanit?: string | null;
+  /** v2.541 */ bildirim_zamani?: string | null; talimat_mw?: number | null }
 

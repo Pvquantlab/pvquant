@@ -144,7 +144,8 @@ def uzlastirma(tenant_id, plant: dict, d: dict) -> dict | None:
                     s_["epias_alacak_tl" if r["yon"] == "alacak" else "epias_borc_tl"] = r["tutar_tl"]
     return {"satirlar": satirlar, "saat": pv.get("saat", 0), "beklenen_saat": pv.get("beklenen_saat"), "guvenilirlik": (pv.get("guvenilirlik") or {}).get("etiket"),
             "nedenler": (pv.get("guvenilirlik") or {}).get("nedenler", []), "bildirim": ({"surum": bil["surum_etiket"], "zaman": bil["zaman"]} if bil else None),
-            "sayac": pv.get("sayac"), "kural_surumu": pv.get("kural_surumu"), "hata": pv.get("hata")}
+            "sayac": pv.get("sayac"), "kural_surumu": pv.get("kural_surumu"), "hata": pv.get("hata"),
+            "uretim_kaynak": (pv.get("uretim_kaynak") or {}).get("etiket"), "kupst_kaynak": pv.get("kupst_kaynak")}   # v2.541 (EK-2 DK-367): gerçekleşen kaynağı ve katsayı kaynağı raporda
 
 
 # ---------------- rapor ----------------
@@ -231,7 +232,10 @@ def rapor(tenant_id, plant: dict, donem: str | None = None, bugun: date | None =
                            "EPİAŞ alacak (TL)": _tl(s["epias_alacak_tl"]), "EPİAŞ borç (TL)": _tl(s["epias_borc_tl"])} for s in u["satirlar"]])
         bol.append(("Uzlaştırma kalemleri (yeniden hesap ↔ EPİAŞ bildirimi)", t))
         bol.append(("Uzlaştırma notu", f"{u['guvenilirlik'] or ''}: {'; '.join(u['nedenler'])}. " + (f"EPİAŞ bildirimi: {u['bildirim']['surum']}, yükleme {u['bildirim']['zaman']}." if u["bildirim"] else "EPİAŞ bildirimi yüklenmedi (Mutabakat sayfası).")
-                     + (f" Sayaç: {u['sayac']['yuklu']}/{u['sayac']['toplam_saat']} saat." if u.get("sayac") and u["sayac"].get("yuklu") else "")))
+                     + (f" Sayaç: {u['sayac']['yuklu']}/{u['sayac']['toplam_saat']} saat." if u.get("sayac") and u["sayac"].get("yuklu") else "")
+                     + (f" Gerçekleşen üretim kaynağı: {u['uretim_kaynak']}." if u.get("uretim_kaynak") else "")
+                     + (f" KÜPST katsayı kaynağı: {u['kupst_kaynak']}." if u.get("kupst_kaynak") else "")
+                     + " Bu bölümdeki yeniden hesap, SCADA tabanlı doğruluk karnesiyle aynı veri değildir; uzlaştırma EPİAŞ sayacına (UEVM) dayanır."))   # v2.541 (DK-367)
     elif u and u.get("hata"):
         bol.append(("Uzlaştırma kalemleri", f"Hesap alınamadı: {u['hata']}"))
     if v["pr"]:

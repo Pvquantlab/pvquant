@@ -65,6 +65,7 @@ def ozet(plant: dict, gun: int = 90, bugun: date | None = None, tenant_id=None) 
     # v2.535 Takvim doğrulama turu: dinî bayramı tanımlı olmayan yıla düşen tarih varsa iş günü hesabı o yılın bayramlarını iş günü sayar — açıkça söylenir
     tatil_eksik = sorted({int(o["tarih"][:4]) for o in uzun} - set(tk.DINI_BAYRAM))
     return {"bugun": b.isoformat(), "pencere_gun": gun, "segment": seg["segment"], "kgup_yukumlu": seg["kgup_yukumlu"], "tatil_eksik_yillar": tatil_eksik,
+            "luy_rejimi": (tk.luy_rejimi(pj) if seg["segment"] in ("lisanssiz_dagitim", "lisanssiz_iletim", "oz_tuketim_saatlik") else None),   # v2.541 (DK-659)
             "yaklasan": tk.yaklasan(b, pj, seg["segment"], gun, kap),
             "yaklasan_piyasa": [o for o in tk.yaklasan(b, pj, seg["segment"], gun, kap) if o["kod"] not in tk.UYUM_KODLAR],   # sayfa: uyum tarihleri yalnız Uyum kartında (tekrar yok)
             "islem_etiketleri": tk.ISLEM_ETIKET, "uyum": uyum, "bakim": _bakim_satirlari(tenant_id, plant, b), "uyum_not": UYUM_NOT, "bakim_kaynak": tk.BAKIM_BILDIRIM_KAYNAK,

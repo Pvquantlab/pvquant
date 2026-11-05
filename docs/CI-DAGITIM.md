@@ -53,3 +53,9 @@ Anahtarı geri almak için sunucuda `authorized_keys`'ten ilgili satırı silmek
 - Alembic göçü bu işte koşmaz; göç gerektiren sürümlerde göç DB sahibiyle elle koşulur (defterdeki v2.502 dersi).
 - İş `concurrency: dagitim-canli` ile tek tek koşar; ikinci tetikleme ilkini bekler.
 - Anahtar iş sonunda runner'dan silinir (`if: always()`).
+
+## Bağımlılık anlık görüntüsü (v2.541)
+
+- `requirements-lock.txt` (depo kökü): imaj eşleniği `.venv-imaj` ortamının `pip freeze` çıktısı (pandas 3.1.0, pvlib 0.16.1, numpy 2.5.4). Dockerfile bu dosyayı kullanmaz, pyproject.toml'dan kurar; dosya sürüklenmeyi fark etmek içindir.
+- Dağıtımdan sonra kıyas: `ssh root@178.18.206.130 "cd /opt/pvquant && docker compose run --rm -T api pip freeze" | diff - <(grep -v '^#' requirements-lock.txt)`; fark varsa pyproject üst sınırlarını (v2.536 dersi) gözden geçirin.
+- Tam kilit (uv/pip-tools ile Dockerfile'ın kilitten kurması) ayrı bir karar; bu sürümde yalnız anlık görüntü.

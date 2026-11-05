@@ -957,3 +957,19 @@ Sonraya: EK-3 değer satırları; lock dosyası kararı; Mutabakat'ta kupst_kayn
 **Kanıt.** tests/test_ek3_v2540.py 4; tam takım; web kapıları; kareler. Göç yok. Arşiv: EK3 satırları DOĞRULANDI/A, `EK3_BIRINCIL_OKUMALAR_2026-11-05.md`.
 
 **Mühür.** 334310d (05.11 04:3x TSİ), CI #692 yeşil; ssh dağıtım api+web 04:44–04:45 TSİ (worker yeniden yaratılmadı: 03:45–06:30 penceresi; worker tarafındaki değişiklik yalnız olay/yekdem notları ve DAHILI_NOTU — gece işlerini etkilemez; 06:30 sonrası `docker compose build worker && up -d worker`); canlı 25/25 birebir; göç yok. Raporlar: 02 M54, 00 kırkıncı paket, 04 E satırı; kanıt `kanit/ek3c-*-2026-11-05.jpg`.
+
+# Kırk birinci paket — v2.541 (05.11.2026) — EK-3 kalanı: olay kaydı alanları (göç v2541_olay), DSG katılımcı toplamı, BUDÜP bilgi sütunları, YEÜM göstergesi, topluluk notu
+
+**Kapsam.** DK-741 (LÜY m.21(8): şebeke işletmecisi acil durumun sona ermesinden itibaren 15 dk içinde bildirir) → `bildirim_zamani` + gecikme/15 dk aşımı; DK-743 (DUY m.71/A(1): talimata uyulamazsa gerekçe olayı takip eden 3 iş günü içinde yazılı) → türetilmiş `gerekce_son_gunu`; DK-056 kayıt → `talimat_mw` (hesaba girmez).
+
+**Yüzeyler.** Olay kaydı formu (acil kesmede bildirim saati; YAL/YAT'ta talimat MW), listede «Bildirim geldi» düğmesi ve açıklama ekleri, CSV 4 sütun, açıklama paragrafı. API: OlayIstek/OlayGuncelle. Göç: `alembic/versions/v2541_olay.py` (revises v2527_saatlik_detay).
+
+**Ek satırlar.** DK-252 `piyasa_katilimcisi` ile DSG'de katılımcı toplamı; DK-056 ikinci yarı dökümde `budup_mwh`/`sapma_talimatli_mwh` (bilgi); DK-804 Karar 14626 YEÜM göstergesi (`lisans_yillik_uretim_mwh`; yalnız negatif dengesizlik kalemi, alt sınır); DK-206 topluluk ağırlıklı tolerans notu. EK-3'te açık satır kalmadı.
+
+**EK-2 kod satırları.** DK-659 `cagri_mektubu_tarihi` + Takvim LÜY rejimi rozeti (m.25/m.26; ölçüt çağrı mektubu); DK-367 aylık raporda üretim ve katsayı kaynağı; Mutabakat'ta KÜPST katsayı kaynağı; `requirements-lock.txt` anlık görüntüsü (Dockerfile kullanmaz). Kapanan: DK-019 (dış API'de alan yok), DK-188/618/840/480 (önceki sürümler). DK-267 `gts_toplayici_adi` ile UEVÇB kodsuz santraller ada göre birimlenir. Diyanet 2028 dinî bayramları resmî listeden eklendi (2027 teyit).
+
+**Yapılmayan.** Talimat miktarının EDT/KÜPST toplamlarına işlenmesi (KUDÜP ilişkisi doğrulanmadı; bilgi sütunu); m.71(2) EAK değişikliği gerekçe bildirimi (metin okunmadı).
+
+**İnceleme (05.11).** Dokuz ekran; tür notundaki «P2b» iç kodu kaldırıldı, sahte tür notları motorla eşitlendi, boş açıklamalı satırda ayraç düzeni.
+
+**Kanıt.** tests/test_ek3_v2541.py 2; tam takım; web kapıları; kare.

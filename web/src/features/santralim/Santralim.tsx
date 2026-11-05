@@ -138,6 +138,8 @@ export function Santralim({ plantId }: { plantId: string }) {
   const [dsgKodu, setDsgKodu] = useState<string>("");
   const [toplayici, setToplayici] = useState<boolean>(false);
   const [dsgMesaj, setDsgMesaj] = useState<string | null>(null);
+  const [katilimci, setKatilimci] = useState<string>("");   // v2.541 (DK-252): piyasa katılımcısı kodu
+  const [ldyeum, setLdyeum] = useState<string>("");         // v2.541 (DK-804): lisanstaki yıllık üretim miktarı (MWh)
   // v2.540 (EK-3 DK-612): YEK-G sisteminde kayıtlı tesis (beyan) → Olay kaydında eşik altı arıza için dâhilî bilgi hatırlatması (Karar 14967 Ek sıra 17)
   const [yekG, setYekG] = useState<boolean>(false);
   const [yekGMesaj, setYekGMesaj] = useState<string | null>(null);
@@ -149,11 +151,19 @@ export function Santralim({ plantId }: { plantId: string }) {
   };
   const dsgKaydet = () => {
     if (!seg?.segment) { setDsgMesaj("Önce piyasa segmentini seçin."); return; }
-    api.segmentAyarla(plantId, seg.segment, uevcb || undefined, { dsg_kodu: dsgKodu.trim(), toplayici_portfoyu: toplayici })
-      .then(() => { setDsgKodu(dsgKodu.trim()); setDsgMesaj(`Kaydedildi: ${dsgKodu.trim() ? `DSG ${dsgKodu.trim()}` : "DSG kodu yok"}${toplayici ? ", toplayıcı portföyünde" : ""}.`); })
+    const ld = ldyeum.trim() === "" ? null : Number(ldyeum.replace(/\./g, "").replace(",", "."));
+    if (ld !== null && (!Number.isFinite(ld) || ld < 0)) { setDsgMesaj("Lisanstaki yıllık üretim miktarı sayı olmalı (MWh)."); return; }
+    api.segmentAyarla(plantId, seg.segment, uevcb || undefined, { dsg_kodu: dsgKodu.trim(), toplayici_portfoyu: toplayici, piyasa_katilimcisi: katilimci.trim(), lisans_yillik_uretim_mwh: ld })
+      .then(() => { setDsgKodu(dsgKodu.trim()); setKatilimci(katilimci.trim()); setDsgMesaj(`Kaydedildi: ${dsgKodu.trim() ? `DSG ${dsgKodu.trim()}` : "DSG kodu yok"}${katilimci.trim() ? `, katılımcı ${katilimci.trim()}` : ""}${toplayici ? ", toplayıcı portföyünde" : ""}${ld ? `, lisans yıllık üretim ${ld} MWh` : ""}.`); })
       .catch((e) => setDsgMesaj(`Kaydedilemedi: ${String(e.message ?? e)}`));
   };
   const [uevcbMesaj, setUevcbMesaj] = useState<string | null>(null);
+  const [gtsAdi, setGtsAdi] = useState<string>("");   // v2.541 (EK-2 DK-267): GTŞ/toplayıcı adı — UEVÇB kodu yoksa portföy KÜPST gruplaması
+  const gtsAdiKaydet = () => {
+    if (!seg?.segment) { setUevcbMesaj("Önce piyasa segmentini seçin."); return; }
+    api.segmentAyarla(plantId, seg.segment, uevcb || undefined, { gts_toplayici_adi: gtsAdi.trim() }).then(() => { setGtsAdi(gtsAdi.trim()); setUevcbMesaj(gtsAdi.trim() ? `Kaydedildi: GTŞ/toplayıcı ${gtsAdi.trim()}.` : "Kaydedildi: GTŞ/toplayıcı adı yok."); })
+      .catch((e) => setUevcbMesaj(`Kaydedilemedi: ${String(e.message ?? e)}`));
+  };
   const [uevcbArama, setUevcbArama] = useState<string>("");
   const [uevcbAday, setUevcbAday] = useState<UevcbArama | null | "yok">(null);
   const uevcbKaydet = (kod: string) => {
@@ -164,7 +174,7 @@ export function Santralim({ plantId }: { plantId: string }) {
     setUevcbMesaj(null); setUevcbAday(null);
     api.uevcbAra(uevcbArama).then((r) => setUevcbAday(r ?? "yok")).catch((e) => { setUevcbAday("yok"); setUevcbMesaj(`Arama yapılamadı: ${String(e.message ?? e)}`); });
   };
-  useEffect(() => { api.dengesizlik(plantId, 14).then((d) => { if (!d) return; setSeg({ segment: d.segment.segment, dengesizlik_sahibi: d.segment.dengesizlik_sahibi }); setUevcb(d.segment.uevcb ?? ""); setDsgKodu(d.segment.dsg_kodu ?? ""); setToplayici(!!d.segment.toplayici_portfoyu); setYekG(!!d.segment.yek_g_kayitli); if (d.luy_istisna !== undefined) setLuyIstisna((v) => (v === null ? !!d.luy_istisna : v));
+  useEffect(() => { api.dengesizlik(plantId, 14).then((d) => { if (!d) return; setSeg({ segment: d.segment.segment, dengesizlik_sahibi: d.segment.dengesizlik_sahibi }); setUevcb(d.segment.uevcb ?? ""); setDsgKodu(d.segment.dsg_kodu ?? ""); setToplayici(!!d.segment.toplayici_portfoyu); setYekG(!!d.segment.yek_g_kayitli); setKatilimci(d.segment.piyasa_katilimcisi ?? ""); setLdyeum(d.segment.lisans_yillik_uretim_mwh != null ? String(d.segment.lisans_yillik_uretim_mwh) : ""); setGtsAdi(d.segment.gts_toplayici_adi ?? ""); if (d.luy_istisna !== undefined) setLuyIstisna((v) => (v === null ? !!d.luy_istisna : v));
     if (d.program) { setPozKaynak((v) => v ?? d.program!.pozisyon.kaynak); if (d.program.pozisyon.sabit_mwh != null) setPozSabit((v) => v || String(d.program!.pozisyon.sabit_mwh)); } }).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { api.saglik(plantId).then(setSg).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   // v2.274 (Dalga 3 tamamlayıcısı): fizik terimleri — santral bazında aç/kapa + "açsam ne değişir?" önizlemesi
@@ -659,6 +669,10 @@ export function Santralim({ plantId }: { plantId: string }) {
               <div className="dugme-sira" style={{ alignItems: "flex-end" }}>
                 <label className="girdi-etiket">DSG kodu (isteğe bağlı)
                   <input className="girdi" value={dsgKodu} maxLength={32} placeholder="örn. DSG-ABC" onChange={(e) => setDsgKodu(e.target.value)} /></label>
+                <label className="girdi-etiket" title="Aynı piyasa katılımcısına (aynı lisans sahibi tüzel kişiye) ait santraller DSG hesabında tek üye olarak toplanır; üye eşiği katılımcı düzeyinde uygulanır (DUY m.111)">Piyasa katılımcısı kodu (isteğe bağlı)
+                  <input className="girdi" value={katilimci} maxLength={32} placeholder="örn. ABC Enerji" onChange={(e) => setKatilimci(e.target.value)} /></label>
+                <label className="girdi-etiket" title="Lisansa dercedilen yıllık elektrik enerjisi üretim miktarı (LDYEÜM, MWh); piyasadan alım sınırı YEÜM göstergesi için (Karar 14626)">Lisanstaki yıllık üretim (MWh, isteğe bağlı)
+                  <input className="girdi" inputMode="decimal" placeholder="örn. 28.000" value={ldyeum} onChange={(e) => setLdyeum(e.target.value)} /></label>
                 <label className="girdi-etiket" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   <input type="checkbox" checked={toplayici} onChange={(e) => setToplayici(e.target.checked)} /> Toplayıcı portföyünde</label>
                 <button className="dugme" onClick={dsgKaydet}>Kaydet</button>
@@ -668,7 +682,8 @@ export function Santralim({ plantId }: { plantId: string }) {
             {ayrintiGovdesi(ayrinti, "dsg", <>
                 <p><b>Ne işe yarar:</b> Kod girilmezse dengesizliğini kendisi taşıyan bütün santralleriniz tek DSG varsayılır. Kod girilince yalnız aynı kodlu santraller birlikte netleşir; kodsuz kalan santral, başka santrallerde kod varken hesap dışı tutulur.</p>
                 <p><b>Toplayıcı portföyü:</b> Toplayıcı DSG'de yer alamaz (DUY m.20(4)); portföyüne geçen santral DSG'den çıkar. Bu işaret beyandır, PVQuant toplayıcı sözleşmesini görmez.</p>
-                <p><b>Eşik:</b> Üye eşiği piyasa katılımcısı düzeyinde uygulanır (DUY m.111); aynı katılımcının birden çok santrali varsa PVQuant her santrali ayrı üye sayar, bireysel tutar fazla görünebilir (çıkarım).</p>
+                <p><b>Eşik:</b> Üye eşiği piyasa katılımcısı düzeyinde uygulanır (DUY m.111); aynı «piyasa katılımcısı kodu»nu taşıyan santraller DSG hesabında tek üye olarak toplanır. Kod girilmezse her santral ayrı üye sayılır, bireysel tutar fazla görünebilir (çıkarım).</p>
+                <p><b>Piyasadan alım sınırı:</b> Karar 14626 (RG 06.06.2026-33272): takvim yılında alış ikili anlaşma, GÖP/GİP alımı, yerine getirilen yük atma talimatı, vadeli uzun pozisyon ve negatif enerji dengesizlik miktarı toplamı YEÜM'ü (lisanstaki yıllık üretim × kabul oranı × toplayıcı dışı gün/365) geçemez. Lisanstaki yıllık üretimi girerseniz Doğruluk sayfasında yıl içi negatif dengesizlik miktarı YEÜM'e oranlanır; öbür kalemler PVQuant'ta olmadığından gösterge alt sınırdır.</p>
               </>)}
           </div>
           {/* v2.540 (EK-3 DK-612): YEK-G kaydı — Dâhilî Bilgi Platformu Asgarî Veriler Listesi sıra 17 (eşiksiz arıza/plansız bakım) */}
@@ -699,6 +714,11 @@ export function Santralim({ plantId }: { plantId: string }) {
                   <input className="girdi" value={uevcb} maxLength={32} placeholder="örn. 40X000000000123A" onChange={(e) => setUevcb(e.target.value)} /></label>
                 <button className="dugme" onClick={() => uevcbKaydet(uevcb)}>Kaydet</button>
               </div>
+              <div className="dugme-sira" style={{ alignItems: "flex-end" }}>   {/* v2.541 (DK-267) */}
+                <label className="girdi-etiket" title="Görevli tedarik şirketi ya da toplayıcının adı; UEVÇB kodu girilmemişse Portföy sayfasındaki KÜPST hesabı santralleri bu ada göre birimler">GTŞ / toplayıcı adı (UEVÇB kodu yoksa gruplama için)
+                  <input className="girdi" value={gtsAdi} maxLength={64} placeholder="örn. ABC bölgesi GTŞ" onChange={(e) => setGtsAdi(e.target.value)} /></label>
+                <button className="dugme" onClick={gtsAdiKaydet}>Kaydet</button>
+              </div>
               <div className="dugme-sira" style={{ alignItems: "flex-end" }}>
                 <label className="girdi-etiket">EPİAŞ'ta ara (kuruluş adı, en az 3 harf)
                   <input className="girdi" value={uevcbArama} minLength={3} placeholder="örn. Format Lab" onChange={(e) => setUevcbArama(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && uevcbArama.trim().length >= 3) uevcbAra(); }} /></label>
@@ -717,7 +737,7 @@ export function Santralim({ plantId }: { plantId: string }) {
             {ayrintiGovdesi(ayrinti, "uevcb", <>
                 <p><b>Kısaltma:</b> uzlaştırmaya esas veriş-çekiş birimi.</p>
                 <p><b>Nereden bulunur:</b> EPYS ya da TPYS kayıtlarınızdan; bilmiyorsanız EPİAŞ Şeffaflık Platformu'nda kuruluş adıyla arayıp listeden seçin (arama, PVQuant'ta EPİAŞ kimliği tanımlıysa çalışır).</p>
-                <p><b>Neyi etkiler:</b> indirilen program ve EAK dosyalarının adı (KGUP_kod_gün_sürüm.csv, EAK_kod_gün.csv); dağıtıma bağlı lisanssız santrallerde sapma tutarı GTŞ ya da toplayıcının UEVÇB'si üzerinden gruplanır. Boş bırakılırsa dosya adında kod yerine «UEVCB» yazılır.</p>
+                <p><b>Neyi etkiler:</b> indirilen program ve EAK dosyalarının adı (KGUP_kod_gün_sürüm.csv, EAK_kod_gün.csv); dağıtıma bağlı lisanssız santrallerde sapma tutarı GTŞ ya da toplayıcının UEVÇB'si üzerinden gruplanır. Kod boşsa Portföy hesabı «GTŞ / toplayıcı adı»na göre birimler; ad da boşsa santral tek birim varsayılır ve etiketlenir. Boş bırakılırsa dosya adında kod yerine «UEVCB» yazılır.</p>
                 <p><b>Ne zaman geçerli:</b> Kaydet'ten sonraki program dosyasında ve Portföy tablolarında.</p>
               </>)}
           </div>

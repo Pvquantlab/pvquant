@@ -61,8 +61,12 @@ DINI_BAYRAM = {
            date(2026, 5, 27), date(2026, 5, 28), date(2026, 5, 29), date(2026, 5, 30)),   # Kurban Bayramı
     2027: (date(2027, 3, 9), date(2027, 3, 10), date(2027, 3, 11),
            date(2027, 5, 16), date(2027, 5, 17), date(2027, 5, 18), date(2027, 5, 19)),
+    # v2.541: Diyanet «2028 Dinî Günler Listesi» (vakithesaplama.diyanet.gov.tr/icerik.php?icerik=185; 05.11.2026 okundu): Ramazan Bayramı 26–28 Şubat 2028
+    # (arife 25 Şubat Cuma), Kurban Bayramı 5–8 Mayıs 2028 (arife 4 Mayıs Perşembe). 2027 aynı kaynakta (icerik=154) teyit edildi.
+    2028: (date(2028, 2, 26), date(2028, 2, 27), date(2028, 2, 28),
+           date(2028, 5, 5), date(2028, 5, 6), date(2028, 5, 7), date(2028, 5, 8)),
 }
-TATIL_KAYNAK = "Resmî tatiller: 2429 sayılı Kanun (sabit günler) ve Diyanet takvimi (dinî bayramlar); yarım günler iş günü sayıldı."
+TATIL_KAYNAK = "Resmî tatiller: 2429 sayılı Kanun (sabit günler) ve Diyanet dinî günler listesi (vakithesaplama.diyanet.gov.tr); yarım günler iş günü sayıldı."
 
 
 def resmi_tatil(d: date) -> bool:
@@ -394,8 +398,10 @@ def bakim_bildirim(baslangic, bitis) -> dict:
 
 # ---- künye tarihleri ve türeyenler ----
 KUNYE_TARIH_ALANLARI = ("lisans_yururluk", "lisans_bitis", "kabul_tarihi", "tam_kabul_tarihi", "isletmeye_giris", "police_bitis", "ced_karar_tarihi",
-                        "baglanti_anlasmasi", "toplayici_giris", "toplayici_cikis", "isg_son_kontrol", "ortaklik_degisikligi", "izin_iptali")   # v2.524 (P3b): +4
+                        "baglanti_anlasmasi", "toplayici_giris", "toplayici_cikis", "isg_son_kontrol", "ortaklik_degisikligi", "izin_iptali",
+                        "cagri_mektubu_tarihi")   # v2.524 (P3b): +4; v2.541 (EK-2 DK-659): çağrı mektubuna hak kazanma tarihi (lisanssız rejim ölçütü)
 KUNYE_ETIKET = {"lisans_yururluk": "Lisans yürürlük tarihi", "lisans_bitis": "Lisans bitiş tarihi", "kabul_tarihi": "İlk kabul tarihi (kısmi ya da tam)",
+                "cagri_mektubu_tarihi": "Çağrı mektubuna hak kazanma tarihi (lisanssız)",   # v2.541 (DK-659)
                 "isletmeye_giris": "İşletmeye giriş (ilk enerji) tarihi", "police_bitis": "Sigorta poliçesi bitişi", "ced_karar_tarihi": "ÇED kararı tarihi",
                 "baglanti_anlasmasi": "Bağlantı anlaşması tarihi", "toplayici_giris": "Toplayıcı portföyüne giriş", "toplayici_cikis": "Toplayıcı portföyünden çıkış",
                 "yekdem_baslangic_yili": "YEKDEM başlangıç yılı",
@@ -410,6 +416,29 @@ def _tarih(v) -> date | None:
         return date.fromisoformat(str(v)[:10])
     except ValueError:
         return None
+
+
+LUY_REJIM_ESIGI = date(2019, 5, 12)   # LÜY (RG 12.05.2019-30772): 12.05.2019 öncesi çağrı mektuplu tesisler m.25, sonrası m.26 (EK-2 DK-659: ölçüt çağrı mektubuna hak kazanma tarihi)
+
+
+def luy_rejimi(pj: dict | None) -> dict:
+    """v2.541 (EK-2 DK-659): lisanssız tesisin LÜY rejimi — ölçüt çağrı mektubuna hak kazanma tarihi (12.05.2019 öncesi: m.25 eski rejim, ayın 6'sı
+    GTŞ bildirimi m.23(3); 12.05.2019 ve sonrası: m.26, 1.5.2026'dan saatlik mahsup). Çağrı mektubu tarihi girilmemişse işletmeye giriş tarihi
+    yorumla kullanılır ve «yorum» etiketlenir; ikisi de yoksa belirsiz."""
+    pj = pj or {}
+    cm = _tarih(pj.get("cagri_mektubu_tarihi")); giris = _tarih(pj.get("isletmeye_giris"))
+    if cm is not None:
+        t, olcut, kesinlik = cm, "çağrı mektubuna hak kazanma tarihi", "teyit"
+    elif giris is not None:
+        t, olcut, kesinlik = giris, "işletmeye giriş tarihi (çağrı mektubu tarihi girilmedi; yorum)", "yorum"
+    else:
+        return {"rejim": None, "etiket": "belirsiz", "olcut": None, "tarih": None, "kesinlik": "belirsiz",
+                "not": "Çağrı mektubuna hak kazanma tarihi girilmedi; LÜY m.25 / m.26 ayrımı yapılamadı (Santral tarihleri formu)."}
+    eski = t < LUY_REJIM_ESIGI
+    return {"rejim": "m25" if eski else "m26", "etiket": ("12.05.2019 öncesi (LÜY m.25)" if eski else "12.05.2019 ve sonrası (LÜY m.26)"), "olcut": olcut,
+            "tarih": t.isoformat(), "kesinlik": kesinlik,
+            "not": ("Ölçüt çağrı mektubuna hak kazanma tarihidir, işletmeye giriş değil (LÜY m.25(1)/m.26(1)). " +
+                    ("Ayın 6'sı GTŞ bildirimi (m.23(3)) bu tesise uygulanır." if eski else "GTŞ bildirimi m.26(2) düzenlenmiş takvime bağlı; 1.5.2026'dan saatlik mahsup (m.26)."))}
 
 
 def yekdem_suresi(isletmeye_giris: date | None, baslangic_yili: int | None = None) -> dict | None:

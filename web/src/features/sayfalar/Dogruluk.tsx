@@ -738,6 +738,9 @@ export function Dogruluk({ plantId }: { plantId: string }) {
             </div>
             <SaatlikDokum plantId={plantId} gun={dz.pencere_gun} />
             <p style={{ marginTop: 10, marginBottom: 0, fontSize: 13.5 }}>
+              {dz.toplam?.yeum && <>Piyasadan alım sınırı göstergesi ({dz.toplam.yeum.yil}): {dz.toplam.yeum.negatif_dengesizlik_mwh != null ? <>yıl içi negatif dengesizlik miktarı <b>{sayiTr(dz.toplam.yeum.negatif_dengesizlik_mwh, 1)} MWh</b> ({sayiTr(dz.toplam.yeum.saat)} hesaplanan saat; pencere {sayiTr(dz.toplam.yeum.pencere_gun ?? 0)} gün)</> : "hesaplanan saat yok"}
+                {dz.toplam.yeum.yeum_mwh != null ? <>; YEÜM {sayiTr(dz.toplam.yeum.yeum_mwh, 0)} MWh, oran <b>%{sayiTr(dz.toplam.yeum.oran_pct ?? 0, 1)}</b></> : <>; YEÜM için Santralim › Santral ayarları'na lisanstaki yıllık üretimi girin</>}
+                {" "}(Karar 14626; yalnız negatif dengesizlik kalemi sayılır, ikili alım / GÖP-GİP alımı / yerine getirilen YAT / vadeli uzun pozisyon PVQuant'ta yok — alt sınır). </>}   {/* v2.541 (DK-804) */}
               {dz.toplam?.teminat && (dz.toplam.teminat.tutar_tl != null
                 ? <>Dengesizlik teminatı göstergesi: <b>{sayiTr(dz.toplam.teminat.tutar_tl / 1000, 1)} bin TL</b> ({sayiTr(dz.toplam.teminat.edm_neg_max_mwh ?? 0, 1)} MWh en yüksek aylık negatif dengesizlik
                     miktarı ({dz.toplam.teminat.edm_ay}) × {sayiTr(dz.toplam.teminat.smf_ort_tl_mwh ?? 0, 0)} TL/MWh {sayiTr(dz.toplam.teminat.smf_ay_sayisi)} aylık ortalama SMF × risk katsayısı {sayiTr(dz.toplam.teminat.risk_katsayisi ?? 0, 2)};

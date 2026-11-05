@@ -46,14 +46,22 @@ GEREKCE_ETIKET = {"kaynak_yetersizligi": "kaynak yetersizliği", "iklim_verim": 
 TUR_KURAL = {
     "planli_bakim":    {"eak_dusur": True,  "gerekce": "kaynak_yetersizligi", "istisna": True,  "sayac": False, "not": "EAK düşer; TPYS Arıza ve Bakım bildirimi ayrıca; kullanılabilirlik hesabında istisna"},
     "ariza":           {"eak_dusur": True,  "gerekce": "kaynak_yetersizligi", "istisna": False, "sayac": True,  "not": "EAK düşer; aylık arıza sayacına girer (30 ve üzeri KÜPST n 0,08); kullanılabilirlikte arıza"},
-    "talimat_yat":     {"eak_dusur": False, "gerekce": None,                  "istisna": True,  "sayac": False, "not": "EAK değişmez; program sapması talimattan (BUDÜP, P2b); kullanılabilirlikte istisna"},
-    "talimat_yal":     {"eak_dusur": False, "gerekce": None,                  "istisna": True,  "sayac": False, "not": "EAK değişmez; program sapması talimattan (BUDÜP, P2b)"},
-    "acil_kesme":      {"eak_dusur": True,  "gerekce": "dissal",              "istisna": True,  "sayac": False, "not": "Sistem İşletmecisi kesmesi: EAK dışsal gerekçeyle düşer; kullanılabilirlikte istisna; lisanssızda talimat tutarı GTŞ/toplayıcı üzerinden yansıtılır (DUY m.75(3)), yerine getirilmeyen kısma ödeme yok (LÜY Ek m.4)"},
+    "talimat_yat":     {"eak_dusur": False, "gerekce": None,                  "istisna": True,  "sayac": False, "not": "EAK değişmez; program sapması talimattan (BUDÜP); kullanılabilirlikte istisna; talimat miktarı (MW) kayıt içindir, hesaba girmez; uyulamadıysa gerekçe 3 iş günü (DUY m.71/A)"},
+    "talimat_yal":     {"eak_dusur": False, "gerekce": None,                  "istisna": True,  "sayac": False, "not": "EAK değişmez; program sapması talimattan (BUDÜP); talimat miktarı (MW) kayıt içindir; uyulamadıysa gerekçe 3 iş günü (DUY m.71/A)"},
+    "acil_kesme":      {"eak_dusur": True,  "gerekce": "dissal",              "istisna": True,  "sayac": False, "not": "Sistem İşletmecisi kesmesi: EAK dışsal gerekçeyle düşer; kullanılabilirlikte istisna; lisanssızda talimat tutarı GTŞ/toplayıcı üzerinden yansıtılır (DUY m.75(3)), yerine getirilmeyen kısma ödeme yok (LÜY Ek m.4); şebeke işletmecisinin sona erme bildirimi 15 dk içinde (LÜY m.21(8)), bildirim zamanı kaydedilir"},
     "sebeke_kesintisi": {"eak_dusur": True, "gerekce": "dissal",              "istisna": True,  "sayac": False, "not": "Şebeke kaynaklı: EAK dışsal gerekçeyle düşer; kullanılabilirlikte istisna"},
     "hasar":           {"eak_dusur": True,  "gerekce": "kaynak_yetersizligi", "istisna": False, "sayac": False, "not": "Hasar dosyası için kayıt; EAK düşer. Hasar tek başına mücbir sebep değildir: «mücbir sebep» gerekçesi yalnız mevzuattaki koşullar sağlanıyorsa seçilir"},
     "uzaktan_acma":    {"eak_dusur": False, "gerekce": None,                  "istisna": False, "sayac": False, "not": "Lisanssız tesiste acil durum talimatında uzaktan açma yapılamadı (LÜY m.21(7) SCADA bağlantısı); EAK değişmez; Sayaç sayfasındaki Karar 14909 bedel göstergesine girer (ay içinde en çok üç kat)"},   # v2.523 (P4a)
 }
 DURUMLAR = ("acik", "kapali", "iptal")
+# v2.541 (EK-3 DK-741/DK-743, kanıt A)
+BILDIRIM_SURE_DK = 15
+LUY_M21_8_NOTU = ("LÜY m.21(8) (RG 19.10.2026-33405 Md.1): şebeke işletmecisi, acil durumun sona erme zamanından itibaren 15 dakika içinde acil durumun sona "
+                  "erdiğini tesis sahibine telefon ve kalıcı veri saklayıcısı ile bildirir; bildirimden sonra yeniden enerjilendirme tesis sahibinin sorumluluğundadır. "
+                  "Bildirim zamanı beyandır; bitişle arasındaki süre, talimat dışı üretim kaybının ayrıştırılması için kaydedilir.")
+DUY_M71A_NOTU = ("DUY m.71/A(1): dengeleme güç piyasası katılımcısı talimata uymakla yükümlüdür; teknik gereklilikle yerine getiremezse MYTM/BYTM'yi ivedilikle haberdar "
+                 "eder ve gerekçesini olayı takip eden en geç 3 iş günü içinde yazılı bildirir. Son gün yalnız talimata uyulamadıysa anlamlıdır (iş günü sayımı Takvim motoru).")
+GEREKCE_IS_GUNU = 3
 DAHILI_TESIS_KW = 30_000.0      # Karar 14967 Asgari Veriler Listesi sıra 1: tesis bazında 30 MW ve üzeri
 DAHILI_PORTFOY_KW = 50_000.0    # portföy bazında 50 MW ve üzeri
 DAHILI_SURE_SAAT = 1
@@ -129,8 +137,23 @@ def dogrula(g: dict, kapasite_kw: float | None = None, bugun: datetime | None = 
     for ad in ("neden", "kanit"):
         if g.get(ad) is not None and len(str(g[ad])) > 500:
             raise ValueError(f"{ad} en çok 500 karakter")
+    # v2.541 (DK-741): sona erme bildirimi yalnız acil durum kesmesinde; başlangıçtan önce olamaz
+    bildirim = _tarih(g.get("bildirim_zamani")) if tur == "acil_kesme" else None
+    if bildirim is not None and bildirim < bas:
+        raise ValueError("bildirim_zamani başlangıçtan önce olamaz")
+    # v2.541 (DK-743/DK-056): talimat miktarı (MW) yalnız YAL/YAT; kayıt amaçlı
+    tmw = g.get("talimat_mw") if tur in ("talimat_yat", "talimat_yal") else None
+    if tmw in (None, ""):
+        tmw = None
+    else:
+        try:
+            tmw = float(tmw)
+        except (TypeError, ValueError):
+            raise ValueError("talimat_mw sayı olmalı (MW)")
+        if tmw <= 0:
+            raise ValueError("talimat_mw 0'dan büyük olmalı (MW)")
     return {"tur": tur, "baslangic": bas, "bitis": bit, "etkilenen_kw": kw, "neden": (str(g.get("neden") or "").strip() or None),
-            "eak_gerekcesi": ger, "kanit": (str(g.get("kanit") or "").strip() or None)}
+            "eak_gerekcesi": ger, "kanit": (str(g.get("kanit") or "").strip() or None), "bildirim_zamani": bildirim, "talimat_mw": tmw}
 
 
 def _sinir_kw(plant: dict) -> float | None:
@@ -141,9 +164,21 @@ def _sinir_kw(plant: dict) -> float | None:
 
 def _satir(r) -> dict:
     d = dict(r._mapping) if hasattr(r, "_mapping") else dict(r)
-    for k in ("baslangic", "bitis", "olusturma", "guncelleme"):
+    bz_dt = d.get("bildirim_zamani") if isinstance(d.get("bildirim_zamani"), datetime) else None
+    bit_dt = d.get("bitis") if isinstance(d.get("bitis"), datetime) else None
+    bas_dt = d.get("baslangic") if isinstance(d.get("baslangic"), datetime) else None
+    for k in ("baslangic", "bitis", "olusturma", "guncelleme", "bildirim_zamani"):
         v = d.get(k)
         d[k] = v.astimezone(IST).isoformat(timespec="minutes") if isinstance(v, datetime) else None
+    # v2.541 (DK-741): bildirim gecikmesi = bildirim − bitiş (dk); 15 dk aşıldı mı. (DK-743): talimatta gerekçe son günü = olayı takip eden 3 iş günü
+    d["bildirim_gecikme_dk"] = int(round((bz_dt - bit_dt).total_seconds() / 60)) if (bz_dt and bit_dt) else None
+    d["bildirim_15dk_asildi"] = (d["bildirim_gecikme_dk"] > BILDIRIM_SURE_DK) if d["bildirim_gecikme_dk"] is not None else None
+    if d.get("tur") in ("talimat_yat", "talimat_yal") and bas_dt is not None:
+        from pvquant.ext.turkiye import takvim as tk
+        d["gerekce_son_gunu"] = tk.is_gunu_ekle(bas_dt.astimezone(IST).date(), GEREKCE_IS_GUNU).isoformat()
+    else:
+        d["gerekce_son_gunu"] = None
+    d.setdefault("talimat_mw", None)
     d["id"] = str(d["id"]); d["plant_id"] = str(d["plant_id"]); d.pop("tenant_id", None)
     d["olusturan"] = str(d["olusturan"]) if d.get("olusturan") else None
     d["tur_etiket"] = TUR_ETIKET.get(d["tur"], d["tur"]); d["kural"] = TUR_KURAL.get(d["tur"])
@@ -186,10 +221,10 @@ def ekle(tenant_id, plant: dict, g: dict, olusturan=None) -> dict:
     except ValueError:
         olusturan = None
     with tenant_baglami(tenant_id) as s:
-        r = s.execute(text("INSERT INTO olay(tenant_id, plant_id, tur, baslangic, bitis, etkilenen_kw, neden, eak_gerekcesi, kanit, durum, olusturan) "
-                           "VALUES (:t, :p, :tur, :b, :e, :kw, :n, :g, :k, :d, :o) RETURNING *"),
+        r = s.execute(text("INSERT INTO olay(tenant_id, plant_id, tur, baslangic, bitis, etkilenen_kw, neden, eak_gerekcesi, kanit, durum, olusturan, bildirim_zamani, talimat_mw) "
+                           "VALUES (:t, :p, :tur, :b, :e, :kw, :n, :g, :k, :d, :o, :bz, :tm) RETURNING *"),
                       {"t": tenant_id, "p": plant["id"], "tur": v["tur"], "b": v["baslangic"], "e": v["bitis"], "kw": v["etkilenen_kw"], "n": v["neden"],
-                       "g": v["eak_gerekcesi"], "k": v["kanit"], "d": durum, "o": olusturan}).first()
+                       "g": v["eak_gerekcesi"], "k": v["kanit"], "d": durum, "o": olusturan, "bz": v["bildirim_zamani"], "tm": v["talimat_mw"]}).first()
     out = _satir(r)
     if cakisan:
         out["uyari"] = (f"Aynı saatlerde {len(cakisan)} kayıt daha var ({', '.join(c['tur_etiket'] for c in cakisan[:3])}). Kayıtlar toplanır: ayrı ekipmanlar için "
@@ -206,16 +241,18 @@ def guncelle(tenant_id, plant: dict, olay_id, g: dict) -> dict | None:
             return None
         m = dict(r._mapping)
         birlesik = {"tur": m["tur"], "baslangic": m["baslangic"], "bitis": g.get("bitis", m["bitis"]), "etkilenen_kw": g.get("etkilenen_kw", m["etkilenen_kw"]),
-                    "neden": g.get("neden", m["neden"]), "eak_gerekcesi": g.get("eak_gerekcesi", m["eak_gerekcesi"]), "kanit": g.get("kanit", m["kanit"])}
+                    "neden": g.get("neden", m["neden"]), "eak_gerekcesi": g.get("eak_gerekcesi", m["eak_gerekcesi"]), "kanit": g.get("kanit", m["kanit"]),
+                    "bildirim_zamani": g.get("bildirim_zamani", m.get("bildirim_zamani")), "talimat_mw": g.get("talimat_mw", m.get("talimat_mw"))}   # v2.541
         v = dogrula(birlesik, _sinir_kw(plant))
         durum = g.get("durum") or m["durum"]
         if durum not in DURUMLAR:
             raise ValueError("durum acik / kapali / iptal olmalı")
         if durum != "iptal":
             durum = "acik" if v["bitis"] is None or v["bitis"] > datetime.now(timezone.utc) else "kapali"
-        r2 = s.execute(text("UPDATE olay SET bitis=:e, etkilenen_kw=:kw, neden=:n, eak_gerekcesi=:g, kanit=:k, durum=:d, guncelleme=now() "
+        r2 = s.execute(text("UPDATE olay SET bitis=:e, etkilenen_kw=:kw, neden=:n, eak_gerekcesi=:g, kanit=:k, durum=:d, bildirim_zamani=:bz, talimat_mw=:tm, guncelleme=now() "
                             "WHERE id=:i AND plant_id=:p RETURNING *"),
-                       {"e": v["bitis"], "kw": v["etkilenen_kw"], "n": v["neden"], "g": v["eak_gerekcesi"], "k": v["kanit"], "d": durum, "i": olay_id, "p": plant["id"]}).first()
+                       {"e": v["bitis"], "kw": v["etkilenen_kw"], "n": v["neden"], "g": v["eak_gerekcesi"], "k": v["kanit"], "d": durum, "i": olay_id, "p": plant["id"],
+                        "bz": v["bildirim_zamani"], "tm": v["talimat_mw"]}).first()
     return _satir(r2)
 
 
@@ -380,19 +417,23 @@ def ozet(tenant_id, plant: dict, gun: int = 90, bugun: date | None = None) -> di
                                   "Başlangıç ve tür değiştirilemez; yanlışsa kaydı geçersiz sayıp yenisini açın. Her ekleme ve değişiklik denetim izinde tutulur.",
                          "gerekce": "EAK gerekçesi TPYS EAK dosyasındaki sütundur; tür için varsayılan önerilir, kayıt girilirken değiştirilebilir. «Mücbir sebep» yalnız mevzuattaki koşullar (Lisans Yön. m.35(2)–(3)) "
                                     "sağlanıyorsa seçilir; EAK sütunu ile EPDK'ya m.35 başvurusu ayrı süreçlerdir; hasar tek başına mücbir sebep değildir.",
-                         "talimat": TALIMAT_NOTU_LISANSSIZ if lisanssiz else TALIMAT_NOTU_LISANSLI}}
+                         "talimat": TALIMAT_NOTU_LISANSSIZ if lisanssiz else TALIMAT_NOTU_LISANSLI,
+                         "bildirim": LUY_M21_8_NOTU + " " + DUY_M71A_NOTU}}   # v2.541 (DK-741/DK-743)
 
 
 def csv_metni(olaylar: list[dict], plant_ad: str) -> str:
     """Hasar / sigorta dosyası: olay listesi (UTF-8 BOM, ; ayraç, Türkçe saat)."""
-    kol = ["santral", "tur", "baslangic", "bitis", "sure_saat", "etkilenen_kw", "neden", "eak_gerekcesi", "kanit", "evre", "olusturma"]
+    kol = ["santral", "tur", "baslangic", "bitis", "sure_saat", "etkilenen_kw", "neden", "eak_gerekcesi", "kanit", "evre", "olusturma",
+           "bildirim_zamani", "bildirim_gecikme_dk", "talimat_mw", "gerekce_son_gunu"]   # v2.541
     satirlar = []
     for o in olaylar:
         b = datetime.fromisoformat(o["baslangic"]); e = datetime.fromisoformat(o["bitis"]) if o["bitis"] else None
         satirlar.append({"santral": plant_ad, "tur": o["tur_etiket"], "baslangic": o["baslangic"], "bitis": o["bitis"] or "",
                          "sure_saat": round((e - b).total_seconds() / 3600, 2) if e else "", "etkilenen_kw": o["etkilenen_kw"] if o["etkilenen_kw"] is not None else "",
                          "neden": o["neden"] or "", "eak_gerekcesi": GEREKCE_ETIKET.get(o["eak_gerekcesi"] or "", ""), "kanit": o["kanit"] or "",
-                         "evre": {"planli": "planlı", "suruyor": "sürüyor", "bitti": "bitti", "iptal": "geçersiz"}[o.get("evre") or evre(o)], "olusturma": o["olusturma"]})
+                         "evre": {"planli": "planlı", "suruyor": "sürüyor", "bitti": "bitti", "iptal": "geçersiz"}[o.get("evre") or evre(o)], "olusturma": o["olusturma"],
+                         "bildirim_zamani": o.get("bildirim_zamani") or "", "bildirim_gecikme_dk": o.get("bildirim_gecikme_dk") if o.get("bildirim_gecikme_dk") is not None else "",
+                         "talimat_mw": o.get("talimat_mw") if o.get("talimat_mw") is not None else "", "gerekce_son_gunu": o.get("gerekce_son_gunu") or ""})
     buf = io.StringIO()
     pd.DataFrame(satirlar, columns=kol).to_csv(buf, sep=";", decimal=",", index=False, lineterminator="\n")
     return "﻿" + buf.getvalue()

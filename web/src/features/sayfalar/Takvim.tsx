@@ -44,7 +44,7 @@ function GunUyarisi({ o }: { o: TakvimOlay }) {
   return null;
 }
 
-const KUNYE_SIRA = ["lisans_yururluk", "lisans_bitis", "kabul_tarihi", "tam_kabul_tarihi", "isletmeye_giris", "yekdem_baslangic_yili", "police_bitis", "ced_karar_tarihi",
+const KUNYE_SIRA = ["lisans_yururluk", "lisans_bitis", "kabul_tarihi", "tam_kabul_tarihi", "isletmeye_giris", "cagri_mektubu_tarihi", "yekdem_baslangic_yili", "police_bitis", "ced_karar_tarihi",
   "baglanti_anlasmasi", "toplayici_giris", "toplayici_cikis", "isg_son_kontrol", "ortaklik_degisikligi", "izin_iptali"];   // v2.524 (P3b): +4
 const saatTr = (iso: string | null | undefined) => iso ? tarihBicimi("tr-TR", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(iso)) : "—";
 
@@ -134,6 +134,8 @@ export function Takvim({ plantId }: { plantId: string }) {
                 <td>{o.kalan_gun === 0 ? "bugün" : `${sayiTr(o.kalan_gun ?? 0)} gün`}</td></tr>))}</tbody>
           </table></div>)}
         {/* v2.535 Takvim doğrulama turu: etiket/kaydırma açıklaması açılır alanda; bayramı tanımsız yıl uyarısı gizlenmez */}
+        {t.luy_rejimi && (   /* v2.541 (DK-659) */
+          <p style={{ fontSize: 13, margin: "8px 0 0" }}><span className={`rozet rozet-kucuk ${t.luy_rejimi.kesinlik === "teyit" ? "rozet-ok" : t.luy_rejimi.kesinlik === "yorum" ? "rozet-uyari" : "rozet-notr"}`}>LÜY rejimi · {t.luy_rejimi.kesinlik}</span> {t.luy_rejimi.etiket}{t.luy_rejimi.tarih ? ` — ${t.luy_rejimi.olcut}: ${t.luy_rejimi.tarih.split("-").reverse().join(".")}` : ""}. {t.luy_rejimi.not}</p>)}
         {(t.tatil_eksik_yillar?.length ?? 0) > 0 && (
           <p style={{ fontSize: 13, margin: "8px 0 0" }}><span className="rozet rozet-uyari rozet-kucuk">tatil takvimi eksik</span> {t.tatil_eksik_yillar!.join(", ")} yılı dinî bayramları henüz tanımlı değil; o yıla düşen iş günü hesapları bayram günlerini iş günü sayar.</p>)}
         <details className="aciklama" style={{ marginTop: 8 }}>
@@ -205,7 +207,7 @@ export function Takvim({ plantId }: { plantId: string }) {
         </table></div>
       </Kart>
 
-      <Kart baslik="Santral tarihleri" alt="Lisans, kabul, işletmeye giriş, poliçe, İSG kontrolü, ortaklık değişikliği ve izin iptali tarihleri; türeyen son tarihler yukarıdaki listelere «santral tarihi» etiketiyle girer.">
+      <Kart baslik="Santral tarihleri" alt="Lisans, kabul, işletmeye giriş, çağrı mektubu (lisanssız), poliçe, İSG kontrolü, ortaklık değişikliği ve izin iptali tarihleri; türeyen son tarihler yukarıdaki listelere «santral tarihi» etiketiyle girer.">
         <KunyeFormu plantId={plantId} kunye={t.kunye} bugun={t.bugun} onKaydet={(k) => { setT({ ...t, kunye: k }); api.takvim(plantId, 90).then((v) => setT(v), () => {}); }} />
       </Kart>
     </Sayfa>

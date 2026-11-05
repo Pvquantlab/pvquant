@@ -26,8 +26,8 @@ export function Olaylar({ plantId }: { plantId: string }) {
   const [o, setO] = useState<OlayOzet | null | undefined>(undefined);
   const [gun, setGun] = useState(90);
   const [mesaj, setMesaj] = useState<{ metin: string; ton: "ok" | "hata" | "uyari" } | null>(null);
-  const [form, setForm] = useState<{ tur: OlayTur; baslangic: string; bitis: string; kw: string; gerekce: string; neden: string; kanit: string }>(
-    { tur: "ariza", baslangic: yerelSimdi(), bitis: "", kw: "", gerekce: "", neden: "", kanit: "" });
+  const [form, setForm] = useState<{ tur: OlayTur; baslangic: string; bitis: string; kw: string; gerekce: string; neden: string; kanit: string; bildirim: string; talimatMw: string }>(
+    { tur: "ariza", baslangic: yerelSimdi(), bitis: "", kw: "", gerekce: "", neden: "", kanit: "", bildirim: "", talimatMw: "" });   // v2.541: bildirim (acil kesme), talimatMw (YAL/YAT)
   const yukle = () => api.olaylar(plantId, gun).then(setO, () => setO(null));
   useEffect(() => { setO(undefined); void yukle(); }, [plantId, ds, gun]);   // eslint-disable-line react-hooks/exhaustive-deps
   const kural = o?.turler.find((t) => t.kod === form.tur);
@@ -38,13 +38,18 @@ export function Olaylar({ plantId }: { plantId: string }) {
     if (kw === undefined) { setMesaj({ metin: "Devre dışı güç sayı olmalı (kW); boş bırakılırsa tesisin tamamı sayılır.", ton: "hata" }); return; }
     if (!form.baslangic) { setMesaj({ metin: "Başlangıç saati gerekli.", ton: "hata" }); return; }
     if (form.bitis && form.bitis <= form.baslangic) { setMesaj({ metin: "Bitiş, başlangıçtan sonra olmalı.", ton: "hata" }); return; }
+    const talimatMw = sayiOku(form.talimatMw);
+    if (talimatMw === undefined || (talimatMw != null && talimatMw <= 0)) { setMesaj({ metin: "Talimat miktarı 0'dan büyük sayı olmalı (MW); bilinmiyorsa boş bırakın.", ton: "hata" }); return; }
     const g: OlayGiris = { tur: form.tur, baslangic: form.baslangic, bitis: form.bitis || null, etkilenen_kw: kw, neden: form.neden || null,
-      eak_gerekcesi: kural?.eak_dusur ? (form.gerekce || null) : null, kanit: form.kanit || null };
+      eak_gerekcesi: kural?.eak_dusur ? (form.gerekce || null) : null, kanit: form.kanit || null,
+      bildirim_zamani: form.tur === "acil_kesme" ? (form.bildirim || null) : null, talimat_mw: (form.tur === "talimat_yat" || form.tur === "talimat_yal") ? talimatMw : null };   // v2.541
     api.olayEkle(plantId, g).then((y) => {
       const evreMetni = y.evre === "planli" ? "planlı" : y.evre === "suruyor" ? "sürüyor" : "bitti";
       setMesaj(y.uyari ? { metin: `Kaydedildi (${evreMetni}). ${y.uyari}`, ton: "uyari" } : { metin: `Kaydedildi: ${y.tur_etiket}, ${saatTr(y.baslangic)}${y.bitis ? ` – ${saatTr(y.bitis)}` : ""} (${evreMetni}).`, ton: "ok" });
-      setForm({ ...form, bitis: "", kw: "", neden: "", kanit: "" }); void yukle(); }).catch(hata);
+      setForm({ ...form, bitis: "", kw: "", neden: "", kanit: "", bildirim: "", talimatMw: "" }); void yukle(); }).catch(hata);
   };
+  // v2.541 (DK-741): şebeke işletmecisinin «acil durum sona erdi» bildirimi geldi → zamanı şimdi olarak yazar
+  const bildirimGeldi = (ol: Olay) => api.olayGuncelle(plantId, ol.id, { bildirim_zamani: new Date().toISOString() }).then(() => { setMesaj({ metin: `Sona erme bildirimi kaydedildi: ${ol.tur_etiket} (${saatTr(ol.baslangic)}).`, ton: "ok" }); void yukle(); }).catch(hata);
   const bitir = (ol: Olay) => api.olayGuncelle(plantId, ol.id, { bitis: new Date().toISOString() }).then(() => { setMesaj({ metin: `Bitirildi: ${ol.tur_etiket} (${saatTr(ol.baslangic)}).`, ton: "ok" }); void yukle(); }).catch(hata);
   const gecersiz = (ol: Olay) => { if (!window.confirm(`${ol.tur_etiket} (${saatTr(ol.baslangic)}) kaydı geçersiz sayılsın mı?\nKayıt silinmez; hesaplardan çıkar ve dosyada «geçersiz» olarak kalır.`)) return;
     api.olayGuncelle(plantId, ol.id, { durum: "iptal" }).then(() => { setMesaj({ metin: `Geçersiz sayıldı: ${ol.tur_etiket}.`, ton: "ok" }); void yukle(); }).catch(hata); };
@@ -80,6 +85,8 @@ export function Olaylar({ plantId }: { plantId: string }) {
             <label className="girdi-etiket" title="Devre dışı kalan güç, invertör çıkışı (AC) olarak; boş bırakılırsa tesisin tamamı (günün EAK tabanı) sayılır">Devre dışı güç (kW, AC; boşsa tesisin tamamı)<input className="girdi" inputMode="decimal" placeholder="ör. 1.500" value={form.kw} onChange={(e) => setForm({ ...form, kw: e.target.value })} /></label>
             {kural?.eak_dusur && <label className="girdi-etiket">TPYS EAK dosyasında gerekçe<select className="girdi" value={form.gerekce || kural.gerekce || ""} onChange={(e) => setForm({ ...form, gerekce: e.target.value })}>
               {o.gerekceler.map((g) => <option key={g.kod} value={g.kod}>{g.etiket}</option>)}</select></label>}
+            {form.tur === "acil_kesme" && <label className="girdi-etiket" title="Şebeke işletmecisinin «acil durum sona erdi» bildiriminin size ulaştığı an (LÜY m.21(8): sona ermeden itibaren 15 dakika içinde telefon ve kalıcı veri saklayıcısı ile)">Sona erme bildirimi (şebeke işletmecisi, Türkiye saati; sonradan da girilebilir)<input className="girdi" type="datetime-local" value={form.bildirim} min={form.baslangic || undefined} onChange={(e) => setForm({ ...form, bildirim: e.target.value })} /></label>}   {/* v2.541 (DK-741) */}
+            {(form.tur === "talimat_yat" || form.tur === "talimat_yal") && <label className="girdi-etiket" title="Talimatla istenen miktar (MW); yalnız kayıt içindir, uzlaştırma hesabına girmez">Talimat miktarı (MW, isteğe bağlı)<input className="girdi" inputMode="decimal" placeholder="ör. 5" value={form.talimatMw} onChange={(e) => setForm({ ...form, talimatMw: e.target.value })} /></label>}   {/* v2.541 (DK-743) */}
             <label className="girdi-etiket">Açıklama (isteğe bağlı)<input className="girdi" maxLength={500} placeholder="ör. invertör 3 arızası" value={form.neden} onChange={(e) => setForm({ ...form, neden: e.target.value })} /></label>
             <label className="girdi-etiket">Belge / tutanak no (isteğe bağlı)<input className="girdi" maxLength={500} placeholder="ör. servis raporu SR-1182" value={form.kanit} onChange={(e) => setForm({ ...form, kanit: e.target.value })} /></label>
             <div className="form-tam dugme-sira"><button className="dugme" onClick={kaydet}>Kaydet</button>
@@ -102,6 +109,7 @@ export function Olaylar({ plantId }: { plantId: string }) {
             <p style={{ margin: "6px 0 0" }}><b>EAK gerekçesi:</b> {o.aciklama.gerekce}</p>
             <p style={{ margin: "6px 0 0" }}><b>Bitir / geçersiz say:</b> {o.aciklama.islem}</p>
             {o.aciklama.talimat && <p style={{ margin: "6px 0 0" }}><b>Talimat tutarı:</b> {o.aciklama.talimat}</p>}   {/* v2.538 (DK-733/DK-740) */}
+            {o.aciklama.bildirim && <p style={{ margin: "6px 0 0" }}><b>Sona erme bildirimi ve gerekçe süresi:</b> {o.aciklama.bildirim}</p>}   {/* v2.541 (DK-741/DK-743) */}
             {o.dahili_yururluk && <p style={{ margin: "6px 0 0" }}><b>Dâhilî bilgi açıklaması:</b> {o.dahili_yururluk.not}</p>}   {/* v2.538 (DK-613) */}
             {o.yek_g_kayitli && o.yek_g_notu && <p style={{ margin: "6px 0 0" }}><b>YEK-G kaydı:</b> {o.yek_g_notu}</p>}   {/* v2.540 (DK-612) */}
             <p style={{ margin: "6px 0 0" }}>{o.not}</p>
@@ -118,9 +126,12 @@ export function Olaylar({ plantId }: { plantId: string }) {
                 <td style={{ ...sol, whiteSpace: "nowrap" }}>{ol.bitis ? saatTr(ol.bitis) : <span className="soluk">girilmedi</span>}</td>
                 <td className="mono" style={{ whiteSpace: "nowrap" }}>{ol.evre === "planli" && !ol.bitis ? "—" : sureTr(ol.baslangic, ol.bitis)}</td><td className="mono" style={{ whiteSpace: "nowrap" }}>{ol.etkilenen_kw != null ? sayiTr(ol.etkilenen_kw, 0) : "tamamı"}</td>
                 <td style={sol}>{o.gerekceler.find((g) => g.kod === ol.eak_gerekcesi)?.etiket ?? "—"}</td>
-                <td style={{ ...sol, whiteSpace: "normal", minWidth: 160 }}>{ol.neden ?? "—"}{ol.kanit ? <span className="soluk"> · belge: {ol.kanit}</span> : null}</td>
+                <td style={{ ...sol, whiteSpace: "normal", minWidth: 160 }}>{ol.neden ?? ((ol.kanit || ol.tur === "acil_kesme" || ol.tur === "talimat_yat" || ol.tur === "talimat_yal") ? "" : "—")}{ol.kanit ? <span className="soluk">{ol.neden ? " · " : ""}belge: {ol.kanit}</span> : null}
+                  {ol.tur === "acil_kesme" && (ol.bildirim_zamani ? <span className="soluk">{ol.neden || ol.kanit ? " · " : ""}sona erme bildirimi {saatTr(ol.bildirim_zamani)}{ol.bildirim_gecikme_dk != null ? <> (bitişten {sayiTr(ol.bildirim_gecikme_dk)} dk sonra{ol.bildirim_15dk_asildi ? <span style={{ color: "var(--amber-koyu, #8a5a00)" }}>; 15 dk aşıldı</span> : null})</> : null}</span>
+                    : <span className="soluk">{ol.neden || ol.kanit ? " · " : ""}sona erme bildirimi girilmedi</span>)}   {/* v2.541 (DK-741) */}
+                  {(ol.tur === "talimat_yat" || ol.tur === "talimat_yal") && <span className="soluk">{ol.talimat_mw != null ? `${ol.neden || ol.kanit ? " · " : ""}talimat ${sayiTr(ol.talimat_mw, 1)} MW` : ""}{ol.gerekce_son_gunu ? `${ol.neden || ol.kanit || ol.talimat_mw != null ? " · " : ""}uyulamadıysa gerekçe son günü ${ol.gerekce_son_gunu.split("-").reverse().join(".")}` : ""}</span>}   {/* v2.541 (DK-743) */}</td>
                 <td><span className={`rozet rozet-kucuk ${ol.evre === "suruyor" ? "rozet-uyari" : ol.evre === "planli" ? "rozet-ok" : "rozet-notr"}`}>{EVRE[ol.evre]}</span></td>
-                <td style={{ whiteSpace: "nowrap" }}>{ol.evre === "suruyor" && <button className="dugme kucuk" title="Bitiş saati olarak şimdiyi yazar; kayıt hesaplarda kalır" onClick={() => bitir(ol)}>Bitir</button>} <button className="dugme kucuk" title="Yanlış kaydı hesaplardan çıkarır; silinmez" onClick={() => gecersiz(ol)}>Geçersiz say</button></td></tr>))}</tbody>
+                <td style={{ whiteSpace: "nowrap" }}>{ol.evre === "suruyor" && <button className="dugme kucuk" title="Bitiş saati olarak şimdiyi yazar; kayıt hesaplarda kalır" onClick={() => bitir(ol)}>Bitir</button>} {ol.tur === "acil_kesme" && !ol.bildirim_zamani && ol.evre !== "planli" && <button className="dugme kucuk" title="Şebeke işletmecisinin «acil durum sona erdi» bildirimi şimdi geldi (LÜY m.21(8))" onClick={() => bildirimGeldi(ol)}>Bildirim geldi</button>} <button className="dugme kucuk" title="Yanlış kaydı hesaplardan çıkarır; silinmez" onClick={() => gecersiz(ol)}>Geçersiz say</button></td></tr>))}</tbody>
           </table></div>)}
       </Kart>
     </Sayfa>

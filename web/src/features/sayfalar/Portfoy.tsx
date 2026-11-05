@@ -253,6 +253,9 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
                 </select>
               </div>
             )}
+            {dsg.katilimci_gruplari && Object.keys(dsg.katilimci_gruplari).length > 0 && (
+              <p className="form-not" style={{ margin: "0 0 10px", fontSize: 13.5 }}><b>Katılımcı toplamları:</b> {Object.entries(dsg.katilimci_gruplari).map(([k, v]) => `${k}: ${v.join(" + ")}`).join("; ")} — aynı piyasa katılımcısının santralleri tek üye olarak sayıldı; üye eşiği katılımcı toplamında (DUY m.111).</p>
+            )}   {/* v2.541 (DK-252) */}
             {dsg.disi_nedenleri && Object.keys(dsg.disi_nedenleri).length > 0 && (
               <details className="aciklama" style={{ marginBottom: 10 }}>
                 <summary>Hesap dışı santraller ({sayiTr(Object.keys(dsg.disi_nedenleri).length)})</summary>
@@ -314,7 +317,7 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
               </div>
               {kupst.uevcbler.map((u) => (
                 <details key={u.kod} className="aciklama genis" style={{ marginBottom: 10 }}>
-                  <summary>{u.kod_tanimsiz ? "UEVÇB kodu girilmedi (tek birim varsayıldı)" : `UEVÇB ${u.kod}`} — {u.santraller.length} santral · {u.kupst_tl != null ? `${sayiTr(u.kupst_tl / 1000, 1)} bin TL` : "hesaplanamadı"} — santrallere dağılım {kupst.dagitim_etiket}</summary>
+                  <summary>{u.kod_tanimsiz ? "UEVÇB kodu girilmedi (tek birim varsayıldı)" : u.kod_kaynagi === "gts_adi" ? `${u.kod} (UEVÇB kodu girilmedi; ada göre gruplandı)` : `UEVÇB ${u.kod}`} — {u.santraller.length} santral · {u.kupst_tl != null ? `${sayiTr(u.kupst_tl / 1000, 1)} bin TL` : "hesaplanamadı"} — santrallere dağılım {kupst.dagitim_etiket}</summary>
                   <div style={{ display: "flex", margin: "8px 0", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                     <label className="soluk" htmlFor={`kupst-anahtar-${u.kod}`}>Dağıtım anahtarı<Bilgi metin="Birimin KÜPST'si santrallere bu anahtarla paylaştırılır. Mevzuatta bir anahtar tanımlı değildir; paylaşım sözleşmeye bağlıdır ve seçilen anahtar bir hak doğurmaz. Sapma payına göre: |üretim − program| oranı. Üretim payına göre: gerçekleşen üretim oranı. Kurulu güç payına göre: kurulu güç oranı. Eşit: her santrale aynı pay." /></label>
                     <select id={`kupst-anahtar-${u.kod}`} className="girdi" value={kAnahtar} onChange={(e) => setKAnahtar(e.target.value as PortfoyAnahtar)} aria-label="KÜPST santrallere dağılım anahtarı">

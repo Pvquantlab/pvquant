@@ -1211,6 +1211,9 @@ class SegmentIstek(BaseModel):
     dsg_kodu: str | None = None             # v2.539 (DK-258): DSG adı/kodu (beyan); aynı kod = aynı grup; "" temizler
     toplayici_portfoyu: bool | None = None  # v2.539 (DK-261): toplayıcı portföyünde → DSG dışı (DUY m.20(4))
     yek_g_kayitli: bool | None = None       # v2.540 (DK-612): YEK-G sisteminde kayıtlı (beyan) → Karar 14967 Ek sıra 17 eşiksiz arıza hatırlatması
+    piyasa_katilimcisi: str | None = None   # v2.541 (DK-252): aynı kodlu santraller DSG hesabında tek üye; "" temizler
+    lisans_yillik_uretim_mwh: float | None = None   # v2.541 (DK-804): lisansa dercedilen yıllık üretim miktarı (LDYEÜM, MWh); 0/None temizler
+    gts_toplayici_adi: str | None = None    # v2.541 (DK-267): GTŞ/toplayıcı adı; UEVÇB kodu yoksa portföy KÜPST gruplaması bu ada göre; "" temizler
 
 
 @app.put("/v1/plants/{plant_id}/segment")
@@ -1231,10 +1234,18 @@ def segment_ayarla(plant_id: str, p: SegmentIstek, claims=Depends(yazma_yetkisi(
         anahtarlar["toplayici_portfoyu"] = bool(p.toplayici_portfoyu)
     if p.yek_g_kayitli is not None:
         anahtarlar["yek_g_kayitli"] = bool(p.yek_g_kayitli)
+    if p.piyasa_katilimcisi is not None:
+        anahtarlar["piyasa_katilimcisi"] = p.piyasa_katilimcisi.strip()[:32] or None
+    if p.lisans_yillik_uretim_mwh is not None:
+        if p.lisans_yillik_uretim_mwh < 0:
+            raise HTTPException(422, "lisans_yillik_uretim_mwh 0 ya da pozitif olmalı")
+        anahtarlar["lisans_yillik_uretim_mwh"] = float(p.lisans_yillik_uretim_mwh) or None
+    if p.gts_toplayici_adi is not None:
+        anahtarlar["gts_toplayici_adi"] = p.gts_toplayici_adi.strip()[:64] or None
     pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **anahtarlar)
     _denetim.kaydet("musteri", "santral_segment", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=plant_id,   # v2.516 (#7)
                     ayrinti=dict(anahtarlar))
-    return {"params_json": {k: v for k, v in pj.items() if k in ("segment", "uevcb", "dsg_kodu", "toplayici_portfoyu", "yek_g_kayitli")}, **dengesizlik_service.segment_bilgisi(pj)}
+    return {"params_json": {k: v for k, v in pj.items() if k in ("segment", "uevcb", "dsg_kodu", "toplayici_portfoyu", "yek_g_kayitli", "piyasa_katilimcisi", "lisans_yillik_uretim_mwh", "gts_toplayici_adi")}, **dengesizlik_service.segment_bilgisi(pj)}
 
 
 class KunyeTarihIstek(BaseModel):
@@ -1246,6 +1257,7 @@ class KunyeTarihIstek(BaseModel):
     police_bitis: str | None = None
     ced_karar_tarihi: str | None = None
     baglanti_anlasmasi: str | None = None
+    cagri_mektubu_tarihi: str | None = None   # v2.541 (EK-2 DK-659): çağrı mektubuna hak kazanma tarihi (lisanssız rejim ölçütü)
     toplayici_giris: str | None = None
     toplayici_cikis: str | None = None
     yekdem_baslangic_yili: int | None = None
@@ -1511,6 +1523,8 @@ class OlayIstek(BaseModel):
     neden: str | None = None
     eak_gerekcesi: str | None = None
     kanit: str | None = None
+    bildirim_zamani: str | None = None  # v2.541 (DK-741): acil kesmede şebeke işletmecisinin sona erme bildirimi (LÜY m.21(8))
+    talimat_mw: float | None = None     # v2.541 (DK-743): YAL/YAT talimat miktarı (MW), kayıt
 
 
 class OlayGuncelle(BaseModel):
@@ -1520,6 +1534,8 @@ class OlayGuncelle(BaseModel):
     eak_gerekcesi: str | None = None
     kanit: str | None = None
     durum: str | None = None            # iptal için
+    bildirim_zamani: str | None = None  # v2.541
+    talimat_mw: float | None = None     # v2.541
 
 
 @app.get("/v1/plants/{plant_id}/olaylar")

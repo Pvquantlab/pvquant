@@ -32,8 +32,9 @@ def test_subat_2027_donemi_ramazan_bayrami_isaretlenir():
 
 
 def test_artik_yil_ve_ay_sonu():
-    assert tk.is_gunu_ekle(date(2028, 2, 25), 3) == date(2028, 3, 1)          # 28, 29 (artık gün), 1 Mart
-    assert tk.is_gununa_kaydir(date(2028, 2, 27)) == date(2028, 2, 28)
+    assert tk.is_gunu_ekle(date(2028, 2, 25), 3) == date(2028, 3, 2)          # v2.541: 28 Şubat 2028 Ramazan Bayramı 3. gün (Diyanet) → 29 (artık gün), 1, 2 Mart
+    assert tk.is_gunu_ekle(date(2028, 3, 1), 2) == date(2028, 3, 3)           # artık yıl sayımı: 2, 3 Mart
+    assert tk.is_gununa_kaydir(date(2028, 2, 27)) == date(2028, 2, 29)       # v2.541: 28 Şubat bayram → 29 Şubat (artık gün) iş günü
     assert tk.ay_ekle(date(2026, 8, 31), 6) == date(2027, 2, 28) and tk.yil_ekle(date(2028, 2, 29), 1) == date(2029, 2, 28)
     o = tk.donem_takvimi(2028, 1); assert _k(o, "itiraz_son")["hafta_sonu"] and _k(o, "nihai_bildirim")["tarih"] == "2028-02-15"
 
@@ -95,4 +96,6 @@ def test_servis_tatil_eksik_yil_uyarisi():
     o = ts.ozet({"id": "p", "params_json": {"segment": "lisansli_serbest"}}, gun=90, bugun=date(2026, 11, 4))
     assert o["tatil_eksik_yillar"] == []                                   # 2026–2027 tanımlı
     o2 = ts.ozet({"id": "p", "params_json": {"segment": "lisansli_serbest"}}, gun=90, bugun=date(2027, 6, 1))
-    assert o2["tatil_eksik_yillar"] == [2028]                              # 12 aylık uyum penceresi 2028'e taşar
+    assert o2["tatil_eksik_yillar"] == []                                  # v2.541: 2028 Diyanet listesiyle tanımlı
+    o3 = ts.ozet({"id": "p", "params_json": {"segment": "lisansli_serbest"}}, gun=90, bugun=date(2028, 6, 1))
+    assert o3["tatil_eksik_yillar"] == [2029]                              # 12 aylık uyum penceresi 2029'a taşar
