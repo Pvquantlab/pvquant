@@ -451,7 +451,7 @@ def gelis(tenant_id, plant: dict, pj: dict, simdi: datetime | None = None) -> di
                     "son_beklenen_dilim": f"{(son_beklenen - timedelta(hours=1)).astimezone(IST):%H:%M}–{son_beklenen.astimezone(IST):%H:%M}"}
     elif tur == "diger":
         beklenen = {"kural": "ayın uzlaştırma takvimindeki son güne kadar (Ölçüm Sist. Yön. m.8(3)); dönem sonunu izleyen ilk 10 gün (DUY m.81(1))", "dayanak": "Ölçüm Sist. Yön. m.8(3); DUY m.81(1)", "kesinlik": "belirsiz",
-                    "not": "m.8(3) «takvimin son günü» ile m.81(1) «ilk 10 gün» eşitlemesi yorumdur (v2.537 DK-392).", "son_beklenen_saat": None, "son_beklenen_dilim": None}
+                    "not": "m.8(3) «takvimin son günü» ile m.81(1) «ilk 10 gün» eşitlemesi yorumdur.", "son_beklenen_saat": None, "son_beklenen_dilim": None}
     else:
         beklenen = {"kural": "sayaç türü seçilmedi", "dayanak": None, "kesinlik": None, "not": "Sayaç türünü seçin: 15 dakikalık endeks alınabilen sayaçta saat bazlı, diğerlerinde aylık beklenti uygulanır.", "son_beklenen_saat": None, "son_beklenen_dilim": None}
     # dönem düzeltme geri sayımı: son biten ay; 12. gün 17:30 geçtiyse bir sonraki dönem de gösterilir

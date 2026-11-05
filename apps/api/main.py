@@ -697,7 +697,7 @@ def portfoy_tahmin(gun: int = 7, claims=Depends(gecerli_kullanici)):
 
 
 @app.get("/v1/portfoy/dsg")
-def portfoy_dsg(gun: int = 30, anahtar: str = "sapma", claims=Depends(gecerli_kullanici)):
+def portfoy_dsg(gun: int = 30, anahtar: str = "sapma", grup: str | None = None, claims=Depends(gecerli_kullanici)):
     """v2.276 — DSG/toplayıcı portföy netleştirmesi: santral başına ayrı dengesizlik ↔ portföyün netleşmiş dengesizliği.
     29.10: `anahtar` — grubun EDT'sinin üyelere dağıtımı (sapma | esit | uretim; sözleşmesel)."""
     from pvquant.ext.turkiye import dengesizlik as _d
@@ -706,11 +706,11 @@ def portfoy_dsg(gun: int = 30, anahtar: str = "sapma", claims=Depends(gecerli_ku
         raise HTTPException(422, "gun 14-365")
     if anahtar not in _d.DAGITIM_ANAHTARLARI:
         raise HTTPException(422, "anahtar " + "|".join(_d.DAGITIM_ANAHTARLARI))
-    return dengesizlik_service.dsg_ozet(claims["tenant_id"], gun=gun, dagitim_anahtari=anahtar)
+    return dengesizlik_service.dsg_ozet(claims["tenant_id"], gun=gun, dagitim_anahtari=anahtar, **({"grup": grup[:32]} if grup else {}))   # v2.539: DSG grubu seçimi
 
 
 @app.get("/v1/portfoy/dsg.csv")
-def portfoy_dsg_csv(gun: int = 30, anahtar: str = "sapma", claims=Depends(gecerli_kullanici)):
+def portfoy_dsg_csv(gun: int = 30, anahtar: str = "sapma", grup: str | None = None, claims=Depends(gecerli_kullanici)):
     """v2.522 (P2b, IH-036) — DSG üye dağılımı belgesi: üye başına EDT tek başına / bireysel / DSG içinde, netleşme farkı, KÜPST, pay (CSV)."""
     from fastapi.responses import Response
     from pvquant.ext.turkiye import dengesizlik as _d
@@ -719,7 +719,7 @@ def portfoy_dsg_csv(gun: int = 30, anahtar: str = "sapma", claims=Depends(gecerl
         raise HTTPException(422, "gun 14-365")
     if anahtar not in _d.DAGITIM_ANAHTARLARI:
         raise HTTPException(422, "anahtar " + "|".join(_d.DAGITIM_ANAHTARLARI))
-    o = dengesizlik_service.dsg_ozet(claims["tenant_id"], gun=gun, dagitim_anahtari=anahtar)
+    o = dengesizlik_service.dsg_ozet(claims["tenant_id"], gun=gun, dagitim_anahtari=anahtar, **({"grup": grup[:32]} if grup else {}))   # v2.539
     _denetim.kaydet("musteri", "dsg_belge_indir", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="tenant", nesne_id=claims["tenant_id"],
                     ayrinti={"gun": gun, "anahtar": anahtar, "uye": len(o.get("uyeler") or {})})
     return Response(dengesizlik_service.dsg_uye_csv(o), media_type="text/csv; charset=utf-8",
@@ -1208,6 +1208,8 @@ class SegmentIstek(BaseModel):
 
     segment: str
     uevcb: str | None = None
+    dsg_kodu: str | None = None             # v2.539 (DK-258): DSG adı/kodu (beyan); aynı kod = aynı grup; "" temizler
+    toplayici_portfoyu: bool | None = None  # v2.539 (DK-261): toplayıcı portföyünde → DSG dışı (DUY m.20(4))
 
 
 @app.put("/v1/plants/{plant_id}/segment")
@@ -1222,10 +1224,14 @@ def segment_ayarla(plant_id: str, p: SegmentIstek, claims=Depends(yazma_yetkisi(
     anahtarlar = {"segment": seg.value}
     if p.uevcb:
         anahtarlar["uevcb"] = p.uevcb.strip()[:32]
+    if p.dsg_kodu is not None:   # v2.539: boş dize temizler
+        anahtarlar["dsg_kodu"] = p.dsg_kodu.strip()[:32] or None
+    if p.toplayici_portfoyu is not None:
+        anahtarlar["toplayici_portfoyu"] = bool(p.toplayici_portfoyu)
     pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **anahtarlar)
     _denetim.kaydet("musteri", "santral_segment", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=plant_id,   # v2.516 (#7)
                     ayrinti=dict(anahtarlar))
-    return {"params_json": {k: v for k, v in pj.items() if k in ("segment", "uevcb")}, **dengesizlik_service.segment_bilgisi(pj)}
+    return {"params_json": {k: v for k, v in pj.items() if k in ("segment", "uevcb", "dsg_kodu", "toplayici_portfoyu")}, **dengesizlik_service.segment_bilgisi(pj)}
 
 
 class KunyeTarihIstek(BaseModel):
@@ -1488,6 +1494,7 @@ def dengesizlik_saatlik(plant_id: str, gun: int = 90, fmt: str = "json", n: int 
     son = df.tail(max(1, min(int(n), 2000)))
     return {"satir": int(len(df)), "kolonlar": list(df.columns), "not": dengesizlik_service.dokum_notu(df),   # v2.520: YEKDEM'de 25 sütun
             "program": ozet.get("program"), "toplam": ozet.get("toplam"), "uretim_kaynak": ozet.get("uretim_kaynak"),   # v2.526 (P4a-2)
+            "talimat_saat": ozet.get("talimat_saat", 0), "talimat_notu": ozet.get("talimat_notu"),   # v2.539 (DK-056)
             "satirlar": [{k: (None if (isinstance(v, float) and v != v) else (float(v) if hasattr(v, "item") and not isinstance(v, str) else v)) for k, v in r.items()}
                          for r in son.to_dict(orient="records")]}
 

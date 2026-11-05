@@ -48,13 +48,14 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
   }, [istekler]);
   // 29.10: üyelere dağıtım anahtarı (sözleşmesel) — seçim değişince DSG yeniden çekilir; varsayılan yol bellek anahtarıyla aynı
   const [anahtar, setAnahtar] = useState<DsgAnahtar>("sapma");
+  const [grup, setGrup] = useState<string | null>(null);   // v2.539 (DK-258): gösterilen DSG grubu (beyan edilmiş kodlar)
   const ilkAnahtar = useRef(true);
   useEffect(() => {
     if (ilkAnahtar.current) { ilkAnahtar.current = false; return; }   // ilk yükleme istekler.dsg ile geldi; «sapma»ya geri dönüş de yeniden çeker
     let acik = true; setDsgD("bekliyor");
-    hatirlayarak(dsgYolu(30, anahtar), () => api.portfoyDsg(30, anahtar)).then((v) => { if (acik) { setDsg(v); setDsgD("tamam"); } }, () => { if (acik) { setDsgD("hata"); } });
+    hatirlayarak(dsgYolu(30, anahtar, grup), () => api.portfoyDsg(30, anahtar, grup)).then((v) => { if (acik) { setDsg(v); setDsgD("tamam"); } }, () => { if (acik) { setDsgD("hata"); } });
     return () => { acik = false; };
-  }, [anahtar]);
+  }, [anahtar, grup]);
   // v2.511 (04 #14): toplayıcı/GTŞ portföyü KÜPST — UEVÇB bazında; anahtar değişince yeniden çekilir
   const [kupst, setKupst] = useState<PortfoyKupst | null | undefined>(() => bellektenOku<PortfoyKupst>(kupstYolu(30)));
   const [kupstD, setKupstD] = useState<"bekliyor" | "tamam" | "hata">("bekliyor");
@@ -222,7 +223,7 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
           Eski sunucu (gosterge !== false) hâlâ «gösterge» rozeti alır. */}
       <Kart baslik={dsg?.gosterge === false ? "Dengeden Sorumlu Grup (DSG) hesabı — santrallerinizin enerji dengesizlik tutarı: tek başına ve DSG içinde netleştirilmiş" : "Dengeden Sorumlu Grup (DSG) göstergesi — yalnız enerji dengesizlik tutarı, eşik uygulanmadan"}
         sag={<>{dsg?.gosterge !== false && <span className="rozet rozet-notr rozet-kucuk" title="Yürürlükteki %5 üye eşiği (Karar 13869) ve KÜPST'ün netleşmemesi bu görünümde uygulanmaz; varsayımsal yeniden hesap">gösterge</span>}
-          {dsg?.gosterge === false && dsg.uyeler && <button className="dugme kucuk" title="Üye başına EDT (tek başına, bireysel, DSG içinde), netleşme farkı, KÜPST ve pay; seçili dağıtım anahtarıyla (CSV)" onClick={() => api.portfoyDsgIndir(30, anahtar).catch(() => undefined)}>Üye dağılımı (CSV)</button>}
+          {dsg?.gosterge === false && dsg.uyeler && <button className="dugme kucuk" title="Üye başına EDT (tek başına, bireysel, DSG içinde), netleşme farkı, KÜPST ve pay; seçili dağıtım anahtarıyla (CSV)" onClick={() => api.portfoyDsgIndir(30, anahtar, dsg.grup).catch(() => undefined)}>Üye dağılımı (CSV)</button>}
           {dsg?.gosterge === false && dsg.esik != null && <span className="cip" title={`Her santralin sapmasının bu oran ile PH çarpımı kadarı DSG içinde netleşir; aşan kısım santralin kendisinde kalır. ${dsg.esik_kaynak ?? ""}${dsg.gecici_m39 ? ` ${dsg.gecici_m39}.` : ""}`}>üye eşiği %{sayiTr(dsg.esik * 100, 0)}{dsg.gecici_m39 ? " · dağıtım/GTŞ DSG'sinde %100" : ""}</span>}
           <span className="cip" title={dsg && dsg.fiyat.senaryo_saat > 0 ? "Senaryo fiyatı: EPİAŞ piyasa fiyatı bağlı olmadığından EPDK yıllık ortalaması kullanılmış, sistem yönü dengede varsayılmıştır." : "Saatlik PTF, SMF ve sistem yönü EPİAŞ verisinden alınır."}>{dsg ? <Meta items={[`son ${sayiTr(dsg.pencere_gun)} gün`, dsg.fiyat.senaryo_saat > 0 ? "senaryo fiyatı" : "piyasa fiyatı (EPİAŞ)", dsgD === "bekliyor" && "güncelleniyor", dsgD === "hata" && "güncellenemedi"]} /> : "—"}</span></>}>
         {dsg === undefined && dsgD === "bekliyor" ? <YerTutucu yukseklik={124} />
@@ -242,6 +243,22 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
                 <Kpi etiket="Enerji dengesizlik tutarı · DSG içinde" bilgi="DSG içinde netleşen kısmın tutarı ile eşiği aşıp santralin kendisinde kalan kısmın tutarının toplamı; grubun net ödeyeceği ya da alacağı tutardır." deger={sayiTr((dsg.edt_dsg_tl ?? 0) / 1000, 1)} birim="bin TL" alt={`DSG içinde netleşen ${sayiTr((dsg.edt_grup_tl ?? 0) / 1000, 1)} + santralde kalan ${sayiTr((dsg.edt_bireysel_tl ?? 0) / 1000, 1)} bin TL`} />
                 <Kpi etiket="KGÜP sapma tutarı · KÜPST" bilgi="Kesinleşmiş gün öncesi üretim programından tolerans üstü sapmanın tutarı, KÜPST. Her santral kendi uzlaştırmaya esas veriş çekiş birimi için öder; DSG içinde netleşmez ve enerji dengesizlik tutarından ayrı bir kalemdir." deger={dsg.kupst_uye_tl != null ? sayiTr(dsg.kupst_uye_tl / 1000, 1) : "—"} birim={dsg.kupst_uye_tl != null ? "bin TL" : undefined} alt={dsg.kupst_uye_tl != null ? "üyelerin toplamı · santral başına ödenir · DSG içinde netleşmez" : "üyelerin toplamı · segment seçilmedi; hesaplanamadı"} />
               </div>
+            )}
+            {/* v2.539 (EK-3 DK-258/261): birden çok DSG grubu beyan edildiyse seçici; hesap dışı santraller nedeniyle */}
+            {dsg.gruplar && dsg.gruplar.length > 1 && (
+              <div style={{ display: "flex", margin: "0 0 10px", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <label className="soluk" htmlFor="dsg-grup">DSG grubu<Bilgi metin="Santral ayarlarında girilen DSG koduna göre gruplar. Her grup kendi içinde netleşir; kod girilmemiş santral, başka santrallerde kod varken hesap dışı kalır." /></label>
+                <select id="dsg-grup" className="girdi" value={dsg.grup ?? ""} onChange={(e) => setGrup(e.target.value || null)} aria-label="DSG grubu">
+                  {dsg.gruplar.map((g) => <option key={g.kod ?? ""} value={g.kod ?? ""}>{g.kod ?? "tek grup"} · {sayiTr(g.santral)} santral{g.kazanc_tl != null ? ` · fark ${sayiTr(g.kazanc_tl / 1000, 1)} bin TL` : g.not ? ` · ${g.not}` : ""}</option>)}
+                </select>
+              </div>
+            )}
+            {dsg.disi_nedenleri && Object.keys(dsg.disi_nedenleri).length > 0 && (
+              <details className="aciklama" style={{ marginBottom: 10 }}>
+                <summary>Hesap dışı santraller ({sayiTr(Object.keys(dsg.disi_nedenleri).length)})</summary>
+                <ul className="not-listesi" style={{ fontSize: 13.5, marginTop: 6 }}>{Object.entries(dsg.disi_nedenleri).map(([ad, n]) => <li key={ad}><b>{ad}:</b> {n}</li>)}</ul>
+                {dsg.katilimci_notu && <p className="soluk" style={{ margin: "6px 0 0", fontSize: 13 }}>{dsg.katilimci_notu}</p>}
+              </details>
             )}
             {dsg.gosterge === false && dsg.uyeler && Object.keys(dsg.uyeler).length > 1 && (
               <details className="aciklama genis" style={{ marginBottom: 10 }}>

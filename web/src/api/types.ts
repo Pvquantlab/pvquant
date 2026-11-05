@@ -193,6 +193,9 @@ export interface PortfoyDsg {
   dagitim_anahtari?: DsgAnahtar; dagitim_etiket?: string;
   santral_tl?: Record<string, number>; uretim_mwh?: number; sapma_net_mwh?: number; sapma_ayri_mwh?: number;
   pencere_gun: number; fiyat: { epias_saat: number; senaryo_saat: number }; not: string;
+  /** v2.539 (EK-3 DK-258/261): DSG grupları santral kaydındaki koda göre; grup = gösterilen grup, varsayım = kod girilmemiş tek grup; dışarıda kalanlar nedeniyle */
+  grup?: string | null; grup_kaynagi?: "beyan" | "varsayim"; disi_nedenleri?: Record<string, string>; katilimci_notu?: string;
+  gruplar?: { kod: string | null; santral: number; uyeler: string[]; n_saat: number | null; ayri_tl: number | null; net_tl: number | null; kazanc_tl: number | null; not?: string | null; secili: boolean }[];
 }
 /** /kgup?fmt=json — v2.260 önizleme; /segment — v2.260. */
 export interface KgupOnizleme {
@@ -261,6 +264,7 @@ export interface DengesizlikKural {
 export interface PozisyonAyari { kaynak: "program" | "uretim" | "sabit"; sabit_mwh: number | null; etiket: string }
 /** v2.517 (P2a): saatlik uzlaştırma dökümü (JSON önizleme; CSV/XLSX ayrı indirilir) */
 export interface DengesizlikSaatlik { satir: number; kolonlar: string[]; not: string; program?: Dengesizlik["program"]; toplam: Dengesizlik["toplam"];
+  /** v2.539 (EK-3 DK-056): Olay kaydındaki talimat/acil kesme saatleri (yat | yal | acil) işaretli; hesap değişmez */ talimat_saat?: number; talimat_notu?: string | null;
   satirlar: Record<string, string | number | null>[] }
 export interface Dengesizlik { luy_istisna?: boolean;   // v2.510 (Ç3): santral ayarı, Santralim onay kutusunu doldurur
   gun_sayisi: number; pencere_gun: number; not: string;
@@ -285,7 +289,8 @@ export interface Dengesizlik { luy_istisna?: boolean;   // v2.510 (Ç3): santral
     kupst_gecersiz_kilma?: boolean; kupst_kaynak?: string };
   fiyat: { epias_saat: number; senaryo_saat: number; yon_varsayilan_saat?: number; yon_eksik_saat?: number };
   hesaplanamayan_saat?: number; kural_surumu?: string | null; kural?: DengesizlikKural;
-  segment: { segment: string | null; kgup_yukumlu: boolean | null; dengesizlik_sahibi: string | null; santral_tasir: boolean | null; uevcb?: string | null };
+  segment: { segment: string | null; kgup_yukumlu: boolean | null; dengesizlik_sahibi: string | null; santral_tasir: boolean | null; uevcb?: string | null;
+    /** v2.539 (EK-3 DK-258/261): DSG adı/kodu (beyan) ve toplayıcı portföyü işareti */ dsg_kodu?: string | null; toplayici_portfoyu?: boolean };
 }
 /** /dengesizlik/geri-test — v2.503 (F-07): 12 aylık uzlaştırma kalemleri geri testi; karşı-olgu sütunları; varsayımsal yeniden hesap. */
 export interface DengesizlikGeriTest {

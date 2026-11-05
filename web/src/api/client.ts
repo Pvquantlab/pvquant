@@ -92,8 +92,8 @@ export function bellekEskit(): void {
 }
 
 /** 29.10: Portföy DSG yolu — varsayılan anahtar yolda yazılmaz (bellek anahtarı eski yolla aynı kalsın) */
-export function dsgYolu(gun = 30, anahtar: DsgAnahtar = "sapma"): string {
-  return `/v1/portfoy/dsg?gun=${gun}${anahtar === "sapma" ? "" : `&anahtar=${anahtar}`}`;
+export function dsgYolu(gun = 30, anahtar: DsgAnahtar = "sapma", grup?: string | null): string {   // v2.539: DSG grubu seçimi
+  return `/v1/portfoy/dsg?gun=${gun}${anahtar === "sapma" ? "" : `&anahtar=${anahtar}`}${grup ? `&grup=${encodeURIComponent(grup)}` : ""}`;
 }
 export function kupstYolu(gun = 30, anahtar: PortfoyAnahtar = "sapma"): string {   // v2.511 (04 #14)
   return `/v1/portfoy/kupst?gun=${gun}${anahtar !== "sapma" ? `&anahtar=${anahtar}` : ""}`;
@@ -544,9 +544,9 @@ export const api = {
     if (TABAN == null) return null;
     return getir<PortfoyTahmin>(`/v1/portfoy/tahmin?gun=${gun}`);
   },
-  portfoyDsg: async (gun = 30, anahtar: DsgAnahtar = "sapma"): Promise<PortfoyDsg | null> => {   // 29.10: üyelere dağıtım anahtarı
+  portfoyDsg: async (gun = 30, anahtar: DsgAnahtar = "sapma", grup?: string | null): Promise<PortfoyDsg | null> => {   // 29.10: üyelere dağıtım anahtarı; v2.539: grup
     if (TABAN == null) return null;
-    return getir<PortfoyDsg>(dsgYolu(gun, anahtar));
+    return getir<PortfoyDsg>(dsgYolu(gun, anahtar, grup));
   },  portfoyKupst: async (gun = 30, anahtar: PortfoyAnahtar = "sapma"): Promise<PortfoyKupst | null> => {   // v2.511 (04 #14)
     if (TABAN == null) return null;
     return getir<PortfoyKupst>(kupstYolu(gun, anahtar));
@@ -840,10 +840,10 @@ export const api = {
   raporGonderimAyarla: (p: string, g: { aktif?: boolean; gun?: number; alicilar?: string[] }): Promise<RaporGonderim> => gonder(`/v1/plants/${p}/rapor-gonderim`, "PUT", g),
   raporGonderimDene: (p: string, donem?: string | null): Promise<RaporGonderimSonuc> => gonder(`/v1/plants/${p}/rapor-gonderim/dene${donem ? `?donem=${donem}` : ""}`, "POST"),
   /** v2.522 (P2b, IH-036): DSG üye dağılımı belgesi (CSV) */
-  portfoyDsgIndir: async (gun = 30, anahtar: DsgAnahtar = "sapma"): Promise<void> => {
+  portfoyDsgIndir: async (gun = 30, anahtar: DsgAnahtar = "sapma", grup?: string | null): Promise<void> => {   // v2.539: grup
     if (TABAN == null) throw new Error("Örnek kipte indirme yok.");
     const jeton = localStorage.getItem("pvq_token");
-    const y = await fetch(`${TABAN}/v1/portfoy/dsg.csv?gun=${gun}&anahtar=${anahtar}`, { headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
+    const y = await fetch(`${TABAN}/v1/portfoy/dsg.csv?gun=${gun}&anahtar=${anahtar}${grup ? `&grup=${encodeURIComponent(grup)}` : ""}`, { headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
     if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
     const b = await y.blob(); const u = URL.createObjectURL(b); const a = document.createElement("a"); a.href = u; a.download = `pvquant_dsg_uye_dagilimi_${gun}g_${anahtar}.csv`; a.click(); URL.revokeObjectURL(u);
   },
@@ -964,9 +964,9 @@ export const api = {
     pozisyon_kaynagi?: "program" | "uretim" | "sabit" | null; pozisyon_sabit_mwh?: number | null; teminat_risk_katsayisi?: number | null; kullanilabilirlik_sozlesme?: number | null; butce_kwh_yil?: number | null }):
     Promise<{ eak_bugun: { eak_mw: number; kaynak: string; bitis?: string }; eak_kw: number | null; eak_gecici: { kw: number; bitis: string } | null; kupst_n: number | null; kupst_tolerans: number | null; dengeleme_birimi?: boolean; ariza_sayisi_ay?: number; luy_istisna?: boolean }> =>
     gonder(`/v1/plants/${p}/eak`, "PUT", g),
-  segmentAyarla: async (p: string, segment: string, uevcb?: string): Promise<{ segment: string | null; dengesizlik_sahibi: string | null; kgup_yukumlu: boolean | null }> => {
+  segmentAyarla: async (p: string, segment: string, uevcb?: string, ek?: { dsg_kodu?: string; toplayici_portfoyu?: boolean }): Promise<{ segment: string | null; dengesizlik_sahibi: string | null; kgup_yukumlu: boolean | null; dsg_kodu?: string | null; toplayici_portfoyu?: boolean }> => {   // v2.539: DSG kodu / toplayıcı portföyü
     const jeton = localStorage.getItem("pvq_token");
-    const y = await fetch(`${TABAN}/v1/plants/${p}/segment`, { method: "PUT", headers: { "Content-Type": "application/json", ...(jeton ? { Authorization: `Bearer ${jeton}` } : {}) }, body: JSON.stringify({ segment, uevcb }) });
+    const y = await fetch(`${TABAN}/v1/plants/${p}/segment`, { method: "PUT", headers: { "Content-Type": "application/json", ...(jeton ? { Authorization: `Bearer ${jeton}` } : {}) }, body: JSON.stringify({ segment, uevcb, ...(ek ?? {}) }) });
     if (!y.ok) throw new Error(`${y.status} segment`);
     return y.json();
   },

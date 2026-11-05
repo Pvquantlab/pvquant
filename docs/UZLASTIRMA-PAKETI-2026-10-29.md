@@ -933,3 +933,15 @@ Sonraya: EK-3 değer satırları; lock dosyası kararı; Mutabakat'ta kupst_kayn
 **Kanıt.** pytest tam takım; `tests/test_ek3_v2538.py` 11 test; web tsc/npm test 103/oxlint 16/build; sahte API kareleri (4 sayfa, taşma yok). Göç yok. Formül değişikliği yok.
 
 **Mühür.** 79d9108 (05.11 02:4x TSİ), CI #688 yeşil; ssh dağıtım api+worker+web 02:56–02:58 TSİ (worker penceresi dışında); canlı 25/25 birebir; göç yok. Raporlar: 02 M52, 00 otuz sekizinci paket, 04 E satırı; kanıt `kanit/ek3-*-2026-11-05.jpg`.
+
+# Otuz dokuzuncu paket — v2.539 (05.11.2026) — EK-3 kanıtlı satırlar II: DSG gruplaması, toplayıcı dışlama, talimat saatleri
+
+**Kapsam.** DK-258 (DSG gruplaması santral kaydındaki `dsg_kodu`na göre; kodsuz = tek grup varsayımı etiketli), DK-261 (`toplayici_portfoyu` → DSG dışı, DUY m.20(4)), DK-653/785 devamı (iletime bağlı lisanssız portföy dışı), DK-252 (katılımcı düzeyi eşik — not), DK-056 (YAL/YAT/acil kesme saatleri dökümde `talimat` sütunu; hesap değişmez).
+
+**Yüzeyler.** Portföy › DSG kartı: grup seçici (birden çok beyan varsa), «Hesap dışı santraller (n)» nedenli liste, varsayım notu; Santralim › Santral ayarları: DSG kartı; Doğruluk › Saatlik döküm: talimat rozeti ve sayım; CSV/XLSX `talimat` sütunu. API: PUT /segment `dsg_kodu`, `toplayici_portfoyu`; GET /portfoy/dsg[.csv] `grup`.
+
+**Yapılmayan.** Katılımcı düzeyinde PH/eşik toplama (DK-252: katılımcı alanı yok; not); talimat miktarının veri olarak alınması (BUDÜP düzeltmesi, DK-056'nın ikinci yarısı); DK-612/629/333/1019 (birincil metin), DK-741/743 (göç).
+
+**İnceleme (05.11).** Katılımcı notundaki araştırma numarası kaldırıldı; varsayım cümlesi sadeleşti.
+
+**Kanıt.** tests/test_ek3_v2539.py 4; tam takım; web kapıları; kareler.

@@ -37,13 +37,14 @@ function SaatlikDokum({ plantId, gun }: { plantId: string; gun: number }) {
   // v2.520 (P5a): lisanslı YEKDEM'de uç dört sütun daha döner — YEK fiyatı, m.23(6) işareti, YEKDEM dışı MWh ve fark tutarı
   const yekdemli = !!sd && sd.kolonlar.includes("m23_6");
   const M23: Record<string, string> = { evet: "YEKDEM dışı", hayir: "—", ptf_yek_ustu: "PTF ≥ YEK fiyatı", fiyat_yok: "fiyat yok", kapsam_disi: "kapsam dışı" };
+  const TALIMAT: Record<string, string> = { yat: "YAT talimatı", yal: "YAL talimatı", acil: "acil kesme" };   // v2.539 (DK-056): Olay kaydından işaret
   return (
     <details className="aciklama genis" style={{ marginTop: 10 }} onToggle={(e) => { if ((e.currentTarget as HTMLDetailsElement).open && sd === undefined) api.dengesizlikSaatlik(plantId, gun).then((v) => setSd(v), () => setSd(null)); }}>
       <summary>Saatlik döküm — program, gerçekleşen, fiyat, yön, EDT ve KÜPST saat saat; CSV / XLSX</summary>
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", margin: "8px 0" }}>
         <button className="dugme kucuk" onClick={() => indir("csv")}>CSV indir</button>
         <button className="dugme kucuk" onClick={() => indir("xlsx")}>XLSX indir</button>
-        {sd && <span className="soluk" style={{ fontSize: 13 }}>{sayiTr(sd.satir)} saat; son {sayiTr(sd.satirlar.length)} satır aşağıda{sd.program ? `; ${sayiTr(sd.program.bildirilen_saat)} saat bildirilen program` : ""}</span>}
+        {sd && <span className="soluk" style={{ fontSize: 13 }}>{sayiTr(sd.satir)} saat; son {sayiTr(sd.satirlar.length)} satır aşağıda{sd.program ? `; ${sayiTr(sd.program.bildirilen_saat)} saat bildirilen program` : ""}{sd.talimat_saat ? `; ${sayiTr(sd.talimat_saat)} saat talimatlı` : ""}</span>}   {/* v2.539 (DK-056) */}
         {mesaj && <span className="ayar-durum hata">{mesaj}</span>}
       </div>
       {sd === undefined ? <p className="soluk">Yükleniyor…</p> : sd === null ? <p className="soluk">Döküm alınamadı.</p> : sd.satirlar.length === 0 ? <p className="soluk">Henüz karşılaştırılan saat yok.</p> : (
@@ -54,7 +55,7 @@ function SaatlikDokum({ plantId, gun }: { plantId: string; gun: number }) {
               <td>{say(r.gerceklesen_mwh, 3)}</td><td>{say(r.sapma_mwh, 3)}</td><td>{say(r.ptf_tl_mwh)}</td><td>{say(r.smf_tl_mwh)}</td><td>{kod(r.yon, YON)}</td>
               <td>{say(r.edt_borc_tl)}</td><td>{say(r.edt_alacak_tl)}</td><td>{say(r.kupsm_mwh, 3)}</td><td>{say(r.kupst_tl)}</td>
               {yekdemli && <><td>{say(r.yek_fiyat_tl_mwh)}</td><td>{r.m23_6 === "evet" ? <span className="rozet rozet-uyari rozet-kucuk">YEKDEM dışı</span> : kod(r.m23_6, M23)}</td><td>{say(r.yekdem_disi_mwh, 3)}</td><td>{say(r.yekdem_disi_tl)}</td></>}
-              <td>{r.durum === "ok" ? DURUM.ok : <span className="rozet rozet-uyari rozet-kucuk">{kod(r.durum, DURUM)}</span>}</td></tr>))}</tbody>
+              <td>{r.durum === "ok" ? DURUM.ok : <span className="rozet rozet-uyari rozet-kucuk">{kod(r.durum, DURUM)}</span>}{r.talimat ? <> <span className="rozet rozet-amber rozet-kucuk" title={sd.talimat_notu ?? "talimat saati: sapma talimattan; tutar güvenilir değil"}>{TALIMAT[String(r.talimat)] ?? String(r.talimat)}</span></> : null}</td></tr>))}</tbody>
         </table></div>)}
       {sd && <p className="soluk" style={{ fontSize: 13, margin: "6px 0 0" }}>Yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir. Kaynak «bildirilen»: TPYS'ye bildirdiğinizi beyan ederek yüklediğiniz KGÜP (TPYS kabulü doğrulanmaz); «öneri»: PVQuant'ın bir gün önce 15:30'dan önceki son tahmininin P50'si. Sapma = gerçekleşen − pozisyon; KÜPSM = toleransı (m × program) aşan sapma miktarı; EDT alacak düşük fiyat saatinde eksi olabilir. Saatler Türkiye saatidir; indirilen dosyada {sayiTr(sd.kolonlar.length)} sütunun tümü ve bu not yer alır.{yekdemli && " YEKDEM sütunları: YEK fiyatı o saatin fiyatı (+ yerli katkı); m.23(6) «YEKDEM dışı» = PTF ya da SMF taban değerin altında ve sistem fazlası saatinde program üstü üretim, PTF < YEK fiyatı (EPİAŞ uygulaması belirsiz; talimat saatleri sayılmadı)."}</p>}
     </details>

@@ -222,7 +222,7 @@ def dsg_saatlik(programlar: dict[str, pd.Series], gerceklesenler: dict[str, pd.S
     grup fiyatıyla (aynı saatlik birim fiyat). Eşik tarihe göre kural tablosundan (%10 → %5 — 2026+ için grupta sayılan payın %5 alınması yorumdur; 2027 varsayım) ya da esik_oran.
     KÜPST üye UEVÇB'si bazında (segment/tarih/arıza) hesaplanır ve TOPLANIR, netleşmez (DUY m.110(3)-(4); m.110(6) yalnız toplayıcı portföyü). Eşiği aşan bireysel EDT DST faturasına girer,
     üyeye aktarımı sözleşmeseldir. Dengesizlik taşımayan
-    segmentteki üye (dağıtım lisanssız, öz tüketim) portföye GİRMEZ, 'disi' listesinde döner. Toplayıcı DSG'de yer alamaz (DUY m.20(4)); iletime bağlı lisanssızın DSG üyeliği varsayımı doğrulanmadı.
+    segmentteki üye (dağıtım lisanssız, öz tüketim) portföye GİRMEZ, 'disi' listesinde döner. Toplayıcı DSG'de yer alamaz (DUY m.20(4)); iletime bağlı lisanssız v2.539'dan portföy dışı (EDT GTŞ/toplayıcı portföyünde, DSG üyeliği doğrulanmadı.
     Üyelere dağıtım (29.10): grubun EDT'si üyelere `dagitim_anahtari` ile paylaştırılır — "sapma" (saatlik |grup payı| oranı; varsayılan),
     "esit" (1/n), "uretim" (saatlik gerçekleşen üretim oranı). Anahtar SÖZLEŞMESELDİR (DSG sözleşmesi belirler), mevzuat sabitlemez;
     pay sıfıra bölünürse eşit dağıtılır. Üye: edt_dsg = edt_bireysel + pay × edt_grup; netlesme_farki = edt_dsg − edt_tek; Σ üye = grup.
@@ -231,7 +231,7 @@ def dsg_saatlik(programlar: dict[str, pd.Series], gerceklesenler: dict[str, pd.S
     if dagitim_anahtari not in DAGITIM_ANAHTARLARI:
         raise ValueError(f"dagitim_anahtari {'|'.join(DAGITIM_ANAHTARLARI)}")
     segmentler = segmentler or {}
-    disi = [ad for ad in programlar if segmentler.get(ad) in ("lisanssiz_dagitim", "oz_tuketim_saatlik")]
+    disi = [ad for ad in programlar if segmentler.get(ad) in ("lisanssiz_dagitim", "oz_tuketim_saatlik", "lisanssiz_iletim")]   # v2.539 (DK-653/785): iletime bağlı lisanssız da portföy dışı
     uyeler = [ad for ad in programlar if ad not in disi]
     idx = None
     for ad in uyeler:

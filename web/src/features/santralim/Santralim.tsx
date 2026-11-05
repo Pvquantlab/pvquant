@@ -134,6 +134,16 @@ export function Santralim({ plantId }: { plantId: string }) {
   const [seg, setSeg] = useState<{ segment: string | null; dengesizlik_sahibi: string | null } | null>(null);   // v2.260
   // v2.513 (04 #14 kalan): UEVÇB kodu panelde görünür/düzenlenir; EPİAŞ Şeffaflık'tan kuruluş adıyla aranır (organization-list + uevcb-list)
   const [uevcb, setUevcb] = useState<string>("");
+  // v2.539 (EK-3 DK-258/261): DSG kodu (aynı kod = aynı grup) ve toplayıcı portföyü işareti (DSG dışı, DUY m.20(4))
+  const [dsgKodu, setDsgKodu] = useState<string>("");
+  const [toplayici, setToplayici] = useState<boolean>(false);
+  const [dsgMesaj, setDsgMesaj] = useState<string | null>(null);
+  const dsgKaydet = () => {
+    if (!seg?.segment) { setDsgMesaj("Önce piyasa segmentini seçin."); return; }
+    api.segmentAyarla(plantId, seg.segment, uevcb || undefined, { dsg_kodu: dsgKodu.trim(), toplayici_portfoyu: toplayici })
+      .then(() => { setDsgKodu(dsgKodu.trim()); setDsgMesaj(`Kaydedildi: ${dsgKodu.trim() ? `DSG ${dsgKodu.trim()}` : "DSG kodu yok"}${toplayici ? ", toplayıcı portföyünde" : ""}.`); })
+      .catch((e) => setDsgMesaj(`Kaydedilemedi: ${String(e.message ?? e)}`));
+  };
   const [uevcbMesaj, setUevcbMesaj] = useState<string | null>(null);
   const [uevcbArama, setUevcbArama] = useState<string>("");
   const [uevcbAday, setUevcbAday] = useState<UevcbArama | null | "yok">(null);
@@ -145,7 +155,7 @@ export function Santralim({ plantId }: { plantId: string }) {
     setUevcbMesaj(null); setUevcbAday(null);
     api.uevcbAra(uevcbArama).then((r) => setUevcbAday(r ?? "yok")).catch((e) => { setUevcbAday("yok"); setUevcbMesaj(`Arama yapılamadı: ${String(e.message ?? e)}`); });
   };
-  useEffect(() => { api.dengesizlik(plantId, 14).then((d) => { if (!d) return; setSeg({ segment: d.segment.segment, dengesizlik_sahibi: d.segment.dengesizlik_sahibi }); setUevcb(d.segment.uevcb ?? ""); if (d.luy_istisna !== undefined) setLuyIstisna((v) => (v === null ? !!d.luy_istisna : v));
+  useEffect(() => { api.dengesizlik(plantId, 14).then((d) => { if (!d) return; setSeg({ segment: d.segment.segment, dengesizlik_sahibi: d.segment.dengesizlik_sahibi }); setUevcb(d.segment.uevcb ?? ""); setDsgKodu(d.segment.dsg_kodu ?? ""); setToplayici(!!d.segment.toplayici_portfoyu); if (d.luy_istisna !== undefined) setLuyIstisna((v) => (v === null ? !!d.luy_istisna : v));
     if (d.program) { setPozKaynak((v) => v ?? d.program!.pozisyon.kaynak); if (d.program.pozisyon.sabit_mwh != null) setPozSabit((v) => v || String(d.program!.pozisyon.sabit_mwh)); } }).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { api.saglik(plantId).then(setSg).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   // v2.274 (Dalga 3 tamamlayıcısı): fizik terimleri — santral bazında aç/kapa + "açsam ne değişir?" önizlemesi
@@ -628,6 +638,28 @@ export function Santralim({ plantId }: { plantId: string }) {
                   <li><b>Öz tüketim (saatlik mahsup):</b> dengesizlik yok; fazla enerji GTŞ fiyatıyla, eksik tüketim tarifeyle mahsuplaşır.</li>
                 </ul>
                 <p><b>Ne zaman geçerli:</b> seçim anında kaydedilir; sonraki hesaplar ve program dosyaları yeni segmenti kullanır.</p>
+              </>)}
+          </div>
+          {/* v2.539 (EK-3 DK-258/261): DSG kodu ve toplayıcı portföyü — Portföy sayfasındaki DSG hesabının gruplaması bu alanlara bağlı */}
+          <div className="ayar">
+            <div><div className="ayar-ad">Dengeden Sorumlu Grup (DSG)</div>
+              <div className="ayar-aciklama">Santralinizin üyesi olduğu DSG'nin adı ya da kodu; aynı kodu taşıyan santraller Portföy sayfasında birlikte netleştirilir. Toplayıcı portföyündeki santral DSG hesabına girmez.</div>
+              {ayrintiDugmesi(ayrinti, setAyrinti, "dsg")}
+              </div>
+            <div className="ayar-kontrol">
+              <div className="dugme-sira" style={{ alignItems: "flex-end" }}>
+                <label className="girdi-etiket">DSG kodu (isteğe bağlı)
+                  <input className="girdi" value={dsgKodu} maxLength={32} placeholder="örn. DSG-ABC" onChange={(e) => setDsgKodu(e.target.value)} /></label>
+                <label className="girdi-etiket" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <input type="checkbox" checked={toplayici} onChange={(e) => setToplayici(e.target.checked)} /> Toplayıcı portföyünde</label>
+                <button className="dugme" onClick={dsgKaydet}>Kaydet</button>
+              </div>
+              {dsgMesaj && <span className={`ayar-durum ${dsgMesaj.startsWith("Kaydedildi") ? "ok" : "hata"}`}>{dsgMesaj}</span>}
+            </div>
+            {ayrintiGovdesi(ayrinti, "dsg", <>
+                <p><b>Ne işe yarar:</b> Kod girilmezse dengesizliğini kendisi taşıyan bütün santralleriniz tek DSG varsayılır. Kod girilince yalnız aynı kodlu santraller birlikte netleşir; kodsuz kalan santral, başka santrallerde kod varken hesap dışı tutulur.</p>
+                <p><b>Toplayıcı portföyü:</b> Toplayıcı DSG'de yer alamaz (DUY m.20(4)); portföyüne geçen santral DSG'den çıkar. Bu işaret beyandır, PVQuant toplayıcı sözleşmesini görmez.</p>
+                <p><b>Eşik:</b> Üye eşiği piyasa katılımcısı düzeyinde uygulanır (DUY m.111); aynı katılımcının birden çok santrali varsa PVQuant her santrali ayrı üye sayar, bireysel tutar fazla görünebilir (çıkarım).</p>
               </>)}
           </div>
           {/* v2.513 (04 #14 kalan): UEVÇB kodu — KGÜP/EAK dosya adı ve toplayıcı portföyü KÜPST gruplaması bu koda bağlı; EPİAŞ'tan arama */}
