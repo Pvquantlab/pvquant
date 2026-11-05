@@ -2,7 +2,7 @@
 Saf hesap takvim.py'de; burada yalnız «bugün» (İstanbul), segment ve params_json okunur."""
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from pvquant.ext.turkiye import takvim as tk
@@ -30,7 +30,7 @@ def bugun_ist() -> date:
 UYUM_NOT = ("«İşlem gerekli» santralin yapacağı adımdır; «takip edilmeli» başkasının (EPİAŞ, EPDK, TEİAŞ, şebeke işletmecisi) adımıdır; «doğrulama gerekli» koşulu "
             "PVQuant'ta kayıtlı olmayan (bağlantı türü, DSG türü, mekanik güç, YEKDEM süresi) satırdır. "
             "Uyum takvimi 12 ay ileriye bakar: lisans ve bildirim yükümlülükleri (ilerleme raporu, lisans bedeli taksitleri, BDB-02, TEİAŞ bakım planı), "
-            "santral tarihlerinden türeyenler (İSG periyodik kontrol, ortaklık değişikliği, izin iptali, lisanssız 10 yıl) ve olay kaydındaki planlı bakımların "
+            "santral tarihlerinden türeyenler (İSG periyodik kontrol, ortaklık değişikliği, izin iptali, lisanssız 10 yıl, sensör kalibrasyon vadesi) ve olay kaydındaki planlı bakımların "
             "bildirim son anı. «Aykırılıkta» sütunu ilgili maddeyi ve ihtar süresini söyler; bent eşlemesi Kurul takdirine bağlı olduğundan «çıkarım» etiketlidir, "
             "tutar yazılmaz (yıllık tebliğle değişir). Toplayıcı lisansının kendi takvimi (Mart/Temmuz/Kasım taksitleri, fiyat bildirimi), piyasadan alım sınırı "
             "(Karar 14626) ve YEK-G kaydı burada yok.")
@@ -55,18 +55,41 @@ def _bakim_satirlari(tenant_id, plant: dict, b: date) -> list[dict]:
     return out
 
 
+def _sensor_satirlari(pj: dict, b: date, gun: int = 365) -> list[dict]:
+    """v2.542 (P8b-2, IH-092): sensör envanterindeki kalibrasyon vadeleri (beyan: son kalibrasyon + periyot) → uyum takvimi satırı; yalnız
+    bugünden `gun` gün ileriye kadar olanlar (geçmiş vade alarm kuralı ve Sensörler kartındadır). Servis katmanında üretilir: motor (tk) sensör
+    sözlüğünü bilmez."""
+    from pvquant.services import performans_service as ps
+    out = []
+    for s in ps.sensor_durumlari(ps.sensorler_oku(pj), b):
+        if not s.get("vade"):
+            continue
+        v = date.fromisoformat(s["vade"])
+        if not (b <= v <= b + timedelta(days=gun)):
+            continue
+        o = tk._olay("sensor_kalibrasyon", f"Sensör kalibrasyonu vadesi — {ps.SENSOR_TURLERI[s['tur']]}, {ps.OLCUMLER[s['olcum']]}", v,
+                     kaynak="Son kalibrasyon tarihi + periyot (Santral ayarları › Sensörler); IEC 61724-1:2021 izleme sınıfı şartı", kaynak_turu="kunye",
+                     kapsam=tk.HEPSI, islem="islem", sorumlu="santral",
+                     not_=("Vade geçince sensörün verisi performans oranına ve beklenen üretime girmeye devam eder; «Sensör kalibrasyonu vadesi geçti» alarm kuralı seçilebilir."
+                           + (f" Marka/model: {s['marka_model']}." if s.get("marka_model") else "")),
+                     sonuc="Kalibrasyonu geçmiş sensörle ölçülen ışınım/sıcaklık KPI'lara girer; ölçüm güvenilirliği etiketlenmez (beyan).", sonuc_kisa="Ölçüm güvenilirliği düşer")
+        out.append({**o, "kalan_gun": (v - b).days})
+    return out
+
+
 def ozet(plant: dict, gun: int = 90, bugun: date | None = None, tenant_id=None) -> dict:
     pj = dengesizlik_service._pj(plant.get("params_json"))
     seg = dengesizlik_service.segment_bilgisi(pj)
     b = bugun or bugun_ist()
     kap = plant.get("capacity_kwp")
     uzun = tk.yaklasan(b, pj, seg["segment"], 365, kap)
-    uyum = [o for o in uzun if o["kod"] in tk.UYUM_KODLAR]   # v2.524 (P3b): 12 ay, dönem adımları hariç
+    sens = _sensor_satirlari(pj, b)   # v2.542 (P8b-2)
+    uyum = sorted([o for o in uzun if o["kod"] in tk.UYUM_KODLAR] + sens, key=lambda o: (o["tarih"], o["saat"] or "", o["kod"]))   # v2.524 (P3b): 12 ay, dönem adımları hariç
     # v2.535 Takvim doğrulama turu: dinî bayramı tanımlı olmayan yıla düşen tarih varsa iş günü hesabı o yılın bayramlarını iş günü sayar — açıkça söylenir
     tatil_eksik = sorted({int(o["tarih"][:4]) for o in uzun} - set(tk.DINI_BAYRAM))
     return {"bugun": b.isoformat(), "pencere_gun": gun, "segment": seg["segment"], "kgup_yukumlu": seg["kgup_yukumlu"], "tatil_eksik_yillar": tatil_eksik,
             "luy_rejimi": (tk.luy_rejimi(pj) if seg["segment"] in ("lisanssiz_dagitim", "lisanssiz_iletim", "oz_tuketim_saatlik") else None),   # v2.541 (DK-659)
-            "yaklasan": tk.yaklasan(b, pj, seg["segment"], gun, kap),
+            "yaklasan": sorted(tk.yaklasan(b, pj, seg["segment"], gun, kap) + [o for o in sens if o["kalan_gun"] <= gun], key=lambda o: (o["tarih"], o["saat"] or "", o["kod"])),   # v2.542: sensör vadesi
             "yaklasan_piyasa": [o for o in tk.yaklasan(b, pj, seg["segment"], gun, kap) if o["kod"] not in tk.UYUM_KODLAR],   # sayfa: uyum tarihleri yalnız Uyum kartında (tekrar yok)
             "islem_etiketleri": tk.ISLEM_ETIKET, "uyum": uyum, "bakim": _bakim_satirlari(tenant_id, plant, b), "uyum_not": UYUM_NOT, "bakim_kaynak": tk.BAKIM_BILDIRIM_KAYNAK,
             "donemler": tk.donemler(b, once=1, sonra=1),

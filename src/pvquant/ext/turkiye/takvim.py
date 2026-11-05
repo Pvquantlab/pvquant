@@ -306,7 +306,8 @@ M16_KISA = "6446 m.16(1)(b) · ihtar 30 gün (çıkarım)"
 HAFTA_SONU_NOT = " Son gün hafta sonuna denk gelirse kaydırma kuralı metinde yok; önceki iş gününde tamamlayın."
 UYUM_KODLAR = ("ilerleme_raporu", "lisans_bedeli_taksit", "bdb02", "planli_devre_disi", "planli_devre_disi_nihai", "planli_devre_disi_itiraz", "planli_devre_disi_alternatif", "isg_periyodik_kontrol",
                "ortaklik_bildirim", "izin_iptali_bildirim", "luy_alim_suresi", "lisans_bedeli_muafiyet", "lisans_bitis", "police_bitis", "yekdem_son_yil",
-               "luy_isletim_bedeli_tem", "luy_isletim_bedeli_ara", "luy_cezai_sart", "yekdem_basvuru", "yek_on_liste", "yek_nihai_liste")
+               "luy_isletim_bedeli_tem", "luy_isletim_bedeli_ara", "luy_cezai_sart", "yekdem_basvuru", "yek_on_liste", "yek_nihai_liste",
+               "sensor_kalibrasyon")   # v2.542 (P8b-2): takvim_service sensör envanterinden üretir (beyan)
 BDB02_ESIK_KW = 100_000.0   # EPDK Bildirim Yükümlülük Tablosu: herhangi bir tesisinin kurulu gücü 100 MW (mekanik) üzeri; kWp ile yaklaşıldı
 
 

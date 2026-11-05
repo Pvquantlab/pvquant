@@ -34,7 +34,8 @@ DAYANAK_KUNYELERI = (
 EK_KURALLAR = ("pr_dustu", "clipping_orani_yuksek", "iletisim_kesintisi", "kullanilabilirlik_dustu",
                "kgup_teslim_gecikti", "dengesizlik_asimi", "kgup_revizyon_onerisi",   # v2.288: kütüphanenin tamamı seçilebilir; v2.507: F-10 revizyon
                "takvim_son_tarih", "ptf_dusuk_saat", "ariza_sayaci_yaklasti", "teminat_hatirlatma", "avans_hatirlatma",   # v2.519 (P7a)
-               "sayac_eksik_saat")   # v2.526 (P7b): vadesi gelen sayaç saatleri PVQuant'a yüklenmedi
+               "sayac_eksik_saat",   # v2.526 (P7b): vadesi gelen sayaç saatleri PVQuant'a yüklenmedi
+               "sensor_kalibrasyon")   # v2.542 (P8b-2, IH-092): sensör envanterinde kalibrasyon vadesi geçen sensör
 ESIK_VARSAYILAN = {"pr_esik": 0.70, "clipping_esik": 0.15, "iletisim_esik_saat": 6, "kullanilabilirlik_esik": 0.97,
                    "dengesizlik_esik": 0.03, "revizyon_esik": 0.10,
                    "takvim_gun_once": 3, "ptf_esik_tl_mwh": 0.0, "ariza_esik": 25,   # v2.519: gün, TL/MWh (0 → PTF ≤ 0; YEKDEM'de V), adet
@@ -50,7 +51,8 @@ KURAL_ETIKET = {"veri_gelmedi": "Veri gelmedi", "skill_dustu": "Tahmin doğrulu�
                 "takvim_son_tarih": "Yaklaşan son tarih", "ptf_dusuk_saat": "Yarın düşük fiyat saati",
                 "ariza_sayaci_yaklasti": "Arıza sayacı eşiğe yaklaştı", "teminat_hatirlatma": "Teminat saati hatırlatması",
                 "avans_hatirlatma": "Avans ödeme hatırlatması",   # v2.519 (P7a)
-                "sayac_eksik_saat": "Sayaç verisi eksik"}   # v2.526 (P7b)
+                "sayac_eksik_saat": "Sayaç verisi eksik",   # v2.526 (P7b)
+                "sensor_kalibrasyon": "Sensör kalibrasyonu vadesi geçti"}   # v2.542 (P8b-2)
 
 
 def _pj(plant: dict) -> dict:
@@ -117,6 +119,12 @@ def ek_alarmlar(plant: dict, baglam: dict) -> list[tuple[str, str, str]]:
                        "iş günü hatırlatması — günlük avans bildirimi 14:30'da yayımlandı; borç 15:00'a kadar ödenir (sonrası temerrüt: 6183 m.51 oranının %50'si, "
                        "17:00 sonrası tam oran), alacak 17:00'a kadar EPİAŞ'tan gelir (DUY m.132/Ç, m.132/D)")
                 out.append((ad, "bilgi", f"{plant.get('name', '')}: {msg}"))
+            continue
+        if ad == "sensor_kalibrasyon":   # v2.542 (P8b-2, IH-092): envanterde vadesi geçmiş sensör; veri KPI'ya girmeye devam eder, yalnız uyarı
+            gecen = b.get("sensor_vade_gecen") or []
+            if gecen:
+                out.append((ad, "uyari", f"{plant.get('name', '')}: kalibrasyon vadesi geçmiş sensör — " + "; ".join(gecen) +
+                            ". Verisi performans oranına ve beklenen üretime girmeye devam ediyor; kalibrasyon ya da tarih güncellemesi Santral ayarları › Sensörler."))
             continue
         if ad == "sayac_eksik_saat":   # v2.526 (P7b): vadesi gelen (m.8(2)) ama PVQuant'a yüklenmemiş sayaç saati eşiği aşınca
             n = b.get("sayac_eksik_saat")
@@ -195,6 +203,14 @@ def _baglam(tenant_id, plant: dict, secili: list[str]) -> dict:
             b["ariza_sayisi_ay"] = olay_service.ariza_sayisi_etkin(tenant_id, plant)["sayi"] or None
         except Exception:   # noqa: BLE001
             b["ariza_sayisi_ay"] = _pj(plant).get("ariza_sayisi_ay")
+    if "sensor_kalibrasyon" in secili:   # v2.542 (P8b-2): params_json.sensorler — DB sorgusu yok
+        from pvquant.services import performans_service
+        try:
+            d = performans_service.sensor_durumlari(performans_service.sensorler_oku(plant.get("params_json")))
+            b["sensor_vade_gecen"] = [f"{performans_service.SENSOR_TURLERI[x['tur']]} ({performans_service.OLCUMLER[x['olcum']]}), vade {x['vade']}"
+                                      for x in d if x["durum"] == "gecti"]
+        except Exception as e:   # noqa: BLE001
+            print("[alarm][sensor]", plant.get("name"), type(e).__name__, e); b["sensor_vade_gecen"] = []
     if "sayac_eksik_saat" in secili:   # v2.526 (P7b): 15 dk sayaçta bu ayın vadesi gelen eksik saati; diğer sayaçta veri günü geçmiş önceki dönemin eksiği
         try:
             from pvquant.services import sayac_service

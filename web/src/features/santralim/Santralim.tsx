@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ALARM_KURALI } from "../../lib/alarmSozluk";
 import type { ReactNode } from "react";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
-import type { PrKarti, Saglik, AlarmKurallari, FizikTerimleri, FizikOnizleme, Kullanilabilirlik, Tarife, Yekdem } from "../../api/types";
+import type { PrKarti, Saglik, AlarmKurallari, FizikTerimleri, FizikOnizleme, Kullanilabilirlik, Tarife, Yekdem, Sensorler, Sensor } from "../../api/types";
 import { SEGMENTLER } from "../../api/types";
 import type { UevcbArama } from "../../api/types";
 import type { EChartsOption } from "echarts";
@@ -31,9 +31,19 @@ function ayrintiDugmesi(acik: string | null, ayarla: (v: string | null) => void,
 function ayrintiGovdesi(acik: string | null, id: string, icerik: ReactNode) {
   return acik === id ? <div id={`ayrinti-${id}`} className="ayar-ayrinti-govde" role="region" aria-label="Ayar ayrıntısı">{icerik}</div> : null;
 }
+/** v2.542 (P8b-2, IH-092): sensör envanteri seçenekleri — performans_service.SENSOR_TURLERI / OLCUMLER ile birebir (sunucu yanıtı varsa o esas). */
+const SENSOR_TURLERI: Record<string, string> = { piranometre: "Piranometre (termopil)", referans_hucre: "Referans hücre (fotovoltaik)", uydu: "Uydu türevli ışınım (saha sensörü değil)",
+  modul_sicaklik: "Modül sıcaklık sensörü", meteo_istasyonu: "Meteoroloji istasyonu (hava sıcaklığı, rüzgâr)" };
+const OLCUMLER: Record<string, string> = { poa: "düzlem-içi ışınım (POA)", ghi: "yatay ışınım (GHI)", t_module: "modül sıcaklığı", t_air: "hava sıcaklığı", wind: "rüzgâr hızı" };
+const OLCUM_SECENEKLERI: Record<string, string[]> = { piranometre: ["poa", "ghi"], referans_hucre: ["poa", "ghi"], uydu: ["ghi", "poa"], modul_sicaklik: ["t_module"], meteo_istasyonu: ["t_air", "wind"] };
+const SENSOR_DURUM: Record<string, string> = { gecti: "Vadesi geçti", yaklasiyor: "Vade yaklaşıyor", uygun: "Uygun", tarih_yok: "Tarih yok" };
+const KAL_DURUM: Record<string, string> = { gecti: "kalibrasyon vadesi geçti", yaklasiyor: "kalibrasyon vadesi yaklaşıyor", uygun: "kalibrasyon uygun", tarih_yok: "kalibrasyon tarihi yok" };
+type SensorForm = { tur: string; olcum: string; marka_model: string; seri_no: string; sinif: string; kalibrasyon_tarihi: string; periyot: string };
+const SENSOR_FORM_BOS: SensorForm = { tur: "piranometre", olcum: "poa", marka_model: "", seri_no: "", sinif: "", kalibrasyon_tarihi: "", periyot: "24" };
+const gunKisa = (iso: string) => tarihBicimi("tr-TR", { day: "numeric", month: "short", year: "numeric" }).format(new Date(iso.slice(0, 10) + "T00:00:00"));
 /** Alarm kuralları konuya göre gruplanır; sözlükte olmayan yeni kural son gruba düşer (etiket bozulmaz). */
 const KURAL_GRUPLARI: { ad: string; kurallar: string[] }[] = [
-  { ad: "Veri ve model", kurallar: ["veri_gelmedi", "skill_dustu", "iletisim_kesintisi", "pr_dustu", "clipping_orani_yuksek", "kullanilabilirlik_dustu"] },
+  { ad: "Veri ve model", kurallar: ["veri_gelmedi", "skill_dustu", "iletisim_kesintisi", "pr_dustu", "clipping_orani_yuksek", "kullanilabilirlik_dustu", "sensor_kalibrasyon"] },
   { ad: "Üretim programı", kurallar: ["kgup_teslim_gecikti", "kgup_revizyon_onerisi"] },
   { ad: "Uzlaştırma ve piyasa", kurallar: ["dengesizlik_asimi", "ptf_dusuk_saat", "ariza_sayaci_yaklasti"] },
   { ad: "Takvim ve hatırlatmalar", kurallar: ["takvim_son_tarih", "teminat_hatirlatma", "avans_hatirlatma"] },
@@ -57,6 +67,7 @@ const KURAL_KOSULU: Record<string, (e: Record<string, number>) => string> = {
   takvim_son_tarih: (e) => `Takvim'deki her son tarih için ${sayiTr(e.takvim_gun_once ?? 3, 0)} gün kala, bir kez. Kontrol: her gece 07:00`,
   teminat_hatirlatma: () => "Teminat mektubu 10:30'a kadar, teminat kontrolü 11:00. Kontrol: her iş günü 10:15; yalnız lisanslı santral",
   avans_hatirlatma: () => "Avans borcu 15:00'a kadar, alacak 17:00'a kadar. Kontrol: her iş günü 14:45; yalnız lisanslı santral",
+  sensor_kalibrasyon: () => "Sensörler kartındaki bir sensörün kalibrasyon vadesi (son kalibrasyon + periyot) geçtiyse; verisi performans oranına girmeye devam eder. Kontrol: her gece 07:00",   // v2.542 (P8b-2)
   sayac_eksik_saat: (e) => `Vadesi gelen (Ölçüm Sist. Yön. m.8(2)) ama PVQuant'a yüklenmemiş sayaç saati eşiğe (${sayiTr(e.sayac_eksik_esik_saat ?? 24, 0)} saat) ulaşınca; aylık okumalı sayaçta veri günü geçmiş dönemin eksiği. Kontrol: her gece 07:00`,   // v2.526 (P7b)
 };
 /** Eşik girişleri: API ondalık oran tutan eşikleri (performans, kırpma, kullanılabilirlik, dengesizlik, revizyon) panel yüzde gösterir ve
@@ -198,6 +209,8 @@ export function Santralim({ plantId }: { plantId: string }) {
   const [teminatKat, setTeminatKat] = useState<string>("");   // v2.522 (P2b): dengesizlik teminatı risk katsayısı (değeri kaynakta yok; müşteri girer)
   const [kullSoz, setKullSoz] = useState<string>("");
   const [butceMwh, setButceMwh] = useState<string>("");       // v2.534 (P8b-1): finansal modeldeki yıllık bütçe (MWh); P-değeri kıyasında bütçe oranı         // v2.533 (P8a, K-07): O&M sözleşmesindeki kullanılabilirlik eşiği (%); açık kWh/TL kıyas tabanı
+  const [prRef, setPrRef] = useState<string>("");   // v2.542 (P8b-2): tasarım/sözleşme PR (%) — ölçülen havayla beklenen üretimin referansı
+  const [sens, setSens] = useState<Sensorler | null>(null); const [sf, setSf] = useState<SensorForm>(SENSOR_FORM_BOS); const [sensMesaj, setSensMesaj] = useState<string | null>(null);   // v2.542 (P8b-2, IH-092)
   const [luyIstisna, setLuyIstisna] = useState<boolean | null>(null);   // 31.10 (v2.510, Ç3): null = dokunulmadı (gönderilmez); LÜY m.5(1)(ç),(d),(e)
   // v2.517 (P2a): piyasa pozisyonu — EDM = gerçekleşen − pozisyon; program (satış programa eşit) | uretim (üretildiği kadar satış) | sabit MWh/saat
   const [pozKaynak, setPozKaynak] = useState<"program" | "uretim" | "sabit" | null>(null);
@@ -205,7 +218,7 @@ export function Santralim({ plantId }: { plantId: string }) {
   const [eakMesaj, setEakMesaj] = useState<string | null>(null);
   const eakKaydet = () => {
     setEakMesaj(null);
-    api.eakAyarla(plantId, { eak_kw: eakKw ? Number(eakKw) : null, gecici_kw: gecKw ? Number(gecKw) : null, gecici_bitis: gecBitis || null, dengeleme_birimi: dengelemeBirimi, ...(arizaAy !== "" ? { ariza_sayisi_ay: Number(arizaAy) } : {}), ...(teminatKat !== "" ? { teminat_risk_katsayisi: Number(teminatKat.replace(",", ".")) } : {}), ...(kullSoz !== "" ? { kullanilabilirlik_sozlesme: (() => { const v = Number(kullSoz.replace(",", ".")); return v > 1 ? v / 100 : v; })() } : {}), ...(butceMwh !== "" ? { butce_kwh_yil: Number(butceMwh.replace(/\./g, "").replace(",", ".")) * 1000 } : {}), ...(luyIstisna !== null ? { luy_istisna: luyIstisna } : {}),
+    api.eakAyarla(plantId, { eak_kw: eakKw ? Number(eakKw) : null, gecici_kw: gecKw ? Number(gecKw) : null, gecici_bitis: gecBitis || null, dengeleme_birimi: dengelemeBirimi, ...(arizaAy !== "" ? { ariza_sayisi_ay: Number(arizaAy) } : {}), ...(teminatKat !== "" ? { teminat_risk_katsayisi: Number(teminatKat.replace(",", ".")) } : {}), ...(kullSoz !== "" ? { kullanilabilirlik_sozlesme: (() => { const v = Number(kullSoz.replace(",", ".")); return v > 1 ? v / 100 : v; })() } : {}), ...(butceMwh !== "" ? { butce_kwh_yil: Number(butceMwh.replace(/\./g, "").replace(",", ".")) * 1000 } : {}), ...(prRef !== "" ? { pr_referans: (() => { const v = Number(prRef.replace(",", ".")); return v > 1 ? v / 100 : v; })() } : {}), ...(luyIstisna !== null ? { luy_istisna: luyIstisna } : {}),
       ...(pozKaynak ? { pozisyon_kaynagi: pozKaynak, pozisyon_sabit_mwh: pozKaynak === "sabit" && pozSabit ? Number(pozSabit.replace(",", ".")) : null } : {}) })
       .then((r) => setEakMesaj(`Kaydedildi. Bugün verilebilecek en yüksek güç ${sayiTr(r.eak_bugun.eak_mw, 2)} MW (${r.eak_bugun.kaynak})${r.ariza_sayisi_ay != null ? `; bu ay arıza kaydı ${sayiTr(r.ariza_sayisi_ay)}` : ""}`))
       .catch((e) => setEakMesaj(String((e as Error).message ?? e)));
@@ -213,6 +226,14 @@ export function Santralim({ plantId }: { plantId: string }) {
   // v2.281: kullanılabilirlik (otomatik tespit) + tarife/gelir yapılandırması
   const [ku, setKu] = useState<Kullanilabilirlik | null>(null);
   useEffect(() => { api.kullanilabilirlik(plantId).then(setKu).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setSens(null); api.sensorler(plantId).then(setSens).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const sensKaydet = (liste: Sensor[]) => {   // v2.542 (P8b-2): envanter bütünüyle gönderilir; vade sunucuda türetilir
+    setSensMesaj(null);
+    api.sensorlerAyarla(plantId, liste.map((s) => ({ tur: s.tur, olcum: s.olcum, marka_model: s.marka_model ?? null, seri_no: s.seri_no ?? null, sinif: s.sinif ?? null,
+      kalibrasyon_tarihi: s.kalibrasyon_tarihi ?? null, kalibrasyon_periyodu_ay: s.kalibrasyon_periyodu_ay ?? 24, not: s.not ?? null })))
+      .then((r) => { setSens(r); setSf(SENSOR_FORM_BOS); setSensMesaj(`Kaydedildi: ${sayiTr(r.sensorler.length)} sensör; ışınım kaynağı: ${r.isinim.etiket}.`); })
+      .catch((e) => setSensMesaj(String((e as Error).message ?? e)));
+  };
   const [tarife, setTarife] = useState<Tarife>({ tip: "sabit" });
   const [tarifeMesaj, setTarifeMesaj] = useState<string | null>(null);
   // v2.312: sayı alanları METİN olarak yaşar. Doğrudan Number(e.target.value) yazmak
@@ -597,6 +618,11 @@ export function Santralim({ plantId }: { plantId: string }) {
                 : pr?.durum === "poa_yok"
                   ? <><span className="kunye-durum eksik">Hesaplanamadı</span><span className="kunye-not">düzlem ışınımı (POA) ölçümü {pr.poa_orani != null ? `saatlerin %${sayiTr(pr.poa_orani * 100, 0)}'inde` : "yok"}; PR için en az %95 gerekir</span></>
                   : <><span className="kunye-durum eksik">Hesaplanamadı</span><span className="kunye-not">ölçüm birikmedi</span></>}</dd></div>
+            {/* v2.542 (P8b-2, IH-092): ışınım ölçümünün kaynağı ve kalibrasyon durumu — PR ve beklenen üretim bu ölçüme dayanır */}
+            <div><dt>Işınım ölçümü kaynağı</dt>
+              <dd>{sens?.isinim.duzlem
+                ? <>{sens.isinim.etiket}<span className="kunye-not">{KAL_DURUM[sens.isinim.kalibrasyon ?? "tarih_yok"]}{sens.isinim.vade ? `, vade ${gunKisa(sens.isinim.vade)}` : ""}</span></>
+                : <><span className="kunye-durum eksik">Beyan edilmedi</span><span className="kunye-not">Sensörler kartından girilir; PR ve beklenen üretim ölçülen düzlem-içi ışınıma dayanır</span></>}</dd></div>
             {/* v2.285: segment salt-okunur — değişiklik "Santral ayarları" kartından */}
             <div><dt>Piyasa segmenti</dt>
               <dd>{seg?.segment
@@ -840,6 +866,9 @@ export function Santralim({ plantId }: { plantId: string }) {
                 {/* v2.534 (P8b-1): finansal modeldeki yıllık bütçe — Aylık beklenti › Yıl yıl P-değerleri kartında bütçe oranı */}
                 <label className="girdi-etiket">Yıllık üretim bütçesi (MWh, isteğe bağlı)
                   <input className="girdi" inputMode="decimal" placeholder="ör. 24.000" value={butceMwh} onChange={(e) => setButceMwh(e.target.value.replace(/[^0-9.,]/g, ""))} /></label>
+                {/* v2.542 (P8b-2, IH-083): tasarım/sözleşme PR — Aylık beklenti › Beklenen üretim (ölçülen hava) kartının referansı; girilmezse santralın son 12 ay ölçülen PR'ı */}
+                <label className="girdi-etiket" title="Tasarım raporu ya da O&M sözleşmesindeki performans oranı (%50–95). Girilmezse beklenen üretim santralın kendi son 12 ay ölçülen PR'ına göre hesaplanır ve EPI kendi geçmişine göre okunur.">Referans performans oranı (%, isteğe bağlı)
+                  <input className="girdi" inputMode="decimal" placeholder="ör. 82" value={prRef} onChange={(e) => setPrRef(e.target.value.replace(/[^0-9.,]/g, ""))} /></label>
                 {/* v2.517 (P2a): pozisyon ayarı — uzlaştırma kartı EDM'yi buna göre hesaplar; KÜPST programa göre kalır */}
                 <label className="girdi-etiket">Piyasa pozisyonu
                   <select className="girdi" value={pozKaynak ?? "program"} onChange={(e) => setPozKaynak(e.target.value as "program" | "uretim" | "sabit")} aria-label="Piyasa pozisyonu kaynağı">
@@ -869,6 +898,7 @@ export function Santralim({ plantId }: { plantId: string }) {
                   <li><b>Geçici kısıt ve bitişi:</b> bakım ya da arıza süresince EAK yerine geçer; bitiş günü dâhil o güne kadar geçerlidir, sonra kendiliğinden kalkar.</li>
                   <li><b>Kullanılabilirlik sözleşme eşiği:</b> O&amp;M sözleşmenizdeki kullanılabilirlik eşiği (ör. %98). Girilirse Santral bilgileri kartı, son 30 günün teknik kullanılabilirliği bu eşiğin altında kaldığında açığı enerji ve satış fiyatıyla TL olarak gösterir. Sözleşmenizdeki tanım, istisna listesi ve tazmin formülü farklı olabilir; bu değer kıyas tabanıdır, alacak değildir. Alarm kurallarındaki «Kullanılabilirlik (%)» eşiği ayrıdır: o uyarı üretir, bu açığı hesaplar.</li>
                   <li><b>Yıllık üretim bütçesi:</b> finansal modelinizdeki yıllık üretim (MWh). Girilirse Aylık beklenti sayfasındaki «Yıl yıl P-değerleri» kartı tamamlanmış yılların ve cari yılın gerçekleşenini bütçeye oranlar (hava düzeltmesiz). Girilmezse kıyas yalnız P50/P90'a göredir.</li>
+                  <li><b>Referans performans oranı:</b> tasarım raporu ya da O&M sözleşmesindeki performans oranı (%50–95). Girilirse Aylık beklenti sayfasındaki «Beklenen üretim (ölçülen hava) ve EPI» kartı beklenen üretimi bu orana göre hesaplar ve EPI tasarıma göre okunur. Girilmezse santralın kendi son 12 ay ölçülen PR'ı kullanılır; EPI o zaman kendi geçmişine göre okunur, kart bunu söyler.</li>   {/* v2.542 (P8b-2) */}
                   <li><b>Teminat risk katsayısı:</b> EPİAŞ dengesizlik teminatı formülündeki katsayı (3 ayın en yüksek aylık negatif dengesizlik miktarı × 12 aylık ortalama SMF × katsayı). Değeri Teminat Usul ve Esasları kaynağında yer almıyor; EPYS'deki teminat hesabınızdan alıp girin. Girilmezse Doğruluk'taki teminat göstergesi tutar vermez.</li>
                   <li><b>Bu ay arıza kaydı:</b> EPİAŞ'a bildirdiğiniz aylık arıza sayısı. Olay kaydı sayfasına girilen arıza olayları otomatik sayılır; bu alan yedektir, ikisinin büyüğü kullanılır. Kural tablosundaki eşikte (30 kayıt) sapma tutarı fiyat katsayısı yükselir; «Arıza sayacı eşiğe yaklaştı» alarmı bu sayıyı izler.</li>
                   <li><b>Dengeleme birimi:</b> yalnız dengeleme güç piyasasına katılan dengeleme birimleri için. Ardışık iki saat arasında 200 MWh ve üzeri fark olduğunda program 15 dakikalık satırlarla üretilir (DUY m.69(3)). Güneş santralleri varsayılan olarak dengeleme birimi değildir; genellikle kapalı kalır.</li>
@@ -969,6 +999,51 @@ export function Santralim({ plantId }: { plantId: string }) {
           </div>
         </Kart>
       </div>
+
+      {/* v2.542 (P8b-2, IH-092): sensör envanteri — ışınım kaynağı etiketi (PR kartı), IEC 61724-1:2021 sınıfı, kalibrasyon vadesi (türetilir), vadesi geçen için alarm kuralı */}
+      <Kart baslik="Sensörler ve kalibrasyon" alt="Işınım, modül sıcaklığı ve hava sensörlerinin beyanı. Kalibrasyon vadesi son kalibrasyon tarihi ve periyottan türetilir; vadesi geçen sensör için alarm kuralı seçilebilir."
+        sag={sens ? <span className="cip">{sayiTr(sens.sensorler.length)} sensör · {sens.isinim.duzlem ? (sens.isinim.duzlem === "poa" ? "düzlem-içi ışınım" : "yatay ışınım") : "ışınım sensörü yok"}</span> : null}>
+        {sens && sens.sensorler.length > 0 && (
+          <div className="grafik-kaydir" style={{ marginBottom: 12 }}>
+            <table className="veri" style={{ fontSize: 13.5 }}>
+              <thead><tr><th>Tür</th><th>Ölçüm</th><th>Marka / model</th><th>Sınıf</th><th>Son kalibrasyon</th><th>Vade</th><th>Durum</th><th></th></tr></thead>
+              <tbody>{sens.sensorler.map((s, i) => (<tr key={`${s.tur}-${s.olcum}-${i}`}>
+                <td>{sens.turler[s.tur] ?? s.tur}</td><td>{sens.olcumler[s.olcum] ?? s.olcum}</td>
+                <td>{s.marka_model ?? "—"}{s.seri_no ? <span className="soluk mono"> · {s.seri_no}</span> : null}</td>
+                <td className="mono">{s.sinif ?? "—"}</td>
+                <td className="mono">{s.kalibrasyon_tarihi ? `${gunKisa(s.kalibrasyon_tarihi)} (${sayiTr(s.kalibrasyon_periyodu_ay ?? 24)} ay)` : "tarih yok"}</td>
+                <td className="mono">{s.vade ? gunKisa(s.vade) : "—"}</td>
+                <td><span className={`rozet rozet-kucuk ${s.durum === "gecti" ? "rozet-uyari" : s.durum === "uygun" ? "rozet-ok" : ""}`}>{SENSOR_DURUM[s.durum ?? "tarih_yok"]}{s.kalan_gun != null && s.durum !== "gecti" ? ` (${sayiTr(s.kalan_gun)} gün)` : ""}</span></td>
+                <td><button className="dugme" title="Bu sensörü envanterden kaldır" onClick={() => sensKaydet(sens.sensorler.filter((_, j) => j !== i))}>Kaldır</button></td>
+              </tr>))}</tbody>
+            </table>
+          </div>
+        )}
+        {sens && sens.sensorler.length === 0 && <p className="soluk" style={{ margin: "0 0 10px" }}>Sensör beyan edilmedi. Performans oranı ve beklenen üretim ölçülen düzlem-içi ışınımı kullanır; ölçümün kaynağını ve kalibrasyonunu burada beyan edin.</p>}
+        <div className="dugme-sira" style={{ alignItems: "flex-end", flexWrap: "wrap" }}>
+          <label className="girdi-etiket">Tür
+            <select className="girdi" value={sf.tur} aria-label="Sensör türü" onChange={(e) => { const tur = e.target.value; setSf({ ...sf, tur, olcum: OLCUM_SECENEKLERI[tur]?.[0] ?? sf.olcum }); }}>
+              {Object.entries(sens?.turler ?? SENSOR_TURLERI).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
+          <label className="girdi-etiket">Ölçüm
+            <select className="girdi" value={sf.olcum} aria-label="Sensör ölçümü" onChange={(e) => setSf({ ...sf, olcum: e.target.value })}>
+              {(OLCUM_SECENEKLERI[sf.tur] ?? Object.keys(OLCUMLER)).map((k) => <option key={k} value={k}>{(sens?.olcumler ?? OLCUMLER)[k] ?? k}</option>)}</select></label>
+          <label className="girdi-etiket">Marka / model
+            <input className="girdi" maxLength={80} placeholder="ör. SMP10" value={sf.marka_model} onChange={(e) => setSf({ ...sf, marka_model: e.target.value })} /></label>
+          <label className="girdi-etiket">Seri no
+            <input className="girdi" maxLength={40} value={sf.seri_no} onChange={(e) => setSf({ ...sf, seri_no: e.target.value })} /></label>
+          <label className="girdi-etiket" title="IEC 61724-1:2021 izleme sınıfı; 2017 baskısındaki C sınıfı kaldırıldı">Sınıf
+            <select className="girdi" value={sf.sinif} aria-label="IEC 61724-1 sınıfı" onChange={(e) => setSf({ ...sf, sinif: e.target.value })}>
+              <option value="">beyan yok</option>{(sens?.siniflar ?? ["A", "B"]).map((k) => <option key={k} value={k}>{k}</option>)}</select></label>
+          <label className="girdi-etiket">Son kalibrasyon
+            <input className="girdi" type="date" value={sf.kalibrasyon_tarihi} onChange={(e) => setSf({ ...sf, kalibrasyon_tarihi: e.target.value })} /></label>
+          <label className="girdi-etiket">Periyot (ay)
+            <input className="girdi" inputMode="numeric" style={{ width: 80 }} value={sf.periyot} onChange={(e) => setSf({ ...sf, periyot: e.target.value.replace(/[^0-9]/g, "") })} /></label>
+          <button className="dugme" onClick={() => sensKaydet([...(sens?.sensorler ?? []), { tur: sf.tur, olcum: sf.olcum, marka_model: sf.marka_model || null, seri_no: sf.seri_no || null, sinif: sf.sinif || null,
+            kalibrasyon_tarihi: sf.kalibrasyon_tarihi || null, kalibrasyon_periyodu_ay: sf.periyot ? Number(sf.periyot) : 24 }])}>Ekle</button>
+        </div>
+        {sensMesaj && <span className={`ayar-durum ${sensMesaj.startsWith("Kaydedildi") ? "ok" : "hata"}`}>{sensMesaj}</span>}
+        <p className="soluk" style={{ fontSize: 13, margin: "10px 0 0" }}>{sens?.not ?? "IEC 61724-1:2021 izleme sınıfları A ve B. Kalibrasyon periyodu üreticinin ya da izleme sınıfının şartına göre girilir; varsayılan 24 ay beyandır."}</p>
+      </Kart>
 
       {sam && sam.saatler.length > 0 && (
         <Kart baslik="Saatlik üretim profili" alt="Saat × ay matrisi"

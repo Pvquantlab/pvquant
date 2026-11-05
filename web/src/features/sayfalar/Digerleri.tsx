@@ -1014,7 +1014,7 @@ function DonemRaporuKarti({ plantId }: { plantId: string }) {
   };
   const oz = v?.ozet; const yuzde = (p: number | null | undefined) => p == null ? "—" : `${p < 0 ? "−" : "+"}%${sayiTr(Math.abs(p), 1)}`;
   return (
-    <Kart baslik="Dönem raporu" alt="Ay, çeyrek ya da yıl seçin; geçmiş her dönem yeniden üretilebilir. İçerik: üretim ve gün başı beklentisi, olay kaydı, olay kaydına göre kullanılabilirlik, ölçülen ışınım varsa performans oranı, ay döneminde uzlaştırma kalemleri (yeniden hesap) ve yüklü EPİAŞ bildirimi."
+    <Kart baslik="Dönem raporu" alt="Ay, çeyrek ya da yıl seçin; geçmiş her dönem yeniden üretilebilir. İçerik: üretim ve gün başı beklentisi, olay kaydı, olay kaydına göre kullanılabilirlik, ölçülen ışınım varsa performans oranı ile ölçülen havayla beklenen üretim ve EPI, ay döneminde uzlaştırma kalemleri (yeniden hesap) ve yüklü EPİAŞ bildirimi."
       sag={<span className="dugme-sira kart-arac">
         <select className="girdi" value={donem} onChange={(e) => { setDonem(e.target.value); setV(null); }} aria-label="Dönem">
           {secenekler.map((s) => <option key={s.kod} value={s.kod}>{s.etiket}</option>)}</select>
@@ -1032,6 +1032,9 @@ function DonemRaporuKarti({ plantId }: { plantId: string }) {
             <Kpi etiket="Beklenti (gün başı P50)" deger={oz.beklenen_kwh != null ? sayiTr(oz.beklenen_kwh / 1000, 1) : "—"} birim={oz.beklenen_kwh != null ? "MWh" : undefined} alt={oz.beklenen_kwh == null ? "arşivde gün başı tahmini yok" : oz.sapma_pct != null ? `sapma ${yuzde(oz.sapma_pct)} (${sayiTr(oz.ortak_gun)} ortak gün)` : "ortak gün yok"} />
             <Kpi etiket="Kullanılabilirlik (olay kaydı)" deger={v.kullanilabilirlik ? `%${sayiTr(v.kullanilabilirlik.oran * 100, 1)}` : "—"} alt={v.kullanilabilirlik ? `${sayiTr(oz.olay)} olay, ${sayiTr(oz.ariza)} arıza/hasar; ${sayiTr(v.kullanilabilirlik.ariza_esdeger_saat, 1)} eşdeğer saat` : "olay kaydı yok"} />
             <Kpi etiket="Performans oranı (temel)" deger={v.pr ? sayiTr(v.pr.pr, 3) : "—"} alt={v.pr ? `${sayiTr(v.pr.gun)} gün ölçülen ışınımla; sıcaklık düzeltmesiz` : "ölçülen düzlem ışınımı yok"} />
+            {/* v2.542 (P8b-2): dönemin ölçülen havayla beklenen üretimi — raporda ayrı bölüm; burada yalnız EPI */}
+            <Kpi etiket="EPI (ölçülen hava)" deger={v.performans?.durum === "ok" && v.performans.epi != null ? `%${sayiTr(v.performans.epi * 100, 1)}` : "—"}
+              alt={v.performans?.durum === "ok" ? `gerçekleşen / beklenen; ${v.performans.referans ?? ""}${v.performans.isinim?.durum === "ok" && v.performans.isinim.yil != null ? `; ışınım endeksi ${sayiTr(v.performans.isinim.yil, 2)}` : ""}` : (v.performans?.not ?? "beklenen üretim hesaplanamadı")} />
           </div>
           {v.uzlastirma?.satirlar && v.uzlastirma.satirlar.length > 0 && (
             <div className="grafik-kaydir" style={{ marginBottom: 8 }}><table className="veri" style={{ fontSize: 13.5 }}>

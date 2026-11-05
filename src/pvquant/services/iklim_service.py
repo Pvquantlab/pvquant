@@ -10,25 +10,25 @@ from __future__ import annotations
 import pandas as pd
 
 
-def aylik_toplamlar(df: pd.DataFrame, tz: str | None = None) -> pd.DataFrame:
+def aylik_toplamlar(df: pd.DataFrame, tz: str | None = None, kolon: str = "ghi") -> pd.DataFrame:
     """Saatlik GHI (W/m2, 'ghi' kolonu) -> yil-ay toplamlari (kWh/m2).
 
     tz verilirse ay siniri o takvimle cizilir (aylik_ozet emsali: 31 Mart
     21:00 UTC, Istanbul'da 1 Nisan'dir). Saatlik seri: W/m2 x 1h = Wh/m2.
     """
     if df is None or df.empty:
-        return pd.DataFrame(columns=["yil", "ay", "ghi_kwh_m2"])
+        return pd.DataFrame(columns=["yil", "ay", f"{kolon}_kwh_m2"])
     idx = df.index.tz_convert(tz) if tz else df.index
     idx = idx.tz_localize(None)
     # v2.536 (04.11 canlı bulgusu): PVGIS indeksi «time» adlıdır; pandas 3'te idx.year/idx.month aynı adı taşıyınca reset_index
     # «cannot insert time, already exists» ile düşüyordu (canlıda 5 santralin 4'ünde iklim beklentisi hiç yazılamadı). Adlar açıkça verilir.
-    g = df["ghi"].groupby([pd.Index(idx.year, name="yil"), pd.Index(idx.month, name="ay")]).sum() / 1000.0
-    out = g.rename("ghi_kwh_m2").reset_index()
-    out.columns = ["yil", "ay", "ghi_kwh_m2"]
+    g = df[kolon].groupby([pd.Index(idx.year, name="yil"), pd.Index(idx.month, name="ay")]).sum() / 1000.0   # v2.542: kolon = ghi | poa
+    out = g.rename(f"{kolon}_kwh_m2").reset_index()
+    out.columns = ["yil", "ay", f"{kolon}_kwh_m2"]
     return out
 
 
-def aylik_beklenti(toplamlar: pd.DataFrame) -> pd.DataFrame:
+def aylik_beklenti(toplamlar: pd.DataFrame, kolon: str = "ghi") -> pd.DataFrame:
     """Yil-ay toplamlari -> ay basina P10/50/90 + yil_sayisi.
 
     Kuantil, ayni ayin YILLAR-ARASI dagilimindan (sartname: NWP aya
@@ -36,7 +36,7 @@ def aylik_beklenti(toplamlar: pd.DataFrame) -> pd.DataFrame:
     """
     if toplamlar is None or toplamlar.empty:
         return pd.DataFrame(columns=["ay", "p10", "p50", "p90", "yil_sayisi"])
-    g = toplamlar.groupby("ay")["ghi_kwh_m2"]
+    g = toplamlar.groupby("ay")[f"{kolon}_kwh_m2"]
     out = pd.DataFrame({
         "p10": g.quantile(0.10), "p50": g.quantile(0.50),
         "p90": g.quantile(0.90), "yil_sayisi": g.count().astype(int),
@@ -55,8 +55,45 @@ def tam_yillar(toplamlar: pd.DataFrame, ilk_yil: int,
                      & (toplamlar["yil"] <= son_yil)].reset_index(drop=True)
 
 
+def poa_serisi(df: pd.DataFrame, lat: float, lon: float, egim: float, azimut: float, albedo: float = 0.2) -> pd.Series:
+    """v2.542 (P8b-2 kalanı; IH-104): saatlik yatay arşivden (ghi; dhi/dni varsa onlar, yoksa Erbs ayrışımı) santralın düzlemine
+    (eğim, azimut — pvlib dili: 180 = güney) düzlem-içi ışınım (W/m²), Hay-Davies; güneş konumu saat ortasında (pvgis_df sözleşmesi).
+    Tasarım simülasyonu değil, iklim beklentisinin düzlem karşılığıdır; model çekirdeğine girmez."""
+    import numpy as np
+    import pvlib
+    idx = pd.DatetimeIndex(df.index)
+    orta = idx + pd.Timedelta(minutes=30)
+    sp = pvlib.location.Location(lat, lon).get_solarposition(orta)
+    zen = sp["apparent_zenith"].values; az = sp["azimuth"].values
+    ghi = df["ghi"].astype(float).clip(lower=0).values
+    if "dni" in df and "dhi" in df:
+        dni = df["dni"].astype(float).clip(lower=0).values; dhi = df["dhi"].astype(float).clip(lower=0).values
+    else:
+        e = pvlib.irradiance.erbs(pd.Series(ghi, index=orta), pd.Series(zen, index=orta), orta)
+        dni = e["dni"].fillna(0).values; dhi = e["dhi"].fillna(0).values
+    dni_extra = pvlib.irradiance.get_extra_radiation(orta).values
+    tot = pvlib.irradiance.get_total_irradiance(float(egim), float(azimut), zen, az, dni, ghi, dhi, dni_extra=dni_extra, model="haydavies", albedo=albedo)
+    poa = pd.Series(np.nan_to_num(np.asarray(tot["poa_global"], dtype=float)), index=idx).clip(lower=0)
+    poa[np.asarray(sp["apparent_elevation"].values) <= 0] = 0.0
+    return poa
+
+
+def _beklenti_birlestir(df: pd.DataFrame, ilk_yil: int, son_yil: int, tz: str | None, lat: float, lon: float,
+                        egim: float | None, azimut: float | None) -> tuple[pd.DataFrame, pd.DataFrame]:
+    t = tam_yillar(aylik_toplamlar(df, tz=tz), ilk_yil, son_yil)
+    b = aylik_beklenti(t)
+    if egim is not None and azimut is not None and not df.empty:   # v2.542: düzlem-içi beklenti (IH-104, düzlem-içi sensör endeksi)
+        d2 = df.copy(); d2["poa"] = poa_serisi(d2, lat, lon, float(egim), float(azimut))
+        tp = tam_yillar(aylik_toplamlar(d2, tz=tz, kolon="poa"), ilk_yil, son_yil)
+        t = t.merge(tp, on=["yil", "ay"], how="left")
+        bp = aylik_beklenti(tp, kolon="poa").rename(columns={"p10": "poa_p10", "p50": "poa_p50", "p90": "poa_p90"}).drop(columns=["yil_sayisi"])
+        b = b.merge(bp, on="ay", how="left")
+        b.attrs["poa_egim"] = float(egim); b.attrs["poa_azimut"] = float(azimut)
+    return t, b
+
+
 def iklim_hesapla(lat: float, lon: float, yil_sayisi: int = 20,
-                  tz: str | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
+                  tz: str | None = None, egim: float | None = None, azimut: float | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Ince ag sargisi: arsivden cek -> saf fonksiyonlardan gecir.
     Doner: (toplamlar, beklenti) — serpili katmani (v2.78) toplamlari da ister.
 
@@ -72,16 +109,14 @@ def iklim_hesapla(lat: float, lon: float, yil_sayisi: int = 20,
         # v2.269 (Dalga 0): uydu türevli SARAH-3 (2005–2023) — Open-Meteo/ERA5 arşivi yerine
         from pvquant.io.arsiv_isinim import iklim_serisi
         df, ilk_yil, son_tam_yil = iklim_serisi(lat, lon, yil_sayisi)
-        t = tam_yillar(aylik_toplamlar(df, tz=tz), ilk_yil, son_tam_yil)
-        return t, aylik_beklenti(t)
+        return _beklenti_birlestir(df, ilk_yil, son_tam_yil, tz, lat, lon, egim, azimut)
     son_tam_yil = dt.date.today().year - 1
     baslangic = f"{son_tam_yil - yil_sayisi + 1}-01-01"
     bitis = f"{son_tam_yil}-12-31"
     ilk_yil = son_tam_yil - yil_sayisi + 1
     df = OpenMeteoClient(timeout=180).get_historical(
         lat, lon, baslangic, bitis).to_dataframe()
-    t = tam_yillar(aylik_toplamlar(df, tz=tz), ilk_yil, son_tam_yil)
-    return t, aylik_beklenti(t)
+    return _beklenti_birlestir(df, ilk_yil, son_tam_yil, tz, lat, lon, egim, azimut)
 
 
 def iklim_beklentisi(lat: float, lon: float, yil_sayisi: int = 20,
@@ -100,21 +135,31 @@ def iklim_kaydet(tenant_id, plant_id, beklenti: pd.DataFrame) -> int:
 
     if beklenti is None or beklenti.empty:
         return 0
+    def _f(r, k):   # v2.542: POA sütunları yoksa/NaN ise None
+        v = r.get(k) if hasattr(r, "get") else None
+        return None if v is None or v != v else float(v)
     satirlar = [
         {"t": str(tenant_id), "p": str(plant_id), "a": int(r["ay"]),
          "p10": float(r["p10"]), "p50": float(r["p50"]),
-         "p90": float(r["p90"]), "y": int(r["yil_sayisi"])}
+         "p90": float(r["p90"]), "y": int(r["yil_sayisi"]),
+         "q10": _f(r, "poa_p10"), "q50": _f(r, "poa_p50"), "q90": _f(r, "poa_p90"),
+         "eg": beklenti.attrs.get("poa_egim"), "az": beklenti.attrs.get("poa_azimut")}
         for _, r in beklenti.iterrows()]
     with tenant_baglami(tenant_id) as s:
         s.execute(text(
             "INSERT INTO iklim_beklenti(tenant_id,plant_id,ay,"
             " ghi_p10_kwh_m2,ghi_p50_kwh_m2,ghi_p90_kwh_m2,"
+            " poa_p10_kwh_m2,poa_p50_kwh_m2,poa_p90_kwh_m2,poa_egim,poa_azimut,"
             " yil_sayisi,hesap_zamani)"
-            " VALUES(:t,:p,:a,:p10,:p50,:p90,:y,now())"
+            " VALUES(:t,:p,:a,:p10,:p50,:p90,:q10,:q50,:q90,:eg,:az,:y,now())"
             " ON CONFLICT (plant_id,ay) DO UPDATE SET"
             " ghi_p10_kwh_m2=EXCLUDED.ghi_p10_kwh_m2,"
             " ghi_p50_kwh_m2=EXCLUDED.ghi_p50_kwh_m2,"
             " ghi_p90_kwh_m2=EXCLUDED.ghi_p90_kwh_m2,"
+            " poa_p10_kwh_m2=EXCLUDED.poa_p10_kwh_m2,"   # v2.542
+            " poa_p50_kwh_m2=EXCLUDED.poa_p50_kwh_m2,"
+            " poa_p90_kwh_m2=EXCLUDED.poa_p90_kwh_m2,"
+            " poa_egim=EXCLUDED.poa_egim, poa_azimut=EXCLUDED.poa_azimut,"
             " yil_sayisi=EXCLUDED.yil_sayisi,"
             " hesap_zamani=now()"), satirlar)
     return len(satirlar)
@@ -129,6 +174,7 @@ def iklim_oku(tenant_id, plant_id) -> pd.DataFrame:
     with tenant_baglami(tenant_id) as s:
         return pd.read_sql(text(
             "SELECT ay, ghi_p10_kwh_m2, ghi_p50_kwh_m2, ghi_p90_kwh_m2,"
+            " poa_p10_kwh_m2, poa_p50_kwh_m2, poa_p90_kwh_m2, poa_egim, poa_azimut,"   # v2.542
             " yil_sayisi, hesap_zamani FROM iklim_beklenti"
             " WHERE plant_id=:p ORDER BY ay"),
             s.connection(), params={"p": str(plant_id)})

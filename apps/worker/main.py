@@ -594,7 +594,7 @@ def aylik_iklim(plant):
     Arsiv probu olcumu: 20 yil tek cagri ~3 sn — santral basina ucuz."""
     from pvquant.services import iklim_service
     t, b = iklim_service.iklim_hesapla(plant["lat"], plant["lon"],
-                                       tz=plant.get("tz"))
+                                       tz=plant.get("tz"), egim=plant.get("tilt"), azimut=plant.get("azimuth"))   # v2.542: düzlem-içi beklenti
     iklim_service.iklim_kaydet(plant["tenant_id"], plant["id"], b)
     iklim_service.iklim_yil_kaydet(plant["tenant_id"], plant["id"], t)  # v2.78-A
 

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
 import type { EChartsOption } from "echarts";
 import { api, bellekten, ayniysaEskisi } from "../../api/client";
-import type { AylikBeklenti, SantralOzeti, Bankable, PDegerleri } from "../../api/types";
+import type { AylikBeklenti, SantralOzeti, Bankable, PDegerleri, Performans } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
 import { Cubuklar } from "../santralim/Cubuklar";
@@ -28,6 +28,7 @@ export function Aylik({ plantId }: { plantId: string }) {
   const [bk, setBk] = useState<Bankable | null | undefined>(undefined);
   const [bkMesaj, setBkMesaj] = useState<string | null>(null);
   const [pd, setPd] = useState<PDegerleri | null | undefined>(undefined);   // 04.11 v2.534 (P8b-1): yıl yıl P-değerleri ve gerçekleşen kıyası
+  const [pf, setPf] = useState<Performans | null | undefined>(undefined);   // 05.11 v2.542 (P8b-2): ölçülen havayla beklenen üretim ve EPI
   const bkYenile = () => { setBkMesaj("Hesaplanıyor: 19 yıllık fiziksel model hesabı, 1–2 dakika…"); api.bankableHesapla(plantId).then((r) => { setBk(r); setBkMesaj(null); }).catch((e) => setBkMesaj(String((e as Error).message ?? e))); };
   const { n, oku } = useTema();
 
@@ -38,6 +39,7 @@ export function Aylik({ plantId }: { plantId: string }) {
     api.ozet(plantId).then((v) => { if (acik) setO((e) => ayniysaEskisi(e, v)); }, () => { if (acik) setO((e) => e ?? null); });
     api.bankable(plantId).then((v) => { if (acik) setBk(v); }, () => { if (acik) setBk(null); });
     setPd(undefined); api.pDegerleri(plantId).then((v) => { if (acik) setPd(v); }, () => { if (acik) setPd(null); });
+    setPf(undefined); api.performans(plantId).then((v) => { if (acik) setPf(v); }, () => { if (acik) setPf(null); });
     return () => { acik = false; };
   }, [plantId, ds]);   // 26.10 eşzamanlama
   const hazir = b !== undefined || bD !== "bekliyor";
@@ -244,6 +246,39 @@ export function Aylik({ plantId }: { plantId: string }) {
           </>
         ) : (
           <p className="soluk" style={{ margin: 0 }}>{pd?.not ?? "P-değeri serisi şu anda alınamadı."}</p>
+        )}
+      </Kart>
+      {/* v2.542 (P8b-2, IH-083/099/104): ölçülen havayla beklenen üretim ve EPI — üç referans (tahmin / ölçülen hava / P50) tek tabloda; ışınım endeksi yalnız yatay sensörde */}
+      <Kart baslik="Beklenen üretim (ölçülen hava) ve EPI" alt="Ay ay gerçekleşen; ölçülen düzlem-içi ışınım ve hücre sıcaklığıyla beklenen; tahminle beklenen; P50. EPI = gerçekleşen / beklenen."
+        sag={pf?.durum === "ok" && pf.toplam ? <span className="cip"><Meta items={[`${sayiTr(pf.toplam.ay_ok)} / ${sayiTr(pf.toplam.ay)} ay`, pf.toplam.epi != null ? `EPI %${sayiTr(pf.toplam.epi * 100, 1)}` : "EPI —", pf.referans ? `referans PR %${sayiTr(pf.referans.deger * 100, 1)} (${pf.referans.kaynak === "tasarim" ? "tasarım" : "ölçüm"})` : ""]} /></span> : null}>
+        {pf === undefined ? <YerTutucu yukseklik={220} /> : pf?.durum === "ok" && pf.aylar ? (
+          <>
+            <div className="grafik-kaydir">
+              <table className="veri" style={{ fontSize: 13.5 }}>
+                <thead><tr><th>Ay</th><th>Gerçekleşen (MWh)</th><th>Beklenen, ölçülen hava (MWh)</th><th>EPI</th><th>EPI, kırpma ve kısıntı dışı</th><th>Tahminle beklenen (MWh)</th><th>P50 (MWh)</th>
+                  {pf.isinim?.durum === "ok" && <><th>Işınım endeksi</th><th>P50, hava düzeltmeli (MWh)</th></>}<th>Işınım ölçüm kapsamı</th></tr></thead>
+                <tbody>
+                  {pf.aylar.map((a) => (<tr key={a.ay}>
+                    <td className="mono">{a.ay}</td>
+                    <td className="mono">{sayiTr(a.uretim_kwh / 1000, 1)}</td>
+                    <td className="mono">{a.beklenen_kwh != null ? sayiTr(a.beklenen_kwh / 1000, 1) : <span className="soluk">— ışınım ölçümü yetersiz</span>}</td>
+                    <td>{a.epi != null ? <span className={`rozet rozet-kucuk ${a.epi >= 0.95 ? "rozet-ok" : a.epi < 0.85 ? "rozet-uyari" : "rozet-notr"}`}>%{sayiTr(a.epi * 100, 1)}</span> : "—"}</td>
+                    <td className="mono">{a.epi_temiz != null ? `%${sayiTr(a.epi_temiz * 100, 1)}` : "—"}{a.kirpma_saat || a.kisinti_saat ? <span className="soluk"> ({sayiTr(a.kirpma_saat)} kırpma, {sayiTr(a.kisinti_saat)} kısıntı saati)</span> : null}</td>
+                    <td className="mono">{a.tahmin_kwh != null ? sayiTr(a.tahmin_kwh / 1000, 1) : "—"}</td>
+                    <td className="mono">{a.p50_kwh != null ? sayiTr(a.p50_kwh / 1000, 1) : "—"}</td>
+                    {pf.isinim?.durum === "ok" && <><td className="mono">{a.isinim_endeksi != null ? sayiTr(a.isinim_endeksi, 2) : "—"}</td><td className="mono">{a.p50_hava_duzeltmeli_kwh != null ? sayiTr(a.p50_hava_duzeltmeli_kwh / 1000, 1) : "—"}</td></>}
+                    <td className="mono">%{sayiTr(a.poa_kapsam * 100, 0)}</td>
+                  </tr>))}
+                </tbody>
+              </table>
+            </div>
+            <p className="soluk" style={{ fontSize: 13, margin: "10px 0 0" }}>
+              Referans PR: {pf.referans?.etiket}. Hücre sıcaklığı: {pf.sicaklik?.etiket}.{pf.ac_sinir_kw ? ` Beklenen üretim ${sayiTr(pf.ac_sinir_kw / 1000, 2)} MW ${pf.ac_sinir_kaynak ?? "EAK"} ile üstten kesildi.` : ""}{" "}
+              Işınım sensörü: {pf.sensorler.etiket}. {pf.isinim?.not} {pf.not}
+            </p>
+          </>
+        ) : (
+          <p className="soluk" style={{ margin: 0 }}>{pf?.durum === "poa_yok" ? `Hiçbir ayda düzlem-içi ışınım ölçümü gündüz saatlerinin %95'ine ulaşmadı; beklenen üretim yazılmadı. ${pf.not}` : pf?.not ?? "Beklenen üretim şu anda alınamadı."}</p>
         )}
       </Kart>
       <Kart baslik="Aylık yatay ışınım (GHI) — uzun dönem P50 ve P10–P90 aralığı">

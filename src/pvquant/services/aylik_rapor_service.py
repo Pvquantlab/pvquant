@@ -121,6 +121,25 @@ def pr_temel(df: pd.DataFrame, kwp: float) -> dict | None:
             "not": "IEC 61724-1 temel PR (sıcaklık düzeltmesiz; kırpma dışlanmadı); ölçülen düzlem ışınımı olan günler"}
 
 
+def performans(tenant_id, plant: dict, d: dict, bugun: date | None = None) -> dict | None:
+    """v2.542 (P8b-2): dönemin ölçülen havayla beklenen üretimi ve EPI'si (performans_service.donem); referans PR ve ışınım endeksi notuyla.
+    Hesap alınamazsa None (rapor düşmez); beklenen yazılamayan aylar tire."""
+    try:
+        from pvquant.services import performans_service as ps
+        r = ps.donem(tenant_id, plant, d["bas"], d["bit"] - timedelta(days=1), bugun)   # donem_cozumle bit HARİÇ; ps.donem bit DÂHİL
+    except Exception as e:   # noqa: BLE001
+        return {"durum": "hata", "hata": f"{type(e).__name__}: {e}"}
+    if r.get("durum") != "ok":
+        return {"durum": r.get("durum"), "not": r.get("not"), "sensor": r.get("sensorler", {}).get("etiket")}
+    tp = r["toplam"]
+    return {"durum": "ok", "referans": r["referans"]["etiket"], "sicaklik": r["sicaklik"]["etiket"], "sensor": r["sensorler"]["etiket"],
+            "epi": tp["epi"], "uretim_kwh": tp["uretim_kwh"], "beklenen_kwh": tp["beklenen_kwh"], "ay_ok": tp["ay_ok"], "ay": tp["ay"],
+            "isinim": {"durum": r["isinim"]["durum"], "yil": r["isinim"]["yil"], "not": r["isinim"]["not"]},
+            "aylar": [{"ay": a["ay"], "uretim_kwh": a["uretim_kwh"], "beklenen_kwh": a["beklenen_kwh"], "epi": a["epi"], "epi_temiz": a["epi_temiz"],
+                       "isinim_endeksi": a.get("isinim_endeksi"), "poa_kapsam": a["poa_kapsam"]} for a in r["aylar"]],
+            "not": r["not"]}
+
+
 def uzlastirma(tenant_id, plant: dict, d: dict) -> dict | None:
     """Ay döneminde PVQuant uzlaştırma kalemleri (yeniden hesap) + yüklü EPİAŞ bildirimi; öbür dönemlerde None (not yazılır)."""
     if d["tur"] != "ay":
@@ -187,6 +206,7 @@ def veri(tenant_id, plant: dict, donem: str | None = None, bugun: date | None = 
     return {"donem": {k: (v.isoformat() if isinstance(v, date) else v) for k, v in d.items()}, "santral": plant.get("name"), "kapasite_kwp": kwp, "ac_kw": plant.get("ac_limit_kw"),
             "ozet": ozet, "gunler": gun_satirlari if d["tur"] == "ay" else [], "aylar": aylik, "olaylar": ol,
             "kullanilabilirlik": kullanilabilirlik_olay(ol, kap, d["saat"]), "pr": pr_temel(df, kwp), "uzlastirma": uzlastirma(tenant_id, plant, d),
+            "performans": performans(tenant_id, plant, d, bugun),   # v2.542 (P8b-2): ölçülen havayla beklenen üretim, EPI, ışınım endeksi
             "notlar": ["Beklenen = gün başlamadan verilmiş tahminin günlük P50 toplamı (arşiv; geriye dönük değişmez); sapma yalnız iki değerin de bulunduğu günlerde.",
                        "Üretim SCADA ölçümüdür (geçerli saatler); EPİAŞ uzlaştırmaya esas sayaç verisi değildir.",
                        "Uzlaştırma kalemleri PVQuant'ın yürürlükteki kuralla yeniden hesabıdır; EPİAŞ bildirimi esastır." if d["tur"] == "ay" else
@@ -212,7 +232,8 @@ def rapor(tenant_id, plant: dict, donem: str | None = None, bugun: date | None =
                              "Sapma (ortak günler)": ("—" if oz["sapma_pct"] is None else f"%{oz['sapma_pct']:+.1f}".replace(".", ",")),
                              "Veri kapsamı": f"{oz['saat']}/{oz['beklenen_saat']} saat (%{oz['kapsam_pct'] or 0:.0f})", "Olay": f"{oz['olay']} ({oz['ariza']} arıza/hasar)",
                              "Kullanılabilirlik (olay kaydı)": ("—" if not v["kullanilabilirlik"] else f"%{v['kullanilabilirlik']['oran'] * 100:.1f}".replace(".", ",")),
-                             "PR (temel)": ("ölçülen düzlem ışınımı yok" if not v["pr"] else f"{v['pr']['pr']:.3f}".replace(".", ","))}]).T.rename(columns={0: "Değer"})
+                             "PR (temel)": ("ölçülen düzlem ışınımı yok" if not v["pr"] else f"{v['pr']['pr']:.3f}".replace(".", ",")),
+                             "EPI (ölçülen hava)": (f"%{v['performans']['epi'] * 100:.1f}".replace(".", ",") if v.get("performans") and v["performans"].get("durum") == "ok" and v["performans"].get("epi") is not None else "—")}]).T.rename(columns={0: "Değer"})   # v2.542
     bol.append(("Özet", ozet_df))
     if v["gunler"]:
         g = pd.DataFrame(v["gunler"]).rename(columns={"gun": "Gün", "kwh": "Üretim (kWh)", "saat": "Saat", "p50_kwh": "Beklenen P50 (kWh)", "p10_kwh": "P10", "p90_kwh": "P90", "sapma_pct": "Sapma %"})
@@ -240,6 +261,17 @@ def rapor(tenant_id, plant: dict, donem: str | None = None, bugun: date | None =
         bol.append(("Uzlaştırma kalemleri", f"Hesap alınamadı: {u['hata']}"))
     if v["pr"]:
         bol.append(("Performans oranı", f"PR {v['pr']['pr']:.3f} — {v['pr']['gun']} gün; E {_kwh(v['pr']['e_kwh'])} kWh, H {v['pr']['h_kwh_m2']} kWh/m². {v['pr']['not']}."))
+    pf = v.get("performans")   # v2.542 (P8b-2): ölçülen havayla beklenen üretim ve EPI
+    if pf and pf.get("durum") == "ok":
+        e = pd.DataFrame([{"Ay": x["ay"], "Üretim (kWh)": _kwh(x["uretim_kwh"]), "Beklenen, ölçülen hava (kWh)": ("—" if x["beklenen_kwh"] is None else _kwh(x["beklenen_kwh"])),
+                           "EPI": ("—" if x["epi"] is None else f"%{x['epi'] * 100:.1f}".replace(".", ",")),
+                           "EPI (kırpma/kısıntı dışı)": ("—" if x["epi_temiz"] is None else f"%{x['epi_temiz'] * 100:.1f}".replace(".", ",")),
+                           "Işınım endeksi": ("—" if x["isinim_endeksi"] is None else f"{x['isinim_endeksi']:.2f}".replace(".", ",")),
+                           "Işınım ölçüm kapsamı": f"%{x['poa_kapsam'] * 100:.0f}"} for x in pf["aylar"]])
+        bol.append(("Beklenen üretim (ölçülen hava) ve EPI", e))
+        bol.append(("Beklenen üretim notu", f"Referans PR: {pf['referans']}. Hücre sıcaklığı: {pf['sicaklik']}. Işınım sensörü: {pf['sensor']}. {pf['isinim']['not']} {pf['not']}"))
+    elif pf and pf.get("durum") not in (None, "hata"):
+        bol.append(("Beklenen üretim (ölçülen hava)", pf.get("not") or "Hesaplanamadı."))
     bol.append(("Notlar", " ".join(v["notlar"]) + " Kaynaklar: " + "; ".join(v["kaynaklar"]) + "."))
     r = rs.Rapor(baslik=f"PVQuant dönem raporu — {plant.get('name', '')}", donem=d["etiket"], santral=plant.get("name", ""), bolumler=bol)
     try:

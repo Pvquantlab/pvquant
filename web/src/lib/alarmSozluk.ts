@@ -9,4 +9,5 @@ export const ALARM_KURALI: Record<string, string> = {
     takvim_son_tarih: "Yaklaşan son tarih", ptf_dusuk_saat: "Yarın düşük fiyat saati",
     ariza_sayaci_yaklasti: "Arıza sayacı eşiğe yaklaştı", teminat_hatirlatma: "Teminat saati hatırlatması", sayac_eksik_saat: "Sayaç verisi eksik",
     avans_hatirlatma: "Avans ödeme hatırlatması",
+    sensor_kalibrasyon: "Sensör kalibrasyonu vadesi geçti",
 };

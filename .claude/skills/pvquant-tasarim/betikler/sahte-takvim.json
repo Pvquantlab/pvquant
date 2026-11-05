@@ -406,6 +406,33 @@
    "kalan_gun": 48
   },
   {
+   "kod": "sensor_kalibrasyon",
+   "ad": "Sensör kalibrasyonu vadesi — Piranometre (termopil), düzlem-içi ışınım (POA)",
+   "tarih": "2026-12-20",
+   "saat": null,
+   "kaynak": "Son kalibrasyon tarihi + periyot (Santral ayarları › Sensörler); IEC 61724-1:2021 izleme sınıfı şartı",
+   "kaynak_turu": "kunye",
+   "dayanak": [],
+   "kaydirma": "yok",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim",
+    "lisanssiz_dagitim",
+    "oz_tuketim_saatlik"
+   ],
+   "donem": null,
+   "not": "Vade geçince sensörün verisi performans oranına ve beklenen üretime girmeye devam eder; «Sensör kalibrasyonu vadesi geçti» alarm kuralı seçilebilir. Marka/model: Kipp & Zonen SMP10.",
+   "sonuc": "Kalibrasyonu geçmiş sensörle ölçülen ışınım/sıcaklık KPI'lara girer; ölçüm güvenilirliği etiketlenmez (beyan).",
+   "sonuc_kisa": "Ölçüm güvenilirliği düşer",
+   "islem": "islem",
+   "sorumlu": "santral",
+   "hafta_sonu": true,
+   "tatil": null,
+   "kalan_gun": 48
+  },
+  {
    "kod": "fatura_duzenleme",
    "ad": "Fatura düzenleme son günü (alacaklıysa EPİAŞ'a kesilecek fatura)",
    "tarih": "2026-12-22",
@@ -1579,6 +1606,33 @@
    "kalan_gun": 48
   },
   {
+   "kod": "sensor_kalibrasyon",
+   "ad": "Sensör kalibrasyonu vadesi — Piranometre (termopil), düzlem-içi ışınım (POA)",
+   "tarih": "2026-12-20",
+   "saat": null,
+   "kaynak": "Son kalibrasyon tarihi + periyot (Santral ayarları › Sensörler); IEC 61724-1:2021 izleme sınıfı şartı",
+   "kaynak_turu": "kunye",
+   "dayanak": [],
+   "kaydirma": "yok",
+   "kapsam": [
+    "lisansli_serbest",
+    "lisansli_yekdem",
+    "yeka",
+    "lisanssiz_iletim",
+    "lisanssiz_dagitim",
+    "oz_tuketim_saatlik"
+   ],
+   "donem": null,
+   "not": "Vade geçince sensörün verisi performans oranına ve beklenen üretime girmeye devam eder; «Sensör kalibrasyonu vadesi geçti» alarm kuralı seçilebilir. Marka/model: Kipp & Zonen SMP10.",
+   "sonuc": "Kalibrasyonu geçmiş sensörle ölçülen ışınım/sıcaklık KPI'lara girer; ölçüm güvenilirliği etiketlenmez (beyan).",
+   "sonuc_kisa": "Ölçüm güvenilirliği düşer",
+   "islem": "islem",
+   "sorumlu": "santral",
+   "hafta_sonu": true,
+   "tatil": null,
+   "kalan_gun": 48
+  },
+  {
    "kod": "ilerleme_raporu",
    "ad": "İlerleme raporu (Ocak sonu; kurulu gücün tamamı kabul edilene kadar)",
    "tarih": "2027-01-31",
@@ -1860,7 +1914,7 @@
    "kaynak": "Elektrik Şebeke Yönetmeliği m.54: 8 saatten kısa planlı devre dışı en az 24 saat önce, 8–48 saat arası en az 7 takvim günü önce bildirilir; 48 saati aşanlar m.54 kapsamı dışındadır: yıllık plan (m.52, 30 Nisan) ya da nihai plan değişikliği (m.52(5)) — çıkarım; yalnız iletime doğrudan bağlı üretim tesisi (m.51(1))"
   }
  ],
- "uyum_not": "«İşlem gerekli» santralin yapacağı adımdır; «takip edilmeli» başkasının (EPİAŞ, EPDK, TEİAŞ, şebeke işletmecisi) adımıdır; «doğrulama gerekli» koşulu PVQuant'ta kayıtlı olmayan (bağlantı türü, DSG türü, mekanik güç, YEKDEM süresi) satırdır. Uyum takvimi 12 ay ileriye bakar: lisans ve bildirim yükümlülükleri (ilerleme raporu, lisans bedeli taksitleri, BDB-02, TEİAŞ bakım planı), santral tarihlerinden türeyenler (İSG periyodik kontrol, ortaklık değişikliği, izin iptali, lisanssız 10 yıl) ve olay kaydındaki planlı bakımların bildirim son anı. «Aykırılıkta» sütunu ilgili maddeyi ve ihtar süresini söyler; bent eşlemesi Kurul takdirine bağlı olduğundan «çıkarım» etiketlidir, tutar yazılmaz (yıllık tebliğle değişir). Toplayıcı lisansının kendi takvimi (Mart/Temmuz/Kasım taksitleri, fiyat bildirimi), piyasadan alım sınırı (Karar 14626) ve YEK-G kaydı burada yok.",
+ "uyum_not": "«İşlem gerekli» santralin yapacağı adımdır; «takip edilmeli» başkasının (EPİAŞ, EPDK, TEİAŞ, şebeke işletmecisi) adımıdır; «doğrulama gerekli» koşulu PVQuant'ta kayıtlı olmayan (bağlantı türü, DSG türü, mekanik güç, YEKDEM süresi) satırdır. Uyum takvimi 12 ay ileriye bakar: lisans ve bildirim yükümlülükleri (ilerleme raporu, lisans bedeli taksitleri, BDB-02, TEİAŞ bakım planı), santral tarihlerinden türeyenler (İSG periyodik kontrol, ortaklık değişikliği, izin iptali, lisanssız 10 yıl, sensör kalibrasyon vadesi) ve olay kaydındaki planlı bakımların bildirim son anı. «Aykırılıkta» sütunu ilgili maddeyi ve ihtar süresini söyler; bent eşlemesi Kurul takdirine bağlı olduğundan «çıkarım» etiketlidir, tutar yazılmaz (yıllık tebliğle değişir). Toplayıcı lisansının kendi takvimi (Mart/Temmuz/Kasım taksitleri, fiyat bildirimi), piyasadan alım sınırı (Karar 14626) ve YEK-G kaydı burada yok.",
  "bakim_kaynak": "Elektrik Şebeke Yönetmeliği m.54: 8 saatten kısa planlı devre dışı en az 24 saat önce, 8–48 saat arası en az 7 takvim günü önce bildirilir; 48 saati aşanlar m.54 kapsamı dışındadır: yıllık plan (m.52, 30 Nisan) ya da nihai plan değişikliği (m.52(5)) — çıkarım; yalnız iletime doğrudan bağlı üretim tesisi (m.51(1))",
  "donemler": [
   {

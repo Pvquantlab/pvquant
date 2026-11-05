@@ -603,6 +603,9 @@ export interface RaporDonemVeri { donem: RaporDonem; santral: string; kapasite_k
   aylar: { ay: string; uretim_kwh: number; beklenen_kwh: number; saat: number; gun: number; sapma_pct: number | null }[] | null;
   olaylar: { tur: string; etiket: string; baslangic: string; bitis: string | null; sure_saat: number; etkilenen_kw: number; neden: string | null; istisna: boolean; ariza: boolean }[];
   kullanilabilirlik: { oran: number; ariza_esdeger_saat: number; istisna_esdeger_saat: number; saat: number; not: string } | null;
+  /** v2.542 (P8b-2): dönemin ölçülen havayla beklenen üretimi ve EPI'si; hesap alınamazsa durum ≠ ok */
+  performans?: { durum: string; epi?: number | null; uretim_kwh?: number; beklenen_kwh?: number; referans?: string; sicaklik?: string; sensor?: string | null; not?: string;
+    isinim?: { durum: string; yil: number | null; not: string }; aylar?: { ay: string; uretim_kwh: number; beklenen_kwh: number | null; epi: number | null; epi_temiz: number | null; isinim_endeksi: number | null; poa_kapsam: number }[] } | null;
   pr: { pr: number; gun: number; e_kwh: number; h_kwh_m2: number; not: string } | null;
   uzlastirma: { satirlar?: { kalem: string; pvquant_alacak_tl: number | null; pvquant_borc_tl: number | null; epias_alacak_tl: number | null; epias_borc_tl: number | null }[]; saat?: number;
     guvenilirlik?: string | null; nedenler?: string[]; bildirim?: { surum: string; zaman: string } | null; hata?: string | null } | null;
@@ -668,3 +671,18 @@ export type OlayYanit = Olay & { uyari?: string; cakisan?: string[] };
 export interface OlayGiris { tur: OlayTur; baslangic: string; bitis?: string | null; etkilenen_kw?: number | null; neden?: string | null; eak_gerekcesi?: string | null; kanit?: string | null;
   /** v2.541 */ bildirim_zamani?: string | null; talimat_mw?: number | null }
 
+/** v2.542 (P8b-2; IH-083/099/104): ölçülen düzlem-içi ışınım ve hücre sıcaklığıyla beklenen üretim, EPI, üç referans, ışınım endeksi. */
+export interface PerformansAy { ay: string; uretim_kwh: number; saat: number; poa_kapsam: number; kirpma_saat: number; kisinti_saat: number; isinim_kwh_m2: number | null;
+  beklenen_kwh: number | null; epi: number | null; epi_temiz: number | null; durum: "ok" | "poa_yok"; tahmin_kwh?: number | null; p50_kwh?: number | null;
+  isinim_p50_kwh_m2?: number | null; isinim_endeksi?: number | null; p50_hava_duzeltmeli_kwh?: number | null }
+export interface IsinimKaynagi { duzlem: "poa" | "ghi" | null; etiket: string; sinif: string | null; kalibrasyon: string | null; tur: string | null; vade?: string | null }
+export interface Performans { durum: "ok" | "poa_yok" | "veri_yok" | "referans_yok"; ay: number; bugun: string; not: string; sensor_sayisi: number; sensorler: IsinimKaynagi;
+  referans?: { deger: number; kaynak: "tasarim" | "olcum"; etiket: string }; sicaklik?: { kaynak: string; etiket: string }; gamma?: number; ac_sinir_kw?: number | null; ac_sinir_kaynak?: string | null;
+  aylar?: PerformansAy[]; toplam?: { ay_ok: number; ay: number; uretim_kwh: number; beklenen_kwh: number; epi: number | null; tahmin_kwh: number | null; p50_kwh: number | null };
+  isinim?: { durum: "ok" | "poa_p50_yok" | "sensor_yok" | "iklim_yok" | "olcum_yok"; yil: number | null; not: string; duzlem: string | null };
+  pr_olcum?: Record<string, number | string | null> }
+/** v2.542 (P8b-2; IH-092): sensör envanteri — vade ve durum sunucuda türetilir. */
+export interface Sensor { tur: string; olcum: string; marka_model?: string | null; seri_no?: string | null; sinif?: string | null; kalibrasyon_tarihi?: string | null;
+  kalibrasyon_periyodu_ay?: number; not?: string | null; vade?: string | null; kalan_gun?: number | null; durum?: "gecti" | "yaklasiyor" | "uygun" | "tarih_yok" }
+export interface Sensorler { sensorler: Sensor[]; isinim: IsinimKaynagi; turler: Record<string, string>; olcumler: Record<string, string>; siniflar: string[];
+  varsayilan_periyot_ay: number; yaklasan_gun: number; not: string }

@@ -1311,6 +1311,7 @@ class EakIstek(BaseModel):
     teminat_risk_katsayisi: float | None = None  # v2.522 (P2b): EPİAŞ dengesizlik teminatı risk katsayısı (değeri kaynakta yok; müşteri girer)
     kullanilabilirlik_sozlesme: float | None = None  # v2.533 (P8a): O&M sözleşmesindeki kullanılabilirlik eşiği (0,5–1); açık kWh/TL kıyas tabanı
     butce_kwh_yil: float | None = None            # v2.534 (P8b-1): finansal modeldeki yıllık bütçe (kWh); P-değeri kıyasında bütçe oranı
+    pr_referans: float | None = None              # v2.542 (P8b-2): tasarım/sözleşme performans oranı (0,5–0,95); ölçülen havayla beklenen üretimin referansı
 
 
 class EpiasIstek(BaseModel):
@@ -1402,6 +1403,10 @@ def eak_ayarla(plant_id: str, p: EakIstek, claims=Depends(yazma_yetkisi())):
         if p.butce_kwh_yil is not None and not (0 < p.butce_kwh_yil <= kap * 8760):
             raise HTTPException(422, "butce_kwh_yil 0 ile kurulu güç × 8760 arasında olmalı")
         an["butce_kwh_yil"] = float(p.butce_kwh_yil) if p.butce_kwh_yil is not None else None
+    if "pr_referans" in verilen:   # v2.542 (P8b-2)
+        if p.pr_referans is not None and not (0.5 <= p.pr_referans <= 0.95):
+            raise HTTPException(422, "pr_referans 0,5–0,95 aralığında olmalı")
+        an["pr_referans"] = float(p.pr_referans) if p.pr_referans is not None else None
     pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **an)
     _denetim.kaydet("musteri", "eak_ayar", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"], ayrinti=dict(an))   # v2.516 (#7)
     row["params_json"] = pj
@@ -1412,7 +1417,8 @@ def eak_ayarla(plant_id: str, p: EakIstek, claims=Depends(yazma_yetkisi())):
             "pozisyon": dengesizlik_service.pozisyon_ayari(pj),   # v2.517 (P2a)
             "teminat_risk_katsayisi": pj.get("teminat_risk_katsayisi"),   # v2.522 (P2b)
             "kullanilabilirlik_sozlesme": pj.get("kullanilabilirlik_sozlesme"),   # v2.533 (P8a)
-            "butce_kwh_yil": pj.get("butce_kwh_yil")}   # v2.534 (P8b-1)
+            "butce_kwh_yil": pj.get("butce_kwh_yil"),   # v2.534 (P8b-1)
+            "pr_referans": pj.get("pr_referans")}   # v2.542 (P8b-2)
 
 
 def _toplayici_yaniti(tenant_id: str, plant_id: str, gun: str | None, fmt: str, adim: int):
@@ -1965,6 +1971,59 @@ def p_degerleri_uc(plant_id: str, claims=Depends(gecerli_kullanici)):
     if row is None:
         raise HTTPException(404, "santral yok")
     return pdeger_service.hesapla(claims["tenant_id"], row)
+
+
+class SensorlerIstek(BaseModel):
+    sensorler: list[dict]   # v2.542 (P8b-2, IH-092): tür, ölçüm, marka_model, seri_no, sinif, kalibrasyon_tarihi, kalibrasyon_periyodu_ay, not
+
+
+def _sensorler_yaniti(row: dict, bugun=None) -> dict:
+    from pvquant.services import performans_service as ps
+    sens = ps.sensor_durumlari(ps.sensorler_oku(row.get("params_json")), bugun)
+    return {"sensorler": sens, "isinim": ps.isinim_kaynagi(sens, bugun), "turler": ps.SENSOR_TURLERI, "olcumler": ps.OLCUMLER,
+            "siniflar": list(ps.SINIFLAR), "varsayilan_periyot_ay": ps.KALIBRASYON_PERIYOT_AY, "yaklasan_gun": ps.KALIBRASYON_YAKLASAN_GUN, "not": ps.IEC_NOTU}
+
+
+@app.get("/v1/plants/{plant_id}/sensorler")
+def sensorler_oku_uc(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """v2.542 (P8b-2; IH-092): sensör envanteri + kalibrasyon vadesi (türetilir) + ışınım kaynağı özeti."""
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    return _sensorler_yaniti(row)
+
+
+@app.put("/v1/plants/{plant_id}/sensorler")
+def sensorler_ayarla(plant_id: str, p: SensorlerIstek, claims=Depends(yazma_yetkisi())):
+    """v2.542 (P8b-2; IH-092): envanteri bütünüyle değiştirir (en çok 20 sensör); vade saklanmaz, türetilir."""
+    from pvquant.services import performans_service as ps
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    if len(p.sensorler) > 20:
+        raise HTTPException(422, "en çok 20 sensör")
+    try:
+        temiz = [ps.sensor_dogrula(s) for s in p.sensorler]
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from e
+    pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, sensorler=temiz)
+    _denetim.kaydet("musteri", "sensor_ayar", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"],
+                    ayrinti={"sensor_sayisi": len(temiz), "olcumler": sorted({s["olcum"] for s in temiz})})
+    row["params_json"] = pj
+    return _sensorler_yaniti(row)
+
+
+@app.get("/v1/plants/{plant_id}/performans")
+def performans_uc(plant_id: str, ay: int = 12, claims=Depends(gecerli_kullanici)):
+    """v2.542 (P8b-2; IH-083/099/104): ölçülen düzlem-içi ışınım ve hücre sıcaklığıyla beklenen üretim, EPI, üç referans (tahmin / beklenen / P50),
+    ışınım endeksi (yalnız yatay sensörde) ve hava düzeltmeli P50. Beklenen tasarım simülasyonu değildir; model çekirdeğine girmez."""
+    from pvquant.services import performans_service
+    if not (1 <= ay <= 36):
+        raise HTTPException(422, "ay 1–36 aralığında olmalı")
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    return performans_service.ozet(claims["tenant_id"], row, ay=ay)
 
 
 @app.get("/v1/plants/{plant_id}/kayip-agaci")
