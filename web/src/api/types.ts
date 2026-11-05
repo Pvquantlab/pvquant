@@ -279,7 +279,7 @@ export interface Dengesizlik { luy_istisna?: boolean;   // v2.510 (Ç3): santral
   toplam: { pvquant_tl: number | null; naif_tl: number | null; kurtarilan_tl: number | null; gelir_oran_pct: number | null; referans_gelir_tl: number;
             kupst_tl?: number | null; teminat_tl?: number | null; dengesizlik_tl?: number; edt_neg_tl?: number; edt_poz_tl?: number; edta_tl?: number; edtb_tl?: number;
             /** v2.541 (EK-3 DK-804, Karar 14626): takvim yılı negatif dengesizlik miktarı ↔ YEÜM (LDYEÜM girildiyse); yalnız (d) kalemi, alt sınır */
-            yeum?: { yil: number; negatif_dengesizlik_mwh: number | null; saat: number; ldyeum_mwh: number | null; yeum_mwh: number | null; oran_pct: number | null; kapsam: string; kalemler_disinda: string[]; not: string };
+            yeum?: { yil: number; negatif_dengesizlik_mwh: number | null; saat: number; ldyeum_mwh: number | null; yeum_mwh: number | null; oran_pct: number | null; kapsam: string; kalemler_disinda: string[]; not: string; pencere_gun?: number };
             tolerans_disi_saat?: number; kupsm_mwh?: number;
             /** v2.522 (P2b): dengesizlik teminatı göstergesi — mevzuat formülü; risk katsayısı Santral ayarlarından, yoksa tutar yok */
             teminat?: { edm_neg_max_mwh: number | null; edm_ay: string | null; ay_sayisi?: number; smf_ort_tl_mwh: number | null; smf_ay_sayisi: number; risk_katsayisi: number | null; tutar_tl: number | null; dogrulanmis: boolean; formul: string; not: string } } | null;
