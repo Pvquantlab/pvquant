@@ -945,3 +945,5 @@ Sonraya: EK-3 değer satırları; lock dosyası kararı; Mutabakat'ta kupst_kayn
 **İnceleme (05.11).** Katılımcı notundaki araştırma numarası kaldırıldı; varsayım cümlesi sadeleşti.
 
 **Kanıt.** tests/test_ek3_v2539.py 4; tam takım; web kapıları; kareler.
+
+**Mühür.** 3ad3aa6 (05.11 03:40 TSİ), CI #690 yeşil; ssh dağıtım api+web 03:52–03:53 TSİ (worker yeniden yaratılmadı: 03:45–06:30 gece işleri penceresi; worker tarafındaki servis değişikliği yalnız DSG gruplaması ve döküm notu, gece işlerini etkilemez — 06:30 sonrası `docker compose build worker && up -d worker`); canlı 25/25 birebir; göç yok. Raporlar: 02 M53, 00 otuz dokuzuncu paket, 04 E satırı; kanıt `kanit/ek3b-*-2026-11-05.jpg`.
