@@ -1017,3 +1017,5 @@ Sonraya: EK-3 değer satırları; lock dosyası kararı; Mutabakat'ta kupst_kayn
 **Yapılmayan / sonraya.** Emre amadelik oranı hesabı (ölçüm yöntemi bulununca); hibrit akış ayrımı (üretim / şarj / deşarj / şebekeden şarj — ayrı sayaç akışı); uzlaştırma dışı veriş miktarı; Takvim'e %85→%80 geçiş tarihi; 15 dk program biçimi (dengeleme birimi işareti zaten 15 dk satır üretir); kapasite mekanizması (2027 GES yok).
 
 **Kanıt.** tests/test_depolama_v2543.py 6 (doğrulama, 30 MW eşiği 29,9/30, %85→%80 sınır günü ve 29 Şubat, segment bloğu, dayanak/sicil, API PUT/GET + 422); künye bekçisi 4; tam takım 893 geçti / 1 atlandı + rapor dosyaları ayrı 86 (toplam 979); web build + lint + 103; sahte önizleme kare `kanit/p9-*-2026-11-05.jpg`.
+
+**Mühür.** b709ad2 (05.11 09:13 TSİ), CI #699 yeşil; ssh dağıtım api+worker+web 09:23 TSİ (gece turu 08:16’da bitmişti, pencere dışı); göç yok; canlı 25/25 birebir; healthz ok. Raporlar: 02 M57, 00 kırk üçüncü paket, 04 E satırı; kanıt `kanit/p9-santralim-depolama-1440-2026-11-05.jpg`.
