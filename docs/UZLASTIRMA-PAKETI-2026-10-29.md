@@ -955,3 +955,5 @@ Sonraya: EK-3 değer satırları; lock dosyası kararı; Mutabakat'ta kupst_kayn
 **Uygulama.** `yek_g_kayitli` beyanı + Olay kaydında eşik altı arıza hatırlatması (3(b) şartı etiketli); `m23_9` işareti ve döküm sütunları, YEKDEM kartı özeti (yarım günler ve KGÜP'süz tatil saatleri yorum); Excel CO₂ 0,438 ve kaynak etiketi. Dil bekçisi iki sözcük yakaladı («Koşu», «Garanti») → düzeltildi.
 
 **Kanıt.** tests/test_ek3_v2540.py 4; tam takım; web kapıları; kareler. Göç yok. Arşiv: EK3 satırları DOĞRULANDI/A, `EK3_BIRINCIL_OKUMALAR_2026-11-05.md`.
+
+**Mühür.** 334310d (05.11 04:3x TSİ), CI #692 yeşil; ssh dağıtım api+web 04:44–04:45 TSİ (worker yeniden yaratılmadı: 03:45–06:30 penceresi; worker tarafındaki değişiklik yalnız olay/yekdem notları ve DAHILI_NOTU — gece işlerini etkilemez; 06:30 sonrası `docker compose build worker && up -d worker`); canlı 25/25 birebir; göç yok. Raporlar: 02 M54, 00 kırkıncı paket, 04 E satırı; kanıt `kanit/ek3c-*-2026-11-05.jpg`.
