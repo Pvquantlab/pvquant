@@ -1,4 +1,4 @@
-import type { DengesizlikSaatlik, DsgAnahtar, KgupRevizyon, PiyasaDurum, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , SaatProfili , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , PDegerleri , Kullanilabilirlik , KayipAyrisimi , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar, PortfoyAnahtar, PortfoyKupst, UevcbArama , Takvim, KunyeTarihler, Yekdem, Olay, OlayOzet, OlayGiris, OlayYanit, MutabakatOzet, MutabakatYukleme, SaatlikKiyas, SaatlikYuklemeYanit, KuralTablosu, SayacOzet, SayacYuklemeYanit, SayacAyar, SayacKaynak, RaporDonemVeri, RaporGonderim, RaporGonderimSonuc, Performans, Sensorler, Sensor } from "./types";
+import type { DengesizlikSaatlik, DsgAnahtar, KgupRevizyon, PiyasaDurum, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , SaatProfili , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , PDegerleri , Kullanilabilirlik , KayipAyrisimi , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar, PortfoyAnahtar, PortfoyKupst, UevcbArama , Takvim, KunyeTarihler, Yekdem, Olay, OlayOzet, OlayGiris, OlayYanit, MutabakatOzet, MutabakatYukleme, SaatlikKiyas, SaatlikYuklemeYanit, KuralTablosu, SayacOzet, SayacYuklemeYanit, SayacAyar, SayacKaynak, RaporDonemVeri, RaporGonderim, RaporGonderimSonuc, Performans, Sensorler, Sensor, Kirlenme, VeriYoluOzet } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -942,6 +942,16 @@ export const api = {
     try { return await getir<Sensorler>(`/v1/plants/${p}/sensorler`); } catch { return null; }
   },
   sensorlerAyarla: (p: string, sensorler: Sensor[]): Promise<Sensorler> => gonder(`/v1/plants/${p}/sensorler`, "PUT", { sensorler }),
+  kirlenme: async (p: string, gun = 90): Promise<Kirlenme | null> => {   // v2.544 (dalga 3 kalanı)
+    if (TABAN == null) return null;
+    try { return await getir<Kirlenme>(`/v1/plants/${p}/kirlenme?gun=${gun}`); } catch { return null; }
+  },
+  veriYolu: async (p: string): Promise<VeriYoluOzet | null> => {   // v2.544 (P4b hazırlık)
+    if (TABAN == null) return null;
+    try { return await getir<VeriYoluOzet>(`/v1/plants/${p}/veri-yolu`); } catch { return null; }
+  },
+  veriYoluAyarla: (p: string, g: { tur: string | null; saglayici?: string | null; periyot_dk?: number | null; salt_okuma_onayi?: boolean; not?: string | null }): Promise<VeriYoluOzet> =>
+    gonder(`/v1/plants/${p}/veri-yolu`, "PUT", g),
   /** v2.278: EPİAŞ gerçekleşen üretim — durum ve santral eşlemesi. */
   epiasUretim: async (p: string): Promise<EpiasUretim | null> => {
     if (TABAN == null) return null;

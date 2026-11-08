@@ -695,3 +695,18 @@ export interface Depolama { var: boolean; guc_mw: number | null; kapasite_mwh: n
   dengeleme_birimi: { yukumlu: boolean | null; esik_mw: number; kesinlik: string; dayanak: string; not: string };
   emre_amadelik: { oran: number | null; yil: number | null; gecis_tarihi: string | null; ilk_yil: number; oran_ilk: number; oran_sonra: number; esik_kesinlik: string; olcum_kesinlik: string; olcum_notu: string; dayanak: string; sonuc: string; not: string } | null;
   yekdem_notu: string; smf_cozunurluk: { deger: string; kesinlik: string; gecis_hukuki: string; etiket: string }; not: string; dayanaklar?: string[] }
+
+/** v2.544 (dalga 3 kalanı; IH-090/092): açık-gök tabanlı kirlenme ve ölçüm tutarlılığı göstergesi — ön tanı, hesap değil. */
+export interface Kirlenme { durum: "ok" | "egim_yok" | "poa_yok" | "acik_gun_yok"; pencere_gun: number; not: string; aciklama?: string; son_olcum?: string;
+  sensor: IsinimKaynagi; tazelik?: { son_olcum: string; veri_yasi_gun: number; bayat: boolean; not: string | null }; pencere?: { bas: string; bit: string }; yontem?: string[];
+  acik_gun?: number; acik_gun_30?: number; age_7g?: number; pr_acik_7g?: number | null; age_egim_pct_ay?: number | null; pr_egim_pct_ay?: number | null;
+  yorum?: { kod: "sensor" | "modul" | "atmosfer" | "ikisi" | "toparlanma" | "kararli" | "yetersiz"; baslik: string; metin: string; tur: "olcum" | "uretim" | "bilgi"; uretim_kaybi: "yok" | "olasi" | "belirsiz" };
+  son_yagis?: { tarih: string | null; mm: number | null; gun_once: number | null; kaynak?: string; not?: string };
+  gunler?: { gun: string; acik_saat: number; age: number; pr_acik: number | null }[];
+  esikler?: Record<string, number | number[]> }
+/** v2.544 (P4b hazırlık; IH-023): veri kaynakları, bağlantı durumu ve hazırlık listesi. durum: mevcut (uygulamada var) | kurulmadi (bağlantı henüz yok). */
+export interface VeriYolu { tur: string; etiket: string; kisa: string; durum: "mevcut" | "kurulmadi"; durum_etiketi: string; yon: string; tur_etiketi: string; gerekenler: string[]; not: string }
+export interface VeriYoluEtkin { tur: string; etiket: string; tur_etiketi: string; tanimli: boolean; son: string | null; ayrinti: string | null; tazelik: "guncel" | "gecikmis" | "yok"; tazelik_etiketi: string; yas_saat: number | null }
+export interface VeriYoluOzet { etkin: VeriYoluEtkin[];
+  beyan: { tur: string; saglayici: string | null; periyot_dk: number | null; salt_okuma_onayi: boolean; not: string | null; beyan_zamani: string } | null;
+  hedef: VeriYolu | null; yollar: VeriYolu[]; taze_saat: number; not: string }

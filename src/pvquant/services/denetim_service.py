@@ -18,7 +18,7 @@ EYLEMLER_PLATFORM = ("giris", "giris_basarisiz", "kiraci_olustur", "kiraci_gunce
 EYLEMLER_MUSTERI = ("giris", "takim_ekle", "takim_guncelle", "takim_iki_adim_sifirla", "anahtar_uret", "anahtar_iptal",
                     "webhook_ekle", "webhook_sil", "santral_arsivle", "santral_geri_al", "scada_sil", "parola_degistir",
                     "kgup_indir", "eak_indir", "kgup_bildirilen_yukle", "kgup_sablon_ogren", "kgup_sablon_sifirla",
-                    "santral_segment", "eak_ayar", "sensor_ayar", "santral_tarihler",   # v2.518 (P3a): künye tarihleri; v2.542 sensör envanteri
+                    "santral_segment", "eak_ayar", "sensor_ayar", "veri_yolu_ayar", "santral_tarihler",   # v2.518 (P3a): künye tarihleri; v2.542 sensör envanteri
                     "olay_ekle", "olay_guncelle",   # v2.521 (P1a): olay kaydı
                     "mutabakat_yukle", "dsg_belge_indir",   # v2.522 (P2b): uzlaştırma bildirimi yükleme, DSG üye belgesi
                     "sayac_yukle", "sayac_ayar",   # v2.523 (P4a): sayaç dosyası yükleme, sayaç/SCADA ayarı

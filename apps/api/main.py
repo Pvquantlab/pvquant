@@ -2,7 +2,7 @@
 import pandas as pd
 from fastapi import FastAPI, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import Response   # v2.261: /kgup CSV eki modül düzeyinde kullanır
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from apps.api.deps import gecerli_kullanici, yazma_yetkisi, yonetici_yetkisi, api_anahtari
 from pvquant.services import auth_service, plant_service
 
@@ -2048,6 +2048,54 @@ def depolama_uc(plant_id: str, claims=Depends(gecerli_kullanici)):
         import json as _j
         pj = _j.loads(pj)
     return {**depolama.ozet(pj), "dayanaklar": list(depolama.DAYANAKLAR)}
+
+
+@app.get("/v1/plants/{plant_id}/kirlenme")
+def kirlenme_uc(plant_id: str, gun: int = 90, claims=Depends(gecerli_kullanici)):
+    """v2.544 (dalga 3 kalanı; IH-090/092): açık-gök tabanlı kirlenme göstergesi — ölçülen düzlem-içi ışınım / açık-gök modeli (açık saatler),
+    günlük endeks, 30 açık gün eğimi, açık gün PR'ıyla çapraz okuma (sensör mü modül mü), son yağış. Kirlenme kaybı hesaplanmaz; göstergedir."""
+    from pvquant.services import kirlenme_service
+    if not (30 <= gun <= 365):
+        raise HTTPException(422, "gun 30–365 aralığında olmalı")
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    return kirlenme_service.ozet(claims["tenant_id"], row, gun=gun)
+
+
+class VeriYoluIstek(BaseModel):
+    tur: str | None = None            # v2.544 (P4b hazırlık): hedef veri yolu; None → beyan silinir
+    saglayici: str | None = None
+    periyot_dk: int | None = None
+    salt_okuma_onayi: bool | None = None
+    not_: str | None = Field(default=None, alias="not")
+
+
+@app.get("/v1/plants/{plant_id}/veri-yolu")
+def veri_yolu_oku(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """v2.544 (P4b hazırlık; IH-023): etkin veri yolları (son geliş), hedef yol beyanı ve her yol için hazırlık kontrol listesi. Protokol/bulut API bağlı değildir."""
+    from pvquant.services import veri_yolu_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    return veri_yolu_service.ozet(claims["tenant_id"], row)
+
+
+@app.put("/v1/plants/{plant_id}/veri-yolu")
+def veri_yolu_ayarla(plant_id: str, p: VeriYoluIstek, claims=Depends(yazma_yetkisi())):
+    """v2.544 (P4b hazırlık): hedef veri yolu beyanı (tür, sağlayıcı, periyot, salt-okuma onayı); params_json.veri_yolu."""
+    from pvquant.services import veri_yolu_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    try:
+        an = veri_yolu_service.dogrula({"tur": p.tur, "saglayici": p.saglayici, "periyot_dk": p.periyot_dk, "salt_okuma_onayi": p.salt_okuma_onayi, "not": p.not_})
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from e
+    pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **an)
+    _denetim.kaydet("musteri", "veri_yolu_ayar", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"], ayrinti=an)
+    row["params_json"] = pj
+    return veri_yolu_service.ozet(claims["tenant_id"], row)
 
 
 @app.get("/v1/plants/{plant_id}/kayip-agaci")
