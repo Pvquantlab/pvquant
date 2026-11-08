@@ -275,6 +275,7 @@ def gece_epias_uretim(plant):
     r = epias_uretim_service.yukle(plant["tenant_id"], plant, gun=7)
     if r.get("durum") != "atlandi":
         print("gece_epias_uretim:", plant.get("name"), r)
+    return r   # 08.11 inceleme (faz 3): sonuç jobs_log.detail'e düşer → Veri kaynakları kartı «çekiş hatası» ile «yeni kayıt yok»u ayırır
 
 
 def gun_oncesi_ptf(_plant=None):

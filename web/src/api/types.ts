@@ -701,12 +701,28 @@ export interface Kirlenme { durum: "ok" | "egim_yok" | "poa_yok" | "acik_gun_yok
   sensor: IsinimKaynagi; tazelik?: { son_olcum: string; veri_yasi_gun: number; bayat: boolean; not: string | null }; pencere?: { bas: string; bit: string }; yontem?: string[];
   acik_gun?: number; acik_gun_30?: number; age_7g?: number; pr_acik_7g?: number | null; age_egim_pct_ay?: number | null; pr_egim_pct_ay?: number | null;
   yorum?: { kod: "sensor" | "modul" | "atmosfer" | "ikisi" | "toparlanma" | "kararli" | "yetersiz"; baslik: string; metin: string; tur: "olcum" | "uretim" | "bilgi"; uretim_kaybi: "yok" | "olasi" | "belirsiz" };
-  son_yagis?: { tarih: string | null; mm: number | null; gun_once: number | null; kaynak?: string; not?: string };
+  son_yagis?: { tarih: string | null; mm: number | null; gun_once: number | null; referans?: string; kaynak?: string; not?: string };
   gunler?: { gun: string; acik_saat: number; age: number; pr_acik: number | null }[];
+  /** v2.545 (IH-090): kirlenme kaybı tahmini — temiz referans PR kantili; yalnız «modül»/«ikisi» yorumunda anlamlı */
+  kayip?: { durum: "ok" | "yetersiz" | "askida"; nitelik?: "tahmin" | "senaryo"; not: string; aciklama?: string; neden?: string; bitis?: string; referans_pr?: number; referans_kaynak?: string;
+    son7_gunluk_kayip_pct?: number | null; son30_kayip_kwh?: number; son30_kayip_tl?: number | null; son30_gun?: number; pencere_kayip_kwh?: number;
+    gecerlilik?: "anlamli" | "zayif" | "belirsiz" | "yanli"; gecerlilik_metin?: string;
+    temizlik?: { maliyet_tl: number; son30_karsilar: boolean; geri_odeme_gun: number | null } | null; temizlik_neden?: string | null };
   esikler?: Record<string, number | number[]> }
 /** v2.544 (P4b hazırlık; IH-023): veri kaynakları, bağlantı durumu ve hazırlık listesi. durum: mevcut (uygulamada var) | kurulmadi (bağlantı henüz yok). */
 export interface VeriYolu { tur: string; etiket: string; kisa: string; durum: "mevcut" | "kurulmadi"; durum_etiketi: string; yon: string; tur_etiketi: string; gerekenler: string[]; not: string }
-export interface VeriYoluEtkin { tur: string; etiket: string; tur_etiketi: string; tanimli: boolean; son: string | null; ayrinti: string | null; tazelik: "guncel" | "gecikmis" | "yok"; tazelik_etiketi: string; yas_saat: number | null }
+export interface VeriYoluEtkin { tur: string; etiket: string; tur_etiketi: string; tanimli: boolean; son: string | null; son_olcum?: string | null; ayrinti: string | null;
+  tazelik: "guncel" | "gecikmis" | "yok" | "dosya" | "dosya_eski"; tazelik_etiketi: string; yas_saat: number | null;
+  /** 08.11 inceleme: EPİAŞ çekiş durumu — hata ≠ yeni kayıt yok ≠ SCADA öncelikli */
+  cekis?: { kod: string; etiket: string; zaman: string | null; ayrinti?: string | null } | null }
+/** 08.11 inceleme (faz 3): hedef bağlantının aşamaları; hiçbiri diğerini ima etmez */
+export interface VeriYoluAsama { kod: "secildi" | "ayar" | "sinama" | "akis"; etiket: string; tamam: boolean; zaman: string | null; durum?: string }
 export interface VeriYoluOzet { etkin: VeriYoluEtkin[];
-  beyan: { tur: string; saglayici: string | null; periyot_dk: number | null; salt_okuma_onayi: boolean; not: string | null; beyan_zamani: string } | null;
-  hedef: VeriYolu | null; yollar: VeriYolu[]; taze_saat: number; not: string }
+  beyan: { tur: string; saglayici: string | null; periyot_dk: number | null; salt_okuma_onayi: boolean; not: string | null; beyan_zamani: string; baglanti?: { host: string; port: number; birim: number } | null;
+    son_sinama?: { zaman: string; durum: VeriYoluSinama["durum"]; ozet?: VeriYoluSinama["ozet"] | null; aciklama?: string | null } | null } | null;
+  hedef: VeriYolu | null; asamalar?: VeriYoluAsama[]; yollar: VeriYolu[]; taze_saat: number; dosya_eski_gun?: number; not: string }
+/** v2.545 (P4b): Modbus TCP / SunSpec bağlantı sınaması sonucu (yalnız okuma; veri akışı başlatmaz). */
+export interface VeriYoluSinama { durum: "ok" | "onay_yok" | "adres_reddedildi" | "ayar_hatasi" | "baglanti_hatasi"; zaman: string; aciklama?: string;
+  hedef?: { host: string; port: number; birim: number; ip?: string; ag?: string };
+  ozet?: { uretici: string | null; model: string | null; seri_no: string | null; guc_kw: number | null; enerji_mwh: number | null; durum: string | null; olaylar: string[]; model_sayisi: number };
+  not?: string }

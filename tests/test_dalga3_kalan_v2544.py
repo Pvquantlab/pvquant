@@ -86,6 +86,22 @@ def test_veri_yolu_beyani_ve_liste():
     assert vy.tazelik(simdi - timedelta(hours=20), simdi)["tazelik"] == "guncel"
     g = vy.tazelik(simdi - timedelta(days=17), simdi); assert g["tazelik"] == "gecikmis" and g["yas_saat"] == 408.0 and g["tazelik_etiketi"] == "gecikmiş"
     assert vy.tazelik(None, simdi) == {"tazelik": "yok", "tazelik_etiketi": "veri gelmedi", "yas_saat": None}
+    # 08.11 inceleme (faz 3): dosya kaynağında 48 saat ölçütü yok — 17 günlük yükleme «dosya» (bilgi), 31 gün «dosya_eski» (uyarı)
+    assert vy.tazelik(simdi - timedelta(days=17), simdi, "dosya")["tazelik"] == "dosya" and vy.tazelik(simdi - timedelta(days=31), simdi, "dosya")["tazelik"] == "dosya_eski"
+    # EPİAŞ çekiş durumu: hata ≠ yeni kayıt yok ≠ SCADA öncelikli ≠ başarılı
+    assert vy.epias_cekis_durumu("error", "HTTPError: 503")["kod"] == "hata" and vy.epias_cekis_durumu(None, None)["kod"] == "yok"
+    assert vy.epias_cekis_durumu("ok", "{'durum': 'veri_yok', 'n_yazilan': 0}")["kod"] == "kayit_yok"
+    assert vy.epias_cekis_durumu("ok", "{'durum': 'ok', 'n_yazilan': 0, 'n_cekilen': 24}")["kod"] == "yazilmadi"
+    assert vy.epias_cekis_durumu("ok", "{'durum': 'ok', 'n_yazilan': 24, 'n_cekilen': 24}")["etiket"].endswith("(24 saat yazıldı)")
+    assert vy.epias_cekis_durumu("ok", "")["kod"] == "ok"
+    # Aşamalar: seçildi → ayar → sınama → akış; hiçbiri diğerini ima etmez
+    assert vy.asamalar(None, []) == []
+    a = vy.asamalar({"tur": "modbus_sunspec", "beyan_zamani": "t", "baglanti": {"host": "10.8.0.12"}}, [])
+    assert [x["kod"] for x in a] == ["secildi", "ayar", "sinama", "akis"] and a[1]["tamam"] and not a[2]["tamam"] and a[2]["etiket"] == "bağlantı sınanmadı" and not a[3]["tamam"]
+    a2 = vy.asamalar({"tur": "modbus_sunspec", "beyan_zamani": "t", "baglanti": {"host": "h"}, "son_sinama": {"durum": "ok", "zaman": "z"}}, [])
+    assert a2[2]["tamam"] and a2[2]["zaman"] == "z" and a2[3]["etiket"] == "veri alınmıyor"
+    a3 = vy.asamalar({"tur": "scada_dosya", "beyan_zamani": "t"}, [{"tur": "scada_dosya", "son": "2026-10-22T21:05:00+00:00"}])
+    assert [x["kod"] for x in a3] == ["secildi", "akis"] and a3[1]["tamam"]
 
 
 PLANT = "22222222-2222-2222-2222-222222222222"
@@ -117,8 +133,33 @@ def istemci(monkeypatch):
 def test_kirlenme_ve_veri_yolu_kapilari(istemci):
     assert istemci.get(f"/v1/plants/{PLANT}/kirlenme?gun=60").json()["pencere_gun"] == 60
     assert istemci.get(f"/v1/plants/{PLANT}/kirlenme?gun=10").status_code == 422
-    g = istemci.get(f"/v1/plants/{PLANT}/veri-yolu"); assert g.status_code == 200 and g.json()["beyan"] is None and len(g.json()["yollar"]) == 7 and g.json()["etkin"][0]["tur"] == "scada_dosya"
+    g = istemci.get(f"/v1/plants/{PLANT}/veri-yolu"); assert g.status_code == 200 and g.json()["beyan"] is None and len(g.json()["yollar"]) == 7 and g.json()["etkin"][0]["tur"] == "scada_dosya" and g.json()["asamalar"] == []
     r = istemci.put(f"/v1/plants/{PLANT}/veri-yolu", json={"tur": "inverter_bulut_api", "saglayici": "FusionSolar", "periyot_dk": 5, "salt_okuma_onayi": True})
     assert r.status_code == 200 and r.json()["beyan"]["tur"] == "inverter_bulut_api" and r.json()["hedef"]["durum"] == "kurulmadi" and len(r.json()["hedef"]["gerekenler"]) >= 4
+    assert [x["kod"] for x in r.json()["asamalar"]] == ["secildi", "ayar", "sinama", "akis"] and not r.json()["asamalar"][1]["tamam"]
     assert istemci.put(f"/v1/plants/{PLANT}/veri-yolu", json={"tur": "yok"}).status_code == 422
     assert istemci.put(f"/v1/plants/{PLANT}/veri-yolu", json={"tur": None}).json()["beyan"] is None
+
+
+# ----------------------------------------------------------------------------- v2.545: kirlenme kaybı tahmini (IH-090 kalanı)
+def test_kayip_tahmini_modul_kirlenmesi_ve_temizlik_esigi():
+    bitis = date(2026, 10, 10)
+    df, cs = _seri(gun=40, pr_egim_gun=-0.0021)                       # modül: PR 0,85 → ~0,77 (40 günde %10 düşüş)
+    g = ks.gunluk_endeks(df, cs, CAP)
+    ur = df.set_index("ts_utc")["power_kw"].groupby(lambda t: t.tz_convert("Europe/Istanbul").date()).sum()
+    fiyat = pd.Series(2000.0, index=ur.index)                          # TL/MWh sabit
+    k = ks.kayip_tahmini(g, ur, fiyat, bitis, temizlik_maliyeti_tl=5000.0, yorum_kodu="modul")
+    assert k["durum"] == "ok" and 0.83 < k["referans_pr"] <= 0.85 and k["gecerlilik"] == "anlamli" and k["nitelik"] == "tahmin" and k["son30_gun"] == 30 and k["bitis"] == "2026-10-10"
+    assert k["son30_kayip_kwh"] > 0 and k["son30_kayip_tl"] == pytest.approx(k["son30_kayip_kwh"] / 1000 * 2000, abs=1.0)
+    assert 5 < k["son7_gunluk_kayip_pct"] < 12 and k["pencere_kayip_kwh"] >= k["son30_kayip_kwh"]
+    assert k["temizlik"]["maliyet_tl"] == 5000.0 and isinstance(k["temizlik"]["son30_karsilar"], bool) and k["temizlik"]["geri_odeme_gun"] > 0
+    # 08.11 inceleme (faz 1): sensör şüphesinde PR yanlı → tahmin ASKIYA alınır, sayı ve temizlik karşılaştırması verilmez
+    df2, cs2 = _seri(gun=40, age_egim_gun=-0.0025, pr_egim_gun=+0.0021); g2 = ks.gunluk_endeks(df2, cs2, CAP)
+    ur2 = df2.set_index("ts_utc")["power_kw"].groupby(lambda t: t.tz_convert("Europe/Istanbul").date()).sum()
+    k2 = ks.kayip_tahmini(g2, ur2, None, bitis, 5000.0, "sensor")
+    assert k2["durum"] == "askida" and k2["gecerlilik"] == "yanli" and k2["temizlik"] is None and "son30_kayip_kwh" not in k2 and "sensörü temizleyin" in k2["aciklama"]
+    # kararlı/atmosfer/yetersiz yorumunda sayı yalnız koşullu senaryo; temizlik maliyeti girilse de karşılaştırma yapılmaz
+    k3 = ks.kayip_tahmini(g, ur, fiyat, bitis, 5000.0, "kararli")
+    assert k3["durum"] == "ok" and k3["nitelik"] == "senaryo" and k3["gecerlilik"] == "zayif" and k3["temizlik"] is None and "karşılaştırması yapılmadı" in k3["temizlik_neden"]
+    assert ks.kayip_tahmini(g, ur, fiyat, bitis, 5000.0, "yetersiz")["gecerlilik"] == "belirsiz" and ks.kayip_tahmini(g, ur, None, bitis, 5000.0, "modul")["temizlik_neden"].startswith("satış fiyatı yok")
+    assert ks.kayip_tahmini(g.head(3), ur, None, bitis)["durum"] == "yetersiz" and ks.kayip_tahmini(pd.DataFrame(), ur, None, bitis)["durum"] == "yetersiz"

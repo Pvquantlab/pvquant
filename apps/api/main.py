@@ -1321,6 +1321,7 @@ class EakIstek(BaseModel):
     kullanilabilirlik_sozlesme: float | None = None  # v2.533 (P8a): O&M sözleşmesindeki kullanılabilirlik eşiği (0,5–1); açık kWh/TL kıyas tabanı
     butce_kwh_yil: float | None = None            # v2.534 (P8b-1): finansal modeldeki yıllık bütçe (kWh); P-değeri kıyasında bütçe oranı
     pr_referans: float | None = None              # v2.542 (P8b-2): tasarım/sözleşme performans oranı (0,5–0,95); ölçülen havayla beklenen üretimin referansı
+    temizlik_maliyeti_tl: float | None = None     # v2.545 (IH-090): bir modül temizliğinin maliyeti (TL); kirlenme kaybı tahminiyle karşılaştırılır
 
 
 class EpiasIstek(BaseModel):
@@ -1416,6 +1417,10 @@ def eak_ayarla(plant_id: str, p: EakIstek, claims=Depends(yazma_yetkisi())):
         if p.pr_referans is not None and not (0.5 <= p.pr_referans <= 0.95):
             raise HTTPException(422, "pr_referans 0,5–0,95 aralığında olmalı")
         an["pr_referans"] = float(p.pr_referans) if p.pr_referans is not None else None
+    if "temizlik_maliyeti_tl" in verilen:   # v2.545 (IH-090)
+        if p.temizlik_maliyeti_tl is not None and not (0 <= p.temizlik_maliyeti_tl <= 1e8):
+            raise HTTPException(422, "temizlik_maliyeti_tl 0 ile 100.000.000 TL arasında olmalı")
+        an["temizlik_maliyeti_tl"] = float(p.temizlik_maliyeti_tl) if p.temizlik_maliyeti_tl else None
     pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **an)
     _denetim.kaydet("musteri", "eak_ayar", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"], ayrinti=dict(an))   # v2.516 (#7)
     row["params_json"] = pj
@@ -1427,7 +1432,8 @@ def eak_ayarla(plant_id: str, p: EakIstek, claims=Depends(yazma_yetkisi())):
             "teminat_risk_katsayisi": pj.get("teminat_risk_katsayisi"),   # v2.522 (P2b)
             "kullanilabilirlik_sozlesme": pj.get("kullanilabilirlik_sozlesme"),   # v2.533 (P8a)
             "butce_kwh_yil": pj.get("butce_kwh_yil"),   # v2.534 (P8b-1)
-            "pr_referans": pj.get("pr_referans")}   # v2.542 (P8b-2)
+            "pr_referans": pj.get("pr_referans"),   # v2.542 (P8b-2)
+            "temizlik_maliyeti_tl": pj.get("temizlik_maliyeti_tl")}   # v2.545 (IH-090)
 
 
 def _toplayici_yaniti(tenant_id: str, plant_id: str, gun: str | None, fmt: str, adim: int):
@@ -2069,6 +2075,7 @@ class VeriYoluIstek(BaseModel):
     periyot_dk: int | None = None
     salt_okuma_onayi: bool | None = None
     not_: str | None = Field(default=None, alias="not")
+    baglanti: dict | None = None     # v2.545: {host, port, birim} — Modbus TCP/SunSpec sınaması için
 
 
 @app.get("/v1/plants/{plant_id}/veri-yolu")
@@ -2089,13 +2096,38 @@ def veri_yolu_ayarla(plant_id: str, p: VeriYoluIstek, claims=Depends(yazma_yetki
     if row is None:
         raise HTTPException(404, "santral yok")
     try:
-        an = veri_yolu_service.dogrula({"tur": p.tur, "saglayici": p.saglayici, "periyot_dk": p.periyot_dk, "salt_okuma_onayi": p.salt_okuma_onayi, "not": p.not_})
+        an = veri_yolu_service.dogrula({"tur": p.tur, "saglayici": p.saglayici, "periyot_dk": p.periyot_dk, "salt_okuma_onayi": p.salt_okuma_onayi, "not": p.not_, "baglanti": p.baglanti})
     except ValueError as e:
         raise HTTPException(422, str(e)) from e
     pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **an)
     _denetim.kaydet("musteri", "veri_yolu_ayar", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"], ayrinti=an)
     row["params_json"] = pj
     return veri_yolu_service.ozet(claims["tenant_id"], row)
+
+
+@app.post("/v1/plants/{plant_id}/veri-yolu/sinama")
+def veri_yolu_sinama(plant_id: str, claims=Depends(yazma_yetkisi())):
+    """v2.545 (P4b ilk bağlayıcı): Modbus TCP/SunSpec bağlantı sınaması — sahibin tetiklediği, yalnız okuma (FC3), onay şart; sonuç denetim izine yazılır.
+    Düzenli veri çekişi başlatmaz."""
+    from pvquant.services import canli_alim_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    pj = row.get("params_json") or {}
+    if isinstance(pj, str):
+        import json as _j
+        pj = _j.loads(pj)
+    vy = pj.get("veri_yolu") if isinstance(pj.get("veri_yolu"), dict) else None
+    if not vy or vy.get("tur") != "modbus_sunspec":
+        raise HTTPException(422, "sınama yalnız hedeflenen veri kaynağı Modbus TCP / SunSpec iken yapılır")
+    if not vy.get("baglanti"):
+        raise HTTPException(422, "bağlantı ayarı (host, port, birim) girilmedi")
+    sonuc = canli_alim_service.sina(vy["baglanti"], bool(vy.get("salt_okuma_onayi")))
+    # 08.11 inceleme (faz 4): son sınama beyana yazılır — «ayar girildi» ile «sınama başarılı» ayrı aşamalardır; sayfa yenilenince kaybolmaz
+    plant_service.params_birlestir(claims["tenant_id"], plant_id, veri_yolu={**vy, "son_sinama": {"zaman": sonuc["zaman"], "durum": sonuc["durum"], "ozet": sonuc.get("ozet"), "aciklama": sonuc.get("aciklama")}})
+    _denetim.kaydet("musteri", "veri_yolu_sinama", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"],
+                    ayrinti={"durum": sonuc["durum"], "hedef": sonuc.get("hedef"), "cihaz": sonuc.get("ozet")})
+    return sonuc
 
 
 @app.get("/v1/plants/{plant_id}/kayip-agaci")
