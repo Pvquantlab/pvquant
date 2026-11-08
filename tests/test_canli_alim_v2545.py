@@ -114,6 +114,22 @@ def test_sinama_onay_adres_ve_basari():
     class Kopuk(Sahte):
         def __enter__(self): raise OSError("bağlantı reddedildi")
     assert ca.sina({"host": "10.0.0.5"}, onay=True, istemci_fabrikasi=Kopuk)["durum"] == "baglanti_hatasi"
+    # 08.11 inceleme II (faz 4): cihaza erişildi ama SunSpec yok → veri_modeli_yok (ulaşılamadı değil); SunSpec var, inverter modeli yok → kismi
+    class SunsYok:
+        def __init__(self, *a): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): pass
+        def oku(self, adres, adet): return [0] * adet
+    r2 = ca.sina({"host": "10.0.0.5"}, onay=True, istemci_fabrikasi=SunsYok)
+    assert r2["durum"] == "veri_modeli_yok" and "kayıt haritası" in r2["aciklama"]
+    class YalnizOrtak(SunsYok):
+        def oku(self, adres, adet):
+            if adres == 40000: return [0x5375, 0x6E53]
+            if adres == 40002: return [1, 66]
+            if adres == 40070: return [0xFFFF, 0]
+            return [0] * adet
+    r3 = ca.sina({"host": "10.0.0.5"}, onay=True, istemci_fabrikasi=YalnizOrtak)
+    assert r3["durum"] == "kismi" and r3["ozet"]["guc_kw"] is None and "inverter ölçüm modeli" in r3["aciklama"]
 
 
 PLANT = "22222222-2222-2222-2222-222222222222"
@@ -147,7 +163,7 @@ def test_sinama_kapisi(monkeypatch):
         c.put(f"/v1/plants/{PLANT}/veri-yolu", json={"tur": "modbus_sunspec", "salt_okuma_onayi": True, "baglanti": {"host": "10.8.0.12"}})
         assert c.post(f"/v1/plants/{PLANT}/veri-yolu/sinama").json()["durum"] == "ok"
         g = c.get(f"/v1/plants/{PLANT}/veri-yolu").json()   # 08.11 inceleme (faz 4): sınama sonucu beyana yazılır, aşama 3 «başarılı», aşama 4 (veri akışı) hâlâ değil
-        assert g["beyan"]["son_sinama"]["durum"] == "ok" and [x["tamam"] for x in g["asamalar"]] == [True, True, True, False]
+        assert g["beyan"]["son_sinama"]["durum"] == "ok" and [x["tamam"] for x in g["asamalar"]] == [True, True, True, False, False]   # v2.546: çekiş aşaması (başlatılmadı), veri akışı yok
         assert c.put(f"/v1/plants/{PLANT}/veri-yolu", json={"tur": "modbus_sunspec", "baglanti": {"host": "10.8.0.12", "port": 99999}}).status_code == 422
         c.put(f"/v1/plants/{PLANT}/veri-yolu", json={"tur": "inverter_bulut_api"})
         assert c.post(f"/v1/plants/{PLANT}/veri-yolu/sinama").status_code == 422                      # Modbus değil

@@ -44,6 +44,9 @@ const KAL_DURUM: Record<string, string> = { gecti: "kalibrasyon vadesi geçti", 
 type SensorForm = { tur: string; olcum: string; marka_model: string; seri_no: string; sinif: string; kalibrasyon_tarihi: string; periyot: string };
 const SENSOR_FORM_BOS: SensorForm = { tur: "piranometre", olcum: "poa", marka_model: "", seri_no: "", sinif: "", kalibrasyon_tarihi: "", periyot: "24" };
 const gunKisa = (iso: string) => tarihBicimi("tr-TR", { day: "numeric", month: "short", year: "numeric" }).format(new Date(iso.slice(0, 10) + "T00:00:00"));
+/** 08.11 inceleme II (faz 4): bağlantı sınaması durum adları — anlık sonuç ve kalıcı «son sınama» satırı aynı sözlüğü kullanır */
+const SINAMA_ETIKET: Record<string, string> = { ok: "bağlantı başarılı", kismi: "cihaza erişildi, inverter modeli yok", veri_modeli_yok: "cihaza erişildi, veri modeli desteklenmiyor", onay_yok: "onay yok", adres_reddedildi: "adres reddedildi", ayar_hatasi: "ayar hatası", baglanti_hatasi: "cihaza ulaşılamadı" };
+const tarihSaatKisa = (iso: string) => tarihBicimi("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" }).format(new Date(iso));   // 08.11 inceleme II: değerlendirme anı
 /** Alarm kuralları konuya göre gruplanır; sözlükte olmayan yeni kural son gruba düşer (etiket bozulmaz). */
 const KURAL_GRUPLARI: { ad: string; kurallar: string[] }[] = [
   { ad: "Veri ve model", kurallar: ["veri_gelmedi", "skill_dustu", "iletisim_kesintisi", "pr_dustu", "clipping_orani_yuksek", "kullanilabilirlik_dustu", "sensor_kalibrasyon"] },
@@ -229,19 +232,21 @@ export function Santralim({ plantId }: { plantId: string }) {
   // v2.544 (dalga 3 kalanı): kirlenme göstergesi (açık-gök) ve veri yolu beyanı
   const [kir, setKir] = useState<Kirlenme | null | undefined>(undefined);
   const [vy, setVy] = useState<VeriYoluOzet | null>(null);
-  const [vyf, setVyf] = useState<{ tur: string; saglayici: string; periyot: string; onay: boolean; not: string }>({ tur: "", saglayici: "", periyot: "", onay: false, not: "" });
+  const [vyf, setVyf] = useState<{ tur: string; saglayici: string; periyot: string; onay: boolean; not: string; cekis: boolean }>({ tur: "", saglayici: "", periyot: "", onay: false, not: "", cekis: false });
   const [vyMesaj, setVyMesaj] = useState<string | null>(null);
   const [vyb, setVyb] = useState<{ host: string; port: string; birim: string }>({ host: "", port: "502", birim: "1" });   // v2.545: Modbus TCP/SunSpec hedefi
   const [sinama, setSinama] = useState<VeriYoluSinama | null | "bekliyor">(null);
   const [temizlikTl, setTemizlikTl] = useState<string>("");   // v2.545 (IH-090): bir temizliğin maliyeti — kirlenme kaybı tahminiyle karşılaştırılır
-  const vySina = () => { setSinama("bekliyor"); api.veriYoluSina(plantId).then(setSinama).catch((e) => setSinama({ durum: "baglanti_hatasi", zaman: new Date().toISOString(), aciklama: String((e as Error).message ?? e) })); };
-  const vyDoldur = (v: VeriYoluOzet | null) => { setVy(v); setVyf(v?.beyan ? { tur: v.beyan.tur, saglayici: v.beyan.saglayici ?? "", periyot: v.beyan.periyot_dk != null ? String(v.beyan.periyot_dk) : "", onay: v.beyan.salt_okuma_onayi, not: v.beyan.not ?? "" } : { tur: "", saglayici: "", periyot: "", onay: false, not: "" }); };   // seçim kaldırılınca form da sıfırlanır
+  const [sonTemizlik, setSonTemizlik] = useState<string>("");   // v2.546: son modül temizliği tarihi — temiz referans PR bu tarihten sonraki açık günlere bağlanır
+  const [dosyaSiklik, setDosyaSiklik] = useState<string>("");   // v2.546: SCADA/sayaç dosyasını kaç günde bir yüklediğiniz — dosya tazelik eşiği iki katı
+  const vySina = () => { setVyMesaj(null); setSinama("bekliyor"); api.veriYoluSina(plantId).then((r) => { setSinama(r); api.veriYolu(plantId).then((v) => { if (v) setVy(v); }).catch(() => {}); }).catch((e) => setSinama({ durum: "baglanti_hatasi", zaman: new Date().toISOString(), aciklama: String((e as Error).message ?? e) })); };   // 08.11 inceleme II: sonuç kalıcı yazıldığı için aşamalar hemen yenilenir
+  const vyDoldur = (v: VeriYoluOzet | null) => { setVy(v); setVyf(v?.beyan ? { tur: v.beyan.tur, saglayici: v.beyan.saglayici ?? "", periyot: v.beyan.periyot_dk != null ? String(v.beyan.periyot_dk) : "", onay: v.beyan.salt_okuma_onayi, not: v.beyan.not ?? "", cekis: !!v.beyan.ornekleme_acik } : { tur: "", saglayici: "", periyot: "", onay: false, not: "", cekis: false }); };   // seçim kaldırılınca form da sıfırlanır
   const vybDoldur = (v: VeriYoluOzet | null) => { const b = v?.beyan?.baglanti; setVyb(b ? { host: b.host, port: String(b.port), birim: String(b.birim) } : { host: "", port: "502", birim: "1" }); setSinama(null); };
   const vyKaydet = (sil = false) => {
     setVyMesaj(null);
-    api.veriYoluAyarla(plantId, sil ? { tur: null } : { tur: vyf.tur || null, saglayici: vyf.saglayici || null, periyot_dk: vyf.periyot ? Number(vyf.periyot) : null, salt_okuma_onayi: vyf.onay, not: vyf.not || null,
+    api.veriYoluAyarla(plantId, sil ? { tur: null } : { tur: vyf.tur || null, saglayici: vyf.saglayici || null, periyot_dk: vyf.periyot ? Number(vyf.periyot) : null, salt_okuma_onayi: vyf.onay, not: vyf.not || null, ornekleme_acik: vyf.cekis,
       baglanti: vyf.tur === "modbus_sunspec" && vyb.host.trim() ? { host: vyb.host.trim(), port: vyb.port ? Number(vyb.port) : null, birim: vyb.birim ? Number(vyb.birim) : null } : null })
-      .then((r) => { vyDoldur(r); vybDoldur(r); setVyMesaj(r.beyan ? `Kaydedildi: hedeflenen veri kaynağı ${r.hedef?.kisa ?? r.beyan.tur} (${r.hedef?.durum_etiketi ?? ""}).` : "Kaydedildi: hedeflenen veri kaynağı seçimi kaldırıldı."); })
+      .then((r) => { vyDoldur(r); vybDoldur(r); setVyMesaj(r.beyan ? `Kaydedildi: hedeflenen veri kaynağı ${r.hedef?.kisa ?? r.beyan.tur}.${r.beyan.tur === "modbus_sunspec" && r.beyan.baglanti ? " Ayarlar kaydedildi; bağlantı henüz sınanmadı — «Bağlantıyı sına» ile doğrulayın." : ""}` : "Kaydedildi: hedeflenen veri kaynağı seçimi kaldırıldı."); })
       .catch((e) => setVyMesaj(`Kaydedilemedi: ${String((e as Error).message ?? e)}`));
   };
   const [sens, setSens] = useState<Sensorler | null>(null); const [sf, setSf] = useState<SensorForm>(SENSOR_FORM_BOS); const [sensMesaj, setSensMesaj] = useState<string | null>(null);   // v2.542 (P8b-2, IH-092)
@@ -253,6 +258,7 @@ export function Santralim({ plantId }: { plantId: string }) {
   const eakKaydet = () => {
     setEakMesaj(null);
     api.eakAyarla(plantId, { eak_kw: eakKw ? Number(eakKw) : null, gecici_kw: gecKw ? Number(gecKw) : null, gecici_bitis: gecBitis || null, dengeleme_birimi: dengelemeBirimi, ...(arizaAy !== "" ? { ariza_sayisi_ay: Number(arizaAy) } : {}), ...(teminatKat !== "" ? { teminat_risk_katsayisi: Number(teminatKat.replace(",", ".")) } : {}), ...(kullSoz !== "" ? { kullanilabilirlik_sozlesme: (() => { const v = Number(kullSoz.replace(",", ".")); return v > 1 ? v / 100 : v; })() } : {}), ...(butceMwh !== "" ? { butce_kwh_yil: Number(butceMwh.replace(/\./g, "").replace(",", ".")) * 1000 } : {}), ...(prRef !== "" ? { pr_referans: (() => { const v = Number(prRef.replace(",", ".")); return v > 1 ? v / 100 : v; })() } : {}), ...(temizlikTl !== "" ? { temizlik_maliyeti_tl: Number(temizlikTl.replace(/\./g, "").replace(",", ".")) } : {}), ...(luyIstisna !== null ? { luy_istisna: luyIstisna } : {}),
+      ...(sonTemizlik !== "" ? { son_temizlik_tarihi: sonTemizlik } : {}), ...(dosyaSiklik !== "" ? { dosya_yukleme_sikligi_gun: Number(dosyaSiklik) } : {}),   // v2.546
       ...(pozKaynak ? { pozisyon_kaynagi: pozKaynak, pozisyon_sabit_mwh: pozKaynak === "sabit" && pozSabit ? Number(pozSabit.replace(",", ".")) : null } : {}) })
       .then((r) => setEakMesaj(`Kaydedildi. Bugün verilebilecek en yüksek güç ${sayiTr(r.eak_bugun.eak_mw, 2)} MW (${r.eak_bugun.kaynak})${r.ariza_sayisi_ay != null ? `; bu ay arıza kaydı ${sayiTr(r.ariza_sayisi_ay)}` : ""}`))
       .catch((e) => setEakMesaj(String((e as Error).message ?? e)));
@@ -920,35 +926,20 @@ export function Santralim({ plantId }: { plantId: string }) {
               </>)}
           </div>
           <div className="ayar">
-            <div><div className="ayar-ad">Üretim programı sınırları</div>
-              <div className="ayar-aciklama">Program dosyasının üst sınırı ve uzlaştırma hesabının varsayımları. Boş alanlarda AC sınırı ve varsayılan kurallar geçerlidir.</div>
+            <div><div className="ayar-ad">İşletme ayarları</div>
+              <div className="ayar-aciklama">Üretim programı sınırları ve piyasa varsayımları, performans hedefleri, bakım ve temizlik, veri güncelliği, risk kayıtları. Boş alanlarda AC sınırı ve varsayılan kurallar geçerlidir.</div>
               {ayrintiDugmesi(ayrinti, setAyrinti, "program")}
               </div>
             <div className="ayar-kontrol">
               <div className="form-izgara form-program">
+                {/* 08.11 inceleme II (faz 1): alanlar beş gruba ayrıldı — anahtarlar, doğrulama ve hesaplar değişmedi */}
+                <div className="form-tam ayar-grup">Üretim programı ve piyasa</div>
                 <label className="girdi-etiket">Verilebilecek en yüksek güç (EAK), kW
                   <input className="girdi" inputMode="numeric" placeholder="boşsa AC sınırı" value={eakKw} onChange={(e) => setEakKw(e.target.value)} /></label>
                 <label className="girdi-etiket">Geçici kısıt (kW, isteğe bağlı)
                   <input className="girdi" inputMode="numeric" placeholder="ör. 8.000" value={gecKw} onChange={(e) => setGecKw(e.target.value)} /></label>
                 <label className="girdi-etiket">Kısıt bitişi (bitiş günü dâhil)
                   <input className="girdi" type="date" value={gecBitis} onChange={(e) => setGecBitis(e.target.value)} /></label>
-                <label className="girdi-etiket">Bu ay arıza kaydı (adet; Olay kaydı sayfası varsa oradan sayılır)
-                  <input className="girdi" inputMode="numeric" placeholder="0" value={arizaAy} onChange={(e) => setArizaAy(e.target.value.replace(/[^0-9]/g, ""))} /></label>
-                <label className="girdi-etiket">Teminat risk katsayısı (isteğe bağlı)
-                  <input className="girdi" inputMode="decimal" placeholder="ör. 1,5" value={teminatKat} onChange={(e) => setTeminatKat(e.target.value.replace(/[^0-9.,]/g, ""))} /></label>
-                {/* v2.533 (P8a): O&M sözleşmesindeki kullanılabilirlik eşiği — teknik kullanılabilirlikle kıyas, açık kWh/TL */}
-                <label className="girdi-etiket">Kullanılabilirlik sözleşme eşiği (%, isteğe bağlı)
-                  <input className="girdi" inputMode="decimal" placeholder="ör. 98" value={kullSoz} onChange={(e) => setKullSoz(e.target.value.replace(/[^0-9.,]/g, ""))} /></label>
-                {/* v2.534 (P8b-1): finansal modeldeki yıllık bütçe — Aylık beklenti › Yıl yıl P-değerleri kartında bütçe oranı */}
-                <label className="girdi-etiket">Yıllık üretim bütçesi (MWh, isteğe bağlı)
-                  <input className="girdi" inputMode="decimal" placeholder="ör. 24.000" value={butceMwh} onChange={(e) => setButceMwh(e.target.value.replace(/[^0-9.,]/g, ""))} /></label>
-                {/* v2.542 (P8b-2, IH-083): tasarım/sözleşme PR — Aylık beklenti › Beklenen üretim (ölçülen hava) kartının referansı; girilmezse santralın son 12 ay ölçülen PR'ı */}
-                <label className="girdi-etiket" title="Tasarım raporu ya da O&M sözleşmesindeki performans oranı (%50–95). Girilmezse beklenen üretim santralın kendi son 12 ay ölçülen PR'ına göre hesaplanır ve EPI kendi geçmişine göre okunur.">Referans performans oranı (%, isteğe bağlı)
-                  <input className="girdi" inputMode="decimal" placeholder="ör. 82" value={prRef} onChange={(e) => setPrRef(e.target.value.replace(/[^0-9.,]/g, ""))} /></label>
-                {/* v2.545 (IH-090): temizlik maliyeti — Santralim › Kirlenme ve ölçüm tutarlılığı kartında kayıp tahminiyle karşılaştırılır */}
-                <label className="girdi-etiket" title="Bir modül temizliğinin toplam maliyeti (TL). Girilirse kirlenme kaybı tahmini bu maliyetle karşılaştırılır ve geri ödeme süresi gösterilir.">Temizlik maliyeti (TL, isteğe bağlı)
-                  <input className="girdi" inputMode="decimal" placeholder="ör. 45.000" value={temizlikTl} onChange={(e) => setTemizlikTl(e.target.value.replace(/[^0-9.,]/g, ""))} /></label>
-                {/* v2.517 (P2a): pozisyon ayarı — uzlaştırma kartı EDM'yi buna göre hesaplar; KÜPST programa göre kalır */}
                 <label className="girdi-etiket">Piyasa pozisyonu
                   <select className="girdi" value={pozKaynak ?? "program"} onChange={(e) => setPozKaynak(e.target.value as "program" | "uretim" | "sabit")} aria-label="Piyasa pozisyonu kaynağı">
                     <option value="program">programa eşit satış</option>
@@ -965,26 +956,53 @@ export function Santralim({ plantId }: { plantId: string }) {
                     <label className="ayar-onay" title="Tesis Lisanssız Elektrik Üretim Yönetmeliği m.5(1) (ç), (d) ya da (e) bendi kapsamındaysa (şebekeye enerji vermeyen öz tüketim tesisi, verimli kojenerasyon, mikrokojenerasyon) EPDK Karar 14907 Md.5 gereği 1.11.2026'dan itibaren KGÜP sapma tutarı uygulanmaz; uzlaştırma kartları bu saatlerde KÜPST'yi 0 gösterir.">
                       <input type="checkbox" checked={!!luyIstisna} onChange={(e) => setLuyIstisna(e.target.checked)} /> LÜY m.5(1) (ç)/(d)/(e) kapsamında (KÜPST uygulanmaz)</label>)}
                 </div>
+                <div className="form-tam ayar-grup">Performans ve üretim hedefleri</div>
+                <label className="girdi-etiket">Yıllık üretim bütçesi (MWh, isteğe bağlı)
+                  <input className="girdi" inputMode="decimal" placeholder="ör. 24.000" value={butceMwh} onChange={(e) => setButceMwh(e.target.value.replace(/[^0-9.,]/g, ""))} /></label>
+                <label className="girdi-etiket" title="Tasarım raporu ya da O&M sözleşmesindeki performans oranı (%50–95). Girilmezse beklenen üretim santralın kendi son 12 ay ölçülen PR'ına göre hesaplanır ve EPI kendi geçmişine göre okunur.">Referans performans oranı (%, isteğe bağlı)
+                  <input className="girdi" inputMode="decimal" placeholder="ör. 82" value={prRef} onChange={(e) => setPrRef(e.target.value.replace(/[^0-9.,]/g, ""))} /></label>
+                <label className="girdi-etiket">Kullanılabilirlik sözleşme eşiği (%, isteğe bağlı)
+                  <input className="girdi" inputMode="decimal" placeholder="ör. 98" value={kullSoz} onChange={(e) => setKullSoz(e.target.value.replace(/[^0-9.,]/g, ""))} /></label>
+                <div className="form-tam ayar-grup">Bakım ve temizlik</div>
+                <label className="girdi-etiket" title="Son modül temizliğinin tarihi. Girilirse kirlenme kaybı tahmininin temiz referansı bu tarihten sonraki açık günlere bağlanır (en az 3 açık gün gerekir).">Son temizlik tarihi (isteğe bağlı)
+                  <input className="girdi" type="date" max={new Date().toISOString().slice(0, 10)} value={sonTemizlik} onChange={(e) => setSonTemizlik(e.target.value)} /></label>
+                <label className="girdi-etiket" title="Santralın tamamı için BİR temizlik işleminin toplam bedeli (TL; modül başına değil). Kirlenme kaybı tahmini bu bedelle karşılaştırılır ve geri ödeme süresi gösterilir.">Santral temizlik maliyeti (TL, bir temizlik; isteğe bağlı)
+                  <input className="girdi" inputMode="decimal" placeholder="ör. 45.000" value={temizlikTl} onChange={(e) => setTemizlikTl(e.target.value.replace(/[^0-9.,]/g, ""))} /></label>
+                <div className="form-tam ayar-grup">Veri güncelliği</div>
+                <label className="girdi-etiket" title="SCADA ya da sayaç dosyasını kaç günde bir yüklediğiniz (1–90). Veri kaynakları kartında yükleme, bu sürenin iki katından eskiyse uyarı alır; girilmezse 30 gün.">Dosya yükleme sıklığı (gün, isteğe bağlı)
+                  <input className="girdi" inputMode="numeric" style={{ width: 110 }} placeholder="ör. 7" value={dosyaSiklik} onChange={(e) => setDosyaSiklik(e.target.value.replace(/[^0-9]/g, ""))} /></label>
+                <div className="form-tam ayar-grup">Risk ve arıza kayıtları</div>
+                <label className="girdi-etiket">Teminat risk katsayısı (isteğe bağlı)
+                  <input className="girdi" inputMode="decimal" placeholder="ör. 1,5" value={teminatKat} onChange={(e) => setTeminatKat(e.target.value.replace(/[^0-9.,]/g, ""))} /></label>
+                <label className="girdi-etiket">Bu ay arıza kaydı (adet; Olay kaydı sayfası varsa oradan sayılır)
+                  <input className="girdi" inputMode="numeric" placeholder="0" value={arizaAy} onChange={(e) => setArizaAy(e.target.value.replace(/[^0-9]/g, ""))} /></label>
                 <div className="form-tam satir-tam">
-                  <button className="dugme" onClick={eakKaydet}>Kaydet</button>
+                  <button className="dugme" onClick={eakKaydet}>Ayarları kaydet</button>
                   {eakMesaj && <span className={`ayar-durum ${eakMesaj.startsWith("Kayded") ? "ok" : "hata"}`}>{eakMesaj}</span>}
                 </div>
               </div>
             </div>
             {ayrintiGovdesi(ayrinti, "program", <>
                 <ul>
+                  <li className="ayar-grup-li"><b>Üretim programı ve piyasa</b></li>
                   <li><b>Verilebilecek en yüksek güç (EAK):</b> mevzuattaki adıyla emre amade kapasite; santralin o gün sisteme verebileceği en yüksek güç. Program hiçbir saatte bunu aşmaz. Boşsa AC sınırı, o da yoksa kurulu güç kullanılır; üst sınır kurulu güçtür.</li>
                   <li><b>Geçici kısıt ve bitişi:</b> bakım ya da arıza süresince EAK yerine geçer; bitiş günü dâhil o güne kadar geçerlidir, sonra kendiliğinden kalkar.</li>
-                  <li><b>Kullanılabilirlik sözleşme eşiği:</b> O&amp;M sözleşmenizdeki kullanılabilirlik eşiği (ör. %98). Girilirse Santral bilgileri kartı, son 30 günün teknik kullanılabilirliği bu eşiğin altında kaldığında açığı enerji ve satış fiyatıyla TL olarak gösterir. Sözleşmenizdeki tanım, istisna listesi ve tazmin formülü farklı olabilir; bu değer kıyas tabanıdır, alacak değildir. Alarm kurallarındaki «Kullanılabilirlik (%)» eşiği ayrıdır: o uyarı üretir, bu açığı hesaplar.</li>
+                  <li><b>Piyasa pozisyonu:</b> Doğruluk sayfasındaki uzlaştırma hesabında dengesizliğin tabanı. Satışınız programa eşitse «programa eşit satış» (varsayılan); üretim olduğu gibi satılıyorsa (ikili anlaşma, dengesizlik alıcıda) «üretildiği kadar satış»; her saat sabit miktar satıyorsanız «sabit miktar» ve MWh/saat değeri. Sapma tutarı her durumda programa göre hesaplanır.</li>
+                  <li><b>Dengeleme birimi:</b> yalnız dengeleme güç piyasasına katılan dengeleme birimleri için. Ardışık iki saat arasında 200 MWh ve üzeri fark olduğunda program 15 dakikalık satırlarla üretilir (DUY m.69(3)). Güneş santralleri varsayılan olarak dengeleme birimi değildir; genellikle kapalı kalır.</li>
+                  <li className="ayar-grup-li"><b>Performans ve üretim hedefleri</b></li>
                   <li><b>Yıllık üretim bütçesi:</b> finansal modelinizdeki yıllık üretim (MWh). Girilirse Aylık beklenti sayfasındaki «Yıl yıl P-değerleri» kartı tamamlanmış yılların ve cari yılın gerçekleşenini bütçeye oranlar (hava düzeltmesiz). Girilmezse kıyas yalnız P50/P90'a göredir.</li>
                   <li><b>Referans performans oranı:</b> tasarım raporu ya da O&M sözleşmesindeki performans oranı (%50–95). Girilirse Aylık beklenti sayfasındaki «Beklenen üretim (ölçülen hava) ve EPI» kartı beklenen üretimi bu orana göre hesaplar ve EPI tasarıma göre okunur. Girilmezse santralın kendi son 12 ay ölçülen PR'ı kullanılır; EPI o zaman kendi geçmişine göre okunur, kart bunu söyler.</li>
-                  <li><b>Temizlik maliyeti:</b> bir modül temizliğinin toplam bedeli (TL). Kirlenme ve ölçüm tutarlılığı kartındaki kayıp tahminiyle karşılaştırılır: son 30 günün tahmini kaybı maliyeti karşılıyorsa ve geri ödeme süresi kısaysa temizlik ekonomiktir. Tahmin yalnız «modüller kirleniyor olabilir» yorumunda anlamlıdır.</li>   {/* v2.545 */}   {/* v2.542 (P8b-2) */}
+                  <li><b>Kullanılabilirlik sözleşme eşiği:</b> O&amp;M sözleşmenizdeki kullanılabilirlik eşiği (ör. %98). Girilirse Santral bilgileri kartı, son 30 günün teknik kullanılabilirliği bu eşiğin altında kaldığında açığı enerji ve satış fiyatıyla TL olarak gösterir. Sözleşmenizdeki tanım, istisna listesi ve tazmin formülü farklı olabilir; bu değer kıyas tabanıdır, alacak değildir. Alarm kurallarındaki «Kullanılabilirlik (%)» eşiği ayrıdır: o uyarı üretir, bu açığı hesaplar.</li>
+                  <li className="ayar-grup-li"><b>Bakım ve temizlik</b></li>
+                  <li><b>Son temizlik tarihi:</b> son modül temizliğinin günü. Kirlenme kaybı tahmininin «temiz referans» PR'ı bu tarihten sonraki açık günlerden alınır (en az 3 açık gün); yoksa 90 günlük pencerenin kantili kullanılır ve kart bunu söyler.</li>
+                  <li><b>Santral temizlik maliyeti:</b> santralın tamamı için bir temizlik işleminin toplam bedeli (TL; modül başına değil). Kirlenme ve ölçüm tutarlılığı kartındaki kayıp tahminiyle karşılaştırılır: son 30 günün tahmini kaybı maliyeti karşılıyorsa ve geri ödeme süresi kısaysa temizlik ekonomiktir. Tahmin yalnız «modüller kirleniyor olabilir» ya da «sensör ve modüller birlikte» yorumunda karar tahminidir; sensör şüphesinde askıya alınır.</li>
+                  <li className="ayar-grup-li"><b>Veri güncelliği</b></li>
+                  <li><b>Dosya yükleme sıklığı:</b> SCADA ya da sayaç dosyasını kaç günde bir yüklediğiniz. Veri kaynakları kartı yüklemeyi bu sürenin iki katından eskiyse «yükleme N günden eski» diye uyarır; girilmezse 30 gün.</li>
+                  <li className="ayar-grup-li"><b>Risk ve arıza kayıtları</b></li>
                   <li><b>Teminat risk katsayısı:</b> EPİAŞ dengesizlik teminatı formülündeki katsayı (3 ayın en yüksek aylık negatif dengesizlik miktarı × 12 aylık ortalama SMF × katsayı). Değeri Teminat Usul ve Esasları kaynağında yer almıyor; EPYS'deki teminat hesabınızdan alıp girin. Girilmezse Doğruluk'taki teminat göstergesi tutar vermez.</li>
                   <li><b>Bu ay arıza kaydı:</b> EPİAŞ'a bildirdiğiniz aylık arıza sayısı. Olay kaydı sayfasına girilen arıza olayları otomatik sayılır; bu alan yedektir, ikisinin büyüğü kullanılır. Kural tablosundaki eşikte (30 kayıt) sapma tutarı fiyat katsayısı yükselir; «Arıza sayacı eşiğe yaklaştı» alarmı bu sayıyı izler.</li>
-                  <li><b>Dengeleme birimi:</b> yalnız dengeleme güç piyasasına katılan dengeleme birimleri için. Ardışık iki saat arasında 200 MWh ve üzeri fark olduğunda program 15 dakikalık satırlarla üretilir (DUY m.69(3)). Güneş santralleri varsayılan olarak dengeleme birimi değildir; genellikle kapalı kalır.</li>
-                  <li><b>Piyasa pozisyonu:</b> Doğruluk sayfasındaki uzlaştırma hesabında dengesizliğin tabanı. Satışınız programa eşitse «programa eşit satış» (varsayılan); üretim olduğu gibi satılıyorsa (ikili anlaşma, dengesizlik alıcıda) «üretildiği kadar satış»; her saat sabit miktar satıyorsanız «sabit miktar» ve MWh/saat değeri. Sapma tutarı her durumda programa göre hesaplanır.</li>
                 </ul>
-                <p><b>Ne zaman geçerli:</b> Kaydet'ten sonraki program dosyasında ve uzlaştırma hesaplarında.</p>
+                <p><b>Ne zaman geçerli:</b> Kaydet'ten sonraki program dosyasında, uzlaştırma hesaplarında ve ilgili kartlarda (kirlenme, veri kaynakları, aylık beklenti).</p>
               </>)}
           </div>
           <div className="ayar">
@@ -1130,10 +1148,13 @@ export function Santralim({ plantId }: { plantId: string }) {
         sag={kir?.durum === "ok" ? <span className="cip">{sayiTr(kir.acik_gun ?? 0)} açık gün · son ölçümden geriye {sayiTr(kir.pencere_gun)} gün</span> : null}>
         {kir === undefined ? <YerTutucu yukseklik={160} /> : kir?.durum === "ok" ? (
           <>
-            {kir.tazelik?.bayat && <p style={{ margin: "0 0 10px", fontSize: 13.5 }}><span className="rozet rozet-kucuk rozet-uyari" style={{ marginRight: 8 }}>veri {sayiTr(kir.tazelik.veri_yasi_gun)} gündür güncellenmedi</span><span className="soluk">{kir.tazelik.not}</span></p>}
+            <p style={{ margin: "0 0 10px", fontSize: 13.5 }}>
+              {kir.tazelik?.bayat && <span className="rozet rozet-kucuk rozet-uyari" style={{ marginRight: 8 }}>veri {sayiTr(kir.tazelik.veri_yasi_gun)} gündür güncellenmedi</span>}
+              <span className="soluk">{kir.hesaplama_zamani ? `Değerlendirme ${tarihSaatKisa(kir.hesaplama_zamani)}; veri ${kir.son_olcum ? gunKisa(kir.son_olcum) : "son ölçüm"} gününe kadar.` : ""}{kir.tazelik?.not ? ` ${kir.tazelik.not}` : ""}</span>
+            </p>
             <div className="ızgara satir-4" style={{ marginBottom: 12 }}>
               <Kpi etiket="Açık-gök endeksi (son 7 açık gün)" deger={kir.age_7g != null ? `%${sayiTr(kir.age_7g * 100, 1)}` : "—"} alt="ölçülen ışınım / açık-gök modeli, medyan" />
-              <Kpi etiket="Endeks eğilimi (son 30 gün)" deger={kir.age_egim_pct_ay != null ? `${kir.age_egim_pct_ay > 0 ? "+" : ""}${sayiTr(kir.age_egim_pct_ay, 1)} %/ay` : "—"} alt={kir.age_egim_pct_ay != null ? `${sayiTr(kir.acik_gun_30 ?? 0)} açık günle` : `eğilim için en az 8 açık gün gerekir (${sayiTr(kir.acik_gun_30 ?? 0)} var)`} />
+              <Kpi etiket="Endeks eğilimi (son 30 gün)" deger={kir.age_egim_pct_ay != null ? `${kir.age_egim_pct_ay > 0 ? "+" : ""}${sayiTr(kir.age_egim_pct_ay, 1)} %/ay` : "—"} alt={kir.age_egim_pct_ay != null ? `${sayiTr(kir.acik_gun_30 ?? 0)} açık günle · göreli değişim, puan değil` : `eğilim için en az 8 açık gün gerekir (${sayiTr(kir.acik_gun_30 ?? 0)} var)`} />
               <Kpi etiket="Açık gün PR (son 7 açık gün)" deger={kir.pr_acik_7g != null ? `%${sayiTr(kir.pr_acik_7g * 100, 1)}` : "—"} alt={kir.pr_egim_pct_ay != null ? `eğilim ${kir.pr_egim_pct_ay > 0 ? "+" : ""}${sayiTr(kir.pr_egim_pct_ay, 1)} %/ay` : "eğilim için açık gün yetersiz"} />
               <Kpi etiket="Son yağış (hava tahmini arşivi)" deger={kir.son_yagis?.gun_once != null ? `${sayiTr(kir.son_yagis.gun_once)} gün önce` : "—"} alt={kir.son_yagis?.mm != null ? `son ölçüm gününe göre · ${sayiTr(kir.son_yagis.mm, 1)} mm tahmin, ölçülen yağış değil` : (kir.son_yagis?.not ?? "")} />
             </div>
@@ -1141,6 +1162,7 @@ export function Santralim({ plantId }: { plantId: string }) {
               <span className={`rozet rozet-kucuk ${kir.yorum.kod === "kararli" || kir.yorum.kod === "toparlanma" ? "rozet-ok" : kir.yorum.kod === "yetersiz" || kir.yorum.kod === "atmosfer" ? "rozet-notr" : "rozet-uyari"}`} style={{ marginRight: 8 }}>{kir.yorum.baslik}</span>
               <span className="soluk">{kir.yorum.metin}</span>
               {kir.yorum.kod !== "yetersiz" && <> <b style={{ fontWeight: 500 }}>{kir.yorum.tur === "olcum" ? "Ölçüm sapması; üretim kaybı değil." : kir.yorum.tur === "uretim" ? "Üretim kaybı olası." : "Eylem gerekmez."}</b></>}</p>}
+            {kir.son_temizlik && <p className="soluk" style={{ margin: "0 0 10px", fontSize: 13 }}>Son temizlik {gunKisa(kir.son_temizlik.tarih)} (son ölçüm gününe göre {sayiTr(kir.son_temizlik.gun_once)} gün önce){kir.kayip?.referans_kaynak ? `; temiz referans: ${kir.kayip.referans_kaynak}` : ""}.</p>}
             {/* 08.11 inceleme (faz 1): kayıp satırı güvenilirlik sınıfına göre — anlamlı: tahmin + temizlik karşılaştırması; zayıf/belirsiz: şartlı senaryo, karşılaştırma yok; sensör şüphesi: askıda, sayı yok */}
             {kir.kayip && (kir.kayip.durum === "ok" ? (
               <p style={{ margin: "0 0 10px", fontSize: 13.5, lineHeight: 1.5 }}>
@@ -1174,15 +1196,17 @@ export function Santralim({ plantId }: { plantId: string }) {
 
       {/* v2.544 (P4b hazırlık, IH-023): veri kaynakları ve bağlantı durumu — kaynak türü, tanımlı mı, son geliş, tazelik; protokol/bulut API için hazırlık listesi; bağlayıcı yazılmadı */}
       <Kart baslik="Veri kaynakları ve bağlantı durumu" alt="Santralın bugün hangi kaynaklardan veri aldığı, son verinin ne kadar taze olduğu ve hedeflediğiniz bağlantı için neler gerektiği. Protokol ve bulut API bağlantıları henüz kurulmadı; Modbus TCP / SunSpec için yalnız okuyan bağlantı sınaması yapılabilir."
-        sag={vy?.hedef ? <span className="cip">hedef: {vy.hedef.kisa} · {vy.beyan?.son_sinama?.durum === "ok" ? "bağlantı sınaması başarılı, veri çekişi yok" : vy.hedef.durum_etiketi}</span> : null}>
+        sag={vy?.hedef ? <span className="cip">hedef: {vy.hedef.kisa} · {vy.asamalar?.find((a) => a.kod === "akis")?.tamam ? "veri alınıyor" : vy.beyan?.ornekleme_acik ? "düzenli veri çekişi açık, ilk örnek bekleniyor" : vy.beyan?.son_sinama?.durum === "ok" ? "bağlantı sınaması başarılı, veri çekişi yok" : vy.hedef.durum_etiketi}</span> : null}>
         {vy && (
           <>
             <div style={{ display: "grid", gap: 4, marginBottom: 12, fontSize: 13.5 }}>
               {vy.etkin.length === 0 && <span className="soluk">Henüz veri gelmedi: SCADA dosyası yükleyin ya da lisanslı tesiste EPİAŞ Şeffaflık santral kimliğini girin.</span>}
+              {/* 08.11 inceleme II (faz 3): bağlantı sağlığı ile veri tazeliği ayrı rozetlerdir — başarılı sorgu, eski veriyi «güncel» yapmaz; eski veri, bağlantıyı «hatalı» yapmaz */}
               {vy.etkin.map((e, i) => { const dosya = e.tazelik === "dosya" || e.tazelik === "dosya_eski"; const gun = e.yas_saat != null ? ` (${sayiTr(Math.round(e.yas_saat / 24))} gün önce)` : ""; return <span key={`${e.tur}-${i}`}>
-                <span className={`rozet rozet-kucuk ${e.tazelik === "guncel" ? "rozet-ok" : e.tazelik === "gecikmis" || e.tazelik === "dosya_eski" ? "rozet-uyari" : "rozet-notr"}`}>{e.tazelik_etiketi}</span> {e.etiket}
-                <span className="soluk"> · {e.tur_etiketi}{e.ayrinti ? ` · ${e.ayrinti}` : ""}{e.son ? ` · ${dosya ? "son yükleme" : "son çekiş"} ${gunKisa(e.son)}${gun}` : ""}{e.son_olcum ? ` · son ölçüm ${gunKisa(e.son_olcum)}` : ""}{e.cekis ? ` · ${e.cekis.zaman ? `son deneme ${gunKisa(e.cekis.zaman)}: ` : ""}${e.cekis.etiket}` : ""}</span></span>; })}
-              <span className="soluk" style={{ fontSize: 13 }}>Bağlantı kaynaklarında «güncel» = son çekiş {sayiTr(vy.taze_saat)} saat içinde. Dosya kaynakları yüklediğiniz güne kadar veri taşır, yükleme ritmi sizindir; {sayiTr(vy.dosya_eski_gun ?? 30)} günden eski yükleme uyarı alır. «Son ölçüm» verinin kendi zaman damgasıdır.</span>
+                {e.baglanti && <span className={`rozet rozet-kucuk ${e.baglanti.durum === "ok" ? "rozet-ok" : e.baglanti.durum === "hata" ? "rozet-uyari" : "rozet-notr"}`} title={`Bağlantı: ${e.baglanti.etiket}${e.baglanti.zaman ? ` · ${gunKisa(e.baglanti.zaman)}` : ""}`} style={{ marginRight: 4 }}>bağlantı: {e.baglanti.etiket}</span>}
+                <span className={`rozet rozet-kucuk ${e.tazelik === "guncel" ? "rozet-ok" : e.tazelik === "gecikmis" || e.tazelik === "dosya_eski" ? "rozet-uyari" : "rozet-notr"}`} title={dosya ? "Dosya kaynağı: yükleme ritmi sizindir" : "Veri tazeliği: son başarıyla gelen verinin yaşı"}>{dosya ? e.tazelik_etiketi : `veri: ${e.veri_etiketi ?? e.tazelik_etiketi}`}</span> {e.etiket}
+                <span className="soluk"> · {e.tur_etiketi}{e.ayrinti ? ` · ${e.ayrinti}` : ""}{e.son ? ` · ${dosya ? "son yükleme" : "son veri gelişi"} ${gunKisa(e.son)}${gun}` : ""}{e.son_olcum ? ` · son ölçüm ${gunKisa(e.son_olcum)}` : ""}{e.cekis ? ` · ${e.cekis.zaman ? `son sorgu ${gunKisa(e.cekis.zaman)}: ` : ""}${e.cekis.etiket}` : ""}</span></span>; })}
+              <span className="soluk" style={{ fontSize: 13 }}>«Bağlantı» son sorgunun sonucudur; «veri» son gelen verinin yaşıdır (bağlantı kaynaklarında güncel = {sayiTr(vy.taze_saat)} saat içinde). Dosya kaynakları yüklediğiniz güne kadar veri taşır, yükleme ritmi sizindir; {sayiTr(vy.dosya_eski_gun ?? 30)} günden eski yükleme uyarı alır. «Son ölçüm» verinin kendi zaman damgasıdır.</span>
             </div>
             <div className="dugme-sira" style={{ alignItems: "flex-end", flexWrap: "wrap" }}>
               <label className="girdi-etiket" style={{ minWidth: 0, maxWidth: "100%" }}>Hedeflenen veri kaynağı
@@ -1202,9 +1226,11 @@ export function Santralim({ plantId }: { plantId: string }) {
                   <input className="girdi" inputMode="numeric" style={{ width: 70 }} value={vyb.birim} onChange={(e) => setVyb({ ...vyb, birim: e.target.value.replace(/[^0-9]/g, "") })} /></label>
               </>}
               {baglanti && <label className="ayar-onay" title="Tesis sahibi olarak PVQuant'ın bu kaynaktan yalnızca veri okumasını onaylıyorum; yazma ya da kumanda yok">
-                <input type="checkbox" checked={vyf.onay} onChange={(e) => setVyf({ ...vyf, onay: e.target.checked })} /> yalnızca veri okunmasını onaylıyorum</label>}
+                <input type="checkbox" checked={vyf.onay} onChange={(e) => setVyf({ ...vyf, onay: e.target.checked, cekis: e.target.checked ? vyf.cekis : false })} /> yalnızca veri okunmasını onaylıyorum</label>}
+              {vyf.tur === "modbus_sunspec" && vyf.onay && <label className="ayar-onay" title="Cihazdan düzenli aralıkla (veri aralığı, varsayılan 15 dk) yalnız okuma örnekleri alınır ve tamamlanan saatler üretim serisine yazılır; var olan dosya/EPİAŞ saatleri korunur. Bağlantı sınaması bunu başlatmaz.">   {/* v2.546 (P4b-2) */}
+                <input type="checkbox" checked={vyf.cekis} onChange={(e) => setVyf({ ...vyf, cekis: e.target.checked })} /> düzenli veri çekişini başlat</label>}
               </>; })()}
-              <button className="dugme" onClick={() => vyKaydet(false)}>Kaydet</button>
+              <button className="dugme" onClick={() => vyKaydet(false)}>Ayarları kaydet</button>
               {vy.beyan && <button className="dugme" onClick={() => vyKaydet(true)}>Seçimi kaldır</button>}
               {vy.beyan?.tur === "modbus_sunspec" && vy.beyan.baglanti && <button className="dugme" disabled={sinama === "bekliyor" || !vy.beyan.salt_okuma_onayi} title={vy.beyan.salt_okuma_onayi ? "Kayıtlı adres, port ve birimle cihaza yalnız okuma amaçlı bağlanır (Modbus fonksiyon 3); veri çekişi başlatmaz" : "Önce «yalnızca veri okunmasını onaylıyorum» kutusunu işaretleyip kaydedin"} onClick={vySina}>{sinama === "bekliyor" ? "Sınanıyor…" : "Bağlantıyı sına"}</button>}
             </div>
@@ -1214,12 +1240,12 @@ export function Santralim({ plantId }: { plantId: string }) {
                 {vy.asamalar.map((a) => <span key={a.kod} className={`rozet rozet-kucuk ${a.tamam ? "rozet-ok" : "rozet-notr"}`} title={a.zaman ? `${a.etiket} · ${gunKisa(a.zaman)}` : a.etiket}>{a.tamam ? "✓ " : "○ "}{a.etiket}</span>)}
               </div>)}
             {!sinama && vy.beyan?.son_sinama && (
-              <p className="soluk" style={{ margin: "8px 0 0", fontSize: 13 }}>Son bağlantı sınaması {gunKisa(vy.beyan.son_sinama.zaman)}: {vy.beyan.son_sinama.durum === "ok" ? `başarılı — ${vy.beyan.son_sinama.ozet?.uretici ?? ""} ${vy.beyan.son_sinama.ozet?.model ?? ""}`.trim() : `başarısız (${vy.beyan.son_sinama.aciklama ?? vy.beyan.son_sinama.durum})`}. Sınama cihaza erişildiğini gösterir; düzenli veri çekişi başlamaz.</p>)}
+              <p className="soluk" style={{ margin: "8px 0 0", fontSize: 13 }}>Son bağlantı sınaması {gunKisa(vy.beyan.son_sinama.zaman)}: {vy.beyan.son_sinama.durum === "ok" ? `başarılı — ${vy.beyan.son_sinama.ozet?.uretici ?? ""} ${vy.beyan.son_sinama.ozet?.model ?? ""}`.trim() : `${SINAMA_ETIKET[vy.beyan.son_sinama.durum] ?? vy.beyan.son_sinama.durum}${vy.beyan.son_sinama.aciklama ? ` — ${vy.beyan.son_sinama.aciklama}` : ""}`}. Sınama cihaza erişildiğini gösterir; düzenli veri çekişi başlamaz.</p>)}
             {sinama && sinama !== "bekliyor" && (
               <p style={{ margin: "8px 0 0", fontSize: 13.5, lineHeight: 1.5 }}>
-                <span className={`rozet rozet-kucuk ${sinama.durum === "ok" ? "rozet-ok" : "rozet-uyari"}`} style={{ marginRight: 8 }}>{({ ok: "bağlantı başarılı", onay_yok: "onay yok", adres_reddedildi: "adres reddedildi", ayar_hatasi: "ayar hatası", baglanti_hatasi: "bağlantı kurulamadı" } as Record<string, string>)[sinama.durum]}</span>
+                <span className={`rozet rozet-kucuk ${sinama.durum === "ok" ? "rozet-ok" : sinama.durum === "kismi" ? "rozet-notr" : "rozet-uyari"}`} style={{ marginRight: 8 }}>{SINAMA_ETIKET[sinama.durum] ?? sinama.durum}</span>
                 {sinama.durum === "ok" && sinama.ozet ? <>{sinama.ozet.uretici ?? "—"} {sinama.ozet.model ?? ""}{sinama.ozet.seri_no ? ` · seri ${sinama.ozet.seri_no}` : ""} · {sinama.ozet.guc_kw != null ? `anlık ${sayiTr(sinama.ozet.guc_kw, 1)} kW` : "güç okunamadı"}{sinama.ozet.enerji_mwh != null ? ` · sayaç ${sayiTr(sinama.ozet.enerji_mwh, 1)} MWh` : ""} · durum {sinama.ozet.durum ?? "—"}{sinama.ozet.olaylar.length ? ` · olay: ${sinama.ozet.olaylar.join(", ")}` : ""}{sinama.hedef?.ag ? <span className="soluk"> · {sinama.hedef.ag}</span> : null}</> : <span className="soluk">{sinama.aciklama}</span>}
-                {sinama.not && <span className="soluk"> {sinama.not}</span>}
+                {sinama.not && <span className="soluk"> · {sinama.not}</span>}
               </p>)}
             {(() => { const h = vy.yollar.find((y) => y.tur === vyf.tur) ?? vy.hedef; return h ? (
               <div style={{ marginTop: 10, fontSize: 13.5 }}>

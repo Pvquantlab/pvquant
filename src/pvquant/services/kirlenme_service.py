@@ -66,13 +66,18 @@ NOT = ("Ön tanı göstergesidir: ölçülen düzlem-içi ışınımın açık-g
        "dönüşümü), yalnız açık saatlerde. Kirlenme sensörü ve uydu referansı yok; kirlenme oranı doğrudan ölçülmez, kayıp açık-gök PR'dan ayrı etiketli bir "
        "TAHMİN olarak verilir. Yağış hava TAHMİNİ arşivinden (ölçülen yağış değil). Temizlik kararı eğilim, yağış sonrası sıçrama, tahmini kayıp–temizlik "
        "maliyeti karşılaştırması ve saha gözlemiyle verilir.")
+def _tr(x) -> str:
+    """08.11 inceleme: görünür metinde Türkçe ondalık (0,5 — 0.5 değil)."""
+    return f"{x:g}".replace(".", ",")
+
+
 YONTEM = [
     "Açık-gök düzlem-içi ışınım: pvlib Ineichen açık-gök modeli (Linke bulanıklığı aylık iklim tablosundan), güneş konumu saat ortasında, Hay-Davies düzlem dönüşümü santralın eğim/azimutuna.",
-    f"Açık saat: açık-gök ışınımı ≥ {ACIK_GOK_MIN_WM2:g} W/m², ölçülen/açık-gök oranı {ORAN_ARALIK[0]:g}–{ORAN_ARALIK[1]:g} arasında ve komşu saatlerle fark ≤ {KOMSU_FARK:g} (bulut geçişleri elenir). Günde ≥ {ACIK_SAAT_MIN} açık saat → açık gün.",
+    f"Açık saat: açık-gök ışınımı ≥ {_tr(ACIK_GOK_MIN_WM2)} W/m², ölçülen/açık-gök oranı {_tr(ORAN_ARALIK[0])}–{_tr(ORAN_ARALIK[1])} arasında ve komşu saatlerle fark ≤ {_tr(KOMSU_FARK)} (bulut geçişleri elenir). Günde ≥ {ACIK_SAAT_MIN} açık saat → açık gün.",
     "Açık-gök endeksi (AGE): açık saat oranlarının günlük medyanı. Açık gün PR: aynı saatlerde ΣE_ac / (P0 × ΣPOA/1000).",
-    f"Eğilim: son ölçümden geriye {EGIM_PENCERE_GUN} takvim günündeki açık günlerde (≥ {EGIM_MIN_ACIK_GUN}) doğrusal eğim, aylık göreli yüzde (pencere ortalamasına göre; puan değil); |eğim| < %{EGIM_ESIK_PCT_AY:g}/ay «kararlı».",
+    f"Eğilim: son ölçümden geriye {EGIM_PENCERE_GUN} takvim günündeki açık günlerde (≥ {EGIM_MIN_ACIK_GUN}) doğrusal eğim, aylık göreli yüzde (pencere ortalamasına göre; puan değil); |eğim| < %{_tr(EGIM_ESIK_PCT_AY)}/ay «kararlı».",
     "Yorum: AGE↓ PR↑ → sensör (ölçüm sapması); AGE sabit PR↓ → modül (üretim kaybı olası); AGE↓ PR sabit → atmosfer/model (kirlenme kanıtı yok); AGE↓ PR↓ → ikisi; AGE↑ → toparlanma.",
-    f"Yağış: hava tahmini arşivinden günlük toplam ≥ {YAGIS_ESIK_MM:g} mm (ölçülen yağış değil); «gün önce» son ölçüm gününe göredir; yalnız bağlam.",
+    f"Yağış: hava tahmini arşivinden günlük toplam ≥ {_tr(YAGIS_ESIK_MM)} mm (ölçülen yağış değil); «gün önce» son ölçüm gününe göredir; yalnız bağlam.",
 ]
 
 
@@ -151,8 +156,11 @@ def yorumla(age_egim: float | None, pr_egim: float | None) -> dict:
     return {"kod": kod, **YORUM[kod]}
 
 
+TEMIZLIK_SONRASI_MIN_ACIK_GUN = 3   # v2.546: temizlik sonrası en az bu kadar açık gün varsa referans o döneme bağlanır
+
+
 def kayip_tahmini(gunler: pd.DataFrame, uretim_gunluk: pd.Series, fiyat_gunluk: pd.Series | None, bitis: date,
-                  temizlik_maliyeti_tl: float | None = None, yorum_kodu: str | None = None) -> dict:
+                  temizlik_maliyeti_tl: float | None = None, yorum_kodu: str | None = None, temizlik_tarihi: date | None = None) -> dict:
     """SAF. gunler: aylik açık gün satırları (gun, pr_acik); uretim_gunluk: yerel gün → kWh (tüm günler); fiyat_gunluk: gün → TL/MWh.
     Temiz referans = açık gün PR'larının %90 kantili; r_d = PR_d/ref (≤ 1) açık günlerden ara günlere zamanla enterpolasyon; kayıp_d = E_d × (1/r_d − 1)."""
     gecerlilik = KAYIP_GECERLILIK.get(yorum_kodu or "yetersiz", "belirsiz")
@@ -166,7 +174,15 @@ def kayip_tahmini(gunler: pd.DataFrame, uretim_gunluk: pd.Series, fiyat_gunluk: 
     if len(pr) < EGIM_MIN_ACIK_GUN:
         return {"durum": "yetersiz", "not": KAYIP_NOTU, "aciklama": f"Kayıp tahmini için en az {EGIM_MIN_ACIK_GUN} açık gün gerekir ({len(pr)} var)."}
     s = pd.Series(pr["pr_acik"].astype(float).values, index=pd.to_datetime(pr["gun"]))
+    ref_kaynak = f"açık gün PR'larının %{int(TEMIZ_REFERANS_KANTIL * 100)} kantili (pencere)"
     ref = float(s.quantile(TEMIZ_REFERANS_KANTIL))
+    if temizlik_tarihi is not None:   # v2.546: son temizlikten sonraki açık günler temiz durumu daha iyi temsil eder
+        st = s[s.index > pd.Timestamp(temizlik_tarihi)]
+        if len(st) >= TEMIZLIK_SONRASI_MIN_ACIK_GUN:
+            ref = float(st.quantile(TEMIZ_REFERANS_KANTIL))
+            ref_kaynak = f"son temizlik ({temizlik_tarihi.isoformat()}) sonrası {len(st)} açık günün PR %{int(TEMIZ_REFERANS_KANTIL * 100)} kantili"
+        else:
+            ref_kaynak += f"; son temizlik ({temizlik_tarihi.isoformat()}) sonrası açık gün yetersiz ({len(st)} < {TEMIZLIK_SONRASI_MIN_ACIK_GUN})"
     if ref <= 0:
         return {"durum": "yetersiz", "not": KAYIP_NOTU, "aciklama": "Referans PR hesaplanamadı."}
     e = uretim_gunluk.copy(); e.index = pd.to_datetime(e.index)
@@ -192,7 +208,7 @@ def kayip_tahmini(gunler: pd.DataFrame, uretim_gunluk: pd.Series, fiyat_gunluk: 
         else:
             temizlik_neden = "yorum modül kirlenmesini desteklemiyor; temizlik karşılaştırması yapılmadı"
     return {"durum": "ok", "nitelik": ("tahmin" if gecerlilik == "anlamli" else "senaryo"), "gecerlilik": gecerlilik, "gecerlilik_metin": KAYIP_GECERLILIK_METIN[gecerlilik],
-            "bitis": bitis.isoformat(), "referans_pr": round(ref, 4), "referans_kaynak": f"açık gün PR'larının %{int(TEMIZ_REFERANS_KANTIL * 100)} kantili (pencere)",
+            "bitis": bitis.isoformat(), "referans_pr": round(ref, 4), "referans_kaynak": ref_kaynak,
             "son7_gunluk_kayip_pct": (round(gun_ort_pct, 2) if gun_ort_pct is not None else None),
             "son30_kayip_kwh": round(k30, 1), "son30_kayip_tl": (round(t30, 0) if t30 is not None else None), "son30_gun": int(son30.sum()),
             "pencere_kayip_kwh": round(float(kayip.sum()), 1), "temizlik": temizlik, "temizlik_neden": temizlik_neden, "not": KAYIP_NOTU}
@@ -288,11 +304,22 @@ def ozet(tenant_id, plant: dict, gun: int = 90, bugun: date | None = None) -> di
             fiyat_g = fs.groupby(hidx.tz_convert(tz).date).mean()
         except Exception:   # noqa: BLE001 — fiyat yoksa TL verilmez
             fiyat_g = None
-        kayip = kayip_tahmini(gunler, uretim_g, fiyat_g, bitis, pj.get("temizlik_maliyeti_tl"), yorum["kod"])
+        tt = pj.get("son_temizlik_tarihi")
+        try:
+            tt = date.fromisoformat(tt) if tt else None
+        except ValueError:
+            tt = None
+        kayip = kayip_tahmini(gunler, uretim_g, fiyat_g, bitis, pj.get("temizlik_maliyeti_tl"), yorum["kod"], tt)
     except Exception as e:   # noqa: BLE001
         kayip = {"durum": "yetersiz", "not": KAYIP_NOTU, "aciklama": f"kayıp tahmini alınamadı ({type(e).__name__})"}
+    tt = pj.get("son_temizlik_tarihi")
+    try:
+        son_temizlik = ({"tarih": tt, "gun_once": (bitis - date.fromisoformat(tt)).days, "referans": "son ölçüm günü"} if tt else None)
+    except ValueError:
+        son_temizlik = None
     return {"durum": "ok", **bos, "son_olcum": bitis.isoformat(), "tazelik": tazelik, "pencere": {"bas": (bitis - timedelta(days=gun)).isoformat(), "bit": bitis.isoformat()},
-            "kayip": kayip,
+            "hesaplama_zamani": datetime.now(timezone.utc).isoformat(timespec="minutes"),   # 08.11 inceleme II: sonuçların ne zaman değerlendirildiği
+            "kayip": kayip, "son_temizlik": son_temizlik,
             "yontem": YONTEM, "acik_gun": int(len(gunler)), "acik_gun_30": n_age,
             "age_7g": round(float(son7["age"].median()), 3), "pr_acik_7g": (round(float(son7["pr_acik"].dropna().median()), 3) if son7["pr_acik"].notna().any() else None),
             "age_egim_pct_ay": age_egim, "pr_egim_pct_ay": pr_egim, "yorum": yorum, "son_yagis": son_yagis,

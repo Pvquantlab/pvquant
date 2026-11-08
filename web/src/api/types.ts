@@ -708,21 +708,29 @@ export interface Kirlenme { durum: "ok" | "egim_yok" | "poa_yok" | "acik_gun_yok
     son7_gunluk_kayip_pct?: number | null; son30_kayip_kwh?: number; son30_kayip_tl?: number | null; son30_gun?: number; pencere_kayip_kwh?: number;
     gecerlilik?: "anlamli" | "zayif" | "belirsiz" | "yanli"; gecerlilik_metin?: string;
     temizlik?: { maliyet_tl: number; son30_karsilar: boolean; geri_odeme_gun: number | null } | null; temizlik_neden?: string | null };
+  /** v2.546: son modül temizliği (Santral ayarları); gün önce son ölçüm gününe göre */
+  son_temizlik?: { tarih: string; gun_once: number; referans: string } | null;
+  /** 08.11 inceleme II: sonuçların değerlendirildiği an (UTC ISO) */
+  hesaplama_zamani?: string;
   esikler?: Record<string, number | number[]> }
 /** v2.544 (P4b hazırlık; IH-023): veri kaynakları, bağlantı durumu ve hazırlık listesi. durum: mevcut (uygulamada var) | kurulmadi (bağlantı henüz yok). */
 export interface VeriYolu { tur: string; etiket: string; kisa: string; durum: "mevcut" | "kurulmadi"; durum_etiketi: string; yon: string; tur_etiketi: string; gerekenler: string[]; not: string }
 export interface VeriYoluEtkin { tur: string; etiket: string; tur_etiketi: string; tanimli: boolean; son: string | null; son_olcum?: string | null; ayrinti: string | null;
   tazelik: "guncel" | "gecikmis" | "yok" | "dosya" | "dosya_eski"; tazelik_etiketi: string; yas_saat: number | null;
   /** 08.11 inceleme: EPİAŞ çekiş durumu — hata ≠ yeni kayıt yok ≠ SCADA öncelikli */
-  cekis?: { kod: string; etiket: string; zaman: string | null; ayrinti?: string | null } | null }
+  cekis?: { kod: string; etiket: string; zaman: string | null; ayrinti?: string | null } | null;
+  /** 08.11 inceleme II: bağlantı sağlığı (veri tazeliğinden ayrı) ve veri cümlesi */
+  baglanti?: { durum: "ok" | "hata" | "yok" | "bilinmiyor"; etiket: string; zaman: string | null } | null; veri_etiketi?: string }
 /** 08.11 inceleme (faz 3): hedef bağlantının aşamaları; hiçbiri diğerini ima etmez */
-export interface VeriYoluAsama { kod: "secildi" | "ayar" | "sinama" | "akis"; etiket: string; tamam: boolean; zaman: string | null; durum?: string }
+export interface VeriYoluAsama { kod: "secildi" | "ayar" | "sinama" | "cekis" | "akis"; etiket: string; tamam: boolean; zaman: string | null; durum?: string }
 export interface VeriYoluOzet { etkin: VeriYoluEtkin[];
   beyan: { tur: string; saglayici: string | null; periyot_dk: number | null; salt_okuma_onayi: boolean; not: string | null; beyan_zamani: string; baglanti?: { host: string; port: number; birim: number } | null;
-    son_sinama?: { zaman: string; durum: VeriYoluSinama["durum"]; ozet?: VeriYoluSinama["ozet"] | null; aciklama?: string | null } | null } | null;
-  hedef: VeriYolu | null; asamalar?: VeriYoluAsama[]; yollar: VeriYolu[]; taze_saat: number; dosya_eski_gun?: number; not: string }
+    son_sinama?: { zaman: string; durum: VeriYoluSinama["durum"]; ozet?: VeriYoluSinama["ozet"] | null; aciklama?: string | null } | null;
+    /** v2.546: sahibin «düzenli veri çekişini başlat» kararı */
+    ornekleme_acik?: boolean } | null;
+  hedef: VeriYolu | null; asamalar?: VeriYoluAsama[]; yollar: VeriYolu[]; taze_saat: number; dosya_eski_gun?: number; dosya_yukleme_sikligi_gun?: number | null; not: string }
 /** v2.545 (P4b): Modbus TCP / SunSpec bağlantı sınaması sonucu (yalnız okuma; veri akışı başlatmaz). */
-export interface VeriYoluSinama { durum: "ok" | "onay_yok" | "adres_reddedildi" | "ayar_hatasi" | "baglanti_hatasi"; zaman: string; aciklama?: string;
+export interface VeriYoluSinama { durum: "ok" | "kismi" | "veri_modeli_yok" | "onay_yok" | "adres_reddedildi" | "ayar_hatasi" | "baglanti_hatasi"; zaman: string; aciklama?: string;
   hedef?: { host: string; port: number; birim: number; ip?: string; ag?: string };
   ozet?: { uretici: string | null; model: string | null; seri_no: string | null; guc_kw: number | null; enerji_mwh: number | null; durum: string | null; olaylar: string[]; model_sayisi: number };
   not?: string }

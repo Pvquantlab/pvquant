@@ -1322,6 +1322,8 @@ class EakIstek(BaseModel):
     butce_kwh_yil: float | None = None            # v2.534 (P8b-1): finansal modeldeki yıllık bütçe (kWh); P-değeri kıyasında bütçe oranı
     pr_referans: float | None = None              # v2.542 (P8b-2): tasarım/sözleşme performans oranı (0,5–0,95); ölçülen havayla beklenen üretimin referansı
     temizlik_maliyeti_tl: float | None = None     # v2.545 (IH-090): bir modül temizliğinin maliyeti (TL); kirlenme kaybı tahminiyle karşılaştırılır
+    son_temizlik_tarihi: str | None = None        # v2.546: son modül temizliği (YYYY-MM-DD); temiz referans PR bu tarihten sonraki açık günlere bağlanır
+    dosya_yukleme_sikligi_gun: int | None = None  # v2.546: SCADA/sayaç dosyasını kaç günde bir yüklediğiniz (1–90); dosya tazelik eşiği iki katı
 
 
 class EpiasIstek(BaseModel):
@@ -1421,6 +1423,22 @@ def eak_ayarla(plant_id: str, p: EakIstek, claims=Depends(yazma_yetkisi())):
         if p.temizlik_maliyeti_tl is not None and not (0 <= p.temizlik_maliyeti_tl <= 1e8):
             raise HTTPException(422, "temizlik_maliyeti_tl 0 ile 100.000.000 TL arasında olmalı")
         an["temizlik_maliyeti_tl"] = float(p.temizlik_maliyeti_tl) if p.temizlik_maliyeti_tl else None
+    if "son_temizlik_tarihi" in verilen:   # v2.546
+        if p.son_temizlik_tarihi:
+            from datetime import date as _d
+            try:
+                t = _d.fromisoformat(p.son_temizlik_tarihi)
+            except ValueError as e:
+                raise HTTPException(422, "son_temizlik_tarihi YYYY-AA-GG biçiminde olmalı") from e
+            if t > _d.today():
+                raise HTTPException(422, "son_temizlik_tarihi gelecekte olamaz")
+            an["son_temizlik_tarihi"] = t.isoformat()
+        else:
+            an["son_temizlik_tarihi"] = None
+    if "dosya_yukleme_sikligi_gun" in verilen:   # v2.546
+        if p.dosya_yukleme_sikligi_gun is not None and not (1 <= p.dosya_yukleme_sikligi_gun <= 90):
+            raise HTTPException(422, "dosya_yukleme_sikligi_gun 1–90 arasında olmalı")
+        an["dosya_yukleme_sikligi_gun"] = int(p.dosya_yukleme_sikligi_gun) if p.dosya_yukleme_sikligi_gun else None
     pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **an)
     _denetim.kaydet("musteri", "eak_ayar", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"], ayrinti=dict(an))   # v2.516 (#7)
     row["params_json"] = pj
@@ -1433,7 +1451,8 @@ def eak_ayarla(plant_id: str, p: EakIstek, claims=Depends(yazma_yetkisi())):
             "kullanilabilirlik_sozlesme": pj.get("kullanilabilirlik_sozlesme"),   # v2.533 (P8a)
             "butce_kwh_yil": pj.get("butce_kwh_yil"),   # v2.534 (P8b-1)
             "pr_referans": pj.get("pr_referans"),   # v2.542 (P8b-2)
-            "temizlik_maliyeti_tl": pj.get("temizlik_maliyeti_tl")}   # v2.545 (IH-090)
+            "temizlik_maliyeti_tl": pj.get("temizlik_maliyeti_tl"),   # v2.545 (IH-090)
+            "son_temizlik_tarihi": pj.get("son_temizlik_tarihi"), "dosya_yukleme_sikligi_gun": pj.get("dosya_yukleme_sikligi_gun")}   # v2.546
 
 
 def _toplayici_yaniti(tenant_id: str, plant_id: str, gun: str | None, fmt: str, adim: int):
@@ -2076,6 +2095,7 @@ class VeriYoluIstek(BaseModel):
     salt_okuma_onayi: bool | None = None
     not_: str | None = Field(default=None, alias="not")
     baglanti: dict | None = None     # v2.545: {host, port, birim} — Modbus TCP/SunSpec sınaması için
+    ornekleme_acik: bool | None = None   # v2.546: sahibin «düzenli veri çekişini başlat» kararı (yalnız Modbus + bağlantı + onay ile geçerli)
 
 
 @app.get("/v1/plants/{plant_id}/veri-yolu")
@@ -2096,7 +2116,8 @@ def veri_yolu_ayarla(plant_id: str, p: VeriYoluIstek, claims=Depends(yazma_yetki
     if row is None:
         raise HTTPException(404, "santral yok")
     try:
-        an = veri_yolu_service.dogrula({"tur": p.tur, "saglayici": p.saglayici, "periyot_dk": p.periyot_dk, "salt_okuma_onayi": p.salt_okuma_onayi, "not": p.not_, "baglanti": p.baglanti})
+        an = veri_yolu_service.dogrula({"tur": p.tur, "saglayici": p.saglayici, "periyot_dk": p.periyot_dk, "salt_okuma_onayi": p.salt_okuma_onayi, "not": p.not_, "baglanti": p.baglanti,
+                                        "ornekleme_acik": p.ornekleme_acik})
     except ValueError as e:
         raise HTTPException(422, str(e)) from e
     pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **an)

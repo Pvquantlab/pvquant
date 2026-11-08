@@ -44,16 +44,17 @@ VERI_YOLLARI: dict[str, dict] = {
 }
 DURUM_ETIKET = {"mevcut": "uygulamada mevcut", "kurulmadi": "bağlantı henüz kurulmadı"}
 TAZELIK_ETIKET = {"guncel": "güncel", "gecikmis": "gecikmiş", "yok": "veri gelmedi", "dosya": "dosya yüklemesi", "dosya_eski": "yükleme 30 günden eski"}
-ASAMA_ETIKET = {"secildi": "hedef seçildi", "ayar": "bağlantı ayarı girildi", "sinama": "bağlantı sınaması başarılı", "akis": "veri alınıyor"}
+ASAMA_ETIKET = {"secildi": "hedef seçildi", "ayar": "bağlantı ayarı girildi", "sinama": "bağlantı sınaması başarılı", "cekis": "düzenli veri çekişi açık", "akis": "veri alınıyor"}
 NOT = ("Dosya kaynakları (SCADA, sayaç) geçmişe dönük çalışır: veri, yüklediğiniz güne kadar gelir; sürekli bağlantı değildir. EPİAŞ Şeffaflık bağlantısı "
        "lisanslı tesiste her gece bir önceki günlerin üretimini çeker. Modbus TCP / SunSpec için cihaz adresi girilip yalnızca okuma onayı verilince bağlantı "
        "sınanabilir; sınama cihaza erişildiğini gösterir, düzenli veri çekişi ayrı bir adımdır ve henüz yoktur. Diğer protokol ve bulut bağlantıları için "
        "gereken bilgiler listelenir; bağlantı, erişim bilgileri ve tesis sahibinin yalnızca okuma onayı geldikten sonra kurulur. Bu liste ne gerektiğini söyler, tarih vermez.")
 
 
-def tazelik(son: datetime | None, simdi: datetime | None = None, yon: str = "api") -> dict:
-    """SAF. Son başarılı veri gelişinden tazelik. Bağlantı kaynakları (api/protokol): guncel (≤ 48 sa) / gecikmis / yok.
-    Dosya kaynakları (yon='dosya'): 48 saat ölçütü uygulanmaz — yükleme ritmi müşterinindir; «dosya» (bilgi) ya da 30 günden eskiyse «dosya_eski» (uyarı)."""
+def tazelik(son: datetime | None, simdi: datetime | None = None, yon: str = "api", esik_saat: float | None = None, dosya_eski_gun: int | None = None) -> dict:
+    """SAF. Son başarılı veri gelişinden tazelik. Bağlantı kaynakları (api/protokol): guncel (≤ esik_saat, varsayılan 48 sa) / gecikmis / yok.
+    Dosya kaynakları (yon='dosya'): 48 saat ölçütü uygulanmaz — yükleme ritmi müşterinindir; «dosya» (bilgi) ya da eşikten eskiyse «dosya_eski» (uyarı);
+    eşik = müşterinin beyan ettiği yükleme sıklığının iki katı (v2.546 `dosya_yukleme_sikligi_gun`), beyan yoksa 30 gün."""
     simdi = simdi or datetime.now(timezone.utc)
     if son is None:
         return {"tazelik": "yok", "tazelik_etiketi": TAZELIK_ETIKET["yok"], "yas_saat": None}
@@ -61,10 +62,42 @@ def tazelik(son: datetime | None, simdi: datetime | None = None, yon: str = "api
         son = son.replace(tzinfo=timezone.utc)
     yas = (simdi - son).total_seconds() / 3600.0
     if yon == "dosya":
-        kod = "dosya_eski" if yas > DOSYA_ESKI_GUN * 24 else "dosya"
-    else:
-        kod = "guncel" if yas <= TAZE_SAAT else "gecikmis"
+        esik_gun = (2 * int(dosya_eski_gun)) if dosya_eski_gun else DOSYA_ESKI_GUN
+        kod = "dosya_eski" if yas > esik_gun * 24 else "dosya"
+        return {"tazelik": kod, "tazelik_etiketi": (f"yükleme {esik_gun} günden eski" if kod == "dosya_eski" else TAZELIK_ETIKET["dosya"]), "yas_saat": round(yas, 1), "esik_gun": esik_gun}
+    kod = "guncel" if yas <= (esik_saat or TAZE_SAAT) else "gecikmis"
     return {"tazelik": kod, "tazelik_etiketi": TAZELIK_ETIKET[kod], "yas_saat": round(yas, 1)}
+
+
+def veri_etiketi(t: dict) -> str:
+    """SAF. Tazelik sözlüğünden müşteri cümlesi — bağlantıdan bağımsız VERİ durumu."""
+    gun = int(round((t.get("yas_saat") or 0) / 24.0))
+    kod = t.get("tazelik")
+    if kod == "guncel":
+        return "veri güncel"
+    if kod == "gecikmis":
+        return f"{gun} gündür yeni veri yok" if gun >= 1 else "yeni veri yok"
+    if kod == "dosya":
+        return f"son yükleme {gun} gün önce" if gun >= 1 else "bugün yüklendi"
+    if kod == "dosya_eski":
+        return t.get("tazelik_etiketi", "yükleme eski")
+    return "veri gelmedi"
+
+
+def epias_baglanti(cekis: dict | None) -> dict:
+    """SAF. Çekiş kaydından BAĞLANTI sağlığı (veri tazeliğinden ayrı): başarılı sorgu, veri eski olsa bile başarılıdır."""
+    if not cekis:
+        return {"durum": "bilinmiyor", "etiket": "sorgu durumu okunamadı", "zaman": None}
+    kod = cekis.get("kod")
+    if kod in ("ok", "kayit_yok", "yazilmadi"):
+        return {"durum": "ok", "etiket": "son sorgu başarılı", "zaman": cekis.get("zaman")}
+    if kod == "hata":
+        return {"durum": "hata", "etiket": "son sorgu hatalı", "zaman": cekis.get("zaman")}
+    if kod == "atlandi":
+        return {"durum": "yok", "etiket": "sorgu atlandı (kimlik/eşleme eksik)", "zaman": cekis.get("zaman")}
+    if kod == "yok":
+        return {"durum": "yok", "etiket": "henüz sorgu yapılmadı", "zaman": None}
+    return {"durum": "bilinmiyor", "etiket": cekis.get("etiket", "sorgu durumu okunamadı"), "zaman": cekis.get("zaman")}
 
 
 def epias_cekis_durumu(status: str | None, detail: str | None) -> dict:
@@ -98,8 +131,12 @@ def asamalar(beyan: dict | None, etkin: list[dict]) -> list[dict]:
     if yon in ("protokol", "api") and VERI_YOLLARI.get(tur, {}).get("durum") == "kurulmadi":
         ss = beyan.get("son_sinama") or {}
         out.append({"kod": "ayar", "etiket": ASAMA_ETIKET["ayar"], "tamam": bool(beyan.get("baglanti")), "zaman": None})
-        out.append({"kod": "sinama", "etiket": ASAMA_ETIKET["sinama"] if ss.get("durum") == "ok" else ("bağlantı sınaması başarısız" if ss else "bağlantı sınanmadı"),
-                    "tamam": ss.get("durum") == "ok", "zaman": ss.get("zaman"), "durum": ss.get("durum")})
+        sd = ss.get("durum")
+        sin_etiket = (ASAMA_ETIKET["sinama"] if sd == "ok" else "cihaza erişildi, veri modeli desteklenmiyor" if sd == "veri_modeli_yok" else
+                      "cihaza erişildi, inverter modeli yok" if sd == "kismi" else "bağlantı sınaması başarısız" if ss else "bağlantı sınanmadı")
+        out.append({"kod": "sinama", "etiket": sin_etiket, "tamam": sd == "ok", "zaman": ss.get("zaman"), "durum": sd})
+        if tur == "modbus_sunspec":   # v2.546: çekiş sahibin ayrı kararı; sınama onu ima etmez
+            out.append({"kod": "cekis", "etiket": ASAMA_ETIKET["cekis"] if beyan.get("ornekleme_acik") else "düzenli veri çekişi başlatılmadı", "tamam": bool(beyan.get("ornekleme_acik")), "zaman": None})
     out.append({"kod": "akis", "etiket": ASAMA_ETIKET["akis"] if akis else "veri alınmıyor", "tamam": akis, "zaman": None})
     return out
 
@@ -124,8 +161,11 @@ def dogrula(d: dict) -> dict:
     if isinstance(b, dict) and (b.get("host") or "").strip():   # v2.545: Modbus TCP/SunSpec hedefi (host, port, birim) — yalnız sınama için; parola yok
         from pvquant.services.canli_alim_service import hedef_dogrula
         baglanti = hedef_dogrula(b.get("host"), b.get("port"), b.get("birim"))
-    return {"veri_yolu": {"tur": tur, "saglayici": sag, "periyot_dk": per, "salt_okuma_onayi": bool(d.get("salt_okuma_onayi")), "not": nt,
-                          "baglanti": baglanti, "beyan_zamani": datetime.now(timezone.utc).isoformat(timespec="minutes")}}
+    onay = bool(d.get("salt_okuma_onayi"))
+    # v2.546 (P4b-2): düzenli çekiş yalnız Modbus hedefinde, bağlantı ayarı ve onay varken açılabilir; sınama tek başına çekiş başlatmaz
+    ornekleme = bool(d.get("ornekleme_acik")) and tur == "modbus_sunspec" and baglanti is not None and onay
+    return {"veri_yolu": {"tur": tur, "saglayici": sag, "periyot_dk": per, "salt_okuma_onayi": onay, "not": nt,
+                          "baglanti": baglanti, "ornekleme_acik": ornekleme, "beyan_zamani": datetime.now(timezone.utc).isoformat(timespec="minutes")}}
 
 
 def _pj(plant: dict) -> dict:
@@ -174,19 +214,38 @@ def etkin_yollar(tenant_id, plant: dict, simdi: datetime | None = None) -> list[
             cekis = {**epias_cekis_durumu(j["status"] if j else None, j["detail"] if j else None), "zaman": (j["started"].isoformat() if j and j["started"] else None)}
         except Exception as e:   # noqa: BLE001 — iş günlüğü okunamazsa durum bilinmez, uydurulmaz
             cekis = {"kod": "bilinmiyor", "etiket": f"çekiş durumu okunamadı ({type(e).__name__})", "zaman": None}
+    sik = pj.get("dosya_yukleme_sikligi_gun")   # v2.546: müşterinin beyan ettiği yükleme sıklığı (gün); eşik iki katı
     if dosya:
         so = son_olcum.get("dosya")
         out.append({"tur": "scada_dosya", "etiket": VERI_YOLLARI["scada_dosya"]["kisa"], "tur_etiketi": "dosya kaynağı", "tanimli": True,
                     "son": dosya["created_at"].isoformat() if dosya["created_at"] else None, "son_olcum": so.isoformat() if so else None,
-                    "ayrinti": f"son dosya {dosya['filename']}", **tazelik(dosya["created_at"], simdi, "dosya")})
+                    "ayrinti": f"son dosya {dosya['filename']}" + (f" · beyan edilen yükleme sıklığı {int(sik)} gün" if sik else ""),
+                    **tazelik(dosya["created_at"], simdi, "dosya", dosya_eski_gun=sik)})
+    # v2.546 (P4b-2): Modbus TCP / SunSpec düzenli örnekleme etkinse canlı protokol satırı — eşik 3 × periyot (en az 1 saat)
+    vyb = pj.get("veri_yolu") if isinstance(pj.get("veri_yolu"), dict) else None
+    if vyb and vyb.get("tur") == "modbus_sunspec" and vyb.get("ornekleme_acik"):
+        from pvquant.services import canli_ornekleme_service as co
+        d = co.durum(tenant_id, plant)
+        if d is not None:
+            per = co.periyot_dk(vyb); esik = max(3 * per, 60) / 60.0
+            tz = tazelik(d["son_ornek"], simdi, "protokol", esik_saat=esik)
+            bag = ({"durum": "yok", "etiket": "henüz örnek alınmadı", "zaman": None} if not d["son_ornek"] else
+                   {"durum": "ok", "etiket": "son örnek alındı", "zaman": d["son_ornek"].isoformat()} if tz["tazelik"] == "guncel" else
+                   {"durum": "hata", "etiket": "örnek alınamıyor", "zaman": d["son_ornek"].isoformat()})
+            out.append({"tur": "modbus_sunspec", "etiket": VERI_YOLLARI["modbus_sunspec"]["kisa"], "tur_etiketi": "saha protokolü", "tanimli": True,
+                        "son": d["son_ornek"].isoformat() if d["son_ornek"] else None, "son_olcum": d["son_saat"].isoformat() if d["son_saat"] else None,
+                        "baglanti": bag, "veri_etiketi": (f"son saat {d['son_saat'].isoformat()}" if d["son_saat"] else "henüz saatlik veri yazılmadı"),
+                        "ayrinti": f"örnekleme {per} dk · son 24 saatte {d['n24']} örnek", **tz})
     if pj.get("epias_santral_id"):
         son = epias["created_at"] if epias else None; so = son_olcum.get("epias")
+        tz = tazelik(son, simdi, "api")
         out.append({"tur": "epias_seffaflik", "etiket": VERI_YOLLARI["epias_seffaflik"]["kisa"], "tur_etiketi": "platform bağlantısı", "tanimli": True,
                     "son": son.isoformat() if son else None, "son_olcum": so.isoformat() if so else None, "cekis": cekis,
-                    "ayrinti": f"santral kimliği {pj['epias_santral_id']}" + ("" if epias else " — bağlantı tanımlı, henüz veri çekilmedi"), **tazelik(son, simdi, "api")})
+                    "baglanti": epias_baglanti(cekis), "veri_etiketi": veri_etiketi(tz),
+                    "ayrinti": f"santral kimliği {pj['epias_santral_id']}" + ("" if epias else " — bağlantı tanımlı, henüz veri çekilmedi"), **tz})
     for x in sy:
         out.append({"tur": "sayac_dosya", "etiket": VERI_YOLLARI["sayac_dosya"]["kisa"], "tur_etiketi": "dosya kaynağı", "tanimli": True,
-                    "son": x["son"].isoformat() if x["son"] else None, "son_olcum": None, "ayrinti": f"kaynak {x['kaynak']}", **tazelik(x["son"], simdi, "dosya")})
+                    "son": x["son"].isoformat() if x["son"] else None, "son_olcum": None, "ayrinti": f"kaynak {x['kaynak']}", **tazelik(x["son"], simdi, "dosya", dosya_eski_gun=sik)})
     return out
 
 
@@ -195,5 +254,6 @@ def ozet(tenant_id, plant: dict, simdi: datetime | None = None) -> dict:
     beyan = pj.get("veri_yolu") if isinstance(pj.get("veri_yolu"), dict) else None
     hedef = _yol(beyan["tur"]) if beyan and beyan.get("tur") in VERI_YOLLARI else None
     etkin = etkin_yollar(tenant_id, plant, simdi)
+    sik = pj.get("dosya_yukleme_sikligi_gun")
     return {"etkin": etkin, "beyan": beyan, "hedef": hedef, "asamalar": asamalar(beyan, etkin), "yollar": [_yol(k) for k in VERI_YOLLARI],
-            "taze_saat": TAZE_SAAT, "dosya_eski_gun": DOSYA_ESKI_GUN, "not": NOT}
+            "taze_saat": TAZE_SAAT, "dosya_eski_gun": (2 * int(sik) if sik else DOSYA_ESKI_GUN), "dosya_yukleme_sikligi_gun": sik, "not": NOT}

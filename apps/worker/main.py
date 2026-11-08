@@ -639,6 +639,33 @@ def _logla_tek(job, fn):
     return ic
 
 
+def _logla_tek_sessiz(job, fn):
+    """v2.546 — _logla_tek'in sessiz kardeşi: iş None dönerse günlüğe satır DÜŞMEZ (5 dk aralıklı örnekleme, uygun santral yokken günlüğü doldurmasın);
+    metin dönerse ya da hata olursa tek satır yazılır."""
+    def ic():
+        bas = dt.datetime.now(dt.timezone.utc)
+        durum, det = "ok", ""
+        try:
+            r = fn()
+            if r is None:
+                return
+            det = str(r)
+        except Exception as e:
+            durum, det = "error", f"{type(e).__name__}: {e}"
+            traceback.print_exc()
+        with sistem_baglami() as s:
+            s.execute(text("INSERT INTO jobs_log(job,tenant_id,plant_id,started, finished,status,detail) VALUES(:j,NULL,NULL,:b,now(),:s,:d)"),
+                      {"j": job, "b": bas, "s": durum, "d": det[:500]})
+    return ic
+
+
+def canli_ornekleme():
+    """v2.546 (P4b-2): Modbus TCP / SunSpec düzenli örnekleme + saatlik toplama — yalnız sahibin «düzenli veri çekişini başlat» dediği santrallarda;
+    yalnız okuma (FC3). Uygun santral yoksa None → günlüğe satır düşmez."""
+    from pvquant.services import canli_ornekleme_service
+    return canli_ornekleme_service.tur(_tum_santraller())
+
+
 def acilis_yakalama():
     """v2.336 — tazelik yakalaması: işçi gece kapalıysa cron'lar hiç koşmaz ve
     tahmin/karne sessizce eskir (31 Ağu ve 10 Eyl'de yaşandı). Açılışta gece
@@ -806,6 +833,7 @@ if __name__ == "__main__":
     _baslatma = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
     def _nabiz():
         nabiz_yaz("worker", {"baslatma": _baslatma, "is_sayisi": len(sch.get_jobs()), "aralik_dk": NABIZ_ARALIK_DK})
+    sch.add_job(_logla_tek_sessiz("canli_ornekleme", canli_ornekleme), "interval", minutes=5, id="canli_ornekleme")   # v2.546 (P4b-2): yalnız ornekleme_acik santrallar
     sch.add_job(_nabiz, "interval", minutes=NABIZ_ARALIK_DK, id="nabiz")
     _nabiz()                                                             # açılışta ilk nabız: tablo boş kalmaz
     print(f"PVQuant worker basladi (UTC cron: {cfg.worker_hour_skill:02d}:30 skill /"

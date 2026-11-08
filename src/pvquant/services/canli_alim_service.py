@@ -71,13 +71,25 @@ def sina(ayar: dict, onay: bool, istemci_fabrikasi=None) -> dict:
     except ValueError as e:
         return {"durum": "ayar_hatasi", "zaman": simdi, "aciklama": str(e)}
     fabrika = istemci_fabrikasi or (lambda host, port, birim, za: ModbusTcpIstemci(host, port, birim, za))
+    hedef = {**h, "ip": ip, "ag": neden}
+    # 08.11 inceleme II (faz 4): «cihaza ulaşılamadı» ile «cihaza erişildi ama veri modeli desteklenmiyor» ayrı durumlardır
     try:
         with fabrika(h["host"], h["port"], h["birim"], ZAMAN_ASIMI_SN) as c:
-            cihaz = sunspec.oku_cihaz(c.oku)
-    except (OSError, ModbusHata, ValueError) as e:
-        return {"durum": "baglanti_hatasi", "zaman": simdi, "hedef": {**h, "ip": ip, "ag": neden}, "aciklama": f"{type(e).__name__}: {e}"}
+            try:
+                cihaz = sunspec.oku_cihaz(c.oku)
+            except (ModbusHata, ValueError) as e:
+                return {"durum": "veri_modeli_yok", "zaman": simdi, "hedef": hedef,
+                        "aciklama": f"Cihaza erişildi; SunSpec veri modeli okunamadı ({e}). Üreticinin Modbus kayıt haritası gerekir; düzenli çekiş bu cihazla kurulamaz."}
+    except OSError as e:
+        return {"durum": "baglanti_hatasi", "zaman": simdi, "hedef": hedef, "aciklama": f"Cihaza ulaşılamadı ({type(e).__name__}: {e}). Adres, port, VPN/ağ geçidi ve cihazın Modbus TCP ayarını denetleyin."}
     inv = cihaz.get("inverter") or {}
-    return {"durum": "ok", "zaman": simdi, "hedef": {**h, "ip": ip, "ag": neden}, "cihaz": cihaz,
+    if not inv:
+        return {"durum": "kismi", "zaman": simdi, "hedef": hedef, "cihaz": cihaz,
+                "ozet": {"uretici": (cihaz.get("ortak") or {}).get("uretici"), "model": (cihaz.get("ortak") or {}).get("model"), "seri_no": (cihaz.get("ortak") or {}).get("seri_no"),
+                         "guc_kw": None, "enerji_mwh": None, "durum": None, "olaylar": [], "model_sayisi": len(cihaz.get("modeller", []))},
+                "aciklama": "Cihaza erişildi ve SunSpec ortak modeli okundu; inverter ölçüm modeli (101–103 / 111–113) bulunamadı. Düzenli çekiş için bu model gerekir.",
+                "not": "Salt okuma sınaması: yalnız Modbus fonksiyon 3 kullanıldı, cihaza yazılmadı."}
+    return {"durum": "ok", "zaman": simdi, "hedef": hedef, "cihaz": cihaz,
             "ozet": {"uretici": (cihaz.get("ortak") or {}).get("uretici"), "model": (cihaz.get("ortak") or {}).get("model"), "seri_no": (cihaz.get("ortak") or {}).get("seri_no"),
                      "guc_kw": (round(inv["guc_w"] / 1000.0, 3) if inv.get("guc_w") is not None else None), "enerji_mwh": (round(inv["enerji_wh"] / 1e6, 3) if inv.get("enerji_wh") is not None else None),
                      "durum": inv.get("durum"), "olaylar": inv.get("olaylar", []), "model_sayisi": len(cihaz.get("modeller", []))},

@@ -94,12 +94,19 @@ def test_veri_yolu_beyani_ve_liste():
     assert vy.epias_cekis_durumu("ok", "{'durum': 'ok', 'n_yazilan': 0, 'n_cekilen': 24}")["kod"] == "yazilmadi"
     assert vy.epias_cekis_durumu("ok", "{'durum': 'ok', 'n_yazilan': 24, 'n_cekilen': 24}")["etiket"].endswith("(24 saat yazıldı)")
     assert vy.epias_cekis_durumu("ok", "")["kod"] == "ok"
+    # 08.11 inceleme II (faz 3): bağlantı sağlığı ≠ veri tazeliği
+    assert vy.veri_etiketi(vy.tazelik(simdi - timedelta(days=11), simdi)) == "11 gündür yeni veri yok" and vy.veri_etiketi(vy.tazelik(simdi - timedelta(hours=5), simdi)) == "veri güncel"
+    assert vy.veri_etiketi(vy.tazelik(simdi - timedelta(days=16), simdi, "dosya")) == "son yükleme 16 gün önce" and vy.veri_etiketi(vy.tazelik(None, simdi)) == "veri gelmedi"
+    assert vy.epias_baglanti({"kod": "kayit_yok", "zaman": "z"}) == {"durum": "ok", "etiket": "son sorgu başarılı", "zaman": "z"}   # eski veri, başarılı sorgu
+    assert vy.epias_baglanti({"kod": "hata", "zaman": "z"})["durum"] == "hata" and vy.epias_baglanti(None)["durum"] == "bilinmiyor" and vy.epias_baglanti({"kod": "yok"})["durum"] == "yok"
+    a_vm = vy.asamalar({"tur": "modbus_sunspec", "beyan_zamani": "t", "baglanti": {"host": "h"}, "son_sinama": {"durum": "veri_modeli_yok", "zaman": "z"}}, [])
+    assert not a_vm[2]["tamam"] and a_vm[2]["etiket"] == "cihaza erişildi, veri modeli desteklenmiyor"
     # Aşamalar: seçildi → ayar → sınama → akış; hiçbiri diğerini ima etmez
     assert vy.asamalar(None, []) == []
     a = vy.asamalar({"tur": "modbus_sunspec", "beyan_zamani": "t", "baglanti": {"host": "10.8.0.12"}}, [])
-    assert [x["kod"] for x in a] == ["secildi", "ayar", "sinama", "akis"] and a[1]["tamam"] and not a[2]["tamam"] and a[2]["etiket"] == "bağlantı sınanmadı" and not a[3]["tamam"]
+    assert [x["kod"] for x in a] == ["secildi", "ayar", "sinama", "cekis", "akis"] and a[1]["tamam"] and not a[2]["tamam"] and a[2]["etiket"] == "bağlantı sınanmadı" and not a[3]["tamam"] and not a[4]["tamam"]   # v2.546: çekiş aşaması
     a2 = vy.asamalar({"tur": "modbus_sunspec", "beyan_zamani": "t", "baglanti": {"host": "h"}, "son_sinama": {"durum": "ok", "zaman": "z"}}, [])
-    assert a2[2]["tamam"] and a2[2]["zaman"] == "z" and a2[3]["etiket"] == "veri alınmıyor"
+    assert a2[2]["tamam"] and a2[2]["zaman"] == "z" and a2[3]["etiket"] == "düzenli veri çekişi başlatılmadı" and a2[4]["etiket"] == "veri alınmıyor"
     a3 = vy.asamalar({"tur": "scada_dosya", "beyan_zamani": "t"}, [{"tur": "scada_dosya", "son": "2026-10-22T21:05:00+00:00"}])
     assert [x["kod"] for x in a3] == ["secildi", "akis"] and a3[1]["tamam"]
 

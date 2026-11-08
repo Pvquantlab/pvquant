@@ -74,7 +74,8 @@ function asamalar(v) {
   if ((y.yon === "protokol" || y.yon === "api") && y.durum === "kurulmadi") {
     const ss = b.son_sinama || null;
     out.push({ kod: "ayar", etiket: "bağlantı ayarı girildi", tamam: !!b.baglanti, zaman: null });
-    out.push({ kod: "sinama", etiket: ss && ss.durum === "ok" ? "bağlantı sınaması başarılı" : ss ? "bağlantı sınaması başarısız" : "bağlantı sınanmadı", tamam: !!ss && ss.durum === "ok", zaman: ss ? ss.zaman : null, durum: ss ? ss.durum : undefined });
+    out.push({ kod: "sinama", etiket: ss && ss.durum === "ok" ? "bağlantı sınaması başarılı" : ss && ss.durum === "veri_modeli_yok" ? "cihaza erişildi, veri modeli desteklenmiyor" : ss && ss.durum === "kismi" ? "cihaza erişildi, inverter modeli yok" : ss ? "bağlantı sınaması başarısız" : "bağlantı sınanmadı", tamam: !!ss && ss.durum === "ok", zaman: ss ? ss.zaman : null, durum: ss ? ss.durum : undefined });
+    if (b.tur === "modbus_sunspec") out.push({ kod: "cekis", etiket: b.ornekleme_acik ? "düzenli veri çekişi açık" : "düzenli veri çekişi başlatılmadı", tamam: !!b.ornekleme_acik, zaman: null });   // v2.546
   }
   out.push({ kod: "akis", etiket: akis ? "veri alınıyor" : "veri alınmıyor", tamam: akis, zaman: null });
   return out;
@@ -155,10 +156,12 @@ const VERI = {
   // 08.11 v2.544 (dalga 3 kalanı): açık-gök kirlenme göstergesi — AGE düşüyor, açık gün PR yükseliyor → sensör kirleniyor olabilir; son yağış 11 gün önce
   kirlenme: { durum: "ok", pencere_gun: 90, son_olcum: "2026-10-22", acik_gun: 41, acik_gun_30: 14, age_7g: 0.922, pr_acik_7g: 0.858, age_egim_pct_ay: -4.8, pr_egim_pct_ay: 3.1,   // medyanlar tablonun son 7 günüyle tutarlı
     tazelik: { son_olcum: "2026-10-22", veri_yasi_gun: 17, bayat: true, not: "Son ölçüm 17 gün önce; gösterge o tarihe kadar olan ölçümlerle hesaplandı, bugünkü durumu göstermez." }, pencere: { bas: "2026-07-24", bit: "2026-10-22" },
-    yontem: ["Açık-gök düzlem-içi ışınım: pvlib Ineichen açık-gök modeli (Linke bulanıklığı aylık iklim tablosundan), güneş konumu saat ortasında, Hay-Davies düzlem dönüşümü santralın eğim/azimutuna.", "Açık saat: açık-gök ışınımı ≥ 200 W/m², ölçülen/açık-gök oranı 0.5–1.35 arasında ve komşu saatlerle fark ≤ 0.08 (bulut geçişleri elenir). Günde ≥ 3 açık saat → açık gün.", "Açık-gök endeksi (AGE): açık saat oranlarının günlük medyanı. Açık gün PR: aynı saatlerde ΣE_ac / (P0 × ΣPOA/1000).", "Eğilim: son ölçümden geriye 30 takvim günündeki açık günlerde (≥ 8) doğrusal eğim, aylık göreli yüzde (pencere ortalamasına göre; puan değil); |eğim| < %2/ay «kararlı».", "Yorum: AGE↓ PR↑ → sensör (ölçüm sapması); AGE sabit PR↓ → modül (üretim kaybı olası); AGE↓ PR sabit → atmosfer/model (kirlenme kanıtı yok); AGE↓ PR↓ → ikisi; AGE↑ → toparlanma.", "Yağış: hava tahmini arşivinden günlük toplam ≥ 1 mm (ölçülen yağış değil); «gün önce» son ölçüm gününe göredir; yalnız bağlam."],   // motorla birebir (kirlenme_service.YONTEM)
+    yontem: ["Açık-gök düzlem-içi ışınım: pvlib Ineichen açık-gök modeli (Linke bulanıklığı aylık iklim tablosundan), güneş konumu saat ortasında, Hay-Davies düzlem dönüşümü santralın eğim/azimutuna.", "Açık saat: açık-gök ışınımı ≥ 200 W/m², ölçülen/açık-gök oranı 0,5–1,35 arasında ve komşu saatlerle fark ≤ 0,08 (bulut geçişleri elenir). Günde ≥ 3 açık saat → açık gün.", "Açık-gök endeksi (AGE): açık saat oranlarının günlük medyanı. Açık gün PR: aynı saatlerde ΣE_ac / (P0 × ΣPOA/1000).", "Eğilim: son ölçümden geriye 30 takvim günündeki açık günlerde (≥ 8) doğrusal eğim, aylık göreli yüzde (pencere ortalamasına göre; puan değil); |eğim| < %2/ay «kararlı».", "Yorum: AGE↓ PR↑ → sensör (ölçüm sapması); AGE sabit PR↓ → modül (üretim kaybı olası); AGE↓ PR sabit → atmosfer/model (kirlenme kanıtı yok); AGE↓ PR↓ → ikisi; AGE↑ → toparlanma.", "Yağış: hava tahmini arşivinden günlük toplam ≥ 1 mm (ölçülen yağış değil); «gün önce» son ölçüm gününe göredir; yalnız bağlam."],   // motorla birebir (kirlenme_service.YONTEM)
     sensor: { duzlem: "poa", etiket: "Piranometre (termopil) — düzlem-içi ışınım (POA), sınıf A", sinif: "A", kalibrasyon: "yaklasiyor", tur: "piranometre", vade: "2026-12-20" },
     yorum: { kod: "sensor", baslik: "Işınım sensörü kirleniyor olabilir", tur: "olcum", uretim_kaybi: "yok", metin: "Açık-gök endeksi düşerken açık gün performans oranı yükseliyor: sensör düşük okudukça PR yapay yükselir. Bu bir ölçüm sapmasıdır, üretim kaybı değildir; PR ve beklenen üretim şişkin okunur. Sensörü temizleyip birkaç açık gün sonra yeniden bakın." },
     son_yagis: { tarih: "2026-10-11", mm: 6.4, gun_once: 11, referans: "son ölçüm günü", kaynak: "hava tahmini arşivi (ölçülen yağış değil)" },
+    son_temizlik: { tarih: "2026-09-14", gun_once: 38, referans: "son ölçüm günü" },   // v2.546 örnek: son temizlik 14 Eylül
+    hesaplama_zamani: new Date().toISOString(),
     // 08.11 inceleme (faz 1): sensör yorumunda kayıp tahmini ASKIDA — sayı ve temizlik karşılaştırması yok
     kayip: { durum: "askida", neden: "sensor", gecerlilik: "yanli", temizlik: null, temizlik_neden: "sensör şüphesi giderilmeden temizlik karşılaştırması yapılmaz",
       aciklama: "Işınım sensörü kirleniyor olabilir: açık gün performans oranı şişkin ölçülür, temiz referans ve kayıp bu veriyle hesaplanamaz. Önce sensörü temizleyin; birkaç açık gün sonra tahmin yeniden kurulur.",
@@ -169,10 +172,11 @@ const VERI = {
     not: "Ön tanı göstergesidir: ölçülen düzlem-içi ışınımın açık-gök modeline oranı (pvlib Ineichen, Linke bulanıklığı aylık iklim tablosu; Hay-Davies düzlem dönüşümü), yalnız açık saatlerde. Kirlenme sensörü ve uydu referansı yok; kirlenme oranı doğrudan ölçülmez, kayıp açık-gök PR'dan ayrı etiketli bir TAHMİN olarak verilir. Yağış hava TAHMİNİ arşivinden (ölçülen yağış değil). Temizlik kararı eğilim, yağış sonrası sıçrama, tahmini kayıp–temizlik maliyeti karşılaştırması ve saha gözlemiyle verilir." },
   // 08.11 v2.544 (P4b hazırlık): veri yolu — etkin SCADA dosyası + Şeffaflık; hedef beyanı yok (PUT ile dolar)
   // 08.11 inceleme (faz 3): dosya kaynağı 48 saat ölçütüne girmez (son yükleme ≠ son ölçüm); EPİAŞ çekiş durumu ayrı
-  "veri-yolu": { etkin: [{ tur: "scada_dosya", etiket: "SCADA dosyası", tur_etiketi: "dosya kaynağı", tanimli: true, son: "2026-10-23T07:12:00+00:00", son_olcum: "2026-10-22T20:00:00+00:00", ayrinti: "son dosya edikli_2026-10-22.csv", tazelik: "dosya", tazelik_etiketi: "dosya yüklemesi", yas_saat: 391.0 },
+  "veri-yolu": { etkin: [{ tur: "scada_dosya", etiket: "SCADA dosyası", tur_etiketi: "dosya kaynağı", tanimli: true, son: "2026-10-23T07:12:00+00:00", son_olcum: "2026-10-22T20:00:00+00:00", ayrinti: "son dosya edikli_2026-10-22.csv", tazelik: "dosya", tazelik_etiketi: "dosya yüklemesi", yas_saat: 391.0, veri_etiketi: "son yükleme 16 gün önce" },
       { tur: "epias_seffaflik", etiket: "EPİAŞ Şeffaflık", tur_etiketi: "platform bağlantısı", tanimli: true, son: "2026-10-28T20:05:00+00:00", son_olcum: "2026-10-27T20:00:00+00:00", ayrinti: "santral kimliği 2579", tazelik: "gecikmis", tazelik_etiketi: "gecikmiş", yas_saat: 262.2,
-        cekis: { kod: "kayit_yok", etiket: "çekiş başarılı, EPİAŞ'ta yeni kayıt yok", zaman: "2026-11-08T02:18:00+00:00" } }],
-    beyan: null, hedef: null, asamalar: [], yollar: YOLLAR, taze_saat: 48, dosya_eski_gun: 30,
+        cekis: { kod: "kayit_yok", etiket: "çekiş başarılı, EPİAŞ'ta yeni kayıt yok", zaman: "2026-11-08T02:18:00+00:00" },
+        baglanti: { durum: "ok", etiket: "son sorgu başarılı", zaman: "2026-11-08T02:18:00+00:00" }, veri_etiketi: "11 gündür yeni veri yok" }],   // 08.11 inceleme II: bağlantı ≠ veri
+    beyan: null, hedef: null, asamalar: [], yollar: YOLLAR, taze_saat: 48, dosya_eski_gun: 30, dosya_yukleme_sikligi_gun: null,
     not: "Dosya kaynakları (SCADA, sayaç) geçmişe dönük çalışır: veri, yüklediğiniz güne kadar gelir; sürekli bağlantı değildir. EPİAŞ Şeffaflık bağlantısı lisanslı tesiste her gece bir önceki günlerin üretimini çeker. Modbus TCP / SunSpec için cihaz adresi girilip yalnızca okuma onayı verilince bağlantı sınanabilir; sınama cihaza erişildiğini gösterir, düzenli veri çekişi ayrı bir adımdır ve henüz yoktur. Diğer protokol ve bulut bağlantıları için gereken bilgiler listelenir; bağlantı, erişim bilgileri ve tesis sahibinin yalnızca okuma onayı geldikten sonra kurulur. Bu liste ne gerektiğini söyler, tarih vermez." },
   // 05.11 v2.542 (P8b-2, IH-083/099/104): son 12 ay + cari ay; referans PR ölçüm (son 365 gün sıcaklık düzeltmeli 0,84); P50 24.300 MWh × iklim payı; tahmin referansı fizik modeli
   performans: (() => {
@@ -566,6 +570,8 @@ http.createServer((req, res) => {
         if (!v.beyan || v.beyan.tur !== "modbus_sunspec" || !b) return yanit(422, { detail: "sınama yalnız hedeflenen veri kaynağı Modbus TCP / SunSpec iken yapılır" });
         if (!v.beyan.salt_okuma_onayi) return yanit(200, { durum: "onay_yok", zaman: "2026-11-08T14:21:00+00:00", aciklama: "Yalnızca veri okuma izni onayı işaretlenmeden bağlantı sınanmaz." });
         if (/^(127\.|169\.254\.)/.test(b.host)) return yanit(200, { durum: "adres_reddedildi", zaman: "2026-11-08T14:21:00+00:00", aciklama: "hedef adres yerel/ayrılmış aralıkta; sahadaki cihaz ya da VPN adresi gerekir", hedef: b });
+        if (b.host === "10.8.0.99") { v.beyan.son_sinama = { zaman: "2026-11-08T14:21:00+00:00", durum: "veri_modeli_yok", ozet: null, aciklama: "Cihaza erişildi; SunSpec veri modeli okunamadı (SunSpec imzası (SunS) 40000 / 50000 / 0 adreslerinde bulunamadı). Üreticinin Modbus kayıt haritası gerekir; düzenli çekiş bu cihazla kurulamaz." }; v.asamalar = asamalar(v);
+          return yanit(200, { durum: "veri_modeli_yok", zaman: "2026-11-08T14:21:00+00:00", hedef: { ...b, ip: b.host, ag: "özel ağ (VPN) adresi" }, aciklama: v.beyan.son_sinama.aciklama }); }   // 08.11 inceleme II: cihaz var, model yok örneği
         const ozet = { uretici: "Ornek Uretici", model: "INV-100K", seri_no: "SN-0001", guc_kw: 98.76, enerji_mwh: 123.457, durum: "üretimde (MPPT)", olaylar: [], model_sayisi: 2 };
         v.beyan.son_sinama = { zaman: "2026-11-08T14:21:00+00:00", durum: "ok", ozet, aciklama: null }; v.asamalar = asamalar(v);   // 08.11 inceleme: sınama sonucu kalıcı
         return yanit(200, { durum: "ok", zaman: "2026-11-08T14:21:00+00:00", hedef: { ...b, ip: b.host, ag: "özel ağ (VPN) adresi" }, ozet,
@@ -576,7 +582,8 @@ http.createServer((req, res) => {
       let g = ""; req.on("data", (c) => { g += c; }); req.on("end", () => {
         const b = JSON.parse(g || "{}"); const v = VERI["veri-yolu"];
         if (!b.tur) { v.beyan = null; v.hedef = null; } else { v.beyan = { tur: b.tur, saglayici: b.saglayici || null, periyot_dk: b.periyot_dk ?? null, salt_okuma_onayi: !!b.salt_okuma_onayi, not: b.not || null, beyan_zamani: "2026-11-08T14:20+00:00",
-          baglanti: b.baglanti && b.baglanti.host ? { host: b.baglanti.host, port: b.baglanti.port || 502, birim: b.baglanti.birim ?? 1 } : null }; v.hedef = YOLLAR.find((y) => y.tur === b.tur) || null; }
+          baglanti: b.baglanti && b.baglanti.host ? { host: b.baglanti.host, port: b.baglanti.port || 502, birim: b.baglanti.birim ?? 1 } : null,
+          ornekleme_acik: !!b.ornekleme_acik && b.tur === "modbus_sunspec" && !!(b.baglanti && b.baglanti.host) && !!b.salt_okuma_onayi }; v.hedef = YOLLAR.find((y) => y.tur === b.tur) || null; }
         v.asamalar = asamalar(v); yanit(200, v); });
       return;
     }

@@ -951,7 +951,7 @@ export const api = {
     try { return await getir<VeriYoluOzet>(`/v1/plants/${p}/veri-yolu`); } catch { return null; }
   },
   veriYoluSina: (p: string): Promise<VeriYoluSinama> => gonder(`/v1/plants/${p}/veri-yolu/sinama`, "POST", {}),   // v2.545: yalnız okuma sınaması
-  veriYoluAyarla: (p: string, g: { tur: string | null; saglayici?: string | null; periyot_dk?: number | null; salt_okuma_onayi?: boolean; not?: string | null; baglanti?: { host: string; port?: number | null; birim?: number | null } | null }): Promise<VeriYoluOzet> =>
+  veriYoluAyarla: (p: string, g: { tur: string | null; saglayici?: string | null; periyot_dk?: number | null; salt_okuma_onayi?: boolean; not?: string | null; baglanti?: { host: string; port?: number | null; birim?: number | null } | null; ornekleme_acik?: boolean }): Promise<VeriYoluOzet> =>
     gonder(`/v1/plants/${p}/veri-yolu`, "PUT", g),
   /** v2.278: EPİAŞ gerçekleşen üretim — durum ve santral eşlemesi. */
   epiasUretim: async (p: string): Promise<EpiasUretim | null> => {
@@ -981,7 +981,7 @@ export const api = {
   kunyeTarihler: (p: string, g: Record<string, string | number | null>): Promise<{ kunye: KunyeTarihler }> => gonder(`/v1/plants/${p}/kunye-tarihler`, "PUT", g),
   /** v2.275: EAK alanı / geçici kısıt / KÜPST katsayıları. */
   eakAyarla: (p: string, g: { eak_kw?: number | null; gecici_kw?: number | null; gecici_bitis?: string | null; kupst_n?: number | null; kupst_tolerans?: number | null; dengeleme_birimi?: boolean | null; ariza_sayisi_ay?: number | null; luy_istisna?: boolean | null;
-    pozisyon_kaynagi?: "program" | "uretim" | "sabit" | null; pozisyon_sabit_mwh?: number | null; teminat_risk_katsayisi?: number | null; kullanilabilirlik_sozlesme?: number | null; butce_kwh_yil?: number | null; pr_referans?: number | null; temizlik_maliyeti_tl?: number | null }):
+    pozisyon_kaynagi?: "program" | "uretim" | "sabit" | null; pozisyon_sabit_mwh?: number | null; teminat_risk_katsayisi?: number | null; kullanilabilirlik_sozlesme?: number | null; butce_kwh_yil?: number | null; pr_referans?: number | null; temizlik_maliyeti_tl?: number | null; son_temizlik_tarihi?: string | null; dosya_yukleme_sikligi_gun?: number | null }):
     Promise<{ eak_bugun: { eak_mw: number; kaynak: string; bitis?: string }; eak_kw: number | null; eak_gecici: { kw: number; bitis: string } | null; kupst_n: number | null; kupst_tolerans: number | null; dengeleme_birimi?: boolean; ariza_sayisi_ay?: number; luy_istisna?: boolean; pr_referans?: number | null }> =>
     gonder(`/v1/plants/${p}/eak`, "PUT", g),
   segmentAyarla: async (p: string, segment: string, uevcb?: string, ek?: { dsg_kodu?: string; toplayici_portfoyu?: boolean; yek_g_kayitli?: boolean; piyasa_katilimcisi?: string; lisans_yillik_uretim_mwh?: number | null; gts_toplayici_adi?: string; depolama?: Record<string, unknown> }): Promise<{ segment: string | null; dengesizlik_sahibi: string | null; kgup_yukumlu: boolean | null; dsg_kodu?: string | null; toplayici_portfoyu?: boolean; yek_g_kayitli?: boolean }> => {   // v2.539: DSG kodu / toplayıcı portföyü; v2.540: YEK-G

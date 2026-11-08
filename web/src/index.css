@@ -1076,6 +1076,9 @@ select.girdi { font-family: var(--font); }
 .ayar-kontrol .satir-tam { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
 .form-izgara.form-alarm { flex-basis: 100%; width: 100%; min-width: 0; max-width: 640px; margin-top: 10px; }
 .form-izgara .form-tam { grid-column: 1 / -1; }
+.form-izgara .ayar-grup { font-family: var(--display); font-size: 12.5px; font-weight: 600; color: var(--ikincil); letter-spacing: 0.01em; margin-top: 6px; padding-bottom: 2px; border-bottom: 1px solid var(--kenar); }   /* 08.11 inceleme II: ayar grubu başlığı */
+.form-izgara .ayar-grup:first-child { margin-top: 0; }
+.ayrinti-govde li.ayar-grup-li, li.ayar-grup-li { list-style: none; margin: 8px 0 2px -18px; color: var(--ikincil); }
 .form-izgara .etiket-ust.form-tam { margin-top: 4px; }
 @media (max-width: 900px) { .ayar { grid-template-columns: minmax(0, 1fr); } }
 /* v2.319 (K5-A): yan yana kart dizisi + yarım sütuna giren ayar satırları.
