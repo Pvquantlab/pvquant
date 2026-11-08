@@ -1077,3 +1077,5 @@ Sonraya: EK-3 değer satırları; lock dosyası kararı; Mutabakat'ta kupst_kayn
 **Yapılmayan / sonraya.** Inverter bulut API bağlantıları (anahtar + örnek çıktı); IEC 60870-5-104 ve OPC UA (cihaz/uç nokta); kirlenme sensörü/uydu referansı; örnek tablosu saklama süresi (şimdilik silinmez); P6 (ii) karar sahibinde.
 
 **Kanıt.** tests/test_canli_ornekleme_v2546.py 6 (şartlar + periyot; saatlik özet sayaç farkı / ortalama / sıfırlama / yetersiz; tur: periyot, uygun yok → None, hata izolasyonu (kopuk cihaz + reddedilen adres); dogrula ornekleme şartı + aşamalar; tazelik eşik + dosya sıklığı; temizlik referansı). Tam takım; ağır dosyalar ayrı; web build + lint + 103; sahte önizleme 1440/375.
+
+**Mühür.** v2.546 e69d5b0 CANLI (08.11 22:28 TSİ): CI #705 yeşil; api+worker+web ssh dağıtımı; GÖÇ v2546_canli_ornek DB sahibiyle uygulandı; canlı bayt kıyası 25/25 birebir; healthz ok. İki inceleme turu (ekran; brif altı faz / üç tur) + son kontrol.
