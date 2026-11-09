@@ -7,7 +7,7 @@ import { AyrintiCipleri } from "../../lib/AyrintiCipleri";
 
 /** 23.10 sekizinci tur — kapsam tanımlayıcısının kullanıcı dili (değer ve yetki anlamı aynı; bilinmeyen kapsam kodla kalır). */
 const KAPSAM_AD: Record<string, string> = { "tahmin:oku": "Tahmin okuma", "kgup:oku": "KGÜP programı okuma",
-  "gerceklesen:oku": "Gerçekleşen üretim okuma", "alarm:oku": "Alarm okuma", "rapor:indir": "Dönem raporu indirme", "santral:yaz": "Santral ayarı yazma" };   // v2.528 (P10): rezerve kapsamlar canlı
+  "gerceklesen:oku": "Gerçekleşen üretim okuma", "alarm:oku": "Alarm okuma", "rapor:indir": "Dönem raporu indirme", "gerceklesen:yaz": "Üretim dosyası itme (CSV/XLSX)", "santral:yaz": "Santral ayarı yazma" };   // v2.528 (P10): rezerve kapsamlar canlı
 
 /** 26.10 Faz 6 — KURULUŞ: Portföy'den taşınan yönetim kartları (Dış erişim, Kuruluşlar arası paylaşım, Hesap ve ekip, Santral arşivi —
  *  bileşenler ve mantıkları AYNEN), + müşteri içi denetim izi (yalnız yönetici) + «yöneticiler için 2FA zorunlu» politikası.

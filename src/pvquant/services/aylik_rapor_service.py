@@ -203,15 +203,20 @@ def veri(tenant_id, plant: dict, donem: str | None = None, bugun: date | None = 
                       "p50_kwh": (None if pd.isna(r["p50_kwh"]) else round(float(r["p50_kwh"]), 1)), "p10_kwh": (None if pd.isna(r["p10_kwh"]) else round(float(r["p10_kwh"]), 1)),
                       "p90_kwh": (None if pd.isna(r["p90_kwh"]) else round(float(r["p90_kwh"]), 1)), "sapma_pct": (None if pd.isna(r["sapma_pct"]) else round(float(r["sapma_pct"]), 1))}
                      for r in df.to_dict("records")]
+    try:   # v2.559 (V4): veri kaynağı niteliği (kaynak / nitelik / revizyon) — izlenebilir doğruluk
+        from pvquant.services import kaynak_secim_service as _ks
+        nitelik = _ks.nitelik_ozeti(tenant_id, plant, _utc(d["bas"]), _utc(d["bit"]) + timedelta(days=1))
+    except Exception:   # noqa: BLE001
+        nitelik = None
     return {"donem": {k: (v.isoformat() if isinstance(v, date) else v) for k, v in d.items()}, "santral": plant.get("name"), "kapasite_kwp": kwp, "ac_kw": plant.get("ac_limit_kw"),
-            "ozet": ozet, "gunler": gun_satirlari if d["tur"] == "ay" else [], "aylar": aylik, "olaylar": ol,
+            "ozet": ozet, "gunler": gun_satirlari if d["tur"] == "ay" else [], "aylar": aylik, "olaylar": ol, "kaynak_niteligi": nitelik,
             "kullanilabilirlik": kullanilabilirlik_olay(ol, kap, d["saat"]), "pr": pr_temel(df, kwp), "uzlastirma": uzlastirma(tenant_id, plant, d),
             "performans": performans(tenant_id, plant, d, bugun),   # v2.542 (P8b-2): ölçülen havayla beklenen üretim, EPI, ışınım endeksi
             "notlar": ["Beklenen = gün başlamadan verilmiş tahminin günlük P50 toplamı (arşiv; geriye dönük değişmez); sapma yalnız iki değerin de bulunduğu günlerde.",
                        "Üretim SCADA ölçümüdür (geçerli saatler); EPİAŞ uzlaştırmaya esas sayaç verisi değildir.",
                        "Uzlaştırma kalemleri PVQuant'ın yürürlükteki kuralla yeniden hesabıdır; EPİAŞ bildirimi esastır." if d["tur"] == "ay" else
                        "Uzlaştırma kalemlerinin yeniden hesabı yalnız ay döneminde verilir; çeyrek ve yıl için Mutabakat sayfasına bakın."],
-            "kaynaklar": ["Üretim: SCADA saatlik ölçümü (geçerli saatler)", "Beklenen: tahmin arşivi, gün başı P50 (forecast_daily; geriye dönük değişmez)",
+            "kaynaklar": [("Üretim: SCADA saatlik ölçümü (geçerli saatler). " + nitelik["metin"]) if nitelik else "Üretim: SCADA saatlik ölçümü (geçerli saatler)", "Beklenen: tahmin arşivi, gün başı P50 (forecast_daily; geriye dönük değişmez)",
                           "Olaylar ve kullanılabilirlik: olay kaydı", "Uzlaştırma: PVQuant yeniden hesabı + yüklü EPİAŞ bildirimi (Mutabakat)" if d["tur"] == "ay" else "Uzlaştırma: yalnız ay döneminde",
                           "PR: SCADA düzlem ışınımı (POA) ölçümü" if pr_temel(df, kwp) else "PR: ölçülen düzlem ışınımı yok"],
             "uretim_zamani": datetime.now(IST).isoformat(timespec="minutes")}
@@ -241,6 +246,11 @@ def rapor(tenant_id, plant: dict, donem: str | None = None, bugun: date | None =
     if v["aylar"]:
         a = pd.DataFrame(v["aylar"]).rename(columns={"ay": "Ay", "uretim_kwh": "Üretim (kWh)", "beklenen_kwh": "Beklenen P50 (kWh)", "saat": "Saat", "gun": "Gün", "sapma_pct": "Sapma %"})
         bol.append(("Aylık üretim ve beklenti", a))
+    if v.get("kaynak_niteligi"):   # v2.559 (V4): veri kaynağı niteliği tablosu
+        kn = v["kaynak_niteligi"]; satirlar = [{"Kaynak": x["etiket"], "Nitelik": "üretim serisi (geçerli)", "Saat": x["saat"]} for x in kn["uretim_serisi"]]
+        satirlar += [{"Kaynak": x["etiket"], "Nitelik": f"gölge görünüm · {x['tamlik_etiketi']}", "Saat": x["saat"]} for x in (kn.get("golge") or {}).get("kaynaklar", [])]
+        if satirlar:
+            bol.append(("Veri kaynağı niteliği", pd.DataFrame(satirlar)))
     if v["olaylar"]:
         o = pd.DataFrame([{"Tür": x["etiket"], "Başlangıç": x["baslangic"], "Bitiş": x["bitis"] or "açık", "Süre (sa)": x["sure_saat"], "Devre dışı güç (kW)": x["etkilenen_kw"],
                            "Not": x["neden"] or ""} for x in v["olaylar"]])

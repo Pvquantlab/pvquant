@@ -25,24 +25,27 @@ def test_uygun_sartlari_ve_periyot():
     assert co.uygun(_plant(ornekleme_acik=False))[1] == "düzenli veri çekişi başlatılmadı"
     assert co.uygun(_plant(salt_okuma_onayi=False))[1] == "yalnızca veri okuma onayı yok"
     assert co.uygun(_plant(baglanti=None))[1] == "bağlantı ayarı yok"
-    assert co.uygun({"params_json": {}})[1] == "hedef Modbus TCP / SunSpec değil"
+    assert co.uygun({"params_json": {}})[1] == "hedef Modbus TCP / SunSpec ya da IEC 104 değil"
     assert co.periyot_dk({"periyot_dk": None}) == 15 and co.periyot_dk({"periyot_dk": "5"}) == 5 and co.periyot_dk({"periyot_dk": 99999}) == 1440
 
 
 def test_saatlik_ozet_sayac_farki_ortalama_ve_yetersiz():
+    """v2.549 (D1): kapanış örneği dâhil; iki sınır yoksa kısmi; sayaç yoksa güç entegrasyonu; sıfırlamada sayaç kullanılmaz."""
     saat = T0
-    ts = [saat + timedelta(minutes=m) for m in (0, 15, 30, 45)]
-    df = pd.DataFrame({"ts_utc": ts, "guc_w": [100000, 110000, 120000, 130000], "enerji_wh": [5_000_000, 5_025_000, 5_052_000, 5_085_000]})
+    ts = [saat + timedelta(minutes=m) for m in (0, 15, 30, 45, 60)]
+    df = pd.DataFrame({"ts_utc": ts, "guc_w": [100000, 110000, 120000, 130000, 140000], "enerji_wh": [5_000_000, 5_025_000, 5_052_000, 5_085_000, 5_120_000]})
     oz = co.saatlik_ozet(df, saat)
-    assert oz["nitelik"] == "sayac" and oz["energy_kwh"] == pytest.approx(85.0) and oz["power_kw"] == pytest.approx(115.0) and oz["n"] == 4 and oz["kapsama_dk"] == 45.0
-    df2 = df.assign(enerji_wh=None)                                       # sayaç yok → ortalama güç × kapsanan süre
+    assert oz["nitelik"] == "sayac" and oz["tamlik"] == "measured_complete" and oz["energy_kwh"] == pytest.approx(120.0) and oz["power_kw"] == pytest.approx(120.0) and oz["n"] == 5 and oz["kapsama_dk"] == 60.0
+    kismi = co.saatlik_ozet(df.head(4), saat)                               # kapanış örneği yok → kısmi, 45 dk, üretim serisine yazılmaz
+    assert kismi["tamlik"] == "measured_partial" and kismi["energy_kwh"] == pytest.approx(85.0) and kismi["kapsama_dk"] == 45.0
+    df2 = df.assign(enerji_wh=None)                                       # sayaç yok → güç entegrasyonu (yamuk), iki sınır var → tam
     oz2 = co.saatlik_ozet(df2, saat)
-    assert oz2["nitelik"] == "ortalama" and oz2["energy_kwh"] == pytest.approx(115.0 * 45 / 60)
+    assert oz2["nitelik"] == "entegrasyon" and oz2["tamlik"] == "measured_complete" and oz2["energy_kwh"] == pytest.approx(120.0)
     df3 = df.copy(); df3.loc[2, "enerji_wh"] = 4_000_000                    # sayaç geri sayıyor (sıfırlama) → sayaç farkı kullanılmaz
-    assert co.saatlik_ozet(df3, saat)["nitelik"] == "ortalama"
+    assert co.saatlik_ozet(df3, saat)["nitelik"] == "entegrasyon"
     assert co.saatlik_ozet(df.head(1), saat) is None                      # tek örnek
-    assert co.saatlik_ozet(df.head(2), saat) is None                      # 15 dk kapsama < 40
-    assert co.saatlik_ozet(df, saat + timedelta(hours=1)) is None          # başka saat
+    assert co.saatlik_ozet(df.head(2), saat)["tamlik"] == "measured_partial"   # 15 dk kapsama → kısmi kayıt (gölgeye), tam değil
+    assert co.saatlik_ozet(df, saat + timedelta(hours=1)) is None          # başka saat (yalnız 01:00 sınır örneği var)
 
 
 def test_tur_periyot_ve_hata_izolasyonu():
@@ -68,6 +71,7 @@ def test_tur_periyot_ve_hata_izolasyonu():
     plants = [_plant(), _plant(ornekleme_acik=False)]
     r = co.tur(plants, T0, SahteIstemci, yaz=co_yaz, son=co_son, topla=topla)
     assert r and "örnek" in r and len(yazilan) == 1 and yazilan[0]["guc_w"] == pytest.approx(98760.0) and yazilan[0]["durum_kodu"] == 4
+    assert yazilan[0]["cihaz_id"] == "santral" and yazilan[0]["sinir"] == "inverter_ac" and yazilan[0]["profil"] == "1xx"   # v2.550 (D4): cihaz kimliği (seri boş → santral)
     r2 = co.tur(plants, T0 + timedelta(minutes=5), SahteIstemci, yaz=co_yaz, son=co_son, topla=topla)
     assert "periyot dolmadı" in r2 and len(yazilan) == 1
     r3 = co.tur(plants, T0 + timedelta(minutes=15), SahteIstemci, yaz=co_yaz, son=co_son, topla=topla)

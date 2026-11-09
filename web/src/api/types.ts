@@ -48,7 +48,7 @@ export interface SantralKisa { id: string; name: string; capacity_kwp: number; t
 /** /v1/portfoy — v2.263. */
 export interface Portfoy {
   gun: string;
-  santraller: { id: string; ad: string; kapasite_kwp: number; tz: string; segment: string | null; son_olcum: string | null; kesinti_gun: number | null;
+  santraller: { id: string; ad: string; kapasite_kwp: number; tz: string; segment: string | null; son_olcum: string | null; kesinti_gun: number | null; baglanti?: { tur: string; tur_kisa: string; kod: string; etiket: string; saglayici: string | null; cekis_acik: boolean; n_cihaz: number } | null;
                 wmape_30g: number | null; bugun_kwh: number | null; yarin_kwh: number | null; acik_alarm: number; son_kosu: string | null;
                 /** 29.10: yarının programı — yükümlü mü, 15:30 kesimi öncesi tahmin var mı */
                 program?: { yukumlu: boolean | null; hazir: boolean | null; run_at: string | null; not: string | null;
@@ -724,23 +724,60 @@ export interface VeriYoluEtkin { tur: string; etiket: string; tur_etiketi: strin
   /** 08.11 inceleme II: bağlantı sağlığı (veri tazeliğinden ayrı) ve veri cümlesi */
   baglanti?: { durum: "ok" | "hata" | "yok" | "bilinmiyor"; etiket: string; zaman: string | null } | null; veri_etiketi?: string; veri_kodu?: string }
 /** 08.11 inceleme (faz 3): hedef bağlantının aşamaları; hiçbiri diğerini ima etmez */
-export interface VeriYoluAsama { kod: "secildi" | "ayar" | "sinama" | "cekis" | "akis"; etiket: string; tamam: boolean; zaman: string | null; durum?: string }
+export interface VeriYoluAsama { kod: "secildi" | "ayar" | "sinama" | "nokta" | "kimlik" | "cekis" | "akis"; etiket: string; tamam: boolean; zaman: string | null; durum?: string }
 export interface VeriYoluOzet { etkin: VeriYoluEtkin[];
-  beyan: { tur: string; saglayici: string | null; periyot_dk: number | null; salt_okuma_onayi: boolean; not: string | null; beyan_zamani: string; baglanti?: { host: string; port: number; birim: number } | null;
+  beyan: { tur: string; saglayici: string | null; periyot_dk: number | null; salt_okuma_onayi: boolean; not: string | null; beyan_zamani: string; baglanti?: { host: string; port: number; birim: number; zaman_asimi_sn?: number | null; profil?: string | null; cihazlar?: { birim: number; ad?: string; profil?: string }[] } | null;
     son_sinama?: { zaman: string; durum: VeriYoluSinama["durum"]; ozet?: VeriYoluSinama["ozet"] | Record<string, unknown> | null; aciklama?: string | null; saglayici?: string } | null;
     /** v2.546: sahibin «düzenli veri çekişini başlat» kararı */
-    ornekleme_acik?: boolean } | null;
+    ornekleme_acik?: boolean;
+    /** v2.548 (Aşama 0, H2): IEC 104 STARTDT yalnız sahibin «ayrı istemci yuvası tanımlandı» onayıyla */
+    startdt_onayi?: boolean;
+    /** v2.554 (S4): IEC 104 ayarları ve nokta tablosu */
+    iec104?: { ca: number; sinir: string; parametreler: Record<string, number> } | null; nokta_tablosu?: { ioa: number; alan: string; carpan: number; ad: string | null }[] | null } | null;
   hedef: VeriYolu | null; asamalar?: VeriYoluAsama[]; yollar: VeriYolu[]; taze_saat: number; dosya_eski_gun?: number; dosya_yukleme_sikligi_gun?: number | null; not: string;
   /** v2.547: bulut sağlayıcıları (bağlayıcısı olanlar) ve henüz olmayanlar */
-  bulut?: { saglayicilar: { kod: string; ad: string; kimlik_alanlari: string[]; bolge: boolean; not: string; durum?: string; durum_etiketi?: string }[]; bolgeler: string[]; henuz_yok: string[]; henuz_yok_etiketi?: string; diger_etiketi?: string; not: string };
+  bulut?: { saglayicilar: { kod: string; ad: string; kimlik_alanlari: string[]; kimlik_etiketleri?: Record<string, string>; gizli_alanlar?: string[]; bolge: boolean; bolgeler?: string[]; varsayilan_bolge?: string | null; not: string; durum?: string; durum_etiketi?: string }[]; bolgeler: string[]; henuz_yok: string[]; henuz_yok_etiketi?: string; diger_etiketi?: string; not: string; kasa?: { var: boolean; id: string | null; eski: string[]; hata?: string } };   // v2.556: şifreli saklama açık mı
   /** 09.11 inceleme III: hedef bağlantının tek durum kodu */
-  baglanti_durumu?: { kod: string; etiket: string } }
+  baglanti_durumu?: { kod: string; etiket: string };
+  /** v2.552 (S2): Modbus kayıt haritaları (SunSpec + üretici profilleri) */
+  profiller?: { kod: string; ad: string; aciklama: string; uretici: string | null; fonksiyon: number; sinir: string; belge: string | null; birim_varsayilan: number; dogrulama: string }[] }
 /** v2.545 (P4b): Modbus TCP / SunSpec bağlantı sınaması sonucu (yalnız okuma; veri akışı başlatmaz). */
-export interface VeriYoluSinama { durum: "ok" | "kismi" | "veri_modeli_yok" | "protokol_yaniti_yok" | "kimlik_hatasi" | "saglayici_desteklenmiyor" | "onay_yok" | "adres_reddedildi" | "ayar_hatasi" | "baglanti_hatasi"; zaman: string; aciklama?: string;
+export interface VeriYoluSinama { durum: "ok" | "kismi" | "veri_modeli_yok" | "protokol_yaniti_yok" | "kimlik_hatasi" | "saglayici_desteklenmiyor" | "saglayici_kapandi" | "onay_yok" | "adres_reddedildi" | "ayar_hatasi" | "baglanti_hatasi"; zaman: string; aciklama?: string;
   /** v2.547: bulut sınaması özeti */
   saglayici?: string; bulut_ozet?: { santral_sayisi: number; ilk_santral: string | null; ilk_kapasite_kwp: number | null; saat_dilimi: string | null };
   hedef?: { host: string; port: number; birim: number; ip?: string; ag?: string };
   ozet?: { uretici?: string | null; model?: string | null; seri_no?: string | null; guc_kw?: number | null; enerji_mwh?: number | null; durum?: string | null; olaylar?: string[]; model_sayisi?: number;
-    /** v2.547: bulut (santral listesi) ve IEC 104 (STARTDT) özetleri aynı alanda */
-    santral_sayisi?: number; ilk_santral?: string | null; ilk_kapasite_kwp?: number | null; saat_dilimi?: string | null; startdt_con?: boolean };
+    /** v2.547: bulut (santral listesi) ve IEC 104 özetleri aynı alanda; v2.548: IEC 104 yöntemi tcp (STARTDT yok) | startdt */
+    santral_sayisi?: number; ilk_santral?: string | null; ilk_kapasite_kwp?: number | null; saat_dilimi?: string | null; uc?: string | null; tcp?: boolean; startdt_con?: boolean | null; yontem?: "tcp" | "startdt" | "gi";
+    /** v2.551/v2.552: profil (1xx | 7xx | üretici haritası), enerji kaynağı, ölçüm sınırı */
+    profil?: string | null; enerji_yolu?: string | null; sinir?: string | null; uretici_durum?: string | null; uygulanmayan?: string[];
+    /** v2.554 (S4): IEC 104 genel sorgulama (yontem "gi") */
+    nokta_sayisi?: number; tablo_sayisi?: number; eslesen?: number; ikame?: number; gelmeyen_ioa?: number[]; gonderilen_tipler?: number[] };
   not?: string }
+
+/** v2.550 (D5): gölge saatlik görünüm — kaynak seçimi ile üretim serisi yan yana (tahmin bu görünümü kullanmaz) */
+export interface GolgeSaat { ts_utc: string; secilen: { kaynak: string; cihaz_id: string | null; power_kw: number | null; energy_kwh: number | null; tamlik: string; tamlik_etiketi: string | null; yontem: string | null; revizyon: number | null; kapsama_dk: number | null } | null;
+  neden: string | null; alternatif_sayisi: number; mevcut: { power_kw: number | null; energy_kwh: number | null; flag: string | null; kaynak: string | null } | null; fark_kwh: number | null }
+export interface GolgeGorunum { bas: string; bit: string; saatler: GolgeSaat[]; ozet: { n_saat: number; n_tam: number; n_kismi: number; n_mevcut: number; n_fark_05kwh: number }; sinir: string; sinir_etiketi: string; oncelik: Record<string, number>; not: string; uyari?: string }
+/** v2.555 (V2): cihaz durumundan olay adayları (otomatik kayıt yok) */
+export interface OlayAday { tur: "ariza" | "iletisim_kopuklugu" | "kisit"; kisma_yuzde_ort?: number; kisma_yuzde_maks?: number; tur_etiketi: string; cihaz_id: string; bas: string; bit: string | null; sure_dk: number; ornek_sayisi: number; kodlar: string[]; durum: "bitti" | "suruyor"; kayitli: boolean; not: string }
+export interface OlayAdaylari { adaylar: OlayAday[]; pencere_saat: number; n_ornek: number; periyot_dk?: number; not: string }
+
+/** v2.556/v2.557 (Aşama 3, K1/K2): şifreli bulut kimliği durumu — gizli alan yok, etiket maskeli */
+export interface BulutKimlikKayit { saglayici: string; saglayici_adi: string; bolge: string | null; dis_kimlik: string | null; kek_id: string; surum: number; etiket: string | null;
+  onay_json: { metinler: Record<string, string>; zaman: string; aktor_id: string | null }; cekis_acik: boolean; birim_dogrulandi: boolean; kota_gun: string | null; kota_sayac: number;
+  son_cekis: string | null; son_durum: string | null; son_durum_etiketi: string | null; son_hata: string | null; olusturma: string; guncelleme: string }
+export interface BulutKimlikDurum { kasa: { var: boolean; id: string | null; eski: string[]; hata?: string }; kayitlar: BulutKimlikKayit[]; onay_metinleri: Record<string, string>; not: string;
+  ham_son: { saglayici: string; ts_utc: string; dis_kimlik: string | null; alanlar: Record<string, number | string | null>; alinma: string }[];
+  alanlar: Record<string, { birim: string; etiket: string; hedef?: string }>; birim_notu: string; gunluk_tavan: number;
+  saglayici_alanlari?: Record<string, { alanlar: Record<string, { birim: string; etiket: string }>; birim_notu: string; gunluk_tavan: number; toplu: boolean }> }
+export interface BulutKimlikSonuc { durum: string; kaydedildi: boolean; aciklama?: string; zaman?: string; saglayici?: string; dis_kimlik?: string; dis_ad?: string | null; etiket?: string | null; kek_id?: string;
+  santraller?: { kimlik: string; ad: string | null; kapasite_kwp: number | null }[]; not?: string }
+
+/** v2.560 (Aşama 4): pilot kapıları ve referans kıyası */
+export interface PilotKapi { kod: string; ad: string; kaynak: "saha" | "kod"; p0: boolean; aciklama: string; tamam: boolean; not: string | null; zaman: string | null; aktor_id: string | null; durum_etiketi: string }
+export interface ReferansKiyasOzet { sonuc: "uyumlu" | "uyumsuz" | "yetersiz"; metin: string; n_referans: number; n_ortak: number; n_tolerans_ici: number; tolerans_orani: number | null; n_golge_yok: number; n_golge_kismi_disi: number; mape_pct: number | null; maks_mutlak_fark_kwh: number; toplam_fark_pct: number | null; sinir?: string; bas?: string; bit?: string; dosya?: string | null; zaman?: string; uyarilar?: string[]; tolerans_disi_saatler?: { ts_utc: string; referans_kwh: number; golge_kwh: number; fark_kwh: number; kaynak: string | null }[] }
+export interface PilotDurum { kapilar: PilotKapi[]; p0_acik: string[]; sahaya_hazir: boolean; referans_sonuc: ReferansKiyasOzet | null; not: string }
+/** v2.561 (Aşama 6): saha toplayıcısı kimlikleri (anahtar yalnız üretim yanıtında) */
+export interface EdgeToplayici { id: string; ad: string; prefix: string; durum: "etkin" | "iptal"; olusturma: string; son_gorulme: string | null; son_sira: number | null; iptal_zamani: string | null }
+export interface EdgeToplayiciYeni { id: string; ad: string; prefix: string; anahtar: string; olusturma: string; not: string }

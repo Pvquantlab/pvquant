@@ -101,6 +101,10 @@ def validate(
     # --- 3. Negatif güç ---
     neg_tol = -NEGATIVE_TOLERANCE_FRACTION * capacity_kwp
     small_neg = (power < 0) & (power >= neg_tol)
+    # v2.549 (Aşama 1, D6): ham işaret kaybolmasın — kırpılmadan önceki değer `power_kw_ham` kolonunda korunur (üretim serisine girmez,
+    # karne/kalibrasyon davranışı değişmez); kırpılan satır sayısı karneye uyarı olarak düşer. Sayaç sıfırlaması bu yolla gizlenmez.
+    out["power_kw_ham"] = power.copy()
+    n_small_neg = int(small_neg.sum())
     out.loc[small_neg, "power_kw"] = 0.0          # öz tüketim → 0'a kırp
     big_neg = power < neg_tol
     flags[big_neg & (flags == RowFlag.VALID.value)] = RowFlag.NEGATIVE_POWER.value
@@ -174,6 +178,11 @@ def validate(
             "günlük ÖZETTİR. Enerji aylık toplamlara ve raporlara girer; "
             "saatlik karne ve kalibrasyon bu satırları kullanmaz — onlar için "
             "saatlik (ya da daha sık) SCADA yükleyin."
+        )
+    if n_small_neg > 0:
+        report.warnings.append(
+            f"{n_small_neg} satırda küçük negatif güç (gece öz tüketimi) 0'a kırpıldı; "
+            "ham değer 'power_kw_ham' kolonunda korunur, üretim serisine girmez."
         )
     if n_kirpma_muaf > 0:
         report.warnings.append(

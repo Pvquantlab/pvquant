@@ -8,7 +8,7 @@ Müşteri sistemlerinin (SCADA/EMS, ticaret masası, portföy yazılımı) PVQua
 - Yönetici, panelde **Kuruluş › Dış erişim** kartından anahtar üretir. Anahtar `pvq_<önek>_<sır>` biçimindedir ve
   **yalnız bir kez** gösterilir; sunucu yalnız sha256 özetini saklar.
 - Her istekte başlık: `X-API-Key: pvq_…`
-- Kapsamlar: `tahmin:oku` (santral listesi + saatlik tahmin), `kgup:oku` (KGÜP programı, sürüm geçmişi, toplayıcı dosyası), `gerceklesen:oku` (gerçekleşen üretim), `alarm:oku` (alarm listesi), `rapor:indir` (dönem raporu), `santral:yaz` (sayaç ayarı alanları). Kapsam dışı → 403. (v2.528: dört kapsam canlıya alındı.)
+- Kapsamlar: `tahmin:oku` (santral listesi + saatlik tahmin), `kgup:oku` (KGÜP programı, sürüm geçmişi, toplayıcı dosyası), `gerceklesen:oku` (gerçekleşen üretim), `alarm:oku` (alarm listesi), `rapor:indir` (dönem raporu), `santral:yaz` (sayaç ayarı alanları), `gerceklesen:yaz` (üretim dosyası itme, v2.553). Kapsam dışı → 403. (v2.528: dört kapsam canlıya alındı.)
 - Oran sınırı anahtar başına dakikada `rpm` (varsayılan 120) → aşımda 429. Geçersiz/iptal/süresi dolmuş → 401.
 
 ## Uçlar
@@ -23,6 +23,8 @@ Müşteri sistemlerinin (SCADA/EMS, ticaret masası, portföy yazılımı) PVQua
 | `GET /v1/dis/santral/{id}/gerceklesen?bas=YYYY-MM-DD&bit=YYYY-MM-DD&kaynak=scada|sayac` | gerceklesen:oku | Saatlik gerçekleşen üretim, kWh, UTC saat başı. `scada`: geçerli SCADA ölçümü (brüt; kaynak scada_dosya / epias_seffaflik). `sayac`: yüklü sayaç verisi (net veriş; kaynak epys/osos/mass/elle, nitelik ölçülmüş/tahmini). En çok 92 gün; verilmezse son 7 Türkiye günü. Uzlaştırmaya esas UEVM değildir. |
 | `GET /v1/dis/santral/{id}/alarmlar?n=20` | alarm:oku | Alarm listesi (yeni → eski, en çok 200): kural kodu + Türkçe adı, şiddet, mesaj, zaman, okunma/atama |
 | `GET /v1/dis/santral/{id}/rapor-donem?donem=YYYY-MM|YYYY-QN|YYYY&fmt=json|html` | rapor:indir | Dönem raporu (panelin Raporlar › Dönem raporu ile aynı hesap): üretim, gün başı beklentisi, olay kaydı, kullanılabilirlik, temel PR, ay döneminde uzlaştırma kalemleri; `html` indirilebilir dosya. Denetim izine düşer. |
+| `POST /v1/dis/santral/{id}/uretim-dosyasi` (çok parçalı `dosya`) | gerceklesen:yaz | v2.553: SCADA / kayıt cihazı dışa aktarımını (CSV, XLSX; ≤50 MB) PVQuant'a iter. Dosya panelden yükleme ile aynı alım hattından geçer (biçim/eşleme algılama, kayıtlı şablon, doğrulama karnesi) ve geçerli saatler üretim serisine yazılır. Cihaz bazlı dosyada tekrar politikası santral ayarından (`itme.tekrar`: sum/mean) gelir; yoksa 422. Yanıt: parti kimliği, satır sayısı, karne. Aynı hat SFTP ile itilen dosyalar için `PVQ_ITME_DIZIN/<santral>/gelen/` klasörünü 10 dakikada bir tarar (hesap açma işletim tarafında). |
+| `GET /v1/dis/santral/{id}/kaynak-saatlik?bas&bit&sinir` | gerceklesen:oku | v2.559 (V4): her saatin kaynağı, ölçüm sınırı, niteliği (tam / kısmi / tahmini) ve revizyonu ile gölge görünüm; üretim serisindeki saatle yan yana. En çok 31 gün. Tahmin ve doğruluk bu görünümü kullanmaz; uzlaştırmaya esas UEVM değildir. |
 | `PUT /v1/dis/santral/{id}/ayarlar` (JSON gövde) | santral:yaz | Sayaç ayarı alanları: `sayac_turu` (15dk_endeks|diger), `scada_durum` (bagli|kopuk|yok), `scada_kopukluk_baslangic` (YYYY-MM-DD), `uzaktan_acma_var` (bool), `sistem_kullanim_bedeli_tl_ay`, `uzlastirma_girdi` (scada|sayac). Yalnız gönderilen alanlar değişir, null temizler; boş gövde 422. Künye/segment/tarife bu kapsamda değildir. |
 
 `tahmin` yanıtı `ETag: W/"<koşu id>"` taşır. `If-None-Match` ile aynı değeri gönderirseniz koşu değişmediyse

@@ -129,7 +129,7 @@ def test_sinama_onay_adres_ve_basari():
             if adres == 40070: return [0xFFFF, 0]
             return [0] * adet
     r3 = ca.sina({"host": "10.0.0.5"}, onay=True, istemci_fabrikasi=YalnizOrtak)
-    assert r3["durum"] == "kismi" and r3["ozet"]["guc_kw"] is None and "inverter ölçüm modeli" in r3["aciklama"]
+    assert r3["durum"] == "kismi" and r3["ozet"]["guc_kw"] is None and "ölçüm modeli (701 ya da 101–103" in r3["aciklama"]
 
 
 PLANT = "22222222-2222-2222-2222-222222222222"

@@ -17,8 +17,9 @@ from datetime import datetime, timedelta, timezone
 from pvquant.ext.platform.api_anahtar import KAPSAMLAR, TokenBucket
 
 # Canlı uçları olan kapsamlar (UI bunları sunar). v2.528 (P10): rezerve dört kapsam da canlı — gerceklesen:oku, alarm:oku, rapor:indir, santral:yaz.
-CANLI_KAPSAMLAR = ("tahmin:oku", "kgup:oku", "gerceklesen:oku", "alarm:oku", "rapor:indir", "santral:yaz")
-KAPSAM_ACIKLAMA = {"tahmin:oku": "Son tahmin koşusu (saatlik P10/P50/P90) ve santral listesi",
+CANLI_KAPSAMLAR = ("tahmin:oku", "kgup:oku", "gerceklesen:oku", "alarm:oku", "rapor:indir", "santral:yaz", "gerceklesen:yaz")
+KAPSAM_ACIKLAMA = {"gerceklesen:yaz": "Üretim dosyası itme (CSV/XLSX): SCADA ya da kayıt cihazı dışa aktarımı PVQuant'a gönderilir, dosya alım hattından geçer",
+                   "tahmin:oku": "Son tahmin koşusu (saatlik P10/P50/P90) ve santral listesi",
                    "kgup:oku": "KGÜP programı (TPYS CSV) ve sürüm geçmişi; toplayıcı özeti",
                    "gerceklesen:oku": "Gerçekleşen üretim: saatlik SCADA ölçümü ya da yüklü sayaç verisi (en çok 92 gün)",
                    "alarm:oku": "Alarm listesi (kural, şiddet, mesaj, okunma/atama)",

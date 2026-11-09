@@ -78,6 +78,21 @@ def _program_durumu(tenant_id, p: dict, yarin: date, bildirim=None) -> dict:
             "not": None if kosu else "15:30 kesimi öncesinde verilmiş tahmin yok", **b}
 
 
+def _baglanti(pj) -> dict | None:
+    """SAF. params_json.veri_yolu beyanından hedef kaynak ve bağlantı durumu (veri_yolu_service.baglanti_durumu; canlı etkin satırı olmadan).
+    Portföy sayfasında toplayıcı/GTŞ birden çok santralın bağlantı durumunu tek bakışta görür; ayrıntı Santralim'de."""
+    if not isinstance(pj, dict):
+        return None
+    vy = pj.get("veri_yolu") if isinstance(pj.get("veri_yolu"), dict) else None
+    if not vy or not vy.get("tur"):
+        return None
+    from pvquant.services import veri_yolu_service as vys
+    d = vys.baglanti_durumu(vy, [])
+    kisa = vys.VERI_YOLLARI.get(vy["tur"], {}).get("kisa", vy["tur"])
+    return {"tur": vy["tur"], "tur_kisa": kisa, "kod": d["kod"], "etiket": d["etiket"], "saglayici": vy.get("saglayici"),
+            "cekis_acik": bool(vy.get("ornekleme_acik") or (vy.get("bulut_kimlik") or {}).get("cekis_acik")), "n_cihaz": 1 + len(((vy.get("baglanti") or {}).get("cihazlar")) or [])}
+
+
 def ozet(tenant_id) -> dict:
     from sqlalchemy import text
     from pvquant.db import tenant_baglami
@@ -117,6 +132,7 @@ def ozet(tenant_id) -> dict:
             "acik_alarm": alarm.get(pid, 0),
             "son_kosu": kosu.get(pid).isoformat() if kosu.get(pid) else None,
             "program": _program_durumu(tenant_id, p, yarin, bildirim.get(pid)),   # 29.10
+            "baglanti": _baglanti(pj),   # v2.563 (V3-b): toplayıcı portföyünde santral başına hedef bağlantı ve durumu (beyan aynasından, DB'siz)
         })
     P = pf.Portfoy({r["id"]: pf.SantralKaydi(r["id"], r["ad"], r["kapasite_kwp"] / 1000.0, "", r["segment"] or "") for r in satirlar})
     karneler = {r["id"]: {"wmape": r["wmape_30g"]} for r in satirlar if r["wmape_30g"] is not None}

@@ -1,0 +1,22 @@
+# v2.563 — Saha toplayıcısı için istemci sertifikası (mTLS) — İSTEĞE BAĞLI, bu sürümde Caddyfile'a EKLENMEDİ.
+# Etkinleştirmek için ana sunucu bloğuna (PVQ_DOMAIN) aşağıdaki tls bloğu eklenir; CA ve CRL dosyaları scripts/edge_ca.sh ile üretilir ve
+# /etc/caddy/edge/ altına kopyalanır. Dikkat: `tls { client_auth }` sunucu bloğunun tamamı için geçerlidir — yalnız /v1/edge/* için istenirse
+# toplayıcı trafiği ayrı bir alt alan adına (ör. edge.pvquant.com) alınır ve bu blok o alt alan adının bloğuna konur.
+#
+# edge.{$PVQ_DOMAIN} {
+#   tls {
+#     client_auth {
+#       mode require_and_verify
+#       trusted_ca_cert_file /etc/caddy/edge/ca.crt
+#       # Caddy 2.8+: iptal listesi için verifier
+#       # verifier revocation { crl_files /etc/caddy/edge/crl.pem }
+#     }
+#   }
+#   route /v1/edge/* {
+#     reverse_proxy api:8000
+#   }
+#   respond 404
+# }
+#
+# Toplayıcı: edge_toplayici.py --sunucu https://edge.<alan adı> --sertifika istemci.crt --sertifika-anahtari istemci.key
+# Sertifika iptali anahtar iptalinden bağımsızdır: ikisi birlikte yapılır (Santralim'de anahtar iptali + edge_ca.sh iptal).

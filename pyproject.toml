@@ -42,6 +42,7 @@ dependencies = [
     "passlib[bcrypt]>=1.7",
     "bcrypt<4.1",
     "pyjwt>=2.8",
+    "cryptography>=42",   # v2.556 (Aşama 3, K1): zarf şifreleme kasası (AES-256-GCM)
     "apscheduler>=3.10",
     "sentry-sdk>=2.0",
     "slowapi>=0.1.10",

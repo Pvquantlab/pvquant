@@ -659,6 +659,20 @@ def _logla_tek_sessiz(job, fn):
     return ic
 
 
+def bulut_cekis():
+    """v2.557 (Aşama 3, K2): FusionSolar düzenli çekiş — yalnız sahibin şifreli kimlik kaydedip çekişi açtığı santrallar; hesap başına tek giriş,
+    günlük kota sayaçlı; ham tabloya, birim doğrulanmışsa gölge görünüme. Kayıt yoksa None → günlüğe satır düşmez."""
+    from pvquant.services import bulut_cekis_service
+    return bulut_cekis_service.tur()
+
+
+def itme_klasoru():
+    """v2.553 (S3): PVQ_ITME_DIZIN/<santral>/gelen/ altındaki üretim dosyalarını (SFTP ile itilen CSV/XLSX) dosya alım hattından geçirir; islenen/ ya da hatali/
+    altına taşır. Dizin tanımlı değilse ya da dosya yoksa None → günlüğe satır düşmez."""
+    from pvquant.services import itme_service
+    return itme_service.klasor_tara(itme_service.itme_dizini(), _tum_santraller())
+
+
 def canli_ornekleme():
     """v2.546 (P4b-2): Modbus TCP / SunSpec düzenli örnekleme + saatlik toplama — yalnız sahibin «düzenli veri çekişini başlat» dediği santrallarda;
     yalnız okuma (FC3). Uygun santral yoksa None → günlüğe satır düşmez."""
@@ -834,6 +848,8 @@ if __name__ == "__main__":
     def _nabiz():
         nabiz_yaz("worker", {"baslatma": _baslatma, "is_sayisi": len(sch.get_jobs()), "aralik_dk": NABIZ_ARALIK_DK})
     sch.add_job(_logla_tek_sessiz("canli_ornekleme", canli_ornekleme), "interval", minutes=5, id="canli_ornekleme")   # v2.546 (P4b-2): yalnız ornekleme_acik santrallar
+    sch.add_job(_logla_tek_sessiz("itme_klasoru", itme_klasoru), "interval", minutes=10, id="itme_klasoru")
+    sch.add_job(_logla_tek_sessiz("bulut_cekis", bulut_cekis), "interval", minutes=60, id="bulut_cekis")   # v2.557 (K2): saatte 1 çağrı/hesap; yerel 01:xx'te dün de   # v2.553 (S3): itme klasörü (PVQ_ITME_DIZIN)
     sch.add_job(_nabiz, "interval", minutes=NABIZ_ARALIK_DK, id="nabiz")
     _nabiz()                                                             # açılışta ilk nabız: tablo boş kalmaz
     print(f"PVQuant worker basladi (UTC cron: {cfg.worker_hour_skill:02d}:30 skill /"

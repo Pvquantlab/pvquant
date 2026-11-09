@@ -32,12 +32,13 @@ app = FastAPI(title="PVQuant API", version="0.1",
 
 # v2.73-B: dev SPA (vite, :5173) tarayici kapisi. Prod'da SPA ayni alan
 # adindan (Caddy /v1) sunulur — oraya CORS gerekmez; liste env ile dar tutulur.
+from fastapi import Header as _Header   # v2.561: toplayıcı anahtarı başlığı
 from fastapi.middleware.cors import CORSMiddleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_os.environ.get(
         "PVQ_CORS_ORIGINS", "http://localhost:5173").split(","),
-    allow_methods=["GET", "POST", "PUT", "DELETE"],   # v2.264: PUT (segment) + DELETE (anahtar/webhook)
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],   # v2.264: PUT (segment) + DELETE (anahtar/webhook); v2.557: PATCH (bulut çekiş ayarı)
     allow_headers=["Authorization", "Content-Type", "X-API-Key"],
     # v2.94: rapor dosya adi — tarayici bu basligi ancak expose ile gorur
     expose_headers=["Content-Disposition"])
@@ -1013,6 +1014,64 @@ def dis_gerceklesen(plant_id: str, bas: str | None = None, bit: str | None = Non
             "not": ("SCADA brüt üretimdir; EPİAŞ uzlaştırmaya esas sayaç (UEVM) değildir." if kaynak == "scada" else
                     "Yüklü sayaç dosyasıdır (net veriş); uzlaştırmaya esas UEVM ile aynılığı doğrulanmaz. nitelik tahmini/doldurulmuş saatler EDAŞ kodundan."),
             "saatlik": saatlik}
+
+
+@app.get("/v1/dis/santral/{plant_id}/kaynak-saatlik", tags=["Dış API"])
+def dis_kaynak_saatlik(plant_id: str, bas: str | None = None, bit: str | None = None, sinir: str = "inverter_ac", anahtar=Depends(api_anahtari("gerceklesen:oku"))):
+    """v2.559 (V4) — her saatin KAYNAK / ölçüm sınırı / NİTELİK (tam, kısmi, tahmini) / REVİZYON kimliğiyle gölge görünüm; üretim serisindeki saatle yan yana.
+    bas–bit Türkiye günü (dâhil), en çok 31 gün; verilmezse son 7 gün. Tahmin ve doğruluk bu görünümü kullanmaz; uzlaştırmaya esas UEVM değildir."""
+    from datetime import date as _d, datetime as _dt, timedelta as _td
+    from pvquant.services import kaynak_secim_service as ks, sayac_service
+    if sinir not in ks.SINIR_ETIKET:
+        raise HTTPException(422, "sinir inverter_ac | plant_gross_ac | pcc_net | settlement olmalı")
+    row = plant_service.getir(anahtar["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    try:
+        b1 = _d.fromisoformat(bit) if bit else _dt.now(sayac_service.IST).date()
+        b0 = _d.fromisoformat(bas) if bas else b1 - _td(days=6)
+    except ValueError:
+        raise HTTPException(422, "bas/bit YYYY-MM-DD olmalı")
+    if b0 > b1 or (b1 - b0).days > 30:
+        raise HTTPException(422, "aralık en çok 31 gün ve bas ≤ bit olmalı")
+    t0 = _dt.combine(b0, _dt.min.time(), tzinfo=sayac_service.IST); t1 = _dt.combine(b1 + _td(days=1), _dt.min.time(), tzinfo=sayac_service.IST)
+    gg = ks.golge_gorunum(anahtar["tenant_id"], row, t0, t1, sinir)
+    saatler = []
+    for h in gg.get("saatler") or []:
+        sec = h.get("secilen") or {}; mev = h.get("mevcut") or {}
+        saatler.append({"ts": h["ts_utc"], "kaynak": sec.get("kaynak"), "kaynak_etiketi": ks.KAYNAK_ETIKET.get(sec.get("kaynak") or "", sec.get("kaynak")), "cihaz_id": sec.get("cihaz_id"),
+                        "sinir": sinir, "nitelik": sec.get("tamlik"), "nitelik_etiketi": sec.get("tamlik_etiketi"), "yontem": sec.get("yontem"), "revizyon": sec.get("revizyon"),
+                        "kwh": (round(float(sec["energy_kwh"]), 3) if sec.get("energy_kwh") is not None else None), "alternatif_sayisi": h.get("alternatif_sayisi", 0),
+                        "uretim_serisi_kwh": (round(float(mev["energy_kwh"]), 3) if mev.get("energy_kwh") is not None else None), "uretim_serisi_kaynak": mev.get("kaynak"),
+                        "fark_kwh": h.get("fark_kwh"), "secim_nedeni": h.get("neden")})
+    _denetim.kaydet("musteri", "rapor_donem_indir", aktor_id=None, tenant_id=anahtar["tenant_id"], nesne_tur="plant", nesne_id=row["id"],
+                    ayrinti={"uc": "kaynak-saatlik", "bas": b0.isoformat(), "bit": b1.isoformat(), "sinir": sinir, "api_anahtar": anahtar["prefix"]})
+    return {"santral_id": str(row["id"]), "santral": row["name"], "sinir": sinir, "sinir_etiketi": ks.SINIR_ETIKET[sinir], "bas": b0.isoformat(), "bit": b1.isoformat(), "birim": "kWh",
+            "saat": len(saatler), "ozet": gg.get("ozet"), "oncelik": gg.get("oncelik"), "nitelik_ozeti": ks.nitelik_ozeti(anahtar["tenant_id"], row, t0, t1), "saatler": saatler,
+            "uyari": gg.get("uyari"),
+            "not": "Gölge görünüm: her saatin kaynağı, ölçüm sınırı, niteliği ve revizyonu. Kısmi ve tahmini saatler üretim serisine yazılmaz; tahmin ve doğruluk bu görünümü kullanmaz. "
+                   "Uzlaştırmaya esas UEVM değildir."}
+
+
+@app.post("/v1/dis/santral/{plant_id}/uretim-dosyasi", tags=["Dış API"])
+def dis_uretim_dosyasi(plant_id: str, dosya: UploadFile = File(...), anahtar=Depends(api_anahtari("gerceklesen:yaz"))):
+    """v2.553 (S3) — üretim dosyası İTME: SCADA / kayıt cihazı dışa aktarımı (CSV, XLSX; ≤50 MB) panelden yüklemeyle aynı alım hattından geçer (biçim/eşleme
+    algılama, kayıtlı şablon, doğrulama karnesi) ve geçerli saatler üretim serisine yazılır. PVQuant üçüncü taraf gizlisi saklamaz; anahtar müşterinin.
+    Cihaz bazlı dosyada tekrar politikası santral ayarından (`itme.tekrar`) gelir; yoksa 422."""
+    from pvquant.services import itme_service
+    row = plant_service.getir(anahtar["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    yol = _gecici_dosya(dosya)
+    try:
+        r = itme_service.dosya_isle(anahtar["tenant_id"], row, yol, dosya.filename or "uretim.csv", kanal="itme_http")
+    finally:
+        _os.unlink(yol)
+    _denetim.kaydet("dis_api", "uretim_dosyasi_itme", aktor_id=anahtar.get("id"), tenant_id=anahtar["tenant_id"], nesne_tur="plant", nesne_id=row["id"],
+                    ayrinti={"durum": r["durum"], "dosya": r.get("dosya"), "n_satir": r.get("n_satir"), "hata": (r.get("hata") or "")[:160] or None})
+    if r["durum"] != "ok":
+        raise HTTPException(422, r.get("hata") or "dosya işlenemedi")
+    return r
 
 
 @app.get("/v1/dis/santral/{plant_id}/alarmlar", tags=["Dış API"])
@@ -2096,6 +2155,8 @@ class VeriYoluIstek(BaseModel):
     not_: str | None = Field(default=None, alias="not")
     baglanti: dict | None = None     # v2.545: {host, port, birim} — Modbus TCP/SunSpec sınaması için
     ornekleme_acik: bool | None = None   # v2.546: sahibin «düzenli veri çekişini başlat» kararı (yalnız Modbus + bağlantı + onay ile geçerli)
+    startdt_onayi: bool | None = None    # v2.548 (Aşama 0, H2): IEC 104 STARTDT yalnız sahibin «ayrı istemci yuvası tanımlandı» onayıyla
+    iec104: dict | None = None           # v2.554 (S4): {ca, sinir, parametreler{k,w,t0..t3,ca_boy,ioa_boy,cot_boy}}
 
 
 @app.get("/v1/plants/{plant_id}/veri-yolu")
@@ -2115,11 +2176,19 @@ def veri_yolu_ayarla(plant_id: str, p: VeriYoluIstek, claims=Depends(yazma_yetki
     row = plant_service.getir(claims["tenant_id"], plant_id)
     if row is None:
         raise HTTPException(404, "santral yok")
+    pj0 = row.get("params_json") or {}
+    if isinstance(pj0, str):
+        import json as _j
+        pj0 = _j.loads(pj0)
+    eski = pj0.get("veri_yolu") if isinstance(pj0.get("veri_yolu"), dict) else {}
     try:
         an = veri_yolu_service.dogrula({"tur": p.tur, "saglayici": p.saglayici, "periyot_dk": p.periyot_dk, "salt_okuma_onayi": p.salt_okuma_onayi, "not": p.not_, "baglanti": p.baglanti,
-                                        "ornekleme_acik": p.ornekleme_acik})
+                                        "ornekleme_acik": p.ornekleme_acik, "startdt_onayi": p.startdt_onayi, "iec104": p.iec104,
+                                        "nokta_tablosu": (eski.get("nokta_tablosu") if eski.get("tur") == p.tur else None)})   # v2.554: tablo ayrı uçtan; tür aynıysa korunur
     except ValueError as e:
         raise HTTPException(422, str(e)) from e
+    if eski.get("tur") == p.tur and eski.get("bulut_kimlik") and isinstance(an.get("veri_yolu"), dict):   # v2.556 (K1): kimlik aynası (gizli yok) tür aynıysa korunur
+        an["veri_yolu"]["bulut_kimlik"] = eski["bulut_kimlik"]
     pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **an)
     _denetim.kaydet("musteri", "veri_yolu_ayar", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"], ayrinti=an)
     row["params_json"] = pj
@@ -2155,6 +2224,240 @@ def veri_yolu_bulut_sinama(plant_id: str, p: BulutSinamaIstek, claims=Depends(ya
     return sonuc
 
 
+class BulutKimlikIstek(BaseModel):
+    saglayici: str                         # v2.556 (Aşama 3, K1)
+    kimlik: dict = {}                      # yalnız bu istekte düz metin; sınama geçerse zarf şifreli saklanır, hiçbir yere düz yazılmaz
+    bolge: str | None = None
+    onaylar: dict = {}                     # yalniz_okuma, sifreli_saklama → true
+    dis_kimlik: str | None = None          # sağlayıcıdaki santral kodu (hesapta birden çok santral varsa)
+
+
+class BulutKimlikAyar(BaseModel):
+    cekis_acik: bool | None = None
+    birim_dogrulandi: bool | None = None
+    dis_kimlik: str | None = None
+
+
+def _bulut_santral(claims, plant_id: str):
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    pj = row.get("params_json") or {}
+    if isinstance(pj, str):
+        import json as _j
+        pj = _j.loads(pj)
+    vy = pj.get("veri_yolu") if isinstance(pj.get("veri_yolu"), dict) else None
+    if not vy or vy.get("tur") != "inverter_bulut_api":
+        raise HTTPException(422, "bulut kimliği yalnız hedeflenen veri kaynağı inverter bulutu API iken saklanır")
+    return row, vy
+
+
+def _bulut_aynasi(claims, plant_id: str, vy: dict, saglayici: str | None = None) -> list[dict]:
+    """params_json.veri_yolu.bulut_kimlik: gizli içermeyen ayna (aşama rozetleri ve bağlantı durumu DB'siz okur)."""
+    from pvquant.services import bulut_kimlik_service as bk
+    kay = bk.listele(claims["tenant_id"], plant_id)
+    plant_service.params_birlestir(claims["tenant_id"], plant_id, veri_yolu={**vy, "saglayici": vy.get("saglayici") or saglayici, "bulut_kimlik": bk.params_ozeti(kay)})
+    return kay
+
+
+@app.get("/v1/plants/{plant_id}/bulut-kimlik")
+def bulut_kimlik_durum(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """v2.556/v2.557: kayıtlı bulut kimlikleri (maskeli etiket; gizli yok), kasa durumu, son çekiş, kota ve son ham saatler."""
+    from pvquant.services import bulut_cekis_service as bc, bulut_kimlik_service as bk
+    if plant_service.getir(claims["tenant_id"], plant_id) is None:
+        raise HTTPException(404, "santral yok")
+    d = bk.durum(claims["tenant_id"], plant_id)
+    d["ham_son"] = bc.ham_son(claims["tenant_id"], plant_id, None, 24)
+    d["saglayici_alanlari"] = bc.saglayici_alanlari()   # v2.562: sağlayıcı → alan etiketleri, birim notu, günlük tavan
+    d["alanlar"] = bc.ALANLAR; d["birim_notu"] = bc.BIRIM_NOTU; d["gunluk_tavan"] = bc.GUNLUK_TAVAN   # FusionSolar uyumluluğu
+    return d
+
+
+@app.post("/v1/plants/{plant_id}/bulut-kimlik")
+def bulut_kimlik_kaydet(plant_id: str, p: BulutKimlikIstek, claims=Depends(yazma_yetkisi())):
+    """v2.556 (K1): iki onay + sınama + santral seçimi → zarf şifreli kayıt. Yanıtta ve denetim izinde kimlik bilgisi yoktur."""
+    from pvquant.services import bulut_kimlik_service as bk
+    row, vy = _bulut_santral(claims, plant_id)
+    onaylar = {**(p.onaylar or {}), "yalniz_okuma": bool((p.onaylar or {}).get("yalniz_okuma")) or bool(vy.get("salt_okuma_onayi"))}
+    sonuc = bk.kaydet(claims["tenant_id"], row, p.saglayici, p.kimlik or {}, p.bolge, onaylar, claims["sub"], p.dis_kimlik)
+    if sonuc.get("kaydedildi"):
+        sn = sonuc.get("sinama") or {}; oz = {k: v for k, v in (sn.get("ozet") or {}).items() if k != "santraller"}   # kayıt sınamayla geçti → son_sinama (liste params'a yazılmaz)
+        vy = {**vy, "son_sinama": {"zaman": sn.get("zaman"), "durum": "ok", "ozet": oz, "aciklama": None, "saglayici": p.saglayici}}
+        _bulut_aynasi(claims, plant_id, vy, p.saglayici)
+    _denetim.kaydet("musteri", "bulut_kimlik_kaydet", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"],
+                    ayrinti={"durum": sonuc["durum"], "saglayici": p.saglayici, "etiket": sonuc.get("etiket"), "dis_kimlik": sonuc.get("dis_kimlik")})   # kimlik bilgisi izine YAZILMAZ
+    return sonuc
+
+
+@app.patch("/v1/plants/{plant_id}/bulut-kimlik/{saglayici}")
+def bulut_kimlik_ayar(plant_id: str, saglayici: str, p: BulutKimlikAyar, claims=Depends(yazma_yetkisi())):
+    """v2.557 (K2): düzenli çekişi aç/kapat, birim doğrulandı işareti, sağlayıcı santral kodu. Geri alınabilir."""
+    from pvquant.services import bulut_kimlik_service as bk
+    row, vy = _bulut_santral(claims, plant_id)
+    k = bk.ayarla(claims["tenant_id"], plant_id, saglayici, cekis_acik=p.cekis_acik, birim_dogrulandi=p.birim_dogrulandi, dis_kimlik=p.dis_kimlik)
+    if k is None:
+        raise HTTPException(404, "bu sağlayıcı için kayıtlı kimlik yok")
+    _bulut_aynasi(claims, plant_id, vy, saglayici)
+    _denetim.kaydet("musteri", "bulut_kimlik_ayar", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"],
+                    ayrinti={"saglayici": saglayici, "cekis_acik": p.cekis_acik, "birim_dogrulandi": p.birim_dogrulandi, "dis_kimlik": p.dis_kimlik})
+    return k
+
+
+@app.delete("/v1/plants/{plant_id}/bulut-kimlik/{saglayici}")
+def bulut_kimlik_sil(plant_id: str, saglayici: str, claims=Depends(yazma_yetkisi())):
+    """v2.556 (K1): kimliği siler; çekiş durur. Ham saatler kalır (veri sahibinindir)."""
+    from pvquant.services import bulut_kimlik_service as bk
+    row, vy = _bulut_santral(claims, plant_id)
+    n = bk.sil(claims["tenant_id"], plant_id, saglayici)
+    if not n:
+        raise HTTPException(404, "bu sağlayıcı için kayıtlı kimlik yok")
+    _bulut_aynasi(claims, plant_id, vy, saglayici)
+    _denetim.kaydet("musteri", "bulut_kimlik_sil", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"], ayrinti={"saglayici": saglayici})
+    return {"silindi": True, "saglayici": saglayici}
+
+
+# ----------------------------------------------------------------------------- v2.560 (Aşama 4): pilot kapıları ve referans kıyası
+class PilotKapiIstek(BaseModel):
+    tamam: bool
+    aciklama: str | None = None
+
+
+@app.get("/v1/plants/{plant_id}/pilot")
+def pilot_durum(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """v2.560: pilot kapıları (G01–G10; kod kapıları testlerle, saha kapıları sahibin tarihli beyanıyla) ve son referans kıyası özeti."""
+    from pvquant.services import pilot_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    return pilot_service.durum(row)
+
+
+@app.put("/v1/plants/{plant_id}/pilot/kapi/{kod}")
+def pilot_kapi(plant_id: str, kod: str, p: PilotKapiIstek, claims=Depends(yazma_yetkisi())):
+    """v2.560: saha kapısını sahibin beyanıyla kapat/aç (tarih, aktör, not). Kod kapıları elle değişmez."""
+    from pvquant.services import pilot_service
+    try:
+        d = pilot_service.kapi_ayarla(claims["tenant_id"], plant_id, kod, p.tamam, p.aciklama, claims["sub"])
+    except LookupError:
+        raise HTTPException(404, "santral yok")
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    _denetim.kaydet("musteri", "pilot_kapi", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=plant_id, ayrinti={"kod": kod.upper(), "tamam": p.tamam, "not": p.aciklama})
+    return d
+
+
+@app.post("/v1/plants/{plant_id}/pilot/referans")
+def pilot_referans(plant_id: str, dosya: UploadFile = File(...), sinir: str = "inverter_ac", claims=Depends(yazma_yetkisi())):
+    """v2.560: referans saatlik dışa aktarımı (CSV: zaman, kWh) ile gölge görünümdeki TAM saatlerin kıyası; özet santral ayarına yazılır, ham referans saklanmaz."""
+    from pvquant.services import kaynak_secim_service as ks, pilot_service
+    if sinir not in ks.SINIR_ETIKET:
+        raise HTTPException(422, "sinir geçersiz")
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    ham = dosya.file.read(5 * 1024 * 1024 + 1)
+    if len(ham) > 5 * 1024 * 1024:
+        raise HTTPException(413, "referans dosyası en çok 5 MB")
+    try:
+        ref = pilot_service.referans_csv_oku(ham.decode("utf-8-sig", errors="replace"))
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    k = pilot_service.referans_degerlendir(claims["tenant_id"], row, ref, sinir, claims["sub"], dosya.filename)
+    _denetim.kaydet("musteri", "pilot_referans", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"],
+                    ayrinti={"sonuc": k["sonuc"], "n_ortak": k["n_ortak"], "tolerans_orani": k["tolerans_orani"], "dosya": dosya.filename, "sinir": sinir})
+    return k
+
+
+# ----------------------------------------------------------------------------- v2.561 (Aşama 6): saha toplayıcısı (edge) kimliği ve idempotent alım
+class EdgeToplayiciIstek(BaseModel):
+    ad: str = "saha toplayıcısı"
+
+
+class EdgeOrnekler(BaseModel):
+    ornekler: list[dict]
+    toplayici_surum: str | None = None
+
+
+def toplayici_anahtari(x_toplayici_anahtar: str = _Header(..., alias="X-Toplayici-Anahtar")):
+    from pvquant.services import edge_service
+    try:
+        return edge_service.dogrula(x_toplayici_anahtar)
+    except PermissionError as e:
+        raise HTTPException(401, str(e))
+
+
+@app.get("/v1/plants/{plant_id}/edge/toplayici")
+def edge_toplayici_listele(plant_id: str, claims=Depends(gecerli_kullanici)):
+    from pvquant.services import edge_service
+    if plant_service.getir(claims["tenant_id"], plant_id) is None:
+        raise HTTPException(404, "santral yok")
+    return {"toplayicilar": edge_service.toplayici_listele(claims["tenant_id"], plant_id),
+            "not": "Toplayıcı anahtarı tek santrala bağlıdır ve sunucuda yalnız özeti durur; iptal edilen anahtarla gelen veri reddedilir. Sunucu toplayıcıya komut göndermez."}
+
+
+@app.post("/v1/plants/{plant_id}/edge/toplayici", status_code=201)
+def edge_toplayici_olustur(plant_id: str, p: EdgeToplayiciIstek, claims=Depends(yazma_yetkisi())):
+    """v2.561 (E2): toplayıcı kimliği üretir; anahtar yalnız bu yanıtta görünür."""
+    from pvquant.services import edge_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    r = edge_service.toplayici_olustur(claims["tenant_id"], plant_id, p.ad)
+    _denetim.kaydet("musteri", "edge_toplayici_olustur", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"], ayrinti={"ad": r["ad"], "prefix": r["prefix"]})   # anahtar izine YAZILMAZ
+    return r
+
+
+@app.delete("/v1/plants/{plant_id}/edge/toplayici/{toplayici_id}")
+def edge_toplayici_iptal(plant_id: str, toplayici_id: str, claims=Depends(yazma_yetkisi())):
+    from pvquant.services import edge_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    if not edge_service.toplayici_iptal(claims["tenant_id"], plant_id, toplayici_id):
+        raise HTTPException(404, "etkin toplayıcı yok")
+    _denetim.kaydet("musteri", "edge_toplayici_iptal", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"], ayrinti={"toplayici_id": toplayici_id})
+    return {"iptal": True, "toplayici_id": toplayici_id}
+
+
+@app.post("/v1/edge/ornekler", tags=["Saha toplayıcısı"])
+def edge_ornekler(p: EdgeOrnekler, t=Depends(toplayici_anahtari)):
+    """v2.561 (E1): toplayıcı örnekleri (sıra numaralı, ≤500). İdempotent: aynı sıra + aynı içerik yinelenen, farklı içerik çatışma. ack_sira kalıcı yazım sonrası döner.
+    Santral anahtardan gelir (gövdede santral yok). Sunucu yanıtı veri dışında hiçbir komut taşımaz."""
+    from pvquant.services import edge_service
+    plant = plant_service.getir(t["tenant_id"], t["plant_id"])
+    if plant is None:
+        raise HTTPException(404, "toplayıcının santralı yok")
+    try:
+        return edge_service.al(t, plant, p.ornekler)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+
+
+@app.post("/v1/plants/{plant_id}/veri-yolu/iec104-nokta-tablosu")
+def veri_yolu_nokta_tablosu(plant_id: str, dosya: UploadFile = File(...), claims=Depends(yazma_yetkisi())):
+    """v2.554 (S4): IEC 104 nokta tablosu (CSV: ioa, alan, carpan[, ad][, tip]) → beyana yazılır; sınama ve düzenli çekiş bu tabloyla IOA'ları PVQuant alanlarına
+    eşler. Yalnız hedef iec104 iken. Üretici dışa aktarımları (Sungrow, Huawei) önce bu beş kolona indirgenir."""
+    from pvquant.services import iec104_nokta_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    pj = row.get("params_json") or {}
+    if isinstance(pj, str):
+        import json as _j
+        pj = _j.loads(pj)
+    vy = pj.get("veri_yolu") if isinstance(pj.get("veri_yolu"), dict) else None
+    if not vy or vy.get("tur") != "iec104":
+        raise HTTPException(422, "nokta tablosu yalnız hedeflenen veri kaynağı IEC 60870-5-104 iken yüklenir")
+    try:
+        metin = dosya.file.read(2 * 1024 * 1024).decode("utf-8", errors="replace")
+        tablo = iec104_nokta_service.csv_den(metin)
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from e
+    plant_service.params_birlestir(claims["tenant_id"], plant_id, veri_yolu={**vy, "nokta_tablosu": tablo, "nokta_tablosu_kaynak": {"dosya": dosya.filename, "zaman": datetime.now(timezone.utc).isoformat(timespec="seconds"), "n": len(tablo)}})
+    _denetim.kaydet("musteri", "veri_yolu_nokta_tablosu", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"], ayrinti={"n": len(tablo), "dosya": dosya.filename})
+    return {"n": len(tablo), "alanlar": sorted({t["alan"] for t in tablo}), "tablo": tablo[:50]}
+
+
 @app.post("/v1/plants/{plant_id}/veri-yolu/sinama")
 def veri_yolu_sinama(plant_id: str, claims=Depends(yazma_yetkisi())):
     """v2.545 (P4b ilk bağlayıcı): Modbus TCP/SunSpec bağlantı sınaması — sahibin tetiklediği, yalnız okuma (FC3), onay şart; sonuç denetim izine yazılır.
@@ -2172,14 +2475,50 @@ def veri_yolu_sinama(plant_id: str, claims=Depends(yazma_yetkisi())):
         raise HTTPException(422, "sınama yalnız hedeflenen veri kaynağı Modbus TCP / SunSpec ya da IEC 60870-5-104 iken yapılır")
     if not vy.get("baglanti"):
         raise HTTPException(422, "bağlantı ayarı (host, port) girilmedi")
-    # v2.547: IEC 104 → yalnız ulaşılabilirlik (STARTDT), komut yok
-    sonuc = (canli_alim_service.sina_iec104(vy["baglanti"], bool(vy.get("salt_okuma_onayi"))) if vy["tur"] == "iec104"
+    # v2.547: IEC 104 → yalnız ulaşılabilirlik, komut yok; v2.548 (H2): varsayılan yalnız TCP, STARTDT yalnız beyandaki sahip onayıyla; v2.554 (S4): onay + nokta tablosu → genel sorgulama
+    sonuc = (canli_alim_service.sina_iec104(vy["baglanti"], bool(vy.get("salt_okuma_onayi")), startdt_onayi=bool(vy.get("startdt_onayi")), nokta_tablosu=vy.get("nokta_tablosu"), iec104_ayar=vy.get("iec104")) if vy["tur"] == "iec104"
              else canli_alim_service.sina(vy["baglanti"], bool(vy.get("salt_okuma_onayi"))))
     # 08.11 inceleme (faz 4): son sınama beyana yazılır — «ayar girildi» ile «sınama başarılı» ayrı aşamalardır; sayfa yenilenince kaybolmaz
     plant_service.params_birlestir(claims["tenant_id"], plant_id, veri_yolu={**vy, "son_sinama": {"zaman": sonuc["zaman"], "durum": sonuc["durum"], "ozet": sonuc.get("ozet"), "aciklama": sonuc.get("aciklama")}})
     _denetim.kaydet("musteri", "veri_yolu_sinama", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"],
                     ayrinti={"durum": sonuc["durum"], "hedef": sonuc.get("hedef"), "cihaz": sonuc.get("ozet")})
     return sonuc
+
+
+@app.get("/v1/plants/{plant_id}/golge-saatlik")
+def golge_saatlik(plant_id: str, bas: str | None = None, bit: str | None = None, sinir: str = "inverter_ac", claims=Depends(gecerli_kullanici)):
+    """v2.550 (Aşama 1, D5): GÖLGE saatlik görünüm — kaynak_saatlik'ten seçilen saat (tamlık + kaynak önceliği, son revizyon) ile üretim serisindeki saat
+    yan yana; fark kWh. Yalnız okuma; tahmin/doğruluk bu görünümü kullanmaz. Pencere en çok 31 gün, varsayılan son 7 gün."""
+    from datetime import datetime as _dt, timedelta as _td, timezone as _tz
+    from pvquant.services import kaynak_secim_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    if sinir not in kaynak_secim_service.SINIR_ETIKET:
+        raise HTTPException(422, "sinir inverter_ac | plant_gross_ac | pcc_net | settlement olmalı")
+    try:
+        b0 = _dt.fromisoformat(bas).astimezone(_tz.utc) if bas else None
+        b1 = _dt.fromisoformat(bit).astimezone(_tz.utc) if bit else None
+    except ValueError as e:
+        raise HTTPException(422, "bas/bit ISO 8601 olmalı") from e
+    if b0 is None or b1 is None:
+        v0, v1 = kaynak_secim_service.varsayilan_pencere()
+        b0, b1 = b0 or v0, b1 or v1
+    if b1 <= b0 or (b1 - b0) > _td(days=31):
+        raise HTTPException(422, "pencere 0–31 gün arasında olmalı")
+    return {"bas": b0.isoformat(), "bit": b1.isoformat(), **kaynak_secim_service.golge_gorunum(claims["tenant_id"], row, b0, b1, sinir)}
+
+
+@app.get("/v1/plants/{plant_id}/olay-adaylari")
+def olay_adaylari(plant_id: str, saat: int = 72, claims=Depends(gecerli_kullanici)):
+    """v2.555 (Aşama 5, V2): cihaz durumundan (canlı örnekler) olay adayları — arıza/alarm koşuları ve iletişim kopuklukları. Otomatik kayıt yok; liste bilgi amaçlı."""
+    from pvquant.services import cihaz_olay_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    if not (1 <= saat <= 24 * 14):
+        raise HTTPException(422, "saat 1–336 arasında olmalı")
+    return cihaz_olay_service.listele(claims["tenant_id"], row, saat)
 
 
 @app.get("/v1/plants/{plant_id}/kayip-agaci")

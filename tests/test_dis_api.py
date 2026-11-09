@@ -156,7 +156,7 @@ def test_pencere_basi_hizalama():
 def test_yeni_kapsamlar_gerceklesen_alarm_rapor_ayar(monkeypatch):
     """v2.528 (P10): rezerve kapsamlar canlı — gerceklesen:oku, alarm:oku, rapor:indir, santral:yaz; kapsam yoksa 403; doğrulama ve denetim."""
     ak._kovalar.clear()
-    tum = ["tahmin:oku", "kgup:oku", "gerceklesen:oku", "alarm:oku", "rapor:indir", "santral:yaz"]
+    tum = ["tahmin:oku", "kgup:oku", "gerceklesen:oku", "alarm:oku", "rapor:indir", "santral:yaz", "gerceklesen:yaz"]   # v2.553: itme kapsamı
     monkeypatch.setattr(ak, "_kayit_bul", lambda p: _kayit("gizli", scopes=tum) if p == "abcd1234" else (_kayit("dar", scopes=["tahmin:oku"]) if p == "dar00000" else None))
     monkeypatch.setattr(ak, "_kullanim_isle", lambda i: None)
     monkeypatch.setattr(ak, "_paylasimli_izin", lambda p, r, t: ak._kova_izin(p, r))

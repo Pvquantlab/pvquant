@@ -40,7 +40,7 @@ export const SOZLUK = {
     // v2.516 (#7) — uzlaştırma katmanı
     kgup_indir: "KGÜP dosyası indirildi", eak_indir: "EAK dosyası indirildi", kgup_bildirilen_yukle: "Bildirilen KGÜP yüklendi",
     kgup_sablon_ogren: "KGÜP şablonu öğrenildi", kgup_sablon_sifirla: "KGÜP şablonu sıfırlandı",
-    santral_segment: "Segment / UEVÇB ayarlandı", eak_ayar: "EAK ayarı değiştirildi", sensor_ayar: "Sensör envanteri değiştirildi", veri_yolu_ayar: "Veri kaynağı beyanı değiştirildi", veri_yolu_sinama: "Veri kaynağı bağlantısı sınandı",
+    santral_segment: "Segment / UEVÇB ayarlandı", eak_ayar: "EAK ayarı değiştirildi", sensor_ayar: "Sensör envanteri değiştirildi", veri_yolu_ayar: "Veri kaynağı beyanı değiştirildi", veri_yolu_nokta_tablosu: "IEC 104 nokta tablosu yüklendi", uretim_dosyasi_itme: "Üretim dosyası itildi (dış API)", bulut_kimlik_kaydet: "Bulut kimliği şifreli kaydedildi", bulut_kimlik_ayar: "Bulut çekiş ayarı değiştirildi", bulut_kimlik_sil: "Bulut kimliği silindi", pilot_kapi: "Pilot kapısı beyanı değiştirildi", pilot_referans: "Pilot referans kıyası yapıldı", edge_toplayici_olustur: "Saha toplayıcısı anahtarı üretildi", edge_toplayici_iptal: "Saha toplayıcısı anahtarı iptal edildi", veri_yolu_sinama: "Veri kaynağı bağlantısı sınandı",
     santral_tarihler: "Santral tarihleri ayarlandı",   // v2.518 (P3a)
     olay_ekle: "Olay kaydı açıldı", olay_guncelle: "Olay kaydı güncellendi",   // v2.521 (P1a)
     mutabakat_yukle: "Uzlaştırma bildirimi yüklendi", dsg_belge_indir: "DSG üye dağılımı belgesi indirildi",   // v2.522 (P2b)

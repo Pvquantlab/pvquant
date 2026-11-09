@@ -150,7 +150,7 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
           <div className="grafik-kaydir santral-tablo">
             <table className="veri sayisal santral">
               <thead><tr>
-                <th>Santral</th><th>Kurulu güç <span className="birim">kWp</span></th><th>Segment</th><th className="tarih-saat">Son ölçüm</th>
+                <th>Santral</th><th>Kurulu güç <span className="birim">kWp</span></th><th>Segment</th><th className="tarih-saat">Son ölçüm</th><th title="Hedeflenen veri kaynağı ve bağlantı durumu (Santralim › Veri kaynakları beyanı); dosya kaynakları «dosya»">Bağlantı</th>
                 <th>Hata 30 g <span className="birim">WMAPE</span></th><th>Bugün</th><th>Yarın</th><th>Alarm</th><th className="tarih-saat">Son tahmin</th><th aria-hidden="true" />
               </tr></thead>
               <tbody>
@@ -167,6 +167,10 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
                       <div className="tarih-saat"><TarihSaat metin={tarih(r.son_olcum)} /></div>
                       {eski && <div className="hucre-alt"><span className="rozet rozet-uyari rozet-kucuk" title="Son ölçüm 2 günden eski">{sayiTr(r.kesinti_gun!)} gün eski</span></div>}
                     </td>
+                    <td>{r.baglanti ? <>   {/* v2.563 (V3-b): toplayıcı portföyünde bağlantı durumu tek bakışta */}
+                      <div>{r.baglanti.tur_kisa}{r.baglanti.n_cihaz > 1 ? ` · ${sayiTr(r.baglanti.n_cihaz)} cihaz` : ""}</div>
+                      <div className="hucre-alt"><span className={`rozet rozet-kucuk ${["veri_akisi", "mevcut", "dosya"].includes(r.baglanti.kod) ? "rozet-ok" : ["cekis_acik", "sinama_ok", "tcp_ok"].includes(r.baglanti.kod) ? "rozet-notr" : r.baglanti.kod === "sinanmadi" ? "rozet-notr" : "rozet-uyari"}`} title={r.baglanti.etiket}>{r.baglanti.etiket}</span></div>
+                    </> : <span className="bos" title="Hedef veri kaynağı seçilmedi">—</span>}</td>
                     <td>{r.wmape_30g != null ? `%${sayiTr(r.wmape_30g, 1)}` : <span className="bos" title="Son 30 günde karşılaştırılmış gün yok">—</span>}</td>
                     <td><DegerBirim metin={kwhYaz(r.bugun_kwh)} /></td>
                     <td><DegerBirim metin={kwhYaz(r.yarin_kwh)} /></td>
