@@ -1101,3 +1101,5 @@ Sonraya: EK-3 değer satırları; lock dosyası kararı; Mutabakat'ta kupst_kayn
 **Yapılmayan / sonraya.** Bulut kimlik bilgisinin şifreli saklanması + düzenli bulut çekişi; bulut bağlayıcılarının gerçek hesapla canlı sınaması; IEC 104 veri çekişi (ASDU adresi + IOA listesi); OPC UA (kitaplık kararı); diğer bulut üreticileri.
 
 **Kanıt.** tests/test_bulut_iec104_v2547.py 6 (FusionSolar giriş/liste/saatlik/305; SolarEdge liste/saatlik/403; sınama durumları + anahtar sızmaz; IEC 104 sahte sunucu con/yanıtsız/kapalı port; sina_iec104 durumları + aşama etiketi; API kapıları — anahtar beyanda ve denetim izinde yok, OPC UA 422). Tam takım; ağır dosyalar ayrı; web build + lint + 103; önizleme 1440/375.
+
+**Mühür.** v2.547 fa3b113 CANLI (09.11 10:47 TSİ): CI #707 yeşil; api+web ssh dağıtımı (worker değişmedi); göç yok; canlı bayt kıyası 25/25 birebir; healthz ok. Üç inceleme turu (ekran; ekran; brif yedi faz / üç tur) + P6 kararı (i).
