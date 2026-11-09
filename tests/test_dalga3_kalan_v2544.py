@@ -143,7 +143,7 @@ def test_kirlenme_ve_veri_yolu_kapilari(istemci):
     g = istemci.get(f"/v1/plants/{PLANT}/veri-yolu"); assert g.status_code == 200 and g.json()["beyan"] is None and len(g.json()["yollar"]) == 7 and g.json()["etkin"][0]["tur"] == "scada_dosya" and g.json()["asamalar"] == []
     r = istemci.put(f"/v1/plants/{PLANT}/veri-yolu", json={"tur": "inverter_bulut_api", "saglayici": "FusionSolar", "periyot_dk": 5, "salt_okuma_onayi": True})
     assert r.status_code == 200 and r.json()["beyan"]["tur"] == "inverter_bulut_api" and r.json()["hedef"]["durum"] == "kurulmadi" and len(r.json()["hedef"]["gerekenler"]) >= 4
-    assert [x["kod"] for x in r.json()["asamalar"]] == ["secildi", "ayar", "sinama", "akis"] and not r.json()["asamalar"][1]["tamam"]
+    assert [x["kod"] for x in r.json()["asamalar"]] == ["secildi", "ayar", "sinama", "akis"] and r.json()["asamalar"][1]["tamam"] and r.json()["asamalar"][1]["etiket"] == "sağlayıcı seçildi"   # v2.547: bulutta ayar = sağlayıcı
     assert istemci.put(f"/v1/plants/{PLANT}/veri-yolu", json={"tur": "yok"}).status_code == 422
     assert istemci.put(f"/v1/plants/{PLANT}/veri-yolu", json={"tur": None}).json()["beyan"] is None
 

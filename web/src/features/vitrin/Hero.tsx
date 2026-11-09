@@ -174,8 +174,8 @@ export function Hero({ kabuk = false }: { kabuk?: boolean } = {}) {
           <div className="vt-eylemler vt-hero__eylem">
             <a className="vt-dugme vt-dugme--dolu vt-dugme--ok vt-dugme--buyuk" href="#basla">Karnenizi başlatın</a>
             <a className="vt-dugme vt-dugme--gece-cizgi vt-dugme--buyuk" href="/yontem#para">Uzlaştırma kalemleri nasıl hesaplanır</a>
-            {/* 29.10 (04 §2): dürüst daraltma — lisanssız sahibini adreslemeyen «Kimin için» künyesi */}
-            <p className="vt-hero__kimin"><span className="vt-hero__kimin-et">Kimin için</span><Meta items={["lisanslı GES sahipleri", "DSG ve enerji ticareti masaları", "toplayıcı ve görevli tedarik portföyleri"]} /></p>
+            {/* 29.10 (04 §2): dürüst daraltma — «Kimin için» künyesi; 09.11 (P6 kararı (i), K-02): tek tesisli lisanssız sahibi ayrıca adreslenmez, lisanssız santraller yalnız toplayıcı portföyü üzerinden kapsanır */}
+            <p className="vt-hero__kimin"><span className="vt-hero__kimin-et">Kimin için</span><Meta items={["lisanslı GES sahipleri", "DSG ve enerji ticareti masaları", "toplayıcı ve görevli tedarik portföyleri", "lisanssız santraller toplayıcı portföyü üzerinden"]} /></p>
             <p className="vt-hero__mikro"><Meta items={["başvuru", "kurulumu biz yaparız", "piyasa kimliği olan lisanslı santralde veri yüklemeniz gerekmez", "doğruluk karneniz ilk günden birikmeye başlar"]} /></p>
           </div>
         </div>

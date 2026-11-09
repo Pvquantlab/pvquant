@@ -55,6 +55,32 @@ def _cozumle(host: str) -> str:
         raise ValueError(f"ana makine adı çözümlenemedi: {host}") from e
 
 
+def sina_iec104(ayar: dict, onay: bool, ulas=None) -> dict:
+    """v2.547: IEC 60870-5-104 ulaşılabilirlik — TCP + STARTDT act/con; ASDU/komut yok. ok (con alındı) · protokol_yaniti_yok (TCP var, con yok) ·
+    baglanti_hatasi · adres_reddedildi · ayar_hatasi · onay_yok. `ulas` testler için enjekte edilir."""
+    from pvquant.io.canli import iec104
+    simdi = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    if not onay:
+        return {"durum": "onay_yok", "zaman": simdi, "aciklama": "Yalnızca veri okuma izni onayı işaretlenmeden bağlantı sınanmaz."}
+    try:
+        h = hedef_dogrula(ayar.get("host"), ayar.get("port") or iec104.VARSAYILAN_PORT, 0)
+        ip = _cozumle(h["host"])
+        izin, neden = adres_izinli(ip)
+        if not izin:
+            return {"durum": "adres_reddedildi", "zaman": simdi, "aciklama": neden, "hedef": h}
+    except ValueError as e:
+        return {"durum": "ayar_hatasi", "zaman": simdi, "aciklama": str(e)}
+    hedef = {"host": h["host"], "port": h["port"], "ip": ip, "ag": neden}
+    try:
+        r = (ulas or iec104.ulasilabilirlik)(h["host"], h["port"], ZAMAN_ASIMI_SN)
+    except OSError as e:
+        return {"durum": "baglanti_hatasi", "zaman": simdi, "hedef": hedef, "aciklama": f"İstasyona ulaşılamadı ({type(e).__name__}: {e}). Adres, port (varsayılan 2404), VPN/ağ geçidi ve istemci bağlantısına izin verilen IP listesini denetleyin."}
+    if not r.get("startdt_con"):
+        return {"durum": "protokol_yaniti_yok", "zaman": simdi, "hedef": hedef, "aciklama": "TCP bağlantısı kuruldu, IEC 104 STARTDT onayı gelmedi: port başka bir hizmete ait olabilir ya da istasyon bu istemci IP'sine izin vermiyor."}
+    return {"durum": "ok", "zaman": simdi, "hedef": hedef, "ozet": {"startdt_con": True},
+            "not": "Ulaşılabilirlik sınaması: yalnız bağlantı katmanı (STARTDT/STOPDT); genel sorgulama dâhil hiçbir komut gönderilmedi, veri okunmadı. Veri çekişi için ASDU adresi ve bilgi nesnesi listesi gerekir."}
+
+
 def sina(ayar: dict, onay: bool, istemci_fabrikasi=None) -> dict:
     """Bağlantı sınaması. ayar: host/port/birim. onay False → yapılmaz. istemci_fabrikasi testler için (host, port, birim, zaman_asimi) → istemci."""
     from pvquant.io.canli import sunspec
@@ -88,9 +114,9 @@ def sina(ayar: dict, onay: bool, istemci_fabrikasi=None) -> dict:
                 "ozet": {"uretici": (cihaz.get("ortak") or {}).get("uretici"), "model": (cihaz.get("ortak") or {}).get("model"), "seri_no": (cihaz.get("ortak") or {}).get("seri_no"),
                          "guc_kw": None, "enerji_mwh": None, "durum": None, "olaylar": [], "model_sayisi": len(cihaz.get("modeller", []))},
                 "aciklama": "Cihaza erişildi ve SunSpec ortak modeli okundu; inverter ölçüm modeli (101–103 / 111–113) bulunamadı. Düzenli çekiş için bu model gerekir.",
-                "not": "Salt okuma sınaması: yalnız Modbus fonksiyon 3 kullanıldı, cihaza yazılmadı."}
+                "not": "Yalnızca okuma sınaması: yalnız Modbus fonksiyon 3 kullanıldı, cihaza yazılmadı."}
     return {"durum": "ok", "zaman": simdi, "hedef": hedef, "cihaz": cihaz,
             "ozet": {"uretici": (cihaz.get("ortak") or {}).get("uretici"), "model": (cihaz.get("ortak") or {}).get("model"), "seri_no": (cihaz.get("ortak") or {}).get("seri_no"),
                      "guc_kw": (round(inv["guc_w"] / 1000.0, 3) if inv.get("guc_w") is not None else None), "enerji_mwh": (round(inv["enerji_wh"] / 1e6, 3) if inv.get("enerji_wh") is not None else None),
                      "durum": inv.get("durum"), "olaylar": inv.get("olaylar", []), "model_sayisi": len(cihaz.get("modeller", []))},
-            "not": "Salt okuma sınaması: yalnız Modbus fonksiyon 3 kullanıldı, cihaza yazılmadı. Düzenli veri çekişi bu sınamayla başlamaz; ayrı pakette."}
+            "not": "Yalnızca okuma sınaması: yalnız Modbus fonksiyon 3 kullanıldı, cihaza yazılmadı. Düzenli veri çekişi bu sınamayla başlamaz; «düzenli veri çekişini başlat» ile ayrıca açılır."}

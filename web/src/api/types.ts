@@ -714,23 +714,33 @@ export interface Kirlenme { durum: "ok" | "egim_yok" | "poa_yok" | "acik_gun_yok
   hesaplama_zamani?: string;
   esikler?: Record<string, number | number[]> }
 /** v2.544 (P4b hazırlık; IH-023): veri kaynakları, bağlantı durumu ve hazırlık listesi. durum: mevcut (uygulamada var) | kurulmadi (bağlantı henüz yok). */
-export interface VeriYolu { tur: string; etiket: string; kisa: string; durum: "mevcut" | "kurulmadi"; durum_etiketi: string; yon: string; tur_etiketi: string; gerekenler: string[]; not: string }
+export interface VeriYolu { tur: string; etiket: string; kisa: string; durum: "mevcut" | "kurulmadi"; durum_etiketi: string; yon: string; tur_etiketi: string; gerekenler: string[]; not: string;
+  /** 09.11 inceleme III: yolun gerçek yetenekleri — arayüz varsayım yapmaz */
+  yetenekler?: { yapilandirma: string | null; sinama: "kimlik" | "okuma" | "ulasilabilirlik" | null; veri_okuma: boolean; duzenli_cekis: boolean; dogrulama: "canli" | "sahte" | "yok"; ozet: string; sinama_etiketi: string; dogrulama_etiketi: string } }
 export interface VeriYoluEtkin { tur: string; etiket: string; tur_etiketi: string; tanimli: boolean; son: string | null; son_olcum?: string | null; ayrinti: string | null;
   tazelik: "guncel" | "gecikmis" | "yok" | "dosya" | "dosya_eski"; tazelik_etiketi: string; yas_saat: number | null;
   /** 08.11 inceleme: EPİAŞ çekiş durumu — hata ≠ yeni kayıt yok ≠ SCADA öncelikli */
   cekis?: { kod: string; etiket: string; zaman: string | null; ayrinti?: string | null } | null;
   /** 08.11 inceleme II: bağlantı sağlığı (veri tazeliğinden ayrı) ve veri cümlesi */
-  baglanti?: { durum: "ok" | "hata" | "yok" | "bilinmiyor"; etiket: string; zaman: string | null } | null; veri_etiketi?: string }
+  baglanti?: { durum: "ok" | "hata" | "yok" | "bilinmiyor"; etiket: string; zaman: string | null } | null; veri_etiketi?: string; veri_kodu?: string }
 /** 08.11 inceleme (faz 3): hedef bağlantının aşamaları; hiçbiri diğerini ima etmez */
 export interface VeriYoluAsama { kod: "secildi" | "ayar" | "sinama" | "cekis" | "akis"; etiket: string; tamam: boolean; zaman: string | null; durum?: string }
 export interface VeriYoluOzet { etkin: VeriYoluEtkin[];
   beyan: { tur: string; saglayici: string | null; periyot_dk: number | null; salt_okuma_onayi: boolean; not: string | null; beyan_zamani: string; baglanti?: { host: string; port: number; birim: number } | null;
-    son_sinama?: { zaman: string; durum: VeriYoluSinama["durum"]; ozet?: VeriYoluSinama["ozet"] | null; aciklama?: string | null } | null;
+    son_sinama?: { zaman: string; durum: VeriYoluSinama["durum"]; ozet?: VeriYoluSinama["ozet"] | Record<string, unknown> | null; aciklama?: string | null; saglayici?: string } | null;
     /** v2.546: sahibin «düzenli veri çekişini başlat» kararı */
     ornekleme_acik?: boolean } | null;
-  hedef: VeriYolu | null; asamalar?: VeriYoluAsama[]; yollar: VeriYolu[]; taze_saat: number; dosya_eski_gun?: number; dosya_yukleme_sikligi_gun?: number | null; not: string }
+  hedef: VeriYolu | null; asamalar?: VeriYoluAsama[]; yollar: VeriYolu[]; taze_saat: number; dosya_eski_gun?: number; dosya_yukleme_sikligi_gun?: number | null; not: string;
+  /** v2.547: bulut sağlayıcıları (bağlayıcısı olanlar) ve henüz olmayanlar */
+  bulut?: { saglayicilar: { kod: string; ad: string; kimlik_alanlari: string[]; bolge: boolean; not: string; durum?: string; durum_etiketi?: string }[]; bolgeler: string[]; henuz_yok: string[]; henuz_yok_etiketi?: string; diger_etiketi?: string; not: string };
+  /** 09.11 inceleme III: hedef bağlantının tek durum kodu */
+  baglanti_durumu?: { kod: string; etiket: string } }
 /** v2.545 (P4b): Modbus TCP / SunSpec bağlantı sınaması sonucu (yalnız okuma; veri akışı başlatmaz). */
-export interface VeriYoluSinama { durum: "ok" | "kismi" | "veri_modeli_yok" | "onay_yok" | "adres_reddedildi" | "ayar_hatasi" | "baglanti_hatasi"; zaman: string; aciklama?: string;
+export interface VeriYoluSinama { durum: "ok" | "kismi" | "veri_modeli_yok" | "protokol_yaniti_yok" | "kimlik_hatasi" | "saglayici_desteklenmiyor" | "onay_yok" | "adres_reddedildi" | "ayar_hatasi" | "baglanti_hatasi"; zaman: string; aciklama?: string;
+  /** v2.547: bulut sınaması özeti */
+  saglayici?: string; bulut_ozet?: { santral_sayisi: number; ilk_santral: string | null; ilk_kapasite_kwp: number | null; saat_dilimi: string | null };
   hedef?: { host: string; port: number; birim: number; ip?: string; ag?: string };
-  ozet?: { uretici: string | null; model: string | null; seri_no: string | null; guc_kw: number | null; enerji_mwh: number | null; durum: string | null; olaylar: string[]; model_sayisi: number };
+  ozet?: { uretici?: string | null; model?: string | null; seri_no?: string | null; guc_kw?: number | null; enerji_mwh?: number | null; durum?: string | null; olaylar?: string[]; model_sayisi?: number;
+    /** v2.547: bulut (santral listesi) ve IEC 104 (STARTDT) özetleri aynı alanda */
+    santral_sayisi?: number; ilk_santral?: string | null; ilk_kapasite_kwp?: number | null; saat_dilimi?: string | null; startdt_con?: boolean };
   not?: string }

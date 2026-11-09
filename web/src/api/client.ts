@@ -951,6 +951,7 @@ export const api = {
     try { return await getir<VeriYoluOzet>(`/v1/plants/${p}/veri-yolu`); } catch { return null; }
   },
   veriYoluSina: (p: string): Promise<VeriYoluSinama> => gonder(`/v1/plants/${p}/veri-yolu/sinama`, "POST", {}),   // v2.545: yalnız okuma sınaması
+  veriYoluBulutSina: (p: string, g: { saglayici: string; kimlik: Record<string, string>; bolge?: string | null }): Promise<VeriYoluSinama> => gonder(`/v1/plants/${p}/veri-yolu/bulut-sinama`, "POST", g),   // v2.547: kimlik yalnız bu istekte gider, saklanmaz
   veriYoluAyarla: (p: string, g: { tur: string | null; saglayici?: string | null; periyot_dk?: number | null; salt_okuma_onayi?: boolean; not?: string | null; baglanti?: { host: string; port?: number | null; birim?: number | null } | null; ornekleme_acik?: boolean }): Promise<VeriYoluOzet> =>
     gonder(`/v1/plants/${p}/veri-yolu`, "PUT", g),
   /** v2.278: EPİAŞ gerçekleşen üretim — durum ve santral eşlemesi. */

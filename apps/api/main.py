@@ -2126,6 +2126,35 @@ def veri_yolu_ayarla(plant_id: str, p: VeriYoluIstek, claims=Depends(yazma_yetki
     return veri_yolu_service.ozet(claims["tenant_id"], row)
 
 
+class BulutSinamaIstek(BaseModel):
+    saglayici: str                         # v2.547: fusionsolar | solaredge
+    kimlik: dict = {}                      # kullanici/sistem_kodu ya da api_anahtari — SAKLANMAZ
+    bolge: str | None = None               # FusionSolar bölge sunucusu
+
+
+@app.post("/v1/plants/{plant_id}/veri-yolu/bulut-sinama")
+def veri_yolu_bulut_sinama(plant_id: str, p: BulutSinamaIstek, claims=Depends(yazma_yetkisi())):
+    """v2.547 (P4b-3): inverter bulutu bağlantı sınaması — kimlik gövdede gelir, yalnız sınama süresince tutulur, yazılmaz; sonuç (anahtarsız) beyana ve
+    denetim izine düşer. Yalnız hedef «inverter_bulut_api» ve onay varken."""
+    from pvquant.services import bulut_sinama_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    pj = row.get("params_json") or {}
+    if isinstance(pj, str):
+        import json as _j
+        pj = _j.loads(pj)
+    vy = pj.get("veri_yolu") if isinstance(pj.get("veri_yolu"), dict) else None
+    if not vy or vy.get("tur") != "inverter_bulut_api":
+        raise HTTPException(422, "bulut sınaması yalnız hedeflenen veri kaynağı inverter bulutu API iken yapılır")
+    sonuc = bulut_sinama_service.sina(p.saglayici, p.kimlik or {}, bool(vy.get("salt_okuma_onayi")), p.bolge)
+    plant_service.params_birlestir(claims["tenant_id"], plant_id, veri_yolu={**vy, "saglayici": vy.get("saglayici") or p.saglayici,
+                                   "son_sinama": {"zaman": sonuc["zaman"], "durum": sonuc["durum"], "ozet": sonuc.get("ozet"), "aciklama": sonuc.get("aciklama"), "saglayici": p.saglayici}})
+    _denetim.kaydet("musteri", "veri_yolu_sinama", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"],
+                    ayrinti={"durum": sonuc["durum"], "saglayici": p.saglayici, "ozet": sonuc.get("ozet")})   # kimlik bilgisi izine YAZILMAZ
+    return sonuc
+
+
 @app.post("/v1/plants/{plant_id}/veri-yolu/sinama")
 def veri_yolu_sinama(plant_id: str, claims=Depends(yazma_yetkisi())):
     """v2.545 (P4b ilk bağlayıcı): Modbus TCP/SunSpec bağlantı sınaması — sahibin tetiklediği, yalnız okuma (FC3), onay şart; sonuç denetim izine yazılır.
@@ -2139,11 +2168,13 @@ def veri_yolu_sinama(plant_id: str, claims=Depends(yazma_yetkisi())):
         import json as _j
         pj = _j.loads(pj)
     vy = pj.get("veri_yolu") if isinstance(pj.get("veri_yolu"), dict) else None
-    if not vy or vy.get("tur") != "modbus_sunspec":
-        raise HTTPException(422, "sınama yalnız hedeflenen veri kaynağı Modbus TCP / SunSpec iken yapılır")
+    if not vy or vy.get("tur") not in ("modbus_sunspec", "iec104"):
+        raise HTTPException(422, "sınama yalnız hedeflenen veri kaynağı Modbus TCP / SunSpec ya da IEC 60870-5-104 iken yapılır")
     if not vy.get("baglanti"):
-        raise HTTPException(422, "bağlantı ayarı (host, port, birim) girilmedi")
-    sonuc = canli_alim_service.sina(vy["baglanti"], bool(vy.get("salt_okuma_onayi")))
+        raise HTTPException(422, "bağlantı ayarı (host, port) girilmedi")
+    # v2.547: IEC 104 → yalnız ulaşılabilirlik (STARTDT), komut yok
+    sonuc = (canli_alim_service.sina_iec104(vy["baglanti"], bool(vy.get("salt_okuma_onayi"))) if vy["tur"] == "iec104"
+             else canli_alim_service.sina(vy["baglanti"], bool(vy.get("salt_okuma_onayi"))))
     # 08.11 inceleme (faz 4): son sınama beyana yazılır — «ayar girildi» ile «sınama başarılı» ayrı aşamalardır; sayfa yenilenince kaybolmaz
     plant_service.params_birlestir(claims["tenant_id"], plant_id, veri_yolu={**vy, "son_sinama": {"zaman": sonuc["zaman"], "durum": sonuc["durum"], "ozet": sonuc.get("ozet"), "aciklama": sonuc.get("aciklama")}})
     _denetim.kaydet("musteri", "veri_yolu_sinama", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"],

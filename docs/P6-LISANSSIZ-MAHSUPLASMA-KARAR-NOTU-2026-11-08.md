@@ -73,3 +73,12 @@ Gerektirdikleri (her biri kendi girdisini ister; hiçbiri bugün elde değil):
 
 Bugünkü kitle ve kaynaklarla **(i)**: C dilimi toplayıcı üzerinden kapsanır, vitrin metni buna göre netleştirilir; (ii) en az bir lisanssız müşteriyle
 görüşülüp OSOS dışa aktarımı ve GTŞ fatura örneği alınmadan açılmaz. Bu not karar verilince 04 raporundaki P6 satırına işlenir.
+
+## 6. Karar (09.11.2026)
+
+Sahip **(i)** yolunu seçti: PVQuant 2027 ilk yarısında tek tesisli lisanssız (persona C) dilimine girmez; lisanssız santraller yalnız toplayıcı /
+görevli tedarik portföyü üzerinden kapsanır (bugünkü KÜPST payı, Karar 14909 göstergesi, Takvim satırları ve LÜY rejimi rozeti korunur). Uygulanan
+tek değişiklik (K-02): vitrin «Kimin için» künyesine «lisanssız santraller toplayıcı portföyü üzerinden» maddesi eklendi (v2.547). (ii) yolunun
+kalemleri (tüketim veri modeli, üç sanal sayaç, GTŞ ödeme kıyası, fatura mutabakatı, Karar 14531 madde karşılaştırması) yol haritasında kapalı
+kalır; yeniden açılması için en az bir lisanssız pilot müşteri, OSOS dışa aktarımı ve bir GTŞ fatura örneği gerekir. 10.12.2026 AYM yürürlüğü sonrası
+rejim için haftalık RG taraması sürer.

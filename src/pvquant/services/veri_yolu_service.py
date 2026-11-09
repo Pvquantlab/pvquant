@@ -31,24 +31,51 @@ VERI_YOLLARI: dict[str, dict] = {
                     "not": "Uzlaştırma girdisi ve SCADA–sayaç kıyası için; Sayaç sayfasından yüklenir. Dosya tabanlıdır."},
     "inverter_bulut_api": {"etiket": "İnverter bulutu API (FusionSolar, iSolarCloud, Sunny Portal, SolisCloud, GoodWe …)", "kisa": "İnverter bulutu API", "durum": "kurulmadi", "yon": "api", "tur_etiketi": "bulut bağlantısı",
                            "gerekenler": ["Üretici portalında yalnızca okuma izinli API hesabı / Northbound anahtarı", "Sahip onayı ve varsa veri erişim bedeli", "Santral ve cihaz kimlikleri (inverter listesi)", "Örnek 48 saatlik çıktı (alan adları, zaman dilimi, birimler)", "Alarm/durum kodu sözlüğü (inverter alarmlarının ortak kategoriye eşlenmesi için)"],
-                           "not": "Üretici başına ayrı bağlantı gerekir; ilk bağlantı, yalnızca okuma izinli anahtar ve örnek çıktı geldikten sonra kurulur. Bağlantı henüz kurulmadı."},
+                           "not": "FusionSolar (Northbound) ve SolarEdge için salt-okuma bağlayıcı herkese açık belgelerden yazıldı; anahtarla sınanabilir, anahtar saklanmaz. Gerçek hesapla doğrulanmadı; düzenli çekiş için kimlik bilgisinin şifreli saklanması ayrı karardır. Diğer üreticiler anahtar ve örnek çıktı gelince."},
     "modbus_sunspec": {"etiket": "Modbus TCP / SunSpec (inverter, enerji sayacı, kirlenme sensörü)", "kisa": "Modbus TCP / SunSpec", "durum": "kurulmadi", "yon": "protokol", "tur_etiketi": "saha protokolü",
                        "gerekenler": ["Saha ağına yalnızca okuma erişimi (VPN ya da ağ geçidi), IP:port ve birim kimliği", "Kayıt haritası: SunSpec model numaraları ya da üretici Modbus tablosu", "Sahip onayı ve yazma kapalı siber güvenlik politikası", "Sorgu periyodu ve sayaç/sensör listesi"],
                        "not": "SolarPower Europe O&M v6.0 kirlenme sensörü ve enerji sayacı için Modbus önerir (öneri, zorunluluk değil). Cihaz adresi girilip yalnızca okuma onayı verilince bağlantı sınanabilir; düzenli veri çekişi henüz yok."},
     "iec104": {"etiket": "IEC 60870-5-104 (SCADA / PPC)", "kisa": "IEC 60870-5-104", "durum": "kurulmadi", "yon": "protokol", "tur_etiketi": "saha protokolü",
                "gerekenler": ["TEİAŞ RTU hattından AYRI, yalnızca okuma istemci bağlantısı", "ASDU adresi ve bilgi nesnesi (IOA) listesi", "İşletmeci ve sahip onayı"],
-               "not": "RTU → TEİAŞ hattına dokunulmaz; PVQuant yalnız ayrı bir izleme istemcisi olabilir. Bağlantı henüz kurulmadı."},
+               "not": "RTU → TEİAŞ hattına dokunulmaz; PVQuant yalnız ayrı bir izleme istemcisi olabilir. Adres girilip onay verilince ulaşılabilirlik sınanır (yalnız STARTDT; komut ve veri okuma yok). Veri çekişi için ASDU adresi ve bilgi nesnesi listesi gerekir."},
     "opc_ua": {"etiket": "OPC UA (SCADA sunucusu)", "kisa": "OPC UA", "durum": "kurulmadi", "yon": "protokol", "tur_etiketi": "saha protokolü",
                "gerekenler": ["OPC UA uç noktası ve yalnızca okuma kullanıcı/sertifika", "Düğüm (node) listesi: güç, enerji, ışınım, sıcaklık", "Sahip onayı"],
-               "not": "Saha SCADA'sı destekliyorsa en temiz yol; yazma kapalı. Bağlantı henüz kurulmadı."},
+               "not": "Saha SCADA'sı destekliyorsa en temiz yol; yazma kapalı. OPC UA istemcisi için ayrı bir kitaplık kararı gerekir (bağımlılık eklenmedi); uç nokta ve sertifika gelince."},
 }
 DURUM_ETIKET = {"mevcut": "uygulamada mevcut", "kurulmadi": "bağlantı henüz kurulmadı"}
+# 09.11 inceleme III (faz 2/4): her yolun GERÇEK yetenekleri — arayüz bunu okur, varsayım yapmaz.
+# sinama: None | kimlik (bulut girişi + santral listesi) | okuma (Modbus FC3 + SunSpec) | ulasilabilirlik (IEC 104 STARTDT; veri okunmaz)
+# dogrulama: canli (üretimde çalışıyor) | sahte (yalnız sahte cihaz/sunucuyla sınandı; gerçek hesap/cihazla doğrulanmadı) | yok
+YETENEKLER: dict[str, dict] = {
+    "scada_dosya": {"yapilandirma": "Veri yükleme sihirbazı (kolon eşlemesi)", "sinama": None, "veri_okuma": True, "duzenli_cekis": False, "dogrulama": "canli",
+                    "ozet": "Dosya yükleyince veri gelir; sürekli bağlantı değildir."},
+    "epias_seffaflik": {"yapilandirma": "Santral ayarları › EPİAŞ santral kimliği", "sinama": None, "veri_okuma": True, "duzenli_cekis": True, "dogrulama": "canli",
+                        "ozet": "Her gece bir önceki günlerin üretimi çekilir (lisanslı tesis)."},
+    "sayac_dosya": {"yapilandirma": "Sayaç sayfası › dosya yükleme", "sinama": None, "veri_okuma": True, "duzenli_cekis": False, "dogrulama": "canli",
+                    "ozet": "Dönem dosyası yüklenince sayaç verisi gelir."},
+    "inverter_bulut_api": {"yapilandirma": "Sağlayıcı seçimi; kimlik yalnız sınamada", "sinama": "kimlik", "veri_okuma": False, "duzenli_cekis": False, "dogrulama": "sahte",
+                           "ozet": "FusionSolar ve SolarEdge için giriş + santral listesi sınanır; üretim verisi henüz çekilmez; gerçek hesapla doğrulanmadı."},
+    "modbus_sunspec": {"yapilandirma": "Cihaz adresi, port, birim kimliği", "sinama": "okuma", "veri_okuma": True, "duzenli_cekis": True, "dogrulama": "sahte",
+                       "ozet": "Sınamada inverter ölçümü okunur; «düzenli veri çekişini başlat» ile saatlik veri üretim serisine yazılır; gerçek cihazla doğrulanmadı."},
+    "iec104": {"yapilandirma": "İstasyon adresi, port", "sinama": "ulasilabilirlik", "veri_okuma": False, "duzenli_cekis": False, "dogrulama": "sahte",
+               "ozet": "Yalnız ulaşılabilirlik sınanır (STARTDT); komut gönderilmez, veri okunmaz."},
+    "opc_ua": {"yapilandirma": None, "sinama": None, "veri_okuma": False, "duzenli_cekis": False, "dogrulama": "yok",
+               "ozet": "İstemci kitaplığı kararı bekliyor; sınama ve veri okuma yok."},
+}
+YETENEK_ETIKET = {"sinama": {None: "sınama yok", "kimlik": "kimlikle sınama (giriş + santral listesi)", "okuma": "yalnızca okuma sınaması (anlık ölçüm)", "ulasilabilirlik": "ulaşılabilirlik sınaması (veri okunmaz)"},
+                  "dogrulama": {"canli": "üretimde çalışıyor", "sahte": "gerçek cihaz/hesapla doğrulanmadı", "yok": "uygulanmadı"}}
+# Hedef bağlantının tek durum kodu (faz 1/3): yapılandırma ≠ sınama ≠ veri akışı
+BAGLANTI_DURUM_ETIKET = {"yapilandirilmadi": "bağlantı yapılandırılmadı", "dosya": "dosya kaynağı (bağlantı değil)", "mevcut": "uygulamada çalışıyor",
+                         "sinanmadi": "yapılandırıldı, bağlantı sınanmadı", "sinama_ok": "bağlantı sınaması başarılı, veri çekişi yok", "cekis_acik": "düzenli veri çekişi açık, ilk örnek bekleniyor",
+                         "sinama_basarisiz": "bağlantı sınaması başarısız", "kimlik_hatasi": "kimlik doğrulanamadı", "desteklenmiyor": "bu sağlayıcı/protokol için bağlantı yok", "veri_akisi": "veri alınıyor"}
 TAZELIK_ETIKET = {"guncel": "güncel", "gecikmis": "gecikmiş", "yok": "veri gelmedi", "dosya": "dosya yüklemesi", "dosya_eski": "yükleme 30 günden eski"}
 ASAMA_ETIKET = {"secildi": "hedef seçildi", "ayar": "bağlantı ayarı girildi", "sinama": "bağlantı sınaması başarılı", "cekis": "düzenli veri çekişi açık", "akis": "veri alınıyor"}
 NOT = ("Dosya kaynakları (SCADA, sayaç) geçmişe dönük çalışır: veri, yüklediğiniz güne kadar gelir; sürekli bağlantı değildir. EPİAŞ Şeffaflık bağlantısı "
        "lisanslı tesiste her gece bir önceki günlerin üretimini çeker. Modbus TCP / SunSpec için cihaz adresi girilip yalnızca okuma onayı verilince bağlantı "
-       "sınanabilir; sınama cihaza erişildiğini gösterir, düzenli veri çekişi ayrı bir adımdır ve henüz yoktur. Diğer protokol ve bulut bağlantıları için "
-       "gereken bilgiler listelenir; bağlantı, erişim bilgileri ve tesis sahibinin yalnızca okuma onayı geldikten sonra kurulur. Bu liste ne gerektiğini söyler, tarih vermez.")
+       "sınanabilir; sınama cihaza erişildiğini gösterir, düzenli veri çekişi sahibin ayrıca başlattığı bir adımdır. IEC 60870-5-104 için yalnız ulaşılabilirlik "
+       "sınanır (komut ve veri okuma yok). FusionSolar ve SolarEdge bulutları için anahtarla sınama yapılır, anahtar saklanmaz; bu bağlayıcılar gerçek hesapla henüz "
+       "doğrulanmadı. Diğer protokol ve bulut bağlantıları için gereken bilgiler listelenir; bağlantı, erişim bilgileri ve tesis sahibinin yalnızca okuma onayı "
+       "geldikten sonra kurulur. Bu liste ne gerektiğini söyler, tarih vermez.")
 
 
 def tazelik(son: datetime | None, simdi: datetime | None = None, yon: str = "api", esik_saat: float | None = None, dosya_eski_gun: int | None = None) -> dict:
@@ -130,10 +157,15 @@ def asamalar(beyan: dict | None, etkin: list[dict]) -> list[dict]:
     out = [{"kod": "secildi", "etiket": ASAMA_ETIKET["secildi"], "tamam": True, "zaman": beyan.get("beyan_zamani")}]
     if yon in ("protokol", "api") and VERI_YOLLARI.get(tur, {}).get("durum") == "kurulmadi":
         ss = beyan.get("son_sinama") or {}
-        out.append({"kod": "ayar", "etiket": ASAMA_ETIKET["ayar"], "tamam": bool(beyan.get("baglanti")), "zaman": None})
+        if tur == "inverter_bulut_api":   # v2.547: bulutta «ayar» = sağlayıcı seçimi (adres yok; kimlik saklanmaz)
+            out.append({"kod": "ayar", "etiket": "sağlayıcı seçildi" if beyan.get("saglayici") else "sağlayıcı seçilmedi", "tamam": bool(beyan.get("saglayici")), "zaman": None})
+        else:
+            out.append({"kod": "ayar", "etiket": ASAMA_ETIKET["ayar"], "tamam": bool(beyan.get("baglanti")), "zaman": None})
         sd = ss.get("durum")
         sin_etiket = (ASAMA_ETIKET["sinama"] if sd == "ok" else "cihaza erişildi, veri modeli desteklenmiyor" if sd == "veri_modeli_yok" else
-                      "cihaza erişildi, inverter modeli yok" if sd == "kismi" else "bağlantı sınaması başarısız" if ss else "bağlantı sınanmadı")
+                      "cihaza erişildi, inverter modeli yok" if sd == "kismi" else "istasyona ulaşıldı, 104 onayı yok" if sd == "protokol_yaniti_yok" else
+                      "kimlik doğrulanamadı" if sd == "kimlik_hatasi" else "sağlayıcı desteklenmiyor" if sd == "saglayici_desteklenmiyor" else
+                      "bağlantı sınaması başarısız" if ss else "bağlantı sınanmadı")
         out.append({"kod": "sinama", "etiket": sin_etiket, "tamam": sd == "ok", "zaman": ss.get("zaman"), "durum": sd})
         if tur == "modbus_sunspec":   # v2.546: çekiş sahibin ayrı kararı; sınama onu ima etmez
             out.append({"kod": "cekis", "etiket": ASAMA_ETIKET["cekis"] if beyan.get("ornekleme_acik") else "düzenli veri çekişi başlatılmadı", "tamam": bool(beyan.get("ornekleme_acik")), "zaman": None})
@@ -179,8 +211,48 @@ def _pj(plant: dict) -> dict:
 
 
 def _yol(tur: str) -> dict:
-    v = VERI_YOLLARI[tur]
-    return {"tur": tur, **v, "durum_etiketi": DURUM_ETIKET[v["durum"]]}
+    v = VERI_YOLLARI[tur]; y = YETENEKLER[tur]
+    return {"tur": tur, **v, "durum_etiketi": DURUM_ETIKET[v["durum"]],
+            "yetenekler": {**y, "sinama_etiketi": YETENEK_ETIKET["sinama"][y["sinama"]], "dogrulama_etiketi": YETENEK_ETIKET["dogrulama"][y["dogrulama"]]}}
+
+
+def baglanti_durumu(beyan: dict | None, etkin: list[dict]) -> dict:
+    """SAF. Hedef bağlantının tek durum kodu. Eski veri bağlantıyı bozmaz; başarılı sınama veri akışı demek değildir."""
+    if not beyan or not beyan.get("tur") or beyan["tur"] not in VERI_YOLLARI:
+        return {"kod": "yapilandirilmadi", "etiket": BAGLANTI_DURUM_ETIKET["yapilandirilmadi"]}
+    tur = beyan["tur"]; v = VERI_YOLLARI[tur]
+    if v["yon"] == "dosya":
+        return {"kod": "dosya", "etiket": BAGLANTI_DURUM_ETIKET["dosya"]}
+    if v["durum"] == "mevcut":
+        return {"kod": "mevcut", "etiket": BAGLANTI_DURUM_ETIKET["mevcut"]}
+    if tur == "inverter_bulut_api":
+        from pvquant.io.bulut import SAGLAYICILAR
+        if (beyan.get("saglayici") or "").strip().lower() not in SAGLAYICILAR:
+            return {"kod": "desteklenmiyor", "etiket": BAGLANTI_DURUM_ETIKET["desteklenmiyor"]}
+    if YETENEKLER[tur]["sinama"] is None:
+        return {"kod": "desteklenmiyor", "etiket": BAGLANTI_DURUM_ETIKET["desteklenmiyor"]}
+    if any(e.get("tur") == tur and e.get("son") for e in etkin):
+        return {"kod": "veri_akisi", "etiket": BAGLANTI_DURUM_ETIKET["veri_akisi"]}
+    if beyan.get("ornekleme_acik"):
+        return {"kod": "cekis_acik", "etiket": BAGLANTI_DURUM_ETIKET["cekis_acik"]}
+    ss = beyan.get("son_sinama") or {}
+    if ss.get("durum") == "ok":
+        return {"kod": "sinama_ok", "etiket": BAGLANTI_DURUM_ETIKET["sinama_ok"]}
+    if ss.get("durum") == "kimlik_hatasi":
+        return {"kod": "kimlik_hatasi", "etiket": BAGLANTI_DURUM_ETIKET["kimlik_hatasi"]}
+    if ss:
+        return {"kod": "sinama_basarisiz", "etiket": BAGLANTI_DURUM_ETIKET["sinama_basarisiz"]}
+    return {"kod": "sinanmadi", "etiket": BAGLANTI_DURUM_ETIKET["sinanmadi"]}
+
+
+def veri_kodu(t: dict, son_olcum=None, yon: str = "api") -> str:
+    """SAF. Veri durumu kodu (bağlantıdan bağımsız): guncel | gecikmis | dosya | dosya_eski | yuklenmedi | olcum_bilinmiyor."""
+    kod = t.get("tazelik")
+    if kod == "yok":
+        return "yuklenmedi" if yon == "dosya" else "gelmedi"
+    if kod in ("guncel", "gecikmis") and son_olcum is None and yon != "dosya":
+        return "olcum_bilinmiyor"
+    return kod or "gelmedi"
 
 
 def etkin_yollar(tenant_id, plant: dict, simdi: datetime | None = None) -> list[dict]:
@@ -217,10 +289,11 @@ def etkin_yollar(tenant_id, plant: dict, simdi: datetime | None = None) -> list[
     sik = pj.get("dosya_yukleme_sikligi_gun")   # v2.546: müşterinin beyan ettiği yükleme sıklığı (gün); eşik iki katı
     if dosya:
         so = son_olcum.get("dosya")
+        tzd = tazelik(dosya["created_at"], simdi, "dosya", dosya_eski_gun=sik)
         out.append({"tur": "scada_dosya", "etiket": VERI_YOLLARI["scada_dosya"]["kisa"], "tur_etiketi": "dosya kaynağı", "tanimli": True,
                     "son": dosya["created_at"].isoformat() if dosya["created_at"] else None, "son_olcum": so.isoformat() if so else None,
                     "ayrinti": f"son dosya {dosya['filename']}" + (f" · beyan edilen yükleme sıklığı {int(sik)} gün" if sik else ""),
-                    **tazelik(dosya["created_at"], simdi, "dosya", dosya_eski_gun=sik)})
+                    "veri_kodu": veri_kodu(tzd, so, "dosya"), "veri_etiketi": "geçmişe dönük dosya · " + veri_etiketi(tzd), **tzd})
     # v2.546 (P4b-2): Modbus TCP / SunSpec düzenli örnekleme etkinse canlı protokol satırı — eşik 3 × periyot (en az 1 saat)
     vyb = pj.get("veri_yolu") if isinstance(pj.get("veri_yolu"), dict) else None
     if vyb and vyb.get("tur") == "modbus_sunspec" and vyb.get("ornekleme_acik"):
@@ -234,18 +307,23 @@ def etkin_yollar(tenant_id, plant: dict, simdi: datetime | None = None) -> list[
                    {"durum": "hata", "etiket": "örnek alınamıyor", "zaman": d["son_ornek"].isoformat()})
             out.append({"tur": "modbus_sunspec", "etiket": VERI_YOLLARI["modbus_sunspec"]["kisa"], "tur_etiketi": "saha protokolü", "tanimli": True,
                         "son": d["son_ornek"].isoformat() if d["son_ornek"] else None, "son_olcum": d["son_saat"].isoformat() if d["son_saat"] else None,
-                        "baglanti": bag, "veri_etiketi": (f"son saat {d['son_saat'].isoformat()}" if d["son_saat"] else "henüz saatlik veri yazılmadı"),
+                        "baglanti": bag, "veri_kodu": veri_kodu(tz, d["son_saat"], "protokol"), "veri_etiketi": (f"son saat {d['son_saat'].isoformat()}" if d["son_saat"] else "henüz saatlik veri yazılmadı"),
                         "ayrinti": f"örnekleme {per} dk · son 24 saatte {d['n24']} örnek", **tz})
     if pj.get("epias_santral_id"):
         son = epias["created_at"] if epias else None; so = son_olcum.get("epias")
         tz = tazelik(son, simdi, "api")
+        ve = veri_etiketi(tz)
+        if cekis and cekis.get("kod") == "kayit_yok" and tz["tazelik"] == "gecikmis":
+            ve += " · kaynakta yeni kayıt yok"   # yalnız servis yanıtı «veri_yok» dediğinde (jobs_log ayrıntısı)
         out.append({"tur": "epias_seffaflik", "etiket": VERI_YOLLARI["epias_seffaflik"]["kisa"], "tur_etiketi": "platform bağlantısı", "tanimli": True,
-                    "son": son.isoformat() if son else None, "son_olcum": so.isoformat() if so else None, "cekis": cekis,
-                    "baglanti": epias_baglanti(cekis), "veri_etiketi": veri_etiketi(tz),
+                    "son": son.isoformat() if son else None, "son_olcum": so.isoformat() if so else None, "cekis": cekis, "veri_kodu": veri_kodu(tz, so, "api"),
+                    "baglanti": epias_baglanti(cekis), "veri_etiketi": ve,
                     "ayrinti": f"santral kimliği {pj['epias_santral_id']}" + ("" if epias else " — bağlantı tanımlı, henüz veri çekilmedi"), **tz})
     for x in sy:
+        tzs = tazelik(x["son"], simdi, "dosya", dosya_eski_gun=sik)
         out.append({"tur": "sayac_dosya", "etiket": VERI_YOLLARI["sayac_dosya"]["kisa"], "tur_etiketi": "dosya kaynağı", "tanimli": True,
-                    "son": x["son"].isoformat() if x["son"] else None, "son_olcum": None, "ayrinti": f"kaynak {x['kaynak']}", **tazelik(x["son"], simdi, "dosya", dosya_eski_gun=sik)})
+                    "son": x["son"].isoformat() if x["son"] else None, "son_olcum": None, "ayrinti": f"kaynak {x['kaynak']}",
+                    "veri_kodu": veri_kodu(tzs, None, "dosya"), "veri_etiketi": "geçmişe dönük dosya · " + veri_etiketi(tzs), **tzs})
     return out
 
 
@@ -255,5 +333,13 @@ def ozet(tenant_id, plant: dict, simdi: datetime | None = None) -> dict:
     hedef = _yol(beyan["tur"]) if beyan and beyan.get("tur") in VERI_YOLLARI else None
     etkin = etkin_yollar(tenant_id, plant, simdi)
     sik = pj.get("dosya_yukleme_sikligi_gun")
-    return {"etkin": etkin, "beyan": beyan, "hedef": hedef, "asamalar": asamalar(beyan, etkin), "yollar": [_yol(k) for k in VERI_YOLLARI],
+    from pvquant.io.bulut import HENUZ_YOK, SAGLAYICILAR
+    from pvquant.io.bulut.fusionsolar import BOLGELER
+    # faz 2: sağlayıcı matrisi — «uygulandı, doğrulanmadı» / «planlandı» / «desteklenmiyor»; hiçbiri «üretime hazır» demez
+    bulut = {"saglayicilar": [{"kod": k, "ad": v["ad"], "kimlik_alanlari": v["kimlik_alanlari"], "bolge": v["bolge"], "not": v["not"],
+                               "durum": "uygulandi_dogrulanmadi", "durum_etiketi": "bağlantı yazıldı, gerçek hesapla doğrulanmadı"} for k, v in SAGLAYICILAR.items()],
+             "bolgeler": list(BOLGELER), "henuz_yok": HENUZ_YOK, "henuz_yok_etiketi": "Planlandı (anahtar ve örnek çıktı gelince)",
+             "diger_etiketi": "desteklenmiyor — kaydederseniz talep olarak not edilir", "not": "Anahtar yalnız sınamada kullanılır, kaydedilmez."}
+    return {"etkin": etkin, "beyan": beyan, "hedef": hedef, "asamalar": asamalar(beyan, etkin), "baglanti_durumu": baglanti_durumu(beyan, etkin),
+            "yollar": [_yol(k) for k in VERI_YOLLARI], "bulut": bulut,
             "taze_saat": TAZE_SAAT, "dosya_eski_gun": (2 * int(sik) if sik else DOSYA_ESKI_GUN), "dosya_yukleme_sikligi_gun": sik, "not": NOT}
