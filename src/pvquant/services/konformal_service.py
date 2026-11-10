@@ -32,7 +32,8 @@ def q_hat_hesapla_df(df: pd.DataFrame, capacity_kwp: float, alpha: float = ALPHA
         return None
     d = df.dropna(subset=["power_kw", "p10", "p90"]).copy()
     d["ts_utc"] = pd.to_datetime(d["ts_utc"], utc=True)
-    d = d[d.power_kw > 0.02 * capacity_kwp].set_index("ts_utc").sort_index()
+    from pvquant.services.karne_kurali import gunduz_maskesi as _gm   # v2.568: tek gündüz eşiği
+    d = d[_gm(d.power_kw, capacity_kwp)].set_index("ts_utc").sort_index()
     if len(d) < min_toplam:
         return None
 

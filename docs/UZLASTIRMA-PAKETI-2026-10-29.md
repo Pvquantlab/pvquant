@@ -1425,3 +1425,22 @@ yazar (önceden COALESCE ile çıkarılıyordu; okuyucular değişmedi). (3) Mü
 api+worker (aylık rapor gönderimi ve nowcast worker'da), web değişmedi.
 
 **Mühür.** v2.567 d9213d0 CANLI (10.11 18:08 TSİ): Faz 0 denetiminin dört düşük riskli düzeltmesi; CI #715 yeşil (6 dk 8 sn); ssh dağıtım api+worker (web değişmedi, imajı yenilenmedi; worker penceresi dışında, açılış yakalaması «taze»); göç yok, canlı baş v2564; healthz 200; api günlüğünde hata yok. Denetim çıktısı `~/Desktop/PVQuant_Faz0_Teknik_Dogrulama/` (depoya girmez). Test veritabanında Faz 0 kiracısı (Solentegre) duruyor.
+
+## Elli sekizinci paket — v2.568 (10.11.2026): karne kuralı tek yerde — koşu seçimi, gün içi ve program kovaları, tek gündüz eşiği (Faz 0 onay paketi 1)
+
+**Kaynak.** Faz 0 denetimi TK-05/06/07/12 ve TK-09 (`~/Desktop/PVQuant_Faz0_Teknik_Dogrulama/05_…`, öneri `onay/karne-tanimi-onerisi.md`); kullanıcı onayı 10.11.
+Kusur: `gece_skill` koşu süzgeci ve saat tekilleştirmesi olmadan eşliyordu; sabah + iki gün içi koşu + önceki günün koşusu aynı saate düşüyor, kısa ufuklu satırlar baskın
+çıkıp WMAPE'yi iyimserleştiriyordu (saf yeniden üretim %20 → %11). Üç yüzey üç farklı kural kullanıyordu (karne tekilleştirmez, rapor en kısa ufuk, Doğruluk ortalama).
+**(A) `services/karne_kurali.py` (SAF, tek kural).** Geriye bakışlı koşular (`model='backtest'`, `meteo_source='open-meteo-arsiv'`) dışarıda; gün içi (`etiket='gun_ici'`)
+koşular ana kovalardan çıkıp `gun_ici` kovasına (saat başına en son revizyon); ana kovalarda (saat, kova) başına en erken yayımlanan koşu; `program` kovası = teslim günü
+(İstanbul) için D-1 KGÜP kesimi (2025'ten 15:30, öncesi 16:00; `kgup_kesim`) öncesi son koşu; `GUNDUZ_ORAN=0.02` tek sabit; `kova_etiketle` metin etiket döner.
+**(B) Bağlantılar.** `apps/worker/main.py`: `gece_skill` SQL'ine model/meteo_source/etiket, `karne_satirlari` + `gunduz_maskesi`; `rapor_alanlari` aynı seçim (en kısa ufuk
+kuralı kalktı). `accuracy_service` iki işlev: seçim + eşik. `konformal_service`, `backtest_service`: eşik. `skill_daily.horizon_bucket` artık `gun_ici` ve `program` da taşır
+(metin sütun; göç yok). `/v1/plants/{id}/skill?bucket=program` zaten çalışır; istemci `api.karne` program kovasını da çeker (`Karne.program`); Doğruluk sayfasında
+«Program doğruluğu» ölçüt grubu (WMAPE, gün, referansa göre iyileşme; yoksa «—»), ilk KPI etiketi «gün başı tahmini». Yöntem metni: «sabah erken saatte (05:00 TSİ)
+üretilir… gün içi güncellemeler ayrı sayılır; her saat için karneye yalnızca en erken yayımlanan tahmin girer».
+**(C) Yeniden hesap.** `scripts/karne_yeniden_hesapla.py`: `skill_daily_eski_<tarih>` yedeği + her santral için arşivin başından `gece_skill`; DB sahibiyle koşulur.
+`docs/VERI-SOZLUGU-KARNE.md`: kural, sütunlar (`mape` = WMAPE; ad değişmedi, göç yok), değişmeyen kalibrasyon eşikleri (TK-12 ayrı paket).
+**Kanıt.** `tests/test_karne_kurali.py` 6 test (çift sayım %11 → %20, en erken koşu, geriye bakışlı dışlama, sütun yoksa eski davranış, program kesimi 15:30/16:00, bütün
+kovalar + eşik); mevcut karne testleri (kova, nrel hakem, sfa, olasılıksal, eşik, kapsama, dogrulama_v2532, api_skill) yeşil; web tsc 0, 104/104, lint 0 hata, build.
+Tam takım test veritabanıyla 1085 geçti / 1 atlandı / 0 kırmızı (ilk koşuda `backtest_service` eşik içe aktarması eksikti, iki test NameError; düzeltildi; `test_edge_db_v2561` yük altında bir kez kırmızı, tek başına ve ikinci tam koşuda geçti). Yeniden hesap betiği test veritabanında prova edildi (yedek tablo alındı; tahmin arşivi olmayan santral atlandı). Canlıda dağıtım sonrası: yeniden hesap betiği DB sahibiyle (yedek alır), 30 gün eski/yeni kıyası, Hakkında'ya tarihli not (sonraki paket).

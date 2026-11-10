@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 
 from pvquant.services.konformal_service import q_hat_hesapla_df, uygula_df
+from pvquant.services.karne_kurali import gunduz_maskesi as _gm   # v2.568: tek gündüz eşiği
 
 HEDEF = 0.80
 
@@ -28,7 +29,7 @@ def konformal_backtest_df(df: pd.DataFrame, capacity_kwp: float, egitim_gun: int
         return bos
     d = df.dropna(subset=["power_kw", "p10", "p90"]).copy()
     d["ts_utc"] = pd.to_datetime(d["ts_utc"], utc=True); d = d.sort_values("ts_utc")
-    d = d[d.power_kw > 0.02 * capacity_kwp]
+    d = d[_gm(d.power_kw, capacity_kwp)]   # v2.568: tek gündüz eşiği
     if d.empty:
         return bos
     gun0 = d.ts_utc.min().normalize(); son = d.ts_utc.max()
@@ -77,7 +78,7 @@ def ufuk_kova_sinavi_df(df: pd.DataFrame, capacity_kwp: float, egitim_gun: int =
         return bos
     d = df.dropna(subset=["power_kw", "p10", "p90"]).copy()
     d["ts_utc"] = pd.to_datetime(d["ts_utc"], utc=True); d = d.sort_values("ts_utc")
-    d = d[d.power_kw > 0.02 * capacity_kwp]
+    d = d[_gm(d.power_kw, capacity_kwp)]   # v2.568: tek gündüz eşiği
     if d.empty:
         return bos
     gun0 = d.ts_utc.min().normalize(); son = d.ts_utc.max()

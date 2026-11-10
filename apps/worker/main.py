@@ -64,8 +64,8 @@ def kova_etiketle(ufuk_s: "pd.Series") -> "pd.Series":
     baslayinca 3-7g ile 7-15g ayni kovada bulaniklasirdi. Simdi:
     (0,24] / (24,72] / (72,168] / (168,999]. Kova-bazli konformal ayarin
     (defter madde b) hakem verisi 168+ kovasinda birikecek."""
-    return pd.cut(ufuk_s, [0, 24, 72, 168, 999],
-                  labels=["0-24", "24-72", "72-168", "168+"])
+    from pvquant.services.karne_kurali import kova_etiketle as _ke   # v2.568: tek kural (metin etiket; yeni kovalar eklenebilir)
+    return _ke(ufuk_s)
 
 
 def kova_skorlari(df: "pd.DataFrame", capacity_kwp: float, tid, pid) -> list[dict]:
@@ -146,7 +146,8 @@ def gece_skill(plant, pencere_gun: int = 10):
     tid, pid = plant["tenant_id"], plant["id"]
     with tenant_baglami(tid) as s:
         df = pd.read_sql(text(
-            "SELECT f.ts_utc, f.p50_kw, f.p10_kw, f.p90_kw, r.run_at, s.power_kw "
+            "SELECT f.ts_utc, f.p50_kw, f.p10_kw, f.p90_kw, r.run_at, s.power_kw, "
+            " r.model, r.meteo_source, r.meteo_ozet_json->>'etiket' AS etiket "
             "FROM forecast_values f "
             "JOIN forecast_runs r ON r.id=f.run_id "
             "JOIN scada_hourly s ON s.plant_id=f.plant_id AND s.ts_utc=f.ts_utc"
@@ -156,11 +157,14 @@ def gece_skill(plant, pencere_gun: int = 10):
             parse_dates=["ts_utc", "run_at"])
     if df.empty:
         return
-    df["ufuk_s"] = (df.ts_utc - df.run_at).dt.total_seconds() / 3600
-    df = df[df.ufuk_s >= 0]
-    df["kova"] = kova_etiketle(df.ufuk_s)  # v2.70: 4 kova
+    # v2.568 (Faz 0 TK-05/06/09): karne kuralı tek yerde — geriye bakışlı koşular dışarıda, gün içi revizyon ayrı kovada,
+    # ana kovalarda saat başına en erken koşu, «program» kovası D-1 KGÜP kesimi öncesi son koşu (karne_kurali.py)
+    from pvquant.services import karne_kurali as _kk
+    df = _kk.karne_satirlari(df)
+    if df.empty:
+        return
     df["gun"] = df.ts_utc.dt.date
-    gunduz = df.power_kw > 0.02 * float(plant["capacity_kwp"])
+    gunduz = _kk.gunduz_maskesi(df.power_kw, float(plant["capacity_kwp"]))
     df = df[gunduz]
     if df.empty:
         return
@@ -483,7 +487,8 @@ def rapor_alanlari(plant, pencere_gun: int = 120):
     # --- B5 ---
     with tenant_baglami(tid) as s:
         df = pd.read_sql(text(
-            "SELECT f.ts_utc, f.p50_kw, r.run_at, sc.power_kw "
+            "SELECT f.ts_utc, f.p50_kw, r.run_at, sc.power_kw, "
+            " r.model, r.meteo_source, r.meteo_ozet_json->>'etiket' AS etiket "
             "FROM forecast_values f "
             "JOIN forecast_runs r ON r.id=f.run_id "
             "JOIN scada_hourly sc ON sc.plant_id=f.plant_id "
@@ -495,14 +500,14 @@ def rapor_alanlari(plant, pencere_gun: int = 120):
     if not df.empty:
         df["ts_utc"] = pd.to_datetime(df.ts_utc, utc=True)
         df["run_at"] = pd.to_datetime(df.run_at, utc=True)
-        df["ufuk_s"] = (df.ts_utc - df.run_at).dt.total_seconds() / 3600
-        df = df[df.ufuk_s >= 0]
-        df["kova"] = kova_etiketle(df.ufuk_s)
-        yerel = df.ts_utc.dt.tz_convert(plant["tz"])
+        from pvquant.services import karne_kurali as _kk   # v2.568: karneyle aynı seçim (önceden en kısa ufuk tutuluyordu — iyimser)
+        df = _kk.ana_kovalar(_kk.karne_secimi(df))
+        if df.empty:
+            df = pd.DataFrame(columns=["ts_utc", "p50_kw", "run_at", "power_kw", "ufuk_s", "kova"])
+        yerel = pd.to_datetime(df.ts_utc, utc=True).dt.tz_convert(plant["tz"])
         df["saat"], df["gun"] = yerel.dt.hour, yerel.dt.date
-        gunduz = df.power_kw > 0.02 * float(plant["capacity_kwp"])
-        d24 = df[(df.kova == "0-24")].sort_values("ufuk_s").drop_duplicates("ts_utc")
-        d24g = d24[d24.power_kw > 0.02 * float(plant["capacity_kwp"])]
+        d24 = df[(df.kova == "0-24")]
+        d24g = d24[_kk.gunduz_maskesi(d24.power_kw, float(plant["capacity_kwp"]))]
         if len(d24g) > 0:
             med = d24g.groupby("saat").power_kw.median()
             prof = [round(float(med.get(h, 0.0)) / 1000, 1) for h in range(5, 20)]

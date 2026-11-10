@@ -6,6 +6,7 @@ from __future__ import annotations
 import pandas as pd
 from sqlalchemy import text
 from pvquant.db import tenant_baglami
+from pvquant.services import karne_kurali as _kk   # v2.568: karne kuralı tek yerde
 
 _KOVALAR = {"0-24": (0, 24), "24-72": (24, 72),
             "72-168": (72, 168), "168+": (168, 999)}
@@ -34,7 +35,7 @@ def saat_profili_hesapla(df: pd.DataFrame, kapasite_kwp: float, tz: str, gun: in
     ilk = dun - pd.Timedelta(days=gun - 1)
     df = df[(df.y_gun >= ilk) & (df.y_gun <= dun)]
     df = df[(df.y_saat >= _SAAT_ILK) & (df.y_saat < _SAAT_SON)]
-    df = df[df.power_kw > 0.02 * float(kapasite_kwp)]
+    df = df[_kk.gunduz_maskesi(df.power_kw, float(kapasite_kwp))]   # v2.568: tek eşik
     if df.empty:
         return bos
     df = (df.groupby(["y_gun", "y_saat"], as_index=False).agg(p50_kw=("p50_kw", "mean"), power_kw=("power_kw", "mean")))
@@ -67,7 +68,8 @@ def saat_profili(tenant_id, plant_id, gun: int = 30, kova: str = "0-24"):
         if p is None:
             raise LookupError("santral yok: %s" % plant_id)
         df = pd.read_sql(text(
-            "SELECT f.ts_utc, f.p50_kw, r.run_at, s.power_kw "
+            "SELECT f.ts_utc, f.p50_kw, r.run_at, s.power_kw, "
+            " r.model, r.meteo_source, r.meteo_ozet_json->>'etiket' AS etiket "
             "FROM forecast_values f "
             "JOIN forecast_runs r ON r.id=f.run_id "
             "JOIN scada_hourly s ON s.plant_id=f.plant_id AND s.ts_utc=f.ts_utc"
@@ -76,6 +78,7 @@ def saat_profili(tenant_id, plant_id, gun: int = 30, kova: str = "0-24"):
             "AND f.ts_utc >= now() - ((:g + 2) * INTERVAL '1 day')"),
             s.connection(), params={"p": plant_id, "g": gun},
             parse_dates=["ts_utc", "run_at"])
+    df = _kk.ana_kovalar(_kk.karne_secimi(df)) if not df.empty else df   # v2.568: karneyle aynı seçim (geriye bakışlı ve gün içi dışarıda, saat başına en erken koşu)
     tz = p["tz"] or "UTC"
     if not df.empty:
         ufuk = (df.ts_utc - df.run_at).dt.total_seconds() / 3600
@@ -100,7 +103,8 @@ def hata_dagilimi(tenant_id, plant_id, gun: int = 120, kova: str = "0-24",
         if p is None:
             raise LookupError("santral yok: %s" % plant_id)
         df = pd.read_sql(text(
-            "SELECT f.ts_utc, f.p50_kw, r.run_at, s.power_kw "
+            "SELECT f.ts_utc, f.p50_kw, r.run_at, s.power_kw, "
+            " r.model, r.meteo_source, r.meteo_ozet_json->>'etiket' AS etiket "
             "FROM forecast_values f "
             "JOIN forecast_runs r ON r.id=f.run_id "
             "JOIN scada_hourly s ON s.plant_id=f.plant_id AND s.ts_utc=f.ts_utc"
@@ -109,6 +113,7 @@ def hata_dagilimi(tenant_id, plant_id, gun: int = 120, kova: str = "0-24",
             "AND f.ts_utc >= now() - ((:g + 2) * INTERVAL '1 day')"),
             s.connection(), params={"p": plant_id, "g": gun},
             parse_dates=["ts_utc", "run_at"])
+    df = _kk.ana_kovalar(_kk.karne_secimi(df)) if not df.empty else df   # v2.568: karneyle aynı seçim (geriye bakışlı ve gün içi dışarıda, saat başına en erken koşu)
     tz = p["tz"] or "UTC"
     bos = {"kutular": [], "mu": None, "sd": None, "ndays": 0,
            "p10": None, "p50": None, "p90": None,
@@ -127,7 +132,7 @@ def hata_dagilimi(tenant_id, plant_id, gun: int = 120, kova: str = "0-24",
     dun = (pd.Timestamp.now(tz=tz) - pd.Timedelta(days=1)).date()
     ilk = dun - pd.Timedelta(days=gun - 1)
     df = df[(df.y_gun >= ilk) & (df.y_gun <= dun)]
-    df = df[df.power_kw > 0.02 * float(p["capacity_kwp"])]      # gunduz
+    df = df[_kk.gunduz_maskesi(df.power_kw, float(p["capacity_kwp"]))]      # gunduz (v2.568: tek eşik)
     if df.empty:
         return bos
     # coklu-kosu savunmasi: ayni saate birden cok gozlem duserse ortala

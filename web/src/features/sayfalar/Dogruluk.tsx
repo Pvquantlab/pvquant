@@ -476,7 +476,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
             sayfasının en tepesi "%0,0 WMAPE" ile kusursuzluk ilan ediyordu.
             İki KPI ayrı denetlenir: backend kova ve skill_vs_naive'i bağımsız
             hesaplıyor, tek bayrak dolu-WMAPE + null-naif vakasını kaçırır. */}
-        <Kpi etiket={k.wmape_ort == null ? "Tahmin hatası (WMAPE), 0–24 saat" : `Tahmin hatası (WMAPE), 0–24 saat, ${k.gun_sayisi} gün ort.`}
+        <Kpi etiket={k.wmape_ort == null ? "Tahmin hatası (WMAPE), gün başı tahmini" : `Tahmin hatası (WMAPE), gün başı tahmini, ${k.gun_sayisi} gün ort.`}
              deger={k.wmape_ort == null ? "—" : `%${sayiTr(k.wmape_ort, 1)}`}
              alt={k.wmape_ort == null
                ? "henüz karşılaştırılmış gün yok; gece değerlendirmesinde birikiyor" : deltaCip} />
@@ -501,6 +501,17 @@ export function Dogruluk({ plantId }: { plantId: string }) {
       {/* 24.10 sekizinci tur: tek çipe sıkışan 6 bilgi → ölçüt grubu (.olcut-grup): başlık + niteleyici, etiket/değer
           çiftleri, ayrı durum satırı. Değer yoksa «—» (sıfır uydurulmaz); durum yalnız null ise yazılır. Hesap aynı. */}
       <div className="olcut-serit">
+        {/* v2.568 (Faz 0 TK-06): program doğruluğu — uzlaştırma maliyetini belirleyen tahmin, D-1 KGÜP kesimi (15:30) öncesi son koşu.
+            Gün başı kovasından ayrı; kesim öncesi koşu olmayan günlerde satır yok → «—» (sıfır uydurulmaz). */}
+        <section className="olcut-grup" aria-label="Program doğruluğu">
+          <div className="olcut-bas">Program doğruluğu<span className="olcut-not">bir gün önce 15:30 kesimi öncesi son tahmin</span></div>
+          <dl className="olcut-liste">
+            <div><dt>WMAPE</dt><dd className={k.program?.wmape_ort == null ? "bos" : undefined}>{k.program?.wmape_ort == null ? "—" : `%${sayiTr(k.program.wmape_ort, 1)}`}</dd></div>
+            <div><dt>Gün</dt><dd className={k.program?.gun_sayisi ? undefined : "bos"}>{k.program?.gun_sayisi ? sayiTr(k.program.gun_sayisi) : "—"}</dd></div>
+            {k.program?.naife_ustunluk_pct != null && <div><dt>Referansa göre iyileşme</dt><dd>%{sayiTr(k.program.naife_ustunluk_pct)}</dd></div>}
+          </dl>
+          {k.program?.wmape_ort == null && <p className="olcut-durum">Henüz değer yok; kesim öncesi tahminler gece değerlendirmesinde birikiyor.</p>}
+        </section>
         <section className="olcut-grup" aria-label="Kurulu güce göre ölçütler">
           <div className="olcut-bas">Kurulu güce göre ölçütler<span className="olcut-not">sektör standardı, 0–24 saat</span></div>
           <dl className="olcut-liste">

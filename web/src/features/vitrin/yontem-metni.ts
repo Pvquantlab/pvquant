@@ -1,5 +1,6 @@
 /** Yöntem metni — TEK KAYNAK (v2.384). Karne bandının yöntem kutusu ve /yontem sayfası buradan okur.
- *  Tanımlar hesapla eşlendi:
+ *  Tanımlar hesapla eşlendi (v2.568: koşu seçimi services/karne_kurali.py — geriye bakışlı koşular dışarıda, gün içi ayrı kova,
+ *  ana kovalarda saat başına en erken koşu; «program» kovası D-1 KGÜP kesimi öncesi son koşu):
  *    - apps/worker/main.py gece_skill: gündüz saati = gerçekleşen > %2 kurulu güç;
  *      naif = dünkü üretim × açık-gök(t) / açık-gök(t − 24 sa), oran [1/4, 4].
  *    - ext/tahmin/dogrulama.py picp: saatlerin ortalaması; services/dogrulama_service.py avg(picp80):
@@ -8,7 +9,7 @@
 
 export const ADIMLAR = [
   ["Tahmin önceden kaydedilir",
-   "Her santral için saatlik tahmin ve iyimser–kötümser aralık, gün başlamadan üretilir ve zaman damgasıyla saklanır. Kayıt üzerinde sonradan düzeltme yapılmaz."],
+   "Her santral için saatlik tahmin ve iyimser–kötümser aralık, sabah erken saatte (05:00 TSİ) üretilir ve zaman damgasıyla saklanır. Kayıt üzerinde sonradan düzeltme yapılmaz. Gün içi güncellemeler ayrı kaydedilir ve karnede ayrı sayılır; her saat için karneye yalnızca en erken yayımlanan tahmin girer."],
   ["Gerçekleşen üretim toplanır",
    "Üretim (SCADA/sayaç) verisi geldikçe saatlik seriye işlenir. Ölçüm gelmeyen saatler karneye dâhil edilmez; eksik veri sıfır sayılmaz."],
   ["Her gece otomatik karşılaştırma",

@@ -377,6 +377,8 @@ export interface TahminSerisi {
 
 export interface Karne {
   kova: string; gun_sayisi: number;       // v2.71-E
+  /** v2.568: program kovası (D-1 KGÜP kesimi öncesi son koşu) — ayrı KPI; kova satırı yoksa null */
+  program?: { wmape_ort: number | null; gun_sayisi: number; naife_ustunluk_pct: number | null } | null;
   wmape_ort: number | null; naife_ustunluk_pct: number | null;
   ilk_tarih: string | null; son_tarih: string | null;
   /** v2.247: SFA sozlugu — kapasiteye normalize yuzdeler (eski kayitlarda null). */
