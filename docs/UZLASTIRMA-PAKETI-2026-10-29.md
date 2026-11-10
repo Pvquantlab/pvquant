@@ -1423,3 +1423,5 @@ yazar (önceden COALESCE ile çıkarılıyordu; okuyucular değişmedi). (3) Mü
 üretilmedi» (`nowcast_service`, `paylasim_service`; `tests/test_paylasim.py` güncellendi). (4) `docs/entegrasyon/DIS-GIRDI-TAKIBI.md` D4/D5 bayat durum satırları.
 **Kanıt.** pytest tam takım test veritabanıyla 1079 geçti / 1 atlandı / 0 kırmızı (düzeltme öncesi ve sonrası); hedefli 36; web 104/104, tsc 0 (web değişmedi). Göç yok; dağıtımda
 api+worker (aylık rapor gönderimi ve nowcast worker'da), web değişmedi.
+
+**Mühür.** v2.567 d9213d0 CANLI (10.11 18:08 TSİ): Faz 0 denetiminin dört düşük riskli düzeltmesi; CI #715 yeşil (6 dk 8 sn); ssh dağıtım api+worker (web değişmedi, imajı yenilenmedi; worker penceresi dışında, açılış yakalaması «taze»); göç yok, canlı baş v2564; healthz 200; api günlüğünde hata yok. Denetim çıktısı `~/Desktop/PVQuant_Faz0_Teknik_Dogrulama/` (depoya girmez). Test veritabanında Faz 0 kiracısı (Solentegre) duruyor.
