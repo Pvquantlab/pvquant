@@ -1,6 +1,7 @@
 """v2.560/v2.561 — pilot kapıları + referans kıyası (SAF) ve saha toplayıcısı alımı (SAF: anahtar, doğrulama, idempotent ack/çatışma)."""
 from __future__ import annotations
 
+import re
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -34,7 +35,11 @@ def test_referans_csv_ve_kiyas():
     assert k["sonuc"] == "uyumlu" and k["tolerans_disi_saatler"][0]["fark_kwh"] == 17.0 and k["maks_mutlak_fark_kwh"] == 17.0
     assert ps.referans_kiyas(golge[:10], ref[:10])["sonuc"] == "yetersiz"
     kotu = [{**r, "kwh": r["kwh"] * 1.1} for r in ref]
-    assert ps.referans_kiyas(golge, kotu)["sonuc"] == "uyumsuz"
+    ku = ps.referans_kiyas(golge, kotu)
+    assert ku["sonuc"] == "uyumsuz"
+    # 10.11 inceleme: müşteri metninde Türkçe ondalık (virgül) ve ek sorunu olmayan «N tanesi» kalıbı
+    assert k["metin"] == "29 ortak tam saatin 28 tanesi toleransta (%96,6; saat başına en çok %2 ya da 0,5 kWh)."
+    assert f"yalnız {ku['n_tolerans_ici']} tanesi toleransta (%" in ku["metin"] and not re.search(r"\d\.\d", ku["metin"])
 
 
 class Defter:

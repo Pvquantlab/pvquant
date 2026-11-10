@@ -722,9 +722,11 @@ export interface VeriYoluEtkin { tur: string; etiket: string; tur_etiketi: strin
   /** 08.11 inceleme: EPİAŞ çekiş durumu — hata ≠ yeni kayıt yok ≠ SCADA öncelikli */
   cekis?: { kod: string; etiket: string; zaman: string | null; ayrinti?: string | null } | null;
   /** 08.11 inceleme II: bağlantı sağlığı (veri tazeliğinden ayrı) ve veri cümlesi */
-  baglanti?: { durum: "ok" | "hata" | "yok" | "bilinmiyor"; etiket: string; zaman: string | null } | null; veri_etiketi?: string; veri_kodu?: string }
+  baglanti?: { durum: "ok" | "hata" | "yok" | "bilinmiyor"; etiket: string; zaman: string | null } | null; veri_etiketi?: string; veri_kodu?: string;
+  /** 10.11 inceleme II (yalnız bulut satırı): birim doğrulanmadıysa «veri» rozeti olumlu renge boyanmaz */
+  saglayici?: string; birim_dogrulandi?: boolean; son_cekis_ok?: boolean }
 /** 08.11 inceleme (faz 3): hedef bağlantının aşamaları; hiçbiri diğerini ima etmez */
-export interface VeriYoluAsama { kod: "secildi" | "ayar" | "sinama" | "nokta" | "kimlik" | "cekis" | "akis"; etiket: string; tamam: boolean; zaman: string | null; durum?: string }
+export interface VeriYoluAsama { kod: "secildi" | "ayar" | "sinama" | "nokta" | "kimlik" | "cekis" | "akis" | "birim"; etiket: string; tamam: boolean; zaman: string | null; durum?: string }
 export interface VeriYoluOzet { etkin: VeriYoluEtkin[];
   beyan: { tur: string; saglayici: string | null; periyot_dk: number | null; salt_okuma_onayi: boolean; not: string | null; beyan_zamani: string; baglanti?: { host: string; port: number; birim: number; zaman_asimi_sn?: number | null; profil?: string | null; cihazlar?: { birim: number; ad?: string; profil?: string }[] } | null;
     son_sinama?: { zaman: string; durum: VeriYoluSinama["durum"]; ozet?: VeriYoluSinama["ozet"] | Record<string, unknown> | null; aciklama?: string | null; saglayici?: string } | null;
@@ -736,7 +738,7 @@ export interface VeriYoluOzet { etkin: VeriYoluEtkin[];
     iec104?: { ca: number; sinir: string; parametreler: Record<string, number> } | null; nokta_tablosu?: { ioa: number; alan: string; carpan: number; ad: string | null }[] | null } | null;
   hedef: VeriYolu | null; asamalar?: VeriYoluAsama[]; yollar: VeriYolu[]; taze_saat: number; dosya_eski_gun?: number; dosya_yukleme_sikligi_gun?: number | null; not: string;
   /** v2.547: bulut sağlayıcıları (bağlayıcısı olanlar) ve henüz olmayanlar */
-  bulut?: { saglayicilar: { kod: string; ad: string; kimlik_alanlari: string[]; kimlik_etiketleri?: Record<string, string>; gizli_alanlar?: string[]; bolge: boolean; bolgeler?: string[]; varsayilan_bolge?: string | null; not: string; durum?: string; durum_etiketi?: string }[]; bolgeler: string[]; henuz_yok: string[]; henuz_yok_etiketi?: string; diger_etiketi?: string; not: string; kasa?: { var: boolean; id: string | null; eski: string[]; hata?: string } };   // v2.556: şifreli saklama açık mı
+  bulut?: { saglayicilar: { kod: string; ad: string; kimlik_alanlari: string[]; kimlik_etiketleri?: Record<string, string>; gizli_alanlar?: string[]; bolge: boolean; bolgeler?: string[]; varsayilan_bolge?: string | null; not: string; durum?: string; durum_etiketi?: string; oauth?: boolean; elle_giris?: boolean }[]; bolgeler: string[]; henuz_yok: string[]; henuz_yok_etiketi?: string; hesap_durumu?: { saglayici: string | null; birim_dogrulandi: boolean; etiket: string } | null; diger_etiketi?: string; not: string; kasa?: { var: boolean; id: string | null; eski: string[]; hata?: string } };   // v2.556: şifreli saklama açık mı
   /** 09.11 inceleme III: hedef bağlantının tek durum kodu */
   baglanti_durumu?: { kod: string; etiket: string };
   /** v2.552 (S2): Modbus kayıt haritaları (SunSpec + üretici profilleri) */
@@ -766,13 +768,23 @@ export interface OlayAdaylari { adaylar: OlayAday[]; pencere_saat: number; n_orn
 /** v2.556/v2.557 (Aşama 3, K1/K2): şifreli bulut kimliği durumu — gizli alan yok, etiket maskeli */
 export interface BulutKimlikKayit { saglayici: string; saglayici_adi: string; bolge: string | null; dis_kimlik: string | null; kek_id: string; surum: number; etiket: string | null;
   onay_json: { metinler: Record<string, string>; zaman: string; aktor_id: string | null }; cekis_acik: boolean; birim_dogrulandi: boolean; kota_gun: string | null; kota_sayac: number;
-  son_cekis: string | null; son_durum: string | null; son_durum_etiketi: string | null; son_hata: string | null; olusturma: string; guncelleme: string }
+  son_cekis: string | null; son_durum: string | null; son_durum_etiketi: string | null; son_hata: string | null; olusturma: string; guncelleme: string;
+  /** v2.565: portal dışa aktarımıyla birim kıyası özeti; «birim doğrulandı» yalnız belge_uyumlu iken işaretlenebilir */
+  birim_kanit?: BulutBirimKiyas | null }
+export interface BulutBirimKiyas { sonuc: string; metin: string; belge_uyumlu: boolean; n_referans: number; n_ortak: number; n_uretimli?: number; isaret_kaldirildi?: boolean; zaman?: string; dosya?: string | null; uyari?: string | null; kaydedildi?: boolean;
+  alanlar: { alan: string; etiket?: string | null; hipotez: string; hipotez_etiketi: string; n_ortak: number; n_uretimli?: number; n_tolerans_ici?: number; oran: number | null; mape_pct: number | null; toplam_fark_pct: number | null; sonuc: string }[];
+  tolerans: { pct: number; kwh: number; min_ortak_saat: number; min_uretimli_saat?: number }; not: string }
 export interface BulutKimlikDurum { kasa: { var: boolean; id: string | null; eski: string[]; hata?: string }; kayitlar: BulutKimlikKayit[]; onay_metinleri: Record<string, string>; not: string;
   ham_son: { saglayici: string; ts_utc: string; dis_kimlik: string | null; alanlar: Record<string, number | string | null>; alinma: string }[];
   alanlar: Record<string, { birim: string; etiket: string; hedef?: string }>; birim_notu: string; gunluk_tavan: number;
-  saglayici_alanlari?: Record<string, { alanlar: Record<string, { birim: string; etiket: string }>; birim_notu: string; gunluk_tavan: number; toplu: boolean }> }
+  saglayici_alanlari?: Record<string, { alanlar: Record<string, { birim: string; etiket: string }>; birim_notu: string; gunluk_tavan: number; toplu: boolean }>;
+  /** v2.564: sahip onayı (OAuth) — platform uygulaması yapılandırıldı mı (eksik ortam değişkeni ADLARI), son girişim (durum kodu, santral listesi) */
+  oauth?: { uygulamalar: Record<string, { yapilandirildi: boolean; eksik: string[]; geri_donus: string; kayit: string | null }>;
+    son: { saglayici: string; bolge: string | null; baslatma: string; bitis: string; kullanildi: boolean; durum: string; etiket: string; aciklama?: string | null; santraller: { kimlik: string; ad: string | null; kapasite_kwp: number | null }[]; zaman?: string | null } | null } }
 export interface BulutKimlikSonuc { durum: string; kaydedildi: boolean; aciklama?: string; zaman?: string; saglayici?: string; dis_kimlik?: string; dis_ad?: string | null; etiket?: string | null; kek_id?: string;
   santraller?: { kimlik: string; ad: string | null; kapasite_kwp: number | null }[]; not?: string }
+/** v2.564: sahip onayı başlatma yanıtı — yetki_url sağlayıcının onay sayfası (tek kullanımlık, 15 dk) */
+export interface BulutOAuthBaslat { durum: string; aciklama?: string; yetki_url?: string; bitis?: string; geri_donus?: string; saglayici?: string; bolge?: string | null; eksik?: string[]; not?: string }
 
 /** v2.560 (Aşama 4): pilot kapıları ve referans kıyası */
 export interface PilotKapi { kod: string; ad: string; kaynak: "saha" | "kod"; p0: boolean; aciklama: string; tamam: boolean; not: string | null; zaman: string | null; aktor_id: string | null; durum_etiketi: string }

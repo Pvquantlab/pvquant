@@ -49,3 +49,18 @@ test("damga değişince önbellek eskir, olay yayılır ve veri sayfaları yenid
     assert.ok(n >= adet, `${dosya}: damgaya bağlı efekt ${n} < ${adet}`);
   }
 });
+
+test("dosyalı yazma GET belleğini düşürür: yükleme sonrası sayfa kendi sonucunu taze görür", () => {
+  // v2.565 inceleme: gonder her yazmada belleği boşaltıyordu, dosya gönderen uçlar boşaltmıyordu; yükleme sonrası
+  // sayfanın kendi yenilemesi 60 sn bellekten dönüyordu (birim kıyası kartı eski kanıtı göstermeye devam etti).
+  const cl = oku("api/client.ts");
+  const dg = cl.slice(cl.indexOf("async function dosyaGonder<T>"), cl.indexOf("/** /summary yaniti"));
+  assert.match(dg, /if \(!yol\.endsWith\("\/preview"\)\) bellekte\.clear\(\);\n  return \(await y\.json\(\)\) as T;/);
+  const parcalar = cl.split('const fd = new FormData(); fd.append("dosya", dosya);').slice(1);
+  assert.ok(parcalar.length >= 7, `elle kurulan dosya ucu ${parcalar.length} < 7`);
+  for (const p of parcalar) {
+    const govde = p.slice(0, p.search(/\n {4}return (\(await )?y\.json\(\)/) + 1);
+    assert.match(govde, /method: "POST", body: fd/);
+    assert.match(govde, /\n {4}bellekte\.clear\(\);/, govde.slice(0, 120));
+  }
+});

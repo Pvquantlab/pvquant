@@ -248,7 +248,7 @@ def rapor(tenant_id, plant: dict, donem: str | None = None, bugun: date | None =
         bol.append(("Aylık üretim ve beklenti", a))
     if v.get("kaynak_niteligi"):   # v2.559 (V4): veri kaynağı niteliği tablosu
         kn = v["kaynak_niteligi"]; satirlar = [{"Kaynak": x["etiket"], "Nitelik": "üretim serisi (geçerli)", "Saat": x["saat"]} for x in kn["uretim_serisi"]]
-        satirlar += [{"Kaynak": x["etiket"], "Nitelik": f"gölge görünüm · {x['tamlik_etiketi']}", "Saat": x["saat"]} for x in (kn.get("golge") or {}).get("kaynaklar", [])]
+        satirlar += [{"Kaynak": x["etiket"], "Nitelik": f"kaynak kıyası · {x['tamlik_etiketi']}", "Saat": x["saat"]} for x in (kn.get("golge") or {}).get("kaynaklar", [])]
         if satirlar:
             bol.append(("Veri kaynağı niteliği", pd.DataFrame(satirlar)))
     if v["olaylar"]:

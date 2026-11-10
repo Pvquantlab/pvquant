@@ -29,8 +29,11 @@ class Baglayici:
     TOPLU = False                               # tek çağrıda birden çok santral
     ALANLAR: dict[str, dict] = {}               # ham alan → {birim, etiket}
     BIRIM_NOTU = ""
+    ETIKET_ALANI: str | None = None            # v2.564: maskeli hesap etiketi hangi alandan (None → ilk kimlik alanı)
+    ELLE_GIRIS = True                           # v2.564: kimlik alanları ekranda elle girilebilir mi (OAuth'a özgü belirteç yollarında False)
+    OAUTH = False                               # v2.564: sahip onayı (OAuth) ile belirteç alınabilir mi (platform uygulaması yapılandırılmışsa)
     DURUM = "uygulandi_dogrulanmadi"
-    DURUM_ETIKETI = "bağlantı yazıldı, gerçek hesapla doğrulanmadı"
+    DURUM_ETIKETI = "uygulamada destekleniyor; gerçek hesapla henüz doğrulanmadı"
     NOT = ""
     ZAMAN_ASIMI = 15.0
 
@@ -68,7 +71,7 @@ class Baglayici:
         return {"ad": cls.AD, "sinif": cls, "kimlik_alanlari": list(cls.KIMLIK_ALANLARI), "kimlik_etiketleri": dict(cls.KIMLIK_ETIKET), "gizli_alanlar": list(cls.GIZLI_ALANLAR),
                 "bolge": cls.BOLGELER is not None, "bolgeler": list(cls.BOLGELER) if cls.BOLGELER else [], "varsayilan_bolge": cls.VARSAYILAN_BOLGE,
                 "gunluk_tavan": cls.GUNLUK_TAVAN, "toplu": cls.TOPLU, "alanlar": dict(cls.ALANLAR), "birim_notu": cls.BIRIM_NOTU,
-                "durum": cls.DURUM, "durum_etiketi": cls.DURUM_ETIKETI, "not": cls.NOT}
+                "durum": cls.DURUM, "durum_etiketi": cls.DURUM_ETIKETI, "not": cls.NOT, "oauth": bool(cls.OAUTH), "etiket_alani": cls.ETIKET_ALANI, "elle_giris": bool(cls.ELLE_GIRIS)}
 
 
 def gun_baslangici(gun: datetime, tz_adi: str | None) -> datetime:

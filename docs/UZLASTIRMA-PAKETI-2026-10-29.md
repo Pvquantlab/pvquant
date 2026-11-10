@@ -1246,3 +1246,151 @@ Sonraya: EK-3 değer satırları; lock dosyası kararı; Mutabakat'ta kupst_kayn
 **İnceleme turu (10.11, bulut formu ekran görüntüsü).** (1) «Diğer» seçiliyken açıklama her sağlayıcı için «(bağlantı yazıldı, gerçek hesapla doğrulanmadı)» ekini yineliyordu → tek parantez, adlar listesi. (2) Hedef «not», yetenek özeti ve kart dip notu hâlâ yalnız FusionSolar'dan ve «V2 talep gelince»den söz ediyordu → beş bağlantı, iki onaylı şifreli saklama, «hiçbiri gerçek hesapla doğrulanmadı», V1 devre dışı, GoodWe/Deye/Sofar planlandı. (3) Sağlayıcı adı yer tutucusu «ör. iSolarCloud» (artık destekleniyor) → «ör. Deye Cloud». Sahte API yol listesi ve dip notu motordan yeniden üretildi.
 
 **Mühür.** v2.563 57fe359 CANLI (10.11 00:44 TSİ): tek commit, kırk sekizinciden elli dördüncüye yedi paket (v2.548–v2.563); CI #709 yeşil (5 dk 49 sn); ssh dağıtım api+worker+web (imaj 139 sn, cryptography bağımlılığıyla); GÖÇLER v2550_kaynak_saatlik → v2556_bulut_kimlik → v2558_edge_kisit DB sahibiyle uygulandı, canlı head v2558; `.env`'e PVQ_KEK (openssl rand, ekrana basılmadı) + PVQ_KEK_ID=k1, kasa canlıda açık ({var: True, id: k1}); canlı bayt kıyası 77/77 birebir; healthz 200; api günlüğünde hata yok, worker açılış yakalaması «taze»; web parçalarında yeni kart metinleri (Santralim, Portföy). Yerel tam pytest 975 + ağır 86; web 103. Dört inceleme turu (ekranlar).
+
+## Elli beşinci paket — v2.564 (10.11.2026): dış girdi takibi, başvuru metinleri ve sahip onayı (OAuth) yönlendirme ucu (YERELDE; mühürlenmedi)
+
+**Kaynak.** v2.563 sonrası kalan her kalem dış girdiye bağlı (gerçek hesap/cihaz, sahip izni, üretici onayı, hukuki görüş). Kullanıcı «dış girdiye bağlı kalanları sırayla yapalım» dedi;
+iki araştırma klasörü (Opus `PVQuant_Inverter_Pazar_Arastirmasi` A, Codex `PVQuant_Turkiye_Invertor_Entegrasyon_Arastirmasi` B) başvuru usulleri için yeniden tarandı: hiçbir sağlayıcı için
+başvuru süresi, ücret ya da ticari onay formu belgelenmemiş; üreticilere hiçbir başvuru yapılmamış. Sungrow uygulama başvurusu redirect URL istediği için (A 08 §3.1 [K87]) tek kod kalemi:
+sahip onayı yönlendirme ucu. Kaynaklar: A 08 §1.2.2–1.2.3 (SolarEdge OAuth: authorize yalnız `client_id`+`external_id`, geri dönüşte `code`/`site_id`/`external_id`, token `/v2/oauth2/token`,
+`GET /sites` Bearer kabul etmez [K77][K353–K358]); A 08 §3.2–3.3 (Sungrow onay adresi kalıbı yalnız ikincil kaynakta [K366], token `/openapi/apiManage/token`, result_code 1/2/5 [K87]).
+
+**(A) Dış girdi takibi ve başvuru metinleri (`docs/entegrasyon/`).** `DIS-GIRDI-TAKIBI.md`: 11 kalem (D1 KVKK görüşü, D2 FusionSolar NBI, D3 pilot yazılı izni, D4 Sungrow geliştirici+VIII(c),
+D5 SolarEdge geliştirici/filo, D6 Growatt belirteci, D7 Solis anahtarı, D8 pilotlar P-1xx/P-7xx/P-104/P-SFTP/P-ENV, D9 ortaklıklar, D10 mTLS eşiği, D11 GoodWe/Deye/Sofar) — her biri için
+kim verir · nereye · biz ne göndeririz · ne alırız · kod durumu · sıradaki adım, kaynak numaralarıyla; önerilen sıra (PVQuant'ın tek başına başlatabildikleri önce). `BASVURU-METINLERI.md`:
+§1 kurulumcuya NBI isteği, §2 pilot yetki ve kapsam beyanı (sahip+O&M+OT; FC03/04 süzgeci, ayrı IEC 104 yuvası, test penceresi, tolerans %2/0,5 kWh, geri alma), §3 Sungrow ticari onay
+e-postası (EN), §4 SolarEdge filo/ilişkili hesap, §5 Growatt belirteci (+ sabit IP 178.18.206.130), §6 Solis sahip adımları + kapsam beyanı, §7 ilk görüşme envanter soruları.
+`OAUTH-UYGULAMA-KAYDI.md`: akış, kayıt adımları, ortam değişkenleri, doğrulanmamış varsayımlar.
+
+**(B) Sahip onayı (OAuth) ucu (`services/bulut_oauth_service.py`, göç `v2564_bulut_oauth`).** `POST /v1/plants/{id}/bulut-kimlik/oauth/baslat`: iki onay + kasa + platform uygulaması
+(ortam: `PVQ_SUNGROW_APPKEY/ACCESS_KEY/APP_ID`, `PVQ_SOLAREDGE_CLIENT_ID/SECRET`, `PVQ_OAUTH_GERI_DONUS_KOK`) → rastgele `state` (tabloda yalnız SHA-256 özeti; santral, sağlayıcı, bölge,
+onaylar, aktör, 15 dk) ve sağlayıcı onay adresi (Sungrow `https://{auth_server}/?state=…#/authorized-app?cloudId=…&applicationId=…&redirectUrl=…`, bölge→cloudId tablosu; SolarEdge
+`connect.solaredge.com/authorize?client_id=…&external_id=<state>`). Tanımlı değilse `uygulama_yok` (eksik değişken ADLARI; sahte başarı yok). `GET /v1/bulut/oauth/{saglayici}/geri-donus`
+kimliksiz: state özetle bulunur ve AYNI UPDATE'te kullanılmış işaretlenir (yeniden oynatma kazanamaz; süresi dolan bulunmaz), sağlayıcı uyuşmazlığı/`error`/kod yokluğu ayrı durumlar;
+kod sunucuda belirteçle değiştirilir (`Sungrow.token_degis`, `SolarEdgeOAuth.token_degis` — site_id yoksa kod harcanmaz), `bulut_kimlik_service.kaydet(..., secim_ertele=True)` ile sınama
+(santral listesi) + zarf şifreli yazım; hesapta birden çok santral varsa kayıt `dis_kimlik` BOŞ yazılır («kaydedildi_secim_bekliyor»), sahip panelden seçer (PATCH), çekiş turu seçilmemiş
+kaydı sağlayıcıya çağrı yapmadan `santral_secilmedi` ile atlar. Tarayıcı panele `/?bulut_oauth=<sağlayıcı>:<durum>#santralim/<santral>` ile döner — yalnız durum KODU (metin yok; adres
+kökü ortamdan). Kod/belirteç/gizli hiçbir yanıt, günlük, denetim izi (`bulut_oauth_baslat`, `bulut_oauth_donus`) ya da `sonuc` özetine yazılmaz. Geri dönüş aynası: `son_sinama`
+(`uc: oauth`) ve `bulut_kimlik` özeti. Yeni sağlayıcı kaydı `solaredge_oauth` (Bearer; `/sites/{id}` + `/energy`; 401'de refresh ve yeni çift atomik; `ETIKET_ALANI=site_id` — belirteç
+maskelenmez; `ELLE_GIRIS=False`); `SolarEdge._get` tek GET noktası. Sicile `oauth`, `etiket_alani`, `elle_giris`; HENUZ_YOK'tan «SolarEdge site sahibi OAuth yolu» çıktı. compose/`.env.example`
+yeni değişkenler (api+worker). Web: «Sahip onayına git (sağlayıcı sayfası)» (uygulama yapılandırılmışsa elle alanlar gizlenir), dönüşte koddan Türkçe mesaj ve sorgu adres çubuğundan
+silinir, kayıt satırında «Sağlayıcıdaki santral» seçimi (son girişimin listesinden), yapılandırılmamışsa «platform uygulaması tanımlı değil» (ortam adı gösterilmez; yalnız onayla kurulan
+yolda elle alan/sınama düğmesi yok). Sahte API: baslat/geri-donus/PATCH dis_kimlik, sağlayıcı listesi motordan; `~/.claude/launch.json` «pvquant-sahte-api».
+
+**Göç.** `v2564_bulut_oauth` — `bulut_oauth_durum` (RLS; pvq_app SELECT/INSERT/UPDATE/DELETE). Canlıda DB sahibiyle (mühürde). Test DB'ye uygulandı.
+
+**Kanıt.** tests/test_bulut_oauth_v2564.py 8 (sicil/özet gizli yok; başlatma kapıları ve adresler — state `#` öncesinde, özet 64 hex, düz state/gizli hiçbir çıktıda yok; state tek kullanım,
+sağlayıcı uyuşmazlığı, error/kod yok/uygulama yok/belirteç hatası; Sungrow sahte sunucuyla belirteç değişimi → kasa: AT/RT/access_key düz metin ne yanıtta ne satırda ne özette, kasa.coz_json
+birebir; çok santralda seçim ertelenir + çekiş bekçisi sağlayıcıya çağrı yapmaz; SolarEdge OAuth: 400 invalid_request, site_id yoksa kod harcanmaz, Bearer ve X-API-Key yok, 401 → refresh →
+kimlik_yenile yeni çift, geri dönüşte external_id/site_id ve etiket site'tan; yönlendirme adresi süzgeci; API: onay_yok, yonlendir + state izde yok, kimliksiz geri dönüş 303 durum koduyla,
+tamam yolunda kasa yazımı + ayna + izde kod/belirteç yok), tests/test_bulut_oauth_db_v2564.py 1 (DB: özet, tek kullanım, RLS, sonuç, süresi dolan). Eski 2 test sicil kümesine `solaredge_oauth`
+eklendi. İlgili 29 pytest + dil bekçisi geçti; tam takım (test DB ile) 1070 geçti / 1 atlandı. Web tsc/build/lint 16 (eski)/0 hata/103 test. Sahte önizlemede uçtan uca: hedef bulut → Sungrow → onaylar → «Sahip onayına
+git» → sahte sağlayıcı dönüşü 303 → panelde «hesapta birden çok santral var» mesajı, kayıt satırı «kimlik şifreli kayıtlı · santral seçilmedi», seçim → «sağlayıcı santralı 5001»
+(`docs/tasarim/kanit-2026-11-10/oauth-donus-secim-bekliyor-800-2026-11-10.jpg`, `…/oauth-santral-secildi-800-2026-11-10.jpg`; depoya girmez); SolarEdge sahip onayı yapılandırılmamışken not ve alan/sınama düğmesi yok.
+
+**Dürüstlük.** Sungrow onay adresi kalıbı ve cloudId eşlemesi yalnız ikincil kaynakta; SolarEdge `state`'in `external_id` ile dönmesi belgeye dayalı varsayım; iki akış da gerçek hesapla
+görülmedi — kayıt yapılıp ilk gerçek dönüşte doğrulanır, aksi hâlde ekran «durum_yok/durum_gecersiz» ile durur, hiçbir şey saklanmaz.
+
+**Kalanlar (dış girdi).** D1–D11 takip belgesinde; kod tarafında eksik yok. Mühürde: göç DB sahibiyle, `.env`'e platform değerleri (kayıt yapılınca; yoksa yol kapalı kalır).
+
+## Elli altıncı paket — v2.565 (10.11.2026): bulut birim kıyası — «birim doğrulandı» kanıta bağlandı (YERELDE; mühürlenmedi)
+
+**Kaynak.** Dış girdi takibi D2 (FusionSolar gerçek hesap) doğrulama protokolünün 3. adımı: ilk gerçek hesap gelince `inverter_power`'ın kWh mi kW mi olduğu portal «saatlik
+üretim» dışa aktarımıyla kıyaslanacak (B kapısı G07/U04: «inverter_power alanını kW veya kWh diye yayınlama»; A 02 [K81/H6] belgeye göre kWh, B 16/05 yorumu sabitlemiyor).
+v2.557'den beri «birim doğrulandı» elle bir kutuydu; gerçek hesap gelmeden önce bu kutunun kanıt istemesi gerekiyordu (sahte doğrulama yolu kapanır).
+
+**(A) Birim kıyası (`services/bulut_birim_service.py`).** SAF `kiyas(ham, referans)`: `bulut_saatlik_ham` satırlarındaki her sayısal alan beş yorumla (kWh doğrudan · Wh÷1000 · MWh×1000 ·
+kümülatif fark kWh · kümülatif fark Wh) referansla (CSV: zaman, kwh; okuyucu pilot kitiyle ortak `pilot_service.referans_csv_oku`) aynı saatlerde kıyaslanır; tolerans %2 ya da 0,5
+kWh/saat, en az 24 ortak saat; alan başına en iyi yorum, oran, MAPE, toplam fark. Karar: `belge_uyumlu` (belgeye göre alan `enerji_kwh_belge` kWh yorumuyla uyumlu) · `belgeyle_celisiyor`
+(başka alan/yorum uyumlu, belge yorumu değil — işaret konamaz, bulgu geliştiriciye) · `uyumsuz` · `yetersiz`. Not: iki kaynak aynı sağlayıcıdan; bu bir BİRİM/ANLAM doğrulamasıdır, ölçüm
+doğruluğu kanıtı değildir (metinde). `degerlendir`: referans aralığındaki ham saatler → kıyas → özet `bulut_kimlik.birim_kanit` (jsonb; ham referans saklanmaz).
+**(B) Kanıt kapısı.** `bulut_kimlik_service.isaret_izinli` (SAF) ve `ayarla(birim_dogrulandi=True)` → kanıt yoksa ya da belge yorumu uyumlu değilse `BirimKanitiYok` → API 422 (mesaj:
+önce dışa aktarım yükle). Uç: `POST /v1/plants/{id}/bulut-kimlik/{saglayici}/birim-kiyas` (dosya ≤5 MB; kayıt yoksa 404; okunamazsa 422; denetim `bulut_birim_kiyas` — dosya adı, sonuç, n).
+Göç: v2564'e sütun eklendi (`bulut_kimlik.birim_kanit`; mühürlenmemiş göç genişletildi, test DB'de geri alınıp yeniden uygulandı). Çekiş turu `santral_secilmedi` etiketi `DURUM_ETIKET`'te.
+**(C) Ekran.** Kayıt satırında «Portal dışa aktarımıyla birim kıyası (CSV)» yükleme; sonuç rozeti (belge yorumu uyumlu / çelişiyor / uyumsuz / yetersiz), metin, zaman, dosya adı, alan
+tablosu (alan, en iyi yorum, ortak saat, toleransta, sonuç); «birim doğrulandı» kutusu yalnız `belge_uyumlu` iken etkin, ipucu nedenini söyler. Sahte API: kıyas ucu, PATCH kapısı (422).
+
+**Kanıt.** tests/test_bulut_birim_v2565.py 5 (kWh doğrudan → belge_uyumlu, alan etiketi ve ışınımın uyumsuz kalması; Wh ölçekli belge alanı → belgeyle_celisiyor + kümülatif Wh alanı
+`kumulatif_wh` ile uyumlu; yetersiz/uyumsuz/boş; işaret kapısı üç hâl; değerlendirme özeti ham referans saklamaz; API: kanıtsız PATCH 422, yabancı sağlayıcı 404, bozuk dosya 422, kıyas
+200 + kayıt + iz, kanıt sonrası PATCH 200). Eski DB testi kapıya uyarlandı (kanıtsız → BirimKanitiYok, kanıt → işaret). İlgili testler + dil bekçisi geçti; tam takım (test DB ile) 1074 geçti / 1 atlandı / 1 kırmızı (aşağıdaki saat bağımlı eski test). Web tsc/build/
+lint 16 (eski)/0 hata/103. Sahte önizleme: kayıt → kanıtsız PATCH 422 → CSV yükleme → «belge yorumu uyumlu» rozeti + tablo → kutu etkin → işaret sunucuda ve ekranda
+(`docs/tasarim/kanit-2026-11-10/birim-kiyas-belge-uyumlu-1280-2026-11-10.jpg`, `…/birim-dogrulandi-isaretli-1280-2026-11-10.png`; depoya girmez).
+
+**Not (test takımı).** `tests/test_olay.py::test_saatlik_etki_istisna_ve_dahili` 10.11.2026 09:30 TSİ'den sonra kendiliğinden kırmızı: `olay_service` satır 217 açık/kapalı sınıflamasında
+`datetime.now()` kullanıyor ve testin 10.11.2026 sabit olayı bugün «başlamış» sayılıyor — saat bağımlı eski test, bu paketle ilgisiz; sabit `simdi` ile düzeltme ayrı küçük iş.
+
+**Kalanlar (dış girdi).** Gerçek NBI hesabıyla kıyasın kendisi (D2); kıyas belge yorumuyla çelişirse bağlayıcı belgesi düzeltilir (kod işi, bulgu gelince).
+
+**İnceleme turu (10.11.2026, kullanıcı ekran görüntüsü üzerine; YERELDE).** Kart ve arkasındaki kod birlikte gözden geçirildi; kesin kusurlar düzeltildi, yargı gerektirenler kullanıcıya bırakıldı.
+(1) **Üretimsiz saat sahte doğrulama veriyordu.** Tolerans oranı tüm ortak saatler üzerinden ölçülüyordu; gece saatleri (0 = 0) her yorumla uyuştuğu için yalnız gece içeren bir dosya
+«belge yorumu uyumlu» çıkarabiliyordu. Artık oran yalnız üretim olan ortak saatlerde ölçülür; karar için en az 8 üretimli saat gerekir (`MIN_URETIMLI_SAAT`), yoksa `yetersiz`. Özet ve
+tabloya «Üretimli saat» eklendi. (2) **Kapı açıkları.** Doğrulamayan yeni bir kıyas eski işareti kaldırır (API `isaret_kaldirildi`, ekranda «işaret kaldırıldı… gölge görünüme yazım durdu»);
+sağlayıcı santrali (`dis_kimlik`) değişince kanıt ve işaret sıfırlanır. (3) **Sunum.** Yüzdeler Türkçe ondalıkla (%95,5); belge alanı satırı her zaman gösterilir; belge alanıyla birebir aynı
+ham alan ikinci satır olarak tekrarlanmaz; hiç saat çekilmemişken CSV girişi kapalı ve nedeni yazılı; bulut hedefinde «cihaza» yerine «hesaba»; gereksinim başlığı yalnız bağlayıcısı olan beş
+bulutu sayar. (4) **Kök neden: dosyalı yazma GET belleğini düşürmüyordu.** `web/src/api/client.ts` `getir` 60 sn bellek tutar; `gonder` her yazmada boşaltır, `dosyaGonder` ve elle yazılmış
+yedi FormData yükleyicisi boşaltmıyordu. Sonuç: yükleme sonrası sayfanın kendi yenilemesi 60 sn boyunca eski yanıtı gösteriyordu (kıyas sonucu ekrana gelmiyordu). Aynı sınıf kusur mühürlü
+akışlarda da vardı (SCADA yükleme, bildirilen KGÜP/şablon, saatlik EPYS, mutabakat, sayaç, IEC 104 nokta tablosu, pilot referansı); düzeltme sekiz noktada `bellekte.clear()` — etkisi yalnız
+bir fazladan GET. Önizleme ucu (`/preview`) veri yazmadığı için belleğe dokunmaz. Bekçi: `web/test/panel/senkron.test.ts` «dosyalı yazma GET belleğini düşürür». (5) **Sahte API** gerçek
+servisle eşlendi: imkânsız durum (çekiş yokken ham saat) kalktı, yüklenen dosya adı yankılanır, işaret kalkınca kaynak satırı etiketi de döner (gerçek servis etiketi her GET'te kayıttan
+hesaplar; `veri_yolu_service` — kusur yalnız sahte API'deydi).
+**Kanıt (inceleme).** `tests/test_bulut_birim_v2565.py` 8 (üretimsiz saat → yetersiz, üretimli saat sayımı, işaretin kalkması dâhil); tam takım 1077 geçti / 1 atlandı / 1 kırmızı (aynı saat
+bağımlı eski test); web 104/104, tsc 0, build tamam, lint yalnız eski uyarılar. Önizleme 1280 px üç durum: A çekiş yok → CSV girişi kapalı; B belge uyumlu → tablo 48 / 22 / %95,5, kutu
+işaretli, kaynak satırı «birim doğrulandı»; C üretimsiz dosya → «kıyas için yetersiz saat», kutu boş ve kapalı, uyarı metni, kaynak satırı «birim doğrulanmadı»
+(`docs/tasarim/kanit-2026-11-10/inceleme-A-…`, `inceleme-B-…`, `inceleme-C-…`; depoya girmez).
+**İncelemede kullanıcıya bırakılan dört satır (10.11, kullanıcı onayıyla düzeltildi; yerelde, mühür bekliyor).**
+(a) **Durum etiketi çelişkisi.** Aynı kartta üst rozet santrale özgü durumu («veri alınıyor») gösterirken hedef seçicisi ve gereksinim başlığı tür düzeyindeki «bağlantı henüz kurulmadı»
+etiketini taşıyordu (v2.544–v2.547'den beri). Arka uç değişmedi: tür etiketi (`DURUM_ETIKET`) ve santral durumu (`baglanti_durumu`) iki ayrı katman olarak kalır. Ön yüzde `yolDurumu`
+yardımcısı, santralin beyan ettiği türde tür etiketi yerine tek durum kodunun etiketini gösterir; diğer türlerde tür etiketi kalır (`web/src/features/santralim/Santralim.tsx`). Rozet rengi
+yalnız `veri_akisi` kodunda olumlu. (b) **Bayat iki cümle.** «düzenli veri çekişi başlamaz» → «düzenli veri çekişini kendiliğinden başlatmaz» (çekiş açıkken de doğru); kıyas metnindeki
+««Birim doğrulandı» işaretlenebilir» → «Bu kanıt «birim doğrulandı» işareti için yeterlidir.» (kutu işaretliyken de doğru; `bulut_birim_service`). (c) **İpucu.** «bağlantı yazıldı, gerçek
+hesapla doğrulanmadı» → «uygulamada destekleniyor; gerçek hesapla henüz doğrulanmadı» (`io/bulut/temel.py` `DURUM_ETIKETI`; cümle başında büyük harfle); `veri_yolu_service` notu «belgelerine
+göre hazırlandı»; sağlayıcı listesi başlığı «hiçbiri gerçek hesapla henüz doğrulanmadı». Dürüstlük kaydı aynı kaldı, yalnız söyleyiş netleşti. (d) **Pilot metinlerinde yüzde.**
+`pilot_service.referans_kiyas` metinleri Türkçe ondalıkla (`_tr`): «…tanesi toleransta (%96,6; saat başına en çok %2 ya da 0,5 kWh)». Karar mantığı, eşikler ve sayılar değişmedi.
+Sahte API aynı metinlere eşlendi.
+**Kanıt (düzeltme).** `tests/test_pilot_edge_v2560.py` uyumlu metni birebir, uyumsuz metninde nokta ondalık yok; `tests/test_bulut_birim_v2565.py` yeni cümle sabitlendi; dört dil bekçisiyle
+birlikte hedefli 26 geçti; tam takım 1077 geçti / 1 atlandı / 1 kırmızı (aynı saat bağımlı eski test). Derleme ve tarayıcıyla aynı anda koşan bir turda iki test daha kırmızı düştü (`test_edge_db_v2561`, `test_rapor_tutarlilik` D18); tek başlarına ve yalnız koşan tam turda geçtiler, yük altında kararsızlık olarak not edildi. Web 104/104, tsc 0, build tamam, lint yalnız eski uyarılar. Önizleme 1280 px üç durum, metinler sayfadan okundu: A çekiş yok → rozet ve seçenek «bağlantı sınaması
+başarılı, veri çekişi yok»; B ve C çekiş açık → rozet, seçenek ve gereksinim başlığı üçü de «veri alınıyor»; bağlanmamış türler (Modbus, IEC 104, OPC UA) «bağlantı henüz kurulmadı» olarak
+kalır (`docs/tasarim/kanit-2026-11-10/duzeltme-A-…`, `duzeltme-B-…`, `duzeltme-C-…`; depoya girmez).
+
+**İkinci inceleme turu (10.11, kullanıcının geniş ekran karesi üzerine; yerelde, mühür bekliyor).** Kare sahte API ile 2300 px genişlikte, açık temada, «kıyas için yetersiz saat»
+durumunda yeniden üretildi; kart metin ve düzen olarak okundu, net kusurlar düzeltildi, karar gerektirenler kullanıcıya bırakıldı. Arka uç değişmedi.
+(1) **Sınıf adı çakışması (canlıda da var).** v2.547'de kart içi bölüm başlığı `.alt-bolum` adıyla yazılmıştı; aynı ad `web/src/index.css` içinde daha önce bölüm kapsayıcısı olarak
+tanımlıydı (Ayarlar «Hesap ve ekip» `Kurulus.tsx`, yönetim `sayfalar.tsx`). Sonuç: Ayarlar kartlarında gövde metni 12,5 px yarı kalın ve altta fazladan çizgi, «Veri kaynakları»
+kartında başlıkların üstünde ikinci çizgi. Başlık kuralı `.kart-bolum` adına taşındı, üç başlık bu sınıfı kullanır; kapsayıcı eski hâline döndü
+(ölçüm: yazı kalınlığı 400, üst boşluk 20 px, üst çizgi 1 px, alt çizgi 0). (2) **Form satırı.** Etiket aralığı 8/12 px; sağlayıcı notu tam satır. (3) **İki tablo.** Kıyas kanıtı
+tablosu `table.veri.dar` (2300 px ekranda 772 px), ham saat tablosu «Son çekilen ham saatler» başlığıyla ayrıldı. (4) **Yaş metni.** 24 saatten genç veri «(0 gün önce)» yerine
+«(N saat önce)», bir saatten genç veri «(1 saatten az önce)». (5) **Satır boyu.** Açıklama satırları en çok 90ch (ölçüm 766 px). (6) **Dar ekran.** 390 px'te belge 533 px
+genişliğe taşıyordu (rozetler tek satır, kanıt bloğu `min-width: auto`, seçim ve dosya girdisi kendi genişliğinde). Izgara `minmax(0, 1fr)`, rozet sarar, girdiler `maxWidth: 100%`,
+tablolar kendi kaydırma kabında; 390 ve 320 px'te kart içerik kutusunu aşan öğe yok.
+**Kullanıcıya bırakılanlar.** Bulut adımlarına «birim doğrulanmadı» bekleyen adımı; birim doğrulanmamışken kaynak satırındaki «veri» rozetinin yeşil olması; kimlik kayıtlıyken boş
+kimlik alanları ve işaretsiz saklama onayı; «yetersiz» sonucun yanında «%100,0»; tür düzeyindeki «gerçek hesapla doğrulanmadı» cümlelerinin başarılı çekişle yan yana durması;
+müşteri metninde «gölge görünüm» ve «şifreli kasada» deyişleri; çok geniş ekranda panel için azami içerik genişliği. Kapsam dışı gözlem: 320 px'te sayfa başka kartlar yüzünden
+382 px («Sensörler ve kalibrasyon» tür seçimi, «Pilot kapıları» dosya girdisi, «Aylık üretim» tablosu).
+**Kanıt (ikinci inceleme).** Web 104/104, tsc 0, build tamam, lint yalnız eski iki uyarı. Önce ve sonra kareleri `docs/tasarim/kanit-2026-11-10/inceleme2-…` (2300, 1280, 390, 320 px
+ve Ayarlar «Hesap ve ekip» 1280 px; depoya girmez). Kalıp `emsaller.md`'ye yazıldı.
+
+**İkinci incelemede kullanıcıya bırakılanlar uygulandı (10.11, «önerilenlerin hepsi»; yerelde, mühür bekliyor).** Altı madde uygulandı, yedincisi (çok geniş ekranda azami içerik
+genişliği) somut öneri verilmediği için açık kaldı. (1) **Bekleyen «birim» adımı.** `veri_yolu_service.asamalar`: bulutta kimlik kayıtlıysa «veri alınıyor»dan sonra ayrı adım,
+«birim doğrulanmadı» ya da «birim doğrulandı»; kimlik yokken adım yok (eski kod dizisi `secildi, ayar, sinama, kimlik, akis` aynı kalır). (2) **«Veri» rozeti.** Bulut satırı üç alan
+taşır (`saglayici`, `birim_dogrulandi`, `son_cekis_ok`); veri güncel olsa da birim doğrulanmadıysa rozet nötr. (3) **Kayıtlı kimlik.** Kimlik kayıtlıyken bölge seçimi, kimlik
+alanları, saklama onayı, «Sına ve şifreli kaydet» ve «Bulut bağlantısını sına» gösterilmez; kayıt satırındaki «Kimliği değiştir» açar, «Değiştirmekten vazgeç» kapatır ve girilenleri
+temizler. Onay kutusu hiçbir durumda önceden işaretlenmez; kayıtlı kimlik yenisi kaydedilene kadar kullanılır. (4) **Yetersiz kıyas.** «Toleransta» sütunu yetersiz sonuçta tire.
+(5) **Hesap durumu.** Yeni saf işlev `hesap_durumu`: son çekiş başarılıysa `bulut.hesap_durumu` döner («bu hesapta çekiş başarılı; birim doğrulaması bekliyor» ya da «…; birim
+doğrulandı»). Ön yüz bunu üç yerde tür etiketinin yerine koyar: kart açıklaması, sağlayıcı notu, yetenek rozeti. Çekiş yoksa ya da son tur başarısızsa genel «gerçek hesapla henüz
+doğrulanmadı» kaydı aynen kalır. «Teknik ayrıntılar» altındaki tür düzeyi notlar değişmedi. (6) **İç terimler.** Müşteri metninde «gölge görünüm» yerine kartın adı «kaynak kıyası»
+(etiket, satır rozeti, birim notları, kayıt yanıtı, Modbus özeti, `kaynak_secim_service` metni, aylık rapor niteliği); «şifreli kasada» yerine «şifreli saklanır». İlk öneri
+«üretim serisine yazılmaz» idi; birim doğrulanınca saatler üretim serisine değil kaynak kıyasına yazıldığı için olumlu cümlede yanlış olurdu, bu yüzden «kaynak kıyası» seçildi.
+İş günlüğündeki «gölge N» sayaçları ve kod içi adlar değişmedi.
+**Kanıt (karar maddeleri).** `tests/test_bulut_birim_v2565.py::test_birim_adimi_ve_hesap_durumu` (adım sırası, etiketler, hesap durumu üç durumu, iç terim yokluğu). Tam takım test
+veritabanıyla 1077 geçti / 1 atlandı / 2 kırmızı; ikisi de sabit tarihli, zamana bağlı eski testler ve bu değişiklikle ilgisiz: `test_olay.py::test_saatlik_etki_istisna_ve_dahili`
+(önceden biliniyordu) ve `test_asama1_db_v2550.py::test_toplama_tam_kismi_revizyon_ve_golge` (`canli_ornekleme_service.durum` `now() − 24 saat` sayar, testin örnekleri 9 Kas 07:45 UTC;
+10 Kas 07:45 UTC'den sonra kırmızıya döndü). İkisi de CI'da kırmızı düşer; mühürden önce düzeltilmeleri gerekir, onay bekliyor. Web 104/104, tsc 0, build tamam, lint yalnız eski iki
+uyarı. Önizleme: kimlik kapalı ve açık durumları 320, 390, 1280 ve 2300 px'te kart içinde taşma yok; kimliksiz durumda alanlar açık ve genel kayıt yerinde; birim doğrulanınca adım,
+rozet ve hesap durumu olumluya döner (`docs/tasarim/kanit-2026-11-10/karar-…`; depoya girmez). Kalıp `emsaller.md`'ye yazıldı. Sahte API aynı kurallara eşlendi.
+
+**Zamana bağlı iki test düzeltildi (10.11, kullanıcı onayıyla; yalnız test dosyaları, yerelde).** (1) `tests/test_olay.py::test_saatlik_etki_istisna_ve_dahili`: kayıtlar sabit 10 Kasım
+tarihli, evre ve durum ise gerçek saate bağlıydı; 10 Kasım gelince «planlı» sayısı değişti. Test artık olay hizmetinin saatini 10 Kasım 08:00'e sabitliyor (`_saat_sabitle`; yeni
+bağımlılık yok, `isinstance` denetimleri gerçek tarih nesnelerinde de doğru kalır). Tarihler sabit bırakıldı, çünkü «2026 olayı yürürlükten önce» doğrulaması yıla bağlı.
+(2) `tests/test_asama1_db_v2550.py::test_toplama_tam_kismi_revizyon_ve_golge`: örnekler sabit 9 Kasım tarihliydi, hizmet «son 24 saat»i veritabanı saatiyle sayıyor. Başlangıç artık
+şimdiki saatin altı saat öncesi; sabit tarih dizgesi de buna göre üretiliyor. Dokuz farklı saat kaymasıyla (3–21 saat; gece yarısı geçişleri dâhil) denendi, hepsi geçti.
+Ürün kodu değişmedi. **Kanıt.** Tam takım test veritabanıyla 1079 geçti / 1 atlandı / 0 kırmızı (6 dk 48 sn).

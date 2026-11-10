@@ -143,8 +143,8 @@ def nitelik_ozeti(tenant_id, plant: dict, bas: datetime, bit: datetime) -> dict 
         return None
     metin = "Üretim serisi: " + (", ".join(f"{x['etiket']} {x['saat']} saat" for x in seri) if seri else "geçerli saat yok")
     if golge and golge["kaynaklar"]:
-        metin += "; gölge görünüm (üretim serisine yazılmayan sınıflar dâhil): " + ", ".join(f"{x['etiket']} {x['tamlik_etiketi']} {x['saat']}" for x in golge["kaynaklar"])
+        metin += "; kaynak kıyası (üretim serisine yazılmayan sınıflar dâhil): " + ", ".join(f"{x['etiket']} {x['tamlik_etiketi']} {x['saat']}" for x in golge["kaynaklar"])
         if golge["revizyonlu_saat"]:
             metin += f"; {golge['revizyonlu_saat']} saatte birden çok revizyon"
     return {"uretim_serisi": seri, "golge": golge, "metin": metin,
-            "not": "Her saatin kaynağı, ölçüm sınırı, niteliği ve revizyonu izlenebilir; kısmi ve tahmini saatler üretim serisine yazılmaz, tahmin ve doğruluk gölge görünümü kullanmaz."}
+            "not": "Her saatin kaynağı, ölçüm sınırı, niteliği ve revizyonu izlenebilir; kısmi ve tahmini saatler üretim serisine yazılmaz, tahmin ve doğruluk kaynak kıyasını kullanmaz."}

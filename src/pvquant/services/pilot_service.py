@@ -118,6 +118,11 @@ def referans_csv_oku(metin: str) -> list[dict]:
     return out
 
 
+def _tr(x: float, bicim: str = "g") -> str:
+    """SAF. Türkçe ondalık (virgül) — müşteri metinlerinde nokta ondalık kalmasın (10.11 inceleme)."""
+    return format(x, bicim).replace(".", ",")
+
+
 def referans_kiyas(golge_saatler: list[dict], referans: list[dict], tol_pct: float = TOL_PCT, tol_kwh: float = TOL_KWH) -> dict:
     """SAF. golge_saatler: karsilastir() çıktısındaki saatler [{ts_utc, secilen{tamlik, energy_kwh, kaynak}}]; referans [{ts_utc, kwh}].
     Yalnız TAM gölge saatleri kıyaslanır; kısmi/tahmini ve gölgesi olmayan saatler ayrı sayılır (referans dışı)."""
@@ -145,9 +150,9 @@ def referans_kiyas(golge_saatler: list[dict], referans: list[dict], tol_pct: flo
     if n_ortak < MIN_ORTAK_SAAT:
         sonuc, metin = "yetersiz", f"Yalnız {n_ortak} ortak tam saat (en az {MIN_ORTAK_SAAT} gerekir); karar verilmez."
     elif oran >= 0.95:
-        sonuc, metin = "uyumlu", f"{n_ortak} ortak tam saatin %{oran * 100:.1f}'i toleransta (saat başına en çok %{tol_pct:g} ya da {tol_kwh:g} kWh)."
+        sonuc, metin = "uyumlu", f"{n_ortak} ortak tam saatin {n_tol} tanesi toleransta (%{_tr(oran * 100, '.1f')}; saat başına en çok %{_tr(tol_pct)} ya da {_tr(tol_kwh)} kWh)."
     else:
-        sonuc, metin = "uyumsuz", f"{n_ortak} ortak tam saatin yalnız %{oran * 100:.1f}'i toleransta; fark kaynağı (ölçüm sınırı, saat dilimi, kayıp, çift sayım) incelenmeli."
+        sonuc, metin = "uyumsuz", f"{n_ortak} ortak tam saatin yalnız {n_tol} tanesi toleransta (%{_tr(oran * 100, '.1f')}); fark kaynağı (ölçüm sınırı, saat dilimi, kayıp, çift sayım) incelenmeli."
     return {"sonuc": sonuc, "metin": metin, "n_referans": len(referans), "n_ortak": n_ortak, "n_tolerans_ici": n_tol, "tolerans_orani": (round(oran, 4) if oran is not None else None),
             "n_golge_yok": n_yok, "n_golge_kismi_disi": n_kismi, "mape_pct": (round(sum(ape) / len(ape) * 100, 2) if ape else None),
             "ortalama_fark_kwh": (round(sum(farklar) / len(farklar), 3) if farklar else None), "maks_mutlak_fark_kwh": round(maks, 3),

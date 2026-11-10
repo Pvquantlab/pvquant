@@ -170,3 +170,13 @@ Her satır: kalıp → dosya → kritik kural. Yeni mühürde yeni kalıp çıka
 - **Platform açık teması (27.10.2026, biriktirildi):** ikinci yüz için aday paletler önce yalnız `data-palet` jeton blokları + localStorage
   önizleme anahtarı + üst çubukta geçici palet seçici olarak sunuldu (sahte API kareleri + ölçülmüş WCAG tablosu + gerçek veride tıklanabilir
   önizleme); karar verilince seçilen blok kalıcı yüz oldu, adaylar/anahtar/seçici silindi. Kalıp: «önce önizlenebilir aday, sonra kalıcı jeton».
+- **Kart içi bölüm: başlık mı, kapsayıcı mı (10.11.2026, biriktirildi):** iki ayrı sınıf. `.alt-bolum` bölüm KAPSAYICISIDIR (üstte ince çizgi + boşluk;
+  Ayarlar «Hesap ve ekip», yönetim sayfaları). `.kart-bolum` yalnız BAŞLIK satırıdır (12,5 px yarı kalın, altta çizgi; «Veri kaynakları» kartı).
+  v2.547'de başlık stili `.alt-bolum` adıyla yazılmış, kapsayıcıyı ezmişti (kalın gövde metni, çift çizgi). Kalıp: yeni sınıf adı eklemeden önce
+  `grep -n "\.ad\b" web/src/index.css`. Aynı kartta dar ekran taşması: ızgara `minmax(0, 1fr)`, esnek öğede `minWidth: 0`, rozette
+  `whiteSpace: normal`, seçim ve dosya girdisinde `maxWidth: 100%`; kısa kanıt tablosu `table.veri.dar`, açıklama satırı en çok 90ch.
+- **Kayıtlı kimlik ve hesap durumu (10.11.2026, biriktirildi):** kimlik kayıtlıyken kimlik alanları, bölge seçimi, saklama onayı ve sınama düğmeleri
+  gösterilmez; kayıt satırındaki «Kimliği değiştir» düğmesi açar, «Değiştirmekten vazgeç» kapatır (onay kutusu hiçbir durumda önceden işaretlenmez).
+  Tür düzeyindeki doğrulama etiketi («gerçek hesapla henüz doğrulanmadı») santralın kendi hesabında çekiş başarılıysa yerini hesap durumuna bırakır
+  («bu hesapta çekiş başarılı; birim doğrulaması bekliyor»); birim ayrı bekleyen adımdır, «veri» rozeti birim doğrulanana kadar nötr kalır.
+  Müşteri metninde «gölge görünüm» denmez: görünümün adı kartın adıdır, «kaynak kıyası».

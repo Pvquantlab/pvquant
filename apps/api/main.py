@@ -2270,6 +2270,8 @@ def bulut_kimlik_durum(plant_id: str, claims=Depends(gecerli_kullanici)):
     d["ham_son"] = bc.ham_son(claims["tenant_id"], plant_id, None, 24)
     d["saglayici_alanlari"] = bc.saglayici_alanlari()   # v2.562: sağlayıcı → alan etiketleri, birim notu, günlük tavan
     d["alanlar"] = bc.ALANLAR; d["birim_notu"] = bc.BIRIM_NOTU; d["gunluk_tavan"] = bc.GUNLUK_TAVAN   # FusionSolar uyumluluğu
+    from pvquant.services import bulut_oauth_service as bo
+    d["oauth"] = {"uygulamalar": bo.uygulamalar_ozeti(), "son": bo.son(claims["tenant_id"], plant_id)}   # v2.564: sahip onayı yolu — yapılandırma durumu (gizli yok) ve son girişim
     return d
 
 
@@ -2294,13 +2296,40 @@ def bulut_kimlik_ayar(plant_id: str, saglayici: str, p: BulutKimlikAyar, claims=
     """v2.557 (K2): düzenli çekişi aç/kapat, birim doğrulandı işareti, sağlayıcı santral kodu. Geri alınabilir."""
     from pvquant.services import bulut_kimlik_service as bk
     row, vy = _bulut_santral(claims, plant_id)
-    k = bk.ayarla(claims["tenant_id"], plant_id, saglayici, cekis_acik=p.cekis_acik, birim_dogrulandi=p.birim_dogrulandi, dis_kimlik=p.dis_kimlik)
+    try:
+        k = bk.ayarla(claims["tenant_id"], plant_id, saglayici, cekis_acik=p.cekis_acik, birim_dogrulandi=p.birim_dogrulandi, dis_kimlik=p.dis_kimlik)
+    except bk.BirimKanitiYok as e:   # v2.565: «birim doğrulandı» kanıtsız işaretlenemez
+        raise HTTPException(422, str(e)) from e
     if k is None:
         raise HTTPException(404, "bu sağlayıcı için kayıtlı kimlik yok")
     _bulut_aynasi(claims, plant_id, vy, saglayici)
     _denetim.kaydet("musteri", "bulut_kimlik_ayar", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"],
                     ayrinti={"saglayici": saglayici, "cekis_acik": p.cekis_acik, "birim_dogrulandi": p.birim_dogrulandi, "dis_kimlik": p.dis_kimlik})
     return k
+
+
+@app.post("/v1/plants/{plant_id}/bulut-kimlik/{saglayici}/birim-kiyas")
+def bulut_birim_kiyas(plant_id: str, saglayici: str, dosya: UploadFile = File(...), claims=Depends(yazma_yetkisi())):
+    """v2.565 (D2 adım 3): portalın saatlik dışa aktarımı (CSV: zaman, kwh) ile çekilen ham saatlerin birim/anlam kıyası; özet kayda yazılır, ham referans saklanmaz.
+    «Birim doğrulandı» yalnız belge yorumu uyumlu bulununca işaretlenebilir."""
+    from pvquant.services import bulut_birim_service as bb, bulut_kimlik_service as bk, pilot_service
+    row, vy = _bulut_santral(claims, plant_id)
+    kayit = next((k for k in bk.listele(claims["tenant_id"], plant_id) if k["saglayici"] == saglayici), None)
+    if kayit is None:
+        raise HTTPException(404, "bu sağlayıcı için kayıtlı kimlik yok")
+    ham = dosya.file.read(5 * 1024 * 1024 + 1)
+    if len(ham) > 5 * 1024 * 1024:
+        raise HTTPException(413, "dışa aktarım dosyası en çok 5 MB")
+    try:
+        referans = pilot_service.referans_csv_oku(ham.decode("utf-8-sig", errors="replace"))
+    except ValueError as e:
+        raise HTTPException(422, f"dosya okunamadı: {e}") from e
+    sonuc = bb.degerlendir(claims["tenant_id"], plant_id, saglayici, referans, aktor_id=claims["sub"], dosya=dosya.filename)
+    sonuc["isaret_kaldirildi"] = bool(kayit.get("birim_dogrulandi")) and not sonuc["belge_uyumlu"] and bool(sonuc.get("kaydedildi"))   # 10.11 inceleme: çürütülen yorumla gölge yazımı sürmez
+    _denetim.kaydet("musteri", "bulut_birim_kiyas", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"],
+                    ayrinti={"saglayici": saglayici, "sonuc": sonuc["sonuc"], "n_ortak": sonuc["n_ortak"], "n_uretimli": sonuc.get("n_uretimli"), "belge_uyumlu": sonuc["belge_uyumlu"],
+                             "isaret_kaldirildi": sonuc["isaret_kaldirildi"], "dosya": dosya.filename})
+    return sonuc
 
 
 @app.delete("/v1/plants/{plant_id}/bulut-kimlik/{saglayici}")
@@ -2314,6 +2343,52 @@ def bulut_kimlik_sil(plant_id: str, saglayici: str, claims=Depends(yazma_yetkisi
     _bulut_aynasi(claims, plant_id, vy, saglayici)
     _denetim.kaydet("musteri", "bulut_kimlik_sil", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"], ayrinti={"saglayici": saglayici})
     return {"silindi": True, "saglayici": saglayici}
+
+
+# ----------------------------------------------------------------------------- v2.564: sahip onayı (OAuth) — Sungrow iSolarCloud, SolarEdge site sahibi
+class BulutOAuthBaslat(BaseModel):
+    saglayici: str
+    bolge: str | None = None
+    onaylar: dict = {}                     # yalniz_okuma, sifreli_saklama → true
+
+
+@app.post("/v1/plants/{plant_id}/bulut-kimlik/oauth/baslat")
+def bulut_oauth_baslat(plant_id: str, p: BulutOAuthBaslat, claims=Depends(yazma_yetkisi())):
+    """v2.564: iki onay + kasa + platform uygulaması → tek kullanımlık state ve sağlayıcının onay sayfası adresi. Yanıtta gizli yok; state denetim izine yazılmaz."""
+    from pvquant.services import bulut_oauth_service as bo
+    row, vy = _bulut_santral(claims, plant_id)
+    onaylar = {**(p.onaylar or {}), "yalniz_okuma": bool((p.onaylar or {}).get("yalniz_okuma")) or bool(vy.get("salt_okuma_onayi"))}
+    sonuc = bo.baslat(claims["tenant_id"], row, p.saglayici, p.bolge, onaylar, claims["sub"])
+    _denetim.kaydet("musteri", "bulut_oauth_baslat", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"],
+                    ayrinti={"durum": sonuc["durum"], "saglayici": p.saglayici, "bolge": sonuc.get("bolge")})   # yetki adresi (state taşır) izine YAZILMAZ
+    return sonuc
+
+
+@app.get("/v1/bulut/oauth/{saglayici}/geri-donus")
+def bulut_oauth_geri_donus(saglayici: str, request: Request):
+    """v2.564: sağlayıcının yönlendirmesi — kimliksiz gelir; santral/kiracı tek kullanımlık state'ten bulunur. Kod sunucuda belirteçle değiştirilir ve
+    kasaya yazılır; tarayıcı panele yalnız DURUM KODUyla döner. Kod/belirteç hiçbir yanıt, günlük ya da izde yok."""
+    from fastapi.responses import RedirectResponse
+    from pvquant.services import bulut_kimlik_service as bk, bulut_oauth_service as bo
+    sorgu = {k: v for k, v in request.query_params.items() if k in ("code", "state", "external_id", "site_id", "error", "error_description")}
+    sonuc = bo.geri_donus(saglayici, sorgu)
+    plant_id = sonuc.get("plant_id"); tenant_id = sonuc.get("tenant_id")
+    if plant_id and tenant_id:
+        if sonuc.get("durum") in ("tamam", "secim_bekliyor"):
+            try:   # ayna: aşama rozetleri ve bağlantı durumu (kaydet ucuyla aynı yazım)
+                row = plant_service.getir(tenant_id, plant_id) or {}
+                vy = dict(((row.get("params_json") or {}).get("veri_yolu")) or {})
+                kay = bk.listele(tenant_id, plant_id)
+                vy = {**vy, "saglayici": vy.get("saglayici") or saglayici, "bulut_kimlik": bk.params_ozeti(kay),
+                      "son_sinama": {"zaman": sonuc.get("zaman"), "durum": "ok", "ozet": {"santral_sayisi": len(sonuc.get("santraller") or []) or 1, "uc": "oauth"}, "aciklama": None, "saglayici": saglayici}}
+                plant_service.params_birlestir(tenant_id, plant_id, veri_yolu=vy)
+            except Exception:   # noqa: BLE001 — ayna yazımı dönüşü engellemez; kayıt zaten kasada
+                pass
+        _denetim.kaydet("musteri", "bulut_oauth_donus", aktor_id=sonuc.get("aktor_id"), tenant_id=tenant_id, nesne_tur="plant", nesne_id=plant_id,
+                        ayrinti={"durum": sonuc.get("durum"), "saglayici": saglayici, "etiket": sonuc.get("etiket_hesap"), "dis_kimlik": sonuc.get("dis_kimlik")})
+    r = RedirectResponse(bo.yonlendirme(plant_id, saglayici, sonuc.get("durum") or "hata"), status_code=303)
+    r.headers["Cache-Control"] = "no-store"
+    return r
 
 
 # ----------------------------------------------------------------------------- v2.560 (Aşama 4): pilot kapıları ve referans kıyası

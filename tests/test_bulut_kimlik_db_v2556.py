@@ -68,6 +68,9 @@ def test_kasa_db_rls_cekis_ve_revizyon(santral, monkeypatch):
         assert s.execute(text("SELECT count(*) FROM kaynak_saatlik WHERE plant_id=:p AND kaynak='fusionsolar'"), {"p": p["id"]}).scalar() == 0
     k = bk.listele(t, p["id"])[0]; assert k["son_durum"] == "ok" and k["kota_sayac"] == 1 and k["kota_gun"] == date(2026, 11, 9).isoformat()
     # birim doğrulandı → gölgeye 3 saat; aynı değerle tekrar → revizyon yok; farklı değer → yeni revizyon (0,0 → 0,0 değişmez)
+    with pytest.raises(bk.BirimKanitiYok):   # v2.565: kanıtsız işaret yok
+        bk.ayarla(t, p["id"], "fusionsolar", birim_dogrulandi=True)
+    assert bk.birim_kanit_yaz(t, p["id"], "fusionsolar", {"sonuc": "belge_uyumlu", "belge_uyumlu": True, "metin": "test kanıtı"}) == 1
     bk.ayarla(t, p["id"], "fusionsolar", birim_dogrulandi=True)
     taze = lambda: [k for k in bc.kayitlar_cekis_acik() if str(k["plant_id"]) == p["id"]]   # noqa: E731 — her tur kayıtları yeniden okur (kota sayacı)
     assert "gölge 3" in bc.tur(simdi=T, kayitlar=taze(), istemci_fabrikasi=SahteIstemci)
@@ -82,4 +85,16 @@ def test_kasa_db_rls_cekis_ve_revizyon(santral, monkeypatch):
                          {"p": p["id"]}).mappings().all()
     assert len(rows) == 5 and max(r["revizyon"] for r in rows) == 2 and all(r["tamlik"] == "measured_complete" and r["yontem"] == "saglayici" and r["cihaz_id"] == "bulut" for r in rows)
     assert bk.listele(t, p["id"])[0]["kota_sayac"] == 4
+    # 10.11 inceleme: belge yorumunu doğrulamayan yeni kıyas işareti kaldırır; aynı santralla yeniden kayıt kanıtı korur; santral değişince kanıt + işaret sıfırlanır
+    assert bk.listele(t, p["id"])[0]["birim_dogrulandi"] is True
+    bk.birim_kanit_yaz(t, p["id"], "fusionsolar", {"sonuc": "uyumsuz", "belge_uyumlu": False, "metin": "uyumsuz"})
+    assert bk.listele(t, p["id"])[0]["birim_dogrulandi"] is False
+    bk.birim_kanit_yaz(t, p["id"], "fusionsolar", {"sonuc": "belge_uyumlu", "belge_uyumlu": True, "metin": "test kanıtı"}); bk.ayarla(t, p["id"], "fusionsolar", birim_dogrulandi=True)
+    bk.kaydet(t, p, "fusionsolar", {"kullanici": "yeni_hesap", "sistem_kodu": "Gizli-101"}, "eu5", ONAY2, "aktor", sina=_sina_ok)
+    k = bk.listele(t, p["id"])[0]; assert k["birim_dogrulandi"] is True and k["birim_kanit"]["belge_uyumlu"] is True and k["dis_kimlik"] == "NE=1"
+    baska = lambda kod, kimlik, onay, bolge: {"durum": "ok", "zaman": "z", "ozet": {"santral_sayisi": 1, "santraller": [{"kimlik": "NE=2", "ad": "Başka", "kapasite_kwp": 500.0}]}}   # noqa: E731
+    bk.kaydet(t, p, "fusionsolar", {"kullanici": "yeni_hesap", "sistem_kodu": "Gizli-102"}, "eu5", ONAY2, "aktor", sina=baska)
+    k = bk.listele(t, p["id"])[0]; assert k["dis_kimlik"] == "NE=2" and k["birim_dogrulandi"] is False and k["birim_kanit"] is None
+    bk.birim_kanit_yaz(t, p["id"], "fusionsolar", {"sonuc": "belge_uyumlu", "belge_uyumlu": True, "metin": "test kanıtı"}); bk.ayarla(t, p["id"], "fusionsolar", birim_dogrulandi=True)
+    k = bk.ayarla(t, p["id"], "fusionsolar", dis_kimlik="NE=1"); assert k["birim_dogrulandi"] is False and k["birim_kanit"] is None and k["dis_kimlik"] == "NE=1"
     assert bk.sil(t, p["id"], "fusionsolar") == 1 and bk.listele(t, p["id"]) == []

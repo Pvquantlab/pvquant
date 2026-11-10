@@ -12,7 +12,7 @@ from pvquant.db import sistem_baglami, tenant_baglami
 from pvquant.services import canli_ornekleme_service as co
 from pvquant.services import kaynak_secim_service as ks
 
-T0 = datetime(2026, 11, 9, 6, 0, tzinfo=timezone.utc)
+T0 = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0) - timedelta(hours=6)   # 10.11.2026: sabit 9 Kasım idi; hizmet «son 24 saat»i veritabanı saatiyle sayar, tarih eskiyince cihaz sayısı 0 oluyordu
 
 
 @pytest.fixture
@@ -61,7 +61,7 @@ def test_toplama_tam_kismi_revizyon_ve_golge(santral):
         assert s.execute(text("SELECT count(*) FROM scada_hourly WHERE plant_id=:p"), {"p": p["id"]}).scalar() == 2
     # gölge görünüm: 07:00 için son revizyon seçilir, alternatif (SN-B) sayılır, mevcut scada_hourly toplamıyla fark
     gg = ks.golge_gorunum(t, p, T0, T0 + timedelta(hours=3))
-    s7 = next(x for x in gg["saatler"] if x["ts_utc"].startswith("2026-11-09T07:00"))
+    s7 = next(x for x in gg["saatler"] if x["ts_utc"].startswith((T0 + timedelta(hours=1)).isoformat()[:16]))
     assert s7["secilen"]["revizyon"] == 2 and s7["secilen"]["tamlik"] == "measured_complete" and s7["alternatif_sayisi"] == 1
     assert s7["mevcut"]["kaynak"] == "modbus_sunspec" and s7["fark_kwh"] == pytest.approx(-50.0)   # seçilen tek cihaz (100) − santral toplamı (150)
     assert gg["ozet"]["n_tam"] == 2 and gg["ozet"]["n_mevcut"] == 2

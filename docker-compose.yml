@@ -40,6 +40,13 @@ services:
       PVQ_KEK: ${PVQ_KEK:-}
       PVQ_KEK_ID: ${PVQ_KEK_ID:-k1}
       PVQ_KEK_ESKI: ${PVQ_KEK_ESKI:-}
+      # v2.564: sahip onayı (OAuth) platform uygulamaları — geliştirici portalı kaydından; tanımlı değilse yol kapalı (uygulama_yok)
+      PVQ_OAUTH_GERI_DONUS_KOK: ${PVQ_OAUTH_GERI_DONUS_KOK:-https://pvquant.com}
+      PVQ_SUNGROW_APPKEY: ${PVQ_SUNGROW_APPKEY:-}
+      PVQ_SUNGROW_ACCESS_KEY: ${PVQ_SUNGROW_ACCESS_KEY:-}
+      PVQ_SUNGROW_APP_ID: ${PVQ_SUNGROW_APP_ID:-}
+      PVQ_SOLAREDGE_CLIENT_ID: ${PVQ_SOLAREDGE_CLIENT_ID:-}
+      PVQ_SOLAREDGE_CLIENT_SECRET: ${PVQ_SOLAREDGE_CLIENT_SECRET:-}
       PVQ_ITME_DIZIN: ${PVQ_ITME_DIZIN:-}
     volumes:
       - ./var:/app/var             # model artifact'leri (hyb_*.pkl) — imaja gomulmez, paylasilir
@@ -67,6 +74,13 @@ services:
       PVQ_KEK: ${PVQ_KEK:-}
       PVQ_KEK_ID: ${PVQ_KEK_ID:-k1}
       PVQ_KEK_ESKI: ${PVQ_KEK_ESKI:-}
+      # v2.564: sahip onayı (OAuth) platform uygulamaları — geliştirici portalı kaydından; tanımlı değilse yol kapalı (uygulama_yok)
+      PVQ_OAUTH_GERI_DONUS_KOK: ${PVQ_OAUTH_GERI_DONUS_KOK:-https://pvquant.com}
+      PVQ_SUNGROW_APPKEY: ${PVQ_SUNGROW_APPKEY:-}
+      PVQ_SUNGROW_ACCESS_KEY: ${PVQ_SUNGROW_ACCESS_KEY:-}
+      PVQ_SUNGROW_APP_ID: ${PVQ_SUNGROW_APP_ID:-}
+      PVQ_SOLAREDGE_CLIENT_ID: ${PVQ_SOLAREDGE_CLIENT_ID:-}
+      PVQ_SOLAREDGE_CLIENT_SECRET: ${PVQ_SOLAREDGE_CLIENT_SECRET:-}
       PVQ_SENTRY_DSN: ${PVQ_SENTRY_DSN:-}
       # v2.334: başvuru teyidi/bildirimi api'den çıkar — worker'daki SMTP seti buraya da
       PVQ_SMTP_HOST: ${PVQ_SMTP_HOST:-}

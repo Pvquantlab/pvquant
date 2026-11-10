@@ -64,7 +64,7 @@ class FusionSolar(Baglayici):
     ALANLAR = {"inverter_power": {"birim": "kWh", "etiket": "inverter üretimi (saatlik)"}, "ongrid_power": {"birim": "kWh", "etiket": "şebekeye verilen (saatlik)"},
                "theory_power": {"birim": "kWh", "etiket": "teorik üretim (sağlayıcı modeli)"}, "radiation_intensity": {"birim": "kWh/m²", "etiket": "ışınım (sağlayıcı sensörü)"},
                "power_profit": {"birim": "para birimi", "etiket": "gelir (sağlayıcı hesabı)"}, "enerji_kwh_belge": {"birim": "kWh", "etiket": "belgeye göre saatlik kWh (inverter_power)"}}
-    BIRIM_NOTU = "Alan anlamları ve birimleri Huawei NBI belgesine göredir (inverter_power = saatlik kWh); gerçek hesap yanıtıyla doğrulanmadan gölge görünüme yazılmaz."
+    BIRIM_NOTU = "Alan anlamları ve birimleri Huawei NBI belgesine göredir (inverter_power = saatlik kWh); gerçek hesap yanıtıyla doğrulanmadan kaynak kıyasına yazılmaz."
     NOT = "Northbound API hesabı (FusionSolar yönetim ekranında kurulumcu şirket yöneticisi açar; kullanıcı adı + systemCode). Belge: Northbound Interface Reference."
 
     def __init__(self, bolge: str = "intl", transport: httpx.BaseTransport | None = None, zaman_asimi: float | None = None):

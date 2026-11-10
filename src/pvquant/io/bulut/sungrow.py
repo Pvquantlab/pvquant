@@ -1,8 +1,9 @@
 """Sungrow iSolarCloud OpenAPI — yalnız okuma. v2.562 (Aşama 3, K3). Kaynak: Opus 08 §3 [K87][K88][K366].
 Tüm istekler POST {gateway}/openapi/...; başlıklar Content-Type json, x-access-key, Authorization: Bearer; gövdede appkey. Bölge → gateway (TR bölgesi DOĞRULANMADI,
 kullanıcı seçer). Token: sahip onayı (OAuth2 authorization code) → access_token (~48 sa) + refresh_token; E00003 (token geçersiz/süresi doldu) → refreshToken ile
-yenilenir ve yeni çift `kimlik_yenile` geri çağrısıyla saklanır (−2: refresh süresi doldu → sahipten yeniden onay). Sahip onayı yönlendirmesi (web3.isolarcloud…#/authorized-app)
-PVQuant'ta yok: ilk token geliştirici portalı/sahip akışıyla alınıp PVQuant'a girilir (çıkarım; doğrulanmadı).
+yenilenir ve yeni çift `kimlik_yenile` geri çağrısıyla saklanır (−2: refresh süresi doldu → sahipten yeniden onay). Sahip onayı yönlendirmesi v2.564'te var: `yetki_url` (kalıp YALNIZ İKİNCİL kaynakta [K366]: https://{auth_server}/?state=…#/authorized-app?cloudId=…&applicationId=…
+&redirectUrl=…; `state` SPA nedeniyle `#`'ten önce) ve `token_degis` (POST {gateway}/openapi/apiManage/token; code, grant_type, redirect_uri, appkey; result_code 1 başarı,
+2 geçersiz kod, 5 redirect uyuşmazlığı). Belirteçler PVQuant'a elle de girilebilir (geliştirici portalı akışı).
 Uçlar: queryPowerStationList (page/size), getPowerStationPointMinuteDataList (≤3 sa, ≤50 santral, points p83022 gün içi üretim Wh kümülatif + p83033 güç W,
 minute_interval 15; zaman damgaları SANTRAL saat diliminde yyyyMMddHHmmss). Kota Basic 2.000/sa, 100.000/ay (E999/E998). Ticari kullanım Sungrow yazılı onayı gerektirir
 (Developer Service Agreement VIII(c)) — üretime almadan önce dış girdi. GERÇEK HESAPLA DOĞRULANMADI.
@@ -34,6 +35,44 @@ class Sungrow(Baglayici):
     NOT = ("Geliştirici portalında uygulama (AppKey, Secret Key); santral sahibi iSolarCloud'da uygulamayı onaylar → erişim ve yenileme belirteçleri. Ticari kullanım için Sungrow'un "
            "yazılı onayı gerekir (sözleşme VIII(c)); Türkiye'nin bölgesi doğrulanmadı — bölge sahibin hesabına göre seçilir.")
     PENCERE_SAAT = 3
+    OAUTH = True
+    # yetkilendirme sunucusu ve cloudId bölgeye göre (Opus 08 §3.2 tablosu; İKİNCİL kaynak [K366]; Türkiye'nin bölgesi DOĞRULANMADI)
+    YETKI_SUNUCUSU = {"cn": ("https://web3.isolarcloud.com", 1), "intl": ("https://web3.isolarcloud.com.hk", 2), "eu": ("https://web3.isolarcloud.eu", 3),
+                      "au": ("https://auweb3.isolarcloud.com", 7), "in": ("https://web3.isolarcloud.in", 9)}
+    TOKEN_HATA = {"2": "yetkilendirme kodu geçersiz ya da kullanılmış", "3": "yetkisiz erişim", "4": "geçersiz istemci (appkey)", "5": "geri dönüş adresi uygulama kaydıyla uyuşmuyor", "6": "desteklenmeyen yetki türü"}
+
+    @classmethod
+    def yetki_url(cls, bolge: str | None, uygulama: dict, redirect_uri: str, state: str) -> str:
+        """Sahibin yönlendirileceği iSolarCloud onay sayfası. `uygulama`: {app_id} (applicationId). Gizli içermez."""
+        from urllib.parse import quote
+        b = (bolge or cls.VARSAYILAN_BOLGE or "").lower()
+        if b not in cls.YETKI_SUNUCUSU:
+            raise ValueError(f"bölge {', '.join(cls.YETKI_SUNUCUSU)} arasından olmalı")
+        sunucu, cloud_id = cls.YETKI_SUNUCUSU[b]
+        return f"{sunucu}/?state={quote(state, safe='')}#/authorized-app?cloudId={cloud_id}&applicationId={quote(str(uygulama['app_id']), safe='')}&redirectUrl={quote(redirect_uri, safe='')}"
+
+    @classmethod
+    def token_degis(cls, bolge: str | None, uygulama: dict, code: str, redirect_uri: str, transport=None) -> dict:
+        """Yetkilendirme kodu → belirteç çifti. `uygulama`: {appkey, access_key}. Dönen kimlik sözlüğü doğrudan `giris`e verilebilir; yetkili santral listesi `auth_ps_list`."""
+        import httpx
+        b = (bolge or cls.VARSAYILAN_BOLGE or "").lower()
+        if b not in cls.BOLGELER:
+            raise ValueError(f"bölge {', '.join(cls.BOLGELER)} arasından olmalı")
+        with httpx.Client(base_url=cls.BOLGELER[b], timeout=cls.ZAMAN_ASIMI, transport=transport) as c:
+            r = c.post("/openapi/apiManage/token", json={"code": code, "grant_type": "authorization_code", "redirect_uri": redirect_uri, "appkey": uygulama["appkey"]},
+                       headers={"Content-Type": "application/json;charset=UTF-8", "x-access-key": uygulama["access_key"]})
+        if r.status_code != 200:
+            raise BulutHata(f"belirteç değişimi HTTP {r.status_code}")
+        try:
+            g = r.json()
+        except ValueError as e:
+            raise BulutHata("belirteç yanıtı JSON değil") from e
+        kod = str(g.get("result_code") or "")
+        d = g.get("result_data") or {}
+        if kod != "1" or not d.get("access_token"):
+            raise BulutHata(f"belirteç alınamadı ({cls.TOKEN_HATA.get(kod, 'sağlayıcı hatası')}, {kod or '?'})")
+        return {"appkey": uygulama["appkey"], "access_key": uygulama["access_key"], "access_token": d["access_token"], "refresh_token": d.get("refresh_token") or "",
+                "auth_ps_list": [str(x) for x in (d.get("auth_ps_list") or [])], "expires_in": d.get("expires_in")}
 
     @classmethod
     def cagri_tahmini(cls, n_kod: int) -> int:

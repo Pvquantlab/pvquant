@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ALARM_KURALI } from "../../lib/alarmSozluk";
 import type { ReactNode } from "react";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
-import type { PrKarti, Saglik, AlarmKurallari, FizikTerimleri, FizikOnizleme, Kullanilabilirlik, Tarife, Yekdem, Sensorler, Sensor, Depolama, Kirlenme, VeriYoluOzet, VeriYoluSinama, GolgeGorunum, OlayAdaylari, BulutKimlikDurum, BulutKimlikSonuc, PilotDurum, EdgeToplayici, EdgeToplayiciYeni } from "../../api/types";
+import type { PrKarti, Saglik, AlarmKurallari, FizikTerimleri, FizikOnizleme, Kullanilabilirlik, Tarife, Yekdem, Sensorler, Sensor, Depolama, Kirlenme, VeriYolu, VeriYoluOzet, VeriYoluSinama, GolgeGorunum, OlayAdaylari, BulutKimlikDurum, BulutKimlikSonuc, PilotDurum, EdgeToplayici, EdgeToplayiciYeni } from "../../api/types";
 import { SEGMENTLER } from "../../api/types";
 import type { UevcbArama } from "../../api/types";
 import type { EChartsOption } from "echarts";
@@ -100,6 +100,13 @@ import { Cubuklar } from "./Cubuklar";
  *  Gun-ici profil 16 gunluk saatlik P50'den turetilir (dilimleme istemcide,
  *  Tahminler kalibi); toplam MWh API'nin kendi gunluk degeridir. Tum gunler
  *  AYNI olcekle cizilir — profiller karsilastirilabilir kalsin. */
+/** 10.11 inceleme: tür düzeyindeki «bağlantı henüz kurulmadı» etiketi, santralin kendi bağlantı durumuyla çelişmesin.
+ *  Santralin beyan ettiği türde tek durum kodu (baglanti_durumu) gösterilir; diğer türlerde tür etiketi kalır. */
+function yolDurumu(vy: VeriYoluOzet, y: VeriYolu): { etiket: string; ok: boolean } {
+  if (y.durum === "kurulmadi" && vy.beyan?.tur === y.tur && vy.baglanti_durumu) return { etiket: vy.baglanti_durumu.etiket, ok: vy.baglanti_durumu.kod === "veri_akisi" };
+  return { etiket: y.durum_etiketi, ok: y.durum === "mevcut" };
+}
+const buyukBas = (s: string) => (s ? s.charAt(0).toLocaleUpperCase("tr-TR") + s.slice(1) : s);
 function gunAnahtari(ms: number, tz: string): string {
   return tarihBicimi("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
 }
@@ -254,15 +261,25 @@ export function Santralim({ plantId }: { plantId: string }) {
   const edgeIptal = (id: string) => { if (!window.confirm("Toplayıcı anahtarı iptal edilsin mi? Bu anahtarla gelen veri reddedilir; gelmiş veri kalır.")) return; api.edgeToplayiciIptal(plantId, id).then(() => { setEdgeYeni(null); pilotYukle(); }).catch(() => {}); };
   const [bk, setBk] = useState<BulutKimlikDurum | null>(null);   // v2.556 (K1): kayıtlı şifreli kimlik durumu (gizli yok)
   const [bkOnay, setBkOnay] = useState(false);
+  const [bkDegistir, setBkDegistir] = useState(false);   // 10.11 inceleme II: kimlik kayıtlıyken kimlik alanları ve saklama onayı yalnız «Kimliği değiştir» ile açılır
   const [bkSantral, setBkSantral] = useState<string>("");
   const [bkSonuc, setBkSonuc] = useState<BulutKimlikSonuc | "bekliyor" | null>(null);
+  const [bkOAuth, setBkOAuth] = useState<string | null>(null);   // v2.564: sahip onayı dönüş/başlatma mesajı (yalnız durum kodundan üretilir)
+  const OAUTH_MESAJ: Record<string, string> = { tamam: "Sahip onayı alındı; belirteçler şifreli kaydedildi. Düzenli çekiş ayrı adımla açılır.", secim_bekliyor: "Sahip onayı alındı; hesapta birden çok santral var. Aşağıdan bu santrala karşılık geleni seçin.",
+    durum_gecersiz: "Onay bağlantısı geçersiz, süresi dolmuş ya da daha önce kullanılmış; yeniden başlatın.", durum_yok: "Sağlayıcı dönüşünde durum değeri yok; yeniden başlatın.", sahip_reddetti: "Sağlayıcı sayfasında onay verilmedi.", saglayici_hatasi: "Sağlayıcı hata döndürdü; yeniden deneyin.",
+    kod_yok: "Sağlayıcı yetkilendirme kodu göndermedi.", uygulama_yok: "Platform uygulaması bu kurulumda tanımlı değil.", belirtec_hatasi: "Yetkilendirme kodu belirteçle değiştirilemedi; yeniden başlatın.", kayit_hatasi: "Belirteçler alındı ancak kayıt tamamlanamadı; ayrıntı için son girişim satırına bakın.", hata: "Sahip onayı tamamlanamadı." };
+  const bkOAuthBaslat = (sg: string) => { setBkOAuth("yönlendiriliyor…"); api.bulutOAuthBaslat(plantId, { saglayici: sg, bolge: bulutBolge, onaylar: { yalniz_okuma: !!vy?.beyan?.salt_okuma_onayi, sifreli_saklama: bkOnay } })
+    .then((r) => { if (r.durum === "yonlendir" && r.yetki_url) { window.location.assign(r.yetki_url); } else { setBkOAuth(r.aciklama ?? r.durum); } })
+    .catch((e) => setBkOAuth(`Başlatılamadı: ${String((e as Error).message ?? e)}`)); };
   const bkYukle = () => { api.bulutKimlik(plantId).then(setBk).catch(() => setBk(null)); api.veriYolu(plantId).then((v) => { if (v) setVy(v); }).catch(() => {}); };
   const bkKaydet = () => { setBkSonuc("bekliyor"); api.bulutKimlikKaydet(plantId, { saglayici: vyf.saglayici, kimlik: Object.fromEntries(Object.entries(bulutKimlik).filter(([, v]) => v)), bolge: bulutBolge,
       onaylar: { yalniz_okuma: !!vy?.beyan?.salt_okuma_onayi, sifreli_saklama: bkOnay }, dis_kimlik: bkSantral || null })
-    .then((r) => { setBkSonuc(r); if (r.kaydedildi) { setBulutKimlik({}); setBkSantral(""); bkYukle(); } })
+    .then((r) => { setBkSonuc(r); if (r.kaydedildi) { setBulutKimlik({}); setBkSantral(""); setBkOnay(false); setBkDegistir(r.durum !== "kaydedildi"); bkYukle(); } })
     .catch((e) => setBkSonuc({ durum: "hata", kaydedildi: false, aciklama: String((e as Error).message ?? e) })); };
-  const bkAyarla = (sg: string, g: { cekis_acik?: boolean; birim_dogrulandi?: boolean }) => { api.bulutKimlikAyarla(plantId, sg, g).then(bkYukle).catch(() => {}); };
-  const bkSil = (sg: string) => { if (!window.confirm("Kayıtlı kimlik silinsin mi? Düzenli çekiş durur; çekilmiş saatler kalır.")) return; api.bulutKimlikSil(plantId, sg).then(() => { setBkSonuc(null); bkYukle(); }).catch(() => {}); };
+  const [bkKiyasMesaj, setBkKiyasMesaj] = useState<string | null>(null);   // v2.565: birim kıyası yükleme durumu
+  const bkAyarla = (sg: string, g: { cekis_acik?: boolean; birim_dogrulandi?: boolean }) => { setBkKiyasMesaj(null); api.bulutKimlikAyarla(plantId, sg, g).then(bkYukle).catch((e) => setBkKiyasMesaj(String((e as Error).message ?? e))); };
+  const bkKiyas = (sg: string, dosya: File | null) => { if (!dosya) return; setBkKiyasMesaj("kıyaslanıyor…"); api.bulutBirimKiyas(plantId, sg, dosya).then((r) => { setBkKiyasMesaj(r.isaret_kaldirildi ? "«Birim doğrulandı» işareti kaldırıldı: yeni kıyas belge yorumunu doğrulamadı. Gölge görünüme yazım durdu." : null); bkYukle(); }).catch((e) => setBkKiyasMesaj(`Kıyaslanamadı: ${String((e as Error).message ?? e)}`)); };
+  const bkSil = (sg: string) => { if (!window.confirm("Kayıtlı kimlik silinsin mi? Düzenli çekiş durur; çekilmiş saatler kalır.")) return; api.bulutKimlikSil(plantId, sg).then(() => { setBkSonuc(null); setBkDegistir(false); bkYukle(); }).catch(() => {}); };
   const vyBulutSina = () => { setVyMesaj(null); setSinama("bekliyor"); api.veriYoluBulutSina(plantId, { saglayici: vyf.saglayici, kimlik: Object.fromEntries(Object.entries(bulutKimlik).filter(([, v]) => v)), bolge: bulutBolge })
     .then((r) => { setSinama(r); setBulutKimlik({}); api.veriYolu(plantId).then((v) => { if (v) setVy(v); }).catch(() => {}); })
     .catch((e) => setSinama({ durum: "baglanti_hatasi", zaman: new Date().toISOString(), aciklama: String((e as Error).message ?? e) })); };
@@ -299,7 +316,13 @@ export function Santralim({ plantId }: { plantId: string }) {
   const [ku, setKu] = useState<Kullanilabilirlik | null>(null);
   useEffect(() => { api.kullanilabilirlik(plantId).then(setKu).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { setSens(null); api.sensorler(plantId).then(setSens).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { setPilot(null); setEdge(null); setEdgeYeni(null); setRefMesaj(null); api.pilot(plantId).then(setPilot).catch(() => setPilot(null)); api.edgeToplayicilar(plantId).then(setEdge).catch(() => setEdge(null)); setBk(null); setBkSonuc(null); setBkOnay(false); api.bulutKimlik(plantId).then(setBk).catch(() => setBk(null)); setGolge(undefined); api.golgeSaatlik(plantId).then(setGolge).catch(() => setGolge(null)); setAdaylar(undefined); api.olayAdaylari(plantId).then(setAdaylar).catch(() => setAdaylar(null)); }, [plantId]);   // v2.550/v2.555
+  useEffect(() => { setPilot(null); setEdge(null); setEdgeYeni(null); setRefMesaj(null); api.pilot(plantId).then(setPilot).catch(() => setPilot(null)); api.edgeToplayicilar(plantId).then(setEdge).catch(() => setEdge(null)); setBk(null); setBkSonuc(null); setBkOnay(false); setBkDegistir(false); api.bulutKimlik(plantId).then(setBk).catch(() => setBk(null)); setGolge(undefined); api.golgeSaatlik(plantId).then(setGolge).catch(() => setGolge(null)); setAdaylar(undefined); api.olayAdaylari(plantId).then(setAdaylar).catch(() => setAdaylar(null)); }, [plantId]);   // v2.550/v2.555
+  useEffect(() => {   // v2.564: sağlayıcıdan dönüş «?bulut_oauth=<sağlayıcı>:<durum>» — yalnız kod okunur, adres çubuğundan silinir
+    const q = new URLSearchParams(window.location.search).get("bulut_oauth"); if (!q) return;
+    const durum = (q.split(":")[1] ?? "hata").replace(/[^a-z_]/g, ""); setBkOAuth(OAUTH_MESAJ[durum] ?? OAUTH_MESAJ.hata);
+    history.replaceState(history.state, "", window.location.pathname + window.location.hash);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => { setKir(undefined); api.kirlenme(plantId).then(setKir).catch(() => setKir(null)); setVy(null); api.veriYolu(plantId).then((v) => { vyDoldur(v); vybDoldur(v); }).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   const sensKaydet = (liste: Sensor[]) => {   // v2.542 (P8b-2): envanter bütünüyle gönderilir; vade sunucuda türetilir
     setSensMesaj(null);
@@ -1228,26 +1251,26 @@ export function Santralim({ plantId }: { plantId: string }) {
       </Kart>
 
       {/* v2.544 (P4b hazırlık, IH-023): veri kaynakları ve bağlantı durumu — kaynak türü, tanımlı mı, son geliş, tazelik; protokol/bulut API için hazırlık listesi; bağlayıcı yazılmadı */}
-      <Kart baslik="Veri kaynakları ve bağlantı durumu" alt="Santralınızın üretim verilerinin hangi kaynaklardan alındığını, ne zaman güncellendiğini ve yeni bağlantılar için gereken bilgileri buradan takip edersiniz. Protokol ve bulut bağlantıları gerçek cihaz ya da hesapla henüz doğrulanmadı; sınanabilenler ve düzenli çekişi açılabilenler aşağıda işaretlidir."
+      <Kart baslik="Veri kaynakları ve bağlantı durumu" alt={`Santralınızın üretim verilerinin hangi kaynaklardan alındığını, ne zaman güncellendiğini ve yeni bağlantılar için gereken bilgileri buradan takip edersiniz. ${vy?.bulut?.hesap_durumu ? `Bu santralın bulut hesabında çekiş başarılı; ${vy.bulut.hesap_durumu.birim_dogrulandi ? "birim doğrulandı" : "birim doğrulaması bekliyor"}. Diğer protokol ve bulut bağlantıları` : "Protokol ve bulut bağlantıları"} gerçek cihaz ya da hesapla henüz doğrulanmadı; sınanabilenler ve düzenli çekişi açılabilenler aşağıda işaretlidir.`}
         sag={vy?.baglanti_durumu ? <span className="cip">hedef: {vy.hedef?.kisa ?? "seçilmedi"} · {vy.baglanti_durumu.etiket}</span> : null}>
         {vy && (
           <>
             {/* 09.11 inceleme III (faz 6): üç bölüm — A mevcut kaynaklar, B yeni bağlantı, C gereksinimler; bağlantı durumu tek koddan (baglanti_durumu) */}
-            <div className="alt-bolum">Mevcut veri kaynakları</div>
-            <div style={{ display: "grid", gap: 4, marginBottom: 12, fontSize: 13.5 }}>
+            <div className="kart-bolum">Mevcut veri kaynakları</div>
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 4, marginBottom: 12, fontSize: 13.5 }}>   {/* 10.11 inceleme: sütun en uzun rozetin genişliğine açılıp dar ekranda kartı taşırıyordu */}
               {vy.etkin.length === 0 && <span className="soluk">Henüz veri gelmedi: SCADA dosyası yükleyin ya da lisanslı tesiste EPİAŞ Şeffaflık santral kimliğini girin.</span>}
               {/* 08.11 inceleme II (faz 3): bağlantı sağlığı ile veri tazeliği ayrı rozetlerdir — başarılı sorgu, eski veriyi «güncel» yapmaz; eski veri, bağlantıyı «hatalı» yapmaz */}
-              {vy.etkin.map((e, i) => { const dosya = e.tazelik === "dosya" || e.tazelik === "dosya_eski"; const gun = e.yas_saat != null ? ` (${sayiTr(Math.round(e.yas_saat / 24))} gün önce)` : ""; return <span key={`${e.tur}-${i}`}>
-                {e.baglanti && <span className={`rozet rozet-kucuk ${e.baglanti.durum === "ok" ? "rozet-ok" : e.baglanti.durum === "hata" ? "rozet-uyari" : "rozet-notr"}`} title={`Bağlantı: ${e.baglanti.etiket}${e.baglanti.zaman ? ` · ${gunKisa(e.baglanti.zaman)}` : ""}`} style={{ marginRight: 4 }}>bağlantı: {e.baglanti.etiket}</span>}
-                <span className={`rozet rozet-kucuk ${e.tazelik === "guncel" ? "rozet-ok" : e.tazelik === "gecikmis" || e.tazelik === "dosya_eski" ? "rozet-uyari" : "rozet-notr"}`} title={dosya ? "Dosya kaynağı: yükleme ritmi sizindir" : "Veri tazeliği: son başarıyla gelen verinin yaşı"}>{dosya ? (e.veri_etiketi ?? e.tazelik_etiketi) : `veri: ${e.veri_etiketi ?? e.tazelik_etiketi}`}</span> {e.etiket}
+              {vy.etkin.map((e, i) => { const dosya = e.tazelik === "dosya" || e.tazelik === "dosya_eski"; const gun = e.yas_saat == null ? "" : e.yas_saat < 1 ? " (1 saatten az önce)" : e.yas_saat < 24 ? ` (${sayiTr(Math.round(e.yas_saat))} saat önce)` : ` (${sayiTr(Math.round(e.yas_saat / 24))} gün önce)`;   /* 10.11 inceleme: 24 saatten genç veri «0 gün önce» yazıyordu */ return <span key={`${e.tur}-${i}`}>
+                {e.baglanti && <span className={`rozet rozet-kucuk ${e.baglanti.durum === "ok" ? "rozet-ok" : e.baglanti.durum === "hata" ? "rozet-uyari" : "rozet-notr"}`} title={`Bağlantı: ${e.baglanti.etiket}${e.baglanti.zaman ? ` · ${gunKisa(e.baglanti.zaman)}` : ""}`} style={{ marginRight: 4, whiteSpace: "normal", maxWidth: "100%" }}>bağlantı: {e.baglanti.etiket}</span>}
+                <span className={`rozet rozet-kucuk ${e.tazelik === "guncel" ? (e.birim_dogrulandi === false ? "rozet-notr" : "rozet-ok") : e.tazelik === "gecikmis" || e.tazelik === "dosya_eski" ? "rozet-uyari" : "rozet-notr"}`} title={dosya ? "Dosya kaynağı: yükleme ritmi sizindir" : "Veri tazeliği: son başarıyla gelen verinin yaşı"} style={{ whiteSpace: "normal", maxWidth: "100%" }}>{dosya ? (e.veri_etiketi ?? e.tazelik_etiketi) : `veri: ${e.veri_etiketi ?? e.tazelik_etiketi}`}</span> {e.etiket}
                 <span className="soluk"> · {e.tur_etiketi}{e.ayrinti ? ` · ${e.ayrinti}` : ""}{e.son ? ` · ${dosya ? "son yükleme" : "son veri gelişi"} ${gunKisa(e.son)}${gun}` : ""}{e.son_olcum ? ` · son ölçüm ${gunKisa(e.son_olcum)}` : ""}{e.cekis ? ` · ${e.cekis.zaman ? `son sorgu ${gunKisa(e.cekis.zaman)}: ` : ""}${e.cekis.etiket}` : ""}</span></span>; })}
-              <span className="soluk" style={{ fontSize: 13 }}>«Bağlantı» son sorgunun sonucudur; «veri» son gelen verinin yaşıdır (bağlantı kaynaklarında güncel = {sayiTr(vy.taze_saat)} saat içinde). Dosya kaynakları yüklediğiniz güne kadar veri taşır, yükleme ritmi sizindir; {sayiTr(vy.dosya_eski_gun ?? 30)} günden eski yükleme uyarı alır. «Son ölçüm» verinin kendi zaman damgasıdır.</span>
+              <span className="soluk" style={{ fontSize: 13, maxWidth: "90ch" }}>«Bağlantı» son sorgunun sonucudur; «veri» son gelen verinin yaşıdır (bağlantı kaynaklarında güncel = {sayiTr(vy.taze_saat)} saat içinde). Dosya kaynakları yüklediğiniz güne kadar veri taşır, yükleme ritmi sizindir; {sayiTr(vy.dosya_eski_gun ?? 30)} günden eski yükleme uyarı alır. «Son ölçüm» verinin kendi zaman damgasıdır.</span>
             </div>
-            <div className="alt-bolum">Yeni veri bağlantısı</div>
-            <div className="dugme-sira" style={{ alignItems: "flex-end", flexWrap: "wrap" }}>
+            <div className="kart-bolum">Yeni veri bağlantısı</div>
+            <div className="dugme-sira" style={{ alignItems: "flex-end", flexWrap: "wrap", gap: "8px 12px" }}>   {/* 10.11 inceleme: alan etiketleri 6 px arayla bitişik okunuyordu («Bölge sunucusu Northbound kullanıcı adı») */}
               <label className="girdi-etiket" style={{ minWidth: 0, maxWidth: "100%" }}>Hedeflenen veri kaynağı
                 <select className="girdi" style={{ maxWidth: "100%" }} value={vyf.tur} aria-label="Hedeflenen veri kaynağı" onChange={(e) => { const t = e.target.value; setVyf({ ...vyf, tur: t }); if (t === "iec104" && (!vyb.port || vyb.port === "502")) setVyb({ ...vyb, port: "2404" }); else if (t === "modbus_sunspec" && (!vyb.port || vyb.port === "2404")) setVyb({ ...vyb, port: "502" }); }}>   {/* v2.547: protokole göre varsayılan port */}
-                  <option value="">Hedef bağlantı seçilmedi</option>{vy.yollar.map((y) => <option key={y.tur} value={y.tur}>{y.kisa} · {y.durum_etiketi}</option>)}</select></label>
+                  <option value="">Hedef bağlantı seçilmedi</option>{vy.yollar.map((y) => <option key={y.tur} value={y.tur}>{y.kisa} · {yolDurumu(vy, y).etiket}</option>)}</select></label>
               {(() => { const yon = vy.yollar.find((y) => y.tur === vyf.tur)?.yon; const baglanti = !!vyf.tur && yon !== "dosya"; return <>   {/* 08.11 inceleme (faz 4): dosya kaynağında sağlayıcı/aralık/onay alanları anlamsız — yalnız bağlantı kaynaklarında */}
               {baglanti && (vyf.tur !== "inverter_bulut_api" || !vy.bulut?.saglayicilar.some((x) => x.kod === vyf.saglayici)) && <label className="girdi-etiket">{vyf.tur === "inverter_bulut_api" ? "Sağlayıcı adı (talep olarak not edilir)" : vyf.tur === "iec104" ? "SCADA / kayıt cihazı (isteğe bağlı)" : "Cihaz / sistem (isteğe bağlı)"}
                 <input className="girdi" maxLength={64} placeholder={vyf.tur === "inverter_bulut_api" ? "ör. Deye Cloud" : vyf.tur === "iec104" ? "ör. Inavitas, SmartLogger3000" : "ör. SMA, Huawei SUN2000"} value={vyf.saglayici} onChange={(e) => setVyf({ ...vyf, saglayici: e.target.value })} /></label>}
@@ -1272,19 +1295,19 @@ export function Santralim({ plantId }: { plantId: string }) {
                   <input className="girdi" inputMode="numeric" style={{ width: 90 }} placeholder="5" value={vyb.zaman} onChange={(e) => setVyb({ ...vyb, zaman: e.target.value.replace(/[^0-9]/g, "") })} /></label>   {/* v2.549 (D3) */}
               </>}
               {vyf.tur === "inverter_bulut_api" && vy.bulut && <>   {/* v2.547: bulut sağlayıcısı + kimlik — kimlik yalnız sınama isteğinde gider, kaydedilmez */}
-                <label className="girdi-etiket">Bulut sağlayıcısı
-                  <select className="girdi" value={vy.bulut.saglayicilar.some((x) => x.kod === vyf.saglayici) ? vyf.saglayici : "diger"} aria-label="Bulut sağlayıcısı" onChange={(e) => { const kod = e.target.value === "diger" ? "" : e.target.value; setVyf({ ...vyf, saglayici: kod }); setBulutKimlik({}); const sg = vy.bulut?.saglayicilar.find((x) => x.kod === kod); setBulutBolge(sg?.varsayilan_bolge ?? sg?.bolgeler?.[0] ?? "intl"); }}>
+                <label className="girdi-etiket" style={{ minWidth: 0, maxWidth: "100%" }}>Bulut sağlayıcısı
+                  <select className="girdi" style={{ maxWidth: "100%" }} value={vy.bulut.saglayicilar.some((x) => x.kod === vyf.saglayici) ? vyf.saglayici : "diger"} aria-label="Bulut sağlayıcısı" onChange={(e) => { const kod = e.target.value === "diger" ? "" : e.target.value; setVyf({ ...vyf, saglayici: kod }); setBulutKimlik({}); setBkDegistir(false); const sg = vy.bulut?.saglayicilar.find((x) => x.kod === kod); setBulutBolge(sg?.varsayilan_bolge ?? sg?.bolgeler?.[0] ?? "intl"); }}>
                     {vy.bulut.saglayicilar.map((x) => <option key={x.kod} value={x.kod} disabled={x.durum === "kapandi"}>{x.ad}{x.durum === "kapandi" ? " — devre dışı" : ""}</option>)}   {/* v2.548 H1: kapanan API seçilemez */}
                     <option value="diger">Diğer (bağlantı yok)</option>
                   </select></label>
-                {(() => { const sg = vy.bulut.saglayicilar.find((x) => x.kod === vyf.saglayici); if (!sg || sg.durum === "kapandi") return null; const bolgeler = sg.bolgeler && sg.bolgeler.length ? sg.bolgeler : (sg.kod === "fusionsolar" ? vy.bulut.bolgeler : []); return <>   {/* v2.562: kimlik alanları ve bölgeler sağlayıcı sicilinden */}
-                  {bolgeler.length > 0 && <label className="girdi-etiket">Bölge sunucusu
+                {(() => { const sg = vy.bulut.saglayicilar.find((x) => x.kod === vyf.saglayici); if (!sg || sg.durum === "kapandi") return null; const bolgeler = sg.bolgeler && sg.bolgeler.length ? sg.bolgeler : (sg.kod === "fusionsolar" ? vy.bulut.bolgeler : []); const gizli = !bkDegistir && !!bk?.kayitlar.some((k) => k.saglayici === sg.kod); const hd = vy.bulut.hesap_durumu && vy.bulut.hesap_durumu.saglayici === sg.kod ? vy.bulut.hesap_durumu : null; return <>   {/* v2.562: kimlik alanları ve bölgeler sağlayıcı sicilinden */}
+                  {!gizli && bolgeler.length > 0 && <label className="girdi-etiket">Bölge sunucusu
                     <select className="girdi" value={bolgeler.includes(bulutBolge) ? bulutBolge : (sg.varsayilan_bolge ?? bolgeler[0])} aria-label="Bulut bölgesi" onChange={(e) => setBulutBolge(e.target.value)}>{bolgeler.map((b) => <option key={b} value={b}>{b}</option>)}</select></label>}
-                  {sg.kimlik_alanlari.map((a) => <label key={a} className="girdi-etiket" title={`${sg.kimlik_etiketleri?.[a] ?? a}: sınamada gönderilir, yalnız aşağıdaki onayla şifreli saklanır`}>{sg.kimlik_etiketleri?.[a] ?? a}
+                  {!gizli && sg.elle_giris !== false && !(sg.oauth && bk?.oauth?.uygulamalar?.[sg.kod]?.yapilandirildi) && sg.kimlik_alanlari.map((a) => <label key={a} className="girdi-etiket" title={`${sg.kimlik_etiketleri?.[a] ?? a}: sınamada gönderilir, yalnız aşağıdaki onayla şifreli saklanır`}>{sg.kimlik_etiketleri?.[a] ?? a}
                     <input className="girdi" type={(sg.gizli_alanlar ?? []).includes(a) ? "password" : "text"} autoComplete={(sg.gizli_alanlar ?? []).includes(a) ? "new-password" : "off"} value={bulutKimlik[a] ?? ""} onChange={(e) => setBulutKimlik({ ...bulutKimlik, [a]: e.target.value })} /></label>)}
-                  <p className="soluk" style={{ margin: "4px 0 0", fontSize: 13, flexBasis: "100%" }}>{sg.durum_etiketi}. {sg.not}</p>
+                  <p className="soluk" style={{ margin: "4px 0 0", fontSize: 13, flexBasis: "100%" }}><span style={{ display: "block", maxWidth: "90ch" }}>{buyukBas(hd?.etiket ?? sg.durum_etiketi ?? "")}.{gizli ? "" : ` ${sg.not}`}</span></p>   {/* 10.11 inceleme II: çekiş başarılıysa hesabın kendi durumu; kimlik kayıtlıyken «kimlik nasıl alınır» notu gizli */}
                 </>; })()}
-                {(() => { const sg = vy.bulut.saglayicilar.find((x) => x.kod === vyf.saglayici); return sg && sg.durum === "kapandi" ? <p className="soluk" style={{ margin: "4px 0 0", fontSize: 13 }}>{sg.durum_etiketi}. {sg.not}</p> : null; })()}   {/* v2.548 H1: SolarEdge V1 kapandı — kimlik alanı yok */}
+                {(() => { const sg = vy.bulut.saglayicilar.find((x) => x.kod === vyf.saglayici); return sg && sg.durum === "kapandi" ? <p className="soluk" style={{ margin: "4px 0 0", fontSize: 13 }}>{buyukBas(sg.durum_etiketi ?? "")}. {sg.not}</p> : null; })()}   {/* v2.548 H1: SolarEdge V1 kapandı — kimlik alanı yok */}
               </>}
               {vyf.tur === "modbus_sunspec" && vyb.profil !== "sunspec" && (() => { const pr = vy.profiller?.find((x) => x.kod === vyb.profil); return pr ? <p className="soluk" style={{ margin: "4px 0 0", fontSize: 13 }}>{pr.aciklama} Belge: {pr.belge}. Ölçüm sınırı: {pr.sinir === "plant_gross_ac" ? "santral toplamı" : "inverter çıkışı"}. {pr.dogrulama}.</p> : null; })()}
               {baglanti && <label className="ayar-onay" title="Tesis sahibi olarak PVQuant'ın bu kaynaktan yalnızca veri okumasını onaylıyorum; yazma ya da kumanda yok">
@@ -1296,22 +1319,31 @@ export function Santralim({ plantId }: { plantId: string }) {
               {vyf.tur === "iec104" && vy.beyan?.tur === "iec104" && <label className="girdi-etiket" title="CSV: ioa, alan, carpan[, ad][, tip]. Alanlar: guc_w, enerji_wh, dc_guc_w, durum_kodu, isinim_wm2, sicaklik_c, frekans_hz. Üretici dışa aktarımı önce bu kolonlara indirgenir.">Nokta tablosu (CSV)
                 <input className="girdi" type="file" accept=".csv,text/csv" onChange={(e) => vyNoktaYukle(e.target.files?.[0] ?? null)} />
                 <span className="soluk" style={{ fontSize: 13 }}>{noktaMesaj ?? (vy.beyan?.nokta_tablosu?.length ? `${sayiTr(vy.beyan.nokta_tablosu.length)} IOA yüklü` : "yüklü değil")}</span></label>}   {/* v2.554 (S4) */}
-              {vyf.tur === "inverter_bulut_api" && vy.bulut?.saglayicilar.some((x) => x.kod === vyf.saglayici && x.durum !== "kapandi") && vy.beyan?.tur === "inverter_bulut_api" && vy.beyan.salt_okuma_onayi && bk && <>   {/* v2.556 (K1): şifreli saklama onayı + sına ve kaydet */}
+              {vyf.tur === "inverter_bulut_api" && vy.bulut?.saglayicilar.some((x) => x.kod === vyf.saglayici && x.durum !== "kapandi") && vy.beyan?.tur === "inverter_bulut_api" && vy.beyan.salt_okuma_onayi && bk && !bkDegistir && bk.kayitlar.some((k) => k.saglayici === vyf.saglayici) && <>   {/* 10.11 inceleme II: kimlik kayıtlı — alanlar kapalı; son işlem mesajı görünür kalır */}
+                {bkSonuc && bkSonuc !== "bekliyor" && bkSonuc.kaydedildi && <span className="ayar-durum ok">Kaydedildi: {bkSonuc.dis_ad ?? bkSonuc.dis_kimlik} (hesap {bkSonuc.etiket})</span>}
+                {bkOAuth && bkOAuth !== "yönlendiriliyor…" && <span className={`ayar-durum ${bkOAuth === OAUTH_MESAJ.tamam || bkOAuth === OAUTH_MESAJ.secim_bekliyor ? "ok" : "hata"}`}>{bkOAuth}</span>}
+              </>}
+              {vyf.tur === "inverter_bulut_api" && vy.bulut?.saglayicilar.some((x) => x.kod === vyf.saglayici && x.durum !== "kapandi") && vy.beyan?.tur === "inverter_bulut_api" && vy.beyan.salt_okuma_onayi && bk && (bkDegistir || !bk.kayitlar.some((k) => k.saglayici === vyf.saglayici)) && <>   {/* v2.556 (K1): şifreli saklama onayı + sına ve kaydet */}
                 <label className="ayar-onay" title={!bk.kasa.var ? "Bu kurulumda şifreli saklama anahtarı tanımlı değil; yalnız sınama yapılabilir" : "Kimlik bilgisi sunucuda şifreli saklanır (kayıt başına veri anahtarı; ana anahtar veritabanının dışında), yalnız düzenli çekişte çözülür, bu ekranda ve denetim izinde görünmez; dilediğiniz an silebilirsiniz"}>
                   <input type="checkbox" checked={bkOnay} disabled={!bk.kasa.var} onChange={(e) => setBkOnay(e.target.checked)} /> {bk.onay_metinleri.sifreli_saklama}</label>
                 {!bk.kasa.var && <p className="soluk" style={{ margin: "2px 0 0", fontSize: 13 }}>Şifreli saklama bu kurulumda kapalı (ana anahtar tanımlı değil); kimlik kaydedilemez, yalnız sınanabilir.</p>}
                 {bkSonuc && bkSonuc !== "bekliyor" && bkSonuc.santraller && bkSonuc.santraller.length > 1 && <label className="girdi-etiket" title="Hesapta birden çok santral var; bu PVQuant santralına karşılık geleni seçin">Sağlayıcıdaki santral
                   <select className="girdi" value={bkSantral} aria-label="Sağlayıcıdaki santral" onChange={(e) => setBkSantral(e.target.value)}><option value="">seçin</option>{bkSonuc.santraller.map((x) => <option key={x.kimlik} value={x.kimlik}>{x.ad ?? x.kimlik}{x.kapasite_kwp ? ` · ${sayiTr(x.kapasite_kwp)} kWp` : ""}</option>)}</select></label>}
+                {(() => { const sg = vy.bulut?.saglayicilar.find((x) => x.kod === vyf.saglayici); const uyg = sg?.oauth ? bk.oauth?.uygulamalar?.[sg.kod] : undefined; const oauthAcik = !!(sg?.oauth && uyg?.yapilandirildi); return <>   {/* v2.564: sahip onayı yolu — platform uygulaması yapılandırılmışsa elle kimlik yerine sağlayıcı sayfasında onay */}
+                {sg?.oauth && !oauthAcik && <p className="soluk" style={{ margin: "2px 0 0", fontSize: 13 }}>Sahip onayı yolu bu kurulumda kapalı: platform uygulaması tanımlı değil.{sg.elle_giris !== false ? " Kimlik bilgisi elle girilebilir." : " Bu bağlantı yalnız sahip onayıyla kurulur."}</p>}
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-                  <button className="dugme" disabled={bkSonuc === "bekliyor" || !bkOnay || !bk.kasa.var || !(vy.bulut?.saglayicilar.find((x) => x.kod === vyf.saglayici)?.kimlik_alanlari ?? []).every((a) => bulutKimlik[a])} title="Girilen kimlikle giriş yapılır ve santral listesi okunur; sınama geçerse kimlik şifreli kaydedilir. Düzenli çekiş ayrı adımla açılır." onClick={bkKaydet}>{bkSonuc === "bekliyor" ? "Sınanıyor…" : "Sına ve şifreli kaydet"}</button>
+                  {oauthAcik ? <button className="dugme" disabled={bkOAuth === "yönlendiriliyor…" || !bkOnay || !bk.kasa.var} title="Sağlayıcının kendi sayfasına gidersiniz ve PVQuant'a yalnızca okuma yetkisi verirsiniz; dönen belirteçler sunucuda şifreli saklanır. Bağlantı 15 dakika geçerlidir ve bir kez kullanılır." onClick={() => bkOAuthBaslat(sg.kod)}>{bkOAuth === "yönlendiriliyor…" ? "Yönlendiriliyor…" : "Sahip onayına git (sağlayıcı sayfası)"}</button>
+                  : sg?.elle_giris === false ? null : <button className="dugme" disabled={bkSonuc === "bekliyor" || !bkOnay || !bk.kasa.var || !(sg?.kimlik_alanlari ?? []).every((a) => bulutKimlik[a])} title="Girilen kimlikle giriş yapılır ve santral listesi okunur; sınama geçerse kimlik şifreli kaydedilir. Düzenli çekiş ayrı adımla açılır." onClick={bkKaydet}>{bkSonuc === "bekliyor" ? "Sınanıyor…" : "Sına ve şifreli kaydet"}</button>}
                   {bkSonuc && bkSonuc !== "bekliyor" && <span className={`ayar-durum ${bkSonuc.kaydedildi ? "ok" : "hata"}`}>{bkSonuc.kaydedildi ? `Kaydedildi: ${bkSonuc.dis_ad ?? bkSonuc.dis_kimlik} (hesap ${bkSonuc.etiket})` : (bkSonuc.aciklama ?? bkSonuc.durum)}</span>}
+                  {bkOAuth && bkOAuth !== "yönlendiriliyor…" && <span className={`ayar-durum ${bkOAuth === OAUTH_MESAJ.tamam || bkOAuth === OAUTH_MESAJ.secim_bekliyor ? "ok" : "hata"}`}>{bkOAuth}</span>}
                 </div>
+                </>; })()}
               </>}
               </>; })()}
               <button className="dugme" onClick={() => vyKaydet(false)}>Ayarları kaydet</button>
               {vy.beyan && <button className="dugme" onClick={() => vyKaydet(true)}>Seçimi kaldır</button>}
               {(vy.beyan?.tur === "modbus_sunspec" || vy.beyan?.tur === "iec104") && vyf.tur === vy.beyan.tur && vy.beyan.baglanti && <button className="dugme" disabled={sinama === "bekliyor" || !vy.beyan.salt_okuma_onayi} title={!vy.beyan.salt_okuma_onayi ? "Önce «yalnızca veri okunmasını onaylıyorum» kutusunu işaretleyip kaydedin" : vy.beyan.tur === "iec104" ? (vy.beyan.startdt_onayi && vy.beyan.nokta_tablosu?.length ? "STARTDT gönderilir ve genel sorgulama (yalnız tip 100) ile noktalar okunup tabloyla eşlenir; komut gönderilmez" : vy.beyan.startdt_onayi ? "Kayıtlı adrese bağlanılır ve STARTDT gönderilir (sahip onayı var); komut gönderilmez, veri okunmaz" : "Kayıtlı adrese yalnız TCP bağlantısı açılır; STARTDT gönderilmez (istasyonun SCADA oturumunu etkilememek için)") : "Kayıtlı adres, port ve birimle cihaza yalnız okuma amaçlı bağlanır (Modbus fonksiyon 3); veri çekişi başlatmaz"} onClick={vySina}>{sinama === "bekliyor" ? "Sınanıyor…" : vy.beyan.tur === "iec104" ? (vy.beyan.startdt_onayi && vy.beyan.nokta_tablosu?.length ? "Noktaları oku" : "Ulaşılabilirliği sına") : "Bağlantıyı sına"}</button>}
-              {vy.beyan?.tur === "inverter_bulut_api" && vyf.tur === "inverter_bulut_api" && vy.bulut?.saglayicilar.some((x) => x.kod === vyf.saglayici && x.durum !== "kapandi") && <button className="dugme" disabled={sinama === "bekliyor" || !vy.beyan.salt_okuma_onayi || !(vy.bulut.saglayicilar.find((x) => x.kod === vyf.saglayici)?.kimlik_alanlari ?? []).every((a) => bulutKimlik[a])} title={vy.beyan.salt_okuma_onayi ? "Girilen kimlikle giriş yapılır ve santral listesi okunur; anahtar kaydedilmez, veri çekişi başlamaz" : "Önce «yalnızca veri okunmasını onaylıyorum» kutusunu işaretleyip kaydedin"} onClick={vyBulutSina}>{sinama === "bekliyor" ? "Sınanıyor…" : "Bulut bağlantısını sına"}</button>}
+              {vy.beyan?.tur === "inverter_bulut_api" && vyf.tur === "inverter_bulut_api" && vy.bulut?.saglayicilar.some((x) => x.kod === vyf.saglayici && x.durum !== "kapandi" && x.elle_giris !== false) && (bkDegistir || !bk?.kayitlar.some((k) => k.saglayici === vyf.saglayici)) && <button className="dugme" disabled={sinama === "bekliyor" || !vy.beyan.salt_okuma_onayi || !(vy.bulut.saglayicilar.find((x) => x.kod === vyf.saglayici)?.kimlik_alanlari ?? []).every((a) => bulutKimlik[a])} title={vy.beyan.salt_okuma_onayi ? "Girilen kimlikle giriş yapılır ve santral listesi okunur; anahtar kaydedilmez, veri çekişi başlamaz" : "Önce «yalnızca veri okunmasını onaylıyorum» kutusunu işaretleyip kaydedin"} onClick={vyBulutSina}>{sinama === "bekliyor" ? "Sınanıyor…" : "Bulut bağlantısını sına"}</button>}
             </div>
             {vyMesaj && <span className={`ayar-durum ${vyMesaj.startsWith("Kaydedildi") ? "ok" : "hata"}`}>{vyMesaj}</span>}
             {vy.beyan?.tur === "inverter_bulut_api" && bk && bk.kayitlar.length > 0 && (   /* v2.556/v2.557 (K1/K2): kayıtlı kimlik, çekiş, birim doğrulama, ham saatler */
@@ -1320,20 +1352,38 @@ export function Santralim({ plantId }: { plantId: string }) {
                   <div key={k.saglayici} style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
                     <span className="rozet rozet-kucuk rozet-ok">kimlik şifreli kayıtlı</span>
                     <span>{k.saglayici_adi} · hesap {k.etiket}{k.bolge ? ` · ${k.bolge}` : ""}{k.dis_kimlik ? ` · sağlayıcı santralı ${k.dis_kimlik}` : ""}</span>
+                    {!k.dis_kimlik && <label className="girdi-etiket" style={{ margin: 0 }} title="Sahip onayı birden çok santral kapsıyor; bu PVQuant santralına karşılık geleni seçin. Seçilmeden çekiş yapılmaz.">Sağlayıcıdaki santral   {/* v2.564: ertelenmiş seçim */}
+                      <select className="girdi" value="" aria-label="Sağlayıcıdaki santral (seçim bekliyor)" onChange={(e) => { if (e.target.value) { api.bulutKimlikAyarla(plantId, k.saglayici, { dis_kimlik: e.target.value }).then(() => { setBkOAuth(null); bkYukle(); }).catch(() => {}); } }}>
+                        <option value="">seçin</option>{(bk.oauth?.son?.saglayici === k.saglayici ? bk.oauth.son.santraller : []).map((x) => <option key={x.kimlik} value={x.kimlik}>{x.ad ?? x.kimlik}{x.kapasite_kwp ? ` · ${sayiTr(x.kapasite_kwp)} kWp` : ""}</option>)}</select></label>}
                     <span className={`rozet rozet-kucuk ${k.son_durum === "ok" ? "rozet-ok" : k.son_durum ? "rozet-uyari" : "rozet-notr"}`} title={k.son_hata ?? undefined}>{k.son_durum ? `${k.son_durum_etiketi}${k.son_cekis ? ` · ${anKisa(k.son_cekis)}` : ""}` : k.cekis_acik ? "çekiş açık, ilk tur bekleniyor" : "düzenli çekiş kapalı"}</span>
                     <span className="soluk">bugün {sayiTr(k.kota_sayac)}/{sayiTr(bk.saglayici_alanlari?.[k.saglayici]?.gunluk_tavan ?? bk.gunluk_tavan)} çağrı</span>
                     <button className="dugme" title="Saatte bir çağrı; aynı hesaptaki santrallar tek çağrıda; yerel 01:00'de dünkü saatler tamamlanır" onClick={() => bkAyarla(k.saglayici, { cekis_acik: !k.cekis_acik })}>{k.cekis_acik ? "Düzenli çekişi durdur" : "Düzenli çekişi başlat"}</button>
-                    <label className="ayar-onay" title={bk.birim_notu}><input type="checkbox" checked={k.birim_dogrulandi} onChange={(e) => bkAyarla(k.saglayici, { birim_dogrulandi: e.target.checked })} /> birim doğrulandı (saatler gölge görünüme yazılsın)</label>
+                    <label className="ayar-onay" title={k.birim_kanit?.belge_uyumlu ? `${k.birim_kanit.metin} ${bk.saglayici_alanlari?.[k.saglayici]?.birim_notu ?? bk.birim_notu}` : (k.birim_kanit?.metin ?? "Önce portalın saatlik dışa aktarımını yükleyip birim kıyası yapın; kanıt olmadan işaretlenemez")}>
+                      <input type="checkbox" checked={k.birim_dogrulandi} disabled={!k.birim_dogrulandi && !k.birim_kanit?.belge_uyumlu} onChange={(e) => bkAyarla(k.saglayici, { birim_dogrulandi: e.target.checked })} /> birim doğrulandı (saatler kaynak kıyasına yazılsın)</label>   {/* v2.565: yalnız kanıtla */}
+                    {k.saglayici === vyf.saglayici && <button className="dugme" aria-expanded={bkDegistir} title="Yeni kimlik bilgisini girip sınar ve kaydedersiniz. Kayıtlı kimlik, yenisi kaydedilene kadar kullanılmaya devam eder." onClick={() => { setBkDegistir(!bkDegistir); setBulutKimlik({}); setBkOnay(false); }}>{bkDegistir ? "Değiştirmekten vazgeç" : "Kimliği değiştir"}</button>}   {/* 10.11 inceleme II */}
                     <button className="dugme" onClick={() => bkSil(k.saglayici)}>Kimliği sil</button>
+                    <label className="girdi-etiket" style={{ margin: 0, minWidth: 0, maxWidth: "100%" }} title="Sağlayıcı portalının kendi saatlik üretim dışa aktarımı (CSV: zaman, kwh; yalnız tam saatler). Çekilen ham saatlerle aynı saatlerde birim/anlam kıyası yapılır; dosya saklanmaz, yalnız özet kalır.">Portal dışa aktarımıyla birim kıyası (CSV)
+                      <input className="girdi" style={{ maxWidth: "100%" }} type="file" accept=".csv,text/csv" disabled={!k.son_cekis && !bk.ham_son.some((h) => h.saglayici === k.saglayici)} onChange={(e) => { bkKiyas(k.saglayici, e.target.files?.[0] ?? null); e.target.value = ""; }} /></label>
+                    {!k.son_cekis && !bk.ham_son.some((h) => h.saglayici === k.saglayici) && <span className="soluk" style={{ fontSize: 13 }}>Kıyas için önce düzenli çekişi başlatın; ham saat çekilmeden kıyas yapılamaz.</span>}
+                    {bkKiyasMesaj && <span className={`ayar-durum ${bkKiyasMesaj.startsWith("kıyas") ? "" : "hata"}`}>{bkKiyasMesaj}</span>}
+                    {k.birim_kanit && <div style={{ flexBasis: "100%", minWidth: 0, fontSize: 13 }}>
+                      <div style={{ maxWidth: "90ch" }}><span className={`rozet rozet-kucuk ${k.birim_kanit.belge_uyumlu ? "rozet-ok" : k.birim_kanit.sonuc === "yetersiz" ? "rozet-notr" : "rozet-uyari"}`}>{k.birim_kanit.belge_uyumlu ? "belge yorumu uyumlu" : k.birim_kanit.sonuc === "yetersiz" ? "kıyas için yetersiz saat" : k.birim_kanit.sonuc === "belgeyle_celisiyor" ? "belge yorumuyla çelişiyor" : "uyumsuz"}</span>
+                      <span> {k.birim_kanit.metin}{k.birim_kanit.zaman ? ` (${anKisa(k.birim_kanit.zaman)}${k.birim_kanit.dosya ? `, ${k.birim_kanit.dosya}` : ""})` : ""}</span></div>
+                      {k.birim_kanit.alanlar.length > 0 && <div style={{ overflowX: "auto" }}><table className="veri dar" style={{ fontSize: 12.5, marginTop: 4 }}>   {/* 10.11 inceleme: dar tablo, ham saat tablosundan ayrı okunur */}
+                        <thead><tr><th>Alan</th><th>En iyi yorum</th><th>Ortak saat</th><th>Üretimli saat</th><th>Toleransta</th><th>Sonuç</th></tr></thead>
+                        <tbody>{k.birim_kanit.alanlar.map((a) => <tr key={a.alan}><td>{a.etiket ?? a.alan}</td><td>{a.hipotez_etiketi}</td><td>{sayiTr(a.n_ortak)}</td><td>{a.n_uretimli == null ? "—" : sayiTr(a.n_uretimli)}</td><td title={a.sonuc === "yetersiz" ? "Üretimli saat sayısı karar için yetersiz; oran gösterilmez" : undefined}>{a.oran == null || a.sonuc === "yetersiz" ? "—" : `%${sayiTr(a.oran * 100, 1)}`}</td><td>{a.sonuc === "uyumlu" ? "uyumlu" : a.sonuc === "yetersiz" ? "yetersiz" : "uyumsuz"}</td></tr>)}</tbody>
+                      </table></div>}
+                    </div>}
                   </div>))}
                 {bk.ham_son.length > 0 ? (
-                  <div style={{ overflowX: "auto", marginTop: 6 }}>
+                  <div style={{ overflowX: "auto", marginTop: 12 }}>
+                    <div className="soluk" style={{ fontSize: 13 }}>Son çekilen ham saatler</div>
                     <table className="veri" style={{ fontSize: 13 }}>
                       {(() => { const sgk = bk.ham_son[0].saglayici; const al = bk.saglayici_alanlari?.[sgk]?.alanlar ?? bk.alanlar; const sut = Object.keys(al).filter((a) => a !== "enerji_kwh_belge").slice(0, 3); return <>
                       <thead><tr><th>Saat (UTC)</th>{sut.map((a) => <th key={a}>{al[a]?.etiket ?? a}{al[a] ? ` (${al[a].birim})` : ""}</th>)}<th>belgeye göre kWh</th><th>Alındı</th></tr></thead>
                       <tbody>{bk.ham_son.slice(0, 8).map((h) => <tr key={h.ts_utc}><td>{h.ts_utc.slice(5, 16).replace("T", " ")}</td>{sut.map((a) => <td key={a}>{h.alanlar[a] == null ? "—" : typeof h.alanlar[a] === "number" ? sayiTr(h.alanlar[a] as number, a === "radiation_intensity" ? 2 : 1) : String(h.alanlar[a])}</td>)}<td>{typeof h.alanlar.enerji_kwh_belge === "number" ? sayiTr(h.alanlar.enerji_kwh_belge, 1) : "—"}</td><td className="soluk">{anKisa(h.alinma)}</td></tr>)}</tbody></>; })()}
                     </table>
-                    <p className="soluk" style={{ margin: "4px 0 0", fontSize: 13 }}>{bk.saglayici_alanlari?.[bk.ham_son[0].saglayici]?.birim_notu ?? bk.birim_notu}</p>
+                    <p className="soluk" style={{ margin: "4px 0 0", fontSize: 13, maxWidth: "90ch" }}>{bk.saglayici_alanlari?.[bk.ham_son[0].saglayici]?.birim_notu ?? bk.birim_notu}</p>
                   </div>) : <p className="soluk" style={{ margin: "4px 0 0", fontSize: 13 }}>Henüz saatlik veri çekilmedi. {bk.not}</p>}
               </div>)}
             {vy.asamalar && vy.asamalar.length > 0 && (   /* 08.11 inceleme (faz 3): aşamalar ayrı — seçildi ≠ ayar ≠ sınama ≠ veri akışı */
@@ -1341,7 +1391,7 @@ export function Santralim({ plantId }: { plantId: string }) {
                 {vy.asamalar.map((a) => <span key={a.kod} className={`rozet rozet-kucuk ${a.tamam ? "rozet-ok" : "rozet-notr"}`} title={a.zaman ? `${a.etiket} · ${gunKisa(a.zaman)}` : a.etiket}>{a.tamam ? "✓ " : "○ "}{a.etiket}</span>)}
               </div>)}
             {!sinama && vy.beyan?.son_sinama && (
-              <p className="soluk" style={{ margin: "8px 0 0", fontSize: 13 }}>Son bağlantı sınaması {gunKisa(vy.beyan.son_sinama.zaman)}: {vy.beyan.son_sinama.durum === "ok" ? `${(vy.beyan.son_sinama.ozet as { yontem?: string } | null | undefined)?.yontem === "tcp" ? "TCP bağlantısı açıldı" : "başarılı"} — ${(vy.beyan.son_sinama.ozet as { uretici?: string | null; model?: string | null; santral_sayisi?: number; startdt_con?: boolean } | null | undefined)?.santral_sayisi != null ? `${sayiTr((vy.beyan.son_sinama.ozet as { santral_sayisi: number }).santral_sayisi)} santral okundu` : (vy.beyan.son_sinama.ozet as { yontem?: string } | null | undefined)?.yontem === "tcp" ? "TCP bağlantısı kuruldu (STARTDT gönderilmedi)" : (vy.beyan.son_sinama.ozet as { startdt_con?: boolean | null } | null | undefined)?.startdt_con ? "IEC 104 STARTDT onayı" : `${(vy.beyan.son_sinama.ozet as { uretici?: string | null } | null | undefined)?.uretici ?? ""} ${(vy.beyan.son_sinama.ozet as { model?: string | null } | null | undefined)?.model ?? ""}`}`.trim() : `${SINAMA_ETIKET[vy.beyan.son_sinama.durum] ?? vy.beyan.son_sinama.durum}${vy.beyan.son_sinama.aciklama ? ` — ${vy.beyan.son_sinama.aciklama}` : ""}`}. Sınama cihaza erişildiğini gösterir; düzenli veri çekişi başlamaz.</p>)}
+              <p className="soluk" style={{ margin: "8px 0 0", fontSize: 13, maxWidth: "90ch" }}>Son bağlantı sınaması {gunKisa(vy.beyan.son_sinama.zaman)}: {vy.beyan.son_sinama.durum === "ok" ? `${(vy.beyan.son_sinama.ozet as { yontem?: string } | null | undefined)?.yontem === "tcp" ? "TCP bağlantısı açıldı" : "başarılı"} — ${(vy.beyan.son_sinama.ozet as { uretici?: string | null; model?: string | null; santral_sayisi?: number; startdt_con?: boolean } | null | undefined)?.santral_sayisi != null ? `${sayiTr((vy.beyan.son_sinama.ozet as { santral_sayisi: number }).santral_sayisi)} santral okundu` : (vy.beyan.son_sinama.ozet as { yontem?: string } | null | undefined)?.yontem === "tcp" ? "TCP bağlantısı kuruldu (STARTDT gönderilmedi)" : (vy.beyan.son_sinama.ozet as { startdt_con?: boolean | null } | null | undefined)?.startdt_con ? "IEC 104 STARTDT onayı" : `${(vy.beyan.son_sinama.ozet as { uretici?: string | null } | null | undefined)?.uretici ?? ""} ${(vy.beyan.son_sinama.ozet as { model?: string | null } | null | undefined)?.model ?? ""}`}`.trim() : `${SINAMA_ETIKET[vy.beyan.son_sinama.durum] ?? vy.beyan.son_sinama.durum}${vy.beyan.son_sinama.aciklama ? ` — ${vy.beyan.son_sinama.aciklama}` : ""}`}. Sınama {vy.beyan.tur === "inverter_bulut_api" ? "hesaba" : "cihaza"} erişildiğini gösterir; düzenli veri çekişini kendiliğinden başlatmaz.</p>)}
             {sinama && sinama !== "bekliyor" && (
               <p style={{ margin: "8px 0 0", fontSize: 13.5, lineHeight: 1.5 }}>
                 <span className={`rozet rozet-kucuk ${sinama.durum === "ok" && sinama.ozet?.yontem === "tcp" ? "rozet-notr" : sinama.durum === "ok" ? "rozet-ok" : sinama.durum === "kismi" ? "rozet-notr" : "rozet-uyari"}`} style={{ marginRight: 8 }}>{sinama.durum === "ok" && sinama.ozet?.yontem === "tcp" ? "TCP bağlantısı açıldı" : SINAMA_ETIKET[sinama.durum] ?? sinama.durum}</span>
@@ -1353,21 +1403,22 @@ export function Santralim({ plantId }: { plantId: string }) {
                 {sinama.not && <span className="soluk"> · {sinama.not}</span>}
               </p>)}
             {vyf.tur === "inverter_bulut_api" && vy.bulut && !vy.bulut.saglayicilar.some((x) => x.kod === vyf.saglayici) && (
-              <p className="soluk" style={{ margin: "8px 0 0", fontSize: 13 }}>Bu sağlayıcı için bağlantı yok: {vy.bulut.diger_etiketi ?? "kaydederseniz talep olarak not edilir"}. Bağlantısı yazılmış sağlayıcılar (hiçbiri gerçek hesapla doğrulanmadı): {vy.bulut.saglayicilar.filter((x) => x.durum !== "kapandi").map((x) => x.ad).join(", ")}. Devre dışı: {vy.bulut.saglayicilar.filter((x) => x.durum === "kapandi").map((x) => x.ad).join(", ") || "—"}. {vy.bulut.henuz_yok_etiketi ?? "Planlanan"}: {vy.bulut.henuz_yok.join(", ")}.</p>)}
+              <p className="soluk" style={{ margin: "8px 0 0", fontSize: 13 }}>Bu sağlayıcı için bağlantı yok: {vy.bulut.diger_etiketi ?? "kaydederseniz talep olarak not edilir"}. Desteklenen sağlayıcılar (hiçbiri gerçek hesapla henüz doğrulanmadı): {vy.bulut.saglayicilar.filter((x) => x.durum !== "kapandi").map((x) => x.ad).join(", ")}. Devre dışı: {vy.bulut.saglayicilar.filter((x) => x.durum === "kapandi").map((x) => x.ad).join(", ") || "—"}. {vy.bulut.henuz_yok_etiketi ?? "Planlanan"}: {vy.bulut.henuz_yok.join(", ")}.</p>)}
             {(() => { const h = vy.yollar.find((y) => y.tur === vyf.tur) ?? vy.hedef; const y = h?.yetenekler; return h ? (
               <>
-                <div className="alt-bolum">Bağlantı gereksinimleri</div>
+                <div className="kart-bolum">Bağlantı gereksinimleri</div>
                 <div style={{ fontSize: 13.5 }}>
-                  <b>{h.etiket}</b> <span className={`rozet rozet-kucuk ${h.durum === "mevcut" ? "rozet-ok" : "rozet-notr"}`}>{h.durum_etiketi}</span> <span className="soluk">· {h.tur_etiketi}</span>
+                  <b>{h.etiket}</b> <span className={`rozet rozet-kucuk ${yolDurumu(vy, h).ok ? "rozet-ok" : "rozet-notr"}`}>{yolDurumu(vy, h).etiket}</span> <span className="soluk">· {h.tur_etiketi}</span>
                   {y && <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>   {/* yetenek matrisi: sınama türü, veri okuma, düzenli çekiş, doğrulama — kod ne yapıyorsa o */}
                     <span className={`rozet rozet-kucuk ${y.sinama ? "rozet-notr" : "rozet-notr"}`}>{y.sinama_etiketi}</span>
                     <span className={`rozet rozet-kucuk ${y.veri_okuma ? "rozet-ok" : "rozet-notr"}`}>{y.veri_okuma ? "veri okuma var" : "veri okuma yok"}</span>
                     <span className={`rozet rozet-kucuk ${y.duzenli_cekis ? "rozet-ok" : "rozet-notr"}`}>{y.duzenli_cekis ? "düzenli çekiş var" : "düzenli çekiş yok"}</span>
-                    <span className={`rozet rozet-kucuk ${y.dogrulama === "canli" ? "rozet-ok" : y.dogrulama === "sahte" ? "rozet-uyari" : "rozet-notr"}`}>{y.dogrulama_etiketi}</span>
+                    {h.tur === "inverter_bulut_api" && vy.bulut?.hesap_durumu ? <span className={`rozet rozet-kucuk ${vy.bulut.hesap_durumu.birim_dogrulandi ? "rozet-ok" : "rozet-notr"}`} style={{ whiteSpace: "normal", maxWidth: "100%" }}>{vy.bulut.hesap_durumu.etiket}</span>   /* 10.11 inceleme II: bu hesabın durumu, tür etiketinin yerine */
+                    : <span className={`rozet rozet-kucuk ${y.dogrulama === "canli" ? "rozet-ok" : y.dogrulama === "sahte" ? "rozet-uyari" : "rozet-notr"}`}>{y.dogrulama_etiketi}</span>}
                   </div>}
                   <div className="soluk" style={{ marginTop: 6 }}>{h.durum === "mevcut" ? "Bu kaynak uygulamada çalışır; gerekenler:" : "Bağlantı için sizden istenecekler:"}</div>
                   <ul style={{ margin: "4px 0 0 18px", padding: 0 }}>{h.gerekenler.map((g, i) => <li key={i}>{g}</li>)}</ul>
-                  {y?.yapilandirma && <p className="soluk" style={{ fontSize: 13, margin: "6px 0 0" }}>Yapılandırma: {y.yapilandirma}. {y.ozet}</p>}
+                  {y?.yapilandirma && <p className="soluk" style={{ fontSize: 13, margin: "6px 0 0", maxWidth: "90ch" }}>Yapılandırma: {y.yapilandirma}. {y.ozet}</p>}
                 </div>
                 <details className="aciklama" style={{ marginTop: 10 }}><summary>Teknik ayrıntılar</summary>
                   <p className="soluk" style={{ fontSize: 13, margin: "6px 0 0" }}>{h.not}</p>
@@ -1430,7 +1481,7 @@ export function Santralim({ plantId }: { plantId: string }) {
               </li>))}
           </ul>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-end", marginTop: 10 }}>
-            <label className="girdi-etiket" title="Aynı cihazın, aynı ölçüm sınırında saatlik referans dışa aktarımı (CSV: zaman, kWh). Yalnız gölge görünümdeki tam saatler kıyaslanır; ham dosya saklanmaz.">Referans dışa aktarımı (CSV)
+            <label className="girdi-etiket" title="Aynı cihazın, aynı ölçüm sınırında saatlik referans dışa aktarımı (CSV: zaman, kWh). Yalnız kaynak kıyasındaki tam saatler kıyaslanır; ham dosya saklanmaz.">Referans dışa aktarımı (CSV)
               <input className="girdi" type="file" accept=".csv,text/csv" onChange={(e) => pilotRef(e.target.files?.[0] ?? null)} />
               <span className="soluk" style={{ fontSize: 13 }}>sütunlar: zaman (saat dilimli), kWh · yalnız tam gölge saatleri kıyaslanır</span></label>
             <label className="girdi-etiket">Ölçüm sınırı

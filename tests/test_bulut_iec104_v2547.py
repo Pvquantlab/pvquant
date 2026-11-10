@@ -86,7 +86,7 @@ def test_solaredge_v1_sinifi_referans_ve_kapandi():
     (test_k3_k4_v2562); anahtar URL'de değil başlıkta."""
     from pvquant.io.bulut.solaredge import KAPANDI
     assert KAPANDI == "2026-11-03" and SAGLAYICILAR["solaredge_v1"]["durum"] == "kapandi" and "solaredge_v1" not in AKTIF_SAGLAYICILAR
-    assert "solaredge" in AKTIF_SAGLAYICILAR and set(AKTIF_SAGLAYICILAR) == {"fusionsolar", "solaredge", "solis", "sungrow", "growatt"}
+    assert "solaredge" in AKTIF_SAGLAYICILAR and set(AKTIF_SAGLAYICILAR) == {"fusionsolar", "solaredge", "solaredge_oauth", "solis", "sungrow", "growatt"}
     c = SolarEdge(); c.giris({"api_anahtari": "ABCDEFGH12"})
     assert c._c.headers["X-API-Key"] == "ABCDEFGH12" and c.kok.endswith("/v2")
     c.kapat()
@@ -106,7 +106,7 @@ def test_bulut_sinama_durumlari_ve_anahtar_saklanmaz():
         raise httpx.ConnectError("boom")
     assert bs.sina("fusionsolar", {"kullanici": "u", "sistem_kodu": "dogru"}, onay=True, transport=httpx.MockTransport(kopuk))["durum"] == "baglanti_hatasi"
     assert bs.sina("fusionsolar", {"kullanici": "u", "sistem_kodu": "dogru"}, onay=True, bolge="evil.com")["durum"] == "ayar_hatasi"   # alan adı dışı bölge reddi
-    assert set(SAGLAYICILAR) == {"fusionsolar", "solaredge_v1", "solaredge", "solis", "sungrow", "growatt"}   # v2.562
+    assert set(SAGLAYICILAR) == {"fusionsolar", "solaredge_v1", "solaredge", "solaredge_oauth", "solis", "sungrow", "growatt"}   # v2.562
 
 
 def _iec_sunucu(cevap: bytes | None):

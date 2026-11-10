@@ -1,7 +1,7 @@
 """SolarEdge Monitoring API **V2** — yalnız okuma, FİLO ERİŞİMİ (X-API-Key). v2.562 (Aşama 3, K4). Kaynak: Opus 08 §1 [K77][K351–K358].
 V1 3 Kasım 2026'da kapandı (v2.548). V2: taban https://monitoringapi.solaredge.com/v2; anahtar BAŞLIKTA (X-API-Key), URL'de değil; tek ortam (sandbox yok).
 Erişim: My Fleet (kurulumcu hesabı), External Fleet (filo sahibi onayı ≤24 ay) ya da Associated Accounts (site sahibi PVQuant'ın kurulumcu hesabını Read only
-ilişkilendirir). Site OAuth yolu (connect.solaredge.com) bu sürümde YOK (platform uygulama kaydı ve geri dönüş ucu gerekir; GET /sites OAuth ile çağrılamaz).
+ilişkilendirir). Site sahibi OAuth yolu ayrı sınıfta (solaredge_oauth.SolarEdgeOAuth, v2.564): Bearer belirteç; GET /sites OAuth ile çağrılamaz, site kimliği geri dönüşten.
 Uçlar: GET /v2/sites (sayfalı, sites-in-page ≤1000, yalnız API anahtarı) → siteId, name, peakPower kWp, location.timezone; GET /v2/sites/{id}/energy
 ?resolution=HOUR&unit=KWH&from&to (saat dilimli ISO; ≤24 s/çağrı) → values[{timestamp (yerel + ofset, pencere başı), value kWh}].
 Kota: kredi (yalnız 200 tüketir) + CPM; 429'da x-ratelimit-remaining-minute 0 → CPM (retry-after), >0 → aylık kredi bitti. 400/403/404 ProblemDetail,
@@ -70,10 +70,14 @@ class SolarEdge(Baglayici):
         except ValueError as e:
             raise BulutHata("JSON değil") from e
 
+    def _get(self, yol: str, params: dict) -> dict:
+        """v2.564: tek GET noktası — OAuth alt sınıfı 401'de belirteci yenileyip bir kez yineler."""
+        return self._kontrol(self._c.get(yol, params=params))
+
     def santraller(self) -> list[dict]:
         out, sayfa = [], 1
         while True:
-            g = self._kontrol(self._c.get("/sites", params={"page": sayfa, "sites-in-page": 1000}))
+            g = self._get("/sites", {"page": sayfa, "sites-in-page": 1000})
             siteler = ((g.get("sites") or {}).get("site")) or []
             for s in siteler:
                 tz = ((s.get("location") or {}).get("timezone"))
@@ -92,7 +96,7 @@ class SolarEdge(Baglayici):
         for kod in kodlar:
             tz = getattr(self, "_tz", {}).get(kod)
             bas = gun_baslangici(gun, tz); bit = bas + timedelta(hours=24)
-            g = self._kontrol(self._c.get(f"/sites/{kod}/energy", params={"resolution": "HOUR", "unit": "KWH", "from": bas.isoformat(), "to": bit.isoformat()}))
+            g = self._get(f"/sites/{kod}/energy", {"resolution": "HOUR", "unit": "KWH", "from": bas.isoformat(), "to": bit.isoformat()})
             for v in g.get("values") or []:
                 try:
                     ts = datetime.fromisoformat(str(v["timestamp"]).replace("Z", "+00:00"))

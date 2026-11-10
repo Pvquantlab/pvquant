@@ -29,9 +29,9 @@ VERI_YOLLARI: dict[str, dict] = {
     "sayac_dosya": {"etiket": "Sayaç dosyası (OSOS / MASS / EPYS dışa aktarımı)", "kisa": "Sayaç dosyası", "durum": "mevcut", "yon": "dosya", "tur_etiketi": "dosya kaynağı",
                     "gerekenler": ["Dağıtım şirketi OSOS portalı, MASS ya da EPYS'den dönem dosyası", "Sayaç türü beyanı (Sayaç sayfası)"],
                     "not": "Uzlaştırma girdisi ve SCADA–sayaç kıyası için; Sayaç sayfasından yüklenir. Dosya tabanlıdır."},
-    "inverter_bulut_api": {"etiket": "İnverter bulutu API (FusionSolar, iSolarCloud, Sunny Portal, SolisCloud, GoodWe …)", "kisa": "İnverter bulutu API", "durum": "kurulmadi", "yon": "api", "tur_etiketi": "bulut bağlantısı",
+    "inverter_bulut_api": {"etiket": "İnverter bulutu API (FusionSolar, SolarEdge, SolisCloud, iSolarCloud, Growatt)", "kisa": "İnverter bulutu API", "durum": "kurulmadi", "yon": "api", "tur_etiketi": "bulut bağlantısı",
                            "gerekenler": ["Üretici portalında yalnızca okuma izinli API hesabı / Northbound anahtarı", "Sahip onayı ve varsa veri erişim bedeli", "Santral ve cihaz kimlikleri (inverter listesi)", "Örnek 48 saatlik çıktı (alan adları, zaman dilimi, birimler)", "Alarm/durum kodu sözlüğü (inverter alarmlarının ortak kategoriye eşlenmesi için)"],
-                           "not": "Beş bulut bağlantısı üreticilerin herkese açık belgelerinden yazıldı: Huawei FusionSolar (Northbound), SolarEdge V2 (filo anahtarı), SolisCloud, Sungrow iSolarCloud, Growatt OpenAPI v1. Anahtarla sınanabilir; sahibin iki onayıyla kimlik şifreli saklanır ve saatlik üretim düzenli çekilir; çekilen saatler birim doğrulanana kadar yalnız ham tabloda kalır. Hiçbiri gerçek hesapla doğrulanmadı. SolarEdge V1 API 3 Kasım 2026'da kapandı; devre dışı. GoodWe, Deye/Solarman ve Sofar anahtar ve örnek çıktı gelince."},
+                           "not": "Beş bulut bağlantısı üreticilerin herkese açık belgelerine göre hazırlandı: Huawei FusionSolar (Northbound), SolarEdge V2 (filo anahtarı), SolisCloud, Sungrow iSolarCloud, Growatt OpenAPI v1. Anahtarla sınanabilir; sahibin iki onayıyla kimlik şifreli saklanır ve saatlik üretim düzenli çekilir; çekilen saatler birim doğrulanana kadar yalnız ham tabloda kalır. Hiçbiri gerçek hesapla doğrulanmadı. SolarEdge V1 API 3 Kasım 2026'da kapandı; devre dışı. GoodWe, Deye/Solarman ve Sofar anahtar ve örnek çıktı gelince."},
     "modbus_sunspec": {"etiket": "Modbus TCP / SunSpec (inverter, enerji sayacı, kirlenme sensörü)", "kisa": "Modbus TCP / SunSpec", "durum": "kurulmadi", "yon": "protokol", "tur_etiketi": "saha protokolü",
                        "gerekenler": ["Saha ağına yalnızca okuma erişimi (VPN ya da ağ geçidi), IP:port ve birim kimliği", "Kayıt haritası: SunSpec model numaraları ya da üretici Modbus tablosu", "Sahip onayı ve yazma kapalı siber güvenlik politikası", "Sorgu periyodu ve sayaç/sensör listesi"],
                        "not": "SolarPower Europe O&M v6.0 kirlenme sensörü ve enerji sayacı için Modbus önerir (öneri, zorunluluk değil). Cihaz adresi girilip yalnızca okuma onayı verilince bağlantı sınanabilir; «düzenli veri çekişini başlat» ile saatlik veri alınır. Kayıt haritası: SunSpec (1xx ve 7xx modelleri otomatik keşif) ya da üretici haritası (Huawei SmartLogger santral toplamı, Sungrow dizi inverteri, Growatt). Üretici haritaları herkese açık belgeden yazıldı; gerçek cihazla doğrulanmadı."},
@@ -53,10 +53,10 @@ YETENEKLER: dict[str, dict] = {
                         "ozet": "Her gece bir önceki günlerin üretimi çekilir (lisanslı tesis)."},
     "sayac_dosya": {"yapilandirma": "Sayaç sayfası › dosya yükleme", "sinama": None, "veri_okuma": True, "duzenli_cekis": False, "dogrulama": "canli",
                     "ozet": "Dönem dosyası yüklenince sayaç verisi gelir."},
-    "inverter_bulut_api": {"yapilandirma": "Sağlayıcı seçimi; kimlik sınamada ve (iki onayla) şifreli kasada", "sinama": "kimlik", "veri_okuma": True, "duzenli_cekis": True, "dogrulama": "sahte",   # v2.556/v2.557 (K1/K2)
-                           "ozet": "Beş bulut için giriş + santral listesi sınanır; kimlik iki onayla şifreli saklanınca saatlik üretim düzenli çekilir (önce ham, birim doğrulanınca gölge görünüme); hiçbiri gerçek hesapla doğrulanmadı. SolarEdge V1 kapandı (devre dışı)."},
+    "inverter_bulut_api": {"yapilandirma": "Sağlayıcı seçimi; kimlik sınamada kullanılır, yalnız iki onayla şifreli saklanır", "sinama": "kimlik", "veri_okuma": True, "duzenli_cekis": True, "dogrulama": "sahte",   # v2.556/v2.557 (K1/K2)
+                           "ozet": "Beş bulut için giriş ve santral listesi sınanır; kimlik kaydedilince saatlik üretim düzenli çekilir. Çekilen saatler önce ham kalır, birim doğrulanınca kaynak kıyasına yazılır. SolarEdge V1 kapandı (devre dışı)."},
     "modbus_sunspec": {"yapilandirma": "Cihaz adresi, port, birim kimliği", "sinama": "okuma", "veri_okuma": True, "duzenli_cekis": True, "dogrulama": "sahte",
-                       "ozet": "Sınamada ölçüm okunur (SunSpec 1xx/7xx ya da Huawei/Sungrow/Growatt haritası); «düzenli veri çekişini başlat» ile tam saatler üretim serisine, kısmi saatler yalnız gölge görünüme yazılır; gerçek cihazla doğrulanmadı."},
+                       "ozet": "Sınamada ölçüm okunur (SunSpec 1xx/7xx ya da Huawei/Sungrow/Growatt haritası); «düzenli veri çekişini başlat» ile tam saatler üretim serisine, kısmi saatler yalnız kaynak kıyasına yazılır; gerçek cihazla doğrulanmadı."},
     "iec104": {"yapilandirma": "İstasyon adresi, port", "sinama": "ulasilabilirlik", "veri_okuma": False, "duzenli_cekis": False, "dogrulama": "sahte",
                "ozet": "Varsayılan sınama yalnız TCP bağlantısı; STARTDT yalnız sahibin ayrı istemci yuvası onayıyla. Komut gönderilmez, veri okunmaz."},
     "opc_ua": {"yapilandirma": None, "sinama": None, "veri_okuma": False, "duzenli_cekis": False, "dogrulama": "yok",
@@ -150,7 +150,7 @@ def epias_cekis_durumu(status: str | None, detail: str | None) -> dict:
 
 
 def asamalar(beyan: dict | None, etkin: list[dict]) -> list[dict]:
-    """SAF. Hedef bağlantının aşamaları ayrı durumlarla: seçildi → ayar girildi → sınama başarılı → veri alınıyor. Hiçbiri diğerini ima etmez."""
+    """SAF. Hedef bağlantının aşamaları ayrı durumlarla: seçildi → ayar girildi → sınama başarılı → veri alınıyor → (bulutta) birim doğrulandı. Hiçbiri diğerini ima etmez."""
     if not beyan or not beyan.get("tur"):
         return []
     tur = beyan["tur"]; yon = VERI_YOLLARI.get(tur, {}).get("yon")
@@ -180,6 +180,10 @@ def asamalar(beyan: dict | None, etkin: list[dict]) -> list[dict]:
         if tur in ("modbus_sunspec", "iec104"):   # v2.546: çekiş sahibin ayrı kararı; sınama onu ima etmez
             out.append({"kod": "cekis", "etiket": ASAMA_ETIKET["cekis"] if beyan.get("ornekleme_acik") else "düzenli veri çekişi başlatılmadı", "tamam": bool(beyan.get("ornekleme_acik")), "zaman": None})
     out.append({"kod": "akis", "etiket": ASAMA_ETIKET["akis"] if akis else "veri alınmıyor", "tamam": akis, "zaman": None})
+    bkm = (beyan.get("bulut_kimlik") or {}) if tur == "inverter_bulut_api" else {}
+    if bkm.get("kayitli"):   # 10.11 inceleme II: «veri alınıyor» birimin doğrulandığını ima etmesin — ayrı, bekleyen adım
+        bd = bool(bkm.get("birim_dogrulandi"))
+        out.append({"kod": "birim", "etiket": "birim doğrulandı" if bd else "birim doğrulanmadı", "tamam": bd, "zaman": None})
     return out
 
 
@@ -371,8 +375,9 @@ def etkin_yollar(tenant_id, plant: dict, simdi: datetime | None = None) -> list[
             out.append({"tur": "inverter_bulut_api", "etiket": VERI_YOLLARI["inverter_bulut_api"]["kisa"], "tur_etiketi": "bulut bağlantısı", "tanimli": True,
                         "son": son_alinma.isoformat() if son_alinma else None, "son_olcum": son_ts.isoformat() if son_ts else None, "baglanti": bag,
                         "veri_kodu": veri_kodu(tz, son_ts, "api"),
-                        "veri_etiketi": (("ham saatler · birim doğrulandı, gölge görünüme yazılıyor" if kay.get("birim_dogrulandi") else
-                                          "ham saatler (birim doğrulanmadı; gölge görünüme yazılmıyor)") if ham else "henüz saatlik veri çekilmedi"),
+                        "veri_etiketi": (("ham saatler · birim doğrulandı, kaynak kıyasına yazılıyor" if kay.get("birim_dogrulandi") else
+                                          "ham saatler (birim doğrulanmadı; kaynak kıyasına yazılmıyor)") if ham else "henüz saatlik veri çekilmedi"),
+                        "saglayici": kay["saglayici"], "birim_dogrulandi": bool(kay.get("birim_dogrulandi")), "son_cekis_ok": bool(ham) and kay.get("son_durum") == "ok",   # 10.11 inceleme II: rozet rengi ve hesap durumu buradan
                         "ayrinti": f"{kay.get('saglayici_adi')} · hesap {kay.get('etiket')} · bugün {kay.get('kota_sayac') or 0}/{bc.GUNLUK_TAVAN} çağrı", **tz})
     if pj.get("epias_santral_id"):
         son = epias["created_at"] if epias else None; so = son_olcum.get("epias")
@@ -392,6 +397,17 @@ def etkin_yollar(tenant_id, plant: dict, simdi: datetime | None = None) -> list[
     return out
 
 
+def hesap_durumu(etkin: list[dict]) -> dict | None:
+    """SAF. 10.11 inceleme II: bu santralın bulut hesabında son çekiş başarılıysa tür düzeyindeki «gerçek hesapla doğrulanmadı» cümlesi yerine
+    hesabın kendi durumu gösterilir. Birim ayrı adımdır; çekiş başarısı birimi doğrulamaz. Çekiş yoksa ya da son tur başarısızsa None (genel etiket kalır)."""
+    e = next((x for x in etkin if x.get("tur") == "inverter_bulut_api" and x.get("son_cekis_ok")), None)
+    if not e:
+        return None
+    bd = bool(e.get("birim_dogrulandi"))
+    return {"saglayici": e.get("saglayici"), "birim_dogrulandi": bd,
+            "etiket": "bu hesapta çekiş başarılı; birim doğrulandı" if bd else "bu hesapta çekiş başarılı; birim doğrulaması bekliyor"}
+
+
 def ozet(tenant_id, plant: dict, simdi: datetime | None = None) -> dict:
     pj = _pj(plant)
     beyan = pj.get("veri_yolu") if isinstance(pj.get("veri_yolu"), dict) else None
@@ -403,9 +419,10 @@ def ozet(tenant_id, plant: dict, simdi: datetime | None = None) -> dict:
     # faz 2: sağlayıcı matrisi — «uygulandı, doğrulanmadı» / «planlandı» / «desteklenmiyor»; hiçbiri «üretime hazır» demez
     bulut = {"saglayicilar": [{"kod": k, "ad": v["ad"], "kimlik_alanlari": v["kimlik_alanlari"], "kimlik_etiketleri": v.get("kimlik_etiketleri") or {}, "gizli_alanlar": v.get("gizli_alanlar") or [],
                                "bolge": v["bolge"], "bolgeler": v.get("bolgeler") or [], "varsayilan_bolge": v.get("varsayilan_bolge"), "not": v["not"],
-                               "durum": v["durum"], "durum_etiketi": v["durum_etiketi"]} for k, v in SAGLAYICILAR.items()],   # v2.548: durum sicilden (kapandi dâhil); v2.562: alan etiketleri, bölgeler
+                               "durum": v["durum"], "durum_etiketi": v["durum_etiketi"], "oauth": bool(v.get("oauth")), "elle_giris": v.get("elle_giris", True)} for k, v in SAGLAYICILAR.items()],   # v2.564: sahip onayı yolu   # v2.548: durum sicilden (kapandi dâhil); v2.562: alan etiketleri, bölgeler
              "bolgeler": list(BOLGELER), "henuz_yok": HENUZ_YOK, "henuz_yok_etiketi": "Planlandı (anahtar ve örnek çıktı gelince)",
              "kasa": __import__("pvquant.guvenlik.kasa", fromlist=["kek_durum"]).kek_durum(),   # v2.556 (K1): şifreli saklama bu kurulumda açık mı (anahtar dönmez)
+             "hesap_durumu": hesap_durumu(etkin),
              "diger_etiketi": "desteklenmiyor — kaydederseniz talep olarak not edilir", "not": "Anahtar sınamada kullanılır; yalnız sahibin iki onayıyla şifreli saklanır ve düzenli çekişte çözülür."}
     from pvquant.io.canli.profiller import liste as profil_listesi
     return {"etkin": etkin, "beyan": beyan, "hedef": hedef, "asamalar": asamalar(beyan, etkin), "baglanti_durumu": baglanti_durumu(beyan, etkin), "profiller": profil_listesi(),

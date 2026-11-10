@@ -21,9 +21,10 @@ ONAY_METNI = {
 }
 ONAY_ANAHTARLARI = tuple(ONAY_METNI)
 DURUM_ETIKET = {"ok": "son çekiş başarılı", "kimlik_hatasi": "kimlik doğrulanamadı", "kota": "sağlayıcı istek sınırı", "kota_doldu": "günlük çağrı tavanı doldu",
-                "hata": "çekiş hatası", "saglayici_desteklenmiyor": "sağlayıcı desteklenmiyor", "kasa_hatasi": "kimlik çözülemedi (anahtar)"}
+                "hata": "çekiş hatası", "saglayici_desteklenmiyor": "sağlayıcı desteklenmiyor", "kasa_hatasi": "kimlik çözülemedi (anahtar)",
+                "santral_secilmedi": "sağlayıcı santralı seçilmedi; çekiş bekliyor"}
 SUTUNLAR = ("saglayici", "bolge", "dis_kimlik", "kek_id", "surum", "etiket", "onay_json", "cekis_acik", "birim_dogrulandi", "kota_gun", "kota_sayac",
-            "son_cekis", "son_durum", "son_hata", "olusturma", "guncelleme")
+            "son_cekis", "son_durum", "son_hata", "olusturma", "guncelleme", "birim_kanit")   # v2.565: birim kıyası özeti
 
 
 def maskele(s: str | None) -> str | None:
@@ -41,8 +42,10 @@ def aad(tenant_id, plant_id, saglayici: str) -> str:
 
 
 def kaydet(tenant_id, plant: dict, saglayici: str, kimlik: dict, bolge: str | None, onaylar: dict, aktor_id, dis_kimlik: str | None = None,
-           sina=None, yaz=None) -> dict:
-    """Onay + sınama + santral seçimi + zarf şifreleme + yazma. Dönen sözlükte kimlik bilgisi YOKTUR."""
+           sina=None, yaz=None, secim_ertele: bool = False) -> dict:
+    """Onay + sınama + santral seçimi + zarf şifreleme + yazma. Dönen sözlükte kimlik bilgisi YOKTUR.
+    v2.564 `secim_ertele`: sahip onayı (OAuth) belirteçleri bir kez verilir; hesapta birden çok santral varsa kayıt santral kodu BOŞ yazılır
+    («kaydedildi_secim_bekliyor»), sahip panelden seçer (PATCH dis_kimlik); seçilmeden çekiş yapılmaz."""
     simdi = datetime.now(timezone.utc).isoformat(timespec="seconds")
     kod = (saglayici or "").strip().lower()
     if kod in SAGLAYICILAR and kod not in AKTIF_SAGLAYICILAR:
@@ -72,6 +75,8 @@ def kaydet(tenant_id, plant: dict, saglayici: str, kimlik: dict, bolge: str | No
             return {"durum": "santral_bulunamadi", "kaydedildi": False, "aciklama": "Seçilen sağlayıcı santralı bu hesapta görünmüyor.", "santraller": santraller}
     elif len(santraller) == 1:
         secilen = santraller[0]
+    elif len(santraller) > 1 and secim_ertele:
+        secilen = None
     elif len(santraller) > 1:
         return {"durum": "santral_secimi_gerekli", "kaydedildi": False, "santraller": santraller,
                 "aciklama": "Bu hesapta birden çok santral var; bu PVQuant santralına karşılık gelen sağlayıcı santralını seçip yeniden kaydedin."}
@@ -79,13 +84,18 @@ def kaydet(tenant_id, plant: dict, saglayici: str, kimlik: dict, bolge: str | No
         return {"durum": "santral_yok", "kaydedildi": False, "aciklama": "Hesapta santral görünmüyor; kimlik saklanmadı."}
     zarf = kasa.sifrele_json(temiz, aad(tenant_id, plant["id"], kod))
     onay_json = {"metinler": {k: ONAY_METNI[k] for k in ONAY_ANAHTARLARI}, "zaman": simdi, "aktor_id": str(aktor_id) if aktor_id else None}
-    satir = {**zarf, "saglayici": kod, "bolge": bolge, "dis_kimlik": str(secilen["kimlik"]), "etiket": maskele(temiz.get(sg["kimlik_alanlari"][0])),
+    etiket_alani = sg.get("etiket_alani") or sg["kimlik_alanlari"][0]   # v2.564: OAuth yollarında belirteç değil site/uygulama kimliği maskelenir
+    satir = {**zarf, "saglayici": kod, "bolge": bolge, "dis_kimlik": (str(secilen["kimlik"]) if secilen else None), "etiket": maskele(temiz.get(etiket_alani)),
              "onay_json": onay_json}
     (yaz or _yaz_db)(tenant_id, plant["id"], satir)
+    if secilen is None:
+        return {"durum": "kaydedildi_secim_bekliyor", "kaydedildi": True, "zaman": simdi, "saglayici": kod, "dis_kimlik": None, "etiket": satir["etiket"], "kek_id": zarf["kek_id"],
+                "santraller": santraller, "sinama": sonuc,
+                "aciklama": "Belirteçler şifreli kaydedildi; hesapta birden çok santral var. Bu PVQuant santralına karşılık gelen sağlayıcı santralını seçin; seçilmeden çekiş yapılmaz."}
     return {"durum": "kaydedildi", "kaydedildi": True, "zaman": simdi, "saglayici": kod, "dis_kimlik": satir["dis_kimlik"], "dis_ad": secilen.get("ad"),
             "etiket": satir["etiket"], "kek_id": zarf["kek_id"], "sinama": sonuc,
             "not": "Kimlik bilgisi şifreli saklandı (kayıt başına veri anahtarı, sunucudaki ana anahtarla sarılı). Düzenli çekiş ayrı adımla açılır; "
-                   "çekilen saatler önce ham tabloya düşer, birim semantiği gerçek yanıtla doğrulanana kadar gölge görünüme yazılmaz."}
+                   "çekilen saatler önce ham tabloya düşer, birim doğrulanana kadar kaynak kıyasına yazılmaz."}
 
 
 def _yaz_db(tenant_id, plant_id, satir: dict) -> None:
@@ -97,6 +107,9 @@ def _yaz_db(tenant_id, plant_id, satir: dict) -> None:
             "VALUES (CAST(:t AS uuid), CAST(:p AS uuid), :sg, :b, :d, :k, :ds, :sf, :su, :e, CAST(:o AS jsonb)) "
             "ON CONFLICT (plant_id, saglayici) DO UPDATE SET bolge=EXCLUDED.bolge, dis_kimlik=EXCLUDED.dis_kimlik, kek_id=EXCLUDED.kek_id, "
             "dek_sarili=EXCLUDED.dek_sarili, sifreli=EXCLUDED.sifreli, surum=EXCLUDED.surum, etiket=EXCLUDED.etiket, onay_json=EXCLUDED.onay_json, "
+            # 10.11 inceleme: sağlayıcı santralı değişirse eski santralın birim kanıtı ve işareti geçersizdir (gölge yazımı başka santralın kanıtıyla sürmez)
+            "birim_dogrulandi=CASE WHEN bulut_kimlik.dis_kimlik IS DISTINCT FROM EXCLUDED.dis_kimlik THEN false ELSE bulut_kimlik.birim_dogrulandi END, "
+            "birim_kanit=CASE WHEN bulut_kimlik.dis_kimlik IS DISTINCT FROM EXCLUDED.dis_kimlik THEN NULL ELSE bulut_kimlik.birim_kanit END, "
             "son_durum=NULL, son_hata=NULL, guncelleme=now()"),
             {"t": str(tenant_id), "p": str(plant_id), "sg": satir["saglayici"], "b": satir.get("bolge"), "d": satir.get("dis_kimlik"), "k": satir["kek_id"],
              "ds": satir["dek_sarili"], "sf": satir["sifreli"], "su": satir["surum"], "e": satir.get("etiket"), "o": json.dumps(satir["onay_json"], ensure_ascii=False)})
@@ -119,13 +132,52 @@ def sil(tenant_id, plant_id, saglayici: str) -> int:
         return s.execute(text("DELETE FROM bulut_kimlik WHERE plant_id=CAST(:p AS uuid) AND saglayici=:sg"), {"p": str(plant_id), "sg": saglayici}).rowcount
 
 
+class BirimKanitiYok(ValueError):
+    """v2.565: «birim doğrulandı» yalnız portal dışa aktarımıyla belge yorumu uyumlu bulununca işaretlenir."""
+
+
+def isaret_izinli(kayit: dict | None) -> tuple[bool, str]:
+    """SAF: kayıt üzerinde «birim doğrulandı» işaretlenebilir mi. Kanıt yoksa ya da belge yorumu uyumlu değilse hayır (sahte doğrulama yok)."""
+    k = (kayit or {}).get("birim_kanit") or {}
+    if not k:
+        return False, "Önce portalın saatlik dışa aktarımını yükleyip birim kıyası yapın; kanıt olmadan «birim doğrulandı» işaretlenemez."
+    if k.get("belge_uyumlu"):
+        return True, k.get("metin") or "belge yorumu uyumlu"
+    return False, k.get("metin") or "Birim kıyası belge yorumunu doğrulamadı."
+
+
+def birim_kanit_yaz(tenant_id, plant_id, saglayici: str, kanit: dict) -> int:
+    import json as _json
+    from sqlalchemy import text
+    from pvquant.db import tenant_baglami
+    with tenant_baglami(tenant_id) as s:
+        # 10.11 inceleme: yeni kıyas belge yorumunu doğrulamıyorsa önceki «birim doğrulandı» işareti de kalkar (çürütülmüş yorumla gölge yazımı sürmez)
+        return s.execute(text("UPDATE bulut_kimlik SET birim_kanit=CAST(:k AS jsonb), birim_dogrulandi=(birim_dogrulandi AND :u), guncelleme=now() "
+                              "WHERE plant_id=CAST(:p AS uuid) AND saglayici=:sg"),
+                         {"k": _json.dumps(kanit, ensure_ascii=False, default=str), "u": bool(kanit.get("belge_uyumlu")), "p": str(plant_id), "sg": saglayici}).rowcount
+
+
 def ayarla(tenant_id, plant_id, saglayici: str, cekis_acik: bool | None = None, birim_dogrulandi: bool | None = None, dis_kimlik: str | None = None) -> dict | None:
     from sqlalchemy import text
     from pvquant.db import tenant_baglami
+    santral_degisti = False
+    if birim_dogrulandi or dis_kimlik:   # v2.565: kanıt kapısı · 10.11 inceleme: santral eşlemesi değişirse kanıt ve işaret sıfırlanır
+        mevcut = next((k for k in listele(tenant_id, plant_id) if k["saglayici"] == saglayici), None)
+        if mevcut is None:
+            return None
+        santral_degisti = bool(dis_kimlik) and str(mevcut.get("dis_kimlik") or "") != str(dis_kimlik)
+        if birim_dogrulandi:
+            if santral_degisti:
+                raise BirimKanitiYok("Sağlayıcı santralı değişti; birim kıyası yeni santral için yeniden yapılmalı.")
+            izin, neden = isaret_izinli(mevcut)
+            if not izin:
+                raise BirimKanitiYok(neden)
     parcalar, prm = [], {"p": str(plant_id), "sg": saglayici}
     if cekis_acik is not None:
         parcalar.append("cekis_acik=:c"); prm["c"] = bool(cekis_acik)
-    if birim_dogrulandi is not None:
+    if santral_degisti:
+        parcalar.append("birim_dogrulandi=false"); parcalar.append("birim_kanit=NULL")
+    elif birim_dogrulandi is not None:
         parcalar.append("birim_dogrulandi=:bd"); prm["bd"] = bool(birim_dogrulandi)
     if dis_kimlik:
         parcalar.append("dis_kimlik=:d"); prm["d"] = str(dis_kimlik)

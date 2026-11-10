@@ -23,6 +23,7 @@ EYLEMLER_MUSTERI = ("giris", "takim_ekle", "takim_guncelle", "takim_iki_adim_sif
                     "mutabakat_yukle", "dsg_belge_indir",   # v2.522 (P2b): uzlaştırma bildirimi yükleme, DSG üye belgesi
                     "sayac_yukle", "sayac_ayar",   # v2.523 (P4a): sayaç dosyası yükleme, sayaç/SCADA ayarı
                     "bulut_kimlik_kaydet", "bulut_kimlik_ayar", "bulut_kimlik_sil",   # v2.556 (Aşama 3, K1): şifreli bulut kimliği (gizli hiç yazılmaz)
+                    "bulut_oauth_baslat", "bulut_oauth_donus", "bulut_birim_kiyas",   # v2.564/v2.565: sahip onayı (OAuth) başlatma ve dönüş (kod/belirteç yazılmaz)
                     "pilot_kapi", "pilot_referans", "edge_toplayici_olustur", "edge_toplayici_iptal",   # v2.560/v2.561: pilot kapıları, saha toplayıcısı
                     "rapor_donem_indir", "rapor_gonderim_ayar", "rapor_gonderim",
                     "mutabakat_saatlik_yukle", "mutabakat_saatlik_indir")   # v2.527 (P2b-2): EPYS saatlik detay yükleme / kıyas indirme   # v2.525 (raporlama): dönem raporu, zamanlanmış gönderim

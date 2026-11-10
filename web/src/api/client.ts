@@ -1,4 +1,4 @@
-import type { DengesizlikSaatlik, DsgAnahtar, KgupRevizyon, PiyasaDurum, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , SaatProfili , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , PDegerleri , Kullanilabilirlik , KayipAyrisimi , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar, PortfoyAnahtar, PortfoyKupst, UevcbArama , Takvim, KunyeTarihler, Yekdem, Olay, OlayOzet, OlayGiris, OlayYanit, MutabakatOzet, MutabakatYukleme, SaatlikKiyas, SaatlikYuklemeYanit, KuralTablosu, SayacOzet, SayacYuklemeYanit, SayacAyar, SayacKaynak, RaporDonemVeri, RaporGonderim, RaporGonderimSonuc, Performans, Sensorler, Sensor, Kirlenme, VeriYoluOzet, VeriYoluSinama , GolgeGorunum, OlayAdaylari, BulutKimlikDurum, BulutKimlikKayit, BulutKimlikSonuc, PilotDurum, ReferansKiyasOzet, EdgeToplayici, EdgeToplayiciYeni } from "./types";
+import type { DengesizlikSaatlik, DsgAnahtar, KgupRevizyon, PiyasaDurum, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , SaatProfili , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , PDegerleri , Kullanilabilirlik , KayipAyrisimi , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar, PortfoyAnahtar, PortfoyKupst, UevcbArama , Takvim, KunyeTarihler, Yekdem, Olay, OlayOzet, OlayGiris, OlayYanit, MutabakatOzet, MutabakatYukleme, SaatlikKiyas, SaatlikYuklemeYanit, KuralTablosu, SayacOzet, SayacYuklemeYanit, SayacAyar, SayacKaynak, RaporDonemVeri, RaporGonderim, RaporGonderimSonuc, Performans, Sensorler, Sensor, Kirlenme, VeriYoluOzet, VeriYoluSinama , GolgeGorunum, OlayAdaylari, BulutKimlikDurum, BulutKimlikKayit, BulutKimlikSonuc, BulutOAuthBaslat, BulutBirimKiyas, PilotDurum, ReferansKiyasOzet, EdgeToplayici, EdgeToplayiciYeni } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -306,6 +306,10 @@ async function dosyaGonder<T>(yol: string, dosya: File,
     if (esleme) throw esleme;
     throw new Error(mesaj);
   }
+  // v2.565 inceleme: dosyalı yazma da GET belleğini düşürür (gonder ile aynı sözleşme). Eski kusur: yükleme
+  // sonrası sayfanın kendi yenilemesi 60 sn boyunca bellekten dönüyor, kullanıcı yüklediğinin sonucunu göremiyordu.
+  // Önizleme ucu veri yazmaz; belleğe dokunmaz.
+  if (!yol.endsWith("/preview")) bellekte.clear();
   return (await y.json()) as T;
 }
 
@@ -756,6 +760,7 @@ export const api = {
     const y = await fetch(`${TABAN}/v1/plants/${p}/kgup/bildirilen?gun=${gun}`, { method: "POST", body: fd, headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
     if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise(() => {}); }
     if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
+    bellekte.clear();   // v2.565 inceleme: dosyalı yazma sonrası GET belleği düşer (gonder ile aynı sözleşme)
     return y.json();
   },
   /** 29.10 (v2.506): dışa aktarma biçimini müşterinin EPYS dosyasından öğren / sıfırla */
@@ -765,6 +770,7 @@ export const api = {
     const y = await fetch(`${TABAN}/v1/plants/${p}/kgup/sablon`, { method: "POST", body: fd, headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
     if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise(() => {}); }
     if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
+    bellekte.clear();   // v2.565 inceleme: dosyalı yazma sonrası GET belleği düşer (gonder ile aynı sözleşme)
     return y.json();
   },
   kgupSablonSifirla: (p: string): Promise<{ sablon: NonNullable<KgupOnizleme["sablon"]> }> => gonder(`/v1/plants/${p}/kgup/sablon`, "DELETE"),
@@ -785,6 +791,7 @@ export const api = {
     const y = await fetch(`${TABAN}/v1/plants/${p}/mutabakat/saatlik${donem ? `?donem=${donem}` : ""}`, { method: "POST", body: fd, headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
     if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise<SaatlikYuklemeYanit>(() => {}); }
     if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
+    bellekte.clear();   // v2.565 inceleme: dosyalı yazma sonrası GET belleği düşer (gonder ile aynı sözleşme)
     return (await y.json()) as SaatlikYuklemeYanit; },
   saatlikKiyasIndir: async (p: string, donem: string, uretim?: string | null): Promise<void> => {
     if (TABAN == null) throw new Error("Örnek kipte indirme yok.");
@@ -802,6 +809,7 @@ export const api = {
     const y = await fetch(`${TABAN}/v1/plants/${p}/mutabakat${q ? `?${q}` : ""}`, { method: "POST", body: fd, headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
     if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise(() => {}); }
     if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
+    bellekte.clear();   // v2.565 inceleme: dosyalı yazma sonrası GET belleği düşer (gonder ile aynı sözleşme)
     return y.json();
   },
   /** v2.523 (P4a): sayaç izleme — geliş beklentisi, SCADA ↔ sayaç farkı, yüklemeler, lisanssız SCADA durumu */
@@ -814,6 +822,7 @@ export const api = {
     const y = await fetch(`${TABAN}/v1/plants/${p}/sayac?kaynak=${kaynak}`, { method: "POST", body: fd, headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
     if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise(() => {}); }
     if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
+    bellekte.clear();   // v2.565 inceleme: dosyalı yazma sonrası GET belleği düşer (gonder ile aynı sözleşme)
     return y.json();
   },
   /** v2.554 (S4): IEC 104 nokta tablosu CSV (ioa, alan, carpan[, ad][, tip]) → beyana */
@@ -823,6 +832,7 @@ export const api = {
     const y = await fetch(`${TABAN}/v1/plants/${p}/veri-yolu/iec104-nokta-tablosu`, { method: "POST", body: fd, headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
     if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise(() => {}); }
     if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
+    bellekte.clear();   // v2.565 inceleme: dosyalı yazma sonrası GET belleği düşer (gonder ile aynı sözleşme)
     return y.json();
   },
   /** v2.523: günlük SCADA ↔ sayaç tablosu (CSV) */
@@ -969,6 +979,7 @@ export const api = {
     const y = await fetch(`${TABAN}/v1/plants/${p}/pilot/referans?sinir=${encodeURIComponent(sinir)}`, { method: "POST", body: fd, headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });
     if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise(() => {}); }
     if (!y.ok) { let m = `${y.status}`; try { const g = await y.json(); if (typeof g.detail === "string") m = g.detail; } catch { /* yok */ } throw new Error(m); }
+    bellekte.clear();   // v2.565 inceleme: dosyalı yazma sonrası GET belleği düşer (gonder ile aynı sözleşme)
     return y.json();
   },
   /** v2.561 (Aşama 6): saha toplayıcısı kimlikleri; anahtar yalnız üretim yanıtında */
@@ -980,6 +991,8 @@ export const api = {
   bulutKimlikKaydet: (p: string, g: { saglayici: string; kimlik: Record<string, string>; bolge?: string | null; onaylar: { yalniz_okuma: boolean; sifreli_saklama: boolean }; dis_kimlik?: string | null }): Promise<BulutKimlikSonuc> => gonder(`/v1/plants/${p}/bulut-kimlik`, "POST", g),   // kimlik yalnız bu istekte düz; sunucu zarf şifreler
   bulutKimlikAyarla: (p: string, sg: string, g: { cekis_acik?: boolean; birim_dogrulandi?: boolean; dis_kimlik?: string }): Promise<BulutKimlikKayit> => gonder(`/v1/plants/${p}/bulut-kimlik/${sg}`, "PATCH", g),
   bulutKimlikSil: (p: string, sg: string): Promise<{ silindi: boolean }> => gonder(`/v1/plants/${p}/bulut-kimlik/${sg}`, "DELETE"),
+  bulutBirimKiyas: (p: string, sg: string, dosya: File): Promise<BulutBirimKiyas> => dosyaGonder(`/v1/plants/${p}/bulut-kimlik/${sg}/birim-kiyas`, dosya),   // v2.565: portal dışa aktarımıyla birim kıyası (özet kayda iner)
+  bulutOAuthBaslat: (p: string, g: { saglayici: string; bolge?: string | null; onaylar: { yalniz_okuma: boolean; sifreli_saklama: boolean } }): Promise<BulutOAuthBaslat> => gonder(`/v1/plants/${p}/bulut-kimlik/oauth/baslat`, "POST", g),   // v2.564: sahip onayı — dönen adrese tarayıcı gider
   /** v2.550 (D5): gölge saatlik görünüm (son 7 gün); örnek kipte null */
   golgeSaatlik: async (p: string): Promise<GolgeGorunum | null> => { if (TABAN == null) return null; try { return await getir<GolgeGorunum>(`/v1/plants/${p}/golge-saatlik`); } catch { return null; } },
   /** v2.555 (V2): cihaz durumundan olay adayları; örnek kipte null */

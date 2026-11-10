@@ -27,7 +27,7 @@ ALANLAR = {
     "radiation_intensity": {"birim": "kWh/m²", "etiket": "ışınım (sağlayıcı sensörü)"},
     "power_profit": {"birim": "para birimi", "etiket": "gelir (sağlayıcı hesabı)"},
 }
-BIRIM_NOTU = "Alan anlamları ve birimleri Huawei NBI belgesine göredir (inverter_power = saatlik kWh); gerçek hesap yanıtıyla doğrulanmadan gölge görünüme yazılmaz."
+BIRIM_NOTU = "Alan anlamları ve birimleri Huawei NBI belgesine göredir (inverter_power = saatlik kWh); gerçek hesap yanıtıyla doğrulanmadan kaynak kıyasına yazılmaz."
 
 
 def satirlar(data: list[dict]) -> list[dict]:
@@ -102,6 +102,8 @@ def tur(simdi: datetime | None = None, kayitlar: list[dict] | None = None, coz=N
         sg = k.get("saglayici"); sicil = AKTIF_SAGLAYICILAR.get(sg or "")
         if not sicil or not sicil.get("sinif"):
             guncelle(k, "saglayici_desteklenmiyor", "bu sağlayıcı için düzenli çekiş bağlayıcısı yok", simdi, None, None); continue
+        if not k.get("dis_kimlik"):   # v2.564: sahip onayı sonrası santral seçimi ertelenmiş — seçilmeden sağlayıcıya çağrı yapılmaz
+            guncelle(k, "santral_secilmedi", "sağlayıcı santralı seçilmedi; Santralim ekranından seçin", simdi, None, None); ozet.append(f"{k.get('santral_adi') or k.get('plant_id')}: santral seçilmedi"); continue
         try:
             kim = coz(k)
         except Exception as e:   # noqa: BLE001 — KEK yok/uyuşmuyor: kimlik metni asla dönmez

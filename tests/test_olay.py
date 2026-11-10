@@ -88,8 +88,24 @@ def test_ekle_guncelle_listele_ve_sayac(kiraci):
             s.execute(text("DELETE FROM tenants WHERE id='00000000-0000-4000-8000-000000000099'"))
 
 
-def test_saatlik_etki_istisna_ve_dahili(kiraci):
+def _saat_sabitle(monkeypatch, an: datetime) -> None:
+    """Olay hizmetinin «şimdi»sini sabitler. Evre ve durum gerçek saate bağlıdır; test tarihleri sabit olduğundan saat ilerleyince sonuç değişmesin
+    (10.11.2026: 10 Kasım kayıtları o gün «planlı» olmaktan çıkınca test kırmızıya döndü). isinstance(x, datetime) gerçek nesnelerde de doğru kalır."""
+    class _Meta(type):
+        def __instancecheck__(cls, x):
+            return isinstance(x, datetime)
+
+    class _Sabit(datetime, metaclass=_Meta):
+        @classmethod
+        def now(cls, tz=None):
+            return an.astimezone(tz) if tz else an.replace(tzinfo=None)
+
+    monkeypatch.setattr(os_, "datetime", _Sabit)
+
+
+def test_saatlik_etki_istisna_ve_dahili(kiraci, monkeypatch):
     tid, plant = kiraci
+    _saat_sabitle(monkeypatch, datetime(2026, 11, 10, 8, 0, tzinfo=IST))   # kayıtlar 10 Kasım 09:30 ve sonrası: hepsi «planlı»
     os_.ekle(tid, plant, {"tur": "ariza", "baslangic": "2026-11-10T09:30", "bitis": "2026-11-10T11:10", "etkilenen_kw": 10000})
     os_.ekle(tid, plant, {"tur": "sebeke_kesintisi", "baslangic": "2026-11-10T10:00", "bitis": "2026-11-10T12:00"})      # tesisin tamamı, dışsal
     os_.ekle(tid, plant, {"tur": "talimat_yat", "baslangic": "2026-11-10T13:00", "bitis": "2026-11-10T14:00", "etkilenen_kw": 5000})   # EAK'yi değiştirmez

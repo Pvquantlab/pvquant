@@ -24,7 +24,7 @@ class Growatt(Baglayici):
     GUNLUK_TAVAN = 200     # genel 5 dk/çağrı sınırı; santral başına günde 1 güç serisi + liste
     TOPLU = False
     ALANLAR = {"guc_kw_ort": {"birim": "kW", "etiket": "ortalama güç (5 dk serisinden)"}, "n_nokta": {"birim": "adet", "etiket": "saatteki 5 dk nokta sayısı"}}
-    BIRIM_NOTU = "/v1/plant/power yalnız güç serisi verir (birim belgeden kW varsayımı); saatlik kWh yok, bu yüzden gölge görünüme yazılmaz. Gerçek hesapla doğrulanmadı."
+    BIRIM_NOTU = "/v1/plant/power yalnız güç serisi verir (birim belgeden kW varsayımı); saatlik kWh yok, bu yüzden kaynak kıyasına yazılmaz. Gerçek hesapla doğrulanmadı."
     NOT = ("Belirteci müşterinin kurulumcusu ya da distribütörü OSS hesabından (System Settings › System Management › Add API) ister; Growatt onaylar. "
            "Geçmiş 3 ay; çağrı aralığı 5 dk; belirtecin IP beyaz listesine PVQuant sunucusu eklenmeli.")
 
