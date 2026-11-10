@@ -48,6 +48,11 @@ export function Hakkinda() {
               </table>
             </div>
             <p style={{ fontSize: 13.5, margin: "12px 0 0", lineHeight: 1.55 }}>{h.yontem}</p>
+            {/* v2.569 (Faz 0 karne paketi): karne tanımı değişikliği tarihli ve açık — «geçmiş değişmez» ilkesinin tek istisnası burada yazılı */}
+            <p className="soluk" style={{ fontSize: 13, margin: "8px 0 0", lineHeight: 1.55, maxWidth: "90ch" }}>
+              Karne tanımı 10 Kasım 2026'da düzeltildi: her saat için yalnızca en erken yayımlanan tahmin sınava girer; gün içi güncellemeler ve
+              program tahmini (bir gün önce 15:30 kesimi öncesi) ayrı sayılır. Geçmiş karne yeni tanımla yeniden hesaplandı; önceki değerler yedekte tutulur.
+            </p>
           </>
         )}
       </Kart>

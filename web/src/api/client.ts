@@ -528,13 +528,14 @@ export const api = {
     // v2.230: gun parametresi kapida ZATEN vardi (1-365) — donem segmenti
     // icin istemciden gecirilir; varsayilan 60 (mockup H karari).
     // v2.568: «program» kovası (D-1 KGÜP kesimi öncesi son koşu) ayrı KPI — uzlaştırma maliyetini belirleyen program doğruluğu
-    const [k0, k1, kp] = await Promise.all([
+    const [k0, k1, kp, kg] = await Promise.all([
       getir<Karne>(`/v1/plants/${p}/skill?bucket=0-24&gun=${gun}`),
       getir<Karne>(`/v1/plants/${p}/skill?bucket=24-72&gun=${gun}`),
       getir<Karne>(`/v1/plants/${p}/skill?bucket=program&gun=${gun}`).catch(() => null),
+      getir<Karne>(`/v1/plants/${p}/skill?bucket=gun_ici&gun=${gun}`).catch(() => null),   // v2.569: gün içi güncelleme kovası ayrı satır
     ]);
-    return { ...k0, gunluk: [...k0.gunluk, ...k1.gunluk, ...(kp?.gunluk ?? [])],
-      program: kp ? { wmape_ort: kp.wmape_ort, gun_sayisi: kp.gun_sayisi, naife_ustunluk_pct: kp.naife_ustunluk_pct } : null };
+    const ozet = (x: Karne | null) => x ? { wmape_ort: x.wmape_ort, gun_sayisi: x.gun_sayisi, naife_ustunluk_pct: x.naife_ustunluk_pct } : null;
+    return { ...k0, gunluk: [...k0.gunluk, ...k1.gunluk, ...(kp?.gunluk ?? []), ...(kg?.gunluk ?? [])], program: ozet(kp), gun_ici: ozet(kg) };
   },
   alarmlar: async (p: string, n = 20): Promise<AlarmSatiri[]> => {
     if (TABAN == null) return [];

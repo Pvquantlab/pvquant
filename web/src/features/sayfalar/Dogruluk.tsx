@@ -512,6 +512,15 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           </dl>
           {k.program?.wmape_ort == null && <p className="olcut-durum">Henüz değer yok; kesim öncesi tahminler gece değerlendirmesinde birikiyor.</p>}
         </section>
+        {/* v2.569: gün içi güncellemeler ayrı sayılır (ana karneye karışmaz); kısa ufuk olduğu için gün başı tahmininden iyi çıkması beklenir */}
+        <section className="olcut-grup" aria-label="Gün içi güncelleme">
+          <div className="olcut-bas">Gün içi güncelleme<span className="olcut-not">12:30 ve 18:30 revizyonları, ayrı sayılır</span></div>
+          <dl className="olcut-liste">
+            <div><dt>WMAPE</dt><dd className={k.gun_ici?.wmape_ort == null ? "bos" : undefined}>{k.gun_ici?.wmape_ort == null ? "—" : `%${sayiTr(k.gun_ici.wmape_ort, 1)}`}</dd></div>
+            <div><dt>Gün</dt><dd className={k.gun_ici?.gun_sayisi ? undefined : "bos"}>{k.gun_ici?.gun_sayisi ? sayiTr(k.gun_ici.gun_sayisi) : "—"}</dd></div>
+          </dl>
+          {k.gun_ici?.wmape_ort == null && <p className="olcut-durum">Henüz değer yok; gün içi güncelleme açık değilse bu satır boş kalır.</p>}
+        </section>
         <section className="olcut-grup" aria-label="Kurulu güce göre ölçütler">
           <div className="olcut-bas">Kurulu güce göre ölçütler<span className="olcut-not">sektör standardı, 0–24 saat</span></div>
           <dl className="olcut-liste">

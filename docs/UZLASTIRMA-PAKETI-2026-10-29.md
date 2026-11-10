@@ -1452,3 +1452,10 @@ gerçekleşenle eşleşen koşu olmadığından karne satırı yok (önceden de 
 24-72 %43,8 → %51,0; 72-168 %54,5 → %54,9; 168+ %59,7 → %73,4; yeni kovalar gun_ici %28,8, program %32,5. Yorum: en erken koşu kuralı uzak kovaları beklendiği gibi
 kötüleştirdi (daha dürüst); 0-24 neredeyse değişmedi (bu santrallarda gün içi koşular ana kovayı az etkiliyormuş); program doğruluğu (%32,5) gün başı tahmininden (%30,0)
 biraz kötü, KGÜP ufkunun bedeli. Kalan: Doğruluk sayfasında gün içi satırı, Hakkında'ya tarihli not, `karne_dustu` alarmı için yeniden hesap gecesi gözlemi (11.11 sabahı).
+
+## Elli dokuzuncu paket — v2.569 (10.11.2026): karne paketinin kalanı — Doğruluk'ta gün içi satırı, Hakkında'ya tarihli not
+
+`api.karne` `gun_ici` kovasını da çeker (`Karne.gun_ici`); Doğruluk sayfasında «Gün içi güncelleme» ölçüt grubu (12:30 ve 18:30 TSİ revizyonları, WMAPE ve gün; yoksa «—»).
+Hakkında › «Veri kaynakları ve lisanslar» kartına yöntem metninin altına tarihli not: karne tanımı 10.11.2026'da düzeltildi, en erken tahmin sınava girer, gün içi ve
+program ayrı, geçmiş yeni tanımla yeniden hesaplandı, önceki değerler yedekte. Yalnız web; arka uç değişmedi. Not: `skill_daily`'de santral başına 9 satırlık «d1» kovası
+yalnız worker yazdığı hâlde bugünkü kodda üretilmiyor; 11.10 geri alınan v2.396–424 («D-1 kesiti») döneminden kalma eski satırlar olduğu düşünülüyor, araştırılmadı.
