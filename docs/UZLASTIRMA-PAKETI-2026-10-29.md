@@ -1405,3 +1405,5 @@ oturum bayrağı kaldırıldı; 401'de her çağrıda en çok bir yenileme yapı
 yardımcısı tek yerde (`pilot_service._tr`). (6) Kayıt/sahip onayı durum satırları tek öğe (`bkDurumSatiri`). (7) Kıyas mesajı sağlayıcıya bağlı; yalnız ilgili
 kayıt satırında görünür. (8) `db.sistem_baglami` kuralı güncellendi: özetle tek satır araması yapan kimliksiz uçlar (toplayıcı anahtarı, OAuth durumu) adlandırıldı,
 sonrası kiracı bağlamı. Ayrıca dokuz paket başlığındaki bayat «YERELDE; mühürlenmedi» etiketi «mühürlendi: v2.563/v2.565» oldu.
+
+**Mühür.** v2.566 a27b818 CANLI (10.11 12:58 TSİ): v2.565 incelemesinin sekiz düzeltmesi ve defter başlıkları; CI #713 yeşil (4 dk 5 sn); ssh dağıtım api+web (worker yeniden yaratılmadı, 53 dk'dır ayakta); göç yok, canlı baş v2564; canlı bayt kıyası 141/141 birebir; healthz 200; geri dönüş ucu durum değeri olmadan 303 ile köke dönüyor; api günlüğünde hata yok. Yerel tam pytest 1079 / 1 atlandı; web 104.
