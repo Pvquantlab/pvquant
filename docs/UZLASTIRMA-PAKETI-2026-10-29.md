@@ -1480,4 +1480,26 @@ zarflandı → çözüldü → düz metne döndü); ilk provada `webhooks.secret
 eklendi (downgrade boş dizeyle geri koyar). Canlıya alma: önce kod + göç (çift okuma, kimse etkilenmez), sonra dönüşüm betiği DB sahibiyle, sonra platform
 girişiyle doğrulama; eski pg_dump yedekleri düz sırları taşımaya devam eder (öneri §2.5).
 
-**Mühür.** v2.570 27d78b5 CANLI (10.11 21:50 TSİ): CI #721 yeşil (4 dk 51 sn); ssh dağıtım api+worker (web dokunulmadı; worker penceresi dışında); GÖÇ v2570_sir_kasasi DB sahibiyle (head v2570); dönüşüm betiği DB sahibiyle: kuru sayım users 1 / platform_kullanicilar 1 / webhooks 0 → ileri aynı sayılar zarflandı → ikinci kuru sayım 0/0/0. Canlı api konteynerinde zarflar kendi KEK'iyle çözüldü (2/2), düz sütunlar NULL, ikisi de 2FA aktif. healthz 200, ana sayfa 200. KULLANICI DOĞRULAMASI BEKLİYOR: platform hesabıyla 2FA'lı giriş (aynı kodu iki kez girmeyin; ikincisi artık reddedilir). Eski pg_dump yedekleri düz sırları taşımaya devam eder (öneri §2.5 (a) belgeleme). Sonraki (ayrı onay): düz sütunların düşürülmesi; onay paketi 3 (VZ-05/06).
+**Mühür.** v2.570 27d78b5 CANLI (10.11 21:50 TSİ): CI #721 yeşil (4 dk 51 sn); ssh dağıtım api+worker (web dokunulmadı; worker penceresi dışında); GÖÇ v2570_sir_kasasi DB sahibiyle (head v2570); dönüşüm betiği DB sahibiyle: kuru sayım users 1 / platform_kullanicilar 1 / webhooks 0 → ileri aynı sayılar zarflandı → ikinci kuru sayım 0/0/0. Canlı api konteynerinde zarflar kendi KEK'iyle çözüldü (2/2), düz sütunlar NULL, ikisi de 2FA aktif. healthz 200, ana sayfa 200. Kullanıcı doğrulaması TAMAM (10.11 22:04 TSİ): platform hesabıyla 2FA'lı giriş başarılı, denetim izinde «platform / Giriş» kaydı; sunucuda `platform_kullanicilar.totp_son_adim` doldu (zarf çözüldü, yeni yol kullanıldı), api günlüğünde traceback/KasaHata 0. Eski pg_dump yedekleri düz sırları taşımaya devam eder (öneri §2.5 (a) belgeleme). Sonraki (ayrı onay): düz sütunların düşürülmesi; onay paketi 3 (VZ-05/06).
+
+## Altmış birinci paket — v2.571 (10.11.2026): rapor günü santralın saat dilimiyle (Faz 0 onay paketi 3, VZ-05/VZ-06)
+
+**Ne.** Üç rapor yüzeyinde gün tanımı tekleşti: gün = santralın yerel günü (`plants.tz`). (1) Tahmin raporu `report_service.rapor_baglami`: günlük gruplama
+UTC gününden yerel güne (`_tam_yerel_gunler`); «yalnız tam günler girer» koruması (v2.345) korunur, tam günün ölçüsü artık o yerel günün gerçek uzunluğu
+(23/24/25 — yaz saati geçiş günleri düşmez); `daily_p10/p90` ve saatlik kırpma aynı anahtarla; Excel Daily-Summary'nin saatlik özetleri (hücre sıcaklığı,
+POA) de `plant_tz` günüyle gruplanır ki anahtar günlükle çakışsın. (2) Aylık/dönem raporu `aylik_rapor_service`: `_utc(d, tz)`, `gunluk()` SQL'i
+`AT TIME ZONE :tz`, olay sınırları ve saatleri santral dilimi, `donem_cozumle(…, tz)` «bugün» ve dönem saat sayısı santral diliminde (yaz saatli dilimde
+743/745 olabilir). (3) Şablon rapor `beklenen_gerceklesen`: SQL `:tz`, `tz_localize(tz)`; `fatura` zaten böyleydi. Dokunulmayan: `reporting/contracts.py`
+`from_results` sentetik yolu (canlı çağıranı yok; «7 gün 7 çubuk» sözleşmesi, yalnız yorum), `pipeline/forecast.py` günlük seri (rapora girmiyor),
+`uretim_zamani`/`son_gonderim` damgaları (PVQuant'ın İstanbul saati).
+
+**Neden.** Faz 0 VZ-05 (HIGH yabancı / LOW TR): Denver'da 06–19 yerel üretim iki UTC gününe bölünüyor, 24-saat süzgeci uç günleri atıyor, günlük toplamlar
+kayıyordu (1300/1300 → 1200/1300/100). VZ-06 (MEDIUM): aylık ve şablon rapor sabit İstanbul günüyle kesiyor, beklenen P50 ise `forecast_daily`'de santral
+yerel günüyle yazılıyor; yabancı santralde iki taraf ayrı gün tanımındaydı. Türkiye'de (+03, yaz saati yok) üretim saatleri aynı UTC gününde kaldığından
+hiçbir çıktı değişmez. Canlıda `plants.tz` dağılımı: 5/5 Europe/Istanbul (10.11 toplu sayım).
+
+**Kanıt.** Yeni `tests/test_rapor_gun_siniri_v2571.py` (6 test): Denver iki yerel gün bölünmez (eski UTC gruplaması aynı seriyi 3'e bölüyor — Faz 0 kanıtı
+testte), yaz saati 23/25 saatlik günler tam sayılır, 2 saat eksik gün düşer, İstanbul'da eski ve yeni gruplama tarih tarih özdeş, SQL'de sabit İstanbul
+kalmadı, `donem_cozumle` saat sayısı (Denver Mart 743, İstanbul 744), test DB'de Denver santraliyle `gunluk()` 1300/1300 ve 13/13 saat (İstanbul günüyle
+17 Temmuz'a 2 saat taşardı). Hedefli: yeni + test_aylik_rapor + test_reporting + test_excel_kc + test_sema_v22 + test_tablo33 + test_yedi_gun +
+test_calib_pencere + test_performans_v2542 + test_dis_api = 106 geçti. Tam takım (test DB 55432): 1094 geçti / 1 atlandı / 0 kırmızı (5 dk 35 sn). Göç yok, web değişmedi.

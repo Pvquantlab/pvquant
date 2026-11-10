@@ -219,6 +219,9 @@ def from_results(
     # 00:00'da başlar; yerele çevirip gün saymak son günü taşırıp fazladan
     # (sıfıra yakın) 8. gün üretiyordu. Grafik/tablo günleri UTC tabanlı,
     # saatlik profil ise görselde yerele çevrilir (charts.py) — tutarlı.
+    # v2.571 (Faz 0 VZ-05): bu yol yalnız sentetik/eski ForecastResult çağrısı
+    # içindir (canlı çağıranı yok); CANLI yol report_service.rapor_baglami
+    # günü santralın yerel gününe göre keser ve kısmi uç günleri atar.
     daily = h["energy_kwh"].groupby(h.index.tz_convert("UTC").date).sum()
     daily.index = pd.to_datetime(daily.index)
 

@@ -4,10 +4,30 @@ Fable 5 v1.7 kurali: JSONB dict olarak geldigi icin isinstance kontrolu."""
 from __future__ import annotations
 import json
 from datetime import datetime, timezone
+import pandas as pd
 from sqlalchemy import text
 from pvquant.db import tenant_baglami
 from pvquant.reporting import ReportContext, build_excel, build_json
 from pvquant.services.forecast_service import son_kosu
+
+
+def _gun_uzunlugu_saat(gun, tz: str) -> int:
+    """Yerel günün gerçek uzunluğu (23 / 24 / 25 — yaz saati geçiş günleri)."""
+    d0 = pd.Timestamp(gun).tz_localize(tz, ambiguous=False, nonexistent="shift_forward")
+    d1 = (pd.Timestamp(gun) + pd.Timedelta(days=1)).tz_localize(tz, ambiguous=False, nonexistent="shift_forward")
+    return int(round((d1 - d0).total_seconds() / 3600))
+
+
+def _tam_yerel_gunler(h: pd.DataFrame, tz: str):
+    """v2.571 (Faz 0 onay paketi 3, VZ-05): günlük gruplama anahtarı SANTRALIN YEREL GÜNÜ (`plants.tz`), UTC günü değil.
+    Eski UTC gruplaması Türkiye'de (+03, yaz saati yok) görünmezdi — üretim saatleri aynı UTC gününe düşer; UTC−7'de ise
+    06–19 yerel üretim iki UTC gününe bölünüyor, «24 saati tam gün» süzgeci uç günleri atıyor, günlük toplamlar kayıyordu.
+    v2.345 koruması korunur: yalnız o yerel günün TÜM saatlerini taşıyan günler rapora girer (kısmi uç gün bir gün değildir).
+    Döner: (anahtar: her saat için yerel tarih, tam_gunler: Index[date])."""
+    gr = h.index.tz_convert(tz).date
+    sayim = pd.Series(1, index=h.index).groupby(gr).size()
+    tam = pd.Index([g for g, n in sayim.items() if int(n) == _gun_uzunlugu_saat(g, tz)])
+    return gr, tam
 
 
 def rapor_baglami(tenant_id, plant: dict) -> ReportContext | None:
@@ -21,18 +41,16 @@ def rapor_baglami(tenant_id, plant: dict) -> ReportContext | None:
     # (337 satır POA=0 W/m², hücre sıcaklığı=25,0 °C; IEC etiketli sahte
     # kolon). Koşu bu alanları taşımıyorsa kolon YOKTUR; tüketici boş bırakır
     # (kural 3: eksiklik uydurulmaz, gösterilir).
-    yerel = h.tz_convert(plant["tz"])
-    # v2.345: yalnız 24 saati TAM olan günler rapora girer — 19 Eyl 15:32
-    # koşusu 337 saatti (14 tam gün + 1 artık gece saati) ve UTC artığı
+    tz = plant.get("tz") or "Europe/Istanbul"
+    # v2.345: yalnız saatleri TAM olan günler rapora girer — 19 Eyl 15:32
+    # koşusu 337 saatti (14 tam gün + 1 artık gece saati) ve artık saat
     # raporda "3 Eki 0,0 MWh" SAHTE günü üretti (kapak grafiği 0'a çakılıyor,
     # çizelge 0,0 basıyordu). Kısmî uç gün bir gün değildir; atılır, dönem
-    # başlığı kalan tam günlerden yazılır. (Üretim saatleri UTC ve yerel gün
-    # tanımında aynı güne düşer — kırpma yalnız üretimsiz gece artıklarını yer.)
-    _gr = h.index.tz_convert("UTC").date
-    _sayim = h["energy_kwh"].groupby(_gr).size()
-    _tam = _sayim[_sayim == 24].index
+    # başlığı kalan tam günlerden yazılır.
+    # v2.571 (VZ-05): gün = santralın yerel günü (_tam_yerel_gunler); eskiden
+    # UTC günüydü ve yabancı santralde üretim günleri bölünüyordu.
+    _gr, _tam = _tam_yerel_gunler(h, tz)
     daily = h["energy_kwh"].groupby(_gr).sum().loc[_tam]
-    import pandas as pd
     daily.index = pd.to_datetime(daily.index)
     # v2.351: SAATLİK seri de aynı tam-gün penceresine kırpılır — v2.345 yalnız
     # günlüğü kırpmıştı; JSON/Excel saatlikte 14 gün + 1 artık gece saati (337)
@@ -73,7 +91,7 @@ def rapor_baglami(tenant_id, plant: dict) -> ReportContext | None:
     # v2.96 durusma dersi (Mod C rozet + '—' bant celiskisi): son_kosu
     # p10/p90'i ZATEN tasiyor, baglanmiyordu. Varsa gunluk banda cevir.
     if "p10_kw" in h.columns and h["p10_kw"].notna().any():
-        gr = h.index.tz_convert("UTC").date
+        gr = h.index.tz_convert(tz).date   # v2.571: yerel gün, daily ile aynı anahtar
         # v2.345: bant da AYNI tam-gün kırpmasından geçer — daily ile hizalı
         ctx.daily_p10 = h["p10_kw"].groupby(gr).sum().loc[_tam]
         ctx.daily_p90 = h["p90_kw"].groupby(gr).sum().loc[_tam]

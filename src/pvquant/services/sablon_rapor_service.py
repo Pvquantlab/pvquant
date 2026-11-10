@@ -99,21 +99,23 @@ def kullanilabilirlik(tenant_id, plant: dict, gun: int = 30) -> rs.Rapor:
 
 
 def beklenen_gerceklesen(tenant_id, plant: dict, gun: int = 180) -> rs.Rapor:
-    """v2.288 — aylık beklenen (gün başında verilmiş koşuların günlük P50 arşivi) vs gerçekleşen (SCADA)."""
+    """v2.288 — aylık beklenen (gün başında verilmiş koşuların günlük P50 arşivi) vs gerçekleşen (SCADA).
+    v2.571 (Faz 0 VZ-06): gün = santral yerel günü (`plants.tz`); eskiden sabit İstanbul'du ve yabancı santralde beklenen (yerel gün) ile gerçekleşen (İstanbul günü) ayrı gün tanımındaydı."""
     from sqlalchemy import text
     from pvquant.db import tenant_baglami
+    tz = plant.get("tz") or "Europe/Istanbul"
     with tenant_baglami(tenant_id) as s:
         b = pd.read_sql(text("SELECT gun, p50_kwh FROM forecast_daily WHERE plant_id=:p AND gun >= current_date - :g ORDER BY gun"),
                         s.connection(), params={"p": plant["id"], "g": gun}, parse_dates=["gun"])
         g = pd.read_sql(text(
-            "SELECT date_trunc('day', ts_utc AT TIME ZONE 'Europe/Istanbul') AS gun, sum(power_kw) AS kwh FROM scada_hourly "
+            "SELECT date_trunc('day', ts_utc AT TIME ZONE :tz) AS gun, sum(power_kw) AS kwh FROM scada_hourly "
             "WHERE plant_id=:p AND flag='valid' AND ts_utc >= now() - (:g * INTERVAL '1 day') GROUP BY 1 ORDER BY 1"),
-            s.connection(), params={"p": plant["id"], "g": gun}, parse_dates=["gun"])
+            s.connection(), params={"p": plant["id"], "g": gun, "tz": tz}, parse_dates=["gun"])
     if b.empty or g.empty:
         raise ValueError("beklenen–gerçekleşen için günlük beklenti arşivi ve ölçüm gerekir (her gece birikir)")
-    bek = pd.Series(b["p50_kwh"].values, index=pd.DatetimeIndex(b["gun"]).tz_localize("Europe/Istanbul"))
-    ger = pd.Series(g["kwh"].values, index=pd.DatetimeIndex(g["gun"]).tz_localize("Europe/Istanbul"))
-    rapor, _ = rs.beklenen_gerceklesen(bek, ger, santral=plant["name"], donem=f"son {gun} gün", tz="Europe/Istanbul")
+    bek = pd.Series(b["p50_kwh"].values, index=pd.DatetimeIndex(b["gun"]).tz_localize(tz))
+    ger = pd.Series(g["kwh"].values, index=pd.DatetimeIndex(g["gun"]).tz_localize(tz))
+    rapor, _ = rs.beklenen_gerceklesen(bek, ger, santral=plant["name"], donem=f"son {gun} gün", tz=tz)
     rapor.bolumler.append(("Not", "Beklenen = gün başlamadan verilmiş koşunun günlük P50 toplamı (arşiv; geriye dönük değişmez)."))
     rapor.kunye = _kunye()
     return rapor

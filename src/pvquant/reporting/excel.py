@@ -311,7 +311,10 @@ def _sayfa_gunluk_ozet(wb, ctx, F):
     BOŞ kalır — "—" metni pivotu kırar; BANT_VAR ilkesi: bantsızlık eksiklik
     değildir, boşluk gizlenmez). ghi_daily yerine poa_gunluk_kwh_m2: ctx'te
     GHI yok, POA var — K-C3 dürüst adlandırma. Günlük anahtar daily_kwh ile
-    AYNI sözleşme: UTC gün sınırı ("8. gün doğmaz" dersi, contracts v2.69)."""
+    AYNI sözleşme: canlı yolda santralın yerel günü (report_service
+    _tam_yerel_gunler, v2.571 VZ-05); sentetik from_results yolu UTC günü
+    ("8. gün doğmaz" dersi, contracts v2.69). Saatlik özetler (tmax, POA) de
+    plant_tz günüyle gruplanır ki anahtar daily ile çakışsın."""
     if ctx.daily_kwh is None or len(ctx.daily_kwh) == 0:
         return
     ws = wb.add_worksheet("Daily-Summary")
@@ -320,7 +323,7 @@ def _sayfa_gunluk_ozet(wb, ctx, F):
                  "poa_gunluk_kwh_m2"]
     for j, ad in enumerate(basliklar):
         ws.write(0, j, ad, F["th"])
-    hu = ctx.hourly.tz_convert("UTC") if ctx.hourly is not None else None
+    hu = ctx.hourly.tz_convert(ctx.plant_tz) if ctx.hourly is not None else None   # v2.571: daily ile aynı gün anahtarı
     grup = hu.groupby(hu.index.date) if hu is not None else None
     tmax = (grup["temp_cell"].max()
             if hu is not None and "temp_cell" in hu.columns else None)

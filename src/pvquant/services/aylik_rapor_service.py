@@ -24,6 +24,13 @@ from pvquant.db import tenant_baglami
 from pvquant.ext.platform import rapor_sablon as rs
 
 IST = ZoneInfo("Europe/Istanbul")
+IST_AD = "Europe/Istanbul"
+
+
+def _tz(plant: dict) -> str:
+    """v2.571 (Faz 0 onay paketi 3, VZ-06): rapor günü SANTRALIN yerel günüdür (`plants.tz`); eskiden sabit İstanbul'du.
+    Türkiye santrallerinde sonuç aynı; yabancı santralde gün bölünmesi ve «beklenen yerel gün, gerçekleşen İstanbul günü» kayması kalkar."""
+    return plant.get("tz") or IST_AD
 AYLAR = ("Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık")
 _AY_RE = re.compile(r"^(20\d{2})-(0[1-9]|1[0-2])$"); _CEYREK_RE = re.compile(r"^(20\d{2})-Q([1-4])$"); _YIL_RE = re.compile(r"^(20\d{2})$")
 GONDERIM_VARSAYILAN = {"aktif": False, "gun": 3, "alicilar": []}
@@ -31,9 +38,10 @@ GONDERIM_DENEME = 3   # başarısız gönderim için en çok yeniden deneme (gü
 
 
 # ---------------- dönem ----------------
-def donem_cozumle(s: str | None, bugun: date | None = None) -> dict:
-    """'YYYY-MM' | 'YYYY-QN' | 'YYYY' → {tur, bas, bit (hariç), etiket, kod}; verilmezse son tam ay. Gelecek dönem ValueError; süren dönem bugüne kırpılır."""
-    b = bugun or datetime.now(IST).date()
+def donem_cozumle(s: str | None, bugun: date | None = None, tz: str = IST_AD) -> dict:
+    """'YYYY-MM' | 'YYYY-QN' | 'YYYY' → {tur, bas, bit (hariç), etiket, kod}; verilmezse son tam ay. Gelecek dönem ValueError; süren dönem bugüne kırpılır.
+    `tz`: santral saat dilimi (v2.571) — «bugün» ve dönemin saat sayısı bu dilimde."""
+    b = bugun or datetime.now(ZoneInfo(tz)).date()
     if not s:
         ilk = b.replace(day=1); onceki = (ilk - timedelta(days=1)).replace(day=1)
         s = onceki.strftime("%Y-%m")
@@ -52,22 +60,25 @@ def donem_cozumle(s: str | None, bugun: date | None = None) -> dict:
     if kirpildi:
         bit = b + timedelta(days=1)   # süren dönem: bugüne kadar (bugün dâhil)
     return {"tur": tur, "kod": s, "bas": bas, "bit": bit, "etiket": etiket + (" (süren dönem, bugüne kadar)" if kirpildi else ""), "kirpildi": kirpildi,
-            "saat": int((bit - bas).days * 24)}
+            "saat": int(round((_utc(bit, tz) - _utc(bas, tz)).total_seconds() / 3600))}   # yaz saati geçişli dilimde 24'ün katı olmayabilir
 
 
-def _utc(d: date) -> datetime:
-    return datetime.combine(d, datetime.min.time(), tzinfo=IST).astimezone(timezone.utc)
+def _utc(d: date, tz: str = IST_AD) -> datetime:
+    """Yerel günün başı (santral dilimi) → UTC."""
+    return datetime.combine(d, datetime.min.time(), tzinfo=ZoneInfo(tz)).astimezone(timezone.utc)
 
 
 # ---------------- veri ----------------
 def gunluk(tenant_id, plant: dict, bas: date, bit: date) -> pd.DataFrame:
-    """Günlük (Türkiye günü) gerçekleşen kWh (geçerli SCADA; energy_kwh yoksa power_kw × 1 sa), saat sayısı, POA toplamı (Wh/m² → kWh/m²), beklenen P50/P10/P90."""
+    """Günlük (santral günü, `plants.tz`) gerçekleşen kWh (geçerli SCADA; energy_kwh yoksa power_kw × 1 sa), saat sayısı, POA toplamı (Wh/m² → kWh/m²),
+    beklenen P50/P10/P90 (forecast_daily.gun zaten santral yerel günüdür — v2.571'den beri iki taraf aynı gün tanımında)."""
+    tz = _tz(plant)
     with tenant_baglami(tenant_id) as s:
         g = pd.read_sql(text(
-            "SELECT (ts_utc AT TIME ZONE 'Europe/Istanbul')::date AS gun, sum(COALESCE(energy_kwh, power_kw)) AS kwh, count(*) AS saat, "
+            "SELECT (ts_utc AT TIME ZONE :tz)::date AS gun, sum(COALESCE(energy_kwh, power_kw)) AS kwh, count(*) AS saat, "
             "sum(poa_wm2) / 1000.0 AS poa_kwh_m2, count(poa_wm2) AS poa_saat FROM scada_hourly "
             "WHERE plant_id = CAST(:p AS uuid) AND flag = 'valid' AND ts_utc >= :a AND ts_utc < :b GROUP BY 1 ORDER BY 1"),
-            s.connection(), params={"p": plant["id"], "a": _utc(bas), "b": _utc(bit)})
+            s.connection(), params={"p": plant["id"], "a": _utc(bas, tz), "b": _utc(bit, tz), "tz": tz})
         f = pd.read_sql(text("SELECT gun, p50_kwh, p10_kwh, p90_kwh FROM forecast_daily WHERE plant_id = CAST(:p AS uuid) AND gun >= :a AND gun < :b ORDER BY gun"),
                         s.connection(), params={"p": plant["id"], "a": bas, "b": bit})
     gunler = pd.DataFrame({"gun": pd.date_range(bas, bit - timedelta(days=1), freq="D").date})
@@ -85,14 +96,15 @@ def gunluk(tenant_id, plant: dict, bas: date, bit: date) -> pd.DataFrame:
 def olaylar(tenant_id, plant: dict, bas: date, bit: date) -> list[dict]:
     from pvquant.services import olay_service
     kap = float(plant.get("ac_limit_kw") or plant.get("capacity_kwp") or 0.0)
-    a, b = _utc(bas), _utc(bit)
+    tz = ZoneInfo(_tz(plant))
+    a, b = _utc(bas, _tz(plant)), _utc(bit, _tz(plant))
     out = []
     for o in olay_service.aralik(tenant_id, plant["id"], a, b):
         s0 = max(o["baslangic"], a); s1 = min(o["bitis"] or b, b)
         sure = max(0.0, (s1 - s0).total_seconds() / 3600)
         kw = float(o["etkilenen_kw"]) if o.get("etkilenen_kw") else kap
-        out.append({"tur": o["tur"], "etiket": olay_service.TUR_ETIKET.get(o["tur"], o["tur"]), "baslangic": o["baslangic"].astimezone(IST).isoformat(timespec="minutes"),
-                    "bitis": o["bitis"].astimezone(IST).isoformat(timespec="minutes") if o.get("bitis") else None, "sure_saat": round(sure, 1), "etkilenen_kw": kw,
+        out.append({"tur": o["tur"], "etiket": olay_service.TUR_ETIKET.get(o["tur"], o["tur"]), "baslangic": o["baslangic"].astimezone(tz).isoformat(timespec="minutes"),
+                    "bitis": o["bitis"].astimezone(tz).isoformat(timespec="minutes") if o.get("bitis") else None, "sure_saat": round(sure, 1), "etkilenen_kw": kw,
                     "donem_icinde_saat": round(sure, 1), "neden": o.get("neden"), "istisna": bool(olay_service.TUR_KURAL.get(o["tur"], {}).get("istisna")),
                     "ariza": o["tur"] in ("ariza", "hasar")})
     return out
@@ -169,7 +181,7 @@ def uzlastirma(tenant_id, plant: dict, d: dict) -> dict | None:
 
 # ---------------- rapor ----------------
 def veri(tenant_id, plant: dict, donem: str | None = None, bugun: date | None = None) -> dict:
-    d = donem_cozumle(donem, bugun)
+    d = donem_cozumle(donem, bugun, _tz(plant))
     df = gunluk(tenant_id, plant, d["bas"], d["bit"])
     kap = float(plant.get("ac_limit_kw") or plant.get("capacity_kwp") or 0.0); kwp = float(plant.get("capacity_kwp") or 0.0)
     ol = olaylar(tenant_id, plant, d["bas"], d["bit"])
@@ -205,7 +217,7 @@ def veri(tenant_id, plant: dict, donem: str | None = None, bugun: date | None = 
                      for r in df.to_dict("records")]
     try:   # v2.559 (V4): veri kaynağı niteliği (kaynak / nitelik / revizyon) — izlenebilir doğruluk
         from pvquant.services import kaynak_secim_service as _ks
-        nitelik = _ks.nitelik_ozeti(tenant_id, plant, _utc(d["bas"]), _utc(d["bit"]))   # Faz 0 (10.11.2026): `bit` HARİÇ sınırdır; +1 gün tabloyu 24 saat şişiriyordu (744 saatlik ayda 768)
+        nitelik = _ks.nitelik_ozeti(tenant_id, plant, _utc(d["bas"], _tz(plant)), _utc(d["bit"], _tz(plant)))   # Faz 0 (10.11.2026): `bit` HARİÇ sınırdır; +1 gün tabloyu 24 saat şişiriyordu (744 saatlik ayda 768)
     except Exception:   # noqa: BLE001
         nitelik = None
     return {"donem": {k: (v.isoformat() if isinstance(v, date) else v) for k, v in d.items()}, "santral": plant.get("name"), "kapasite_kwp": kwp, "ac_kw": plant.get("ac_limit_kw"),
@@ -340,7 +352,7 @@ def gonder(tenant_id, plant: dict, donem: str | None = None, bugun: date | None 
         r, v = rapor(tenant_id, plant, donem, bugun)
     except Exception as e:   # noqa: BLE001 — 02.11 inceleme: rapor üretim hatası, e-posta hatasından ayrı tutulur ve kayda düşer
         print("[rapor_gonderim][rapor]", type(e).__name__, e)
-        d = donem_cozumle(donem, bugun)
+        d = donem_cozumle(donem, bugun, _tz(plant))
         r, v, durum = None, {"donem": {k: (x.isoformat() if isinstance(x, date) else x) for k, x in d.items()}}, "rapor_hatasi"
     if r is None:
         pass
