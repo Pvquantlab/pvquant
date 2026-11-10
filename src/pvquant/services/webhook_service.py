@@ -7,12 +7,14 @@ from __future__ import annotations
 
 import json
 import secrets
+import uuid
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 
 import pandas as pd
 
 from pvquant.ext.platform.api_anahtar import webhook_imzala
+from pvquant.guvenlik import sir as _sir   # v2.570: imza sırrı kasada
 
 OLAYLAR = ("tahmin.yeni", "alarm.yeni", "deneme")   # v2.519 (P7a): alarm.yeni — alerts satırı yazıldığında (alarm_service._bildir)
 ZAMAN_ASIMI_SN = 10.0
@@ -63,10 +65,12 @@ def ekle(tenant_id, url: str, plant_id: str | None = None, olaylar: list[str] | 
     if not set(ol) <= set(OLAYLAR):
         raise ValueError(f"bilinmeyen olay: {sorted(set(ol) - set(OLAYLAR))}")
     secret = "whsec_" + secrets.token_urlsafe(24)
+    wid = uuid.uuid4()
+    zarf, duz = _sir.sakla(secret, f"webhooks:{tenant_id}:{wid}")   # v2.570: KEK varsa zarf, düz sütun NULL
     with tenant_baglami(tenant_id) as s:
-        wid = s.execute(text(
-            "INSERT INTO webhooks(tenant_id, plant_id, url, secret, events) VALUES(:t, :p, :u, :s, CAST(:e AS jsonb)) RETURNING id"),
-            {"t": tenant_id, "p": plant_id, "u": url.strip(), "s": secret, "e": json.dumps(ol)}).scalar()
+        s.execute(text(
+            "INSERT INTO webhooks(id, tenant_id, plant_id, url, secret, secret_zarf, events) VALUES(CAST(:i AS uuid), :t, :p, :u, :s, CAST(:z AS jsonb), CAST(:e AS jsonb))"),
+            {"i": str(wid), "t": tenant_id, "p": plant_id, "u": url.strip(), "s": duz, "z": json.dumps(zarf) if zarf else None, "e": json.dumps(ol)})
     return {"id": str(wid), "url": url.strip(), "plant_id": plant_id, "olaylar": ol, "secret": secret}
 
 
@@ -105,14 +109,15 @@ def gonder(tenant_id, olay: str, govde: dict, plant_id: str | None = None, webho
     sonuc = []
     with tenant_baglami(tenant_id) as s:
         rows = s.execute(text(
-            "SELECT id, url, secret, events FROM webhooks WHERE active "
+            "SELECT id, url, secret, secret_zarf, events FROM webhooks WHERE active "
             "AND (CAST(:w AS uuid) IS NULL OR id = CAST(:w AS uuid)) "
             "AND (plant_id IS NULL OR CAST(:p AS uuid) IS NULL OR plant_id = CAST(:p AS uuid))"),   # psycopg: parametre tipi belirsiz kalmasın
             {"w": webhook_id, "p": plant_id}).fetchall()
         for r in rows:
             if olay not in (r.events or []) and olay != "deneme":
                 continue
-            b, h = istek_hazirla(r.secret, olay, govde)
+            gizli = _sir.oku(getattr(r, "secret_zarf", None), r.secret, f"webhooks:{tenant_id}:{r.id}")   # v2.570 çift okuma
+            b, h = istek_hazirla(gizli, olay, govde)
             durum = post(r.url, b, h)
             ok = 200 <= durum < 300
             s.execute(text("UPDATE webhooks SET last_sent_at=now(), last_status=:d, fail_count = CASE WHEN :ok THEN 0 ELSE fail_count + 1 END WHERE id=:i"),

@@ -1461,3 +1461,21 @@ program ayrı, geçmiş yeni tanımla yeniden hesaplandı, önceki değerler yed
 yalnız worker yazdığı hâlde bugünkü kodda üretilmiyor; 11.10 geri alınan v2.396–424 («D-1 kesiti») döneminden kalma eski satırlar olduğu düşünülüyor, araştırılmadı.
 
 **Mühür.** v2.569 408f4d8 CANLI (10.11 19:30 TSİ): CI #719 yeşil (7 dk 57 sn); ssh dağıtım yalnız web (api ve worker dokunulmadı); göç yok; healthz 200, ana sayfa 200; canlı bayt kıyası 141/141. Karne paketi (v2.568 + v2.569) böylece tamamlandı; kalan yalnız 11.11 sabahı `karne_dustu` alarmı gözlemi.
+
+## Altmışıncı paket — v2.570 (10.11.2026): sır kasası ve TOTP tekrar koruması (Faz 0 onay paketi 2, GV-01/GV-02)
+
+**Kaynak.** Faz 0 denetimi 07 belgesi GV-01 (TOTP ve webhook sırları düz metin) ve GV-02 (TOTP tekrar koruması yok); öneri `onay/sir-kasasi-totp-onerisi.md`, kullanıcı onayı 10.11.
+**(A) `guvenlik/sir.py` (tek yer).** `sakla(duz, aad)`: KEK varsa kasa zarfı (JSON: kek_id, dek_sarili b64, sifreli b64, surum) ve düz sütun NULL; KEK yoksa bugünkü düz
+davranış. `oku(zarf, duz, aad)`: geçiş dönemi çift okuma. `totp_dogrula(sir, kod, son_adim)`: ±1 adımda eşleşen adımı bulur, son kabul edilenden yeni değilse reddeder,
+kabulde adımı döner; servisler adımı atomik yazar (`UPDATE … WHERE totp_son_adim IS NULL OR totp_son_adim < :adim`, 0 satır = eşzamanlı tekrar → red).
+AAD bağları users:<id>:totp, platform:<id>:totp, webhooks:<tenant>:<id>.
+**(B) Göç `v2570_sir_kasasi`** (geri alınabilir): users ve platform_kullanicilar `totp_zarf JSONB`, `totp_son_adim BIGINT`; webhooks `secret_zarf JSONB`. Düz sütunlar
+geçiş döneminde kalır (sonraki sürümde ayrı onayla düşer). **(C) Bağlantılar.** `iki_adim_service` (baslat, dogrula_ve_ac, giris_dogrula, kapat, yonetici_sifirla),
+`platform_service` (giris, yeniden_dogrula, iki_adim_baslat, iki_adim_dogrula, operator_guncelle sıfırlama), `webhook_service` (oluşturma zarf + kimlik istemcide
+üretilir, gönderimde çift okuma). Eski `pyotp.TOTP(...).verify(valid_window=1)` çağrısı kalmadı (test sabitlendi). **(D) `scripts/sirlari_kasaya_tasi.py`**: düz → zarf
+(ilk kaydı çözerek doğrular), `--geri` zarf → düz, `--kuru` yalnız sayar; DB sahibiyle ve PVQ_KEK ile koşulur.
+**Kanıt.** `tests/test_sir_v2570.py` (zarf gidiş-dönüş ve bağlam, KEK yokken düz, tekrar reddi ve pencere, servislerin tek yardımcıyı kullanması);
+`test_platform_db::test_uctan_uca` sahte saatle adım adım (aynı kodla ikinci giriş artık doğru olarak reddediliyor); hedefli 41 geçti. Göç test DB'de uygulandı. Tam takım 1089 geçti / 1 atlandı / 0 kırmızı. Dönüşüm betiği test DB'de gerçek kayıtla ileri ve geri prova edildi (users 1, webhooks 1:
+zarflandı → çözüldü → düz metne döndü); ilk provada `webhooks.secret NOT NULL` kısıtı dönüşümü ve KEK'li yeni webhook oluşturmayı kırıyordu, göçe `DROP NOT NULL`
+eklendi (downgrade boş dizeyle geri koyar). Canlıya alma: önce kod + göç (çift okuma, kimse etkilenmez), sonra dönüşüm betiği DB sahibiyle, sonra platform
+girişiyle doğrulama; eski pg_dump yedekleri düz sırları taşımaya devam eder (öneri §2.5).

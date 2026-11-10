@@ -28,7 +28,7 @@ def temiz(monkeypatch):
         s.execute(text("DELETE FROM platform_kullanicilar WHERE email LIKE :e"), {"e": f"%{etiket}%"})
 
 
-def test_uctan_uca(temiz):
+def test_uctan_uca(temiz, monkeypatch):
     e = temiz
     sahip_eposta = f"sahip-{e}@pvq.test"
     pid = ps.ilk_sahip_olustur(sahip_eposta, "cok-gizli-parola-123")
@@ -40,14 +40,21 @@ def test_uctan_uca(temiz):
     assert c["kapsam"] == "platform" and c["sub"] == pid and c["sv"] == 0
     # 2FA kur → artık kodsuz giriş olmaz
     k = ps.iki_adim_baslat(pid)
-    ps.iki_adim_dogrula(pid, pyotp.TOTP(k["secret"]).now())
+    # v2.570: tekrar koruması — aynı kod ikinci kez geçmez; sahte saat her kod üretiminde 30 sn ilerler (yalnız sir modülünün saati)
+    import types as _types
+    saat = {"t": 1_800_000_000.0}
+    monkeypatch.setattr(ps._sir, "time", _types.SimpleNamespace(time=lambda: saat["t"]))
+    def kod():
+        saat["t"] += 30
+        return pyotp.TOTP(k["secret"]).at(int(saat["t"]))
+    ps.iki_adim_dogrula(pid, kod())
     assert ps.giris(sahip_eposta, "cok-gizli-parola-123") == {"iki_adim_gerekli": True}
-    assert ps.giris(sahip_eposta, "cok-gizli-parola-123", pyotp.TOTP(k["secret"]).now())["iki_adim_kurulmali"] is False
+    assert ps.giris(sahip_eposta, "cok-gizli-parola-123", kod())["iki_adim_kurulmali"] is False
     # 26.10 denetim-3: hassas işlem yeniden doğrulaması — parola + kod; yalnız parola / yanlış kod / yanlış parola geçmez
-    assert ps.yeniden_dogrula(pid, "cok-gizli-parola-123", pyotp.TOTP(k["secret"]).now()) is True
+    assert ps.yeniden_dogrula(pid, "cok-gizli-parola-123", kod()) is True
     assert ps.yeniden_dogrula(pid, "cok-gizli-parola-123", None) is False
     assert ps.yeniden_dogrula(pid, "cok-gizli-parola-123", "000000") is False
-    assert ps.yeniden_dogrula(pid, "yanlis", pyotp.TOTP(k["secret"]).now()) is False
+    assert ps.yeniden_dogrula(pid, "yanlis", kod()) is False
     assert ps.yeniden_dogrula(str(uuid.uuid4()), "x", "000000") is False
     # kiracı oluştur (posta kapalı → bağlantı döner), listede görünür
     firma = f"Firma {e}"; admin_eposta = f"admin-{e}@musteri.test"

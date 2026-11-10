@@ -18,7 +18,10 @@ import secrets
 import time
 
 import jwt
+import json as _json
 import pyotp
+
+from pvquant.guvenlik import sir as _sir   # v2.570
 from passlib.hash import bcrypt
 from sqlalchemy import text
 
@@ -53,7 +56,7 @@ def giris(email: str, sifre: str, kod: str | None = None) -> dict | None:
     {token, rol, email, iki_adim_kurulmali} = oturum açıldı."""
     with sistem_baglami() as s:
         row = s.execute(text(
-            "SELECT id, email, pw_hash, rol, aktif, totp_secret, totp_aktif, oturum_surumu "
+            "SELECT id, email, pw_hash, rol, aktif, totp_secret, totp_zarf, totp_son_adim, totp_aktif, oturum_surumu "
             "FROM platform_kullanicilar WHERE email=:e"), {"e": (email or "").strip().lower()}).first()
         if not row:
             bcrypt.verify(sifre or "", _KUKLA_HASH)   # 26.10 denetim-3: hesap yokken de bcrypt koşar — zamanlamayla varlık sızmasın
@@ -64,8 +67,13 @@ def giris(email: str, sifre: str, kod: str | None = None) -> dict | None:
     if row.totp_aktif:
         if not kod:
             return {"iki_adim_gerekli": True}
-        if not pyotp.TOTP(row.totp_secret).verify((kod or "").replace(" ", ""), valid_window=1):
+        sirr = _sir.oku(getattr(row, "totp_zarf", None), row.totp_secret, f"platform:{row.id}:totp")
+        ok, adim = _sir.totp_dogrula(sirr, kod, getattr(row, "totp_son_adim", None))   # v2.570: tekrar koruması
+        if not ok:
             return None
+        with sistem_baglami() as s:
+            if not _adim_yaz(s, row.id, adim):
+                return None
     with sistem_baglami() as s:
         s.execute(text("UPDATE platform_kullanicilar SET last_login=now() WHERE id=:i"), {"i": row.id})
     return {"token": _jeton(row), "rol": row.rol, "email": row.email, "iki_adim_kurulmali": not row.totp_aktif}
@@ -76,13 +84,18 @@ def yeniden_dogrula(pid: str, sifre: str | None, kod: str | None) -> bool:
     çalınmış bir JETONLA yapılamasın — aktörün parolası + TOTP kodu yeniden istenir. 2FA kurulu değilse (platform kapısı zaten
     yalnız kurulum uçlarını açar) parola yetmez: False."""
     with sistem_baglami() as s:
-        r = s.execute(text("SELECT pw_hash, totp_secret, totp_aktif, aktif FROM platform_kullanicilar WHERE id=:i"), {"i": str(pid)}).first()
+        r = s.execute(text("SELECT pw_hash, totp_secret, totp_zarf, totp_son_adim, totp_aktif, aktif FROM platform_kullanicilar WHERE id=:i"), {"i": str(pid)}).first()
     if r is None or not r.aktif or not r.totp_aktif:
         bcrypt.verify(sifre or "", _KUKLA_HASH)
         return False
     if not bcrypt.verify(sifre or "", r.pw_hash):
         return False
-    return bool(kod) and pyotp.TOTP(r.totp_secret).verify((kod or "").replace(" ", ""), valid_window=1)
+    sirr = _sir.oku(getattr(r, "totp_zarf", None), r.totp_secret, f"platform:{pid}:totp")
+    ok, adim = _sir.totp_dogrula(sirr, kod, getattr(r, "totp_son_adim", None))
+    if not ok:
+        return False
+    with sistem_baglami() as s:
+        return _adim_yaz(s, pid, adim)
 
 
 def oturum_durumu(pid: str) -> dict | None:
@@ -141,6 +154,14 @@ def parola_degistir(pid: str, eski: str, yeni: str) -> None:
         _surum_artir(s, pid)
 
 
+def _adim_yaz(s, pid, adim: int | None) -> bool:
+    """v2.570: kabul edilen TOTP adımını atomik yazar; 0 satır = eşzamanlı tekrar → red."""
+    if adim is None:
+        return False
+    r = s.execute(text("UPDATE platform_kullanicilar SET totp_son_adim=:a WHERE id=:i AND (totp_son_adim IS NULL OR totp_son_adim < :a)"), {"a": int(adim), "i": str(pid)})
+    return getattr(r, "rowcount", 1) != 0
+
+
 def iki_adim_baslat(pid: str) -> dict:
     """Yeni sır üretir (etkinleştirme dogrula ile); açıksa önce kapatılmalı (bu fazda kapatma yalnız başka sahip eliyle)."""
     with sistem_baglami() as s:
@@ -150,18 +171,21 @@ def iki_adim_baslat(pid: str) -> dict:
         if r.totp_aktif:
             raise PlatformHata("iki adımlı doğrulama zaten açık")
         sir = pyotp.random_base32()
-        s.execute(text("UPDATE platform_kullanicilar SET totp_secret=:s WHERE id=:i"), {"s": sir, "i": str(pid)})
+        zarf, duz = _sir.sakla(sir, f"platform:{pid}:totp")   # v2.570
+        s.execute(text("UPDATE platform_kullanicilar SET totp_secret=:s, totp_zarf=CAST(:z AS jsonb), totp_son_adim=NULL WHERE id=:i"), {"s": duz, "z": _json.dumps(zarf) if zarf else None, "i": str(pid)})
     uri = pyotp.totp.TOTP(sir).provisioning_uri(name=r.email, issuer_name=_ISSUER)
     return {"secret": sir, "otpauth_uri": uri}
 
 
 def iki_adim_dogrula(pid: str, kod: str) -> None:
     with sistem_baglami() as s:
-        r = s.execute(text("SELECT totp_secret, totp_aktif FROM platform_kullanicilar WHERE id=:i"), {"i": str(pid)}).first()
-        if r is None or not r.totp_secret:
+        r = s.execute(text("SELECT totp_secret, totp_zarf, totp_son_adim, totp_aktif FROM platform_kullanicilar WHERE id=:i"), {"i": str(pid)}).first()
+        sirr = _sir.oku(getattr(r, "totp_zarf", None), getattr(r, "totp_secret", None), f"platform:{pid}:totp") if r is not None else None
+        if not sirr:
             raise PlatformHata("önce kurulumu başlatın")
-        if not pyotp.TOTP(r.totp_secret).verify((kod or "").replace(" ", ""), valid_window=1):
-            raise PlatformHata("kod doğrulanamadı")
+        ok, adim = _sir.totp_dogrula(sirr, kod, getattr(r, "totp_son_adim", None))
+        if not ok or not _adim_yaz(s, pid, adim):
+            raise PlatformHata("kod doğrulanamadı (aynı kod ikinci kez kullanılamaz)")
         s.execute(text("UPDATE platform_kullanicilar SET totp_aktif=true WHERE id=:i"), {"i": str(pid)})
     oturum_onbellegi_dusur(pid)   # kapı 60 sn beklemeden tam kapsamı açsın
 
@@ -233,7 +257,7 @@ def operator_guncelle(pid: str, *, rol: str | None = None, aktif: bool | None = 
         if dusuruyor and int(s.execute(text("SELECT count(*) FROM platform_kullanicilar WHERE rol='sahip' AND aktif")).scalar()) <= 1:
             raise PlatformHata("son etkin sahip düşürülemez")
         s.execute(text("UPDATE platform_kullanicilar SET rol=COALESCE(:r, rol), aktif=COALESCE(:a, aktif)"
-                       + (", totp_secret=NULL, totp_aktif=false" if iki_adim_sifirla else "") + " WHERE id=:i"),
+                       + (", totp_secret=NULL, totp_zarf=NULL, totp_son_adim=NULL, totp_aktif=false" if iki_adim_sifirla else "") + " WHERE id=:i"),
                   {"r": rol, "a": aktif, "i": str(pid)})
         _surum_artir(s, pid)
     return True
