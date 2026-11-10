@@ -1459,3 +1459,5 @@ biraz kötü, KGÜP ufkunun bedeli. Kalan: Doğruluk sayfasında gün içi satı
 Hakkında › «Veri kaynakları ve lisanslar» kartına yöntem metninin altına tarihli not: karne tanımı 10.11.2026'da düzeltildi, en erken tahmin sınava girer, gün içi ve
 program ayrı, geçmiş yeni tanımla yeniden hesaplandı, önceki değerler yedekte. Yalnız web; arka uç değişmedi. Not: `skill_daily`'de santral başına 9 satırlık «d1» kovası
 yalnız worker yazdığı hâlde bugünkü kodda üretilmiyor; 11.10 geri alınan v2.396–424 («D-1 kesiti») döneminden kalma eski satırlar olduğu düşünülüyor, araştırılmadı.
+
+**Mühür.** v2.569 408f4d8 CANLI (10.11 19:30 TSİ): CI #719 yeşil (7 dk 57 sn); ssh dağıtım yalnız web (api ve worker dokunulmadı); göç yok; healthz 200, ana sayfa 200; canlı bayt kıyası 141/141. Karne paketi (v2.568 + v2.569) böylece tamamlandı; kalan yalnız 11.11 sabahı `karne_dustu` alarmı gözlemi.
