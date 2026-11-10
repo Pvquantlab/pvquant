@@ -1444,3 +1444,11 @@ kuralı kalktı). `accuracy_service` iki işlev: seçim + eşik. `konformal_serv
 **Kanıt.** `tests/test_karne_kurali.py` 6 test (çift sayım %11 → %20, en erken koşu, geriye bakışlı dışlama, sütun yoksa eski davranış, program kesimi 15:30/16:00, bütün
 kovalar + eşik); mevcut karne testleri (kova, nrel hakem, sfa, olasılıksal, eşik, kapsama, dogrulama_v2532, api_skill) yeşil; web tsc 0, 104/104, lint 0 hata, build.
 Tam takım test veritabanıyla 1085 geçti / 1 atlandı / 0 kırmızı (ilk koşuda `backtest_service` eşik içe aktarması eksikti, iki test NameError; düzeltildi; `test_edge_db_v2561` yük altında bir kez kırmızı, tek başına ve ikinci tam koşuda geçti). Yeniden hesap betiği test veritabanında prova edildi (yedek tablo alındı; tahmin arşivi olmayan santral atlandı). Canlıda dağıtım sonrası: yeniden hesap betiği DB sahibiyle (yedek alır), 30 gün eski/yeni kıyası, Hakkında'ya tarihli not (sonraki paket).
+
+**Mühür.** v2.568 11494f7 CANLI (10.11 19:13 TSİ): CI #717 yeşil (7 dk 50 sn); ssh dağıtım api+worker+web (worker penceresi dışında, açılış yakalaması «taze»); göç yok;
+canlı bayt kıyası 141/141; healthz 200; api günlüğünde hata yok. **Canlıda yeniden hesap** (`scripts/karne_yeniden_hesapla.py`, DB sahibiyle): yedek `skill_daily_eski_20261110`
+449 satır; üç EPİAŞ santralı 42 günlük arşivden yeni kuralla yeniden yazıldı (kova başına 32–40 gün; `gun_ici` ve `program` kovaları doldu); PVDAQ Golden 33 ve Format Lab'da
+gerçekleşenle eşleşen koşu olmadığından karne satırı yok (önceden de yoktu). **Eski/yeni kıyası (son 30 gün, üç santral, günlük WMAPE ortalaması):** 0-24 %30,4 → %30,0;
+24-72 %43,8 → %51,0; 72-168 %54,5 → %54,9; 168+ %59,7 → %73,4; yeni kovalar gun_ici %28,8, program %32,5. Yorum: en erken koşu kuralı uzak kovaları beklendiği gibi
+kötüleştirdi (daha dürüst); 0-24 neredeyse değişmedi (bu santrallarda gün içi koşular ana kovayı az etkiliyormuş); program doğruluğu (%32,5) gün başı tahmininden (%30,0)
+biraz kötü, KGÜP ufkunun bedeli. Kalan: Doğruluk sayfasında gün içi satırı, Hakkında'ya tarihli not, `karne_dustu` alarmı için yeniden hesap gecesi gözlemi (11.11 sabahı).
