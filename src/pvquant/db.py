@@ -32,8 +32,10 @@ def tenant_baglami(tenant_id: str):
 
 @contextmanager
 def sistem_baglami():
-    """Tenant'siz isler (login, tenant olusturma). DIKKAT: yalniz
-    auth_service ve migration kullanir; baska yerde cagirmak YASAK."""
+    """Tenant'siz isler (login, tenant olusturma). DIKKAT: yalniz auth_service, migration ve kimliksiz
+    ucların ÖZETLE (SHA-256) tek satır araması kullanır (edge_service toplayıcı anahtarı, bulut_oauth_service
+    durum değeri): arama sonucu hemen kiracı bağlamına geçilir, başka sorgu bu bağlamda yapılmaz.
+    Bunun dışında çağırmak YASAK (10.11.2026 güncellemesi)."""
     s = SessionLocal()
     try:
         yield s

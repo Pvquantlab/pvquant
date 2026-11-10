@@ -159,7 +159,7 @@ def referans_kiyas(golge_saatler: list[dict], referans: list[dict], tol_pct: flo
             "toplam_referans_kwh": round(top_ref, 1), "toplam_golge_kwh": round(top_g, 1),
             "toplam_fark_pct": (round((top_g - top_ref) / top_ref * 100, 2) if top_ref > 0 else None), "tolerans": {"pct": tol_pct, "kwh": tol_kwh},
             "tolerans_disi_saatler": saatler,
-            "not": "Kıyas yalnız tam gölge saatlerinde; kısmi/tahmini saatler ve gölgesi olmayan saatler referans dışıdır. Uyum, aynı ölçüm sınırı ve aynı cihaz varsayımıyla okunur."}
+            "not": "Kıyas yalnız kaynak kıyasındaki tam saatlerde; kısmi/tahmini saatler ve kaynak kıyasında olmayan saatler referans dışıdır. Uyum, aynı ölçüm sınırı ve aynı cihaz varsayımıyla okunur."}
 
 
 def referans_degerlendir(tenant_id, plant: dict, referans: list[dict], sinir: str = "inverter_ac", aktor_id=None, dosya: str | None = None) -> dict:

@@ -1104,7 +1104,7 @@ Sonraya: EK-3 değer satırları; lock dosyası kararı; Mutabakat'ta kupst_kayn
 
 **Mühür.** v2.547 fa3b113 CANLI (09.11 10:47 TSİ): CI #707 yeşil; api+web ssh dağıtımı (worker değişmedi); göç yok; canlı bayt kıyası 25/25 birebir; healthz ok. Üç inceleme turu (ekran; ekran; brif yedi faz / üç tur) + P6 kararı (i).
 
-## Kırk sekizinci paket — v2.548 (09.11.2026): Aşama 0 hijyen — SolarEdge V1 devre dışı, IEC 104 varsayılan TCP, FusionSolar uç/bölge düzeltmesi, Veri kaynakları notları (YERELDE; mühürlenmedi)
+## Kırk sekizinci paket — v2.548 (09.11.2026): Aşama 0 hijyen — SolarEdge V1 devre dışı, IEC 104 varsayılan TCP, FusionSolar uç/bölge düzeltmesi, Veri kaynakları notları (mühürlendi: v2.563, 10.11)
 
 **Kaynak.** İki dış araştırmanın (Opus «Inverter Pazar» 2 tur; Codex «Invertör Entegrasyon» 3 faz) bütünleşik değerlendirmesi: `~/Desktop/PVQuant_Entegre_Degerlendirme_2026-11-09/` (00–05). Yol haritası 04 §1 Aşama 0 kalemleri H1–H4; dış girdi gerektirmeyen tek paket. Dayanaklar: Opus 07 SE-1…SE-5 ve HW-3/HW-18/HW-19 [K77][K81][K353][K354][K364]; Opus 00 «Acil uyarı 3» ve 08 §5.9 (lib60870 tek yedeklilik grubu davranışı) [K387]; Codex 07 (Faz 3) U04 birim şüphesi.
 
@@ -1124,7 +1124,7 @@ Sonraya: EK-3 değer satırları; lock dosyası kararı; Mutabakat'ta kupst_kayn
 
 **İnceleme turu (09.11 akşam, iki ekran).** (1) TCP kipinde «bağlantı sınaması başarılı» ifadesi fazla iddialıydı: yeni bağlantı durum kodu `tcp_ok` («TCP bağlantısı açıldı; IEC 104 sınanmadı, veri çekişi yok»), aşama etiketi «TCP bağlantısı açıldı (STARTDT sınanmadı)», sonuç rozeti nötr «TCP bağlantısı açıldı»; STARTDT kipi eskisi gibi «başarılı». Motor + sahte API + arayüz aynı kural. (2) IEC 104 hedefinde «Cihaz / sistem» alanı «SCADA / kayıt cihazı (isteğe bağlı)» oldu (yer tutucu Inavitas, SmartLogger3000). (3) Protokol sınama düğmesi yalnız formdaki tür kayıtlı türle aynıyken görünür (bulut düğmesiyle tutarlı; tür değiştirilince kayıtlı hedefin düğmesi altta kalmıyor). Testler: durum kodu ve aşama etiketi için 3 yeni iddia; ilgili 22 geçti; web tsc/build/lint 16/103; önizlemede TCP kipi başlık–aşama–rozet üçlüsü ve düğme gizlenmesi doğrulandı.
 
-## Kırk dokuzuncu paket — v2.549/v2.550 (09.11.2026): Aşama 1 veri doğruluğu çekirdeği — saatlik toplama, tipli SunSpec, MBAP, cihaz/sınır kimliği, gölge görünüm (YERELDE; mühürlenmedi)
+## Kırk dokuzuncu paket — v2.549/v2.550 (09.11.2026): Aşama 1 veri doğruluğu çekirdeği — saatlik toplama, tipli SunSpec, MBAP, cihaz/sınır kimliği, gölge görünüm (mühürlendi: v2.563, 10.11)
 
 **Kaynak.** Entegre değerlendirme 04 §1 Aşama 1 (D1–D7); Codex Faz 2/3 sentetik kayıtları 07a (saat sınırı 75/100 kWh), OFF01–OFF08 (tipli sentinel, MBAP), L10 (cihaz anahtarı), C06 (negatif kırpma), C07 (sabit zaman aşımı); Codex 07/08 veri sözleşmesi (ölçüm sınırı, tamlık, revizyon). Dış girdi yok.
 
@@ -1144,7 +1144,7 @@ Sonraya: EK-3 değer satırları; lock dosyası kararı; Mutabakat'ta kupst_kayn
 
 **Yapılmayan / sonraya.** Gölge görünümün arayüzü (Aşama 5 V4 ile); dosya/EPİAŞ saatlerinin gölgeye yazılması (bugün yalnız canlı toplama yazar; dosya/EPİAŞ scada_hourly'de); tüketime geçiş (DEV10); gerçek cihazla doğrulama.
 
-## Ellinci paket — v2.551–v2.554 (09.11.2026): Aşama 2 saha yolları — SunSpec 7xx, üretici Modbus profilleri, üretim dosyası itme, IEC 104 salt-okur istemci (YERELDE; mühürlenmedi)
+## Ellinci paket — v2.551–v2.554 (09.11.2026): Aşama 2 saha yolları — SunSpec 7xx, üretici Modbus profilleri, üretim dosyası itme, IEC 104 salt-okur istemci (mühürlendi: v2.563, 10.11)
 
 **Kaynak.** Entegre değerlendirme 04 §1 Aşama 2 (S1–S4); Opus 08 §2 (7xx register tabloları, sunspec/models JSON), 05 sıra 2 (üretici haritaları K380/K381/K382 yerel kopyaları pdftotext ile okundu), 05 sıra 5 (itme yolları), 08 §5 (IEC 104 APCI/ASDU, k/w/t, salt-okur küme); Codex T35/T40 (Huawei 150K-MG0 1/701/702/714). Dış girdi: gerçek cihaz yok; haritalar üretici belgesinden, DOĞRULANMADI etiketiyle.
 
@@ -1162,7 +1162,7 @@ Sonraya: EK-3 değer satırları; lock dosyası kararı; Mutabakat'ta kupst_kayn
 
 **Yapılmayan / sonraya.** Üretici haritalarının ve 7xx'in gerçek cihazla doğrulanması (P-1xx/P-7xx pilotları); IEC 104 pilotu (sahibin ayrı istemci yuvası, nokta tablosu); SFTP hesabı açma (işletim); Sungrow/Huawei nokta tablosu dışa aktarım biçimlerinin dönüştürücüsü (biçim görülmedi); K1 kimlik bilgisi saklama kararı ve bulut çekişi (K2–K4); edge (E1–E2); V1–V5 ürün katmanı.
 
-## Elli birinci paket — v2.555 (09.11.2026): Aşama 5 (kısmi) — gölge görünüm kartı ve cihaz durumundan olay adayları (YERELDE; mühürlenmedi)
+## Elli birinci paket — v2.555 (09.11.2026): Aşama 5 (kısmi) — gölge görünüm kartı ve cihaz durumundan olay adayları (mühürlendi: v2.563, 10.11)
 
 **Kaynak.** Entegre değerlendirme 04 §1 Aşama 5: V1/V4 (üç kaynaklı tutarlılık ve kaynak niteliğinin görünürlüğü) ve V2 (cihaz durumundan olay adayı); Codex DQ01/DQ21 (iletişim kopukluğu üretim 0 değildir; alarm kodu uydurulmaz).
 
@@ -1176,7 +1176,7 @@ Sonraya: EK-3 değer satırları; lock dosyası kararı; Mutabakat'ta kupst_kayn
 
 **Aşama 5 kalanları (dış girdi / tasarım kararı).** V3 toplayıcı portföyü toplu bağlantı (gerçek portföy envanteri), V5 kısıt sinyalinin sapma açıklamasına bağlanması (talimat verisi), rapor ve dış API'de kaynak niteliği sütunu (gölge görünüm kabul edildikten sonra, DEV10).
 
-## Elli ikinci paket — v2.556/v2.557 (09.11.2026): Aşama 3 K1/K2 — şifreli kimlik kasası ve FusionSolar düzenli çekiş (YERELDE; mühürlenmedi)
+## Elli ikinci paket — v2.556/v2.557 (09.11.2026): Aşama 3 K1/K2 — şifreli kimlik kasası ve FusionSolar düzenli çekiş (mühürlendi: v2.563, 10.11)
 
 **Kaynak.** Entegre değerlendirme 04 §1 Aşama 3 (K1 karar: uygulama içi KEK; K2 FusionSolar düzenli çekiş); Opus 05 §«Kimlik bilgisi saklama» [K407][K397][K393] (zarf deseni; TR bölgesi KMS yok), T2_04 (getKpiStationHour: stationCodes ≤100 tek çağrı, collectTime santral saat dilimi, günlük Roundup(n/100)+24), ek alıntı (hourly alanlar: inverter_power kWh); Codex U04/G07.
 
@@ -1198,7 +1198,7 @@ Sonraya: EK-3 değer satırları; lock dosyası kararı; Mutabakat'ta kupst_kayn
 
 **İnceleme turu (09.11 gece, ekran görüntüsü).** (1) Kimlik kaydı sınamayla geçtiği hâlde aşama «bağlantı sınanmadı» kalıyordu → kayıtta `son_sinama` yazılır (santral listesi params'a yazılmaz). (2) Başlık rozeti «ilk örnek bekleniyor» bulut için yanlış sözcüktü → «ilk veri bekleniyor»; mock'ta çekiş açılınca etkin satır eklenir, motor zaten ekliyordu (→ «veri alınıyor», bulut satırı «Mevcut veri kaynakları»nda). (3) Onay sırası: önce «yalnızca veri okunmasını onaylıyorum», sonra şifreli saklama onayı + «Sına ve şifreli kaydet», sonra kaydet düğmeleri. (4) Bulutta «Veri aralığı (dakika)» anlamsız (sağlayıcı saatlik) → gizlendi. (5) Işınım kWh/m² iki ondalık; «Alındı» ve son çekiş saatli. (6) «systemCode (kaydedilmez)» etiketi güncel durumla çelişiyordu → «systemCode», ipucu «sınamada gönderilir, yalnız onayla şifreli saklanır». (7) Kart açıklaması «henüz kurulmadı» → «gerçek cihaz ya da hesapla henüz doğrulanmadı». Kanıt: ilgili 22 pytest, web kapıları, sahte önizleme.
 
-## Elli üçüncü paket — v2.558–v2.561 (09.11.2026): kalan aşamalar — V3/V5 (Aşama 5), V4, pilot kiti (Aşama 4), saha toplayıcısı (Aşama 6) (YERELDE; mühürlenmedi)
+## Elli üçüncü paket — v2.558–v2.561 (09.11.2026): kalan aşamalar — V3/V5 (Aşama 5), V4, pilot kiti (Aşama 4), saha toplayıcısı (Aşama 6) (mühürlendi: v2.563, 10.11)
 
 **Kaynak.** Entegre değerlendirme 04 §1: V3 toplayıcı portföyü, V4 kaynak niteliği raporda/API'de, V5 kısıt sinyali; Aşama 4 kapıları (Codex Faz 3 G01–G10, 09/15); Aşama 6 E1/E2 (Codex 07 §journal/ack, 10 pilot tasarımı, 08 §mTLS/scope). SunSpec 701 ThrotPct/ThrotSrc, 704 WMaxLimPct, 123 Immediate Controls (Opus 08 tabloları; yalnız okunur).
 
@@ -1220,7 +1220,7 @@ Sonraya: EK-3 değer satırları; lock dosyası kararı; Mutabakat'ta kupst_kayn
 
 **İnceleme turu (09.11 gece, pilot kartı ekran görüntüsü).** (1) «Huawei'ye özgü (markaya özgü)» yinelemesi → kapı adları «Huawei/GoodWe/Sungrow bağlantısı», eki «(markaya özgü; P0 değil)». (2) Kod kapılarının etiketi «kod testleriyle kapalı; gerçek cihazda doğrulanmadı» (aşırı iddia yok). (3) Kutu/rozet sütunu sabit genişlik → satırlar hizalı. (4) Referans CSV ipucu (sütunlar, yalnız tam saatler) ve «uzlaştırma sayacı» sınır seçeneği. (5) Sıra numarası binlik ayracısız. (6) «kutu» → «saha bilgisayarı». Kapılar ve sahte önizleme yeniden koştu.
 
-## Elli dördüncü paket — v2.562/v2.563 (10.11.2026): K3/K4 bulut bağlayıcıları, edge mTLS araçları, portföy bağlantı görünümü, KVKK taslağı (YERELDE; mühürlenmedi)
+## Elli dördüncü paket — v2.562/v2.563 (10.11.2026): K3/K4 bulut bağlayıcıları, edge mTLS araçları, portföy bağlantı görünümü, KVKK taslağı (mühürlendi: v2.563, 10.11)
 
 **Kaynak.** Entegre değerlendirme 04 §1 Aşama 3 K3 (Solis/Sungrow/Growatt) ve K4 (SolarEdge V2); Opus 08 §1 (SolarEdge V2 [K77][K351–K358]), §3 (iSolarCloud [K87][K88][K366]), §4 (SolisCloud [K93][K94][K367][K368]); Opus 04_api_grup_B §Growatt (ShowDoc v1/v4). Aşama 6 E2 (Codex 08 §mTLS/scope). V3 toplayıcı portföyü.
 
@@ -1247,7 +1247,7 @@ Sonraya: EK-3 değer satırları; lock dosyası kararı; Mutabakat'ta kupst_kayn
 
 **Mühür.** v2.563 57fe359 CANLI (10.11 00:44 TSİ): tek commit, kırk sekizinciden elli dördüncüye yedi paket (v2.548–v2.563); CI #709 yeşil (5 dk 49 sn); ssh dağıtım api+worker+web (imaj 139 sn, cryptography bağımlılığıyla); GÖÇLER v2550_kaynak_saatlik → v2556_bulut_kimlik → v2558_edge_kisit DB sahibiyle uygulandı, canlı head v2558; `.env`'e PVQ_KEK (openssl rand, ekrana basılmadı) + PVQ_KEK_ID=k1, kasa canlıda açık ({var: True, id: k1}); canlı bayt kıyası 77/77 birebir; healthz 200; api günlüğünde hata yok, worker açılış yakalaması «taze»; web parçalarında yeni kart metinleri (Santralim, Portföy). Yerel tam pytest 975 + ağır 86; web 103. Dört inceleme turu (ekranlar).
 
-## Elli beşinci paket — v2.564 (10.11.2026): dış girdi takibi, başvuru metinleri ve sahip onayı (OAuth) yönlendirme ucu (YERELDE; mühürlenmedi)
+## Elli beşinci paket — v2.564 (10.11.2026): dış girdi takibi, başvuru metinleri ve sahip onayı (OAuth) yönlendirme ucu (mühürlendi: v2.565, 10.11)
 
 **Kaynak.** v2.563 sonrası kalan her kalem dış girdiye bağlı (gerçek hesap/cihaz, sahip izni, üretici onayı, hukuki görüş). Kullanıcı «dış girdiye bağlı kalanları sırayla yapalım» dedi;
 iki araştırma klasörü (Opus `PVQuant_Inverter_Pazar_Arastirmasi` A, Codex `PVQuant_Turkiye_Invertor_Entegrasyon_Arastirmasi` B) başvuru usulleri için yeniden tarandı: hiçbir sağlayıcı için
@@ -1293,7 +1293,7 @@ görülmedi — kayıt yapılıp ilk gerçek dönüşte doğrulanır, aksi hâld
 
 **Kalanlar (dış girdi).** D1–D11 takip belgesinde; kod tarafında eksik yok. Mühürde: göç DB sahibiyle, `.env`'e platform değerleri (kayıt yapılınca; yoksa yol kapalı kalır).
 
-## Elli altıncı paket — v2.565 (10.11.2026): bulut birim kıyası — «birim doğrulandı» kanıta bağlandı (YERELDE; mühürlenmedi)
+## Elli altıncı paket — v2.565 (10.11.2026): bulut birim kıyası — «birim doğrulandı» kanıta bağlandı (mühürlendi: v2.565, 10.11)
 
 **Kaynak.** Dış girdi takibi D2 (FusionSolar gerçek hesap) doğrulama protokolünün 3. adımı: ilk gerçek hesap gelince `inverter_power`'ın kWh mi kW mi olduğu portal «saatlik
 üretim» dışa aktarımıyla kıyaslanacak (B kapısı G07/U04: «inverter_power alanını kW veya kWh diye yayınlama»; A 02 [K81/H6] belgeye göre kWh, B 16/05 yorumu sabitlemiyor).
@@ -1396,3 +1396,12 @@ bağımlılık yok, `isinstance` denetimleri gerçek tarih nesnelerinde de doğr
 Ürün kodu değişmedi. **Kanıt.** Tam takım test veritabanıyla 1079 geçti / 1 atlandı / 0 kırmızı (6 dk 48 sn).
 
 **Mühür.** v2.565 cc06a12 CANLI (10.11 12:04 TSİ): tek commit, elli beşinci ve elli altıncı paket (v2.564–v2.565) ile iki inceleme turu, altı karar maddesi ve iki test düzeltmesi; CI #711 yeşil (6 dk 8 sn); ssh dağıtım api+worker+web (worker penceresi dışında); GÖÇ v2558_edge_kisit → v2564_bulut_oauth DB sahibiyle uygulandı, canlı head v2564 (`bulut_oauth_durum` satır güvenliği açık ve zorunlu, `bulut_kimlik.birim_kanit` sütunu var); canlı bayt kıyası 141/141 birebir; healthz 200; kasa açık ({var: True, id: k1}); sahip onayı geri dönüş ucu durum değeri olmadan 303 ile yalnız pvquant.com köküne döner; api ve worker günlüğünde hata izi yok. Sahip onayı ortam değerleri girilmedi: yol canlıda kapalı, sağlayıcı kayıtları yapılınca açılır. Yerel tam pytest 1079 / 1 atlandı; web 104.
+
+**Mühür sonrası bağımsız inceleme (10.11, v2.565 farkı üzerinde; yerelde, mühür bekliyor).** Sekiz bulgu, sekizi de uygulandı. (1) Sahip onayı dönüşünde sağlayıcı
+«cancel» hatası: durum ve açıklama aynı koşuldan türetilir (ikisi de «onay verilmedi»). (2) Tek kullanımlık durum değeri artık sağlayıcı süzgeciyle aranır
+(`_bul_ve_isaretle_db(…, saglayici)`); yanlış sağlayıcı yoluna gelen dönüş geçerli değeri tüketmez (DB testinde sabitlendi). (3) SolarEdge OAuth istemcisinde
+oturum bayrağı kaldırıldı; 401'de her çağrıda en çok bir yenileme yapılır, ikinci dolma da yenilenir. (4) Müşteri metninde kalan «gölge» ifadeleri temizlendi
+(kıyas mesajı «Saatler kaynak kıyasına yazılmıyor», pilot «yalnız tam ölçülmüş saatler», «kaynak kıyasında olmayan N», `pilot_service` not metni). (5) Türkçe ondalık
+yardımcısı tek yerde (`pilot_service._tr`). (6) Kayıt/sahip onayı durum satırları tek öğe (`bkDurumSatiri`). (7) Kıyas mesajı sağlayıcıya bağlı; yalnız ilgili
+kayıt satırında görünür. (8) `db.sistem_baglami` kuralı güncellendi: özetle tek satır araması yapan kimliksiz uçlar (toplayıcı anahtarı, OAuth durumu) adlandırıldı,
+sonrası kiracı bağlamı. Ayrıca dokuz paket başlığındaki bayat «YERELDE; mühürlenmedi» etiketi «mühürlendi: v2.563/v2.565» oldu.

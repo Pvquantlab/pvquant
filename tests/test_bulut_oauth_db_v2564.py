@@ -43,7 +43,8 @@ def test_state_tek_kullanim_sure_ve_rls(santral, monkeypatch):
     assert son["durum"] == "bekliyor" and son["saglayici"] == "sungrow" and "Gizli-K" not in json.dumps(son)
     with tenant_baglami(str(uuid.uuid4())) as s:   # RLS: başka kiracı görmez
         assert s.execute(text("SELECT count(*) FROM bulut_oauth_durum WHERE plant_id=CAST(:p AS uuid)"), {"p": p}).scalar() == 0
-    bulunan = bo._bul_ve_isaretle_db(bo._ozet(state), simdi + timedelta(minutes=1))
+    assert bo._bul_ve_isaretle_db(bo._ozet(state), simdi + timedelta(minutes=1), "solaredge_oauth") is None   # 10.11 inceleme: yanlış sağlayıcı yolu state'i tüketmez
+    bulunan = bo._bul_ve_isaretle_db(bo._ozet(state), simdi + timedelta(minutes=1), "sungrow")
     assert bulunan and str(bulunan["plant_id"]) == p and str(bulunan["tenant_id"]) == t and bulunan["saglayici"] == "sungrow" and bulunan["onay_json"]["onaylar"] == ONAY2
     assert bo._bul_ve_isaretle_db(bo._ozet(state), simdi + timedelta(minutes=1)) is None   # ikinci kez (yeniden oynatma) bulunmaz
     bo._sonuc_yaz_db(bulunan["id"], t, {"durum": "tamam", "etiket": "x", "zaman": simdi.isoformat(), "santraller": [{"kimlik": "1", "ad": "A", "kapasite_kwp": 1.0}]})

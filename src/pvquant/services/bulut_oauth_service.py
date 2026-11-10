@@ -110,14 +110,15 @@ def _yaz_db(satir: dict) -> None:
                    "o": json.dumps(satir["onay_json"], ensure_ascii=False), "a": satir.get("aktor_id"), "bt": satir["bitis"]})
 
 
-def _bul_ve_isaretle_db(state_hash: str, simdi: datetime) -> dict | None:
+def _bul_ve_isaretle_db(state_hash: str, simdi: datetime, saglayici: str | None = None) -> dict | None:
     """Geri dönüş kimliksizdir: satır özetle bulunur ve AYNI ifadede kullanılmış işaretlenir (yeniden oynatma iki kez kazanamaz).
+    10.11 inceleme: sağlayıcı da süzgeçtedir; yanlış sağlayıcı yoluna gelen dönüş geçerli state'i tüketmez.
     Sistem bağlamı yalnız bu arama için (edge_toplayici anahtar araması deseni; sonrası kiracı bağlamında)."""
     from sqlalchemy import text
     from pvquant.db import sistem_baglami
     with sistem_baglami() as s:
-        r = s.execute(text("UPDATE bulut_oauth_durum SET kullanildi=TRUE, kullanim_zamani=:z WHERE state_hash=:h AND kullanildi=FALSE AND bitis > :z "
-                           "RETURNING id, tenant_id, plant_id, saglayici, bolge, onay_json, aktor_id"), {"h": state_hash, "z": simdi}).mappings().first()
+        r = s.execute(text("UPDATE bulut_oauth_durum SET kullanildi=TRUE, kullanim_zamani=:z WHERE state_hash=:h AND kullanildi=FALSE AND bitis > :z AND (CAST(:sg AS text) IS NULL OR saglayici=:sg) "
+                           "RETURNING id, tenant_id, plant_id, saglayici, bolge, onay_json, aktor_id"), {"h": state_hash, "z": simdi, "sg": saglayici}).mappings().first()
         return dict(r) if r else None
 
 
@@ -137,7 +138,7 @@ def geri_donus(saglayici: str, sorgu: dict, simdi: datetime | None = None, bul=N
     state = (sorgu or {}).get("state") or (sorgu or {}).get("external_id") or ""
     if not state:
         return {"durum": "durum_yok", "aciklama": DURUM_ETIKET["durum_yok"]}
-    satir = (bul or _bul_ve_isaretle_db)(_ozet(str(state)), simdi)
+    satir = (bul or _bul_ve_isaretle_db)(_ozet(str(state)), simdi, kod_sg)
     if not satir or satir.get("saglayici") != kod_sg:
         return {"durum": "durum_gecersiz", "aciklama": DURUM_ETIKET["durum_gecersiz"]}
     temel = {"tenant_id": satir["tenant_id"], "plant_id": satir["plant_id"], "saglayici": kod_sg, "aktor_id": satir.get("aktor_id"), "zaman": simdi.isoformat(timespec="seconds")}
@@ -149,8 +150,8 @@ def geri_donus(saglayici: str, sorgu: dict, simdi: datetime | None = None, bul=N
 
     hata = (sorgu or {}).get("error")
     if hata:
-        h = str(hata)[:40]
-        return bitir("sahip_reddetti" if "denied" in h or "cancel" in h else "saglayici_hatasi", aciklama=f"{DURUM_ETIKET['saglayici_hatasi']} ({h})" if "denied" not in h else DURUM_ETIKET["sahip_reddetti"])
+        h = str(hata)[:40]; red = "denied" in h or "cancel" in h   # 10.11 inceleme: durum ve açıklama aynı koşuldan
+        return bitir("sahip_reddetti" if red else "saglayici_hatasi", aciklama=DURUM_ETIKET["sahip_reddetti"] if red else f"{DURUM_ETIKET['saglayici_hatasi']} ({h})")
     code = (sorgu or {}).get("code")
     if not code:
         return bitir("kod_yok", aciklama=DURUM_ETIKET["kod_yok"])

@@ -83,19 +83,21 @@ def test_geri_donus_state_ve_hata_yollari(monkeypatch):
     assert bo.geri_donus("sungrow", {"code": "c"}, T)["durum"] == "durum_yok"
     kullanim = {"n": 0}
 
-    def bul(h, simdi):   # ilk arama bulur, ikincisi (yeniden oynatma) bulamaz
+    def bul(h, simdi, *_):   # ilk arama bulur, ikincisi (yeniden oynatma) bulamaz
         kullanim["n"] += 1
         return _satir() if kullanim["n"] == 1 else None
+    r0 = bo.geri_donus("sungrow", {"state": "abc", "error": "user_cancelled"}, T, bul=lambda h, s, *_: _satir(), sonuclandir=son)
+    assert r0["durum"] == "sahip_reddetti" and r0["aciklama"] == bo.DURUM_ETIKET["sahip_reddetti"]   # 10.11 inceleme: cancel de red; açıklama durumla aynı
     r = bo.geri_donus("sungrow", {"state": "abc", "error": "access_denied"}, T, bul=bul, sonuclandir=son)
     assert r["durum"] == "sahip_reddetti" and r["plant_id"] == PLANT["id"] and sonuclar[-1]["durum"] == "sahip_reddetti"
     r = bo.geri_donus("sungrow", {"state": "abc", "code": "c"}, T, bul=bul, sonuclandir=son)
     assert r["durum"] == "durum_gecersiz" and "plant_id" not in r
-    assert bo.geri_donus("solaredge_oauth", {"external_id": "x", "code": "c"}, T, bul=lambda h, s: _satir("sungrow"), sonuclandir=son)["durum"] == "durum_gecersiz"   # sağlayıcı uyuşmazlığı
-    assert bo.geri_donus("sungrow", {"state": "x"}, T, bul=lambda h, s: _satir(), sonuclandir=son)["durum"] == "kod_yok"
+    assert bo.geri_donus("solaredge_oauth", {"external_id": "x", "code": "c"}, T, bul=lambda h, s, *_: _satir("sungrow"), sonuclandir=son)["durum"] == "durum_gecersiz"   # sağlayıcı uyuşmazlığı
+    assert bo.geri_donus("sungrow", {"state": "x"}, T, bul=lambda h, s, *_: _satir(), sonuclandir=son)["durum"] == "kod_yok"
     _env(monkeypatch)
-    assert bo.geri_donus("sungrow", {"state": "x", "code": "c"}, T, bul=lambda h, s: _satir(), sonuclandir=son)["durum"] == "uygulama_yok"
+    assert bo.geri_donus("sungrow", {"state": "x", "code": "c"}, T, bul=lambda h, s, *_: _satir(), sonuclandir=son)["durum"] == "uygulama_yok"
     _env(monkeypatch, SUNGROW_ENV)
-    r = bo.geri_donus("sungrow", {"state": "x", "code": "c"}, T, bul=lambda h, s: _satir(), sonuclandir=son,
+    r = bo.geri_donus("sungrow", {"state": "x", "code": "c"}, T, bul=lambda h, s, *_: _satir(), sonuclandir=son,
                       token_degis=lambda *a, **k: (_ for _ in ()).throw(BulutHata("belirteç alınamadı (yetkilendirme kodu geçersiz ya da kullanılmış, 2)")))
     assert r["durum"] == "belirtec_hatasi" and "kullanılmış" in r["aciklama"]
 
@@ -120,7 +122,7 @@ def test_geri_donus_sungrow_belirtec_kasaya_duz_metinsiz(monkeypatch):
     with pytest.raises(BulutHata):
         Sungrow.token_degis("eu", {"appkey": "APPKEY-1", "access_key": "Gizli-Access-Key-9"}, "kotu", bo.geri_donus_adresi("sungrow"), transport=tr)
     sina = lambda kod, kimlik, onay, bolge: {"durum": "ok", "zaman": "z", "ozet": {"santraller": [{"kimlik": "5001", "ad": "Bor GES", "kapasite_kwp": 990.0}]}}   # noqa: E731
-    r = bo.geri_donus("sungrow", {"state": "x", "code": "iyi"}, T, bul=lambda h, s: _satir(), sina=sina, yaz_kimlik=lambda t, p, s: yazilan.append((t, p, s)),
+    r = bo.geri_donus("sungrow", {"state": "x", "code": "iyi"}, T, bul=lambda h, s, *_: _satir(), sina=sina, yaz_kimlik=lambda t, p, s: yazilan.append((t, p, s)),
                       sonuclandir=lambda sid, t, so: sonuclar.append(so),
                       token_degis=lambda bolge, uyg, code, rd: Sungrow.token_degis(bolge, uyg, code, rd, transport=tr))
     assert r["durum"] == "tamam" and r["dis_kimlik"] == "5001" and r["dis_ad"] == "Bor GES" and r["etiket_hesap"] == "APP…-1" and r["plant_id"] == PLANT["id"]
@@ -137,7 +139,7 @@ def test_geri_donus_cok_santral_secim_ertelenir(monkeypatch):
     _env(monkeypatch, SUNGROW_ENV)
     yazilan: list = []
     sina = lambda kod, kimlik, onay, bolge: {"durum": "ok", "zaman": "z", "ozet": {"santraller": [{"kimlik": "1", "ad": "A", "kapasite_kwp": 1.0}, {"kimlik": "2", "ad": "B", "kapasite_kwp": 2.0}]}}   # noqa: E731
-    r = bo.geri_donus("sungrow", {"state": "x", "code": "c"}, T, bul=lambda h, s: _satir(), sina=sina, yaz_kimlik=lambda t, p, s: yazilan.append(s), sonuclandir=lambda *a: None,
+    r = bo.geri_donus("sungrow", {"state": "x", "code": "c"}, T, bul=lambda h, s, *_: _satir(), sina=sina, yaz_kimlik=lambda t, p, s: yazilan.append(s), sonuclandir=lambda *a: None,
                       token_degis=lambda *a, **k: {"appkey": "APPKEY-1", "access_key": "k", "access_token": "a", "refresh_token": "r", "auth_ps_list": ["1", "2"]})
     assert r["durum"] == "secim_bekliyor" and [x["kimlik"] for x in r["santraller"]] == ["1", "2"] and yazilan[0]["dis_kimlik"] is None
     # çekiş turu: santral seçilmemiş kayıt sağlayıcıya çağrı yapmaz
@@ -180,7 +182,7 @@ def test_solaredge_oauth_baglayici_bearer_ve_yenileme(monkeypatch):
     c.kapat()
     # geri dönüş: external_id state taşır, site_id kayda iner, etiket site kimliğinden (belirteç maskelenmez)
     yazilan: list = []
-    r = bo.geri_donus("solaredge_oauth", {"external_id": "st", "code": "iyi", "site_id": "2951500"}, T, bul=lambda h_, s: _satir("solaredge_oauth", None),
+    r = bo.geri_donus("solaredge_oauth", {"external_id": "st", "code": "iyi", "site_id": "2951500"}, T, bul=lambda h_, s, *_: _satir("solaredge_oauth", None),
                       sina=lambda kod, kimlik, onay, bolge: {"durum": "ok", "zaman": "z", "ozet": {"santraller": [{"kimlik": kimlik["site_id"], "ad": "Çatı GES", "kapasite_kwp": 480.5}]}},
                       yaz_kimlik=lambda t, p, s: yazilan.append(s), sonuclandir=lambda *a: None,
                       token_degis=lambda bolge, uyg, code, rd, **ek: SolarEdgeOAuth.token_degis(bolge, uyg, code, rd, transport=tr, **ek))
@@ -225,11 +227,11 @@ def test_api_baslat_ve_geri_donus_yonlendirmesi(monkeypatch):
         state = g["yetki_url"].split("state=")[1].split("#")[0]
         assert state not in json.dumps(izler) and "Gizli-Access-Key-9" not in json.dumps(g) and izler[-1]["durum"] == "yonlendir"
         # geri dönüş: kimliksiz; state geçersiz → panele 303 durum koduyla
-        monkeypatch.setattr(bo, "_bul_ve_isaretle_db", lambda h, s: None)
+        monkeypatch.setattr(bo, "_bul_ve_isaretle_db", lambda h, s, *_: None)
         r = c.get("/v1/bulut/oauth/sungrow/geri-donus", params={"code": "Gizli-Kod", "state": "yok"}, follow_redirects=False)
         assert r.status_code == 303 and r.headers["location"] == "https://pvquant.com/?bulut_oauth=sungrow:durum_gecersiz#santralim" and r.headers["cache-control"] == "no-store"
         # geçerli state → belirteç değişimi (sahte) → kasaya yazım → 303 tamam, ayna güncellenir, iz kodu/belirteci içermez
-        monkeypatch.setattr(bo, "_bul_ve_isaretle_db", lambda h, s: {"id": "s1", "tenant_id": "t", "plant_id": PLANT["id"], "saglayici": "sungrow", "bolge": "eu", "onay_json": {"onaylar": ONAY2}, "aktor_id": "u"})
+        monkeypatch.setattr(bo, "_bul_ve_isaretle_db", lambda h, s, *_: {"id": "s1", "tenant_id": "t", "plant_id": PLANT["id"], "saglayici": "sungrow", "bolge": "eu", "onay_json": {"onaylar": ONAY2}, "aktor_id": "u"})
         monkeypatch.setattr(bo, "_sonuc_yaz_db", lambda *a: None)
         monkeypatch.setattr(Sungrow, "token_degis", classmethod(lambda cls, bolge, uyg, code, rd, **ek: {"appkey": "APPKEY-1", "access_key": "Gizli-Access-Key-9", "access_token": "AT-Gizli", "refresh_token": "RT-Gizli", "auth_ps_list": ["5001"]}))
         from pvquant.services import bulut_kimlik_service as bk, bulut_sinama_service as bs

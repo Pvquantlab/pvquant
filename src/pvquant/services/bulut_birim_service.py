@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from pvquant.services.pilot_service import MIN_ORTAK_SAAT, TOL_KWH, TOL_PCT
+from pvquant.services.pilot_service import MIN_ORTAK_SAAT, TOL_KWH, TOL_PCT, _tr   # 10.11 inceleme: Türkçe ondalık tek yerde
 
 HIPOTEZLER = {"kwh": ("saatlik kWh (doğrudan)", lambda seri, t: seri.get(t)),
               "wh": ("saatlik Wh (÷1000)", lambda seri, t: None if seri.get(t) is None else seri[t] / 1000.0),
@@ -24,10 +24,6 @@ HIPOTEZLER = {"kwh": ("saatlik kWh (doğrudan)", lambda seri, t: seri.get(t)),
 BELGE_ALANI = "enerji_kwh_belge"
 BELGE_HIPOTEZI = "kwh"
 MIN_URETIMLI_SAAT = 8   # 10.11 inceleme: karar için üretim olan en az bu kadar ortak saat (kış gününde bir gün yeter)
-
-
-def _tr(x: float, basamak: int = 1) -> str:
-    return f"{x:.{basamak}f}".replace(".", ",")
 
 
 def _ts(v) -> datetime:
@@ -99,10 +95,10 @@ def kiyas(ham: list[dict], referans: list[dict], alan_etiketleri: dict | None = 
                                      "Üretimsiz saatler her yorumla uyuştuğu için kanıt sayılmaz; dışa aktarım üretim olan en az bir günü kapsamalı.")
     elif belge_uyumlu:
         sonuc, metin = "belge_uyumlu", (f"Belgeye göre saatlik kWh yorumu portal dışa aktarımıyla uyumlu: üretim olan {belge['n_uretimli']} ortak saatin {belge['n_tolerans_ici']} tanesi toleransta "
-                                         f"(%{_tr((belge['oran'] or 0) * 100)}). Bu kanıt «birim doğrulandı» işareti için yeterlidir.")
+                                         f"(%{_tr((belge['oran'] or 0) * 100, '.1f')}). Bu kanıt «birim doğrulandı» işareti için yeterlidir.")
     elif baska:
         b = baska[0]
-        sonuc, metin = "belgeyle_celisiyor", (f"Belge yorumu uyumsuz; «{b['etiket'] or b['alan']}» alanı «{b['hipotez_etiketi']}» yorumuyla uyumlu (%{_tr((b['oran'] or 0) * 100)}). Bağlayıcının belge yorumu "
+        sonuc, metin = "belgeyle_celisiyor", (f"Belge yorumu uyumsuz; «{b['etiket'] or b['alan']}» alanı «{b['hipotez_etiketi']}» yorumuyla uyumlu (%{_tr((b['oran'] or 0) * 100, '.1f')}). Bağlayıcının belge yorumu "
                                                "düzeltilmeden «birim doğrulandı» işaretlenemez; bu bulgu geliştiriciye iletilir.")
     else:
         sonuc, metin = "uyumsuz", "Hiçbir alan hiçbir yorumla toleransta değil; ölçüm sınırı (inverter/sayaç), saat dilimi ya da santral eşlemesi incelenmeli. «Birim doğrulandı» işaretlenemez."

@@ -87,8 +87,8 @@ class SolarEdgeOAuth(SolarEdge):
 
     def _get(self, yol: str, params: dict) -> dict:
         r = self._c.get(yol, params=params)
-        if r.status_code == 401 and not getattr(self, "_yenilendi", False):
-            self.cagri += 1; self._yenilendi = True
+        if r.status_code == 401:   # 10.11 inceleme: her çağrıda en çok bir yenileme (oturum bayrağı yok; ikinci dolma da yenilenir)
+            self.cagri += 1
             self._yenile()
             r = self._c.get(yol, params=params)
         return self._kontrol(r)
