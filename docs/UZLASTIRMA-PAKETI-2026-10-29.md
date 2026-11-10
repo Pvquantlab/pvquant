@@ -1503,3 +1503,5 @@ testte), yaz saati 23/25 saatlik günler tam sayılır, 2 saat eksik gün düşe
 kalmadı, `donem_cozumle` saat sayısı (Denver Mart 743, İstanbul 744), test DB'de Denver santraliyle `gunluk()` 1300/1300 ve 13/13 saat (İstanbul günüyle
 17 Temmuz'a 2 saat taşardı). Hedefli: yeni + test_aylik_rapor + test_reporting + test_excel_kc + test_sema_v22 + test_tablo33 + test_yedi_gun +
 test_calib_pencere + test_performans_v2542 + test_dis_api = 106 geçti. Tam takım (test DB 55432): 1094 geçti / 1 atlandı / 0 kırmızı (5 dk 35 sn). Göç yok, web değişmedi.
+
+**Mühür.** v2.571 67931eb CANLI (10.11 22:34 TSİ): CI #723 yeşil (5 dk 7 sn); ssh dağıtım api+worker (web dokunulmadı; worker penceresi dışında); göç yok; canlıda veri dönüşümü yok; healthz 200, ana sayfa 200, api/worker günlüğünde hata 0. Faz 0 onay paketlerinin üçü de (karne v2.568/569, sır kasası v2.570, rapor gün sınırı v2.571) canlıda. Kalan: düz TOTP/webhook sütunlarının düşürülmesi (ayrı onay, bir yedek döngüsü sonrası); 11.11 sabahı `karne_dustu` alarmı gözlemi.
