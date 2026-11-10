@@ -84,7 +84,7 @@ def karsilastir(golge: list[dict], mevcut: list[dict], plant: dict | None = None
                     "fark_kwh": fark})
     return {"saatler": out, "ozet": {"n_saat": len(out), "n_tam": n_tam, "n_kismi": n_kismi, "n_mevcut": len(mev), "n_fark_05kwh": n_fark},
             "sinir": sinir, "sinir_etiketi": SINIR_ETIKET.get(sinir, sinir), "oncelik": onc,
-            "not": "Gölge görünüm: kaynak bazlı saatlik değerler ile üretim serisindeki saat yan yana. Tahmin ve doğruluk bu görünümü kullanmaz; kaynak seçimi kabul edilince ayrı bir işle bağlanır. Kısmi ve tahmini saatler üretim serisine yazılmaz."}
+            "not": "Kaynak kıyası: kaynak bazlı saatlik değerler ile üretim serisindeki saat yan yana. Tahmin ve doğruluk bu görünümü kullanmaz; kaynak seçimi kabul edilince ayrı bir işle bağlanır. Kısmi ve tahmini saatler üretim serisine yazılmaz."}
 
 
 def golge_gorunum(tenant_id, plant: dict, bas: datetime, bit: datetime, sinir: str = "inverter_ac") -> dict:

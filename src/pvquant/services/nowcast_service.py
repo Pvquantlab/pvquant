@@ -72,7 +72,7 @@ def hesapla(tenant_id, plant: dict, simdi: pd.Timestamp | None = None) -> dict:
                 "not": "canlı SCADA gerektirir — son ölçüm 3 saatten eski; katman devre dışı"}
     df = forecast_service.son_kosu(tenant_id, pid)
     if df is None or df.empty:
-        return {**ortak, "durum": "tahmin_yok", "oran": None, "n_saat": 0, "ufuk": [], "not": "koşu yok"}
+        return {**ortak, "durum": "tahmin_yok", "oran": None, "n_saat": 0, "ufuk": [], "not": "henüz tahmin üretilmedi"}
     gi = g.index.tz_localize("UTC") if g.index.tz is None else g.index
     r = rampali_persistans_guc(pd.Series(g["power_kw"].values, index=gi), df["p50_kw"], simdi)
     return {**ortak, **r}

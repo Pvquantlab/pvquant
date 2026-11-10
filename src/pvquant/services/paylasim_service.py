@@ -119,7 +119,7 @@ def paylasilan_tahmin(hedef_tenant, paylasim_id) -> dict:
     df = forecast_service.son_kosu(r["kaynak_tenant"], r["plant_id"])
     ad = r["takma_ad"] or r["santral"]
     if df is None or df.empty:
-        return {"santral": ad, "gunler": [], "not": "koşu yok"}
+        return {"santral": ad, "gunler": [], "not": "henüz tahmin üretilmedi"}
     g = gunluk_toplamlar(df, r["tz"] or "Europe/Istanbul")
     return {"santral": ad, "kapasite_kwp": (None if r["takma_ad"] else float(r["capacity_kwp"])),
             "gunler": [{"gun": k, "p50_kwh": v["p50_kwh"], "p10_kwh": v.get("p10_kwh"), "p90_kwh": v.get("p90_kwh")} for k, v in list(g.items())[:10]]}

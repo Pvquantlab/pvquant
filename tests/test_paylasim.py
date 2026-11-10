@@ -45,7 +45,7 @@ def test_paylasilan_tahmin_takma_ad(monkeypatch):
     assert j["santral"] == "GES-A" and j["kapasite_kwp"] is None and "Konya" not in str(j)
     assert j["gunler"] and j["gunler"][0]["p50_kwh"] == pytest.approx(2400.0)
     monkeypatch.setattr(forecast_service, "son_kosu", lambda t, p: None)
-    assert ps.paylasilan_tahmin("t2", "x")["gunler"] == [] and "koşu yok" in ps.paylasilan_tahmin("t2", "x")["not"]
+    assert ps.paylasilan_tahmin("t2", "x")["gunler"] == [] and "henüz tahmin üretilmedi" in ps.paylasilan_tahmin("t2", "x")["not"]
 
 
 def test_yonetici_kapisi():

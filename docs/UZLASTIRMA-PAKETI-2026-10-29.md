@@ -1407,3 +1407,19 @@ kayıt satırında görünür. (8) `db.sistem_baglami` kuralı güncellendi: öz
 sonrası kiracı bağlamı. Ayrıca dokuz paket başlığındaki bayat «YERELDE; mühürlenmedi» etiketi «mühürlendi: v2.563/v2.565» oldu.
 
 **Mühür.** v2.566 a27b818 CANLI (10.11 12:58 TSİ): v2.565 incelemesinin sekiz düzeltmesi ve defter başlıkları; CI #713 yeşil (4 dk 5 sn); ssh dağıtım api+web (worker yeniden yaratılmadı, 53 dk'dır ayakta); göç yok, canlı baş v2564; canlı bayt kıyası 141/141 birebir; healthz 200; geri dönüş ucu durum değeri olmadan 303 ile köke dönüyor; api günlüğünde hata yok. Yerel tam pytest 1079 / 1 atlandı; web 104.
+
+## Elli yedinci paket — v2.567 (10.11.2026): Faz 0 teknik doğrulama denetimi ve dört düşük riskli düzeltme
+
+**Kaynak.** Kullanıcının ChatGPT'den aldığı «Faz 0 — teknik envanter, güvenilirlik ve sistem doğrulaması» brifi. Yedi paralel inceleme (envanter, araştırma–kod karşılaştırması,
+veri/zaman, tahmin/kalibrasyon, mevzuat/DSG, güvenlik/izolasyon, panel/pilot) ve gerçek santral zinciri; çıktı `~/Desktop/PVQuant_Faz0_Teknik_Dogrulama/` (on belge + bulgu
+matrisi + ek + kanıt; depoya girmez). Canlı veritabanı okunmadı (izin yok); canlıya dair her iddia dış teyit etiketli. 165 bulgu, CRITICAL yok, 6 HIGH (TK-05 karne 0–24
+kovasında çoklu koşu çift sayımı, TK-03 hibrit holdout sızıntısı, TK-02 kalibrasyon KPI örneklem içi, GV-01 TOTP/webhook sırları düz metin, VZ-05 rapor gün sınırı UTC, VZ-07
+PVDAQ sabit UTC−7 yükleme dilimi); hepsi ONAY GEREKLİ, uygulanmadı. ChatGPT hipotezlerinden ikisi CONTRADICTED (örnek kip PVDAQ değil ve canlıda kapalı; fiziksel saat ile
+piyasa saati ayrımı kodda doğru), «%3,1 MAPE» depoda yok (UNVERIFIED). Gerçek santral: Solentegre GES (EPİAŞ 2108) UEVM 2025 (8760 saat, 12.563,9 MWh) test veritabanına içe
+alındı; birim/zaman/provenans/veri yolu/aylık rapor adımları geçti, tahmin ayağı engelli → Faz 0 kararı TAMAMLANMADI, Faz 1 ŞARTLI HAZIR.
+**Uygulanan düzeltmeler (düşük risk, çekirdeğe dokunmaz).** (1) `aylik_rapor_service` «Veri kaynağı niteliği» penceresi: `bit` HARİÇ sınırken +1 gün ekleniyordu, 744 saatlik
+ayda 768 yazıyordu (zincirde bulundu; 744'e indi; `tests/test_aylik_rapor.py` yeni sabit). (2) `ingest_service`: dosya yüklemesi `format_json`'a açık `kaynak: scada_dosya`
+yazar (önceden COALESCE ile çıkarılıyordu; okuyucular değişmedi). (3) Müşteri metni: «Gölge görünüm:» → «Kaynak kıyası:» (`kaynak_secim_service`), «koşu yok» → «henüz tahmin
+üretilmedi» (`nowcast_service`, `paylasim_service`; `tests/test_paylasim.py` güncellendi). (4) `docs/entegrasyon/DIS-GIRDI-TAKIBI.md` D4/D5 bayat durum satırları.
+**Kanıt.** pytest tam takım test veritabanıyla 1079 geçti / 1 atlandı / 0 kırmızı (düzeltme öncesi ve sonrası); hedefli 36; web 104/104, tsc 0 (web değişmedi). Göç yok; dağıtımda
+api+worker (aylık rapor gönderimi ve nowcast worker'da), web değişmedi.

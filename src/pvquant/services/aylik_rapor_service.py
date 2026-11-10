@@ -205,7 +205,7 @@ def veri(tenant_id, plant: dict, donem: str | None = None, bugun: date | None = 
                      for r in df.to_dict("records")]
     try:   # v2.559 (V4): veri kaynağı niteliği (kaynak / nitelik / revizyon) — izlenebilir doğruluk
         from pvquant.services import kaynak_secim_service as _ks
-        nitelik = _ks.nitelik_ozeti(tenant_id, plant, _utc(d["bas"]), _utc(d["bit"]) + timedelta(days=1))
+        nitelik = _ks.nitelik_ozeti(tenant_id, plant, _utc(d["bas"]), _utc(d["bit"]))   # Faz 0 (10.11.2026): `bit` HARİÇ sınırdır; +1 gün tabloyu 24 saat şişiriyordu (744 saatlik ayda 768)
     except Exception:   # noqa: BLE001
         nitelik = None
     return {"donem": {k: (v.isoformat() if isinstance(v, date) else v) for k, v in d.items()}, "santral": plant.get("name"), "kapasite_kwp": kwp, "ac_kw": plant.get("ac_limit_kw"),

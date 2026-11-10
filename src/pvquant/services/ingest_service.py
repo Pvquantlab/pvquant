@@ -31,7 +31,7 @@ def yukle_ve_kaydet(tenant_id, plant_id, dosya_yolu, *, capacity_kwp,
             " format_json,mapping_json,transform_json,quality_json) "
             "VALUES (:t,:p,:f,:fmt,:map,:tr,:q) RETURNING id"),
             {"t": tenant_id, "p": plant_id, "f": str(dosya_yolu),
-             "fmt": _j(res, "file_format"), "map": _j(res, "mapping"),
+             "fmt": _kaynakli(_j(res, "file_format")), "map": _j(res, "mapping"),
              "tr": _j(res, "transform"), "q": _j(res, "report")}).scalar()
         satirlar = []
         for ts, row in df.iterrows():
@@ -52,6 +52,13 @@ def yukle_ve_kaydet(tenant_id, plant_id, dosya_yolu, *, capacity_kwp,
             " t_module=EXCLUDED.t_module, wind_ms=EXCLUDED.wind_ms,"
             " flag=EXCLUDED.flag, batch_id=EXCLUDED.batch_id"), satirlar)
     return {"batch_id": str(batch_id), "n_satir": len(satirlar)}
+
+
+def _kaynakli(fmt):
+    """Faz 0 (10.11.2026): dosya yüklemesi format_json'a açık kaynak etiketi yazar; önceden yalnız yokluğundan (COALESCE) çıkarılıyordu."""
+    d = dict(fmt or {})
+    d.setdefault("kaynak", "scada_dosya")
+    return d
 
 
 def _j(res, alan):

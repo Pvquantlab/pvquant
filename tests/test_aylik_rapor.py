@@ -56,7 +56,7 @@ def test_donem_cozumle():
     assert ar.donem_cozumle("2025-Q4", b)["bit"] == date(2026, 1, 1)   # yıl geçişi
 
 
-def test_veri_rapor_html(kiraci):
+def test_veri_rapor_html(kiraci, monkeypatch):
     tid, plant = kiraci
     v = ar.veri(tid, plant, "2026-10", bugun=date(2026, 11, 2))
     oz = v["ozet"]
@@ -81,6 +81,12 @@ def test_veri_rapor_html(kiraci):
     c = ar.veri(tid, plant, "2026-Q4", bugun=date(2026, 11, 2)); assert c["gunler"] == [] and c["aylar"][0]["ay"] == "2026-10" and c["aylar"][0]["uretim_kwh"] == 20000.0 and c["uzlastirma"] is None
     assert any("yalnız ay döneminde" in n for n in c["notlar"])
     assert ar.pr_temel(__import__("pandas").DataFrame({"poa_saat": [0] * 31, "poa_kwh_m2": [None] * 31, "kwh": [1.0] * 31}), 1200.0) is None   # POA yoksa PR yok
+    # Faz 0 (10.11.2026): kaynak niteliği penceresi dönem sınırıyla birebir — `bit` HARİÇ sınırdır; +1 gün tabloyu 24 saat şişiriyordu (744 saatlik ayda 768)
+    import pvquant.services.kaynak_secim_service as _ks
+    yakala: dict = {}
+    monkeypatch.setattr(_ks, "nitelik_ozeti", lambda t, p, b, e: yakala.update(bas=b, bit=e) or None)
+    ar.veri(tid, plant, "2026-10", bugun=date(2026, 11, 2))
+    assert (yakala["bit"] - yakala["bas"]).total_seconds() == 31 * 24 * 3600
 
 
 def test_gonderim_ayar_kural_ve_gonder(kiraci, monkeypatch):
