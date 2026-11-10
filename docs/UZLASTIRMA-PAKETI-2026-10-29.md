@@ -1506,7 +1506,7 @@ test_calib_pencere + test_performans_v2542 + test_dis_api = 106 geçti. Tam tak�
 
 **Mühür.** v2.571 67931eb CANLI (10.11 22:34 TSİ): CI #723 yeşil (5 dk 7 sn); ssh dağıtım api+worker (web dokunulmadı; worker penceresi dışında); göç yok; canlıda veri dönüşümü yok; healthz 200, ana sayfa 200, api/worker günlüğünde hata 0. Faz 0 onay paketlerinin üçü de (karne v2.568/569, sır kasası v2.570, rapor gün sınırı v2.571) canlıda. Kalan: düz TOTP/webhook sütunlarının düşürülmesi (ayrı onay, bir yedek döngüsü sonrası); 11.11 sabahı `karne_dustu` alarmı gözlemi.
 
-## Altmış ikinci paket — v2.572 (10.11.2026): koşu künyesi ve arşiv sertleştirme (Faz 1 paketi F1-A, Stage 2) (YERELDE; mühür bekliyor)
+## Altmış ikinci paket — v2.572 (10.11.2026): koşu künyesi ve arşiv sertleştirme (Faz 1 paketi F1-A, Stage 2)
 
 **Ne.** (1) Göç `v2572_kosu_kunyesi`: `forecast_runs`'a sekiz NULL'lanabilir sütun — `kalibrasyon_id`, `ml_model_id`, `konformal_hesap_zamani`,
 `nwp_kosu_zamani`, `ufuk_saat`, `kapasite_kwp`, `yazilim_surumu`, `etiket`; mevcut satırlarda yalnız `etiket` JSON'dan türetilir, başka alan geriye
@@ -1528,7 +1528,7 @@ MeteoData varsayılanı ve arşiv çerçevesinde UTC yayın zamanı; test DB'de 
 zamanı, ufuk = değer sayısı, kapasite 1200, sürüm, etiket sütun ve JSON'da «elle»; PVQ_SURUM boşsa None. Hedefli (yeni + karne/skill/kapsama/doğruluk
 takımı) 42 geçti. Göç test DB'de ileri/geri/ileri prova; compose `yaml.safe_load` kapısı geçti (`docker compose config` yerelde .env istediği için koşulmadı; canlıda dağıtım öncesi koşulacak). Tam takım (test DB 55432): 1099 geçti / 1 atlandı / 0 kırmızı (5 dk 25 sn).
 
-## Altmış üçüncü paket — v2.573 (10.11.2026): ölçüm uygunluk katmanı (Faz 1 paketi F1-B, Stage 3) (YERELDE; mühür bekliyor)
+## Altmış üçüncü paket — v2.573 (10.11.2026): ölçüm uygunluk katmanı (Faz 1 paketi F1-B, Stage 3)
 
 **Ne.** (1) Göç `v2573_scada_kapsama`: `scada_hourly.kapsama_dk SMALLINT NULL` (saatin kaç dakikası ölçülü; eski satırlar ve EPİAŞ/bulut yolları
 NULL = bilinmiyor). (2) Yükleme: `transform.py` saat altı kaynakta örnek sayısı × adım = kapsama (en çok 60), hiç örneği olmayan saatin enerjisi
@@ -1548,7 +1548,7 @@ niteliği, olay saatlerinin birleşmesi ve açık uçlu olay, 15 dk CSV'de 15/30
 NaN + uyarı, saatlik kaynakta 60, test DB'de uçtan uca `saat_durumlari` (iptal olay sayılmaz). Hedefli: yeni + ingestion takımı 35 geçti. Göç test
 DB'de ileri/geri/ileri prova. Tam takım (test DB 55432): 1104 geçti / 1 atlandı / 1 kırmızı → `test_rapor_tutarlilik::test_d18_olculmemis_gun_durust_gecer` (16 sayfalık PDF alt süreci, JSON fikstür; F1-B'nin dokunduğu yolda değil) yük altında düştü, tek başına 33 sn'de geçti — yük kaynaklı, daha önce de görülen desen (v2.568 test_edge_db_v2561).
 
-## Altmış dördüncü paket — v2.574 (10.11.2026): bağımsız doğrulama motoru ve referanslar (Faz 1 paketi F1-C, Stage 4–5) (YERELDE; mühür bekliyor)
+## Altmış dördüncü paket — v2.574 (10.11.2026): bağımsız doğrulama motoru ve referanslar (Faz 1 paketi F1-C, Stage 4–5)
 
 **Ne.** (1) Yeni `services/bagimsiz_dogrulama_service.py` (SOZLUK_SURUMU 2026-11-10): koşu seçimi saat başına TEK tahmin — `program`
 (D-1 KGÜP kesimi öncesi son koşu, karne_kurali ile aynı), `gun_oncesi` (yerel gün başlamadan yayımlanmış son koşu; gün içi revizyon dâhil),
@@ -1578,7 +1578,7 @@ SHA'ları deterministik. Test DB: 10 günlük sentetik santral (frozen 1 saat + 
 kovası 10,0 %, fizik 20 % «model daha iyi»), kaydet/son/yalnız-ekleme sayımı 1, portföy, API 200/422/404. Göç test DB'de ileri/geri/ileri prova.
 Hedefli (IZLENEN_ISLER, alarm, API skill, karne, RLS, F1-A/B) 53 geçti. Tam takım (test DB 55432): ilk koşu 1112 geçti / 3 kırmızı — üçü de yeni gece işinin operatör adının `isler_service.ISIM_TR`'de olmamasından (test_isler, test_senkron, test_faz3_sistem_izleme); «Bağımsız doğrulama» eklendi, üç test + yeni dosya yeniden koşuldu ve geçti.
 
-## Altmış beşinci paket — v2.575 (10.11.2026): Doğruluk sayfasında «Bağımsız doğrulama» bölümü (Faz 1 paketi F1-D, Stage 7) (YERELDE; mühür bekliyor)
+## Altmış beşinci paket — v2.575 (10.11.2026): Doğruluk sayfasında «Bağımsız doğrulama» bölümü (Faz 1 paketi F1-D, Stage 7)
 
 **Ne.** Yeni sayfa yok; `Dogruluk.tsx`'e ölçüt gruplarının altına `BagimsizDogrulamaKarti`: (1) sağ slot — «program / gün öncesi» segmenti
 (kural), çip: dönem günü, «gece hesabı HH:MM» ya da «anlık hesap», değerlendirilen gün; (2) dört KPI — havuzlanmış WMAPE (alt: günlük
@@ -1604,7 +1604,7 @@ Kalan 24 px (belge 399 px) ESKİ «Uzlaştırma kalemleri» kartının başlık 
 kalemle aynı. `tarama.mjs`: «atlanan heading h1→h3» ve küçük hedefler Portföy/Tahminler'de de var (önceden mevcut, Kart h3 deseni).
 1440 açık tema karesi: dört KPI, döküm, iki tablo, bilgi listesi okunur; kart içinde kart yok.
 
-## Altmış altıncı paket — v2.576 (10.11.2026): bağımsız tahmin doğrulama raporu (Faz 1 paketi F1-E, Stage 8) (YERELDE; mühür bekliyor)
+## Altmış altıncı paket — v2.576 (10.11.2026): bağımsız tahmin doğrulama raporu (Faz 1 paketi F1-E, Stage 8)
 
 **Ne.** (1) Şablon rapor `bagimsiz-dogrulama` (`sablon_rapor_service`; HTML kabuk + Markdown, `uret(fmt="html"|"md")`): bölümler — Durum
 (**DOĞRULANMIŞ ÖLÇÜM** / **EKSİK DEĞERLENDİRME** (14 günden az ya da kapsama < %70) / **GERİYE DÖNÜK SİMÜLASYON** (yayım anında saklanmamış
@@ -1632,7 +1632,7 @@ değerleri); test DB'de uçtan uca `uret` HTML + Markdown (10 gün → EKSİK DE
 `test_reporting` iki şema sürümü iddiası 1.3.0'a güncellendi (ekleme). Hedefli (yeni + reporting + excel_kc + sema_v22 + tablo33 + bagimsiz
 + dis_api) 92 geçti. Web: tsc 0, oxlint 0, 104 test, build tamam. Tam takım (test DB 55432, 11.11 00:0x): 1118 geçti / 1 atlandı / 1 kırmızı → `test_modb_rapor::test_matrissiz_girdi_kosullu` (16 sayfalık PDF alt süreci, Mod B fikstürü; F1-E'nin dokunduğu yolda değil) yük altında düştü, tek başına 31,9 sn'de geçti — v2.573'teki aynı desen (yük kaynaklı).
 
-## Altmış yedinci paket — v2.577 (11.11.2026): gerçek santral pilotu ve simülasyon kipi (Faz 1 paketi F1-F, Stage 6) (YERELDE; mühür bekliyor)
+## Altmış yedinci paket — v2.577 (11.11.2026): gerçek santral pilotu ve simülasyon kipi (Faz 1 paketi F1-F, Stage 6)
 
 **Ne.** (1) Motor `simulasyon=True` kipi (`kosu_sec`/`hesapla_saf`/`hesapla`): geriye bakışlı koşular yalnız açıkça istenince dâhil; `meta.simulasyon`;
 `kaydet` simülasyonu REDDEDER (dogrulama_sonuc yalnız yayım anında saklanmış tahmin); rapor etiketi meta'dan da okunur. (2) Günlük ortalama WMAPE'de
@@ -1649,7 +1649,7 @@ CSV): 4.163 gündüz saat, 365 gün, WMAPE %25,9, nMBE +%6,5, yaz %12,5 / kış 
 puan; en zayıf beş gün kayıtsız kesinti imzası (olay kaydı yokluğu). F1-F1 canlı ayağı kullanıcı girdisine bağlı. `tests/test_simulasyon_v2577.py`
 (1): varsayılan dışlar, simülasyon dâhil eder ve etiketler, kaydet reddeder. Faz 1 hedefli beş dosya 26 geçti. Tam takım (test DB 55432, 11.11): 1120 geçti / 1 atlandı / 0 kırmızı (5 dk 42 sn).
 
-## Altmış sekizinci paket — v2.578 (11.11.2026): Faz 1 test turları ve kiracı izolasyon testleri (Faz 1 paketi F1-G, Stage 9) (YERELDE; mühür bekliyor)
+## Altmış sekizinci paket — v2.578 (11.11.2026): Faz 1 test turları ve kiracı izolasyon testleri (Faz 1 paketi F1-G, Stage 9)
 
 **Ne.** `tests/test_faz1_tur2_v2578.py` (2): `dogrulama_sonuc` RLS — B kiracısı A'nın kaydını görmez, B bağlamında A'ya yazma WITH CHECK ile reddedilir,
 sistem bağlamında yalnız A'nın kaydı; API — başka kiracının santralı `/dogrulama/bagimsiz` ve `/rapor-sablon/bagimsiz-dogrulama` 404, kendi
@@ -1666,3 +1666,12 @@ santralı 200, portföy yalnız kendi santralı. Üç tur koşuldu ve kanıtland
 **Faz 1 teslim raporu (11.11.2026).** `~/Desktop/PVQuant_Faz1_Tahmin_Dogrulama/08_Faz1_Teslim_Raporu.md` + README: karar **Faz 1 KISMEN TAMAMLANDI** —
 dokuz kabul ölçütünün sekizi kod ve testle karşılandı; canlı santralda yayımlanmış tahmin × ölçüm kanıtı ve müşteri doğrulaması açık (canlı DB okuma
 reddi, dağıtım kapsam dışı). Mühür adayları v2.572–v2.578 yerelde (48 dosya); mühürde üç göç DB sahibiyle + `PVQ_SURUM` ile dağıtım.
+
+**Mühür.** v2.578 e5c74eb CANLI (11.11 00:50 TSİ; Faz 1 paketleri v2.572–v2.578 tek commit, 44 dosya): CI #725 yeşil (6 dk 42 sn); sunucuda önce
+`PVQ_SURUM=$(git describe --always) docker compose build api worker web` (fable5-baslangic-226-ge5c74eb; konteynerde doğrulandı), sonra ÜÇ GÖÇ DB sahibiyle
+v2572 → v2573 → v2574 (head v2574_dogrulama_sonuc; `forecast_runs` 7+1 yeni sütun, `etiket` 421 koşuda JSON'dan dolduruldu, `scada_hourly.kapsama_dk`,
+`dogrulama_sonuc` 0 satır), sonra `up -d api worker web` (00:48 TSİ, worker penceresi dışı); api/worker günlüğünde hata 0; worker modülünde
+`gece_bagimsiz_dogrulama` + IZLENEN_ISLER + ISIM_TR doğrulandı (ilk koşu 11.11 03:50 TSİ). Canlı bayt kıyası 141/141 (index + assets). `/v1/healthz`
+{"ok":true}; `/v1/dogrulama` 200 JSON; yeni uçlar kimliksiz 422 (mevcut uçlarla aynı). DERSLER: (1) `compose run api alembic` ESKİ imajı kullanır —
+göç dosyası imaja girmeden koşmaz: sıra BUILD → GÖÇ → UP; (2) `https://pvquant.com/api/healthz` ve `/healthz` SPA yedek sayfasıdır (HTML 200) — gerçek sağlık
+`/v1/healthz` JSON; (3) defter başlık temizleme regex'i `v2\.57` ile (nokta kaçışı) — ilk commit başlıkları «mühür bekliyor» kaldı, rapor commit düzeltti.
