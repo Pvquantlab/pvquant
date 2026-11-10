@@ -58,17 +58,18 @@ def kosu_cercevesi_denetle(h) -> None:
 
 
 def uret_ve_kaydet(tenant_id, plant: dict, etiket: str | None = None) -> str:
-    """etiket (v2.276): 'gun_ici' gibi koşu türü — meteo_ozet_json'a yazılır; koşular güncellenmez, yenisi eklenir."""
+    """etiket (v2.276): 'gun_ici' gibi koşu türü — meteo_ozet_json'a ve v2.572'den beri `forecast_runs.etiket` sütununa yazılır
+    (None gece/program koşusu, 'gun_ici' gün içi revizyon, 'elle' panelden tetiklenen koşu); koşular güncellenmez, yenisi eklenir."""
     meteo = OpenMeteoClient().get_forecast(
         latitude=plant["lat"], longitude=plant["lon"],
         days=get_settings().forecast_horizon_days)  # v2.69: 7g -> 16g
     with tenant_baglami(tenant_id) as s:
         cal = s.execute(text(
-            "SELECT mode, params_json FROM calibrations "
+            "SELECT id, mode, params_json FROM calibrations "
             "WHERE plant_id=:p AND active "
             "ORDER BY created_at DESC LIMIT 1"), {"p": plant["id"]}).first()
         ml = s.execute(text(
-            "SELECT artifact_path FROM ml_models "
+            "SELECT id, artifact_path FROM ml_models "
             "WHERE plant_id=:p AND active "
             "ORDER BY created_at DESC LIMIT 1"), {"p": plant["id"]}).first()
     mode = cal.mode if cal else "A"
@@ -87,8 +88,10 @@ def uret_ve_kaydet(tenant_id, plant: dict, etiket: str | None = None) -> str:
     h["physics_kw"] = h["p50_kw"]; h["ml_kw"] = None
     h["p10_kw"] = None; h["p90_kw"] = None
     h["p25_kw"] = None; h["p75_kw"] = None   # v2.204: ic bant — A/B'de yok
+    _ml_id = None   # v2.572: künye — yalnız artefakt gerçekten yüklendiyse
     if mode == "C" and ml:
         model = _model_yukle(ml.artifact_path)
+        _ml_id = ml.id if model is not None else None
         if model is None:
             # v2.80: DB 'aktif model var' der, disk 'yok' derse kosu OLMEZ —
             # kalibre-fizik (B) moduna dusulur; etiket kayda durustce gider
@@ -145,14 +148,24 @@ def uret_ve_kaydet(tenant_id, plant: dict, etiket: str | None = None) -> str:
                 for g, t, ghi_g in list(_gun_ozetleri(meteo, plant["tz"]))[:3]
             ],
         }, default=str)
+        # v2.572 (Faz 1 F1-A, Stage 2): koşu künyesi — hangi kalibrasyon, hangi öğrenilmiş model, hangi konformal ayar,
+        # hangi NWP yayını, hangi yazılım, hangi kapasite. Bilinmeyen alan NULL kalır; değer uydurulmaz.
+        from pvquant.surum import yazilim_surumu as _ys
+        _nwp = getattr(meteo, "kosu_zamani", None)
         run_id = s.execute(text(
             "INSERT INTO forecast_runs(tenant_id,plant_id,mode,model,"
-            " meteo_source,meteo_ozet_json)"
-            " VALUES(:t,:p,:m,:mo,:ms,:oz) RETURNING id"),
+            " meteo_source,meteo_ozet_json,"
+            " kalibrasyon_id,ml_model_id,konformal_hesap_zamani,nwp_kosu_zamani,ufuk_saat,kapasite_kwp,yazilim_surumu,etiket)"
+            " VALUES(:t,:p,:m,:mo,:ms,:oz,:kal,:mlid,:konf,:nwp,:ufuk,:kap,:ys,:et) RETURNING id"),
             {"t": tenant_id, "p": plant["id"], "m": mode,
              "mo": "hybrid_residual" if mode == "C" else "barhdadi_bennis",
              "ms": _kaynak,
-             "oz": meteo_ozet}).scalar()
+             "oz": meteo_ozet,
+             "kal": (cal.id if cal else None), "mlid": _ml_id,
+             "konf": (_ayar.get("hesap_zamani") if _ayar else None),
+             "nwp": (pd.Timestamp(_nwp).to_pydatetime() if _nwp is not None else None),
+             "ufuk": int(len(h)), "kap": (float(plant["capacity_kwp"]) if plant.get("capacity_kwp") is not None else None),
+             "ys": _ys(), "et": etiket}).scalar()
         satirlar = [{"t": tenant_id, "r": run_id, "p": plant["id"], "ts": ts,
                      "p50": _f(v["p50_kw"]), "p10": _f(v["p10_kw"]),
                      "p90": _f(v["p90_kw"]),
@@ -250,7 +263,7 @@ def kosu_gecmisi(tenant_id, plant_id, n: int = 10):
         # temizler, suzgec gelecegi: yarim kalan kosular listeye sizmasin.
         return s.execute(_text(
             "SELECT run_at, mode, model, meteo_ozet_json->'bant' AS bant, meteo_ozet_json->'sapma' AS sapma, "
-            "meteo_ozet_json->>'etiket' AS etiket FROM forecast_runs "
+            "COALESCE(etiket, meteo_ozet_json->>'etiket') AS etiket FROM forecast_runs "
             "WHERE plant_id=:p "
             "AND EXISTS (SELECT 1 FROM forecast_values v "
             "  WHERE v.run_id = forecast_runs.id) "

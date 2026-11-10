@@ -40,17 +40,19 @@ def yukle_ve_kaydet(tenant_id, plant_id, dosya_yolu, *, capacity_kwp,
             for src, hedef in _KOLONLAR.items():
                 v = row.get(src)
                 kayit[hedef] = None if pd.isna(v) else float(v)
+            k = row.get("kapsama_dk")   # v2.573 (Faz 1 F1-B): saat başına ölçüm kapsaması; yoksa NULL = bilinmiyor
+            kayit["kapsama_dk"] = None if k is None or pd.isna(k) else int(round(float(k)))
             satirlar.append(kayit)
         s.execute(text(
             "INSERT INTO scada_hourly(tenant_id,plant_id,ts_utc,power_kw,"
-            " energy_kwh,poa_wm2,t_air,t_module,wind_ms,flag,batch_id) "
+            " energy_kwh,poa_wm2,t_air,t_module,wind_ms,flag,batch_id,kapsama_dk) "
             "VALUES (:t,:p,:ts,:power_kw,:energy_kwh,:poa_wm2,:t_air,"
-            " :t_module,:wind_ms,:flag,:b) "
+            " :t_module,:wind_ms,:flag,:b,:kapsama_dk) "
             "ON CONFLICT (plant_id, ts_utc) DO UPDATE SET "
             " power_kw=EXCLUDED.power_kw, energy_kwh=EXCLUDED.energy_kwh,"
             " poa_wm2=EXCLUDED.poa_wm2, t_air=EXCLUDED.t_air,"
             " t_module=EXCLUDED.t_module, wind_ms=EXCLUDED.wind_ms,"
-            " flag=EXCLUDED.flag, batch_id=EXCLUDED.batch_id"), satirlar)
+            " flag=EXCLUDED.flag, batch_id=EXCLUDED.batch_id, kapsama_dk=EXCLUDED.kapsama_dk"), satirlar)
     return {"batch_id": str(batch_id), "n_satir": len(satirlar)}
 
 

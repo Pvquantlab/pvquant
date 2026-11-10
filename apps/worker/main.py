@@ -147,7 +147,7 @@ def gece_skill(plant, pencere_gun: int = 10):
     with tenant_baglami(tid) as s:
         df = pd.read_sql(text(
             "SELECT f.ts_utc, f.p50_kw, f.p10_kw, f.p90_kw, r.run_at, s.power_kw, "
-            " r.model, r.meteo_source, r.meteo_ozet_json->>'etiket' AS etiket "
+            " r.model, r.meteo_source, COALESCE(r.etiket, r.meteo_ozet_json->>'etiket') AS etiket "
             "FROM forecast_values f "
             "JOIN forecast_runs r ON r.id=f.run_id "
             "JOIN scada_hourly s ON s.plant_id=f.plant_id AND s.ts_utc=f.ts_utc"
@@ -306,6 +306,21 @@ def gece_piyasa(_plant=None):
         return
     piyasa_service.gece_piyasa(gun=3)
     gece_piyasa._son = bugun
+
+
+def gece_bagimsiz_dogrulama(plant, gun: int = 30):
+    """v2.574 (Faz 1 F1-C): bağımsız doğrulama — son 30 tam yerel gün, «program» ve «gün öncesi» kuralları; sonuç yalnız-ekleme
+    tablosuna. Mevcut gece karnesi (gece_skill/skill_daily) DOKUNULMAZ; iki ölçüm yan yana. Yetersiz veri → atlanır (uydurulmaz)."""
+    from pvquant.services import bagimsiz_dogrulama_service as bd
+    out = []
+    for kural in ("program", "gun_oncesi"):
+        s = bd.hesapla(plant["tenant_id"], plant, gun=gun, kural=kural)
+        n = s["metrik"]["n_saat"]
+        if n < bd.ASGARI_SAAT:
+            out.append(f"{kural}: yetersiz veri ({n} saat), atlandı"); continue
+        bd.kaydet(plant["tenant_id"], s, plant["id"])
+        out.append(f"{kural}: n={n} wmape={s['metrik']['wmape']}")
+    return "; ".join(out)
 
 
 def gece_hijyen(plant, pencere_gun: int = 10):
@@ -488,7 +503,7 @@ def rapor_alanlari(plant, pencere_gun: int = 120):
     with tenant_baglami(tid) as s:
         df = pd.read_sql(text(
             "SELECT f.ts_utc, f.p50_kw, r.run_at, sc.power_kw, "
-            " r.model, r.meteo_source, r.meteo_ozet_json->>'etiket' AS etiket "
+            " r.model, r.meteo_source, COALESCE(r.etiket, r.meteo_ozet_json->>'etiket') AS etiket "
             "FROM forecast_values f "
             "JOIN forecast_runs r ON r.id=f.run_id "
             "JOIN scada_hourly sc ON sc.plant_id=f.plant_id "
@@ -820,6 +835,8 @@ if __name__ == "__main__":
                 "cron", hour=cfg.worker_hour_skill, minute=40)
     sch.add_job(_logla("rapor_alanlari", rapor_alanlari),                # v2.103 (B1+B5)
                 "cron", hour=cfg.worker_hour_skill, minute=45)
+    sch.add_job(_logla("gece_bagimsiz_dogrulama", gece_bagimsiz_dogrulama),   # v2.574 (Faz 1 F1-C): karneden sonra, yalnız ekleme
+                "cron", hour=cfg.worker_hour_skill, minute=50)
     sch.add_job(_logla("alarm", alarm_tara), "cron", hour=cfg.worker_hour_alarm, minute=0)
     sch.add_job(_logla("kgup_teslim_kontrol", alarm_kgup_kontrol), "cron", hour=12, minute=35)   # 29.10: 15:35 TSİ (Türkiye UTC+3 sabit) — KGÜP gecikti kuralı
     sch.add_job(_logla("kgup_revizyon_kontrol", alarm_kgup_revizyon), "cron", hour="4-15", minute=10)   # 30.10 v2.507 (F-10): gündüz saat başı +10 (07:10–18:10 TSİ)

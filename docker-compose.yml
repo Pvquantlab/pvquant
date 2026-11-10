@@ -19,7 +19,10 @@ services:
       retries: 10
 
   worker:
-    build: .
+    build:
+      context: .
+      args:
+        PVQ_SURUM: ${PVQ_SURUM:-}   # v2.572: dağıtımda PVQ_SURUM=$(git describe --always) docker compose build …
     environment:
       # 25.10 v2.488 (denetim Y1): uygulama süper kullanıcı DEĞİL — pvq_api (BYPASSRLS, rol/DB yönetimi yok). Yönetici URL'si yalnız gece pg_dump için.
       PVQ_DB_URL: postgresql+psycopg://pvq_api:${API_DB_PASSWORD:?.env'de API_DB_PASSWORD tanimli olmali (ALTER ROLE pvq_api PASSWORD)}@db:5432/pvquant
@@ -57,7 +60,10 @@ services:
     restart: unless-stopped        # v2.63 (GUN 0)
 
   api:
-    build: .                       # v2.72: worker ile ayni imaj, komut farkli
+    build:                         # v2.72: worker ile ayni imaj, komut farkli
+      context: .
+      args:
+        PVQ_SURUM: ${PVQ_SURUM:-}
     # v2.321: tek işçi, sayfa açılışının ~20 eşzamanlı isteğini kuyrukluyordu
     # (ölçüldü: /summary tek başına 224ms, sayfa yükünde 1116ms). 4 süreç gerçek
     # paralellik verir (pandas GIL'i aşılır). Not: API-anahtarı hız sınırı süreç

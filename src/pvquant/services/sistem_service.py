@@ -43,6 +43,7 @@ IZLENEN_ISLER = (
     ("gece_ufuk_sigma", 36, "günlük", True),
     ("gece_konformal", 36, "günlük", True),
     ("rapor_alanlari", 36, "günlük", True),
+    ("gece_bagimsiz_dogrulama", 36, "günlük", True),  # 10.11 v2.574 (Faz 1 F1-C): 03:50 TSİ; yetersiz veri «atlandı» da başarılı koşudur
     ("aylik_kalibrasyon", 24 * 35, "aylık", True),      # 04.11 v2.531 (ENV-F06): üç aylık üretici iş izlenir; santral başına koşar
     ("aylik_iklim", 24 * 35, "aylık", True),
     ("aylik_bankable", 24 * 35, "aylık", True),

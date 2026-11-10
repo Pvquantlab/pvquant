@@ -88,6 +88,78 @@ class Accuracy(BaseModel):
     daily: list[AccuracyDay] = []
 
 
+class IndependentValidationReference(BaseModel):
+    hours: int
+    wmape_pct: float | None = None
+    model_wmape_pct: float | None = Field(default=None, description="PVQuant WMAPE, aynı saat kümesinde")
+    skill_pct: float | None = Field(default=None, description="1 − WMAPE/WMAPE_ref, puan; pozitif = PVQuant daha iyi")
+    verdict: str | None = None
+    note: str | None = None
+
+
+class IndependentValidation(BaseModel):
+    """v2.576 (Faz 1 F1-E): bağımsız doğrulama — yayımlandığı andaki tahmin × uygun ölçüm × referanslar; bagimsiz_dogrulama_service sözlüğü.
+    Gece karnesinden (accuracy) ayrı hesaptır: saat başına tek tahmin, havuzlanmış WMAPE, nedenli dışlama, yeniden üretim kimliği."""
+    status: str = Field(description="DOĞRULANMIŞ ÖLÇÜM | EKSİK DEĞERLENDİRME | GERİYE DÖNÜK SİMÜLASYON")
+    dictionary_version: str
+    rule: str = Field(description="program | gun_oncesi | gun_ici | ufuk")
+    source: str = Field(description="scada (tesis brüt AC) | sayac (bağlantı noktası net)")
+    period_start: str
+    period_end: str
+    timezone: str | None = None
+    hours_evaluated: int
+    days_evaluated: int
+    wmape_pct: float | None = None
+    wmape_daily_mean_pct: float | None = None
+    mae_kw: float | None = None
+    rmse_kw: float | None = None
+    nmae_pct: float | None = None
+    nrmse_pct: float | None = None
+    mbe_kw: float | None = Field(default=None, description="tahmin − gerçek; pozitif = fazla tahmin")
+    nmbe_pct: float | None = None
+    energy_bias_kwh_per_day: float | None = None
+    picp80_pct: float | None = None
+    below_p10_pct: float | None = None
+    above_p90_pct: float | None = None
+    interval_width_pct: float | None = Field(default=None, description="ortalama (P90 − P10) / kurulu güç")
+    winkler_kw: float | None = None
+    measurement_coverage_pct: float | None = None
+    evaluated_daytime_pct: float | None = None
+    excluded_daytime_hours: dict[str, int] = {}
+    clipping_hours: int = 0
+    references: dict[str, IndependentValidationReference] = {}
+    worst_days: list[dict] = []
+    run_count: int = 0
+    run_set_sha: str
+    hour_set_sha: str
+    computed_at: str
+    software_version: str | None = None
+    record_id: str | None = None
+
+
+def _independent_validation(ctx) -> "IndependentValidation | None":
+    s = getattr(ctx, "bagimsiz", None)
+    if not s:
+        return None
+    from pvquant.services.sablon_rapor_service import dogrulama_durumu
+    m = s.get("metrik") or {}; b = s.get("butunluk") or {}; meta = s.get("meta") or {}; o = b.get("olcum") or {}
+    durum, _ = dogrulama_durumu(s)
+    refs = {k: IndependentValidationReference(hours=int(v.get("n_saat") or 0), wmape_pct=v.get("wmape"), model_wmape_pct=v.get("model_wmape_ayni_saatler"),
+                                              skill_pct=v.get("beceri_pct"), verdict=v.get("sonuc"), note=v.get("tanim")) for k, v in (s.get("referans") or {}).items()}
+    return IndependentValidation(
+        status=durum, dictionary_version=str(meta.get("sozluk_surumu")), rule=str(meta.get("kural")), source=str(meta.get("kaynak", "scada")),
+        period_start=str(meta.get("donem", {}).get("bas")), period_end=str(meta.get("donem", {}).get("bit")), timezone=meta.get("donem", {}).get("tz"),
+        hours_evaluated=int(m.get("n_saat") or 0), days_evaluated=int(m.get("n_gun") or 0), wmape_pct=m.get("wmape"), wmape_daily_mean_pct=m.get("wmape_gunluk_ort"),
+        mae_kw=m.get("mae_kw"), rmse_kw=m.get("rmse_kw"), nmae_pct=m.get("nmae"), nrmse_pct=m.get("nrmse"), mbe_kw=m.get("mbe_kw"), nmbe_pct=m.get("nmbe"),
+        energy_bias_kwh_per_day=m.get("enerji_sapma_kwh_gun"), picp80_pct=m.get("picp80"), below_p10_pct=m.get("p10_alti"), above_p90_pct=m.get("p90_ustu"),
+        interval_width_pct=m.get("bant_genisligi_oran"), winkler_kw=m.get("winkler_kw"), measurement_coverage_pct=o.get("kapsama_pct"),
+        evaluated_daytime_pct=b.get("degerlendirilen_pct"), excluded_daytime_hours={str(k): int(v) for k, v in (b.get("gunduz_dislanan") or {}).items()},
+        clipping_hours=int(b.get("kirpma_saat_degerlendirilen") or 0), references=refs,
+        worst_days=[{"date": g.get("kesit"), "wmape_pct": g.get("wmape"), "hours": g.get("n_saat"), "energy_bias_kwh": g.get("enerji_sapma_kwh_gun")} for g in (s.get("kesit") or {}).get("en_zayif_gunler", [])],
+        run_count=int(meta.get("kosu_sayisi") or 0), run_set_sha=str(meta.get("kosu_kumesi_sha")), hour_set_sha=str(meta.get("saat_kumesi_sha")),
+        computed_at=str(s.get("hesap_zamani") or meta.get("hesap_zamani")), software_version=meta.get("yazilim_surumu"), record_id=s.get("id"))
+
+
 class HybridQuality(BaseModel):
     """Mod C holdout sınavı — kronolojik son %20 (yalnız hibrit aktifken)."""
     holdout_mape_pct: float
@@ -137,6 +209,7 @@ class ForecastReport(BaseModel):
     hourly: list[HourlyPoint]
     accuracy: Accuracy | None = Field(default=None, description="Ölçüm yoksa null")
     quality: Quality
+    independent_validation: IndependentValidation | None = Field(default=None, description="v2.576: bağımsız doğrulama; hesaplanmadıysa anahtar HİÇ yazılmaz")
 
 
 def _hybrid_quality(ctx) -> "HybridQuality | None":
@@ -237,8 +310,11 @@ def build_json(ctx) -> str:
                         eta_bos=_r(ctx.eta_bos, 3), bg=_r(ctx.bg, 3),
                         hybrid=_hybrid_quality(ctx),
                         warnings=ctx.warnings or []),
+        independent_validation=_independent_validation(ctx),
     )
     d = rapor.model_dump(mode="json")
     if d["quality"].get("hybrid") is None:      # yok = YOK (null değil)
         d["quality"].pop("hybrid", None)
+    if d.get("independent_validation") is None:   # v2.576: yok = YOK
+        d.pop("independent_validation", None)
     return _json.dumps(d, indent=2, ensure_ascii=False)

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
 import type { EChartsOption } from "echarts";
 import { api, bellekten, ayniysaEskisi } from "../../api/client";
-import type { Karne, HataDagilimi, KonformalAyar, Backtest, Dengesizlik, DengesizlikGeriTest, DengesizlikSaatlik, Guvenilirlik, Yekdem } from "../../api/types";
+import type { Karne, HataDagilimi, KonformalAyar, Backtest, Dengesizlik, DengesizlikGeriTest, DengesizlikSaatlik, Guvenilirlik, Yekdem, BagimsizDogrulama } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
 import { BilgiliEtiket, Kpi, Kart, Sayfa, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
@@ -153,6 +153,132 @@ function kupstEtiketi(dz: Dengesizlik): string {
     : "kural tablosundan";
 }
 
+/** v2.575 (Faz 1 F1-D) — Bağımsız doğrulama bölümü: yayımlandığı andaki tahmin × uygun ölçüm × referanslar (bagimsiz_dogrulama_service).
+ *  Mevcut karne KPI'larından ayrı bir hesaptır (saat başına tek tahmin, havuzlanmış hata, nedenli dışlama); ikisi yan yana okunur.
+ *  Dil: müşteri dili; sayı uydurulmaz («—»); durum sözcüğü + neden. */
+const NEDEN_AD: Record<string, string> = { eksik: "ölçüm yok", kismi_saat: "kısmi saat (45 dakikadan az ölçüm)", tahmin_yok: "o saat için tahmin yok" };
+const BAYRAK_AD: Record<string, string> = { negative_power: "negatif güç", night_production: "gece üretimi", over_capacity: "kurulu güç üstü", frozen_value: "donmuş değer",
+  duplicate_time: "yinelenen zaman", dst_ambiguous: "yaz saati belirsizliği", unparseable: "okunamayan değer", gunluk_ozet: "günlük özet satırı", partial_hour: "kısmi saat", kisinti: "kısıntı", anomali: "aykırı değer" };
+const OLAY_AD: Record<string, string> = { ariza: "arıza", planli_bakim: "planlı bakım", talimat_yat: "yük atma talimatı", talimat_yal: "yük alma talimatı", acil_kesme: "acil durum kesmesi", sebeke_kesintisi: "şebeke kesintisi", hasar: "hasar" };
+const SAYAC_AD: Record<string, string> = { tahmini: "tahmini", doldurulmus: "doldurulmuş", elle: "elle girilmiş" };
+const REF_AD: Record<string, string> = { fizik: "Fiziksel model (öğrenilmiş düzeltme olmadan)", cliper: "Sektör referansı (iklim ortalaması ve son ölçümler)" };
+const KURAL_AD: Record<string, string> = { program: "bir gün önce 15:30 kesimi öncesi son tahmin", gun_oncesi: "gün başlamadan önceki son tahmin" };
+const MOD_AD: Record<string, string> = { A: "fiziksel model", B: "kalibre fiziksel model", C: "fiziksel model ve öğrenilmiş düzeltme" };
+const nedenYaz = (k: string): string => {
+  if (k.startsWith("bayrak:")) return `yükleme kontrolü: ${BAYRAK_AD[k.slice(7)] ?? k.slice(7)}`;
+  if (k.startsWith("olay:")) return `olay kaydı: ${k.slice(5).split("+").map((t) => OLAY_AD[t] ?? t).join(" ve ")}`;
+  if (k.startsWith("sayac:")) return `sayaç verisi ${SAYAC_AD[k.slice(6)] ?? k.slice(6)}`;
+  return NEDEN_AD[k] ?? k;
+};
+const gunYaz = (iso: string): string => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? iso : `${d.getDate()} ${AY[d.getMonth()]} ${d.getFullYear()}`; };
+const saatYaz = (iso: string | undefined): string => { if (!iso) return "—"; const d = new Date(iso); return Number.isNaN(d.getTime()) ? iso : d.toLocaleString("tr-TR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }); };
+const yuzde = (v: number | null | undefined, hane = 1) => (v == null ? "—" : `%${sayiTr(v, hane)}`);
+
+function BagimsizDogrulamaKarti({ bd, kural, setKural, gun }:
+  { bd: BagimsizDogrulama | null | undefined; kural: "program" | "gun_oncesi"; setKural: (k: "program" | "gun_oncesi") => void; gun: number }) {
+  const m = bd?.metrik; const b = bd?.butunluk; const r = bd?.referans ?? {}; const meta = bd?.meta;
+  const yeterli = !!m && m.n_saat > 0 && m.wmape != null;
+  const uyarilar: string[] = [];
+  if (bd && m) {
+    if (m.n_gun < 30) uyarilar.push(`${sayiTr(m.n_gun)} gün değerlendirildi; 30 günden az dönemde sonuç dalgalı okunmalı.`);
+    if (b?.olcum.kapsama_pct != null && b.olcum.kapsama_pct < 70) uyarilar.push(`Ölçüm kapsaması %${sayiTr(b.olcum.kapsama_pct, 0)}: dönemin önemli bölümü ölçülmemiş; sonuç dönemin tamamını temsil etmez.`);
+    if (b && b.olcum.kapsama_bilinmeyen_saat > 0 && b.olcum.kapsama_bilinmeyen_saat === b.olcum.olculdu_saat) uyarilar.push("Saat içi ölçüm kapsaması bu veride kayıtlı değil (eski yükleme); kısmi saatler ayırt edilemez.");
+    if (b && b.gece.tahmin_pozitif_saat > 0 && (b.gece.tahmin_kwh ?? 0) > 0.001 * meta!.kapasite_kwp * b.gece.n_saat) uyarilar.push("Gece saatlerinde sıfırdan büyük tahmin var; gece ayrı sayılır, hata ölçütlerine girmez.");
+    if (m.wmape == null && m.n_saat > 0) uyarilar.push(m.not ?? "Hata oranı hesaplanamadı.");
+  }
+  const refSatirlari = Object.entries(r).map(([k, v]) => ({ ad: REF_AD[k] ?? "Son ölçümlere göre tahmin (gök açıklığıyla ölçekli)", ...v }));
+  const dis = b ? Object.entries(b.gunduz_dislanan) : [];
+  return (
+    <Kart baslik="Bağımsız doğrulama — yayımlandığı andaki tahmin, uygun ölçümle saat saat"
+      sag={<>
+        <span className="seg" role="group" aria-label="Doğrulanan tahmin">
+          {(["program", "gun_oncesi"] as const).map((kk) => (
+            <button key={kk} aria-pressed={kural === kk} onClick={() => setKural(kk)}>{kk === "program" ? "program" : "gün öncesi"}</button>))}
+        </span>
+        <span className="cip"><Meta items={[`${sayiTr(gun)} gün`, bd === undefined ? "hesaplanıyor" : bd === null ? "alınamadı" : bd.kayitli ? `gece hesabı ${saatYaz(bd.hesap_zamani)}` : "anlık hesap", m?.n_gun != null && m.n_gun > 0 && `${sayiTr(m.n_gun)} gün değerlendirildi`]} /></span>
+      </>}>
+      {bd === undefined ? <YerTutucu yukseklik={300} /> : bd === null ? (
+        <p className="soluk" style={{ margin: 0 }}>Doğrulama sonucu alınamadı; sayfayı yenileyin.</p>
+      ) : !yeterli ? (
+        <div className="bos-durum"><div className="bos-bas">Henüz değerlendirilecek saat yok</div>
+          <p>{m?.not ?? "Bu dönemde ölçüm ve tahmin aynı saatlerde birikmedi; gece hesabında birikir."}{b && b.olcum.kapsama_pct != null ? ` Ölçüm kapsaması %${sayiTr(b.olcum.kapsama_pct, 0)}.` : ""}</p></div>
+      ) : (
+        <>
+          <div className="ızgara satir-4">
+            <Kpi etiket="Tahmin hatası (WMAPE), saatlik toplam" deger={yuzde(m!.wmape)}
+                 alt={m!.wmape_gunluk_ort != null ? `günlük ortalaması %${sayiTr(m!.wmape_gunluk_ort, 1)}; ${sayiTr(m!.n_saat)} gündüz saati` : `${sayiTr(m!.n_saat)} gündüz saati`} />
+            <Kpi etiket="Ortalama saatlik hata (MAE)" deger={m!.mae_kw == null ? "—" : sayiTr(m!.mae_kw, 0)} birim={m!.mae_kw == null ? undefined : "kW"}
+                 ikinci={m!.nmbe != null ? { etiket: m!.nmbe > 0 ? "Yön: fazla tahmin" : m!.nmbe < 0 ? "Yön: eksik tahmin" : "Yön: dengede", deger: `%${sayiTr(Math.abs(m!.nmbe), 1)}`, birim: "kurulu güç" } : undefined}
+                 alt={m!.enerji_sapma_kwh_gun != null ? `günlük enerji sapması ${sayiTr(m!.enerji_sapma_kwh_gun, 0)} kWh` : undefined} />
+            <Kpi etiket="Aralık içinde kalan saatler (P10–P90)" deger={yuzde(m!.picp80, 0)}
+                 ikinci={m!.bant_genisligi_oran != null ? { etiket: "Ortalama aralık genişliği", deger: `%${sayiTr(m!.bant_genisligi_oran, 0)}`, birim: "kurulu güç" } : undefined}
+                 alt={m!.picp80 == null ? "aralık verisi yeterli değil" : "hedef %80; dar aralık iddialı, geniş aralık temkinli"} />
+            <Kpi etiket="Değerlendirilen ölçüm" deger={b?.degerlendirilen_pct == null ? "—" : `%${sayiTr(b.degerlendirilen_pct, 0)}`}
+                 ikinci={b ? { etiket: "Ölçülen saat", deger: `${sayiTr(b.olcum.olculdu_saat)} / ${sayiTr(b.olcum.beklenen_saat)}`, birim: "saat" } : undefined}
+                 alt={b ? `gündüz saatlerinin; ${b.olcum.sinir_etiketi}` : undefined} />
+          </div>
+          {dis.length > 0 && (
+            <details className="aciklama">
+              <summary>Değerlendirmeye girmeyen gündüz saatleri ({sayiTr(dis.reduce((a, [, n]) => a + n, 0))} saat), nedenleriyle</summary>
+              <ul className="not-listesi">{dis.map(([k, n]) => <li key={k}>{nedenYaz(k)}: {sayiTr(n)} saat</li>)}
+                {b!.kirpma_saat_degerlendirilen > 0 && <li>Kırpma saatleri değerlendirmeye girer, ayrıca sayılır: {sayiTr(b!.kirpma_saat_degerlendirilen)} saat.</li>}
+                <li>Eksik saat sıfır üretim sayılmaz; yalnız ölçülmüş saatler hataya girer.</li></ul>
+            </details>
+          )}
+          <div className="ızgara satir-2" style={{ marginTop: 14, gap: 16 }}>
+            <section aria-label="Referans karşılaştırması">
+              <div className="etiket-ust">Referanslara göre</div>
+              <p className="kart-alt" style={{ margin: "2px 0 6px" }}>Aynı saatlerde, aynı ölçümle; fark lehte de aleyhte de olduğu gibi yazılır.</p>
+              <div className="grafik-kaydir"><table className="veri sayisal dar">
+                <thead><tr><th>Referans</th><th>Referans hatası</th><th>PVQuant hatası</th><th>Fark</th></tr></thead>
+                <tbody>{refSatirlari.map((x) => (
+                  <tr key={x.ad}><td style={{ whiteSpace: "normal" }}>{x.ad}{x.wmape == null && x.tanim && <div className="hucre-alt soluk">{x.tanim.replace(/^hesaplanamadı: /, "hesaplanamadı; ")}</div>}</td>
+                    <td className={x.wmape == null ? "soluk" : undefined}>{yuzde(x.wmape)}</td>
+                    <td className={x.model_wmape_ayni_saatler == null ? "soluk" : undefined}>{yuzde(x.model_wmape_ayni_saatler)}</td>
+                    <td className={x.beceri_pct == null ? "soluk" : undefined}>{x.beceri_pct == null ? "—" : `${x.beceri_pct > 0 ? "+" : ""}${sayiTr(x.beceri_pct, 1)} puan`}
+                      {x.sonuc && <div className="hucre-alt soluk">{x.sonuc === "model daha iyi" ? "PVQuant daha iyi" : x.sonuc === "referans daha iyi" ? "referans daha iyi" : "eşit"}</div>}</td></tr>))}
+                </tbody>
+              </table></div>
+            </section>
+            <section aria-label="En zayıf günler">
+              <div className="etiket-ust">En zayıf günler</div>
+              <p className="kart-alt" style={{ margin: "2px 0 6px" }}>Dönemde saatlik hatası en yüksek beş gün.</p>
+              {bd.kesit.en_zayif_gunler.length === 0 ? <p className="soluk" style={{ margin: 0 }}>Gün bazında değer yok.</p> : (
+                <div className="grafik-kaydir"><table className="veri sayisal dar">
+                  <thead><tr><th>Gün</th><th>Hata (WMAPE)</th><th>Saat</th><th>Enerji sapması</th></tr></thead>
+                  <tbody>{bd.kesit.en_zayif_gunler.map((g) => (
+                    <tr key={g.kesit}><td>{gunYaz(g.kesit)}</td><td>{yuzde(g.wmape)}</td><td>{sayiTr(g.n_saat)}</td>
+                      <td>{g.enerji_sapma_kwh_gun == null ? "—" : <DegerBirimKwh v={g.enerji_sapma_kwh_gun} />}</td></tr>))}</tbody>
+                </table></div>)}
+            </section>
+          </div>
+          {uyarilar.length > 0 && <ul className="not-listesi" style={{ marginTop: 12 }}>{uyarilar.map((u) => <li key={u} className="kunye-uyari">{u}</li>)}</ul>}
+          <dl className="kunye" style={{ marginTop: 12 }}>
+            <div><dt>Dönem</dt><dd className="kunye-sayi">{meta ? `${gunYaz(meta.donem.bas)} – ${gunYaz(meta.donem.bit)}` : "—"}</dd></div>
+            <div><dt>Doğrulanan tahmin</dt><dd>{KURAL_AD[meta?.kural ?? ""] ?? meta?.kural ?? "—"}</dd></div>
+            <div><dt>Ölçüm sınırı</dt><dd>{b?.olcum.sinir_etiketi ?? "—"}</dd></div>
+            <div><dt>Model</dt><dd>{meta?.kosu_kunyesi?.mode?.length ? meta.kosu_kunyesi.mode.map((x) => MOD_AD[x] ?? x).join(", ") : <span className="kunye-durum eksik">Belirtilmedi</span>}</dd></div>
+            <div><dt>Tahmin kümesi</dt><dd className="kunye-sayi">{meta ? `${sayiTr(meta.kosu_sayisi)} tahmin, özet ${meta.kosu_kumesi_sha}` : "—"}</dd></div>
+            <div><dt>Hesap sözlüğü</dt><dd className="kunye-sayi">{meta ? `${meta.sozluk_surumu}${meta.yazilim_surumu ? `, yazılım ${meta.yazilim_surumu}` : ""}` : "—"}</dd></div>
+            <div><dt>Hesap zamanı</dt><dd className="kunye-sayi">{saatYaz(bd.hesap_zamani ?? meta?.hesap_zamani)}</dd></div>
+          </dl>
+          <details className="aciklama">
+            <summary>Nasıl hesaplanır</summary>
+            <p>Her saat için tek tahmin alınır: seçilen kurala göre o gün için elde olan son tahmin. Gündüz saati, gerçek üretim ya da tahmin kurulu gücün %2'sini aşan saattir; gece ayrı sayılır.
+              Hata oranı (WMAPE), tüm gündüz saatlerindeki mutlak hataların toplamının gerçek üretim toplamına oranıdır; günlük ortalaması ayrıca verilir.
+              Ölçüm yoksa, yükleme kontrolünden geçmediyse, saatin 45 dakikasından azı ölçüldüyse ya da olay kaydında üretimi etkileyen bir olay varsa o saat değerlendirmeye girmez ve nedeniyle sayılır.
+              Referanslar aynı saatlerde ve aynı ölçümle hesaplanır; sektör referansı dönem öncesi verilerle ağırlıklandırılır, yeterli geçmiş yoksa hesaplanmaz.
+              Sonuç, tahmin kümesi ve saat kümesi özetleriyle yeniden üretilebilir.</p>
+          </details>
+        </>
+      )}
+    </Kart>
+  );
+}
+function DegerBirimKwh({ v }: { v: number }) {
+  return <>{v > 0 ? "+" : ""}{sayiTr(v, 0)} <span className="birim">kWh</span></>;
+}
+
 export function Dogruluk({ plantId }: { plantId: string }) {
   const ds = useDamgaSurumu();   // 26.10 eşzamanlama
   // 24.10 açık tema geçiş turu — YEDİ İSTEK BAĞIMSIZ, BAYAT-ÖNCE (Portföy kalıbı, v2.476). v2.326'nın tek kapısı sayfayı en
@@ -171,6 +297,14 @@ export function Dogruluk({ plantId }: { plantId: string }) {
   const [dz, setDz] = useState<Dengesizlik | null | undefined>(undefined);   // v2.259
   const [gv, setGv] = useState<Guvenilirlik | null | undefined>(undefined);   // v2.271
   const [gt, setGt] = useState<DengesizlikGeriTest | null | undefined>(undefined);   // v2.503 (F-07): 12 ay geri test, kart açılınca
+  // v2.575 (Faz 1 F1-D): bağımsız doğrulama — dönem segmenti ve kural (program / gün öncesi) ile yeniden çekilir; mevcut karneden ayrı istek
+  const [bdKural, setBdKural] = useState<"program" | "gun_oncesi">("program");
+  const [bd, setBd] = useState<BagimsizDogrulama | null | undefined>(undefined);
+  useEffect(() => {
+    let acik = true; setBd(undefined);
+    api.bagimsizDogrulama(plantId, donem, bdKural).then((v) => { if (acik) setBd(v); }, () => { if (acik) setBd(null); });
+    return () => { acik = false; };
+  }, [plantId, donem, bdKural, ds]);
   // Dönem segmenti yalnız karneyi tazeler (v2.230 kararı korunur); santral değişince hepsi yeniden kurulur.
   useEffect(() => {
     let acik = true;
@@ -541,6 +675,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           {k.cliper_ustunluk_pct == null && <p className="olcut-durum">Henüz değer yok; gece değerlendirmesinde birikiyor.</p>}
         </section>
       </div>
+      <BagimsizDogrulamaKarti bd={bd} kural={bdKural} setKural={setBdKural} gun={donem} />
       <Kart baslik="Günlük tahmin hatası (WMAPE) — referans tahminle karşılaştırma"
         sag={<span className="cip"><Meta items={["nokta: günlük", "kalın: 7 gün eğilimi", "ince gri: referans tahmin"]} /></span>}>
         {/* 22.10 üçüncü tur: hiç karşılaştırılmış gün yokken 2×240 px boş grafik yerine kompakt boş durum

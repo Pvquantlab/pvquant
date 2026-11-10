@@ -87,3 +87,21 @@ export const ornekAylik = {
     yil: 2005 + (i % 5), ay: (i % 12) + 1,
     ghi_kwh_m2: 70 + ((i * 37) % 180) })),
 };
+
+/** v2.575 (Faz 1 F1-D): örnek kip — bağımsız doğrulama (temsili; sayılar canlı hesap değildir). */
+export const ornekBagimsiz = {
+  kayitli: false, gun: 30, kaynak: "scada",
+  metrik: { n_saat: 318, n_gun: 29, wmape: 11.4, wmape_gunluk_ort: 12.1, mae_kw: 186.2, rmse_kw: 262.9, nmae: 4.1, nrmse: 5.8, mbe_kw: 41.0, nmbe: 0.9, enerji_sapma_kwh_gun: 450.3,
+            picp80: 78.6, p10_alti: 12.3, p90_ustu: 9.1, bant_genisligi_oran: 19.4, winkler_kw: 1210.5, bant_n: 318 },
+  kesit: { gun: [], en_zayif_gunler: [{ kesit: "2026-04-11", n_saat: 11, wmape: 27.9, mae_kw: 410.2, nmbe: -6.1, enerji_sapma_kwh_gun: -2940.0 }, { kesit: "2026-04-03", n_saat: 12, wmape: 22.4, mae_kw: 355.0, nmbe: 4.4, enerji_sapma_kwh_gun: 2110.0 }],
+           ufuk: [{ kesit: "24-48", n_saat: 318, wmape: 11.4 }] },
+  referans: { fizik: { n_saat: 318, wmape: 14.9, model_wmape_ayni_saatler: 11.4, beceri_pct: 23.5, sonuc: "model daha iyi", tanim: "aynı tahminin saf fizik modeli" },
+              persistans: { n_saat: 301, wmape: 24.6, model_wmape_ayni_saatler: 11.5, beceri_pct: 53.3, sonuc: "model daha iyi" },
+              cliper: { n_saat: 0, wmape: null, beceri_pct: null, sonuc: null, tanim: "hesaplanamadı: dönem öncesi yeterli ölçüm yok" } },
+  butunluk: { olcum: { beklenen_saat: 720, olculdu_saat: 684, kapsama_pct: 95.0, dislanan: { eksik: 24, "bayrak:frozen_value": 8, "olay:ariza": 4 }, kirpma_saat: 31, kapsama_bilinmeyen_saat: 684, kaynak: "scada", sinir: "plant_gross_ac", sinir_etiketi: "tesis brüt AC (SCADA)" },
+              gunduz_saat: 348, degerlendirilen_saat: 318, degerlendirilen_pct: 91.4, gunduz_dislanan: { eksik: 18, "bayrak:frozen_value": 8, "olay:ariza": 4 }, kirpma_saat_degerlendirilen: 31,
+              gece: { n_saat: 372, tahmin_pozitif_saat: 12, tahmin_kwh: 9.6, gercek_pozitif_saat: 0 } },
+  meta: { sozluk_surumu: "2026-11-10", kural: "program", kaynak: "scada", kapasite_kwp: 4514, gunduz_orani: 0.02, donem: { bas: "2026-03-19", bit: "2026-04-18", tz: "Europe/Istanbul" },
+          kosu_sayisi: 29, kosu_kumesi_sha: "3b8f6bc9000ebbd5", saat_kumesi_sha: "24cf6d3a7a88664d", hesap_zamani: "2026-04-18T03:50:00+00:00", yazilim_surumu: null,
+          kosu_kunyesi: { mode: ["C"], model: ["hybrid_residual"], meteo_source: ["acik-nwp"], kalibrasyon_id: [], yazilim_surumu: [], nwp_yasi_saat_ort: 4.2, ilk_run_at: "2026-03-18", son_run_at: "2026-04-17" } },
+};

@@ -797,3 +797,22 @@ export interface PilotDurum { kapilar: PilotKapi[]; p0_acik: string[]; sahaya_ha
 /** v2.561 (Aşama 6): saha toplayıcısı kimlikleri (anahtar yalnız üretim yanıtında) */
 export interface EdgeToplayici { id: string; ad: string; prefix: string; durum: "etkin" | "iptal"; olusturma: string; son_gorulme: string | null; son_sira: number | null; iptal_zamani: string | null }
 export interface EdgeToplayiciYeni { id: string; ad: string; prefix: string; anahtar: string; olusturma: string; not: string }
+
+/** v2.575 (Faz 1 F1-D) — /dogrulama/bagimsiz yanıtı: bagimsiz_dogrulama_service.hesapla / son ile birebir (yalnız okunan alanlar). */
+export interface BagimsizDogrulama {
+  id?: string; hesap_zamani?: string; kayitli: boolean; gun: number; kaynak?: string;
+  metrik: { n_saat: number; n_gun: number; wmape: number | null; wmape_gunluk_ort: number | null; mae_kw: number | null; rmse_kw: number | null;
+            nmae: number | null; nrmse: number | null; mbe_kw: number | null; nmbe: number | null; enerji_sapma_kwh_gun: number | null;
+            picp80: number | null; p10_alti: number | null; p90_ustu: number | null; bant_genisligi_oran: number | null; winkler_kw: number | null; bant_n: number; not?: string };
+  kesit: { gun: { kesit: string; n_saat: number; wmape: number | null; mae_kw: number | null; nmbe: number | null; enerji_sapma_kwh_gun: number | null; picp80: number | null }[];
+           en_zayif_gunler: { kesit: string; n_saat: number; wmape: number | null; mae_kw: number | null; nmbe: number | null; enerji_sapma_kwh_gun: number | null }[];
+           ufuk?: { kesit: string; n_saat: number; wmape: number | null }[]; mevsim?: { kesit: string; n_saat: number; wmape: number | null }[];
+           uretim_sinifi?: { kesit: string; n_saat: number; wmape: number | null }[] };
+  referans: Record<string, { n_saat: number; wmape: number | null; mae_kw?: number | null; model_wmape_ayni_saatler?: number | null; beceri_pct: number | null; sonuc: string | null; tanim?: string }>;
+  butunluk: { olcum: { beklenen_saat: number; olculdu_saat: number; kapsama_pct: number | null; dislanan: Record<string, number>; kirpma_saat: number; kapsama_bilinmeyen_saat: number; kaynak: string; sinir: string; sinir_etiketi: string };
+              gunduz_saat: number; degerlendirilen_saat: number; degerlendirilen_pct: number | null; gunduz_dislanan: Record<string, number>; kirpma_saat_degerlendirilen: number;
+              gece: { n_saat: number; tahmin_pozitif_saat: number; tahmin_kwh: number | null; gercek_pozitif_saat: number } };
+  meta: { sozluk_surumu: string; kural: string; kaynak: string; kapasite_kwp: number; gunduz_orani: number; donem: { bas: string; bit: string; tz: string | null };
+          kosu_sayisi: number; kosu_kumesi_sha: string; saat_kumesi_sha: string; hesap_zamani: string; yazilim_surumu: string | null;
+          kosu_kunyesi?: { mode: string[]; model: string[]; meteo_source: string[]; kalibrasyon_id: string[]; yazilim_surumu: string[]; nwp_yasi_saat_ort: number | null; ilk_run_at: string; son_run_at: string } };
+}

@@ -371,6 +371,7 @@ def uret(tenant_id, plant: dict, fmt: str):
         # izlenebilirlik (report_log'a düşer, B6 deseninin devamı).
         ctx.report_id = rapor_id_uret(tenant_id, plant, ctx.mode)
         _excel_zenginlestir(tenant_id, plant, ctx)   # v2.348 + v2.349
+        ctx.bagimsiz = _bagimsiz_dogrulama(tenant_id, plant)   # v2.576 (Faz 1 F1-E)
         veri, uzanti = build_excel(ctx), "xlsx"
     elif fmt == "json":
         # v2.350 (şema 1.2.0): JSON da rapor kimliği taşır (report_log izi) ve
@@ -379,12 +380,25 @@ def uret(tenant_id, plant: dict, fmt: str):
         from pvquant.services.dogrulama_service import santral_karne_ozeti
         with tenant_baglami(tenant_id) as s:
             ctx.dogrulama = santral_karne_ozeti(s, plant["id"])
+        ctx.bagimsiz = _bagimsiz_dogrulama(tenant_id, plant)   # v2.576 (Faz 1 F1-E)
         j = build_json(ctx)
         veri = j.encode("utf-8") if isinstance(j, str) else j
         uzanti = "json"
     else:
         raise ValueError(f"bilinmeyen format: {fmt}")
     return veri, f"PVQuant_{ad_kok}_{gun}.{uzanti}", _dt.datetime.now()
+
+
+def _bagimsiz_dogrulama(tenant_id, plant: dict, gun: int = 30, kural: str = "program") -> dict | None:
+    """v2.576 (Faz 1 F1-E): JSON/Excel için bağımsız doğrulama — gece kaydı (≤36 sa) varsa o, yoksa anında hesap; değerlendirilecek saat yoksa None (blok YOK).
+    Hata raporu düşürmez (K-C2 dürüst yokluk)."""
+    try:
+        from pvquant.services import bagimsiz_dogrulama_service as bd
+        s = bd.son(tenant_id, plant["id"], kural, gun) or bd.hesapla(tenant_id, plant, gun=gun, kural=kural)
+        return s if (s.get("metrik") or {}).get("n_saat", 0) >= bd.ASGARI_SAAT else None
+    except Exception as e:   # noqa: BLE001
+        print("[rapor][bagimsiz_dogrulama] atlandı:", type(e).__name__, e)
+        return None
 
 
 def rapor_id_uret(tenant_id, plant: dict, mode: str) -> str:

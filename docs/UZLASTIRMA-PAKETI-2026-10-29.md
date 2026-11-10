@@ -1505,3 +1505,164 @@ kalmadı, `donem_cozumle` saat sayısı (Denver Mart 743, İstanbul 744), test D
 test_calib_pencere + test_performans_v2542 + test_dis_api = 106 geçti. Tam takım (test DB 55432): 1094 geçti / 1 atlandı / 0 kırmızı (5 dk 35 sn). Göç yok, web değişmedi.
 
 **Mühür.** v2.571 67931eb CANLI (10.11 22:34 TSİ): CI #723 yeşil (5 dk 7 sn); ssh dağıtım api+worker (web dokunulmadı; worker penceresi dışında); göç yok; canlıda veri dönüşümü yok; healthz 200, ana sayfa 200, api/worker günlüğünde hata 0. Faz 0 onay paketlerinin üçü de (karne v2.568/569, sır kasası v2.570, rapor gün sınırı v2.571) canlıda. Kalan: düz TOTP/webhook sütunlarının düşürülmesi (ayrı onay, bir yedek döngüsü sonrası); 11.11 sabahı `karne_dustu` alarmı gözlemi.
+
+## Altmış ikinci paket — v2.572 (10.11.2026): koşu künyesi ve arşiv sertleştirme (Faz 1 paketi F1-A, Stage 2) (YERELDE; mühür bekliyor)
+
+**Ne.** (1) Göç `v2572_kosu_kunyesi`: `forecast_runs`'a sekiz NULL'lanabilir sütun — `kalibrasyon_id`, `ml_model_id`, `konformal_hesap_zamani`,
+`nwp_kosu_zamani`, `ufuk_saat`, `kapasite_kwp`, `yazilim_surumu`, `etiket`; mevcut satırlarda yalnız `etiket` JSON'dan türetilir, başka alan geriye
+dönük yazılmaz (boşluk uydurulmaz); `(plant_id, etiket)` dizini. (2) `forecast_service.uret_ve_kaydet` künyeyi doldurur: aktif kalibrasyon kimliği,
+yalnız artefakt gerçekten yüklendiyse model kimliği, uygulanan konformal ayarın hesap zamanı, NWP yayın zamanı, yazılan saat sayısı, koşu anındaki
+kapasite, `PVQ_SURUM`. (3) `MeteoData.kosu_zamani` (varsayılan None): `acik_nwp.arsivden_tahmin` ileri ufkun koşu zamanını taşır; Open-Meteo yolunda
+None. (4) `pvquant/surum.py`: `PVQ_SURUM` ortamından sürüm (boşsa None); Dockerfile `ARG/ENV PVQ_SURUM`, compose `build.args` — dağıtımda
+`PVQ_SURUM=$(git describe --always) docker compose build …` (mühür ritüeline eklenecek; boş kalırsa künye NULL, yanlış değil). (5) Panelden tetiklenen
+koşu `etiket='elle'`; karne kuralı 6. madde: elle koşu ana ve gün içi kovalarına girmez (program kovasında kesim öncesi son koşu kuralı sürer, kgup ile
+aynı); `sentetik_tohum` geriye bakışlı sayılır; `KURAL_SURUMU=2026-11-10.2`. (6) Etiket okuyan dört SQL (`gece_skill`, `rapor_alanlari`,
+`accuracy_service` ×2, `kosu_gecmisi`) `COALESCE(r.etiket, json)`. Değişmezlik tetikleyicisi bu pakette YOK (ayrı karar). Çekirdek, kalibrasyon ve
+uzlaştırma formülleri dokunulmadı; web değişmedi.
+
+**Neden.** Faz 1 Stage 2: koşu hangi kalibrasyon/model/NWP yayını/yazılımla üretildi sorusu kayıtta yoktu (Faz 0 TK-09 «arşiv sağlam ama künye
+eksik»); elle koşu etiketsiz olduğu için gece koşusuyla aynı saati çift sayabiliyordu; sentetik tohum dışlama listesinde değildi.
+
+**Kanıt.** `tests/test_kosu_kunyesi_v2572.py` (5): elle koşu ana/gün içi kovalarda yok, programda kesim öncesi son koşu kuralı; sentetik tohum dışarıda;
+MeteoData varsayılanı ve arşiv çerçevesinde UTC yayın zamanı; test DB'de uçtan uca `uret_ve_kaydet` (Mod B, sahte meteo): kalibrasyon kimliği, NWP
+zamanı, ufuk = değer sayısı, kapasite 1200, sürüm, etiket sütun ve JSON'da «elle»; PVQ_SURUM boşsa None. Hedefli (yeni + karne/skill/kapsama/doğruluk
+takımı) 42 geçti. Göç test DB'de ileri/geri/ileri prova; compose `yaml.safe_load` kapısı geçti (`docker compose config` yerelde .env istediği için koşulmadı; canlıda dağıtım öncesi koşulacak). Tam takım (test DB 55432): 1099 geçti / 1 atlandı / 0 kırmızı (5 dk 25 sn).
+
+## Altmış üçüncü paket — v2.573 (10.11.2026): ölçüm uygunluk katmanı (Faz 1 paketi F1-B, Stage 3) (YERELDE; mühür bekliyor)
+
+**Ne.** (1) Göç `v2573_scada_kapsama`: `scada_hourly.kapsama_dk SMALLINT NULL` (saatin kaç dakikası ölçülü; eski satırlar ve EPİAŞ/bulut yolları
+NULL = bilinmiyor). (2) Yükleme: `transform.py` saat altı kaynakta örnek sayısı × adım = kapsama (en çok 60), hiç örneği olmayan saatin enerjisi
+artık 0 değil NaN (validate → `unparseable`); saatlik kaynakta satır varsa 60; günlük özette tanımsız. `validate.py` yeni bayrak `partial_hour`
+(kapsama < 45 dk; `PARTIAL_HOUR_MIN_MINUTES`), karneye uyarı. `ingest_service` sütunu yazar; canlı örnekleme tam saatleri 60 yazar.
+(3) Yeni `services/olcum_uygunluk_service.py`: dönemdeki her saat için `durum` (olculdu/dislandi) ve `neden` — eksik > bayrak:<flag> > kismi_saat >
+olay:<tür> > olculdu; sayaç kaynağında `sayac:<nitelik>`; `kirpma` bilgi sütunu; ölçüm sınırı açık (SCADA = tesis brüt AC, sayaç = bağlantı
+noktası net). `dokum()`: beklenen/ölçülen saat, kapsama %, neden → saat, kırpma saati, kapsama bilinmeyen saat. `saat_durumlari()` DB'den yalnız
+okur (tüm bayraklar + iptal edilmemiş, üretimi etkileyen olaylar: EAK düşüren ya da istisna türler; uzaktan açma hariç). Eksik saat hiçbir
+yerde 0 sayılmaz. Mevcut karne (`gece_skill`, `skill_daily`) DOKUNULMADI; bu katman F1-C motorunun girdisidir. Çekirdek ve web değişmedi.
+
+**Neden.** Faz 1 Stage 3: dışlanan saatlerin nedenleriyle kaydı yoktu; arıza/bakım/kısıntı olayları doğruluktan dışlanmıyordu; 15 dk kaynakta
+tek örnekli saat «geçerli» kalıyor, boş saat 0 kWh yazılıyordu; brüt/net ayrımı karnede söylenmiyordu (üç depo taraması, 10.11).
+
+**Kanıt.** `tests/test_olcum_uygunluk_v2573.py` (6): öncelik sırası ve eksik saatin NaN kalması, 45 dk sınırının geçerli sayılması, sayaç
+niteliği, olay saatlerinin birleşmesi ve açık uçlu olay, 15 dk CSV'de 15/30 dk → `partial_hour`, 45 → geçerli, boş saat → `unparseable` + enerji
+NaN + uyarı, saatlik kaynakta 60, test DB'de uçtan uca `saat_durumlari` (iptal olay sayılmaz). Hedefli: yeni + ingestion takımı 35 geçti. Göç test
+DB'de ileri/geri/ileri prova. Tam takım (test DB 55432): 1104 geçti / 1 atlandı / 1 kırmızı → `test_rapor_tutarlilik::test_d18_olculmemis_gun_durust_gecer` (16 sayfalık PDF alt süreci, JSON fikstür; F1-B'nin dokunduğu yolda değil) yük altında düştü, tek başına 33 sn'de geçti — yük kaynaklı, daha önce de görülen desen (v2.568 test_edge_db_v2561).
+
+## Altmış dördüncü paket — v2.574 (10.11.2026): bağımsız doğrulama motoru ve referanslar (Faz 1 paketi F1-C, Stage 4–5) (YERELDE; mühür bekliyor)
+
+**Ne.** (1) Yeni `services/bagimsiz_dogrulama_service.py` (SOZLUK_SURUMU 2026-11-10): koşu seçimi saat başına TEK tahmin — `program`
+(D-1 KGÜP kesimi öncesi son koşu, karne_kurali ile aynı), `gun_oncesi` (yerel gün başlamadan yayımlanmış son koşu; gün içi revizyon dâhil),
+`gun_ici` (son revizyon), `ufuk` (ana kovalar; üst düzey metrik yalnız 0-24, kesit tüm kovalar); backtest/arşiv meteo/sentetik tohum dışarıda.
+Gündüz maskesi «gerçek VEYA tahmin > %2 kapasite» (kullanıcı onayı 10.11); gece ayrı sayılır («gece davranışı»: tahmin > 0 saat/kWh, gerçek > 0 saat).
+Metrikler (birimler açık, payda yetersizse None): WMAPE havuzlanmış + günlük ortalama, MAE/RMSE kW, nMAE/nRMSE/nMBE (% kapasite), MBE işaret
+«tahmin − gerçek; pozitif = fazla tahmin», günlük enerji sapması kWh/gün, PICP80, P(y<P10), P(y>P90), bant genişliği/kapasite, Winkler α=0,2.
+Kesitler: gün, hafta, ay, mevsim, yerel saat, ufuk (0-24/24-48/48-72/72-168/168+), düşük/orta/yüksek üretim günleri (dönem içi üçte birlikler),
+en zayıf 5 gün. Referanslar aynı saat kümesinde: fizik (`physics_kw`), bilgi kümesi tutarlı persistans (yayından önce ölçülmüş son aynı saat ×
+açık gök oranı, kelepçe 4), CLIPER örneklem dışı (iklimsel ay×saat ≥20 gün + persistans, ağırlık dönem öncesi 30 günde); beceri = 1 − WMAPE/WMAPE_ref,
+sonuç «model daha iyi / referans daha iyi / eşit» aynen. Bütünlük: ölçüm dökümü (F1-B) + gündüz saat / değerlendirilen / nedenli dışlanan +
+kırpma. Meta: sözlük sürümü, kural, koşu kümesi ve saat kümesi SHA-256 (16), kapasite, yazılım sürümü, koşu künyesi (mod, model, meteo,
+kalibrasyon, NWP yaşı). (2) Göç `v2574_dogrulama_sonuc`: yalnız-ekleme tablo (RLS, pvq_app SELECT/INSERT). (3) Worker `gece_bagimsiz_dogrulama`
+(03:50 TSİ; program + gün öncesi, 30 gün; yetersiz veri «atlandı»), IZLENEN_ISLER'e eklendi. (4) API `GET /v1/plants/{id}/dogrulama/bagimsiz?gun&kural&taze`
+(kayıtlı sonuç ≤36 sa, yoksa anında hesap, kaydedilmez) ve `GET /v1/portfoy/dogrulama/bagimsiz` (saatlik havuzlanmış, anında). Mevcut
+`gece_skill`/`skill_daily`/Doğruluk sayfası DOKUNULMADI; çekirdek, kalibrasyon ve web değişmedi.
+
+**Neden.** Faz 1 Stage 4–5: dönem WMAPE'si günlük ortalamaydı; MAE, bant genişliği, Winkler yoktu; naif referans uzak ufukta yayın anında
+bilinmeyen gözlemi kullanıyordu; CLIPER örneklem içi ve gece işinde fiilen boştu; fizik referansı kıyaslanmıyordu; mevsim/üretim sınıfı/portföy
+havuzu ve yeniden üretim metası yoktu; olaylar ve kısmi saatler dışlanmıyordu (Faz 0 05 §2 tasarımı + 10.11 taramaları).
+
+**Kanıt.** `tests/test_bagimsiz_dogrulama_v2574.py` (10, tur 1): bilinen sonuçlu WMAPE/MAE/MBE/nMBE/RMSE/enerji sapması/PICP/Winkler; payda yetersiz
+→ None; maske gerçek VEYA tahmin; eksik saat 0 sayılmaz (0 sayılsaydı WMAPE 75 → 8,33); bant 2 saat → hesaplanmaz; koşu seçimi: yinelenen saat
+tek satır, 21:30 UTC koşusu yerel gün sonrası (gün öncesi değil), backtest/elle/gün içi ana kovaya girmez, program = kesim öncesi son koşu; persistans
+yayından sonraki gözlemi kullanmaz (k=2), gece NaN; CLIPER ağırlık [0,1], kısa geçmişte hesaplanmaz; en zayıf 5 gün sırası; üretim sınıfları; meta
+SHA'ları deterministik. Test DB: 10 günlük sentetik santral (frozen 1 saat + arıza 2 saat dışarıda; gün öncesi/program/gün içi 2,0 %, ufuk 24-48
+kovası 10,0 %, fizik 20 % «model daha iyi»), kaydet/son/yalnız-ekleme sayımı 1, portföy, API 200/422/404. Göç test DB'de ileri/geri/ileri prova.
+Hedefli (IZLENEN_ISLER, alarm, API skill, karne, RLS, F1-A/B) 53 geçti. Tam takım (test DB 55432): ilk koşu 1112 geçti / 3 kırmızı — üçü de yeni gece işinin operatör adının `isler_service.ISIM_TR`'de olmamasından (test_isler, test_senkron, test_faz3_sistem_izleme); «Bağımsız doğrulama» eklendi, üç test + yeni dosya yeniden koşuldu ve geçti.
+
+## Altmış beşinci paket — v2.575 (10.11.2026): Doğruluk sayfasında «Bağımsız doğrulama» bölümü (Faz 1 paketi F1-D, Stage 7) (YERELDE; mühür bekliyor)
+
+**Ne.** Yeni sayfa yok; `Dogruluk.tsx`'e ölçüt gruplarının altına `BagimsizDogrulamaKarti`: (1) sağ slot — «program / gün öncesi» segmenti
+(kural), çip: dönem günü, «gece hesabı HH:MM» ya da «anlık hesap», değerlendirilen gün; (2) dört KPI — havuzlanmış WMAPE (alt: günlük
+ortalama + gündüz saati), ortalama saatlik hata kW + ikinci satır yön (fazla/eksik tahmin, % kurulu güç) + günlük enerji sapması,
+aralık içinde kalan saatler + ortalama aralık genişliği, değerlendirilen ölçüm % + ölçülen/beklenen saat + ölçüm sınırı; (3) katlanır
+«değerlendirmeye girmeyen gündüz saatleri, nedenleriyle» (`ul.not-listesi`; neden kodları müşteri dilinde: ölçüm yok, yükleme kontrolü:
+donmuş değer…, olay kaydı: arıza…, kısmi saat, sayaç verisi tahmini); (4) iki sütun: referans tablosu (fiziksel model / son ölçümlere göre
+tahmin / sektör referansı; referans hatası, PVQuant hatası aynı saatlerde, fark puan + «PVQuant daha iyi / referans daha iyi»; hesaplanamayan
+satır «—» + neden) ve en zayıf beş gün tablosu (gün, WMAPE, saat, enerji sapması ± kWh); (5) uyarılar (30 günden az, kapsama < %70, kapsama
+bilinmeyen eski yükleme, gece pozitif tahmin, payda yetersiz); (6) `dl.kunye`: dönem, doğrulanan tahmin, ölçüm sınırı, model (müşteri dili),
+tahmin kümesi (sayı + SHA özeti), hesap sözlüğü + yazılım sürümü, hesap zamanı; (7) «Nasıl hesaplanır» `<details class="aciklama">`.
+`client.ts api.bagimsizDogrulama(p, gun, kural)` (örnek kipte temsili `ornekBagimsiz`), `types.ts BagimsizDogrulama`, `index.css .satir-2`
+(≤700 px tek sütun), sahte API `dogrulama/bagimsiz` ucu (420 ms). Mevcut KPI'lar, ölçüt grupları ve grafikler aynen. Dil bekçisi
+kurallarına uyuldu (iç terim yok; persistans/künye/koşu sözcükleri yüzeyde yok). Çekirdek, API ve DB değişmedi.
+
+**Neden.** Faz 1 Stage 7 müşteri soruları: tahmin gerçeğe ne kadar yakındı (havuzlanmış WMAPE + MAE + yön), hangi günler zayıf (en zayıf
+beş gün), referansı geçti mi (üç referans, lehte/aleyhte), ölçümün ne kadarı doğrulandı (değerlendirilen %, nedenli dışlama), hangi
+model/dönem (bilgi listesi), veri sınırlılıkları (uyarı listesi) — 10.11 taramasında «kısmen/yok» olan altı satır.
+
+**Kanıt.** Web kapıları: `npm test` 104/104, `tsc` 0, `oxlint` 0, `build` tamam. CDP: `kare.mjs` Doğruluk iki tema × 320/375/768/1280/1440;
+ilk turda yeni tablolar 375'te kartı aşıyordu (belge 470 px) → `.grafik-kaydir` sarmalı; sonra 320/375'te yeni bölümden taşan öğe yok.
+Kalan 24 px (belge 399 px) ESKİ «Uzlaştırma kalemleri» kartının başlık rozeti («senaryo fiyatı») — F1-D dışı, bellekteki açık görsel
+kalemle aynı. `tarama.mjs`: «atlanan heading h1→h3» ve küçük hedefler Portföy/Tahminler'de de var (önceden mevcut, Kart h3 deseni).
+1440 açık tema karesi: dört KPI, döküm, iki tablo, bilgi listesi okunur; kart içinde kart yok.
+
+## Altmış altıncı paket — v2.576 (10.11.2026): bağımsız tahmin doğrulama raporu (Faz 1 paketi F1-E, Stage 8) (YERELDE; mühür bekliyor)
+
+**Ne.** (1) Şablon rapor `bagimsiz-dogrulama` (`sablon_rapor_service`; HTML kabuk + Markdown, `uret(fmt="html"|"md")`): bölümler — Durum
+(**DOĞRULANMIŞ ÖLÇÜM** / **EKSİK DEĞERLENDİRME** (14 günden az ya da kapsama < %70) / **GERİYE DÖNÜK SİMÜLASYON** (yayım anında saklanmamış
+tahmin; «tarihsel tahmin başarısı olarak OKUNMAZ»)), kimlik ve dönem, ölçüm kaynağı ve kalitesi (beklenen/ölçülen saat, kapsama, kırpma,
+kapsaması bilinmeyen saat, gündüz/değerlendirilen), tahmin bilgileri (mod, kalibrasyon kimliği, hava verisi kaynağı ve yaşı, yazılım sürümü,
+ilk/son tahmin zamanı), doğruluk ölçütleri (ad/değer/birim/tanım), saate göre hata ve sistematik sapma, P10–P90 kapsaması, referans kıyası
+(aynı saatler, aynı ölçüm; «PVQuant daha iyi / referans daha iyi / hesaplanamadı» + neden), eksik ve dışlanan gündüz saatleri (nedenleriyle),
+gece davranışı, en zayıf günler, ufuk/mevsim/üretim düzeyi kesitleri, güçlü ve zayıf yanlar (sayıdan türetilmiş eşikli cümleler: WMAPE %10,
+nMBE ±2, PICP 80±5, referans farkı, kapsama %90, en zayıf 3 gün — sıfat yok), yöntem ve sınırlar, yeniden üretim kimliği (sözlük sürümü,
+kural, tahmin kümesi ve saat kümesi SHA, kapasite, yazılım, kayıt kimliği, hesap zamanı). Gece kaydı (≤36 sa) varsa o, yoksa anında hesap.
+(2) JSON şeması 1.3.0: `independent_validation` bloğu (`IndependentValidation`: status, dictionary_version, rule, source, dönem, saat/gün,
+WMAPE/MAE/RMSE/nMAE/nRMSE/MBE/nMBE/enerji sapması, PICP/P10 altı/P90 üstü/aralık genişliği/Winkler, ölçüm kapsaması, değerlendirilen %,
+nedenli dışlama, kırpma, referanslar, en zayıf günler, run_set_sha, hour_set_sha, computed_at, software_version, record_id); hesaplanmadıysa
+anahtar HİÇ yazılmaz (hybrid deseni). (3) Excel yeni sayfa «Validation-Independent» (ölçütler/birim, referanslar, dışlanan saatler, kimlik);
+ctx.bagimsiz yoksa sayfa yok (K-C2). `report_service.uret` json/xlsx yollarında `_bagimsiz_dogrulama` (gece kaydı ya da anında hesap; hata
+raporu düşürmez). (4) API `GET /rapor-sablon/bagimsiz-dogrulama?gun&kural&fmt` (422 doğrulama). (5) Raporlar sayfasına «Bağımsız tahmin
+doğrulama (30 gün)» indirme düğmesi + açıklama cümlesi. PDF (16 sayfa) bu pakette değişmedi (s07/s10 mevcut karneyi anlatır; ayrı karar).
+
+**Neden.** Faz 1 Stage 8: bağımsız doğrulama belgesi yoktu; raporlar sürüm/kural künyesi, dışlanan saat dökümü ve referans kıyası taşımıyordu;
+doğrulanmış / simülasyon / eksik ayrımı yazılı değildi (10.11 taraması).
+
+**Kanıt.** `tests/test_bagimsiz_rapor_v2576.py` (4): 14 bölüm ve durum etiketi, HTML/Markdown'da SHA ve referans adları, güçlü/zayıf cümleler;
+simülasyon ve eksik (8 gün; kapsama %50) etiketleri; JSON bloğu yok = YOK ve var (alanlar sonuçla birebir, Excel sayfası var/yok, hücre
+değerleri); test DB'de uçtan uca `uret` HTML + Markdown (10 gün → EKSİK DEĞERLENDİRME, WMAPE %10, nMBE pozitif cümlesi) ve API 200/422×3.
+`test_reporting` iki şema sürümü iddiası 1.3.0'a güncellendi (ekleme). Hedefli (yeni + reporting + excel_kc + sema_v22 + tablo33 + bagimsiz
++ dis_api) 92 geçti. Web: tsc 0, oxlint 0, 104 test, build tamam. Tam takım (test DB 55432, 11.11 00:0x): 1118 geçti / 1 atlandı / 1 kırmızı → `test_modb_rapor::test_matrissiz_girdi_kosullu` (16 sayfalık PDF alt süreci, Mod B fikstürü; F1-E'nin dokunduğu yolda değil) yük altında düştü, tek başına 31,9 sn'de geçti — v2.573'teki aynı desen (yük kaynaklı).
+
+## Altmış yedinci paket — v2.577 (11.11.2026): gerçek santral pilotu ve simülasyon kipi (Faz 1 paketi F1-F, Stage 6) (YERELDE; mühür bekliyor)
+
+**Ne.** (1) Motor `simulasyon=True` kipi (`kosu_sec`/`hesapla_saf`/`hesapla`): geriye bakışlı koşular yalnız açıkça istenince dâhil; `meta.simulasyon`;
+`kaydet` simülasyonu REDDEDER (dogrulama_sonuc yalnız yayım anında saklanmış tahmin); rapor etiketi meta'dan da okunur. (2) Günlük ortalama WMAPE'de
+gün başına payda kuralı (`wmape_gunluk_n`; kesinti/kar günü ortalamayı %1000'lere taşıyordu). (3) `scripts/faz1_pilot_okuma.sql`: canlı pilot için
+salt okunur toplu sayımlar (kimlik yok). (4) `scripts/faz1_solentegre_simulasyon.py`: Solentegre 2025 (EPİAŞ UEVM, test DB) için ERA5 analiz
+meteosu + kalibrasyonsuz fizik → 365 sanal koşu (backtest/arşiv etiketli; karne dışlar), motor + rapor, kanıt klasörü; silme yetkisi olmadığı
+için var olan koşuları yeniden kullanır. Çekirdek çağrıldı, değişmedi; canlıya dokunulmadı; web değişmedi.
+
+**Neden.** Faz 1 Stage 6 / Faz 0 8. koşul: gerçek santralda tahmin ayağı BLOCKED idi; canlı okuma bu oturumda reddedildi; brief «sonradan
+gözlenen meteoyla test → geriye dönük simülasyon etiketi» diyor.
+
+**Kanıt.** `~/Desktop/PVQuant_Faz1_Tahmin_Dogrulama/06_Pilot_Dogrulama.md` + `kanit/F1-F2_*` (HTML/MD rapor «GERİYE DÖNÜK SİMÜLASYON», JSON, meteo
+CSV): 4.163 gündüz saat, 365 gün, WMAPE %25,9, nMBE +%6,5, yaz %12,5 / kış %49,5, düşük üretim günleri %89,8, son ölçümlere göre tahmine +21,9
+puan; en zayıf beş gün kayıtsız kesinti imzası (olay kaydı yokluğu). F1-F1 canlı ayağı kullanıcı girdisine bağlı. `tests/test_simulasyon_v2577.py`
+(1): varsayılan dışlar, simülasyon dâhil eder ve etiketler, kaydet reddeder. Faz 1 hedefli beş dosya 26 geçti. Tam takım (test DB 55432, 11.11): 1120 geçti / 1 atlandı / 0 kırmızı (5 dk 42 sn).
+
+## Altmış sekizinci paket — v2.578 (11.11.2026): Faz 1 test turları ve kiracı izolasyon testleri (Faz 1 paketi F1-G, Stage 9) (YERELDE; mühür bekliyor)
+
+**Ne.** `tests/test_faz1_tur2_v2578.py` (2): `dogrulama_sonuc` RLS — B kiracısı A'nın kaydını görmez, B bağlamında A'ya yazma WITH CHECK ile reddedilir,
+sistem bağlamında yalnız A'nın kaydı; API — başka kiracının santralı `/dogrulama/bagimsiz` ve `/rapor-sablon/bagimsiz-dogrulama` 404, kendi
+santralı 200, portföy yalnız kendi santralı. Üç tur koşuldu ve kanıtlandı (`~/Desktop/PVQuant_Faz1_Tahmin_Dogrulama/07_Test_Turlari.md` +
+`kanit/F1-G_*`): Tur 1 saf hesap 29 geçti; Tur 2 entegrasyon 103 geçti; Tur 3 web 104/104 + tsc 0 + build + oxlint (Faz 1 dosyaları 0; eski 2 uyarı),
+14 panel sayfası × 375/1440 × iki tema 56 ölçümün 52'si taşma 0 (Santralim@375 7 px ve Doğruluk@375 24 px önceden mevcut), tarama ihlalleri
+önceden mevcut (Kart h3, küçük hedef). Performans: motor 30 gün 1,9 sn, 365 gün 5,5 sn; rapor 0,05 sn. Koşulmayan: Playwright/Firefox/Safari
+(altyapı yok), canlı regresyon (dağıtım kapsam dışı), F1-F1 canlı ayağı. Kod değişikliği yalnız test dosyası.
+
+**Neden.** Faz 1 Stage 9: üç tur ve geçti/kaldı/engellendi/koşulmadı dökümü; kiracı ve santral yetkisi yeni tabloda açıkça sınanmalıydı.
+
+**Kanıt.** Tam takım (test DB 55432, 11.11 00:25, `kanit/F1-G_tam_takim.txt`): 1122 geçti / 1 atlandı / 0 kırmızı (5 dk 11 sn).
+
+**Faz 1 teslim raporu (11.11.2026).** `~/Desktop/PVQuant_Faz1_Tahmin_Dogrulama/08_Faz1_Teslim_Raporu.md` + README: karar **Faz 1 KISMEN TAMAMLANDI** —
+dokuz kabul ölçütünün sekizi kod ve testle karşılandı; canlı santralda yayımlanmış tahmin × ölçüm kanıtı ve müşteri doğrulaması açık (canlı DB okuma
+reddi, dağıtım kapsam dışı). Mühür adayları v2.572–v2.578 yerelde (48 dosya); mühürde üç göç DB sahibiyle + `PVQ_SURUM` ile dağıtım.

@@ -425,11 +425,22 @@ def transform_to_canonical(
     spec.source_timestep_minutes = source_step
     spec.timestep_minutes = source_step
     if source_step < 60:
+        # v2.573 (Faz 1 F1-B): saatin kaç dakikası ölçümle kaplı — örnek sayısı × kaynak adımı (en çok 60). Önceden 4 dilimden
+        # 1'i olan saat de 'valid' kalıyor, hiç örneği olmayan saatte enerji 0 yazılıyordu (toplam min_count'suz); ikisi de
+        # ölçülmüş gibi görünüyordu. Şimdi kapsama kayda geçer, boş saatin enerjisi NaN kalır (validate → 'unparseable').
+        n_ornek = work["power_kw"].resample("1h").count()
+        e_ornek = work["energy_kwh"].resample("1h").count() if "energy_kwh" in work.columns else None
         agg = {c: "mean" for c in work.columns}
         if "energy_kwh" in work.columns:
             agg["energy_kwh"] = "sum"           # enerji TOPLANIR
         work = work.resample("1h").agg(agg)     # güç/ölçümler ORTALANIR
+        if e_ornek is not None:
+            work.loc[e_ornek.reindex(work.index).fillna(0) == 0, "energy_kwh"] = float("nan")   # boş saat 0 değil, bilinmiyor
+        work["kapsama_dk"] = (n_ornek.reindex(work.index).fillna(0) * source_step).clip(upper=60).where(n_ornek.reindex(work.index).fillna(0) > 0)
         dst_series = dst_series.resample("1h").max().fillna(False)
         spec.timestep_minutes = 60
+    elif source_step < 1440:
+        work["kapsama_dk"] = work["power_kw"].notna().map({True: 60.0, False: float("nan")})   # saatlik kaynak: satır varsa tam saat
+    # günlük özet (≥1440 dk): kapsama tanımsız, kolon yok
 
     return work, spec, dst_series.astype(bool)

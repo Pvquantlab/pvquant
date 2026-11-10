@@ -250,6 +250,7 @@ def build_excel(ctx) -> bytes:
     _sayfa_iklim(wb, ctx, F)
     # ====== PERFORMANCE — PR + kullanılabilirlik (v2.349, rakip paritesi) ======
     _sayfa_performans(wb, ctx, F)
+    _sayfa_bagimsiz(wb, ctx, F)   # v2.576 (Faz 1 F1-E)
 
     # ================= METADATA =================
     ws_m = wb.add_worksheet("Metadata")
@@ -361,6 +362,61 @@ def _sayfa_gunluk_ozet(wb, ctx, F):
     ws.conditional_format(1, 1, n, 1, {
         "type": "data_bar", "bar_color": RENK.MARKA,
         "bar_border_color": RENK.MARKA, "bar_solid": True})
+
+
+def _sayfa_bagimsiz(wb, ctx, F):
+    """v2.576 (Faz 1 F1-E) — Validation-Independent: bağımsız doğrulama (bagimsiz_dogrulama_service sonucu). ctx.bagimsiz yoksa sayfa HİÇ eklenmez (K-C2).
+    Üç blok: ölçütler (ad, değer, birim), referanslar, dışlanan saatler; altta yeniden üretim kimliği."""
+    s = getattr(ctx, "bagimsiz", None)
+    if not s:
+        return
+    from pvquant.services.sablon_rapor_service import dogrulama_durumu, REF_AD, _neden_yaz
+    m = s.get("metrik") or {}; b = s.get("butunluk") or {}; meta = s.get("meta") or {}; o = b.get("olcum") or {}
+    durum, _ = dogrulama_durumu(s)
+    ws = wb.add_worksheet("Validation-Independent")
+    satir = 0
+    def yaz(ad, deger, birim=""):
+        nonlocal satir
+        ws.write(satir, 0, ad, F["hucre"])
+        if deger is None:
+            ws.write_blank(satir, 1, None, F["hucre"])
+        elif isinstance(deger, (int, float)) and not isinstance(deger, bool):
+            ws.write_number(satir, 1, float(deger), F["sayi1"])
+        else:
+            ws.write(satir, 1, str(deger), F["hucre"])
+        ws.write(satir, 2, birim, F["hucre"]); satir += 1
+    for j, ad in enumerate(("olcut", "deger", "birim")):
+        ws.write(0, j, ad, F["th"])
+    satir = 1
+    yaz("durum", durum); yaz("sozluk_surumu", meta.get("sozluk_surumu")); yaz("kural", meta.get("kural")); yaz("kaynak", o.get("sinir_etiketi"))
+    yaz("donem", f"{meta.get('donem', {}).get('bas')} – {meta.get('donem', {}).get('bit')}")
+    for ad, anahtar, birim in (("n_saat", "n_saat", "saat"), ("n_gun", "n_gun", "gün"), ("wmape", "wmape", "%"), ("wmape_gunluk_ort", "wmape_gunluk_ort", "%"), ("mae", "mae_kw", "kW"),
+                               ("rmse", "rmse_kw", "kW"), ("nmae", "nmae", "% kurulu güç"), ("nrmse", "nrmse", "% kurulu güç"), ("mbe", "mbe_kw", "kW (tahmin − gerçek)"), ("nmbe", "nmbe", "% kurulu güç"),
+                               ("enerji_sapma", "enerji_sapma_kwh_gun", "kWh/gün"), ("picp80", "picp80", "%"), ("p10_alti", "p10_alti", "%"), ("p90_ustu", "p90_ustu", "%"),
+                               ("aralik_genisligi", "bant_genisligi_oran", "% kurulu güç"), ("winkler", "winkler_kw", "kW")):
+        yaz(ad, m.get(anahtar), birim)
+    yaz("olcum_kapsamasi", o.get("kapsama_pct"), "%"); yaz("degerlendirilen_gunduz", b.get("degerlendirilen_pct"), "%"); yaz("kirpma_saat", b.get("kirpma_saat_degerlendirilen"), "saat")
+    satir += 1
+    for j, ad in enumerate(("referans", "saat", "referans_wmape", "pvquant_wmape_ayni_saatler", "fark_puan", "sonuc")):
+        ws.write(satir, j, ad, F["th"])
+    satir += 1
+    for k, v in (s.get("referans") or {}).items():
+        ws.write(satir, 0, REF_AD.get(k, k), F["hucre"]); ws.write_number(satir, 1, float(v.get("n_saat") or 0), F["sayi0"])
+        for j, anahtar in ((2, "wmape"), (3, "model_wmape_ayni_saatler"), (4, "beceri_pct")):
+            if v.get(anahtar) is None:
+                ws.write_blank(satir, j, None, F["hucre"])
+            else:
+                ws.write_number(satir, j, float(v[anahtar]), F["sayi1"])
+        ws.write(satir, 5, v.get("sonuc") or "hesaplanamadı", F["hucre"]); satir += 1
+    satir += 1
+    ws.write(satir, 0, "dislanan_neden", F["th"]); ws.write(satir, 1, "saat", F["th"]); satir += 1
+    for k, n in sorted((b.get("gunduz_dislanan") or {}).items(), key=lambda kv: -kv[1]):
+        ws.write(satir, 0, _neden_yaz(k), F["hucre"]); ws.write_number(satir, 1, float(n), F["sayi0"]); satir += 1
+    satir += 1
+    for ad, v in (("tahmin_kumesi_sha", meta.get("kosu_kumesi_sha")), ("saat_kumesi_sha", meta.get("saat_kumesi_sha")), ("tahmin_sayisi", meta.get("kosu_sayisi")),
+                  ("yazilim_surumu", meta.get("yazilim_surumu") or "—"), ("hesap_zamani", s.get("hesap_zamani") or meta.get("hesap_zamani")), ("kayit", s.get("id") or "anlık hesap")):
+        yaz(ad, v)
+    ws.set_column(0, 0, 44); ws.set_column(1, 5, 18)
 
 
 def _sayfa_karne(wb, ctx, F):

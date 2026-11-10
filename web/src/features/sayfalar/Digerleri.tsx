@@ -15,14 +15,15 @@ import type { RaporJson, RaporDonemVeri, RaporGonderim } from "../../api/types";
 
 function SablonDugmeleri({ plantId }: { plantId: string }) {
   const [hata, setHata] = useState<string | null>(null);
-  const indir = (ad: "kapasite-testi" | "fatura" | "kullanilabilirlik" | "beklenen-gerceklesen") => { setHata(null); api.raporSablonIndir(plantId, ad).catch((e) => setHata(String((e as Error).message ?? e))); };
+  const indir = (ad: "kapasite-testi" | "fatura" | "kullanilabilirlik" | "beklenen-gerceklesen" | "bagimsiz-dogrulama") => { setHata(null); api.raporSablonIndir(plantId, ad).catch((e) => setHata(String((e as Error).message ?? e))); };
   return (
     <>
       {/* 24.10 sekizinci tur: dört düğme indirme EYLEMİ olarak netleşti — grup etiketi + indirme ikonu + «… şablonunu
           indir» erişilebilir ad; onClick/api.raporSablonIndir ve şablon adları aynen */}
       <div className="dugme-sira">
         {([["kapasite-testi", "Kapasite testi"], ["fatura", "Tahmini fatura ve dengesizlik özeti (son ay, simülasyon)"],
-           ["kullanilabilirlik", "Kullanılabilirlik (30 gün)"], ["beklenen-gerceklesen", "Beklenen – gerçekleşen (aylık)"]] as const).map(([ad, etiket]) => (
+           ["kullanilabilirlik", "Kullanılabilirlik (30 gün)"], ["beklenen-gerceklesen", "Beklenen – gerçekleşen (aylık)"],
+           ["bagimsiz-dogrulama", "Bağımsız tahmin doğrulama (30 gün)"]] as const).map(([ad, etiket]) => (
           <button key={ad} className="dugme dugme-indir" onClick={() => indir(ad)} aria-label={`${etiket} şablonunu indir`}>
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 2v7m0 0L4.5 6.5M7 9l2.5-2.5M2.5 11.5h9" /></svg>
             {etiket}
@@ -30,7 +31,7 @@ function SablonDugmeleri({ plantId }: { plantId: string }) {
       </div>
       {hata && <p style={{ color: "var(--uyari-metin)", fontSize: 13.5, margin: "8px 0 0" }}>{hata}</p>}
       <p className="soluk" style={{ fontSize: 14, margin: "8px 0 0" }}>
-        Kapasite testi ölçülen düzlem ışınımı gerektirir; tahmini fatura özeti santral ayarlarındaki tarifeyi ve uzlaştırma kalemi yeniden hesabını kullanır (EPİAŞ uzlaştırması değildir); kullanılabilirlik raporu otomatik arıza tespitine dayanır.
+        Kapasite testi ölçülen düzlem ışınımı gerektirir; tahmini fatura özeti santral ayarlarındaki tarifeyi ve uzlaştırma kalemi yeniden hesabını kullanır (EPİAŞ uzlaştırması değildir); kullanılabilirlik raporu otomatik arıza tespitine dayanır. Bağımsız tahmin doğrulama raporu, yayımlandığı anda kaydedilmiş tahminleri uygun ölçümle saat saat karşılaştırır ve yeniden üretim kimliği taşır.
       </p>
     </>
   );

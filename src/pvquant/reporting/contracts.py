@@ -15,7 +15,7 @@ import pandas as pd
 
 # Sema surumu: alan EKLEME minor, kaldirma/yeniden adlandirma major (pratikte
 # yapilmaz — alan 'deprecated' isaretlenir). Tur 6: quality.hybrid blogu -> 1.1.0
-SCHEMA_VERSION = "1.2.0"   # v2.350: bant + sözleşme + birim + karne + kimlik (EKLEME; yalnız quality yuvarlandı)
+SCHEMA_VERSION = "1.3.0"   # v2.576 (Faz 1 F1-E): independent_validation bloğu (EKLEME; yoksa anahtar hiç yazılmaz). 1.2.0 (v2.350): bant + sözleşme + birim + karne + kimlik
 
 
 @dataclass
@@ -62,6 +62,7 @@ class ReportContext:
     son12: Optional[pd.DataFrame] = None        # ay(ts), actual_mwh
     flag_dagilimi: Optional[dict] = None        # flag -> satir sayisi
     coverage_pct: Optional[float] = None        # gecerli saat / toplam saat
+    bagimsiz: Optional[dict] = None             # v2.576 (Faz 1 F1-E): bagimsiz_dogrulama_service sonucu (JSON/Excel bloğu; yoksa blok YOK)
     karne_kapsama: Optional[dict] = None        # C-3b (v2.152): {tarih: gun-ici %}
                                                 # worker karne_kapsama yazar; gun
                                                 # esigin altindaysa karne DISI

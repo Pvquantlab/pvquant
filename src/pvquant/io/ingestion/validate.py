@@ -41,6 +41,9 @@ OVER_CAPACITY_FACTOR = 1.05
 #: Donmuş değer: aynı sıfır-dışı değerin ardışık tekrar eşiği (saat).
 FROZEN_RUN_HOURS = 4
 
+#: v2.573 (Faz 1 F1-B): saatin en az bu kadar dakikası ölçülü değilse 'partial_hour' — ortalama güç saati temsil etmez.
+PARTIAL_HOUR_MIN_MINUTES = 45
+
 #: Kırpma platosu muafiyeti: güç AC tavanının bu oranı ve üstündeyse
 #: 'saatlerce sabit değer' arıza değil KIRPMADIR — inverter AC limitine
 #: dayanmış santral öğle boyunca aynı değeri basar (v2.376, Karapınar:
@@ -97,6 +100,14 @@ def validate(
     # --- 2. Tekrarlanan timestamp ---
     dup = out.index.duplicated(keep="first")
     flags[dup] = RowFlag.DUPLICATE_TIME.value
+
+    # --- 2b. v2.573 (Faz 1 F1-B): kısmi saat — kaynak adımı saatten sıksa ve saatin <45 dakikası ölçülüyse ---
+    n_kismi = 0
+    if "kapsama_dk" in out.columns:
+        kismi = out["kapsama_dk"].notna() & (out["kapsama_dk"] < PARTIAL_HOUR_MIN_MINUTES)
+        kismi &= flags == RowFlag.VALID.value
+        n_kismi = int(kismi.sum())
+        flags[kismi] = RowFlag.PARTIAL_HOUR.value
 
     # --- 3. Negatif güç ---
     neg_tol = -NEGATIVE_TOLERANCE_FRACTION * capacity_kwp
@@ -183,6 +194,11 @@ def validate(
         report.warnings.append(
             f"{n_small_neg} satırda küçük negatif güç (gece öz tüketimi) 0'a kırpıldı; "
             "ham değer 'power_kw_ham' kolonunda korunur, üretim serisine girmez."
+        )
+    if n_kismi > 0:
+        report.warnings.append(
+            f"{n_kismi} saatte ölçüm {PARTIAL_HOUR_MIN_MINUTES} dakikanın altında (kısmi saat): bu saatler geçerli üretim "
+            "serisine girmez; kapsama 'kapsama_dk' kolonunda."
         )
     if n_kirpma_muaf > 0:
         report.warnings.append(

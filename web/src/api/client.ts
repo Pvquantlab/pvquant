@@ -1,5 +1,5 @@
-import type { DengesizlikSaatlik, DsgAnahtar, KgupRevizyon, PiyasaDurum, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , SaatProfili , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , PDegerleri , Kullanilabilirlik , KayipAyrisimi , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar, PortfoyAnahtar, PortfoyKupst, UevcbArama , Takvim, KunyeTarihler, Yekdem, Olay, OlayOzet, OlayGiris, OlayYanit, MutabakatOzet, MutabakatYukleme, SaatlikKiyas, SaatlikYuklemeYanit, KuralTablosu, SayacOzet, SayacYuklemeYanit, SayacAyar, SayacKaynak, RaporDonemVeri, RaporGonderim, RaporGonderimSonuc, Performans, Sensorler, Sensor, Kirlenme, VeriYoluOzet, VeriYoluSinama , GolgeGorunum, OlayAdaylari, BulutKimlikDurum, BulutKimlikKayit, BulutKimlikSonuc, BulutOAuthBaslat, BulutBirimKiyas, PilotDurum, ReferansKiyasOzet, EdgeToplayici, EdgeToplayiciYeni } from "./types";
-import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik } from "./ornek";
+import type { DengesizlikSaatlik, DsgAnahtar, KgupRevizyon, PiyasaDurum, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , SaatProfili , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , PDegerleri , Kullanilabilirlik , KayipAyrisimi , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar, PortfoyAnahtar, PortfoyKupst, UevcbArama , Takvim, KunyeTarihler, Yekdem, Olay, OlayOzet, OlayGiris, OlayYanit, MutabakatOzet, MutabakatYukleme, SaatlikKiyas, SaatlikYuklemeYanit, KuralTablosu, SayacOzet, SayacYuklemeYanit, SayacAyar, SayacKaynak, RaporDonemVeri, RaporGonderim, RaporGonderimSonuc, Performans, Sensorler, Sensor, Kirlenme, VeriYoluOzet, VeriYoluSinama , GolgeGorunum, OlayAdaylari, BulutKimlikDurum, BulutKimlikKayit, BulutKimlikSonuc, BulutOAuthBaslat, BulutBirimKiyas, PilotDurum, ReferansKiyasOzet, EdgeToplayici, EdgeToplayiciYeni , BagimsizDogrulama } from "./types";
+import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik, ornekBagimsiz } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
  *  VITE_API_URL tanimliysa GERCEK kapiya gider; degilse ornek veriye duser. */
@@ -537,6 +537,11 @@ export const api = {
     const ozet = (x: Karne | null) => x ? { wmape_ort: x.wmape_ort, gun_sayisi: x.gun_sayisi, naife_ustunluk_pct: x.naife_ustunluk_pct } : null;
     return { ...k0, gunluk: [...k0.gunluk, ...k1.gunluk, ...(kp?.gunluk ?? []), ...(kg?.gunluk ?? [])], program: ozet(kp), gun_ici: ozet(kg) };
   },
+  /** v2.575 (Faz 1 F1-D): bağımsız doğrulama — gece işinin kayıtlı sonucu (≤36 sa) ya da anında hesap; örnek kipte temsili. */
+  bagimsizDogrulama: async (p: string, gun = 30, kural: "program" | "gun_oncesi" = "program"): Promise<BagimsizDogrulama> => {
+    if (TABAN == null) return { ...ornekBagimsiz, gun, meta: { ...ornekBagimsiz.meta, kural } } as BagimsizDogrulama;
+    return getir<BagimsizDogrulama>(`/v1/plants/${p}/dogrulama/bagimsiz?gun=${gun}&kural=${kural}`);
+  },
   alarmlar: async (p: string, n = 20): Promise<AlarmSatiri[]> => {
     if (TABAN == null) return [];
     return getir<AlarmSatiri[]>(`/v1/plants/${p}/alarmlar?n=${n}`);
@@ -936,7 +941,7 @@ export const api = {
     try { return (await getir<{ tarife: Tarife | null }>(`/v1/plants/${p}/tarife`)).tarife; } catch { return null; }
   },
   tarifeAyarla: (p: string, tarife: Tarife | null): Promise<{ tarife: Tarife | null }> => gonder(`/v1/plants/${p}/tarife`, "PUT", { tarife }),
-  raporSablonIndir: async (p: string, ad: "kapasite-testi" | "fatura" | "kullanilabilirlik" | "beklenen-gerceklesen"): Promise<void> => {
+  raporSablonIndir: async (p: string, ad: "kapasite-testi" | "fatura" | "kullanilabilirlik" | "beklenen-gerceklesen" | "bagimsiz-dogrulama"): Promise<void> => {   // v2.576: bağımsız doğrulama raporu
     if (TABAN == null) throw new Error("Örnek kipte şablon rapor yok.");
     const jeton = localStorage.getItem("pvq_token");
     const y = await fetch(`${TABAN}/v1/plants/${p}/rapor-sablon/${ad}`, { headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });

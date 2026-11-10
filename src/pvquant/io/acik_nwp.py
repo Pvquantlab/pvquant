@@ -330,7 +330,7 @@ def eski_temizle(dizin: Path, tut: int = 2) -> list[str]:
     return silinen
 
 
-def _cerceve_to_meteodata(df: pd.DataFrame, lat: float, lon: float, nwp_model: str = KAYNAK_ETIKET):
+def _cerceve_to_meteodata(df: pd.DataFrame, lat: float, lon: float, nwp_model: str = KAYNAK_ETIKET, kosu_zamani=None):
     from pvquant.io.meteo import MeteoData
     df = df.sort_index()
     return MeteoData(ghi=df["ghi"], temp_air=df["temp_air"], wind_speed_10m=df["wind_speed_10m"],
@@ -338,7 +338,9 @@ def _cerceve_to_meteodata(df: pd.DataFrame, lat: float, lon: float, nwp_model: s
                      cloud_cover=df["cloud_cover"] if "cloud_cover" in df else None,
                      latitude=float(lat), longitude=float(lon), timezone="UTC",
                      precipitation=df["precipitation"] if "precipitation" in df else None, snowfall=None,
-                     kaynak=KAYNAK, nwp_model=nwp_model)
+                     kaynak=KAYNAK, nwp_model=nwp_model,
+                     kosu_zamani=(pd.Timestamp(kosu_zamani).tz_convert("UTC") if kosu_zamani is not None and pd.Timestamp(kosu_zamani).tzinfo is not None
+                                  else (pd.Timestamp(kosu_zamani, tz="UTC") if kosu_zamani is not None else None)))   # v2.572: künye
 
 
 def arsivden_tahmin(lat: float, lon: float, days: int, past_days: int = 0, azami_yas_saat: float = 36.0):
@@ -372,7 +374,7 @@ def arsivden_tahmin(lat: float, lon: float, days: int, past_days: int = 0, azami
         return None
     if df.index.tz is None:
         df.index = df.index.tz_localize("UTC")
-    return _cerceve_to_meteodata(df, la, lo)
+    return _cerceve_to_meteodata(df, la, lo, kosu_zamani=kosu)   # v2.572 (Faz 1 F1-A): künye — ileri ufuk bu koşudan
 
 
 #: v2.382 (zaman sözleşmesi mühürü): bu andan ÖNCEKİ koşularla yazılmış arşiv

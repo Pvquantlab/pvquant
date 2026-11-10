@@ -2644,20 +2644,31 @@ def tarife_ayarla(plant_id: str, p: TarifeIstek, claims=Depends(yazma_yetkisi())
 
 
 @app.get("/v1/plants/{plant_id}/rapor-sablon/{ad}")
-def rapor_sablon_uc(plant_id: str, ad: str, ay: str | None = None, gun: int = 30, claims=Depends(gecerli_kullanici)):
-    """v2.281 — şablon raporlar (HTML): kapasite-testi | fatura (ay=YYYY-MM) | kullanilabilirlik (gun) | beklenen-gerceklesen (gun). (ENV-F05-5: dördü de burada.)"""
+def rapor_sablon_uc(plant_id: str, ad: str, ay: str | None = None, gun: int = 30, kural: str = "program", fmt: str = "html", claims=Depends(gecerli_kullanici)):
+    """v2.281 — şablon raporlar (HTML): kapasite-testi | fatura (ay=YYYY-MM) | kullanilabilirlik (gun) | beklenen-gerceklesen (gun). (ENV-F05-5: dördü de burada.)
+    v2.576 (Faz 1 F1-E): bagimsiz-dogrulama (gun 7–365, kural program|gun_oncesi|gun_ici|ufuk, fmt html|md)."""
     from pvquant.services import sablon_rapor_service
     row = plant_service.getir(claims["tenant_id"], plant_id)
     if row is None:
         raise HTTPException(404, "santral yok")
+    if fmt not in ("html", "md"):
+        raise HTTPException(422, "fmt html|md")
     try:
-        p = {"ay": ay} if ad == "fatura" else {"gun": gun}
-        icerik, dosya = sablon_rapor_service.uret(claims["tenant_id"], row, ad, **p)
+        if ad == "bagimsiz-dogrulama":
+            from pvquant.services import bagimsiz_dogrulama_service as bd
+            if kural not in bd.KURALLAR:
+                raise HTTPException(422, "kural " + "|".join(bd.KURALLAR))
+            if not (7 <= gun <= 365):
+                raise HTTPException(422, "gun 7-365")
+            p = {"gun": gun, "kural": kural}
+        else:
+            p = {"ay": ay} if ad == "fatura" else {"gun": gun}
+        icerik, dosya = sablon_rapor_service.uret(claims["tenant_id"], row, ad, fmt=fmt, **p)
     except KeyError:
         raise HTTPException(422, f"şablon: {sablon_rapor_service.SABLONLAR}")
     except ValueError as e:
         raise HTTPException(409, str(e))
-    return Response(content=icerik, media_type="text/html; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{dosya}"'})
+    return Response(content=icerik, media_type=("text/markdown; charset=utf-8" if fmt == "md" else "text/html; charset=utf-8"), headers={"Content-Disposition": f'attachment; filename="{dosya}"'})
 
 
 class RaporGonderimIstek(BaseModel):
@@ -3060,7 +3071,7 @@ def tahmin_kos(plant_id: str, claims=Depends(yazma_yetkisi())):
     row = plant_service.getir(claims["tenant_id"], plant_id)
     if row is None:
         raise HTTPException(404, "santral yok")
-    run_id = uret_ve_kaydet(claims["tenant_id"], row)
+    run_id = uret_ve_kaydet(claims["tenant_id"], row, etiket="elle")   # v2.572: elle koşu ana karne kovalarına girmez (karne_kurali)
     return {"run_id": str(run_id)}
 
 
@@ -3087,6 +3098,42 @@ def kosu_listesi(plant_id: str, claims=Depends(gecerli_kullanici)):
     return [{"run_at": r.run_at.isoformat(), "mode": r.mode, "model": r.model, "bant": getattr(r, "bant", None),   # v2.273
              "sapma": getattr(r, "sapma", None), "etiket": getattr(r, "etiket", None)}   # v2.274 / v2.276
             for r in kosu_gecmisi(claims["tenant_id"], plant_id, n=10)]
+
+
+@app.get("/v1/plants/{plant_id}/dogrulama/bagimsiz")
+def bagimsiz_dogrulama(plant_id: str, gun: int = 30, kural: str = "program", taze: int = 0, claims=Depends(gecerli_kullanici)):
+    """v2.574 (Faz 1 F1-C): bağımsız doğrulama — yayımlandığı andaki tahmin × uygun ölçüm × referanslar (fizik, persistans, CLIPER).
+    Varsayılan: gece işinin son kayıtlı sonucu (≤36 sa); yoksa ya da taze=1 ise anında hesap (kaydedilmez)."""
+    from pvquant.services import bagimsiz_dogrulama_service as bd
+    if kural not in bd.KURALLAR:
+        raise HTTPException(422, "kural " + "|".join(bd.KURALLAR))
+    if not (7 <= gun <= 365):
+        raise HTTPException(422, "gun 7-365")
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    if not taze:
+        s = bd.son(claims["tenant_id"], plant_id, kural, gun)
+        if s:
+            return s
+    s = bd.hesapla(claims["tenant_id"], row, gun=gun, kural=kural)
+    s["kayitli"] = False
+    return s
+
+
+@app.get("/v1/portfoy/dogrulama/bagimsiz")
+def portfoy_bagimsiz_dogrulama(gun: int = 30, kural: str = "program", claims=Depends(gecerli_kullanici)):
+    """v2.574 (Faz 1 F1-C): kiracının tüm santralleri tek havuzda (saatlik havuzlanmış); anında hesap, kaydedilmez."""
+    from pvquant.services import bagimsiz_dogrulama_service as bd
+    if kural not in bd.KURALLAR:
+        raise HTTPException(422, "kural " + "|".join(bd.KURALLAR))
+    if not (7 <= gun <= 365):
+        raise HTTPException(422, "gun 7-365")
+    from sqlalchemy import text as _text
+    from pvquant.db import tenant_baglami as _tb
+    with _tb(claims["tenant_id"]) as s:
+        plants = [dict(r._mapping) for r in s.execute(_text("SELECT id, name, capacity_kwp, tz, lat, lon, params_json FROM plants WHERE NOT archived ORDER BY name"))]
+    return bd.portfoy(claims["tenant_id"], plants, gun=gun, kural=kural)
 
 
 @app.get("/v1/plants/{plant_id}/report")

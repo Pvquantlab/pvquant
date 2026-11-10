@@ -14,7 +14,7 @@ const CARPAN = Number(process.env.YAVAS ?? 1);
 const GECIKME = {
   "/v1/plants": 60, "/v1/oturum/yenile": 60, "/v1/portfoy": 270, "/v1/portfoy/tahmin": 400, "/v1/portfoy/dsg": 1000, "/v1/portfoy/kupst": 700,
   summary: 250, forecast: 350, skill: 300, runs: 80, alarmlar: 80, "alarm-kurallari": 80, nowcast: 150, kgup: 300, konformal: 120,
-  dengesizlik: 500, backtest: 900, guvenilirlik: 700, "saat-profili": 150, "kayip-ayrisimi": 220, "p-degerleri": 180, "hata-dagilimi": 350, kalibrasyon: 200, hijyen: 300,
+  dengesizlik: 500, backtest: 900, guvenilirlik: 700, "saat-profili": 150, "kayip-ayrisimi": 220, "p-degerleri": 180, "hata-dagilimi": 350, "dogrulama/bagimsiz": 420, kalibrasyon: 200, hijyen: 300,
   kayma: 600, "kayip-agaci": 250, "guc-matrisi": 250, monthly: 300, bankable: 800, "saat-ay-matrisi": 400, "gunes-yolu": 300,
   pr: 200, saglik: 300, kullanilabilirlik: 200, "fizik-terimleri": 100, tarife: 80, "epias-uretim": 100, damga: 40, performans: 260, sensorler: 90, kirlenme: 240, "veri-yolu": 90, "bulut-kimlik": 60, "pilot": 60, "edge/toplayici": 60, "golge-saatlik": 120, "olay-adaylari": 90,
   "/v1/isler": 100, "/v1/hakkinda": 150,
@@ -67,6 +67,27 @@ function karne(bucket, gun) {
   const ort = (f) => +(g.reduce((a, x) => a + f(x), 0) / g.length).toFixed(2);
   return { kova: bucket, gun_sayisi: gun, wmape_ort: ort((x) => x.wmape), naife_ustunluk_pct: 27.4, ilk_tarih: g[0].tarih, son_tarih: g[g.length - 1].tarih, nmae_ort: ort((x) => x.nmae), nrmse_ort: ort((x) => x.nrmse), nmbe_ort: ort((x) => x.nmbe), cliper_wmape_ort: ort((x) => x.wmape) * 1.12, cliper_ustunluk_pct: 11.8,
     olasiliksal: { gun_sayisi: gun - 2, pinball_p10: 412, pinball_p50: 980, pinball_p90: 430, crps: 760, picp80: 0.77, kapsama_p10: 0.12, kapsama_p90: 0.89, bant_n: 0.22 }, gunluk: g };
+}
+/** v2.575 (Faz 1 F1-D): bağımsız doğrulama — bagimsiz_dogrulama_service.hesapla şekli; deterministik, temsili. */
+function bagimsiz(gun, kural) {
+  const kat = kural === "program" ? 1 : 0.93;
+  const gunler = Array.from({ length: gun }, (_, i) => { const d = new Date(Date.UTC(2026, 9, 23) - (gun - 1 - i) * 86400e3).toISOString().slice(0, 10); const w = +(kat * (8 + 18 * r(i, 7))).toFixed(2);
+    return { kesit: d, n_saat: 11 + Math.round(2 * r(i, 8)), wmape: w, mae_kw: +(w * 14.2).toFixed(1), nmbe: +((r(i, 9) - 0.5) * 6).toFixed(2), enerji_sapma_kwh_gun: +((r(i, 9) - 0.5) * 4800).toFixed(0), picp80: +(70 + 20 * r(i, 10)).toFixed(1) }; });
+  const n = gunler.reduce((a, g) => a + g.n_saat, 0); const wm = +(gunler.reduce((a, g) => a + g.wmape * g.n_saat, 0) / n).toFixed(2);
+  const enz = [...gunler].sort((a, b) => b.wmape - a.wmape).slice(0, 5);
+  return { kayitli: true, id: "ds-1", hesap_zamani: "2026-10-24T00:50:00+00:00", gun, kaynak: "scada",
+    metrik: { n_saat: n, n_gun: gun, wmape: wm, wmape_gunluk_ort: +(wm * 1.06).toFixed(2), mae_kw: +(wm * 14.2).toFixed(1), rmse_kw: +(wm * 21).toFixed(1), nmae: +(wm * 0.31).toFixed(2), nrmse: +(wm * 0.47).toFixed(2), mbe_kw: 38.4, nmbe: 0.85, enerji_sapma_kwh_gun: 412.0,
+              picp80: 77.9, p10_alti: 12.6, p90_ustu: 9.5, bant_genisligi_oran: 19.1, winkler_kw: 1180.4, bant_n: n },
+    kesit: { gun: gunler, en_zayif_gunler: enz, ufuk: [{ kesit: "24-48", n_saat: n, wmape: wm }], mevsim: [{ kesit: "sonbahar", n_saat: n, wmape: wm }],
+             uretim_sinifi: [{ kesit: "düşük üretim günleri", n_saat: Math.round(n / 3), wmape: +(wm * 1.4).toFixed(2) }, { kesit: "orta", n_saat: Math.round(n / 3), wmape: wm }, { kesit: "yüksek üretim günleri", n_saat: n - 2 * Math.round(n / 3), wmape: +(wm * 0.8).toFixed(2) }] },
+    referans: { fizik: { n_saat: n, wmape: +(wm * 1.3).toFixed(2), mae_kw: +(wm * 18).toFixed(1), model_wmape_ayni_saatler: wm, beceri_pct: 23.1, sonuc: "model daha iyi", tanim: "aynı tahminin saf fizik modeli P50'si" },
+                persistans: { n_saat: n - 12, wmape: +(wm * 2.1).toFixed(2), mae_kw: +(wm * 30).toFixed(1), model_wmape_ayni_saatler: +(wm * 1.01).toFixed(2), beceri_pct: 52.4, sonuc: "model daha iyi", tanim: "yayın anından önce ölçülmüş son aynı saat × açık gök oranı" },
+                cliper: { n_saat: 0, wmape: null, beceri_pct: null, sonuc: null, tanim: "hesaplanamadı: dönem öncesi yeterli ölçüm (ay×saat ≥20 gün, 7 gün eğitim) yok" } },
+    butunluk: { olcum: { beklenen_saat: gun * 24, olculdu_saat: gun * 24 - 31, kapsama_pct: +((gun * 24 - 31) / (gun * 24) * 100).toFixed(1), dislanan: { eksik: 19, "bayrak:frozen_value": 8, "olay:ariza": 4 }, kirpma_saat: 27, kapsama_bilinmeyen_saat: 0, kaynak: "scada", sinir: "plant_gross_ac", sinir_etiketi: "tesis brüt AC (SCADA)" },
+                gunduz_saat: n + 24, degerlendirilen_saat: n, degerlendirilen_pct: +(n / (n + 24) * 100).toFixed(1), gunduz_dislanan: { eksik: 13, "bayrak:frozen_value": 7, "olay:ariza": 4 }, kirpma_saat_degerlendirilen: 27,
+                gece: { n_saat: gun * 24 - n - 24, tahmin_pozitif_saat: 9, tahmin_kwh: 6.1, gercek_pozitif_saat: 0 } },
+    meta: { sozluk_surumu: "2026-11-10", kural, kaynak: "scada", kapasite_kwp: 4514, gunduz_orani: 0.02, donem: { bas: gunler[0].kesit, bit: "2026-10-24", tz: "Europe/Istanbul" }, kosu_sayisi: gun, kosu_kumesi_sha: "3b8f6bc9000ebbd5", saat_kumesi_sha: "24cf6d3a7a88664d",
+            hesap_zamani: "2026-10-24T00:50:00+00:00", yazilim_surumu: "v2.575-test", kosu_kunyesi: { mode: ["C"], model: ["hybrid_residual"], meteo_source: ["acik-nwp"], kalibrasyon_id: ["c1"], yazilim_surumu: ["v2.575-test"], nwp_yasi_saat_ort: 4.3, ilk_run_at: gunler[0].kesit, son_run_at: "2026-10-23" } } };
 }
 const SAAT = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0") + ":00");
 const GUNLER30 = Array.from({ length: 30 }, (_, i) => new Date(Date.UTC(2026, 9, 23) - (29 - i) * 86400e3).toISOString().slice(0, 10));
@@ -625,6 +646,7 @@ http.createServer((req, res) => {
   if (/^\/v1\/plants\/[^/]+\//.test(yol)) {
     if (uc === "forecast") return yanit(200, forecast(Math.min(384, Number(url.searchParams.get("hours") ?? 384))));
     if (uc === "skill") return yanit(200, karne(url.searchParams.get("bucket") ?? "0-24", Number(url.searchParams.get("gun") ?? 60)));
+    if (uc === "dogrulama/bagimsiz") return yanit(200, bagimsiz(Number(url.searchParams.get("gun") ?? 30), url.searchParams.get("kural") ?? "program"));   // v2.575 (Faz 1 F1-D)
     if (uc === "damga") { if (req.headers["if-none-match"] === '"d1"') return yanit(304, undefined); return yanit(200, { son_scada: "2026-10-22T20:00:00Z", son_kosu: "2026-10-24T03:12:00Z", son_alarm: null, acik_alarm: 0, son_skill: GUN, son_kalibrasyon: "2026-10-01" }, { etag: '"d1"' }); }
     if (uc === "veri-yolu/iec104-nokta-tablosu" && req.method === "POST") {   // v2.554: örnek tablo — gövde okunmaz, üç IOA yüklenmiş sayılır
       req.on("data", () => {}); req.on("end", () => { const v = VERI["veri-yolu"];

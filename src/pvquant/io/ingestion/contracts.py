@@ -31,6 +31,7 @@ class RowFlag(str, Enum):
     DST_AMBIGUOUS = "dst_ambiguous"          # yaz saati geçişinde belirsiz/eksik saat
     UNPARSEABLE = "unparseable"              # sayıya/tarihe çevrilemedi
     DAILY_SUMMARY = "gunluk_ozet"            # v2.367: kaynak adımı ≥1 gün — saatlik karneye girmez
+    PARTIAL_HOUR = "partial_hour"            # v2.573 (Faz 1 F1-B): saatin 45 dakikasından azı ölçülü — geçerli üretim serisine girmez
 
 
 @dataclass

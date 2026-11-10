@@ -69,7 +69,7 @@ def saat_profili(tenant_id, plant_id, gun: int = 30, kova: str = "0-24"):
             raise LookupError("santral yok: %s" % plant_id)
         df = pd.read_sql(text(
             "SELECT f.ts_utc, f.p50_kw, r.run_at, s.power_kw, "
-            " r.model, r.meteo_source, r.meteo_ozet_json->>'etiket' AS etiket "
+            " r.model, r.meteo_source, COALESCE(r.etiket, r.meteo_ozet_json->>'etiket') AS etiket "
             "FROM forecast_values f "
             "JOIN forecast_runs r ON r.id=f.run_id "
             "JOIN scada_hourly s ON s.plant_id=f.plant_id AND s.ts_utc=f.ts_utc"
@@ -104,7 +104,7 @@ def hata_dagilimi(tenant_id, plant_id, gun: int = 120, kova: str = "0-24",
             raise LookupError("santral yok: %s" % plant_id)
         df = pd.read_sql(text(
             "SELECT f.ts_utc, f.p50_kw, r.run_at, s.power_kw, "
-            " r.model, r.meteo_source, r.meteo_ozet_json->>'etiket' AS etiket "
+            " r.model, r.meteo_source, COALESCE(r.etiket, r.meteo_ozet_json->>'etiket') AS etiket "
             "FROM forecast_values f "
             "JOIN forecast_runs r ON r.id=f.run_id "
             "JOIN scada_hourly s ON s.plant_id=f.plant_id AND s.ts_utc=f.ts_utc"

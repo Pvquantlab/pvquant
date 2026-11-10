@@ -12,6 +12,9 @@ Doğruluk karnesi (skill_daily), rapor hata dağılımı ve Doğruluk sayfası h
 4. «program» kovası: teslim günü D için D-1 KGÜP kesimi (1.1.2025'ten 15:30, öncesinde 16:00, İstanbul) öncesi son
    koşunun D saatleri — uzlaştırma maliyetini belirleyen program doğruluğu (kgup_service.kaynak_kosu_df ile aynı kural).
 5. Gündüz = gerçekleşen > GUNDUZ_ORAN × kurulu güç; tek sabit.
+6. (v2.572, Faz 1 F1-A) Panelden elle tetiklenen koşular (`etiket='elle'`) ana ufuk kovalarına ve gün içi kovasına girmez: yayın
+   saati rastgeledir, aynı saati gece koşusuyla çift sayardı. Program kovasında sayılır (kesim öncesi son koşu kuralı, kgup ile aynı).
+   `meteo_source='sentetik_tohum'` (scripts/seed_sentetik.py) geriye bakışlı sayılır, hiçbir kovaya girmez.
 
 Hepsi SAF; DB yok. Çekirdek tahmin matematiğine dokunmaz; yalnız hangi tahminin sınava girdiğini seçer.
 """
@@ -28,10 +31,11 @@ ANA_KOVALAR = tuple(KOVA_ETIKETLERI)
 KOVA_GUN_ICI = "gun_ici"
 KOVA_PROGRAM = "program"
 GERIYE_BAKISLI_MODEL = frozenset({"backtest"})
-GERIYE_BAKISLI_METEO = frozenset({"open-meteo-arsiv"})
+GERIYE_BAKISLI_METEO = frozenset({"open-meteo-arsiv", "sentetik_tohum"})
 ETIKET_GUN_ICI = "gun_ici"
+ETIKET_ELLE = "elle"
 PIYASA_TZ = "Europe/Istanbul"
-KURAL_SURUMU = "2026-11-10"
+KURAL_SURUMU = "2026-11-10.2"   # v2.572: elle koşu dışlaması + sentetik tohum
 
 
 def kova_etiketle(ufuk_s: pd.Series) -> pd.Series:
@@ -68,7 +72,8 @@ def karne_secimi(df: pd.DataFrame) -> pd.DataFrame:
         d["kova"] = pd.Series(dtype=object)
         return d
     gun_ici = d["etiket"].eq(ETIKET_GUN_ICI) if "etiket" in d else pd.Series(False, index=d.index)
-    ana = d[~gun_ici].copy()
+    elle = d["etiket"].eq(ETIKET_ELLE) if "etiket" in d else pd.Series(False, index=d.index)   # v2.572: ana/gün içi kovaya girmez
+    ana = d[~gun_ici & ~elle].copy()
     ana["kova"] = kova_etiketle(ana["ufuk_s"])
     ana = ana.dropna(subset=["kova"])
     ana = ana.sort_values("ufuk_s", ascending=False).drop_duplicates(["ts_utc", "kova"], keep="first")   # en erken koşu

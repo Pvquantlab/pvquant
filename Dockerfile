@@ -17,6 +17,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
 
 ENV PYTHONUNBUFFERED=1
 WORKDIR /app
+# v2.572 (Faz 1 F1-A): yazılım sürümü koşu künyesine girer — compose build.args PVQ_SURUM (git describe); boşsa künye NULL
+ARG PVQ_SURUM=
+ENV PVQ_SURUM=${PVQ_SURUM}
 
 # v2.113: bagimliliklar KAYNAKTAN ONCE ayri katmanda — src degisince ~2 dk pip
 # tekrari biter (v2.63'un 'ayri katman gereksiz' karari WeasyPrint+lightgbm

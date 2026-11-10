@@ -289,6 +289,7 @@ h2 { font-size: var(--t-bolum); line-height: 1.2; }
 .satir-4 { grid-template-columns: repeat(4, minmax(0,1fr)); }
 .satir-5 { grid-template-columns: repeat(5, minmax(0,1fr)); }   /* v2.516: Genel bakış beş KPI */
 .satir-3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
+.satir-2 { grid-template-columns: repeat(2, minmax(0,1fr)); }   /* v2.575 (Faz 1 F1-D): referans tablosu + en zayıf günler yan yana */
 @media (max-width: 1100px) { .satir-4, .satir-3, .satir-5 { grid-template-columns: repeat(2, minmax(0,1fr)); } }
 
 /* ---------- rozet / cip ---------- */
@@ -932,7 +933,7 @@ body { background: var(--zemin); }
   .icerik { padding: 16px 16px 56px; }   /* 22.10: kenar nefesi 16 px (12 idi) */
 }
 @media (max-width: 700px) {
-  .satir-3, .satir-4, .satir-5 { grid-template-columns: minmax(0, 1fr); }
+  .satir-2, .satir-3, .satir-4, .satir-5 { grid-template-columns: minmax(0, 1fr); }
 }
 /* 22.10 web-design-guidelines denetimi: mobilde girdi yazısı ≥16 px (iOS odakta yakınlaştırmasın — giriş ekranı
    kuralı panele de); dokunma hedeflerinde çift dokunma yakınlaştırması kapalı */
