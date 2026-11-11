@@ -38,7 +38,7 @@ def test_toplayici_alim_defter_ve_iptal(santral):
     anahtar = r["anahtar"]; assert anahtar.startswith("pvqe_")
     with sistem_baglami() as s:
         row = dict(s.execute(text("SELECT * FROM edge_toplayici WHERE id=CAST(:i AS uuid)"), {"i": r["id"]}).mappings().first())
-    assert anahtar.split("_")[2] not in str(row.values()) and row["anahtar_hash"] != anahtar   # yalnız özet
+    assert anahtar.split("_", 2)[2] not in str(row.values()) and row["anahtar_hash"] != anahtar   # yalnız özet; gizli bölüm (token_urlsafe) «_» içerebilir → maxsplit=2 (v2.586 CI düzeltmesi: tek harflik parça rastgele başka alanda geçince düşüyordu)
     top = es.dogrula(anahtar); assert top["plant_id"] == p["id"] and top["tenant_id"] == t
     assert es.toplayici_listele(t, p["id"])[0]["durum"] == "etkin" and "anahtar" not in es.toplayici_listele(t, p["id"])[0]
     # 06:00–07:00 tam saat (5 örnek, kapanış dâhil) → canli_ornek kanal edge, defter, toplama tam saat

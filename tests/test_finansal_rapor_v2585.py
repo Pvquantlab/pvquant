@@ -16,7 +16,7 @@ from pvquant.reporting import build_excel, build_json, from_results
 from pvquant.services import aylik_rapor_service as ar
 from pvquant.services import finansal_etki_service as fe
 from pvquant.services import sablon_rapor_service as srs
-from tests.test_finansal_etki_v2580 import santral as _santral
+from test_finansal_etki_v2580 import santral as _santral
 
 santral = _santral   # pytest fixture'ı bu modülde ad olarak tanıtır (noqa'sız; ruff --fix içe aktarmayı silmesin)
 

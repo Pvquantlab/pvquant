@@ -9,8 +9,8 @@ from pvquant.ext.platform import finans as fn
 from pvquant.ext.turkiye import dengesizlik as d
 from pvquant.services import dengesizlik_service as ds
 from pvquant.services import finansal_etki_service as fe
-from tests.test_finansal_etki_v2580 import _df, _fiyat, _izgara
-from tests.test_finansal_etki_v2580 import santral as _santral
+from test_finansal_etki_v2580 import _df, _fiyat, _izgara
+from test_finansal_etki_v2580 import santral as _santral
 
 santral = _santral   # pytest fixture'ı bu modülde ad olarak tanıtır (noqa'sız; ruff --fix içe aktarmayı silmesin)
 

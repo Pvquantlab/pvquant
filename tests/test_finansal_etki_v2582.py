@@ -11,8 +11,8 @@ import pandas as pd
 from pvquant.ext.platform import finans as fn
 from pvquant.services import finansal_etki_service as fe
 from pvquant.services import kayip_ayrisimi_service as ka
-from tests.test_finansal_etki_v2580 import santral as _santral
-from tests.test_finansal_etki_v2581 import _g
+from test_finansal_etki_v2580 import santral as _santral
+from test_finansal_etki_v2581 import _g
 
 santral = _santral   # pytest fixture'ı bu modülde ad olarak tanıtır (noqa'sız; ruff --fix içe aktarmayı silmesin)
 

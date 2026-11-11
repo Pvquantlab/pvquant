@@ -11,7 +11,7 @@ import apps.api.main as api_main
 from apps.api.deps import gecerli_kullanici
 from pvquant.services import dengesizlik_service as ds
 from pvquant.services import finansal_etki_service as fe
-from tests.test_finansal_etki_v2580 import santral as _santral
+from test_finansal_etki_v2580 import santral as _santral
 
 santral = _santral   # pytest fixture'ı bu modülde ad olarak tanıtır (noqa'sız)
 

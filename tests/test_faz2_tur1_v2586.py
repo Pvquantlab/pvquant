@@ -11,8 +11,8 @@ from pvquant.ext.platform import finans as fn
 from pvquant.ext.turkiye import dengesizlik as d
 from pvquant.services import dengesizlik_service as ds
 from pvquant.services import finansal_etki_service as fe
-from tests.test_finansal_etki_v2580 import _df, _fiyat
-from tests.test_finansal_etki_v2581 import POZ
+from test_finansal_etki_v2580 import _df, _fiyat
+from test_finansal_etki_v2581 import POZ
 
 PLANT = {"id": "p1", "name": "Tur1 GES", "capacity_kwp": 1000.0, "lat": 37.0, "lon": 32.0, "tz": "Europe/Istanbul", "params_json": {"segment": "lisansli_serbest"}}
 
