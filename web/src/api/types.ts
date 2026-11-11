@@ -196,7 +196,7 @@ export interface PortfoyDsg {
   santral_tl?: Record<string, number>; uretim_mwh?: number; sapma_net_mwh?: number; sapma_ayri_mwh?: number;
   pencere_gun: number; fiyat: { epias_saat: number; senaryo_saat: number }; not: string;
   /** v2.539 (EK-3 DK-258/261): DSG grupları santral kaydındaki koda göre; grup = gösterilen grup, varsayım = kod girilmemiş tek grup; dışarıda kalanlar nedeniyle */
-  grup?: string | null; grup_kaynagi?: "beyan" | "varsayim"; disi_nedenleri?: Record<string, string>; katilimci_notu?: string;
+  grup?: string | null; grup_kaynagi?: "beyan" | "varsayim" | "uyelik";   // v2.595 (F3-H): «uyelik» = tarihli üyelik tablosu disi_nedenleri?: Record<string, string>; katilimci_notu?: string;
   /** v2.541 (DK-252): aynı piyasa katılımcısı kodunu taşıyan santraller tek üye olarak toplandı */ katilimci_gruplari?: Record<string, string[]>;
   gruplar?: { kod: string | null; santral: number; uyeler: string[]; n_saat: number | null; ayri_tl: number | null; net_tl: number | null; kazanc_tl: number | null; not?: string | null; secili: boolean }[];
 }
@@ -862,3 +862,48 @@ export interface PortfoyFinansalEtki { donem_kodu: string | null; santraller: { 
   dengesizlik?: { tutar_tl: number | null; nitelik: FinansNitelik; toplanir: boolean } | null; kupst?: { tutar_tl: number | null; nitelik: FinansNitelik; toplanir: boolean } | null;
   toplam?: { tutar_tl: number | null; nitelik: FinansNitelik; giren: string[]; eksik: string[] }; donem?: FinansDonem }[];
   toplam: { tutar_tl: number | null; nitelik: FinansNitelik; nitelik_ad: string; santral_sayisi: number; toplanan_santral: number; toplama_girmeyen: (string | null)[]; planlanan_mwh: number | null; gerceklesen_mwh: number | null; isaret: string }; not: string }
+
+// ---------------------------------------------------------------- v2.595 (Faz 3 F3-H) — portföy yönetimi (kuruluş, portföy, zamanlı üyelik, sözleşme; portföy hesapları)
+export type PortfoyTur = "toplayici" | "dsg" | "isletme" | "ozel";
+export type UyelikDogrulama = "beyan" | "belgeli" | "dogrulandi";
+export type BelirsizlikDurum = "dogrulandi" | "dogrulanmadi" | "yetersiz_veri";
+export type RiskEtiket = "dogrulanmis" | "tahmini" | "eksik" | "gecti" | "bilgi";
+export interface PortfoyKisa { id: string; ad: string; tur: PortfoyTur; kurulus_id: string | null; kurulus_ad: string | null; gecerli_bas: string; gecerli_bit: string | null; notlar: string | null; dsg_kodu: string | null; uye_sayisi: number; gecerli: boolean }
+export interface PortfoyUye { id: string; plant_id: string; santral: string; capacity_kwp: number | null; tz: string; gecerli_bas: string; gecerli_bit: string | null; kaynak: string; dogrulama: UyelikDogrulama; dogrulama_ad: string; belge_adi: string | null; segment: string | null; uevcb: string | null }
+export interface PortfoySozlesme { id: string; tur: string; gecerli_bas: string; gecerli_bit: string | null; dagitim_yontemi: string | null; dengesizlik_sorumlusu: string | null; dogrulama: UyelikDogrulama; dogrulama_ad: string; belge_adi: string | null; dagilim_etiketi: string; taraf_a_ad: string | null; taraf_b_ad: string | null }
+export interface PortfoyDetay extends PortfoyKisa { yonetici_kurulus_id?: string | null; uyeler: PortfoyUye[]; sozlesmeler: PortfoySozlesme[]; tarih: string }
+export interface Kurulus { id: string; ad: string; tur: string; epias_kodu: string | null; aktif: boolean }
+export interface PortfoyGunluk { gun: string; p50_mwh: number | null; p10_mwh: number | null; p90_mwh: number | null; p10_naif_mwh: number | null; p90_naif_mwh: number | null; saat: number }
+export interface PortfoyTahminT { durum: string; not?: string; santral?: number; kapasite_kwp?: number; kural_ad?: string; pencere?: { n_saat: number };
+  tazelik?: { en_yeni: string; en_eski: string; fark_saat: number | null; en_eski_yas_saat: number | null; farkli_yayin: boolean } | null;
+  katkilar?: Record<string, { p50_mwh: number | null; pay_pct: number | null; kapasite_kwp: number; yayin: string | null }>; tahmin_yok?: string[];
+  gunluk?: PortfoyGunluk[]; gunluk_meta?: { yontem: string | null; durum: string; n_gun: number };
+  belirsizlik?: { durum: BelirsizlikDurum; durum_ad: string; aciklama: string; kapsama?: { picp80: number | null; n_gun: number; durum: string } | null };
+  korelasyon?: { durum: string; n_gun: number; rho: Record<string, Record<string, number>> | null }; donem_bantlari?: Record<string, { q10_mwh: number; q90_mwh: number; ornek_gun: number } | null>; donem_notu?: string }
+export interface PortfoySapmaT { durum: string; not?: string; donem?: { kod: string; etiket: string; bas: string; bit: string; kirpildi: boolean; saat: number }; santral?: number; hesaba_giren?: number; kapasite_kwp?: number;
+  ozet?: { saat: number; program: { mwh: number | null; saat: number; tam_saat: number }; gerceklesen: { mwh: number | null; saat: number; tam_saat: number; eksik_saat: number }; tahmin: { mwh: number | null };
+    program_sapma: { mwh: number | null; pct: number | null; saat: number; tam_saat: number; etiket: string }; tahmin_hata: { mwh: number | null; pct: number | null; etiket: string }; fizik_sapma: { mwh: number | null; pct: number | null; etiket: string } };
+  katkilar?: { satirlar: { santral: string; kapasite_kwp: number | null; mwh: number | null; pay_pct: number | null; mutlak_pay_pct: number | null; yon: string | null; pct: number | null; saat: number; program_mwh: number | null; gercek_mwh: number | null }[];
+    toplam_mwh: number; mutlak_toplam_mwh: number; netlesen_mwh: number; netlesme_orani_pct: number | null; not: string | null };
+  korelasyon?: { durum: string; n_gun: number; rho: Record<string, Record<string, number>> | null }; kapsama?: { guvenilirlik: string; guvenilirlik_ad: string; aciklama?: string; sapma_tam_saat: number; beklenen_saat: number; oran_pct: number | null };
+  maruziyet_saatleri?: { saatler: { ts: string; sapma_mwh: number; ptf: number | null; fiyat_kaynak: string | null; baskin_santral: string | null; baskin_mwh: number | null }[]; olcut: string; not: string };
+  riskli_gunler?: { gun: string; sapma_mwh: number | null; program_mwh: number | null; pct: number | null; tam_saat: number; saat: number }[]; santral_bilgi?: Record<string, { olcum_saat?: number; kapsama?: { kapsama_pct?: number | null } | null; uretim?: string; program?: { bildirilen_saat: number; oneri_saat: number } }>;
+  fiyat?: { epias_saat: number; senaryo_saat: number } }
+export interface PortfoyRiskT { durum: string; not?: string; kural_ad?: string; tahmin_yok?: string[]; program_kaynak?: { bildirilen: number; oneri: number; yok: number };
+  tazelik?: PortfoyTahminT["tazelik"]; belirsizlik?: PortfoyTahminT["belirsizlik"]; santral_program?: Record<string, { mwh: number | null; bildirilen_saat: number; oneri_saat: number; yok_saat: number }>; santral_tahmin?: Record<string, number | null>;
+  risk?: { etiket: RiskEtiket; etiket_ad: string; saat?: number; program_mwh?: number | null; tahmin_mwh?: number | null; beklenen_sapma_mwh?: number | null; beklenen_sapma_pct?: number | null; aralik_mwh?: { p10: number; p90: number }; riskli_saat?: number;
+    saatler?: { ts: string; program_mwh: number; tahmin_mwh: number; p10_mwh: number | null; p90_mwh: number | null; fark_mwh: number; yon: string }[]; not?: string }; gunluk?: PortfoyGunluk[] }
+export interface PortfoyDsgT { durum: string; not?: string; tur?: string; santral?: number; hesaba_giren?: number; yontem?: string; yontem_ad?: string; notlar?: string[]; fiyat?: { epias_saat: number; senaryo_saat: number };
+  dsg?: { n_saat: number | null; edt_tek_tl: number | null; edt_dsg_tl: number | null; edt_grup_tl: number | null; edt_bireysel_tl: number | null; netlesme_farki_tl: number | null; kupst_uye_tl: number | null };
+  perspektifler?: { bagimsiz: { nitelik: FinansNitelik; toplam_edt_tl: number | null; toplam_kupst_tl: number | null; satirlar: { santral: string; edt_tek_tl: number | null; kupst_tl: number | null; uyelik_dogrulama: string }[] };
+    dsg_ici: { nitelik: FinansNitelik; edt_dsg_tl: number | null; netlesme_farki_tl: number | null; esik: number | null; uyelik_hepsi_dogrulandi: boolean; aciklama: string | null };
+    sozlesmesel: { etiket: string; nitelik: FinansNitelik; yontem_ad: string; satirlar: { santral: string; pay_pct: number | null; grup_payi_tl: number | null; edt_bireysel_tl: number | null; ucret_tl: number | null; toplam_tl: number | null; kupst_tl: number | null }[]; toplam: { toplam_tl: number | null; ucret_tl: number | null } | null; notlar: string[] };
+    ozet: { etiket: string; nitelik: FinansNitelik } };
+  sozlesme?: PortfoySozlesme | null; kural?: { esik: number | null; esik_kaynak: string | null; gecici_m39: string | null; belirsiz_2027: boolean } }
+export interface PortfoyOneri { kod: string; tur: "bilgi" | "oneri" | "eylem"; tur_ad: string; etiket: RiskEtiket; etiket_ad: string; metin: string; sayfa: string | null; dayanak: Record<string, unknown> | null }
+export interface PortfoyRevizyonT { durum: string; not?: string; hedef?: string; hedef_ad?: string; gun?: string; ozet?: string; oneriler?: PortfoyOneri[]; risk?: PortfoyRiskT["risk"];
+  santraller?: { santral: string; program_mwh: number | null; tahmin_mwh: number | null; fark_mwh: number | null; degisim_pct: number | null; bildirilen: boolean }[];
+  pencere?: { durum: string; dakika_kaldi: number; hedef_gun: string }; gun_ici?: { acik?: boolean; teslimat?: string; kgup_revizyon_son?: string; dakika_kaldi?: number | null } }
+export interface PortfoyFinansT { durum: string; not?: string; toplam?: FinansToplam; toplam_dsg?: (FinansToplam & { etiket: string }) | null; bilesenler?: FinansBilesen[]; kayitli_santral?: number; toplama_girmeyen?: string[]; notlar?: string[];
+  santraller?: { ad: string; hata?: string; kayitli?: boolean; planlanan_mwh?: number | null; gerceklesen_mwh?: number | null; toplam?: { tutar_tl: number | null; nitelik: FinansNitelik } }[];
+  dsg?: { etiket: string; nitelik: FinansNitelik; netlesme_farki_tl: number | null } | null; siniflar?: Record<string, { ad: string; kodlar: string[] }>; mwh?: { toplanan: { planlanan: number | null; gerceklesen: number | null; santral: number }; tum: { planlanan: number | null; gerceklesen: number | null; santral: number } }; kaynaklar?: Record<string, string> }

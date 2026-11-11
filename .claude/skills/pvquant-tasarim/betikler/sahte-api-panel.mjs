@@ -14,7 +14,7 @@ const CARPAN = Number(process.env.YAVAS ?? 1);
 const GECIKME = {
   "/v1/plants": 60, "/v1/oturum/yenile": 60, "/v1/portfoy": 270, "/v1/portfoy/tahmin": 400, "/v1/portfoy/dsg": 1000, "/v1/portfoy/kupst": 700,
   summary: 250, forecast: 350, skill: 300, runs: 80, alarmlar: 80, "alarm-kurallari": 80, nowcast: 150, kgup: 300, konformal: 120,
-  dengesizlik: 500, backtest: 900, guvenilirlik: 700, "saat-profili": 150, "kayip-ayrisimi": 220, "p-degerleri": 180, "hata-dagilimi": 350, "dogrulama/bagimsiz": 420, "finansal-etki": 480, "finansal-etki/gecmis": 120, "finansal-etki/senaryo": 520, "/v1/portfoy/finansal-etki": 900, kalibrasyon: 200, hijyen: 300,
+  dengesizlik: 500, backtest: 900, guvenilirlik: 700, "saat-profili": 150, "kayip-ayrisimi": 220, "p-degerleri": 180, "hata-dagilimi": 350, "dogrulama/bagimsiz": 420, "finansal-etki": 480, "finansal-etki/gecmis": 120, "finansal-etki/senaryo": 520, "/v1/portfoy/finansal-etki": 900, "/v1/portfoyler": 200, portfoyler: 500, kalibrasyon: 200, hijyen: 300,
   kayma: 600, "kayip-agaci": 250, "guc-matrisi": 250, monthly: 300, bankable: 800, "saat-ay-matrisi": 400, "gunes-yolu": 300,
   pr: 200, saglik: 300, kullanilabilirlik: 200, "fizik-terimleri": 100, tarife: 80, "epias-uretim": 100, damga: 40, performans: 260, sensorler: 90, kirlenme: 240, "veri-yolu": 90, "bulut-kimlik": 60, "pilot": 60, "edge/toplayici": 60, "golge-saatlik": 120, "olay-adaylari": 90,
   "/v1/isler": 100, "/v1/hakkinda": 150,
@@ -89,6 +89,89 @@ function bagimsiz(gun, kural) {
     meta: { sozluk_surumu: "2026-11-10", kural, kaynak: "scada", kapasite_kwp: 4514, gunduz_orani: 0.02, donem: { bas: gunler[0].kesit, bit: "2026-10-24", tz: "Europe/Istanbul" }, kosu_sayisi: gun, kosu_kumesi_sha: "3b8f6bc9000ebbd5", saat_kumesi_sha: "24cf6d3a7a88664d",
             hesap_zamani: "2026-10-24T00:50:00+00:00", yazilim_surumu: "v2.575-test", kosu_kunyesi: { mode: ["C"], model: ["hybrid_residual"], meteo_source: ["acik-nwp"], kalibrasyon_id: ["c1"], yazilim_surumu: ["v2.575-test"], nwp_yasi_saat_ort: 4.3, ilk_run_at: gunler[0].kesit, son_run_at: "2026-10-23" } } };
 }
+
+/** v2.595 (Faz 3 F3-H): portföy yönetimi — temsili veri (servis şekilleriyle aynı; sayılar örnek). */
+const PF_UYELER = [
+  { id: "u1", plant_id: "a1", santral: "Edikli GES", capacity_kwp: 15230, tz: "Europe/Istanbul", gecerli_bas: "2026-01-01", gecerli_bit: null, kaynak: "belge", dogrulama: "dogrulandi", dogrulama_ad: "Doğrulandı", belge_adi: "dsg-uyelik-edikli.pdf", segment: "lisansli_serbest", uevcb: "40W0000000123456" },
+  { id: "u2", plant_id: "a4", santral: "Kıvanç 2 GES", capacity_kwp: 52500, tz: "Europe/Istanbul", gecerli_bas: "2026-01-01", gecerli_bit: null, kaynak: "beyan", dogrulama: "beyan", dogrulama_ad: "Beyan", belge_adi: null, segment: "lisansli_serbest", uevcb: null },
+  { id: "u3", plant_id: "a3", santral: "Karapınar RT-2579", capacity_kwp: 260000, tz: "Europe/Istanbul", gecerli_bas: "2026-09-01", gecerli_bit: null, kaynak: "beyan", dogrulama: "belgeli", dogrulama_ad: "Belgeli", belge_adi: "karapinar-uyelik.pdf", segment: "lisansli_yekdem", uevcb: null },
+  { id: "u0", plant_id: "a2", santral: "Format Lab", capacity_kwp: 1000, tz: "Europe/Istanbul", gecerli_bas: "2026-01-01", gecerli_bit: "2026-06-30", kaynak: "beyan", dogrulama: "beyan", dogrulama_ad: "Beyan", belge_adi: null, segment: "lisanssiz_iletim", uevcb: null }];
+const PF_SOZ = [{ id: "s1", tur: "dsg_uyelik", gecerli_bas: "2026-09-01", gecerli_bit: null, dagitim_yontemi: "sabit_pay", dengesizlik_sorumlusu: "dsg", dogrulama: "dogrulandi", dogrulama_ad: "Doğrulandı", belge_adi: "dsg-sozlesme-2026.pdf", dagilim_etiketi: "Sözleşmeye dayalı dağılım", taraf_a_ad: "Anadolu DSG Yönetim A.Ş.", taraf_b_ad: null }];
+const PF_LISTE = [
+  { id: "pf-dsg", ad: "Anadolu DSG", tur: "dsg", kurulus_id: "k1", kurulus_ad: "Anadolu DSG Yönetim A.Ş.", gecerli_bas: "2026-01-01", gecerli_bit: null, notlar: null, dsg_kodu: "DSG-ANK-07", uye_sayisi: 3, gecerli: true },
+  { id: "pf-top", ad: "Toplayıcı portföyü", tur: "toplayici", kurulus_id: "k2", kurulus_ad: "Güneş Toplayıcı Ltd.", gecerli_bas: "2026-03-01", gecerli_bit: "2026-12-31", notlar: null, dsg_kodu: null, uye_sayisi: 2, gecerli: true }];
+const PF_GUNLUK = (gun0) => [0, 1, 2, 3, 4, 5, 6].map((i) => { const d = new Date(gun0); d.setDate(d.getDate() + i); const g = d.toISOString().slice(0, 10); const p = 1180 + 60 * Math.sin(i); return { gun: g, p50_mwh: +p.toFixed(1), p10_mwh: +(p * 0.86).toFixed(1), p90_mwh: +(p * 1.11).toFixed(1), p10_naif_mwh: +(p * 0.78).toFixed(1), p90_naif_mwh: +(p * 1.19).toFixed(1), saat: 24 }; });
+function pfTahmin() { return { durum: "ok", santral: 3, kapasite_kwp: 327730, kural_ad: "En yeni tahmin", pencere: { n_saat: 168 }, tazelik: { en_yeni: "2026-11-11T02:05:00+00:00", en_eski: "2026-11-11T02:05:00+00:00", fark_saat: 0, en_eski_yas_saat: 5.2, farkli_yayin: false },
+  katkilar: { "Edikli GES": { p50_mwh: 58.4, pay_pct: 5.1, kapasite_kwp: 15230, yayin: "2026-11-11T02:05:00+00:00" }, "Kıvanç 2 GES": { p50_mwh: 201.6, pay_pct: 17.4, kapasite_kwp: 52500, yayin: "2026-11-11T02:05:00+00:00" }, "Karapınar RT-2579": { p50_mwh: 898.2, pay_pct: 77.5, kapasite_kwp: 260000, yayin: "2026-11-11T02:05:00+00:00" } },
+  tahmin_yok: [], gunluk: PF_GUNLUK(new Date()), gunluk_meta: { yontem: "günlük portföy artığının ampirik kantili (gün bloğu)", durum: "ampirik", n_gun: 41 },
+  belirsizlik: { durum: "dogrulanmadi", durum_ad: "Doğrulanmadı", aciklama: "Belirsizlik aralığı istatistiksel olarak doğrulanmadı; karar verirken aralığı yaklaşık kabul edin.", kapsama: { picp80: 76.4, n_gun: 22, durum: "yetersiz_veri" } },
+  korelasyon: { durum: "yeterli", n_gun: 41, rho: { "Edikli GES": { "Edikli GES": 1, "Kıvanç 2 GES": 0.62, "Karapınar RT-2579": 0.41 }, "Kıvanç 2 GES": { "Edikli GES": 0.62, "Kıvanç 2 GES": 1, "Karapınar RT-2579": 0.47 }, "Karapınar RT-2579": { "Edikli GES": 0.41, "Kıvanç 2 GES": 0.47, "Karapınar RT-2579": 1 } } },
+  donem_bantlari: { hafta: { q10_mwh: -412.5, q90_mwh: 388.0, ornek_gun: 41 }, ay: { q10_mwh: -1210.0, q90_mwh: 1150.0, ornek_gun: 41 } }, donem_notu: "Hafta ve ay aralıkları günlük sapmaların gün bloğu bootstrap'ıyla." }; }
+function pfSapma(kod) { const ay = !/^\d{4}-\d{2}-\d{2}$/.test(kod); const k = ay ? 30 : 1; return { durum: "ok", donem: { kod, etiket: ay ? "Ekim 2026" : kod, bas: ay ? "2026-10-01" : kod, bit: ay ? "2026-11-01" : kod, kirpildi: false, saat: 24 * (ay ? 31 : 1) }, santral: 3, hesaba_giren: 3, kapasite_kwp: 327730,
+  ozet: { saat: 24 * (ay ? 31 : 1), program: { mwh: 34210.5 * k / 30, saat: 744, tam_saat: 741 }, gerceklesen: { mwh: 33380.2 * k / 30, saat: 744, tam_saat: 738, eksik_saat: 6 }, tahmin: { mwh: 34110.0 * k / 30 },
+    program_sapma: { mwh: -830.3 * k / 30, pct: -2.43, saat: 744, tam_saat: 738, etiket: "gerçekleşen − program (artı = fazla üretim)" }, tahmin_hata: { mwh: 729.8 * k / 30, pct: 2.19, etiket: "tahmin − gerçekleşen" }, fizik_sapma: { mwh: -410.2 * k / 30, pct: -1.2, etiket: "gerçekleşen − fizik beklentisi" } },
+  katkilar: { satirlar: [
+    { santral: "Karapınar RT-2579", kapasite_kwp: 260000, mwh: -1012.4 * k / 30, pay_pct: 121.9, mutlak_pay_pct: 74.9, yon: "eksik", pct: -3.8, saat: 738, program_mwh: 26640.0 * k / 30, gercek_mwh: 25627.6 * k / 30 },
+    { santral: "Kıvanç 2 GES", kapasite_kwp: 52500, mwh: 238.6 * k / 30, pay_pct: -28.7, mutlak_pay_pct: 17.7, yon: "fazla", pct: 3.9, saat: 744, program_mwh: 6120.0 * k / 30, gercek_mwh: 6358.6 * k / 30 },
+    { santral: "Edikli GES", kapasite_kwp: 15230, mwh: -56.5 * k / 30, pay_pct: 6.8, mutlak_pay_pct: 4.2, yon: "eksik", pct: -3.9, saat: 744, program_mwh: 1450.5 * k / 30, gercek_mwh: 1394.0 * k / 30 }],
+    toplam_mwh: -830.3 * k / 30, mutlak_toplam_mwh: 1307.5 * k / 30, netlesen_mwh: 477.2 * k / 30, netlesme_orani_pct: 36.5, fazla: ["Kıvanç 2 GES"], eksik: ["Karapınar RT-2579", "Edikli GES"],
+    not: "3 santralin sapmaları portföy toplamında birbirini kısmen dengeliyor: toplam |sapma| 1307,5 MWh, portföy net sapması 830,3 MWh (477,2 MWh fiziksel olarak netleşti). Bu fiziksel bir ofsettir; mali karşılığı DSG üyeliği ve sözleşmeye bağlıdır." },
+  korelasyon: { durum: ay ? "yeterli" : "yetersiz_veri", n_gun: ay ? 31 : 1, rho: ay ? { "Edikli GES": { "Edikli GES": 1, "Kıvanç 2 GES": 0.55, "Karapınar RT-2579": 0.38 }, "Kıvanç 2 GES": { "Edikli GES": 0.55, "Kıvanç 2 GES": 1, "Karapınar RT-2579": 0.44 }, "Karapınar RT-2579": { "Edikli GES": 0.38, "Kıvanç 2 GES": 0.44, "Karapınar RT-2579": 1 } } : null },
+  kapsama: { guvenilirlik: "tam", guvenilirlik_ad: "Tam", sapma_tam_saat: ay ? 738 : 24, beklenen_saat: ay ? 744 : 24, oran_pct: 99.2 },
+  maruziyet_saatleri: { saatler: [{ ts: "2026-10-14T10:00+00:00", sapma_mwh: -48.2, ptf: 2410.5, fiyat_kaynak: "epias", baskin_santral: "Karapınar RT-2579", baskin_mwh: -41.0 }], olcut: "|program sapması| × PTF (gösterge)", not: "Sıralama göstergesidir." },
+  riskli_gunler: [{ gun: "2026-10-14", sapma_mwh: -212.4, program_mwh: 1180.0, pct: -18.0, tam_saat: 24, saat: 24 }, { gun: "2026-10-22", sapma_mwh: -168.9, program_mwh: 1102.0, pct: -15.3, tam_saat: 24, saat: 24 }, { gun: "2026-10-05", sapma_mwh: 97.3, program_mwh: 1210.0, pct: 8.0, tam_saat: 23, saat: 24 }],
+  santral_bilgi: { "Edikli GES": { olcum_saat: 744, uretim: "scada", kapsama: { kapsama_pct: 99.1 } }, "Kıvanç 2 GES": { olcum_saat: 744, uretim: "sayac" }, "Karapınar RT-2579": { olcum_saat: 738, uretim: "scada" } }, fiyat: { epias_saat: 744, senaryo_saat: 0 } }; }
+function pfRisk() { return { durum: "ok", kural_ad: "En yeni tahmin", tahmin_yok: [], program_kaynak: { bildirilen: 48, oneri: 0, yok: 0 }, tazelik: pfTahmin().tazelik, belirsizlik: pfTahmin().belirsizlik,
+  risk: { etiket: "tahmini", etiket_ad: "Tahmini risk", saat: 48, program_mwh: 2512.0, tahmin_mwh: 2311.0, beklenen_sapma_mwh: -201.0, beklenen_sapma_pct: -8.0, aralik_mwh: { p10: -512.0, p90: 110.0 }, riskli_saat: 5,
+    saatler: [{ ts: "2026-11-12T08:00+00:00", program_mwh: 182.0, tahmin_mwh: 141.2, p10_mwh: 118.0, p90_mwh: 166.0, fark_mwh: -40.8, yon: "program bandın üstünde" }, { ts: "2026-11-12T09:00+00:00", program_mwh: 230.0, tahmin_mwh: 188.0, p10_mwh: 160.0, p90_mwh: 214.0, fark_mwh: -42.0, yon: "program bandın üstünde" }, { ts: "2026-11-12T07:00+00:00", program_mwh: 121.0, tahmin_mwh: 96.0, p10_mwh: 80.0, p90_mwh: 112.0, fark_mwh: -25.0, yon: "program bandın üstünde" }],
+    not: "Program ile tahmin arasındaki fark bant içindeyse sapma olağan belirsizlik sınırında kabul edilir; bandın dışındaki saatler listelendi." } }; }
+function pfDsg(kod) { return { durum: "ok", santral: 3, hesaba_giren: 3, yontem: "sabit_pay", yontem_ad: "sözleşmedeki sabit paylarla", fiyat: { epias_saat: 744, senaryo_saat: 0 },
+  dsg: { n_saat: 744, edt_tek_tl: -412300, edt_dsg_tl: -318900, edt_grup_tl: -120400, edt_bireysel_tl: -198500, netlesme_farki_tl: 93400, kupst_uye_tl: 41200 },
+  perspektifler: { bagimsiz: { nitelik: "hesaplanan", toplam_edt_tl: -412300, toplam_kupst_tl: -41200, satirlar: [{ santral: "Karapınar RT-2579", edt_tek_tl: -366100, kupst_tl: -38600, uyelik_dogrulama: "belgeli" }, { santral: "Kıvanç 2 GES", edt_tek_tl: 61200, kupst_tl: null, uyelik_dogrulama: "beyan" }, { santral: "Edikli GES", edt_tek_tl: -107400, kupst_tl: -2600, uyelik_dogrulama: "dogrulandi" }] },
+    dsg_ici: { nitelik: "senaryo", edt_dsg_tl: -318900, netlesme_farki_tl: 93400, esik: 0.05, uyelik_hepsi_dogrulandi: false, aciklama: "Üyelerin tek başına dengesizlik tutarlarının toplamı ile DSG içi tutar arasındaki fark, eşik içinde kalan karşıt sapmaların grup içinde netleşmesinden gelir; eşiği aşan kısım üyede bireysel kalır. Fark DSG lehine." },
+    sozlesmesel: { etiket: "Sözleşmeye dayalı dağılım", nitelik: "hesaplanan", yontem_ad: "sözleşmedeki sabit paylarla", toplam: { toplam_tl: -319900, ucret_tl: -1000 }, notlar: ["Dağılım, doğrulanmış sözleşme belgesindeki anahtara göredir."],
+      satirlar: [{ santral: "Karapınar RT-2579", pay_pct: 60, grup_payi_tl: -72240, edt_bireysel_tl: -176300, ucret_tl: -600, toplam_tl: -249140, kupst_tl: -38600 }, { santral: "Kıvanç 2 GES", pay_pct: 25, grup_payi_tl: -30100, edt_bireysel_tl: 12400, ucret_tl: -250, toplam_tl: -17950, kupst_tl: null }, { santral: "Edikli GES", pay_pct: 15, grup_payi_tl: -18060, edt_bireysel_tl: -34600, ucret_tl: -150, toplam_tl: -52810, kupst_tl: -2600 }] },
+    ozet: { etiket: "Sözleşmeye dayalı dağılım", nitelik: "senaryo" } }, sozlesme: PF_SOZ[0], kural: { esik: 0.05, esik_kaynak: "Karar 13869", gecici_m39: null, belirsiz_2027: false },
+  notlar: ["Tutarlar PVQuant'ın yürürlükteki kuralla yeniden hesabıdır; EPİAŞ uzlaştırma sonucu ya da DSG faturası değildir.", "Dağılım, doğrulanmış sözleşme belgesindeki anahtara göredir."], donem: { kod } }; }
+function pfRevizyon(hedef) { return { durum: "ok", hedef, hedef_ad: hedef === "yarin" ? "Yarın" : "Bugün (kalan saatler)", gun: "2026-11-12", ozet: "Yarın portföy beklentisi programdan %8,0 düşük; 2 eylem önerisi var.",
+  pencere: { durum: "pencere_acik", dakika_kaldi: 52, hedef_gun: "2026-11-12" }, gun_ici: { acik: true, teslimat: "2026-11-11T15:00+03:00", kgup_revizyon_son: "2026-11-11T14:30+03:00", dakika_kaldi: 10 }, risk: pfRisk().risk,
+  oneriler: [
+    { kod: "sapma_orta", tur: "eylem", tur_ad: "eylem", etiket: "tahmini", etiket_ad: "Tahmini risk", metin: "Portföyünüzün yarınki üretim beklentisi, mevcut üretim programından %8,0 düşük. Programı gözden geçirmeniz önerilir; revizyon kararı sizindir.", sayfa: "tahminler", dayanak: null },
+    { kod: "pencere", tur: "eylem", tur_ad: "eylem", etiket: "tahmini", etiket_ad: "Tahmini risk", metin: "Yarının (2026-11-12) programı için bildirim süresi açık; 15:30'a 52 dakika kaldı. TEİAŞ teyidi 17:00.", sayfa: "tahminler", dayanak: null },
+    { kod: "santral_degisim", tur: "oneri", tur_ad: "öneri", etiket: "tahmini", etiket_ad: "Tahmini risk", metin: "Bir santralde üretim beklentisi belirgin şekilde değişti. Programınızı kontrol etmeniz önerilir. (Karapınar RT-2579)", sayfa: "tahminler", dayanak: null },
+    { kod: "ofset", tur: "bilgi", tur_ad: "bilgi", etiket: "bilgi", etiket_ad: "Bilgi", metin: "İki santralin sapmaları portföy toplamında birbirini kısmen dengeliyor (santral sapmaları toplamı 262,0 MWh, portföy net sapması 201,0 MWh). Mali karşılığı DSG üyeliği ve sözleşmeye bağlıdır.", sayfa: null, dayanak: null },
+    { kod: "belirsizlik", tur: "bilgi", tur_ad: "bilgi", etiket: "tahmini", etiket_ad: "Tahmini risk", metin: "Portföy tahmin aralığı henüz geçmiş gerçekleşmelerle doğrulanmadı; riskli saatleri yaklaşık kabul edin.", sayfa: null, dayanak: null },
+    { kod: "maruziyet", tur: "bilgi", tur_ad: "bilgi", etiket: "tahmini", etiket_ad: "Tahmini risk", metin: "Beklenen 201,0 MWh sapmanın tahmini uzlaştırma etkisi yaklaşık 96.000 … 241.000 TL (son 30 günün sapma başına tutarıyla; senaryo).", sayfa: "finans", dayanak: null }] }; }
+function pfFinans(kod) { const b = (kod_, ad, tutar, nitelik, toplanir, kaynak) => ({ kod: kod_, ad, tutar_tl: tutar, alacak_tl: tutar == null ? null : Math.max(tutar, 0), borc_tl: tutar == null ? null : Math.max(-tutar, 0), nitelik, nitelik_ad: nitelik, kaynak, kapsam_saat: 744, beklenen_saat: 744, kapsam_orani: 1, kural_surumu: "edt-2026-V100-edta_ayrik", dayanak: null, toplanir, notlar: [] });
+  return { durum: "ok", donem_kodu: kod, kayitli_santral: 2, toplama_girmeyen: [], kaynaklar: { "Edikli GES": "kayıtlı", "Kıvanç 2 GES": "kayıtlı", "Karapınar RT-2579": "anında" },
+    bilesenler: [b("satis_geliri", "Enerji satışı", 68420000, "sozlesme_tahmini", true, "Σ 3 santral"), b("dengesizlik", "Enerji dengesizlik tutarı (bağımsız santral toplamı)", -412300, "hesaplanan", true, "Σ 3 santral"), b("kupst", "KGÜP sapma tutarı (santral bazında)", -41200, "hesaplanan", true, "Σ 3 santral"),
+      b("dengesizlik_dsg", "Enerji dengesizlik tutarı (DSG içi)", -318900, "senaryo", false, "DSG netleşmesi"), b("netlesme_farki", "DSG netleşme farkı (DSG içi − bağımsız)", 93400, "senaryo", false, "DSG"), b("sozlesmesel_dagilim", "Sözleşmesel dağılım — Sözleşmeye dayalı dağılım", -319900, "hesaplanan", false, "sözleşmedeki sabit paylarla"),
+      b("uretim_dusuklugu", "Üretim düşüklüğü (gelir kaybı tahmini)", -812000, "sozlesme_tahmini", false, "Σ 3 santral"), b("ileri_maruziyet", "İleriye dönük maruziyet (senaryo)", -168000, "senaryo", false, "Σ 3 santral")],
+    toplam: { tutar_tl: 67966500, alacak_tl: 68420000, borc_tl: 453500, nitelik: "sozlesme_tahmini", nitelik_ad: "sözleşme tahmini", giren: ["satis_geliri", "dengesizlik", "kupst"], eksik: [], isaret: "artı = santral lehine" },
+    toplam_dsg: { tutar_tl: 68059900, alacak_tl: 68420000, borc_tl: 360100, nitelik: "senaryo", nitelik_ad: "senaryo", giren: ["satis_geliri", "kupst", "dengesizlik_dsg"], eksik: [], isaret: "artı = santral lehine", etiket: "enerji satışı + DSG içi dengesizlik tutarı + KGÜP sapma tutarı" },
+    dsg: { etiket: "Sözleşmeye dayalı dağılım", nitelik: "senaryo", netlesme_farki_tl: 93400 }, siniflar: {}, mwh: { toplanan: { planlanan: 34210.5, gerceklesen: 33380.2, santral: 3 }, tum: { planlanan: 34210.5, gerceklesen: 33380.2, santral: 3 } },
+    notlar: ["Portföy toplamı = enerji satışı + dengesizlik (bağımsız) + KGÜP sapma tutarı; resmî satırlar, DSG, göstergeler, düşüklük ve maruziyet toplama girmez.", "DSG içi dengesizlik tutarı bağımsız santral toplamının yerine geçer; iki tutar toplanmaz."] }; }
+function portfoyRotasi(yol, url, yanit) {
+  if (yol === "/v1/portfoyler") return yanit(200, { portfoyler: PF_LISTE });
+  if (yol === "/v1/kuruluslar") return yanit(200, { kuruluslar: [{ id: "k1", ad: "Anadolu DSG Yönetim A.Ş.", tur: "dsg_yoneticisi", epias_kodu: null, aktif: true }, { id: "k2", ad: "Güneş Toplayıcı Ltd.", tur: "toplayici", epias_kodu: null, aktif: true }] });
+  if (yol === "/v1/sozlesmeler") return yanit(200, { sozlesmeler: url.searchParams.get("portfoy_id") === "pf-dsg" ? PF_SOZ : [] });
+  const m = /^\/v1\/portfoyler\/([^/]+)(?:\/(.*))?$/.exec(yol);
+  if (!m) return null;
+  const pf = PF_LISTE.find((x) => x.id === m[1]); if (!pf) return yanit(404, { detail: "portföy bulunamadı" });
+  const uc = m[2] ?? ""; const kod = url.searchParams.get("donem") ?? "2026-10";
+  const uyeler = pf.tur === "dsg" ? PF_UYELER : PF_UYELER.slice(0, 2);
+  if (uc === "") return yanit(200, { ...pf, yonetici_kurulus_id: pf.tur === "dsg" ? "k1" : null, uyeler: uyeler.filter((u) => !u.gecerli_bit), sozlesmeler: pf.tur === "dsg" ? PF_SOZ : [], tarih: new Date().toISOString().slice(0, 10) });
+  if (uc === "uyeler") return yanit(200, { uyeler });
+  if (uc === "tahmin") return yanit(200, pfTahmin());
+  if (uc === "sapma") return yanit(200, pfSapma(kod));
+  if (uc === "risk") return yanit(200, pfRisk());
+  if (uc === "dsg") return yanit(200, pf.tur === "dsg" ? pfDsg(kod) : { durum: "dsg_degil", tur: pf.tur, not: "Bu portföy bir DSG değil; DSG netleşmesi yalnız DSG türündeki portföyler için hesaplanır." });
+  if (uc === "revizyon") return yanit(200, pfRevizyon(url.searchParams.get("hedef") ?? "yarin"));
+  if (uc === "finansal-etki") return yanit(200, pfFinans(kod));
+  if (uc === "gecmis") return yanit(200, { kayitlar: [] });
+  return yanit(404, { detail: "uç yok" });
+}
+
 /** v2.584 (Faz 2 F2-F): Finansal etki — finansal_etki_service.ozet şekli (web/src/api/ornek.ts ornekFinansalEtki ile aynı sayılar); temsili. */
 function finansal(kod, senaryo) {
   const b = (k, ad, tutar, nit, kaynak, toplanir = true, kapsam = 720, beklenen = 744, notlar = []) => ({ kod: k, ad, tutar_tl: tutar, alacak_tl: tutar == null ? null : Math.max(tutar, 0), borc_tl: tutar == null ? null : Math.max(-tutar, 0), nitelik: nit,
@@ -676,6 +759,7 @@ http.createServer((req, res) => {
   if (yol === "/v1/iki-adim") return yanit(200, { aktif: false, kalan_kurtarma: 0 });
   if (yol === "/v1/vitrin/basvurular") return yanit(200, { basvurular: [] });
   if (yol === "/v1/kullanicilar") return yanit(200, []);
+  { const pr = portfoyRotasi(yol, url, yanit); if (pr) return pr; }   // v2.595 (Faz 3 F3-H)
   if (yol === "/v1/portfoy/finansal-etki") { const f = finansal(url.searchParams.get("donem") ?? "2026-10", false); return yanit(200, { donem_kodu: f.donem.kod, santraller: [
     { plant_id: "a1", ad: "Edikli GES", segment: "lisansli_serbest", santral_tasir: true, planlanan_mwh: 1240.5, gerceklesen_mwh: 1198.2, sapma_mwh: -42.3, sapma_pct: -3.41, kapsama_pct: 96.8, gelir: { tutar_tl: 2396400, nitelik: "sozlesme_tahmini" }, dengesizlik: { tutar_tl: -61300, nitelik: "hesaplanan", toplanir: true }, kupst: { tutar_tl: -8900, nitelik: "hesaplanan", toplanir: true }, toplam: { tutar_tl: 2326200, nitelik: "sozlesme_tahmini", giren: ["satis_geliri", "dengesizlik", "kupst"], eksik: [] }, donem: f.donem },
     { plant_id: "a2", ad: "Kaymaklı GES", segment: "lisanssiz_iletim", santral_tasir: false, planlanan_mwh: 212.0, gerceklesen_mwh: 219.4, sapma_mwh: 7.4, sapma_pct: 3.49, kapsama_pct: 99.1, gelir: { tutar_tl: 438800, nitelik: "sozlesme_tahmini" }, dengesizlik: { tutar_tl: -4100, nitelik: "hesaplanan", toplanir: false }, kupst: { tutar_tl: -600, nitelik: "hesaplanan", toplanir: true }, toplam: { tutar_tl: 438200, nitelik: "sozlesme_tahmini", giren: ["satis_geliri", "kupst"], eksik: [] }, donem: f.donem },

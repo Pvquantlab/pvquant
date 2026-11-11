@@ -26,7 +26,9 @@ EYLEMLER_MUSTERI = ("giris", "takim_ekle", "takim_guncelle", "takim_iki_adim_sif
                     "bulut_oauth_baslat", "bulut_oauth_donus", "bulut_birim_kiyas",   # v2.564/v2.565: sahip onayı (OAuth) başlatma ve dönüş (kod/belirteç yazılmaz)
                     "pilot_kapi", "pilot_referans", "edge_toplayici_olustur", "edge_toplayici_iptal",   # v2.560/v2.561: pilot kapıları, saha toplayıcısı
                     "rapor_donem_indir", "rapor_gonderim_ayar", "rapor_gonderim",
-                    "mutabakat_saatlik_yukle", "mutabakat_saatlik_indir")   # v2.527 (P2b-2): EPYS saatlik detay yükleme / kıyas indirme   # v2.525 (raporlama): dönem raporu, zamanlanmış gönderim
+                    "mutabakat_saatlik_yukle", "mutabakat_saatlik_indir",
+                    "kurulus_ekle", "kurulus_guncelle", "portfoy_ekle", "portfoy_guncelle", "uyelik_ekle", "uyelik_guncelle",
+                    "sozlesme_ekle", "sozlesme_guncelle")   # v2.588 (Faz 3 F3-A): portföy varlıkları — üyelik/sözleşme değişikliği izlenebilir   # v2.527 (P2b-2): EPYS saatlik detay yükleme / kıyas indirme   # v2.525 (raporlama): dönem raporu, zamanlanmış gönderim
 # v2.516 (yönetim boşlukları #7): uzlaştırma katmanının müşteri eylemleri de izde — «değiştirilemez kayıt» vaadi denetimde görünür.
 # Ayrıntıya dosya içeriği ya da sır yazılmaz: gün, sürüm, kantil, kanal, dosya adı, biçim, segment/UEVÇB ve EAK alanları.
 

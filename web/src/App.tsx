@@ -54,6 +54,7 @@ const Olaylar = lazy(() => import("./features/sayfalar/Olaylar").then((m) => ({ 
 const Mutabakat = lazy(() => import("./features/sayfalar/Mutabakat").then((m) => ({ default: m.Mutabakat })));   // v2.522 (P2b-1)
 const Sayac = lazy(() => import("./features/sayfalar/Sayac").then((m) => ({ default: m.Sayac })));   // v2.523 (P4a)
 const FinansalEtki = lazy(() => import("./features/sayfalar/FinansalEtki").then((m) => ({ default: m.FinansalEtki })));   // v2.584 (Faz 2 F2-F)
+const Portfoyler = lazy(() => import("./features/sayfalar/Portfoyler").then((m) => ({ default: m.Portfoyler })));   // v2.595 (Faz 3 F3-H)
 const Aylik = lazy(() => import("./features/sayfalar/Aylik").then((m) => ({ default: m.Aylik })));
 const VeriYukleme = lazy(() => import("./features/sayfalar/Digerleri").then((m) => ({ default: m.VeriYukleme })));
 const Kalibrasyon = lazy(() => import("./features/sayfalar/Digerleri").then((m) => ({ default: m.Kalibrasyon })));
@@ -224,8 +225,9 @@ export default function App() {
       {/* v2.353: santral yokken sayfalar hiç çizilmez — her biri plantId ile
           uç çağırır ve boş kimlikte 404/asılı istek üretirdi. Portföy istisna:
           santral eklemenin ikinci yolu orada. */}
-      {!plantId && sayfa !== "portfoy" && <SantralYok />}
+      {!plantId && sayfa !== "portfoy" && sayfa !== "portfoyler" && <SantralYok />}
       {sayfa === "portfoy" && <Portfoy onSec={(id) => { santralSec(id); sayfaSec("santralim"); }} />}
+      {sayfa === "portfoyler" && <Portfoyler />}   {/* v2.595 (Faz 3 F3-H): santral seçimi gerektirmez */}
       {sayfa === "kurulus" && <Kurulus santralYenile={santralYenile} />}   {/* 26.10 Faz 6 */}
       {plantId && sayfa === "santralim" && <Santralim plantId={plantId} />}
       {plantId && sayfa === "veri" && <VeriYukleme plantId={plantId}

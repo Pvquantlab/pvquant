@@ -948,28 +948,36 @@ def katilimci_birlestir(programlar: dict, kodlar: dict, pozisyonlar: dict | None
     return {"programlar": P, "pozisyonlar": Z, "segmentler": S, "ariza": A, "luy": L, "gruplar": gruplar, "ad_haritasi": harita}
 
 
-def dsg_gruplari(santraller: list[dict]) -> dict:
+def dsg_gruplari(santraller: list[dict], uyelikler: dict[str, dict] | None = None) -> dict:
     """v2.539 (EK-3 DK-258/DK-261, kanıt A) — SAF: santral kayıtlarından DSG grupları. Dışarıda: toplayıcı portföyündeki (beyan), iletime/dağıtıma bağlı
     lisanssız ve öz tüketim segmentleri. Kalanlar params_json.dsg_kodu ile gruplanır; hiçbir santralde kod yoksa hepsi tek grup («varsayim»);
-    kod girilmiş santral varsa kodsuz santral hesap dışı («kodsuz»). Dönüş: {"gruplar": {kod|None: [ad…]}, "disi_nedenleri": {ad: neden}, "grup_kaynagi": beyan|varsayim}."""
-    disi: dict[str, str] = {}; aday: list[tuple[str, str]] = []
+    kod girilmiş santral varsa kodsuz santral hesap dışı («kodsuz»). Dönüş: {"gruplar": {kod|None: [ad…]}, "disi_nedenleri": {ad: neden}, "grup_kaynagi": beyan|varsayim}.
+    v2.588 (Faz 3 F3-A): `uyelikler` = {plant_id: {"dsg_kodu", "dogrulama", "portfoy_ad", …}} (portfoy_varlik_service.dsg_uyelik_kodlari, o tarihte geçerli
+    üyelik tablosu). Üyeliği olan santralda tablo kodu beyanı EZER; hiç üyelik yoksa beyana düşülür. grup_kaynagi: «uyelik» (en az bir santral tablodan),
+    aksi beyan/varsayim; «uyelik_dogrulama» {ad: beyan|belgeli|dogrulandi} ve «kaynaklar» {ad: uyelik|beyan} döner."""
+    disi: dict[str, str] = {}; aday: list[tuple[str, str]] = []; kaynaklar: dict[str, str] = {}; dogrulama: dict[str, str] = {}
+    uyelikler = uyelikler or {}
     for p in santraller:
         ad = p["name"]; b = segment_bilgisi(p.get("params_json"))
-        if b["toplayici_portfoyu"]:
+        u = uyelikler.get(str(p.get("id"))) if p.get("id") is not None else None
+        if b["toplayici_portfoyu"] and not u:
             disi[ad] = DSG_DISI_NEDEN["toplayici"]
         elif b["segment"] in ("lisanssiz_iletim", "lisanssiz_dagitim", "oz_tuketim_saatlik"):
             disi[ad] = DSG_DISI_NEDEN[b["segment"]]
+        elif u:
+            aday.append((ad, str(u.get("dsg_kodu") or "").strip())); kaynaklar[ad] = "uyelik"; dogrulama[ad] = u.get("dogrulama") or "beyan"
         else:
-            aday.append((ad, b["dsg_kodu"] or ""))
+            aday.append((ad, b["dsg_kodu"] or "")); kaynaklar[ad] = "beyan"
     kodlu = [a for a in aday if a[1]]
+    ek = {"kaynaklar": kaynaklar, "uyelik_dogrulama": dogrulama}
     if not kodlu:
-        return {"gruplar": {None: [a for a, _ in aday]} if aday else {}, "disi_nedenleri": disi, "grup_kaynagi": "varsayim"}
+        return {"gruplar": {None: [a for a, _ in aday]} if aday else {}, "disi_nedenleri": disi, "grup_kaynagi": "varsayim", **ek}
     gruplar: dict = {}
     for ad, kod in aday:
         if not kod:
             disi[ad] = DSG_DISI_NEDEN["kodsuz"]; continue
         gruplar.setdefault(kod, []).append(ad)
-    return {"gruplar": gruplar, "disi_nedenleri": disi, "grup_kaynagi": "beyan"}
+    return {"gruplar": gruplar, "disi_nedenleri": disi, "grup_kaynagi": "uyelik" if any(v == "uyelik" for v in kaynaklar.values()) else "beyan", **ek}
 
 
 def dsg_ozet(tenant_id, gun: int = 30, dagitim_anahtari: str = "sapma", grup: str | None = None) -> dict:
@@ -995,7 +1003,12 @@ def dsg_ozet(tenant_id, gun: int = 30, dagitim_anahtari: str = "sapma", grup: st
         if df is not None and not df.empty:
             idx = idx.union(pd.DatetimeIndex(df["ts_utc"]))
     fiyat = piyasa_service.fiyatlar(idx) if len(idx) else pd.DataFrame(columns=["ptf", "smf", "yon", "kaynak"])
-    gr = dsg_gruplari(santraller)   # v2.539 (DK-258/261)
+    try:   # v2.588 (Faz 3 F3-A): bugün geçerli üyelik tablosu beyanı ezer; tablo boşsa beyana düşülür
+        from pvquant.services import portfoy_varlik_service as pv
+        uyelikler = pv.dsg_uyelik_kodlari(tenant_id)
+    except Exception:   # noqa: BLE001 — üyelik tablosu okunamazsa beyanla sürer (göç öncesi ortam)
+        uyelikler = {}
+    gr = dsg_gruplari(santraller, uyelikler)   # v2.539 (DK-258/261)
     kodlar = {p["name"]: (segment_bilgisi(p.get("params_json")).get("piyasa_katilimcisi") or "") for p in santraller}   # v2.541 (DK-252)
     sonuclar = {}; katilimci_gruplari = {}
     for kod, adlar in gr["gruplar"].items():
@@ -1023,7 +1036,8 @@ def dsg_ozet(tenant_id, gun: int = 30, dagitim_anahtari: str = "sapma", grup: st
     out["segment_yok"] = [p["name"] for p in santraller if not segmentler[p["name"]]]
     # 29.10 dil turu: müşteri dili — kural kısa, varsayım açık, dayanak sonda
     grup_notu = (" DSG kodu girilmedi: dengesizliğini kendisi taşıyan bütün santraller tek DSG varsayıldı; Santralim › Santral ayarları'ndan DSG kodu girince gruplar ayrılır." if gr["grup_kaynagi"] == "varsayim" and out["santral"] > 1
-                 else (f" {len(sonuclar)} DSG grubu beyan edildi; gösterilen: «{secili}»." if gr["grup_kaynagi"] == "beyan" and len(sonuclar) > 1 else ""))
+                 else (f" {len(sonuclar)} DSG grubu beyan edildi; gösterilen: «{secili}»." if gr["grup_kaynagi"] == "beyan" and len(sonuclar) > 1
+                       else (" Gruplar portföy üyelik kayıtlarından (bugün geçerli üyelik); doğrulanmamış üyelikler beyan niteliğindedir." if gr["grup_kaynagi"] == "uyelik" else "")))
     out["not"] = ("Dengeden Sorumlu Grup içinde tek santral var; karşılıklı netleşecek sapma bulunmadığından fark sıfırdır. İkinci santral bağlandığında burada görünür." if out["santral"] <= 1
                   else _esik_cumlesi(out.get("esik"))
                        + "KÜPST santral başına ödenir ve DSG içinde netleşmez. Dayanak: DUY m.111. Bu rakamlar yürürlükteki kuralla yapılmış varsayımsal bir yeniden hesaptır; "

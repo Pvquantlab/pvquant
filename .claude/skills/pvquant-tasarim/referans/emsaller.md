@@ -31,6 +31,7 @@ Her satır: kalıp → dosya → kritik kural. Yeni mühürde yeni kalıp çıka
 | Tablo oluğu | `table.veri` | `th+th/td+td{padding-left}` — oluk ilk sütun dolgusuyla OLMAZ (v2.309) |
 | Üç kipli tema | `Kabuk` temaKipi oto\|acik\|koyu | pvq_tema localStorage; oto varsayılan |
 | Palet/modal kalıbı | Kabuk ⌘K + YeniSantral | kart örtünün ÇOCUĞU + stopPropagation (v2.308 dersi: kardeş çizim örtü altında kalır) |
+| Portföy yönetimi sayfası (v2.595, Faz 3 F3-H) | `sayfalar/Portfoyler.tsx` | santral seçimsiz sayfa (App'te `SantralYok` kapısı dışında); üst künye satırı + 4 KPI (değer + çapa + rozet); üç perspektif `dl.kunye` (kart içinde Kpi kutusu YOK); dar karttaki tablo ≤4 sütun, birim dipnotta; etiketler yalnız arka uç sözlüğünden (doğrulandı/doğrulanmadı, sözleşmeye dayalı/varsayımsal); düzenleme formları `details` içinde, sözleşme yalnız admin; sahte API `portfoyRotasi` |
 
 ## Süreç emsalleri
 

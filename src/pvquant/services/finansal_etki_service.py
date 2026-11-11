@@ -900,15 +900,23 @@ def gecmis(tenant_id, plant_id, donem_kodu: str, n: int = 20) -> list[dict]:
     return out
 
 
-def portfoy(tenant_id, plants: list[dict], donem_kodu: str | None, uretim: str | None = None, bugun: date | None = None) -> dict:
+def portfoy(tenant_id, plants: list[dict], donem_kodu: str | None, uretim: str | None = None, bugun: date | None = None, taze: bool = False) -> dict:
     """Portföy: santral başına özet satırı (planlanan, gerçekleşen, sapma, satış geliri, EDT, KÜPST, toplam ve nitelik; segment kapısı) + toplamlar.
-    Toplam yalnız toplanabilen satırlardan (eksik olmayan); nitelik en zayıf. Bir santralın hatası portföyü düşürmez, satıra yazılır."""
-    satirlar = []; tl = []; nit = []; plan = []; ger = []
+    Toplam yalnız toplanabilen satırlardan (eksik olmayan); nitelik en zayıf. Bir santralın hatası portföyü düşürmez, satıra yazılır.
+    v2.594 (F3-G): santral sonucu gece kaydından (≤36 sa) gelir, yoksa ya da taze=True anında; MWh toplamları toplanan santral kümesiyle tutarlı (B13), bütün santraller `tum_santral`."""
+    satirlar = []; tl = []; nit = []; plan = []; ger = []; plan_tum = []; ger_tum = []
     for p in plants:
         try:
-            o = ozet(tenant_id, p, donem_kodu, uretim, bugun)
+            o = None
+            if donem_kodu and not taze:   # v2.594 (F3-G; inceleme bulgusu 7): gece kaydı varsa (≤36 sa, dönem sonu ve santral girdisiyle eşleşen) yeniden hesaplanmaz
+                try:
+                    o = son(tenant_id, str(p["id"]), donem_kodu, uretim, donem_bit=donem(p, donem_kodu, bugun)["bit"], plant=p)
+                except Exception:   # noqa: BLE001 — kayıt aranamazsa anında hesap
+                    o = None
+            if o is None:
+                o = ozet(tenant_id, p, donem_kodu, uretim, bugun)
             kod = {b["kod"]: b for b in o["bilesenler"]}
-            satir = {"plant_id": str(p["id"]), "ad": p.get("name"), "segment": o["meta"].get("segment"), "santral_tasir": o["uzlastirma"].get("santral_tasir"),
+            satir = {"plant_id": str(p["id"]), "ad": p.get("name"), "segment": o["meta"].get("segment"), "santral_tasir": o["uzlastirma"].get("santral_tasir"), "kayitli": bool(o.get("kayitli")),
                      "planlanan_mwh": o["uretim"]["planlanan"]["mwh"], "gerceklesen_mwh": o["uretim"]["gerceklesen"]["mwh"], "sapma_mwh": o["uretim"]["sapma"]["mwh"],
                      "sapma_pct": o["uretim"]["sapma"]["pct"], "kapsama_pct": ((o["uretim"]["gerceklesen"].get("kapsama") or {}).get("kapsama_pct")),
                      "gelir": {k: kod[KOD_GELIR].get(k) for k in ("tutar_tl", "nitelik")} if KOD_GELIR in kod else None,
@@ -916,19 +924,24 @@ def portfoy(tenant_id, plants: list[dict], donem_kodu: str | None, uretim: str |
                      "kupst": {k: kod[KOD_KUPST].get(k) for k in ("tutar_tl", "nitelik", "toplanir")} if KOD_KUPST in kod else None,
                      "toplam": {k: o["toplam"].get(k) for k in ("tutar_tl", "nitelik", "giren", "eksik")}, "donem": o["donem"]}
             satirlar.append(satir)
-            if satir["toplam"]["tutar_tl"] is not None:
-                tl.append(float(satir["toplam"]["tutar_tl"])); nit.append(satir["toplam"]["nitelik"])
             if satir["planlanan_mwh"] is not None:
-                plan.append(float(satir["planlanan_mwh"]))
+                plan_tum.append(float(satir["planlanan_mwh"]))
             if satir["gerceklesen_mwh"] is not None:
-                ger.append(float(satir["gerceklesen_mwh"]))
+                ger_tum.append(float(satir["gerceklesen_mwh"]))
+            if satir["toplam"]["tutar_tl"] is not None:   # v2.594 (B13): MWh toplamları toplama giren santral kümesiyle tutarlı; bütün santraller ayrı alanda
+                tl.append(float(satir["toplam"]["tutar_tl"])); nit.append(satir["toplam"]["nitelik"])
+                if satir["planlanan_mwh"] is not None:
+                    plan.append(float(satir["planlanan_mwh"]))
+                if satir["gerceklesen_mwh"] is not None:
+                    ger.append(float(satir["gerceklesen_mwh"]))
         except Exception as ex:   # bir santralın hatası portföyü düşürmez
             satirlar.append({"plant_id": str(p["id"]), "ad": p.get("name"), "hata": f"{type(ex).__name__}: {ex}"})
     top_nit = fn.en_zayif(*nit) if nit else fn.Nitelik.EKSIK
     eksik = [s["ad"] for s in satirlar if s.get("hata") or (s.get("toplam") or {}).get("tutar_tl") is None]
     return {"donem_kodu": donem_kodu, "santraller": satirlar, "toplam": {"tutar_tl": (round(sum(tl), 2) if tl else None), "nitelik": top_nit.value, "nitelik_ad": fn.NITELIK_AD[top_nit],
             "santral_sayisi": len(satirlar), "toplanan_santral": len(tl), "toplama_girmeyen": eksik, "planlanan_mwh": (round(sum(plan), 3) if plan else None),
-            "gerceklesen_mwh": (round(sum(ger), 3) if ger else None), "isaret": fn.ISARET_KURALI},
+            "gerceklesen_mwh": (round(sum(ger), 3) if ger else None), "isaret": fn.ISARET_KURALI,
+            "tum_santral": {"planlanan_mwh": (round(sum(plan_tum), 3) if plan_tum else None), "gerceklesen_mwh": (round(sum(ger_tum), 3) if ger_tum else None)}},   # v2.594 (B13)
             "not": "Santral toplamları aynı dönem ve aynı sözlükle; eksik nitelikli santral toplama girmez. Resmî satırlar, DSG ve göstergeler santral özetinde de toplama girmez.",
             "surum": SURUM, "sozluk_surumu": fn.SOZLUK_SURUMU}
 

@@ -45,6 +45,7 @@ IZLENEN_ISLER = (
     ("rapor_alanlari", 36, "günlük", True),
     ("gece_bagimsiz_dogrulama", 36, "günlük", True),  # 10.11 v2.574 (Faz 1 F1-C): 03:50 TSİ; yetersiz veri «atlandı» da başarılı koşudur
     ("gece_finansal_etki", 36, "günlük", True),  # 11.11 v2.583 (Faz 2 F2-E): 03:55 TSİ; ölçüm yok «atlandı» da başarılı koşudur
+    ("gece_portfoy", 36, "günlük", False),  # 11.11 v2.593 (Faz 3 F3-F): 04:05 TSİ; küresel iş (portföy yok «portföy yok» da başarılı koşudur)
     ("aylik_kalibrasyon", 24 * 35, "aylık", True),      # 04.11 v2.531 (ENV-F06): üç aylık üretici iş izlenir; santral başına koşar
     ("aylik_iklim", 24 * 35, "aylık", True),
     ("aylik_bankable", 24 * 35, "aylık", True),

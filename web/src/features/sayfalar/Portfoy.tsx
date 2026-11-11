@@ -285,6 +285,7 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
                 </select>
               </div>
             )}
+            <p className="form-not" style={{ margin: "0 0 10px", fontSize: 13.5 }}>{dsg.grup_kaynagi === "uyelik" ? "Gruplar Portföy yönetimi sayfasındaki tarihli üyelik kayıtlarından kuruldu." : "Gruplar santral ayarlarındaki DSG kodu beyanıyla kuruldu; tarihli üyelik ve sözleşme kayıtları için "}{dsg.grup_kaynagi !== "uyelik" && <a href="#portfoyler">Portföy yönetimi</a>}{dsg.grup_kaynagi !== "uyelik" && " sayfasını kullanın."}</p>   {/* v2.595 (Faz 3 F3-H) */}
             {dsg.katilimci_gruplari && Object.keys(dsg.katilimci_gruplari).length > 0 && (
               <p className="form-not" style={{ margin: "0 0 10px", fontSize: 13.5 }}><b>Katılımcı toplamları:</b> {Object.entries(dsg.katilimci_gruplari).map(([k, v]) => `${k}: ${v.join(" + ")}`).join("; ")} — aynı piyasa katılımcısının santralleri tek üye olarak sayıldı; üye eşiği katılımcı toplamında (DUY m.111).</p>
             )}   {/* v2.541 (DK-252) */}

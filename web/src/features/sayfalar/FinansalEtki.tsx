@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
 import { api } from "../../api/client";
 import type { FinansalEtki as FinansalEtkiT, FinansalEtkiGecmis, FinansBilesen, FinansDonemTur, FinansNitelik } from "../../api/types";
+import { donemSecenekleri, TUR_AD } from "../../lib/donem";   // v2.595: ortak dönem seçenekleri
 import { Kart, Kpi, Sayfa, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
 import { Meta } from "../../lib/Meta";
 import { tarihBicimi } from "../../lib/bicim";
@@ -18,8 +19,6 @@ const NITELIK: Record<FinansNitelik, { etiket: string; sinif: string; aciklama: 
   senaryo: { etiket: "senaryo", sinif: "rozet-uyari", aciklama: "Varsayımsal hesap: senaryo fiyatı, varsayılan sistem yönü ya da sözleşme verisi olmayan üyelik." },
   eksik: { etiket: "eksik", sinif: "rozet-notr", aciklama: "Gerekli veri (fiyat, sistem yönü, katsayı, ölçüm ya da bildirim) olmadığından hesaplanamadı." },
 };
-const TUR_AD: Record<FinansDonemTur, string> = { gun: "gün", hafta: "hafta", ay: "ay", ceyrek: "çeyrek", yil: "yıl" };
-const AYLAR = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 const ONERI_SINIF: Record<string, string> = { eylem: "rozet-dikkat", oneri: "rozet-uyari", bilgi: "rozet-notr" };
 const SAYFA_AD: Record<string, string> = { tahminler: "Tahminler", mutabakat: "Mutabakat", santralim: "Santralim", kurulus: "Ayarlar", veri: "Veri yükleme", olaylar: "Olay kaydı", hakkinda: "Hakkında", sayac: "Sayaç" };
 const sol = { textAlign: "left" as const };
@@ -28,23 +27,6 @@ const isaretli = (v: number | null | undefined, ondalik = 0) => v == null ? "—
 const binTl = (v: number | null | undefined) => v == null ? "—" : `${v < 0 ? "−" : ""}${sayiTr(Math.abs(v) / 1000, 1)}`;
 const saatYaz = (iso: string | null | undefined) => iso ? tarihBicimi("tr-TR", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(iso)) : "—";
 const gunYaz = (iso: string | null | undefined) => iso ? tarihBicimi("tr-TR", { day: "numeric", month: "short", year: "numeric" }).format(new Date(iso.slice(0, 10) + "T12:00:00")) : "—";
-const p2 = (n: number) => String(n).padStart(2, "0");
-
-function isoHafta(d: Date): [number, number] {
-  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())); const gun = t.getUTCDay() || 7;
-  t.setUTCDate(t.getUTCDate() + 4 - gun); const y = t.getUTCFullYear(); const bas = Date.UTC(y, 0, 1);
-  return [y, Math.ceil(((t.getTime() - bas) / 86400000 + 1) / 7)];
-}
-/** Dönem seçenekleri (bugünden geriye): 14 gün, 8 hafta, 12 ay (süren ay dâhil), 4 çeyrek, 2 yıl. Kod biçimleri arka uçla aynı. */
-function donemSecenekleri(tur: FinansDonemTur, bugun = new Date()): { kod: string; etiket: string }[] {
-  const out: { kod: string; etiket: string }[] = [];
-  if (tur === "gun") for (let i = 1; i <= 14; i++) { const d = new Date(bugun); d.setDate(d.getDate() - i); out.push({ kod: `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`, etiket: `${d.getDate()} ${AYLAR[d.getMonth()]} ${d.getFullYear()}` }); }
-  if (tur === "hafta") for (let i = 1; i <= 8; i++) { const d = new Date(bugun); d.setDate(d.getDate() - 7 * i); const [y, h] = isoHafta(d); out.push({ kod: `${y}-W${p2(h)}`, etiket: `${y}, ${h}. hafta` }); }
-  if (tur === "ay") for (let i = 0; i < 12; i++) { const d = new Date(bugun.getFullYear(), bugun.getMonth() - i, 1); out.push({ kod: `${d.getFullYear()}-${p2(d.getMonth() + 1)}`, etiket: `${AYLAR[d.getMonth()]} ${d.getFullYear()}${i === 0 ? " (süren)" : ""}` }); }
-  if (tur === "ceyrek") { const q0 = Math.floor(bugun.getMonth() / 3); for (let i = 0; i < 4; i++) { let q = q0 - i, y = bugun.getFullYear(); while (q < 0) { q += 4; y -= 1; } out.push({ kod: `${y}-Q${q + 1}`, etiket: `${y}, ${q + 1}. çeyrek${i === 0 ? " (süren)" : ""}` }); } }
-  if (tur === "yil") for (let i = 0; i < 2; i++) { const y = bugun.getFullYear() - i; out.push({ kod: String(y), etiket: `${y}${i === 0 ? " (süren)" : ""}` }); }
-  return out;
-}
 
 function Rozet({ n, kucuk = true }: { n: FinansNitelik; kucuk?: boolean }) {
   const x = NITELIK[n] ?? NITELIK.eksik;

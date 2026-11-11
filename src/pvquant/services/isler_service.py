@@ -16,6 +16,7 @@ ISIM_TR = {
     "gece_epias_uretim": "Gerçekleşen üretim çekimi", "gece_hijyen": "Veri hijyeni",
     "gece_bagimsiz_dogrulama": "Bağımsız doğrulama",   # v2.574 (Faz 1 F1-C)
     "gece_finansal_etki": "Finansal etki",   # v2.583 (Faz 2 F2-E)
+    "gece_portfoy": "Portföy hesabı",   # v2.593 (Faz 3 F3-F)
     "gece_skill": "Gece karnesi", "gece_ufuk_sigma": "Ufuk belirsizliği",
     "gece_konformal": "Bant kalibrasyonu", "gunluk_beklenti": "Günlük beklenti",
     "rapor_alanlari": "Rapor alanları", "alarm": "Alarm taraması",

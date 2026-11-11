@@ -3244,3 +3244,359 @@ def rapor_uret(plant_id: str, fmt: str, claims=Depends(gecerli_kullanici)):
     return Response(content=veri, media_type=_RAPOR_MIME[fmt],
                     headers={"Content-Disposition":
                              f'attachment; filename="{ad}"'})
+
+
+# ======================================================================================================================
+# v2.593 (Faz 3 F3-F) — PORTFÖY VARLIKLARI ve PORTFÖY HESAP UÇLARI
+# Yetki: okuma gecerli_kullanici (viewer dâhil); kuruluş/portföy/üyelik yazma editor/admin (yazma_yetkisi); sözleşme okuma editor/admin, yazma yalnız admin.
+# Doğrulama hataları (PortfoyHatasi) 422, «bulunamadı» 404. Her yazma denetim izine düşer (servis). Hesap uçları anında hesaplar; kayıt yalnız gece işinden.
+# ======================================================================================================================
+class KurulusIstek(BaseModel):
+    ad: str
+    tur: str
+    epias_kodu: str | None = None
+    notlar: str | None = None
+
+
+class KurulusGuncelle(BaseModel):
+    ad: str | None = None
+    tur: str | None = None
+    epias_kodu: str | None = None
+    notlar: str | None = None
+    aktif: bool | None = None
+
+
+class PortfoyIstek(BaseModel):
+    ad: str
+    tur: str
+    gecerli_bas: str
+    gecerli_bit: str | None = None
+    kurulus_id: str | None = None
+    notlar: str | None = None
+    dsg: dict | None = None          # {"dsg_kodu", "yonetici_kurulus_id"?, "netlesme"?}
+    toplayici: dict | None = None    # {"kurulus_id"?, "sorumluluk"?}
+
+
+class PortfoyGuncelle(BaseModel):
+    ad: str | None = None
+    gecerli_bit: str | None = None
+    notlar: str | None = None
+    kurulus_id: str | None = None
+    dsg_kodu: str | None = None
+    yonetici_kurulus_id: str | None = None
+    netlesme: dict | None = None
+    sorumluluk: dict | None = None
+
+
+class UyelikIstek(BaseModel):
+    plant_id: str
+    gecerli_bas: str
+    gecerli_bit: str | None = None
+    kaynak: str = "beyan"
+    dogrulama: str = "beyan"
+    belge_adi: str | None = None
+    belge_sha256: str | None = None
+    notlar: str | None = None
+
+
+class UyelikGuncelle(BaseModel):
+    gecerli_bit: str | None = None
+    dogrulama: str | None = None
+    belge_adi: str | None = None
+    belge_sha256: str | None = None
+    notlar: str | None = None
+    kaynak: str | None = None
+
+
+class SozlesmeIstek(BaseModel):
+    tur: str
+    gecerli_bas: str
+    gecerli_bit: str | None = None
+    portfoy_id: str | None = None
+    plant_id: str | None = None
+    taraf_a_kurulus_id: str | None = None
+    taraf_b_kurulus_id: str | None = None
+    satis_modeli: str | None = None
+    uzlastirma_modeli: str | None = None
+    dengesizlik_sorumlusu: str | None = None
+    dagitim_yontemi: str | None = None
+    parametreler: dict | None = None
+    belge_adi: str | None = None
+    belge_sha256: str | None = None
+    dogrulama: str = "beyan"
+    notlar: str | None = None
+
+
+class SozlesmeGuncelle(BaseModel):
+    gecerli_bit: str | None = None
+    satis_modeli: str | None = None
+    uzlastirma_modeli: str | None = None
+    dengesizlik_sorumlusu: str | None = None
+    dagitim_yontemi: str | None = None
+    parametreler: dict | None = None
+    belge_adi: str | None = None
+    belge_sha256: str | None = None
+    dogrulama: str | None = None
+    notlar: str | None = None
+
+
+def _pv():
+    from pvquant.services import portfoy_varlik_service as pv
+    return pv
+
+
+def _pv_aktor(claims) -> dict:
+    return {"sub": claims.get("sub"), "email": claims.get("email")}
+
+
+def _pv_hata(e: Exception) -> HTTPException:
+    m = str(e)
+    return HTTPException(404 if "bulunamadı" in m else 422, m)
+
+
+def _pv_tarih(tarih: str | None, ad: str = "tarih"):
+    if tarih in (None, ""):
+        return None
+    try:
+        return _pv()._tarih(tarih, ad)
+    except ValueError as e:
+        raise _pv_hata(e)
+
+
+def _pv_gun(bugun: str | None):
+    """Test ve yeniden üretim için isteğe bağlı «bugün» (YYYY-AA-GG); verilmezse gerçek gün."""
+    return _pv_tarih(bugun, "bugun")
+
+
+@app.get("/v1/kuruluslar")
+def kuruluslar(aktif: int = 1, claims=Depends(gecerli_kullanici)):
+    return {"kuruluslar": _pv().kuruluslar(claims["tenant_id"], True if aktif else None)}
+
+
+@app.post("/v1/kuruluslar")
+def kurulus_ekle(p: KurulusIstek, claims=Depends(yazma_yetkisi())):
+    try:
+        return {"id": _pv().kurulus_ekle(claims["tenant_id"], p.ad, p.tur, p.epias_kodu, p.notlar, aktor=_pv_aktor(claims))}
+    except ValueError as e:
+        raise _pv_hata(e)
+
+
+@app.put("/v1/kuruluslar/{kurulus_id}")
+def kurulus_guncelle(kurulus_id: str, p: KurulusGuncelle, claims=Depends(yazma_yetkisi())):
+    try:
+        return _pv().kurulus_guncelle(claims["tenant_id"], kurulus_id, aktor=_pv_aktor(claims), **p.model_dump(exclude_none=True))
+    except ValueError as e:
+        raise _pv_hata(e)
+
+
+@app.get("/v1/portfoyler")
+def portfoyler(tarih: str | None = None, tur: str | None = None, claims=Depends(gecerli_kullanici)):
+    try:
+        return {"portfoyler": _pv().portfoyler(claims["tenant_id"], _pv_tarih(tarih), tur)}
+    except ValueError as e:
+        raise _pv_hata(e)
+
+
+@app.post("/v1/portfoyler")
+def portfoy_ekle(p: PortfoyIstek, claims=Depends(yazma_yetkisi())):
+    try:
+        return {"id": _pv().portfoy_ekle(claims["tenant_id"], p.ad, p.tur, p.gecerli_bas, p.gecerli_bit, p.kurulus_id, p.notlar, p.dsg, p.toplayici, aktor=_pv_aktor(claims))}
+    except ValueError as e:
+        raise _pv_hata(e)
+
+
+@app.get("/v1/portfoyler/{portfoy_id}")
+def portfoy_getir(portfoy_id: str, tarih: str | None = None, claims=Depends(gecerli_kullanici)):
+    try:
+        return _pv().portfoy(claims["tenant_id"], portfoy_id, _pv_tarih(tarih))
+    except ValueError as e:
+        raise _pv_hata(e)
+
+
+@app.put("/v1/portfoyler/{portfoy_id}")
+def portfoy_guncelle(portfoy_id: str, p: PortfoyGuncelle, claims=Depends(yazma_yetkisi())):
+    try:
+        return _pv().portfoy_guncelle(claims["tenant_id"], portfoy_id, aktor=_pv_aktor(claims), **p.model_dump(exclude_none=True))
+    except ValueError as e:
+        raise _pv_hata(e)
+
+
+@app.get("/v1/portfoyler/{portfoy_id}/uyeler")
+def portfoy_uyeler(portfoy_id: str, tarih: str | None = None, tum: int = 0, claims=Depends(gecerli_kullanici)):
+    """tarih verilirse o tarihte geçerli üyeler; tum=1 bütün üyelik geçmişi; ikisi de yoksa bugün."""
+    pv = _pv()
+    try:
+        pv.portfoy(claims["tenant_id"], portfoy_id)   # 404 kapısı
+        t = None if tum else (_pv_tarih(tarih) or __import__("datetime").date.today())
+        return {"uyeler": pv.uyeler(claims["tenant_id"], portfoy_id, t)}
+    except ValueError as e:
+        raise _pv_hata(e)
+
+
+@app.post("/v1/portfoyler/{portfoy_id}/uyeler")
+def portfoy_uyelik_ekle(portfoy_id: str, p: UyelikIstek, claims=Depends(yazma_yetkisi())):
+    try:
+        return {"id": _pv().uyelik_ekle(claims["tenant_id"], portfoy_id, p.plant_id, p.gecerli_bas, p.gecerli_bit, p.kaynak, p.dogrulama, p.belge_adi, p.belge_sha256, p.notlar,
+                                        aktor=_pv_aktor(claims))}
+    except ValueError as e:
+        raise _pv_hata(e)
+
+
+@app.put("/v1/portfoyler/{portfoy_id}/uyeler/{uyelik_id}")
+def portfoy_uyelik_guncelle(portfoy_id: str, uyelik_id: str, p: UyelikGuncelle, claims=Depends(yazma_yetkisi())):
+    try:
+        return _pv().uyelik_guncelle(claims["tenant_id"], uyelik_id, aktor=_pv_aktor(claims), **p.model_dump(exclude_none=True))
+    except ValueError as e:
+        raise _pv_hata(e)
+
+
+@app.get("/v1/sozlesmeler")
+def sozlesmeler(portfoy_id: str | None = None, plant_id: str | None = None, tarih: str | None = None, claims=Depends(yazma_yetkisi())):
+    """Sözleşme kayıtları editor/admin'e açıktır (hassas ticari veri); viewer yalnız portföy görünümündeki dağılım etiketini görür."""
+    try:
+        return {"sozlesmeler": _pv().sozlesmeler(claims["tenant_id"], portfoy_id, plant_id, _pv_tarih(tarih))}
+    except ValueError as e:
+        raise _pv_hata(e)
+
+
+@app.post("/v1/sozlesmeler")
+def sozlesme_ekle(p: SozlesmeIstek, claims=Depends(yonetici_yetkisi())):
+    try:
+        d = p.model_dump()
+        return {"id": _pv().sozlesme_ekle(claims["tenant_id"], d.pop("tur"), d.pop("gecerli_bas"), d.pop("gecerli_bit"), aktor=_pv_aktor(claims), **d)}
+    except ValueError as e:
+        raise _pv_hata(e)
+
+
+@app.put("/v1/sozlesmeler/{sozlesme_id}")
+def sozlesme_guncelle(sozlesme_id: str, p: SozlesmeGuncelle, claims=Depends(yonetici_yetkisi())):
+    try:
+        return _pv().sozlesme_guncelle(claims["tenant_id"], sozlesme_id, aktor=_pv_aktor(claims), **p.model_dump(exclude_none=True))
+    except ValueError as e:
+        raise _pv_hata(e)
+
+
+def _pf_kapi(claims, portfoy_id: str) -> dict:
+    try:
+        return _pv().portfoy(claims["tenant_id"], portfoy_id)
+    except ValueError as e:
+        raise _pv_hata(e)
+
+
+@app.get("/v1/portfoyler/{portfoy_id}/tahmin")
+def portfoyler_tahmin(portfoy_id: str, gun: int = 2, kural: str = "son", bugun: str | None = None, claims=Depends(gecerli_kullanici)):
+    """v2.589 (F3-B): portföy saatlik tahmini — ortak saat kümesi, bant (santral yarı genişlikleri × büzülmüş korelasyon; naif/bağımsız sınırlar), günlük beklenti, tazelik."""
+    from pvquant.services import portfoy_tahmin_service as pt
+    if kural not in pt.KURALLAR:
+        raise HTTPException(422, "kural " + "|".join(pt.KURALLAR))
+    if not (1 <= gun <= 15):
+        raise HTTPException(422, "gun 1-15")
+    _pf_kapi(claims, portfoy_id); b = _pv_gun(bugun)
+    return pt.gunler(claims["tenant_id"], portfoy_id, gun, kural, b)
+
+
+@app.get("/v1/portfoyler/{portfoy_id}/kapsama")
+def portfoy_kapsama(portfoy_id: str, gun: int = 30, taze: int = 0, bugun: str | None = None, claims=Depends(gecerli_kullanici)):
+    """v2.589 (F3-B): portföy bandının geçmiş sınavı (PICP80, Winkler; naif ve bağımsız karşılaştırma). Varsayılan: gece işinin son kaydı (≤36 sa); yoksa ya da taze=1 anında."""
+    from pvquant.services import portfoy_tahmin_service as pt
+    if not (7 <= gun <= 120):
+        raise HTTPException(422, "gun 7-120")
+    _pf_kapi(claims, portfoy_id)
+    if not taze and not bugun:
+        s = pt.son_kapsama(claims["tenant_id"], portfoy_id)
+        if s:
+            return s
+    return pt.kapsama(claims["tenant_id"], portfoy_id, gun, _pv_gun(bugun))
+
+
+@app.get("/v1/portfoyler/{portfoy_id}/sapma")
+def portfoy_sapma(portfoy_id: str, donem: str | None = None, uretim: str | None = None, bugun: str | None = None, claims=Depends(gecerli_kullanici)):
+    """v2.590 (F3-C): dönem için program sapması / tahmin hatası / fizik sapması ayrı; santral katkıları, fiziksel ofset, maruziyet saatleri (gösterge), kapsama."""
+    from pvquant.services import portfoy_sapma_service as sp
+    _pf_kapi(claims, portfoy_id); ur = _fe_uretim(uretim)
+    try:
+        return sp.donem(claims["tenant_id"], portfoy_id, donem, ur, _pv_gun(bugun))
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+
+
+@app.get("/v1/portfoyler/{portfoy_id}/risk")
+def portfoy_risk(portfoy_id: str, gun: int = 2, kural: str = "son", bugun: str | None = None, claims=Depends(gecerli_kullanici)):
+    """v2.590 (F3-C): ileriye dönük risk — portföy bandı ↔ ileri program (bildirilen KGÜP › program kesimi öncesi tahmin); riskli saatler ve etiket."""
+    from pvquant.services import portfoy_sapma_service as sp
+    from pvquant.services import portfoy_tahmin_service as pt
+    if kural not in pt.KURALLAR:
+        raise HTTPException(422, "kural " + "|".join(pt.KURALLAR))
+    if not (1 <= gun <= 7):
+        raise HTTPException(422, "gun 1-7")
+    _pf_kapi(claims, portfoy_id)
+    return sp.gelecek(claims["tenant_id"], portfoy_id, gun, kural, _pv_gun(bugun))
+
+
+@app.get("/v1/portfoyler/{portfoy_id}/dsg")
+def portfoy_dsg_perspektif(portfoy_id: str, donem: str | None = None, uretim: str | None = None, anahtar: str | None = None, bugun: str | None = None,
+                           claims=Depends(gecerli_kullanici)):
+    """v2.591 (F3-D): DSG üç perspektif (bağımsız / DSG içi / sözleşmesel dağılım) zamanlı üyelik ve sözleşmeyle; DSG olmayan portföyde durum «dsg_degil»."""
+    from pvquant.ext.platform import dagitim as dg
+    from pvquant.services import portfoy_dsg_service as sd
+    if anahtar is not None and anahtar not in dg.YONTEMLER:
+        raise HTTPException(422, "anahtar " + "|".join(dg.YONTEMLER))
+    _pf_kapi(claims, portfoy_id); ur = _fe_uretim(uretim)
+    try:
+        return sd.donem(claims["tenant_id"], portfoy_id, donem, ur, _pv_gun(bugun), anahtar=anahtar)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+
+
+@app.get("/v1/portfoyler/{portfoy_id}/revizyon")
+def portfoy_revizyon(portfoy_id: str, hedef: str = "yarin", simdi: str | None = None, claims=Depends(gecerli_kullanici)):
+    """v2.592 (F3-E): revizyon karar desteği — dayanaklı Türkçe öneriler, etiketli (doğrulanmış / tahmini / eksik bilgi / fırsat geçti). Otomatik bildirim yok."""
+    from pvquant.services import portfoy_revizyon_service as rv
+    if hedef not in rv.HEDEFLER:
+        raise HTTPException(422, "hedef " + "|".join(rv.HEDEFLER))
+    _pf_kapi(claims, portfoy_id)
+    t = None
+    if simdi:
+        try:
+            t = pd.Timestamp(simdi)
+        except (ValueError, TypeError):
+            raise HTTPException(422, "simdi ISO zaman")
+    return rv.oneriler(claims["tenant_id"], portfoy_id, hedef, t)
+
+
+@app.get("/v1/portfoyler/{portfoy_id}/finansal-etki")
+def portfoyler_finansal_etki(portfoy_id: str, donem: str | None = None, uretim: str | None = None, taze: int = 0, bugun: str | None = None, claims=Depends(gecerli_kullanici)):
+    """v2.594 (F3-G): portföy finansal etkisi — santral başına Faz 2 FEM sonucu (gece kaydı ≤36 sa, yoksa anında), portföy bileşenleri (çift sayım bekçisi),
+    DSG portföyünde bağımsız / DSG içi / sözleşmesel dağılım satırları ve DSG içi toplam (yerine koyma), gerçekleşen ↔ hesaplanan ↔ varsayımsal sınıfları."""
+    from pvquant.services import portfoy_finans_service as pfs
+    _pf_kapi(claims, portfoy_id); ur = _fe_uretim(uretim)
+    try:
+        return pfs.donem(claims["tenant_id"], portfoy_id, donem, ur, _pv_gun(bugun), taze=bool(taze))
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+
+
+@app.get("/v1/portfoyler/{portfoy_id}/gecmis")
+def portfoy_gecmis(portfoy_id: str, tur: str | None = None, donem: str | None = None, n: int = 20, claims=Depends(gecerli_kullanici)):
+    """v2.593 (F3-F): gece işinin kayıtlı portföy sonuçları (yalnız ekleme; üyelik/sözleşme anlık görüntüsü meta'da) — yeniden üretilebilirlik."""
+    pv = _pv()
+    if tur is not None and tur not in pv.SONUC_TURLERI:
+        raise HTTPException(422, "tur " + "|".join(pv.SONUC_TURLERI))
+    if not (1 <= n <= 100):
+        raise HTTPException(422, "n 1-100")
+    _pf_kapi(claims, portfoy_id)
+    return {"kayitlar": pv.sonuc_gecmisi(claims["tenant_id"], portfoy_id, tur, donem, n)}
+
+
+@app.get("/v1/portfoyler/{portfoy_id}/gecmis/{kayit_id}")
+def portfoy_gecmis_kayit(portfoy_id: str, kayit_id: str, claims=Depends(gecerli_kullanici)):
+    from sqlalchemy import text as _text
+    from pvquant.db import tenant_baglami as _tb
+    _pf_kapi(claims, portfoy_id)
+    with _tb(claims["tenant_id"]) as s:
+        r = s.execute(_text("SELECT id, hesap_zamani, tur, donem_kodu, donem_bas, donem_bit, sonuc_json, meta_json FROM portfoy_sonuc WHERE id = CAST(:i AS uuid) AND portfoy_id = CAST(:p AS uuid)"),
+                      {"i": kayit_id, "p": portfoy_id}).mappings().first()
+    if r is None:
+        raise HTTPException(404, "kayıt yok")
+    return {"id": str(r["id"]), "hesap_zamani": r["hesap_zamani"].isoformat(), "tur": r["tur"], "donem_kodu": r["donem_kodu"], "donem_bas": r["donem_bas"].isoformat(),
+            "donem_bit": r["donem_bit"].isoformat(), "sonuc": r["sonuc_json"], "meta": r["meta_json"], "kayitli": True}

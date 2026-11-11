@@ -14,6 +14,7 @@ import { Meta } from "../lib/Meta";
    devrededir; kullanıcı Açık/Koyu seçtiyse seçimi her sayfada geçerlidir. */
 export const SAYFALAR = [
   { id: "portfoy", ad: "Portföy", yuz: "koyu" },        // v2.263
+  { id: "portfoyler", ad: "Portföy yönetimi", yuz: "acik" },   // v2.595 (Faz 3 F3-H): toplayıcı/DSG portföyleri
   { id: "santralim", ad: "Santralim", yuz: "koyu" },
   { id: "veri", ad: "Veri yükleme", yuz: "koyu" },
   { id: "kalibrasyon", ad: "Kalibrasyon", yuz: "acik" },
@@ -45,6 +46,7 @@ const IKONLAR: Record<SayfaId, ReactNode> = {
   takvim: <svg {...IKON_ORTAK}><rect x="3" y="4" width="14" height="13" rx="1.5"/><path d="M3 8h14M7 4V2.5M13 4V2.5"/><path d="M7.5 12.5l1.8 1.8 3.2-3.6"/></svg>,   // v2.518 (P3a)
   olaylar: <svg {...IKON_ORTAK}><path d="M6 3.5h8l2 2v11H4v-11z"/><path d="M7 8h6M7 11h6M7 14h3"/></svg>,   // v2.521 (P1a)
   mutabakat: <svg {...IKON_ORTAK}><path d="M3.5 6h13M3.5 14h13"/><path d="M6 3.5l-2.5 2.5L6 8.5M14 11.5l2.5 2.5-2.5 2.5"/></svg>,   // v2.522 (P2b-1): iki yönlü kıyas
+  portfoyler: <svg {...IKON_ORTAK}><circle cx="5.5" cy="6" r="2"/><circle cx="14.5" cy="6" r="2"/><circle cx="10" cy="14" r="2"/><path d="M7.2 7.2l1.6 4.6M12.8 7.2l-1.6 4.6M7.5 6h5"/></svg>,   // v2.595 (Faz 3 F3-H): üç düğüm, bağlı grup
   finans: <svg {...IKON_ORTAK}><rect x="3" y="5.5" width="14" height="9" rx="1.5"/><circle cx="10" cy="10" r="2.2"/><path d="M5.5 8.5v3M14.5 8.5v3"/></svg>,   // v2.584 (Faz 2 F2-F): banknot
   sayac: <svg {...IKON_ORTAK}><path d="M3.5 14.5a6.5 6.5 0 1 1 13 0"/><path d="M10 14.5l3.2-4.8"/><path d="M3.5 14.5h13"/></svg>,   // v2.523 (P4a): sayaç kadranı
   aylik: <svg {...IKON_ORTAK}><rect x="3" y="4" width="14" height="13" rx="1.5"/><path d="M3 8h14M7 4V2.5M13 4V2.5"/></svg>,

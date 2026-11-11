@@ -341,6 +341,67 @@ def gece_finansal_etki(plant):
     return "; ".join(out)
 
 
+def gece_portfoy(bugun=None):
+    """v2.593 (Faz 3 F3-F): portföy gece hesabı — KÜRESEL iş (kiracı × bugün geçerli portföy): portföy tahmin bandı kapsama sınavı (dogrulama_sonuc, plant_id NULL),
+    dünün ve ayın sapma görünümü, DSG portföylerinde üç perspektif, bugün+yarın portföy tahmini → portfoy_sonuc (YALNIZ EKLEME; üyelik/sözleşme anlık görüntüsü meta'da).
+    Veri olmayan dönem atlanır (uydurulmaz). Santral tahmini, uzlaştırma ve FEM servisleri DOKUNULMAZ."""
+    from zoneinfo import ZoneInfo
+    from pvquant.ext.platform import finans as fn
+    from pvquant.services import portfoy_dsg_service as sd
+    from pvquant.services import portfoy_finans_service as pfs
+    from pvquant.services import portfoy_sapma_service as sp
+    from pvquant.services import portfoy_tahmin_service as pt
+    from pvquant.services import portfoy_varlik_service as pv
+    bugun = bugun or dt.datetime.now(ZoneInfo("Europe/Istanbul")).date()
+    with sistem_baglami() as s:
+        kiracilar = [str(r[0]) for r in s.execute(text("SELECT id FROM tenants WHERE status = 'active'"))]
+    out = []
+    for tid in kiracilar:
+        try:
+            portfoyler = pv.portfoyler(tid, tarih=bugun)
+        except Exception as e:   # noqa: BLE001 — bir kiracının listesi okunamazsa diğerleri sürer
+            out.append(f"{tid[:8]}: liste hatası {type(e).__name__}"); continue
+        for pf in portfoyler:
+            pid = pf["id"]; parca = []
+            try:
+                k = pt.kapsama(tid, pid, gun=30, bugun=bugun)
+                if k.get("durum") == "ok" and k["metrik"]["n_saat"]:
+                    pt.kapsama_kaydet(tid, pid, k); parca.append(f"kapsama {k['metrik']['durum']} picp={k['metrik']['picp80']}")
+                else:
+                    parca.append("kapsama: veri yok, atlandı")
+                for kod in ((bugun - dt.timedelta(days=1)).isoformat(), fn.donem_kodu(bugun, "ay")):
+                    o = sp.donem(tid, pid, kod, bugun=bugun)
+                    if o.get("durum") == "ok" and o["ozet"]["gerceklesen"]["saat"]:
+                        pv.sonuc_kaydet(tid, pid, "sapma", {"kod": kod, "bas": o["donem"]["bas"], "bit": o["donem"]["bit"]}, o, {**o["meta"], "kapsama": o["kapsama"]})
+                        parca.append(f"sapma {kod}: {o['ozet']['program_sapma']['mwh']} MWh")
+                    else:
+                        parca.append(f"sapma {kod}: ölçüm yok, atlandı")
+                    f = pfs.donem(tid, pid, kod, bugun=bugun)   # v2.594 (F3-G): santral FEM kayıtları (03:55) + DSG perspektifi → portföy finansal satırı
+                    if f.get("durum") == "ok" and f["toplam"]["tutar_tl"] is not None:
+                        pv.sonuc_kaydet(tid, pid, "finans", {"kod": kod, "bas": f["donem"]["bas"], "bit": f["donem"]["bit"]}, f, f["meta"])
+                        parca.append(f"finans {kod}: {f['toplam']['tutar_tl']} TL ({f['toplam']['nitelik']})")
+                    else:
+                        parca.append(f"finans {kod}: hesaplanamadı, atlandı")
+                    if pf["tur"] == "dsg":
+                        d = sd.donem(tid, pid, kod, bugun=bugun)
+                        if d.get("durum") == "ok" and d["dsg"].get("n_saat"):
+                            pv.sonuc_kaydet(tid, pid, "dsg", {"kod": kod, "bas": d["donem"]["bas"], "bit": d["donem"]["bit"]}, d, d["meta"])
+                            parca.append(f"dsg {kod}: {d['perspektifler']['ozet']['etiket']}")
+                        else:
+                            parca.append(f"dsg {kod}: {d.get('durum') or 'veri yok'}, atlandı")
+                t = pt.saatlik(tid, pid, kural="son", bugun=bugun)
+                if t.get("durum") == "ok" and t["pencere"]["n_saat"]:
+                    pv.sonuc_kaydet(tid, pid, "tahmin", {"kod": bugun.isoformat(), "bas": bugun.isoformat(), "bit": (bugun + dt.timedelta(days=2)).isoformat()}, t,
+                                    {"uyelik_anlik": pv.uyelik_anlik(tid, pid, bugun), "kural": t["kural"], "belirsizlik": t["belirsizlik"]["durum"], "yontem": t["yontem"]})
+                    parca.append(f"tahmin {t['pencere']['n_saat']} sa ({t['belirsizlik']['durum']})")
+                else:
+                    parca.append("tahmin: koşu yok, atlandı")
+            except Exception as e:   # noqa: BLE001 — bir portföyün hatası diğerlerini düşürmez; günlüğe yazılır
+                parca.append(f"HATA {type(e).__name__}: {e}")
+            out.append(f"{pf['ad']}: " + "; ".join(parca))
+    return " | ".join(out) if out else "portföy yok"
+
+
 def gece_hijyen(plant, pencere_gun: int = 10):
     """v2.254 — gece skill'den ÖNCE: son 10 günün kırpma/kısıntı bayrakları yeniden değerlendirilir
     (kısıntı flag='kisinti' → karne ve kalibrasyon dışı; kırpma yalnız kalibrasyon dışı)."""
@@ -857,6 +918,8 @@ if __name__ == "__main__":
                 "cron", hour=cfg.worker_hour_skill, minute=50)
     sch.add_job(_logla("gece_finansal_etki", gece_finansal_etki),   # v2.583 (Faz 2 F2-E): 03:55 TSİ, bağımsız doğrulamadan sonra; yalnız ekleme
                 "cron", hour=cfg.worker_hour_skill, minute=55)
+    sch.add_job(_logla_tek("gece_portfoy", gece_portfoy),   # v2.593 (Faz 3 F3-F): 04:05 TSİ, finansal etkiden sonra; küresel (kiracı × portföy), yalnız ekleme
+                "cron", hour=(cfg.worker_hour_skill + 1) % 24, minute=5)
     sch.add_job(_logla("alarm", alarm_tara), "cron", hour=cfg.worker_hour_alarm, minute=0)
     sch.add_job(_logla("kgup_teslim_kontrol", alarm_kgup_kontrol), "cron", hour=12, minute=35)   # 29.10: 15:35 TSİ (Türkiye UTC+3 sabit) — KGÜP gecikti kuralı
     sch.add_job(_logla("kgup_revizyon_kontrol", alarm_kgup_revizyon), "cron", hour="4-15", minute=10)   # 30.10 v2.507 (F-10): gündüz saat başı +10 (07:10–18:10 TSİ)

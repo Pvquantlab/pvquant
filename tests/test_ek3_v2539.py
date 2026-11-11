@@ -27,7 +27,8 @@ def test_dsg_gruplari_beyan_kodlu_ve_kodsuz():
                          _p("C", segment="lisansli_serbest", dsg_kodu="DSG-2"), _p("D", segment="lisansli_serbest")])
     assert g["grup_kaynagi"] == "beyan" and g["gruplar"] == {"DSG-1": ["A", "B"], "DSG-2": ["C"]}
     assert list(g["disi_nedenleri"]) == ["D"] and "DSG kodu girilmedi" in g["disi_nedenleri"]["D"]
-    assert dz.dsg_gruplari([]) == {"gruplar": {}, "disi_nedenleri": {}, "grup_kaynagi": "varsayim"}
+    g0 = dz.dsg_gruplari([])   # v2.588: kaynaklar/uyelik_dogrulama anahtarları eklendi
+    assert g0["gruplar"] == {} and g0["disi_nedenleri"] == {} and g0["grup_kaynagi"] == "varsayim"
     b = dz.segment_bilgisi({"segment": "lisansli_serbest", "dsg_kodu": " X ", "toplayici_portfoyu": 1})
     assert b["dsg_kodu"] == "X" and b["toplayici_portfoyu"] is True and dz.segment_bilgisi({})["dsg_kodu"] is None
 
