@@ -323,6 +323,24 @@ def gece_bagimsiz_dogrulama(plant, gun: int = 30):
     return "; ".join(out)
 
 
+def gece_finansal_etki(plant):
+    """v2.583 (Faz 2 F2-E): Finansal Etki Merkezi — dün (gün) ve ay başından bugüne (ay) için birleşik özet; sonuç yalnız-ekleme tablosuna
+    (finansal_etki_sonuc). Senaryo hesabı yazılmaz; ölçümü olmayan dönem atlanır (uydurulmaz). Uzlaştırma, tarife ve mutabakat servisleri DOKUNULMAZ."""
+    from zoneinfo import ZoneInfo
+    from pvquant.ext.platform import finans as fn
+    from pvquant.services import finansal_etki_service as fe
+    tz = plant.get("tz") or "Europe/Istanbul"
+    bugun = dt.datetime.now(ZoneInfo(tz)).date()
+    out = []
+    for kod in ((bugun - dt.timedelta(days=1)).isoformat(), fn.donem_kodu(bugun, "ay")):
+        o = fe.ozet(plant["tenant_id"], plant, kod, bugun=bugun)
+        if not o["uretim"]["gerceklesen"]["saat"]:
+            out.append(f"{kod}: ölçüm yok, atlandı"); continue
+        fe.kaydet(plant["tenant_id"], o, plant["id"])
+        out.append(f"{kod}: toplam={o['toplam']['tutar_tl']} ({o['toplam']['nitelik']})")
+    return "; ".join(out)
+
+
 def gece_hijyen(plant, pencere_gun: int = 10):
     """v2.254 — gece skill'den ÖNCE: son 10 günün kırpma/kısıntı bayrakları yeniden değerlendirilir
     (kısıntı flag='kisinti' → karne ve kalibrasyon dışı; kırpma yalnız kalibrasyon dışı)."""
@@ -837,6 +855,8 @@ if __name__ == "__main__":
                 "cron", hour=cfg.worker_hour_skill, minute=45)
     sch.add_job(_logla("gece_bagimsiz_dogrulama", gece_bagimsiz_dogrulama),   # v2.574 (Faz 1 F1-C): karneden sonra, yalnız ekleme
                 "cron", hour=cfg.worker_hour_skill, minute=50)
+    sch.add_job(_logla("gece_finansal_etki", gece_finansal_etki),   # v2.583 (Faz 2 F2-E): 03:55 TSİ, bağımsız doğrulamadan sonra; yalnız ekleme
+                "cron", hour=cfg.worker_hour_skill, minute=55)
     sch.add_job(_logla("alarm", alarm_tara), "cron", hour=cfg.worker_hour_alarm, minute=0)
     sch.add_job(_logla("kgup_teslim_kontrol", alarm_kgup_kontrol), "cron", hour=12, minute=35)   # 29.10: 15:35 TSİ (Türkiye UTC+3 sabit) — KGÜP gecikti kuralı
     sch.add_job(_logla("kgup_revizyon_kontrol", alarm_kgup_revizyon), "cron", hour="4-15", minute=10)   # 30.10 v2.507 (F-10): gündüz saat başı +10 (07:10–18:10 TSİ)

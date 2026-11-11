@@ -816,3 +816,49 @@ export interface BagimsizDogrulama {
           kosu_sayisi: number; kosu_kumesi_sha: string; saat_kumesi_sha: string; hesap_zamani: string; yazilim_surumu: string | null;
           kosu_kunyesi?: { mode: string[]; model: string[]; meteo_source: string[]; kalibrasyon_id: string[]; yazilim_surumu: string[]; nwp_yasi_saat_ort: number | null; ilk_run_at: string; son_run_at: string } };
 }
+
+/** v2.584 (Faz 2 F2-F) — Finansal Etki Merkezi: GET /v1/plants/{id}/finansal-etki (finansal_etki_service.ozet / son). Tutarlar yeniden hesaptır;
+ *  işaret artı = santral lehine (alacak), eksi = aleyhine (borç). Nitelik: resmî › hesaplanan › sözleşme tahmini › senaryo › eksik. */
+export type FinansNitelik = "resmi" | "hesaplanan" | "sozlesme_tahmini" | "senaryo" | "eksik";
+export interface FinansBilesen { kod: string; ad: string; tutar_tl: number | null; alacak_tl: number | null; borc_tl: number | null; nitelik: FinansNitelik; nitelik_ad: string;
+  kaynak: string; kapsam_saat: number | null; beklenen_saat: number | null; kapsam_orani: number | null; kural_surumu: string | null; dayanak: string | null; toplanir: boolean; notlar: string[] }
+export interface FinansToplam { tutar_tl: number | null; alacak_tl: number | null; borc_tl: number | null; nitelik: FinansNitelik; nitelik_ad: string; giren: string[]; eksik: string[]; isaret: string }
+export type FinansDonemTur = "gun" | "hafta" | "ay" | "ceyrek" | "yil";
+export interface FinansDonem { tur: FinansDonemTur; kod: string; bas: string; bit: string; etiket: string; kirpildi: boolean; gun: number; saat: number; tz: string }
+export interface FinansOneri { kod: string; tur: "bilgi" | "oneri" | "eylem"; tur_ad: string; metin: string; sayfa: string | null; dayanak: string | null }
+export interface FinansUretim {
+  planlanan: { mwh: number | null; saat: number; kaynak: "bildirilen" | "oneri" | "karisik" | "yok"; kaynak_etiket: string; bildirilen_saat: number; oneri_saat: number; yok_saat: number; tamamlanan_saat: number };
+  gerceklesen: { mwh: number | null; saat: number; beklenen_saat: number; secim: string; secim_etiket: string; sinir: string; sinir_etiket: string; kaynak_saat: Record<string, number>;
+    kapsama: { beklenen_saat: number; olculdu_saat: number; kapsama_pct: number | null; dislanan: Record<string, number> } | null };
+  tahmin: { mwh: number | null; saat: number; etiket: string };
+  sapma: { mwh: number | null; pct: number | null; yon: "fazla" | "eksik" | "dengede" | null; ortak_saat: number; etiket: string; tahmine_gore_mwh: number | null; tahmin_ortak_saat: number };
+  notlar: string[];
+}
+export interface FinansResmi { bilesenler: FinansBilesen[]; fark: Record<string, number>; fark_etiket?: string | null; durum: Record<string, string> | null;
+  guvenilirlik?: { durum: string | null; etiket: string | null }; bildirim?: { surum: string | null; surum_etiket: string | null; zaman: string | null; surum_kaynagi: string | null } | null;
+  saatlik_detay?: { yuklu: boolean; ortak_saat: number; toplam: { edt_net_fark_tl?: number | null } | null } | null; eylem?: string | null; not: string | null }
+export interface FinansUzlastirma { bilesenler: FinansBilesen[]; toplam: FinansToplam; fiyat: { epias_saat: number; senaryo_saat: number; yon_varsayilan_saat?: number; yon_eksik_saat?: number };
+  hesaplanamayan_saat: number; kural_surumu: string | null; segment: string | null; santral_tasir: boolean | null; notlar: string[]; resmi: FinansResmi; gostergeler: { bilesenler: FinansBilesen[] };
+  dsg: { neden?: string | null; grup?: string; santral?: number; n_saat?: number; dagitim_etiket?: string; esik?: number | null; uye?: Record<string, number | null> | null } | null }
+export interface FinansDusukluk {
+  tahmin_hatasi: { n_saat: number; eksik_mwh: number | null; fazla_mwh: number | null; net_mwh: number | null; program: string | null; wmape: number | null; etiket: string; dogrulama_n_saat?: number | null };
+  siniflar: { kod: string; ad: string; saat: number; kayip_kwh: number | null; kayip_tl: number | null; nedenler: { neden: string; etiket: string; saat: number; kayip_kwh: number | null; kayip_tl: number | null; kpi_disi: boolean | null; not: string }[] }[];
+  kayip: { durum: string; mumkun_saat?: number | null; veri_saat?: number | null; epi?: number | null; toplam_kayip_kwh?: number | null; toplam_kayip_tl?: number | null; fiyatsiz_saat?: number | null } | null;
+  fiyat: { kaynak?: string; tip?: string | null; senaryo_saat?: number; etiket?: string } | null; sozlesme: { esik: number; acik_puan: number; acik_kwh: number; acik_tl: number | null; fiyat_kaynak: string; not: string } | null;
+  bilesenler: FinansBilesen[]; notlar: string[];
+}
+export interface FinansMaruziyet { program_mwh: number | null; saat: number; kaynak: Record<string, number>; gecmis_gun: number; oran_tl_mwh: { p25: number; p50: number; p75: number } | null;
+  aralik_tl: { p25: number; p50: number; p75: number } | null; nitelik: FinansNitelik; notlar: string[]; bilesenler: FinansBilesen[]; ufuk: { bas: string; bit: string; gun: number; gecmis_gun_pencere: number } }
+export interface FinansMeta { hesap_zamani: string; sozluk_surumu: string; yazilim_surumu: string | null; uretim_girdisi: string; pencere_gun: number; segment: string | null; pozisyon: { kaynak: string; sabit_mwh: number | null };
+  kural_surumu: string | null; fiyat: { epias_saat: number; senaryo_saat: number }; program_kaynak: { kaynak: string; bildirilen_saat: number; oneri_saat: number; tamamlanan_saat: number };
+  tarife: { tip: string | null; sha: string } | null; bildirim: { surum_etiket?: string | null; zaman?: string | null } | null; senaryo: { pozisyon: { kaynak: string; sabit_mwh: number | null }; etiket: string; not: string } | null; isaret: string }
+export interface FinansalEtki { donem: FinansDonem; kayitli: boolean; id?: string; hesap_zamani?: string; uretim: FinansUretim;
+  gelir: { bilesenler: FinansBilesen[]; toplam: FinansToplam; tarife: { tip: string | null; etiket: string; ortalama_fiyat_tl_mwh: number | null }; uretim_mwh: number | null; fiyat: { epias_saat: number; senaryo_saat: number }; resmi: FinansBilesen | null; fark_tl: number | null; fark_etiket: string | null; notlar: string[] };
+  uzlastirma: FinansUzlastirma; dusukluk: FinansDusukluk; maruziyet: FinansMaruziyet; bilesenler: FinansBilesen[]; toplam: FinansToplam; toplam_etiket: string; oneriler: FinansOneri[]; meta: FinansMeta }
+export interface FinansalEtkiGecmis { donem_kodu: string; surumler: { id: string; hesap_zamani: string; donem_kodu: string; donem_bit: string; uretim_girdisi: string; sozluk_surumu: string; toplam: FinansToplam;
+  varsayimlar: Record<string, unknown> }[] }
+export interface PortfoyFinansalEtki { donem_kodu: string | null; santraller: { plant_id: string; ad: string | null; hata?: string; segment?: string | null; santral_tasir?: boolean | null; planlanan_mwh?: number | null;
+  gerceklesen_mwh?: number | null; sapma_mwh?: number | null; sapma_pct?: number | null; kapsama_pct?: number | null; gelir?: { tutar_tl: number | null; nitelik: FinansNitelik } | null;
+  dengesizlik?: { tutar_tl: number | null; nitelik: FinansNitelik; toplanir: boolean } | null; kupst?: { tutar_tl: number | null; nitelik: FinansNitelik; toplanir: boolean } | null;
+  toplam?: { tutar_tl: number | null; nitelik: FinansNitelik; giren: string[]; eksik: string[] }; donem?: FinansDonem }[];
+  toplam: { tutar_tl: number | null; nitelik: FinansNitelik; nitelik_ad: string; santral_sayisi: number; toplanan_santral: number; toplama_girmeyen: (string | null)[]; planlanan_mwh: number | null; gerceklesen_mwh: number | null; isaret: string }; not: string }

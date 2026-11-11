@@ -1,5 +1,5 @@
-import type { DengesizlikSaatlik, DsgAnahtar, KgupRevizyon, PiyasaDurum, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , SaatProfili , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , PDegerleri , Kullanilabilirlik , KayipAyrisimi , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar, PortfoyAnahtar, PortfoyKupst, UevcbArama , Takvim, KunyeTarihler, Yekdem, Olay, OlayOzet, OlayGiris, OlayYanit, MutabakatOzet, MutabakatYukleme, SaatlikKiyas, SaatlikYuklemeYanit, KuralTablosu, SayacOzet, SayacYuklemeYanit, SayacAyar, SayacKaynak, RaporDonemVeri, RaporGonderim, RaporGonderimSonuc, Performans, Sensorler, Sensor, Kirlenme, VeriYoluOzet, VeriYoluSinama , GolgeGorunum, OlayAdaylari, BulutKimlikDurum, BulutKimlikKayit, BulutKimlikSonuc, BulutOAuthBaslat, BulutBirimKiyas, PilotDurum, ReferansKiyasOzet, EdgeToplayici, EdgeToplayiciYeni , BagimsizDogrulama } from "./types";
-import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik, ornekBagimsiz } from "./ornek";
+import type { DengesizlikSaatlik, DsgAnahtar, KgupRevizyon, PiyasaDurum, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , SaatProfili , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , PDegerleri , Kullanilabilirlik , KayipAyrisimi , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar, PortfoyAnahtar, PortfoyKupst, UevcbArama , Takvim, KunyeTarihler, Yekdem, Olay, OlayOzet, OlayGiris, OlayYanit, MutabakatOzet, MutabakatYukleme, SaatlikKiyas, SaatlikYuklemeYanit, KuralTablosu, SayacOzet, SayacYuklemeYanit, SayacAyar, SayacKaynak, RaporDonemVeri, RaporGonderim, RaporGonderimSonuc, Performans, Sensorler, Sensor, Kirlenme, VeriYoluOzet, VeriYoluSinama , GolgeGorunum, OlayAdaylari, BulutKimlikDurum, BulutKimlikKayit, BulutKimlikSonuc, BulutOAuthBaslat, BulutBirimKiyas, PilotDurum, ReferansKiyasOzet, EdgeToplayici, EdgeToplayiciYeni , BagimsizDogrulama, FinansalEtki, FinansalEtkiGecmis, PortfoyFinansalEtki } from "./types";
+import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik, ornekBagimsiz, ornekFinansalEtki } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
  *  VITE_API_URL tanimliysa GERCEK kapiya gider; degilse ornek veriye duser. */
@@ -542,6 +542,28 @@ export const api = {
     if (TABAN == null) return { ...ornekBagimsiz, gun, meta: { ...ornekBagimsiz.meta, kural } } as BagimsizDogrulama;
     return getir<BagimsizDogrulama>(`/v1/plants/${p}/dogrulama/bagimsiz?gun=${gun}&kural=${kural}`);
   },
+  /** v2.584 (Faz 2 F2-F): Finansal Etki Merkezi — gece işinin kayıtlı sonucu (≤36 sa) ya da anında hesap; örnek kipte temsili. */
+  finansalEtki: async (p: string, donem?: string | null, uretim?: string | null, taze = false): Promise<FinansalEtki> => {
+    if (TABAN == null) return ornekFinansalEtki(donem ?? "2026-10") as unknown as FinansalEtki;
+    const q = new URLSearchParams(); if (donem) q.set("donem", donem); if (uretim) q.set("uretim", uretim); if (taze) q.set("taze", "1");
+    return getir<FinansalEtki>(`/v1/plants/${p}/finansal-etki${q.size ? `?${q}` : ""}`);
+  },
+  /** v2.584: pozisyon senaryosu (program | uretim | sabit MWh/saat) — kaydedilmez, «senaryo» damgalı. */
+  finansalEtkiSenaryo: async (p: string, donem: string | null, pozisyon: "program" | "uretim" | "sabit", sabitMwh?: number | null, uretim?: string | null): Promise<FinansalEtki> => {
+    if (TABAN == null) { const o = ornekFinansalEtki(donem ?? "2026-10") as unknown as FinansalEtki; return { ...o, kayitli: false, meta: { ...o.meta, senaryo: { pozisyon: { kaynak: pozisyon, sabit_mwh: sabitMwh ?? null }, etiket: pozisyon === "uretim" ? "üretildiği kadar satış" : pozisyon === "sabit" ? `sabit ${sabitMwh} MWh/saat` : "satış programa eşit", not: "Senaryo hesabı (örnek kip)." } } }; }
+    const q = new URLSearchParams({ pozisyon }); if (donem) q.set("donem", donem); if (sabitMwh != null) q.set("sabit_mwh", String(sabitMwh)); if (uretim) q.set("uretim", uretim);
+    return getir<FinansalEtki>(`/v1/plants/${p}/finansal-etki/senaryo?${q}`);
+  },
+  /** v2.584: dönemin kayıtlı sürümleri ve varsayımları. */
+  finansalEtkiGecmis: async (p: string, donem: string | null): Promise<FinansalEtkiGecmis> => {
+    if (TABAN == null) return { donem_kodu: donem ?? "2026-10", surumler: [] };
+    return getir<FinansalEtkiGecmis>(`/v1/plants/${p}/finansal-etki/gecmis${donem ? `?donem=${encodeURIComponent(donem)}` : ""}`);
+  },
+  /** v2.584: portföy finansal etki (santral satırları + toplam); örnek kipte yok. */
+  portfoyFinansalEtki: async (donem?: string | null): Promise<PortfoyFinansalEtki | null> => {
+    if (TABAN == null) return null;
+    return getir<PortfoyFinansalEtki>(`/v1/portfoy/finansal-etki${donem ? `?donem=${encodeURIComponent(donem)}` : ""}`);
+  },
   alarmlar: async (p: string, n = 20): Promise<AlarmSatiri[]> => {
     if (TABAN == null) return [];
     return getir<AlarmSatiri[]>(`/v1/plants/${p}/alarmlar?n=${n}`);
@@ -941,7 +963,7 @@ export const api = {
     try { return (await getir<{ tarife: Tarife | null }>(`/v1/plants/${p}/tarife`)).tarife; } catch { return null; }
   },
   tarifeAyarla: (p: string, tarife: Tarife | null): Promise<{ tarife: Tarife | null }> => gonder(`/v1/plants/${p}/tarife`, "PUT", { tarife }),
-  raporSablonIndir: async (p: string, ad: "kapasite-testi" | "fatura" | "kullanilabilirlik" | "beklenen-gerceklesen" | "bagimsiz-dogrulama"): Promise<void> => {   // v2.576: bağımsız doğrulama raporu
+  raporSablonIndir: async (p: string, ad: "kapasite-testi" | "fatura" | "kullanilabilirlik" | "beklenen-gerceklesen" | "bagimsiz-dogrulama" | "finansal-etki"): Promise<void> => {   // v2.576: bağımsız doğrulama raporu
     if (TABAN == null) throw new Error("Örnek kipte şablon rapor yok.");
     const jeton = localStorage.getItem("pvq_token");
     const y = await fetch(`${TABAN}/v1/plants/${p}/rapor-sablon/${ad}`, { headers: jeton ? { Authorization: `Bearer ${jeton}` } : {} });

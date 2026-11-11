@@ -251,6 +251,7 @@ def build_excel(ctx) -> bytes:
     # ====== PERFORMANCE — PR + kullanılabilirlik (v2.349, rakip paritesi) ======
     _sayfa_performans(wb, ctx, F)
     _sayfa_bagimsiz(wb, ctx, F)   # v2.576 (Faz 1 F1-E)
+    _sayfa_finansal(wb, ctx, F)   # v2.585 (Faz 2 F2-G)
 
     # ================= METADATA =================
     ws_m = wb.add_worksheet("Metadata")
@@ -655,3 +656,70 @@ def _sayfa_iklim(wb, ctx, F):
             "bar_border_color": RENK.MARKA, "bar_solid": True})
     ws.set_column(0, 4, 16)
     ws.freeze_panes(1, 0)
+
+
+def _sayfa_finansal(wb, ctx, F):
+    """v2.585 (Faz 2 F2-G) — Financial-Impact: Finansal Etki Merkezi (finansal_etki_service.ozet/son). ctx.finansal yoksa sayfa HİÇ eklenmez.
+    Bloklar: durum ve dönem, üretim/program, bileşenler (işaret artı = santral lehine), toplam, resmî fark, öneriler, yeniden üretim kimliği."""
+    s = getattr(ctx, "finansal", None)
+    if not s:
+        return
+    from pvquant.services.sablon_rapor_service import FINANS_NITELIK_AD, finansal_durum
+    d = s.get("donem") or {}; u = s.get("uretim") or {}; top = s.get("toplam") or {}; meta = s.get("meta") or {}; uz = s.get("uzlastirma") or {}; r = uz.get("resmi") or {}
+    g = u.get("gerceklesen") or {}; sap = u.get("sapma") or {}; pl = u.get("planlanan") or {}
+    durum, _ = finansal_durum(s)
+    ws = wb.add_worksheet("Financial-Impact")
+    satir = 0
+    def yaz(ad, deger, birim=""):
+        nonlocal satir
+        ws.write(satir, 0, ad, F["hucre"])
+        if deger is None:
+            ws.write_blank(satir, 1, None, F["hucre"])
+        elif isinstance(deger, (int, float)) and not isinstance(deger, bool):
+            ws.write_number(satir, 1, float(deger), F["sayi1"])
+        else:
+            ws.write(satir, 1, str(deger), F["hucre"])
+        ws.write(satir, 2, birim, F["hucre"]); satir += 1
+    for j, ad in enumerate(("alan", "deger", "birim")):
+        ws.write(0, j, ad, F["th"])
+    satir = 1
+    yaz("durum", durum); yaz("sozluk_surumu", meta.get("sozluk_surumu")); yaz("isaret", meta.get("isaret")); yaz("senaryo", "evet" if meta.get("senaryo") else "hayır")
+    yaz("donem", f"{d.get('kod')} ({d.get('bas')} – {d.get('bit')}, {d.get('tz')})"); yaz("donem_saat", d.get("saat"), "saat"); yaz("uretim_girdisi", meta.get("uretim_girdisi"))
+    yaz("planlanan", pl.get("mwh"), "MWh"); yaz("program_kaynagi", pl.get("kaynak_etiket")); yaz("gerceklesen", g.get("mwh"), "MWh"); yaz("olculen_saat", g.get("saat"), "saat")
+    yaz("beklenen_saat", g.get("beklenen_saat"), "saat"); yaz("olcum_siniri", g.get("sinir_etiket")); yaz("gun_oncesi_tahmin", (u.get("tahmin") or {}).get("mwh"), "MWh")
+    yaz("sapma", sap.get("mwh"), "MWh (gerçek − program)"); yaz("sapma_pct", sap.get("pct"), "%"); yaz("sapma_yon", sap.get("yon"))
+    satir += 1
+    for j, ad in enumerate(("bilesen", "kod", "net_tl", "alacak_tl", "borc_tl", "nitelik", "toplama_girer", "kapsam_saat", "beklenen_saat", "kaynak", "kural_surumu")):
+        ws.write(satir, j, ad, F["th"])
+    satir += 1
+    for b in s.get("bilesenler") or []:
+        ws.write(satir, 0, b["ad"], F["hucre"]); ws.write(satir, 1, b["kod"], F["hucre"])
+        for j, anahtar in ((2, "tutar_tl"), (3, "alacak_tl"), (4, "borc_tl")):
+            if b.get(anahtar) is None:
+                ws.write_blank(satir, j, None, F["hucre"])
+            else:
+                ws.write_number(satir, j, float(b[anahtar]), F["sayi1"])
+        ws.write(satir, 5, FINANS_NITELIK_AD.get(b.get("nitelik"), str(b.get("nitelik"))), F["hucre"]); ws.write(satir, 6, "evet" if b.get("toplanir") else "hayır", F["hucre"])
+        for j, anahtar in ((7, "kapsam_saat"), (8, "beklenen_saat")):
+            if b.get(anahtar) is None:
+                ws.write_blank(satir, j, None, F["hucre"])
+            else:
+                ws.write_number(satir, j, float(b[anahtar]), F["sayi0"])
+        ws.write(satir, 9, b.get("kaynak") or "", F["hucre"]); ws.write(satir, 10, b.get("kural_surumu") or "", F["hucre"]); satir += 1
+    satir += 1
+    yaz("toplam_net", top.get("tutar_tl"), "TL"); yaz("toplam_alacak", top.get("alacak_tl"), "TL"); yaz("toplam_borc", top.get("borc_tl"), "TL")
+    yaz("toplam_nitelik", FINANS_NITELIK_AD.get(top.get("nitelik"), str(top.get("nitelik")))); yaz("toplanan", ", ".join(top.get("giren") or [])); yaz("eksik", ", ".join(top.get("eksik") or []))
+    for k, v in (r.get("fark") or {}).items():
+        yaz(f"resmi_fark_{k}", v, "TL (hesaplanan − resmî)")
+    for k, v in (r.get("durum") or {}).items():
+        yaz(f"mutabakat_durumu_{k}", v)
+    satir += 1
+    ws.write(satir, 0, "oneri_turu", F["th"]); ws.write(satir, 1, "gozlem", F["th"]); ws.write(satir, 2, "sayfa", F["th"]); satir += 1
+    for x in s.get("oneriler") or []:
+        ws.write(satir, 0, x.get("tur_ad"), F["hucre"]); ws.write(satir, 1, x.get("metin"), F["hucre"]); ws.write(satir, 2, x.get("sayfa") or "", F["hucre"]); satir += 1
+    satir += 1
+    for ad, v in (("kural_surumu", meta.get("kural_surumu")), ("tarife", (meta.get("tarife") or {}).get("tip")), ("tarife_sha", (meta.get("tarife") or {}).get("sha")),
+                  ("pozisyon", (meta.get("pozisyon") or {}).get("kaynak")), ("fiyat_epias_saat", (uz.get("fiyat") or {}).get("epias_saat")), ("fiyat_senaryo_saat", (uz.get("fiyat") or {}).get("senaryo_saat")),
+                  ("yazilim_surumu", meta.get("yazilim_surumu") or "—"), ("hesap_zamani", s.get("hesap_zamani") or meta.get("hesap_zamani")), ("kayit", s.get("id") or "kaydedilmedi")):
+        yaz(ad, v)
+    ws.set_column(0, 0, 44); ws.set_column(1, 1, 60); ws.set_column(2, 10, 18)

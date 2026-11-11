@@ -224,6 +224,7 @@ def veri(tenant_id, plant: dict, donem: str | None = None, bugun: date | None = 
             "ozet": ozet, "gunler": gun_satirlari if d["tur"] == "ay" else [], "aylar": aylik, "olaylar": ol, "kaynak_niteligi": nitelik,
             "kullanilabilirlik": kullanilabilirlik_olay(ol, kap, d["saat"]), "pr": pr_temel(df, kwp), "uzlastirma": uzlastirma(tenant_id, plant, d),
             "performans": performans(tenant_id, plant, d, bugun),   # v2.542 (P8b-2): ölçülen havayla beklenen üretim, EPI, ışınım endeksi
+            "finansal": finansal(tenant_id, plant, d, bugun),   # v2.585 (Faz 2 F2-G): Finansal Etki Merkezi özeti (ay döneminde; gece kaydı varsa o)
             "notlar": ["Beklenen = gün başlamadan verilmiş tahminin günlük P50 toplamı (arşiv; geriye dönük değişmez); sapma yalnız iki değerin de bulunduğu günlerde.",
                        "Üretim SCADA ölçümüdür (geçerli saatler); EPİAŞ uzlaştırmaya esas sayaç verisi değildir.",
                        "Uzlaştırma kalemleri PVQuant'ın yürürlükteki kuralla yeniden hesabıdır; EPİAŞ bildirimi esastır." if d["tur"] == "ay" else
@@ -240,6 +241,26 @@ def _tl(v) -> str:
 
 def _kwh(v) -> str:
     return "—" if v is None else f"{v:,.0f}".replace(",", ".")
+
+
+def finansal(tenant_id, plant: dict, d: dict, bugun: date | None = None) -> dict | None:
+    """v2.585 (Faz 2 F2-G): dönem raporuna Finansal Etki Merkezi özeti — gün/hafta/ay/çeyrek/yıl kodları aynı; gece kaydı (≤36 sa) varsa o, yoksa anında hesap.
+    Hata raporu düşürmez (None + hata)."""
+    try:
+        from pvquant.services import finansal_etki_service as fe
+        from pvquant.services.sablon_rapor_service import FINANS_NITELIK_AD, finansal_durum
+        kod = d["kod"]
+        s = (fe.son(tenant_id, plant["id"], kod) if bugun is None else None) or fe.ozet(tenant_id, plant, kod, bugun=bugun)
+        kodlar = {b["kod"]: b for b in s.get("bilesenler") or []}
+        top = s.get("toplam") or {}; durum, _ = finansal_durum(s)
+        return {"durum": durum, "toplam_tl": top.get("tutar_tl"), "nitelik": top.get("nitelik"), "nitelik_ad": FINANS_NITELIK_AD.get(top.get("nitelik"), top.get("nitelik")),
+                "satirlar": [{"kod": k, "ad": b["ad"], "tutar_tl": b.get("tutar_tl"), "nitelik": FINANS_NITELIK_AD.get(b.get("nitelik"), b.get("nitelik")), "toplanir": b.get("toplanir")}
+                             for k, b in kodlar.items()],
+                "planlanan_mwh": (s.get("uretim") or {}).get("planlanan", {}).get("mwh"), "gerceklesen_mwh": (s.get("uretim") or {}).get("gerceklesen", {}).get("mwh"),
+                "sapma_pct": (s.get("uretim") or {}).get("sapma", {}).get("pct"), "oneriler": [x["metin"] for x in (s.get("oneriler") or [])][:5],
+                "kayitli": bool(s.get("kayitli")), "hesap_zamani": s.get("hesap_zamani") or (s.get("meta") or {}).get("hesap_zamani"), "isaret": (s.get("meta") or {}).get("isaret")}
+    except Exception as e:   # noqa: BLE001
+        return {"hata": f"{type(e).__name__}: {e}"}
 
 
 def rapor(tenant_id, plant: dict, donem: str | None = None, bugun: date | None = None) -> tuple[rs.Rapor, dict]:
@@ -281,6 +302,15 @@ def rapor(tenant_id, plant: dict, donem: str | None = None, bugun: date | None =
                      + " Bu bölümdeki yeniden hesap, SCADA tabanlı doğruluk karnesiyle aynı veri değildir; uzlaştırma EPİAŞ sayacına (UEVM) dayanır."))   # v2.541 (DK-367)
     elif u and u.get("hata"):
         bol.append(("Uzlaştırma kalemleri", f"Hesap alınamadı: {u['hata']}"))
+    fi = v.get("finansal")   # v2.585 (Faz 2 F2-G)
+    if fi and not fi.get("hata") and fi.get("satirlar"):
+        ft = pd.DataFrame([{"Bileşen": x["ad"], "Net (TL)": _tl(x["tutar_tl"]), "Nitelik": x["nitelik"], "Toplama girer": "evet" if x["toplanir"] else "hayır"} for x in fi["satirlar"]])
+        bol.append(("Finansal etki özeti (Finansal Etki Merkezi)", ft))
+        bol.append(("Finansal etki notu", f"{fi['durum']}: toplam {_tl(fi['toplam_tl'])} net ({fi['nitelik_ad']}; {fi['isaret']}). Planlanan {fi['planlanan_mwh']} MWh, gerçekleşen {fi['gerceklesen_mwh']} MWh"
+                    + (f", fark %{fi['sapma_pct']}" if fi.get("sapma_pct") is not None else "") + ". " + (f"Gece kaydı {fi['hesap_zamani']}." if fi.get("kayitli") else "Anlık hesap.")
+                    + (" Gözlemler: " + " ".join(fi["oneriler"]) if fi.get("oneriler") else "") + " Resmî uzlaştırma belgesi değildir; ayrıntı Finansal etki sayfası ve şablon raporunda."))
+    elif fi and fi.get("hata"):
+        bol.append(("Finansal etki özeti", f"Hesap alınamadı: {fi['hata']}"))
     if v["pr"]:
         bol.append(("Performans oranı", f"PR {v['pr']['pr']:.3f} — {v['pr']['gun']} gün; E {_kwh(v['pr']['e_kwh'])} kWh, H {v['pr']['h_kwh_m2']} kWh/m². {v['pr']['not']}."))
     pf = v.get("performans")   # v2.542 (P8b-2): ölçülen havayla beklenen üretim ve EPI

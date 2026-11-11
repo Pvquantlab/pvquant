@@ -144,7 +144,7 @@ def test_json_semasi_ve_gun_sayisi():
     fr = _sentetik_forecast()
     ctx = from_results(fr, _sentetik_calibration(), plant_name="Test")
     d = json.loads(build_json(ctx))
-    assert d["schema_version"] == "1.3.0"   # v2.576: independent_validation (ekleme); 1.2.0 (v2.350): bant+sözleşme+karne+kimlik
+    assert d["schema_version"] == "1.4.0"   # v2.576: independent_validation (ekleme); 1.2.0 (v2.350): bant+sözleşme+karne+kimlik
     assert len(d["daily"]) == 7           # düzeltme 2+3 JSON'da da geçerli
     assert len(d["hourly"]) == 168
     assert d["plant"]["name"] == "Test"
@@ -208,7 +208,7 @@ def _mod_c_ctx():
 def test_json_hybrid_block_when_mode_c():
     import json
     d = json.loads(build_json(_mod_c_ctx()))
-    assert d["schema_version"] == "1.3.0"   # v2.576 (1.2.0: v2.350)
+    assert d["schema_version"] == "1.4.0"   # v2.576 (1.2.0: v2.350)
     hy = d["quality"]["hybrid"]
     assert hy["holdout_mape_pct"] == 17.6
     assert hy["holdout_rmse_kw"] == 260.0

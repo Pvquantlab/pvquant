@@ -77,7 +77,7 @@ def test_durum_etiketi_simulasyon_ve_eksik():
 def test_json_blogu_var_yok_ve_excel_sayfasi():
     fr = _sentetik_forecast(); ctx = from_results(fr, _sentetik_calibration(), plant_name="Test")
     d = json.loads(build_json(ctx))
-    assert d["schema_version"] == "1.3.0" and "independent_validation" not in d           # yok = YOK
+    assert d["schema_version"] == "1.4.0" and "independent_validation" not in d           # yok = YOK
     wb = load_workbook(BytesIO(build_excel(ctx))); assert "Validation-Independent" not in wb.sheetnames
     ctx.bagimsiz = _sentetik_sonuc()
     d = json.loads(build_json(ctx)); iv = d["independent_validation"]

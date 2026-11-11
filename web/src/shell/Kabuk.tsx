@@ -22,6 +22,7 @@ export const SAYFALAR = [
   { id: "takvim", ad: "Takvim", yuz: "acik" },        // v2.518 (P3a)
   { id: "olaylar", ad: "Olay kaydı", yuz: "acik" },   // v2.521 (P1a)
   { id: "mutabakat", ad: "Mutabakat", yuz: "acik" },   // v2.522 (P2b-1)
+  { id: "finans", ad: "Finansal etki", yuz: "acik" },   // v2.584 (Faz 2 F2-F)
   { id: "sayac", ad: "Sayaç", yuz: "acik" },   // v2.523 (P4a)
   { id: "aylik", ad: "Aylık beklenti", yuz: "acik" },
   { id: "raporlar", ad: "Raporlar", yuz: "acik" },
@@ -44,6 +45,7 @@ const IKONLAR: Record<SayfaId, ReactNode> = {
   takvim: <svg {...IKON_ORTAK}><rect x="3" y="4" width="14" height="13" rx="1.5"/><path d="M3 8h14M7 4V2.5M13 4V2.5"/><path d="M7.5 12.5l1.8 1.8 3.2-3.6"/></svg>,   // v2.518 (P3a)
   olaylar: <svg {...IKON_ORTAK}><path d="M6 3.5h8l2 2v11H4v-11z"/><path d="M7 8h6M7 11h6M7 14h3"/></svg>,   // v2.521 (P1a)
   mutabakat: <svg {...IKON_ORTAK}><path d="M3.5 6h13M3.5 14h13"/><path d="M6 3.5l-2.5 2.5L6 8.5M14 11.5l2.5 2.5-2.5 2.5"/></svg>,   // v2.522 (P2b-1): iki yönlü kıyas
+  finans: <svg {...IKON_ORTAK}><rect x="3" y="5.5" width="14" height="9" rx="1.5"/><circle cx="10" cy="10" r="2.2"/><path d="M5.5 8.5v3M14.5 8.5v3"/></svg>,   // v2.584 (Faz 2 F2-F): banknot
   sayac: <svg {...IKON_ORTAK}><path d="M3.5 14.5a6.5 6.5 0 1 1 13 0"/><path d="M10 14.5l3.2-4.8"/><path d="M3.5 14.5h13"/></svg>,   // v2.523 (P4a): sayaç kadranı
   aylik: <svg {...IKON_ORTAK}><rect x="3" y="4" width="14" height="13" rx="1.5"/><path d="M3 8h14M7 4V2.5M13 4V2.5"/></svg>,
   raporlar: <svg {...IKON_ORTAK}><path d="M5 2.5h7L16 6v11.5H5z"/><path d="M12 2.5V6h4"/></svg>,

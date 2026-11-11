@@ -372,6 +372,7 @@ def uret(tenant_id, plant: dict, fmt: str):
         ctx.report_id = rapor_id_uret(tenant_id, plant, ctx.mode)
         _excel_zenginlestir(tenant_id, plant, ctx)   # v2.348 + v2.349
         ctx.bagimsiz = _bagimsiz_dogrulama(tenant_id, plant)   # v2.576 (Faz 1 F1-E)
+        ctx.finansal = _finansal_etki(tenant_id, plant)   # v2.585 (Faz 2 F2-G)
         veri, uzanti = build_excel(ctx), "xlsx"
     elif fmt == "json":
         # v2.350 (şema 1.2.0): JSON da rapor kimliği taşır (report_log izi) ve
@@ -381,12 +382,26 @@ def uret(tenant_id, plant: dict, fmt: str):
         with tenant_baglami(tenant_id) as s:
             ctx.dogrulama = santral_karne_ozeti(s, plant["id"])
         ctx.bagimsiz = _bagimsiz_dogrulama(tenant_id, plant)   # v2.576 (Faz 1 F1-E)
+        ctx.finansal = _finansal_etki(tenant_id, plant)   # v2.585 (Faz 2 F2-G)
         j = build_json(ctx)
         veri = j.encode("utf-8") if isinstance(j, str) else j
         uzanti = "json"
     else:
         raise ValueError(f"bilinmeyen format: {fmt}")
     return veri, f"PVQuant_{ad_kok}_{gun}.{uzanti}", _dt.datetime.now()
+
+
+def _finansal_etki(tenant_id, plant: dict, donem: str | None = None) -> dict | None:
+    """v2.585 (Faz 2 F2-G): JSON/Excel için Finansal Etki Merkezi — son tam ay (verilmezse); gece kaydı (≤36 sa) varsa o, yoksa anında hesap; ölçüm saati yoksa None (blok YOK).
+    Hata raporu düşürmez (dürüst yokluk)."""
+    try:
+        from pvquant.services import finansal_etki_service as fe
+        d = fe.donem(plant, donem)
+        s = fe.son(tenant_id, plant["id"], d["kod"]) or fe.ozet(tenant_id, plant, d["kod"])
+        return s if ((s.get("uretim") or {}).get("gerceklesen") or {}).get("saat") else None
+    except Exception as e:   # noqa: BLE001
+        print("[rapor][finansal_etki] atlandı:", type(e).__name__, e)
+        return None
 
 
 def _bagimsiz_dogrulama(tenant_id, plant: dict, gun: int = 30, kural: str = "program") -> dict | None:

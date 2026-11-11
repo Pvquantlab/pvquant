@@ -2644,7 +2644,7 @@ def tarife_ayarla(plant_id: str, p: TarifeIstek, claims=Depends(yazma_yetkisi())
 
 
 @app.get("/v1/plants/{plant_id}/rapor-sablon/{ad}")
-def rapor_sablon_uc(plant_id: str, ad: str, ay: str | None = None, gun: int = 30, kural: str = "program", fmt: str = "html", claims=Depends(gecerli_kullanici)):
+def rapor_sablon_uc(plant_id: str, ad: str, ay: str | None = None, gun: int = 30, kural: str = "program", fmt: str = "html", donem: str | None = None, uretim: str | None = None, claims=Depends(gecerli_kullanici)):
     """v2.281 — şablon raporlar (HTML): kapasite-testi | fatura (ay=YYYY-MM) | kullanilabilirlik (gun) | beklenen-gerceklesen (gun). (ENV-F05-5: dördü de burada.)
     v2.576 (Faz 1 F1-E): bagimsiz-dogrulama (gun 7–365, kural program|gun_oncesi|gun_ici|ufuk, fmt html|md)."""
     from pvquant.services import sablon_rapor_service
@@ -2654,7 +2654,9 @@ def rapor_sablon_uc(plant_id: str, ad: str, ay: str | None = None, gun: int = 30
     if fmt not in ("html", "md"):
         raise HTTPException(422, "fmt html|md")
     try:
-        if ad == "bagimsiz-dogrulama":
+        if ad == "finansal-etki":   # v2.585 (Faz 2 F2-G): dönem kodu (gün/hafta/ay/çeyrek/yıl), üretim girdisi
+            p = {"donem": _fe_donem(row, donem), "uretim": _fe_uretim(uretim)}
+        elif ad == "bagimsiz-dogrulama":
             from pvquant.services import bagimsiz_dogrulama_service as bd
             if kural not in bd.KURALLAR:
                 raise HTTPException(422, "kural " + "|".join(bd.KURALLAR))
@@ -3134,6 +3136,83 @@ def portfoy_bagimsiz_dogrulama(gun: int = 30, kural: str = "program", claims=Dep
     with _tb(claims["tenant_id"]) as s:
         plants = [dict(r._mapping) for r in s.execute(_text("SELECT id, name, capacity_kwp, tz, lat, lon, params_json FROM plants WHERE NOT archived ORDER BY name"))]
     return bd.portfoy(claims["tenant_id"], plants, gun=gun, kural=kural)
+
+
+def _fe_donem(row: dict, donem: str | None) -> str:
+    from pvquant.ext.platform import finans as fn
+    try:
+        return fn.donem_cozumle(donem, tz=row.get("tz") or fn.IST_AD)["kod"]
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from e
+
+
+def _fe_uretim(uretim: str | None) -> str | None:
+    if uretim in (None, ""):
+        return None
+    if uretim not in ("scada", "sayac"):
+        raise HTTPException(422, "uretim scada|sayac")
+    return uretim
+
+
+@app.get("/v1/plants/{plant_id}/finansal-etki")
+def finansal_etki(plant_id: str, donem: str | None = None, uretim: str | None = None, taze: int = 0, claims=Depends(gecerli_kullanici)):
+    """v2.583 (Faz 2 F2-E): Finansal Etki Merkezi — dönem (YYYY-MM-DD | YYYY-Wnn | YYYY-MM | YYYY-QN | YYYY; verilmezse son tam ay) için üretim özeti,
+    satış geliri, uzlaştırma bileşenleri, resmî eşleme, göstergeler, üretim düşüklüğü, ileri maruziyet ve birleşik toplam. Varsayılan: gece işinin son
+    kayıtlı sonucu (≤36 sa); yoksa ya da taze=1 ise anında hesap (kaydedilmez). Tutarlar yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir."""
+    from pvquant.services import finansal_etki_service as fe
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    kod = _fe_donem(row, donem); ur = _fe_uretim(uretim)
+    if not taze:
+        s = fe.son(claims["tenant_id"], plant_id, kod, ur)
+        if s:
+            return s
+    return fe.ozet(claims["tenant_id"], row, kod, ur)
+
+
+@app.get("/v1/plants/{plant_id}/finansal-etki/gecmis")
+def finansal_etki_gecmis(plant_id: str, donem: str | None = None, n: int = 20, claims=Depends(gecerli_kullanici)):
+    """v2.583 (Faz 2 F2-E, Stage 6): dönemin kayıtlı sürümleri ve her birinin varsayımları (kural sürümü, fiyat kaynağı, program, tarife, bildirim)."""
+    from pvquant.services import finansal_etki_service as fe
+    if not (1 <= n <= 100):
+        raise HTTPException(422, "n 1-100")
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    kod = _fe_donem(row, donem)
+    return {"donem_kodu": kod, "surumler": fe.gecmis(claims["tenant_id"], plant_id, kod, n)}
+
+
+@app.get("/v1/plants/{plant_id}/finansal-etki/senaryo")
+def finansal_etki_senaryo(plant_id: str, donem: str | None = None, pozisyon: str = "program", sabit_mwh: float | None = None, uretim: str | None = None,
+                          claims=Depends(gecerli_kullanici)):
+    """v2.583 (Faz 2 F2-E, Stage 6): pozisyon senaryosu (program | uretim | sabit MWh/saat) — kaydedilmez, «senaryo» damgalı; resmî değerlerin yerine geçmez."""
+    from pvquant.services import finansal_etki_service as fe
+    if pozisyon not in fe.POZISYON_SECENEKLERI:
+        raise HTTPException(422, "pozisyon " + "|".join(fe.POZISYON_SECENEKLERI))
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    if pozisyon == "sabit":
+        kap = float(row.get("capacity_kwp") or 0.0) / 1000.0
+        if sabit_mwh is None or not (0.0 <= float(sabit_mwh) <= (kap if kap > 0 else float("inf"))):
+            raise HTTPException(422, "sabit_mwh 0–kurulu güç (MWh/saat)")
+    kod = _fe_donem(row, donem); ur = _fe_uretim(uretim)
+    return fe.senaryo(claims["tenant_id"], row, kod, pozisyon, sabit_mwh, ur)
+
+
+@app.get("/v1/portfoy/finansal-etki")
+def portfoy_finansal_etki(donem: str | None = None, uretim: str | None = None, claims=Depends(gecerli_kullanici)):
+    """v2.583 (Faz 2 F2-E): kiracının santralleri — santral başına özet ve toplam (segment kapısıyla; eksik nitelikli santral toplama girmez); anında hesap, kaydedilmez."""
+    from pvquant.services import finansal_etki_service as fe
+    from sqlalchemy import text as _text
+    from pvquant.db import tenant_baglami as _tb
+    ur = _fe_uretim(uretim)
+    with _tb(claims["tenant_id"]) as s:
+        plants = [dict(r._mapping) for r in s.execute(_text("SELECT id, name, capacity_kwp, tz, lat, lon, params_json, archived FROM plants WHERE NOT archived ORDER BY name"))]
+    kod = _fe_donem(plants[0] if plants else {}, donem)
+    return fe.portfoy(claims["tenant_id"], plants, kod, ur)
 
 
 @app.get("/v1/plants/{plant_id}/report")

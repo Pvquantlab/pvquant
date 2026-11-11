@@ -192,6 +192,103 @@ UNITS: dict[str, str] = {
 SCHEMA_URL = "/v1/report/json-schema"   # apps.api: ForecastReport.model_json_schema()
 
 
+class FinancialImpactComponent(BaseModel):
+    """v2.585 (Faz 2 F2-G): finansal sonuç satırı; işaret artı = santral lehine (alacak), eksi = aleyhine (borç)."""
+    code: str
+    name: str
+    net_tl: float | None = None
+    credit_tl: float | None = None
+    debit_tl: float | None = None
+    quality: str = Field(description="resmi | hesaplanan | sozlesme_tahmini | senaryo | eksik")
+    included_in_total: bool = True
+    coverage_hours: int | None = None
+    expected_hours: int | None = None
+    source: str | None = None
+    rule_version: str | None = None
+    notes: list[str] = []
+
+
+class FinancialImpactRecommendation(BaseModel):
+    code: str
+    kind: str = Field(description="bilgi | oneri | eylem")
+    text: str
+    page: str | None = None
+
+
+class FinancialImpact(BaseModel):
+    """v2.585 (Faz 2 F2-G): Finansal Etki Merkezi bloğu — arayüzle aynı hesap sürümü ve kapsam (finansal_etki_service.ozet/son).
+    Tutarlar PVQuant'ın yeniden hesabıdır; resmî uzlaştırma sonucu değildir (status ve quality alanları bunu taşır)."""
+    status: str = Field(description="RESMÎ KARŞILAŞTIRMALI | TAHMİNİ HESAP | SENARYO HESABI | EKSİK HESAP")
+    dictionary_version: str
+    sign_convention: str
+    is_scenario: bool = False
+    period_type: str
+    period_code: str
+    period_start: str
+    period_end: str
+    timezone: str | None = None
+    period_hours: int | None = None
+    production_input: str | None = None
+    planned_mwh: float | None = None
+    actual_mwh: float | None = None
+    forecast_mwh: float | None = None
+    deviation_mwh: float | None = None
+    deviation_pct: float | None = None
+    deviation_direction: str | None = None
+    measured_hours: int | None = None
+    expected_hours: int | None = None
+    measurement_boundary: str | None = None
+    program_source: str | None = None
+    components: list[FinancialImpactComponent] = []
+    total_net_tl: float | None = None
+    total_credit_tl: float | None = None
+    total_debit_tl: float | None = None
+    total_quality: str | None = None
+    total_included: list[str] = []
+    total_missing: list[str] = []
+    official_available: bool = False
+    official_differences_tl: dict[str, float] = {}
+    official_statuses: dict[str, str] = {}
+    price_epias_hours: int | None = None
+    price_scenario_hours: int | None = None
+    tariff_type: str | None = None
+    tariff_sha: str | None = None
+    market_position: str | None = None
+    rule_version: str | None = None
+    recommendations: list[FinancialImpactRecommendation] = []
+    computed_at: str | None = None
+    software_version: str | None = None
+    record_id: str | None = None
+
+
+def _financial_impact(ctx) -> "FinancialImpact | None":
+    s = getattr(ctx, "finansal", None)
+    if not s:
+        return None
+    from pvquant.services.sablon_rapor_service import finansal_durum
+    d = s.get("donem") or {}; u = s.get("uretim") or {}; top = s.get("toplam") or {}; meta = s.get("meta") or {}; uz = s.get("uzlastirma") or {}; r = uz.get("resmi") or {}
+    g = u.get("gerceklesen") or {}; sap = u.get("sapma") or {}; pl = u.get("planlanan") or {}
+    durum, _ = finansal_durum(s)
+    return FinancialImpact(
+        status=durum, dictionary_version=str(meta.get("sozluk_surumu")), sign_convention=str(meta.get("isaret") or ""), is_scenario=bool(meta.get("senaryo")),
+        period_type=str(d.get("tur")), period_code=str(d.get("kod")), period_start=str(d.get("bas")), period_end=str(d.get("bit")), timezone=d.get("tz"), period_hours=d.get("saat"),
+        production_input=meta.get("uretim_girdisi"), planned_mwh=pl.get("mwh"), actual_mwh=g.get("mwh"), forecast_mwh=(u.get("tahmin") or {}).get("mwh"), deviation_mwh=sap.get("mwh"),
+        deviation_pct=sap.get("pct"), deviation_direction=sap.get("yon"), measured_hours=g.get("saat"), expected_hours=g.get("beklenen_saat"), measurement_boundary=g.get("sinir"),
+        program_source=pl.get("kaynak"),
+        components=[FinancialImpactComponent(code=b["kod"], name=b["ad"], net_tl=b.get("tutar_tl"), credit_tl=b.get("alacak_tl"), debit_tl=b.get("borc_tl"), quality=str(b.get("nitelik")),
+                                             included_in_total=bool(b.get("toplanir")), coverage_hours=b.get("kapsam_saat"), expected_hours=b.get("beklenen_saat"), source=b.get("kaynak"),
+                                             rule_version=b.get("kural_surumu"), notes=list(b.get("notlar") or [])) for b in (s.get("bilesenler") or [])],
+        total_net_tl=top.get("tutar_tl"), total_credit_tl=top.get("alacak_tl"), total_debit_tl=top.get("borc_tl"), total_quality=top.get("nitelik"),
+        total_included=list(top.get("giren") or []), total_missing=list(top.get("eksik") or []),
+        official_available=bool(r.get("bilesenler")), official_differences_tl={k: float(v) for k, v in (r.get("fark") or {}).items() if v is not None},
+        official_statuses={k: str(v) for k, v in (r.get("durum") or {}).items() if v is not None},
+        price_epias_hours=(uz.get("fiyat") or {}).get("epias_saat"), price_scenario_hours=(uz.get("fiyat") or {}).get("senaryo_saat"),
+        tariff_type=(meta.get("tarife") or {}).get("tip"), tariff_sha=(meta.get("tarife") or {}).get("sha"), market_position=(meta.get("pozisyon") or {}).get("kaynak"),
+        rule_version=meta.get("kural_surumu"),
+        recommendations=[FinancialImpactRecommendation(code=x["kod"], kind=x["tur"], text=x["metin"], page=x.get("sayfa")) for x in (s.get("oneriler") or [])],
+        computed_at=str(s.get("hesap_zamani") or meta.get("hesap_zamani")), software_version=meta.get("yazilim_surumu"), record_id=s.get("id"))
+
+
 class ForecastReport(BaseModel):
     schema_version: str = "1.0.0"   # build_json ctx'ten geçirir (SCHEMA_VERSION)
     # v2.350 (1.2.0): yayımlı sözleşme + izlenebilirlik + birim bloğu.
@@ -210,6 +307,7 @@ class ForecastReport(BaseModel):
     accuracy: Accuracy | None = Field(default=None, description="Ölçüm yoksa null")
     quality: Quality
     independent_validation: IndependentValidation | None = Field(default=None, description="v2.576: bağımsız doğrulama; hesaplanmadıysa anahtar HİÇ yazılmaz")
+    financial_impact: FinancialImpact | None = Field(default=None, description="v2.585: Finansal Etki Merkezi; hesaplanmadıysa anahtar HİÇ yazılmaz")
 
 
 def _hybrid_quality(ctx) -> "HybridQuality | None":
@@ -311,10 +409,13 @@ def build_json(ctx) -> str:
                         hybrid=_hybrid_quality(ctx),
                         warnings=ctx.warnings or []),
         independent_validation=_independent_validation(ctx),
+        financial_impact=_financial_impact(ctx),   # v2.585 (Faz 2 F2-G)
     )
     d = rapor.model_dump(mode="json")
     if d["quality"].get("hybrid") is None:      # yok = YOK (null değil)
         d["quality"].pop("hybrid", None)
     if d.get("independent_validation") is None:   # v2.576: yok = YOK
         d.pop("independent_validation", None)
+    if d.get("financial_impact") is None:   # v2.585: yok = YOK
+        d.pop("financial_impact", None)
     return _json.dumps(d, indent=2, ensure_ascii=False)

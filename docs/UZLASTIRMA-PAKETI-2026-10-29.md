@@ -1675,3 +1675,156 @@ v2572 → v2573 → v2574 (head v2574_dogrulama_sonuc; `forecast_runs` 7+1 yeni 
 {"ok":true}; `/v1/dogrulama` 200 JSON; yeni uçlar kimliksiz 422 (mevcut uçlarla aynı). DERSLER: (1) `compose run api alembic` ESKİ imajı kullanır —
 göç dosyası imaja girmeden koşmaz: sıra BUILD → GÖÇ → UP; (2) `https://pvquant.com/api/healthz` ve `/healthz` SPA yedek sayfasıdır (HTML 200) — gerçek sağlık
 `/v1/healthz` JSON; (3) defter başlık temizleme regex'i `v2\.57` ile (nokta kaçışı) — ilk commit başlıkları «mühür bekliyor» kaldı, rapor commit düzeltti.
+
+## Altmış dokuzuncu paket — v2.579 (11.11.2026): Finansal Etki Merkezi sözlüğü — nitelik, işaret eşlemesi, bileşen, dönem çözümleyici (Faz 2 paketi F2-A, Stage 2 temeli)
+
+Durum: YERELDE UYGULANDI, mühür bekliyor. Kaynak: Faz 2 brief'i (ChatGPT 11.11) + `~/Desktop/PVQuant_Faz2_Finansal_Etki/00` planı («Evet, F2-A'dan başla», 11.11 11:20).
+Kapsam: yeni saf modül `src/pvquant/ext/platform/finans.py` — FORMÜL YOK; `Nitelik` {resmi › hesaplanan › sozlesme_tahmini › senaryo › eksik} ve `en_zayif()`
+(birleşik değerde en zayıf nitelik kazanır), `ISARET_ESLEMESI` (46 kaynak alan → FEM işareti «artı = santral lehine»; dengesizlik, DSG, mutabakat, saatlik detay,
+tarife, YEKDEM, kayıp, kullanılabilirlik, sayaç, teminat; bilinmeyen alan KeyError — sessiz varsayım yok), `fem_isareti`, `bildirim_isareti` (mutlak tutar + yön),
+`alacak_borc`, `Bilesen` (net/alacak/borç, nitelik, kaynak, kapsam saat/beklenen, kural sürümü, dayanak, `toplanir`), `toplam()` (çift sayım bekçisi: aynı kod iki kez
+→ ValueError; eksik kalem toplamı en iyi hâlde senaryo düzeyine düşürür; göstergeler toplama girmez), birim yardımcıları (`kwh_mwh`, `tl_per_mwh` payda ≈ 0 → None,
+`bin_tl`), dönem çözümleyici (`YYYY-MM-DD` gün, `YYYY-Wnn` ISO hafta, ay/çeyrek/yıl — aylık raporla aynı kodlar ve etiketler; santral yerel günü, UTC sınırlar,
+yaz saati geçişli dilimde 23/25 saat; gelecek dönem 422'ye esas ValueError; süren dönem bugüne kırpılır), `saat_kumesi` (bütün bileşenler aynı UTC saat kümesinden),
+`donem_kodu` (tersine). Var olan servis ve uçlar DEĞİŞMEDİ; `aylik_rapor_service.donem_cozumle` korunur (eşitlik testi).
+Testler: `tests/test_finans_v2579.py` 41 (nitelik sırası; 31 alanlık işaret parametre testi; B dalı eksi alacak; bileşen türetme; toplam ve bekçi; birim; gün/hafta/ay/çeyrek/yıl;
+kırpma, gelecek, hatalı kod; Berlin 23/25 saat; aylık raporla birebir; dönem kodu tersine). Dil ve künye bekçileri geçti.
+Sonraki: F2-B (üretim özeti + satış geliri).
+
+## Yetmişinci paket — v2.580 (11.11.2026): Finansal Etki Merkezi — üretim/program özeti ve satış geliri (Faz 2 paketi F2-B, Stage 3A)
+
+Durum: YERELDE UYGULANDI, mühür bekliyor. Kaynak: Faz 2 planı F2-B («F2-B'ye geç», 11.11).
+Kapsam: yeni `services/finansal_etki_service.py` — FORMÜL YOK; `girdiler()` dönemin tek girdi kümesi (`dengesizlik_service._girdiler` ile aynı program /
+gerçekleşen / bildirilen / pozisyon; `pencere_gun` son geçerli SCADA ve bugünden dönem başına kadar; fiyat `piyasa_service.fiyatlar(izgara)` bütün saatler;
+df ızgaraya yeniden dizilir, ölçüm olmayan saat NaN; `program_df` öneriyi yalnız geçerli SCADA saatine kurduğundan ölçümsüz saatin önerisi Faz 1 `bagimsiz_dogrulama_service.kosu_sec('program')` ile aynı 15:30 kesiminden tamamlanır ve `tamamlanan_saat` olarak sayılır — DB testinin bulduğu durum). `program_serisi` saatlik_hesap kuralıyla birebir (bildirilen KGÜP › PVQuant önerisi; testle eş).
+`uretim_ozeti_saf`: planlanan (program MWh, kaynak bildirilen/öneri/karışık/yok, saat sayıları), gerçekleşen (MWh, saat/beklenen, seçim SCADA/sayaç, ölçüm
+sınırı plant_gross_ac / pcc_net / karışık, kaynak saat sayımı, `olcum_uygunluk_service` kapsama dökümü), gün öncesi tahmin (P50), sapma = gerçek − program
+yalnız ortak saatlerde (artı = fazla; EDM işaretiyle aynı; etiket fazla/eksik/dengede %0,5), tahmine göre sapma; eksik saat 0 sayılmaz, notlara düşer.
+`satis_geliri_saf`: `tarife_service.gelir_df` GERÇEKLEŞEN üretimle (sabit / PTF endeksli / çok zamanlı / YEKDEM); nitelik sözleşme tahmini, PTF tarifesinde
+senaryo fiyatlı saat varsa senaryo; tarife yoksa PTF × üretim «senaryo» + not; ölçüm yoksa eksik; fiyatı olmayan saat gelire girmez (not). Resmî karşılık
+YALNIZ ay dönemi + lisanslı YEKDEM + bildirimde YEK kalemi: `mutabakat_service.bildirim` → `satis_geliri_resmi` (resmî, toplanır=False, yan yana, fark =
+hesaplanan − resmî); serbest satışta «EPİAŞ kalemiyle birebir eşleşmez» notu; gün/hafta/çeyrek/yılda «aylık bildirimde» notu; bildirim yoksa Mutabakat'a
+yönlendiren not. `ozet()` ikisini tek girdi okumasıyla verir (F2-C bileşenleri ekler). API ucu yok (F2-E).
+Testler: `tests/test_finansal_etki_v2580.py` 10 — saf 9 (program kuralı saatlik_hesap ile birebir; toplamlar/sapma/eksik saat; fazla/dengede/karışık/boş;
+ölçüm sınırı sayaç/karışık; sabit tarife + gün dönemi notu; PTF senaryo saati + çok zamanlı; tarife yok senaryo + ölçüm yok eksik; resmî YEK kalemi yalnız
+ay+YEKDEM, bildirim yok / kalem yok / serbest / gün; pencere günü) + test DB uçtan uca 1 (10 günlük Eylül, bayraklı saat → program arşivden tamamlanır, gün ve kırpılmış ay, gelir). Test DB pvq-test-db ile 51/51 (F2-A+B); dil ve künye bekçileri geçti.
+Sonraki: F2-C (uzlaştırma bileşenleri ve mutabakat).
+
+## Yetmiş birinci paket — v2.581 (11.11.2026): Finansal Etki Merkezi — uzlaştırma bileşenleri, DSG, resmî eşleme, göstergeler (Faz 2 paketi F2-C, Stage 3B–D ve G)
+
+Durum: YERELDE UYGULANDI, mühür bekliyor. Kaynak: Faz 2 planı F2-C («F2-C'ye geç», 11.11).
+Kapsam (`services/finansal_etki_service.py`, FORMÜL YOK): `saatlik(g)` dönem girdilerinden `dengesizlik_service.saatlik_hesap` (Doğruluk, döküm, Mutabakat ile
+aynı çekirdek). `uzlastirma_bilesenleri_saf`: EDT satırı alacak = EDTA, borç = EDTB (`ext/turkiye/dengesizlik.aylik_karne` m.110(1) toplama kuralı, İstanbul ayı;
+19.10.2026 sonrası ayrık), net = EDTA − EDTB = Σedt_net; nitelik senaryo fiyatlı ya da yön varsayılan saat varsa «senaryo», yoksa «hesaplanan»; kapsam/beklenen
+saat, kural sürümü, dayanak (`kurallar.kural` dönem son günü), yön eksik / 2027 belirsiz / hesaba girmeyen saat notları. KÜPST: segment tablosunda uygulanmıyorsa
+eksik+toplanmaz; katsayı doğrulanamıyorsa eksik (toplam senaryoya düşer); yoksa −ΣKÜPST, kaynak kural tablosu / santral ayarı geçersiz kılma, LÜY istisnası
+notu. Segment kapısı (B7): `santral_tasir=False` (lisanssız dağıtım, öz tüketim, lisanssız iletim) → EDT ve KÜPST toplanmaz, «bilgi amaçlı» notu; segment
+seçilmemişse lisanslı güneş varsayımı notu. DSG: `_dsg_donem` santralın grubunu (`dsg_gruplari`, `katilimci_birlestir`) DÖNEMİN saat kümesinde `dsg_hesapla_df`
+ile hesaplar (dsg_ozet'in orkestrasyonu dönem dilimiyle; yalnız dsg_kodu girilmişse) → «DSG içinde EDT» satırı toplanmaz, senaryo, tek başına / netleşme farkı /
+pay / eşik notları. Resmî (`resmi_kiyas_saf`, yalnız ay): `mutabakat_service.mutabakat` satırlarından dengesizlik ve KÜPST resmî satırları (toplanmaz; durum,
+doğrulama, mutabakat farkı notu), FEM farkı = hesaplanan − resmî, B4 notu (EDTA/EDTB ayrımı yüzünden mutabakat farkından sapınca), güvenilirlik, saatlik detay
+özeti, eylem; gün/hafta/çeyrek/yıl ve bildirim yok notları. Göstergeler (toplanmaz): dengesizlik teminatı (`teminat_gostergesi`, ≥120 gün pencere; risk katsayısı
+yoksa eksik), YEKDEM m.23(6) (`yekdem_service.dokum_ek` + `m23_6_ozeti`, yalnız lisanslı YEKDEM + tarife yekdem). `uzlastirma()` üst düzey; `ozet()` artık
+üretim + gelir + uzlaştırma + resmî + göstergeler ve birleşik toplam (çift sayım bekçisi; F2-B'deki eski ozet kaldırıldı). Mutabakat servisi DEĞİŞMEDİ (B4 ayrı onay).
+Testler: `tests/test_finansal_etki_v2581.py` 8 — saf 7 (EDTA/EDTB/KÜPST toplamları aylik_karne ile birebir; senaryo saat niteliği; lisanssız dağıtım kapısı + segment
+yok; DSG yerine koyma + boş çerçeve; LÜY istisnası; resmî eşleme ve B4; birleşik toplam ve çift sayım) + test DB 1 (gün uzlaştırma + ay birleşik özet). Faz 2 toplamı
+59/59 (test DB), dil ve künye bekçileri geçti. Sonraki: F2-D (üretim düşüklüğü ve ileri maruziyet).
+
+## Yetmiş ikinci paket — v2.582 (11.11.2026): Finansal Etki Merkezi — üretim düşüklüğü ve ileriye dönük maruziyet (Faz 2 paketi F2-D, Stage 3E–F)
+
+Durum: YERELDE UYGULANDI, mühür bekliyor. Kaynak: Faz 2 planı F2-D («Evet, F2-D'ye geç», 11.11).
+Kapsam (`services/finansal_etki_service.py`, FORMÜL YOK): `_kayip_girdi` dönem sınırlı kayıp girdisi (kayip_ayrisimi_service.hesapla ile aynı seçim: 0–24 saat
+öncülü fizik beklentisi, en yeni koşu, SCADA valid/kisinti). `dusukluk_saf`: tahmin hatası (program − gerçek: eksik/fazla/net MWh, programın bağlayıcı olup
+olmadığı, bağımsız doğrulama WMAPE; «mali karşılığı EDT satırında, ikinci kez sayılmaz»), kayıp ayrışımı satırları dört sınıfa (kısıntı/talimat/bakım,
+fiziksel = arıza/şebeke/kırpma, ölçüm yok, açıklanmayan) toplanır (kWh ve TL yalnız kaynağın verdiği satırlarda; açıklanmayana TL yazılmaz), `uretim_dusuklugu`
+satırı toplanmaz (nitelik: tarife → sözleşme tahmini, PTF/senaryo saat → senaryo, fiyat yok → eksik), `sozlesme_acigi` satırı toplanmaz (kıyas tabanı; eşik yoksa
+eksik). `uretim_dusuklugu` DB: olay haritası (`olay_service.aralik` + `olay_saat_haritasi`), satış fiyatı (`kayip_ayrisimi_service._fiyat_serisi`), kullanılabilirlik
+(`kullanilabilirlik_service.hesapla_df` + istisna saatleri + `sozlesme_acigi`), bağımsız doğrulama `bagimsiz_dogrulama_service.hesapla(gun=dönem, bugun=dönem sonu)`.
+`maruziyet_saf`: günlük oran r_d = Σ(edt_net − KÜPST)_d / Σprogram_d (FEM işareti, planlanan MWh başına; program 0 günler dışarı), çeyrekler × gelecek programın
+toplamı → aralık bin TL'ye yuvarlı, nitelik senaryo; <7 gün / program yok / geçmiş yok → eksik. `ileri_maruziyet` DB: yarından 7 gün (santral yerel günü),
+program = bildirilen KGÜP (kgup_surum) › en son tahmin P50 (`tahmin_oku`, saat başına son koşu), geçmiş `saatlik_pv(gun=30)`. `ozet()` artık düşüklük ve maruziyeti
+de içerir; birleşik toplama yalnız satış geliri + dengesizlik + KÜPST girer (bekçi). Var olan servisler DEĞİŞMEDİ.
+Testler: `tests/test_finansal_etki_v2582.py` 5 — saf 4 (sınıflar ve bileşenler kayıp çekirdeğiyle birebir; eksik/senaryo fiyat; maruziyet oran ve aralık; eksik
+dalları) + test DB 1 (dönem sınırlı kayıp, ölçüm yok saati, sözleşme eşiği yok, tahmin hatası, ileri tahmin yok → eksik, birleşik özet). Fixture (v2580): fizik
+beklentisi 1,2 × gerçek ve her gün için D 00:00 TSİ koşusu eklendi (program kuralı etkilenmez). DERS: `Timestamp.tz_convert("UTC").normalize()` İstanbul gün
+başını bir gün geriye atar; 30 UTC günü İstanbul takviminde 31 güne yayılır (testler yerel gün başından kurulur). Sonraki: F2-E (kayıt, gece işi, API; şema onayı).
+
+## Yetmiş üçüncü paket — v2.583 (11.11.2026): Finansal Etki Merkezi — kayıt (yalnız ekleme), gece işi, API, senaryo kipi, portföy (Faz 2 paketi F2-E, Stage 2 meta / Stage 6 geçmiş) — ŞEMA
+
+Durum: YERELDE UYGULANDI, mühür bekliyor (canlı göç DB sahibiyle, mühürde). Kaynak: Faz 2 planı F2-E («Evet, F2-E'ye geç», 11.11; plan §3 madde 4).
+Göç `v2583_finansal_etki_sonuc` (revises v2574): tablo `finansal_etki_sonuc` (tenant, plant NOT NULL, hesap_zamani, donem_tur/kodu/bas/bit, uretim_girdisi, sozluk_surumu,
+uretim/gelir/uzlastirma/dusukluk/maruziyet/toplam/meta JSONB); indeks (plant, donem_kodu, hesap_zamani DESC); RLS ENABLE+FORCE; pvq_app yalnız SELECT, INSERT.
+Servis: `ozet()` artık `meta` (hesap zamanı, sözlük/yazılım sürümü, dönem, üretim girdisi, pencere, segment, LÜY, pozisyon, kural sürümü, fiyat kaynağı sayımı,
+program/üretim kaynağı, tarife tipi+sha16, bildirim sürümü, YEKDEM rejimi, senaryo, işaret) ve `kayitli=False` taşır; `pozisyon` verilirse SENARYO (program | uretim |
+sabit MWh/saat; EDT/KÜPST/DSG satırları senaryo damgalı). `senaryo()`, `kaydet()` (yalnız ekleme; meta.senaryo → ValueError), `son()` (aynı dönem kodu [+üretim girdisi],
+≤36 sa), `gecmis()` (sürümler + varsayımlar), `portfoy()` (santral satırları + toplam; eksik nitelikli santral ve hatalı santral toplama girmez, hata satıra yazılır).
+Worker `gece_finansal_etki` (03:55 TSİ, bağımsız doğrulamadan sonra): dün (gün) + ay başından bugüne (ay); ölçüm yoksa «atlandı»; `IZLENEN_ISLER` (36 sa, günlük) ve
+`ISIM_TR` «Finansal etki». API: `GET /v1/plants/{id}/finansal-etki?donem&uretim&taze` (son kayıt ≤36 sa, yoksa/taze anında; dönem kodu 422; gelecek dönem 422),
+`GET …/finansal-etki/gecmis?donem&n` (1–100), `GET …/finansal-etki/senaryo?donem&pozisyon&sabit_mwh&uretim` (sabit: 0–kurulu güç; kaydedilmez), `GET /v1/portfoy/finansal-etki?donem&uretim`.
+Dış API'ye alan eklenmedi (ayrı karar). Var olan servisler ve uçlar DEĞİŞMEDİ.
+Testler: `tests/test_finansal_etki_v2583.py` 4 — test DB: kaydet/son/gecmis (iki sürüm, bayatlık, üretim girdisi filtresi), meta içeriği, senaryo (EDT 0 «üretildiği kadar»,
+senaryo damgası, kaydet reddi, sabit pozisyon), kiracı izolasyonu (ikinci kiracı 0 satır, RLS), portföy (bilinmeyen santral satıra hata), API (kayıtlı/taze/422/404/geçmiş/
+senaryo/portföy; API ve senaryo satır yazmaz); gece işi (bugün Kasım → ölçüm yok, iki dönem atlandı, satır yok); izleme listesi ve ad sözlüğü; göç dosyası (yalnız ekleme,
+FORCE RLS). İş kayıt tutarlılığı: test_isler 7, test_senkron 3, sistem izleme 1 geçti. Faz 2 toplamı 68/68 (test DB, alembic head v2583), dil ve künye bekçileri geçti.
+DERS: daraltılmış `ruff --fix --select …,RUF100` etkin olmayan kuralların `noqa` notlarını «kullanılmıyor» diye siler (F811 fixture notları iki kez gitti) → düzeltme tam
+yapılandırmayla (`--ignore` ile) yapılır. Test içinde `monkeypatch.setattr(fe, "ozet", …)` modül genelinde kalır; senaryo() da onu çağırır → `monkeypatch.context()`.
+Sonraki: F2-F (müşteri yüzeyi «Finansal etki» sayfası + Portföy kartı).
+
+## Yetmiş dördüncü paket — v2.584 (11.11.2026): «Finansal etki» sayfası, Portföy kartı ve karar desteği önerileri (Faz 2 paketi F2-F, Stage 4–5)
+
+Durum: YERELDE UYGULANDI, mühür bekliyor. Kaynak: Faz 2 planı F2-F («Evet, F2-F'ye geç», 11.11). Tasarım: pvquant-tasarim referansları (emsaller, jetonlar, bileşen
+dili, anti-slop) — yeni kalıp icat edilmedi: Mutabakat sayfasının seçici/KPI/tablo dili, Doğruluk'taki bağımsız doğrulama kartının tanım listesi ve «Nasıl hesaplanır»
+katlaması, Portföy'ün kart + `table.veri.sayisal.santral` dili; amber yalnız gerçekleşen üretim KPI'sında.
+Arka uç: `finansal_etki_service.oneriler(ozet)` (SAF) — veriye dayalı karar desteği {bilgi | öneri | eylem}, her biri var olan bir sayfaya bağlanır: sapma ≥ %10 eylem /
+≥ %5 öneri (Tahminler), senaryo fiyatlı saat (Ayarlar), ay döneminde bildirim yok (Mutabakat) / fark var (Mutabakat) / ay dışı dönem bilgi, tarife yok (Santralim),
+ölçüm kapsaması < %90 (Veri yükleme), bildirilen KGÜP yok (Tahminler), KÜPST katsayısı yok (Hakkında), düşüklüğün tamamı açıklanmayan (Olay kaydı), sözleşme eşiği
+yok (Santralim), maruziyet aralığı (Tahminler), DSG kodu yok (Santralim). `ozet()` çıktısına `oneriler`; kayıtta meta_json içinde saklanır, `son()` geri verir; kayıtlı
+satırdan birleşik `bilesenler` listesi (`_kayitli_bilesenler`). Türkçe ondalık (`_tr1`). Test `tests/test_finansal_etki_v2584.py` 2 (sakin özet boş; her kural tek tek).
+Web: `features/sayfalar/FinansalEtki.tsx` — nav «Finansal etki» (Mutabakat'tan sonra, açık yüz, banknot ikonu), rota `finans`; seçiciler dönem türü (gün/hafta/ay/çeyrek/yıl)
++ dönem (14 gün / 8 ISO hafta / 12 ay / 4 çeyrek / 2 yıl; kodlar arka uçla aynı) + üretim girdisi + pozisyon senaryosu (üretildiği kadar satış; kaydedilmez, uyarı
+şeridi); 4 KPI (planlanan, gerçekleşen [amber], üretim ve program farkı, tahmini finansal etki + nitelik rozeti + resmî ikinci satır); «Finansal sonuç bileşenleri»
+tablosu (net/alacak/borç/nitelik/kapsam/kaynak; toplanan satırlar, toplam, «Toplama girmeyen satırlar» grubu; notlar katlaması); «Resmî bildirimle karşılaştırma»
+(ay: PVQuant/EPİAŞ/fark/durum; değilse boş durum metni); «Ne yapmalı» (öneri listesi, tür rozeti, sayfa bağlantısı `#sayfa/santral`); «Üretim düşüklüğü» (program farkı,
+tahmin hatası, enerji performansı; neden sınıfı tablosu; gelir kaybı ve sözleşme açığı satırları); «Önümüzdeki günler» (çeyrekler, oran, program kaynağı); «Hesap
+bilgileri» (tanım listesi; kayıtlı sürümler katlaması açılınca `gecmis` çekilir; «Nasıl hesaplanır»). Nitelik rozetleri: resmî ok, hesaplanan/sözleşme tahmini nötr,
+senaryo uyarı, eksik nötr. Portföy: «Finansal etki — son tam ay» kartı (3 KPI + 7 sütunlu santral tablosu; satır santrala gider; örnek kipte gösterilmez). `types.ts`
+FinansalEtki/PortfoyFinansalEtki/…; `client.ts` finansalEtki/finansalEtkiSenaryo/finansalEtkiGecmis/portfoyFinansalEtki (örnek kip temsili); `ornek.ts`
+ornekFinansalEtki; sahte API `finansal-etki`, `/senaryo`, `/gecmis`, `/v1/portfoy/finansal-etki` (temsili); dil bekçisi DOSYALAR + kare.mjs PANEL listesine eklendi.
+Kapılar: tsc 0, web test 104/104 (dil bekçisi yeni dosyayı tarıyor), oxlint yeni uyarı 0 (donemSecenekleri dışa aktarılmadı), build; kare.mjs (sahte API + vite 4273 +
+başsız Chrome 9333) Finansal etki ve Portföy 375/768/1440 taşma 0 (`kanit/F2-F_*`). İnceleme düzeltmesi: Portföy tablosu 9 → 7 sütun (satış ve KGÜP sapma santral sayfasında).
+DERS: vite yalnız `localhost` dinler (127.0.0.1 → 000); kare betiği 900 ms bekler → sahte API `YAVAS=0.2` ile; ruff benzeri: oxlint fast-refresh uyarısı için sayfa
+dosyasından bileşen dışı dışa aktarma yapılmaz. Sonraki: F2-G (rapor şablonu, JSON 1.4.0, Excel).
+
+## Yetmiş beşinci paket — v2.585 (11.11.2026): Finansal etki raporu — şablon, JSON 1.4.0 financial_impact, Excel sayfası, dönem raporu özeti (Faz 2 paketi F2-G, Stage 7)
+
+Durum: YERELDE UYGULANDI, mühür bekliyor. Kaynak: Faz 2 planı F2-G («F2-G'ye geç», 11.11).
+Şablon `finansal-etki` (`sablon_rapor_service.finansal_etki`; HTML/Markdown; `finansal_durum` etiketi: RESMÎ KARŞILAŞTIRMALI › SENARYO HESABI › TAHMİNİ HESAP › EKSİK HESAP, her biri
+«resmî uzlaştırma belgesi değildir» açıklamasıyla): Durum, Kimlik ve dönem (dönem türü/kodu, üretim girdisi, hesap durumu gece kaydı/anlık/senaryo), Üretim ve program, Finansal sonuç
+bileşenleri (net/alacak/borç/nitelik/toplama girer/kapsam/kaynak/kural sürümü), Toplam, Resmî bildirimle karşılaştırma (ay: PVQuant/EPİAŞ/fark/durum + mutabakat notu; yoksa
+not), Fiyat kaynakları, Sözleşme varsayımları (tarife, özeti, pozisyon, YEKDEM rejimi, segment, LÜY, senaryo), Kural sürümleri ve dayanak, Üretim düşüklüğü (+ not), İleriye dönük
+maruziyet, Ne yapmalı (öneriler), Veri kalitesi sınırları (tüm notlar tekilleştirilmiş), Formüller (EDT/EDTA-EDTB, P(±), KÜPST, toplam, düşüklük, maruziyet), Yeniden üretim kimliği.
+Aynı sonuç `finansal_etki_service.son/ozet`'ten (arayüzle aynı hesap sürümü ve kapsam). API `rapor-sablon/finansal-etki?donem&uretim&fmt` (dönem kodu/gelecek 422, üretim 422).
+JSON: `SCHEMA_VERSION` 1.3.0 → **1.4.0** (EKLEME): `financial_impact` (`FinancialImpact` — status, sözlük, işaret, senaryo mu, dönem, üretim/program/sapma, bileşenler
+[`FinancialImpactComponent`: kod, ad, net/alacak/borç, nitelik, toplama girer, kapsam, kaynak, kural sürümü, notlar], toplam, resmî farklar/durumlar, fiyat saat sayımı, tarife
+tipi+özeti, pozisyon, kural sürümü, öneriler [`FinancialImpactRecommendation`], hesap zamanı, yazılım, kayıt); yoksa anahtar hiç yazılmaz. `ReportContext.finansal`;
+`report_service._finansal_etki` (son tam ay; gece kaydı ≤36 sa varsa o; ölçüm saati yoksa None) xlsx ve json yollarında. Excel «Financial-Impact» sayfası (`_sayfa_finansal`: alan/değer/
+birim bloğu, bileşen tablosu, toplam, resmî fark ve mutabakat durumu, öneriler, kimlik). Dönem raporu (`aylik_rapor_service.finansal` → `veri()["finansal"]`, `rapor()` «Finansal etki
+özeti (Finansal Etki Merkezi)» tablosu + notu; hata raporu düşürmez). Web: Raporlar «Finansal etki (son tam ay)» düğmesi (`raporSablonIndir` birliği). Şema sürümü testleri 1.4.0.
+Testler: `tests/test_finansal_rapor_v2585.py` 2 — durum etiketi (saf, 5 durum); test DB: şablon 16 bölüm + metinler, JSON blok yok/var ve arayüz hesabıyla birebir (toplam, bileşen
+kodları, üretim, öneriler), Excel sayfası hücreleri, dönem raporu özeti toplamı = arayüz, uret + API (md 200, dönem/üretim/fmt 422). Birlikte: test_bagimsiz_rapor 4, test_reporting 26,
+test_aylik_rapor 4, test_excel_kc 24 = 60/60; test_rapor_tutarlilik + test_dis_api + test_modb_rapor + dil/künye bekçileri 102/102 (4 dk 47 s; PDF alt süreçleri dâhil, kırmızı yok). Web tsc 0, 104/104, build. Sonraki: F2-H (test turları, mevzuat künyesi, 05/07/08 belgeleri).
+
+## Yetmiş altıncı paket — v2.586 (11.11.2026): Faz 2 test turları ve mevzuat künyesi (Faz 2 paketi F2-H, Stage 8 + regulatory_verification)
+
+Durum: YERELDE UYGULANDI, mühür bekliyor. Kaynak: Faz 2 planı F2-H («Evet, F2-H'ye geç», 11.11).
+Testler: `tests/test_faz2_tur1_v2586.py` 6 (kural sürümü geçişleri 31.12.2025→1.1.2026 / 18→19.10.2026 EDTA ayrık / 31.10→1.11.2026 V100 — iki sürüm aynı dönemde, EDTA/EDTB = aylık
+karne; sıfır ve negatif fiyat sonlu; eksik sistem yönü ve senaryo niteliği; kısmi süren dönem ve birimler; gelir/maliyet sınıfları ve çift sayım); `tests/test_faz2_tur2_v2586.py` 2 (FEM
+EDT/KÜPST = `dengesizlik_service.dokum` aynı saatlerde gün ve ay — döküm 2 ondalığa yuvarladığından saat başına ≤ 0,005 TL tolerans; portföy toplamı doğrusal; sayaç seçili-satır yok →
+SCADA; viewer GET 200 / PUT 401-403; rapor-sablon md 200). Tur 3: tam Python takımı test DB ile **1.202 geçti, 1 atlandı, 0 başarısız** (7 dk 21 s; `kanit/F2-H_tam_takim_2026-11-11.txt`);
+web tsc 0, 104/104, oxlint yeni uyarı 0, build; kareler 375/768/1440 taşma 0 (F2-F). Koşulmayan: Playwright (yok), canlı veri, gerçek EPYS dosyası.
+Belgeler `~/Desktop/PVQuant_Faz2_Finansal_Etki`: 05 Mevzuat künyesi (FEM'in dokunduğu her kural: karar/RG, madde, yürürlük, formül, `kurallar.dogrulama_durumu`; 2025+ kural tablosu
+`kurallar.tablo`'dan; 9 açık soru; dış erişim yapılmadı → «bekliyor», formül değişmedi), 07 Test turları (üç tur, düzeltme sonrası yeniden koşular), 08 Teslim raporu (brief'in 10 bölümü):
+**FAZ 2 KISMEN TAMAMLANDI** — modül çalışır, bütün kabul ölçütleri kodla/testle karşılandı; finansal doğruluk resmî uzlaştırma verisiyle ve canlıda doğrulanmadı; 1.11.2026 yürürlük
+çıkarımı ve 2027 rejimi belirsiz; bulgular B1–B7 ayrı onay. Faz 2 toplam yeni Python testi 80 (v2579–v2586), web dil bekçisi FinansalEtki.tsx'i tarıyor.
+Mühürde: `PVQ_SURUM=$(git describe --always) docker compose build api worker web` → göç v2583 DB sahibiyle → `up -d` (worker yeniden yaratılır; 04:00–08:30 TSİ dışında) → `/v1/healthz`
+→ bayt kıyası → gece işi `gece_finansal_etki` 03:55 TSİ ilk satırlar → Finansal etki sayfası canlı inceleme → 08'e canlı kanıt.

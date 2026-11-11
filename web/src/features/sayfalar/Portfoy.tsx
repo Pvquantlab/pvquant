@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { SOZLUK } from "../../lib/sozluk";
 import { api, bellektenOku, dsgYolu, kupstYolu } from "../../api/client";
-import type { DsgAnahtar, Portfoy as PortfoyT, PortfoyAnahtar, PortfoyDsg, PortfoyKupst, PortfoyTahmin } from "../../api/types";
+import type { DsgAnahtar, Portfoy as PortfoyT, PortfoyAnahtar, PortfoyDsg, PortfoyFinansalEtki, PortfoyKupst, PortfoyTahmin } from "../../api/types";
 import { Bilgi, Kart, Kpi, Sayfa, sayiTr, gucTr, enerjiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
 import { Meta } from "../../lib/Meta";
 
@@ -33,6 +33,8 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
   type Durum = "bekliyor" | "tamam" | "hata";
   const [p, setP] = useState<PortfoyT | null | undefined>(() => bellektenOku<PortfoyT>("/v1/portfoy"));
   const [dsg, setDsg] = useState<PortfoyDsg | null | undefined>(() => bellektenOku<PortfoyDsg>("/v1/portfoy/dsg?gun=30"));   // v2.276
+  const [fin, setFin] = useState<PortfoyFinansalEtki | null | undefined>(undefined);   // v2.584 (Faz 2 F2-F): son tam ay finansal etki
+  useEffect(() => { let acik = true; api.portfoyFinansalEtki().then((v) => { if (acik) setFin(v); }, () => { if (acik) setFin(null); }); return () => { acik = false; }; }, []);
   const [pt, setPt] = useState<PortfoyTahmin | null | undefined>(() => bellektenOku<PortfoyTahmin>("/v1/portfoy/tahmin?gun=7"));   // v2.280
   const [pD, setPD] = useState<Durum>("bekliyor");
   const [ptD, setPtD] = useState<Durum>("bekliyor");
@@ -222,6 +224,32 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
           </>
         )}
       </Kart>
+      {/* v2.584 (Faz 2 F2-F): Finansal etki — son tam ay, santral başına; eksik nitelikli santral toplama girmez. Örnek kipte gösterilmez (veri yok). */}
+      {fin !== null && (fin === undefined || fin.santraller.length > 0) && (
+        <Kart baslik="Finansal etki — son tam ay, santral başına net tutar" alt="Net = enerji satışı + enerji dengesizlik tutarı + KGÜP sapma tutarı (yeniden hesap; EPİAŞ uzlaştırma sonucu değildir). Eksi tutar santralin ödediğidir. Satış ve KGÜP sapma satırları için santralı seçip Finansal etki sayfasına gidin."
+          sag={fin ? <span className="cip"><Meta items={[fin.donem_kodu ?? "", `${sayiTr(fin.toplam.toplanan_santral)} / ${sayiTr(fin.toplam.santral_sayisi)} santral toplandı`]} /></span> : undefined}>
+          {fin === undefined ? <YerTutucu yukseklik={120} /> : (
+            <>
+              <div className="ızgara satir-3" style={{ marginBottom: 10 }}>
+                <Kpi etiket="Planlanan üretim" deger={fin.toplam.planlanan_mwh == null ? "—" : sayiTr(fin.toplam.planlanan_mwh, 1)} birim={fin.toplam.planlanan_mwh == null ? undefined : "MWh"} alt="toplanan santraller" />
+                <Kpi etiket="Gerçekleşen üretim" ton="amber" deger={fin.toplam.gerceklesen_mwh == null ? "—" : sayiTr(fin.toplam.gerceklesen_mwh, 1)} birim={fin.toplam.gerceklesen_mwh == null ? undefined : "MWh"} alt="ölçülen saatler" />
+                <Kpi etiket="Tahmini finansal etki, net" deger={fin.toplam.tutar_tl == null ? "—" : `${fin.toplam.tutar_tl < 0 ? "−" : ""}${sayiTr(Math.abs(fin.toplam.tutar_tl) / 1000, 1)}`} birim={fin.toplam.tutar_tl == null ? undefined : "bin TL"} alt={`${fin.toplam.nitelik_ad}${fin.toplam.toplama_girmeyen.length ? `; toplama girmeyen: ${fin.toplam.toplama_girmeyen.filter(Boolean).join(", ")}` : ""}`} />
+              </div>
+              <div className="grafik-kaydir"><table className="veri sayisal santral">
+                <thead><tr><th>Santral</th><th>Planlanan (MWh)</th><th>Gerçekleşen (MWh)</th><th>Fark (%)</th><th>Dengesizlik (bin TL)</th><th>Net (bin TL)</th><th>Nitelik</th></tr></thead>
+                <tbody>{fin.santraller.map((s) => (
+                  <tr key={s.plant_id} className="satir-tikla" onClick={() => onSec(s.plant_id)} tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter") onSec(s.plant_id); }}>
+                    <td>{s.ad ?? s.plant_id}{s.hata && <div className="hucre-alt soluk">hesaplanamadı</div>}{s.santral_tasir === false && <div className="hucre-alt soluk">dengesizliği toplayıcı/GTŞ taşır</div>}</td>
+                    <td className="mono">{s.planlanan_mwh == null ? "—" : sayiTr(s.planlanan_mwh, 1)}</td><td className="mono">{s.gerceklesen_mwh == null ? "—" : sayiTr(s.gerceklesen_mwh, 1)}</td>
+                    <td className="mono">{s.sapma_pct == null ? "—" : `${s.sapma_pct > 0 ? "+" : s.sapma_pct < 0 ? "−" : ""}${sayiTr(Math.abs(s.sapma_pct), 1)}`}</td>
+                    <td className={`mono${s.dengesizlik && !s.dengesizlik.toplanir ? " soluk" : ""}`}>{s.dengesizlik?.tutar_tl == null ? "—" : `${s.dengesizlik.tutar_tl < 0 ? "−" : ""}${sayiTr(Math.abs(s.dengesizlik.tutar_tl) / 1000, 1)}`}</td>
+                    <td className="mono" style={{ fontWeight: 600 }}>{s.toplam?.tutar_tl == null ? "—" : `${s.toplam.tutar_tl < 0 ? "−" : ""}${sayiTr(Math.abs(s.toplam.tutar_tl) / 1000, 1)}`}</td>
+                    <td><span className={`rozet rozet-kucuk ${s.toplam?.nitelik === "senaryo" ? "rozet-uyari" : s.toplam?.nitelik === "resmi" ? "rozet-ok" : "rozet-notr"}`}>{s.hata ? "eksik" : ({ resmi: "resmî", hesaplanan: "hesaplanan", sozlesme_tahmini: "sözleşme tahmini", senaryo: "senaryo", eksik: "eksik" } as Record<string, string>)[s.toplam?.nitelik ?? "eksik"]}</span></td>
+                  </tr>))}</tbody>
+              </table></div>
+              <p className="form-not" style={{ marginTop: 8, fontSize: 13.5 }}>{fin.not}</p>
+            </>)}
+        </Kart>)}
       {/* v2.276 (Dalga 5): DSG/toplayıcı netleştirmesi — portföy tek dengesizlik hesabına girerse ne kazanılır */}
       {/* v2.502 (F-08): DSG netleşmesi yürürlükteki kuralla — üye eşiği × PH grupta, aşan kısım bireysel; KÜPST üye bazında, netleşmez.
           Eski sunucu (gosterge !== false) hâlâ «gösterge» rozeti alır. */}

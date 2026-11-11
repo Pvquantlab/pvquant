@@ -13,7 +13,7 @@ import pandas as pd
 
 from pvquant.ext.platform import rapor_sablon as rs
 
-SABLONLAR = ("kapasite-testi", "fatura", "kullanilabilirlik", "beklenen-gerceklesen", "bagimsiz-dogrulama")   # v2.576 (Faz 1 F1-E)
+SABLONLAR = ("kapasite-testi", "fatura", "kullanilabilirlik", "beklenen-gerceklesen", "bagimsiz-dogrulama", "finansal-etki")   # v2.576 (Faz 1 F1-E); v2.585 (Faz 2 F2-G)
 
 
 def _kunye() -> str:
@@ -276,12 +276,124 @@ def bagimsiz_dogrulama(tenant_id, plant: dict, gun: int = 30, kural: str = "prog
     return rapor
 
 
+# ---------------- v2.585 (Faz 2 F2-G, Stage 7): Finansal etki raporu ----------------
+FINANS_NITELIK_AD = {"resmi": "resmî", "hesaplanan": "hesaplanan", "sozlesme_tahmini": "sözleşme tahmini", "senaryo": "senaryo", "eksik": "eksik"}
+FINANS_DURUM_ACIKLAMA = {
+    "RESMÎ KARŞILAŞTIRMALI": "EPİAŞ uzlaştırma bildirimi yüklü; dengesizlik ve KGÜP sapma tutarı için resmî değer PVQuant hesabıyla yan yana verilir. Bildirim esastır.",
+    "TAHMİNİ HESAP": "Tutarlar PVQuant'ın EPİAŞ saatlik fiyatı ve santral tarifesiyle yeniden hesabıdır; resmî uzlaştırma belgesi değildir.",
+    "SENARYO HESABI": "Senaryo fiyatı, varsayılan sistem yönü ya da seçilen pozisyon senaryosu kullanıldı; tutarlar varsayımsaldır, karar için tek başına okunmaz.",
+    "EKSİK HESAP": "Ölçüm, program ya da fiyat verisi yetersiz; toplam verilmez. Eksik veriler bölümüne bakın.",
+}
+
+
+def finansal_durum(sonuc: dict) -> tuple[str, str]:
+    """Rapor durum etiketi: resmî karşılaştırmalı › senaryo › tahmini hesap › eksik."""
+    top = sonuc.get("toplam") or {}; meta = sonuc.get("meta") or {}; resmi = ((sonuc.get("uzlastirma") or {}).get("resmi") or {}).get("bilesenler") or []
+    if top.get("tutar_tl") is None:
+        d = "EKSİK HESAP"
+    elif meta.get("senaryo") or top.get("nitelik") == "senaryo":
+        d = "SENARYO HESABI"
+    elif resmi:
+        d = "RESMÎ KARŞILAŞTIRMALI"
+    else:
+        d = "TAHMİNİ HESAP"
+    return d, FINANS_DURUM_ACIKLAMA[d]
+
+
+def _tl(v, hane=0) -> str:
+    return _y(v, hane, " TL")
+
+
+def finansal_etki(tenant_id, plant: dict, donem: str | None = None, uretim: str | None = None, bugun=None, sonuc: dict | None = None) -> rs.Rapor:
+    """v2.585 (Faz 2 F2-G, Stage 7) — Finansal etki raporu: finansal_etki_service.ozet (gece kaydı ≤36 sa varsa o) ile aynı sayılar; arayüzle aynı hesap
+    sürümü ve kapsam. Bölümler: durum, kimlik, üretim ve program, bileşenler, toplam, resmî karşılaştırma, fiyat kaynakları, sözleşme varsayımları, kural
+    sürümleri ve dayanak, üretim düşüklüğü, ileriye dönük maruziyet, ne yapmalı, veri kalitesi sınırları, formüller, yeniden üretim kimliği."""
+    from pvquant.services import finansal_etki_service as fe
+    if sonuc is None:
+        d = fe.donem(plant, donem, bugun)
+        sonuc = (fe.son(tenant_id, plant["id"], d["kod"], uretim) if bugun is None else None) or fe.ozet(tenant_id, plant, d["kod"], uretim, bugun)
+    dn = sonuc["donem"]; u = sonuc["uretim"]; top = sonuc["toplam"]; uz = sonuc["uzlastirma"]; ge = sonuc["gelir"]; du = sonuc.get("dusukluk") or {}; ma = sonuc.get("maruziyet") or {}
+    meta = sonuc["meta"]; durum, aciklama = finansal_durum(sonuc)
+    bol: list = []
+    bol.append(("Durum", f"<b>{durum}</b>. {aciklama} İşaret: {meta.get('isaret')}."))
+    kimlik = pd.DataFrame([{"Santral": plant.get("name"), "Kurulu güç (kWp)": plant.get("capacity_kwp"), "Dönem": f"{dn['etiket']} ({dn['bas']} – {dn['bit']}, {dn.get('tz')})",
+                            "Dönem türü": dn.get("tur"), "Saat": dn.get("saat"), "Üretim girdisi": u["gerceklesen"].get("secim_etiket"), "Hesap sözlüğü": meta.get("sozluk_surumu"),
+                            "Hesap durumu": ("gece kaydı" if sonuc.get("kayitli") else "senaryo (kaydedilmez)" if meta.get("senaryo") else "anlık hesap (kaydedilmedi)"),
+                            "Hesap zamanı": sonuc.get("hesap_zamani") or meta.get("hesap_zamani")}]).T.rename(columns={0: "Değer"})
+    bol.append(("Kimlik ve dönem", kimlik))
+    sap = u["sapma"]; g = u["gerceklesen"]; pl = u["planlanan"]
+    uretim = pd.DataFrame([{"Planlanan üretim (MWh)": pl.get("mwh"), "Program kaynağı": f"{pl.get('kaynak_etiket')} ({pl.get('bildirilen_saat')} saat bildirilen, {pl.get('oneri_saat')} saat öneri)",
+                            "Gerçekleşen üretim (MWh)": g.get("mwh"), "Ölçülen saat": f"{g.get('saat')} / {g.get('beklenen_saat')}", "Ölçüm sınırı": g.get("sinir_etiket"),
+                            "Ölçüm kapsaması (%)": (g.get("kapsama") or {}).get("kapsama_pct"), "Gün öncesi tahmin (MWh)": u["tahmin"].get("mwh"),
+                            "Üretim ve program farkı (MWh)": sap.get("mwh"), "Fark (%)": sap.get("pct"), "Yön": sap.get("yon"), "Ortak saat": sap.get("ortak_saat")}]).T.rename(columns={0: "Değer"})
+    bol.append(("Üretim ve program", uretim))
+    bil = pd.DataFrame([{"Bileşen": b["ad"], "Net (TL)": b["tutar_tl"], "Alacak (TL)": b["alacak_tl"], "Borç (TL)": b["borc_tl"], "Nitelik": FINANS_NITELIK_AD.get(b["nitelik"], b["nitelik"]),
+                         "Toplama girer": "evet" if b["toplanir"] else "hayır", "Kapsam (saat)": (f"{b['kapsam_saat']} / {b['beklenen_saat']}" if b.get("kapsam_saat") is not None and b.get("beklenen_saat") else "—"),
+                         "Kaynak": b.get("kaynak") or "—", "Kural sürümü": b.get("kural_surumu") or "—"} for b in sonuc["bilesenler"]])
+    bol.append(("Finansal sonuç bileşenleri", bil))
+    bol.append(("Toplam", f"<b>{_tl(top.get('tutar_tl'))}</b> net (alacak {_tl(top.get('alacak_tl'))}, borç {_tl(top.get('borc_tl'))}); nitelik <b>{FINANS_NITELIK_AD.get(top.get('nitelik'), top.get('nitelik'))}</b>; "
+                f"toplanan: {', '.join(top.get('giren') or []) or 'yok'}; eksik: {', '.join(top.get('eksik') or []) or 'yok'}. {sonuc.get('toplam_etiket')}."))
+    r = uz.get("resmi") or {}
+    if r.get("bilesenler"):
+        satir = []
+        for b in r["bilesenler"]:
+            kod = "dengesizlik" if b["kod"] == "dengesizlik_resmi" else "kupst"
+            hes = next((x for x in uz["bilesenler"] if x["kod"] == kod), {})
+            satir.append({"Kalem": hes.get("ad") or kod, "PVQuant (TL)": hes.get("tutar_tl"), "EPİAŞ bildirimi (TL)": b["tutar_tl"], "Fark (TL)": (r.get("fark") or {}).get(kod),
+                          "Mutabakat durumu": (r.get("durum") or {}).get(kod), "Not": " ".join(b.get("notlar") or [])})
+        bol.append(("Resmî bildirimle karşılaştırma", pd.DataFrame(satir)))
+        bol.append(("Mutabakat notu", f"Fark: {r.get('fark_etiket')}. Güvenilirlik: {(r.get('guvenilirlik') or {}).get('etiket') or '—'}. Bildirim: {(r.get('bildirim') or {}).get('surum_etiket') or '—'}, "
+                    f"yükleme {(r.get('bildirim') or {}).get('zaman') or '—'}." + (f" {r['eylem']}" if r.get("eylem") else "")))
+    else:
+        bol.append(("Resmî bildirimle karşılaştırma", r.get("not") or "Bu dönem için karşılaştırılacak resmî kalem yok."))
+    f = uz.get("fiyat") or {}
+    bol.append(("Fiyat kaynakları", f"EPİAŞ saatlik fiyat ve sistem yönü: {f.get('epias_saat', 0)} saat; senaryo fiyatı: {f.get('senaryo_saat', 0)} saat"
+                + (f" (sistem yönü dengede varsayıldı: {f.get('yon_varsayilan_saat')} saat)" if f.get("yon_varsayilan_saat") else "")
+                + (f"; sistem yönü eksik: {f.get('yon_eksik_saat')} saat" if f.get("yon_eksik_saat") else "") + f". Satış fiyatı: {ge['tarife'].get('etiket')}"
+                + (f", ortalama {_y(ge['tarife'].get('ortalama_fiyat_tl_mwh'), 0, ' TL/MWh')}" if ge["tarife"].get("ortalama_fiyat_tl_mwh") is not None else "") + "."))
+    poz = meta.get("pozisyon") or {}
+    bol.append(("Sözleşme varsayımları", pd.DataFrame([{"Satış tarifesi": ge["tarife"].get("etiket"), "Tarife özeti": ((meta.get("tarife") or {}).get("sha") or "tarife yok"),
+                "Piyasa pozisyonu": {"program": "satış programa eşit", "uretim": "üretildiği kadar satış", "sabit": f"sabit {poz.get('sabit_mwh')} MWh/saat"}.get(poz.get("kaynak"), poz.get("kaynak")),
+                "YEKDEM rejimi": meta.get("yekdem_rejim") or "YEKDEM dışı / belirtilmedi", "Piyasa segmenti": meta.get("segment") or "seçilmedi (lisanslı güneş varsayıldı)",
+                "LÜY istisnası": "evet" if meta.get("luy_istisna") else "hayır", "Üretim girdisi": meta.get("uretim_girdisi"), "Senaryo": (meta.get("senaryo") or {}).get("etiket") or "yok"}]).T.rename(columns={0: "Değer"})))
+    dy = [{"Bileşen": b["ad"], "Kural sürümü": b.get("kural_surumu") or "—", "Dayanak": b.get("dayanak") or "—"} for b in uz.get("bilesenler") or [] if b.get("kural_surumu") or b.get("dayanak")]
+    bol.append(("Kural sürümleri ve dayanak", pd.DataFrame(dy) if dy else "Uzlaştırma kuralı uygulanmadı (hesaplanabilir saat yok)."))
+    th = du.get("tahmin_hatasi") or {}
+    if du.get("siniflar"):
+        sinif = pd.DataFrame([{"Neden sınıfı": x["ad"], "Saat": x["saat"], "Kayıp (kWh)": x.get("kayip_kwh"), "Gelir kaybı tahmini (TL)": x.get("kayip_tl")} for x in du["siniflar"] if x.get("saat")])
+        bol.append(("Üretim düşüklüğü", sinif if not sinif.empty else "Üretim düşüklüğü sınıfı yok."))
+    bol.append(("Üretim düşüklüğü notu", f"Program farkı: eksik {_y(th.get('eksik_mwh'), 1, ' MWh')}, fazla {_y(th.get('fazla_mwh'), 1, ' MWh')} ({th.get('program') or '—'}); tahmin hatası "
+                f"{_y(th.get('wmape'), 1, ' %') if th.get('wmape') is not None else 'hesaplanmadı'}; enerji performansı {_y((du.get('kayip') or {}).get('epi'), 3) if (du.get('kayip') or {}).get('epi') is not None else '—'}. "
+                + " ".join(du.get("notlar") or [])))
+    if ma.get("aralik_tl"):
+        a = ma["aralik_tl"]; o = ma.get("oran_tl_mwh") or {}
+        bol.append(("İleriye dönük maruziyet (senaryo)", pd.DataFrame([{"Ufuk": f"{(ma.get('ufuk') or {}).get('bas')} – {(ma.get('ufuk') or {}).get('bit')}", "Program (MWh)": ma.get("program_mwh"),
+                    "Temkinli (çeyrek 1, TL)": a.get("p25"), "Orta (ortanca, TL)": a.get("p50"), "İyimser (çeyrek 3, TL)": a.get("p75"), "Oran, ortanca (TL/MWh)": o.get("p50"),
+                    "Geçmiş gün": ma.get("gecmis_gun")}]).T.rename(columns={0: "Değer"})))
+    else:
+        bol.append(("İleriye dönük maruziyet (senaryo)", " ".join(ma.get("notlar") or ["Hesaplanamadı."])))
+    on = sonuc.get("oneriler") or []
+    bol.append(("Ne yapmalı", pd.DataFrame([{"Tür": x["tur_ad"], "Gözlem": x["metin"], "Sayfa": x.get("sayfa") or "—"} for x in on]) if on else "Dikkat gerektiren gözlem yok; program, ölçüm, fiyat verisi ve bildirim bu dönem için yeterli."))
+    sinirlar = list(u.get("notlar") or []) + list(ge.get("notlar") or []) + list(uz.get("notlar") or []) + [n for b in sonuc["bilesenler"] for n in (b.get("notlar") or [])]
+    bol.append(("Veri kalitesi sınırları", "<br>".join(f"• {x}" for x in dict.fromkeys(sinirlar)) if sinirlar else "Not yok."))
+    bol.append(("Formüller", "Enerji satışı = Σ(gerçekleşen MWh × tarife fiyatı). Enerji dengesizlik tutarı = Σ saatlik EDT (EDT(+) alacak, EDT(−) borç; 19.10.2026'dan EDTA/EDTB ayrık toplama, "
+                "DUY m.110); fiyatlar P(−) = max(V, PTF, SMF)·(1+k), P(+) = min(PTF, SMF)·(1−l). KGÜP sapma tutarı = Σ KÜPSM × max(taban, PTF, SMF) × n; KÜPSM = max(0, |sapma| − m × BUDÜP). "
+                "Toplam = enerji satışı + dengesizlik + KGÜP sapma tutarı (net, artı santral lehine). Üretim düşüklüğü = Σ max(beklenen − gerçek, 0) × satış fiyatı, neden sınıfına göre (toplanmaz). "
+                "İleriye dönük maruziyet = gelecek program (MWh) × son dönemin günlük (EDT net − KÜPST) / planlanan MWh oranının çeyrekleri (toplanmaz)."))
+    bol.append(("Yeniden üretim kimliği", f"Hesap sözlüğü {meta.get('sozluk_surumu')}; kural sürümü {meta.get('kural_surumu') or '—'}; üretim girdisi {meta.get('uretim_girdisi')}; "
+                f"tarife özeti {(meta.get('tarife') or {}).get('sha') or '—'}; yazılım {meta.get('yazilim_surumu') or '—'}; kayıt {sonuc.get('id') or 'kaydedilmedi'}; hesap zamanı {sonuc.get('hesap_zamani') or meta.get('hesap_zamani')}. "
+                "Bu rapor resmî uzlaştırma belgesi değildir; EPİAŞ bildirimi esastır. Aynı dönem, aynı girdi ve aynı sözlükle aynı sonuç üretilir."))
+    rapor = rs.Rapor(baslik=f"Finansal etki raporu — {plant.get('name', '')}", donem=dn.get("etiket") or f"{dn['bas']} – {dn['bit']}", santral=plant.get("name", ""), bolumler=bol)
+    rapor.kunye = _kunye()
+    return rapor
+
+
 def uret(tenant_id, plant: dict, ad: str, fmt: str = "html", **p) -> tuple[bytes, str]:
     """fmt: html (kabuklu) | md (Markdown; v2.576 — rapor metni makine/sürüm izinde aynen)."""
     if ad not in SABLONLAR:
         raise KeyError(ad)
     r = {"kapasite-testi": kapasite_testi, "fatura": fatura, "kullanilabilirlik": kullanilabilirlik,
-         "beklenen-gerceklesen": beklenen_gerceklesen, "bagimsiz-dogrulama": bagimsiz_dogrulama}[ad](tenant_id, plant, **p)
+         "beklenen-gerceklesen": beklenen_gerceklesen, "bagimsiz-dogrulama": bagimsiz_dogrulama, "finansal-etki": finansal_etki}[ad](tenant_id, plant, **p)
     kok = f"{ad}_{plant['name'].replace(' ', '_')}_{date.today().isoformat()}"
     if fmt == "md":
         return r.markdown().encode("utf-8"), kok + ".md"

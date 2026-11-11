@@ -1,5 +1,6 @@
 -- v2.577 (Faz 1 F1-F1) — CANLI PİLOT İÇİN SALT OKUNUR TOPLU SAYIMLAR. Müşteri kimliği, e-posta, ad yazdırmaz; yalnız santral kimliği ve sayılar.
--- Koşum (sunucuda, salt okunur):  docker compose exec -T db psql -U pvquant -d pvquant -At -F' | ' -f /opt/pvquant/scripts/faz1_pilot_okuma.sql
+-- Koşum (sunucuda, salt okunur; psql db konteynerinde çalışır, dosya stdin'den verilir):
+--   cd /opt/pvquant && docker compose exec -T db psql -U pvquant -d pvquant -At -F' | ' < scripts/faz1_pilot_okuma.sql
 -- Çıktı Faz 1 kanıt klasörüne (kanit/F1-F1_canli_sayim.txt) yapıştırılır; motor (gece_bagimsiz_dogrulama) dağıtımdan sonra 30 günlük sonucu kendisi üretir.
 \echo '== santral başına tahmin koşusu (son 90 gün): sayı, ilk/son, etiket dağılımı'
 SELECT plant_id, count(*) AS kosu, min(run_at)::date AS ilk, max(run_at)::date AS son,
