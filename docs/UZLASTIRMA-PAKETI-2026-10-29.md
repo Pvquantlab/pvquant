@@ -1848,3 +1848,7 @@ sayaç girdisiyle kaydedilmiş daha yeni satır SCADA görünümünde dönmez. �
 Testler: test_finansal_etki_v2583 genişletildi (dönem sonu uyuşmazlığı None; sayaç satırı santral ayarı görünümünde dönmez, `uretim=sayac` ile döner; API aynı); rapor/aylık/tur 2
 takımları 38/38. Kalan inceleme bulguları (3–10: çift saatlik_hesap, bd.hesapla yükü, maruziyetin her kayıtta saklanması, _oneri_tamamla yüksekliği, eylem rozeti amber,
 rapor yükü, Portföy kartı yenilenmesi, oneriler meta) ayrı karar.
+
+**Mühür (v2.587, 11.11.2026 16:25 TSİ):** commit `df96350`, CI #730 yeşil (6 dk 36 s). Dağıtım ssh: `git pull` → `PVQ_SURUM=fable5-baslangic-231-gdf96350 docker compose build api worker`
+→ `up -d api worker` (web değişmedi, göç yok; 16:2x TSİ, 04:00–08:30 penceresi dışı). Canlı: api «startup complete», worker «basladi», `PVQ_SURUM` kapsayıcıda, alembic head
+v2583, `/v1/healthz` ok, kimliksiz `finansal-etki` 422, index.html birebir. Kalan inceleme bulguları 3–10 ayrı karar; 12.11 03:55 gece işinin ilk satırları ve canlı sayfa incelemesi → 08.
