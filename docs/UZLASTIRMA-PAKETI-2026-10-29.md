@@ -1837,3 +1837,14 @@ oturumundan okundu — panelde oturum yok). Dağıtım ssh: `git pull` → `PVQ_
 `finansal-etki` ve `portfoy/finansal-etki` 422; api «startup complete», worker «basladi»; `PVQ_SURUM` kapsayıcıda; `IZLENEN_ISLER`/`ISIM_TR` gece_finansal_etki; tablo
 `finansal_etki_sonuc` 0 satır, RLS enable+force, yetkiler pvq_app S/I · pvq_api S/I/U/D (varsayılan ayrıcalık) · pvquant sahip; varlık bayt kıyası 141/141 + index.html
 birebir. İlk gece işi 12.11 03:55 TSİ; Finansal etki sayfasının canlı veriyle incelemesi ve 08'e canlı kanıt sonraya. DERS: `gh` yerelde yok; GitHub günlüğü için kullanıcı ekranı.
+
+## Yetmiş yedinci paket — v2.587 (11.11.2026): mühür sonrası inceleme düzeltmeleri 1–2 — kayıtlı sonuçta dönem sonu eşleşmesi ve etkin üretim girdisi
+
+Durum: YERELDE UYGULANDI, mühür bekliyor. Kaynak: v2.586 mühür sonrası /code-review (10 bulgu), kullanıcı «Evet, ikisini düzelt».
+`finansal_etki_service.son(..., donem_bit=None, plant=None)`: dönem sonu verilirse kaydın `donem_bit`'i eşleşmeli (süren ayda dünkü kısmi kayıt bugünkü görünüm için
+dönmez; gece işi yeni kaydı yazana kadar anında hesap); `etkin_uretim(plant, uretim)`: üretim verilmezse santral ayarındaki girdi (`uzlastirma_girdi`) ile süzülür —
+sayaç girdisiyle kaydedilmiş daha yeni satır SCADA görünümünde dönmez. Çağrı noktaları: API `finansal-etki` (`_fe_donem_dict` ile dönem sonu + santral), `report_service`,
+`sablon_rapor_service.finansal_etki`, `aylik_rapor_service.finansal`. Geriye uyumluluk: `plant` ve `donem_bit` verilmezse eski davranış.
+Testler: test_finansal_etki_v2583 genişletildi (dönem sonu uyuşmazlığı None; sayaç satırı santral ayarı görünümünde dönmez, `uretim=sayac` ile döner; API aynı); rapor/aylık/tur 2
+takımları 38/38. Kalan inceleme bulguları (3–10: çift saatlik_hesap, bd.hesapla yükü, maruziyetin her kayıtta saklanması, _oneri_tamamla yüksekliği, eylem rozeti amber,
+rapor yükü, Portföy kartı yenilenmesi, oneriler meta) ayrı karar.

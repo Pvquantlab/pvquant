@@ -3138,12 +3138,16 @@ def portfoy_bagimsiz_dogrulama(gun: int = 30, kural: str = "program", claims=Dep
     return bd.portfoy(claims["tenant_id"], plants, gun=gun, kural=kural)
 
 
-def _fe_donem(row: dict, donem: str | None) -> str:
+def _fe_donem_dict(row: dict, donem: str | None) -> dict:
     from pvquant.ext.platform import finans as fn
     try:
-        return fn.donem_cozumle(donem, tz=row.get("tz") or fn.IST_AD)["kod"]
+        return fn.donem_cozumle(donem, tz=row.get("tz") or fn.IST_AD)
     except ValueError as e:
         raise HTTPException(422, str(e)) from e
+
+
+def _fe_donem(row: dict, donem: str | None) -> str:
+    return _fe_donem_dict(row, donem)["kod"]
 
 
 def _fe_uretim(uretim: str | None) -> str | None:
@@ -3163,9 +3167,9 @@ def finansal_etki(plant_id: str, donem: str | None = None, uretim: str | None = 
     row = plant_service.getir(claims["tenant_id"], plant_id)
     if row is None:
         raise HTTPException(404, "santral yok")
-    kod = _fe_donem(row, donem); ur = _fe_uretim(uretim)
+    d = _fe_donem_dict(row, donem); kod = d["kod"]; ur = _fe_uretim(uretim)
     if not taze:
-        s = fe.son(claims["tenant_id"], plant_id, kod, ur)
+        s = fe.son(claims["tenant_id"], plant_id, kod, ur, donem_bit=d["bit"], plant=row)   # v2.587: dönem sonu ve santral ayarındaki girdiyle eşleşen kayıt
         if s:
             return s
     return fe.ozet(claims["tenant_id"], row, kod, ur)

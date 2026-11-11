@@ -397,7 +397,7 @@ def _finansal_etki(tenant_id, plant: dict, donem: str | None = None) -> dict | N
     try:
         from pvquant.services import finansal_etki_service as fe
         d = fe.donem(plant, donem)
-        s = fe.son(tenant_id, plant["id"], d["kod"]) or fe.ozet(tenant_id, plant, d["kod"])
+        s = fe.son(tenant_id, plant["id"], d["kod"], donem_bit=d["bit"], plant=plant) or fe.ozet(tenant_id, plant, d["kod"])   # v2.587
         return s if ((s.get("uretim") or {}).get("gerceklesen") or {}).get("saat") else None
     except Exception as e:   # noqa: BLE001
         print("[rapor][finansal_etki] atlandı:", type(e).__name__, e)

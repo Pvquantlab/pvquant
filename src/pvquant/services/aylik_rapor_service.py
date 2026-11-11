@@ -250,7 +250,7 @@ def finansal(tenant_id, plant: dict, d: dict, bugun: date | None = None) -> dict
         from pvquant.services import finansal_etki_service as fe
         from pvquant.services.sablon_rapor_service import FINANS_NITELIK_AD, finansal_durum
         kod = d["kod"]
-        s = (fe.son(tenant_id, plant["id"], kod) if bugun is None else None) or fe.ozet(tenant_id, plant, kod, bugun=bugun)
+        s = (fe.son(tenant_id, plant["id"], kod, donem_bit=d["bit"], plant=plant) if bugun is None else None) or fe.ozet(tenant_id, plant, kod, bugun=bugun)   # v2.587
         kodlar = {b["kod"]: b for b in s.get("bilesenler") or []}
         top = s.get("toplam") or {}; durum, _ = finansal_durum(s)
         return {"durum": durum, "toplam_tl": top.get("tutar_tl"), "nitelik": top.get("nitelik"), "nitelik_ad": FINANS_NITELIK_AD.get(top.get("nitelik"), top.get("nitelik")),

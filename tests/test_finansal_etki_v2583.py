@@ -8,12 +8,12 @@ from datetime import date
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
+from test_finansal_etki_v2580 import santral as _santral
 
 import apps.api.main as api_main
 from apps.api.deps import gecerli_kullanici
 from pvquant.db import sistem_baglami, tenant_baglami
 from pvquant.services import finansal_etki_service as fe
-from test_finansal_etki_v2580 import santral as _santral
 
 santral = _santral   # pytest fixture'ı bu modülde ad olarak tanıtır (noqa'sız; ruff --fix içe aktarmayı silmesin)
 
@@ -32,12 +32,18 @@ def test_db_kaydet_son_gecmis_senaryo_izolasyon_portfoy_api(santral, monkeypatch
     s1 = fe.son(tid, plant["id"], "2026-09-05")
     assert s1 and s1["id"] == kid and s1["kayitli"] is True and s1["toplam"]["tutar_tl"] == o["toplam"]["tutar_tl"] and s1["uretim"]["gerceklesen"]["saat"] == 23
     assert fe.son(tid, plant["id"], "2026-09-05", uretim="sayac") is None and fe.son(tid, plant["id"], "2026-09-06") is None
+    # v2.587 (inceleme 1): dönem sonu eşleşmeli — süren dönemde dünkü kısmi kayıt bugünkü görünüm için dönmez
+    assert fe.son(tid, plant["id"], "2026-09-05", donem_bit=date(2026, 9, 6)) is not None and fe.son(tid, plant["id"], "2026-09-05", donem_bit=date(2026, 9, 7)) is None
+    # v2.587 (inceleme 2): üretim verilmezse santral ayarındaki girdi (SCADA) süzer — sayaç girdisiyle kaydedilmiş daha yeni satır dönmez
+    sy = fe.ozet(tid, plant, "2026-09-05", uretim="sayac", bugun=BUGUN); kid_sy = fe.kaydet(tid, sy, plant["id"])
+    assert fe.son(tid, plant["id"], "2026-09-05", plant=plant)["id"] != kid_sy and fe.son(tid, plant["id"], "2026-09-05", uretim="sayac")["id"] == kid_sy
+    assert fe.son(tid, plant["id"], "2026-09-05")["id"] == kid_sy   # plant verilmezse eski davranış: en yeni satır
     assert fe.son(tid, plant["id"], "2026-09-05", azami_yas_saat=0.0) is None   # bayat
     kid2 = fe.kaydet(tid, o, plant["id"])
     g = fe.gecmis(tid, plant["id"], "2026-09-05")
-    assert [x["id"] for x in g] == [kid2, kid] and g[0]["varsayimlar"]["tarife"]["tip"] == "sabit" and g[0]["varsayimlar"]["kural_surumu"] and g[0]["toplam"]["giren"][0] == "satis_geliri"
+    assert [x["id"] for x in g] == [kid2, kid_sy, kid] and g[0]["varsayimlar"]["tarife"]["tip"] == "sabit" and g[0]["varsayimlar"]["kural_surumu"] and g[0]["toplam"]["giren"][0] == "satis_geliri"
     with sistem_baglami() as c:
-        assert c.execute(text("SELECT count(*) FROM finansal_etki_sonuc WHERE tenant_id=:t"), {"t": tid}).scalar() == 2
+        assert c.execute(text("SELECT count(*) FROM finansal_etki_sonuc WHERE tenant_id=:t"), {"t": tid}).scalar() == 3
     # senaryo: EDT/KÜPST senaryo damgası, kaydet reddeder, sabit pozisyon
     sn = fe.senaryo(tid, plant, "2026-09-05", "uretim", bugun=BUGUN)
     kod = {b["kod"]: b for b in sn["bilesenler"]}
@@ -57,7 +63,7 @@ def test_db_kaydet_son_gecmis_senaryo_izolasyon_portfoy_api(santral, monkeypatch
         with tenant_baglami(tid2) as c:
             assert c.execute(text("SELECT count(*) FROM finansal_etki_sonuc")).scalar() == 0
         with tenant_baglami(tid) as c:
-            assert c.execute(text("SELECT count(*) FROM finansal_etki_sonuc")).scalar() == 2
+            assert c.execute(text("SELECT count(*) FROM finansal_etki_sonuc")).scalar() == 3
     finally:
         with sistem_baglami() as c:
             c.execute(text("DELETE FROM tenants WHERE id=:t"), {"t": tid2})
@@ -72,7 +78,8 @@ def test_db_kaydet_son_gecmis_senaryo_izolasyon_portfoy_api(santral, monkeypatch
     api_main.app.dependency_overrides[gecerli_kullanici] = lambda: {"sub": "u", "tenant_id": tid, "role": "viewer", "exp": 0}
     try:
         c = TestClient(api_main.app)
-        r = c.get(f"/v1/plants/{plant['id']}/finansal-etki?donem=2026-09-05"); assert r.status_code == 200 and r.json()["kayitli"] is True and r.json()["id"] == kid2
+        r = c.get(f"/v1/plants/{plant['id']}/finansal-etki?donem=2026-09-05"); assert r.status_code == 200 and r.json()["kayitli"] is True and r.json()["id"] == kid2   # v2.587: sayaç satırı (daha yeni) değil, santral ayarı SCADA satırı
+        r = c.get(f"/v1/plants/{plant['id']}/finansal-etki?donem=2026-09-05&uretim=sayac"); assert r.status_code == 200 and r.json()["id"] == kid_sy
         with monkeypatch.context() as mp:   # anında hesap yolu: ozet taklidi yalnız bu iki çağrı için (senaryo gerçek ozet'i kullanır)
             mp.setattr(fe, "ozet", lambda *a, **k: o)
             r = c.get(f"/v1/plants/{plant['id']}/finansal-etki?donem=2026-09-05&taze=1"); assert r.status_code == 200 and r.json()["kayitli"] is False
@@ -81,7 +88,7 @@ def test_db_kaydet_son_gecmis_senaryo_izolasyon_portfoy_api(santral, monkeypatch
         assert c.get(f"/v1/plants/{plant['id']}/finansal-etki?donem=2027-01").status_code == 422   # gelecek dönem
         assert c.get(f"/v1/plants/{plant['id']}/finansal-etki?donem=2026-09-05&uretim=x").status_code == 422
         assert c.get(f"/v1/plants/{uuid.uuid4()}/finansal-etki").status_code == 404
-        r = c.get(f"/v1/plants/{plant['id']}/finansal-etki/gecmis?donem=2026-09-05"); assert r.status_code == 200 and len(r.json()["surumler"]) == 2
+        r = c.get(f"/v1/plants/{plant['id']}/finansal-etki/gecmis?donem=2026-09-05"); assert r.status_code == 200 and len(r.json()["surumler"]) == 3
         assert c.get(f"/v1/plants/{plant['id']}/finansal-etki/gecmis?donem=2026-09-05&n=0").status_code == 422
         r = c.get(f"/v1/plants/{plant['id']}/finansal-etki/senaryo?donem=2026-09-05&pozisyon=uretim"); assert r.status_code == 200 and r.json()["meta"]["senaryo"]["pozisyon"]["kaynak"] == "uretim"
         assert c.get(f"/v1/plants/{plant['id']}/finansal-etki/senaryo?donem=2026-09-05&pozisyon=x").status_code == 422
@@ -93,7 +100,7 @@ def test_db_kaydet_son_gecmis_senaryo_izolasyon_portfoy_api(santral, monkeypatch
     finally:
         api_main.app.dependency_overrides.clear()
     with sistem_baglami() as c:   # API ve senaryo çağrıları yeni satır yazmadı (yalnız gece işi/kaydet yazar)
-        assert c.execute(text("SELECT count(*) FROM finansal_etki_sonuc WHERE tenant_id=:t"), {"t": tid}).scalar() == 2
+        assert c.execute(text("SELECT count(*) FROM finansal_etki_sonuc WHERE tenant_id=:t"), {"t": tid}).scalar() == 3
 
 
 def test_db_gece_isi_olcum_yoksa_atlar(santral):

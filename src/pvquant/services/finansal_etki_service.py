@@ -855,15 +855,28 @@ def _satir_sonuc(r) -> dict:
             "oneriler": (r["meta_json"] or {}).get("oneriler") or [], "bilesenler": _kayitli_bilesenler(r)}
 
 
-def son(tenant_id, plant_id, donem_kodu: str, uretim: str | None = None, azami_yas_saat: float = AZAMI_YAS_SAAT) -> dict | None:
-    """Aynı dönem kodu (ve üretim girdisi) için en son kayıtlı sonuç; bayatsa None. Süren dönemde (ay başından bugüne) kayıt dönem sonu bugünkü olmalı."""
+def etkin_uretim(plant: dict | None, uretim: str | None) -> str | None:
+    """v2.587 (inceleme bulgusu 2): üretim girdisi verilmediyse santral ayarı (uzlastirma_girdi) geçerli girdidir; kayıt araması buna göre süzülür."""
+    if uretim in ("scada", "sayac"):
+        return uretim
+    return ds.uretim_secimi(plant.get("params_json")) if plant else None
+
+
+def son(tenant_id, plant_id, donem_kodu: str, uretim: str | None = None, azami_yas_saat: float = AZAMI_YAS_SAAT, donem_bit: date | None = None,
+        plant: dict | None = None) -> dict | None:
+    """Aynı dönem kodu için en son kayıtlı sonuç; bayatsa None.
+    v2.587 (inceleme bulguları 1–2): `donem_bit` verilirse kaydın dönem sonu onunla eşleşmeli — süren ayda dünkü kısmi kayıt bugünkü görünüm için kullanılmaz;
+    `uretim` verilmezse ve `plant` verildiyse santral ayarındaki girdiyle süzülür (sayaç girdisiyle kaydedilmiş satır SCADA görünümünde dönmez)."""
     from sqlalchemy import text
 
     from pvquant.db import tenant_baglami
     kod = str(donem_kodu).strip().upper()
+    ur = etkin_uretim(plant, uretim)
+    kosul = "AND uretim_girdisi = :u " if ur else ""
+    kosul += "AND donem_bit = :b " if donem_bit is not None else ""
+    prm = {"p": plant_id, "k": kod, **({"u": ur} if ur else {}), **({"b": donem_bit} if donem_bit is not None else {})}
     with tenant_baglami(tenant_id) as s:
-        r = s.execute(text("SELECT * FROM finansal_etki_sonuc WHERE plant_id = CAST(:p AS uuid) AND donem_kodu = :k " + ("AND uretim_girdisi = :u " if uretim else "")
-                           + "ORDER BY hesap_zamani DESC LIMIT 1"), {"p": plant_id, "k": kod, **({"u": uretim} if uretim else {})}).mappings().first()
+        r = s.execute(text("SELECT * FROM finansal_etki_sonuc WHERE plant_id = CAST(:p AS uuid) AND donem_kodu = :k " + kosul + "ORDER BY hesap_zamani DESC LIMIT 1"), prm).mappings().first()
     if r is None or (datetime.now(timezone.utc) - r["hesap_zamani"]).total_seconds() > azami_yas_saat * 3600:
         return None
     return _satir_sonuc(r)

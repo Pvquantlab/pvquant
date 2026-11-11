@@ -311,7 +311,7 @@ def finansal_etki(tenant_id, plant: dict, donem: str | None = None, uretim: str 
     from pvquant.services import finansal_etki_service as fe
     if sonuc is None:
         d = fe.donem(plant, donem, bugun)
-        sonuc = (fe.son(tenant_id, plant["id"], d["kod"], uretim) if bugun is None else None) or fe.ozet(tenant_id, plant, d["kod"], uretim, bugun)
+        sonuc = (fe.son(tenant_id, plant["id"], d["kod"], uretim, donem_bit=d["bit"], plant=plant) if bugun is None else None) or fe.ozet(tenant_id, plant, d["kod"], uretim, bugun)   # v2.587
     dn = sonuc["donem"]; u = sonuc["uretim"]; top = sonuc["toplam"]; uz = sonuc["uzlastirma"]; ge = sonuc["gelir"]; du = sonuc.get("dusukluk") or {}; ma = sonuc.get("maruziyet") or {}
     meta = sonuc["meta"]; durum, aciklama = finansal_durum(sonuc)
     bol: list = []
