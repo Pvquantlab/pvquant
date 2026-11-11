@@ -1852,3 +1852,35 @@ rapor yükü, Portföy kartı yenilenmesi, oneriler meta) ayrı karar.
 **Mühür (v2.587, 11.11.2026 16:25 TSİ):** commit `df96350`, CI #730 yeşil (6 dk 36 s). Dağıtım ssh: `git pull` → `PVQ_SURUM=fable5-baslangic-231-gdf96350 docker compose build api worker`
 → `up -d api worker` (web değişmedi, göç yok; 16:2x TSİ, 04:00–08:30 penceresi dışı). Canlı: api «startup complete», worker «basladi», `PVQ_SURUM` kapsayıcıda, alembic head
 v2583, `/v1/healthz` ok, kimliksiz `finansal-etki` 422, index.html birebir. Kalan inceleme bulguları 3–10 ayrı karar; 12.11 03:55 gece işinin ilk satırları ve canlı sayfa incelemesi → 08.
+
+## Yetmiş sekizinci paket — v2.588 (11.11.2026): Faz 3 — Toplayıcı ve DSG portföy yönetimi toplu mühür (F3-A…I) — ŞEMA
+Durum: MÜHÜRLENDİ. Kaynak: ChatGPT «Phase 3 — Aggregator and DSG Portfolio Management» brief'i (11.11); belgeler `~/Desktop/PVQuant_Faz3_Portfoy_DSG` (00 plan, 05 mevzuat künyesi,
+07 test turları, 08 teslim raporu: FAZ 3 KISMEN TAMAMLANDI — 16 ölçütten 13 tamamlandı, 3 kısmen). Kullanıcı her paketi ayrı onayladı («Evet, F3-A'dan başla» … «Evet, F3-I'ya geç»), «Mühürle».
+Şema v2588_portfoy_varliklari (revises v2583): `kurulus`, `portfoy`, `portfoy_uyelik` (tarihli; kaynak beyan/belge/paylaşım; doğrulama beyan›belgeli›doğrulandı; belge + SHA), `dsg_grubu`,
+`toplayici_kapsami`, `ticari_sozlesme`, `portfoy_sonuc` (yalnız ekleme; üyelik/sözleşme anlık görüntüsü meta'da). RLS ENABLE+FORCE; ana veride pvq_app S/I/U (silme yok, tarihle
+kapatma), sonuçta S/I. `portfoy_varlik_service`: çakışma/uyumsuzluk reddi (aynı tarihte iki DSG; toplayıcı↔DSG DUY m.20(4); dengesizlik taşımayan segment; portföy aralığı), 8 denetim
+eylemi; `dsg_gruplari(santraller, uyelikler)` üyelik tablosu beyanı ezer, yoksa beyan (geriye uyumlu).
+Tahmin: `ext/tahmin/portfoy_belirsizlik` (saf) — ortak saat kümesi, Schäfer–Strimmer büzülmüş korelasyon (≥14 gün; yoksa ρ=1 «yetersiz veri»), iki yönlü birleşik bant + naif/bağımsız
+sınırlar, günlük ampirik kantil, dönem bootstrap, kapsama sınavı PICP80∈[70,90] ≥30 gün → «doğrulandı»; `portfoy_tahmin_service` (koşu kuralı son/gün öncesi/program/gün içi, tazelik,
+`dogrulama_sonuc` portföy satırı kural `portfoy_gun_oncesi`). Naif P10/P90 toplamı aralık olarak sunulmaz; eski `/v1/portfoy/tahmin` değişmedi (B11 ayrı karar).
+Sapma/risk: `ext/platform/portfoy_sapma` + servis — program sapması / tahmin hatası / fizik sapması ayrı, eksik saat 0 sayılmaz, katkılar Σ = portföy, fiziksel netleşme (finansal değil),
+maruziyet saatleri gösterge, kapsama tam/kısmi/yetersiz, gelecek risk etiketleri. DSG: `ext/platform/dagitim` + `portfoy_dsg_service` — `dsg_hesapla_df` DOKUNULMADI; üç perspektif
+(bağımsız / DSG içi / sözleşmesel), 5 anahtar (+ ücretler), Σ pay = grup, KÜPST dağılım dışı, «Sözleşmeye dayalı» yalnız doğrulanmış belgeli sözleşmede, aksi «Varsayımsal maliyet
+dağılımı»; kural künyesi (eşik, Geçici m.39, 2027 bayrağı). Revizyon: `ext/platform/portfoy_oneri` (12 kural, etiketler doğrulanmış/tahmini/eksik bilgi/fırsat geçti, brief cümleleri
+birebir) + `portfoy_revizyon_service` (KGÜP 14:00–15:30, gün içi düzeltme teslimat −1 sa +30 dk; maruziyet oranı senaryo; otomatik bildirim/emir yok).
+Kayıt/API: worker `gece_portfoy` 04:05 TSİ (küresel: kiracı × portföy; kapsama, sapma dün+ay, DSG, finans, tahmin); `/v1/kuruluslar`, `/v1/portfoyler` (+uyeler), `/v1/sozlesmeler`
+(okuma editor/admin, yazma admin), hesap uçları tahmin/kapsama/sapma/risk/dsg/revizyon/finansal-etki/gecmis; 422/404. FEM: `ext/platform/portfoy_finans` + servis — Σ aynı kod, çift
+sayım bekçisi, DSG içi EDT yerine koyma (`toplam_dsg`), resmî fark, sınıflar; `fe.portfoy()` gece kaydını kullanır + `tum_santral` MWh (B13). JSON dış şeması değişmedi.
+Web: `sayfalar/Portfoyler.tsx` «Portföy yönetimi» (nav `portfoyler`, açık yüz, santral seçimsiz): 4 KPI, santral katkıları, portföy riski, revizyon önerileri, üyeler/DSG/sözleşmeler
+(üç perspektif künye), finansal bileşenler, düzenleme formları (sözleşme yalnız admin); `lib/donem.ts` ortak dönem seçici; Portföy DSG kartına üyelik kaynağı notu; sahte API
+`portfoyRotasi`; kareler 375/768/1440 taşma 0. Yeni bulgular (ayrı karar): B9 katılımcı birleştirmesinde KÜPST birimi, B10 DSG içi KÜPST'te UEÇM, B11, B12; Faz 2 B1–B8 sürüyor.
+Testler: 40 yeni Faz 3 testi (14 dosya; ρ=0,9/0,2/−0,5 kapsama sınavı %72–88 hedefte, naif >%90 şişirir; NREL 3 santral); tam Python takımı 1.238 geçti, 1 atlandı, 0 başarısız;
+web 104/104, tsc -b 0, oxlint yeni uyarı 0. Koşulmayan: Firefox/WebKit, Playwright, canlı veri, gerçek sözleşme/EPYS.
+
+**Mühür (v2.588, 11.11.2026 21:45 TSİ):** commit `475173d` (Faz 3 toplu, v2.588–v2.596 adayları) + `6fe46f5` (CI düzeltmesi: PortfoyDsg tipinde satır içi açıklama iki alanı
+yorumlamıştı — yerel `tsc --noEmit -p .` yakalamadı, CI `tsc -b` yakaladı; ders: web denetimi CI ile aynı `npm run build` ile). CI #732 kırmızı (web tip hatası) → #733 yeşil (4 dk 55 s);
+Python test işi ikisinde de yeşil. Dağıtım ssh: `git pull` → `PVQ_SURUM=fable5-baslangic-234-g6fe46f5 docker compose build api worker web` (131 s) → göç DB SAHİBİYLE
+(`docker compose run … api alembic upgrade head`, v2583 → v2588) → `up -d api worker web` (21:40 TSİ, 04:00–08:30 penceresi dışı). Canlı: api «startup complete», worker «basladi»,
+alembic head v2588, 7 tabloda RLS enable+force ve 7 politika, grant pvq_app S/I/U (sonuç S/I) ve pvq_api S/I/U/D, `/v1/healthz` ok, kimliksiz `portfoyler` ve `finansal-etki` 422,
+index.html ve 143 asset birebir. Kalan: ilk `gece_portfoy` koşusu (12.11 04:05 TSİ) ve «Portföy yönetimi» sayfasının canlı incelemesi (oturumlu Chrome) → 08; B9/B10/B11/B12 ve
+Faz 2 B1–B8 ayrı karar.
