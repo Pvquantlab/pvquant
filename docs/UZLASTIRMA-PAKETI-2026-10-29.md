@@ -1828,3 +1828,12 @@ Belgeler `~/Desktop/PVQuant_Faz2_Finansal_Etki`: 05 Mevzuat künyesi (FEM'in dok
 çıkarımı ve 2027 rejimi belirsiz; bulgular B1–B7 ayrı onay. Faz 2 toplam yeni Python testi 80 (v2579–v2586), web dil bekçisi FinansalEtki.tsx'i tarıyor.
 Mühürde: `PVQ_SURUM=$(git describe --always) docker compose build api worker web` → göç v2583 DB sahibiyle → `up -d` (worker yeniden yaratılır; 04:00–08:30 TSİ dışında) → `/v1/healthz`
 → bayt kıyası → gece işi `gece_finansal_etki` 03:55 TSİ ilk satırlar → Finansal etki sayfası canlı inceleme → 08'e canlı kanıt.
+
+**Mühür (v2.586, 11.11.2026 13:20 TSİ):** commit `1b3f2ec` (Faz 2 toplu, v2.579–v2.586) + `5908793` (CI düzeltmesi). CI #727 kırmızı: Faz 2 dışı dalgalı test
+`test_edge_db_v2561::test_toplayici_alim_defter_ve_iptal` (gizli bölüm `token_urlsafe` «_» içerince `split("_")[2]` tek harf kaldı, UUID/özet alanlarında rastgele geçti) →
+`split("_", 2)[2]`; tanı için taze CI benzeri DB + pvq_api rolü (88/88) ve Docker python:3.12 kopyası (80/80) koşuldu; CI #728 yeşil (4 dk 26 s; günlük kullanıcının GitHub
+oturumundan okundu — panelde oturum yok). Dağıtım ssh: `git pull` → `PVQ_SURUM=fable5-baslangic-229-g5908793 docker compose build api worker web` → göç
+`v2583_finansal_etki_sonuc` DB sahibiyle (head) → `up -d` (api+worker+web yeniden yaratıldı, 13:1x TSİ; 04:00–08:30 penceresi dışı). Canlı: `/v1/healthz` ok; kimliksiz
+`finansal-etki` ve `portfoy/finansal-etki` 422; api «startup complete», worker «basladi»; `PVQ_SURUM` kapsayıcıda; `IZLENEN_ISLER`/`ISIM_TR` gece_finansal_etki; tablo
+`finansal_etki_sonuc` 0 satır, RLS enable+force, yetkiler pvq_app S/I · pvq_api S/I/U/D (varsayılan ayrıcalık) · pvquant sahip; varlık bayt kıyası 141/141 + index.html
+birebir. İlk gece işi 12.11 03:55 TSİ; Finansal etki sayfasının canlı veriyle incelemesi ve 08'e canlı kanıt sonraya. DERS: `gh` yerelde yok; GitHub günlüğü için kullanıcı ekranı.
