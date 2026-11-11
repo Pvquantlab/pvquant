@@ -196,7 +196,7 @@ export interface PortfoyDsg {
   santral_tl?: Record<string, number>; uretim_mwh?: number; sapma_net_mwh?: number; sapma_ayri_mwh?: number;
   pencere_gun: number; fiyat: { epias_saat: number; senaryo_saat: number }; not: string;
   /** v2.539 (EK-3 DK-258/261): DSG grupları santral kaydındaki koda göre; grup = gösterilen grup, varsayım = kod girilmemiş tek grup; dışarıda kalanlar nedeniyle */
-  grup?: string | null; grup_kaynagi?: "beyan" | "varsayim" | "uyelik";   // v2.595 (F3-H): «uyelik» = tarihli üyelik tablosu disi_nedenleri?: Record<string, string>; katilimci_notu?: string;
+  grup?: string | null; grup_kaynagi?: "beyan" | "varsayim" | "uyelik"; disi_nedenleri?: Record<string, string>; katilimci_notu?: string;   // v2.595 (F3-H): «uyelik» = tarihli üyelik tablosu
   /** v2.541 (DK-252): aynı piyasa katılımcısı kodunu taşıyan santraller tek üye olarak toplandı */ katilimci_gruplari?: Record<string, string[]>;
   gruplar?: { kod: string | null; santral: number; uyeler: string[]; n_saat: number | null; ayri_tl: number | null; net_tl: number | null; kazanc_tl: number | null; not?: string | null; secili: boolean }[];
 }
