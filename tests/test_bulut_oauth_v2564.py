@@ -175,6 +175,8 @@ def test_solaredge_oauth_baglayici_bearer_ve_yenileme(monkeypatch):
     k = SolarEdgeOAuth.token_degis(None, {"client_id": "cid-1", "client_secret": "Cok-Gizli-Secret"}, "iyi", "r", transport=tr, site_id="2951500")
     assert k["access_token"] == "AT-1" and k["refresh_token"] == "RT-1" and k["site_id"] == "2951500"
     c = SolarEdgeOAuth(transport=tr); c.kimlik_yenile = yenilenen.append
+    from pvquant.services.bulut_oauth_service import uygulama as _uyg
+    c.uygulama_getir = _uyg   # v2.603 (F4-I): io katmanı servisi içe aktarmaz; çağıran enjekte eder (bulut_cekis_service böyle kurar)
     c.giris({"access_token": "AT-eski", "refresh_token": "RT-eski", "site_id": "2951500"})
     st = c.santraller()
     assert st == [{"kimlik": "2951500", "ad": "Çatı GES", "kapasite_kwp": 480.5, "saat_dilimi": "Europe/Istanbul", "uc": "sites/{id}", "durum": "ACTIVE"}]

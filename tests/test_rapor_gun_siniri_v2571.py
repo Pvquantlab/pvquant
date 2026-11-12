@@ -9,7 +9,7 @@ import pandas as pd
 import pytest
 from sqlalchemy import text
 
-from pvquant.db import sistem_baglami
+from pvquant.db import sistem_baglami, bakim_baglami
 from pvquant.services import aylik_rapor_service as ar
 from pvquant.services import report_service as rp
 from pvquant.services import sablon_rapor_service as sr
@@ -88,7 +88,7 @@ def denver():
             s.execute(text("INSERT INTO forecast_daily(tenant_id, plant_id, gun, p50_kwh, p10_kwh, p90_kwh, run_id, saat_sayisi) VALUES(:t, :p, :g, 1300, 1100, 1500, :r, 24)"),
                       {"t": tid, "p": pid, "g": date(2025, 7, g), "r": rid})
     yield tid, {"id": pid, "name": "Golden GES", "capacity_kwp": 1000.0, "ac_limit_kw": 1000.0, "tz": tz, "params_json": {}}
-    with sistem_baglami() as s:
+    with bakim_baglami() as s:
         for t in ("forecast_daily", "forecast_runs", "scada_hourly"):
             s.execute(text(f"DELETE FROM {t} WHERE tenant_id=:t"), {"t": tid})
         s.execute(text("DELETE FROM plants WHERE id=:p"), {"p": pid}); s.execute(text("DELETE FROM tenants WHERE id=:t"), {"t": tid})

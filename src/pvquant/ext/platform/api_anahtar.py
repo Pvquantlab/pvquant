@@ -13,7 +13,8 @@ import secrets
 import time
 from dataclasses import dataclass, field
 
-KAPSAMLAR = {"tahmin:oku", "gerceklesen:oku", "rapor:indir", "kgup:oku", "alarm:oku", "santral:yaz", "gerceklesen:yaz"}   # v2.553: üretim dosyası itme
+KAPSAMLAR = {"tahmin:oku", "gerceklesen:oku", "rapor:indir", "kgup:oku", "alarm:oku", "santral:yaz", "gerceklesen:yaz",   # v2.553: üretim dosyası itme
+             "veri_kalitesi:oku", "portfoy:oku", "finans:oku"}   # v2.603 (F4-I): veri kalitesi özeti, portföy listesi, portföy finansal etkisi
 
 
 @dataclass

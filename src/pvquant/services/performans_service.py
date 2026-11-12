@@ -19,6 +19,8 @@ uygun / tarih yok. PR kartına ışınım kaynağı etiketi; «Sensör kalibrasy
 """
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 import json
 from datetime import date, datetime, timedelta, timezone
 
@@ -26,6 +28,8 @@ import numpy as np
 import pandas as pd
 
 from pvquant.ext.standart import iec61724
+from pvquant.services import kalite_sozlugu as _ks   # v2.598 (F4-C): flag süzgeci tek sözlükten
+from pvquant.services.karne_kurali import yayin_kosu_sql as _yayin_sql   # v2.597 (F4-B): yayımlanmış koşu süzgeci
 
 GAMMA_VARSAYILAN = -0.0035               # 1/°C (kristal silisyum tipik; PR kartıyla aynı)
 PR_REFERANS_ARALIK = (0.5, 0.95)
@@ -183,7 +187,7 @@ def beklenen_olculen(df: pd.DataFrame, capacity_kwp: float, pr_ref: float, gamma
     return d.reset_index(), kaynak
 
 
-def aylik_tablo(d: pd.DataFrame, capacity_kwp: float, tz: str = "Europe/Istanbul") -> list[dict]:
+def aylik_tablo(d: pd.DataFrame, capacity_kwp: float, tz: str = PIYASA_TZ) -> list[dict]:
     """SAF. beklenen_olculen çıktısından ay satırları (santral saat dilimi). Tire: ay POA kapsamı < %95 → beklenen/EPI None."""
     if d is None or d.empty:
         return []
@@ -282,7 +286,7 @@ def _hesapla(tenant_id, plant: dict, bas_yerel: date, bit_yerel: date | None, bu
     from sqlalchemy import text
     from pvquant.db import tenant_baglami
     from pvquant.services import pr_service, iklim_service
-    tz = plant.get("tz") or "Europe/Istanbul"
+    tz = plant.get("tz") or PIYASA_TZ
     pj = _pj(plant)
     cap = float(plant.get("capacity_kwp") or 0.0)
     bas_utc = pd.Timestamp(bas_yerel, tz=ZoneInfo(tz)).tz_convert("UTC")
@@ -296,11 +300,12 @@ def _hesapla(tenant_id, plant: dict, bas_yerel: date, bit_yerel: date | None, bu
     with tenant_baglami(tenant_id) as s:
         df = pd.read_sql(text(
             "SELECT ts_utc, power_kw, poa_wm2, t_air, t_module, wind_ms, flag, kirpma FROM scada_hourly "
-            "WHERE plant_id=:p AND flag IN ('valid','kisinti') AND ts_utc >= :bas AND ts_utc < :bit ORDER BY ts_utc"),
+            f"WHERE plant_id=:p AND {_ks.sql_kosulu('kayip')} AND ts_utc >= :bas AND ts_utc < :bit ORDER BY ts_utc"),
             s.connection(), params={"p": plant["id"], "bas": bas_utc.to_pydatetime(), "bit": bit_utc.to_pydatetime()}, parse_dates=["ts_utc"])
         tahmin = pd.read_sql(text(
             "SELECT DISTINCT ON (f.ts_utc) f.ts_utc, f.physics_kw FROM forecast_values f JOIN forecast_runs r ON r.id=f.run_id "
             "WHERE f.plant_id=:p AND f.ts_utc >= :bas AND f.ts_utc < :bit AND f.ts_utc - r.run_at BETWEEN INTERVAL '0 hour' AND INTERVAL '24 hour' "
+            f"AND {_yayin_sql('r')} "
             "ORDER BY f.ts_utc, r.run_at DESC"),
             s.connection(), params={"p": plant["id"], "bas": bas_utc.to_pydatetime(), "bit": bit_utc.to_pydatetime()}, parse_dates=["ts_utc"])
     if df.empty:

@@ -9,12 +9,18 @@ yalnız KGÜP yükümlü segmentte; program yükümlülüğü olmayan santrale z
 """
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 from datetime import date, timedelta
 
 import numpy as np
 import pandas as pd
 
 from pvquant.ext.platform import portfoy as pf
+from pvquant.services import kalite_sozlugu as _ks  # v2.598 (F4-C): flag süzgeci tek sözlükten
+from pvquant.services.karne_kurali import (
+    yayin_kosu_sql as _yayin_sql,  # v2.597 (F4-B): yayımlanmış koşu süzgeci
+)
 
 
 def _toplam(v: list) -> float | None:
@@ -49,7 +55,7 @@ def _son_kosu_gunleri(s, plant_id: str, tz: str) -> dict[str, dict]:
     from sqlalchemy import text
     run = s.execute(text(
         "SELECT id FROM forecast_runs WHERE plant_id=:p AND EXISTS (SELECT 1 FROM forecast_values v WHERE v.run_id=forecast_runs.id) "
-        "ORDER BY run_at DESC LIMIT 1"), {"p": plant_id}).first()
+        f"AND {_yayin_sql('forecast_runs')} ORDER BY run_at DESC LIMIT 1"), {"p": plant_id}).first()
     if not run:
         return {}
     df = pd.read_sql(text("SELECT ts_utc, p50_kw, p10_kw, p90_kw FROM forecast_values WHERE run_id=:r ORDER BY ts_utc"),
@@ -95,6 +101,7 @@ def _baglanti(pj) -> dict | None:
 
 def ozet(tenant_id) -> dict:
     from sqlalchemy import text
+
     from pvquant.db import tenant_baglami
     with tenant_baglami(tenant_id) as s:
         santraller = [dict(r._mapping) for r in s.execute(text(
@@ -103,18 +110,18 @@ def ozet(tenant_id) -> dict:
             return {"santraller": [], "toplam": None, "gun": date.today().isoformat()}
         ids = [str(p["id"]) for p in santraller]
         son_scada = {str(r.plant_id): r.son for r in s.execute(text(
-            "SELECT plant_id, max(ts_utc) AS son FROM scada_hourly WHERE flag='valid' GROUP BY plant_id"))}
+            f"SELECT plant_id, max(ts_utc) AS son FROM scada_hourly WHERE {_ks.sql_kosulu('tazelik')} GROUP BY plant_id"))}
         wmape = {str(r.plant_id): (float(r.w) if r.w is not None else None) for r in s.execute(text(
             "SELECT plant_id, avg(mape) AS w FROM skill_daily WHERE horizon_bucket='0-24' "
             "AND date >= current_date - 30 GROUP BY plant_id"))}
         # v2.264: bugün/yarın SON KOŞUDAN (forecast_daily yalnız kapanmış günlerin arşividir — canlı kontrolde tire kaldı);
         # 'bugün' santralin yerel günü (İstanbul), sunucunun UTC takvimi değil (v2.262 dersi).
-        bugun = pd.Timestamp.now(tz=santraller[0].get("tz") or "Europe/Istanbul").date(); yarin = bugun + timedelta(days=1)
+        bugun = pd.Timestamp.now(tz=santraller[0].get("tz") or PIYASA_TZ).date(); yarin = bugun + timedelta(days=1)
         bek = {str(p["id"]): _son_kosu_gunleri(s, str(p["id"]), p.get("tz") or "UTC") for p in santraller}
         alarm = {str(r.plant_id): int(r.n) for r in s.execute(text(
             "SELECT plant_id, count(*) AS n FROM alerts WHERE created_at >= now() - interval '7 days' AND acked_by IS NULL GROUP BY plant_id"))}
         kosu = {str(r.plant_id): r.son for r in s.execute(text(
-            "SELECT plant_id, max(run_at) AS son FROM forecast_runs r WHERE EXISTS (SELECT 1 FROM forecast_values v WHERE v.run_id=r.id) GROUP BY plant_id"))}
+            f"SELECT plant_id, max(run_at) AS son FROM forecast_runs r WHERE EXISTS (SELECT 1 FROM forecast_values v WHERE v.run_id=r.id) AND {_yayin_sql('r')} GROUP BY plant_id"))}
         # 29.10: yarın için müşterinin yüklediği (bildirdiğini beyan ettiği) KGÜP dosyası — «bildirildi» rozeti; tek sorgu, santral başına son kayıt
         bildirim = {str(r.plant_id): r.son for r in s.execute(text(
             "SELECT plant_id, max(olusturma) AS son FROM kgup_surum WHERE kaynak='musteri' AND teslim_gunu=:g GROUP BY plant_id"), {"g": yarin})}
@@ -126,6 +133,7 @@ def ozet(tenant_id) -> dict:
             "segment": (pj.get("segment") if isinstance(pj, dict) else None),
             "son_olcum": son_scada.get(pid).isoformat() if son_scada.get(pid) else None,
             "kesinti_gun": (int((pd.Timestamp.now(tz="UTC") - pd.Timestamp(son_scada[pid])).days) if son_scada.get(pid) else None),
+            "veri_durumu": _ks.tazelik_durumu(son_scada.get(pid)),   # v2.598 (F4-C): tazelik rozeti ortak sözlükten {kod, nitelik, etiket, yas_saat}
             "wmape_30g": (round(wmape[pid], 2) if wmape.get(pid) is not None else None),
             "bugun_kwh": (bek.get(pid, {}).get(bugun.isoformat()) or {}).get("p50_kwh"),
             "yarin_kwh": (bek.get(pid, {}).get(yarin.isoformat()) or {}).get("p50_kwh"),

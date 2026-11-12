@@ -1,10 +1,10 @@
 """PVQuant API — ince katman: HTTP -> services -> HTTP."""
+import os as _os
+
 import pandas as pd
-from fastapi import FastAPI, Depends, File, HTTPException, Request, UploadFile
-from fastapi.responses import Response   # v2.261: /kgup CSV eki modül düzeyinde kullanır
+from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
+from fastapi.responses import Response  # v2.261: /kgup CSV eki modül düzeyinde kullanır
 from pydantic import BaseModel, Field
-from apps.api.deps import gecerli_kullanici, yazma_yetkisi, yonetici_yetkisi, api_anahtari
-from pvquant.services import auth_service, plant_service
 
 # v2.364: İTHALAT ISINDIRMASI — FastAPI'nin sync uçları iş parçacığı havuzunda
 # koşar; ağır pipeline zinciri taze işçide İKİ istek tarafından aynı anda İLK
@@ -13,8 +13,13 @@ from pvquant.services import auth_service, plant_service
 # /forecast ve /fizik-terimleri aralıklı 500 — panel "gelip gidiyor"). Zincir
 # burada, açılışta tek iş parçacığıyla bir kez yüklenir; istekler hazır bulur.
 import pvquant.pipeline.calibration  # noqa: F401,E402  (forecast+utils+validation zincirini kökten yükler)
+from apps.api.deps import api_anahtari, gecerli_kullanici, yazma_yetkisi, yonetici_yetkisi
+from pvquant.services import auth_service, plant_service
+from pvquant.services.karne_kurali import (
+    yayin_kosu_sql as _yayin_sql,  # v2.597 (F4-B): yayımlanmış koşu süzgeci
+)
+from pvquant.zaman import PIYASA_TZ
 
-import os as _os
 try:
     import sentry_sdk
     if _os.environ.get("PVQ_SENTRY_DSN"):
@@ -32,8 +37,9 @@ app = FastAPI(title="PVQuant API", version="0.1",
 
 # v2.73-B: dev SPA (vite, :5173) tarayici kapisi. Prod'da SPA ayni alan
 # adindan (Caddy /v1) sunulur — oraya CORS gerekmez; liste env ile dar tutulur.
-from fastapi import Header as _Header   # v2.561: toplayıcı anahtarı başlığı
+from fastapi import Header as _Header  # v2.561: toplayıcı anahtarı başlığı
 from fastapi.middleware.cors import CORSMiddleware
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_os.environ.get(
@@ -45,14 +51,88 @@ app.add_middleware(
 
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from apps.api.hiz import limiter, paylasimli_sinir   # 24.10 Faz 1: yonetim yönlendiricisiyle paylaşılır
+
+from apps.api.hiz import (  # 24.10 Faz 1: yonetim yönlendiricisiyle paylaşılır
+    limiter,
+    paylasimli_sinir,
+)
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # 24.10 Faz 1: platform yönetimi (/v1/yonetim/*) — ayrı kapsam, ayrı yönlendirici
-from apps.api.yonetim import yonetim as _yonetim   # noqa: E402
-from pvquant.services import denetim_service as _denetim   # noqa: E402
+from apps.api.yonetim import yonetim as _yonetim  # noqa: E402
+from pvquant.services import denetim_service as _denetim  # noqa: E402
+
+
+def _ayar_izi(eylem: str, claims: dict, plant_id, eski_pj, yeni_pj, ek: dict | None = None) -> None:
+    """v2.602 (F4-H): santral ayarı değişikliği izi — {degisen: {alan: {eski, yeni}}, ayar_sha: {eski, yeni}} standardı; iz, kapı değildir."""
+    _denetim.ayar_degisikligi_kaydet(eylem, aktor_id=claims.get("sub"), tenant_id=claims["tenant_id"], plant_id=str(plant_id), eski_pj=eski_pj or {}, yeni_pj=yeni_pj or {}, ek=ek)
+
+
+# ---------------------------------------------------------------- v2.603 (F4-I): dış API sözleşmesi ---------------------------------------------
+DIS_API_SEMA = "2026-11-12"   # dış API şema sürümü: her /v1/dis yanıtında X-PVQuant-Schema başlığı; yeni uçların gövdesinde schema_version
+_DIS_HATA_KODU = {400: "istek_gecersiz", 401: "anahtar_gecersiz", 403: "kapsam_yetersiz", 404: "bulunamadi", 409: "kosu_yok", 413: "dosya_buyuk",
+                  422: "istek_gecersiz", 429: "oran_siniri", 500: "sunucu_hatasi", 503: "hizmet_disi"}
+
+
+def _dis_hata(durum: int, kod: str, mesaj: str) -> HTTPException:
+    """Dış API hata gövdesi {detail, kod, schema_version} (istisna işleyicisi kodu okur)."""
+    return HTTPException(durum, {"detail": mesaj, "kod": kod})
+
+
+def _dis_santral(anahtar: dict, plant_id: str) -> dict:
+    """Dış API santral çözümleyici: kiracıda yoksa 404 `santral_yok`; anahtarın santral kapsamı (plant_ids) dışındaysa 403 `santral_kapsam_disi`."""
+    from pvquant.services import api_anahtar_service
+    row = plant_service.getir(anahtar["tenant_id"], plant_id)
+    if row is None:
+        raise _dis_hata(404, "santral_yok", "santral yok")
+    if not api_anahtar_service.santral_izinli(anahtar, row["id"]):
+        raise _dis_hata(403, "santral_kapsam_disi", "santral bu anahtarın kapsamında değil")
+    return row
+
+
+from fastapi.exception_handlers import http_exception_handler as _varsayilan_http_hata  # noqa: E402
+from fastapi.exception_handlers import request_validation_exception_handler as _varsayilan_dogrulama_hata  # noqa: E402
+from fastapi.exceptions import RequestValidationError as _DogrulamaHatasi  # noqa: E402
+from starlette.exceptions import HTTPException as _StarletteHTTP  # noqa: E402
+
+
+@app.exception_handler(_StarletteHTTP)
+async def _dis_http_hata(request: Request, exc: _StarletteHTTP):
+    """/v1/dis yolunda hata gövdesi {detail, kod, schema_version}; diğer yollar FastAPI varsayılanı (değişmez)."""
+    if not request.url.path.startswith("/v1/dis"):
+        return await _varsayilan_http_hata(request, exc)
+    from fastapi.responses import JSONResponse
+    d = exc.detail
+    if isinstance(d, dict) and "kod" in d:
+        govde = {"detail": d.get("detail"), "kod": d["kod"]}
+    else:
+        kod = _DIS_HATA_KODU.get(exc.status_code, "hata")
+        if exc.status_code == 403 and isinstance(d, str) and "kapsam" not in d:
+            kod = "yetki_yok"
+        if exc.status_code == 409 and isinstance(d, str) and "koşu" not in d and "kosu" not in d:   # KGÜP «eksik saatler» gibi hesap çatışmaları
+            kod = "hesaplanamadi"
+        govde = {"detail": d, "kod": kod}
+    return JSONResponse({**govde, "schema_version": DIS_API_SEMA}, status_code=exc.status_code, headers=dict(exc.headers or {}))
+
+
+@app.exception_handler(_DogrulamaHatasi)
+async def _dis_dogrulama_hata(request: Request, exc: _DogrulamaHatasi):
+    if not request.url.path.startswith("/v1/dis"):
+        return await _varsayilan_dogrulama_hata(request, exc)
+    from fastapi.responses import JSONResponse
+    return JSONResponse({"detail": "istek doğrulanamadı", "kod": "istek_gecersiz", "alanlar": [{"konum": list(e.get("loc", [])), "mesaj": e.get("msg")} for e in exc.errors()],
+                         "schema_version": DIS_API_SEMA}, status_code=422)
+
+
+@app.middleware("http")
+async def _dis_sema_basligi(request: Request, call_next):
+    yanit = await call_next(request)
+    if request.url.path.startswith("/v1/dis"):
+        yanit.headers["X-PVQuant-Schema"] = DIS_API_SEMA
+    return yanit
+
 app.include_router(_yonetim)
 
 
@@ -89,7 +169,7 @@ class PlantIstek(BaseModel):
     name: str
     lat: float
     lon: float
-    tz: str = "Europe/Istanbul"
+    tz: str = PIYASA_TZ   # v2.599: tek tanım pvquant.zaman
     capacity_kwp: float
     tilt: float | None = None
     azimuth: float | None = None
@@ -109,9 +189,12 @@ def plant_ekle(p: PlantIstek, claims=Depends(yazma_yetkisi())):
     except Exception:
         raise HTTPException(422, "saat dilimi geçersiz (IANA adı bekleniyor, ör. Europe/Istanbul)")
     try:
-        return {"id": plant_service.olustur(claims["tenant_id"], **p.model_dump())}
+        pid = plant_service.olustur(claims["tenant_id"], **p.model_dump())
     except ValueError as e:   # v2.302: yinelenen ad insan diliyle döner (500 değil)
         raise HTTPException(422, str(e))
+    _denetim.kaydet("musteri", "santral_ekle", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=pid,   # v2.602 (F4-H)
+                    ayrinti={"ad": p.name, "capacity_kwp": p.capacity_kwp, "tz": p.tz})
+    return {"id": pid}
 
 
 @app.delete("/v1/plants/{plant_id}")
@@ -181,6 +264,10 @@ def forecast(plant_id: str, hours: int = 168,
         "plant_id": plant_id,
         "run_at": kosu[0].run_at.isoformat() if kosu else None,
         "mode": kosu[0].mode if kosu else None,
+        # v2.605 (F4-K): tahmin etiketi (yayin | gun_ici | elle; eski kayıtta null) ve hava tahmini kaynaklarının üretim zamanları {kaynak: ISO}
+        "etiket": (getattr(kosu[0], "etiket", None) if kosu else None),
+        "nwp_kosu_zamani": (kosu[0].nwp_kosu_zamani.isoformat() if kosu and getattr(kosu[0], "nwp_kosu_zamani", None) else None),
+        "nwp_bilesenler": (getattr(kosu[0], "nwp_bilesenler", None) if kosu else None),
         "hours": int(len(df)),
         "gunes": gunes,
         "series": [
@@ -192,6 +279,89 @@ def forecast(plant_id: str, hours: int = 168,
             for ts, r in df.iterrows()
         ],
     }
+
+
+class KunyeIstek(BaseModel):
+    """v2.599 (F4-E): yeni künye sürümü; verilmeyen alanlar önceki sürümden taşınır."""
+    gecerli_bas: str
+    dc_kwp: float | None = None
+    ac_kw: float | None = None
+    eak_kw: float | None = None
+    baglanti_turu: str | None = None
+    gerilim_kv: float | None = None
+    segment: str | None = None
+    lisans_durumu: str | None = None
+    uevcb_kod: str | None = None
+    eic: str | None = None
+    epias_santral_id: str | None = None
+    sayac_kimligi: str | None = None
+    olcum_siniri: str | None = None
+    kaynak: str = "beyan"
+    dogrulama: str = "beyan"
+    belge_adi: str | None = None
+    notlar: str | None = None
+
+
+@app.get("/v1/plants/{plant_id}/kunye")
+def santral_kunye(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """v2.599 (F4-E): tarihli santral kimliği — bugün geçerli sürüm, tarihçe, güç tanımları (DC/AC/EAK kaynaklı), beyan uyarıları, sözlük."""
+    from pvquant.services import santral_kunye_service as _sk
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    g = _sk.guncel(claims["tenant_id"], plant_id)
+    return {"plant_id": plant_id, "guncel": g, "tarihce": _sk.tarihce(claims["tenant_id"], plant_id), "guc": _sk.guc_tanimlari(row, None, g),
+            "uyarilar": _sk.beyan_uyarilari(claims["tenant_id"], row), "sozluk": _sk.sozluk()}
+
+
+@app.post("/v1/plants/{plant_id}/kunye")
+def santral_kunye_yeni(plant_id: str, p: KunyeIstek, claims=Depends(yazma_yetkisi())):
+    """v2.599 (F4-E): yeni künye sürümü (eski sürüm kapanır; plants çift yazılır; denetim izi)."""
+    from pvquant.services import santral_kunye_service as _sk
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    verilen = p.model_dump(exclude_unset=True)
+    alanlar = {k: v for k, v in verilen.items() if k in _sk.ALANLAR}
+    try:
+        if _sk.guncel(claims["tenant_id"], plant_id) is None:
+            _sk.ilk_surum(claims["tenant_id"], plant_id, dc_kwp=row["capacity_kwp"], ac_kw=row.get("ac_limit_kw"))
+        g = _sk.yeni_surum(claims["tenant_id"], plant_id, gecerli_bas=p.gecerli_bas, aktor_id=claims["sub"], kaynak=p.kaynak, dogrulama=p.dogrulama,
+                           belge_adi=p.belge_adi, notlar=p.notlar, **alanlar)
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from e
+    return {"guncel": g, "tarihce": _sk.tarihce(claims["tenant_id"], plant_id)}
+
+
+@app.get("/v1/sozluk/kalite")
+def sozluk_kalite(claims=Depends(gecerli_kullanici)):
+    """v2.598 (Faz 4 F4-C): veri kalitesi sözlüğü — nitelikler, bayrak eşlemeleri, amaç başına geçerli küme, tazelik eşiği.
+    Arayüz rozetleri ve dış API bu sözlükten okur; sürüm alanı değişince istemci etiketleri yeniler."""
+    from pvquant.services import kalite_sozlugu
+    return kalite_sozlugu.sozluk()
+
+
+@app.get("/v1/plants/{plant_id}/tahmin-arsivi")
+def tahmin_arsivi(plant_id: str, hedef: str, yayin_oncesi: str | None = None, claims=Depends(gecerli_kullanici)):
+    """v2.597 (Faz 4 F4-B) arşiv sorgusu: `hedef` saati (ISO 8601, UTC yoksa UTC sayılır) için `yayin_oncesi` anında
+    yayımlanmış olan son koşunun değeri ve koşu künyesi. «Yayımlandı» iddiası yalnız koşu zamanıyla (run_at ≤ yayin_oncesi);
+    geriye bakışlı koşular (backtest, simülasyon, sentetik, demo, yeniden kurma) hiç dönmez. Yoksa 404."""
+    import pandas as _pd
+
+    from pvquant.services import forecast_service
+    try:
+        h = _pd.Timestamp(hedef)
+        y = _pd.Timestamp(yayin_oncesi) if yayin_oncesi else None
+    except (ValueError, TypeError):
+        raise HTTPException(422, "hedef / yayin_oncesi ISO 8601 zaman olmalı") from None
+    if _pd.isna(h) or (yayin_oncesi and _pd.isna(y)):
+        raise HTTPException(422, "hedef / yayin_oncesi ISO 8601 zaman olmalı")
+    if plant_service.getir(claims["tenant_id"], plant_id) is None:
+        raise HTTPException(404, "santral yok")
+    out = forecast_service.yayimlanmis_kosu(claims["tenant_id"], plant_id, h, y)
+    if out is None:
+        raise HTTPException(404, "bu saat için o anda yayımlanmış koşu yok")
+    return {"plant_id": plant_id, **out}
 
 
 def _tarih(x):
@@ -207,8 +377,8 @@ def summary(plant_id: str, claims=Depends(gecerli_kullanici)):
     -> gunun_ozeti -> aylik_uretim. Alan adlari GununOzeti + kunye ile
     birebir; olmayan/dolmayan alan null (icat yok, sahte deger yok).
     """
-    from pvquant.services import (plant_service, ozet_service, ingest_service,
-                                  forecast_service)
+    from pvquant.services import kalite_sozlugu as _kalite   # v2.605 (F4-K)
+    from pvquant.services import forecast_service, ingest_service, ozet_service, plant_service
     row = plant_service.getir(claims["tenant_id"], plant_id)
     if row is None:
         raise HTTPException(404, "santral yok")
@@ -263,7 +433,8 @@ def summary(plant_id: str, claims=Depends(gecerli_kullanici)):
                    for e, v in zip(o.gunler, o.gunluk_mwh)],
         "saglik": {"son_scada": _tarih(o.son_scada_tarihi),
                    "islenen_saat": o.islenen_saat,
-                   "anomali": o.anomali_sayisi},
+                   "anomali": o.anomali_sayisi,
+                   "veri_durumu": _kalite.tazelik_durumu(o.son_scada_tarihi)},   # v2.605 (F4-K): tazelik rozeti ortak sözlükten
         "aylik": aylik,
     }
 
@@ -478,7 +649,8 @@ def iki_adim_durum(claims=Depends(gecerli_kullanici)):
 @app.post("/v1/iki-adim/baslat")
 def iki_adim_baslat(claims=Depends(gecerli_kullanici)):
     """Sır + QR üretir (henüz aktif değil). E-posta claims'te yok → DB'den."""
-    from pvquant.services import iki_adim_service, auth_service as au
+    from pvquant.services import auth_service as au
+    from pvquant.services import iki_adim_service
     try:
         return iki_adim_service.baslat(claims["sub"], au.eposta_getir(claims["sub"]))
     except ValueError as e:
@@ -489,9 +661,11 @@ def iki_adim_baslat(claims=Depends(gecerli_kullanici)):
 def iki_adim_dogrula(g: IkiAdimKod, claims=Depends(gecerli_kullanici)):
     from pvquant.services import iki_adim_service
     try:
-        return iki_adim_service.dogrula_ve_ac(claims["sub"], g.kod)
+        r = iki_adim_service.dogrula_ve_ac(claims["sub"], g.kod)
     except ValueError as e:
         raise HTTPException(422, str(e))
+    _denetim.kaydet("musteri", "iki_adim_ac", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="user", nesne_id=claims["sub"])   # v2.602 (F4-H); kod/sır yazılmaz
+    return r
 
 
 @app.post("/v1/iki-adim/kapat")
@@ -501,6 +675,7 @@ def iki_adim_kapat(g: IkiAdimKod, claims=Depends(gecerli_kullanici)):
         iki_adim_service.kapat(claims["sub"], g.kod)
     except ValueError as e:
         raise HTTPException(422, str(e))
+    _denetim.kaydet("musteri", "iki_adim_kapat", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="user", nesne_id=claims["sub"])   # v2.602 (F4-H)
     return {"tamam": True}
 
 
@@ -508,9 +683,11 @@ def iki_adim_kapat(g: IkiAdimKod, claims=Depends(gecerli_kullanici)):
 def iki_adim_kurtarma(g: IkiAdimKod, claims=Depends(gecerli_kullanici)):
     from pvquant.services import iki_adim_service
     try:
-        return iki_adim_service.kurtarma_yenile(claims["sub"], g.kod)
+        r = iki_adim_service.kurtarma_yenile(claims["sub"], g.kod)
     except ValueError as e:
         raise HTTPException(422, str(e))
+    _denetim.kaydet("musteri", "iki_adim_kurtarma_yenile", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="user", nesne_id=claims["sub"])   # v2.602; kodlar yazılmaz
+    return r
 
 
 @app.get("/v1/isler")
@@ -544,17 +721,21 @@ def alarm_kurallari_ayarla(plant_id: str, p: KuralIstek, claims=Depends(yazma_ye
     if plant_service.getir(claims["tenant_id"], plant_id) is None:
         raise HTTPException(404, "santral yok")
     try:
-        return alarm_service.kural_ayarla(claims["tenant_id"], plant_id, p.kurallar, p.esik, alicilar=p.alicilar)
+        r = alarm_service.kural_ayarla(claims["tenant_id"], plant_id, p.kurallar, p.esik, alicilar=p.alicilar)
     except ValueError as e:
         raise HTTPException(422, str(e))
+    _denetim.kaydet("musteri", "alarm_kural_ayar", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=plant_id,   # v2.602 (F4-H)
+                    ayrinti={"kurallar": list(p.kurallar or []), "esik": dict(p.esik or {}), "alici_sayisi": len(p.alicilar or [])})   # alıcı adresleri yazılmaz
+    return r
 
 
 @app.get("/v1/plants/{plant_id}/damga")
 def damga(plant_id: str, request: Request, claims=Depends(gecerli_kullanici)):
     """v2.265 — değişim damgası: son SCADA/koşu/alarm/skill/kalibrasyon zamanları; ETag ile If-None-Match → 304.
     İstemci yalnız damga değişince veri çeker (60 s görünür / 5 dk arka plan)."""
-    from pvquant.services import damga_service
     from fastapi.responses import JSONResponse
+
+    from pvquant.services import damga_service
     d = damga_service.hesapla(claims["tenant_id"], plant_id)
     et = damga_service.etag_uret(d)
     if request.headers.get("if-none-match") == et:
@@ -580,12 +761,18 @@ def fizik_terimleri_uc(plant_id: str, claims=Depends(gecerli_kullanici)):
 def fizik_terimleri_ayarla(plant_id: str, p: FizikIstek, claims=Depends(yazma_yetkisi())):
     """v2.274 — terimleri aç/kapa; bir sonraki koşudan itibaren geçerli (koşular güncellenmez, yenisi eklenir)."""
     from pvquant.services import fizik_service
-    if plant_service.getir(claims["tenant_id"], plant_id) is None:
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
         raise HTTPException(404, "santral yok")
+    eski = dict((row.get("params_json") or {}))
     try:
-        return fizik_service.ayar_yaz(claims["tenant_id"], plant_id, p.ayar)
+        temiz = fizik_service.dogrula(p.ayar)   # izde doğrulanmış (tür dönüşümlü) değerler karşılaştırılır; ham istek değil
+        r = fizik_service.ayar_yaz(claims["tenant_id"], plant_id, p.ayar)
     except ValueError as e:
         raise HTTPException(422, str(e))
+    _denetim.kaydet("musteri", "fizik_terim_ayar", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=plant_id,   # v2.602 (F4-H): damga dışı (tahmin katmanı)
+                    ayrinti={"degisen": {k: {"eski": eski.get(k), "yeni": v} for k, v in temiz.items() if eski.get(k) != v}})
+    return r
 
 
 @app.post("/v1/plants/{plant_id}/fizik-terimleri/onizle")
@@ -616,6 +803,7 @@ def dogrulama():
     """v2.294 — kamuya açık doğrulama karnesi (kimliksiz). Yayın operatör bayrağına bağlı;
     yalnız toplulaştırılmış sayılar çıkar, santral kimliği çıkmaz. 60 sn önbellek başlığı."""
     from fastapi.responses import JSONResponse
+
     from pvquant.services import dogrulama_service
     return JSONResponse(dogrulama_service.ozet(), headers={"Cache-Control": "public, max-age=60"})
 
@@ -714,6 +902,7 @@ def portfoy_dsg(gun: int = 30, anahtar: str = "sapma", grup: str | None = None, 
 def portfoy_dsg_csv(gun: int = 30, anahtar: str = "sapma", grup: str | None = None, claims=Depends(gecerli_kullanici)):
     """v2.522 (P2b, IH-036) — DSG üye dağılımı belgesi: üye başına EDT tek başına / bireysel / DSG içinde, netleşme farkı, KÜPST, pay (CSV)."""
     from fastapi.responses import Response
+
     from pvquant.ext.turkiye import dengesizlik as _d
     from pvquant.services import dengesizlik_service
     if not (14 <= gun <= 365):
@@ -750,6 +939,7 @@ def portfoy(claims=Depends(gecerli_kullanici)):
 def _kgup_yaniti(tenant_id: str, plant_id: str, gun: str | None, kantil: str, fmt: str, indiren=None):
     """v2.260/v2.264 — panel ve dış API'nin ortak KGÜP gövdesi. v2.502: CSV indirme arşive yazılır (kgup_arsiv_service; aynı içerik yeni sürüm açmaz)."""
     from datetime import date, timedelta
+
     from pvquant.services import kgup_service, plant_service
     if kantil not in kgup_service.KANTILLER:
         raise HTTPException(422, "kantil p10|p25|p50|p75|p90")
@@ -758,7 +948,7 @@ def _kgup_yaniti(tenant_id: str, plant_id: str, gun: str | None, kantil: str, fm
         raise HTTPException(404, "santral yok")
     # v2.262: 'yarın' santralin piyasa gününe göre (İstanbul), sunucunun UTC takvimine göre değil —
     # 21:00 UTC sonrası UTC 'bugün' hâlâ dünkü piyasa günüdür; canlı kontrolde KGÜP kartı bu yüzden boş kaldı.
-    g = date.fromisoformat(gun) if gun else (pd.Timestamp.now(tz="Europe/Istanbul").date() + timedelta(days=1))
+    g = date.fromisoformat(gun) if gun else (pd.Timestamp.now(tz=PIYASA_TZ).date() + timedelta(days=1))
     pj = row.get("params_json") or {}
     if isinstance(pj, str):
         import json as _j; pj = _j.loads(pj)
@@ -796,6 +986,7 @@ def kgup_dosyasi(plant_id: str, gun: str | None = None, kantil: str = "p50", fmt
 def kgup_surumler(plant_id: str, gun: str | None = None, n: int = 30, claims=Depends(gecerli_kullanici)):
     """v2.502 (F-06) — indirilen KGÜP dosyalarının sürüm geçmişi (yeni → eski); kayıt değiştirilemez."""
     from datetime import date as _d
+
     from pvquant.services import kgup_arsiv_service, plant_service
     if plant_service.getir(claims["tenant_id"], plant_id) is None:
         raise HTTPException(404, "santral yok")
@@ -813,6 +1004,7 @@ def kgup_bildirilen_yukle(plant_id: str, gun: str, dosya: UploadFile = File(...)
     """v2.503 (F-06) — müşterinin TPYS'ye bildirdiğini beyan ettiği KGÜP dosyası: doğrulanır, 'musteri' kaynağıyla değiştirilemez kayıt;
     TPYS kabulü doğrulanmaz (beyan). Yanıt: kayıt + öneriyle kıyas."""
     from datetime import date as _d
+
     from pvquant.services import kgup_arsiv_service, plant_service
     row = plant_service.getir(claims["tenant_id"], plant_id)
     if row is None:
@@ -842,6 +1034,7 @@ def kgup_sablon_ogren(plant_id: str, dosya: UploadFile = File(...), claims=Depen
     """29.10 (v2.506) — müşterinin EPYS/TPYS'den indirdiği KGÜP dosyasından (CSV/Excel, ≤2 MB) dışa aktarma biçimi öğrenilir:
     kolon adları/sırası, ayraç, ondalık, tarih biçimi → params_json.kgup_sablon; sonraki CSV indirmeleri bu biçimde çıkar."""
     from datetime import datetime, timezone
+
     from pvquant.ext.turkiye import kgup as kg
     from pvquant.services import kgup_service, plant_service
     row = plant_service.getir(claims["tenant_id"], plant_id)
@@ -888,6 +1081,7 @@ def kgup_revizyon(plant_id: str, claims=Depends(gecerli_kullanici)):
 def kgup_kiyas(plant_id: str, gun: str, claims=Depends(gecerli_kullanici)):
     """v2.503 (F-06) — teslim günü için son PVQuant önerisi ↔ müşterinin bildirdiği KGÜP: saat saat fark."""
     from datetime import date as _d
+
     from pvquant.services import kgup_arsiv_service, plant_service
     if plant_service.getir(claims["tenant_id"], plant_id) is None:
         raise HTTPException(404, "santral yok")
@@ -914,11 +1108,12 @@ def kgup_surum_dosyasi(plant_id: str, surum_id: str, claims=Depends(gecerli_kull
 # ------------------------------------------------------------------ v2.264: Dış API (X-API-Key) --------------
 def _son_kosu_kimligi(tenant_id: str, plant_id: str):
     from sqlalchemy import text as _t
+
     from pvquant.db import tenant_baglami as _tb
     with _tb(tenant_id) as s:
         return s.execute(_t(
             "SELECT id, run_at, mode FROM forecast_runs WHERE plant_id=:p "
-            "AND EXISTS (SELECT 1 FROM forecast_values v WHERE v.run_id=forecast_runs.id) ORDER BY run_at DESC LIMIT 1"),
+            f"AND EXISTS (SELECT 1 FROM forecast_values v WHERE v.run_id=forecast_runs.id) AND {_yayin_sql('forecast_runs')} ORDER BY run_at DESC LIMIT 1"),
             {"p": plant_id}).first()
 
 
@@ -935,9 +1130,21 @@ class SayacAyarIstek(BaseModel):
 
 @app.get("/v1/dis/santraller", tags=["Dış API"])
 def dis_santraller(anahtar=Depends(api_anahtari("tahmin:oku"))):
-    """Anahtarın kiracısındaki santraller (kimlik, ad, kurulu güç, saat dilimi)."""
-    return [{"id": str(p["id"]), "ad": p["name"], "kapasite_kwp": float(p["capacity_kwp"]), "tz": p["tz"]}
-            for p in plant_service.listele(anahtar["tenant_id"])]
+    """Anahtarın kiracısındaki santraller: kimlik, ad, kurulu güç, saat dilimi + v2.599 (F4-E) tarihli künye alanları
+    (bugün geçerli sürüm; künyesiz santralda null)."""
+    from pvquant.services import api_anahtar_service
+    from pvquant.services import santral_kunye_service as _sk
+    out = []
+    for p in plant_service.listele(anahtar["tenant_id"]):
+        if not api_anahtar_service.santral_izinli(anahtar, p["id"]):   # v2.603 (F4-I): anahtarın santral kapsamı
+            continue
+        k = _sk.guncel(anahtar["tenant_id"], p["id"]) or {}
+        out.append({"id": str(p["id"]), "ad": p["name"], "kapasite_kwp": float(p["capacity_kwp"]), "tz": p["tz"],
+                    "dc_kwp": k.get("dc_kwp", float(p["capacity_kwp"])), "ac_kw": k.get("ac_kw", p.get("ac_limit_kw")), "eak_kw": k.get("eak_kw"),
+                    "baglanti_turu": k.get("baglanti_turu"), "gerilim_kv": k.get("gerilim_kv"), "segment": k.get("segment"), "lisans_durumu": k.get("lisans_durumu"),
+                    "uevcb_kod": k.get("uevcb_kod"), "eic": k.get("eic"), "epias_santral_id": k.get("epias_santral_id"), "olcum_siniri": k.get("olcum_siniri"),
+                    "kunye_gecerli_bas": k.get("gecerli_bas"), "kunye_dogrulama": k.get("dogrulama")})
+    return out
 
 
 @app.get("/v1/dis/santral/{plant_id}/tahmin", tags=["Dış API"])
@@ -945,9 +1152,7 @@ def dis_tahmin(plant_id: str, request: Request, anahtar=Depends(api_anahtari("ta
     """Son koşunun saatlik P10/P50/P90 (kW, UTC). ETag = koşu kimliği; `If-None-Match` eşleşirse 304 (gövde yok).
     Bant yoksa alan null gelir — istemci uydurmasın."""
     from pvquant.services import forecast_service
-    row = plant_service.getir(anahtar["tenant_id"], plant_id)
-    if row is None:
-        raise HTTPException(404, "santral yok")
+    row = _dis_santral(anahtar, plant_id)   # v2.603: 404 santral_yok / 403 santral_kapsam_disi
     kosu = _son_kosu_kimligi(anahtar["tenant_id"], plant_id)
     if kosu is None:
         raise HTTPException(409, "bu santral için henüz koşu yok")
@@ -967,15 +1172,39 @@ def dis_tahmin(plant_id: str, request: Request, anahtar=Depends(api_anahtari("ta
 
 @app.get("/v1/dis/santral/{plant_id}/kgup", tags=["Dış API"])
 def dis_kgup(plant_id: str, gun: str | None = None, kantil: str = "p50", fmt: str = "json", anahtar=Depends(api_anahtari("kgup:oku"))):
-    """KGÜP saatlik program (D-1 15:30 öncesi koşudan); gün verilmezse İstanbul yarını. fmt=csv → TPYS CSV (arşive yazılır)."""
-    return _kgup_yaniti(anahtar["tenant_id"], plant_id, gun, kantil, fmt)
+    """KGÜP saatlik program (D-1 15:30 öncesi koşudan); gün verilmezse İstanbul yarını. fmt=json yan etkisiz.
+    v2.603 (F4-I): fmt=csv|eak GET ile hâlâ çalışır ama ARŞİVE YAZAR (yan etki) — `Deprecation` başlığıyla uyarılır; yeni istemciler POST /kgup kullanır."""
+    _dis_santral(anahtar, plant_id)
+    r = _kgup_yaniti(anahtar["tenant_id"], plant_id, gun, kantil, fmt)
+    if fmt != "json" and isinstance(r, Response):
+        r.headers["Deprecation"] = "true"
+        r.headers["Warning"] = '299 - "GET fmt=csv/eak arsive yazar (yan etki); POST /v1/dis/santral/{id}/kgup kullanin"'
+    return r
+
+
+class KgupUretIstek(BaseModel):
+    gun: str | None = None      # YYYY-MM-DD (İstanbul teslim günü); verilmezse yarın
+    kantil: str = "p50"
+    fmt: str = "csv"            # csv | eak
+
+
+@app.post("/v1/dis/santral/{plant_id}/kgup", tags=["Dış API"])
+def dis_kgup_uret(plant_id: str, p: KgupUretIstek, anahtar=Depends(api_anahtari("kgup:oku"))):
+    """v2.603 (F4-I): KGÜP/EAK dosyasını ÜRET ve arşivle (yan etkili işlem POST'ta): TPYS CSV gövdesi, X-PVQ-Surum / X-PVQ-SHA256 başlıkları.
+    Aynı içerik yeni sürüm açmaz. GET fmt=json önizleme yan etkisizdir."""
+    if p.fmt not in ("csv", "eak"):
+        raise _dis_hata(422, "istek_gecersiz", "fmt csv ya da eak olmalı")
+    _dis_santral(anahtar, plant_id)
+    return _kgup_yaniti(anahtar["tenant_id"], plant_id, p.gun, p.kantil, p.fmt)
 
 
 @app.get("/v1/dis/santral/{plant_id}/kgup/surumler", tags=["Dış API"])
 def dis_kgup_surumler(plant_id: str, gun: str | None = None, n: int = 30, anahtar=Depends(api_anahtari("kgup:oku"))):
     """v2.502 (F-06) — KGÜP sürüm geçmişi (indirilen dosyalar: sürüm, kaynak koşu, kesim, SHA-256)."""
     from datetime import date as _d
+
     from pvquant.services import kgup_arsiv_service
+    _dis_santral(anahtar, plant_id)
     try:
         g = _d.fromisoformat(gun) if gun else None
     except ValueError:
@@ -988,13 +1217,14 @@ def dis_gerceklesen(plant_id: str, bas: str | None = None, bit: str | None = Non
     """v2.528 (P10) — gerçekleşen üretim, saatlik kWh (UTC saat başı). kaynak=scada: geçerli SCADA ölçümü (brüt; kaynak etiketi scada_dosya /
     epias_seffaflik); kaynak=sayac: yüklü sayaç verisi (net veriş; kaynak epys/osos/mass/elle, nitelik ölçülmüş/tahmini). bas–bit Türkiye günü
     (dâhil), en çok 92 gün; verilmezse son 7 gün. Uzlaştırmaya esas UEVM değildir."""
-    from datetime import date as _d, datetime as _dt, timedelta as _td
+    from datetime import date as _d
+    from datetime import datetime as _dt
+    from datetime import timedelta as _td
+
     from pvquant.services import sayac_service
     if kaynak not in ("scada", "sayac"):
         raise HTTPException(422, "kaynak scada ya da sayac olmalı")
-    row = plant_service.getir(anahtar["tenant_id"], plant_id)
-    if row is None:
-        raise HTTPException(404, "santral yok")
+    row = _dis_santral(anahtar, plant_id)   # v2.603: 404 santral_yok / 403 santral_kapsam_disi
     try:
         b1 = _d.fromisoformat(bit) if bit else _dt.now(sayac_service.IST).date()
         b0 = _d.fromisoformat(bas) if bas else b1 - _td(days=6)
@@ -1020,13 +1250,15 @@ def dis_gerceklesen(plant_id: str, bas: str | None = None, bit: str | None = Non
 def dis_kaynak_saatlik(plant_id: str, bas: str | None = None, bit: str | None = None, sinir: str = "inverter_ac", anahtar=Depends(api_anahtari("gerceklesen:oku"))):
     """v2.559 (V4) — her saatin KAYNAK / ölçüm sınırı / NİTELİK (tam, kısmi, tahmini) / REVİZYON kimliğiyle gölge görünüm; üretim serisindeki saatle yan yana.
     bas–bit Türkiye günü (dâhil), en çok 31 gün; verilmezse son 7 gün. Tahmin ve doğruluk bu görünümü kullanmaz; uzlaştırmaya esas UEVM değildir."""
-    from datetime import date as _d, datetime as _dt, timedelta as _td
-    from pvquant.services import kaynak_secim_service as ks, sayac_service
+    from datetime import date as _d
+    from datetime import datetime as _dt
+    from datetime import timedelta as _td
+
+    from pvquant.services import kaynak_secim_service as ks
+    from pvquant.services import sayac_service
     if sinir not in ks.SINIR_ETIKET:
         raise HTTPException(422, "sinir inverter_ac | plant_gross_ac | pcc_net | settlement olmalı")
-    row = plant_service.getir(anahtar["tenant_id"], plant_id)
-    if row is None:
-        raise HTTPException(404, "santral yok")
+    row = _dis_santral(anahtar, plant_id)   # v2.603: 404 santral_yok / 403 santral_kapsam_disi
     try:
         b1 = _d.fromisoformat(bit) if bit else _dt.now(sayac_service.IST).date()
         b0 = _d.fromisoformat(bas) if bas else b1 - _td(days=6)
@@ -1059,9 +1291,7 @@ def dis_uretim_dosyasi(plant_id: str, dosya: UploadFile = File(...), anahtar=Dep
     algılama, kayıtlı şablon, doğrulama karnesi) ve geçerli saatler üretim serisine yazılır. PVQuant üçüncü taraf gizlisi saklamaz; anahtar müşterinin.
     Cihaz bazlı dosyada tekrar politikası santral ayarından (`itme.tekrar`) gelir; yoksa 422."""
     from pvquant.services import itme_service
-    row = plant_service.getir(anahtar["tenant_id"], plant_id)
-    if row is None:
-        raise HTTPException(404, "santral yok")
+    row = _dis_santral(anahtar, plant_id)   # v2.603: 404 santral_yok / 403 santral_kapsam_disi
     yol = _gecici_dosya(dosya)
     try:
         r = itme_service.dosya_isle(anahtar["tenant_id"], row, yol, dosya.filename or "uretim.csv", kanal="itme_http")
@@ -1078,9 +1308,7 @@ def dis_uretim_dosyasi(plant_id: str, dosya: UploadFile = File(...), anahtar=Dep
 def dis_alarmlar(plant_id: str, n: int = 20, anahtar=Depends(api_anahtari("alarm:oku"))):
     """v2.528 (P10) — alarm listesi (yeni → eski; en çok 200): kural kodu + Türkçe adı, şiddet, mesaj, zaman, okunma/atama."""
     from pvquant.services import alarm_service
-    row = plant_service.getir(anahtar["tenant_id"], plant_id)
-    if row is None:
-        raise HTTPException(404, "santral yok")
+    row = _dis_santral(anahtar, plant_id)   # v2.603: 404 santral_yok / 403 santral_kapsam_disi
     rows = alarm_service.listele(anahtar["tenant_id"], plant_id, max(1, min(int(n), 200)))
     return {"santral_id": str(row["id"]), "santral": row["name"], "alarmlar": [{**r, "kural_adi": alarm_service.KURAL_ETIKET.get(r["kural"], r["kural"])} for r in rows]}
 
@@ -1092,9 +1320,7 @@ def dis_rapor_donem(plant_id: str, donem: str | None = None, fmt: str = "json", 
     from pvquant.services import aylik_rapor_service
     if fmt not in ("html", "json"):
         raise HTTPException(422, "fmt html ya da json olmalı")
-    row = plant_service.getir(anahtar["tenant_id"], plant_id)
-    if row is None:
-        raise HTTPException(404, "santral yok")
+    row = _dis_santral(anahtar, plant_id)   # v2.603: 404 santral_yok / 403 santral_kapsam_disi
     plant = {"id": str(row["id"]), "name": row["name"], "capacity_kwp": row.get("capacity_kwp"), "ac_limit_kw": row.get("ac_limit_kw"), "params_json": row.get("params_json")}
     try:
         if fmt == "json":
@@ -1118,17 +1344,17 @@ def dis_ayarlar(plant_id: str, p: SayacAyarIstek, anahtar=Depends(api_anahtari("
     sistem_kullanim_bedeli_tl_ay, uzlastirma_girdi). Yalnız istekte geçen alanlar değişir, null temizler; panelin PUT sayac-ayar ile aynı doğrulama.
     Künye/segment/tarife bu kapsamda değildir (panelden)."""
     from pvquant.services import sayac_service
-    row = plant_service.getir(anahtar["tenant_id"], plant_id)
-    if row is None:
-        raise HTTPException(404, "santral yok")
+    row = _dis_santral(anahtar, plant_id)   # v2.603: 404 santral_yok / 403 santral_kapsam_disi
     try:
         an = sayac_service.ayar_dogrula(p.model_dump(exclude_unset=True))
     except ValueError as e:
         raise HTTPException(422, f"{e} alanı geçersiz")
     if not an:
         raise HTTPException(422, "değişecek alan yok")
+    eski_pj = dict(row.get("params_json") or {})
     pj = plant_service.params_birlestir(anahtar["tenant_id"], plant_id, **an)
-    _denetim.kaydet("musteri", "sayac_ayar", aktor_id=None, tenant_id=anahtar["tenant_id"], nesne_tur="plant", nesne_id=row["id"], ayrinti={**an, "api_anahtar": anahtar["prefix"]})
+    _denetim.ayar_degisikligi_kaydet("sayac_ayar", aktor_id=anahtar.get("id"), tenant_id=anahtar["tenant_id"], plant_id=str(row["id"]), eski_pj=eski_pj, yeni_pj=pj,
+                                     ek={"istek": dict(an), "api_anahtar": anahtar["prefix"]}, kapsam="dis_api")   # v2.602 (F4-H, M1): anahtarla yazma → dis_api kapsamı
     return {"santral_id": str(row["id"]), "degisen": an, "ayar": {k: (pj or {}).get(k) for k in ("sayac_turu", "scada_durum", "scada_kopukluk_baslangic", "scada_uyari_tarihi", "uzaktan_acma_var", "sistem_kullanim_bedeli_tl_ay", "uzlastirma_girdi")}}
 
 
@@ -1138,6 +1364,7 @@ class AnahtarIstek(BaseModel):
     kapsamlar: list[str]
     gecerlilik_gun: int | None = None
     rpm: int = 120
+    plant_ids: list[str] | None = None   # v2.603 (F4-I): santral kapsamı (boş/None = tüm santraller)
 
 
 class WebhookIstek(BaseModel):
@@ -1158,11 +1385,11 @@ def anahtar_uret(p: AnahtarIstek, claims=Depends(yonetici_yetkisi())):
     """Düz anahtar YALNIZ bu yanıtta; sunucu sha256 dışında hiçbir şey saklamaz."""
     from pvquant.services import api_anahtar_service
     try:
-        y = api_anahtar_service.uret(claims["tenant_id"], p.ad, p.kapsamlar, p.gecerlilik_gun, p.rpm)
+        y = api_anahtar_service.uret(claims["tenant_id"], p.ad, p.kapsamlar, p.gecerlilik_gun, p.rpm, plant_ids=p.plant_ids)
     except ValueError as e:
         raise HTTPException(422, str(e))
     _denetim.kaydet("musteri", "anahtar_uret", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="api_key", nesne_id=y.get("id"),
-                    ayrinti={"ad": p.ad, "kapsamlar": p.kapsamlar, "rpm": p.rpm})   # düz anahtar YAZILMAZ
+                    ayrinti={"ad": p.ad, "kapsamlar": p.kapsamlar, "rpm": p.rpm, "plant_ids": y.get("plant_ids")})   # düz anahtar YAZILMAZ
     return y
 
 
@@ -1190,7 +1417,7 @@ def webhook_ekle(p: WebhookIstek, claims=Depends(yonetici_yetkisi())):
     except ValueError as e:
         raise HTTPException(422, str(e))
     _denetim.kaydet("musteri", "webhook_ekle", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="webhook", nesne_id=y.get("id"),
-                    ayrinti={"url": p.url, "plant_id": p.plant_id})   # secret YAZILMAZ
+                    ayrinti={"url": _denetim.maskele_url(p.url), "plant_id": p.plant_id})   # secret YAZILMAZ; v2.602: sorgu dizgisi/kullanıcı bilgisi maskelenir
     return y
 
 
@@ -1210,6 +1437,8 @@ def webhook_dene(webhook_id: str, claims=Depends(yonetici_yetkisi())):
     r = webhook_service.gonder(claims["tenant_id"], "deneme", {"olay": "deneme", "mesaj": "PVQuant webhook denemesi"}, webhook_id=webhook_id)
     if not r:
         raise HTTPException(404, "webhook yok ya da pasif")
+    _denetim.kaydet("musteri", "webhook_dene", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="webhook", nesne_id=webhook_id,   # v2.602 (F4-H)
+                    ayrinti={"http_durum": (r[0] or {}).get("durum") if isinstance(r[0], dict) else None})
     return r[0]
 
 
@@ -1235,10 +1464,13 @@ def paylasim_ekle(p: PaylasimIstek, claims=Depends(yonetici_yetkisi())):
     if plant_service.getir(claims["tenant_id"], p.plant_id) is None:
         raise HTTPException(404, "santral yok")
     try:
-        return paylasim_service.paylas(claims["tenant_id"], claims["sub"], {"id": p.plant_id},
-                                       p.hedef_eposta, p.izinler, p.bitis, p.takma_ad)
+        r = paylasim_service.paylas(claims["tenant_id"], claims["sub"], {"id": p.plant_id},
+                                   p.hedef_eposta, p.izinler, p.bitis, p.takma_ad)
     except ValueError as e:
         raise HTTPException(422, str(e))
+    _denetim.kaydet("musteri", "paylasim_ekle", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="paylasim", nesne_id=(r or {}).get("id") if isinstance(r, dict) else None,
+                    ayrinti={"plant_id": p.plant_id, "hedef_eposta": p.hedef_eposta, "izinler": sorted(set(p.izinler or [])), "bitis": p.bitis})   # v2.602 (F4-H)
+    return r
 
 
 @app.delete("/v1/paylasimlar/{paylasim_id}", tags=["Yönetim"])
@@ -1246,6 +1478,7 @@ def paylasim_iptal(paylasim_id: str, claims=Depends(yonetici_yetkisi())):
     from pvquant.services import paylasim_service
     if not paylasim_service.iptal(claims["tenant_id"], claims["sub"], paylasim_id):
         raise HTTPException(404, "paylaşım yok ya da zaten iptal")
+    _denetim.kaydet("musteri", "paylasim_iptal", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="paylasim", nesne_id=paylasim_id)   # v2.602 (F4-H)
     return {"iptal": True}
 
 
@@ -1281,7 +1514,7 @@ class SegmentIstek(BaseModel):
 def segment_ayarla(plant_id: str, p: SegmentIstek, claims=Depends(yazma_yetkisi())):
     """v2.260 — piyasa segmenti (YEKDEM / serbest / lisanssız …) ve UEVÇB kodu; params_json'a yazılır."""
     from pvquant.ext.turkiye.segment import Segment
-    from pvquant.services import plant_service, dengesizlik_service
+    from pvquant.services import dengesizlik_service, plant_service
     try:
         seg = Segment(p.segment)
     except ValueError:
@@ -1309,9 +1542,9 @@ def segment_ayarla(plant_id: str, p: SegmentIstek, claims=Depends(yazma_yetkisi(
             anahtarlar.update(_dep.dogrula(p.depolama))
         except ValueError as e:
             raise HTTPException(422, str(e)) from e
+    eski_pj = dict((plant_service.getir(claims["tenant_id"], plant_id) or {}).get("params_json") or {})
     pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **anahtarlar)
-    _denetim.kaydet("musteri", "santral_segment", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=plant_id,   # v2.516 (#7)
-                    ayrinti=dict(anahtarlar))
+    _ayar_izi("santral_segment", claims, plant_id, eski_pj, pj, ek={"istek": dict(anahtarlar)})   # v2.516 (#7); v2.602: eski/yeni + ayar damgası
     return {"params_json": {k: v for k, v in pj.items() if k in ("segment", "uevcb", "dsg_kodu", "toplayici_portfoyu", "yek_g_kayitli", "piyasa_katilimcisi", "lisans_yillik_uretim_mwh", "gts_toplayici_adi", "depolama_gucu_mw", "depolama_kapasite_mwh", "depolama_konfigurasyon", "depolama_uevcb", "depolama_kabul_tarihi", "depolama_butunlesik")}, **dengesizlik_service.segment_bilgisi(pj),
             "depolama": dengesizlik_service.segment_bilgisi(pj)["depolama"]}   # v2.543 (P9)
 
@@ -1406,7 +1639,9 @@ def epias_uretim_ayarla(plant_id: str, p: EpiasIstek, claims=Depends(yazma_yetki
     row = plant_service.getir(claims["tenant_id"], plant_id)
     if row is None:
         raise HTTPException(404, "santral yok")
+    eski = dict(row.get("params_json") or {})
     pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, epias_santral_id=p.epias_santral_id)
+    _ayar_izi("epias_uretim_ayar", claims, plant_id, eski, pj)   # v2.602 (F4-H)
     row["params_json"] = pj
     return epias_uretim_service.durum(claims["tenant_id"], row)
 
@@ -1416,7 +1651,8 @@ def eak_ayarla(plant_id: str, p: EakIstek, claims=Depends(yazma_yetkisi())):
     """v2.275 — EAK alanı (emre amade kapasite) + geçici kısıt + KÜPST katsayıları; params_json'a yazılır, KGÜP/toplayıcı çıktısı ve simülatör okur.
     v2.517 (P2a): piyasa pozisyonu ayarı (program | uretim | sabit MWh/saat) — uzlaştırma hesabının EDM tabanı."""
     from datetime import date as _d
-    from pvquant.services import kgup_service, dengesizlik_service
+
+    from pvquant.services import dengesizlik_service, kgup_service
     row = plant_service.getir(claims["tenant_id"], plant_id)
     if row is None:
         raise HTTPException(404, "santral yok")
@@ -1498,10 +1734,11 @@ def eak_ayarla(plant_id: str, p: EakIstek, claims=Depends(yazma_yetkisi())):
         if p.dosya_yukleme_sikligi_gun is not None and not (1 <= p.dosya_yukleme_sikligi_gun <= 90):
             raise HTTPException(422, "dosya_yukleme_sikligi_gun 1–90 arasında olmalı")
         an["dosya_yukleme_sikligi_gun"] = int(p.dosya_yukleme_sikligi_gun) if p.dosya_yukleme_sikligi_gun else None
+    eski_pj = dict(row.get("params_json") or {})
     pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **an)
-    _denetim.kaydet("musteri", "eak_ayar", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"], ayrinti=dict(an))   # v2.516 (#7)
+    _ayar_izi("eak_ayar", claims, row["id"], eski_pj, pj, ek={"istek": dict(an)})   # v2.516 (#7); v2.602: eski/yeni + ayar damgası
     row["params_json"] = pj
-    return {"eak_bugun": kgup_service.eak_etkin(row, pd.Timestamp.now(tz="Europe/Istanbul").date()),
+    return {"eak_bugun": kgup_service.eak_etkin(row, pd.Timestamp.now(tz=PIYASA_TZ).date()),
             "eak_kw": pj.get("eak_kw"), "eak_gecici": pj.get("eak_gecici"), "kupst_n": pj.get("kupst_n"), "kupst_tolerans": pj.get("kupst_tolerans"),
             "dengeleme_birimi": bool(pj.get("dengeleme_birimi")), "ariza_sayisi_ay": int(pj.get("ariza_sayisi_ay") or 0),
             "luy_istisna": bool(pj.get("luy_istisna")),
@@ -1516,13 +1753,14 @@ def eak_ayarla(plant_id: str, p: EakIstek, claims=Depends(yazma_yetkisi())):
 
 def _toplayici_yaniti(tenant_id: str, plant_id: str, gun: str | None, fmt: str, adim: int):
     from datetime import date, timedelta
+
     from pvquant.services import toplayici_service
     if fmt not in ("csv", "xlsx", "json") or adim not in (60, 15):
         raise HTTPException(422, "fmt csv|xlsx|json, adim 60|15")
     row = plant_service.getir(tenant_id, plant_id)
     if row is None:
         raise HTTPException(404, "santral yok")
-    g = date.fromisoformat(gun) if gun else (pd.Timestamp.now(tz="Europe/Istanbul").date() + timedelta(days=1))
+    g = date.fromisoformat(gun) if gun else (pd.Timestamp.now(tz=PIYASA_TZ).date() + timedelta(days=1))
     r = toplayici_service.uret(tenant_id, row, g, fmt, adim)
     if "hata" in r:
         raise HTTPException(409, r["hata"])
@@ -1538,21 +1776,152 @@ def toplayici(plant_id: str, gun: str | None = None, fmt: str = "csv", adim: int
 @app.get("/v1/dis/santral/{plant_id}/toplayici", tags=["Dış API"])
 def dis_toplayici(plant_id: str, gun: str | None = None, fmt: str = "csv", adim: int = 60, anahtar=Depends(api_anahtari("kgup:oku"))):
     """Toplayıcı/DSG program dosyası (P10/P50/P90 MW, EAK); adim=15 ile çeyrek saatlik. Gün verilmezse İstanbul yarını."""
+    _dis_santral(anahtar, plant_id)
     return _toplayici_yaniti(anahtar["tenant_id"], plant_id, gun, fmt, adim)
+
+
+# ---------------------------------------------------------------- v2.603 (F4-I): yeni dış uçlar -------------------------------------------------
+@app.get("/v1/dis/santral/{plant_id}/tahmin-arsivi", tags=["Dış API"])
+def dis_tahmin_arsivi(plant_id: str, hedef: str, yayin_oncesi: str | None = None, anahtar=Depends(api_anahtari("tahmin:oku"))):
+    """v2.603 (F4-I): arşiv sorgusu — `hedef` saati için `yayin_oncesi` anında yayımlanmış son koşunun değeri ve künyesi (panel ucuyla aynı servis;
+    geriye bakışlı koşular dönmez). Yoksa 404 `kosu_yok`."""
+    from pvquant.services import forecast_service
+    try:
+        h = pd.Timestamp(hedef); y = pd.Timestamp(yayin_oncesi) if yayin_oncesi else None
+    except (ValueError, TypeError):
+        raise _dis_hata(422, "istek_gecersiz", "hedef / yayin_oncesi ISO 8601 zaman olmalı") from None
+    if pd.isna(h) or (yayin_oncesi and pd.isna(y)):
+        raise _dis_hata(422, "istek_gecersiz", "hedef / yayin_oncesi ISO 8601 zaman olmalı")
+    row = _dis_santral(anahtar, plant_id)
+    out = forecast_service.yayimlanmis_kosu(anahtar["tenant_id"], plant_id, h, y)
+    if out is None:
+        raise _dis_hata(404, "kosu_yok", "bu saat için o anda yayımlanmış koşu yok")
+    return {"schema_version": DIS_API_SEMA, "santral_id": str(row["id"]), **out}
+
+
+@app.get("/v1/dis/santral/{plant_id}/kalite", tags=["Dış API"])
+def dis_kalite(plant_id: str, bas: str | None = None, bit: str | None = None, anahtar=Depends(api_anahtari("veri_kalitesi:oku"))):
+    """v2.603 (F4-I): veri kalitesi özeti — bas–bit Türkiye günü (dâhil, en çok 92 gün; verilmezse son 7 gün): saat sayısı bayrağa ve niteliğe göre
+    (kalite sözlüğü), tazelik (son geçerli ölçüm), ölçüm künyesi (kaynaklar, son geliş). Uydurma yok: olmayan saat sayılmaz."""
+    from datetime import date as _d
+    from datetime import datetime as _dt
+    from datetime import timedelta as _td
+    from zoneinfo import ZoneInfo
+
+    from sqlalchemy import text as _text
+
+    from pvquant.db import tenant_baglami as _tb
+    from pvquant.services import kalite_sozlugu as _ks
+    row = _dis_santral(anahtar, plant_id)
+    tz = ZoneInfo(PIYASA_TZ)
+    try:
+        b1 = _d.fromisoformat(bit) if bit else _dt.now(tz).date()
+        b0 = _d.fromisoformat(bas) if bas else b1 - _td(days=6)
+    except ValueError:
+        raise _dis_hata(422, "istek_gecersiz", "bas/bit YYYY-MM-DD olmalı") from None
+    if b0 > b1 or (b1 - b0).days > 91:
+        raise _dis_hata(422, "istek_gecersiz", "aralık en çok 92 gün ve bas ≤ bit olmalı")
+    t0 = _dt.combine(b0, _dt.min.time(), tzinfo=tz); t1 = _dt.combine(b1 + _td(days=1), _dt.min.time(), tzinfo=tz)
+    with _tb(anahtar["tenant_id"]) as s:
+        # bayraksız satır «valid» SAYILMAZ (uzlaştırma süzgeci flag IN (...) ile uyumlu): ayrı anahtar, niteliği «gecersiz»
+        rows = s.execute(_text("SELECT COALESCE(flag, 'bayraksiz') AS flag, count(*) AS n FROM scada_hourly WHERE plant_id = :p AND ts_utc >= :a AND ts_utc < :b GROUP BY 1"),
+                         {"p": plant_id, "a": t0, "b": t1}).mappings().all()
+        kw = s.execute(_text("SELECT max(alinma_zamani), array_agg(DISTINCT COALESCE(kaynak, 'bilinmiyor')) FROM scada_hourly WHERE plant_id = :p AND ts_utc >= :a AND ts_utc < :b"),
+                       {"p": plant_id, "a": t0, "b": t1}).first()   # künye: pencere içi
+        son = s.execute(_text(f"SELECT max(ts_utc) FROM scada_hourly WHERE plant_id = :p AND {_ks.sql_kosulu('tazelik')}"), {"p": plant_id}).scalar()   # tazelik: santralın son geçerli ölçümü
+    bayrak = {r["flag"]: int(r["n"]) for r in rows}
+    nitelik: dict[str, int] = {}
+    for f, n in bayrak.items():
+        ad = (_ks.Nitelik.GECERSIZ if f == "bayraksiz" else _ks.flag_nitelik(f)).value; nitelik[ad] = nitelik.get(ad, 0) + n   # satır var ama bayraksız → gecersiz (eksik = satır yok)
+    beklenen = int((t1 - t0).total_seconds() // 3600)
+    olcumlu = sum(bayrak.values())
+    return {"schema_version": DIS_API_SEMA, "santral_id": str(row["id"]), "santral": row["name"], "bas": b0.isoformat(), "bit": b1.isoformat(),
+            "beklenen_saat": beklenen, "olcumlu_saat": olcumlu, "eksik_saat": max(0, beklenen - olcumlu),
+            "uzlastirmaya_uygun_saat": sum(n for f, n in bayrak.items() if f in _ks.gecerli_flaglar("uzlastirma")),
+            "bayrak": bayrak, "nitelik": nitelik, "tazelik": _ks.tazelik_durumu(son),
+            "kunye": {"son_gecerli_olcum": (son.isoformat() if son else None), "son_alinma": (kw[0].isoformat(timespec="seconds") if kw and kw[0] else None),
+                      "kaynaklar": sorted(kw[1] or []) if kw else []},
+            "sozluk_surumu": _ks.SOZLUK_SURUMU,
+            "not": "Saatler SCADA satırlarıdır; eksik saat 0 sayılmaz. Künye (kaynaklar, son geliş) pencere içindir; tazelik ve son geçerli ölçüm santralın tamamından. "
+                   "Nitelik etiketleri kalite sözlüğünden (GET /v1/sozluk/kalite)."}
+
+
+@app.get("/v1/dis/portfoyler", tags=["Dış API"])
+def dis_portfoyler(tarih: str | None = None, n: int = 50, sonraki: str | None = None, anahtar=Depends(api_anahtari("portfoy:oku"))):
+    """v2.603 (F4-I): kiracının portföyleri (tarihte geçerli olanlar, üye sayısıyla). İmleçli sayfalama: `sonraki` bir önceki yanıttan; kimlik sıralı."""
+    from datetime import date as _d
+
+    from pvquant.services import portfoy_varlik_service as pv
+    try:
+        t = _d.fromisoformat(tarih) if tarih else None
+    except ValueError:
+        raise _dis_hata(422, "istek_gecersiz", "tarih YYYY-MM-DD olmalı") from None
+    n = max(1, min(int(n), 200))
+    hepsi = sorted(pv.portfoyler(anahtar["tenant_id"], tarih=t), key=lambda x: str(x["id"]))
+    if sonraki:
+        hepsi = [x for x in hepsi if str(x["id"]) > sonraki]
+    sayfa = hepsi[:n]
+    return {"schema_version": DIS_API_SEMA, "tarih": (t or pd.Timestamp.now(tz=PIYASA_TZ).date()).isoformat(),
+            "portfoyler": [{"id": str(x["id"]), "ad": x["ad"], "tur": x["tur"], "kurulus_ad": x.get("kurulus_ad"), "dsg_kodu": x.get("dsg_kodu"),
+                            "gecerli_bas": str(x.get("gecerli_bas") or ""), "gecerli_bit": (str(x["gecerli_bit"]) if x.get("gecerli_bit") else None),
+                            "uye_sayisi": x.get("uye_sayisi")} for x in sayfa],
+            "sonraki": (str(sayfa[-1]["id"]) if len(hepsi) > n else None)}
+
+
+@app.get("/v1/dis/portfoy/{portfoy_id}/finansal-etki", tags=["Dış API"])
+def dis_portfoy_finansal_etki(portfoy_id: str, donem: str | None = None, uretim: str | None = None, anahtar=Depends(api_anahtari("finans:oku"))):
+    """v2.603 (F4-I): portföy finansal etkisi (dönem YYYY-MM-DD | YYYY-Wnn | YYYY-MM | YYYY-QN | YYYY; verilmezse son tam ay): santral satırları, toplam,
+    nitelik; meta damgaları (kural sicili sha/sürümü, DSG fiyat sha, hesap durumu, çıktı sürümü). Santral sonuçları gece kaydından (≤36 sa), yoksa anında.
+    Tutarlar yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir."""
+    from pvquant.services import portfoy_finans_service as pfs
+    ur = _fe_uretim(uretim)
+    try:
+        out = pfs.donem(anahtar["tenant_id"], portfoy_id, donem, ur)
+    except ValueError as e:
+        raise _dis_hata(422, "istek_gecersiz", str(e)) from None
+    if out.get("durum") == "portfoy_yok":
+        raise _dis_hata(404, "portfoy_yok", "portföy yok")
+    if out.get("durum") != "ok":
+        raise _dis_hata(409, "hesaplanamadi", out.get("not") or out.get("durum") or "hesaplanamadı")
+    m = out.get("meta") or {}
+    return {"schema_version": DIS_API_SEMA, "portfoy_id": str(portfoy_id), "portfoy": out.get("portfoy"), "donem": out.get("donem"), "uyelik_tarihi": out.get("uyelik_tarihi"),
+            "santral": out.get("santral"), "santraller": out.get("santraller"), "bilesenler": out.get("bilesenler"), "toplam": out.get("toplam"), "toplam_dsg": out.get("toplam_dsg"),
+            "kaynaklar": out.get("kaynaklar"), "dsg_durum": out.get("dsg_durum"),
+            "meta": {"surum": m.get("surum"), "cikti_surumu": m.get("cikti_surumu"), "hesap_durumu": m.get("hesap_durumu"), "kural_sicili_sha": m.get("kural_sicili_sha"),
+                     "kural_sicili_surumu": m.get("kural_sicili_surumu"), "dsg_fiyat_sha16": ((m.get("girdi") or {}).get("dsg_fiyat") or {}).get("sha16"),
+                     "girdi_sha16": (m.get("girdi") or {}).get("sha16"), "uretim_girdisi": m.get("uretim_girdisi")},
+            "not": "Tutarlar yürürlükteki kuralla yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir. Artı = santral lehine."}
 
 
 @app.get("/v1/kurallar")
 def kurallar_tablosu(tarih: str | None = None, segment: str | None = "lisansli_serbest", claims=Depends(gecerli_kullanici)):
     """29.10.2026 (F-01) — uzlaştırma kuralı ve parametre sürüm tablosu (salt okunur): tarih verilirse o günün kuralı, yoksa tüm satırlar."""
-    from pvquant.services import dengesizlik_service
     from pvquant.ext.turkiye import kurallar as kr
+    from pvquant.services import dengesizlik_service
     if tarih:
         try:
             from datetime import date as _d
             return dengesizlik_service.kural_ozeti(segment, _d.fromisoformat(tarih))
         except ValueError:
             raise HTTPException(422, "tarih YYYY-MM-DD olmalı")
-    return {"segment": segment, "satirlar": kr.tablo(segment)}
+    from pvquant.ext.turkiye import kural_sicili as _ks
+    bugun = pd.Timestamp.now(tz=PIYASA_TZ).date()
+    return {"segment": segment, "satirlar": kr.tablo(segment),
+            "sicil": _ks.ozet(bugun),                                         # v2.600 (F4-F): sürüm, sha16, doğrulama dağılımı, yürürlükte / gelecek
+            "bugun": dengesizlik_service.kural_ozeti(segment, bugun)}         # arayüz sabitleri buradan (k/l, V, B, AFL, KÜPST, DSG, takvim)
+
+
+@app.get("/v1/kurallar/sicil")
+def kurallar_sicili(claims=Depends(gecerli_kullanici)):
+    """v2.600 (F4-F): mevzuat kural sicilinin tamamı (kod içi, sürümlü) + son anlık görüntüler (kural_sicili_anlik)."""
+    from pvquant.ext.turkiye import kural_sicili as _ks
+    from pvquant.services import kural_sicili_service as _kss
+    anlik, hata = [], None
+    try:
+        anlik = _kss.anlik_listesi(10)
+    except Exception as e:   # noqa: BLE001 — tablo yoksa/okunamazsa sicil yine döner
+        hata = type(e).__name__
+    return {"surum": _ks.SURUM, "sha16": _ks.sicil_sha16(), "kayitlar": _ks.tablo(), "dogrulama_durumlari": list(_ks.DOGRULAMA), "anlik": anlik, "anlik_hata": hata}
 
 
 @app.get("/v1/plants/{plant_id}/dengesizlik/geri-test")
@@ -1586,6 +1955,7 @@ def dengesizlik_saatlik(plant_id: str, gun: int = 90, fmt: str = "json", n: int 
     KÜPSM, KÜPST, kural sürümü, durum. fmt=csv (;-ayraçlı, BOM'lu) ve fmt=xlsx (Saatlik + Aylar) indirilir; fmt=json son n satırı döner.
     Yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir."""
     from fastapi.responses import Response
+
     from pvquant.services import dengesizlik_service, plant_service
     if not (14 <= gun <= 365):
         raise HTTPException(422, "gun 14–365 aralığında olmalı")
@@ -1754,8 +2124,10 @@ def mutabakat_saatlik(plant_id: str, donem: str | None = None, uretim: str | Non
     """v2.527 (P2b-2) — eş kapsamlı saatlik kıyas: yüklü EPYS saatlik detayı ↔ PVQuant dökümü yalnız ortak saatlerde (fiyat, üretim, program, EDT, KÜPST;
     fark ayrıştırması; en büyük farklı saatler). fmt=csv saatlik satırları indirir. donem verilmezse son yüklenen dönem."""
     from datetime import datetime, timedelta
+
     from fastapi.responses import Response
-    from pvquant.services import saatlik_detay_service, mutabakat_service
+
+    from pvquant.services import mutabakat_service, saatlik_detay_service
     if fmt not in ("json", "csv"):
         raise HTTPException(422, "fmt json ya da csv olmalı")
     if uretim is not None and uretim not in ("scada", "sayac"):
@@ -1839,9 +2211,10 @@ def sayac_ayar(plant_id: str, p: SayacAyarIstek, claims=Depends(yazma_yetkisi())
     except ValueError as e:
         raise HTTPException(422, f"{e} alanı geçersiz")
     if an:
+        eski_pj = dict(row.get("params_json") or {})
         pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, **an)
         row["params_json"] = pj
-        _denetim.kaydet("musteri", "sayac_ayar", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"], ayrinti=an)
+        _ayar_izi("sayac_ayar", claims, row["id"], eski_pj, pj, ek={"istek": dict(an)})   # v2.602: eski/yeni + ayar damgası
     return sayac_service.ozet(claims["tenant_id"], _sayac_plant(row), gun=30)
 
 
@@ -1883,21 +2256,31 @@ def epias_uevcb_ara(kurulus: str, claims=Depends(gecerli_kullanici)):
 
 
 @app.get("/v1/piyasa/fiyat")
-def piyasa_fiyat(bas: str, bitis: str, claims=Depends(gecerli_kullanici)):
-    """v2.258 — saatlik PTF/SMF/yön (UTC); eksik saatler 'senaryo' kaynaklı döner."""
+def piyasa_fiyat(bas: str, bitis: str, itibariyle: str | None = None, claims=Depends(gecerli_kullanici)):
+    """v2.258 — saatlik PTF/SMF/yön (UTC); eksik saatler 'senaryo' kaynaklı döner. v2.601: `itibariyle` → o andaki fiyat sürümü (M6)."""
     from pvquant.services import piyasa_service
-    idx = pd.date_range(pd.Timestamp(bas, tz="Europe/Istanbul"), pd.Timestamp(bitis, tz="Europe/Istanbul") + pd.Timedelta(hours=23), freq="h").tz_convert("UTC")
+    idx = pd.date_range(pd.Timestamp(bas, tz=PIYASA_TZ), pd.Timestamp(bitis, tz=PIYASA_TZ) + pd.Timedelta(hours=23), freq="h").tz_convert("UTC")
     if len(idx) > 24 * 400:
         raise HTTPException(422, "en fazla 400 gun")
-    f = piyasa_service.fiyatlar(idx)
+    t = _zaman_cozumle(itibariyle) if itibariyle else None
+    f = piyasa_service.fiyatlar(idx, itibariyle=t) if t else piyasa_service.fiyatlar(idx)
     return {"satirlar": [{"ts": ts.isoformat(), "ptf": _kw(r.ptf), "smf": _kw(r.smf), "yon": r.yon, "kaynak": r.kaynak} for ts, r in f.iterrows()],
-            "epias_saat": int((f.kaynak == "epias").sum()), "senaryo_saat": int((f.kaynak == "senaryo").sum())}
+            "epias_saat": int((f.kaynak == "epias").sum()), "senaryo_saat": int((f.kaynak == "senaryo").sum()),
+            "sha16": piyasa_service.fiyat_sha16(f), "itibariyle": (t.isoformat(timespec="seconds") if t else None)}
+
+
+@app.get("/v1/piyasa/fiyat-surumleri")
+def piyasa_fiyat_surumleri(ts: str, n: int = 20, claims=Depends(gecerli_kullanici)):
+    """v2.601 (F4-G): bir saatin fiyat sürümleri (en yeni önce): gün öncesi PTF → gece tam satır → düzeltmeler; alinma zamanıyla."""
+    from pvquant.services import piyasa_service
+    t = _zaman_cozumle(ts)
+    return {"ts": t.isoformat(timespec="seconds"), "surumler": piyasa_service.surum_tarihcesi(t, max(1, min(int(n), 200)))}
 
 
 @app.get("/v1/plants/{plant_id}/saglik")
 def saglik(plant_id: str, gun: int = 800, claims=Depends(gecerli_kullanici)):
     """v2.256 — bozunma (%/yıl, YoY) ve performans eğilimi; POA yoksa model-normalize verimle."""
-    from pvquant.services import saglik_service, plant_service
+    from pvquant.services import plant_service, saglik_service
     if not (60 <= gun <= 2000):
         raise HTTPException(422, "gun 60-2000 araliginda olmali")
     row = plant_service.getir(claims["tenant_id"], plant_id)
@@ -2263,7 +2646,8 @@ def _bulut_aynasi(claims, plant_id: str, vy: dict, saglayici: str | None = None)
 @app.get("/v1/plants/{plant_id}/bulut-kimlik")
 def bulut_kimlik_durum(plant_id: str, claims=Depends(gecerli_kullanici)):
     """v2.556/v2.557: kayıtlı bulut kimlikleri (maskeli etiket; gizli yok), kasa durumu, son çekiş, kota ve son ham saatler."""
-    from pvquant.services import bulut_cekis_service as bc, bulut_kimlik_service as bk
+    from pvquant.services import bulut_cekis_service as bc
+    from pvquant.services import bulut_kimlik_service as bk
     if plant_service.getir(claims["tenant_id"], plant_id) is None:
         raise HTTPException(404, "santral yok")
     d = bk.durum(claims["tenant_id"], plant_id)
@@ -2312,7 +2696,9 @@ def bulut_kimlik_ayar(plant_id: str, saglayici: str, p: BulutKimlikAyar, claims=
 def bulut_birim_kiyas(plant_id: str, saglayici: str, dosya: UploadFile = File(...), claims=Depends(yazma_yetkisi())):
     """v2.565 (D2 adım 3): portalın saatlik dışa aktarımı (CSV: zaman, kwh) ile çekilen ham saatlerin birim/anlam kıyası; özet kayda yazılır, ham referans saklanmaz.
     «Birim doğrulandı» yalnız belge yorumu uyumlu bulununca işaretlenebilir."""
-    from pvquant.services import bulut_birim_service as bb, bulut_kimlik_service as bk, pilot_service
+    from pvquant.services import bulut_birim_service as bb
+    from pvquant.services import bulut_kimlik_service as bk
+    from pvquant.services import pilot_service
     row, vy = _bulut_santral(claims, plant_id)
     kayit = next((k for k in bk.listele(claims["tenant_id"], plant_id) if k["saglayici"] == saglayici), None)
     if kayit is None:
@@ -2369,7 +2755,9 @@ def bulut_oauth_geri_donus(saglayici: str, request: Request):
     """v2.564: sağlayıcının yönlendirmesi — kimliksiz gelir; santral/kiracı tek kullanımlık state'ten bulunur. Kod sunucuda belirteçle değiştirilir ve
     kasaya yazılır; tarayıcı panele yalnız DURUM KODUyla döner. Kod/belirteç hiçbir yanıt, günlük ya da izde yok."""
     from fastapi.responses import RedirectResponse
-    from pvquant.services import bulut_kimlik_service as bk, bulut_oauth_service as bo
+
+    from pvquant.services import bulut_kimlik_service as bk
+    from pvquant.services import bulut_oauth_service as bo
     sorgu = {k: v for k, v in request.query_params.items() if k in ("code", "state", "external_id", "site_id", "error", "error_description")}
     sonuc = bo.geri_donus(saglayici, sorgu)
     plant_id = sonuc.get("plant_id"); tenant_id = sonuc.get("tenant_id")
@@ -2424,7 +2812,8 @@ def pilot_kapi(plant_id: str, kod: str, p: PilotKapiIstek, claims=Depends(yazma_
 @app.post("/v1/plants/{plant_id}/pilot/referans")
 def pilot_referans(plant_id: str, dosya: UploadFile = File(...), sinir: str = "inverter_ac", claims=Depends(yazma_yetkisi())):
     """v2.560: referans saatlik dışa aktarımı (CSV: zaman, kWh) ile gölge görünümdeki TAM saatlerin kıyası; özet santral ayarına yazılır, ham referans saklanmaz."""
-    from pvquant.services import kaynak_secim_service as ks, pilot_service
+    from pvquant.services import kaynak_secim_service as ks
+    from pvquant.services import pilot_service
     if sinir not in ks.SINIR_ETIKET:
         raise HTTPException(422, "sinir geçersiz")
     row = plant_service.getir(claims["tenant_id"], plant_id)
@@ -2564,7 +2953,10 @@ def veri_yolu_sinama(plant_id: str, claims=Depends(yazma_yetkisi())):
 def golge_saatlik(plant_id: str, bas: str | None = None, bit: str | None = None, sinir: str = "inverter_ac", claims=Depends(gecerli_kullanici)):
     """v2.550 (Aşama 1, D5): GÖLGE saatlik görünüm — kaynak_saatlik'ten seçilen saat (tamlık + kaynak önceliği, son revizyon) ile üretim serisindeki saat
     yan yana; fark kWh. Yalnız okuma; tahmin/doğruluk bu görünümü kullanmaz. Pencere en çok 31 gün, varsayılan son 7 gün."""
-    from datetime import datetime as _dt, timedelta as _td, timezone as _tz
+    from datetime import datetime as _dt
+    from datetime import timedelta as _td
+    from datetime import timezone as _tz
+
     from pvquant.services import kaynak_secim_service
     row = plant_service.getir(claims["tenant_id"], plant_id)
     if row is None:
@@ -2633,13 +3025,16 @@ def tarife_getir_uc(plant_id: str, claims=Depends(gecerli_kullanici)):
 def tarife_ayarla(plant_id: str, p: TarifeIstek, claims=Depends(yazma_yetkisi())):
     """v2.281 — tarife/gelir yapılandırması (sabit | PTF-endeksli | YEKDEM döviz endeksli); null → kaldır."""
     from pvquant.services import tarife_service
-    if plant_service.getir(claims["tenant_id"], plant_id) is None:
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
         raise HTTPException(404, "santral yok")
     try:
         t = tarife_service.dogrula(p.tarife) if p.tarife else None
     except ValueError as e:
         raise HTTPException(422, str(e))
+    eski = dict(row.get("params_json") or {})
     pj = plant_service.params_birlestir(claims["tenant_id"], plant_id, tarife=t)
+    _ayar_izi("tarife_ayar", claims, plant_id, eski, pj)   # v2.602 (F4-H): eski/yeni tarife + ayar damgası (etkilenen hesaplar)
     return {"tarife": pj.get("tarife")}
 
 
@@ -2706,7 +3101,7 @@ def rapor_donem(plant_id: str, donem: str | None = None, fmt: str = "html", clai
 @app.get("/v1/plants/{plant_id}/rapor-gonderim")
 def rapor_gonderim_oku(plant_id: str, claims=Depends(gecerli_kullanici)):
     """v2.525 — zamanlanmış gönderim ayarı ve son gönderim durumu."""
-    from pvquant.services import aylik_rapor_service, alarm_service
+    from pvquant.services import alarm_service, aylik_rapor_service
     row = plant_service.getir(claims["tenant_id"], plant_id)
     if row is None:
         raise HTTPException(404, "santral yok")
@@ -2717,7 +3112,7 @@ def rapor_gonderim_oku(plant_id: str, claims=Depends(gecerli_kullanici)):
 
 @app.put("/v1/plants/{plant_id}/rapor-gonderim")
 def rapor_gonderim_ayarla(plant_id: str, p: RaporGonderimIstek, claims=Depends(yazma_yetkisi())):
-    from pvquant.services import aylik_rapor_service, alarm_service
+    from pvquant.services import alarm_service, aylik_rapor_service
     row = plant_service.getir(claims["tenant_id"], plant_id)
     if row is None:
         raise HTTPException(404, "santral yok")
@@ -2847,6 +3242,17 @@ def kurulus_denetim(limit: int = 100, once_id: int | None = None, claims=Depends
     return {"kayitlar": kayitlar}
 
 
+@app.get("/v1/kurulus/denetim/{iz_id}/etkilenen", tags=["Yönetim"])
+def kurulus_denetim_etkilenen(iz_id: int, n: int = 100, claims=Depends(yonetici_yetkisi())):
+    """v2.602 (F4-H): bir santral ayarı değişikliğinin (iz) öncesinde eski ayar damgasıyla hesaplanmış kayıtlı finansal sonuçlar — yeniden hesap gereğini
+    gösterir, yeniden hesaplamaz. Yalnız kiracının kendi izi."""
+    from pvquant.services import denetim_service
+    r = denetim_service.etkilenen_sonuclar(claims["tenant_id"], iz_id, n)
+    if r.get("durum") == "iz_yok":
+        raise HTTPException(404, "iz yok")
+    return r
+
+
 @app.get("/v1/kurulus/ayarlar", tags=["Yönetim"])
 def kurulus_ayarlar(claims=Depends(yonetici_yetkisi())):
     from pvquant.services import kurulus_service
@@ -2891,7 +3297,8 @@ from fastapi import File, Form, UploadFile
 def _gecici_dosya(f) -> str:
     """UploadFile -> diskte gecici kopya. Uzanti korunur: format
     algilama .xlsx/.csv ayrimini dosya adindan da okur."""
-    import shutil, tempfile
+    import shutil
+    import tempfile
     from pathlib import Path
     ek = Path(f.filename or "veri.csv").suffix or ".csv"
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=ek)
@@ -2912,6 +3319,7 @@ def _ornek_satirlar(df):
 def scada_disa(plant_id: str, baslangic: str | None = None, bitis: str | None = None, claims=Depends(gecerli_kullanici)):
     """v2.298 — yüklenen ham serinin CSV dökümü ("veriniz sizindir" sözünün karşılığı; her role açık)."""
     from fastapi.responses import Response
+
     from pvquant.services import ingest_service
     row = plant_service.getir(claims["tenant_id"], plant_id)
     if row is None:
@@ -2985,6 +3393,7 @@ def scada_yukle(plant_id: str, dosya: UploadFile = File(...),
                 map_wind_speed: str | None = Form(None),
                 map_ghi: str | None = Form(None),
                 duplicate_policy: str | None = Form(None),   # v2.363: sum|mean
+                damga_tipi: str | None = Form(None),         # v2.599 (F4-D): aralik_basi (varsayılan) | aralik_sonu | anlik
                 claims=Depends(yazma_yetkisi())):
     """v2.87 Faz 2: onayli kararla dogrula + kalicilastir. Kapasite/konum
     santral KAYDINDAN okunur (kunye tek gercek, formda tekrar yok).
@@ -3000,6 +3409,10 @@ def scada_yukle(plant_id: str, dosya: UploadFile = File(...),
     if duplicate_policy is not None and duplicate_policy not in ("sum", "mean"):
         raise HTTPException(422, "duplicate_policy yalnız 'sum' ya da 'mean' olabilir")
     tekrar = duplicate_policy or "error"
+    from pvquant.zaman import DAMGA_TIPLERI as _DT
+    if damga_tipi is not None and damga_tipi not in _DT:
+        raise HTTPException(422, "damga_tipi yalnız aralik_basi, aralik_sonu ya da anlik olabilir")
+    damga = damga_tipi or "aralik_basi"
     tz = source_timezone or row["tz"]   # v2.91: bos ise santral kaydi konusur
     esleme = None
     if map_timestamp:
@@ -3020,12 +3433,12 @@ def scada_yukle(plant_id: str, dosya: UploadFile = File(...),
                               latitude=row["lat"], longitude=row["lon"],
                               source_timezone=tz,
                               file_format=detect_file_format(yol),
-                              mapping=esleme, duplicate_policy=tekrar,
+                              mapping=esleme, duplicate_policy=tekrar, damga_tipi=damga,
                               ac_limit_kw=row.get("ac_limit_kw"))   # v2.376
         else:
             res = ingest_file(yol, capacity_kwp=float(row["capacity_kwp"]),
                               latitude=row["lat"], longitude=row["lon"],
-                              source_timezone=tz, duplicate_policy=tekrar,
+                              source_timezone=tz, duplicate_policy=tekrar, damga_tipi=damga,
                               ac_limit_kw=row.get("ac_limit_kw"))   # v2.376
         out = ingest_service.yukle_ve_kaydet(
             claims["tenant_id"], plant_id, dosya.filename or yol,
@@ -3056,6 +3469,9 @@ def scada_yukle(plant_id: str, dosya: UploadFile = File(...),
         raise HTTPException(422, str(e))
     finally:
         _os.unlink(yol)
+    _denetim.kaydet("musteri", "scada_yukle", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=plant_id,   # v2.602 (F4-H): dosya içeriği yazılmaz
+                    ayrinti={"dosya": dosya.filename, "damga_tipi": damga_tipi, "duplicate_policy": duplicate_policy,
+                             **{k: v for k, v in (out or {}).items() if isinstance(v, (int, str)) and k in ("batch_id", "parti_id", "satir", "yazilan", "ilk", "son", "rows_written", "n_satir")}})
     return {**out, "report": res.report.to_dict(),
             "transform": res.transform.to_dict()}
 
@@ -3073,8 +3489,12 @@ def tahmin_kos(plant_id: str, claims=Depends(yazma_yetkisi())):
     row = plant_service.getir(claims["tenant_id"], plant_id)
     if row is None:
         raise HTTPException(404, "santral yok")
+    import time as _time
+    t0 = _time.perf_counter()
     run_id = uret_ve_kaydet(claims["tenant_id"], row, etiket="elle")   # v2.572: elle koşu ana karne kovalarına girmez (karne_kurali)
-    return {"run_id": str(run_id)}
+    sure_sn = round(_time.perf_counter() - t0, 2)   # v2.606 (F4-L): eş zamanlı koşu YALNIZ ölçülür (arka plana alınması ayrı karar); süre izde ve yanıtta
+    _denetim.kaydet("musteri", "elle_kosu", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=plant_id, ayrinti={"run_id": str(run_id), "etiket": "elle", "sure_sn": sure_sn})   # v2.602
+    return {"run_id": str(run_id), "sure_sn": sure_sn}
 
 
 # ---------------------------------------------------------------- v2.94
@@ -3098,7 +3518,8 @@ def kosu_listesi(plant_id: str, claims=Depends(gecerli_kullanici)):
     if row is None:
         raise HTTPException(404, "santral yok")
     return [{"run_at": r.run_at.isoformat(), "mode": r.mode, "model": r.model, "bant": getattr(r, "bant", None),   # v2.273
-             "sapma": getattr(r, "sapma", None), "etiket": getattr(r, "etiket", None)}   # v2.274 / v2.276
+             "sapma": getattr(r, "sapma", None), "etiket": getattr(r, "etiket", None),   # v2.274 / v2.276
+             "nwp_kosu_zamani": (r.nwp_kosu_zamani.isoformat() if getattr(r, "nwp_kosu_zamani", None) else None), "nwp_bilesenler": getattr(r, "nwp_bilesenler", None)}   # v2.605
             for r in kosu_gecmisi(claims["tenant_id"], plant_id, n=10)]
 
 
@@ -3132,6 +3553,7 @@ def portfoy_bagimsiz_dogrulama(gun: int = 30, kural: str = "program", claims=Dep
     if not (7 <= gun <= 365):
         raise HTTPException(422, "gun 7-365")
     from sqlalchemy import text as _text
+
     from pvquant.db import tenant_baglami as _tb
     with _tb(claims["tenant_id"]) as s:
         plants = [dict(r._mapping) for r in s.execute(_text("SELECT id, name, capacity_kwp, tz, lat, lon, params_json FROM plants WHERE NOT archived ORDER BY name"))]
@@ -3159,7 +3581,7 @@ def _fe_uretim(uretim: str | None) -> str | None:
 
 
 @app.get("/v1/plants/{plant_id}/finansal-etki")
-def finansal_etki(plant_id: str, donem: str | None = None, uretim: str | None = None, taze: int = 0, claims=Depends(gecerli_kullanici)):
+def finansal_etki(plant_id: str, donem: str | None = None, uretim: str | None = None, taze: int = 0, itibariyle: str | None = None, claims=Depends(gecerli_kullanici)):
     """v2.583 (Faz 2 F2-E): Finansal Etki Merkezi — dönem (YYYY-MM-DD | YYYY-Wnn | YYYY-MM | YYYY-QN | YYYY; verilmezse son tam ay) için üretim özeti,
     satış geliri, uzlaştırma bileşenleri, resmî eşleme, göstergeler, üretim düşüklüğü, ileri maruziyet ve birleşik toplam. Varsayılan: gece işinin son
     kayıtlı sonucu (≤36 sa); yoksa ya da taze=1 ise anında hesap (kaydedilmez). Tutarlar yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir."""
@@ -3168,11 +3590,25 @@ def finansal_etki(plant_id: str, donem: str | None = None, uretim: str | None = 
     if row is None:
         raise HTTPException(404, "santral yok")
     d = _fe_donem_dict(row, donem); kod = d["kod"]; ur = _fe_uretim(uretim)
+    if itibariyle:   # v2.601 (F4-G, M6): fiyat o andaki sürümle — kayıtlı sonucun yeniden kurulması (kaydedilmez)
+        return fe.ozet(claims["tenant_id"], row, kod, ur, itibariyle=_zaman_cozumle(itibariyle))
     if not taze:
         s = fe.son(claims["tenant_id"], plant_id, kod, ur, donem_bit=d["bit"], plant=row)   # v2.587: dönem sonu ve santral ayarındaki girdiyle eşleşen kayıt
         if s:
             return s
     return fe.ozet(claims["tenant_id"], row, kod, ur)
+
+
+def _zaman_cozumle(metin: str):
+    """ISO zaman → UTC datetime; saat dilimi yoksa piyasa dilimi varsayılır. Geçersizse 422."""
+    try:
+        t = pd.Timestamp(metin)
+    except (ValueError, TypeError):
+        raise HTTPException(422, "itibariyle ISO zaman olmalı (ör. 2026-11-12T03:55:00+03:00)") from None
+    if pd.isna(t):
+        raise HTTPException(422, "itibariyle ISO zaman olmalı")
+    t = t.tz_localize(PIYASA_TZ) if t.tzinfo is None else t
+    return t.tz_convert("UTC").to_pydatetime()
 
 
 @app.get("/v1/plants/{plant_id}/finansal-etki/gecmis")
@@ -3209,9 +3645,10 @@ def finansal_etki_senaryo(plant_id: str, donem: str | None = None, pozisyon: str
 @app.get("/v1/portfoy/finansal-etki")
 def portfoy_finansal_etki(donem: str | None = None, uretim: str | None = None, claims=Depends(gecerli_kullanici)):
     """v2.583 (Faz 2 F2-E): kiracının santralleri — santral başına özet ve toplam (segment kapısıyla; eksik nitelikli santral toplama girmez); anında hesap, kaydedilmez."""
-    from pvquant.services import finansal_etki_service as fe
     from sqlalchemy import text as _text
+
     from pvquant.db import tenant_baglami as _tb
+    from pvquant.services import finansal_etki_service as fe
     ur = _fe_uretim(uretim)
     with _tb(claims["tenant_id"]) as s:
         plants = [dict(r._mapping) for r in s.execute(_text("SELECT id, name, capacity_kwp, tz, lat, lon, params_json, archived FROM plants WHERE NOT archived ORDER BY name"))]
@@ -3223,6 +3660,7 @@ def portfoy_finansal_etki(donem: str | None = None, uretim: str | None = None, c
 def rapor_uret(plant_id: str, fmt: str, claims=Depends(gecerli_kullanici)):
     """v2.94: uret() -> bytes; dosya adi basliga yazilir, tarayici indirir."""
     from fastapi.responses import Response
+
     from pvquant.services import report_service
     from pvquant.services.report_html_service import RaporDenetimHatasi
     if fmt not in _RAPOR_MIME:
@@ -3591,6 +4029,7 @@ def portfoy_gecmis(portfoy_id: str, tur: str | None = None, donem: str | None = 
 @app.get("/v1/portfoyler/{portfoy_id}/gecmis/{kayit_id}")
 def portfoy_gecmis_kayit(portfoy_id: str, kayit_id: str, claims=Depends(gecerli_kullanici)):
     from sqlalchemy import text as _text
+
     from pvquant.db import tenant_baglami as _tb
     _pf_kapi(claims, portfoy_id)
     with _tb(claims["tenant_id"]) as s:

@@ -8,10 +8,14 @@ uzlaştırılarak (yaklaşık). Tek santralde dürüstçe 'bottom-up (uzlaştır
 """
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 import numpy as np
 import pandas as pd
 
 from pvquant.ext.tahmin import portfoy as hp
+from pvquant.services import kalite_sozlugu as _ks   # v2.598 (F4-C): flag süzgeci tek sözlükten
+from pvquant.services.karne_kurali import yayin_kosu_sql as _yayin_sql   # v2.597 (F4-B): yayımlanmış koşu süzgeci
 
 MIN_GUN = 14
 
@@ -64,8 +68,9 @@ def portfoy_tahmini(tenant_id, gun: int = 7) -> dict:
         santraller = [dict(r._mapping) for r in s.execute(text("SELECT id, name, tz, capacity_kwp FROM plants WHERE NOT archived ORDER BY name"))]
         art = pd.read_sql(text(
             "SELECT p.name, f.ts_utc, f.p50_kw - s.power_kw AS artik FROM forecast_values f JOIN forecast_runs r ON r.id=f.run_id "
-            "JOIN scada_hourly s ON s.plant_id=f.plant_id AND s.ts_utc=f.ts_utc AND s.flag='valid' JOIN plants p ON p.id=f.plant_id "
+            f"JOIN scada_hourly s ON s.plant_id=f.plant_id AND s.ts_utc=f.ts_utc AND {_ks.sql_kosulu('uzlastirma', 's')} JOIN plants p ON p.id=f.plant_id "
             "WHERE f.ts_utc >= now() - interval '60 days' AND f.ts_utc - r.run_at BETWEEN INTERVAL '0 hour' AND INTERVAL '24 hour' "
+            f"AND {_yayin_sql('r')} "
             "AND s.power_kw > 0.02 * p.capacity_kwp"), s.connection(), parse_dates=["ts_utc"])
     tahminler = {}; santral_eksik: list[str] = []   # 03.11: koşusu olmayan santral tabloda YOK — özet kartı «—» der, tablo adını söyler
     for p in santraller:
@@ -79,7 +84,7 @@ def portfoy_tahmini(tenant_id, gun: int = 7) -> dict:
         return {"durum": "kosu_yok", "santral": len(santraller)}
     artiklar = art.pivot_table(index="ts_utc", columns="name", values="artik") if not art.empty else None
     uz, meta = uzlastir_df(tahminler, artiklar)
-    tz = santraller[0].get("tz") or "Europe/Istanbul"
+    tz = santraller[0].get("tz") or PIYASA_TZ
     yerel = uz.index.tz_convert(tz)
     g = uz.groupby(yerel.date).agg({"p50": "sum", "p10": "sum", "p90": "sum"}) / 1000.0
     say = uz.groupby(yerel.date).size()

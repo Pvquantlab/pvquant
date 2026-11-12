@@ -30,6 +30,7 @@ göstermeli.
 """
 from __future__ import annotations
 
+
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -122,8 +123,14 @@ def _tarih_saat_birlestir(df: pd.DataFrame) -> pd.DataFrame:
     if tarih_kolonu is None or saat_kolonu is None:
         return df
     df = df.copy()
-    saat = (pd.to_numeric(df[saat_kolonu], errors="coerce")
-            .fillna(0).astype(int).mod(24).map("{:02d}:00".format))
+    say = pd.to_numeric(df[saat_kolonu], errors="coerce")
+    # v2.599 (F4-D): saat kolonu 1–24 ise HOUR-ENDING (aralık sonu) dosyasıdır — 24 aynı günün 00:00'ı değil, 23:00–24:00 aralığıdır.
+    # Eski `mod(24)` 24'ü günün başına yığıyordu. Aralık başına çevrilir (saat−1), künyeye 'aralik_sonu' + 'saat-1' yazılır.
+    hour_ending = bool(say.notna().any() and say.min() >= 1 and say.max() == 24)
+    if hour_ending:
+        say = say - 1
+        df.attrs["kaynak_damga_tipi"] = "aralik_sonu"; df.attrs["damga_duzeltme"] = "saat-1"
+    saat = say.fillna(0).astype(int).mod(24).map("{:02d}:00".format)
     birlesik = df[tarih_kolonu].astype(str).str.strip() + " " + saat
     df = df.rename(columns={tarih_kolonu: f"{tarih_kolonu}__tarih",
                             saat_kolonu: f"{saat_kolonu}__saat"})
@@ -339,6 +346,7 @@ def ingest_file(
     mapping: ColumnMapping | None = None,
     duplicate_policy: str = "error",
     ac_limit_kw: float | None = None,
+    damga_tipi: str = "aralik_basi",
 ) -> IngestionResult:
     """Faz 2: onaylanmış kararlarla dönüştür + doğrula.
 
@@ -384,6 +392,7 @@ def ingest_file(
         source_timezone=source_timezone,
         decimal=fmt.decimal,
         duplicate_policy=duplicate_policy,
+        damga_tipi=damga_tipi,   # v2.599 (F4-D): kaynak damgası aralık sonu ise aralık başına çevrilir
     )
     flagged, report = validate(
         canonical,
@@ -394,6 +403,11 @@ def ingest_file(
         source_timestep_minutes=spec.source_timestep_minutes,   # v2.367
         ac_limit_kw=ac_limit_kw,                                # v2.376
     )
+    if spec.dst_yok_saat_satiri:   # v2.599 (F4-D): yaz saati ileri alınırken var olmayan saat — tek UTC karşılığı yok, sessizce değil raporla düşer
+        report.warnings.append(
+            f"{spec.dst_yok_saat_satiri} satır yaz saati geçişinde var olmayan yerel saate düşüyor (ileri alma); bu satırların UTC karşılığı yok, "
+            "seriye alınmadı. Dosya saat dilimi yanlış seçilmiş olabilir (kaynak sabit standart saat kullanıyorsa dilimi 'Etc/GMT-1' gibi seçin)."
+        )
     # v2.371 (bulgu 21, T9 canlı): birim ORAN sezgisiyle çevrildiyse SESSİZ
     # kalmaz — kobayın şişkin kapasitesi ~2 kW'lik değerleri MW sanıp 1000×
     # çarptırdı, 319 satır 'kapasite üstü' oldu ve karne sebebini söylemedi.

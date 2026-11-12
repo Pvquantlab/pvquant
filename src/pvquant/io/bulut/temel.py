@@ -8,6 +8,8 @@ Token yenileyen bağlayıcılar (Sungrow) yeni kimliği `kimlik_yenile(yeni)` ge
 """
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 from datetime import datetime, timezone
 
 import httpx
@@ -77,7 +79,7 @@ class Baglayici:
 def gun_baslangici(gun: datetime, tz_adi: str | None) -> datetime:
     """Verilen günün yerel gece yarısı (saat dilimli)."""
     from zoneinfo import ZoneInfo
-    tz = ZoneInfo(tz_adi or "Europe/Istanbul")
+    tz = ZoneInfo(tz_adi or PIYASA_TZ)
     g = gun if gun.tzinfo else gun.replace(tzinfo=timezone.utc)
     return g.astimezone(tz).replace(hour=0, minute=0, second=0, microsecond=0)
 

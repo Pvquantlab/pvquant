@@ -13,6 +13,8 @@ import numpy as np
 import pandas as pd
 
 from pvquant.config import get_settings
+from pvquant.services import kalite_sozlugu as _ks   # v2.598 (F4-C): flag süzgeci tek sözlükten
+from pvquant.services.karne_kurali import yayin_kosu_sql as _yayin_sql   # v2.597 (F4-B): yayımlanmış koşu süzgeci
 
 PENCERE_GUN = 7
 TAZELIK_GUN = 3
@@ -69,7 +71,7 @@ def ayar_getir(tenant_id, plant: dict) -> dict:
     from sqlalchemy import text
     from pvquant.db import tenant_baglami
     with tenant_baglami(tenant_id) as s:
-        son = s.execute(text("SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p AND flag='valid'"), {"p": plant["id"]}).scalar()
+        son = s.execute(text(f"SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p AND {_ks.sql_kosulu('karne')}"), {"p": plant["id"]}).scalar()
         if son is None:
             return {"aktif": False, "neden": "ölçüm yok"}
         yas = (pd.Timestamp.now(tz="UTC") - pd.Timestamp(son).tz_convert("UTC")).days
@@ -77,8 +79,9 @@ def ayar_getir(tenant_id, plant: dict) -> dict:
             return {"aktif": False, "neden": f"son ölçüm {yas} gün önce (>{TAZELIK_GUN})"}
         df = pd.read_sql(text(
             "SELECT f.ts_utc, s.power_kw, f.p50_kw AS p50 FROM forecast_values f JOIN forecast_runs r ON r.id=f.run_id "
-            "JOIN scada_hourly s ON s.plant_id=f.plant_id AND s.ts_utc=f.ts_utc AND s.flag='valid' "
+            f"JOIN scada_hourly s ON s.plant_id=f.plant_id AND s.ts_utc=f.ts_utc AND {_ks.sql_kosulu('karne', 's')} "
             "WHERE f.plant_id=:p AND f.ts_utc >= :son - (:g * INTERVAL '1 day') "
+            f"AND {_yayin_sql('r')} "
             "AND f.ts_utc - r.run_at BETWEEN INTERVAL '0 hour' AND INTERVAL '24 hour' ORDER BY f.ts_utc"),
             s.connection(), params={"p": plant["id"], "son": son, "g": PENCERE_GUN}, parse_dates=["ts_utc"])
     out = oranlar_hesapla(df, float(plant["capacity_kwp"]), plant.get("tz") or "UTC")

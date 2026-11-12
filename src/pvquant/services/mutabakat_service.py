@@ -9,6 +9,8 @@ PVQuant yalnız santral verisinden hesaplanabilen kalemleri yeniden hesaplar: en
 """
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 import calendar
 import hashlib
 import io
@@ -28,7 +30,7 @@ DAYANAK_KUNYELERI = (
     'Karar 14907: EPDK Kurul Kararı 14907 (KÜPST, 1.11.2026 çıkarım), RG 19.10.2026-33405'
 )
 
-IST = ZoneInfo("Europe/Istanbul")
+IST = ZoneInfo(PIYASA_TZ)
 SURUMLER = ("on", "nihai")
 SURUM_ETIKET = {"on": "ön bildirim", "nihai": "nihai bildirim"}
 # kod → etiket (EPYS ekranı adı), ipuçları (sadeleştirilmiş), PVQuant hesaplar mı, EPYS kalem kodu (02-23 ön yüz paketi)

@@ -16,6 +16,7 @@ from pvquant.ext.platform import finans as fn
 from pvquant.ext.turkiye import kurallar as kr
 from pvquant.services import dengesizlik_service as ds
 from pvquant.services import finansal_etki_service as fe
+from pvquant.services import kural_sicili_service as _kss  # v2.600 (F4-F): sonuç meta damgası
 from pvquant.services import piyasa_service
 from pvquant.services import portfoy_tahmin_service as pt
 from pvquant.services import portfoy_varlik_service as pv
@@ -107,9 +108,14 @@ def donem(tenant_id, portfoy_id, kod: str | None = None, uretim: str | None = No
                                                                                    "hesaplanamayan_saat", "sapma_net_mwh", "sapma_ayri_mwh", "uretim_mwh", "dagitim_anahtari", "not")},
             "perspektifler": per, "sozlesme": ({k: soz.get(k) for k in ("id", "tur", "gecerli_bas", "gecerli_bit", "dagitim_yontemi", "dogrulama", "belge_adi", "dagilim_etiketi", "taraf_a_ad", "taraf_b_ad")} if soz else None),
             "yontem": yontem, "yontem_ad": dg.YONTEM_AD.get(yontem, yontem), "kural": kural, "fiyat": fiyat_ozeti, "notlar": notlar,
-            "meta": {"surum": SURUM, "uretim_girdisi": uretim or "santral ayarı", "uyelik_anlik": pv.uyelik_anlik(tenant_id, portfoy_id, uyelik_tarihi),
+            "meta": {"surum": SURUM, **_kss.meta_damgasi(), "uretim_girdisi": uretim or "santral ayarı", "uyelik_anlik": pv.uyelik_anlik(tenant_id, portfoy_id, uyelik_tarihi),
                      "sozlesme_anlik": pv.sozlesme_anlik(tenant_id, portfoy_id, uyelik_tarihi), "uyelik_pencerede_degisti": bool(uyelik_degisti), "isaret": fn.ISARET_KURALI,
-                     "cekirdek": "dengesizlik_service.dsg_hesapla_df (dsg_saatlik); formül değişmedi"}}
+                     "cekirdek": "dengesizlik_service.dsg_hesapla_df (dsg_saatlik); formül değişmedi",
+                     # v2.601 (F4-G): fiyat damgası (M6), hesap durumu, çıktı sürümü
+                     "fiyat": {**fiyat_ozeti, "sha16": piyasa_service.fiyat_sha16(fiyat), "itibariyle": None},
+                     "hesap_durumu": ("hesaplanamadi" if not uy else "senaryo" if fiyat_ozeti["epias_saat"] == 0 and fiyat_ozeti["senaryo_saat"] else
+                                      "kismi" if (fiyat_ozeti["senaryo_saat"] or hatalar or dsg.get("hesaplanamayan_saat")) else "tam"),
+                     "cikti_surumu": "1.1"}}
 
 
 def _uretim_mwh(df: pd.DataFrame | None) -> float | None:

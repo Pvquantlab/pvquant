@@ -9,10 +9,13 @@ sınırı pvquant.ext.platform.paylasim.ROL_IZIN ile aynı dildedir.
 """
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 import json
 from datetime import datetime, timezone
 
 import pandas as pd
+from pvquant.services import kalite_sozlugu as _ks   # v2.598 (F4-C): flag süzgeci tek sözlükten
 
 PAYLASILABILIR = ("tahmin:oku", "karne:oku", "gerceklesen:oku")
 ETIKET = {"tahmin:oku": "tahmin", "karne:oku": "karne", "gerceklesen:oku": "gerçekleşen özeti"}
@@ -48,7 +51,7 @@ def paylas(tenant_id, kullanici_id, plant: dict, hedef_eposta: str, izinler: lis
         raise ValueError("kendi kuruluşunuza paylaşım gerekmez")
     b = None
     if bitis:
-        b = pd.Timestamp(bitis, tz="Europe/Istanbul") + pd.Timedelta(days=1)   # bitiş günü dâhil
+        b = pd.Timestamp(bitis, tz=PIYASA_TZ) + pd.Timedelta(days=1)   # bitiş günü dâhil
     with tenant_baglami(tenant_id) as s:
         pid = s.execute(text(
             "INSERT INTO paylasimlar(kaynak_tenant,hedef_tenant,plant_id,izinler,takma_ad,bitis,olusturan) "
@@ -120,7 +123,7 @@ def paylasilan_tahmin(hedef_tenant, paylasim_id) -> dict:
     ad = r["takma_ad"] or r["santral"]
     if df is None or df.empty:
         return {"santral": ad, "gunler": [], "not": "henüz tahmin üretilmedi"}
-    g = gunluk_toplamlar(df, r["tz"] or "Europe/Istanbul")
+    g = gunluk_toplamlar(df, r["tz"] or PIYASA_TZ)
     return {"santral": ad, "kapasite_kwp": (None if r["takma_ad"] else float(r["capacity_kwp"])),
             "gunler": [{"gun": k, "p50_kwh": v["p50_kwh"], "p10_kwh": v.get("p10_kwh"), "p90_kwh": v.get("p90_kwh")} for k, v in list(g.items())[:10]]}
 
@@ -148,8 +151,8 @@ def paylasilan_gerceklesen(hedef_tenant, paylasim_id) -> dict:
     with sistem_baglami() as s:
         g = s.execute(text(
             "SELECT date_trunc('day', ts_utc AT TIME ZONE :tz)::date AS gun, round(sum(power_kw)::numeric, 0) AS kwh FROM scada_hourly "
-            "WHERE plant_id=:p AND flag='valid' AND ts_utc >= now() - interval '14 days' GROUP BY 1 ORDER BY 1"),
-            {"p": r["plant_id"], "tz": r["tz"] or "Europe/Istanbul"}).mappings().all()
+            f"WHERE plant_id=:p AND {_ks.sql_kosulu('rapor')} AND ts_utc >= now() - interval '14 days' GROUP BY 1 ORDER BY 1"),
+            {"p": r["plant_id"], "tz": r["tz"] or PIYASA_TZ}).mappings().all()
     return {"santral": r["takma_ad"] or r["santral"], "gunler": [{"gun": x["gun"].isoformat(), "kwh": float(x["kwh"])} for x in g]}
 
 

@@ -16,6 +16,8 @@ import numpy as np
 import pandas as pd
 
 from pvquant.ext.tahmin.konformal import CQR
+from pvquant.services import kalite_sozlugu as _ks   # v2.598 (F4-C): flag süzgeci tek sözlükten
+from pvquant.services.karne_kurali import yayin_kosu_sql as _yayin_sql   # v2.597 (F4-B): yayımlanmış koşu süzgeci
 
 ALPHA = 0.2          # %80 bant (P10–P90)
 MIN_TOPLAM = 24 * 7  # en az bir haftalık gündüz saati
@@ -127,8 +129,9 @@ def gecmis_band_df(tenant_id, plant_id, gun: int = 60, ufuk_ust_saat: int = 24) 
             "COALESCE(f.p90_ham_kw, f.p90_kw) AS p90, "
             "EXTRACT(EPOCH FROM (f.ts_utc - r.run_at)) / 3600.0 AS ufuk_saat "
             "FROM forecast_values f JOIN forecast_runs r ON r.id=f.run_id "
-            "JOIN scada_hourly s ON s.plant_id=f.plant_id AND s.ts_utc=f.ts_utc AND s.flag='valid' "
+            f"JOIN scada_hourly s ON s.plant_id=f.plant_id AND s.ts_utc=f.ts_utc AND {_ks.sql_kosulu('karne', 's')} "
             "WHERE f.plant_id=:p AND f.ts_utc >= now()-(:g * INTERVAL '1 day') "
+            f"AND {_yayin_sql('r')} "
             "AND f.ts_utc - r.run_at BETWEEN INTERVAL '0 hour' AND (:u * INTERVAL '1 hour') ORDER BY f.ts_utc"),
             s.connection(), params={"p": plant_id, "g": gun, "u": ufuk_ust_saat}, parse_dates=["ts_utc"])
 
@@ -149,6 +152,11 @@ def q_hat_hesapla(tenant_id, plant: dict, gun: int = 60) -> dict | None:
             "VALUES(:t,:p,:a,:g,CAST(:q AS jsonb),:n,:pg,now()) "
             "ON CONFLICT (plant_id) DO UPDATE SET alpha=EXCLUDED.alpha, grup=EXCLUDED.grup, q_hat_json=EXCLUDED.q_hat_json,"
             " n=EXCLUDED.n, pencere_gun=EXCLUDED.pencere_gun, hesap_zamani=now()"),
+            {"t": tenant_id, "p": pid, "a": ayar["alpha"], "g": ayar["grup"], "q": json.dumps(ayar["q_hat"]), "n": ayar["n"], "pg": gun})
+        # v2.597 (F4-B): q̂ sürüm geçmişi — yalnız ekleme; UPSERT eski ayarı ezer, bant yeniden kurma için sürüm burada kalır
+        s.execute(text(
+            "INSERT INTO konformal_ayar_gecmis(tenant_id,plant_id,alpha,grup,q_hat_json,n,pencere_gun,hesap_zamani,kaynak) "
+            "VALUES(:t,:p,:a,:g,CAST(:q AS jsonb),:n,:pg,now(),'gece')"),
             {"t": tenant_id, "p": pid, "a": ayar["alpha"], "g": ayar["grup"], "q": json.dumps(ayar["q_hat"]), "n": ayar["n"], "pg": gun})
     return ayar
 

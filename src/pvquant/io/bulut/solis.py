@@ -8,6 +8,8 @@ Hız: uç başına 2/sn (429). Erişim yalnız santral sahibine (API Access Requ
 """
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 import base64
 import hashlib
 import hmac
@@ -108,7 +110,7 @@ class Solis(Baglayici):
         out = []
         for kod in kodlar:
             tzs = getattr(self, "_tz", {}).get(kod, 3)
-            bas = gun_baslangici(gun, "Europe/Istanbul") if tzs == 3 else gun_baslangici(gun, "UTC")
+            bas = gun_baslangici(gun, PIYASA_TZ) if tzs == 3 else gun_baslangici(gun, "UTC")
             d = self._post("/v1/api/stationDay", {"id": int(kod) if kod.isdigit() else kod, "money": "EUR", "time": bas.strftime("%Y-%m-%d"), "timeZone": tzs})
             noktalar = d if isinstance(d, list) else (d.get("records") or d.get("list") or [])
             kum: list[tuple[datetime, float]] = []; guc: dict[datetime, list[float]] = {}

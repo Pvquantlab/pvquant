@@ -14,6 +14,8 @@ Doğrulama: portföy toplamının PICP80 / P(y<P10) / P(y>P90) / Winkler sınav�
 Eksik saat/santral 0 sayılmaz: NaN kalır ve listelenir."""
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 import numpy as np
 import pandas as pd
 
@@ -243,7 +245,7 @@ def bolge_gostergesi(koordinatlar: dict[str, tuple[float, float]], esik_km: floa
 
 
 # ---------------------------------------------------------------- birleşik özet (saf)
-def portfoy_tahmini(tahminler: dict[str, pd.DataFrame], kapasiteler: dict[str, float], artiklar: pd.DataFrame | None, tz: str = "Europe/Istanbul",
+def portfoy_tahmini(tahminler: dict[str, pd.DataFrame], kapasiteler: dict[str, float], artiklar: pd.DataFrame | None, tz: str = PIYASA_TZ,
                     koordinatlar: dict[str, tuple[float, float]] | None = None, kapsama: dict | None = None) -> dict:
     """Saf uçtan uca: hizala → ρ → saatlik bant → günlük → durum. `kapsama` (önceki sınav sonucu) verilirse belirsizlik durumu ondan alınır;
     verilmezse ρ yeterliyse «dogrulanmadi», değilse «yetersiz_veri»."""

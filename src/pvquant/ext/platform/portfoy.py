@@ -6,6 +6,8 @@ Hiyerarşik uzlaştırma (MinT) pvquant.ext.tahmin.portfoy'da; burada yalnız to
 """
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -66,7 +68,7 @@ def siralama(karneler: dict[str, dict], portfoy: Portfoy, alan: str = "wmape", n
     return pd.concat([df.head(n).assign(grup="en_iyi"), df.tail(n).assign(grup="en_kotu")])
 
 
-def gunluk_ozet(tahmin_mw: dict[str, pd.Series], gercek_mw: dict[str, pd.Series], portfoy: Portfoy, tz: str = "Europe/Istanbul") -> pd.DataFrame:
+def gunluk_ozet(tahmin_mw: dict[str, pd.Series], gercek_mw: dict[str, pd.Series], portfoy: Portfoy, tz: str = PIYASA_TZ) -> pd.DataFrame:
     T = topla(tahmin_mw).tz_convert(tz); G = topla(gercek_mw).tz_convert(tz)
     df = pd.DataFrame({"tahmin_mwh": T.resample("D").sum(min_count=1), "gercek_mwh": G.resample("D").sum(min_count=1)})
     df["sapma_mwh"] = df["gercek_mwh"] - df["tahmin_mwh"]

@@ -27,7 +27,9 @@ from datetime import date, datetime, timedelta, timezone
 import numpy as np
 import pandas as pd
 
+from pvquant.services import kalite_sozlugu as _ks  # v2.598 (F4-C): flag süzgeci tek sözlükten
 from pvquant.services import karne_kurali as kk
+from pvquant.zaman import PIYASA_TZ
 
 SOZLUK_SURUMU = "2026-11-10"
 KURALLAR = ("program", "gun_oncesi", "gun_ici", "ufuk")
@@ -307,6 +309,11 @@ def meta(d: pd.DataFrame, e: pd.DataFrame, kural: str, kaynak: str, kapasite: fl
     m = {"sozluk_surumu": SOZLUK_SURUMU, "kural": kural, "kaynak": kaynak, "kapasite_kwp": float(kapasite), "gunduz_orani": GUNDUZ_ORAN,
          "donem": {"bas": str(donem_bas), "bit": str(donem_bit), "tz": plant.get("tz")}, "kosu_sayisi": len(run_ids), "kosu_kumesi_sha": _sha(run_ids),
          "saat_kumesi_sha": _sha(sorted(e["ts_utc"].astype(str))), "hesap_zamani": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+    try:   # v2.600 (F4-F): hangi mevzuat kural kümesiyle (program kesimi vb.) hesaplandı
+        from pvquant.ext.turkiye import kural_sicili as _ks
+        m["kural_sicili_sha"] = _ks.sicil_sha16()
+    except Exception:   # noqa: BLE001
+        m["kural_sicili_sha"] = None
     try:
         from pvquant.surum import yazilim_surumu
         m["yazilim_surumu"] = yazilim_surumu()
@@ -327,7 +334,7 @@ def meta(d: pd.DataFrame, e: pd.DataFrame, kural: str, kaynak: str, kapasite: fl
 # ---------------------------------------------------------------- saf uçtan uca
 def hesapla_saf(tahmin: pd.DataFrame, saatler: pd.DataFrame, dokum: dict, plant: dict, donem_bas, donem_bit, kural: str = "program",
                 kaynak: str = "scada", gecmis: pd.Series | None = None, kosular: pd.DataFrame | None = None, simulasyon: bool = False) -> dict:
-    tz = plant.get("tz") or "Europe/Istanbul"; kap = float(plant["capacity_kwp"])
+    tz = plant.get("tz") or PIYASA_TZ; kap = float(plant["capacity_kwp"])
     secim = kosu_sec(tahmin, kural, tz, simulasyon)
     d = eslestir(secim, saatler, tz)
     e_tum = degerlendirilebilir(d, kap)
@@ -350,6 +357,7 @@ def hesapla_saf(tahmin: pd.DataFrame, saatler: pd.DataFrame, dokum: dict, plant:
 def tahmin_oku(tenant_id, plant_id, bas: datetime, bit: datetime) -> tuple[pd.DataFrame, pd.DataFrame]:
     """[bas, bit) saatlerini kapsayan tüm koşuların değerleri (geriye bakışlı dâhil; seçim kuralı sonra eler) ve koşu künyeleri."""
     from sqlalchemy import text
+
     from pvquant.db import tenant_baglami
     with tenant_baglami(tenant_id) as s:
         df = pd.read_sql(text(
@@ -368,9 +376,10 @@ def tahmin_oku(tenant_id, plant_id, bas: datetime, bit: datetime) -> tuple[pd.Da
 def gecmis_olcum_oku(tenant_id, plant_id, bas: datetime, bit: datetime, geriye_gun: int = 400) -> pd.Series:
     """Referanslar için ölçülmüş saatlik seri (flag='valid'; kWh ≈ kW×1 sa), dönemden geriye_gun gün öncesinden dönem sonuna."""
     from sqlalchemy import text
+
     from pvquant.db import tenant_baglami
     with tenant_baglami(tenant_id) as s:
-        df = pd.read_sql(text("SELECT ts_utc, COALESCE(energy_kwh, power_kw) AS kwh FROM scada_hourly WHERE plant_id = CAST(:p AS uuid) AND flag='valid' "
+        df = pd.read_sql(text(f"SELECT ts_utc, COALESCE(energy_kwh, power_kw) AS kwh FROM scada_hourly WHERE plant_id = CAST(:p AS uuid) AND {_ks.sql_kosulu('karne')} "
                               "AND ts_utc >= :a AND ts_utc < :b ORDER BY ts_utc"),
                          s.connection(), params={"p": plant_id, "a": bas - timedelta(days=geriye_gun), "b": bit}, parse_dates=["ts_utc"])
     if df.empty:
@@ -380,7 +389,7 @@ def gecmis_olcum_oku(tenant_id, plant_id, bas: datetime, bit: datetime, geriye_g
 
 def donem(plant: dict, gun: int, bugun: date | None = None) -> tuple[datetime, datetime, date, date]:
     """Son `gun` tam yerel gün: [bugün−gun, bugün) santral dilimi → UTC sınırlar."""
-    tz = plant.get("tz") or "Europe/Istanbul"
+    tz = plant.get("tz") or PIYASA_TZ
     b = bugun or pd.Timestamp.now(tz=tz).date()
     bas_g, bit_g = b - timedelta(days=gun), b
     bas = pd.Timestamp(bas_g, tz=tz).tz_convert("UTC").to_pydatetime(); bit = pd.Timestamp(bit_g, tz=tz).tz_convert("UTC").to_pydatetime()
@@ -401,6 +410,7 @@ def hesapla(tenant_id, plant: dict, gun: int = 30, kural: str = "program", kayna
 def kaydet(tenant_id, sonuc: dict, plant_id=None) -> str:
     """YALNIZ EKLEME. Simülasyon sonucu (meta.simulasyon) KAYDEDİLMEZ: dogrulama_sonuc yalnız yayımlandığı anda saklanmış tahminin sınavını tutar."""
     from sqlalchemy import text
+
     from pvquant.db import tenant_baglami
     m = sonuc["meta"]
     if m.get("simulasyon"):
@@ -417,6 +427,7 @@ def kaydet(tenant_id, sonuc: dict, plant_id=None) -> str:
 def son(tenant_id, plant_id, kural: str = "program", gun: int = 30, azami_yas_saat: float = 36.0) -> dict | None:
     """En son kaydedilmiş sonuç (aynı kural ve dönem uzunluğu); bayatsa None."""
     from sqlalchemy import text
+
     from pvquant.db import tenant_baglami
     with tenant_baglami(tenant_id) as s:
         r = s.execute(text("SELECT id, hesap_zamani, donem_bas, donem_bit, kural, kaynak, sozluk_surumu, metrik_json, kesit_json, referans_json, butunluk_json, meta_json "
@@ -439,7 +450,7 @@ def portfoy(tenant_id, plants: list[dict], gun: int = 30, kural: str = "program"
             bas, bit, bas_g, bit_g = donem(p, gun, bugun)
             tahmin, _ = tahmin_oku(tenant_id, p["id"], bas, bit)
             saatler, dokum = ou.saat_durumlari(tenant_id, p, bas, bit)
-            tz = p.get("tz") or "Europe/Istanbul"
+            tz = p.get("tz") or PIYASA_TZ
             e = degerlendirilebilir(eslestir(kosu_sec(tahmin, kural, tz), saatler, tz), float(p["capacity_kwp"]))
             e = e.assign(_plant=str(p["id"]))
             parcalar.append(e); kap += float(p["capacity_kwp"])

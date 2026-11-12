@@ -16,6 +16,8 @@ import numpy as np
 import pandas as pd
 import pvlib
 
+YONTEM_ETIKETI = "saatlik dağıtım (açık gök profili) — 15 dk ölçüm ya da tahmin değildir"   # v2.599: çıktıya attrs['yontem'] olarak iliştirilir
+
 
 def acik_gok_15dk(index_15: pd.DatetimeIndex, lat: float, lon: float, yukseklik: float = 0.0) -> pd.Series:
     konum = pvlib.location.Location(lat, lon, altitude=yukseklik, tz="UTC")
@@ -43,7 +45,13 @@ def saatlikten_15dk(saatlik: pd.Series, lat: float, lon: float, degiskenlik: flo
     out = (kt15 * cs15).clip(lower=0.0)
     # enerji koruma: saat toplamı saatlik değere eşitlensin (cs eğriliği sonrası küçük sapma)
     olcek = s / out.resample("h").mean().reindex(s.index).replace(0, np.nan)
-    return (out * olcek.reindex(idx15, method="ffill").fillna(1.0)).fillna(0.0)
+    q = (out * olcek.reindex(idx15, method="ffill").fillna(1.0)).fillna(0.0)
+    # v2.599 (Faz 4 F4-D, 15 dk politikası): bu seri GERÇEK 15 dk tahmin değil, saatlik değerin açık gök profiliyle DAĞITIMIDIR;
+    # saatlik girdide olmayan saat 0 değil EKSİK (NaN) kalır — eski fillna(0) eksik saati «sıfır üretim» gibi gösteriyordu.
+    var_saat = pd.DatetimeIndex(s.index)
+    q = q.where(pd.DatetimeIndex(q.index).floor("h").isin(var_saat))
+    q.attrs["yontem"] = YONTEM_ETIKETI
+    return q
 
 
 def saatlige_topla(seri_15: pd.Series, enerji: bool = False) -> pd.Series:

@@ -11,6 +11,7 @@ import pandas as pd
 import pytest
 from sqlalchemy import text
 
+from pvquant.db import bakim_baglami
 from pvquant.ext.platform import finans as fn
 from pvquant.services import dengesizlik_service as ds
 from pvquant.services import finansal_etki_service as fe
@@ -205,7 +206,7 @@ def santral():
                               {"t": tid, "r": rid, "p": pid, "ts": ts, "kw": kw, "ph": kw / 1.1 * 1.2})   # fizik beklentisi 1,2 × gerçek
     yield tid, {"id": pid, "name": "FE GES", "capacity_kwp": 1000.0, "lat": 37.0, "lon": 32.0, "tz": tz,
                 "params_json": {"tarife": {"tip": "sabit", "tl_mwh": 2000}, "segment": "lisansli_serbest"}, "archived": False}
-    with sistem_baglami() as s:
+    with bakim_baglami() as s:
         for t in ("finansal_etki_sonuc", "forecast_values", "forecast_runs", "scada_hourly"):
             s.execute(text(f"DELETE FROM {t} WHERE tenant_id=:t"), {"t": tid})
         s.execute(text("DELETE FROM plants WHERE id=:p"), {"p": pid}); s.execute(text("DELETE FROM tenants WHERE id=:t"), {"t": tid})

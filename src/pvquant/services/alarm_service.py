@@ -15,6 +15,8 @@ günlük), santral bazlı alıcılar (params_json.alarm_alicilar + PVQ_ALARM_TO)
 (elle girilen aylık arıza sayısı), teminat_hatirlatma / avans_hatirlatma; kgup_teslim_gecikti artık «bildirildi» beyanına da bakar."""
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 import os
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -40,7 +42,7 @@ ESIK_VARSAYILAN = {"pr_esik": 0.70, "clipping_esik": 0.15, "iletisim_esik_saat":
                    "dengesizlik_esik": 0.03, "revizyon_esik": 0.10,
                    "takvim_gun_once": 3, "ptf_esik_tl_mwh": 0.0, "ariza_esik": 25,   # v2.519: gün, TL/MWh (0 → PTF ≤ 0; YEKDEM'de V), adet
                    "sayac_eksik_esik_saat": 24}   # v2.526 (P7b): vadesi gelip yüklenmemiş sayaç saati (adet) — ürün parametresi, mevzuat eşiği değil
-IST = ZoneInfo("Europe/Istanbul")
+IST = ZoneInfo(PIYASA_TZ)
 AYLAR = ("Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara")
 GUNLER = ("Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz")
 KURAL_ETIKET = {"veri_gelmedi": "Veri gelmedi", "skill_dustu": "Tahmin doğruluğu düştü", "pr_dustu": "Performans oranı düştü",   # 29.10: «isabet» iç terim (panel dili)
@@ -169,7 +171,7 @@ def _baglam(tenant_id, plant: dict, secili: list[str]) -> dict:
         try:
             import pandas as _pd
             from pvquant.services import kgup_service, dengesizlik_service
-            simdi = _pd.Timestamp.now(tz="Europe/Istanbul")
+            simdi = _pd.Timestamp.now(tz=PIYASA_TZ)
             seg = dengesizlik_service.segment_bilgisi(plant.get("params_json"))
             if seg.get("kgup_yukumlu") and simdi.hour * 60 + simdi.minute >= 15 * 60 + 30:
                 yarin = (simdi + _pd.Timedelta(days=1)).date()

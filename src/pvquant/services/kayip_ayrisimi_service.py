@@ -12,10 +12,14 @@ dışlanmadığını söyler (olay_service.TUR_KURAL istisna bayrağı).
 """
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 from datetime import timedelta, timezone
 
 import numpy as np
 import pandas as pd
+from pvquant.services.karne_kurali import yayin_kosu_sql as _yayin_sql   # v2.597 (F4-B): yayımlanmış koşu süzgeci
+from pvquant.services import kalite_sozlugu as _ks   # v2.598 (F4-C): flag süzgeci tek sözlükten
 
 NEDENLER = (
     ("talimat", "Sistem işletmecisi talimatı (YAT/YAL)", "olay kaydı", True),
@@ -119,7 +123,7 @@ def _fiyat_serisi(plant: dict, idx: pd.DatetimeIndex) -> tuple[pd.Series, dict]:
     t = tarife_service.tarife_getir(plant)
     if t and t.get("tip"):
         try:
-            ist = idx.tz_convert("Europe/Istanbul")
+            ist = idx.tz_convert(PIYASA_TZ)
             y = tarife_service.yapi(t, plant=plant, bas=ist.min().date(), bit=ist.max().date())
             fiyat = y.fiyat(idx, ptf=ptf)
             return fiyat, {"kaynak": "tarife", "tip": t["tip"], "senaryo_saat": (senaryo if t["tip"] == "ptf" else 0),
@@ -134,11 +138,12 @@ def hesapla(tenant_id, plant: dict, gun: int = 30) -> dict:
     from pvquant.db import tenant_baglami
     from pvquant.services import olay_service
     with tenant_baglami(tenant_id) as s:
-        son = s.execute(text("SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p AND flag IN ('valid','kisinti')"), {"p": plant["id"]}).scalar()
+        son = s.execute(text(f"SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p AND {_ks.sql_kosulu('kayip')}"), {"p": plant["id"]}).scalar()
         df = pd.read_sql(text(
             "SELECT f.ts_utc, f.physics_kw AS beklenen_kw, s.power_kw, s.flag, s.kirpma FROM forecast_values f JOIN forecast_runs r ON r.id=f.run_id "
-            "LEFT JOIN scada_hourly s ON s.plant_id=f.plant_id AND s.ts_utc=f.ts_utc AND s.flag IN ('valid','kisinti') "
+            f"LEFT JOIN scada_hourly s ON s.plant_id=f.plant_id AND s.ts_utc=f.ts_utc AND {_ks.sql_kosulu('kayip', 's')} "
             "WHERE f.plant_id=:p AND f.ts_utc - r.run_at BETWEEN INTERVAL '0 hour' AND INTERVAL '24 hour' "
+            f"AND {_yayin_sql('r')} "
             "AND f.ts_utc >= :son - (:g * INTERVAL '1 day') AND f.ts_utc <= :son ORDER BY f.ts_utc, r.run_at DESC"),
             s.connection(), params={"p": plant["id"], "g": gun, "son": son}, parse_dates=["ts_utc"]) if son is not None else pd.DataFrame()
     bos = {"pencere_gun": gun, "son_olcum": son.date().isoformat() if son is not None else None}

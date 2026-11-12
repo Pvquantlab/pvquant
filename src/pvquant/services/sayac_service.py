@@ -9,6 +9,8 @@ Bedel göstergesi dağıtım şirketi faturası değildir. Tahmin çekirdeği ve
 """
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 import hashlib
 import io
 import json
@@ -22,6 +24,7 @@ import pandas as pd
 from sqlalchemy import text
 
 from pvquant.db import tenant_baglami
+from pvquant.services import kalite_sozlugu as _ks   # v2.598 (F4-C): flag süzgeci tek sözlükten
 from pvquant.ext.turkiye import takvim as tk
 from pvquant.services.mutabakat_service import _sade, _satirlar, _sayi
 # v2.535 dayanak künyeleri [OLCUM, KARAR_13995, KARAR_14982, OSOS_UE, LUY, DUY] — bu dosyadaki madde atıflarının birincil yayımı (RG tarih-sayı, karar no); metin kunye.py sicilinden üretildi,
@@ -35,7 +38,7 @@ DAYANAK_KUNYELERI = (
     'DUY: Elektrik Piyasası Dengeleme ve Uzlaştırma Yönetmeliği, RG 14.04.2009-27200; değişiklikler RG 28.03.2015-29309, 30.10.2016-29873, 18.01.2018-30305, 09.08.2019-30857, 02.02.2020-31027, 19.11.2022-32018, 19.12.2023-32404, 17.12.2024-32755, 21.01.2025-32789, 29.12.2025-33122, 19.10.2026-33405, 21.10.2026-33407'
 )
 
-IST = ZoneInfo("Europe/Istanbul")
+IST = ZoneInfo(PIYASA_TZ)
 
 KAYNAKLAR = ("osos", "mass", "epys", "elle")
 KAYNAK_ETIKET = {"osos": "OSOS (dağıtım şirketi portalı; bilgi amaçlı, uzlaştırmaya esas UEVM değil)", "mass": "MASS (Millî Akıllı Sayaç Sistemi, massportal.com.tr kullanıcı uygulaması; bilgi amaçlı)", "epys": "EPYS sayaç verisi", "elle": "elle girilen"}
@@ -303,7 +306,7 @@ def scada_oku(tenant_id, plant_id, bas: datetime, bit: datetime) -> pd.DataFrame
         df = pd.read_sql(text("SELECT h.ts_utc, COALESCE(h.energy_kwh, h.power_kw) AS kwh, h.flag, "
                               "CASE WHEN b.filename = 'epias_realtime' THEN 'epias_seffaflik' ELSE 'scada_dosya' END AS kaynak "
                               "FROM scada_hourly h LEFT JOIN ingestion_batches b ON b.id = h.batch_id "
-                              "WHERE h.plant_id = CAST(:p AS uuid) AND h.flag = 'valid' AND h.ts_utc >= :a AND h.ts_utc < :b ORDER BY h.ts_utc"),
+                              f"WHERE h.plant_id = CAST(:p AS uuid) AND {_ks.sql_kosulu('uzlastirma', 'h')} AND h.ts_utc >= :a AND h.ts_utc < :b ORDER BY h.ts_utc"),
                          s.connection(), params={"p": plant_id, "a": bas, "b": bit}, parse_dates=["ts_utc"])
     if df.empty:
         return pd.DataFrame(columns=["kwh", "flag", "kaynak"], index=pd.DatetimeIndex([], tz="UTC", name="ts_utc"))
@@ -430,7 +433,7 @@ def gelis(tenant_id, plant: dict, pj: dict, simdi: datetime | None = None) -> di
     tur = pj.get("sayac_turu") if pj.get("sayac_turu") in SAYAC_TURLERI else None
     with tenant_baglami(tenant_id) as s:
         son_sayac = s.execute(text("SELECT max(ts_utc) FROM sayac_saatlik WHERE plant_id = CAST(:p AS uuid)"), {"p": plant["id"]}).scalar()
-        son_scada = s.execute(text("SELECT max(ts_utc) FROM scada_hourly WHERE plant_id = CAST(:p AS uuid) AND flag = 'valid'"), {"p": plant["id"]}).scalar()
+        son_scada = s.execute(text(f"SELECT max(ts_utc) FROM scada_hourly WHERE plant_id = CAST(:p AS uuid) AND {_ks.sql_kosulu('uzlastirma')}"), {"p": plant["id"]}).scalar()
     ay_bas = datetime.combine(_ay_bas(now_ist.date()), datetime.min.time(), tzinfo=IST).astimezone(timezone.utc)
     gecen_bit = now.replace(minute=0, second=0, microsecond=0)                              # başlamış saat dilimleri (bu saat hariç)
     son_beklenen = gecen_bit - timedelta(hours=2)                                           # m.8(2): saat + 2 sa (dilim sonundan sayıldı — koruyucu; sayım başlangıcı metinde açık değil)

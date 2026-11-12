@@ -18,6 +18,8 @@ Günler santralın yerel günüdür (v2.571 kuralı); UTC sınırlar yerel gün 
 """
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 import math
 import re
 from dataclasses import dataclass, field
@@ -29,7 +31,7 @@ import pandas as pd
 
 SOZLUK_SURUMU = "2026-11-11"
 ISARET_KURALI = "artı = santral lehine (alacak), eksi = santral aleyhine (borç)"
-IST_AD = "Europe/Istanbul"
+IST_AD = PIYASA_TZ   # v2.599: tek tanım pvquant.zaman
 
 
 # ---------------- nitelik ----------------

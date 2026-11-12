@@ -14,11 +14,14 @@ O&M v6.0 öneri, 04-05); temizlik kararı eğilim + yağış sonrası sıçrama 
 """
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 import json
 from datetime import date, datetime, timedelta, timezone
 
 import numpy as np
 import pandas as pd
+from pvquant.services import kalite_sozlugu as _ks   # v2.598 (F4-C): flag süzgeci tek sözlükten
 
 ACIK_GOK_MIN_WM2 = 200.0
 ORAN_ARALIK = (0.5, 1.35)
@@ -90,7 +93,7 @@ def acik_gok_poa(idx: pd.DatetimeIndex, lat: float, lon: float, egim: float, azi
     return poa_serisi(cs[["ghi", "dni", "dhi"]], lat, lon, float(egim), float(azimut))
 
 
-def gunluk_endeks(df: pd.DataFrame, cs_poa: pd.Series, capacity_kwp: float, tz: str = "Europe/Istanbul") -> pd.DataFrame:
+def gunluk_endeks(df: pd.DataFrame, cs_poa: pd.Series, capacity_kwp: float, tz: str = PIYASA_TZ) -> pd.DataFrame:
     """SAF. df: ts_utc, power_kw, poa_wm2. cs_poa: aynı damgalarda açık-gök POA. Döner gün satırları: gun, acik_saat, age, pr_acik."""
     if df is None or df.empty:
         return pd.DataFrame(columns=["gun", "acik_saat", "age", "pr_acik"])
@@ -214,7 +217,7 @@ def kayip_tahmini(gunler: pd.DataFrame, uretim_gunluk: pd.Series, fiyat_gunluk: 
             "pencere_kayip_kwh": round(float(kayip.sum()), 1), "temizlik": temizlik, "temizlik_neden": temizlik_neden, "not": KAYIP_NOTU}
 
 
-def gunluk_yagis(df_meteo: pd.DataFrame, tz: str = "Europe/Istanbul") -> pd.Series:
+def gunluk_yagis(df_meteo: pd.DataFrame, tz: str = PIYASA_TZ) -> pd.Series:
     """SAF. meteo arşivi saatlik precipitation (mm) → yerel günlük toplam."""
     if df_meteo is None or df_meteo.empty or "precipitation" not in df_meteo:
         return pd.Series(dtype=float)
@@ -252,7 +255,7 @@ def ozet(tenant_id, plant: dict, gun: int = 90, bugun: date | None = None) -> di
     from sqlalchemy import text
     from pvquant.db import tenant_baglami
     from pvquant.services import performans_service as ps
-    tz = plant.get("tz") or "Europe/Istanbul"
+    tz = plant.get("tz") or PIYASA_TZ
     pj = _pj(plant)
     kaynak = ps.isinim_kaynagi(ps.sensor_durumlari(ps.sensorler_oku(pj), bugun), bugun)
     bos = {"pencere_gun": gun, "sensor": kaynak, "not": NOT}
@@ -260,15 +263,15 @@ def ozet(tenant_id, plant: dict, gun: int = 90, bugun: date | None = None) -> di
         return {"durum": "egim_yok", **bos, "aciklama": "Santralın eğim/azimutu kayıtlı değil; açık-gök düzlem-içi ışınımı hesaplanamaz."}
     cap = float(plant.get("capacity_kwp") or 0.0)
     with tenant_baglami(tenant_id) as s:
-        son = s.execute(text("SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p AND flag='valid'"), {"p": plant["id"]}).scalar()
+        son = s.execute(text(f"SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p AND {_ks.sql_kosulu('kalibrasyon')}"), {"p": plant["id"]}).scalar()
         df = pd.read_sql(text(
-            "SELECT ts_utc, power_kw, poa_wm2 FROM scada_hourly WHERE plant_id=:p AND flag='valid' AND poa_wm2 IS NOT NULL "
+            f"SELECT ts_utc, power_kw, poa_wm2 FROM scada_hourly WHERE plant_id=:p AND {_ks.sql_kosulu('kalibrasyon')} AND poa_wm2 IS NOT NULL "
             "AND ts_utc >= :son - (:g * INTERVAL '1 day') AND ts_utc <= :son ORDER BY ts_utc"),
             s.connection(), params={"p": plant["id"], "g": gun, "son": son}, parse_dates=["ts_utc"]) if son is not None else pd.DataFrame()
     if df.empty:
         return {"durum": "poa_yok", **bos, "aciklama": "Düzlem-içi ışınım ölçümü yok; gösterge ölçülen ışınım ister."}
     with tenant_baglami(tenant_id) as s:   # günlük üretim (tüm geçerli saatler; POA'sız saatler dâhil) — kayıp tahmini tabanı
-        ur = pd.read_sql(text("SELECT ts_utc, power_kw FROM scada_hourly WHERE plant_id=:p AND flag='valid' AND ts_utc >= :son - (:g * INTERVAL '1 day') AND ts_utc <= :son"),
+        ur = pd.read_sql(text(f"SELECT ts_utc, power_kw FROM scada_hourly WHERE plant_id=:p AND {_ks.sql_kosulu('kalibrasyon')} AND ts_utc >= :son - (:g * INTERVAL '1 day') AND ts_utc <= :son"),
                          s.connection(), params={"p": plant["id"], "g": gun, "son": son}, parse_dates=["ts_utc"])
     idx = pd.DatetimeIndex(pd.to_datetime(df["ts_utc"], utc=True))
     cs = acik_gok_poa(idx, float(plant["lat"]), float(plant["lon"]), float(plant["tilt"]), float(plant["azimuth"]))

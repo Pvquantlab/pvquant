@@ -12,6 +12,8 @@ import numpy as np
 import pandas as pd
 
 from pvquant.ext.tahmin import degradasyon
+from pvquant.services import kalite_sozlugu as _ks   # v2.598 (F4-C): flag süzgeci tek sözlükten
+from pvquant.services.karne_kurali import yayin_kosu_sql as _yayin_sql   # v2.597 (F4-B): yayımlanmış koşu süzgeci
 
 
 def gunluk_indeks(df: pd.DataFrame, capacity_kwp: float, min_beklenen_kwh: float | None = None) -> pd.Series:
@@ -54,9 +56,9 @@ def saglik(tenant_id, plant: dict, gun: int = 800) -> dict:
         df = pd.read_sql(text(
             "SELECT s.ts_utc, s.power_kw, b.physics_kw AS beklenen_kw FROM scada_hourly s "
             "LEFT JOIN LATERAL (SELECT f.physics_kw FROM forecast_values f JOIN forecast_runs r ON r.id=f.run_id "
-            "  WHERE f.plant_id=s.plant_id AND f.ts_utc=s.ts_utc AND f.ts_utc - r.run_at BETWEEN INTERVAL '0 hour' AND INTERVAL '24 hour' "
+            f"  WHERE f.plant_id=s.plant_id AND f.ts_utc=s.ts_utc AND {_yayin_sql('r')} AND f.ts_utc - r.run_at BETWEEN INTERVAL '0 hour' AND INTERVAL '24 hour' "
             "  ORDER BY r.run_at DESC LIMIT 1) b ON true "
-            "WHERE s.plant_id=:p AND s.flag='valid' AND NOT s.kirpma AND s.ts_utc >= now() - (:g * INTERVAL '1 day') ORDER BY s.ts_utc"),
+            f"WHERE s.plant_id=:p AND {_ks.sql_kosulu('karne', 's')} AND NOT s.kirpma AND s.ts_utc >= now() - (:g * INTERVAL '1 day') ORDER BY s.ts_utc"),
             s.connection(), params={"p": plant["id"], "g": gun}, parse_dates=["ts_utc"])
     idx = gunluk_indeks(df, float(plant["capacity_kwp"]))
     out = saglik_hesapla(idx)

@@ -23,6 +23,7 @@ def test_brief_ornekleri_ve_etiketler():
     o = _kodlar(_g())
     assert o["sapma_orta"]["metin"].startswith("Portföyünüzün yarınki üretim beklentisi, mevcut üretim programından %8,0 düşük") and o["sapma_orta"]["etiket"] == "tahmini"
     assert o["pencere"]["tur"] == "eylem" and "40 dakika" in o["pencere"]["metin"] and "maruziyet" in o and o["maruziyet"]["etiket"] == "eksik"
+    assert "12 Eyl 2026" in o["pencere"]["metin"] and "2026-09-12" not in o["pencere"]["metin"]   # 12.11 inceleme 4: ISO tarih müşteri cümlesine girmez
     g = _g(risk={**_g()["risk"], "beklenen_sapma_pct": -12.0, "etiket": "dogrulanmis"})
     o = _kodlar(g)
     assert o["sapma_buyuk"]["tur"] == "eylem" and o["sapma_buyuk"]["etiket"] == "dogrulanmis" and o["sapma_buyuk"]["etiket_ad"] == "Doğrulanmış risk" and "sapma_orta" not in o

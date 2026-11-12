@@ -7,6 +7,8 @@ Doğrulama: negatif fiyat, boşluklu dilim, tarih çakışması.
 """
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -17,7 +19,7 @@ DAYANAK_KUNYELERI = (
     "AFL U&E: GÖP ve DGP'de Asgari ve Azami Fiyat Limitlerinin Belirlenmesine İlişkin Usul ve Esaslar, Karar 5629-16, RG 21.06.2015-29393; Karar 6851 RG 06.01.2017-29940; Karar 14459 RG 03.04.2026-33213"
 )
 
-IST = "Europe/Istanbul"
+IST = PIYASA_TZ   # v2.599: tek tanım pvquant.zaman
 
 
 def _ist(idx: pd.DatetimeIndex) -> pd.DatetimeIndex:

@@ -21,7 +21,8 @@ export interface SantralOzeti {
            /** v2.205 — ay tam kapsanmadan null (kismi toplam yaniltir). */
            beklenti_mwh: number | null }[];
   saglik: { son_scada: string | null; kesinti_gun: number | null;
-            islenen_saat: number; anomali: number };
+            islenen_saat: number; anomali: number;
+            veri_durumu?: { kod: string; nitelik: string; etiket: string; yas_saat: number | null } | null };   // v2.605 (F4-K): tazelik rozeti, ortak sözlük
 }
 
 /** /pr yaniti — v2.249 (IEC 61724-1, olcumden; POA yoksa 'poa_yok'). */
@@ -48,7 +49,7 @@ export interface SantralKisa { id: string; name: string; capacity_kwp: number; t
 /** /v1/portfoy — v2.263. */
 export interface Portfoy {
   gun: string;
-  santraller: { id: string; ad: string; kapasite_kwp: number; tz: string; segment: string | null; son_olcum: string | null; kesinti_gun: number | null; baglanti?: { tur: string; tur_kisa: string; kod: string; etiket: string; saglayici: string | null; cekis_acik: boolean; n_cihaz: number } | null;
+  santraller: { id: string; ad: string; kapasite_kwp: number; tz: string; segment: string | null; son_olcum: string | null; kesinti_gun: number | null; veri_durumu?: { kod: string; nitelik: string; etiket: string; yas_saat: number | null } | null; baglanti?: { tur: string; tur_kisa: string; kod: string; etiket: string; saglayici: string | null; cekis_acik: boolean; n_cihaz: number } | null;
                 wmape_30g: number | null; bugun_kwh: number | null; yarin_kwh: number | null; acik_alarm: number; son_kosu: string | null;
                 /** 29.10: yarının programı — yükümlü mü, 15:30 kesimi öncesi tahmin var mı */
                 program?: { yukumlu: boolean | null; hazir: boolean | null; run_at: string | null; not: string | null;
@@ -176,7 +177,7 @@ export interface PortfoyKupst {
   santral: number; kupst_toplam_tl: number | null; dagitim_anahtari: PortfoyAnahtar; dagitim_etiket: string; etiket: string;
   pencere_gun: number; fiyat: { epias_saat: number; senaryo_saat: number }; not?: string;
   uevcbler: { kod: string; kod_tanimsiz: boolean; /** v2.541 (DK-267) */ kod_kaynagi?: "uevcb" | "gts_adi" | "tanimsiz"; santraller: string[]; n_saat: number; kupst_tl: number | null; not?: string;
-              udups_mwh?: number; kupsm_mwh?: number; uretim_mwh?: number; hesaplanamayan_saat?: number; kural_dayanak?: string; kural_surumu?: string;
+              udups_mwh?: number; kupsm_mwh?: number; uretim_mwh?: number; hesaplanamayan_saat?: number; kural_dayanak?: string; kural_surumu?: string; kural?: { m: number | null; n: number | null; surum: string; taban: number; yururluk: string | null };
               uyeler?: Record<string, { kupst_tl: number | null; pay_pct: number; sapma_mwh: number; uretim_mwh: number; kurulu_mw: number }> }[];
 }
 export interface PortfoyDsg {
@@ -364,6 +365,8 @@ export interface Kayma {
 
 export interface TahminSerisi {
   mod: Mod | null; model: string; kosu_zamani: string; ufuk_saat: number;
+  /** v2.605 (F4-K): tahmin etiketi (yayin | gun_ici | elle; eski kayıtta null) ve hava tahmini kaynaklarının üretim zamanları. */
+  etiket?: string | null; nwp_bilesenler?: Record<string, string> | null;
   ac_tavani_kw: number | null; simdi_idx: number | null;
   /** v2.203 — pencerenin astronomik dogus/batis ciftleri (UTC ISO). */
   gunes: { gun: string; dogus: string; batis: string }[];
@@ -546,7 +549,7 @@ export interface Olay { id: string; plant_id: string; tur: OlayTur; tur_etiket: 
   /** v2.541 (EK-3 DK-741/743): acil kesmede şebeke işletmecisinin sona erme bildirimi (LÜY m.21(8), 15 dk) ve gecikmesi; YAL/YAT talimat miktarı (kayıt) ve gerekçe son günü (DUY m.71/A, 3 iş günü) */
   bildirim_zamani?: string | null; bildirim_gecikme_dk?: number | null; bildirim_15dk_asildi?: boolean | null; talimat_mw?: number | null; gerekce_son_gunu?: string | null }
 export interface OlayOzet { bugun: string; pencere_gun: number; olaylar: Olay[]; acik: number; planli: number;
-  ariza_sayaci: { sayi: number; olay: number; elle: number; kaynak: string; esik: number; uyari: number; ay: string };
+  ariza_sayaci: { sayi: number; olay: number; elle: number; kaynak: string; esik: number; uyari: number; ay: string; n?: number | null; n_ariza?: number | null; ariza_esigi?: number | null; kural_surumu?: string; karar?: string | null };
   eak_bugun: { saat_sayisi: number; en_cok_kw: number; taban_kw: number; kismi_saat: number; suren: number };
   aciklama: { kapasite: string; sayac: string; kullanilabilirlik: string; islem: string; gerekce: string;
     /** v2.538 (EK-3 DK-733/DK-740): talimat tutarının yansıtılması — segmente göre lisanssız / lisanslı metni */ talimat?: string;
@@ -851,7 +854,10 @@ export interface FinansMaruziyet { program_mwh: number | null; saat: number; kay
   aralik_tl: { p25: number; p50: number; p75: number } | null; nitelik: FinansNitelik; notlar: string[]; bilesenler: FinansBilesen[]; ufuk: { bas: string; bit: string; gun: number; gecmis_gun_pencere: number } }
 export interface FinansMeta { hesap_zamani: string; sozluk_surumu: string; yazilim_surumu: string | null; uretim_girdisi: string; pencere_gun: number; segment: string | null; pozisyon: { kaynak: string; sabit_mwh: number | null };
   kural_surumu: string | null; fiyat: { epias_saat: number; senaryo_saat: number }; program_kaynak: { kaynak: string; bildirilen_saat: number; oneri_saat: number; tamamlanan_saat: number };
-  tarife: { tip: string | null; sha: string } | null; bildirim: { surum_etiket?: string | null; zaman?: string | null } | null; senaryo: { pozisyon: { kaynak: string; sabit_mwh: number | null }; etiket: string; not: string } | null; isaret: string }
+  tarife: { tip: string | null; sha: string } | null; bildirim: { surum_etiket?: string | null; zaman?: string | null } | null; senaryo: { pozisyon: { kaynak: string; sabit_mwh: number | null }; etiket: string; not: string } | null; isaret: string;
+  // v2.600–v2.602 (F4-F/G/H): kural sicili, fiyat sürümü, girdi referansları, hesap durumu, ayar damgası — «Hesap bilgileri» açılırı
+  kural_sicili_sha?: string | null; kural_sicili_surumu?: string | null; kural_surumu_tam?: string | null; cikti_surumu?: string | null; hesap_durumu?: string | null; ayar_sha?: string | null;
+  girdi?: { sha16: string; olcum?: { saat: number; son_alinma: string | null; kaynaklar: string[] }; program?: { kosular: string[]; kaynak: string | null }; fiyat?: { sha16: string; itibariyle: string | null; epias_saat: number; senaryo_saat: number } } | null }
 export interface FinansalEtki { donem: FinansDonem; kayitli: boolean; id?: string; hesap_zamani?: string; uretim: FinansUretim;
   gelir: { bilesenler: FinansBilesen[]; toplam: FinansToplam; tarife: { tip: string | null; etiket: string; ortalama_fiyat_tl_mwh: number | null }; uretim_mwh: number | null; fiyat: { epias_saat: number; senaryo_saat: number }; resmi: FinansBilesen | null; fark_tl: number | null; fark_etiket: string | null; notlar: string[] };
   uzlastirma: FinansUzlastirma; dusukluk: FinansDusukluk; maruziyet: FinansMaruziyet; bilesenler: FinansBilesen[]; toplam: FinansToplam; toplam_etiket: string; oneriler: FinansOneri[]; meta: FinansMeta }
@@ -904,6 +910,6 @@ export interface PortfoyOneri { kod: string; tur: "bilgi" | "oneri" | "eylem"; t
 export interface PortfoyRevizyonT { durum: string; not?: string; hedef?: string; hedef_ad?: string; gun?: string; ozet?: string; oneriler?: PortfoyOneri[]; risk?: PortfoyRiskT["risk"];
   santraller?: { santral: string; program_mwh: number | null; tahmin_mwh: number | null; fark_mwh: number | null; degisim_pct: number | null; bildirilen: boolean }[];
   pencere?: { durum: string; dakika_kaldi: number; hedef_gun: string }; gun_ici?: { acik?: boolean; teslimat?: string; kgup_revizyon_son?: string; dakika_kaldi?: number | null } }
-export interface PortfoyFinansT { durum: string; not?: string; toplam?: FinansToplam; toplam_dsg?: (FinansToplam & { etiket: string }) | null; bilesenler?: FinansBilesen[]; kayitli_santral?: number; toplama_girmeyen?: string[]; notlar?: string[];
+export interface PortfoyFinansT { durum: string; not?: string; meta?: { surum?: string; hesap_durumu?: string | null; cikti_surumu?: string | null; kural_sicili_sha?: string | null } | null; toplam?: FinansToplam; toplam_dsg?: (FinansToplam & { etiket: string }) | null; bilesenler?: FinansBilesen[]; kayitli_santral?: number; toplama_girmeyen?: string[]; notlar?: string[];
   santraller?: { ad: string; hata?: string; kayitli?: boolean; planlanan_mwh?: number | null; gerceklesen_mwh?: number | null; toplam?: { tutar_tl: number | null; nitelik: FinansNitelik } }[];
   dsg?: { etiket: string; nitelik: FinansNitelik; netlesme_farki_tl: number | null } | null; siniflar?: Record<string, { ad: string; kodlar: string[] }>; mwh?: { toplanan: { planlanan: number | null; gerceklesen: number | null; santral: number }; tum: { planlanan: number | null; gerceklesen: number | null; santral: number } }; kaynaklar?: Record<string, string> }

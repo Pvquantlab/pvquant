@@ -53,6 +53,7 @@ class MeteoData:
     kaynak: str = "open-meteo"               # v2.268: forecast_runs.meteo_source / künye
     nwp_model: str = "best_match"            # v2.268: 'ECMWF IFS + ICON-EU' ya da Open-Meteo best_match
     kosu_zamani: "pd.Timestamp | None" = None   # v2.572 (Faz 1 F1-A): NWP koşusunun yayın zamanı (meteo_arsiv.kosu_zamani); Open-Meteo yolunda None
+    bilesenler: dict | None = None              # v2.597 (Faz 4 F4-B): NWP bileşenleri → koşu zamanı ISO ({"ECMWF IFS": ..., "ICON-EU": ...}); bilinmiyorsa None
 
     def to_dataframe(self) -> pd.DataFrame:
         """Tüm seriler tek bir DataFrame'de döner."""

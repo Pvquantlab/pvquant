@@ -6,6 +6,8 @@ from __future__ import annotations
 import pandas as pd
 from sqlalchemy import text
 from pvquant.db import tenant_baglami
+from pvquant.services import santral_kunye_service as _sk   # v2.599 (F4-E)
+from pvquant.services import kalite_sozlugu as _ks   # v2.598 (F4-C): flag süzgeci tek sözlükten
 from pvquant.services import karne_kurali as _kk   # v2.568: karne kuralı tek yerde
 
 _KOVALAR = {"0-24": (0, 24), "24-72": (24, 72),
@@ -73,7 +75,7 @@ def saat_profili(tenant_id, plant_id, gun: int = 30, kova: str = "0-24"):
             "FROM forecast_values f "
             "JOIN forecast_runs r ON r.id=f.run_id "
             "JOIN scada_hourly s ON s.plant_id=f.plant_id AND s.ts_utc=f.ts_utc"
-            " AND s.flag='valid' "
+            f" AND {_ks.sql_kosulu('karne', 's')} "
             "WHERE f.plant_id=:p "
             "AND f.ts_utc >= now() - ((:g + 2) * INTERVAL '1 day')"),
             s.connection(), params={"p": plant_id, "g": gun},
@@ -108,7 +110,7 @@ def hata_dagilimi(tenant_id, plant_id, gun: int = 120, kova: str = "0-24",
             "FROM forecast_values f "
             "JOIN forecast_runs r ON r.id=f.run_id "
             "JOIN scada_hourly s ON s.plant_id=f.plant_id AND s.ts_utc=f.ts_utc"
-            " AND s.flag='valid' "
+            f" AND {_ks.sql_kosulu('karne', 's')} "
             "WHERE f.plant_id=:p "
             "AND f.ts_utc >= now() - ((:g + 2) * INTERVAL '1 day')"),
             s.connection(), params={"p": plant_id, "g": gun},
@@ -132,7 +134,7 @@ def hata_dagilimi(tenant_id, plant_id, gun: int = 120, kova: str = "0-24",
     dun = (pd.Timestamp.now(tz=tz) - pd.Timedelta(days=1)).date()
     ilk = dun - pd.Timedelta(days=gun - 1)
     df = df[(df.y_gun >= ilk) & (df.y_gun <= dun)]
-    df = df[_kk.gunduz_maskesi(df.power_kw, float(p["capacity_kwp"]))]      # gunduz (v2.568: tek eşik)
+    df = df[_kk.gunduz_maskesi(df.power_kw, _sk.guc_tanimlari(p)["dc_kwp"])]      # gunduz (v2.568: tek eşik; v2.599: payda tek kaynak)
     if df.empty:
         return bos
     # coklu-kosu savunmasi: ayni saate birden cok gozlem duserse ortala

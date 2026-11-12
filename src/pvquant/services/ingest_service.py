@@ -4,6 +4,7 @@ import json
 import pandas as pd
 from sqlalchemy import text
 from pvquant.db import tenant_baglami
+from pvquant.services import kalite_sozlugu as _ks   # v2.598 (F4-C): flag süzgeci tek sözlükten
 from pvquant.io.ingestion.pipeline import ingest_file
 
 _KOLONLAR = {"power_kw":"power_kw","energy_kwh":"energy_kwh",
@@ -34,33 +35,52 @@ def yukle_ve_kaydet(tenant_id, plant_id, dosya_yolu, *, capacity_kwp,
              "fmt": _kaynakli(_j(res, "file_format")), "map": _j(res, "mapping"),
              "tr": _j(res, "transform"), "q": _j(res, "report")}).scalar()
         satirlar = []
+        _tr = res.transform if hasattr(res, "transform") else None
+        _aralik = getattr(_tr, "source_timestep_minutes", None)   # v2.598: kaynak adımı künyeye
+        _damga = getattr(_tr, "kaynak_damga_tipi", None) or "aralik_basi"   # v2.599 (F4-D): kaynağın damga konvansiyonu (çıktı daima aralık başı)
         for ts, row in df.iterrows():
             kayit = {"t": tenant_id, "p": plant_id, "ts": ts,
-                     "flag": row.get("flag", "valid"), "b": batch_id}
+                     "flag": row.get("flag", "valid"), "b": batch_id,
+                     "aralik": (int(_aralik) if _aralik else None), "damga": _damga}
             for src, hedef in _KOLONLAR.items():
                 v = row.get(src)
                 kayit[hedef] = None if pd.isna(v) else float(v)
             k = row.get("kapsama_dk")   # v2.573 (Faz 1 F1-B): saat başına ölçüm kapsaması; yoksa NULL = bilinmiyor
             kayit["kapsama_dk"] = None if k is None or pd.isna(k) else int(round(float(k)))
             satirlar.append(kayit)
+        # v2.598 (Faz 4 F4-C): SCADA dosyası birincil kaynaktır (EPİAŞ/canlı satırının üstüne yazar) ama hijyenin koyduğu 'kisinti'
+        # bayrağı ve kirpma işareti yeni 'valid' satırla silinmez (bir sonraki hijyen koşusu yeniden değerlendirir); künye sütunları
+        # kaynak/alinma_zamani/aralik_dk dolar.
         s.execute(text(
             "INSERT INTO scada_hourly(tenant_id,plant_id,ts_utc,power_kw,"
-            " energy_kwh,poa_wm2,t_air,t_module,wind_ms,flag,batch_id,kapsama_dk) "
+            " energy_kwh,poa_wm2,t_air,t_module,wind_ms,flag,batch_id,kapsama_dk,kaynak,alinma_zamani,aralik_dk,kaynak_damga_tipi) "
             "VALUES (:t,:p,:ts,:power_kw,:energy_kwh,:poa_wm2,:t_air,"
-            " :t_module,:wind_ms,:flag,:b,:kapsama_dk) "
+            " :t_module,:wind_ms,:flag,:b,:kapsama_dk,'scada_dosya',now(),:aralik,:damga) "
             "ON CONFLICT (plant_id, ts_utc) DO UPDATE SET "
             " power_kw=EXCLUDED.power_kw, energy_kwh=EXCLUDED.energy_kwh,"
             " poa_wm2=EXCLUDED.poa_wm2, t_air=EXCLUDED.t_air,"
             " t_module=EXCLUDED.t_module, wind_ms=EXCLUDED.wind_ms,"
-            " flag=EXCLUDED.flag, batch_id=EXCLUDED.batch_id, kapsama_dk=EXCLUDED.kapsama_dk"), satirlar)
+            " flag=(CASE WHEN scada_hourly.flag='kisinti' AND EXCLUDED.flag='valid' THEN 'kisinti' ELSE EXCLUDED.flag END),"
+            " batch_id=EXCLUDED.batch_id, kapsama_dk=EXCLUDED.kapsama_dk,"
+            " kaynak='scada_dosya', alinma_zamani=now(), aralik_dk=EXCLUDED.aralik_dk, kaynak_damga_tipi=EXCLUDED.kaynak_damga_tipi"), satirlar)
     return {"batch_id": str(batch_id), "n_satir": len(satirlar)}
 
 
 def _kaynakli(fmt):
-    """Faz 0 (10.11.2026): dosya yüklemesi format_json'a açık kaynak etiketi yazar; önceden yalnız yokluğundan (COALESCE) çıkarılıyordu."""
-    d = dict(fmt or {})
+    """Faz 0 (10.11.2026): dosya yüklemesi format_json'a açık kaynak etiketi yazar; önceden yalnız yokluğundan (COALESCE) çıkarılıyordu.
+    v2.598 (F4-C, bulgu M7): `_j` JSON METNİ döndürür; eski `dict(fmt)` metinde ValueError, None'da sözlük (psycopg adapte edemez) veriyordu —
+    yükleme kaydı 500 düşüyordu. Girdi metin/sözlük/None olabilir; çıktı her zaman JSON metni."""
+    if isinstance(fmt, str):
+        try:
+            d = json.loads(fmt)
+        except ValueError:
+            d = {}
+    else:
+        d = dict(fmt or {})
+    if not isinstance(d, dict):
+        d = {}
     d.setdefault("kaynak", "scada_dosya")
-    return d
+    return json.dumps(d, default=str, ensure_ascii=False)
 
 
 def _j(res, alan):
@@ -77,7 +97,7 @@ def scada_oku(tenant_id, plant_id, *, gunluk_dahil: bool = False) -> pd.DataFram
     bayrakli satirlar (gunluk ozet dosyalari) da okunur; kalibrasyon ve saatlik
     isler varsayilanda onlari GORMEZ."""
     kosul = ("flag IN ('valid','gunluk_ozet')" if gunluk_dahil
-             else "flag='valid'")
+             else f"{_ks.sql_kosulu('tazelik')}")
     with tenant_baglami(tenant_id) as s:
         df = pd.read_sql(text(
             "SELECT ts_utc, power_kw, energy_kwh, poa_wm2, t_air,"
@@ -134,7 +154,7 @@ def veri_ozeti(tenant_id, plant_id) -> dict:
     from pvquant.db import tenant_baglami
     with tenant_baglami(tenant_id) as s:
         r = s.execute(text(
-            "SELECT count(*) FILTER (WHERE flag='valid') AS valid_saat,"
+            f"SELECT count(*) FILTER (WHERE {_ks.sql_kosulu('tazelik')}) AS valid_saat,"
             " max(ts_utc) AS son_ts FROM scada_hourly WHERE plant_id=:p"),
             {"p": plant_id}).first()
     return {"valid_saat": int(r.valid_saat or 0), "son_ts": r.son_ts}

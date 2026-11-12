@@ -8,7 +8,9 @@ CAS duyuruları 8 saat diyor — kısa olan esas). CAS limiti: TGT 100/dk (28.07
 kurallar.yon_normalize ile 'acik'|'fazla'|'dengede' olarak saklanır (29.10.2026: önceki sürüm sayıya çevirip NaN yazıyordu). Veri servisleri: POST + JSON gövde
 {"startDate": "YYYY-MM-DDT00:00:00+03:00", "endDate": "...T23:00:00+03:00", ...}; yanıt {"items":[...]}.
 Şifre koda yazılmaz: EPIAS_KULLANICI / EPIAS_SIFRE. Ağsız test için `transport` (httpx.MockTransport) enjekte edilir.
-Önbellek: yerel CSV (gün bazlı) — aynı günü ikinci kez çekmez (fiyatlar kesinleştikten sonra değişmez).
+Önbellek: yerel CSV (pencere bazlı) — yalnız bitişi 7+ gün geride kalan ve saat sayısı tam pencereler yazılır (v2.604; gece işinin son günleri hep ağdan,
+düzeltmeler görülür; kısmi yanıt kalıcı olmaz).
+Kamuya açık / özel ayrımı ve uç sözleşmeleri: docs/EPIAS-ENTEGRASYON.md.
 """
 from __future__ import annotations
 
@@ -19,6 +21,8 @@ from pathlib import Path
 
 import httpx
 import pandas as pd
+
+from pvquant.zaman import PIYASA_TZ
 # v2.535 dayanak künyeleri [DUY, KARAR_14968, SEFFAFLIK] — bu dosyadaki madde atıflarının birincil yayımı (RG tarih-sayı, karar no); metin kunye.py sicilinden üretildi,
 # tests/test_kunye_bekcisi.py sicille eş tutar (kaynak: 03.11.2026 doğrulama arşivi 03_Kaynak_Envanteri).
 DAYANAK_KUNYELERI = (
@@ -45,7 +49,8 @@ UC = {
     "organizasyon_listesi": ("/v1/generation/data/organization-list", None),       # OrganizationListRequestDto: required [startDate, endDate] → organizationId kaynağı
     "uevcb_santraldan": ("/v1/markets/data/uevcb-list-by-power-plant-id", None),  # UevcbRequestDto: required [powerPlantId, startDate]
 }
-IST = "Europe/Istanbul"
+IST = PIYASA_TZ   # v2.599
+ONBELLEK_KESINLESME_GUN = 7   # v2.604 (F4-J): bundan daha yeni biten pencereler önbelleğe yazılmaz (düzeltme penceresi)
 # 29.10 (v2.505, canlı sınama): liste uçları GET'tir (POST → 404 «Method not found or disabled»); KGÜP uçları `region` ister (yoksa 400).
 UC_GET = {"santral_listesi"}
 VARSAYILAN_EK = {"kgup": {"region": "TR1"}, "kgup_ilk": {"region": "TR1"}}
@@ -141,8 +146,13 @@ class Istemci:
     def _onbellek_yaz(self, ad, b, e, alan, ek, s: pd.Series):
         if not self.onbellek_dizin or s.empty:
             return
-        # yalnız bitmiş günler önbelleğe (bugün değişebilir)
-        if pd.Timestamp(e, tz=IST) >= pd.Timestamp.now(tz=IST).normalize():
+        # v2.604 (F4-J): yalnız KESİNLEŞMİŞ günler önbelleğe — bitiş günü en az ONBELLEK_KESINLESME_GUN gün geride (gece işinin 3 günlük penceresi
+        # hep ağdan gelir → EPİAŞ düzeltmeleri görülür ve fiyat sürüm tarihçesine düşer; geri doldurma pencereleri önbellekten)
+        if pd.Timestamp(e, tz=IST) > pd.Timestamp.now(tz=IST).normalize() - pd.Timedelta(days=ONBELLEK_KESINLESME_GUN):
+            return
+        # eksik pencere önbelleğe YAZILMAZ (EPİAŞ kesintisi/kısmi yanıt kalıcı olmasın): saat sayısı beklenenin altındaysa bir sonraki çağrı yine ağdan
+        beklenen = int((pd.Timestamp(e, tz=IST) + pd.Timedelta(days=1) - pd.Timestamp(b, tz=IST)).total_seconds() // 3600)   # DST günleri 23/25
+        if len(s) < beklenen:
             return
         Path(self.onbellek_dizin).mkdir(parents=True, exist_ok=True)
         pd.DataFrame({"zaman": s.index, "deger": s.values}).to_csv(Path(self.onbellek_dizin) / self._anahtar(ad, b, e, alan, ek), index=False)

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { SOZLUK } from "../../lib/sozluk";
 import { api, bellektenOku, dsgYolu, kupstYolu } from "../../api/client";
 import type { DsgAnahtar, Portfoy as PortfoyT, PortfoyAnahtar, PortfoyDsg, PortfoyFinansalEtki, PortfoyKupst, PortfoyTahmin } from "../../api/types";
-import { Bilgi, Kart, Kpi, Sayfa, sayiTr, gucTr, enerjiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
+import { Bilgi, Kart, Kpi, Sayfa, sayiTr, gucTr, enerjiTr, SayfaIskeleti, VeriDurumu, YerTutucu } from "./parcalar";
 import { Meta } from "../../lib/Meta";
 
 /** 23.10 sekizinci tur — «76,3 MWh» gibi birimli dizgiyi sayı + soluk birim olarak basar; dizgi aynen (enerjiTr). */
@@ -167,7 +167,8 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
                     <td>{r.segment ? (SOZLUK.segmentKisa[r.segment] ?? r.segment) : <span className="bos" title="Piyasa segmenti seçilmedi">—</span>}</td>
                     <td>
                       <div className="tarih-saat"><TarihSaat metin={tarih(r.son_olcum)} /></div>
-                      {eski && <div className="hucre-alt"><span className="rozet rozet-uyari rozet-kucuk" title="Son ölçüm 2 günden eski">{sayiTr(r.kesinti_gun!)} gün eski</span></div>}
+                      {r.veri_durumu ? (r.veri_durumu.kod !== "taze" && <div className="hucre-alt"><VeriDurumu d={r.veri_durumu} /></div>)   /* v2.605 (F4-K): tazelik rozeti ortak sözlükten; taze satır sade (rozet yalnız durum) */
+                        : eski && <div className="hucre-alt"><span className="rozet rozet-uyari rozet-kucuk" title="Son ölçüm 2 günden eski">{sayiTr(r.kesinti_gun!)} gün eski</span></div>}
                     </td>
                     <td>{r.baglanti ? <>   {/* v2.563 (V3-b): toplayıcı portföyünde bağlantı durumu tek bakışta */}
                       <div>{r.baglanti.tur_kisa}{r.baglanti.n_cihaz > 1 ? ` · ${sayiTr(r.baglanti.n_cihaz)} cihaz` : ""}</div>
@@ -346,7 +347,9 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
               <div className="ızgara satir-3" style={{ marginBottom: 10 }}>
                 <Kpi etiket="KGÜP sapma tutarı · KÜPST, birim toplamı" bilgi="Dağıtım sistemine bağlı lisanssız santrallerde KÜPST santralin kendisinde değil, görevli tedarik şirketi ya da toplayıcı adına açılan uzlaştırmaya esas veriş çekiş biriminde hesaplanır; birimdeki santrallerin programı ve üretimi toplanır, sapma brüt alınır." deger={kupst.kupst_toplam_tl != null ? sayiTr(kupst.kupst_toplam_tl / 1000, 1) : "—"} birim={kupst.kupst_toplam_tl != null ? "bin TL" : undefined} alt={kupst.kupst_toplam_tl != null ? `${sayiTr(kupst.uevcbler.length)} birim · ${sayiTr(kupst.santral)} santral` : "1.11.2026 öncesi katsayı belirsiz; hesaplanmadı"} />
                 <Kpi etiket="Tolerans üstü sapma" bilgi="Birim toplamında |üretim − program| toplamından toleransın (programın %25'i) düşülmüş kısmı; KÜPST bu miktar üzerinden hesaplanır." deger={sayiTr(kupst.uevcbler.reduce((a, u) => a + (u.kupsm_mwh ?? 0), 0), 1)} birim="MWh" alt={`brüt sapma ${sayiTr(kupst.uevcbler.reduce((a, u) => a + (u.udups_mwh ?? 0), 0), 1)} MWh`} />
-                <Kpi etiket="Kural" bilgi={kupst.uevcbler[0]?.kural_dayanak ?? ""} deger="0,25 / 0,01" alt="tolerans / fiyat katsayısı · Karar 14907 · 1.11.2026'dan" />
+                <Kpi etiket="Kural" bilgi={kupst.uevcbler[0]?.kural_dayanak ?? ""}
+                     deger={kupst.uevcbler[0]?.kural?.m != null && kupst.uevcbler[0].kural.n != null ? `${sayiTr(kupst.uevcbler[0].kural.m, 2)} / ${sayiTr(kupst.uevcbler[0].kural.n, 2)}` : "—"}
+                     alt={`tolerans / fiyat katsayısı${kupst.uevcbler[0]?.kural?.yururluk ? ` · ${new Date(kupst.uevcbler[0].kural.yururluk + "T12:00:00").toLocaleDateString("tr-TR")}'dan` : ""}`} />   {/* v2.600: sabit değil, kural sicilinden; belirsiz kural «—» */}
               </div>
               {kupst.uevcbler.map((u) => (
                 <details key={u.kod} className="aciklama genis" style={{ marginBottom: 10 }}>

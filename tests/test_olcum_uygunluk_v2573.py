@@ -78,7 +78,7 @@ def test_15dk_kapsama_kismi_saat_ve_bos_saat_enerjisi(tmp_path):
     assert k[10]["kapsama_dk"] == 15 and k[10]["flag"] == RowFlag.PARTIAL_HOUR.value
     assert k[11]["kapsama_dk"] == 30 and k[11]["flag"] == RowFlag.PARTIAL_HOUR.value
     assert k[12]["kapsama_dk"] == 45 and k[12]["flag"] == RowFlag.VALID.value
-    assert pd.isna(k[13]["kapsama_dk"]) and k[13]["flag"] == RowFlag.UNPARSEABLE.value and pd.isna(k[13]["energy_kwh"])   # boş saat 0 değil
+    assert pd.isna(k[13]["kapsama_dk"]) and k[13]["flag"] == RowFlag.EKSIK.value and pd.isna(k[13]["energy_kwh"])   # boş saat 0 değil; v2.598: 'eksik' (kaynakta satır yok), 'unparseable' değil
     assert any("kısmi saat" in w for w in r.report.warnings) and r.report.flag_counts.get("partial_hour") == 2
 
 

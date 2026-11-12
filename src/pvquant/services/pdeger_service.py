@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 
 from pvquant.ext.standart.belirsizlik_butcesi import Z
+from pvquant.services import kalite_sozlugu as _ks   # v2.598 (F4-C): flag süzgeci tek sözlükten
 
 BOZUNMA_VARSAYILAN = 0.5          # %/yıl (sektör tipik değeri; ölçüm yoksa)
 KAPSAMA_ESIK = 0.90
@@ -87,7 +88,7 @@ def _yillik_uretim(tenant_id, plant_id) -> pd.DataFrame:
         tz = s.execute(text("SELECT tz FROM plants WHERE id=:p"), {"p": plant_id}).scalar() or "UTC"
         return pd.read_sql(text(
             "SELECT CAST(date_part('year', ts_utc AT TIME ZONE :tz) AS int) AS yil, sum(COALESCE(energy_kwh, power_kw)) AS kwh, count(*) AS saat "
-            "FROM scada_hourly WHERE plant_id=:p AND flag='valid' GROUP BY 1 ORDER BY 1"), s.connection(), params={"p": plant_id, "tz": tz})
+            f"FROM scada_hourly WHERE plant_id=:p AND {_ks.sql_kosulu('karne')} GROUP BY 1 ORDER BY 1"), s.connection(), params={"p": plant_id, "tz": tz})
 
 
 def _aylik_pay(tenant_id, plant_id) -> list[float] | None:

@@ -6,6 +6,8 @@ Saatlik kWh verilmez (yalnız güç serisi) → enerji_kwh_belge yok; ham saat (
 """
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 from datetime import datetime, timezone
 
 from .temel import Baglayici, BulutHata, gun_baslangici
@@ -66,7 +68,7 @@ class Growatt(Baglayici):
     def saatlik_ham(self, kodlar: list[str], gun: datetime) -> list[dict]:
         out = []
         for kod in kodlar:
-            bas = gun_baslangici(gun, "Europe/Istanbul")
+            bas = gun_baslangici(gun, PIYASA_TZ)
             d = self._kontrol(self._c.get("/v1/plant/power", params={"plant_id": kod, "date": bas.strftime("%Y-%m-%d")}))
             seri = d.get("powers") or d.get("data") or []
             guc: dict[datetime, list[float]] = {}

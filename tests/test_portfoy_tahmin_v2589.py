@@ -10,7 +10,7 @@ import pandas as pd
 import pytest
 from sqlalchemy import text
 
-from pvquant.db import sistem_baglami, tenant_baglami
+from pvquant.db import sistem_baglami, tenant_baglami, bakim_baglami
 from pvquant.services import portfoy_tahmin_service as pt
 from pvquant.services import portfoy_varlik_service as pv
 
@@ -60,7 +60,7 @@ def portfoy():
     pv.uyelik_ekle(tid, pid, pl["A"], "2026-01-01"); pv.uyelik_ekle(tid, pid, pl["B"], "2026-01-01")
     pv.uyelik_ekle(tid, pid, pl["C"], "2026-09-05"); pv.uyelik_ekle(tid, pid, pl["D"], "2026-01-01")   # C sonradan katılır; D'nin tahmini yok
     yield tid, tid2, pid, pl
-    with sistem_baglami() as s:
+    with bakim_baglami() as s:
         for t in ("dogrulama_sonuc", "portfoy_sonuc", "portfoy_uyelik", "toplayici_kapsami", "portfoy", "denetim_izi", "forecast_values", "forecast_runs", "scada_hourly", "plants"):
             s.execute(text(f"DELETE FROM {t} WHERE tenant_id IN (:t, :t2)"), {"t": tid, "t2": tid2})
         s.execute(text("DELETE FROM tenants WHERE id IN (:t, :t2)"), {"t": tid, "t2": tid2})

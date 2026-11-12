@@ -10,6 +10,8 @@ karşılaştırma budur; aylık bildirim toplamıyla değil. Fark ayrıştırmas
 program (BUDÜP ↔ PVQuant programı); girdiler eşitken EDT farklıysa «kural/hesap farkı»."""
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 import hashlib
 import io
 import re
@@ -28,7 +30,7 @@ DAYANAK_KUNYELERI = (
     'Karar 14907: EPDK Kurul Kararı 14907 (KÜPST, 1.11.2026 çıkarım), RG 19.10.2026-33405'
 )
 
-IST = ZoneInfo("Europe/Istanbul")
+IST = ZoneInfo(PIYASA_TZ)
 EN_BUYUK = 5_000_000   # bayt
 
 # sade başlık → alan; sıra önemli (ilk eşleşen kazanır); «pozitif edt» «edt»den önce

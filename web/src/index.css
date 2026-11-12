@@ -445,6 +445,10 @@ table.veri tbody tr[tabindex]:focus-visible td { box-shadow: inset 0 0 0 2px var
 .dugme-grubu > div { display: flex; flex-direction: column; gap: 6px; }
 .dugme-grubu .etiket-ust { margin-bottom: 0; }
 .dugme-sira { display: flex; flex-wrap: wrap; gap: 6px; }
+/* v2.605 (F4-K kare taraması, Santralim@375): satır içi formda uzun seçenekli select (sensör türü) içsel genişliğiyle kartı taşırıyordu — esnek öğe
+   kendi kutusuna sığar, kontrol öğeyi aşmaz */
+.dugme-sira > .girdi-etiket { min-width: 0; max-width: 100%; }
+.dugme-sira > .girdi-etiket > .girdi { max-width: 100%; min-width: 0; }
 .dugme.kucuk { min-height: 32px; padding: 5px 12px; font-size: 13px; }
 /* dar sayısal tablo: içerik genişliğinde kalır (7 sütunlu verim tablosu 1840 px'e yayılmasın), oluk geniş */
 /* 23.10 sekizinci tur — kurumsal veri tablosu (santraller): veri sütunları içerik genişliğinde, ad sütunu esner */
@@ -1123,3 +1127,9 @@ html.vt-sayfa body { background: #FFFFFF; }
 /* açık yüzde birincil düğme mürekkep hap (müşteri açık temasıyla aynı kural); koyu kuralı [data-tema=koyu] zaten uygulanmaz */
 :root[data-yuz="platform"][data-tema="acik"] .dugme-ana { background: var(--metin); border-color: var(--metin); color: var(--kart); }
 :root[data-yuz="platform"][data-tema="acik"] .dugme-ana:hover { background: #2B2F3A; border-color: #2B2F3A; color: #FFFFFF; }
+
+/* 12.11 inceleme 2–3 (Portföy yönetimi): formlar .ayar ızgarasına (250 px + 1fr) değil düz bloğa oturur; üye payları tablosu (8 sütun) yarım genişlik kartta
+   taşmasın diye .dar 13 px ve 10 px oluk (712 → ~630 px). */
+.portfoy-form { padding: 6px 0 2px; }
+table.veri.dar { font-size: 13px; }
+table.veri.dar th + th, table.veri.dar td + td { padding-left: 10px; }

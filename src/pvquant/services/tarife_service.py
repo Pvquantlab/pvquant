@@ -10,6 +10,8 @@ YEKDEM (v2.520): fiyat gün bazında yekdem_service'ten gelir — Cetvel I ¢ ×
 """
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 import json
 
 import pandas as pd
@@ -151,5 +153,5 @@ def gelir_df(uretim_kwh: pd.Series, t: dict, ptf: pd.Series | None = None, plant
     u = pd.Series(uretim_kwh.values, index=idx).astype(float) / 1000.0
     bas = bit = None
     if len(idx) and t.get("tip") == "yekdem":
-        ist = idx.tz_convert("Europe/Istanbul"); bas, bit = ist.min().date(), ist.max().date()
+        ist = idx.tz_convert(PIYASA_TZ); bas, bit = ist.min().date(), ist.max().date()
     return tf.gelir(u, [yapi(t, plant=plant, bas=bas, bit=bit)], ptf=ptf)

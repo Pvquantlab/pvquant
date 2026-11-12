@@ -18,7 +18,29 @@ import json
 import numpy as np
 import pandas as pd
 
-from pvquant.ext.turkiye import dengesizlik as d, kurallar as kr, segment as sg
+from pvquant.ext.turkiye import dengesizlik as d
+from pvquant.ext.turkiye import kurallar as kr
+from pvquant.ext.turkiye import segment as sg
+from pvquant.services import kalite_sozlugu as _ks  # v2.598 (F4-C): flag süzgeci tek sözlükten
+from pvquant.services.karne_kurali import yayin_kosu_sql as _yayin_sql  # v2.597 (F4-B)
+from pvquant.zaman import PIYASA_TZ
+
+_GUN_IST_F = "CAST(f.ts_utc AT TIME ZONE 'Europe/Istanbul' AS date)"   # program_df: teslim günü ifadesi (kgup_kesim_sql girdisi)
+# v2.606 (F4-L): program_df KÜME TABANLI — eski sürüm saat başına iki korelasyonlu alt sorgu çalıştırıyordu (koşu seçimi + dünkü saat); yeni sürüm aynı
+# kuralı (yayımlanmış koşu, D-1 kesimi öncesi son koşu, dünkü aynı saat) tek geçişte DISTINCT ON ile kurar. Çıktı birebir (tests/test_performans_v2606.py denklik;
+# eski korelasyonlu biçim orada saklanır).
+PROGRAM_DF_SQL = (
+    f"WITH g AS (SELECT ts_utc, power_kw FROM scada_hourly WHERE plant_id=:p AND {_ks.sql_kosulu('uzlastirma')} "
+    f"  AND ts_utc >= (SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p AND {_ks.sql_kosulu('uzlastirma')}) - (:g * INTERVAL '1 day')), "
+    " kos AS (SELECT DISTINCT ON (f.ts_utc) f.ts_utc, f.p50_kw FROM forecast_values f JOIN forecast_runs r ON r.id = f.run_id "
+    f"   WHERE f.plant_id=:p AND f.ts_utc IN (SELECT ts_utc FROM g) AND {_yayin_sql('r')} "   # v2.597: geriye bakışlı koşu programa kaynak olmaz
+    "   AND r.run_at <= ((date_trunc('day', f.ts_utc AT TIME ZONE 'Europe/Istanbul') - INTERVAL '1 day' "
+    f"     + {kr.kgup_kesim_sql(_GUN_IST_F)}) AT TIME ZONE 'Europe/Istanbul') "   # v2.597: kesim tek kaynak kurallar.kgup_kesim
+    "   ORDER BY f.ts_utc, r.run_at DESC, r.id DESC) "   # r.id: aynı run_at'li iki koşuda belirleyici seçim
+    "SELECT g.ts_utc, g.power_kw AS gercek_kw, kos.p50_kw AS kgup_kw, s2.power_kw AS naif_kw "
+    "FROM g LEFT JOIN kos ON kos.ts_utc = g.ts_utc "
+    f"LEFT JOIN scada_hourly s2 ON s2.plant_id=:p AND {_ks.sql_kosulu('uzlastirma', 's2')} AND s2.ts_utc = g.ts_utc - INTERVAL '24 hour' "
+    "ORDER BY g.ts_utc")
 # v2.535 dayanak künyeleri [DUY, KARAR_14968, KARAR_14907, TUE] — bu dosyadaki madde atıflarının birincil yayımı (RG tarih-sayı, karar no); metin kunye.py sicilinden üretildi,
 # tests/test_kunye_bekcisi.py sicille eş tutar (kaynak: 03.11.2026 doğrulama arşivi 03_Kaynak_Envanteri).
 DAYANAK_KUNYELERI = (
@@ -28,7 +50,7 @@ DAYANAK_KUNYELERI = (
     'Teminat U&E: Teminat Usul ve Esasları, Karar 6282-3, RG 28.05.2016-29725; son değişiklik Karar 14954, RG 21.10.2026-33407'
 )
 
-IST = "Europe/Istanbul"
+IST = PIYASA_TZ   # v2.599
 
 
 def _pj(v) -> dict:
@@ -55,20 +77,10 @@ def program_df(tenant_id, plant_id, gun: int = 90, uretim: str = "scada") -> pd.
     v2.532 (DK-180/DK-195): sayaç satırında çekiş varsa cekis_kw sütunu (UEÇM; 1.11.2026'dan net sapmada düşülür), yoksa NaN.
     SCADA'da olmayan saat sayaçla eklenmez (program ve fiyat o saat için SCADA satırından kurulur; sonraya)."""
     from sqlalchemy import text
+
     from pvquant.db import tenant_baglami
     with tenant_baglami(tenant_id) as s:
-        df = pd.read_sql(text(
-            "WITH g AS (SELECT ts_utc, power_kw FROM scada_hourly WHERE plant_id=:p AND flag='valid' "
-            "  AND ts_utc >= (SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p AND flag='valid') - (:g * INTERVAL '1 day')) "
-            "SELECT g.ts_utc, g.power_kw AS gercek_kw, "
-            " (SELECT f.p50_kw FROM forecast_values f JOIN forecast_runs r ON r.id=f.run_id "
-            "   WHERE f.plant_id=:p AND f.ts_utc=g.ts_utc "
-            "   AND r.run_at <= ((date_trunc('day', g.ts_utc AT TIME ZONE 'Europe/Istanbul') - INTERVAL '1 day' "
-            "     + (CASE WHEN CAST(g.ts_utc AT TIME ZONE 'Europe/Istanbul' AS date) < DATE '2025-01-01' THEN INTERVAL '16 hours' ELSE INTERVAL '15 hours 30 minutes' END)) "   # 03.11: 2024 ve öncesi teslim günü kesimi 16:00 (DK-154); ::date yazımı text() bağlı parametresiyle karışır
-            "     AT TIME ZONE 'Europe/Istanbul') "
-            "   ORDER BY r.run_at DESC LIMIT 1) AS kgup_kw, "
-            " (SELECT s2.power_kw FROM scada_hourly s2 WHERE s2.plant_id=:p AND s2.flag='valid' AND s2.ts_utc = g.ts_utc - INTERVAL '24 hour') AS naif_kw "
-            "FROM g ORDER BY g.ts_utc"),
+        df = pd.read_sql(text(PROGRAM_DF_SQL),
             s.connection(), params={"p": plant_id, "g": gun}, parse_dates=["ts_utc"])
     if not df.empty:
         df["ts_utc"] = pd.to_datetime(df["ts_utc"], utc=True)
@@ -127,9 +139,10 @@ def bildirilen_serisi(tenant_id, plant_id, params_json=None, gun: int = 90) -> p
     → saatlik MWh serisi (UTC index; İstanbul günü 00:00'dan 24 saat). Dosya yoksa boş seri: o saatlerde program PVQuant önerisine düşer.
     TPYS kabulü doğrulanmaz (beyan); hesaba giren program «bildirilen» etiketiyle taşınır."""
     from sqlalchemy import text
+
     from pvquant.db import tenant_baglami
-    from pvquant.services import kgup_arsiv_service as ka
     from pvquant.ext.turkiye.kgup import Sablon
+    from pvquant.services import kgup_arsiv_service as ka
     with tenant_baglami(tenant_id) as s:
         rows = s.execute(text(
             "SELECT DISTINCT ON (teslim_gunu) teslim_gunu, dosya FROM kgup_surum WHERE plant_id=:p AND kaynak='musteri' "
@@ -175,7 +188,10 @@ def saatlik_hesap(df: pd.DataFrame, fiyat: pd.DataFrame, kat: d.Katsayilar | Non
     uecm = (pd.to_numeric(x["cekis_kw"], errors="coerce").astype(float) / 1000.0) if "cekis_kw" in x.columns else pd.Series(np.nan, index=x.index)
     pv = d.saatlik(prog, ger, ptf, smf, kat, yon=yon, segment=segment, ariza_sayisi=ariza_sayisi, luy_istisna=luy_istisna,
                    pozisyon_mwh=poz_s, budup_mwh=prog, uecm_mwh=uecm.fillna(0.0))
-    pv["program_kaynak"] = kaynak; pv["oneri"] = oneri.values; pv["uecm"] = uecm.values
+    # v2.606 (canlı 12.11 03:55 gece FEM hatası): d.saatlik program/ölçüm/fiyatı eksik saatleri düşürür (_hizala) → pv kısa kalır;
+    # konumsal .values ataması «Length of values (24) does not match length of index (22)» veriyordu. İndeksle hizalanır.
+    pv["program_kaynak"] = pd.Series(kaynak, index=x.index).reindex(pv.index).values
+    pv["oneri"] = oneri.reindex(pv.index); pv["uecm"] = uecm.reindex(pv.index)
     naif_var = x["naif_kw"].notna(); ay_naif = None
     if naif_var.sum() >= 24:
         xn = x[naif_var]
@@ -416,6 +432,7 @@ def dokum_csv(df: pd.DataFrame) -> str:
 def dokum_xlsx(df: pd.DataFrame, baslik: str, aylar: list[dict] | None = None) -> bytes:
     """İki sayfa: Saatlik (döküm) ve Aylar (özet) + Not."""
     import io
+
     import xlsxwriter
     buf = io.BytesIO()
     wb = xlsxwriter.Workbook(buf, {"in_memory": True})
@@ -622,7 +639,15 @@ def kural_ozeti(segment: str | None, tarih=None, luy_istisna: bool = False) -> d
             "kupst_m": r.kupst.m, "kupst_n": r.kupst.n, "kupst_n_ariza": r.kupst.n_ariza, "kupst_ariza_esigi": r.kupst.ariza_esigi,
             "kupst_taban": r.kupst.taban, "kupst_net_sapma": r.kupst.net_sapma, "kupst_birim": r.kupst.birim, "kupst_dayanak": r.kupst.dayanak,
             "dsg_esik": r.dsg_esik, "dsg_dayanak": r.dsg_dayanak, "belirsiz_2027": r.belirsiz_2027,
-            "belirsiz_2027_gerekce": kr.BELIRSIZ_2027_GEREKCE if r.belirsiz_2027 else None}
+            "belirsiz_2027_gerekce": kr.BELIRSIZ_2027_GEREKCE if r.belirsiz_2027 else None,
+            # v2.600 (F4-F): tam sürüm (AFL + DSG), sicil damgası, KGÜP kesimi/takvimi — arayüz sabitleri buradan okur
+            "kural_surumu_tam": r.surum_tam, "kural_sicili_sha": r.sicil_sha16,
+            "kgup_kesim": "{:02d}:{:02d}".format(*kr.kgup_kesim(r.tarih)[0]), "kgup_takvim": _kgup_takvim()}
+
+
+def _kgup_takvim() -> dict:
+    from pvquant.ext.turkiye import kgup as _kg
+    return dict(_kg.TAKVIM)
 
 
 def simulasyon(tenant_id, plant: dict, gun: int = 90) -> dict:
@@ -766,6 +791,7 @@ def portfoy_kupst_ozet(tenant_id, gun: int = 30, dagitim_anahtari: str = "sapma"
     """04 #14 (v2.511): dağıtıma bağlı lisanssız santrallerin KÜPST'si GTŞ/toplayıcı UEVÇB'si bazında (params_json.uevcb ile gruplanır;
     boş kod → tek birim varsayımı etiketiyle). Santrallere dağılım anahtarı sözleşmeseldir; mevzuatta tanımsız."""
     from sqlalchemy import text
+
     from pvquant.db import tenant_baglami
     from pvquant.services import piyasa_service
     if dagitim_anahtari not in d.PORTFOY_ANAHTARLARI:
@@ -829,7 +855,7 @@ def portfoy_kupst_ozet(tenant_id, gun: int = 30, dagitim_anahtari: str = "sapma"
                       "santraller": list(g["uyeler"].keys()), "n_saat": int(len(sa)),
                       "kupst_tl": (round(kupst, 0) if kupst is not None else None), "udups_mwh": round(float(sa.loc[ok, "udups"].sum()), 1),
                       "kupsm_mwh": round(float(sa.loc[ok, "kupsm"].sum()), 1), "uretim_mwh": round(float(sa["gerceklesen"].sum()), 1),
-                      "hesaplanamayan_saat": int((~ok).sum()), "kural_dayanak": g["kural_dayanak"],
+                      "hesaplanamayan_saat": int((~ok).sum()), "kural_dayanak": g["kural_dayanak"], "kural": g.get("kural"),   # v2.600: m/n/sürüm/yürürlük sicilden
                       "kural_surumu": " | ".join(sorted(set(sa["kural_surumu"]))), "uyeler": uye})
     return {**bos, "santral": len(uyeler), "uevcbler": cikti, "kupst_toplam_tl": (round(toplam, 0) if toplam_var else None),
             "etiket": r["etiket"], "fiyat": fiyat_ozeti,
@@ -986,6 +1012,7 @@ def dsg_ozet(tenant_id, gun: int = 30, dagitim_anahtari: str = "sapma", grup: st
     v2.539 (DK-258/261): gruplar santral kaydındaki DSG koduna göre (dsg_gruplari); toplayıcı portföyündeki ve lisanssız santraller dışarıda.
     `grup` ile seçilen grup, verilmezse en kalabalık grup üst düzeyde döner; bütün grupların özeti `gruplar`, dışarıda kalanlar `disi_nedenleri`."""
     from sqlalchemy import text
+
     from pvquant.db import tenant_baglami
     from pvquant.services import piyasa_service
     with tenant_baglami(tenant_id) as s:

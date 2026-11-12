@@ -13,7 +13,7 @@ from sqlalchemy import text
 
 import apps.api.main as api_main
 from apps.api.deps import gecerli_kullanici
-from pvquant.db import sistem_baglami
+from pvquant.db import sistem_baglami, bakim_baglami
 from pvquant.services import bagimsiz_dogrulama_service as bd
 from pvquant.services import olcum_uygunluk_service as ou
 
@@ -155,7 +155,7 @@ def santral():
             for saat_utc, et, kat in ((3, None, 1.10), (9.5, "gun_ici", 1.02)):
                 ra = (pd.Timestamp(f"2026-09-{g:02d}", tz=tz) - pd.Timedelta(days=1)).tz_convert("UTC").normalize() + pd.Timedelta(hours=saat_utc)
                 rid = s.execute(text("INSERT INTO forecast_runs(tenant_id, plant_id, run_at, mode, model, meteo_source, meteo_ozet_json, etiket) "
-                                     "VALUES(CAST(:t AS uuid), :p, :ra, 'B', 'barhdadi_bennis', 'acik-nwp', CAST(:oz AS jsonb), :et) RETURNING id"),
+                                     "VALUES(CAST(:t AS uuid), :p, :ra, 'B', 'barhdadi_bennis', 'acik-nwp', CAST(:oz AS jsonb), COALESCE(:et, 'yayin')) RETURNING id"),   # v2.597: etiket NOT NULL
                                 {"t": tid, "p": pid, "ra": ra.to_pydatetime(), "oz": '{"etiket": %s}' % ('"gun_ici"' if et else "null"), "et": et}).scalar()
                 for h in range(0, 24):
                     ts = pd.Timestamp(f"2026-09-{g:02d} {h:02d}:00", tz=tz).tz_convert("UTC").to_pydatetime()
@@ -165,7 +165,7 @@ def santral():
         s.execute(text("INSERT INTO olay(tenant_id, plant_id, tur, baslangic, bitis, durum, eak_gerekcesi) VALUES(:t, :p, 'ariza', :b, :e, 'kapali', 'kaynak_yetersizligi')"),
                   {"t": tid, "p": pid, "b": datetime(2026, 9, 3, 8, 0, tzinfo=UTC), "e": datetime(2026, 9, 3, 10, 0, tzinfo=UTC)})
     yield tid, {"id": pid, "name": "BD GES", "capacity_kwp": 1000.0, "lat": 37.0, "lon": 32.0, "tz": tz, "params_json": {}, "archived": False}
-    with sistem_baglami() as s:
+    with bakim_baglami() as s:
         for t in ("dogrulama_sonuc", "olay", "forecast_values", "forecast_runs", "scada_hourly"):
             s.execute(text(f"DELETE FROM {t} WHERE tenant_id=:t"), {"t": tid})
         s.execute(text("DELETE FROM plants WHERE id=:p"), {"p": pid}); s.execute(text("DELETE FROM tenants WHERE id=:t"), {"t": tid})

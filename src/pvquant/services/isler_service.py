@@ -17,6 +17,7 @@ ISIM_TR = {
     "gece_bagimsiz_dogrulama": "Bağımsız doğrulama",   # v2.574 (Faz 1 F1-C)
     "gece_finansal_etki": "Finansal etki",   # v2.583 (Faz 2 F2-E)
     "gece_portfoy": "Portföy hesabı",   # v2.593 (Faz 3 F3-F)
+    "gece_kural_sicili": "Kural sicili anlık görüntüsü",   # v2.600 (Faz 4 F4-F)
     "gece_skill": "Gece karnesi", "gece_ufuk_sigma": "Ufuk belirsizliği",
     "gece_konformal": "Bant kalibrasyonu", "gunluk_beklenti": "Günlük beklenti",
     "rapor_alanlari": "Rapor alanları", "alarm": "Alarm taraması",
@@ -110,7 +111,7 @@ def ozet(tenant_id, saat: int = 48) -> dict:
     from pvquant.db import sistem_baglami
     with sistem_baglami() as s:
         rows = s.execute(text(
-            "SELECT job, started, finished, status FROM jobs_log "
+            "SELECT job, started, finished, status, sonuc_json FROM jobs_log "   # v2.606 (F4-L): yapılı sonuç da döner
             "WHERE (tenant_id = :t OR tenant_id IS NULL) AND started >= now() - (:h * INTERVAL '1 hour') "
             "ORDER BY started DESC LIMIT 60"), {"t": tenant_id, "h": saat}).mappings().all()
         son_gece = s.execute(text(
@@ -126,15 +127,48 @@ def ozet(tenant_id, saat: int = 48) -> dict:
         if r["finished"] is not None and r["started"] is not None:
             sure = round((r["finished"] - r["started"]).total_seconds(), 1)
         isler.append({"is": ISIM_TR.get(r["job"], r["job"]), "zaman": r["started"].isoformat(),
-                      "sure_sn": sure, "tamam": r["status"] == "ok"})
+                      "sure_sn": sure, "tamam": r["status"] == "ok", "sonuc": _sonuc_ozeti(r.get("sonuc_json"))})   # v2.606: durum/sayılar (metin değil)
     # v2.339: hüküm artık iş bazında — "biri koştu" yetmez, HER üretici iş taze olmalı.
     bayat = bayat_isler(30, tenant_id)
     gece_calisiyor, bayat, seviye, not_ = hukum(int(n_santral), en_yeni_santral, bayat, son_gece)
-    return {"isler": isler, "pencere_saat": saat,
+    return {"isler": isler, "pencere_saat": saat, "sureler": sureler(tenant_id, gun=7),   # v2.606 (F4-L): iş başına süre dağılımı (7 gün)
             "gece_calisiyor": bool(gece_calisiyor),
             "son_gece_isi": son_gece.isoformat() if son_gece else None,
             "bayat_isler": [ISIM_TR.get(b, b) for b in bayat],
             "seviye": seviye, "not": not_}
+
+
+def _sonuc_ozeti(sonuc) -> dict | None:
+    """jobs_log.sonuc_json'dan ekrana uygun kısa özet: durum ve sayısal alanlar (metin alanları ve iç ayrıntı dönmez)."""
+    if not sonuc:
+        return None
+    if isinstance(sonuc, str):
+        import json
+        try:
+            sonuc = json.loads(sonuc)
+        except ValueError:
+            return None
+    if not isinstance(sonuc, dict):
+        return None
+    out = {k: v for k, v in sonuc.items() if k == "durum" or isinstance(v, (int, float)) and not isinstance(v, bool)}
+    return out or None
+
+
+def sureler(tenant_id, gun: int = 7) -> list[dict]:
+    """v2.606 (F4-L): son `gun` günde iş başına süre dağılımı — koşu sayısı, ortalama / en uzun süre (sn), başarısız sayısı; jobs_log'dan türer,
+    uydurulmaz (bitiş damgasız satır sayılmaz). Performans izleme: gece işleri büyüyen portföyde ne kadar sürüyor."""
+    from sqlalchemy import text
+
+    from pvquant.db import sistem_baglami
+    with sistem_baglami() as s:
+        rows = s.execute(text(
+            "SELECT job, count(*) AS n, count(*) FILTER (WHERE status IS DISTINCT FROM 'ok') AS hata, "
+            " round(avg(EXTRACT(EPOCH FROM (finished - started)))::numeric, 1) AS ort_sn, round(max(EXTRACT(EPOCH FROM (finished - started)))::numeric, 1) AS en_uzun_sn, "
+            " max(started) AS son FROM jobs_log WHERE (tenant_id = :t OR tenant_id IS NULL) AND finished IS NOT NULL "
+            " AND started >= now() - (:g * INTERVAL '1 day') GROUP BY job ORDER BY en_uzun_sn DESC NULLS LAST"), {"t": tenant_id, "g": int(gun)}).mappings().all()
+    return [{"is": ISIM_TR.get(r["job"], r["job"]), "kod": r["job"], "n": int(r["n"]), "hata": int(r["hata"] or 0),
+             "ort_sn": (float(r["ort_sn"]) if r["ort_sn"] is not None else None), "en_uzun_sn": (float(r["en_uzun_sn"]) if r["en_uzun_sn"] is not None else None),
+             "son": r["son"].isoformat() if r["son"] else None} for r in rows]
 
 
 def hukum(n_santral: int, en_yeni_santral, bayat: list[str], son_gece):

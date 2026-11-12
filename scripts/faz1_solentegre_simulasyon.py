@@ -67,8 +67,8 @@ def meteo_cek(plant: dict, yil: int, kanit: Path):
 
 def fizik_kos(plant: dict, meteo):
     from pvquant.pipeline.forecast import forecast_7day
-    from pvquant.services.calib_service import _plant_spec
-    fr = forecast_7day(meteo, _plant_spec(plant))
+    from pvquant.services.plant_spec_service import plant_spec_kur
+    fr = forecast_7day(meteo, plant_spec_kur(plant))
     h = fr.hourly.rename(columns={"p_ac_kw": "p50_kw"})
     h.index = pd.DatetimeIndex(h.index).tz_localize("UTC") if pd.DatetimeIndex(h.index).tz is None else pd.DatetimeIndex(h.index).tz_convert("UTC")
     return h[["p50_kw"]].dropna()

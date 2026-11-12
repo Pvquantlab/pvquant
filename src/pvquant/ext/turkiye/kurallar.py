@@ -33,12 +33,16 @@ lisanssız m/n; GTŞ/toplayıcı UEVÇB'si 1.11.2026 öncesi; 2027 DSG oranı (k
 """
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 import re
 
 from dataclasses import dataclass
 from datetime import date, timedelta
 
 import pandas as pd
+
+from pvquant.ext.turkiye import kural_sicili as _sicil   # v2.600 (F4-F): değerler ve tarihler sicilden
 # v2.535 dayanak künyeleri [DUY, LUY, KARAR_14907, KARAR_14968, KARAR_14029, KARAR_14030, KARAR_14911, KARAR_13869, KARAR_13025, AFL_UE] — bu dosyadaki madde atıflarının birincil yayımı (RG tarih-sayı, karar no); metin kunye.py sicilinden üretildi,
 # tests/test_kunye_bekcisi.py sicille eş tutar (kaynak: 03.11.2026 doğrulama arşivi 03_Kaynak_Envanteri).
 DAYANAK_KUNYELERI = (
@@ -54,7 +58,7 @@ DAYANAK_KUNYELERI = (
     "AFL U&E: GÖP ve DGP'de Asgari ve Azami Fiyat Limitlerinin Belirlenmesine İlişkin Usul ve Esaslar, Karar 5629-16, RG 21.06.2015-29393; Karar 6851 RG 06.01.2017-29940; Karar 14459 RG 03.04.2026-33213"
 )
 
-IST = "Europe/Istanbul"
+IST = PIYASA_TZ   # v2.599: tek tanım pvquant.zaman
 YONLER = ("acik", "fazla", "dengede")
 
 # ---------------------------------------------------------------- segment → KÜPST hesap birimi ------------------------
@@ -110,7 +114,19 @@ class Kural:
 
     @property
     def surum(self) -> str:
+        """Sonuç kayıtlarında saklanan sürüm dizgisi (edt+kupst) — biçimi değişmez (geçmiş kayıtlarla karşılaştırılabilir)."""
         return f"{self.edt.surum}+{self.kupst.surum}"
+
+    @property
+    def surum_tam(self) -> str:
+        """v2.600 (F4-F, bulgu M5): AFL ve DSG eşiğini de kapsayan tam sürüm — bu ikisi değişince ayırt edilir; sonuç meta'larına yazılır."""
+        afl_ = f"afl{int(afl(self.tarih))}"   # o gün yürürlükteki AFL (EDT formülü kullanmasa da sicilde tarihli)
+        dsg_ = f"dsg{int(round(self.dsg_esik * 100))}" if self.dsg_esik is not None else "dsg-yok"
+        return f"{self.surum}+{afl_}+{dsg_}"
+
+    @property
+    def sicil_sha16(self) -> str:
+        return _sicil.sicil_sha16()
 
 
 # ---------------------------------------------------------------- tarihli parametreler --------------------------------
@@ -119,45 +135,7 @@ class Kural:
 # EPİAŞ aylık duyurularından (Wayback; PTF serisinden yeniden hesaplanmadı). 1.7.2015–31.12.2019: 2.000 (geçici 1(2)); 7.1.2017–28.2.2017 teslim
 # günleri 500 (Karar 6851; 03.11.2026 doğrulama arşivi DK-016 / 10_Uzlastirma_Dengesizlik Ç-1 — RG lafzı 6.1.2017 ve 1.3.2017 günleri açık, EPİAŞ
 # uygulama günü esas alındı); 2016 ve 2018–2019 ara kararı doğrulanmadı.
-_AFL_ZINCIRI: tuple[tuple[date, float, str], ...] = (
-    (date(2026, 4, 4), 4500.0, "Karar 14459 (RG 3.4.2026-33213 s.47)"),
-    (date(2025, 4, 5), 3400.0, "Karar 13423 (RG 5.4.2025-32861)"),
-    (date(2024, 7, 1), 3000.0, "Karar 12716 (RG 29.6.2024-32587 s.26)"),
-    (date(2023, 7, 4), 2700.0, "Karar 11933 (RG 4.7.2023-32238; yürürlük maddesi yok — Usul ve Esaslar Md.4(5) lafzen 1.8.2023, EPİAŞ 4.7.2023 teslim gününden uyguladı; uygulama tarihi esas alındı)"),
-    (date(2023, 4, 1), 2600.0, "Karar 11772 (RG 31.3.2023-32149 s.5)"),
-    (date(2023, 3, 1), 3050.0, "Karar 11682 (RG 1.3.2023-32119; karar tarihi 28.2.2023, EPİAŞ 1.3.2023 teslim gününden)"),
-    (date(2023, 2, 1), 3650.0, "Karar 11588 (RG 27.1.2023-32086)"),
-    (date(2023, 1, 1), 4200.0, "Karar 11499 (RG 30.12.2022-32059 s.2)"),
-    (date(2022, 9, 1), 4800.0, "Karar 11156 (RG 1.9.2022-31940)"),
-    (date(2022, 8, 1), 4000.0, "Karar 11083 (RG 29.7.2022-31907)"),
-    (date(2022, 7, 1), 3750.0, "Karar 11043 (RG 30.6.2022-31882)"),
-    (date(2022, 6, 1), 3200.0, "Karar 10984 (RG 28.5.2022-31849)"),
-    (date(2022, 5, 20), 2750.0, "Karar 10978 (RG 19.5.2022-31840; EPİAŞ 20.5.2022'den)"),
-    (date(2022, 4, 1), 2500.0, "Karar 10890 (RG 30.3.2022-31794 s.7)"),
-    (date(2022, 3, 1), 1745.0, "Karar 10489 formülü (3× 12 aylık PTF, ≤2.000); EPİAŞ Mart 2022 duyurusu"),
-    (date(2022, 2, 1), 1524.0, "Karar 10489 formülü; EPİAŞ Şubat 2022 duyurusu"),
-    (date(2022, 1, 1), 1345.0, "Karar 10489 formülü; EPİAŞ Ocak 2022 duyurusu"),
-    (date(2021, 12, 1), 1217.0, "Karar 10489 formülü; EPİAŞ Aralık 2021 duyurusu"),
-    (date(2021, 11, 1), 1131.0, "Karar 10489 formülü; EPİAŞ Kasım 2021 duyurusu"),
-    (date(2021, 10, 16), 1078.0, "Karar 10489 (RG 15.10.2021-31629); EPİAŞ 16–31.10.2021 duyurusu"),
-    (date(2021, 10, 1), 718.0, "Karar 9598 formülü (2× 12 aylık PTF); EPİAŞ 1–15.10.2021"),
-    (date(2021, 9, 1), 674.0, "Karar 9598 formülü; EPİAŞ Eylül 2021 duyurusu"),
-    (date(2021, 8, 1), 636.0, "Karar 9598 formülü; EPİAŞ Ağustos 2021 duyurusu"),
-    (date(2021, 7, 1), 617.0, "Karar 9598 formülü; EPİAŞ Temmuz 2021 duyurusu"),
-    (date(2021, 6, 1), 595.0, "Karar 9598 formülü; EPİAŞ Haziran 2021 duyurusu"),
-    (date(2021, 5, 1), 578.0, "Karar 9598 formülü; EPİAŞ Mayıs 2021 duyurusu"),
-    (date(2021, 4, 1), 567.0, "Karar 9598 formülü; EPİAŞ Nisan 2021 duyurusu"),
-    (date(2021, 3, 1), 569.0, "Karar 9598 formülü; EPİAŞ Mart 2021 duyurusu"),
-    (date(2021, 1, 1), 572.0, "Karar 9598 formülü; EPİAŞ Ocak–Şubat 2021 duyuruları"),
-    (date(2020, 12, 1), 572.0, "Karar 9598 formülü; EPİAŞ Aralık 2020 duyurusu"),
-    (date(2020, 11, 1), 566.0, "Karar 9598 formülü; EPİAŞ Kasım 2020 duyurusu"),
-    (date(2020, 10, 7), 563.0, "Karar 9598 (RG 6.10.2020-31266); EPİAŞ 7–31.10.2020 duyurusu"),
-    (date(2020, 4, 1), 2000.0, "Karar 9021 süresi doldu → geçici 1(2) 2.000 (EPİAŞ 25.3.2020 duyurusu)"),
-    (date(2020, 1, 1), 600.0, "Karar 9021 (RG 28.12.2019-30992; 1.1–31.3.2020, GÖP ve DGP)"),
-    (date(2017, 3, 1), 2000.0, "Karar 6851 süreli hükmü bitti → geçici 1(2) 2.000 (EPİAŞ 24.2.2017 duyurusu: 1.3.2017 teslim gününden); 2018–2019 ara kararı doğrulanmadı"),   # v2.532 DK-016
-    (date(2017, 1, 7), 500.0, "Karar 6851 Geçici 1(3) (RG 6.1.2017-29940; lafzen 06.01–01.03.2017, EPİAŞ 5.1.2017 duyurusu: 7.1.2017 teslim gününden)"),   # v2.532 DK-016
-    (date(2015, 7, 1), 2000.0, "Karar 5629-16 geçici 1(2) (RG 21.6.2015-29393); 2016 ve 2018–2019 ara kararı doğrulanmadı"),
-)
+_AFL_ZINCIRI: tuple[tuple[date, float, str], ...] = _sicil.afl_zinciri()   # v2.600 (F4-F): zincir kural sicilinden (kural_sicili._AFL_HAM); biçim geriye uyumlu
 
 
 KGUP_KESIM_DEGISIM = date(2025, 1, 1)
@@ -167,115 +145,85 @@ def kgup_kesim(tarih: date) -> tuple[tuple[int, int], str]:
     """Teslim günü D için D-1 son KGÜP bildirim saati (İstanbul) ve dayanağı. 03.11.2026 doğrulama arşivi DK-154 / 11_KGUP_TPYS §3 (kanıt A):
     1.1.2025'ten 15:30 (RG 17.12.2024-32755 Md.17, 18, 20; DUY m.69(1)); öncesinde 16:00 (RG 14.04.2009-27200 m.69(1) asıl metin; EPDK 19.12.2023
     sürümü). Geri test ve yeniden hesaplarda 2024 ve öncesi teslim günleri için program kesimi 16:00 alınır."""
-    if tarih < KGUP_KESIM_DEGISIM:
-        return (16, 0), "DUY m.69(1) (RG 14.04.2009-27200): 31.12.2024'e kadar D-1 16:00"
-    return (15, 30), "DUY m.69(1) (RG 17.12.2024-32755 Md.17): 1.1.2025'ten D-1 15:30"
+    k = _sicil.ara("kgup.kesim", tarih)
+    if k is None:   # kapsam başından önce: eski dal
+        k = _sicil.kayitlar("kgup.kesim")[0]
+    return tuple(k.deger), k.gerekce
+
+
+def kgup_kesim_sql(gun_ifadesi: str) -> str:
+    """SQL parçası (v2.597, F4-B): teslim günü ifadesi (DATE) için D-1 kesim saati INTERVAL'i — `kgup_kesim` ile AYNI kural tablosundan
+    üretilir (program_df'nin elle yazılmış CASE'i buraya bağlandı; üçlü denklik testi program_df = kaynak_kosu_df = karne_kurali.program_kovasi)."""
+    (h0, m0), _ = kgup_kesim(KGUP_KESIM_DEGISIM - timedelta(days=1))
+    (h1, m1), _ = kgup_kesim(KGUP_KESIM_DEGISIM)
+    return (f"(CASE WHEN {gun_ifadesi} < DATE '{KGUP_KESIM_DEGISIM.isoformat()}' THEN INTERVAL '{h0} hours {m0} minutes'"
+            f" ELSE INTERVAL '{h1} hours {m1} minutes' END)")
 
 
 def afl(tarih: date) -> float:
     """Azami fiyat limiti (TL/MWh), teslim günü bazında. Zincir `_AFL_ZINCIRI`; 1.7.2015 öncesi 2.000 (kapsam dışı, doğrulanmadı)."""
-    for bas, deger, _ in _AFL_ZINCIRI:
-        if tarih >= bas:
-            return deger
-    return 2000.0
+    k = _sicil.ara("afl", tarih)
+    return float(k.deger) if k is not None else _sicil.AFL_KAPSAM_DISI_DEGER
 
 
 def afl_dayanak(tarih: date) -> str:
-    for bas, _, day in _AFL_ZINCIRI:
-        if tarih >= bas:
-            return day
-    return "1.7.2015 öncesi: kapsam dışı (doğrulanmadı)"
+    k = _sicil.ara("afl", tarih)
+    return k.gerekce if k is not None else _sicil.AFL_KAPSAM_DISI_DAYANAK
 
 
 def v_degeri(tarih: date) -> float | None:
-    if tarih < date(2026, 1, 1):
-        return None
-    return 100.0 if tarih >= date(2026, 11, 1) else 150.0     # Karar 14911
+    k = _sicil.ara("edt.V", tarih)
+    return float(k.deger) if k is not None else None     # 2026 öncesi V yok; Karar 14911 ile 1.11.2026'dan 100
 
 
 def edt_kurali(tarih: date) -> EdtKurali:
-    if tarih < date(2026, 1, 1):
-        return EdtKurali("2025", {y: 0.03 for y in YONLER}, {y: 0.03 for y in YONLER}, None, None, None, "net",
-                         "DUY m.110 (RG 2.2.2020-31027 Md.32); k = l = 0,03 — EPDK 4-16180 (22.09.2025) k/l karar taslağı «Mevcut Metin»: "
-                         "01/05/2015'ten 0,03 (asıl karar no bulunamadı); 2.2.2020 öncesi formül farklı, 1.12.2011–30.4.2015 k = l = 0 (geçici m.21) — kapsam dışı", "edt-2025")
-    toplama = "edta_ayrik" if tarih >= date(2026, 10, 19) else "edta_net"
+    """v2.600 (F4-F): rejim, k/l, V, B, toplama ve dayanak parçaları kural sicilinden; çıktı (değer ve dayanak metni) v2.535 ile birebir."""
+    r = _sicil.ara("edt.rejim", tarih) or _sicil.kayitlar("edt.rejim")[0]
+    t = _sicil.ara("edt.toplama", tarih) or _sicil.kayitlar("edt.toplama")[-1]
+    if r.rejim == "2025":
+        return EdtKurali("2025", dict(r.deger["k"]), dict(r.deger["l"]), None, None, None, t.deger, r.gerekce, r.surum)
     v = v_degeri(tarih)
-    return EdtKurali("2026", {"acik": 0.06, "fazla": 0.03, "dengede": 0.03}, {"acik": 0.03, "fazla": 0.06, "dengede": 0.03},
-                     v, 100.0, afl(tarih), toplama,
-                     "DUY m.110(1)-(2) (RG 29.12.2025-33122 Md.17); Karar 14030 (k/l); " + ("Karar 14911 (V = 100; «yayımı takip eden fatura dönemi» → 1.11.2026 çıkarım, EPİAŞ uygulama duyurusu bulunamadı)" if v == 100.0 else "V = 150 başlangıç")
-                     + ("; EDTA/EDTB dönem bazlı max/min (RG 19.10.2026-33405 Md.22)" if toplama == "edta_ayrik"
-                        else "; EDTA = max(ΣΣEDT(+);0), EDTB = ΣΣEDT(−) − min(ΣΣEDT(+);0) (RG 33122 Md.17)")
-                     + f"; AFL {afl(tarih):.0f}: {afl_dayanak(tarih)}",
-                     f"edt-2026-V{int(v)}-{toplama}")
-
+    vk = _sicil.ara("edt.V", tarih)
+    return EdtKurali("2026", dict(r.deger["k"]), dict(r.deger["l"]), v, float(r.deger["B"]), afl(tarih), t.deger,
+                     r.gerekce + (vk.gerekce if vk is not None else "") + t.gerekce + f"; AFL {afl(tarih):.0f}: {afl_dayanak(tarih)}",
+                     f"edt-2026-V{int(v)}-{t.deger}")
 
 def kupst_kurali(tarih: date, segment: str | None, portfoy: bool = False, luy_istisna: bool = False) -> KupstKurali:
     """Segment: ext.turkiye.segment.Segment değeri (str). portfoy=True → dağıtıma bağlı lisanssız için GTŞ/toplayıcı UEVÇB katsayısı.
     luy_istisna=True → tesis LÜY m.5(1)(ç),(d),(e) kapsamında (öz tüketim YEK / verimli kojenerasyon / mikrokojenerasyon):
     Karar 14907 Md.5 gereği iletime bağlı lisanssıza 1.11.2026'dan karar uygulanmaz (KÜPST 0 — yorum). Santral ayarı: yalnız (ç) aynı ölçüm
-    noktası / (d) kojenerasyon / (e) mikrokojenerasyon; (h) türü öz tüketim istisna dışı. Harflendirme güncel konsolide metinle teyitli (03.11.2026)."""
+    noktası / (d) kojenerasyon / (e) mikrokojenerasyon; (h) türü öz tüketim istisna dışı. Harflendirme güncel konsolide metinle teyitli (03.11.2026).
+    v2.600 (F4-F): katsayılar, tarihler ve dayanak metinleri kural sicilinden (segment grubu + koşul); çıktılar v2.535 ile birebir."""
     birim = KUPST_BIRIMI.get(segment or "", "yok")
-    taban = 750.0 if tarih >= date(2025, 1, 1) else 0.0
+    tk = _sicil.ara("kupst.taban", tarih) or _sicil.kayitlar("kupst.taban")[0]
+    taban = float(tk.deger)
     # 14907 Md.1(1) net sapma (UEÇM düşülür) yalnız lisanslıda; Md.1(3): lisanssızlarda «sadece üretim miktarı» (31.10.2026 araştırması Ç2)
     lisanssiz = segment in ("lisanssiz_iletim", "lisanssiz_dagitim")
-    net = tarih >= date(2026, 11, 1) and not lisanssiz
+    net = _sicil.ara("kupst.net_sapma", tarih) is not None and not lisanssiz
     if birim == "yok" or segment is None:
-        return KupstKurali(None, None, None, None, taban, net, birim if segment else "yok", "KÜPST bu segmentte uygulanmaz / segment seçilmedi", "kupst-yok")
+        return KupstKurali(None, None, None, None, taban, net, birim if segment else "yok", _sicil.KUPST_YOK_DAYANAK, "kupst-yok")
+    kosul = None
     if segment == "lisanssiz_dagitim":
-        if portfoy and tarih >= date(2026, 11, 1):
-            return KupstKurali(0.25, 0.01, None, None, taban, net, birim,
-                               "Karar 14907 Md.2(1)(ç) piyasa katılımcısı bazlı, Md.3(1)(e); UEVÇB: DUY m.110(6)(b)(3) (RG 19.10.2026-33405 Md.22); Md.1(3) brüt",
-                               "kupst-14907-dagitim")
-        if portfoy:
-            return KupstKurali(None, None, None, None, taban, net, birim,
-                               "Karar 13025/14029'da dağıtıma bağlı lisanssız / GTŞ-toplayıcı UEVÇB'sine özel satır yok; genel satırın uygulanıp uygulanmadığı "
-                               "belirsiz (EPİAŞ uygulaması bulunamadı); KGÜP yükümlülüğü 11.03.2025'ten (TPYS); özel katsayı Karar 14907 ile 1.11.2026'dan",
-                               "kupst-dagitim-portfoy-belirsiz")
-        return KupstKurali(0.0, 0.0, None, None, taban, net, birim,
-                           "Dağıtıma bağlı lisanssız: KÜPST santral sahibinde değil, GTŞ/toplayıcı UEVÇB'sinde hesaplanır (GTŞ: DUY m.69(11) + m.110(3); toplayıcı: m.110(6)(b)(3); "
-                           "RG 19.10.2026-33405 ile 19.10.2026'dan; üreticiye yansıtma m.132/Ç(18) olası — GTŞ'de yansıtma hükmü yok, toplayıcıda hizmet anlaşmasına bağlı; "
-                           "öncesinde toplayıcı için eski m.110(6) tesis bazında münferit (1.1.2025), GTŞ için m.69(2) + TPYS 11.03.2025)",
-                           "kupst-dagitim-santral-0")
-    if segment == "lisanssiz_iletim":
-        if tarih >= date(2026, 11, 1) and luy_istisna:
-            return KupstKurali(0.0, 0.0, None, None, taban, net, birim,
-                               "Karar 14907 Md.5: LÜY m.5(1)(ç),(d),(e) kapsamındaki iletime bağlı tesislere karar uygulanmaz (santral ayarı)", "kupst-14907-luy-istisna")
-        if tarih >= date(2026, 11, 1):
-            return KupstKurali(0.20, 0.02, None, None, taban, net, birim,
-                               "Karar 14907 Md.2(1)(c), Md.3(1)(d); Md.1(3) brüt; LÜY 5(1)(ç),(d),(e) tesislerine uygulanmaz (Md.5 — santral ayarı «LÜY istisnası»)",
-                               "kupst-14907-iletim")
-        if tarih >= date(2026, 1, 1):
-            return KupstKurali(0.20, 0.02, None, None, taban, net, birim, "Karar 14029 Md.2(1)(c), Md.3(1) (RG 29.12.2025-33122; 14907 Md.6 ile 1.11.2026'da kalktı)", "kupst-14029-iletim")
-        return KupstKurali(None, None, None, None, taban, net, birim,
-                           "2025 katsayısı DOĞRULANAMADI: Karar 13025'te bu gruba özel satır yok, DUY m.110(6)/13025 Md.4 karşı okumaya açık; "
-                           "yükümlülük hukuken RG 21.1.2025-32789 m.69(10), fiilen TPYS 11.03.2025", "kupst-2025-iletim-belirsiz")
-    # lisanslı güneş (serbest / YEKDEM / YEKA)
-    if tarih >= date(2026, 11, 1):
-        return KupstKurali(0.08, 0.05, 0.08, 30, taban, True, birim, "Karar 14907 Md.1(1) net sapma, Md.2(1)(f), Md.3(1)(b) (RG 19.10.2026-33405); Md.7 «takip eden fatura dönemi» → 1.11.2026 çıkarım", "kupst-14907")
-    if tarih >= date(2026, 1, 1):
-        return KupstKurali(0.08, 0.05, 0.08, 30, taban, False, birim, "Karar 14029 Md.2(1)(ç), Md.3(1) (RG 29.12.2025-33122)", "kupst-14029")
-    if tarih >= date(2025, 1, 1):
-        return KupstKurali(0.10, 0.03, 0.05, 40, taban, False, birim, "Karar 13025 Md.2(1)(c) YEK satırı, Md.3(1) (RG 17.12.2024-32755 s.3); taban DUY m.110(3)", "kupst-13025")
-    if tarih >= date(2023, 2, 1):
-        return KupstKurali(0.12, 0.03, None, None, 0.0, False, birim, "Karar 11589-2 (RG 27.1.2023-32086)", "kupst-11589")
-    if tarih >= date(2020, 8, 1):
-        return KupstKurali(0.10, 0.03, None, None, 0.0, False, birim, "Karar 9422 (RG 3.7.2020-31174; 1.8.2020'den)", "kupst-9422")
-    return KupstKurali(0.10, 0.03, None, None, 0.0, False, birim,
-                       "Karar 7524 (RG 18.1.2018-30305); ilk 3 ay n 0,015 penceresinin tarihi bulunamadı — 0,03 kullanıldı", "kupst-7524")
-
+        if not portfoy:
+            k = _sicil.ara("kupst", tarih, segment, None)
+        else:
+            k = _sicil.ara("kupst", tarih, segment, "portfoy")
+    elif segment == "lisanssiz_iletim":
+        kosul = "luy_istisna" if (luy_istisna and _sicil.ara("kupst", tarih, segment, "luy_istisna") is not None) else None
+        k = _sicil.ara("kupst", tarih, segment, kosul)
+    else:
+        k = _sicil.ara("kupst", tarih, segment, None) or _sicil.ara("kupst", tarih, "lisansli_serbest", None)
+    if k is None:   # kapsam başından önce: en eski lisanslı dal (eski davranış: Karar 7524 etiketi)
+        k = [x for x in _sicil.kayitlar("kupst") if x.segmentler and segment in x.segmentler and x.kosul is None][0]
+    d = k.deger
+    return KupstKurali(d["m"], d["n"], d["n_ariza"], d["ariza_esigi"], taban, net, birim, k.gerekce, k.surum)   # taban tarihli (kupst.taban); 2025 öncesi 0
 
 def dsg_esigi(tarih: date) -> tuple[float | None, str]:
     """DSG üye dengesizlik oranı eşiği. 03.11.2026 doğrulama arşivi DK-249 (kanıt A): m.111(3)-(5) RG 17.12.2024-32755 Md.24 ile
     eklendi, Md.30 ile 1.1.2025'te yürürlüğe girdi; 2023 sürümünde m.111 yalnız (1)-(2) → 1.1.2025 öncesinde üye eşiği YOK (eşiksiz netleşme).
-    02.02.2020 öncesi m.111 sürümleri okunmadı (kapsam dışı)."""
-    if tarih < date(2025, 1, 1):
-        return None, "DUY m.111(3)-(5) 1.1.2025'ten (RG 17.12.2024-32755 Md.24, Md.30); öncesinde üye eşiği yok — sapmalar DSG içinde tamamen netleşir"
-    if tarih < date(2026, 1, 1):
-        return 0.10, "DUY m.111(5), RG 17.12.2024-32755 Md.24 (%10; yürürlük 1.1.2025)"
-    if tarih < date(2027, 1, 1):
-        return 0.05, "Karar 13869 (RG 18.10.2025-33051), 1.1.2026'dan %5 (grupta sayılan payın %5 alınması yorum)"
-    return 0.05, ("Karar 13869 yürürlükte (süre sınırı yok, %5); DUY m.111(5) uyarınca yıllık düşürme kararı en geç 1.12.2026'da alınır, "
-                  "RG yayımı Aralık sonuna sarkabilir; yön riski aşağı — %5 VARSAYILDI")
+    02.02.2020 öncesi m.111 sürümleri okunmadı (kapsam dışı). v2.600: değer ve dayanak kural sicilinden."""
+    k = _sicil.ara("dsg.esik", tarih) or _sicil.kayitlar("dsg.esik")[0]
+    return (float(k.deger) if k.deger is not None else None), k.gerekce
 
 
 # DUY Geçici m.39 (RG 17.12.2024-32755 Md.29; bulgular/10.md (e)): dağıtım lisansı sahipleri ile bölgelerindeki görevli tedarik şirketlerinin
@@ -294,13 +242,7 @@ def gecici_m39_notu(tarih: date) -> str | None:
 
 
 # 1.1.2027 belirsizlik bayrağının gerekçesi (31.10.2026 araştırması, bulgular/09.md): ekran/rapor notu için tek kaynak.
-BELIRSIZ_2027_GEREKCE = (
-    "(i) m.110(1)-(2): RG 21.1.2025-32789 Md.13 (tek EDT_f; V/B/AFL ve EDTA/EDTB kalkar) yürürlük tarihi RG'de 1.1.2027 yazılı, ama 33122/33405 aynı "
-    "fıkraları sonradan yeniden yazdı — ilişkisi hukuken belirsiz; tek k/l kararı yok (üç aylık duyuru süresinin 1.10.2026'da dolması çıkarım). (ii) m.110(3)-(4): Md.13 KÜPST'yi 15 dakikalık «ç» bazına alır; "
-    "«ç» bazlı KÜPSM yöntem kararı yok (14907 «u» bazlı). (iii) m.91(2) + Geçici 40: 15 dakikalık DGP 1.1.2027'den önce başlamaz, "
-    "fiilî başlangıç ilan edilmedi. (iv) SMF_N/SMF_P çeyrek SMF ister; Karar 14968 Şeffaflık'ta SMF'yi yalnız saatlik listeler. "
-    "Varsayılan: 2026 rejimi sürer, sonuçlar «belirsiz» etiketi taşır; Kasım–Aralık 2026 RG'leri izlenir (kanıt kesimi 03.11.2026)."
-)
+BELIRSIZ_2027_GEREKCE = _sicil.BELIRSIZ_2027_GEREKCE   # v2.600: tek metin kural sicilinde
 
 
 def kural(tarih: date | str | pd.Timestamp, segment: str | None = None, portfoy: bool = False, luy_istisna: bool = False) -> Kural:
@@ -340,7 +282,7 @@ def parametre_cercevesi(index: pd.DatetimeIndex, segment: str | None = None, ari
                           e.dayanak + ("; karşı-olgu: 2026 kuralı tüm döneme, V = 100" if karsi_olgu == "2026_V100" else "; karşı-olgu: 2026 kuralı tüm döneme"),
                           (e.surum.replace("V150", "V100") if karsi_olgu == "2026_V100" else e.surum) + "-karsi-olgu")
             r = Kural(r.tarih, r.segment, e, kp, r.dsg_esik, r.dsg_dayanak, r.belirsiz_2027)
-        satirlar[g] = {"rejim": r.edt.rejim, "surum": r.surum,
+        satirlar[g] = {"rejim": r.edt.rejim, "surum": r.surum, "surum_tam": r.surum_tam,
                        "k_acik": r.edt.k["acik"], "k_fazla": r.edt.k["fazla"], "k_dengede": r.edt.k["dengede"],
                        "l_acik": r.edt.l["acik"], "l_fazla": r.edt.l["fazla"], "l_dengede": r.edt.l["dengede"],
                        "V": r.edt.V, "B": r.edt.B, "AFL": r.edt.AFL, "toplama": r.edt.toplama,

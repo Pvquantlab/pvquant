@@ -1,8 +1,9 @@
 """EPİAŞ Şeffaflık: PTF/SMF çek ve örnek dengesizlik maliyeti. EPIAS_KULLANICI/EPIAS_SIFRE gerekir."""
 import numpy as np, pandas as pd
-from pvquant.ext.kaynak import epias
+from pvquant.ext.kaynak import epias   # eski formül (≤2025)
+from pvquant.ext.turkiye.epias import Istemci   # v2.604: tek canlı istemci
 
-c = epias.SeffaflikIstemci()
+c = Istemci()
 ptf = c.ptf("2025-07-01", "2025-07-07"); smf = c.smf("2025-07-01", "2025-07-07")
 print(ptf.head()); print(smf.head())
 # sentetik 10 MW santral: KGÜP vs gerçekleşen

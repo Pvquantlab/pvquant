@@ -2,6 +2,8 @@
 Saf hesap takvim.py'de; burada yalnız «bugün» (İstanbul), segment ve params_json okunur."""
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -15,7 +17,7 @@ DAYANAK_KUNYELERI = (
     'DUY: Elektrik Piyasası Dengeleme ve Uzlaştırma Yönetmeliği, RG 14.04.2009-27200; değişiklikler RG 28.03.2015-29309, 30.10.2016-29873, 18.01.2018-30305, 09.08.2019-30857, 02.02.2020-31027, 19.11.2022-32018, 19.12.2023-32404, 17.12.2024-32755, 21.01.2025-32789, 29.12.2025-33122, 19.10.2026-33405, 21.10.2026-33407'
 )
 
-IST = ZoneInfo("Europe/Istanbul")
+IST = ZoneInfo(PIYASA_TZ)
 
 NOT = ("Tarihler mevzuattan (DUY m.132, m.133; YEK Yönetmeliği; LÜY) ve iş günü hesabından türetilmiştir; EPİAŞ ve EPDK duyurusuyla "
        "değişebilir. «mevzuat» etiketi metinde yazılı günü, «hesaplanan» iş günü kaydırmasını ya da gün ekleme hesabını, «santral tarihi» "

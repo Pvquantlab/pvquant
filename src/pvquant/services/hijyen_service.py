@@ -14,6 +14,8 @@ import numpy as np
 import pandas as pd
 
 from pvquant.ext.tahmin import kisitlama
+from pvquant.services import kalite_sozlugu as _ks   # v2.598 (F4-C): flag süzgeci tek sözlükten
+from pvquant.services.karne_kurali import yayin_kosu_sql as _yayin_sql   # v2.597 (F4-B): yayımlanmış koşu süzgeci
 
 
 def bayrakla_df(df: pd.DataFrame, tavan_kw: float | None, capacity_kwp: float) -> pd.DataFrame:
@@ -44,10 +46,10 @@ def _oku(tenant_id, plant_id, gun: int) -> pd.DataFrame:
         return pd.read_sql(text(
             "SELECT s.ts_utc, s.power_kw, s.flag, s.kirpma, b.physics_kw AS beklenen_kw FROM scada_hourly s "
             "LEFT JOIN LATERAL (SELECT f.physics_kw FROM forecast_values f JOIN forecast_runs r ON r.id=f.run_id "
-            "  WHERE f.plant_id=s.plant_id AND f.ts_utc=s.ts_utc AND f.ts_utc - r.run_at BETWEEN INTERVAL '0 hour' AND INTERVAL '24 hour' "
+            f"  WHERE f.plant_id=s.plant_id AND f.ts_utc=s.ts_utc AND {_yayin_sql('r')} AND f.ts_utc - r.run_at BETWEEN INTERVAL '0 hour' AND INTERVAL '24 hour' "
             "  ORDER BY r.run_at DESC LIMIT 1) b ON true "
-            "WHERE s.plant_id=:p AND s.flag IN ('valid','kisinti') "
-            "AND s.ts_utc >= (SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p AND flag IN ('valid','kisinti')) - (:g * INTERVAL '1 day') "
+            f"WHERE s.plant_id=:p AND {_ks.sql_kosulu('kayip', 's')} "
+            f"AND s.ts_utc >= (SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p AND {_ks.sql_kosulu('kayip')}) - (:g * INTERVAL '1 day') "
             "ORDER BY s.ts_utc"),   # v2.257: pencere son ölçüme bağlı (takvim değil) — PR kartıyla aynı kural
             s.connection(), params={"p": plant_id, "g": gun}, parse_dates=["ts_utc"])
 
@@ -83,14 +85,14 @@ def ozet(tenant_id, plant_id, gun: int = 30) -> dict:
             "COALESCE(sum(GREATEST(b.physics_kw - s.power_kw, 0)) FILTER (WHERE s.flag='kisinti'), 0) AS kayip_kwh, "
             "count(b.physics_kw) AS beklenen_saat "
             "FROM scada_hourly s LEFT JOIN LATERAL (SELECT f.physics_kw FROM forecast_values f JOIN forecast_runs r ON r.id=f.run_id "
-            "  WHERE f.plant_id=s.plant_id AND f.ts_utc=s.ts_utc AND f.ts_utc - r.run_at BETWEEN INTERVAL '0 hour' AND INTERVAL '24 hour' "
+            f"  WHERE f.plant_id=s.plant_id AND f.ts_utc=s.ts_utc AND {_yayin_sql('r')} AND f.ts_utc - r.run_at BETWEEN INTERVAL '0 hour' AND INTERVAL '24 hour' "
             "  ORDER BY r.run_at DESC LIMIT 1) b ON true "
-            "WHERE s.plant_id=:p AND s.flag IN ('valid','kisinti') "
-            "AND s.ts_utc >= (SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p AND flag IN ('valid','kisinti')) - (:g * INTERVAL '1 day')"),
+            f"WHERE s.plant_id=:p AND {_ks.sql_kosulu('kayip', 's')} "
+            f"AND s.ts_utc >= (SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p AND {_ks.sql_kosulu('kayip')}) - (:g * INTERVAL '1 day')"),
             {"p": plant_id, "g": gun}).mappings().first()   # v2.257: son ölçüme bağlı pencere
     saat = int(r["saat"] or 0)
     with tenant_baglami(tenant_id) as s2:
-        son = s2.execute(text("SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p AND flag IN ('valid','kisinti')"), {"p": plant_id}).scalar()
+        son = s2.execute(text(f"SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p AND {_ks.sql_kosulu('kayip')}"), {"p": plant_id}).scalar()
     return {"pencere_gun": gun, "son_olcum": son.date().isoformat() if son is not None else None, "saat": saat, "kirpma_saat": int(r["kirpma"] or 0), "kirpma_gun": int(r["kirpma_gun"] or 0),
             "kisinti_saat": int(r["kisinti"] or 0), "kisinti_gun": int(r["kisinti_gun"] or 0),
             "kisinti_kayip_kwh": round(float(r["kayip_kwh"] or 0), 1),

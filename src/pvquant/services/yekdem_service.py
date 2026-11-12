@@ -23,6 +23,8 @@ YEKDEM dışı kalan MWh için fark = YEK fiyatı − j × PTF (j = 0,980, güne
 """
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 import json
 import re
 from datetime import date, datetime, timedelta
@@ -41,7 +43,7 @@ DAYANAK_KUNYELERI = (
     "Karar 5905-27: EPDK Kurul Kararı 5905-27 (02.12.2015; YEKDEM yararlanma yılları) — EPDK listesi, RG'de yayımlanmaz"
 )
 
-IST = ZoneInfo("Europe/Istanbul")
+IST = ZoneInfo(PIYASA_TZ)
 REJIMLER = ("otomatik", "cetvel1", "7189")
 TESIS_TIPLERI = ("gunes", "gunes_depolamali")
 TESIS_ETIKET = {"gunes": "güneş", "gunes_depolamali": "bütünleşik depolamalı güneş"}

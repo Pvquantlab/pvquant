@@ -7,6 +7,8 @@ raporlar aralık uydurmaz.
 """
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional
@@ -192,7 +194,7 @@ def from_results(
     forecast_result,
     calibration_result=None,
     plant_name: str | None = None,
-    plant_tz: str = "Europe/Istanbul",
+    plant_tz: str = PIYASA_TZ,
     mode: str = "B",
     plant_context: dict | None = None,
 ) -> ReportContext:

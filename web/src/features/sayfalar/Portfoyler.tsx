@@ -4,7 +4,7 @@ import type { BelirsizlikDurum, FinansNitelik, PortfoyDetay, PortfoyDsgT, Portfo
 import { donemSecenekleri, TUR_AD, type FinansDonemTur } from "../../lib/donem";
 import { tarihBicimi } from "../../lib/bicim";
 import { Meta } from "../../lib/Meta";
-import { Kart, Kpi, Sayfa, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
+import { HesapDurumu, Kart, Kpi, Sayfa, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
 
 /** v2.595 (Faz 3 F3-H) — Portföy yönetimi: toplayıcı ya da DSG yöneticisinin portföyünü birkaç saniyede okuması için tek sayfa.
  *  Santral tahminleri, uzlaştırma ve finansal etki hesapları değişmez; bu sayfa zamanlı üyelik kayıtlarıyla (F3-A) portföy tahmini ve
@@ -20,6 +20,9 @@ const RISK: Record<RiskEtiket, string> = { dogrulanmis: "rozet-ok", tahmini: "ro
 const ONERI_SINIF: Record<string, string> = { eylem: "rozet-dikkat", oneri: "rozet-uyari", bilgi: "rozet-notr" };
 const DOGRULAMA_SINIF: Record<string, string> = { dogrulandi: "rozet-ok", belgeli: "rozet-notr", beyan: "rozet-uyari" };
 const TUR_ETIKET: Record<string, string> = { toplayici: "toplayıcı portföyü", dsg: "dengeden sorumlu grup", isletme: "işletme portföyü", ozel: "özel portföy" };
+/* 12.11 inceleme 1: sözleşme kayıtları tablosunda iç kod («sabit_pay», «dsg») görünmez — arka uç sözlüğüyle (dagitim.YONTEM_AD, DENGESIZLIK_SORUMLULARI) aynı adlar. */
+const DAGILIM_AD: Record<string, string> = { sapma: "sapma payına göre", esit: "eşit paylarla", uretim: "üretime göre", sabit_pay: "sözleşmedeki sabit paylarla", ozel: "sözleşmedeki özel kurallarla" };
+const SORUMLU_AD: Record<string, string> = { santral: "santral", toplayici: "toplayıcı", dsg: "dengeden sorumlu grup", gts: "görevli tedarik şirketi" };
 const SAYFA_AD: Record<string, string> = { tahminler: "Tahminler", santralim: "Santralim", kurulus: "Ayarlar", veri: "Veri yükleme", finans: "Finansal etki" };
 const sol = { textAlign: "left" as const };
 const yaz = (v: number | null | undefined, ondalik = 0) => v == null ? "—" : `${v < 0 ? "−" : ""}${sayiTr(Math.abs(v), ondalik)}`;
@@ -84,7 +87,8 @@ export function Portfoyler() {
   const secici = (
     <span className="dugme-sira">
       {liste && liste.length > 0 && <select className="girdi" value={secili} onChange={(e) => setSecili(e.target.value)} aria-label="Portföy">
-        {liste.map((p) => <option key={p.id} value={p.id}>{p.ad} · {TUR_ETIKET[p.tur] ?? p.tur}{p.gecerli ? "" : " (geçerli değil)"}</option>)}</select>}
+        {liste.map((p) => { const tur = TUR_ETIKET[p.tur] ?? p.tur; const adTuruIceriyor = p.ad.toLocaleLowerCase("tr").includes(tur.toLocaleLowerCase("tr"));   // 12.11 inceleme: «Toplayıcı portföyü · toplayıcı portföyü» tekrarı
+          return <option key={p.id} value={p.id}>{p.ad}{adTuruIceriyor ? "" : ` · ${tur}`}{p.gecerli ? "" : " (geçerli değil)"}</option>; })}</select>}
       <select className="girdi" value={tur} onChange={(e) => turDegis(e.target.value as FinansDonemTur)} aria-label="Dönem türü">
         {(Object.keys(TUR_AD) as FinansDonemTur[]).map((t) => <option key={t} value={t}>{TUR_AD[t]}</option>)}</select>
       <select className="girdi" value={kod} onChange={(e) => setKod(e.target.value)} aria-label="Dönem">
@@ -126,11 +130,11 @@ export function Portfoyler() {
         <Kpi etiket={`Program sapması (${sapma?.donem?.etiket ?? "dönem"})`} bilgi="Gerçekleşen − program, yalnız bütün üyelerin ölçümü ve programı olan saatlerde; artı fazla üretim. Eksik ölçüm sıfır sayılmaz. Tahmin hatası ve fiziksel sapma ayrı satırlarda tutulur."
           deger={isaretli(o?.program_sapma.mwh, 1)} birim={o?.program_sapma.mwh == null ? undefined : "MWh"}
           ikinci={o?.program_sapma.pct != null ? { etiket: o.program_sapma.mwh! > 0 ? "Fazla üretim" : "Eksik üretim", deger: `%${sayiTr(Math.abs(o.program_sapma.pct), 1)}`, birim: "programın" } : undefined}
-          alt={sapma?.kapsama ? `${sapma.kapsama.guvenilirlik_ad.toLowerCase()} kapsama: ${sayiTr(sapma.kapsama.sapma_tam_saat)} / ${sayiTr(sapma.kapsama.beklenen_saat)} saat` : sapma === null ? "sapma alınamadı" : sapma?.durum === "uye_yok" ? "bu dönemde üye yok" : "yükleniyor"} />
+          alt={sapma?.kapsama ? `${sayiTr(sapma.kapsama.sapma_tam_saat)} / ${sayiTr(sapma.kapsama.beklenen_saat)} saatte program ve ölçüm birlikte · kapsama ${sapma.kapsama.guvenilirlik_ad.toLowerCase()}` : sapma === null ? "sapma alınamadı" : sapma?.durum === "uye_yok" ? "bu dönemde üye yok" : "yükleniyor"} />
         <Kpi etiket="Tahmini finansal etki" bilgi="Enerji satışı + enerji dengesizlik tutarı (bağımsız santral toplamı) + KGÜP sapma tutarı, net; artı portföy lehine. DSG içi tutar bağımsız tutarın yerine geçer, toplanmaz; ayrı gösterilir."
           deger={binTl(topFin?.tutar_tl)} birim={topFin?.tutar_tl == null ? undefined : "bin TL"}
           ikinci={fin?.toplam_dsg?.tutar_tl != null ? { etiket: "DSG içi hesapla", deger: `${binTl(fin.toplam_dsg.tutar_tl)} bin TL` } : undefined}
-          alt={topFin ? <><Nitelik n={topFin.nitelik} /> {fin?.kayitli_santral ? `${sayiTr(fin.kayitli_santral)} santral gece kaydından` : "anlık hesap"}{fin?.toplama_girmeyen?.length ? `; ${fin.toplama_girmeyen.length} santral toplam dışı` : ""}</> : fin === null ? "finansal etki alınamadı" : "yükleniyor"} />
+          alt={topFin ? <><Nitelik n={topFin.nitelik} /> <HesapDurumu d={fin?.meta?.hesap_durumu} /> {fin?.kayitli_santral ? `${sayiTr(fin.kayitli_santral)} santral gece kaydından` : "anlık hesap"}{fin?.toplama_girmeyen?.length ? `; ${fin.toplama_girmeyen.length} santral toplam dışı` : ""}</> : fin === null ? "finansal etki alınamadı" : "yükleniyor"} />
       </div>
 
       <Kart baslik="Santral katkıları" alt="Dönemde her üyenin programı, gerçekleşeni ve portföy sapmasına katkısı; yarınki tahmini ve üyelik durumu."
@@ -138,7 +142,7 @@ export function Portfoyler() {
         {sapma === undefined ? <YerTutucu yukseklik={120} /> : !sapma || sapma.durum !== "ok" ? <p className="soluk" style={{ margin: 0 }}>{sapma?.not ?? "Dönem görünümü alınamadı."}</p> : (
           <>
             <div className="grafik-kaydir"><table className="veri sayisal">
-              <thead><tr><th style={sol}>Santral</th><th>Kurulu güç (kW)</th><th>Program (MWh)</th><th>Gerçekleşen (MWh)</th><th>Sapma (MWh)</th><th>Pay (%)</th><th>Yarın (MWh)</th><th style={sol}>Ölçüm</th><th style={sol}>Üyelik</th></tr></thead>
+              <thead><tr><th style={sol}>Santral</th><th>Kurulu güç (kW)</th><th>Program (MWh)</th><th>Gerçekleşen (MWh)</th><th>Sapma (MWh)</th><th title="Santralin, üyelerin mutlak sapmaları toplamındaki payı">Sapma payı (%)</th><th>Yarın (MWh)</th><th style={sol}>Ölçüm</th><th style={sol}>Üyelik</th></tr></thead>
               <tbody>{kat.map((s) => {
                 const u = uyeler.find((x) => x.santral === s.santral); const t = tahmin?.katkilar?.[s.santral]; const b = sapma.santral_bilgi?.[s.santral];
                 return (<tr key={s.santral}>
@@ -217,7 +221,7 @@ export function Portfoyler() {
                     <div><dt>Sözleşmeye göre paylar</dt><dd><span className="kunye-sayi">{binTl(per.sozlesmesel.toplam?.toplam_tl)} bin TL</span> <Rozet sinif={per.sozlesmesel.etiket.startsWith("Sözleşmeye") ? "rozet-ok" : "rozet-uyari"}>{per.sozlesmesel.etiket.toLowerCase()}</Rozet><span className="kunye-not"> {per.sozlesmesel.yontem_ad}</span></dd></div>
                   </dl>
                   {per.sozlesmesel.satirlar.length > 0 && <div className="grafik-kaydir"><table className="veri sayisal dar">
-                    <thead><tr><th style={sol}>Üye</th><th>Tek başına (TL)</th><th>Pay (%)</th><th>Grup payı (TL)</th><th>Üyede kalan (TL)</th><th>Ücret (TL)</th><th>Toplam (TL)</th><th>KÜPST (TL)</th></tr></thead>
+                    <thead><tr><th style={sol}>Üye</th><th>Tek başına (TL)</th><th title="Sözleşmedeki pay">Sözleşme payı (%)</th><th>Grup payı (TL)</th><th>Üyede kalan (TL)</th><th>Ücret (TL)</th><th>Toplam (TL)</th><th>KÜPST (TL)</th></tr></thead>
                     <tbody>{per.sozlesmesel.satirlar.map((s) => { const b = per.bagimsiz.satirlar.find((x) => x.santral === s.santral); return <tr key={s.santral}><td style={sol}>{s.santral}</td><td className="mono">{yaz(b?.edt_tek_tl)}</td><td className="mono">{s.pay_pct == null ? "—" : sayiTr(s.pay_pct, 1)}</td><td className="mono">{yaz(s.grup_payi_tl)}</td><td className="mono">{yaz(s.edt_bireysel_tl)}</td><td className="mono">{yaz(s.ucret_tl)}</td><td className="mono" style={{ fontWeight: 600 }}>{yaz(s.toplam_tl)}</td><td className="mono soluk">{yaz(s.kupst_tl)}</td></tr>; })}</tbody>
                   </table></div>}
                   <ul className="not-listesi">
@@ -232,9 +236,10 @@ export function Portfoyler() {
                 {sozlesmeler === "yetki_yok" ? <p className="soluk" style={{ margin: 0 }}>Sözleşme kayıtları editör ve yönetici yetkili kullanıcılara açıktır.</p> : sozlesmeler === undefined ? <YerTutucu yukseklik={40} /> : sozlesmeler === null ? <p className="soluk" style={{ margin: 0 }}>Sözleşme listesi alınamadı.</p> : sozlesmeler.length === 0 ? <p className="soluk" style={{ margin: 0 }}>Bu portföy için sözleşme kaydı yok; dağılım varsayımsal anahtarla gösterilir.</p> : (
                   <div className="grafik-kaydir"><table className="veri dar">
                     <thead><tr><th style={sol}>Tür</th><th style={sol}>Geçerlilik</th><th style={sol}>Dağılım</th><th style={sol}>Dengesizlik sorumlusu</th><th style={sol}>Doğrulama</th><th style={sol}>Taraflar</th></tr></thead>
-                    <tbody>{sozlesmeler.map((z) => <tr key={z.id}><td style={sol}>{z.tur === "dsg_uyelik" ? "DSG üyeliği" : z.tur === "toplayici" ? "toplayıcı" : z.tur === "satis" ? "satış" : "işletme"}</td><td style={sol} className="mono">{gunYaz(z.gecerli_bas)}{z.gecerli_bit ? ` – ${gunYaz(z.gecerli_bit)}` : " – süresiz"}</td>
-                      <td style={sol}>{z.dagitim_yontemi ?? "—"} <Rozet sinif={z.dagilim_etiketi.startsWith("Sözleşmeye") ? "rozet-ok" : "rozet-uyari"}>{z.dagilim_etiketi.toLowerCase()}</Rozet></td><td style={sol}>{z.dengesizlik_sorumlusu ?? "—"}</td>
-                      <td style={sol}><Rozet sinif={DOGRULAMA_SINIF[z.dogrulama] ?? "rozet-notr"}>{z.dogrulama_ad.toLowerCase()}</Rozet>{z.belge_adi ? <span className="soluk"> {z.belge_adi}</span> : null}</td><td style={sol} className="soluk">{[z.taraf_a_ad, z.taraf_b_ad].filter(Boolean).join(" – ") || "—"}</td></tr>)}</tbody>
+                    <tbody>{sozlesmeler.map((z) => <tr key={z.id}><td style={sol}>{z.tur === "dsg_uyelik" ? "DSG üyeliği" : z.tur === "toplayici" ? "toplayıcı" : z.tur === "satis" ? "satış" : "işletme"}</td><td style={{ ...sol, whiteSpace: "nowrap" }} className="mono">{gunYaz(z.gecerli_bas)}{z.gecerli_bit ? ` – ${gunYaz(z.gecerli_bit)}` : " – süresiz"}</td>
+                      {/* 12.11 inceleme: dar kartta altı sütun — tarih tek satır, dağılım metni ve rozet alt alta, belge adı kendi satırında; taraflar kırılmaz */}
+                      <td style={sol}>{z.dagitim_yontemi ? (DAGILIM_AD[z.dagitim_yontemi] ?? z.dagitim_yontemi) : "—"}<div><Rozet sinif={z.dagilim_etiketi.startsWith("Sözleşmeye") ? "rozet-ok" : "rozet-uyari"}>{z.dagilim_etiketi.toLowerCase()}</Rozet></div></td><td style={sol}>{z.dengesizlik_sorumlusu ? (SORUMLU_AD[z.dengesizlik_sorumlusu] ?? z.dengesizlik_sorumlusu) : "—"}</td>
+                      <td style={sol}><Rozet sinif={DOGRULAMA_SINIF[z.dogrulama] ?? "rozet-notr"}>{z.dogrulama_ad.toLowerCase()}</Rozet>{z.belge_adi ? <div className="soluk" style={{ fontSize: 12.5, wordBreak: "break-all" }}>{z.belge_adi}</div> : null}</td><td style={sol} className="soluk">{[z.taraf_a_ad, z.taraf_b_ad].filter(Boolean).join(" – ") || "—"}</td></tr>)}</tbody>
                   </table></div>)}
               </details>
             </>)}
@@ -247,7 +252,7 @@ export function Portfoyler() {
                 <thead><tr><th style={sol}>Bileşen</th><th>Net (TL)</th><th style={sol}>Nitelik</th><th style={sol}>Kaynak</th></tr></thead>
                 <tbody>
                   {fin.bilesenler.filter((b) => b.toplanir).map((b) => <tr key={b.kod}><td style={{ ...sol, whiteSpace: "normal" }}>{b.ad}</td><td className="mono">{yaz(b.tutar_tl)}</td><td style={sol}><Nitelik n={b.nitelik} /></td><td style={sol} className="soluk">{b.kaynak || "—"}</td></tr>)}
-                  <tr style={{ fontWeight: 600 }}><td style={sol}>Toplam</td><td className="mono">{yaz(topFin?.tutar_tl)}</td><td style={sol}><Nitelik n={topFin?.nitelik} /></td><td style={sol} className="soluk">{fin.mwh ? `${sayiTr(fin.mwh.toplanan.santral)} santral` : ""}</td></tr>
+                  <tr style={{ fontWeight: 600 }}><td style={sol}>Toplam</td><td className="mono">{yaz(topFin?.tutar_tl)}</td><td style={sol}><Nitelik n={topFin?.nitelik} /></td><td style={sol} className="soluk">{fin.mwh ? `${sayiTr(fin.mwh.toplanan.santral)} santral toplamı` : ""}</td></tr>
                   {fin.toplam_dsg && <tr><td style={sol}>Toplam, DSG içi hesapla</td><td className="mono">{yaz(fin.toplam_dsg.tutar_tl)}</td><td style={sol}><Nitelik n={fin.toplam_dsg.nitelik} /></td><td style={{ ...sol, whiteSpace: "normal" }} className="soluk">bağımsız tutarın yerine</td></tr>}
                   <tr><td colSpan={4} className="etiket-ust" style={{ ...sol, paddingTop: 12 }}>Toplama girmeyen satırlar</td></tr>
                   {fin.bilesenler.filter((b) => !b.toplanir && b.nitelik !== "eksik").map((b) => <tr key={b.kod} className="soluk"><td style={{ ...sol, whiteSpace: "normal" }}>{b.ad}</td><td className="mono">{yaz(b.tutar_tl)}</td><td style={sol}><Nitelik n={b.nitelik} /></td><td style={sol}>{b.kaynak || "—"}</td></tr>)}
@@ -282,8 +287,8 @@ function PortfoyFormu({ onBitti }: { onBitti: () => void }) {
     api.portfoyEkle({ ad, tur, gecerli_bas: bas, dsg: tur === "dsg" ? { dsg_kodu: dsgKodu } : null }).then(() => { setDurum("Portföy tanımlandı."); setAd(""); onBitti(); }, (e) => setDurum(hataMetni(e)));
   };
   return (
-    <div className="ayar"><div className="ayar-kontrol" style={{ flexWrap: "wrap", gap: 10 }}>
-      <label className="girdi-etiket">Ad<input className="girdi" value={ad} onChange={(e) => setAd(e.target.value)} placeholder="ör. Toplayıcı portföyü 2026" /></label>
+    <div className="portfoy-form"><div className="ayar-kontrol" style={{ flexWrap: "wrap", gap: 10 }}>
+      <label className="girdi-etiket">Ad<input className="girdi" value={ad} onChange={(e) => setAd(e.target.value)} placeholder="ör. Toplayıcı 2026" /></label>
       <label className="girdi-etiket">Tür<select className="girdi" value={tur} onChange={(e) => setTur(e.target.value)}>{Object.entries(TUR_ETIKET).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
       <label className="girdi-etiket">Başlangıç<input className="girdi" type="date" value={bas} onChange={(e) => setBas(e.target.value)} /></label>
       {tur === "dsg" && <label className="girdi-etiket">DSG kodu<input className="girdi" value={dsgKodu} onChange={(e) => setDsgKodu(e.target.value)} placeholder="EPİAŞ DSG kodu" /></label>}
@@ -300,7 +305,7 @@ function UyelikFormu({ portfoyId, uyeler, onBitti }: { portfoyId: string; uyeler
   const kapatGonder = () => { setDurum(null); api.uyelikGuncelle(portfoyId, kapat, { gecerli_bit: bit }).then(() => { setDurum("Üyelik kapatıldı."); onBitti(); }, (e) => setDurum(hataMetni(e))); };
   const acik = uyeler.filter((u) => !u.gecerli_bit);
   return (
-    <div className="ayar">
+    <div className="portfoy-form">
       <div className="ayar-kontrol" style={{ flexWrap: "wrap", gap: 10 }}>
         <label className="girdi-etiket">Santral<select className="girdi" value={plant} onChange={(e) => setPlant(e.target.value)}><option value="">seçiniz</option>{santraller.map((s) => <option key={s.id} value={s.id}>{s.ad}</option>)}</select></label>
         <label className="girdi-etiket">Başlangıç<input className="girdi" type="date" value={bas} onChange={(e) => setBas(e.target.value)} /></label>
@@ -326,7 +331,7 @@ function SozlesmeFormu({ portfoyId, uyeler, onBitti }: { portfoyId: string; uyel
     api.sozlesmeEkle({ tur, gecerli_bas: bas, portfoy_id: portfoyId, dagitim_yontemi: yontem, parametreler: prm, dogrulama, belge_adi: belge || null }).then(() => { setDurum("Sözleşme kaydedildi."); onBitti(); }, (e) => setDurum(hataMetni(e)));
   };
   return (
-    <div className="ayar">
+    <div className="portfoy-form">
       <div className="ayar-kontrol" style={{ flexWrap: "wrap", gap: 10 }}>
         <label className="girdi-etiket">Tür<select className="girdi" value={tur} onChange={(e) => setTur(e.target.value)}><option value="dsg_uyelik">DSG üyeliği</option><option value="toplayici">toplayıcı</option><option value="satis">satış</option><option value="isletme">işletme</option></select></label>
         <label className="girdi-etiket">Başlangıç<input className="girdi" type="date" value={bas} onChange={(e) => setBas(e.target.value)} /></label>

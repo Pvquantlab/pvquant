@@ -919,9 +919,9 @@ export function Dogruluk({ plantId }: { plantId: string }) {
               Gerçekleşen üretim ile saatlik piyasa pozisyonu (varsayılanı üretim programı) arasındaki farkın, {dz.kural?.rejim === "2026"
                 ? <>1.1.2026'dan yürürlükteki DUY m.110 formülüyle TL karşılığı: eksik üretimde max(V, PTF, SMF)×(1+k), tavanda AFL×1,05×(1+k);
                     fazla üretimde min(PTF, SMF)×(1−l), fiyat V'nin altındaysa −B×(1+l) (fazla üretim borç doğurur); k ve l sistem yönüne göre
-                    (açık 0,06/0,03; fazla 0,03/0,06; dengede 0,03). KÜPST: tolerans üstü sapma × max(750; PTF; SMF) × n{dz.kural.kupst_net_sapma ? ", net sapma (1.11.2026'dan: |(üretim − UEÇM) − program|; UEÇM sayaç çekişinden, yoksa 0)" : ""}.</>
-                : <>2025 formülüyle TL karşılığı: fazla üretim min(PTF, SMF)×0,97; eksik üretim max(PTF, SMF)×1,03; KÜPST tolerans üstü sapma × max(750; PTF; SMF) × n.</>}
-              {dz.fiyat.senaryo_saat > 0 && " Senaryo fiyatında k = l = 0,03 varsayıldı."} Kısaltmalar: PTF piyasa takas fiyatı, SMF sistem marjinal fiyatı, V ve B DUY m.110 taban/borç parametreleri, AFL aylık fiyat limiti, k ve l sistem yönüne bağlı katsayılar, n KÜPST katsayısı.
+                    (açık {sayiTr(dz.kural?.k?.acik ?? 0, 2)}/{sayiTr(dz.kural?.l?.acik ?? 0, 2)}; fazla {sayiTr(dz.kural?.k?.fazla ?? 0, 2)}/{sayiTr(dz.kural?.l?.fazla ?? 0, 2)}; dengede {sayiTr(dz.kural?.k?.dengede ?? 0, 2)}). KÜPST: tolerans üstü sapma × max({sayiTr(dz.kural?.kupst_taban ?? 0, 0)}; PTF; SMF) × n{dz.kural.kupst_net_sapma ? ", net sapma (1.11.2026'dan: |(üretim − UEÇM) − program|; UEÇM sayaç çekişinden, yoksa 0)" : ""}.</>
+                : <>2025 formülüyle TL karşılığı: fazla üretim min(PTF, SMF)×{sayiTr(1 - (dz.kural?.l?.fazla ?? 0), 2)}; eksik üretim max(PTF, SMF)×{sayiTr(1 + (dz.kural?.k?.acik ?? 0), 2)}; KÜPST tolerans üstü sapma × max({sayiTr(dz.kural?.kupst_taban ?? 0, 0)}; PTF; SMF) × n.</>}
+              {dz.fiyat.senaryo_saat > 0 && ` Senaryo fiyatında k = l = ${sayiTr(dz.kural?.k?.dengede ?? 0, 2)} varsayıldı.`} Kısaltmalar: PTF piyasa takas fiyatı, SMF sistem marjinal fiyatı, V ve B DUY m.110 taban/borç parametreleri, AFL aylık fiyat limiti, k ve l sistem yönüne bağlı katsayılar, n KÜPST katsayısı.
               </p>
             </details>
           </>

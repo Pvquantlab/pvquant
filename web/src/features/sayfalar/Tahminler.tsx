@@ -3,6 +3,7 @@ import { useDamgaSurumu } from "../../shell/damgaOlay";
 import { api, bellekten, ayniysaEskisi } from "../../api/client";
 import type { KgupRevizyon, SantralOzeti, TahminSerisi, KgupOnizleme, KgupSurum, KgupKiyas, Nowcast } from "../../api/types";
 import { Kart, Sayfa, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
+import { TAHMIN_ETIKETI } from "../../lib/durum";
 import { Meta } from "../../lib/Meta";
 import ProductionForecastChart, { type ActualPoint, type ForecastPoint, type Plant } from "./ProductionForecastChart";
 import {
@@ -329,7 +330,11 @@ export function Tahminler({ plantId }: { plantId: string }) {
             {/* 23.10 altıncı tur: tahmin kimliği (mod · aralık kaynağı) görünür tek satır; uzun «Ne gösterir»
                 açıklaması açılır alanda (details) — metin aynen, bilgi kaybı yok */}
             <p className="soluk" style={{ fontSize: 13.5, margin: "12px 0 0" }}>
-              Son tahmin Mod {seri.mod ?? "—"}.{bantYazisi ? ` Aralık: ${bantYazisi}.` : ""}
+              {/* v2.605 (F4-K): tahmin etiketi (gece / gün içi / elle) ve hava tahmini kaynaklarının üretim zamanları — etiket sözlüğü parcalar'da */}
+              Son tahmin Mod {seri.mod ?? "—"}{seri.etiket && TAHMIN_ETIKETI[seri.etiket] ? ` · ${TAHMIN_ETIKETI[seri.etiket]}` : ""}.{bantYazisi ? ` Aralık: ${bantYazisi}.` : ""}
+              {seri.nwp_bilesenler && Object.keys(seri.nwp_bilesenler).length > 0 && (
+                <> Hava tahmini kaynakları: {Object.entries(seri.nwp_bilesenler).map(([k, v]) => `${k} ${new Date(v).toLocaleString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`).join(" · ")}.</>
+              )}
             </p>
             <details className="aciklama">
               <summary>Ne gösterir</summary>

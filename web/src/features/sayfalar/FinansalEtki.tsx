@@ -3,7 +3,7 @@ import { useDamgaSurumu } from "../../shell/damgaOlay";
 import { api } from "../../api/client";
 import type { FinansalEtki as FinansalEtkiT, FinansalEtkiGecmis, FinansBilesen, FinansDonemTur, FinansNitelik } from "../../api/types";
 import { donemSecenekleri, TUR_AD } from "../../lib/donem";   // v2.595: ortak dönem seçenekleri
-import { Kart, Kpi, Sayfa, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
+import { HesapDurumu, Kart, Kpi, Sayfa, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
 import { Meta } from "../../lib/Meta";
 import { tarihBicimi } from "../../lib/bicim";
 
@@ -100,7 +100,7 @@ export function FinansalEtki({ plantId }: { plantId: string }) {
         <Kpi etiket="Tahmini finansal etki" bilgi={`Enerji satışı + enerji dengesizlik tutarı + KGÜP sapma tutarı, net. ${top.isaret}. Resmî satırlar, DSG, göstergeler, üretim düşüklüğü ve maruziyet bu toplama girmez.`}
           deger={binTl(top.tutar_tl)} birim={top.tutar_tl == null ? undefined : "bin TL"}
           ikinci={resmiEdt ? { etiket: "EPİAŞ bildirimi, dengesizlik", deger: `${binTl(resmiEdt.tutar_tl)} bin TL` } : undefined}
-          alt={<><Rozet n={top.nitelik} /> {top.giren.length ? `${top.giren.length} bileşen toplandı` : "toplanacak bileşen yok"}{top.eksik.length ? `; eksik: ${top.eksik.length}` : ""}</>} />
+          alt={<><Rozet n={top.nitelik} /> <HesapDurumu d={m.hesap_durumu} /> {top.giren.length ? `${top.giren.length} bileşen toplandı` : "toplanacak bileşen yok"}{top.eksik.length ? `; eksik: ${top.eksik.length}` : ""}</>} />   {/* v2.605 (F4-K): hesap durumu (tam / kısmi / senaryo) */}
       </div>
       <Kart baslik="Finansal sonuç bileşenleri" alt="Aynı saat kümesinden derlenen satırlar; toplama yalnız ilk grup girer. Alacak ve borç ayrı sütunlarda, net tutar işaretli."
         sag={<span className="cip"><Meta items={[`${sayiTr(o.donem.saat)} saat`, uz.fiyat.senaryo_saat > 0 ? `${sayiTr(uz.fiyat.senaryo_saat)} saat senaryo fiyatı` : "EPİAŞ fiyatı", uz.hesaplanamayan_saat > 0 && `${sayiTr(uz.hesaplanamayan_saat)} saat hesaplanamadı`, durumMetni]} /></span>}>
@@ -201,10 +201,14 @@ export function FinansalEtki({ plantId }: { plantId: string }) {
           <div><dt>Üretim girdisi</dt><dd>{u.gerceklesen.secim_etiket}<span className="kunye-not"> {u.gerceklesen.sinir_etiket}</span></dd></div>
           <div><dt>Program</dt><dd>{u.planlanan.kaynak_etiket}<span className="kunye-not"> {sayiTr(u.planlanan.bildirilen_saat)} saat bildirilen, {sayiTr(u.planlanan.oneri_saat)} saat öneri</span></dd></div>
           <div><dt>Fiyat</dt><dd>{uz.fiyat.senaryo_saat > 0 ? <>{sayiTr(uz.fiyat.epias_saat)} saat EPİAŞ, {sayiTr(uz.fiyat.senaryo_saat)} saat senaryo</> : "EPİAŞ saatlik PTF, SMF ve sistem yönü"}</dd></div>
-          <div><dt>Uzlaştırma kuralı</dt><dd className="kunye-sayi">{uz.kural_surumu ?? "—"}</dd></div>
+          <div><dt>Uzlaştırma kuralı</dt><dd><span className="kunye-sayi">{m.kural_surumu_tam ?? uz.kural_surumu ?? "—"}</span>{m.kural_sicili_sha && <span className="kunye-not">kural sicili {m.kural_sicili_surumu ?? ""} · {m.kural_sicili_sha}</span>}</dd></div>
+          {/* v2.605 (F4-K): yeniden üretim için damgalar — fiyat sürümü (F4-G), tahmin kayıtları (F4-B arşivi), girdi ve ayar damgaları, çıktı sürümü */}
+          {m.girdi?.fiyat && <div><dt>Fiyat sürümü</dt><dd><span className="kunye-sayi">{m.girdi.fiyat.sha16}</span><span className="kunye-not">{m.girdi.fiyat.itibariyle ? `${saatYaz(m.girdi.fiyat.itibariyle)} itibarıyla geçerli fiyatlar` : "hesap anındaki fiyatlar"}; {sayiTr(m.girdi.fiyat.epias_saat)} saat EPİAŞ, {sayiTr(m.girdi.fiyat.senaryo_saat)} saat senaryo</span></dd></div>}
+          {m.girdi?.program && <div><dt>Tahmin kayıtları</dt><dd>{m.girdi.program.kosular.length ? <><span className="kunye-sayi">{sayiTr(m.girdi.program.kosular.length)}</span> kayıt<span className="kunye-not">{m.girdi.program.kosular.slice(0, 2).map((k) => k.slice(0, 8)).join(", ")}{m.girdi.program.kosular.length > 2 ? ", …" : ""}; arşivdeki tahmin kimlikleri</span></> : <><span className="kunye-durum eksik">Bildirilen program</span><span className="kunye-not">arşiv tahmini kullanılmadı</span></>}</dd></div>}
+          {m.girdi?.sha16 && <div><dt>Girdi damgası</dt><dd><span className="kunye-sayi">{m.girdi.sha16}</span><span className="kunye-not">ölçüm, program, fiyat, ayar ve sözlüklerin bileşik özeti; aynı damga aynı sonucu verir{m.ayar_sha ? `; santral ayarı ${m.ayar_sha}` : ""}</span></dd></div>}
           <div><dt>Satış tarifesi</dt><dd>{o.gelir.tarife.etiket}{o.gelir.tarife.ortalama_fiyat_tl_mwh != null && <span className="kunye-not"> ortalama {sayiTr(o.gelir.tarife.ortalama_fiyat_tl_mwh, 0)} TL/MWh</span>}</dd></div>
           <div><dt>Piyasa pozisyonu</dt><dd>{m.pozisyon.kaynak === "uretim" ? "üretildiği kadar satış" : m.pozisyon.kaynak === "sabit" ? `sabit ${sayiTr(m.pozisyon.sabit_mwh ?? 0, 2)} MWh/saat` : "satış programa eşit"}</dd></div>
-          <div><dt>Hesap sözlüğü</dt><dd className="kunye-sayi">{m.sozluk_surumu}{m.yazilim_surumu ? `, yazılım ${m.yazilim_surumu}` : ""}</dd></div>
+          <div><dt>Hesap sözlüğü</dt><dd className="kunye-sayi">{m.sozluk_surumu}{m.yazilim_surumu ? `, yazılım ${m.yazilim_surumu}` : ""}{m.cikti_surumu ? `, çıktı ${m.cikti_surumu}` : ""}</dd></div>
         </dl>
         <details className="aciklama" onToggle={gecmisAc}>
           <summary>Kayıtlı sürümler ve varsayımların geçmişi</summary>

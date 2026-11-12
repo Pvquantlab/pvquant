@@ -21,7 +21,13 @@ import numpy as np
 import pandas as pd
 
 from pvquant.ext.platform import finans as fn
+from pvquant.services import ayar_damgasi as _ad  # v2.602 (F4-H)
 from pvquant.services import dengesizlik_service as ds
+from pvquant.services import kalite_sozlugu as _ks  # v2.598 (F4-C): flag süzgeci tek sözlükten
+from pvquant.services import kural_sicili_service as _kss  # v2.600 (F4-F): sonuç meta damgası
+from pvquant.services.karne_kurali import (
+    yayin_kosu_sql as _yayin_sql,  # v2.597 (F4-B): yayımlanmış koşu süzgeci
+)
 
 SURUM = "2026-11-11"
 KOD_GELIR = "satis_geliri"
@@ -60,13 +66,14 @@ def son_olcum_zamani(tenant_id, plant_id) -> datetime | None:
 
     from pvquant.db import tenant_baglami
     with tenant_baglami(tenant_id) as s:
-        z = s.execute(text("SELECT max(ts_utc) FROM scada_hourly WHERE plant_id = :p AND flag = 'valid'"), {"p": plant_id}).scalar()
+        z = s.execute(text(f"SELECT max(ts_utc) FROM scada_hourly WHERE plant_id = :p AND {_ks.sql_kosulu('uzlastirma')}"), {"p": plant_id}).scalar()
     return z.astimezone(timezone.utc) if z is not None else None
 
 
-def girdiler(tenant_id, plant: dict, donem: dict, uretim: str | None = None) -> dict:
+def girdiler(tenant_id, plant: dict, donem: dict, uretim: str | None = None, itibariyle: datetime | None = None) -> dict:
     """Dönemin tek girdi kümesi: dengesizlik_service._girdiler ile aynı program/gerçekleşen/fiyat/bildirilen/pozisyon, dönemin saat kümesine kırpılmış.
-    df: ts_utc indeksli, izgaraya yeniden dizilmiş (ölçüm olmayan saat NaN)."""
+    df: ts_utc indeksli, izgaraya yeniden dizilmiş (ölçüm olmayan saat NaN).
+    v2.601 (F4-G): `itibariyle` → fiyat o andaki sürümden (piyasa_fiyat_surum; M6); ölçüm künyesi (saat, son geliş) girdi referansı için okunur."""
     izgara = fn.saat_kumesi(donem)
     gun = pencere_gun(donem, son_olcum_zamani(tenant_id, plant["id"]))
     g = ds._girdiler(tenant_id, plant, gun, uretim)   # aynı paketin girdi paketleyicisi; formül yok
@@ -76,16 +83,110 @@ def girdiler(tenant_id, plant: dict, donem: dict, uretim: str | None = None) -> 
         df = df[~df.index.duplicated(keep="last")].reindex(izgara)
     else:
         df = pd.DataFrame(index=izgara, columns=["gercek_kw", "kgup_kw", "naif_kw", "uretim_kaynak", "cekis_kw"])
-    df = _oneri_tamamla(tenant_id, plant, df, izgara)
+    sec, sec_hata = _program_secimi(tenant_id, plant, izgara)   # v2.601: Faz 1 program kuralı seçimi BİR kez okunur (öneri tamamlama + girdi referansı)
+    df = _oneri_tamamla(tenant_id, plant, df, izgara, sec)
     bil = g["bildirilen_mwh"]
     bil = bil.reindex(izgara).astype(float) if bil is not None and len(bil) else None
     from pvquant.services import piyasa_service
-    fiyat = piyasa_service.fiyatlar(izgara)   # dönemin bütün saatleri (ölçüm saatleriyle sınırlı _girdiler çerçevesi yerine); eksik saat «senaryo» kaynaklı
+    fiyat = piyasa_service.fiyatlar(izgara, itibariyle=itibariyle) if itibariyle else piyasa_service.fiyatlar(izgara)   # dönemin bütün saatleri (ölçüm saatleriyle sınırlı _girdiler çerçevesi yerine); eksik saat «senaryo» kaynaklı
     return {"donem": donem, "izgara": izgara, "df": df, "bildirilen": bil, "fiyat": fiyat, "pozisyon": g["pozisyon"], "uretim": g["uretim"],
-            "segment": g["segment"], "pj": g["pj"], "kat": g["kat"], "ariza_sayisi": g["ariza_sayisi"], "luy_istisna": g["luy_istisna"], "pencere_gun": gun}
+            "segment": g["segment"], "pj": g["pj"], "kat": g["kat"], "ariza_sayisi": g["ariza_sayisi"], "luy_istisna": g["luy_istisna"], "pencere_gun": gun,
+            "itibariyle": itibariyle, "olcum_kunye": _olcum_kunyesi(tenant_id, plant["id"], izgara, g["uretim"]), "program_sec": sec, "program_sec_hata": sec_hata}
 
 
-def _oneri_tamamla(tenant_id, plant: dict, df: pd.DataFrame, izgara: pd.DatetimeIndex) -> pd.DataFrame:
+def _program_secimi(tenant_id, plant: dict, izgara: pd.DatetimeIndex) -> tuple[pd.DataFrame | None, str | None]:
+    """Faz 1 program kuralı seçicisi (bagimsiz_dogrulama_service.kosu_sec 'program': bir gün önce 15:30 kesimi, geriye bakışlı/elle koşu dışı) —
+    dönemin seçilen koşu satırları; arşiv okunamazsa (None, hata adı). Hesap değişmez; yalnız okuma."""
+    if len(izgara) == 0:
+        return None, None
+    from pvquant.services import bagimsiz_dogrulama_service as bd
+    try:
+        tahmin, _ = bd.tahmin_oku(tenant_id, plant["id"], izgara[0].to_pydatetime(), (izgara[-1] + pd.Timedelta(hours=1)).to_pydatetime())
+        sec = bd.kosu_sec(tahmin, "program", _tz(plant))
+    except Exception as ex:   # noqa: BLE001 — tahmin arşivi okunamazsa program eksik kalır (uydurulmaz), referans not düşer
+        return None, f"{type(ex).__name__}"
+    return (None if sec is None or sec.empty else sec), None
+
+
+def _olcum_kunyesi(tenant_id, plant_id, izgara: pd.DatetimeIndex, uretim: str | None = None) -> dict:
+    """v2.601 (F4-G): dönemdeki ölçüm satırlarının künyesi — SCADA: uzlaştırmaya uygun satır sayısı, son geliş (alinma_zamani; partisiz NULL), kaynak kümesi;
+    sayaç girdisinde (`uretim='sayac'`) ayrıca sayaç satırı sayısı ve son geliş (saatlik seri sayaçtan kurulur; SCADA satırı saat kümesini verir)."""
+    from sqlalchemy import text
+
+    from pvquant.db import tenant_baglami
+    if len(izgara) == 0:
+        return {"tablo": "scada_hourly", "saat": 0, "son_alinma": None, "kaynaklar": [], "sayac": None}
+    prm = {"p": plant_id, "a": izgara[0].to_pydatetime(), "b": izgara[-1].to_pydatetime()}
+    with tenant_baglami(tenant_id) as s:
+        r = s.execute(text(f"SELECT count(*), max(alinma_zamani), array_agg(DISTINCT COALESCE(kaynak, 'bilinmiyor')) FROM scada_hourly "
+                           f"WHERE plant_id = :p AND ts_utc >= :a AND ts_utc <= :b AND {_ks.sql_kosulu('uzlastirma')}"), prm).first()
+        sayac = None
+        if uretim == "sayac":   # sayaç satırı: son geliş = guncelleme (yükleme/çekim zamanı), kaynak kümesi (osos/mass/epys/elle)
+            q = s.execute(text("SELECT count(*), max(guncelleme), array_agg(DISTINCT kaynak) FROM sayac_saatlik WHERE plant_id = :p AND ts_utc >= :a AND ts_utc <= :b"), prm).first()
+            sayac = {"saat": int(q[0] or 0), "son_alinma": (q[1].isoformat(timespec="seconds") if q and q[1] else None), "kaynaklar": sorted(q[2] or [])}
+    return {"tablo": "scada_hourly", "saat": int(r[0] or 0), "son_alinma": (r[1].isoformat(timespec="seconds") if r and r[1] else None),
+            "kaynaklar": sorted(r[2] or []), "sayac": sayac}
+
+
+def _seri_sha16(seri) -> str:
+    """Saatlik serinin içerik damgası (saat → 1e-6 yuvarlanmış değer; NaN «null»)."""
+    import hashlib
+    if seri is None or len(seri) == 0:
+        return hashlib.sha256(b"[]").hexdigest()[:16]
+    satirlar = [(pd.Timestamp(t).isoformat(), (None if pd.isna(v) else round(float(v), 6))) for t, v in seri.sort_index().items()]
+    return hashlib.sha256(repr(satirlar).encode("utf-8")).hexdigest()[:16]
+
+
+def _sozluk_sha16(nesne) -> str:
+    import hashlib
+    import json
+    return hashlib.sha256(json.dumps(nesne, sort_keys=True, ensure_ascii=False, default=str).encode("utf-8")).hexdigest()[:16]
+
+
+def girdi_referanslari(tenant_id, plant: dict, g: dict, u: dict, fo: dict) -> dict:
+    """v2.601 (F4-G): sonucun HANGİ girdilerle hesaplandığı — yeniden üretim ve «değişti mi?» için. Formül yok; yalnız damga ve künye.
+    program.kosular: Faz 1 program kuralı seçicisinin (bagimsiz_dogrulama_service.kosu_sec 'program') dönemde seçtiği koşu kimlikleri (okunamazsa boş + not)."""
+    from pvquant.services import piyasa_service
+    df = g["df"]
+    prog, _ = program_serisi(df, g["bildirilen"], g["izgara"])
+    gercek = pd.to_numeric(df["gercek_kw"], errors="coerce") if "gercek_kw" in df.columns else pd.Series(np.nan, index=g["izgara"])
+    sec = g.get("program_sec"); kosu_notu = f"koşu listesi okunamadı: {g['program_sec_hata']}" if g.get("program_sec_hata") else None
+    kosular = sorted({str(x) for x in sec["run_id"].dropna().unique()}) if sec is not None and "run_id" in sec.columns else []
+    fiyat_sha = piyasa_service.fiyat_sha16(g["fiyat"])
+    ayar = {"tarife": (g["pj"] or {}).get("tarife"), "segment": g["segment"], "kat": g["kat"], "pozisyon": g["pozisyon"], "luy_istisna": g["luy_istisna"],
+            "ariza_sayisi": g["ariza_sayisi"], "uretim": g["uretim"]}
+    ref = {"olcum": {**g.get("olcum_kunye", {}), "sha16": _seri_sha16(gercek), "sinir": u["gerceklesen"].get("sinir")},
+           "program": {"sha16": _seri_sha16(prog), "kaynak": u["planlanan"].get("kaynak"), "bildirilen_saat": u["planlanan"].get("bildirilen_saat"),
+                       "oneri_saat": u["planlanan"].get("oneri_saat"), "tamamlanan_saat": u["planlanan"].get("tamamlanan_saat"), "kosular": kosular, "not": kosu_notu},
+           "fiyat": {"sha16": fiyat_sha, "itibariyle": (g["itibariyle"].isoformat(timespec="seconds") if g.get("itibariyle") else None),
+                     "epias_saat": int(fo.get("epias_saat") or 0), "senaryo_saat": int(fo.get("senaryo_saat") or 0)},
+           "ayar_sha16": _sozluk_sha16(ayar),
+           "sozlukler": {"fem": SURUM, "finans": fn.SOZLUK_SURUMU, "kalite": _ks.SOZLUK_SURUMU, **_kss.meta_damgasi()}}   # fem: derleme sürümü (düzeltme sonrası sha değişir)
+    ref["sha16"] = _sozluk_sha16({"olcum": ref["olcum"]["sha16"], "program": ref["program"]["sha16"], "fiyat": fiyat_sha, "ayar": ref["ayar_sha16"],
+                                  "sozlukler": ref["sozlukler"], "donem": {k: str(v) for k, v in g["donem"].items()}})
+    return ref
+
+
+HESAP_DURUMLARI = ("tam", "kismi", "senaryo", "hesaplanamadi")
+CIKTI_SURUMU = "1.1"   # sonuç JSON biçimi: 1.0 = v2.583 (Faz 2); 1.1 = v2.601 meta.girdi / hesap_durumu / cikti_surumu
+
+
+def hesap_durumu(u: dict, fo: dict, senaryo: dict | None) -> str:
+    """v2.601 (F4-G): tam = bütün beklenen saatler ölçülü ve EPİAŞ fiyatlı; kismi = ölçüm ya da fiyat eksik (senaryo saat / yön varsayımı);
+    senaryo = pozisyon senaryosu ya da fiyatın tamamı senaryo; hesaplanamadi = ölçüm yok."""
+    ger = u.get("gerceklesen") or {}
+    saat = int(ger.get("saat") or 0); beklenen = int(ger.get("beklenen_saat") or 0)
+    sen = int(fo.get("senaryo_saat") or 0); ep = int(fo.get("epias_saat") or 0); yon_v = int(fo.get("yon_varsayilan_saat") or 0)
+    if saat == 0:
+        return "hesaplanamadi"
+    if senaryo or (sen > 0 and ep == 0):
+        return "senaryo"
+    if saat < beklenen or sen > 0 or yon_v > 0:
+        return "kismi"
+    return "tam"
+
+
+def _oneri_tamamla(tenant_id, plant: dict, df: pd.DataFrame, izgara: pd.DatetimeIndex, sec: pd.DataFrame | None = None) -> pd.DataFrame:
     """program_df öneriyi yalnız geçerli SCADA satırı olan saatlere kurar; «planlanan üretim» ölçüme bağlı olmasın diye ölçümsüz saatlerin önerisi
     Faz 1 program kuralı seçicisinden (bagimsiz_dogrulama_service.kosu_sec 'program': bir gün önce 15:30 kesimi, geriye bakışlı/elle koşu dışı)
     tamamlanır ve `program_tamamlanan` sütunuyla işaretlenir. Hesap değişmez; yalnız eksik saatin programı okunur."""
@@ -94,12 +195,8 @@ def _oneri_tamamla(tenant_id, plant: dict, df: pd.DataFrame, izgara: pd.Datetime
     eksik = df["kgup_kw"].isna() if "kgup_kw" in df.columns else pd.Series(True, index=izgara)
     if not eksik.any():
         return df
-    from pvquant.services import bagimsiz_dogrulama_service as bd
-    try:
-        tahmin, _ = bd.tahmin_oku(tenant_id, plant["id"], izgara[0].to_pydatetime(), (izgara[-1] + pd.Timedelta(hours=1)).to_pydatetime())
-        sec = bd.kosu_sec(tahmin, "program", _tz(plant))
-    except Exception:   # tahmin arşivi okunamazsa program eksik kalır (uydurulmaz)
-        return df
+    if sec is None:
+        sec, _ = _program_secimi(tenant_id, plant, izgara)   # doğrudan çağrıda (testler) seçim burada okunur
     if sec is None or sec.empty:
         return df
     p50 = pd.to_numeric(sec.set_index(pd.to_datetime(sec["ts_utc"], utc=True))["p50_kw"], errors="coerce")
@@ -570,8 +667,9 @@ def _kayip_girdi(tenant_id, plant_id, bas: datetime, bit: datetime) -> pd.DataFr
     with tenant_baglami(tenant_id) as s:
         df = pd.read_sql(text(
             "SELECT f.ts_utc, f.physics_kw AS beklenen_kw, s.power_kw, s.flag, s.kirpma FROM forecast_values f JOIN forecast_runs r ON r.id=f.run_id "
-            "LEFT JOIN scada_hourly s ON s.plant_id=f.plant_id AND s.ts_utc=f.ts_utc AND s.flag IN ('valid','kisinti') "
+            f"LEFT JOIN scada_hourly s ON s.plant_id=f.plant_id AND s.ts_utc=f.ts_utc AND {_ks.sql_kosulu('kayip', 's')} "
             "WHERE f.plant_id=:p AND f.ts_utc - r.run_at BETWEEN INTERVAL '0 hour' AND INTERVAL '24 hour' "
+            f"AND {_yayin_sql('r')} "
             "AND f.ts_utc >= :a AND f.ts_utc < :b ORDER BY f.ts_utc, r.run_at DESC"),
             s.connection(), params={"p": plant_id, "a": bas, "b": bit}, parse_dates=["ts_utc"])
     if df.empty:
@@ -770,12 +868,13 @@ def _tarife_ozeti(pj: dict) -> dict | None:
     return {"tip": t.get("tip"), "sha": h}
 
 
-def ozet(tenant_id, plant: dict, donem_kodu: str | None, uretim: str | None = None, bugun: date | None = None, pozisyon: dict | None = None) -> dict:
+def ozet(tenant_id, plant: dict, donem_kodu: str | None, uretim: str | None = None, bugun: date | None = None, pozisyon: dict | None = None,
+         itibariyle: datetime | None = None) -> dict:
     """Üretim özeti + satış geliri + uzlaştırma bileşenleri + resmî eşleme + göstergeler + üretim düşüklüğü + ileri maruziyet, tek girdi okumasıyla;
     birleşik toplam (çift sayım bekçisi: yalnız satış geliri, dengesizlik ve KÜPST toplanır) ve yeniden üretim metası.
     `pozisyon` ({kaynak: program|uretim|sabit, sabit_mwh}) verilirse SENARYO: santral ayarı yerine bu pozisyonla hesaplanır, meta.senaryo dolar, kaydedilmez."""
     from pvquant.surum import yazilim_surumu
-    g = girdiler(tenant_id, plant, donem(plant, donem_kodu, bugun), uretim)
+    g = girdiler(tenant_id, plant, donem(plant, donem_kodu, bugun), uretim, itibariyle)
     senaryo = None
     if pozisyon:
         k = pozisyon.get("kaynak") if pozisyon.get("kaynak") in POZISYON_SECENEKLERI else "program"
@@ -804,7 +903,12 @@ def ozet(tenant_id, plant: dict, donem_kodu: str | None, uretim: str | None = No
             "pozisyon": g["pozisyon"], "kural_surumu": uz.get("kural_surumu"), "fiyat": fo, "program_kaynak": {k: u["planlanan"].get(k) for k in ("kaynak", "bildirilen_saat", "oneri_saat", "tamamlanan_saat")},
             "uretim_kaynak": u["gerceklesen"].get("kaynak_saat"), "tarife": _tarife_ozeti(g["pj"]), "bildirim": (uz.get("resmi") or {}).get("bildirim"),
             "yekdem_rejim": ((g["pj"].get("tarife") or {}).get("rejim") if (g["pj"].get("tarife") or {}).get("tip") == "yekdem" else None),
-            "senaryo": senaryo, "isaret": fn.ISARET_KURALI}
+            "senaryo": senaryo, "isaret": fn.ISARET_KURALI,
+            **_kss.meta_damgasi(), "kural_surumu_tam": uz.get("kural_surumu_tam"),   # v2.600 (F4-F): hangi kural kümesiyle hesaplandı
+            "cikti_surumu": CIKTI_SURUMU, "hesap_durumu": hesap_durumu(u, fo, senaryo),   # v2.601 (F4-G)
+            "ayar_sha": _ad.ayar_sha16(g["pj"])}   # v2.602 (F4-H): santral ayar damgası — ayar değişikliği izi ile eşlenir («etkilenen hesaplar»)
+    meta["girdi"] = girdi_referanslari(tenant_id, plant, g, u, fo)   # v2.601 (F4-G): girdi referansları + bileşik sha (deterministik: aynı girdi → aynı sha ve aynı sonuç)
+    meta["fiyat"] = {**fo, "sha16": meta["girdi"]["fiyat"]["sha16"], "itibariyle": meta["girdi"]["fiyat"]["itibariyle"]}
     out = {"donem": u["donem"], "uretim": u, "gelir": ge, "uzlastirma": uz, "dusukluk": du, "maruziyet": ma, "bilesenler": [b.sozluk() for b in hepsi], "toplam": toplam,
            "toplam_etiket": "enerji satışı + dengesizlik + KGÜP sapma tutarı (net; resmî satırlar, DSG, göstergeler, üretim düşüklüğü ve maruziyet toplama girmez)",
            "meta": meta, "kayitli": False, "surum": SURUM, "sozluk_surumu": fn.SOZLUK_SURUMU}
@@ -882,6 +986,17 @@ def son(tenant_id, plant_id, donem_kodu: str, uretim: str | None = None, azami_y
     return _satir_sonuc(r)
 
 
+def ayni_girdili_kayit(tenant_id, plant: dict, sonuc: dict, uretim: str | None = None) -> str | None:
+    """v2.601 (F4-G, tekrar edilmeyen hesap): aynı dönem sonu ve üretim girdisiyle kayıtlı SON sonucun girdi sha'sı bu sonuçla aynıysa o kaydın id'si;
+    yoksa None. Deterministik hesap: aynı girdi → aynı sonuç; gece işi yeni satır yazmaz."""
+    bit = date.fromisoformat(sonuc["donem"]["bit"]) if isinstance(sonuc["donem"].get("bit"), str) else sonuc["donem"].get("bit")
+    o = son(tenant_id, str(plant["id"]), sonuc["donem"]["kod"], uretim, azami_yas_saat=10 ** 6, donem_bit=bit, plant=plant)
+    sha = ((sonuc.get("meta") or {}).get("girdi") or {}).get("sha16")
+    if o is None or not sha:
+        return None
+    return o["id"] if ((o.get("meta") or {}).get("girdi") or {}).get("sha16") == sha else None
+
+
 def gecmis(tenant_id, plant_id, donem_kodu: str, n: int = 20) -> list[dict]:
     """Dönemin kayıtlı sürümleri (en yeni önce): hesap zamanı, toplam, nitelik, üretim girdisi, meta özeti (varsayımların geçmişi)."""
     from sqlalchemy import text
@@ -896,7 +1011,8 @@ def gecmis(tenant_id, plant_id, donem_kodu: str, n: int = 20) -> list[dict]:
         m = r["meta_json"] or {}
         out.append({"id": str(r["id"]), "hesap_zamani": r["hesap_zamani"].isoformat(timespec="seconds"), "donem_kodu": r["donem_kodu"], "donem_bit": r["donem_bit"].isoformat(),
                     "uretim_girdisi": r["uretim_girdisi"], "sozluk_surumu": r["sozluk_surumu"], "toplam": r["toplam_json"],
-                    "varsayimlar": {k: m.get(k) for k in ("kural_surumu", "fiyat", "program_kaynak", "tarife", "bildirim", "pozisyon", "yazilim_surumu", "pencere_gun")}})
+                    "varsayimlar": {k: m.get(k) for k in ("kural_surumu", "fiyat", "program_kaynak", "tarife", "bildirim", "pozisyon", "yazilim_surumu", "pencere_gun")},
+                    "hesap_durumu": m.get("hesap_durumu"), "cikti_surumu": m.get("cikti_surumu"), "girdi_sha16": (m.get("girdi") or {}).get("sha16")})   # v2.601
     return out
 
 

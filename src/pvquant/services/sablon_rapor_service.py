@@ -6,12 +6,15 @@ tarife (params_json.tarife; PTF tipi için EPİAŞ/senaryo fiyatı) − uzlaşt�
 """
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 from datetime import date
 
 import numpy as np
 import pandas as pd
 
 from pvquant.ext.platform import rapor_sablon as rs
+from pvquant.services import kalite_sozlugu as _ks   # v2.598 (F4-C): flag süzgeci tek sözlükten
 
 SABLONLAR = ("kapasite-testi", "fatura", "kullanilabilirlik", "beklenen-gerceklesen", "bagimsiz-dogrulama", "finansal-etki")   # v2.576 (Faz 1 F1-E); v2.585 (Faz 2 F2-G)
 
@@ -30,8 +33,8 @@ def kapasite_testi(tenant_id, plant: dict, gun: int = 30) -> rs.Rapor:
     from pvquant.services.calib_service import _plant_spec
     with tenant_baglami(tenant_id) as s:
         df = pd.read_sql(text(
-            "SELECT ts_utc, power_kw, poa_wm2, t_air, wind_ms FROM scada_hourly WHERE plant_id=:p AND flag='valid' "
-            "AND ts_utc >= (SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p AND flag='valid') - (:g * INTERVAL '1 day') ORDER BY ts_utc"),
+            f"SELECT ts_utc, power_kw, poa_wm2, t_air, wind_ms FROM scada_hourly WHERE plant_id=:p AND {_ks.sql_kosulu('rapor')} "
+            f"AND ts_utc >= (SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p AND {_ks.sql_kosulu('rapor')}) - (:g * INTERVAL '1 day') ORDER BY ts_utc"),
             s.connection(), params={"p": plant["id"], "g": gun}, parse_dates=["ts_utc"], index_col="ts_utc")
     if df.empty or df["poa_wm2"].notna().sum() < 50:
         raise ValueError("kapasite testi için ölçülen düzlem ışınımı (POA) gerekir — bu santralda yok/yetersiz")
@@ -55,12 +58,12 @@ def fatura(tenant_id, plant: dict, ay: str | None = None) -> rs.Rapor:
     from sqlalchemy import text
     from pvquant.db import tenant_baglami
     from pvquant.services import tarife_service, piyasa_service, dengesizlik_service
-    tz = plant.get("tz") or "Europe/Istanbul"
+    tz = plant.get("tz") or PIYASA_TZ
     if ay is None:
         bugun = pd.Timestamp.now(tz=tz); ilk = (bugun.replace(day=1) - pd.Timedelta(days=1)).replace(day=1); ay = ilk.strftime("%Y-%m")
     a0 = pd.Timestamp(ay + "-01", tz=tz); a1 = a0 + pd.offsets.MonthBegin(1)
     with tenant_baglami(tenant_id) as s:
-        df = pd.read_sql(text("SELECT ts_utc, power_kw FROM scada_hourly WHERE plant_id=:p AND flag='valid' AND ts_utc >= :a AND ts_utc < :b ORDER BY ts_utc"),
+        df = pd.read_sql(text(f"SELECT ts_utc, power_kw FROM scada_hourly WHERE plant_id=:p AND {_ks.sql_kosulu('rapor')} AND ts_utc >= :a AND ts_utc < :b ORDER BY ts_utc"),
                          s.connection(), params={"p": plant["id"], "a": a0, "b": a1}, parse_dates=["ts_utc"], index_col="ts_utc")
     if df.empty:
         raise ValueError(f"{ay} için ölçüm yok")
@@ -103,13 +106,13 @@ def beklenen_gerceklesen(tenant_id, plant: dict, gun: int = 180) -> rs.Rapor:
     v2.571 (Faz 0 VZ-06): gün = santral yerel günü (`plants.tz`); eskiden sabit İstanbul'du ve yabancı santralde beklenen (yerel gün) ile gerçekleşen (İstanbul günü) ayrı gün tanımındaydı."""
     from sqlalchemy import text
     from pvquant.db import tenant_baglami
-    tz = plant.get("tz") or "Europe/Istanbul"
+    tz = plant.get("tz") or PIYASA_TZ
     with tenant_baglami(tenant_id) as s:
         b = pd.read_sql(text("SELECT gun, p50_kwh FROM forecast_daily WHERE plant_id=:p AND gun >= current_date - :g ORDER BY gun"),
                         s.connection(), params={"p": plant["id"], "g": gun}, parse_dates=["gun"])
         g = pd.read_sql(text(
             "SELECT date_trunc('day', ts_utc AT TIME ZONE :tz) AS gun, sum(power_kw) AS kwh FROM scada_hourly "
-            "WHERE plant_id=:p AND flag='valid' AND ts_utc >= now() - (:g * INTERVAL '1 day') GROUP BY 1 ORDER BY 1"),
+            f"WHERE plant_id=:p AND {_ks.sql_kosulu('rapor')} AND ts_utc >= now() - (:g * INTERVAL '1 day') GROUP BY 1 ORDER BY 1"),
             s.connection(), params={"p": plant["id"], "g": gun, "tz": tz}, parse_dates=["gun"])
     if b.empty or g.empty:
         raise ValueError("beklenen–gerçekleşen için günlük beklenti arşivi ve ölçüm gerekir (her gece birikir)")

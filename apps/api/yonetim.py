@@ -82,6 +82,7 @@ def parola(p: Parola, c=Depends(platform_yetkisi())):
         ps.parola_degistir(c["sub"], p.eski, p.yeni)
     except ValueError as e:
         raise _hata(e)
+    dz.kaydet("platform", "parola_degistir", aktor_id=c["sub"], aktor_eposta=c.get("email"), nesne_tur="operator", nesne_id=c["sub"])   # v2.602 (F4-H); parola yazılmaz
     return {"tamam": True}
 
 

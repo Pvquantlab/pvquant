@@ -31,6 +31,9 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
+from pvquant.zaman import PIYASA_TZ
+
 # v2.535 dayanak künyeleri [DUY, KARAR_14907, TPYS, GIP_KAPI] — bu dosyadaki madde atıflarının birincil yayımı (RG tarih-sayı, karar no); metin kunye.py sicilinden üretildi,
 # tests/test_kunye_bekcisi.py sicille eş tutar (kaynak: 03.11.2026 doğrulama arşivi 03_Kaynak_Envanteri).
 DAYANAK_KUNYELERI = (
@@ -40,14 +43,16 @@ DAYANAK_KUNYELERI = (
     "GİP kapı kapanışı: DUY m.66/A(1)(f) yetkisiyle EPİAŞ duyurusu 28.08.2018 (01.10.2018'den teslimattan 60 dk önce); KGÜP revizyonu kapanış + 30 dk DUY m.69(1)"
 )
 
-IST = "Europe/Istanbul"
+IST = PIYASA_TZ   # v2.599
 TESLIM_BAS, TESLIM_SON, TEYIT = (14, 0), (15, 30), (17, 0)
 SICRAMA_ESIK_MWH = 200.0
 
 
 SABLON_DURUMU = ("TPYS «CSV Şablonları» ekleriyle (KGUP.csv, EAK.csv; 28.02.2018 duyurusu, 30.10.2026'da indirildi) birebir; ondalık ayraç "
                  "şablonda örneklenmemiş, nokta varsayıldı. Kendi bildirim dosyanızdan bir örnek yükleyerek biçimi değiştirebilirsiniz")   # v2.512
-TAKVIM = {"pencere_acilis": "14:00", "bytm_son": "14:30", "son": "15:30", "teyit": "17:00", "eak_acilis": "09:00"}   # m.69(1), (4); TPYS Bildirim Dokümanı: EAK 09:00–15:30
+from pvquant.ext.turkiye import kural_sicili as _ks  # v2.600 (F4-F)
+
+TAKVIM = dict(_ks.guncel("kgup.takvim").deger)   # m.69(1), (4); TPYS Bildirim Dokümanı — v2.600: tek kaynak kural sicili
 
 
 @dataclass
@@ -217,6 +222,7 @@ def sablon_ogren(b: bytes, dosya_adi: str = "") -> dict:
     uyar: list[str] = []
     if b[:2] == b"PK":   # xlsx (zip)
         import io
+
         from openpyxl import load_workbook
         wb = load_workbook(io.BytesIO(b), read_only=True, data_only=True); ws = wb.worksheets[0]
         satirlar = [[("" if c is None else str(c)) for c in r] for r in ws.iter_rows(values_only=True, max_row=30)]

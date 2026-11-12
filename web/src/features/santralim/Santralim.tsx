@@ -10,7 +10,7 @@ import { api, bellekten, ayniysaEskisi } from "../../api/client";
 import type { SantralOzeti, TahminSerisi, GunesYolu, SaatAyMatrisi } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
-import { Kart, Kpi, Sayfa, sayiTr, sayiTrN, gucTr, enerjiTr, isiTonu, isiMetni, SayfaIskeleti, YerTutucu } from "../sayfalar/parcalar";
+import { Kart, Kpi, Sayfa, sayiTr, sayiTrN, gucTr, enerjiTr, isiTonu, isiMetni, SayfaIskeleti, YerTutucu, VeriDurumu } from "../sayfalar/parcalar";
 import ProductionForecastChart, { type ActualPoint, type ForecastPoint, type Plant } from "../sayfalar/ProductionForecastChart";
 import { Meta } from "../../lib/Meta";
 
@@ -705,6 +705,8 @@ export function Santralim({ plantId }: { plantId: string }) {
             <div><dt>Son veri</dt>
               <dd>{s.son_scada == null
                 ? <><span className="kunye-durum eksik">Yüklenmedi</span><span className="kunye-not">SCADA verisi henüz yüklenmedi</span></>
+                : s.veri_durumu
+                  ? <><span className="kunye-sayi">{s.son_scada}</span>{" "}<VeriDurumu d={s.veri_durumu} />   {/* v2.605 (F4-K): tazelik ortak sözlükten; etiket süreyi söyler, ikinci not yok */}</>
                 : (s.kesinti_gun ?? 0) > 2
                   ? <><span className="kunye-sayi">{s.son_scada}</span>{" "}
                       <span className="rozet rozet-uyari" style={{ marginLeft: 6, fontSize: 12 }} title="Son yüklemeden bu yana yeni ölçüm yok">{sayiTr(s.kesinti_gun!)} gündür yeni veri yok</span></>

@@ -91,7 +91,7 @@ def test_yonetici_kapisi(monkeypatch):
         monkeypatch.setattr(ak, "listele", lambda t: [])
         j = TestClient(api_main.app).get("/v1/api-anahtarlari").json()
         assert j["anahtarlar"] == [] and "tahmin:oku" in j["kapsamlar"]
-        monkeypatch.setattr(ak, "uret", lambda t, ad, k, g, r: (_ for _ in ()).throw(ValueError("bilinmeyen kapsam")))
+        monkeypatch.setattr(ak, "uret", lambda t, ad, k, g, r, plant_ids=None: (_ for _ in ()).throw(ValueError("bilinmeyen kapsam")))   # v2.603: plant_ids
         assert TestClient(api_main.app).post("/v1/api-anahtarlari", json={"ad": "x", "kapsamlar": ["yok:oku"]}).status_code == 422
     finally:
         api_main.app.dependency_overrides.clear()
@@ -156,7 +156,8 @@ def test_pencere_basi_hizalama():
 def test_yeni_kapsamlar_gerceklesen_alarm_rapor_ayar(monkeypatch):
     """v2.528 (P10): rezerve kapsamlar canlı — gerceklesen:oku, alarm:oku, rapor:indir, santral:yaz; kapsam yoksa 403; doğrulama ve denetim."""
     ak._kovalar.clear()
-    tum = ["tahmin:oku", "kgup:oku", "gerceklesen:oku", "alarm:oku", "rapor:indir", "santral:yaz", "gerceklesen:yaz"]   # v2.553: itme kapsamı
+    tum = ["tahmin:oku", "kgup:oku", "gerceklesen:oku", "alarm:oku", "rapor:indir", "santral:yaz", "gerceklesen:yaz",   # v2.553: itme kapsamı
+           "veri_kalitesi:oku", "portfoy:oku", "finans:oku"]   # v2.603 (F4-I)
     monkeypatch.setattr(ak, "_kayit_bul", lambda p: _kayit("gizli", scopes=tum) if p == "abcd1234" else (_kayit("dar", scopes=["tahmin:oku"]) if p == "dar00000" else None))
     monkeypatch.setattr(ak, "_kullanim_isle", lambda i: None)
     monkeypatch.setattr(ak, "_paylasimli_izin", lambda p, r, t: ak._kova_izin(p, r))

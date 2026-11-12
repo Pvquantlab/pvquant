@@ -42,11 +42,11 @@ def _topla(ozetler: dict[str, dict | None], kod: str, ad: str, toplanir: bool) -
         if b.get("kural_surumu"):
             kur.add(str(b["kural_surumu"]))
     if not var:
-        return fn.Bilesen.eksik(kod, ad, "Hiçbir santralda bu kalem hesaplanamadı." if ozetler else "Santral yok.", kaynak="Σ santral", toplanir=toplanir)
+        return fn.Bilesen.eksik(kod, ad, "Hiçbir santralda bu kalem hesaplanamadı." if ozetler else "Santral yok.", kaynak="santral toplamı", toplanir=toplanir)
     n = fn.en_zayif(*nit)
     if eksik:
         n = fn.en_zayif(n, fn.Nitelik.SENARYO); notlar.append(f"{len(eksik)} santralda hesaplanamadı ({', '.join(eksik[:5])}); toplam o santraller olmadan, eksik 0 sayılmadı.")
-    return fn.Bilesen(kod, ad, tutar_tl=al - bo, alacak_tl=al, borc_tl=bo, nitelik=n, kaynak=f"Σ {len(var)} santral", kapsam_saat=kap or None, beklenen_saat=bek or None,
+    return fn.Bilesen(kod, ad, tutar_tl=al - bo, alacak_tl=al, borc_tl=bo, nitelik=n, kaynak=f"{len(var)} santral toplamı", kapsam_saat=kap or None, beklenen_saat=bek or None,
                       kural_surumu=" | ".join(sorted(kur)) or None, toplanir=toplanir, notlar=notlar)
 
 

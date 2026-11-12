@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { HESAP_DURUMU } from "../../lib/durum";
 import { sayiBicimi } from "../../lib/bicim";
 
 /** v2.85: Intl, sayinin kisa ondalik yazimindan yuvarlar (212.95 -> "213,0");
@@ -188,4 +189,21 @@ export function isiMetni(t: number, koyu: boolean): string {
   if (!Number.isFinite(t)) t = 0.5;   // v2.365: isiTonu ile ayni zirh
   return koyu ? (t > 0.698 ? "#000000" : "#FFFFFF")
               : (t > 0.62 ? "#000000" : "var(--pi-metin)");
+}
+
+/** v2.605 (F4-K): veri tazeliği rozeti — ortak kalite sözlüğü (API `tazelik_durumu`: {kod, nitelik, etiket, yas_saat}); sayı uydurulmaz,
+ *  sözlük yoksa «—». Ton: taze → marka, gecikmiş → uyarı, eksik → nötr (amber yalnız gerçekleşen üretim). */
+export type VeriDurumuBilgi = { kod: "taze" | "gecikmis" | "eksik" | string; nitelik?: string; etiket: string; yas_saat?: number | null };
+export function VeriDurumu({ d, kucuk = true }: { d?: VeriDurumuBilgi | null; kucuk?: boolean }) {
+  if (!d) return <span className="bos">—</span>;
+  const sinif = d.kod === "taze" ? "rozet-ok" : d.kod === "gecikmis" ? "rozet-uyari" : "rozet-notr";
+  const yas = d.yas_saat != null ? (d.yas_saat >= 48 ? `${sayiTr(Math.round(d.yas_saat / 24))} gün` : `${sayiTr(Math.round(d.yas_saat))} saat`) : null;
+  return <span className={`rozet ${sinif}${kucuk ? " rozet-kucuk" : ""}`} title={yas ? `son geçerli ölçüm ${yas} önce` : d.etiket}>{d.etiket}</span>;
+}
+
+/** v2.605 (F4-K): hesap durumu rozeti — sözlük `lib/durum.ts` (tam | kismi | senaryo | hesaplanamadi). */
+export function HesapDurumu({ d, kucuk = true }: { d?: string | null; kucuk?: boolean }) {
+  if (!d) return null;
+  const h = HESAP_DURUMU[d] ?? { etiket: d, sinif: "rozet-notr", aciklama: "" };
+  return <span className={`rozet ${h.sinif}${kucuk ? " rozet-kucuk" : ""}`} title={h.aciklama}>{h.etiket}</span>;
 }

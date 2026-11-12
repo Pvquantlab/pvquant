@@ -68,7 +68,9 @@ export function Olaylar({ plantId }: { plantId: string }) {
         <Kpi etiket="Süren olay" deger={sayiTr(o.acik)} ton={o.acik > 0 ? "uyari" : undefined}
           alt={o.acik > 0 ? `başlamış, bitişi girilmemiş; program ve kullanılabilirlik hesabında sürüyor sayılır${o.planli > 0 ? `; ayrıca ${sayiTr(o.planli)} planlı` : ""}` : o.planli > 0 ? `süren olay yok; ${sayiTr(o.planli)} planlı (ileri tarihli)` : "süren olay yok"} />
         <Kpi etiket={`Arıza kaydı (${ayAd})`} deger={sayiTr(sayac.sayi)} birim={`/ ${sayiTr(sayac.esik)}`} ton={sayacTon}
-          alt={sayac.sayi >= sayac.esik ? "eşik aşıldı: bu ay sapma tutarı katsayısı 0,08" : `${sayiTr(sayac.esik)} ve üzerinde sapma tutarı katsayısı 0,05'ten 0,08'e çıkar; kaynak ${sayac.kaynak}`} />
+          alt={sayac.n_ariza == null || sayac.n == null ? `bu segmentte arıza sayısı sapma tutarı katsayısını değiştirmez; kaynak ${sayac.kaynak}`
+               : sayac.sayi >= sayac.esik ? `eşik aşıldı: bu ay sapma tutarı katsayısı ${sayiTr(sayac.n_ariza, 2)}`
+               : `${sayiTr(sayac.esik)} ve üzerinde sapma tutarı katsayısı ${sayiTr(sayac.n, 2)}'ten ${sayiTr(sayac.n_ariza, 2)}'e çıkar; kaynak ${sayac.kaynak}`} />   {/* v2.600: katsayılar kural sicilinden; kural yoksa sayı basılmaz */}
         <Kpi etiket="Bugün kapasite düşümü" deger={sayiTr(o.eak_bugun.saat_sayisi)} birim="saat" ton={o.eak_bugun.saat_sayisi > 0 ? "amber" : undefined}
           alt={o.eak_bugun.saat_sayisi > 0 ? `en çok ${sayiTr(o.eak_bugun.en_cok_kw, 0)} kW (taban ${sayiTr(o.eak_bugun.taban_kw, 0)} kW)${o.eak_bugun.kismi_saat > 0 ? `; ${sayiTr(o.eak_bugun.kismi_saat)} saatte kısmi süre, orantılı` : ""}${o.eak_bugun.suren > 0 ? "; bitişi girilmemiş olay gün sonuna kadar sayılır" : ""}` : "bugün kapasiteyi düşüren olay yok"} />
         <Kpi etiket="Dâhilî bilgi açıklaması" deger={dahili ? (dahili.gecti ? "süre doldu" : `${sayiTr(dahili.kalan_dk)} dk`) : "—"} ton={dahili ? (dahili.basladi === false ? "amber" : "uyari") : undefined}

@@ -11,7 +11,7 @@ import datetime as dt
 import pytest
 from sqlalchemy import text
 
-from pvquant.db import sistem_baglami
+from pvquant.db import bakim_baglami, sistem_baglami
 from pvquant.services import isler_service, sistem_service, damga_service, platform_service as ps, auth_service as au
 
 KOK = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -39,7 +39,9 @@ def temiz(monkeypatch):
         s.execute(text("DELETE FROM piyasa_fiyat WHERE kaynak = :e"), {"e": f"senkron-{e}"})
         for t in ("scada_hourly", "alerts", "plants"):
             s.execute(text(f"DELETE FROM {t} WHERE plant_id IN (SELECT id FROM plants WHERE name LIKE :e)" if t != "plants" else "DELETE FROM plants WHERE name LIKE :e"), {"e": f"%{e}%"})
+    with bakim_baglami() as s:   # v2.602: denetim_izi DELETE yalnız bakım (sahip) bağlamında
         s.execute(text("DELETE FROM denetim_izi WHERE aktor_eposta LIKE :e OR ayrinti::text LIKE :e"), {"e": f"%{e}%"})
+    with sistem_baglami() as s:
         s.execute(text("DELETE FROM parola_sifirlama WHERE user_id IN (SELECT id FROM users WHERE email LIKE :e)"), {"e": f"%{e}%"})
         s.execute(text("DELETE FROM users WHERE email LIKE :e"), {"e": f"%{e}%"})
         s.execute(text("DELETE FROM tenants WHERE name LIKE :e"), {"e": f"%{e}%"})

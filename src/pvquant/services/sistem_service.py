@@ -13,6 +13,7 @@ import json
 from sqlalchemy import text
 
 from pvquant.db import sistem_baglami, platform_baglami
+from pvquant.services import kalite_sozlugu as _ks   # v2.598 (F4-C): flag süzgeci tek sözlükten
 from pvquant.services.isler_service import ISIM_TR, URETEN_ISLER, bayat_isler
 
 NABIZ_ARALIK_DK = 5       # worker nabız sıklığı
@@ -44,6 +45,7 @@ IZLENEN_ISLER = (
     ("gece_konformal", 36, "günlük", True),
     ("rapor_alanlari", 36, "günlük", True),
     ("gece_bagimsiz_dogrulama", 36, "günlük", True),  # 10.11 v2.574 (Faz 1 F1-C): 03:50 TSİ; yetersiz veri «atlandı» da başarılı koşudur
+    ("gece_kural_sicili", 36, "günlük", True),   # 12.11 v2.600 (Faz 4 F4-F): 03:08 TSİ; sha aynıysa «yeni: false» da başarılı koşudur
     ("gece_finansal_etki", 36, "günlük", True),  # 11.11 v2.583 (Faz 2 F2-E): 03:55 TSİ; ölçüm yok «atlandı» da başarılı koşudur
     ("gece_portfoy", 36, "günlük", False),  # 11.11 v2.593 (Faz 3 F3-F): 04:05 TSİ; küresel iş (portföy yok «portföy yok» da başarılı koşudur)
     ("aylik_kalibrasyon", 24 * 35, "aylık", True),      # 04.11 v2.531 (ENV-F06): üç aylık üretici iş izlenir; santral başına koşar
@@ -239,7 +241,7 @@ def santraller(aktor_id: str, *, sorunlu: bool = False) -> dict:
     with platform_baglami(aktor_id) as s:
         rows = s.execute(text(
             "SELECT p.id, p.name, p.capacity_kwp, p.tz, p.created_at, p.params_json, t.id AS tenant_id, t.name AS kiraci, t.status AS kiraci_durum, "
-            "(SELECT max(ts_utc) FROM scada_hourly sh WHERE sh.plant_id = p.id AND sh.flag = 'valid') AS son_scada, "
+            f"(SELECT max(ts_utc) FROM scada_hourly sh WHERE sh.plant_id = p.id AND {_ks.sql_kosulu('tazelik', 'sh')}) AS son_scada, "
             "(SELECT max(run_at) FROM forecast_runs r WHERE r.plant_id = p.id) AS son_kosu, "
             "(SELECT max(started) FROM jobs_log j WHERE j.plant_id = p.id AND j.status <> 'ok') AS son_hata "
             "FROM plants p JOIN tenants t ON t.id = p.tenant_id WHERE NOT p.archived ORDER BY t.name, p.name")).mappings().all()

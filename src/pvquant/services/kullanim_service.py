@@ -15,6 +15,7 @@ import datetime as dt
 from sqlalchemy import text
 
 from pvquant.db import sistem_baglami, platform_baglami
+from pvquant.services import kalite_sozlugu as _ks   # v2.598 (F4-C): flag süzgeci tek sözlükten
 
 TURLER = ("dis_api", "webhook", "webhook_hata")
 PENCERE_SN = 60
@@ -91,7 +92,7 @@ def _ay_toplamlari(s, ilk: dt.date, son: dt.date) -> dict[str, dict]:
                       {"a": ilk, "b": son}).mappings().all()
     kosu = s.execute(text("SELECT tenant_id, count(*) AS n FROM forecast_runs WHERE run_at >= :a AND run_at < :b GROUP BY tenant_id"),
                      {"a": ilk, "b": son}).mappings().all()
-    scada = s.execute(text("SELECT tenant_id, count(*) AS n FROM scada_hourly WHERE ts_utc >= :a AND ts_utc < :b AND flag = 'valid' GROUP BY tenant_id"),
+    scada = s.execute(text(f"SELECT tenant_id, count(*) AS n FROM scada_hourly WHERE ts_utc >= :a AND ts_utc < :b AND {_ks.sql_kosulu('tazelik')} GROUP BY tenant_id"),
                       {"a": ilk, "b": son}).mappings().all()
     yukleme = s.execute(text("SELECT tenant_id, count(*) AS n FROM ingestion_batches WHERE created_at >= :a AND created_at < :b GROUP BY tenant_id"),
                         {"a": ilk, "b": son}).mappings().all()
@@ -146,7 +147,7 @@ def gunler(aktor_id: str, tenant_id: str, ay: str | None = None) -> dict:
         kosu = s.execute(text("SELECT CAST(run_at AT TIME ZONE 'UTC' AS date) AS gun, count(*) AS n FROM forecast_runs "
                               "WHERE tenant_id = CAST(:t AS uuid) AND run_at >= :a AND run_at < :b GROUP BY 1"), p).mappings().all()
         scada = s.execute(text("SELECT CAST(ts_utc AT TIME ZONE 'UTC' AS date) AS gun, count(*) AS n FROM scada_hourly "
-                               "WHERE tenant_id = CAST(:t AS uuid) AND ts_utc >= :a AND ts_utc < :b AND flag = 'valid' GROUP BY 1"), p).mappings().all()
+                               f"WHERE tenant_id = CAST(:t AS uuid) AND ts_utc >= :a AND ts_utc < :b AND {_ks.sql_kosulu('tazelik')} GROUP BY 1"), p).mappings().all()
         yukleme = s.execute(text("SELECT CAST(created_at AT TIME ZONE 'UTC' AS date) AS gun, count(*) AS n FROM ingestion_batches "
                                  "WHERE tenant_id = CAST(:t AS uuid) AND created_at >= :a AND created_at < :b GROUP BY 1"), p).mappings().all()
         kgup = s.execute(text("SELECT CAST(olusturma AT TIME ZONE 'UTC' AS date) AS gun, kaynak, count(*) AS n FROM kgup_surum "

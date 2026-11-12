@@ -53,15 +53,19 @@ def cek(plant: dict, bas: date, bitis: date, istemci=None) -> pd.Series:
 def yukle(tenant_id, plant: dict, gun: int = 7, istemci=None) -> dict:
     """Son `gun` günün üretimini çek, SCADA olmayan saatlere yaz. Döner {durum, n_yazilan, n_cekilen, bas, bitis}."""
     from sqlalchemy import text
+
     from pvquant.db import tenant_baglami
+    from pvquant.services.piyasa_service import piyasa_gunu
     ok, neden = uygun_mu(plant)
     if not ok and istemci is None:
         return {"durum": "atlandi", "neden": neden, "n_yazilan": 0}
-    bitis = date.today() - timedelta(days=1); bas = bitis - timedelta(days=gun)
+    bitis = piyasa_gunu() - timedelta(days=1); bas = bitis - timedelta(days=gun)   # v2.604 (F4-J): piyasa günü (İstanbul)
     seri = cek(plant, bas, bitis, istemci)
     if seri.empty:
         return {"durum": "veri_yok", "n_yazilan": 0, "n_cekilen": 0, "bas": bas.isoformat(), "bitis": bitis.isoformat()}
-    satirlar = satirlar_uret(seri, float(plant["capacity_kwp"]))
+    from pvquant.services.santral_kunye_service import guc_tanimlari_db
+    tavan_kw = guc_tanimlari_db(tenant_id, plant, bitis)["ihracat_siniri_kw"] or float(plant["capacity_kwp"])   # v2.599 (F4-E): anomali tavanı EAK/AC
+    satirlar = satirlar_uret(seri, float(tavan_kw))
     with tenant_baglami(tenant_id) as s:
         batch_id = s.execute(text(
             "INSERT INTO ingestion_batches(tenant_id,plant_id,filename,format_json,quality_json) VALUES(:t,:p,:f,CAST(:fmt AS jsonb),CAST(:q AS jsonb)) RETURNING id"),
@@ -70,8 +74,8 @@ def yukle(tenant_id, plant: dict, gun: int = 7, istemci=None) -> dict:
         n = 0
         for r in satirlar:
             n += s.execute(text(
-                "INSERT INTO scada_hourly(tenant_id,plant_id,ts_utc,power_kw,energy_kwh,flag,batch_id) "
-                "VALUES(:t,:p,:ts,:pk,:e,:f,:b) ON CONFLICT (plant_id, ts_utc) DO NOTHING"),
+                "INSERT INTO scada_hourly(tenant_id,plant_id,ts_utc,power_kw,energy_kwh,flag,batch_id,kaynak,alinma_zamani,aralik_dk,kaynak_damga_tipi,sinir) "
+                "VALUES(:t,:p,:ts,:pk,:e,:f,:b,'epias',now(),60,'aralik_basi','settlement') ON CONFLICT (plant_id, ts_utc) DO NOTHING"),   # v2.598: künye
                 {"t": tenant_id, "p": plant["id"], "ts": r["ts"], "pk": r["power_kw"], "e": r["energy_kwh"], "f": r["flag"], "b": batch_id}).rowcount
     return {"durum": "ok", "n_yazilan": int(n), "n_cekilen": len(satirlar), "bas": bas.isoformat(), "bitis": bitis.isoformat()}
 

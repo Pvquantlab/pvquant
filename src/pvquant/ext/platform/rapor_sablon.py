@@ -6,6 +6,8 @@ rapor gövdesinde geçmez; yalnız 'kapasite testi' gibi ürün dili (Gizlilik A
 """
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 from dataclasses import dataclass
 
 import numpy as np
@@ -62,7 +64,7 @@ def kapasite_testi(guc_ac_kw: pd.Series, poa: pd.Series, temp_air: pd.Series, wi
     return Rapor("Kapasite testi", donem, santral, [("Sonuç", tablo), ("Raporlama koşulları", rc), ("Karar", karar)]), sonuc
 
 
-def beklenen_gerceklesen(beklenen_kwh: pd.Series, gercek_kwh: pd.Series, santral: str = "", donem: str = "", tz: str = "Europe/Istanbul") -> tuple[Rapor, pd.DataFrame]:
+def beklenen_gerceklesen(beklenen_kwh: pd.Series, gercek_kwh: pd.Series, santral: str = "", donem: str = "", tz: str = PIYASA_TZ) -> tuple[Rapor, pd.DataFrame]:
     idx = beklenen_kwh.index.intersection(gercek_kwh.index)
     b = beklenen_kwh.loc[idx].tz_convert(tz); g = gercek_kwh.loc[idx].tz_convert(tz)
     ay = pd.DataFrame({"Beklenen (kWh)": b.resample("ME").sum(), "Gerçekleşen (kWh)": g.resample("ME").sum()})

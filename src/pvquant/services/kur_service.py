@@ -9,6 +9,8 @@ gününün kurunu taşır ve satırı «onceki_gun» ile işaretler (panel «ön
 """
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 from datetime import date, datetime, timedelta
 from xml.etree import ElementTree as ET
 from zoneinfo import ZoneInfo
@@ -22,7 +24,7 @@ DAYANAK_KUNYELERI = (
     'YEK Yön.: Yenilenebilir Enerji Kaynaklarının Belgelendirilmesi ve Desteklenmesine İlişkin Yönetmelik, RG 01.10.2013-28782; değişiklikler RG 29.04.2016-29698 (m.16–17 mülga), 23.08.2019-30867, 19.08.2021-31573, 29.12.2025-33122, 19.10.2026-33405 (m.23(6))'
 )
 
-IST = ZoneInfo("Europe/Istanbul")
+IST = ZoneInfo(PIYASA_TZ)
 TCMB_BUGUN = "https://www.tcmb.gov.tr/kurlar/today.xml"
 TCMB_ARSIV = "https://www.tcmb.gov.tr/kurlar/{ym}/{dmy}.xml"
 PARALAR = ("USD", "EUR")

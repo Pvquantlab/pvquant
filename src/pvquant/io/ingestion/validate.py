@@ -40,6 +40,8 @@ OVER_CAPACITY_FACTOR = 1.05
 
 #: Donmuş değer: aynı sıfır-dışı değerin ardışık tekrar eşiği (saat).
 FROZEN_RUN_HOURS = 4
+ZERO_DAYTIME_ELEVATION_DEG = 10.0      # v2.598: beklenmeyen sıfır üretim — güneş yüksekliği eşiği
+ZERO_DAYTIME_IRRADIANCE_WM2 = 200.0    # v2.598: ışınım eşiği (W/m²)
 
 #: v2.573 (Faz 1 F1-B): saatin en az bu kadar dakikası ölçülü değilse 'partial_hour' — ortalama güç saati temsil etmez.
 PARTIAL_HOUR_MIN_MINUTES = 45
@@ -94,8 +96,15 @@ def validate(
 
     power = out["power_kw"]
 
-    # --- 1. Okunamayan güç ---
-    flags[power.isna()] = RowFlag.UNPARSEABLE.value
+    # --- 1. Okunamayan güç / boş saat ---
+    # v2.598 (Faz 4 F4-C): kaynakta o saat için hiç satır yoksa 'eksik' (boş saat), satır var ama sayıya çevrilemediyse
+    # 'unparseable'. Saatlik ızgara (n_kaynak_satir) yoksa eski davranış: NaN güç = okunamayan.
+    bos = pd.Series(False, index=out.index)
+    if "n_kaynak_satir" in out.columns:
+        bos = out["n_kaynak_satir"].fillna(0).astype(int).eq(0)
+        out = out.drop(columns=["n_kaynak_satir"])
+    flags[power.isna() & ~bos] = RowFlag.UNPARSEABLE.value
+    flags[power.isna() & bos] = RowFlag.EKSIK.value
 
     # --- 2. Tekrarlanan timestamp ---
     dup = out.index.duplicated(keep="first")
@@ -121,7 +130,10 @@ def validate(
     flags[big_neg & (flags == RowFlag.VALID.value)] = RowFlag.NEGATIVE_POWER.value
 
     # --- 4. Kapasite aşımı ---
-    over = power > OVER_CAPACITY_FACTOR * capacity_kwp
+    # v2.599 (F4-E): tavan inverter AC sınırıdır (biliniyorsa) — AC'nin %5 üstü fiziksel olarak mümkün değildir (ölçek/birim hatası);
+    # AC bilinmiyorsa eski kural: DC kurulu gücün %5 üstü.
+    tavan_kw = float(ac_limit_kw) if ac_limit_kw is not None and ac_limit_kw > 0 else float(capacity_kwp)
+    over = power > OVER_CAPACITY_FACTOR * tavan_kw
     flags[over & (flags == RowFlag.VALID.value)] = RowFlag.OVER_CAPACITY.value
 
     # --- 5. Gece üretimi (saat dilimi hatası dedektörü) ---
@@ -156,6 +168,19 @@ def validate(
             n_kirpma_muaf = int((frozen & plato).sum())
             frozen &= ~plato
         flags[frozen & (flags == RowFlag.VALID.value)] = RowFlag.FROZEN_VALUE.value
+
+    # --- 6b. v2.598 (F4-C): beklenmeyen sıfır üretim — gündüz, ışınım ölçümü var ve > eşik, güç tam 0 → şüpheli (inverter
+    # kapalı / iletişim / sayaç sıfırı). Yalnız ışınım kolonu varsa (uydurma yok); günlük özette koşmaz.
+    n_sifir = 0
+    if not gunluk_ozet:
+        isinim_kol = next((c for c in ("poa_global", "ghi") if c in out.columns), None)
+        if isinim_kol is not None:
+            elev2 = _solar_elevation(out.index, latitude, longitude)
+            isinim = pd.to_numeric(out[isinim_kol], errors="coerce")
+            sifir = (elev2 > ZERO_DAYTIME_ELEVATION_DEG) & (isinim > ZERO_DAYTIME_IRRADIANCE_WM2) & (power.fillna(-1) == 0.0)
+            sifir &= flags == RowFlag.VALID.value
+            n_sifir = int(sifir.sum())
+            flags[sifir] = RowFlag.SIFIR_GUNDUZ.value
 
     # --- 7. DST belirsizliği ---
     if dst_flags is not None:
@@ -199,6 +224,11 @@ def validate(
         report.warnings.append(
             f"{n_kismi} saatte ölçüm {PARTIAL_HOUR_MIN_MINUTES} dakikanın altında (kısmi saat): bu saatler geçerli üretim "
             "serisine girmez; kapsama 'kapsama_dk' kolonunda."
+        )
+    if n_sifir > 0:
+        report.warnings.append(
+            f"{n_sifir} saatte gündüz ışınım ölçülürken üretim sıfır: şüpheli sayıldı (inverter duruşu ya da iletişim kesintisi "
+            "olabilir); bu saatler geçerli üretim serisine girmez."
         )
     if n_kirpma_muaf > 0:
         report.warnings.append(

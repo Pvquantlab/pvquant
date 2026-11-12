@@ -314,8 +314,49 @@ def kosu_cek_ve_arsivle(noktalar: list[tuple[float, float]], dizin: Path | None 
             continue
         satirlar += satirlar_uret(harmanla(e, i, lat, lon, gfs=g_kontrol.get((lat, lon))), KAYNAK, kosu, lat, lon)
     rapor["satir"] = _arsive_yaz(satirlar); rapor["kosu"] = kosu.isoformat(); rapor["modeller"] = 2 + (1 if g_kontrol else 0)
+    # v2.597 (F4-B): bileşen künyesi — hangi model hangi koşu zamanıyla harmana girdi (nokta başına; GFS kontrol üyesi varsa onun koşusu)
+    bilesenler_ortak = {k: v.isoformat() for k, v in (("ECMWF IFS", e_kosu), ("ICON-EU", i_kosu)) if v is not None}
+    kunyeler = []
+    for lat, lon in noktalar:
+        b = dict(bilesenler_ortak)
+        gk = (rapor.get("gefs") or {}).get(f"{lat},{lon}", {}).get("kosu")
+        if (lat, lon) in g_kontrol and gk:
+            b["GFS"] = gk
+        kunyeler.append({"k": KAYNAK, "z": kosu.to_pydatetime(), "la": lat, "lo": lon, "b": json.dumps(b)})
+    rapor["bilesenler"] = _kunye_yaz(kunyeler)
     eski_temizle(dizin, get_settings().nwp_kosu_tut)
     return rapor
+
+
+def _kunye_yaz(kunyeler: list[dict]) -> int:
+    """DB (v2.597): meteo_kosu_kunye — koşunun bileşen → koşu zamanı sözlüğü (nokta başına)."""
+    if not kunyeler:
+        return 0
+    from sqlalchemy import text
+    from pvquant.db import sistem_baglami
+    with sistem_baglami() as s:
+        s.execute(text(
+            "INSERT INTO meteo_kosu_kunye(kaynak,kosu_zamani,lat,lon,bilesenler_json) VALUES(:k,:z,:la,:lo,CAST(:b AS jsonb)) "
+            "ON CONFLICT (kaynak,kosu_zamani,lat,lon) DO NOTHING"), kunyeler)
+    return len(kunyeler)
+
+
+def _kunye_oku(s, kosu, lat: float, lon: float) -> dict | None:
+    """DB (v2.597): koşunun bileşen künyesi; göç öncesi koşularda yok → None (uydurulmaz)."""
+    from sqlalchemy import text
+    r = s.execute(text("SELECT bilesenler_json FROM meteo_kosu_kunye WHERE kaynak=:k AND kosu_zamani=:z AND lat=:la AND lon=:lo"),
+                  {"k": KAYNAK, "z": kosu, "la": lat, "lo": lon}).scalar()
+    if r is None:
+        return None
+    return json.loads(r) if isinstance(r, str) else dict(r)
+
+
+def nwp_model_etiketi(bilesenler: dict | None) -> str:
+    """Künyeden model listesi (yalnız harmana gerçekten giren modeller); künye yoksa eski sabit etiket."""
+    if not bilesenler:
+        return KAYNAK_ETIKET
+    sira = ["ECMWF IFS", "ICON-EU", "GFS"]
+    return " + ".join([m for m in sira if m in bilesenler] + [m for m in bilesenler if m not in sira])
 
 
 def eski_temizle(dizin: Path, tut: int = 2) -> list[str]:
@@ -330,9 +371,10 @@ def eski_temizle(dizin: Path, tut: int = 2) -> list[str]:
     return silinen
 
 
-def _cerceve_to_meteodata(df: pd.DataFrame, lat: float, lon: float, nwp_model: str = KAYNAK_ETIKET, kosu_zamani=None):
+def _cerceve_to_meteodata(df: pd.DataFrame, lat: float, lon: float, nwp_model: str | None = None, kosu_zamani=None, bilesenler: dict | None = None):
     from pvquant.io.meteo import MeteoData
     df = df.sort_index()
+    nwp_model = nwp_model or nwp_model_etiketi(bilesenler)   # v2.597: künye varsa gerçek bileşen listesi
     return MeteoData(ghi=df["ghi"], temp_air=df["temp_air"], wind_speed_10m=df["wind_speed_10m"],
                      relative_humidity=(df["relative_humidity"] if "relative_humidity" in df and df["relative_humidity"].notna().any() else None),
                      cloud_cover=df["cloud_cover"] if "cloud_cover" in df else None,
@@ -340,7 +382,8 @@ def _cerceve_to_meteodata(df: pd.DataFrame, lat: float, lon: float, nwp_model: s
                      precipitation=df["precipitation"] if "precipitation" in df else None, snowfall=None,
                      kaynak=KAYNAK, nwp_model=nwp_model,
                      kosu_zamani=(pd.Timestamp(kosu_zamani).tz_convert("UTC") if kosu_zamani is not None and pd.Timestamp(kosu_zamani).tzinfo is not None
-                                  else (pd.Timestamp(kosu_zamani, tz="UTC") if kosu_zamani is not None else None)))   # v2.572: künye
+                                  else (pd.Timestamp(kosu_zamani, tz="UTC") if kosu_zamani is not None else None)),   # v2.572: künye
+                     bilesenler=bilesenler)   # v2.597: bileşen künyesi (yoksa None)
 
 
 def arsivden_tahmin(lat: float, lon: float, days: int, past_days: int = 0, azami_yas_saat: float = 36.0):
@@ -369,12 +412,13 @@ def arsivden_tahmin(lat: float, lon: float, days: int, past_days: int = 0, azami
                 "AND ts_utc - kosu_zamani BETWEEN INTERVAL '0 hour' AND INTERVAL '24 hour' ORDER BY ts_utc, kosu_zamani DESC"),
                 s.connection(), params={"k": KAYNAK, "la": la, "lo": lo, "a": bas - pd.Timedelta(days=past_days), "b": bas},
                 index_col="ts_utc", parse_dates=["ts_utc"])
+        bilesenler = _kunye_oku(s, kosu, la, lo)   # v2.597: bileşen künyesi (göç öncesi koşuda None)
     df = pd.concat([gecmis, ileri]).sort_index()
     if df.empty:
         return None
     if df.index.tz is None:
         df.index = df.index.tz_localize("UTC")
-    return _cerceve_to_meteodata(df, la, lo, kosu_zamani=kosu)   # v2.572 (Faz 1 F1-A): künye — ileri ufuk bu koşudan
+    return _cerceve_to_meteodata(df, la, lo, kosu_zamani=kosu, bilesenler=bilesenler)   # v2.572 (Faz 1 F1-A): künye — ileri ufuk bu koşudan
 
 
 #: v2.382 (zaman sözleşmesi mühürü): bu andan ÖNCEKİ koşularla yazılmış arşiv
@@ -539,6 +583,22 @@ def gefs_cek_ve_arsivle(lat: float, lon: float, dizin: Path | None = None) -> di
 
 def arsivden_uyeler(lat: float, lon: float, days: int, azami_yas_saat: float = 36.0) -> dict[int, "pd.DataFrame"] | None:
     """En taze GEFS koşusunun üyeleri (uye → saatlik df); yoksa/bayatsa None."""
+    return arsivden_uyeler_kunyeli(lat, lon, days, azami_yas_saat)[0]
+
+
+def arsivden_uye_kosusu(lat: float, lon: float):
+    """v2.597 künye: arşivdeki en taze GEFS üye koşusunun yayın zamanı (UTC) ya da None."""
+    from sqlalchemy import text
+    from pvquant.db import sistem_baglami
+    la, lo = _nokta_anahtar(lat, lon)
+    with sistem_baglami() as s:
+        kosu = s.execute(text("SELECT max(kosu_zamani) FROM meteo_uye WHERE kaynak=:k AND lat=:la AND lon=:lo"),
+                         {"k": GEFS_KAYNAK, "la": la, "lo": lo}).scalar()
+    return pd.Timestamp(kosu).tz_convert("UTC") if kosu is not None else None
+
+
+def arsivden_uyeler_kunyeli(lat: float, lon: float, days: int, azami_yas_saat: float = 36.0) -> tuple[dict[int, pd.DataFrame] | None, pd.Timestamp | None]:
+    """v2.597 (F4-B künye): (üyeler, üye koşusunun yayın zamanı); yoksa/bayatsa (None, None)."""
     from sqlalchemy import text
     from pvquant.db import sistem_baglami
     la, lo = _nokta_anahtar(lat, lon)
@@ -547,7 +607,7 @@ def arsivden_uyeler(lat: float, lon: float, days: int, azami_yas_saat: float = 3
         kosu = s.execute(text("SELECT max(kosu_zamani) FROM meteo_uye WHERE kaynak=:k AND lat=:la AND lon=:lo"),
                          {"k": GEFS_KAYNAK, "la": la, "lo": lo}).scalar()
         if kosu is None or (simdi - pd.Timestamp(kosu).tz_convert("UTC")) > pd.Timedelta(hours=azami_yas_saat):
-            return None
+            return None, None
         bas = simdi.floor("D")
         df = pd.read_sql(text(
             "SELECT uye, ts_utc, ghi, temp_air, wind_speed_10m, cloud_cover FROM meteo_uye "
@@ -555,14 +615,14 @@ def arsivden_uyeler(lat: float, lon: float, days: int, azami_yas_saat: float = 3
             s.connection(), params={"k": GEFS_KAYNAK, "la": la, "lo": lo, "z": kosu, "a": bas, "b": bas + pd.Timedelta(days=days)},
             parse_dates=["ts_utc"])
     if df.empty:
-        return None
+        return None, None
     out = {}
     for u, g in df.groupby("uye"):
         g = g.set_index(pd.DatetimeIndex(g["ts_utc"])).drop(columns=["uye", "ts_utc"])
         if g.index.tz is None:
             g.index = g.index.tz_localize("UTC")
         out[int(u)] = g
-    return out
+    return out, pd.Timestamp(kosu).tz_convert("UTC")
 
 
 # ----------------------------------------------------------------------------- v2.276: gün içi güncelleme --------

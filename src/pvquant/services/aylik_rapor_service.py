@@ -22,9 +22,11 @@ from sqlalchemy import text
 
 from pvquant.db import tenant_baglami
 from pvquant.ext.platform import rapor_sablon as rs
+from pvquant.services import kalite_sozlugu as _ks  # v2.598 (F4-C): flag süzgeci tek sözlükten
+from pvquant.zaman import PIYASA_TZ
 
-IST = ZoneInfo("Europe/Istanbul")
-IST_AD = "Europe/Istanbul"
+IST = ZoneInfo(PIYASA_TZ)
+IST_AD = PIYASA_TZ   # v2.599
 
 
 def _tz(plant: dict) -> str:
@@ -39,29 +41,18 @@ GONDERIM_DENEME = 3   # başarısız gönderim için en çok yeniden deneme (gü
 
 # ---------------- dönem ----------------
 def donem_cozumle(s: str | None, bugun: date | None = None, tz: str = IST_AD) -> dict:
-    """'YYYY-MM' | 'YYYY-QN' | 'YYYY' → {tur, bas, bit (hariç), etiket, kod}; verilmezse son tam ay. Gelecek dönem ValueError; süren dönem bugüne kırpılır.
-    `tz`: santral saat dilimi (v2.571) — «bugün» ve dönemin saat sayısı bu dilimde."""
-    b = bugun or datetime.now(ZoneInfo(tz)).date()
-    if not s:
-        ilk = b.replace(day=1); onceki = (ilk - timedelta(days=1)).replace(day=1)
-        s = onceki.strftime("%Y-%m")
-    s = str(s).strip().upper()
-    if m := _AY_RE.match(s):
-        y, a = int(m.group(1)), int(m.group(2)); bas = date(y, a, 1); bit = date(y + (a == 12), a % 12 + 1, 1); tur = "ay"; etiket = f"{AYLAR[a - 1]} {y}"
-    elif m := _CEYREK_RE.match(s):
-        y, q = int(m.group(1)), int(m.group(2)); bas = date(y, 3 * q - 2, 1); bit = date(y + (q == 4), (3 * q) % 12 + 1, 1); tur = "ceyrek"; etiket = f"{y} {q}. çeyrek"
-    elif m := _YIL_RE.match(s):
-        y = int(m.group(1)); bas = date(y, 1, 1); bit = date(y + 1, 1, 1); tur = "yil"; etiket = f"{y} yılı"
-    else:
+    """'YYYY-MM' | 'YYYY-QN' | 'YYYY' → {tur, bas, bit (hariç), etiket, kod, …}; verilmezse son tam ay. Gelecek dönem ValueError; süren dönem
+    bugüne kırpılır. `tz`: santral saat dilimi (v2.571). v2.599 (F4-D): tek çözümleyici ext/platform/finans.donem_cozumle'ye devreder; rapor
+    yalnız ay/çeyrek/yıl kabul eder (gün/hafta kodları finansal etki içindir)."""
+    from pvquant.ext.platform import finans as fn
+    if s and not any(r.match(str(s).strip().upper()) for r in (_AY_RE, _CEYREK_RE, _YIL_RE)):
         raise ValueError("donem YYYY-MM, YYYY-QN ya da YYYY olmalı")
-    if bas > b:
-        raise ValueError("gelecek dönem için rapor üretilmez")
-    kirpildi = bit > b + timedelta(days=1)
-    if kirpildi:
-        bit = b + timedelta(days=1)   # süren dönem: bugüne kadar (bugün dâhil)
-    return {"tur": tur, "kod": s, "bas": bas, "bit": bit, "etiket": etiket + (" (süren dönem, bugüne kadar)" if kirpildi else ""), "kirpildi": kirpildi,
-            "saat": int(round((_utc(bit, tz) - _utc(bas, tz)).total_seconds() / 3600))}   # yaz saati geçişli dilimde 24'ün katı olmayabilir
-
+    try:
+        return fn.donem_cozumle(s, bugun, tz=tz)
+    except ValueError as e:
+        if "gelecek dönem" in str(e):
+            raise ValueError("gelecek dönem için rapor üretilmez") from None
+        raise
 
 def _utc(d: date, tz: str = IST_AD) -> datetime:
     """Yerel günün başı (santral dilimi) → UTC."""
@@ -77,7 +68,7 @@ def gunluk(tenant_id, plant: dict, bas: date, bit: date) -> pd.DataFrame:
         g = pd.read_sql(text(
             "SELECT (ts_utc AT TIME ZONE :tz)::date AS gun, sum(COALESCE(energy_kwh, power_kw)) AS kwh, count(*) AS saat, "
             "sum(poa_wm2) / 1000.0 AS poa_kwh_m2, count(poa_wm2) AS poa_saat FROM scada_hourly "
-            "WHERE plant_id = CAST(:p AS uuid) AND flag = 'valid' AND ts_utc >= :a AND ts_utc < :b GROUP BY 1 ORDER BY 1"),
+            f"WHERE plant_id = CAST(:p AS uuid) AND {_ks.sql_kosulu('rapor')} AND ts_utc >= :a AND ts_utc < :b GROUP BY 1 ORDER BY 1"),
             s.connection(), params={"p": plant["id"], "a": _utc(bas, tz), "b": _utc(bit, tz), "tz": tz})
         f = pd.read_sql(text("SELECT gun, p50_kwh, p10_kwh, p90_kwh FROM forecast_daily WHERE plant_id = CAST(:p AS uuid) AND gun >= :a AND gun < :b ORDER BY gun"),
                         s.connection(), params={"p": plant["id"], "a": bas, "b": bit})
@@ -376,7 +367,7 @@ def alicilar(plant: dict) -> list[str]:
 
 def gonder(tenant_id, plant: dict, donem: str | None = None, bugun: date | None = None, kaynak: str = "zamanlanmis") -> dict:
     """Dönem raporunu HTML gövdeli e-postayla alıcılara gönderir; sonucu params_json.rapor_gonderim'e ve denetim izine yazar. SMTP yoksa gönderilmez."""
-    from pvquant.services import posta_service, plant_service, denetim_service
+    from pvquant.services import denetim_service, plant_service, posta_service
     kime = alicilar(plant)
     try:
         r, v = rapor(tenant_id, plant, donem, bugun)

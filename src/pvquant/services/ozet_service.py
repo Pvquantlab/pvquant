@@ -4,6 +4,8 @@ ozet_service son_kosu+scada_oku+aktif calibrations okur, hero+KPI+grafik+
 saglik doldurur. Icgoru sirasi (§7): verisi TAM olan ilk sablon kazanir.
 """
 from __future__ import annotations
+
+from pvquant.zaman import PIYASA_TZ
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
@@ -11,6 +13,8 @@ from typing import Optional
 import pandas as pd
 from sqlalchemy import text
 from pvquant.db import tenant_baglami
+from pvquant.services import kalite_sozlugu as _ks   # v2.598 (F4-C): flag süzgeci tek sözlükten
+from pvquant.services.karne_kurali import yayin_kosu_sql as _yayin_sql   # v2.597 (F4-B): yayımlanmış koşu süzgeci
 from pvquant.services.forecast_service import son_kosu
 from pvquant.services.ingest_service import scada_oku
 
@@ -74,7 +78,7 @@ def _icgoru_sec(o: GununOzeti, tenant_id, santral) -> Optional[str]:
         with tenant_baglami(tenant_id) as s:
             gecen = s.execute(text(
                 "SELECT SUM(COALESCE(energy_kwh, power_kw)) AS toplam FROM scada_hourly "
-                "WHERE plant_id=:p AND flag='valid' "
+                f"WHERE plant_id=:p AND {_ks.sql_kosulu('rapor')} "
                 "AND ts_utc >= now() - interval '7 days'"),
                 {"p": santral["id"]}).scalar()
         if gecen and gecen > 0:
@@ -117,13 +121,13 @@ def gunun_ozeti(tenant_id: str, santral: dict) -> GununOzeti:
     """Santralim'in tek cagrisi. Fable 5 v1.5: forecast_service bittikten
     sonra tum bagimliliklar hazir; okuma + sablon secimi burada."""
     o = GununOzeti()
-    tz = santral.get("tz") or "Europe/Istanbul"
+    tz = santral.get("tz") or PIYASA_TZ
 
     # ---------- 1) Veri sagligi ----------
     with tenant_baglami(tenant_id) as s:
         row = s.execute(text(
             "SELECT MAX(ts_utc) AS son_ts, "
-            " COUNT(*) FILTER (WHERE flag='valid') AS valid_n, "
+            f" COUNT(*) FILTER (WHERE {_ks.sql_kosulu('rapor')}) AS valid_n, "
             " COUNT(*) FILTER (WHERE flag<>'valid') AS anomali_n "
             "FROM scada_hourly WHERE plant_id=:p"),
             {"p": santral["id"]}).first()
@@ -205,7 +209,7 @@ def gunun_ozeti(tenant_id: str, santral: dict) -> GununOzeti:
         with tenant_baglami(tenant_id) as s:
             run_row = s.execute(text(
                 "SELECT meteo_ozet_json FROM forecast_runs "
-                "WHERE plant_id=:p ORDER BY run_at DESC LIMIT 1"),
+                f"WHERE plant_id=:p AND {_yayin_sql('forecast_runs')} ORDER BY run_at DESC LIMIT 1"),
                 {"p": santral["id"]}).first()
         if run_row and run_row.meteo_ozet_json:
             ozet = run_row.meteo_ozet_json
@@ -249,7 +253,7 @@ def saat_ay_matrisi(tenant_id: str, plant_id: str):
             raise LookupError("santral yok: %s" % plant_id)
         df = pd.read_sql(text(
             "SELECT ts_utc, power_kw FROM scada_hourly "
-            "WHERE plant_id=:p AND flag='valid'"),
+            f"WHERE plant_id=:p AND {_ks.sql_kosulu('rapor')}"),
             s.connection(), params={"p": plant_id}, parse_dates=["ts_utc"])
     tz = p["tz"] or "UTC"
     if df.empty:

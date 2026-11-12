@@ -12,6 +12,8 @@ Güvenlik: klasör adı santral kimliğiyle birebir eşleşmeli (kiracı santral
 """
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 import json
 import os
 import shutil
@@ -51,10 +53,10 @@ def dosya_isle(tenant_id, plant: dict, yol: str | Path, orijinal_ad: str, kanal:
     if yol.stat().st_size > AZAMI_BAYT:
         return {"durum": "hata", "kanal": kanal, "dosya": orijinal_ad, "hata": "dosya 50 MB sınırını aşıyor"}
     try:
-        res = ingest_file(str(yol), capacity_kwp=float(plant["capacity_kwp"]), latitude=plant["lat"], longitude=plant["lon"], source_timezone=plant.get("tz") or "Europe/Istanbul",
+        res = ingest_file(str(yol), capacity_kwp=float(plant["capacity_kwp"]), latitude=plant["lat"], longitude=plant["lon"], source_timezone=plant.get("tz") or PIYASA_TZ,
                           duplicate_policy=tekrar_politikasi(plant), ac_limit_kw=plant.get("ac_limit_kw"))
         out = ingest_service.yukle_ve_kaydet(tenant_id, plant["id"], f"{kanal}:{orijinal_ad}", capacity_kwp=float(plant["capacity_kwp"]), latitude=plant["lat"],
-                                             longitude=plant["lon"], source_timezone=plant.get("tz") or "Europe/Istanbul", hazir_sonuc=res)
+                                             longitude=plant["lon"], source_timezone=plant.get("tz") or PIYASA_TZ, hazir_sonuc=res)
     except MappingFailedError as e:
         return {"durum": "hata", "kanal": kanal, "dosya": orijinal_ad, "hata": f"kolon eşlemesi kurulamadı: {e}. Bir kez panelden yükleyip şablon kaydedin ya da başlıkları zaman/güç/enerji olarak adlandırın."}
     except DuplicateTimestampsError as e:

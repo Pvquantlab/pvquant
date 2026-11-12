@@ -9,7 +9,7 @@ import pandas as pd
 import pytest
 from sqlalchemy import text
 
-from pvquant.db import sistem_baglami
+from pvquant.db import sistem_baglami, bakim_baglami
 from pvquant.io.meteo import MeteoData
 from pvquant.services import karne_kurali as kk
 
@@ -72,7 +72,7 @@ def santral():
         cid = s.execute(text("INSERT INTO calibrations(tenant_id, plant_id, mode, params_json, active) VALUES(:t, :p, 'B', '{\"eta_bos\": 0.85}', true) RETURNING id"),
                         {"t": tid, "p": pid}).scalar()
     yield tid, {"id": pid, "tenant_id": tid, "name": "Künye GES", "capacity_kwp": 1200.0, "ac_limit_kw": 1000.0, "lat": 37.0, "lon": 32.0, "tz": "Europe/Istanbul", "params_json": {}}, str(cid)
-    with sistem_baglami() as s:
+    with bakim_baglami() as s:
         for t in ("forecast_values", "forecast_runs", "calibrations"):
             s.execute(text(f"DELETE FROM {t} WHERE tenant_id=:t"), {"t": tid})
         s.execute(text("DELETE FROM plants WHERE id=:p"), {"p": pid}); s.execute(text("DELETE FROM tenants WHERE id=:t"), {"t": tid})
@@ -90,12 +90,12 @@ def test_uret_ve_kaydet_kunye_yazar(santral, monkeypatch):
     monkeypatch.setenv("PVQ_SURUM", "test-abc123")
     run_id = fs.uret_ve_kaydet(tid, plant, etiket="elle")
     with sistem_baglami() as s:
-        r = s.execute(text("SELECT mode, kalibrasyon_id, ml_model_id, konformal_hesap_zamani, nwp_kosu_zamani, ufuk_saat, kapasite_kwp, yazilim_surumu, etiket, "
+        r = s.execute(text("SELECT mode, kalibrasyon_id, ml_model_id, konformal_hesap_zamani, nwp_kosu_zamani, ufuk_saat, satir_sayisi, kapasite_kwp, yazilim_surumu, etiket, "
                            "meteo_ozet_json->>'etiket' AS json_etiket, (SELECT count(*) FROM forecast_values v WHERE v.run_id=forecast_runs.id) AS n "
                            "FROM forecast_runs WHERE id=CAST(:r AS uuid)"), {"r": run_id}).mappings().one()
     assert r["mode"] == "B" and str(r["kalibrasyon_id"]) == cid and r["ml_model_id"] is None and r["konformal_hesap_zamani"] is None
     assert pd.Timestamp(r["nwp_kosu_zamani"]).tz_convert("UTC") == yayin
-    assert r["ufuk_saat"] == r["n"] and r["ufuk_saat"] > 0
+    assert r["satir_sayisi"] == r["n"] and 48 <= r["ufuk_saat"] <= 96   # v2.597: ufuk_saat = koşu anından son tahmin saatine ileri saat (meteo 3 gün ileriden başlar)
     assert float(r["kapasite_kwp"]) == 1200.0 and r["yazilim_surumu"] == "test-abc123"
     assert r["etiket"] == "elle" and r["json_etiket"] == "elle"
 

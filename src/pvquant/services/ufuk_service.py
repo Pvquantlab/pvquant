@@ -15,6 +15,8 @@ import numpy as np
 import pandas as pd
 
 from pvquant.config import get_settings
+from pvquant.services import kalite_sozlugu as _ks   # v2.598 (F4-C): flag süzgeci tek sözlükten
+from pvquant.services.karne_kurali import yayin_kosu_sql as _yayin_sql   # v2.597 (F4-B): yayımlanmış koşu süzgeci
 
 KOVA_SAAT = 24          # ufuk kovası genişliği (saat)
 Z10 = 1.2816            # P10/P90 için normal z
@@ -78,8 +80,9 @@ def gece_ufuk_sigma(tenant_id, plant: dict, gun: int = PENCERE_GUN) -> dict | No
     with tenant_baglami(tenant_id) as s:
         df = pd.read_sql(text(
             "SELECT f.ts_utc, r.run_at, f.p50_kw, s.power_kw FROM forecast_values f JOIN forecast_runs r ON r.id=f.run_id "
-            "JOIN scada_hourly s ON s.plant_id=f.plant_id AND s.ts_utc=f.ts_utc AND s.flag='valid' "
-            "WHERE f.plant_id=:p AND f.ts_utc >= (SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p AND flag='valid') - (:g * INTERVAL '1 day')"),
+            f"JOIN scada_hourly s ON s.plant_id=f.plant_id AND s.ts_utc=f.ts_utc AND {_ks.sql_kosulu('karne', 's')} "
+            f"WHERE f.plant_id=:p AND f.ts_utc >= (SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p AND {_ks.sql_kosulu('karne')}) - (:g * INTERVAL '1 day') "
+            f"AND {_yayin_sql('r')}"),
             s.connection(), params={"p": plant["id"], "g": gun}, parse_dates=["ts_utc", "run_at"])
     ayar = sigma_hesapla_df(df, float(plant["capacity_kwp"]))
     if ayar is None:

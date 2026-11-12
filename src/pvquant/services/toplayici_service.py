@@ -12,7 +12,9 @@ from datetime import date
 
 import pandas as pd
 
-IST = "Europe/Istanbul"
+from pvquant.zaman import PIYASA_TZ
+
+IST = PIYASA_TZ   # v2.599
 KOLONLAR = ["Tarih", "Saat", "Ceyrek", "UEVCB", "P10_MW", "P50_MW", "P90_MW", "EAK_MW"]
 
 
@@ -43,6 +45,7 @@ def tablo_uret(df: pd.DataFrame, gun: date, uevcb: str, eak_mw: float, lat: floa
         p10 = bol(p10) if p10 is not None else None
         p90 = bol(p90) if p90 is not None else None
         p50 = p50[(p50.index >= d0) & (p50.index < d1)]
+    dagitim_yontemi = getattr(p50, "attrs", {}).get("yontem") if adim == 15 else None   # v2.599: 15 dk satırlar dağıtımdır, çıktı künyesine yazılır
     yerel = p50.index.tz_convert(IST)
     out = pd.DataFrame({"Tarih": yerel.strftime("%d.%m.%Y"), "Saat": yerel.hour, "Ceyrek": yerel.minute, "UEVCB": uevcb,
                         "P10_MW": (p10.reindex(p50.index).clip(upper=eak_mw).round(3).values if p10 is not None else None),
@@ -51,6 +54,8 @@ def tablo_uret(df: pd.DataFrame, gun: date, uevcb: str, eak_mw: float, lat: floa
                         "EAK_MW": round(float(eak_mw), 3)})
     if adim == 60:
         out = out.drop(columns=["Ceyrek"])
+    if dagitim_yontemi:
+        out.attrs["dagitim_yontemi"] = dagitim_yontemi
     return out.reset_index(drop=True)
 
 

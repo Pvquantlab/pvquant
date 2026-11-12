@@ -81,7 +81,7 @@ def test_epias_sahte_tasiyici_ve_utc():
 
 
 def test_epias_onbellek(tmp_path):
-    items = [{"date": "2025-07-01T00:00:00+03:00", "price": 2600.0}]
+    items = [{"date": f"2025-07-01T{h:02d}:00:00+03:00", "price": 2600.0 + h} for h in range(24)]   # v2.604: yalnız TAM pencere önbelleğe yazılır (24 saat)
     sayac = {"n": 0}
     def handler(req):
         if req.url.path.endswith("/cas/v1/tickets"): return httpx.Response(201, text="T")

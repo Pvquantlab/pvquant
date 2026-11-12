@@ -1,14 +1,15 @@
 """Geriye tarihli GERCEK kosu: skill karnesini beklemeden doldurur.
 Kullanim: PYTHONPATH=src python scripts/dev_skill_backtest.py <plant_id> 2026-07-01
 Sahte veri URETMEZ: gercek model + tarihsel meteo + mevcut SCADA."""
-import sys, json, datetime as dt
+import sys, datetime as dt
 from pathlib import Path as _P
 sys.path.insert(0, str(_P(__file__).parent.parent))  # repo koku (apps/ icin)
 from sqlalchemy import text
 from pvquant.db import sistem_baglami, tenant_baglami
 from pvquant.io.meteo import OpenMeteoClient
 from pvquant.pipeline.forecast import forecast_7day
-from pvquant.services.calib_service import _plant_spec, aktif_kalibrasyon
+from pvquant.services.calib_service import aktif_kalibrasyon
+from pvquant.services.plant_spec_service import plant_spec_kur
 from pvquant.services.forecast_service import _f, kosu_cercevesi_denetle
 from apps.worker.main import gece_skill
 
@@ -18,12 +19,8 @@ with sistem_baglami() as s:
                            {"p": pid}).first()._mapping)
 tid = plant["tenant_id"]
 cal = aktif_kalibrasyon(tid, pid)
-spec = _plant_spec(plant)
-pr = json.loads(cal.params_json) if isinstance(cal.params_json, str) else cal.params_json
-# spec uzerine kalibre katsayilar (uret_ve_kaydet ile ayni yol)
-if "eta_bos" in pr: spec.eta_bos = pr["eta_bos"]
-if "bg" in pr or "bifacial_factor" in pr:
-    spec.bifacial_factor = pr.get("bifacial_factor", pr.get("bg"))
+# v2.597 (F4-A): kalibre katsayılar TEK noktadan (eskiden bg yanlış yuvaya — bifacial_factor'a — yazılıyordu)
+spec = plant_spec_kur(plant, cal.params_json)
 
 meteo = OpenMeteoClient().get_historical(
     latitude=plant["lat"], longitude=plant["lon"],

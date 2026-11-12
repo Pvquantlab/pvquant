@@ -8,6 +8,8 @@ Kurallar (12): program_yok, sapma_buyuk, sapma_orta, santral_degisim, ofset, ris
 tetiklenmezse «sakin». Metinler brief örnekleriyle aynı dilde; iç terim yok."""
 from __future__ import annotations
 
+from datetime import date
+
 import pandas as pd
 
 from pvquant.ext.platform import finans as fn
@@ -22,6 +24,18 @@ MARUZIYET_ASGARI_GUN = 7
 TUR_AD = {"bilgi": "bilgi", "oneri": "öneri", "eylem": "eylem"}
 ETIKET_AD = {"dogrulanmis": "Doğrulanmış risk", "tahmini": "Tahmini risk", "eksik": "Eksik bilgi", "gecti": "Revizyon fırsatı geçti", "bilgi": "Bilgi"}
 SAYI_SOZ = {1: "Bir", 2: "İki", 3: "Üç", 4: "Dört", 5: "Beş", 6: "Altı", 7: "Yedi", 8: "Sekiz", 9: "Dokuz", 10: "On"}
+
+
+_KISA_AY = ("Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara")
+
+
+def _gun_tr(iso) -> str:
+    """12.11 inceleme 4: müşteri cümlesinde ISO tarih (2026-11-12) değil panelin biçimi (12 Kas 2026); çözülemezse olduğu gibi."""
+    try:
+        d = date.fromisoformat(str(iso)[:10])
+        return f"{d.day} {_KISA_AY[d.month - 1]} {d.year}"
+    except (TypeError, ValueError):
+        return str(iso) if iso is not None else "—"
 
 
 def _tr(x, n: int = 1) -> str:
@@ -132,12 +146,12 @@ def oneriler(g: dict) -> list[dict]:
     if hedef == "yarin":
         d = pen.get("durum")
         if d == "pencere_acik":
-            ekle("pencere", "eylem", risk_et if risk_et != "eksik" else "tahmini", f"Yarının ({pen.get('hedef_gun')}) programı için bildirim penceresi açık; 15:30'a {pen.get('dakika_kaldi')} dakika kaldı. "
+            ekle("pencere", "eylem", risk_et if risk_et != "eksik" else "tahmini", f"Yarının ({_gun_tr(pen.get('hedef_gun'))}) programı için bildirim penceresi açık; 15:30'a {pen.get('dakika_kaldi')} dakika kaldı. "
                  f"TEİAŞ teyidi {pen.get('teyit_saati', '17:00')[:5]}.", "tahminler", pen)
         elif d == "erken":
             ekle("pencere", "bilgi", "bilgi", f"Yarının programı için bildirim penceresi 14:00'te açılır, 15:30'da kapanır ({pen.get('dakika_kaldi')} dakika kaldı).", "tahminler", pen)
         elif d == "gecikti":
-            ekle("pencere", "bilgi", "gecti", f"Yarın ({pen.get('hedef_gun')}) için program bildirim süresi (15:30) geçti; değişiklik yalnız gün içinde, teslimat saatinden "
+            ekle("pencere", "bilgi", "gecti", f"Yarın ({_gun_tr(pen.get('hedef_gun'))}) için program bildirim süresi (15:30) geçti; değişiklik yalnız gün içinde, teslimat saatinden "
                  "bir saat önceki kapanıştan sonraki 30 dakika içinde yapılabilir.", "tahminler", pen)
     else:
         if gi.get("acik"):

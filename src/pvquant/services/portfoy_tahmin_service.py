@@ -11,6 +11,8 @@ Kapsama sınavı: son `gun` günde her gün için gün öncesi seçimli santral 
 PICP80 / P(y<P10) / P(y>P90) / Winkler; naif toplam da yanında raporlanır. Sonuç kaydı yalnız ekleme; üyelik anlık görüntüsü meta'da."""
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 import json
 from datetime import date, datetime, timedelta, timezone
 
@@ -19,6 +21,7 @@ import pandas as pd
 from sqlalchemy import text
 
 from pvquant.db import tenant_baglami
+from pvquant.services import kalite_sozlugu as _ks   # v2.598 (F4-C): flag süzgeci tek sözlükten
 from pvquant.ext.tahmin import portfoy_belirsizlik as pb
 from pvquant.services import bagimsiz_dogrulama_service as bd
 from pvquant.services import karne_kurali as kk
@@ -55,15 +58,15 @@ def santraller(tenant_id, portfoy_id, tarih: date) -> list[dict]:
     for u in pv.uyeler(tenant_id, portfoy_id, tarih):
         if u.get("archived"):
             continue
-        out.append({"id": u["plant_id"], "name": u["santral"], "capacity_kwp": float(u["capacity_kwp"] or 0.0), "tz": u.get("tz") or "Europe/Istanbul",
+        out.append({"id": u["plant_id"], "name": u["santral"], "capacity_kwp": float(u["capacity_kwp"] or 0.0), "tz": u.get("tz") or PIYASA_TZ,
                     "lat": u.get("lat"), "lon": u.get("lon"), "segment": u.get("segment"), "params_json": u.get("params_json") or {},
                     "uyelik": {"kaynak": u["kaynak"], "dogrulama": u["dogrulama"], "gecerli_bas": u["gecerli_bas"], "gecerli_bit": u["gecerli_bit"]}})
     return out
 
 
 def _portfoy_tz(plants: list[dict]) -> str:
-    tzs = [p.get("tz") or "Europe/Istanbul" for p in plants]
-    return max(set(tzs), key=tzs.count) if tzs else "Europe/Istanbul"
+    tzs = [p.get("tz") or PIYASA_TZ for p in plants]
+    return max(set(tzs), key=tzs.count) if tzs else PIYASA_TZ
 
 
 # ---------------------------------------------------------------- koşu seçimi
@@ -83,7 +86,7 @@ def tahmin_sec(tenant_id, plant: dict, bas: datetime, bit: datetime, kural: str 
         son_run = d.loc[d["run_at"].idxmax(), "run_id"]
         sec = d[d["run_id"] == son_run]
     else:
-        sec = bd.kosu_sec(df, kural, plant.get("tz") or "Europe/Istanbul")
+        sec = bd.kosu_sec(df, kural, plant.get("tz") or PIYASA_TZ)
         if sec is None or sec.empty:
             return None, {"run_at": None, "run_id": None, "n_saat": 0, "kural": kural}
     sec = sec.drop_duplicates("ts_utc").set_index("ts_utc").sort_index()
@@ -118,7 +121,7 @@ def saatlik(tenant_id, portfoy_id, bas: datetime | None = None, bit: datetime | 
             tarih: date | None = None, gecmis_gun: int = GECMIS_GUN, kapsama_sonucu: dict | None = None, simdi: pd.Timestamp | None = None) -> dict:
     """Portföyün saatlik tahmini: üyeler (tarih; varsayılan bugün), her santral aynı `kural` ile seçilir, ortak UTC saat kümesi; ρ son `gecmis_gun`
     günün gün öncesi artıklarından. Varsayılan pencere: bugün 00:00 yerel → +2 gün (bugün ve yarın)."""
-    tz0 = "Europe/Istanbul"
+    tz0 = PIYASA_TZ   # v2.599
     bugun = _tarih(bugun, tz0); tarih = tarih or bugun
     plants = santraller(tenant_id, portfoy_id, tarih)
     if not plants:
@@ -167,7 +170,7 @@ def saatlik(tenant_id, portfoy_id, bas: datetime | None = None, bit: datetime | 
 
 def gunler(tenant_id, portfoy_id, gun: int = 7, kural: str = "son", bugun: date | None = None, gecmis_gun: int = GECMIS_GUN) -> dict:
     """Önümüzdeki `gun` günün günlük beklentisi + hafta/ay dönem bantları (gün bloğu bootstrap)."""
-    tz0 = "Europe/Istanbul"; bugun = _tarih(bugun, tz0)
+    tz0 = PIYASA_TZ; bugun = _tarih(bugun, tz0)
     plants = santraller(tenant_id, portfoy_id, bugun)
     if not plants:
         return {"durum": "uye_yok", "santral": 0}
@@ -191,7 +194,7 @@ def gunler(tenant_id, portfoy_id, gun: int = 7, kural: str = "son", bugun: date 
 def kapsama(tenant_id, portfoy_id, gun: int = KAPSAMA_GUN, bugun: date | None = None, tarih: date | None = None) -> dict:
     """Son `gun` tam yerel gün: her santral gün öncesi seçimli bant, portföy bandı ρ ile (aynı pencere, örneklem içi), ölçüm Σ y; PICP sınavı.
     Üyelik `tarih` (varsayılan bugün) itibarıyla; pencere içinde üyelik değiştiyse meta uyarır."""
-    tz0 = "Europe/Istanbul"; bugun = _tarih(bugun, tz0); tarih = tarih or bugun
+    tz0 = PIYASA_TZ; bugun = _tarih(bugun, tz0); tarih = tarih or bugun
     plants = santraller(tenant_id, portfoy_id, tarih)
     if not plants:
         return {"durum": "uye_yok", "santral": 0, "metrik": pb.kapsama_sinavi(pd.DataFrame(), 1.0)}
@@ -219,7 +222,7 @@ def kapsama(tenant_id, portfoy_id, gun: int = KAPSAMA_GUN, bugun: date | None = 
             "korelasyon": {"durum": ko["durum"], "n_gun": ko["n_gun"], "n_saat": ko["n_saat"], "yontem": ko["yontem"], "rho": ko["rho"].round(3).to_dict() if ko.get("rho") is not None else None},
             "meta": {"sozluk_surumu": SOZLUK_SURUMU, "tz": tz, "uyelik_tarihi": tarih.isoformat(), "uyelik_anlik": pv.uyelik_anlik(tenant_id, portfoy_id, tarih),
                      "uyelik_pencerede_degisti": bool(uyelik_degisti), "rho_orneklem": "örneklem içi (sınav penceresiyle aynı artıklar)",
-                     "secim": "gün öncesi (yerel gün başlamadan önceki son yayın), geriye bakışlı ve elle koşular dışarıda", "olcum": "SCADA flag='valid', gündüz saatleri"}}
+                     "secim": "gün öncesi (yerel gün başlamadan önceki son yayın), geriye bakışlı ve elle koşular dışarıda", "olcum": f"SCADA {_ks.sql_kosulu('rapor')}, gündüz saatleri"}}
 
 
 def kapsama_kaydet(tenant_id, portfoy_id, sonuc: dict) -> str:

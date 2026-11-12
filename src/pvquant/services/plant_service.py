@@ -1,6 +1,7 @@
 """Santral kutuphanesi: listele, olustur, getir, guncelle.
 Tum sorgular tenant_baglami icinde (RLS)."""
 from sqlalchemy import text
+
 from pvquant.db import tenant_baglami
 
 
@@ -33,7 +34,7 @@ def olustur(tenant_id, *, name, lat, lon, tz, capacity_kwp,
 def _olustur_ic(tenant_id, *, name, lat, lon, tz, capacity_kwp,
                 tilt, azimuth, panel_tech, ac_limit_kw):
     with tenant_baglami(tenant_id) as s:
-        return str(s.execute(text(
+        pid = str(s.execute(text(
             "INSERT INTO plants(tenant_id,name,lat,lon,tz,capacity_kwp,"
             " tilt,azimuth,panel_tech,ac_limit_kw)"
             " VALUES(:t,:n,:la,:lo,:tz,:c,:ti,:az,:pt,:ac)"
@@ -41,6 +42,10 @@ def _olustur_ic(tenant_id, *, name, lat, lon, tz, capacity_kwp,
             {"t": tenant_id, "n": name, "la": lat, "lo": lon, "tz": tz,
              "c": capacity_kwp, "ti": tilt, "az": azimuth,
              "pt": panel_tech, "ac": ac_limit_kw}).scalar())
+    # v2.599 (F4-E): ilk künye sürümü (kaynak 'kayit') — tarihli kimlik kayıtla başlar
+    from pvquant.services import santral_kunye_service
+    santral_kunye_service.ilk_surum(tenant_id, pid, dc_kwp=capacity_kwp, ac_kw=ac_limit_kw)
+    return pid
 
 
 def getir(tenant_id, plant_id):
@@ -50,14 +55,40 @@ def getir(tenant_id, plant_id):
     return dict(r._mapping) if r else None
 
 
-def guncelle(tenant_id, plant_id, **alanlar):
+def guncelle(tenant_id, plant_id, aktor_id=None, **alanlar):
+    """Güncel görünümü günceller. v2.599 (F4-E): kapasite/AC değişirse tarihli künyeye yeni sürüm açılır (plants çift yazılır) ve
+    her güncelleme denetim izine düşer (önceki/yeni değerle)."""
     if not alanlar: return
     izinli = {"name","lat","lon","tz","capacity_kwp","tilt","azimuth","panel_tech","ac_limit_kw"}
     kume = {k: v for k, v in alanlar.items() if k in izinli}
-    sset = ", ".join(f"{k}=:{k}" for k in kume)
-    with tenant_baglami(tenant_id) as s:
-        s.execute(text(f"UPDATE plants SET {sset} WHERE id=:_p"),
-                  {**kume, "_p": plant_id})
+    if not kume: return
+    onceki = getir(tenant_id, plant_id) or {}
+    guc = {k: kume[k] for k in ("capacity_kwp", "ac_limit_kw") if k in kume and _degisti(onceki.get(k), kume[k])}
+    diger = {k: v for k, v in kume.items() if k not in guc}
+    if diger:
+        sset = ", ".join(f"{k}=:{k}" for k in diger)
+        with tenant_baglami(tenant_id) as s:
+            s.execute(text(f"UPDATE plants SET {sset} WHERE id=:_p"), {**diger, "_p": plant_id})
+    if guc:
+        from datetime import date as _date
+
+        from pvquant.services import santral_kunye_service as _sk
+        alan = {}
+        if "capacity_kwp" in guc: alan["dc_kwp"] = guc["capacity_kwp"]
+        if "ac_limit_kw" in guc: alan["ac_kw"] = guc["ac_limit_kw"]
+        if _sk.guncel(tenant_id, plant_id) is None:   # künyesiz eski santral: önce mevcut değerlerle ilk sürüm
+            _sk.ilk_surum(tenant_id, plant_id, dc_kwp=onceki.get("capacity_kwp"), ac_kw=onceki.get("ac_limit_kw"))
+        _sk.yeni_surum(tenant_id, plant_id, gecerli_bas=_date.today(), aktor_id=aktor_id, kaynak="beyan", **alan)   # plants çift yazılır
+    from pvquant.services import denetim_service
+    denetim_service.kaydet("musteri", "santral_guncelle", aktor_id=aktor_id, tenant_id=tenant_id, nesne_tur="plant", nesne_id=plant_id,
+                           ayrinti={"yeni": kume, "onceki": {k: onceki.get(k) for k in kume}})
+
+
+def _degisti(a, b) -> bool:
+    try:
+        return (a is None) != (b is None) or (a is not None and abs(float(a) - float(b)) > 1e-9)
+    except (TypeError, ValueError):
+        return a != b
 def params_birlestir(tenant_id, plant_id, **anahtarlar) -> dict:
     """v2.260 — params_json'a anahtar ekle/güncelle (jsonb ||); öteki anahtarlar korunur."""
     import json as _json
@@ -81,6 +112,7 @@ def sil(tenant_id, plant_id) -> dict:
 # ---------------- v2.303: yaşam döngüsünün öbür ucu ----------------
 def arsivli_listele(tenant_id):
     from sqlalchemy import text
+
     from pvquant.db import tenant_baglami
     with tenant_baglami(tenant_id) as s:
         return [dict(r._mapping) for r in s.execute(text(
@@ -92,6 +124,7 @@ def arsivle(tenant_id, plant_id) -> dict:
     santral listelerden ve gece koşularından çekilir. Koruma: son etkin santral arşivlenemez
     (panel santralsız kalmasın; önce yenisini bağlayın)."""
     from sqlalchemy import text
+
     from pvquant.db import tenant_baglami
     with tenant_baglami(tenant_id) as s:
         etkin = s.execute(text("SELECT count(*) FROM plants WHERE NOT archived")).scalar()
@@ -103,6 +136,7 @@ def arsivle(tenant_id, plant_id) -> dict:
 
 def geri_al(tenant_id, plant_id) -> dict:
     from sqlalchemy import text
+
     from pvquant.db import tenant_baglami
     with tenant_baglami(tenant_id) as s:
         n = s.execute(text("UPDATE plants SET archived=false WHERE id=:p AND archived"), {"p": plant_id}).rowcount

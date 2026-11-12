@@ -307,7 +307,8 @@ def saatlik_topla(tenant_id, plant: dict, simdi: datetime | None = None, geri_sa
             n = 0
             for ts, t in sorted(toplam.items()):
                 n += s.execute(text(
-                    "INSERT INTO scada_hourly(tenant_id,plant_id,ts_utc,power_kw,energy_kwh,flag,batch_id,kapsama_dk) VALUES(:t,:p,:ts,:pk,:e,'valid',:b,60) "   # v2.573: yalnız tam saatler yazılır
+                    "INSERT INTO scada_hourly(tenant_id,plant_id,ts_utc,power_kw,energy_kwh,flag,batch_id,kapsama_dk,kaynak,alinma_zamani,aralik_dk,kaynak_damga_tipi) "
+                    "VALUES(:t,:p,:ts,:pk,:e,'valid',:b,60,'canli',now(),60,'aralik_basi') "   # v2.573: yalnız tam saatler yazılır; v2.598: künye
                     "ON CONFLICT (plant_id, ts_utc) DO NOTHING"),
                     {"t": tenant_id, "p": plant["id"], "ts": ts, "pk": round(t["power_kw"], 3), "e": round(t["energy_kwh"], 3), "b": batch_id}).rowcount
         else:

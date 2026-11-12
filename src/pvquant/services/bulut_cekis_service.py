@@ -14,6 +14,8 @@ import json
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
+from pvquant.zaman import PIYASA_TZ
+
 IS_ADI = "bulut_cekis"
 GUNLUK_TAVAN = 24
 KAYNAK = "fusionsolar"
@@ -44,7 +46,7 @@ def satirlar(data: list[dict]) -> list[dict]:
 
 def gunler(simdi: datetime, tz_adi: str | None) -> list[datetime]:
     """SAF. Çekilecek günler (yerel gece yarısı, saat dilimli): bugün; yerel saat 01:xx ise dün de (geç gelen saatlerin tamamlanması)."""
-    tz = ZoneInfo(tz_adi or "Europe/Istanbul")
+    tz = ZoneInfo(tz_adi or PIYASA_TZ)
     yerel = simdi.astimezone(tz)
     bugun = yerel.replace(hour=0, minute=0, second=0, microsecond=0)
     return [bugun, bugun - timedelta(days=1)] if yerel.hour == 1 else [bugun]
@@ -111,7 +113,7 @@ def tur(simdi: datetime | None = None, kayitlar: list[dict] | None = None, coz=N
         gruplar.setdefault((sg, k.get("bolge") or sicil.get("varsayilan_bolge"), tuple(sorted((a, str(v)) for a, v in kim.items()))), []).append(k)
     for (sg, bolge, kim_t), grup in gruplar.items():
         sicil = AKTIF_SAGLAYICILAR[sg]; tavan = int(sicil.get("gunluk_tavan") or GUNLUK_TAVAN); sinif = istemci_fabrikasi or sicil["sinif"]; kim = dict(kim_t)
-        tz_adi = grup[0].get("tz") or "Europe/Istanbul"
+        tz_adi = grup[0].get("tz") or PIYASA_TZ
         bugun = simdi.astimezone(ZoneInfo(tz_adi)).date()
         sayac = kota_sayaci(grup, bugun)
         gl = gunler(simdi, tz_adi)
@@ -124,6 +126,9 @@ def tur(simdi: datetime | None = None, kayitlar: list[dict] | None = None, coz=N
         c = None
         try:
             c = sinif(bolge)
+            if getattr(c, "OAUTH", False) and hasattr(c, "uygulama_getir"):   # v2.603 (F4-I): OAuth istemcisine platform uygulaması sağlayıcısı enjekte edilir (io → services bağı kalktı)
+                from pvquant.services.bulut_oauth_service import uygulama as _uyg
+                c.uygulama_getir = _uyg
             c.kimlik_yenile = lambda yeni, grup=grup, sg=sg: [kimlik_guncelle(k["tenant_id"], k["plant_id"], sg, yeni) for k in grup]   # Sungrow token yenilemesi → zarf şifreli
             c.giris(kim)
             n_ham = n_golge = 0

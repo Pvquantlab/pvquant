@@ -43,6 +43,11 @@ export const SOZLUK = {
     santral_segment: "Segment / UEVÇB ayarlandı", eak_ayar: "EAK ayarı değiştirildi", sensor_ayar: "Sensör envanteri değiştirildi", veri_yolu_ayar: "Veri kaynağı beyanı değiştirildi", veri_yolu_nokta_tablosu: "IEC 104 nokta tablosu yüklendi", uretim_dosyasi_itme: "Üretim dosyası itildi (dış API)", bulut_kimlik_kaydet: "Bulut kimliği şifreli kaydedildi", bulut_kimlik_ayar: "Bulut çekiş ayarı değiştirildi", bulut_kimlik_sil: "Bulut kimliği silindi", bulut_oauth_baslat: "Bulut sahip onayı başlatıldı", bulut_oauth_donus: "Bulut sahip onayı dönüşü işlendi", bulut_birim_kiyas: "Bulut birim kıyası yapıldı", pilot_kapi: "Pilot kapısı beyanı değiştirildi", pilot_referans: "Pilot referans kıyası yapıldı", edge_toplayici_olustur: "Saha toplayıcısı anahtarı üretildi", edge_toplayici_iptal: "Saha toplayıcısı anahtarı iptal edildi", veri_yolu_sinama: "Veri kaynağı bağlantısı sınandı",
     santral_tarihler: "Santral tarihleri ayarlandı",   // v2.518 (P3a)
     olay_ekle: "Olay kaydı açıldı", olay_guncelle: "Olay kaydı güncellendi",   // v2.521 (P1a)
+    // v2.602 (Faz 4 F4-H) — izsiz uçlar iz bırakır; v2.603 platform temizliği
+    santral_ekle: "Santral eklendi", tarife_ayar: "Satış tarifesi değiştirildi", alarm_kural_ayar: "Alarm kuralları değiştirildi", fizik_terim_ayar: "Fizik terimleri değiştirildi",
+    epias_uretim_ayar: "EPİAŞ santral kimliği değiştirildi", paylasim_ekle: "Veri paylaşımı açıldı", paylasim_iptal: "Veri paylaşımı iptal edildi",
+    elle_kosu: "Tahmin elle istendi", scada_yukle: "SCADA dosyası yüklendi", iki_adim_kapat: "İki adımlı doğrulama kapatıldı", iki_adim_kurtarma_yenile: "Kurtarma kodları yenilendi",
+    webhook_dene: "Webhook denemesi gönderildi", denetim_temizlik: "Denetim izi saklama temizliği",   // uretim_dosyasi_itme ve sayac_ayar zaten yukarıda/aşağıda
     mutabakat_yukle: "Uzlaştırma bildirimi yüklendi", dsg_belge_indir: "DSG üye dağılımı belgesi indirildi",   // v2.522 (P2b)
     sayac_yukle: "Sayaç dosyası yüklendi", sayac_ayar: "Sayaç ve SCADA ayarı değişti",   // v2.523 (P4a)
     mutabakat_saatlik_yukle: "EPYS saatlik detayı yüklendi", mutabakat_saatlik_indir: "Saatlik kıyas indirildi",   // v2.527 (P2b-2)

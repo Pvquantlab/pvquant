@@ -1,15 +1,29 @@
 """PVQuant worker — dort is: sabah tahmini, gece skill, aylik kalibrasyon, alarm."""
 from __future__ import annotations
-import datetime as dt, traceback
-import pandas as pd
-from sqlalchemy import text
-from apscheduler.schedulers.blocking import BlockingScheduler
-from pvquant.db import sistem_baglami, tenant_baglami
-from pvquant.services import forecast_service, calib_service, plant_service
-from pvquant.services.alarm_service import tara as alarm_tara, kgup_kontrol as alarm_kgup_kontrol, kgup_revizyon_kontrol as alarm_kgup_revizyon
-from pvquant.services.alarm_service import iletisim_kontrol as alarm_iletisim, ptf_kontrol as alarm_ptf, hatirlatma_teminat as alarm_teminat, hatirlatma_avans as alarm_avans   # v2.519 (P7a)
 
+import datetime as dt
+import json as _json
 import os as _os
+import traceback
+
+import pandas as pd
+from apscheduler.schedulers.blocking import BlockingScheduler
+from sqlalchemy import text
+
+from pvquant.db import sistem_baglami, tenant_baglami
+from pvquant.services import calib_service, forecast_service, plant_service
+from pvquant.services import kalite_sozlugu as _ks  # v2.598 (F4-C): flag süzgeci tek sözlükten
+from pvquant.services.alarm_service import hatirlatma_avans as alarm_avans
+from pvquant.services.alarm_service import hatirlatma_teminat as alarm_teminat
+from pvquant.services.alarm_service import iletisim_kontrol as alarm_iletisim  # v2.519 (P7a)
+from pvquant.services.alarm_service import kgup_kontrol as alarm_kgup_kontrol
+from pvquant.services.alarm_service import kgup_revizyon_kontrol as alarm_kgup_revizyon
+from pvquant.services.alarm_service import ptf_kontrol as alarm_ptf
+from pvquant.services.alarm_service import tara as alarm_tara
+from pvquant.services.karne_kurali import yayin_kosu_sql as _yayin_sql  # v2.597 (F4-B)
+from pvquant.services.santral_kunye_service import guc_tanimlari as _guc_tanimlari  # v2.599 (F4-E)
+from pvquant.zaman import PIYASA_TZ
+
 try:
     import sentry_sdk
     if _os.environ.get("PVQ_SENTRY_DSN"):
@@ -18,6 +32,11 @@ try:
 except ImportError:
     pass  # sentry-sdk kurulu değilse sessiz geç (dev ortamı)
 
+
+
+def _guc_dc(plant) -> float:
+    """v2.599: karne gündüz maskesi paydası tek kaynaktan (DC)."""
+    return float(_guc_tanimlari(plant)["dc_kwp"])
 
 def _tum_santraller():
     with sistem_baglami() as s:
@@ -35,19 +54,22 @@ def _logla(job, fn):
         for plant in _tum_santraller():
             bas = dt.datetime.now(dt.timezone.utc)
             durum, det = "ok", ""
+            sonuc_json = None
             try:
                 sonuc = fn(plant)
                 if sonuc:
                     det = str(sonuc)
+                    if isinstance(sonuc, dict):   # v2.598 (F4-C): yapılı sonuç — veri yolu durumu regex yerine bunu okur
+                        sonuc_json = _json.dumps(sonuc, default=str)
             except Exception as e:
                 durum, det = "error", f"{type(e).__name__}: {e}"
                 traceback.print_exc()
             with sistem_baglami() as s:
                 s.execute(text(
                     "INSERT INTO jobs_log(job,tenant_id,plant_id,started,"
-                    " finished,status,detail) VALUES(:j,:t,:p,:b,now(),:s,:d)"),
+                    " finished,status,detail,sonuc_json) VALUES(:j,:t,:p,:b,now(),:s,:d,CAST(:sj AS jsonb))"),
                     {"j": job, "t": plant["tenant_id"], "p": plant["id"],
-                     "b": bas, "s": durum, "d": det[:500]})
+                     "b": bas, "s": durum, "d": det[:500], "sj": sonuc_json})
     return ic
 
 
@@ -64,7 +86,9 @@ def kova_etiketle(ufuk_s: "pd.Series") -> "pd.Series":
     baslayinca 3-7g ile 7-15g ayni kovada bulaniklasirdi. Simdi:
     (0,24] / (24,72] / (72,168] / (168,999]. Kova-bazli konformal ayarin
     (defter madde b) hakem verisi 168+ kovasinda birikecek."""
-    from pvquant.services.karne_kurali import kova_etiketle as _ke   # v2.568: tek kural (metin etiket; yeni kovalar eklenebilir)
+    from pvquant.services.karne_kurali import (
+        kova_etiketle as _ke,  # v2.568: tek kural (metin etiket; yeni kovalar eklenebilir)
+    )
     return _ke(ufuk_s)
 
 
@@ -151,7 +175,7 @@ def gece_skill(plant, pencere_gun: int = 10):
             "FROM forecast_values f "
             "JOIN forecast_runs r ON r.id=f.run_id "
             "JOIN scada_hourly s ON s.plant_id=f.plant_id AND s.ts_utc=f.ts_utc"
-            " AND s.flag='valid' "
+            f" AND {_ks.sql_kosulu('karne', 's')} "
             "WHERE f.plant_id=:p AND f.ts_utc >= now()-(:g * INTERVAL '1 day')"),
             s.connection(), params={"p": pid, "g": pencere_gun},
             parse_dates=["ts_utc", "run_at"])
@@ -164,7 +188,7 @@ def gece_skill(plant, pencere_gun: int = 10):
     if df.empty:
         return
     df["gun"] = df.ts_utc.dt.date
-    gunduz = _kk.gunduz_maskesi(df.power_kw, float(plant["capacity_kwp"]))
+    gunduz = _kk.gunduz_maskesi(df.power_kw, _guc_dc(plant))   # v2.599: payda tek kaynaktan (DC)
     df = df[gunduz]
     if df.empty:
         return
@@ -174,6 +198,7 @@ def gece_skill(plant, pencere_gun: int = 10):
     # (2) berrak-gok orani: dun bulutlu / bugun acik farki citaya islenir;
     #     duz 'dun=bugun' citasi puani sisiriyordu (kitap Kutu 14 tuzagi).
     import pvlib as _pvlib
+
     from pvquant.config import get_settings as _gs
     _clip = _gs().skill_naive_ratio_clip
     # v2.130: naif kaynagi pencere+1 gun — kayan pencerenin ilk tam gununun
@@ -186,7 +211,7 @@ def gece_skill(plant, pencere_gun: int = 10):
     with tenant_baglami(tid) as s:
         _act = pd.read_sql(text(
             "SELECT ts_utc, power_kw FROM scada_hourly "
-            "WHERE plant_id=:p AND flag='valid' "
+            f"WHERE plant_id=:p AND {_ks.sql_kosulu('karne')} "
             "AND ts_utc >= now()-((:g + 1) * INTERVAL '1 day')"),
             s.connection(), params={"p": pid, "g": pencere_gun},
             parse_dates=["ts_utc"]).drop_duplicates("ts_utc") \
@@ -218,9 +243,10 @@ def gece_skill(plant, pencere_gun: int = 10):
         s.execute(text(
             "INSERT INTO skill_daily(tenant_id,plant_id,date,horizon_bucket,"
             " mape,rmse,skill_vs_naive,naive_wmape,nmae,nrmse,nmbe,"
-            " pinball_p10,pinball_p50,pinball_p90,crps,picp80,kapsama_p10,kapsama_p90,bant_n,cliper_wmape,skill_vs_cliper)"
-            " VALUES(:t,:p,:g,:k,:m,:r,:s,:n,:na,:nr,:nb,:q10,:q50,:q90,:cr,:pc,:k10,:k90,:bn,:cw,:sc) "
+            " pinball_p10,pinball_p50,pinball_p90,crps,picp80,kapsama_p10,kapsama_p90,bant_n,cliper_wmape,skill_vs_cliper,hesap_zamani)"
+            " VALUES(:t,:p,:g,:k,:m,:r,:s,:n,:na,:nr,:nb,:q10,:q50,:q90,:cr,:pc,:k10,:k90,:bn,:cw,:sc,now()) "
             "ON CONFLICT (plant_id,date,horizon_bucket) DO UPDATE SET "
+            " hesap_zamani=now(), yeniden_hesap_sayisi=skill_daily.yeniden_hesap_sayisi+1,"   # v2.597 (F4-B): «yeniden hesaplandı» bayrağı
             " mape=EXCLUDED.mape, rmse=EXCLUDED.rmse,"
             " skill_vs_naive=EXCLUDED.skill_vs_naive,"
             " naive_wmape=EXCLUDED.naive_wmape,"
@@ -237,6 +263,12 @@ def gece_ufuk_sigma(plant, pencere_gun: int = 60):
     r = ufuk_service.gece_ufuk_sigma(plant["tenant_id"], plant, gun=pencere_gun)
     if r:
         print("gece_ufuk_sigma:", plant.get("name"), {k: r["sigma_kw"][k] for k in list(r["sigma_kw"])[:3]}, "…", r["n"], "saat")
+def gece_kural_sicili(_plant=None):
+    """v2.600 (F4-F): mevzuat kural sicilinin anlık görüntüsü — sha16 yeni ise kural_sicili_anlik'e satır; sonuç jobs_log.sonuc_json'da."""
+    from pvquant.services import kural_sicili_service
+    return kural_sicili_service.gece_kural_sicili()
+
+
 def gece_meteo(_plant=None):
     """v2.268 (Dalga 0) — açık NWP koşularını (ECMWF IFS + ICON-EU) indirip TÜM santrallerin noktalarını
     meteo_arsiv'e yazar; günde bir kez (gece_piyasa kalıbı). sabah_tahmin arşivden okur — API'ye çıkmaz."""
@@ -264,6 +296,7 @@ def gun_ici_tahmin(plant):
     if _gs().meteo_kaynak != "acik" or not _gs().gun_ici_guncelleme:
         return
     import datetime as _dt
+
     from pvquant.io import acik_nwp
     damga = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H")
     if getattr(gun_ici_tahmin, "_son", None) != damga:   # ICON tazeleme saatte bir, santral döngüsünde tek sefer
@@ -299,8 +332,9 @@ def gece_kur(_plant=None):
 def gece_piyasa(_plant=None):
     """v2.258 — EPİAŞ fiyatları (tenant'sız, günde bir kez yeter; _logla santral döngüsünden çağırır,
     ikinci santralde tekrar çekmemek için 'bugün çekildi' bayrağı)."""
-    from pvquant.services import piyasa_service
     import datetime as _dt
+
+    from pvquant.services import piyasa_service
     bugun = _dt.date.today().isoformat()
     if getattr(gece_piyasa, "_son", None) == bugun:
         return
@@ -327,17 +361,21 @@ def gece_finansal_etki(plant):
     """v2.583 (Faz 2 F2-E): Finansal Etki Merkezi — dün (gün) ve ay başından bugüne (ay) için birleşik özet; sonuç yalnız-ekleme tablosuna
     (finansal_etki_sonuc). Senaryo hesabı yazılmaz; ölçümü olmayan dönem atlanır (uydurulmaz). Uzlaştırma, tarife ve mutabakat servisleri DOKUNULMAZ."""
     from zoneinfo import ZoneInfo
+
     from pvquant.ext.platform import finans as fn
     from pvquant.services import finansal_etki_service as fe
-    tz = plant.get("tz") or "Europe/Istanbul"
+    tz = plant.get("tz") or PIYASA_TZ
     bugun = dt.datetime.now(ZoneInfo(tz)).date()
     out = []
     for kod in ((bugun - dt.timedelta(days=1)).isoformat(), fn.donem_kodu(bugun, "ay")):
         o = fe.ozet(plant["tenant_id"], plant, kod, bugun=bugun)
         if not o["uretim"]["gerceklesen"]["saat"]:
             out.append(f"{kod}: ölçüm yok, atlandı"); continue
+        ayni = fe.ayni_girdili_kayit(plant["tenant_id"], plant, o)   # v2.601 (F4-G): aynı girdi → aynı sonuç; yeni satır yazılmaz
+        if ayni:
+            out.append(f"{kod}: girdi değişmedi, kayıt {ayni[:8]} geçerli"); continue
         fe.kaydet(plant["tenant_id"], o, plant["id"])
-        out.append(f"{kod}: toplam={o['toplam']['tutar_tl']} ({o['toplam']['nitelik']})")
+        out.append(f"{kod}: toplam={o['toplam']['tutar_tl']} ({o['toplam']['nitelik']}; {o['meta']['hesap_durumu']})")
     return "; ".join(out)
 
 
@@ -346,13 +384,14 @@ def gece_portfoy(bugun=None):
     dünün ve ayın sapma görünümü, DSG portföylerinde üç perspektif, bugün+yarın portföy tahmini → portfoy_sonuc (YALNIZ EKLEME; üyelik/sözleşme anlık görüntüsü meta'da).
     Veri olmayan dönem atlanır (uydurulmaz). Santral tahmini, uzlaştırma ve FEM servisleri DOKUNULMAZ."""
     from zoneinfo import ZoneInfo
+
     from pvquant.ext.platform import finans as fn
     from pvquant.services import portfoy_dsg_service as sd
     from pvquant.services import portfoy_finans_service as pfs
     from pvquant.services import portfoy_sapma_service as sp
     from pvquant.services import portfoy_tahmin_service as pt
     from pvquant.services import portfoy_varlik_service as pv
-    bugun = bugun or dt.datetime.now(ZoneInfo("Europe/Istanbul")).date()
+    bugun = bugun or dt.datetime.now(ZoneInfo(PIYASA_TZ)).date()
     with sistem_baglami() as s:
         kiracilar = [str(r[0]) for r in s.execute(text("SELECT id FROM tenants WHERE status = 'active'"))]
     out = []
@@ -376,19 +415,20 @@ def gece_portfoy(bugun=None):
                         parca.append(f"sapma {kod}: {o['ozet']['program_sapma']['mwh']} MWh")
                     else:
                         parca.append(f"sapma {kod}: ölçüm yok, atlandı")
-                    f = pfs.donem(tid, pid, kod, bugun=bugun)   # v2.594 (F3-G): santral FEM kayıtları (03:55) + DSG perspektifi → portföy finansal satırı
-                    if f.get("durum") == "ok" and f["toplam"]["tutar_tl"] is not None:
-                        pv.sonuc_kaydet(tid, pid, "finans", {"kod": kod, "bas": f["donem"]["bas"], "bit": f["donem"]["bit"]}, f, f["meta"])
-                        parca.append(f"finans {kod}: {f['toplam']['tutar_tl']} TL ({f['toplam']['nitelik']})")
-                    else:
-                        parca.append(f"finans {kod}: hesaplanamadı, atlandı")
-                    if pf["tur"] == "dsg":
+                    d = None
+                    if pf["tur"] == "dsg":   # v2.601 (F4-G): DSG dönemi BİR kez hesaplanır; finans satırı aynı sonucu kullanır (Faz 3 inceleme 5–6)
                         d = sd.donem(tid, pid, kod, bugun=bugun)
                         if d.get("durum") == "ok" and d["dsg"].get("n_saat"):
                             pv.sonuc_kaydet(tid, pid, "dsg", {"kod": kod, "bas": d["donem"]["bas"], "bit": d["donem"]["bit"]}, d, d["meta"])
                             parca.append(f"dsg {kod}: {d['perspektifler']['ozet']['etiket']}")
                         else:
                             parca.append(f"dsg {kod}: {d.get('durum') or 'veri yok'}, atlandı")
+                    f = pfs.donem(tid, pid, kod, bugun=bugun, dsg_sonuc=d)   # v2.594 (F3-G): santral FEM kayıtları (03:55) + DSG perspektifi → portföy finansal satırı
+                    if f.get("durum") == "ok" and f["toplam"]["tutar_tl"] is not None:
+                        pv.sonuc_kaydet(tid, pid, "finans", {"kod": kod, "bas": f["donem"]["bas"], "bit": f["donem"]["bit"]}, f, f["meta"])
+                        parca.append(f"finans {kod}: {f['toplam']['tutar_tl']} TL ({f['toplam']['nitelik']}; {f['meta']['hesap_durumu']})")
+                    else:
+                        parca.append(f"finans {kod}: hesaplanamadı, atlandı")
                 t = pt.saatlik(tid, pid, kural="son", bugun=bugun)
                 if t.get("durum") == "ok" and t["pencere"]["n_saat"]:
                     pv.sonuc_kaydet(tid, pid, "tahmin", {"kod": bugun.isoformat(), "bas": bugun.isoformat(), "bit": (bugun + dt.timedelta(days=2)).isoformat()}, t,
@@ -468,6 +508,7 @@ def gunluk_beklenti(plant, geriye_gun: int = 120):
                 "AND run_at < :d0 "
                 "AND EXISTS (SELECT 1 FROM forecast_values v"
                 "  WHERE v.run_id = forecast_runs.id) "
+                f"AND {_yayin_sql('forecast_runs')} "   # v2.597: geriye bakışlı koşu günlük beklentiye girmez
                 "ORDER BY run_at DESC LIMIT 1"),
                 {"p": pid, "d0": d0_utc}).first()
             if not run:
@@ -575,7 +616,7 @@ def rapor_alanlari(plant, pencere_gun: int = 120):
     with tenant_baglami(tid) as s:
         _kts = pd.read_sql(text(
             "SELECT ts_utc FROM scada_hourly WHERE plant_id=:p "
-            "AND flag='valid' AND ts_utc >= now()-INTERVAL '31 days'"),
+            f"AND {_ks.sql_kosulu('karne')} AND ts_utc >= now()-INTERVAL '31 days'"),
             s.connection(), params={"p": pid}, parse_dates=["ts_utc"]).ts_utc
     kapsama = karne_kapsama_hesapla(_kts, plant["tz"])
     # --- B5 ---
@@ -586,7 +627,7 @@ def rapor_alanlari(plant, pencere_gun: int = 120):
             "FROM forecast_values f "
             "JOIN forecast_runs r ON r.id=f.run_id "
             "JOIN scada_hourly sc ON sc.plant_id=f.plant_id "
-            " AND sc.ts_utc=f.ts_utc AND sc.flag='valid' "
+            f" AND sc.ts_utc=f.ts_utc AND {_ks.sql_kosulu('karne', 'sc')} "
             "WHERE f.plant_id=:p AND f.ts_utc >= now()-(:g * INTERVAL '1 day')"),
             s.connection(), params={"p": pid, "g": pencere_gun},
             parse_dates=["ts_utc", "run_at"])
@@ -594,14 +635,16 @@ def rapor_alanlari(plant, pencere_gun: int = 120):
     if not df.empty:
         df["ts_utc"] = pd.to_datetime(df.ts_utc, utc=True)
         df["run_at"] = pd.to_datetime(df.run_at, utc=True)
-        from pvquant.services import karne_kurali as _kk   # v2.568: karneyle aynı seçim (önceden en kısa ufuk tutuluyordu — iyimser)
+        from pvquant.services import (
+            karne_kurali as _kk,  # v2.568: karneyle aynı seçim (önceden en kısa ufuk tutuluyordu — iyimser)
+        )
         df = _kk.ana_kovalar(_kk.karne_secimi(df))
         if df.empty:
             df = pd.DataFrame(columns=["ts_utc", "p50_kw", "run_at", "power_kw", "ufuk_s", "kova"])
         yerel = pd.to_datetime(df.ts_utc, utc=True).dt.tz_convert(plant["tz"])
         df["saat"], df["gun"] = yerel.dt.hour, yerel.dt.date
         d24 = df[(df.kova == "0-24")]
-        d24g = d24[_kk.gunduz_maskesi(d24.power_kw, float(plant["capacity_kwp"]))]
+        d24g = d24[_kk.gunduz_maskesi(d24.power_kw, _guc_dc(plant))]
         if len(d24g) > 0:
             med = d24g.groupby("saat").power_kw.median()
             prof = [round(float(med.get(h, 0.0)) / 1000, 1) for h in range(5, 20)]
@@ -642,8 +685,9 @@ def rapor_alanlari(plant, pencere_gun: int = 120):
 
 def rapor_gonderimi(plant):
     """v2.525 (raporlama): zamanlanmış dönem raporu — her gün bakar; aktif, günü gelmiş ve bu ay için henüz gönderilmemiş santrala önceki ayın raporunu e-postalar."""
-    from pvquant.services import aylik_rapor_service
     import json as _j
+
+    from pvquant.services import aylik_rapor_service
     pj = plant.get("params_json") or {}
     pj = _j.loads(pj) if isinstance(pj, str) else pj
     bugun = dt.datetime.now(dt.timezone(dt.timedelta(hours=3))).date()
@@ -704,6 +748,7 @@ def tam_tur():
     takvimin/kullanıcının işi). --once ve açılış yakalaması (v2.336) ortak kullanır."""
     _logla_tek("gece_meteo", gece_meteo)()                  # v2.268 (Dalga 0): NWP arşivi önce
     _logla_tek("gece_piyasa", gece_piyasa)()                # v2.258 (kimlik yoksa atlar)
+    _logla_tek("gece_kural_sicili", gece_kural_sicili)()    # v2.600 (F4-F)
     _logla("gece_epias_uretim", gece_epias_uretim)()    # v2.278 (kimlik/eşleme yoksa atlar)
     _logla("gece_hijyen", gece_hijyen)()                # v2.254 (skill'den once)
     _logla("gece_skill", gece_skill)()
@@ -723,18 +768,22 @@ def _logla_tek(job, fn):
     def ic():
         bas = dt.datetime.now(dt.timezone.utc)
         durum, det = "ok", ""
+        sonuc_json = None
         try:
             r = fn()
             if isinstance(r, str):   # 29.10: temizlik işleri sonucunu (silinen sayısı) döner — detail'e yazılsın
                 det = r
+            elif isinstance(r, dict):   # v2.600 (F4-F): yapılı sonuç (gece_kural_sicili) — _logla ile aynı sözleşme
+                det = str(r)
+                sonuc_json = _json.dumps(r, default=str)
         except Exception as e:
             durum, det = "error", f"{type(e).__name__}: {e}"
             traceback.print_exc()
         with sistem_baglami() as s:
             s.execute(text(
                 "INSERT INTO jobs_log(job,tenant_id,plant_id,started,"
-                " finished,status,detail) VALUES(:j,NULL,NULL,:b,now(),:s,:d)"),
-                {"j": job, "b": bas, "s": durum, "d": det[:500]})
+                " finished,status,detail,sonuc_json) VALUES(:j,NULL,NULL,:b,now(),:s,:d,CAST(:sj AS jsonb))"),
+                {"j": job, "b": bas, "s": durum, "d": det[:500], "sj": sonuc_json})
     return ic
 
 
@@ -791,8 +840,8 @@ def acilis_yakalama():
     v2.339: ölçüt İŞ BAZINA indi (isler_service.bayat_isler) — "grubun biri koştu"
     demek yetmiyordu: 18 Eyl'de gece_skill koştuğu için grup taze sayıldı ve
     sabah_tahmin'in 10 gündür koşmadığı gözden kaçtı."""
-    from pvquant.services.isler_service import bayat_isler, kacan_isler_db
     from pvquant.config import get_settings as _gs
+    from pvquant.services.isler_service import bayat_isler, kacan_isler_db
     cfg = _gs()
     # v2.536 (04.11 canlı bulgusu): 30 saat ölçütü dağıtımla kesilen gece turunu görmedi (v2.532, 05:03 TSİ: gece_meteo ve sabah_tahmin
     # kesildi, dünkü koşular «taze» sayıldı). Ek ölçüt: bugünkü cron slotu geçmiş ve o slottan sonra başarılı koşu yoksa iş KAÇMIŞTIR.
@@ -825,8 +874,12 @@ def acilis_yedek():
 def denetim_temizlik():
     """26.10 denetim D6 — denetim izi saklama: PVQUANT_DENETIM_SAKLAMA_AY > 0 ise giriş/giriş_basarisiz/kiraci_goruntule satırlarının
     N aydan eskisi silinir; yazma eylemleri kalıcı. Ayar 0 (varsayılan) hiçbir şey silmez; sonuç jobs_log detail'e yazılır."""
+    from pvquant.config import get_settings
     from pvquant.services import denetim_service, kullanim_service
     n = denetim_service.temizle()
+    if n:   # v2.602 (F4-H): silme yalnız DB sahibi bağlamında ve kendi izini bırakır (politika: TEMIZLENEN_EYLEMLER, saklama ayı)
+        denetim_service.kaydet("platform", "denetim_temizlik", nesne_tur="denetim_izi",
+                               ayrinti={"silinen": int(n), "saklama_ay": int(get_settings().denetim_saklama_ay or 0), "eylemler": list(denetim_service.TEMIZLENEN_EYLEMLER)})
     hp = kullanim_service.pencere_temizle()   # 26.10 denetim-3: eski hız pencereleri (IP/anahtar başına kalıcı satır birikmesin)
     return (f"silinen: {n}" if n else "ayar 0 ya da silinecek satır yok") + f"; hız penceresi: {hp}"
 
@@ -834,8 +887,8 @@ def denetim_temizlik():
 def kgup_arsiv_temizlik():
     """29.10 F-06 saklama — KGÜP sürüm arşivinde teslim günü PVQUANT_KGUP_SAKLAMA_AY (varsayılan 24, taban 15) aydan eski satırlar
     aylık silinir; ayar 0 hiçbir şey silmez. Sonuç jobs_log detail'e yazılır."""
-    from pvquant.services import kgup_arsiv_service
     from pvquant.config import get_settings
+    from pvquant.services import kgup_arsiv_service
     ay = int(get_settings().kgup_saklama_ay or 0)
     n = kgup_arsiv_service.temizle()
     return f"saklama {max(ay, kgup_arsiv_service.SAKLAMA_TABAN_AY)} ay; silinen: {n}" if ay > 0 else "ayar 0 — silme yok"
@@ -851,7 +904,9 @@ def gece_yedek():
     import glob
     import gzip
     import subprocess
+
     from sqlalchemy.engine import make_url
+
     from pvquant.config import get_settings
     cfg = get_settings()
     if _os.environ.get("PVQ_YEDEK_KAPALI"):
@@ -887,6 +942,7 @@ def gece_yedek():
 
 if __name__ == "__main__":
     import sys
+
     from pvquant.config import get_settings
     cfg = get_settings()
     if "--once" in sys.argv:
@@ -901,6 +957,7 @@ if __name__ == "__main__":
     if cfg.gun_ici_guncelleme:                                              # v2.276: gün içi koşular (ICON taze)
         sch.add_job(_logla("gun_ici_tahmin", gun_ici_tahmin), "cron", hour=cfg.gun_ici_saatler, minute=30)
     sch.add_job(_logla_tek("gece_piyasa", gece_piyasa), "cron", hour=cfg.worker_hour_skill, minute=15)   # v2.258; 25.10 O5: tek satır
+    sch.add_job(_logla_tek("gece_kural_sicili", gece_kural_sicili), "cron", hour=cfg.worker_hour_skill, minute=8)   # v2.600 (F4-F): sicil anlık görüntüsü (sha yeni ise), FEM'den önce
     sch.add_job(_logla_tek("gun_oncesi_ptf", gun_oncesi_ptf), "cron", hour=11, minute=35)   # 29.10 v2.505: GÖP sonrası yarının PTF'si (14:35 TSİ)
     sch.add_job(_logla_tek("gece_kur", gece_kur), "cron", hour=13, minute=5)   # 01.11 v2.520 (P5a): TCMB kuru 16:05 TSİ (bülten 15:30)
     sch.add_job(_logla("gece_epias_uretim", gece_epias_uretim), "cron", hour=cfg.worker_hour_skill, minute=18)   # v2.278
@@ -948,7 +1005,7 @@ if __name__ == "__main__":
                 run_date=dt.datetime.now(dt.timezone.utc) + dt.timedelta(seconds=45))
     # 25.10 Faz 3: zamanlayıcı NABZI — sistem_nabiz'e tek satır UPSERT, her NABIZ_ARALIK_DK dakikada. jobs_log'a
     # yazılmaz (müşterinin «gece işleri» listesine sızardı). Nabız «zamanlayıcı ayakta» demektir; işler ayrı izlenir.
-    from pvquant.services.sistem_service import nabiz_yaz, NABIZ_ARALIK_DK
+    from pvquant.services.sistem_service import NABIZ_ARALIK_DK, nabiz_yaz
     _baslatma = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
     def _nabiz():
         nabiz_yaz("worker", {"baslatma": _baslatma, "is_sayisi": len(sch.get_jobs()), "aralik_dk": NABIZ_ARALIK_DK})

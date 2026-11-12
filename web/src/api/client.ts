@@ -17,6 +17,8 @@ interface ForecastYanit {
   plant_id: string;
   run_at: string | null;
   mode: "A" | "B" | "C" | null;
+  etiket?: string | null;                              // v2.605: yayin | gun_ici | elle
+  nwp_bilesenler?: Record<string, string> | null;      // v2.605: {kaynak: ISO üretim zamanı}
   hours: number;
   /** v2.203 — pencerenin astronomik dogus/batis ciftleri (UTC ISO). */
   gunes?: { gun: string; dogus_utc: string; batis_utc: string }[];
@@ -176,6 +178,7 @@ function uyarla(g: ForecastYanit): TahminSerisi {
   }
   return {
     mod: g.mode, model: "", kosu_zamani: g.run_at ?? "",
+    etiket: g.etiket ?? null, nwp_bilesenler: g.nwp_bilesenler ?? null,   // v2.605 (F4-K): tahmin etiketi ve hava tahmini kaynak zamanları
     ufuk_saat: g.hours, ac_tavani_kw: null, simdi_idx: simdiIdx,
     gunes: (g.gunes ?? []).map((x) =>
       ({ gun: x.gun, dogus: x.dogus_utc, batis: x.batis_utc })),
@@ -325,7 +328,8 @@ interface OzetYanit {
   kalibrasyon_tarihi: string | null;
   hava: { gun: string; derece: number; kwhm2: number }[];
   gunler: { etiket: string; mwh: number | null }[];
-  saglik: { son_scada: string | null; islenen_saat: number; anomali: number };
+  saglik: { son_scada: string | null; islenen_saat: number; anomali: number;
+            veri_durumu?: { kod: string; nitelik: string; etiket: string; yas_saat: number | null } | null }   // v2.605 (F4-K);
   aylik: { ay: string; mwh: number | null; saglam_saat: number | null;
            kapsam_pct: number | null;
            /* v2.205: ay TAM kapsanmadan API null gonderir */
@@ -377,7 +381,8 @@ function uyarlaOzet(g: OzetYanit): SantralOzeti {
       // v2.205: beklenti 0'a INDIRGENMEZ — null durust yokluktur (imlec yok)
       beklenti_mwh: a.beklenti_mwh ?? null })),
     saglik: { son_scada: trTarih(sonScada), kesinti_gun: kesintiGun,
-              islenen_saat: g.saglik.islenen_saat, anomali: g.saglik.anomali },
+              islenen_saat: g.saglik.islenen_saat, anomali: g.saglik.anomali,
+              veri_durumu: g.saglik.veri_durumu ?? null },   // v2.605 (F4-K): tazelik rozeti API sözlüğünden (uydurulmaz)
   };
 }
 

@@ -49,7 +49,18 @@ BAYRAK_AKSIYON.update({
     "over_capacity":    BAYRAK_AKSIYON["kapasite_ustu"],
     "unparseable":      BAYRAK_AKSIYON["okunamayan"],
     "frozen":           BAYRAK_AKSIYON["donmus"],
+    "frozen_value":     BAYRAK_AKSIYON["donmus"],          # v2.598: DB'deki asıl ad (eski 'frozen' eşlemesi eksikti)
     "yanlis_yil_2006":  BAYRAK_AKSIYON["yanlis_yil"],
+    # v2.598 (Faz 4 F4-C): sözlükteki bütün bayraklar rapor çizelgesinde karşılık bulur (kalite_sozlugu.FLAGLAR ile test edilir)
+    "negative_power":   ("Negatif güç", "Gece öz tüketimi dışında kalan belirgin negatif değerler; sayaç yönü ve işaret kontrol edilmeli."),
+    "duplicate_time":   ("Tekrarlanan zaman damgası", "Aynı saat için birden çok satır; ilk satır tutuldu, diğerleri dışlandı."),
+    "dst_ambiguous":    ("Yaz saati geçişi", "Saat ileri/geri alınırken belirsiz kalan saat; seri dışında tutuldu."),
+    "partial_hour":     ("Kısmi saat", "Saatin 45 dakikasından azı ölçülü; üretim toplamlarına girmedi."),
+    "eksik":            ("Boş saat", "Kaynak dosyada bu saat için kayıt yok."),
+    "sifir_gunduz":     ("Gündüz sıfır üretim", "Işınım ölçülürken üretim sıfır; inverter duruşu ya da iletişim kesintisi olabilir."),
+    "anomali":          ("Kaynak anomali işareti", "EPİAŞ gerçek zamanlı üretim verisinde kaynağın kendi anomali işareti."),
+    "gunluk_ozet":      ("Günlük özet", "Günlük toplam kaydı; saatlik seriye girmez, aylık toplamlara girer."),
+    "kisinti":          ("Kısıntı saati", "Şebeke kısıntısı altında ölçülmüş saat; doğruluk karnesine girmez, kayıp analizine girer."),
 })
 
 

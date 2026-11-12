@@ -9,6 +9,8 @@ kuralına (kullanilabilirlik_dustu, opt-in) beslenir.
 from __future__ import annotations
 
 import pandas as pd
+from pvquant.services.karne_kurali import yayin_kosu_sql as _yayin_sql   # v2.597 (F4-B): yayımlanmış koşu süzgeci
+from pvquant.services import kalite_sozlugu as _ks   # v2.598 (F4-C): flag süzgeci tek sözlükten
 
 MIN_MUMKUN_SAAT = 40
 
@@ -79,8 +81,9 @@ def hesapla(tenant_id, plant: dict, gun: int = 30) -> dict:
             "SELECT f.ts_utc, f.physics_kw AS beklenen_kw, s.power_kw, s.flag FROM forecast_values f JOIN forecast_runs r ON r.id=f.run_id "
             "LEFT JOIN scada_hourly s ON s.plant_id=f.plant_id AND s.ts_utc=f.ts_utc "
             "WHERE f.plant_id=:p AND f.ts_utc - r.run_at BETWEEN INTERVAL '0 hour' AND INTERVAL '24 hour' "
-            "AND f.ts_utc >= (SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p AND flag IN ('valid','kisinti')) - (:g * INTERVAL '1 day') "
-            "AND f.ts_utc <= (SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p AND flag IN ('valid','kisinti'))"),
+            f"AND {_yayin_sql('r')} "
+            f"AND f.ts_utc >= (SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p AND {_ks.sql_kosulu('kayip')}) - (:g * INTERVAL '1 day') "
+            f"AND f.ts_utc <= (SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p AND {_ks.sql_kosulu('kayip')})"),
             s.connection(), params={"p": plant["id"], "g": gun}, parse_dates=["ts_utc"])
     if not df.empty:
         df = df.sort_values("ts_utc").drop_duplicates("ts_utc", keep="last")

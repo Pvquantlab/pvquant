@@ -66,3 +66,35 @@ def platform_baglami(aktor_id: str):
         raise
     finally:
         s.close()
+
+
+_bakim_sessionmaker = None
+
+
+def _bakim_oturumu():
+    global _bakim_sessionmaker
+    url = os.environ.get("PVQ_BAKIM_DB_URL")
+    if not url:
+        return SessionLocal()
+    if _bakim_sessionmaker is None:
+        _bakim_sessionmaker = sessionmaker(bind=create_engine(url, pool_pre_ping=True), expire_on_commit=False)
+    return _bakim_sessionmaker()
+
+
+@contextmanager
+def bakim_baglami():
+    """v2.597 (Faz 4 F4-B): tahmin arşivi BAKIM bağlamı — forecast_runs/forecast_values üzerindeki değişmezlik tetikleyicisi
+    yalnız bu bağlamda (app.arsiv_bakim='1') UPDATE/DELETE'e izin verir. Üretim kodu çağırmaz; göç, bakım betikleri
+    (scripts/seed_sentetik.py) ve test fixture temizlikleri kullanır. Kiracı bağlamı yok (sahip rolü), RLS devre dışı.
+    v2.606: PVQ_BAKIM_DB_URL tanımlıysa (CI: tam takım pvq_api rolüyle koşar, bakım ise DB sahibiyle) o bağlantı kullanılır;
+    yoksa PVQ_DB_URL (yerelde zaten sahip). pvq_api/pvq_app'ten UPDATE/DELETE yetkisi şemada kaldırıldığı için bakım sahip ister."""
+    s = _bakim_oturumu()
+    try:
+        s.execute(text("SELECT set_config('app.arsiv_bakim', '1', true)"))
+        yield s
+        s.commit()
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()

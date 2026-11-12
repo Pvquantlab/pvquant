@@ -15,7 +15,7 @@ from sqlalchemy import text
 
 import apps.api.main as api_main
 from apps.api.deps import gecerli_kullanici
-from pvquant.db import sistem_baglami
+from pvquant.db import sistem_baglami, bakim_baglami
 from pvquant.reporting import build_excel, build_json, from_results
 from pvquant.services import bagimsiz_dogrulama_service as bd
 from pvquant.services import olcum_uygunluk_service as ou
@@ -109,7 +109,7 @@ def santral():
                 s.execute(text("INSERT INTO forecast_values(tenant_id, run_id, plant_id, ts_utc, p50_kw, p10_kw, p90_kw, physics_kw) VALUES(:t, :r, :p, :ts, :p50, :p10, :p90, :ph)"),
                           {"t": tid, "r": rid, "p": pid, "ts": ts, "p50": kw * 1.1, "p10": kw * 0.9, "p90": kw * 1.3, "ph": kw * 1.2})
     yield tid, {"id": pid, "name": "Rapor BD GES", "capacity_kwp": 1000.0, "lat": 37.0, "lon": 32.0, "tz": tz, "params_json": {}, "archived": False}
-    with sistem_baglami() as s:
+    with bakim_baglami() as s:
         for t in ("dogrulama_sonuc", "forecast_values", "forecast_runs", "scada_hourly"):
             s.execute(text(f"DELETE FROM {t} WHERE tenant_id=:t"), {"t": tid})
         s.execute(text("DELETE FROM plants WHERE id=:p"), {"p": pid}); s.execute(text("DELETE FROM tenants WHERE id=:t"), {"t": tid})

@@ -10,6 +10,7 @@ from pvquant.services.ingest_service import scada_oku
 from pvquant.io.scada import SCADAData
 from pvquant.io.meteo import OpenMeteoClient
 from pvquant.pipeline.calibration import calibrate_from_scada
+from pvquant.services.plant_spec_service import params_json, plant_spec_kur
 from pvquant.pipeline.forecast import PlantSpec
 from pvquant.pipeline.hybrid_ui import run_hybrid_training, session_ozeti
 
@@ -78,39 +79,13 @@ def _meteo(plant, df_index):
 
 
 def _plant_spec(plant) -> PlantSpec:
-    return PlantSpec(
-        p_nom_kwp=plant["capacity_kwp"], latitude=plant["lat"],
-        longitude=plant["lon"], tilt=plant.get("tilt") or 20.0,
-        azimuth=plant.get("azimuth") or 180.0,
-        bifacial_factor=0.7 if plant.get("panel_tech") == "bifacial" else 0.0,
-        # B-1 Adım 3: AC kırpma köprüsü (None = kırpma yok, mevcut davranış)
-        p_ac_clip_kw=plant.get("ac_limit_kw"),
-        # v2.255: santral params_json ile açılan fizik terimleri (varsayılan kapalı)
-        iam_model=_pj(plant).get("iam_model") or "none",
-        spectral_model=_pj(plant).get("spectral_model") or "none",
-        # v2.256: kirlenme/kar — saha profili
-        soiling_model=_pj(plant).get("soiling_model") or "none",
-        soiling_gunluk_kayip=float(_pj(plant).get("soiling_gunluk_kayip") or 0.0015),
-        soiling_temizleme_mm=float(_pj(plant).get("soiling_temizleme_mm") or 6.0),
-        soiling_baslangic=float(_pj(plant).get("soiling_baslangic") or 0.0),
-        kar_model=_pj(plant).get("kar_model") or "none",
-        # v2.381: izleyici — params_json.izleyici = "tek_eksen" ile açılır
-        izleyici=_pj(plant).get("izleyici") or "sabit",
-        izleyici_max_aci=float(_pj(plant).get("izleyici_max_aci") or 60.0),
-        izleyici_gcr=float(_pj(plant).get("izleyici_gcr") or 0.35),
-        izleyici_capraz_egim=float(_pj(plant).get("izleyici_capraz_egim") or 0.0),
-    )
+    """Geriye uyumlu ad (v2.597): tek kaynak `plant_spec_service.plant_spec_kur`; kalibrasyonsuz spec."""
+    return plant_spec_kur(plant)
 
 
 def _pj(plant) -> dict:
-    """plants.params_json — dict ya da JSON metni ya da None."""
-    pj = plant.get("params_json") if hasattr(plant, "get") else None
-    if isinstance(pj, str):
-        try:
-            return json.loads(pj)
-        except Exception:
-            return {}
-    return pj or {}
+    """Geriye uyumlu ad (v2.597): `plant_spec_service.params_json`."""
+    return params_json(plant)
 
 
 def fizik_terimleri(tenant_id, plant_id) -> dict:

@@ -15,6 +15,8 @@ Session anahtar sözleşmesi (frontend bu adları kullanır):
 """
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -85,7 +87,7 @@ def _plant_profile(plant_ctx: dict, plant_name: str = "Santral"):
         location=Location(
             latitude=float(plant_ctx["latitude"]),
             longitude=float(plant_ctx["longitude"]),
-            timezone=plant_ctx.get("timezone", "Europe/Istanbul"),
+            timezone=plant_ctx.get("timezone", PIYASA_TZ),
             elevation_m=float(plant_ctx.get("elevation_m", 1000)),
         ),
         dc_capacity_kwp=kwp,

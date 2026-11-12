@@ -10,7 +10,7 @@ import pandas as pd
 import pytest
 from sqlalchemy import text
 
-from pvquant.db import sistem_baglami
+from pvquant.db import sistem_baglami, bakim_baglami
 from pvquant.services import portfoy_dsg_service as sd
 from pvquant.services import portfoy_varlik_service as pv
 
@@ -52,7 +52,7 @@ def dsg():
     pv.sozlesme_ekle(tid, "dsg_uyelik", "2026-09-06", portfoy_id=pid, taraf_a_kurulus_id=k, dagitim_yontemi="sabit_pay",
                      parametreler={"paylar": {"GES A": 0.5, "GES B": 0.3, "GES C": 0.2}, "yonetim_ucreti_tl": 300.0}, dogrulama="dogrulandi", belge_adi="dsg-sozlesme.pdf")
     yield tid, tid2, pid, tp, pl
-    with sistem_baglami() as s:
+    with bakim_baglami() as s:
         for t in ("dogrulama_sonuc", "finansal_etki_sonuc", "portfoy_sonuc", "ticari_sozlesme", "portfoy_uyelik", "dsg_grubu", "toplayici_kapsami", "portfoy", "kurulus", "denetim_izi",
                   "forecast_values", "forecast_runs", "scada_hourly", "plants"):
             s.execute(text(f"DELETE FROM {t} WHERE tenant_id IN (:t, :t2)"), {"t": tid, "t2": tid2})

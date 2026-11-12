@@ -78,12 +78,12 @@ def onizle(tenant_id, plant: dict, aday: dict, gun: int = 7) -> dict:
     """Arşivdeki son koşu meteosuyla salt fizik: mevcut spec ↔ aday spec; günlük kWh ve toplam fark."""
     from pvquant.io.meteo import OpenMeteoClient
     from pvquant.pipeline.forecast import forecast_7day
-    from pvquant.services.calib_service import _pj, _plant_spec
+    from pvquant.services.plant_spec_service import params_json as _pj, plant_spec_kur
     aday = dogrula(aday)
     meteo = OpenMeteoClient().get_forecast(latitude=plant["lat"], longitude=plant["lon"], days=gun)
-    mevcut = _plant_spec(plant)
+    mevcut = plant_spec_kur(plant)   # v2.597: tek kaynak (kalibrasyonsuz salt fizik önizleme — eskisi gibi)
     aday_plant = dict(plant); aday_plant["params_json"] = {**_pj(plant), **aday}
-    yeni = _plant_spec(aday_plant)
+    yeni = plant_spec_kur(aday_plant)
     tz = plant.get("tz") or "UTC"
     def gunluk(spec):
         h = forecast_7day(meteo, spec).hourly["p_ac_kw"]

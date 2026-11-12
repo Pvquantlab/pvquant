@@ -9,6 +9,8 @@ Sürüm arşivi (F-06, kgup_surum tablosu) bu sürümde YOK — göç taslağı 
 """
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 import hashlib
 import io
 from datetime import date
@@ -16,6 +18,7 @@ from datetime import date
 import pandas as pd
 
 from pvquant.ext.turkiye import kgup as kg
+from pvquant.services.karne_kurali import yayin_kosu_sql as _yayin_sql   # v2.597 (F4-B): yayımlanmış koşu süzgeci
 from pvquant.ext.turkiye import kurallar as kr
 # v2.535 dayanak künyeleri [DUY, GIP_KAPI, TPYS] — bu dosyadaki madde atıflarının birincil yayımı (RG tarih-sayı, karar no); metin kunye.py sicilinden üretildi,
 # tests/test_kunye_bekcisi.py sicille eş tutar (kaynak: 03.11.2026 doğrulama arşivi 03_Kaynak_Envanteri).
@@ -25,7 +28,7 @@ DAYANAK_KUNYELERI = (
     'TPYS Bildirim Dokümanı: EPİAŞ TPYS Bildirim Dokümanı (EAK ve KGÜP), duyuru 19.02.2025 (ek 648549); KGUP.csv / EAK.csv şablonları 28.02.2018; dayanak DUY RG 17.12.2024-32755'
 )
 
-IST = "Europe/Istanbul"
+IST = PIYASA_TZ   # v2.599
 
 
 def kaynak_kosu_df(tenant_id, plant_id, gun: date, kantil: str = "p50", tum_kantiller: bool = False) -> tuple[pd.DataFrame, dict | None]:
@@ -42,6 +45,7 @@ def kaynak_kosu_df(tenant_id, plant_id, gun: date, kantil: str = "p50", tum_kant
     with tenant_baglami(tenant_id) as s:
         r = s.execute(text("SELECT id, run_at, mode FROM forecast_runs WHERE plant_id=:p AND run_at <= :k "
                            "AND EXISTS (SELECT 1 FROM forecast_values v WHERE v.run_id=forecast_runs.id AND v.ts_utc >= :a AND v.ts_utc < :b) "
+                           f"AND {_yayin_sql('forecast_runs')} "   # v2.597: geriye bakışlı koşu programa kaynak olmaz
                            "ORDER BY run_at DESC LIMIT 1"),
                       {"p": plant_id, "k": kesim.to_pydatetime(), "a": d0.tz_convert("UTC").to_pydatetime(), "b": d1.tz_convert("UTC").to_pydatetime()}).first()
         if r is None:
@@ -55,24 +59,9 @@ def kaynak_kosu_df(tenant_id, plant_id, gun: date, kantil: str = "p50", tum_kant
 
 def eak_etkin(plant: dict, gun: date) -> dict:
     """v2.275 — EAK (emre amade kapasite, MW) o gün için: geçici kısıt (bakım/arıza, bitiş tarihine kadar) > kalıcı EAK alanı
-    > AC tavanı > kurulu güç. Kaynak açıkça söylenir."""
-    import json as _j
-    pj = plant.get("params_json") or {}
-    if isinstance(pj, str):
-        pj = _j.loads(pj)
-    kap = float(plant["capacity_kwp"]) / 1000.0
-    ac = (float(plant["ac_limit_kw"]) / 1000.0) if plant.get("ac_limit_kw") else None
-    g = pj.get("eak_gecici") or {}
-    try:
-        if g.get("kw") and g.get("bitis") and date.fromisoformat(str(g["bitis"])) >= gun and float(g["kw"]) > 0:
-            return {"eak_mw": round(min(float(g["kw"]) / 1000.0, ac or kap), 3), "kaynak": "gecici", "bitis": str(g["bitis"])}
-    except (TypeError, ValueError):
-        pass
-    if pj.get("eak_kw"):
-        return {"eak_mw": round(min(float(pj["eak_kw"]) / 1000.0, kap), 3), "kaynak": "eak_alani"}
-    if ac:
-        return {"eak_mw": round(ac, 3), "kaynak": "ac_tavani"}
-    return {"eak_mw": round(kap, 3), "kaynak": "kurulu_guc"}
+    > AC tavanı > kurulu güç. Kaynak açıkça söylenir. v2.599 (F4-E): kural tek yerde — santral_kunye_service.guc_tanimlari."""
+    from pvquant.services.santral_kunye_service import guc_tanimlari
+    return guc_tanimlari(plant, gun)["eak"]
 
 
 KANTILLER = ("p10", "p25", "p50", "p75", "p90")
@@ -112,7 +101,7 @@ def uret(tenant_id, plant: dict, gun: date, kantil: str = "p50", uevcb: str | No
     etki = olay_service.saatlik_etki(tenant_id, plant, gun)
     gerekce_saat = {h: {g: kw / 1000.0 for g, kw in v["gerekce"].items()} for h, v in etki["saatler"].items()}
     if etki["saatler"]:
-        idx_ist = pd.date_range(pd.Timestamp(gun).tz_localize("Europe/Istanbul"), periods=24, freq="h")
+        idx_ist = pd.date_range(pd.Timestamp(gun).tz_localize(PIYASA_TZ), periods=24, freq="h")
         eak_seri = pd.Series([max(eak - etki["saatler"].get(h, {"toplam_kw": 0.0})["toplam_kw"] / 1000.0, 0.0) for h in range(24)], index=idx_ist)
         eak_bilgi = {**eak_bilgi, "olay_saat": len(etki["saatler"]), "olay_en_cok_mw": round(max(v["toplam_kw"] for v in etki["saatler"].values()) / 1000.0, 3),
                      "kaynak": eak_bilgi["kaynak"] + "+olay"}
@@ -132,7 +121,7 @@ def uret(tenant_id, plant: dict, gun: date, kantil: str = "p50", uevcb: str | No
     if son.sicrama_saatleri and not dengeleme_birimi:
         uyarilar.append(f"≥200 MWh saatlik değişim var (saat {', '.join(map(str, son.sicrama_saatleri))}); santral dengeleme birimi değil, 15 dk satırı üretilmedi (DUY m.69(3))")
     # v2.287: gün içi revizyon kapısı (md. 69(1)) — öğlen örneğiyle; öneri kantili dengesizlik servisinden
-    ogle = kg.gun_ici_revizyon_penceresi(pd.Timestamp(gun).tz_localize("Europe/Istanbul") + pd.Timedelta(hours=12))
+    ogle = kg.gun_ici_revizyon_penceresi(pd.Timestamp(gun).tz_localize(PIYASA_TZ) + pd.Timedelta(hours=12))
     gip = {"kural": "Her teslimat saatinin gün içi piyasa kapısı 1 saat önce kapanır; KGÜP revizyonu kapanış + 30 dakikaya kadar.",
            "ornek_teslimat": "12:00", "ornek_kapi": str(ogle["gip_kapi_kapanis"].time())[:5], "ornek_revizyon_son": str(ogle["kgup_revizyon_son"].time())[:5]}
     oneri = None

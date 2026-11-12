@@ -22,6 +22,7 @@ import json as _json
 import pyotp
 
 from pvquant.guvenlik import sir as _sir   # v2.570
+from pvquant.services import kalite_sozlugu as _ks   # v2.598 (F4-C): flag süzgeci tek sözlükten
 from passlib.hash import bcrypt
 from sqlalchemy import text
 
@@ -291,7 +292,7 @@ def kiraci_detay(aktor_id: str, tid: str) -> dict | None:
             {"t": str(tid)}).mappings().all()
         santraller = s.execute(text(
             "SELECT p.id, p.name, p.capacity_kwp, p.tz, p.archived, p.created_at, p.params_json, "
-            "(SELECT max(ts_utc) FROM scada_hourly sh WHERE sh.plant_id=p.id AND sh.flag='valid') AS son_scada, "
+            f"(SELECT max(ts_utc) FROM scada_hourly sh WHERE sh.plant_id=p.id AND {_ks.sql_kosulu('tazelik', 'sh')}) AS son_scada, "
             "(SELECT max(run_at) FROM forecast_runs r WHERE r.plant_id=p.id) AS son_kosu "
             "FROM plants p WHERE p.tenant_id=:t ORDER BY p.name"), {"t": str(tid)}).mappings().all()
     iso = lambda v: v.isoformat() if v else None  # noqa: E731

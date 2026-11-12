@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+from pvquant.services import kalite_sozlugu as _ks   # v2.598 (F4-C): flag süzgeci tek sözlükten
 
 TAU_SAAT = 2.0
 UFUK_SAAT = 6
@@ -59,11 +60,11 @@ def hesapla(tenant_id, plant: dict, simdi: pd.Timestamp | None = None) -> dict:
     pid = plant["id"]
     simdi = pd.Timestamp(simdi or pd.Timestamp.now(tz="UTC")).tz_convert("UTC")
     with tenant_baglami(tenant_id) as s:
-        g = pd.read_sql(text("SELECT ts_utc, power_kw FROM scada_hourly WHERE plant_id=:p AND flag='valid' "
+        g = pd.read_sql(text(f"SELECT ts_utc, power_kw FROM scada_hourly WHERE plant_id=:p AND {_ks.sql_kosulu('kalibrasyon')} "
                              "AND ts_utc >= :a ORDER BY ts_utc"),
                         s.connection(), params={"p": pid, "a": simdi - pd.Timedelta(hours=PENCERE_SAAT + 1)},
                         index_col="ts_utc", parse_dates=["ts_utc"])
-        son = s.execute(text("SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p AND flag='valid'"), {"p": pid}).scalar()
+        son = s.execute(text(f"SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p AND {_ks.sql_kosulu('kalibrasyon')}"), {"p": pid}).scalar()
     ortak = {"uydu": False, "yontem": "ölçüm persistansı (rampalı harman, τ=2 s)", "ufuk_saat": UFUK_SAAT,
              "son_olcum": son.isoformat() if son is not None else None,
              "tazelik_saat": round(float((simdi - pd.Timestamp(son).tz_convert("UTC")).total_seconds() / 3600), 1) if son is not None else None}

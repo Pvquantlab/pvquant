@@ -11,6 +11,8 @@ import numpy as np
 import pandas as pd
 
 from pvquant.ext.tahmin import dogrulama as d
+from pvquant.services import kalite_sozlugu as _ks   # v2.598 (F4-C): flag süzgeci tek sözlükten
+from pvquant.services.karne_kurali import yayin_kosu_sql as _yayin_sql   # v2.597 (F4-B): yayımlanmış koşu süzgeci
 
 MIN_SAAT = 72
 TAULAR = ("p10", "p50", "p90")
@@ -58,8 +60,9 @@ def hesapla(tenant_id, plant: dict, gun: int = 60) -> dict:
             "SELECT f.ts_utc, s.power_kw, f.p50_kw AS p50, COALESCE(f.p10_ham_kw, f.p10_kw) AS p10_ham, "
             "COALESCE(f.p90_ham_kw, f.p90_kw) AS p90_ham, f.p10_kw AS p10_kal, f.p90_kw AS p90_kal "
             "FROM forecast_values f JOIN forecast_runs r ON r.id=f.run_id "
-            "JOIN scada_hourly s ON s.plant_id=f.plant_id AND s.ts_utc=f.ts_utc AND s.flag='valid' "
-            "WHERE f.plant_id=:p AND f.ts_utc >= (SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p AND flag='valid') - (:g * INTERVAL '1 day') "
+            f"JOIN scada_hourly s ON s.plant_id=f.plant_id AND s.ts_utc=f.ts_utc AND {_ks.sql_kosulu('karne', 's')} "
+            f"WHERE f.plant_id=:p AND f.ts_utc >= (SELECT max(ts_utc) FROM scada_hourly WHERE plant_id=:p AND {_ks.sql_kosulu('karne')}) - (:g * INTERVAL '1 day') "
+            f"AND {_yayin_sql('r')} "
             "AND f.ts_utc - r.run_at BETWEEN INTERVAL '0 hour' AND INTERVAL '24 hour' ORDER BY f.ts_utc"),
             s.connection(), params={"p": plant["id"], "g": gun}, parse_dates=["ts_utc"])
     out = hesapla_df(df, float(plant["capacity_kwp"]))

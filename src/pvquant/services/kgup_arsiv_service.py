@@ -10,6 +10,8 @@ v2.513: kaynak = 'eak' — TPYS EAK.csv biçimindeki EAK dosyası da indirilince
 """
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 import hashlib
 import io
 import json
@@ -148,7 +150,7 @@ def listele(tenant_id, plant_id, gun: date | None = None, n: int = 30) -> list[d
     for x in out:
         if x["kaynak"] != "pvquant":
             continue
-        kapanis = (pd.Timestamp(x["_gun"]) - pd.Timedelta(days=1)).tz_localize("Europe/Istanbul") + pd.Timedelta(hours=12, minutes=30)
+        kapanis = (pd.Timestamp(x["_gun"]) - pd.Timedelta(days=1)).tz_localize(PIYASA_TZ) + pd.Timedelta(hours=12, minutes=30)
         olus = pd.Timestamp(x["_olusturma"])
         if olus.tzinfo is None:
             olus = olus.tz_localize("UTC")

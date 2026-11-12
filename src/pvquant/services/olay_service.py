@@ -26,6 +26,8 @@ import pandas as pd
 from sqlalchemy import text
 
 from pvquant.db import tenant_baglami
+from pvquant.zaman import PIYASA_TZ
+
 # v2.535 dayanak künyeleri [DUY, KARAR_14967, KARAR_14968, SEFFAFLIK] — bu dosyadaki madde atıflarının birincil yayımı (RG tarih-sayı, karar no); metin kunye.py sicilinden üretildi,
 # tests/test_kunye_bekcisi.py sicille eş tutar (kaynak: 03.11.2026 doğrulama arşivi 03_Kaynak_Envanteri).
 DAYANAK_KUNYELERI = (
@@ -35,7 +37,7 @@ DAYANAK_KUNYELERI = (
     'Şeffaflık Yön.: Enerji Piyasalarında Şeffaflığa ve Piyasa Bozucu Davranışlara İlişkin Yönetmelik, RG 14.02.2026-33168; değişiklik RG 23.05.2026-33262'
 )
 
-IST = ZoneInfo("Europe/Istanbul")
+IST = ZoneInfo(PIYASA_TZ)
 TURLER = ("planli_bakim", "ariza", "talimat_yat", "talimat_yal", "acil_kesme", "sebeke_kesintisi", "hasar", "uzaktan_acma")   # v2.523 (P4a): uzaktan açma yapılamadı
 TUR_ETIKET = {"planli_bakim": "Planlı bakım", "ariza": "Arıza", "talimat_yat": "Yük atma talimatı (YAT)", "talimat_yal": "Yük alma talimatı (YAL)",
               "acil_kesme": "Acil durum kesmesi", "sebeke_kesintisi": "Şebeke kesintisi", "hasar": "Hasar",
@@ -399,7 +401,8 @@ def ozet(tenant_id, plant: dict, gun: int = 90, bugun: date | None = None) -> di
     from pvquant.services import dengesizlik_service
     seg = dengesizlik_service.segment_bilgisi(plant.get("params_json")).get("segment")   # v2.538 (DK-733/DK-740): talimat notu segmente göre
     lisanssiz = seg in ("lisanssiz_dagitim", "lisanssiz_iletim")
-    return {"bugun": b.isoformat(), "pencere_gun": gun, "olaylar": olaylar, "acik": len(acik), "planli": len(planli), "ariza_sayaci": {**sayac, "esik": 30, "uyari": 25, "ay": b.strftime("%Y-%m")},
+    kn = _kupst_n(seg, b)   # v2.600 (F4-F): eşik ve katsayılar kural sicilinden; 25 ürün ön uyarısı (mevzuat eşiği değil)
+    return {"bugun": b.isoformat(), "pencere_gun": gun, "olaylar": olaylar, "acik": len(acik), "planli": len(planli), "ariza_sayaci": {**sayac, "esik": kn["ariza_esigi"] or 30, "uyari": 25, "ay": b.strftime("%Y-%m"), **kn},
             "eak_bugun": {"saat_sayisi": len(etki["saatler"]), "en_cok_kw": max((v["toplam_kw"] for v in etki["saatler"].values()), default=0.0),
                           "taban_kw": etki["taban_kw"], "kismi_saat": sum(1 for v in etki["saatler"].values() if v["oran"] < 1.0),
                           "suren": sum(1 for o in acik if o["kural"]["eak_dusur"] and not o["bitis"])},   # bitişi girilmemiş: gün sonuna kadar sayılır
@@ -411,7 +414,7 @@ def ozet(tenant_id, plant: dict, gun: int = 90, bugun: date | None = None) -> di
             "aciklama": {"kapasite": "Planlı bakım, arıza, acil kesme, şebeke kesintisi ve hasar o saatlerde verilebilecek gücü (EAK) ve programın tavanını düşürür; saat içinde kısmen süren olay "
                                      "süreyle orantılı düşer; bitişi girilmemiş olay gün sonuna kadar sayılır. Birden çok olay toplanır (ayrı ekipmanlar için doğrudur; aynı ekipmanı "
                                      "anlatan iki kayıt iki kez düşer, kayıt ekipman ayrımı tutmaz), toplam günün EAK tabanını (AC sınırı ya da EAK alanı) aşmaz. Talimatlar (YAL/YAT) kapasiteyi değiştirmez. Şebeke kesintisi ve hasarın EAK'yi düşürmesi tanımdan çıkarım, acil kesme varsayımdır (TEİAŞ teyidine kadar); tür → gerekçe eşlemesi ürün varsayılanıdır.",
-                         "sayac": "Yalnız «arıza» türü aylık sayaca girer. Ayda 30 ve üzeri arıza kaydı KGÜP sapma tutarı katsayısını 0,05'ten 0,08'e çıkarır (Karar 14907); 25'te ürün ön uyarısı (mevzuat eşiği değil). Sayaç EPİAŞ sayımına vekildir.",
+                         "sayac": _sayac_metni(kn),
                          "kullanilabilirlik": "Planlı bakım, talimat, acil kesme ve şebeke kesintisi saatleri kullanılabilirlik hesabından düşülür (santralın elinde değil); arıza ve hasar arıza sayılır.",
                          "islem": "«Bitir» olayın bittiğini işler, kayıt hesaplarda kalır. «Geçersiz say» yanlış kaydı hesaplardan çıkarır; kayıt silinmez, dosyada «geçersiz» olarak görünür. "
                                   "Başlangıç ve tür değiştirilemez; yanlışsa kaydı geçersiz sayıp yenisini açın. Her ekleme ve değişiklik denetim izinde tutulur.",
@@ -437,3 +440,26 @@ def csv_metni(olaylar: list[dict], plant_ad: str) -> str:
     buf = io.StringIO()
     pd.DataFrame(satirlar, columns=kol).to_csv(buf, sep=";", decimal=",", index=False, lineterminator="\n")
     return "﻿" + buf.getvalue()
+
+
+def _kupst_n(segment: str | None, gun) -> dict:
+    """v2.600 (F4-F): arıza eşiği ve KÜPST n katsayıları kural sicilinden (ekran sabiti değil). `karar`: dayanaktaki karar numarası
+    («Karar 14907»); yoksa None. n_ariza None → bu segmentte arıza sayacı katsayıyı değiştirmez."""
+    import re as _re
+    from pvquant.ext.turkiye import kurallar as kr
+    k = kr.kupst_kurali(gun, segment)
+    m = _re.search(r"Karar \d{4,5}", k.dayanak or "")
+    return {"n": k.n, "n_ariza": k.n_ariza, "ariza_esigi": k.ariza_esigi, "kural_surumu": k.surum, "karar": m.group(0) if m else None}
+
+
+def _tr(x) -> str:
+    return f"{x:.2f}".replace(".", ",")
+
+
+def _sayac_metni(kn: dict) -> str:
+    """Olay özeti «sayaç» açıklaması: katsayılar ve eşik sicilden; kural yoksa sayı basılmaz (dürüstlük anayasası)."""
+    if kn["n_ariza"] is None or kn["ariza_esigi"] is None:
+        return ("Yalnız «arıza» türü aylık sayaca girer. Bu segmentte arıza sayısı KGÜP sapma tutarı katsayısını değiştirmez"
+                f"{' (' + kn['karar'] + ')' if kn['karar'] else ''}; 25'te ürün ön uyarısı (mevzuat eşiği değil). Sayaç EPİAŞ sayımına vekildir.")
+    return (f"Yalnız «arıza» türü aylık sayaca girer. Ayda {kn['ariza_esigi']} ve üzeri arıza kaydı KGÜP sapma tutarı katsayısını {_tr(kn['n'])}'ten "
+            f"{_tr(kn['n_ariza'])}'e çıkarır{' (' + kn['karar'] + ')' if kn['karar'] else ''}; 25'te ürün ön uyarısı (mevzuat eşiği değil). Sayaç EPİAŞ sayımına vekildir.")

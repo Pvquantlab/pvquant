@@ -9,7 +9,7 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import ProgrammingError
 
-from pvquant.db import sistem_baglami, tenant_baglami
+from pvquant.db import bakim_baglami, sistem_baglami, tenant_baglami
 from pvquant.services import dengesizlik_service as dz
 from pvquant.services import portfoy_varlik_service as pv
 
@@ -53,7 +53,7 @@ def kiraci():
             s.execute(text("INSERT INTO plants(id, tenant_id, name, capacity_kwp, lat, lon, tz, params_json) VALUES(:p, :t, :ad, 1000, 37.0, 32.0, 'Europe/Istanbul', CAST(:pj AS jsonb))"),
                       {"p": pid, "t": tid, "ad": f"GES {ad}", "pj": pj[ad]})
     yield tid, tid2, pl
-    with sistem_baglami() as s:
+    with bakim_baglami() as s:   # v2.602: denetim_izi DELETE yalnız bakım (sahip) bağlamında
         for t in ("portfoy_sonuc", "ticari_sozlesme", "portfoy_uyelik", "dsg_grubu", "toplayici_kapsami", "portfoy", "kurulus", "denetim_izi", "plants"):
             s.execute(text(f"DELETE FROM {t} WHERE tenant_id IN (:t, :t2)"), {"t": tid, "t2": tid2})
         s.execute(text("DELETE FROM tenants WHERE id IN (:t, :t2)"), {"t": tid, "t2": tid2})

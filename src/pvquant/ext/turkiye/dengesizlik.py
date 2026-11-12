@@ -24,6 +24,8 @@ Kıyas: iki program (ör. referans vs PVQuant) → aylık kalem farkı (kolon ad
 """
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 from dataclasses import dataclass
 from datetime import date
 
@@ -169,7 +171,7 @@ def _toplama(grup: pd.DataFrame) -> tuple[float, float]:
     return edta, edtb
 
 
-def aylik_karne(saatlik_df: pd.DataFrame, tz: str = "Europe/Istanbul") -> pd.DataFrame:
+def aylik_karne(saatlik_df: pd.DataFrame, tz: str = PIYASA_TZ) -> pd.DataFrame:
     """Piyasa ayı İstanbul saatiyle: UTC index önce yerel saate çevrilir (1 Temmuz 00:00 IST = 30 Haziran 21:00 UTC).
     EDTA/EDTB (m.110(1)) ayrı; kayıp (dengesizlik_maliyeti) ve KÜPST ayrı; toplam_maliyet = kayıp + KÜPST."""
     df = saatlik_df.copy(); df.index = df.index.tz_convert(tz)
@@ -341,7 +343,8 @@ def portfoy_kupst_saatlik(programlar: dict[str, pd.Series], gerceklesenler: dict
         out[kod] = {"saatlik": pd.DataFrame({"kgup": K_top, "gerceklesen": G_top, "udups": udups, "kupsm": kupsm, "kupst": kupst,
                                              "m": m, "n": n, "taban": taban, "ptf": P, "smf": S, "kural_surumu": prm["surum"],
                                              "durum": np.where(hesaplanamaz.values, "kupst_hesaplanamaz", "ok")}),
-                    "uyeler": detay, "kural_dayanak": g.kupst.dayanak}
+                    "uyeler": detay, "kural_dayanak": g.kupst.dayanak,
+                    "kural": {"m": g.kupst.m, "n": g.kupst.n, "surum": g.kupst.surum, "taban": g.kupst.taban, "yururluk": _kupst_yururluk(g.kupst.surum)}}   # v2.600 (F4-F)
     return {"uevcbler": out, "dagitim_anahtari": dagitim_anahtari, "etiket": PORTFOY_ETIKET + " — " + PORTFOY_ANAHTAR_ETIKET[dagitim_anahtari]}
 
 
@@ -380,3 +383,12 @@ def optimal_teklif_kantili(ptf: float, smf_beklenen_acik: float, smf_beklenen_fa
     if c_eksik + c_fazla <= 0:
         return 0.5
     return float(np.clip(c_fazla / (c_eksik + c_fazla), 0.05, 0.95))
+
+
+def _kupst_yururluk(surum: str) -> str | None:
+    """v2.600 (F4-F): KÜPST kural sürümünün yürürlük başlangıcı (ISO) — kural sicilinden; ekran «… 'dan» ekini buradan basar."""
+    from pvquant.ext.turkiye import kural_sicili as _ks
+    for k in _ks.kayitlar("kupst"):
+        if k.surum == surum:
+            return None if k.yururluk_bas <= _ks.BASLANGIC else k.yururluk_bas.isoformat()   # kapsam başı sentineli tarih değildir
+    return None

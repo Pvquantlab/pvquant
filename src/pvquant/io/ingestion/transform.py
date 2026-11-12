@@ -65,6 +65,25 @@ class DuplicateTimestampsError(ValueError):
         super().__init__(mesaj)
 
 
+_YIRMI_DORT = re.compile(r"^(?P<tarih>\d{4}-\d{2}-\d{2}|\d{1,2}[./]\d{1,2}[./]\d{4})[ T]24:00(?::00)?$")
+
+
+def _yirmi_dort_sifirla(s: pd.Series) -> pd.Series:
+    """'…24:00' → ertesi gün '…00:00' (metin düzeyinde; biçim korunur)."""
+    m = s.str.match(_YIRMI_DORT)
+    if not m.any():
+        return s
+    out = s.copy()
+    for i in s.index[m.fillna(False)]:
+        g = _YIRMI_DORT.match(s[i]).group("tarih")
+        try:
+            t = pd.to_datetime(g, dayfirst=("-" not in g), errors="raise") + pd.Timedelta(days=1)
+        except (ValueError, TypeError):
+            continue
+        out[i] = t.strftime("%Y-%m-%d") + " 00:00"
+    return out
+
+
 def _parse_datetime_robust(raw: pd.Series) -> pd.Series:
     """Tarih parse stratejisi: önce ISO, sonra gün-önce (TR/EU).
 
@@ -74,6 +93,8 @@ def _parse_datetime_robust(raw: pd.Series) -> pd.Series:
     tercih edilir (uluslararası dosyalarda daha yaygın).
     """
     s = raw.astype(str).str.strip()
+    # v2.599 (F4-D): «24:00» damgası (OSOS/sayaç ve bazı SCADA dışa aktarımları) = ertesi gün 00:00 — sayaç yoluyla (sayac_service._zaman) aynı kural
+    s = _yirmi_dort_sifirla(s)
     try:
         iso = pd.to_datetime(s, format="ISO8601", errors="coerce")
     except (ValueError, TypeError):
@@ -97,12 +118,21 @@ def parse_timestamps(
         idx = pd.DatetimeIndex(parsed).tz_localize("UTC")
         return idx, pd.Series(False, index=range(len(idx)))
 
-    # Yerel → UTC. ambiguous/nonexistent NaT: sessiz varsayım yok.
-    localized = pd.DatetimeIndex(parsed).tz_localize(
-        source_timezone, ambiguous="NaT", nonexistent="NaT"
-    )
-    dst_flag = pd.Series(localized.isna() & parsed.notna().values,
-                         index=range(len(localized)))
+    # Yerel → UTC. v2.598 (Faz 4 F4-C, bulgu M4): DST geçişindeki satır DÜŞMEZ, BAYRAKLANIR. Önce sıkı yerelleştirme ile
+    # belirsiz/yok saatler bulunur (bayrak); sonra aynı satırlar yumuşak kuralla zamana oturtulur: yok saat ileri kaydırılır
+    # (saat ileri alınırken 02:30 → 03:30), çift saat sırayla çözülür (infer), çözülemezse standart saat varsayılır. Varsayım
+    # sessiz değildir: satır DST_AMBIGUOUS bayrağıyla saatlik seriye girmez.
+    # Yok saat (ileri alma, 02:00→03:00 arası): tek bir UTC karşılığı yoktur; kaydırılırsa komşu saatle MÜKERRER olur. Düşer ve sayılır
+    # (TransformSpec.dst_yok_saat_satiri → karne uyarısı). Belirsiz saat (geri alma, iki 02:00): sırayla çözülür, çözülemezse standart saat;
+    # satır kalır, DST_AMBIGUOUS bayrağı alır.
+    sik = pd.DatetimeIndex(parsed).tz_localize(source_timezone, ambiguous="NaT", nonexistent="NaT")
+    dst_flag = pd.Series(sik.isna() & parsed.notna().values, index=range(len(sik)))
+    if not dst_flag.any():
+        return sik.tz_convert("UTC"), dst_flag
+    try:
+        localized = pd.DatetimeIndex(parsed).tz_localize(source_timezone, ambiguous="infer", nonexistent="NaT")
+    except Exception:   # noqa: BLE001 — sıra çıkarılamıyorsa (tekrarsız/karışık) standart saat varsayımı; satır yine bayraklı
+        localized = pd.DatetimeIndex(parsed).tz_localize(source_timezone, ambiguous=False, nonexistent="NaT")
     return localized.tz_convert("UTC"), dst_flag
 
 
@@ -298,6 +328,7 @@ def transform_to_canonical(
     source_timezone: str,
     decimal: str = ".",
     duplicate_policy: str = "error",
+    damga_tipi: str = "aralik_basi",
 ) -> tuple[pd.DataFrame, TransformSpec, pd.Series]:
     """Eşlenmiş ham frame'i kanonik saatlik UTC frame'e dönüştürür.
 
@@ -333,6 +364,13 @@ def transform_to_canonical(
         )
 
     utc_index, dst_flag = parse_timestamps(df[mapping.timestamp], source_timezone)
+    # v2.599 (F4-D): kaynak damgası aralık SONU ise bir adım geri alınır — arşivde her satır aralık başıdır; künyeye kaynağın konvansiyonu yazılır
+    from pvquant.zaman import DAMGA_TIPLERI, saat_damgasi_araliga
+    if damga_tipi not in DAMGA_TIPLERI:
+        raise ValueError(f"damga_tipi {damga_tipi!r} tanımsız (izinli: {', '.join(DAMGA_TIPLERI)})")
+    if damga_tipi == "aralik_sonu":
+        _adim = detect_timestep_minutes(pd.DatetimeIndex(utc_index.dropna().unique()).sort_values())
+        utc_index = saat_damgasi_araliga(utc_index, "aralik_sonu", _adim)
     opt_map = {
         "poa_global": mapping.poa_irradiance,
         "t_air": mapping.temp_ambient,
@@ -341,7 +379,9 @@ def transform_to_canonical(
         "ghi": mapping.ghi,
     }
     spec = TransformSpec(source_timezone=source_timezone,
-                         duplicate_policy=duplicate_policy)
+                         duplicate_policy=duplicate_policy,
+                         kaynak_damga_tipi=(df.attrs.get("kaynak_damga_tipi") or damga_tipi),
+                         damga_duzeltme=(df.attrs.get("damga_duzeltme") or ("adim_geri" if damga_tipi == "aralik_sonu" else None)))
 
     # --- 1. Ham sayısal seriler: henüz birim/kümülatif kararı YOK ---
     raw = pd.DataFrame(index=utc_index)
@@ -354,8 +394,9 @@ def transform_to_canonical(
             raw[canon] = coerce_numeric(df[src], decimal).values
     dst_series = pd.Series(dst_flag.values, index=utc_index)
 
-    # Zamanı çözülemeyen satırlar index'lenemez → düş (rapora yazılır)
+    # Zamanı çözülemeyen satırlar index'lenemez → düş (rapora yazılır); v2.599: DST yok-saat satırları ayrıca sayılır
     valid_time = raw.index.notna()
+    spec.dst_yok_saat_satiri = int((dst_series.values & ~valid_time).sum())
     raw = raw[valid_time].sort_index(kind="stable")
     dst_series = dst_series[valid_time].sort_index(kind="stable")
 
@@ -427,8 +468,9 @@ def transform_to_canonical(
     if source_step < 60:
         # v2.573 (Faz 1 F1-B): saatin kaç dakikası ölçümle kaplı — örnek sayısı × kaynak adımı (en çok 60). Önceden 4 dilimden
         # 1'i olan saat de 'valid' kalıyor, hiç örneği olmayan saatte enerji 0 yazılıyordu (toplam min_count'suz); ikisi de
-        # ölçülmüş gibi görünüyordu. Şimdi kapsama kayda geçer, boş saatin enerjisi NaN kalır (validate → 'unparseable').
+        # ölçülmüş gibi görünüyordu. Şimdi kapsama kayda geçer, boş saatin enerjisi NaN kalır (validate → v2.598'den beri 'eksik').
         n_ornek = work["power_kw"].resample("1h").count()
+        n_satir = work["power_kw"].resample("1h").size()   # v2.598: NaN dâhil kaynak satırı sayısı — boş saat (0) ↔ okunamayan (>0) ayrımı
         e_ornek = work["energy_kwh"].resample("1h").count() if "energy_kwh" in work.columns else None
         agg = {c: "mean" for c in work.columns}
         if "energy_kwh" in work.columns:
@@ -437,6 +479,7 @@ def transform_to_canonical(
         if e_ornek is not None:
             work.loc[e_ornek.reindex(work.index).fillna(0) == 0, "energy_kwh"] = float("nan")   # boş saat 0 değil, bilinmiyor
         work["kapsama_dk"] = (n_ornek.reindex(work.index).fillna(0) * source_step).clip(upper=60).where(n_ornek.reindex(work.index).fillna(0) > 0)
+        work["n_kaynak_satir"] = n_satir.reindex(work.index).fillna(0).astype(int)
         dst_series = dst_series.resample("1h").max().fillna(False)
         spec.timestep_minutes = 60
     elif source_step < 1440:

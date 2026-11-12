@@ -10,6 +10,8 @@ minute_interval 15; zaman damgaları SANTRAL saat diliminde yyyyMMddHHmmss). Kot
 """
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 from datetime import datetime, timedelta, timezone
 
 from .temel import Baglayici, BulutHata, gun_baslangici, saatlik_fark
@@ -134,7 +136,7 @@ class Sungrow(Baglayici):
     def saatlik_ham(self, kodlar: list[str], gun: datetime) -> list[dict]:
         """Günün 8 × 3 saatlik penceresi; ≤50 santral/çağrı. Zaman damgaları santral saat diliminde (TR varsayımı; ps_current_time_zone okunmadıysa)."""
         from zoneinfo import ZoneInfo
-        tz = ZoneInfo("Europe/Istanbul"); bas = gun_baslangici(gun, "Europe/Istanbul")
+        tz = ZoneInfo(PIYASA_TZ); bas = gun_baslangici(gun, PIYASA_TZ)
         kum: dict[str, list[tuple[datetime, float]]] = {}; guc: dict[tuple[str, datetime], list[float]] = {}
         for grup in [kodlar[i:i + 50] for i in range(0, len(kodlar), 50)]:
             for p in range(0, 24, self.PENCERE_SAAT):

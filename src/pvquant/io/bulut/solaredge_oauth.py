@@ -26,6 +26,7 @@ class SolarEdgeOAuth(SolarEdge):
     OAUTH = True
     ETIKET_ALANI = "site_id"
     ELLE_GIRIS = False      # belirteçler yalnız sahip onayı akışından gelir
+    uygulama_getir = None   # v2.603 (F4-I): Callable[[str], dict] — platform uygulaması kaydı (client_id/secret); servis katmanı istemciyi kurarken atar
     GUNLUK_TAVAN = 60
     NOT = ("Site sahibi SolarEdge sayfasında PVQuant uygulamasını onaylar; belirteçler şifreli saklanır ve yenilenir. Her onay tek site bağlar. "
            "Platform uygulama kaydı (istemci kimliği, gizli anahtar, geri dönüş adresi) sunucuda tanımlı değilse bu yol kapalıdır. Gerçek hesapla doğrulanmadı.")
@@ -75,8 +76,9 @@ class SolarEdgeOAuth(SolarEdge):
     def _yenile(self) -> None:
         if not self.kimlik.get("refresh_token"):
             raise BulutHata("yenileme belirteci yok; sahipten yeniden onay gerekir")
-        from pvquant.services.bulut_oauth_service import uygulama
-        uyg = uygulama(self.KOD)
+        if self.uygulama_getir is None:   # v2.603 (F4-I): io katmanı servis içe aktarmaz; platform uygulaması çağıran tarafından enjekte edilir
+            raise BulutHata("platform uygulaması sağlayıcısı verilmedi; belirteç yenilenemez")
+        uyg = self.uygulama_getir(self.KOD)
         if not uyg.get("yapilandirildi"):
             raise BulutHata("platform uygulaması tanımlı değil; belirteç yenilenemez")
         d = self._token(uyg["gizli"], {"grant_type": "refresh_token", "refresh_token": self.kimlik["refresh_token"]}, transport=self._c._transport)

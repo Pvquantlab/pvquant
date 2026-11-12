@@ -41,7 +41,10 @@ _SAHIP = _ce(_os.environ.get(
 
 
 def _sahip_oturum():
-    return _Session(_SAHIP)
+    """v2.597 (F4-B, M3): arşiv değişmezlik tetikleyicisi yalnız bakım bağlamında geçer — oturum açılışında bayrak basılır."""
+    s = _Session(_SAHIP)
+    s.execute(text("SELECT set_config('app.arsiv_bakim', '1', false)"))
+    return s
 
 
 def _batch_id(pid):
@@ -74,25 +77,16 @@ def _temizle(plant, gun_sayisi):
         n4 = s.execute(text(
             "DELETE FROM skill_daily WHERE plant_id=:p AND date >= :e"),
             {"p": pid, "e": esik.date()}).rowcount
-        # c5/2 (v2.109): pencere içi YABANCI koşu değerleri karneyi zehirler
-        # (eski hava tahmini × sentetik gerçekleşme) — değerler karantinaya,
-        # koşu kayıtları denetim izi olarak kalır.
-        n5 = s.execute(text(
-            "DELETE FROM forecast_values WHERE plant_id=:p AND ts_utc >= :e "
-            "AND run_id IN (SELECT id FROM forecast_runs WHERE plant_id=:p "
-            " AND meteo_source <> 'sentetik_tohum')"),
-            {"p": pid, "e": esik}).rowcount
-        # değersiz kalan kabuk koşular son_kosu'yu şaşırtmasın
-        n6 = s.execute(text(
-            "DELETE FROM forecast_runs WHERE plant_id=:p "
-            "AND meteo_source <> 'sentetik_tohum' AND run_at >= :e "
-            "AND NOT EXISTS (SELECT 1 FROM forecast_values v "
-            "                WHERE v.run_id = forecast_runs.id)"),
-            {"p": pid, "e": esik}).rowcount
+        # v2.597 (Faz 4 F4-B, bulgu M3): eski c5/2 adımı pencere içindeki GERÇEK koşu değerlerini ve kabuk koşuları siliyordu —
+        # gerçek tahmin arşivi hiçbir betikle silinmez (değişmezlik ilkesi). Yabancı koşular karneyi zehirliyorsa karne
+        # seçimi (karne_kurali: etiket='sentetik' yalnız kendi kovasında) bunu süzer; silme yok.
+        n_yabanci = s.execute(text(
+            "SELECT count(*) FROM forecast_runs WHERE plant_id=:p AND meteo_source <> 'sentetik_tohum' AND run_at >= :e"),
+            {"p": pid, "e": esik}).scalar()
         s.execute(text("DELETE FROM report_stats WHERE plant_id=:p"),
                   {"p": pid})
-    print("  temizlik: %d tahmin, %d koşu, %d scada, %d skill, %d yabancı değer, %d kabuk koşu" %
-          (n1, n2, n3, n4, n5, n6))
+    print("  temizlik: %d tahmin, %d koşu, %d scada, %d skill; pencerede %d gerçek koşu DOKUNULMADI" %
+          (n1, n2, n3, n4, n_yabanci))
 
 
 def _sentetik_seri(plant, saatler, rng):
@@ -169,8 +163,8 @@ def ek(plant, gun_sayisi):
             rid = _run_id(pid, g)
             s.execute(text(
                 "INSERT INTO forecast_runs(id,tenant_id,plant_id,run_at,mode,"
-                " model,meteo_source,meteo_ozet_json) VALUES(:i,:t,:p,:r,'C',"
-                " 'hybrid_residual','sentetik_tohum','{}'::jsonb)"),
+                " model,meteo_source,meteo_ozet_json,etiket) VALUES(:i,:t,:p,:r,'C',"
+                " 'hybrid_residual','sentetik_tohum','{}'::jsonb,'sentetik')"),
                 {"i": rid, "t": tid, "p": pid, "r": run_at})
             ufuk = pd.date_range(run_at + dt.timedelta(hours=1),
                                  run_at + dt.timedelta(hours=72),
@@ -205,8 +199,8 @@ def ek(plant, gun_sayisi):
                          "pvq-seed-pub-%s-%s" % (pid, simdi.date()))
         s.execute(text(
             "INSERT INTO forecast_runs(id,tenant_id,plant_id,run_at,mode,"
-            " model,meteo_source,meteo_ozet_json) VALUES(:i,:t,:p,:r,'C',"
-            " 'hybrid_residual','sentetik_tohum','{}'::jsonb)"),
+            " model,meteo_source,meteo_ozet_json,etiket) VALUES(:i,:t,:p,:r,'C',"
+            " 'hybrid_residual','sentetik_tohum','{}'::jsonb,'sentetik')"),
             {"i": rid, "t": tid, "p": pid, "r": pub_at})
         yayin = []
         for ts in pd.date_range(pub_at + dt.timedelta(hours=1),
@@ -249,10 +243,14 @@ if __name__ == "__main__":
     ap.add_argument("--temizle", action="store_true",
                     help="yalnız tohum izini sil, ekme yapma")
     ap.add_argument("--santral", default=None,
-                    help="tek santral adı (varsayılan: tüm aktifler)")
+                    help="santral adı (v2.597: ZORUNLU — tüm santrallere tohum ekilmez)")
+    ap.add_argument("--onay", action="store_true",
+                    help="v2.597 (M3): sentetik tohum gerçek arşivin yanına yazılır; bilinçli onay bayrağı olmadan çalışmaz")
     arg = ap.parse_args()
+    if not arg.santral or not arg.onay:
+        ap.error("--santral <ad> ve --onay zorunlu (Faz 4 F4-B, bulgu M3: betik yalnız kendi sentetik izini siler, gerçek koşuya dokunmaz)")
     for plant in _tum_santraller():
-        if arg.santral and plant["name"] != arg.santral:
+        if plant["name"] != arg.santral:
             continue
         print("=== %s ===" % plant["name"])
         _temizle(plant, arg.gun)

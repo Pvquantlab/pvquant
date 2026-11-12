@@ -2,11 +2,15 @@
 reporting paketi TEK SATIR degismez (Parca 3 §4).
 Fable 5 v1.7 kurali: JSONB dict olarak geldigi icin isinstance kontrolu."""
 from __future__ import annotations
+
+from pvquant.zaman import PIYASA_TZ
 import json
 from datetime import datetime, timezone
 import pandas as pd
 from sqlalchemy import text
 from pvquant.db import tenant_baglami
+from pvquant.services import kalite_sozlugu as _ks   # v2.598 (F4-C): flag süzgeci tek sözlükten
+from pvquant.services.karne_kurali import yayin_kosu_sql as _yayin_sql   # v2.597 (F4-B): yayımlanmış koşu süzgeci
 from pvquant.reporting import ReportContext, build_excel, build_json
 from pvquant.services.forecast_service import son_kosu
 
@@ -41,7 +45,7 @@ def rapor_baglami(tenant_id, plant: dict) -> ReportContext | None:
     # (337 satır POA=0 W/m², hücre sıcaklığı=25,0 °C; IEC etiketli sahte
     # kolon). Koşu bu alanları taşımıyorsa kolon YOKTUR; tüketici boş bırakır
     # (kural 3: eksiklik uydurulmaz, gösterilir).
-    tz = plant.get("tz") or "Europe/Istanbul"
+    tz = plant.get("tz") or PIYASA_TZ
     # v2.345: yalnız saatleri TAM olan günler rapora girer — 19 Eyl 15:32
     # koşusu 337 saatti (14 tam gün + 1 artık gece saati) ve artık saat
     # raporda "3 Eki 0,0 MWh" SAHTE günü üretti (kapak grafiği 0'a çakılıyor,
@@ -63,7 +67,7 @@ def rapor_baglami(tenant_id, plant: dict) -> ReportContext | None:
         # "Mod C" etiketi tasiyordu; run_at da rapor ani yaziliyordu.
         kosu = s.execute(text(
             "SELECT run_at, mode, model, meteo_source FROM forecast_runs "
-            "WHERE plant_id=:p ORDER BY run_at DESC LIMIT 1"),
+            f"WHERE plant_id=:p AND {_yayin_sql('forecast_runs')} ORDER BY run_at DESC LIMIT 1"),
             {"p": plant["id"]}).first()
         cal = s.execute(text(
             "SELECT mode,params_json,quality_json,gate_json,n_valid_hours,"
@@ -175,7 +179,7 @@ def rapor_baglami(tenant_id, plant: dict) -> ReportContext | None:
         ctx.son12 = pd.read_sql(text(
             "SELECT date_trunc('month', ts_utc) AS ay,"
             " SUM(power_kw)/1000.0 AS actual_mwh "
-            "FROM scada_hourly WHERE plant_id=:p AND flag='valid' "
+            f"FROM scada_hourly WHERE plant_id=:p AND {_ks.sql_kosulu('rapor')} "
             "AND ts_utc >= date_trunc('month', now()) - INTERVAL '12 months' "
             "GROUP BY 1 ORDER BY 1"),
             s.connection(), params={"p": plant["id"]}, parse_dates=["ay"])
@@ -207,6 +211,7 @@ def rapor_baglami(tenant_id, plant: dict) -> ReportContext | None:
                 "SUM(f.p90_kw - f.p10_kw)/2000.0 AS half_mwh "  # v2.103: evrim bandı
                 "FROM forecast_values f JOIN forecast_runs r ON r.id=f.run_id "
                 "WHERE f.plant_id=:p AND f.ts_utc >= :g0 AND f.ts_utc < :g1 "
+                f"AND {_yayin_sql('r')} "
                 "GROUP BY r.run_at "
                 "HAVING SUM(f.p90_kw - f.p10_kw) IS NOT NULL "  # bantsız koşu evrimde çizilemez
                 "ORDER BY r.run_at DESC LIMIT 8"),
@@ -245,7 +250,7 @@ def rapor_baglami(tenant_id, plant: dict) -> ReportContext | None:
         # diger = 100-g-h: yuvarlama sonrasi toplam 100 garanti.
         ql = pd.read_sql(text(
             "SELECT date_trunc('month', ts_utc) AS ay, COUNT(*) AS n, "
-            " COUNT(*) FILTER (WHERE flag='valid') AS g, "
+            f" COUNT(*) FILTER (WHERE {_ks.sql_kosulu('rapor')}) AS g, "
             " COUNT(*) FILTER (WHERE flag IN ('gece_uretim','kapasite_ustu',"
             "'okunamayan','night_production','over_capacity','unparseable') "
             " OR flag LIKE 'yanlis%') AS h "  # c5: İngilizce bayraklar (v2.109)
@@ -295,12 +300,12 @@ def _excel_zenginlestir(tenant_id, plant: dict, ctx) -> None:
     with tenant_baglami(tenant_id) as s:
         ctx.dogrulama = santral_karne_ozeti(s, plant["id"])
         # --- aylık PR: E_ay/kWp ÷ H_poa_ay (G_STC=1 kW/m² ile boyutsuz) ---
-        tz = plant.get("tz") or "Europe/Istanbul"
+        tz = plant.get("tz") or PIYASA_TZ
         pa = s.execute(text(
             "SELECT to_char(date_trunc('month', ts_utc AT TIME ZONE :tz), 'YYYY-MM') AS ay,"
             " sum(power_kw) AS kwh, sum(poa_wm2)/1000.0 AS poa_kwh_m2,"
             " count(poa_wm2) AS poa_saat, count(*) AS saat "
-            "FROM scada_hourly WHERE plant_id=:p AND flag='valid' "
+            f"FROM scada_hourly WHERE plant_id=:p AND {_ks.sql_kosulu('rapor')} "
             "GROUP BY 1 ORDER BY 1"), {"p": plant["id"], "tz": tz}).mappings().all()
     kwp = float(plant["capacity_kwp"])
     ctx.performans_aylik = [{

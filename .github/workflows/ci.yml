@@ -56,6 +56,8 @@ jobs:
         run: pytest -q
         env:
           PVQ_DB_URL: postgresql+psycopg://pvq_api:pvq_api_ci@localhost:5432/pvquant
+          # v2.606 (Faz 4): değişmez tablolarda pvq_api'nin UPDATE/DELETE yetkisi yok; fixture temizliği (bakim_baglami) DB sahibiyle
+          PVQ_BAKIM_DB_URL: postgresql+psycopg://pvquant:pvquant_dev@localhost:5432/pvquant
       - name: Rapor kalkani (kanonik HTML md5 — v2.159)
         run: |
           cd reporting/html && rm -rf cikti && python3 uret.py > /dev/null

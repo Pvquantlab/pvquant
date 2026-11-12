@@ -9,7 +9,7 @@ import pyotp
 import pytest
 from sqlalchemy import text
 
-from pvquant.db import sistem_baglami
+from pvquant.db import sistem_baglami, bakim_baglami
 from pvquant.services import platform_service as ps, auth_service as au, denetim_service as dz
 
 
@@ -20,8 +20,9 @@ def temiz(monkeypatch):
     etiket = uuid.uuid4().hex[:8]
     yield etiket
     ps.oturum_onbellegi_dusur(); au.oturum_onbellegi_dusur()
-    with sistem_baglami() as s:
+    with bakim_baglami() as s:   # v2.602: denetim_izi'nde uygulama rolünün DELETE yetkisi yok → bakım (sahip) bağlamı
         s.execute(text("DELETE FROM denetim_izi WHERE aktor_eposta LIKE :e OR ayrinti::text LIKE :e"), {"e": f"%{etiket}%"})
+    with sistem_baglami() as s:
         s.execute(text("DELETE FROM parola_sifirlama WHERE user_id IN (SELECT id FROM users WHERE email LIKE :e)"), {"e": f"%{etiket}%"})
         s.execute(text("DELETE FROM users WHERE email LIKE :e"), {"e": f"%{etiket}%"})
         s.execute(text("DELETE FROM tenants WHERE name LIKE :e"), {"e": f"%{etiket}%"})
@@ -227,7 +228,7 @@ def test_faz4_kullanim(temiz):
         assert g["gunler"][0]["kgup"] == 1 and g["gunler"][0]["kgup_bildirilen"] == 1
         assert ks.gunler(pid, "00000000-0000-0000-0000-000000000000")["gunler"] == []
     finally:
-        with sistem_baglami() as s:
+        with bakim_baglami() as s:
             s.execute(text("DELETE FROM kullanim_sayac WHERE tenant_id = CAST(:t AS uuid)"), {"t": tid})
             s.execute(text("DELETE FROM hiz_pencere WHERE anahtar = :a"), {"a": f"anahtar:{e}"})
             s.execute(text("DELETE FROM report_log WHERE plant_id = :p"), {"p": plant_id})
@@ -345,6 +346,7 @@ def test_faz5_temsil_uctan_uca_get_ler(temiz, monkeypatch):
         assert c.get("/v1/plants", headers=tj).status_code == 403
         ps.kiraci_guncelle(pid, y["tenant_id"], status="active")
     finally:
-        with sistem_baglami() as s:
+        with bakim_baglami() as s:
             s.execute(text("DELETE FROM denetim_izi WHERE tenant_id = CAST(:t AS uuid)"), {"t": y["tenant_id"]})
+        with sistem_baglami() as s:
             s.execute(text("DELETE FROM plants WHERE id = :p"), {"p": plant_id})

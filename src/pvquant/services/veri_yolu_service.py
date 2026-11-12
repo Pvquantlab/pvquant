@@ -15,6 +15,8 @@ import json
 import re
 from datetime import datetime, timezone
 
+from pvquant.services import kalite_sozlugu as _ks  # v2.598 (F4-C): flag süzgeci tek sözlükten
+
 TAZE_SAAT = 48
 DOSYA_ESKI_GUN = 30   # 08.11 inceleme (faz 3): dosya kaynağında 48 saat ölçütü anlamsız (yükleme ritmi müşterinindir); 30 günden eski yükleme yalnız bilgi uyarısı
 EPIAS_IS_ADI = "gece_epias_uretim"
@@ -128,16 +130,20 @@ def epias_baglanti(cekis: dict | None) -> dict:
     return {"durum": "bilinmiyor", "etiket": cekis.get("etiket", "sorgu durumu okunamadı"), "zaman": cekis.get("zaman")}
 
 
-def epias_cekis_durumu(status: str | None, detail: str | None) -> dict:
+def epias_cekis_durumu(status: str | None, detail: str | None, sonuc: dict | None = None) -> dict:
     """SAF. jobs_log'daki son gece_epias_uretim satırından çekiş durumu: hata / yeni kayıt yok / yazılmadı (SCADA öncelikli) / başarılı / ayrıntısız.
-    Bağlantı hatası ile «EPİAŞ'ta yeni kayıt yok» ayrılır (brif faz 3)."""
+    Bağlantı hatası ile «EPİAŞ'ta yeni kayıt yok» ayrılır (brif faz 3). v2.598: yapılı `sonuc` (jobs_log.sonuc_json) varsa o okunur;
+    eski satırlarda metin ayrıştırması geriye uyum için kalır."""
     if status is None:
         return {"kod": "yok", "etiket": "henüz çekiş yapılmadı"}
     if status != "ok":
         return {"kod": "hata", "etiket": "son çekiş hatayla bitti", "ayrinti": (detail or "")[:160] or None}
-    d = detail or ""
-    m = re.search(r"'durum':\s*'(\w+)'", d); n = re.search(r"'n_yazilan':\s*(\d+)", d)
-    durum = m.group(1) if m else None; yazilan = int(n.group(1)) if n else None
+    if isinstance(sonuc, dict) and sonuc.get("durum"):
+        durum = str(sonuc.get("durum")); yazilan = sonuc.get("n_yazilan"); yazilan = int(yazilan) if yazilan is not None else None
+    else:
+        d = detail or ""
+        m = re.search(r"'durum':\s*'(\w+)'", d); n = re.search(r"'n_yazilan':\s*(\d+)", d)
+        durum = m.group(1) if m else None; yazilan = int(n.group(1)) if n else None
     if durum == "veri_yok":
         return {"kod": "kayit_yok", "etiket": "çekiş başarılı, EPİAŞ'ta yeni kayıt yok"}
     if durum == "atlandi":
@@ -300,6 +306,7 @@ def veri_kodu(t: dict, son_olcum=None, yon: str = "api") -> str:
 def etkin_yollar(tenant_id, plant: dict, simdi: datetime | None = None) -> list[dict]:
     """Santralın tanımlı/kullanılmış kaynakları: tür, tanımlı mı, son başarılı geliş, tazelik (DB)."""
     from sqlalchemy import text
+
     from pvquant.db import tenant_baglami
     pj = _pj(plant); out = []
     with tenant_baglami(tenant_id) as s:
@@ -314,7 +321,7 @@ def etkin_yollar(tenant_id, plant: dict, simdi: datetime | None = None) -> list[
         try:
             olc = s.execute(text(
                 "SELECT CASE WHEN b.format_json->>'kaynak' = 'epias_realtime' THEN 'epias' ELSE 'dosya' END AS k, max(sh.ts_utc) AS son "
-                "FROM scada_hourly sh JOIN ingestion_batches b ON b.id = sh.batch_id WHERE sh.plant_id=:p AND sh.flag='valid' GROUP BY 1"), {"p": plant["id"]}).mappings().all()
+                f"FROM scada_hourly sh JOIN ingestion_batches b ON b.id = sh.batch_id WHERE sh.plant_id=:p AND {_ks.sql_kosulu('tazelik', 'sh')} GROUP BY 1"), {"p": plant["id"]}).mappings().all()
             son_olcum = {r["k"]: r["son"] for r in olc}
         except Exception:   # noqa: BLE001
             son_olcum = {}
@@ -323,9 +330,10 @@ def etkin_yollar(tenant_id, plant: dict, simdi: datetime | None = None) -> list[
         try:
             from pvquant.db import sistem_baglami
             with sistem_baglami() as s2:
-                j = s2.execute(text("SELECT started, status, detail FROM jobs_log WHERE job=:j AND plant_id=CAST(:p AS uuid) ORDER BY started DESC LIMIT 1"),
+                j = s2.execute(text("SELECT started, status, detail, sonuc_json FROM jobs_log WHERE job=:j AND plant_id=CAST(:p AS uuid) ORDER BY started DESC LIMIT 1"),
                                {"j": EPIAS_IS_ADI, "p": plant["id"]}).mappings().first()
-            cekis = {**epias_cekis_durumu(j["status"] if j else None, j["detail"] if j else None), "zaman": (j["started"].isoformat() if j and j["started"] else None)}
+            cekis = {**epias_cekis_durumu(j["status"] if j else None, j["detail"] if j else None, j["sonuc_json"] if j else None),
+                     "zaman": (j["started"].isoformat() if j and j["started"] else None)}
         except Exception as e:   # noqa: BLE001 — iş günlüğü okunamazsa durum bilinmez, uydurulmaz
             cekis = {"kod": "bilinmiyor", "etiket": f"çekiş durumu okunamadı ({type(e).__name__})", "zaman": None}
     sik = pj.get("dosya_yukleme_sikligi_gun")   # v2.546: müşterinin beyan ettiği yükleme sıklığı (gün); eşik iki katı

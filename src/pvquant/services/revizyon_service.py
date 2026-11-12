@@ -9,12 +9,14 @@ revizyon müşterinin kendi işlemidir. Hesap ve veri kaynakları yanıtta açı
 """
 from __future__ import annotations
 
+from pvquant.zaman import PIYASA_TZ
+
 from datetime import date
 
 import numpy as np
 import pandas as pd
 
-IST = "Europe/Istanbul"
+IST = PIYASA_TZ   # v2.599
 ESIK_ORAN_VARSAYILAN = 0.10     # programın %10'u
 TABAN_ORAN_KURULU = 0.02        # kurulu gücün %2'si (MW × 1 s = MWh) — küçük programlarda gürültüyü eler
 

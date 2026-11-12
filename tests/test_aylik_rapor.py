@@ -10,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 
-from pvquant.db import sistem_baglami
+from pvquant.db import sistem_baglami, bakim_baglami
 from pvquant.services import aylik_rapor_service as ar
 
 
@@ -37,7 +37,7 @@ def kiraci():
                   {"t": tid, "p": pid, "b1": datetime(2026, 10, 5, 7, tzinfo=timezone.utc), "e1": datetime(2026, 10, 5, 11, tzinfo=timezone.utc),
                    "b2": datetime(2026, 10, 7, 6, tzinfo=timezone.utc), "e2": datetime(2026, 10, 7, 9, tzinfo=timezone.utc)})
     yield tid, {"id": pid, "name": "Rapor GES", "capacity_kwp": 1200.0, "ac_limit_kw": 1000.0, "params_json": {"segment": "lisansli_serbest", "alarm_alicilar": ["ops@ornek.com"]}}
-    with sistem_baglami() as s:
+    with bakim_baglami() as s:
         for t in ("olay", "forecast_daily", "forecast_runs", "scada_hourly", "sayac_saatlik", "uzlastirma_bildirimi"):
             s.execute(text(f"DELETE FROM {t} WHERE tenant_id=:t"), {"t": tid})
         s.execute(text("DELETE FROM plants WHERE id=:p"), {"p": pid})

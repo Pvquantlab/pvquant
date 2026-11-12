@@ -7,6 +7,7 @@ Gölge görünüm: kaynak_saatlik'ten seçilen saat ile scada_hourly'deki (dosya
 kalibrasyon bu görünümü OKUMAZ; kabul sonrası ayrı bir işle bağlanır (yol haritası DEV10).
 """
 from __future__ import annotations
+from pvquant.services import kalite_sozlugu as _ks   # v2.598 (F4-C): flag süzgeci tek sözlükten
 
 import json
 from datetime import datetime, timedelta, timezone
@@ -124,7 +125,7 @@ def nitelik_ozeti(tenant_id, plant: dict, bas: datetime, bit: datetime) -> dict 
     try:
         with tenant_baglami(tenant_id) as s:
             m = s.execute(text("SELECT COALESCE(b.format_json->>'kaynak', 'scada_dosya') AS k, count(*) AS n FROM scada_hourly h LEFT JOIN ingestion_batches b ON b.id = h.batch_id "
-                               "WHERE h.plant_id=:p AND h.ts_utc >= :a AND h.ts_utc < :b AND h.flag='valid' GROUP BY 1 ORDER BY 2 DESC"), {"p": plant["id"], "a": bas, "b": bit}).mappings().all()
+                               f"WHERE h.plant_id=:p AND h.ts_utc >= :a AND h.ts_utc < :b AND {_ks.sql_kosulu('tazelik', 'h')} GROUP BY 1 ORDER BY 2 DESC"), {"p": plant["id"], "a": bas, "b": bit}).mappings().all()
             try:
                 g = s.execute(text("SELECT kaynak, tamlik, count(*) AS n FROM (SELECT DISTINCT ON (kaynak, cihaz_id, sinir, ts_utc) kaynak, tamlik FROM kaynak_saatlik "
                                    "WHERE plant_id=:p AND ts_utc >= :a AND ts_utc < :b ORDER BY kaynak, cihaz_id, sinir, ts_utc, revizyon DESC) x GROUP BY 1, 2 ORDER BY 1, 2"),

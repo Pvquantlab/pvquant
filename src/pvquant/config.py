@@ -81,6 +81,7 @@ class Settings(BaseSettings):
     # fiyatlar 'senaryo' (EPDK 2025 yıllık ortalamaları) — UI bunu açıkça söyler. Şifre asla loglanmaz.
     epias_kullanici: str | None = None
     epias_sifre: str | None = None
+    epias_onbellek_dizin: str = "var/epias"   # v2.604 (F4-J): Şeffaflık gün önbelleği (CSV; yalnız kesinleşmiş günler, ./var bağlı hacmi); "" → kapalı
     # C-3b (v2.152): s08 butunluk kurallarinin makine esikleri — worker ve
     # servis TEK kaynaktan okur. reporting/html/veri.py KARNE_ESIK aynasidir
     # (rapor katmani bagimsizdir; sapma D19/D20 verisinde yakalanir).

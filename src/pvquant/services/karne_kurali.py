@@ -24,6 +24,8 @@ from datetime import date, timedelta
 
 import pandas as pd
 
+from pvquant.zaman import PIYASA_TZ as _PIYASA_TZ
+
 GUNDUZ_ORAN = 0.02
 KOVA_SINIRLARI = [0, 24, 72, 168, 999]
 KOVA_ETIKETLERI = ["0-24", "24-72", "72-168", "168+"]
@@ -34,8 +36,24 @@ GERIYE_BAKISLI_MODEL = frozenset({"backtest"})
 GERIYE_BAKISLI_METEO = frozenset({"open-meteo-arsiv", "sentetik_tohum"})
 ETIKET_GUN_ICI = "gun_ici"
 ETIKET_ELLE = "elle"
-PIYASA_TZ = "Europe/Istanbul"
-KURAL_SURUMU = "2026-11-10.2"   # v2.572: elle koşu dışlaması + sentetik tohum
+ETIKET_YAYIN = "yayin"                                        # v2.597: gece/program koşusu (eski NULL)
+ETIKETLER = ("yayin", "gun_ici", "elle", "backtest", "simulasyon", "sentetik", "demo", "yeniden_kurma")   # forecast_runs.etiket CHECK
+GERIYE_BAKISLI_ETIKET = frozenset({"backtest", "simulasyon", "sentetik", "demo", "yeniden_kurma"})   # v2.597: yayımlanmış sayılmaz
+PIYASA_TZ = _PIYASA_TZ   # v2.599: tek tanım pvquant.zaman
+KURAL_SURUMU = "2026-11-11"   # v2.597: etiket sözlüğü (yayin/backtest/simulasyon/sentetik/demo/yeniden_kurma) tek süzgeç
+
+
+def yayin_kosu_sql(alias: str = "r", elle_dahil: bool = True) -> str:
+    """SQL parçası (v2.597, F4-B): «yayımlanmış koşu» süzgeci — TEK yer. Geriye bakışlı etiketler (backtest, simulasyon, sentetik,
+    demo, yeniden_kurma) ve eski damgalar (model='backtest', meteo_source ∈ {open-meteo-arsiv, sentetik_tohum}) dışarıda kalır.
+    `elle_dahil=False` panelden elle tetiklenen koşuyu da dışlar (karne ana kovaları; program/son koşu için elle sayılır).
+    Parametre taşımaz (sabit sözlük); `WHERE ... AND {yayin_kosu_sql('r')}` biçiminde eklenir."""
+    a = f"{alias}." if alias else ""
+    etiketler = ", ".join(f"'{e}'" for e in sorted(GERIYE_BAKISLI_ETIKET | ({ETIKET_ELLE} if not elle_dahil else set())))
+    modeller = ", ".join(f"'{m}'" for m in sorted(GERIYE_BAKISLI_MODEL))
+    meteolar = ", ".join(f"'{m}'" for m in sorted(GERIYE_BAKISLI_METEO))
+    return (f"(COALESCE({a}etiket, '{ETIKET_YAYIN}') NOT IN ({etiketler}) AND COALESCE({a}model, '') NOT IN ({modeller})"
+            f" AND COALESCE({a}meteo_source, '') NOT IN ({meteolar}))")
 
 
 def kova_etiketle(ufuk_s: pd.Series) -> pd.Series:
@@ -54,6 +72,8 @@ def geriye_bakisli(df: pd.DataFrame) -> pd.Series:
         m |= df["model"].isin(GERIYE_BAKISLI_MODEL)
     if "meteo_source" in df:
         m |= df["meteo_source"].isin(GERIYE_BAKISLI_METEO)
+    if "etiket" in df:   # v2.597: etiket sözlüğü (yayin_kosu_sql ile aynı küme)
+        m |= df["etiket"].isin(GERIYE_BAKISLI_ETIKET)
     return m
 
 
@@ -93,10 +113,9 @@ def ana_kovalar(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def program_kesimi(gun: date) -> pd.Timestamp:
-    """Teslim günü D için D-1 KGÜP kesim anı (İstanbul)."""
-    from pvquant.ext.turkiye import kurallar as kr
-    (kh, km), _ = kr.kgup_kesim(gun)
-    return pd.Timestamp(gun, tz=PIYASA_TZ) - pd.Timedelta(days=1) + pd.Timedelta(hours=kh, minutes=km)
+    """Teslim günü D için D-1 KGÜP kesim anı (İstanbul). v2.599: tek kaynak pvquant.zaman.program_kesimi."""
+    from pvquant.zaman import program_kesimi as _pk
+    return _pk(gun)
 
 
 def program_kovasi(df: pd.DataFrame) -> pd.DataFrame:

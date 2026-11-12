@@ -50,14 +50,25 @@ def uye_meteodata(uye_df: pd.DataFrame, temel, lat: float, lon: float):
                      kaynak="gefs", nwp_model="GEFS üye")
 
 
-def bant_uret(plant: dict, spec, temel_meteo, h: pd.DataFrame, days: int) -> tuple[pd.DataFrame | None, dict]:
-    """Ağ/DB: taze üyeler varsa üye başına fizik koşusu → kantiller; yoksa (None, {'kaynak':'model'})."""
+def uyeler_getir(plant: dict, days: int) -> tuple[dict | None, pd.Timestamp | None]:
+    """DB (v2.597 F4-A ayrımı): arşivdeki taze GEFS üyeleri ve üye koşusunun yayın zamanı (künye); bant kaynağı 'model' ise
+    hiç bakılmaz → (None, None)."""
+    if get_settings().bant_kaynagi == "model":
+        return None, None
+    from pvquant.io import acik_nwp
+    uyeler = acik_nwp.arsivden_uyeler(float(plant["lat"]), float(plant["lon"]), days)
+    if not uyeler:
+        return None, None
+    return uyeler, acik_nwp.arsivden_uye_kosusu(float(plant["lat"]), float(plant["lon"]))
+
+
+def bant_hesapla(plant: dict, spec, temel_meteo, h: pd.DataFrame, uyeler: dict | None) -> tuple[pd.DataFrame | None, dict]:
+    """SAF (v2.597): verilen üyelerle üye başına fizik koşusu → kantiller; üye yoksa/azsa (None, {'kaynak':'model', ...}).
+    `bant_uret` ile aynı mantık; DB okuması `uyeler_getir`'de."""
     cfg = get_settings()
     if cfg.bant_kaynagi == "model":
         return None, {"kaynak": "model"}
-    from pvquant.io import acik_nwp
     from pvquant.pipeline.forecast import forecast_7day
-    uyeler = acik_nwp.arsivden_uyeler(float(plant["lat"]), float(plant["lon"]), days)
     if not uyeler or len(uyeler) < cfg.ensemble_min_uye:
         return None, {"kaynak": "model", "not": f"üye yok ya da az ({len(uyeler or {})} < {cfg.ensemble_min_uye})"}
     guc = {}
@@ -73,3 +84,8 @@ def bant_uret(plant: dict, spec, temel_meteo, h: pd.DataFrame, days: int) -> tup
     G = pd.DataFrame(guc).dropna(how="all")
     q = uye_kantilleri(G, h["p50_kw"], h["physics_kw"], float(plant.get("ac_limit_kw") or plant["capacity_kwp"]))
     return q, {"kaynak": "gefs", "uye": int(len(guc)), "yayilim_ort_kw": round(float(q["yayilim"].mean()), 1)}
+
+
+def bant_uret(plant: dict, spec, temel_meteo, h: pd.DataFrame, days: int) -> tuple[pd.DataFrame | None, dict]:
+    """Ağ/DB: `uyeler_getir` + `bant_hesapla` (davranış v2.273 ile birebir)."""
+    return bant_hesapla(plant, spec, temel_meteo, h, uyeler_getir(plant, days)[0])

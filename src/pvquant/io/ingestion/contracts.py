@@ -32,6 +32,8 @@ class RowFlag(str, Enum):
     UNPARSEABLE = "unparseable"              # sayıya/tarihe çevrilemedi
     DAILY_SUMMARY = "gunluk_ozet"            # v2.367: kaynak adımı ≥1 gün — saatlik karneye girmez
     PARTIAL_HOUR = "partial_hour"            # v2.573 (Faz 1 F1-B): saatin 45 dakikasından azı ölçülü — geçerli üretim serisine girmez
+    EKSIK = "eksik"                          # v2.598 (Faz 4 F4-C): kaynakta o saat için satır yok (boş saat) — 'unparseable' değil
+    SIFIR_GUNDUZ = "sifir_gunduz"            # v2.598: gündüz, ışınım var (>200 W/m²), güç 0 — beklenmeyen sıfır üretim (şüpheli)
 
 
 @dataclass
@@ -125,6 +127,10 @@ class TransformSpec:
     # --- 20 Eyl 2026: cihaz bazlı satırlar (Bulgu 1) ve kaynak adımı (Bulgu 2) ---
     duplicate_policy: str = "error"                # "error"|"sum"|"mean"
     rows_per_timestamp: float = 1.0
+    # --- v2.599 (Faz 4 F4-D zaman sözleşmesi): kaynak damgasının anlamı ve uygulanan düzeltme ---
+    kaynak_damga_tipi: str = "aralik_basi"         # "aralik_basi"|"aralik_sonu"|"anlik" — kaynağın konvansiyonu (çıktı daima aralık başı)
+    damga_duzeltme: str | None = None              # "saat-1" (hour-ending 1–24), "adim_geri" (aralık sonu → başı), "24:00→ertesi gün" …
+    dst_yok_saat_satiri: int = 0                   # yaz saati ileri alınırken var olmayan yerel saate düşen (seriye alınmayan) satır sayısı
     source_timestep_minutes: Optional[int] = None
 
     def to_dict(self) -> dict:
@@ -174,6 +180,9 @@ class QualityReport:
                     "duplicate_time": "tekrarlanan zaman damgası",
                     "dst_ambiguous": "yaz saati geçişi belirsizliği",
                     "unparseable": "okunamayan satır",
+                    "partial_hour": "kısmi saat (45 dakikadan az ölçüm)",
+                    "eksik": "boş saat (kaynakta kayıt yok)",
+                    "sifir_gunduz": "gündüz ışınım varken sıfır üretim (şüpheli)",
                 }.get(flag, flag)
                 parts.append(f"{n} satır: {label}.")
         parts.extend(self.warnings)
