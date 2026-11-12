@@ -1884,3 +1884,29 @@ Python test işi ikisinde de yeşil. Dağıtım ssh: `git pull` → `PVQ_SURUM=f
 alembic head v2588, 7 tabloda RLS enable+force ve 7 politika, grant pvq_app S/I/U (sonuç S/I) ve pvq_api S/I/U/D, `/v1/healthz` ok, kimliksiz `portfoyler` ve `finansal-etki` 422,
 index.html ve 143 asset birebir. Kalan: ilk `gece_portfoy` koşusu (12.11 04:05 TSİ) ve «Portföy yönetimi» sayfasının canlı incelemesi (oturumlu Chrome) → 08; B9/B10/B11/B12 ve
 Faz 2 B1–B8 ayrı karar.
+
+## Yetmiş dokuzuncu paket — v2.606 (12.11.2026): Faz 4 — Mimari güçlendirme toplu mühür (F4-A…L) — ŞEMA (7 göç)
+Durum: MÜHÜRLENDİ. Kaynak: ChatGPT «strengthen PVQuant's existing architecture» brief'i (11.11, 14 aşama); belgeler `~/Desktop/PVQuant_Faz4_Mimari` (00 plan + paket durumları,
+07 test turları, 08 teslim raporu: 15 bölüm + tamamlanma matrisi). İlke: değer üreten formül değişmez; sınır, künye, sözlük, sicil, sürüm eklenir (altın referanslar + denklik testleri).
+Kullanıcı her paketi ayrı onayladı («Evet, F4-A'dan başla» … «Evet, F4-L'ye geç»); F4-F'den itibaren her paket /code-review high öz-incelemesinden geçti.
+Şema: v2597 forecast_runs künye + etiket sözlüğü (NOT NULL, CHECK, geri doldurma) + değişmezlik tetikleyicisi (bakım bağlamı) + konformal_ayar_gecmis / meteo_kosu_kunye;
+v2598 scada_hourly flag CHECK + kaynak/alinma_zamani/aralik_dk/kaynak_damga_tipi/sinir + jobs_log.sonuc_json; v2599 santral_kunye (tarihli, RLS); v2600 kural_sicili_anlik;
+v2601 piyasa_fiyat_surum (yalnız ekleme); v2602 denetim_izi CHECK +dis_api, UPDATE/DELETE yok, SECURITY DEFINER denetim_izi_temizle; v2603 api_keys.plant_ids.
+Değişmez tablolarda pvq_api/pvq_app UPDATE/DELETE yetkisi kaldırıldı. Elle doğrulanan M1–M7 kapandı (dış API izi kaybı, hibrit künyesi, sentetik tohum, DST satırı, kural
+sürümü, fiyat üzerine yazma, dosya yükleme kaydı). Paket özetleri commit `262361a` NE bölümünde ve `00` plan bloklarında.
+Mühür öncesi (bu oturum): tam takım `pvq_api` rolüyle (CI taklidi) koşuldu → iki üretim sorunu yakalandı ve kapandı: fixture temizliği (`PVQ_BAKIM_DB_URL`, ci.yml) ve worker
+denetim temizliğinin pvq_api'de reddedilmesi (SECURITY DEFINER işlev). Canlı salt okuma: 12.11 03:55 `gece_finansal_etki` bir santralda ValueError (fiyatı eksik saat düşünce
+24/22 hizalama) → `dengesizlik_service.saatlik_hesap` indeksle hizalama + regresyon testi bu mühürde. M7 canlı etkisi yok (72 saatte dosya yüklemesi yok; partiler EPİAŞ çekişi).
+Testler: tam Python takımı sahip rolüyle 1.334 geçti / 1 atlandı / 0 başarısız; pvq_api rolüyle 1.336 geçti / 0 başarısız; Tur 1 95/95, Tur 3 39/39; web 104/104, tsc -b, vite build,
+oxlint yeni uyarı 0; kareler 5 sayfa × 375/768/1440 taşma 0. Koşulmayan: Firefox/WebKit, Playwright, yük testi, canlı süre, gerçek EPİAŞ yanıtı.
+Not: commit `262361a` mesajının KANIT satırında «CI taklidi pvq_api rolüyle: __CI_TAKLIDI__» yer tutucusu kaldı (doldurma betiği düştü; amend/force-push otomatik modda
+reddedildi). Gerçek değer: 1.336 geçti, 0 başarısız (8 dk 05 s).
+
+**Mühür (v2.606, 12.11.2026 ~18:55 TSİ):** commit `262361a` (171 dosya; kareler commit edilmedi), CI #735 yeşil (7 dk 19 s). Dağıtım ssh: `git pull` →
+`PVQ_SURUM=$(git describe --always) docker compose build api worker web` → 7 göç DB SAHİBİYLE (`docker compose run … api alembic upgrade head`, v2588 → v2603; ders: `bash -s`
+heredoc içinde `docker compose run` stdin'i yutar, `</dev/null` şart) → `up -d` (17:55 UTC, 04:00–08:30 TSİ penceresi dışı). Canlı: alembic head v2603; `scada_hourly_flag_check`
+ve `denetim_izi_kapsam_check` DOĞRULANMIŞ (NOT VALID kalmadı); etiket geri doldurma yayin 236 / gun_ici 433; `piyasa_fiyat_surum` 16.368 = `piyasa_fiyat`; `santral_kunye` 5;
+`/v1/healthz` ok; kimliksiz `/v1/dis/santraller` 422 + `X-PVQuant-Schema: 2026-11-12` + `{detail, kod, alanlar, schema_version}`; worker «basladi», yakalama turu gerekmedi
+(sicil açılış koşusu tam_tur'un parçası) → sicil anlık görüntüsü worker konteynerinde pvq_api ile bir kez üretildi (id 1, sha 2af703c1485c20c7, 71 kayıt); `denetim_izi_temizle`
+EXECUTE pvq_api ✓, `denetim_izi`/`forecast_values` DELETE pvq_api ✗ (beklenen). Kalan: ilk gece koşuları (03:08 sicil, 03:50 doğrulama, 03:55 FEM — düzeltme doğrulanır, 04:05
+portföy) ve `isler_service.sureler()` ilk satırları → 08; ayrı kararlar 08 §15.
