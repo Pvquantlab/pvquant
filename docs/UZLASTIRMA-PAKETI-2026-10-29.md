@@ -1910,3 +1910,21 @@ ve `denetim_izi_kapsam_check` DOĞRULANMIŞ (NOT VALID kalmadı); etiket geri do
 (sicil açılış koşusu tam_tur'un parçası) → sicil anlık görüntüsü worker konteynerinde pvq_api ile bir kez üretildi (id 1, sha 2af703c1485c20c7, 71 kayıt); `denetim_izi_temizle`
 EXECUTE pvq_api ✓, `denetim_izi`/`forecast_values` DELETE pvq_api ✗ (beklenen). Kalan: ilk gece koşuları (03:08 sicil, 03:50 doğrulama, 03:55 FEM — düzeltme doğrulanır, 04:05
 portföy) ve `isler_service.sureler()` ilk satırları → 08; ayrı kararlar 08 §15.
+
+## v2.607 + v2.608 — Faz 4 mühür sonrası düzeltmeleri ve Faz 5 toplu mühür (12.11.2026, gece)
+
+**v2.607** (`bdf2fce`, 10 dosya): v2.606 mühür sonrası `/code-review medium` 7 bulgu — hour-ending dosya + «aralık sonu» damga tipi tek kaydırma; 1–23 saat kolonu belirsiz
+(kaydırılmaz, rapor uyarısı); NaT tazelik «eksik»; `_yas_gun` None; künye-önce santral güncellemesi (kısmi yazım yok); v2599 REVOKE yorumu; `timezone.utc`. Şema değişmedi.
+
+**v2.608** (`da4dae2`, 49 dosya, +3.062/−550): Faz 5 — müşteri paneli bilgi mimarisi ve yönetim paneli sağlık ayrımı (F5-A…F). Durum sözlüğü (6 durum, SIRA, ESIK yanıtta;
+`GET /v1/sozluk/durum`); müşteri hizmet sağlığı (5 boyut, santral→kuruluş→portföy→platform; `GET /v1/hizmet-sagligi`, `GET /v1/yonetim/hizmet-sagligi`); Genel bakış açılış
+sayfası (`GET /v1/plants/{id}/genel-bakis`, dört kart); beş iş akışı grubu + KGÜP ve Paylaşım sayfaları; teknik sistem sağlığı (`GET /v1/yonetim/sistem-sagligi`) ↔ müşteri
+hizmet sağlığı iki bölüm; aşamalı açılım (`Katla`). İlke: çekirdek/formül/kalibrasyon/şema değişmedi; «bildirildi» müşteri beyanı; TPYS kabulü ve EPİAŞ uzlaştırma durumu
+daima «doğrulanamadı». Kanıt: tam takım DB sahibi 1.354/1/0 (8 dk 57 s), pvq_api CI taklidi 1.364/0 (8 dk 44 s); web 112/112; üç motor (Chromium 156 / Firefox 157 /
+WebKit 27.2) 0 hata; CDP taraması taşma 0; yük 25 santral: hizmet sağlığı 50–64 ms, Genel bakış 89–116 ms. Öz incelemeler: C/B 9→8, A 8/8, D 8/8+1, E 7/7, tüm birikim
+5→4 (1 ayrı karar: santral uçlarına biçimsiz kimlik `_uuid` kapısı). Belgeler `~/Desktop/PVQuant_Faz5_Panel_Mimarisi` (00/07/08, kanit/), depo `docs/PANEL-MIMARISI-FAZ5.md`.
+
+**Mühür (12.11.2026 ~22:48 TSİ):** CI #737 yeşil (7 dk 32 s; tek koşu iki commit için). Dağıtım ssh: `git pull --ff-only` → `PVQ_SURUM=$(git describe --always)` =
+`fable5-baslangic-239-gda4dae2` → `docker compose build api worker web` → `up -d api worker web` (19:48 UTC; göç yok, 04:00–08:30 TSİ penceresi dışı). Canlı: `/v1/healthz` 200;
+web `index-Di7g82Nw.js` + `GenelBakis`/`Kgup`/`Paylasim` parçaları yayında; yeni uçlar kimliksiz 422 (mevcut uçlarla aynı); worker «basladi», yakalama turu gerekmedi (üretici gece
+işleri taze). Kalan: canlı kiracıda Genel bakış ve hizmet sağlığı sayılarının gözlenmesi (ilk sabah), `.rozet-kritik` tonu, eşik ezme, portföy bazlı Genel bakış → 08 §15.
