@@ -58,7 +58,7 @@ def upgrade() -> None:
     op.execute("GRANT SELECT, INSERT, UPDATE ON santral_kunye TO pvq_app")
     op.execute("GRANT USAGE, SELECT ON SEQUENCE santral_kunye_id_seq TO pvq_app")
     op.execute("GRANT SELECT ON santral_kunye TO pvq_api")
-    op.execute("REVOKE INSERT, UPDATE, DELETE ON santral_kunye FROM pvq_api")
+    op.execute("REVOKE INSERT, UPDATE, DELETE ON santral_kunye FROM pvq_api")   # doğrudan yetki yok; pvq_api pvq_app üyesi olduğundan kalıtla S/I/U edinir (uygulama rolü yazar), DELETE kimsede yok
     # tek seferlik doldurma — yalnız bilinen değerler
     op.execute("""
     INSERT INTO santral_kunye(tenant_id, plant_id, gecerli_bas, dc_kwp, ac_kw, eak_kw, segment, lisans_durumu, uevcb_kod, epias_santral_id, kaynak, dogrulama, notlar)

@@ -10,7 +10,7 @@ SAF: DB yok, ağ yok. Çekirdek (pipeline/models/ext/tahmin) bu modülü içe ak
 """
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 import pandas as pd
 
@@ -81,4 +81,4 @@ def saat_damgasi_araliga(index: pd.DatetimeIndex, damga_tipi: str, adim_dk: int)
 
 def simdi_utc() -> datetime:
     """Tek «şimdi» kaynağı (testlerde yamalanır)."""
-    return datetime.now(tz=pd.Timestamp.now(tz="UTC").tzinfo)
+    return datetime.now(timezone.utc)

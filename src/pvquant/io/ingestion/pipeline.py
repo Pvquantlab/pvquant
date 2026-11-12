@@ -130,6 +130,10 @@ def _tarih_saat_birlestir(df: pd.DataFrame) -> pd.DataFrame:
     if hour_ending:
         say = say - 1
         df.attrs["kaynak_damga_tipi"] = "aralik_sonu"; df.attrs["damga_duzeltme"] = "saat-1"
+    elif say.notna().any() and say.min() >= 1 and say.max() == 23:
+        # v2.607: 0 da 24 de yok — 1–23 hour-ending mi (24 satırı eksik), 0 satırı eksik 0 tabanlı mı belirsiz; kaydırılmaz, raporda söylenir
+        df.attrs["saat_kolonu_uyari"] = ("Saat kolonu 1–23 arası: dosyanın saat tabanı belirsiz (0 ve 24 satırı yok). 0 tabanlı sayıldı; "
+                                        "kaynak aralık sonu (hour-ending) ise 'aralık sonu' damga tipiyle yeniden yükleyin.")
     saat = say.fillna(0).astype(int).mod(24).map("{:02d}:00".format)
     birlesik = df[tarih_kolonu].astype(str).str.strip() + " " + saat
     df = df.rename(columns={tarih_kolonu: f"{tarih_kolonu}__tarih",
@@ -403,6 +407,8 @@ def ingest_file(
         source_timestep_minutes=spec.source_timestep_minutes,   # v2.367
         ac_limit_kw=ac_limit_kw,                                # v2.376
     )
+    if raw.attrs.get("saat_kolonu_uyari"):   # v2.607: belirsiz saat tabanı sessiz kalmaz
+        report.warnings.append(str(raw.attrs["saat_kolonu_uyari"]))
     if spec.dst_yok_saat_satiri:   # v2.599 (F4-D): yaz saati ileri alınırken var olmayan saat — tek UTC karşılığı yok, sessizce değil raporla düşer
         report.warnings.append(
             f"{spec.dst_yok_saat_satiri} satır yaz saati geçişinde var olmayan yerel saate düşüyor (ileri alma); bu satırların UTC karşılığı yok, "

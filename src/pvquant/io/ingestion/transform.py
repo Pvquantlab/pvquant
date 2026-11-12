@@ -368,7 +368,7 @@ def transform_to_canonical(
     from pvquant.zaman import DAMGA_TIPLERI, saat_damgasi_araliga
     if damga_tipi not in DAMGA_TIPLERI:
         raise ValueError(f"damga_tipi {damga_tipi!r} tanımsız (izinli: {', '.join(DAMGA_TIPLERI)})")
-    if damga_tipi == "aralik_sonu":
+    if damga_tipi == "aralik_sonu" and df.attrs.get("damga_duzeltme") != "saat-1":   # v2.607: hour-ending dosya pipeline'da zaten saat−1 çevrildi; ikinci kaydırma yok
         _adim = detect_timestep_minutes(pd.DatetimeIndex(utc_index.dropna().unique()).sort_values())
         utc_index = saat_damgasi_araliga(utc_index, "aralik_sonu", _adim)
     opt_map = {

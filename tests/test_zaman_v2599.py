@@ -84,6 +84,13 @@ def test_hour_ending_1_24_dosyasi_aralik_basina_cevrilir(tmp_path):
     # 0–23 dosyası eskisi gibi aralık başı
     r2 = ingest_file(_csv(tmp_path / "hb.csv", ["date,hour,production"] + [f"2023-06-01,{h},{5.0}" for h in range(24)]), capacity_kwp=35000.0, latitude=36.8, longitude=34.6, source_timezone="Europe/Istanbul")
     assert r2.transform.kaynak_damga_tipi == "aralik_basi" and r2.transform.damga_duzeltme is None
+    # v2.607 (mühür sonrası inceleme): hour-ending dosya + 'aralik_sonu' seçimi TEK kaydırma (çift düzeltme yok)
+    r3 = ingest_file(_csv(tmp_path / "he2.csv", satirlar), capacity_kwp=35000.0, latitude=36.8, longitude=34.6, source_timezone="Europe/Istanbul", damga_tipi="aralik_sonu")
+    d3 = r3.data.reset_index()
+    assert d3["timestamp"].min() == pd.Timestamp("2023-06-01 00:00", tz="Europe/Istanbul") and d3["timestamp"].max() == pd.Timestamp("2023-06-02 23:00", tz="Europe/Istanbul")
+    # v2.607: 1–23 (24 satırı yok) belirsiz — kaydırılmaz, raporda uyarı
+    r4 = ingest_file(_csv(tmp_path / "he3.csv", ["date,hour,production"] + [f"2023-06-01,{h},{5.0}" for h in range(1, 24)]), capacity_kwp=35000.0, latitude=36.8, longitude=34.6, source_timezone="Europe/Istanbul")
+    assert r4.transform.damga_duzeltme is None and any("saat tabanı belirsiz" in w for w in r4.report.warnings)
 
 
 def test_24_00_damgasi_ertesi_gun_00_00():

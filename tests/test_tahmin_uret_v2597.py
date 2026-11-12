@@ -97,3 +97,11 @@ def test_plant_spec_kur_tek_kaynak_eski_adla_birebir():
     assert (k.eta_bos, k.bifacial_gain_geometric, k.bifacial_factor) == (0.88, 0.2, 0.7)   # bg GEOMETRİK BG'ye, BF teknolojiden
     assert plant_spec_kur(p, {"eta_bos": None, "bg": None}).eta_bos == 0.93
     assert plant_spec_kur({**p, "params_json": "{bozuk"}).iam_model == "none"
+
+
+def test_yas_gun_hesaplanamayinca_none_v2607():
+    """v2.607 (mühür sonrası inceleme): kalibrasyon/konformal yaşı ayrıştırılamıyorsa None (eski kod None/24 ile TypeError veriyordu)."""
+    from pvquant.services.forecast_service import _yas_gun
+    simdi = pd.Timestamp("2026-11-12T00:00Z")
+    assert _yas_gun(simdi, "2026-11-10T00:00Z") == 2.0 and _yas_gun(simdi, None) is None and _yas_gun(simdi, "bozuk-damga") is None
+

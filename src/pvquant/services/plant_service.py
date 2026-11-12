@@ -65,10 +65,7 @@ def guncelle(tenant_id, plant_id, aktor_id=None, **alanlar):
     onceki = getir(tenant_id, plant_id) or {}
     guc = {k: kume[k] for k in ("capacity_kwp", "ac_limit_kw") if k in kume and _degisti(onceki.get(k), kume[k])}
     diger = {k: v for k, v in kume.items() if k not in guc}
-    if diger:
-        sset = ", ".join(f"{k}=:{k}" for k in diger)
-        with tenant_baglami(tenant_id) as s:
-            s.execute(text(f"UPDATE plants SET {sset} WHERE id=:_p"), {**diger, "_p": plant_id})
+    # v2.607: önce künye sürümü (doğrulama burada; hata verirse hiçbir alan yazılmaz), sonra diğer alanlar — kısmi güncelleme kalmaz
     if guc:
         from datetime import date as _date
 
@@ -79,6 +76,10 @@ def guncelle(tenant_id, plant_id, aktor_id=None, **alanlar):
         if _sk.guncel(tenant_id, plant_id) is None:   # künyesiz eski santral: önce mevcut değerlerle ilk sürüm
             _sk.ilk_surum(tenant_id, plant_id, dc_kwp=onceki.get("capacity_kwp"), ac_kw=onceki.get("ac_limit_kw"))
         _sk.yeni_surum(tenant_id, plant_id, gecerli_bas=_date.today(), aktor_id=aktor_id, kaynak="beyan", **alan)   # plants çift yazılır
+    if diger:
+        sset = ", ".join(f"{k}=:{k}" for k in diger)
+        with tenant_baglami(tenant_id) as s:
+            s.execute(text(f"UPDATE plants SET {sset} WHERE id=:_p"), {**diger, "_p": plant_id})
     from pvquant.services import denetim_service
     denetim_service.kaydet("musteri", "santral_guncelle", aktor_id=aktor_id, tenant_id=tenant_id, nesne_tur="plant", nesne_id=plant_id,
                            ayrinti={"yeni": kume, "onceki": {k: onceki.get(k) for k in kume}})

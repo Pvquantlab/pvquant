@@ -203,6 +203,12 @@ def _yas_saat(simdi, zaman) -> float | None:
         return None
 
 
+def _yas_gun(simdi, zaman) -> float | None:
+    """v2.607: saat cinsi yaşı güne çevirir; yaş hesaplanamıyorsa None (eski kod None/24 ile düşüyordu)."""
+    y = _yas_saat(simdi, zaman)
+    return round(y / 24.0, 1) if y is not None else None
+
+
 def arsive_yaz(tenant_id, plant: dict, meteo, sonuc: TahminSonucu, kalibrasyon_id=None, etiket: str | None = None,
                girdi: TahminGirdisi | None = None) -> str:
     """DB: forecast_runs künyesi + forecast_values satırları, tek işlemde; v2.176 son-bekçi (sayım tutmazsa rollback).
@@ -248,8 +254,8 @@ def arsive_yaz(tenant_id, plant: dict, meteo, sonuc: TahminSonucu, kalibrasyon_i
         _bilesenler = getattr(meteo, "bilesenler", None)
         veri_kalitesi = {
             "meteo_yas_saat": _yas_saat(simdi, _nwp),                              # NWP yayını ile koşu arası
-            "kalibrasyon_yas_gun": (round(_yas_saat(simdi, _g.kalibrasyon_zamani) / 24.0, 1) if _g.kalibrasyon_zamani is not None else None),
-            "konformal_yas_gun": (round(_yas_saat(simdi, _ayar.get("hesap_zamani")) / 24.0, 1) if _ayar and _ayar.get("hesap_zamani") else None),
+            "kalibrasyon_yas_gun": _yas_gun(simdi, _g.kalibrasyon_zamani),
+            "konformal_yas_gun": (_yas_gun(simdi, _ayar.get("hesap_zamani")) if _ayar else None),
             "ensemble_yas_saat": _yas_saat(simdi, _g.ensemble_kosu_zamani),
             "eksik_saat": int(sonuc.n_eksik or 0), "bant_kaynagi": sonuc.bant.get("kaynak"), "sapma_aktif": bool(sonuc.sapma.get("aktif")),
             "geri_dusus": sonuc.geri_dusus,

@@ -165,7 +165,10 @@ def tazelik_durumu(son_olcum, simdi=None, esik_saat: float = TAZELIK_ESIK_SAAT) 
         return {"kod": "eksik", "nitelik": Nitelik.EKSIK.value, "etiket": "ölçüm yok", "yas_saat": None}
     simdi = pd.Timestamp(simdi) if simdi is not None else pd.Timestamp.now(tz="UTC")
     simdi = simdi.tz_localize("UTC") if simdi.tzinfo is None else simdi.tz_convert("UTC")
-    s = pd.Timestamp(son_olcum); s = s.tz_localize("UTC") if s.tzinfo is None else s.tz_convert("UTC")
+    s = pd.Timestamp(son_olcum)
+    if pd.isna(s):   # v2.607: NaT (çerçeveden gelen boş max) ölçüm yok demektir; «taze» sanılmaz
+        return {"kod": "eksik", "nitelik": Nitelik.EKSIK.value, "etiket": "ölçüm yok", "yas_saat": None}
+    s = s.tz_localize("UTC") if s.tzinfo is None else s.tz_convert("UTC")
     yas = round(float((simdi - s).total_seconds() / 3600.0), 1)
     if yas > esik_saat:
         return {"kod": "gecikmis", "nitelik": Nitelik.GECIKMIS.value, "etiket": f"son ölçüm {int(yas // 24)} gün önce", "yas_saat": yas}

@@ -68,6 +68,7 @@ def test_diger_sozluk_eslemeleri_ve_tazelik():
     assert ks.uygunluk_nitelik("olay:kisit") is ks.Nitelik.SUPHELI and ks.uygunluk_nitelik(None) is ks.Nitelik.EKSIK
     simdi = pd.Timestamp("2026-11-12 00:00", tz="UTC")
     assert ks.tazelik_durumu(None)["kod"] == "eksik"
+    assert ks.tazelik_durumu(pd.NaT, simdi)["kod"] == "eksik"   # v2.607: NaT «taze» sanılmaz
     assert ks.tazelik_durumu("2026-11-11T10:00Z", simdi) == {"kod": "taze", "nitelik": "olculmus", "etiket": "veri güncel", "yas_saat": 14.0}
     g = ks.tazelik_durumu("2026-11-09T00:00Z", simdi)
     assert g["kod"] == "gecikmis" and g["yas_saat"] == 72.0 and "3 gün" in g["etiket"]
