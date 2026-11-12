@@ -571,7 +571,7 @@ def mutabakat(tenant_id, plant: dict, donem, surum: str | None = None, bugun: da
     return {"donem": d.isoformat()[:7], "donem_etiket": d.strftime("%m.%Y"), "bildirim": ({k: v for k, v in bil.items() if k != "kalemler"} if bil else None),
             "satirlar": satirlar, "ozet": ozet, "uyum": {"pct": UYUM_PCT, "tl": UYUM_TL, "not": UYUM_NOTU}, "guvenilirlik": guven, "eylem": eylem,
             "pvquant": {k: v for k, v in pv.items() if k != "kalemler"}, "saatlik_detay": saatlik, "not": NOT, "itiraz": itiraz,
-            "program_notu": ("bildirilen KGÜP yüklü saat yok: hesap PVQuant önerisiyle; mutabakat için bildirilen programı yükleyin (Tahminler › bildirilen KGÜP)"
+            "program_notu": ("bildirilen KGÜP yüklü saat yok: hesap PVQuant önerisiyle; mutabakat için bildirilen programı yükleyin (KGÜP › bildirilen KGÜP ile kıyas)"
                              if pv.get("saat") and not pv.get("bildirilen_saat") else None)}
 
 

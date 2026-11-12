@@ -31,7 +31,7 @@ def test_sakin_ozet_oneri_uretmez():
 def test_her_kural_tetiklenir():
     assert _kodlar(_o(**{"uretim.sapma.pct": -12.0}))[0] == "sapma_buyuk"
     r = fe.oneriler(_o(**{"uretim.sapma.pct": 12.0}))[0]
-    assert r["tur"] == "eylem" and r["sayfa"] == "tahminler" and "fazla üretim" in r["metin"] and "%12,0" in r["metin"] and "sapma -10,0 MWh" in r["dayanak"]
+    assert r["tur"] == "eylem" and r["sayfa"] == "kgup" and "fazla üretim" in r["metin"] and "%12,0" in r["metin"] and "sapma -10,0 MWh" in r["dayanak"]
     assert _kodlar(_o(**{"uretim.sapma.pct": -6.0})) == ["sapma_orta"]
     assert _kodlar(_o(**{"uzlastirma.fiyat.senaryo_saat": 24})) == ["piyasa_verisi_eksik"]
     assert _kodlar(_o(**{"uzlastirma.resmi.not": fe.NOT_BILDIRIM_YOK})) == ["bildirim_yok"]

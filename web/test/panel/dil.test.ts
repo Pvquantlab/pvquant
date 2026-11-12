@@ -11,6 +11,8 @@ const DOSYALAR = [
   "features/sayfalar/Portfoy.tsx", "features/sayfalar/Dogruluk.tsx", "features/sayfalar/Tahminler.tsx", "features/sayfalar/Takvim.tsx", "features/sayfalar/Olaylar.tsx", "features/sayfalar/Mutabakat.tsx", "features/sayfalar/FinansalEtki.tsx", "features/sayfalar/Portfoyler.tsx", "features/sayfalar/Sayac.tsx",
   "features/sayfalar/Aylik.tsx", "features/sayfalar/Digerleri.tsx", "features/sayfalar/Hakkinda.tsx",
   "features/sayfalar/JsonOnizleme.tsx", "features/santralim/Santralim.tsx", "features/giris/Giris.tsx",
+  "features/genel/GenelBakis.tsx",   // v2.608 (Faz 5 F5-B)
+  "features/sayfalar/Kgup.tsx", "features/sayfalar/Paylasim.tsx",   // v2.608 (Faz 5 F5-A)
 ];
 
 // iç terim → müşteri dili (karşılık yalnız hata mesajı için)

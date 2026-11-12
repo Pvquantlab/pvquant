@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { SOZLUK, isDurumu, tazelik, sorunAdi, segmentKisa } from "../../lib/sozluk";
 import { SEGMENTLER } from "../../api/types";
-import { yonetim, yasTr, type SistemOzet, type IsKaydi, type SantralEnvanter, type Kiraci, type YekdemYonetim } from "../../api/yonetim";
+import { yonetim, yasTr, type SistemSagligi, type HizmetSagligi, type HsSantral, type IsKaydi, type SantralEnvanter, type Kiraci, type YekdemYonetim } from "../../api/yonetim";
+import { hizmetDurumu } from "../../lib/durum";   // v2.608 (F5-D): hizmet durumu sözlüğü (müşteri paneliyle aynı)
 import { Zaman } from "./ortak";
-import { Kart, Kpi, Sayfa, SayfaIskeleti, sayiTr, gucTr } from "../sayfalar/parcalar";
+import { HizmetDurumu as Rozet, Kart, Kpi, Sayfa, SayfaIskeleti, sayiTr, gucTr } from "../sayfalar/parcalar";
 import { Meta } from "../../lib/Meta";
 
 /** 25.10 Faz 3 — SİSTEM: zamanlayıcı nabzı, gece turu tazeliği, hava/piyasa/yedek yaşı; müşteriler arası iş kayıtları (hata
@@ -22,19 +23,71 @@ const AYRINTI = { textAlign: "left" as const, whiteSpace: "normal" as const, wid
 const tarihTr = (s: string | null | undefined) => s ? new Date(s).toLocaleDateString("tr-TR") : "—";
 // Meteo arşivi tablosu yarım kartta: .grafik-kaydir > table 620 px tabanı orada 440 (1440'ta kaydırmasız, 375'te kayar).
 
+const BOLUM_ANAHTAR = "pvq_platform_sistem_bolum";
+const BOYUT_AD: Record<string, string> = { veri: "Veri", tahmin: "Tahmin", kgup: "Program (KGÜP)", mutabakat: "Mutabakat", alarm: "Alarm / olay" };
+const sureTrK = (sn: number | null) => sn == null ? "—" : sn < 60 ? `${sayiTr(sn, 1)} sn` : `${sayiTr(sn / 60, 1)} dk`;
+
+/** v2.608 (Faz 5 F5-D) — SİSTEM iki bağımsız görünüm: SİSTEM SAĞLIĞI (altyapı sinyalleri: zamanlayıcı, gece işleri, hava verisi, EPİAŞ, veritabanı/yedek,
+ *  sunucu; /sistem-sagligi) ve MÜŞTERİ HİZMET SAĞLIĞI (santral × veri/tahmin/program/mutabakat/alarm; /hizmet-sagligi). Teknik başarı hizmet
+ *  başarısı sayılmaz: iki uç ayrı hesaplar, sayfa ikisini yan yana koymaz, sekmeyle ayırır. Hükümler uçtan; arayüz yalnız sözlükten sözcük basar. */
 export function Sistem() {
-  const [o, setO] = useState<SistemOzet | null>(null);
+  // başlatıcı yalnız OKUR (StrictMode iki kez çağırır); anahtar takıldıktan sonra silinir — hedefli açılış («Müşteri hizmet sağlığı →») tek seferliktir
+  const [bolum, setBolum] = useState<"sistem" | "hizmet">(() => { try { return sessionStorage.getItem(BOLUM_ANAHTAR) === "hizmet" ? "hizmet" : "sistem"; } catch { return "sistem"; } });
+  useEffect(() => { try { sessionStorage.removeItem(BOLUM_ANAHTAR); } catch { /* gizli pencere */ } }, []);
+  const [sg, setSg] = useState<SistemSagligi | null>(null);
   const [hata, setHata] = useState<string | null>(null);
   const [sayac, setSayac] = useState(0);
   const [secSantral, setSecSantral] = useState<{ id: string; ad: string } | null>(null);   // 26.10 D2: envanterden «son hata» → iş kayıtları süzgeci
-  useEffect(() => { yonetim.sistem().then(setO).catch((e) => setHata(mesajCikar(e))); }, [sayac]);
+  useEffect(() => { yonetim.sistemSagligi().then(setSg).catch((e) => setHata(mesajCikar(e))); }, [sayac]);
+  const o = sg?.ham ?? null;
   if (!o && !hata) return <Sayfa baslik="Sistem"><SayfaIskeleti kpi={6} kart={2} /></Sayfa>;
   return (
-    <Sayfa baslik="Sistem" alt="Zamanlayıcı, gece işlemleri, veri tazeliği ve yedek; tüm müşterilerin iş kayıtları ve santralleri."
-      sag={<span className="dugme-sira">{o && <span className="cip"><Meta items={[`veritabanı ${boyutTr(o.db.boyut_bayt)}`, `${sayiTr(o.santral.etkin)} etkin santral`, `${sayiTr(o.santral.arsivli)} arşivli`]} /></span>}
-        <button className="dugme kucuk" onClick={() => { setO(null); setHata(null); setSayac((x) => x + 1); }}>Yenile</button></span>}>
+    <Sayfa baslik="Sistem" alt={bolum === "sistem" ? "Altyapı sinyalleri: zamanlayıcı, gece işlemleri, hava verisi, EPİAŞ, veritabanı ve yedek, sunucu; tüm müşterilerin iş kayıtları."
+                                              : "PVQuant bu müşteriye şu an kullanılabilir sonuç üretiyor mu? Santral × veri, tahmin, program, mutabakat, alarm; kuruluş ve portföy toplamları."}
+      sag={<span className="dugme-sira">
+        <div className="sekme" role="group" aria-label="Sağlık görünümü">   {/* .sekme kalıbı: aria-pressed düğmeler (Tahminler ufuk seçici gibi) */}
+          <button type="button" aria-pressed={bolum === "sistem"} onClick={() => setBolum("sistem")}>Sistem sağlığı</button>
+          <button type="button" aria-pressed={bolum === "hizmet"} onClick={() => setBolum("hizmet")}>Müşteri hizmet sağlığı</button>
+        </div>
+        {o && <span className="cip"><Meta items={[`veritabanı ${boyutTr(o.db.boyut_bayt)}`, `${sayiTr(o.santral.etkin)} etkin santral`, `${sayiTr(o.santral.arsivli)} arşivli`]} /></span>}
+        <button className="dugme kucuk" onClick={() => { setSg(null); setHata(null); setSayac((x) => x + 1); }}>Yenile</button></span>}>
       <Hata m={hata} />
-      {o && <>
+      {bolum === "hizmet" ? <HizmetSagligiBolumu santralSec={(id, ad) => { setSecSantral({ id, ad }); setBolum("sistem"); window.setTimeout(() => document.getElementById("is-kayitlari")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50); }} />
+       : o && sg && <>
+        {/* v2.608 (F5-D): altı bileşen, hüküm uçtan (durum sözlüğü); sinyali olmayan bileşen «doğrulanamadı» — yeşil değil */}
+        <div className="plat-saglik" style={{ gap: 10 }}>
+          <Rozet durum={sg.durum} etiket={`sistem: ${sg.etiket.toLocaleLowerCase("tr")}`} />
+          <span className="soluk" style={{ fontSize: 13 }}>{sg.not}</span>
+        </div>
+        <div className="ızgara satir-3" style={{ marginBottom: 14 }}>
+          {(["zamanlayici", "gece_isleri", "hava", "epias", "veritabani", "sunucu"] as const).map((k) => { const b = sg.bilesenler[k]; const AD = { zamanlayici: "Zamanlayıcı", gece_isleri: "Gece işlemleri", hava: "Hava verisi", epias: "EPİAŞ bağlantısı", veritabani: "Veritabanı ve yedek", sunucu: "Sunucu" }[k];
+            return <div key={k} className="kpi"><div className="kpi-et">{AD}</div><div style={{ margin: "6px 0" }}><Rozet durum={b.durum} /></div><div className="kpi-br">{b.neden}</div></div>; })}
+        </div>
+        <div className="ızgara-cift" style={{ marginBottom: 14 }}>
+          <Kart baslik="Dört zaman: bağlantı, veri alımı, en yeni kayıt, kullanılabilirlik" alt="Başarılı bağlantı yeni kayıt getirmemiş olabilir; dördü ayrı okunur">
+            <dl className="kunye">
+              <div><dt>Hava verisi: son indirme işi</dt><dd>{sg.bilesenler.hava.son_is ? <><Zaman s={sg.bilesenler.hava.son_is.zaman} /> <Rozet durum={sg.bilesenler.hava.son_is.tamam ? "saglikli" : "dikkat"} etiket={isDurumu(sg.bilesenler.hava.son_is.tamam)} /></> : "—"}</dd></div>
+              <div><dt>Hava verisi: son indirme</dt><dd><Zaman s={sg.bilesenler.hava.son_indirme} /></dd></div>
+              <div><dt>Hava verisi: en yeni tahmin koşusu</dt><dd><Zaman s={sg.bilesenler.hava.en_yeni_kosu} sar /><span className="kunye-not">arşivdeki en ileri saat; indirme başarılı olsa da bu eskiyse hava verisi eskidir</span></dd></div>
+              <div><dt>EPİAŞ: son istek</dt><dd>{sg.bilesenler.epias.son_baglanti ? <><Zaman s={sg.bilesenler.epias.son_baglanti.zaman} /> <Rozet durum={sg.bilesenler.epias.son_baglanti.tamam ? "saglikli" : "dikkat"} etiket={isDurumu(sg.bilesenler.epias.son_baglanti.tamam)} />{sg.bilesenler.epias.son_baglanti.ayrinti && <span className="kunye-not">{sg.bilesenler.epias.son_baglanti.ayrinti}</span>}</> : "—"}</dd></div>
+              <div><dt>EPİAŞ: son veri alımı</dt><dd><Zaman s={sg.bilesenler.epias.son_veri_alimi} /></dd></div>
+              <div><dt>EPİAŞ: en yeni fiyat saati</dt><dd><Zaman s={sg.bilesenler.epias.en_yeni_kayit} /><span className="kunye-not">gerçekleşen PTF/SMF; ileri fiyat değil</span></dd></div>
+              <div><dt>EPİAŞ: kullanılabilirlik (sistem yönü)</dt><dd><Zaman s={sg.bilesenler.epias.yon_son} /><span className="kunye-not">son 7 günde {sayiTr(sg.bilesenler.epias.yon_saat_7g)} saat yön; gün öncesi PTF <Zaman s={sg.bilesenler.epias.gop_son} /></span></dd></div>
+              <div><dt>EPİAŞ: kimlik</dt><dd>{sg.bilesenler.epias.kimlik === true ? "tanımlı" : sg.bilesenler.epias.kimlik === false ? "tanımlı değil" : "okunamadı"}</dd></div>
+            </dl>
+          </Kart>
+          <Kart baslik="Veritabanı, yedek ve sunucu" alt="yedek doğrulaması ve hata günlüğü sinyalsiz: «doğrulanamadı»">
+            <dl className="kunye">
+              <div><dt>Bağlantı</dt><dd><Rozet durum={sg.bilesenler.veritabani.baglanti.durum} /><span className="kunye-not">{sg.bilesenler.veritabani.baglanti.neden}; boyut {boyutTr(sg.bilesenler.veritabani.baglanti.boyut_bayt)}</span></dd></div>
+              <div><dt>Yedek</dt><dd><Rozet durum={sg.bilesenler.veritabani.yedek.durum} /><span className="kunye-not">{sg.bilesenler.veritabani.yedek.neden}</span></dd></div>
+              <div><dt>Yedek doğrulaması</dt><dd><Rozet durum={sg.bilesenler.veritabani.yedek_dogrulama.durum} /><span className="kunye-not">{sg.bilesenler.veritabani.yedek_dogrulama.neden}</span></dd></div>
+              <div><dt>API</dt><dd><Rozet durum={sg.bilesenler.sunucu.api.durum} /><span className="kunye-not">{sg.bilesenler.sunucu.api.neden}</span></dd></div>
+              <div><dt>Hata günlüğü</dt><dd><Rozet durum={sg.bilesenler.sunucu.hata_gunlugu.durum} /><span className="kunye-not">{sg.bilesenler.sunucu.hata_gunlugu.neden}</span></dd></div>
+              <div><dt>İş hataları (24 sa)</dt><dd><Rozet durum={sg.bilesenler.sunucu.is_hatalari.durum} /><span className="kunye-not">{sg.bilesenler.sunucu.is_hatalari.neden}</span></dd></div>
+            </dl>
+          </Kart>
+        </div>
+        {/* 25.10 Faz 3 KPI'ları aynen: tonlar uçtan gelen durum/taze/bayat alanlarını okur */}
         <div className="ızgara satir-3" style={{ marginBottom: 14 }}>
           <Kpi etiket={SOZLUK.kaynak.zamanlayici} deger={o.nabiz.durum === "calisiyor" ? "çalışıyor" : o.nabiz.durum === "sessiz" ? "sessiz" : "nabız yok"}
             ton={o.nabiz.durum === "calisiyor" ? undefined : "uyari"}
@@ -62,7 +115,15 @@ export function Sistem() {
             alt={o.yedek.son_deneme ? (o.yedek.son_deneme.tamam ? `son deneme başarılı; ${o.yedek.esik_saat} saatten eskisi eski sayılır` : `son deneme başarısız: ${o.yedek.son_deneme.ayrinti ?? "ayrıntı yok"}`) : "henüz yedek kaydı yok"} />
         </div>
         <IsKayitlari santral={secSantral} temizle={() => setSecSantral(null)} />
-        <SantralEnvanteri santralSec={(id, ad) => { setSecSantral({ id, ad }); document.getElementById("is-kayitlari")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} />
+        <Kart baslik="İş süreleri — son 7 gün, platform geneli" alt={`en uzun süreli ${sayiTr(sg.sureler.length)} iş; koşu sayısı, ortalama ve en uzun süre, başarısız sayısı; iş kayıtlarından, bitiş damgasız satır sayılmaz; listede olmayan iş ya hiç koşmadı ya kısa sürdü`} style={{ marginBottom: 14 }}>
+          {sg.sureler.length === 0 ? <Bos bas="Son 7 günde biten iş kaydı yok." /> : (
+            <div className="grafik-kaydir"><table className="veri sayisal" style={{ minWidth: 0 }}>
+              <thead><tr><th style={sol}>İş</th><th>Koşu</th><th>Başarısız</th><th>Ortalama</th><th>En uzun</th><th style={sol}>Son</th></tr></thead>
+              <tbody>{sg.sureler.map((u) => (
+                <tr key={u.kod}><td style={sol}><span title={u.kod}>{u.is}</span></td><td>{sayiTr(u.n)}</td><td>{u.hata > 0 ? <span className="rozet rozet-uyari">{sayiTr(u.hata)}</span> : "0"}</td>
+                  <td>{sureTrK(u.ort_sn)}</td><td>{sureTrK(u.en_uzun_sn)}</td><td style={sol}><Zaman s={u.son} /></td></tr>))}</tbody>
+            </table></div>)}
+        </Kart>
         <YekdemFiyatlari />
         <div className="ızgara-cift">
           <Kart baslik="Üretici ve izlenen işler" alt={`üretici işler (müşteri ölçütü): son başarılı koşu ${o.gece_turu.esik_saat} saatten yeni; izlenen işler kendi eşiğiyle`}>
@@ -222,6 +283,63 @@ function IsKayitlari({ santral, temizle }: { santral: { id: string; ad: string }
               <td style={{ ...AYRINTI, fontSize: 13.5, color: x.tamam ? "var(--ikincil)" : undefined }}>{x.ayrinti ?? "—"}</td></tr>))}</tbody>
         </table></div>)}
     </Kart>
+  );
+}
+
+// ---------------- v2.608 (Faz 5 F5-D): MÜŞTERİ HİZMET SAĞLIĞI ----------------
+/** Kuruluş × boyut ısı tablosu, santral listesi (yalnız sorunlu / kuruluş süzgeci), ardından mevcut santral envanteri. Veri tek uçtan (/hizmet-sagligi);
+ *  hükümler ve sözcükler sözlükten. TPYS kabulü ve EPİAŞ uzlaştırma durumu burada da «doğrulanamadı» olarak görünür. */
+function HizmetSagligiBolumu({ santralSec }: { santralSec: (id: string, ad: string) => void }) {
+  const [sorunlu, setSorunlu] = useState(false);
+  const [tenant, setTenant] = useState<string>("");
+  const [v, setV] = useState<HizmetSagligi | null>(null);
+  const [hata, setHata] = useState<string | null>(null);
+  useEffect(() => { setV(null); yonetim.hizmetSagligi({ tenant_id: tenant || undefined, yalniz_sorunlu: sorunlu }).then(setV).catch((e) => setHata(mesajCikar(e))); }, [tenant, sorunlu]);
+  const BOYUTLAR = ["veri", "tahmin", "kgup", "mutabakat", "alarm"] as const;
+  return (
+    <>
+      <Hata m={hata} />
+      {!v ? <SayfaIskeleti kpi={5} kart={2} /> : <>
+        <div className="plat-saglik" style={{ gap: 10 }}>
+          <Rozet durum={v.ozet.durum} etiket={`müşteri hizmeti: ${v.ozet.etiket.toLocaleLowerCase("tr")}`} />
+          <span className="soluk" style={{ fontSize: 13 }}><Meta items={[`${sayiTr(v.ozet.santral)} santral`, `${sayiTr(v.ozet.kurulus ?? v.kuruluslar.length)} kuruluş`, `${sayiTr(v.ozet.dikkat_kurulus ?? 0)} kuruluşta dikkat`, v.yarin ? `program günü ${v.yarin}` : null, v.donem ? `mutabakat dönemi ${v.donem}` : null].filter(Boolean) as string[]} /></span>
+        </div>
+        <div className="ızgara satir-5" style={{ marginBottom: 14 }}>
+          {BOYUTLAR.map((b) => { const d = v.ozet.boyut[b]; const s = d?.sayim ?? {};
+            return <div key={b} className="kpi"><div className="kpi-et">{BOYUT_AD[b]}</div><div style={{ margin: "6px 0" }}>{d ? <Rozet durum={d.durum} /> : "—"}</div>
+              <div className="kpi-br">{sayiTr(s.kritik ?? 0)} kritik · {sayiTr(s.dikkat ?? 0)} dikkat · {sayiTr(s.saglikli ?? 0)} sağlıklı{(s.dogrulanamadi ?? 0) > 0 ? ` · ${sayiTr(s.dogrulanamadi)} doğrulanamadı` : ""}</div></div>; })}
+        </div>
+        <Kart baslik="Kuruluşlar × boyut" alt="satırda kuruluşun en kötü hükmü; hücrede boyutun kuruluş içindeki en kötü hükmü ve sayımı; satıra tıklayınca santral listesi süzülür" style={{ marginBottom: 14 }}>
+          {v.kuruluslar.length === 0 ? <Bos bas="Etkin santrali olan kuruluş yok." /> : (
+            <div className="grafik-kaydir"><table className="veri sayisal" style={{ minWidth: 0 }}>
+              <thead><tr><th style={sol}>Kuruluş</th><th>Santral</th><th>Hüküm</th>{BOYUTLAR.map((b) => <th key={b}>{BOYUT_AD[b]}</th>)}<th style={sol}>Dikkat gereken</th></tr></thead>
+              <tbody>{v.kuruluslar.map((k) => (
+                <tr key={k.id} className="satir-tikla" onClick={() => setTenant(tenant === k.id ? "" : k.id)} aria-selected={tenant === k.id}>
+                  <td style={sol}>{k.ad}</td><td>{sayiTr(k.santral)}</td><td><Rozet durum={k.durum} /></td>
+                  {BOYUTLAR.map((b) => { const d = k.boyut[b]; return <td key={b}>{d ? <Rozet durum={d.durum} title={Object.entries(d.sayim).filter(([, n]) => n > 0).map(([ad, n]) => `${hizmetDurumu(ad).etiket} ${n}`).join(" · ")} /> : "—"}</td>; })}
+                  <td style={{ ...sol, whiteSpace: "normal", minWidth: 180 }}>{k.dikkat_santral.length === 0 ? <span className="soluk">yok</span> : k.dikkat_santral.slice(0, 4).map((x) => x.ad).join(", ") + (k.dikkat_santral.length > 4 ? ` +${sayiTr(k.dikkat_santral.length - 4)}` : "")}</td>
+                </tr>))}</tbody>
+            </table></div>)}
+        </Kart>
+        <Kart baslik="Santraller" alt="her santralın beş boyutu; rozetin üstünde neden; «son iş hatası» iş kayıtlarına götürür" style={{ marginBottom: 14 }}
+          sag={<span className="dugme-sira">{tenant && <span className="rozet rozet-uyari">kuruluş: {v.kuruluslar.find((k) => k.id === tenant)?.ad ?? tenant} <button type="button" className="plat-rozet-kapat" aria-label="kuruluş süzgecini kaldır" onClick={() => setTenant("")}>×</button></span>}
+            <label className="ayar-onay" style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13.5, cursor: "pointer" }}><input type="checkbox" checked={sorunlu} onChange={(e) => setSorunlu(e.target.checked)} />yalnız sorunlu</label></span>}>
+          {v.santraller.length === 0 ? <Bos bas={sorunlu ? "Sorunlu santral yok." : "Etkin santral yok."} /> : (
+            <div className="grafik-kaydir"><table className="veri sayisal santral plat-envanter">
+              <thead><tr><th>Müşteri</th><th>Santral</th><th>Hüküm</th>{BOYUTLAR.map((b) => <th key={b}>{BOYUT_AD[b]}</th>)}<th style={sol}>Eylem gereken</th></tr></thead>
+              <tbody>{v.santraller.map((p: HsSantral) => (
+                <tr key={p.id}><td className="ad">{p.kiraci}</td><td>{p.ad}<div className="kunye-not">{p.kapasite_kwp ? `${gucTr(p.kapasite_kwp)} kWp` : "kurulu güç girilmemiş"}{p.segment ? ` · ${segmentKisa(p.segment)}` : " · segment seçilmedi"}</div></td>
+                  <td><Rozet durum={p.durum} /></td>
+                  {BOYUTLAR.map((b) => { const d = p.boyutlar[b]; return <td key={b}>{d ? <Rozet durum={d.durum} title={d.neden} /> : "—"}</td>; })}
+                  <td style={{ ...sol, whiteSpace: "normal", minWidth: 220 }}>{p.eylem_gereken.length === 0 ? <span className="soluk">yok</span> : p.eylem_gereken.map((b) => `${BOYUT_AD[b] ?? b}: ${p.boyutlar[b]?.neden ?? ""}`).join(" · ")}
+                    {p.boyutlar.alarm?.son_is_hatasi ? <div className="kunye-not"><button type="button" className="plat-baglanti" onClick={() => santralSec(p.id, p.ad)}>son iş hatası {yasTr(String(p.boyutlar.alarm.son_is_hatasi))}</button></div> : null}</td>
+                </tr>))}</tbody>
+            </table></div>)}
+          <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>{v.not}</p>
+        </Kart>
+      </>}
+      <SantralEnvanteri santralSec={santralSec} />
+    </>
   );
 }
 

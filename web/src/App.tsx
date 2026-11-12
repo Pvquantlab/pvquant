@@ -4,6 +4,7 @@ import { Vitrin } from "./features/vitrin/Vitrin";
 import { Yontem } from "./features/vitrin/Yontem";
 import type { SayfaId } from "./shell/Kabuk";
 import { SAYFALAR } from "./shell/Kabuk";
+import { SANTRALSIZ } from "./shell/gruplar";   // v2.608 (F5-A): santral seçimi gerektirmeyen sayfalar tek kaynaktan
 import { api } from "./api/client";
 import type { SantralKisa } from "./api/types";
 
@@ -47,7 +48,10 @@ function tembel<P extends object>(yukle: () => Promise<ComponentType<P>>) {
 }
 const Kabuk = tembel(() => import("./shell/Kabuk").then((m) => m.Kabuk));
 const Santralim = tembel(() => import("./features/santralim/Santralim").then((m) => m.Santralim));
+const GenelBakis = tembel(() => import("./features/genel/GenelBakis").then((m) => m.GenelBakis));   // v2.608 (Faz 5 F5-B): varsayılan açılış
 const Tahminler = lazy(() => import("./features/sayfalar/Tahminler").then((m) => ({ default: m.Tahminler })));
+const Kgup = lazy(() => import("./features/sayfalar/Kgup").then((m) => ({ default: m.Kgup })));   // v2.608 (Faz 5 F5-A)
+const Paylasim = lazy(() => import("./features/sayfalar/Paylasim").then((m) => ({ default: m.Paylasim })));   // v2.608 (Faz 5 F5-A)
 const Dogruluk = lazy(() => import("./features/sayfalar/Dogruluk").then((m) => ({ default: m.Dogruluk })));
 const Takvim = lazy(() => import("./features/sayfalar/Takvim").then((m) => ({ default: m.Takvim })));   // v2.518 (P3a)
 const Olaylar = lazy(() => import("./features/sayfalar/Olaylar").then((m) => ({ default: m.Olaylar })));   // v2.521 (P1a)
@@ -66,7 +70,7 @@ const Hakkinda = lazy(() => import("./features/sayfalar/Hakkinda").then((m) => (
  *  parça inişi (yavaş ağda ~200 ms) kalmaz; ilk boyamayı geciktirmez (idle + 1,5 sn sonra), veri tasarrufu/2G'de
  *  atlanır. Aynı import() ifadeleri olduğundan tembel bileşenler inmiş parçayı kullanır; veri çekilmez. */
 const ONYUKLENECEKLER = [
-  () => import("./features/sayfalar/Portfoy"), () => import("./features/sayfalar/Tahminler"),
+  () => import("./features/santralim/Santralim"), () => import("./features/sayfalar/Portfoy"), () => import("./features/sayfalar/Tahminler"),
   () => import("./features/sayfalar/Digerleri"), () => import("./features/sayfalar/Dogruluk"),
   () => import("./features/sayfalar/Aylik"), () => import("./features/sayfalar/Hakkinda"),
 ];
@@ -107,7 +111,7 @@ function hashBaglanti(): { sayfa?: SayfaId; santral?: string } {
 }
 
 export default function App() {
-  const [sayfa, setSayfa] = useState<SayfaId>(() => hashBaglanti().sayfa ?? "santralim");
+  const [sayfa, setSayfa] = useState<SayfaId>(() => hashBaglanti().sayfa ?? "genel");   // v2.608 (F5-B): açılış Genel bakış; #santralim yer imleri çalışır
   // v2.263: santral seçimi gerçek — liste girişten sonra /v1/plants'ten.
   // v2.353: SABİT VARSAYILAN KİMLİK ÖLDÜ. Geliştirme kalıntısı bir UUID
   // ("1242a0a8-…", yerel Konya GES) varsayılandı; TAZE KURULUMDA panel o
@@ -166,7 +170,7 @@ export default function App() {
   // 24.10 Portföy geçiş turu: yan menü vurgusu ACİL güncelleme, içerik GEÇİŞ — tıklanan satır aynı karede seçili görünür;
   // içerik parçası/verisi gelene dek eski sayfa yerinde kalır. Eskiden vurgu da geçişle beklediğinden ilk ziyarette
   // (parça inene dek) tıklamanın görünür karşılığı yoktu.
-  const [secili, setSecili] = useState<SayfaId>(() => hashBaglanti().sayfa ?? "santralim");
+  const [secili, setSecili] = useState<SayfaId>(() => hashBaglanti().sayfa ?? "genel");
   const sayfaSec = (s: SayfaId) => { setSecili(s); startTransition(() => setSayfa(s)); };
   // v2.353: kalıcılık TEK yerde — seçim nereden değişirse değişsin (kullanıcı
   // tıklaması, otomatik ilk santral, son santral arşivlenince boşalma) depo
@@ -212,7 +216,7 @@ export default function App() {
           // panel boş içerik alanıyla değil, tek parça gelir. Hata olursa geçiş yine yapılır (hata sınırı/yenileme yakalar).
           const kusak = oturumKusagi.current;
           santralYenile();
-          Promise.all([Kabuk.onYukle(), Santralim.onYukle()]).catch(() => {})
+          Promise.all([Kabuk.onYukle(), GenelBakis.onYukle()]).catch(() => {})   // v2.608: ilk ekran Genel bakış
             .finally(() => { if (kusak === oturumKusagi.current) startTransition(() => setGirdi(true)); });
         }} />;
   else icerik = (
@@ -225,16 +229,20 @@ export default function App() {
       {/* v2.353: santral yokken sayfalar hiç çizilmez — her biri plantId ile
           uç çağırır ve boş kimlikte 404/asılı istek üretirdi. Portföy istisna:
           santral eklemenin ikinci yolu orada. */}
-      {!plantId && sayfa !== "portfoy" && sayfa !== "portfoyler" && <SantralYok />}
+      {/* v2.608 (F5-A): santral seçimi gerektirmeyen sayfalar kapıdan muaf */}
+      {!plantId && !SANTRALSIZ.includes(sayfa) && <SantralYok />}
       {sayfa === "portfoy" && <Portfoy onSec={(id) => { santralSec(id); sayfaSec("santralim"); }} />}
       {sayfa === "portfoyler" && <Portfoyler />}   {/* v2.595 (Faz 3 F3-H): santral seçimi gerektirmez */}
       {sayfa === "kurulus" && <Kurulus santralYenile={santralYenile} />}   {/* 26.10 Faz 6 */}
+      {plantId && sayfa === "genel" && <GenelBakis plantId={plantId} git={sayfaSec} />}   {/* v2.608 (Faz 5 F5-B) */}
       {plantId && sayfa === "santralim" && <Santralim plantId={plantId} />}
       {plantId && sayfa === "veri" && <VeriYukleme plantId={plantId}
         santralimeGit={() => sayfaSec("santralim")}
         tahminlereGit={() => sayfaSec("tahminler")} />}
       {plantId && sayfa === "kalibrasyon" && <Kalibrasyon plantId={plantId} />}
-      {plantId && sayfa === "tahminler" && <Tahminler plantId={plantId} />}
+      {plantId && sayfa === "tahminler" && <Tahminler plantId={plantId} kgupGit={() => sayfaSec("kgup")} />}
+      {plantId && sayfa === "kgup" && <Kgup plantId={plantId} />}   {/* v2.608 (Faz 5 F5-A) */}
+      {sayfa === "paylasim" && <Paylasim />}   {/* v2.608 (Faz 5 F5-A): santral seçimi gerektirmez */}
       {plantId && sayfa === "dogruluk" && <Dogruluk plantId={plantId} />}
       {plantId && sayfa === "takvim" && <Takvim plantId={plantId} />}
       {plantId && sayfa === "olaylar" && <Olaylar plantId={plantId} />}

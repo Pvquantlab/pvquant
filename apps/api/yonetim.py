@@ -334,6 +334,21 @@ def santraller(sorunlu: bool = False, c=Depends(platform_yetkisi())):
     return ss.santraller(c["sub"], sorunlu=sorunlu)
 
 
+@yonetim.get("/sistem-sagligi")
+def sistem_sagligi(c=Depends(platform_yetkisi())):
+    """v2.608 (Faz 5 F5-D): TEKNİK SİSTEM SAĞLIĞI — /sistem'in ham sinyalleri durum sözlüğüyle sınıflanmış (zamanlayıcı, gece işleri, hava verisi,
+    EPİAŞ, veritabanı/yedek, sunucu) + iş süreleri; sinyali olmayan bileşen «doğrulanamadı». Salt okunur."""
+    return ss.sistem_sagligi(c["sub"])
+
+
+@yonetim.get("/hizmet-sagligi")
+def hizmet_sagligi(tenant_id: str | None = None, yalniz_sorunlu: bool = False, c=Depends(platform_yetkisi())):
+    """v2.608 (Faz 5 F5-C): MÜŞTERİ HİZMET SAĞLIĞI — tüm kiracılar (ya da biri): santral × beş boyut, kuruluş/portföy/platform toplamları.
+    /sistem'in teknik hükmünden bağımsızdır; salt okunur, hata ayrıntısı taşımaz (o /isler'de)."""
+    from pvquant.services import hizmet_sagligi_service as hs
+    return hs.platform_ozet(c["sub"], tenant_id=_uuid(tenant_id, "kiracı kimliği"), yalniz_sorunlu=yalniz_sorunlu)
+
+
 # ---------------- kullanım (25.10 Faz 4) ----------------
 @yonetim.get("/kullanim")
 def kullanim(request: Request, ay: str | None = None, tenant_id: str | None = None, c=Depends(platform_yetkisi())):

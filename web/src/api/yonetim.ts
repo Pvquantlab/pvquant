@@ -16,9 +16,14 @@ export class YonetimHata extends Error { durum: number; constructor(durum: numbe
 async function istek<T>(yol: string, method: "GET" | "POST" | "PUT" = "GET", govde?: unknown): Promise<T> {
   if (PTABAN == null) throw new YonetimHata(0, "Örnek kipte yönetim yüzü yok.");
   const j = platformJeton();
-  const y = await fetch(`${PTABAN}/v1/yonetim${yol}`, {
-    method, body: govde === undefined ? undefined : JSON.stringify(govde),
-    headers: { ...(j ? { Authorization: `Bearer ${j}` } : {}), ...(govde === undefined ? {} : { "Content-Type": "application/json" }) } });
+  let y: Response;
+  try {
+    y = await fetch(`${PTABAN}/v1/yonetim${yol}`, {
+      method, body: govde === undefined ? undefined : JSON.stringify(govde),
+      headers: { ...(j ? { Authorization: `Bearer ${j}` } : {}), ...(govde === undefined ? {} : { "Content-Type": "application/json" }) } });
+  } catch {   // v2.608 (F5-D inceleme): ağ/sunucu yokken tarayıcının İngilizce «Failed to fetch» metni ekrana düşmesin
+    throw new YonetimHata(0, "Sunucuya ulaşılamadı. Bağlantınızı kontrol edip yeniden deneyin.");
+  }
   if (y.status === 401 && j) { platformCikis(); dusunce?.(); return new Promise<T>(() => {}); }
   if (!y.ok) {
     let mesaj = `${y.status} ${yol}`;
@@ -73,6 +78,31 @@ export interface KullanimToplam { dis_api: number; webhook: number; webhook_hata
   /** v2.516 (#6): KGÜP öneri sürümü (kgup_surum kaynak=pvquant) ve müşterinin yüklediği bildirilen dosya (kaynak=musteri) */
   kgup: number; kgup_bildirilen: number }
 /** v2.516 (#5): müşteriler arası açık alarm özeti — okunmamış ve pencere_gun günden yeni; etiket arka uçtan */
+/** v2.608 (Faz 5 F5-D): teknik sistem sağlığı — /sistem ham özeti + durum sözlüğü hükümleri (lib/durum.ts HIZMET_DURUMU). */
+export interface SagDurum { durum: string; etiket: string; neden: string }
+export interface SonIs { zaman: string | null; tamam: boolean; ayrinti: string | null }
+export interface SistemSagligi {
+  zaman: string; durum: string; etiket: string; sayim: Record<string, number>; sozluk_surumu: string; esik: Record<string, number>; not: string;
+  bilesenler: {
+    zamanlayici: SagDurum & { son: string | null; yas_dk: number | null };
+    gece_isleri: SagDurum & { bayat: string[]; son: string | null; uretici_isler: { kod: string; is: string; son_ok: string | null }[]; is_hatasi_24: number };
+    hava: SagDurum & { son_indirme: string | null; en_yeni_kosu: string | null; kaynak_sayisi: number; esik_saat: number; son_is: SonIs | null };
+    epias: SagDurum & { kimlik: boolean | null; son_baglanti: SonIs | null; son_veri_alimi: string | null; en_yeni_kayit: string | null; yon_son: string | null; yon_saat_7g: number; gop_son: string | null; epias_uretim: SonIs | null };
+    veritabani: SagDurum & { baglanti: SagDurum & { boyut_bayt: number }; yedek: SagDurum & { son_basarili: string | null; son_deneme: { zaman: string | null; tamam: boolean; ayrinti: string | null } | null; esik_saat: number }; yedek_dogrulama: SagDurum };
+    sunucu: SagDurum & { api: SagDurum; hata_gunlugu: SagDurum; is_hatalari: SagDurum };
+  };
+  sureler: { is: string; kod: string; n: number; hata: number; ort_sn: number | null; en_uzun_sn: number | null; son: string | null }[];
+  ham: SistemOzet;
+}
+/** v2.608 (Faz 5 F5-C/D): müşteri hizmet sağlığı — santral × beş boyut, kuruluş/portföy/platform toplamları (hizmet_sagligi_service). */
+export interface HsBoyut extends SagDurum { [k: string]: unknown }
+export interface HsSantral { id: string; ad: string; kapasite_kwp: number; tenant_id: string; kiraci: string; kiraci_durum: string; segment: string | null;
+  durum: string; etiket: string; eylem_gereken: string[]; boyutlar: Record<string, HsBoyut> }
+export interface HsGrup { id: string; ad: string; santral: number; durum: string; etiket: string; sayim: Record<string, number>;
+  boyut: Record<string, { durum: string; sayim: Record<string, number> }>; dikkat_santral: { id: string; ad: string; durum: string; eylem_gereken: string[] }[]; tur?: string; tenant_id?: string }
+export interface HizmetSagligi { zaman: string; yarin?: string; donem?: string; pencere?: { durum?: string } | null; santraller: HsSantral[]; kuruluslar: HsGrup[]; portfoyler: HsGrup[];
+  ozet: { santral: number; kurulus?: number; durum: string; etiket: string; sayim: Record<string, number>; boyut: Record<string, { durum: string; sayim: Record<string, number> }>; dikkat_kurulus?: number };
+  boyutlar?: string[]; esik: Record<string, number>; sozluk_surumu: string; not?: string }
 export interface AlarmOzet { acik: number; musteri: number; santral: number; en_eski: string | null; pencere_gun: number;
   kurallar: { kural: string; etiket: string; adet: number; musteri: number }[] }
 export interface KullanimKiraci { id: string; ad: string; plan: string; durum: string; etkin_anahtar: number; etkin_webhook: number; son_api_kullanim: string | null;
@@ -142,6 +172,9 @@ export const yonetim = {
     istek(`/denetim${sorgu(p)}`),
   // 25.10 Faz 3 — sistem izleme (salt okunur)
   sistem: (): Promise<SistemOzet> => istek("/sistem"),
+  // v2.608 (Faz 5 F5-D): iki ayrı sağlık görünümü — teknik (sistem) ve müşteri hizmeti; ikisi de salt okunur
+  sistemSagligi: (): Promise<SistemSagligi> => istek("/sistem-sagligi"),
+  hizmetSagligi: (p: { tenant_id?: string; yalniz_sorunlu?: boolean } = {}): Promise<HizmetSagligi> => istek(`/hizmet-sagligi${sorgu(p)}`),
   alarmlar: (): Promise<AlarmOzet> => istek("/alarmlar"),
   isler: (p: { saat?: number; yalniz_hata?: boolean; job?: string; tenant_id?: string; limit?: number; plant_id?: string } = {}): Promise<{ isler: IsKaydi[]; pencere_saat: number; is_turleri: { kod: string; is: string }[] }> =>
     istek(`/isler${sorgu(p)}`),

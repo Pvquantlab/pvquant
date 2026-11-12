@@ -159,7 +159,8 @@ h2 { font-size: var(--t-bolum); line-height: 1.2; }
 .kabuk { display: grid; grid-template-columns: 248px minmax(0,1fr); min-height: 100vh; }
 .yan { background: var(--yan); border-right: 1px solid var(--yan-cizgi);
        display: flex; flex-direction: column;
-       padding: 18px 14px; position: sticky; top: 0; height: 100vh; }
+       padding: 18px 14px; position: sticky; top: 0; height: 100vh;
+       overflow-y: auto; scrollbar-width: thin; }   /* v2.608 (F5-A inceleme): gruplu liste 1000 px'i aşar; hesap bloğu ve Çıkış yap kaydırmayla erişilir */
 .logo { display: flex; align-items: center; gap: 9px; color: var(--metin);
         font-family: var(--display); font-weight: 600; font-size: 18px; padding: 2px 6px 18px;
         letter-spacing: -0.015em; }
@@ -177,6 +178,15 @@ h2 { font-size: var(--t-bolum); line-height: 1.2; }
                 color: var(--soluk); font-weight: 500; }
 .yan-ozet .dg { font-family: var(--display); font-size: 16px; font-weight: 500;
                 font-variant-numeric: tabular-nums; color: var(--metin); letter-spacing: -0.01em; }
+/* v2.608 (Faz 5 F5-A): yan menü iş akışı grupları — başlık .yan-etiket dilinde (eyebrow), ok işareti açık/kapalı; aktif grup başlığı metin rengi */
+.yan-grup { margin-top: 10px; }
+.yan-ozet + .yan-grup { margin-top: 4px; }   /* inceleme: :first-of-type .yan-ozet div'i yüzünden hiç eşleşmiyordu */
+/* başlık tipografisi .yan-etiket'ten (düğmeye iki sınıf: yan-etiket yan-grup-bas); burada yalnız düğme davranışı */
+.yan-grup-bas { display: flex; align-items: center; justify-content: space-between; width: 100%; background: none; border: 0; cursor: pointer;
+                padding: 4px 6px 6px; border-radius: var(--r); }
+.yan-grup-bas:hover { color: var(--metin); }
+.yan-grup-bas svg { transition: transform .12s; }
+.yan-grup.is-aktif .yan-grup-bas { color: var(--ikincil); }
 .nav-btn { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
            background: none; border: 0;
            color: var(--ikincil); font-family: var(--display); font-size: 15.5px; font-weight: 500;
@@ -291,6 +301,12 @@ h2 { font-size: var(--t-bolum); line-height: 1.2; }
 .satir-3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
 .satir-2 { grid-template-columns: repeat(2, minmax(0,1fr)); }   /* v2.575 (Faz 1 F1-D): referans tablosu + en zayıf günler yan yana */
 @media (max-width: 1100px) { .satir-4, .satir-3, .satir-5 { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+/* v2.608 (Faz 5 F5-B): Genel bakış — dört karar kartı 2×2, ≤1100 px tek sütun; kartlar üstten hizalı (içerik boyu farklı) */
+.ızgara-genel { display: grid; gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+@media (max-width: 1100px) { .ızgara-genel { grid-template-columns: minmax(0, 1fr); } }
+.risk-listesi li { grid-template-columns: auto minmax(0, 1fr); align-items: start; }
+.risk-listesi li + li { margin-top: 8px; }
+.risk-baslik { font-size: var(--t-govde); color: var(--metin); font-weight: 500; text-align: left; }
 
 /* ---------- rozet / cip ---------- */
 .rozet { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px;
@@ -298,6 +314,9 @@ h2 { font-size: var(--t-bolum); line-height: 1.2; }
          font-family: var(--display); font-weight: 500; letter-spacing: 0; line-height: 1.3; }
 .rozet-ok { background: var(--marka-zemin); color: var(--marka-koyu); }
 .rozet-uyari { background: var(--uyari-zemin); color: var(--uyari-metin); }
+/* v2.608 (Faz 5): «kritik» = uyarı ailesinin DOLGULU türevi (hizmet verilemiyor); tek jeton --uyari üstünde --kart metni — yeni renk yok, yanıp sönme yok.
+   Ölçülen kontrast (F5-F, alfa katmanlı): açık tema 4,5:1 (AA sınırı, 12 px kalın), koyu tema 7,0:1 — ton koyulaştırma ayrı karar */
+.rozet-kritik { background: var(--uyari); color: var(--kart); }
 /* 22.10: künye çipi vitrinin .vt-cip/.vt-alan kalıbı — Inter Tight 500, hap köşe; mono kalktı */
 .cip { font-family: var(--display); font-size: 12.5px; font-weight: 500; color: var(--ikincil);
        background: var(--yuzey); padding: 4px 11px; border-radius: var(--r-hap); line-height: 1.3;
@@ -702,6 +721,7 @@ table.veri td .dugme-sira { flex-wrap: nowrap; }                        /* işle
 
 /* v2.92: koyu tema kontrast cilasi (v2.196'da D paletiyle korundu) */
 [data-tema="koyu"] .rozet-ok { color: var(--marka); }
+[data-tema="koyu"] .rozet-kritik { background: var(--uyari-metin); color: var(--kart); }
 [data-tema="koyu"] .dugme-ana { background: #FFFFFF; border-color: #FFFFFF; color: #0B0E15; }
 [data-tema="koyu"] .dugme-ana:hover { background: #F2F2F4; border-color: #F2F2F4; color: #0B0E15; }
 .lejant { display: flex; gap: 14px; font-size: 13px; font-family: var(--font);
@@ -1061,6 +1081,26 @@ select.girdi { font-family: var(--font); }
 .ayar-ayrinti-govde ul { margin: 0; padding-left: 16px; }
 .ayar-ayrinti-govde li { margin: 2px 0; }
 .ayar-ayrinti-govde b { color: var(--ikincil); font-weight: 600; }
+/* v2.608 (Faz 5 F5-E) aşamalı açılım: kart gövdesi ya da satır içi gelişmiş alanlar katlanır (parcalar.Katla); alanlar DOM'da kalır.
+   Başlık .aciklama ile aynı ok diliyle; gövde renk/boyut almaz (içinde form ve tablo var). */
+.katla { margin: 0; min-width: 0; }
+.katla > summary { cursor: pointer; list-style: none; display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; user-select: none; padding: 2px 0;
+                   font-family: var(--font); font-size: 13px; font-weight: 500; color: var(--ikincil); }
+.katla > summary .katla-ad { white-space: nowrap; }   /* başlık bölünmez; not dar sütunda alt satıra iner */
+.katla > summary::-webkit-details-marker { display: none; }
+.katla > summary::before { content: ""; width: 6px; height: 6px; margin-left: 2px; flex-shrink: 0; border-right: 1.5px solid currentColor;
+                           border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform .12s; }
+.katla[open] > summary::before { transform: rotate(45deg); }
+.katla > summary:hover { color: var(--metin); }
+.katla > summary:focus-visible { outline: 2px solid var(--marka); outline-offset: 2px; border-radius: 4px; }
+.katla > summary .soluk { font-weight: 400; font-size: 12.5px; }
+.katla-govde { margin-top: 10px; min-width: 0; }
+/* kart düzeyi «Gelişmiş ayarlar»: ayar satırlarının altında, başlık ayar adı dizgisinde; içindeki satır ilk/son satır kuralını alır */
+.ayar-gelismis { padding-top: 12px; }
+.ayar-gelismis > summary { font-family: var(--display); font-size: 14px; font-weight: 600; color: var(--metin); letter-spacing: -0.01em; }
+.ayar-gelismis > summary .soluk { font-family: var(--font); font-weight: 400; letter-spacing: 0; }
+.ayar-gelismis > .katla-govde { margin-top: 0; }
+.ayar-gelismis > .katla-govde > .ayar:first-child { padding-top: 10px; }
 /* alarm kuralları: konu grupları (eyebrow) + ızgara; sabit kural işaretli-değiştirilemez; eşik/alıcı formu tam satır */
 .kural-gruplar { flex-basis: 100%; display: grid; gap: 4px; }
 .kural-grup .etiket-ust { margin: 8px 0 2px; }

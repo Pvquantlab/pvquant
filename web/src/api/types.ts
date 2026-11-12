@@ -913,3 +913,27 @@ export interface PortfoyRevizyonT { durum: string; not?: string; hedef?: string;
 export interface PortfoyFinansT { durum: string; not?: string; meta?: { surum?: string; hesap_durumu?: string | null; cikti_surumu?: string | null; kural_sicili_sha?: string | null } | null; toplam?: FinansToplam; toplam_dsg?: (FinansToplam & { etiket: string }) | null; bilesenler?: FinansBilesen[]; kayitli_santral?: number; toplama_girmeyen?: string[]; notlar?: string[];
   santraller?: { ad: string; hata?: string; kayitli?: boolean; planlanan_mwh?: number | null; gerceklesen_mwh?: number | null; toplam?: { tutar_tl: number | null; nitelik: FinansNitelik } }[];
   dsg?: { etiket: string; nitelik: FinansNitelik; netlesme_farki_tl: number | null } | null; siniflar?: Record<string, { ad: string; kodlar: string[] }>; mwh?: { toplanan: { planlanan: number | null; gerceklesen: number | null; santral: number }; tum: { planlanan: number | null; gerceklesen: number | null; santral: number } }; kaynaklar?: Record<string, string> }
+
+/** v2.608 (Faz 5 F5-B): Genel bakış — dört kart; `durum` kodları lib/durum.ts HIZMET_DURUMU sözlüğünden. Değer yoksa null (sıfır uydurulmaz). */
+export interface GbDurum { durum: string; etiket: string; neden: string }
+export interface GbAdim extends GbDurum { surum?: number | null; en_yeni_kayit?: string | null }
+export interface GbRisk { kod: string; durum: string; baslik: string; ayrinti?: string | null; zaman?: string | null; baglanti: string }
+export interface GenelBakis {
+  zaman: string; bugun_gun: string; yarin_gun: string;
+  santral: { id: string; ad: string; tz: string; kapasite_kwp: number; segment: string | null; kgup_yukumlu: boolean | null };
+  bugun: GbDurum & { beklenen_kwh: number | null; beklenen_saat: number; gerceklesen_kwh: number | null; gerceklesen_saat: number; ortak_saat: number;
+    sapma_pct: number | null; sapma_not: string | null; tahmin: { yayin: string | null; etiket: string | null; yas_saat: number | null; durum: string };
+    olcum: { son: string | null; son_alim: string | null; yas_saat: number | null; durum: string; etiket: string }; donem: string; kapsam: string; eylem: string | null; baglanti: string };
+  yarin: GbDurum & { beklenen_kwh: number | null; beklenen_saat: number; donem: string; kapsam: string; eylem: string | null; baglanti: string; not_: string;
+    program: GbDurum & { adimlar: { tahmin: GbAdim; hazirlik: GbAdim; bildirim: GbAdim; kabul: GbAdim } | null; eksik: string[];
+      pencere: { durum?: string; hedef_gun?: string; dakika_kaldi?: number; teyit_saati?: string } | null; dogrulanmayan?: string[] } };
+  riskler: GbDurum & { liste: GbRisk[]; adet: number; kapsam: string; eylem: string | null; baglanti: string; not_: string;
+    kiraci: { santral: number; olcum_gecikmis: number; dikkat: number; kritik: number; baglanti: string } | null };
+  finans: GbDurum & { kapsam: string; eylem: string | null; baglanti: string; not_: string; hesaplanamiyor: string | null;
+    son_sonuc: { donem_kodu: string; donem_bas: string; donem_bit: string; hesap_zamani: string; yas_saat: number | null; tutar_tl: number | null; alacak_tl: number | null;
+      borc_tl: number | null; nitelik_ad: string | null; eksik: string[] | null; hesap_durumu: string | null; nitelik: string;
+      maruziyet: { aralik_tl: { p25?: number | null; p50?: number | null; p75?: number | null }; ufuk: { bas?: string; bit?: string; gun?: number } | null; nitelik: string; program_mwh: number | null } | null } | null;
+    epias: { donem: string; surum: string; surum_etiket: string; zaman: string; borc_tl: number; alacak_tl: number; net_tl: number; nitelik: string; resmi_durum: string; kalem: number } | null };
+  genel: { durum: string; etiket: string; eylem_gereken: string[] };
+  esik: Record<string, number>; sozluk_surumu: string;
+}

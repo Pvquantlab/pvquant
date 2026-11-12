@@ -17,7 +17,7 @@ const GECIKME = {
   dengesizlik: 500, backtest: 900, guvenilirlik: 700, "saat-profili": 150, "kayip-ayrisimi": 220, "p-degerleri": 180, "hata-dagilimi": 350, "dogrulama/bagimsiz": 420, "finansal-etki": 480, "finansal-etki/gecmis": 120, "finansal-etki/senaryo": 520, "/v1/portfoy/finansal-etki": 900, "/v1/portfoyler": 200, portfoyler: 500, kalibrasyon: 200, hijyen: 300,
   kayma: 600, "kayip-agaci": 250, "guc-matrisi": 250, monthly: 300, bankable: 800, "saat-ay-matrisi": 400, "gunes-yolu": 300,
   pr: 200, saglik: 300, kullanilabilirlik: 200, "fizik-terimleri": 100, tarife: 80, "epias-uretim": 100, damga: 40, performans: 260, sensorler: 90, kirlenme: 240, "veri-yolu": 90, "bulut-kimlik": 60, "pilot": 60, "edge/toplayici": 60, "golge-saatlik": 120, "olay-adaylari": 90,
-  "/v1/isler": 100, "/v1/hakkinda": 150,
+  "/v1/isler": 100, "/v1/hakkinda": 150, "genel-bakis": 260,   // v2.608 (F5-B): tek uç, dört kart
 };
 const gunluk = [];
 const GUN = "2026-10-24";
@@ -255,6 +255,53 @@ function hesapDurumu(v) {
   const d = VERI["bulut-kimlik"]; const kay = d && d.kayitlar[0]; const sat = v.etkin.find((e) => e.tur === "inverter_bulut_api");
   if (sat && kay) { sat.saglayici = kay.saglayici; sat.birim_dogrulandi = !!kay.birim_dogrulandi; sat.son_cekis_ok = kay.son_durum === "ok" && d.ham_son.length > 0; }
   if (v.bulut) v.bulut.hesap_durumu = sat && sat.son_cekis_ok ? { saglayici: sat.saglayici, birim_dogrulandi: sat.birim_dogrulandi, etiket: sat.birim_dogrulandi ? "bu hesapta çekiş başarılı; birim doğrulandı" : "bu hesapta çekiş başarılı; birim doğrulaması bekliyor" } : null;
+}
+/** v2.608 (Faz 5 F5-B): Genel bakış — genel_bakis_service.ozet şekli; a1 sağlıklı/dikkat karışımı, a2 kritik (ölçüm 2020), a4 yükümlü değil. */
+function genelBakis(id) {
+  const K = (durum, etiket, neden) => ({ durum, etiket, neden });
+  const adim = (durum, neden, ek = {}) => ({ durum, etiket: { saglikli: "Sağlıklı", kritik: "Kritik", veri_bekleniyor: "Veri bekleniyor", dogrulanamadi: "Doğrulanamadı", dikkat: "Dikkat gerekiyor" }[durum], neden, ...ek });
+  const pencere = { durum: "erken", hedef_gun: "2026-10-25", dakika_kaldi: 310, teyit_saati: "17:00:00" };
+  const kritik = id === "a2" || id === "a5";
+  const bugun = kritik
+    ? { ...K("kritik", "Kritik", "son geçerli ölçüm 2319 gün önce; karne ve uzlaştırma hesaplanamaz"), beklenen_kwh: 4383, beklenen_saat: 24, gerceklesen_kwh: null, gerceklesen_saat: 0, ortak_saat: 0, sapma_pct: null, sapma_not: "sapma için en az 6 ortak saat gerekir (şu an 0)",
+        tahmin: { yayin: "2026-10-24T03:12:00Z", etiket: "yayin", yas_saat: 5.8, durum: "saglikli" }, olcum: { son: "2020-06-17T20:00:00Z", son_alim: "2020-06-18T07:10:00Z", yas_saat: 55656, durum: "kritik", etiket: "Kritik" } }
+    : { ...K("dikkat", "Dikkat gerekiyor", "son geçerli ölçüm 1 gün önce"), beklenen_kwh: 65400, beklenen_saat: 24, gerceklesen_kwh: null, gerceklesen_saat: 0, ortak_saat: 0, sapma_pct: null, sapma_not: "sapma için en az 6 ortak saat gerekir (şu an 0)",
+        tahmin: { yayin: "2026-10-24T03:12:00Z", etiket: "yayin", yas_saat: 5.8, durum: "saglikli" }, olcum: { son: "2026-10-22T20:00:00Z", son_alim: "2026-10-23T06:05:00Z", yas_saat: 37.0, durum: "dikkat", etiket: "Dikkat gerekiyor" } };   // summary (son_scada 22.10) ile tutarlı
+  const yarin = id === "a4"
+    ? { ...K("uygulanmiyor", "Uygulanmıyor", "bu santral için program bildirimi yükümlülüğü yok"), beklenen_kwh: 275400, beklenen_saat: 24,
+        program: { ...K("uygulanmiyor", "Uygulanmıyor", "bu santral için program bildirimi yükümlülüğü yok"), adimlar: null, eksik: [], pencere, dogrulanmayan: ["kabul"] }, eylem: null }
+    : kritik
+    ? { ...K("dikkat", "Dikkat gerekiyor", "piyasa segmenti seçilmedi; program yükümlülüğü bilinmiyor"), beklenen_kwh: 4330, beklenen_saat: 24,
+        program: { ...K("dikkat", "Dikkat gerekiyor", "piyasa segmenti seçilmedi; program yükümlülüğü bilinmiyor"), adimlar: null, eksik: ["segment"], pencere, dogrulanmayan: ["kabul"] }, eylem: "Santralim › Santral ayarları'ndan piyasa segmentini seçin" }
+    : { ...K("saglikli", "Sağlıklı", "bildirildiği beyan edildi; TPYS kabulü PVQuant'tan doğrulanamaz"), beklenen_kwh: 64200, beklenen_saat: 24,
+        program: { ...K("saglikli", "Sağlıklı", "bildirildiği beyan edildi; TPYS kabulü PVQuant'tan doğrulanamaz"), eksik: [], pencere, dogrulanmayan: ["kabul"],
+          adimlar: { tahmin: adim("saglikli", "kesim öncesi tahmin var", { en_yeni_kayit: "2026-10-24T03:12:00Z" }), hazirlik: adim("saglikli", "öneri sürümü 2 üretildi", { surum: 2 }),
+                     bildirim: adim("saglikli", "bildirildiği beyan edildi (müşteri dosyası)", { en_yeni_kayit: "2026-10-24T09:40:00Z" }), kabul: adim("dogrulanamadi", "TPYS kabulü PVQuant'tan doğrulanamaz") } }, eylem: null };
+  const liste = kritik
+    ? [{ kod: "olcum", durum: "kritik", baslik: "Üretim ölçümü eksik ya da gecikmiş", ayrinti: "son geçerli ölçüm 2319 gün önce; karne ve uzlaştırma hesaplanamaz", zaman: "2020-06-17T20:00:00Z", baglanti: "veri" },
+       { kod: "alarm", durum: "dikkat", baslik: "3 okunmamış alarm", ayrinti: "son 7 gün; zil simgesinden okuyun", baglanti: "santralim" },
+       { kod: "mutabakat", durum: "dikkat", baslik: "Uzlaştırma belgesi eksik", ayrinti: "2026-09 dönemi için EPİAŞ bildirimi yüklenmedi", baglanti: "mutabakat" }]
+    : [{ kod: "olcum", durum: "dikkat", baslik: "Üretim ölçümü eksik ya da gecikmiş", ayrinti: "son geçerli ölçüm 1 gün önce", zaman: "2026-10-22T20:00:00Z", baglanti: "veri" },
+       { kod: "olay", durum: "dikkat", baslik: "1 süren olay", ayrinti: "bitişini Olay kaydı'ndan verin; program tavanını düşürür", baglanti: "olaylar" }];
+  const riskler = { ...K(liste[0].durum, { kritik: "Kritik", dikkat: "Dikkat gerekiyor" }[liste[0].durum], liste[0].baslik), liste, adet: liste.length, kapsam: "seçili santral; kuruluş geneli ayrı satırda",
+    kiraci: { santral: 5, olcum_gecikmis: 2, dikkat: 1, kritik: 2, baglanti: "portfoy" }, eylem: liste[0].ayrinti, baglanti: "veri",
+    not_: "Tahmin belirsizliği (P10–P90) risk değildir; burada yalnız eylem gerektiren veri ve operasyon maddeleri listelenir." };
+  const finans = kritik
+    ? { ...K("veri_bekleniyor", "Veri bekleniyor", "kayıtlı finansal sonuç yok: gece hesabı ölçüm ve piyasa fiyatı ister"), hesaplanamiyor: "kayıtlı finansal sonuç yok: gece hesabı ölçüm ve piyasa fiyatı ister", son_sonuc: null, epias: null, eylem: null }
+    : { ...K("saglikli", "Sağlıklı", "son kayıtlı dönem 2026-09, hesap durumu «tam»"), hesaplanamiyor: null, eylem: null,
+        son_sonuc: { donem_kodu: "2026-09", donem_bas: "2026-09-01", donem_bit: "2026-09-30", hesap_zamani: "2026-10-01T00:55:00+00:00", yas_saat: 560, tutar_tl: 4868300, alacak_tl: 5100000, borc_tl: 231700, nitelik_ad: "ölçülmüş", eksik: [], hesap_durumu: "tam", nitelik: "tahmini",
+          maruziyet: { aralik_tl: { p25: -41200, p50: -18600, p75: -4100 }, ufuk: { bas: "2026-10-25", bit: "2026-10-31", gun: 7 }, nitelik: "senaryo", program_mwh: 1620.4 } },
+        epias: { donem: "2026-09", surum: "on", surum_etiket: "ön bildirim", zaman: "2026-10-12T10:20", borc_tl: 277620.75, alacak_tl: 1401234.6, net_tl: 1123613.85, nitelik: "resmi_belge", resmi_durum: "dogrulanmadi", kalem: 9 } };
+  const ortak = { kapsam: "seçili santral", baglanti: "finans", not_: "Tahmini tutarlar PVQuant hesabıdır; resmî alacak/borç yalnız yüklenen EPİAŞ bildirimindeki tutardır. Maruziyet senaryodur." };
+  const p = PLANTS.find((x) => x.id === id) ?? PLANTS[0];
+  const genelD = kritik ? "kritik" : "dikkat";
+  return { zaman: "2026-10-24T09:00:00+00:00", bugun_gun: "2026-10-24", yarin_gun: "2026-10-25",
+    santral: { id: p.id, ad: p.name, tz: "Europe/Istanbul", kapasite_kwp: p.capacity_kwp, segment: kritik ? null : "lisansli_serbest", kgup_yukumlu: kritik ? null : id !== "a4" },
+    bugun: { ...bugun, donem: "2026-10-24", kapsam: "seçili santral", eylem: "bugünün ölçümünü yükleyin ya da bağlantıyı kontrol edin", baglanti: "santralim" },
+    yarin: { ...yarin, donem: "2026-10-25", kapsam: "seçili santral", baglanti: "kgup", not_: "Program dosyası PVQuant'ta üretilir; TPYS'ye gönderim ve kabul müşterinin sisteminden yapılır ve burada doğrulanamaz." },
+    riskler, finans: { ...finans, ...ortak },
+    genel: { durum: genelD, etiket: genelD === "kritik" ? "Kritik" : "Dikkat gerekiyor", eylem_gereken: kritik ? ["bugun", "yarin", "riskler"] : ["riskler"] },
+    esik: { olcum_dikkat_saat: 48, olcum_kritik_saat: 168, tahmin_dikkat_saat: 30, tahmin_kritik_saat: 72 }, sozluk_surumu: "2026-11-12" };
 }
 const VERI = {
   summary: summary(),
@@ -773,6 +820,7 @@ http.createServer((req, res) => {
     not: "Santral toplamları aynı dönem ve aynı sözlükle; eksik nitelikli santral toplama girmez." }); }
   if (yol in VERI) return yanit(200, VERI[yol]);
   if (/^\/v1\/plants\/[^/]+\//.test(yol)) {
+    if (uc === "genel-bakis") return yanit(200, genelBakis(yol.split("/")[3]));   // v2.608 (Faz 5 F5-B)
     if (uc === "forecast") return yanit(200, forecast(Math.min(384, Number(url.searchParams.get("hours") ?? 384))));
     if (uc === "skill") return yanit(200, karne(url.searchParams.get("bucket") ?? "0-24", Number(url.searchParams.get("gun") ?? 60)));
     if (uc === "dogrulama/bagimsiz") return yanit(200, bagimsiz(Number(url.searchParams.get("gun") ?? 30), url.searchParams.get("kural") ?? "program"));   // v2.575 (Faz 1 F1-D)

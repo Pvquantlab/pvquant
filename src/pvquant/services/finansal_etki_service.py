@@ -1088,10 +1088,10 @@ def oneriler(o: dict) -> list[dict]:
     sap = u.get("sapma") or {}; pct = sap.get("pct")
     if pct is not None and abs(pct) >= SAPMA_BUYUK_PCT:
         ekle("sapma_buyuk", "eylem", f"Üretim programınız ile gerçekleşen üretim arasındaki fark %{_tr1(abs(pct))} ({'eksik' if pct < 0 else 'fazla'} üretim). "
-             "Güncel tahmini ve gün içi program düzeltme önerisini Tahminler sayfasında kontrol edin.", "tahminler",
+             "Güncel tahmini Tahminler, gün içi program düzeltme önerisini KGÜP sayfasında kontrol edin.", "kgup",   # F5-A: revizyon önerisi KGÜP sayfasında
              f"sapma {sap.get('mwh')} MWh, {sap.get('ortak_saat')} ortak saat".replace(".", ","))
     elif pct is not None and abs(pct) >= SAPMA_ORTA_PCT:
-        ekle("sapma_orta", "oneri", f"Program ile gerçekleşen arasındaki fark %{_tr1(abs(pct))}; eğilim sürerse program düzeltmesini değerlendirin.", "tahminler",
+        ekle("sapma_orta", "oneri", f"Program ile gerçekleşen arasındaki fark %{_tr1(abs(pct))}; eğilim sürerse program düzeltmesini değerlendirin.", "kgup",
              f"sapma {sap.get('mwh')} MWh".replace(".", ","))
     f = uz.get("fiyat") or {}; sen = int(f.get("senaryo_saat") or 0)
     if sen:
@@ -1115,7 +1115,7 @@ def oneriler(o: dict) -> list[dict]:
              "veri", f"{g.get('saat')} / {g.get('beklenen_saat')} saat")
     p = u.get("planlanan") or {}
     if p.get("kaynak") == "oneri" and (p.get("saat") or 0) > 0:
-        ekle("bildirilen_yok", "bilgi", "Bildirilen KGÜP yüklü olmadığından program PVQuant önerisidir; TPYS'ye bildirdiğiniz dosyayı Tahminler sayfasından yüklerseniz hesap fiilî programla yapılır.", "tahminler")
+        ekle("bildirilen_yok", "bilgi", "Bildirilen KGÜP yüklü olmadığından program PVQuant önerisidir; TPYS'ye bildirdiğiniz dosyayı KGÜP sayfasından yüklerseniz hesap fiilî programla yapılır.", "kgup")
     kb = next((b for b in (uz.get("bilesenler") or []) if b.get("kod") == KOD_KUPST), None)
     if kb and kb.get("nitelik") == "eksik" and kb.get("toplanir"):
         ekle("kupst_katsayi", "bilgi", "KGÜP sapma tutarı için katsayı doğrulanamadığından tutar verilmedi; toplam senaryo niteliğindedir (Hakkında sayfasındaki kural tablosu).", "hakkinda")

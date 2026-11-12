@@ -333,6 +333,32 @@ def santral_kunye_yeni(plant_id: str, p: KunyeIstek, claims=Depends(yazma_yetkis
     return {"guncel": g, "tarihce": _sk.tarihce(claims["tenant_id"], plant_id)}
 
 
+@app.get("/v1/sozluk/durum")
+def sozluk_durum(claims=Depends(gecerli_kullanici)):
+    """v2.608 (Faz 5 F5-C): hizmet durumu sözlüğü — altı durum, sıra, eşikler. Genel bakış kartları ve hizmet sağlığı bu kodlarla konuşur."""
+    from pvquant.services import durum_sozlugu
+    return durum_sozlugu.sozluk()
+
+
+@app.get("/v1/plants/{plant_id}/genel-bakis")
+def genel_bakis(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """v2.608 (Faz 5 F5-B): Genel bakış — dört iş sorusu, dört kart (bugün / yarının programı / açık riskler / finansal durum). Mevcut servisleri
+    birleştirir, hesap yazmaz; her kartta durum sözlüğü kodu, dönem, tazelik, kapsam, eylem ve hedef sayfa. Değer yoksa null ve neden."""
+    from pvquant.services import genel_bakis_service, plant_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    return genel_bakis_service.ozet(claims["tenant_id"], {**row, "id": str(row["id"])})
+
+
+@app.get("/v1/hizmet-sagligi")
+def hizmet_sagligi(claims=Depends(gecerli_kullanici)):
+    """v2.608 (Faz 5 F5-C): kiracının santralleri için hizmet sağlığı — veri, tahmin, program (KGÜP), mutabakat, alarm boyutları; kuruluş ve portföy
+    toplamları. Teknik iş başarısından bağımsız (iş düşmüşken de, iş başarılıyken de yalnız kayıtların kendisine bakar). Hata ayrıntısı yok."""
+    from pvquant.services import hizmet_sagligi_service
+    return hizmet_sagligi_service.ozet(claims["tenant_id"])
+
+
 @app.get("/v1/sozluk/kalite")
 def sozluk_kalite(claims=Depends(gecerli_kullanici)):
     """v2.598 (Faz 4 F4-C): veri kalitesi sözlüğü — nitelikler, bayrak eşlemeleri, amaç başına geçerli küme, tazelik eşiği.

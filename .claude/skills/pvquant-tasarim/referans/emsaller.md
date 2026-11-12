@@ -32,6 +32,7 @@ Her satır: kalıp → dosya → kritik kural. Yeni mühürde yeni kalıp çıka
 | Üç kipli tema | `Kabuk` temaKipi oto\|acik\|koyu | pvq_tema localStorage; oto varsayılan |
 | Palet/modal kalıbı | Kabuk ⌘K + YeniSantral | kart örtünün ÇOCUĞU + stopPropagation (v2.308 dersi: kardeş çizim örtü altında kalır) |
 | Portföy yönetimi sayfası (v2.595, Faz 3 F3-H) | `sayfalar/Portfoyler.tsx` | santral seçimsiz sayfa (App'te `SantralYok` kapısı dışında); üst künye satırı + 4 KPI (değer + çapa + rozet); üç perspektif `dl.kunye` (kart içinde Kpi kutusu YOK); dar karttaki tablo ≤4 sütun, birim dipnotta; etiketler yalnız arka uç sözlüğünden (doğrulandı/doğrulanmadı, sözleşmeye dayalı/varsayımsal); düzenleme formları `details` içinde, sözleşme yalnız admin; sahte API `portfoyRotasi` |
+| Aşamalı açılım (v2.608, Faz 5 F5-E) | `sayfalar/parcalar.tsx Katla` | yerleşik details; kart başlığı + çip HER ZAMAN görünür, yalnız gövde/gelişmiş alanlar katlanır; `acik` yalnız dış sinyalle (vadesi geçen sensör, hava verisinde KAYMA) AÇAR, kullanıcının kapattığını geri açmaz, sinyal sönünce kapatmaz; boş/yükleniyor durumu KATLANMAZ (çağıran yalnız içerik varken sarar); alanlar DOM'da, aynı Kaydet; iş kritik/sık değişen alan katlanmaz (segment, UEVÇB, DSG, tarife, EAK, bütçe, temizlik); bekçi `test/panel/acilim.test.ts` |
 
 ## Süreç emsalleri
 

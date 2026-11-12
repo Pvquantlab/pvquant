@@ -20,7 +20,7 @@ const NITELIK: Record<FinansNitelik, { etiket: string; sinif: string; aciklama: 
   eksik: { etiket: "eksik", sinif: "rozet-notr", aciklama: "Gerekli veri (fiyat, sistem yönü, katsayı, ölçüm ya da bildirim) olmadığından hesaplanamadı." },
 };
 const ONERI_SINIF: Record<string, string> = { eylem: "rozet-dikkat", oneri: "rozet-uyari", bilgi: "rozet-notr" };
-const SAYFA_AD: Record<string, string> = { tahminler: "Tahminler", mutabakat: "Mutabakat", santralim: "Santralim", kurulus: "Ayarlar", veri: "Veri yükleme", olaylar: "Olay kaydı", hakkinda: "Hakkında", sayac: "Sayaç" };
+const SAYFA_AD: Record<string, string> = { tahminler: "Tahminler", kgup: "KGÜP", mutabakat: "Mutabakat", santralim: "Santralim", kurulus: "Ayarlar", veri: "Veri yükleme", olaylar: "Olay kaydı", hakkinda: "Hakkında", sayac: "Sayaç" };
 const sol = { textAlign: "left" as const };
 const yaz = (v: number | null | undefined, ondalik = 0) => v == null ? "—" : `${v < 0 ? "−" : ""}${sayiTr(Math.abs(v), ondalik)}`;
 const isaretli = (v: number | null | undefined, ondalik = 0) => v == null ? "—" : `${v > 0 ? "+" : v < 0 ? "−" : ""}${sayiTr(Math.abs(v), ondalik)}`;

@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
-import { HESAP_DURUMU } from "../../lib/durum";
+import { useEffect, useRef, type ReactNode } from "react";
+import { HESAP_DURUMU, hizmetDurumu } from "../../lib/durum";
 import { sayiBicimi } from "../../lib/bicim";
 
 /** v2.85: Intl, sayinin kisa ondalik yazimindan yuvarlar (212.95 -> "213,0");
@@ -87,6 +87,18 @@ export function Kpi({ etiket, deger, birim, alt, ton, ikinci, bilgi }:
  *  ilk harfi Türkçe kurala göre büyütülür (yalnız sunum). Numara (.kart-no) gerçek sıralamayı taşıyan sayfalarda
  *  (Santralim 1–7) kalır; ayraç CSS ile çizilir, ekran okuyucuya metin olarak gitmez. */
 const buyukHarf = (s: string) => s.length ? s[0].toLocaleUpperCase("tr-TR") + s.slice(1) : s;
+/** v2.608 (Faz 5 F5-E) — aşamalı açılım: yerleşik details. Alanlar DOM'da kalır (form durumu ve Kaydet etkilenmez), yalnız görünürlük
+ *  katlanır; klavyeyle Tab + Enter/Boşluk. `acik` yalnız dışarıdan gelen bir sinyalle (vadesi geçen sensör, hava verisinde kayma) AÇAR, hiç
+ *  kapatmaz; kullanıcı kapatabilir. Boş/yükleniyor durumu katlanmaz (çağıran, yalnız içerik varken sarar). Kart düzeyinde `className="ayar-gelismis"`, satır içinde `form-tam`. */
+export function Katla({ ozet, not, acik, className, children }: { ozet: string; not?: string; acik?: boolean; className?: string; children: ReactNode }) {
+  const ref = useRef<HTMLDetailsElement>(null);
+  useEffect(() => { if (acik && ref.current) ref.current.open = true; }, [acik]);   // öz inceleme: sinyal yalnız AÇAR; sinyal sönünce (tazeleme) kullanıcının açık bıraktığını kapatmaz
+  return (
+    <details ref={ref} className={`katla${className ? " " + className : ""}`}>
+      <summary><span className="katla-ad">{ozet}</span>{not && <span className="soluk">· {not}</span>}</summary>
+      <div className="katla-govde">{children}</div>
+    </details>);
+}
 export function Kart({ baslik, alt, no, sag, children, ...rest }:
   { baslik?: string; alt?: string; no?: string; sag?: ReactNode; children: ReactNode } & { style?: React.CSSProperties; id?: string }) {
   const [bas, ...kuyruk] = (baslik ?? "").split(" — ");
@@ -202,6 +214,12 @@ export function VeriDurumu({ d, kucuk = true }: { d?: VeriDurumuBilgi | null; ku
 }
 
 /** v2.605 (F4-K): hesap durumu rozeti — sözlük `lib/durum.ts` (tam | kismi | senaryo | hesaplanamadi). */
+/** v2.608 (Faz 5): hizmet durumu rozeti — kod uçtan (durum_sozlugu), sözcük ve sınıf `lib/durum.ts` HIZMET_DURUMU; müşteri ve platform paneli aynı bileşen. */
+export function HizmetDurumu({ durum, etiket, title, kucuk = false }: { durum: string; etiket?: string; title?: string; kucuk?: boolean }) {
+  const d = hizmetDurumu(durum);
+  return <span className={`rozet ${d.sinif}${kucuk ? " rozet-kucuk" : ""}`} title={title}>{etiket ?? d.etiket}</span>;
+}
+
 export function HesapDurumu({ d, kucuk = true }: { d?: string | null; kucuk?: boolean }) {
   if (!d) return null;
   const h = HESAP_DURUMU[d] ?? { etiket: d, sinif: "rozet-notr", aciklama: "" };

@@ -154,17 +154,19 @@ def _sonuc_ozeti(sonuc) -> dict | None:
     return out or None
 
 
-def sureler(tenant_id, gun: int = 7) -> list[dict]:
+def sureler(tenant_id, gun: int = 7, *, hepsi: bool = False) -> list[dict]:
     """v2.606 (F4-L): son `gun` günde iş başına süre dağılımı — koşu sayısı, ortalama / en uzun süre (sn), başarısız sayısı; jobs_log'dan türer,
-    uydurulmaz (bitiş damgasız satır sayılmaz). Performans izleme: gece işleri büyüyen portföyde ne kadar sürüyor."""
+    uydurulmaz (bitiş damgasız satır sayılmaz). Performans izleme: gece işleri büyüyen portföyde ne kadar sürüyor.
+    v2.608 (F5-D): `hepsi=True` platform görünümü — kiracı süzgeci yok (yalnız platform ucu çağırır)."""
     from sqlalchemy import text
 
     from pvquant.db import sistem_baglami
+    kosul = "" if hepsi else "(tenant_id = :t OR tenant_id IS NULL) AND "
     with sistem_baglami() as s:
         rows = s.execute(text(
             "SELECT job, count(*) AS n, count(*) FILTER (WHERE status IS DISTINCT FROM 'ok') AS hata, "
             " round(avg(EXTRACT(EPOCH FROM (finished - started)))::numeric, 1) AS ort_sn, round(max(EXTRACT(EPOCH FROM (finished - started)))::numeric, 1) AS en_uzun_sn, "
-            " max(started) AS son FROM jobs_log WHERE (tenant_id = :t OR tenant_id IS NULL) AND finished IS NOT NULL "
+            f" max(started) AS son FROM jobs_log WHERE {kosul}finished IS NOT NULL "
             " AND started >= now() - (:g * INTERVAL '1 day') GROUP BY job ORDER BY en_uzun_sn DESC NULLS LAST"), {"t": tenant_id, "g": int(gun)}).mappings().all()
     return [{"is": ISIM_TR.get(r["job"], r["job"]), "kod": r["job"], "n": int(r["n"]), "hata": int(r["hata"] or 0),
              "ort_sn": (float(r["ort_sn"]) if r["ort_sn"] is not None else None), "en_uzun_sn": (float(r["en_uzun_sn"]) if r["en_uzun_sn"] is not None else None),

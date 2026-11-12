@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { SOZLUK } from "../lib/sozluk";
 import { ALARM_KURALI } from "../lib/alarmSozluk";
 import { api, type AlarmSatiri, rolum } from "../api/client";
+import { GRUPLAR, NAV_KAPALI_ANAHTAR, kapaliGruplariOku } from "./gruplar";   // v2.608 (F5-A): bileşen dosyasından ayrı (fast refresh kuralı)
 import { IkiAdimBolumu } from "../features/sayfalar/Kurulus";   // 26.10 Faz 6: 2FA kurulum kapısı
 import type { SantralOzeti, Kullanici } from "../api/types";
 import { useDamga } from "./useDamga";
@@ -13,12 +14,14 @@ import { Meta } from "../lib/Meta";
    aylık, raporlar, hakkında) açık rapor dili. Yalnız "otomatik" tema kipinde
    devrededir; kullanıcı Açık/Koyu seçtiyse seçimi her sayfada geçerlidir. */
 export const SAYFALAR = [
+  { id: "genel", ad: "Genel bakış", yuz: "acik" },        // v2.608 (Faz 5 F5-B): varsayılan açılış — dört iş sorusu
   { id: "portfoy", ad: "Portföy", yuz: "koyu" },        // v2.263
-  { id: "portfoyler", ad: "Portföy yönetimi", yuz: "acik" },   // v2.595 (Faz 3 F3-H): toplayıcı/DSG portföyleri
+  { id: "portfoyler", ad: "DSG ve portföyler", yuz: "acik" },   // v2.595 (Faz 3 F3-H): toplayıcı/DSG portföyleri; v2.608 (F5-A): ad «DSG ve portföyler»
   { id: "santralim", ad: "Santralim", yuz: "koyu" },
   { id: "veri", ad: "Veri yükleme", yuz: "koyu" },
   { id: "kalibrasyon", ad: "Kalibrasyon", yuz: "acik" },
   { id: "tahminler", ad: "Tahminler", yuz: "koyu" },
+  { id: "kgup", ad: "KGÜP", yuz: "acik" },           // v2.608 (Faz 5 F5-A): üretim programı kartları Tahminler'den kendi sayfasına
   { id: "dogruluk", ad: "Doğruluk", yuz: "acik" },
   { id: "takvim", ad: "Takvim", yuz: "acik" },        // v2.518 (P3a)
   { id: "olaylar", ad: "Olay kaydı", yuz: "acik" },   // v2.521 (P1a)
@@ -27,6 +30,7 @@ export const SAYFALAR = [
   { id: "sayac", ad: "Sayaç", yuz: "acik" },   // v2.523 (P4a)
   { id: "aylik", ad: "Aylık beklenti", yuz: "acik" },
   { id: "raporlar", ad: "Raporlar", yuz: "acik" },
+  { id: "paylasim", ad: "Paylaşım", yuz: "acik" },   // v2.608 (Faz 5 F5-A): kuruluşlar arası paylaşım Ayarlar'dan kendi sayfasına
   { id: "kurulus", ad: "Ayarlar", yuz: "acik" },        // 26.10 Faz 6: yönetim kartları Portföy'den buraya (ad kullanıcı kararı: «Ayarlar»; kimlik kurulus kalır)
   { id: "hakkinda", ad: "Hakkında", yuz: "acik" },      // v2.270
 ] as const;
@@ -37,11 +41,14 @@ const IKON_ORTAK = { width: 15, height: 15, viewBox: "0 0 20 20", fill: "none",
   stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round" as const,
   strokeLinejoin: "round" as const, "aria-hidden": true as const };
 const IKONLAR: Record<SayfaId, ReactNode> = {
+  genel: <svg {...IKON_ORTAK}><rect x="3" y="3" width="6" height="6" rx="1.5"/><rect x="11" y="3" width="6" height="6" rx="1.5"/><rect x="3" y="11" width="6" height="6" rx="1.5"/><rect x="11" y="11" width="6" height="6" rx="1.5"/></svg>,   // v2.608 (F5-B): dört kart
   portfoy: <svg {...IKON_ORTAK}><path d="M3 16h14"/><path d="M5 16V9M9 16V5M13 16v-6M17 16V7"/></svg>,
   santralim: <svg {...IKON_ORTAK}><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="11" y="3" width="6" height="6" rx="1"/><rect x="3" y="11" width="6" height="6" rx="1"/><rect x="11" y="11" width="6" height="6" rx="1"/></svg>,
   veri: <svg {...IKON_ORTAK}><path d="M10 3v9M6.5 8.5 10 12l3.5-3.5"/><path d="M4 14v2.5h12V14"/></svg>,
   kalibrasyon: <svg {...IKON_ORTAK}><circle cx="10" cy="10" r="6.5"/><path d="M10 6.5V10l2.5 1.5"/></svg>,
   tahminler: <svg {...IKON_ORTAK}><path d="M3 15l4-5 3 3 4-6 3 4"/></svg>,
+  kgup: <svg {...IKON_ORTAK}><path d="M5 3h7l3 3v11H5z"/><path d="M12 3v3h3"/><path d="M7.5 9.5h5M7.5 12.5h5"/></svg>,   // v2.608 (F5-A): program dosyası
+  paylasim: <svg {...IKON_ORTAK}><circle cx="5" cy="10" r="2"/><circle cx="15" cy="5" r="2"/><circle cx="15" cy="15" r="2"/><path d="M6.8 9l6.4-3M6.8 11l6.4 3"/></svg>,   // v2.608 (F5-A): paylaşım
   dogruluk: <svg {...IKON_ORTAK}><path d="M4 3h12v14H4z"/><path d="M7.5 10l1.8 1.8 3.2-3.6"/></svg>,
   takvim: <svg {...IKON_ORTAK}><rect x="3" y="4" width="14" height="13" rx="1.5"/><path d="M3 8h14M7 4V2.5M13 4V2.5"/><path d="M7.5 12.5l1.8 1.8 3.2-3.6"/></svg>,   // v2.518 (P3a)
   olaylar: <svg {...IKON_ORTAK}><path d="M6 3.5h8l2 2v11H4v-11z"/><path d="M7 8h6M7 11h6M7 14h3"/></svg>,   // v2.521 (P1a)
@@ -120,6 +127,10 @@ export function Kabuk({ sayfa, tiklanan, setSayfa, santral, plantId, onCikis, ch
   const [paletAcik, setPaletAcik] = useState(false);
   // v2.236: mobil cekmece — ≤900px'te kenar menu hamburger'la acilir
   const [menuAcik, setMenuAcik] = useState(false);
+  // v2.608 (F5-A): kapalı gruplar — kullanıcı seçimi kalıcı; aktif sayfanın grubu kapatılsa da görünür kalır
+  const [kapaliGruplar, setKapaliGruplar] = useState<string[]>(kapaliGruplariOku);
+  const grupDegistir = (id: string) => setKapaliGruplar((k) => (k.includes(id) ? k.filter((x) => x !== id) : [...k, id]));
+  useEffect(() => { try { localStorage.setItem(NAV_KAPALI_ANAHTAR, JSON.stringify(kapaliGruplar)); } catch { /* gizli pencere */ } }, [kapaliGruplar]);   // kalıcılık yan etkisi güncelleyicide değil
   // v2.302: yeni santral formu — "Yakında" çipi gerçek oldu (yazma yetkisi: admin+editör)
   const [santralFormu, setSantralFormu] = useState(false);
   const [sorgu, setSorgu] = useState("");
@@ -164,7 +175,8 @@ export function Kabuk({ sayfa, tiklanan, setSayfa, santral, plantId, onCikis, ch
     .replace(/ç/g, "c").replace(/ö/g, "o").replace(/ü/g, "u");
   const bulunan = useMemo(() => {
     const q = katla(sorgu.trim());
-    return q ? SAYFALAR.filter((s) => katla(s.ad).includes(q)) : [...SAYFALAR];
+    const grupAdi = (id: SayfaId) => GRUPLAR.find((g) => g.sayfalar.includes(id))?.ad ?? "";
+    return q ? SAYFALAR.filter((s) => katla(s.ad).includes(q) || katla(grupAdi(s.id)).includes(q)) : [...SAYFALAR];   // v2.608 (F5-A): grup adıyla da arama
   }, [sorgu]);
   const paletSec = (id: SayfaId) => { setSayfa(id); setPaletAcik(false); };
   const mac = typeof navigator !== "undefined" && /Mac/.test(navigator.platform);
@@ -216,13 +228,28 @@ export function Kabuk({ sayfa, tiklanan, setSayfa, santral, plantId, onCikis, ch
           <div><div className="et">Kurulu güç</div>
             <div className="dg">{kwp === null ? "—" : `${gucTr(kwp)} kWp`}</div></div>
         </div>
-        {SAYFALAR.map((s) => (
-          <button key={s.id} className="nav-btn"
-            onClick={() => { setSayfa(s.id); setMenuAcik(false); }}
-            aria-current={(tiklanan ?? sayfa) === s.id ? "page" : undefined}>
-            {IKONLAR[s.id]}{s.ad}
-          </button>
-        ))}
+        {/* v2.608 (Faz 5 F5-A): iş akışı grupları — başlık düğmesi açar/kapar; aktif sayfanın grubu zorla açık */}
+        {GRUPLAR.map((g) => {
+          const aktif = g.sayfalar.includes(tiklanan ?? sayfa);
+          const acik = aktif || !kapaliGruplar.includes(g.id);
+          return (
+            <div key={g.id} className={`yan-grup${aktif ? " is-aktif" : ""}`}>
+              <button type="button" className="yan-etiket yan-grup-bas" aria-expanded={acik} aria-controls={`yan-grup-${g.id}`}
+                onClick={() => grupDegistir(g.id)}>
+                <span>{g.ad}</span>
+                <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+                  style={{ transform: acik ? "rotate(90deg)" : "none" }}><path d="M7 4l6 6-6 6" /></svg>
+              </button>
+              <div id={`yan-grup-${g.id}`} hidden={!acik}>   {/* her zaman çizilir: aria-controls hedefi var, düğmeler sökülüp takılmaz */}
+                {g.sayfalar.map((id) => { const s = SAYFALAR.find((x) => x.id === id)!; return (
+                  <button key={s.id} className="nav-btn"
+                    onClick={() => { setSayfa(s.id); setMenuAcik(false); }}
+                    aria-current={(tiklanan ?? sayfa) === s.id ? "page" : undefined}>
+                    {IKONLAR[s.id]}{s.ad}
+                  </button>); })}
+              </div>
+            </div>);
+        })}
         <div className="yan-alt">
           <div className="hesap">
             {/* v2.355: gerçek müşteri — yüklenene dek sessiz tire, asla başka firmanın adı değil */}

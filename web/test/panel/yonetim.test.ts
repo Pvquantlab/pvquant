@@ -129,7 +129,7 @@ test("D turu: envanter son hata → iş kayıtları süzgeci, Operatörler kendi
   assert.match(sis, /<option value=\{720\}>son 30 gün<\/option>/);
   const s = oku("features/yonetim/sayfalar.tsx");
   assert.match(s, /Kendi hesabınız: rol ve durum başka bir sahip tarafından değiştirilir/);
-  assert.match(s, /<SaglikSeridi sis=\{sis\} git=\{\(\) => git\("sistem"\)\} \/>/);
+  assert.match(s, /<SaglikSeridi sis=\{sis\} hs=\{hs\} git=\{\(bolum\) => \{ try \{ sessionStorage\.setItem\("pvq_platform_sistem_bolum", bolum\); \} catch \{ \/\* gizli pencere \*\/ \} git\("sistem"\); \}\} \/>/);   // v2.608 (F5-D): iki şerit, bölüm seçimi
   assert.match(s, /ok=\{sis\.nabiz\.durum === "calisiyor"\}/);   // hüküm uçtan
   assert.match(oku("api/yonetim.ts"), /plant_id\?: string \} = \{\}\)/);
 });
@@ -163,7 +163,9 @@ test("Faz 6: Ayarlar (kimlik kurulus) menüde ve App'te; Portföy yönetim kartl
   const portfoy = oku("features/sayfalar/Portfoy.tsx");
   for (const b of ["<DisErisim", "<SantralArsivi", "<Paylasimlar", "<HesapVeEkip", "function DisErisim", "function HesapVeEkip"]) assert.doesNotMatch(portfoy, new RegExp(b), b);
   const kurulus = oku("features/sayfalar/Kurulus.tsx");
-  for (const b of ["function DisErisim", "function Paylasimlar", "function HesapVeEkip", "function SantralArsivi", "export function IkiAdimBolumu", "function KurulusDenetim", "function Politika"]) assert.match(kurulus, new RegExp(b), b);
+  assert.match(oku("features/sayfalar/Paylasim.tsx"), /function Paylasimlar/);   // v2.608 (Faz 5 F5-A): paylaşım kendi sayfasında
+  assert.doesNotMatch(kurulus, /<Paylasimlar|function Paylasimlar/);
+  for (const b of ["function DisErisim", "function HesapVeEkip", "function SantralArsivi", "export function IkiAdimBolumu", "function KurulusDenetim", "function Politika"]) assert.match(kurulus, new RegExp(b), b);
   assert.match(kurulus, /\{yonetici && <DisErisim/);                                   // yazma kartları rolle
   assert.match(oku("api/client.ts"), /kurulusAyarGuncelle: \(yonetici_2fa_zorunlu: boolean\)/);
   assert.match(oku("features/yonetim/sayfalar.tsx"), /"yönetici 2FA zorunlu"/);
@@ -240,4 +242,30 @@ test("platform açık yüzü: «ara yol» jetonları, Açık/Koyu seçici, ilk b
   assert.doesNotMatch(kok, /onizleme|paletler/);
   const html = readFileSync(new URL("../../index.html", import.meta.url), "utf8");
   assert.match(html, /localStorage\.getItem\("pvq_platform_token"\)\)\{d\.dataset\.yuz="platform";d\.dataset\.tema=localStorage\.getItem\("pvq_platform_tema"\)==="koyu"\?"koyu":"acik";return;\}/);
+});
+
+// ---------------- v2.608 (Faz 5 F5-D): iki sağlık görünümü ----------------
+test("F5-D: Sistem sayfası iki bölüm (sistem / müşteri hizmet sağlığı), hükümler uçtan, sinyalsiz bileşen doğrulanamadı; Genel bakış iki şerit + dikkat kartı", () => {
+  const y = oku("api/yonetim.ts");
+  for (const uc of ['istek("/sistem-sagligi")', "istek(`/hizmet-sagligi${sorgu(p)}`)", "export interface SistemSagligi", "export interface HizmetSagligi"]) assert.ok(y.includes(uc), uc);
+  const sis = oku("features/yonetim/Sistem.tsx");
+  assert.match(sis, /useState<"sistem" \| "hizmet">/);
+  assert.match(sis, /role="group" aria-label="Sağlık görünümü"/);
+  assert.match(sis, /function HizmetSagligiBolumu/);
+  assert.match(sis, /yonetim\.sistemSagligi\(\)/);
+  assert.match(sis, /yonetim\.hizmetSagligi\(\{ tenant_id: tenant \|\| undefined, yalniz_sorunlu: sorunlu \}\)/);
+  assert.match(sis, /HizmetDurumu as Rozet/);                                                   // sözcük ve sınıf tek bileşenden (parcalar.HizmetDurumu, müşteri paneliyle aynı)
+  assert.match(oku("features/sayfalar/parcalar.tsx"), /export function HizmetDurumu\(/);
+  assert.match(oku("api/yonetim.ts"), /Sunucuya ulaşılamadı\. Bağlantınızı kontrol edip yeniden deneyin\./);   // ağ hatası Türkçe
+  assert.doesNotMatch(sis, /durum === "saglikli" \? "rozet-ok"/);                            // arayüz hüküm/sınıf hesaplamaz
+  assert.match(sis, /yedek_dogrulama/);
+  assert.match(sis, /hata_gunlugu/);
+  assert.match(sis, /Dört zaman: bağlantı, veri alımı, en yeni kayıt, kullanılabilirlik/);
+  const say = oku("features/yonetim/sayfalar.tsx");
+  assert.match(say, /yonetim\.hizmetSagligi\(\{ yalniz_sorunlu: true \}\)\.then\(setHs\)/);
+  assert.match(say, /Müşteri hizmet sağlığı →/);
+  assert.match(say, /<Kart baslik="Dikkat gereken santraller"/);
+  assert.match(say, /sessionStorage\.setItem\("pvq_platform_sistem_bolum", "hizmet"\)/);
+  // müşteri paneli istemcisi platform uçlarını bilmez
+  assert.doesNotMatch(oku("api/client.ts"), /sistem-sagligi|\/v1\/yonetim\//);
 });

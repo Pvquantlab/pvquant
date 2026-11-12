@@ -1,8 +1,8 @@
 import { SEGMENTLER } from "../../api/types";
 import { useEffect, useState } from "react";
 import { hesapDurumu, tazelik, eylemAdi, SOZLUK, segmentKisa } from "../../lib/sozluk";
-import { yonetim, zamanTr, yasTr, type Plan, type SistemOzet, type Kiraci, type KiraciDetay, type Kullanici, type Operator, type Basvuru, type DenetimKaydi, type Ben, type AlarmOzet } from "../../api/yonetim";
-import { Kart, Kpi, Sayfa, SayfaIskeleti, sayiTr, gucTr } from "../sayfalar/parcalar";
+import { yonetim, zamanTr, yasTr, type Plan, type SistemOzet, type HizmetSagligi, type Kiraci, type KiraciDetay, type Kullanici, type Operator, type Basvuru, type DenetimKaydi, type Ben, type AlarmOzet } from "../../api/yonetim";
+import { HizmetDurumu, Kart, Kpi, Sayfa, SayfaIskeleti, sayiTr, gucTr } from "../sayfalar/parcalar";
 import { Meta } from "../../lib/Meta";
 import { KullanimKarti } from "./Kullanim";
 import { Zaman, AyrintiCipleri, LimitRozet } from "./ortak";
@@ -37,32 +37,46 @@ function TekSeferlik({ baslik, deger, not }: { baslik: string; deger: string; no
 
 // ---------------- Genel bakış ----------------
 /** 26.10 D5 — sağlık şeridi: Sistem özetinden üç hüküm (zamanlayıcı, gece turu, yedek); tıklayınca Sistem sayfası. Hükümler uçtan. */
-function SaglikSeridi({ sis, git }: { sis: SistemOzet | null | "hata"; git: () => void }) {
+function SaglikSeridi({ sis, hs, git }: { sis: SistemOzet | null | "hata"; hs: HizmetSagligi | null | "hata"; git: (bolum: "sistem" | "hizmet") => void }) {
   if (sis === null) return <div className="plat-saglik" aria-busy="true"><span className="soluk">sistem durumu alınıyor…</span></div>;
   if (sis === "hata") return <div className="plat-saglik"><span className="rozet rozet-uyari">sistem durumu alınamadı</span></div>;
   const yedekSorun = sis.yedek.bayat || (sis.yedek.son_deneme ? !sis.yedek.son_deneme.tamam : false);
   const isSorun = !sis.gece_turu.taze || (sis.izlenen?.bayat.length ?? 0) > 0;   // v2.516 (#3): izlenen işler de şeride girer
   const R = ({ ok, ad, deger }: { ok: boolean; ad: string; deger: string }) => (
     <span className={`rozet ${ok ? "rozet-ok" : "rozet-uyari"}`}>{ad}: {deger}</span>);
+  // v2.608 (F5-D): iki ayrı şerit — teknik sistem (altyapı) ve müşteri hizmeti (kullanılabilir sonuç); biri ötekini yeşile çevirmez
+  const hsRozet = hs === null ? <span className="soluk" style={{ fontSize: 13 }}>hizmet sağlığı alınıyor…</span>
+    : hs === "hata" ? <span className="rozet rozet-uyari">hizmet sağlığı alınamadı</span>
+    : <><HizmetDurumu durum={hs.ozet.durum} etiket={`müşteri hizmeti: ${hs.ozet.etiket.toLocaleLowerCase("tr")}`} />
+        <span className="rozet rozet-notr">{sayiTr(hs.ozet.sayim.kritik ?? 0)} kritik · {sayiTr(hs.ozet.sayim.dikkat ?? 0)} dikkat santral</span>
+        <span className="rozet rozet-notr">{sayiTr(hs.ozet.dikkat_kurulus ?? 0)} / {sayiTr(hs.ozet.kurulus ?? hs.kuruluslar.length)} kuruluşta dikkat</span></>;
   return (
-    <button type="button" className="plat-saglik plat-saglik--tikla" onClick={git} title="Sistem sayfasını aç">
-      <R ok={sis.nabiz.durum === "calisiyor"} ad="zamanlayıcı" deger={sis.nabiz.durum === "calisiyor" ? "çalışıyor" : sis.nabiz.durum === "sessiz" ? "sessiz" : "nabız yok"} />
-      <R ok={!isSorun} ad="gece işlemleri" deger={tazelik(isSorun)} />
-      <R ok={!yedekSorun} ad="yedek" deger={yasTr(sis.yedek.son_basarili)} />
-      <span className="soluk" style={{ fontSize: 13 }}>Sistem →</span>
-    </button>
+    <>
+      <button type="button" className="plat-saglik plat-saglik--tikla" onClick={() => git("sistem")} title="Sistem sağlığı">
+        <R ok={sis.nabiz.durum === "calisiyor"} ad="zamanlayıcı" deger={sis.nabiz.durum === "calisiyor" ? "çalışıyor" : sis.nabiz.durum === "sessiz" ? "sessiz" : "nabız yok"} />
+        <R ok={!isSorun} ad="gece işlemleri" deger={tazelik(isSorun)} />
+        <R ok={!yedekSorun} ad="yedek" deger={yasTr(sis.yedek.son_basarili)} />
+        <span className="soluk" style={{ fontSize: 13 }}>Sistem sağlığı →</span>
+      </button>
+      <button type="button" className="plat-saglik plat-saglik--tikla" onClick={() => git("hizmet")} title="Müşteri hizmet sağlığı">
+        {hsRozet}
+        <span className="soluk" style={{ fontSize: 13 }}>Müşteri hizmet sağlığı →</span>
+      </button>
+    </>
   );
 }
 export function GenelBakis({ git }: { git: (s: "musteriler" | "basvurular" | "denetim" | "sistem") => void }) {
   const [k, setK] = useState<Kiraci[] | null>(null);
   const [sis, setSis] = useState<SistemOzet | null | "hata">(null);   // 26.10 D5: sağlık şeridi (aynı /sistem ucu)
   const [al, setAl] = useState<AlarmOzet | null | "hata">(null);   // v2.516 (#5): müşteriler arası açık alarm
+  const [hs, setHs] = useState<HizmetSagligi | null | "hata">(null);   // v2.608 (F5-D): müşteri hizmet sağlığı (teknik hükümden bağımsız)
   const [b, setB] = useState<Basvuru[] | null>(null);
   const [d, setD] = useState<DenetimKaydi[] | null>(null);
   const [hata, setHata] = useState<string | null>(null);
   useEffect(() => {
     yonetim.sistem().then(setSis).catch(() => setSis("hata"));
     yonetim.alarmlar().then(setAl).catch(() => setAl("hata"));
+    yonetim.hizmetSagligi({ yalniz_sorunlu: true }).then(setHs).catch(() => setHs("hata"));   // özet süzgeçsiz hesaplanır; yalnız sorunlu santral satırları iner
     Promise.allSettled([yonetim.kiracilar(), yonetim.basvurular(), yonetim.denetim({ limit: 12, eylem_haric: "kiraci_goruntule" })]).then(([rk, rb, rd]) => {
       setK(rk.status === "fulfilled" ? rk.value.kiracilar : []); setB(rb.status === "fulfilled" ? rb.value.basvurular : []);
       setD(rd.status === "fulfilled" ? rd.value.kayitlar : []);
@@ -75,7 +89,7 @@ export function GenelBakis({ git }: { git: (s: "musteriler" | "basvurular" | "de
   return (
     <Sayfa baslik="Genel bakış" alt="Müşteriler, santraller ve son işlemler; tüm sayılar canlı veritabanından.">
       <Hata m={hata} />
-      <SaglikSeridi sis={sis} git={() => git("sistem")} />
+      <SaglikSeridi sis={sis} hs={hs} git={(bolum) => { try { sessionStorage.setItem("pvq_platform_sistem_bolum", bolum); } catch { /* gizli pencere */ } git("sistem"); }} />
       <div className="ızgara satir-5" style={{ marginBottom: 14 }}>
         <Kpi etiket="Müşteri" deger={sayiTr(k.length)} alt={`${sayiTr(etkin.length)} etkin, ${sayiTr(k.length - etkin.length)} askıda`} />
         <Kpi etiket="Etkin santral" deger={sayiTr(k.reduce((a, x) => a + x.santral, 0))} alt={kwp ? `${gucTr(kwp)} kWp kurulu güç` : "kurulu güç yok"} />
@@ -86,6 +100,19 @@ export function GenelBakis({ git }: { git: (s: "musteriler" | "basvurular" | "de
           alt={al === "hata" ? "alarm özeti alınamadı" : !al ? "alınıyor…" : al.acik === 0 ? `son ${sayiTr(al.pencere_gun)} günde okunmamış alarm yok`
             : `${al.kurallar[0].etiket} ${sayiTr(al.kurallar[0].adet)}${al.kurallar.length > 1 ? `, +${sayiTr(al.kurallar.length - 1)} kural` : ""} · ${sayiTr(al.musteri)} müşteri`} />
       </div>
+      {/* v2.608 (F5-D): dikkat gereken santraller — hizmet sağlığından (iş başarısı değil, kayıtların kendisi); tıklayınca Sistem › Müşteri hizmet sağlığı */}
+      {hs && hs !== "hata" && (() => { const SIRA = ["kritik", "dikkat"]; const tum = hs.santraller.filter((p) => SIRA.includes(p.durum))
+          .sort((a, b) => SIRA.indexOf(a.durum) - SIRA.indexOf(b.durum) || a.ad.localeCompare(b.ad, "tr")); const dikkat = tum.slice(0, 10); return (
+        <Kart baslik="Dikkat gereken santraller" alt={`hizmet sağlığı kritik ya da dikkat olan ${sayiTr(tum.length)} santral${tum.length > 10 ? `, kritikler önce, ilk 10` : ""}; hüküm veri, tahmin, program, mutabakat ve alarm boyutlarından`}
+          sag={<button className="dugme kucuk" onClick={() => { try { sessionStorage.setItem("pvq_platform_sistem_bolum", "hizmet"); } catch { /* gizli pencere */ } git("sistem"); }}>Tümü</button>}>
+          {dikkat.length === 0 ? <Bos bas="Dikkat gereken santral yok." alt="Bütün etkin santrallerde veri, tahmin, program, mutabakat ve alarm boyutları eşik içinde ya da bekleme/doğrulama durumunda." /> : (
+            <div className="grafik-kaydir"><table className="veri sayisal" style={{ minWidth: 0 }}>
+              <thead><tr><th style={{ textAlign: "left" }}>Müşteri</th><th style={{ textAlign: "left" }}>Santral</th><th>Hüküm</th><th style={{ textAlign: "left" }}>Eylem gereken</th></tr></thead>
+              <tbody>{dikkat.map((p) => (
+                <tr key={p.id}><td style={{ textAlign: "left" }}>{p.kiraci}</td><td style={{ textAlign: "left" }}>{p.ad}</td><td><HizmetDurumu durum={p.durum} etiket={p.etiket} /></td>
+                  <td style={{ textAlign: "left", whiteSpace: "normal", minWidth: 220 }}>{p.eylem_gereken.length ? (p.boyutlar[p.eylem_gereken[0]]?.neden ?? p.eylem_gereken[0]) : "—"}{p.eylem_gereken.length > 1 ? <span className="soluk"> · +{sayiTr(p.eylem_gereken.length - 1)} boyut</span> : null}</td></tr>))}</tbody>
+            </table></div>)}
+        </Kart>); })()}
       <Kart baslik="Son işlemler" alt={`Denetim izinin son 12 kaydı; «${eylemAdi("kiraci_goruntule")}» izleri yalnız Denetim izi sayfasında`} sag={<button className="dugme kucuk" onClick={() => git("denetim")}>Tümü</button>}>
         {d.length === 0 ? <Bos bas="Henüz kayıt yok." /> : <DenetimTablosu kayitlar={d} />}
       </Kart>

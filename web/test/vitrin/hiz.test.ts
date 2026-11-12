@@ -158,7 +158,7 @@ test("panel geçişleri: ekran değişimleri startTransition içinde, tek kalıc
   assert.match(app, /<Giris key=\{girisNo\}/);
   assert.equal((app.match(/<Suspense fallback=\{null\}>/g) ?? []).length, 2);
   assert.match(app, /return <Suspense fallback=\{null\}>\{icerik\}<\/Suspense>;/);
-  assert.match(app, /Promise\.all\(\[Kabuk\.onYukle\(\), Santralim\.onYukle\(\)\]\)/);
+  assert.match(app, /Promise\.all\(\[Kabuk\.onYukle\(\), GenelBakis\.onYukle\(\)\]\)/);   // v2.608 (Faz 5 F5-B): ilk ekran Genel bakış; Santralim boş zamanda iner
   // giriş ekranı font bekleme listesi: her örnek ASCII + gerekirse Türkçe harf içerir (latin yüzü de istensin)
   const ornek = new Map([...app.matchAll(/document\.fonts\.load\("([^"]+)", "([^"]+)"\)/g)].map((m) => [m[1], m[2]]));
   assert.equal(ornek.size, 5);

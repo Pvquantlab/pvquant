@@ -8,7 +8,7 @@ import { api, bellekten, ayniysaEskisi, rolum, RaporDenetimHata, type DenetimBul
          type ScadaOnizleme, type ScadaKayit,
          type KosuSatiri , CihazBazliHatasi} from "../../api/client";
 import type { KalibrasyonOzeti, Kayma, Hijyen, EpiasUretim, KayipAgaci, GucMatrisi, Isler, SaatProfili, KayipAyrisimi } from "../../api/types";
-import { Kart, Sayfa, Kpi, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
+import { Kart, Sayfa, Kpi, sayiTr, SayfaIskeleti, YerTutucu, Katla } from "./parcalar";
 import { Meta } from "../../lib/Meta";
 import { JsonOnizleme } from "./JsonOnizleme";   // v2.351: JSON panel içi önizleme
 import type { RaporJson, RaporDonemVeri, RaporGonderim } from "../../api/types";
@@ -891,70 +891,72 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
       <Kart baslik="Gerçekleşen kayıp ayrışımı" alt="Beklenen ile gerçekleşen arasındaki açık, nedene göre; son 30 ölçüm günü"
         sag={<span className="cip">{kyp?.durum === "ok" ? <Meta items={[`${sayiTr(kyp.mumkun_saat ?? 0)} saat`, kyp.son_olcum && `bitiş ${tarihTr(kyp.son_olcum)}`, kyp.epi != null && `EPI %${sayiTr(kyp.epi * 100, 1)}`, kyp.fiyat?.etiket]} />
           : kyp === undefined ? "hesaplanıyor" : kyp?.durum === "yetersiz" ? "üretim mümkün saat yetersiz" : kyp ? "veri yok" : "alınamadı"}</span>}>
-        {kyp === undefined ? <YerTutucu yukseklik={260} /> : kyp?.durum === "ok" && kyp.satirlar ? (
-          <>
-            <div className="ızgara satir-3" style={{ gap: 12 }}>
-              <div className="kpi"><div className="kpi-et">Enerji performans indeksi (EPI)</div>
-                <div className="kpi-dg">{kyp.epi != null ? <>%{sayiTr(kyp.epi * 100, 1)}</> : "—"}</div>
-                <div className="kpi-alt">gerçekleşen {sayiTr((kyp.uretim_kwh ?? 0) / 1000, 1)} MWh / beklenen {sayiTr((kyp.beklenen_kwh ?? 0) / 1000, 1)} MWh</div></div>
-              <div className="kpi"><div className="kpi-et">Nedeni bilinen kayıp</div>
-                <div className="kpi-dg">{sayiTr((kyp.toplam_kayip_kwh ?? 0) / 1000, 1)} <small>MWh</small></div>
-                <div className="kpi-alt">talimat, bakım, kesinti, kısıt ve arıza saatleri; kırpma kWh'si hesaplanmaz</div></div>
-              <div className="kpi"><div className="kpi-et">TL karşılığı</div>
-                <div className="kpi-dg">{kyp.fiyat?.kaynak === "yok" ? "—" : <>{sayiTr((kyp.toplam_kayip_tl ?? 0) / 1000, 1)} <small>bin TL</small></>}</div>
-                <div className="kpi-alt">{kyp.fiyat?.etiket ?? "fiyat yok"}{(kyp.fiyat?.senaryo_saat ?? 0) > 0 ? `; ${sayiTr(kyp.fiyat?.senaryo_saat ?? 0)} saat senaryo fiyatı` : ""}; gelir kaybı tahmini, fatura kalemi değil</div></div>
-            </div>
-            <div className="grafik-kaydir" style={{ marginTop: 12 }}>
-              <table className="veri" style={{ fontSize: 13.5 }}>
-                <thead><tr><th>Neden</th><th>Kaynak</th><th>Saat</th><th>Kayıp (kWh)</th><th>Kayıp (TL)</th><th>KPI'dan dışlanır</th></tr></thead>
-                <tbody>
-                  {kyp.satirlar.map((r) => (
-                    <tr key={r.neden}><td>{r.etiket}{r.not ? <span className="soluk" style={{ display: "block", fontSize: 12.5 }}>{r.not}</span> : null}</td><td className="soluk">{r.kaynak}</td>
-                      <td className="mono">{sayiTr(r.saat)}</td><td className="mono">{r.kayip_kwh != null ? sayiTr(r.kayip_kwh, 0) : "—"}</td><td className="mono">{r.kayip_tl != null ? sayiTr(r.kayip_tl, 0) : "—"}</td>
-                      <td>{r.kpi_disi == null ? "—" : r.kpi_disi ? "evet" : "hayır"}</td></tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <p className="soluk" style={{ fontSize: 13, margin: "10px 0 0" }}>{kyp.not}</p>
-          </>
+        {/* v2.608 (Faz 5 F5-E) aşamalı açılım: başlık çipi EPI ve kapsamı söyler; tablo katlı */}
+        {kyp === undefined ? <YerTutucu yukseklik={120} /> : kyp?.durum === "ok" && kyp.satirlar ? (
+          <Katla ozet="Nedene göre kayıp tablosu" not="EPI, nedeni bilinen kayıp ve TL karşılığı">
+              <div className="ızgara satir-3" style={{ gap: 12 }}>
+                <div className="kpi"><div className="kpi-et">Enerji performans indeksi (EPI)</div>
+                  <div className="kpi-dg">{kyp.epi != null ? <>%{sayiTr(kyp.epi * 100, 1)}</> : "—"}</div>
+                  <div className="kpi-alt">gerçekleşen {sayiTr((kyp.uretim_kwh ?? 0) / 1000, 1)} MWh / beklenen {sayiTr((kyp.beklenen_kwh ?? 0) / 1000, 1)} MWh</div></div>
+                <div className="kpi"><div className="kpi-et">Nedeni bilinen kayıp</div>
+                  <div className="kpi-dg">{sayiTr((kyp.toplam_kayip_kwh ?? 0) / 1000, 1)} <small>MWh</small></div>
+                  <div className="kpi-alt">talimat, bakım, kesinti, kısıt ve arıza saatleri; kırpma kWh'si hesaplanmaz</div></div>
+                <div className="kpi"><div className="kpi-et">TL karşılığı</div>
+                  <div className="kpi-dg">{kyp.fiyat?.kaynak === "yok" ? "—" : <>{sayiTr((kyp.toplam_kayip_tl ?? 0) / 1000, 1)} <small>bin TL</small></>}</div>
+                  <div className="kpi-alt">{kyp.fiyat?.etiket ?? "fiyat yok"}{(kyp.fiyat?.senaryo_saat ?? 0) > 0 ? `; ${sayiTr(kyp.fiyat?.senaryo_saat ?? 0)} saat senaryo fiyatı` : ""}; gelir kaybı tahmini, fatura kalemi değil</div></div>
+              </div>
+              <div className="grafik-kaydir" style={{ marginTop: 12 }}>
+                <table className="veri" style={{ fontSize: 13.5 }}>
+                  <thead><tr><th>Neden</th><th>Kaynak</th><th>Saat</th><th>Kayıp (kWh)</th><th>Kayıp (TL)</th><th>KPI'dan dışlanır</th></tr></thead>
+                  <tbody>
+                    {kyp.satirlar.map((r) => (
+                      <tr key={r.neden}><td>{r.etiket}{r.not ? <span className="soluk" style={{ display: "block", fontSize: 12.5 }}>{r.not}</span> : null}</td><td className="soluk">{r.kaynak}</td>
+                        <td className="mono">{sayiTr(r.saat)}</td><td className="mono">{r.kayip_kwh != null ? sayiTr(r.kayip_kwh, 0) : "—"}</td><td className="mono">{r.kayip_tl != null ? sayiTr(r.kayip_tl, 0) : "—"}</td>
+                        <td>{r.kpi_disi == null ? "—" : r.kpi_disi ? "evet" : "hayır"}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="soluk" style={{ fontSize: 13, margin: "10px 0 0" }}>{kyp.not}</p>
+          </Katla>
         ) : (
-          <p className="soluk" style={{ margin: 0 }}>{kyp?.durum === "yetersiz" ? "Üretim mümkün saat sayısı henüz yetersiz (en az 24 saat)." : kyp ? "Beklenen ve gerçekleşen çifti birikmedi; ölçüm yüklemeleri sürdükçe dolar." : "Kayıp ayrışımı şu anda alınamadı."}</p>
-        )}
+            <p className="soluk" style={{ margin: 0 }}>{kyp?.durum === "yetersiz" ? "Üretim mümkün saat sayısı henüz yetersiz (en az 24 saat)." : kyp ? "Beklenen ve gerçekleşen çifti birikmedi; ölçüm yüklemeleri sürdükçe dolar." : "Kayıp ayrışımı şu anda alınamadı."}</p>
+          )}
       </Kart>
       {/* v2.253 (Dalga 2.8b): eğitim/servis kayması — kalibrasyon arşiv meteosuyla, tahmin servisi tahmin
           meteosuyla çalışır; aynı saatlerde dağılım/sapma farkı bant sapmasının olası adresidir. */}
       <Kart baslik="Hava verisi tutarlılığı" alt="Kalibrasyon ve tahmin aynı veriyi mi görüyor?"
         sag={<span className="cip">{ky ? <Meta items={[`${sayiTr(ky.n_saat)} saat`, ky.hukum]} /> : ky === undefined ? "hesaplanıyor" : "alınamadı"}</span>}>
-        {ky === undefined ? <YerTutucu yukseklik={222} /> : ky && ky.ozellikler.length > 0 ? (
-          <>
-            <div className="grafik-kaydir">
-              <table className="veri" style={{ fontSize: 13.5 }}>
-                <thead><tr><th>Girdi</th><th>Saat</th><th>Dağılım farkı (PSI)</th><th>KS</th><th>Tahmin − kalibrasyon</th><th>Hüküm</th></tr></thead>
-                <tbody className="mono">
-                  {ky.ozellikler.map((o) => (
-                    <tr key={o.ad}><td>{o.etiket}</td><td>{sayiTr(o.n)}</td><td>{sayiTr(o.psi, 3)}</td><td>{sayiTr(o.ks, 3)}</td>
-                      <td>{sayiTr(o.sapma, 2)}{o.sapma_pct != null ? ` (%${sayiTr(o.sapma_pct, 1)})` : ""}</td>
-                      <td style={{ color: o.hukum === "KAYMA" ? "var(--uyari-metin)" : o.hukum === "dikkat" ? "var(--soluk)" : "var(--basari-metin)" }}>{o.hukum}</td></tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <details className="aciklama">
-              <summary>Veri kaynakları ve eşikler</summary>
-              <p>
-                Kalibrasyon verisi: {ky.kaynak.egitim}; tahmin verisi: {ky.kaynak.servis}. {ky.kaynak.not}. PSI &lt; 0,10 uyumlu, 0,10–0,25 dikkat, &gt; 0,25 kayma.
-                Kayma varsa tahmin aralığındaki sapmanın nedeni büyük olasılıkla buradadır; bu kart yalnız ölçer, düzeltme yapmaz.
-              </p>
-            </details>
-          </>
+        {/* v2.608 (Faz 5 F5-E) aşamalı açılım: hüküm başlık çipinde; girdi tablosu katlı, kayma varsa açık başlar */}
+        {ky === undefined ? <YerTutucu yukseklik={120} /> : ky && ky.ozellikler.length > 0 ? (
+          <Katla ozet="Girdi karşılaştırması" not={ky?.hukum === "KAYMA" ? "kayma var; tablo açık" : "dağılım farkı ve sapma, girdi başına"} acik={ky?.hukum === "KAYMA"}>
+              <div className="grafik-kaydir">
+                <table className="veri" style={{ fontSize: 13.5 }}>
+                  <thead><tr><th>Girdi</th><th>Saat</th><th>Dağılım farkı (PSI)</th><th>KS</th><th>Tahmin − kalibrasyon</th><th>Hüküm</th></tr></thead>
+                  <tbody className="mono">
+                    {ky.ozellikler.map((o) => (
+                      <tr key={o.ad}><td>{o.etiket}</td><td>{sayiTr(o.n)}</td><td>{sayiTr(o.psi, 3)}</td><td>{sayiTr(o.ks, 3)}</td>
+                        <td>{sayiTr(o.sapma, 2)}{o.sapma_pct != null ? ` (%${sayiTr(o.sapma_pct, 1)})` : ""}</td>
+                        <td style={{ color: o.hukum === "KAYMA" ? "var(--uyari-metin)" : o.hukum === "dikkat" ? "var(--soluk)" : "var(--basari-metin)" }}>{o.hukum}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <details className="aciklama">
+                <summary>Veri kaynakları ve eşikler</summary>
+                <p>
+                  Kalibrasyon verisi: {ky.kaynak.egitim}; tahmin verisi: {ky.kaynak.servis}. {ky.kaynak.not}. PSI &lt; 0,10 uyumlu, 0,10–0,25 dikkat, &gt; 0,25 kayma.
+                  Kayma varsa tahmin aralığındaki sapmanın nedeni büyük olasılıkla buradadır; bu kart yalnız ölçer, düzeltme yapmaz.
+                </p>
+              </details>
+          </Katla>
         ) : (
-          /* 23.10 altıncı tur: boş durum iki kademe — kısa başlık + API'nin nedeni aynen */
-          <div className="bos-durum">
-            <div className="bos-bas">{ky ? "Karşılaştırma henüz yapılamadı" : "Karşılaştırma şu anda alınamadı"}</div>
-            <p>{ky ? (ky.not ? ky.not : "Ortak saat yetersiz; en az 48 saat gerekir.") : "Sunucu yanıt vermedi; sayfayı yenileyin."}</p>
-          </div>
-        )}
+            /* 23.10 altıncı tur: boş durum iki kademe — kısa başlık + API'nin nedeni aynen */
+            <div className="bos-durum">
+              <div className="bos-bas">{ky ? "Karşılaştırma henüz yapılamadı" : "Karşılaştırma şu anda alınamadı"}</div>
+              <p>{ky ? (ky.not ? ky.not : "Ortak saat yetersiz; en az 48 saat gerekir.") : "Sunucu yanıt vermedi; sayfayı yenileyin."}</p>
+            </div>
+          )}
       </Kart>
       {/* 04.11 v2.532: Doğruluk'taki saat × gün hata haritası kaldırıldı — müşteri için karar üretmiyordu, 720 hücre bir çubuk grafiğin
           söylediğini söylüyordu. Haritanın tek işe yarar bilgisi (saate göre sistematik sapma) kalibrasyonun teşhis girdisi olarak burada. */}

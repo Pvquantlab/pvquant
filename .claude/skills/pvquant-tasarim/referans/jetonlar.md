@@ -71,8 +71,19 @@ Kaynak dosyalar (gerçek değerler HER ZAMAN oradan okunur, burası harita):
   mobil 16; ızgara oluğu 16; kart dolgusu 20/22; satır içi `minmax(Npx, 1fr)` daima `minmax(min(Npx, 100%), 1fr)`.
 - Boşluk ritmi 4/8 px; süre `--vt-sure*` (120/200/320 ms), reduced-motion her animasyonu keser.
 
+## Hizmet durumu rozetleri (12.11.2026, Faz 5 F5-B)
+
+Durum kodu uçtan (`durum_sozlugu.py`), sözcük ve sınıf `web/src/lib/durum.ts` `HIZMET_DURUMU`: sağlıklı `.rozet-ok`, dikkat `.rozet-uyari`,
+**kritik `.rozet-uyari.rozet-kritik`** (uyarı ailesinin DOLGULU türevi: zemin `--uyari`, metin `--kart`; koyu yüzde zemin `--uyari-metin`, metin `--kart`),
+veri bekleniyor / doğrulanamadı / uygulanmıyor `.rozet-notr`. Yeni renk yok; yanıp sönme yok; amber hiçbir durumun rengi değildir.
+
 ## Jeton-dışı değer yasağı
 
 Bileşen kodunda ham hex/px (jeton karşılığı varken) inceleme kapısına takılır;
 `betikler/tarama.mjs` computed-style taramasında set-dışı değerleri raporlar.
 - **Üst çubuk «Buz cam» (15.10.2026, kullanıcı B seçti; C «derin gök» iki sekmede denendi, «daha az göz yoruyor» ile B):** `--vt-ust-buz: rgba(255,255,255,.80)` + blur(24px) saturate(160%), `--vt-ust-murekkep: #0B1B3C` (yazı/CTA/açılır panel/çekmece), hap 64 px, `--vt-ust-y` 96/88. Siyah hap (#0F131B) kalktı; amber/eylem rengine dokunmaz.
+
+## Katlama (12.11.2026, Faz 5 F5-E)
+
+`.katla` (parcalar.Katla): özet satırı `.aciklama` ile aynı ok dili (6 px çevrilen köşe, `--ikincil`, hover `--metin`, odak `--marka` çerçeve); `.katla-ad` bölünmez, not `.soluk` 12,5 px alt satıra iner;
+gövde renk/boyut ALMAZ (içinde form ve tablo var). Kart düzeyi `.ayar-gelismis`: başlık ayar adı dizgisi (`--display` 14 px 600 `--metin`), üstten 12 px, içindeki ilk `.ayar` 10 px. Yeni renk yok.

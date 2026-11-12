@@ -100,7 +100,7 @@ def ek_alarmlar(plant: dict, baglam: dict) -> list[tuple[str, str, str]]:
             if b.get("kgup_gecikti"):
                 out.append((ad, "kritik", f"{plant.get('name', '')}: yarın için teslim penceresi (14:00–15:30) kapandı ve pencere öncesinde verilmiş tahmin yok — program dosyası üretilemedi"))
             elif b.get("kgup_bildirildi") is False:
-                out.append((ad, "uyari", f"{plant.get('name', '')}: yarının program önerisi hazır ama TPYS'ye bildirdiğiniz dosya PVQuant'a yüklenmedi — bildirdiyseniz dosyayı Tahminler sayfasından yükleyin; yüklenen dosya beyanınız sayılır"))
+                out.append((ad, "uyari", f"{plant.get('name', '')}: yarının program önerisi hazır ama TPYS'ye bildirdiğiniz dosya PVQuant'a yüklenmedi — bildirdiyseniz dosyayı KGÜP sayfasından yükleyin; yüklenen dosya beyanınız sayılır"))
             continue
         if ad == "ptf_dusuk_saat":   # v2.519 (P7a, IH-011)
             saatler = b.get("ptf_dusuk_saatler") or []

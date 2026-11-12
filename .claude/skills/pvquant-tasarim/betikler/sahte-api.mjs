@@ -98,7 +98,8 @@ http.createServer((req, res) => {
       YEKDEM_Y.bekleyen = YEKDEM_Y.bekleyen.filter((x) => !(x.ay === f.ay && x.tesis_tipi === f.tesis_tipi));
       res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" }); res.end(JSON.stringify(f)); }); return; }
   if (yol === "/v1/yonetim/kur-doldur" && req.method === "POST") return yanit(200, { yazilan: 1, bulunamayan: ["2026-10-28"], bas: "2026-10-01", bit: "2026-10-31" });
-  if (yol === "/v1/yonetim/sistem") return yanit(200, {
+  // v2.608 (Faz 5 F5-D): iki sağlık görünümü — /sistem ham özeti (SISTEM) + sınıflanmış teknik sağlık + müşteri hizmet sağlığı
+  const SISTEM = ({
     zaman: dkOnce(0),
     nabiz: NABIZ_SESSIZ ? { durum: "sessiz", son: dkOnce(47), yas_dk: 47, ayrinti: { baslatma: dkOnce(900), is_sayisi: 21, aralik_dk: 5 }, aralik_dk: 5, sessiz_dk: 15 }
                         : { durum: "calisiyor", son: dkOnce(3), yas_dk: 3, ayrinti: { baslatma: dkOnce(900), is_sayisi: 21, aralik_dk: 5 }, aralik_dk: 5, sessiz_dk: 15 },
@@ -126,6 +127,60 @@ http.createServer((req, res) => {
       return { isler, bayat: isler.filter((x) => x.durum === "bayat").map((x) => x.is) }; })(),
     yedek: { son_basarili: dkOnce(60 * 9), yas_saat: 9.2, esik_saat: 30, bayat: false, son_deneme: { zaman: dkOnce(60 * 9), tamam: true, ayrinti: null } },
     db: { boyut_bayt: 2_914_000_000 }, santral: { etkin: 6, arsivli: 1 } });
+  if (yol === "/v1/yonetim/sistem") return yanit(200, SISTEM);
+  if (yol === "/v1/yonetim/sistem-sagligi") {
+    const D = (durum, neden, ek = {}) => ({ durum, etiket: { saglikli: "Sağlıklı", dikkat: "Dikkat gerekiyor", kritik: "Kritik", veri_bekleniyor: "Veri bekleniyor", dogrulanamadi: "Doğrulanamadı", uygulanmiyor: "Uygulanmıyor" }[durum], neden, ...ek });
+    const S = NABIZ_SESSIZ;
+    const bil = {
+      zamanlayici: S ? D("dikkat", "son nabız 47 dk önce (beklenen her 5 dk)", { son: dkOnce(47), yas_dk: 47 }) : D("saglikli", "nabız 3 dk önce", { son: dkOnce(3), yas_dk: 3 }),
+      gece_isleri: S ? D("kritik", "30 saattir koşmayan üretici iş: Sabah tahmini", { bayat: ["Sabah tahmini"], son: dkOnce(60 * 31), uretici_isler: SISTEM.gece_turu.uretici_isler, is_hatasi_24: 4 })
+                     : D("saglikli", "üretici ve izlenen işler eşik içinde", { bayat: [], son: dkOnce(60 * 7), uretici_isler: SISTEM.gece_turu.uretici_isler, is_hatasi_24: 1 }),
+      hava: D("dikkat", "eski kaynak: GEFS üyeleri (50 saat)", { son_indirme: dkOnce(60 * 8), en_yeni_kosu: dkOnce(-60 * 384), kaynak_sayisi: 3, esik_saat: 36, son_is: { zaman: dkOnce(60 * 8), tamam: true, ayrinti: null } }),
+      epias: S ? D("dikkat", "sistem yönü eksik ya da fiyatın bir günden fazla gerisinde", { kimlik: true, son_baglanti: { zaman: dkOnce(60 * 8), tamam: true, ayrinti: null }, son_veri_alimi: dkOnce(60 * 8), en_yeni_kayit: dkOnce(60 * 26), yon_son: dkOnce(60 * 74), yon_saat_7g: 96, gop_son: dkOnce(-60 * 20), epias_uretim: { zaman: dkOnce(60 * 8), tamam: true, ayrinti: null } })
+               : D("saglikli", "kimlik var, son istek başarılı, fiyat ve yön güncel", { kimlik: true, son_baglanti: { zaman: dkOnce(60 * 8), tamam: true, ayrinti: null }, son_veri_alimi: dkOnce(60 * 8), en_yeni_kayit: dkOnce(60 * 26), yon_son: dkOnce(60 * 26), yon_saat_7g: 168, gop_son: dkOnce(-60 * 20), epias_uretim: { zaman: dkOnce(60 * 8), tamam: true, ayrinti: null } }),
+      veritabani: D("dogrulanamadi", "geri yükleme sınaması yapılmıyor; yedek dosyasının açılabilirliği sınanmadı", {
+        baglanti: D("saglikli", "özet sorguları yanıt verdi", { boyut_bayt: 2_914_000_000 }), yedek: D("saglikli", "son başarılı yedek 9 saat önce", { son_basarili: dkOnce(60 * 9), son_deneme: { zaman: dkOnce(60 * 9), tamam: true, ayrinti: null }, esik_saat: 30 }),
+        yedek_dogrulama: D("dogrulanamadi", "geri yükleme sınaması yapılmıyor; yedek dosyasının açılabilirliği sınanmadı") }),
+      sunucu: D("dogrulanamadi", "uygulama ve API hata günlüğü panele bağlı değil; sunucu günlüğüne bakılır", {
+        api: D("saglikli", "bu yanıt API tarafından üretildi; ayrı dış yoklama yok"), hata_gunlugu: D("dogrulanamadi", "uygulama ve API hata günlüğü panele bağlı değil; sunucu günlüğüne bakılır"),
+        is_hatalari: S ? D("dikkat", "son 24 saatte 4 başarısız iş (86 kayıt)") : D("dikkat", "son 24 saatte 1 başarısız iş (86 kayıt)") }) };
+    const durumlar = Object.values(bil).map((b) => b.durum); const sira = ["kritik", "dikkat", "dogrulanamadi", "veri_bekleniyor", "saglikli", "uygulanmiyor"];
+    const genel = sira.find((d) => durumlar.includes(d));
+    return yanit(200, { zaman: dkOnce(0), durum: genel, etiket: bil.zamanlayici.etiket && { saglikli: "Sağlıklı", dikkat: "Dikkat gerekiyor", kritik: "Kritik", dogrulanamadi: "Doğrulanamadı" }[genel],
+      sayim: Object.fromEntries(sira.map((d) => [d, durumlar.filter((x) => x === d).length])), bilesenler: bil, sozluk_surumu: "2026-11-12",
+      esik: { nabiz_sessiz_dk: 15, nabiz_kritik_dk: 60, gece_saat: 30, meteo_saat: 36, piyasa_saat: 36, yedek_saat: 30 },
+      sureler: [["sabah_tahmin", "Sabah tahmini", 7, 0, 412.5, 498.2], ["gece_skill", "Gece karnesi", 7, 0, 88.1, 102.0], ["gece_finansal_etki", "Finansal etki", 7, 1, 61.4, 190.3], ["gece_bagimsiz_dogrulama", "Bağımsız doğrulama", 7, 0, 40.2, 55.0], ["alarm", "Alarm taraması", 7, 0, 12.0, 14.1]]
+        .map(([kod, is, n, hata, ort, uzun]) => ({ kod, is, n, hata, ort_sn: ort, en_uzun_sn: uzun, son: dkOnce(60 * 8) })),
+      ham: SISTEM, not: "Teknik sağlık: altyapı sinyalleri. Müşteriye kullanılabilir sonuç üretilip üretilmediği ayrı hesaptır (Müşteri hizmet sağlığı)." });
+  }
+  if (yol === "/v1/yonetim/hizmet-sagligi") {
+    const E = { saglikli: "Sağlıklı", dikkat: "Dikkat gerekiyor", kritik: "Kritik", veri_bekleniyor: "Veri bekleniyor", dogrulanamadi: "Doğrulanamadı", uygulanmiyor: "Uygulanmıyor" };
+    const B = (durum, neden, ek = {}) => ({ durum, etiket: E[durum], neden, ...ek });
+    const sira = ["kritik", "dikkat", "dogrulanamadi", "veri_bekleniyor", "saglikli", "uygulanmiyor"];
+    const enKotu = (ds) => { const h = ds.filter((d) => d !== "uygulanmiyor"); return h.length ? sira.find((d) => h.includes(d)) : "uygulanmiyor"; };
+    const sayim = (ds) => Object.fromEntries(sira.map((d) => [d, ds.filter((x) => x === d).length]));
+    const S = (id, ad, kwp, tenant_id, kiraci, segment, boyutlar) => { const durum = enKotu(Object.values(boyutlar).map((b) => b.durum));
+      return { id, ad, kapasite_kwp: kwp, tenant_id, kiraci, kiraci_durum: "active", segment, durum, etiket: E[durum], eylem_gereken: Object.keys(boyutlar).filter((k) => ["kritik", "dikkat"].includes(boyutlar[k].durum)), boyutlar }; };
+    const santraller = [
+      S("a1", "Edikli GES", 15230, "t1", "Deneme Lab", "lisansli_serbest", { veri: B("saglikli", "ölçüm güncel"), tahmin: B("saglikli", "tahmin güncel ve yarını kapsıyor"), kgup: B("saglikli", "bildirildiği beyan edildi; TPYS kabulü PVQuant'tan doğrulanamaz"), mutabakat: B("saglikli", "2026-09 bildirimi yüklü; EPİAŞ'ın uzlaştırma durumu dosyadan doğrulanmaz"), alarm: B("saglikli", "açık alarm ve süren olay yok") }),
+      S("a2", "Format Lab", 1000, "t1", "Deneme Lab", null, { veri: B("kritik", "son geçerli ölçüm 2319 gün önce; karne ve uzlaştırma hesaplanamaz", { en_yeni_kayit: "2020-06-17T20:00:00Z" }), tahmin: B("dikkat", "tahmin, son ölçümden 2319 gün sonra üretildi (düzeltme katmanları eski ölçümle)"), kgup: B("dikkat", "piyasa segmenti seçilmedi; program yükümlülüğü bilinmiyor"), mutabakat: B("dikkat", "piyasa segmenti seçilmedi; uzlaştırma kalemleri hesaplanamaz"), alarm: B("dikkat", "3 okunmamış alarm", { son_is_hatasi: dkOnce(60 * 5) }) }),
+      S("a3", "Karapınar RT-2579", 260000, "t2", "Güneş Enerji A.Ş.", "lisansli_yekdem", { veri: B("saglikli", "ölçüm güncel"), tahmin: B("dogrulanamadi", "bağımsız doğrulama kaydı yok"), kgup: B("kritik", "teslim kesimi öncesinde verilmiş tahmin yok"), mutabakat: B("veri_bekleniyor", "2026-10 ön bildirimi 11.11.2026 tarihinde yayımlanır"), alarm: B("saglikli", "açık alarm ve süren olay yok") }),
+      S("a4", "Kıvanç 2 GES", 52500, "t2", "Güneş Enerji A.Ş.", "lisanssiz_dagitim", { veri: B("dikkat", "son geçerli ölçüm 3 gün önce"), tahmin: B("saglikli", "tahmin güncel ve yarını kapsıyor"), kgup: B("uygulanmiyor", "bu santral için program bildirimi yükümlülüğü yok"), mutabakat: B("saglikli", "2026-09 bildirimi yüklü; EPİAŞ'ın uzlaştırma durumu dosyadan doğrulanmaz"), alarm: B("saglikli", "açık alarm ve süren olay yok") }),
+    ];
+    const grup = (liste, id, ad) => { const ds = liste.map((p) => p.durum); const durum = enKotu(ds); const boyut = {};
+      for (const b of ["veri", "tahmin", "kgup", "mutabakat", "alarm"]) { const bd = liste.map((p) => p.boyutlar[b].durum); boyut[b] = { durum: enKotu(bd), sayim: sayim(bd) }; }
+      return { id, ad, santral: liste.length, durum, etiket: E[durum], sayim: sayim(ds), boyut, dikkat_santral: liste.filter((p) => ["kritik", "dikkat"].includes(p.durum)).map((p) => ({ id: p.id, ad: p.ad, durum: p.durum, eylem_gereken: p.eylem_gereken })) }; };
+    const tenant = url.searchParams.get("tenant_id"); const sorunlu = url.searchParams.get("yalniz_sorunlu") === "true";
+    const kume = santraller.filter((p) => !tenant || p.tenant_id === tenant);
+    const kuruluslar = [["t1", "Deneme Lab"], ["t2", "Güneş Enerji A.Ş."]].filter(([id]) => !tenant || id === tenant).map(([id, ad]) => grup(kume.filter((p) => p.tenant_id === id), id, ad));
+    const ds = kume.map((p) => p.durum); const genel = enKotu(ds); const boyut = {};
+    for (const b of ["veri", "tahmin", "kgup", "mutabakat", "alarm"]) { const bd = kume.map((p) => p.boyutlar[b].durum); boyut[b] = { durum: enKotu(bd), sayim: sayim(bd) }; }
+    return yanit(200, { zaman: dkOnce(0), yarin: "2026-10-25", donem: "2026-09", pencere: { durum: "erken" }, santraller: sorunlu ? kume.filter((p) => ["kritik", "dikkat"].includes(p.durum)) : kume, kuruluslar,
+      portfoyler: [{ ...grup(kume.filter((p) => p.tenant_id === "t2"), "pf1", "Konya DSG"), tur: "dsg", tenant_id: "t2" }].filter((g) => g.santral > 0),
+      ozet: { santral: kume.length, kurulus: kuruluslar.length, durum: genel, etiket: E[genel], sayim: sayim(ds), boyut, dikkat_kurulus: kuruluslar.filter((k) => ["kritik", "dikkat"].includes(k.durum)).length },
+      boyutlar: ["veri", "tahmin", "kgup", "mutabakat", "alarm"], esik: { olcum_dikkat_saat: 48, olcum_kritik_saat: 168, tahmin_dikkat_saat: 30, tahmin_kritik_saat: 72 }, sozluk_surumu: "2026-11-12",
+      not: "Hizmet sağlığı teknik iş başarısından bağımsız hesaplanır; TPYS kabulü ve EPİAŞ uzlaştırma durumu doğrulanamaz." });
+  }
   // v2.516 (#5): müşteriler arası açık alarm özeti
   if (yol === "/v1/yonetim/alarmlar") return yanit(200, { acik: 6, musteri: 2, santral: 3, en_eski: dkOnce(60 * 60), pencere_gun: 7, kurallar: [
       { kural: "kgup_teslim_gecikti", etiket: "Program bildirimi hazırlanamadı", adet: 3, musteri: 2 }, { kural: "veri_gelmedi", etiket: "Veri gelmedi", adet: 2, musteri: 1 },

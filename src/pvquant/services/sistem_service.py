@@ -281,3 +281,115 @@ def santraller(aktor_id: str, *, sorunlu: bool = False) -> dict:
                       "kgup_yarin": {"gun": yarin.isoformat(), "oneri_surum": (ar.get("pvquant") or {}).get("surum"),
                                      "bildirilen": "musteri" in ar, "eak": "eak" in ar}})
     return {"santraller": cikti, "esik": {"scada_saat": SCADA_BAYAT_SAAT, "kosu_saat": KOSU_BAYAT_SAAT}, "toplam": len(rows), "yarin": yarin.isoformat()}
+
+
+# ======================================================================================================================
+# v2.608 (Faz 5 F5-D) — SİSTEM SAĞLIĞI: ozet()'in ham sinyalleri hizmet durumu sözlüğüyle (durum_sozlugu) sınıflanır. ozet() DEĞİŞMEZ.
+# Altı bileşen: zamanlayıcı, gece işleri, hava verisi (meteoroloji), EPİAŞ, veritabanı (bağlantı + yedek + yedek doğrulaması), sunucu
+# (API + hata günlüğü + 24 sa iş hataları). Sinyali olmayan şey yeşil olmaz: yedek doğrulaması ve API hata günlüğü «doğrulanamadı».
+# Dört zaman ayrımı EPİAŞ'ta: son bağlantı (iş), son veri alımı (piyasa_fiyat.guncelleme), en yeni kayıt (ts_utc), kullanılabilirlik (yön).
+# ======================================================================================================================
+NABIZ_KRITIK_DK = 60   # bir saattir nabız yoksa zamanlayıcı düşmüş sayılır (sessiz = 15 dk)
+
+
+def _son_is(s, job: str) -> dict | None:
+    r = s.execute(text("SELECT started, status, detail FROM jobs_log WHERE job = :j ORDER BY started DESC LIMIT 1"), {"j": job}).mappings().first()
+    return None if r is None else {"zaman": _iso(r["started"]), "tamam": r["status"] == "ok", "ayrinti": (r["detail"] or "")[:160] or None}
+
+
+def sinifla(o: dict, son_isler: dict[str, dict | None], simdi: dt.datetime) -> dict:
+    """SAF: ozet() çıktısı + {iş: son koşu} → altı bileşenin durumu (durum_sozlugu kodları). Test edilebilir; DB yok, saat parametre."""
+    from pvquant.services import durum_sozlugu as ds
+    D = ds.Durum
+
+    def k(durum, neden, **ek):
+        return {"durum": durum.value, "etiket": ds.etiket(durum), "neden": neden, **ek}
+    # --- zamanlayıcı (nabız)
+    nb = o["nabiz"]
+    if nb["durum"] == "yok":
+        zam = k(D.DOGRULANAMADI, "işçi henüz nabız yazmadı (eski imaj ya da kapalı)", son=nb["son"], yas_dk=nb["yas_dk"])
+    elif nb["yas_dk"] is not None and nb["yas_dk"] > NABIZ_KRITIK_DK:
+        zam = k(D.KRITIK, f"son nabız {int(nb['yas_dk'] // 60)} saat önce; zamanlayıcı durmuş olabilir", son=nb["son"], yas_dk=nb["yas_dk"])
+    elif nb["durum"] == "sessiz":
+        zam = k(D.DIKKAT, f"son nabız {nb['yas_dk']} dk önce (beklenen her {nb['aralik_dk']} dk)", son=nb["son"], yas_dk=nb["yas_dk"])
+    else:
+        zam = k(D.SAGLIKLI, f"nabız {nb['yas_dk']} dk önce", son=nb["son"], yas_dk=nb["yas_dk"])
+    # --- gece işleri (üretici + izlenen)
+    gt = o["gece_turu"]; iz = o.get("izlenen") or {"bayat": [], "isler": []}
+    if not gt["taze"]:
+        gece = k(D.KRITIK, f"{gt['esik_saat']} saattir koşmayan üretici iş: {', '.join(gt['bayat_isler'])}", bayat=gt["bayat_isler"], son=gt["son"])
+    elif iz["bayat"]:
+        gece = k(D.DIKKAT, f"eşiğini aşan izlenen iş: {', '.join(iz['bayat'])}", bayat=iz["bayat"], son=gt["son"])
+    else:
+        gece = k(D.SAGLIKLI, "üretici ve izlenen işler eşik içinde", bayat=[], son=gt["son"])
+    gece["uretici_isler"] = gt["uretici_isler"]
+    gece["is_hatasi_24"] = o["isler_24"]["hata"]
+    # --- hava verisi: indirme işi ≠ arşivdeki en yeni koşu
+    me = o["meteo"]; kay = me["kaynaklar"]
+    son_indirme = max((x["son_indirme"] for x in kay if x["son_indirme"]), default=None)
+    en_yeni_kosu = max((x["son_ts"] for x in kay if x.get("son_ts")), default=None)
+    if not kay:
+        hava = k(D.DOGRULANAMADI, "hava verisi arşivi boş; indirme sinyali yok")
+    elif any(x["bayat"] for x in kay):
+        hava = k(D.DIKKAT, "eski kaynak: " + ", ".join(f"{x['kaynak']} ({'hiç' if x['yas_saat'] is None else str(int(x['yas_saat'])) + ' saat'})" for x in kay if x["bayat"]))
+    else:
+        hava = k(D.SAGLIKLI, f"{len(kay)} kaynak güncel")
+    hava.update({"son_indirme": son_indirme, "en_yeni_kosu": en_yeni_kosu, "kaynak_sayisi": len(kay), "esik_saat": me["esik_saat"],
+                 "son_is": son_isler.get("gece_meteo")})
+    # --- EPİAŞ: kimlik, son istek (iş), son veri alımı (guncelleme), en yeni kayıt (ts_utc), kullanılabilirlik (yön)
+    pz = o["piyasa"]
+    son_is = son_isler.get("gece_piyasa")
+    nedenler = []
+    if pz["kimlik"] is False:
+        ep = k(D.DIKKAT, "EPİAŞ kimliği tanımlı değil: fiyat ve yön çekilemez, uzlaştırma senaryo fiyatıyla hesaplanır")
+    elif pz["kimlik"] is None:
+        ep = k(D.DOGRULANAMADI, "EPİAŞ kimlik ayarı okunamadı")
+    else:
+        if son_is is not None and not son_is["tamam"]:
+            nedenler.append("son istek hatayla bitti")
+        if pz["bayat"]:
+            nedenler.append(f"son veri alımı {'yok' if pz['yas_saat'] is None else str(int(pz['yas_saat'])) + ' saat önce'} (eşik {pz['esik_saat']} sa)")
+        # gerçekleşen fiyat (en yeni kayıt) tanımı gereği alımdan en az bir gün geridedir; «bağlantı var, yeni kayıt yok» hükmü alım eşiği ve yön üzerinden verilir
+        if pz["yon_bayat"]:
+            nedenler.append("sistem yönü eksik ya da fiyatın bir günden fazla gerisinde")
+        ep = k(D.DIKKAT, "; ".join(nedenler)) if nedenler else k(D.SAGLIKLI, "kimlik var, son istek başarılı, fiyat ve yön güncel")
+    ep.update({"kimlik": pz["kimlik"], "son_baglanti": son_is, "son_veri_alimi": pz["son_guncelleme"], "en_yeni_kayit": pz["son_ts"], "yon_son": pz["yon_son"],
+               "yon_saat_7g": pz["yon_saat_7g"], "gop_son": pz["gop_son"], "epias_uretim": son_isler.get("gece_epias_uretim")})
+    # --- veritabanı: bağlantı (bu özet sorgulandı), yedek, yedek doğrulaması (sinyal yok)
+    yd = o["yedek"]
+    if yd["son_basarili"] is None:
+        yedek = k(D.KRITIK, "hiç başarılı yedek yok")
+    elif yd["yas_saat"] is not None and yd["yas_saat"] > 3 * yd["esik_saat"]:
+        yedek = k(D.KRITIK, f"son başarılı yedek {int(yd['yas_saat'] // 24)} gün önce")
+    elif yd["bayat"] or (yd["son_deneme"] and not yd["son_deneme"]["tamam"]):
+        yedek = k(D.DIKKAT, ("son deneme başarısız: " + (yd["son_deneme"]["ayrinti"] or "ayrıntı yok")) if (yd["son_deneme"] and not yd["son_deneme"]["tamam"]) else f"son başarılı yedek {int(yd['yas_saat'])} saat önce (eşik {yd['esik_saat']} sa)")
+    else:
+        yedek = k(D.SAGLIKLI, f"son başarılı yedek {int(yd['yas_saat'])} saat önce")
+    yedek.update({"son_basarili": yd["son_basarili"], "son_deneme": yd["son_deneme"], "esik_saat": yd["esik_saat"]})
+    db = {"baglanti": k(D.SAGLIKLI, "özet sorguları yanıt verdi", boyut_bayt=o["db"]["boyut_bayt"]), "yedek": yedek,
+          "yedek_dogrulama": k(D.DOGRULANAMADI, "geri yükleme sınaması yapılmıyor; yedek dosyasının açılabilirliği sınanmadı")}
+    db_genel = ds.en_kotu([db["baglanti"]["durum"], db["yedek"]["durum"], db["yedek_dogrulama"]["durum"]])
+    db = {**k(db_genel, db["yedek"]["neden"] if db["yedek"]["durum"] != "saglikli" else db["yedek_dogrulama"]["neden"]), **db}
+    # --- sunucu: API (bu yanıt üretildi), hata günlüğü (yok), 24 sa iş hataları
+    h24 = o["isler_24"]
+    sunucu = {"api": k(D.SAGLIKLI, "bu yanıt API tarafından üretildi; ayrı dış yoklama yok"),
+              "hata_gunlugu": k(D.DOGRULANAMADI, "uygulama ve API hata günlüğü panele bağlı değil; sunucu günlüğüne bakılır"),
+              "is_hatalari": (k(D.DIKKAT, f"son 24 saatte {h24['hata']} başarısız iş ({h24['toplam']} kayıt)") if h24["hata"] > 0 else k(D.SAGLIKLI, f"son 24 saatte {h24['toplam']} iş, hata yok"))}
+    sunucu = {**k(ds.en_kotu([sunucu["api"]["durum"], sunucu["hata_gunlugu"]["durum"], sunucu["is_hatalari"]["durum"]]),
+                  sunucu["is_hatalari"]["neden"] if h24["hata"] > 0 else sunucu["hata_gunlugu"]["neden"]), **sunucu}
+    bil = {"zamanlayici": zam, "gece_isleri": gece, "hava": hava, "epias": ep, "veritabani": db, "sunucu": sunucu}
+    genel = ds.en_kotu([b["durum"] for b in bil.values()])
+    return {"durum": genel.value, "etiket": ds.etiket(genel), "sayim": ds.sayim([b["durum"] for b in bil.values()]), "bilesenler": bil,
+            "sozluk_surumu": ds.SOZLUK_SURUMU, "esik": {"nabiz_sessiz_dk": NABIZ_SESSIZ_DK, "nabiz_kritik_dk": NABIZ_KRITIK_DK, "gece_saat": BAYAT_SAAT,
+                                                       "meteo_saat": METEO_BAYAT_SAAT, "piyasa_saat": PIYASA_BAYAT_SAAT, "yedek_saat": YEDEK_BAYAT_SAAT}}
+
+
+def sistem_sagligi(aktor_id: str) -> dict:
+    """Platform ucu: ozet() (ham) + sinifla() (hüküm) + iş süreleri (platform geneli, 7 gün). Müşteri hizmet sağlığı ayrı uçtadır; burada karıştırılmaz."""
+    from pvquant.services.isler_service import sureler
+    o = ozet(aktor_id)
+    with platform_baglami(aktor_id) as s:
+        son_isler = {j: _son_is(s, j) for j in ("gece_meteo", "gece_piyasa", "gece_epias_uretim")}
+    simdi = dt.datetime.fromisoformat(o["zaman"])
+    return {"zaman": o["zaman"], **sinifla(o, son_isler, simdi), "sureler": sureler(None, gun=7, hepsi=True)[:12], "ham": o,
+            "not": "Teknik sağlık: altyapı sinyalleri. Müşteriye kullanılabilir sonuç üretilip üretilmediği ayrı hesaptır (Müşteri hizmet sağlığı)."}

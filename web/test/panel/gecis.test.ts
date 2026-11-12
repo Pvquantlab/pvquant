@@ -21,6 +21,7 @@ const SAYFALAR = {
   "features/sayfalar/Portfoy.tsx": { bellekten: "bellektenOku", yerTutucu: true },
   "features/santralim/Santralim.tsx": { bellekten: "bellekten.ozet(", yerTutucu: false },   // istekleri zaten bağımsız; yalnız bayat-önce
   "features/sayfalar/Hakkinda.tsx": { bellekten: 'bellektenOku<HakkindaT>("/v1/hakkinda")', yerTutucu: true },
+  "features/genel/GenelBakis.tsx": { bellekten: "bellekten.genelBakis(", yerTutucu: false },   // v2.608 (Faz 5 F5-B): tek uç, yolda parça yok; yalnız bayat-önce
 };
 
 test("panel sayfalarında tek kapı (Promise.allSettled / Promise.all) yok", () => {
@@ -54,11 +55,14 @@ test("ayniysaEskisi: birebir aynı veri eski referansı döndürür, farklı ver
   assert.equal(f(undefined, yeni), yeni); assert.equal(f(null, yeni), yeni);
 });
 
-test("Tahminler: KGÜP ve kısa ufuk kartları yanıt gelmeden «henüz yok» demez; seri/özet alınamazsa boş durum", () => {
+test("Tahminler: KGÜP (kendi sayfasında) ve kısa ufuk kartları yanıt gelmeden «henüz yok» demez; seri/özet alınamazsa boş durum", () => {
   const k = yorumsuz(oku("features/sayfalar/Tahminler.tsx"));
-  assert.match(k, /kgup === undefined \?[\s\S]{0,200}<YerTutucu/, "KGÜP yoldayken yer tutucu");
+  const kg = yorumsuz(oku("features/sayfalar/Kgup.tsx"));   // v2.608 (Faz 5 F5-A): KGÜP kartları Kgup.tsx'e taşındı, kalıp aynı
+  assert.match(kg, /kgup === undefined \?[\s\S]{0,200}<YerTutucu/, "KGÜP yoldayken yer tutucu");
+  assert.match(kg, /rv === undefined \? <YerTutucu/, "revizyon önerisi yoldayken yer tutucu");
   assert.match(k, /nc === undefined \? <YerTutucu/, "kısa ufuk yoldayken yer tutucu");
-  assert.match(k, /kgup === undefined \? "hesaplanıyor" : "tahmin bekleniyor"/, "KGÜP çipi yolda/yok ayrımı");
+  assert.match(kg, /kgup === undefined \? "hesaplanıyor" : "tahmin bekleniyor"/, "KGÜP çipi yolda/yok ayrımı");
+  assert.doesNotMatch(k, /kgupOnizleme|kgupRevizyon/, "Tahminler KGÜP uçlarını artık çağırmaz (çift hedef yok)");
   assert.ok(k.includes("Tahmin gösterilemiyor"), "seri ya da özet alınamayınca boş durum");
   assert.doesNotMatch(k, /if \(!seri \|\| !ozet\) return/, "alınamadı durumu sayfayı boş bırakmaz; başlık ve sekme kalır");
 });

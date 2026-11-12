@@ -23,7 +23,7 @@ const TUR_ETIKET: Record<string, string> = { toplayici: "toplayıcı portföyü"
 /* 12.11 inceleme 1: sözleşme kayıtları tablosunda iç kod («sabit_pay», «dsg») görünmez — arka uç sözlüğüyle (dagitim.YONTEM_AD, DENGESIZLIK_SORUMLULARI) aynı adlar. */
 const DAGILIM_AD: Record<string, string> = { sapma: "sapma payına göre", esit: "eşit paylarla", uretim: "üretime göre", sabit_pay: "sözleşmedeki sabit paylarla", ozel: "sözleşmedeki özel kurallarla" };
 const SORUMLU_AD: Record<string, string> = { santral: "santral", toplayici: "toplayıcı", dsg: "dengeden sorumlu grup", gts: "görevli tedarik şirketi" };
-const SAYFA_AD: Record<string, string> = { tahminler: "Tahminler", santralim: "Santralim", kurulus: "Ayarlar", veri: "Veri yükleme", finans: "Finansal etki" };
+const SAYFA_AD: Record<string, string> = { tahminler: "Tahminler", kgup: "KGÜP", santralim: "Santralim", kurulus: "Ayarlar", veri: "Veri yükleme", finans: "Finansal etki" };
 const sol = { textAlign: "left" as const };
 const yaz = (v: number | null | undefined, ondalik = 0) => v == null ? "—" : `${v < 0 ? "−" : ""}${sayiTr(Math.abs(v), ondalik)}`;
 const isaretli = (v: number | null | undefined, ondalik = 0) => v == null ? "—" : `${v > 0 ? "+" : v < 0 ? "−" : ""}${sayiTr(Math.abs(v), ondalik)}`;
