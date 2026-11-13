@@ -83,9 +83,11 @@ def test_uret_ve_kaydet_kunye_yazar(santral, monkeypatch):
     from pvquant.services import forecast_service as fs
     yayin = pd.Timestamp("2026-11-11 18:00", tz="UTC")
 
+    bugun = pd.Timestamp.now("UTC").strftime("%Y-%m-%d")   # v2.609 CI düzeltmesi: sabit «2026-11-12» ufku her gün 24 sa eritiyordu (13.11'de 37 sa → 48 altı)
+
     class _Stub:
         def get_forecast(self, latitude, longitude, days):
-            return _sentetik_meteo("2026-11-12", 3, kosu_zamani=yayin)
+            return _sentetik_meteo(bugun, 3, kosu_zamani=yayin)   # bugünden 3 gün: son saat = bugün+2 23:00 → ufuk 47…72 sa (saate bağlı)
     monkeypatch.setattr(fs, "OpenMeteoClient", _Stub)
     monkeypatch.setenv("PVQ_SURUM", "test-abc123")
     run_id = fs.uret_ve_kaydet(tid, plant, etiket="elle")
@@ -95,7 +97,7 @@ def test_uret_ve_kaydet_kunye_yazar(santral, monkeypatch):
                            "FROM forecast_runs WHERE id=CAST(:r AS uuid)"), {"r": run_id}).mappings().one()
     assert r["mode"] == "B" and str(r["kalibrasyon_id"]) == cid and r["ml_model_id"] is None and r["konformal_hesap_zamani"] is None
     assert pd.Timestamp(r["nwp_kosu_zamani"]).tz_convert("UTC") == yayin
-    assert r["satir_sayisi"] == r["n"] and 48 <= r["ufuk_saat"] <= 96   # v2.597: ufuk_saat = koşu anından son tahmin saatine ileri saat (meteo 3 gün ileriden başlar)
+    assert r["satir_sayisi"] == r["n"] and 47 <= r["ufuk_saat"] <= 72   # v2.597: ufuk_saat = koşu anından son tahmin saatine ileri saat; bugünden 3 günlük meteo
     assert float(r["kapasite_kwp"]) == 1200.0 and r["yazilim_surumu"] == "test-abc123"
     assert r["etiket"] == "elle" and r["json_etiket"] == "elle"
 
