@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, rolum, bellektenOku } from "../../api/client";
 import type { PaylasimListesi, PaylasilanVeri, SantralKisa } from "../../api/types";
 import { Kart, Sayfa, sayiTr, SayfaIskeleti } from "./parcalar";
+import { ModulNotu } from "./Abonelik";   // v2.609 (Faz 6 F6-D): kapalı özellik notu (uyarı kipi)
 import { Meta } from "../../lib/Meta";
 
 /** v2.608 (Faz 5 F5-A) — PAYLAŞIM sayfası: «Kuruluşlar arası paylaşım» kartı Ayarlar'dan (Kurulus.tsx) TAŞINDI — bileşen ve mantığı
@@ -11,6 +12,7 @@ export function Paylasim() {
   useEffect(() => { api.santraller().then((l: SantralKisa[]) => setSantraller(l.map((s) => ({ id: s.id, ad: s.name })))).catch(() => {}); }, []);
   return (
     <Sayfa baslik="Paylaşım" alt="Kuruluşlar arası veri paylaşımı: başka bir kuruluşa verdiğiniz ve sizinle paylaşılan santral verileri, izinler ve süreler.">
+      <ModulNotu kod="paylasim" />
       <Paylasimlar santraller={santraller} />
     </Sayfa>
   );

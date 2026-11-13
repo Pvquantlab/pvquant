@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { yonetim, zamanTr, type KullanimOzet, type KullanimKiraci, type KullanimToplam, type KullanimGunler, type Plan } from "../../api/yonetim";
 import { Kart, Sayfa, SayfaIskeleti, sayiTr } from "../sayfalar/parcalar";
 import { Meta } from "../../lib/Meta";
-import { LimitRozet } from "./ortak";
+import { KotaRozet, LimitRozet } from "./ortak";   // v2.609 (F6-B): kota rozeti uçtan
 
 /** 25.10 Faz 4 — KULLANIM: müşteri başına aylık sayımlar. dis_api / webhook sayaçtan (kullanim_sayac), rapor / koşu / SCADA saati /
  *  yükleme mevcut tablolardan türetilir; hepsi uçtan, arayüz toplar ve gösterir. Plan limiti yok (Faz 5): yalnız ölçüm. */
@@ -28,7 +28,11 @@ function aylar(n = 6): string[] {
 }
 const ayAdi = (ay: string) => new Date(Date.UTC(Number(ay.slice(0, 4)), Number(ay.slice(5, 7)) - 1, 1)).toLocaleDateString("tr-TR", { month: "long", year: "numeric", timeZone: "UTC" });
 /** Sayı; sıfır soluk «0» (gerçek sayım; «—» yalnız eksik değer içindir), webhook hücresi hata sayısını rozetle söyler */
-function Hucre({ k, t, plan }: { k: keyof KullanimToplam; t: KullanimToplam; plan?: Plan }) {
+function Hucre({ k, t, plan, kotalar }: { k: keyof KullanimToplam; t: KullanimToplam; plan?: Plan; kotalar?: KullanimKiraci["kotalar"] }) {
+  // v2.609 (F6-B): aylık kota hükmü uçtan (kotalar); eski plan rozeti yalnız kotalar yoksa (toplam satırı, günlük kırılım)
+  if (kotalar && k === "dis_api") return <KotaRozet k={kotalar.aylik_dis_api} />;
+  if (kotalar && k === "rapor") return <KotaRozet k={kotalar.aylik_rapor} />;
+  if (kotalar && k === "scada_saat") return <KotaRozet k={kotalar.aylik_isleme_saat} />;
   // 26.10 Faz 5: aylık limitli iki tür rozetle (uyarı kipi); plan bilinmiyorsa düz sayı
   if (plan && k === "dis_api") return <LimitRozet kullanim={t.dis_api} limit={plan.aylik_dis_api_limit} />;
   if (plan && k === "rapor") return <LimitRozet kullanim={t.rapor} limit={plan.aylik_rapor_limit} />;
@@ -48,7 +52,7 @@ export function Kullanim() {
   const toplam = o ? o.kiracilar.reduce((a, k) => topla(a, k.bu_ay), BOS) : BOS;
   const onceki = o ? o.kiracilar.reduce((a, k) => topla(a, k.onceki_ay), BOS) : BOS;
   return (
-    <Sayfa baslik="Kullanım" alt="Müşteri başına aylık sayımlar; dış API ve webhook sayaçtan; rapor, koşu, SCADA, yükleme ve KGÜP sürümleri kayıtlardan. Plan sınırı yok, yalnız ölçüm."
+    <Sayfa baslik="Kullanım" alt="Müşteri başına aylık sayımlar; dış API ve webhook sayaçtan; rapor, koşu, SCADA, yükleme ve KGÜP sürümleri kayıtlardan. Kotalar uyarı kipinde: rozet plan ya da sözleşme limitine göre, kısıt yok."
       sag={<label className="girdi-etiket" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>Ay
         <select className="girdi kucuk" value={ay} onChange={(e) => setAy(e.target.value)}>{aylar().map((a) => <option key={a} value={a}>{ayAdi(a)}</option>)}</select></label>}>
       <Hata m={hata} />
@@ -62,8 +66,13 @@ export function Kullanim() {
                   {/* v2.516 (#6): anahtar/webhook ve son API kullanımı adın altında künye — iki yeni KGÜP sütunu 1440 px'te kaydırma açmasın */}
                   <td className="ad">{k.ad}{k.durum !== "active" && <span className="rozet rozet-uyari" style={{ marginLeft: 8 }}>askıda</span>}
                     <div className="kunye-not" style={{ fontWeight: 400 }}>{sayiTr(k.etkin_anahtar)} anahtar{k.etkin_webhook > 0 ? ` · ${sayiTr(k.etkin_webhook)} webhook` : ""}</div>
-                    <div className="kunye-not" style={{ fontWeight: 400 }}>son API {k.son_api_kullanim ? zamanTr(k.son_api_kullanim) : "yok"}</div></td><td>{k.plan}</td>
-                  {KULLANIM_SUTUNLAR.map((c) => <td key={c.k}><Hucre k={c.k} t={k.bu_ay} plan={planlar[k.plan]} /><span className="hucre-alt soluk" style={{ display: "block", fontSize: 12 }}>({sayiTr(k.onceki_ay[c.k])})</span></td>)}
+                    <div className="kunye-not" style={{ fontWeight: 400 }}>son API {k.son_api_kullanim ? zamanTr(k.son_api_kullanim) : "yok"}</div></td>
+                  {/* v2.609 (F6-B): plan hücresi = plan + abonelik durumu + anlık kotalar (santral, kullanıcı, portföy, güç) — hükümler uçtan */}
+                  <td style={{ textAlign: "left", whiteSpace: "normal", minWidth: 150 }}>{k.plan}{k.abonelik_durum && k.abonelik_durum !== "aktif" && k.abonelik_durum !== k.plan && <span className="soluk"> · {k.abonelik_etiketi.toLocaleLowerCase("tr")}</span>}   {/* «pilot · pilot» yinelenmez */}
+                    {k.kotalar && <div className="kunye-not" style={{ fontWeight: 400, display: "grid", gap: 2 }}>
+                      <span>santral <KotaRozet k={k.kotalar.santral} /></span><span>kullanıcı <KotaRozet k={k.kotalar.kullanici} /></span>
+                      <span>portföy <KotaRozet k={k.kotalar.portfoy} /></span><span>güç MW <KotaRozet k={k.kotalar.ac_mw} /></span></div>}</td>
+                  {KULLANIM_SUTUNLAR.map((c) => <td key={c.k}><Hucre k={c.k} t={k.bu_ay} plan={planlar[k.plan]} kotalar={k.kotalar} /><span className="hucre-alt soluk" style={{ display: "block", fontSize: 12 }}>({sayiTr(k.onceki_ay[c.k])})</span></td>)}
                   <td><svg className="satir-ok" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M7 4l6 6-6 6"/></svg></td>
                 </tr>))}
               <tr><td className="ad">Toplam</td><td></td>{KULLANIM_SUTUNLAR.map((c) => <td key={c.k} style={{ fontWeight: 600 }}><Hucre k={c.k} t={toplam} /><span className="hucre-alt soluk" style={{ display: "block", fontSize: 12, fontWeight: 400 }}>({sayiTr(onceki[c.k])})</span></td>)}<td></td></tr>

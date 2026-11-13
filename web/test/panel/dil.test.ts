@@ -13,6 +13,7 @@ const DOSYALAR = [
   "features/sayfalar/JsonOnizleme.tsx", "features/santralim/Santralim.tsx", "features/giris/Giris.tsx",
   "features/genel/GenelBakis.tsx",   // v2.608 (Faz 5 F5-B)
   "features/sayfalar/Kgup.tsx", "features/sayfalar/Paylasim.tsx",   // v2.608 (Faz 5 F5-A)
+  "features/sayfalar/Abonelik.tsx",   // v2.609 (Faz 6 F6-D)
 ];
 
 // iç terim → müşteri dili (karşılık yalnız hata mesajı için)

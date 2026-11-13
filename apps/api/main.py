@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 # /forecast ve /fizik-terimleri aralıklı 500 — panel "gelip gidiyor"). Zincir
 # burada, açılışta tek iş parçacığıyla bir kez yüklenir; istekler hazır bulur.
 import pvquant.pipeline.calibration  # noqa: F401,E402  (forecast+utils+validation zincirini kökten yükler)
-from apps.api.deps import api_anahtari, gecerli_kullanici, yazma_yetkisi, yonetici_yetkisi
+from apps.api.deps import api_anahtari, gecerli_kullanici, kota_kontrol, modul_gerekli, yazma_yetkisi, yonetici_yetkisi   # v2.609 (F6-E): abonelik kapıları
 from pvquant.services import auth_service, plant_service
 from pvquant.services.karne_kurali import (
     yayin_kosu_sql as _yayin_sql,  # v2.597 (F4-B): yayımlanmış koşu süzgeci
@@ -131,6 +131,10 @@ async def _dis_sema_basligi(request: Request, call_next):
     yanit = await call_next(request)
     if request.url.path.startswith("/v1/dis"):
         yanit.headers["X-PVQuant-Schema"] = DIS_API_SEMA
+    kod = getattr(request.state, "abonelik_uyari", None)   # v2.609 (F6-E öz inceleme): kapı uyarısı, uç Response(...) döndürse de (304, dosya) başlıkta
+    if kod and "X-PVQuant-Abonelik" not in yanit.headers:
+        yanit.headers["X-PVQuant-Abonelik"] = "uyari"
+        yanit.headers["X-PVQuant-Abonelik-Kod"] = kod
     return yanit
 
 app.include_router(_yonetim)
@@ -178,7 +182,7 @@ class PlantIstek(BaseModel):
 
 
 @app.post("/v1/plants")
-def plant_ekle(p: PlantIstek, claims=Depends(yazma_yetkisi())):
+def plant_ekle(p: PlantIstek, claims=Depends(yazma_yetkisi()), _kapi=Depends(kota_kontrol("santral"))):   # F6-E
     if not (-90 <= p.lat <= 90 and -180 <= p.lon <= 180) or p.capacity_kwp <= 0:
         raise HTTPException(422, "konum ya da kurulu güç geçersiz")
     # v2.361: tz artık formdan gelebiliyor — çöp dilim tüm gün pencerelerini
@@ -219,7 +223,7 @@ def plant_arsiv_listesi(claims=Depends(yonetici_yetkisi())):
 
 
 @app.post("/v1/plants/{plant_id}/geri-al")
-def plant_geri_al(plant_id: str, claims=Depends(yonetici_yetkisi())):
+def plant_geri_al(plant_id: str, claims=Depends(yonetici_yetkisi()), _kapi=Depends(kota_kontrol("santral"))):   # F6-E öz inceleme: geri alma da etkin santral sayar
     r = plant_service.geri_al(claims["tenant_id"], plant_id)
     if not r["geri_alindi"]:
         raise HTTPException(404, "arşivde böyle bir santral yok")
@@ -616,7 +620,7 @@ def takim(claims=Depends(yonetici_yetkisi())):
 
 
 @app.post("/v1/takim", tags=["Yönetim"], status_code=201)
-def takim_ekle(p: UyeIstek, claims=Depends(yonetici_yetkisi())):
+def takim_ekle(p: UyeIstek, claims=Depends(yonetici_yetkisi()), _kapi=Depends(kota_kontrol("kullanici"))):   # F6-E
     """Geçici parola YALNIZ bu yanıtta görünür; üye ilk girişte kendi parolasını değiştirir."""
     try:
         y = auth_service.kullanici_ekle(claims["tenant_id"], p.email, p.rol)
@@ -1407,7 +1411,7 @@ def anahtar_listesi(claims=Depends(yonetici_yetkisi())):
 
 
 @app.post("/v1/api-anahtarlari", tags=["Yönetim"], status_code=201)
-def anahtar_uret(p: AnahtarIstek, claims=Depends(yonetici_yetkisi())):
+def anahtar_uret(p: AnahtarIstek, claims=Depends(yonetici_yetkisi()), _kapi=Depends(modul_gerekli("dis_api", yazma=True))):   # F6-E
     """Düz anahtar YALNIZ bu yanıtta; sunucu sha256 dışında hiçbir şey saklamaz."""
     from pvquant.services import api_anahtar_service
     try:
@@ -1435,7 +1439,7 @@ def webhook_listesi(claims=Depends(yonetici_yetkisi())):
 
 
 @app.post("/v1/webhooklar", tags=["Yönetim"], status_code=201)
-def webhook_ekle(p: WebhookIstek, claims=Depends(yonetici_yetkisi())):
+def webhook_ekle(p: WebhookIstek, claims=Depends(yonetici_yetkisi()), _kapi=Depends(modul_gerekli("dis_api", yazma=True))):   # F6-E
     """`secret` YALNIZ bu yanıtta gösterilir; alıcı imzayı onunla doğrular."""
     from pvquant.services import webhook_service
     try:
@@ -1485,7 +1489,7 @@ def paylasim_listesi(claims=Depends(gecerli_kullanici)):
 
 
 @app.post("/v1/paylasimlar", tags=["Yönetim"], status_code=201)
-def paylasim_ekle(p: PaylasimIstek, claims=Depends(yonetici_yetkisi())):
+def paylasim_ekle(p: PaylasimIstek, claims=Depends(yonetici_yetkisi()), _kapi=Depends(modul_gerekli("paylasim", yazma=True))):   # F6-E
     from pvquant.services import paylasim_service
     if plant_service.getir(claims["tenant_id"], p.plant_id) is None:
         raise HTTPException(404, "santral yok")
@@ -2092,7 +2096,7 @@ def olay_guncelle(plant_id: str, olay_id: str, p: OlayGuncelle, claims=Depends(y
 
 
 @app.get("/v1/plants/{plant_id}/mutabakat")
-def mutabakat_ozet(plant_id: str, donem: str | None = None, surum: str | None = None, uretim: str | None = None, claims=Depends(gecerli_kullanici)):
+def mutabakat_ozet(plant_id: str, donem: str | None = None, surum: str | None = None, uretim: str | None = None, claims=Depends(gecerli_kullanici), _kapi=Depends(modul_gerekli("mutabakat"))):   # F6-E
     """v2.522 (P2b-1) — EPİAŞ uzlaştırma bildirimiyle kalem kalem mutabakat: yüklenmiş dönemler + seçilen dönemin bildirim ↔ PVQuant tablosu.
     Yeniden hesap EPİAŞ sonucu değildir. v2.526 (P4a-2): uretim=scada|sayac — gerçekleşen üretim kaynağı (verilmezse santral ayarı)."""
     from pvquant.services import mutabakat_service
@@ -2110,7 +2114,7 @@ def mutabakat_ozet(plant_id: str, donem: str | None = None, surum: str | None = 
 
 
 @app.post("/v1/plants/{plant_id}/mutabakat", status_code=201)
-def mutabakat_yukle(plant_id: str, donem: str | None = None, surum: str | None = None, dosya: UploadFile = File(...), claims=Depends(yazma_yetkisi())):
+def mutabakat_yukle(plant_id: str, donem: str | None = None, surum: str | None = None, dosya: UploadFile = File(...), claims=Depends(yazma_yetkisi()), _kapi=Depends(modul_gerekli("mutabakat", yazma=True))):   # F6-E
     """v2.522 (P2b-1) — EPYS «Uzlaştırma Bildirimi» dosyası (CSV/XLSX, ≤2 MB): kalemler tanınır ve dönem + sürümle saklanır (her yükleme yeni sürüm,
     silme yok). Dönem/sürüm verilmezse dosyadan okunur."""
     from pvquant.services import mutabakat_service
@@ -3137,7 +3141,7 @@ def rapor_gonderim_oku(plant_id: str, claims=Depends(gecerli_kullanici)):
 
 
 @app.put("/v1/plants/{plant_id}/rapor-gonderim")
-def rapor_gonderim_ayarla(plant_id: str, p: RaporGonderimIstek, claims=Depends(yazma_yetkisi())):
+def rapor_gonderim_ayarla(plant_id: str, p: RaporGonderimIstek, claims=Depends(yazma_yetkisi()), _kapi=Depends(modul_gerekli("rapor_gelismis", yazma=True))):   # F6-E
     from pvquant.services import alarm_service, aylik_rapor_service
     row = plant_service.getir(claims["tenant_id"], plant_id)
     if row is None:
@@ -3283,6 +3287,40 @@ def kurulus_denetim_etkilenen(iz_id: int, n: int = 100, claims=Depends(yonetici_
 def kurulus_ayarlar(claims=Depends(yonetici_yetkisi())):
     from pvquant.services import kurulus_service
     return kurulus_service.ayarlar(claims["tenant_id"])
+
+
+@app.get("/v1/abonelik", tags=["Yönetim"])
+def abonelik(claims=Depends(gecerli_kullanici)):
+    """v2.609 (Faz 6 F6-A): kiracının aboneliği — plan, durum, etkin modüller, kota ve kullanım (her rol okur; sözleşme iç notu yüzeye çıkmaz).
+    Uyarı kipinde yalnız bilgi; kısıt yok. Değer ölçülemiyorsa «ölçülmüyor», sınır yoksa «sınırsız» (sayı uydurulmaz)."""
+    from pvquant.services import yetki_service
+    try:
+        return yetki_service.musteri_gorunumu(yetki_service.haklar(claims["tenant_id"]))
+    except LookupError:
+        raise HTTPException(404, "kiracı yok") from None
+
+
+class AbonelikTalep(BaseModel):
+    tur: str                              # plan | modul | sanayi_ges | diger
+    hedef: str | None = Field(default=None, max_length=64)
+    mesaj: str | None = Field(default=None, max_length=500)
+
+
+@app.post("/v1/abonelik/talep", tags=["Yönetim"], status_code=201)
+def abonelik_talep(p: AbonelikTalep, request: Request, claims=Depends(yazma_yetkisi())):
+    """v2.609 (Faz 6 F6-D): teklif / yükseltme talebi — doğrudan satın alma yok; talep platform Başvurular'a düşer (`vitrin_basvurulari`, kaynak
+    yukseltme | sanayi_ges), e-posta kullanıcının kayıtlı adresi. Mesaj yalnız denetim izinde. Saatte 10 talep (IP, paylaşımlı pencere)."""
+    from pvquant.services import basvuru_service
+    paylasimli_sinir(request, "abonelik_talep", 10, 3600)
+    try:
+        y = basvuru_service.talep_kaydet(claims["tenant_id"], claims["sub"], p.tur, p.hedef, p.mesaj)
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+    except LookupError:
+        raise HTTPException(404, "kullanıcı yok") from None
+    _denetim.kaydet("musteri", "abonelik_talep", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="basvuru", nesne_id=y["id"],
+                    ayrinti={"tur": p.tur, "hedef": p.hedef, "mesaj": (p.mesaj or "")[:500] or None, "kaynak": y["kaynak"]}, ip=request.client.host if request.client else None)
+    return y
 
 
 @app.put("/v1/kurulus/ayarlar", tags=["Yönetim"])
@@ -3607,7 +3645,7 @@ def _fe_uretim(uretim: str | None) -> str | None:
 
 
 @app.get("/v1/plants/{plant_id}/finansal-etki")
-def finansal_etki(plant_id: str, donem: str | None = None, uretim: str | None = None, taze: int = 0, itibariyle: str | None = None, claims=Depends(gecerli_kullanici)):
+def finansal_etki(plant_id: str, donem: str | None = None, uretim: str | None = None, taze: int = 0, itibariyle: str | None = None, claims=Depends(gecerli_kullanici), _kapi=Depends(modul_gerekli("finansal_etki"))):   # F6-E
     """v2.583 (Faz 2 F2-E): Finansal Etki Merkezi — dönem (YYYY-MM-DD | YYYY-Wnn | YYYY-MM | YYYY-QN | YYYY; verilmezse son tam ay) için üretim özeti,
     satış geliri, uzlaştırma bileşenleri, resmî eşleme, göstergeler, üretim düşüklüğü, ileri maruziyet ve birleşik toplam. Varsayılan: gece işinin son
     kayıtlı sonucu (≤36 sa); yoksa ya da taze=1 ise anında hesap (kaydedilmez). Tutarlar yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir."""
@@ -3669,7 +3707,7 @@ def finansal_etki_senaryo(plant_id: str, donem: str | None = None, pozisyon: str
 
 
 @app.get("/v1/portfoy/finansal-etki")
-def portfoy_finansal_etki(donem: str | None = None, uretim: str | None = None, claims=Depends(gecerli_kullanici)):
+def portfoy_finansal_etki(donem: str | None = None, uretim: str | None = None, claims=Depends(gecerli_kullanici), _kapi=Depends(modul_gerekli("finansal_etki"))):   # F6-E
     """v2.583 (Faz 2 F2-E): kiracının santralleri — santral başına özet ve toplam (segment kapısıyla; eksik nitelikli santral toplama girmez); anında hesap, kaydedilmez."""
     from sqlalchemy import text as _text
 
@@ -3862,7 +3900,7 @@ def portfoyler(tarih: str | None = None, tur: str | None = None, claims=Depends(
 
 
 @app.post("/v1/portfoyler")
-def portfoy_ekle(p: PortfoyIstek, claims=Depends(yazma_yetkisi())):
+def portfoy_ekle(p: PortfoyIstek, claims=Depends(yazma_yetkisi()), _kapi=Depends(modul_gerekli("portfoy_dsg", yazma=True)), _kota=Depends(kota_kontrol("portfoy"))):   # F6-E
     try:
         return {"id": _pv().portfoy_ekle(claims["tenant_id"], p.ad, p.tur, p.gecerli_bas, p.gecerli_bit, p.kurulus_id, p.notlar, p.dsg, p.toplayici, aktor=_pv_aktor(claims))}
     except ValueError as e:
@@ -3898,7 +3936,7 @@ def portfoy_uyeler(portfoy_id: str, tarih: str | None = None, tum: int = 0, clai
 
 
 @app.post("/v1/portfoyler/{portfoy_id}/uyeler")
-def portfoy_uyelik_ekle(portfoy_id: str, p: UyelikIstek, claims=Depends(yazma_yetkisi())):
+def portfoy_uyelik_ekle(portfoy_id: str, p: UyelikIstek, claims=Depends(yazma_yetkisi()), _kapi=Depends(modul_gerekli("portfoy_dsg", yazma=True))):   # F6-E öz inceleme
     try:
         return {"id": _pv().uyelik_ekle(claims["tenant_id"], portfoy_id, p.plant_id, p.gecerli_bas, p.gecerli_bit, p.kaynak, p.dogrulama, p.belge_adi, p.belge_sha256, p.notlar,
                                         aktor=_pv_aktor(claims))}
@@ -4029,7 +4067,7 @@ def portfoy_revizyon(portfoy_id: str, hedef: str = "yarin", simdi: str | None = 
 
 
 @app.get("/v1/portfoyler/{portfoy_id}/finansal-etki")
-def portfoyler_finansal_etki(portfoy_id: str, donem: str | None = None, uretim: str | None = None, taze: int = 0, bugun: str | None = None, claims=Depends(gecerli_kullanici)):
+def portfoyler_finansal_etki(portfoy_id: str, donem: str | None = None, uretim: str | None = None, taze: int = 0, bugun: str | None = None, claims=Depends(gecerli_kullanici), _kapi=Depends(modul_gerekli("finansal_etki"))):   # F6-E
     """v2.594 (F3-G): portföy finansal etkisi — santral başına Faz 2 FEM sonucu (gece kaydı ≤36 sa, yoksa anında), portföy bileşenleri (çift sayım bekçisi),
     DSG portföyünde bağımsız / DSG içi / sözleşmesel dağılım satırları ve DSG içi toplam (yerine koyma), gerçekleşen ↔ hesaplanan ↔ varsayımsal sınıfları."""
     from pvquant.services import portfoy_finans_service as pfs

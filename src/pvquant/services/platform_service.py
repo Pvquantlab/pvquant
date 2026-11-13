@@ -13,21 +13,24 @@ Posta yapılandırılmamışsa bağlantı yanıtta döner ki operatör elden ile
 from __future__ import annotations
 
 import datetime as dt
+import json as _json
 import os
 import secrets
 import time
 
 import jwt
-import json as _json
 import pyotp
-
-from pvquant.guvenlik import sir as _sir   # v2.570
-from pvquant.services import kalite_sozlugu as _ks   # v2.598 (F4-C): flag süzgeci tek sözlükten
 from passlib.hash import bcrypt
 from sqlalchemy import text
 
-from pvquant.db import sistem_baglami, platform_baglami
-from pvquant.services import auth_service
+from pvquant.db import platform_baglami, sistem_baglami
+from pvquant.guvenlik import sir as _sir  # v2.570
+from pvquant.services import (
+    abonelik_service,  # v2.609 (F6-A): çift yazım
+    auth_service,
+    yetki_service,  # v2.609 (F6-B): modül sözlüğü
+)
+from pvquant.services import kalite_sozlugu as _ks  # v2.598 (F4-C): flag süzgeci tek sözlükten
 
 ROLLER = ("operator", "sahip")
 JWT_SAAT = 4
@@ -347,6 +350,7 @@ def kiraci_olustur(aktor_id: str, firma: str, yonetici_eposta: str, plan: str = 
         if s.execute(text("SELECT 1 FROM tenants WHERE lower(name)=lower(:n)"), {"n": firma}).first():
             raise PlatformHata("bu adla bir müşteri zaten var")
         tid = s.execute(text("INSERT INTO tenants(name, plan) VALUES(:n, :p) RETURNING id"), {"n": firma, "p": plan}).scalar()
+        abonelik_service.varsayilan_olustur(s, tid, plan, aktor=str(aktor_id))   # v2.609 (F6-A): çift yazım — abonelik satırı + geçmiş
         # ilk yönetici: parola RASTGELE ve kimseye gösterilmez — davet bağlantısıyla kendisi belirler
         uid = s.execute(text("INSERT INTO users(tenant_id, email, pw_hash, role) VALUES(:t, :e, :h, 'admin') RETURNING id"),
                         {"t": tid, "e": eposta, "h": bcrypt.hash(secrets.token_urlsafe(24))}).scalar()
@@ -388,6 +392,8 @@ def kiraci_guncelle(aktor_id: str, tid: str, *, status: str | None = None, plan:
         if status is not None and status != eski["status"]:
             # askıya alma/açma: kiracının TÜM açık jetonları düşer (Faz 0 modeli), ≤60 sn içinde her işçide
             s.execute(text("UPDATE users SET oturum_surumu = oturum_surumu + 1 WHERE tenant_id=:t"), {"t": str(tid)})
+        if plan is not None or status is not None:   # v2.609 (F6-A): abonelik satırı tenants ile eşzamanlı
+            abonelik_service.senkron(s, tid, plan=plan, status=status, aktor=str(aktor_id))
     if status is not None and status != eski["status"]:
         auth_service.oturum_onbellegi_dusur()
     return {"eski": dict(eski), "yeni": {"name": ad or eski["name"], "plan": plan or eski["plan"], "status": status or eski["status"]}}
@@ -434,25 +440,41 @@ def davet_gonder(aktor_id: str, uid: str, saat: int = 24, rol: str | None = None
 
 
 # ---------------- 26.10 Faz 5: planlar (uyarı kipi) ----------------
-PLAN_LIMITLER = ("santral_limit", "kullanici_limit", "api_rpm_limit", "aylik_rapor_limit", "aylik_dis_api_limit")
+PLAN_LIMITLER = ("santral_limit", "kullanici_limit", "api_rpm_limit", "aylik_rapor_limit", "aylik_dis_api_limit",
+                 "ac_mw_limit", "portfoy_limit", "aylik_isleme_saat_limit")   # v2.609 (F6-B): üç yeni kota; ac_mw ondalıklı (NUMERIC)
+ONDALIKLI_LIMITLER = ("ac_mw_limit",)
 LIMIT_UST = 1_000_000_000   # planlar sütunları INTEGER; «sınırsız» için None kullanılır
 
 
 def plan_listesi() -> list[dict]:
+    """v2.609 (F6-B): yeni kota sütunları ve plan → modül varsayılanları (plan_modulleri; salt okunur, düzenleme F6-C) da döner."""
     with sistem_baglami() as s:
-        rows = s.execute(text("SELECT ad, baslik, santral_limit, kullanici_limit, api_rpm_limit, aylik_rapor_limit, aylik_dis_api_limit, notlar, sira, "
+        rows = s.execute(text("SELECT ad, baslik, " + ", ".join(PLAN_LIMITLER) + ", notlar, sira, "
                               "guncelleme, (SELECT count(*) FROM tenants t WHERE t.plan = p.ad) AS kiraci FROM planlar p ORDER BY sira, ad")).mappings().all()
-    return [{"ad": r["ad"], "baslik": r["baslik"], **{k: r[k] for k in PLAN_LIMITLER}, "notlar": r["notlar"], "sira": int(r["sira"]),
-             "guncelleme": r["guncelleme"].isoformat(), "kiraci": int(r["kiraci"])} for r in rows]
+        mods = s.execute(text("SELECT plan_ad, modul, dahil, sinir FROM plan_modulleri ORDER BY plan_ad, modul")).mappings().all()
+    satir: dict[str, dict] = {}
+    for m in mods:
+        satir.setdefault(m["plan_ad"], {})[m["modul"]] = m
+
+    def moduller(plan_ad: str) -> dict:   # F6-C inceleme: HER modül, sözlükteki ad/durumla (dahil olmayan da adıyla görünür); satırı yoksa dahil=false
+        out = {}
+        for kod, soz in yetki_service.MODULLER.items():
+            m = satir.get(plan_ad, {}).get(kod)
+            out[kod] = {"dahil": bool(m["dahil"]) if m else False, "sinir": m["sinir"] if m else None, "ad": soz["ad"], "durum": soz["durum"],
+                        "durum_etiketi": yetki_service.MODUL_DURUM_ETIKET[soz["durum"]]}
+        return out
+    return [{"ad": r["ad"], "baslik": r["baslik"], **{k: (float(r[k]) if k in ONDALIKLI_LIMITLER and r[k] is not None else r[k]) for k in PLAN_LIMITLER},
+             "notlar": r["notlar"], "sira": int(r["sira"]), "guncelleme": r["guncelleme"].isoformat(), "kiraci": int(r["kiraci"]),
+             "moduller": moduller(r["ad"])} for r in rows]
 
 
 def plan_guncelle(ad: str, *, baslik: str | None = None, notlar: str | None = None, **limitler) -> dict | None:
     """Sahip: limitleri değiştirir (None = sınırsız; negatif reddedilir). Zorlama yok — rozetler yeni eşikle çizilir."""
     alanlar = {k: v for k, v in limitler.items() if k in PLAN_LIMITLER}
     for k, v in alanlar.items():
-        if v is not None and int(v) < 0:
+        if v is not None and float(v) < 0:
             raise PlatformHata(f"{k} negatif olamaz")
-        if v is not None and int(v) > LIMIT_UST:
+        if v is not None and float(v) > LIMIT_UST:
             raise PlatformHata(f"{k} en çok {LIMIT_UST}")   # 26.10 denetim-3: INTEGER taşması 500 veriyordu
     if baslik is not None and not baslik.strip():
         raise PlatformHata("başlık boş olamaz")
@@ -463,7 +485,27 @@ def plan_guncelle(ad: str, *, baslik: str | None = None, notlar: str | None = No
         setler = [f"{k} = :{k}" for k in alanlar] + (["baslik = :baslik"] if baslik is not None else []) + (["notlar = :notlar"] if notlar is not None else [])
         if setler:
             s.execute(text(f"UPDATE planlar SET {', '.join(setler)}, guncelleme = now() WHERE ad = :a"),
-                      {"a": ad, **{k: (None if v is None else int(v)) for k, v in alanlar.items()}, "baslik": baslik, "notlar": notlar})
+                      {"a": ad, **{k: (None if v is None else (float(v) if k in ONDALIKLI_LIMITLER else int(v))) for k, v in alanlar.items()}, "baslik": baslik, "notlar": notlar})
+    return next((x for x in plan_listesi() if x["ad"] == ad), None)
+
+
+def plan_modul_guncelle(ad: str, moduller: dict) -> dict | None:
+    """v2.609 (F6-C, sahip): plan → modül varsayılanları; {kod: {dahil: bool, sinir: dict|None}}; sözlük dışı kod reddedilir; verilmeyen kodlar dokunulmaz."""
+    for kod, m in (moduller or {}).items():
+        if kod not in yetki_service.MODULLER:
+            raise PlatformHata(f"bilinmeyen modül: {kod}")
+        if not isinstance(m, dict) or "dahil" not in m:
+            raise PlatformHata(f"{kod}: dahil alanı gerekli")
+        if m.get("sinir") is not None and not isinstance(m["sinir"], dict):
+            raise PlatformHata(f"{kod}: sınır nesne olmalı")
+    with sistem_baglami() as s:
+        if s.execute(text("SELECT 1 FROM planlar WHERE ad = :a"), {"a": ad}).first() is None:
+            return None
+        for kod, m in (moduller or {}).items():
+            s.execute(text("INSERT INTO plan_modulleri(plan_ad, modul, dahil, sinir) VALUES (:p, :m, :d, CAST(:s AS jsonb)) "
+                           "ON CONFLICT (plan_ad, modul) DO UPDATE SET dahil = EXCLUDED.dahil, sinir = EXCLUDED.sinir"),
+                      {"p": ad, "m": kod, "d": bool(m["dahil"]), "s": _json.dumps(m.get("sinir"), ensure_ascii=False) if m.get("sinir") is not None else None})
+    yetki_service.onbellek_dusur()
     return next((x for x in plan_listesi() if x["ad"] == ad), None)
 
 

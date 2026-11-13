@@ -44,7 +44,7 @@ export interface KiraciDetay { id: string; ad: string; plan: string; durum: stri
   kullanicilar: KiraciKullanici[]; santraller: KiraciSantral[] }
 export interface Kullanici extends KiraciKullanici { tenant_id: string; firma: string }
 export interface Operator { id: string; email: string; rol: string; aktif: boolean; totp_aktif: boolean; son_giris: string | null; olusturma: string }
-export interface Basvuru { id: string; eposta: string; santral_adi: string | null; kurulu_guc_kwp: number | null; okundu: boolean; created_at: string }
+export interface Basvuru { id: string; eposta: string; santral_adi: string | null; kurulu_guc_kwp: number | null; okundu: boolean; created_at: string; kaynak?: string; kaynak_etiketi?: string }   // v2.609 (F6-D): kaynak
 export interface DenetimKaydi { id: number; zaman: string; kapsam: string; aktor_id: string | null; aktor_eposta: string | null; tenant_id: string | null;
   eylem: string; nesne_tur: string | null; nesne_id: string | null; ayrinti: Record<string, unknown>; ip: string | null; kiraci_ad?: string | null }
 
@@ -105,15 +105,34 @@ export interface HizmetSagligi { zaman: string; yarin?: string; donem?: string; 
   boyutlar?: string[]; esik: Record<string, number>; sozluk_surumu: string; not?: string }
 export interface AlarmOzet { acik: number; musteri: number; santral: number; en_eski: string | null; pencere_gun: number;
   kurallar: { kural: string; etiket: string; adet: number; musteri: number }[] }
+/** v2.609 (Faz 6 F6-B): kota durumu uçtan (yetki_service.kota_durumu) — limit null sınırsız, kullanım null ölçülmüyor; kaynak plan | ezme (sözleşme) */
+import type { KotaDurum } from "./types";
+export type { KotaDurum };   // F6-D: tek tanım api/types.ts (müşteri ve platform)
+export type KotaAlani = "santral" | "kullanici" | "portfoy" | "ac_mw" | "aylik_dis_api" | "aylik_rapor" | "aylik_isleme_saat";
+export interface KullanimAnlik { santral: number; ac_mw: number; ac_eksik_santral: number; kullanici: number; portfoy: number }
 export interface KullanimKiraci { id: string; ad: string; plan: string; durum: string; etkin_anahtar: number; etkin_webhook: number; son_api_kullanim: string | null;
-  bu_ay: KullanimToplam; onceki_ay: KullanimToplam }
-export interface KullanimOzet { ay: string; onceki_ay: string; turler: string[]; kiracilar: KullanimKiraci[] }
+  bu_ay: KullanimToplam; onceki_ay: KullanimToplam;
+  abonelik_durum: string; abonelik_etiketi: string; anlik: KullanimAnlik; kotalar: Record<KotaAlani, KotaDurum> }   // v2.609 (F6-B)
+export interface KullanimOzet { ay: string; onceki_ay: string; turler: string[]; kiracilar: KullanimKiraci[]; kota_alanlari: KotaAlani[]; kota_sozlugu: Record<string, string> }
 export interface KullanimGunler { ay: string; tenant_id: string; ad: string | null; gunler: ({ gun: string } & KullanimToplam)[] }
 
 // 26.10 Faz 5 — planlar (uyarı kipi) + kimliğe bürünme
-export type PlanLimitAlani = "santral_limit" | "kullanici_limit" | "api_rpm_limit" | "aylik_rapor_limit" | "aylik_dis_api_limit";
+export type PlanLimitAlani = "santral_limit" | "kullanici_limit" | "api_rpm_limit" | "aylik_rapor_limit" | "aylik_dis_api_limit"
+  | "ac_mw_limit" | "portfoy_limit" | "aylik_isleme_saat_limit";   // v2.609 (F6-B): üç yeni kota
 export interface Plan { ad: string; baslik: string; santral_limit: number | null; kullanici_limit: number | null; api_rpm_limit: number | null;
-  aylik_rapor_limit: number | null; aylik_dis_api_limit: number | null; notlar: string | null; sira: number; guncelleme: string; kiraci: number }
+  aylik_rapor_limit: number | null; aylik_dis_api_limit: number | null; ac_mw_limit: number | null; portfoy_limit: number | null; aylik_isleme_saat_limit: number | null;
+  notlar: string | null; sira: number; guncelleme: string; kiraci: number;
+  moduller: Record<string, { dahil: boolean; sinir: Record<string, unknown> | null; ad?: string; durum?: string | null; durum_etiketi?: string | null }> }   // v2.609 (F6-B): plan → modül varsayılanları, ad/durum sözlükten (salt okunur; düzenleme F6-C)
+/** v2.609 (Faz 6 F6-A/C): kiracı abonelik hakları (yetki_service.haklar platform görünümü + yalnız-ekleme geçmiş). Hükümler ve sözcükler uçtan. */
+export interface AbonelikModul { ad: string; dahil: boolean; kaynak: "plan" | "ek" | "cikar" | "yok"; sinir: Record<string, unknown> | null; durum: string; durum_etiketi: string }
+export interface AbonelikGecmis { id: number; zaman: string; aktor: string | null; eylem: string; eski: Record<string, unknown> | null; yeni: Record<string, unknown> | null; gerekce: string | null }
+export interface Abonelik { tenant_id: string; kiraci: string; plan: { ad: string; baslik: string }; durum: string; durum_etiketi: string; kayit_durumu: string | null; kayit_var: boolean;
+  tarihler: { baslangic: string | null; bitis: string | null; pilot_bitis: string | null; kalan_gun: number | null };
+  moduller: Record<string, AbonelikModul>; kotalar: Record<KotaAlani | "api_rpm", KotaDurum>; kullanim: Record<string, number | null | string>; uyarilar: string[]; zorlama: "uyari" | "zorla";
+  sozlesme: { notu: string | null; teklif_ref: string | null; kota_ezme: Record<string, number | null>; modul_ek: string[]; modul_cikar: string[]; guncelleme: string | null; guncelleyen: string | null };
+  sozluk: { durumlar: Record<string, string>; kota_durumlari: Record<string, string> }; zaman: string; gecmis: AbonelikGecmis[] }
+export interface AbonelikGuncelle { plan?: string; bitis?: string | null; pilot_bitis?: string | null; modul_ek?: string[]; modul_cikar?: string[]; kota_ezme?: Record<string, number | null>;
+  sozlesme_notu?: string | null; teklif_ref?: string | null; durum?: "aktif" | "askida" | "feshedildi"; gerekce: string }
 export interface Temsil { token: string; tenant_id: string; kiraci: string; sure_dk: number; bitis: string }
 // v2.520 (P5a) — YEKDEM aylık fiyat ilanı (7189 sayılı CK) ve TCMB kur arşivi; band konumu uçtan (bir önceki ayın ortalama USD alış kuruyla)
 export interface YekdemFiyat { ay: string; tesis_tipi: string; fiyat_kr_kwh: number; yerli_katki_kr_kwh: number | null; kaynak: string | null; guncelleme: string | null;
@@ -187,6 +206,10 @@ export const yonetim = {
   planlar: (): Promise<{ planlar: Plan[]; limit_alanlari: PlanLimitAlani[] }> => istek("/planlar"),
   planGuncelle: (ad: string, g: Partial<Record<PlanLimitAlani, number>> & { baslik?: string; notlar?: string; sinirsiz?: PlanLimitAlani[] }): Promise<Plan> => istek(`/planlar/${ad}`, "PUT", g),
   temsil: (tenant_id: string): Promise<Temsil> => istek(`/kiracilar/${tenant_id}/temsil`, "POST"),
+  // v2.609 (Faz 6 F6-A/C): abonelik hakları (salt okunur) + yaşam döngüsü eylemi (gerekçe zorunlu; fesih sahip) + plan modül varsayılanları (sahip)
+  abonelik: (tenant_id: string): Promise<Abonelik> => istek(`/kiracilar/${tenant_id}/abonelik`),
+  abonelikGuncelle: (tenant_id: string, g: AbonelikGuncelle): Promise<{ tamam: boolean; degisen: Record<string, { eski: string; yeni: string }>; abonelik: Abonelik }> => istek(`/kiracilar/${tenant_id}/abonelik`, "PUT", g),
+  planModulGuncelle: (ad: string, moduller: Record<string, { dahil: boolean; sinir?: Record<string, unknown> | null }>): Promise<Plan> => istek(`/planlar/${ad}/moduller`, "PUT", { moduller }),
   // v2.520 (P5a) — YEKDEM ilanı ve kur arşivi (operatör de yazar; denetim izine düşer)
   yekdem: (): Promise<YekdemYonetim> => istek("/yekdem"),
   yekdemFiyat: (g: { ay: string; tesis_tipi: string; fiyat_kr_kwh: number; yerli_katki_kr_kwh: number | null; kaynak: string | null }): Promise<YekdemFiyat> => istek("/yekdem-fiyat", "PUT", g),

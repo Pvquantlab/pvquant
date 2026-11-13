@@ -5,6 +5,7 @@ import { donemSecenekleri, TUR_AD, type FinansDonemTur } from "../../lib/donem";
 import { tarihBicimi } from "../../lib/bicim";
 import { Meta } from "../../lib/Meta";
 import { HesapDurumu, Kart, Kpi, Sayfa, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
+import { ModulNotu } from "./Abonelik";   // v2.609 (Faz 6 F6-D): kapalı özellik notu (uyarı kipi)
 
 /** v2.595 (Faz 3 F3-H) — Portföy yönetimi: toplayıcı ya da DSG yöneticisinin portföyünü birkaç saniyede okuması için tek sayfa.
  *  Santral tahminleri, uzlaştırma ve finansal etki hesapları değişmez; bu sayfa zamanlı üyelik kayıtlarıyla (F3-A) portföy tahmini ve
@@ -99,6 +100,7 @@ export function Portfoyler() {
   if (liste === null) return <Sayfa baslik="Portföy yönetimi" alt={alt}><p className="soluk">Portföy listesi alınamadı. Bağlantıyı kontrol edip sayfayı yenileyin.</p></Sayfa>;
   if (liste.length === 0) return (
     <Sayfa baslik="Portföy yönetimi" alt={alt}>
+      <ModulNotu kod="portfoy_dsg" />
       <div className="bos-durum"><div className="bos-bas">Henüz tanımlı portföy yok</div>
         <p>Portföy, santrallerinizin ticari ilişkisini tarihli üyeliklerle tutar: toplayıcı portföyü, dengeden sorumlu grup, işletme portföyü ya da özel grup.
           {yazabilir ? " Aşağıdan ilk portföyü tanımlayın; santral ekledikçe tahmin, sapma ve risk görünümleri burada birikir." : " Portföyü kuruluşunuzun editör ya da yönetici yetkili kullanıcısı tanımlar."}</p></div>
@@ -115,6 +117,7 @@ export function Portfoyler() {
   const rho = sapma?.korelasyon?.rho; const rhoOrt = rho ? (() => { const v: number[] = []; const ad = Object.keys(rho); ad.forEach((a, i) => ad.slice(i + 1).forEach((b) => { const x = rho[a]?.[b]; if (typeof x === "number") v.push(x); })); return v.length ? v.reduce((s, x) => s + x, 0) / v.length : null; })() : null;
   return (
     <Sayfa baslik="Portföy yönetimi" alt={alt} sag={secici}>
+      <ModulNotu kod="portfoy_dsg" />
       <p className="form-not" style={{ margin: "0 0 12px", fontSize: 13.5 }}>
         <b>{p.ad}</b> · {TUR_ETIKET[p.tur] ?? p.tur}{p.dsg_kodu ? ` · DSG kodu ${p.dsg_kodu}` : ""}{p.kurulus_ad ? ` · ${p.kurulus_ad}` : ""} · geçerlilik {gunYaz(p.gecerli_bas)}{p.gecerli_bit ? ` – ${gunYaz(p.gecerli_bit)}` : " – süresiz"} · {sayiTr(p.uye_sayisi)} üye bugün
         {rev?.ozet && <> · <span style={{ color: "var(--metin)" }}>{rev.ozet}</span></>}

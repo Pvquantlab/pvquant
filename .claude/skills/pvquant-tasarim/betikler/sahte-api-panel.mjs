@@ -794,6 +794,26 @@ http.createServer((req, res) => {
   }
   if (yol === "/v1/plants") return yanit(200, PLANTS);
   if (yol === "/v1/oturum/yenile") return yanit(200, { token: "x." + Buffer.from('{"role":"admin"}').toString("base64url") + ".y", role: "admin", firma: "Deneme Lab", email: "deneme@example.com" });
+  // ---- v2.609 (Faz 6 F6-D): müşteri aboneliği (yetki_service.musteri_gorunumu biçimi) + teklif/yükseltme talebi
+  if (yol === "/v1/abonelik" && req.method === "GET") {
+    const KE = { saglikli: "sınırın altında", dikkat: "sınıra yaklaşıyor", dolu: "sınıra ulaşıldı", asildi: "sınır aşıldı", sinirsiz: "sınırsız", olculmuyor: "ölçülmüyor" };
+    const K = (ad, birim, limit, kullanim, kaynak = "plan", not_) => { const oran = limit == null || kullanim == null || limit <= 0 ? null : Math.round(kullanim / limit * 1000) / 1000;
+      const durum = kullanim == null ? "olculmuyor" : limit == null ? "sinirsiz" : limit <= 0 ? (kullanim > 0 ? "asildi" : "saglikli") : oran > 1 ? "asildi" : oran >= 1 ? "dolu" : oran >= 0.8 ? "dikkat" : "saglikli";
+      return { ad, birim, limit, kullanim, oran, durum, etiket: KE[durum], kaynak, ...(not_ ? { not_ } : {}) }; };
+    const M = (ad, dahil, kaynak = "plan", sinir = null, durum = "mevcut", de = "mevcut") => ({ ad, dahil, kaynak, sinir, durum, durum_etiketi: de });
+    return yanit(200, { tenant_id: "e190f269-637e-4459-af54-27a7e08095c7", kiraci: "Deneme Lab", plan: { ad: "pilot", baslik: "Pilot" }, durum: "pilot", durum_etiketi: "Pilot",
+      tarihler: { baslangic: "2026-10-26", bitis: null, pilot_bitis: "2026-12-25", kalan_gun: 42 },
+      moduller: { tahmin: M("Tahmin ve Genel bakış", true), dogruluk: M("Doğruluk karnesi ve bağımsız doğrulama", true), veri: M("Veri yükleme ve bağlantılar", true, "plan", { baglanti: 1 }), alarm: M("Alarm ve olay kaydı", true, "plan", { kurallar: "temel" }),
+        kgup: M("Üretim programı (KGÜP)", true, "plan", { revizyon: false }), finansal_etki: M("Finansal etki merkezi", true, "ek"), mutabakat: M("Mutabakat ve EPİAŞ bildirimi", false, "yok"), rapor_gelismis: M("Dönem raporu ve zamanlanmış gönderim", false, "yok"),
+        paylasim: M("Kuruluşlar arası paylaşım", false, "yok"), portfoy_dsg: M("Portföy, DSG ve KÜPST", false, "yok"), dis_api: M("Kurumsal API ve webhook", false, "yok"), santral_yetki: M("Santral bazlı kullanıcı yetkisi", false, "yok", null, "gelistirmede", "geliştirmede"),
+        sozlesme: M("Sözleşme kuralları", false, "yok", null, "sinirli", "sınırlı"), entegrasyon: M("Özel entegrasyon ve saha toplayıcısı", false, "yok", null, "is_bazli", "iş bazlı"), destek_oncelik: M("Öncelikli destek", false, "yok", null, "surec", "süreç") },
+      kotalar: { santral: K("Etkin santral", "adet", 5, 2, "ezme"), kullanici: K("Etkin kullanıcı", "adet", 3, 3), portfoy: K("Etkin portföy", "adet", 0, 0), ac_mw: K("Yönetilen güç", "MW", null, 5.714, "plan", "1 santralde AC sınırı girilmemiş; DC gücü sayıldı (yaklaşık)"),
+        aylik_dis_api: K("Dış API isteği", "istek/ay", 5000, 1184), aylik_rapor: K("Üretilen rapor", "adet/ay", 50, 3), aylik_isleme_saat: K("İşlenen üretim verisi", "saat/ay", null, 3000), api_rpm: K("Dış API hızı", "istek/dk", 60, null, "plan", "anahtar başına uygulanır") },
+      kullanim: { santral: 2, kullanici: 3, portfoy: 0, ac_mw: 5.714, ac_eksik_santral: 1, aylik_dis_api: 1184, aylik_rapor: 3, aylik_isleme_saat: 3000, api_rpm: null, ay: "2026-11" },
+      uyarilar: ["Etkin kullanıcı: sınıra ulaşıldı"], zorlama: "uyari",
+      sozluk: { durumlar: { pilot: "Pilot", aktif: "Etkin", sona_eriyor: "Sona eriyor", yenileme_bekliyor: "Yenileme bekliyor", askida: "Askıda", sona_erdi: "Sona erdi", feshedildi: "Feshedildi" }, kota_durumlari: KE },
+      sozlesme_istisnasi: true, zaman: new Date().toISOString() }); }
+  if (yol === "/v1/abonelik/talep" && req.method === "POST") { req.on("data", () => {}); req.on("end", () => yanit(201, { tamam: true, id: "talep-1", kaynak: "yukseltme" })); return; }
   if (yol === "/v1/kurulus/ayarlar" && req.method === "GET") return yanit(200, { yonetici_2fa_zorunlu: false, iki_adimsiz_yonetici: 1 });   // 03.11: 404 görünmesin
   if (yol === "/v1/kurulus/ayarlar" && req.method === "PUT") { req.on("data", () => {}); req.on("end", () => yanit(200, { yonetici_2fa_zorunlu: true, iki_adimsiz_yonetici: 1 })); return; }
   if (yol.startsWith("/v1/kurulus/denetim")) return yanit(200, { kayitlar: [

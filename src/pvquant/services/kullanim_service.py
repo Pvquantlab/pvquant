@@ -11,11 +11,13 @@ Okumalar `platform_baglami(aktör)` ile (RLS dışı, adlı)."""
 from __future__ import annotations
 
 import datetime as dt
+import json as _json
 
 from sqlalchemy import text
 
-from pvquant.db import sistem_baglami, platform_baglami
-from pvquant.services import kalite_sozlugu as _ks   # v2.598 (F4-C): flag süzgeci tek sözlükten
+from pvquant.db import platform_baglami, sistem_baglami
+from pvquant.services import kalite_sozlugu as _ks  # v2.598 (F4-C): flag süzgeci tek sözlükten
+from pvquant.services import yetki_service as _ys  # v2.609 (F6-B): kota hükümleri tek yerden
 
 TURLER = ("dis_api", "webhook", "webhook_hata")
 PENCERE_SN = 60
@@ -117,20 +119,61 @@ def ozet(aktor_id: str, ay: str | None = None) -> dict:
     o_ilk, _, o_etiket = _ay_sinirlari(_onceki_ay(ilk))
     with platform_baglami(aktor_id) as s:
         kiracilar = s.execute(text(
-            "SELECT t.id, t.name, t.plan, t.status, "
+            "SELECT t.id, t.name, t.plan, t.status, t.created_at, "
             "(SELECT count(*) FROM api_keys k WHERE k.tenant_id = t.id AND NOT k.revoked AND (k.expires_at IS NULL OR k.expires_at > now())) AS anahtar, "
             "(SELECT count(*) FROM webhooks w WHERE w.tenant_id = t.id AND w.active) AS webhook, "
             "(SELECT max(k.last_used_at) FROM api_keys k WHERE k.tenant_id = t.id) AS son_api "
             "FROM tenants t ORDER BY t.name")).mappings().all()
         bu = _ay_toplamlari(s, ilk, son)
         onceki = _ay_toplamlari(s, o_ilk, ilk)
+        anlik = _anlik_sayimlar(s)
+        abonelik = {str(r["tenant_id"]): dict(r) for r in s.execute(text(
+            "SELECT tenant_id, plan, durum, bitis, pilot_bitis, kota_ezme FROM kiraci_abonelik")).mappings().all()}
+        planlar = {r["ad"]: dict(r) for r in s.execute(text("SELECT ad, " + ", ".join(_ys.KOTALAR[k]["sutun"] for k in _ys.KOTALAR) + " FROM planlar")).mappings().all()}
     bos = {"dis_api": 0, "webhook": 0, "webhook_hata": 0, "rapor": 0, "kosu": 0, "scada_saat": 0, "yukleme": 0, "kgup": 0, "kgup_bildirilen": 0}
-    return {"ay": etiket, "onceki_ay": o_etiket, "turler": list(TURLER),
-            "kiracilar": [{"id": str(k["id"]), "ad": k["name"], "plan": k["plan"], "durum": k["status"],
-                           "etkin_anahtar": int(k["anahtar"]), "etkin_webhook": int(k["webhook"]),
-                           "son_api_kullanim": k["son_api"].isoformat() if k["son_api"] else None,
-                           "bu_ay": bu.get(str(k["id"]), dict(bos)), "onceki_ay": onceki.get(str(k["id"]), dict(bos))}
-                          for k in kiracilar]}
+    bugun = dt.datetime.now(dt.timezone.utc).date()
+    out = []
+    for k in kiracilar:
+        tid = str(k["id"]); bu_ay = bu.get(tid, dict(bos))
+        plan_ad = (abonelik[tid]["plan"] if tid in abonelik else k["plan"]) or "pilot"
+        a = abonelik.get(tid) or _ys.varsayilan_kayit(plan_ad, k["created_at"], bugun)   # inceleme: kayıtsız kiracı yetki_service ile aynı türetme
+        durum = _ys.durum_turet(plan_ad, k["status"], a, bugun)
+        out.append({"id": tid, "ad": k["name"], "plan": plan_ad, "durum": k["status"],
+                    "abonelik_durum": durum, "abonelik_etiketi": _ys.DURUM_ETIKET[durum],
+                    "etkin_anahtar": int(k["anahtar"]), "etkin_webhook": int(k["webhook"]),
+                    "son_api_kullanim": k["son_api"].isoformat() if k["son_api"] else None,
+                    "bu_ay": bu_ay, "onceki_ay": onceki.get(tid, dict(bos)),
+                    "anlik": anlik.get(tid, {"santral": 0, "ac_mw": 0.0, "ac_eksik_santral": 0, "kullanici": 0, "portfoy": 0}),
+                    "kotalar": _kotalar(planlar.get(plan_ad), a, anlik.get(tid), bu_ay)})
+    return {"ay": etiket, "onceki_ay": o_etiket, "turler": list(TURLER), "kota_alanlari": list(KOTA_KAYNAK), "kota_sozlugu": _ys.KOTA_DURUM_ETIKET,
+            "kiracilar": out}
+
+
+# v2.609 (Faz 6 F6-B): kota alanı → bu fonksiyonun sayımındaki kaynak (anlık ya da bu ay). api_rpm anahtar başına: ölçülmez.
+KOTA_KAYNAK = {"santral": ("anlik", "santral"), "kullanici": ("anlik", "kullanici"), "portfoy": ("anlik", "portfoy"), "ac_mw": ("anlik", "ac_mw"),
+               "aylik_dis_api": ("bu_ay", "dis_api"), "aylik_rapor": ("bu_ay", "rapor"), "aylik_isleme_saat": ("bu_ay", "scada_saat")}
+
+
+def _anlik_sayimlar(s) -> dict[str, dict]:
+    """Kiracı → {santral, ac_mw, ac_eksik_santral, kullanici, portfoy}; tek küme sorgusu (tüm kiracılar); tanım yetki_service.ANLIK_ALT_SORGU."""
+    rows = s.execute(text(f"SELECT t.id, {_ys.ANLIK_ALT_SORGU.format(T='t.id')} FROM tenants t")).mappings().all()   # inceleme: tek tanım (yetki_service)
+    return {str(r["id"]): _ys.anlik_sozluk(r) for r in rows}
+
+
+def _kotalar(plan: dict | None, abonelik: dict | None, anlik: dict | None, bu_ay: dict) -> dict:
+    """Plan limiti (yoksa sınırsız) + kiracı kota ezmesi → yetki_service.kota_durumu; kullanım kaynağı KOTA_KAYNAK."""
+    ezme = (abonelik or {}).get("kota_ezme") or {}
+    if isinstance(ezme, str):
+        ezme = _json.loads(ezme)
+    out = {}
+    for alan, (kaynak, anahtar) in KOTA_KAYNAK.items():
+        kullanim = (anlik or {}).get(anahtar) if kaynak == "anlik" else bu_ay.get(anahtar)
+        limit = plan.get(_ys.KOTALAR[alan]["sutun"]) if plan else None
+        d = _ys.kota_durumu(limit, kullanim, ezme=ezme.get(alan))
+        out[alan] = {**d, "ad": _ys.KOTALAR[alan]["ad"], "birim": _ys.KOTALAR[alan]["birim"]}
+    if anlik and anlik.get("ac_eksik_santral"):
+        out["ac_mw"]["not_"] = f"{anlik['ac_eksik_santral']} santralde AC sınırı girilmemiş; DC gücü sayıldı (yaklaşık)"
+    return out
 
 
 def gunler(aktor_id: str, tenant_id: str, ay: str | None = None) -> dict:

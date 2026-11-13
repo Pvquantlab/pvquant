@@ -937,3 +937,14 @@ export interface GenelBakis {
   genel: { durum: string; etiket: string; eylem_gereken: string[] };
   esik: Record<string, number>; sozluk_surumu: string;
 }
+
+/** v2.609 (Faz 6 F6-B/D): kota durumu uçtan (yetki_service.kota_durumu) — limit null sınırsız, kullanım null ölçülmüyor; kaynak plan | ezme (sözleşme).
+ *  Müşteri ve platform aynı tip (platform istemcisi buradan yeniden dışa aktarır). */
+export interface KotaDurum { ad: string; birim: string; limit: number | null; kullanim: number | null; oran: number | null; durum: string; etiket: string; kaynak: string; not_?: string }
+/** v2.609 (Faz 6 F6-D): müşteri aboneliği (GET /v1/abonelik, yetki_service.musteri_gorunumu) — sözleşme iç notu yüzeye çıkmaz; hükümler ve sözcükler uçtan. */
+export interface MusteriAbonelik { tenant_id: string; kiraci: string; plan: { ad: string; baslik: string }; durum: string; durum_etiketi: string;
+  tarihler: { baslangic: string | null; bitis: string | null; pilot_bitis: string | null; kalan_gun: number | null };
+  moduller: Record<string, { ad: string; dahil: boolean; kaynak: string; sinir: Record<string, unknown> | null; durum: string; durum_etiketi: string }>;
+  kotalar: Record<string, KotaDurum>; kullanim: Record<string, number | null | string>; uyarilar: string[]; zorlama: "uyari" | "zorla";
+  sozluk: { durumlar: Record<string, string>; kota_durumlari: Record<string, string> }; sozlesme_istisnasi: boolean; zaman: string }
+export interface AbonelikTalep { tur: "plan" | "modul" | "sanayi_ges" | "diger"; hedef?: string | null; mesaj?: string | null }

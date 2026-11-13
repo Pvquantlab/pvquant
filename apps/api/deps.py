@@ -1,7 +1,8 @@
 """API bagimlilik enjeksiyonu: token dogrulama + rol kontrolu."""
 import os
 import time
-from fastapi import Header, HTTPException, Depends, Request
+import uuid
+from fastapi import Header, HTTPException, Depends, Request, Response
 from pvquant.services import auth_service
 from pvquant.services.auth_service import token_coz
 
@@ -97,15 +98,74 @@ def yonetici_yetkisi():
 
 
 def api_anahtari(kapsam: str):
-    """v2.264: dış API kapısı — X-API-Key başlığı; kapsam zorunlu. 401 (geçersiz), 403 (kapsam), 429 (oran)."""
-    def _ic(x_api_key: str = Header(..., alias="X-API-Key")):
+    """v2.264: dış API kapısı — X-API-Key başlığı; kapsam zorunlu. 401 (geçersiz), 403 (kapsam), 429 (oran).
+    v2.609 (F6-E): anahtar doğrulandıktan sonra abonelik kapısı — `dis_api` modülü ve aylık dış API kotası (uyarı kipinde başlık + iz, zorla kipinde 403/409)."""
+    def _ic(request: Request, response: Response, x_api_key: str = Header(..., alias="X-API-Key")):
         from pvquant.services import api_anahtar_service
         try:
-            return api_anahtar_service.dogrula(x_api_key, kapsam)
+            anahtar = api_anahtar_service.dogrula(x_api_key, kapsam)
         except PermissionError as e:
-            raise HTTPException(403 if "kapsam" in str(e) else 401, str(e))
+            raise HTTPException(403 if "kapsam" in str(e) else 401, str(e)) from None
         except RuntimeError:
-            raise HTTPException(429, "oran siniri: dakikalik istek hakki doldu")
+            raise HTTPException(429, "oran siniri: dakikalik istek hakki doldu") from None
+        abonelik_kapisi_uygula(request, response, anahtar["tenant_id"], _kapi_hukmu(anahtar["tenant_id"], modul="dis_api", alan="aylik_dis_api", artis=1),
+                               kapsam="dis_api", nesne="dis_api", aktor_id=None)
+        return anahtar
+    return _ic
+
+
+# ---------------------------------------------------------------- v2.609 (Faz 6 F6-E): abonelik kapıları ----------------------------------------
+UYARI_IZI_SN = 3600
+_uyari_izi: dict[tuple[str, str, str], float] = {}   # (kiracı, kod, nesne) → son iz zamanı; uyarı kipinde her istekte değil, saatte bir denetim satırı
+
+
+def _kapi_hukmu(tenant_id, **kw):
+    from pvquant.services import yetki_service
+    try:
+        uuid.UUID(str(tenant_id))
+    except ValueError:    # UUID olmayan kiracı kimliği (eski testlerin sahte jetonu): kapı sessiz geçer
+        return None
+    try:
+        return yetki_service.kapi_hukmu(tenant_id, **kw)
+    except LookupError:   # kiracı kaydı yok (yarış/test): kapı sessiz geçer, diğer kapılar karar verir
+        return None
+
+
+def abonelik_kapisi_uygula(request: Request, response: Response, tenant_id, hukum: dict | None, *, kapsam: str = "musteri", nesne: str = "", aktor_id=None) -> None:
+    """Hükmü kipe göre uygular. Uyarı kipi (varsayılan): yanıt başlığı `X-PVQuant-Abonelik: uyari` + `X-PVQuant-Abonelik-Kod` (bağımlılık yanıtı +
+    main.py middleware'i `request.state.abonelik_uyari` ile — dosya/304 dönen uçlarda da) ve denetim izi
+    `abonelik_uyari` (kiracı × kod × nesne başına saatte bir; süreç başına). Zorla kipi: HTTP 403/409, detail {kod, mesaj, …} (dış API gövdesi
+    `{detail, kod}` istisna işleyicisinden). Kip `Settings.abonelik_zorlama`; «zorla» yalnız açık onayla (00 §13/1)."""
+    if hukum is None:
+        return
+    from pvquant.services import denetim_service, yetki_service
+    if yetki_service.zorlama_kipi() == "zorla":
+        raise HTTPException(hukum["http"], {"detail": hukum["mesaj"], "mesaj": hukum["mesaj"], "kod": hukum["kod"], **hukum["ayrinti"]})
+    response.headers["X-PVQuant-Abonelik"] = "uyari"
+    response.headers["X-PVQuant-Abonelik-Kod"] = hukum["kod"]
+    request.state.abonelik_uyari = hukum["kod"]   # öz inceleme: uç Response(...) döndürürse bağımlılık başlığı birleşmez → middleware state'ten yazar
+    anahtar = (str(tenant_id), hukum["kod"], str(nesne))
+    simdi = time.monotonic()
+    if simdi - _uyari_izi.get(anahtar, -1e12) >= UYARI_IZI_SN:
+        _uyari_izi[anahtar] = simdi
+        denetim_service.kaydet(kapsam, "abonelik_uyari", aktor_id=aktor_id, tenant_id=tenant_id, nesne_tur="abonelik", nesne_id=None,
+                               ayrinti={"kod": hukum["kod"], "mesaj": hukum["mesaj"], **hukum["ayrinti"], "yol": request.url.path, "yontem": request.method, "kip": "uyari"},
+                               ip=request.client.host if request.client else None)
+
+
+def modul_gerekli(modul: str, *, yazma: bool = False):
+    """Uç bir modül ister: Depends(modul_gerekli("finansal_etki")). `yazma=True` ayrıca sona ermiş/kapalı abonelikte yazmayı keser (okuma serbest)."""
+    def _ic(request: Request, response: Response, claims=Depends(gecerli_kullanici)):
+        abonelik_kapisi_uygula(request, response, claims["tenant_id"], _kapi_hukmu(claims["tenant_id"], modul=modul, yazma=yazma), nesne=modul, aktor_id=claims.get("sub"))
+        return claims
+    return _ic
+
+
+def kota_kontrol(alan: str, artis: int = 1):
+    """Uç bir kota alanında yer ister (yazma): Depends(kota_kontrol("santral")). Tam sınır = yer yok; sınırsız/ölçülmeyen geçer."""
+    def _ic(request: Request, response: Response, claims=Depends(gecerli_kullanici)):
+        abonelik_kapisi_uygula(request, response, claims["tenant_id"], _kapi_hukmu(claims["tenant_id"], alan=alan, artis=artis, yazma=True), nesne=alan, aktor_id=claims.get("sub"))
+        return claims
     return _ic
 
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
+import type { KotaDurum } from "../../api/types";   // v2.609 (F6-D)
 import { HESAP_DURUMU, hizmetDurumu } from "../../lib/durum";
 import { sayiBicimi } from "../../lib/bicim";
 
@@ -218,6 +219,17 @@ export function VeriDurumu({ d, kucuk = true }: { d?: VeriDurumuBilgi | null; ku
 export function HizmetDurumu({ durum, etiket, title, kucuk = false }: { durum: string; etiket?: string; title?: string; kucuk?: boolean }) {
   const d = hizmetDurumu(durum);
   return <span className={`rozet ${d.sinif}${kucuk ? " rozet-kucuk" : ""}`} title={title}>{etiket ?? d.etiket}</span>;
+}
+
+/** v2.609 (Faz 6 F6-B/D) — kota rozeti (müşteri + platform tek parça): hüküm ve sözcük UÇTAN (yetki_service.kota_durumu); arayüz oran hesaplamaz.
+ *  sınırsız/ölçülmüyor soluk, dikkat ve dolu (tam sınır) amber, aşıldı uyarı; kaynak «ezme» ise sözleşme işareti. Uyarı kipi: kısıt yok, yalnız rozet. */
+export function KotaRozet({ k }: { k: KotaDurum }) {
+  const ondalik = k.birim === "MW" ? 1 : 0;
+  const deger = k.kullanim == null ? "—" : sayiTr(k.kullanim, ondalik);
+  const baslik = [k.ad, k.not_, k.kaynak === "ezme" ? "sözleşmeyle ezilmiş limit" : null].filter(Boolean).join(" · ");
+  if (k.durum === "sinirsiz" || k.durum === "olculmuyor") return <span className="soluk" title={`${baslik} · ${k.etiket}`}>{deger}{k.durum === "olculmuyor" ? "" : <span className="birim"> / ∞</span>}</span>;
+  const sinif = k.durum === "asildi" ? "rozet-uyari" : k.durum === "dikkat" || k.durum === "dolu" ? "rozet-uyari plat-rozet-sari" : "rozet-notr";   // dolu = sınırda, aşılmadı
+  return <span className={`rozet ${sinif}`} title={`${baslik} · ${k.etiket}${k.durum === "asildi" ? " (uyarı; kısıt yok)" : ""}`}>{deger} / {sayiTr(k.limit ?? 0, ondalik)}{k.kaynak === "ezme" ? "*" : ""}</span>;
 }
 
 export function HesapDurumu({ d, kucuk = true }: { d?: string | null; kucuk?: boolean }) {

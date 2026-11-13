@@ -51,6 +51,8 @@ class Settings(BaseSettings):
     sapma_katmani: Literal["otomatik", "kapali"] = "otomatik"
     # v2.276 (Dalga 5): gün içi güncelleme — ICON-EU taze koşusuyla öğle/ikindi koşuları (GİP revizyonu için); UTC saatleri
     gun_ici_guncelleme: bool = True
+    # v2.609 (Faz 6 F6-A): abonelik kapıları — "uyari": iz + rozet, kısıt yok (varsayılan); "zorla": modül kapalı 403, kota aşımı 409 (AÇIK ONAYLA)
+    abonelik_zorlama: Literal["uyari", "zorla"] = "uyari"
     gun_ici_saatler: str = "9,15"
     # v2.279 (Tablo 3.2 satır 3, ★): ufukla büyüyen belirsizlik tabanı — geçmiş hatadan σ(h); yalnız genişletir
     ufuk_sigma_katmani: Literal["otomatik", "kapali"] = "otomatik"

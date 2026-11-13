@@ -3,6 +3,7 @@ import { api, rolum, bellektenOku } from "../../api/client";
 import type { PiyasaDurum, TakimUyesi, ApiAnahtar, Webhook, SantralKisa, DenetimKaydi, KurulusAyarlar } from "../../api/types";
 import { Kart, Sayfa, sayiTr, gucTr, SayfaIskeleti } from "./parcalar";
 import { Meta } from "../../lib/Meta";
+import { AboneliginizKarti, ModulNotu } from "./Abonelik";   // v2.609 (Faz 6 F6-D)
 import { AyrintiCipleri } from "../../lib/AyrintiCipleri";
 
 /** 23.10 sekizinci tur — kapsam tanımlayıcısının kullanıcı dili (değer ve yetki anlamı aynı; bilinmeyen kapsam kodla kalır). */
@@ -18,9 +19,11 @@ export function Kurulus({ santralYenile }: { santralYenile?: () => void }) {
   const yonetici = rolum() === "admin";
   return (
     <Sayfa baslik="Ayarlar" alt="Hesap ve ekip, güvenlik politikası, dış erişim, santral arşivi ve denetim izi. Kuruluşlar arası paylaşım kendi sayfasında (Yönetim › Paylaşım).">
+      <AboneliginizKarti />   {/* v2.609 (Faz 6 F6-D) */}
       <HesapVeEkip />
       {yonetici && <Politika />}
       {yonetici && <PiyasaVerisi />}
+      {yonetici && <ModulNotu kod="dis_api" />}
       {yonetici && <DisErisim santraller={santraller} />}
       {yonetici && <SantralArsivi santralYenile={santralYenile} />}
       {yonetici && <KurulusDenetim />}

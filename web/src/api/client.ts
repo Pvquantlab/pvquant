@@ -1,4 +1,4 @@
-import type { DengesizlikSaatlik, DsgAnahtar, KgupRevizyon, PiyasaDurum, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , SaatProfili , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , PDegerleri , Kullanilabilirlik , KayipAyrisimi , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar, PortfoyAnahtar, PortfoyKupst, UevcbArama , Takvim, KunyeTarihler, Yekdem, Olay, OlayOzet, OlayGiris, OlayYanit, MutabakatOzet, MutabakatYukleme, SaatlikKiyas, SaatlikYuklemeYanit, KuralTablosu, SayacOzet, SayacYuklemeYanit, SayacAyar, SayacKaynak, RaporDonemVeri, RaporGonderim, RaporGonderimSonuc, Performans, Sensorler, Sensor, Kirlenme, VeriYoluOzet, VeriYoluSinama , GolgeGorunum, OlayAdaylari, BulutKimlikDurum, BulutKimlikKayit, BulutKimlikSonuc, BulutOAuthBaslat, BulutBirimKiyas, PilotDurum, ReferansKiyasOzet, EdgeToplayici, EdgeToplayiciYeni , BagimsizDogrulama, FinansalEtki, FinansalEtkiGecmis, PortfoyFinansalEtki, PortfoyKisa, PortfoyDetay, PortfoyUye, PortfoySozlesme, Kurulus, PortfoyTahminT, PortfoySapmaT, PortfoyRiskT, PortfoyDsgT, PortfoyRevizyonT, PortfoyFinansT, GenelBakis } from "./types";
+import type { MusteriAbonelik, AbonelikTalep, DengesizlikSaatlik, DsgAnahtar, KgupRevizyon, PiyasaDurum, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , SaatProfili , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , PDegerleri , Kullanilabilirlik , KayipAyrisimi , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar, PortfoyAnahtar, PortfoyKupst, UevcbArama , Takvim, KunyeTarihler, Yekdem, Olay, OlayOzet, OlayGiris, OlayYanit, MutabakatOzet, MutabakatYukleme, SaatlikKiyas, SaatlikYuklemeYanit, KuralTablosu, SayacOzet, SayacYuklemeYanit, SayacAyar, SayacKaynak, RaporDonemVeri, RaporGonderim, RaporGonderimSonuc, Performans, Sensorler, Sensor, Kirlenme, VeriYoluOzet, VeriYoluSinama , GolgeGorunum, OlayAdaylari, BulutKimlikDurum, BulutKimlikKayit, BulutKimlikSonuc, BulutOAuthBaslat, BulutBirimKiyas, PilotDurum, ReferansKiyasOzet, EdgeToplayici, EdgeToplayiciYeni , BagimsizDogrulama, FinansalEtki, FinansalEtkiGecmis, PortfoyFinansalEtki, PortfoyKisa, PortfoyDetay, PortfoyUye, PortfoySozlesme, Kurulus, PortfoyTahminT, PortfoySapmaT, PortfoyRiskT, PortfoyDsgT, PortfoyRevizyonT, PortfoyFinansT, GenelBakis } from "./types";
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik, ornekBagimsiz, ornekFinansalEtki } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -7,6 +7,8 @@ const _API_HAM = import.meta.env.VITE_API_URL as string | undefined;
 /** v2.148: "." = AYNI KÖKEN (caddy arkası) — fetch'ler göreli /v1'e gider,
  *  alan adından bağımsız tek build. Tanımsız = örnek kip (API'siz demo). */
 const TABAN = _API_HAM === "." ? "" : _API_HAM;
+/** v2.609 (F6-D inceleme): örnek kip (API tabanı yok) — null yanıt «alınamadı» değil «bu kipte yok» demektir. */
+export const ornekKip = TABAN == null;
 
 /** UI ufuk etiketi -> saat. Kapinin dili saat sayisidir (?hours=N, tavan 384). */
 const UFUK_SAAT = { "24h": 24, "72h": 72, "7d": 168, "16d": 384 } as const;
@@ -119,6 +121,7 @@ export const bellekten = {
   kalibrasyon: (p: string): KalibrasyonOzeti | undefined => bellektenOku<KalibrasyonOzeti>(`/v1/plants/${p}/kalibrasyon`),
   aylik: (p: string): AylikBeklenti | undefined => bellektenOku<AylikBeklenti>(`/v1/plants/${p}/monthly`),
   genelBakis: (p: string): GenelBakis | undefined => bellektenOku<GenelBakis>(`/v1/plants/${p}/genel-bakis`),   // v2.608 (F5-B)
+  abonelik: (): MusteriAbonelik | undefined => bellektenOku<MusteriAbonelik>("/v1/abonelik"),   // v2.609 (F6-D)
 };
 
 /** 24.10 — bayat-önce tazelemesi: taze yanıt bellekteki bayat değerle BİREBİR aynıysa eski referans korunur; böylece
@@ -127,6 +130,13 @@ export const bellekten = {
 export function ayniysaEskisi<T>(eski: T | null | undefined, yeni: T): T {
   if (eski == null || yeni == null) return yeni;
   try { return JSON.stringify(eski) === JSON.stringify(yeni) ? (eski as T) : yeni; } catch { return yeni; }
+}
+
+/** v2.609 (F6-E): abonelik kapıları zorla kipinde nesne detail {kod, mesaj, …} döner — kullanıcı mesajı okunur; metin detail aynen; aksi hâlde varsayılan. */
+function detayMesaji(d: unknown, varsayilan: string): string {
+  if (typeof d === "string") return d;
+  if (d && typeof d === "object" && typeof (d as { mesaj?: unknown }).mesaj === "string") return (d as { mesaj: string }).mesaj;
+  return varsayilan;
 }
 
 /** v2.264: JSON gövdeli POST/DELETE — getir'in 401 sözleşmesi; 4xx'te sunucunun detail'i Error olur. */
@@ -138,7 +148,7 @@ async function gonder<T>(yol: string, method: "POST" | "DELETE" | "PUT" | "PATCH
   if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise<T>(() => {}); }
   if (!y.ok) {
     let mesaj = `${y.status} ${yol}`;
-    try { const g = (await y.json()) as { detail?: unknown }; if (typeof g.detail === "string") mesaj = g.detail; } catch { /* gövde yok */ }
+    try { const g = (await y.json()) as { detail?: unknown }; mesaj = detayMesaji(g.detail, mesaj); } catch { /* gövde yok */ }
     throw new Error(mesaj);
   }
   // v2.325: her başarılı yazmadan sonra GET belleği düşer — kullanıcı kendi
@@ -305,7 +315,7 @@ async function dosyaGonder<T>(yol: string, dosya: File,
         esleme = new EslemeHatasi(d as EslemeVerisi);   // v2.91
       else if (d && typeof d === "object" && (d as { tur?: string }).tur === "cihaz_bazli")
         esleme = new CihazBazliHatasi(d as CihazBazliVerisi);   // v2.363
-      else if (typeof d === "string") mesaj = d;
+      else mesaj = detayMesaji(d, mesaj);
     } catch { /* govde yoksa durum kodu kalir */ }
     if (esleme) throw esleme;
     throw new Error(mesaj);
@@ -1048,6 +1058,9 @@ export const api = {
   /** v2.521 (P1a): olay kaydı — liste/özet, ekleme, güncelleme (kapatma/iptal), hasar dosyası CSV. */
   /** v2.608 (Faz 5 F5-B): Genel bakış — dört kart tek uçtan; örnek kipte yok (null → sayfa dürüst boş durum). */
   genelBakis: async (p: string): Promise<GenelBakis | null> => { if (TABAN == null) return null; return getir<GenelBakis>(`/v1/plants/${p}/genel-bakis`); },
+  /** v2.609 (Faz 6 F6-D): kuruluşun aboneliği (her rol okur) ve teklif / yükseltme talebi (yazma yetkisi; doğrudan satın alma yok). */
+  abonelik: async (): Promise<MusteriAbonelik | null> => { if (TABAN == null) return null; return getir<MusteriAbonelik>("/v1/abonelik"); },
+  abonelikTalep: (t: AbonelikTalep): Promise<{ tamam: boolean; id: string; kaynak: string }> => gonder("/v1/abonelik/talep", "POST", t),
   olaylar: (p: string, gun = 90): Promise<OlayOzet> => getir<OlayOzet>(`/v1/plants/${p}/olaylar?gun=${gun}`),
   olayEkle: (p: string, g: OlayGiris): Promise<OlayYanit> => gonder(`/v1/plants/${p}/olaylar`, "POST", g),
   olayGuncelle: (p: string, id: string, g: Partial<OlayGiris> & { durum?: "iptal" }): Promise<Olay> => gonder(`/v1/plants/${p}/olaylar/${id}`, "PUT", g),

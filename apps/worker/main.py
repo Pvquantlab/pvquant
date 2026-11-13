@@ -269,6 +269,14 @@ def gece_kural_sicili(_plant=None):
     return kural_sicili_service.gece_kural_sicili()
 
 
+def gece_abonelik(_plant=None):
+    """v2.609 (Faz 6 F6-C): abonelik durumlarını tarihlerden türetir (sona_eriyor / yenileme_bekliyor / sona_erdi); küresel, yalnız sözcük (uyarı kipi)."""
+    from pvquant.db import platform_baglami
+    from pvquant.services import abonelik_service
+    with platform_baglami("gece_abonelik") as s:
+        return abonelik_service.gece_turet(s)
+
+
 def gece_meteo(_plant=None):
     """v2.268 (Dalga 0) — açık NWP koşularını (ECMWF IFS + ICON-EU) indirip TÜM santrallerin noktalarını
     meteo_arsiv'e yazar; günde bir kez (gece_piyasa kalıbı). sabah_tahmin arşivden okur — API'ye çıkmaz."""
@@ -749,6 +757,7 @@ def tam_tur():
     _logla_tek("gece_meteo", gece_meteo)()                  # v2.268 (Dalga 0): NWP arşivi önce
     _logla_tek("gece_piyasa", gece_piyasa)()                # v2.258 (kimlik yoksa atlar)
     _logla_tek("gece_kural_sicili", gece_kural_sicili)()    # v2.600 (F4-F)
+    _logla_tek("gece_abonelik", gece_abonelik)()            # v2.609 (F6-C)
     _logla("gece_epias_uretim", gece_epias_uretim)()    # v2.278 (kimlik/eşleme yoksa atlar)
     _logla("gece_hijyen", gece_hijyen)()                # v2.254 (skill'den once)
     _logla("gece_skill", gece_skill)()
@@ -957,6 +966,7 @@ if __name__ == "__main__":
     if cfg.gun_ici_guncelleme:                                              # v2.276: gün içi koşular (ICON taze)
         sch.add_job(_logla("gun_ici_tahmin", gun_ici_tahmin), "cron", hour=cfg.gun_ici_saatler, minute=30)
     sch.add_job(_logla_tek("gece_piyasa", gece_piyasa), "cron", hour=cfg.worker_hour_skill, minute=15)   # v2.258; 25.10 O5: tek satır
+    sch.add_job(_logla_tek("gece_abonelik", gece_abonelik), "cron", hour=cfg.worker_hour_skill, minute=12)   # v2.609 (F6-C): abonelik durumları (03:12 TSİ)
     sch.add_job(_logla_tek("gece_kural_sicili", gece_kural_sicili), "cron", hour=cfg.worker_hour_skill, minute=8)   # v2.600 (F4-F): sicil anlık görüntüsü (sha yeni ise), FEM'den önce
     sch.add_job(_logla_tek("gun_oncesi_ptf", gun_oncesi_ptf), "cron", hour=11, minute=35)   # 29.10 v2.505: GÖP sonrası yarının PTF'si (14:35 TSİ)
     sch.add_job(_logla_tek("gece_kur", gece_kur), "cron", hour=13, minute=5)   # 01.11 v2.520 (P5a): TCMB kuru 16:05 TSİ (bülten 15:30)

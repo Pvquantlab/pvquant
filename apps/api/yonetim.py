@@ -216,6 +216,59 @@ def kiraci(tid: str, request: Request, c=Depends(platform_yetkisi())):
     return d
 
 
+@yonetim.get("/kiracilar/{tid}/abonelik")
+def kiraci_abonelik(tid: str, request: Request, c=Depends(platform_yetkisi())):
+    """v2.609 (Faz 6 F6-A): kiracının abonelik hakları (platform görünümü: sözleşme notu, kota ezme, modül istisnaları) + yalnız-ekleme geçmiş.
+    Salt okunur; okuma izi kiracı detayı gibi günde tek. Yazma eylemleri F6-C."""
+    from pvquant.db import tenant_baglami
+    from pvquant.services import abonelik_service, yetki_service
+    tid = _uuid(tid, "kiracı kimliği")
+    try:
+        h = yetki_service.haklar(tid, taze=True)
+    except LookupError:
+        raise HTTPException(404, "müşteri yok") from None
+    with tenant_baglami(tid) as s:
+        gecmis = abonelik_service.gecmis(s, tid)
+    dz.goruntule_kaydet(c["sub"], c["email"], tid, ip=_ip(request))
+    return {**h, "gecmis": gecmis}
+
+
+class AbonelikGuncelle(BaseModel):
+    """v2.609 (F6-C): verilmeyen alan dokunulmaz (model_fields_set), None = temizle; gerekçe zorunlu."""
+    plan: str | None = None
+    bitis: str | None = None
+    pilot_bitis: str | None = None
+    modul_ek: list[str] | None = None
+    modul_cikar: list[str] | None = None
+    kota_ezme: dict[str, float | None] | None = None
+    sozlesme_notu: str | None = None
+    teklif_ref: str | None = None
+    durum: str | None = None                 # aktif | askida | feshedildi (yalnız sahip)
+    gerekce: str
+
+
+@yonetim.put("/kiracilar/{tid}/abonelik")
+def kiraci_abonelik_guncelle(tid: str, p: AbonelikGuncelle, request: Request, c=Depends(platform_yetkisi())):
+    """v2.609 (F6-C): abonelik yaşam döngüsü eylemi — plan / tarihler / modül istisnası / kota ezme / sözleşme notu / durum; her biri geçmişe ve
+    denetim izine. Fesih yalnız sahip. Uyarı kipinde müşteri davranışı değişmez (askı hariç — o Faz 1'den beri jeton düşürür)."""
+    from pvquant.db import platform_baglami
+    from pvquant.services import abonelik_service as ab
+    from pvquant.services import yetki_service
+    tid = _uuid(tid, "kiracı kimliği")
+    alanlar = {k: getattr(p, k) for k in ("plan", "bitis", "pilot_bitis", "modul_ek", "modul_cikar", "kota_ezme", "sozlesme_notu", "teklif_ref") if k in p.model_fields_set}
+    try:
+        with platform_baglami(c["sub"]) as s:
+            y = ab.guncelle(s, tid, c["sub"], durum=p.durum, gerekce=p.gerekce, sahip=(c["rol"] == "sahip"), **alanlar)
+    except LookupError:
+        raise HTTPException(404, "müşteri yok") from None
+    except ValueError as e:
+        raise _hata(e) from None
+    if y["degisen"]:
+        dz.kaydet("platform", "abonelik_guncelle", aktor_id=c["sub"], aktor_eposta=c["email"], tenant_id=tid, nesne_tur="tenant", nesne_id=tid,
+                  ayrinti={"degisen": {k: {"eski": str(v["eski"]), "yeni": str(v["yeni"])} for k, v in y["degisen"].items()}, "gerekce": p.gerekce}, ip=_ip(request))
+    return {"tamam": True, "degisen": {k: {"eski": str(v["eski"]), "yeni": str(v["yeni"])} for k, v in y["degisen"].items()}, "abonelik": yetki_service.haklar(tid, taze=True)}
+
+
 @yonetim.put("/kiracilar/{tid}")
 def kiraci_guncelle(tid: str, p: KiraciGuncelle, request: Request, c=Depends(platform_yetkisi())):
     """Askıya alma (durum=suspended): kiracının tüm oturumları ≤60 sn içinde düşer, giriş 403 «hesap askıda»."""
@@ -371,6 +424,9 @@ class PlanGuncelle(BaseModel):
     api_rpm_limit: int | None = None
     aylik_rapor_limit: int | None = None
     aylik_dis_api_limit: int | None = None
+    ac_mw_limit: float | None = None          # v2.609 (F6-B): yönetilen güç (MW, ondalıklı)
+    portfoy_limit: int | None = None
+    aylik_isleme_saat_limit: int | None = None
     sinirsiz: list[str] = []   # None «değiştirme» demek olduğundan sınırsız yapılacak alanlar adla gelir
 
 
@@ -394,6 +450,24 @@ def plan_guncelle(ad: str, p: PlanGuncelle, request: Request, c=Depends(platform
         raise HTTPException(404, "plan yok")
     dz.kaydet("platform", "plan_guncelle", aktor_id=c["sub"], aktor_eposta=c["email"], nesne_tur="plan", nesne_id=ad,
               ayrinti={"limitler": limitler, **({"baslik": p.baslik} if p.baslik is not None else {})}, ip=_ip(request))
+    return y
+
+
+class PlanModulGuncelle(BaseModel):
+    moduller: dict[str, dict]
+
+
+@yonetim.put("/planlar/{ad}/moduller")
+def plan_modul_guncelle(ad: str, p: PlanModulGuncelle, request: Request, c=Depends(platform_yetkisi("sahip"))):
+    """v2.609 (F6-C, sahip): plan → modül varsayılanları. Kiracı istisnaları (ek/çıkar) etkilenmez; önbellek düşer."""
+    try:
+        y = ps.plan_modul_guncelle(ad, p.moduller)
+    except ValueError as e:
+        raise _hata(e) from None
+    if y is None:
+        raise HTTPException(404, "plan yok")
+    dz.kaydet("platform", "plan_modul_guncelle", aktor_id=c["sub"], aktor_eposta=c["email"], nesne_tur="plan", nesne_id=ad,
+              ayrinti={"moduller": {k: bool(v.get("dahil")) for k, v in p.moduller.items()}}, ip=_ip(request))
     return y
 
 

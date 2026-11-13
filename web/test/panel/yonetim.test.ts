@@ -269,3 +269,46 @@ test("F5-D: Sistem sayfası iki bölüm (sistem / müşteri hizmet sağlığı),
   // müşteri paneli istemcisi platform uçlarını bilmez
   assert.doesNotMatch(oku("api/client.ts"), /sistem-sagligi|\/v1\/yonetim\//);
 });
+
+// ---------------- v2.609 (Faz 6 F6-B): kullanım ve kota ölçümü ----------------
+test("F6-B: Planlar üç yeni kota alanı + modül çipleri; Kullanım kota hükmünü uçtan basar (arayüz oran hesaplamaz); tipler", () => {
+  const y = oku("api/yonetim.ts");
+  for (const a of ["ac_mw_limit", "portfoy_limit", "aylik_isleme_saat_limit"]) assert.ok(y.includes(`"${a}"`), a);
+  assert.match(y, /import type \{ KotaDurum \} from "\.\/types";/);   // F6-D: tek tanım api/types.ts (müşteri + platform)
+  assert.match(oku("api/types.ts"), /export interface KotaDurum \{ ad: string; birim: string; limit: number \| null; kullanim: number \| null; oran: number \| null; durum: string; etiket: string; kaynak: string/);
+  assert.match(y, /abonelik_durum: string; abonelik_etiketi: string; anlik: KullanimAnlik; kotalar: Record<KotaAlani, KotaDurum>/);
+  const pl = oku("features/yonetim/Planlar.tsx");
+  assert.equal((pl.match(/\{ k: "[a-z_]+_limit", ad: "/g) ?? []).length, 8, "Planlar 8 limit alanı");
+  assert.match(pl, /step=\{a\.k === "ac_mw_limit" \? 0\.1 : 1\}/);
+  assert.match(pl, /Dâhil modüller/);
+  const ku = oku("features/yonetim/Kullanim.tsx");
+  assert.match(ku, /<KotaRozet k=\{kotalar\.aylik_isleme_saat\} \/>/);
+  for (const k of ["santral", "kullanici", "portfoy", "ac_mw"]) assert.ok(ku.includes(`<KotaRozet k={k.kotalar.${k}} />`), k);
+  const ortak = oku("features/yonetim/ortak.tsx");
+  assert.match(ortak, /export \{ KotaRozet \} from "\.\.\/sayfalar\/parcalar";/);   // F6-D: parça müşteriyle ortak
+  const parca = oku("features/sayfalar/parcalar.tsx");
+  assert.match(parca, /export function KotaRozet\(\{ k \}: \{ k: KotaDurum \}\)/);
+  assert.doesNotMatch(parca.slice(parca.indexOf("export function KotaRozet"), parca.indexOf("export function HesapDurumu")), /kullanim \/ limit/);   // hüküm uçtan, oran burada hesaplanmaz
+  assert.match(ku, /Kotalar uyarı kipinde/);
+});
+
+// ---------------- v2.609 (Faz 6 F6-C): abonelik yaşam döngüsü ----------------
+test("F6-C: Müşteri detayında Abonelik kartı (gerekçe zorunlu, fesih sahip, ödeme sahte düğmesi yok); Planlar modül düzenleme sahipte; eylem sözlüğü", () => {
+  const y = oku("api/yonetim.ts");
+  for (const uc of ["istek(`/kiracilar/${tenant_id}/abonelik`)", "istek(`/kiracilar/${tenant_id}/abonelik`, \"PUT\", g)", "istek(`/planlar/${ad}/moduller`, \"PUT\", { moduller })", "export interface Abonelik ", "export interface AbonelikGuncelle"]) assert.ok(y.includes(uc), uc);
+  assert.match(y, /durum\?: "aktif" \| "askida" \| "feshedildi"; gerekce: string/);
+  const ab = oku("features/yonetim/Abonelik.tsx");
+  assert.match(ab, /disabled=\{!f\.gerekce\.trim\(\)\} onClick=\{kaydet\}/);                       // gerekçesiz kayıt yok
+  assert.match(ab, /\{sahip && a\.durum !== "feshedildi" && \(onay === "feshedildi"/);              // fesih yalnız sahip, onaylı
+  assert.match(ab, /ödeme altyapısı entegre değil, tahsilat panel dışında/);                       // sahte ödeme düğmesi yok
+  assert.doesNotMatch(ab, /Öde|Fatura kes|Tahsil et/);
+  assert.match(ab, /<KotaRozet k=\{d\} \/>/);                                                       // hüküm uçtan
+  assert.match(ab, /ROZET_DURUM\[a\.durum\]/);
+  assert.match(oku("features/yonetim/sayfalar.tsx"), /<AbonelikKarti tenantId=\{id\} sahip=\{sahip\} onDegisti=/);
+  const pl = oku("features/yonetim/Planlar.tsx");
+  assert.match(pl, /yonetim\.planModulGuncelle\(p\.ad, g\)/);
+  assert.match(pl, /Modülleri kaydet/);
+  const soz = oku("lib/sozluk.ts");
+  assert.match(soz, /abonelik_guncelle: "Abonelik güncellendi", plan_modul_guncelle: "Plan modülleri güncellendi"/);
+  assert.doesNotMatch(oku("api/client.ts"), /abonelik\/guncelle|\/v1\/yonetim\//);                   // müşteri istemcisi platform uçlarını bilmez
+});

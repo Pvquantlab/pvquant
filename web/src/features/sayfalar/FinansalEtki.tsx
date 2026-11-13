@@ -4,6 +4,7 @@ import { api } from "../../api/client";
 import type { FinansalEtki as FinansalEtkiT, FinansalEtkiGecmis, FinansBilesen, FinansDonemTur, FinansNitelik } from "../../api/types";
 import { donemSecenekleri, TUR_AD } from "../../lib/donem";   // v2.595: ortak dönem seçenekleri
 import { HesapDurumu, Kart, Kpi, Sayfa, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
+import { ModulNotu } from "./Abonelik";   // v2.609 (Faz 6 F6-D): kapalı özellik notu (uyarı kipi)
 import { Meta } from "../../lib/Meta";
 import { tarihBicimi } from "../../lib/bicim";
 
@@ -84,6 +85,7 @@ export function FinansalEtki({ plantId }: { plantId: string }) {
   const durumMetni = o.kayitli ? `gece hesabı ${saatYaz(o.hesap_zamani ?? m.hesap_zamani)}` : m.senaryo ? "senaryo hesabı" : "anlık hesap";
   return (
     <Sayfa baslik="Finansal etki" alt="Seçilen dönemde planlanan ve gerçekleşen üretim, aradaki fark ve bunun tahmini mali karşılığı. Tutarlar PVQuant'ın yeniden hesabıdır; EPİAŞ uzlaştırma sonucu değildir. Resmî değerler ayrıca işaretlenir; eksi tutar santralin ödediğidir." sag={secici}>
+      <ModulNotu kod="finansal_etki" />
       {m.senaryo && <p className="form-not" style={{ margin: "0 0 12px", fontSize: 13.5, color: "var(--uyari-metin)" }}><b>Senaryo görünümü:</b> {m.senaryo.etiket}. {m.senaryo.not}</p>}
       <div className="ızgara satir-4" style={{ marginBottom: 14 }}>
         <Kpi etiket={`Planlanan üretim (${o.donem.etiket.replace(" (süren dönem, bugüne kadar)", ", süren")})`} bilgi="Üretim programı: TPYS'ye bildirildiği beyan edilen KGÜP varsa o, yoksa bir gün önce 15:30'dan önceki son PVQuant tahmini. Ölçümsüz saatlerin programı da sayılır."

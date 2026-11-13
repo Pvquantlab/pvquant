@@ -9,6 +9,7 @@ import { api, bellekten, ayniysaEskisi, rolum, RaporDenetimHata, type DenetimBul
          type KosuSatiri , CihazBazliHatasi} from "../../api/client";
 import type { KalibrasyonOzeti, Kayma, Hijyen, EpiasUretim, KayipAgaci, GucMatrisi, Isler, SaatProfili, KayipAyrisimi } from "../../api/types";
 import { Kart, Sayfa, Kpi, sayiTr, SayfaIskeleti, YerTutucu, Katla } from "./parcalar";
+import { ModulNotu } from "./Abonelik";   // v2.609 (Faz 6 F6-D): kapalı özellik notu (uyarı kipi)
 import { Meta } from "../../lib/Meta";
 import { JsonOnizleme } from "./JsonOnizleme";   // v2.351: JSON panel içi önizleme
 import type { RaporJson, RaporDonemVeri, RaporGonderim } from "../../api/types";
@@ -1157,6 +1158,7 @@ export function Raporlar({ plantId }: { plantId: string }) {
   return (
     <Sayfa baslik="Raporlar"
       alt="Tahmin bölümleri tahmin arşivinden üretilir (tahminler güncellenmez, yenisi eklenir); üretim, olay, uzlaştırma ve kalibrasyon bölümleri ilgili kayıtlardan o anda alınır. Her rapor dönemini, veri kapsamını ve üretim zamanını taşır.">
+      <ModulNotu kod="rapor_gelismis" />
       <DonemRaporuKarti plantId={plantId} />
       <div style={{ height: 14 }} />
       <GonderimKarti plantId={plantId} />

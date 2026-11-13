@@ -3,6 +3,7 @@ import { useDamgaSurumu } from "../../shell/damgaOlay";
 import { api } from "../../api/client";
 import type { MutabakatOzet, MutabakatSatir, SaatlikKiyas } from "../../api/types";
 import { Kart, Kpi, Sayfa, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
+import { ModulNotu } from "./Abonelik";   // v2.609 (Faz 6 F6-D): kapalı özellik notu (uyarı kipi)
 import { Meta } from "../../lib/Meta";
 import { tarihBicimi } from "../../lib/bicim";
 
@@ -137,6 +138,7 @@ export function Mutabakat({ plantId }: { plantId: string }) {
   return (
     <Sayfa baslik="Mutabakat" alt="EPİAŞ uzlaştırma bildirimini PVQuant'ın yeniden hesabıyla kalem kalem karşılaştırın. EPİAŞ bildirimi esastır; PVQuant tutarları yeniden hesaptır, fark bilgi amaçlıdır."
       sag={<span className="dugme-sira">
+        <ModulNotu kod="mutabakat" />
         <select className="girdi" value={m.donem} onChange={(e) => setDonem(e.target.value)} aria-label="Fatura dönemi">
           {donemler.map((d) => <option key={d} value={d}>{ayAd(d)}</option>)}</select>
         <select className="girdi" value={surum ?? ""} onChange={(e) => setSurum(e.target.value || null)} aria-label="Bildirim sürümü">

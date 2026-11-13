@@ -5,6 +5,7 @@ import { yonetim, zamanTr, yasTr, type Plan, type SistemOzet, type HizmetSagligi
 import { HizmetDurumu, Kart, Kpi, Sayfa, SayfaIskeleti, sayiTr, gucTr } from "../sayfalar/parcalar";
 import { Meta } from "../../lib/Meta";
 import { KullanimKarti } from "./Kullanim";
+import { AbonelikKarti } from "./Abonelik";   // v2.609 (Faz 6 F6-C)
 import { Zaman, AyrintiCipleri, LimitRozet } from "./ortak";
 import { temsilAc } from "./temsil";
 
@@ -208,6 +209,7 @@ function MusteriDetay({ id, geri, sahip }: { id: string; geri: () => void; sahip
           <button className="dugme kucuk" style={{ marginTop: 8 }} onClick={() => dene(() => yonetim.kiraciGuncelle(id, { notlar }), "Notlar kaydedildi.")}>Notları kaydet</button>
         </div>
       </Kart>
+      <AbonelikKarti tenantId={id} sahip={sahip} onDegisti={() => { void yenile(); }} />   {/* v2.609 (Faz 6 F6-C): plan/durum/modül/kota eylemleri burada; «Durum ve plan» kartı Faz 1 kalıbı */}
       <Kart baslik="Kullanıcılar" alt="Rol, durum, 2FA, son giriş; işlemler müşteri kuralına tabidir (son etkin yönetici düşürülemez)">
         <KullaniciTablosu satirlar={d.kullanicilar.map((u) => ({ ...u, tenant_id: id, firma: d.ad }))} firmaGoster={false}
           islem={(fn, m) => dene(fn, m)} sirGoster={(b, v) => setSir({ baslik: b, deger: v })} />
@@ -288,8 +290,10 @@ export function Basvurular() {
       <Kart baslik="Gelen talepler">
         {!liste ? <SayfaIskeleti kpi={0} kart={1} /> : liste.length === 0 ? <Bos bas="Henüz başvuru yok." /> : (
           <div className="grafik-kaydir"><table className="veri sayisal santral">
-            <thead><tr><th>E-posta</th><th>Santral</th><th>Kurulu güç<span className="birim">kWp</span></th><th>Tarih</th><th>Durum</th><th>İşlem</th></tr></thead>
-            <tbody>{liste.map((b) => (<tr key={b.id}><td className="ad">{b.eposta}</td><td>{b.santral_adi ?? <span className="bos">—</span>}</td>
+            <thead><tr><th>E-posta</th><th>Kaynak</th><th>Santral / talep</th><th>Kurulu güç<span className="birim">kWp</span></th><th>Tarih</th><th>Durum</th><th>İşlem</th></tr></thead>
+            <tbody>{liste.map((b) => (<tr key={b.id}><td className="ad">{b.eposta}</td>
+              <td>{b.kaynak && b.kaynak !== "vitrin" ? <span className="rozet rozet-notr">{b.kaynak_etiketi ?? b.kaynak}</span> : <span className="soluk">vitrin</span>}</td>   {/* v2.609 (F6-D): müşteri paneli talepleri */}
+              <td style={{ textAlign: "left", whiteSpace: "normal" }}>{b.santral_adi ?? <span className="bos">—</span>}</td>
               <td>{b.kurulu_guc_kwp != null ? gucTr(b.kurulu_guc_kwp) : <span className="bos">—</span>}</td><td><Zaman s={b.created_at} /></td>
               <td>{b.okundu ? <span className="rozet rozet-notr">okundu</span> : <span className="rozet rozet-uyari">yeni</span>}</td>
               <td>{!b.okundu && <button className="dugme kucuk" onClick={() => yonetim.basvuruOkundu(b.id).then(yenile).catch((e) => setHata(mesajCikar(e)))}>Okundu işaretle</button>}</td></tr>))}</tbody>

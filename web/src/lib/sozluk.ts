@@ -31,6 +31,8 @@ export const SOZLUK = {
     parola_sifirlama_gonder: "Parola bağlantısı gönderildi", parola_sifirla_cli: "Parola sıfırlandı (sunucu)", eposta_degistir_cli: "E-posta değiştirildi (sunucu)",
     iki_adim_ac: "İki adımlı doğrulama açıldı", iki_adim_sifirla: "İki adımlı doğrulama sıfırlandı",
     basvuru_okundu: "Başvuru okundu", operator_ekle: "Operatör eklendi", operator_guncelle: "Operatör güncellendi", plan_guncelle: "Plan güncellendi",
+    abonelik_guncelle: "Abonelik güncellendi", plan_modul_guncelle: "Plan modülleri güncellendi",   // v2.609 (Faz 6 F6-C)
+    abonelik_talep: "Teklif / yükseltme talebi gönderildi",   // v2.609 (Faz 6 F6-D): müşteri talebi (kaynak yukseltme ya da sanayi_ges)
     yekdem_fiyat: "YEKDEM aylık fiyatı girildi", kur_doldur: "Döviz kuru arşivi dolduruldu",
     // müşteri (kuruluş ekibi)
     takim_ekle: "Ekip üyesi eklendi", takim_guncelle: "Ekip üyesi güncellendi", takim_iki_adim_sifirla: "Ekip üyesi 2FA sıfırlandı",
