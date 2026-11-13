@@ -1952,3 +1952,23 @@ worker web` (12:48 TSİ, 04:00–08:30 penceresi dışı). Canlı: alembic head 
 geri_doldurma 2; `/v1/healthz` 200; `GET /v1/abonelik` ve `POST /v1/abonelik/talep` kimliksiz 422 (mevcut uçlarla aynı); web `index-CbkKgT-L.js` yayında; worker «basladi»,
 yakalama turu gerekmedi (üretici gece işleri taze). Kalan: ilk `gece_abonelik` koşusu (14.11 03:12 TSİ) ve uyarı izleri → 08; canlı kiracıda Ayarlar › Aboneliğiniz'in
 gözlenmesi; ayrı kararlar 08 §15 (zorla kipi, pilot ücreti, kota ezme sahip-only, vitrin SSS metni, fiyat sayıları, ikinci işçi eşiği).
+
+## Rapor — Faz 8 (13.11.2026): Ticari doğrulama programı (F8-A…I) — KOD YOK, ŞEMA YOK, DAĞITIM YOK
+
+**Ne:** `docs/ticari-dogrulama/` — 15 belge + 5 CSV: 01 yönetici özeti (nihai), 02 Türkiye pazar araştırması güncellemesi (19.10.2026 RG 33405 paketi birincil
+metinden: YEK 23/6 KGÜP = YEKDEM şartı, DUY 68/69/73, Karar 14907/14911, lisanssız portföy paketi; TBMM 2/4042; EPDK Eylül 2026; 49 toplayıcı; Şeffaflık YEKDEM kurulu
+güç), 03 aday havuzu 40 / kısa liste 15 (+ `aday_havuzu.csv`), 04/05 görüşme protokolü ve kayıt şablonu (D1–D7, Y1–Y8, sinyal merdiveni 6 basamak, şiddet puanı; +
+`gorusme_kayit_sablonu.csv` boş), 06/07 pilot protokolleri (eşikler Z/B/G **ÖNERİ**, motorun hesapladığı metriklerle), 08 geriye dönük finansal doğrulama yöntemi
+(«varsayımsal fark»; + `finansal_dogrulama_sablonu.csv` boş), 09 fiyat ve ödeme istekliliği (formüllü, **TL yok**), 10 pilottan ücretliye dönüşüm, 11 puan kartı
+(13 ölçü, **gerçek hepsi 0**; + `puan_karti.csv`), 12 risk sicili (13 risk), 13 kaynak ve kanıt sicili (**65 satır**; + `kanit_sicili.csv`), 14 eylem planı (dış eylemler
+D1–D12 **izin bekliyor**), 15 nihai karar raporu (15 bölüm; beş hedef «Engellendi — hazır»; karar **BELİRSİZ**).
+
+**Neden:** brief «8. Ticari doğrulama programı» — teknik tamamlanma ≠ ticari talep; görüşme 12–15, lisanslı pilot 1–2, toplayıcı/DSG pilot 1, ≥2 dönem finansal analiz,
+ücretli dönüşüm hedefleri için kanıta dayalı program. Hiçbiri uydurulmadı: görüşme 0, pilot 0, finansal doğrulama 0, teklif 0, ödeme 0; dış eylem yapılmadı (taslaklar
+gönderilmedi); kişi adı/e-posta yok; «tasarruf/garanti/kazanç/ceza» vaat bağlamında yok.
+
+**Kanıt:** plan ve kanıt klasörü `~/Desktop/PVQuant_Faz8_Ticari_Dogrulama/` (00 plan, F8-A…I durum + öz inceleme blokları — A 4/4, B 9/9, C 5/5, D 6/6, E 5/5, F 4/4,
+G 3/3, H 4/4, I 2/2; kanit/: alt ajan raporları, tarayıcı bulguları, EPDK 2026 YEK listesi 37 GES CSV, toplayıcı 49 CSV, üç kalite turu, canlı doğrulama okuma SQL).
+Dersler: saat etiketleri yalnız `date`/mtime/jsonl (üçüncü kez ileri tahmin yakalandı); V 150→100 maliyeti düşürür; motor kWp ile normalize eder; CLIPER ≥12 ay geçmiş
+ister; Pilot tohumunda rapor/mutabakat yok; haftalık RG rutini etkin (pazartesi 09:00 TSİ). Kalan kararlar: dış eylem izinleri (A segmenti 30.11 öncesi), canlı SQL çıktısı →
+eşik kalibrasyonu, pilot ücreti. Commit 18:07 TSİ.

@@ -1,0 +1,14 @@
+olcu_id,olcu,hedef,gercek,kanit_kaynagi,durum,tarih
+Ö1,Görüşülen kuruluş,12–15,0,05 başlık kayıtları,Henüz yapılmadı — hazır: 03/04/05,13.11.2026
+Ö2,Segment kapsaması (A/B/C/D + GTŞ),A≥3 B≥2 C(TP)≥2 DSG≥2 D≥3 GTŞ≥1,0,05,Henüz yapılmadı,13.11.2026
+Ö3,Problem gösterildi (sinyal ≥2),≥%50 görüşme (ÖNERİ),0,05 sinyal_basamagi,Henüz yapılmadı,13.11.2026
+Ö4,Şiddet puanı ≥12 kuruluş,≥5 (ÖNERİ),0,05 şiddet sütunları,Henüz yapılmadı,13.11.2026
+Ö5,Mevcut harcama kalemi olan,≥4 (ÖNERİ),0,09 E1,Henüz yapılmadı,13.11.2026
+Ö6,Pilot taahhüdü (sinyal ≥4),≥3,0,05; veri işleme sözleşmesi,Henüz yapılmadı,13.11.2026
+Ö7,Lisanslı GES pilotu başlatılan,1–2,0,06,Henüz yapılmadı — hazır: 06,13.11.2026
+Ö8,Toplayıcı/DSG pilotu başlatılan,1,0,07,Henüz yapılmadı — hazır: 07,13.11.2026
+Ö9,Pilot teknik kabul (Z+B),başlatılanların ≥%50 (ÖNERİ),0,06/07 kabul listesi,Henüz yapılmadı,13.11.2026
+Ö10,Finansal doğrulama dönemi,"≥2 dönem, ≥1 kuruluş",0,08 raporu,Henüz yapılmadı — hazır: 08; en erken Ocak 2027,13.11.2026
+Ö11,Teklif istenen/gönderilen,≥3 (ÖNERİ),0,09 teklif_istendi,Henüz yapılmadı,13.11.2026
+Ö12,Kabul edilen teklif / imza,≥1,0,sözleşme,Henüz yapılmadı,13.11.2026
+Ö13,Fiili ödeme,≥1,0,fatura/ödeme kaydı (panel dışı),Henüz yapılmadı,13.11.2026
