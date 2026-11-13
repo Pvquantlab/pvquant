@@ -1928,3 +1928,27 @@ WebKit 27.2) 0 hata; CDP taraması taşma 0; yük 25 santral: hizmet sağlığı
 `fable5-baslangic-239-gda4dae2` → `docker compose build api worker web` → `up -d api worker web` (19:48 UTC; göç yok, 04:00–08:30 TSİ penceresi dışı). Canlı: `/v1/healthz` 200;
 web `index-Di7g82Nw.js` + `GenelBakis`/`Kgup`/`Paylasim` parçaları yayında; yeni uçlar kimliksiz 422 (mevcut uçlarla aynı); worker «basladi», yakalama turu gerekmedi (üretici gece
 işleri taze). Kalan: canlı kiracıda Genel bakış ve hizmet sağlığı sayılarının gözlenmesi (ilk sabah), `.rozet-kritik` tonu, eşik ezme, portföy bazlı Genel bakış → 08 §15.
+
+## Sekseninci paket — v2.609 (13.11.2026): Faz 6 — Ticari model toplu mühür (F6-A…G) — ŞEMA (göç v2609)
+
+**v2.609** (`f672055`, 42 dosya: 29 değişen + 13 yeni, +596/−73 değişen dosyalarda; kareler commit edilmedi) + **CI düzeltmesi** (`11fe0f8`, 1 dosya): Pilot / Standart /
+Kurumsal → yönetilebilir abonelik + hak (entitlement) + kota. Şema `v2609_abonelik`: `plan_modulleri` (tohum 5/11/15), `kiraci_abonelik` (7 durum, RLS+FORCE, tenants FK
+cascade, kota ezme / modül ek-çıkar / sözleşme notu), `abonelik_gecmisi` (yalnız ekleme), `planlar` +3 kota sütunu; geri doldurma (plan NULL→pilot, pilot_bitis =
+oluşturma+60 gün, suspended→askida). `yetki_service` (sözlükler, durum türetme, kota hükmü «dolu» =%100 «sınıra ulaşıldı» / aşıldı >%100, 60 sn önbellek, `kapi_hukmu`),
+`abonelik_service` (yaşam döngüsü, gerekçe zorunlu, çift yazım tenants.plan/status, gece işi 03:12 TSİ), `kullanim_service` anlık+aylık sayımlar; uçlar `GET /v1/abonelik`,
+`POST /v1/abonelik/talep` (→ vitrin_basvurulari kaynak yukseltme|sanayi_ges), platform abonelik GET/PUT + plan modülleri PUT; kapılar (`deps.modul_gerekli`/`kota_kontrol`)
+**uyarı kipinde** (başlık `X-PVQuant-Abonelik` + saatte bir `abonelik_uyari` izi; zorla kipi yalnız ayarla: 403 modul_kapali / 409 kota_asildi), dış API anahtar kapısı;
+web platform Abonelik kartı + Planlar modülleri + Kullanım kota rozetleri, müşteri Ayarlar › «Aboneliğiniz» + talep formu + altı sayfada kapalı özellik notu. İlke: tahmin
+çekirdeği / uzlaştırma formülleri / kalibrasyon değişmedi; fiyat kodda yok (yalnız belge); «panelden doğrudan satın alma yoktur». Kanıt: tam takım DB sahibi 1.388/1/1,
+pvq_api 1.389/0/1 (tek başarısız tarihe çıpalı Faz 1 testi — CI düzeltmesiyle giderildi); Faz 6 testleri 26/26; web 117/117; CDP 4 sayfa taşma 0; üç motor 0 hata;
+kontrast AA üstü; öz incelemeler A 5/5, B 5/5, C 4/4, D 7/7, E 5/5, F 5/5. Belgeler `~/Desktop/PVQuant_Faz6_Ticari_Model` (00/04/05/06/07/08, kanit/), depo
+`docs/ABONELIK-YETKI-FAZ6.md`.
+
+**Mühür (13.11.2026 ~12:50 TSİ):** CI #739 **kırmızı** — `test_kosu_kunyesi_v2572` sabit «2026-11-12» sentetik hava verisiyle ufku her gün 24 sa eritiyordu (13.11'de 37 sa;
+önceki mühürler gece koştuğundan CI yakalamamıştı) → `11fe0f8` (meteo bugünden 3 gün, ufuk 47…72) → CI #740 **yeşil** (8 dk 54 s). Dağıtım ssh: `git pull --ff-only` →
+`PVQ_SURUM=fable5-baslangic-242-g11fe0f8 docker compose build api worker web` → göç DB SAHİBİYLE (`docker compose run --rm -e DB_SAHIP_PW=… api sh -c '… alembic upgrade
+head' </dev/null`; ders: sunucu `.env` 47. satırı `. ./.env` kaynaklamasını bozuyor → parola `grep` ile okunur, URL kodlama konteyner içinde `urllib.parse.quote`) → `up -d api
+worker web` (12:48 TSİ, 04:00–08:30 penceresi dışı). Canlı: alembic head **v2609**; `kiraci_abonelik` 2 kiracı `pilot` (sona_erdi yok), `plan_modulleri` 31, `abonelik_gecmisi`
+geri_doldurma 2; `/v1/healthz` 200; `GET /v1/abonelik` ve `POST /v1/abonelik/talep` kimliksiz 422 (mevcut uçlarla aynı); web `index-CbkKgT-L.js` yayında; worker «basladi»,
+yakalama turu gerekmedi (üretici gece işleri taze). Kalan: ilk `gece_abonelik` koşusu (14.11 03:12 TSİ) ve uyarı izleri → 08; canlı kiracıda Ayarlar › Aboneliğiniz'in
+gözlenmesi; ayrı kararlar 08 §15 (zorla kipi, pilot ücreti, kota ezme sahip-only, vitrin SSS metni, fiyat sayıları, ikinci işçi eşiği).
