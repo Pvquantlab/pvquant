@@ -1,9 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { SOZLUK } from "../../lib/sozluk";
 import { api, bellektenOku, dsgYolu, kupstYolu } from "../../api/client";
-import type { DsgAnahtar, Portfoy as PortfoyT, PortfoyAnahtar, PortfoyDsg, PortfoyFinansalEtki, PortfoyKupst, PortfoyTahmin } from "../../api/types";
+import type { DsgAnahtar, FinansNitelik, Portfoy as PortfoyT, PortfoyAnahtar, PortfoyDsg, PortfoyFinansalEtki, PortfoyKupst, PortfoyTahmin } from "../../api/types";
+import { FINANS_NITELIK } from "../../lib/durum";
+import { donemEtiket } from "../../lib/donem";
 import { Bilgi, Kart, Kpi, Sayfa, sayiTr, gucTr, enerjiTr, SayfaIskeleti, VeriDurumu, YerTutucu } from "./parcalar";
 import { Meta } from "../../lib/Meta";
+
+/** 15.11.2026 (Portföy turu): uçtaki yöntem adı («bottom-up», «MinT …») müşteri yüzeyinde yöntem adı olarak yazılmaz; ne yapıldığı söylenir. */
+const yontemAd = (y?: string) => !y ? y : y === "bottom-up" ? "santral toplamı" : y.startsWith("MinT") ? "birlikte düzeltilmiş toplam" : y;
 
 /** 23.10 sekizinci tur — «76,3 MWh» gibi birimli dizgiyi sayı + soluk birim olarak basar; dizgi aynen (enerjiTr). */
 function DegerBirim({ metin }: { metin: string }) {
@@ -128,7 +133,7 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
                 <li key={r.id}><b>{r.ad}</b>
                   <span>
                     <span className={`rozet ${rozet[0]} rozet-kucuk`}>{rozet[1]}</span>
-                    {pr.bildirilen && <span className="rozet rozet-ok rozet-kucuk" style={{ marginLeft: 6 }} title="Panele yüklenen, TPYS'ye bildirildiği beyan edilen dosya; TPYS kabulü doğrulanmaz">bildirildi</span>}
+                    {pr.bildirilen && <span className="rozet rozet-ok rozet-kucuk" style={{ marginLeft: 6 }} title="Panele yüklenen, TPYS'ye bildirildiği beyan edilen dosya; TPYS kabulü doğrulanmaz">müşteri beyanı</span>}
                     {pr.hazir && pr.run_at && <span className="soluk"> · tahmin {tarih(pr.run_at)}</span>}
                     {pr.bildirilen && pr.bildirim_zamani && <span className="soluk"> · dosya {tarih(pr.bildirim_zamani)}</span>}
                     {pr.not && pr.yukumlu === true && pr.hazir !== false && <span className="soluk"> · {pr.not}</span>}
@@ -172,7 +177,7 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
                     </td>
                     <td>{r.baglanti ? <>   {/* v2.563 (V3-b): toplayıcı portföyünde bağlantı durumu tek bakışta */}
                       <div>{r.baglanti.tur_kisa}{r.baglanti.n_cihaz > 1 ? ` · ${sayiTr(r.baglanti.n_cihaz)} cihaz` : ""}</div>
-                      <div className="hucre-alt"><span className={`rozet rozet-kucuk ${["veri_akisi", "mevcut", "dosya"].includes(r.baglanti.kod) ? "rozet-ok" : ["cekis_acik", "sinama_ok", "tcp_ok"].includes(r.baglanti.kod) ? "rozet-notr" : r.baglanti.kod === "sinanmadi" ? "rozet-notr" : "rozet-uyari"}`} title={r.baglanti.etiket}>{r.baglanti.etiket}</span></div>
+                      <div className="hucre-alt"><span className={`rozet rozet-kucuk ${["veri_akisi", "mevcut"].includes(r.baglanti.kod) ? "rozet-ok" : ["cekis_acik", "sinama_ok", "tcp_ok"].includes(r.baglanti.kod) ? "rozet-notr" : r.baglanti.kod === "sinanmadi" ? "rozet-notr" : "rozet-uyari"}`} title={r.baglanti.etiket}>{r.baglanti.etiket}</span></div>
                     </> : <span className="bos" title="Hedef veri kaynağı seçilmedi">—</span>}</td>
                     <td>{r.wmape_30g != null ? `%${sayiTr(r.wmape_30g, 1)}` : <span className="bos" title="Son 30 günde karşılaştırılmış gün yok">—</span>}</td>
                     <td><DegerBirim metin={kwhYaz(r.bugun_kwh)} /></td>
@@ -197,7 +202,7 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
         </ul>
       </Kart>
       {/* v2.280 (Tablo 3.2 satır 11): hiyerarşik uzlaştırılmış portföy tahmini — toplam santral tahminleriyle tutarlı */}
-      <Kart baslik="Portföyün günlük üretim tahmini" sag={<span className="cip">{pt?.durum === "ok" ? <Meta items={[pt.yontem, pt.tutarli === false && "tutarsız", ptD === "bekliyor" && "güncelleniyor", ptD === "hata" && "güncellenemedi"]} /> : "—"}</span>}>
+      <Kart baslik="Portföyün günlük üretim tahmini" sag={<span className="cip">{pt?.durum === "ok" ? <Meta items={[yontemAd(pt.yontem), pt.tutarli === false && "tutarsız", ptD === "bekliyor" && "güncelleniyor", ptD === "hata" && "güncellenemedi"]} /> : "—"}</span>}>
         {/* 23.10 yedinci tur: cümle başı tire kalktı — tire yalnız değer yerinde (tablo/KPI hücresi) */}
         {/* 24.10: bekliyor → boyutlu yer tutucu; sunucu hatası → açıkça söylenir (eskiden «Henüz tahmin yok» ile karışıyordu) */}
         {pt === undefined && ptD === "bekliyor" ? <YerTutucu yukseklik={168} />
@@ -220,7 +225,7 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
                   </>); })()}
               </table>
             </div>
-            <p className="soluk" style={{ fontSize: 14, margin: "10px 0 0" }}>Santral tahminleri toplanır; toplam, santral tahminleriyle çelişmez. {pt.not}{pt.artik_gun ? ` Düzeltme geçmişi ${sayiTr(pt.artik_gun)} gün.` : ""}
+            <p className="soluk" style={{ fontSize: 14, margin: "10px 0 0" }}>Santral tahminleri toplanır; toplam, santral tahminleriyle çelişmez.{pt.yontem === "bottom-up" && " P10 ve P90 da santral değerlerinin toplamıdır; bu, santraller arasında tam bağımlılık varsayımına denk gelir ve portföy belirsizliği olarak ayrıca kalibre edilmemiştir (temkinli aralık)."} {pt.not}{pt.artik_gun ? ` Düzeltme geçmişi ${sayiTr(pt.artik_gun)} gün.` : ""}
               {(pt.santral_eksik?.length ?? 0) > 0 && <> Tahmini olmayan santral tabloda yok: {pt.santral_eksik!.join(", ")}; özet kartı bu yüzden toplam göstermez.</>}</p>
           </>
         )}
@@ -228,7 +233,7 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
       {/* v2.584 (Faz 2 F2-F): Finansal etki — son tam ay, santral başına; eksik nitelikli santral toplama girmez. Örnek kipte gösterilmez (veri yok). */}
       {fin !== null && (fin === undefined || fin.santraller.length > 0) && (
         <Kart baslik="Finansal etki — son tam ay, santral başına net tutar" alt="Net = enerji satışı + enerji dengesizlik tutarı + KGÜP sapma tutarı (yeniden hesap; EPİAŞ uzlaştırma sonucu değildir). Eksi tutar santralin ödediğidir. Satış ve KGÜP sapma satırları için santralı seçip Finansal etki sayfasına gidin."
-          sag={fin ? <span className="cip"><Meta items={[fin.donem_kodu ?? "", `${sayiTr(fin.toplam.toplanan_santral)} / ${sayiTr(fin.toplam.santral_sayisi)} santral toplandı`]} /></span> : undefined}>
+          sag={fin ? <span className="cip"><Meta items={[fin.donem_kodu ? donemEtiket(fin.donem_kodu) : "", `${sayiTr(fin.toplam.toplanan_santral)} / ${sayiTr(fin.toplam.santral_sayisi)} santral toplandı`]} /></span> : undefined}>
           {fin === undefined ? <YerTutucu yukseklik={120} /> : (
             <>
               <div className="ızgara satir-3" style={{ marginBottom: 10 }}>
@@ -245,7 +250,8 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
                     <td className="mono">{s.sapma_pct == null ? "—" : `${s.sapma_pct > 0 ? "+" : s.sapma_pct < 0 ? "−" : ""}${sayiTr(Math.abs(s.sapma_pct), 1)}`}</td>
                     <td className={`mono${s.dengesizlik && !s.dengesizlik.toplanir ? " soluk" : ""}`}>{s.dengesizlik?.tutar_tl == null ? "—" : `${s.dengesizlik.tutar_tl < 0 ? "−" : ""}${sayiTr(Math.abs(s.dengesizlik.tutar_tl) / 1000, 1)}`}</td>
                     <td className="mono" style={{ fontWeight: 600 }}>{s.toplam?.tutar_tl == null ? "—" : `${s.toplam.tutar_tl < 0 ? "−" : ""}${sayiTr(Math.abs(s.toplam.tutar_tl) / 1000, 1)}`}</td>
-                    <td><span className={`rozet rozet-kucuk ${s.toplam?.nitelik === "senaryo" ? "rozet-uyari" : s.toplam?.nitelik === "resmi" ? "rozet-ok" : "rozet-notr"}`}>{s.hata ? "eksik" : ({ resmi: "resmî", hesaplanan: "hesaplanan", sozlesme_tahmini: "sözleşme tahmini", senaryo: "senaryo", eksik: "eksik" } as Record<string, string>)[s.toplam?.nitelik ?? "eksik"]}</span></td>
+                    {(() => { const n = FINANS_NITELIK[(s.hata ? "eksik" : s.toplam?.nitelik ?? "eksik") as FinansNitelik] ?? FINANS_NITELIK.eksik;
+                      return <td><span className={`rozet rozet-kucuk ${n.sinif}`} title={n.aciklama}>{n.etiket}</span></td>; })()}
                   </tr>))}</tbody>
               </table></div>
               <p className="form-not" style={{ marginTop: 8, fontSize: 13.5 }}>{fin.not}</p>
@@ -255,10 +261,11 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
       {/* v2.502 (F-08): DSG netleşmesi yürürlükteki kuralla — üye eşiği × PH grupta, aşan kısım bireysel; KÜPST üye bazında, netleşmez.
           Eski sunucu (gosterge !== false) hâlâ «gösterge» rozeti alır. */}
       <Kart baslik={dsg?.gosterge === false ? "Dengeden Sorumlu Grup (DSG) hesabı — santrallerinizin enerji dengesizlik tutarı: tek başına ve DSG içinde netleştirilmiş" : "Dengeden Sorumlu Grup (DSG) göstergesi — yalnız enerji dengesizlik tutarı, eşik uygulanmadan"}
-        sag={<>{dsg?.gosterge !== false && <span className="rozet rozet-notr rozet-kucuk" title="Yürürlükteki %5 üye eşiği (Karar 13869) ve KÜPST'ün netleşmemesi bu görünümde uygulanmaz; varsayımsal yeniden hesap">gösterge</span>}
+        sag={<span className="dugme-sira kart-arac" style={{ flexWrap: "wrap", justifyContent: "flex-end" }}>{/* 15.11: üç cip 900 px altında başlığın altına kırılır (emsal Dogruluk/Digerleri); fragment başlığı dar sütuna sıkıştırıyordu */}
+          {dsg?.gosterge !== false && <span className="rozet rozet-notr rozet-kucuk" title="Yürürlükteki %5 üye eşiği (Karar 13869) ve KÜPST'ün netleşmemesi bu görünümde uygulanmaz; varsayımsal yeniden hesap">gösterge</span>}
           {dsg?.gosterge === false && dsg.uyeler && <button className="dugme kucuk" title="Üye başına EDT (tek başına, bireysel, DSG içinde), netleşme farkı, KÜPST ve pay; seçili dağıtım anahtarıyla (CSV)" onClick={() => api.portfoyDsgIndir(30, anahtar, dsg.grup).catch(() => undefined)}>Üye dağılımı (CSV)</button>}
           {dsg?.gosterge === false && dsg.esik != null && <span className="cip" title={`Her santralin sapmasının bu oran ile PH çarpımı kadarı DSG içinde netleşir; aşan kısım santralin kendisinde kalır. ${dsg.esik_kaynak ?? ""}${dsg.gecici_m39 ? ` ${dsg.gecici_m39}.` : ""}`}>üye eşiği %{sayiTr(dsg.esik * 100, 0)}{dsg.gecici_m39 ? " · dağıtım/GTŞ DSG'sinde %100" : ""}</span>}
-          <span className="cip" title={dsg && dsg.fiyat.senaryo_saat > 0 ? "Senaryo fiyatı: EPİAŞ piyasa fiyatı bağlı olmadığından EPDK yıllık ortalaması kullanılmış, sistem yönü dengede varsayılmıştır." : "Saatlik PTF, SMF ve sistem yönü EPİAŞ verisinden alınır."}>{dsg ? <Meta items={[`son ${sayiTr(dsg.pencere_gun)} gün`, dsg.fiyat.senaryo_saat > 0 ? "senaryo fiyatı" : "piyasa fiyatı (EPİAŞ)", dsgD === "bekliyor" && "güncelleniyor", dsgD === "hata" && "güncellenemedi"]} /> : "—"}</span></>}>
+          <span className="cip" title={dsg && dsg.fiyat.senaryo_saat > 0 ? "Senaryo fiyatı: EPİAŞ piyasa fiyatı bağlı olmadığından EPDK yıllık ortalaması kullanılmış, sistem yönü dengede varsayılmıştır." : "Saatlik PTF, SMF ve sistem yönü EPİAŞ verisinden alınır."}>{dsg ? <Meta items={[`son ${sayiTr(dsg.pencere_gun)} gün`, dsg.fiyat.senaryo_saat > 0 ? "senaryo fiyatı" : "piyasa fiyatı (EPİAŞ)", dsgD === "bekliyor" && "güncelleniyor", dsgD === "hata" && "güncellenemedi"]} /> : "—"}</span></span>}>
         {dsg === undefined && dsgD === "bekliyor" ? <YerTutucu yukseklik={124} />
          : !dsg && dsgD === "hata" ? <p className="soluk" style={{ margin: 0 }}>Dengeden Sorumlu Grup hesabı şu anda alınamadı; sunucu hatası.</p>
          : !dsg ? <p className="soluk" style={{ margin: 0 }}>Veri yok.</p> : dsg.ayri_tl == null ? (
@@ -333,7 +340,9 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
                 {(dsg.segment_yok?.length ?? 0) > 0 && `Segmenti seçilmemiş santraller, lisanslı güneş varsayıldı ve KÜPST hesaplanamadı; Santralim › Santral ayarlarından seçilir: ${dsg.segment_yok!.join(", ")}.`}
               </p>
             )}
-            <p className="soluk" style={{ fontSize: 14, margin: 0 }}>{dsg.not}</p>
+            {/* 15.11: önce öz, dayanak katlanır (uzun mevzuat metni gövdeyi boğuyordu) */}
+            <p className="soluk" style={{ fontSize: 13.5, margin: "0 0 6px" }}>Yürürlükteki kuralla yapılmış varsayımsal bir yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir.</p>
+            <details className="aciklama" style={{ margin: 0 }}><summary>Yöntem ve dayanak</summary><p className="soluk" style={{ fontSize: 13.5, margin: "6px 0 0" }}>{dsg.not}</p></details>
           </>
         )}
       </Kart>
@@ -380,7 +389,8 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
                   <p className="soluk" style={{ fontSize: 13, margin: "6px 0 0" }}>Birim toplamı: brüt sapma {sayiTr(u.udups_mwh ?? 0, 1)} MWh, tolerans üstü {sayiTr(u.kupsm_mwh ?? 0, 1)} MWh, {sayiTr(u.n_saat)} saat{(u.hesaplanamayan_saat ?? 0) > 0 ? `, ${sayiTr(u.hesaplanamayan_saat ?? 0)} saat hesaplanamadı (1.11.2026 öncesi katsayı belirsiz)` : ""}. Santral paylarının toplamı birim toplamına eşittir.</p>
                 </details>
               ))}
-              <p className="soluk" style={{ fontSize: 14, margin: 0 }}>{kupst.not}</p>
+              <p className="soluk" style={{ fontSize: 13.5, margin: "0 0 6px" }}>Yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir.</p>
+              <details className="aciklama" style={{ margin: 0 }}><summary>Yöntem ve dayanak</summary><p className="soluk" style={{ fontSize: 13.5, margin: "6px 0 0" }}>{kupst.not}</p></details>
             </>
           )}
         </Kart>

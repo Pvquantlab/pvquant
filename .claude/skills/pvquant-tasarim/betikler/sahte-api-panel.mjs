@@ -27,18 +27,18 @@ const BAGLANTI_ORNEK = {   // v2.563 (V3-b): portföyde santral başına bağlan
   a3: { tur: "modbus_sunspec", tur_kisa: "Modbus TCP / SunSpec", kod: "veri_akisi", etiket: "veri akışı var", saglayici: null, cekis_acik: true, n_cihaz: 3 },
   a4: { tur: "iec104", tur_kisa: "IEC 60870-5-104", kod: "tcp_ok", etiket: "TCP bağlantısı açıldı; IEC 104 sınanmadı, veri çekilmiyor", saglayici: null, cekis_acik: false, n_cihaz: 1 },
 };
-const santral = (id, ad, kwp, wm, b, y, al, son, kes) => ({ id, ad, kapasite_kwp: kwp, tz: "Europe/Istanbul", segment: null, son_olcum: son, kesinti_gun: kes, baglanti: BAGLANTI_ORNEK[id] ?? null, wmape_30g: wm, bugun_kwh: b, yarin_kwh: y, acik_alarm: al, son_kosu: "2026-10-23T15:42:00Z" , veri_durumu: kes == null ? null : kes <= 2 ? { kod: "taze", nitelik: "olculmus", etiket: "veri güncel", yas_saat: kes * 24 } : { kod: "gecikmis", nitelik: "gecikmis", etiket: `son ölçüm ${kes} gün önce`, yas_saat: kes * 24 } });   // v2.605 (F4-K)
+const santral = (id, ad, kwp, wm, b, y, al, son, kes) => ({ id, ad, kapasite_kwp: kwp, tz: "Europe/Istanbul", segment: null, son_olcum: son, kesinti_gun: kes, baglanti: BAGLANTI_ORNEK[id] ?? null, wmape_30g: wm, bugun_kwh: b, yarin_kwh: y, acik_alarm: al, son_kosu: "2026-10-24T03:12:00Z", veri_durumu: kes == null ? null : kes <= 2 ? { kod: "taze", nitelik: "olculmus", etiket: "veri güncel", yas_saat: kes * 24 } : { kod: "gecikmis", nitelik: "gecikmis", etiket: `son ölçüm ${kes} gün önce`, yas_saat: kes * 24 } });   // v2.605 (F4-K)
 const PORTFOY = { gun: GUN, santraller: [
   santral("a1", "Edikli GES", 15230, 37.5, 65400, 64200, 0, "2026-10-22T20:00:00Z", 1), santral("a2", "Format Lab", 1000, null, 4383, 4330, 3, "2020-06-17T20:00:00Z", 2319),
   santral("a3", "Karapınar RT-2579", 260000, 29.2, 1446500, 1486300, 0, "2026-10-22T20:00:00Z", 1), santral("a4", "Kıvanç 2 GES", 52500, 33.7, 282200, 275400, 0, "2026-10-22T20:00:00Z", 1),
   santral("a5", "PVDAQ Golden 33", 2, null, 3, 8, 3, "2019-01-01T06:00:00Z", 2852) ].map((r, i) => ({ ...r,
     segment: ({ a1: "lisansli_serbest", a3: "lisansli_yekdem", a4: "lisanssiz_dagitim" })[r.id] ?? null,   // 03.11 v2.528: Segment sütunu (ENV-F05-3) — a2/a5 seçilmedi
     // 29.10: yarının programı — a1 hazır, a3 yükümlü ama 15:30 öncesi tahmin yok, a4 yükümlü değil (lisanssız dağıtım), a2/a5 segment seçilmedi
-    program: i === 0 ? { yukumlu: true, hazir: true, run_at: "2026-10-24T09:30:00Z", not: null, teslim: { hedef_gun: "2026-10-25", durum: "erken", dakika_kaldi: 310, teyit_saati: "17:00:00" }, bildirilen: true, bildirim_zamani: "2026-10-24T13:02:00Z" }
+    program: i === 0 ? { yukumlu: true, hazir: true, run_at: "2026-10-24T03:12:00Z", not: null, teslim: { hedef_gun: "2026-10-25", durum: "erken", dakika_kaldi: 310, teyit_saati: "17:00:00" }, bildirilen: false, bildirim_zamani: null }   // 15.11: örnek saati 12:00 TSİ, pencere açılmadı → beyan henüz yok (Genel bakış ile aynı hikâye)
       : i === 2 ? { yukumlu: true, hazir: false, run_at: null, not: "15:30 kesimi öncesinde verilmiş tahmin yok", teslim: { hedef_gun: "2026-10-25", durum: "erken", dakika_kaldi: 310, teyit_saati: "17:00:00" } }
       : i === 3 ? { yukumlu: false, hazir: null, run_at: null, not: "program yükümlülüğü yok (GTŞ/toplayıcı (santral taşımaz))", teslim: { hedef_gun: "2026-10-25", durum: "erken", dakika_kaldi: 310, teyit_saati: "17:00:00" } }
       : { yukumlu: null, hazir: null, run_at: null, not: "segment seçilmedi", teslim: { hedef_gun: "2026-10-25", durum: "erken", dakika_kaldi: 310, teyit_saati: "17:00:00" } } })),
-  toplam: { santral: 5, kapasite_kwp: 328732, bugun_kwh: 1798486, yarin_kwh: 1830238, /* 03.11: satır toplamlarıyla birebir */ wmape_agirlikli: 30.3, program_yukumlu: 2, program_hazir: 1, program_bildirilen: 1, program_segment_yok: 2, wmape_kapsanan_kwp: 327730, acik_alarm: 6, veri_gecikmis: 2 } };
+  toplam: { santral: 5, kapasite_kwp: 328732, bugun_kwh: 1798486, yarin_kwh: 1830238, /* 03.11: satır toplamlarıyla birebir */ wmape_agirlikli: 30.3, program_yukumlu: 2, program_hazir: 1, program_bildirilen: 0, program_segment_yok: 2, wmape_kapsanan_kwp: 327730, acik_alarm: 6, veri_gecikmis: 2 } };
 const PLANTS = PORTFOY.santraller.map((s) => ({ id: s.id, name: s.ad, capacity_kwp: s.kapasite_kwp, tz: s.tz }));
 const KWP = 15230, AC = 12000;
 const PROFIL = [0, 0, 0, 0, 0, 0.012, 0.09, 0.26, 0.45, 0.63, 0.76, 0.84, 0.86, 0.84, 0.76, 0.63, 0.45, 0.26, 0.09, 0.012, 0, 0, 0, 0];
@@ -54,6 +54,19 @@ function forecast(hours) {
   const gunes = Array.from({ length: Math.ceil(hours / 24) }, (_, g) => ({ gun: new Date(BAS + g * 86400e3 + 12 * 3600e3).toISOString().slice(0, 10), dogus_utc: ISO(BAS + g * 86400e3 + 7.3 * 3600e3), batis_utc: ISO(BAS + g * 86400e3 + 17.65 * 3600e3) }));
   return { plant_id: "a1", run_at: "2026-10-24T03:12:00Z", mode: "C", hours, gunes, series,
            etiket: "yayin", nwp_kosu_zamani: "2026-10-24T00:00:00Z", nwp_bilesenler: { "ECMWF IFS": "2026-10-24T00:00:00Z", "ICON-EU": "2026-10-24T00:00:00Z" } };   // v2.605 (F4-K)
+}
+/** 15.11.2026: örnek API santral kimliğini yok sayıp her santrale Edikli özetini döndürüyordu (Santralim'de başlık/sayılar yanlış santral).
+ *  Özet artık Portföy tablosundaki santralla eşleşir: ad, güç, konum, bugün/yarın, son ölçüm; öbür seriler güç oranıyla ölçeklenir. */
+const KONUM_ORNEK = { a1: [38.41, 34.61], a2: [39.93, 32.85], a3: [37.72, 33.55], a4: [37.05, 35.32], a5: [39.74, -105.18] };
+function summaryIcin(id) {
+  const taban = summary(); const st = PORTFOY.santraller.find((x) => x.id === id);
+  if (!st || id === "a1") return taban;
+  const k = st.kapasite_kwp / KWP; const olc = (v) => +(v * k).toFixed(v >= 100 ? 0 : 1); const [lat, lon] = KONUM_ORNEK[id] ?? [38.41, 34.61];
+  return { ...taban, plant: { ...taban.plant, id, name: st.ad, capacity_kwp: st.kapasite_kwp, ac_limit_kw: Math.round(st.kapasite_kwp * 0.79), lat, lon },
+    bugun_kwh: st.bugun_kwh, yarin_kwh: st.yarin_kwh, hafta_mwh: olc(taban.hafta_mwh), sapma_pct: st.wmape_30g == null ? null : taban.sapma_pct,
+    anlati: st.yarin_kwh >= st.bugun_kwh ? "Yarın beklenen üretim bugünün biraz üstünde." : "Yarın beklenen üretim bugünün biraz altında.",
+    gunler: taban.gunler.map((g) => ({ ...g, mwh: olc(g.mwh) })), aylik: taban.aylik.map((a) => ({ ...a, mwh: Math.round(a.mwh * k), beklenti_mwh: a.beklenti_mwh == null ? a.beklenti_mwh : Math.round(a.beklenti_mwh * k) })),
+    saglik: { ...taban.saglik, son_scada: st.son_olcum, veri_durumu: st.veri_durumu ?? taban.saglik.veri_durumu } };
 }
 function summary() {
   const aylar = Array.from({ length: 18 }, (_, i) => { const d = new Date(Date.UTC(2025, 4 + i, 1)); return { ay: d.toISOString().slice(0, 7), mwh: Math.round(1800 + 900 * Math.sin((d.getUTCMonth() - 3) / 12 * 2 * Math.PI) + 50 * r(i)), saglam_saat: 400 + Math.round(60 * r(i, 2)), kapsam_pct: 55 + Math.round(12 * r(i, 3)), beklenti_mwh: i < 17 ? Math.round(1750 + 900 * Math.sin((d.getUTCMonth() - 3) / 12 * 2 * Math.PI)) : null }; });
@@ -273,10 +286,10 @@ function genelBakis(id) {
     : kritik
     ? { ...K("dikkat", "Dikkat gerekiyor", "piyasa segmenti seçilmedi; program yükümlülüğü bilinmiyor"), beklenen_kwh: 4330, beklenen_saat: 24,
         program: { ...K("dikkat", "Dikkat gerekiyor", "piyasa segmenti seçilmedi; program yükümlülüğü bilinmiyor"), adimlar: null, eksik: ["segment"], pencere, dogrulanmayan: ["kabul"] }, eylem: "Santralim › Santral ayarları'ndan piyasa segmentini seçin" }
-    : { ...K("saglikli", "Sağlıklı", "bildirildiği beyan edildi; TPYS kabulü PVQuant'tan doğrulanamaz"), beklenen_kwh: 64200, beklenen_saat: 24,
-        program: { ...K("saglikli", "Sağlıklı", "bildirildiği beyan edildi; TPYS kabulü PVQuant'tan doğrulanamaz"), eksik: [], pencere, dogrulanmayan: ["kabul"],
+    : { ...K("veri_bekleniyor", "Veri bekleniyor", "bildirim beyanı yok"), beklenen_kwh: 64200, beklenen_saat: 24,
+        program: { ...K("veri_bekleniyor", "Veri bekleniyor", "bildirim beyanı yok"), eksik: ["bildirim_beyani"], pencere, dogrulanmayan: ["kabul"],
           adimlar: { tahmin: adim("saglikli", "kesim öncesi tahmin var", { en_yeni_kayit: "2026-10-24T03:12:00Z" }), hazirlik: adim("saglikli", "öneri sürümü 2 üretildi", { surum: 2 }),
-                     bildirim: adim("saglikli", "bildirildiği beyan edildi (müşteri dosyası)", { en_yeni_kayit: "2026-10-24T09:40:00Z" }), kabul: adim("dogrulanamadi", "TPYS kabulü PVQuant'tan doğrulanamaz") } }, eylem: null };
+                     bildirim: adim("veri_bekleniyor", "bildirim beyanı yok"), kabul: adim("dogrulanamadi", "TPYS kabulü PVQuant'tan doğrulanamaz") } }, eylem: null };
   const liste = kritik
     ? [{ kod: "olcum", durum: "kritik", baslik: "Üretim ölçümü eksik ya da gecikmiş", ayrinti: "son geçerli ölçüm 2319 gün önce; karne ve uzlaştırma hesaplanamaz", zaman: "2020-06-17T20:00:00Z", baglanti: "veri" },
        { kod: "alarm", durum: "dikkat", baslik: "3 okunmamış alarm", ayrinti: "son 7 gün; zil simgesinden okuyun", baglanti: "santralim" },
@@ -288,7 +301,7 @@ function genelBakis(id) {
     not_: "Tahmin belirsizliği (P10–P90) risk değildir; burada yalnız eylem gerektiren veri ve operasyon maddeleri listelenir." };
   const finans = kritik
     ? { ...K("veri_bekleniyor", "Veri bekleniyor", "kayıtlı finansal sonuç yok: gece hesabı ölçüm ve piyasa fiyatı ister"), hesaplanamiyor: "kayıtlı finansal sonuç yok: gece hesabı ölçüm ve piyasa fiyatı ister", son_sonuc: null, epias: null, eylem: null }
-    : { ...K("saglikli", "Sağlıklı", "son kayıtlı dönem 2026-09, hesap durumu «tam»"), hesaplanamiyor: null, eylem: null,
+    : { ...K("saglikli", "Tahmini hesap hazır", "son kayıtlı dönem 2026-09, hesap durumu «tam»"), hesaplanamiyor: null, eylem: null,
         son_sonuc: { donem_kodu: "2026-09", donem_bas: "2026-09-01", donem_bit: "2026-09-30", hesap_zamani: "2026-10-01T00:55:00+00:00", yas_saat: 560, tutar_tl: 4868300, alacak_tl: 5100000, borc_tl: 231700, nitelik_ad: "ölçülmüş", eksik: [], hesap_durumu: "tam", nitelik: "tahmini",
           maruziyet: { aralik_tl: { p25: -41200, p50: -18600, p75: -4100 }, ufuk: { bas: "2026-10-25", bit: "2026-10-31", gun: 7 }, nitelik: "senaryo", program_mwh: 1620.4 } },
         epias: { donem: "2026-09", surum: "on", surum_etiket: "ön bildirim", zaman: "2026-10-12T10:20", borc_tl: 277620.75, alacak_tl: 1401234.6, net_tl: 1123613.85, nitelik: "resmi_belge", resmi_durum: "dogrulanmadi", kalem: 9 } };
@@ -480,7 +493,7 @@ const DSG = { gosterge: false, santral: 4, dagitim_anahtari: "sapma", dagitim_et
             "Edikli GES": { kayip_tl: 76700, edt_tek_tl: -74100, edt_bireysel_tl: -64200, kupst_tl: 2600, sapma_mwh: 30.0, grup_payi_mwh: 22.0, edt_dsg_tl: -66500, netlesme_farki_tl: 7600, pay_pct: 18.6 },
             "Format Lab": { kayip_tl: 26800, edt_tek_tl: -25800, edt_bireysel_tl: -22400, kupst_tl: null, sapma_mwh: 10.5, grup_payi_mwh: 7.7, edt_dsg_tl: -23200, netlesme_farki_tl: 2600, pay_pct: 6.5 },
             "PVDAQ Golden 33": { kayip_tl: 2500, edt_tek_tl: -2400, edt_bireysel_tl: -2100, kupst_tl: null, sapma_mwh: 1.0, grup_payi_mwh: 0.7, edt_dsg_tl: -2200, netlesme_farki_tl: 200, pay_pct: 0.6 } }, n_saat: 480, ayri_tl: 412300, net_tl: 371900, kazanc_tl: 40400, kazanc_pct: 9.8, edt_tek_tl: -398200, edt_dsg_tl: -357800, edt_grup_tl: -12600, edt_bireysel_tl: -345200, netlesme_farki_tl: 40400, kupst_uye_tl: null, esik: 0.05, esik_kaynak: "Karar 13869 (RG 18.10.2025), 1.1.2026'dan %5", kural_surumu: "edt-2026-V150-edta_ayrik+kupst-14029", hesaplanamayan_saat: 0, disi: ["Kıvanç 2 GES"], segment_yok: ["Format Lab", "PVDAQ Golden 33"], sapma_net_mwh: 118.2, sapma_ayri_mwh: 161.5, pencere_gun: 30, fiyat: { epias_saat: 480, senaryo_saat: 0 }, not: "Her santralin sapmasının eşik oranı kadarı, %5 × PH, DSG içinde netleşir; aşan kısım santralin kendisinde kalır. KÜPST santral başına ödenir ve DSG içinde netleşmez. Dayanak: DUY m.111. Bu rakamlar yürürlükteki kuralla yapılmış varsayımsal bir yeniden hesaptır; santralin satışı KGÜP'e eşit varsayılmıştır. EPİAŞ uzlaştırma sonucu değildir. DSG kodu girilmedi: dengesizliğini kendisi taşıyan bütün santraller tek DSG varsayıldı; Santralim › Santral ayarları'ndan DSG kodu girince gruplar ayrılır." };
-const PT = { durum: "ok", yontem: "bottom-up", tutarli: true, santral: 5, n_saat: 168, kapasite_kwp: 328732, gunler: Array.from({ length: 7 }, (_, i) => ({ gun: new Date(Date.UTC(2026, 9, 24 + i)).toISOString().slice(0, 10), p50_mwh: [1798.5, 1830.2][i] ?? 1830.2 - (i - 1) * 12, p10_mwh: 1600 - i * 10, p90_mwh: 1950 - i * 12, saat: 24 })), santral_eksik: [], not: "MinT için ≥2 santral ve ≥14 gün ortak artık gerekir — şimdilik bottom-up (toplam)." };   // 03.11: bugün/yarın = özet kartıyla aynı sayı
+const PT = { durum: "ok", yontem: "bottom-up", tutarli: true, santral: 5, n_saat: 168, kapasite_kwp: 328732, gunler: Array.from({ length: 7 }, (_, i) => ({ gun: new Date(Date.UTC(2026, 9, 24 + i)).toISOString().slice(0, 10), p50_mwh: [1798.5, 1830.2][i] ?? 1830.2 - (i - 1) * 12, p10_mwh: 1600 - i * 10, p90_mwh: 1950 - i * 12, saat: 24 })), santral_eksik: [], not: "Birlikte düzeltme için en az 2 santral ve 14 gün ortak hata geçmişi gerekir — şimdilik santral tahminlerinin toplamı." };   // 03.11: bugün/yarın = özet kartıyla aynı sayı
 // v2.521 (P1a): olay kaydı fixture (gerçek servis şekli); a1 için; türler ve kurallar olay_service.TUR_KURAL ile birebir
 const OLAY_ETIKET = { planli_bakim: "Planlı bakım", ariza: "Arıza", talimat_yat: "Yük atma talimatı (YAT)", talimat_yal: "Yük alma talimatı (YAL)", acil_kesme: "Acil durum kesmesi", sebeke_kesintisi: "Şebeke kesintisi", hasar: "Hasar", uzaktan_acma: "Uzaktan açma yapılamadı" };   // v2.523 (P4a)
 const OLAY_KURAL = {   // v2.541: olay_service.TUR_KURAL ile birebir (motor çıktısından üretildi)
@@ -833,10 +846,10 @@ http.createServer((req, res) => {
   { const pr = portfoyRotasi(yol, url, yanit); if (pr) return pr; }   // v2.595 (Faz 3 F3-H)
   if (yol === "/v1/portfoy/finansal-etki") { const f = finansal(url.searchParams.get("donem") ?? "2026-10", false); return yanit(200, { donem_kodu: f.donem.kod, santraller: [
     { plant_id: "a1", ad: "Edikli GES", segment: "lisansli_serbest", santral_tasir: true, planlanan_mwh: 1240.5, gerceklesen_mwh: 1198.2, sapma_mwh: -42.3, sapma_pct: -3.41, kapsama_pct: 96.8, gelir: { tutar_tl: 2396400, nitelik: "sozlesme_tahmini" }, dengesizlik: { tutar_tl: -61300, nitelik: "hesaplanan", toplanir: true }, kupst: { tutar_tl: -8900, nitelik: "hesaplanan", toplanir: true }, toplam: { tutar_tl: 2326200, nitelik: "sozlesme_tahmini", giren: ["satis_geliri", "dengesizlik", "kupst"], eksik: [] }, donem: f.donem },
-    { plant_id: "a2", ad: "Kaymaklı GES", segment: "lisanssiz_iletim", santral_tasir: false, planlanan_mwh: 212.0, gerceklesen_mwh: 219.4, sapma_mwh: 7.4, sapma_pct: 3.49, kapsama_pct: 99.1, gelir: { tutar_tl: 438800, nitelik: "sozlesme_tahmini" }, dengesizlik: { tutar_tl: -4100, nitelik: "hesaplanan", toplanir: false }, kupst: { tutar_tl: -600, nitelik: "hesaplanan", toplanir: true }, toplam: { tutar_tl: 438200, nitelik: "sozlesme_tahmini", giren: ["satis_geliri", "kupst"], eksik: [] }, donem: f.donem },
-    { plant_id: "a3", ad: "Yeşilova GES", segment: "lisansli_yekdem", santral_tasir: true, planlanan_mwh: 980.0, gerceklesen_mwh: 1004.2, sapma_mwh: 24.2, sapma_pct: 2.47, kapsama_pct: 100, gelir: { tutar_tl: 3700500, nitelik: "sozlesme_tahmini" }, dengesizlik: { tutar_tl: 9800, nitelik: "senaryo", toplanir: true }, kupst: { tutar_tl: null, nitelik: "eksik", toplanir: true }, toplam: { tutar_tl: 3710300, nitelik: "senaryo", giren: ["satis_geliri", "dengesizlik"], eksik: ["kupst"] }, donem: f.donem },
-    { plant_id: "a4", ad: "Dağlı GES", hata: "ValueError: dönemde ölçüm yok" }],
-    toplam: { tutar_tl: 6474700, nitelik: "senaryo", nitelik_ad: "senaryo", santral_sayisi: 4, toplanan_santral: 3, toplama_girmeyen: ["Dağlı GES"], planlanan_mwh: 2432.5, gerceklesen_mwh: 2421.8, isaret: "artı = santral lehine (alacak), eksi = santral aleyhine (borç)" },
+    { plant_id: "a4", ad: "Kıvanç 2 GES", segment: "lisanssiz_dagitim", santral_tasir: false, planlanan_mwh: 212.0, gerceklesen_mwh: 219.4, sapma_mwh: 7.4, sapma_pct: 3.49, kapsama_pct: 99.1, gelir: { tutar_tl: 438800, nitelik: "sozlesme_tahmini" }, dengesizlik: { tutar_tl: -4100, nitelik: "hesaplanan", toplanir: false }, kupst: { tutar_tl: -600, nitelik: "hesaplanan", toplanir: true }, toplam: { tutar_tl: 438200, nitelik: "sozlesme_tahmini", giren: ["satis_geliri", "kupst"], eksik: [] }, donem: f.donem },
+    { plant_id: "a3", ad: "Karapınar RT-2579", segment: "lisansli_yekdem", santral_tasir: true, planlanan_mwh: 980.0, gerceklesen_mwh: 1004.2, sapma_mwh: 24.2, sapma_pct: 2.47, kapsama_pct: 100, gelir: { tutar_tl: 3700500, nitelik: "sozlesme_tahmini" }, dengesizlik: { tutar_tl: 9800, nitelik: "senaryo", toplanir: true }, kupst: { tutar_tl: null, nitelik: "eksik", toplanir: true }, toplam: { tutar_tl: 3710300, nitelik: "senaryo", giren: ["satis_geliri", "dengesizlik"], eksik: ["kupst"] }, donem: f.donem },
+    { plant_id: "a2", ad: "Format Lab", hata: "dönemde ölçüm yok" }, { plant_id: "a5", ad: "PVDAQ Golden 33", hata: "dönemde ölçüm yok" }],   // 15.11: santral kümesi Portföy tablosuyla aynı
+    toplam: { tutar_tl: 6474700, nitelik: "senaryo", nitelik_ad: "senaryo", santral_sayisi: 5, toplanan_santral: 3, toplama_girmeyen: ["Format Lab", "PVDAQ Golden 33"], planlanan_mwh: 2432.5, gerceklesen_mwh: 2421.8, isaret: "artı = santral lehine (alacak), eksi = santral aleyhine (borç)" },
     not: "Santral toplamları aynı dönem ve aynı sözlükle; eksik nitelikli santral toplama girmez." }); }
   if (yol in VERI) return yanit(200, VERI[yol]);
   if (/^\/v1\/plants\/[^/]+\//.test(yol)) {
@@ -1004,6 +1017,7 @@ http.createServer((req, res) => {
         yanit(200, VERI.sensorler); });
       return;
     }
+    if (uc === "summary" && req.method === "GET") { const pid = yol.match(/^\/v1\/plants\/([^/]+)\//)?.[1]; return yanit(200, summaryIcin(pid)); }   // 15.11: santrale göre özet
     if (uc in VERI) return yanit(200, VERI[uc]);
   }
   return yanit(404, { detail: "yok" });

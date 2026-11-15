@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { FINANS_NITELIK } from "../../lib/durum";
 import { api, rolum } from "../../api/client";
 import type { BelirsizlikDurum, FinansNitelik, PortfoyDetay, PortfoyDsgT, PortfoyFinansT, PortfoyKisa, PortfoyRevizyonT, PortfoyRiskT, PortfoySapmaT, PortfoySozlesme, PortfoyTahminT, RiskEtiket } from "../../api/types";
 import { donemSecenekleri, TUR_AD, type FinansDonemTur } from "../../lib/donem";
@@ -12,9 +13,7 @@ import { ModulNotu } from "./Abonelik";   // v2.609 (Faz 6 F6-D): kapalı özell
  *  belirsizliğini (F3-B), sapma ve riski (F3-C), DSG üç perspektifini (F3-D), revizyon önerilerini (F3-E) ve portföy finansal etkisini (F3-G) derler.
  *  Dürüstlük: belirsizlik aralığı yalnız geçmiş sınavla «doğrulandı» ise öyle yazılır; sözleşmesel dağılım yalnız doğrulanmış belgeli sözleşmede
  *  «sözleşmeye dayalı», aksi «varsayımsal»; eksik ölçüm 0 sayılmaz; tutarlar yeniden hesaptır, EPİAŞ sonucu değildir. Otomatik bildirim yok. */
-const NITELIK: Record<FinansNitelik, { etiket: string; sinif: string }> = {
-  resmi: { etiket: "resmî", sinif: "rozet-ok" }, hesaplanan: { etiket: "hesaplanan", sinif: "rozet-notr" }, sozlesme_tahmini: { etiket: "sözleşme tahmini", sinif: "rozet-notr" },
-  senaryo: { etiket: "senaryo", sinif: "rozet-uyari" }, eksik: { etiket: "eksik", sinif: "rozet-notr" } };
+const NITELIK = FINANS_NITELIK;   // 15.11: ortak sözlük (lib/durum)
 const BELIRSIZLIK: Record<BelirsizlikDurum, { etiket: string; sinif: string }> = {
   dogrulandi: { etiket: "aralık doğrulandı", sinif: "rozet-ok" }, dogrulanmadi: { etiket: "aralık doğrulanmadı", sinif: "rozet-uyari" }, yetersiz_veri: { etiket: "aralık için veri yetersiz", sinif: "rozet-notr" } };
 const RISK: Record<RiskEtiket, string> = { dogrulanmis: "rozet-ok", tahmini: "rozet-uyari", eksik: "rozet-notr", gecti: "rozet-notr", bilgi: "rozet-notr" };

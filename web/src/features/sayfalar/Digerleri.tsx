@@ -1,4 +1,5 @@
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
+import { AYLAR, donemEtiket } from "../../lib/donem";
 import { isDurumu } from "../../lib/sozluk";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
 import type { EChartsOption } from "echarts";
@@ -985,10 +986,9 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
 
 /** v2.525 (raporlama; IH-096/105/107, B14/B17) — Dönem raporu: ay / çeyrek / yıl seçici, geçmiş dönem yeniden üretilebilir; önizleme (özet)
  *  ve HTML indirme. Zamanlanmış gönderim: ayın gününde önceki ayın raporu alıcılara e-posta (SMTP yoksa dürüstçe söylenir). */
-const DONEM_AYLAR = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 function donemSecenekleri(): { kod: string; etiket: string }[] {
   const d = new Date(); const y = d.getFullYear(), m = d.getMonth() + 1; const out: { kod: string; etiket: string }[] = [];
-  for (let i = 1; i <= 12; i++) { let yy = y, mm = m - i; while (mm <= 0) { mm += 12; yy -= 1; } out.push({ kod: `${yy}-${String(mm).padStart(2, "0")}`, etiket: `${DONEM_AYLAR[mm - 1]} ${yy}` }); }
+  for (let i = 1; i <= 12; i++) { let yy = y, mm = m - i; while (mm <= 0) { mm += 12; yy -= 1; } out.push({ kod: `${yy}-${String(mm).padStart(2, "0")}`, etiket: `${AYLAR[mm - 1]} ${yy}` }); }
   const qBu = Math.ceil(m / 12 * 4);
   for (let i = 0; i < 4; i++) { let q = qBu - i, yy = y; while (q <= 0) { q += 4; yy -= 1; } if (i > 0 || m % 3 !== 1) out.push({ kod: `${yy}-Q${q}`, etiket: `${yy} ${q}. çeyrek` }); }
   out.push({ kod: String(y), etiket: `${y} yılı (bugüne kadar)` }, { kod: String(y - 1), etiket: `${y - 1} yılı` });
@@ -998,12 +998,6 @@ const donemOncekiAy = () => { const d = new Date(); d.setDate(1); d.setMonth(d.g
 const GONDERIM_DURUM: Record<string, string> = { gonderildi: "gönderildi", gonderim_hatasi: "gönderilemedi (e-posta)", rapor_hatasi: "rapor üretilemedi", posta_yapilandirilmadi: "e-posta sunucusu yapılandırılmadı", alici_yok: "alıcı yok" };
 const VERI_DURUMU: Record<string, { etiket: string; sinif: string }> = { tam: { etiket: "tam veri", sinif: "rozet-ok" }, kismi: { etiket: "kısmi veri", sinif: "rozet-dikkat" }, yok: { etiket: "veri yok", sinif: "rozet-notr" } };
 const zamanTr = (iso: string) => { const d = new Date(iso); const iki = (x: number) => String(x).padStart(2, "0"); return `${iki(d.getDate())}.${iki(d.getMonth() + 1)}.${d.getFullYear()} ${iki(d.getHours())}:${iki(d.getMinutes())}`; };   // panelin diğer tarihleriyle aynı biçim (gg.aa.yyyy ss:dd)
-/** 02.11 inceleme: dönem kodu (2026-09 | 2026-Q3 | 2026) ekranda ham görünmez — seçicideki etiketin aynısı. */
-function donemEtiket(kod: string): string {
-  const ay = /^(\d{4})-(\d{2})$/.exec(kod); if (ay) return `${DONEM_AYLAR[Number(ay[2]) - 1] ?? ay[2]} ${ay[1]}`;
-  const q = /^(\d{4})-Q([1-4])$/.exec(kod); if (q) return `${q[1]} ${q[2]}. çeyrek`;
-  return /^\d{4}$/.test(kod) ? `${kod} yılı` : kod;
-}
 
 function DonemRaporuKarti({ plantId }: { plantId: string }) {
   const [donem, setDonem] = useState(donemOncekiAy());

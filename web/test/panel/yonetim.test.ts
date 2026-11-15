@@ -199,7 +199,7 @@ test("görsel uyum: platform tablolarında zaman/sayı gövde ailesi tabular, mo
   assert.match(css, /\n\.plat-ayrinti__cip \{ display: inline-flex;[^}]*font-family: var\(--mono\)/);   // müşteri Kuruluş çipi değişmedi
   // müşteri paneli jetonları ve kuralları değişmedi
   assert.match(css, /\[data-tema="koyu"\] \{\n[^]*?--zemin: #0B0E15; --kart: #181B23;/);
-  assert.match(css, /\n\.rozet-kucuk \{ font-size: 11\.5px; padding: 2px 8px; \}/);
+  assert.match(css, /\n\.rozet-kucuk \{ font-size: 12px; padding: 2px 8px; \}/);   // 15.11: 12 px tabanı
 });
 
 // ---------------- 27.10 eylem sözlüğü ----------------

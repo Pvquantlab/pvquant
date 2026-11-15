@@ -564,7 +564,7 @@ export function Santralim({ plantId }: { plantId: string }) {
           ? <span className="rozet rozet-ok"><Meta items={[o.model_adi, `Mod ${o.mod}`]} /></span>
           : <span className="cip">kalibrasyon bekliyor</span>}
         <span className="mono" style={{ fontSize: 13.5, color: "var(--soluk)" }}>
-          <Meta items={[`${gucTr(o.kapasite_kwp)} kWp`, `${o.lat}, ${o.lon}`]} />
+          <Meta items={[`${gucTr(o.kapasite_kwp)} kWp`, `${sayiTr(o.lat, 2)}°K, ${sayiTr(o.lon, 2)}°D`]} />
         </span>
       </div>}>
 
@@ -591,7 +591,7 @@ export function Santralim({ plantId }: { plantId: string }) {
             )}
             <text x="80" y="66" textAnchor="middle" className="ch-gauge-deger">
               {gosterilen === null ? "—" : sayiTr(gosterilen)}</text>
-            <text x="80" y="82" textAnchor="middle" className="ch-t">
+            <text x="80" y="84" textAnchor="middle" className="ch-gauge-birim">
               {gosterilen === null ? "veri yok" :
                 anlikPay === null ? "kW" : `kW (%${sayiTr(anlikPay * 100)})`}</text>
           </svg>

@@ -1,3 +1,4 @@
+import type { FinansNitelik } from "../api/types";
 /** v2.605 (Faz 4 F4-K) — durum sözlükleri (bileşen dosyasından ayrı: fast refresh yalnız bileşen dışa aktaran dosyalarda çalışır).
  *  Müşteri dili; iç terim yok. Hesap durumu finansal sonuç meta'sından (F4-G), tahmin etiketi arşiv etiketinden (F4-B). */
 export const HESAP_DURUMU: Record<string, { etiket: string; sinif: string; aciklama: string }> = {
@@ -21,3 +22,12 @@ export const HIZMET_DURUMU: Record<string, { etiket: string; sinif: string }> = 
   uygulanmiyor: { etiket: "Uygulanmıyor", sinif: "rozet-notr" },
 };
 export const hizmetDurumu = (kod: string | null | undefined) => HIZMET_DURUMU[kod ?? ""] ?? { etiket: kod ?? "—", sinif: "rozet-notr" };
+
+/** 15.11.2026 (Portföy turu): finansal nitelik sözlüğü — FinansalEtki, Portföy ve DSG/portföyler sayfalarındaki üç kopya tek kaynakta. */
+export const FINANS_NITELIK: Record<FinansNitelik, { etiket: string; sinif: string; aciklama: string }> = {
+  resmi: { etiket: "resmî", sinif: "rozet-ok", aciklama: "EPİAŞ uzlaştırma bildiriminden ya da resmî fiyat ve kur kaydından alınan değer." },
+  hesaplanan: { etiket: "hesaplanan", sinif: "rozet-notr", aciklama: "PVQuant'ın EPİAŞ saatlik fiyatı ve sistem yönüyle yeniden hesabı; resmî uzlaştırma sonucu değildir." },
+  sozlesme_tahmini: { etiket: "sözleşme tahmini", sinif: "rozet-notr", aciklama: "Santral ayarlarındaki tarife ya da sözleşme varsayımıyla hesaplanan tahmin; fatura değildir." },
+  senaryo: { etiket: "senaryo", sinif: "rozet-uyari", aciklama: "Varsayımsal hesap: senaryo fiyatı, varsayılan sistem yönü ya da sözleşme verisi olmayan üyelik." },
+  eksik: { etiket: "eksik", sinif: "rozet-notr", aciklama: "Gerekli veri (fiyat, sistem yönü, katsayı, ölçüm ya da bildirim) olmadığından hesaplanamadı." },
+};

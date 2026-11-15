@@ -10,7 +10,7 @@ import { sayiBicimi } from "../../lib/bicim";
  *  toplamlarda dogmaz.) */
 export const sayiTr = (x: number, ondalik = 0): string =>
   sayiBicimi("tr-TR", { minimumFractionDigits: ondalik, maximumFractionDigits: ondalik })   // 24.10: biçimleyici önbellekten
-    .format(Number(x.toFixed(ondalik)));
+    .format(Number(x.toFixed(ondalik))).replace(/^-/, "\u2212");   // 15.11 (K-009): görüntüde tipografik eksi; CSV/API'ye dokunmaz
 
 /** v2.310 — null-bilen kardeş: veri yoksa tire, sıfır UYDURULMAZ (anayasa).
  *  Kural: tire yanına birim basılmaz — "— kWh" yanlış, birim yalnız sayı varken çıkar. */

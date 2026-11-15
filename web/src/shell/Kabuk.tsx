@@ -226,7 +226,7 @@ export function Kabuk({ sayfa, tiklanan, setSayfa, santral, plantId, onCikis, ch
               yazıyordu (canlı kurulumda yakalandı). Sayaç gerçeği söyler. */}
           <div><div className="et">Santral</div><div className="dg">{sayiTr(santraller?.length ?? 0)}</div></div>
           <div><div className="et">Kurulu güç</div>
-            <div className="dg">{kwp === null ? "—" : `${gucTr(kwp)} kWp`}</div></div>
+            <div className="dg">{kwp === null ? "—" : <>{gucTr(kwp)} <small>kWp</small></>}</div></div>
         </div>
         {/* v2.608 (Faz 5 F5-A): iş akışı grupları — başlık düğmesi açar/kapar; aktif sayfanın grubu zorla açık */}
         {GRUPLAR.map((g) => {

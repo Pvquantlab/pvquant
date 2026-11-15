@@ -94,8 +94,8 @@ def portfoy_tahmini(tenant_id, gun: int = 7) -> dict:
     return {"durum": "ok", **meta, "kapasite_kwp": float(sum(p["capacity_kwp"] for p in santraller)), "gunler": gunler,
             "santral_bugun_mwh": santral_gunluk, "artik_gun": int(art["ts_utc"].dt.date.nunique()) if not art.empty else 0,
             "santral_eksik": santral_eksik,
-            "not": ("Tek santral: portföy = santral; uzlaştırma gerekmez." if len(tahminler) == 1 else
-                    ("Santral artıklarının büzülmüş kovaryansıyla en küçük kareler; toplam korunur." if meta["yontem"].startswith("MinT") else
-                     (f"Artık geçmişi olmayan santral: {', '.join(meta['artik_eksik'])} (geçerli SCADA ölçümü yok); "
-                      f"MinT tüm santrallerin ortak artığını ister — bottom-up (toplam)." if meta.get("artik_eksik") else
-                      f"MinT için ≥2 santral ve ≥{MIN_GUN} gün ortak artık gerekir — şimdilik bottom-up (toplam).")))}
+            "not": ("Tek santral: portföy toplamı santral tahminine eşittir." if len(tahminler) == 1 else   # 15.11: müşteri yüzeyinde yöntem adı yok (MinT/bottom-up); «uzlaştırma» EPİAŞ terimiyle karışmasın
+                    ("Santral tahminleri geçmiş hata ilişkilerine göre birlikte düzeltildi; toplam santral tahminleriyle tutarlıdır." if meta["yontem"].startswith("MinT") else
+                     (f"Hata geçmişi olmayan santral: {', '.join(meta['artik_eksik'])} (geçerli SCADA ölçümü yok); "
+                      f"birlikte düzeltme bütün santrallerin ortak hata geçmişini ister — toplam, santral tahminlerinin toplamıdır." if meta.get("artik_eksik") else
+                      f"Birlikte düzeltme için en az 2 santral ve {MIN_GUN} gün ortak hata geçmişi gerekir — şimdilik santral tahminlerinin toplamı.")))}

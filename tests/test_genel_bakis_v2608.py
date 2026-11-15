@@ -145,3 +145,42 @@ def test_uc_404_ve_sozlesme(monkeypatch):
         assert y.status_code == 200 and y.json()["santral"]["id"] == "11111111-1111-4111-8111-111111111111"   # kimlik dizge olarak geçer
     finally:
         api_main.app.dependency_overrides.clear()
+
+
+def test_kart_etiketi_resmi_kabul_ve_kesin_tutar_ima_etmez():
+    """15.11.2026 Genel bakış turu: durum kodu ve renk sözlükten; kart sözcüğü kartın gerçekten doğruladığı şeyi söyler.
+    Program kartı sağlıklıyken «Program hazır» (TPYS kabulü ayrı adım, doğrulanamadı); finans kartı tam hesapta «Tahmini hesap tam».
+    Sorun varsa (adım eksik, mutabakat belgesi yok) sözlük sözcüğü («Dikkat gerekiyor» vb.) aynen kalır."""
+    from pvquant.services import durum_sozlugu as ds
+    yarin = (GUN0 + dt.timedelta(days=1)).date(); df = _df(GUN0 + dt.timedelta(days=1), 24)
+    kg = ds.kgup_durumu(True, SIMDI - dt.timedelta(hours=6), 2, SIMDI - dt.timedelta(hours=1), None)
+    k = gb._yarin_karti(df, yarin, IST, {"boyutlar": {"kgup": kg}}, SIMDI)
+    assert kg["durum"] == "saglikli" and k["durum"] == "saglikli" and k["etiket"] == "Program hazır"
+    assert k["program"]["adimlar"]["kabul"]["durum"] == "dogrulanamadi" and "kabul" in k["program"]["dogrulanmayan"]
+    assert k["program"]["adimlar"]["bildirim"]["etiket"] == "Müşteri beyanı var" and k["program"]["adimlar"]["bildirim"]["durum"] == "saglikli"
+    assert kg["adimlar"]["bildirim"]["etiket"] == "Sağlıklı"   # paylaşılan sözlük sonucu yerinde değişmedi
+    kg2 = ds.kgup_durumu(True, SIMDI - dt.timedelta(hours=6), None, None, None)
+    k2 = gb._yarin_karti(df, yarin, IST, {"boyutlar": {"kgup": kg2}}, SIMDI)
+    assert k2["durum"] != "saglikli" and k2["etiket"] == ds.etiket(k2["durum"])
+    r = {"hesap_zamani": SIMDI, "donem_kodu": "2026-10", "donem_bas": dt.date(2026, 10, 1), "donem_bit": dt.date(2026, 10, 31),
+         "toplam_json": {"tutar_tl": 10.0, "nitelik_ad": "hesaplanan"}, "maruziyet_json": {}, "meta_json": {"hesap_durumu": "tam"}}
+    plant = {"id": str(uuid.uuid4())}
+    f = gb._finans_karti(r, uuid.uuid4(), plant, None, SIMDI)
+    assert f["durum"] == "saglikli" and f["etiket"] == "Tahmini hesap hazır" and f["son_sonuc"]["nitelik"] == "tahmini"
+    r["meta_json"] = {"hesap_durumu": "kismi"}
+    f2 = gb._finans_karti(r, uuid.uuid4(), plant, None, SIMDI)
+    assert f2["durum"] == "dikkat" and f2["etiket"] == "Tahmini hesap kısmi"
+    f3 = gb._finans_karti(r, uuid.uuid4(), plant, {"boyutlar": {"mutabakat": {"durum": "dikkat", "neden": "2026-10 dönemi için EPİAŞ bildirimi yüklenmedi"}}}, SIMDI)
+    assert f3["durum"] == "dikkat" and f3["etiket"] == ds.etiket("dikkat") and "yüklenmedi" in f3["neden"]
+
+
+def test_yarin_karti_pencere_acilmadan_eylem_istemez():
+    """15.11.2026 Portföy turu: bildirim beyanı henüz yokken pencere «erken» ise eylem None (sözlük: veri_bekleniyor = ritim gereği, eylem gerekmez);
+    pencere açık ya da geçtiyse eylem yazılır."""
+    df = _df(GUN0, 48)
+    kg = {"durum": "veri_bekleniyor", "etiket": "Veri bekleniyor", "neden": "bildirim beyanı yok", "eksik": ["bildirim_beyani"],
+          "adimlar": {"tahmin": {"durum": "saglikli"}, "hazirlik": {"durum": "saglikli"}, "bildirim": {"durum": "veri_bekleniyor"}, "kabul": {"durum": "dogrulanamadi"}}}
+    erken = gb._yarin_karti(df, dt.date(2026, 11, 21), IST, {"boyutlar": {"kgup": {**kg, "pencere": {"durum": "erken", "dakika_kaldi": 310}}}}, SIMDI)
+    acik = gb._yarin_karti(df, dt.date(2026, 11, 21), IST, {"boyutlar": {"kgup": {**kg, "pencere": {"durum": "pencere_acik", "dakika_kaldi": 20}}}}, SIMDI)
+    assert erken["eylem"] is None and erken["durum"] == "veri_bekleniyor"
+    assert acik["eylem"] is not None and "bildirdiğiniz dosyayı" in acik["eylem"]

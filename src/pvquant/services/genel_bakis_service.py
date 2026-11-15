@@ -23,6 +23,11 @@ from pvquant.zaman import PIYASA_TZ
 SAPMA_ASGARI_SAAT = 6   # bugünkü sapma ancak en az bu kadar ortak saat (ölçüm + tahmin) varsa yazılır
 BAGLANTI = {"bugun": "santralim", "yarin": "kgup", "riskler": "veri", "finans": "finans"}   # F5-A: program kartları KGÜP sayfasında
 HESAP_DURUMU_AD = {"tam": "tam hesap", "kismi": "kısmi hesap", "senaryo": "senaryo", "hesaplanamadi": "hesaplanamadı"}   # web lib/durum.ts HESAP_DURUMU ile aynı
+# 15.11.2026 (Genel bakış turu): kart rozeti sözcüğü — sözlük etiketi «Sağlıklı» finans kartında kesin tutar, program kartında resmî kabul ima ediyordu.
+# Durum kodu ve renk sözlükten değişmez; yalnız sözcük kartın gerçekten doğruladığı şeyi söyler.
+FEM_ETIKET = {"tam": "Tahmini hesap hazır", "kismi": "Tahmini hesap kısmi", "senaryo": "Senaryo hesabı"}   # «hazır» = bütün saatler ölçülü ve fiyatlı (tam); kısmi ayrı sözcük
+PROGRAM_HAZIR_ETIKET = "Program hazır"   # TPYS kabulü ayrı adım: her yanıtta «doğrulanamadı» (durum_sozlugu.kgup_durumu dogrulanmayan)
+BEYAN_ETIKET = "Müşteri beyanı var"      # bildirim adımı: yeşil = adım tamam (beyan dosyası yüklü); sözcük resmî kabul ima etmez
 
 
 def _tz(plant: dict) -> ZoneInfo:
@@ -56,9 +61,9 @@ def _bugun_gercek(s, plant_id: str, gun: dt.date, tz: ZoneInfo) -> pd.Series:
     return pd.Series([float(r[1]) if r[1] is not None else float("nan") for r in rows], index=ix).dropna()
 
 
-def _kart(durum, neden: str, **ek) -> dict:
+def _kart(durum, neden: str, etiket: str | None = None, **ek) -> dict:
     d = ds.Durum(durum)
-    return {"durum": d.value, "etiket": ds.etiket(d), "neden": neden, **ek}
+    return {"durum": d.value, "etiket": etiket or ds.etiket(d), "neden": neden, **ek}
 
 
 def _bugun_karti(santral: dict, df, gercek: pd.Series, gun: dt.date, tz: ZoneInfo, simdi: dt.datetime, hs_santral: dict | None) -> dict:
@@ -95,6 +100,9 @@ def _yarin_karti(df, yarin: dt.date, tz: ZoneInfo, hs_santral: dict | None, simd
     beklenen, saat = _gun_toplami(df, yarin, tz)
     kg = (hs_santral or {}).get("boyutlar", {}).get("kgup") or ds.kgup_durumu(None, None, None, None, None)
     adimlar = kg.get("adimlar")
+    if adimlar and adimlar["bildirim"]["durum"] == "saglikli":   # paylaşılan sözlük sonucu değiştirilmez; bu kart için kopya
+        adimlar = {**adimlar, "bildirim": {**adimlar["bildirim"], "etiket": BEYAN_ETIKET}}
+        kg = {**kg, "adimlar": adimlar}
     eylem = None
     if kg["durum"] == "uygulanmiyor":
         eylem = None
@@ -104,9 +112,9 @@ def _yarin_karti(df, yarin: dt.date, tz: ZoneInfo, hs_santral: dict | None, simd
         eylem = "tahmin yoksa elle tahmin isteyin; sorun sürerse destek"
     elif adimlar and adimlar["hazirlik"]["durum"] != "saglikli":
         eylem = "KGÜP sayfasından program dosyasını üretin"
-    elif adimlar and adimlar["bildirim"]["durum"] != "saglikli":
+    elif adimlar and adimlar["bildirim"]["durum"] != "saglikli" and (kg.get("pencere") or {}).get("durum") != "erken":   # 15.11: pencere açılmadan eylem istenmez (veri_bekleniyor = ritim)
         eylem = "TPYS'ye bildirdiğiniz dosyayı yükleyin (bildirim beyanı)"
-    return _kart(kg["durum"], kg["neden"], beklenen_kwh=beklenen, beklenen_saat=saat, program=kg, donem=yarin.isoformat(), kapsam="seçili santral",
+    return _kart(kg["durum"], kg["neden"], etiket=(PROGRAM_HAZIR_ETIKET if kg["durum"] == "saglikli" else None), beklenen_kwh=beklenen, beklenen_saat=saat, program=kg, donem=yarin.isoformat(), kapsam="seçili santral",
                  eylem=eylem, baglanti=BAGLANTI["yarin"], not_="Program dosyası PVQuant'ta üretilir; TPYS'ye gönderim ve kabul müşterinin sisteminden yapılır ve burada doğrulanamaz.")
 
 
@@ -199,9 +207,11 @@ def _finans_karti(r, tenant_id, plant: dict, hs_santral: dict | None, simdi: dt.
     m = (hs_santral or {}).get("boyutlar", {}).get("mutabakat")
     durumlar = [fem_durum] + ([m["durum"]] if m and m["durum"] in ("dikkat", "kritik") else [])
     durum = ds.en_kotu(durumlar)
+    mutabakat_sorunu = bool(m and m["durum"] in ("dikkat", "kritik"))
+    etiket = FEM_ETIKET.get(fem["hesap_durumu"] or "") if fem and not hesaplanamiyor and not mutabakat_sorunu else None   # sorun varsa sözlük sözcüğü kalır
     neden = hesaplanamiyor or (m["neden"] if m and m["durum"] in ("dikkat", "kritik") else
                                (f"son kayıtlı dönem {fem['donem_kodu']}, {HESAP_DURUMU_AD.get(fem['hesap_durumu'], 'hesap durumu kayıtta yok')}" if fem else "—"))
-    return _kart(durum, neden, son_sonuc=fem, epias=epias, hesaplanamiyor=hesaplanamiyor, kapsam="seçili santral",
+    return _kart(durum, neden, etiket=etiket, son_sonuc=fem, epias=epias, hesaplanamiyor=hesaplanamiyor, kapsam="seçili santral",
                  eylem=(m["neden"] if m and m["durum"] == "dikkat" else None), baglanti=BAGLANTI["finans"],
                  not_="Tahmini tutarlar PVQuant hesabıdır; resmî alacak/borç yalnız yüklenen EPİAŞ bildirimindeki tutardır. Maruziyet senaryodur.")
 

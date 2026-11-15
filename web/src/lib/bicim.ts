@@ -28,5 +28,6 @@ export function yasTr(s: string | null | undefined, simdi = Date.now()): string 
 
 /** 26.10 ortak sözlük — kısa tarih-saat «26.10.2026 12:33» (tarayıcının yerel saati; iki panel de yerel saat gösterir). */
 export function zamanTr(s: string | null | undefined): string {
-  return s ? new Date(s).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }) : "—";
+  // 15.11.2026 (Genel bakış turu): gün ve ay iki haneli — «1.10.2026 03:55» ile «24.10.2026 06:12» aynı kolonda farklı genişlikteydi.
+  return s ? new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(s)) : "—";
 }

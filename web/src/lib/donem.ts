@@ -21,3 +21,13 @@ export function donemSecenekleri(tur: FinansDonemTur, bugun = new Date()): { kod
   if (tur === "yil") for (let i = 0; i < 2; i++) { const y = bugun.getFullYear() - i; out.push({ kod: String(y), etiket: `${y}${i === 0 ? " (süren)" : ""}` }); }
   return out;
 }
+
+/** 15.11.2026 (Genel bakış turu; 02.11 inceleme kuralı ortaklaştı): dönem kodu (2026-09 | 2026-Q3 | 2026 | 2026-W37 | 2026-09-14) ekranda ham
+ *  görünmez — seçicideki etiketin aynısı. Tanınmayan biçim olduğu gibi döner (uydurma yok). */
+export function donemEtiket(kod: string): string {
+  const ay = /^(\d{4})-(\d{2})$/.exec(kod); if (ay) return `${AYLAR[Number(ay[2]) - 1] ?? ay[2]} ${ay[1]}`;
+  const q = /^(\d{4})-Q([1-4])$/.exec(kod); if (q) return `${q[1]} ${q[2]}. çeyrek`;
+  const h = /^(\d{4})-W(\d{2})$/.exec(kod); if (h) return `${h[1]}, ${Number(h[2])}. hafta`;
+  const g = /^(\d{4})-(\d{2})-(\d{2})$/.exec(kod); if (g) return `${Number(g[3])} ${AYLAR[Number(g[2]) - 1] ?? g[2]} ${g[1]}`;
+  return /^\d{4}$/.test(kod) ? `${kod} yılı` : kod;
+}

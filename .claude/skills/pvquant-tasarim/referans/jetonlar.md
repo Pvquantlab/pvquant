@@ -77,6 +77,14 @@ Durum kodu uçtan (`durum_sozlugu.py`), sözcük ve sınıf `web/src/lib/durum.t
 **kritik `.rozet-uyari.rozet-kritik`** (uyarı ailesinin DOLGULU türevi: zemin `--uyari`, metin `--kart`; koyu yüzde zemin `--uyari-metin`, metin `--kart`),
 veri bekleniyor / doğrulanamadı / uygulanmıyor `.rozet-notr`. Yeni renk yok; yanıp sönme yok; amber hiçbir durumun rengi değildir.
 
+## Kontrol sınırı jetonu (15.11.2026, açık tema bağımsız denetimi)
+
+`--kenar-kontrol` yalnız ETKİLEŞİMLİ kontrol sınırı içindir (girdi, seçici, metin alanı, dosya düğmesi): açık #7A808C (beyaz 3,97 · zemin 3,29 ·
+yan 3,57), koyu rgba(255,255,255,.38) (kart 3,58), platform açık #7A7A80 (4,27) — WCAG 1.4.11 ≥3:1. Kart/tablo ayırıcıları `--kenar`'da
+kalır (ince çizgi dili). Placeholder `--soluk` tam opak (6,1:1). Arayüzde 12 px altı METİN yok (`.rozet-kucuk` 12, `.kpi-delta` 12,
+`.yan-ozet .et` 12; ikon glifi/avatar baş harfi istisna). Gösterge SVG metinleri viewBox birimiyle ölçeklenir: 160 birimlik viewBox 118 px
+çizildiğinde 11 birim ≈ 8 px'tir — değer 24, birim 16 birim.
+
 ## Jeton-dışı değer yasağı
 
 Bileşen kodunda ham hex/px (jeton karşılığı varken) inceleme kapısına takılır;

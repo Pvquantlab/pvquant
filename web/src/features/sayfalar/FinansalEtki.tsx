@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
 import { api } from "../../api/client";
 import type { FinansalEtki as FinansalEtkiT, FinansalEtkiGecmis, FinansBilesen, FinansDonemTur, FinansNitelik } from "../../api/types";
+import { FINANS_NITELIK as NITELIK } from "../../lib/durum";
 import { donemSecenekleri, TUR_AD } from "../../lib/donem";   // v2.595: ortak dönem seçenekleri
 import { HesapDurumu, Kart, Kpi, Sayfa, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
 import { ModulNotu } from "./Abonelik";   // v2.609 (Faz 6 F6-D): kapalı özellik notu (uyarı kipi)
@@ -13,13 +14,6 @@ import { tarihBicimi } from "../../lib/bicim";
  *  niteliğini taşır: resmî (EPİAŞ bildirimi) › hesaplanan (EPİAŞ fiyatıyla yeniden hesap) › sözleşme tahmini (tarife varsayımı) › senaryo › eksik.
  *  İşaret: artı santral lehine (alacak), eksi aleyhine (borç). Toplama yalnız satış geliri, dengesizlik ve KGÜP sapma tutarı girer; resmî satırlar,
  *  DSG, göstergeler, üretim düşüklüğü ve ileriye dönük maruziyet yan yana gösterilir, toplanmaz (çift sayım yok). */
-const NITELIK: Record<FinansNitelik, { etiket: string; sinif: string; aciklama: string }> = {
-  resmi: { etiket: "resmî", sinif: "rozet-ok", aciklama: "EPİAŞ uzlaştırma bildiriminden ya da resmî fiyat ve kur kaydından alınan değer." },
-  hesaplanan: { etiket: "hesaplanan", sinif: "rozet-notr", aciklama: "PVQuant'ın EPİAŞ saatlik fiyatı ve sistem yönüyle yeniden hesabı; resmî uzlaştırma sonucu değildir." },
-  sozlesme_tahmini: { etiket: "sözleşme tahmini", sinif: "rozet-notr", aciklama: "Santral ayarlarındaki tarife ya da sözleşme varsayımıyla hesaplanan tahmin; fatura değildir." },
-  senaryo: { etiket: "senaryo", sinif: "rozet-uyari", aciklama: "Varsayımsal hesap: senaryo fiyatı, varsayılan sistem yönü ya da sözleşme verisi olmayan üyelik." },
-  eksik: { etiket: "eksik", sinif: "rozet-notr", aciklama: "Gerekli veri (fiyat, sistem yönü, katsayı, ölçüm ya da bildirim) olmadığından hesaplanamadı." },
-};
 const ONERI_SINIF: Record<string, string> = { eylem: "rozet-dikkat", oneri: "rozet-uyari", bilgi: "rozet-notr" };
 const SAYFA_AD: Record<string, string> = { tahminler: "Tahminler", kgup: "KGÜP", mutabakat: "Mutabakat", santralim: "Santralim", kurulus: "Ayarlar", veri: "Veri yükleme", olaylar: "Olay kaydı", hakkinda: "Hakkında", sayac: "Sayaç" };
 const sol = { textAlign: "left" as const };

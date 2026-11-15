@@ -3,10 +3,11 @@ import { useDamgaSurumu } from "../../shell/damgaOlay";
 import { api, ayniysaEskisi, bellekten } from "../../api/client";
 import type { GbAdim, GbRisk, GenelBakis as GenelBakisT } from "../../api/types";
 import type { SayfaId } from "../../shell/Kabuk";
-import { HizmetDurumu as Rozet, Kart, Sayfa, SayfaIskeleti, enerjiTr, sayiTr } from "../sayfalar/parcalar";
+import { HizmetDurumu as Rozet, Kart, Sayfa, SayfaIskeleti, enerjiTr, gucTr, sayiTr } from "../sayfalar/parcalar";
 import { Meta } from "../../lib/Meta";
-import { TAHMIN_ETIKETI } from "../../lib/durum";
+import { HESAP_DURUMU, TAHMIN_ETIKETI } from "../../lib/durum";
 import { zamanTr } from "../../lib/bicim";
+import { donemEtiket } from "../../lib/donem";
 
 /** v2.608 (Faz 5 F5-B) — GENEL BAKIŞ: müşterinin ilk ekranı, dört iş sorusu, dört kart. Her değer tek uçtan (/genel-bakis), durum sözcükleri
  *  uçtan (durum sözlüğü); arayüz hesap yapmaz, yalnız biçimler. Her kart: ana değer, dönem, tazelik, kapsam, eylem ve ayrıntı sayfasına bağlantı.
@@ -19,7 +20,7 @@ const yuzdeTr = (v: number) => `${v < 0 ? "−" : v > 0 ? "+" : ""}%${sayiTr(Mat
 const gunTr = (iso: string) => new Date(iso + "T00:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "long", weekday: "long" });
 const ADIM_AD: Record<string, string> = { tahmin: "Tahmin", hazirlik: "Program dosyası", bildirim: "Bildirim beyanı", kabul: "TPYS kabulü" };
 const EKSIK_AD: Record<string, string> = { segment: "piyasa segmenti seçilmedi", uevcb: "UEVÇB kodu girilmedi", kesim_oncesi_tahmin: "teslim saatinden önce verilmiş tahmin yok", bildirim_beyani: "bildirdiğiniz dosya yüklenmedi" };
-const PENCERE: Record<string, string> = { erken: "bildirim saati henüz açılmadı", pencere_acik: "bildirim saati açık", gecikti: "bildirim saati geçti" };
+const PENCERE: Record<string, string> = { erken: "henüz açılmadı", pencere_acik: "açık", gecikti: "geçti" };   // satır başlığı «Bildirim saati» — değer onu yinelemez
 
 function Satir({ ad, children, not: n, uyari }: { ad: string; children: ReactNode; not?: string | null; uyari?: boolean }) {
   return <div><dt>{ad}</dt><dd className={uyari ? "kunye-uyari" : undefined}>{children}{n && <span className="kunye-not">{n}</span>}</dd></div>;
@@ -47,10 +48,10 @@ export function GenelBakis({ plantId, git }: { plantId: string; git: (s: SayfaId
   return (
     <Sayfa baslik="Genel bakış" alt={`${o.santral.ad}: bugünkü üretim, yarının programı, açık riskler ve finansal durum. Her kart ayrıntı sayfasına götürür.`}
       sag={<span className="dugme-sira"><Rozet durum={o.genel.durum} etiket={o.genel.etiket} />
-        <span className="cip"><Meta items={[`son kontrol ${saatTr(o.zaman)}`, `${sayiTr(o.santral.kapasite_kwp)} kWp`]} /></span></span>}>
+        <span className="cip"><Meta items={[`son kontrol ${saatTr(o.zaman)}`, `${gucTr(o.santral.kapasite_kwp)} kWp`]} /></span></span>}>
       <div className="ızgara-genel">
         {/* 1 — bugün */}
-        <Kart baslik="Bugün ne kadar üretim bekleniyor?" alt={gunTr(b.donem)} sag={<Rozet durum={b.durum} />}>
+        <Kart baslik="Bugün ne kadar üretim bekleniyor?" alt={gunTr(b.donem)} sag={<Rozet durum={b.durum} etiket={b.etiket} />}>
           <dl className="kunye">
             <Satir ad="Beklenen üretim" not={b.beklenen_kwh == null ? b.neden : `son tahmin (P50), ${sayiTr(b.beklenen_saat)} saat`}>
               <span className="kunye-sayi">{b.beklenen_kwh == null ? "—" : enerjiTr(b.beklenen_kwh)}</span></Satir>
@@ -66,49 +67,56 @@ export function GenelBakis({ plantId, git }: { plantId: string; git: (s: SayfaId
           </dl>
         </Kart>
         {/* 2 — yarın */}
-        <Kart baslik="Yarının üretim programı hazır mı?" alt={gunTr(y.donem)} sag={<Rozet durum={y.durum} />}>
+        <Kart baslik="Yarının üretim programı hazır mı?" alt={gunTr(y.donem)} sag={<span className="dugme-sira"><Rozet durum={y.durum} etiket={y.etiket} />
+          {/* 15.11: «Program hazır» PVQuant'ın doğrulayabildiği adımlardır; TPYS kabulü ayrı ve doğrulanamaz — başlıkta da söylenir, sözcükler uçtan */}
+          {y.durum === "saglikli" && y.program.adimlar && <Rozet durum={y.program.adimlar.kabul.durum} etiket={`${ADIM_AD.kabul} ${y.program.adimlar.kabul.etiket.toLocaleLowerCase("tr-TR")}`} kucuk />}</span>}>
           <dl className="kunye">
             <Satir ad="Yarın beklenen" not={y.beklenen_kwh == null ? "son tahmin yarını kapsamıyor" : `son tahmin (P50), ${sayiTr(y.beklenen_saat)} saat`}>
               <span className="kunye-sayi">{y.beklenen_kwh == null ? "—" : enerjiTr(y.beklenen_kwh)}</span></Satir>
             {y.program.durum === "uygulanmiyor" ? <Satir ad="Program bildirimi" not={y.program.neden}>Uygulanmıyor</Satir>
               : y.program.adimlar ? (Object.entries(y.program.adimlar) as [string, GbAdim][]).map(([k, a]) => (
-                <Satir key={k} ad={ADIM_AD[k] ?? k} not={a.neden}><Rozet durum={a.durum} kucuk />{a.surum != null && <span className="kunye-not">sürüm {sayiTr(a.surum)}</span>}</Satir>))
+                <Satir key={k} ad={ADIM_AD[k] ?? k} not={[a.surum != null ? `sürüm ${sayiTr(a.surum)}` : null,
+                  k === "bildirim" && a.en_yeni_kayit ? `müşteri dosyası · ${saatTr(a.en_yeni_kayit)}` : k === "kabul" ? null : a.neden].filter(Boolean).join(" · ") || null}>
+                  {/* kabul: neden («PVQuant'tan doğrulanamaz») kart dipnotunda; beyan: zaman damgası nedenden bilgilendirici */}
+                  <Rozet durum={a.durum} etiket={a.etiket} kucuk /></Satir>))
               : <Satir ad="Program bildirimi" not={y.program.neden} uyari>{y.program.etiket}</Satir>}
             {y.program.pencere?.durum && <Satir ad="Bildirim saati" not={y.program.pencere.dakika_kaldi ? `${sayiTr(y.program.pencere.dakika_kaldi)} dk kaldı` : null}>
               {PENCERE[y.program.pencere.durum] ?? y.program.pencere.durum}</Satir>}
-            {y.program.eksik.length > 0 && <Satir ad="Eksikler" uyari>{y.program.eksik.map((e) => EKSIK_AD[e] ?? e).join("; ")}</Satir>}
+            {/* 15.11: bildirim saati henüz açılmadıysa «beyan yok» eksik değil, ritimdir (sözlük veri_bekleniyor) — satır «Bildirim beyanı» ve «Bildirim saati» zaten söyler */}
+            {(() => { const eksikler = y.program.eksik.filter((e) => !(e === "bildirim_beyani" && y.program.pencere?.durum === "erken"));
+              return eksikler.length > 0 && <Satir ad="Eksikler" uyari>{eksikler.map((e) => EKSIK_AD[e] ?? e).join("; ")}</Satir>; })()}
             {y.eylem && <Satir ad="Eylem" uyari>{y.eylem}</Satir>}
             <Satir ad="Ayrıntı"><Ayrinti sayfa={y.baglanti} ad="KGÜP: program dosyası" git={git} /></Satir>
           </dl>
-          <p className="soluk" style={{ fontSize: 13, margin: "10px 0 0" }}>{y.not_}</p>
+          <p className="aciklama">{y.not_}</p>
         </Kart>
         {/* 3 — riskler */}
-        <Kart baslik="Açık veri ve operasyon riskleri" alt={r.adet ? `${sayiTr(r.adet)} madde, eylem gerektirenler önce` : "eylem gerektiren madde yok"} sag={<Rozet durum={r.durum} />}>
+        <Kart baslik="Açık veri ve operasyon riskleri" alt={r.adet ? `bu santralde ${sayiTr(r.adet)} madde, eylem gerektirenler önce` : "bu santralde eylem gerektiren madde yok"} sag={<Rozet durum={r.durum} etiket={r.etiket} />}>
           {r.liste.length === 0 ? <div className="bos-durum"><div className="bos-bas">Açık risk yok.</div><p>Ölçüm güncel, okunmamış alarm ve süren olay yok, uzlaştırma belgeleri yüklü.</p></div>
             : <ul className="tanim-listesi risk-listesi">
               {r.liste.map((x: GbRisk, i) => (
                 <li key={`${x.kod}-${i}`}><Rozet durum={x.durum} kucuk /><div><button type="button" className="plat-baglanti risk-baslik" onClick={() => git_(x.baglanti)}>{x.baslik}</button>
                   {x.ayrinti && <span className="kunye-not">{x.ayrinti}{x.zaman ? ` · ${saatTr(x.zaman)}` : ""}</span>}</div></li>))}
             </ul>}
-          {r.kiraci && r.kiraci.santral > 1 && <p style={{ fontSize: 13.5, margin: "12px 0 0" }}>
-            Kuruluş geneli: {sayiTr(r.kiraci.santral)} santralin {sayiTr(r.kiraci.olcum_gecikmis)} tanesinde ölçüm eksik ya da gecikmiş; {sayiTr(r.kiraci.kritik)} kritik, {sayiTr(r.kiraci.dikkat)} dikkat durumda.{" "}
+          {r.kiraci && r.kiraci.santral > 1 && <p className="kunye-dip">
+            Kuruluş geneli ({sayiTr(r.kiraci.santral)} santral): ölçümü eksik ya da gecikmiş {sayiTr(r.kiraci.olcum_gecikmis)} santral; genel durumu kritik {sayiTr(r.kiraci.kritik)}, dikkat gerektiren {sayiTr(r.kiraci.dikkat)} santral.{" "}
             <button type="button" className="plat-baglanti" onClick={() => git_(r.kiraci!.baglanti)}>Portföy</button></p>}
-          <p className="soluk" style={{ fontSize: 13, margin: "10px 0 0" }}>{r.not_}</p>
+          <p className="aciklama">{r.not_}</p>
         </Kart>
         {/* 4 — finans */}
-        <Kart baslik="Finansal durum nedir?" alt={f.son_sonuc ? `son kayıtlı dönem ${f.son_sonuc.donem_kodu}` : "kayıtlı sonuç yok"} sag={<Rozet durum={f.durum} />}>
+        <Kart baslik="Finansal durum nedir?" alt={f.son_sonuc ? `son kayıtlı dönem: ${donemEtiket(f.son_sonuc.donem_kodu)}` : "kayıtlı sonuç yok"} sag={<Rozet durum={f.durum} etiket={f.etiket} />}>
           <dl className="kunye">
             {f.hesaplanamiyor ? <Satir ad="Tahmini finansal etki" not={f.hesaplanamiyor} uyari>Hesaplanamıyor</Satir>
-              : f.son_sonuc && <Satir ad="Tahmini finansal etki, net" not={`${f.son_sonuc.nitelik} · ${f.son_sonuc.nitelik_ad ?? "—"} hesap · ${saatTr(f.son_sonuc.hesap_zamani)}`}>
+              : f.son_sonuc && <Satir ad="Tahmini finansal etki, net" not={`${[f.son_sonuc.hesap_durumu ? HESAP_DURUMU[f.son_sonuc.hesap_durumu]?.etiket ?? f.son_sonuc.hesap_durumu : null, f.son_sonuc.nitelik_ad].filter(Boolean).join(", ")} · hesap ${saatTr(f.son_sonuc.hesap_zamani)}`}>
                 <span className="kunye-sayi">{tlTr(f.son_sonuc.tutar_tl)}</span></Satir>}
-            <Satir ad="EPİAŞ bildirimi" not={f.epias ? `${f.epias.surum_etiket}, ${f.epias.donem} · resmî belge, uzlaştırma durumu doğrulanmadı · ${sayiTr(f.epias.kalem)} kalem` : "bu santral için yüklenmiş bildirim yok"}>
-              {f.epias ? <><span className="kunye-sayi">{tlTr(f.epias.net_tl)}</span> <span className="kunye-not">alacak {tlTr(f.epias.alacak_tl)} · borç {tlTr(f.epias.borc_tl)}</span></> : "—"}</Satir>
+            <Satir ad="EPİAŞ bildirimi" not={f.epias ? `${f.epias.surum_etiket}, ${donemEtiket(f.epias.donem)} · resmî belge · ${sayiTr(f.epias.kalem)} kalem` : "bu santral için yüklenmiş bildirim yok"}>
+              {f.epias ? <><span className="kunye-sayi">{tlTr(f.epias.net_tl)}</span> {f.epias.resmi_durum === "dogrulanmadi" && <Rozet durum="dogrulanamadi" etiket="uzlaştırma doğrulanmadı" kucuk />}<span className="kunye-not">alacak {tlTr(f.epias.alacak_tl)} · borç {tlTr(f.epias.borc_tl)}</span></> : "—"}</Satir>
             {f.son_sonuc?.maruziyet && <Satir ad="Önümüzdeki günler (senaryo)" not={`orta senaryo (ortanca); temkinli ${tlTr(f.son_sonuc.maruziyet.aralik_tl.p25)}, iyimser ${tlTr(f.son_sonuc.maruziyet.aralik_tl.p75)}${f.son_sonuc.maruziyet.ufuk?.gun ? ` · ${sayiTr(f.son_sonuc.maruziyet.ufuk.gun)} gün` : ""}`}>
               <span className="kunye-sayi">{tlTr(f.son_sonuc.maruziyet.aralik_tl.p50)}</span></Satir>}
             {f.eylem && <Satir ad="Eylem" uyari>{f.eylem}</Satir>}
             <Satir ad="Ayrıntı"><span className="dugme-sira"><Ayrinti sayfa={f.baglanti} ad="Finansal etki" git={git} /><Ayrinti sayfa="mutabakat" ad="Mutabakat" git={git} /></span></Satir>
           </dl>
-          <p className="soluk" style={{ fontSize: 13, margin: "10px 0 0" }}>{f.not_}</p>
+          <p className="aciklama">{f.not_}</p>
         </Kart>
       </div>
     </Sayfa>
