@@ -1993,3 +1993,8 @@ uzlaştırma çekirdeği değişikliği gerektiriyor ve uygulanmadı. Tutar veya
 1 skipped / 1 düşen, CI taklidi pvq_api 1.397 / 1 düşen — tek düşen fixture (`test_sahte_kural_tablosu_motorla_es`) yeniden üretimle yeşil (ilgili 163 test). Web tsc, npm
 test 117, vite build, oxlint 16 (= taban). İş/hesap sondası 9/9 (4635; 94 / 141 / −106). Yeni bulgular: YB-1 saatlik `kural_surumu` etiketi LÜY istisnasını taşımıyor
 (fiyat çerçevesi bayraksız kurulur; hesap doğru, etiket yanlış — Kulvar B); YB-2 B-13 pin çelişkisi.
+
+**Mühür (v2.610, 15.11.2026 16:39 TSİ):** commit `9beeed0` (18 dosya: 16 M + yeni test + defter), CI #746 **yeşil** (6 dk 55 s). Dağıtım ssh: `git pull --ff-only` →
+`PVQ_SURUM=fable5-baslangic-245-g9beeed0 docker compose build api worker web` (132 s) → `up -d api worker web` (13:35 UTC; göç yok, 04:00–08:30 TSİ penceresi dışı). Canlı:
+api «Application startup complete», worker «basladi», `/v1/healthz` 200 `{"ok":true}`, web paketi `index-WkqUYffl.js` (önceki `index-CbkKgT-L.js`). Yakalama turu
+gerekmedi. Kalan: Kulvar B 14 / C 33 öneri ve K-01…K-20 kararları (`~/Desktop/PVQuant_Acik_Konular_Entegrasyonu_2026-11-15/09`); YB-1 etiket düzeltmesi onay bekler.
