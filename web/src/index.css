@@ -168,8 +168,10 @@ h2 { font-size: var(--t-bolum); line-height: 1.2; }
 .logo { display: flex; align-items: center; gap: 9px; color: var(--metin);
         font-family: var(--display); font-weight: 600; font-size: 18px; padding: 2px 6px 18px;
         letter-spacing: -0.015em; }
-.yan-etiket { font-family: var(--display); font-size: 12px; color: var(--soluk); letter-spacing: .10em;
-              padding: 0 6px 6px; text-transform: uppercase; font-weight: 500; }
+/* 16.11: bölüm başlığı (eyebrow) — soluk 500/.10em ögelerin yanında siliniyordu; ikincil mürekkep + 600 + .09em: açık 8,6:1, koyu 12,6:1 (yan zeminde).
+   Punto 12 px sabit; hiyerarşi boyutla (öge 15,5) ve büyük harfle kurulur, ağırlık ögeyi ezmez. */
+.yan-etiket { font-family: var(--display); font-size: 12px; color: var(--ikincil); letter-spacing: .09em;
+              padding: 0 6px 6px; text-transform: uppercase; font-weight: 600; }
 .yan-secim { width: 100%; padding: 9px 10px; border-radius: var(--r); font-size: 14.5px;
              background: var(--kart); color: var(--metin); font-family: var(--display); font-weight: 500;
              border: 1px solid var(--kenar-kontrol); margin-bottom: 10px; }   /* 15.11 K-004: seçim kontrolü sınırı */
@@ -179,19 +181,19 @@ h2 { font-size: var(--t-bolum); line-height: 1.2; }
 .yan-ozet > div { background: var(--kart); border: 1px solid var(--kenar);
                   border-radius: var(--r); padding: 7px 9px; }
 .yan-ozet .et { font-family: var(--display); font-size: 12px; text-transform: uppercase; letter-spacing: .08em;   /* 15.11: 12 px tabanı */
-                color: var(--soluk); font-weight: 500; }
+                color: var(--ikincil); font-weight: 500; }   /* 16.11: bölüm başlığıyla aynı mürekkep (aynı «SANTRAL» sözcüğü iki tonda duruyordu); 500 ağırlık değer etiketi rolünü korur */
 .yan-ozet .dg { font-family: var(--display); font-size: 16px; font-weight: 500; white-space: nowrap;
                 font-variant-numeric: tabular-nums; color: var(--metin); letter-spacing: -0.01em; }
 .yan-ozet .dg small { font-size: 12px; font-weight: 400; color: var(--soluk); letter-spacing: 0; }   /* 15.11: birim değerden ayrı kesim, satır kırılmaz */
 /* v2.608 (Faz 5 F5-A): yan menü iş akışı grupları — başlık .yan-etiket dilinde (eyebrow), ok işareti açık/kapalı; aktif grup başlığı metin rengi */
-.yan-grup { margin-top: 10px; }
+.yan-grup { margin-top: 14px; }   /* 16.11: gruplar arası ayrım biraz daha net; öge aralığı aynı */
 .yan-ozet + .yan-grup { margin-top: 4px; }   /* inceleme: :first-of-type .yan-ozet div'i yüzünden hiç eşleşmiyordu */
 /* başlık tipografisi .yan-etiket'ten (düğmeye iki sınıf: yan-etiket yan-grup-bas); burada yalnız düğme davranışı */
 .yan-grup-bas { display: flex; align-items: center; justify-content: space-between; width: 100%; background: none; border: 0; cursor: pointer;
                 padding: 4px 6px 6px; border-radius: var(--r); }
 .yan-grup-bas:hover { color: var(--metin); }
 .yan-grup-bas svg { transition: transform .12s; }
-.yan-grup.is-aktif .yan-grup-bas { color: var(--ikincil); }
+.yan-grup.is-aktif .yan-grup-bas { color: var(--metin); }   /* 16.11: başlık tabanı ikincil olunca etkin grup mürekkep */
 .nav-btn { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
            background: none; border: 0;
            color: var(--ikincil); font-family: var(--display); font-size: 15.5px; font-weight: 500;

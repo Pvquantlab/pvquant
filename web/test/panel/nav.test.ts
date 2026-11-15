@@ -34,8 +34,9 @@ test("App her kimliği çizer; santralsız sayfalar kapıdan muaf; KGÜP ve Payl
   assert.match(app, /sayfa === "paylasim" && <Paylasim \/>/);
 });
 
-test("yan menü: grup başlığı aria-expanded, aktif grup zorla açık, kapalı gruplar kalıcı; palet grup adıyla arar", () => {
-  assert.match(kabuk, /const acik = aktif \|\| !kapaliGruplar\.includes\(g\.id\)/);
+test("yan menü: grup başlığı aria-expanded, etkin grup da katlanabilir ve sayfa değişince açılır, kapalı gruplar kalıcı; palet grup adıyla arar", () => {
+  assert.match(kabuk, /const acik = !kapaliGruplar\.includes\(g\.id\)/);   // 16.11: «aktif ||» zorlaması kalktı — ok işlevsiz kalıyordu
+  assert.match(kabuk, /GRUPLAR\.find\(\(x\) => x\.sayfalar\.includes\(sayfa\)\)/);   // sayfa değişince grubu açan etki
   assert.match(kabuk, /aria-expanded=\{acik\} aria-controls=/);
   assert.match(kabuk, /<div id=\{`yan-grup-\$\{g\.id\}`\} hidden=\{!acik\}>/);   // inceleme: kapsayıcı her zaman çizilir
   assert.match(kabuk, /localStorage\.setItem\(NAV_KAPALI_ANAHTAR/);

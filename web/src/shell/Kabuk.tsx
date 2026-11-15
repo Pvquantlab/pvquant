@@ -131,6 +131,9 @@ export function Kabuk({ sayfa, tiklanan, setSayfa, santral, plantId, onCikis, ch
   const [kapaliGruplar, setKapaliGruplar] = useState<string[]>(kapaliGruplariOku);
   const grupDegistir = (id: string) => setKapaliGruplar((k) => (k.includes(id) ? k.filter((x) => x !== id) : [...k, id]));
   useEffect(() => { try { localStorage.setItem(NAV_KAPALI_ANAHTAR, JSON.stringify(kapaliGruplar)); } catch { /* gizli pencere */ } }, [kapaliGruplar]);   // kalıcılık yan etkisi güncelleyicide değil
+  // 16.11: sayfa değişince o sayfanın grubu açılır (palet/kırıntı ile kapalı gruba gidilebilir); sonrasında kullanıcı etkin grubu da katlayabilir —
+  // önceki «etkin grup zorla açık» kuralı oku işlevsiz bırakıyordu (kullanıcı bulgusu)
+  useEffect(() => { const g = GRUPLAR.find((x) => x.sayfalar.includes(sayfa)); if (g) setKapaliGruplar((k) => (k.includes(g.id) ? k.filter((x) => x !== g.id) : k)); }, [sayfa]);
   // v2.302: yeni santral formu — "Yakında" çipi gerçek oldu (yazma yetkisi: admin+editör)
   const [santralFormu, setSantralFormu] = useState(false);
   const [sorgu, setSorgu] = useState("");
@@ -228,10 +231,10 @@ export function Kabuk({ sayfa, tiklanan, setSayfa, santral, plantId, onCikis, ch
           <div><div className="et">Kurulu güç</div>
             <div className="dg">{kwp === null ? "—" : <>{gucTr(kwp)} <small>kWp</small></>}</div></div>
         </div>
-        {/* v2.608 (Faz 5 F5-A): iş akışı grupları — başlık düğmesi açar/kapar; aktif sayfanın grubu zorla açık */}
+        {/* v2.608 (Faz 5 F5-A): iş akışı grupları — başlık düğmesi açar/kapar; etkin grup başlığı mürekkep renginde (16.11: katlanabilir, sayfa değişince açılır) */}
         {GRUPLAR.map((g) => {
           const aktif = g.sayfalar.includes(tiklanan ?? sayfa);
-          const acik = aktif || !kapaliGruplar.includes(g.id);
+          const acik = !kapaliGruplar.includes(g.id);
           return (
             <div key={g.id} className={`yan-grup${aktif ? " is-aktif" : ""}`}>
               <button type="button" className="yan-etiket yan-grup-bas" aria-expanded={acik} aria-controls={`yan-grup-${g.id}`}
