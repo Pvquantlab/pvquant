@@ -2011,3 +2011,8 @@ değişmedi; `saatlik(portfoy=True)` çağıran üretim yolu yok; DSG grup etike
 
 **Kanıt:** `~/Desktop/PVQuant_Acik_Konular_Entegrasyonu_2026-11-15/` 07 §6, 08 ek, 09 YB-1. Hedefli 126/138 geçti; tam takım test DB sahip 1.398 geçti / 1 skipped,
 CI taklidi pvq_api 1.399 geçti (öz inceleme sonrası ağaç, kanit/pytest_tam_yb1_oz.txt). /code-review high: 2 bulgu → 2 düzeltme. Web değişmedi; göç yok.
+
+**Mühür (v2.611, 15.11.2026 18:12 TSİ):** commit `cd00eee` (4 dosya: 3 kod/test + defter), CI #748 **yeşil** (7 dk 34 s; ara Rapor commit'i #747 de yeşil 8 dk 44 s).
+Dağıtım ssh: `git pull --ff-only` → `PVQ_SURUM=fable5-baslangic-247-gcd00eee docker compose build api worker` (132 s; web değişmedi, yeniden kurulmadı) → `up -d api worker`
+(15:08 UTC; göç yok, 04:00–08:30 TSİ penceresi dışı). Canlı: api «Application startup complete», worker «basladi», `/v1/healthz` 200 `{"ok":true}`. Yakalama turu gerekmedi.
+Kalan: Kulvar B 13 / C 33 öneri ve K-01…K-20 kararları (`~/Desktop/PVQuant_Acik_Konular_Entegrasyonu_2026-11-15/09`).
