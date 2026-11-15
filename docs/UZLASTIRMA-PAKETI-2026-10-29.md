@@ -2031,3 +2031,10 @@ Kalan: Kulvar B 13 / C 33 öneri ve K-01…K-20 kararları (`~/Desktop/PVQuant_A
 **Neden:** «Değerlendirilen ölçüm» oranı ve portföy toplamı müşteriye yanlış sayı gösteriyordu (Kritik); diğerleri gerçek dışı durum etiketi, N kat küçülen portföy ölçütü, 500 dönen uç, temsilde arşiv yazımı, sığ healthz. Çekirdek tahmin, uzlaştırma formülleri, kalibrasyon, şema, yetki mimarisi değişmedi; göç yok.
 
 **Kanıt:** `~/Desktop/PVQuant_Faz9_Uygulama_ve_Dogrulama/` (00–12, 09.xlsx, kanit/). Faz 9 seti 118 geçti / 10 atlandı; tam takım test DB **sahip 1.514 geçti / 11 atlandı**, **CI taklidi pvq_api 1.515 geçti / 10 atlandı** (0 düşen; F9-T01 kapandı); 54 PRD vektörü fark 0; web tsc temiz, npm test 117, build, oxlint 16; CDP 10 sayfa taşma 0 (D11 sonrası). Canlı salt-okuma (15.11 16:45 UTC, `kanit/canli/`): 2 santral 30 gün nMAE %9–10, kapsama %95–96, PICP80 %74–78; resmî bildirim 0; F9-D02/E02/F02 canlıda teyit; pilot bitişleri 21–23.11.2026.
+
+**Mühür (v2.612, 15.11.2026 20:13 TSİ):** commit `1fccfe5` (13 dosya: 7 M + 5 yeni test + defter), CI #750 **yeşil** (6 dk 5 s; Faz 9 testleri dâhil). Dağıtım ssh:
+`git pull --ff-only` → `PVQ_SURUM=fable5-baslangic-249-g1fccfe5 docker compose build api worker web` (130 s) → `up -d api worker web` (17:09 UTC; göç yok, 04:00–08:30
+TSİ penceresi dışı). Canlı: api «Application startup complete», worker «basladi», `/v1/healthz` 200, **`/v1/readyz` 200 `{"ok":true,"db":"ok","worker_nabiz_dk":0}`**, web
+paketi `index-rDthfpSg.js`. Yakalama turu gerekmedi. İlk yeni sözlükle (2026-11-14) `dogrulama_sonuc` kaydı 16.11 03:50 TSİ gece işinde; FEM günlük kayıtları o
+geceden itibaren «kısmi» etiketini yön eksik saatte de taşır. Kalan: 12 §4–5 (P3/P4 göçleri, P9 iş sözleşmesi, P5/P14/P15 kararları, compose healthcheck → readyz,
+pilot bitişleri 21–23.11, aylık iklim/kalibrasyon işlerinin 1.11 hataları).
