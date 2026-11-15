@@ -5,7 +5,8 @@ from __future__ import annotations
 
 import io
 import uuid
-from datetime import date
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
 import numpy as np
 import pandas as pd
@@ -127,7 +128,9 @@ def test_mutabakat_kalemler(kiraci, monkeypatch):
     assert m["guvenilirlik"]["durum"] == "kismi" and len(m["guvenilirlik"]["nedenler"]) == 2 and m["eylem"].startswith("Karşılaştırılan kalemler uyum") and "kapsam kısmi" in m["eylem"]
     # 02.11 inceleme: kısmi kapsamda hüküm «kısmi» nitelikli (özet ve satır); hesaplanamayan satırda nitelik yok
     assert m["ozet"]["dogrulama"] == "kismi" and m["ozet"]["kapsam_saat"] == 48 and m["ozet"]["beklenen_saat"] == 744 and s["imbalance"]["dogrulama"] == "kismi" and s["dam"]["dogrulama"] is None
-    assert m["bildirim"]["surum_dogrulama"]["durum"] == "takvimden_once" and m["bildirim"]["surum_dogrulama"]["beklenen_tarih"] == "2026-11-16"
+    # 16.11: yükleme bu testte «şimdi» olur; nihai takvim tarihi 16.11.2026 geçince hüküm «takvim_uyumlu» olur — test gerçek takvime çıpalanmaz (CI #754)
+    _ist_bugun = datetime.now(ZoneInfo("Europe/Istanbul")).date()
+    assert m["bildirim"]["surum_dogrulama"]["durum"] == ("takvimden_once" if _ist_bugun < date(2026, 11, 16) else "takvim_uyumlu") and m["bildirim"]["surum_dogrulama"]["beklenen_tarih"] == "2026-11-16"
     # bileşen eşiği: net eşleşse de alacak ve borç ayrı ayrı sapıyorsa «fark» (alacak 100k / borç 211k → net aynı)
     monkeypatch.setattr(dz, "dokum", lambda t, p, gun: (_dokum(edt_borc=4397.6, edt_alacak=2087.6, kupst=300.0), {"fiyat": {"senaryo_saat": 0}}))
     mb = ms.mutabakat(tid, plant, "2026-10", bugun=date(2026, 11, 2)); sb = {r["kod"]: r for r in mb["satirlar"]}

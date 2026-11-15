@@ -16,7 +16,7 @@ def test_gece_piyasa_bitisi_dun(monkeypatch):
     monkeypatch.setattr(piyasa_service, "kaydet", lambda df: 0)
     r = piyasa_service.gece_piyasa(gun=3)
     assert r["durum"] == "ok"
-    dun = date.today() - timedelta(days=1)
+    dun = piyasa_service.piyasa_gunu() - timedelta(days=1)   # 16.11: servis PİYASA gününü (İstanbul) kullanır; date.today() UTC koşucuda 21:00 sonrası bir gün geride kalıp testi düşürüyordu (CI #754)
     assert yakalanan["bitis"] == dun.isoformat()
     assert yakalanan["bas"] == (dun - timedelta(days=3)).isoformat()
 
