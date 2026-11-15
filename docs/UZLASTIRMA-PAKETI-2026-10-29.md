@@ -1998,3 +1998,16 @@ test 117, vite build, oxlint 16 (= taban). İş/hesap sondası 9/9 (4635; 94 / 1
 `PVQ_SURUM=fable5-baslangic-245-g9beeed0 docker compose build api worker web` (132 s) → `up -d api worker web` (13:35 UTC; göç yok, 04:00–08:30 TSİ penceresi dışı). Canlı:
 api «Application startup complete», worker «basladi», `/v1/healthz` 200 `{"ok":true}`, web paketi `index-WkqUYffl.js` (önceki `index-CbkKgT-L.js`). Yakalama turu
 gerekmedi. Kalan: Kulvar B 14 / C 33 öneri ve K-01…K-20 kararları (`~/Desktop/PVQuant_Acik_Konular_Entegrasyonu_2026-11-15/09`); YB-1 etiket düzeltmesi onay bekler.
+
+## v2.611 (15.11.2026): YB-1 — saatlik kural etiketi LÜY istisnasını taşır (etiket düzeltmesi, hesap değişmedi)
+
+**Ne:** `ext/turkiye/dengesizlik.saatlik` çıktısındaki `kural_surumu` artık fiyat çerçevesinden (`birim_fiyatlar`, LÜY bayrağını bilmez) değil KÜPST parametre
+çerçevesinden (`parametre_cercevesi(..., luy_istisna=…)`) gelir → istisnalı iletime bağlı lisanssız santralde Kasım 2026 etiketi `edt-2026-V100-edta_ayrik+kupst-14907-luy-istisna`
+(önce `…+kupst-14907-iletim`; m = n = 0 zaten uygulanıyordu). FEM LÜY notu istisna saatini etiketten sayar; kalan saatlerin dayanağı sabit «Karar 14029» yerine etiketten
+yazılır (bayrak başka segmentte de açılabilir). Yeni test `test_yb1_saatlik_etiket_luy_istisnasini_tasir`; T-29 testi kalan etiketi de doğrular. Lisanslı serbest etiket biçimi
+değişmedi; `saatlik(portfoy=True)` çağıran üretim yolu yok; DSG grup etiketi segmentsiz kalır.
+
+**Neden:** v2.610 entegrasyonunda bulundu (YB-1): rapor/JSON «kural sürümü» alanı istisnalı santralde uygulanan kuralı göstermiyordu; tutar doğru, etiket yanlıştı.
+
+**Kanıt:** `~/Desktop/PVQuant_Acik_Konular_Entegrasyonu_2026-11-15/` 07 §6, 08 ek, 09 YB-1. Hedefli 126/138 geçti; tam takım test DB sahip 1.398 geçti / 1 skipped,
+CI taklidi pvq_api 1.399 geçti (öz inceleme sonrası ağaç, kanit/pytest_tam_yb1_oz.txt). /code-review high: 2 bulgu → 2 düzeltme. Web değişmedi; göç yok.

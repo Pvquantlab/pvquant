@@ -95,6 +95,23 @@ def test_t29_luy_istisna_notu_kosullu():
         k = next(b for b in out["bilesenler"] if b["kod"] == "kupst")
         return k, " ".join(k.get("notlar") or [])
     _, n_eki = _not("2026-10")                     # Ekim 2026: 14907 henüz yok → istisna uygulanamaz
-    assert "sapma tutarı 0." not in n_eki and "uygulanabilir saat yok" in n_eki
+    assert "sapma tutarı 0." not in n_eki and "uygulanabilir saat yok" in n_eki and "kupst-14029-iletim" in n_eki   # kalan saatlerin kuralı etiketten
     _, n_kas = _not("2026-11")                     # Kasım 2026: istisna bütün saatlerde → tutar 0 notu
     assert "sapma tutarı 0." in n_kas
+
+
+# ---- YB-1 (15.11.2026 entegrasyon bulgusu): saatlik kural etiketi LÜY istisnasını taşır (KÜPST çerçevesinden; portfoy=True çağıran üretim yolu yok)
+def test_yb1_saatlik_etiket_luy_istisnasini_tasir():
+    from pvquant.ext.turkiye import dengesizlik as d
+    def _s(ay, luy, segment="lisanssiz_iletim"):
+        ix = pd.date_range(f"2026-{ay}-05 06:00", periods=6, freq="h", tz="UTC")
+        one = pd.Series(1.0, index=ix)
+        return d.saatlik(one, one * 0.8, one * 2000, one * 2100, yon="acik", segment=segment, luy_istisna=luy)
+    kas = _s("11", True); eki = _s("10", True); kas0 = _s("11", False)
+    assert set(kas["kural_surumu"]) == {"edt-2026-V100-edta_ayrik+kupst-14907-luy-istisna"} and (kas["kupst_m"] == 0).all()
+    assert set(kas0["kural_surumu"]) == {"edt-2026-V100-edta_ayrik+kupst-14907-iletim"} and (kas0["kupst_m"] == 0.2).all()
+    assert set(eki["kural_surumu"]) == {"edt-2026-V150-edta_net+kupst-14029-iletim"}            # 14907 öncesi istisna etkisiz (5.10: edta_net, ayrık 19.10'dan)
+    # etiket ile katsayı aynı çerçeveden: istisna saati sayısı = m == 0 saat sayısı
+    assert int(kas["kural_surumu"].str.contains("luy-istisna").sum()) == int((kas["kupst_m"] == 0).sum()) == 6
+    # lisanslı serbest etiket değişmedi (mevcut pin biçimi)
+    assert set(_s("11", False, "lisansli_serbest")["kural_surumu"]) == {"edt-2026-V100-edta_ayrik+kupst-14907"}

@@ -153,7 +153,7 @@ def saatlik(kgup_mwh: pd.Series, gerceklesen_mwh: pd.Series, ptf: pd.Series, smf
                          "pozitif_gelir": edt_poz, "negatif_gider": edt_neg,          # eski kolon adları (API/rapor uyumu)
                          "referans_gelir": referans_gelir, "gerceklesen_gelir": gerceklesen_gelir,
                          "dengesizlik_maliyeti": kayip, "kupsm": kupsm, "kupst_m": m, "kupst_n": n, "kupst": kupst_s,
-                         "toplam_maliyet": toplam, "kural_surumu": f["kural_surumu"], "rejim": f["rejim"], "durum": durum,
+                         "toplam_maliyet": toplam, "kural_surumu": prm["surum"].values, "rejim": f["rejim"], "durum": durum,   # YB-1 (15.11.2026): etiket KÜPST çerçevesinden — LÜY istisnası / portföy koşulunu taşır; fiyat çerçevesi (f) bayrağı bilmez
                          "belirsiz_2027": f["belirsiz_2027"], "net_sapma": net, "uecm": uecm.values})   # v2.532: net sapma bayrağı ve UEÇM (MWh)
 
 

@@ -481,14 +481,16 @@ def uzlastirma_bilesenleri_saf(donem: dict, izgara: pd.DatetimeIndex, pv: pd.Dat
                        kaynak=("santral ayarı (katsayı geçersiz kılma)" if gecersiz else "kural tablosu"), kapsam_saat=int(pv["kupst"].notna().sum()), beklenen_saat=n,
                        kural_surumu=" | ".join(sorted(set(pv["kural_surumu"].astype(str)))), dayanak=dy.get("kupst"))
         if luy_istisna:   # T-29 (AK-0248): not yalnız istisnanın uygulandığı saatler için (Karar 14907 Md.5, 1.11.2026'dan)
-            # Etiket (kural_surumu) fiyat çerçevesinden gelir ve LÜY bayrağını taşımaz (bkz. 09 Kalan riskler, YB-1); istisna saati m = n = 0 ile sayılır
-            ist_saat = int(((pv["kupst_m"] == 0) & (pv["kupst_n"] == 0) & pv["kupst"].notna()).sum()) if {"kupst_m", "kupst_n"} <= set(pv.columns) else 0
+            # YB-1 (15.11.2026): saatlik etiket artık KÜPST çerçevesinden gelir ve istisnayı «luy-istisna» ile taşır (dengesizlik.saatlik)
+            ist_saat = int(pv["kural_surumu"].astype(str).str.contains("luy-istisna").sum())
             if ist_saat and ist_saat >= int(pv["kupst"].notna().sum()):
                 k.notlar.append("LÜY istisnası beyan edildi: KGÜP sapma tutarı 0.")
-            elif ist_saat:
-                k.notlar.append(f"LÜY istisnası {ist_saat} saatte uygulandı (Karar 14907 Md.5, 1.11.2026'dan); kalan saatlerde Karar 14029 iletim katsayısı uygulandı.")
-            else:
-                k.notlar.append("LÜY istisnası beyan edildi; bu dönemde uygulanabilir saat yok (Karar 14907 Md.5 1.11.2026'dan geçerli) — tutar Karar 14029 iletim katsayısıyla.")
+            else:   # öz inceleme (15.11): dayanak adı sabit yazılmaz — kalan saatlerin kuralı etiketten (segment bağımsız; bayrak lisanslıda da açılabilir)
+                kalan = " | ".join(sorted({s for s in pv["kural_surumu"].astype(str) if "luy-istisna" not in s}))
+                if ist_saat:
+                    k.notlar.append(f"LÜY istisnası {ist_saat} saatte uygulandı (Karar 14907 Md.5, 1.11.2026'dan); kalan saatlerde yürürlükteki KÜPST katsayısı ({kalan}).")
+                else:
+                    k.notlar.append(f"LÜY istisnası beyan edildi; bu dönemde uygulanabilir saat yok (Karar 14907 Md.5 1.11.2026'dan, iletime bağlı lisanssız) — tutar yürürlükteki katsayıyla ({kalan}).")
         hy = int((pv["durum"] == "kupst_hesaplanamaz").sum())
         if hy:
             k.notlar.append(f"{hy} saatte KÜPST katsayısı olmadığından hesaplanamadı.")
