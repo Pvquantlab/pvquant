@@ -2016,3 +2016,18 @@ CI taklidi pvq_api 1.399 geçti (öz inceleme sonrası ağaç, kanit/pytest_tam_
 Dağıtım ssh: `git pull --ff-only` → `PVQ_SURUM=fable5-baslangic-247-gcd00eee docker compose build api worker` (132 s; web değişmedi, yeniden kurulmadı) → `up -d api worker`
 (15:08 UTC; göç yok, 04:00–08:30 TSİ penceresi dışı). Canlı: api «Application startup complete», worker «basladi», `/v1/healthz` 200 `{"ok":true}`. Yakalama turu gerekmedi.
 Kalan: Kulvar B 13 / C 33 öneri ve K-01…K-20 kararları (`~/Desktop/PVQuant_Acik_Konular_Entegrasyonu_2026-11-15/09`).
+
+## v2.612 (15.11.2026): Faz 9 başarı kriterleri araştırmasının uygulanması — 11 düzeltme (2 kritik), Faz 9 test takımı CI'de, hesap çekirdeği değişmedi
+
+**Ne:** `~/Desktop/PVQuant_Faz9_Basari_Dogrulama/` (14.11; 45 bulgu, 25 öneri) koda eşlendi; güvenle uygulanabilenler yapıldı. (Araştırmanın 14.11 akşamı «v2.610» adıyla push edip geri çektiği P1/P2 yaması bu mühürle yeniden geldi; v2.610 adı 15.11 Açık Konular işine ait.)
+- **P1 · F9-B01 (Kritik):** `bagimsiz_dogrulama_service.butunluk` paydası = gözlenen gündüz ∪ (astronomik gündüz ∧ geçerli ölçüm yok); `astronomik_gunduz`, `ACIK_GOK_GUNDUZ_WM2`, yeni alanlar `gunduz_saat_gozlenen` / `gunduz_saat_veri_yok_eklenen` / `payda_kurali`; `SOZLUK_SURUMU` 2026-11-14. Metrik maskesi değişmedi.
+- **P2 · F9-D01 (Kritik):** `portfoy_finans._topla` santralde `toplanir=False` bileşeni ana toplama almaz; `_toplanmayan` bilgi satırı; not metni.
+- **P6 · F9-D02:** `finansal_etki_service.hesap_durumu` yön eksik / hesaplanamayan saat → «kismi». **P7 · F9-A04:** `havuz_metrikleri` — portföy havuzunda nMAE/nRMSE/nMBE/bant santral kWp'siyle; WMAPE/MAE/RMSE ham. **F9-A03:** simülasyon kipi geriye bakışlı etiketi de alır.
+- **P8 · F9-F01 (kısmen):** `GET /v1/readyz` (DB `SELECT 1` + worker nabız dk; 503); `healthz` canlılık olarak aynı; compose healthcheck değişmedi. **P16 · F9-E05:** temsil oturumunda `GET /kgup?fmt=csv` 403. **P17 · F9-E09:** iec104 nokta tablosu ucunda tanımsız `datetime` → fonksiyon içi içe aktarma (ruff F821 2 → 0).
+- **F9-E12:** `tests/test_db_rolu.py` tekil `has_table_privilege` + değişmez tablo pini. **F9-T02:** `tests/test_faz9_{tahmin_dogrulama,finans_dogrulama,guvenlik_matrisi,servis_surekliligi}.py` + `test_faz9_duzeltmeler.py` (118 test, 10 açıkça atlanan; açık bulgular «belgeleyici» testlerle sabit; uç envanteri 248 + `/v1/_test/*` dışlanır).
+- **D11 (CDP):** `web/src/features/sayfalar/Dogruluk.tsx` «Uzlaştırma kalemleri» başlık cip/rozet şeridi `kart-arac` ile sarıldı — 375 px'te 24 px yatay taşma 0. `.claude/launch.json` örnek kip önizleme girdisi (araç).
+- Uygulanmayan (ayrı onay): P3 RLS göçü, P4 REVOKE (F9-E01/E02), P5 kısıntı dışlaması, P9 boş «ok» (iş dönüş sözleşmesi), P14 mutabakat EDTA/EDTB, P15 işaret, P10/P11/P13/P18–P25.
+
+**Neden:** «Değerlendirilen ölçüm» oranı ve portföy toplamı müşteriye yanlış sayı gösteriyordu (Kritik); diğerleri gerçek dışı durum etiketi, N kat küçülen portföy ölçütü, 500 dönen uç, temsilde arşiv yazımı, sığ healthz. Çekirdek tahmin, uzlaştırma formülleri, kalibrasyon, şema, yetki mimarisi değişmedi; göç yok.
+
+**Kanıt:** `~/Desktop/PVQuant_Faz9_Uygulama_ve_Dogrulama/` (00–12, 09.xlsx, kanit/). Faz 9 seti 118 geçti / 10 atlandı; tam takım test DB **sahip 1.514 geçti / 11 atlandı**, **CI taklidi pvq_api 1.515 geçti / 10 atlandı** (0 düşen; F9-T01 kapandı); 54 PRD vektörü fark 0; web tsc temiz, npm test 117, build, oxlint 16; CDP 10 sayfa taşma 0 (D11 sonrası). Canlı salt-okuma (15.11 16:45 UTC, `kanit/canli/`): 2 santral 30 gün nMAE %9–10, kapsama %95–96, PICP80 %74–78; resmî bildirim 0; F9-D02/E02/F02 canlıda teyit; pilot bitişleri 21–23.11.2026.

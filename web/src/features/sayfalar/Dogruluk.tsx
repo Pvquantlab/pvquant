@@ -844,7 +844,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
       {/* 29.10 (F-01/F-02/F-03/F-09): uzlaştırma kalemleri — EDT ve KÜPST AYRI, tek sayı yok; her TL'nin yanında kural sürümü ve
           fiyat kaynağı; hesaplanamayan saat (yön eksik / segment yok) açıkça; «tasarruf/ceza» yok; teminat sadeleştirilmiş gösterge */}
       <Kart baslik="Uzlaştırma kalemleri — enerji dengesizlik tutarı ve KGÜP sapma tutarı, son dönem"
-        sag={<>
+        sag={<span className="dugme-sira kart-arac" style={{ flexWrap: "wrap", justifyContent: "flex-end" }}>{/* Faz 9 CDP (15.11): cip/rozet şeridi 375 px'te 24 px taşıyordu — .kart-arac ile 900 px altında başlığın altına kırılır (emsal: Digerleri «dugme-sira kart-arac») */}
           {/* v2.517 (P2a): program kaynağı — bildirilen KGÜP (müşteri beyanı) varsa o, yoksa öneri; pozisyon ayarı */}
           <span className="cip" title={dz?.program ? `${sayiTr(dz.program.bildirilen_saat)} saat bildirilen KGÜP, ${sayiTr(dz.program.oneri_saat)} saat PVQuant önerisi; ${dz.program.pozisyon.etiket}` : undefined}>{dz === undefined ? "hesaplanıyor" : dz && dz.gun_sayisi ? <Meta items={[`${sayiTr(dz.gun_sayisi)} gün`,
             dz.program && dz.program.bildirilen_saat > 0 ? `program: ${sayiTr(dz.program.bildirilen_gun)} gün bildirilen KGÜP, kalanı öneri` : "program: PVQuant önerisi (bir gün önce 15:30'dan önceki tahmin, P50)",
@@ -853,7 +853,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           {dz?.cozunurluk && <span className="cip" title={dz.cozunurluk.etiket}>uzlaştırma {dz.cozunurluk.deger}</span>}   {/* v2.543 (P9, IH-109): 15 dk geçişi belirsiz */}
           {/* 29.10: rozet metni kısa (375 px'te başlık satırı taşıyordu); ayrıntı title ve KPI alt etiketinde */}
           {dz && <span className={`rozet ${dz.fiyat.senaryo_saat > 0 ? "rozet-uyari" : "rozet-ok"} rozet-kucuk`} title={dz.fiyat.senaryo_saat > 0 ? "Senaryo fiyatı: EPİAŞ kimliği tanımlı değil. " + dz.not : dz.not}>{dz.fiyat.senaryo_saat > 0 ? "senaryo fiyatı" : "fiyat: EPİAŞ"}</span>}
-        </>}>
+        </span>}>
         {dz === undefined ? <YerTutucu yukseklik={411} /> : dz && dz.toplam ? (
           <>
             <div className="ızgara satir-4" style={{ gap: 12 }}>

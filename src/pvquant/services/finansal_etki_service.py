@@ -177,11 +177,12 @@ def hesap_durumu(u: dict, fo: dict, senaryo: dict | None) -> str:
     ger = u.get("gerceklesen") or {}
     saat = int(ger.get("saat") or 0); beklenen = int(ger.get("beklenen_saat") or 0)
     sen = int(fo.get("senaryo_saat") or 0); ep = int(fo.get("epias_saat") or 0); yon_v = int(fo.get("yon_varsayilan_saat") or 0)
+    yon_e = int(fo.get("yon_eksik_saat") or 0); hy = int(u.get("hesaplanamayan_saat") or 0)   # Faz 9 F9-D02 (Ç-21): yön eksik / hesaplanamayan saat «tam» değildir
     if saat == 0:
         return "hesaplanamadi"
     if senaryo or (sen > 0 and ep == 0):
         return "senaryo"
-    if saat < beklenen or sen > 0 or yon_v > 0:
+    if saat < beklenen or sen > 0 or yon_v > 0 or yon_e > 0 or hy > 0:
         return "kismi"
     return "tam"
 

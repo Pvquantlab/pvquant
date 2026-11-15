@@ -23,31 +23,63 @@ BILGI = (("uretim_dusuklugu", "Üretim düşüklüğü (gelir kaybı tahmini)"),
 SINIF_AD = {"gerceklesen_resmi": "Gerçekleşen (resmî bildirim)", "hesaplanan": "Hesaplanan (yeniden hesap)", "varsayimsal": "Varsayımsal (sözleşme tahmini / senaryo)", "eksik": "Hesaplanamadı"}
 NOT_DSG = ("DSG içi dengesizlik tutarı bağımsız santral toplamının yerine geçer; iki tutar toplanmaz. Netleşme farkı fiziksel karşıt sapmaların grup içinde "
            "netleşmesinden gelir; üyeye düşen kısım sözleşmeyle belirlenir, otomatik bir tasarruf değildir.")
-NOT_TOPLAM = "Portföy toplamı = enerji satışı + dengesizlik (bağımsız) + KGÜP sapma tutarı; resmî satırlar, DSG, göstergeler, düşüklük ve maruziyet toplama girmez."
+NOT_TOPLAM = ("Portföy toplamı = enerji satışı + dengesizlik (bağımsız) + KGÜP sapma tutarı; resmî satırlar, DSG, göstergeler, düşüklük ve maruziyet toplama girmez. "
+              "Santralin uzlaştırmada taşımadığı kalemler (ör. dağıtıma bağlı lisanssız santral) da girmez, bilgi satırında gösterilir.")
 
 
 def _sinif(nitelik: str) -> str:
     return {"resmi": "gerceklesen_resmi", "hesaplanan": "hesaplanan", "sozlesme_tahmini": "varsayimsal", "senaryo": "varsayimsal"}.get(nitelik, "eksik")
 
 
+def _santral_toplanmaz(b: dict) -> bool:
+    """v2.610 (Faz 9 F9-D01): santral FEM'inde `toplanir=False` işaretli bileşen (ör. dağıtıma bağlı lisanssız santralın bilgi amaçlı
+    EDT/KÜPST'ü — santral_tasir=False) portföy ana toplamına GİRMEZ; ayrı bilgi satırında görünür."""
+    return b.get("toplanir") is False
+
+
 def _topla(ozetler: dict[str, dict | None], kod: str, ad: str, toplanir: bool) -> fn.Bilesen:
-    """Aynı kodlu santral bileşenlerinin toplamı. Eksik santral 0 sayılmaz; varsa toplam en iyi hâlde senaryo ve not düşülür."""
+    """Aynı kodlu santral bileşenlerinin toplamı. Eksik santral 0 sayılmaz; varsa toplam en iyi hâlde senaryo ve not düşülür.
+    Toplanır satırda (toplanir=True) santralde toplanmaz işaretli bileşen atlanır ve sayısı notta yazılır (v2.610, F9-D01)."""
     var, eksik, nit, al, bo, kap, bek, kur, notlar = [], [], [], 0.0, 0.0, 0, 0, set(), []
+    haric = []
     for ad_s, o in ozetler.items():
         b = next((x for x in (o or {}).get("bilesenler", []) if x.get("kod") == kod), None)
+        if toplanir and b is not None and _santral_toplanmaz(b):
+            haric.append(ad_s); continue
         if b is None or b.get("tutar_tl") is None or b.get("nitelik") == "eksik":
             eksik.append(ad_s); continue
         var.append(ad_s); nit.append(fn.Nitelik(b["nitelik"])); al += float(b.get("alacak_tl") or 0.0); bo += float(b.get("borc_tl") or 0.0)
         kap += int(b.get("kapsam_saat") or 0); bek += int(b.get("beklenen_saat") or 0)
         if b.get("kural_surumu"):
             kur.add(str(b["kural_surumu"]))
+    if haric:
+        notlar.append(f"{len(haric)} santralda bu kalem santral tarafından taşınmaz (ör. dağıtıma bağlı lisanssız santral) — portföy "
+                      f"toplamına girmedi, bilgi satırında gösterilir ({', '.join(haric[:5])}).")
     if not var:
+        if haric and not eksik:   # bütün santrallerde kalem bilgi amaçlı: kurala göre toplama katkısı 0 (uydurma değil; kalem taşınmıyor)
+            return fn.Bilesen(kod, ad, tutar_tl=0.0, alacak_tl=0.0, borc_tl=0.0, nitelik=fn.Nitelik.HESAPLANAN, kaynak="toplama giren santral yok",
+                              toplanir=toplanir, notlar=notlar)
         return fn.Bilesen.eksik(kod, ad, "Hiçbir santralda bu kalem hesaplanamadı." if ozetler else "Santral yok.", kaynak="santral toplamı", toplanir=toplanir)
     n = fn.en_zayif(*nit)
     if eksik:
         n = fn.en_zayif(n, fn.Nitelik.SENARYO); notlar.append(f"{len(eksik)} santralda hesaplanamadı ({', '.join(eksik[:5])}); toplam o santraller olmadan, eksik 0 sayılmadı.")
     return fn.Bilesen(kod, ad, tutar_tl=al - bo, alacak_tl=al, borc_tl=bo, nitelik=n, kaynak=f"{len(var)} santral toplamı", kapsam_saat=kap or None, beklenen_saat=bek or None,
                       kural_surumu=" | ".join(sorted(kur)) or None, toplanir=toplanir, notlar=notlar)
+
+
+def _toplanmayan(ozetler: dict[str, dict | None], kod: str, ad: str) -> fn.Bilesen | None:
+    """v2.610 (F9-D01): santralde toplanmaz işaretli aynı kodlu bileşenlerin toplamı — yalnız bilgi satırı (toplanir=False); yoksa None."""
+    al = bo = 0.0; nit, adlar = [], []
+    for ad_s, o in ozetler.items():
+        b = next((x for x in (o or {}).get("bilesenler", []) if x.get("kod") == kod), None)
+        if b is None or not _santral_toplanmaz(b) or b.get("tutar_tl") is None or b.get("nitelik") == "eksik":
+            continue
+        adlar.append(ad_s); nit.append(fn.Nitelik(b["nitelik"])); al += float(b.get("alacak_tl") or 0.0); bo += float(b.get("borc_tl") or 0.0)
+    if not adlar:
+        return None
+    return fn.Bilesen(f"{kod}_toplanmayan", f"{ad} — santral taşımaz, bilgi amaçlı (toplama girmez)", tutar_tl=al - bo, alacak_tl=al, borc_tl=bo,
+                      nitelik=fn.en_zayif(*nit), kaynak=f"{len(adlar)} santral", toplanir=False,
+                      notlar=["Santral bu kalemi uzlaştırmada taşımaz; tutar portföy toplamına eklenmez."])
 
 
 def satirlar(ozetler: dict[str, dict | None], kapasiteler: dict[str, float] | None = None) -> list[dict]:
@@ -76,7 +108,7 @@ def birlestir(ozetler: dict[str, dict | None], dsg: dict | None = None, kapasite
     """ozetler: santral adı → FEM özeti (ozet() ya da son() çıktısı; None/hata = eksik). dsg: F3-D `portfoy_dsg_service.donem` çıktısı (durum ok) ya da None."""
     sat = satirlar(ozetler, kapasiteler)
     ana = [_topla(ozetler, k, a, True) for k, a in TOPLANAN]
-    bilgi = [_topla(ozetler, k, a, False) for k, a in BILGI]
+    bilgi = [x for x in (_toplanmayan(ozetler, k, a) for k, a in TOPLANAN) if x is not None] + [_topla(ozetler, k, a, False) for k, a in BILGI]
     # resmî fark: resmî − hesaplanan (yalnız ikisi de olan santrallarda)
     fark_var, fark = [], 0.0
     for ad, o in ozetler.items():

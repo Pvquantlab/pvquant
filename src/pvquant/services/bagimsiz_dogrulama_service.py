@@ -10,6 +10,9 @@ Koşu seçimi (saat başına TEK tahmin, çift sayım yok; karne_kurali ile ayn�
   ufuk        ana kovalar 0-24 / 24-72 / 72-168 / 168+ (saat başına en erken koşu; karne_kurali) — ufuk kesiti için
 Gündüz maskesi: gerçek > GUNDUZ_ORAN·kapasite VEYA tahmin > GUNDUZ_ORAN·kapasite (tahminin «gece» dediği ama üretim olan saat ve
 üretim olmayan ama tahmin olan saat kaçmaz). Gece saatleri ayrı sayılır («gece davranışı»).
+Bütünlük paydası (v2.610, Faz 9 F9-B01): gözlenen gündüz maskesi, tahmin ve geçerli ölçüm BİRLİKTE yokken saati göremez — o saat paydadan düşer
+ve «değerlendirilen %» şişerdi. Payda = gözlenen gündüz ∪ (astronomik gündüz ∧ geçerli ölçüm yok); astronomik gündüz = saat ortasında açık gök
+GHI ≥ GUNDUZ_ORAN × 1000 W/m² (STC ışınımının %2'si — metrik maskesindeki %2 kapasite kuralının ışınım karşılığı). Metrik maskesi DEĞİŞMEZ.
 Metrikler (gündüz, uygun saatler; birimler açık): WMAPE havuzlanmış Σ|f−y|/Σy (% — payda yetersizse None, günlük ortalama WMAPE ayrıca),
 MAE kW, RMSE kW, nMAE/nRMSE (kapasite kWp'ye bölü, %), MBE kW ve nMBE % (işaret: tahmin − gerçek; pozitif = fazla tahmin), günlük enerji
 sapması kWh/gün (Σ(f−y) günlük ortalaması); PICP80 (y ∈ [P10, P90] oranı), P(y<P10), P(y>P90), ortalama bant genişliği / kapasite,
@@ -31,9 +34,10 @@ from pvquant.services import kalite_sozlugu as _ks  # v2.598 (F4-C): flag süzge
 from pvquant.services import karne_kurali as kk
 from pvquant.zaman import PIYASA_TZ
 
-SOZLUK_SURUMU = "2026-11-10"
+SOZLUK_SURUMU = "2026-11-14"   # v2.610: bütünlük paydası astronomik gündüzü de sayar (F9-B01); önceki «2026-11-10»
 KURALLAR = ("program", "gun_oncesi", "gun_ici", "ufuk")
 GUNDUZ_ORAN = 0.02
+ACIK_GOK_GUNDUZ_WM2 = GUNDUZ_ORAN * 1000.0   # astronomik gündüz eşiği (saat ortası açık gök GHI, W/m²)
 ASGARI_SAAT = 3                 # bir kesitte metrik için en az gündüz saati
 PAYDA_ASGARI_ORAN = 0.01        # WMAPE paydası < oran × kapasite × n_saat ise «hesaplanamaz»
 PERSISTANS_KELEPCE = 4.0
@@ -73,6 +77,8 @@ def kosu_sec(tahmin: pd.DataFrame, kural: str, tz: str, simulasyon: bool = False
     d = tahmin.copy()
     if simulasyon:
         d["model"] = "simulasyon"; d["meteo_source"] = "simulasyon"   # dışlama süzgeci bu etiketleri tanımaz → dâhil
+        if "etiket" in d.columns:   # Faz 9 F9-A03: geriye bakışlı etiketli (backtest/simulasyon/…) koşu da simülasyonda açıkça dâhil; gun_ici/elle anlamı korunur
+            d.loc[d["etiket"].isin(kk.GERIYE_BAKISLI_ETIKET), "etiket"] = kk.ETIKET_YAYIN
     d["ts_utc"] = pd.to_datetime(d["ts_utc"], utc=True); d["run_at"] = pd.to_datetime(d["run_at"], utc=True)
     if kural == "program":
         return kk.program_kovasi(d)
@@ -293,11 +299,30 @@ def referanslar(e: pd.DataFrame, kapasite: float, gecmis: pd.Series | None, done
 
 
 # ---------------------------------------------------------------- bütünlük ve meta
-def butunluk(d: pd.DataFrame, e: pd.DataFrame, dokum: dict, kapasite: float) -> dict:
-    gunduz = d[gunduz_maskesi(d, kapasite)]
+def astronomik_gunduz(d: pd.DataFrame, lat: float, lon: float) -> pd.Series:
+    """Saat (aralık başı damgası) ortasında açık gök GHI ≥ ACIK_GOK_GUNDUZ_WM2 → True. Veriden bağımsız (tahmin/ölçüm olmasa da bilinir)."""
+    if d.empty:
+        return pd.Series(False, index=d.index)
+    orta = pd.DatetimeIndex(pd.to_datetime(d["ts_utc"], utc=True)) + pd.Timedelta(minutes=30)
+    cs = _acik_gok(orta, lat, lon)
+    return pd.Series(np.asarray(cs, dtype=float) >= ACIK_GOK_GUNDUZ_WM2, index=d.index)
+
+
+def butunluk(d: pd.DataFrame, e: pd.DataFrame, dokum: dict, kapasite: float, konum: tuple[float, float] | None = None) -> dict:
+    """Bütünlük dökümü. `konum` (lat, lon) verilirse payda astronomik gündüzde geçerli ölçümü olmayan saatleri de sayar (F9-B01);
+    verilmezse eski davranış (yalnız gözlenen maske) — ve `payda_kurali` bunu söyler."""
+    gozlenen = gunduz_maskesi(d, kapasite)
+    if konum is not None and not d.empty:
+        ek = astronomik_gunduz(d, float(konum[0]), float(konum[1])) & d["y"].isna() & ~gozlenen
+        kural = "gözlenen gündüz ∪ (astronomik gündüz ∧ geçerli ölçüm yok)"
+    else:
+        ek = pd.Series(False, index=d.index)
+        kural = "gözlenen gündüz (konum yok — eksik veri saatleri paydaya giremez)"
+    gunduz = d[gozlenen | ek]
     dis = gunduz[gunduz["y"].isna() | gunduz["p50_kw"].isna()]
     neden = dis["neden"].where(dis["y"].isna(), "tahmin_yok").value_counts().to_dict()
-    return {"olcum": dokum, "gunduz_saat": int(len(gunduz)), "degerlendirilen_saat": int(len(e)),
+    return {"olcum": dokum, "gunduz_saat": int(len(gunduz)), "gunduz_saat_gozlenen": int(gozlenen.sum()),
+            "gunduz_saat_veri_yok_eklenen": int(ek.sum()), "payda_kurali": kural, "degerlendirilen_saat": int(len(e)),
             "degerlendirilen_pct": _r(len(e) / len(gunduz) * 100, 1) if len(gunduz) else None,
             "gunduz_dislanan": {str(k): int(v) for k, v in sorted(neden.items(), key=lambda kv: -kv[1])},
             "kirpma_saat_degerlendirilen": int(e["kirpma"].fillna(False).astype(bool).sum()) if "kirpma" in e else 0,
@@ -350,7 +375,7 @@ def hesapla_saf(tahmin: pd.DataFrame, saatler: pd.DataFrame, dokum: dict, plant:
         kes["ufuk"] = kesitler(e_tum, kap).get("ufuk", [])
     return {"metrik": m, "kesit": kes,
             "referans": referanslar(e, kap, gecmis, donem_bas, float(plant["lat"]), float(plant["lon"]), m.get("wmape")) if len(e) >= ASGARI_SAAT else {},
-            "butunluk": butunluk(d, e, dokum, kap), "meta": {**meta(d, e, kural, kaynak, kap, plant, donem_bas, donem_bit, kosular), "simulasyon": bool(simulasyon)}}
+            "butunluk": butunluk(d, e, dokum, kap, konum=(float(plant["lat"]), float(plant["lon"]))), "meta": {**meta(d, e, kural, kaynak, kap, plant, donem_bas, donem_bit, kosular), "simulasyon": bool(simulasyon)}}
 
 
 # ---------------------------------------------------------------- DB
@@ -441,6 +466,27 @@ def son(tenant_id, plant_id, kural: str = "program", gun: int = 30, azami_yas_sa
             "metrik": r["metrik_json"], "kesit": r["kesit_json"], "referans": r["referans_json"], "butunluk": r["butunluk_json"], "meta": r["meta_json"], "kayitli": True}
 
 
+HAVUZ_KURALI = "santral-saat havuzu; nMAE/nRMSE/nMBE/bant genişliği her santralın kendi kWp'sine göre (F9-A04); WMAPE/MAE/RMSE/MBE ham havuz"
+
+
+def havuz_metrikleri(e: pd.DataFrame, kap: float) -> dict:
+    """Faz 9 F9-A04 (15.11.2026): portföy havuzu santral-SAAT satırlarıdır; kapasiteye bölünen ölçütler (nMAE, nRMSE, nMBE, bant genişliği)
+    toplam kWp ile N kat küçülüyordu. `_kap` sütunu varsa her satır kendi santralının kWp'sine göre ortak referansa (toplam kWp) ölçeklenir
+    → santral-saat başına doğru normalize ölçüt (iki özdeş santral = tek santral). WMAPE / MAE / RMSE / MBE ham havuzdan (ölçekleme bunları
+    çarpıtır). Günlük kesit ham havuzla kalır."""
+    m = metrikler(e, kap)
+    if "_kap" not in e.columns or not len(e):
+        return m
+    en = e.copy(); olcek = float(kap) / en["_kap"].astype(float)
+    for c in ("y", "p50_kw", "p10_kw", "p90_kw", "physics_kw"):
+        if c in en.columns:
+            en[c] = en[c].astype(float) * olcek
+    mn = metrikler(en, kap)
+    m.update({k: mn.get(k) for k in ("nmae", "nrmse", "nmbe", "bant_genisligi_oran")})
+    m["havuz_kurali"] = HAVUZ_KURALI
+    return m
+
+
 def portfoy(tenant_id, plants: list[dict], gun: int = 30, kural: str = "program", bugun: date | None = None) -> dict:
     """Saatlik havuzlanmış portföy: tüm santrallerin değerlendirilebilir saatleri tek havuzda; kapasite = toplam kWp."""
     from pvquant.services import olcum_uygunluk_service as ou
@@ -452,12 +498,12 @@ def portfoy(tenant_id, plants: list[dict], gun: int = 30, kural: str = "program"
             saatler, dokum = ou.saat_durumlari(tenant_id, p, bas, bit)
             tz = p.get("tz") or PIYASA_TZ
             e = degerlendirilebilir(eslestir(kosu_sec(tahmin, kural, tz), saatler, tz), float(p["capacity_kwp"]))
-            e = e.assign(_plant=str(p["id"]))
+            e = e.assign(_plant=str(p["id"]), _kap=float(p["capacity_kwp"]))
             parcalar.append(e); kap += float(p["capacity_kwp"])
             santral.append({"plant_id": str(p["id"]), "ad": p.get("name"), "n_saat": int(len(e)), "kapsama_pct": dokum.get("kapsama_pct")})
         except Exception as ex:   # noqa: BLE001 — bir santralın hatası portföyü düşürmez, kayda geçer
             santral.append({"plant_id": str(p["id"]), "ad": p.get("name"), "hata": f"{type(ex).__name__}: {ex}"})
     e = pd.concat(parcalar, ignore_index=True) if parcalar else pd.DataFrame(columns=["y", "p50_kw", "p10_kw", "p90_kw", "gun"])
-    m = metrikler(e, kap) if kap > 0 and len(e) else {"n_saat": 0, "wmape": None}
+    m = havuz_metrikleri(e, kap) if kap > 0 and len(e) else {"n_saat": 0, "wmape": None}
     return {"metrik": m, "kapasite_kwp": kap, "santraller": santral, "kural": kural, "gun": gun, "sozluk_surumu": SOZLUK_SURUMU,
             "kesit": {"gun": _kesit(e, kap, "gun")} if kap > 0 and len(e) >= ASGARI_SAAT else {"gun": []}}

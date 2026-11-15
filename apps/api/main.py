@@ -1009,6 +1009,8 @@ def _kgup_yaniti(tenant_id: str, plant_id: str, gun: str | None, kantil: str, fm
 @app.get("/v1/plants/{plant_id}/kgup")
 def kgup_dosyasi(plant_id: str, gun: str | None = None, kantil: str = "p50", fmt: str = "csv", claims=Depends(gecerli_kullanici)):
     """v2.260 — KGÜP saatlik program (D-1 15:30 öncesi koşudan). fmt=csv → TPYS CSV eki (arşive yazılır); fmt=json → önizleme."""
+    if fmt == "csv" and claims.get("temsil"):   # Faz 9 F9-E05: CSV indirme arşive yeni sürüm yazar — görüntüleme (temsil) oturumu salt okunur
+        raise HTTPException(403, "görüntüleme oturumu salt okunur")
     return _kgup_yaniti(claims["tenant_id"], plant_id, gun, kantil, fmt, indiren=claims.get("sub"))
 
 
@@ -2947,6 +2949,7 @@ def veri_yolu_nokta_tablosu(plant_id: str, dosya: UploadFile = File(...), claims
         tablo = iec104_nokta_service.csv_den(metin)
     except ValueError as e:
         raise HTTPException(422, str(e)) from e
+    from datetime import datetime, timezone   # Faz 9 F9-E09: ad tanımsızdı → başarılı yolda NameError/500
     plant_service.params_birlestir(claims["tenant_id"], plant_id, veri_yolu={**vy, "nokta_tablosu": tablo, "nokta_tablosu_kaynak": {"dosya": dosya.filename, "zaman": datetime.now(timezone.utc).isoformat(timespec="seconds"), "n": len(tablo)}})
     _denetim.kaydet("musteri", "veri_yolu_nokta_tablosu", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"], ayrinti={"n": len(tablo), "dosya": dosya.filename})
     return {"n": len(tablo), "alanlar": sorted({t["alan"] for t in tablo}), "tablo": tablo[:50]}
@@ -3335,7 +3338,27 @@ def kurulus_ayarlar_guncelle(a: KurulusAyar, request: Request, claims=Depends(yo
 
 @app.get("/v1/healthz")
 def healthz():
+    """Canlılık: süreç ayakta. Hazırlık (DB, worker nabzı) için /v1/readyz (Faz 9 F9-F01)."""
     return {"ok": True}
+
+
+@app.get("/v1/readyz")
+def readyz():
+    """Faz 9 F9-F01: hazırlık denetimi — DB `SELECT 1` ve worker nabız yaşı (dk). DB erişilemezse 503; nabız yalnız bilgidir (hüküm sistem-sagligi'nda)."""
+    import datetime as _dt
+
+    from sqlalchemy import text as _t
+
+    from pvquant import db as _db
+    from pvquant.services import sistem_service as _ss
+    try:
+        with _db.sistem_baglami() as s:
+            s.execute(_t("SELECT 1"))
+            z = s.execute(_t("SELECT zaman FROM sistem_nabiz WHERE bilesen = 'worker'")).scalar()
+    except Exception as e:  # hazır değil: ayrıntı günlüğe, dışarıya genel mesaj
+        print(f"[readyz] db erişilemiyor: {type(e).__name__}: {e}")
+        raise HTTPException(503, "hazır değil: veritabanı erişilemiyor") from None
+    return {"ok": True, "db": "ok", "worker_nabiz_dk": _ss._yas_dk(z, _dt.datetime.now(_dt.timezone.utc)) if z is not None else None}
 
 
 @app.get("/v1/report/json-schema", tags=["Dış API"])
