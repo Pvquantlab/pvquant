@@ -224,7 +224,7 @@
 },
 "dsg_esik": 0.05,
 "dsg_dayanak": "Karar 13869 (RG 18.10.2025-33051), 1.1.2026'dan %5 (grupta sayılan payın %5 alınması yorum)",
-"edt_dayanak": "DUY m.110(1)-(2) (RG 29.12.2025-33122 Md.17); Karar 14030 (k/l); Karar 14911 (V = 100; «yayımı takip eden fatura dönemi» → 1.11.2026 çıkarım, EPİAŞ uygulama duyurusu bulunamadı); EDTA/EDTB dönem bazlı max/min (RG 19.10.2026-33405 Md.22); AFL 4500: Karar 14459 (RG 3.4.2026-33213 s.47)",
+"edt_dayanak": "DUY m.110(1)-(2) (RG 29.12.2025-33122 Md.17); Karar 14030 (k/l); Karar 14911 (V = 100; «yayımı takip eden fatura dönemi» → 1.11.2026 çıkarım, EPİAŞ uygulama duyurusu bulunamadı); EPİAŞ günlük bülteni 01.11.2026 12:00 P(+) = 94,00 = 100·(1−0,06) — V = 100 ile tutarlı; ikinci bağımsız kaynak (müşteri Kasım bildirimi) beklenir (T-05, AK-0015); EDTA/EDTB dönem bazlı max/min (RG 19.10.2026-33405 Md.22); AFL 4500: Karar 14459 (RG 3.4.2026-33213 s.47)",
 "belirsiz_2027": false,
 "dogrulama": "dogrulama_gerekli",
 "dogrulama_notu": "EDT: yayımı takip eden fatura dönemi» → 1.11.2026 çıkarım, EPİAŞ uygulama duyurusu bulunamadı"
@@ -262,7 +262,7 @@
 },
 "dsg_esik": 0.05,
 "dsg_dayanak": "Karar 13869 yürürlükte (süre sınırı yok, %5); DUY m.111(5) uyarınca yıllık düşürme kararı en geç 1.12.2026'da alınır, RG yayımı Aralık sonuna sarkabilir; yön riski aşağı — %5 VARSAYILDI",
-"edt_dayanak": "DUY m.110(1)-(2) (RG 29.12.2025-33122 Md.17); Karar 14030 (k/l); Karar 14911 (V = 100; «yayımı takip eden fatura dönemi» → 1.11.2026 çıkarım, EPİAŞ uygulama duyurusu bulunamadı); EDTA/EDTB dönem bazlı max/min (RG 19.10.2026-33405 Md.22); AFL 4500: Karar 14459 (RG 3.4.2026-33213 s.47)",
+"edt_dayanak": "DUY m.110(1)-(2) (RG 29.12.2025-33122 Md.17); Karar 14030 (k/l); Karar 14911 (V = 100; «yayımı takip eden fatura dönemi» → 1.11.2026 çıkarım, EPİAŞ uygulama duyurusu bulunamadı); EPİAŞ günlük bülteni 01.11.2026 12:00 P(+) = 94,00 = 100·(1−0,06) — V = 100 ile tutarlı; ikinci bağımsız kaynak (müşteri Kasım bildirimi) beklenir (T-05, AK-0015); EDTA/EDTB dönem bazlı max/min (RG 19.10.2026-33405 Md.22); AFL 4500: Karar 14459 (RG 3.4.2026-33213 s.47)",
 "belirsiz_2027": true,
 "dogrulama": "belirsiz",
 "dogrulama_notu": "1.1.2027 sonrası uygulama ayrıntıları henüz belirsiz (DUY m.110); varsayılan: 2026 rejimi sürer; EDT: yayımı takip eden fatura dönemi» → 1.11.2026 çıkarım, EPİAŞ uygulama duyurusu bulunamadı"

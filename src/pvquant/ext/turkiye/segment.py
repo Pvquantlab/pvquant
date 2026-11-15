@@ -1,6 +1,6 @@
 """Segmentasyon — santral tipine göre dengesizlik sorumluluğu, KGÜP yükümlülüğü ve gelir formülü.
 
-Segmentler (kaynak: DUY m.69, m.110–111 (RG 14.04.2009-27200; son değişiklik RG 19.10.2026-33405); LÜY (RG 12.05.2019-30772; değişiklik RG 02.04.2026-33212);
+Segmentler (kaynak: DUY m.69, m.110–111 (RG 14.04.2009-27200; son değişiklik RG 19.10.2026-33405); LÜY (RG 12.05.2019-30772; değişiklikler RG 02.04.2026-33212, RG 19.10.2026-33405 — m.21/8, m.28/4, Ek m.4, Geçici 14; B-07);
 5346 sayılı Kanun (RG 18.05.2005-25819) ve YEK Yön. (RG 01.10.2013-28782); CK 7189 (RG 01.05.2023-32177) / CK 2949 (RG 18.09.2020-31248) / CK 11415
 (RG 13.06.2026-33279) — tam künyeler kunye.py; v2.535):
   LISANSLI_SERBEST      : gelir = üretim·PTF (ikili anlaşma varsa sözleşme fiyatı); dengesizlik + KÜPST santralde (ya da DSG'de)
@@ -14,7 +14,7 @@ Segmentler (kaynak: DUY m.69, m.110–111 (RG 14.04.2009-27200; son değişiklik
                           KÜPST santral bazında hesaplanır (Karar 14907 m.2(1)(c): 0,02; m.3(1)(d) tolerans 0,20; 1.11.2026)
   LISANSSIZ_DAGITIM     : santral sahibi KGÜP bildirmez, KGÜP GTŞ/toplayıcı UEVÇB'sinden (DUY m.69(11)); KÜPST portföy UEVÇB'sinde 1.11.2026'dan
                           (Karar 14907); ihtiyaç fazlasını GTŞ/toplayıcı alır (10 yıl, sonrası CK 11415); EDT/KÜPST santralde değil — talimat tutarları
-                          (DUY m.75(3)) ve LÜY Ek m.4 tahsilatı yansıtılabilir
+                          (DUY m.75(3)) ve LÜY Ek m.4 tahsilatı yansıtılabilir; mahsuplaşma DUY m.132/Ç(18) (1.1.2026; B-07, AK-0005)
   OZ_TUKETIM_SAATLIK    : 1 Mayıs 2026 saatlik mahsuplaşma (LÜY m.4(1)(ö), RG 02.04.2026-33212; mesken aylık m.26(20)): saatlik net = üretim − tüketim;
                           model fazlayı GTŞ fiyatıyla, eksiği tarifeyle değerler — (ç)/(d) bendi tesislerinde fazlaya ödeme yok (m.26(5)), modellenmedi; fiilî uygulama teyitsiz.
                           v2.538 KAPSAM SINIRI (EK-3 DK-662/DK-668/DK-696, kanıt A): LÜY m.26(17) iki kat sınırı (12.5.2019 ve sonrası çağrı mektuplu

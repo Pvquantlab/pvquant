@@ -9,7 +9,7 @@ Kurul kararıyla belirlenen her katsayı (k, l, KÜPST n/tolerans, YEKDEM içi p
 | KGÜP/DUY dengesizlik simülasyonu | `dengesizlik` | Saatlik DUY formülü (pozitif/negatif), KÜPST, referans-gelire göre maliyet, aylık karne (TL, gelir oranı, TL/MWh), iki program kıyası ("kurtarılan TL"), DSG netleşme, teminat, SMF spread senaryosu, optimal teklif kantili (newsvendor) |
 | YEKDEM / serbest segmentasyon | `segment` | 6 segment (lisanslı serbest/YEKDEM/YEKA, iletim-lisanssız, dağıtım-lisanssız, öz-tüketim saatlik mahsup): KGÜP yükümlülüğü, dengesizlik sahibi, gelir formülü; saatlik gelir; dengesizliğin santrale düşen payı |
 | EPİAŞ Şeffaflık entegrasyonu | `epias` | TGT (önbellekli), 12 uç nokta, 429/401 yeniden deneme, İstanbul→UTC hizalama, gün-bazlı CSV önbellek, `fiyat_paketi` (PTF/SMF/yön), gerçekleşen üretim → SCADA sözleşmesi adaptörü, ağsız test için sahte taşıyıcı |
-| KGÜP bildirim dosyası | `kgup` | 24 saatlik program (KGÜP ≤ EAK ≤ kurulu güç), ≥200 MWh sıçramada 15 dk dilimleme, TPYS CSV (kolonlar parametrik — resmi şablon teyit edilemedi), 14:00–15:30 teslim durumu, GİP+30 dk revizyon penceresi, doğrulama |
+| KGÜP bildirim dosyası | `kgup` | 24 saatlik program (KGÜP ≤ EAK ≤ kurulu güç), ≥200 MWh sıçramada 15 dk dilimleme, TPYS CSV (sütun yapısı KGUP.csv ile aynı; ondalık ayraç ve TPYS kabulü doğrulanmadı — kolonlar parametrik; B-01), 14:00–15:30 teslim durumu, GİP+30 dk revizyon penceresi, doğrulama |
 
 ## Kurulum ve test
 ```bash

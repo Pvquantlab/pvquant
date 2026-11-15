@@ -88,6 +88,9 @@ class Istemci:
 
     def ham(self, ad: str, baslangic: str, bitis: str, **ek) -> list[dict]:
         yol, _ = UC[ad]
+        if ad == "yek_dengesizlik" and str(baslangic) > "2016-04-30":   # T-55 (AK-1340, AK-0054): uç yalnız ≤30.04.2016 verisi döndürür
+            raise ValueError("EPİAŞ yek_dengesizlik: uç 30.04.2016 sonrası veri vermez (RG 29.04.2016-29698 Md.16; Karar 14968 EK'te karşılığı yok) — istek atılmadı; "
+                             "YEKDEM dengesizliği katılımcının EPYS bildiriminden alınır")
         ek = {**VARSAYILAN_EK.get(ad, {}), **ek}
         eksik = [z for z in UC_ZORUNLU.get(ad, ()) if z not in ek]
         if eksik:

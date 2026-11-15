@@ -439,9 +439,9 @@ def load_csv(
 def load_fusionsolar_csv(path: str | Path, plant_name: str | None = None) -> SCADAData:
     """FusionSolar (Huawei) export CSV okuyucusu.
 
-    FusionSolar genelde Türkçe yerel ayarlarla virgül ondalık kullanır,
-    fakat dosyalar sistemden sisteme değişebilir. Bu wrapper genel
-    `load_csv`'yi çağırır; özel format farkları çıkarsa burada handle edilir.
+    FusionSolar dışa aktarımlarında ondalık ayraç dosyadan dosyaya değişir (nokta ya da virgül);
+    bu sarmalayıcı ayraç varsayımı yapmaz, `decimal` parametresi belirler (T-57, AK-0413: eski docstring
+    «virgül ondalık» diyordu, kodla çelişiyordu). Genel `load_csv`'yi çağırır; özel format farkları çıkarsa burada ele alınır.
 
     Args:
         path: CSV dosya yolu.

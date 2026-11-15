@@ -143,7 +143,11 @@ def emre_amadelik(kabul_tarihi, bugun: date | None = None) -> dict:
     if kt is None:
         return {**taban, "oran": None, "yil": None, "gecis_tarihi": None, "not": "Depolama kabul tarihi girilmedi; geçerli eşik bilinmiyor."}
     gecis = yil_ekle(kt, EMRE_AMADE_ILK_YIL)
-    yil = (bugun - kt).days // 365 + 1 if bugun >= kt else 0
+    yil = 0
+    if bugun >= kt:                                   # T-53 (AK-0792; DUY m.81/A(2)(b)): takvim yılı sayacı — 365 bölmesi 2029'da bir yıl sapıyordu
+        yil = 1
+        while yil_ekle(kt, yil) <= bugun:
+            yil += 1
     oran = EMRE_AMADE_ORAN_ILK if bugun < gecis else EMRE_AMADE_ORAN_SONRA
     return {**taban, "oran": oran, "yil": yil, "gecis_tarihi": gecis.isoformat(),
             "not": (f"Kabulden bu yana {yil}. yıl; %{int(oran * 100)} eşiği geçerli" + (f", %80'e geçiş {gecis.strftime('%d.%m.%Y')}" if oran == EMRE_AMADE_ORAN_ILK else "") + ".")}

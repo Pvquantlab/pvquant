@@ -11,7 +11,7 @@ Birincil kaynak: DUY (mevzuat.gov.tr PDF, son değişiklik RG 29/12/2025-33122) 
 
 ## (b) Dengesizlik
 - EDM = (veriş−çekiş) − ikili anlaşma − GÖP/GİP/VEP ± YAL/YAT (md. 111). Pozitif: min(PTF,SMF)×(1−l); negatif: max(PTF,SMF)×(1+k); k,l Kurul kararı 0–1. %3 = EPDK 01.05.2015 kurul kararı (ikincil kaynak) — 2026'da geçerliliği BİRİNCİL KAYNAKLA TEYİT EDİLEMEDİ; değiştiren karara rastlanmadı.
-- Değişiklikler: RG 17/12/2024, 21/1/2025, 29/12/2025. md. 110(1)-(2) yeniden yazıldı: azami fiyat limiti, 15 dk SMF_N/SMF_P (2027 hazırlığı); V=150, B=100 TL/MWh birim fiyatlar.
+- Değişiklikler: RG 17/12/2024, 21/1/2025, 29/12/2025. md. 110(1)-(2) yeniden yazıldı: azami fiyat limiti, 15 dk SMF_N/SMF_P (2027 hazırlığı); V=150 (1.1.2026; 1.11.2026'dan 100 — Karar 14911, RG 19.10.2026-33405; B-02), B=100 TL/MWh birim fiyatlar.
 - KÜPST (KGÜP'ten sapma tutarı, md. 110(3)-(6)): KGÜP bildirmekle yükümlü UEVÇB'ler için ayrı sapma tutarı; katsayı n ve tolerans katsayısı Kurul kararıyla; toplayıcı portföyünde topluluk veya münferit.
 - YEKDEM: DUY'da ayrı dengesizlik havuzu hükmü yok; YEKDEM Yön. metni çekilemedi → TEYİT EDİLEMEDİ.
 - Lisanssız: LÜY'de 'dengesizlik' hiç geçmiyor; ihtiyaç fazlası GTŞ satın alır; dağıtım bağlı lisanssızın doğrudan dengesizlik sorumluluğu YOK (GTŞ/toplayıcı taşır). İstisna: iletim bağlı lisanssız KGÜP; toplayıcı portföyünde KÜPST. RG 25/11/2025-33088.

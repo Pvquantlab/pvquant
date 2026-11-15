@@ -30,7 +30,8 @@ CO2_T_MWH = 0.438          # Türkiye geneli elektrik üretimi emisyon faktörü
 CO2_KAYNAK_KISA = "ETKB üretim emisyon faktörü 2022, şebeke ortalaması; yaklaşım"
 CO2_KAYNAK = ("ETKB EVÇED «Türkiye Elektrik Üretimi ve Elektrik Tüketim Noktası Emisyon Faktörleri Bilgi Formu» (ETKB-EVÇED-FRM-042 Rev.01; hesaplama dönemi 2022, "
               "yayım 06.12.2024): Türkiye geneli elektrik üretimi emisyon faktörü 0,438 tCO₂/MWh (0,442 tCO₂-eşd./MWh). Kaçınılan emisyon şebeke ortalamasıyla "
-              "hesaplanır; marjinal santral yaklaşımı değildir, yıl ve karma değiştikçe güncellenir.")
+              "hesaplanır; marjinal santral yaklaşımı değildir, yıl ve karma değiştikçe güncellenir. Kaçınılan CO₂ bir karbon kredisi/sertifika (I-REC, Gold Standard vb.) değeri değildir; "
+              "raporlama göstergesidir (B-12, AK-0790).")
 
 def build_excel(ctx) -> bytes:
     buf = BytesIO()

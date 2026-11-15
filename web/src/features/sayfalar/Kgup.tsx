@@ -175,7 +175,7 @@ export function Kgup({ plantId }: { plantId: string }) {
               <p>
                 {kgup.gip && `${kgup.gip.kural} Örnek: ${kgup.gip.ornek_teslimat} teslimatı için kapı ${kgup.gip.ornek_kapi}, revizyon son ${kgup.gip.ornek_revizyon_son}. `}
                 Program, teslim saatinden (bir gün önce 15:30) önce verilmiş son tahminin saatlik beklenen (P50) değeridir; program ≤ verilebilecek en yüksek güç (EAK) ≤ kurulu güç
-                kuralı uygulanır. KGÜP dosyası TPYS şablonuyla (KGUP.csv) birebirdir, «Bildirim dosyası biçimi» alanından kendi dosyanızla değiştirilebilir; EAK ayrı dosyadır (TPYS EAK.csv, bildirim 09:00–15:30). Dosya bir öneridir, bildirim TPYS'de yapılır.
+                kuralı uygulanır. KGÜP dosyasının sütun yapısı TPYS KGUP.csv ile aynıdır; ondalık ayraç ve TPYS kabulü doğrulanmadı, «Bildirim dosyası biçimi» alanından kendi dosyanızla değiştirilebilir; EAK ayrı dosyadır (TPYS EAK.csv, bildirim 09:00–15:30). Dosya bir öneridir, bildirim TPYS'de yapılır.
               </p>
             </details>
           </>

@@ -776,7 +776,8 @@ def dsg_hesapla_df(programlar: dict[str, pd.DataFrame], fiyat: pd.DataFrame, kat
             "edt_tek_tl": round(float(sa["edt_tek"].sum()), 0), "edt_dsg_tl": round(float(sa["edt_dsg"].sum()), 0),
             "edt_grup_tl": round(float(sa["edt_grup"].sum()), 0), "edt_bireysel_tl": round(float(sa["edt_bireysel"].sum()), 0),
             "netlesme_farki_tl": round(float(sa["netlesme_farki"].sum()), 0), "kupst_uye_tl": (round(kupst, 0) if kupst is not None else None),
-            "esik": (float(sa["esik"].iloc[-1]) if pd.notna(sa["esik"].iloc[-1]) else None), "esik_kaynak": r["esik_kaynak"],   # None → eşik yok (1.1.2025 öncesi) "kural_surumu": " | ".join(sorted(set(sa["kural_surumu"]))),
+            "esik": (float(sa["esik"].iloc[-1]) if pd.notna(sa["esik"].iloc[-1]) else None), "esik_kaynak": r["esik_kaynak"],   # None → eşik yok (1.1.2025 öncesi)
+            "kural_surumu": " | ".join(sorted(set(sa["kural_surumu"].astype(str)))),   # T-25 (AK-0205): anahtar yorum satırında kalmıştı
             "gecici_m39": kr.gecici_m39_notu(pd.Timestamp(idx[-1]).tz_convert(IST).date()),   # v2.513: dağıtım/GTŞ DSG'lerinde %100 (1.1.2027'ye kadar)
             "dagitim_anahtari": r["dagitim_anahtari"], "dagitim_etiket": d.DAGITIM_ETIKET[r["dagitim_anahtari"]],
             "hesaplanamayan_saat": int((sa["durum"] != "ok").sum()), "disi": r["disi"], "gosterge": False,

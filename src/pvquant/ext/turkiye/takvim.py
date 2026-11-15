@@ -141,11 +141,11 @@ def donem_takvimi(yil: int, ay: int) -> list[dict]:
               kapsam=UZLASTIRMA_TARAFI, donem=donem, islem="takip", sorumlu="EPİAŞ"),
         _olay("itiraz_son", "Ön bildirime itiraz ve sayaç verisi düzeltme son anı", itiraz, saat="17:30",
               kaynak="DUY m.132/B(1); m.82(4): ayın 12'si 17:30; itiraz sayaç okuyan kurum / yardim.epias.com.tr üzerinden",
-              kaynak_turu="mevzuat", kaydirma="belirsiz", kapsam=UZLASTIRMA_TARAFI, donem=donem, islem="islem", sorumlu="santral",
+              kaynak_turu="mevzuat", kaydirma="yok", kapsam=UZLASTIRMA_TARAFI, donem=donem, islem="islem", sorumlu="santral",   # T-42 (AK-0040 B1): metinde kaydırma yok
               sonuc="Bu andan sonra gelen sayaç düzeltmesi ve itiraz o ayın uzlaştırmasına girmez (DUY m.82(4), m.132/B(1)); sonrası 60 günlük fatura itirazı (m.133)",
               sonuc_kisa="Düzeltme o aya girmez (m.82(4))",
-              not_=("Hafta sonuna denk geliyor; metinde kaydırma kuralı yok. EPİAŞ geçmiş dönemlerde 12'si 17:30'u kaydırmadan uyguladı "
-                    "(12.07.2025 Cumartesi, 12.04.2026 Pazar); o ayın duyurusuna bakın.") if itiraz.weekday() >= 5 else None),
+              not_=("Hafta sonuna denk geliyor; DUY m.132/B(1) ve m.82(4) metninde kaydırma yok. EPİAŞ 12.07.2025, 12.04.2026, 12.07.2026 ve 12.09.2026 dönemlerinde "
+                    "12'si 17:30'u kaydırmadan uyguladı (T-42, AK-0040); o ayın duyurusuna bakın.") if itiraz.weekday() >= 5 else None),
         _olay("itiraz_sonuc", "EPİAŞ itirazları sonuçlandırır", g(14), saat="16:00",
               kaynak="DUY m.132/B(1): ayın 14'ü 16:00", kaynak_turu="mevzuat", kaydirma="belirsiz", kapsam=UZLASTIRMA_TARAFI, donem=donem, islem="takip", sorumlu="EPİAŞ"),
         _olay("nihai_bildirim", "Nihai uzlaştırma bildirimi = fatura tebliği", nihai,
@@ -264,7 +264,7 @@ def sabit_tarihler(bugun: date) -> list[dict]:
               not_="Yükümlülük DUY m.75(4) kapsamındaki (GTŞ/toplayıcı portföyündeki) lisanssız üreticiler içindir; hangi anlaşmalar için zorunlu olduğu doğrulanmadı; "
                    "yayım günü sayılırsa temkinli son gün 17.12.2026. Dağıtım şirketinizin duyurusuna bakın."),
         _olay("m110_2027", "DUY m.110 yeni rejim (15 dk DGP, tek k/l, «ç» bazlı KÜPSM) — uygulama belirsiz", date(2027, 1, 1),
-              kaynak="RG 21.1.2025-32789 Md.13, Md.20(b); 31.10.2026'ya kadar yeni Kurul kararı yok", kaynak_turu="mevzuat",   # 08-01
+              kaynak="RG 21.1.2025-32789 Md.13, Md.20(b); Karar 14907 Geçici m.1 (RG 19.10.2026-33405); 14.11.2026'ya kadar tek k/l ve «ç» bazlı KÜPSM kararı yok", kaynak_turu="mevzuat",   # 08-01; T-06 (AK-0018/0073)
               kapsam=HEPSI, islem="mevzuat", sorumlu="Kurul", not_="Yürürlük tarihi yazılı; uygulama ayrıntıları (DGP 15 dk, tek k/l, «ç» bazlı KÜPSM) Kurul kararı çıkana kadar belirsiz. Hesap yürürlükteki kuralla. "
                                                                  "Aynı değişikliğin Md.5'i ile 1.1.2027'den DUY m.50(2): frekans kontrol rezervi tedariki gecikirse GÖP süreçleri ötelenebilir; KGÜP penceresi daralabilir."),
         _olay("gecici_m39_bitis", "DUY Geçici m.39 sona erer: dağıtım ve GTŞ DSG'lerinde %100 üye eşiği biter, genel eşik uygulanır", date(2027, 1, 1),

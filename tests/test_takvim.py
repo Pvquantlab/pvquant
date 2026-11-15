@@ -33,10 +33,10 @@ def test_ekim_2026_donemi_02_01_ile_birebir():
     assert _k(o, "itiraz_60")["tarih"] == "2027-01-15"
 
 
-def test_kasim_2026_donemi_cumartesi_itiraz_belirsiz():
+def test_kasim_2026_donemi_cumartesi_itiraz_kaydirma_yok():
     o = tk.donem_takvimi(2026, 11)
     assert _k(o, "on_bildirim")["tarih"] == "2026-12-11"
-    i = _k(o, "itiraz_son"); assert i["tarih"] == "2026-12-12" and i["hafta_sonu"] and i["kaydirma"] == "belirsiz" and i["not"]
+    i = _k(o, "itiraz_son"); assert i["tarih"] == "2026-12-12" and i["hafta_sonu"] and i["kaydirma"] == "yok" and i["not"]   # T-42 (AK-0040 B1): metinde kaydırma yok
     n = _k(o, "nihai_bildirim"); assert n["tarih"] == "2026-12-15" and n["kaynak_turu"] == "mevzuat"
     assert _k(o, "borc_odeme")["tarih"] == "2026-12-23"
     assert _k(o, "alacak_tahsil")["tarih"] == "2026-12-24"

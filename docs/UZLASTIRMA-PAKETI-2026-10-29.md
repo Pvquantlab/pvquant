@@ -1972,3 +1972,24 @@ G 3/3, H 4/4, I 2/2; kanit/: alt ajan raporları, tarayıcı bulguları, EPDK 20
 Dersler: saat etiketleri yalnız `date`/mtime/jsonl (üçüncü kez ileri tahmin yakalandı); V 150→100 maliyeti düşürür; motor kWp ile normalize eder; CLIPER ≥12 ay geçmiş
 ister; Pilot tohumunda rapor/mutabakat yok; haftalık RG rutini etkin (pazartesi 09:00 TSİ). Kalan kararlar: dış eylem izinleri (A segmenti 30.11 öncesi), canlı SQL çıktısı →
 eşik kalibrasyonu, pilot ücreti. Commit 18:07 TSİ.
+
+## v2.610 (15.11.2026): Açık Konular araştırmasının entegrasyonu — Kulvar A (12 öneri + 5 belge maddesi), hesap değişmedi
+
+**Ne:** `~/Desktop/PVQuant_Acik_Konular_Kapanis_2026-11/` araştırması (1.343 AK, T-01…T-59) koda tek tek eşlendi; doğrulanmış, düşük riskli Kulvar A uygulandı:
+T-04 `kurallar._gun` naif damga = UTC (parametre_cercevesi ile aynı sözleşme); T-08 `gip_ust_limit(tarih)` = AFL × (1 + min(k, l)) saf fonksiyon (ekrana bağlı değil);
+T-25 `dsg_hesapla_df` çıktısına `kural_surumu` (anahtar yorum satırında kalmıştı); T-29 LÜY istisna notu koşullu (istisna saati m = n = 0 ile sayılır; 1.11.2026 öncesi
+«uygulanabilir saat yok»); T-42 `itiraz_son` kaydırma «yok» + DUY m.132/B(1), m.82(4) ve dört EPİAŞ dönemi notu; T-53 depolama emre amadelik yıl sayacı takvim yılı
+(`yil_ekle`); T-55 `epias.ham` yek_dengesizlik 30.04.2016 sonrası istek atmaz (ValueError); T-05 V100 dayanağına EPİAŞ bülteni 01.11.2026 P(+) = 94,00 tutarlılık cümlesi
+(durum «çıkarım» korunur); T-06 2027 gerekçesi «hukuki dayanağı olmayan varsayım», kesim 14.11.2026; T-57 FusionSolar docstring; takvim m110_2027 kaynağına Karar 14907
+Geçici m.1. Belge: B-01 KGÜP sayfası + docs/ext/turkiye («sütun yapısı aynı; ondalık ve TPYS kabulü doğrulanmadı»), B-02 hat_B2 V dayanağı, B-03 EPIAS-ENTEGRASYON Karar
+10711 ↔ 14968 tablosu, B-07 segment.py LÜY künyesi RG 33405 + mahsup DUY 132/Ç(18), B-12 CO₂ «kredi/sertifika değeri değildir». Tasarım kipi fixture `sahte-kurallar.json`
+motordan yeniden üretildi (2 satır). Yeni `tests/test_entegrasyon_2026_11.py` (8 test; T-15 «<» sınırı koruma testi dahil). Geri alınan: B-13 takvim satırı
+(`test_takvim_v2535` DK-302/279 pini; olgu `docs/ticari-dogrulama` 02 §M16 / 13 §K-37'de).
+
+**Neden:** araştırma 59 öneri çıkardı; bunların 12'si kod okumasıyla doğrulanmış etiket/not/sözleşme düzeltmesi, kalan 47'si (Kulvar B 14, C 33) kullanıcı kararı ya da
+uzlaştırma çekirdeği değişikliği gerektiriyor ve uygulanmadı. Tutar veya katsayı değiştiren tek kalem yok.
+
+**Kanıt:** `~/Desktop/PVQuant_Acik_Konular_Entegrasyonu_2026-11-15/` (00–10 + izlenebilirlik.csv + kanit/). Taban hedefli 149 → 157; tam takım test DB sahip 1.396 geçti /
+1 skipped / 1 düşen, CI taklidi pvq_api 1.397 / 1 düşen — tek düşen fixture (`test_sahte_kural_tablosu_motorla_es`) yeniden üretimle yeşil (ilgili 163 test). Web tsc, npm
+test 117, vite build, oxlint 16 (= taban). İş/hesap sondası 9/9 (4635; 94 / 141 / −106). Yeni bulgular: YB-1 saatlik `kural_surumu` etiketi LÜY istisnasını taşımıyor
+(fiyat çerçevesi bayraksız kurulur; hesap doğru, etiket yanlış — Kulvar B); YB-2 B-13 pin çelişkisi.

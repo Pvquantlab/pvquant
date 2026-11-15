@@ -176,6 +176,14 @@ def v_degeri(tarih: date) -> float | None:
     return float(k.deger) if k is not None else None     # 2026 öncesi V yok; Karar 14911 ile 1.11.2026'dan 100
 
 
+def gip_ust_limit(tarih) -> float:
+    """SAF (T-08, AK-0020): GİP fiyat üst limiti = AFL × (1 + min(k, l)) — DUY m.66/C(6) (RG 19.10.2026-33405 Md.6).
+    Yalnız açıklama/uyarı içindir; PVQuant teklif vermez. 2027'de k/l değişirse değer de değişir (sicilden okur)."""
+    t = _gun(tarih); e = edt_kurali(t)
+    def _v(x): return [float(v) for v in x.values()] if isinstance(x, dict) else [float(x)]
+    return round(afl(t) * (1 + min(_v(e.k) + _v(e.l))), 2)
+
+
 def edt_kurali(tarih: date) -> EdtKurali:
     """v2.600 (F4-F): rejim, k/l, V, B, toplama ve dayanak parçaları kural sicilinden; çıktı (değer ve dayanak metni) v2.535 ile birebir."""
     r = _sicil.ara("edt.rejim", tarih) or _sicil.kayitlar("edt.rejim")[0]
@@ -257,8 +265,8 @@ def _gun(tarih) -> date:
     if isinstance(tarih, date) and not isinstance(tarih, pd.Timestamp):
         return tarih
     ts = pd.Timestamp(tarih)
-    if ts.tz is not None:
-        ts = ts.tz_convert(IST)
+    # T-04 (AK-0247): naif damga UTC sayılır — parametre_cercevesi ile aynı sözleşme (pvquant.zaman)
+    ts = ts.tz_convert(IST) if ts.tz is not None else ts.tz_localize("UTC").tz_convert(IST)
     return ts.date()
 
 

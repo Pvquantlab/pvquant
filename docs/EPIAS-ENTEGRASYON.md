@@ -50,3 +50,27 @@ Karar 14968 (RG 20.10.2026-33406): Şeffaflık veri listesi 1.1.2027'den değiş
 - Yapılan: ölü ikinci istemci `ext/kaynak/epias.SeffaflikIstemci` kaldırıldı (eski formül fonksiyonu guard'lı kaldı); gün önbelleği üretimde açık ve
   düzeltme penceresiyle; tarih aralıkları piyasa günü; bu belge.
 - Yapılmayan: yeni uç eklenmedi; Şeffaflık belgesi doğrulaması (erişim); `eptr2` değerlendirmesi; EPYS/TPYS yazma (ilke gereği yok).
+
+## Şeffaflık veri listesi: Karar 10711 (6.1.2022–31.12.2026) ↔ Karar 14968 (1.1.2027'den) — B-03 (AK-0054, AK-1340; kaynak: Açık Konular Kapanışı 05 §29, 07 §2)
+
+Karar 14968 (15.10.2026; RG 20.10.2026-33406; 151 satır) 1.1.2027'den 10711'i kaldırır. PVQuant'ın kullandığı/çağırabildiği uçların karşılıkları (# = karar ekindeki sıra):
+
+| UC adı (`epias.UC`) | İçerik | 10711 # | 14968 # (1.1.2027) | Not |
+|---|---|---|---|---|
+| smf | sistem marjinal fiyatı | — | 31 (TEİAŞ, saatlik) | 15 dk SMF satırı YOK → SMF_N/SMF_P çeyrek kaynağı yok (2027 belirsizliği iv) |
+| sistem_yonu | sistem yönü | — | 32 (TEİAŞ, saatlik) | metin → `yon_normalize` |
+| dengesizlik_miktar / dengesizlik_tutar | piyasa toplamı dengesizlik | — | 52 / 53 (saatlik, A+1) | UC var, çağrılmıyor; santral değeri değil |
+| (yok) DSG dengesizlik miktarı | `imbalance/data/dsg-imbalance-quantity` | 8–10 (saatlik + aylık) | 54 (yalnız aylık) | **saatlik DSG satırı 2027'de kalkıyor** |
+| kgup_ilk / kgup | KGÜP ilk sürüm / nihai | 13 (G-1) | 61 / 62 (TEİAŞ, saatlik, G-1) | UC var, çağrılmıyor |
+| (yok) EAK / KUDÜP | | 11–12 / 14 | 64 / 65 | — |
+| gercek_zamanli_uretim | kaynak ve santral bazında saatlik üretim | 15 (G+1) | 66 (TEİAŞ, saatlik, G) | kullanılıyor; UEVM değildir |
+| (yok) UEVM / UEÇM | uzlaştırmaya esas veriş/çekiş | 104 | 67 / 73 (saatlik, A+1) | — |
+| (yok) YEKDEM UEVM, LÜ miktarı, LÜY bedeli, birim maliyet | | 111, 21 | 82 / 83 / 84 / 85 | 85 sürümlü |
+| (yok) YEKDEM kurulu güç | | 112 | 86 (aylık) | — |
+| yek_dengesizlik (ESKİ) | `renewables/data/imbalance-cost` | — | — (karşılığı yok) | yalnız ≤30.04.2016 verisi; **30.04.2016 sonrası istek atılmaz (T-55)**; YEKBED / YG / YEKTOB 14968 #87 / #88 / #89 (10711 #20, #114, #113) |
+| (yok) YEKDEM katılımcı listesi | | — | 90 (EPDK, yıllık) | — |
+| (yok) kısıt maliyeti | | 34 (saatlik) | 93 (TEİAŞ, günlük, G+1) | — |
+| ptf | gün öncesi fiyat | — | (bu tabloda numarası doğrulanmadı; 07 raporu) | kullanılıyor |
+
+Okuma: PVQuant'ın hesap için kullandığı uçlar (ptf, smf, sistem_yonu, gercek_zamanli_uretim, kgup) 14968'de karşılığını koruyor; yayım zamanları değişebilir (AK-0054).
+Santral bazlı talimat (YAL/YAT) satırı her iki kararda da yok (AK-0648) → talimat verisi EPYS'ten (müşteri) gelir.

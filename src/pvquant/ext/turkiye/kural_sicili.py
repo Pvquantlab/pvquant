@@ -111,7 +111,8 @@ EDT_2025_DAYANAK = ("DUY m.110 (RG 2.2.2020-31027 Md.32); k = l = 0,03 — EPDK 
                     "01/05/2015'ten 0,03 (asıl karar no bulunamadı); 2.2.2020 öncesi formül farklı, 1.12.2011–30.4.2015 k = l = 0 (geçici m.21) — kapsam dışı")
 EDT_2026_DAYANAK = "DUY m.110(1)-(2) (RG 29.12.2025-33122 Md.17); Karar 14030 (k/l); "
 V150_DAYANAK = "V = 150 başlangıç"
-V100_DAYANAK = "Karar 14911 (V = 100; «yayımı takip eden fatura dönemi» → 1.11.2026 çıkarım, EPİAŞ uygulama duyurusu bulunamadı)"
+V100_DAYANAK = ("Karar 14911 (V = 100; «yayımı takip eden fatura dönemi» → 1.11.2026 çıkarım, EPİAŞ uygulama duyurusu bulunamadı); "
+                "EPİAŞ günlük bülteni 01.11.2026 12:00 P(+) = 94,00 = 100·(1−0,06) — V = 100 ile tutarlı; ikinci bağımsız kaynak (müşteri Kasım bildirimi) beklenir (T-05, AK-0015)")
 TOPLAMA_NET_DAYANAK = "; EDTA = max(ΣΣEDT(+);0), EDTB = ΣΣEDT(−) − min(ΣΣEDT(+);0) (RG 33122 Md.17)"
 TOPLAMA_AYRIK_DAYANAK = "; EDTA/EDTB dönem bazlı max/min (RG 19.10.2026-33405 Md.22)"
 
@@ -212,7 +213,7 @@ BELIRSIZ_2027_GEREKCE = (
     "fıkraları sonradan yeniden yazdı — ilişkisi hukuken belirsiz; tek k/l kararı yok (üç aylık duyuru süresinin 1.10.2026'da dolması çıkarım). (ii) m.110(3)-(4): Md.13 KÜPST'yi 15 dakikalık «ç» bazına alır; "
     "«ç» bazlı KÜPSM yöntem kararı yok (14907 «u» bazlı). (iii) m.91(2) + Geçici 40: 15 dakikalık DGP 1.1.2027'den önce başlamaz, "
     "fiilî başlangıç ilan edilmedi. (iv) SMF_N/SMF_P çeyrek SMF ister; Karar 14968 Şeffaflık'ta SMF'yi yalnız saatlik listeler. "
-    "Varsayılan: 2026 rejimi sürer, sonuçlar «belirsiz» etiketi taşır; Kasım–Aralık 2026 RG'leri izlenir (kanıt kesimi 03.11.2026)."
+    "Varsayılan: 2026 rejimi sürer — hukuki dayanağı olmayan varsayım; sonuçlar «belirsiz» etiketi taşır; Kasım–Aralık 2026 RG'leri izlenir (kanıt kesimi 14.11.2026; haftalık RG taraması; T-06, AK-0018)."
 )
 _GELECEK_KAYITLARI: tuple[KuralKaydi, ...] = (
     KuralKaydi("2027", "2027-belirsiz", "1.1.2027 DUY m.110 değişikliği (RG 21.1.2025-32789 Md.13)", date(2027, 1, 1), None, None, "DUY", "RG 21.1.2025-32789 Md.13, Md.20(b)", "21.1.2025-32789", "belirsiz",
