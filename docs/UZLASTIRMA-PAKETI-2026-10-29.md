@@ -2083,3 +2083,19 @@ pilot bitişleri 21–23.11, aylık iklim/kalibrasyon işlerinin 1.11 hataları)
 **Kanıt:** `scripts/kontrol.sh muhur` 4/4 (tsc, 117 test, build, oxlint 16; Python değişmedi). Önizleme ölçümü: vitrin `body` font-variant-numeric normal, kalın 600 vitrinin kendi `.vt-yontem b` kuralından; panel body tabular, kalın 600.
 
 **Mühür (v2.616, 16.11.2026 18:08 TSİ):** commit `cce6d8c` (6 dosya), CI #759 **yeşil (9 dk 12 s)**. Dağıtım ssh: `git pull --ff-only` → `docker compose build web` → `up -d web` (api/worker dokunulmadı, göç yok). Canlı: healthz 200, readyz 200; canlı stil dosyasında `:where(body:not(:has(.vt)))` kuralları var, body düzeyinde tabular yok.
+
+## v2.617 (16.11.2026): Yüzde işaret sırası tek kural — yalnız web
+
+**Ne:** `lib/bicim.ts` `yuzdeTr(v, hane=1, isaret=false)` («%» önek, işaret ondan önce U+2212, delta bağlamında «+», sıfırda işaret yok, tire yedeği); 14 bileşende 100 yer `%${sayiTr(…)}`/`%{sayiTr(…)}` → `yuzdeTr(…)` (Santralim'in 31'i v2.618 ile); yerel biçimleyiciler (Genel bakış `yuzdeIsaretli`, Sayaç/Kalibrasyon/Mutabakat `yuzde`, Doğruluk/JSON önizleme/kayıp zinciri) ortak kurala devredildi; bekçi testi `test/panel/yuzde.test.ts`.
+
+**Neden:** Kalibrasyon «%−8,4» yazarken Sayaç «−%3,2» yazıyordu; sayısal tipografi standardı §7.2 işareti öne alır.
+
+**Kanıt:** kontrol muhur 7/7; önizlemede Kalibrasyon/Sayaç/Doğruluk «%−» 0; kullanıcı kareleri doğrulandı. **Mühür:** commit `72b5bf0`, CI #761 (v2.618 ile birlikte) yeşil 9 dk 18 s; dağıtım v2.618 ile.
+
+## v2.618 (16.11.2026): Panel gezinme hızı — damga anahtarlı sunucu yanıt önbelleği, süre başlığı, istemci belleği 10 dk, ısıtma, Santralim kademe + yarış koruması (api + web)
+
+**Ne:** `src/pvquant/services/yanit_onbellegi.py` (anahtar kiracı+santral+uç+param+damga etag; TTL 15 dk; `PVQ_YANIT_ONBELLEK=1` compose'da; kapalıyken şeffaf); `apps/api/main.py` 18 ağır GET ucu sarıldı (`_X_uret` + sarmal; dogrulama/bagimsiz taze=1 hariç) + `X-Sure-ms` + 300 ms üstü «YAVAS» günlüğü; `client.ts` BELLEK_MS 10 dk + `isit()`; `Kabuk.tsx` nav fare/odak ısıtma; `Santralim.tsx` 9 ikincil efekt özet sonrası + 28 yarış koruması; testler `tests/test_yanit_onbellegi.py`, `web/test/panel/hiz-gezinme.test.ts`; `kontrol.sh` ruff özet satırı düzeltmesi.
+
+**Neden:** Canlı ölçüm (Karapınar, bellek boş): Doğruluk son kart 2,86 s, Santralim 18 istek/0,83 s, Aylık 0,94 s, Kalibrasyon 0,73 s; sunucu içi özet 0,3–0,4 s, sağlık 0,7, dengesizlik 0,55–0,95, backtest 1,0, hata_dagilimi 1,0–1,2, genel_bakis 0,3–1,5; önbellek yok; 4 işçi; istemci 60 sn sonra her dönüşte yeniden çekiyordu; Santralim'de yarış koruması yoktu. Rapor: `~/Desktop/PVQuant_Gezinme_Hizi_2026-11-16/`.
+
+**Kanıt:** kontrol muhur 7/7 (tam pytest 1.384, CI taklidi, web 121); yarış denemesi geçti. **Mühür (16.11 20:25 TSİ):** commit `80e004c`, CI #761 yeşil 9 dk 18 s; ssh `git pull --ff-only` → build api web → `up -d api web` (worker dokunulmadı, göç yok); healthz/readyz 200, `X-Sure-ms` başlığı canlı, `PVQ_YANIT_ONBELLEK=1`. **Canlı sonra-1:** sayfaya dönüşte 0 istek; yeniden yükleme sonrası kazanç sınırlı (Doğruluk 2,95 → 1,24 s) — işçi başına bellek; v2.619 paylaşılan dosya katmanı.
