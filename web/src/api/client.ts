@@ -52,7 +52,7 @@ const ucustakiler = new Map<string, Promise<unknown>>();
  *  damga yoklaması getir kullanmaz (kendi ETag fetch'i) → tazelik sinyali
  *  önbelleğe takılmaz. */
 const bellekte = new Map<string, { veri: unknown; zaman: number }>();
-const BELLEK_MS = 60_000;
+const BELLEK_MS = 600_000;   // 16.11 gezinme hızı: 60 sn → 10 dk. Tazelik damgaya bağlı: damga değişince bellekEskit yaşı sıfırlar (görünür sekmede 60 sn yoklama), her yazma belleği boşaltır; süre yalnız emniyet.
 function getir<T>(yol: string): Promise<T> {
   const anilan = bellekte.get(yol);
   if (anilan && Date.now() - anilan.zaman < BELLEK_MS)
@@ -1205,3 +1205,24 @@ export const api = {
   portfoyRevizyon: async (id: string, hedef: "yarin" | "bugun" = "yarin"): Promise<PortfoyRevizyonT | null> => { if (TABAN == null) return null; return getir<PortfoyRevizyonT>(`/v1/portfoyler/${id}/revizyon?hedef=${hedef}`); },
   portfoyFinans: async (id: string, donem?: string | null): Promise<PortfoyFinansT | null> => { if (TABAN == null) return null; return getir<PortfoyFinansT>(`/v1/portfoyler/${id}/finansal-etki${donem ? `?donem=${encodeURIComponent(donem)}` : ""}`); },
 };
+
+/** 16.11 gezinme hızı — ISITMA: yan menüde fareyle/odakla üzerine gelinen sayfanın ana verisi önceden çekilir (getir: uçuş
+ *  birleştirme + bellek). Yalnız gerçek API'de; aynı sayfa+santral bellek süresi içinde bir kez. Hata sessiz. Sayfa başına 1–2 uç:
+ *  sunucudaki yanıt önbelleği ısınır, tıklama anında bellekten çizilir; tıklanmazsa en fazla bu kadar fazladan istek gider. */
+const ISITMA: Record<string, (p: string) => Promise<unknown>[]> = {
+  genel: (p) => [api.genelBakis(p)],
+  santralim: (p) => [api.ozet(p), api.tahmin(p, "16d")],
+  tahminler: (p) => [api.tahmin(p, "16d"), api.ozet(p)],
+  aylik: (p) => [api.aylik(p), api.ozet(p)],
+  dogruluk: (p) => [api.karne(p)],
+  kalibrasyon: (p) => [api.kalibrasyon(p)],
+};
+const isitildi = new Map<string, number>();
+export function isit(sayfa: string, plantId?: string): void {
+  if (TABAN == null || !plantId) return;
+  const f = ISITMA[sayfa]; if (!f) return;
+  const k = `${sayfa}/${plantId}`; const simdi = Date.now();
+  if ((isitildi.get(k) ?? 0) > simdi - BELLEK_MS) return;
+  isitildi.set(k, simdi);
+  for (const soz of f(plantId)) soz.catch(() => {});
+}

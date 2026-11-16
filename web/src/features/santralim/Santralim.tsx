@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ALARM_KURALI } from "../../lib/alarmSozluk";
 import type { ReactNode } from "react";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
@@ -62,12 +62,12 @@ const KURAL_KOSULU: Record<string, (e: Record<string, number>) => string> = {
   veri_gelmedi: () => "Son ölçüm 48 saatten eskiyse. Kontrol: her gece 07:00",
   skill_dustu: () => "Günlük tahmin hatası 7 gün üst üste 30 günlük ortalamanın 1,5 katını aşınca. Kontrol: her gece 07:00",
   iletisim_kesintisi: (e) => `Son ölçüm ${sayiTr(e.iletisim_esik_saat ?? 6, 0)} saatten eskiyse. Kontrol: her saat`,
-  pr_dustu: (e) => `30 günlük performans oranı eşiğin (%${sayiTr((e.pr_esik ?? 0.7) * 100, 0)}) altına düşünce. Kontrol: her gece 07:00`,
-  clipping_orani_yuksek: (e) => `Son 7 günde kırpılan saatlerin payı eşiği (%${sayiTr((e.clipping_esik ?? 0.15) * 100, 0)}) aşınca. Kontrol: her gece 07:00`,
-  kullanilabilirlik_dustu: (e) => `Son 30 günün teknik kullanılabilirliği eşiğin (%${sayiTr((e.kullanilabilirlik_esik ?? 0.97) * 100, 0)}) altında kalınca. Kontrol: her gece 07:00`,
+  pr_dustu: (e) => `30 günlük performans oranı eşiğin (${yuzdeTr((e.pr_esik ?? 0.7) * 100, 0)}) altına düşünce. Kontrol: her gece 07:00`,
+  clipping_orani_yuksek: (e) => `Son 7 günde kırpılan saatlerin payı eşiği (${yuzdeTr((e.clipping_esik ?? 0.15) * 100, 0)}) aşınca. Kontrol: her gece 07:00`,
+  kullanilabilirlik_dustu: (e) => `Son 30 günün teknik kullanılabilirliği eşiğin (${yuzdeTr((e.kullanilabilirlik_esik ?? 0.97) * 100, 0)}) altında kalınca. Kontrol: her gece 07:00`,
   kgup_teslim_gecikti: () => "Yarının programı için 15:30'dan önce verilmiş tahmin yoksa kritik; tahmin var ama TPYS'ye bildirilen dosya yüklenmemişse uyarı. Kontrol: her gün 15:35",
-  kgup_revizyon_onerisi: (e) => `Bugünün programı güncel beklentiden eşik (%${sayiTr((e.revizyon_esik ?? 0.10) * 100, 0)}) kadar sapınca ve o saatin revizyon süresi geçmediyse. Kontrol: 07:10–18:10 arası saat başı`,
-  dengesizlik_asimi: (e) => `Son 30 günün dengesizlik maliyeti gelire oranla eşiği (%${sayiTr((e.dengesizlik_esik ?? 0.03) * 100, 0)}) aşınca. Kontrol: her gece 07:00`,
+  kgup_revizyon_onerisi: (e) => `Bugünün programı güncel beklentiden eşik (${yuzdeTr((e.revizyon_esik ?? 0.10) * 100, 0)}) kadar sapınca ve o saatin revizyon süresi geçmediyse. Kontrol: 07:10–18:10 arası saat başı`,
+  dengesizlik_asimi: (e) => `Son 30 günün dengesizlik maliyeti gelire oranla eşiği (${yuzdeTr((e.dengesizlik_esik ?? 0.03) * 100, 0)}) aşınca. Kontrol: her gece 07:00`,
   ptf_dusuk_saat: (e) => (e.ptf_esik_tl_mwh ?? 0) <= 0
     ? "Yarın fiyatın sıfır ya da negatif olduğu saat varsa; YEKDEM'li santralde yarının YEK fiyatının altı. Kontrol: her gün 14:40"
     : `Yarın fiyatın ${sayiTr(e.ptf_esik_tl_mwh, 0)} TL/MWh altında olduğu saat varsa. Kontrol: her gün 14:40`,
@@ -92,7 +92,7 @@ const ESIK_ALANLARI: { k: string; etiket: string; yuzde?: boolean; aralik: strin
   { k: "ariza_esik", etiket: "Arıza sayacı (adet)", aralik: "1–30" },
   { k: "sayac_eksik_esik_saat", etiket: "Eksik sayaç saati (adet)", aralik: "1–744" },   // v2.526 (P7b)
 ];
-import { tarihBicimi } from "../../lib/bicim";
+import { tarihBicimi, yuzdeTr } from "../../lib/bicim";
 import { t0Hesapla, simdiDegeri, simdiGercegi, dilimle } from "../sayfalar/tahminPencere";
 import { Cubuklar } from "./Cubuklar";
 
@@ -143,6 +143,8 @@ export function Santralim({ plantId }: { plantId: string }) {
   // 24.10 açık tema geçiş turu: özet ve seri BAYAT-ÖNCE — bellekte son yanıt varsa (60 sn dolmuş olsa da) sayfa anında
   // çizilir, ağdan gelen yanıt üstüne yazar (Portföy kalıbı). İstekler zaten bağımsızdı; yalnız başlangıç durumu değişti.
   const [o, setO] = useState<SantralOzeti | null>(() => bellekten.ozet(plantId) ?? null);
+  // 16.11 gezinme hızı — yarış koruması: santral değişince eski santralın geç gelen yanıtı yeni santralın durumuna yazılmaz (her .then plantRef'e bakar)
+  const plantRef = useRef(plantId); plantRef.current = plantId;
   const [pr, setPr] = useState<PrKarti | null>(null);   // v2.249
   const [seri, setSeri] = useState<TahminSerisi | null>(() => bellekten.tahmin(plantId, "16d") ?? null);
   const [gy, setGy] = useState<GunesYolu | null>(null);
@@ -150,12 +152,13 @@ export function Santralim({ plantId }: { plantId: string }) {
   const { n, oku } = useTema();
   const ds = useDamgaSurumu();   // 26.10 eşzamanlama: damga (yeni koşu/ölçüm/fiyat/iş) değişince veri efektleri yeniden koşar
   const [oHata, setOHata] = useState(false);   // 26.10 denetim-3: özet alınamazsa iskelet sonsuza dek kalıyordu (yakalanmamış ret)
+  const hazir = o != null || oHata;   // 16.11 kademe: ikincil kartların istekleri özet gelince (ya da düşünce) başlar — 4 işçili sunucuda 20 paralel istek özetin kendisini kuyruğa sokuyordu
   useEffect(() => { setO(bellekten.ozet(plantId) ?? null); setOHata(false);
-    api.ozet(plantId).then((v) => setO((e) => ayniysaEskisi(e, v)), () => setOHata(true)); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { setSeri(bellekten.tahmin(plantId, "16d") ?? null); api.tahmin(plantId, "16d").then((v) => setSeri((e) => ayniysaEskisi(e, v))).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps   // v2.365: kosusuz santralda 404 gurultusuz // v2.166: D1 — tam seri cek, istemcide "24h" dilimle (Tahminler kalibi)
-  useEffect(() => { api.gunesYolu(plantId).then(setGy).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { api.saatAyMatrisi(plantId).then(setSam).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { api.pr(plantId).then(setPr).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps   // v2.249
+    api.ozet(plantId).then((v) => { if (plantRef.current === plantId) setO((e) => ayniysaEskisi(e, v)); }, () => { if (plantRef.current === plantId) setOHata(true); }); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setSeri(bellekten.tahmin(plantId, "16d") ?? null); api.tahmin(plantId, "16d").then((v) => { if (plantRef.current === plantId) setSeri((e) => ayniysaEskisi(e, v)); }).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps   // v2.365: kosusuz santralda 404 gurultusuz // v2.166: D1 — tam seri cek, istemcide "24h" dilimle (Tahminler kalibi)
+  useEffect(() => { api.gunesYolu(plantId).then((v) => { if (plantRef.current === plantId) setGy(v); }).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { api.saatAyMatrisi(plantId).then((v) => { if (plantRef.current === plantId) setSam(v); }).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { api.pr(plantId).then((v) => { if (plantRef.current === plantId) setPr(v); }).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps   // v2.249
   const [sg, setSg] = useState<Saglik | null>(null);   // v2.256
   const [seg, setSeg] = useState<{ segment: string | null; dengesizlik_sahibi: string | null } | null>(null);   // v2.260
   // v2.513 (04 #14 kalan): UEVÇB kodu panelde görünür/düzenlenir; EPİAŞ Şeffaflık'tan kuruluş adıyla aranır (organization-list + uevcb-list)
@@ -213,14 +216,14 @@ export function Santralim({ plantId }: { plantId: string }) {
     setUevcbMesaj(null); setUevcbAday(null);
     api.uevcbAra(uevcbArama).then((r) => setUevcbAday(r ?? "yok")).catch((e) => { setUevcbAday("yok"); setUevcbMesaj(`Arama yapılamadı: ${String(e.message ?? e)}`); });
   };
-  useEffect(() => { api.dengesizlik(plantId, 14).then((d) => { if (!d) return; setSeg({ segment: d.segment.segment, dengesizlik_sahibi: d.segment.dengesizlik_sahibi }); setUevcb(d.segment.uevcb ?? ""); setDsgKodu(d.segment.dsg_kodu ?? ""); setToplayici(!!d.segment.toplayici_portfoyu); setYekG(!!d.segment.yek_g_kayitli); depDoldur(d.segment.depolama); setKatilimci(d.segment.piyasa_katilimcisi ?? ""); setLdyeum(d.segment.lisans_yillik_uretim_mwh != null ? String(d.segment.lisans_yillik_uretim_mwh) : ""); setGtsAdi(d.segment.gts_toplayici_adi ?? ""); if (d.luy_istisna !== undefined) setLuyIstisna((v) => (v === null ? !!d.luy_istisna : v));
-    if (d.program) { setPozKaynak((v) => v ?? d.program!.pozisyon.kaynak); if (d.program.pozisyon.sabit_mwh != null) setPozSabit((v) => v || String(d.program!.pozisyon.sabit_mwh)); } }).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { api.saglik(plantId).then(setSg).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!hazir) return; api.dengesizlik(plantId, 14).then((d) => { if (!d || plantRef.current !== plantId) return; setSeg({ segment: d.segment.segment, dengesizlik_sahibi: d.segment.dengesizlik_sahibi }); setUevcb(d.segment.uevcb ?? ""); setDsgKodu(d.segment.dsg_kodu ?? ""); setToplayici(!!d.segment.toplayici_portfoyu); setYekG(!!d.segment.yek_g_kayitli); depDoldur(d.segment.depolama); setKatilimci(d.segment.piyasa_katilimcisi ?? ""); setLdyeum(d.segment.lisans_yillik_uretim_mwh != null ? String(d.segment.lisans_yillik_uretim_mwh) : ""); setGtsAdi(d.segment.gts_toplayici_adi ?? ""); if (d.luy_istisna !== undefined) setLuyIstisna((v) => (v === null ? !!d.luy_istisna : v));
+    if (d.program) { setPozKaynak((v) => v ?? d.program!.pozisyon.kaynak); if (d.program.pozisyon.sabit_mwh != null) setPozSabit((v) => v || String(d.program!.pozisyon.sabit_mwh)); } }).catch(() => {}); }, [plantId, ds, hazir]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!hazir) return; api.saglik(plantId).then((v) => { if (plantRef.current === plantId) setSg(v); }).catch(() => {}); }, [plantId, ds, hazir]);   // eslint-disable-line react-hooks/exhaustive-deps
   // v2.274 (Dalga 3 tamamlayıcısı): fizik terimleri — santral bazında aç/kapa + "açsam ne değişir?" önizlemesi
   const [ft, setFt] = useState<FizikTerimleri | null>(null);
   const [ftOn, setFtOn] = useState<FizikOnizleme | null>(null);
   const [ftMesaj, setFtMesaj] = useState<string | null>(null);
-  useEffect(() => { api.fizikTerimleri(plantId).then(setFt).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!hazir) return; api.fizikTerimleri(plantId).then((v) => { if (plantRef.current === plantId) setFt(v); }).catch(() => {}); }, [plantId, ds, hazir]);   // eslint-disable-line react-hooks/exhaustive-deps
   const [ftSon, setFtSon] = useState<Record<string, string>>({});
   const ftDegistir = (k: string, v: string) => {
     setFtMesaj(null); setFtOn(null); setFtSon({ [k]: v });
@@ -318,16 +321,16 @@ export function Santralim({ plantId }: { plantId: string }) {
   };
   // v2.281: kullanılabilirlik (otomatik tespit) + tarife/gelir yapılandırması
   const [ku, setKu] = useState<Kullanilabilirlik | null>(null);
-  useEffect(() => { api.kullanilabilirlik(plantId).then(setKu).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { setSens(null); api.sensorler(plantId).then(setSens).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { setPilot(null); setEdge(null); setEdgeYeni(null); setRefMesaj(null); api.pilot(plantId).then(setPilot).catch(() => setPilot(null)); api.edgeToplayicilar(plantId).then(setEdge).catch(() => setEdge(null)); setBk(null); setBkSonuc(null); setBkOnay(false); setBkDegistir(false); api.bulutKimlik(plantId).then(setBk).catch(() => setBk(null)); setGolge(undefined); api.golgeSaatlik(plantId).then(setGolge).catch(() => setGolge(null)); setAdaylar(undefined); api.olayAdaylari(plantId).then(setAdaylar).catch(() => setAdaylar(null)); }, [plantId]);   // v2.550/v2.555
+  useEffect(() => { if (!hazir) return; api.kullanilabilirlik(plantId).then((v) => { if (plantRef.current === plantId) setKu(v); }).catch(() => {}); }, [plantId, ds, hazir]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!hazir) return; setSens(null); api.sensorler(plantId).then((v) => { if (plantRef.current === plantId) setSens(v); }).catch(() => {}); }, [plantId, ds, hazir]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!hazir) return; setPilot(null); setEdge(null); setEdgeYeni(null); setRefMesaj(null); api.pilot(plantId).then((v) => { if (plantRef.current === plantId) setPilot(v); }).catch(() => { if (plantRef.current === plantId) setPilot(null); }); api.edgeToplayicilar(plantId).then((v) => { if (plantRef.current === plantId) setEdge(v); }).catch(() => { if (plantRef.current === plantId) setEdge(null); }); setBk(null); setBkSonuc(null); setBkOnay(false); setBkDegistir(false); api.bulutKimlik(plantId).then((v) => { if (plantRef.current === plantId) setBk(v); }).catch(() => { if (plantRef.current === plantId) setBk(null); }); setGolge(undefined); api.golgeSaatlik(plantId).then((v) => { if (plantRef.current === plantId) setGolge(v); }).catch(() => { if (plantRef.current === plantId) setGolge(null); }); setAdaylar(undefined); api.olayAdaylari(plantId).then((v) => { if (plantRef.current === plantId) setAdaylar(v); }).catch(() => { if (plantRef.current === plantId) setAdaylar(null); }); }, [plantId, hazir]);   // v2.550/v2.555
   useEffect(() => {   // v2.564: sağlayıcıdan dönüş «?bulut_oauth=<sağlayıcı>:<durum>» — yalnız kod okunur, adres çubuğundan silinir
     const q = new URLSearchParams(window.location.search).get("bulut_oauth"); if (!q) return;
     const durum = (q.split(":")[1] ?? "hata").replace(/[^a-z_]/g, ""); setBkOAuth(OAUTH_MESAJ[durum] ?? OAUTH_MESAJ.hata);
     history.replaceState(history.state, "", window.location.pathname + window.location.hash);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  useEffect(() => { setKir(undefined); api.kirlenme(plantId).then(setKir).catch(() => setKir(null)); setVy(null); api.veriYolu(plantId).then((v) => { vyDoldur(v); vybDoldur(v); }).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!hazir) return; setKir(undefined); api.kirlenme(plantId).then((v) => { if (plantRef.current === plantId) setKir(v); }).catch(() => { if (plantRef.current === plantId) setKir(null); }); setVy(null); api.veriYolu(plantId).then((v) => { if (plantRef.current !== plantId) return; vyDoldur(v); vybDoldur(v); }).catch(() => {}); }, [plantId, ds, hazir]);   // eslint-disable-line react-hooks/exhaustive-deps
   const sensKaydet = (liste: Sensor[]) => {   // v2.542 (P8b-2): envanter bütünüyle gönderilir; vade sunucuda türetilir
     setSensMesaj(null);
     api.sensorlerAyarla(plantId, liste.map((s) => ({ tur: s.tur, olcum: s.olcum, marka_model: s.marka_model ?? null, seri_no: s.seri_no ?? null, sinif: s.sinif ?? null,
@@ -342,7 +345,7 @@ export function Santralim({ plantId }: { plantId: string }) {
   // için kutuda "NaN" görünüyordu; (b) alan silinince Number("")=0 → kutu 0'a atlıyor
   // ve Kaydet'e basılırsa 0 TL/MWh KAYDEDİLİYORDU.
   const [tarifeMetin, setTarifeMetin] = useState<Record<string, string>>({});
-  useEffect(() => { api.tarife(plantId).then((t) => { if (t) { setTarife(t); setTarifeMetin({}); } }).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!hazir) return; api.tarife(plantId).then((t) => { if (t && plantRef.current === plantId) { setTarife(t); setTarifeMetin({}); } }).catch(() => {}); }, [plantId, ds, hazir]);   // eslint-disable-line react-hooks/exhaustive-deps
   /** "1250,5" ve "1.250,5" Türkçe yazımlarını okur; boş/bozuk girdi undefined döner (0 uydurmaz). */
   const sayiOku = (s: string): number | undefined => {
     const t = s.trim().replace(/\s/g, "");
@@ -355,7 +358,7 @@ export function Santralim({ plantId }: { plantId: string }) {
     | "kur_tl_usd" | "gunduz_tl_mwh" | "puant_tl_mwh" | "gece_tl_mwh" | "yerli_katki_usd_cent";
   // v2.520 (P5a): YEKDEM rejimi ve bugünün fiyatı uçtan (işletmeye giriş tarihinden türetilir; seçim onu ezer) — form alanları rejime göre
   const [yk, setYk] = useState<Yekdem | null>(null);
-  useEffect(() => { if (tarife.tip === "yekdem") api.yekdem(plantId, 14).then(setYk); else setYk(null); }, [plantId, ds, tarife.tip]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (tarife.tip === "yekdem") api.yekdem(plantId, 14).then((v) => { if (plantRef.current === plantId) setYk(v); }); else setYk(null); }, [plantId, ds, tarife.tip]);   // eslint-disable-line react-hooks/exhaustive-deps
   const rejimEtkin: "cetvel1" | "7189" | null = tarife.rejim === "cetvel1" || tarife.rejim === "7189" ? tarife.rejim : (yk?.rejim.rejim ?? null);
   const tarifeSayi = (alan: TarifeSayiAlani) => ({
     value: tarifeMetin[alan] ?? sayiYaz(tarife[alan]),
@@ -380,7 +383,7 @@ export function Santralim({ plantId }: { plantId: string }) {
       .catch((e) => setTarifeMesaj(String((e as Error).message ?? e)));
   };
   const [ak, setAk] = useState<AlarmKurallari | null>(null);   // v2.265: ek alarm kuralları (opt-in)
-  useEffect(() => { api.alarmKurallari(plantId).then(setAk).catch(() => {}); }, [plantId, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!hazir) return; api.alarmKurallari(plantId).then((v) => { if (plantRef.current === plantId) setAk(v); }).catch(() => {}); }, [plantId, ds, hazir]);   // eslint-disable-line react-hooks/exhaustive-deps
   const akDegistir = (kural: string, acik: boolean) => {
     if (!ak) return;
     const k = acik ? [...ak.secili, kural] : ak.secili.filter((x) => x !== kural);
@@ -593,7 +596,7 @@ export function Santralim({ plantId }: { plantId: string }) {
               {gosterilen === null ? "—" : sayiTr(gosterilen)}</text>
             <text x="80" y="84" textAnchor="middle" className="ch-gauge-birim">
               {gosterilen === null ? "veri yok" :
-                anlikPay === null ? "kW" : `kW (%${sayiTr(anlikPay * 100)})`}</text>
+                anlikPay === null ? "kW" : `kW (${yuzdeTr(anlikPay * 100)})`}</text>
           </svg>
           <div>
             <div className="et">Anlık güç</div>
@@ -632,7 +635,7 @@ export function Santralim({ plantId }: { plantId: string }) {
                 ? <span className="rozet rozet-ok"><Meta items={[o.model_adi, `Mod ${o.mod}`]} /></span>
                 : <span className="cip"><Meta items={[o.model_adi, "kalibrasyon bekliyor"]} /></span>}</div>
             <div><span className="e">Yıllık sapma</span>
-              <span className="d">{o.sapma_pct == null ? "—" : `%${sayiTr(o.sapma_pct, 2)}`}</span></div>
+              <span className="d">{o.sapma_pct == null ? "—" : yuzdeTr(o.sapma_pct, 2)}</span></div>
             <div><span className="e">Son kalibrasyon</span>
               <span className="d">{o.son_kalibrasyon ?? "—"}</span></div>
           </div>
@@ -717,10 +720,10 @@ export function Santralim({ plantId }: { plantId: string }) {
             {/* v2.249 (Dalga 1.4): IEC 61724-1 performans orani — olcumden, POA yoksa tire + neden */}
             <div><dt>Performans oranı (PR, 30 gün)</dt>
               <dd>{pr?.durum === "ok" && pr.PR != null
-                ? <>%{sayiTr(pr.PR * 100, 1)}{pr.PR_sicaklik != null && ` (sıcaklık düzeltmeli %${sayiTr(pr.PR_sicaklik * 100, 1)})`}
-                    <span className="kunye-not">{sayiTr(pr.gun)} gün değerlendirildi{pr.son_olcum ? `, son ölçüm ${tarihBicimi("tr-TR", { day: "numeric", month: "short", year: "numeric" }).format(new Date(pr.son_olcum.length === 10 ? pr.son_olcum + "T00:00:00" : pr.son_olcum))}` : ""}{(pr.kirpma_saat ?? 0) > 0 && pr.PR_kirpma_disi != null ? `; AC sınırında kırpılan ${sayiTr(pr.kirpma_saat ?? 0)} saat dışında %${sayiTr(pr.PR_kirpma_disi * 100, 1)}` : ""}</span></>
+                ? <>{yuzdeTr(pr.PR * 100, 1)}{pr.PR_sicaklik != null && ` (sıcaklık düzeltmeli ${yuzdeTr(pr.PR_sicaklik * 100, 1)})`}
+                    <span className="kunye-not">{sayiTr(pr.gun)} gün değerlendirildi{pr.son_olcum ? `, son ölçüm ${tarihBicimi("tr-TR", { day: "numeric", month: "short", year: "numeric" }).format(new Date(pr.son_olcum.length === 10 ? pr.son_olcum + "T00:00:00" : pr.son_olcum))}` : ""}{(pr.kirpma_saat ?? 0) > 0 && pr.PR_kirpma_disi != null ? `; AC sınırında kırpılan ${sayiTr(pr.kirpma_saat ?? 0)} saat dışında ${yuzdeTr(pr.PR_kirpma_disi * 100, 1)}` : ""}</span></>
                 : pr?.durum === "poa_yok"
-                  ? <><span className="kunye-durum eksik">Hesaplanamadı</span><span className="kunye-not">düzlem ışınımı (POA) ölçümü {pr.poa_orani != null ? `saatlerin %${sayiTr(pr.poa_orani * 100, 0)}'inde` : "yok"}; PR için en az %95 gerekir</span></>
+                  ? <><span className="kunye-durum eksik">Hesaplanamadı</span><span className="kunye-not">düzlem ışınımı (POA) ölçümü {pr.poa_orani != null ? `saatlerin ${yuzdeTr(pr.poa_orani * 100, 0)}'inde` : "yok"}; PR için en az %95 gerekir</span></>
                   : <><span className="kunye-durum eksik">Hesaplanamadı</span><span className="kunye-not">ölçüm birikmedi</span></>}</dd></div>
             {/* v2.542 (P8b-2, IH-092): ışınım ölçümünün kaynağı ve kalibrasyon durumu — PR ve beklenen üretim bu ölçüme dayanır */}
             <div><dt>Işınım ölçümü kaynağı</dt>
@@ -736,17 +739,17 @@ export function Santralim({ plantId }: { plantId: string }) {
             {/* v2.256 (Dalga 3.11): bozunma ve eğilim — POA yoksa model-normalize verimle; yetersizse neden */}
             <div><dt>Yıllık verim kaybı (bozunma)</dt>
               <dd>{sg?.bozunma_yuzde_yil != null
-                ? <>%{sayiTr(sg.bozunma_yuzde_yil, 2)}/yıl{sg.bozunma_ga && ` (±${sayiTr(Math.abs(sg.bozunma_ga[1] - sg.bozunma_ga[0]) / 2, 2)})`}
+                ? <>{yuzdeTr(sg.bozunma_yuzde_yil, 2)}/yıl{sg.bozunma_ga && ` (±${sayiTr(Math.abs(sg.bozunma_ga[1] - sg.bozunma_ga[0]) / 2, 2)})`}
                     <span className="kunye-not">{sayiTr(sg.ay)} ay</span></>
                 : sg?.egim_yuzde_yil != null
-                  ? <>eğilim %{sayiTr(sg.egim_yuzde_yil, 1)}/yıl<span className="kunye-not">{sayiTr(sg.gun)} gün; {sg.not || "bozunma için ≥13 ay"}</span></>
+                  ? <>eğilim {yuzdeTr(sg.egim_yuzde_yil, 1)}/yıl<span className="kunye-not">{sayiTr(sg.gun)} gün; {sg.not || "bozunma için ≥13 ay"}</span></>
                   : <><span className="kunye-durum eksik">Hesaplanamadı</span><span className="kunye-not">{sg?.not || "ölçüm birikmedi"}</span></>}</dd></div>
             {/* v2.281: kullanılabilirlik — otomatik arıza tespiti (olay günlüğü yok; dürüst not) */}
             {/* 04.11 v2.531 (K-07, ENV-F10): teknik kullanılabilirlik (IEC 61724-3); sözleşmesel tanım O&M sözleşmesine göre ayrı — MTBF/MTTR olay kaydındaki arızalardan */}
             <div><dt>Teknik kullanılabilirlik (30 gün)</dt>
               <dd>{ku?.durum === "ok" && ku.A_t != null
-                ? <>%{sayiTr(ku.A_t * 100, 1)} zaman, {ku.A_e != null ? `%${sayiTr(ku.A_e * 100, 1)} enerji` : "—"}
-                    <span className="kunye-not">{sayiTr(ku.ariza_saat ?? 0)} arıza saati, veri %{sayiTr((ku.veri_orani ?? 0) * 100, 0)}, otomatik tespit; sözleşmesel tanım O&amp;M sözleşmenize göre ayrı{(ku.ariza_olay_sayisi ?? 0) > 0 && ku.mtbf_saat != null ? ` · olay kaydı: ${sayiTr(ku.ariza_olay_sayisi ?? 0)} arıza, MTBF ${sayiTr(ku.mtbf_saat, 0)} sa, MTTR ${sayiTr(ku.mttr_saat ?? 0, 1)} sa` : ""}{ku.sozlesme ? (ku.sozlesme.acik_puan > 0 ? ` · sözleşme eşiği %${sayiTr(ku.sozlesme.esik * 100, Number.isInteger(ku.sozlesme.esik * 100) ? 0 : 1)}: açık ${sayiTr(ku.sozlesme.acik_puan * 100, 1)} puan ≈ ${sayiTr(ku.sozlesme.acik_kwh / 1000, 1)} MWh${ku.sozlesme.acik_tl != null ? ` / ${sayiTr(ku.sozlesme.acik_tl)} TL, fiyat: ${ku.sozlesme.fiyat_kaynak}` : ""} — kıyas tabanı, alacak değil` : ` · sözleşme eşiği %${sayiTr(ku.sozlesme.esik * 100, Number.isInteger(ku.sozlesme.esik * 100) ? 0 : 1)} karşılanıyor`) : ""}</span></>
+                ? <>{yuzdeTr(ku.A_t * 100, 1)} zaman, {ku.A_e != null ? `${yuzdeTr(ku.A_e * 100, 1)} enerji` : "—"}
+                    <span className="kunye-not">{sayiTr(ku.ariza_saat ?? 0)} arıza saati, veri {yuzdeTr((ku.veri_orani ?? 0) * 100, 0)}, otomatik tespit; sözleşmesel tanım O&amp;M sözleşmenize göre ayrı{(ku.ariza_olay_sayisi ?? 0) > 0 && ku.mtbf_saat != null ? ` · olay kaydı: ${sayiTr(ku.ariza_olay_sayisi ?? 0)} arıza, MTBF ${sayiTr(ku.mtbf_saat, 0)} sa, MTTR ${sayiTr(ku.mttr_saat ?? 0, 1)} sa` : ""}{ku.sozlesme ? (ku.sozlesme.acik_puan > 0 ? ` · sözleşme eşiği ${yuzdeTr(ku.sozlesme.esik * 100, Number.isInteger(ku.sozlesme.esik * 100) ? 0 : 1)}: açık ${sayiTr(ku.sozlesme.acik_puan * 100, 1)} puan ≈ ${sayiTr(ku.sozlesme.acik_kwh / 1000, 1)} MWh${ku.sozlesme.acik_tl != null ? ` / ${sayiTr(ku.sozlesme.acik_tl)} TL, fiyat: ${ku.sozlesme.fiyat_kaynak}` : ""} — kıyas tabanı, alacak değil` : ` · sözleşme eşiği ${yuzdeTr(ku.sozlesme.esik * 100, Number.isInteger(ku.sozlesme.esik * 100) ? 0 : 1)} karşılanıyor`) : ""}</span></>
                 : <><span className="kunye-durum eksik">Hesaplanamadı</span><span className="kunye-not">{ku?.durum === "yetersiz" ? "üretim mümkün saat yetersiz" : "ölçüm/beklenti birikmedi"}</span></>}</dd></div>
           </dl>
           <p className="kunye-dip">
@@ -860,7 +863,7 @@ export function Santralim({ plantId }: { plantId: string }) {
               {dep?.var && (
                 <div style={{ display: "grid", gap: 4, fontSize: "var(--t-ikincil)" }}>
                   <span><span className={`rozet rozet-kucuk ${dep.dengeleme_birimi.yukumlu ? "rozet-uyari" : "rozet-ok"}`}>{dep.dengeleme_birimi.yukumlu ? "dengeleme birimi" : "dengeleme birimi değil"}</span> <span className="soluk">{dep.dengeleme_birimi.not}</span></span>
-                  {dep.emre_amadelik && <span><span className={`rozet rozet-kucuk ${dep.emre_amadelik.oran != null ? "rozet-notr" : "rozet-uyari"}`}>{dep.emre_amadelik.oran != null ? `emre amadelik eşiği %${sayiTr(dep.emre_amadelik.oran * 100, 0)}` : "kabul tarihi yok"}</span> <span className="soluk">{dep.emre_amadelik.not} {dep.emre_amadelik.sonuc}</span></span>}
+                  {dep.emre_amadelik && <span><span className={`rozet rozet-kucuk ${dep.emre_amadelik.oran != null ? "rozet-notr" : "rozet-uyari"}`}>{dep.emre_amadelik.oran != null ? `emre amadelik eşiği ${yuzdeTr(dep.emre_amadelik.oran * 100, 0)}` : "kabul tarihi yok"}</span> <span className="soluk">{dep.emre_amadelik.not} {dep.emre_amadelik.sonuc}</span></span>}
                   {dep.uevcb ? <span className="soluk">Depolama UEVÇB {dep.uevcb}. {dep.uevcb_notu}</span> : <span className="soluk">{dep.uevcb_notu}</span>}
                 </div>)}
             </div>
@@ -1150,7 +1153,7 @@ export function Santralim({ plantId }: { plantId: string }) {
                       </select>
                     </label>))}
                   {ftOn && <div className="ayar-panel">
-                    <span>Önizleme (7 gün, yalnız fiziksel model): <b>{ftOn.toplam_fark_pct == null ? "—" : `%${sayiTr(ftOn.toplam_fark_pct, 2)}`}</b> enerji farkı ({sayiTr(ftOn.toplam_mevcut_kwh / 1000, 1)} → {sayiTr(ftOn.toplam_aday_kwh / 1000, 1)} MWh)</span>
+                    <span>Önizleme (7 gün, yalnız fiziksel model): <b>{ftOn.toplam_fark_pct == null ? "—" : yuzdeTr(ftOn.toplam_fark_pct, 2)}</b> enerji farkı ({sayiTr(ftOn.toplam_mevcut_kwh / 1000, 1)} → {sayiTr(ftOn.toplam_aday_kwh / 1000, 1)} MWh)</span>
                     {!ftOn.nem_var && <span className="soluk">nem verisi yok; spektral düzeltme etkisiz</span>}
                     {!ftOn.kar_var && <span className="soluk">kar verisi yok; kar örtüsü etkisiz</span>}
                     <button className="dugme" onClick={() => { const [k, v] = Object.entries(ftSon)[0] ?? []; if (k) ftUygula(k, String(v)); }}>Uygula</button>
@@ -1230,9 +1233,9 @@ export function Santralim({ plantId }: { plantId: string }) {
               <span className="soluk">{kir.hesaplama_zamani ? `Değerlendirme ${tarihSaatKisa(kir.hesaplama_zamani)}; veri ${kir.son_olcum ? gunKisa(kir.son_olcum) : "son ölçüm"} gününe kadar.` : ""}{kir.tazelik?.not ? ` ${kir.tazelik.not}` : ""}</span>
             </p>
             <div className="ızgara satir-4" style={{ marginBottom: 12 }}>
-              <Kpi etiket="Açık-gök endeksi (son 7 açık gün)" deger={kir.age_7g != null ? `%${sayiTr(kir.age_7g * 100, 1)}` : "—"} alt="ölçülen ışınım / açık-gök modeli, medyan" />
+              <Kpi etiket="Açık-gök endeksi (son 7 açık gün)" deger={kir.age_7g != null ? yuzdeTr(kir.age_7g * 100, 1) : "—"} alt="ölçülen ışınım / açık-gök modeli, medyan" />
               <Kpi etiket="Endeks eğilimi (son 30 gün)" deger={kir.age_egim_pct_ay != null ? `${kir.age_egim_pct_ay > 0 ? "+" : ""}${sayiTr(kir.age_egim_pct_ay, 1)} %/ay` : "—"} alt={kir.age_egim_pct_ay != null ? `${sayiTr(kir.acik_gun_30 ?? 0)} açık günle · göreli değişim, puan değil` : `eğilim için en az 8 açık gün gerekir (${sayiTr(kir.acik_gun_30 ?? 0)} var)`} />
-              <Kpi etiket="Açık gün PR (son 7 açık gün)" deger={kir.pr_acik_7g != null ? `%${sayiTr(kir.pr_acik_7g * 100, 1)}` : "—"} alt={kir.pr_egim_pct_ay != null ? `eğilim ${kir.pr_egim_pct_ay > 0 ? "+" : ""}${sayiTr(kir.pr_egim_pct_ay, 1)} %/ay` : "eğilim için açık gün yetersiz"} />
+              <Kpi etiket="Açık gün PR (son 7 açık gün)" deger={kir.pr_acik_7g != null ? yuzdeTr(kir.pr_acik_7g * 100, 1) : "—"} alt={kir.pr_egim_pct_ay != null ? `eğilim ${kir.pr_egim_pct_ay > 0 ? "+" : ""}${sayiTr(kir.pr_egim_pct_ay, 1)} %/ay` : "eğilim için açık gün yetersiz"} />
               <Kpi etiket="Son yağış (hava tahmini arşivi)" deger={kir.son_yagis?.gun_once != null ? `${sayiTr(kir.son_yagis.gun_once)} gün önce` : "—"} alt={kir.son_yagis?.mm != null ? `son ölçüm gününe göre · ${sayiTr(kir.son_yagis.mm, 1)} mm tahmin, ölçülen yağış değil` : (kir.son_yagis?.not ?? "")} />
             </div>
             {kir.yorum && <p style={{ margin: "0 0 10px", fontSize: "var(--t-ikincil)", lineHeight: 1.5 }}>
@@ -1245,7 +1248,7 @@ export function Santralim({ plantId }: { plantId: string }) {
               <p style={{ margin: "0 0 10px", fontSize: "var(--t-ikincil)", lineHeight: 1.5 }}>
                 <span className={`rozet rozet-kucuk ${kir.kayip.nitelik === "tahmin" ? "rozet-uyari" : "rozet-notr"}`} style={{ marginRight: 8 }}>{kir.kayip.nitelik === "tahmin" ? "kirlenme kaybı tahmini" : "kirlenme kaybı · şartlı senaryo"}</span>
                 Son ölçüme kadar {sayiTr(kir.kayip.son30_gun ?? 30)} gün: <b style={{ fontWeight: 500 }}>{sayiTr((kir.kayip.son30_kayip_kwh ?? 0) / 1000, 1)} MWh</b>{kir.kayip.son30_kayip_tl != null ? <> · <b style={{ fontWeight: 500 }}>{sayiTr(kir.kayip.son30_kayip_tl, 0)} TL</b></> : <> · TL karşılığı yok (satış fiyatı tanımlı değil)</>}
-                {kir.kayip.son7_gunluk_kayip_pct != null ? <> · son 7 günde günlük ortalama %{sayiTr(kir.kayip.son7_gunluk_kayip_pct, 1)}</> : null}; temiz referans PR %{sayiTr((kir.kayip.referans_pr ?? 0) * 100, 1)}.
+                {kir.kayip.son7_gunluk_kayip_pct != null ? <> · son 7 günde günlük ortalama {yuzdeTr(kir.kayip.son7_gunluk_kayip_pct, 1)}</> : null}; temiz referans PR {yuzdeTr((kir.kayip.referans_pr ?? 0) * 100, 1)}.
                 {kir.kayip.temizlik ? <> Temizlik maliyeti {sayiTr(kir.kayip.temizlik.maliyet_tl, 0)} TL: {kir.kayip.temizlik.son30_karsilar ? "son 30 günün tahmini kaybı karşılıyor" : "son 30 günün tahmini kaybı henüz karşılamıyor"}{kir.kayip.temizlik.geri_odeme_gun != null ? `, geri ödeme yaklaşık ${sayiTr(kir.kayip.temizlik.geri_odeme_gun)} gün` : ""}.</>
                   : kir.kayip.temizlik_neden ? <> Temizlik karşılaştırması yok: {kir.kayip.temizlik_neden}.</> : kir.kayip.nitelik === "tahmin" ? <> Temizlik maliyeti girilmedi (Santral ayarları).</> : null}
                 <span className="soluk"> {kir.kayip.gecerlilik_metin}</span>
@@ -1260,7 +1263,7 @@ export function Santralim({ plantId }: { plantId: string }) {
               <div className="grafik-kaydir">
                 <table className="veri">
                   <thead><tr><th>Açık gün</th><th>Açık saat</th><th>Açık-gök endeksi</th><th>Açık gün PR</th></tr></thead>
-                  <tbody>{kir.gunler.map((g) => (<tr key={g.gun}><td>{gunKisa(g.gun)}</td><td>{sayiTr(g.acik_saat)}</td><td>%{sayiTr(g.age * 100, 1)}</td><td>{g.pr_acik != null ? `%${sayiTr(g.pr_acik * 100, 1)}` : "—"}</td></tr>))}</tbody>
+                  <tbody>{kir.gunler.map((g) => (<tr key={g.gun}><td>{gunKisa(g.gun)}</td><td>{sayiTr(g.acik_saat)}</td><td>{yuzdeTr(g.age * 100, 1)}</td><td>{g.pr_acik != null ? yuzdeTr(g.pr_acik * 100, 1) : "—"}</td></tr>))}</tbody>
                 </table>
               </div>)}
             <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "10px 0 0" }}>Işınım sensörü: {kir.sensor.etiket}. Kirlenme sensörü ve uydu referansı yok; kirlenme oranı doğrudan ölçülmez, kayıp açık-gök performans oranından tahmin edilir.</p>
@@ -1390,7 +1393,7 @@ export function Santralim({ plantId }: { plantId: string }) {
                       <span> {k.birim_kanit.metin}{k.birim_kanit.zaman ? ` (${anKisa(k.birim_kanit.zaman)}${k.birim_kanit.dosya ? `, ${k.birim_kanit.dosya}` : ""})` : ""}</span></div>
                       {k.birim_kanit.alanlar.length > 0 && <div style={{ overflowX: "auto" }}><table className="veri dar" style={{ marginTop: 4 }}>   {/* 10.11 inceleme: dar tablo, ham saat tablosundan ayrı okunur */}
                         <thead><tr><th>Alan</th><th>En iyi yorum</th><th>Ortak saat</th><th>Üretimli saat</th><th>Toleransta</th><th>Sonuç</th></tr></thead>
-                        <tbody>{k.birim_kanit.alanlar.map((a) => <tr key={a.alan}><td>{a.etiket ?? a.alan}</td><td>{a.hipotez_etiketi}</td><td>{sayiTr(a.n_ortak)}</td><td>{a.n_uretimli == null ? "—" : sayiTr(a.n_uretimli)}</td><td title={a.sonuc === "yetersiz" ? "Üretimli saat sayısı karar için yetersiz; oran gösterilmez" : undefined}>{a.oran == null || a.sonuc === "yetersiz" ? "—" : `%${sayiTr(a.oran * 100, 1)}`}</td><td>{a.sonuc === "uyumlu" ? "uyumlu" : a.sonuc === "yetersiz" ? "yetersiz" : "uyumsuz"}</td></tr>)}</tbody>
+                        <tbody>{k.birim_kanit.alanlar.map((a) => <tr key={a.alan}><td>{a.etiket ?? a.alan}</td><td>{a.hipotez_etiketi}</td><td>{sayiTr(a.n_ortak)}</td><td>{a.n_uretimli == null ? "—" : sayiTr(a.n_uretimli)}</td><td title={a.sonuc === "yetersiz" ? "Üretimli saat sayısı karar için yetersiz; oran gösterilmez" : undefined}>{a.oran == null || a.sonuc === "yetersiz" ? "—" : yuzdeTr(a.oran * 100, 1)}</td><td>{a.sonuc === "uyumlu" ? "uyumlu" : a.sonuc === "yetersiz" ? "yetersiz" : "uyumsuz"}</td></tr>)}</tbody>
                       </table></div>}
                     </div>}
                   </div>))}
@@ -1482,7 +1485,7 @@ export function Santralim({ plantId }: { plantId: string }) {
               {adaylar.adaylar.length === 0 ? <p className="soluk" style={{ margin: "4px 0 0", fontSize: "var(--t-ikincil)" }}>Aday yok: cihaz durumu arıza ya da alarm biti taşımıyor, örnekleme boşluğu yok.</p> : (
                 <ul style={{ margin: "4px 0 0", paddingLeft: 18, fontSize: "var(--t-ikincil)", lineHeight: 1.5 }}>
                   {adaylar.adaylar.slice(0, 10).map((a, i) => (
-                    <li key={i}><span className={`rozet rozet-kucuk ${a.tur === "ariza" ? "rozet-uyari" : "rozet-notr"}`}>{a.tur_etiketi}</span> {a.cihaz_id} · {a.bas.slice(5, 16).replace("T", " ")}{a.bit ? ` → ${a.bit.slice(11, 16)}` : " → sürüyor"} UTC · {sayiTr(a.sure_dk, 0)} dk{a.tur === "kisit" && a.kisma_yuzde_ort != null ? ` · kısma ort. %${sayiTr(a.kisma_yuzde_ort, 0)} (en çok %${sayiTr(a.kisma_yuzde_maks ?? a.kisma_yuzde_ort, 0)})` : ""}{a.kodlar.length ? ` · ${a.kodlar.join(", ")}` : ""}{a.kayitli ? <span className="soluk"> · olay kaydıyla çakışıyor</span> : <span className="soluk"> · kayıt yok (Olay kaydı sayfasından ekleyebilirsiniz)</span>}</li>))}
+                    <li key={i}><span className={`rozet rozet-kucuk ${a.tur === "ariza" ? "rozet-uyari" : "rozet-notr"}`}>{a.tur_etiketi}</span> {a.cihaz_id} · {a.bas.slice(5, 16).replace("T", " ")}{a.bit ? ` → ${a.bit.slice(11, 16)}` : " → sürüyor"} UTC · {sayiTr(a.sure_dk, 0)} dk{a.tur === "kisit" && a.kisma_yuzde_ort != null ? ` · kısma ort. ${yuzdeTr(a.kisma_yuzde_ort, 0)} (en çok ${yuzdeTr(a.kisma_yuzde_maks ?? a.kisma_yuzde_ort, 0)})` : ""}{a.kodlar.length ? ` · ${a.kodlar.join(", ")}` : ""}{a.kayitli ? <span className="soluk"> · olay kaydıyla çakışıyor</span> : <span className="soluk"> · kayıt yok (Olay kaydı sayfasından ekleyebilirsiniz)</span>}</li>))}
                 </ul>)}
               <p className="soluk" style={{ margin: "6px 0 0", fontSize: "var(--t-ikincil)" }}>{adaylar.not}</p>
             </div>) : null}
@@ -1508,7 +1511,7 @@ export function Santralim({ plantId }: { plantId: string }) {
             {refMesaj && <span className={`ayar-durum ${refMesaj.startsWith("Kıyaslanamadı") ? "hata" : ""}`}>{refMesaj}</span>}
           </div>
           {pilot.referans_sonuc && (() => { const r = pilot.referans_sonuc; return (
-            <p style={{ margin: "8px 0 0", fontSize: "var(--t-ikincil)" }}><span className={`rozet rozet-kucuk ${r.sonuc === "uyumlu" ? "rozet-ok" : r.sonuc === "uyumsuz" ? "rozet-uyari" : "rozet-notr"}`}>referans kıyası: {r.sonuc}</span> {r.metin} <span className="soluk">· {sayiTr(r.n_referans)} referans saati, {sayiTr(r.n_ortak)} ortak tam saat, kaynak kıyasında olmayan {sayiTr(r.n_golge_yok)}, kısmi/tahmini dışı {sayiTr(r.n_golge_kismi_disi)}{r.mape_pct != null ? `, ortalama mutlak sapma %${sayiTr(r.mape_pct, 1)}` : ""}, en büyük fark {sayiTr(r.maks_mutlak_fark_kwh, 1)} kWh{r.zaman ? ` · ${gunKisa(r.zaman)}` : ""}</span></p>); })()}
+            <p style={{ margin: "8px 0 0", fontSize: "var(--t-ikincil)" }}><span className={`rozet rozet-kucuk ${r.sonuc === "uyumlu" ? "rozet-ok" : r.sonuc === "uyumsuz" ? "rozet-uyari" : "rozet-notr"}`}>referans kıyası: {r.sonuc}</span> {r.metin} <span className="soluk">· {sayiTr(r.n_referans)} referans saati, {sayiTr(r.n_ortak)} ortak tam saat, kaynak kıyasında olmayan {sayiTr(r.n_golge_yok)}, kısmi/tahmini dışı {sayiTr(r.n_golge_kismi_disi)}{r.mape_pct != null ? `, ortalama mutlak sapma ${yuzdeTr(r.mape_pct, 1)}` : ""}, en büyük fark {sayiTr(r.maks_mutlak_fark_kwh, 1)} kWh{r.zaman ? ` · ${gunKisa(r.zaman)}` : ""}</span></p>); })()}
           <p className="soluk" style={{ margin: "8px 0 0", fontSize: "var(--t-ikincil)" }}>{pilot.not}</p>
           {edge && (
             <div style={{ marginTop: 12 }}>
@@ -1643,7 +1646,7 @@ export function Santralim({ plantId }: { plantId: string }) {
                   <td>{a.ay}</td><td>{sayiTrN(olcek(a.mwh), kucuk ? 0 : 1)}</td>
                   <td>{a.beklenti_mwh === null ? "—" : sayiTr(olcek(a.beklenti_mwh) as number, kucuk ? 0 : 1)}</td>
                   <td>{a.mwh === null || a.beklenti_mwh === null || a.beklenti_mwh === 0 ? "—"
-                    : `${a.mwh >= a.beklenti_mwh ? "+" : "−"}%${sayiTr(
+                    : `${a.mwh >= a.beklenti_mwh ? "+" : "−"}${yuzdeTr(
                         Math.abs((a.mwh - a.beklenti_mwh) / a.beklenti_mwh) * 100, 1)}`}</td>
                   <td style={{ color: "var(--ikincil)" }}>{sayiTr(a.kapsam_pct, 1)}</td>
                 </tr>

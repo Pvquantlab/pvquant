@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { SOZLUK } from "../lib/sozluk";
 import { ALARM_KURALI } from "../lib/alarmSozluk";
-import { api, type AlarmSatiri, rolum } from "../api/client";
+import { api, isit, type AlarmSatiri, rolum } from "../api/client";   // 16.11: isit — yan menüde ısıtma
 import { GRUPLAR, NAV_KAPALI_ANAHTAR, kapaliGruplariOku } from "./gruplar";   // v2.608 (F5-A): bileşen dosyasından ayrı (fast refresh kuralı)
 import { IkiAdimBolumu } from "../features/sayfalar/Kurulus";   // 26.10 Faz 6: 2FA kurulum kapısı
 import type { SantralOzeti, Kullanici } from "../api/types";
@@ -247,6 +247,7 @@ export function Kabuk({ sayfa, tiklanan, setSayfa, santral, plantId, onCikis, ch
                 {g.sayfalar.map((id) => { const s = SAYFALAR.find((x) => x.id === id)!; return (
                   <button key={s.id} className="nav-btn"
                     onClick={() => { setSayfa(s.id); setMenuAcik(false); }}
+                    onMouseEnter={() => isit(s.id, plantId)} onFocus={() => isit(s.id, plantId)}   /* 16.11 gezinme hızı: niyet anında ana veri ısıtılır */
                     aria-current={(tiklanan ?? sayfa) === s.id ? "page" : undefined}>
                     {IKONLAR[s.id]}{s.ad}
                   </button>); })}

@@ -33,8 +33,8 @@ if [ "$KIP" = "tam" ] || [ "$KIP" = "muhur" ]; then
     adim "ruff (değişen dosyalar, HEAD'e göre yeni kural kodu yok)" bash -c '
       for f in '"$(echo $py_degisen | tr "\n" " ")"'; do
         git show "HEAD:$f" > /tmp/pvq_ruff_head.py 2>/dev/null || continue
-        a=$(.venv/bin/ruff check --output-format concise /tmp/pvq_ruff_head.py 2>/dev/null | sed "s/.*: \([A-Z]*[0-9]*\) .*/\1/" | sort -u)
-        b=$(.venv/bin/ruff check --output-format concise "$f" 2>/dev/null | sed "s/.*: \([A-Z]*[0-9]*\) .*/\1/" | sort -u)
+        a=$(.venv/bin/ruff check --output-format concise /tmp/pvq_ruff_head.py 2>/dev/null | sed -n "s/.*: \([A-Z]*[0-9]*\) .*/\1/p" | grep -E "^[A-Z]+[0-9]+$" | sort -u)
+        b=$(.venv/bin/ruff check --output-format concise "$f" 2>/dev/null | sed -n "s/.*: \([A-Z]*[0-9]*\) .*/\1/p" | grep -E "^[A-Z]+[0-9]+$" | sort -u)   # 16.11: «Found N errors» özet satırı kural sanılmasın
         yeni=$(comm -13 <(echo "$a") <(echo "$b")); [ -n "$yeni" ] && { echo "$f yeni kural: $yeni"; exit 1; }
       done; exit 0'
   fi

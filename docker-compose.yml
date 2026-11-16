@@ -76,6 +76,7 @@ services:
       # 25.10 v2.488 (denetim Y1): pvq_api — süper kullanıcı değil; alembic dağıtım komutunda -e PVQ_DB_URL=<pvquant> ile koşar.
       PVQ_DB_URL: postgresql+psycopg://pvq_api:${API_DB_PASSWORD:?.env'de API_DB_PASSWORD tanimli olmali (ALTER ROLE pvq_api PASSWORD)}@db:5432/pvquant
       PVQ_JWT_SECRET: ${PVQ_JWT_SECRET:-}
+      PVQ_YANIT_ONBELLEK: "1"   # 16.11 gezinme hızı: ağır GET uçları damga anahtarlı yanıt önbelleği (yanit_onbellegi)
       # v2.556 (Aşama 3, K1): bulut kimlik kasası ana anahtarı (api şifreler; kasa yoksa kimlik saklama kapalı)
       PVQ_KEK: ${PVQ_KEK:-}
       PVQ_KEK_ID: ${PVQ_KEK_ID:-k1}

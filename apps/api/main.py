@@ -1,5 +1,6 @@
 """PVQuant API — ince katman: HTTP -> services -> HTTP."""
 import os as _os
+import time as _time
 
 import pandas as pd
 from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
@@ -14,7 +15,7 @@ from pydantic import BaseModel, Field
 # burada, açılışta tek iş parçacığıyla bir kez yüklenir; istekler hazır bulur.
 import pvquant.pipeline.calibration  # noqa: F401,E402  (forecast+utils+validation zincirini kökten yükler)
 from apps.api.deps import api_anahtari, gecerli_kullanici, kota_kontrol, modul_gerekli, yazma_yetkisi, yonetici_yetkisi   # v2.609 (F6-E): abonelik kapıları
-from pvquant.services import auth_service, plant_service
+from pvquant.services import auth_service, plant_service, yanit_onbellegi   # 16.11: ağır GET uçları damga anahtarlı yanıt önbelleği
 from pvquant.services.karne_kurali import (
     yayin_kosu_sql as _yayin_sql,  # v2.597 (F4-B): yayımlanmış koşu süzgeci
 )
@@ -97,6 +98,19 @@ from fastapi.exception_handlers import request_validation_exception_handler as _
 from fastapi.exceptions import RequestValidationError as _DogrulamaHatasi  # noqa: E402
 from starlette.exceptions import HTTPException as _StarletteHTTP  # noqa: E402
 
+
+
+@app.middleware("http")
+async def _sure_basligi(request: Request, call_next):
+    """16.11 gezinme hızı: her yanıta X-Sure-ms (sunucuda geçen süre). 300 ms üstü /v1 istekleri uvicorn akışına «YAVAS» satırı
+    olarak düşer (yol + süre; gövde ve kimlik yok) — önce/sonra ölçümü ve kalan darboğazların izi."""
+    t0 = _time.perf_counter()
+    yanit = await call_next(request)
+    ms = (_time.perf_counter() - t0) * 1000
+    yanit.headers["X-Sure-ms"] = f"{ms:.0f}"
+    if ms >= 300 and request.url.path.startswith("/v1/"):
+        print(f"YAVAS {ms:5.0f} ms {request.method} {request.url.path}", flush=True)
+    return yanit
 
 @app.exception_handler(_StarletteHTTP)
 async def _dis_http_hata(request: Request, exc: _StarletteHTTP):
@@ -346,6 +360,10 @@ def sozluk_durum(claims=Depends(gecerli_kullanici)):
 
 @app.get("/v1/plants/{plant_id}/genel-bakis")
 def genel_bakis(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """Önbellekli (yanit_onbellegi, 16.11): anahtar = kiracı + santral + «genel-bakis» + değişim damgası; üretici aşağıda."""
+    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, "genel-bakis", lambda: _genel_bakis_uret(plant_id=plant_id, claims=claims))
+
+def _genel_bakis_uret(plant_id: str, claims=Depends(gecerli_kullanici)):
     """v2.608 (Faz 5 F5-B): Genel bakış — dört iş sorusu, dört kart (bugün / yarının programı / açık riskler / finansal durum). Mevcut servisleri
     birleştirir, hesap yazmaz; her kartta durum sözlüğü kodu, dönem, tazelik, kapsam, eylem ve hedef sayfa. Değer yoksa null ve neden."""
     from pvquant.services import genel_bakis_service, plant_service
@@ -401,6 +419,10 @@ def _tarih(x):
 
 @app.get("/v1/plants/{plant_id}/summary")
 def summary(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """Önbellekli (yanit_onbellegi, 16.11): anahtar = kiracı + santral + «summary» + değişim damgası; üretici aşağıda."""
+    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, "summary", lambda: _summary_uret(plant_id=plant_id, claims=claims))
+
+def _summary_uret(plant_id: str, claims=Depends(gecerli_kullanici)):
     """v2.74-A — Santralim'in tek servis sozlesmesi (Anayasa 8.4) API'de.
 
     Streamlit'in veri yolunun kopyasi: plant_service.getir -> santral dict
@@ -493,6 +515,10 @@ def kalibrasyon_uc(plant_id: str, claims=Depends(gecerli_kullanici)):
 
 @app.get("/v1/plants/{plant_id}/saat-ay-matrisi")
 def saat_ay_matrisi_uc(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """Önbellekli (yanit_onbellegi, 16.11): anahtar = kiracı + santral + «saat-ay-matrisi» + değişim damgası; üretici aşağıda."""
+    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, "saat-ay-matrisi", lambda: _saat_ay_matrisi_uc_uret(plant_id=plant_id, claims=claims))
+
+def _saat_ay_matrisi_uc_uret(plant_id: str, claims=Depends(gecerli_kullanici)):
     """v2.121 — Solargis Tablo 4.3: yerel saat x ay ortalama uretim (kW),
     tum valid SCADA'dan. Bos SCADA'da 200 + bos listeler."""
     from pvquant.services import ozet_service
@@ -501,6 +527,10 @@ def saat_ay_matrisi_uc(plant_id: str, claims=Depends(gecerli_kullanici)):
 
 @app.get("/v1/plants/{plant_id}/gunes-yolu")
 def gunes_yolu_uc(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """Önbellekli (yanit_onbellegi, 16.11): anahtar = kiracı + santral + «gunes-yolu» + değişim damgası; üretici aşağıda."""
+    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, "gunes-yolu", lambda: _gunes_yolu_uc_uret(plant_id=plant_id, claims=claims))
+
+def _gunes_yolu_uc_uret(plant_id: str, claims=Depends(gecerli_kullanici)):
     """v2.116 — sunpath (Solargis Fig 2.3 gelenegi): yaz/ekinoks/kis
     azimut x yukseklik egrileri + saat isaretleri. Salt astronomi (pvlib);
     santralin lat/lon/tz'sinden hesaplanir, arsiv verisi gerektirmez."""
@@ -510,6 +540,11 @@ def gunes_yolu_uc(plant_id: str, claims=Depends(gecerli_kullanici)):
 
 @app.get("/v1/plants/{plant_id}/hata-dagilimi")
 def hata_dagilimi_uc(plant_id: str, gun: int = 120, kova: str = "0-24",
+                     claims=Depends(gecerli_kullanici)):
+    """Önbellekli (yanit_onbellegi, 16.11): anahtar = kiracı + santral + «hata-dagilimi?gun={gun}&kova={kova}» + değişim damgası; üretici aşağıda."""
+    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, f"hata-dagilimi?gun={gun}&kova={kova}", lambda: _hata_dagilimi_uc_uret(plant_id=plant_id, gun=gun, kova=kova, claims=claims))
+
+def _hata_dagilimi_uc_uret(plant_id: str, gun: int = 120, kova: str = "0-24",
                      claims=Depends(gecerli_kullanici)):
     """v2.112 — gunluk sapma dagilimi (F-A, MWh/gun), rapor s08 tanimi.
     Hesap accuracy_service'te; coklu-kosu savunmali. Bos dagilim 200 +
@@ -526,6 +561,11 @@ def hata_dagilimi_uc(plant_id: str, gun: int = 120, kova: str = "0-24",
 
 @app.get("/v1/plants/{plant_id}/saat-profili")
 def saat_profili_uc(plant_id: str, gun: int = 30, kova: str = "0-24",
+                    claims=Depends(gecerli_kullanici)):
+    """Önbellekli (yanit_onbellegi, 16.11): anahtar = kiracı + santral + «saat-profili?gun={gun}&kova={kova}» + değişim damgası; üretici aşağıda."""
+    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, f"saat-profili?gun={gun}&kova={kova}", lambda: _saat_profili_uc_uret(plant_id=plant_id, gun=gun, kova=kova, claims=claims))
+
+def _saat_profili_uc_uret(plant_id: str, gun: int = 30, kova: str = "0-24",
                     claims=Depends(gecerli_kullanici)):
     """v2.532 — saat başına ortalama işaretli hata (p50 − gerçek, kW) ve sistematik sapma saatleri; Kalibrasyon sayfası.
     v2.111'in saat × gün matrisi (/hata-matrisi) kaldırıldı. Kurallar gece_skill ile özdeş (flag='valid', gündüz > %2
@@ -1971,6 +2011,10 @@ def dengesizlik_geri_test(plant_id: str, gun: int = 365, claims=Depends(gecerli_
 
 @app.get("/v1/plants/{plant_id}/dengesizlik")
 def dengesizlik(plant_id: str, gun: int = 90, claims=Depends(gecerli_kullanici)):
+    """Önbellekli (yanit_onbellegi, 16.11): anahtar = kiracı + santral + «dengesizlik?gun={gun}» + değişim damgası; üretici aşağıda."""
+    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, f"dengesizlik?gun={gun}", lambda: _dengesizlik_uret(plant_id=plant_id, gun=gun, claims=claims))
+
+def _dengesizlik_uret(plant_id: str, gun: int = 90, claims=Depends(gecerli_kullanici)):
     """v2.259 — karnenin TL dili: PVQuant programı vs referans program uzlaştırma kalemleri (EDT + KÜPST, yürürlükteki kural), aylık + toplam."""
     from pvquant.services import dengesizlik_service, plant_service
     if not (14 <= gun <= 365):
@@ -2311,6 +2355,10 @@ def piyasa_fiyat_surumleri(ts: str, n: int = 20, claims=Depends(gecerli_kullanic
 
 @app.get("/v1/plants/{plant_id}/saglik")
 def saglik(plant_id: str, gun: int = 800, claims=Depends(gecerli_kullanici)):
+    """Önbellekli (yanit_onbellegi, 16.11): anahtar = kiracı + santral + «saglik?gun={gun}» + değişim damgası; üretici aşağıda."""
+    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, f"saglik?gun={gun}", lambda: _saglik_uret(plant_id=plant_id, gun=gun, claims=claims))
+
+def _saglik_uret(plant_id: str, gun: int = 800, claims=Depends(gecerli_kullanici)):
     """v2.256 — bozunma (%/yıl, YoY) ve performans eğilimi; POA yoksa model-normalize verimle."""
     from pvquant.services import plant_service, saglik_service
     if not (60 <= gun <= 2000):
@@ -2323,6 +2371,10 @@ def saglik(plant_id: str, gun: int = 800, claims=Depends(gecerli_kullanici)):
 
 @app.get("/v1/plants/{plant_id}/hijyen")
 def hijyen(plant_id: str, gun: int = 30, claims=Depends(gecerli_kullanici)):
+    """Önbellekli (yanit_onbellegi, 16.11): anahtar = kiracı + santral + «hijyen?gun={gun}» + değişim damgası; üretici aşağıda."""
+    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, f"hijyen?gun={gun}", lambda: _hijyen_uret(plant_id=plant_id, gun=gun, claims=claims))
+
+def _hijyen_uret(plant_id: str, gun: int = 30, claims=Depends(gecerli_kullanici)):
     """v2.254 — kırpma/kısıntı sayımı ve 'kısıtlama olmasaydı' kaybı (beklenen = son koşu fiziği)."""
     from pvquant.services import hijyen_service
     if not (7 <= gun <= 365):
@@ -2332,6 +2384,10 @@ def hijyen(plant_id: str, gun: int = 30, claims=Depends(gecerli_kullanici)):
 
 @app.get("/v1/plants/{plant_id}/guvenilirlik")
 def guvenilirlik(plant_id: str, gun: int = 60, claims=Depends(gecerli_kullanici)):
+    """Önbellekli (yanit_onbellegi, 16.11): anahtar = kiracı + santral + «guvenilirlik?gun={gun}» + değişim damgası; üretici aşağıda."""
+    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, f"guvenilirlik?gun={gun}", lambda: _guvenilirlik_uret(plant_id=plant_id, gun=gun, claims=claims))
+
+def _guvenilirlik_uret(plant_id: str, gun: int = 60, claims=Depends(gecerli_kullanici)):
     """v2.271 — kantil güvenilirliği (P10/P50/P90 gözlenen vs nominal), PIT histogramı, keskinlik ve aralık skoru; ham ↔ kalibre."""
     from pvquant.services import guvenilirlik_service, plant_service
     if not (14 <= gun <= 180):
@@ -2344,6 +2400,10 @@ def guvenilirlik(plant_id: str, gun: int = 60, claims=Depends(gecerli_kullanici)
 
 @app.get("/v1/plants/{plant_id}/backtest")
 def backtest(plant_id: str, gun: int = 90, claims=Depends(gecerli_kullanici)):
+    """Önbellekli (yanit_onbellegi, 16.11): anahtar = kiracı + santral + «backtest?gun={gun}» + değişim damgası; üretici aşağıda."""
+    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, f"backtest?gun={gun}", lambda: _backtest_uret(plant_id=plant_id, gun=gun, claims=claims))
+
+def _backtest_uret(plant_id: str, gun: int = 90, claims=Depends(gecerli_kullanici)):
     """v2.253 — konformal katmanın kayan-başlangıç geriye dönük sınavı (sızıntısız)."""
     from pvquant.services import backtest_service, plant_service
     if not (30 <= gun <= 180):
@@ -2394,6 +2454,11 @@ def pr(plant_id: str, gun: int = 30, claims=Depends(gecerli_kullanici)):
 
 @app.get("/v1/plants/{plant_id}/skill")
 def skill(plant_id: str, bucket: str = "0-24", gun: int = 120,
+          claims=Depends(gecerli_kullanici)):
+    """Önbellekli (yanit_onbellegi, 16.11): anahtar = kiracı + santral + «skill?bucket={bucket}&gun={gun}» + değişim damgası; üretici aşağıda."""
+    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, f"skill?bucket={bucket}&gun={gun}", lambda: _skill_uret(plant_id=plant_id, bucket=bucket, gun=gun, claims=claims))
+
+def _skill_uret(plant_id: str, bucket: str = "0-24", gun: int = 120,
           claims=Depends(gecerli_kullanici)):
     """v2.75-A — karne kapisi. Toplulastirma Streamlit dogruluk.py'nin
     KOPYASI (iki panel ayni sayiyi soyler): kova filtresi -> mape.mean(),
@@ -2453,6 +2518,10 @@ class TarifeIstek(BaseModel):
 
 @app.get("/v1/plants/{plant_id}/kullanilabilirlik")
 def kullanilabilirlik_uc(plant_id: str, gun: int = 30, claims=Depends(gecerli_kullanici)):
+    """Önbellekli (yanit_onbellegi, 16.11): anahtar = kiracı + santral + «kullanilabilirlik?gun={gun}» + değişim damgası; üretici aşağıda."""
+    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, f"kullanilabilirlik?gun={gun}", lambda: _kullanilabilirlik_uc_uret(plant_id=plant_id, gun=gun, claims=claims))
+
+def _kullanilabilirlik_uc_uret(plant_id: str, gun: int = 30, claims=Depends(gecerli_kullanici)):
     """v2.281 — kullanılabilirlik (zaman/enerji tabanlı, otomatik arıza tespiti; olay günlüğü yok)."""
     from pvquant.services import kullanilabilirlik_service
     row = plant_service.getir(claims["tenant_id"], plant_id)
@@ -2463,6 +2532,10 @@ def kullanilabilirlik_uc(plant_id: str, gun: int = 30, claims=Depends(gecerli_ku
 
 @app.get("/v1/plants/{plant_id}/kayip-ayrisimi")
 def kayip_ayrisimi_uc(plant_id: str, gun: int = 30, claims=Depends(gecerli_kullanici)):
+    """Önbellekli (yanit_onbellegi, 16.11): anahtar = kiracı + santral + «kayip-ayrisimi?gun={gun}» + değişim damgası; üretici aşağıda."""
+    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, f"kayip-ayrisimi?gun={gun}", lambda: _kayip_ayrisimi_uc_uret(plant_id=plant_id, gun=gun, claims=claims))
+
+def _kayip_ayrisimi_uc_uret(plant_id: str, gun: int = 30, claims=Depends(gecerli_kullanici)):
     """v2.533 (P8a; IH-087): gerçekleşen kayıp ayrışımı — nedene göre saat / kWh / TL (satış fiyatıyla), EPI; beklenen = fizik modeli."""
     from pvquant.services import kayip_ayrisimi_service
     row = plant_service.getir(claims["tenant_id"], plant_id)
@@ -2473,6 +2546,10 @@ def kayip_ayrisimi_uc(plant_id: str, gun: int = 30, claims=Depends(gecerli_kulla
 
 @app.get("/v1/plants/{plant_id}/p-degerleri")
 def p_degerleri_uc(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """Önbellekli (yanit_onbellegi, 16.11): anahtar = kiracı + santral + «p-degerleri» + değişim damgası; üretici aşağıda."""
+    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, "p-degerleri", lambda: _p_degerleri_uc_uret(plant_id=plant_id, claims=claims))
+
+def _p_degerleri_uc_uret(plant_id: str, claims=Depends(gecerli_kullanici)):
     """v2.534 (P8b-1; IH-098/099): yıl yıl P50/P75/P90/P99 serisi (bozunma dâhil, biçim etiketli) ve gerçekleşen kıyası (hava düzeltmesiz)."""
     from pvquant.services import pdeger_service
     row = plant_service.getir(claims["tenant_id"], plant_id)
@@ -2523,6 +2600,10 @@ def sensorler_ayarla(plant_id: str, p: SensorlerIstek, claims=Depends(yazma_yetk
 
 @app.get("/v1/plants/{plant_id}/performans")
 def performans_uc(plant_id: str, ay: int = 12, claims=Depends(gecerli_kullanici)):
+    """Önbellekli (yanit_onbellegi, 16.11): anahtar = kiracı + santral + «performans?ay={ay}» + değişim damgası; üretici aşağıda."""
+    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, f"performans?ay={ay}", lambda: _performans_uc_uret(plant_id=plant_id, ay=ay, claims=claims))
+
+def _performans_uc_uret(plant_id: str, ay: int = 12, claims=Depends(gecerli_kullanici)):
     """v2.542 (P8b-2; IH-083/099/104): ölçülen düzlem-içi ışınım ve hücre sıcaklığıyla beklenen üretim, EPI, üç referans (tahmin / beklenen / P50),
     ışınım endeksi (yalnız yatay sensörde) ve hava düzeltmeli P50. Beklenen tasarım simülasyonu değildir; model çekirdeğine girmez."""
     from pvquant.services import performans_service
@@ -3226,6 +3307,10 @@ def bankable_hesapla(plant_id: str, claims=Depends(yazma_yetkisi())):
 
 @app.get("/v1/plants/{plant_id}/monthly")
 def monthly(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """Önbellekli (yanit_onbellegi, 16.11): anahtar = kiracı + santral + «monthly» + değişim damgası; üretici aşağıda."""
+    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, "monthly", lambda: _monthly_uret(plant_id=plant_id, claims=claims))
+
+def _monthly_uret(plant_id: str, claims=Depends(gecerli_kullanici)):
     """v2.78-B — aylik beklenti kapisi (KUTU-2 okuyan yol).
 
     Ham okuma, hesap yok: iklim_beklenti (P10/50/90, worker ayda bir yazar)
@@ -3612,6 +3697,12 @@ def kosu_listesi(plant_id: str, claims=Depends(gecerli_kullanici)):
 
 @app.get("/v1/plants/{plant_id}/dogrulama/bagimsiz")
 def bagimsiz_dogrulama(plant_id: str, gun: int = 30, kural: str = "program", taze: int = 0, claims=Depends(gecerli_kullanici)):
+    """Önbellekli (yanit_onbellegi, 16.11): anahtar = kiracı + santral + «dogrulama/bagimsiz?gun={gun}&kural={kural}&taze={taze}» + değişim damgası; üretici aşağıda."""
+    if taze:   # taze=1 açıkça yeniden hesap ister (kaydedilmez) — önbelleğe girmez
+        return _bagimsiz_dogrulama_uret(plant_id=plant_id, gun=gun, kural=kural, taze=taze, claims=claims)
+    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, f"dogrulama/bagimsiz?gun={gun}&kural={kural}&taze={taze}", lambda: _bagimsiz_dogrulama_uret(plant_id=plant_id, gun=gun, kural=kural, taze=taze, claims=claims))
+
+def _bagimsiz_dogrulama_uret(plant_id: str, gun: int = 30, kural: str = "program", taze: int = 0, claims=Depends(gecerli_kullanici)):
     """v2.574 (Faz 1 F1-C): bağımsız doğrulama — yayımlandığı andaki tahmin × uygun ölçüm × referanslar (fizik, persistans, CLIPER).
     Varsayılan: gece işinin son kayıtlı sonucu (≤36 sa); yoksa ya da taze=1 ise anında hesap (kaydedilmez)."""
     from pvquant.services import bagimsiz_dogrulama_service as bd

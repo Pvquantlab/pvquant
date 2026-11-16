@@ -45,7 +45,7 @@ test("damga değişince önbellek eskir, olay yayılır ve veri sayfaları yenid
                                ["features/sayfalar/Aylik.tsx", 1], ["features/sayfalar/Digerleri.tsx", 3]] as const) {
     const s = oku(dosya);
     assert.match(s, /useDamgaSurumu/, dosya);
-    const n = (s.match(/\[plantId, ds\]|\[ds\]/g) ?? []).length;
+    const n = (s.match(/\[plantId, ds(, hazir)?\]|\[ds\]/g) ?? []).length;   // 16.11: Santralim'de ikincil efektler `hazir` kademesiyle (ds yine bağımlılıkta)
     assert.ok(n >= adet, `${dosya}: damgaya bağlı efekt ${n} < ${adet}`);
   }
 });
