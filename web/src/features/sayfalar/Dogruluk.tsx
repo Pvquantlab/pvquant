@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { kapsananSonGun, zamanTr } from "../../lib/bicim";
+import { sonGunYaz, zamanTr } from "../../lib/bicim";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
 import type { EChartsOption } from "echarts";
 import { api, bellekten, ayniysaEskisi } from "../../api/client";
@@ -255,7 +255,7 @@ function BagimsizDogrulamaKarti({ bd, kural, setKural, gun }:
           </div>
           {uyarilar.length > 0 && <ul className="not-listesi" style={{ marginTop: 12 }}>{uyarilar.map((u) => <li key={u} className="kunye-uyari">{u}</li>)}</ul>}
           <dl className="kunye" style={{ marginTop: 12 }}>
-            <div><dt>Dönem</dt><dd className="kunye-sayi">{meta ? `${gunYaz(meta.donem.bas)} – ${gunYaz(kapsananSonGun(meta.donem.bit))}` : "—"}</dd></div>   {/* 16.11: donem_bit dışlayıcı (ts_utc < :b; donem_bit − donem_bas = gün) */}
+            <div><dt>Dönem</dt><dd className="kunye-sayi">{meta ? `${gunYaz(meta.donem.bas)} – ${sonGunYaz(meta.donem.bit)}` : "—"}</dd></div>   {/* 16.11: donem_bit dışlayıcı (ts_utc < :b; donem_bit − donem_bas = gün) */}
             <div><dt>Doğrulanan tahmin</dt><dd>{KURAL_AD[meta?.kural ?? ""] ?? meta?.kural ?? "—"}</dd></div>
             <div><dt>Ölçüm sınırı</dt><dd>{b?.olcum.sinir_etiketi ?? "—"}</dd></div>
             <div><dt>Model</dt><dd>{meta?.kosu_kunyesi?.mode?.length ? meta.kosu_kunyesi.mode.map((x) => MOD_AD[x] ?? x).join(", ") : <span className="kunye-durum eksik">Belirtilmedi</span>}</dd></div>
@@ -424,7 +424,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
               silent: true, symbol: "circle", symbolSize: 7,
               itemStyle: { color: marka, borderColor: oku("--kart"), borderWidth: 1.5 },
               label: { show: true, position: "top", distance: 6, color: markaKoyu,
-                fontFamily: "'Inter Variable', 'Inter', system-ui, sans-serif", fontSize: 12, fontWeight: "bold",
+                fontFamily: "'Inter Variable', 'Inter', system-ui, sans-serif", fontSize: 12, fontWeight: 600,   /* 16.11 inceleme: merdiven 400/500/600, 700 yok */
                 formatter: () => `%${sayiTr(egilim[si] as number, 1)}` },
               data: [{ coord: [tarihler[si], egilim[si]] }],
             } } : {}),

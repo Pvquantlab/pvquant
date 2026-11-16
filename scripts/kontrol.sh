@@ -9,7 +9,8 @@ KOK="$(cd "$(dirname "$0")/.." && pwd)"; cd "$KOK" || exit 1
 KIP="${1:-hizli}"; shift || true
 URL="${PVQ_TEST_DB_URL:-}"
 ok=0; kotu=0
-adim() { local ad="$1"; shift; if "$@" >/tmp/pvq_kontrol_adim.log 2>&1; then echo "✓ $ad"; ok=$((ok+1)); else echo "✗ $ad"; tail -25 /tmp/pvq_kontrol_adim.log; kotu=$((kotu+1)); fi; }
+LOG=$(mktemp -t pvq_kontrol); trap 'rm -f "$LOG"' EXIT   # koşu başına günlük (eşzamanlı koşular çakışmaz)
+adim() { local ad="$1"; shift; if "$@" >"$LOG" 2>&1; then echo "✓ $ad"; ok=$((ok+1)); else echo "✗ $ad"; tail -25 "$LOG"; kotu=$((kotu+1)); fi; }
 web_degisti=$(git diff --name-only HEAD -- web | wc -l | tr -d ' ')
 py_degisen=$(git diff --name-only HEAD -- src apps tests | grep '\.py$' || true)
 py_test_hedef() {   # değişen kaynak dosyasının testlerini kaba eşleşmeyle bul: src/.../x_service.py → tests/test_x*.py
@@ -39,7 +40,9 @@ if [ "$KIP" = "tam" ] || [ "$KIP" = "muhur" ]; then
   fi
 fi
 if [ "$KIP" = "muhur" ]; then
-  if [ -n "$py_degisen" ]; then
+  if [ -n "$py_degisen" ] && [ -z "$URL" ]; then
+    echo "✗ PVQ_TEST_DB_URL boş: mühür kipinde tam pytest test DB ister (RLS/yetki testleri DB'siz anlamsız)"; kotu=$((kotu+1))
+  elif [ -n "$py_degisen" ]; then
     adim "tam pytest (sahip rolü, test DB)" bash -c "PVQ_DB_URL='$URL' PYTHONPATH=src .venv/bin/python3 -m pytest -q -p no:cacheprovider --no-header"
     adim "CI taklidi (TZ=UTC, pvq_api)" bash -c "TZ=UTC PVQ_BAKIM_DB_URL='$URL' PVQ_DB_URL='postgresql+psycopg://pvq_api:pvq_api_ci@localhost:55432/pvquant' PYTHONPATH=src .venv/bin/python3 -m pytest -q -p no:cacheprovider --no-header"
   else

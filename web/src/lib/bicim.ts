@@ -34,6 +34,15 @@ export function kapsananSonGun(bitIso: string): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+/** 16.11 (inceleme): kısa gün «1 Eki 2026» — öğlen sabitlenir, saat dilimi günü kaydırmaz; değer yoksa tire. */
+export function gunYaz(iso: string | null | undefined): string {
+  return iso ? tarihBicimi("tr-TR", { day: "numeric", month: "short", year: "numeric" }).format(new Date(iso.slice(0, 10) + "T12:00:00")) : "—";
+}
+/** Dışlayıcı bitişin kapsadığı son günü yazar; null-güvenli (Finansal etki ve Doğruluk künyeleri aynı yardımcıyı kullanır). */
+export function sonGunYaz(bitIso: string | null | undefined): string {
+  return bitIso ? gunYaz(kapsananSonGun(bitIso)) : "—";
+}
+
 export function zamanTr(s: string | null | undefined): string {
   // 15.11.2026 (Genel bakış turu): gün ve ay iki haneli — «1.10.2026 03:55» ile «24.10.2026 06:12» aynı kolonda farklı genişlikteydi.
   return s ? new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(s)) : "—";

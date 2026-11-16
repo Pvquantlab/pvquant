@@ -7,7 +7,7 @@ import { donemEtiket, donemSecenekleri, TUR_AD } from "../../lib/donem";   // v2
 import { HesapDurumu, Kart, Kpi, Sayfa, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
 import { ModulNotu } from "./Abonelik";   // v2.609 (Faz 6 F6-D): kapalı özellik notu (uyarı kipi)
 import { Meta } from "../../lib/Meta";
-import { kapsananSonGun, tarihBicimi } from "../../lib/bicim";
+import { gunYaz, sonGunYaz, tarihBicimi } from "../../lib/bicim";   // 16.11 inceleme: gün/son gün yardımcıları ortak
 
 /** v2.584 (Faz 2 F2-F) — Finansal etki: seçilen dönemde planlanan ve gerçekleşen üretim, sapma ve tahmini mali karşılığı. Var olan hesapların
  *  (dengesizlik, KGÜP sapma tutarı, tarife, YEKDEM, kayıp ayrışımı, mutabakat) aynı saat kümesinde derlenmiş hâlidir; formül yazmaz. Her satır
@@ -21,8 +21,6 @@ const yaz = (v: number | null | undefined, ondalik = 0) => v == null ? "—" : `
 const isaretli = (v: number | null | undefined, ondalik = 0) => v == null ? "—" : `${v > 0 ? "+" : v < 0 ? "−" : ""}${sayiTr(Math.abs(v), ondalik)}`;
 const binTl = (v: number | null | undefined) => v == null ? "—" : `${v < 0 ? "−" : ""}${sayiTr(Math.abs(v) / 1000, 1)}`;
 const saatYaz = (iso: string | null | undefined) => iso ? tarihBicimi("tr-TR", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(iso)) : "—";
-const gunYaz = (iso: string | null | undefined) => iso ? tarihBicimi("tr-TR", { day: "numeric", month: "short", year: "numeric" }).format(new Date(iso.slice(0, 10) + "T12:00:00")) : "—";
-const sonGunYaz = (bitIso: string | null | undefined) => bitIso ? gunYaz(kapsananSonGun(bitIso)) : "—";   // 16.11: dışlayıcı bitiş → kapsanan son gün (lib/bicim)
 
 function Rozet({ n, kucuk = true }: { n: FinansNitelik; kucuk?: boolean }) {
   const x = NITELIK[n] ?? NITELIK.eksik;

@@ -147,19 +147,22 @@ button:focus-visible, select:focus-visible, a:focus-visible, input:focus-visible
   outline: 2px solid var(--marka); outline-offset: 2px; }
 body { margin: 0; background: var(--zemin); color: var(--metin);
        font-family: var(--font); font-size: var(--t-govde); line-height: var(--satir);
-       font-variant-numeric: tabular-nums;   /* 16.11 tek aile: rakamlar her bağlamda eşit genişlik (83 eksik düğüm → 0) */
        text-rendering: optimizeLegibility;
        /* v2.306: Inter değişken sürümü — optik boyut ekseni küçük puntoda harfleri
           otomatik açar. NOT: 1/l/I ayrımını güçlendiren cv01/cv05 karakter varyantları
           Google Fonts sürümünde YOK (ölçüldü, etkisi 0); gerekirse font self-host edilip
           açılır. Mono eşi ayrı karar — şimdilik Plex Mono. */
        font-optical-sizing: auto; }
-/* 16.11 tek aile: .mono artık VERİ rolü (sınıf adı tarihsel; 179 kullanım) — gövde ailesi, tabular. Gerçek mono yalnız kod sınıfları. */
+/* 16.11 tek aile: .mono artık VERİ rolü (sınıf adı tarihsel; 179 kullanım; «.veri» adı table.veri ile çakıştığından yeniden adlandırılmadı) —
+   gövde ailesi, tabular. Gerçek mono yalnız kod sınıfları (.kimlik, .kod, .cip-kod, .kod-duz, .plat-anahtar, .girdi.mono, kbd). */
 .mono { font-family: var(--font); font-variant-numeric: tabular-nums; }
+/* 16.11 mühür sonrası inceleme: iki küresel kural PANEL köküne bağlı — vitrin (.vt) bu stil dosyasını da yüklüyor, oraya sızmasın.
+   :where() ile sıfır özgüllük: sınıf tabanlı b kuralları (.tanim-listesi b 500, .kpi-ikinci b …) yine kazanır. */
+:where(body:not(:has(.vt))) { font-variant-numeric: tabular-nums; }   /* rakamlar her bağlamda eşit genişlik (83 eksik düğüm → 0) */
+:where(body:not(:has(.vt))) :where(b, strong) { font-weight: 600; }   /* ağırlık merdiveni 400/500/600 — tarayıcı varsayılanı 700 Inter'de fazla koyu (60 düğüm) */
 /* 22.10 tip merdiveni: sayfa h1 26/600 (vitrinin kart başlığı kesimi: Inter Tight 600, −.015em),
    bölüm h2 20/600, kart h3 15/600 — hepsi display ailesi; ağırlık 700 kalktı (Inter Tight'ta 700 yüklü değil). */
 h1, h2, h3 { margin: 0; font-family: var(--display); font-weight: 600; letter-spacing: -0.015em; color: var(--metin); }
-b, strong { font-weight: 600; }   /* 16.11: ağırlık merdiveni 400/500/600 — tarayıcı varsayılanı 700 Inter'de fazla koyu (60 düğüm) */
 h1 { font-size: var(--t-baslik); letter-spacing: -0.02em; line-height: 1.15; }
 h2 { font-size: var(--t-bolum); line-height: 1.2; }
 /* 22.10: eyebrow — vitrinin .vt-eyebrow kalıbı (500, büyük harf, .12em, üçüncül renk); kart içi grup etiketi */
