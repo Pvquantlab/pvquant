@@ -5,6 +5,7 @@ import type { DsgAnahtar, FinansNitelik, Portfoy as PortfoyT, PortfoyAnahtar, Po
 import { FINANS_NITELIK } from "../../lib/durum";
 import { donemEtiket } from "../../lib/donem";
 import { Bilgi, Kart, Kpi, Sayfa, sayiTr, gucTr, enerjiTr, SayfaIskeleti, VeriDurumu, YerTutucu } from "./parcalar";
+import { yuzdeTr } from "../../lib/bicim";   // 16.11: yüzde işaret sırası tek kural (−%8,4)
 import { Meta } from "../../lib/Meta";
 
 /** 15.11.2026 (Portföy turu): uçtaki yöntem adı («bottom-up», «MinT …») müşteri yüzeyinde yöntem adı olarak yazılmaz; ne yapıldığı söylenir. */
@@ -110,7 +111,7 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
              ikinci={t ? { etiket: "Yarın", deger: ikisi ? yaz(t.yarin_kwh!) : enj(t.yarin_kwh), birim: ikisi ? b : undefined } : undefined}
              alt={t && (t.bugun_kwh == null || t.yarin_kwh == null) ? "bir santralde tahmin yok; toplam gösterilmez" : "tüm santrallerin beklenen (P50) toplamı"} />;
         })()}
-        <Kpi etiket="30 günlük tahmin hatası (WMAPE)" deger={t?.wmape_agirlikli != null ? `%${sayiTr(t.wmape_agirlikli, 1)}` : "—"}
+        <Kpi etiket="30 günlük tahmin hatası (WMAPE)" deger={t?.wmape_agirlikli != null ? yuzdeTr(t.wmape_agirlikli, 1) : "—"}
              alt={t ? `${sayiTr(t.wmape_kapsanan_kwp / 1000, 2)} MWp değerlendirmede, kapasite ağırlıklı${(() => { const e = (p?.santraller ?? []).filter((r) => r.wmape_30g == null).length; return e > 0 ? ` · ${sayiTr(e)} santral ölçüm yetersiz` : ""; })()}` : ""} />
         <Kpi etiket="Açık alarm" deger={t ? sayiTr(t.acik_alarm) : "—"}
              ikinci={t ? { etiket: "Veri gecikmiş", deger: sayiTr(t.veri_gecikmis), birim: "santral" } : undefined}
@@ -181,7 +182,7 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
                       <div>{r.baglanti.tur_kisa}{r.baglanti.n_cihaz > 1 ? ` · ${sayiTr(r.baglanti.n_cihaz)} cihaz` : ""}</div>
                       <div className="hucre-alt"><span className={`rozet rozet-kucuk ${["veri_akisi", "mevcut"].includes(r.baglanti.kod) ? "rozet-ok" : ["cekis_acik", "sinama_ok", "tcp_ok"].includes(r.baglanti.kod) ? "rozet-notr" : r.baglanti.kod === "sinanmadi" ? "rozet-notr" : "rozet-uyari"}`} title={r.baglanti.etiket}>{r.baglanti.etiket}</span></div>
                     </> : <span className="bos" title="Hedef veri kaynağı seçilmedi">—</span>}</td>
-                    <td>{r.wmape_30g != null ? `%${sayiTr(r.wmape_30g, 1)}` : <span className="bos" title="Son 30 günde karşılaştırılmış gün yok">—</span>}</td>
+                    <td>{r.wmape_30g != null ? yuzdeTr(r.wmape_30g, 1) : <span className="bos" title="Son 30 günde karşılaştırılmış gün yok">—</span>}</td>
                     <td><DegerBirim metin={kwhYaz(r.bugun_kwh)} /></td>
                     <td><DegerBirim metin={kwhYaz(r.yarin_kwh)} /></td>
                     <td>{r.acik_alarm > 0
@@ -266,7 +267,7 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
         sag={<span className="dugme-sira kart-arac" style={{ flexWrap: "wrap", justifyContent: "flex-end" }}>{/* 15.11: üç cip 900 px altında başlığın altına kırılır (emsal Dogruluk/Digerleri); fragment başlığı dar sütuna sıkıştırıyordu */}
           {dsg?.gosterge !== false && <span className="rozet rozet-notr rozet-kucuk" title="Yürürlükteki %5 üye eşiği (Karar 13869) ve KÜPST'ün netleşmemesi bu görünümde uygulanmaz; varsayımsal yeniden hesap">gösterge</span>}
           {dsg?.gosterge === false && dsg.uyeler && <button className="dugme kucuk" title="Üye başına EDT (tek başına, bireysel, DSG içinde), netleşme farkı, KÜPST ve pay; seçili dağıtım anahtarıyla (CSV)" onClick={() => api.portfoyDsgIndir(30, anahtar, dsg.grup).catch(() => undefined)}>Üye dağılımı (CSV)</button>}
-          {dsg?.gosterge === false && dsg.esik != null && <span className="cip" title={`Her santralin sapmasının bu oran ile PH çarpımı kadarı DSG içinde netleşir; aşan kısım santralin kendisinde kalır. ${dsg.esik_kaynak ?? ""}${dsg.gecici_m39 ? ` ${dsg.gecici_m39}.` : ""}`}>üye eşiği %{sayiTr(dsg.esik * 100, 0)}{dsg.gecici_m39 ? " · dağıtım/GTŞ DSG'sinde %100" : ""}</span>}
+          {dsg?.gosterge === false && dsg.esik != null && <span className="cip" title={`Her santralin sapmasının bu oran ile PH çarpımı kadarı DSG içinde netleşir; aşan kısım santralin kendisinde kalır. ${dsg.esik_kaynak ?? ""}${dsg.gecici_m39 ? ` ${dsg.gecici_m39}.` : ""}`}>üye eşiği {yuzdeTr(dsg.esik * 100, 0)}{dsg.gecici_m39 ? " · dağıtım/GTŞ DSG'sinde %100" : ""}</span>}
           <span className="cip" title={dsg && dsg.fiyat.senaryo_saat > 0 ? "Senaryo fiyatı: EPİAŞ piyasa fiyatı bağlı olmadığından EPDK yıllık ortalaması kullanılmış, sistem yönü dengede varsayılmıştır." : "Saatlik PTF, SMF ve sistem yönü EPİAŞ verisinden alınır."}>{dsg ? <Meta items={[`son ${sayiTr(dsg.pencere_gun)} gün`, dsg.fiyat.senaryo_saat > 0 ? "senaryo fiyatı" : "piyasa fiyatı (EPİAŞ)", dsgD === "bekliyor" && "güncelleniyor", dsgD === "hata" && "güncellenemedi"]} /> : "—"}</span></span>}>
         {dsg === undefined && dsgD === "bekliyor" ? <YerTutucu yukseklik={124} />
          : !dsg && dsgD === "hata" ? <p className="soluk" style={{ margin: 0 }}>Dengeden Sorumlu Grup hesabı şu anda alınamadı; sunucu hatası.</p>
@@ -277,7 +278,7 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
             <div className="ızgara satir-3" style={{ marginBottom: 10 }}>
               <Kpi etiket="Tek başına dengesizlik maliyeti" bilgi="Her santralin kendi dengesizliğini tek başına ödemesi hâlinde oluşacak toplam maliyet. Enerji dengesizlik tutarı, EDT, yürürlükteki kuralla yeniden hesaplanır." deger={sayiTr(dsg.ayri_tl / 1000, 1)} birim="bin TL" alt={`${sayiTr(dsg.santral)} santral · ${sayiTr(dsg.sapma_ayri_mwh ?? 0, 1)} MWh sapma`} />
               <Kpi etiket="DSG içinde netleştirilmiş maliyet" bilgi="Santrallerin sapmaları Dengeden Sorumlu Grup içinde birbirini kısmen karşılar; geriye kalan dengesizliğin maliyetidir." deger={sayiTr((dsg.net_tl ?? 0) / 1000, 1)} birim="bin TL" alt={`${sayiTr(dsg.sapma_net_mwh ?? 0, 1)} MWh net sapma`} />
-              <Kpi etiket="Netleşme farkı · varsayımsal" bilgi="Tek başına maliyet ile DSG içindeki maliyet arasındaki fark. Yürürlükteki kuralla yapılan yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir." deger={sayiTr((dsg.kazanc_tl ?? 0) / 1000, 1)} birim="bin TL" alt={dsg.kazanc_pct != null ? `tek başına maliyetin %${sayiTr(dsg.kazanc_pct, 1)}'i${dsg.gosterge === false ? " · eşik kuralı uygulandı" : " · eşik uygulanmadan, gösterge"}` : "—"} />
+              <Kpi etiket="Netleşme farkı · varsayımsal" bilgi="Tek başına maliyet ile DSG içindeki maliyet arasındaki fark. Yürürlükteki kuralla yapılan yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir." deger={sayiTr((dsg.kazanc_tl ?? 0) / 1000, 1)} birim="bin TL" alt={dsg.kazanc_pct != null ? `tek başına maliyetin ${yuzdeTr(dsg.kazanc_pct, 1)}'i${dsg.gosterge === false ? " · eşik kuralı uygulandı" : " · eşik uygulanmadan, gösterge"}` : "—"} />
             </div>
             {dsg.gosterge === false && (
               <div className="ızgara satir-3" style={{ marginBottom: 10 }}>
@@ -322,7 +323,7 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
                     <thead><tr><th>Santral</th><th>Sapma (MWh)</th><th>Pay</th><th>Tek başına EDT</th><th>DSG içinde EDT</th><th>Fark</th><th title="Eşiği aşan, DSG içinde netleşmeyip santralin kendisinde kalan enerji dengesizlik tutarı">Santralde kalan EDT</th><th title="KGÜP sapma tutarı; santral başına ödenir, DSG içinde netleşmez">KÜPST</th></tr></thead>
                     <tbody>
                       {Object.entries(dsg.uyeler).map(([ad, u]) => (
-                        <tr key={ad}><td>{ad}</td><td>{sayiTr(u.sapma_mwh, 1)}</td><td>{u.pay_pct != null ? `%${sayiTr(u.pay_pct, 1)}` : "—"}</td>
+                        <tr key={ad}><td>{ad}</td><td>{sayiTr(u.sapma_mwh, 1)}</td><td>{u.pay_pct != null ? yuzdeTr(u.pay_pct, 1) : "—"}</td>
                           <td>{sayiTr(u.edt_tek_tl / 1000, 1)} <span className="birim">bin TL</span></td>
                           <td>{u.edt_dsg_tl != null ? sayiTr(u.edt_dsg_tl / 1000, 1) : "—"} <span className="birim">bin TL</span></td>
                           <td>{u.netlesme_farki_tl != null ? sayiTr(u.netlesme_farki_tl / 1000, 1) : "—"} <span className="birim">bin TL</span></td>
@@ -381,7 +382,7 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
                         <thead><tr><th>Santral</th><th>Kurulu güç (MW)</th><th>Üretim (MWh)</th><th>Sapma (MWh)</th><th>Pay</th><th>KÜPST payı</th></tr></thead>
                         <tbody>
                           {Object.entries(u.uyeler).map(([ad, m]) => (
-                            <tr key={ad}><td>{ad}</td><td>{sayiTr(m.kurulu_mw, 2)}</td><td>{sayiTr(m.uretim_mwh, 1)}</td><td>{sayiTr(m.sapma_mwh, 1)}</td><td>%{sayiTr(m.pay_pct, 1)}</td>
+                            <tr key={ad}><td>{ad}</td><td>{sayiTr(m.kurulu_mw, 2)}</td><td>{sayiTr(m.uretim_mwh, 1)}</td><td>{sayiTr(m.sapma_mwh, 1)}</td><td>{yuzdeTr(m.pay_pct, 1)}</td>
                               <td>{m.kupst_tl != null ? sayiTr(m.kupst_tl / 1000, 1) : "—"} <span className="birim">bin TL</span></td></tr>
                           ))}
                         </tbody>

@@ -10,6 +10,7 @@ import { api, bellekten, ayniysaEskisi, rolum, RaporDenetimHata, type DenetimBul
          type KosuSatiri , CihazBazliHatasi} from "../../api/client";
 import type { KalibrasyonOzeti, Kayma, Hijyen, EpiasUretim, KayipAgaci, GucMatrisi, Isler, SaatProfili, KayipAyrisimi } from "../../api/types";
 import { Kart, Sayfa, Kpi, sayiTr, SayfaIskeleti, YerTutucu, Katla } from "./parcalar";
+import { yuzdeTr } from "../../lib/bicim";   // 16.11: yüzde işaret sırası tek kural (−%8,4)
 import { ModulNotu } from "./Abonelik";   // v2.609 (Faz 6 F6-D): kapalı özellik notu (uyarı kipi)
 import { Meta } from "../../lib/Meta";
 import { JsonOnizleme } from "./JsonOnizleme";   // v2.351: JSON panel içi önizleme
@@ -60,7 +61,7 @@ function GucMatrisiKarti({ plantId, ilkVeri }: { plantId: string; ilkVeri: GucMa
   const hesapla = () => { setMesaj("Hesaplanıyor (tipik yıl, ~10 s)…"); api.gucMatrisiHesapla(plantId).then((r) => { setG(r); setMesaj(null); }).catch((e) => setMesaj(String((e as Error).message ?? e))); };
   return (
     <Kart baslik="Panel verimi" alt="Işınım ve sıcaklığa göre güç tablosu" sag={<span style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
-      {g?.durum === "ok" && <span className="cip"><Meta items={[`tipik yıl ${g.yil}`, `iklim-özgü verim oranı %${sayiTr((g.cser ?? 0) * 100, 1)}`]} /></span>}
+      {g?.durum === "ok" && <span className="cip"><Meta items={[`tipik yıl ${g.yil}`, `iklim-özgü verim oranı ${yuzdeTr((g.cser ?? 0) * 100, 1)}`]} /></span>}
       <button className="dugme kucuk" onClick={hesapla}>{g?.durum === "ok" ? "Yenile" : "Hesapla"}</button></span>}>
       {/* 23.10 altıncı tur: boş durum iki kademe (.bos-durum); tablo dar + sans tabular (.veri.sayisal.dar) — 7 sütun
           1840 px'e yayılmıyor; sentetik kaynak başlıkta rozetle söylenir (ölçüm sanılmasın); kaynak/not iki ayrı cümle. */}
@@ -73,16 +74,16 @@ function GucMatrisiKarti({ plantId, ilkVeri }: { plantId: string; ilkVeri: GucMa
         <>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12, alignItems: "center" }}>
             {/^sentetik/i.test(g.kaynak ?? "") && <span className="rozet rozet-notr" title="Motorun verim eğrisinden hesaplanır; saha ölçümü değildir">model hesabı, ölçüm değil</span>}
-            <span className="cip">düşük ışınım (200 W/m²) verim kaybı %{sayiTr(g.dusuk_isinim_kayip_pct ?? 0, 1)}</span>
-            <span className="cip">sıcak hücre (50 °C) kaybı %{sayiTr(g.sicaklik_50_kayip_pct ?? 0, 1)}</span>
+            <span className="cip">düşük ışınım (200 W/m²) verim kaybı {yuzdeTr(g.dusuk_isinim_kayip_pct ?? 0, 1)}</span>
+            <span className="cip">sıcak hücre (50 °C) kaybı {yuzdeTr(g.sicaklik_50_kayip_pct ?? 0, 1)}</span>
             <span className="cip"><Meta items={[`tipik yıl DC ${sayiTr(g.e_dc_kwh_kwp ?? 0, 0)} kWh/kWp`, `düzlem ${sayiTr(g.h_poa_kwh_m2 ?? 0, 0)} kWh/m²`]} /></span>
           </div>
           <div className="grafik-kaydir">
             <table className="veri sayisal dar">
               <thead><tr><th style={{ textAlign: "left" }}>Işınım (W/m²)</th>{(g.tablo ?? []).map((r) => <th key={r.g_wm2}>{sayiTr(r.g_wm2)}</th>)}</tr></thead>
               <tbody>
-                <tr><td style={{ textAlign: "left" }}>Verim oranı, hücre 25 °C</td>{(g.tablo ?? []).map((r) => <td key={r.g_wm2}>%{sayiTr(r.verim_25_pct, 1)}</td>)}</tr>
-                <tr><td style={{ textAlign: "left" }}>Verim oranı, hücre 50 °C</td>{(g.tablo ?? []).map((r) => <td key={r.g_wm2}>%{sayiTr(r.verim_50_pct, 1)}</td>)}</tr>
+                <tr><td style={{ textAlign: "left" }}>Verim oranı, hücre 25 °C</td>{(g.tablo ?? []).map((r) => <td key={r.g_wm2}>{yuzdeTr(r.verim_25_pct, 1)}</td>)}</tr>
+                <tr><td style={{ textAlign: "left" }}>Verim oranı, hücre 50 °C</td>{(g.tablo ?? []).map((r) => <td key={r.g_wm2}>{yuzdeTr(r.verim_50_pct, 1)}</td>)}</tr>
               </tbody>
             </table>
           </div>
@@ -106,7 +107,7 @@ function KayipAgaciKarti({ plantId, ilkVeri }: { plantId: string; ilkVeri: Kayip
   const hesapla = () => { setMesaj("Hesaplanıyor (tipik yıl ışınımı, ~10 s)…"); api.kayipAgaciHesapla(plantId).then((r) => { setK(r); setMesaj(null); }).catch((e) => setMesaj(String((e as Error).message ?? e))); };
   return (
     <Kart baslik="Kayıp zinciri" alt="Yatay ışınımdan şebekeye, adım adım; tipik yıl ışınımı (uzun dönem arşivi) ve tipik varsayılanlarla hesaplanır, gerçekleşen üretim değildir — her satır kaynağını söyler" sag={<span style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
-      {k?.durum === "ok" && <span className="cip"><Meta items={[`tipik yıl ${k.yil}`, `PR %${sayiTr((k.pr ?? 0) * 100, 0)}`, `${sayiTr(k.ozgul_kwh_kwp ?? 0, 0)} kWh/kWp`]} /></span>}
+      {k?.durum === "ok" && <span className="cip"><Meta items={[`tipik yıl ${k.yil}`, `PR ${yuzdeTr((k.pr ?? 0) * 100, 0)}`, `${sayiTr(k.ozgul_kwh_kwp ?? 0, 0)} kWh/kWp`]} /></span>}
       <button className="dugme kucuk" onClick={hesapla}>{k?.durum === "ok" ? "Yenile" : "Hesapla"}</button></span>}>
       {/* 23.10 altıncı tur: boş durum iki kademe — başlık satırı + «Hesapla» yönlendirmesi */}
       {k === undefined ? <YerTutucu yukseklik={430} /> : !k || k.durum !== "ok" ? (
@@ -127,7 +128,7 @@ function KayipAgaciKarti({ plantId, ilkVeri }: { plantId: string; ilkVeri: Kayip
                         yanıyor, "%-13,8" düzleme aktarma kazancı yeşil yanıyordu.
                         Anayasa: kırmızı/amber YALNIZ durum bildirir. Büyüklük sırası
                         zaten okunuyor — sütun sağa dayalı, mono ve tabular-nums. */}
-                    <td>{r.kayip_pct === 0 ? "—" : `%${sayiTr(r.kayip_pct, 1)}`}</td>
+                    <td>{r.kayip_pct === 0 ? "—" : yuzdeTr(r.kayip_pct, 1)}</td>
                     <td>{sayiTr(r.cikan_kwh / 1000, 0)}</td><td style={{ textAlign: "left", fontFamily: "var(--font)", color: "var(--soluk)" }}>{r.kaynak}</td></tr>))}
               </tbody>
             </table>
@@ -684,7 +685,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
   const yuklendi = k !== undefined || kD !== "bekliyor";
   const tazeleniyor = yuklendi && kD === "bekliyor";
   const sr = (a: string, b: string) => <tr key={a}><td>{a}</td><td className="mono">{b}</td></tr>;
-  const yzd = (v: number | null) => v === null ? "\u2014" : `%${sayiTr(v, 1)}`;
+  const yzd = (v: number | null) => v === null ? "\u2014" : yuzdeTr(v, 1);
   const iyilesme = k && k.mape_once && k.mape_sonra
     ? Math.round((1 - k.mape_sonra / k.mape_once) * 100) : null;
   const AY = ["Oca","Şub","Mar","Nis","May","Haz","Tem","Ağu","Eyl","Eki","Kas","Ara"];
@@ -719,7 +720,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
       const iyi = d < 0;
       const soluk = oku("--soluk"), veri = oku("--font"), izgara = oku("--izgara");
       const marka = oku("--marka");
-      const et = (v: number) => `%${sayiTr(v, 1)}`;
+      const et = (v: number) => yuzdeTr(v, 1);
       return {
         grid: { left: 44, right: 10, top: 30, bottom: 26 }, animation: false,
         xAxis: { type: "category", data: ["Fiziksel", "Kalibrasyon", "Kalibre"],
@@ -730,7 +731,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
           min: +(Math.min(o, so) * 0.9).toFixed(1),
           max: +(Math.max(o, so) * 1.12).toFixed(1),
           axisLabel: { color: soluk, fontFamily: veri, fontSize: 13,
-                       formatter: (v: number) => `%${sayiTr(v, 1)}` } },
+                       formatter: (v: number) => yuzdeTr(v, 1) } },
         series: [
           { type: "bar", stack: "s", barMaxWidth: 44, silent: true,
             itemStyle: { color: "transparent" },
@@ -882,7 +883,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
                 Kırpma: üretimin AC sınırına dayandığı saatlerdir; gerçek üretimdir ve tahmin de bu sınırı bilir, ancak
                 sınırlanmış güç panel fiziğini yansıtmadığından kalibrasyon bu saatleri kullanmaz. Kısıt: beklenenin çok
                 altında ve düz seyreden bloklardır; şebeke kısıtının izidir, bulut düşüşü düz olmaz. Her gece yeniden
-                değerlendirilir; hiçbir ölçüm silinmez. {hj.beklenen_kapsama != null && `Beklenen üretim saatlerin %${sayiTr(hj.beklenen_kapsama * 100, 0)}'inde vardı.`}
+                değerlendirilir; hiçbir ölçüm silinmez. {hj.beklenen_kapsama != null && `Beklenen üretim saatlerin ${yuzdeTr(hj.beklenen_kapsama * 100, 0)}'inde vardı.`}
               </p>
             </details>
           </>
@@ -891,14 +892,14 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
       {/* 04.11 v2.533 (P8a, IH-087): gerçekleşen kayıp ayrışımı — nedene göre saat / kWh / TL; beklenen hava tahmini girdili fizik modeli,
           TL satış fiyatıyla gelir kaybı tahmini; her satır KPI'dan dışlanıp dışlanmadığını söyler */}
       <Kart baslik="Gerçekleşen kayıp ayrışımı" alt="Beklenen ile gerçekleşen arasındaki açık, nedene göre; son 30 ölçüm günü"
-        sag={<span className="cip">{kyp?.durum === "ok" ? <Meta items={[`${sayiTr(kyp.mumkun_saat ?? 0)} saat`, kyp.son_olcum && `bitiş ${tarihTr(kyp.son_olcum)}`, kyp.epi != null && `EPI %${sayiTr(kyp.epi * 100, 1)}`, kyp.fiyat?.etiket]} />
+        sag={<span className="cip">{kyp?.durum === "ok" ? <Meta items={[`${sayiTr(kyp.mumkun_saat ?? 0)} saat`, kyp.son_olcum && `bitiş ${tarihTr(kyp.son_olcum)}`, kyp.epi != null && `EPI ${yuzdeTr(kyp.epi * 100, 1)}`, kyp.fiyat?.etiket]} />
           : kyp === undefined ? "hesaplanıyor" : kyp?.durum === "yetersiz" ? "üretim mümkün saat yetersiz" : kyp ? "veri yok" : "alınamadı"}</span>}>
         {/* v2.608 (Faz 5 F5-E) aşamalı açılım: başlık çipi EPI ve kapsamı söyler; tablo katlı */}
         {kyp === undefined ? <YerTutucu yukseklik={120} /> : kyp?.durum === "ok" && kyp.satirlar ? (
           <Katla ozet="Nedene göre kayıp tablosu" not="EPI, nedeni bilinen kayıp ve TL karşılığı">
               <div className="ızgara satir-3" style={{ gap: 12 }}>
                 <div className="kpi"><div className="kpi-et">Enerji performans indeksi (EPI)</div>
-                  <div className="kpi-dg">{kyp.epi != null ? <>%{sayiTr(kyp.epi * 100, 1)}</> : "—"}</div>
+                  <div className="kpi-dg">{kyp.epi != null ? <>{yuzdeTr(kyp.epi * 100, 1)}</> : "—"}</div>
                   <div className="kpi-alt">gerçekleşen {sayiTr((kyp.uretim_kwh ?? 0) / 1000, 1)} MWh / beklenen {sayiTr((kyp.beklenen_kwh ?? 0) / 1000, 1)} MWh</div></div>
                 <div className="kpi"><div className="kpi-et">Nedeni bilinen kayıp</div>
                   <div className="kpi-dg">{sayiTr((kyp.toplam_kayip_kwh ?? 0) / 1000, 1)} <small>MWh</small></div>
@@ -938,7 +939,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
                   <tbody className="mono">
                     {ky.ozellikler.map((o) => (
                       <tr key={o.ad}><td>{o.etiket}</td><td>{sayiTr(o.n)}</td><td>{sayiTr(o.psi, 3)}</td><td>{sayiTr(o.ks, 3)}</td>
-                        <td>{sayiTr(o.sapma, 2)}{o.sapma_pct != null ? ` (%${sayiTr(o.sapma_pct, 1)})` : ""}</td>
+                        <td>{sayiTr(o.sapma, 2)}{o.sapma_pct != null ? ` (${yuzdeTr(o.sapma_pct, 1)})` : ""}</td>
                         <td style={{ color: o.hukum === "KAYMA" ? "var(--uyari-metin)" : o.hukum === "dikkat" ? "var(--soluk)" : "var(--basari-metin)" }}>{o.hukum}</td></tr>
                     ))}
                   </tbody>
@@ -1010,7 +1011,7 @@ function DonemRaporuKarti({ plantId }: { plantId: string }) {
     try { if (ne === "onizle") setV(await api.raporDonem(plantId, donem)); else await api.raporDonemIndir(plantId, donem); }
     catch (e) { setHata(String((e as Error).message ?? e)); } finally { setMesgul(null); }
   };
-  const oz = v?.ozet; const yuzde = (p: number | null | undefined) => p == null ? "—" : `${p < 0 ? "−" : "+"}%${sayiTr(Math.abs(p), 1)}`;
+  const oz = v?.ozet; const yuzde = (p: number | null | undefined) => yuzdeTr(p, 1, true);   // 16.11: ortak kural
   return (
     <Kart baslik="Dönem raporu" alt="Ay, çeyrek ya da yıl seçin; geçmiş her dönem yeniden üretilebilir. İçerik: üretim ve gün başı beklentisi, olay kaydı, olay kaydına göre kullanılabilirlik, ölçülen ışınım varsa performans oranı ile ölçülen havayla beklenen üretim ve EPI, ay döneminde uzlaştırma kalemleri (yeniden hesap) ve yüklü EPİAŞ bildirimi."
       sag={<span className="dugme-sira kart-arac">
@@ -1026,12 +1027,12 @@ function DonemRaporuKarti({ plantId }: { plantId: string }) {
             <span className="soluk">{oz.veri_durumu_metni} Üretim zamanı {zamanTr(v.uretim_zamani)}; «HTML indir» aynı veriden o anda yeniden üretilir.</span>
           </p>
           <div className="ızgara satir-4" style={{ marginBottom: 12 }}>
-            <Kpi etiket={`Üretim (${v.donem.etiket})`} deger={oz.uretim_kwh != null ? sayiTr(oz.uretim_kwh / 1000, 1) : "—"} birim={oz.uretim_kwh != null ? "MWh" : undefined} alt={oz.uretim_kwh != null ? `${sayiTr(oz.saat)} / ${sayiTr(oz.beklenen_saat)} saat veri (%${sayiTr(oz.kapsam_pct ?? 0, 0)})` : "dönemde SCADA ölçümü yok"} />
+            <Kpi etiket={`Üretim (${v.donem.etiket})`} deger={oz.uretim_kwh != null ? sayiTr(oz.uretim_kwh / 1000, 1) : "—"} birim={oz.uretim_kwh != null ? "MWh" : undefined} alt={oz.uretim_kwh != null ? `${sayiTr(oz.saat)} / ${sayiTr(oz.beklenen_saat)} saat veri (${yuzdeTr(oz.kapsam_pct ?? 0, 0)})` : "dönemde SCADA ölçümü yok"} />
             <Kpi etiket="Beklenti (gün başı P50)" deger={oz.beklenen_kwh != null ? sayiTr(oz.beklenen_kwh / 1000, 1) : "—"} birim={oz.beklenen_kwh != null ? "MWh" : undefined} alt={oz.beklenen_kwh == null ? "arşivde gün başı tahmini yok" : oz.sapma_pct != null ? `sapma ${yuzde(oz.sapma_pct)} (${sayiTr(oz.ortak_gun)} ortak gün)` : "ortak gün yok"} />
-            <Kpi etiket="Kullanılabilirlik (olay kaydı)" deger={v.kullanilabilirlik ? `%${sayiTr(v.kullanilabilirlik.oran * 100, 1)}` : "—"} alt={v.kullanilabilirlik ? `${sayiTr(oz.olay)} olay, ${sayiTr(oz.ariza)} arıza/hasar; ${sayiTr(v.kullanilabilirlik.ariza_esdeger_saat, 1)} eşdeğer saat` : "olay kaydı yok"} />
+            <Kpi etiket="Kullanılabilirlik (olay kaydı)" deger={v.kullanilabilirlik ? yuzdeTr(v.kullanilabilirlik.oran * 100, 1) : "—"} alt={v.kullanilabilirlik ? `${sayiTr(oz.olay)} olay, ${sayiTr(oz.ariza)} arıza/hasar; ${sayiTr(v.kullanilabilirlik.ariza_esdeger_saat, 1)} eşdeğer saat` : "olay kaydı yok"} />
             <Kpi etiket="Performans oranı (temel)" deger={v.pr ? sayiTr(v.pr.pr, 3) : "—"} alt={v.pr ? `${sayiTr(v.pr.gun)} gün ölçülen ışınımla; sıcaklık düzeltmesiz` : "ölçülen düzlem ışınımı yok"} />
             {/* v2.542 (P8b-2): dönemin ölçülen havayla beklenen üretimi — raporda ayrı bölüm; burada yalnız EPI */}
-            <Kpi etiket="EPI (ölçülen hava)" deger={v.performans?.durum === "ok" && v.performans.epi != null ? `%${sayiTr(v.performans.epi * 100, 1)}` : "—"}
+            <Kpi etiket="EPI (ölçülen hava)" deger={v.performans?.durum === "ok" && v.performans.epi != null ? yuzdeTr(v.performans.epi * 100, 1) : "—"}
               alt={v.performans?.durum === "ok" ? `gerçekleşen / beklenen; ${v.performans.referans ?? ""}${v.performans.isinim?.durum === "ok" && v.performans.isinim.yil != null ? `; ışınım endeksi ${sayiTr(v.performans.isinim.yil, 2)}` : ""}` : (v.performans?.not ?? "beklenen üretim hesaplanamadı")} />
           </div>
           {v.uzlastirma?.satirlar && v.uzlastirma.satirlar.length > 0 && (

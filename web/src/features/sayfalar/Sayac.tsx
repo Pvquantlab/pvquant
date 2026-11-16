@@ -4,7 +4,7 @@ import { api } from "../../api/client";
 import type { SayacOzet, SayacKaynak, SayacGun, SayacAyar } from "../../api/types";
 import { Kart, Kpi, Sayfa, sayiTr, SayfaIskeleti } from "./parcalar";
 import { Meta } from "../../lib/Meta";
-import { tarihBicimi } from "../../lib/bicim";
+import { tarihBicimi, yuzdeTr } from "../../lib/bicim";
 
 /** v2.523 (P4a) — Sayaç: uzlaştırmaya esas sayaç verisi (OSOS / MASS / EPYS dışa aktarımı) SCADA'dan ayrı yüklenir; sayaç türüne göre EPİAŞ geliş
  *  beklentisi (Ölçüm Sist. Yön. m.8(2)–(3)), bu ayın eksik saatleri, 12. gün 17:30 düzeltme geri sayımı (DUY m.81, m.82), günlük SCADA ↔ sayaç
@@ -17,7 +17,7 @@ const saatTr = (iso: string | null | undefined) => iso ? tarihBicimi("tr-TR", { 
 const gunTr = (iso: string | null | undefined) => iso ? tarihBicimi("tr-TR", { day: "numeric", month: "short", year: "numeric" }).format(/^\d{4}-\d{2}-\d{2}(\s|$)/.test(iso) ? new Date(iso.slice(0, 10) + "T12:00:00") : new Date(iso)) : "—";
 const ayAd = (d: string) => `${d.slice(5)}.${d.slice(0, 4)}`;
 const kwh = (v: number | null | undefined) => v == null ? "—" : sayiTr(v, 0);
-const yuzde = (p: number | null | undefined) => p == null ? "—" : `${p < 0 ? "−" : p > 0 ? "+" : ""}%${sayiTr(Math.abs(p), 1)}`;
+const yuzde = (p: number | null | undefined) => yuzdeTr(p, 1, true);   // 16.11: ortak kural, işaret «%»den önce
 const imzali = (v: number | null | undefined, ondalik = 0) => v == null ? "—" : `${v < 0 ? "−" : v > 0 ? "+" : ""}${sayiTr(Math.abs(v), ondalik)}`;   // eksi işareti tek biçim (−)
 const sureTr = (saat: number) => { const s = Math.abs(saat); return s < 1 ? `${sayiTr(Math.round(s * 60))} dk` : s < 48 ? `${sayiTr(s, 0)} sa` : `${sayiTr(s / 24, 0)} gün`; };
 const sayiOku = (t: string): number | null | undefined => { const x = t.trim(); if (x === "") return null; const n = Number(x.includes(",") ? x.replace(/\./g, "").replace(",", ".") : x); return Number.isFinite(n) ? n : undefined; };
@@ -89,7 +89,7 @@ export function Sayac({ plantId }: { plantId: string }) {
           alt={sn.vadesi_gelen != null ? `${sayiTr(sn.vadesi_gelen)} saatin ölçümü bekleniyor, ${sayiTr(sn.yuklu)} saati yüklü${sn.yuklu_tahmini ? ` (${sayiTr(sn.yuklu_tahmini)} tahmini)` : ""}; ${sayiTr(sn.vadesi_gelmemis ?? 0)} saatin vadesi gelmedi. Eksik = PVQuant'a yüklenmemiş; EPİAŞ'ta eksik olduğu anlamına gelmez.` : g.sayac_turu === "diger" ? "aylık bildirim yapan sayaç; saat bazında beklenti yok" : "önce sayaç türünü seçin (sağdaki kart)"} />
         <Kpi etiket={`Sayaç ve SCADA üretim farkı (${sayiTr(f.pencere_gun)} gün)`} bilgi="Sayaç − SCADA, yalnız iki serinin de bulunduğu ve sayaç değeri ölçülmüş olan saatlerde; yüzde SCADA toplamına oranla. İkinci satır tahmini değerler dâhil. SCADA brüt AC üretim, sayaç şebekeye verilen net enerjidir; oran santrale özgüdür, PVQuant eşik koymaz."
           deger={yuzde(f.olculmus.fark_pct)} ikinci={f.tahmini_dahil.saat && f.tahmini_dahil.saat !== f.olculmus.saat ? { etiket: "tahmini değerler dâhil", deger: `${yuzde(f.tahmini_dahil.fark_pct)} (${sayiTr(f.tahmini_dahil.saat)} saat)` } : undefined}
-          alt={f.olculmus.saat ? `${sayiTr(f.olculmus.saat)} ölçülmüş ortak saat; ${imzali(f.olculmus.fark_kwh)} kWh; kapsam %${sayiTr(f.kapsam.ortak_pct ?? 0, 0)} (${sayiTr(f.kapsam.ortak_saat)} / ${sayiTr(f.kapsam.pencere_saat)} saat). Sürekli benzer bir fark çoğunlukla ölçüm noktası ve öz tüketimdendir; tek başına arıza göstergesi değildir.` : "karşılaştırma için hem SCADA hem sayaç verisi olan saat gerekir"} />
+          alt={f.olculmus.saat ? `${sayiTr(f.olculmus.saat)} ölçülmüş ortak saat; ${imzali(f.olculmus.fark_kwh)} kWh; kapsam ${yuzdeTr(f.kapsam.ortak_pct ?? 0, 0)} (${sayiTr(f.kapsam.ortak_saat)} / ${sayiTr(f.kapsam.pencere_saat)} saat). Sürekli benzer bir fark çoğunlukla ölçüm noktası ve öz tüketimdendir; tek başına arıza göstergesi değildir.` : "karşılaştırma için hem SCADA hem sayaç verisi olan saat gerekir"} />
         <Kpi etiket="Sayaç verisi düzeltme son tarihi" bilgi="DUY m.82(4): ayın 12'si 17:30'dan sonra gelen sayaç düzeltmesi o ayın uzlaştırmasına girmez; sayaç değerleri dönem sonunu izleyen ilk 10 gün içinde PYS'ye aktarılır (m.81(1)). Hafta sonuna denk gelen 12'si için EPİAŞ uygulaması metinde yazılı değil. Alt satır: dönemin sayaç kapsamı PVQuant'ta."
           deger={dSon ? (dSon.gecti ? "geçti" : sureTr(dSon.kalan_saat)) : "—"} birim={dSon && !dSon.gecti ? "kaldı" : undefined} ton={dSon && !dSon.gecti && dSon.kalan_saat <= 72 ? "amber" : undefined}
           alt={dSon ? <>{ayAd(dSon.donem)} dönemi: {gunTr(dSon.itiraz_son)} 17:30{d0 && d0 !== dSon ? ` (${ayAd(d0.donem)} geçti)` : ""}{dSon.hafta_sonu ? "; hafta sonu" : ""}; PVQuant'ta {sayiTr(dSon.kapsam.yuklu)} / {sayiTr(dSon.kapsam.vadesi_gelen)} saat{dSon.kapsam.eksik ? `, ${sayiTr(dSon.kapsam.eksik)} eksik` : ""}{!dSon.gecti ? <span className="soluk"> · bu tarihten sonra yapılan sayaç düzeltmesi {ayAd(dSon.donem)} uzlaştırmasına girmez</span> : null}</> : undefined} />

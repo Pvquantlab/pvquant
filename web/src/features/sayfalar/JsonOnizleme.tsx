@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { RaporJson } from "../../api/types";
 import { sayiTr } from "./parcalar";
+import { yuzdeTr } from "../../lib/bicim";   // 16.11: yüzde işaret sırası tek kural (−%8,4)
 import { Meta } from "../../lib/Meta";
 
 /** v2.351: JSON raporunun panel içi OKUNUR önizlemesi (kullanıcı kararı,
@@ -24,7 +25,7 @@ function tr(iso: string, saat = true) {
   const g = `${iki(d.getDate())}.${iki(d.getMonth() + 1)}.${d.getFullYear()}`;
   return saat ? `${g} ${iki(d.getHours())}:${iki(d.getMinutes())}` : g;
 }
-const pct = (v: number | null | undefined, n = 1) => (v == null ? "—" : `%${sayiTr(v, n)}`);
+const pct = (v: number | null | undefined, n = 1) => (v == null ? "—" : yuzdeTr(v, n));
 const num = (v: number | null | undefined, n = 1) => (v == null ? "—" : sayiTr(v, n));
 
 export function JsonOnizleme({ veri, onKapat }: { veri: RaporJson; onKapat: () => void }) {

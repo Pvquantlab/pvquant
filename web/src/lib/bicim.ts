@@ -43,6 +43,16 @@ export function sonGunYaz(bitIso: string | null | undefined): string {
   return bitIso ? gunYaz(kapsananSonGun(bitIso)) : "—";
 }
 
+/** 16.11 (yüzde işaret sırası): «%» ÖNEK, işaret ondan önce — «−%8,4», isaret=true ile «+%2,1»; sıfırda işaret yok. Değer yoksa tire.
+ *  Eskiden `%${sayiTr(v)}` kalıbı «%−8,4» üretiyordu; Sayaç/Genel bakış ise «−%3,2» — tek kural burada. */
+export function yuzdeTr(v: number | null | undefined, hane = 1, isaret = false): string {
+  if (v == null || Number.isNaN(v)) return "—";
+  const n = Number(Math.abs(v).toFixed(hane));
+  const govde = sayiBicimi("tr-TR", { minimumFractionDigits: hane, maximumFractionDigits: hane }).format(n);
+  const on = v < 0 && n !== 0 ? "\u2212" : isaret && v > 0 && n !== 0 ? "+" : "";
+  return `${on}%${govde}`;
+}
+
 export function zamanTr(s: string | null | undefined): string {
   // 15.11.2026 (Genel bakış turu): gün ve ay iki haneli — «1.10.2026 03:55» ile «24.10.2026 06:12» aynı kolonda farklı genişlikteydi.
   return s ? new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(s)) : "—";

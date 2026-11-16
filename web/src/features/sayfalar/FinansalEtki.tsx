@@ -7,7 +7,7 @@ import { donemEtiket, donemSecenekleri, TUR_AD } from "../../lib/donem";   // v2
 import { HesapDurumu, Kart, Kpi, Sayfa, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
 import { ModulNotu } from "./Abonelik";   // v2.609 (Faz 6 F6-D): kapalı özellik notu (uyarı kipi)
 import { Meta } from "../../lib/Meta";
-import { gunYaz, sonGunYaz, tarihBicimi } from "../../lib/bicim";   // 16.11 inceleme: gün/son gün yardımcıları ortak
+import { gunYaz, sonGunYaz, tarihBicimi, yuzdeTr } from "../../lib/bicim";   // 16.11 inceleme: gün/son gün yardımcıları ortak
 
 /** v2.584 (Faz 2 F2-F) — Finansal etki: seçilen dönemde planlanan ve gerçekleşen üretim, sapma ve tahmini mali karşılığı. Var olan hesapların
  *  (dengesizlik, KGÜP sapma tutarı, tarife, YEKDEM, kayıp ayrışımı, mutabakat) aynı saat kümesinde derlenmiş hâlidir; formül yazmaz. Her satır
@@ -87,10 +87,10 @@ export function FinansalEtki({ plantId }: { plantId: string }) {
         <Kpi etiket="Gerçekleşen üretim" ton="amber" bilgi="Ölçülen üretim: SCADA brüt AC ya da santral ayarına göre bağlantı noktası sayacı (net). Ölçümü olmayan saat sıfır sayılmaz, toplama girmez."
           deger={u.gerceklesen.mwh == null ? "—" : sayiTr(u.gerceklesen.mwh, 1)} birim={u.gerceklesen.mwh == null ? undefined : "MWh"}
           ikinci={{ etiket: "Ölçülen saat", deger: `${sayiTr(u.gerceklesen.saat)} / ${sayiTr(u.gerceklesen.beklenen_saat)}`, birim: "saat" }}
-          alt={`${u.gerceklesen.sinir_etiket}${kapsama?.kapsama_pct != null ? `; kapsama %${sayiTr(kapsama.kapsama_pct, 0)}` : ""}`} />
+          alt={`${u.gerceklesen.sinir_etiket}${kapsama?.kapsama_pct != null ? `; kapsama ${yuzdeTr(kapsama.kapsama_pct, 0)}` : ""}`} />
         <Kpi etiket="Üretim ve program farkı" bilgi="Gerçekleşen − program, yalnız hem program hem ölçüm olan saatlerde. Artı fazla üretim, eksi eksik üretim. Mali karşılığı enerji dengesizlik satırındadır."
           deger={isaretli(u.sapma.mwh, 1)} birim={u.sapma.mwh == null ? undefined : "MWh"}
-          ikinci={u.sapma.pct != null ? { etiket: u.sapma.yon === "fazla" ? "Fazla üretim" : u.sapma.yon === "eksik" ? "Eksik üretim" : "Dengede", deger: `%${sayiTr(Math.abs(u.sapma.pct), 1)}`, birim: "programın" } : undefined}
+          ikinci={u.sapma.pct != null ? { etiket: u.sapma.yon === "fazla" ? "Fazla üretim" : u.sapma.yon === "eksik" ? "Eksik üretim" : "Dengede", deger: yuzdeTr(Math.abs(u.sapma.pct), 1), birim: "programın" } : undefined}
           alt={u.sapma.mwh == null ? "program ve ölçüm aynı saatlerde yok" : `${sayiTr(u.sapma.ortak_saat)} ortak saat${u.sapma.tahmine_gore_mwh != null ? `; gün öncesi tahmine göre ${isaretli(u.sapma.tahmine_gore_mwh, 1)} MWh` : ""}`} />
         <Kpi etiket="Tahmini finansal etki" bilgi={`Enerji satışı + enerji dengesizlik tutarı + KGÜP sapma tutarı, net. ${top.isaret}. Resmî satırlar, DSG, göstergeler, üretim düşüklüğü ve maruziyet bu toplama girmez.`}
           deger={binTl(top.tutar_tl)} birim={top.tutar_tl == null ? undefined : "bin TL"}
@@ -157,7 +157,7 @@ export function FinansalEtki({ plantId }: { plantId: string }) {
         <Kart baslik="Üretim düşüklüğü" alt="Beklenen üretim ile gerçekleşen arasındaki fark, nedenine göre. TL karşılığı satış fiyatıyla gelir kaybı tahminidir; uzlaştırma kalemi değildir ve dengesizlik satırıyla toplanmaz.">
           <dl className="kunye">
             <div><dt>Program farkı</dt><dd>{th.n_saat ? <>eksik {sayiTr(th.eksik_mwh ?? 0, 1)} MWh, fazla {sayiTr(th.fazla_mwh ?? 0, 1)} MWh <span className="kunye-not">({th.program}; mali karşılığı dengesizlik satırında)</span></> : <span className="kunye-durum eksik">Hesaplanamadı</span>}</dd></div>
-            <div><dt>Tahmin hatası</dt><dd>{th.wmape != null ? <span className="kunye-sayi">%{sayiTr(th.wmape, 1)}</span> : <span className="kunye-durum eksik">Hesaplanamadı</span>}{th.wmape != null && <span className="kunye-not"> saatlik toplam hata oranı, bağımsız doğrulama (Doğruluk sayfası)</span>}</dd></div>
+            <div><dt>Tahmin hatası</dt><dd>{th.wmape != null ? <span className="kunye-sayi">{yuzdeTr(th.wmape, 1)}</span> : <span className="kunye-durum eksik">Hesaplanamadı</span>}{th.wmape != null && <span className="kunye-not"> saatlik toplam hata oranı, bağımsız doğrulama (Doğruluk sayfası)</span>}</dd></div>
             <div><dt>Enerji performansı</dt><dd>{du.kayip?.epi != null ? <span className="kunye-sayi">{sayiTr(du.kayip.epi * 100, 1)}</span> : <span className="kunye-durum eksik">Hesaplanamadı</span>}{du.kayip?.epi != null && <span className="kunye-not"> gerçekleşen / beklenen, yüzde</span>}</dd></div>
           </dl>
           {du.kayip?.durum === "ok" ? (

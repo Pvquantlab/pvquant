@@ -3,6 +3,7 @@ import { useDamgaSurumu } from "../../shell/damgaOlay";
 import { api } from "../../api/client";
 import type { KgupRevizyon, KgupOnizleme, KgupSurum, KgupKiyas } from "../../api/types";
 import { Kart, Sayfa, sayiTr, YerTutucu } from "./parcalar";
+import { yuzdeTr } from "../../lib/bicim";   // 16.11: yüzde işaret sırası tek kural (−%8,4)
 import { Meta } from "../../lib/Meta";
 
 /** v2.608 (Faz 5 F5-A) — KGÜP sayfası: «Üretim programı (KGÜP) — yarının saatlik programı» ve «Bugünün programı — revizyon önerisi»
@@ -188,7 +189,7 @@ export function Kgup({ plantId }: { plantId: string }) {
       </Kart>
       {/* v2.507 (F-10): bugünün programı ↔ güncel beklenti — eşik üstü ve revize edilebilir saatler; yol gösterici, kayıt yazmaz */}
       <Kart baslik="Bugünün programı — revizyon önerisi"
-        sag={<span className="cip">{rv === undefined ? "hesaplanıyor" : rv?.durum === "ok" ? <Meta items={[rv.oneri_saatleri.length ? `${sayiTr(rv.oneri_saatleri.length)} saat öneri` : "öneri yok", `eşik %${sayiTr(rv.esik_oran * 100, 0)}`, rv.program_kaynagi ?? ""]} /> : rv?.durum === "gun_bitti" ? "gün bitti" : rv?.durum === "program_yok" ? "bugün için program yok" : "tahmin yok"}</span>}>
+        sag={<span className="cip">{rv === undefined ? "hesaplanıyor" : rv?.durum === "ok" ? <Meta items={[rv.oneri_saatleri.length ? `${sayiTr(rv.oneri_saatleri.length)} saat öneri` : "öneri yok", `eşik ${yuzdeTr(rv.esik_oran * 100, 0)}`, rv.program_kaynagi ?? ""]} /> : rv?.durum === "gun_bitti" ? "gün bitti" : rv?.durum === "program_yok" ? "bugün için program yok" : "tahmin yok"}</span>}>
         {rv === undefined ? <YerTutucu yukseklik={160} />
          : !rv || rv.durum !== "ok" ? (
           <div className="bos-durum">

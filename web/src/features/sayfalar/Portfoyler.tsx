@@ -3,7 +3,7 @@ import { FINANS_NITELIK } from "../../lib/durum";
 import { api, rolum } from "../../api/client";
 import type { BelirsizlikDurum, FinansNitelik, PortfoyDetay, PortfoyDsgT, PortfoyFinansT, PortfoyKisa, PortfoyRevizyonT, PortfoyRiskT, PortfoySapmaT, PortfoySozlesme, PortfoyTahminT, RiskEtiket } from "../../api/types";
 import { donemSecenekleri, TUR_AD, type FinansDonemTur } from "../../lib/donem";
-import { tarihBicimi } from "../../lib/bicim";
+import { tarihBicimi, yuzdeTr } from "../../lib/bicim";
 import { Meta } from "../../lib/Meta";
 import { HesapDurumu, Kart, Kpi, Sayfa, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
 import { ModulNotu } from "./Abonelik";   // v2.609 (Faz 6 F6-D): kapalı özellik notu (uyarı kipi)
@@ -131,7 +131,7 @@ export function Portfoyler() {
           alt={bel ? <><Rozet sinif={BELIRSIZLIK[bel].sinif}>{BELIRSIZLIK[bel].etiket}</Rozet> {tahmin?.tazelik?.farkli_yayin ? "tahminler farklı saatlerde yayımlandı" : tahmin?.tazelik?.en_yeni ? `en yeni tahmin ${saatYaz(tahmin.tazelik.en_yeni)}` : ""}</> : (tahmin === null ? "tahmin alınamadı" : "yükleniyor")} />
         <Kpi etiket={`Program sapması (${sapma?.donem?.etiket ?? "dönem"})`} bilgi="Gerçekleşen − program, yalnız bütün üyelerin ölçümü ve programı olan saatlerde; artı fazla üretim. Eksik ölçüm sıfır sayılmaz. Tahmin hatası ve fiziksel sapma ayrı satırlarda tutulur."
           deger={isaretli(o?.program_sapma.mwh, 1)} birim={o?.program_sapma.mwh == null ? undefined : "MWh"}
-          ikinci={o?.program_sapma.pct != null ? { etiket: o.program_sapma.mwh! > 0 ? "Fazla üretim" : "Eksik üretim", deger: `%${sayiTr(Math.abs(o.program_sapma.pct), 1)}`, birim: "programın" } : undefined}
+          ikinci={o?.program_sapma.pct != null ? { etiket: o.program_sapma.mwh! > 0 ? "Fazla üretim" : "Eksik üretim", deger: yuzdeTr(Math.abs(o.program_sapma.pct), 1), birim: "programın" } : undefined}
           alt={sapma?.kapsama ? `${sayiTr(sapma.kapsama.sapma_tam_saat)} / ${sayiTr(sapma.kapsama.beklenen_saat)} saatte program ve ölçüm birlikte · kapsama ${sapma.kapsama.guvenilirlik_ad.toLowerCase()}` : sapma === null ? "sapma alınamadı" : sapma?.durum === "uye_yok" ? "bu dönemde üye yok" : "yükleniyor"} />
         <Kpi etiket="Tahmini finansal etki" bilgi="Enerji satışı + enerji dengesizlik tutarı (bağımsız santral toplamı) + KGÜP sapma tutarı, net; artı portföy lehine. DSG içi tutar bağımsız tutarın yerine geçer, toplanmaz; ayrı gösterilir."
           deger={binTl(topFin?.tutar_tl)} birim={topFin?.tutar_tl == null ? undefined : "bin TL"}
@@ -150,7 +150,7 @@ export function Portfoyler() {
                 return (<tr key={s.santral}>
                   <td style={sol}>{u ? <a href={`#santralim/${u.plant_id}`}>{s.santral}</a> : s.santral}</td>
                   <td className="mono">{s.kapasite_kwp == null ? "—" : sayiTr(s.kapasite_kwp)}</td><td className="mono">{yaz(s.program_mwh, 1)}</td><td className="mono">{yaz(s.gercek_mwh, 1)}</td>
-                  <td className="mono">{isaretli(s.mwh, 1)}{s.pct != null && <span className="soluk"> (%{sayiTr(Math.abs(s.pct), 1)})</span>}</td>
+                  <td className="mono">{isaretli(s.mwh, 1)}{s.pct != null && <span className="soluk"> ({yuzdeTr(Math.abs(s.pct), 1)})</span>}</td>
                   <td className="mono">{s.mutlak_pay_pct == null ? "—" : sayiTr(s.mutlak_pay_pct, 0)}</td>
                   <td className="mono">{t?.p50_mwh == null ? "—" : sayiTr(t.p50_mwh, 1)}</td>
                   <td style={sol} className="soluk">{b?.olcum_saat != null ? `${sayiTr(b.olcum_saat)} saat${b.uretim === "sayac" ? ", sayaç" : ""}` : "—"}</td>
@@ -167,11 +167,11 @@ export function Portfoyler() {
           {risk === undefined ? <YerTutucu yukseklik={140} /> : !risk || risk.durum !== "ok" || !rs ? <p className="soluk" style={{ margin: 0 }}>{risk?.not ?? "Risk görünümü alınamadı."}</p> : (
             <>
               <dl className="kunye">
-                <div><dt>Beklenen sapma</dt><dd>{rs.beklenen_sapma_mwh == null ? <span className="kunye-durum eksik">Program yok</span> : <><span className="kunye-sayi">{isaretli(rs.beklenen_sapma_mwh, 1)} MWh</span><span className="kunye-not"> {rs.beklenen_sapma_pct != null ? `%${sayiTr(Math.abs(rs.beklenen_sapma_pct), 1)}, ` : ""}{sayiTr(rs.saat ?? 0)} saat, {risk.kural_ad?.toLowerCase()}</span></>}</dd></div>
+                <div><dt>Beklenen sapma</dt><dd>{rs.beklenen_sapma_mwh == null ? <span className="kunye-durum eksik">Program yok</span> : <><span className="kunye-sayi">{isaretli(rs.beklenen_sapma_mwh, 1)} MWh</span><span className="kunye-not"> {rs.beklenen_sapma_pct != null ? `${yuzdeTr(Math.abs(rs.beklenen_sapma_pct), 1)}, ` : ""}{sayiTr(rs.saat ?? 0)} saat, {risk.kural_ad?.toLowerCase()}</span></>}</dd></div>
                 <div><dt>Aralık</dt><dd>{rs.aralik_mwh ? <><span className="kunye-sayi">{isaretli(rs.aralik_mwh.p10, 1)} … {isaretli(rs.aralik_mwh.p90, 1)} MWh</span>{bel && <span className="kunye-not"> {BELIRSIZLIK[bel].etiket}</span>}</> : <span className="kunye-durum eksik">Hesaplanamadı</span>}</dd></div>
                 <div><dt>Aralık dışı saat</dt><dd><span className="kunye-sayi">{sayiTr(rs.riskli_saat ?? 0)}</span><span className="kunye-not"> program tahmin aralığının dışında</span></dd></div>
-                <div><dt>Geçmiş sınav</dt><dd>{tahmin?.belirsizlik?.kapsama?.picp80 != null ? <><span className="kunye-sayi">%{sayiTr(tahmin.belirsizlik.kapsama.picp80, 0)}</span><span className="kunye-not"> gerçekleşen aralık içinde kaldı ({sayiTr(tahmin.belirsizlik.kapsama.n_gun)} gün; hedef %80)</span></> : <span className="kunye-not">Henüz sınanmadı; gece hesabı ilk sınavı yapar.</span>}</dd></div>
-                <div><dt>Yoğunlaşma</dt><dd>{yogun && yogun.mwh != null ? <>{yogun.santral}<span className="kunye-not"> dönem sapmasının %{sayiTr(yogun.mutlak_pay_pct ?? 0, 0)}'i</span></> : <span className="kunye-not">—</span>}</dd></div>
+                <div><dt>Geçmiş sınav</dt><dd>{tahmin?.belirsizlik?.kapsama?.picp80 != null ? <><span className="kunye-sayi">{yuzdeTr(tahmin.belirsizlik.kapsama.picp80, 0)}</span><span className="kunye-not"> gerçekleşen aralık içinde kaldı ({sayiTr(tahmin.belirsizlik.kapsama.n_gun)} gün; hedef %80)</span></> : <span className="kunye-not">Henüz sınanmadı; gece hesabı ilk sınavı yapar.</span>}</dd></div>
+                <div><dt>Yoğunlaşma</dt><dd>{yogun && yogun.mwh != null ? <>{yogun.santral}<span className="kunye-not"> dönem sapmasının {yuzdeTr(yogun.mutlak_pay_pct ?? 0, 0)}'i</span></> : <span className="kunye-not">—</span>}</dd></div>
                 <div><dt>Santraller arası bağımlılık</dt><dd>{rhoOrt != null ? <><span className="kunye-sayi">{sayiTr(rhoOrt, 2)}</span><span className="kunye-not"> ortalama sapma korelasyonu ({sayiTr(sapma?.korelasyon?.n_gun ?? 0)} gün)</span></> : <span className="kunye-not">{sapma?.korelasyon?.durum === "yetersiz_veri" ? "Yeterli ortak gün yok." : "—"}</span>}</dd></div>
               </dl>
               {(rs.saatler ?? []).length > 0 && (
@@ -228,7 +228,7 @@ export function Portfoyler() {
                   </table></div>}
                   <ul className="not-listesi">
                     {per.dsg_ici.aciklama && <li>{per.dsg_ici.aciklama}</li>}
-                    {dsg.kural?.esik != null && <li>Üye eşiği %{sayiTr(dsg.kural.esik * 100, 0)}{dsg.kural.esik_kaynak ? ` (${dsg.kural.esik_kaynak})` : ""}.{dsg.kural.belirsiz_2027 ? " 2027 kuralı henüz yayımlanmadı; 2026 kuralı sürdürüldü." : ""}</li>}
+                    {dsg.kural?.esik != null && <li>Üye eşiği {yuzdeTr(dsg.kural.esik * 100, 0)}{dsg.kural.esik_kaynak ? ` (${dsg.kural.esik_kaynak})` : ""}.{dsg.kural.belirsiz_2027 ? " 2027 kuralı henüz yayımlanmadı; 2026 kuralı sürdürüldü." : ""}</li>}
                     {(dsg.notlar ?? []).slice(0, 2).map((n) => <li key={n}>{n}</li>)}
                   </ul>
                 </>))}

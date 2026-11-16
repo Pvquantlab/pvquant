@@ -6,6 +6,7 @@ import type { EChartsOption } from "echarts";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
 import { Lejant, sayiTr } from "../sayfalar/parcalar";
+import { yuzdeTr } from "../../lib/bicim";   // 16.11: yüzde işaret sırası tek kural (−%8,4)
 
 export function Cubuklar({ etiketler, degerler, birim, vurguIdx, yukseklik = 260, ondalik = 1, kapsamPct, beklenti }:
   { etiketler: string[];
@@ -40,7 +41,7 @@ export function Cubuklar({ etiketler, degerler, birim, vurguIdx, yukseklik = 260
           if (b !== null && b !== undefined)
             satir += `<br/>beklenti (P50): ${sayiTr(b, ondalik)} ${birim}`;
           return tam(i) ? satir
-            : `${satir}<br/><span style="opacity:.75">kapsam %${sayiTr(kapsamPct![i], 1)} (eksik veri)</span>`;
+            : `${satir}<br/><span style="opacity:.75">kapsam ${yuzdeTr(kapsamPct![i], 1)} (eksik veri)</span>`;
         } },
       xAxis: { type: "category", data: etiketler, axisTick: { show: false },
         axisLine: { lineStyle: { color: kenar } },

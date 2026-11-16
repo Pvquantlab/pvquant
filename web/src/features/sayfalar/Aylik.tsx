@@ -7,6 +7,7 @@ import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
 import { Cubuklar } from "../santralim/Cubuklar";
 import { Kart, Kpi, Sayfa, sayiTr, isiTonu, isiMetni, SayfaIskeleti, YerTutucu } from "./parcalar";
+import { yuzdeTr } from "../../lib/bicim";   // 16.11: yüzde işaret sırası tek kural (−%8,4)
 import { Meta } from "../../lib/Meta";
 
 const AYLAR = ["Oca", "Şub", "Mar", "Nis", "May", "Haz",
@@ -193,10 +194,10 @@ export function Aylik({ plantId }: { plantId: string }) {
               <Kpi etiket="Yıllık beklenen (P50)" deger={sayiTr((bk.p50_kwh ?? 0) / 1000, 0)} birim="MWh" alt={`${sayiTr(bk.ozgul_verim_kwh_kwp ?? 0, 0)} kWh/kWp özgül verim`} />
               <Kpi etiket="Güvenli (P90), tek yıl" deger={sayiTr((bk.bir_yil?.p90 ?? 0) / 1000, 0)} birim="MWh" alt={`P99 ${sayiTr((bk.bir_yil?.p99 ?? 0) / 1000, 0)} MWh`} />
               <Kpi etiket={`Güvenli (P90), ${sayiTr(bk.N_yil ?? 10)} yıl ortalaması`} deger={sayiTr((bk.n_yil?.p90 ?? 0) / 1000, 0)} birim="MWh" alt="finansman dönemi (yıllar arası oynaklık ortalamada küçülür)" />
-              <Kpi etiket="Toplam belirsizlik" deger={`%${sayiTr((bk.sigma_toplam ?? 0) * 100, 1)}`}
+              <Kpi etiket="Toplam belirsizlik" deger={yuzdeTr((bk.sigma_toplam ?? 0) * 100, 1)}
                    alt={bk.katki_pct
-                     ? (bk.olcumle_kalibre ? "ölçümle kalibre; " : "") + "katkı: " + Object.entries(bk.katki_pct).sort((x, y) => y[1] - x[1]).slice(0, 3)   /* jsonb anahtar sırası korumaz — değere göre */.map(([k, v]) => `${({ yillar_arasi: "yıllar arası", kaynak: "kaynak", transpozisyon: "düzleme aktarma", model_zinciri: "model", olcum: "ölçüm", degradasyon: "bozunma", kullanilabilirlik: "kullanılabilirlik" } as Record<string, string>)[k] ?? k} %${sayiTr(v, 0)}`).join(", ")
-                     : bk.bilesenler ? `yıllar arası %${sayiTr((bk.bilesenler.yillar_arasi ?? 0) * 100, 1)}, kaynak %${sayiTr((bk.bilesenler.kaynak ?? 0) * 100, 0)}, model %${sayiTr((bk.bilesenler.model_zinciri ?? bk.bilesenler.model ?? 0) * 100, 1)}` : ""} />
+                     ? (bk.olcumle_kalibre ? "ölçümle kalibre; " : "") + "katkı: " + Object.entries(bk.katki_pct).sort((x, y) => y[1] - x[1]).slice(0, 3)   /* jsonb anahtar sırası korumaz — değere göre */.map(([k, v]) => `${({ yillar_arasi: "yıllar arası", kaynak: "kaynak", transpozisyon: "düzleme aktarma", model_zinciri: "model", olcum: "ölçüm", degradasyon: "bozunma", kullanilabilirlik: "kullanılabilirlik" } as Record<string, string>)[k] ?? k} ${yuzdeTr(v, 0)}`).join(", ")
+                     : bk.bilesenler ? `yıllar arası ${yuzdeTr((bk.bilesenler.yillar_arasi ?? 0) * 100, 1)}, kaynak ${yuzdeTr((bk.bilesenler.kaynak ?? 0) * 100, 0)}, model ${yuzdeTr((bk.bilesenler.model_zinciri ?? bk.bilesenler.model ?? 0) * 100, 1)}` : ""} />
             </div>
             <div className="grafik-kaydir">
               <table className="veri sik dar">
@@ -220,7 +221,7 @@ export function Aylik({ plantId }: { plantId: string }) {
       </Kart>
       {/* 04.11 v2.534 (P8b-1; IH-098/099): yıl yıl P-değerleri (bozunma dâhil, biçim etiketli) ve gerçekleşen kıyası — hava düzeltmesiz, etiketli */}
       <Kart baslik="Yıl yıl P-değerleri ve gerçekleşen" alt="n. yıl P50 / P75 / P90 / P99 (bozunma dâhil); tamamlanmış yıllar ve cari yıl gerçekleşenle kıyas, hava düzeltmesiz"
-        sag={pd?.durum === "ok" ? <span className="cip"><Meta items={[`yıl 1 = ${pd.ilk_yil ?? "—"} (${pd.ilk_yil_kaynak ?? "—"})`, `${sayiTr(pd.n_yil ?? 0)} yıl`, `bozunma %${sayiTr(pd.bozunma_yuzde_yil ?? 0, 2)}/yıl`]} /></span> : undefined}>
+        sag={pd?.durum === "ok" ? <span className="cip"><Meta items={[`yıl 1 = ${pd.ilk_yil ?? "—"} (${pd.ilk_yil_kaynak ?? "—"})`, `${sayiTr(pd.n_yil ?? 0)} yıl`, `bozunma ${yuzdeTr(pd.bozunma_yuzde_yil ?? 0, 2)}/yıl`]} /></span> : undefined}>
         {pd === undefined ? <YerTutucu yukseklik={260} /> : pd?.durum === "ok" && pd.satirlar ? (
           <>
             <div className="grafik-kaydir">
@@ -229,10 +230,10 @@ export function Aylik({ plantId }: { plantId: string }) {
                 <tbody>
                   {pd.satirlar.map((r) => { const k = (pd.kiyas ?? []).find((x) => x.yil === r.takvim_yili); const KON = { ustu: "P50 üstü", arasi: "P50–P90 arası", alti: "P90 altı" } as const;
                     return (<tr key={r.n}><td className="mono">{r.n}</td><td className="mono">{r.takvim_yili ?? "—"}</td><td className="mono">{sayiTr(r.p50 / 1000, 0)}</td><td className="mono">{sayiTr(r.p75 / 1000, 0)}</td><td className="mono">{sayiTr(r.p90 / 1000, 0)}</td><td className="mono">{sayiTr(r.p99 / 1000, 0)}</td>
-                      <td className="mono">{k ? <>{sayiTr(k.gerceklesen_kwh / 1000, 0)}{k.durum === "cari_yil" ? <span className="soluk"> (yıl başından bugüne)</span> : k.durum === "kapsam_yetersiz" ? <span className="soluk"> (kapsam %{sayiTr(k.kapsam_pct ?? 0, 0)})</span> : null}</> : "—"}</td>
-                      <td className="mono">{k?.oran_p50 != null ? `%${sayiTr(k.oran_p50 * 100, 1)}` : "—"}</td>
+                      <td className="mono">{k ? <>{sayiTr(k.gerceklesen_kwh / 1000, 0)}{k.durum === "cari_yil" ? <span className="soluk"> (yıl başından bugüne)</span> : k.durum === "kapsam_yetersiz" ? <span className="soluk"> (kapsam {yuzdeTr(k.kapsam_pct ?? 0, 0)})</span> : null}</> : "—"}</td>
+                      <td className="mono">{k?.oran_p50 != null ? yuzdeTr(k.oran_p50 * 100, 1) : "—"}</td>
                       <td>{k?.konum ? <span className={`rozet rozet-kucuk ${k.konum === "alti" ? "rozet-uyari" : "rozet-ok"}`}>{KON[k.konum]}{k.durum === "cari_yil" ? " (ışınım payıyla)" : ""}</span> : k?.durum === "kapsam_yetersiz" ? <span className="soluk">kapsam yetersiz</span> : k?.durum === "cari_pay_yok" ? <span className="soluk">iklim payı yok</span> : "—"}</td>
-                      {pd.butce_kwh_yil ? <td className="mono">{k?.butce_orani != null ? `%${sayiTr(k.butce_orani * 100, 1)}` : "—"}</td> : null}</tr>);
+                      {pd.butce_kwh_yil ? <td className="mono">{k?.butce_orani != null ? yuzdeTr(k.butce_orani * 100, 1) : "—"}</td> : null}</tr>);
                   })}
                   {pd.omur_ortalamasi && <tr><td colSpan={2}><b>Ömür ortalaması ({sayiTr(pd.omur_ortalamasi.n_yil)} yıl)</b></td><td className="mono">{sayiTr(pd.omur_ortalamasi.p50 / 1000, 0)}</td><td className="mono">{sayiTr(pd.omur_ortalamasi.p75 / 1000, 0)}</td><td className="mono">{sayiTr(pd.omur_ortalamasi.p90 / 1000, 0)}</td><td className="mono">{sayiTr(pd.omur_ortalamasi.p99 / 1000, 0)}</td><td colSpan={pd.butce_kwh_yil ? 4 : 3} className="soluk">yıllar arası oynaklık √N ile küçülür</td></tr>}
                   {pd.omur_toplami && <tr><td colSpan={2}><b>Ömür toplamı ({sayiTr(pd.omur_toplami.n_yil)} yıl)</b></td><td className="mono">{sayiTr(pd.omur_toplami.p50 / 1000, 0)}</td><td className="mono">{sayiTr(pd.omur_toplami.p75 / 1000, 0)}</td><td className="mono">{sayiTr(pd.omur_toplami.p90 / 1000, 0)}</td><td className="mono">{sayiTr(pd.omur_toplami.p99 / 1000, 0)}</td><td colSpan={pd.butce_kwh_yil ? 4 : 3} className="soluk">biçim: ömür toplamı (yıl n ile karıştırılmasın)</td></tr>}
@@ -240,7 +241,7 @@ export function Aylik({ plantId }: { plantId: string }) {
               </table>
             </div>
             <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "10px 0 0" }}>
-              Bozunma: {pd.bozunma_kaynak}. Belirsizlik tek yıl %{sayiTr((pd.sigma_1yil ?? 0) * 100, 1)}, ömür ortalaması %{sayiTr((pd.sigma_nyil ?? 0) * 100, 1)}.
+              Bozunma: {pd.bozunma_kaynak}. Belirsizlik tek yıl {yuzdeTr((pd.sigma_1yil ?? 0) * 100, 1)}, ömür ortalaması {yuzdeTr((pd.sigma_nyil ?? 0) * 100, 1)}.
               {pd.butce_kwh_yil ? ` Bütçe: ${sayiTr(pd.butce_kwh_yil / 1000, 0)} MWh/yıl (Santral ayarları).` : " Yıllık bütçe girilmedi (Santral ayarları); bütçe sütunu için finansal modeldeki değeri girin."}{" "}{pd.not}
             </p>
           </>
@@ -250,7 +251,7 @@ export function Aylik({ plantId }: { plantId: string }) {
       </Kart>
       {/* v2.542 (P8b-2, IH-083/099/104): ölçülen havayla beklenen üretim ve EPI — üç referans (tahmin / ölçülen hava / P50) tek tabloda; ışınım endeksi yalnız yatay sensörde */}
       <Kart baslik="Beklenen üretim (ölçülen hava) ve EPI" alt="Ay ay gerçekleşen; ölçülen düzlem-içi ışınım ve hücre sıcaklığıyla beklenen; tahminle beklenen; P50. EPI = gerçekleşen / beklenen."
-        sag={pf?.durum === "ok" && pf.toplam ? <span className="cip"><Meta items={[`${sayiTr(pf.toplam.ay_ok)} / ${sayiTr(pf.toplam.ay)} ay`, pf.toplam.epi != null ? `EPI %${sayiTr(pf.toplam.epi * 100, 1)}` : "EPI —", pf.referans ? `referans PR %${sayiTr(pf.referans.deger * 100, 1)} (${pf.referans.kaynak === "tasarim" ? "tasarım" : "ölçüm"})` : ""]} /></span> : null}>
+        sag={pf?.durum === "ok" && pf.toplam ? <span className="cip"><Meta items={[`${sayiTr(pf.toplam.ay_ok)} / ${sayiTr(pf.toplam.ay)} ay`, pf.toplam.epi != null ? `EPI ${yuzdeTr(pf.toplam.epi * 100, 1)}` : "EPI —", pf.referans ? `referans PR ${yuzdeTr(pf.referans.deger * 100, 1)} (${pf.referans.kaynak === "tasarim" ? "tasarım" : "ölçüm"})` : ""]} /></span> : null}>
         {pf === undefined ? <YerTutucu yukseklik={220} /> : pf?.durum === "ok" && pf.aylar ? (
           <>
             <div className="grafik-kaydir">
@@ -262,12 +263,12 @@ export function Aylik({ plantId }: { plantId: string }) {
                     <td className="mono">{a.ay}</td>
                     <td className="mono">{sayiTr(a.uretim_kwh / 1000, 1)}</td>
                     <td className="mono">{a.beklenen_kwh != null ? sayiTr(a.beklenen_kwh / 1000, 1) : <span className="soluk">— ışınım ölçümü yetersiz</span>}</td>
-                    <td>{a.epi != null ? <span className={`rozet rozet-kucuk ${a.epi >= 0.95 ? "rozet-ok" : a.epi < 0.85 ? "rozet-uyari" : "rozet-notr"}`}>%{sayiTr(a.epi * 100, 1)}</span> : "—"}</td>
-                    <td className="mono">{a.epi_temiz != null ? `%${sayiTr(a.epi_temiz * 100, 1)}` : "—"}{a.kirpma_saat || a.kisinti_saat ? <span className="soluk"> ({sayiTr(a.kirpma_saat)} kırpma, {sayiTr(a.kisinti_saat)} kısıntı saati)</span> : null}</td>
+                    <td>{a.epi != null ? <span className={`rozet rozet-kucuk ${a.epi >= 0.95 ? "rozet-ok" : a.epi < 0.85 ? "rozet-uyari" : "rozet-notr"}`}>{yuzdeTr(a.epi * 100, 1)}</span> : "—"}</td>
+                    <td className="mono">{a.epi_temiz != null ? yuzdeTr(a.epi_temiz * 100, 1) : "—"}{a.kirpma_saat || a.kisinti_saat ? <span className="soluk"> ({sayiTr(a.kirpma_saat)} kırpma, {sayiTr(a.kisinti_saat)} kısıntı saati)</span> : null}</td>
                     <td className="mono">{a.tahmin_kwh != null ? sayiTr(a.tahmin_kwh / 1000, 1) : "—"}</td>
                     <td className="mono">{a.p50_kwh != null ? sayiTr(a.p50_kwh / 1000, 1) : "—"}</td>
                     {pf.isinim?.durum === "ok" && <><td className="mono">{a.isinim_endeksi != null ? sayiTr(a.isinim_endeksi, 2) : "—"}</td><td className="mono">{a.p50_hava_duzeltmeli_kwh != null ? sayiTr(a.p50_hava_duzeltmeli_kwh / 1000, 1) : "—"}</td></>}
-                    <td className="mono">%{sayiTr(a.poa_kapsam * 100, 0)}</td>
+                    <td className="mono">{yuzdeTr(a.poa_kapsam * 100, 0)}</td>
                   </tr>))}
                 </tbody>
               </table>

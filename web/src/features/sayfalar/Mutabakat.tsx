@@ -5,7 +5,7 @@ import type { MutabakatOzet, MutabakatSatir, SaatlikKiyas } from "../../api/type
 import { Kart, Kpi, Sayfa, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
 import { ModulNotu } from "./Abonelik";   // v2.609 (Faz 6 F6-D): kapalı özellik notu (uyarı kipi)
 import { Meta } from "../../lib/Meta";
-import { tarihBicimi } from "../../lib/bicim";
+import { tarihBicimi, yuzdeTr } from "../../lib/bicim";
 
 /** v2.522 (P2b-1) — Mutabakat: müşterinin EPYS'den indirdiği «Uzlaştırma Bildirimi» dosyası (CSV/XLSX) yüklenir; kalemler tanınır ve PVQuant'ın
  *  yeniden hesabıyla (enerji dengesizlik tutarı, KGÜP sapma tutarı, lisanslı YEKDEM'de YEK alacağı) kalem kalem yan yana konur. Bildirim esastır;
@@ -21,7 +21,7 @@ const gunTr = (iso: string | null | undefined) => iso ? tarihBicimi("tr-TR", { d
 const ayAd = (d: string) => `${d.slice(5)}.${d.slice(0, 4)}`;
 const tl = (v: number | null | undefined) => v == null ? "—" : sayiTr(v, 2);   // kuruşlu: bildirimdeki tutarla birebir
 const binTl = (v: number | null | undefined) => v == null ? "—" : sayiTr(v / 1000, 1);
-const yuzde = (p: number | null) => p == null ? "" : ` (${p < 0 ? "−" : "+"}%${sayiTr(Math.abs(p), 1)})`;
+const yuzde = (p: number | null) => p == null ? "" : ` (${yuzdeTr(p, 1, true)})`;   // 16.11: ortak kural, işaret «%»den önce
 const sol = { textAlign: "left" as const };
 const oncekiAy = () => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; };
 
@@ -160,7 +160,7 @@ export function Mutabakat({ plantId }: { plantId: string }) {
           deger={oz.fark_tl != null ? `${oz.fark_tl > 0 ? "+" : ""}${binTl(oz.fark_tl)}` : "—"} birim={oz.fark_tl != null ? "bin TL" : undefined}
           ton={oz.farkli > 0 ? "amber" : undefined}
           ikinci={m.saatlik_detay?.yuklu && m.saatlik_detay.toplam?.edt_net_fark_tl != null ? { etiket: `saatlik eş kapsamlı, ${sayiTr(m.saatlik_detay.ortak_saat)} saat (yalnız dengesizlik)`, deger: `${m.saatlik_detay.toplam.edt_net_fark_tl > 0 ? "+" : m.saatlik_detay.toplam.edt_net_fark_tl < 0 ? "−" : ""}${sayiTr(Math.abs(m.saatlik_detay.toplam.edt_net_fark_tl), 2)} TL` } : undefined}
-          alt={oz.kiyaslanan ? (g.durum === "senaryo" ? `${sayiTr(oz.kiyaslanan)} kalem; senaryo hesabı, uyum sınıflandırması yapılmadı` : g.durum === "kismi" ? `aylık bildirim ↔ PVQuant, ${sayiTr(oz.kiyaslanan)} kalem: ${sayiTr(oz.uyumlu)} uyumlu, ${sayiTr(oz.farkli)} farklı — kapsam kısmi (${sayiTr(oz.kapsam_saat ?? m.pvquant.saat)}/${sayiTr(oz.beklenen_saat ?? 0)} saat), fark doğrulanmış değil` : `${sayiTr(oz.kiyaslanan)} kalem: ${sayiTr(oz.uyumlu)} uyumlu, ${sayiTr(oz.farkli)} farklı; ölçüt bileşen başına %${sayiTr(m.uyum.pct)} ya da ${sayiTr(m.uyum.tl)} TL`) : "kıyaslanacak kalem yok"} />
+          alt={oz.kiyaslanan ? (g.durum === "senaryo" ? `${sayiTr(oz.kiyaslanan)} kalem; senaryo hesabı, uyum sınıflandırması yapılmadı` : g.durum === "kismi" ? `aylık bildirim ↔ PVQuant, ${sayiTr(oz.kiyaslanan)} kalem: ${sayiTr(oz.uyumlu)} uyumlu, ${sayiTr(oz.farkli)} farklı — kapsam kısmi (${sayiTr(oz.kapsam_saat ?? m.pvquant.saat)}/${sayiTr(oz.beklenen_saat ?? 0)} saat), fark doğrulanmış değil` : `${sayiTr(oz.kiyaslanan)} kalem: ${sayiTr(oz.uyumlu)} uyumlu, ${sayiTr(oz.farkli)} farklı; ölçüt bileşen başına ${yuzdeTr(m.uyum.pct)} ya da ${sayiTr(m.uyum.tl)} TL`) : "kıyaslanacak kalem yok"} />
       </div>
       <div className="ızgara-cift">
         <Kart baslik="EPİAŞ bildirimi yükleme" alt="EPYS › Uzlaştırma › Uzlaştırma Bildirimi ekranından indirdiğiniz dosya (CSV ya da XLSX). Dönem ve uzlaştırma durumu dosyadan okunur; okunamazsa buradaki seçim geçerlidir.">
@@ -206,7 +206,7 @@ export function Mutabakat({ plantId }: { plantId: string }) {
             {g.nedenler.length > 0 && <p style={{ margin: "6px 0 0" }}><b>{g.etiket}:</b> {g.nedenler.join("; ")}</p>}
             <p style={{ margin: "6px 0 0" }}><b>Üretim kaynağı:</b> {sayacla ? "Sayaç dosyasının uzlaştırmaya esas UEVM ile aynı olduğu doğrulanmaz; sayaç satırı olmayan saatlerde SCADA kullanılır (Doğruluk sayfasındaki 90 günlük hesap SCADA ile kalır)." : "SCADA brüt üretimdir, EPİAŞ uzlaştırmaya esas sayaç verisi (UEVM) değildir; sayaç net veriştir. Hesabı sayaçla görmek için yukarıdan «üretim: sayaç» seçin ya da Sayaç sayfasında kalıcı ayarlayın."}
               {uk?.kiyas && uk.kiyas.edt_net_fark_tl != null ? <> Aynı dönem SCADA ile hesaba göre: dengesizlik neti {uk.kiyas.edt_net_fark_tl >= 0 ? "+" : "−"}{sayiTr(Math.abs(uk.kiyas.edt_net_fark_tl), 2)} TL ({uk.kiyas.edt_net_fark_tl >= 0 ? "sayaçla daha lehte" : "sayaçla daha aleyhte"}){uk.kiyas.kupst_fark_tl ? <>, KÜPST borcu {uk.kiyas.kupst_fark_tl >= 0 ? "+" : "−"}{sayiTr(Math.abs(uk.kiyas.kupst_fark_tl), 2)} TL ({uk.kiyas.kupst_fark_tl >= 0 ? "daha aleyhte" : "daha lehte"})</> : null}.</> : null}
-              {sy?.yuklu && sy.olc_fark_pct != null ? <> Ölçülmüş saatlerde sayaç − SCADA {sy.olc_fark_pct < 0 ? "−" : "+"}%{sayiTr(Math.abs(sy.olc_fark_pct), 1)}.</> : null}</p>
+              {sy?.yuklu && sy.olc_fark_pct != null ? <> Ölçülmüş saatlerde sayaç − SCADA {sy.olc_fark_pct < 0 ? "−" : "+"}{yuzdeTr(Math.abs(sy.olc_fark_pct), 1)}.</> : null}</p>
             {sd && <p style={{ margin: "6px 0 0", color: sd.durum === "takvimden_once" ? "var(--amber-koyu, #8a5a00)" : undefined }}><b>Sürüm:</b> {sd.aciklama}</p>}
           </details>
           {m.itiraz && <details className="aciklama" style={{ marginTop: 6 }}>   {/* v2.538 (EK-3 DK-557/DK-395): itiraz süreleri ve geriye dönük düzeltme penceresi */}

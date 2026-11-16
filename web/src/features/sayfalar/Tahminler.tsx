@@ -3,6 +3,7 @@ import { useDamgaSurumu } from "../../shell/damgaOlay";
 import { api, bellekten, ayniysaEskisi } from "../../api/client";
 import type { SantralOzeti, TahminSerisi, Nowcast } from "../../api/types";
 import { Kart, Sayfa, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
+import { yuzdeTr } from "../../lib/bicim";   // 16.11: yüzde işaret sırası tek kural (−%8,4)
 import { TAHMIN_ETIKETI } from "../../lib/durum";
 import { Meta } from "../../lib/Meta";
 import ProductionForecastChart, { type ActualPoint, type ForecastPoint, type Plant } from "./ProductionForecastChart";
@@ -57,7 +58,7 @@ export function Tahminler({ plantId, kgupGit }: { plantId: string; kgupGit?: () 
       if (!acik) return;
       const b = k[0]?.bant;
       const s = k[0]?.sapma;
-      const sy = s?.aktif ? `; son ${sayiTr(s.n_gun ?? 0)} günün ölçümüyle %${sayiTr(((s.oran_genel ?? 1) - 1) * 100, 1)} düzeltildi` : "";
+      const sy = s?.aktif ? `; son ${sayiTr(s.n_gun ?? 0)} günün ölçümüyle ${yuzdeTr(((s.oran_genel ?? 1) - 1) * 100, 1)} düzeltildi` : "";
       const gi = k[0]?.etiket === "gun_ici" ? "; gün içi güncelleme (güncel bölgesel hava tahmini)" : "";
       setBantYazisi((!b ? "" : b.kaynak === "gefs" ? `${sayiTr(b.uye ?? 0)} üyeli hava tahmini topluluğundan türetilen aralık` : "model aralığı") + sy + gi || null);
     }, () => { if (acik) setBantYazisi(null); });
@@ -236,7 +237,7 @@ export function Tahminler({ plantId, kgupGit }: { plantId: string; kgupGit?: () 
                 <tbody className="mono">
                   {nc.ufuk.map((u) => (
                     <tr key={u.ts}><td>{new Date(u.ts).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</td>
-                      <td>{sayiTr(u.p50_kw)} kW</td><td>{sayiTr(u.nowcast_kw)} kW</td><td>%{sayiTr(u.agirlik * 100, 0)}</td></tr>))}
+                      <td>{sayiTr(u.p50_kw)} kW</td><td>{sayiTr(u.nowcast_kw)} kW</td><td>{yuzdeTr(u.agirlik * 100, 0)}</td></tr>))}
                 </tbody>
               </table>
             </div>

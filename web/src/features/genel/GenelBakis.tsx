@@ -6,7 +6,7 @@ import type { SayfaId } from "../../shell/Kabuk";
 import { HizmetDurumu as Rozet, Kart, Sayfa, SayfaIskeleti, enerjiTr, gucTr, sayiTr } from "../sayfalar/parcalar";
 import { Meta } from "../../lib/Meta";
 import { HESAP_DURUMU, TAHMIN_ETIKETI } from "../../lib/durum";
-import { zamanTr } from "../../lib/bicim";
+import { zamanTr, yuzdeTr } from "../../lib/bicim";
 import { donemEtiket } from "../../lib/donem";
 
 /** v2.608 (Faz 5 F5-B) — GENEL BAKIŞ: müşterinin ilk ekranı, dört iş sorusu, dört kart. Her değer tek uçtan (/genel-bakis), durum sözcükleri
@@ -16,7 +16,7 @@ import { donemEtiket } from "../../lib/donem";
 const tlTr = (v: number | null | undefined) => v == null ? "—" : `${v < 0 ? "−" : ""}${sayiTr(Math.abs(v), 0)} TL`;
 const saatTr = (iso: string | null | undefined) => iso ? zamanTr(iso) : "—";
 const yasTr = (saat: number | null | undefined) => saat == null ? null : saat < 1 ? "1 saatten yeni" : saat < 48 ? `${sayiTr(Math.round(saat))} saat önce` : `${sayiTr(Math.round(saat / 24))} gün önce`;
-const yuzdeTr = (v: number) => `${v < 0 ? "−" : v > 0 ? "+" : ""}%${sayiTr(Math.abs(v), 1)}`;
+const yuzdeIsaretli = (v: number) => yuzdeTr(v, 1, true);   // 16.11: işaret «%»den önce — ortak kural lib/bicim
 const gunTr = (iso: string) => new Date(iso + "T00:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "long", weekday: "long" });
 const ADIM_AD: Record<string, string> = { tahmin: "Tahmin", hazirlik: "Program dosyası", bildirim: "Bildirim beyanı", kabul: "TPYS kabulü" };
 const EKSIK_AD: Record<string, string> = { segment: "piyasa segmenti seçilmedi", uevcb: "UEVÇB kodu girilmedi", kesim_oncesi_tahmin: "teslim saatinden önce verilmiş tahmin yok", bildirim_beyani: "bildirdiğiniz dosya yüklenmedi" };
@@ -58,7 +58,7 @@ export function GenelBakis({ plantId, git }: { plantId: string; git: (s: SayfaId
             <Satir ad="Bugüne kadar gerçekleşen" not={b.gerceklesen_kwh == null ? "bugünün ölçümü henüz gelmedi" : `${sayiTr(b.gerceklesen_saat)} ölçülmüş saat`}>
               <span className="kunye-sayi">{b.gerceklesen_kwh == null ? "—" : enerjiTr(b.gerceklesen_kwh)}</span></Satir>
             <Satir ad="Sapma" not={b.sapma_pct == null ? (b.sapma_not ?? "hesaplanamıyor") : `gerçekleşen − beklenen, aynı ${sayiTr(b.ortak_saat)} saat`}>
-              <span className="kunye-sayi">{b.sapma_pct == null ? "—" : yuzdeTr(b.sapma_pct)}</span></Satir>
+              <span className="kunye-sayi">{b.sapma_pct == null ? "—" : yuzdeIsaretli(b.sapma_pct)}</span></Satir>
             <Satir ad="Tahmin yayını" not={b.tahmin.etiket ? TAHMIN_ETIKETI[b.tahmin.etiket] ?? b.tahmin.etiket : null}>
               <span className="kunye-sayi">{saatTr(b.tahmin.yayin)}</span> <Rozet durum={b.tahmin.durum} kucuk /></Satir>
             <Satir ad="Son ölçüm" not={b.olcum.son ? yasTr(b.olcum.yas_saat) : "geçerli ölçüm yok"}><span className="kunye-sayi">{saatTr(b.olcum.son)}</span> <Rozet durum={b.olcum.durum} kucuk /></Satir>

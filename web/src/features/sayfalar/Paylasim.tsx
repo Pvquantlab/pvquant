@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, rolum, bellektenOku } from "../../api/client";
 import type { PaylasimListesi, PaylasilanVeri, SantralKisa } from "../../api/types";
 import { Kart, Sayfa, sayiTr, SayfaIskeleti } from "./parcalar";
+import { yuzdeTr } from "../../lib/bicim";   // 16.11: yüzde işaret sırası tek kural (−%8,4)
 import { ModulNotu } from "./Abonelik";   // v2.609 (Faz 6 F6-D): kapalı özellik notu (uyarı kipi)
 import { Meta } from "../../lib/Meta";
 
@@ -86,9 +87,9 @@ function Paylasimlar({ santraller }: { santraller: { id: string; ad: string }[] 
               {acik.tur === "karne" ? (
                 <table className="veri dar"><tbody>
                   <tr><td>Değerlendirilen gün</td><td className="mono">{sayiTr(acik.veri.gun ?? 0)}</td></tr>
-                  <tr><td>Ağırlıklı hata (WMAPE)</td><td className="mono">{acik.veri.wmape_pct == null ? "—" : `%${sayiTr(acik.veri.wmape_pct, 1)}`}</td></tr>
-                  <tr><td>Kurulu güce göre hata (nMAE)</td><td className="mono">{acik.veri.nmae_pct == null ? "—" : `%${sayiTr(acik.veri.nmae_pct, 1)}`}</td></tr>
-                  <tr><td>Tahmin aralığı isabeti (P10–P90)</td><td className="mono">{acik.veri.picp80 == null ? "—" : `%${sayiTr(acik.veri.picp80 * 100, 1)}`}</td></tr>
+                  <tr><td>Ağırlıklı hata (WMAPE)</td><td className="mono">{acik.veri.wmape_pct == null ? "—" : yuzdeTr(acik.veri.wmape_pct, 1)}</td></tr>
+                  <tr><td>Kurulu güce göre hata (nMAE)</td><td className="mono">{acik.veri.nmae_pct == null ? "—" : yuzdeTr(acik.veri.nmae_pct, 1)}</td></tr>
+                  <tr><td>Tahmin aralığı isabeti (P10–P90)</td><td className="mono">{acik.veri.picp80 == null ? "—" : yuzdeTr(acik.veri.picp80 * 100, 1)}</td></tr>
                 </tbody></table>
               ) : (acik.veri.gunler?.length ?? 0) === 0 ? <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: 0 }}>{acik.veri.not ?? "Veri yok."}</p> : (
                 <div className="grafik-kaydir"><table className="veri dar">
