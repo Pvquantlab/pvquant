@@ -1,4 +1,5 @@
 import type { MusteriAbonelik, AbonelikTalep, DengesizlikSaatlik, DsgAnahtar, KgupRevizyon, PiyasaDurum, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , SaatProfili , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , PDegerleri , Kullanilabilirlik , KayipAyrisimi , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar, PortfoyAnahtar, PortfoyKupst, UevcbArama , Takvim, KunyeTarihler, Yekdem, Olay, OlayOzet, OlayGiris, OlayYanit, MutabakatOzet, MutabakatYukleme, SaatlikKiyas, SaatlikYuklemeYanit, KuralTablosu, SayacOzet, SayacYuklemeYanit, SayacAyar, SayacKaynak, RaporDonemVeri, RaporGonderim, RaporGonderimSonuc, Performans, Sensorler, Sensor, Kirlenme, VeriYoluOzet, VeriYoluSinama , GolgeGorunum, OlayAdaylari, BulutKimlikDurum, BulutKimlikKayit, BulutKimlikSonuc, BulutOAuthBaslat, BulutBirimKiyas, PilotDurum, ReferansKiyasOzet, EdgeToplayici, EdgeToplayiciYeni , BagimsizDogrulama, FinansalEtki, FinansalEtkiGecmis, PortfoyFinansalEtki, PortfoyKisa, PortfoyDetay, PortfoyUye, PortfoySozlesme, Kurulus, PortfoyTahminT, PortfoySapmaT, PortfoyRiskT, PortfoyDsgT, PortfoyRevizyonT, PortfoyFinansT, GenelBakis } from "./types";
+import { donemSecenekleri } from "../lib/donem";   // 16.11: ısıtma — Finansal etki varsayılan dönemi
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik, ornekBagimsiz, ornekFinansalEtki } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -1216,6 +1217,16 @@ const ISITMA: Record<string, (p: string) => Promise<unknown>[]> = {
   aylik: (p) => [api.aylik(p), api.ozet(p)],
   dogruluk: (p) => [api.karne(p)],
   kalibrasyon: (p) => [api.kalibrasyon(p)],
+  // 16.11 piyasa/finans: sayfaların ilk çağrısıyla birebir aynı yol (aksi hâlde bellek ve sunucu önbelleği ısınmaz)
+  kgup: (p) => [api.kgupOnizleme(p), api.kgupRevizyon(p)],
+  mutabakat: (p) => [api.mutabakat(p)],
+  finans: (p) => [api.finansalEtki(p, donemSecenekleri("ay")[1]?.kod ?? donemSecenekleri("ay")[0].kod)],   // FinansalEtki.tsx varsayılanı: son tam ay
+  portfoyler: () => [api.portfoyler()],
+  // 16.11 operasyon: sayfaların açılış çağrılarıyla aynı yollar
+  sayac: (p) => [api.sayac(p)],
+  veri: (p) => [api.epiasUretim(p), api.isler()],
+  olaylar: (p) => [api.olaylar(p)],
+  takvim: (p) => [api.takvim(p)],
 };
 const isitildi = new Map<string, number>();
 export function isit(sayfa: string, plantId?: string): void {

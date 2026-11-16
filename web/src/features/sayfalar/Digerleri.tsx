@@ -148,7 +148,7 @@ function EpiasUretimKarti({ plantId }: { plantId: string }) {
   const [d, setD] = useState<EpiasUretim | null | undefined>(undefined);
   const [kimlik, setKimlik] = useState<string>("");
   const [mesaj, setMesaj] = useState<string | null>(null);
-  useEffect(() => { api.epiasUretim(plantId).then((r) => { setD(r); setKimlik(r?.epias_santral_id ? String(r.epias_santral_id) : ""); }).catch(() => setD(null)); }, [plantId]);
+  useEffect(() => { let acik = true; api.epiasUretim(plantId).then((r) => { if (!acik) return; setD(r); setKimlik(r?.epias_santral_id ? String(r.epias_santral_id) : ""); }).catch(() => { if (acik) setD(null); }); return () => { acik = false; }; }, [plantId]);   // 16.11: yarış koruması
   const kaydet = () => {
     setMesaj(null);
     api.epiasUretimAyarla(plantId, kimlik ? Number(kimlik) : null).then((r) => { setD(r); setMesaj("Kaydedildi. Gece işlemi son 7 günü alır; SCADA ölçümü olan saatlere dokunmaz."); })
@@ -1055,7 +1055,7 @@ function GonderimKarti({ plantId }: { plantId: string }) {
   const [aktif, setAktif] = useState(false); const [gun, setGun] = useState("3"); const [alicilar, setAlicilar] = useState("");
   const [durum, setDurum] = useState<{ metin: string; ton: "ok" | "hata" } | null>(null); const [mesgul, setMesgul] = useState(false);
   const ds = useDamgaSurumu();
-  useEffect(() => { api.raporGonderim(plantId).then((r) => { setG(r); setAktif(r.aktif); setGun(String(r.gun)); setAlicilar(r.alicilar.join(", ")); }, () => setG(null)); }, [plantId, ds]);
+  useEffect(() => { let acik = true; api.raporGonderim(plantId).then((r) => { if (!acik) return; setG(r); setAktif(r.aktif); setGun(String(r.gun)); setAlicilar(r.alicilar.join(", ")); }, () => { if (acik) setG(null); }); return () => { acik = false; }; }, [plantId, ds]);   // 16.11: yarış koruması
   const kaydet = () => {
     const n = Number(gun); if (!Number.isInteger(n) || n < 1 || n > 28) { setDurum({ metin: "Gün 1–28 arasında olmalı.", ton: "hata" }); return; }
     const al = alicilar.split(/[,;\s]+/).map((x) => x.trim()).filter(Boolean);
@@ -1095,7 +1095,9 @@ export function Raporlar({ plantId }: { plantId: string }) {
 
   const ds = useDamgaSurumu();   // 26.10 eşzamanlama
   useEffect(() => {
-    api.kosular(plantId).then(setKosular).catch(() => {});
+    let acik = true;   // 16.11: yarış koruması — santral değişiminde eski koşu listesi yeninin üstüne yazılmaz
+    api.kosular(plantId).then((v) => { if (acik) setKosular(v); }).catch(() => {});
+    return () => { acik = false; };
   }, [plantId, ds]);
 
   const MODEL_AD: Record<string, string> = {
@@ -1290,7 +1292,7 @@ function VerinizSizindirKarti({ plantId }: { plantId: string }) {
 function GeceIsleriKarti() {
   const [j, setJ] = useState<Isler | null>(null);
   const ds = useDamgaSurumu();   // 26.10 eşzamanlama: yeni iş kaydı damgayı değiştirir
-  useEffect(() => { api.isler().then(setJ).catch(() => {}); }, [ds]);
+  useEffect(() => { let acik = true; api.isler().then((v) => { if (acik) setJ(v); }).catch(() => {}); return () => { acik = false; }; }, [ds]);   // 16.11: yarış koruması (hızlı damga değişimi)
   if (!j) return null;
   const zaman = (t: string) => new Date(t).toLocaleString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   return (

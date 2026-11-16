@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
 import { api } from "../../api/client";
 import type { MutabakatOzet, MutabakatSatir, SaatlikKiyas } from "../../api/types";
@@ -30,7 +30,8 @@ function SaatlikDetayKarti({ plantId, donem, uretim, ds }: { plantId: string; do
   const [k, setK] = useState<SaatlikKiyas | null | undefined>(undefined);
   const [dosya, setDosya] = useState<File | null>(null); const [anahtar, setAnahtar] = useState(0);
   const [mesaj, setMesaj] = useState<{ metin: string; ton: "ok" | "hata" | "uyari" } | null>(null); const [mesgul, setMesgul] = useState(false);
-  const yukle = () => api.saatlikKiyas(plantId, donem, uretim).then(setK, () => setK(null));
+  const canli = useRef(0);   // 16.11 gezinme hızı — yarış koruması: son çağrı kazanır (santral/dönem değişimi, yükleme sonrası yenileme)
+  const yukle = () => { const n = ++canli.current; return api.saatlikKiyas(plantId, donem, uretim).then((v) => { if (n === canli.current) setK(v); }, () => { if (n === canli.current) setK(null); }); };
   useEffect(() => { setK(undefined); void yukle(); }, [plantId, donem, uretim, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   const gonder = () => {
     if (!dosya) { setMesaj({ metin: "Önce EPYS'den indirdiğiniz saatlik detay dosyasını seçin (XLSX ya da CSV).", ton: "hata" }); return; }
@@ -109,7 +110,8 @@ export function Mutabakat({ plantId }: { plantId: string }) {
   const [yukDonem, setYukDonem] = useState(oncekiAy());
   const [yukSurum, setYukSurum] = useState("");
   const [yukleniyor, setYukleniyor] = useState(false);
-  const yukle = () => api.mutabakat(plantId, donem, surum, uretim).then(setO, () => setO(null));
+  const canli = useRef(0);   // 16.11 gezinme hızı — yarış koruması: son çağrı kazanır
+  const yukle = () => { const n = ++canli.current; return api.mutabakat(plantId, donem, surum, uretim).then((v) => { if (n === canli.current) setO(v); }, () => { if (n === canli.current) setO(null); }); };
   useEffect(() => { setO(undefined); void yukle(); }, [plantId, ds, donem, surum, uretim]);   // eslint-disable-line react-hooks/exhaustive-deps
   const gonder = () => {
     if (!dosya) { setMesaj({ metin: "Önce EPYS'den indirdiğiniz bildirim dosyasını seçin (CSV ya da XLSX).", ton: "hata" }); return; }

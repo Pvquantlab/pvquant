@@ -93,7 +93,7 @@ def test_damga_degisim_kaynaklari_ve_izolasyon(temiz):
     e = temiz; pid, a, b, pa, pb = _kur(e)
     d0 = damga_service.hesapla(a["tenant_id"], pa); et0 = damga_service.etag_uret(d0)
     assert damga_service.etag_uret(damga_service.hesapla(a["tenant_id"], pa)) == et0           # değişiklik yok → sabit
-    assert {"son_piyasa", "son_is", "son_meteo", "santral_ozu"} <= set(d0) and d0["santral_ozu"]
+    assert {"son_piyasa", "son_is", "son_meteo", "santral_ozu", "son_mutabakat_yukleme", "son_saatlik_yukleme", "son_sayac_yukleme", "son_kgup_surum"} <= set(d0) and d0["santral_ozu"]   # 16.11: yüklemeler damgada
     # 1) yeni iş kaydı (kiracının)
     with sistem_baglami() as s:
         s.execute(text("INSERT INTO jobs_log(job, tenant_id, plant_id, started, finished, status, detail) VALUES ('sabah_tahmin', CAST(:t AS uuid), :p, now(), now(), 'ok', :e)"),

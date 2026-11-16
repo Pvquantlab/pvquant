@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
 import { api } from "../../api/client";
 import type { SayacOzet, SayacKaynak, SayacGun, SayacAyar } from "../../api/types";
@@ -40,8 +40,9 @@ export function Sayac({ plantId }: { plantId: string }) {
   const [scada, setScada] = useState<{ durum: string; bas: string; uyari: string; uzaktan: boolean | null; bedel: string }>({ durum: "", bas: "", uyari: "", uzaktan: null, bedel: "" });   // v2.538: uyari = dağıtım şirketi uyarı tarihi
   const [ayarDurum, setAyarDurum] = useState<{ metin: string; ton: "ok" | "hata" } | null>(null);
   const [scadaDurumIleti, setScadaDurumIleti] = useState<{ metin: string; ton: "ok" | "hata" } | null>(null);
-  const yukle = () => api.sayac(plantId, gun).then((y) => { setO(y); setTur(y.ayar.sayac_turu ?? ""); setGirdi(y.ayar.uzlastirma_girdi === "sayac" ? "sayac" : "scada");
-    setScada({ durum: y.ayar.scada_durum ?? "", bas: y.ayar.scada_kopukluk_baslangic ?? "", uyari: y.ayar.scada_uyari_tarihi ?? "", uzaktan: y.ayar.uzaktan_acma_var, bedel: y.ayar.sistem_kullanim_bedeli_tl_ay != null ? String(y.ayar.sistem_kullanim_bedeli_tl_ay).replace(".", ",") : "" }); }, () => setO(null));
+  const canli = useRef(0);   // 16.11 gezinme hızı — yarış koruması: son çağrı kazanır (santral/gün/damga değişimi, yükleme sonrası yenileme)
+  const yukle = () => { const n = ++canli.current; return api.sayac(plantId, gun).then((y) => { if (n !== canli.current) return; setO(y); setTur(y.ayar.sayac_turu ?? ""); setGirdi(y.ayar.uzlastirma_girdi === "sayac" ? "sayac" : "scada");
+    setScada({ durum: y.ayar.scada_durum ?? "", bas: y.ayar.scada_kopukluk_baslangic ?? "", uyari: y.ayar.scada_uyari_tarihi ?? "", uzaktan: y.ayar.uzaktan_acma_var, bedel: y.ayar.sistem_kullanim_bedeli_tl_ay != null ? String(y.ayar.sistem_kullanim_bedeli_tl_ay).replace(".", ",") : "" }); }, () => { if (n === canli.current) setO(null); }); };
   useEffect(() => { setO(undefined); void yukle(); }, [plantId, ds, gun]);   // eslint-disable-line react-hooks/exhaustive-deps
   const gonder = () => {
     if (!dosya) { setMesaj({ metin: "Önce sayaç dışa aktarım dosyasını seçin (CSV ya da XLSX).", ton: "hata" }); return; }

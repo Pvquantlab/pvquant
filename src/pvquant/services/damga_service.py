@@ -24,7 +24,13 @@ def hesapla(tenant_id, plant_id) -> dict:
             " (SELECT max(created_at) FROM alerts WHERE plant_id=:p) AS son_alarm,"
             " (SELECT count(*) FROM alerts WHERE plant_id=:p AND acked_by IS NULL AND created_at >= now() - interval '7 days') AS acik_alarm,"
             " (SELECT max(date) FROM skill_daily WHERE plant_id=:p) AS son_skill,"
-            " (SELECT max(created_at) FROM calibrations WHERE plant_id=:p) AS son_kalibrasyon"),
+            " (SELECT max(created_at) FROM calibrations WHERE plant_id=:p) AS son_kalibrasyon,"
+            # 16.11 gezinme hizi (piyasa/finans): dosya yuklemeleri de damgada - sunucu yanit onbellegi (yanit_onbellegi) bu damgayla
+            # anahtarli; EPIAS bildirimi / saatlik detay / sayac dosyasi / KGUP surumu yuklenince mutabakat-finans yanitlari tazelenir
+            " (SELECT max(olusturma) FROM uzlastirma_bildirimi WHERE plant_id=:p) AS son_mutabakat_yukleme,"
+            " (SELECT max(olusturma) FROM uzlastirma_saatlik WHERE plant_id=:p) AS son_saatlik_yukleme,"
+            " (SELECT max(olusturma) FROM sayac_yukleme WHERE plant_id=:p) AS son_sayac_yukleme,"
+            " (SELECT max(olusturma) FROM kgup_surum WHERE plant_id=:p) AS son_kgup_surum"),
             {"p": plant_id}).mappings().first()
     d = {k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in dict(r).items()}
     d["acik_alarm"] = int(d.get("acik_alarm") or 0)

@@ -100,6 +100,35 @@ from starlette.exceptions import HTTPException as _StarletteHTTP  # noqa: E402
 
 
 
+# 16.11 yönetim grubu ölçümü: işçi başına İLK çağrı ağır modül yüklemesi ödüyordu (iki-adim 0,8 s: pyotp/qrcode/passlib;
+# hakkinda 0,76 s: acik_nwp + tarama). İşleyiciler servisleri tembel içe aktarır; burada işçi açılışında bir kez yüklenir —
+# ilk kullanıcı beklemez. Yüklenemeyen modül sessizce atlanır (uç kendi içinde yine tembel yükler). PVQ_ON_YUKLEME=0 kapatır.
+ON_YUKLENECEK_SERVISLER = (
+    "iki_adim_service", "kaynak_service", "finansal_etki_service", "dengesizlik_service", "backtest_service", "mutabakat_service",
+    "saatlik_detay_service", "kgup_service", "kgup_arsiv_service", "revizyon_service", "nowcast_service", "saglik_service",
+    "accuracy_service", "guvenilirlik_service", "sayac_service", "olay_service", "takvim_service", "kirlenme_service",
+    "hijyen_service", "kayma_service", "genel_bakis_service", "calib_service", "ozet_service", "ingest_service",
+    "forecast_service", "iklim_service", "bagimsiz_dogrulama_service", "damga_service", "alarm_service", "api_anahtar_service",
+    "webhook_service", "piyasa_service", "paylasim_service", "aylik_rapor_service",
+)
+
+
+@app.on_event("startup")
+def _servisleri_on_yukle() -> None:
+    if _os.environ.get("PVQ_ON_YUKLEME", "1") == "0":
+        return
+    import importlib
+    t0 = _time.perf_counter(); n = 0
+    import contextlib
+    for ad in ON_YUKLENECEK_SERVISLER:
+        with contextlib.suppress(Exception):   # açılış asla düşmez; uç tembel yüklemeyle çalışır
+            importlib.import_module(f"pvquant.services.{ad}")
+            n += 1
+    with contextlib.suppress(Exception):
+        importlib.import_module("pvquant.io.acik_nwp")
+    print(f"ON-YUKLEME {n}/{len(ON_YUKLENECEK_SERVISLER)} servis modülü {(_time.perf_counter() - t0) * 1000:.0f} ms", flush=True)
+
+
 @app.middleware("http")
 async def _sure_basligi(request: Request, call_next):
     """16.11 gezinme hızı: her yanıta X-Sure-ms (sunucuda geçen süre). 300 ms üstü /v1 istekleri uvicorn akışına «YAVAS» satırı
@@ -943,7 +972,8 @@ def parola_sifirla(request: Request, g: ParolaSifirlamaGovde):
 def hakkinda(claims=Depends(gecerli_kullanici)):
     """v2.270 — Veri kaynakları ve lisanslar (Gizlilik Anayasası v2.245 istisnası: atıf yalnız burada, rapor künyesinde, README'de)."""
     from pvquant.services import kaynak_service
-    return kaynak_service.hakkinda()
+    # 16.11 yönetim grubu: kiracıdan bağımsız sistem künyesi (meteo arşivinde DISTINCT tarama ~0,75 s) — 10 dk genel önbellek
+    return yanit_onbellegi.getir_genel("hakkinda", kaynak_service.hakkinda, ttl_sn=600)
 
 
 @app.get("/v1/portfoy/tahmin")
@@ -1048,6 +1078,12 @@ def _kgup_yaniti(tenant_id: str, plant_id: str, gun: str | None, kantil: str, fm
 
 @app.get("/v1/plants/{plant_id}/kgup")
 def kgup_dosyasi(plant_id: str, gun: str | None = None, kantil: str = "p50", fmt: str = "csv", claims=Depends(gecerli_kullanici)):
+    """Önbellekli (yanit_onbellegi, 16.11 piyasa/finans): anahtar = kiracı + santral + «kgup?gun={gun}&kantil={kantil}&fmt={fmt}» + değişim damgası (yüklemeler dâhil); üretici aşağıda."""
+    if fmt != "json":   # CSV eki arşive yazılır; yalnız JSON önizleme önbellekte
+        return _kgup_dosyasi_uret(plant_id=plant_id, gun=gun, kantil=kantil, fmt=fmt, claims=claims)
+    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, f"kgup?gun={gun}&kantil={kantil}&fmt={fmt}", lambda: _kgup_dosyasi_uret(plant_id=plant_id, gun=gun, kantil=kantil, fmt=fmt, claims=claims), ttl_sn=60)
+
+def _kgup_dosyasi_uret(plant_id: str, gun: str | None = None, kantil: str = "p50", fmt: str = "csv", claims=Depends(gecerli_kullanici)):
     """v2.260 — KGÜP saatlik program (D-1 15:30 öncesi koşudan). fmt=csv → TPYS CSV eki (arşive yazılır); fmt=json → önizleme."""
     if fmt == "csv" and claims.get("temsil"):   # Faz 9 F9-E05: CSV indirme arşive yeni sürüm yazar — görüntüleme (temsil) oturumu salt okunur
         raise HTTPException(403, "görüntüleme oturumu salt okunur")
@@ -1140,6 +1176,10 @@ def kgup_sablon_sifirla(plant_id: str, claims=Depends(yazma_yetkisi())):
 
 @app.get("/v1/plants/{plant_id}/kgup/revizyon")
 def kgup_revizyon(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """Önbellekli (yanit_onbellegi, 16.11 piyasa/finans): anahtar = kiracı + santral + «kgup/revizyon» + değişim damgası (yüklemeler dâhil); üretici aşağıda."""
+    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, "kgup/revizyon", lambda: _kgup_revizyon_uret(plant_id=plant_id, claims=claims), ttl_sn=60)
+
+def _kgup_revizyon_uret(plant_id: str, claims=Depends(gecerli_kullanici)):
     """v2.507 (F-10) — bugünün programı ↔ güncel beklenti: eşik üstü sapan ve revizyon süresi geçmemiş saatler (GİP kapısı + 30 dk).
     Yol göstericidir; kayıt yazmaz, revizyon TPYS'de yapılır."""
     from pvquant.services import plant_service, revizyon_service
@@ -1967,7 +2007,13 @@ def dis_portfoy_finansal_etki(portfoy_id: str, donem: str | None = None, uretim:
 
 @app.get("/v1/kurallar")
 def kurallar_tablosu(tarih: str | None = None, segment: str | None = "lisansli_serbest", claims=Depends(gecerli_kullanici)):
-    """29.10.2026 (F-01) — uzlaştırma kuralı ve parametre sürüm tablosu (salt okunur): tarih verilirse o günün kuralı, yoksa tüm satırlar."""
+    """29.10.2026 (F-01) — uzlaştırma kuralı ve parametre sürüm tablosu (salt okunur): tarih verilirse o günün kuralı, yoksa tüm satırlar.
+    16.11: kiracıdan bağımsız (yalnız tarih/segment) — 10 dk genel önbellek; «bugün» İstanbul günüyle anahtarlanır."""
+    _bugun = pd.Timestamp.now(tz=PIYASA_TZ).date().isoformat()
+    return yanit_onbellegi.getir_genel(f"kurallar?tarih={tarih}&segment={segment}&gun={_bugun}", lambda: _kurallar_tablosu_uret(tarih=tarih, segment=segment), ttl_sn=600)
+
+
+def _kurallar_tablosu_uret(tarih: str | None = None, segment: str | None = "lisansli_serbest"):
     from pvquant.ext.turkiye import kurallar as kr
     from pvquant.services import dengesizlik_service
     if tarih:
@@ -2143,6 +2189,10 @@ def olay_guncelle(plant_id: str, olay_id: str, p: OlayGuncelle, claims=Depends(y
 
 @app.get("/v1/plants/{plant_id}/mutabakat")
 def mutabakat_ozet(plant_id: str, donem: str | None = None, surum: str | None = None, uretim: str | None = None, claims=Depends(gecerli_kullanici), _kapi=Depends(modul_gerekli("mutabakat"))):   # F6-E
+    """Önbellekli (yanit_onbellegi, 16.11 piyasa/finans): anahtar = kiracı + santral + «mutabakat?donem={donem}&surum={surum}&uretim={uretim}» + değişim damgası (yüklemeler dâhil); üretici aşağıda."""
+    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, f"mutabakat?donem={donem}&surum={surum}&uretim={uretim}", lambda: _mutabakat_ozet_uret(plant_id=plant_id, donem=donem, surum=surum, uretim=uretim, claims=claims, _kapi=_kapi))
+
+def _mutabakat_ozet_uret(plant_id: str, donem: str | None = None, surum: str | None = None, uretim: str | None = None, claims=Depends(gecerli_kullanici), _kapi=Depends(modul_gerekli("mutabakat"))):   # F6-E
     """v2.522 (P2b-1) — EPİAŞ uzlaştırma bildirimiyle kalem kalem mutabakat: yüklenmiş dönemler + seçilen dönemin bildirim ↔ PVQuant tablosu.
     Yeniden hesap EPİAŞ sonucu değildir. v2.526 (P4a-2): uretim=scada|sayac — gerçekleşen üretim kaynağı (verilmezse santral ayarı)."""
     from pvquant.services import mutabakat_service
@@ -2197,6 +2247,12 @@ def mutabakat_saatlik_yukle(plant_id: str, donem: str | None = None, dosya: Uplo
 
 @app.get("/v1/plants/{plant_id}/mutabakat/saatlik")
 def mutabakat_saatlik(plant_id: str, donem: str | None = None, uretim: str | None = None, fmt: str = "json", claims=Depends(gecerli_kullanici)):
+    """Önbellekli (yanit_onbellegi, 16.11 piyasa/finans): anahtar = kiracı + santral + «mutabakat/saatlik?donem={donem}&uretim={uretim}&fmt={fmt}» + değişim damgası (yüklemeler dâhil); üretici aşağıda."""
+    if fmt != "json":   # CSV indirme önbelleğe girmez
+        return _mutabakat_saatlik_uret(plant_id=plant_id, donem=donem, uretim=uretim, fmt=fmt, claims=claims)
+    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, f"mutabakat/saatlik?donem={donem}&uretim={uretim}&fmt={fmt}", lambda: _mutabakat_saatlik_uret(plant_id=plant_id, donem=donem, uretim=uretim, fmt=fmt, claims=claims))
+
+def _mutabakat_saatlik_uret(plant_id: str, donem: str | None = None, uretim: str | None = None, fmt: str = "json", claims=Depends(gecerli_kullanici)):
     """v2.527 (P2b-2) — eş kapsamlı saatlik kıyas: yüklü EPYS saatlik detayı ↔ PVQuant dökümü yalnız ortak saatlerde (fiyat, üretim, program, EDT, KÜPST;
     fark ayrıştırması; en büyük farklı saatler). fmt=csv saatlik satırları indirir. donem verilmezse son yüklenen dönem."""
     from datetime import datetime, timedelta
@@ -2234,6 +2290,10 @@ def _sayac_plant(row) -> dict:
 
 @app.get("/v1/plants/{plant_id}/sayac")
 def sayac_ozet(plant_id: str, gun: int = 30, claims=Depends(gecerli_kullanici)):
+    """Önbellekli (yanit_onbellegi, 16.11 operasyon): anahtar = kiracı + santral + «sayac?gun={gun}» + değişim damgası (sayaç/SCADA yüklemeleri dâhil); TTL 5 dk — «bugün» ve 12. gün 17:30 geri sayımı zamana bağlı."""
+    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, f"sayac?gun={gun}", lambda: _sayac_ozet_uret(plant_id=plant_id, gun=gun, claims=claims), ttl_sn=300)
+
+def _sayac_ozet_uret(plant_id: str, gun: int = 30, claims=Depends(gecerli_kullanici)):
     """v2.523 (P4a) — Sayaç izleme: veri geliş beklentisi (Ölçüm Sist. Yön. m.8), eksik saat, 12. gün 17:30 geri sayımı, SCADA ↔ sayaç günlük farkı,
     kaynak/nitelik etiketi, yükleme tarihçesi; lisanssızda SCADA durumu ve Karar 14909 bedel göstergesi."""
     from pvquant.services import sayac_service
@@ -3760,6 +3820,12 @@ def _fe_uretim(uretim: str | None) -> str | None:
 
 @app.get("/v1/plants/{plant_id}/finansal-etki")
 def finansal_etki(plant_id: str, donem: str | None = None, uretim: str | None = None, taze: int = 0, itibariyle: str | None = None, claims=Depends(gecerli_kullanici), _kapi=Depends(modul_gerekli("finansal_etki"))):   # F6-E
+    """Önbellekli (yanit_onbellegi, 16.11 piyasa/finans): anahtar = kiracı + santral + «finansal-etki?donem={donem}&uretim={uretim}&itibariyle={itibariyle}» + değişim damgası (yüklemeler dâhil); üretici aşağıda."""
+    if taze:   # taze=1 açıkça yeniden hesap ister (kaydedilmez)
+        return _finansal_etki_uret(plant_id=plant_id, donem=donem, uretim=uretim, taze=taze, itibariyle=itibariyle, claims=claims, _kapi=_kapi)
+    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, f"finansal-etki?donem={donem}&uretim={uretim}&itibariyle={itibariyle}", lambda: _finansal_etki_uret(plant_id=plant_id, donem=donem, uretim=uretim, taze=taze, itibariyle=itibariyle, claims=claims, _kapi=_kapi))
+
+def _finansal_etki_uret(plant_id: str, donem: str | None = None, uretim: str | None = None, taze: int = 0, itibariyle: str | None = None, claims=Depends(gecerli_kullanici), _kapi=Depends(modul_gerekli("finansal_etki"))):   # F6-E
     """v2.583 (Faz 2 F2-E): Finansal Etki Merkezi — dönem (YYYY-MM-DD | YYYY-Wnn | YYYY-MM | YYYY-QN | YYYY; verilmezse son tam ay) için üretim özeti,
     satış geliri, uzlaştırma bileşenleri, resmî eşleme, göstergeler, üretim düşüklüğü, ileri maruziyet ve birleşik toplam. Varsayılan: gece işinin son
     kayıtlı sonucu (≤36 sa); yoksa ya da taze=1 ise anında hesap (kaydedilmez). Tutarlar yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir."""
@@ -3804,6 +3870,11 @@ def finansal_etki_gecmis(plant_id: str, donem: str | None = None, n: int = 20, c
 
 @app.get("/v1/plants/{plant_id}/finansal-etki/senaryo")
 def finansal_etki_senaryo(plant_id: str, donem: str | None = None, pozisyon: str = "program", sabit_mwh: float | None = None, uretim: str | None = None,
+                          claims=Depends(gecerli_kullanici)):
+    """Önbellekli (yanit_onbellegi, 16.11 piyasa/finans): anahtar = kiracı + santral + «finansal-etki/senaryo?donem={donem}&pozisyon={pozisyon}&sabit_mwh={sabit_mwh}&uretim={uretim}» + değişim damgası (yüklemeler dâhil); üretici aşağıda."""
+    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, f"finansal-etki/senaryo?donem={donem}&pozisyon={pozisyon}&sabit_mwh={sabit_mwh}&uretim={uretim}", lambda: _finansal_etki_senaryo_uret(plant_id=plant_id, donem=donem, pozisyon=pozisyon, sabit_mwh=sabit_mwh, uretim=uretim, claims=claims))
+
+def _finansal_etki_senaryo_uret(plant_id: str, donem: str | None = None, pozisyon: str = "program", sabit_mwh: float | None = None, uretim: str | None = None,
                           claims=Depends(gecerli_kullanici)):
     """v2.583 (Faz 2 F2-E, Stage 6): pozisyon senaryosu (program | uretim | sabit MWh/saat) — kaydedilmez, «senaryo» damgalı; resmî değerlerin yerine geçmez."""
     from pvquant.services import finansal_etki_service as fe

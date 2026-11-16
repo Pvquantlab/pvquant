@@ -9,7 +9,8 @@ test("istemci belleği 10 dk (damga tazeler), ısıtma beş üretim sayfasını 
   assert.match(cl, /const BELLEK_MS = 600_000;/);
   assert.match(cl, /export function bellekEskit\(\)/);                     // damga değişince yaş sıfırlanır — tazelik güvencesi bu
   assert.match(cl, /export function isit\(sayfa: string, plantId\?: string\): void/);
-  for (const s of ["genel", "santralim", "tahminler", "aylik", "dogruluk", "kalibrasyon"]) assert.match(cl, new RegExp(`\\n  ${s}: \\(p\\) => \\[api\\.`), s);
+  for (const s of ["genel", "santralim", "tahminler", "aylik", "dogruluk", "kalibrasyon", "kgup", "mutabakat", "finans", "sayac", "veri", "olaylar", "takvim"]) assert.match(cl, new RegExp(`\\n  ${s}: \\(p\\) => \\[api\\.`), s);
+  assert.match(cl, /finans: \(p\) => \[api\.finansalEtki\(p, donemSecenekleri\("ay"\)\[1\]\?\.kod/);   // sayfanın ilk çağrısıyla aynı dönem → aynı yol
   assert.match(cl, /if \(TABAN == null \|\| !plantId\) return;/);          // örnek kipte ve santralsız ısıtma yok
 });
 
@@ -26,4 +27,26 @@ test("Santralim: her veri efekti yarış korumalı, ikincil kartlar özet gelinc
   assert.equal((s.match(/if \(!hazir\) return;/g) ?? []).length, 9, "kademeli efekt sayısı");
   // korumasız .then(setX) kalmadı (veri efektlerinde)
   for (const satir of s.split("\n")) if (/useEffect\(\(\) => \{/.test(satir) && /\[plantId/.test(satir)) assert.doesNotMatch(satir, /\.then\(set[A-Za-z]+\)/, "korumasız mount efekti");
+});
+
+test("Mutabakat: iki veri yükleyicisi de son-çağrı-kazanır yarış korumalı", () => {
+  const m = oku("../../src/features/sayfalar/Mutabakat.tsx");
+  assert.equal((m.match(/const canli = useRef\(0\);/g) ?? []).length, 2);
+  assert.equal((m.match(/if \(n === canli\.current\) set[KO]\(v\)/g) ?? []).length, 2);
+  assert.doesNotMatch(m, /\.then\(set[KO], /);
+});
+
+test("Operasyon: Sayaç ve Olay kaydı yükleyicileri son-çağrı-kazanır; Veri yükleme kartları acik bayraklı", () => {
+  for (const d of ["Sayac", "Olaylar"]) {
+    const s = oku(`../../src/features/sayfalar/${d}.tsx`);
+    assert.match(s, /const canli = useRef\(0\);/, d);
+    assert.match(s, /const n = \+\+canli\.current;/, d);
+    assert.doesNotMatch(s, /\.then\(setO, /, d);
+  }
+  const dg = oku("../../src/features/sayfalar/Digerleri.tsx");
+  assert.match(dg, /let acik = true; api\.epiasUretim\(plantId\)/);
+  assert.match(dg, /let acik = true; api\.isler\(\)/);
+  // yönetim: Raporlar koşu listesi ve rapor gönderim kartı
+  assert.match(dg, /let acik = true; api\.raporGonderim\(plantId\)/);
+  assert.match(dg, /api\.kosular\(plantId\)\.then\(\(v\) => \{ if \(acik\) setKosular\(v\); \}\)/);
 });

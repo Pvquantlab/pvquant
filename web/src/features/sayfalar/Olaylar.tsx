@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
 import { api } from "../../api/client";
 import type { Olay, OlayOzet, OlayTur, OlayGiris } from "../../api/types";
@@ -28,7 +28,8 @@ export function Olaylar({ plantId }: { plantId: string }) {
   const [mesaj, setMesaj] = useState<{ metin: string; ton: "ok" | "hata" | "uyari" } | null>(null);
   const [form, setForm] = useState<{ tur: OlayTur; baslangic: string; bitis: string; kw: string; gerekce: string; neden: string; kanit: string; bildirim: string; talimatMw: string }>(
     { tur: "ariza", baslangic: yerelSimdi(), bitis: "", kw: "", gerekce: "", neden: "", kanit: "", bildirim: "", talimatMw: "" });   // v2.541: bildirim (acil kesme), talimatMw (YAL/YAT)
-  const yukle = () => api.olaylar(plantId, gun).then(setO, () => setO(null));
+  const canli = useRef(0);   // 16.11 gezinme hızı — yarış koruması: son çağrı kazanır
+  const yukle = () => { const n = ++canli.current; return api.olaylar(plantId, gun).then((v) => { if (n === canli.current) setO(v); }, () => { if (n === canli.current) setO(null); }); };
   useEffect(() => { setO(undefined); void yukle(); }, [plantId, ds, gun]);   // eslint-disable-line react-hooks/exhaustive-deps
   const kural = o?.turler.find((t) => t.kod === form.tur);
   const hata = (e: unknown) => setMesaj({ metin: String((e as Error).message ?? e), ton: "hata" });

@@ -8,23 +8,92 @@ TTL yalnız emniyettir. Kiracı ve santral kimliği anahtardadır: başka kirac�
 paylaşılmaz (ayrıca yetki/404 denetimi üretici içinde yine koşar — önbellek yalnız YETKİLİ ve BAŞARILI yanıtı saklar).
 
 Açma: PVQ_YANIT_ONBELLEK=1 (docker-compose api). Kapalıyken `getir` üreticiyi doğrudan çağırır (testler, yerel geliştirme).
-Damga okunamazsa (DB yok) yine önbelleksiz üretilir — doğruluk hızdan önce gelir. Her uvicorn işçisinin kendi belleği vardır.
+Damga okunamazsa (DB yok) yine önbelleksiz üretilir — doğruluk hızdan önce gelir.
+
+İki katman (16.11 canlı ölçüm dersi): uvicorn 4 işçi = 4 süreç; yalnız süreç içi bellekle ikinci ziyaret başka işçiye düşüp ıska
+veriyordu (günlükte her ağır uç tam iki kez «YAVAS»). Bu yüzden ikinci katman konteynerin tmp dizininde PAYLAŞILAN dosya
+önbelleğidir (`PVQ_YANIT_ONBELLEK_DIZIN`, varsayılan /tmp/pvq-yanit): anahtarın sha256'sı dosya adı, içerik FastAPI'nin
+`jsonable_encoder` çıktısı (HTTP yanıtıyla birebir aynı JSON), yazma geçici dosya + atomik yeniden adlandırma, TTL dosya
+mtime'ından. Yeni bağımlılık ve şema yok; dizin yazılamazsa yalnız süreç içi katman çalışır.
 """
 from __future__ import annotations
 
+import contextlib
+import hashlib
+import json
 import os
+import tempfile
 import threading
 import time
 from collections import OrderedDict
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 _KILIT = threading.Lock()
-_KAYIT: "OrderedDict[tuple[str, str, str, str], tuple[float, Any]]" = OrderedDict()
+_KAYIT: OrderedDict[tuple[str, str, str, str], tuple[float, Any]] = OrderedDict()
 _DAMGA: dict[tuple[str, str], tuple[float, str]] = {}
 EN_COK = 512            # işçi başına kayıt tavanı (LRU)
 DAMGA_SN = 5.0          # damga etag'i bu kadar süre yeniden hesaplanmaz (bir sayfanın ~20 isteği tek damga sorgusu paylaşır)
 VARSAYILAN_TTL_SN = 900
-SAYAC = {"isabet": 0, "iska": 0, "atlandi": 0}
+DOSYA_EN_COK = 4000       # paylaşılan dizindeki dosya tavanı; aşınca en eskiler silinir (her 50 yazmada bir bakılır)
+SAYAC = {"isabet": 0, "dosya_isabet": 0, "iska": 0, "atlandi": 0}
+_YAZMA_SAYACI = [0]
+
+
+def _dizin() -> str | None:
+    d = os.environ.get("PVQ_YANIT_ONBELLEK_DIZIN", "/tmp/pvq-yanit")
+    try:
+        os.makedirs(d, exist_ok=True)
+        return d if os.access(d, os.W_OK) else None
+    except OSError:
+        return None
+
+
+def _dosya_yolu(d: str, k: tuple[str, str, str, str]) -> str:
+    return os.path.join(d, hashlib.sha256("\x1f".join(k).encode()).hexdigest() + ".json")
+
+
+def _dosyadan(k, ttl_sn: int):
+    d = _dizin()
+    if d is None:
+        return None
+    y = _dosya_yolu(d, k)
+    try:
+        if time.time() - os.stat(y).st_mtime >= ttl_sn:
+            return None
+        with open(y, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return None
+
+
+def _dosyaya(k, deger) -> None:
+    d = _dizin()
+    if d is None:
+        return
+    try:
+        fd, gecici = tempfile.mkstemp(dir=d, suffix=".tmp")
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(deger, f, ensure_ascii=False)
+        os.replace(gecici, _dosya_yolu(d, k))
+        _YAZMA_SAYACI[0] += 1
+        if _YAZMA_SAYACI[0] % 50 == 0:
+            _budama(d)
+    except (OSError, TypeError, ValueError):
+        return
+
+
+def _budama(d: str) -> None:
+    try:
+        dosyalar = [(os.stat(os.path.join(d, a)).st_mtime, a) for a in os.listdir(d) if a.endswith(".json")]
+    except OSError:
+        return
+    if len(dosyalar) <= DOSYA_EN_COK:
+        return
+    dosyalar.sort()
+    for _, a in dosyalar[: len(dosyalar) - DOSYA_EN_COK]:
+        with contextlib.suppress(OSError):
+            os.remove(os.path.join(d, a))
 
 
 def etkin() -> bool:
@@ -32,7 +101,8 @@ def etkin() -> bool:
 
 
 def _damga_etag(tenant_id, plant_id) -> str:
-    k = (str(tenant_id), str(plant_id)); simdi = time.monotonic()
+    k = (str(tenant_id), str(plant_id))
+    simdi = time.monotonic()
     with _KILIT:
         v = _DAMGA.get(k)
         if v and simdi - v[0] < DAMGA_SN:
@@ -55,22 +125,74 @@ def getir(tenant_id, plant_id, anahtar: str, uret: Callable[[], Any], ttl_sn: in
     except Exception:
         SAYAC["atlandi"] += 1
         return uret()
-    k = (str(tenant_id), str(plant_id), anahtar, et); simdi = time.monotonic()
+    k = (str(tenant_id), str(plant_id), anahtar, et)
+    simdi = time.monotonic()
     with _KILIT:
         v = _KAYIT.get(k)
         if v and simdi - v[0] < ttl_sn:
-            _KAYIT.move_to_end(k); SAYAC["isabet"] += 1
+            _KAYIT.move_to_end(k)
+            SAYAC["isabet"] += 1
             return v[1]
-    deger = uret()
+    dosyadan = _dosyadan(k, ttl_sn)
+    if dosyadan is not None:
+        with _KILIT:
+            _KAYIT[k] = (simdi, dosyadan)
+            _KAYIT.move_to_end(k)
+            SAYAC["dosya_isabet"] += 1
+            while len(_KAYIT) > EN_COK:
+                _KAYIT.popitem(last=False)
+        return dosyadan
+    from fastapi.encoders import jsonable_encoder
+    deger = jsonable_encoder(uret())   # HTTP yanıtıyla birebir aynı JSON biçimi: bellek, dosya ve ağ aynı şeyi söyler
     with _KILIT:
-        _KAYIT[k] = (simdi, deger); _KAYIT.move_to_end(k); SAYAC["iska"] += 1
+        _KAYIT[k] = (simdi, deger)
+        _KAYIT.move_to_end(k)
+        SAYAC["iska"] += 1
         while len(_KAYIT) > EN_COK:
             _KAYIT.popitem(last=False)
+    _dosyaya(k, deger)
     return deger
 
 
-def temizle() -> None:
+def getir_genel(anahtar: str, uret: Callable[[], Any], ttl_sn: int = 600) -> Any:
+    """Kiracıdan ve santraldan BAĞIMSIZ sistem bilgisi için (16.11 yönetim grubu: /hakkinda meteo arşivinde DISTINCT tarama,
+    /kurallar sürüm tablosu). Anahtar damga taşımaz; yalnız TTL ile tazelenir. Kiracı verisi taşıyan yanıtlar için ASLA
+    kullanılmaz — çağıran, üreticinin claims/tenant okumadığını garanti eder."""
+    if not etkin():
+        SAYAC["atlandi"] += 1
+        return uret()
+    k = ("*", "*", anahtar, "genel")
+    simdi = time.monotonic()
     with _KILIT:
-        _KAYIT.clear(); _DAMGA.clear()
+        v = _KAYIT.get(k)
+        if v and simdi - v[0] < ttl_sn:
+            _KAYIT.move_to_end(k)
+            SAYAC["isabet"] += 1
+            return v[1]
+    dosyadan = _dosyadan(k, ttl_sn)
+    if dosyadan is not None:
+        with _KILIT:
+            _KAYIT[k] = (simdi, dosyadan)
+            SAYAC["dosya_isabet"] += 1
+        return dosyadan
+    from fastapi.encoders import jsonable_encoder
+    deger = jsonable_encoder(uret())
+    with _KILIT:
+        _KAYIT[k] = (simdi, deger)
+        SAYAC["iska"] += 1
+    _dosyaya(k, deger)
+    return deger
+
+
+def temizle(dosyalar: bool = True) -> None:
+    with _KILIT:
+        _KAYIT.clear()
+        _DAMGA.clear()
     for k in SAYAC:
         SAYAC[k] = 0
+    d = _dizin() if dosyalar else None
+    if d:
+        for a in os.listdir(d):
+            if a.endswith(".json"):
+                with contextlib.suppress(OSError):
+                    os.remove(os.path.join(d, a))

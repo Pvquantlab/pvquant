@@ -21,10 +21,11 @@ if [ "$web_degisti" != "0" ] || [ "$KIP" != "hizli" ]; then
   adim "web tsc" bash -c "cd web && npx tsc -b"
   adim "web testleri" bash -c "cd web && npm test --silent"
 fi
-hedefler="$*"; [ -z "$hedefler" ] && hedefler=$(py_test_hedef)
+hedefler="$*"; [ -z "$hedefler" ] && hedefler=$(py_test_hedef | tr "\n" " ")   # 16.11: birden çok hedef tek satırda (satır sonu bash -c içinde ikinci komut oluyordu)
 if [ -n "$hedefler" ]; then
   [ -z "$URL" ] && echo "uyarı: PVQ_TEST_DB_URL boş; DB isteyen testler atlanır"
-  adim "pytest hedefli ($(echo "$hedefler" | wc -w | tr -d ' ') dosya)" bash -c "PVQ_DB_URL='$URL' PYTHONPATH=src .venv/bin/python3 -m pytest -q -p no:cacheprovider --no-header $hedefler"
+  dburl=""; [ -n "$URL" ] && dburl="PVQ_DB_URL='$URL'"   # 16.11: boş adres geçirilmez (PVQ_DB_URL='' toplama hatası veriyordu; adres yokken varsayılan kalır)
+  adim "pytest hedefli ($(echo "$hedefler" | wc -w | tr -d ' ') dosya)" bash -c "$dburl PYTHONPATH=src .venv/bin/python3 -m pytest -q -p no:cacheprovider --no-header $hedefler"
 fi
 if [ "$KIP" = "tam" ] || [ "$KIP" = "muhur" ]; then
   adim "web build" bash -c "cd web && npx vite build"
