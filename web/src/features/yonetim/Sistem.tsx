@@ -57,7 +57,7 @@ export function Sistem() {
         {/* v2.608 (F5-D): altı bileşen, hüküm uçtan (durum sözlüğü); sinyali olmayan bileşen «doğrulanamadı» — yeşil değil */}
         <div className="plat-saglik" style={{ gap: 10 }}>
           <Rozet durum={sg.durum} etiket={`sistem: ${sg.etiket.toLocaleLowerCase("tr")}`} />
-          <span className="soluk" style={{ fontSize: 13 }}>{sg.not}</span>
+          <span className="soluk" style={{ fontSize: "var(--t-ikincil)" }}>{sg.not}</span>
         </div>
         <div className="ızgara satir-3" style={{ marginBottom: 14 }}>
           {(["zamanlayici", "gece_isleri", "hava", "epias", "veritabani", "sunucu"] as const).map((k) => { const b = sg.bilesenler[k]; const AD = { zamanlayici: "Zamanlayıcı", gece_isleri: "Gece işlemleri", hava: "Hava verisi", epias: "EPİAŞ bağlantısı", veritabani: "Veritabanı ve yedek", sunucu: "Sunucu" }[k];
@@ -135,7 +135,7 @@ export function Sistem() {
             </table></div>
             {/* v2.516 (#3): izlenen işler — uzlaştırma, piyasa ve bakım; durum kodu uçtan (ok / esik_asimi / henuz_yok / beklenmiyor), sözcük sözlükten */}
             {o.izlenen && <>
-              <p className="soluk" style={{ fontSize: 13, margin: "14px 0 6px" }}>İzlenen işler: gün içi 30, günlük 36 saat, aylık 35 gün eşiği; müşteri hükmüne girmez, platform kartını uyarır.</p>
+              <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "14px 0 6px" }}>İzlenen işler: gün içi 30, günlük 36 saat, aylık 35 gün eşiği; müşteri hükmüne girmez, platform kartını uyarır.</p>
               <div className="grafik-kaydir"><table className="veri sayisal" style={{ minWidth: 0 }}>
                 <thead><tr><th style={sol}>İş</th><th style={sol}>Sıklık</th><th style={sol}>Son başarılı koşu</th><th>Durum</th></tr></thead>
                 <tbody>{o.izlenen.isler.map((u) => (
@@ -196,10 +196,10 @@ function YekdemFiyatlari() {
     <Kart baslik="YEKDEM fiyatları ve döviz kuru" alt="7189 sayılı CK kapsamındaki tesisler için EPİAŞ'ın aylık ilan ettiği fiyat (kuruş/kWh) ve TCMB gösterge alış kuru arşivi; müşteri panelindeki YEKDEM fiyatı ve m.23(6) işareti bu kayıtlardan hesaplanır">
       <Hata m={hata} />
       {!o && !hata ? <p className="soluk" style={{ margin: 0 }}>Yükleniyor…</p> : o && <>
-        <p style={{ fontSize: 13.5, margin: "0 0 8px" }}>
+        <p style={{ fontSize: "var(--t-ikincil)", margin: "0 0 8px" }}>
           Resmî kaynaklar: <a href={o.kaynaklar.epias_url} target="_blank" rel="noreferrer">EPİAŞ fiyat duyurusu</a> · <a href={o.kaynaklar.tcmb_url} target="_blank" rel="noreferrer">TCMB gösterge kurları</a> · {o.kaynaklar.mevzuat}.
         </p>
-        <p className="soluk" style={{ fontSize: 13.5, margin: "0 0 10px" }}>
+        <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "0 0 10px" }}>
           Kayıt durumu kaynağın tarihinden türetilir: «resmî duyuru» = EPİAŞ duyurusu, tarihli, dönemle ve kayıt zamanıyla tutarlı; «doğrulanmadı» = kaynak ya da tarih eksik, tarih gelecekte, dönemden önce ya da kayıttan sonra.
           {o.bekleyen.length > 0 && <> <span className="rozet rozet-notr">bekleyen</span> {o.bekleyen.map((b) => `${AYAD(b.ay)} ${o.tesis_etiket[b.tesis_tipi] ?? b.tesis_tipi}`).join(", ")}: EPİAŞ ilanı henüz girilmedi; müşteri paneli önceki ayın fiyatını işaretli olarak taşır.</>}
         </p>
@@ -225,7 +225,7 @@ function YekdemFiyatlari() {
           <div className="form-tam dugme-sira"><button className="dugme" onClick={kaydet}>İlanı kaydet</button></div>
         </div>
         <p className="etiket-ust" style={{ margin: "14px 0 6px" }}>Kur arşivi</p>
-        <p className="soluk" style={{ fontSize: 13.5, margin: "0 0 8px" }}>
+        <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "0 0 8px" }}>
           {o.kur.son_gun ? <>Son bülten {tarihTr(o.kur.son_gun)} (USD alış {o.kur.son_usd_alis != null ? sayiTr(o.kur.son_usd_alis, 4) : "—"} TL); {sayiTr(o.kur.gun_sayisi)} bülten{o.kur.ilk_gun ? `, ${tarihTr(o.kur.ilk_gun)} tarihinden` : ""}.</> : "Arşiv boş; worker ilk koşuda son 13 ayı TCMB'den tamamlar."}
           {" "}Son 30 günde TCMB bülteni eksik iş günü: {o.kur.eksik_is_gunu_30.length ? o.kur.eksik_is_gunu_30.map(tarihTr).join(", ") : "yok"}. Hafta sonu, resmî tatil ve arefe yarım günlerinde bülten yayımlanmaz; o günler için önceki iş gününün kuru uygulanır.
         </p>
@@ -235,7 +235,7 @@ function YekdemFiyatlari() {
           <div className="form-tam dugme-sira"><button className="dugme" onClick={doldur}>Eksik iş günlerini TCMB'den doldur</button>
             {mesaj && <span className={`ayar-durum ${mesaj.startsWith("Kayded") || /bülten yazıldı/.test(mesaj) ? "ok" : "hata"}`}>{mesaj}</span>}</div>
         </div>
-        <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>Alt–üst sınır: güneş {sayiTr(o.bant_cent.gunes[0], 2)}–{sayiTr(o.bant_cent.gunes[1], 2)}, bütünleşik depolamalı {sayiTr(o.bant_cent.gunes_depolamali[0], 2)}–{sayiTr(o.bant_cent.gunes_depolamali[1], 2)} ¢/kWh; başlangıç fiyatları {sayiTr(o.baslangic_kr.gunes[0], 2)} / {sayiTr(o.baslangic_kr.gunes_depolamali[0], 2)} kuruş/kWh (7189 sayılı CK Ek-1). Birimler: fiyat kuruş/kWh (×10 = TL/MWh); USD karşılığı = kuruş/kWh ÷ bir önceki ayın ortalama TL/USD alış kuru. Her kayıt denetim izine düşer; aynı dönem ve tesis tipi için yeni kayıt eskisinin üzerine yazar.</p>
+        <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "10px 0 0" }}>Alt–üst sınır: güneş {sayiTr(o.bant_cent.gunes[0], 2)}–{sayiTr(o.bant_cent.gunes[1], 2)}, bütünleşik depolamalı {sayiTr(o.bant_cent.gunes_depolamali[0], 2)}–{sayiTr(o.bant_cent.gunes_depolamali[1], 2)} ¢/kWh; başlangıç fiyatları {sayiTr(o.baslangic_kr.gunes[0], 2)} / {sayiTr(o.baslangic_kr.gunes_depolamali[0], 2)} kuruş/kWh (7189 sayılı CK Ek-1). Birimler: fiyat kuruş/kWh (×10 = TL/MWh); USD karşılığı = kuruş/kWh ÷ bir önceki ayın ortalama TL/USD alış kuru. Her kayıt denetim izine düşer; aynı dönem ve tesis tipi için yeni kayıt eskisinin üzerine yazar.</p>
       </>}
     </Kart>
   );
@@ -280,7 +280,7 @@ function IsKayitlari({ santral, temizle }: { santral: { id: string; ad: string }
               <td style={{ whiteSpace: "nowrap" }}>{x.kiraci ?? (x.tenant_id ? x.tenant_id.slice(0, 8) : "—")}</td>
               <td style={{ whiteSpace: "nowrap" }}>{x.santral ?? (x.plant_id ? x.plant_id.slice(0, 8) : "—")}</td><td style={{ whiteSpace: "nowrap" }}>{sureTr(x.sure_sn)}</td>
               <td><span className={`rozet ${x.tamam ? "rozet-ok" : "rozet-uyari"}`}>{isDurumu(x.tamam)}</span></td>
-              <td style={{ ...AYRINTI, fontSize: 13.5, color: x.tamam ? "var(--ikincil)" : undefined }}>{x.ayrinti ?? "—"}</td></tr>))}</tbody>
+              <td style={{ ...AYRINTI, fontSize: "var(--t-ikincil)", color: x.tamam ? "var(--ikincil)" : undefined }}>{x.ayrinti ?? "—"}</td></tr>))}</tbody>
         </table></div>)}
     </Kart>
   );
@@ -302,7 +302,7 @@ function HizmetSagligiBolumu({ santralSec }: { santralSec: (id: string, ad: stri
       {!v ? <SayfaIskeleti kpi={5} kart={2} /> : <>
         <div className="plat-saglik" style={{ gap: 10 }}>
           <Rozet durum={v.ozet.durum} etiket={`müşteri hizmeti: ${v.ozet.etiket.toLocaleLowerCase("tr")}`} />
-          <span className="soluk" style={{ fontSize: 13 }}><Meta items={[`${sayiTr(v.ozet.santral)} santral`, `${sayiTr(v.ozet.kurulus ?? v.kuruluslar.length)} kuruluş`, `${sayiTr(v.ozet.dikkat_kurulus ?? 0)} kuruluşta dikkat`, v.yarin ? `program günü ${v.yarin}` : null, v.donem ? `mutabakat dönemi ${v.donem}` : null].filter(Boolean) as string[]} /></span>
+          <span className="soluk" style={{ fontSize: "var(--t-ikincil)" }}><Meta items={[`${sayiTr(v.ozet.santral)} santral`, `${sayiTr(v.ozet.kurulus ?? v.kuruluslar.length)} kuruluş`, `${sayiTr(v.ozet.dikkat_kurulus ?? 0)} kuruluşta dikkat`, v.yarin ? `program günü ${v.yarin}` : null, v.donem ? `mutabakat dönemi ${v.donem}` : null].filter(Boolean) as string[]} /></span>
         </div>
         <div className="ızgara satir-5" style={{ marginBottom: 14 }}>
           {BOYUTLAR.map((b) => { const d = v.ozet.boyut[b]; const s = d?.sayim ?? {};
@@ -323,7 +323,7 @@ function HizmetSagligiBolumu({ santralSec }: { santralSec: (id: string, ad: stri
         </Kart>
         <Kart baslik="Santraller" alt="her santralın beş boyutu; rozetin üstünde neden; «son iş hatası» iş kayıtlarına götürür" style={{ marginBottom: 14 }}
           sag={<span className="dugme-sira">{tenant && <span className="rozet rozet-uyari">kuruluş: {v.kuruluslar.find((k) => k.id === tenant)?.ad ?? tenant} <button type="button" className="plat-rozet-kapat" aria-label="kuruluş süzgecini kaldır" onClick={() => setTenant("")}>×</button></span>}
-            <label className="ayar-onay" style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13.5, cursor: "pointer" }}><input type="checkbox" checked={sorunlu} onChange={(e) => setSorunlu(e.target.checked)} />yalnız sorunlu</label></span>}>
+            <label className="ayar-onay" style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: "var(--t-ikincil)", cursor: "pointer" }}><input type="checkbox" checked={sorunlu} onChange={(e) => setSorunlu(e.target.checked)} />yalnız sorunlu</label></span>}>
           {v.santraller.length === 0 ? <Bos bas={sorunlu ? "Sorunlu santral yok." : "Etkin santral yok."} /> : (
             <div className="grafik-kaydir"><table className="veri sayisal santral plat-envanter">
               <thead><tr><th>Müşteri</th><th>Santral</th><th>Hüküm</th>{BOYUTLAR.map((b) => <th key={b}>{BOYUT_AD[b]}</th>)}<th style={sol}>Eylem gereken</th></tr></thead>
@@ -335,7 +335,7 @@ function HizmetSagligiBolumu({ santralSec }: { santralSec: (id: string, ad: stri
                     {p.boyutlar.alarm?.son_is_hatasi ? <div className="kunye-not"><button type="button" className="plat-baglanti" onClick={() => santralSec(p.id, p.ad)}>son iş hatası {yasTr(String(p.boyutlar.alarm.son_is_hatasi))}</button></div> : null}</td>
                 </tr>))}</tbody>
             </table></div>)}
-          <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>{v.not}</p>
+          <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "10px 0 0" }}>{v.not}</p>
         </Kart>
       </>}
       <SantralEnvanteri santralSec={santralSec} />
@@ -351,7 +351,7 @@ function SantralEnvanteri({ santralSec }: { santralSec: (id: string, ad: string)
   useEffect(() => { setVeri(null); yonetim.santraller(sorunlu).then(setVeri).catch((e) => setHata(mesajCikar(e))); }, [sorunlu]);
   return (
     <Kart baslik="Santral envanteri" alt={veri ? `SCADA ${veri.esik.scada_saat} saatten, tahmin koşusu ${veri.esik.kosu_saat} saatten eskiyse sorun sayılır` : undefined}
-      sag={<label className="ayar-onay" style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13.5, cursor: "pointer" }}>
+      sag={<label className="ayar-onay" style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: "var(--t-ikincil)", cursor: "pointer" }}>
         <input type="checkbox" checked={sorunlu} onChange={(e) => setSorunlu(e.target.checked)} />yalnız sorunlu</label>}>
       <Hata m={hata} />
       {!veri ? <SayfaIskeleti kpi={0} kart={1} /> : veri.santraller.length === 0 ? <Bos bas={sorunlu ? "Sorunlu santral yok." : "Etkin santral yok."} alt={sorunlu ? `${sayiTr(veri.toplam)} etkin santralin hepsi veri alıyor ve koşuyor.` : undefined} /> : (
@@ -379,7 +379,7 @@ function SantralEnvanteri({ santralSec }: { santralSec: (id: string, ad: string)
                 {p.son_hata && <div className="kunye-not"><button type="button" className="plat-baglanti" title="İş kayıtlarında bu santralin hatalarını göster (başarısız biten son iş)" onClick={() => santralSec(p.id, p.ad)}
                   style={Date.now() - new Date(p.son_hata).getTime() > 7 * 86400000 ? { color: "var(--soluk)" } : undefined}>son hata {yasTr(p.son_hata)}</button></div>}</td></tr>))}</tbody>
         </table></div>)}
-      {veri && sorunlu && veri.santraller.length > 0 && <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>{sayiTr(veri.santraller.length)} / {sayiTr(veri.toplam)} etkin santralde sorun var.</p>}
+      {veri && sorunlu && veri.santraller.length > 0 && <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "10px 0 0" }}>{sayiTr(veri.santraller.length)} / {sayiTr(veri.toplam)} etkin santralde sorun var.</p>}
     </Kart>
   );
 }

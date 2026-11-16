@@ -21,7 +21,7 @@ export function Cubuklar({ etiketler, degerler, birim, vurguIdx, yukseklik = 260
     // ilk kez koşunca döküldü; dev-Vite tip denetimi yapmıyordu. nr kullanımda.
     const nr = oku("--notr-r") || "100,116,139";
     const izgara = oku("--izgara"), soluk = oku("--soluk"), kenar = oku("--kenar");
-    const mono = oku("--mono");  // v2.92: sabit ad degil token
+    const veri = oku("--font");  // v2.92: sabit ad degil token
     // v2.118: kapsam <%50 aylar "eksik veri" sayilir — en-dusuk aramasina
     // girmez (Solargis: olculmemis donem, kotu donemle karistirilmaz)
     const tam = (i: number) => !kapsamPct || (kapsamPct[i] ?? 100) >= 50;
@@ -44,10 +44,10 @@ export function Cubuklar({ etiketler, degerler, birim, vurguIdx, yukseklik = 260
         } },
       xAxis: { type: "category", data: etiketler, axisTick: { show: false },
         axisLine: { lineStyle: { color: kenar } },
-        axisLabel: { color: soluk, fontFamily: mono, fontSize: 13 } },
+        axisLabel: { color: soluk, fontFamily: veri, fontSize: 13 } },
       yAxis: { type: "value", splitLine: { lineStyle: { color: izgara } },
         axisLine: { show: false },
-        axisLabel: { color: soluk, fontFamily: mono, fontSize: 13,
+        axisLabel: { color: soluk, fontFamily: veri, fontSize: 13,
                      formatter: (v: number) => sayiTr(v) } },
       series: [{
         type: "bar", barMaxWidth: 34,
@@ -64,7 +64,7 @@ export function Cubuklar({ etiketler, degerler, birim, vurguIdx, yukseklik = 260
           // hayalet cubugun rakami kendinden emin okunuyordu.
           label: tam(i) ? undefined : { color: oku("--soluk") } })),
         label: { show: true, position: "top", color: oku("--ikincil"),
-                 fontFamily: mono, fontSize: 12.5,
+                 fontFamily: veri, fontSize: 12.5,
                  formatter: (p: unknown) =>
                    sayiTr(Number((p as { value: number }).value), ondalik) },
       },

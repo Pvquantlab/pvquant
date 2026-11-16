@@ -2,7 +2,7 @@
 
 Kaynak dosyalar (gerçek değerler HER ZAMAN oradan okunur, burası harita):
 - Panel: `web/src/index.css` (`:root` + koyu yüz blokları) — N0–N900 mürekkep merdiveni,
-  `--chart-*` uzayı, `--font` (Inter), `--mono` (IBM Plex Mono, tabular-nums), `--display`.
+  `--chart-*` uzayı, `--font` (Inter Variable), `--display` (16.11'den beri panelde = `--font`), `--mono` (IBM Plex Mono — YALNIZ kod/anahtar/kimlik). Gövde düzeyinde `tabular-nums`.
 - Vitrin: `web/src/features/vitrin/vitrin.css` — `--vt-*` uzayı. Kök blok (satır 1–60) tarihsel;
   **13.10.2026'dan beri dosyanın SONUNDAKİ «JUA KATMANI» kazanır**: mürekkep #0B0E15, gövde #404551,
   koyu zemin #0B0E15 (hero #05070C), krem bant #FEF0E6, eylem #B11F47 yalnız odak halkasında,
@@ -28,10 +28,10 @@ Kaynak dosyalar (gerçek değerler HER ZAMAN oradan okunur, burası harita):
 
 | Rol | Panel | Vitrin |
 |---|---|---|
-| Display/başlık | `--display` = **Inter Tight** (22.10.2026 tek tasarım sistemi; Space Grotesk kalktı): h1 26/600 −.02em · h2 20/600 · kart h3 15/600 −.01em (`.kart-bas h3`, cümle düzeni, büyük harf YOK) · giriş hero 64/500 −.03em | Inter Tight **300** (−0,035em, satır 0,96; h2 −0,028em/1,02) |
+| Display/başlık | `--display` = **Inter Variable** (16.11.2026 TEK AİLE — sayısal tipografi raporu; Inter Tight panelden çıktı, optik boyut ekseni ≥28 px'te sıkı çizimi verir): h1 28/600 −.02em · h2 20/600 · kart h3 15/600 −.01em (`.kart-bas h3`, cümle düzeni, büyük harf YOK) · giriş hero 64/500 −.03em | Inter Tight **300** (−0,035em, satır 0,96; h2 −0,028em/1,02) |
 | Gövde | Inter (`--font`) 14/1,55 · ikincil 13 · tablo 13,5 (optik boyut ekseni küçük puntoda kalır) | Inter Tight 400 (16/24 taban; giriş 19/1,5; hero 22/1,45) |
 | Etiket/düğme | Inter Tight 500: eyebrow `.etiket-ust` 12px +.10em büyük harf · nav 14,5 · düğme 13,5 · çip/rozet 12 · sekme 13; düğme/çip/sekme/segment **hap 999** (`--r-hap`) | Inter Tight 500 (eyebrow 12px +0,14em büyük harf; hap düğme 999px) |
-| VERİ/eksen/künye | IBM Plex Mono + `tabular-nums` tablo gövdesi, eksen, kod, zaman damgası (mono tablolarda İLK sütun etiket → gövde ailesi). **22.10 istisnası (tek tasarım sistemi):** KPI başlık sayıları `.kpi-dg` / `.ozet .dg` / `.yan-ozet .dg` / `.sayi-buyuk` Inter Tight 500 30px tabular — vitrinin karne sayısıyla aynı kesim; tek jeton (`--display`) ile geri alınabilir | **Vitrin istisnası (13.10, kullanıcı kararı):** Inter Tight + `tabular-nums` (300 büyük sayı, 400/500 künye); Plex Mono vitrinde kullanılmaz |
+| VERİ/eksen/künye | **16.11 TEK AİLE:** tablo gövdesi, eksen, zaman damgası, künye sayısı, KPI (`.kpi-dg` / `.ozet .dg` / `.sayi-buyuk` 500 32/28 px −.02em) hepsi Inter Variable + `tabular-nums` (`body` düzeyinde). `.mono` sınıfı VERİ rolüdür (gövde ailesi, tabular; ad tarihsel). IBM Plex Mono yalnız kod/anahtar/kimlik: `.kimlik` (hash, sürüm anahtarı, SHA özeti — künyede `.kunye-sayi` DEĞİL), `.kod`, `.cip-kod`, `.kod-duz`, `.plat-anahtar`, `.girdi.mono`, `kbd`, `.plat-ayrinti__cip`. ECharts canvas'ta tabular yok; eksen orantılı Inter (referans normu). Gerekçe: 61 referansın hiçbiri veri için ayrı aile kullanmıyor; Plex rakamı aynı puntoda Inter'den %3,7 kısa, üç kesim üç rakam çizimi veriyordu | **Vitrin istisnası (13.10, kullanıcı kararı):** Inter Tight + `tabular-nums` (300 büyük sayı, 400/500 künye); Plex Mono vitrinde kullanılmaz |
 
 - Etikette `text-transform: uppercase` birimleri bozar (kWp→KWP) — birim taşıyan metne asla.
 - Türkçe büyük harf: `lang="tr"` şart; JS `/i` bayrağı İ'yi KATLAMAZ (regex'te sınıf kullan).
@@ -95,3 +95,21 @@ Bileşen kodunda ham hex/px (jeton karşılığı varken) inceleme kapısına ta
 
 `.katla` (parcalar.Katla): özet satırı `.aciklama` ile aynı ok dili (6 px çevrilen köşe, `--ikincil`, hover `--metin`, odak `--marka` çerçeve); `.katla-ad` bölünmez, not `.soluk` 12,5 px alt satıra iner;
 gövde renk/boyut ALMAZ (içinde form ve tablo var). Kart düzeyi `.ayar-gelismis`: başlık ayar adı dizgisi (`--display` 14 px 600 `--metin`), üstten 12 px, içindeki ilk `.ayar` 10 px. Yeni renk yok.
+
+## Tip ölçeği (16.11.2026 tipografi birliği)
+
+| Jeton | Değer | Rol |
+|---|---|---|
+| `--t-baslik` | 28 px | sayfa başlığı (Inter Variable 600) |
+| `--t-bolum` | 21 px | bölüm başlığı |
+| `--t-kart` | 16 px | kart başlığı |
+| `--t-govde` | 15 px | gövde metni, künye satırı |
+| `--t-tablo` | 14 px | `table.veri` tabanı |
+| `--t-veri` | 14 px | (16.11: kullanımdan kalktı — `.kunye-sayi` gövde puntosu; jeton geriye dönük duruyor) |
+| `--t-ikincil` | 13,5 px | **ikincil metnin tek boyu**: dipnot, not, açıklama, form notu, tanım listesi, lejant |
+| `--t-kod` | 13 px | kod/anahtar/kimlik — PANELDEKİ TEK mono bağlam (`.kod`, `.cip-kod`, `.girdi.mono`), küçük düğme metni |
+| `--t-tablo-dar` | 13 px | yoğun tablo (`table.veri.dar`) |
+| `--t-etiket` | 12,5 px | eyebrow / büyük harfli etiket |
+| `--t-kucuk` | 12 px | küçük rozet, meta |
+
+Kural: bileşenlerde satır içi sayısal `fontSize` yazılmaz; jeton kullanılır (16.11'de 364 satır içi punto bu jetonlara çevrildi: 254 ikincil, 52 tablo, 18 düğme, kalanı etiket/küçük/kod). ECharts seçenek nesneleri (sayı ister) kural dışı. Ağırlık merdiveni 400 / 500 / 600; 700 kullanılmaz.

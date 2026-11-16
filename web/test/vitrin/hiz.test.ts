@@ -161,10 +161,11 @@ test("panel geçişleri: ekran değişimleri startTransition içinde, tek kalıc
   assert.match(app, /Promise\.all\(\[Kabuk\.onYukle\(\), GenelBakis\.onYukle\(\)\]\)/);   // v2.608 (Faz 5 F5-B): ilk ekran Genel bakış; Santralim boş zamanda iner
   // giriş ekranı font bekleme listesi: her örnek ASCII + gerekirse Türkçe harf içerir (latin yüzü de istensin)
   const ornek = new Map([...app.matchAll(/document\.fonts\.load\("([^"]+)", "([^"]+)"\)/g)].map((m) => [m[1], m[2]]));
-  assert.equal(ornek.size, 5);
+  // 16.11 tek aile: giriş ekranı yalnız Inter Variable ister (değişken yüz; Plex Mono yalnız kod/anahtar, tembel iner)
+  assert.equal(ornek.size, 2);
   for (const [f, s] of ornek) assert.match(s, /[A-Za-z]/, f);
-  for (const f of ["500 64px 'Inter Tight'", "400 16px 'Inter Variable'", "400 12px 'IBM Plex Mono'"]) assert.match(ornek.get(f) ?? "", /[ğşİ]/, f);
-  assert.ok(ornek.has("500 12px 'IBM Plex Mono'") && ornek.has("600 12px 'IBM Plex Mono'"));
+  for (const f of ["500 64px 'Inter Variable'", "400 16px 'Inter Variable'"]) assert.match(ornek.get(f) ?? "", /[ğşİ]/, f);
+  assert.doesNotMatch(app, /fonts\.load\("[^"]*(IBM Plex Mono|Inter Tight)/);
   assert.match(oku("../../src/features/giris/Giris.tsx"), /if \(r === "ok"\) \{ onGiris\(\); return; \}/);
   assert.match(oku("../../src/features/sayfalar/Digerleri.tsx"), /if \(tahminlereGit\) \{ tahminlereGit\(\);/);
 });

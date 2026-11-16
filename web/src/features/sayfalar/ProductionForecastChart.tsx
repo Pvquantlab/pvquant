@@ -539,7 +539,7 @@ export function buildChartOption(input: BuildInput): EChartsOption {
               // v2.307: "doğuş 06:26" etiketi "[saat · yerel]" eksen adına biniyordu;
               // etiket tikin ÜSTÜNE alındı (grafik içine), eksen adı altta serbest kaldı.
               show: !cokGun, position: "top", distance: narrow ? 6 : 8,
-              color: T.mutedText, fontFamily: "'IBM Plex Mono', ui-monospace, monospace",
+              color: T.mutedText, fontFamily: "'Inter Variable', 'Inter', system-ui, sans-serif",
               fontSize: narrow ? 11 : 12.5,
             },
             data: isaretler.map((m) => ({
@@ -873,7 +873,7 @@ export function buildChartOption(input: BuildInput): EChartsOption {
               style: {
                 text: `AC ${nfKw.format(acVal)}`,
                 fill: T.acLimit,
-                font: `${narrow ? 11 : 12}px 'IBM Plex Mono', ui-monospace, monospace`,
+                font: `${narrow ? 11 : 12}px 'Inter Variable', 'Inter', system-ui, sans-serif`,
               },
               silent: true,
               z: 50,
@@ -889,7 +889,7 @@ export function buildChartOption(input: BuildInput): EChartsOption {
         hideOverlap: true,
         interval: axisIntervalFn as never,
         formatter: axisFmtFn,
-        fontFamily: "'IBM Plex Mono', ui-monospace, monospace",
+        fontFamily: "'Inter Variable', 'Inter', system-ui, sans-serif",
         fontSize: narrow ? 11 : 13,
       },
       // v2.218: Solargis cizim dili — taban cizgisi izgaradan belirgin,
@@ -907,7 +907,7 @@ export function buildChartOption(input: BuildInput): EChartsOption {
         name: daily ? "[yerel gün]" : "[yerel saat]",
         nameLocation: "middle" as const,
         nameGap: 30,
-        nameTextStyle: { color: T.unitText, fontFamily: "'IBM Plex Mono', ui-monospace, monospace", fontSize: 12.5 },
+        nameTextStyle: { color: T.unitText, fontFamily: "'Inter Variable', 'Inter', system-ui, sans-serif", fontSize: 12.5 },
       }),
     },
     yAxis: {
@@ -918,7 +918,7 @@ export function buildChartOption(input: BuildInput): EChartsOption {
       interval: yAralik,
       axisLabel: {
         color: T.axisText,
-        fontFamily: "'IBM Plex Mono', ui-monospace, monospace",
+        fontFamily: "'Inter Variable', 'Inter', system-ui, sans-serif",
         fontSize: narrow ? 11 : 13,
         // v2.360: küçük eksende ondalık korunur — 0,4/0,8 etiketleri "0" diye
         // yuvarlanıp merdiven boyunca "0 0 1 1 2" okunuyordu.
@@ -930,7 +930,7 @@ export function buildChartOption(input: BuildInput): EChartsOption {
         nameLocation: "middle" as const,
         nameGap: 56,
         nameRotate: 90,
-        nameTextStyle: { color: T.unitText, fontFamily: "'IBM Plex Mono', ui-monospace, monospace", fontSize: 12.5 },
+        nameTextStyle: { color: T.unitText, fontFamily: "'Inter Variable', 'Inter', system-ui, sans-serif", fontSize: 12.5 },
       }),
     },
     ...(features.dataZoom
@@ -948,7 +948,7 @@ export function buildChartOption(input: BuildInput): EChartsOption {
       borderColor: T.gridLine,
       borderWidth: 0.5,
       extraCssText: "box-shadow:none;",
-      textStyle: { color: T.labelText, fontFamily: "'IBM Plex Mono', ui-monospace, monospace", fontSize: 13 },
+      textStyle: { color: T.labelText, fontFamily: "'Inter Variable', 'Inter', system-ui, sans-serif", fontSize: 13 },
       formatter: (params: unknown) => {
         const arr = params as { axisValue: string }[];
         if (!arr?.length) return "";
@@ -1136,7 +1136,7 @@ export default function ProductionForecastChart({
   // 23.10 altıncı tur: ≥32 px (panel düğme tabanı); üç krom satırı (lejant / şimdi+birim / PNG-CSV) TEK şeride indi:
   // şimdi hapı solda, lejant ortada (.lejant: gövde ailesi), dışa aktarma sağda; dar ekranda sarar.
   const btn: React.CSSProperties = {
-    font: "500 13px 'Inter Tight', 'Inter Tight Yedek', 'Inter Variable', system-ui, sans-serif",
+    font: "500 13px 'Inter Variable', 'Inter', system-ui, sans-serif",
     padding: "5px 12px",
     minHeight: 32,
     border: `1px solid ${T.btnBorder}`,
@@ -1146,7 +1146,7 @@ export default function ProductionForecastChart({
     cursor: "pointer",
   };
   const pill: React.CSSProperties = {
-    font: "500 12.5px 'Inter Tight', 'Inter Tight Yedek', 'Inter Variable', system-ui, sans-serif",
+    font: "500 12.5px 'Inter Variable', 'Inter', system-ui, sans-serif",
     background: T.surface,
     border: `1px solid ${T.btnBorder}`,
     borderRadius: 999,
@@ -1206,7 +1206,7 @@ export default function ProductionForecastChart({
           )}
         </div>
         {(narrow || daily) && (
-          <span style={{ font: "12.5px 'IBM Plex Mono', ui-monospace, monospace", color: T.mutedText, whiteSpace: "nowrap" }}>
+          <span style={{ font: "12.5px 'Inter Variable', 'Inter', system-ui, sans-serif", color: T.mutedText, whiteSpace: "nowrap" }}>
             {daily ? "günlük tepe ve aralık, " : ""}kW
           </span>
         )}

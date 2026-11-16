@@ -54,6 +54,9 @@ export const SOZLUK = {
     sayac_yukle: "Sayaç dosyası yüklendi", sayac_ayar: "Sayaç ve SCADA ayarı değişti",   // v2.523 (P4a)
     mutabakat_saatlik_yukle: "EPYS saatlik detayı yüklendi", mutabakat_saatlik_indir: "Saatlik kıyas indirildi",   // v2.527 (P2b-2)
     rapor_donem_indir: "Dönem raporu indirildi", rapor_gonderim_ayar: "Rapor gönderim ayarı değişti", rapor_gonderim: "Dönem raporu e-postayla gönderildi",   // v2.525
+    // 16.11 — müşteri denetim izi de bu sözlüğü kullanır (önce ham kod gösteriyordu); canlı izde ve kaydet çağrılarında görülen eksik kodlar
+    abonelik_uyari: "Plan sınırı uyarısı", basvuru: "Başvuru alındı", doviz_kuru: "Döviz kuru", santral_guncelle: "Santral güncellendi",
+    santral_kunye: "Santral bilgileri güncellendi", paylasim: "Veri paylaşımı",
   } as Record<string, string>,
 } as const;
 

@@ -36,7 +36,7 @@ function Paylasimlar({ santraller }: { santraller: { id: string; ad: string }[] 
     return <div className="bos-durum"><div className="bos-bas">Paylaşım yok.</div><p>Kuruluşunuzun verdiği ya da aldığı paylaşım bulunmuyor; paylaşım açmak yönetici yetkisi ister.</p></div>;
   return (
     <Kart baslik="Kuruluşlar arası paylaşım" sag={<span className="cip"><Meta items={["yalnız okuma", "zaman sınırlı"]} /></span>}>
-      <p className="soluk" style={{ margin: "0 0 10px", fontSize: 14 }}>
+      <p className="soluk" style={{ margin: "0 0 10px", fontSize: "var(--t-ikincil)" }}>
         Bir santralin tahmin, karne ya da gerçekleşen özetini başka bir kuruluşa (toplayıcı, danışman, alıcı) açar.
         Karşı taraf yalnız seçtiğiniz kapsamı, günlük toplam düzeyinde görür; istenirse santral adı takma adla gizlenir.
         Her erişim denetim iziyle kayda geçer.
@@ -46,8 +46,8 @@ function Paylasimlar({ santraller }: { santraller: { id: string; ad: string }[] 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(340px, 100%), 1fr))", gap: 16 }}>
         <div>
           <div className="etiket-ust">Verdiklerimiz</div>
-          {liste.verilenler.length === 0 ? <p className="soluk" style={{ fontSize: 14, margin: 0 }}>Henüz paylaşım yok.</p> : (
-            <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 13 }}>
+          {liste.verilenler.length === 0 ? <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: 0 }}>Henüz paylaşım yok.</p> : (
+            <div className="grafik-kaydir"><table className="veri dar">
               <thead><tr><th>Santral</th><th>Kuruluş</th><th>Kapsam</th><th>Bitiş</th><th>Durum</th><th></th></tr></thead>
               <tbody>{liste.verilenler.map((x) => (
                 <tr key={x.id} style={{ opacity: x.aktif ? 1 : 0.5 }}>
@@ -55,7 +55,7 @@ function Paylasimlar({ santraller }: { santraller: { id: string; ad: string }[] 
                   <td>{x.karsi_kurulus}</td><td>{x.izinler.map(etiket).join(", ")}</td>
                   <td>{x.bitis ? new Date(x.bitis).toLocaleDateString("tr-TR") : "süresiz"}</td>
                   <td>{x.iptal ? "iptal" : x.aktif ? "etkin" : "süresi doldu"}</td>
-                  <td>{yonetici && x.aktif && <button className="dugme" style={{ fontSize: 13 }}
+                  <td>{yonetici && x.aktif && <button className="dugme kucuk"
                         onClick={() => dene(async () => { await api.paylasimIptal(x.id); setMesaj("Paylaşım iptal edildi."); })}>İptal et</button>}</td>
                 </tr>))}</tbody>
             </table></div>
@@ -63,15 +63,15 @@ function Paylasimlar({ santraller }: { santraller: { id: string; ad: string }[] 
         </div>
         <div>
           <div className="etiket-ust">Aldıklarımız</div>
-          {liste.alinanlar.length === 0 ? <p className="soluk" style={{ fontSize: 14, margin: 0 }}>Bize açılmış paylaşım yok.</p> : (
-            <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 13 }}>
+          {liste.alinanlar.length === 0 ? <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: 0 }}>Bize açılmış paylaşım yok.</p> : (
+            <div className="grafik-kaydir"><table className="veri dar">
               <thead><tr><th>Santral</th><th>Kuruluş</th><th>Bitiş</th><th>Görüntüle</th></tr></thead>
               <tbody>{liste.alinanlar.map((x) => (
                 <tr key={x.id} style={{ opacity: x.aktif ? 1 : 0.5 }}>
                   <td>{x.santral}</td><td>{x.karsi_kurulus}</td>
                   <td>{x.bitis ? new Date(x.bitis).toLocaleDateString("tr-TR") : "süresiz"}</td>
                   <td style={{ whiteSpace: "nowrap" }}>{x.aktif ? x.izinler.map((i) => (
-                    <button key={i} className="dugme" style={{ fontSize: 13, marginRight: 4 }}
+                    <button key={i} className="dugme kucuk" style={{ marginRight: 4 }}
                             onClick={() => dene(async () => setAcik({ id: x.id, tur: i.split(":")[0], veri: await api.paylasimVeri(x.id, i.split(":")[0]) }))}>{etiket(i)}</button>
                   )) : <span className="soluk">kapandı</span>}</td>
                 </tr>))}</tbody>
@@ -79,19 +79,19 @@ function Paylasimlar({ santraller }: { santraller: { id: string; ad: string }[] 
           )}
           {acik && (
             <div style={{ marginTop: 10, padding: 10, border: "1px solid var(--kenar)", borderRadius: 8, background: "var(--yuzey2)" }}>
-              <div style={{ fontSize: 13, marginBottom: 6, display: "flex", justifyContent: "space-between", gap: 8 }}>
+              <div style={{ fontSize: "var(--t-ikincil)", marginBottom: 6, display: "flex", justifyContent: "space-between", gap: 8 }}>
                 <span><Meta items={[<strong key="ad">{acik.veri.santral}</strong>, etiket(`${acik.tur}:oku`)]} /></span>
-                <button className="dugme" style={{ fontSize: 13 }} onClick={() => setAcik(null)}>Kapat</button>
+                <button className="dugme kucuk" onClick={() => setAcik(null)}>Kapat</button>
               </div>
               {acik.tur === "karne" ? (
-                <table className="veri" style={{ fontSize: 13 }}><tbody>
+                <table className="veri dar"><tbody>
                   <tr><td>Değerlendirilen gün</td><td className="mono">{sayiTr(acik.veri.gun ?? 0)}</td></tr>
                   <tr><td>Ağırlıklı hata (WMAPE)</td><td className="mono">{acik.veri.wmape_pct == null ? "—" : `%${sayiTr(acik.veri.wmape_pct, 1)}`}</td></tr>
                   <tr><td>Kurulu güce göre hata (nMAE)</td><td className="mono">{acik.veri.nmae_pct == null ? "—" : `%${sayiTr(acik.veri.nmae_pct, 1)}`}</td></tr>
                   <tr><td>Tahmin aralığı isabeti (P10–P90)</td><td className="mono">{acik.veri.picp80 == null ? "—" : `%${sayiTr(acik.veri.picp80 * 100, 1)}`}</td></tr>
                 </tbody></table>
-              ) : (acik.veri.gunler?.length ?? 0) === 0 ? <p className="soluk" style={{ fontSize: 14, margin: 0 }}>{acik.veri.not ?? "Veri yok."}</p> : (
-                <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 13 }}>
+              ) : (acik.veri.gunler?.length ?? 0) === 0 ? <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: 0 }}>{acik.veri.not ?? "Veri yok."}</p> : (
+                <div className="grafik-kaydir"><table className="veri dar">
                   <thead>{acik.tur === "tahmin"
                     ? <tr><th>Gün</th><th>P50 (kWh)</th><th>P10–P90 (kWh)</th></tr>
                     : <tr><th>Gün</th><th>Üretim (kWh)</th></tr>}</thead>

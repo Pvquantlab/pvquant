@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { kapsananSonGun, zamanTr } from "../../lib/bicim";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
 import type { EChartsOption } from "echarts";
 import { api, bellekten, ayniysaEskisi } from "../../api/client";
@@ -44,11 +45,11 @@ function SaatlikDokum({ plantId, gun }: { plantId: string; gun: number }) {
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", margin: "8px 0" }}>
         <button className="dugme kucuk" onClick={() => indir("csv")}>CSV indir</button>
         <button className="dugme kucuk" onClick={() => indir("xlsx")}>XLSX indir</button>
-        {sd && <span className="soluk" style={{ fontSize: 13 }}>{sayiTr(sd.satir)} saat; son {sayiTr(sd.satirlar.length)} satır aşağıda{sd.program ? `; ${sayiTr(sd.program.bildirilen_saat)} saat bildirilen program` : ""}{sd.talimat_saat ? `; ${sayiTr(sd.talimat_saat)} saat talimatlı` : ""}</span>}   {/* v2.539 (DK-056) */}
+        {sd && <span className="soluk" style={{ fontSize: "var(--t-ikincil)" }}>{sayiTr(sd.satir)} saat; son {sayiTr(sd.satirlar.length)} satır aşağıda{sd.program ? `; ${sayiTr(sd.program.bildirilen_saat)} saat bildirilen program` : ""}{sd.talimat_saat ? `; ${sayiTr(sd.talimat_saat)} saat talimatlı` : ""}</span>}   {/* v2.539 (DK-056) */}
         {mesaj && <span className="ayar-durum hata">{mesaj}</span>}
       </div>
       {sd === undefined ? <p className="soluk">Yükleniyor…</p> : sd === null ? <p className="soluk">Döküm alınamadı.</p> : sd.satirlar.length === 0 ? <p className="soluk">Henüz karşılaştırılan saat yok.</p> : (
-        <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 13 }}>
+        <div className="grafik-kaydir"><table className="veri dar">
           <thead><tr><th>Saat</th><th>Program (MWh)</th><th>Kaynak</th><th>Gerçekleşen (MWh)</th><th>Sapma (MWh)</th><th>PTF (TL/MWh)</th><th>SMF (TL/MWh)</th><th>Yön</th><th>EDT borç (TL)</th><th>EDT alacak (TL)</th><th title="KGÜP sapma miktarı: toleransın (m × program) üstündeki sapma">KÜPSM (MWh)</th><th title="KGÜP sapma tutarı">KÜPST (TL)</th>{yekdemli && <><th title="O saatin YEK fiyatı (+ yerli katkı)">YEK fiyatı (TL/MWh)</th><th title="YEK Yön. m.23(6): düşük fiyat ve sistem fazlası saatinde program üstü üretim; EPİAŞ uygulaması belirsiz">m.23(6)</th><th>YEKDEM dışı (MWh)</th><th title="YEKDEM dışı MWh × (YEK fiyatı − 0,98 × PTF)">Fark (TL)</th></>}<th>Durum</th></tr></thead>
           <tbody className="mono">{sd.satirlar.map((r, i) => (
             <tr key={i}><td>{say(r.zaman)}</td><td>{say(r.program_mwh, 3)}</td><td>{r.program_kaynak === "bildirilen" ? <span className="rozet rozet-ok rozet-kucuk">bildirilen</span> : "öneri"}</td>
@@ -57,7 +58,7 @@ function SaatlikDokum({ plantId, gun }: { plantId: string; gun: number }) {
               {yekdemli && <><td>{say(r.yek_fiyat_tl_mwh)}</td><td>{r.m23_6 === "evet" ? <span className="rozet rozet-uyari rozet-kucuk">YEKDEM dışı</span> : kod(r.m23_6, M23)}</td><td>{say(r.yekdem_disi_mwh, 3)}</td><td>{say(r.yekdem_disi_tl)}</td></>}
               <td>{r.durum === "ok" ? DURUM.ok : <span className="rozet rozet-uyari rozet-kucuk">{kod(r.durum, DURUM)}</span>}{r.talimat ? <> <span className="rozet rozet-amber rozet-kucuk" title={sd.talimat_notu ?? "talimat saati: sapma talimattan; tutar güvenilir değil"}>{TALIMAT[String(r.talimat)] ?? String(r.talimat)}</span></> : null}</td></tr>))}</tbody>
         </table></div>)}
-      {sd && <p className="soluk" style={{ fontSize: 13, margin: "6px 0 0" }}>Yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir. Kaynak «bildirilen»: TPYS'ye bildirdiğinizi beyan ederek yüklediğiniz KGÜP (TPYS kabulü doğrulanmaz); «öneri»: PVQuant'ın bir gün önce 15:30'dan önceki son tahmininin P50'si. Sapma = gerçekleşen − pozisyon; KÜPSM = toleransı (m × program) aşan sapma miktarı; EDT alacak düşük fiyat saatinde eksi olabilir. Saatler Türkiye saatidir; indirilen dosyada {sayiTr(sd.kolonlar.length)} sütunun tümü ve bu not yer alır.{yekdemli && " YEKDEM sütunları: YEK fiyatı o saatin fiyatı (+ yerli katkı); m.23(6) «YEKDEM dışı» = PTF ya da SMF taban değerin altında ve sistem fazlası saatinde program üstü üretim, PTF < YEK fiyatı (EPİAŞ uygulaması belirsiz; talimat saatleri sayılmadı)."}</p>}
+      {sd && <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "6px 0 0" }}>Yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir. Kaynak «bildirilen»: TPYS'ye bildirdiğinizi beyan ederek yüklediğiniz KGÜP (TPYS kabulü doğrulanmaz); «öneri»: PVQuant'ın bir gün önce 15:30'dan önceki son tahmininin P50'si. Sapma = gerçekleşen − pozisyon; KÜPSM = toleransı (m × program) aşan sapma miktarı; EDT alacak düşük fiyat saatinde eksi olabilir. Saatler Türkiye saatidir; indirilen dosyada {sayiTr(sd.kolonlar.length)} sütunun tümü ve bu not yer alır.{yekdemli && " YEKDEM sütunları: YEK fiyatı o saatin fiyatı (+ yerli katkı); m.23(6) «YEKDEM dışı» = PTF ya da SMF taban değerin altında ve sistem fazlası saatinde program üstü üretim, PTF < YEK fiyatı (EPİAŞ uygulaması belirsiz; talimat saatleri sayılmadı)."}</p>}
     </details>
   );
 }
@@ -94,7 +95,7 @@ function YekdemKarti({ plantId, gun }: { plantId: string; gun: number }) {
               alt={yk.m23_6 ? `${sayiTr(yk.m23_6.saat)} saat; fark ${sayiTr(yk.m23_6.yekdem_disi_tl / 1000, 1)} bin TL; EPİAŞ uygulaması belirsiz` : yk.uygulanir ? "tarife YEKDEM seçilmedi" : "segment lisanslı YEKDEM değil"} />
           </div>
           {yk.rejim.rejim === "7189" && yk.aylar.length > 0 && (
-            <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 13 }}>
+            <div className="grafik-kaydir"><table className="veri dar">
               <thead><tr><th style={sol}>Ay</th><th>Fiyat (kr/kWh)</th><th>Yerli katkı (kr/kWh)</th><th title="Bir önceki ayın ortalama TCMB USD alış kuruyla">USD karşılığı (¢/kWh)</th><th style={sol} title="7189 sayılı CK: fiyat, bir önceki ayın ortalama TCMB USD alış kuruyla ¢/kWh'a çevrilip alt–üst sınıra kırpılır">USD sınır kontrolü ({sayiTr(yk.sabitler.bant_cent[0], 2)}–{sayiTr(yk.sabitler.bant_cent[1], 2)} ¢)</th><th style={sol}>Kaynak</th></tr></thead>
               <tbody>{yk.aylar.map((a) => (
                 <tr key={a.ay}><td style={sol}>{AYAD(a.ay)}</td><td className="mono">{a.fiyat_kr_kwh != null ? sayiTr(a.fiyat_kr_kwh, 2) : "—"}</td><td className="mono">{a.yerli_katki_kr_kwh != null ? sayiTr(a.yerli_katki_kr_kwh, 2) : "—"}</td>
@@ -102,22 +103,22 @@ function YekdemKarti({ plantId, gun }: { plantId: string; gun: number }) {
                   <td style={sol}>{a.durum !== "ilan" ? <span className="soluk">henüz ilan edilmedi</span> : a.bant && a.bant.durum !== "kur_yok" ? <span className={`rozet rozet-kucuk ${a.bant.durum === "icinde" ? "rozet-ok" : "rozet-uyari"}`} title={`${AYAD(a.bant.kur_ayi)} ortalama USD alış kuru ${sayiTr(a.bant.kur_ortalama ?? 0, 4)} TL`}>{BANT[a.bant.durum]}</span> : <span className="soluk">{a.bant ? `${AYAD(a.bant.kur_ayi)} kuru arşivde yok; kontrol yapılamadı` : "kur verisi yok"}</span>}</td>
                   <td style={{ ...sol, whiteSpace: "normal", minWidth: 220 }}>{a.kaynak ?? "—"}</td></tr>))}</tbody>
             </table></div>)}
-          {yk.m23_6 && yk.m23_6.saat > 0 && <p style={{ margin: "10px 0 0", fontSize: 13.5 }}>
+          {yk.m23_6 && yk.m23_6.saat > 0 && <p style={{ margin: "10px 0 0", fontSize: "var(--t-ikincil)" }}>
             Son {sayiTr(yk.m23_6.pencere_gun)} günde {sayiTr(yk.m23_6.saat)} saatte program üstü üretim YEKDEM dışı sayıldı: {sayiTr(yk.m23_6.yekdem_disi_mwh, 1)} MWh, fark {sayiTr(yk.m23_6.yekdem_disi_tl)} TL (ilk {saatTr(yk.m23_6.ilk_saat)}, son {saatTr(yk.m23_6.son_saat)}).
             {yk.m23_6.bildirilmemis_saat > 0 && <> Bu saatlerin {sayiTr(yk.m23_6.bildirilmemis_saat)} tanesinde bildirilen KGÜP yoktu; PVQuant önerisi program sayıldı.</>}
             {/* v2.532 (DK-301): KGÜP = 0 okuması sayıyla — dosya yüklenmedi ≠ EPİAŞ'a bildirilmedi; iki okuma yan yana */}
             {(yk.m23_6.kgup0_saat ?? 0) > 0 && <> Bildirilen KGÜP yüklenmemiş saatlerde KGÜP hiç bildirilmediyse mevzuat KGÜP'ü 0 sayar: o okumayla {sayiTr(yk.m23_6.kgup0_saat ?? 0)} saatte üretimin tamamı ({sayiTr(yk.m23_6.kgup0_mwh ?? 0, 1)} MWh, fark {sayiTr(yk.m23_6.kgup0_tl ?? 0)} TL) YEKDEM dışı kalır; bildirdiyseniz dosyayı yükleyin, hesap ona göre yapılır.</>}
           </p>}
-          {yk.m23_6?.m23_9 && yk.m23_6.m23_9.kapsam_saat > 0 && <p style={{ margin: "8px 0 0", fontSize: 13.5 }}>   {/* v2.540 (EK-3 DK-333) */}
+          {yk.m23_6?.m23_9 && yk.m23_6.m23_9.kapsam_saat > 0 && <p style={{ margin: "8px 0 0", fontSize: "var(--t-ikincil)" }}>   {/* v2.540 (EK-3 DK-333) */}
             <b>m.23(9) tatil günleri (1.1–18.10.2026):</b> pencerede {sayiTr(yk.m23_6.m23_9.kapsam_saat)} tatil saati; {sayiTr(yk.m23_6.m23_9.saat)} saatte bildirilen program üstü üretim YEK UEVM dışı: {sayiTr(yk.m23_6.m23_9.mwh, 1)} MWh, fark {sayiTr(yk.m23_6.m23_9.tl / 1000, 1)} bin TL (yaklaşık)
             {yk.m23_6.m23_9.kgup_yok_saat > 0 ? `; ${sayiTr(yk.m23_6.m23_9.kgup_yok_saat)} tatil saatinde bildirilen KGÜP yoktu (tespit yorumu, sayılmadı)` : ""}. Bu fıkra 19.10.2026'da kalktı.
           </p>}
-          <p className="soluk" style={{ margin: "8px 0 0", fontSize: 13 }}>
+          <p className="soluk" style={{ margin: "8px 0 0", fontSize: "var(--t-ikincil)" }}>
             {yk.not ? yk.not + " " : ""}Yeniden hesaptır; EPİAŞ YEKDEM uzlaştırması değildir.
           </p>
           {yk.kapsam_sinirlari && yk.kapsam_sinirlari.length > 0 && <details className="aciklama">   {/* v2.538 (EK-3 DK-297/DK-323/DK-675) */}
             <summary>Bu hesabın kapsamadığı kurallar ({sayiTr(yk.kapsam_sinirlari.length)})</summary>
-            <ul className="not-listesi" style={{ fontSize: 13.5, marginTop: 6 }}>{yk.kapsam_sinirlari.map((k) => <li key={k.kod}><b>{k.etiket}:</b> {k.metin}</li>)}</ul>
+            <ul className="not-listesi" style={{ fontSize: "var(--t-ikincil)", marginTop: 6 }}>{yk.kapsam_sinirlari.map((k) => <li key={k.kod}><b>{k.etiket}:</b> {k.metin}</li>)}</ul>
           </details>}
           <details className="aciklama">
             <summary>m.23(6) ve m.23(9) dayanağı ve hesap yöntemi</summary>
@@ -171,7 +172,7 @@ const nedenYaz = (k: string): string => {
   return NEDEN_AD[k] ?? k;
 };
 const gunYaz = (iso: string): string => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? iso : `${d.getDate()} ${AY[d.getMonth()]} ${d.getFullYear()}`; };
-const saatYaz = (iso: string | undefined): string => { if (!iso) return "—"; const d = new Date(iso); return Number.isNaN(d.getTime()) ? iso : d.toLocaleString("tr-TR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }); };
+const saatYaz = (iso: string | undefined): string => iso ? zamanTr(iso) : "—";   // 16.11: «24/10 03:50» yerine panel geneli zaman biçimi (gg.aa.yyyy ss:dd)
 const yuzde = (v: number | null | undefined, hane = 1) => (v == null ? "—" : `%${sayiTr(v, hane)}`);
 
 function BagimsizDogrulamaKarti({ bd, kural, setKural, gun }:
@@ -254,11 +255,11 @@ function BagimsizDogrulamaKarti({ bd, kural, setKural, gun }:
           </div>
           {uyarilar.length > 0 && <ul className="not-listesi" style={{ marginTop: 12 }}>{uyarilar.map((u) => <li key={u} className="kunye-uyari">{u}</li>)}</ul>}
           <dl className="kunye" style={{ marginTop: 12 }}>
-            <div><dt>Dönem</dt><dd className="kunye-sayi">{meta ? `${gunYaz(meta.donem.bas)} – ${gunYaz(meta.donem.bit)}` : "—"}</dd></div>
+            <div><dt>Dönem</dt><dd className="kunye-sayi">{meta ? `${gunYaz(meta.donem.bas)} – ${gunYaz(kapsananSonGun(meta.donem.bit))}` : "—"}</dd></div>   {/* 16.11: donem_bit dışlayıcı (ts_utc < :b; donem_bit − donem_bas = gün) */}
             <div><dt>Doğrulanan tahmin</dt><dd>{KURAL_AD[meta?.kural ?? ""] ?? meta?.kural ?? "—"}</dd></div>
             <div><dt>Ölçüm sınırı</dt><dd>{b?.olcum.sinir_etiketi ?? "—"}</dd></div>
             <div><dt>Model</dt><dd>{meta?.kosu_kunyesi?.mode?.length ? meta.kosu_kunyesi.mode.map((x) => MOD_AD[x] ?? x).join(", ") : <span className="kunye-durum eksik">Belirtilmedi</span>}</dd></div>
-            <div><dt>Tahmin kümesi</dt><dd className="kunye-sayi">{meta ? `${sayiTr(meta.kosu_sayisi)} tahmin, özet ${meta.kosu_kumesi_sha}` : "—"}</dd></div>
+            <div><dt>Tahmin kümesi</dt><dd className="kunye-sayi">{meta ? <>{sayiTr(meta.kosu_sayisi)} tahmin, özet <span className="kimlik">{meta.kosu_kumesi_sha}</span></> : "—"}</dd></div>
             <div><dt>Hesap sözlüğü</dt><dd className="kunye-sayi">{meta ? `${meta.sozluk_surumu}${meta.yazilim_surumu ? `, yazılım ${meta.yazilim_surumu}` : ""}` : "—"}</dd></div>
             <div><dt>Hesap zamanı</dt><dd className="kunye-sayi">{saatYaz(bd.hesap_zamani ?? meta?.hesap_zamani)}</dd></div>
           </dl>
@@ -330,7 +331,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
   // v2.271: güvenilirlik diyagramı — x nominal τ, y gözlenen P(y ≤ q_τ); köşegen ideal. Ham ince/soluk, kalibre kalın mavi.
   const gvOption = useMemo<EChartsOption | null>(() => {
     if (!gv || gv.durum !== "ok" || !gv.guvenilirlik) return null;
-    const kenar = oku("--kenar"), soluk = oku("--soluk"), mono = oku("--mono"), mavi = oku("--chart-p50-future");
+    const kenar = oku("--kenar"), soluk = oku("--soluk"), veri = oku("--font"), mavi = oku("--chart-p50-future");
     const seri = (ad: string, rows: { tau: number; gozlenen: number }[], renk: string, kalin: number) => ({
       name: ad, type: "line" as const, data: rows.map((r) => [r.tau, r.gozlenen]), symbol: "circle", symbolSize: 8,
       lineStyle: { color: renk, width: kalin }, itemStyle: { color: renk } });
@@ -340,9 +341,9 @@ export function Dogruluk({ plantId }: { plantId: string }) {
       tooltip: { trigger: "axis", backgroundColor: oku("--kart"), borderColor: kenar, borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 13 },
         valueFormatter: (v: unknown) => `%${sayiTr(Number(v) * 100, 0)}` },
       xAxis: { type: "value", min: 0, max: 1, name: "nominal", nameTextStyle: { color: soluk, fontSize: 12 },
-        axisLabel: { color: soluk, fontFamily: mono, fontSize: 12, formatter: (v: number) => `P${Math.round(v * 100)}` }, splitLine: { lineStyle: { color: oku("--izgara") } } },
+        axisLabel: { color: soluk, fontFamily: veri, fontSize: 12, formatter: (v: number) => `P${Math.round(v * 100)}` }, splitLine: { lineStyle: { color: oku("--izgara") } } },
       yAxis: { type: "value", min: 0, max: 1, name: "gözlenen", nameTextStyle: { color: soluk, fontSize: 12 },
-        axisLabel: { color: soluk, fontFamily: mono, fontSize: 12, formatter: (v: number) => `%${Math.round(v * 100)}` }, splitLine: { lineStyle: { color: oku("--izgara") } } },
+        axisLabel: { color: soluk, fontFamily: veri, fontSize: 12, formatter: (v: number) => `%${Math.round(v * 100)}` }, splitLine: { lineStyle: { color: oku("--izgara") } } },
       series: [
         { name: "ideal", type: "line", data: [[0, 0], [1, 1]], symbol: "none", showSymbol: false, itemStyle: { color: soluk },
           lineStyle: { color: soluk, type: "dashed", width: 1 }, silent: true },
@@ -353,13 +354,13 @@ export function Dogruluk({ plantId }: { plantId: string }) {
   }, [gv, n, oku]);   // eslint-disable-line react-hooks/exhaustive-deps
   const pitOption = useMemo<EChartsOption | null>(() => {
     if (!gv || gv.durum !== "ok" || !gv.pit) return null;
-    const soluk = oku("--soluk"), mono = oku("--mono");
+    const soluk = oku("--soluk"), veri = oku("--font");
     return {
       animation: false, grid: { left: 40, right: 12, top: 18, bottom: 30 },
       tooltip: { trigger: "axis", backgroundColor: oku("--kart"), borderColor: oku("--kenar"), borderWidth: 0.5, textStyle: { color: oku("--metin"), fontSize: 13 },
         valueFormatter: (v: unknown) => `%${sayiTr(Number(v) * 100, 0)}` },
-      xAxis: { type: "category", data: gv.pit.map((p) => p.kutu), axisLabel: { color: soluk, fontFamily: mono, fontSize: 12, interval: 1 }, axisTick: { show: false } },
-      yAxis: { type: "value", min: 0, axisLabel: { color: soluk, fontFamily: mono, fontSize: 12, formatter: (v: number) => `%${Math.round(v * 100)}` }, splitLine: { lineStyle: { color: oku("--izgara") } } },
+      xAxis: { type: "category", data: gv.pit.map((p) => p.kutu), axisLabel: { color: soluk, fontFamily: veri, fontSize: 12, interval: 1 }, axisTick: { show: false } },
+      yAxis: { type: "value", min: 0, axisLabel: { color: soluk, fontFamily: veri, fontSize: 12, formatter: (v: number) => `%${Math.round(v * 100)}` }, splitLine: { lineStyle: { color: oku("--izgara") } } },
       series: [{ type: "bar", data: gv.pit.map((p) => p.oran), itemStyle: { color: oku("--ch-cubuk") }, barMaxWidth: 26,
         markLine: { silent: true, symbol: "none", lineStyle: { color: soluk, type: "dashed" }, data: [{ yAxis: 0.1 }], label: { show: false } } }],
     };
@@ -371,7 +372,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
   // Hiyerarsi: nokta < gri cizgi < egilim; ic ice cizgi karmasasi biter.
   const wmapePanel = useMemo(() => {
     const izgara = oku("--izgara"), soluk = oku("--soluk");
-    const kenar = oku("--kenar"), mono = oku("--mono");
+    const kenar = oku("--kenar"), veri = oku("--font");
     const marka = oku("--marka"), dusuk = oku("--ch-dusuk");
     const markaKoyu = oku("--marka-koyu");
     const g = k?.gunluk ?? [];
@@ -403,11 +404,11 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           axisLine: { lineStyle: { color: kenar } },
           // v2.231: sabit 13 araligi 30g penceresinde tek etiket birakiyordu —
           // hedef ~4 etiket, pencereye gore olceklenir
-          axisLabel: { color: soluk, fontFamily: mono, fontSize: 12,
+          axisLabel: { color: soluk, fontFamily: veri, fontSize: 12,
             interval: Math.max(1, Math.ceil(tarihler.length / 4) - 1) } },
         yAxis: { type: "value", max: ymax, splitLine: { lineStyle: { color: izgara } },
           axisLine: { show: false },
-          axisLabel: { color: soluk, fontFamily: mono, fontSize: 12,
+          axisLabel: { color: soluk, fontFamily: veri, fontSize: 12,
                        formatter: (v: number) => `%${v}` } },
         series: [
           { name: "Referans tahmin", type: "line", symbol: "none", z: 1,
@@ -423,7 +424,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
               silent: true, symbol: "circle", symbolSize: 7,
               itemStyle: { color: marka, borderColor: oku("--kart"), borderWidth: 1.5 },
               label: { show: true, position: "top", distance: 6, color: markaKoyu,
-                fontFamily: "monospace", fontSize: 12, fontWeight: "bold",
+                fontFamily: "'Inter Variable', 'Inter', system-ui, sans-serif", fontSize: 12, fontWeight: "bold",
                 formatter: () => `%${sayiTr(egilim[si] as number, 1)}` },
               data: [{ coord: [tarihler[si], egilim[si]] }],
             } } : {}),
@@ -444,7 +445,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
   // P10-P90 acik bant + duz medyan cizgisi (Solargis Fig 7.5 dili).
   // API p25/p75 vermez \u2014 ic bant cizilmez (tire ilkesinin alan hali).
   const dagOption = useMemo<EChartsOption>(() => {
-    const kenar = oku("--kenar"), soluk = oku("--soluk"), mono = oku("--mono");
+    const kenar = oku("--kenar"), soluk = oku("--soluk"), veri = oku("--font");
     const marka = oku("--marka"), markaKoyu = oku("--marka-koyu");
     const mavi = oku("--chart-p50-future");
     const kutular = hd?.kutular ?? [];
@@ -470,7 +471,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           nameTextStyle: { color: soluk, fontSize: 13 },
           axisTick: { show: false },
           axisLine: { lineStyle: { color: oku("--chart-baseline") || kenar } },
-          axisLabel: { color: soluk, fontFamily: mono, fontSize: 13 } },
+          axisLabel: { color: soluk, fontFamily: veri, fontSize: 13 } },
         // v2.232: KDF icin gizli deger ekseni — kutu KENARLARI (kumulatif pay
         // kutunun SONUNDA birikir; Solargis Fig 7.5 egriyi kenardan gecirir)
         { type: "value", min: -0.5, max: Math.max(0.5, kutular.length - 0.5),
@@ -479,10 +480,10 @@ export function Dogruluk({ plantId }: { plantId: string }) {
       yAxis: [
         { type: "value", splitLine: { lineStyle: { color: oku("--izgara") } },
           axisLine: { show: false }, axisTick: { show: false },
-          axisLabel: { color: soluk, fontFamily: mono, fontSize: 13 } },
+          axisLabel: { color: soluk, fontFamily: veri, fontSize: 13 } },
         { type: "value", min: 0, max: 100, splitLine: { show: false },
           axisLine: { show: false }, axisTick: { show: false },
-          axisLabel: { color: markaKoyu, fontFamily: mono, fontSize: 13,
+          axisLabel: { color: markaKoyu, fontFamily: veri, fontSize: 13,
                        formatter: (v: number) => `%${v}` } },
       ],
       series: [
@@ -496,7 +497,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
             ? { symbol: "none", animation: false, silent: true,
                 data: [{ name: "medyan", xAxis: xi(hd.p50),
                   lineStyle: { color: soluk, type: "solid" as const, width: 1.4 },
-                  label: { color: soluk, fontSize: 12, fontFamily: mono,
+                  label: { color: soluk, fontSize: 12, fontFamily: veri,
                     position: "end" as const, distance: 6, rotate: 0,
                     formatter: () => `medyan ${sayiTr(hd.p50 as number, 2)}` } }] as never }
             : undefined },
@@ -681,27 +682,27 @@ export function Dogruluk({ plantId }: { plantId: string }) {
         {/* 22.10 üçüncü tur: hiç karşılaştırılmış gün yokken 2×240 px boş grafik yerine kompakt boş durum
             (veri yokluğu gizlenmez; seri/hesap değişmez — yalnız sunum) */}
         {(k?.gunluk ?? []).length === 0 ? (
-          <p className="soluk" style={{ margin: 0, fontSize: 14.5 }}>
+          <p className="soluk" style={{ margin: 0, fontSize: "var(--t-govde)" }}>
             Henüz karşılaştırılmış gün yok. İlk gece değerlendirmesinden sonra 0–24 ve 24–72 saat ufukları için
             günlük tahmin hatası burada çizilir; referans tahminle kıyas aynı grafikte görünür.
           </p>
         ) : (
         <div className="ızgara" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)" }}>
           <div>
-            <p style={{ fontSize: 14.5, fontWeight: 600, color: "var(--metin)",
+            <p style={{ fontSize: "var(--t-govde)", fontWeight: 600, color: "var(--metin)",
                         margin: "0 0 4px" }}>0–24 saat ufku</p>
             <EChart option={wmape024} height={240}
               ariaLabel="0–24 saat ufku günlük tahmin hatası (WMAPE), referans tahminle" />
           </div>
           <div>
-            <p style={{ fontSize: 14.5, fontWeight: 600, color: "var(--metin)",
+            <p style={{ fontSize: "var(--t-govde)", fontWeight: 600, color: "var(--metin)",
                         margin: "0 0 4px" }}>24–72 saat ufku</p>
             <EChart option={wmape2472} height={240}
               ariaLabel="24–72 saat ufku günlük tahmin hatası (WMAPE), referans tahminle" />
           </div>
         </div>
         )}
-        <p style={{ fontSize: 13, color: "var(--soluk)", margin: "12px 0 0" }}>
+        <p style={{ fontSize: "var(--t-ikincil)", color: "var(--soluk)", margin: "12px 0 0" }}>
           <b style={{ color: "var(--ikincil)" }}>Ne gösterir:</b>{" "}
           her nokta bir günün tahmin hatasıdır (WMAPE); kalın yeşil çizgi 7 günlük eğilim,
           ince gri çizgi referans tahmindir (dün aynı saat).{" "}
@@ -736,7 +737,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
               <div key={et} className="kpi">
                 <div className="kpi-et">{et}</div>
                 <div className="kpi-dg">{v == null ? "—" : `%${sayiTr(v * 100, 0)}`}
-                  <span style={{ fontSize: 13, color: "var(--soluk)", marginLeft: 6 }}>hedef %{sayiTr(hedef * 100, 0)}</span></div>
+                  <span style={{ fontSize: "var(--t-ikincil)", color: "var(--soluk)", marginLeft: 6 }}>hedef %{sayiTr(hedef * 100, 0)}</span></div>
                 <div style={{ position: "relative", height: 6, background: "var(--yuzey2)", borderRadius: 3, margin: "8px 0 6px" }}>
                   <div style={{ width: `${Math.min(100, (v ?? 0) * 100)}%`, height: "100%", borderRadius: 3,
                     background: v != null && Math.abs(v - hedef) <= 0.05 ? "var(--basari)" : "var(--chart-p50-future)" }} />
@@ -749,7 +750,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
         ) : (
           <p className="soluk" style={{ margin: 0 }}>Aralık değerlendirmesi, P10–P90 kaydedilen tahminlerle gece değerlendirmesinde birikir; ilk gün tamamlanınca burada görünür.</p>
         )}
-        <p className="soluk" style={{ marginTop: 10, marginBottom: 0, fontSize: 14 }}>
+        <p className="soluk" style={{ marginTop: 10, marginBottom: 0, fontSize: "var(--t-ikincil)" }}>
           Ne gösterir: gerçekleşen üretimin, önceden verilen P10–P90 aralığı içinde kaldığı günlerin oranı.
           Neye bakmalı: yeşil çubuk hedefe ±5 puan yakın demektir; düşükse aralık dar (fazla iddialı), yüksekse aralık geniş (fazla temkinli).
           {ol?.crps != null && ` Aralık kalitesi (CRPS): ${sayiTr(ol.crps, 0)} kW; ortalama aralık genişliği kurulu gücün %${sayiTr((ol.bant_n ?? 0) * 100, 0)}'i.`}
@@ -760,7 +761,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
             <div className="cip" style={{ display: "inline-block", marginBottom: 6 }}>
               <Meta items={["Geriye dönük değerlendirme", `${sayiTr(bt.pencere)} dönem`, `ham %${sayiTr((bt.picp_ham_ort ?? 0) * 100, 0)} → ayarlı %${sayiTr((bt.picp_kal_ort ?? 0) * 100, 0)} (hedef %80)`, bt.hukum]} />
             </div>
-            <table className="veri" style={{ fontSize: 13.5 }}>
+            <table className="veri">
               <thead><tr><th>Başlangıç</th><th>Test saati</th><th>Ham kapsama</th><th>Ayarlı kapsama</th><th>Aralık genişliği (ham → ayarlı)</th></tr></thead>
               <tbody className="mono">
                 {bt.satirlar.map((r) => (
@@ -776,7 +777,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
                 <div className="cip" style={{ display: "inline-block", margin: "12px 0 6px" }}>
                   <Meta items={["Ufka göre değerlendirme", `${sayiTr(bt.kova_sinav.pencere)} dönem`, bt.kova_sinav.hukum]} />
                 </div>
-                <table className="veri" style={{ fontSize: 13.5 }}>
+                <table className="veri">
                   <thead><tr><th>Ufuk</th><th>Test saati</th><th>Ham</th><th>Tek düzeltme</th><th>Ufka göre düzeltme</th></tr></thead>
                   <tbody className="mono">
                     {bt.kova_sinav.kovalar.map((k) => (
@@ -786,7 +787,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
                     ))}
                   </tbody>
                 </table>
-                <p className="soluk" style={{ fontSize: 14, margin: "6px 0 0" }}>
+                <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "6px 0 0" }}>
                   Hedef %80. "Tek düzeltme" eski yöntemdir (aynı düzeltme her ufka uygulanır);
                   "ufka göre" her ufuk için ayrı öğrenilir. Hedefe yakın olan iyidir.
                 </p>
@@ -829,14 +830,14 @@ export function Dogruluk({ plantId }: { plantId: string }) {
               <div><div className="etiket-ust" style={{ marginBottom: 2 }}>PIT histogramı</div><p className="kart-alt" style={{ margin: "0 0 6px" }}>Gerçekleşenin aralık içindeki yüzdeliği (düz = iyi ayarlı)</p>
                 <EChart option={pitOption} height={220} /></div>
             </div>
-            <p className="soluk" style={{ marginTop: 8, marginBottom: 0, fontSize: 14 }}>
+            <p className="soluk" style={{ marginTop: 8, marginBottom: 0, fontSize: "var(--t-ikincil)" }}>
               Nasıl okunur: nokta köşegenin altındaysa o seviye olması gerekenden düşük, üstündeyse yüksek demektir.
               P10 için düşük kalmak alt sınırın, P90 için yüksek kalmak üst sınırın fazla temkinli olduğunu gösterir; ikisi birden aralığın fazla geniş olduğunu söyler.
               PIT sütunları %10 çizgisine yakın olmalıdır: ortada tepe aralık fazla geniş, kenarlarda tepe aralık fazla dar demektir. Aralık puanı, genişlik ile aralık dışı kalma puanının toplamıdır.
             </p>
           </div>
         ) : gv.durum !== "ok" ? (
-          <p className="soluk" style={{ marginTop: 10, marginBottom: 0, fontSize: 14 }}>
+          <p className="soluk" style={{ marginTop: 10, marginBottom: 0, fontSize: "var(--t-ikincil)" }}>
             Güvenilirlik diyagramı için en az {sayiTr(gv.min_saat ?? 72)} gündüz saati gerekir (şu an {sayiTr(gv.n_saat)}).
           </p>
         ) : null)}
@@ -870,13 +871,13 @@ export function Dogruluk({ plantId }: { plantId: string }) {
                 <div className="kpi-dg">{dz.toplam.kurtarilan_tl != null ? <>{sayiTr(dz.toplam.kurtarilan_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div>
                 <div className="kpi-alt">referans: dün aynı saat{dz.toplam.naif_tl != null ? `, ${sayiTr(dz.toplam.naif_tl / 1000, 1)} bin TL` : ""}</div></div>
             </div>
-            <p className="soluk" style={{ marginTop: 8, marginBottom: 0, fontSize: 13.5 }}>
+            <p className="soluk" style={{ marginTop: 8, marginBottom: 0, fontSize: "var(--t-ikincil)" }}>
               {dz.segment.santral_tasir === false ? `Bu segmentte dengesizliği ${dz.segment.dengesizlik_sahibi} taşır; tutarlar santral sahibine yansımaz.`
                 : dz.segment.segment ? "Dengesizliği santral taşır; tutarlar santral sahibine yansır." : "Segment seçilmedi; Santralim › Santral ayarlarından seçilir. KÜPST hesaplanamaz."}
               {(dz.hesaplanamayan_saat ?? 0) > 0 && ` ${sayiTr(dz.hesaplanamayan_saat ?? 0)} saat hesaplanamadı; neden: ${(dz.fiyat.yon_eksik_saat ?? 0) > 0 ? "sistem yönü verisi eksik" : "KÜPST katsayısı yok"}. Bu saatler toplama 0 olarak alınmadı.`}
             </p>
             <div className="grafik-kaydir" style={{ marginTop: 12 }}>
-              <table className="veri" style={{ fontSize: 13.5 }}>
+              <table className="veri">
                 <thead><tr><th>Ay</th><th>Üretim (MWh)</th><th>Sapma (MWh)</th><th>EDT borç (TL)</th><th>EDT alacak (TL)</th><th>Dengesizlik maliyeti (TL)</th><th>KÜPST (TL)</th><th title="KGÜP sapma tutarı doğuran saat sayısı: sapmanın toleransı (m × program) aştığı saatler">Tolerans dışı saat</th><th title="KGÜP sapma miktarı (KÜPSM): toleransın üstündeki sapma toplamı, MWh">KÜPSM (MWh)</th><th>Toplam (TL)</th><th>Referans (TL)</th><th>Fark (TL)</th><th>Hesaplanamayan saat</th></tr></thead>
                 <tbody className="mono">
                   {dz.aylar.map((a) => (
@@ -893,7 +894,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
               </table>
             </div>
             <SaatlikDokum plantId={plantId} gun={dz.pencere_gun} />
-            <p style={{ marginTop: 10, marginBottom: 0, fontSize: 13.5 }}>
+            <p style={{ marginTop: 10, marginBottom: 0, fontSize: "var(--t-ikincil)" }}>
               {dz.toplam?.yeum && <>Piyasadan alım sınırı göstergesi ({dz.toplam.yeum.yil}): {dz.toplam.yeum.negatif_dengesizlik_mwh != null ? <>yıl içi negatif dengesizlik miktarı <b>{sayiTr(dz.toplam.yeum.negatif_dengesizlik_mwh, 1)} MWh</b> ({sayiTr(dz.toplam.yeum.saat)} hesaplanan saat; pencere {sayiTr(dz.toplam.yeum.pencere_gun ?? 0)} gün)</> : "hesaplanan saat yok"}
                 {dz.toplam.yeum.yeum_mwh != null ? <>; YEÜM {sayiTr(dz.toplam.yeum.yeum_mwh, 0)} MWh, oran <b>%{sayiTr(dz.toplam.yeum.oran_pct ?? 0, 1)}</b></> : <>; YEÜM için Santralim › Santral ayarları'na lisanstaki yıllık üretimi girin</>}
                 {" "}(Karar 14626; yalnız negatif dengesizlik kalemi sayılır, ikili alım / GÖP-GİP alımı / yerine getirilen YAT / vadeli uzun pozisyon PVQuant'ta yok — alt sınır). </>}   {/* v2.541 (DK-804) */}
@@ -908,7 +909,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
                     %{sayiTr((dz.oneri.acik_saat_orani ?? 0) * 100, 0)}'inde sistem enerji açığındaydı); eksik üretimin birim maliyeti ile fazla üretimin birim maliyetinin dengesidir.</>
                 : <span className="soluk">Önerilen program seviyesi: — ({dz.oneri.not})</span>)}
             </p>
-            <p className="soluk" style={{ marginTop: 8, marginBottom: 0, fontSize: 14 }}>
+            <p className="soluk" style={{ marginTop: 8, marginBottom: 0, fontSize: "var(--t-ikincil)" }}>
               Bu kart yürürlükteki kuralla yapılan bir yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir. Referans sütunu, dünün aynı saatteki üretimini program kabul eden basit referansın aynı kuralla maliyetidir; fark varsayımsaldır.
               {dz.fiyat.senaryo_saat > 0 && " Senaryo fiyatı: EPİAŞ piyasa fiyatı bağlı olmadığından EPDK 2025 yıllık ortalaması kullanılmış, sistem yönü dengede varsayılmıştır; piyasa kimliği tanımlandığında gerçek saatlik fiyat ve yönle hesaplanır."}
               {dz.kural?.belirsiz_2027 && " 1.1.2027 sonrası kural metni hukuken belirsiz; 2026 kuralı sürdürüldü."}
@@ -941,7 +942,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
            : !gt.toplam || gt.aylar.length === 0 ? <p className="soluk">Karşılaştırılabilir gün yok; tahmin ve ölçüm biriktikçe oluşur.</p>
            : (
             <>
-              <p className="soluk" style={{ fontSize: 13.5, margin: "0 0 8px" }}>{gt.baslik} Kural: {gt.kural_surumu ?? "—"}.</p>
+              <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "0 0 8px" }}>{gt.baslik} Kural: {gt.kural_surumu ?? "—"}.</p>
               <div className="ızgara satir-4" style={{ gap: 12, marginBottom: 10 }}>
                 <div className="kpi"><div className="kpi-et"><BilgiliEtiket metin="Yürürlükteki kuralla toplam" bilgi="Her saat, o gün yürürlükte olan kuralla hesaplanan dengesizlik maliyeti ile KÜPST toplamı." /></div><div className="kpi-dg">{gt.toplam.toplam_tl != null ? <>{sayiTr(gt.toplam.toplam_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div>
                   <div className="kpi-alt">eksik {gt.toplam.eksik_tl != null ? sayiTr(gt.toplam.eksik_tl / 1000, 1) : "—"} · fazla {gt.toplam.fazla_tl != null ? sayiTr(gt.toplam.fazla_tl / 1000, 1) : "—"} · KÜPST {gt.toplam.kupst_tl != null ? sayiTr(gt.toplam.kupst_tl / 1000, 1) : "—"} bin TL</div></div>
@@ -950,7 +951,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
                 <div className="kpi"><div className="kpi-et"><BilgiliEtiket metin="Referans programa göre fark · varsayımsal" bilgi="Dünün aynı saatteki üretimini program kabul eden basit referansın maliyeti ile PVQuant programının maliyeti arasındaki fark; varsayımsaldır." /></div><div className="kpi-dg">{gt.toplam.referans_fark_tl != null ? <>{sayiTr(gt.toplam.referans_fark_tl / 1000, 1)} <small>bin TL</small></> : "—"}</div><div className="kpi-alt">referans: dün aynı saat{gt.toplam.referans_tl != null ? `, ${sayiTr(gt.toplam.referans_tl / 1000, 1)} bin TL` : ""}</div></div>
               </div>
               <div className="grafik-kaydir">
-                <table className="veri" style={{ fontSize: 13 }}>
+                <table className="veri dar">
                   <thead><tr><th>Ay</th><th>Gün</th><th>Üretim (MWh)</th><th>Sapma (MWh)</th><th>Eksik üretim (TL)</th><th>Fazla üretim (TL)</th><th>KÜPST (TL)</th><th>Toplam (TL)</th><th>2026 kuralı tüm döneme</th><th>V = 100 kuralı</th><th>Referans (TL)</th><th>Hesaplanamayan saat</th></tr></thead>
                   <tbody className="mono">
                     {gt.aylar.map((a) => (
@@ -964,9 +965,9 @@ export function Dogruluk({ plantId }: { plantId: string }) {
               {gt.duyarlilik && gt.duyarlilik.seviyeler.length > 0 && (
                 <details className="aciklama genis" style={{ marginTop: 10 }}>
                   <summary>Hata duyarlılığı · varsayımsal (gerçek WMAPE %{sayiTr(gt.duyarlilik.wmape_gercek, 1)})</summary>
-                  <p className="soluk" style={{ fontSize: 13.5, margin: "0 0 8px" }}>Aynı fiyat ve sistem yönü geçmişinde tahmin hatası farklı bir seviyede olsaydı uzlaştırma kalemleri ne olurdu: santralin kendi saatlik hata deseni hedef seviyeye ölçeklenir, rastgele üretim yoktur. Gelecek için öngörü ya da taahhüt değildir.</p>
+                  <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "0 0 8px" }}>Aynı fiyat ve sistem yönü geçmişinde tahmin hatası farklı bir seviyede olsaydı uzlaştırma kalemleri ne olurdu: santralin kendi saatlik hata deseni hedef seviyeye ölçeklenir, rastgele üretim yoktur. Gelecek için öngörü ya da taahhüt değildir.</p>
                   <div className="grafik-kaydir">
-                    <table className="veri" style={{ fontSize: 13 }}>
+                    <table className="veri dar">
                       <thead><tr><th>WMAPE hedef</th><th>Elde edilen</th><th>Eksik üretim (TL)</th><th>Fazla üretim (TL)</th><th>KÜPST (TL)</th><th>Toplam (TL)</th><th>TL/MWh</th></tr></thead>
                       <tbody className="mono">
                         {gt.duyarlilik.seviyeler.map((r) => (
@@ -978,11 +979,11 @@ export function Dogruluk({ plantId }: { plantId: string }) {
                       </tbody>
                     </table>
                   </div>
-                  <p className="soluk" style={{ fontSize: 13, margin: "6px 0 0" }}>Yöntem: {gt.duyarlilik.yontem}. Elde edilen WMAPE, 0 ile kurulu güç arasına kırpma yüzünden hedeften biraz sapabilir.</p>
+                  <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "6px 0 0" }}>Yöntem: {gt.duyarlilik.yontem}. Elde edilen WMAPE, 0 ile kurulu güç arasına kırpma yüzünden hedeften biraz sapabilir.</p>
                 </details>
               )}
               {gt.mekanizma && (
-                <p className="soluk" style={{ fontSize: 13.5, margin: "8px 0 0" }}>
+                <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "8px 0 0" }}>
                   Saat dağılımı: {sayiTr(gt.mekanizma.saat)} saat; sistem enerji açığında {sayiTr(gt.mekanizma.acik_saat)}, fazlasında {sayiTr(gt.mekanizma.fazla_saat)}, dengede {sayiTr(gt.mekanizma.dengede_saat)}.
                   Fazla üretimin borç yazdığı saat, B dalı: {sayiTr(gt.mekanizma.b_dali_saat)}{gt.mekanizma.b_dali_tl != null ? `, ${sayiTr(gt.mekanizma.b_dali_tl)} TL` : ""}. Aylık fiyat limiti AFL'nin uygulandığı saat: {sayiTr(gt.mekanizma.afl_dali_saat)}.
                   Taban fiyat V'nin uygulandığı saat: {sayiTr(gt.mekanizma.v_tabani_saat)}.{gt.mekanizma.yon_varsayilan_saat > 0 ? ` Senaryo fiyatlı ${sayiTr(gt.mekanizma.yon_varsayilan_saat)} saatte sistem yönü dengede varsayıldı.` : ""}{gt.mekanizma.yon_eksik_saat > 0 ? ` ${sayiTr(gt.mekanizma.yon_eksik_saat)} saatte sistem yönü verisi yok, hesaplanmadı.` : ""}
@@ -1005,7 +1006,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           <>
             <EChart option={dagOption} height={280}
               ariaLabel="Günlük tahmin sapması histogramı, yüzdelik çizgileriyle" />
-            <p style={{ fontSize: 13, color: "var(--soluk)", margin: "12px 0 0" }}>
+            <p style={{ fontSize: "var(--t-ikincil)", color: "var(--soluk)", margin: "12px 0 0" }}>
               <b style={{ color: "var(--ikincil)" }}>Ne gösterir:</b>{" "}
               her mavi çubuk, günlük toplam sapması (tahmin − gerçekleşen, MWh) o aralığa
               düşen gün sayısını verir; sıfırın solu eksik, sağı fazla tahmindir. Kesikli
@@ -1017,7 +1018,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
             </p>
           </>
         ) : (
-          <p style={{ fontSize: 14, color: "var(--soluk)", margin: 0 }}>
+          <p style={{ fontSize: "var(--t-ikincil)", color: "var(--soluk)", margin: 0 }}>
             Dağılım için henüz yeterli eşleşmiş gün birikmedi.
           </p>
         )}

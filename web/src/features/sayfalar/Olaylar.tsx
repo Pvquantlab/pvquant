@@ -94,10 +94,10 @@ export function Olaylar({ plantId }: { plantId: string }) {
             <div className="form-tam dugme-sira"><button className="dugme" onClick={kaydet}>Kaydet</button>
               {mesaj && <span className={`ayar-durum ${mesaj.ton === "uyari" ? "" : mesaj.ton}`} style={mesaj.ton === "uyari" ? { color: "var(--amber-koyu, #8a5a00)" } : undefined}>{mesaj.metin}</span>}</div>
           </div>
-          {kural && <p className="form-not" style={{ marginTop: 10, fontSize: 13.5 }}><b>{kural.etiket}:</b> {kural.not}.</p>}
+          {kural && <p className="form-not" style={{ marginTop: 10, fontSize: "var(--t-ikincil)" }}><b>{kural.etiket}:</b> {kural.not}.</p>}
         </Kart>
         <Kart baslik="Olay türleri ve etkileri" alt="Her türün kapasite (EAK), aylık arıza sayacı ve kullanılabilirlik hesabına etkisi">
-          <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 13.5 }}>
+          <div className="grafik-kaydir"><table className="veri">
             <thead><tr><th style={sol}>Tür</th><th title="O saatlerde verilebilecek güç ve program tavanı düşer">Kapasiteyi düşürür</th><th title="Ayda 30 ve üzeri arıza kaydı sapma tutarı katsayısını yükseltir">Arıza sayacına girer</th><th title="Santralın elinde olmayan saatler kullanılabilirlik hesabından düşülür">Kullanılabilirlikten düşülür</th><th style={sol} title="TPYS EAK dosyasında eksik kapasitenin yazıldığı sütun; tür için varsayılan, kayıt girilirken değiştirilebilir">EAK gerekçesi (varsayılan)</th></tr></thead>
             <tbody>{o.turler.map((t) => (
               <tr key={t.kod}><td style={sol}>{t.etiket}</td><td>{t.eak_dusur ? "evet" : "—"}</td><td>{t.sayac ? "evet" : "—"}</td><td>{t.istisna ? "evet" : "—"}</td>
@@ -121,7 +121,7 @@ export function Olaylar({ plantId }: { plantId: string }) {
       <Kart baslik="Olaylar" alt={`son ${sayiTr(o.pencere_gun)} gün, süren ve planlı olaylar; geçersiz sayılanlar listede ve hesaplarda yok, indirilen dosyada «geçersiz» olarak kalır`}
         sag={<span className="cip"><Meta items={[`${sayiTr(o.olaylar.length)} olay`, `${sayiTr(o.acik)} sürüyor`, ...(o.planli > 0 ? [`${sayiTr(o.planli)} planlı`] : [])]} /></span>}>
         {o.olaylar.length === 0 ? <p className="soluk" style={{ margin: 0 }}>Bu aralıkta olay kaydı yok.</p> : (
-          <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 13.5 }}>
+          <div className="grafik-kaydir"><table className="veri">
             <thead><tr><th style={sol}>Tür</th><th style={sol}>Başlangıç</th><th style={sol}>Bitiş</th><th title="Süren olayda şu ana kadar">Süre</th><th>Devre dışı (kW)</th><th style={sol}>EAK gerekçesi</th><th style={sol}>Açıklama</th><th>Evre</th><th>İşlem</th></tr></thead>
             <tbody>{o.olaylar.map((ol) => (
               <tr key={ol.id}><td style={sol}>{ol.tur_etiket}</td><td style={{ ...sol, whiteSpace: "nowrap" }}>{saatTr(ol.baslangic)}</td>

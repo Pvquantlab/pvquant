@@ -32,7 +32,7 @@ export function Hakkinda() {
           <>
             {h.uyarilar.length > 0 && <ul className="not-listesi uyari" style={{ margin: "0 0 10px" }}>{h.uyarilar.map((u) => <li key={u}>{u}</li>)}</ul>}
             <div className="grafik-kaydir">
-              <table className="veri" style={{ fontSize: 13.5 }}>
+              <table className="veri">
                 <thead><tr><th style={sol}>Kaynak</th><th style={sol}>Kurum</th><th style={sol}>Lisans</th><th style={sol}>Ne için</th></tr></thead>
                 <tbody>
                   {h.kaynaklar.map((k) => (
@@ -41,15 +41,15 @@ export function Hakkinda() {
                       <td style={sol}>{k.kurum}</td>
                       <td style={sol}><a href={k.lisans_url} target="_blank" rel="noreferrer" style={bag}>{k.lisans}</a>
                         {/* v2.535: lisans sayfası son ne zaman okundu — kayıt yoksa açıkça «doğrulama kaydı yok» */}
-                        <div className="soluk" style={{ fontSize: 12, marginTop: 2 }} title={k.lisans_notu ?? undefined}>{k.lisans_dogrulama ? `lisans sayfası doğrulandı ${gunTr(k.lisans_dogrulama)}` : "lisans sayfası doğrulama kaydı yok"}</div></td>
+                        <div className="soluk" style={{ fontSize: "var(--t-kucuk)", marginTop: 2 }} title={k.lisans_notu ?? undefined}>{k.lisans_dogrulama ? `lisans sayfası doğrulandı ${gunTr(k.lisans_dogrulama)}` : "lisans sayfası doğrulama kaydı yok"}</div></td>
                       <td className="soluk" style={sol}>{k.not}</td>
                     </tr>))}
                 </tbody>
               </table>
             </div>
-            <p style={{ fontSize: 13.5, margin: "12px 0 0", lineHeight: 1.55 }}>{h.yontem}</p>
+            <p style={{ fontSize: "var(--t-ikincil)", margin: "12px 0 0", lineHeight: 1.55 }}>{h.yontem}</p>
             {/* v2.569 (Faz 0 karne paketi): karne tanımı değişikliği tarihli ve açık — «geçmiş değişmez» ilkesinin tek istisnası burada yazılı */}
-            <p className="soluk" style={{ fontSize: 13, margin: "8px 0 0", lineHeight: 1.55, maxWidth: "90ch" }}>
+            <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "8px 0 0", lineHeight: 1.55, maxWidth: "90ch" }}>
               Karne tanımı 10 Kasım 2026'da düzeltildi: her saat için yalnızca en erken yayımlanan tahmin sınava girer; gün içi güncellemeler ve
               program tahmini (bir gün önce 15:30 kesimi öncesi) ayrı sayılır. Geçmiş karne yeni tanımla yeniden hesaplandı; önceki değerler yedekte tutulur.
             </p>
@@ -59,7 +59,7 @@ export function Hakkinda() {
       {h && (h.mevzuat?.length ?? 0) > 0 && (
         <Kart baslik="Mevzuat ve standart dayanağı" sag={<span className="cip" title="k/l, V, B, AFL ve DSG eşiği kural tablosundan gelir; yalnız KÜPST n ve tolerans santral ayarından geçersiz kılınabilir">yalnız KÜPST n/tolerans ayardan değişir</span>}>
           <div className="grafik-kaydir">
-            <table className="veri" style={{ fontSize: 13.5 }}>
+            <table className="veri">
               <thead><tr><th style={sol}>Dayanak</th><th style={sol}>Kapsam</th><th style={sol}>Yayım (Resmî Gazete tarih-sayı, karar)</th><th style={sol}>Not</th></tr></thead>
               <tbody>
                 {h.mevzuat!.map((m) => (
@@ -67,13 +67,13 @@ export function Hakkinda() {
                     <td style={{ ...sol, fontWeight: 600, minWidth: 180, maxWidth: 250, whiteSpace: "normal" }}>{m.ad}</td>
                     <td style={{ ...sol, minWidth: 180, maxWidth: 260, whiteSpace: "normal" }}>{m.kapsam}</td>
                     {/* v2.535: birincil yayım bilgisi — doğrulama arşivinin kaynak envanteriyle aynı */}
-                    <td style={{ ...sol, whiteSpace: "normal", minWidth: 320, fontSize: 12.5 }}>{m.kunye ?? "—"}</td>
+                    <td style={{ ...sol, whiteSpace: "normal", minWidth: 320, fontSize: "var(--t-etiket)" }}>{m.kunye ?? "—"}</td>
                     <td className="soluk" style={{ ...sol, minWidth: 240, whiteSpace: "normal" }}>{m.not}</td>
                   </tr>))}
               </tbody>
             </table>
           </div>
-          <p className="soluk" style={{ fontSize: 14, margin: "10px 0 0" }}>
+          <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "10px 0 0" }}>
             Ürün bu çerçevenin tanımlarını uygular; madde numaraları yürürlükteki metne, yayım sütunu o metnin Resmî Gazete yayımına işaret eder (son değişiklik dâhil; 03.11.2026 doğrulama arşiviyle eş).
             Mevzuat değişirse kural tablosu (kural motoru) yeni sürümle güncellenir; k/l, V, B, AFL ve DSG eşiği ayarlardan değişmez.
             Yalnız KÜPST n ve tolerans Santralim › Santral ayarları'ndan geçersiz kılınabilir; geçersiz kılma Doğruluk sayfasında etiketlenir.
@@ -88,7 +88,7 @@ export function Hakkinda() {
             {kurallar.satirlar.some((r) => r.dogrulama === "dogrulama_gerekli") && <span className="rozet rozet-uyari rozet-kucuk" title="Dayanağın bir parçası birincil kaynakta bulunamadı; ayrıntı satırın Dayanak alanında">{sayiTr(kurallar.satirlar.filter((r) => r.dogrulama === "dogrulama_gerekli").length)} satır doğrulama gerekli</span>}
           </>}>
           <div className="grafik-kaydir">
-            <table className="veri" style={{ fontSize: 13 }}>
+            <table className="veri dar">
               <thead><tr><th style={sol}>Geçerlilik</th><th style={sol}>Kural sürümü</th><th style={sol}>Rejim</th><th title="Dengesizlik katsayıları sistem yönüne göre (Karar 14030): sistem açığı / sistem fazlası; dengede ipucunda">k (açık / fazla)</th><th title="Sistem açığı / sistem fazlası">l (açık / fazla)</th><th title="Düşük fiyat eşiği (TL/MWh)">V</th><th title="KÜPST tolerans oranı (m) ve fiyat katsayısı (n; arıza eşiğinde n arıza)">KÜPST m / n</th><th title="DSG netleşme eşiği">DSG eşiği</th><th style={sol} title="doğrulandı: birincil kaynak belirli · çıkarım: yürürlük tarihi metinden çıkarım · doğrulama gerekli: dayanağın bir parçası bulunamadı · belirsiz: 2027 sonrası">Durum</th><th style={sol}>Dayanak</th></tr></thead>
               <tbody>
                 {kurallar.satirlar.map((r) => (
@@ -105,7 +105,7 @@ export function Hakkinda() {
                     {/* v2.535: dayanak açılır metinde — satır sığar, tam metin ve eksik parça notu tıklayınca */}
                     <td className="soluk" style={{ ...sol, minWidth: 220, maxWidth: 420, whiteSpace: "normal" }}>
                       <details><summary style={{ cursor: "pointer" }}>dayanak ve durum notu</summary>
-                        <div style={{ marginTop: 6, fontSize: 12.5, lineHeight: 1.5 }}>
+                        <div style={{ marginTop: 6, fontSize: "var(--t-etiket)", lineHeight: 1.5 }}>
                           <div><b>EDT:</b> {r.edt_dayanak}</div>
                           {r.kupst.dayanak && <div><b>KÜPST:</b> {r.kupst.dayanak}</div>}
                           {r.dsg_dayanak && <div><b>DSG:</b> {r.dsg_dayanak}</div>}
@@ -115,13 +115,13 @@ export function Hakkinda() {
               </tbody>
             </table>
           </div>
-          <p className="soluk" style={{ fontSize: 14, margin: "10px 0 0" }}>{kurallar.satirlar.some((r) => r.dsg_esik == null) && <>DSG eşiği «—»: 1.1.2025 öncesinde üye eşiği yoktu, sapmalar DSG içinde tamamen netleşir (DUY m.111(3)-(5) 1.1.2025'ten). </>}Durum sütunu: «doğrulandı» birincil kaynak (Resmî Gazete yayımı / Kurul kararı) belirli; «çıkarım» yürürlük tarihi «yayımı takip eden fatura dönemi» ifadesinden çıkarım; «doğrulama gerekli» dayanağın bir parçası birincil kaynakta bulunamadı (hangi parça olduğu Dayanak altında). k/l, V, B, AFL ve DSG eşiği bu tablodan gelir ve ayarlardan değişmez; yalnız KÜPST n ve tolerans santral ayarından geçersiz kılınabilir (Doğruluk sayfasında etiketlenir). Dış API: GET /v1/kurallar.</p>
+          <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "10px 0 0" }}>{kurallar.satirlar.some((r) => r.dsg_esik == null) && <>DSG eşiği «—»: 1.1.2025 öncesinde üye eşiği yoktu, sapmalar DSG içinde tamamen netleşir (DUY m.111(3)-(5) 1.1.2025'ten). </>}Durum sütunu: «doğrulandı» birincil kaynak (Resmî Gazete yayımı / Kurul kararı) belirli; «çıkarım» yürürlük tarihi «yayımı takip eden fatura dönemi» ifadesinden çıkarım; «doğrulama gerekli» dayanağın bir parçası birincil kaynakta bulunamadı (hangi parça olduğu Dayanak altında). k/l, V, B, AFL ve DSG eşiği bu tablodan gelir ve ayarlardan değişmez; yalnız KÜPST n ve tolerans santral ayarından geçersiz kılınabilir (Doğruluk sayfasında etiketlenir). Dış API: GET /v1/kurallar.</p>
         </Kart>
       )}
       {h && Object.keys(h.arsiv).length > 0 && (
         <Kart baslik="Meteoroloji arşivi" sag={<span className="cip">tahmin başına nokta serileri</span>}>
           <div className="grafik-kaydir">
-            <table className="veri" style={{ fontSize: 13.5 }}>
+            <table className="veri">
               <thead><tr><th style={sol}>Kaynak</th><th style={sol} title="Arşivdeki en yeni model tahmininin başlangıç saati; indirmenin yapıldığı saat değil (o aşağıda, iş günlüğünden)">Son model tahmini</th><th>Nokta</th><th>Satır</th><th style={sol}>Kapsam</th></tr></thead>
               <tbody>
                 {Object.entries(h.arsiv).map(([k, v]) => (
@@ -132,13 +132,13 @@ export function Hakkinda() {
           </div>
           {/* v2.535: indirme işinin günlüğü — «son model tahmini» ile karıştırılmaz; kayıt yoksa açıkça söylenir */}
           {h.isler && Object.entries(h.isler).map(([j, v]) => (
-            <p key={j} style={{ fontSize: 13.5, margin: "10px 0 0" }}>
+            <p key={j} style={{ fontSize: "var(--t-ikincil)", margin: "10px 0 0" }}>
               <b>{v.ad}:</b> {v.son_deneme
                 ? <>son deneme {tarih(v.son_deneme)} ({v.son_durum === "ok" ? "başarılı" : `hata${v.son_ayrinti ? `: ${v.son_ayrinti}` : ""}`}) · son başarılı {tarih(v.son_basarili)}</>
                 : "iş günlüğünde kayıt yok"}
               {v.son_deneme && v.son_durum !== "ok" && <span className="rozet rozet-uyari rozet-kucuk" style={{ marginLeft: 6 }}>son deneme başarısız</span>}
             </p>))}
-          <p className="soluk" style={{ fontSize: 14, margin: "10px 0 0" }}>
+          <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "10px 0 0" }}>
             Her gece, tahmin işinden bir saat önce hava tahmini verisi indirilir, santral noktaları çıkarılır ve saklanır; tahmin, kalibrasyon ve hava verisi
             tutarlılık denetimi aynı arşivden beslenir. Ham ızgara dosyaları tutulmaz.
           </p>

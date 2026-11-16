@@ -3,11 +3,11 @@ import { useDamgaSurumu } from "../../shell/damgaOlay";
 import { api } from "../../api/client";
 import type { FinansalEtki as FinansalEtkiT, FinansalEtkiGecmis, FinansBilesen, FinansDonemTur, FinansNitelik } from "../../api/types";
 import { FINANS_NITELIK as NITELIK } from "../../lib/durum";
-import { donemSecenekleri, TUR_AD } from "../../lib/donem";   // v2.595: ortak dönem seçenekleri
+import { donemEtiket, donemSecenekleri, TUR_AD } from "../../lib/donem";   // v2.595: ortak dönem seçenekleri
 import { HesapDurumu, Kart, Kpi, Sayfa, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
 import { ModulNotu } from "./Abonelik";   // v2.609 (Faz 6 F6-D): kapalı özellik notu (uyarı kipi)
 import { Meta } from "../../lib/Meta";
-import { tarihBicimi } from "../../lib/bicim";
+import { kapsananSonGun, tarihBicimi } from "../../lib/bicim";
 
 /** v2.584 (Faz 2 F2-F) — Finansal etki: seçilen dönemde planlanan ve gerçekleşen üretim, sapma ve tahmini mali karşılığı. Var olan hesapların
  *  (dengesizlik, KGÜP sapma tutarı, tarife, YEKDEM, kayıp ayrışımı, mutabakat) aynı saat kümesinde derlenmiş hâlidir; formül yazmaz. Her satır
@@ -22,6 +22,7 @@ const isaretli = (v: number | null | undefined, ondalik = 0) => v == null ? "—
 const binTl = (v: number | null | undefined) => v == null ? "—" : `${v < 0 ? "−" : ""}${sayiTr(Math.abs(v) / 1000, 1)}`;
 const saatYaz = (iso: string | null | undefined) => iso ? tarihBicimi("tr-TR", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(iso)) : "—";
 const gunYaz = (iso: string | null | undefined) => iso ? tarihBicimi("tr-TR", { day: "numeric", month: "short", year: "numeric" }).format(new Date(iso.slice(0, 10) + "T12:00:00")) : "—";
+const sonGunYaz = (bitIso: string | null | undefined) => bitIso ? gunYaz(kapsananSonGun(bitIso)) : "—";   // 16.11: dışlayıcı bitiş → kapsanan son gün (lib/bicim)
 
 function Rozet({ n, kucuk = true }: { n: FinansNitelik; kucuk?: boolean }) {
   const x = NITELIK[n] ?? NITELIK.eksik;
@@ -80,7 +81,7 @@ export function FinansalEtki({ plantId }: { plantId: string }) {
   return (
     <Sayfa baslik="Finansal etki" alt="Seçilen dönemde planlanan ve gerçekleşen üretim, aradaki fark ve bunun tahmini mali karşılığı. Tutarlar PVQuant'ın yeniden hesabıdır; EPİAŞ uzlaştırma sonucu değildir. Resmî değerler ayrıca işaretlenir; eksi tutar santralin ödediğidir." sag={secici}>
       <ModulNotu kod="finansal_etki" />
-      {m.senaryo && <p className="form-not" style={{ margin: "0 0 12px", fontSize: 13.5, color: "var(--uyari-metin)" }}><b>Senaryo görünümü:</b> {m.senaryo.etiket}. {m.senaryo.not}</p>}
+      {m.senaryo && <p className="form-not" style={{ margin: "0 0 12px", fontSize: "var(--t-ikincil)", color: "var(--uyari-metin)" }}><b>Senaryo görünümü:</b> {m.senaryo.etiket}. {m.senaryo.not}</p>}
       <div className="ızgara satir-4" style={{ marginBottom: 14 }}>
         <Kpi etiket={`Planlanan üretim (${o.donem.etiket.replace(" (süren dönem, bugüne kadar)", ", süren")})`} bilgi="Üretim programı: TPYS'ye bildirildiği beyan edilen KGÜP varsa o, yoksa bir gün önce 15:30'dan önceki son PVQuant tahmini. Ölçümsüz saatlerin programı da sayılır."
           deger={u.planlanan.mwh == null ? "—" : sayiTr(u.planlanan.mwh, 1)} birim={u.planlanan.mwh == null ? undefined : "MWh"}
@@ -166,7 +167,7 @@ export function FinansalEtki({ plantId }: { plantId: string }) {
               <thead><tr><th style={sol}>Neden sınıfı</th><th>Saat</th><th>Kayıp (kWh)</th><th>Gelir kaybı (TL)</th></tr></thead>
               <tbody>{du.siniflar.filter((s) => s.saat > 0).map((s) => <tr key={s.kod}><td style={{ ...sol, whiteSpace: "normal" }}>{s.ad}</td><td className="mono">{sayiTr(s.saat)}</td><td className="mono">{s.kayip_kwh == null ? "—" : sayiTr(s.kayip_kwh, 0)}</td><td className="mono">{s.kayip_tl == null ? "—" : sayiTr(s.kayip_tl, 0)}</td></tr>)}</tbody>
             </table></div>
-          ) : <p className="soluk" style={{ margin: "10px 0 0", fontSize: 13.5 }}>{du.kayip?.durum === "yetersiz" ? "Dönemde üretim mümkün saat yetersiz; neden ayrışımı yapılmadı." : "Beklenen üretim verisi olmadığından neden ayrışımı yapılmadı."}</p>}
+          ) : <p className="soluk" style={{ margin: "10px 0 0", fontSize: "var(--t-ikincil)" }}>{du.kayip?.durum === "yetersiz" ? "Dönemde üretim mümkün saat yetersiz; neden ayrışımı yapılmadı." : "Beklenen üretim verisi olmadığından neden ayrışımı yapılmadı."}</p>}
           <ul className="not-listesi">
             {du.bilesenler.map((b) => <li key={b.kod}><b>{b.ad}:</b> {b.tutar_tl == null ? b.notlar[0] ?? "hesaplanmadı" : `${yaz(b.tutar_tl)} TL`} <Rozet n={b.nitelik} /></li>)}
             {du.sozlesme?.not && <li className="soluk">{du.sozlesme.not}</li>}
@@ -184,7 +185,7 @@ export function FinansalEtki({ plantId }: { plantId: string }) {
                 <Kpi etiket="İyimser (çeyrek 3)" deger={binTl(ma.aralik_tl.p75)} birim="bin TL" alt={`${isaretli(ma.oran_tl_mwh?.p75, 0)} TL/MWh`} />
               </div>
               <ul className="not-listesi">
-                <li>Program kaynağı: {Object.entries(ma.kaynak).map(([k, v]) => `${v} saat ${k === "bildirilen" ? "bildirilen KGÜP" : "son tahmin"}`).join(", ") || "yok"}; dönem {gunYaz(ma.ufuk.bas)} – {gunYaz(ma.ufuk.bit)}.</li>
+                <li>Program kaynağı: {Object.entries(ma.kaynak).map(([k, v]) => `${v} saat ${k === "bildirilen" ? "bildirilen KGÜP" : "son tahmin"}`).join(", ") || "yok"}; dönem {gunYaz(ma.ufuk.bas)} – {sonGunYaz(ma.ufuk.bit)}.</li>
                 <li>{ma.notlar[0]}</li>
               </ul>
             </>)}
@@ -192,19 +193,19 @@ export function FinansalEtki({ plantId }: { plantId: string }) {
       </div>
       <Kart baslik="Hesap bilgileri" alt="Bu sonucun hangi varsayımlarla üretildiği; aynı varsayımlarla yeniden üretilebilir.">
         <dl className="kunye">
-          <div><dt>Dönem</dt><dd className="kunye-sayi">{gunYaz(o.donem.bas)} – {gunYaz(o.donem.bit)}{o.donem.kirpildi && <span className="kunye-not"> süren dönem, bugüne kadar</span>}</dd></div>
+          <div><dt>Dönem</dt><dd>{donemEtiket(o.donem.kod)}<span className="kunye-not"><span className="kunye-sayi">{gunYaz(o.donem.bas)} – {sonGunYaz(o.donem.bit)}</span>{o.donem.kirpildi && " · süren dönem, bugüne kadar"}</span></dd></div>
           <div><dt>Hesap durumu</dt><dd>{durumMetni}{o.kayitli ? <span className="kunye-not"> kayıtlı sonuç; yeni hesap yeni kayıt olur, eski kayıt silinmez</span> : <span className="kunye-not"> kaydedilmedi</span>}</dd></div>
           <div><dt>Üretim girdisi</dt><dd>{u.gerceklesen.secim_etiket}<span className="kunye-not"> {u.gerceklesen.sinir_etiket}</span></dd></div>
           <div><dt>Program</dt><dd>{u.planlanan.kaynak_etiket}<span className="kunye-not"> {sayiTr(u.planlanan.bildirilen_saat)} saat bildirilen, {sayiTr(u.planlanan.oneri_saat)} saat öneri</span></dd></div>
           <div><dt>Fiyat</dt><dd>{uz.fiyat.senaryo_saat > 0 ? <>{sayiTr(uz.fiyat.epias_saat)} saat EPİAŞ, {sayiTr(uz.fiyat.senaryo_saat)} saat senaryo</> : "EPİAŞ saatlik PTF, SMF ve sistem yönü"}</dd></div>
-          <div><dt>Uzlaştırma kuralı</dt><dd><span className="kunye-sayi">{m.kural_surumu_tam ?? uz.kural_surumu ?? "—"}</span>{m.kural_sicili_sha && <span className="kunye-not">kural sicili {m.kural_sicili_surumu ?? ""} · {m.kural_sicili_sha}</span>}</dd></div>
+          <div><dt>Uzlaştırma kuralı</dt><dd><span className="kimlik">{m.kural_surumu_tam ?? uz.kural_surumu ?? "—"}</span>{m.kural_sicili_sha && <span className="kunye-not">kural sicili {m.kural_sicili_surumu ?? ""} · <span className="kimlik">{m.kural_sicili_sha}</span></span>}</dd></div>
           {/* v2.605 (F4-K): yeniden üretim için damgalar — fiyat sürümü (F4-G), tahmin kayıtları (F4-B arşivi), girdi ve ayar damgaları, çıktı sürümü */}
-          {m.girdi?.fiyat && <div><dt>Fiyat sürümü</dt><dd><span className="kunye-sayi">{m.girdi.fiyat.sha16}</span><span className="kunye-not">{m.girdi.fiyat.itibariyle ? `${saatYaz(m.girdi.fiyat.itibariyle)} itibarıyla geçerli fiyatlar` : "hesap anındaki fiyatlar"}; {sayiTr(m.girdi.fiyat.epias_saat)} saat EPİAŞ, {sayiTr(m.girdi.fiyat.senaryo_saat)} saat senaryo</span></dd></div>}
-          {m.girdi?.program && <div><dt>Tahmin kayıtları</dt><dd>{m.girdi.program.kosular.length ? <><span className="kunye-sayi">{sayiTr(m.girdi.program.kosular.length)}</span> kayıt<span className="kunye-not">{m.girdi.program.kosular.slice(0, 2).map((k) => k.slice(0, 8)).join(", ")}{m.girdi.program.kosular.length > 2 ? ", …" : ""}; arşivdeki tahmin kimlikleri</span></> : <><span className="kunye-durum eksik">Bildirilen program</span><span className="kunye-not">arşiv tahmini kullanılmadı</span></>}</dd></div>}
-          {m.girdi?.sha16 && <div><dt>Girdi damgası</dt><dd><span className="kunye-sayi">{m.girdi.sha16}</span><span className="kunye-not">ölçüm, program, fiyat, ayar ve sözlüklerin bileşik özeti; aynı damga aynı sonucu verir{m.ayar_sha ? `; santral ayarı ${m.ayar_sha}` : ""}</span></dd></div>}
+          {m.girdi?.fiyat && <div><dt>Fiyat sürümü</dt><dd><span className="kimlik">{m.girdi.fiyat.sha16}</span><span className="kunye-not">{m.girdi.fiyat.itibariyle ? `${saatYaz(m.girdi.fiyat.itibariyle)} itibarıyla geçerli fiyatlar` : "hesap anındaki fiyatlar"}; {sayiTr(m.girdi.fiyat.epias_saat)} saat EPİAŞ, {sayiTr(m.girdi.fiyat.senaryo_saat)} saat senaryo</span></dd></div>}
+          {m.girdi?.program && <div><dt>Tahmin kayıtları</dt><dd>{m.girdi.program.kosular.length ? <><span className="kunye-sayi">{sayiTr(m.girdi.program.kosular.length)}</span> kayıt<span className="kunye-not"><span className="kimlik">{m.girdi.program.kosular.slice(0, 2).map((k) => k.slice(0, 8)).join(", ")}{m.girdi.program.kosular.length > 2 ? ", …" : ""}</span>; arşivdeki tahmin kimlikleri</span></> : <><span className="kunye-durum eksik">Bildirilen program</span><span className="kunye-not">arşiv tahmini kullanılmadı</span></>}</dd></div>}
+          {m.girdi?.sha16 && <div><dt>Girdi damgası</dt><dd><span className="kimlik">{m.girdi.sha16}</span><span className="kunye-not">ölçüm, program, fiyat, ayar ve sözlüklerin bileşik özeti; aynı damga aynı sonucu verir{m.ayar_sha && <>; santral ayarı <span className="kimlik">{m.ayar_sha}</span></>}</span></dd></div>}
           <div><dt>Satış tarifesi</dt><dd>{o.gelir.tarife.etiket}{o.gelir.tarife.ortalama_fiyat_tl_mwh != null && <span className="kunye-not"> ortalama {sayiTr(o.gelir.tarife.ortalama_fiyat_tl_mwh, 0)} TL/MWh</span>}</dd></div>
           <div><dt>Piyasa pozisyonu</dt><dd>{m.pozisyon.kaynak === "uretim" ? "üretildiği kadar satış" : m.pozisyon.kaynak === "sabit" ? `sabit ${sayiTr(m.pozisyon.sabit_mwh ?? 0, 2)} MWh/saat` : "satış programa eşit"}</dd></div>
-          <div><dt>Hesap sözlüğü</dt><dd className="kunye-sayi">{m.sozluk_surumu}{m.yazilim_surumu ? `, yazılım ${m.yazilim_surumu}` : ""}{m.cikti_surumu ? `, çıktı ${m.cikti_surumu}` : ""}</dd></div>
+          <div><dt>Hesap sözlüğü</dt><dd><span className="kunye-sayi">{m.sozluk_surumu}</span>{m.yazilim_surumu && <> · yazılım <span className="kunye-sayi">{m.yazilim_surumu}</span></>}{m.cikti_surumu && <> · çıktı <span className="kunye-sayi">{m.cikti_surumu}</span></>}</dd></div>
         </dl>
         <details className="aciklama" onToggle={gecmisAc}>
           <summary>Kayıtlı sürümler ve varsayımların geçmişi</summary>

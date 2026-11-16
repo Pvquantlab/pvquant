@@ -42,13 +42,19 @@
      Gövde ve tablo 12–14 px'te Inter Variable kalır: optik boyut ekseni küçük puntoda harfleri açar; Inter Tight
      yalnız ≥13 px rollerde. Sayı disiplini: tablo/eksen/kod Plex Mono (tabular); KPI başlık sayıları Inter Tight
      tabular — vitrinin karne sayılarıyla aynı kesim (jetonlar.md «22.10 istisnası»). */
-  --display: 'Inter Tight', 'Inter Tight Yedek', 'Inter Variable', 'Inter', system-ui, sans-serif;
+  /* 16.11 TEK AİLE (sayısal tipografi raporu kararı): panelde başlık/KPI/etiket/düğme de Inter Variable — optik boyut
+     ekseni ≥28 px'te zaten sıkı çizim verir; Inter Tight yalnız vitrinde kalır. Rakam biçimi KPI, tablo ve gövdede
+     birebir aynı. Plex Mono yalnız kod/anahtar/kimlik (.kod, .cip-kod, .kod-duz, .plat-anahtar, .girdi.mono, kbd). */
+  --display: 'Inter Variable', 'Inter', system-ui, -apple-system, sans-serif;
   --mono: 'IBM Plex Mono', ui-monospace, monospace;
   /* tip ölçeği (22.10 üçüncü tur — kullanıcı üç brief'te «yazılar küçük»; 2560 px ekranda 14 px gövde fiziksel
      olarak küçük kalıyordu): sayfa 28 · bölüm 21 · kart 16 · gövde 15 · ikincil 13,5 · etiket 12,5 · KPI 32.
      Vitrin gövdesi 17; panel veri yoğunluğu için bir kademe altında kalır. */
   --t-buyuk: 32px; --t-baslik: 28px; --t-bolum: 21px; --t-kart: 16px;
   --t-govde: 15px; --t-ikincil: 13.5px; --t-etiket: 12.5px;
+  /* 16.11 tipografi birliği: ikincil metin TEK boy (13,5; eskiden 13/13,5/14 arasında geziyordu), küçük rozet/meta 12, kod ve
+     kontrol içi mono 13, tablo ve mono veri 14 (22.10 üç-rol kararı: Plex Mono 14 ≈ Inter 15). Satır içi sayısal punto YOK; jeton kullanılır. */
+  --t-kucuk: 12px; --t-kod: 13px; --t-veri: 14px; --t-tablo: 14px; --t-tablo-dar: 13px;
   --satir: 1.55;
   /* köşe ölçeği (22.10): kontrol 8 · kart 12 · hap 999 — vitrinin hap düğmesi/çipi panelde de aynı */
   --r: 8px; --rk: 12px; --r-hap: 999px;
@@ -141,16 +147,19 @@ button:focus-visible, select:focus-visible, a:focus-visible, input:focus-visible
   outline: 2px solid var(--marka); outline-offset: 2px; }
 body { margin: 0; background: var(--zemin); color: var(--metin);
        font-family: var(--font); font-size: var(--t-govde); line-height: var(--satir);
+       font-variant-numeric: tabular-nums;   /* 16.11 tek aile: rakamlar her bağlamda eşit genişlik (83 eksik düğüm → 0) */
        text-rendering: optimizeLegibility;
        /* v2.306: Inter değişken sürümü — optik boyut ekseni küçük puntoda harfleri
           otomatik açar. NOT: 1/l/I ayrımını güçlendiren cv01/cv05 karakter varyantları
           Google Fonts sürümünde YOK (ölçüldü, etkisi 0); gerekirse font self-host edilip
           açılır. Mono eşi ayrı karar — şimdilik Plex Mono. */
        font-optical-sizing: auto; }
-.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+/* 16.11 tek aile: .mono artık VERİ rolü (sınıf adı tarihsel; 179 kullanım) — gövde ailesi, tabular. Gerçek mono yalnız kod sınıfları. */
+.mono { font-family: var(--font); font-variant-numeric: tabular-nums; }
 /* 22.10 tip merdiveni: sayfa h1 26/600 (vitrinin kart başlığı kesimi: Inter Tight 600, −.015em),
    bölüm h2 20/600, kart h3 15/600 — hepsi display ailesi; ağırlık 700 kalktı (Inter Tight'ta 700 yüklü değil). */
 h1, h2, h3 { margin: 0; font-family: var(--display); font-weight: 600; letter-spacing: -0.015em; color: var(--metin); }
+b, strong { font-weight: 600; }   /* 16.11: ağırlık merdiveni 400/500/600 — tarayıcı varsayılanı 700 Inter'de fazla koyu (60 düğüm) */
 h1 { font-size: var(--t-baslik); letter-spacing: -0.02em; line-height: 1.15; }
 h2 { font-size: var(--t-bolum); line-height: 1.2; }
 /* 22.10: eyebrow — vitrinin .vt-eyebrow kalıbı (500, büyük harf, .12em, üçüncül renk); kart içi grup etiketi */
@@ -266,6 +275,8 @@ h2 { font-size: var(--t-bolum); line-height: 1.2; }
 .kpi-dg { font-family: var(--display); font-size: var(--t-buyuk); line-height: 1.1; letter-spacing: -0.02em;
           font-weight: 500; color: var(--metin); font-variant-numeric: tabular-nums; }
 .kpi-br { font-size: var(--t-ikincil); color: var(--soluk); margin-top: 6px; line-height: 1.45; }
+/* 16.11: KPI birimi tek kesim — Kpi bileşeninin satır içi stili ve Doğruluk'taki ham <small> (0,83em = 23 px!) aynı kurala bağlandı */
+.kpi-birim, .kpi-dg small { font-size: var(--t-govde); font-weight: 400; letter-spacing: 0; color: var(--soluk); white-space: nowrap; }
 /* 15.11 açık tema denetimi (K-013, rubrik 5): kartın İÇİNDEKİ KPI ikinci bir çerçeve çizmez — yüzey dolgusu, kenarsız; değer bir kademe küçük */
 .kart .kpi { background: var(--yuzey); border-color: transparent; }
 .kart .kpi .kpi-dg { font-size: 28px; }
@@ -346,7 +357,7 @@ h2 { font-size: var(--t-bolum); line-height: 1.2; }
 .hava-isin { font-size: 12px; color: var(--soluk); }
 
 /* ---------- tablo: Solargis dili — yalniz yatay ince cizgiler ---------- */
-table.veri { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.veri { width: 100%; border-collapse: collapse; font-size: var(--t-tablo); }
 /* v2.307: büyük harf dönüşümü KALDIRILDI — birimleri eziyordu (kWp→KWP, MWh→MWH).
    Başlıklar kodda zaten doğru yazılı; punto bir tık büyüdü, aralık kısıldı.
    22.10: başlık satırı mono değil gövde ailesi (500, 12 px) — tablo başlığı etiket, veri değil. */
@@ -393,7 +404,7 @@ table.veri tbody tr:hover td { background: var(--yuzey); }
 /* satır içi kod (API yolu, başlık adı): mono, hafif zemin, taşmadan kırılır */
 /* 23.10 sekizinci tur: uç yolu çipi — .cip hapının mono içerikli türevi (santral arşivi .dugme.kucuk ile aynı aile:
    --kenar çerçeve, 999 köşe, 28 px); uzun yol dar ekranda çip içinde kırılabilir */
-.cip-kod { font-family: var(--mono); font-size: 13px; font-weight: 400; letter-spacing: 0; color: var(--metin);
+.cip-kod { font-family: var(--mono); font-size: var(--t-kod); font-weight: 400; letter-spacing: 0; color: var(--metin);
            display: inline-flex; align-items: center; min-height: 28px; padding: 4px 12px; overflow-wrap: anywhere;
            white-space: normal; }
 .uc-listesi { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--izgara); }
@@ -419,15 +430,15 @@ table.veri tbody tr:hover td { background: var(--yuzey); }
 .onay-kapsam { display: inline-flex; align-items: center; gap: 9px; min-height: 36px; padding: 0 10px 0 0; border-radius: var(--r);
                cursor: pointer; }
 .onay-kapsam .onay-metin { display: inline-flex; flex-direction: column; line-height: 1.2; }
-.onay-kapsam .onay-ad { font-size: 13.5px; color: var(--metin); }
+.onay-kapsam .onay-ad { font-size: var(--t-ikincil); color: var(--metin); }
 .onay-kapsam .onay-metin .kod { font-size: 11.5px; padding: 0; background: none; color: var(--soluk); }
 .onay-kapsam:hover .onay-ad { color: var(--marka-koyu); }
 .onay-kapsam:has(input:focus-visible) { box-shadow: 0 0 0 2px var(--marka); }
 .onay-kapsam:has(input:disabled) { opacity: .55; cursor: not-allowed; }
 .uc-sira { display: flex; flex-wrap: wrap; gap: 8px; }
-.uc-not { margin: 10px 0 0; font-size: 13.5px; color: var(--soluk); line-height: 1.6; }
+.uc-not { margin: 10px 0 0; font-size: var(--t-ikincil); color: var(--soluk); line-height: 1.6; }
 .uc-not .kod { font-size: 12.5px; }
-.kod { font-family: var(--mono); font-size: 13px; background: var(--yuzey); padding: 1px 6px; border-radius: 6px;
+.kod { font-family: var(--mono); font-size: var(--t-kod); background: var(--yuzey); padding: 1px 6px; border-radius: 6px;
        overflow-wrap: anywhere; color: var(--metin); }
 /* tehlikeli işlem (pasifleştir): sıradan düğmeden ayrışır, bağırmaz */
 .dugme-tehlike { color: var(--uyari-metin); border-color: var(--kenar); }
@@ -445,13 +456,13 @@ table.veri tbody tr[tabindex]:focus-visible td { box-shadow: inset 0 0 0 2px var
 .kunye-durum { font-weight: 500; color: var(--metin); }
 .kunye-durum.eksik { color: var(--ikincil); }
 .kunye-dip { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--izgara);
-             font-size: 13.5px; color: var(--ikincil); line-height: 1.55; max-width: 90ch; }
+             font-size: var(--t-ikincil); color: var(--ikincil); line-height: 1.55; max-width: 90ch; }
 /* boş durum: başlık satırı + neden; kutu/çerçeve yok (kart-içinde-kart yasak) */
 .bos-durum { margin: 0; }
 .bos-durum .bos-bas { font-size: var(--t-govde); font-weight: 500; color: var(--metin); }
-.bos-durum p { margin: 4px 0 0; font-size: 13.5px; color: var(--soluk); line-height: 1.55; max-width: 90ch; }
+.bos-durum p { margin: 4px 0 0; font-size: var(--t-ikincil); color: var(--soluk); line-height: 1.55; max-width: 90ch; }
 /* açılır açıklama (details): uzun teknik not başlık altında katlanır; metin aynen korunur */
-.aciklama { margin: 12px 0 0; font-size: 13.5px; color: var(--soluk); line-height: 1.55; max-width: 90ch; }
+.aciklama { margin: 12px 0 0; font-size: var(--t-ikincil); color: var(--soluk); line-height: 1.55; max-width: 90ch; }
 .aciklama.genis { max-width: none; }
 /* 29.10 dil turu: bilgi simgesi — etiket yanında küçük daire, açıklama title/aria-label'da; tema jetonlarıyla */
 .bilgi { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-left: 6px;
@@ -483,7 +494,7 @@ table.veri tbody tr[tabindex]:focus-visible td { box-shadow: inset 0 0 0 2px var
    kendi kutusuna sığar, kontrol öğeyi aşmaz */
 .dugme-sira > .girdi-etiket { min-width: 0; max-width: 100%; }
 .dugme-sira > .girdi-etiket > .girdi { max-width: 100%; min-width: 0; }
-.dugme.kucuk { min-height: 32px; padding: 5px 12px; font-size: 13px; }
+.dugme.kucuk { min-height: 32px; padding: 5px 12px; font-size: var(--t-kod); }   /* küçük kontrol metni 13 */
 /* dar sayısal tablo: içerik genişliğinde kalır (7 sütunlu verim tablosu 1840 px'e yayılmasın), oluk geniş */
 /* 23.10 sekizinci tur — kurumsal veri tablosu (santraller): veri sütunları içerik genişliğinde, ad sütunu esner */
 table.veri.santral { font-size: 14px; }
@@ -539,7 +550,7 @@ tr.satir-tikla { cursor: pointer; }
 .dugme.dugme-indir svg { color: var(--soluk); flex-shrink: 0; }
 .dugme.dugme-indir:hover svg { color: var(--metin); }
 .tanim-listesi { list-style: none; margin: 14px 0 0; padding: 12px 0 0; border-top: 1px solid var(--izgara);
-                 font-size: 13px; color: var(--soluk); line-height: 1.5; }   /* 15.11: 90ch sınırı li'de — üst çizgi kart genişliğinde, satır uzunluğu okunur kalır */
+                 font-size: var(--t-ikincil); color: var(--soluk); line-height: 1.5; }   /* 15.11: 90ch sınırı li'de — üst çizgi kart genişliğinde, satır uzunluğu okunur kalır */
 .tanim-listesi li { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; max-width: 90ch; }
 .tanim-listesi li + li { margin-top: 3px; }
 .tanim-listesi b { font-weight: 500; color: var(--ikincil); }
@@ -621,6 +632,8 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--marka); }
 :root[data-yuz="platform"] table.veri.santral.plat-envanter td.plat-cipler .dugme-sira { flex-wrap: wrap; }
 :root[data-yuz="platform"] table.veri.santral.plat-envanter td.plat-kgup { min-width: 150px; }    /* «öneri v2» 67 + «bildirildi» 61 + 6 aralık = 134 + 14 oluk (ölçüldü) */
 :root[data-yuz="platform"] table.veri.santral.plat-envanter td.plat-sorun { min-width: 210px; }   /* «segment seçilmedi» 123 + «veri eski» 65 + 6 = 194 + 14 oluk; 1440 px'te yedi sütun 1019 ≤ 1045 (ölçüldü) */
+/* 16.11 tek aile: kimlik/hash/sürüm anahtarı — panelde mono'nun kaldığı tek bağlam (kod sınıflarıyla birlikte) */
+.kimlik { font-family: var(--mono); font-size: var(--t-kod); letter-spacing: 0; font-variant-numeric: normal; }
 .kod-duz, .kunye-not.kod-duz { font-family: var(--mono); font-size: 12.5px; letter-spacing: 0; }   /* .kunye-not (13.5 px) dosyada daha sonra geldiği için çift sınıf */
 /* v2.515: «table.veri.santral td → nowrap» kuralı (0,2,2) bu iki hücre kuralını (0,2,1) eziyordu — uzun aktör e-postası komşu sütuna taşıyor,
    ayrıntı çipleri tek satıra zorlanıp tablo kaydırıyordu. Seçici artık tablo sınıfıyla (0,2,3). */
@@ -698,7 +711,7 @@ table.veri td .dugme-sira { flex-wrap: nowrap; }                        /* işle
 /* 15.11 açık tema denetimi (K-018): sınıfsız <a> tarayıcı mavisi/moru alıyordu — panelde bağlantı mürekkep + alt çizgi (plat-baglanti ile aynı dil) */
 .icerik a:not([class]) { color: var(--metin); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--notr-acik); }
 .icerik a:not([class]):hover, .icerik a:not([class]):focus-visible { color: var(--marka-koyu); text-decoration-color: currentColor; }
-.not-listesi { margin: 8px 0 0; padding: 0; list-style: none; font-size: 13.5px; line-height: 1.55; max-width: 90ch; }
+.not-listesi { margin: 8px 0 0; padding: 0; list-style: none; font-size: var(--t-ikincil); line-height: 1.55; max-width: 90ch; }
 .not-listesi li + li { margin-top: 3px; }
 .not-listesi.uyari { color: var(--uyari-metin); }
 
@@ -706,15 +719,15 @@ table.veri td .dugme-sira { flex-wrap: nowrap; }                        /* işle
    Etiket solda sabit kolon, değer kendi kolonunda SOLA hizalı (sağa dayalı uzun cümleler düzensiz bölünüyordu);
    sayı/tarih/kimlik mono tabular, durum cümleleri gövde ailesi soluk, uyarı ayrı renk. */
 .kunye { display: grid; margin: 0; }
-.kunye > div { display: grid; grid-template-columns: minmax(170px, 34%) minmax(0, 1fr); gap: 4px 20px;
+.kunye > div { display: grid; grid-template-columns: minmax(170px, min(34%, 300px)) minmax(0, 1fr); gap: 4px 20px;   /* 16.11: geniş kartta etiket sütunu 300 px'te durur (1900 px'te 640 px boşluk kalıyordu) */
                padding: 9px 0; border-bottom: 1px solid var(--izgara); align-items: baseline; }
 .kunye > div:last-child { border-bottom: 0; }
 .kunye dt { font-size: var(--t-govde); color: var(--ikincil); font-weight: 500; }
 .kunye dd { margin: 0; font-size: var(--t-govde); color: var(--metin); font-variant-numeric: tabular-nums;
             line-height: 1.5; overflow-wrap: anywhere; }
-.kunye-sayi { font-family: var(--mono); font-size: 14px; }
+.kunye-sayi { font-family: var(--font); font-size: var(--t-govde); }   /* 16.11 tek aile: künye sayısı etiketle aynı punto */
 /* 23.10 yedinci tur: neden/not durumun ALTINDA ayrı satır — satır içi orta nokta ayracı kalktı */
-.kunye-not { display: block; color: var(--soluk); font-size: 13.5px; margin-top: 2px; }
+.kunye-not { display: block; color: var(--soluk); font-size: var(--t-ikincil); margin-top: 2px; }
 .kunye-uyari, .kunye dd.kunye-uyari { color: var(--uyari-metin); }   /* 15.11: `.kunye dd` (0,1,1) tek sınıfı eziyordu; Eylem/Eksikler satırı mürekkep renginde kalıyordu */
 .kunye-uyari .kunye-sayi { color: inherit; }
 @media (max-width: 560px) { .kunye > div { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
@@ -747,7 +760,7 @@ table.veri td .dugme-sira { flex-wrap: nowrap; }                        /* işle
 [data-tema="koyu"] .rozet-kritik { background: var(--uyari-metin); color: var(--kart); }
 [data-tema="koyu"] .dugme-ana { background: #FFFFFF; border-color: #FFFFFF; color: #0B0E15; }
 [data-tema="koyu"] .dugme-ana:hover { background: #F2F2F4; border-color: #F2F2F4; color: #0B0E15; }
-.lejant { display: flex; gap: 14px; font-size: 13px; font-family: var(--font);
+.lejant { display: flex; gap: 14px; font-size: var(--t-ikincil); font-family: var(--font);
           color: var(--ikincil); flex-wrap: wrap; }
 .lejant span { display: flex; align-items: center; gap: 6px; }
 .nokta { width: 9px; height: 9px; border-radius: 2px; }
@@ -914,7 +927,7 @@ body { background: var(--zemin); }
 .palet-satir[aria-selected="true"] { background: var(--yan-aktif); color: var(--marka-koyu); }
 .palet-satir[aria-selected="true"] svg { color: var(--marka); }
 .palet-not { margin-left: auto; font-family: var(--font); font-size: 11.5px; color: var(--soluk); }
-.palet-bos { padding: 14px; font-size: 13px; color: var(--soluk); }
+.palet-bos { padding: 14px; font-size: var(--t-ikincil); color: var(--soluk); }
 .yan-yeni { display: flex; align-items: center; gap: 8px; width: 100%;
   border: 1px dashed var(--kenar); border-radius: var(--r); background: none;
   color: var(--soluk); font-family: var(--display); font-size: 13px; font-weight: 500;
@@ -1043,7 +1056,7 @@ body { background: var(--zemin); }
 .zil-bas { font-family: var(--display); font-size: var(--t-kart); font-weight: 600;
   letter-spacing: -0.01em; color: var(--metin);
   padding: 12px 14px 10px; border-bottom: 1px solid var(--izgara); }
-.zil-bos { font-size: 13px; color: var(--soluk); padding: 14px;
+.zil-bos { font-size: var(--t-ikincil); color: var(--soluk); padding: 14px;
   margin: 0; line-height: 1.55; }
 .zil-satir { padding: 11px 14px; border-bottom: 1px solid var(--izgara); }
 .zil-satir:last-child { border-bottom: none; }
@@ -1066,7 +1079,7 @@ body { background: var(--zemin); }
 .ayar:last-child { border-bottom: none; padding-bottom: 4px; }
 .ayar:first-child { padding-top: 4px; }
 .ayar-ad { font-family: var(--display); font-weight: 600; font-size: 14px; color: var(--metin); letter-spacing: -0.01em; }
-.ayar-aciklama { font-size: 13px; color: var(--ikincil); line-height: 1.5; margin-top: 3px; max-width: 34em; }   /* 01.11: açıklama 13 px ikincil (okunurluk) */
+.ayar-aciklama { font-size: var(--t-ikincil); color: var(--ikincil); line-height: 1.5; margin-top: 3px; max-width: 34em; }   /* 01.11: açıklama 13 px ikincil (okunurluk) */
 .ayar-kontrol { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: flex-end;
                 font-size: 13px; min-width: 0; padding-top: 2px; }
 .ayar-durum { font-size: 12.5px; color: var(--soluk); align-self: center; }
@@ -1077,15 +1090,15 @@ body { background: var(--zemin); }
 .girdi { font-family: var(--font); font-size: 14px; padding: 7px 12px; border: 1px solid var(--kenar-kontrol);   /* 15.11 K-004 */
          border-radius: var(--r); background: var(--kart); color: var(--metin); min-height: 36px;
          transition: border-color .12s, box-shadow .12s; }
-.girdi.mono { font-family: var(--mono); font-size: 13px; }
+.girdi.mono { font-family: var(--mono); font-size: var(--t-kod); }
 .girdi::placeholder { color: var(--soluk); opacity: 1; }   /* 15.11 K-007: .8 opaklık beyazda 3,9:1 veriyordu; tam opak 6,1:1 */
 .girdi:hover:not(:disabled):not(:focus-visible) { border-color: var(--soluk); }
 .girdi:focus-visible, .ayar-kontrol select:focus-visible, .ayar-kontrol input:focus-visible {
   outline: none; border-color: var(--marka); box-shadow: 0 0 0 3px rgba(var(--marka-r), .28); }
 select.girdi { font-family: var(--font); }
-.girdi-etiket { display: flex; flex-direction: column; gap: 5px; font-size: 13px;
+.girdi-etiket { display: flex; flex-direction: column; gap: 5px; font-size: var(--t-ikincil);
                 color: var(--soluk); }  /* uppercase YOK: birim yazımı (kW, TL/MWh) bozulmasın */
-.ayar-onay { display: inline-flex; gap: 7px; align-items: center; font-size: 13px;
+.ayar-onay { display: inline-flex; gap: 7px; align-items: center; font-size: var(--t-ikincil);
              color: var(--metin); padding: 5px 0; cursor: pointer; }
 .ayar-onay .mono { color: var(--soluk); font-size: 12px; }
 .ayar-panel { flex-basis: 100%; background: var(--yuzey); border-radius: var(--rk);
@@ -1135,9 +1148,9 @@ select.girdi { font-family: var(--font); }
 .kural-satir.sabit { cursor: default; }
 .kural-metin { display: grid; gap: 2px; min-width: 0; }
 .kural-ad { font-size: 14px; color: var(--metin); line-height: 1.35; }
-.kural-ad .soluk { font-size: 13px; }
-.kural-kosul { font-size: 13px; color: var(--ikincil); line-height: 1.45; }   /* 01.11 son kontrol: küçük/soluk yazı → 13 px ikincil */
-.form-not { margin: 0; font-size: 12.5px; color: var(--soluk); line-height: 1.5; }
+.kural-ad .soluk { font-size: var(--t-ikincil); }
+.kural-kosul { font-size: var(--t-ikincil); color: var(--ikincil); line-height: 1.45; }   /* 01.11 son kontrol: küçük/soluk yazı → 13 px ikincil */
+.form-not { margin: 0; font-size: var(--t-ikincil);   /* 16.11: 12,5 → ikincil; 18 yerde satır içi 13,5'e çekiliyordu */ color: var(--soluk); line-height: 1.5; }
 .form-izgara.form-program { flex-basis: 100%; width: 100%; min-width: 0; max-width: 820px; margin-top: 0; }
 /* 01.11 v2.520 (P5a): ayar satırındaki seçiciler 375 px'te içerik genişliğine açılıp kartı taşırıyordu (rejim seçici 314 px / 293 px) → en çok sütun genişliği */
 .ayar-kontrol > .girdi-etiket { max-width: 100%; min-width: 0; }   /* esnek öğe içerik genişliğinin altına inemiyordu (min-width:auto) */
@@ -1196,5 +1209,5 @@ html.vt-sayfa body { background: #FFFFFF; }
 /* 12.11 inceleme 2–3 (Portföy yönetimi): formlar .ayar ızgarasına (250 px + 1fr) değil düz bloğa oturur; üye payları tablosu (8 sütun) yarım genişlik kartta
    taşmasın diye .dar 13 px ve 10 px oluk (712 → ~630 px). */
 .portfoy-form { padding: 6px 0 2px; }
-table.veri.dar { font-size: 13px; }
+table.veri.dar { font-size: var(--t-tablo-dar); }
 table.veri.dar th + th, table.veri.dar td + td { padding-left: 10px; }

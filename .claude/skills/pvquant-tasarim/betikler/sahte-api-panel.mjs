@@ -302,7 +302,7 @@ function genelBakis(id) {
   const finans = kritik
     ? { ...K("veri_bekleniyor", "Veri bekleniyor", "kayıtlı finansal sonuç yok: gece hesabı ölçüm ve piyasa fiyatı ister"), hesaplanamiyor: "kayıtlı finansal sonuç yok: gece hesabı ölçüm ve piyasa fiyatı ister", son_sonuc: null, epias: null, eylem: null }
     : { ...K("saglikli", "Tahmini hesap hazır", "son kayıtlı dönem 2026-09, hesap durumu «tam»"), hesaplanamiyor: null, eylem: null,
-        son_sonuc: { donem_kodu: "2026-09", donem_bas: "2026-09-01", donem_bit: "2026-09-30", hesap_zamani: "2026-10-01T00:55:00+00:00", yas_saat: 560, tutar_tl: 4868300, alacak_tl: 5100000, borc_tl: 231700, nitelik_ad: "ölçülmüş", eksik: [], hesap_durumu: "tam", nitelik: "tahmini",
+        son_sonuc: { donem_kodu: "2026-09", donem_bas: "2026-09-01", donem_bit: "2026-10-01", hesap_zamani: "2026-10-01T00:55:00+00:00", yas_saat: 560, tutar_tl: 4868300, alacak_tl: 5100000, borc_tl: 231700, nitelik_ad: "ölçülmüş", eksik: [], hesap_durumu: "tam", nitelik: "tahmini",
           maruziyet: { aralik_tl: { p25: -41200, p50: -18600, p75: -4100 }, ufuk: { bas: "2026-10-25", bit: "2026-10-31", gun: 7 }, nitelik: "senaryo", program_mwh: 1620.4 } },
         epias: { donem: "2026-09", surum: "on", surum_etiket: "ön bildirim", zaman: "2026-10-12T10:20", borc_tl: 277620.75, alacak_tl: 1401234.6, net_tl: 1123613.85, nitelik: "resmi_belge", resmi_durum: "dogrulanmadi", kalem: 9 } };
   const ortak = { kapsam: "seçili santral", baglanti: "finans", not_: "Tahmini tutarlar PVQuant hesabıdır; resmî alacak/borç yalnız yüklenen EPİAŞ bildirimindeki tutardır. Maruziyet senaryodur." };

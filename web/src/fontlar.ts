@@ -1,8 +1,8 @@
 /* v2.384 — Fontlar kendi sunucumuzdan (SIL OFL-1.1, @fontsource).
    Google Fonts @import'u kalktı: ziyaretçi IP'si üçüncü tarafa gitmez (KVKK) ve açılışı
    engelleyen @import zinciri yok. Panel aileleri: Inter (opsz 14–32 · wght 100–900; aile adı
-   'Inter Variable') gövde/tablo, IBM Plex Mono 400/500/600 sayı/kod — toplu dosyalar unicode-range
-   taşır; yalnız sayfadaki harflerin alt kümesi iner.
+   'Inter Variable') gövde/tablo/KPI/başlık (16.11 tek aile), IBM Plex Mono 400/500/600 YALNIZ kod/anahtar — toplu
+   dosyalar unicode-range taşır; yalnız sayfadaki harflerin alt kümesi iner.
    22.10.2026 tek tasarım sistemi: başlık/etiket/düğme/KPI ailesi vitrinle ORTAK Inter Tight 400/500/600 —
    dosyaları features/vitrin/fontlar.ts yükler (Vitrin.tsx ana pakette; Türkçe alt küme dahil). Space Grotesk
    kalktı: panel iki woff2 daha az indirir, başlık kesimi vitrinin kart başlığıyla aynı olur. */

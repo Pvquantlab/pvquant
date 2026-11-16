@@ -43,8 +43,8 @@ export function PlatformKabugu({ sayfa, setSayfa, ben, onCikis, tema, children }
           <div className="hesap">
             <div className="avatar" aria-hidden="true">{(ben?.email ?? "·").slice(0, 2).toUpperCase()}</div>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 13.5, color: "var(--metin)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ben?.email ?? "—"}</div>
-              <div style={{ fontSize: 13, color: "var(--yan-metin)" }}>{ben ? (ben.rol === "sahip" ? "Sahip" : "Operatör") : "—"}</div>
+              <div style={{ fontSize: "var(--t-ikincil)", color: "var(--metin)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ben?.email ?? "—"}</div>
+              <div style={{ fontSize: "var(--t-ikincil)", color: "var(--yan-metin)" }}>{ben ? (ben.rol === "sahip" ? "Sahip" : "Operatör") : "—"}</div>
             </div>
           </div>
           <button onClick={onCikis} className="plat-cikis">Çıkış yap</button>
@@ -55,7 +55,7 @@ export function PlatformKabugu({ sayfa, setSayfa, ben, onCikis, tema, children }
           <button className="menu-dugme" aria-label="Menüyü aç" aria-expanded={menuAcik} onClick={() => setMenuAcik(true)}>
             <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true"><path d="M3 5.5h14M3 10h14M3 14.5h14" /></svg>
           </button>
-          <div style={{ fontSize: 14, color: "var(--ikincil)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div style={{ fontSize: "var(--t-ikincil)", color: "var(--ikincil)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             Platform<span className="ust-yol-ayrac" aria-hidden="true">/</span><b style={{ color: "var(--metin)" }}>{YSAYFALAR.find((s) => s.id === sayfa)?.ad}</b>
             <span className="mono ust-tarih" style={{ color: "var(--soluk)", marginLeft: 14 }}>{bugun}</span>
           </div>

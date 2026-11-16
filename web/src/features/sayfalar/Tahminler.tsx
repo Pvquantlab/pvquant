@@ -126,7 +126,7 @@ export function Tahminler({ plantId, kgupGit }: { plantId: string; kgupGit?: () 
       }
     >
       {/* v2.608 (Faz 5 F5-A): üretim programı (KGÜP) ve revizyon önerisi kendi sayfasına taşındı; eski yer imleri için bağlantı */}
-      {kgupGit && <p className="soluk" style={{ fontSize: 13.5, margin: "0 0 14px" }}>Yarının üretim programı (KGÜP) ve bugünün revizyon önerisi <button type="button" className="plat-baglanti" onClick={kgupGit}>KGÜP sayfasında</button>.</p>}
+      {kgupGit && <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "0 0 14px" }}>Yarının üretim programı (KGÜP) ve bugünün revizyon önerisi <button type="button" className="plat-baglanti" onClick={kgupGit}>KGÜP sayfasında</button>.</p>}
       {(!seri || !ozet) && (
         <Kart baslik="Saatlik tahmin ve P10–P90 aralığı">
           <div className="bos-durum">
@@ -163,7 +163,7 @@ export function Tahminler({ plantId, kgupGit }: { plantId: string; kgupGit?: () 
             />
             {/* 23.10 altıncı tur: tahmin kimliği (mod · aralık kaynağı) görünür tek satır; uzun «Ne gösterir»
                 açıklaması açılır alanda (details) — metin aynen, bilgi kaybı yok */}
-            <p className="soluk" style={{ fontSize: 13.5, margin: "12px 0 0" }}>
+            <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "12px 0 0" }}>
               {/* v2.605 (F4-K): tahmin etiketi (gece / gün içi / elle) ve hava tahmini kaynaklarının üretim zamanları — etiket sözlüğü parcalar'da */}
               Son tahmin Mod {seri.mod ?? "—"}{seri.etiket && TAHMIN_ETIKETI[seri.etiket] ? ` · ${TAHMIN_ETIKETI[seri.etiket]}` : ""}.{bantYazisi ? ` Aralık: ${bantYazisi}.` : ""}
               {seri.nwp_bilesenler && Object.keys(seri.nwp_bilesenler).length > 0 && (
@@ -209,7 +209,7 @@ export function Tahminler({ plantId, kgupGit }: { plantId: string; kgupGit?: () 
             </table>
             </div>
             {gunlukVeri.some((g) => g.kismi) && (
-              <p className="soluk" style={{ fontSize: 13.5, margin: "10px 0 0" }}>
+              <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "10px 0 0" }}>
                 * dönemin yalnız bir bölümü kapsanan gün
               </p>
             )}
@@ -231,7 +231,7 @@ export function Tahminler({ plantId, kgupGit }: { plantId: string; kgupGit?: () 
         ) : (
           <>
             <div className="grafik-kaydir">
-              <table className="veri" style={{ fontSize: 13.5 }}>
+              <table className="veri">
                 <thead><tr><th>Saat</th><th>Beklenen (P50)</th><th>Düzeltilmiş</th><th>Düzeltme ağırlığı</th></tr></thead>
                 <tbody className="mono">
                   {nc.ufuk.map((u) => (
@@ -240,7 +240,7 @@ export function Tahminler({ plantId, kgupGit }: { plantId: string; kgupGit?: () 
                 </tbody>
               </table>
             </div>
-            <p className="soluk" style={{ fontSize: 14, margin: "10px 0 0" }}>
+            <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "10px 0 0" }}>
               Son {sayiTr(nc.n_saat)} saatin ölçüm/tahmin oranı ({sayiTr(nc.oran ?? 0, 2)}) ileriye doğru azalan ağırlıkla beklenen değere (P50)
               karıştırılır; 6 saat sonrası beklenen değerdir. Gün içi program güncellemesi için yol göstericidir; kayıt yazmaz.
             </p>

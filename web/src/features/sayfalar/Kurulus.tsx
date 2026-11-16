@@ -5,6 +5,7 @@ import { Kart, Sayfa, sayiTr, gucTr, SayfaIskeleti } from "./parcalar";
 import { Meta } from "../../lib/Meta";
 import { AboneliginizKarti, ModulNotu } from "./Abonelik";   // v2.609 (Faz 6 F6-D)
 import { AyrintiCipleri } from "../../lib/AyrintiCipleri";
+import { eylemAdi } from "../../lib/sozluk";   // 16.11: eylem kodu müşteri dilinde, kod yanında (denetlenebilirlik)
 
 /** 23.10 sekizinci tur — kapsam tanımlayıcısının kullanıcı dili (değer ve yetki anlamı aynı; bilinmeyen kapsam kodla kalır). */
 const KAPSAM_AD: Record<string, string> = { "tahmin:oku": "Tahmin okuma", "kgup:oku": "KGÜP programı okuma",
@@ -64,7 +65,7 @@ function Politika() {
           <input type="checkbox" checked={a.yonetici_2fa_zorunlu}
             onChange={(e) => api.kurulusAyarGuncelle(e.target.checked).then(setA).catch((er) => setHata(String((er as Error).message ?? er)))} />
           <span>Yöneticiler için iki adımlı doğrulama zorunlu
-            <span className="soluk" style={{ display: "block", fontSize: 13.5 }}>
+            <span className="soluk" style={{ display: "block", fontSize: "var(--t-ikincil)" }}>
               {a.yonetici_2fa_zorunlu
                 ? (a.iki_adimsiz_yonetici > 0 ? `${sayiTr(a.iki_adimsiz_yonetici)} yönetici henüz kurmadı; bir sonraki girişte kurulum ekranını görür.` : "Tüm yöneticilerde açık.")
                 : (a.iki_adimsiz_yonetici > 0 ? `${sayiTr(a.iki_adimsiz_yonetici)} yöneticide 2FA kapalı.` : "Tüm yöneticilerde 2FA zaten açık.")}
@@ -84,11 +85,11 @@ function KurulusDenetim() {
     <Kart baslik="Denetim izi" alt="Girişler, ekip ve ayar değişiklikleri; «platform» satırları PVQuant personelinin bu kuruluşta yaptıklarıdır (görüntüleme dahil)"
       sag={liste ? <span className="cip"><Meta items={[`${sayiTr(liste.length)} kayıt`]} /></span> : undefined}>
       {hata && <p role="alert" className="giris-hata" style={{ marginTop: 0 }}>{hata}</p>}
-      {!liste ? <SayfaIskeleti kpi={0} kart={1} /> : liste.length === 0 ? <p className="soluk" style={{ margin: 0, fontSize: 14 }}>Henüz kayıt yok.</p> : (<>
-        <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 13.5 }}>
+      {!liste ? <SayfaIskeleti kpi={0} kart={1} /> : liste.length === 0 ? <p className="soluk" style={{ margin: 0, fontSize: "var(--t-ikincil)" }}>Henüz kayıt yok.</p> : (<>
+        <div className="grafik-kaydir"><table className="veri">
           <thead><tr><th style={{ textAlign: "left" }}>Zaman</th><th style={{ textAlign: "left" }}>Kapsam</th><th style={{ textAlign: "left" }}>Eylem</th><th style={{ textAlign: "left" }}>Kim</th><th style={{ textAlign: "left" }}>Ayrıntı</th></tr></thead>
           <tbody>{liste.map((k) => (<tr key={k.id}><td className="mono" style={{ textAlign: "left", whiteSpace: "nowrap" }}>{zaman(k.zaman)}</td>
-            <td style={{ textAlign: "left" }}>{k.kapsam === "musteri" ? "ekibiniz" : "platform"}</td><td style={{ textAlign: "left" }}><span className="cip-kod">{k.eylem}</span></td>
+            <td style={{ textAlign: "left" }}>{k.kapsam === "musteri" ? "ekibiniz" : "platform"}</td><td style={{ textAlign: "left" }}>{eylemAdi(k.eylem) !== k.eylem ? <>{eylemAdi(k.eylem)}<span className="kod-duz soluk" style={{ display: "block" }}>{k.eylem}</span></> : <span className="cip-kod">{k.eylem}</span>}</td>
             <td style={{ textAlign: "left" }}>{k.aktor_eposta ?? (k.kapsam === "platform" ? "PVQuant" : "—")}</td>
             <td style={{ textAlign: "left", whiteSpace: "normal", minWidth: 180 }}><AyrintiCipleri a={k.ayrinti} /></td></tr>))}</tbody>
         </table></div>
@@ -146,7 +147,7 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
     <Kart baslik="Dış erişim"
           sag={<span style={{ display: "flex", gap: 6 }}><span className="cip">yalnız yönetici</span>
                 {docs ? <a className="cip" href={docs} target="_blank" rel="noreferrer">OpenAPI şeması ↗</a> : <span className="cip">örnek kip</span>}</span>}>
-      <p className="soluk" style={{ margin: "0 0 14px", fontSize: 14, maxWidth: "100ch" }}>
+      <p className="soluk" style={{ margin: "0 0 14px", fontSize: "var(--t-ikincil)", maxWidth: "100ch" }}>
         Müşteri sistemleri tahmini <span className="kod">X-API-Key</span> başlığıyla çeker; sabah tahmini üretildikten sonra webhook alıcılarına imzalı bildirim gider.
         Anahtar ve sır yalnız üretildiği anda görünür; sunucu yalnız özetini saklar.
       </p>
@@ -157,14 +158,14 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(340px, 100%), 1fr))", gap: "20px 28px" }}>
         <div>
           <div className="etiket-ust">API anahtarları</div>
-          {anahtarlar.length === 0 ? <p className="soluk" style={{ fontSize: 14, margin: 0 }}>Henüz anahtar yok.</p> : (
-            <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 13 }}>
+          {anahtarlar.length === 0 ? <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: 0 }}>Henüz anahtar yok.</p> : (
+            <div className="grafik-kaydir"><table className="veri dar">
               <thead><tr><th>Ad</th><th>Önek</th><th>Kapsam</th><th>Son kullanım</th><th>Durum</th><th></th></tr></thead>
               <tbody className="mono">{anahtarlar.map((k) => (
                 <tr key={k.id} style={{ opacity: k.iptal ? 0.5 : 1 }}>
                   <td>{k.ad ?? "—"}</td><td>pvq_{k.prefix}…</td><td>{k.kapsamlar.join(", ")}</td><td>{tarih(k.son_kullanim)}</td>
                   <td>{k.iptal ? "iptal" : k.expires_at && new Date(k.expires_at) < new Date() ? "süresi doldu" : "etkin"}</td>
-                  <td>{!k.iptal && <button className="dugme" style={{ fontSize: 13 }} onClick={() => dene(() => api.apiAnahtarIptal(k.id))}>İptal et</button>}</td>
+                  <td>{!k.iptal && <button className="dugme kucuk" onClick={() => dene(() => api.apiAnahtarIptal(k.id))}>İptal et</button>}</td>
                 </tr>))}</tbody>
             </table></div>
           )}
@@ -186,16 +187,16 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
           </form>
           {yeniAnahtar && (
             <div style={{ marginTop: 10, padding: 10, border: "1px solid var(--kenar)", borderRadius: 8, background: "var(--yuzey2)" }}>
-              <div style={{ fontSize: 13, marginBottom: 4 }}>Yeni anahtar: <strong>bir daha gösterilmez</strong>, şimdi kopyalayın:</div>
-              <code className="mono" style={{ fontSize: 13.5, wordBreak: "break-all", userSelect: "all" }}>{yeniAnahtar}</code>
-              <div style={{ marginTop: 6 }}><button className="dugme" style={{ fontSize: 13 }} onClick={() => { navigator.clipboard?.writeText(yeniAnahtar).then(() => setMesaj("Anahtar panoya kopyalandı.")).catch(() => {}); }}>Kopyala</button>
-                <button className="dugme" style={{ fontSize: 13, marginLeft: 6 }} onClick={() => setYeniAnahtar(null)}>Kapat</button></div>
+              <div style={{ fontSize: "var(--t-ikincil)", marginBottom: 4 }}>Yeni anahtar: <strong>bir daha gösterilmez</strong>, şimdi kopyalayın:</div>
+              <code className="mono" style={{ fontSize: "var(--t-kod)", wordBreak: "break-all", userSelect: "all" }}>{yeniAnahtar}</code>
+              <div style={{ marginTop: 6 }}><button className="dugme kucuk" onClick={() => { navigator.clipboard?.writeText(yeniAnahtar).then(() => setMesaj("Anahtar panoya kopyalandı.")).catch(() => {}); }}>Kopyala</button>
+                <button className="dugme kucuk" style={{ marginLeft: 6 }} onClick={() => setYeniAnahtar(null)}>Kapat</button></div>
             </div>)}
         </div>
         <div>
           <div className="etiket-ust">Webhook alıcıları <span className="soluk">(tahmin.yeni, alarm.yeni; önceden eklenenler yalnız tahmin.yeni alır)</span></div>
-          {webhooklar.length === 0 ? <p className="soluk" style={{ fontSize: 14, margin: 0 }}>Henüz alıcı yok.</p> : (
-            <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 13 }}>
+          {webhooklar.length === 0 ? <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: 0 }}>Henüz alıcı yok.</p> : (
+            <div className="grafik-kaydir"><table className="veri dar">
               <thead><tr><th>Adres</th><th>Santral</th><th>Son gönderim</th><th>Durum</th><th></th></tr></thead>
               <tbody className="mono">{webhooklar.map((w) => (
                 <tr key={w.id}>
@@ -204,8 +205,8 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
                   <td style={{ color: w.son_durum != null && !(w.son_durum >= 200 && w.son_durum < 300) ? "var(--uyari-metin)" : undefined }}>
                     {w.son_durum == null ? "—" : w.son_durum === 0 ? "ulaşılamadı" : `HTTP ${w.son_durum}`}{w.hata_sayisi > 0 ? ` (${sayiTr(w.hata_sayisi)} hata)` : ""}</td>
                   <td style={{ whiteSpace: "nowrap" }}>
-                    <button className="dugme" style={{ fontSize: 13 }} onClick={() => dene(async () => { const r = await api.webhookDene(w.id); setMesaj(r.ok ? `Deneme ulaştı (HTTP ${r.durum}).` : `Deneme başarısız (${r.durum === 0 ? "ulaşılamadı" : "HTTP " + r.durum}).`); })}>Dene</button>
-                    <button className="dugme" style={{ fontSize: 13, marginLeft: 4 }} onClick={() => dene(() => api.webhookSil(w.id))}>Sil</button>
+                    <button className="dugme kucuk" onClick={() => dene(async () => { const r = await api.webhookDene(w.id); setMesaj(r.ok ? `Deneme ulaştı (HTTP ${r.durum}).` : `Deneme başarısız (${r.durum === 0 ? "ulaşılamadı" : "HTTP " + r.durum}).`); })}>Dene</button>
+                    <button className="dugme kucuk" style={{ marginLeft: 4 }} onClick={() => dene(() => api.webhookSil(w.id))}>Sil</button>
                   </td>
                 </tr>))}</tbody>
             </table></div>
@@ -223,9 +224,9 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
           </form>
           {yeniSir && (
             <div style={{ marginTop: 10, padding: 10, border: "1px solid var(--kenar)", borderRadius: 8 }}>
-              <div style={{ fontSize: 13, marginBottom: 4 }}>İmza sırrı: <strong>bir daha gösterilmez</strong>; alıcı <span className="mono">X-PVQ-Signature</span> başlığını bununla doğrular:</div>
-              <code className="mono" style={{ fontSize: 13.5, wordBreak: "break-all", userSelect: "all" }}>{yeniSir}</code>
-              <div style={{ marginTop: 6 }}><button className="dugme" style={{ fontSize: 13 }} onClick={() => setYeniSir(null)}>Kapat</button></div>
+              <div style={{ fontSize: "var(--t-ikincil)", marginBottom: 4 }}>İmza sırrı: <strong>bir daha gösterilmez</strong>; alıcı <span className="mono">X-PVQ-Signature</span> başlığını bununla doğrular:</div>
+              <code className="mono" style={{ fontSize: "var(--t-kod)", wordBreak: "break-all", userSelect: "all" }}>{yeniSir}</code>
+              <div style={{ marginTop: 6 }}><button className="dugme kucuk" onClick={() => setYeniSir(null)}>Kapat</button></div>
             </div>)}
         </div>
       </div>
@@ -247,7 +248,7 @@ function DisErisim({ santraller }: { santraller: { id: string; ad: string }[] })
         <ul className="tanim-listesi">
           <li><b>Önbellek</b>tahmin ucu ETag ile 304 döner.</li>
           <li><b>Oran sınırı</b>dakikada 120 istek.</li>
-          <li><b>Belge</b><span className="kod">docs/api/dis-api.md</span></li>
+          <li><b>Belge</b><span>başlıktaki OpenAPI şeması; ayrıntılı kılavuz (<span className="kod">dis-api.md</span>) ekibimizden istenir</span></li>   {/* 16.11: depo yolu müşteriye açık değil (canlıda SPA yedeği dönüyor) */}
         </ul>
       </div>
     </Kart>
@@ -283,27 +284,27 @@ export function IkiAdimBolumu() {
 
       {kurtarma ? (
         <div style={{ padding: 12, border: "1px solid var(--kenar)", borderRadius: 8, background: "var(--yuzey2)" }}>
-          <p style={{ fontSize: 13.5, margin: "0 0 8px", lineHeight: 1.6 }}>
+          <p style={{ fontSize: "var(--t-ikincil)", margin: "0 0 8px", lineHeight: 1.6 }}>
             <strong>Kurtarma kodları bir daha gösterilmez.</strong> Telefonunuzu
             kaybederseniz her biri bir kez giriş sağlar. Güvenli bir yere kaydedin:</p>
           <div className="mono" style={{ display: "grid", gridTemplateColumns: "1fr 1fr",
-            gap: "4px 16px", fontSize: 14, userSelect: "all" }}>
+            gap: "4px 16px", fontSize: "var(--t-veri)", userSelect: "all" }}>
             {kurtarma.map((k) => <span key={k}>{k}</span>)}
           </div>
-          <button className="dugme" style={{ marginTop: 10, fontSize: 13 }}
+          <button className="dugme kucuk" style={{ marginTop: 10 }}
             onClick={() => { setKurtarma(null); setKod(""); yenile(); }}>Kaydettim, kapat</button>
         </div>
       ) : kurulum ? (
         <div>
-          <p style={{ fontSize: 13.5, margin: "0 0 10px", lineHeight: 1.6 }}>
+          <p style={{ fontSize: "var(--t-ikincil)", margin: "0 0 10px", lineHeight: 1.6 }}>
             Authenticator uygulamanızla (Google Authenticator, 1Password, Authy…)
             QR'ı okutun ya da anahtarı elle girin, sonra üretilen 6 haneli kodu yazın:</p>
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
             <div style={{ width: 160, height: 160, background: "#fff", padding: 8, borderRadius: 8 }}
               dangerouslySetInnerHTML={{ __html: kurulum.qr_svg }} />
             <div>
-              <div style={{ fontSize: 13, color: "var(--soluk)" }}>Elle giriş anahtarı</div>
-              <code className="mono" style={{ fontSize: 13.5, userSelect: "all", wordBreak: "break-all" }}>{kurulum.secret}</code>
+              <div style={{ fontSize: "var(--t-ikincil)", color: "var(--soluk)" }}>Elle giriş anahtarı</div>
+              <code className="mono" style={{ fontSize: "var(--t-kod)", userSelect: "all", wordBreak: "break-all" }}>{kurulum.secret}</code>
             </div>
           </div>
           <form className="ayar-kontrol" style={{ marginTop: 10 }} onSubmit={(e) => { e.preventDefault();
@@ -316,12 +317,12 @@ export function IkiAdimBolumu() {
         </div>
       ) : durum?.aktif ? (
         <div>
-          <p style={{ fontSize: 13.5, margin: "0 0 8px" }}>
+          <p style={{ fontSize: "var(--t-ikincil)", margin: "0 0 8px" }}>
             Açık. Kalan kurtarma kodu: <strong>{durum.kalan_kurtarma}</strong></p>
           {!kapatAcik ? (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button className="dugme" style={{ fontSize: 13 }} onClick={() => setKapatAcik(true)}>Kapat</button>
-              <button className="dugme" style={{ fontSize: 13 }}
+              <button className="dugme kucuk" onClick={() => setKapatAcik(true)}>Kapat</button>
+              <button className="dugme kucuk"
                 onClick={() => dene(async () => { const r = await api.ikiAdimKurtarmaYenile(
                   prompt("Yenilemek için uygulamadaki 6 haneli kodu ya da bir kurtarma kodunu girin:") || "");
                   setKurtarma(r.kurtarma_kodlari); })}>Kurtarma kodlarını yenile</button>
@@ -339,7 +340,7 @@ export function IkiAdimBolumu() {
         </div>
       ) : (
         <div>
-          <p style={{ fontSize: 13.5, margin: "0 0 8px", color: "var(--ikincil)", lineHeight: 1.6 }}>
+          <p style={{ fontSize: "var(--t-ikincil)", margin: "0 0 8px", color: "var(--ikincil)", lineHeight: 1.6 }}>
             Kapalı. Açtığınızda girişte parolanıza ek olarak authenticator
             uygulamanızdaki 6 haneli kod istenir.</p>
           <button className="dugme" onClick={() => dene(async () => {
@@ -384,7 +385,7 @@ function HesapVeEkip() {
         <div className="alt-bolum">
           <div className="etiket-ust">Ekip</div>
           {uyeler.length > 0 && (
-            <div className="grafik-kaydir"><table className="veri sayisal" style={{ fontSize: 14 }}>
+            <div className="grafik-kaydir"><table className="veri sayisal">
               <thead><tr><th>E-posta</th><th>Rol</th><th>Son giriş</th><th>Durum</th><th>2FA</th><th></th></tr></thead>
               <tbody>{uyeler.map((u) => (
                 <tr key={u.id} style={{ opacity: u.aktif ? 1 : 0.5 }}>
@@ -426,12 +427,12 @@ function HesapVeEkip() {
           </form>
           {gecici && (
             <div style={{ marginTop: 10, padding: 10, border: "1px solid var(--kenar)", borderRadius: 8, background: "var(--yuzey2)" }}>
-              <div style={{ fontSize: 13, marginBottom: 4 }}>
+              <div style={{ fontSize: "var(--t-ikincil)", marginBottom: 4 }}>
                 <span className="mono">{gecici.email}</span> için geçici parola: <strong>bir daha gösterilmez</strong>, güvenli kanaldan iletin; üye girişte kendi parolasını değiştirsin:</div>
-              <code className="mono" style={{ fontSize: 14, userSelect: "all" }}>{gecici.parola}</code>
-              <div style={{ marginTop: 6 }}><button className="dugme" style={{ fontSize: 13 }} onClick={() => setGecici(null)}>Kapat</button></div>
+              <code className="mono" style={{ fontSize: "var(--t-veri)", userSelect: "all" }}>{gecici.parola}</code>
+              <div style={{ marginTop: 6 }}><button className="dugme kucuk" onClick={() => setGecici(null)}>Kapat</button></div>
             </div>)}
-          <p className="soluk" style={{ fontSize: 14, margin: "10px 0 0" }}>
+          <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "10px 0 0" }}>
             Pasif üye oturum açamaz; kaydı ve geçmiş atamaları silinmez. Son etkin yönetici düşürülemez.
           </p>
         </div>
@@ -460,7 +461,7 @@ function SantralArsivi({ santralYenile }: { santralYenile?: () => void }) {
   if (etkin.length < 2 && arsiv.length === 0) return null;   // tek santral + boş arşiv: kart gereksiz
   return (
     <Kart baslik="Santral arşivi" sag={<span className="cip"><Meta items={["silmez", "veri denetim için durur"]} /></span>}>
-      <p className="soluk" style={{ margin: "0 0 10px", fontSize: 14 }}>
+      <p className="soluk" style={{ margin: "0 0 10px", fontSize: "var(--t-ikincil)" }}>
         Arşivlenen santral listelerden ve gece hesaplamalarından çıkarılır; ölçüm, kalibrasyon ve tahmin geçmişi
         yerinde kalır ve geri alınabilir. Son etkin santral arşivlenemez.
       </p>
@@ -490,13 +491,13 @@ function SantralArsivi({ santralYenile }: { santralYenile?: () => void }) {
         </ul>
       )}
       {arsiv.length > 0 && (
-        <div className="grafik-kaydir" style={{ marginTop: 10 }}><table className="veri" style={{ fontSize: 13.5 }}>
+        <div className="grafik-kaydir" style={{ marginTop: 10 }}><table className="veri">
           <thead><tr><th style={{ textAlign: "left" }}>Arşivdeki santral</th><th>Kurulu güç</th><th></th></tr></thead>
           <tbody>{arsiv.map((x) => (
             <tr key={x.id}>
               <td style={{ textAlign: "left" }}>{x.name}</td>
               <td className="mono">{gucTr(x.capacity_kwp)} kWp</td>
-              <td><button className="dugme" style={{ fontSize: 13 }}
+              <td><button className="dugme kucuk"
                     onClick={() => dene(async () => { await api.santralGeriAl(x.id); setMesaj(`${x.name} geri alındı.`); })}>Geri al</button></td>
             </tr>))}</tbody>
         </table></div>

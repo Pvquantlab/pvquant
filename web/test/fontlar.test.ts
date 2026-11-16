@@ -37,7 +37,11 @@ test("panel aileleri @fontsource'tan yüklenir; yığın 'Inter Variable' ile ba
   assert.doesNotMatch(fontlar, /space-grotesk/);
   assert.match(oku("../src/main.tsx"), /import ['"]\.\/fontlar['"]/);
   assert.match(oku("../src/index.css"), /--font: 'Inter Variable', 'Inter'/);
-  assert.match(oku("../src/index.css"), /--display: 'Inter Tight', 'Inter Tight Yedek', 'Inter Variable'/);
+  // 16.11 tek aile: panelde display = gövde ailesi; Inter Tight yalnız vitrin. .mono veri rolü gövde ailesinde, Plex yalnız kod.
+  assert.match(oku("../src/index.css"), /--display: 'Inter Variable', 'Inter', system-ui/);
+  assert.match(oku("../src/index.css"), /\.mono \{ font-family: var\(--font\); font-variant-numeric: tabular-nums; \}/);
+  assert.match(oku("../src/index.css"), /^body \{[^}]*font-variant-numeric: tabular-nums;/m);
+  assert.doesNotMatch(oku("../src/features/sayfalar/ProductionForecastChart.tsx"), /(font|fontFamily): ["'`][^\n]*(IBM Plex Mono|Inter Tight)/);
   // Inter Tight dosyalarını vitrin yükler; Vitrin.tsx tembel değil, ana pakette — panel de aynı yüzleri görür
   assert.match(oku("../src/App.tsx"), /import \{ Vitrin \} from "\.\/features\/vitrin\/Vitrin";/);
   assert.match(oku("../src/features/vitrin/Vitrin.tsx"), /import "\.\/fontlar";/);

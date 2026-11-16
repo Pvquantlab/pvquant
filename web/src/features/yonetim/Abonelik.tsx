@@ -85,7 +85,7 @@ export function AbonelikKarti({ tenantId, sahip, onDegisti }: { tenantId: string
             <div className="form-tam etiket-ust">Modül istisnaları (plan varsayılanının üstüne)</div>
             <div className="form-tam" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 4 }}>
               {moduller.map(([kod, m]) => (
-                <div key={kod} className="dugme-sira" style={{ gap: 10, fontSize: 13 }}>
+                <div key={kod} className="dugme-sira" style={{ gap: 10, fontSize: "var(--t-ikincil)" }}>
                   <span style={{ minWidth: 180 }}>{m.ad}<span className="soluk"> · plan: {m.kaynak === "plan" || m.kaynak === "cikar" ? "dâhil" : "dâhil değil"}</span></span>
                   <label className="ayar-onay"><input type="checkbox" checked={f.modul_ek.includes(kod)} onChange={(e) => istisna(kod, "modul_ek", e.target.checked)} /> ekle</label>
                   <label className="ayar-onay"><input type="checkbox" checked={f.modul_cikar.includes(kod)} onChange={(e) => istisna(kod, "modul_cikar", e.target.checked)} /> çıkar</label>
@@ -114,7 +114,7 @@ export function AbonelikKarti({ tenantId, sahip, onDegisti }: { tenantId: string
       <details className="aciklama genis" style={{ marginTop: 12 }}>
         <summary>Geçmiş{a.gecmis.length ? ` (${sayiTr(a.gecmis.length)} kayıt)` : ""}</summary>
         {a.gecmis.length === 0 ? <p className="soluk">Kayıt yok.</p> : (
-          <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 13 }}>
+          <div className="grafik-kaydir"><table className="veri dar">
             <thead><tr><th>Zaman</th><th>Eylem</th><th>Değişen</th><th>Gerekçe</th><th>Kim</th></tr></thead>
             <tbody>{a.gecmis.slice(0, 20).map((g) => (
               <tr key={g.id}><td>{zamanTr(g.zaman)}</td><td>{({ olusturma: "oluşturma", senkron: "eşzamanlama", guncelle: "güncelleme", turetme: "gece türetme", geri_doldurma: "geri doldurma" } as Record<string, string>)[g.eylem] ?? g.eylem}</td>

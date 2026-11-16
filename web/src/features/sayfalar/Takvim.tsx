@@ -135,12 +135,12 @@ export function Takvim({ plantId }: { plantId: string }) {
           </table></div>)}
         {/* v2.535 Takvim doğrulama turu: etiket/kaydırma açıklaması açılır alanda; bayramı tanımsız yıl uyarısı gizlenmez */}
         {t.luy_rejimi && (   /* v2.541 (DK-659) */
-          <p style={{ fontSize: 13, margin: "8px 0 0" }}><span className={`rozet rozet-kucuk ${t.luy_rejimi.kesinlik === "teyit" ? "rozet-ok" : t.luy_rejimi.kesinlik === "yorum" ? "rozet-uyari" : "rozet-notr"}`}>LÜY rejimi · {t.luy_rejimi.kesinlik}</span> {t.luy_rejimi.etiket}{t.luy_rejimi.tarih ? ` — ${t.luy_rejimi.olcut}: ${t.luy_rejimi.tarih.split("-").reverse().join(".")}` : ""}. {t.luy_rejimi.not}</p>)}
+          <p style={{ fontSize: "var(--t-ikincil)", margin: "8px 0 0" }}><span className={`rozet rozet-kucuk ${t.luy_rejimi.kesinlik === "teyit" ? "rozet-ok" : t.luy_rejimi.kesinlik === "yorum" ? "rozet-uyari" : "rozet-notr"}`}>LÜY rejimi · {t.luy_rejimi.kesinlik}</span> {t.luy_rejimi.etiket}{t.luy_rejimi.tarih ? ` — ${t.luy_rejimi.olcut}: ${t.luy_rejimi.tarih.split("-").reverse().join(".")}` : ""}. {t.luy_rejimi.not}</p>)}
         {(t.tatil_eksik_yillar?.length ?? 0) > 0 && (
-          <p style={{ fontSize: 13, margin: "8px 0 0" }}><span className="rozet rozet-uyari rozet-kucuk">tatil takvimi eksik</span> {t.tatil_eksik_yillar!.join(", ")} yılı dinî bayramları henüz tanımlı değil; o yıla düşen iş günü hesapları bayram günlerini iş günü sayar.</p>)}
+          <p style={{ fontSize: "var(--t-ikincil)", margin: "8px 0 0" }}><span className="rozet rozet-uyari rozet-kucuk">tatil takvimi eksik</span> {t.tatil_eksik_yillar!.join(", ")} yılı dinî bayramları henüz tanımlı değil; o yıla düşen iş günü hesapları bayram günlerini iş günü sayar.</p>)}
         <details className="aciklama" style={{ marginTop: 8 }}>
           <summary>Etiketler, kaydırma kuralları ve tatil takvimi</summary>
-          <p className="soluk" style={{ fontSize: 13, margin: "6px 0 0" }}>{t.not} {t.tatil_kaynak}{t.tatil_yillari.length ? ` Dinî bayramlar ${yillar} için tanımlı.` : ""}</p>
+          <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "6px 0 0" }}>{t.not} {t.tatil_kaynak}{t.tatil_yillari.length ? ` Dinî bayramlar ${yillar} için tanımlı.` : ""}</p>
         </details>
       </Kart>
 
@@ -155,7 +155,7 @@ export function Takvim({ plantId }: { plantId: string }) {
                 <td className="esnek" title={o.kaynak}><OlayAdi o={o} /> <IslemRozeti o={o} /></td>
                 <td className="soluk">{o.sorumlu ?? "—"}</td>
                 <td><KaynakRozeti o={o} /></td>
-                <td className="soluk" style={{ fontSize: 12.5, whiteSpace: "nowrap" }} title={o.sonuc ?? undefined}>{o.sonuc_kisa ?? o.sonuc ?? "—"}</td>
+                <td className="soluk" style={{ fontSize: "var(--t-etiket)", whiteSpace: "nowrap" }} title={o.sonuc ?? undefined}>{o.sonuc_kisa ?? o.sonuc ?? "—"}</td>
                 <td>{o.kalan_gun === 0 ? "bugün" : `${sayiTr(o.kalan_gun ?? 0)} gün`}</td></tr>))}</tbody>
           </table></div>)}
         {t.bakim.length > 0 && (
@@ -170,7 +170,7 @@ export function Takvim({ plantId }: { plantId: string }) {
           </table></div>)}
         <details className="aciklama" style={{ marginTop: 8 }}>
           <summary>Sınıflar, dayanaklar ve kapsam dışı olanlar</summary>
-          <p className="soluk" style={{ fontSize: 13, margin: "6px 0 0" }}>{t.uyum_not}{t.bakim.length ? ` ${t.bakim_kaynak}.` : ""}</p>
+          <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "6px 0 0" }}>{t.uyum_not}{t.bakim.length ? ` ${t.bakim_kaynak}.` : ""}</p>
         </details>
       </Kart>
 
@@ -203,7 +203,7 @@ export function Takvim({ plantId }: { plantId: string }) {
             <td className="soluk">{g.gunler}</td>
             <td className="esnek" title={g.not ?? undefined}>{g.ad}{g.not ? <span className="soluk"> ({g.not})</span> : null}</td>
             {/* v2.535: madde atfı açılır metinde — satır kısa, tam dayanak tıklayınca */}
-            <td className="sar soluk" style={{ fontSize: 12.5, minWidth: 160, maxWidth: 360 }}><details><summary style={{ cursor: "pointer" }}>{g.kaynak.split(/[;:(]/)[0].trim()}</summary><div style={{ marginTop: 4 }}>{g.kaynak}</div></details></td></tr>)}</tbody>
+            <td className="sar soluk" style={{ fontSize: "var(--t-etiket)", minWidth: 160, maxWidth: 360 }}><details><summary style={{ cursor: "pointer" }}>{g.kaynak.split(/[;:(]/)[0].trim()}</summary><div style={{ marginTop: 4 }}>{g.kaynak}</div></details></td></tr>)}</tbody>
         </table></div>
       </Kart>
 

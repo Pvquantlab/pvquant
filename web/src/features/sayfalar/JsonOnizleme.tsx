@@ -50,8 +50,8 @@ export function JsonOnizleme({ veri, onKapat }: { veri: RaporJson; onKapat: () =
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline",
         gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
         <div>
-          <div style={{ fontSize: 17, fontWeight: 700 }}>{veri.plant.name} — JSON raporu</div>
-          <div style={{ fontSize: 13.5, color: "var(--ikincil)" }}>
+          <div style={{ fontSize: 17, fontWeight: 600 }}>{veri.plant.name} — JSON raporu</div>
+          <div style={{ fontSize: "var(--t-ikincil)", color: "var(--ikincil)" }}>
             <Meta items={[veri.report_id ?? "kimlik yok", `şema ${veri.schema_version}`, `üretildi ${tr(veri.generated_at)}`,
               `${MODEL_AD[veri.run.model] ?? "Model"}, Mod ${veri.run.mode}`, KAYNAK_AD[veri.run.meteo_source] ?? "hava kaynağı"]} />
           </div>
@@ -60,7 +60,7 @@ export function JsonOnizleme({ veri, onKapat }: { veri: RaporJson; onKapat: () =
       </div>
 
       {/* sözleşme — makine-okunur bloğun insan dili */}
-      <div style={{ fontSize: 13.5, color: "var(--ikincil)", marginBottom: 14 }}>
+      <div style={{ fontSize: "var(--t-ikincil)", color: "var(--ikincil)", marginBottom: 14 }}>
         <Meta items={[`Damga: aralığın ${veri.conventions.timestamp === "interval_start" ? "başı" : veri.conventions.timestamp}`,
           `adım ${veri.conventions.period === "PT1H" ? "1 saat" : veri.conventions.period}`, veri.conventions.timezone,
           `eksik değer: ${veri.conventions.missing === "null" ? "null (uydurulmaz)" : veri.conventions.missing}`,
@@ -73,8 +73,8 @@ export function JsonOnizleme({ veri, onKapat }: { veri: RaporJson; onKapat: () =
         {kpi.map(([et, deger, alt]) => (
           <div key={et} style={kutu}>
             <div style={etiket}>{et}</div>
-            <div style={{ fontSize: 22, fontWeight: 700 }}>{deger}</div>
-            <div style={{ fontSize: 13, color: "var(--ikincil)" }}>{alt}</div>
+            <div style={{ fontSize: 22, fontWeight: 600 }}>{deger}</div>
+            <div style={{ fontSize: "var(--t-ikincil)", color: "var(--ikincil)" }}>{alt}</div>
           </div>
         ))}
       </div>
@@ -84,10 +84,10 @@ export function JsonOnizleme({ veri, onKapat }: { veri: RaporJson; onKapat: () =
         <div style={etiket}>Doğruluk karnesi</div>
         {a ? (
           <>
-            <div style={{ fontSize: 14, marginBottom: 6 }}>
+            <div style={{ fontSize: "var(--t-ikincil)", marginBottom: 6 }}>
               <Meta items={[`Son ${a.window_days} gün`, `son ölçüm ${tr(a.last_measured_date + "T12:00:00", false)}`]} />
             </div>
-            <div style={{ display: "flex", gap: 22, flexWrap: "wrap", fontSize: 14 }}>
+            <div style={{ display: "flex", gap: 22, flexWrap: "wrap", fontSize: "var(--t-ikincil)" }}>
               <span><b>{pct(a.wmape_pct)}</b> WMAPE</span>
               <span><b>{pct(a.nmae_pct)}</b> kapasiteye normalize</span>
               <span><b>{pct(a.skill_vs_naive_pct, 0)}</b> referansa göre iyileşme</span>
@@ -96,7 +96,7 @@ export function JsonOnizleme({ veri, onKapat }: { veri: RaporJson; onKapat: () =
             </div>
           </>
         ) : (
-          <div style={{ fontSize: 14, color: "var(--ikincil)" }}>
+          <div style={{ fontSize: "var(--t-ikincil)", color: "var(--ikincil)" }}>
             Ölçüm özeti yok; doğruluk bölümü boş bırakıldı.
           </div>
         )}
@@ -145,7 +145,7 @@ export function JsonOnizleme({ veri, onKapat }: { veri: RaporJson; onKapat: () =
         </div>
       )}
       {hamAcik && (
-        <pre style={{ maxHeight: 340, overflow: "auto", marginTop: 10, padding: 12, fontSize: 13,
+        <pre style={{ maxHeight: 340, overflow: "auto", marginTop: 10, padding: 12, fontSize: "var(--t-ikincil)",
           border: "1px solid var(--cizgi)", borderRadius: 8, background: "var(--yuzey)" }}>
           {JSON.stringify(veri, null, 2)}
         </pre>

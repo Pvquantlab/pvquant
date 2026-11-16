@@ -14,7 +14,7 @@ Plotly, AG Charts, Vega-Lite, Lightweight Charts REDDEDİLDİ (gerekçeler:
    `tooltip.backgroundColor`, seri rengi yazmak YASAK (bekçi: grep testi, Mühür B).
 3. **Kapatılan varsayılanlar:** `toolbox` tamamen; varsayılan `color` paleti (bizim
    mavi/amber dilimiz); `animation` kapalı ya da ilk çizim ≤200 ms; varsayılan beyaz
-   tooltip yerine tek şablon (Plex Mono, tabular, künye düzeni, boş «—»); legend grafiğin
+   tooltip yerine tek şablon (gövde ailesi Inter + tabular — 16.11 tek aile; eksen/etiket `oku("--font")`, Plex yok; künye düzeni, boş «—»); legend grafiğin
    DIŞINDA React bileşeni (`legend.show:false` + `dispatchAction` vurgusu).
 4. **İmza custom series:** anomali imi, bant kenar çizgisi, gece/gün-doğumu şeridi — bir
    kez yazılır, her grafikte aynı dil (v6 yeniden kullanılabilir custom series).

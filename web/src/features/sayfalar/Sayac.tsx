@@ -103,13 +103,13 @@ export function Sayac({ plantId }: { plantId: string }) {
             <div className="dugme-sira" style={{ alignSelf: "end" }}><button className="dugme" onClick={gonder} disabled={yukleniyor}>{yukleniyor ? "Yükleniyor…" : "Yükle"}</button></div>
             {mesaj && <div className="form-tam"><span className={`ayar-durum ${mesaj.ton === "uyari" ? "" : mesaj.ton}`} style={mesaj.ton === "uyari" ? amber : undefined}>{mesaj.metin}</span></div>}
           </div>
-          <p className="form-not" style={{ marginTop: 10, fontSize: 13.5 }}>Aynı saat için aynı kaynaktan yeniden yüklerseniz değer güncellenir (düzeltme); eski yüklemeler silinmez. Aynı saatte birden çok kaynak varsa EPYS, OSOS, MASS, elle sırasıyla biri gösterilir. Endeks (sayaç sayacı) sütunu tek başına yetmez; saatlik enerji (kWh) sütunu gerekir.</p>
+          <p className="form-not" style={{ marginTop: 10, fontSize: "var(--t-ikincil)" }}>Aynı saat için aynı kaynaktan yeniden yüklerseniz değer güncellenir (düzeltme); eski yüklemeler silinmez. Aynı saatte birden çok kaynak varsa EPYS, OSOS, MASS, elle sırasıyla biri gösterilir. Endeks (sayaç sayacı) sütunu tek başına yetmez; saatlik enerji (kWh) sütunu gerekir.</p>
           {o.yuklemeler.length > 0 && (
-            <div className="grafik-kaydir" style={{ marginTop: 10 }}><table className="veri" style={{ fontSize: 13.5 }}>
+            <div className="grafik-kaydir" style={{ marginTop: 10 }}><table className="veri">
               <thead><tr><th style={sol}>Yükleme</th><th style={sol}>Kaynak · dosya</th><th style={sol}>Aralık</th><th>Saat</th><th style={sol}>Veri türü</th></tr></thead>
               <tbody>{o.yuklemeler.map((y) => (
                 <tr key={y.yukleme_id}>
-                  <td style={{ ...sol, whiteSpace: "nowrap" }}>{saatTr(y.zaman)}</td><td style={{ ...sol, whiteSpace: "normal" }}>{y.kaynak_etiket.split(" (")[0]}<div className="soluk" style={{ fontSize: 12, wordBreak: "break-all" }}>{y.dosya_adi ?? "—"}</div></td>
+                  <td style={{ ...sol, whiteSpace: "nowrap" }}>{saatTr(y.zaman)}</td><td style={{ ...sol, whiteSpace: "normal" }}>{y.kaynak_etiket.split(" (")[0]}<div className="soluk" style={{ fontSize: "var(--t-kucuk)", wordBreak: "break-all" }}>{y.dosya_adi ?? "—"}</div></td>
                   <td style={{ ...sol, whiteSpace: "nowrap" }}>{gunTr(y.bas)} – {gunTr(y.bit)}</td><td className="mono">{sayiTr(y.n_saat)}</td>
                   <td style={sol}>{Object.entries(y.nitelik_sayim).filter(([k]) => k !== "olculmus").map(([k, n]) => `${sayiTr(n)} ${NITELIK_AD[`sayac_${k}`]?.replace("sayaç ", "") ?? k}`).join(", ") || "ölçülmüş"}{y.uyarilar.length ? <span className="soluk" title={y.uyarilar.join("; ")}> · uyarı</span> : null}</td></tr>))}</tbody>
             </table></div>)}
@@ -125,7 +125,7 @@ export function Sayac({ plantId }: { plantId: string }) {
             <div className="dugme-sira" style={{ alignSelf: "end" }}><button className="dugme" onClick={() => ayarKaydet({ sayac_turu: tur || null, uzlastirma_girdi: girdi })}>Kaydet</button>
               {ayarDurum && <span className={`ayar-durum ${ayarDurum.ton}`}>{ayarDurum.metin}</span>}</div>
           </div>
-          <ul className="not-listesi" style={{ fontSize: 13.5, marginTop: 10 }}>
+          <ul className="not-listesi" style={{ fontSize: "var(--t-ikincil)", marginTop: 10 }}>
             <li><b>Beklenen iletim:</b> {g.beklenen.kural}{g.beklenen.dayanak ? ` (${g.beklenen.dayanak})` : ""}{g.beklenen.son_beklenen_saat ? `; şu an EPİAŞ'ta olması beklenen son dilim ${gunTr(g.beklenen.son_beklenen_saat)} ${g.beklenen.son_beklenen_dilim}` : ""}</li>
             {g.beklenen.not && <li className="soluk">{g.beklenen.not}</li>}
             {sn.vadesi_gelen != null && <li><b>Bu ay ({ayAd(g.ay)}):</b> {sayiTr(sn.gecen_saat)} saat geçti; ölçümü beklenen {sayiTr(sn.vadesi_gelen)}, henüz beklenmeyen {sayiTr(sn.vadesi_gelmemis ?? 0)}; yüklü {sayiTr(sn.yuklu)} ({sayiTr(sn.yuklu_olculmus)} ölçülmüş, {sayiTr(sn.yuklu_tahmini)} tahmini); PVQuant'a yüklenmemiş {sayiTr(sn.eksik ?? 0)}</li>}
@@ -140,21 +140,21 @@ export function Sayac({ plantId }: { plantId: string }) {
       </div>
       <Kart baslik="Sayaç ve SCADA üretim karşılaştırması" alt={`${gunTr(f.bas)} – ${gunTr(f.bit)}; günlük toplam (Türkiye günü); fark = sayaç − SCADA, yalnız iki verinin de bulunduğu saatlerde`}
         sag={<span className="cip"><Meta items={[`${sayiTr(t.saat_ortak)} ortak saat`, t.saat_sayac ? `${sayiTr(t.saat_sayac)} sayaç saati` : "sayaç verisi yok", `${sayiTr(t.saat_scada)} SCADA saati`]} /></span>}>
-        <p className="form-not" style={{ margin: "0 0 6px", fontSize: 13.5 }}><b>Yalnız ölçülmüş ortak saatler:</b> {f.olculmus.saat ? `${sayiTr(f.olculmus.saat)} saat, sayaç ${kwh(f.olculmus.sayac_kwh)} / SCADA ${kwh(f.olculmus.scada_kwh)} kWh, fark ${yuzde(f.olculmus.fark_pct)}` : "yok"}
+        <p className="form-not" style={{ margin: "0 0 6px", fontSize: "var(--t-ikincil)" }}><b>Yalnız ölçülmüş ortak saatler:</b> {f.olculmus.saat ? `${sayiTr(f.olculmus.saat)} saat, sayaç ${kwh(f.olculmus.sayac_kwh)} / SCADA ${kwh(f.olculmus.scada_kwh)} kWh, fark ${yuzde(f.olculmus.fark_pct)}` : "yok"}
           {f.tahmini_dahil.saat !== f.olculmus.saat ? <> · <b>Tahmini değerler dâhil:</b> {sayiTr(f.tahmini_dahil.saat)} saat, fark {yuzde(f.tahmini_dahil.fark_pct)}</> : null}
           {" · "}<b>Kapsam:</b> {sayiTr(f.kapsam.ortak_saat)} / {sayiTr(f.kapsam.pencere_saat)} saat ortak{f.kapsam.yalniz_scada_saat ? `, ${sayiTr(f.kapsam.yalniz_scada_saat)} yalnız SCADA` : ""}{f.kapsam.yalniz_sayac_saat ? `, ${sayiTr(f.kapsam.yalniz_sayac_saat)} yalnız sayaç` : ""}{f.kapsam.ikisi_de_yok_saat ? `, ${sayiTr(f.kapsam.ikisi_de_yok_saat)} ikisi de yok` : ""}</p>
-        {kaynakSayim.length > 0 && <p className="form-not" style={{ margin: "0 0 10px", fontSize: 13.5 }}><b>Verinin kaynağı ({sayiTr(f.pencere_saat)} saat; sayaç sayımı SCADA'dan bağımsız):</b> {kaynakSayim.map(([k, n]) => `${NITELIK_AD[k] ?? k} ${sayiTr(n)}`).join(" · ")}
+        {kaynakSayim.length > 0 && <p className="form-not" style={{ margin: "0 0 10px", fontSize: "var(--t-ikincil)" }}><b>Verinin kaynağı ({sayiTr(f.pencere_saat)} saat; sayaç sayımı SCADA'dan bağımsız):</b> {kaynakSayim.map(([k, n]) => `${NITELIK_AD[k] ?? k} ${sayiTr(n)}`).join(" · ")}
           {Object.keys(f.sayac_kaynak_sayim).length ? ` · sayaç kaynağı: ${Object.entries(f.sayac_kaynak_sayim).map(([k, n]) => `${k.toUpperCase()} ${sayiTr(n)}`).join(", ")}` : ""}</p>}
         {f.gunler.length === 0 ? <p className="soluk" style={{ margin: 0 }}>Bu aralıkta ne SCADA ne sayaç saati var.</p> : (
-          <div className="grafik-kaydir"><table className="veri" style={{ fontSize: 13.5 }}>
+          <div className="grafik-kaydir"><table className="veri">
             <thead><tr><th style={sol}>Gün</th><th title="Geçerli SCADA saatlerinin kWh toplamı (dosya ya da Şeffaflık akışı)">SCADA (kWh)</th><th title="Sayaç veriş kWh toplamı">Sayaç (kWh)</th>
               <th title="İki serinin de bulunduğu saat sayısı / günün en çok saati">Ortak saat</th><th title="Ortak saatlerde sayaç − SCADA">Fark (kWh)</th><th title="SCADA toplamına oranla, bütün ortak saatler">Fark</th><th title="Yalnız sayaç değeri ölçülmüş olan ortak saatlerde fark">Ölçülmüş fark</th><th title="Tahmini, doldurulmuş ya da «veri yok» işaretli sayaç saatleri">Tahmini saat</th></tr></thead>
             <tbody>{[...f.gunler].reverse().map(gunSatir)}</tbody>
           </table></div>)}
-        {f.en_buyuk_fark && <p className="form-not" style={{ marginTop: 8, fontSize: 13.5 }}><b>En büyük günlük fark:</b> {gunTr(f.en_buyuk_fark.gun)}, {imzali(f.en_buyuk_fark.fark_kwh)} kWh ({yuzde(f.en_buyuk_fark.fark_pct)}). Fark sürekli aynı yöndeyse ölçüm noktası ve öz tüketim; tek günlükse saat dilimi ya da eksik dilim en sık nedendir.</p>}
-        <p className="form-not" style={{ marginTop: 8, fontSize: 13.5 }}>{f.aciklama}</p>
+        {f.en_buyuk_fark && <p className="form-not" style={{ marginTop: 8, fontSize: "var(--t-ikincil)" }}><b>En büyük günlük fark:</b> {gunTr(f.en_buyuk_fark.gun)}, {imzali(f.en_buyuk_fark.fark_kwh)} kWh ({yuzde(f.en_buyuk_fark.fark_pct)}). Fark sürekli aynı yöndeyse ölçüm noktası ve öz tüketim; tek günlükse saat dilimi ya da eksik dilim en sık nedendir.</p>}
+        <p className="form-not" style={{ marginTop: 8, fontSize: "var(--t-ikincil)" }}>{f.aciklama}</p>
       </Kart>
-      {!sc && o.scada_notu && <p className="form-not soluk" style={{ margin: "14px 0 0", fontSize: 13.5 }}><b>SCADA bağlantı durumu:</b> {o.scada_notu}</p>}
+      {!sc && o.scada_notu && <p className="form-not soluk" style={{ margin: "14px 0 0", fontSize: "var(--t-ikincil)" }}><b>SCADA bağlantı durumu:</b> {o.scada_notu}</p>}
       {sc && (
         <Kart baslik="SCADA bağlantı durumu" alt="Lisanssız tesis (LÜY m.21(7)); durum beyandır. Karar 14909 bedel göstergesi varsayımsaldır; (f) ve (g) 30.4.2027'ye kadar uygulanmaz (LÜY Geçici m.14(2)), (ç) askıda değildir."
           sag={<span className={`rozet rozet-kucuk ${!sc.yukumlu ? "rozet-notr" : sc.durum === "bagli" ? "rozet-ok" : sc.durum ? "rozet-uyari" : "rozet-notr"}`} title={`${sc.dayanak_yukumluluk}. Durum kaynağı: beyan (bu formda girilir).`}>
@@ -171,7 +171,7 @@ export function Sayac({ plantId }: { plantId: string }) {
                   <input type="checkbox" checked={!!scada.uzaktan} onChange={(e) => setScada({ ...scada, uzaktan: e.target.checked })} /> Uzaktan açma-kapama yeteneği var</label>
                 <div className="form-tam dugme-sira"><button className="dugme" onClick={scadaKaydet}>Kaydet</button>{scadaDurumIleti && <span className={`ayar-durum ${scadaDurumIleti.ton}`}>{scadaDurumIleti.metin}</span>}</div>
               </div>
-              <ul className="not-listesi" style={{ fontSize: 13.5, marginTop: 10 }}>
+              <ul className="not-listesi" style={{ fontSize: "var(--t-ikincil)", marginTop: 10 }}>
                 <li><b>Yükümlülük:</b> {sc.kurulu_kaynak} {sayiTr(sc.kurulu_kw, 0)} kW {sc.yukumlu ? "≥" : "<"} {sayiTr(sc.esik_kw)} kW → {sc.yukumlu ? "SCADA bağlantısı zorunlu" : "bağlantı yükümlülüğü yok"} (LÜY m.21(7)); anlaşma tarafı {sc.anlasma === "dagitim" ? "dağıtım şirketi" : "TEİAŞ (iletim)"}; DUY m.75(4) kapsamı (900 kW ve üzeri): {sc.m75_kapsam ? "içinde" : "dışında"}</li>
                 <li><b>Durum kaynağı:</b> beyan (bu form); PVQuant şebeke işletmecisinin SCADA'sına bağlı değildir. PVQuant'taki SCADA dosyası tazeliği ayrı bir göstergedir.</li>
                 {sc.kopukluk_gun != null && <li><b>Kopukluk sayacı:</b> <span style={sc.kopukluk_gun > 30 ? amber : undefined}>{sayiTr(sc.kopukluk_gun)} gün</span> ({gunTr(sc.kopukluk_baslangic)} tarihinden beri; bilgi sayacı)</li>}
@@ -183,15 +183,15 @@ export function Sayac({ plantId }: { plantId: string }) {
               </ul>
             </div>
             <div>
-              <table className="veri" style={{ fontSize: 13.5 }}>
+              <table className="veri">
                 <thead><tr><th style={sol}>Karar 14909 bedel göstergesi</th><th>Kat</th><th title="Varsayımsal: girdiğiniz bedelle kaba uygulama; tebliğ edilmiş borç değildir">Varsayımsal tutar (TL)</th></tr></thead>
                 <tbody>{sc.kalemler.length === 0 ? <tr><td style={sol} colSpan={3} className="soluk">{!sc.yukumlu ? "Yükümlülük yok." : sc.anlasma === "iletim" ? "İletime bağlı tesis: dağıtım bağlantı anlaşması bedel maddeleri uygulanmaz." : "Bu ay için bedel maddesi tetiklenmedi (durum bağlı ya da 30 gün aşılmadı, uzaktan açma olayı yok)."}</td></tr>
-                  : sc.kalemler.map((k) => <tr key={k.kod}><td style={sol}>{k.etiket}{k.kesinlik === "belirsiz" ? <span className="soluk" title={k.not ?? ""}> · belirsiz</span> : null}<div className="soluk" style={{ fontSize: 12 }}>{k.birim}{k.aski === "kapsamda" ? " · askıda" : k.aski === "askida_degil" ? " · askıda değil" : k.aski === "dogrulanmadi" ? " · askı doğrulanmadı" : ""}</div></td>
+                  : sc.kalemler.map((k) => <tr key={k.kod}><td style={sol}>{k.etiket}{k.kesinlik === "belirsiz" ? <span className="soluk" title={k.not ?? ""}> · belirsiz</span> : null}<div className="soluk" style={{ fontSize: "var(--t-kucuk)" }}>{k.birim}{k.aski === "kapsamda" ? " · askıda" : k.aski === "askida_degil" ? " · askıda değil" : k.aski === "dogrulanmadi" ? " · askı doğrulanmadı" : ""}</div></td>
                     <td className="mono">{sayiTr(k.kat, 2)}</td><td className="mono">{k.tutar_tl != null ? sayiTr(k.tutar_tl, 2) : "bedel girilmedi"}</td></tr>)}
                   {sc.kalemler.length > 0 && <tr style={{ fontWeight: 600 }}><td style={sol}>Toplam · varsayımsal{sc.toplam_aski_tl && !sc.aski_gecti ? <span className="soluk" style={{ fontWeight: 400 }}> ({sayiTr(sc.toplam_aski_tl, 2)} TL askı bitince{sc.toplam_aski_disi_tl ? `; ${sayiTr(sc.toplam_aski_disi_tl, 2)} TL askı doğrulanmadı` : ""})</span> : null}</td><td /><td className="mono">{sc.toplam_tl != null ? sayiTr(sc.toplam_tl, 2) : "—"}</td></tr>}</tbody>
               </table>
-              {sc.uygulanmayan.length > 0 && <ul className="not-listesi soluk" style={{ fontSize: 13, marginTop: 6 }}>{sc.uygulanmayan.map((u) => <li key={u}>{u}</li>)}</ul>}
-              <p className="form-not" style={{ marginTop: 8, fontSize: 13.5 }}>{sc.not}</p>
+              {sc.uygulanmayan.length > 0 && <ul className="not-listesi soluk" style={{ fontSize: "var(--t-ikincil)", marginTop: 6 }}>{sc.uygulanmayan.map((u) => <li key={u}>{u}</li>)}</ul>}
+              <p className="form-not" style={{ marginTop: 8, fontSize: "var(--t-ikincil)" }}>{sc.not}</p>
               <details className="aciklama" style={{ marginTop: 8 }}><summary>Dayanak</summary><p style={{ margin: "6px 0 0" }}>{sc.kaynak}</p></details>
             </div>
           </div>

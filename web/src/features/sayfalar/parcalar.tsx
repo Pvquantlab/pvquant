@@ -75,7 +75,7 @@ export function Kpi({ etiket, deger, birim, alt, ton, ikinci, bilgi }:
             boşluksuz bitişik inline'ları kıramaz, "0,54MWh" taşıyordu
             (karne ekranında "MWh" kırpılması). Araya gerçek boşluk kondu. */}
         <span style={{ whiteSpace: "nowrap" }}>{deger}</span>{birim && <>{" "}
-        <span style={{ fontSize: 15, fontWeight: 400, letterSpacing: 0, color: "var(--soluk)", whiteSpace: "nowrap" }}>{birim}</span></>}</div>
+        <span className="kpi-birim">{birim}</span></>}</div>
       {ikinci && <div className="kpi-ikinci"><span>{ikinci.etiket}</span><b>{ikinci.deger}</b>{ikinci.birim && <small>{ikinci.birim}</small>}</div>}
       {alt && <div className="kpi-br">{alt}</div>}
     </div>
@@ -146,7 +146,7 @@ export function Sayfa({ baslik, alt, sag, children }:
         <div>
           {/* 22.10: boyut CSS'ten (h1 = --t-baslik 26 px); açıklama 14 px gövde */}
           <h1>{baslik}</h1>
-          {alt && <p style={{ fontSize: 15, color: "var(--ikincil)", margin: "6px 0 0", lineHeight: 1.5, maxWidth: "80ch" }}>{alt}</p>}
+          {alt && <p style={{ fontSize: "var(--t-govde)", color: "var(--ikincil)", margin: "6px 0 0", lineHeight: 1.5, maxWidth: "80ch" }}>{alt}</p>}
         </div>
         {sag}
       </div>

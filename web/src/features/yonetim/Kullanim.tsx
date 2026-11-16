@@ -72,10 +72,10 @@ export function Kullanim() {
                     {k.kotalar && <div className="kunye-not" style={{ fontWeight: 400, display: "grid", gap: 2 }}>
                       <span>santral <KotaRozet k={k.kotalar.santral} /></span><span>kullanıcı <KotaRozet k={k.kotalar.kullanici} /></span>
                       <span>portföy <KotaRozet k={k.kotalar.portfoy} /></span><span>güç MW <KotaRozet k={k.kotalar.ac_mw} /></span></div>}</td>
-                  {KULLANIM_SUTUNLAR.map((c) => <td key={c.k}><Hucre k={c.k} t={k.bu_ay} plan={planlar[k.plan]} kotalar={k.kotalar} /><span className="hucre-alt soluk" style={{ display: "block", fontSize: 12 }}>({sayiTr(k.onceki_ay[c.k])})</span></td>)}
+                  {KULLANIM_SUTUNLAR.map((c) => <td key={c.k}><Hucre k={c.k} t={k.bu_ay} plan={planlar[k.plan]} kotalar={k.kotalar} /><span className="hucre-alt soluk" style={{ display: "block", fontSize: "var(--t-kucuk)" }}>({sayiTr(k.onceki_ay[c.k])})</span></td>)}
                   <td><svg className="satir-ok" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M7 4l6 6-6 6"/></svg></td>
                 </tr>))}
-              <tr><td className="ad">Toplam</td><td></td>{KULLANIM_SUTUNLAR.map((c) => <td key={c.k} style={{ fontWeight: 600 }}><Hucre k={c.k} t={toplam} /><span className="hucre-alt soluk" style={{ display: "block", fontSize: 12, fontWeight: 400 }}>({sayiTr(onceki[c.k])})</span></td>)}<td></td></tr>
+              <tr><td className="ad">Toplam</td><td></td>{KULLANIM_SUTUNLAR.map((c) => <td key={c.k} style={{ fontWeight: 600 }}><Hucre k={c.k} t={toplam} /><span className="hucre-alt soluk" style={{ display: "block", fontSize: "var(--t-kucuk)", fontWeight: 400 }}>({sayiTr(onceki[c.k])})</span></td>)}<td></td></tr>
             </tbody>
           </table></div>)}
       </Kart>

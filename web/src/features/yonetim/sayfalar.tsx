@@ -31,7 +31,7 @@ function TekSeferlik({ baslik, deger, not }: { baslik: string; deger: string; no
         <button className="dugme kucuk" onClick={() => { navigator.clipboard?.writeText(deger).then(() => setKopya("kopyalandı"), () => setKopya("kopyalanamadı")); }}>Kopyala</button>
         {kopya && <span className="cip">{kopya}</span>}
       </div>
-      <p className="soluk" style={{ fontSize: 13.5, margin: "8px 0 0" }}>{not ?? "Yalnız bu ekranda görünür; denetim izine yazılmaz."}</p>
+      <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "8px 0 0" }}>{not ?? "Yalnız bu ekranda görünür; denetim izine yazılmaz."}</p>
     </div>
   );
 }
@@ -46,7 +46,7 @@ function SaglikSeridi({ sis, hs, git }: { sis: SistemOzet | null | "hata"; hs: H
   const R = ({ ok, ad, deger }: { ok: boolean; ad: string; deger: string }) => (
     <span className={`rozet ${ok ? "rozet-ok" : "rozet-uyari"}`}>{ad}: {deger}</span>);
   // v2.608 (F5-D): iki ayrı şerit — teknik sistem (altyapı) ve müşteri hizmeti (kullanılabilir sonuç); biri ötekini yeşile çevirmez
-  const hsRozet = hs === null ? <span className="soluk" style={{ fontSize: 13 }}>hizmet sağlığı alınıyor…</span>
+  const hsRozet = hs === null ? <span className="soluk" style={{ fontSize: "var(--t-ikincil)" }}>hizmet sağlığı alınıyor…</span>
     : hs === "hata" ? <span className="rozet rozet-uyari">hizmet sağlığı alınamadı</span>
     : <><HizmetDurumu durum={hs.ozet.durum} etiket={`müşteri hizmeti: ${hs.ozet.etiket.toLocaleLowerCase("tr")}`} />
         <span className="rozet rozet-notr">{sayiTr(hs.ozet.sayim.kritik ?? 0)} kritik · {sayiTr(hs.ozet.sayim.dikkat ?? 0)} dikkat santral</span>
@@ -57,11 +57,11 @@ function SaglikSeridi({ sis, hs, git }: { sis: SistemOzet | null | "hata"; hs: H
         <R ok={sis.nabiz.durum === "calisiyor"} ad="zamanlayıcı" deger={sis.nabiz.durum === "calisiyor" ? "çalışıyor" : sis.nabiz.durum === "sessiz" ? "sessiz" : "nabız yok"} />
         <R ok={!isSorun} ad="gece işlemleri" deger={tazelik(isSorun)} />
         <R ok={!yedekSorun} ad="yedek" deger={yasTr(sis.yedek.son_basarili)} />
-        <span className="soluk" style={{ fontSize: 13 }}>Sistem sağlığı →</span>
+        <span className="soluk" style={{ fontSize: "var(--t-ikincil)" }}>Sistem sağlığı →</span>
       </button>
       <button type="button" className="plat-saglik plat-saglik--tikla" onClick={() => git("hizmet")} title="Müşteri hizmet sağlığı">
         {hsRozet}
-        <span className="soluk" style={{ fontSize: 13 }}>Müşteri hizmet sağlığı →</span>
+        <span className="soluk" style={{ fontSize: "var(--t-ikincil)" }}>Müşteri hizmet sağlığı →</span>
       </button>
     </>
   );
@@ -311,7 +311,7 @@ function DenetimTablosu({ kayitlar }: { kayitlar: DenetimKaydi[] }) {
       <tbody>{kayitlar.map((k) => (<tr key={k.id}><td className="ad"><Zaman s={k.zaman} /></td><td>{k.kapsam === "musteri" ? "müşteri" : k.kapsam}</td><td><span className="rozet rozet-notr" title={k.eylem}>{eylemAdi(k.eylem)}</span></td>
         <td className="plat-aktor">{k.aktor_eposta ? k.aktor_eposta.replace("@", "@\u200b") : (k.aktor_id ? k.aktor_id.slice(0, 8) : "—")}</td>   {/* v2.515: uzun adres yalnız «@» sonrasında kırılır */}
         <td>{k.kiraci_ad ?? (k.tenant_id ? <span title={k.tenant_id}>{k.tenant_id.slice(0, 8)}</span> : "—")}</td>
-        <td>{k.nesne_tur ? <>{k.nesne_tur}{k.nesne_id && <span className="soluk" title={k.nesne_id} style={{ display: "block", fontSize: 12.5 }}>{k.nesne_id.slice(0, 8)}</span>}</> : "—"}</td>
+        <td>{k.nesne_tur ? <>{k.nesne_tur}{k.nesne_id && <span className="soluk" title={k.nesne_id} style={{ display: "block", fontSize: "var(--t-etiket)" }}>{k.nesne_id.slice(0, 8)}</span>}</> : "—"}</td>
         <td>{k.ip ?? "—"}</td><td className="plat-ayrinti-sutun"><AyrintiCipleri a={k.ayrinti} /></td></tr>))}</tbody>
     </table></div>
   );

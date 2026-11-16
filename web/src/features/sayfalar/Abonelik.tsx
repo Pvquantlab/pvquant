@@ -65,9 +65,9 @@ export function AboneliginizKarti() {
       <div className="dugme-sira" style={{ flexWrap: "wrap", gap: 6 }}>
         {dahil.map(([kod, m]) => <span key={kod} className="cip" title={m.sinir ? "sınırlı kapsam" : undefined}>{m.ad}{m.durum !== "mevcut" ? <span className="soluk"> · {m.durum_etiketi}</span> : null}</span>)}
       </div>
-      {disinda.length > 0 && <p className="soluk" style={{ fontSize: 13, margin: "10px 0 0" }}>Planınıza dâhil olmayan özellikler: {disinda.map(([, m]) => m.ad).join(", ")}.</p>}
+      {disinda.length > 0 && <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "10px 0 0" }}>Planınıza dâhil olmayan özellikler: {disinda.map(([, m]) => m.ad).join(", ")}.</p>}
       {a.uyarilar.length > 0 && <ul className="not-listesi uyari" style={{ marginTop: 10 }}>{a.uyarilar.map((u) => <li key={u}>{u}</li>)}</ul>}
-      <p className="soluk" style={{ fontSize: 13, margin: "10px 0 0" }}>Fiyatlar ve sözleşme şartları teklifle belirlenir; panelden doğrudan satın alma yoktur. Ödeme ve faturalama panel dışında yürütülür.</p>
+      <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "10px 0 0" }}>Fiyatlar ve sözleşme şartları teklifle belirlenir; panelden doğrudan satın alma yoktur. Ödeme ve faturalama panel dışında yürütülür.</p>
       {yazabilir && (
         <Katla ozet="Teklif ya da yükseltme talebi" not="plan, özellik ya da Sanayi GES için; ekibimiz kayıtlı e-postanızdan döner">
           <div className="form-izgara">

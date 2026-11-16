@@ -6,6 +6,7 @@ import http from "node:http";
 const [port, base, cikti, wArg] = process.argv.slice(2);
 const w = Number(wArg ?? 1440);
 const PANEL = ["Portföy", "Santralim", "Veri yükleme", "Kalibrasyon", "Tahminler", "Doğruluk", "Aylık beklenti", "Raporlar", "Hakkında"];
+const SAYFALAR = process.env.SAYFALAR ? process.env.SAYFALAR.split(",") : PANEL;   // 16.11: sayfa listesi dışarıdan (tipografi envanteri)
 const sekme = await new Promise((res, rej) => { http.get(`http://127.0.0.1:${port}/json/new?about:blank`, { method: "PUT" }, (r) => { let s = ""; r.on("data", (c) => (s += c)); r.on("end", () => res(JSON.parse(s))); }).on("error", rej); });
 const ws = new WebSocket(sekme.webSocketDebuggerUrl);
 await new Promise((r, j) => { ws.addEventListener("open", r, { once: true }); ws.addEventListener("error", j, { once: true }); });
@@ -17,6 +18,8 @@ const uyut = (ms) => new Promise((r) => setTimeout(r, ms));
 await cdp("Page.enable");
 await cdp("Emulation.setDeviceMetricsOverride", { width: w, height: 900, deviceScaleFactor: 1, mobile: w < 768 });
 await cdp("Page.navigate", { url: base + "/" }); await uyut(1500);
+// 16.11: belge hazır olana dek bekle (about:blank/hata sayfasında localStorage «Access is denied» veriyordu)
+for (let i = 0; i < 20; i++) { try { if ((await js("location.origin")) === new URL(base).origin) break; } catch { /* henüz değil */ } await uyut(500); }
 await js(`localStorage.setItem('pvq_token','ornek-kip'); localStorage.setItem('pvq_tema', ${JSON.stringify(process.env.TEMA ?? "koyu")}); true`);
 await cdp("Page.navigate", { url: base + "/" }); await uyut(2500);
 
@@ -54,7 +57,7 @@ const DENETIM = `(() => {
 })()`;
 
 const rapor = {};
-for (const s of PANEL) {
+for (const s of SAYFALAR) {
   await js(`[...document.querySelectorAll(".nav-btn")].find((b) => b.textContent.trim() === ${JSON.stringify(s)}).click(); true`);
   await uyut(1100);
   rapor[s] = await js(DENETIM);
