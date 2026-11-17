@@ -2140,3 +2140,11 @@ pilot bitişleri 21–23.11, aylık iklim/kalibrasyon işlerinin 1.11 hataları)
 
 **Kanıt:** `kontrol.sh muhur` 7/7 (tam pytest + CI taklidi test DB'de). Örnek yığın (1440): dört başlık 320 → 38 ms, önbellekli 18–20 ms, CLS 0,005 → 0; 375 px tek sütun, taşma 0. **Mühür (17.11 ~19:30 TSİ):** commit `cdb4839` (8 dosya), CI #771 yeşil; sunucuda `git pull --ff-only` → build api web → `up -d api web` (worker/DB dokunulmadı, göç yok); healthz/readyz 200, hata 0; api konteynerinde ISITICI=1, `isitici.lock` var, 45 s içinde 12 önbellek dosyası (4 santral × genel-bakis/summary/forecast; forecast'ı olmayan santral atlandı). **Canlı sonra (konteyner içi):** damga 150 → 44–48 ms; taze süreçten genel-bakis/summary/forecast dosya katmanından 0,8 / 0,5 / 3,4 ms (üretici koşmadı); canlı demette iskelet metni 1/1. DERS: taze süreçte ilk damga etag hesabı 763 ms (bağlantı + ilk sorgu); işçi başına bir kez. Rapor `RAPOR-GENEL-BAKIS.md` (aynı klasör). Sıradaki: Portföy.
 
+## v2.624 (17.11.2026): Genel bakış inceleme düzeltmeleri — ısıtıcı yalnız etkin kiracılar, dizin yoksa koşmaz, hatalı santral yeniden denenir; meteo hatırlaması 30 s; kart başlıkları tek sabit (api + web)
+
+**Ne:** `yanit_isitici.santraller` `tenants.status='active'` süzgeci; `_kilit_al` paylaşılan dizin yoksa False; `tur` santralda üretici hatası varsa etag kaydetmez; `damga_service._METEO_SN` 120 → 30 s; `GenelBakis.tsx` `KART_BASLIKLARI` sabiti (kart + iskelet); test pini.
+
+**Neden:** v2.623 mühür sonrası /code-review (6 bulgu; atlanan: ısıtma listesinin uç kaydıyla genişletilmesi). Süreç içi meteo hatırlaması 4 işçide 2 dk etag farkı → istemci gereksiz tazeleme; askıdaki kiracı boşa ısıtılıyordu; dizin yazılamazsa dört işçi aynı işi yapacaktı; geçici hata santralı damga değişene dek soğuk bırakıyordu; iskelet başlığı ayrı yazılmıştı.
+
+**Kanıt:** `kontrol.sh muhur`: tam pytest + CI taklidi test DB'de geçti; ruff yeni kod RUF003 (yorumda Türkçe harf) ASCII yorumla giderildi, `tam` 6/6. **Mühür (17.11 ~20:31 TSİ):** commit `c05ef81` (4 dosya), CI #773 yeşil; sunucuda build api web → `up -d api web` (worker/DB dokunulmadı); healthz/readyz 200, hata 0; ısıtıcı kilidi var, 12 önbellek dosyası yeniden üretildi; canlı 200/200.
+
