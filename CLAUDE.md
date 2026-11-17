@@ -24,5 +24,5 @@ web `npm test` / `npx tsc --noEmit` / `npm run build` / `npx oxlint src/features
 (AYRI çıkış kodları; `grep -c` zincir kırar) → CDP doğrulama (`tarama.mjs`) → önizleme →
 AÇIK kullanıcı onayı → Türkçe NE/NEDEN/KANIT commit (`git add -A` YASAK) → push → CI
 TARAYICIDAN izlenir (anonim API kota yakar) → sunucu
-`ssh root@178.18.206.130 "cd /opt/pvquant && git pull && docker compose build web && docker compose up -d"`
+`ssh root@178.18.206.235 "cd /opt/pvquant && git pull && docker compose build web && docker compose up -d"`
 → canlı CDP doğrulama → defter + bellek. Workflow YAML düzenlenirse `yaml.safe_load` kapısı.

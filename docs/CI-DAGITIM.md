@@ -57,5 +57,5 @@ Anahtarı geri almak için sunucuda `authorized_keys`'ten ilgili satırı silmek
 ## Bağımlılık anlık görüntüsü (v2.541)
 
 - `requirements-lock.txt` (depo kökü): imaj eşleniği `.venv-imaj` ortamının `pip freeze` çıktısı (pandas 3.1.0, pvlib 0.16.1, numpy 2.5.4). Dockerfile bu dosyayı kullanmaz, pyproject.toml'dan kurar; dosya sürüklenmeyi fark etmek içindir.
-- Dağıtımdan sonra kıyas: `ssh root@178.18.206.130 "cd /opt/pvquant && docker compose run --rm -T api pip freeze" | diff - <(grep -v '^#' requirements-lock.txt)`; fark varsa pyproject üst sınırlarını (v2.536 dersi) gözden geçirin.
+- Dağıtımdan sonra kıyas: `ssh root@178.18.206.235 "cd /opt/pvquant && docker compose run --rm -T api pip freeze" | diff - <(grep -v '^#' requirements-lock.txt)`; fark varsa pyproject üst sınırlarını (v2.536 dersi) gözden geçirin.
 - Tam kilit (uv/pip-tools ile Dockerfile'ın kilitten kurması) ayrı bir karar; bu sürümde yalnız anlık görüntü.

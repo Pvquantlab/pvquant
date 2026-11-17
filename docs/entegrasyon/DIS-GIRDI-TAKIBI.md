@@ -67,7 +67,7 @@ Durum sözlüğü: **bekliyor** (başvuru yapılmadı) · **başvuruldu** (tarih
 
 ### D6 — Growatt OpenAPI belirteci
 - **Kim:** OSS hesabı olan **kurulumcu** (Growatt ile doğrudan sözleşmesi varsa distribütör): OSS › System Settings › System Management › **Add API** → onay → belirteç e-postayla [K90]; son kullanıcı kurulumcusuna başvurur (A 04_api_grup_B:16–23). Türkiye hattı: +90 312 394 71 00, servis@growatt-tr.com / turkey@growatt.com (Form Elektrik ile aynı numara [K305]); rolü belgede yok.
-- **Ne alırız:** 32 karakter sabit `token` («Permanent (tentative)»); **IP beyaz listesi** önerilir, sabit olmayan IP'den çağrı belirteci kapattırabilir [K90]. PVQuant sabit IP: 178.18.206.130. Beyaz listenin nereye girildiği belgede yok.
+- **Ne alırız:** 32 karakter sabit `token` («Permanent (tentative)»); **IP beyaz listesi** önerilir, sabit olmayan IP'den çağrı belirteci kapattırabilir [K90]. PVQuant sabit IP: 178.18.206.235. Beyaz listenin nereye girildiği belgede yok.
 - **Kod tarafı:** v1 bağlayıcı (yalnız güç serisi) canlı; limitler 5 dk/çağrı, `/plant/energy` günde 10, ≤7 gün aralık.
 - **Durum:** bekliyor. **Sıradaki adım (siz):** Growatt kullanan kurulumcu teması; BASVURU-METINLERI §5.
 

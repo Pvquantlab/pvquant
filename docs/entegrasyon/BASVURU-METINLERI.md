@@ -45,7 +45,7 @@ Araştırmada hazır metin yok; kapsam kalemleri B 17/09–09a'dan. Üç taraf i
    uygular ve süzgecin çalıştığını [tarih]'te doğrular.
 5. **Oturum ve mevcut sistemler.** Mevcut SCADA/PPC/O&M bağlantıları etkilenmez. IEC 104'te PVQuant için ayrı istemci yuvası
    / yedeklilik grubu tanımlanmıştır: [yuva/IP]. STARTDT gönderilmesine sahip [onay veriyor / vermiyor].
-6. **Ağ.** Erişim sahanın başlattığı VPN/tünel üzerinden; Modbus 502 internete açılmaz. PVQuant IP: 178.18.206.130.
+6. **Ağ.** Erişim sahanın başlattığı VPN/tünel üzerinden; Modbus 502 internete açılmaz. PVQuant IP: 178.18.206.235.
 7. **Test penceresi.** [başlangıç – bitiş tarihi/saati]; okuma sıklığı en fazla [15 dk]; pencere dışında erişim yok.
 8. **Referans.** Sahip aynı cihaz(lar)dan aynı dönem için sayaç/dışa aktarım verisini [tarih] itibarıyla verir; ölçüm sınırı:
    [inverter çıkışı / PCC / uzlaştırma sayacı]; saat dilimi ve zaman damgası kuralı: [UTC+3, saat başı/sonu].
@@ -107,7 +107,7 @@ OSS hesabınızdan şu yolla istenir: OSS › System Settings › System Managem
 
 1. Başvuruyu [santral adı] için yapmanız; mümkünse «yalnızca okuma» notu düşmeniz.
 2. Belirteç gelince e-posta gövdesi yerine [güvenli kanal] ile iletmeniz.
-3. IP beyaz listesi istenirse PVQuant sabit adresi: **178.18.206.130**.
+3. IP beyaz listesi istenirse PVQuant sabit adresi: **178.18.206.235**.
 
 PVQuant yalnız santral listesi ve günlük güç serisini okur (günde santral başına en fazla birkaç çağrı); kimlik şifreli saklanır, sahip istediği
 anda siler. Türkiye temsilciliği (Ankara) ile görüşmek gerekirse: +90 312 394 71 00, servis@growatt-tr.com. Saygılarımızla, [ad]
