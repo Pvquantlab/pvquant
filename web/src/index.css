@@ -329,7 +329,11 @@ h2 { font-size: var(--t-bolum); line-height: 1.2; }
 .satir-2 { grid-template-columns: repeat(2, minmax(0,1fr)); }   /* v2.575 (Faz 1 F1-D): referans tablosu + en zayıf günler yan yana */
 @media (max-width: 1100px) { .satir-4, .satir-3, .satir-5 { grid-template-columns: repeat(2, minmax(0,1fr)); } }
 /* v2.608 (Faz 5 F5-B): Genel bakış — dört karar kartı 2×2, ≤1100 px tek sütun; kartlar üstten hizalı (içerik boyu farklı) */
-.ızgara-genel { display: grid; gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }   /* 15.11: içerik yüksekliği — risk kartı gibi seyrek kartta boş çerçeve kalmasın (eşit yükseklik denendi, vazgeçildi) */
+.ızgara-genel { display: grid; gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+/* 17.11 Genel bakış: iskelet künye satırları gerçek .kunye ızgarasında (etiket/değer sütunu aynı), yer tutucu blok 14 px */
+.iskelet-kunye .iskelet-alan { display: block; height: 14px; }
+.iskelet-kunye > div { padding: 18px 0; }   /* gerçek künye satırı (değer + iki satır not) ~85 px; yer tutucu 14 + 6 + 10 + 36 = ~86 px → veri gelince ikinci sıra kaymaz */
+@media (max-width: 900px) { .ızgara-genel { grid-template-columns: minmax(0, 1fr); } }   /* 17.11: dar pencerede tek sütun (375'te iki sütun 160 px'e sıkışıyordu) */   /* 15.11: içerik yüksekliği — risk kartı gibi seyrek kartta boş çerçeve kalmasın (eşit yükseklik denendi, vazgeçildi) */
 @media (max-width: 1100px) { .ızgara-genel { grid-template-columns: minmax(0, 1fr); } }
 /* 15.11: risk listesi kart başlığının hemen altında — .tanim-listesi'nin üst çizgisi başlık ayracını ikilemesin, 90ch sınırı kartı daraltmasın (emsal .uc-listesi) */
 .tanim-listesi.risk-listesi { margin-top: 0; padding-top: 0; border-top: 0; max-width: none; }

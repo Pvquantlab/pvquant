@@ -129,6 +129,21 @@ def _servisleri_on_yukle() -> None:
     print(f"ON-YUKLEME {n}/{len(ON_YUKLENECEK_SERVISLER)} servis modülü {(_time.perf_counter() - t0) * 1000:.0f} ms", flush=True)
 
 
+@app.on_event("startup")
+def _yanit_isiticisini_baslat() -> None:
+    """17.11 Genel bakış hız turu — sunucu içi ısıtıcı: damga değişince (gece koşusu, SCADA, ayar) her etkin santral için
+    genel-bakis / summary / forecast(384) önbelleğini tek işçi yeniden üretir; ilk ziyaretçi soğuk bedeli (573/184/294 ms +
+    kuyruk) ödemez. Anahtar ve TTL uç sarmalılarıyla birebir aynı. PVQ_YANIT_ISITICI=1 ile açılır (compose api)."""
+    from pvquant.services import yanit_isitici
+    def _c(t: str) -> dict:
+        return {"tenant_id": t, "sub": "isitici", "role": "viewer"}
+    yanit_isitici.baslat({
+        "genel-bakis": (lambda t, p: _genel_bakis_uret(plant_id=p, claims=_c(t)), yanit_onbellegi.VARSAYILAN_TTL_SN),
+        "summary": (lambda t, p: _summary_uret(plant_id=p, claims=_c(t)), yanit_onbellegi.VARSAYILAN_TTL_SN),
+        "forecast?hours=384": (lambda t, p: _forecast_uret(plant_id=p, hours=384, claims=_c(t)), 300),
+    })
+
+
 @app.middleware("http")
 async def _sure_basligi(request: Request, call_next):
     """16.11 gezinme hızı: her yanıta X-Sure-ms (sunucuda geçen süre). 300 ms üstü /v1 istekleri uvicorn akışına «YAVAS» satırı

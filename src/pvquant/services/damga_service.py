@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import threading
+import time
 
 
 def etag_uret(damga: dict) -> str:
@@ -50,8 +52,33 @@ def _ortak_damga(tenant_id, plant_id) -> dict:
         r = s.execute(text(
             "SELECT (SELECT max(guncelleme) FROM piyasa_fiyat) AS son_piyasa,"
             " (SELECT max(started) FROM jobs_log WHERE tenant_id = CAST(:t AS uuid) OR tenant_id IS NULL) AS son_is,"
-            " (SELECT max(m.kosu_zamani) FROM meteo_arsiv m, plants p WHERE p.id = CAST(:p AS uuid)"
-            "    AND abs(m.lat - p.lat) < 0.05 AND abs(m.lon - p.lon) < 0.05) AS son_meteo,"
             " (SELECT md5(CAST(row_to_json(p) AS text)) FROM plants p WHERE p.id = CAST(:p AS uuid) AND p.tenant_id = CAST(:t AS uuid)) AS santral_ozu"),
             {"t": str(tenant_id), "p": str(plant_id)}).mappings().first()
-    return {k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in dict(r).items()}
+        d = dict(r)
+        d["son_meteo"] = _son_meteo(s, str(plant_id))
+    return {k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in d.items()}
+
+
+_METEO_SN = 120.0
+_METEO: dict[str, tuple[float, object]] = {}
+_METEO_KILIT = threading.Lock()
+
+
+def _son_meteo(s, plant_id: str):
+    """Santral noktasına en yakın meteo arşivi koşusu — 17.11 Genel bakış hız turu: iki düzeltme.
+    (1) `abs(m.lat - p.lat) < 0.05` yüklemi meteo_arsiv_nokta_ts (lat, lon, ts_utc) dizinini kullanamıyordu (1,45 M satır, sıralı
+        tarama) → BETWEEN aralık yüklemi (ÖLÇÜLDÜ canlı EXPLAIN: 152 → 97 ms; nokta 52 bin satır).
+    (2) Arşiv yalnız gece işiyle değişir; 120 s süreç içi hatırlama ile damga her yoklamada 97 ms yerine ~0 ms öder. Damga istemciye
+        60 s'de bir gider; meteo değişimi en çok 2 dk geç fark edilir (tahmin koşusu zaten ayrıca damgada)."""
+    simdi = time.monotonic()
+    with _METEO_KILIT:
+        v = _METEO.get(plant_id)
+        if v and simdi - v[0] < _METEO_SN:
+            return v[1]
+    from sqlalchemy import text
+    deger = s.execute(text(
+        "SELECT max(m.kosu_zamani) FROM meteo_arsiv m, plants p WHERE p.id = CAST(:p AS uuid)"
+        "  AND m.lat BETWEEN p.lat - 0.05 AND p.lat + 0.05 AND m.lon BETWEEN p.lon - 0.05 AND p.lon + 0.05"), {"p": plant_id}).scalar()
+    with _METEO_KILIT:
+        _METEO[plant_id] = (simdi, deger)
+    return deger

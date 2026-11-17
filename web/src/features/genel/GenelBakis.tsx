@@ -3,7 +3,7 @@ import { useDamgaSurumu } from "../../shell/damgaOlay";
 import { api, ayniysaEskisi, bellekten } from "../../api/client";
 import type { GbAdim, GbRisk, GenelBakis as GenelBakisT } from "../../api/types";
 import type { SayfaId } from "../../shell/Kabuk";
-import { HizmetDurumu as Rozet, Kart, Sayfa, SayfaIskeleti, enerjiTr, gucTr, sayiTr } from "../sayfalar/parcalar";
+import { HizmetDurumu as Rozet, Kart, Sayfa, enerjiTr, gucTr, sayiTr } from "../sayfalar/parcalar";
 import { Meta } from "../../lib/Meta";
 import { HESAP_DURUMU, TAHMIN_ETIKETI } from "../../lib/durum";
 import { zamanTr, yuzdeTr } from "../../lib/bicim";
@@ -42,7 +42,7 @@ export function GenelBakis({ plantId, git }: { plantId: string; git: (s: SayfaId
   }, [plantId, ds]);
   if (hata && !o) return <Sayfa baslik="Genel bakış"><p className="soluk">Genel bakış alınamadı. Bağlantınızı kontrol edip yeniden deneyin.</p></Sayfa>;
   if (o === null) return <Sayfa baslik="Genel bakış"><p className="soluk">Genel bakış bu kipte yok.</p></Sayfa>;
-  if (o === undefined) return <Sayfa baslik="Genel bakış"><SayfaIskeleti kpi={0} kart={4} /></Sayfa>;
+  if (o === undefined) return <GenelBakisIskeleti />;   // 17.11: dört soru başlığı anında, satır yer tutucuları gerçek boyda
   const b = o.bugun, y = o.yarin, r = o.riskler, f = o.finans;
   const git_ = (s: string) => git(s as SayfaId);
   return (
@@ -118,6 +118,28 @@ export function GenelBakis({ plantId, git }: { plantId: string; git: (s: SayfaId
           </dl>
           <p className="aciklama">{f.not_}</p>
         </Kart>
+      </div>
+    </Sayfa>
+  );
+}
+
+/** 17.11 Genel bakış hız turu — sayfaya özel iskelet: dört iş sorusu gerçek başlıklarıyla ANINDA çizilir (tıklama → ilk kare), her kartta
+ *  gerçek satır sayısına yakın yer tutucu (künye ızgarası aynı). ÖLÇÜLDÜ (örnek yığın, 1440): genel iskelet 39 ms'de boş çubuklar, kartlar
+ *  320 ms'de geliyordu; başlıklar artık 39 ms'de okunur, kart yükseklikleri yakın olduğundan sıçrama küçülür. Sayı göstermez. */
+const ISKELET_KARTLAR: [string, number][] = [["Bugün ne kadar üretim bekleniyor?", 7], ["Yarının üretim programı hazır mı?", 7],
+  ["Açık veri ve operasyon riskleri", 4], ["Finansal durum nedir?", 5]];   // satır sayısı ve yüksekliği gerçek kartlara göre (ÖLÇÜLDÜ 1195: 685/652/413/623 px)
+function GenelBakisIskeleti() {
+  return (
+    <Sayfa baslik="Genel bakış" alt="Bugünkü üretim, yarının programı, açık riskler ve finansal durum yükleniyor…">
+      <div className="ızgara-genel" role="status" aria-live="polite" aria-label="Yükleniyor">
+        {ISKELET_KARTLAR.map(([baslik, n]) => (
+          <Kart key={baslik} baslik={baslik} sag={<span className="iskelet-alan" style={{ display: "inline-block", width: 92, height: 20 }} />}>
+            <dl className="kunye iskelet-kunye">
+              {Array.from({ length: n }, (_, i) => <div key={i}><dt><span className="iskelet-alan" style={{ width: "60%" }} /></dt>
+                <dd><span className="iskelet-alan" style={{ width: i === 0 ? "40%" : "70%" }} /><span className="iskelet-alan" style={{ width: "85%", height: 26, marginTop: 6 }} />   {/* iki satırlık not yüksekliği */}</dd></div>)}
+            </dl>
+          </Kart>))}
+        <span className="gorsel-gizli">Yükleniyor…</span>
       </div>
     </Sayfa>
   );

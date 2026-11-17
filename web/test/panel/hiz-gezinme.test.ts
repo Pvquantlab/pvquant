@@ -63,3 +63,11 @@ test("Operasyon: Sayaç ve Olay kaydı yükleyicileri son-çağrı-kazanır; Ver
   assert.match(dg, /let acik = true; api\.raporGonderim\(plantId\)/);
   assert.match(dg, /api\.kosular\(plantId\)\.then\(\(v\) => \{ if \(acik\) setKosular\(v\); \}\)/);
 });
+
+test("Genel bakış: sayfaya özel iskelet dört soru başlığıyla anında; tek uç ve bayat-önce korunur", () => {
+  const s = oku("../../src/features/genel/GenelBakis.tsx");
+  assert.match(s, /if \(o === undefined\) return <GenelBakisIskeleti \/>;/);
+  assert.match(s, /\["Bugün ne kadar üretim bekleniyor\?", 7\], \["Yarının üretim programı hazır mı\?", 7\]/);
+  assert.match(s, /useState<GenelBakisT \| null \| undefined>\(\(\) => bellekten\.genelBakis\(plantId\)\)/);
+  assert.equal((s.match(/api\.genelBakis\(plantId\)/g) ?? []).length, 1, "tek uç");
+});

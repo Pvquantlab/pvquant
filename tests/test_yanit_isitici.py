@@ -1,0 +1,82 @@
+"""17.11.2026 Genel bakış hız turu — yanıt ısıtıcısı: varsayılan kapalı, damga değişince ısıtır, değişmeyince atlar, üretici hatası geçilir,
+tek işçi kilidi, main.py sarmalıyla birebir anahtarlar."""
+from pathlib import Path
+
+import pytest
+
+from pvquant.services import damga_service, yanit_isitici, yanit_onbellegi
+
+
+@pytest.fixture()
+def etkin(monkeypatch, tmp_path):
+    monkeypatch.setenv("PVQ_YANIT_ONBELLEK", "1")
+    monkeypatch.setenv("PVQ_YANIT_ISITICI", "1")
+    monkeypatch.setenv("PVQ_YANIT_ONBELLEK_DIZIN", str(tmp_path))
+    yanit_onbellegi.temizle()
+    yanit_isitici._SON_ETAG.clear()
+    damga = {"son_scada": "2026-11-17T00:00:00"}
+    monkeypatch.setattr(damga_service, "hesapla", lambda t, p: dict(damga))
+    yield damga
+    yanit_onbellegi.temizle()
+    yanit_isitici._SON_ETAG.clear()
+
+
+def test_varsayilan_kapali(monkeypatch):
+    monkeypatch.delenv("PVQ_YANIT_ISITICI", raising=False)
+    monkeypatch.setenv("PVQ_YANIT_ONBELLEK", "1")
+    assert yanit_isitici.etkin() is False
+    assert yanit_isitici.baslat({"x": (lambda t, p: 1, 60)}) is None
+
+
+def test_damga_degisince_isitir_degismeyince_atlar(etkin):
+    say = {"n": 0}
+    def uret(t, p):
+        say["n"] += 1
+        return {"kiraci": t, "santral": p, "n": say["n"]}
+    liste = [("t1", "p1"), ("t2", "p2")]
+    r1 = yanit_isitici.tur({"genel-bakis": (uret, 900)}, liste)
+    assert r1 == {"isitilan": 2, "atlanan": 0, "hata": 0} and say["n"] == 2
+    # aynı damga → iki santral da atlanır, üretici koşmaz
+    r2 = yanit_isitici.tur({"genel-bakis": (uret, 900)}, liste)
+    assert r2 == {"isitilan": 0, "atlanan": 2, "hata": 0} and say["n"] == 2
+    # ısıtılan kayıt, uç sarmalının anahtarıyla isabet eder (üretici yine koşmaz)
+    assert yanit_onbellegi.getir("t1", "p1", "genel-bakis", lambda: uret("t1", "p1"))["n"] == 1 and say["n"] == 2
+    # damga değişince yeniden ısıtılır; kiracı yalıtımı korunur
+    etkin["son_scada"] = "2026-11-17T06:00:00"
+    yanit_onbellegi._DAMGA.clear()
+    r3 = yanit_isitici.tur({"genel-bakis": (uret, 900)}, liste)
+    assert r3["isitilan"] == 2 and say["n"] == 4
+    assert yanit_onbellegi.getir("t2", "p2", "genel-bakis", lambda: uret("t2", "p2"))["kiraci"] == "t2" and say["n"] == 4
+
+
+def test_uretici_hatasi_gecilir_ve_onbellege_girmez(etkin):
+    def patlar(t, p):
+        raise LookupError("tahmin koşusu yok")
+    r = yanit_isitici.tur({"forecast?hours=384": (patlar, 300), "summary": (lambda t, p: {"ok": 1}, 900)}, [("t1", "p1")])
+    assert r == {"isitilan": 1, "atlanan": 0, "hata": 1}
+    say = {"n": 0}
+    def uret():
+        say["n"] += 1
+        return {"n": say["n"]}
+    assert yanit_onbellegi.getir("t1", "p1", "forecast?hours=384", uret, ttl_sn=300) == {"n": 1}   # ıska: hata saklanmamıştı
+
+
+def test_tek_isci_kilidi(etkin):
+    import fcntl
+    yanit_isitici._KILIT_DOSYASI = None
+    assert yanit_isitici._kilit_al() is True
+    yol = Path(yanit_onbellegi._dizin()) / "isitici.lock"
+    assert yol.exists()
+    with open(yol, "w") as ikinci, pytest.raises(OSError):   # ikinci işçi aynı kilidi alamaz
+        fcntl.flock(ikinci, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    yanit_isitici._KILIT_DOSYASI.close(); yanit_isitici._KILIT_DOSYASI = None
+
+
+def test_main_sarmali_ve_anahtarlar():
+    import apps.api.main as api_main
+    kaynak = Path(api_main.__file__).read_text(encoding="utf-8")
+    assert '@app.on_event("startup")\ndef _yanit_isiticisini_baslat()' in kaynak
+    for anahtar in ('"genel-bakis": (lambda t, p: _genel_bakis_uret(', '"summary": (lambda t, p: _summary_uret(', '"forecast?hours=384": (lambda t, p: _forecast_uret(plant_id=p, hours=384'):
+        assert anahtar in kaynak, anahtar
+    compose = Path(api_main.__file__).resolve().parents[2].joinpath("docker-compose.yml").read_text(encoding="utf-8")
+    assert 'PVQ_YANIT_ISITICI: "1"' in compose

@@ -77,6 +77,7 @@ services:
       PVQ_DB_URL: postgresql+psycopg://pvq_api:${API_DB_PASSWORD:?.env'de API_DB_PASSWORD tanimli olmali (ALTER ROLE pvq_api PASSWORD)}@db:5432/pvquant
       PVQ_JWT_SECRET: ${PVQ_JWT_SECRET:-}
       PVQ_YANIT_ONBELLEK: "1"   # 16.11 gezinme hızı: ağır GET uçları damga anahtarlı yanıt önbelleği (yanit_onbellegi)
+      PVQ_YANIT_ISITICI: "1"    # 17.11 Genel bakış hızı: damga değişince genel-bakis/summary/forecast önbelleğini tek işçi önceden üretir (yanit_isitici)
       # v2.556 (Aşama 3, K1): bulut kimlik kasası ana anahtarı (api şifreler; kasa yoksa kimlik saklama kapalı)
       PVQ_KEK: ${PVQ_KEK:-}
       PVQ_KEK_ID: ${PVQ_KEK_ID:-k1}
