@@ -21,6 +21,8 @@ const gunTr = (iso: string) => new Date(iso + "T00:00:00").toLocaleDateString("t
 const ADIM_AD: Record<string, string> = { tahmin: "Tahmin", hazirlik: "Program dosyası", bildirim: "Bildirim beyanı", kabul: "TPYS kabulü" };
 const EKSIK_AD: Record<string, string> = { segment: "piyasa segmenti seçilmedi", uevcb: "UEVÇB kodu girilmedi", kesim_oncesi_tahmin: "teslim saatinden önce verilmiş tahmin yok", bildirim_beyani: "bildirdiğiniz dosya yüklenmedi" };
 const PENCERE: Record<string, string> = { erken: "henüz açılmadı", pencere_acik: "açık", gecikti: "geçti" };   // satır başlığı «Bildirim saati» — değer onu yinelemez
+/** 17.11: dört iş sorusu — gerçek kart ve iskelet aynı metni kullanır (inceleme: iki yerde yazılınca başlık değişince iskelet geride kalıyordu). */
+const KART_BASLIKLARI = ["Bugün ne kadar üretim bekleniyor?", "Yarının üretim programı hazır mı?", "Açık veri ve operasyon riskleri", "Finansal durum nedir?"] as const;
 
 function Satir({ ad, children, not: n, uyari }: { ad: string; children: ReactNode; not?: string | null; uyari?: boolean }) {
   return <div><dt>{ad}</dt><dd className={uyari ? "kunye-uyari" : undefined}>{children}{n && <span className="kunye-not">{n}</span>}</dd></div>;
@@ -51,7 +53,7 @@ export function GenelBakis({ plantId, git }: { plantId: string; git: (s: SayfaId
         <span className="cip"><Meta items={[`son kontrol ${saatTr(o.zaman)}`, `${gucTr(o.santral.kapasite_kwp)} kWp`]} /></span></span>}>
       <div className="ızgara-genel">
         {/* 1 — bugün */}
-        <Kart baslik="Bugün ne kadar üretim bekleniyor?" alt={gunTr(b.donem)} sag={<Rozet durum={b.durum} etiket={b.etiket} />}>
+        <Kart baslik={KART_BASLIKLARI[0]} alt={gunTr(b.donem)} sag={<Rozet durum={b.durum} etiket={b.etiket} />}>
           <dl className="kunye">
             <Satir ad="Beklenen üretim" not={b.beklenen_kwh == null ? b.neden : `son tahmin (P50), ${sayiTr(b.beklenen_saat)} saat`}>
               <span className="kunye-sayi">{b.beklenen_kwh == null ? "—" : enerjiTr(b.beklenen_kwh)}</span></Satir>
@@ -67,7 +69,7 @@ export function GenelBakis({ plantId, git }: { plantId: string; git: (s: SayfaId
           </dl>
         </Kart>
         {/* 2 — yarın */}
-        <Kart baslik="Yarının üretim programı hazır mı?" alt={gunTr(y.donem)} sag={<span className="dugme-sira"><Rozet durum={y.durum} etiket={y.etiket} />
+        <Kart baslik={KART_BASLIKLARI[1]} alt={gunTr(y.donem)} sag={<span className="dugme-sira"><Rozet durum={y.durum} etiket={y.etiket} />
           {/* 15.11: «Program hazır» PVQuant'ın doğrulayabildiği adımlardır; TPYS kabulü ayrı ve doğrulanamaz — başlıkta da söylenir, sözcükler uçtan */}
           {y.durum === "saglikli" && y.program.adimlar && <Rozet durum={y.program.adimlar.kabul.durum} etiket={`${ADIM_AD.kabul} ${y.program.adimlar.kabul.etiket.toLocaleLowerCase("tr-TR")}`} kucuk />}</span>}>
           <dl className="kunye">
@@ -91,7 +93,7 @@ export function GenelBakis({ plantId, git }: { plantId: string; git: (s: SayfaId
           <p className="aciklama">{y.not_}</p>
         </Kart>
         {/* 3 — riskler */}
-        <Kart baslik="Açık veri ve operasyon riskleri" alt={r.adet ? `bu santralde ${sayiTr(r.adet)} madde, eylem gerektirenler önce` : "bu santralde eylem gerektiren madde yok"} sag={<Rozet durum={r.durum} etiket={r.etiket} />}>
+        <Kart baslik={KART_BASLIKLARI[2]} alt={r.adet ? `bu santralde ${sayiTr(r.adet)} madde, eylem gerektirenler önce` : "bu santralde eylem gerektiren madde yok"} sag={<Rozet durum={r.durum} etiket={r.etiket} />}>
           {r.liste.length === 0 ? <div className="bos-durum"><div className="bos-bas">Açık risk yok.</div><p>Ölçüm güncel, okunmamış alarm ve süren olay yok, uzlaştırma belgeleri yüklü.</p></div>
             : <ul className="tanim-listesi risk-listesi">
               {r.liste.map((x: GbRisk, i) => (
@@ -104,7 +106,7 @@ export function GenelBakis({ plantId, git }: { plantId: string; git: (s: SayfaId
           <p className="aciklama">{r.not_}</p>
         </Kart>
         {/* 4 — finans */}
-        <Kart baslik="Finansal durum nedir?" alt={f.son_sonuc ? `son kayıtlı dönem: ${donemEtiket(f.son_sonuc.donem_kodu)}` : "kayıtlı sonuç yok"} sag={<Rozet durum={f.durum} etiket={f.etiket} />}>
+        <Kart baslik={KART_BASLIKLARI[3]} alt={f.son_sonuc ? `son kayıtlı dönem: ${donemEtiket(f.son_sonuc.donem_kodu)}` : "kayıtlı sonuç yok"} sag={<Rozet durum={f.durum} etiket={f.etiket} />}>
           <dl className="kunye">
             {f.hesaplanamiyor ? <Satir ad="Tahmini finansal etki" not={f.hesaplanamiyor} uyari>Hesaplanamıyor</Satir>
               : f.son_sonuc && <Satir ad="Tahmini finansal etki, net" not={`${[f.son_sonuc.hesap_durumu ? HESAP_DURUMU[f.son_sonuc.hesap_durumu]?.etiket ?? f.son_sonuc.hesap_durumu : null, f.son_sonuc.nitelik_ad].filter(Boolean).join(", ")} · hesap ${saatTr(f.son_sonuc.hesap_zamani)}`}>
@@ -126,19 +128,18 @@ export function GenelBakis({ plantId, git }: { plantId: string; git: (s: SayfaId
 /** 17.11 Genel bakış hız turu — sayfaya özel iskelet: dört iş sorusu gerçek başlıklarıyla ANINDA çizilir (tıklama → ilk kare), her kartta
  *  gerçek satır sayısına yakın yer tutucu (künye ızgarası aynı). ÖLÇÜLDÜ (örnek yığın, 1440): genel iskelet 39 ms'de boş çubuklar, kartlar
  *  320 ms'de geliyordu; başlıklar artık 39 ms'de okunur, kart yükseklikleri yakın olduğundan sıçrama küçülür. Sayı göstermez. */
-const ISKELET_KARTLAR: [string, number][] = [["Bugün ne kadar üretim bekleniyor?", 7], ["Yarının üretim programı hazır mı?", 7],
-  ["Açık veri ve operasyon riskleri", 4], ["Finansal durum nedir?", 5]];   // satır sayısı ve yüksekliği gerçek kartlara göre (ÖLÇÜLDÜ 1195: 685/652/413/623 px)
+const ISKELET_SATIR = [7, 7, 4, 5];   // kart başına yer tutucu satır (iskelet ve gerçek kart aynı KART_BASLIKLARI sabitini kullanır)   // satır sayısı ve yüksekliği gerçek kartlara göre (ÖLÇÜLDÜ 1195: 685/652/413/623 px)
 function GenelBakisIskeleti() {
   return (
     <Sayfa baslik="Genel bakış" alt="Bugünkü üretim, yarının programı, açık riskler ve finansal durum yükleniyor…">
       <div className="ızgara-genel" role="status" aria-live="polite" aria-label="Yükleniyor">
-        {ISKELET_KARTLAR.map(([baslik, n]) => (
+        {KART_BASLIKLARI.map((baslik, k) => { const n = ISKELET_SATIR[k]; return (
           <Kart key={baslik} baslik={baslik} sag={<span className="iskelet-alan" style={{ display: "inline-block", width: 92, height: 20 }} />}>
             <dl className="kunye iskelet-kunye">
               {Array.from({ length: n }, (_, i) => <div key={i}><dt><span className="iskelet-alan" style={{ width: "60%" }} /></dt>
                 <dd><span className="iskelet-alan" style={{ width: i === 0 ? "40%" : "70%" }} /><span className="iskelet-alan" style={{ width: "85%", height: 26, marginTop: 6 }} />   {/* iki satırlık not yüksekliği */}</dd></div>)}
             </dl>
-          </Kart>))}
+          </Kart>); })}
         <span className="gorsel-gizli">Yükleniyor…</span>
       </div>
     </Sayfa>

@@ -39,13 +39,14 @@ def etkin() -> bool:
 
 
 def santraller() -> list[tuple[str, str]]:
-    """(tenant_id, plant_id) — arşivlenmemiş bütün santrallar, sistem bağlamından (RLS dışı; kiracı kimliği anahtara girer)."""
+    """(tenant_id, plant_id) — etkin kiracıların arşivlenmemiş santralları, sistem bağlamından (RLS dışı; kiracı kimliği anahtara girer)."""
     from sqlalchemy import text
 
     from pvquant.db import sistem_baglami
     with sistem_baglami() as s:
         return [(str(r[0]), str(r[1])) for r in s.execute(text(
-            "SELECT tenant_id, id FROM plants WHERE NOT archived ORDER BY tenant_id, name")).all()]
+            "SELECT p.tenant_id, p.id FROM plants p JOIN tenants t ON t.id = p.tenant_id"
+            " WHERE NOT p.archived AND t.status = 'active' ORDER BY p.tenant_id, p.name")).all()]   # 17.11 inceleme: askıdaki kiracı ısıtılmaz
 
 
 def tur(kayit: Kayit, liste: list[tuple[str, str]] | None = None, zorla: bool = False) -> dict:
@@ -60,13 +61,16 @@ def tur(kayit: Kayit, liste: list[tuple[str, str]] | None = None, zorla: bool = 
         if not zorla and _SON_ETAG.get(plant_id) == et:
             sonuc["atlanan"] += 1
             continue
+        hata = 0
         for anahtar, (uret, ttl_sn) in kayit.items():
             try:
                 yanit_onbellegi.getir(tenant_id, plant_id, anahtar, lambda u=uret, t=tenant_id, p=plant_id: u(t, p), ttl_sn=ttl_sn)
                 sonuc["isitilan"] += 1
             except Exception:
-                sonuc["hata"] += 1    # 404 (koşu yok) ve benzeri: sayılır, geçilir; önbelleğe girmez
-        _SON_ETAG[plant_id] = et
+                hata += 1    # 404 (koşu yok) ve benzeri: sayılır, geçilir; önbelleğe girmez
+        sonuc["hata"] += hata
+        if hata == 0:
+            _SON_ETAG[plant_id] = et    # 17.11 inceleme: hata varsa (geçici DB sorunu) bir sonraki turda yeniden denenir
     SAYAC["tur"] += 1
     for k in ("isitilan", "atlanan", "hata"):
         SAYAC[k] += sonuc[k]
@@ -74,13 +78,13 @@ def tur(kayit: Kayit, liste: list[tuple[str, str]] | None = None, zorla: bool = 
 
 
 def _kilit_al() -> bool:
-    """Çok işçili uvicorn'da tek ısıtıcı: paylaşılan önbellek dizininde dosya kilidi (fcntl, engelsiz). Dizin yoksa tek işçi varsayılır."""
+    """Çok işçili uvicorn'da tek ısıtıcı: paylaşılan önbellek dizininde dosya kilidi (fcntl, engelsiz). Dizin yoksa ısıtıcı koşmaz."""
     global _KILIT_DOSYASI
     if _KILIT_DOSYASI is not None:
         return True
     d = yanit_onbellegi._dizin()
     if d is None:
-        return True
+        return False    # 17.11 inceleme: paylaşılan dizin yoksa dosya katmanı da yok; 4 işçi aynı işi boşa yapmasın
     try:
         import fcntl
         fh = open(os.path.join(d, "isitici.lock"), "w")   # noqa: SIM115 — kilit süreç ömrünce açık kalır

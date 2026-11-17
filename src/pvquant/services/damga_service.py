@@ -59,7 +59,7 @@ def _ortak_damga(tenant_id, plant_id) -> dict:
     return {k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in d.items()}
 
 
-_METEO_SN = 120.0
+_METEO_SN = 30.0    # 17.11 inceleme: surec ici hatirlama iscilerarasi etag farki yaratir (4 isci); pencere 30 s <= istemci yoklamasi 60 s
 _METEO: dict[str, tuple[float, object]] = {}
 _METEO_KILIT = threading.Lock()
 
@@ -68,8 +68,8 @@ def _son_meteo(s, plant_id: str):
     """Santral noktasına en yakın meteo arşivi koşusu — 17.11 Genel bakış hız turu: iki düzeltme.
     (1) `abs(m.lat - p.lat) < 0.05` yüklemi meteo_arsiv_nokta_ts (lat, lon, ts_utc) dizinini kullanamıyordu (1,45 M satır, sıralı
         tarama) → BETWEEN aralık yüklemi (ÖLÇÜLDÜ canlı EXPLAIN: 152 → 97 ms; nokta 52 bin satır).
-    (2) Arşiv yalnız gece işiyle değişir; 120 s süreç içi hatırlama ile damga her yoklamada 97 ms yerine ~0 ms öder. Damga istemciye
-        60 s'de bir gider; meteo değişimi en çok 2 dk geç fark edilir (tahmin koşusu zaten ayrıca damgada)."""
+    (2) Arşiv yalnız gece işiyle değişir; 30 s süreç içi hatırlama ile damga çoğu yoklamada 97 ms yerine ~0 ms öder. İşçiler arası
+        etag farkı en çok 30 s sürer (istemci 60 s'de bir yoklar: en çok bir fazladan tazeleme); tahmin koşusu zaten ayrıca damgada."""
     simdi = time.monotonic()
     with _METEO_KILIT:
         v = _METEO.get(plant_id)
