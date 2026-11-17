@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-/** 17.11 Santralim hız turu — görünürlük kapısı: bir bölgenin verisi, bölge görüş alanına (payda kadar) yaklaşınca istenir.
+/** 17.11 Santralim hız turu — görünürlük kapısı: bir bölgenin verisi, bölge görüş alanına (payda kadar) yaklaşınca istenir. Pay 240 px: 480 px'te 1350 px yüksek ekranda
+ *  «Santral» ve «Ayarlar» kapıları ilk karede açılıp ilk ekranı 7 yerine 12 isteğe çıkarıyordu (inceleme bulgusu).
  *  Bir kez açılınca açık kalır (kaydırınca kapanmaz); IntersectionObserver yoksa hemen açık sayılır (eski motor, SSR).
  *  Amaç: ilk ekranın istekleriyle sayfa altının 10+ isteği aynı anda sunucu kuyruğuna girmesin.
  *  Geri çağrı ref: öğe sonradan bağlansa da (iskelet → gerçek sayfa) gözlemci o anda kurulur; bağımlılıksız efekt gerekmez. */
-export function useGorunur<T extends Element>(payda = "480px"): [(el: T | null) => void, boolean] {
+export function useGorunur<T extends Element>(payda = "240px"): [(el: T | null) => void, boolean] {
   const [gorunur, setGorunur] = useState(false);
   const acik = useRef(false);
   const io = useRef<IntersectionObserver | null>(null);

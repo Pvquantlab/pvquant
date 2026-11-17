@@ -1173,9 +1173,7 @@ select.girdi { font-family: var(--font); }
    ~150px kalıyordu. ÖLÇÜLDÜ: tek kolona düşürmek kartı 868px'e şişirip boşluğu
    sağa taşıdı — dar etiket kolonu (170px) satırları kompakt tutuyor. */
 .kart-sutunu { display: grid; gap: 14px; align-content: start; min-width: 0; }
-/* dar etiket YALNIZ çift sütun etkinken — tam genişlikte 170px kolon
-   açıklamaları 4 satıra katlıyordu, orada evin 250px kuralı geçerli. */
-@media (min-width: 1341px) { .kart-sutunu .ayar { grid-template-columns: 190px minmax(0, 1fr); } }   /* 01.11: 13 px açıklama için 170 → 190 */
+/* 17.11: `.kart-sutunu .ayar` 190 px kuralı kaldırıldı — Ayarlar artık .kart-sutunu içinde değil (tam genişlik, .ayar-izgara kapsayıcı sorgusu). .ızgara-cift diğer sayfalarda (Sayaç, Mutabakat, Finansal etki…) yaşıyor, dokunulmadı. */
 /* Ayar kartının kontrolleri ~430px yarım sütuna sığmıyor (ÖLÇÜLDÜ: 1180px
    pencerede kart 1167px'e uzayıp 2 kontrol taştı) — çift sütun yalnız yer
    varken; sıkışınca üçlü tam genişlik dizilir (boşluk da doğmaz). */

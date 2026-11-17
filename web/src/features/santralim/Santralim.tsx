@@ -679,12 +679,7 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
 
       <section className="bolum" ref={santralRef}>
       <div className="ozet-bas">Santral<span className="sag">kimlik, hava, veri durumu ve ayarlar</span></div>
-      {/* v2.319 (K5, kullanıcı seçimi A): "Santral ayarları" bu bölgeye çıktı —
-          hava 190px / künye 715px yan yana solda 525px boşluk bırakıyordu.
-          ÖLÇÜLEREK dizildi: sol = Hava+Künye (~759px), sağ = Ayarlar (~848px);
-          ayarları havayla eşlemek boşluğu sağa taşıyordu (ölçüldü: 481px).
-          ≤1340px'te üçlü tam genişlik dizilir (eski okuma sırası korunur);
-          bölüm numarası 3 yerinde. */}
+      {/* v2.319 (K5) Hava+Künye | Ayarlar çifti 17.11'de kalktı: Ayarlar tam genişlikte (.ayar-izgara), bu satır Hava+Künye ↔ Veri kaynakları+Kaynak kıyası (ÖLÇÜLDÜ 1440: 1.247 ↔ 1.649 px). */}
       <div className="sira-2">
         <div className="kart-sutunu">
         <Kart baslik="Hava" alt="Önümüzdeki günler"
@@ -1699,7 +1694,7 @@ export function Santralim({ plantId, ad }: { plantId: string; ad?: string }) {
  *  yükseklik çöküşü üretiyordu; yapı korununca içerik gelince sıçrama yok. Sayı göstermez. */
 function SantralimIskeleti({ ad }: { ad?: string }) {
   return (
-    <Sayfa baslik={ad || "Santralim"} alt="Santral özeti yükleniyor…">
+    <Sayfa baslik={ad && ad !== "—" ? ad : "Santralim"} alt="Santral özeti yükleniyor…">   {/* App santral listesi gelmeden «—» geçirir; tire başlık olmasın */}
       <div className="santralim-akis" role="status" aria-live="polite" aria-label="Yükleniyor">
         <section className="bolum">
           <div className="ozet-bas">Özet<span className="sag">tümü beklenen değer (P50); her gece gerçekleşenle sınanır</span></div>
