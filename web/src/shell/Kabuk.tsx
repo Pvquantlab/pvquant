@@ -85,12 +85,23 @@ export function Kabuk({ sayfa, tiklanan, setSayfa, santral, plantId, onCikis, ch
     /** v2.263: gerçek santral seçici — liste ve seçim geri çağrısı (yoksa tek santral). */
     santraller?: { id: string; name: string }[]; onSantral?: (id: string) => void;
     /** v2.302: yeni santral eklenince liste tazelensin */ santralYenile?: () => void }) {
-  // v2.290: tema kipi — "oto" (varsayılan) sayfanın yüzünü izler; Açık/Koyu kalıcı seçimdir.
+  // v2.290: tema kipi — Açık/Koyu kalıcı seçimdir. 17.11: "oto" (varsayılan) artık SİSTEM tercihini izler (prefers-color-scheme);
+  // eskiden sayfanın yüzünü izliyordu ve Genel bakış → Portföy geçişi temayı açıktan koyuya çeviriyordu (kullanıcı bulgusu).
+  // SAYFALAR[].yuz alanı tema seçmez (nav pinleri için duruyor).
   const [temaKipi, setTemaKipi] = useState<"oto" | "acik" | "koyu">(() => {
     try { const k = localStorage.getItem("pvq_tema"); return k === "acik" || k === "koyu" ? k : "oto"; }
     catch { return "oto"; }
   });
-  const sayfaYuzu = SAYFALAR.find((s) => s.id === sayfa)?.yuz ?? "acik";
+  const [sistemKoyu, setSistemKoyu] = useState<boolean>(() => {
+    try { return typeof window !== "undefined" && !!window.matchMedia?.("(prefers-color-scheme: dark)").matches; } catch { return false; }
+  });
+  useEffect(() => {   // sistem teması değişirse (gün/gece) Oto kipi onu izler; sayfa geçişi etkilemez
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const din = (e: MediaQueryListEvent) => setSistemKoyu(e.matches);
+    mq.addEventListener?.("change", din);
+    return () => mq.removeEventListener?.("change", din);
+  }, []);
   // v2.340 (#8): sekme başlığı sayfayı ve santralı yansıtsın — panel sekmeleri
   // arasında gezerken hepsi aynı başlığı taşıyordu, açık sekmeler ayırt edilemiyordu.
   useEffect(() => {
@@ -100,7 +111,7 @@ export function Kabuk({ sayfa, tiklanan, setSayfa, santral, plantId, onCikis, ch
     // ekranındaki ziyaretçi sekmede santral adını görmeye devam ederdi.
     return () => { document.title = "PVQuant — Güneş santralleri için üretim tahmini ve doğruluk karnesi"; };
   }, [sayfa, santral]);
-  const koyu = temaKipi === "koyu" || (temaKipi === "oto" && sayfaYuzu === "koyu");
+  const koyu = temaKipi === "koyu" || (temaKipi === "oto" && sistemKoyu);
   const kipSec = (k: "oto" | "acik" | "koyu") => {
     setTemaKipi(k);
     try { if (k === "oto") localStorage.removeItem("pvq_tema"); else localStorage.setItem("pvq_tema", k); } catch { /* gizli pencere */ }
@@ -318,7 +329,7 @@ export function Kabuk({ sayfa, tiklanan, setSayfa, santral, plantId, onCikis, ch
             </button>
             <div className="seg" role="group" aria-label="Tema">
               <button aria-pressed={temaKipi === "oto"} onClick={() => kipSec("oto")}
-                      title="Sayfaya göre: operasyon sayfaları koyu, kanıt sayfaları açık">Oto</button>
+                      title="Sistem tercihini izler (cihazınızın açık/koyu ayarı); sayfa geçişi temayı değiştirmez">Oto</button>
               <button aria-pressed={temaKipi === "acik"} onClick={() => kipSec("acik")}>Açık</button>
               <button aria-pressed={temaKipi === "koyu"} onClick={() => kipSec("koyu")}>Koyu</button>
             </div>

@@ -106,3 +106,12 @@ test("istemci: bellekten.* okuyucuları aynı yolu bellekte arar (API sözleşme
   const govde = c.slice(c.indexOf("export const bellekten = {"), c.indexOf("};", c.indexOf("export const bellekten = {")));
   assert.doesNotMatch(govde, /fetch\(|istek\(|al\(/, "bellekten yalnız bellektenOku kullanır");
 });
+
+// 17.11 — Oto kipi sayfa yüzünü DEĞİL sistem tercihini izler: Genel bakış → Portföy geçişi temayı çevirmez (kullanıcı bulgusu)
+test("tema Oto kipi: sistem tercihi (prefers-color-scheme), sayfa yüzünden bağımsız", () => {
+  const k = oku("shell/Kabuk.tsx");
+  assert.match(k, /const koyu = temaKipi === "koyu" \|\| \(temaKipi === "oto" && sistemKoyu\);/);
+  assert.match(k, /window\.matchMedia\("\(prefers-color-scheme: dark\)"\)/);
+  assert.match(k, /mq\.addEventListener\?\.\("change", din\)/);
+  assert.doesNotMatch(k, /sayfaYuzu === "koyu"/, "sayfa yüzü temayı seçmemeli");
+});
