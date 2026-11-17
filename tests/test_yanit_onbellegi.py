@@ -114,11 +114,13 @@ def test_sarilan_uclar_kaynakta():
                "sayac"]:   # operasyon: sayac 0,3 s (pandas), TTL 5 dk
         assert (f'plant_id, f"{uc}' in kaynak or f'plant_id, "{uc}"' in kaynak) and f'@app.get("/v1/plants/{{plant_id}}/{uc}")' in kaynak, uc
     assert kaynak.count("yanit_onbellegi.getir(") == 29   # 17.11 Santralim: + forecast, pr, runs, kirlenme
-    assert kaynak.count("ttl_sn=300") == 4   # sayac («bugün» geri sayımı) + 17.11 Santralim: forecast, pr, runs (koşu damgasına bağlı, 5 dk)
+    assert kaynak.count("ttl_sn=300") == 5   # sayac («bugün» geri sayımı) + 17.11 Santralim: forecast, pr, runs (koşu damgasına bağlı, 5 dk) + 17.11 KGUP: revizyon girdisi
     assert kaynak.count("if taze:") == 2   # bağımsız doğrulama ve finansal etki: taze=1 önbelleğe girmez
     assert kaynak.count('if fmt != "json":') == 2   # kgup CSV eki (arşive yazar) ve mutabakat/saatlik CSV indirme önbelleğe girmez
-    assert kaynak.count("ttl_sn=60)") == 2   # kgup ve kgup/revizyon zamana bağlı (revizyon penceresi) → kısa TTL
-    assert kaynak.count("ttl_sn=600)") == 3   # hakkinda ve kurallar (genel 10 dk) + 17.11 kirlenme (ölçüm damgasına bağlı)
+    assert kaynak.count("ttl_sn=60)") == 0   # 17.11 KGUP hiz turu: zamana bagli alanlar sarmaldan ayrildi (kgup: teslim her istekte; revizyon: girdi onbellekte, pencere her istekte) -> kisa TTL kalmadi
+    assert kaynak.count("ttl_sn=600)") == 4   # hakkinda ve kurallar (genel 10 dk) + 17.11 kirlenme (ölçüm damgasına bağlı) + 17.11 kgup govdesi (cozulmus gun anahtarda)
+    assert 'f"kgup?gun={g}&kantil={kantil}&fmt=json"' in kaynak and 'return {**govde, "teslim": _kg.teslim_durumu()}' in kaynak   # gun anahtara cozulmus; teslim taze
+    assert 'f"kgup/revizyon-girdi?gun={t.date().isoformat()}"' in kaynak and "revizyon_service.oner(claims[\"tenant_id\"], row, t, girdi=girdi)" in kaynak
     assert 'yanit.headers["X-Sure-ms"]' in kaynak
 
 

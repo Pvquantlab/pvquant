@@ -35,10 +35,10 @@ def test_damga_degisince_isitir_degismeyince_atlar(etkin):
         return {"kiraci": t, "santral": p, "n": say["n"]}
     liste = [("t1", "p1"), ("t2", "p2")]
     r1 = yanit_isitici.tur({"genel-bakis": (uret, 900)}, liste)
-    assert r1 == {"isitilan": 2, "atlanan": 0, "hata": 0} and say["n"] == 2
+    assert r1 == {"isitilan": 2, "atlanan": 0, "bos": 0, "hata": 0} and say["n"] == 2
     # aynı damga → iki santral da atlanır, üretici koşmaz
     r2 = yanit_isitici.tur({"genel-bakis": (uret, 900)}, liste)
-    assert r2 == {"isitilan": 0, "atlanan": 2, "hata": 0} and say["n"] == 2
+    assert r2 == {"isitilan": 0, "atlanan": 2, "bos": 0, "hata": 0} and say["n"] == 2
     # ısıtılan kayıt, uç sarmalının anahtarıyla isabet eder (üretici yine koşmaz)
     assert yanit_onbellegi.getir("t1", "p1", "genel-bakis", lambda: uret("t1", "p1"))["n"] == 1 and say["n"] == 2
     # damga değişince yeniden ısıtılır; kiracı yalıtımı korunur
@@ -53,12 +53,32 @@ def test_uretici_hatasi_gecilir_ve_onbellege_girmez(etkin):
     def patlar(t, p):
         raise LookupError("tahmin koşusu yok")
     r = yanit_isitici.tur({"forecast?hours=384": (patlar, 300), "summary": (lambda t, p: {"ok": 1}, 900)}, [("t1", "p1")])
-    assert r == {"isitilan": 1, "atlanan": 0, "hata": 1}
+    assert r == {"isitilan": 1, "atlanan": 0, "bos": 0, "hata": 1}
     say = {"n": 0}
     def uret():
         say["n"] += 1
         return {"n": say["n"]}
     assert yanit_onbellegi.getir("t1", "p1", "forecast?hours=384", uret, ttl_sn=300) == {"n": 1}   # ıska: hata saklanmamıştı
+
+
+def test_4xx_bos_sayilir_ve_etag_anisi_tutulur(etkin):
+    """17.11 KGUP hiz turu: kosusu olmayan santralda 404/409 kalici durumdur — hata degil «bos»; etag anisi tutulur, her dakika yeniden denenmez."""
+    from fastapi import HTTPException
+    say = {"n": 0}
+    def yok(t, p):
+        say["n"] += 1
+        raise HTTPException(409, "bu gün için teslim penceresi öncesinde verilmiş koşu yok")
+    kayit = {"kgup?gun={yarin}&kantil=p50&fmt=json": (yok, 600), "summary": (lambda t, p: {"ok": 1}, 900)}
+    r1 = yanit_isitici.tur(kayit, [("t1", "p1")])
+    assert r1 == {"isitilan": 1, "atlanan": 0, "bos": 1, "hata": 0} and say["n"] == 1
+    r2 = yanit_isitici.tur(kayit, [("t1", "p1")])
+    assert r2["atlanan"] == 1 and say["n"] == 1   # ayni damga + ayni gun: santral atlanir, 409 ureticisi yeniden kosmaz
+    # gun yer tutucusu anahtara cozulur; gun donunce etag anisi gecersizlesir
+    g = {"bugun": "2026-11-17", "yarin": "2026-11-18"}
+    assert yanit_isitici.anahtar_coz("kgup?gun={yarin}&kantil=p50&fmt=json", g) == "kgup?gun=2026-11-18&kantil=p50&fmt=json"
+    assert yanit_isitici.anahtar_coz("kgup/revizyon-girdi?gun={bugun}", g) == "kgup/revizyon-girdi?gun=2026-11-17"
+    gg = yanit_isitici.gunler(); assert len(gg["bugun"]) == 10 and gg["yarin"] > gg["bugun"]
+    assert next(iter(yanit_isitici._SON_ETAG.values())).endswith("|" + gg["bugun"])
 
 
 def test_tek_isci_kilidi(etkin):
@@ -76,7 +96,9 @@ def test_main_sarmali_ve_anahtarlar():
     import apps.api.main as api_main
     kaynak = Path(api_main.__file__).read_text(encoding="utf-8")
     assert '@app.on_event("startup")\ndef _yanit_isiticisini_baslat()' in kaynak
-    for anahtar in ('"genel-bakis": (lambda t, p: _genel_bakis_uret(', '"summary": (lambda t, p: _summary_uret(', '"forecast?hours=384": (lambda t, p: _forecast_uret(plant_id=p, hours=384'):
+    for anahtar in ('"genel-bakis": (lambda t, p: _genel_bakis_uret(', '"summary": (lambda t, p: _summary_uret(', '"forecast?hours=384": (lambda t, p: _forecast_uret(plant_id=p, hours=384',
+                    '"kgup?gun={yarin}&kantil=p50&fmt=json": (lambda t, p: _kgup_dosyasi_uret(plant_id=p, gun=yanit_isitici.gunler()["yarin"], kantil="p50", fmt="json", claims=_c(t)), 600)',   # 17.11 KGUP: uc anahtari/TTL ile birebir
+                    '"kgup/revizyon-girdi?gun={bugun}": (lambda t, p: _kgup_revizyon_girdi_uret(plant_id=p, claims=_c(t)), 300)'):
         assert anahtar in kaynak, anahtar
     compose = Path(api_main.__file__).resolve().parents[2].joinpath("docker-compose.yml").read_text(encoding="utf-8")
     assert 'PVQ_YANIT_ISITICI: "1"' in compose

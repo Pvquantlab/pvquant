@@ -72,3 +72,27 @@ test("Genel bakış: sayfaya özel iskelet dört soru başlığıyla anında; te
   assert.match(s, /useState<GenelBakisT \| null \| undefined>\(\(\) => bellekten\.genelBakis\(plantId\)\)/);
   assert.equal((s.match(/api\.genelBakis\(plantId\)/g) ?? []).length, 1, "tek uç");
 });
+
+// 17.11 KGÜP hız ve bütünlük turu — kaynak pinleri
+test("KGÜP: bayat-önce bellek, sürüm geçmişi yalnız açılınca, iki bölümlü akış ve gövde iskeletleri", () => {
+  const s = oku("../../src/features/sayfalar/Kgup.tsx");
+  assert.match(s, /useState<KgupOnizleme \| null \| undefined>\(\(\) => bellekten\.kgup\(plantId\)\)/, "önizleme bellekten başlar");
+  assert.match(s, /useState<KgupRevizyon \| null \| undefined>\(\(\) => bellekten\.kgupRevizyon\(plantId\)\)/, "revizyon bellekten başlar");
+  const efekt = s.slice(s.indexOf("useEffect(() => {"), s.indexOf("}, [plantId, ds]);"));
+  assert.doesNotMatch(efekt, /kgupSurumler|surumleriYenile/, "sürüm geçmişi açılış isteği değil (3 → 2 istek)");
+  assert.match(efekt, /setKgup\(bellekten\.kgup\(plantId\)\); setRv\(bellekten\.kgupRevizyon\(plantId\)\);/, "santral geçişinde bellekteki anında");
+  assert.match(efekt, /setKgup\(\(e\) => \(v \? ayniysaEskisi\(e, v\) : v\)\)/, "aynı veri yeniden çizdirmez");
+  assert.match(s, /onToggle=\{\(e\) => \{ if \(\(e\.currentTarget as HTMLDetailsElement\)\.open && surumler === undefined\) surumleriYenile\(\); \}\}/, "açılınca istenir");
+  assert.match(s, /<div className="akis">/); assert.equal((s.match(/<section className="bolum">/g) ?? []).length, 2, "Yarın / Bugün bölümleri");
+  assert.match(s, /<div className="ozet-bas">Yarın<span className="sag">/); assert.match(s, /<div className="ozet-bas">Bugün<span className="sag">/);
+  assert.doesNotMatch(s, /baslik="Üretim programı \(KGÜP\) —/, "kart başlığı sayfa başlığını yinelemez");
+  assert.match(s, /kgup === undefined \? \([\s\S]{0,220}<ProgramIskeleti \/>/); assert.match(s, /rv === undefined \? <RevizyonIskeleti \/>/);
+  assert.match(s, /function ProgramIskeleti\(\)[\s\S]*?className="program-ozet"[\s\S]*?className="dugme-grubu"/, "iskelet gerçek kalıpta");
+  assert.match(s, /Array\.from\(\{ length: 13 \}/, "revizyon iskeleti 13 satır (gün ortası)");
+  const cl = oku("../../src/api/client.ts");
+  assert.match(cl, /kgup: \(p: string\): KgupOnizleme \| undefined => bellektenOku<KgupOnizleme>\(`\/v1\/plants\/\$\{p\}\/kgup\?fmt=json&kantil=p50`\)/, "bellek yolu kgupOnizleme ile birebir");
+  assert.match(cl, /kgupRevizyon: \(p: string\): KgupRevizyon \| undefined => bellektenOku<KgupRevizyon>\(`\/v1\/plants\/\$\{p\}\/kgup\/revizyon`\)/);
+  const css = oku("../../src/index.css");
+  assert.match(css, /\n\.akis \{ display: grid; gap: 28px; \}/); assert.match(css, /\.akis \.bolum \{ display: grid; gap: 14px;/);
+  assert.match(css, /\.iskelet-satirlar \.iskelet-alan \{ height: 28px;/);
+});

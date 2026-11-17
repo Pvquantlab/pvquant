@@ -1,21 +1,25 @@
 import { useEffect, useState } from "react";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
-import { api } from "../../api/client";
+import { api, ayniysaEskisi, bellekten } from "../../api/client";
 import type { KgupRevizyon, KgupOnizleme, KgupSurum, KgupKiyas } from "../../api/types";
-import { Kart, Sayfa, sayiTr, YerTutucu } from "./parcalar";
+import { Kart, Sayfa, sayiTr } from "./parcalar";
 import { yuzdeTr } from "../../lib/bicim";   // 16.11: yüzde işaret sırası tek kural (−%8,4)
 import { Meta } from "../../lib/Meta";
 
 /** v2.608 (Faz 5 F5-A) — KGÜP sayfası: «Üretim programı (KGÜP) — yarının saatlik programı» ve «Bugünün programı — revizyon önerisi»
  *  kartları Tahminler'den TAŞINDI (bileşen gövdeleri, api çağrıları ve durumlar aynen; Tahminler'de yalnız bağlantı kaldı). Piyasa ve
- *  finans grubunun ilk sayfası. İstekler bağımsız, yanıt yoldayken yer tutucu (24.10 kalıbı). */
+ *  finans grubunun ilk sayfası. İstekler bağımsız, yanıt yoldayken yer tutucu (24.10 kalıbı).
+ *  17.11 KGÜP hız ve bütünlük turu: (1) bayat-önce — önizleme ve revizyon bellekte varsa santral geçişinde anında çizilir, ağdan tazelenir
+ *  (ayniysaEskisi: aynı veri yeniden çizdirmez); (2) ilk ekran 3 → 2 istek: sürüm geçmişi yalnız açılır alan açılınca istenir (kıyasla aynı kalıp);
+ *  (3) iki bölümlü akış (Yarın / Bugün, .akis: 28/14 ritmi, eyebrow) ve kart başlıkları sayfa başlığını yinelemez; (4) gövde iskeletleri
+ *  gerçek yerleşimin kalıbında (özet satırı + düğme kümesi + açılır satırlar; revizyonda satır listesi) — veri gelince sıçrama küçülür. */
 // 29.10 (F-05 #4): panelin önerdiği her kantil indirilebilir
 const KGUP_KANTILLER = ["p10", "p25", "p50", "p75", "p90"] as const;
 type KgupKantil = (typeof KGUP_KANTILLER)[number];
 
 export function Kgup({ plantId }: { plantId: string }) {
   const ds = useDamgaSurumu();   // 26.10 eşzamanlama
-  const [kgup, setKgup] = useState<KgupOnizleme | null | undefined>(undefined);   // v2.260
+  const [kgup, setKgup] = useState<KgupOnizleme | null | undefined>(() => bellekten.kgup(plantId));   // v2.260; 17.11 bayat-önce
   const [kgupHata, setKgupHata] = useState<string | null>(null);
   const [kgupKantil, setKgupKantil] = useState<KgupKantil>("p50");   // 29.10
   const [surumler, setSurumler] = useState<KgupSurum[] | undefined>(undefined);   // v2.502 (F-06): indirilen dosyaların sürüm geçmişi
@@ -41,13 +45,14 @@ export function Kgup({ plantId }: { plantId: string }) {
     api.kgupBildirilenYukle(plantId, gun, dosya).then((r) => { setKiyas(r.kiyas); setYukleMesaj(r.kayit.yeni ? `Kaydedildi: bildirilen sürüm ${r.kayit.surum}, ${sayiTr(r.kayit.toplam_mwh, 1)} MWh.` : "Aynı içerik zaten kayıtlı."); surumleriYenile(); })
       .catch((e) => setYukleMesaj(String((e as Error).message ?? e)));
   };
-  const [rv, setRv] = useState<KgupRevizyon | null | undefined>(undefined);   // v2.507 (F-10)
+  const [rv, setRv] = useState<KgupRevizyon | null | undefined>(() => bellekten.kgupRevizyon(plantId));   // v2.507 (F-10); 17.11 bayat-önce
   useEffect(() => {
     let acik = true;
-    setKgup(undefined); setSurumler(undefined); setKiyas(null); setYukleMesaj(null); setSablonMesaj(null); setKgupHata(null);   // inceleme: önceki santralın kıyası/mesajı kalmasın
-    api.kgupOnizleme(plantId).then((v) => { if (acik) setKgup(v); }, () => { if (acik) setKgup(null); });
-    setRv(undefined); api.kgupRevizyon(plantId).then((v) => { if (acik) setRv(v); }, () => { if (acik) setRv(null); });
-    api.kgupSurumler(plantId).then((v) => { if (acik) setSurumler(v); });
+    // 17.11: bellekte varsa anında (iskelet yok), yoksa iskelet; sürüm geçmişi açılış isteği değil (açılır alan açılınca)
+    setKgup(bellekten.kgup(plantId)); setRv(bellekten.kgupRevizyon(plantId));
+    setSurumler(undefined); setKiyas(null); setYukleMesaj(null); setSablonMesaj(null); setKgupHata(null);   // inceleme: önceki santralın kıyası/mesajı kalmasın
+    api.kgupOnizleme(plantId).then((v) => { if (acik) setKgup((e) => (v ? ayniysaEskisi(e, v) : v)); }, () => { if (acik) setKgup(null); });
+    api.kgupRevizyon(plantId).then((v) => { if (acik) setRv((e) => (v ? ayniysaEskisi(e, v) : v)); }, () => { if (acik) setRv(null); });
     return () => { acik = false; };
   }, [plantId, ds]);   // 26.10 eşzamanlama: damga değişince yeniden çekilir
   return (
@@ -58,11 +63,14 @@ export function Kgup({ plantId }: { plantId: string }) {
           (3) piyasa takvimi kuralı açılır alanda. Düğmelerin onClick'leri ve api çağrıları aynen. */}
       {/* 29.10 (05 §5, 08 #10): KGÜP kartı ilk ekranda, tek birincil eylem (.dugme-ana), kantil seçimi (P10/P25/P50/P75/P90),
           dosya özeti (SHA-256) ve «indirilen dosya teslim sayılmaz» notu; şablon durumu açık */}
-      <Kart baslik="Üretim programı (KGÜP) — yarının saatlik programı"
+      <div className="akis">
+      <section className="bolum">
+      <div className="ozet-bas">Yarın<span className="sag">teslim günü programı</span></div>
+      <Kart baslik="Program dosyası — yarının saatlik programı; bildirim beyanı ve kıyas"
         sag={<span className="cip">{kgup ? <Meta items={[`teslim günü ${new Date(kgup.teslim.hedef_gun + "T12:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}`, `teyit ${kgup.teslim.teyit_saati.slice(0, 5)}`]} /> : kgup === undefined ? "hesaplanıyor" : "tahmin bekleniyor"}</span>}>
         {kgup === undefined ? (
-          /* 24.10: yanıt yoldayken «program henüz yok» yazılmaz — yer tutucu (önce boş durum görünüp sonra doluyordu) */
-          <YerTutucu yukseklik={140} />
+          /* 24.10: yanıt yoldayken «program henüz yok» yazılmaz — yer tutucu (önce boş durum görünüp sonra doluyordu); 17.11: gövde kalıbında iskelet */
+          <ProgramIskeleti />
         ) : kgup ? (
           <>
             <div className="program-ozet">
@@ -104,7 +112,7 @@ export function Kgup({ plantId }: { plantId: string }) {
             {kgup.uyarilar.length > 0 && <ul className="not-listesi uyari">{kgup.uyarilar.map((u) => <li key={u}>{u}</li>)}</ul>}
             {kgup.sicrama_saatleri.length > 0 && <p style={{ fontSize: "var(--t-ikincil)", margin: "8px 0 0" }}>≥200 MWh ani değişim: saat {kgup.sicrama_saatleri.join(", ")}; dosyada 15 dakikalık adımlar.</p>}
             {/* v2.502 (F-06): sürüm geçmişi — her indirme değiştirilemez kayıt; aynı içerik yeni sürüm açmaz; dosya bayt bayt geri alınır */}
-            <details className="aciklama genis">
+            <details className="aciklama genis" onToggle={(e) => { if ((e.currentTarget as HTMLDetailsElement).open && surumler === undefined) surumleriYenile(); }}>   {/* 17.11: açılınca istenir */}
               <summary>Sürüm geçmişi{surumler && surumler.length > 0 ? ` (${sayiTr(surumler.length)} kayıt)` : ""}</summary>
               {surumler === undefined ? <p className="soluk">yükleniyor…</p>
                : surumler.length === 0 ? <p className="soluk">Henüz indirilmiş dosya yok. Her KGÜP ve EAK indirmesi sürüm olarak saklanır; aynı içerik yeniden indirilince yeni sürüm açılmaz.</p>
@@ -187,10 +195,13 @@ export function Kgup({ plantId }: { plantId: string }) {
           </div>
         )}
       </Kart>
+      </section>
       {/* v2.507 (F-10): bugünün programı ↔ güncel beklenti — eşik üstü ve revize edilebilir saatler; yol gösterici, kayıt yazmaz */}
-      <Kart baslik="Bugünün programı — revizyon önerisi"
+      <section className="bolum">
+      <div className="ozet-bas">Bugün<span className="sag">gün içi revizyon</span></div>
+      <Kart baslik="Revizyon önerisi — bugünün programı ↔ güncel beklenti"
         sag={<span className="cip">{rv === undefined ? "hesaplanıyor" : rv?.durum === "ok" ? <Meta items={[rv.oneri_saatleri.length ? `${sayiTr(rv.oneri_saatleri.length)} saat öneri` : "öneri yok", `eşik ${yuzdeTr(rv.esik_oran * 100, 0)}`, rv.program_kaynagi ?? ""]} /> : rv?.durum === "gun_bitti" ? "gün bitti" : rv?.durum === "program_yok" ? "bugün için program yok" : "tahmin yok"}</span>}>
-        {rv === undefined ? <YerTutucu yukseklik={160} />
+        {rv === undefined ? <RevizyonIskeleti />
          : !rv || rv.durum !== "ok" ? (
           <div className="bos-durum">
             <div className="bos-bas">{rv?.durum === "gun_bitti" ? "Bugünün revizyon pencereleri kapandı." : rv?.durum === "program_yok" ? "Bugün için bildirilmiş ya da indirilmiş program bulunamadı." : "Güncel tahmin olmadığından kıyas yapılamadı."}</div>
@@ -217,6 +228,34 @@ export function Kgup({ plantId }: { plantId: string }) {
           </>
         )}
       </Kart>
+      </section>
+      </div>
     </Sayfa>
+  );
+}
+
+/** 17.11 — gövde iskeletleri: gerçek yerleşimin kalıbı (ölçüm 1440 px: program gövdesi ~340 px = özet satırı 29 + düğme kümesi 61 + not 40 +
+ *  dört açılır satır; revizyon gövdesi gün ortasında ~450 px = not + 13 saat satırı). Sayı/veri göstermez; hareket yok. */
+function ProgramIskeleti() {
+  return (
+    <div className="iskelet-govde" role="status" aria-live="polite" aria-label="Yükleniyor">
+      <div className="program-ozet"><span className="iskelet-alan" style={{ height: 30, width: 150 }} /><span className="iskelet-alan" style={{ height: 14, width: 200 }} /><span className="iskelet-alan" style={{ height: 22, width: 240, borderRadius: 999 }} /></div>
+      <div className="dugme-grubu">
+        <div><span className="iskelet-alan" style={{ height: 12, width: 110 }} /><span className="iskelet-alan" style={{ height: 34, width: 300 }} /></div>
+        <div><span className="iskelet-alan" style={{ height: 12, width: 110 }} /><span className="iskelet-alan" style={{ height: 34, width: 320 }} /></div>
+      </div>
+      <span className="iskelet-alan" style={{ height: 14, width: "85%", marginTop: 6 }} />
+      {Array.from({ length: 4 }, (_, i) => <span key={i} className="iskelet-alan" style={{ height: 18, width: 180 + (i % 2) * 40, marginTop: 8 }} />)}
+      <span className="gorsel-gizli">Yükleniyor…</span>
+    </div>
+  );
+}
+function RevizyonIskeleti() {
+  return (
+    <div className="iskelet-govde" role="status" aria-live="polite" aria-label="Yükleniyor">
+      <span className="iskelet-alan" style={{ height: 14, width: "70%" }} />
+      <div className="iskelet-satirlar">{Array.from({ length: 13 }, (_, i) => <span key={i} className="iskelet-alan" style={{ opacity: i === 0 ? 0.6 : 1 }} />)}</div>
+      <span className="gorsel-gizli">Yükleniyor…</span>
+    </div>
   );
 }

@@ -58,8 +58,8 @@ test("ayniysaEskisi: birebir aynı veri eski referansı döndürür, farklı ver
 test("Tahminler: KGÜP (kendi sayfasında) ve kısa ufuk kartları yanıt gelmeden «henüz yok» demez; seri/özet alınamazsa boş durum", () => {
   const k = yorumsuz(oku("features/sayfalar/Tahminler.tsx"));
   const kg = yorumsuz(oku("features/sayfalar/Kgup.tsx"));   // v2.608 (Faz 5 F5-A): KGÜP kartları Kgup.tsx'e taşındı, kalıp aynı
-  assert.match(kg, /kgup === undefined \?[\s\S]{0,200}<YerTutucu/, "KGÜP yoldayken yer tutucu");
-  assert.match(kg, /rv === undefined \? <YerTutucu/, "revizyon önerisi yoldayken yer tutucu");
+  assert.match(kg, /kgup === undefined \?[\s\S]{0,200}<ProgramIskeleti \/>/, "KGÜP yoldayken yer tutucu (17.11: gövde kalıbında iskelet)");
+  assert.match(kg, /rv === undefined \? <RevizyonIskeleti \/>/, "revizyon önerisi yoldayken yer tutucu (17.11: satır listesi iskeleti)");
   assert.match(k, /nc === undefined \? <YerTutucu/, "kısa ufuk yoldayken yer tutucu");
   assert.match(kg, /kgup === undefined \? "hesaplanıyor" : "tahmin bekleniyor"/, "KGÜP çipi yolda/yok ayrımı");
   assert.doesNotMatch(k, /kgupOnizleme|kgupRevizyon/, "Tahminler KGÜP uçlarını artık çağırmaz (çift hedef yok)");

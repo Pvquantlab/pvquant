@@ -62,3 +62,32 @@ def test_revizyon_kapisi(istemci, monkeypatch):
     j = istemci.get("/v1/plants/p1/kgup/revizyon").json()
     assert j["durum"] == "ok" and j["oneri_saatleri"] == [12] and j["program_kaynagi"].startswith("bildirilen") and j["esik_oran"] == 0.10
     assert istemci.get("/v1/plants/yok/kgup/revizyon").status_code == 404
+
+
+def test_girdiler_onbellek_turu_ayni_sonuc_ve_pencere_taze(monkeypatch):
+    """17.11 KGUP hiz turu: girdiler() JSON'u ile oner(girdi=) dogrudan hesapla BIREBIR; zaman ilerleyince ayni girdiyle pencere daralir;
+    gun uyusmazsa girdi yok sayilir; program yoksa beklenti hesaplanmaz."""
+    import pytest
+    idx = pd.date_range("2026-10-30", periods=24, freq="h", tz=IST)
+    prog = pd.Series([0.0] * 8 + [5, 8, 10, 11, 12, 11, 9, 6, 3] + [0.0] * 7, index=idx, dtype=float)
+    bek = prog * 1.3
+    monkeypatch.setattr(rv, "_program_bugun", lambda t, p, g: (prog, "indirilen öneri (sürüm 2)"))
+    monkeypatch.setattr(rv, "_beklenen", lambda t, p, s: (bek, "son koşu P50"))
+    plant = {"id": "p1", "capacity_kwp": 12000, "params_json": {}}
+    simdi = pd.Timestamp("2026-10-30 09:40", tz=IST)
+    g = rv.girdiler("t", plant, simdi)
+    assert g["gun"] == "2026-10-30" and len(g["program"]["ts"]) == 24 and g["program"]["ts"][0].endswith("+00:00") and g["beklenen"]["mwh"][12] == pytest.approx(15.6)
+    dogrudan = rv.oner("t", plant, simdi)
+    def db_yok(*a):
+        raise AssertionError("girdi varken DB'ye gidilmemeli")
+    monkeypatch.setattr(rv, "_program_bugun", db_yok); monkeypatch.setattr(rv, "_beklenen", db_yok)
+    girdili = rv.oner("t", plant, simdi, girdi=g)
+    assert girdili == dogrudan and girdili["durum"] == "ok" and girdili["oneri_saatleri"] and girdili["program_kaynagi"] == "indirilen öneri (sürüm 2)"
+    sonra = rv.oner("t", plant, pd.Timestamp("2026-10-30 12:45", tz=IST), girdi=g)   # ayni girdi, sonraki istek: pencere su ana gore
+    assert sonra["saatler"][0]["saat"] == 12 and len(sonra["saatler"]) < len(girdili["saatler"]) and sonra["simdi"].startswith("2026-10-30T12:45")
+    with pytest.raises(AssertionError):   # gun uyusmazligi (gece yarisi gecisi): girdi yok sayilir, DB yolu
+        rv.oner("t", plant, pd.Timestamp("2026-10-31 09:40", tz=IST), girdi=g)
+    assert rv.oner("t", plant, pd.Timestamp("2026-10-30 23:10", tz=IST), girdi=g)["durum"] == "gun_bitti"
+    monkeypatch.setattr(rv, "_program_bugun", lambda t, p, g: (None, None))
+    g2 = rv.girdiler("t", plant, simdi)
+    assert g2["program"] is None and g2["beklenen"] is None and rv.oner("t", plant, simdi, girdi=g2)["durum"] == "program_yok"

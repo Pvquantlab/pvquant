@@ -1253,3 +1253,15 @@ table.veri.dar th + th, table.veri.dar td + td { padding-left: 10px; }
 /* iskelet: özet şeridi hücreleri gerçek ızgarada, yer tutucu bloklar; hareket yok */
 .santralim-akis .iskelet-ozet > div { display: grid; gap: 8px; align-content: start; }
 .santralim-akis .iskelet-ozet .iskelet-alan { display: block; }
+
+/* 17.11 KGÜP hız ve bütünlük turu — genel akış sınıfı: Santralim ritmi (bölümler arası 28, bölüm içi 14, eyebrow .ozet-bas) sayfadan
+   bağımsız; .santralim-akis kuralları dokunulmadı (ileride diğer sayfalar aynı sınıfa geçer). Gövde iskeleti: kart başlığı anında, gövde
+   gerçek kalıbın boyutlarında (özet/düğme/satır); .iskelet-satirlar 28 px satırlar (table.veri satır yüksekliğiyle aynı). */
+.akis { display: grid; gap: 28px; }
+.akis .bolum { display: grid; gap: 14px; align-content: start; min-width: 0; }
+.akis .ozet-bas { margin-bottom: 0; }
+.akis .ozet-bas .sag { font-weight: 400; color: var(--soluk); }
+.iskelet-govde { display: grid; gap: 10px; align-content: start; }
+.iskelet-govde .iskelet-alan { display: block; max-width: 100%; }
+.iskelet-satirlar { display: grid; gap: 6px; }
+.iskelet-satirlar .iskelet-alan { height: 28px; border-radius: 6px; }

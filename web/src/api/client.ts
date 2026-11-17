@@ -123,6 +123,9 @@ export const bellekten = {
   aylik: (p: string): AylikBeklenti | undefined => bellektenOku<AylikBeklenti>(`/v1/plants/${p}/monthly`),
   genelBakis: (p: string): GenelBakis | undefined => bellektenOku<GenelBakis>(`/v1/plants/${p}/genel-bakis`),   // v2.608 (F5-B)
   abonelik: (): MusteriAbonelik | undefined => bellektenOku<MusteriAbonelik>("/v1/abonelik"),   // v2.609 (F6-D)
+  // 17.11 KGÜP hız turu: santral geçişinde bellekteki önizleme/revizyon anında çizilir, ağdan tazelenir (kgupOnizleme/kgupRevizyon yollarıyla birebir)
+  kgup: (p: string): KgupOnizleme | undefined => bellektenOku<KgupOnizleme>(`/v1/plants/${p}/kgup?fmt=json&kantil=p50`),
+  kgupRevizyon: (p: string): KgupRevizyon | undefined => bellektenOku<KgupRevizyon>(`/v1/plants/${p}/kgup/revizyon`),
 };
 
 /** 24.10 — bayat-önce tazelemesi: taze yanıt bellekteki bayat değerle BİREBİR aynıysa eski referans korunur; böylece

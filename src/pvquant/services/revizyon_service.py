@@ -101,10 +101,39 @@ def _beklenen(tenant_id, plant: dict, simdi: pd.Timestamp) -> tuple[pd.Series | 
     return s, kaynak
 
 
-def oner(tenant_id, plant: dict, simdi: pd.Timestamp | None = None) -> dict:
-    """DB: bugün için öneri. Dönüş oner_df + {durum, program_kaynagi, beklenen_kaynagi, gun, not}."""
+def _seri_json(s: pd.Series | None) -> dict | None:
+    """17.11 KGUP hiz turu: saatlik seriyi onbellege yazilabilir JSON'a (UTC ISO zaman + MWh) cevirir; None korunur."""
+    if s is None:
+        return None
+    idx = s.index.tz_convert("UTC") if s.index.tz is not None else s.index.tz_localize("UTC")
+    return {"ts": [ts.isoformat() for ts in idx], "mwh": [None if pd.isna(v) else float(v) for v in s.values]}
+
+
+def _seri_jsondan(d: dict | None) -> pd.Series | None:
+    if not d:
+        return None
+    return pd.Series([np.nan if v is None else float(v) for v in d["mwh"]], index=pd.DatetimeIndex(pd.to_datetime(d["ts"], utc=True)), dtype=float)
+
+
+def girdiler(tenant_id, plant: dict, simdi: pd.Timestamp | None = None) -> dict:
+    """17.11 KGUP hiz turu — onerinin PAHALI girdileri (DB: bugunun programi 66 ms + guncel beklenti 70 ms, canli olcum), JSON olarak.
+    `oner(..., girdi=...)` bunlari okur ve saf oner_df'yi su ana gore kosturur; boylece yanit onbellegi girdileri damgaya bagli
+    tutar, revizyon penceresi (revize_mumkun, gun_bitti) ise her istekte taze hesaplanir. Nowcast ufku girdinin uretildigi ana
+    cipalidir; kisa TTL (5 dk) ve olcum damgasi bunu sinirlar."""
+    t = pd.Timestamp(simdi or pd.Timestamp.now(tz="UTC")); t = t.tz_convert(IST) if t.tz is not None else t.tz_localize("UTC").tz_convert(IST)
+    prog, kaynak = _program_bugun(tenant_id, plant, t.date())
+    bek, bkaynak = (_beklenen(tenant_id, plant, t) if prog is not None else (None, None))
+    return {"gun": t.date().isoformat(), "uretim": t.isoformat(), "program": _seri_json(prog), "program_kaynagi": kaynak,
+            "beklenen": _seri_json(bek), "beklenen_kaynagi": bkaynak}
+
+
+def oner(tenant_id, plant: dict, simdi: pd.Timestamp | None = None, girdi: dict | None = None) -> dict:
+    """DB: bugün için öneri. Dönüş oner_df + {durum, program_kaynagi, beklenen_kaynagi, gun, not}.
+    girdi verilirse (`girdiler` ciktisi, onbellekten) DB'ye gidilmez; gun uyusmazsa girdi yok sayilir (gece yarisi gecisi)."""
     t = pd.Timestamp(simdi or pd.Timestamp.now(tz="UTC")); t = t.tz_convert(IST) if t.tz is not None else t.tz_localize("UTC").tz_convert(IST)
     gun = t.date()
+    if girdi is not None and girdi.get("gun") != gun.isoformat():
+        girdi = None
     pj = plant.get("params_json") or {}
     if isinstance(pj, str):
         import json as _j; pj = _j.loads(pj)
@@ -113,10 +142,16 @@ def oner(tenant_id, plant: dict, simdi: pd.Timestamp | None = None) -> dict:
              "not": "Yol göstericidir, kayıt yazmaz: her saatin revizyon son anı GİP kapı kapanışı + 30 dakikadır (teslimat − 30 dk, DUY m.69(1)); revizyon TPYS'de yapılır."}
     if t.hour >= 23:
         return {**ortak, "durum": "gun_bitti", "program_kaynagi": None, "beklenen_kaynagi": None, "saatler": [], "oneri_saatleri": []}
-    prog, kaynak = _program_bugun(tenant_id, plant, gun)
+    if girdi is not None:
+        prog, kaynak = _seri_jsondan(girdi.get("program")), girdi.get("program_kaynagi")
+    else:
+        prog, kaynak = _program_bugun(tenant_id, plant, gun)
     if prog is None:
         return {**ortak, "durum": "program_yok", "program_kaynagi": None, "beklenen_kaynagi": None, "saatler": [], "oneri_saatleri": []}
-    bek, bkaynak = _beklenen(tenant_id, plant, t)
+    if girdi is not None:
+        bek, bkaynak = _seri_jsondan(girdi.get("beklenen")), (girdi.get("beklenen_kaynagi") or "tahmin yok")
+    else:
+        bek, bkaynak = _beklenen(tenant_id, plant, t)
     if bek is None:
         return {**ortak, "durum": "tahmin_yok", "program_kaynagi": kaynak, "beklenen_kaynagi": None, "saatler": [], "oneri_saatleri": []}
     r = oner_df(prog, bek, t, esik_oran=esik, kurulu_guc_mw=(float(plant.get("capacity_kwp") or 0) / 1000.0) or None)

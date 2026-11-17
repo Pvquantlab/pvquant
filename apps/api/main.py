@@ -141,6 +141,9 @@ def _yanit_isiticisini_baslat() -> None:
         "genel-bakis": (lambda t, p: _genel_bakis_uret(plant_id=p, claims=_c(t)), yanit_onbellegi.VARSAYILAN_TTL_SN),
         "summary": (lambda t, p: _summary_uret(plant_id=p, claims=_c(t)), yanit_onbellegi.VARSAYILAN_TTL_SN),
         "forecast?hours=384": (lambda t, p: _forecast_uret(plant_id=p, hours=384, claims=_c(t)), 300),
+        # 17.11 KGUP hiz turu: {yarin}/{bugun} yer tutucularini isitici her turda piyasa gunuyle cozer (gun degisince yeniden isitir)
+        "kgup?gun={yarin}&kantil=p50&fmt=json": (lambda t, p: _kgup_dosyasi_uret(plant_id=p, gun=yanit_isitici.gunler()["yarin"], kantil="p50", fmt="json", claims=_c(t)), 600),
+        "kgup/revizyon-girdi?gun={bugun}": (lambda t, p: _kgup_revizyon_girdi_uret(plant_id=p, claims=_c(t)), 300),
     })
 
 
@@ -1099,10 +1102,17 @@ def _kgup_yaniti(tenant_id: str, plant_id: str, gun: str | None, kantil: str, fm
 
 @app.get("/v1/plants/{plant_id}/kgup")
 def kgup_dosyasi(plant_id: str, gun: str | None = None, kantil: str = "p50", fmt: str = "csv", claims=Depends(gecerli_kullanici)):
-    """Önbellekli (yanit_onbellegi, 16.11 piyasa/finans): anahtar = kiracı + santral + «kgup?gun={gun}&kantil={kantil}&fmt={fmt}» + değişim damgası (yüklemeler dâhil); üretici aşağıda."""
+    """Önbellekli (yanit_onbellegi, 16.11 piyasa/finans): anahtar = kiracı + santral + «kgup?gun={gun}&kantil={kantil}&fmt=json» + değişim damgası (yüklemeler dâhil); üretici aşağıda.
+    17.11 KGUP hiz turu: gun anahtara COZULMUS yazilir (gece yarisi gecisinde eski gunun govdesi donmez), TTL 60 s -> 10 dk (govde damgaya bagli: kosu,
+    yukleme, fiyat, santral ayari); zamana bagli tek alan `teslim` (15:30 penceresi, dakika_kaldi) her istekte taze hesaplanir. Canli olcum: soguk 562 ms / ilik 9 ms,
+    60 s TTL'de ziyaretcilerin cogu soguk bedeli oduyordu; isitici (yanit_isitici) ayni anahtari damga degisince onceden uretir."""
     if fmt != "json":   # CSV eki arşive yazılır; yalnız JSON önizleme önbellekte
         return _kgup_dosyasi_uret(plant_id=plant_id, gun=gun, kantil=kantil, fmt=fmt, claims=claims)
-    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, f"kgup?gun={gun}&kantil={kantil}&fmt={fmt}", lambda: _kgup_dosyasi_uret(plant_id=plant_id, gun=gun, kantil=kantil, fmt=fmt, claims=claims), ttl_sn=60)
+    from pvquant.ext.turkiye import kgup as _kg
+    from pvquant.services import yanit_isitici as _isitici
+    g = gun or _isitici.gunler()["yarin"]
+    govde = yanit_onbellegi.getir(claims["tenant_id"], plant_id, f"kgup?gun={g}&kantil={kantil}&fmt=json", lambda: _kgup_dosyasi_uret(plant_id=plant_id, gun=g, kantil=kantil, fmt="json", claims=claims), ttl_sn=600)
+    return {**govde, "teslim": _kg.teslim_durumu()}
 
 def _kgup_dosyasi_uret(plant_id: str, gun: str | None = None, kantil: str = "p50", fmt: str = "csv", claims=Depends(gecerli_kullanici)):
     """v2.260 — KGÜP saatlik program (D-1 15:30 öncesi koşudan). fmt=csv → TPYS CSV eki (arşive yazılır); fmt=json → önizleme."""
@@ -1197,17 +1207,28 @@ def kgup_sablon_sifirla(plant_id: str, claims=Depends(yazma_yetkisi())):
 
 @app.get("/v1/plants/{plant_id}/kgup/revizyon")
 def kgup_revizyon(plant_id: str, claims=Depends(gecerli_kullanici)):
-    """Önbellekli (yanit_onbellegi, 16.11 piyasa/finans): anahtar = kiracı + santral + «kgup/revizyon» + değişim damgası (yüklemeler dâhil); üretici aşağıda."""
-    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, "kgup/revizyon", lambda: _kgup_revizyon_uret(plant_id=plant_id, claims=claims), ttl_sn=60)
-
-def _kgup_revizyon_uret(plant_id: str, claims=Depends(gecerli_kullanici)):
     """v2.507 (F-10) — bugünün programı ↔ güncel beklenti: eşik üstü sapan ve revizyon süresi geçmemiş saatler (GİP kapısı + 30 dk).
-    Yol göstericidir; kayıt yazmaz, revizyon TPYS'de yapılır."""
+    Yol göstericidir; kayıt yazmaz, revizyon TPYS'de yapılır.
+    17.11 KGUP hiz turu: yanitin kendisi degil PAHALI GIRDILERI onbellekte — anahtar «kgup/revizyon-girdi?gun={bugun}» + damga, TTL 5 dk
+    (canli: program 66 ms + beklenti 70 ms); revizyon penceresi (revize_mumkun, gun_bitti, oneri) her istekte SU ANA gore saf oner_df ile (6 ms).
+    Eski kalip tum yaniti 60 s saklardi: zamana bagli alanlar yuzunden TTL kisa, ziyaretcilerin cogu soguk bedeli (133 ms) oduyordu."""
     from pvquant.services import plant_service, revizyon_service
     row = plant_service.getir(claims["tenant_id"], plant_id)
     if row is None:
         raise HTTPException(404, "santral yok")
-    return revizyon_service.oner(claims["tenant_id"], row)
+    t = pd.Timestamp.now(tz=PIYASA_TZ)
+    if t.hour >= 23:   # gun bitti: girdi gerekmez (oner kisa devre)
+        return revizyon_service.oner(claims["tenant_id"], row, t)
+    girdi = yanit_onbellegi.getir(claims["tenant_id"], plant_id, f"kgup/revizyon-girdi?gun={t.date().isoformat()}", lambda: revizyon_service.girdiler(claims["tenant_id"], row, t), ttl_sn=300)
+    return revizyon_service.oner(claims["tenant_id"], row, t, girdi=girdi)
+
+def _kgup_revizyon_girdi_uret(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """17.11 KGUP hiz turu — isitici icin: revizyon girdileri (onbelleksiz uretim; anahtar/TTL isitici kaydinda, uc ile birebir)."""
+    from pvquant.services import plant_service, revizyon_service
+    row = plant_service.getir(claims["tenant_id"], plant_id)
+    if row is None:
+        raise HTTPException(404, "santral yok")
+    return revizyon_service.girdiler(claims["tenant_id"], row, pd.Timestamp.now(tz=PIYASA_TZ))
 
 
 @app.get("/v1/plants/{plant_id}/kgup/kiyas")

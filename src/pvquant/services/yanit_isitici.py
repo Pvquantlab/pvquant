@@ -12,6 +12,8 @@ diğer işçiler de yararlanır. Hesap yazmaz, yetki gerektirmez (kiracı kimli�
 
 Açma: PVQ_YANIT_ISITICI=1 (docker-compose api) ve PVQ_YANIT_ONBELLEK=1. Kapalıyken `baslat` hiçbir şey yapmaz (testler, yerel).
 Üretici istisnası (ör. koşusu olmayan santralda forecast 404) sayılır ve geçilir; ısıtıcı asla uygulamayı düşürmez.
+17.11 KGUP hiz turu: anahtarlar {bugun}/{yarin} yer tutucusu tasiyabilir (gunler/anahtar_coz; "kgup?gun={yarin}&kantil=p50&fmt=json",
+"kgup/revizyon-girdi?gun={bugun}"); etag anisina gun eklenir; uretici 4xx'i (409 kosu yok) «bos» sayilir, etag anisini engellemez.
 """
 from __future__ import annotations
 
@@ -26,7 +28,7 @@ from pvquant.services import yanit_onbellegi
 
 ARALIK_SN = 60.0        # damga yoklama aralığı (istemcinin görünür yoklamasıyla aynı)
 ILK_GECIKME_SN = 15.0   # açılışta servis ön yüklemesi bitsin, DB ayağa kalksın
-SAYAC = {"tur": 0, "isitilan": 0, "atlanan": 0, "hata": 0}
+SAYAC = {"tur": 0, "isitilan": 0, "atlanan": 0, "bos": 0, "hata": 0}   # bos: uretici 4xx (kosusu olmayan santral) — kalici durum, hata degil
 _SON_ETAG: dict[str, str] = {}
 _KILIT_DOSYASI: Any = None
 
@@ -36,6 +38,22 @@ Kayit = dict[str, tuple[Uretici, int]]         # anahtar -> (üretici, ttl_sn)
 
 def etkin() -> bool:
     return os.environ.get("PVQ_YANIT_ISITICI", "0") == "1" and yanit_onbellegi.etkin()
+
+
+def gunler() -> dict[str, str]:
+    """17.11 KGUP hiz turu — {bugun}/{yarin}: piyasa gunu (Istanbul). Anahtarlardaki yer tutucular her turda bununla cozulur ve
+    etag anisina gun eklenir: damga degismese de gun donunce KGUP (yarin) ve revizyon girdisi (bugun) yeniden isitilir."""
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
+
+    from pvquant.zaman import PIYASA_TZ
+    b = datetime.now(ZoneInfo(PIYASA_TZ)).date()
+    return {"bugun": b.isoformat(), "yarin": (b + timedelta(days=1)).isoformat()}
+
+
+def anahtar_coz(anahtar: str, g: dict[str, str] | None = None) -> str:
+    g = g or gunler()
+    return anahtar.replace("{bugun}", g["bugun"]).replace("{yarin}", g["yarin"])
 
 
 def santraller() -> list[tuple[str, str]]:
@@ -51,10 +69,11 @@ def santraller() -> list[tuple[str, str]]:
 
 def tur(kayit: Kayit, liste: list[tuple[str, str]] | None = None, zorla: bool = False) -> dict:
     """Bir yoklama turu: damga etag'i değişen santrallar için kayıtlı üreticileri ısıtır. Dönüş: bu turun sayaçları."""
-    sonuc = {"isitilan": 0, "atlanan": 0, "hata": 0}
+    sonuc = {"isitilan": 0, "atlanan": 0, "bos": 0, "hata": 0}
+    g = gunler()
     for tenant_id, plant_id in (liste if liste is not None else santraller()):
         try:
-            et = yanit_onbellegi._damga_etag(tenant_id, plant_id)
+            et = yanit_onbellegi._damga_etag(tenant_id, plant_id) + "|" + g["bugun"]   # gun donunce de yeniden (KGUP yarin / revizyon bugun)
         except Exception:
             sonuc["hata"] += 1
             continue
@@ -64,15 +83,19 @@ def tur(kayit: Kayit, liste: list[tuple[str, str]] | None = None, zorla: bool = 
         hata = 0
         for anahtar, (uret, ttl_sn) in kayit.items():
             try:
-                yanit_onbellegi.getir(tenant_id, plant_id, anahtar, lambda u=uret, t=tenant_id, p=plant_id: u(t, p), ttl_sn=ttl_sn)
+                yanit_onbellegi.getir(tenant_id, plant_id, anahtar_coz(anahtar, g), lambda u=uret, t=tenant_id, p=plant_id: u(t, p), ttl_sn=ttl_sn)
                 sonuc["isitilan"] += 1
-            except Exception:
-                hata += 1    # 404 (koşu yok) ve benzeri: sayılır, geçilir; önbelleğe girmez
+            except Exception as e:
+                kod = getattr(e, "status_code", None)
+                if isinstance(kod, int) and 400 <= kod < 500:
+                    sonuc["bos"] += 1    # 404/409 (kosu yok, program yok): kalici durum; onbellege girmez, etag anisini engellemez (her dakika yeniden denenmez)
+                else:
+                    hata += 1    # gecici (DB) hata: sayilir, gecilir; bir sonraki turda yeniden denenir
         sonuc["hata"] += hata
         if hata == 0:
             _SON_ETAG[plant_id] = et    # 17.11 inceleme: hata varsa (geçici DB sorunu) bir sonraki turda yeniden denenir
     SAYAC["tur"] += 1
-    for k in ("isitilan", "atlanan", "hata"):
+    for k in ("isitilan", "atlanan", "bos", "hata"):
         SAYAC[k] += sonuc[k]
     return sonuc
 
