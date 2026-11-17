@@ -1214,3 +1214,40 @@ html.vt-sayfa body { background: #FFFFFF; }
 .portfoy-form { padding: 6px 0 2px; }
 table.veri.dar { font-size: var(--t-tablo-dar); }
 table.veri.dar th + th, table.veri.dar td + td { padding-left: 10px; }
+
+/* ============================================================
+   17.11 — SANTRALİM BÜTÜNLÜK TURU: tek dikey ritim ve ölçülmüş sütun çiftleri (yalnız Santralim; diğer sayfalar dokunulmadı).
+   ÖLÇÜLDÜ (1278/1440 px, örnek yığın): kartlar arası boşluk 0 / 14 / 16 / 18 / 24 px karışıktı; «Sensörler»den «Güneş yolu»na
+   yedi kart 0 px aralıkla bitişikti; .ızgara-cift'te Hava+Künye 1121 px ↔ Ayarlar 3561 px (2400 px boşluk). Şimdi: bölümler
+   arası 28 px, bölüm içi 14 px, eyebrow başlık (.ozet-bas) her bölümde; çiftler yükseklikçe eşlendi. Kartların kendi
+   kenar/köşe/dolgu jetonları değişmedi. ============================================================ */
+.santralim-akis { display: grid; gap: 28px; }
+.santralim-akis .bolum { display: grid; gap: 14px; align-content: start; min-width: 0; }
+.santralim-akis .ozet, .santralim-akis .ozet-bas { margin-bottom: 0; }                 /* ritim ızgaradan gelir, kenar boşluğundan değil */
+.santralim-akis .ozet-bas .sag { font-weight: 400; color: var(--soluk); }
+.santralim-akis .sira-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 410px), 1fr)); gap: 14px; align-items: start; }   /* 17.11 inceleme: viewport eşiği (1340) değil içerik genişliği — 834 px'ten geniş içerikte iki sütun (panel 1195 px pencerede de), darda tek */
+.santralim-akis .sira-2 > .kart-sutunu { gap: 14px; }
+/* Ayarlar kartı tam genişlik: kısa ayar blokları içerik 814 px'ten genişken iki sütun; blok darsa (≤ 440 px) etiket kontrolün ÜSTÜNE,
+   genişse (1440: ~520 px) 190 px etiket kolonu (01.11 ölçümü). Kapsayıcı sorgusu: yan menü/pencere değil kartın kendi genişliği belirler. */
+.santralim-akis .ayar-izgara { container-type: inline-size; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr)); column-gap: 36px; }
+.santralim-akis .ayar-izgara > .ayar { grid-template-columns: 190px minmax(0, 1fr); border-bottom: 1px solid var(--izgara); padding-top: 15px; }
+.santralim-akis .ayar-izgara > .ayar:first-child { padding-top: 4px; }
+.santralim-akis .ayar-izgara + .ayar { padding-top: 15px; }
+@container (min-width: 836px) { .santralim-akis .ayar-izgara > .ayar:nth-child(2) { padding-top: 4px; } }     /* iki sütunda ikinci blok da ilk satırda */
+@container (max-width: 920px) { .santralim-akis .ayar-izgara > .ayar { grid-template-columns: minmax(0, 1fr); } }   /* blok ≤ ~440 px: etiket üstte, kontroller tam genişlik */
+/* Özet şeridi orta genişlikte (901–1340 px pencere; panel 1195 px): beş hücre tek satırda sıkışıyordu («Anlık güç» 4 satır, «Model durumu» rozeti kırık) →
+   3 + 2: Anlık güç · Bugün · Yarın / Önümüzdeki 7 gün · Model durumu (iki sütun). Geniş ekranda 15.11'in 1,55fr ölçümü, ≤900'de eski 2 sütun kuralı aynen. */
+@media (min-width: 901px) and (max-width: 1340px) {
+  .santralim-akis .ozet { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .santralim-akis .ozet > div:nth-child(3) { border-right: none; }
+  .santralim-akis .ozet > div:nth-child(n+4) { border-top: 1px solid var(--kenar); }
+  .santralim-akis .ozet > div:nth-child(4) { padding-left: 0; }
+  .santralim-akis .ozet > div:nth-child(5) { grid-column: span 2; }
+}
+/* Yarım sütuna giren kart: dört KPI'lı şerit (.satir-4, Kirlenme) 640 px'ten dar kartta 2×2 — ÖLÇÜLDÜ 1195/1280 px pencerede
+   «11 gün önce» değeri 90 px'lik hücreden 16–80 px taşıyordu. Kapsayıcı = sütunun kendisi; pencere genişliğine bağlı değil. */
+.santralim-akis .sira-2 > * { container-type: inline-size; min-width: 0; }
+@container (max-width: 640px) { .santralim-akis .satir-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* iskelet: özet şeridi hücreleri gerçek ızgarada, yer tutucu bloklar; hareket yok */
+.santralim-akis .iskelet-ozet > div { display: grid; gap: 8px; align-content: start; }
+.santralim-akis .iskelet-ozet .iskelet-alan { display: block; }

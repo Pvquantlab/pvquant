@@ -283,7 +283,13 @@ def _kw(x):
 
 
 @app.get("/v1/plants/{plant_id}/forecast")
-def forecast(plant_id: str, hours: int = 168,
+def forecast(plant_id: str, hours: int = 168, claims=Depends(gecerli_kullanici)):
+    """Önbellekli (17.11 Santralim hız turu): damga anahtarlı yanıt önbelleği — yeni koşu damgayı değiştirir, bayat seri dönmez.
+    ÖLÇÜLDÜ (canlı konteyner, sırayla): her çağrı 220–280 ms (iterrows + pvlib doğuş/batış); önbellekten ~10 ms."""
+    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, f"forecast?hours={hours}", lambda: _forecast_uret(plant_id=plant_id, hours=hours, claims=claims), ttl_sn=300)
+
+
+def _forecast_uret(plant_id: str, hours: int = 168,
              claims=Depends(gecerli_kullanici)):
     """v2.72 — son kosunun saatlik P10/P50/P90 serisi (ilk `hours` saat).
 
@@ -2504,6 +2510,11 @@ def konformal(plant_id: str, claims=Depends(gecerli_kullanici)):
 
 @app.get("/v1/plants/{plant_id}/pr")
 def pr(plant_id: str, gun: int = 30, claims=Depends(gecerli_kullanici)):
+    """Önbellekli (17.11): PR kartı ölçüm/koşu damgasına bağlı; 300 s."""
+    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, f"pr?gun={gun}", lambda: _pr_uret(plant_id=plant_id, gun=gun, claims=claims), ttl_sn=300)
+
+
+def _pr_uret(plant_id: str, gun: int = 30, claims=Depends(gecerli_kullanici)):
     """v2.249 — Dalga 1.4: IEC 61724-1 performans orani (olcumden). POA olcumu
     yoksa 'poa_yok' — GHI ile uydurulmaz (tire ilkesi)."""
     from pvquant.services import pr_service
@@ -2692,6 +2703,11 @@ def depolama_uc(plant_id: str, claims=Depends(gecerli_kullanici)):
 
 @app.get("/v1/plants/{plant_id}/kirlenme")
 def kirlenme_uc(plant_id: str, gun: int = 90, claims=Depends(gecerli_kullanici)):
+    """Önbellekli (17.11): kirlenme özeti ölçüm damgasına bağlı; 600 s."""
+    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, f"kirlenme?gun={gun}", lambda: _kirlenme_uc_uret(plant_id=plant_id, gun=gun, claims=claims), ttl_sn=600)
+
+
+def _kirlenme_uc_uret(plant_id: str, gun: int = 90, claims=Depends(gecerli_kullanici)):
     """v2.544 (dalga 3 kalanı; IH-090/092): açık-gök tabanlı kirlenme göstergesi — ölçülen düzlem-içi ışınım / açık-gök modeli (açık saatler),
     günlük endeks, 30 açık gün eğimi, açık gün PR'ıyla çapraz okuma (sensör mü modül mü), son yağış. Kirlenme kaybı hesaplanmaz; göstergedir."""
     from pvquant.services import kirlenme_service
@@ -3744,6 +3760,11 @@ _RAPOR_MIME = {
 
 @app.get("/v1/plants/{plant_id}/runs")
 def kosu_listesi(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """Önbellekli (17.11): koşu listesi damgaya bağlı (yeni koşu damgayı değiştirir); 300 s."""
+    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, "runs", lambda: _kosu_listesi_uret(plant_id=plant_id, claims=claims), ttl_sn=300)
+
+
+def _kosu_listesi_uret(plant_id: str, claims=Depends(gecerli_kullanici)):
     """v2.94: gecmis kosular — SPA'daki sabit ornegin yerine gercek tablo."""
     from pvquant.services.forecast_service import kosu_gecmisi
     row = plant_service.getir(claims["tenant_id"], plant_id)

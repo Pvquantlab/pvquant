@@ -22,9 +22,22 @@ test("yan menü düğmesi niyet anında ısıtır (fare + odak), tıklama davran
 test("Santralim: her veri efekti yarış korumalı, ikincil kartlar özet gelince başlar", () => {
   const s = oku("../../src/features/santralim/Santralim.tsx");
   assert.match(s, /const plantRef = useRef\(plantId\); plantRef\.current = plantId;/);
-  assert.match(s, /const hazir = o != null \|\| oHata;/);
   assert.ok((s.match(/plantRef\.current/g) ?? []).length >= 20, "yarış koruması sayısı");
-  assert.equal((s.match(/if \(!hazir\) return;/g) ?? []).length, 9, "kademeli efekt sayısı");
+  // 17.11 Santralim hız turu: `hazir` kademesi yerine görünürlük kapıları — ilk ekran (özet, seri, PR, sağlık, segment, sensör,
+  // kullanılabilirlik) hemen; «Santral» bölümü 2, ayarlar 3, sayfa altı 3 efekt bölge yaklaşınca (useGorunur, 480 px pay)
+  assert.doesNotMatch(s, /\bhazir\b/, "eski kademe kalmadı");
+  assert.match(s, /const \[santralRef, santralGorunur\] = useGorunur<HTMLElement>\(\);/);
+  assert.match(s, /const \[ayarRef, ayarGorunur\] = useGorunur<HTMLDivElement>\(\);/);
+  assert.match(s, /const \[altRef, altGorunur\] = useGorunur<HTMLElement>\(\);/);
+  assert.equal((s.match(/if \(!santralGorunur\) return;/g) ?? []).length, 2, "santral bölümü kapısı");
+  assert.equal((s.match(/if \(!ayarGorunur\) return;/g) ?? []).length, 3, "ayarlar kapısı");
+  assert.equal((s.match(/if \(!altGorunur\) return;/g) ?? []).length, 3, "sayfa altı kapısı");
+  for (const uc of ["api.pr(plantId)", "api.saglik(plantId)", "api.sensorler(plantId)", "api.dengesizlik(plantId, 14)"])
+    assert.ok(s.includes(uc), `ilk ekran ucu hemen: ${uc}`);
+  assert.match(s, /<section className="bolum" ref=\{santralRef\}>/); assert.match(s, /<div ref=\{ayarRef\}>/); assert.match(s, /<section className="bolum" ref=\{altRef\}>/);
+  assert.match(s, /<SantralimIskeleti ad=\{ad\} \/>/, "sayfaya özel iskelet (başlık gerçek adla anında)");
+  const g = oku("../../src/lib/gorunur.ts");
+  assert.match(g, /new IntersectionObserver\(/); assert.match(g, /rootMargin: `\$\{payda\} 0px`/); assert.match(g, /if \(typeof IntersectionObserver === "undefined"\) \{ acik\.current = true; setGorunur\(true\); return; \}/); assert.match(g, /const ref = useCallback\(\(el: T \| null\) => \{/, "geri çağrı ref: öğe sonradan bağlanınca gözlemci kurulur");
   // korumasız .then(setX) kalmadı (veri efektlerinde)
   for (const satir of s.split("\n")) if (/useEffect\(\(\) => \{/.test(satir) && /\[plantId/.test(satir)) assert.doesNotMatch(satir, /\.then\(set[A-Za-z]+\)/, "korumasız mount efekti");
 });

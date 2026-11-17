@@ -232,7 +232,7 @@ export default function App() {
       {sayfa === "portfoyler" && <Portfoyler />}   {/* v2.595 (Faz 3 F3-H): santral seçimi gerektirmez */}
       {sayfa === "kurulus" && <Kurulus santralYenile={santralYenile} />}   {/* 26.10 Faz 6 */}
       {plantId && sayfa === "genel" && <GenelBakis plantId={plantId} git={sayfaSec} />}   {/* v2.608 (Faz 5 F5-B) */}
-      {plantId && sayfa === "santralim" && <Santralim plantId={plantId} />}
+      {plantId && sayfa === "santralim" && <Santralim plantId={plantId} ad={santralAd} />}   {/* 17.11: iskelet başlığı gerçek adla anında */}
       {plantId && sayfa === "veri" && <VeriYukleme plantId={plantId}
         santralimeGit={() => sayfaSec("santralim")}
         tahminlereGit={() => sayfaSec("tahminler")} />}

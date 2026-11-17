@@ -41,11 +41,11 @@ test("damga değişince önbellek eskir, olay yayılır ve veri sayfaları yenid
   assert.match(cl, /export function bellekEskit\(\): void \{\n  for \(const \[k, v\] of bellekte\) bellekte\.set\(k, \{ veri: v\.veri, zaman: 0 \}\);/);
   assert.match(ud, /if \(!ilk\) \{ bellekEskit\(\); damgaYay\(\); setSurum/);
   assert.match(olay, /export function useDamgaSurumu\(\): number/);
-  for (const [dosya, adet] of [["features/santralim/Santralim.tsx", 11], ["features/sayfalar/Tahminler.tsx", 1], ["features/sayfalar/Dogruluk.tsx", 1],
+  for (const [dosya, adet] of [["features/santralim/Santralim.tsx", 14], ["features/sayfalar/Tahminler.tsx", 1], ["features/sayfalar/Dogruluk.tsx", 1],
                                ["features/sayfalar/Aylik.tsx", 1], ["features/sayfalar/Digerleri.tsx", 3]] as const) {
     const s = oku(dosya);
     assert.match(s, /useDamgaSurumu/, dosya);
-    const n = (s.match(/\[plantId, ds(, hazir)?\]|\[ds\]/g) ?? []).length;   // 16.11: Santralim'de ikincil efektler `hazir` kademesiyle (ds yine bağımlılıkta)
+    const n = (s.match(/\[plantId, ds(, (altGorunur|ayarGorunur|santralGorunur))?\]|\[ds\]/g) ?? []).length;   // 17.11: Santralim'de bölge efektleri görünürlük kapısıyla (ds yine bağımlılıkta)
     assert.ok(n >= adet, `${dosya}: damgaya bağlı efekt ${n} < ${adet}`);
   }
 });

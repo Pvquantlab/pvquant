@@ -113,12 +113,12 @@ def test_sarilan_uclar_kaynakta():
                "finansal-etki", "finansal-etki/senaryo", "mutabakat", "mutabakat/saatlik", "kgup", "kgup/revizyon",   # piyasa/finans: finansal-etki 6,1 s, mutabakat 1,1 s
                "sayac"]:   # operasyon: sayac 0,3 s (pandas), TTL 5 dk
         assert (f'plant_id, f"{uc}' in kaynak or f'plant_id, "{uc}"' in kaynak) and f'@app.get("/v1/plants/{{plant_id}}/{uc}")' in kaynak, uc
-    assert kaynak.count("yanit_onbellegi.getir(") == 25
-    assert kaynak.count("ttl_sn=300") == 1   # sayac: «bugün» ve 12. gün 17:30 geri sayımı zamana bağlı
+    assert kaynak.count("yanit_onbellegi.getir(") == 29   # 17.11 Santralim: + forecast, pr, runs, kirlenme
+    assert kaynak.count("ttl_sn=300") == 4   # sayac («bugün» geri sayımı) + 17.11 Santralim: forecast, pr, runs (koşu damgasına bağlı, 5 dk)
     assert kaynak.count("if taze:") == 2   # bağımsız doğrulama ve finansal etki: taze=1 önbelleğe girmez
     assert kaynak.count('if fmt != "json":') == 2   # kgup CSV eki (arşive yazar) ve mutabakat/saatlik CSV indirme önbelleğe girmez
     assert kaynak.count("ttl_sn=60)") == 2   # kgup ve kgup/revizyon zamana bağlı (revizyon penceresi) → kısa TTL
-    assert kaynak.count("ttl_sn=600)") == 2   # hakkinda ve kurallar: kiracıdan bağımsız genel önbellek 10 dk
+    assert kaynak.count("ttl_sn=600)") == 3   # hakkinda ve kurallar (genel 10 dk) + 17.11 kirlenme (ölçüm damgasına bağlı)
     assert 'yanit.headers["X-Sure-ms"]' in kaynak
 
 

@@ -1212,7 +1212,7 @@ export const api = {
  *  sunucudaki yanıt önbelleği ısınır, tıklama anında bellekten çizilir; tıklanmazsa en fazla bu kadar fazladan istek gider. */
 const ISITMA: Record<string, (p: string) => Promise<unknown>[]> = {
   genel: (p) => [api.genelBakis(p)],
-  santralim: (p) => [api.ozet(p), api.tahmin(p, "16d")],
+  santralim: (p) => [api.ozet(p), api.tahmin(p, "16d"), api.pr(p), api.saglik(p)],   // 17.11: ilk ekranın dört ucu (künye PR + veri durumu da)
   tahminler: (p) => [api.tahmin(p, "16d"), api.ozet(p)],
   aylik: (p) => [api.aylik(p), api.ozet(p)],
   dogruluk: (p) => [api.karne(p)],
