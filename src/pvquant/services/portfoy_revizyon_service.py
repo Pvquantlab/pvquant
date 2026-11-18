@@ -40,11 +40,19 @@ def gun_ici_penceresi(simdi: pd.Timestamp, azami_saat: int = 24) -> dict:
     return sonuc or {"acik": False, "teslimat": ilk.isoformat(timespec="minutes"), "sonraki_revizyon_son": None, "dakika_kaldi": None}
 
 
-def oneriler(tenant_id, portfoy_id, hedef: str = "yarin", simdi: pd.Timestamp | None = None, kural: str = "son") -> dict:
+def _an(simdi: pd.Timestamp | None) -> pd.Timestamp:
+    t = pd.Timestamp(simdi) if simdi is not None else pd.Timestamp.now(tz="UTC")
+    return t.tz_convert(fn.IST_AD) if t.tz is not None else t.tz_localize(fn.IST_AD)
+
+
+def hazirla(tenant_id, portfoy_id, hedef: str = "yarin", simdi: pd.Timestamp | None = None, kural: str = "son") -> dict:
+    """18.11 DSG/portfoy hiz turu — onerinin PAHALI, zamana en az bagli girdileri (DB: santraller, ileri program/risk, fiyat kaynagi, maruziyet,
+    son olcum zamani, uyelik anlik gorunumu; test DB olcumu 1,0–1,4 s). JSON'a yazilabilir; `oneriler_hazirdan(h, simdi)` bundan teslim
+    penceresini, gun ici pencereyi ve olcum yasini SU ANA gore hesaplayip oneri metinlerini uretir (saf, ms). Yanit onbellegi bunu portfoy
+    damgasiyla saklar. «bugun» hedefinde ileri program gecmis saatleri `simdi`ye gore dusurur: onbellek TTL'si (5 dk) kadar gecikebilir."""
     if hedef not in HEDEFLER:
         raise ValueError("hedef " + "|".join(HEDEFLER))
-    t = pd.Timestamp(simdi) if simdi is not None else pd.Timestamp.now(tz="UTC")
-    t = t.tz_convert(fn.IST_AD) if t.tz is not None else t.tz_localize(fn.IST_AD)
+    t = _an(simdi)
     bugun = t.date(); gun = bugun + timedelta(days=1) if hedef == "yarin" else bugun
     plants = pt.santraller(tenant_id, portfoy_id, gun)
     if not plants:
@@ -76,23 +84,42 @@ def oneriler(tenant_id, portfoy_id, hedef: str = "yarin", simdi: pd.Timestamp | 
         except Exception:   # noqa: BLE001 — bir santralin geçmişi okunamazsa maruziyet onsuz
             continue
     mar = po.maruziyet_orani(pd.concat(pvs), tz) if pvs else None
-    yaslar = []
+    olcumler = []   # 18.11: ham zamanlar saklanir, yas (saat) istek aninda hesaplanir
     for p in plants:
         try:
             z = fe.son_olcum_zamani(tenant_id, p["id"])
         except Exception:   # noqa: BLE001
             z = None
         if z is not None:
-            yaslar.append((t.tz_convert("UTC") - pd.Timestamp(z)).total_seconds() / 3600)
-    olcum_yas = round(max(yaslar), 1) if yaslar else None
+            olcumler.append(z)
+    en_eski_olcum = min(zlar).isoformat() if (zlar := [pd.Timestamp(z).tz_convert("UTC") if pd.Timestamp(z).tz is not None else pd.Timestamp(z).tz_localize("UTC")
+                                                      for z in olcumler]) else None
+    return {"durum": "ok", "hazir": True, "portfoy_id": str(portfoy_id), "hedef": hedef, "gun": gun.isoformat(), "tz": tz, "kural": kural, "kural_ad": g["kural_ad"],
+            "santral": len(plants), "risk": g["risk"], "santraller": santraller, "program_kaynak": g["program_kaynak"], "tahmin_yok": g["tahmin_yok"],
+            "tazelik": g["tazelik"], "belirsizlik": g["belirsizlik"], "fiyat": fiyat, "maruziyet": mar, "gunluk": g.get("gunluk"), "kapasite_kwp": g.get("kapasite_kwp"),
+            "en_eski_olcum_utc": en_eski_olcum, "uyelik_anlik": pv.uyelik_anlik(tenant_id, portfoy_id, gun), "program_meta": g["meta"]["program"]}
+
+
+def oneriler_hazirdan(h: dict, simdi: pd.Timestamp | None = None) -> dict:
+    """SAF: `hazirla` ciktisindan (onbellekten de gelebilir, JSON) su ana gore teslim penceresi, gun ici pencere, olcum yasi ve oneri metinleri.
+    Hazir degilse (uye yok / ileri program yok) girdi oldugu gibi doner."""
+    if not h.get("hazir"):
+        return h
+    t = _an(simdi); hedef = h["hedef"]
     pencere = kg.teslim_durumu(t); gi = gun_ici_penceresi(t) if hedef == "bugun" else {}
-    girdi = {"hedef": hedef, "gun": gun.isoformat(), "risk": g["risk"], "program_kaynak": g["program_kaynak"], "santraller": santraller, "tahmin_yok": g["tahmin_yok"],
-             "belirsizlik": g["belirsizlik"], "tazelik": g["tazelik"] or {}, "olcum_yas_saat": olcum_yas, "pencere": pencere, "gun_ici": gi, "fiyat": fiyat, "maruziyet": mar,
-             "kapasite_kwp": g.get("kapasite_kwp")}
+    olcum_yas = round((t.tz_convert("UTC") - pd.Timestamp(h["en_eski_olcum_utc"])).total_seconds() / 3600, 1) if h.get("en_eski_olcum_utc") else None
+    girdi = {"hedef": hedef, "gun": h["gun"], "risk": h["risk"], "program_kaynak": h["program_kaynak"], "santraller": h["santraller"], "tahmin_yok": h["tahmin_yok"],
+             "belirsizlik": h["belirsizlik"], "tazelik": h["tazelik"] or {}, "olcum_yas_saat": olcum_yas, "pencere": pencere, "gun_ici": gi, "fiyat": h["fiyat"], "maruziyet": h["maruziyet"],
+             "kapasite_kwp": h.get("kapasite_kwp")}
     on = po.oneriler(girdi)
-    return {"durum": "ok", "portfoy_id": str(portfoy_id), "hedef": hedef, "hedef_ad": "Yarın" if hedef == "yarin" else "Bugün (kalan saatler)", "gun": gun.isoformat(),
-            "simdi": t.isoformat(timespec="minutes"), "tz": tz, "kural": kural, "kural_ad": g["kural_ad"], "santral": len(plants), "ozet": po.ozet_cumlesi(girdi, on),
-            "oneriler": on, "risk": g["risk"], "santraller": santraller, "program_kaynak": g["program_kaynak"], "tahmin_yok": g["tahmin_yok"], "tazelik": g["tazelik"],
-            "olcum_yas_saat": olcum_yas, "belirsizlik": g["belirsizlik"], "pencere": pencere, "gun_ici": gi, "fiyat": fiyat, "maruziyet": mar, "gunluk": g.get("gunluk"),
-            "etiketler": po.ETIKET_AD, "meta": {"surum": SURUM, "uyelik_anlik": pv.uyelik_anlik(tenant_id, portfoy_id, gun), "program": g["meta"]["program"],
+    return {"durum": "ok", "portfoy_id": h["portfoy_id"], "hedef": hedef, "hedef_ad": "Yarın" if hedef == "yarin" else "Bugün (kalan saatler)", "gun": h["gun"],
+            "simdi": t.isoformat(timespec="minutes"), "tz": h["tz"], "kural": h["kural"], "kural_ad": h["kural_ad"], "santral": h["santral"], "ozet": po.ozet_cumlesi(girdi, on),
+            "oneriler": on, "risk": h["risk"], "santraller": h["santraller"], "program_kaynak": h["program_kaynak"], "tahmin_yok": h["tahmin_yok"], "tazelik": h["tazelik"],
+            "olcum_yas_saat": olcum_yas, "belirsizlik": h["belirsizlik"], "pencere": pencere, "gun_ici": gi, "fiyat": h["fiyat"], "maruziyet": h["maruziyet"], "gunluk": h.get("gunluk"),
+            "etiketler": po.ETIKET_AD, "meta": {"surum": SURUM, "uyelik_anlik": h["uyelik_anlik"], "program": h["program_meta"],
                                                  "karar": "Karar desteğidir; otomatik KGÜP bildirimi ya da piyasa emri yapılmaz."}}
+
+
+def oneriler(tenant_id, portfoy_id, hedef: str = "yarin", simdi: pd.Timestamp | None = None, kural: str = "son") -> dict:
+    """DB: hazirla + oneriler_hazirdan (ayni an). Cikti 18.11 oncesiyle birebir (test_portfoy_revizyon_db)."""
+    return oneriler_hazirdan(hazirla(tenant_id, portfoy_id, hedef, simdi, kural), simdi)

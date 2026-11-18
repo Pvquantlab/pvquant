@@ -48,12 +48,13 @@ def gunler() -> dict[str, str]:
 
     from pvquant.zaman import PIYASA_TZ
     b = datetime.now(ZoneInfo(PIYASA_TZ)).date()
-    return {"bugun": b.isoformat(), "yarin": (b + timedelta(days=1)).isoformat()}
+    gecen = (b.replace(day=1) - timedelta(days=1))   # 18.11 DSG/portfoy: {gecen_ay} = portfoy sayfasinin varsayilan donemi (YYYY-AA)
+    return {"bugun": b.isoformat(), "yarin": (b + timedelta(days=1)).isoformat(), "gecen_ay": gecen.strftime("%Y-%m")}
 
 
 def anahtar_coz(anahtar: str, g: dict[str, str] | None = None) -> str:
     g = g or gunler()
-    return anahtar.replace("{bugun}", g["bugun"]).replace("{yarin}", g["yarin"])
+    return anahtar.replace("{bugun}", g["bugun"]).replace("{yarin}", g["yarin"]).replace("{gecen_ay}", g["gecen_ay"])
 
 
 def santraller() -> list[tuple[str, str]]:
@@ -67,23 +68,38 @@ def santraller() -> list[tuple[str, str]]:
             " WHERE NOT p.archived AND t.status = 'active' ORDER BY p.tenant_id, p.name")).all()]   # 17.11 inceleme: askıdaki kiracı ısıtılmaz
 
 
-def tur(kayit: Kayit, liste: list[tuple[str, str]] | None = None, zorla: bool = False) -> dict:
-    """Bir yoklama turu: damga etag'i değişen santrallar için kayıtlı üreticileri ısıtır. Dönüş: bu turun sayaçları."""
+def portfoyler() -> list[tuple[str, str]]:
+    """18.11 DSG/portfoy hiz turu: (tenant_id, portfoy_id) — etkin kiracilarin suresi dolmamis portfoyleri (sistem baglami)."""
+    from sqlalchemy import text
+
+    from pvquant.db import sistem_baglami
+    with sistem_baglami() as s:
+        return [(str(r[0]), str(r[1])) for r in s.execute(text(
+            "SELECT p.tenant_id, p.id FROM portfoy p JOIN tenants t ON t.id = p.tenant_id"
+            " WHERE t.status = 'active' AND (p.gecerli_bit IS NULL OR p.gecerli_bit >= CURRENT_DATE) ORDER BY p.tenant_id, p.ad")).all()]
+
+
+def tur(kayit: Kayit, liste: list[tuple[str, str]] | None = None, zorla: bool = False, portfoy: bool = False) -> dict:
+    """Bir yoklama turu: damga etag'i değişen santrallar için kayıtlı üreticileri ısıtır. Dönüş: bu turun sayaçları.
+    portfoy=True: liste (kiraci, portfoy) ciftleridir; portfoy damgasi ve getir_portfoy kullanilir (18.11 DSG/portfoy hiz turu)."""
     sonuc = {"isitilan": 0, "atlanan": 0, "bos": 0, "hata": 0}
     g = gunler()
-    for tenant_id, plant_id in (liste if liste is not None else santraller()):
+    etag_fn = yanit_onbellegi._portfoy_etag if portfoy else yanit_onbellegi._damga_etag
+    getir_fn = yanit_onbellegi.getir_portfoy if portfoy else yanit_onbellegi.getir
+    for tenant_id, plant_id in (liste if liste is not None else (portfoyler() if portfoy else santraller())):
+        ani = ("pf:" + plant_id) if portfoy else plant_id
         try:
-            et = yanit_onbellegi._damga_etag(tenant_id, plant_id) + "|" + g["bugun"]   # gun donunce de yeniden (KGUP yarin / revizyon bugun)
+            et = etag_fn(tenant_id, plant_id) + "|" + g["bugun"]   # gun donunce de yeniden (KGUP yarin / revizyon bugun)
         except Exception:
             sonuc["hata"] += 1
             continue
-        if not zorla and _SON_ETAG.get(plant_id) == et:
+        if not zorla and _SON_ETAG.get(ani) == et:
             sonuc["atlanan"] += 1
             continue
         hata = 0
         for anahtar, (uret, ttl_sn) in kayit.items():
             try:
-                yanit_onbellegi.getir(tenant_id, plant_id, anahtar_coz(anahtar, g), lambda u=uret, t=tenant_id, p=plant_id: u(t, p), ttl_sn=ttl_sn)
+                getir_fn(tenant_id, plant_id, anahtar_coz(anahtar, g), lambda u=uret, t=tenant_id, p=plant_id: u(t, p), ttl_sn=ttl_sn)
                 sonuc["isitilan"] += 1
             except Exception as e:
                 kod = getattr(e, "status_code", None)
@@ -93,7 +109,7 @@ def tur(kayit: Kayit, liste: list[tuple[str, str]] | None = None, zorla: bool = 
                     hata += 1    # gecici (DB) hata: sayilir, gecilir; bir sonraki turda yeniden denenir
         sonuc["hata"] += hata
         if hata == 0:
-            _SON_ETAG[plant_id] = et    # 17.11 inceleme: hata varsa (geçici DB sorunu) bir sonraki turda yeniden denenir
+            _SON_ETAG[ani] = et    # 17.11 inceleme: hata varsa (geçici DB sorunu) bir sonraki turda yeniden denenir
     SAYAC["tur"] += 1
     for k in ("isitilan", "atlanan", "bos", "hata"):
         SAYAC[k] += sonuc[k]
@@ -120,21 +136,23 @@ def _kilit_al() -> bool:
         return False
 
 
-def _dongu(kayit: Kayit) -> None:
+def _dongu(kayit: Kayit, kayit_pf: Kayit | None = None) -> None:
     time.sleep(ILK_GECIKME_SN)
     while True:
         try:
             if _kilit_al():
                 tur(kayit)
+                if kayit_pf:
+                    tur(kayit_pf, portfoy=True)   # 18.11: portfoy uclari (kiraci, portfoy) listesiyle, portfoy damgasiyla
         except Exception:
             SAYAC["hata"] += 1
         time.sleep(ARALIK_SN)
 
 
-def baslat(kayit: Kayit) -> threading.Thread | None:
+def baslat(kayit: Kayit, kayit_pf: Kayit | None = None) -> threading.Thread | None:
     """Uygulama açılışında çağrılır; etkin değilse None döner. Arka plan iş parçacığı daemon'dur (kapanışı bekletmez)."""
     if not etkin() or not kayit:
         return None
-    t = threading.Thread(target=_dongu, args=(kayit,), name="yanit-isitici", daemon=True)
+    t = threading.Thread(target=_dongu, args=(kayit, kayit_pf), name="yanit-isitici", daemon=True)
     t.start()
     return t

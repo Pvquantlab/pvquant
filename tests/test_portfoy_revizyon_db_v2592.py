@@ -53,3 +53,42 @@ def test_db_yarin_ve_bugun_onerileri(portfoy):
     assert rv.oneriler(tid2, pid, "yarin", simdi)["durum"] == "uye_yok"
     with pytest.raises(ValueError):
         rv.oneriler(tid, pid, "haftaya", simdi)
+
+
+def test_db_hazirla_onbellek_turu_birebir(portfoy):
+    """18.11 DSG/portfoy hiz turu: oneriler == oneriler_hazirdan(JSON(hazirla)); zaman ilerleyince ayni hazirlikla pencere/olcum yasi taze."""
+    import json
+
+    from fastapi.encoders import jsonable_encoder
+    tid, _, pid, _ = portfoy
+    t = pd.Timestamp("2026-09-12 13:40", tz=TZ)
+    dogrudan = rv.oneriler(tid, pid, "yarin", t)
+    h = json.loads(json.dumps(jsonable_encoder(rv.hazirla(tid, pid, "yarin", t))))
+    yeni = rv.oneriler_hazirdan(h, t)
+    assert jsonable_encoder(yeni) == jsonable_encoder(dogrudan), "onbellek turu ciktiyi degistirmemeli"
+    sonra = rv.oneriler_hazirdan(h, pd.Timestamp("2026-09-12 15:10", tz=TZ))
+    assert sonra["pencere"]["durum"] == "pencere_acik" and dogrudan["pencere"]["durum"] == "erken" and sonra["simdi"].startswith("2026-09-12T15:10")
+    assert (sonra["olcum_yas_saat"] or 0) > (dogrudan["olcum_yas_saat"] or 0)
+    hb = json.loads(json.dumps(jsonable_encoder(rv.hazirla(tid, pid, "bugun", t))))
+    assert rv.oneriler_hazirdan(hb, t)["gun_ici"] == rv.oneriler(tid, pid, "bugun", t)["gun_ici"]
+
+
+def test_db_portfoy_damgasi_uyelik_ve_olcumle_degisir(portfoy):
+    """18.11 DSG/portfoy hiz turu: portfoy damgasi uyelerin olcumunu/kosusunu ve uyelik/portfoy kayitlarini kapsar; uyelik eklenince etag degisir."""
+    import uuid
+
+    from pvquant.services import damga_service
+    from pvquant.services import portfoy_varlik_service as pv
+    tid, _, pid, _pl = portfoy
+    d = damga_service.portfoy_hesapla(tid, pid)
+    for k in ("son_scada", "son_kosu", "portfoy_guncelleme", "uyelik_guncelleme", "sozlesme_guncelleme", "son_portfoy_sonuc", "santral_ozu", "son_piyasa", "son_is"):
+        assert k in d, k
+    assert d["son_scada"] and d["son_kosu"] and d["uyelik_guncelleme"] and d["santral_ozu"]
+    e1 = damga_service.etag_uret(d)
+    with sistem_baglami() as s:
+        yeni = str(uuid.uuid4())
+        s.execute(text("INSERT INTO plants(id, tenant_id, name, capacity_kwp, lat, lon, tz, params_json) VALUES(:p, :t, 'GES Z', 1000, 37.0, 32.0, :tz, '{}')"), {"p": yeni, "t": tid, "tz": TZ})
+    pv.uyelik_ekle(tid, pid, yeni, "2026-01-01")
+    e2 = damga_service.etag_uret(damga_service.portfoy_hesapla(tid, pid))
+    assert e2 != e1, "uyelik eklenince portfoy damgasi degismeli (santral ozu + uyelik guncelleme)"
+    assert damga_service.etag_uret(damga_service.portfoy_hesapla(tid, str(uuid.uuid4()))) != e2   # bos portfoy: yalniz kiraci parcalari

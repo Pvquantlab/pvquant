@@ -49,13 +49,48 @@ def _ortak_damga(tenant_id, plant_id) -> dict:
     from sqlalchemy import text
     from pvquant.db import sistem_baglami
     with sistem_baglami() as s:
-        r = s.execute(text(
-            "SELECT (SELECT max(guncelleme) FROM piyasa_fiyat) AS son_piyasa,"
-            " (SELECT max(started) FROM jobs_log WHERE tenant_id = CAST(:t AS uuid) OR tenant_id IS NULL) AS son_is,"
-            " (SELECT md5(CAST(row_to_json(p) AS text)) FROM plants p WHERE p.id = CAST(:p AS uuid) AND p.tenant_id = CAST(:t AS uuid)) AS santral_ozu"),
-            {"t": str(tenant_id), "p": str(plant_id)}).mappings().first()
-        d = dict(r)
+        d = _kiraci_damga(s, tenant_id)
+        d["santral_ozu"] = s.execute(text("SELECT md5(CAST(row_to_json(p) AS text)) FROM plants p WHERE p.id = CAST(:p AS uuid) AND p.tenant_id = CAST(:t AS uuid)"),
+                                     {"t": str(tenant_id), "p": str(plant_id)}).scalar()
         d["son_meteo"] = _son_meteo(s, str(plant_id))
+    return {k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in d.items()}
+
+
+def _kiraci_damga(s, tenant_id) -> dict:
+    """Kiraciya ait, santraldan bagimsiz damga parcalari (sistem baglami): son_piyasa (PTF/SMF guncellemesi), son_is (kiracinin ya da
+    kuresel son is kaydi). 18.11 DSG/portfoy hiz turu: santral damgasi ve portfoy damgasi ortak kullanir."""
+    from sqlalchemy import text
+    r = s.execute(text(
+        "SELECT (SELECT max(guncelleme) FROM piyasa_fiyat) AS son_piyasa,"
+        " (SELECT max(started) FROM jobs_log WHERE tenant_id = CAST(:t AS uuid) OR tenant_id IS NULL) AS son_is"),
+        {"t": str(tenant_id)}).mappings().first()
+    return dict(r)
+
+
+def portfoy_hesapla(tenant_id, portfoy_id) -> dict:
+    """18.11 DSG/portfoy hiz turu — PORTFOY damgasi: yanit onbellegi (yanit_onbellegi.getir_portfoy) portfoy uclarini bununla anahtarlar.
+    Kapsam: uyelerin olcumu/kosusu/yuklemeleri (scada, forecast_runs, kgup_surum, uzlastirma, sayac), portfoy/uyelik/sozlesme kayitlarinin
+    guncellemesi, gece isinin portfoy sonucu (portfoy_sonuc.hesap_zamani), uye santral satirlarinin ozeti ve kiraci parcalari (piyasa, is).
+    Uyelik gecmisi (gecerli_bit dolmus uyeler dahil) kapsamda: donem gorunumleri gecmis uyelikle hesaplanir. Kiraci baglaminda (RLS)."""
+    from sqlalchemy import text
+    from pvquant.db import sistem_baglami, tenant_baglami
+    with tenant_baglami(tenant_id) as s:
+        r = s.execute(text(
+            "WITH u AS (SELECT DISTINCT plant_id FROM portfoy_uyelik WHERE portfoy_id = CAST(:pf AS uuid))"
+            " SELECT (SELECT max(ts_utc) FROM scada_hourly h WHERE h.plant_id IN (SELECT plant_id FROM u)) AS son_scada,"
+            " (SELECT max(run_at) FROM forecast_runs r WHERE r.plant_id IN (SELECT plant_id FROM u) AND EXISTS (SELECT 1 FROM forecast_values v WHERE v.run_id = r.id)) AS son_kosu,"
+            " (SELECT max(olusturma) FROM kgup_surum k WHERE k.plant_id IN (SELECT plant_id FROM u)) AS son_kgup_surum,"
+            " (SELECT max(olusturma) FROM uzlastirma_bildirimi m WHERE m.plant_id IN (SELECT plant_id FROM u)) AS son_mutabakat_yukleme,"
+            " (SELECT max(olusturma) FROM sayac_yukleme y WHERE y.plant_id IN (SELECT plant_id FROM u)) AS son_sayac_yukleme,"
+            " (SELECT max(GREATEST(created_at, updated_at)) FROM portfoy WHERE id = CAST(:pf AS uuid)) AS portfoy_guncelleme,"
+            " (SELECT max(GREATEST(created_at, updated_at)) FROM portfoy_uyelik WHERE portfoy_id = CAST(:pf AS uuid)) AS uyelik_guncelleme,"
+            " (SELECT max(GREATEST(created_at, updated_at)) FROM ticari_sozlesme WHERE portfoy_id = CAST(:pf AS uuid)) AS sozlesme_guncelleme,"
+            " (SELECT max(hesap_zamani) FROM portfoy_sonuc WHERE portfoy_id = CAST(:pf AS uuid)) AS son_portfoy_sonuc,"
+            " (SELECT md5(string_agg(md5(CAST(row_to_json(p) AS text)), ',' ORDER BY p.id)) FROM plants p WHERE p.id IN (SELECT plant_id FROM u)) AS santral_ozu"),
+            {"pf": str(portfoy_id)}).mappings().first()
+        d = dict(r)
+    with sistem_baglami() as s:
+        d.update(_kiraci_damga(s, tenant_id))
     return {k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in d.items()}
 
 

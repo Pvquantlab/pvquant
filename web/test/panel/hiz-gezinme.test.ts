@@ -96,3 +96,25 @@ test("KGÜP: bayat-önce bellek, sürüm geçmişi yalnız açılınca, iki böl
   assert.match(css, /\n\.akis \{ display: grid; gap: 28px; \}/); assert.match(css, /\.akis \.bolum \{ display: grid; gap: 14px;/);
   assert.match(css, /\.iskelet-satirlar \.iskelet-alan \{ height: 28px;/);
 });
+
+// 18.11 DSG ve portföyler hız ve bütünlük turu — kaynak pinleri
+test("DSG ve portföyler: bayat-önce dokuz okuyucu, üyelik formu açılınca, sapma ozet=1, dört bölümlü akış, KPI 2×2 kapsayıcı kuralı, sayfaya özel iskelet", () => {
+  const s = oku("../../src/features/sayfalar/Portfoyler.tsx");
+  assert.match(s, /useState<Yuk<PortfoyKisa\[\]>>\(\(\) => bellekten\.portfoyler\(\)\)/, "liste bellekten başlar");
+  for (const ad of ["portfoyDetay(secili)", "portfoylerTahmin(secili, 7)", "portfoySapma(secili, kod)", "portfoyRisk(secili, 2)", "portfoyDsgPerspektif(secili, kod)", "portfoyRevizyon(secili, hedef)", "portfoyFinans(secili, kod)"])
+    assert.equal((s.split(`bellekten.${ad}`).length - 1), 2, `${ad}: başlangıç + efekt`);
+  assert.doesNotMatch(s, /setDetay\(undefined\); setTahmin\(undefined\)/, "santral/dönem geçişinde iskelete düşmez");
+  assert.match(s, /\{uyelikAcik && <UyelikFormu /, "üyelik formu (santral listesi isteği) yalnız açılınca");
+  assert.doesNotMatch(s, /SayfaIskeleti/, "genel iskelet yerine sayfaya özel");
+  assert.match(s, /if \(liste === undefined\) return <Sayfa baslik="Portföy yönetimi" alt=\{alt\}><PortfoylerIskeleti \/><\/Sayfa>;/);
+  assert.equal((s.match(/<section className="bolum">/g) ?? []).length, 4 + 2, "4 bölüm + iskelette 2");
+  for (const b of ["Dönem", "Önümüzdeki günler", "Üyelik ve finans", "Kayıtlar"]) assert.match(s, new RegExp(`<div className="ozet-bas">${b}<span className="sag">`), b);
+  assert.doesNotMatch(s, /ızgara-cift/, "çiftler .sira-2 (Santralim ile aynı)"); assert.equal((s.match(/<div className="sira-2">/g) ?? []).length, 3);
+  const cl = oku("../../src/api/client.ts");
+  assert.match(cl, /sapma\?ozet=1\$\{donem \? `&donem=/, "sapma ozet=1 (saatlik liste gelmez)");
+  assert.match(cl, /portfoySapma: \(id: string, donem\?: string \| null\): PortfoySapmaT \| undefined => bellektenOku<PortfoySapmaT>\(`\/v1\/portfoyler\/\$\{id\}\/sapma\?ozet=1/, "bellek yolu api ile birebir");
+  assert.match(cl, /portfoyler: \(\) => \{ const pf = localStorage\.getItem\("pvq_portfoy"\);/, "ısıtma hatırlanan portföyün açılış uçlarını kapsar");
+  const css = oku("../../src/index.css");
+  assert.match(css, /\.akis \.bolum \{ container-type: inline-size; \}/);
+  assert.match(css, /@container \(min-width: 700px\) and \(max-width: 1000px\) \{ \.akis \.satir-4 \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); \} \}/);
+});

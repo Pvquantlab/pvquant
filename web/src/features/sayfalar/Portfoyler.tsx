@@ -1,18 +1,22 @@
 import { useEffect, useState } from "react";
 import { FINANS_NITELIK } from "../../lib/durum";
-import { api, rolum } from "../../api/client";
+import { api, bellekten, rolum } from "../../api/client";
 import type { BelirsizlikDurum, FinansNitelik, PortfoyDetay, PortfoyDsgT, PortfoyFinansT, PortfoyKisa, PortfoyRevizyonT, PortfoyRiskT, PortfoySapmaT, PortfoySozlesme, PortfoyTahminT, RiskEtiket } from "../../api/types";
 import { donemSecenekleri, TUR_AD, type FinansDonemTur } from "../../lib/donem";
 import { tarihBicimi, yuzdeTr } from "../../lib/bicim";
 import { Meta } from "../../lib/Meta";
-import { HesapDurumu, Kart, Kpi, Sayfa, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
+import { HesapDurumu, Kart, Kpi, Sayfa, sayiTr, YerTutucu } from "./parcalar";
 import { ModulNotu } from "./Abonelik";   // v2.609 (Faz 6 F6-D): kapalı özellik notu (uyarı kipi)
 
 /** v2.595 (Faz 3 F3-H) — Portföy yönetimi: toplayıcı ya da DSG yöneticisinin portföyünü birkaç saniyede okuması için tek sayfa.
  *  Santral tahminleri, uzlaştırma ve finansal etki hesapları değişmez; bu sayfa zamanlı üyelik kayıtlarıyla (F3-A) portföy tahmini ve
  *  belirsizliğini (F3-B), sapma ve riski (F3-C), DSG üç perspektifini (F3-D), revizyon önerilerini (F3-E) ve portföy finansal etkisini (F3-G) derler.
  *  Dürüstlük: belirsizlik aralığı yalnız geçmiş sınavla «doğrulandı» ise öyle yazılır; sözleşmesel dağılım yalnız doğrulanmış belgeli sözleşmede
- *  «sözleşmeye dayalı», aksi «varsayımsal»; eksik ölçüm 0 sayılmaz; tutarlar yeniden hesaptır, EPİAŞ sonucu değildir. Otomatik bildirim yok. */
+ *  «sözleşmeye dayalı», aksi «varsayımsal»; eksik ölçüm 0 sayılmaz; tutarlar yeniden hesaptır, EPİAŞ sonucu değildir. Otomatik bildirim yok.
+ *  18.11 DSG ve portföyler hız ve bütünlük turu: (1) bayat-önce — liste ve seçili portföyün sekiz yanıtı bellekte varsa anında (sayfaya dönüş,
+ *  portföy/dönem geçişi), ağdan tazelenir; (2) açılış 10 → 9 istek: üyelik formunun santral listesi (/v1/portfoy) yalnız açılır alan açılınca;
+ *  sapma yanıtı ozet=1 (185 KB saatlik liste gelmez); (3) dört bölümlü akış (.akis: Dönem / Önümüzdeki günler / Üyelik ve finans / Kayıtlar) —
+ *  KPI şeridi 1000 px'ten dar içerikte 2×2 (1195 px pencerede taşıyordu), kart çiftleri .sira-2; (4) sayfaya özel iskelet (başlık + 4 KPI + kart + çift). */
 const NITELIK = FINANS_NITELIK;   // 15.11: ortak sözlük (lib/durum)
 const BELIRSIZLIK: Record<BelirsizlikDurum, { etiket: string; sinif: string }> = {
   dogrulandi: { etiket: "aralık doğrulandı", sinif: "rozet-ok" }, dogrulanmadi: { etiket: "aralık doğrulanmadı", sinif: "rozet-uyari" }, yetersiz_veri: { etiket: "aralık için veri yetersiz", sinif: "rozet-notr" } };
@@ -42,24 +46,25 @@ type Yuk<T> = T | null | undefined;   // undefined = yükleniyor, null = alınam
 
 export function Portfoyler() {
   const yazabilir = rolum() === "admin" || rolum() === "editor"; const yonetici = rolum() === "admin";
-  const [liste, setListe] = useState<Yuk<PortfoyKisa[]>>(undefined);
+  const [liste, setListe] = useState<Yuk<PortfoyKisa[]>>(() => bellekten.portfoyler());   // 18.11 bayat-önce
   const [secili, setSecili] = useState<string>(() => localStorage.getItem("pvq_portfoy") ?? "");
   const [tur, setTur] = useState<FinansDonemTur>("ay");
   const [kod, setKod] = useState<string>(() => donemSecenekleri("ay")[1]?.kod ?? donemSecenekleri("ay")[0].kod);
   const [hedef, setHedef] = useState<"yarin" | "bugun">("yarin");
-  const [detay, setDetay] = useState<Yuk<PortfoyDetay>>(undefined);
-  const [tahmin, setTahmin] = useState<Yuk<PortfoyTahminT>>(undefined);
-  const [sapma, setSapma] = useState<Yuk<PortfoySapmaT>>(undefined);
-  const [risk, setRisk] = useState<Yuk<PortfoyRiskT>>(undefined);
-  const [dsg, setDsg] = useState<Yuk<PortfoyDsgT>>(undefined);
-  const [rev, setRev] = useState<Yuk<PortfoyRevizyonT>>(undefined);
-  const [fin, setFin] = useState<Yuk<PortfoyFinansT>>(undefined);
+  const [detay, setDetay] = useState<Yuk<PortfoyDetay>>(() => secili ? bellekten.portfoyDetay(secili) : undefined);   // 18.11 bayat-önce (hepsi)
+  const [tahmin, setTahmin] = useState<Yuk<PortfoyTahminT>>(() => secili ? bellekten.portfoylerTahmin(secili, 7) : undefined);
+  const [sapma, setSapma] = useState<Yuk<PortfoySapmaT>>(() => secili ? bellekten.portfoySapma(secili, kod) : undefined);
+  const [risk, setRisk] = useState<Yuk<PortfoyRiskT>>(() => secili ? bellekten.portfoyRisk(secili, 2) : undefined);
+  const [dsg, setDsg] = useState<Yuk<PortfoyDsgT>>(() => secili ? bellekten.portfoyDsgPerspektif(secili, kod) : undefined);
+  const [rev, setRev] = useState<Yuk<PortfoyRevizyonT>>(() => secili ? bellekten.portfoyRevizyon(secili, hedef) : undefined);
+  const [fin, setFin] = useState<Yuk<PortfoyFinansT>>(() => secili ? bellekten.portfoyFinans(secili, kod) : undefined);
+  const [uyelikAcik, setUyelikAcik] = useState(false);   // 18.11: üyelik formu (santral listesi isteği) yalnız açılınca
   const [sozlesmeler, setSozlesmeler] = useState<Yuk<PortfoySozlesme[]> | "yetki_yok">(undefined);
   const [yenile, setYenile] = useState(0);
   const secenekler = donemSecenekleri(tur);
 
   useEffect(() => {
-    let acik = true; setListe(undefined);
+    let acik = true; setListe(bellekten.portfoyler());   // bellekte varsa iskelet yok
     api.portfoyler().then((l) => { if (!acik) return; setListe(l); if (l && l.length && !l.some((p) => p.id === secili)) setSecili(l[0].id); }, () => { if (acik) setListe(null); });
     return () => { acik = false; };
   }, [yenile]);   // eslint-disable-line react-hooks/exhaustive-deps -- seçim yalnız ilk listede düzeltilir
@@ -67,7 +72,8 @@ export function Portfoyler() {
     if (!secili) return;
     localStorage.setItem("pvq_portfoy", secili);
     let acik = true;
-    setDetay(undefined); setTahmin(undefined); setSapma(undefined); setDsg(undefined); setFin(undefined); setSozlesmeler(undefined);
+    setDetay(bellekten.portfoyDetay(secili)); setTahmin(bellekten.portfoylerTahmin(secili, 7)); setSapma(bellekten.portfoySapma(secili, kod));
+    setDsg(bellekten.portfoyDsgPerspektif(secili, kod)); setFin(bellekten.portfoyFinans(secili, kod)); setSozlesmeler(undefined);
     const yukle = <T,>(p: Promise<T | null>, set: (v: Yuk<T>) => void) => p.then((v) => { if (acik) set(v); }, () => { if (acik) set(null); });
     yukle(api.portfoyDetay(secili), setDetay); yukle(api.portfoylerTahmin(secili, 7), setTahmin); yukle(api.portfoySapma(secili, kod), setSapma);
     yukle(api.portfoyDsgPerspektif(secili, kod), setDsg); yukle(api.portfoyFinans(secili, kod), setFin);
@@ -77,7 +83,7 @@ export function Portfoyler() {
   }, [secili, kod, yenile, yazabilir]);
   useEffect(() => {
     if (!secili) return;
-    let acik = true; setRisk(undefined); setRev(undefined);
+    let acik = true; setRisk(bellekten.portfoyRisk(secili, 2)); setRev(bellekten.portfoyRevizyon(secili, hedef));
     api.portfoyRisk(secili, 2).then((v) => { if (acik) setRisk(v); }, () => { if (acik) setRisk(null); });
     api.portfoyRevizyon(secili, hedef).then((v) => { if (acik) setRev(v); }, () => { if (acik) setRev(null); });
     return () => { acik = false; };
@@ -95,7 +101,7 @@ export function Portfoyler() {
         {secenekler.map((s) => <option key={s.kod} value={s.kod}>{s.etiket}</option>)}</select>
     </span>);
   const alt = "Portföyünüzün bugünkü durumu: üretim beklentisi ve belirsizliği, program sapması, dengeden sorumlu grup ve sözleşme ilişkileri, revizyon önerileri. Tutarlar PVQuant'ın yeniden hesabıdır; EPİAŞ uzlaştırma sonucu değildir.";
-  if (liste === undefined) return <Sayfa baslik="Portföy yönetimi" alt={alt}><SayfaIskeleti kpi={4} kart={3} /></Sayfa>;
+  if (liste === undefined) return <Sayfa baslik="Portföy yönetimi" alt={alt}><PortfoylerIskeleti /></Sayfa>;
   if (liste === null) return <Sayfa baslik="Portföy yönetimi" alt={alt}><p className="soluk">Portföy listesi alınamadı. Bağlantıyı kontrol edip sayfayı yenileyin.</p></Sayfa>;
   if (liste.length === 0) return (
     <Sayfa baslik="Portföy yönetimi" alt={alt}>
@@ -117,11 +123,14 @@ export function Portfoyler() {
   return (
     <Sayfa baslik="Portföy yönetimi" alt={alt} sag={secici}>
       <ModulNotu kod="portfoy_dsg" />
-      <p className="form-not" style={{ margin: "0 0 12px", fontSize: "var(--t-ikincil)" }}>
+      <div className="akis">
+      <section className="bolum">
+      <div className="ozet-bas">Dönem<span className="sag">{sapma?.donem?.etiket ?? "seçili dönem"}</span></div>
+      <p className="form-not" style={{ margin: 0, fontSize: "var(--t-ikincil)" }}>
         <b>{p.ad}</b> · {TUR_ETIKET[p.tur] ?? p.tur}{p.dsg_kodu ? ` · DSG kodu ${p.dsg_kodu}` : ""}{p.kurulus_ad ? ` · ${p.kurulus_ad}` : ""} · geçerlilik {gunYaz(p.gecerli_bas)}{p.gecerli_bit ? ` – ${gunYaz(p.gecerli_bit)}` : " – süresiz"} · {sayiTr(p.uye_sayisi)} üye bugün
         {rev?.ozet && <> · <span style={{ color: "var(--metin)" }}>{rev.ozet}</span></>}
       </p>
-      <div className="ızgara satir-4" style={{ marginBottom: 14 }}>
+      <div className="ızgara satir-4">
         <Kpi etiket="Kurulu güç" bilgi="Bugün geçerli üyelerin kurulu gücü (DC). Üyelik tarihli tutulur; geçmiş dönemler o tarihteki üyelikle hesaplanır."
           deger={kapasite ? sayiTr(kapasite / 1000, 1) : "—"} birim={kapasite ? "MW" : undefined}
           alt={`${sayiTr(etkin.length)} etkin santral${tahmin?.tahmin_yok?.length ? `; ${tahmin.tahmin_yok.length} santralin tahmini yok` : ""}`} />
@@ -160,8 +169,11 @@ export function Portfoyler() {
             {sapma.katkilar?.not && <p className="form-not" style={{ margin: "10px 0 0", fontSize: "var(--t-ikincil)" }}>{sapma.katkilar.not}</p>}
           </>)}
       </Kart>
+      </section>
 
-      <div className="ızgara-cift">
+      <section className="bolum">
+      <div className="ozet-bas">Önümüzdeki günler<span className="sag">risk ve revizyon</span></div>
+      <div className="sira-2">
         <Kart baslik="Portföy riski" alt="Önümüzdeki günlerde program ile tahmin arasındaki beklenen fark, aralık dışı saatler ve geçmişte sapmanın yoğunlaştığı yerler."
           sag={rs ? <Rozet sinif={RISK[rs.etiket]}>{rs.etiket_ad}</Rozet> : undefined}>
           {risk === undefined ? <YerTutucu yukseklik={140} /> : !risk || risk.durum !== "ok" || !rs ? <p className="soluk" style={{ margin: 0 }}>{risk?.not ?? "Risk görünümü alınamadı."}</p> : (
@@ -202,8 +214,11 @@ export function Portfoyler() {
             </>)}
         </Kart>
       </div>
+      </section>
 
-      <div className="ızgara-cift">
+      <section className="bolum">
+      <div className="ozet-bas">Üyelik ve finans<span className="sag">üyeler, DSG, tutarlar</span></div>
+      <div className="sira-2">
         <Kart baslik="Üyeler, DSG ve sözleşmeler" alt="Portföyün tarihli üyelikleri; dengeden sorumlu grupta üç perspektif: tek başına, grup içinde ve sözleşmeye göre pay.">
           {detay === undefined ? <YerTutucu yukseklik={120} /> : !detay ? <p className="soluk" style={{ margin: 0 }}>Üyelikler alınamadı.</p> : (
             <>
@@ -264,15 +279,38 @@ export function Portfoyler() {
             </>)}
         </Kart>
       </div>
+      </section>
 
       {yazabilir && (
+        <section className="bolum">
+        <div className="ozet-bas">Kayıtlar<span className="sag">portföy, üyelik, sözleşme</span></div>
         <Kart baslik="Üyelikler ve sözleşmeler" alt="Portföy, üyelik ve sözleşme kayıtları tarihli tutulur; kayıt silinmez, bitiş tarihiyle kapatılır. Her değişiklik denetim izine yazılır.">
           <details className="aciklama"><summary>Yeni portföy</summary><PortfoyFormu onBitti={() => setYenile((n) => n + 1)} /></details>
-          <details className="aciklama"><summary>Üyelik ekle ya da kapat</summary><UyelikFormu portfoyId={p.id} uyeler={uyeler} onBitti={() => setYenile((n) => n + 1)} /></details>
+          <details className="aciklama" onToggle={(e) => setUyelikAcik((e.currentTarget as HTMLDetailsElement).open)}><summary>Üyelik ekle ya da kapat</summary>{uyelikAcik && <UyelikFormu portfoyId={p.id} uyeler={uyeler} onBitti={() => setYenile((n) => n + 1)} />}</details>   {/* 18.11: açılınca bağlanır (santral listesi isteği) */}
           {yonetici ? <details className="aciklama"><summary>Sözleşme ekle</summary><SozlesmeFormu portfoyId={p.id} uyeler={uyeler} onBitti={() => setYenile((n) => n + 1)} /></details>
             : <p className="soluk" style={{ margin: "8px 0 0", fontSize: "var(--t-ikincil)" }}>Sözleşme kaydını yalnız yönetici ekler.</p>}
-        </Kart>)}
+        </Kart>
+        </section>)}
+      </div>
     </Sayfa>
+  );
+}
+
+/** 18.11 — sayfaya özel iskelet: başlık anında; dört KPI (124 px), dönem kartı (~340 px) ve ilk çift (~520 px) kaba kalıp. Sayı yok, hareket yok. */
+function PortfoylerIskeleti() {
+  return (
+    <div className="akis" role="status" aria-live="polite" aria-label="Yükleniyor">
+      <section className="bolum">
+        <div className="ozet-bas">Dönem<span className="sag">yükleniyor…</span></div>
+        <div className="iskelet-kpi" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>{Array.from({ length: 4 }, (_, i) => <span key={i} />)}</div>
+        <div className="iskelet-kart" style={{ height: 340 }} />
+      </section>
+      <section className="bolum">
+        <div className="ozet-bas">Önümüzdeki günler</div>
+        <div className="sira-2"><div className="iskelet-kart" style={{ height: 520 }} /><div className="iskelet-kart" style={{ height: 520 }} /></div>
+      </section>
+      <span className="gorsel-gizli">Yükleniyor…</span>
+    </div>
   );
 }
 

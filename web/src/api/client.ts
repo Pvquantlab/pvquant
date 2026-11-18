@@ -126,6 +126,15 @@ export const bellekten = {
   // 17.11 KGÜP hız turu: santral geçişinde bellekteki önizleme/revizyon anında çizilir, ağdan tazelenir (kgupOnizleme/kgupRevizyon yollarıyla birebir)
   kgup: (p: string): KgupOnizleme | undefined => bellektenOku<KgupOnizleme>(`/v1/plants/${p}/kgup?fmt=json&kantil=p50`),
   kgupRevizyon: (p: string): KgupRevizyon | undefined => bellektenOku<KgupRevizyon>(`/v1/plants/${p}/kgup/revizyon`),
+  // 18.11 DSG ve portföyler hız turu: portföy geçişinde ve sayfaya dönüşte bellekteki yanıtlar anında (api.portfoy* yollarıyla birebir)
+  portfoyler: (): PortfoyKisa[] | undefined => bellektenOku<{ portfoyler: PortfoyKisa[] }>("/v1/portfoyler")?.portfoyler,
+  portfoyDetay: (id: string): PortfoyDetay | undefined => bellektenOku<PortfoyDetay>(`/v1/portfoyler/${id}`),
+  portfoylerTahmin: (id: string, gun = 7): PortfoyTahminT | undefined => bellektenOku<PortfoyTahminT>(`/v1/portfoyler/${id}/tahmin?gun=${gun}`),
+  portfoySapma: (id: string, donem?: string | null): PortfoySapmaT | undefined => bellektenOku<PortfoySapmaT>(`/v1/portfoyler/${id}/sapma?ozet=1${donem ? `&donem=${encodeURIComponent(donem)}` : ""}`),
+  portfoyDsgPerspektif: (id: string, donem?: string | null): PortfoyDsgT | undefined => bellektenOku<PortfoyDsgT>(`/v1/portfoyler/${id}/dsg${donem ? `?donem=${encodeURIComponent(donem)}` : ""}`),
+  portfoyFinans: (id: string, donem?: string | null): PortfoyFinansT | undefined => bellektenOku<PortfoyFinansT>(`/v1/portfoyler/${id}/finansal-etki${donem ? `?donem=${encodeURIComponent(donem)}` : ""}`),
+  portfoyRisk: (id: string, gun = 2): PortfoyRiskT | undefined => bellektenOku<PortfoyRiskT>(`/v1/portfoyler/${id}/risk?gun=${gun}`),
+  portfoyRevizyon: (id: string, hedef: "yarin" | "bugun" = "yarin"): PortfoyRevizyonT | undefined => bellektenOku<PortfoyRevizyonT>(`/v1/portfoyler/${id}/revizyon?hedef=${hedef}`),
 };
 
 /** 24.10 — bayat-önce tazelemesi: taze yanıt bellekteki bayat değerle BİREBİR aynıysa eski referans korunur; böylece
@@ -1203,7 +1212,7 @@ export const api = {
   sozlesmeler: async (portfoyId: string): Promise<PortfoySozlesme[]> => { if (TABAN == null) return []; return (await getir<{ sozlesmeler: PortfoySozlesme[] }>(`/v1/sozlesmeler?portfoy_id=${portfoyId}`)).sozlesmeler; },
   sozlesmeEkle: (g: Record<string, unknown>) => gonder<{ id: string }>("/v1/sozlesmeler", "POST", g),
   portfoylerTahmin: async (id: string, gun = 7): Promise<PortfoyTahminT | null> => { if (TABAN == null) return null; return getir<PortfoyTahminT>(`/v1/portfoyler/${id}/tahmin?gun=${gun}`); },   // ad: eski api.portfoyTahmin (MinT, /v1/portfoy/tahmin) ile çakışmasın
-  portfoySapma: async (id: string, donem?: string | null): Promise<PortfoySapmaT | null> => { if (TABAN == null) return null; return getir<PortfoySapmaT>(`/v1/portfoyler/${id}/sapma${donem ? `?donem=${encodeURIComponent(donem)}` : ""}`); },
+  portfoySapma: async (id: string, donem?: string | null): Promise<PortfoySapmaT | null> => { if (TABAN == null) return null; return getir<PortfoySapmaT>(`/v1/portfoyler/${id}/sapma?ozet=1${donem ? `&donem=${encodeURIComponent(donem)}` : ""}`); },   // 18.11: ozet=1 — panelin kullanmadığı 744 satırlık saatlik liste (185 KB) gelmez
   portfoyRisk: async (id: string, gun = 2): Promise<PortfoyRiskT | null> => { if (TABAN == null) return null; return getir<PortfoyRiskT>(`/v1/portfoyler/${id}/risk?gun=${gun}`); },
   portfoyDsgPerspektif: async (id: string, donem?: string | null): Promise<PortfoyDsgT | null> => { if (TABAN == null) return null; return getir<PortfoyDsgT>(`/v1/portfoyler/${id}/dsg${donem ? `?donem=${encodeURIComponent(donem)}` : ""}`); },
   portfoyRevizyon: async (id: string, hedef: "yarin" | "bugun" = "yarin"): Promise<PortfoyRevizyonT | null> => { if (TABAN == null) return null; return getir<PortfoyRevizyonT>(`/v1/portfoyler/${id}/revizyon?hedef=${hedef}`); },
@@ -1224,7 +1233,9 @@ const ISITMA: Record<string, (p: string) => Promise<unknown>[]> = {
   kgup: (p) => [api.kgupOnizleme(p), api.kgupRevizyon(p)],
   mutabakat: (p) => [api.mutabakat(p)],
   finans: (p) => [api.finansalEtki(p, donemSecenekleri("ay")[1]?.kod ?? donemSecenekleri("ay")[0].kod)],   // FinansalEtki.tsx varsayılanı: son tam ay
-  portfoyler: () => [api.portfoyler()],
+  // 18.11 DSG ve portföyler: liste + hatırlanan portföyün (pvq_portfoy) açılış uçları, sayfanın varsayılan dönemiyle (geçen ay) — ilk tıklamada bellekten
+  portfoyler: () => { const pf = localStorage.getItem("pvq_portfoy"); const d = donemSecenekleri("ay")[1]?.kod ?? donemSecenekleri("ay")[0].kod;
+    return pf ? [api.portfoyler(), api.portfoyDetay(pf), api.portfoylerTahmin(pf, 7), api.portfoySapma(pf, d), api.portfoyFinans(pf, d)] : [api.portfoyler()]; },
   // 16.11 operasyon: sayfaların açılış çağrılarıyla aynı yollar
   sayac: (p) => [api.sayac(p)],
   veri: (p) => [api.epiasUretim(p), api.isler()],

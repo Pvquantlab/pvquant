@@ -144,7 +144,53 @@ def _yanit_isiticisini_baslat() -> None:
         # 17.11 KGUP hiz turu: {yarin}/{bugun} yer tutucularini isitici her turda piyasa gunuyle cozer (gun degisince yeniden isitir)
         "kgup?gun={yarin}&kantil=p50&fmt=json": (lambda t, p: _kgup_dosyasi_uret(plant_id=p, gun=yanit_isitici.gunler()["yarin"], kantil="p50", fmt="json", claims=_c(t)), 600),
         "kgup/revizyon-girdi?gun={bugun}": (lambda t, p: _kgup_revizyon_girdi_uret(plant_id=p, claims=_c(t)), 300),
+    }, kayit_pf={
+        # 18.11 DSG/portfoy hiz turu: portfoy sayfasinin acilis uclari (varsayilan donem = gecen ay, sayfadaki secici ile ayni); anahtarlar uc sarmaliyla birebir
+        "portfoy/tahmin?gun=7&kural=son&bugun={bugun}": (lambda t, pf: _pt().gunler(t, pf, 7, "son", None), 300),
+        "portfoy/sapma?donem={gecen_ay}&uretim=None&bugun={bugun}": (lambda t, pf: _sp().donem(t, pf, yanit_isitici.gunler()["gecen_ay"], None, None), yanit_onbellegi.VARSAYILAN_TTL_SN),
+        "portfoy/dsg?donem={gecen_ay}&uretim=None&anahtar=None&bugun={bugun}": (lambda t, pf: _sd().donem(t, pf, yanit_isitici.gunler()["gecen_ay"], None, None, anahtar=None), yanit_onbellegi.VARSAYILAN_TTL_SN),
+        "portfoy/finansal-etki?donem={gecen_ay}&uretim=None&bugun={bugun}": (lambda t, pf: _pf_finans_isit(t, pf), yanit_onbellegi.VARSAYILAN_TTL_SN),
+        "portfoy/risk?gun=2&kural=son&bugun={bugun}": (lambda t, pf: _sp().gelecek(t, pf, 2, "son", None), 300),
+        "portfoy/revizyon-hazir?hedef=yarin&bugun={bugun}": (lambda t, pf: _rv_pf().hazirla(t, pf, "yarin", None), 300),
     })
+
+
+def _pf_finans_isit(tenant_id: str, portfoy_id: str):
+    """Isitici icin portfoy finansal etkisi: ucun modul kapisi (modul_gerekli("finansal_etki")) «zorla» kipinde 403 verirse uretim bosa gitmesin — ayni hukum
+    burada da uygulanir (4xx -> isiticide «bos»); uyari kipinde uc yaniti servis eder, isitma da yapilir."""
+    from pvquant.services import yanit_isitici, yetki_service
+    try:
+        h = yetki_service.kapi_hukmu(tenant_id, modul="finansal_etki")
+    except LookupError:
+        h = None
+    if h and yetki_service.zorlama_kipi() == "zorla":
+        raise HTTPException(h["http"], h["mesaj"])
+    return _pfs().donem(tenant_id, portfoy_id, yanit_isitici.gunler()["gecen_ay"], None, None)
+
+
+def _pt():
+    from pvquant.services import portfoy_tahmin_service as pt
+    return pt
+
+
+def _sp():
+    from pvquant.services import portfoy_sapma_service as sp
+    return sp
+
+
+def _sd():
+    from pvquant.services import portfoy_dsg_service as sd
+    return sd
+
+
+def _pfs():
+    from pvquant.services import portfoy_finans_service as pfs
+    return pfs
+
+
+def _rv_pf():
+    from pvquant.services import portfoy_revizyon_service as rv
+    return rv
 
 
 @app.middleware("http")
@@ -4227,6 +4273,12 @@ def _pf_kapi(claims, portfoy_id: str) -> dict:
         raise _pv_hata(e)
 
 
+def _pf_gun(bugun: str | None) -> str:
+    """18.11 DSG/portfoy hiz turu: onbellek anahtarindaki «bugun» — istekte verilen ya da piyasa gunu (gun donunce anahtar degisir)."""
+    b = _pv_gun(bugun)
+    return b.isoformat() if b else pd.Timestamp.now(tz=PIYASA_TZ).date().isoformat()
+
+
 @app.get("/v1/portfoyler/{portfoy_id}/tahmin")
 def portfoyler_tahmin(portfoy_id: str, gun: int = 2, kural: str = "son", bugun: str | None = None, claims=Depends(gecerli_kullanici)):
     """v2.589 (F3-B): portföy saatlik tahmini — ortak saat kümesi, bant (santral yarı genişlikleri × büzülmüş korelasyon; naif/bağımsız sınırlar), günlük beklenti, tazelik."""
@@ -4236,7 +4288,9 @@ def portfoyler_tahmin(portfoy_id: str, gun: int = 2, kural: str = "son", bugun: 
     if not (1 <= gun <= 15):
         raise HTTPException(422, "gun 1-15")
     _pf_kapi(claims, portfoy_id); b = _pv_gun(bugun)
-    return pt.gunler(claims["tenant_id"], portfoy_id, gun, kural, b)
+    # 18.11 DSG/portfoy hiz turu: portfoy damgasiyla onbellek (test DB olcumu 0,4–0,5 s; her istekte yeniden hesaplaniyordu); pencere gune bagli -> anahtarda bugun, 5 dk
+    return yanit_onbellegi.getir_portfoy(claims["tenant_id"], portfoy_id, f"portfoy/tahmin?gun={gun}&kural={kural}&bugun={_pf_gun(bugun)}",
+                                         lambda: pt.gunler(claims["tenant_id"], portfoy_id, gun, kural, b), ttl_sn=300)
 
 
 @app.get("/v1/portfoyler/{portfoy_id}/kapsama")
@@ -4254,12 +4308,15 @@ def portfoy_kapsama(portfoy_id: str, gun: int = 30, taze: int = 0, bugun: str | 
 
 
 @app.get("/v1/portfoyler/{portfoy_id}/sapma")
-def portfoy_sapma(portfoy_id: str, donem: str | None = None, uretim: str | None = None, bugun: str | None = None, claims=Depends(gecerli_kullanici)):
+def portfoy_sapma(portfoy_id: str, donem: str | None = None, uretim: str | None = None, bugun: str | None = None, ozet: int = 0, claims=Depends(gecerli_kullanici)):
     """v2.590 (F3-C): dönem için program sapması / tahmin hatası / fizik sapması ayrı; santral katkıları, fiziksel ofset, maruziyet saatleri (gösterge), kapsama."""
     from pvquant.services import portfoy_sapma_service as sp
     _pf_kapi(claims, portfoy_id); ur = _fe_uretim(uretim)
     try:
-        return sp.donem(claims["tenant_id"], portfoy_id, donem, ur, _pv_gun(bugun))
+        # 18.11 DSG/portfoy hiz turu: onbellek (test DB 1,4 s); ozet=1 -> 744 satirlik «saatlik» listesi (193 KB'nin 185 KB'si) yanita girmez (panel kullanmaz)
+        d = yanit_onbellegi.getir_portfoy(claims["tenant_id"], portfoy_id, f"portfoy/sapma?donem={donem}&uretim={ur}&bugun={_pf_gun(bugun)}",
+                                          lambda: sp.donem(claims["tenant_id"], portfoy_id, donem, ur, _pv_gun(bugun)))
+        return {k: v for k, v in d.items() if k != "saatlik"} if ozet else d
     except ValueError as e:
         raise HTTPException(422, str(e))
 
@@ -4274,7 +4331,8 @@ def portfoy_risk(portfoy_id: str, gun: int = 2, kural: str = "son", bugun: str |
     if not (1 <= gun <= 7):
         raise HTTPException(422, "gun 1-7")
     _pf_kapi(claims, portfoy_id)
-    return sp.gelecek(claims["tenant_id"], portfoy_id, gun, kural, _pv_gun(bugun))
+    return yanit_onbellegi.getir_portfoy(claims["tenant_id"], portfoy_id, f"portfoy/risk?gun={gun}&kural={kural}&bugun={_pf_gun(bugun)}",
+                                         lambda: sp.gelecek(claims["tenant_id"], portfoy_id, gun, kural, _pv_gun(bugun)), ttl_sn=300)   # 18.11: ileriye donuk, gune bagli -> 5 dk
 
 
 @app.get("/v1/portfoyler/{portfoy_id}/dsg")
@@ -4287,7 +4345,8 @@ def portfoy_dsg_perspektif(portfoy_id: str, donem: str | None = None, uretim: st
         raise HTTPException(422, "anahtar " + "|".join(dg.YONTEMLER))
     _pf_kapi(claims, portfoy_id); ur = _fe_uretim(uretim)
     try:
-        return sd.donem(claims["tenant_id"], portfoy_id, donem, ur, _pv_gun(bugun), anahtar=anahtar)
+        return yanit_onbellegi.getir_portfoy(claims["tenant_id"], portfoy_id, f"portfoy/dsg?donem={donem}&uretim={ur}&anahtar={anahtar}&bugun={_pf_gun(bugun)}",
+                                             lambda: sd.donem(claims["tenant_id"], portfoy_id, donem, ur, _pv_gun(bugun), anahtar=anahtar))   # 18.11: portfoy damgasi (sozlesme/uyelik dahil)
     except ValueError as e:
         raise HTTPException(422, str(e))
 
@@ -4305,7 +4364,10 @@ def portfoy_revizyon(portfoy_id: str, hedef: str = "yarin", simdi: str | None = 
             t = pd.Timestamp(simdi)
         except (ValueError, TypeError):
             raise HTTPException(422, "simdi ISO zaman")
-    return rv.oneriler(claims["tenant_id"], portfoy_id, hedef, t)
+    # 18.11 DSG/portfoy hiz turu: pahali hazirlik onbellekte (test DB 1,0–1,4 s), teslim/gun ici penceresi ve olcum yasi her istekte su ana gore (KGUP revizyonuyla ayni kalip)
+    hazir = yanit_onbellegi.getir_portfoy(claims["tenant_id"], portfoy_id, f"portfoy/revizyon-hazir?hedef={hedef}&bugun={_pf_gun(None) if t is None else t.date().isoformat()}",
+                                          lambda: rv.hazirla(claims["tenant_id"], portfoy_id, hedef, t), ttl_sn=300)
+    return rv.oneriler_hazirdan(hazir, t)
 
 
 @app.get("/v1/portfoyler/{portfoy_id}/finansal-etki")
@@ -4315,7 +4377,10 @@ def portfoyler_finansal_etki(portfoy_id: str, donem: str | None = None, uretim: 
     from pvquant.services import portfoy_finans_service as pfs
     _pf_kapi(claims, portfoy_id); ur = _fe_uretim(uretim)
     try:
-        return pfs.donem(claims["tenant_id"], portfoy_id, donem, ur, _pv_gun(bugun), taze=bool(taze))
+        if taze:   # taze=1 anlik yeniden hesap: onbellege girmez (bagimsiz dogrulama / finansal etki ile ayni kural)
+            return pfs.donem(claims["tenant_id"], portfoy_id, donem, ur, _pv_gun(bugun), taze=True)
+        return yanit_onbellegi.getir_portfoy(claims["tenant_id"], portfoy_id, f"portfoy/finansal-etki?donem={donem}&uretim={ur}&bugun={_pf_gun(bugun)}",
+                                             lambda: pfs.donem(claims["tenant_id"], portfoy_id, donem, ur, _pv_gun(bugun)))   # 18.11: test DB 4,9–5,5 s; gece kaydi yoksa FEM anlik kosuyordu
     except ValueError as e:
         raise HTTPException(422, str(e))
 

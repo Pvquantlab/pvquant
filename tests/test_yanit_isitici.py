@@ -74,11 +74,32 @@ def test_4xx_bos_sayilir_ve_etag_anisi_tutulur(etkin):
     r2 = yanit_isitici.tur(kayit, [("t1", "p1")])
     assert r2["atlanan"] == 1 and say["n"] == 1   # ayni damga + ayni gun: santral atlanir, 409 ureticisi yeniden kosmaz
     # gun yer tutucusu anahtara cozulur; gun donunce etag anisi gecersizlesir
-    g = {"bugun": "2026-11-17", "yarin": "2026-11-18"}
+    g = {"bugun": "2026-11-17", "yarin": "2026-11-18", "gecen_ay": "2026-10"}
     assert yanit_isitici.anahtar_coz("kgup?gun={yarin}&kantil=p50&fmt=json", g) == "kgup?gun=2026-11-18&kantil=p50&fmt=json"
     assert yanit_isitici.anahtar_coz("kgup/revizyon-girdi?gun={bugun}", g) == "kgup/revizyon-girdi?gun=2026-11-17"
     gg = yanit_isitici.gunler(); assert len(gg["bugun"]) == 10 and gg["yarin"] > gg["bugun"]
     assert next(iter(yanit_isitici._SON_ETAG.values())).endswith("|" + gg["bugun"])
+
+
+def test_portfoy_turu_portfoy_damgasiyla(etkin, monkeypatch):
+    """18.11 DSG/portfoy hiz turu: tur(portfoy=True) (kiraci, portfoy) listesiyle getir_portfoy'u kullanir; {gecen_ay} cozulur; etag anisi «pf:» on ekli."""
+    from pvquant.services import damga_service
+    pf = {"son_scada": "2026-11-17T20:00:00"}
+    monkeypatch.setattr(damga_service, "portfoy_hesapla", lambda t, p: dict(pf))
+    yanit_onbellegi._DAMGA.clear()
+    say = {"n": 0}
+    def uret(t, p):
+        say["n"] += 1
+        return {"kiraci": t, "portfoy": p, "n": say["n"]}
+    kayit = {"portfoy/sapma?donem={gecen_ay}&uretim=None&bugun={bugun}": (uret, 900)}
+    r1 = yanit_isitici.tur(kayit, [("t1", "pf1")], portfoy=True)
+    assert r1 == {"isitilan": 1, "atlanan": 0, "bos": 0, "hata": 0} and say["n"] == 1
+    assert yanit_isitici.tur(kayit, [("t1", "pf1")], portfoy=True)["atlanan"] == 1
+    g = yanit_isitici.gunler(); assert len(g["gecen_ay"]) == 7 and g["gecen_ay"] < g["bugun"][:7]
+    anahtar = yanit_isitici.anahtar_coz("portfoy/sapma?donem={gecen_ay}&uretim=None&bugun={bugun}", g)
+    assert yanit_onbellegi.getir_portfoy("t1", "pf1", anahtar, lambda: uret("t1", "pf1"))["n"] == 1 and say["n"] == 1   # uc sarmali isabet eder
+    assert "pf:pf1" in yanit_isitici._SON_ETAG and "pf1" not in yanit_isitici._SON_ETAG
+    assert yanit_isitici.tur({"x": (uret, 60)}, [("t1", "pf1")])["isitilan"] == 1   # santral turu ayni kimligi ayri anar
 
 
 def test_tek_isci_kilidi(etkin):
@@ -98,7 +119,11 @@ def test_main_sarmali_ve_anahtarlar():
     assert '@app.on_event("startup")\ndef _yanit_isiticisini_baslat()' in kaynak
     for anahtar in ('"genel-bakis": (lambda t, p: _genel_bakis_uret(', '"summary": (lambda t, p: _summary_uret(', '"forecast?hours=384": (lambda t, p: _forecast_uret(plant_id=p, hours=384',
                     '"kgup?gun={yarin}&kantil=p50&fmt=json": (lambda t, p: _kgup_dosyasi_uret(plant_id=p, gun=yanit_isitici.gunler()["yarin"], kantil="p50", fmt="json", claims=_c(t)), 600)',   # 17.11 KGUP: uc anahtari/TTL ile birebir
-                    '"kgup/revizyon-girdi?gun={bugun}": (lambda t, p: _kgup_revizyon_girdi_uret(plant_id=p, claims=_c(t)), 300)'):
+                    '"kgup/revizyon-girdi?gun={bugun}": (lambda t, p: _kgup_revizyon_girdi_uret(plant_id=p, claims=_c(t)), 300)',
+                    '"portfoy/tahmin?gun=7&kural=son&bugun={bugun}": (lambda t, pf: _pt().gunler(t, pf, 7, "son", None), 300)',   # 18.11 portfoy kayitlari
+                    '"portfoy/sapma?donem={gecen_ay}&uretim=None&bugun={bugun}": (lambda t, pf: _sp().donem(t, pf, yanit_isitici.gunler()["gecen_ay"], None, None), yanit_onbellegi.VARSAYILAN_TTL_SN)',
+                    '"portfoy/finansal-etki?donem={gecen_ay}&uretim=None&bugun={bugun}":', '"portfoy/risk?gun=2&kural=son&bugun={bugun}":', '"portfoy/revizyon-hazir?hedef=yarin&bugun={bugun}": (lambda t, pf: _rv_pf().hazirla(t, pf, "yarin", None), 300)',
+                    '"portfoy/dsg?donem={gecen_ay}&uretim=None&anahtar=None&bugun={bugun}":'):
         assert anahtar in kaynak, anahtar
     compose = Path(api_main.__file__).resolve().parents[2].joinpath("docker-compose.yml").read_text(encoding="utf-8")
     assert 'PVQ_YANIT_ISITICI: "1"' in compose

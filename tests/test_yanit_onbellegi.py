@@ -114,8 +114,13 @@ def test_sarilan_uclar_kaynakta():
                "sayac"]:   # operasyon: sayac 0,3 s (pandas), TTL 5 dk
         assert (f'plant_id, f"{uc}' in kaynak or f'plant_id, "{uc}"' in kaynak) and f'@app.get("/v1/plants/{{plant_id}}/{uc}")' in kaynak, uc
     assert kaynak.count("yanit_onbellegi.getir(") == 29   # 17.11 Santralim: + forecast, pr, runs, kirlenme
-    assert kaynak.count("ttl_sn=300") == 5   # sayac («bugün» geri sayımı) + 17.11 Santralim: forecast, pr, runs (koşu damgasına bağlı, 5 dk) + 17.11 KGUP: revizyon girdisi
-    assert kaynak.count("if taze:") == 2   # bağımsız doğrulama ve finansal etki: taze=1 önbelleğe girmez
+    assert kaynak.count("ttl_sn=300") == 8   # sayac («bugün» geri sayımı) + 17.11 Santralim: forecast, pr, runs (koşu damgasına bağlı, 5 dk) + 17.11 KGUP: revizyon girdisi + 18.11 portfoy: tahmin, risk, revizyon-hazir
+    assert kaynak.count("yanit_onbellegi.getir_portfoy(") == 6   # 18.11 DSG/portfoy: tahmin, sapma, risk, dsg, revizyon-hazir, finansal-etki (portfoy damgasi)
+    for uc in ("portfoy/tahmin?gun={gun}&kural={kural}&bugun={_pf_gun(bugun)}", "portfoy/sapma?donem={donem}&uretim={ur}&bugun={_pf_gun(bugun)}", "portfoy/risk?gun={gun}&kural={kural}&bugun={_pf_gun(bugun)}",
+               "portfoy/dsg?donem={donem}&uretim={ur}&anahtar={anahtar}&bugun={_pf_gun(bugun)}", "portfoy/revizyon-hazir?hedef={hedef}&bugun=", "portfoy/finansal-etki?donem={donem}&uretim={ur}&bugun={_pf_gun(bugun)}"):
+        assert f'f"{uc}' in kaynak, uc
+    assert 'return {k: v for k, v in d.items() if k != "saatlik"} if ozet else d' in kaynak   # ozet=1: 744 satirlik saatlik liste yanita girmez
+    assert kaynak.count("if taze:") == 3   # bağımsız doğrulama ve finansal etki + 18.11 portfoy finansal etkisi: taze=1 önbelleğe girmez
     assert kaynak.count('if fmt != "json":') == 2   # kgup CSV eki (arşive yazar) ve mutabakat/saatlik CSV indirme önbelleğe girmez
     assert kaynak.count("ttl_sn=60)") == 0   # 17.11 KGUP hiz turu: zamana bagli alanlar sarmaldan ayrildi (kgup: teslim her istekte; revizyon: girdi onbellekte, pencere her istekte) -> kisa TTL kalmadi
     assert kaynak.count("ttl_sn=600)") == 4   # hakkinda ve kurallar (genel 10 dk) + 17.11 kirlenme (ölçüm damgasına bağlı) + 17.11 kgup govdesi (cozulmus gun anahtarda)
@@ -147,3 +152,28 @@ def test_acilis_on_yuklemesi_ve_genel_uclar():
     assert 'yanit_onbellegi.getir_genel("hakkinda", kaynak_service.hakkinda, ttl_sn=600)' in kaynak
     assert 'yanit_onbellegi.getir_genel(f"kurallar?tarih={tarih}&segment={segment}&gun={_bugun}"' in kaynak
     api_main._servisleri_on_yukle()   # çalışır, istisna atmaz
+
+
+def test_getir_portfoy_portfoy_damgasiyla_ve_santraldan_ayri(etkin, monkeypatch):
+    """18.11 DSG/portfoy hiz turu: portfoy anahtari portfoy damgasina bagli; santral damgasi degisse de portfoy kaydi kalir, portfoy damgasi
+    degisince (uyelik/sozlesme/uye olcumu) yeniden uretilir; kiraci ve portfoy yalitimi."""
+    from pvquant.services import damga_service
+    pf = {"son_scada": "2026-11-17T20:00:00", "uyelik_guncelleme": "2026-11-01T00:00:00"}
+    monkeypatch.setattr(damga_service, "portfoy_hesapla", lambda t, p: dict(pf))
+    yanit_onbellegi._DAMGA.clear()
+    say = {"n": 0}
+    def uret():
+        say["n"] += 1
+        return {"n": say["n"]}
+    assert yanit_onbellegi.getir_portfoy("t1", "pf1", "portfoy/sapma?donem=2026-10", uret) == {"n": 1}
+    assert yanit_onbellegi.getir_portfoy("t1", "pf1", "portfoy/sapma?donem=2026-10", uret) == {"n": 1}      # isabet
+    assert yanit_onbellegi.getir_portfoy("t1", "pf2", "portfoy/sapma?donem=2026-10", uret) == {"n": 2}      # baska portfoy
+    assert yanit_onbellegi.getir_portfoy("t2", "pf1", "portfoy/sapma?donem=2026-10", uret) == {"n": 3}      # baska kiraci
+    assert yanit_onbellegi.getir("t1", "pf1", "portfoy/sapma?donem=2026-10", uret) == {"n": 4}              # santral anahtari ayri («pf:» on eki)
+    pf["uyelik_guncelleme"] = "2026-11-18T09:00:00"; yanit_onbellegi._DAMGA.clear()
+    assert yanit_onbellegi.getir_portfoy("t1", "pf1", "portfoy/sapma?donem=2026-10", uret) == {"n": 5}      # damga degisti -> yeniden
+    def patlar():
+        raise LookupError("portfoy yok")
+    with pytest.raises(LookupError):
+        yanit_onbellegi.getir_portfoy("t1", "pf1", "portfoy/risk?gun=2", patlar)
+    assert yanit_onbellegi.getir_portfoy("t1", "pf1", "portfoy/risk?gun=2", uret) == {"n": 6}              # hata saklanmadi

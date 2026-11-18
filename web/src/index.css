@@ -1261,6 +1261,11 @@ table.veri.dar th + th, table.veri.dar td + td { padding-left: 10px; }
 .akis .bolum { display: grid; gap: 14px; align-content: start; min-width: 0; }
 .akis .ozet-bas { margin-bottom: 0; }
 .akis .ozet-bas .sag { font-weight: 400; color: var(--soluk); }
+/* 18.11 DSG ve portföyler: bölüm kapsayıcı — KPI şeridi (.satir-4) 1000 px'ten dar içerikte 2×2 (ÖLÇÜLDÜ 1195 px pencerede 4 sütun 201 px, .kpi-ikinci
+   taşıyordu); dar ekran (≤700 px pencere) tek sütun kuralı üstün kalsın diye alt sınır 700. Kart çifti .sira-2 Santralim'dekiyle aynı (410 px eşiği). */
+.akis .bolum { container-type: inline-size; }
+.akis .sira-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 410px), 1fr)); gap: 14px; align-items: start; }
+@container (min-width: 700px) and (max-width: 1000px) { .akis .satir-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .iskelet-govde { display: grid; gap: 10px; align-content: start; }
 .iskelet-govde .iskelet-alan { display: block; max-width: 100%; }
 .iskelet-satirlar { display: grid; gap: 6px; }

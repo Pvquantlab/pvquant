@@ -114,6 +114,22 @@ def _damga_etag(tenant_id, plant_id) -> str:
     return et
 
 
+def _portfoy_etag(tenant_id, portfoy_id) -> str:
+    """18.11 DSG/portfoy hiz turu: portfoy damgasi (damga_service.portfoy_hesapla) — uyelerin olcum/kosu/yuklemeleri, uyelik/sozlesme/portfoy
+    kayitlari, gece sonucu, piyasa ve is. Santral damgasiyla ayni 5 s hatirlama (ayni _DAMGA sozlugu, «pf» on ekli anahtar)."""
+    k = ("pf", str(tenant_id), str(portfoy_id))
+    simdi = time.monotonic()
+    with _KILIT:
+        v = _DAMGA.get(k)
+        if v and simdi - v[0] < DAMGA_SN:
+            return v[1]
+    from pvquant.services import damga_service
+    et = damga_service.etag_uret(damga_service.portfoy_hesapla(tenant_id, portfoy_id))
+    with _KILIT:
+        _DAMGA[k] = (simdi, et)
+    return et
+
+
 def getir(tenant_id, plant_id, anahtar: str, uret: Callable[[], Any], ttl_sn: int = VARSAYILAN_TTL_SN) -> Any:
     """Anahtar = (kiracı, santral, uç+parametre, damga etag). İsabet → saklanan yanıt; ıska → `uret()` koşar ve saklanır.
     Üretici istisna atarsa hiçbir şey saklanmaz (404/422 önbelleğe girmez)."""
@@ -125,7 +141,24 @@ def getir(tenant_id, plant_id, anahtar: str, uret: Callable[[], Any], ttl_sn: in
     except Exception:
         SAYAC["atlandi"] += 1
         return uret()
-    k = (str(tenant_id), str(plant_id), anahtar, et)
+    return _anahtarla((str(tenant_id), str(plant_id), anahtar, et), uret, ttl_sn)
+
+
+def getir_portfoy(tenant_id, portfoy_id, anahtar: str, uret: Callable[[], Any], ttl_sn: int = VARSAYILAN_TTL_SN) -> Any:
+    """18.11 DSG/portfoy hiz turu: portfoy uclari icin (kiraci, «pf:»+portfoy, uc+parametre, portfoy damgasi etag). Depolama `getir` ile
+    ayni (surec LRU + paylasilan dosya katmani); yetki kapisi (_pf_kapi) cagiranda, onbellegin DISINDA kalir."""
+    if not etkin():
+        SAYAC["atlandi"] += 1
+        return uret()
+    try:
+        et = _portfoy_etag(tenant_id, portfoy_id)
+    except Exception:
+        SAYAC["atlandi"] += 1
+        return uret()
+    return _anahtarla((str(tenant_id), "pf:" + str(portfoy_id), anahtar, et), uret, ttl_sn)
+
+
+def _anahtarla(k: tuple[str, str, str, str], uret: Callable[[], Any], ttl_sn: int) -> Any:
     simdi = time.monotonic()
     with _KILIT:
         v = _KAYIT.get(k)
