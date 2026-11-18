@@ -144,6 +144,18 @@ def _yanit_isiticisini_baslat() -> None:
         # 17.11 KGUP hiz turu: {yarin}/{bugun} yer tutucularini isitici her turda piyasa gunuyle cozer (gun degisince yeniden isitir)
         "kgup?gun={yarin}&kantil=p50&fmt=json": (lambda t, p: _kgup_dosyasi_uret(plant_id=p, gun=yanit_isitici.gunler()["yarin"], kantil="p50", fmt="json", claims=_c(t)), 600),
         "kgup/revizyon-girdi?gun={bugun}": (lambda t, p: _kgup_revizyon_girdi_uret(plant_id=p, claims=_c(t)), 300),
+        # 18.11 gezinme (Parti B #4): Doğruluk / Kalibrasyon / Aylık açılış uçları — canlıda damga her değişince soğuktu (ıska ≈ %45: saat-profili 7/16,
+        # hijyen 7/16, kayıp ayrışımı 7/15; bağımsız doğrulama soğuk 6,8 s, geri test 1,3 s). Anahtarlar istemcinin ilk çağrısıyla birebir; ucuz → pahalı sıra.
+        "p-degerleri": (lambda t, p: _p_degerleri_uc_uret(plant_id=p, claims=_c(t)), yanit_onbellegi.VARSAYILAN_TTL_SN),
+        "performans?ay=12": (lambda t, p: _performans_uc_uret(plant_id=p, ay=12, claims=_c(t)), yanit_onbellegi.VARSAYILAN_TTL_SN),
+        "kalibrasyon": (lambda t, p: _kalibrasyon_uret(plant_id=p, claims=_c(t)), yanit_onbellegi.VARSAYILAN_TTL_SN),
+        "saat-profili?gun=30&kova=0-24": (lambda t, p: _saat_profili_uc_uret(plant_id=p, gun=30, kova="0-24", claims=_c(t)), yanit_onbellegi.VARSAYILAN_TTL_SN),
+        "hijyen?gun=30": (lambda t, p: _hijyen_uret(plant_id=p, gun=30, claims=_c(t)), yanit_onbellegi.VARSAYILAN_TTL_SN),
+        "kayip-ayrisimi?gun=30": (lambda t, p: _kayip_ayrisimi_uc_uret(plant_id=p, gun=30, claims=_c(t)), yanit_onbellegi.VARSAYILAN_TTL_SN),
+        "kayma?gun=30&bugun={bugun}": (lambda t, p: _kayma_uret(plant_id=p, gun=30, claims=_c(t)), yanit_onbellegi.VARSAYILAN_TTL_SN),
+        **{f"skill?bucket={b}&gun=60": (lambda t, p, b=b: _skill_uret(plant_id=p, bucket=b, gun=60, claims=_c(t)), yanit_onbellegi.VARSAYILAN_TTL_SN) for b in ("0-24", "24-72", "program", "gun_ici")},
+        "backtest?gun=90": (lambda t, p: _backtest_uret(plant_id=p, gun=90, claims=_c(t)), yanit_onbellegi.VARSAYILAN_TTL_SN),
+        "dogrulama/bagimsiz?gun=60&kural=program&taze=0": (lambda t, p: _bagimsiz_dogrulama_uret(plant_id=p, gun=60, kural="program", taze=0, claims=_c(t)), yanit_onbellegi.VARSAYILAN_TTL_SN),
     }, kayit_pf={
         # 18.11 DSG/portfoy hiz turu: portfoy sayfasinin acilis uclari (varsayilan donem = gecen ay, sayfadaki secici ile ayni); anahtarlar uc sarmaliyla birebir
         "portfoy/tahmin?gun=7&kural=son&bugun={bugun}": (lambda t, pf: _pt().gunler(t, pf, 7, "son", None), 300),
@@ -152,7 +164,41 @@ def _yanit_isiticisini_baslat() -> None:
         "portfoy/finansal-etki?donem={gecen_ay}&uretim=None&bugun={bugun}": (lambda t, pf: _pf_finans_isit(t, pf), yanit_onbellegi.VARSAYILAN_TTL_SN),
         "portfoy/risk?gun=2&kural=son&bugun={bugun}": (lambda t, pf: _sp().gelecek(t, pf, 2, "son", None), 300),
         "portfoy/revizyon-hazir?hedef=yarin&bugun={bugun}": (lambda t, pf: _rv_pf().hazirla(t, pf, "yarin", None), 300),
+    }, kayit_k={
+        # 18.11 gezinme (Parti B #3): Portföy (GENEL BAKIŞ) sayfasının beş ucu — kiracı damgasıyla; anahtarlar uç sarmalıyla ve sayfanın ilk çağrısıyla birebir
+        "portfoy?bugun={bugun}": (lambda t, _p: _ps().ozet(t), 300),
+        "portfoy/tahmin?gun=7&bugun={bugun}": (lambda t, _p: _uz().portfoy_tahmini(t, gun=7), 300),
+        "portfoy/kupst?gun=30&anahtar=sapma&bugun={bugun}": (lambda t, _p: _dz().portfoy_kupst_ozet(t, gun=30, dagitim_anahtari="sapma"), yanit_onbellegi.VARSAYILAN_TTL_SN),
+        "portfoy/dsg?gun=30&anahtar=sapma&grup=None&bugun={bugun}": (lambda t, _p: _dz().dsg_ozet(t, gun=30, dagitim_anahtari="sapma"), yanit_onbellegi.VARSAYILAN_TTL_SN),
+        "portfoy/finansal-etki?donem=None&uretim=None&bugun={bugun}": (lambda t, _p: _kiraci_finans_isit(t), yanit_onbellegi.VARSAYILAN_TTL_SN),   # en pahalı (canlı 18–23 s) en sonda
     })
+
+
+def _kiraci_finans_isit(tenant_id: str):
+    """Isitici icin kiraci finansal etkisi (/v1/portfoy/finansal-etki): modul kapisi «zorla» kipinde 403 verirse uretim bosa gitmesin (4xx -> «bos»)."""
+    from pvquant.services import yetki_service
+    try:
+        h = yetki_service.kapi_hukmu(tenant_id, modul="finansal_etki")
+    except LookupError:
+        h = None
+    if h and yetki_service.zorlama_kipi() == "zorla":
+        raise HTTPException(h["http"], h["mesaj"])
+    return _portfoy_finansal_etki_uret(tenant_id, None, None)
+
+
+def _ps():
+    from pvquant.services import portfoy_service as ps
+    return ps
+
+
+def _uz():
+    from pvquant.services import uzlastirma_service as uz
+    return uz
+
+
+def _dz():
+    from pvquant.services import dengesizlik_service as dz
+    return dz
 
 
 def _pf_finans_isit(tenant_id: str, portfoy_id: str):
@@ -604,6 +650,11 @@ def _naif_wmape(r):
 
 @app.get("/v1/plants/{plant_id}/kalibrasyon")
 def kalibrasyon_uc(plant_id: str, claims=Depends(gecerli_kullanici)):
+    """Önbellekli (yanit_onbellegi, 18.11 gezinme Parti B #5): anahtar = kiracı + santral + «kalibrasyon» + değişim damgası; 404 önbelleğe girmez (istisna)."""
+    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, "kalibrasyon", lambda: _kalibrasyon_uret(plant_id=plant_id, claims=claims))
+
+
+def _kalibrasyon_uret(plant_id: str, claims=Depends(gecerli_kullanici)):
     """v2.122 — aktif kalibrasyon ozeti; kayit yoksa 404 (icat yok)."""
     from pvquant.services import calib_service
     k = calib_service.kalibrasyon_ozeti(claims["tenant_id"], plant_id)
@@ -1052,7 +1103,8 @@ def portfoy_tahmin(gun: int = 7, claims=Depends(gecerli_kullanici)):
     from pvquant.services import uzlastirma_service
     if not (1 <= gun <= 15):
         raise HTTPException(422, "gun 1-15")
-    return uzlastirma_service.portfoy_tahmini(claims["tenant_id"], gun=gun)
+    # 18.11 gezinme (Parti B #3): kiracı önbelleği (canlı 1,1 s); gün anahtarda (pencere bugüne göre)
+    return yanit_onbellegi.getir_kiraci(claims["tenant_id"], f"portfoy/tahmin?gun={gun}&bugun={_pf_gun(None)}", lambda: uzlastirma_service.portfoy_tahmini(claims["tenant_id"], gun=gun), ttl_sn=300)
 
 
 @app.get("/v1/portfoy/dsg")
@@ -1065,7 +1117,9 @@ def portfoy_dsg(gun: int = 30, anahtar: str = "sapma", grup: str | None = None, 
         raise HTTPException(422, "gun 14-365")
     if anahtar not in _d.DAGITIM_ANAHTARLARI:
         raise HTTPException(422, "anahtar " + "|".join(_d.DAGITIM_ANAHTARLARI))
-    return dengesizlik_service.dsg_ozet(claims["tenant_id"], gun=gun, dagitim_anahtari=anahtar, **({"grup": grup[:32]} if grup else {}))   # v2.539: DSG grubu seçimi
+    # 18.11 gezinme (Parti B #3): kiracı önbelleği (canlı ort 1,8 s, max 2,2 s); gün anahtarda
+    return yanit_onbellegi.getir_kiraci(claims["tenant_id"], f"portfoy/dsg?gun={gun}&anahtar={anahtar}&grup={grup}&bugun={_pf_gun(None)}",
+                                        lambda: dengesizlik_service.dsg_ozet(claims["tenant_id"], gun=gun, dagitim_anahtari=anahtar, **({"grup": grup[:32]} if grup else {})))   # v2.539: DSG grubu seçimi
 
 
 @app.get("/v1/portfoy/dsg.csv")
@@ -1096,14 +1150,16 @@ def portfoy_kupst(gun: int = 30, anahtar: str = "sapma", claims=Depends(gecerli_
         raise HTTPException(422, "gun 14-365")
     if anahtar not in _d.PORTFOY_ANAHTARLARI:
         raise HTTPException(422, "anahtar " + "|".join(_d.PORTFOY_ANAHTARLARI))
-    return dengesizlik_service.portfoy_kupst_ozet(claims["tenant_id"], gun=gun, dagitim_anahtari=anahtar)
+    return yanit_onbellegi.getir_kiraci(claims["tenant_id"], f"portfoy/kupst?gun={gun}&anahtar={anahtar}&bugun={_pf_gun(None)}",
+                                        lambda: dengesizlik_service.portfoy_kupst_ozet(claims["tenant_id"], gun=gun, dagitim_anahtari=anahtar))   # 18.11 Parti B #3
 
 
 @app.get("/v1/portfoy")
 def portfoy(claims=Depends(gecerli_kullanici)):
-    """v2.263 — kiracının tüm santralleri: kapasite, son ölçüm, 30g WMAPE, bugün/yarın beklenen, açık alarm; toplamlar."""
+    """v2.263 — kiracının tüm santralleri: kapasite, son ölçüm, 30g WMAPE, bugün/yarın beklenen, açık alarm; toplamlar.
+    18.11 gezinme (Parti B #3): kiracı önbelleği (canlı 370–400 ms), TTL 5 dk (bugün/yarın beklenen güne bağlı: gün anahtarda), alarm özü damgada."""
     from pvquant.services import portfoy_service
-    return portfoy_service.ozet(claims["tenant_id"])
+    return yanit_onbellegi.getir_kiraci(claims["tenant_id"], f"portfoy?bugun={_pf_gun(None)}", lambda: portfoy_service.ozet(claims["tenant_id"]), ttl_sn=300)
 
 
 def _kgup_yaniti(tenant_id: str, plant_id: str, gun: str | None, kantil: str, fmt: str, indiren=None):
@@ -2567,6 +2623,14 @@ def _backtest_uret(plant_id: str, gun: int = 90, claims=Depends(gecerli_kullanic
 
 @app.get("/v1/plants/{plant_id}/kayma")
 def kayma(plant_id: str, gun: int = 30, claims=Depends(gecerli_kullanici)):
+    """Önbellekli (yanit_onbellegi, 18.11 gezinme Parti B #5): anahtar = kiracı + santral + «kayma?gun={gun}&bugun=…» + değişim damgası
+    (pencere bugüne göre: gün dönünce anahtar değişir). Canlı 460–600 ms (iki Open-Meteo çağrısı) — Kalibrasyon'un en uzun isteğiydi."""
+    if not (7 <= gun <= 60):
+        raise HTTPException(422, "gun 7-60 araliginda olmali")
+    return yanit_onbellegi.getir(claims["tenant_id"], plant_id, f"kayma?gun={gun}&bugun={_pf_gun(None)}", lambda: _kayma_uret(plant_id=plant_id, gun=gun, claims=claims))
+
+
+def _kayma_uret(plant_id: str, gun: int = 30, claims=Depends(gecerli_kullanici)):
     """v2.253 — eğitim (arşiv) / servis (tahmin) meteo kayması: PSI/KS/sapma; 24 s önbellek."""
     from pvquant.services import kayma_service, plant_service
     if not (7 <= gun <= 60):
@@ -3996,16 +4060,24 @@ def _finansal_etki_senaryo_uret(plant_id: str, donem: str | None = None, pozisyo
 
 @app.get("/v1/portfoy/finansal-etki")
 def portfoy_finansal_etki(donem: str | None = None, uretim: str | None = None, claims=Depends(gecerli_kullanici), _kapi=Depends(modul_gerekli("finansal_etki"))):   # F6-E
+    """Önbellekli (yanit_onbellegi.getir_kiraci, 18.11 gezinme Parti B #3): canlıda 18–23 s (santral başına ay hesabı) her ziyarette yeniden koşuyordu.
+    Anahtar = kiracı + «portfoy/finansal-etki?donem={donem}&uretim={ur}&bugun=…» + kiracı damgası (ölçüm/yükleme/piyasa değişince yenilenir;
+    donem=None varsayılan ay bugüne göre çözüldüğünden gün anahtarda). Modül kapısı sarmalın dışında (Depends)."""
+    ur = _fe_uretim(uretim)
+    return yanit_onbellegi.getir_kiraci(claims["tenant_id"], f"portfoy/finansal-etki?donem={donem}&uretim={ur}&bugun={_pf_gun(None)}",
+                                        lambda: _portfoy_finansal_etki_uret(claims["tenant_id"], donem, ur))
+
+
+def _portfoy_finansal_etki_uret(tenant_id: str, donem: str | None, ur: str | None):
     """v2.583 (Faz 2 F2-E): kiracının santralleri — santral başına özet ve toplam (segment kapısıyla; eksik nitelikli santral toplama girmez); anında hesap, kaydedilmez."""
     from sqlalchemy import text as _text
 
     from pvquant.db import tenant_baglami as _tb
     from pvquant.services import finansal_etki_service as fe
-    ur = _fe_uretim(uretim)
-    with _tb(claims["tenant_id"]) as s:
+    with _tb(tenant_id) as s:
         plants = [dict(r._mapping) for r in s.execute(_text("SELECT id, name, capacity_kwp, tz, lat, lon, params_json, archived FROM plants WHERE NOT archived ORDER BY name"))]
     kod = _fe_donem(plants[0] if plants else {}, donem)
-    return fe.portfoy(claims["tenant_id"], plants, kod, ur)
+    return fe.portfoy(tenant_id, plants, kod, ur)
 
 
 @app.get("/v1/plants/{plant_id}/report")

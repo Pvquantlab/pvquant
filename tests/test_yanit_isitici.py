@@ -120,6 +120,17 @@ def test_main_sarmali_ve_anahtarlar():
     for anahtar in ('"genel-bakis": (lambda t, p: _genel_bakis_uret(', '"summary": (lambda t, p: _summary_uret(', '"forecast?hours=384": (lambda t, p: _forecast_uret(plant_id=p, hours=384',
                     '"kgup?gun={yarin}&kantil=p50&fmt=json": (lambda t, p: _kgup_dosyasi_uret(plant_id=p, gun=yanit_isitici.gunler()["yarin"], kantil="p50", fmt="json", claims=_c(t)), 600)',   # 17.11 KGUP: uc anahtari/TTL ile birebir
                     '"kgup/revizyon-girdi?gun={bugun}": (lambda t, p: _kgup_revizyon_girdi_uret(plant_id=p, claims=_c(t)), 300)',
+                    # 18.11 gezinme Parti B #4: Doğruluk / Kalibrasyon / Aylık açılış uçları (anahtarlar istemcinin ilk çağrısı ve uç sarmalıyla birebir)
+                    '"p-degerleri": (lambda t, p: _p_degerleri_uc_uret(', '"performans?ay=12": (lambda t, p: _performans_uc_uret(plant_id=p, ay=12',
+                    '"kalibrasyon": (lambda t, p: _kalibrasyon_uret(', '"saat-profili?gun=30&kova=0-24": (lambda t, p: _saat_profili_uc_uret(plant_id=p, gun=30, kova="0-24"',
+                    '"hijyen?gun=30": (lambda t, p: _hijyen_uret(plant_id=p, gun=30', '"kayip-ayrisimi?gun=30": (lambda t, p: _kayip_ayrisimi_uc_uret(plant_id=p, gun=30',
+                    '"kayma?gun=30&bugun={bugun}": (lambda t, p: _kayma_uret(plant_id=p, gun=30', 'f"skill?bucket={b}&gun=60": (lambda t, p, b=b: _skill_uret(plant_id=p, bucket=b, gun=60',
+                    'for b in ("0-24", "24-72", "program", "gun_ici")', '"backtest?gun=90": (lambda t, p: _backtest_uret(plant_id=p, gun=90',
+                    '"dogrulama/bagimsiz?gun=60&kural=program&taze=0": (lambda t, p: _bagimsiz_dogrulama_uret(plant_id=p, gun=60, kural="program", taze=0',
+                    # 18.11 gezinme Parti B #3: kiraci turu — Portföy (GENEL BAKIŞ) beş ucu
+                    '}, kayit_k={', '"portfoy?bugun={bugun}": (lambda t, _p: _ps().ozet(t), 300)', '"portfoy/tahmin?gun=7&bugun={bugun}": (lambda t, _p: _uz().portfoy_tahmini(t, gun=7), 300)',
+                    '"portfoy/kupst?gun=30&anahtar=sapma&bugun={bugun}":', '"portfoy/dsg?gun=30&anahtar=sapma&grup=None&bugun={bugun}":',
+                    '"portfoy/finansal-etki?donem=None&uretim=None&bugun={bugun}": (lambda t, _p: _kiraci_finans_isit(t)',
                     '"portfoy/tahmin?gun=7&kural=son&bugun={bugun}": (lambda t, pf: _pt().gunler(t, pf, 7, "son", None), 300)',   # 18.11 portfoy kayitlari
                     '"portfoy/sapma?donem={gecen_ay}&uretim=None&bugun={bugun}": (lambda t, pf: _sp().donem(t, pf, yanit_isitici.gunler()["gecen_ay"], None, None), yanit_onbellegi.VARSAYILAN_TTL_SN)',
                     '"portfoy/finansal-etki?donem={gecen_ay}&uretim=None&bugun={bugun}":', '"portfoy/risk?gun=2&kural=son&bugun={bugun}":', '"portfoy/revizyon-hazir?hedef=yarin&bugun={bugun}": (lambda t, pf: _rv_pf().hazirla(t, pf, "yarin", None), 300)',
@@ -127,3 +138,26 @@ def test_main_sarmali_ve_anahtarlar():
         assert anahtar in kaynak, anahtar
     compose = Path(api_main.__file__).resolve().parents[2].joinpath("docker-compose.yml").read_text(encoding="utf-8")
     assert 'PVQ_YANIT_ISITICI: "1"' in compose
+
+
+def test_kiraci_turu_kiraci_damgasiyla(etkin, monkeypatch):
+    """18.11 gezinme Parti B #3: tur(kiraci=True) (kiraci, "") listesiyle getir_kiraci'yi kullanir; etag anisi «k:» on ekli; uc sarmali isabet eder."""
+    from pvquant.services import damga_service
+    d = {"son_scada": "2026-11-18T10:00:00"}
+    monkeypatch.setattr(damga_service, "kiraci_hesapla", lambda t: dict(d))
+    yanit_onbellegi._DAMGA.clear(); yanit_onbellegi._KAYIT.clear(); yanit_isitici._SON_ETAG.clear()
+    say = {"n": 0}
+    def uret(t, _p):
+        say["n"] += 1
+        return {"kiraci": t, "n": say["n"]}
+    kayit = {"portfoy?bugun={bugun}": (uret, 300)}
+    r1 = yanit_isitici.tur(kayit, [("t1", "")], kiraci=True)
+    assert r1 == {"isitilan": 1, "atlanan": 0, "bos": 0, "hata": 0} and say["n"] == 1
+    assert yanit_isitici.tur(kayit, [("t1", "")], kiraci=True)["atlanan"] == 1
+    anahtar = yanit_isitici.anahtar_coz("portfoy?bugun={bugun}")
+    assert yanit_onbellegi.getir_kiraci("t1", anahtar, lambda: uret("t1", ""), ttl_sn=300)["n"] == 1 and say["n"] == 1   # uc sarmali isabet eder
+    assert "k:t1" in yanit_isitici._SON_ETAG
+    d["son_scada"] = "2026-11-18T11:00:00"; yanit_onbellegi._DAMGA.clear()
+    assert yanit_isitici.tur(kayit, [("t1", "")], kiraci=True)["isitilan"] == 1 and say["n"] == 2   # damga degisti: yeniden isitildi
+    monkeypatch.setattr(yanit_isitici, "santraller", lambda: [("t2", "p3"), ("t1", "p1"), ("t1", "p2")])
+    assert yanit_isitici.kiracilar() == [("t1", ""), ("t2", "")]   # kiraci basina bir kez, sirali

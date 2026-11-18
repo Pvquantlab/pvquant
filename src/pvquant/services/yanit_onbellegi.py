@@ -130,6 +130,22 @@ def _portfoy_etag(tenant_id, portfoy_id) -> str:
     return et
 
 
+def _kiraci_etag(tenant_id) -> str:
+    """18.11 gezinme (Parti B #3): kiraci damgasi (damga_service.kiraci_hesapla) — kiracinin tum santralleri + alarm + piyasa/is.
+    Ayni 5 s hatirlama (_DAMGA, «k» on ekli anahtar)."""
+    k = ("k", str(tenant_id))
+    simdi = time.monotonic()
+    with _KILIT:
+        v = _DAMGA.get(k)
+        if v and simdi - v[0] < DAMGA_SN:
+            return v[1]
+    from pvquant.services import damga_service
+    et = damga_service.etag_uret(damga_service.kiraci_hesapla(tenant_id))
+    with _KILIT:
+        _DAMGA[k] = (simdi, et)
+    return et
+
+
 def getir(tenant_id, plant_id, anahtar: str, uret: Callable[[], Any], ttl_sn: int = VARSAYILAN_TTL_SN) -> Any:
     """Anahtar = (kiracı, santral, uç+parametre, damga etag). İsabet → saklanan yanıt; ıska → `uret()` koşar ve saklanır.
     Üretici istisna atarsa hiçbir şey saklanmaz (404/422 önbelleğe girmez)."""
@@ -156,6 +172,20 @@ def getir_portfoy(tenant_id, portfoy_id, anahtar: str, uret: Callable[[], Any], 
         SAYAC["atlandi"] += 1
         return uret()
     return _anahtarla((str(tenant_id), "pf:" + str(portfoy_id), anahtar, et), uret, ttl_sn)
+
+
+def getir_kiraci(tenant_id, anahtar: str, uret: Callable[[], Any], ttl_sn: int = VARSAYILAN_TTL_SN) -> Any:
+    """18.11 gezinme (Parti B #3): kiracinin tum santrallerini kapsayan uclar (/v1/portfoy ailesi) icin (kiraci, «k:», uc+parametre,
+    kiraci damgasi etag). Depolama `getir` ile ayni; yetki/modul kapisi cagiranda, onbellegin DISINDA."""
+    if not etkin():
+        SAYAC["atlandi"] += 1
+        return uret()
+    try:
+        et = _kiraci_etag(tenant_id)
+    except Exception:
+        SAYAC["atlandi"] += 1
+        return uret()
+    return _anahtarla((str(tenant_id), "k:", anahtar, et), uret, ttl_sn)
 
 
 def _anahtarla(k: tuple[str, str, str, str], uret: Callable[[], Any], ttl_sn: int) -> Any:

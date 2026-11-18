@@ -79,15 +79,26 @@ def portfoyler() -> list[tuple[str, str]]:
             " WHERE t.status = 'active' AND (p.gecerli_bit IS NULL OR p.gecerli_bit >= CURRENT_DATE) ORDER BY p.tenant_id, p.ad")).all()]
 
 
-def tur(kayit: Kayit, liste: list[tuple[str, str]] | None = None, zorla: bool = False, portfoy: bool = False) -> dict:
+def kiracilar() -> list[tuple[str, str]]:
+    """18.11 gezinme (Parti B): (tenant_id, "") — etkin kiracilar (santrali olanlar); kiraci duzeyi uclar (/v1/portfoy ailesi) icin."""
+    return [(t, "") for t in sorted({t for t, _p in santraller()})]
+
+
+def tur(kayit: Kayit, liste: list[tuple[str, str]] | None = None, zorla: bool = False, portfoy: bool = False, kiraci: bool = False) -> dict:
     """Bir yoklama turu: damga etag'i değişen santrallar için kayıtlı üreticileri ısıtır. Dönüş: bu turun sayaçları.
-    portfoy=True: liste (kiraci, portfoy) ciftleridir; portfoy damgasi ve getir_portfoy kullanilir (18.11 DSG/portfoy hiz turu)."""
+    portfoy=True: liste (kiraci, portfoy) ciftleridir; portfoy damgasi ve getir_portfoy kullanilir (18.11 DSG/portfoy hiz turu).
+    kiraci=True: liste (kiraci, "") ciftleridir; kiraci damgasi ve getir_kiraci (18.11 gezinme Parti B: /v1/portfoy ailesi)."""
     sonuc = {"isitilan": 0, "atlanan": 0, "bos": 0, "hata": 0}
     g = gunler()
-    etag_fn = yanit_onbellegi._portfoy_etag if portfoy else yanit_onbellegi._damga_etag
-    getir_fn = yanit_onbellegi.getir_portfoy if portfoy else yanit_onbellegi.getir
-    for tenant_id, plant_id in (liste if liste is not None else (portfoyler() if portfoy else santraller())):
-        ani = ("pf:" + plant_id) if portfoy else plant_id
+    if kiraci:
+        etag_fn = lambda t, _p: yanit_onbellegi._kiraci_etag(t)   # noqa: E731
+        getir_fn = lambda t, _p, a, u, ttl_sn: yanit_onbellegi.getir_kiraci(t, a, u, ttl_sn=ttl_sn)   # noqa: E731
+    else:
+        etag_fn = yanit_onbellegi._portfoy_etag if portfoy else yanit_onbellegi._damga_etag
+        getir_fn = yanit_onbellegi.getir_portfoy if portfoy else yanit_onbellegi.getir
+    varsayilan = kiracilar if kiraci else (portfoyler if portfoy else santraller)
+    for tenant_id, plant_id in (liste if liste is not None else varsayilan()):
+        ani = ("k:" + tenant_id) if kiraci else (("pf:" + plant_id) if portfoy else plant_id)
         try:
             et = etag_fn(tenant_id, plant_id) + "|" + g["bugun"]   # gun donunce de yeniden (KGUP yarin / revizyon bugun)
         except Exception:
@@ -136,7 +147,7 @@ def _kilit_al() -> bool:
         return False
 
 
-def _dongu(kayit: Kayit, kayit_pf: Kayit | None = None) -> None:
+def _dongu(kayit: Kayit, kayit_pf: Kayit | None = None, kayit_k: Kayit | None = None) -> None:
     time.sleep(ILK_GECIKME_SN)
     while True:
         try:
@@ -144,15 +155,17 @@ def _dongu(kayit: Kayit, kayit_pf: Kayit | None = None) -> None:
                 tur(kayit)
                 if kayit_pf:
                     tur(kayit_pf, portfoy=True)   # 18.11: portfoy uclari (kiraci, portfoy) listesiyle, portfoy damgasiyla
+                if kayit_k:
+                    tur(kayit_k, kiraci=True)     # 18.11 Parti B: kiraci duzeyi uclar (/v1/portfoy ailesi) kiraci damgasiyla
         except Exception:
             SAYAC["hata"] += 1
         time.sleep(ARALIK_SN)
 
 
-def baslat(kayit: Kayit, kayit_pf: Kayit | None = None) -> threading.Thread | None:
+def baslat(kayit: Kayit, kayit_pf: Kayit | None = None, kayit_k: Kayit | None = None) -> threading.Thread | None:
     """Uygulama açılışında çağrılır; etkin değilse None döner. Arka plan iş parçacığı daemon'dur (kapanışı bekletmez)."""
     if not etkin() or not kayit:
         return None
-    t = threading.Thread(target=_dongu, args=(kayit, kayit_pf), name="yanit-isitici", daemon=True)
+    t = threading.Thread(target=_dongu, args=(kayit, kayit_pf, kayit_k), name="yanit-isitici", daemon=True)
     t.start()
     return t

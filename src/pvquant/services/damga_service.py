@@ -67,6 +67,30 @@ def _kiraci_damga(s, tenant_id) -> dict:
     return dict(r)
 
 
+def kiraci_hesapla(tenant_id) -> dict:
+    """18.11 gezinme (Parti B #3) — KIRACI damgasi: yanit_onbellegi.getir_kiraci kiracinin TUM santrallerini kapsayan uclari (/v1/portfoy,
+    portfoy/tahmin, portfoy/dsg, portfoy/kupst, portfoy/finansal-etki — canlida sarmalsizdi: finansal-etki 18–23 s, dsg 1,7 s) bununla
+    anahtarlar. Kapsam: arsivlenmemis santrallerin olcumu/kosusu/yuklemeleri (scada, forecast_runs, kgup_surum, uzlastirma, sayac), acik alarm
+    ozu (/v1/portfoy acik alarm sayar: 7 gun, okunmamis), santral satirlarinin ozeti (arsivleme/ayar degisince) ve kiraci parcalari (piyasa, is).
+    Kiraci baglaminda (RLS) ve ayrica santral suzgeciyle (alerts yalniz kiracinin arsivlenmemis santrallari)."""
+    from sqlalchemy import text
+    from pvquant.db import sistem_baglami, tenant_baglami
+    with tenant_baglami(tenant_id) as s:
+        r = s.execute(text(
+            "WITH u AS (SELECT id AS plant_id FROM plants WHERE NOT archived)"
+            " SELECT (SELECT max(ts_utc) FROM scada_hourly h WHERE h.plant_id IN (SELECT plant_id FROM u)) AS son_scada,"
+            " (SELECT max(run_at) FROM forecast_runs r WHERE r.plant_id IN (SELECT plant_id FROM u) AND EXISTS (SELECT 1 FROM forecast_values v WHERE v.run_id = r.id)) AS son_kosu,"
+            " (SELECT max(olusturma) FROM kgup_surum k WHERE k.plant_id IN (SELECT plant_id FROM u)) AS son_kgup_surum,"
+            " (SELECT max(olusturma) FROM uzlastirma_bildirimi m WHERE m.plant_id IN (SELECT plant_id FROM u)) AS son_mutabakat_yukleme,"
+            " (SELECT max(olusturma) FROM sayac_yukleme y WHERE y.plant_id IN (SELECT plant_id FROM u)) AS son_sayac_yukleme,"
+            " (SELECT count(*) || ':' || COALESCE(CAST(max(created_at) AS text), '') FROM alerts a WHERE a.plant_id IN (SELECT plant_id FROM u) AND a.created_at >= now() - interval '7 days' AND a.acked_by IS NULL) AS alarm_ozu,"
+            " (SELECT md5(string_agg(md5(CAST(row_to_json(p) AS text)), ',' ORDER BY p.id)) FROM plants p) AS santral_ozu")).mappings().first()
+        d = dict(r)
+    with sistem_baglami() as s:
+        d.update(_kiraci_damga(s, tenant_id))
+    return {k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in d.items()}
+
+
 def portfoy_hesapla(tenant_id, portfoy_id) -> dict:
     """18.11 DSG/portfoy hiz turu — PORTFOY damgasi: yanit onbellegi (yanit_onbellegi.getir_portfoy) portfoy uclarini bununla anahtarlar.
     Kapsam: uyelerin olcumu/kosusu/yuklemeleri (scada, forecast_runs, kgup_surum, uzlastirma, sayac), portfoy/uyelik/sozlesme kayitlarinin

@@ -111,11 +111,18 @@ def test_sarilan_uclar_kaynakta():
     for uc in ["summary", "genel-bakis", "saglik", "dengesizlik", "backtest", "hijyen", "guvenilirlik", "hata-dagilimi", "saat-profili", "skill", "monthly",
                "p-degerleri", "kullanilabilirlik", "dogrulama/bagimsiz", "performans", "saat-ay-matrisi", "gunes-yolu", "kayip-ayrisimi",   # canlı ölçüm (16.11, Karapınar): 0,3–2,8 s
                "finansal-etki", "finansal-etki/senaryo", "mutabakat", "mutabakat/saatlik", "kgup", "kgup/revizyon",   # piyasa/finans: finansal-etki 6,1 s, mutabakat 1,1 s
-               "sayac"]:   # operasyon: sayac 0,3 s (pandas), TTL 5 dk
+               "sayac",   # operasyon: sayac 0,3 s (pandas), TTL 5 dk
+               "kayma", "kalibrasyon"]:   # 18.11 gezinme Parti B #5: Kalibrasyon — kayma 460–600 ms (Open-Meteo), kalibrasyon 404 önbelleğe girmez
         assert (f'plant_id, f"{uc}' in kaynak or f'plant_id, "{uc}"' in kaynak) and f'@app.get("/v1/plants/{{plant_id}}/{uc}")' in kaynak, uc
-    assert kaynak.count("yanit_onbellegi.getir(") == 29   # 17.11 Santralim: + forecast, pr, runs, kirlenme
-    assert kaynak.count("ttl_sn=300") == 8   # sayac («bugün» geri sayımı) + 17.11 Santralim: forecast, pr, runs (koşu damgasına bağlı, 5 dk) + 17.11 KGUP: revizyon girdisi + 18.11 portfoy: tahmin, risk, revizyon-hazir
+    assert kaynak.count("yanit_onbellegi.getir(") == 31   # 17.11 Santralim: + forecast, pr, runs, kirlenme; 18.11 Parti B: + kayma, kalibrasyon
+    assert kaynak.count("ttl_sn=300") == 10   # 18.11 Parti B: + portfoy, portfoy/tahmin (kiraci); sayac («bugün» geri sayımı) + 17.11 Santralim: forecast, pr, runs (koşu damgasına bağlı, 5 dk) + 17.11 KGUP: revizyon girdisi + 18.11 portfoy: tahmin, risk, revizyon-hazir
     assert kaynak.count("yanit_onbellegi.getir_portfoy(") == 6   # 18.11 DSG/portfoy: tahmin, sapma, risk, dsg, revizyon-hazir, finansal-etki (portfoy damgasi)
+    # 18.11 gezinme Parti B #3: Portföy (GENEL BAKIŞ) beş ucu kiracı damgasıyla; gün anahtarda (bugün/yarın beklenen, pencere, varsayılan ay)
+    assert kaynak.count("yanit_onbellegi.getir_kiraci(") == 5
+    for uc in ('f"portfoy?bugun={_pf_gun(None)}"', 'f"portfoy/tahmin?gun={gun}&bugun={_pf_gun(None)}"', 'f"portfoy/dsg?gun={gun}&anahtar={anahtar}&grup={grup}&bugun={_pf_gun(None)}"',
+               'f"portfoy/kupst?gun={gun}&anahtar={anahtar}&bugun={_pf_gun(None)}"', 'f"portfoy/finansal-etki?donem={donem}&uretim={ur}&bugun={_pf_gun(None)}"'):
+        assert uc in kaynak, uc
+    assert 'f"kayma?gun={gun}&bugun={_pf_gun(None)}"' in kaynak and 'plant_id, "kalibrasyon", lambda: _kalibrasyon_uret(' in kaynak
     for uc in ("portfoy/tahmin?gun={gun}&kural={kural}&bugun={_pf_gun(bugun)}", "portfoy/sapma?donem={donem}&uretim={ur}&bugun={_pf_gun(bugun)}", "portfoy/risk?gun={gun}&kural={kural}&bugun={_pf_gun(bugun)}",
                "portfoy/dsg?donem={donem}&uretim={ur}&anahtar={anahtar}&bugun={_pf_gun(bugun)}", "portfoy/revizyon-hazir?hedef={hedef}&bugun=", "portfoy/finansal-etki?donem={donem}&uretim={ur}&bugun={_pf_gun(bugun)}"):
         assert f'f"{uc}' in kaynak, uc
@@ -177,3 +184,21 @@ def test_getir_portfoy_portfoy_damgasiyla_ve_santraldan_ayri(etkin, monkeypatch)
     with pytest.raises(LookupError):
         yanit_onbellegi.getir_portfoy("t1", "pf1", "portfoy/risk?gun=2", patlar)
     assert yanit_onbellegi.getir_portfoy("t1", "pf1", "portfoy/risk?gun=2", uret) == {"n": 6}              # hata saklanmadi
+
+
+def test_getir_kiraci_kiraciya_ozel_ve_damgali(etkin, monkeypatch):
+    """18.11 gezinme Parti B #3: kiracı düzeyi önbellek — anahtar (kiracı, «k:», uç, kiracı damgası); damga değişince yeniden üretir; kiracılar ayrı."""
+    from pvquant.services import damga_service
+    d = {"son_scada": "2026-11-18T10:00:00", "alarm_ozu": "0:"}
+    monkeypatch.setattr(damga_service, "kiraci_hesapla", lambda t: dict(d))
+    yanit_onbellegi._DAMGA.clear(); yanit_onbellegi._KAYIT.clear()
+    say = {"n": 0}
+    def uret():
+        say["n"] += 1
+        return {"n": say["n"]}
+    assert yanit_onbellegi.getir_kiraci("t1", "portfoy?bugun=2026-11-18", uret, ttl_sn=300) == {"n": 1}
+    assert yanit_onbellegi.getir_kiraci("t1", "portfoy?bugun=2026-11-18", uret, ttl_sn=300) == {"n": 1}   # isabet
+    assert yanit_onbellegi.getir_kiraci("t2", "portfoy?bugun=2026-11-18", uret, ttl_sn=300) == {"n": 2}   # başka kiracı: ayrı
+    d["alarm_ozu"] = "1:2026-11-18T11:00:00"; yanit_onbellegi._DAMGA.clear()   # alarm gelince damga değişir (5 s hatırlama sıfırlandı)
+    assert yanit_onbellegi.getir_kiraci("t1", "portfoy?bugun=2026-11-18", uret, ttl_sn=300) == {"n": 3}
+    assert ("t1", "k:", "portfoy?bugun=2026-11-18", yanit_onbellegi._kiraci_etag("t1")) in yanit_onbellegi._KAYIT
