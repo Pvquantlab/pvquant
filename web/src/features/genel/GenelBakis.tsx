@@ -3,7 +3,7 @@ import { useDamgaSurumu } from "../../shell/damgaOlay";
 import { api, ayniysaEskisi, bellekten } from "../../api/client";
 import type { GbAdim, GbRisk, GenelBakis as GenelBakisT } from "../../api/types";
 import type { SayfaId } from "../../shell/Kabuk";
-import { HizmetDurumu as Rozet, Kart, Sayfa, enerjiTr, gucTr, sayiTr } from "../sayfalar/parcalar";
+import { HizmetDurumu as Rozet, Kart, KunyeIskeleti, ListeIskeleti, Sayfa, enerjiTr, gucTr, sayiTr } from "../sayfalar/parcalar";
 import { Meta } from "../../lib/Meta";
 import { HESAP_DURUMU, TAHMIN_ETIKETI } from "../../lib/durum";
 import { zamanTr, yuzdeTr } from "../../lib/bicim";
@@ -42,9 +42,9 @@ export function GenelBakis({ plantId, git }: { plantId: string; git: (s: SayfaId
     api.genelBakis(plantId).then((v) => { if (acik) setO((e) => (v ? ayniysaEskisi(e ?? undefined, v) : null)); }, () => { if (acik) setHata(true); });
     return () => { acik = false; };
   }, [plantId, ds]);
-  if (hata && !o) return <Sayfa baslik="Genel bakış"><p className="soluk">Genel bakış alınamadı. Bağlantınızı kontrol edip yeniden deneyin.</p></Sayfa>;
+  if (hata && !o) return <Sayfa baslik="Genel bakış"><div className="bos-durum" role="alert"><div className="bos-bas">Genel bakış sunucudan alınamadı</div><p>Bağlantı kurulamadı ya da yanıt gelmedi; bağlantınızı denetleyip sayfayı yenileyin.</p></div></Sayfa>;
   if (o === null) return <Sayfa baslik="Genel bakış"><p className="soluk">Genel bakış bu kipte yok.</p></Sayfa>;
-  if (o === undefined) return <GenelBakisIskeleti />;   // 17.11: dört soru başlığı anında, satır yer tutucuları gerçek boyda
+  if (o === undefined) return genelCerceve();   // 17.11: dört soru başlığı anında; 18.11 yükleme düzeltmesi: aynı <Sayfa> kökü, gerçek satır etiketleri
   const b = o.bugun, y = o.yarin, r = o.riskler, f = o.finans;
   const git_ = (s: string) => git(s as SayfaId);
   return (
@@ -125,23 +125,31 @@ export function GenelBakis({ plantId, git }: { plantId: string; git: (s: SayfaId
   );
 }
 
-/** 17.11 Genel bakış hız turu — sayfaya özel iskelet: dört iş sorusu gerçek başlıklarıyla ANINDA çizilir (tıklama → ilk kare), her kartta
- *  gerçek satır sayısına yakın yer tutucu (künye ızgarası aynı). ÖLÇÜLDÜ (örnek yığın, 1440): genel iskelet 39 ms'de boş çubuklar, kartlar
- *  320 ms'de geliyordu; başlıklar artık 39 ms'de okunur, kart yükseklikleri yakın olduğundan sıçrama küçülür. Sayı göstermez. */
-const ISKELET_SATIR = [7, 7, 4, 5];   // kart başına yer tutucu satır (iskelet ve gerçek kart aynı KART_BASLIKLARI sabitini kullanır)   // satır sayısı ve yüksekliği gerçek kartlara göre (ÖLÇÜLDÜ 1195: 685/652/413/623 px)
-function GenelBakisIskeleti() {
+/** 17.11 Genel bakış hız turu → 18.11 yükleme düzeltmesi — yükleme çerçevesi: dört iş sorusu gerçek başlıklarıyla ANINDA; her kartta gerçek
+ *  künye ızgarası ve HER sonuçta bulunan satır etiketleri (veriye bağlı etiketler çubuk), değer + iki satırlık not çubuğu (ÖLÇÜLDÜ 1440: gerçek
+ *  kartlar 560/592/331/481 px). Düz işlev (bileşen değil): içerikle aynı <Sayfa> kökü ve aynı dört Kart konumu → veri gelince kartlar yerinde
+ *  kalır, yalnız gövdeler değişir (önceden ayrı bileşen kökü: 24 kök değişimi, CLS 0,105). Sayı göstermez; hareket yok. */
+const ISKELET_SATIR: readonly (readonly (string | null)[])[] = [
+  ["Beklenen üretim", "Bugüne kadar gerçekleşen", "Sapma", "Tahmin yayını", "Son ölçüm", "Ayrıntı"],
+  ["Yarın beklenen", null, null, null, null, "Ayrıntı"],   // program adımları segmente göre değişir
+  [],   // risk listesi
+  [null, "EPİAŞ bildirimi", null, "Ayrıntı"],
+];
+const ROZET_ISK = <span className="iskelet-alan iskelet-cubuk rozet-bicimi" style={{ width: 92 }} aria-hidden="true" />;
+function genelCerceve() {
+  const kart = (k: number) => (
+    <Kart baslik={KART_BASLIKLARI[k]} sag={ROZET_ISK}>
+      {k === 2 ? <ListeIskeleti satir={3} rozetli /> : <KunyeIskeleti etiketler={ISKELET_SATIR[k]} notSatir={2} />}
+    </Kart>);
   return (
     <Sayfa baslik="Genel bakış" alt="Bugünkü üretim, yarının programı, açık riskler ve finansal durum yükleniyor…">
-      <div className="ızgara-genel" role="status" aria-live="polite" aria-label="Yükleniyor">
-        {KART_BASLIKLARI.map((baslik, k) => { const n = ISKELET_SATIR[k]; return (
-          <Kart key={baslik} baslik={baslik} sag={<span className="iskelet-alan" style={{ display: "inline-block", width: 92, height: 20 }} />}>
-            <dl className="kunye iskelet-kunye">
-              {Array.from({ length: n }, (_, i) => <div key={i}><dt><span className="iskelet-alan" style={{ width: "60%" }} /></dt>
-                <dd><span className="iskelet-alan" style={{ width: i === 0 ? "40%" : "70%" }} /><span className="iskelet-alan" style={{ width: "85%", height: 26, marginTop: 6 }} />   {/* iki satırlık not yüksekliği */}</dd></div>)}
-            </dl>
-          </Kart>); })}
-        <span className="gorsel-gizli">Yükleniyor…</span>
+      <div className="ızgara-genel">
+        {kart(0)}
+        {kart(1)}
+        {kart(2)}
+        {kart(3)}
       </div>
+      <span className="gorsel-gizli" role="status" aria-live="polite">Genel bakış yükleniyor…</span>
     </Sayfa>
   );
 }

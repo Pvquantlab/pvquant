@@ -1288,3 +1288,17 @@ table.veri.dar th + th, table.veri.dar td + td { padding-left: 10px; }
 .iskelet-govde .iskelet-alan { display: block; max-width: 100%; }
 .iskelet-satirlar { display: grid; gap: 6px; }
 .iskelet-satirlar .iskelet-alan { height: 28px; border-radius: 6px; }
+/* 18.11 Finansal etki yükleme düzeltmesi — yapılı iskelet çubukları (ÖLÇÜLDÜ 1440: tablo satırı 42/84 px, künye satırı 65 px, KPI 193 px):
+   tablo iskeleti gerçek başlık satırı + gerçek satır dolgusuyla; çubuk metin satırı kadar (14 px), rozet biçimi 18 px hap; hareket yok */
+.iskelet-cubuk { display: inline-block; height: 14px; border-radius: 4px; vertical-align: middle; max-width: 100%; }
+.iskelet-cubuk.rozet-bicimi { height: 18px; width: 64px; border-radius: 999px; flex: 0 0 auto; }
+.iskelet-tablo .hucre-alt { display: grid; gap: 4px; margin-top: 6px; }
+.iskelet-tablo .hucre-alt .iskelet-cubuk { height: 12px; }
+table.veri.iskelet-tablo tbody tr:hover td { background: transparent; }
+.iskelet-kunye dd { display: grid; gap: 6px; align-content: start; }
+.iskelet-tablo td:first-child { color: var(--ikincil); }   /* gerçek satır etiketi (künye tablosu) iskelette ikincil renk */
+.iskelet-liste li { display: flex; gap: 10px; align-items: flex-start; }
+.iskelet-liste li + li { margin-top: 12px; }
+.iskelet-liste .iskelet-govde { flex: 1; gap: 6px; }
+.kpi-ikinci .iskelet-cubuk, .kpi-br .iskelet-cubuk { display: block; }
+.kpi-br .iskelet-cubuk + .iskelet-cubuk { margin-top: 6px; }

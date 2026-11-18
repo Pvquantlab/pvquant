@@ -193,6 +193,7 @@ export default function App() {
   const [bekleyen, setBekleyen] = useState<SayfaId | null>(null);
   const seciliRef = useRef<SayfaId>(secili);
   const sayfaSec = useCallback((s: SayfaId) => {
+    window.scrollTo(0, 0);   // 18.11 Finansal etki yükleme düzeltmesi (ÖLÇÜLDÜ): kaydırılmış sayfadan geçişte konum korunuyordu → yeni sayfanın ortasına (yer tutucuların içine) iniliyordu; her sayfa geçişi başa
     setSecili(s); seciliRef.current = s;
     const gec = () => startTransition(() => { setSayfa(s); setBekleyen(null); });
     if (PARCALAR[s].hazirMi()) gec();

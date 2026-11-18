@@ -122,6 +122,61 @@ export function YerTutucu({ yukseklik }: { yukseklik: number }) {
   return <div className="iskelet-alan" style={{ minHeight: yukseklik }} role="status" aria-live="polite" aria-label="Yükleniyor"><span className="gorsel-gizli">Yükleniyor…</span></div>;
 }
 
+/** 18.11 Finansal etki yükleme düzeltmesi — YAPILI iskelet parçaları: tek gri blok yerine gerçek kalıbın çizgileri (gerçek sütun başlıkları ve
+ *  künye etiketleri metin; değerler gri çubuk). Veri, sayı ya da durum söylemez; hareket yok; ekran okuyucuya kapalı (çağıran tek durum satırı taşır). */
+export type IskeletSutun = { ad: string; sol?: boolean; tur?: "metin" | "sayi" | "rozet" };
+const SOL = { textAlign: "left" as const };
+export function IskeletHucre({ tur = "sayi", notlu }: { tur?: IskeletSutun["tur"]; notlu?: boolean }) {
+  if (tur === "rozet") return <span className="iskelet-alan iskelet-cubuk rozet-bicimi" />;
+  if (tur === "metin") return <>
+    <span className="iskelet-alan iskelet-cubuk" style={{ width: "72%" }} />
+    {notlu && <div className="hucre-alt"><span className="iskelet-alan iskelet-cubuk" style={{ width: "60%" }} /><span className="iskelet-alan iskelet-cubuk" style={{ width: "34%" }} /></div>}</>;
+  return <span className="iskelet-alan iskelet-cubuk" style={{ width: 56 }} />;
+}
+export function IskeletSatir({ sutunlar, notlu }: { sutunlar: readonly IskeletSutun[]; notlu?: boolean }) {
+  return <tr>{sutunlar.map((k, i) => <td key={k.ad} style={k.sol ? SOL : undefined}><IskeletHucre tur={k.tur} notlu={notlu && i === 0} /></td>)}</tr>;
+}
+/** Gerçek başlık satırı + n gövde satırı (tablo gövdesi satır kalıbı sayfaya özelse çağıran IskeletSatir'ı kendi tbody'sinde dizer). */
+export function TabloIskeleti({ sutunlar, satir, notlu, dar }: { sutunlar: readonly IskeletSutun[]; satir: number; notlu?: boolean; dar?: boolean }) {
+  return (
+    <div className="grafik-kaydir"><table className={`veri sayisal iskelet-tablo${dar ? " dar" : ""}`} aria-hidden="true">
+      <thead><tr>{sutunlar.map((k) => <th key={k.ad} style={k.sol ? SOL : undefined}>{k.ad}</th>)}</tr></thead>
+      <tbody>{Array.from({ length: satir }, (_, i) => <IskeletSatir key={i} sutunlar={sutunlar} notlu={notlu} />)}</tbody>
+    </table></div>);
+}
+/** Künye iskeleti: gerçek etiketler (yalnız her sonuçta bulunan satırlar; veriye bağlı etiket null → çubuk), değer + not çubuğu (notSatir 2: iki satırlık not). */
+export function KunyeIskeleti({ etiketler, notSatir = 1 }: { etiketler: readonly (string | null)[]; notSatir?: 1 | 2 }) {
+  return <dl className="kunye iskelet-kunye" aria-hidden="true">{etiketler.map((e, i) => <div key={e ?? i}><dt>{e ?? <span className="iskelet-alan iskelet-cubuk" style={{ width: "60%" }} />}</dt><dd><span className="iskelet-alan iskelet-cubuk" style={{ width: "46%" }} /><span className="iskelet-alan iskelet-cubuk" style={{ width: "70%", height: notSatir === 2 ? 26 : undefined }} /></dd></div>)}</dl>;
+}
+/** KPI iskeleti: gerçek etiket (+ bilgi simgesi) ve gerçek oranlar (ÖLÇÜLDÜ: değer 35, ikinci değer satırı 37, alt satır 20 px) — değer, isteğe bağlı
+ *  ikinci değer ve alt satır(lar) çubuk. Etiket veriye bağlıysa verilmez → çubuk. */
+export function KpiIskeleti({ etiket, bilgi, ton, ikinci, alt = 2 }: { etiket?: string; bilgi?: string; ton?: "amber"; ikinci?: boolean; alt?: 0 | 1 | 2 }) {
+  return (
+    <div className="kpi" style={ton === "amber" ? { borderColor: "var(--amber)", background: "linear-gradient(180deg, var(--amber-zemin) 0%, var(--kart) 72%)" } : undefined}>
+      <div className="kpi-et">{etiket ? (bilgi ? <BilgiliEtiket metin={etiket} bilgi={bilgi} /> : etiket) : <span className="iskelet-alan iskelet-cubuk" style={{ width: "62%" }} aria-hidden="true" />}</div>
+      <div className="kpi-dg" aria-hidden="true"><span className="iskelet-alan iskelet-cubuk" style={{ width: "58%", height: 30 }} /></div>
+      {ikinci && <div className="kpi-ikinci" aria-hidden="true"><span className="iskelet-alan iskelet-cubuk" style={{ width: "44%", height: 18 }} /></div>}
+      {alt > 0 && <div className="kpi-br" aria-hidden="true"><span className="iskelet-alan iskelet-cubuk" style={{ width: "86%" }} />{alt > 1 && <span className="iskelet-alan iskelet-cubuk" style={{ width: "54%" }} />}</div>}
+    </div>
+  );
+}
+/** Grafik alanı iskeleti: gerçek grafik yüksekliğinde boş alan (çizim gelince yer değişmez); ekran okuyucuya kapalı. */
+export function GrafikIskeleti({ yukseklik }: { yukseklik: number }) {
+  return <div className="iskelet-alan" style={{ height: yukseklik }} aria-hidden="true" />;
+}
+/** Not listesi iskeleti: satır başına (rozet +) iki metin çubuğu. */
+export function ListeIskeleti({ satir, rozetli }: { satir: number; rozetli?: boolean }) {
+  return <ul className="not-listesi iskelet-liste" aria-hidden="true">{Array.from({ length: satir }, (_, i) => <li key={i}>{rozetli && <span className="iskelet-alan iskelet-cubuk rozet-bicimi" />}<div className="iskelet-govde"><span className="iskelet-alan iskelet-cubuk" style={{ width: i % 2 ? "64%" : "88%" }} /><span className="iskelet-alan iskelet-cubuk" style={{ width: i % 2 ? "40%" : "52%" }} /></div></li>)}</ul>;
+}
+/** Düz metin satırları (boş durum / kısa açıklama kalıbı). */
+export function MetinIskeleti({ satir }: { satir: number }) {
+  return <div className="iskelet-govde" aria-hidden="true">{Array.from({ length: satir }, (_, i) => <span key={i} className="iskelet-alan iskelet-cubuk" style={{ width: ["58%", "92%", "76%", "84%"][i % 4] }} />)}</div>;
+}
+/** 28 px satırlar (KGÜP ile aynı kalıp; .iskelet-satirlar) — tablo/veri satırı gelecek yer. */
+export function SatirlarIskeleti({ satir }: { satir: number }) {
+  return <div className="iskelet-satirlar" aria-hidden="true">{Array.from({ length: satir }, (_, i) => <span key={i} className="iskelet-alan" />)}</div>;
+}
+
 /** 24.10 performans turu — sayfa iskeleti: veri gelene dek «Yükleniyor…» tek satırı yerine sayfanın kaba kalıbı
  *  (başlık, KPI sırası, kart). Boyut korunur → içerik gelince sıçrama küçülür; hareket yok (reduced-motion dostu).
  *  Sayı/veri göstermez — yalnız yer tutucu. */

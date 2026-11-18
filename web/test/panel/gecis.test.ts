@@ -35,7 +35,7 @@ test("veri sayfaları bellekten (bayat-önce) başlar ve yoldaki veri için YerT
   for (const [yol, b] of Object.entries(SAYFALAR)) {
     const k = yorumsuz(oku(yol));
     assert.ok(k.includes(b.bellekten), `${yol}: ${b.bellekten} ile başlangıç durumu bellekten okunmalı`);
-    if (b.yerTutucu) assert.match(k, /<YerTutucu yukseklik=\{\d+\} \/>/, `${yol}: yoldaki veri için YerTutucu`);
+    if (b.yerTutucu) assert.match(k, /<YerTutucu yukseklik=\{\d+\} \/>|<(Tablo|Kunye|Satirlar|Metin|Grafik|Liste|Kpi)Iskeleti /, `${yol}: yoldaki veri için yer tutucu ya da yapılı iskelet`);   // 18.11: yapılı iskelet parçaları da yer tutucudur
     // taze yanıt bayatla birebir aynıysa eski referans korunur → grafik seçenekleri yeniden kurulmaz (4× CPU bulgusu)
     if (yol !== "features/sayfalar/Portfoy.tsx") assert.ok(k.includes("ayniysaEskisi("), `${yol}: tazeleme ayniysaEskisi ile`);
   }

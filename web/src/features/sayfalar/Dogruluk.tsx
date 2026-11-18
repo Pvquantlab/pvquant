@@ -6,7 +6,7 @@ import { api, bellekten, ayniysaEskisi } from "../../api/client";
 import type { Karne, HataDagilimi, KonformalAyar, Backtest, Dengesizlik, DengesizlikGeriTest, DengesizlikSaatlik, Guvenilirlik, Yekdem, BagimsizDogrulama } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
-import { BilgiliEtiket, Kpi, Kart, Sayfa, sayiTr, YerTutucu } from "./parcalar";
+import { BilgiliEtiket, GrafikIskeleti, Kpi, KpiIskeleti, Kart, MetinIskeleti, SatirlarIskeleti, Sayfa, sayiTr, TabloIskeleti, type IskeletSutun } from "./parcalar";
 import { useGorunur } from "../../lib/gorunur";   // 18.11 Doğruluk (Grup 1): sayfa altı istekleri görünürlük kapısıyla
 import { Meta } from "../../lib/Meta";
 
@@ -77,7 +77,7 @@ function YekdemKarti({ yk }: { yk: Yekdem | null | undefined }) {   // 18.11 Par
   return (
     <Kart baslik="YEKDEM — fiyat rejimi, günlük YEK fiyatı ve m.23(6) saatleri"
       sag={<span className="cip">{yk ? <Meta items={[yk.rejim.etiket, `${sayiTr(yk.pencere_gun)} gün`]} /> : yk === null ? "alınamadı" : "hesaplanıyor"}</span>}>
-      {yk === undefined ? <YerTutucu yukseklik={660} /> : yk === null ? <p className="soluk" style={{ margin: 0 }}>YEKDEM bilgisi alınamadı.</p> : (
+      {yk === undefined ? YK_ISK : yk === null ? <p className="soluk" style={{ margin: 0 }}>YEKDEM bilgisi alınamadı.</p> : (
         <>
           <div className="ızgara satir-4" style={{ marginBottom: 12 }}>
             <Kpi etiket="Fiyat rejimi" deger={yk.rejim.rejim === "cetvel1" ? "Cetvel I" : yk.rejim.rejim === "7189" ? "7189 sayılı CK" : "belirsiz"} ton={yk.rejim.rejim ? undefined : "uyari"}
@@ -197,7 +197,7 @@ function BagimsizDogrulamaKarti({ bd, kural, setKural, gun }:
         </span>
         <span className="cip"><Meta items={[`${sayiTr(gun)} gün`, bd === undefined ? "hesaplanıyor" : bd === null ? "alınamadı" : bd.kayitli ? `gece hesabı ${saatYaz(bd.hesap_zamani)}` : "anlık hesap", m?.n_gun != null && m.n_gun > 0 && `${sayiTr(m.n_gun)} gün değerlendirildi`]} /></span>
       </>}>
-      {bd === undefined ? <YerTutucu yukseklik={990} /> : bd === null ? (
+      {bd === undefined ? BD_ISK : bd === null ? (
         <p className="soluk" style={{ margin: 0 }}>Doğrulama sonucu alınamadı; sayfayı yenileyin.</p>
       ) : !yeterli ? (
         <div className="bos-durum"><div className="bos-bas">Henüz değerlendirilecek saat yok</div>
@@ -576,7 +576,17 @@ export function Dogruluk({ plantId }: { plantId: string }) {
 
   const hazir = k !== undefined || kD !== "bekliyor";
   const tazeleniyor = hazir && kD === "bekliyor";   // bayat karne ekranda, taze yanıt yolda
-  if (!hazir) return <DogrulukIskeleti />;
+  // 18.11 yükleme düzeltmesi: dönem seçicisi, bağımsız doğrulama ve YEKDEM kartları çerçeve ve içerikte AYNI öğe (aynı <Sayfa> kökü; düğme odağı düşmez)
+  const donemSeg = (
+    <span className="seg" role="group" aria-label="Karne dönemi">
+      {([30, 60, 90] as const).map((g) => (
+        <button key={g} aria-pressed={donem === g}
+          onClick={() => setDonem(g)}>{g}g</button>
+      ))}
+    </span>);
+  const bagimsizKarti = <BagimsizDogrulamaKarti bd={bd} kural={bdKural} setKural={setBdKural} gun={donem} />;
+  const yekdemKarti = (yk === undefined || yk?.uygulanir) ? <YekdemKarti yk={yk} /> : null;
+  if (!hazir) return dogrulukCercevesi(donemSeg, bagimsizKarti, yekdemKarti);
   if (!k) return <div style={{ color: "var(--soluk)" }}>Doğruluk verisi alınamadı; sayfayı yenileyin.</div>;
 
   const OK = ({ yukari }: { yukari: boolean }) => (
@@ -616,12 +626,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
     <Sayfa baslik="Doğruluk karnesi"
       alt="Tahminler her gece gerçekleşen üretimle karşılaştırılır; sonuçlar burada birikir."
       sag={<>
-        <span className="seg" role="group" aria-label="Karne dönemi">
-          {([30, 60, 90] as const).map((g) => (
-            <button key={g} aria-pressed={donem === g}
-              onClick={() => setDonem(g)}>{g}g</button>
-          ))}
-        </span>
+        {donemSeg}
         <span className="cip"><Meta items={[`Kapsanan dönem: ${donemYaz(donemIlk, donemSon)}`, tazeleniyor && "güncelleniyor", kD === "hata" && "güncellenemedi"]} /></span>
       </>}>
       <div className="akis">
@@ -700,7 +705,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
       </section>
       <section className="bolum">
       <div className="ozet-bas">Bağımsız doğrulama<span className="sag">yayımlandığı andaki tahmin, uygun ölçümle</span></div>
-      <BagimsizDogrulamaKarti bd={bd} kural={bdKural} setKural={setBdKural} gun={donem} />
+      {bagimsizKarti}
       </section>
       <section className="bolum">
       <div className="ozet-bas">Günlük hata ve aralık<span className="sag">referansla kıyas; P10–P90 sınavı</span></div>
@@ -822,7 +827,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           </div>
         )}
         {/* v2.271 (Dalga 1 tamamlayıcısı): kantil güvenilirliği + PIT + keskinlik — ham ↔ kalibre */}
-        {gv === undefined && <div style={{ marginTop: 14 }}><YerTutucu yukseklik={1060} /></div>}
+        {gv === undefined && <div style={{ marginTop: 14 }}>{GV_ISK}</div>}
         {gv && (gv.durum === "ok" && gvOption && pitOption ? (
           <div style={{ marginTop: 14 }}>
             {/* 24.10: beş çip → üç ölçüt grubu (örneklem · aralık ayarının etkisi · seviyeler); sayılar ve kaynak aynı */}
@@ -885,7 +890,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           {/* 29.10: rozet metni kısa (375 px'te başlık satırı taşıyordu); ayrıntı title ve KPI alt etiketinde */}
           {dz && <span className={`rozet ${dz.fiyat.senaryo_saat > 0 ? "rozet-uyari" : "rozet-ok"} rozet-kucuk`} title={dz.fiyat.senaryo_saat > 0 ? "Senaryo fiyatı: EPİAŞ kimliği tanımlı değil. " + dz.not : dz.not}>{dz.fiyat.senaryo_saat > 0 ? "senaryo fiyatı" : "fiyat: EPİAŞ"}</span>}
         </span>}>
-        {dz === undefined ? <YerTutucu yukseklik={628} /> : dz && dz.toplam ? (
+        {dz === undefined ? DZ_ISK : dz && dz.toplam ? (
           <>
             <div className="ızgara satir-4" style={{ gap: 12 }}>
               <div className="kpi"><div className="kpi-et"><BilgiliEtiket metin="Dengesizlik maliyeti · EDT" bilgi="Gerçekleşen üretim ile saatlik piyasa pozisyonu (varsayılanı üretim programı; Santralim › Program sınırları) arasındaki farkın EPİAŞ uzlaştırmasındaki karşılığı, enerji dengesizlik tutarı: eksik üretim borç, fazla üretim alacak yazar; gösterilen değer net maliyettir." /></div>
@@ -961,7 +966,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
         )}
       </Kart>
       {/* v2.520 (P5a): YEKDEM katmanı — yalnız lisanslı YEKDEM segmentinde (öbür segmentlerde fiyat yalnız tarife gelirine girer) */}
-      {(yk === undefined || yk?.uygulanir) && <YekdemKarti yk={yk} />}
+      {yekdemKarti}
       {/* v2.503 (F-07): 12 aylık geri test — aylık tablo + karşı-olgu sütunları; istek yalnız kart açılınca (ağır sorgu) */}
       <Kart baslik="Uzlaştırma kalemleri geri testi — son 12 ay, varsayımsal yeniden hesap"
         sag={<span className="cip">{gt ? <Meta items={[`${sayiTr(gt.gun_sayisi)} gün`, gt.mekanizma && gt.mekanizma.senaryo_saat > 0 ? `senaryo fiyatı ${sayiTr(gt.mekanizma.senaryo_saat)} saat` : "fiyat: EPİAŞ"]} /> : gt === null ? "alınamadı" : "kapalı"}</span>}>
@@ -1035,7 +1040,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
             `std. sapma ${hd?.sd != null ? `${sayiTr(hd.sd, 2)} MWh` : "—"}`,
             hd?.p10 != null && hd?.p90 != null && `P10–P90: ${sayiTr(hd.p10, 2)} – ${sayiTr(hd.p90, 2)} MWh`]} />
         </span>}>
-        {hd === undefined ? <YerTutucu yukseklik={368} /> : hd && hd.kutular.length > 0 ? (
+        {hd === undefined ? HD_ISK : hd && hd.kutular.length > 0 ? (
           <>
             <EChart option={dagOption} height={280}
               ariaLabel="Günlük tahmin sapması histogramı, yüzdelik çizgileriyle" />
@@ -1062,22 +1067,113 @@ export function Dogruluk({ plantId }: { plantId: string }) {
   );
 }
 
-/** 18.11 (Grup 1) — sayfaya özel iskelet: başlık ve açıklama anında; dört KPI (124 px), dört ölçüt grubu (~96 px), bağımsız doğrulama kartı (~400 px).
- *  Eski genel iskelet başlıksızdı ve 4 KPI + 2 kart kalıbı gerçek yerleşimle uyuşmuyordu. Sayı/veri yok, hareket yok. */
-function DogrulukIskeleti() {
+/** 18.11 (Grup 1) → 18.11 yükleme düzeltmesi — yükleme çerçevesi ve kart içi iskeletler: beş bölüm gerçek başlık ve kart adlarıyla anında; KPI'lar
+ *  gerçek etiketleriyle, ölçüt grupları gerçek başlık/etiketleriyle, tablolar gerçek sütun başlıklarıyla, grafikler gerçek yükseklikte boş alan.
+ *  (ÖLÇÜLDÜ 1440: önce 1.055 → 6.057 px, ayrı bileşen kökü; KPI 192/228, bağımsız doğrulama 1.083, aralık 1.393, uzlaştırma 749, YEKDEM 751,
+ *  dağılım 458 px.) Düz işlev: içerikle aynı <Sayfa> kökü; dönem seçicisi, bağımsız doğrulama ve YEKDEM kartı iki durumda aynı öğe. */
+const OLCUT_ISK = (
+  <div className="olcut-serit" aria-hidden="true">
+    {([["Program doğruluğu", "bir gün önce 15:30 kesimi öncesi son tahmin", ["WMAPE", "Gün"]], ["Gün içi güncelleme", "12:30 ve 18:30 revizyonları, ayrı sayılır", ["WMAPE", "Gün"]],
+       ["Kurulu güce göre ölçütler", "sektör standardı, 0–24 saat", ["nMAE", "nRMSE", "nMBE"]], ["Sektör referansına göre iyileşme", "iklim ortalaması ve son günlerin birleşimi", ["İyileşme"]]] as const).map(([bas, not_, dtler]) => (
+      <section key={bas} className="olcut-grup">
+        <div className="olcut-bas">{bas}<span className="olcut-not">{not_}</span></div>
+        <dl className="olcut-liste">{dtler.map((d) => <div key={d}><dt>{d}</dt><dd><span className="iskelet-alan iskelet-cubuk" style={{ width: 48 }} /></dd></div>)}</dl>
+      </section>))}
+  </div>);
+const BD_ISK = (
+  <>
+    <div className="ızgara satir-4">
+      <KpiIskeleti etiket="Tahmin hatası (WMAPE), saatlik toplam" ikinci />
+      <KpiIskeleti etiket="Ortalama saatlik hata (MAE)" ikinci />
+      <KpiIskeleti etiket="Aralık içinde kalan saatler (P10–P90)" ikinci />
+      <KpiIskeleti etiket="Değerlendirilen ölçüm" ikinci />
+    </div>
+    <div className="ızgara satir-2" style={{ marginTop: 14, gap: 16 }}>
+      <div><div className="etiket-ust">Referanslara göre</div><TabloIskeleti sutunlar={[{ ad: "Referans", tur: "metin" }, { ad: "Referans hatası" }, { ad: "PVQuant hatası" }, { ad: "Fark" }]} satir={3} dar /></div>
+      <div><SatirlarIskeleti satir={5} /></div>
+    </div>
+    <div style={{ marginTop: 12 }}><MetinIskeleti satir={2} /></div>
+  </>);
+const GV_ISK = (
+  <div aria-hidden="true">
+    <div className="olcut-serit" style={{ marginBottom: 12 }}>
+      {([["Örneklem", ["Gündüz saati", "Gün"]], ["Aralık ayarının etkisi", ["Genişlik", "Aralık puanı", "PIT en büyük sapma"]], ["Seviyeler", ["P10 altı", "P50 altı", "P90 altı"]]] as const).map(([bas, dtler]) => (
+        <section key={bas} className="olcut-grup"><div className="olcut-bas">{bas}</div>
+          <dl className="olcut-liste">{dtler.map((d) => <div key={d}><dt>{d}</dt><dd><span className="iskelet-alan iskelet-cubuk" style={{ width: 56 }} /></dd></div>)}</dl></section>))}
+    </div>
+    <div className="ızgara satir-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))", gap: 14 }}>
+      <div><div className="etiket-ust" style={{ marginBottom: 2 }}>Güvenilirlik diyagramı</div><GrafikIskeleti yukseklik={220} /></div>
+      <div><div className="etiket-ust" style={{ marginBottom: 2 }}>PIT histogramı</div><GrafikIskeleti yukseklik={220} /></div>
+    </div>
+  </div>);
+const DZ_SUTUN: readonly IskeletSutun[] = [{ ad: "Ay", tur: "metin" }, { ad: "Üretim (MWh)" }, { ad: "Sapma (MWh)" }, { ad: "EDT borç (TL)" }, { ad: "EDT alacak (TL)" }, { ad: "Dengesizlik maliyeti (TL)" }, { ad: "KÜPST (TL)" }];
+const DZ_ISK = (
+  <>
+    <div className="ızgara satir-4" style={{ gap: 12 }}>
+      <KpiIskeleti etiket="Dengesizlik maliyeti · EDT" alt={1} />
+      <KpiIskeleti etiket="KGÜP sapma tutarı · KÜPST" alt={1} />
+      <KpiIskeleti etiket="Uzlaştırma kalemleri toplamı" alt={1} />
+      <KpiIskeleti etiket="Referans programa göre fark · varsayımsal" alt={1} />
+    </div>
+    <div style={{ marginTop: 8 }}><MetinIskeleti satir={1} /></div>
+    <div style={{ marginTop: 12 }}><TabloIskeleti sutunlar={DZ_SUTUN} satir={3} /></div>
+  </>);
+const YK_ISK = (
+  <>
+    <div className="ızgara satir-4" style={{ marginBottom: 12 }}>
+      <KpiIskeleti etiket="Fiyat rejimi" />
+      <KpiIskeleti etiket="YEK fiyatı" />
+      <KpiIskeleti />
+      <KpiIskeleti etiket="YEKDEM dışı üretim (m.23(6))" />
+    </div>
+    <SatirlarIskeleti satir={6} />
+    <div style={{ marginTop: 10 }}><MetinIskeleti satir={2} /></div>
+  </>);
+const HD_ISK = <><GrafikIskeleti yukseklik={280} /><div style={{ marginTop: 12 }}><MetinIskeleti satir={3} /></div></>;
+function dogrulukCercevesi(donemSeg: React.ReactNode, bagimsizKarti: React.ReactNode, yekdemKarti: React.ReactNode) {
   return (
-    <Sayfa baslik="Doğruluk karnesi" alt="Tahminler her gece gerçekleşen üretimle karşılaştırılır; sonuçlar burada birikir.">
-      <div className="akis" role="status" aria-live="polite" aria-label="Yükleniyor">
-        <section className="bolum">
-          <div className="ozet-bas">Dönem özeti<span className="sag">yükleniyor…</span></div>
-          <div className="iskelet-kpi" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>{Array.from({ length: 4 }, (_, i) => <span key={i} />)}</div>
-          <div className="olcut-serit">{Array.from({ length: 4 }, (_, i) => <section key={i} className="olcut-grup"><span className="iskelet-alan" style={{ display: "block", height: 14, width: "55%" }} /><span className="iskelet-alan" style={{ display: "block", height: 22, width: "80%", marginTop: 12 }} /><span className="iskelet-alan" style={{ display: "block", height: 12, width: "70%", marginTop: 10 }} /></section>)}</div>
-        </section>
-        <section className="bolum">
-          <div className="ozet-bas">Bağımsız doğrulama</div>
-          <div className="iskelet-kart" style={{ height: 400 }} />
-        </section>
-        <span className="gorsel-gizli">Yükleniyor…</span>
+    <Sayfa baslik="Doğruluk karnesi"
+      alt="Tahminler her gece gerçekleşen üretimle karşılaştırılır; sonuçlar burada birikir."
+      sag={<>
+        {donemSeg}
+        <span className="cip">hesaplanıyor</span>
+      </>}>
+      <div className="akis">
+      <section className="bolum">
+      <div className="ozet-bas">Dönem özeti<span className="sag">gece değerlendirmelerinden birikir</span></div>
+      <div className="ızgara satir-4">
+        <KpiIskeleti etiket="Tahmin hatası (WMAPE), gün başı tahmini" alt={1} />
+        <KpiIskeleti etiket="Referans tahmine göre iyileşme" alt={1} />
+        <KpiIskeleti etiket="Değerlendirilen gün" alt={1} />
+        <KpiIskeleti etiket="Günlük sapma (ortalama)" ikinci alt={1} />
+      </div>
+      {OLCUT_ISK}
+      </section>
+      <section className="bolum">
+      <div className="ozet-bas">Bağımsız doğrulama<span className="sag">yayımlandığı andaki tahmin, uygun ölçümle</span></div>
+      {bagimsizKarti}
+      </section>
+      <section className="bolum">
+      <div className="ozet-bas">Günlük hata ve aralık<span className="sag">referansla kıyas; P10–P90 sınavı</span></div>
+      <Kart baslik="Günlük tahmin hatası (WMAPE) — referans tahminle karşılaştırma">
+        <div className="ızgara" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)" }}><GrafikIskeleti yukseklik={240} /><GrafikIskeleti yukseklik={240} /></div>
+      </Kart>
+      <Kart baslik="Tahmin aralığının güvenilirliği (P10–P90)" sag={<span className="cip">hesaplanıyor</span>}>
+        <div className="ızgara satir-3" style={{ gap: 12 }}><KpiIskeleti etiket="Aralık içinde kalan günler (P10–P90)" alt={1} /><KpiIskeleti etiket="P10'un altında kalan" alt={1} /><KpiIskeleti alt={1} /></div>
+        <div style={{ marginTop: 14 }}>{GV_ISK}</div>
+      </Kart>
+      </section>
+      <section className="bolum">
+      <div className="ozet-bas">Uzlaştırma<span className="sag">enerji dengesizlik ve KGÜP sapma tutarları</span></div>
+      <Kart baslik="Uzlaştırma kalemleri — enerji dengesizlik tutarı ve KGÜP sapma tutarı, son dönem">{DZ_ISK}</Kart>
+      {yekdemKarti}
+      <Kart baslik="Uzlaştırma kalemleri geri testi — son 12 ay, varsayımsal yeniden hesap"><MetinIskeleti satir={1} /></Kart>
+      </section>
+      <section className="bolum">
+      <div className="ozet-bas">Dağılım<span className="sag">günlük sapma histogramı</span></div>
+      <Kart baslik="Günlük sapma dağılımı (tahmin − gerçekleşen)">{HD_ISK}</Kart>
+      </section>
+      <span className="gorsel-gizli" role="status" aria-live="polite">Doğruluk karnesi yükleniyor…</span>
       </div>
     </Sayfa>
   );

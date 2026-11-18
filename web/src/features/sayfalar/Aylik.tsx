@@ -6,7 +6,7 @@ import type { AylikBeklenti, SantralOzeti, Bankable, PDegerleri, Performans } fr
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
 import { Cubuklar } from "../santralim/Cubuklar";
-import { Kart, Kpi, Sayfa, sayiTr, isiTonu, isiMetni, YerTutucu } from "./parcalar";
+import { GrafikIskeleti, Kart, Kpi, KpiIskeleti, MetinIskeleti, SatirlarIskeleti, Sayfa, sayiTr, isiTonu, isiMetni, TabloIskeleti, type IskeletSutun } from "./parcalar";
 import { yuzdeTr } from "../../lib/bicim";   // 16.11: yüzde işaret sırası tek kural (−%8,4)
 import { Meta } from "../../lib/Meta";
 
@@ -143,7 +143,7 @@ export function Aylik({ plantId }: { plantId: string }) {
     } as EChartsOption;
   }, [b, n]);  // v2.148
 
-  if (!hazir) return <AylikIskeleti />;
+  if (!hazir) return aylikCerceve();   // 18.11 yükleme düzeltmesi: aynı <Sayfa> kökü, dört bölüm gerçek başlıklarıyla
   if (birikiyor) return (
     <Sayfa baslik="Aylık beklenti" alt="Uzun dönem iklim verisinden aylık üretim aralığı.">
       <Kart baslik="Beklenti birikiyor">
@@ -153,7 +153,7 @@ export function Aylik({ plantId }: { plantId: string }) {
         </p>
       </Kart>
     </Sayfa>);
-  if (!b) return <AylikIskeleti />;   // erişilmez (birikiyor null'u karşılar); tip daraltma
+  if (!b) return aylikCerceve();   // erişilmez (birikiyor null'u karşılar); tip daraltma
 
   const buAy = new Date().getMonth() + 1;
   const k = b.beklenti.find((r) => r.ay === buAy);
@@ -190,7 +190,7 @@ export function Aylik({ plantId }: { plantId: string }) {
           {bk?.durum === "ok" && <span className="cip"><Meta items={[bk.donem, `${sayiTr(bk.yil_sayisi ?? 0)} yıl`]} /></span>}
           <button className="dugme kucuk" onClick={bkYenile}>{bk?.durum === "ok" ? "Yenile" : "Hesapla"}</button>
         </span>}>
-        {bk === undefined ? <YerTutucu yukseklik={317} />
+        {bk === undefined ? BANKABLE_ISK
          : !bk || bk.durum !== "ok" ? (
           <p className="soluk" style={{ margin: 0 }}>{bkMesaj ?? (bk?.not ?? "Henüz hesaplanmadı. 'Hesapla' uzun dönem ışınım arşivinden yıllık dağılımı üretir (ayda bir kendiliğinden yenilenir).")}</p>
         ) : (
@@ -228,9 +228,9 @@ export function Aylik({ plantId }: { plantId: string }) {
       <section className="bolum">
       <div className="ozet-bas">Yıl yıl ve performans<span className="sag">P-değerleri ve EPI</span></div>
       {/* 04.11 v2.534 (P8b-1; IH-098/099): yıl yıl P-değerleri (bozunma dâhil, biçim etiketli) ve gerçekleşen kıyası — hava düzeltmesiz, etiketli */}
-      <Kart baslik="Yıl yıl P-değerleri ve gerçekleşen" alt="n. yıl P50 / P75 / P90 / P99 (bozunma dâhil); tamamlanmış yıllar ve cari yıl gerçekleşenle kıyas, hava düzeltmesiz"
+      <Kart baslik="Yıl yıl P-değerleri ve gerçekleşen" alt={PD_ALT}
         sag={pd?.durum === "ok" ? <span className="cip"><Meta items={[`yıl 1 = ${pd.ilk_yil ?? "—"} (${pd.ilk_yil_kaynak ?? "—"})`, `${sayiTr(pd.n_yil ?? 0)} yıl`, `bozunma ${yuzdeTr(pd.bozunma_yuzde_yil ?? 0, 2)}/yıl`]} /></span> : undefined}>
-        {pd === undefined ? <YerTutucu yukseklik={260} /> : pd?.durum === "ok" && pd.satirlar ? (
+        {pd === undefined ? <TabloIskeleti sutunlar={PD_SUTUN} satir={10} /> : pd?.durum === "ok" && pd.satirlar ? (
           <>
             <div className="grafik-kaydir">
               <table className="veri">
@@ -258,9 +258,9 @@ export function Aylik({ plantId }: { plantId: string }) {
         )}
       </Kart>
       {/* v2.542 (P8b-2, IH-083/099/104): ölçülen havayla beklenen üretim ve EPI — üç referans (tahmin / ölçülen hava / P50) tek tabloda; ışınım endeksi yalnız yatay sensörde */}
-      <Kart baslik="Beklenen üretim (ölçülen hava) ve EPI" alt="Ay ay gerçekleşen; ölçülen düzlem-içi ışınım ve hücre sıcaklığıyla beklenen; tahminle beklenen; P50. EPI = gerçekleşen / beklenen."
+      <Kart baslik="Beklenen üretim (ölçülen hava) ve EPI" alt={PF_ALT}
         sag={pf?.durum === "ok" && pf.toplam ? <span className="cip"><Meta items={[`${sayiTr(pf.toplam.ay_ok)} / ${sayiTr(pf.toplam.ay)} ay`, pf.toplam.epi != null ? `EPI ${yuzdeTr(pf.toplam.epi * 100, 1)}` : "EPI —", pf.referans ? `referans PR ${yuzdeTr(pf.referans.deger * 100, 1)} (${pf.referans.kaynak === "tasarim" ? "tasarım" : "ölçüm"})` : ""]} /></span> : null}>
-        {pf === undefined ? <YerTutucu yukseklik={220} /> : pf?.durum === "ok" && pf.aylar ? (
+        {pf === undefined ? <TabloIskeleti sutunlar={PF_SUTUN} satir={12} /> : pf?.durum === "ok" && pf.aylar ? (
           <>
             <div className="grafik-kaydir">
               <table className="veri">
@@ -384,7 +384,7 @@ export function Aylik({ plantId }: { plantId: string }) {
       </section>
       <section className="bolum">
       <div className="ozet-bas">Gerçekleşen<span className="sag">ölçümden, ay ay</span></div>
-      {o === undefined && <Kart baslik="Gerçekleşen üretim — son 12 ay (SCADA)"><YerTutucu yukseklik={220} /></Kart>}
+      {o === undefined && <Kart baslik="Gerçekleşen üretim — son 12 ay (SCADA)"><GrafikIskeleti yukseklik={220} /></Kart>}
       {o && o.aylik.length > 0 && (
         <Kart baslik="Gerçekleşen üretim — son 12 ay (SCADA)">
           {/* v2.316: iç boşluk ayı artık API'den null-mwh satırı olarak gelir (eksen
@@ -408,18 +408,54 @@ export function Aylik({ plantId }: { plantId: string }) {
   );
 }
 
-/** 18.11 (Grup 1) — sayfaya özel iskelet: başlık ve açıklama anında; üç KPI (124 px) + yıllık beklenti kartı (~400 px). Eski genel iskelet
- *  başlıksızdı (3 KPI + 2 kart). Sayı/veri yok, hareket yok. */
-function AylikIskeleti() {
+/** 18.11 (Grup 1) → 18.11 yükleme düzeltmesi — yükleme çerçevesi: sayfanın dört bölümü gerçek başlık ve kart adlarıyla anında; gövdeler gerçek
+ *  kalıbın iskeleti (ÖLÇÜLDÜ 1440: KPI 128/143, yıllık kart 451, P-değerleri 771, EPI 962, GHI 494, yıl × ay 737, gerçekleşen 369 px). Önceden
+ *  yalnız ilk bölüm (3 gri kutu + 1 gri kart, 773 px) ve ayrı bileşen kökü vardı: veri gelince sayfa 4.401 px'e büyüyordu. Düz işlev: içerikle
+ *  aynı <Sayfa> kökü ve aynı bölüm/kart konumları. Kart içi yer tutucular (yıllık, P-değerleri, EPI, gerçekleşen) sayfa ile aynı iskeleti kullanır. */
+const PD_ALT = "n. yıl P50 / P75 / P90 / P99 (bozunma dâhil); tamamlanmış yıllar ve cari yıl gerçekleşenle kıyas, hava düzeltmesiz";
+const PF_ALT = "Ay ay gerçekleşen; ölçülen düzlem-içi ışınım ve hücre sıcaklığıyla beklenen; tahminle beklenen; P50. EPI = gerçekleşen / beklenen.";
+const PD_SUTUN: readonly IskeletSutun[] = [{ ad: "Yıl", tur: "metin" }, { ad: "Takvim yılı" }, { ad: "P50 (MWh)" }, { ad: "P75 (MWh)" }, { ad: "P90 (MWh)" }, { ad: "P99 (MWh)" }, { ad: "Gerçekleşen (MWh)" }, { ad: "Gerçekleşen / P50" }, { ad: "Konum", tur: "rozet" }];
+const PF_SUTUN: readonly IskeletSutun[] = [{ ad: "Ay", tur: "metin" }, { ad: "Gerçekleşen (MWh)" }, { ad: "Beklenen, ölçülen hava (MWh)" }, { ad: "EPI" }, { ad: "EPI, kırpma ve kısıntı dışı" }, { ad: "Tahminle beklenen (MWh)" }, { ad: "P50 (MWh)" }, { ad: "Işınım ölçüm kapsamı" }];
+const BANKABLE_ISK = (
+  <>
+    <div className="ızgara satir-4" style={{ marginBottom: 10 }}>
+      <KpiIskeleti etiket="Yıllık beklenen (P50)" alt={1} />
+      <KpiIskeleti etiket="Güvenli (P90), tek yıl" alt={1} />
+      <KpiIskeleti alt={1} />
+      <KpiIskeleti etiket="Toplam belirsizlik" alt={1} />
+    </div>
+    <SatirlarIskeleti satir={3} />
+    <div style={{ marginTop: 10 }}><MetinIskeleti satir={2} /></div>
+  </>);
+function aylikCerceve() {
+  const ay = AYLAR[new Date().getMonth()];
   return (
     <Sayfa baslik="Aylık beklenti" alt="Uzun dönem iklim verisinden aylık üretim aralığı; günlük tahminden bağımsızdır.">
-      <div className="akis" role="status" aria-live="polite" aria-label="Yükleniyor">
+      <div className="akis">
         <section className="bolum">
-          <div className="ozet-bas">Bu ay ve yıl<span className="sag">yükleniyor…</span></div>
-          <div className="iskelet-kpi" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>{Array.from({ length: 3 }, (_, i) => <span key={i} />)}</div>
-          <div className="iskelet-kart" style={{ height: 400 }} />
+          <div className="ozet-bas">Bu ay ve yıl<span className="sag">iklim arşivinden beklenti</span></div>
+          <div className="ızgara satir-3">
+            <KpiIskeleti etiket={`${ay} P10`} alt={1} />
+            <KpiIskeleti etiket={`${ay} P50`} alt={1} />
+            <KpiIskeleti etiket={`${ay} P90`} alt={1} />
+          </div>
+          <Kart baslik="Yıllık üretim beklentisi — P50 / P90 ve belirsizlik kalemleri">{BANKABLE_ISK}</Kart>
         </section>
-        <span className="gorsel-gizli">Yükleniyor…</span>
+        <section className="bolum">
+          <div className="ozet-bas">Yıl yıl ve performans<span className="sag">P-değerleri ve EPI</span></div>
+          <Kart baslik="Yıl yıl P-değerleri ve gerçekleşen" alt={PD_ALT}><TabloIskeleti sutunlar={PD_SUTUN} satir={10} /></Kart>
+          <Kart baslik="Beklenen üretim (ölçülen hava) ve EPI" alt={PF_ALT}><TabloIskeleti sutunlar={PF_SUTUN} satir={12} /></Kart>
+        </section>
+        <section className="bolum">
+          <div className="ozet-bas">İklim arşivi<span className="sag">aylık ışınım, yıl × ay tablosu</span></div>
+          <Kart baslik="Aylık yatay ışınım (GHI) — uzun dönem P50 ve P10–P90 aralığı"><GrafikIskeleti yukseklik={320} /><div style={{ marginTop: 12 }}><MetinIskeleti satir={3} /></div></Kart>
+          <Kart baslik="Yıl × ay ışınım tablosu (GHI)"><SatirlarIskeleti satir={12} /></Kart>
+        </section>
+        <section className="bolum">
+          <div className="ozet-bas">Gerçekleşen<span className="sag">ölçümden, ay ay</span></div>
+          <Kart baslik="Gerçekleşen üretim — son 12 ay (SCADA)"><GrafikIskeleti yukseklik={220} /></Kart>
+        </section>
+        <span className="gorsel-gizli" role="status" aria-live="polite">Aylık beklenti yükleniyor…</span>
       </div>
     </Sayfa>
   );

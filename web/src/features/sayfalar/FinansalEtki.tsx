@@ -4,7 +4,7 @@ import { api, bellekten } from "../../api/client";
 import type { FinansalEtki as FinansalEtkiT, FinansalEtkiGecmis, FinansBilesen, FinansDonemTur, FinansNitelik } from "../../api/types";
 import { FINANS_NITELIK as NITELIK } from "../../lib/durum";
 import { donemEtiket, donemSecenekleri, TUR_AD } from "../../lib/donem";   // v2.595: ortak dönem seçenekleri
-import { BilgiliEtiket, HesapDurumu, Kart, Kpi, Sayfa, sayiTr, YerTutucu } from "./parcalar";
+import { HesapDurumu, IskeletHucre, IskeletSatir, type IskeletSutun, Kart, Kpi, KpiIskeleti, KunyeIskeleti, ListeIskeleti, MetinIskeleti, SatirlarIskeleti, Sayfa, sayiTr, YerTutucu } from "./parcalar";
 import { ModulNotu } from "./Abonelik";   // v2.609 (Faz 6 F6-D): kapalı özellik notu (uyarı kipi)
 import { Meta } from "../../lib/Meta";
 import { gunYaz, sonGunYaz, tarihBicimi, yuzdeTr } from "../../lib/bicim";   // 16.11 inceleme: gün/son gün yardımcıları ortak
@@ -74,12 +74,13 @@ export function FinansalEtki({ plantId }: { plantId: string }) {
   const [gecmis, setGecmis] = useState<FinansalEtkiGecmis | null | undefined>(undefined);
   const [gecmisAcik, setGecmisAcik] = useState(false);   // 18.11 Parti 2: kapalı «Kayıtlı sürümler» alanında yer tutucu çizilmez (kalıcı iskelet parçası ölçüldü)
   const gecmisAcikRef = useRef(false);   // efekt bağımlılığı olmadan: açıkken dönem/santral değişirse liste yeniden yüklenir (son kontrol bulgusu)
+  const [hataKodu, setHataKodu] = useState<string | null>(null);   // 18.11 yükleme düzeltmesi: hata türü ayrılır (geçersiz dönem / sunucu / ağ); bellekte sonuç varsa o kalır, hata gösterilmez
   const secenekler = donemSecenekleri(tur);
   useEffect(() => {
-    let acik = true; setO(bellektekiSonuc(plantId, kod, uretim, pozisyon)); setGecmis(undefined);
+    let acik = true; setO(bellektekiSonuc(plantId, kod, uretim, pozisyon)); setGecmis(undefined); setHataKodu(null);
     if (gecmisAcikRef.current) api.finansalEtkiGecmis(plantId, kod).then((v) => { if (acik) setGecmis(v); }, () => { if (acik) setGecmis(null); });
     const istek = pozisyon === "program" ? api.finansalEtki(plantId, kod, uretim) : api.finansalEtkiSenaryo(plantId, kod, pozisyon, null, uretim);
-    istek.then((v) => { if (acik) setO(v); }, () => { if (acik) setO((e) => e ?? null); });
+    istek.then((v) => { if (acik) setO(v); }, (h: unknown) => { if (acik) { setO((e) => e ?? null); setHataKodu(hataKoduOku(h)); } });
     return () => { acik = false; };
   }, [plantId, kod, uretim, pozisyon, ds]);
   const turDegis = (t: FinansDonemTur) => { setTur(t); const s = donemSecenekleri(t); setKod((t === "ay" || t === "ceyrek" || t === "yil") && s[1] ? s[1].kod : s[0].kod); };
@@ -95,8 +96,30 @@ export function FinansalEtki({ plantId }: { plantId: string }) {
       <select className="girdi" value={pozisyon} onChange={(e) => setPozisyon(e.target.value as "program" | "uretim")} aria-label="Satış pozisyonu senaryosu" title="Senaryo: satışın programa eşit sayılması (varsayılan) ya da üretildiği kadar satış (dengesizlik alıcıda, yalnız KGÜP sapma tutarı kalır). Senaryo kaydedilmez.">
         <option value="program">pozisyon: santral ayarı</option><option value="uretim">senaryo: üretildiği kadar satış</option></select>
     </span>);
-  if (o === undefined) return <FinansalEtkiCerceve secici={secici} kod={kod} />;
-  if (o === null) return <Sayfa baslik="Finansal etki" sag={secici}><p className="soluk">Finansal etki alınamadı; dönem kodu geçersiz ya da gelecek dönem olabilir. Başka bir dönem seçin ya da sayfayı yenileyin.</p></Sayfa>;
+  // 18.11 yükleme düzeltmesi (ÖLÇÜLDÜ): çerçeve ve içerik ayrı köklerdi (çerçeve bileşeni / Sayfa) → her dönem/santral/girdi değişiminde bütün ağaç,
+  // dönem seçicileri dâhil yeniden takılıyordu (klavye odağı body'ye düşüyordu; CLS ölçümü kör kalıyordu). Artık tek <Sayfa> kökü: başlık ve seçiciler
+  // sabit, kartlar yerinde kalır, yalnız gövdeler iskeletten içeriğe geçer. «Kayıtlı sürümler» alanı iki durumda da aynı öğe (açıkken yüklenir).
+  const gecmisDetay = (
+    <details className="aciklama" onToggle={(e) => { gecmisAcikRef.current = e.currentTarget.open; setGecmisAcik(e.currentTarget.open); gecmisAc(); }}>
+      <summary>Kayıtlı sürümler ve varsayımların geçmişi</summary>
+      {!gecmisAcik ? null : gecmis === undefined ? <YerTutucu yukseklik={48} /> : gecmis === null ? <p className="soluk">Sürüm listesi alınamadı.</p> : gecmis.surumler.length === 0 ? <p className="soluk" style={{ margin: 0 }}>Bu dönem için kayıtlı sürüm yok; gece hesabı ilk kaydı oluşturur.</p> : (
+        <div className="grafik-kaydir"><table className="veri sayisal dar">
+          <thead><tr><th style={sol}>Hesap zamanı</th><th>Toplam (TL)</th><th style={sol}>Nitelik</th><th style={sol}>Üretim girdisi</th><th style={sol}>Kural</th></tr></thead>
+          <tbody>{gecmis.surumler.map((s) => <tr key={s.id}><td style={sol}>{saatYaz(s.hesap_zamani)}</td><td className="mono">{yaz(s.toplam?.tutar_tl)}</td><td style={sol}><Rozet n={s.toplam?.nitelik ?? "eksik"} /></td><td style={sol}>{s.uretim_girdisi === "sayac" ? "sayaç" : "SCADA"}</td><td style={sol} className="mono">{String((s.varsayimlar as { kural_surumu?: string | null }).kural_surumu ?? "—")}</td></tr>)}</tbody>
+        </table></div>)}
+    </details>);
+  const senaryo = o?.meta.senaryo;
+  return (
+    <Sayfa baslik="Finansal etki" alt={SAYFA_ALT} sag={secici}>
+      <ModulNotu kod="finansal_etki" />
+      {senaryo ? <p className="form-not t-ikincil" style={{ margin: "0 0 12px", color: "var(--uyari-metin)" }}><b>Senaryo görünümü:</b> {senaryo.etiket}. {senaryo.not}</p> : null}
+      {o === undefined ? cerceve(kod, gecmisDetay) : o === null ? <FinansalEtkiHata kodu={hataKodu} /> : icerik(o, plantId, gecmisDetay)}
+    </Sayfa>
+  );
+}
+
+/** Yüklenmiş sonuç — sayfa gövdesi (bileşen değil, düz işlev: çerçeveyle aynı öğe türleri aynı konumda kalsın, kartlar yeniden takılmasın). */
+function icerik(o: FinansalEtkiT, plantId: string, gecmisDetay: React.ReactNode) {
   const u = o.uretim; const top = o.toplam; const uz = o.uzlastirma; const r = uz.resmi; const du = o.dusukluk; const ma = o.maruziyet; const m = o.meta;
   const toplananlar = o.bilesenler.filter((b) => b.toplanir); const digerleri = o.bilesenler.filter((b) => !b.toplanir);
   const resmiEdt = r.bilesenler.find((b) => b.kod === "dengesizlik_resmi"); const resmiKupst = r.bilesenler.find((b) => b.kod === "kupst_resmi");
@@ -104,9 +127,6 @@ export function FinansalEtki({ plantId }: { plantId: string }) {
   const kapsama = u.gerceklesen.kapsama; const th = du.tahmin_hatasi;
   const durumMetni = o.kayitli ? `gece hesabı ${saatYaz(o.hesap_zamani ?? m.hesap_zamani)}` : m.senaryo ? "senaryo hesabı" : "anlık hesap";
   return (
-    <Sayfa baslik="Finansal etki" alt={SAYFA_ALT} sag={secici}>
-      <ModulNotu kod="finansal_etki" />
-      {m.senaryo && <p className="form-not t-ikincil" style={{ margin: "0 0 12px", color: "var(--uyari-metin)" }}><b>Senaryo görünümü:</b> {m.senaryo.etiket}. {m.senaryo.not}</p>}
       <div className="akis">
       <section className="bolum">
       <div className="ozet-bas">Dönem<span className="sag">{o.donem.etiket}</span></div>
@@ -130,7 +150,7 @@ export function FinansalEtki({ plantId }: { plantId: string }) {
       <Kart baslik={KART.bilesenler.baslik} alt={KART.bilesenler.alt}
         sag={<span className="cip"><Meta items={[`${sayiTr(o.donem.saat)} saat`, uz.fiyat.senaryo_saat > 0 ? `${sayiTr(uz.fiyat.senaryo_saat)} saat senaryo fiyatı` : "EPİAŞ fiyatı", uz.hesaplanamayan_saat > 0 && `${sayiTr(uz.hesaplanamayan_saat)} saat hesaplanamadı`, durumMetni]} /></span>}>
         <div className="grafik-kaydir"><table className="veri sayisal">
-          <thead><tr><th style={sol}>Bileşen</th><th>Net (TL)</th><th>Alacak (TL)</th><th>Borç (TL)</th><th style={sol}>Nitelik</th><th>Kapsam (saat)</th><th style={sol}>Kaynak</th></tr></thead>
+          {BILESEN_BASLIK}
           <tbody>
             {toplananlar.map((b) => <BilesenSatiri key={b.kod} b={b} />)}
             <tr style={{ fontWeight: 600 }}><td style={sol}>Toplam</td><td className="mono">{yaz(top.tutar_tl)}</td><td className="mono">{top.alacak_tl == null ? "—" : sayiTr(top.alacak_tl, 0)}</td><td className="mono">{top.borc_tl == null ? "—" : sayiTr(top.borc_tl, 0)}</td>
@@ -244,77 +264,93 @@ export function FinansalEtki({ plantId }: { plantId: string }) {
           <div><dt>Piyasa pozisyonu</dt><dd>{m.pozisyon.kaynak === "uretim" ? "üretildiği kadar satış" : m.pozisyon.kaynak === "sabit" ? `sabit ${sayiTr(m.pozisyon.sabit_mwh ?? 0, 2)} MWh/saat` : "satış programa eşit"}</dd></div>
           <div><dt>Hesap sözlüğü</dt><dd><span className="kunye-sayi">{m.sozluk_surumu}</span>{m.yazilim_surumu && <> · yazılım <span className="kunye-sayi">{m.yazilim_surumu}</span></>}{m.cikti_surumu && <> · çıktı <span className="kunye-sayi">{m.cikti_surumu}</span></>}</dd></div>
         </dl>
-        <details className="aciklama" onToggle={(e) => { gecmisAcikRef.current = e.currentTarget.open; setGecmisAcik(e.currentTarget.open); gecmisAc(); }}>
-          <summary>Kayıtlı sürümler ve varsayımların geçmişi</summary>
-          {!gecmisAcik ? null : gecmis === undefined ? <YerTutucu yukseklik={48} /> : gecmis === null ? <p className="soluk">Sürüm listesi alınamadı.</p> : gecmis.surumler.length === 0 ? <p className="soluk" style={{ margin: 0 }}>Bu dönem için kayıtlı sürüm yok; gece hesabı ilk kaydı oluşturur.</p> : (
-            <div className="grafik-kaydir"><table className="veri sayisal dar">
-              <thead><tr><th style={sol}>Hesap zamanı</th><th>Toplam (TL)</th><th style={sol}>Nitelik</th><th style={sol}>Üretim girdisi</th><th style={sol}>Kural</th></tr></thead>
-              <tbody>{gecmis.surumler.map((s) => <tr key={s.id}><td style={sol}>{saatYaz(s.hesap_zamani)}</td><td className="mono">{yaz(s.toplam?.tutar_tl)}</td><td style={sol}><Rozet n={s.toplam?.nitelik ?? "eksik"} /></td><td style={sol}>{s.uretim_girdisi === "sayac" ? "sayaç" : "SCADA"}</td><td style={sol} className="mono">{String((s.varsayimlar as { kural_surumu?: string | null }).kural_surumu ?? "—")}</td></tr>)}</tbody>
-            </table></div>)}
-        </details>
-        <details className="aciklama">
-          <summary>Nasıl hesaplanır</summary>
-          <p>Dönemin bütün saatleri tek küme olarak alınır; program, ölçüm, fiyat ve kalemler aynı saatlerden türer. Enerji satışı gerçekleşen üretimin tarifeyle çarpımıdır.
-            Enerji dengesizlik tutarı ve KGÜP sapma tutarı, Doğruluk ve Mutabakat sayfalarıyla aynı saatlik hesaptan gelir; alacak ve borç 19.10.2026'dan itibaren ayrı toplanır.
-            Toplam yalnız bu üç satırdır. Resmî bildirim satırları, DSG içi tutar, teminat ve YEKDEM göstergeleri, üretim düşüklüğü ve ileriye dönük aralık yan yana gösterilir, toplanmaz; aksi hâlde aynı sapma iki kez sayılırdı.
-            Senaryo fiyatlı ya da sistem yönü varsayılan saat varsa satır senaryo niteliği alır; eksik satır toplamın niteliğini düşürür. Santralin taşımadığı kalemler (lisanssız dağıtım, öz tüketim) bilgi amaçlı kalır.</p>
-        </details>
+        {gecmisDetay}
+        {NASIL_DETAY}
       </Kart>
       </section>
       </div>
-    </Sayfa>
   );
 }
 
-/** 18.11 Parti 2 (aşamalı çizim) — yükleme ÇERÇEVESİ: sayfanın gerçek yapısı anında (dört bölüm başlığı, dört KPI etiketi + bilgi,
- *  altı kartın gerçek başlık ve açıklaması); yalnız değerler ve kart gövdeleri boyutlu yer tutucu (ölçülen gövde yükseklikleri: 1440 px,
- *  Karapınar). Önceden başlık + 4 gri kutu + tek gri kart vardı; tek yanıt gelene dek (canlı soğuk 5,8 s) sayfa tanınmıyordu. Gerçek gecikme
- *  gizlenmez: değerler gelene dek boş, hareket yok. */
-function KpiYerTutucu({ etiket, bilgi, ton }: { etiket: string; bilgi: string; ton?: "amber" }) {
+/** Statik açıklama (sayfa ve çerçeve aynı öğe). */
+const NASIL_DETAY = (
+  <details className="aciklama">
+    <summary>Nasıl hesaplanır</summary>
+    <p>Dönemin bütün saatleri tek küme olarak alınır; program, ölçüm, fiyat ve kalemler aynı saatlerden türer. Enerji satışı gerçekleşen üretimin tarifeyle çarpımıdır.
+      Enerji dengesizlik tutarı ve KGÜP sapma tutarı, Doğruluk ve Mutabakat sayfalarıyla aynı saatlik hesaptan gelir; alacak ve borç 19.10.2026'dan itibaren ayrı toplanır.
+      Toplam yalnız bu üç satırdır. Resmî bildirim satırları, DSG içi tutar, teminat ve YEKDEM göstergeleri, üretim düşüklüğü ve ileriye dönük aralık yan yana gösterilir, toplanmaz; aksi hâlde aynı sapma iki kez sayılırdı.
+      Senaryo fiyatlı ya da sistem yönü varsayılan saat varsa satır senaryo niteliği alır; eksik satır toplamın niteliğini düşürür. Santralin taşımadığı kalemler (lisanssız dağıtım, öz tüketim) bilgi amaçlı kalır.</p>
+  </details>);
+/** Bileşen tablosu sütunları — sayfa başlık satırı ve iskelet aynı listeden (sapamaz). */
+const BILESEN_SUTUN: readonly IskeletSutun[] = [{ ad: "Bileşen", sol: true, tur: "metin" }, { ad: "Net (TL)", tur: "sayi" }, { ad: "Alacak (TL)", tur: "sayi" }, { ad: "Borç (TL)", tur: "sayi" }, { ad: "Nitelik", sol: true, tur: "rozet" }, { ad: "Kapsam (saat)", tur: "sayi" }, { ad: "Kaynak", sol: true, tur: "metin" }];
+const BILESEN_BASLIK = <thead><tr>{BILESEN_SUTUN.map((k) => <th key={k.ad} style={k.sol ? sol : undefined}>{k.ad}</th>)}</tr></thead>;
+/** Künye etiketleri yalnız HER sonuçta bulunan satırlar (koşullu «Fiyat sürümü», «Tahmin kayıtları», «Girdi damgası» iskelette yok: veri gelince eklenir). */
+const HESAP_ETIKET = ["Dönem", "Hesap durumu", "Üretim girdisi", "Program", "Fiyat", "Uzlaştırma kuralı", "Satış tarifesi", "Piyasa pozisyonu", "Hesap sözlüğü"] as const;
+const DUSUKLUK_ETIKET = ["Program farkı", "Tahmin hatası", "Enerji performansı"] as const;
+/** api/client getir: hata iletisi «<durum> <yol>» ile başlar; ağ hatası (TypeError) kodsuz. */
+const hataKoduOku = (h: unknown): string | null => (h instanceof Error ? /^(\d{3}) / .exec(h.message)?.[1] : null) ?? null;
+
+/** Yanıt alınamadı: yükleme (çerçeve), boş veri (kart içi «boş durum»), eksik ölçüm (kapsam/«Hesaplanamadı») ve hesap hatası ayrı dillerde;
+ *  burası yalnız SONUCUN HİÇ gelmediği durum. Bellekte önceki sonuç varsa bu görünmez (bayat-önce). */
+function FinansalEtkiHata({ kodu }: { kodu: string | null }) {
+  const gecersiz = kodu === "400" || kodu === "404" || kodu === "422";
+  const sunucu = kodu != null && kodu >= "500";
   return (
-    <div className="kpi" style={ton === "amber" ? { borderColor: "var(--amber)", background: "linear-gradient(180deg, var(--amber-zemin) 0%, var(--kart) 72%)" } : undefined}>
-      <div className="kpi-et"><BilgiliEtiket metin={etiket} bilgi={bilgi} /></div>
-      <div className="kpi-dg" aria-hidden="true"><span className="iskelet-alan" style={{ display: "inline-block", width: "58%", height: 34, verticalAlign: "middle" }} /></div>
-      <div className="kpi-br" aria-hidden="true"><span className="iskelet-alan" style={{ display: "block", width: "80%", height: 14, marginTop: 4 }} /></div>
-    </div>
-  );
+    <div className="bos-durum" role="alert">
+      <div className="bos-bas">{gecersiz ? "Bu dönem için finansal etki hesaplanamadı" : sunucu ? "Sunucu finansal etkiyi üretemedi" : "Finansal etki sunucudan alınamadı"}</div>
+      <p>{gecersiz ? "Dönem kodu geçersiz ya da gelecek dönem olabilir; başka bir dönem seçin." : sunucu ? `Sunucu hatası (${kodu}). Sayfayı yenileyin; sürerse sistem yöneticinize bildirin.` : "Bağlantı kurulamadı ya da yanıt gelmedi; bağlantınızı denetleyip sayfayı yenileyin."}</p>
+    </div>);
 }
 
-function FinansalEtkiCerceve({ secici, kod }: { secici: React.ReactNode; kod: string }) {
+/** 18.11 Parti 2 (aşamalı çizim) → 18.11 yükleme düzeltmesi — yükleme ÇERÇEVESİ: sayfanın gerçek yapısı anında (dört bölüm başlığı, dört KPI etiketi
+ *  + bilgi, altı kartın gerçek başlık ve açıklaması); gövdeler artık tek gri blok değil, gerçek kalıbın iskeleti (ÖLÇÜLDÜ 1440, Karapınar örneği:
+ *  bileşen tablosu 9 satır/927 px, KPI 193 px, künye satırı 65 px). Bileşen tablosu gerçek sütun başlıkları, «Toplam» ve «Toplama girmeyen satırlar»
+ *  satırlarıyla (hizmet her sonuçta en az 3 toplanan + 4 toplanmayan satır üretir); künyeler yalnız koşulsuz etiketleriyle. Gerçek gecikme
+ *  gizlenmez: değerler gelene dek gri çubuk, hareket yok, tek gizli durum satırı. KPI iskeleti ortak (parcalar.KpiIskeleti). */
+function cerceve(kod: string, gecmisDetay: React.ReactNode) {
   const donem = donemEtiket(kod);
   return (
-    <Sayfa baslik="Finansal etki" alt={SAYFA_ALT} sag={secici}>
       <div className="akis">
-        <span className="gorsel-gizli" role="status" aria-live="polite">Finansal etki hesabı yükleniyor…</span>
         <section className="bolum">
           <div className="ozet-bas">Dönem<span className="sag">{donem}</span></div>
           <div className="ızgara satir-4">
-            <KpiYerTutucu etiket={`Planlanan üretim (${donem})`} bilgi={KPI_BILGI.planlanan} />
-            <KpiYerTutucu etiket="Gerçekleşen üretim" ton="amber" bilgi={KPI_BILGI.gerceklesen} />
-            <KpiYerTutucu etiket="Üretim ve program farkı" bilgi={KPI_BILGI.fark} />
-            <KpiYerTutucu etiket="Tahmini finansal etki" bilgi={KPI_BILGI.etki} />
+            <KpiIskeleti etiket={`Planlanan üretim (${donem})`} bilgi={KPI_BILGI.planlanan} />
+            <KpiIskeleti etiket="Gerçekleşen üretim" ton="amber" bilgi={KPI_BILGI.gerceklesen} ikinci />
+            <KpiIskeleti etiket="Üretim ve program farkı" bilgi={KPI_BILGI.fark} ikinci />
+            <KpiIskeleti etiket="Tahmini finansal etki" bilgi={KPI_BILGI.etki} />
           </div>
-          <Kart baslik={KART.bilesenler.baslik} alt={KART.bilesenler.alt}><YerTutucu yukseklik={900} /></Kart>
+          <Kart baslik={KART.bilesenler.baslik} alt={KART.bilesenler.alt}>
+            <div className="grafik-kaydir"><table className="veri sayisal iskelet-tablo" aria-hidden="true">
+              {BILESEN_BASLIK}
+              <tbody>
+                {[0, 1, 2].map((i) => <IskeletSatir key={i} sutunlar={BILESEN_SUTUN} notlu />)}
+                <tr style={{ fontWeight: 600 }}><td style={sol}>Toplam</td>{BILESEN_SUTUN.slice(1).map((k) => <td key={k.ad} style={k.sol ? sol : undefined}><IskeletHucre tur={k.tur} /></td>)}</tr>
+                <tr><td colSpan={7} className="etiket-ust" style={{ ...sol, paddingTop: 14 }}>Toplama girmeyen satırlar</td></tr>
+                {[0, 1, 2, 3].map((i) => <IskeletSatir key={i} sutunlar={BILESEN_SUTUN} notlu />)}
+              </tbody>
+            </table></div>
+            <details className="aciklama"><summary>Satırların notları ve neden farklı oldukları</summary><MetinIskeleti satir={3} /></details>
+          </Kart>
         </section>
         <section className="bolum">
           <div className="ozet-bas">Karşılaştırma ve eylem<span className="sag">bildirim, öneriler</span></div>
           <div className="sira-2">
-            <Kart baslik={KART.resmi.baslik} alt={KART.resmi.alt}><YerTutucu yukseklik={120} /></Kart>
-            <Kart baslik={KART.oneri.baslik} alt={KART.oneri.alt}><YerTutucu yukseklik={300} /></Kart>
+            <Kart baslik={KART.resmi.baslik} alt={KART.resmi.alt}><MetinIskeleti satir={3} /></Kart>
+            <Kart baslik={KART.oneri.baslik} alt={KART.oneri.alt}><ListeIskeleti satir={4} rozetli /></Kart>
           </div>
         </section>
         <section className="bolum">
           <div className="ozet-bas">Düşüklük ve ileriye<span className="sag">neden ve ufuk</span></div>
           <div className="sira-2">
-            <Kart baslik={KART.dusukluk.baslik} alt={KART.dusukluk.alt}><YerTutucu yukseklik={600} /></Kart>
-            <Kart baslik={KART.ufuk.baslik} alt={KART.ufuk.alt}><YerTutucu yukseklik={350} /></Kart>
+            <Kart baslik={KART.dusukluk.baslik} alt={KART.dusukluk.alt}><KunyeIskeleti etiketler={DUSUKLUK_ETIKET} /><div style={{ marginTop: 10 }}><SatirlarIskeleti satir={6} /></div><ListeIskeleti satir={2} /></Kart>
+            <Kart baslik={KART.ufuk.baslik} alt={KART.ufuk.alt}><SatirlarIskeleti satir={4} /><ListeIskeleti satir={2} /></Kart>
           </div>
         </section>
         <section className="bolum">
           <div className="ozet-bas">Hesap<span className="sag">varsayımlar ve sürümler</span></div>
-          <Kart baslik={KART.hesap.baslik} alt={KART.hesap.alt}><YerTutucu yukseklik={820} /></Kart>
+          <Kart baslik={KART.hesap.baslik} alt={KART.hesap.alt}><KunyeIskeleti etiketler={HESAP_ETIKET} />{gecmisDetay}{NASIL_DETAY}</Kart>
         </section>
+        <span className="gorsel-gizli" role="status" aria-live="polite">Finansal etki hesabı yükleniyor…</span>
       </div>
-    </Sayfa>
   );
 }

@@ -9,7 +9,7 @@ import { api, bellekten, ayniysaEskisi, rolum, RaporDenetimHata, type DenetimBul
          type ScadaOnizleme, type ScadaKayit,
          type KosuSatiri , CihazBazliHatasi} from "../../api/client";
 import type { KalibrasyonOzeti, Kayma, Hijyen, EpiasUretim, KayipAgaci, GucMatrisi, Isler, SaatProfili, KayipAyrisimi } from "../../api/types";
-import { Kart, Sayfa, Kpi, sayiTr, YerTutucu, Katla } from "./parcalar";
+import { GrafikIskeleti, Kart, Sayfa, Kpi, KpiIskeleti, MetinIskeleti, SatirlarIskeleti, sayiTr, YerTutucu, Katla } from "./parcalar";
 import { yuzdeTr } from "../../lib/bicim";   // 16.11: yüzde işaret sırası tek kural (−%8,4)
 import { ModulNotu } from "./Abonelik";   // v2.609 (Faz 6 F6-D): kapalı özellik notu (uyarı kipi)
 import { Meta } from "../../lib/Meta";
@@ -65,7 +65,7 @@ function GucMatrisiKarti({ plantId, ilkVeri }: { plantId: string; ilkVeri: GucMa
       <button className="dugme kucuk" onClick={hesapla}>{g?.durum === "ok" ? "Yenile" : "Hesapla"}</button></span>}>
       {/* 23.10 altıncı tur: boş durum iki kademe (.bos-durum); tablo dar + sans tabular (.veri.sayisal.dar) — 7 sütun
           1840 px'e yayılmıyor; sentetik kaynak başlıkta rozetle söylenir (ölçüm sanılmasın); kaynak/not iki ayrı cümle. */}
-      {g === undefined ? <YerTutucu yukseklik={178} /> : !g || g.durum !== "ok" ? (
+      {g === undefined ? <SatirlarIskeleti satir={4} /> : !g || g.durum !== "ok" ? (
         <div className="bos-durum">
           <div className="bos-bas">{mesaj ?? "Henüz hesaplanmadı"}</div>
           {!mesaj && <p>«Hesapla» panelin ışınım ve sıcaklığa göre verimini tipik yıl iklimiyle değerlendirir.</p>}
@@ -110,7 +110,7 @@ function KayipAgaciKarti({ plantId, ilkVeri }: { plantId: string; ilkVeri: Kayip
       {k?.durum === "ok" && <span className="cip"><Meta items={[`tipik yıl ${k.yil}`, `PR ${yuzdeTr((k.pr ?? 0) * 100, 0)}`, `${sayiTr(k.ozgul_kwh_kwp ?? 0, 0)} kWh/kWp`]} /></span>}
       <button className="dugme kucuk" onClick={hesapla}>{k?.durum === "ok" ? "Yenile" : "Hesapla"}</button></span>}>
       {/* 23.10 altıncı tur: boş durum iki kademe — başlık satırı + «Hesapla» yönlendirmesi */}
-      {k === undefined ? <YerTutucu yukseklik={430} /> : !k || k.durum !== "ok" ? (
+      {k === undefined ? <SatirlarIskeleti satir={10} /> : !k || k.durum !== "ok" ? (
         <div className="bos-durum">
           <div className="bos-bas">{mesaj ?? "Henüz hesaplanmadı"}</div>
           {!mesaj && <p>«Hesapla» tipik yıl ışınımından şebekeye adım adım kayıp zincirini üretir; her satır kaynağını söyler.</p>}
@@ -753,7 +753,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
     const d = new Date(iso);
     return `${d.getDate()} ${AY[d.getMonth()]} ${d.getFullYear()}`;
   };
-  if (!yuklendi) return <KalibrasyonIskeleti />;
+  if (!yuklendi) return kalibrasyonCercevesi(<KayipAgaciKarti plantId={plantId} ilkVeri={ka} />, <GucMatrisiKarti plantId={plantId} ilkVeri={gm} />);   // 18.11 yükleme düzeltmesi: aynı <Sayfa> kökü; tipik yıl kartları aynı öğe
   return (
     <Sayfa baslik="Kalibrasyon"
       alt="Model santralinizin kendi verisiyle uyarlanır; sonucunu bu sayfada görürsünüz."
@@ -881,7 +881,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
               </p>
             </details>
           </>
-        ) : hj === undefined ? <YerTutucu yukseklik={184} /> : <p className="soluk" style={{ margin: 0 }}>Veri temizliği özeti şu anda alınamadı.</p>}
+        ) : hj === undefined ? HJ_ISK : <p className="soluk" style={{ margin: 0 }}>Veri temizliği özeti şu anda alınamadı.</p>}
       </Kart>
       {/* 04.11 v2.533 (P8a, IH-087): gerçekleşen kayıp ayrışımı — nedene göre saat / kWh / TL; beklenen hava tahmini girdili fizik modeli,
           TL satış fiyatıyla gelir kaybı tahmini; her satır KPI'dan dışlanıp dışlanmadığını söyler */}
@@ -889,7 +889,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
         sag={<span className="cip">{kyp?.durum === "ok" ? <Meta items={[`${sayiTr(kyp.mumkun_saat ?? 0)} saat`, kyp.son_olcum && `bitiş ${tarihTr(kyp.son_olcum)}`, kyp.epi != null && `EPI ${yuzdeTr(kyp.epi * 100, 1)}`, kyp.fiyat?.etiket]} />
           : kyp === undefined ? "hesaplanıyor" : kyp?.durum === "yetersiz" ? "üretim mümkün saat yetersiz" : kyp ? "veri yok" : "alınamadı"}</span>}>
         {/* v2.608 (Faz 5 F5-E) aşamalı açılım: başlık çipi EPI ve kapsamı söyler; tablo katlı */}
-        {kyp === undefined ? <YerTutucu yukseklik={120} /> : kyp?.durum === "ok" && kyp.satirlar ? (
+        {kyp === undefined ? <MetinIskeleti satir={2} /> : kyp?.durum === "ok" && kyp.satirlar ? (
           <Katla ozet="Nedene göre kayıp tablosu" not="EPI, nedeni bilinen kayıp ve TL karşılığı">
               <div className="ızgara satir-3" style={{ gap: 12 }}>
                 <div className="kpi"><div className="kpi-et">Enerji performans indeksi (EPI)</div>
@@ -928,7 +928,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
       <Kart baslik="Hava verisi tutarlılığı" alt="Kalibrasyon ve tahmin aynı veriyi mi görüyor?"
         sag={<span className="cip">{ky ? <Meta items={[`${sayiTr(ky.n_saat)} saat`, ky.hukum]} /> : ky === undefined ? "hesaplanıyor" : "alınamadı"}</span>}>
         {/* v2.608 (Faz 5 F5-E) aşamalı açılım: hüküm başlık çipinde; girdi tablosu katlı, kayma varsa açık başlar */}
-        {ky === undefined ? <YerTutucu yukseklik={120} /> : ky && ky.ozellikler.length > 0 ? (
+        {ky === undefined ? <MetinIskeleti satir={2} /> : ky && ky.ozellikler.length > 0 ? (
           <Katla ozet="Girdi karşılaştırması" not={ky?.hukum === "KAYMA" ? "kayma var; tablo açık" : "dağılım farkı ve sapma, girdi başına"} acik={ky?.hukum === "KAYMA"}>
               <div className="grafik-kaydir">
                 <table className="veri">
@@ -962,7 +962,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
           söylediğini söylüyordu. Haritanın tek işe yarar bilgisi (saate göre sistematik sapma) kalibrasyonun teşhis girdisi olarak burada. */}
       <Kart baslik="Saate göre ortalama sapma" alt="Tahmin − gerçekleşen, son 30 ölçüm günü; sistematik sapma kalibrasyonun ilk hedefidir"
         sag={<span className="cip" title={sp ? `saat dilimi ${sp.tz}` : undefined}>{sp ? <Meta items={[sp.gun_sayisi ? `${sayiTr(sp.gun_sayisi)} gün` : "veri yok", sp.ilk_gun && sp.son_gun && `${tarihTr(sp.ilk_gun)} – ${tarihTr(sp.son_gun)}`, "0–24 saat ufku"]} /> : sp === undefined ? "hesaplanıyor" : "alınamadı"}</span>}>
-        {sp === undefined ? <YerTutucu yukseklik={330} /> : sp && sp.gun_sayisi > 0 && profilOption ? (
+        {sp === undefined ? SP_ISK : sp && sp.gun_sayisi > 0 && profilOption ? (
           <>
             <EChart option={profilOption} height={300} ariaLabel="Saate göre ortalama tahmin sapması, yatay çubuk" />
             <p className="t-ikincil" style={{ margin: "10px 0 0" }}>
@@ -987,18 +987,57 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
 }
 
 
-/** 18.11 (Grup 1) — Kalibrasyon iskeleti: başlık ve açıklama anında; üç KPI (124 px) + iki sonuç kartı (300 px) kalıbı.
- *  Eski genel iskelet başlıksızdı (3 KPI + 2 kart alt alta). Sayı/veri yok, hareket yok. */
-function KalibrasyonIskeleti() {
+/** 18.11 (Grup 1) → 18.11 yükleme düzeltmesi — Kalibrasyon yükleme çerçevesi: dört bölüm gerçek başlık ve kart adlarıyla anında; katsayı tablosu
+ *  gerçek satır etiketleriyle, KPI'lar gerçek etiketleriyle, grafikler gerçek yükseklikte boş alan (ÖLÇÜLDÜ 1440: önce 673 → 3.434 px, ayrı bileşen
+ *  kökü; kartlar 463/463/389/300/146/146/473/574/300 px). Düz işlev: içerikle aynı <Sayfa> kökü; tipik yıl kartları iki durumda aynı öğe. */
+const KATSAYI_ETIKET = ["Sistem verim katsayısı", "Çift yüzlü panel kazancı", "Geçerli saat", "Geliş açısı düzeltmesi", "Spektral düzeltme", "Gök açıklığı referansı", "Kirlenme modeli", "Kar örtüsü modeli", "Kalibrasyon tarihi"] as const;
+const HJ_ISK = (
+  <div className="ızgara satir-3" style={{ gap: 12 }}>
+    <KpiIskeleti etiket="AC sınırında kırpılan" alt={1} />
+    <KpiIskeleti etiket="Şebeke kısıtı" alt={1} />
+    <KpiIskeleti etiket="Kısıt olmasaydı" alt={1} />
+  </div>);
+const SP_ISK = <><GrafikIskeleti yukseklik={300} /><div style={{ marginTop: 10 }}><MetinIskeleti satir={1} /></div></>;
+function kalibrasyonCercevesi(kayipAgaci: React.ReactNode, gucMatrisi: React.ReactNode) {
   return (
     <Sayfa baslik="Kalibrasyon" alt="Model santralinizin kendi verisiyle uyarlanır; sonucunu bu sayfada görürsünüz.">
-      <div className="akis" role="status" aria-live="polite" aria-label="Yükleniyor">
-        <section className="bolum">
-          <div className="ozet-bas">Sonuç<span className="sag">yükleniyor…</span></div>
-          <div className="iskelet-kpi" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>{Array.from({ length: 3 }, (_, i) => <span key={i} />)}</div>
-          <div className="sira-2"><div className="iskelet-kart" style={{ height: 300 }} /><div className="iskelet-kart" style={{ height: 300 }} /></div>
-        </section>
-        <span className="gorsel-gizli">Yükleniyor…</span>
+      <div className="akis">
+      <section className="bolum">
+      <div className="ozet-bas">Sonuç<span className="sag">kalibre model, fiziksel modele karşı</span></div>
+      <div className="ızgara satir-3">
+        <KpiIskeleti etiket="Kalibre model hatası (MAPE)" alt={1} />
+        <KpiIskeleti etiket="Fiziksel model, aynı dönem" alt={1} />
+        <KpiIskeleti etiket="İyileşme" alt={1} />
+      </div>
+      <div className="ızgara" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)" }}>
+        <Kart baslik="Katsayılar ve dönem">
+          <table className="veri iskelet-tablo" aria-hidden="true"><tbody>{KATSAYI_ETIKET.map((a) => <tr key={a}><td>{a}</td><td><span className="iskelet-alan iskelet-cubuk" style={{ width: 64 }} /></td></tr>)}</tbody></table>
+        </Kart>
+        <Kart baslik="Yıllık enerji sapması">
+          <div style={{ display: "flex", alignItems: "baseline", gap: 14 }} aria-hidden="true"><span className="iskelet-alan iskelet-cubuk" style={{ width: 64, height: 24 }} /><span style={{ color: "var(--soluk)" }}>{"\u2192"}</span><span className="iskelet-alan iskelet-cubuk" style={{ width: 84, height: 32 }} /></div>
+          <div style={{ marginTop: 14 }}><MetinIskeleti satir={2} /></div>
+        </Kart>
+      </div>
+      <Kart baslik="Etkisi" alt="Fiziksel modelden kalibre modele">
+        <div className="ızgara" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)" }}><GrafikIskeleti yukseklik={210} /><GrafikIskeleti yukseklik={210} /></div>
+      </Kart>
+      </section>
+      <section className="bolum">
+      <div className="ozet-bas">Veri kalitesi<span className="sag">kırpma, kısıt ve kayıp ayrışımı</span></div>
+      <Kart baslik="Veri temizliği" alt="AC sınırında kırpma ve şebeke kısıtı" sag={<span className="cip">hesaplanıyor</span>}>{HJ_ISK}</Kart>
+      <Kart baslik="Gerçekleşen kayıp ayrışımı" alt="Beklenen ile gerçekleşen arasındaki açık, nedene göre; son 30 ölçüm günü" sag={<span className="cip">hesaplanıyor</span>}><MetinIskeleti satir={2} /></Kart>
+      </section>
+      <section className="bolum">
+      <div className="ozet-bas">Teşhis<span className="sag">hava verisi ve saate göre sapma</span></div>
+      <Kart baslik="Hava verisi tutarlılığı" alt="Kalibrasyon ve tahmin aynı veriyi mi görüyor?" sag={<span className="cip">hesaplanıyor</span>}><MetinIskeleti satir={2} /></Kart>
+      <Kart baslik="Saate göre ortalama sapma" alt="Tahmin − gerçekleşen, son 30 ölçüm günü; sistematik sapma kalibrasyonun ilk hedefidir">{SP_ISK}</Kart>
+      </section>
+      <section className="bolum">
+      <div className="ozet-bas">Tipik yıl<span className="sag">kayıp zinciri ve panel verimi</span></div>
+      {kayipAgaci}
+      {gucMatrisi}
+      </section>
+      <span className="gorsel-gizli" role="status" aria-live="polite">Kalibrasyon yükleniyor…</span>
       </div>
     </Sayfa>
   );

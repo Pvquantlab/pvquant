@@ -5,7 +5,7 @@ import type { BelirsizlikDurum, FinansNitelik, PortfoyDetay, PortfoyDsgT, Portfo
 import { donemSecenekleri, TUR_AD, type FinansDonemTur } from "../../lib/donem";
 import { tarihBicimi, yuzdeTr } from "../../lib/bicim";
 import { Meta } from "../../lib/Meta";
-import { HesapDurumu, Kart, Kpi, Sayfa, sayiTr, YerTutucu } from "./parcalar";
+import { HesapDurumu, Kart, Kpi, KpiIskeleti, KunyeIskeleti, ListeIskeleti, MetinIskeleti, SatirlarIskeleti, Sayfa, sayiTr, TabloIskeleti, YerTutucu, type IskeletSutun } from "./parcalar";
 import { ModulNotu } from "./Abonelik";   // v2.609 (Faz 6 F6-D): kapalı özellik notu (uyarı kipi)
 
 /** v2.595 (Faz 3 F3-H) — Portföy yönetimi: toplayıcı ya da DSG yöneticisinin portföyünü birkaç saniyede okuması için tek sayfa.
@@ -101,7 +101,12 @@ export function Portfoyler() {
         {secenekler.map((s) => <option key={s.kod} value={s.kod}>{s.etiket}</option>)}</select>
     </span>);
   const alt = "Portföyünüzün bugünkü durumu: üretim beklentisi ve belirsizliği, program sapması, dengeden sorumlu grup ve sözleşme ilişkileri, revizyon önerileri. Tutarlar PVQuant'ın yeniden hesabıdır; EPİAŞ uzlaştırma sonucu değildir.";
-  if (liste === undefined) return <Sayfa baslik="Portföy yönetimi" alt={alt}><PortfoylerIskeleti /></Sayfa>;
+  // 18.11 yükleme düzeltmesi: çerçeve içerikle aynı <Sayfa> kökü ve aynı çocuk konumları (ModulNotu + .akis); seçiciler ve hedef gün düğmeleri aynı öğe
+  const hedefSeg = (
+    <span className="dugme-sira"><div className="seg" role="group" aria-label="Hedef gün">
+      <button type="button" className={hedef === "yarin" ? "secili" : undefined} onClick={() => setHedef("yarin")}>Yarın</button>
+      <button type="button" className={hedef === "bugun" ? "secili" : undefined} onClick={() => setHedef("bugun")}>Bugün</button></div></span>);
+  if (liste === undefined) return <Sayfa baslik="Portföy yönetimi" alt={alt} sag={secici}><ModulNotu kod="portfoy_dsg" />{portfoylerCercevesi(hedefSeg)}</Sayfa>;
   if (liste === null) return <Sayfa baslik="Portföy yönetimi" alt={alt}><p className="soluk">Portföy listesi alınamadı. Bağlantıyı kontrol edip sayfayı yenileyin.</p></Sayfa>;
   if (liste.length === 0) return (
     <Sayfa baslik="Portföy yönetimi" alt={alt}>
@@ -150,7 +155,7 @@ export function Portfoyler() {
 
       <Kart baslik="Santral katkıları" alt="Dönemde her üyenin programı, gerçekleşeni ve portföy sapmasına katkısı; yarınki tahmini ve üyelik durumu."
         sag={<span className="cip"><Meta items={[sapma?.donem?.etiket, o && `${sayiTr(o.saat)} saat`, sapma?.katkilar?.not && "karşıt sapmalar netleşiyor"]} /></span>}>
-        {sapma === undefined ? <YerTutucu yukseklik={120} /> : !sapma || sapma.durum !== "ok" ? <p className="soluk" style={{ margin: 0 }}>{sapma?.not ?? "Dönem görünümü alınamadı."}</p> : (
+        {sapma === undefined ? <TabloIskeleti sutunlar={KATKI_SUTUN} satir={3} /> : !sapma || sapma.durum !== "ok" ? <p className="soluk" style={{ margin: 0 }}>{sapma?.not ?? "Dönem görünümü alınamadı."}</p> : (
           <>
             <div className="grafik-kaydir"><table className="veri sayisal">
               <thead><tr><th style={sol}>Santral</th><th>Kurulu güç (kW)</th><th>Program (MWh)</th><th>Gerçekleşen (MWh)</th><th>Sapma (MWh)</th><th title="Santralin, üyelerin mutlak sapmaları toplamındaki payı">Sapma payı (%)</th><th>Yarın (MWh)</th><th style={sol}>Ölçüm</th><th style={sol}>Üyelik</th></tr></thead>
@@ -176,7 +181,7 @@ export function Portfoyler() {
       <div className="sira-2">
         <Kart baslik="Portföy riski" alt="Önümüzdeki günlerde program ile tahmin arasındaki beklenen fark, aralık dışı saatler ve geçmişte sapmanın yoğunlaştığı yerler."
           sag={rs ? <Rozet sinif={RISK[rs.etiket]}>{rs.etiket_ad}</Rozet> : undefined}>
-          {risk === undefined ? <YerTutucu yukseklik={140} /> : !risk || risk.durum !== "ok" || !rs ? <p className="soluk" style={{ margin: 0 }}>{risk?.not ?? "Risk görünümü alınamadı."}</p> : (
+          {risk === undefined ? RISK_ISK : !risk || risk.durum !== "ok" || !rs ? <p className="soluk" style={{ margin: 0 }}>{risk?.not ?? "Risk görünümü alınamadı."}</p> : (
             <>
               <dl className="kunye">
                 <div><dt>Beklenen sapma</dt><dd>{rs.beklenen_sapma_mwh == null ? <span className="kunye-durum eksik">Program yok</span> : <><span className="kunye-sayi">{isaretli(rs.beklenen_sapma_mwh, 1)} MWh</span><span className="kunye-not"> {rs.beklenen_sapma_pct != null ? `${yuzdeTr(Math.abs(rs.beklenen_sapma_pct), 1)}, ` : ""}{sayiTr(rs.saat ?? 0)} saat, {risk.kural_ad?.toLowerCase()}</span></>}</dd></div>
@@ -197,10 +202,8 @@ export function Portfoyler() {
             </>)}
         </Kart>
         <Kart baslik="Revizyon önerileri" alt="Güncel tahmin ile üretim programı arasındaki farktan türeyen, dayanaklı öneriler. Karar sizindir; PVQuant program bildirmez, piyasaya teklif vermez."
-          sag={<span className="dugme-sira"><div className="seg" role="group" aria-label="Hedef gün">
-            <button type="button" className={hedef === "yarin" ? "secili" : undefined} onClick={() => setHedef("yarin")}>Yarın</button>
-            <button type="button" className={hedef === "bugun" ? "secili" : undefined} onClick={() => setHedef("bugun")}>Bugün</button></div></span>}>
-          {rev === undefined ? <YerTutucu yukseklik={140} /> : !rev || rev.durum !== "ok" ? <p className="soluk" style={{ margin: 0 }}>{rev?.not ?? "Öneriler alınamadı."}</p> : (
+          sag={hedefSeg}>
+          {rev === undefined ? REV_ISK : !rev || rev.durum !== "ok" ? <p className="soluk" style={{ margin: 0 }}>{rev?.not ?? "Öneriler alınamadı."}</p> : (
             <>
               {rev.pencere && hedef === "yarin" && <p className="form-not t-ikincil" style={{ margin: "0 0 8px" }}>{rev.pencere.durum === "pencere_acik" ? `Yarının programı için bildirim süresi açık; 15:30'a ${sayiTr(rev.pencere.dakika_kaldi)} dakika.` : rev.pencere.durum === "erken" ? "Yarının programı için bildirim 14:00–15:30 arasında yapılır." : "Yarın için bildirim süresi (15:30) geçti; değişiklik yalnız gün içi düzeltme ile."}</p>}
               {rev.gun_ici && hedef === "bugun" && <p className="form-not t-ikincil" style={{ margin: "0 0 8px" }}>{rev.gun_ici.acik ? `Bir sonraki teslimat saati için gün içi düzeltme ${sayiTr(rev.gun_ici.dakika_kaldi ?? 0)} dakika daha yapılabilir.` : "Bir sonraki teslimat saati için düzeltme süresi geçti."}</p>}
@@ -220,7 +223,7 @@ export function Portfoyler() {
       <div className="ozet-bas">Üyelik ve finans<span className="sag">üyeler, DSG, tutarlar</span></div>
       <div className="sira-2">
         <Kart baslik="Üyeler, DSG ve sözleşmeler" alt="Portföyün tarihli üyelikleri; dengeden sorumlu grupta üç perspektif: tek başına, grup içinde ve sözleşmeye göre pay.">
-          {detay === undefined ? <YerTutucu yukseklik={120} /> : !detay ? <p className="soluk" style={{ margin: 0 }}>Üyelikler alınamadı.</p> : (
+          {detay === undefined ? <TabloIskeleti sutunlar={UYE_SUTUN} satir={3} dar /> : !detay ? <p className="soluk" style={{ margin: 0 }}>Üyelikler alınamadı.</p> : (
             <>
               <div className="grafik-kaydir"><table className="veri dar">
                 <thead><tr><th style={sol}>Santral</th><th style={sol}>Üyelik dönemi</th><th style={sol}>Doğrulama</th></tr></thead>
@@ -229,7 +232,7 @@ export function Portfoyler() {
                   <td style={sol} className="mono">{gunYaz(u.gecerli_bas)} – {u.gecerli_bit ? gunYaz(u.gecerli_bit) : "süresiz"}</td>
                   <td style={sol}><Rozet sinif={DOGRULAMA_SINIF[u.dogrulama] ?? "rozet-notr"} title={u.kaynak === "belge" ? "kaynak: belge" : u.kaynak === "paylasim" ? "kaynak: paylaşım" : "kaynak: beyan"}>{u.dogrulama_ad.toLowerCase()}</Rozet>{u.belge_adi ? <div className="hucre-alt soluk">{u.belge_adi}</div> : null}</td></tr>)}</tbody>
               </table></div>
-              {p.tur === "dsg" && (dsg === undefined ? <YerTutucu yukseklik={80} /> : !dsg || dsg.durum !== "ok" || !per ? <p className="soluk" style={{ margin: "10px 0 0" }}>{dsg?.not ?? "DSG hesabı alınamadı."}</p> : (
+              {p.tur === "dsg" && (dsg === undefined ? <div style={{ marginTop: 10 }}><MetinIskeleti satir={2} /></div> : !dsg || dsg.durum !== "ok" || !per ? <p className="soluk" style={{ margin: "10px 0 0" }}>{dsg?.not ?? "DSG hesabı alınamadı."}</p> : (
                 <>
                   <p className="etiket-ust" style={{ margin: "12px 0 4px" }}>Üç perspektif</p>
                   <dl className="kunye">
@@ -263,7 +266,7 @@ export function Portfoyler() {
         </Kart>
         <Kart baslik="Finansal etki bileşenleri" alt="Dönemde portföy satırları: aynı santral hesaplarının toplamı; toplama yalnız ilk üç girer. DSG içi tutar, netleşme farkı ve dağılım bilgi satırıdır."
           sag={fin?.dsg ? <Rozet sinif={fin.dsg.etiket.startsWith("Sözleşmeye") ? "rozet-ok" : "rozet-uyari"}>{fin.dsg.etiket.toLowerCase()}</Rozet> : undefined}>
-          {fin === undefined ? <YerTutucu yukseklik={120} /> : !fin || fin.durum !== "ok" || !fin.bilesenler ? <p className="soluk" style={{ margin: 0 }}>{fin?.not ?? "Finansal etki alınamadı."}</p> : (
+          {fin === undefined ? <TabloIskeleti sutunlar={FIN_SUTUN} satir={5} dar /> : !fin || fin.durum !== "ok" || !fin.bilesenler ? <p className="soluk" style={{ margin: 0 }}>{fin?.not ?? "Finansal etki alınamadı."}</p> : (
             <>
               <div className="grafik-kaydir"><table className="veri sayisal dar">
                 <thead><tr><th style={sol}>Bileşen</th><th>Net (TL)</th><th style={sol}>Nitelik</th><th style={sol}>Kaynak</th></tr></thead>
@@ -296,20 +299,44 @@ export function Portfoyler() {
   );
 }
 
-/** 18.11 — sayfaya özel iskelet: başlık anında; dört KPI (124 px), dönem kartı (~340 px) ve ilk çift (~520 px) kaba kalıp. Sayı yok, hareket yok. */
-function PortfoylerIskeleti() {
+/** 18.11 → 18.11 yükleme düzeltmesi — yükleme çerçevesi ve kart içi iskeletler: üç bölüm gerçek başlık ve kart adlarıyla anında; KPI'lar gerçek
+ *  etiketleriyle, tablolar gerçek sütun başlıklarıyla, risk künyesi gerçek satır etiketleriyle (ÖLÇÜLDÜ 1440: önce 1.348 → 3.261 px; KPI 214,
+ *  katkılar 343, risk 850, revizyon 565, üyeler 1.033, finans 935 px). Düz işlev: içerikle aynı <Sayfa> kökü ve aynı çocuk konumları. Kayıtlar
+ *  bölümü (yalnız yazabilen rol) seçili portföyü ister; çerçevede yoktur. Sayı yok, hareket yok. */
+const KATKI_SUTUN: readonly IskeletSutun[] = [{ ad: "Santral", sol: true, tur: "metin" }, { ad: "Kurulu güç (kW)" }, { ad: "Program (MWh)" }, { ad: "Gerçekleşen (MWh)" }, { ad: "Sapma (MWh)" }, { ad: "Sapma payı (%)" }, { ad: "Yarın (MWh)" }];
+const UYE_SUTUN: readonly IskeletSutun[] = [{ ad: "Santral", sol: true, tur: "metin" }, { ad: "Üyelik dönemi", sol: true, tur: "metin" }, { ad: "Doğrulama", sol: true, tur: "rozet" }];
+const FIN_SUTUN: readonly IskeletSutun[] = [{ ad: "Bileşen", sol: true, tur: "metin" }, { ad: "Net (TL)" }, { ad: "Nitelik", sol: true, tur: "rozet" }, { ad: "Kaynak", sol: true, tur: "metin" }];
+const RISK_ISK = <><KunyeIskeleti etiketler={["Beklenen sapma", "Aralık", "Aralık dışı saat", "Geçmiş sınav", "Yoğunlaşma", "Santraller arası bağımlılık"]} /><div style={{ marginTop: 10 }}><SatirlarIskeleti satir={4} /></div></>;
+const REV_ISK = <><MetinIskeleti satir={1} /><div style={{ marginTop: 8 }}><ListeIskeleti satir={3} rozetli /></div></>;
+function portfoylerCercevesi(hedefSeg: React.ReactNode) {
   return (
-    <div className="akis" role="status" aria-live="polite" aria-label="Yükleniyor">
+    <div className="akis">
       <section className="bolum">
-        <div className="ozet-bas">Dönem<span className="sag">yükleniyor…</span></div>
-        <div className="iskelet-kpi" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>{Array.from({ length: 4 }, (_, i) => <span key={i} />)}</div>
-        <div className="iskelet-kart" style={{ height: 340 }} />
+      <div className="ozet-bas">Dönem<span className="sag">seçili dönem</span></div>
+      <p className="form-not t-ikincil" style={{ margin: 0 }} aria-hidden="true"><span className="iskelet-alan iskelet-cubuk" style={{ width: "48%" }} /></p>
+      <div className="ızgara satir-4">
+        <KpiIskeleti etiket="Kurulu güç" ikinci />
+        <KpiIskeleti etiket="Üretim beklentisi" ikinci />
+        <KpiIskeleti etiket="Program sapması" ikinci />
+        <KpiIskeleti etiket="Tahmini finansal etki" ikinci />
+      </div>
+      <Kart baslik="Santral katkıları" alt="Dönemde her üyenin programı, gerçekleşeni ve portföy sapmasına katkısı; yarınki tahmini ve üyelik durumu."><TabloIskeleti sutunlar={KATKI_SUTUN} satir={3} /></Kart>
       </section>
       <section className="bolum">
-        <div className="ozet-bas">Önümüzdeki günler</div>
-        <div className="sira-2"><div className="iskelet-kart" style={{ height: 520 }} /><div className="iskelet-kart" style={{ height: 520 }} /></div>
+      <div className="ozet-bas">Önümüzdeki günler<span className="sag">risk ve revizyon</span></div>
+      <div className="sira-2">
+        <Kart baslik="Portföy riski" alt="Önümüzdeki günlerde program ile tahmin arasındaki beklenen fark, aralık dışı saatler ve geçmişte sapmanın yoğunlaştığı yerler.">{RISK_ISK}</Kart>
+        <Kart baslik="Revizyon önerileri" alt="Güncel tahmin ile üretim programı arasındaki farktan türeyen, dayanaklı öneriler. Karar sizindir; PVQuant program bildirmez, piyasaya teklif vermez." sag={hedefSeg}>{REV_ISK}</Kart>
+      </div>
       </section>
-      <span className="gorsel-gizli">Yükleniyor…</span>
+      <section className="bolum">
+      <div className="ozet-bas">Üyelik ve finans<span className="sag">üyeler, DSG, tutarlar</span></div>
+      <div className="sira-2">
+        <Kart baslik="Üyeler, DSG ve sözleşmeler" alt="Portföyün tarihli üyelikleri; dengeden sorumlu grupta üç perspektif: tek başına, grup içinde ve sözleşmeye göre pay."><TabloIskeleti sutunlar={UYE_SUTUN} satir={3} dar /><div style={{ marginTop: 10 }}><MetinIskeleti satir={2} /></div></Kart>
+        <Kart baslik="Finansal etki bileşenleri" alt="Dönemde portföy satırları: aynı santral hesaplarının toplamı; toplama yalnız ilk üç girer. DSG içi tutar, netleşme farkı ve dağılım bilgi satırıdır."><TabloIskeleti sutunlar={FIN_SUTUN} satir={5} dar /></Kart>
+      </div>
+      </section>
+      <span className="gorsel-gizli" role="status" aria-live="polite">Portföy yönetimi yükleniyor…</span>
     </div>
   );
 }
