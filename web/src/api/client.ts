@@ -1,5 +1,6 @@
 import type { MusteriAbonelik, AbonelikTalep, DengesizlikSaatlik, DsgAnahtar, KgupRevizyon, PiyasaDurum, KgupSurum, KgupKiyas, DengesizlikGeriTest, SantralOzeti, TahminSerisi, Karne, AylikBeklenti , SaatProfili , HataDagilimi , GunesYolu , SaatAyMatrisi , KalibrasyonOzeti , PrKarti , KonformalAyar , Backtest , Kayma , Hijyen , Saglik , Dengesizlik , KgupOnizleme , SantralKisa , Portfoy , PortfoyDsg , PortfoyTahmin , EpiasUretim , Bankable , PDegerleri , Kullanilabilirlik , KayipAyrisimi , KayipAgaci , GucMatrisi , Tarife , ApiAnahtar , ApiAnahtarYeni , Webhook , Kullanici , AlarmKurallari , Damga , Nowcast , Hakkinda , Guvenilirlik , FizikTerimleri , FizikOnizleme , PaylasimListesi , PaylasilanVeri , Dogrulama , TakimUyesi , Isler , RaporJson , DenetimKaydi , KurulusAyarlar, PortfoyAnahtar, PortfoyKupst, UevcbArama , Takvim, KunyeTarihler, Yekdem, Olay, OlayOzet, OlayGiris, OlayYanit, MutabakatOzet, MutabakatYukleme, SaatlikKiyas, SaatlikYuklemeYanit, KuralTablosu, SayacOzet, SayacYuklemeYanit, SayacAyar, SayacKaynak, RaporDonemVeri, RaporGonderim, RaporGonderimSonuc, Performans, Sensorler, Sensor, Kirlenme, VeriYoluOzet, VeriYoluSinama , GolgeGorunum, OlayAdaylari, BulutKimlikDurum, BulutKimlikKayit, BulutKimlikSonuc, BulutOAuthBaslat, BulutBirimKiyas, PilotDurum, ReferansKiyasOzet, EdgeToplayici, EdgeToplayiciYeni , BagimsizDogrulama, FinansalEtki, FinansalEtkiGecmis, PortfoyFinansalEtki, PortfoyKisa, PortfoyDetay, PortfoyUye, PortfoySozlesme, Kurulus, PortfoyTahminT, PortfoySapmaT, PortfoyRiskT, PortfoyDsgT, PortfoyRevizyonT, PortfoyFinansT, GenelBakis } from "./types";
 import { donemSecenekleri } from "../lib/donem";   // 16.11: ısıtma — Finansal etki varsayılan dönemi
+import { damgaYay } from "../shell/damgaOlay";   // 18.11 bayat-önce: taze yanıt gelince açık sayfa yenilenir
 import { ornekOzet, ornekTahmin, ornekKarne, ornekAylik, ornekBagimsiz, ornekFinansalEtki } from "./ornek";
 
 /** Ince API istemcisi (v2.73-A). Kural: sozlesmeyi API belirler, istemci uyar.
@@ -78,11 +79,44 @@ function getir<T>(yol: string): Promise<T> {
     if (!y.ok) throw new Error(`${y.status} ${yol}`);
     const veri = (await y.json()) as T;
     bellekte.set(yol, { veri, zaman: Date.now() });
+    bayatIsle(yol, y.headers.get("x-bayat") === "1");
     return veri;
   })();
   ucustakiler.set(yol, soz);
   soz.finally(() => ucustakiler.delete(yol)).catch(() => {});
   return soz;
+}
+
+/** 18.11 canlı teşhis — SUNUCU bayat-önce: damga değişince sunucu son bilinen yanıtı anında ve `X-Bayat: 1` ile döner, tazesini arka planda
+ *  üretir (ÖLÇÜLDÜ: :50 iş koşusundan sonra açık sekme 2,7–5,8 s bekliyordu). İstemci: bayat yanıt kullanılır (sayfa dolu), Kabuk
+ *  «güncelleniyor» yazar, yol 4/6/10/20/30 s sonra tek-uçuş yeniden istenir; taze gelince bellek yenilenir ve damgaYay() ile açık sayfa
+ *  bellekten yolundan (iskeletsiz) tazelenir. Beş denemeden sonra vazgeçilir (bir sonraki damga/TTL'de yenilenir). Dürüstlük: bayat
+ *  veri «güncel» diye sunulmaz — çip yanar; hesap/etiket değişmez. */
+const bayatlar = new Map<string, number>();   // yol → deneme sayısı
+const bayatZamanlayici = new Map<string, number>();   // yol → planlı yeniden isteme (tek plan; sayfanın kendi isteği ikinci plan açmaz)
+const bayatDinleyiciler = new Set<() => void>();
+const BAYAT_BEKLEME_SN = [4, 6, 10, 20, 30] as const;
+export function bayatSayisi(): number { return bayatlar.size; }
+export function bayatDinle(d: () => void): () => void { bayatDinleyiciler.add(d); return () => { bayatDinleyiciler.delete(d); }; }
+const bayatYay = () => { for (const d of bayatDinleyiciler) d(); };
+function bayatIsle(yol: string, bayat: boolean): void {
+  if (!bayat) {
+    if (bayatlar.delete(yol)) { bayatYay(); damgaYay(); }   // tazesi geldi: açık sayfa yeniden çeker (bellekte taze, iskelet yok)
+    return;
+  }
+  const n = bayatlar.get(yol);
+  if (n === undefined) { bayatlar.set(yol, 0); bayatYay(); bayatPlanla(yol, 0); return; }
+  if (bayatZamanlayici.has(yol)) return;   // plan zaten var (bu yanıt sayfanın kendi isteğinden geldi)
+  if (n + 1 < BAYAT_BEKLEME_SN.length) { bayatlar.set(yol, n + 1); bayatPlanla(yol, n + 1); }
+  else { bayatlar.delete(yol); bayatYay(); }   // vazgeç: sonraki damga/TTL'de yenilenir
+}
+function bayatPlanla(yol: string, n: number): void {
+  bayatZamanlayici.set(yol, window.setTimeout(() => {
+    bayatZamanlayici.delete(yol);
+    if (!bayatlar.has(yol)) return;
+    const b = bellekte.get(yol); if (b) bellekte.set(yol, { veri: b.veri, zaman: 0 });   // tazelik kuralına takılmasın
+    getir(yol).catch(() => { bayatlar.delete(yol); bayatYay(); });
+  }, BAYAT_BEKLEME_SN[Math.min(n, BAYAT_BEKLEME_SN.length - 1)] * 1000));
 }
 
 /** 24.10 Portföy geçiş turu — BAYAT OKUYUCU (stale-while-revalidate; sayfanın bilinçli, görünür kullanımı için):
@@ -273,6 +307,7 @@ export async function giris(email: string, sifre: string, kod?: string):
 }
 
 export function cikis(): void {
+  bayatlar.clear(); bayatYay(); for (const z of bayatZamanlayici.values()) window.clearTimeout(z); bayatZamanlayici.clear();   // 18.11: bekleyen bayat yenilemeleri hesapla birlikte düşer
   localStorage.removeItem("pvq_token");
   localStorage.removeItem("pvq_temsil");   // 26.10 denetim-2: görüntüleme işareti oturumla birlikte gider (süresi dolan temsil sonraki girişte şerit bırakmasın)
   bellekte.clear();   // v2.325: hesap sınırı — sonraki oturum önceki hesabın verisini bellekte bulmasın

@@ -26,7 +26,8 @@ from typing import Any
 
 from pvquant.services import yanit_onbellegi
 
-ARALIK_SN = 60.0        # damga yoklama aralığı (istemcinin görünür yoklamasıyla aynı)
+ARALIK_SN = 20.0        # damga yoklama aralığı — 18.11 canlı teşhis: 60 s'de değişim sonrası pencere 0–115 s'ydi; 20 s + 2 iş parçacığı ile ≈ 0–45 s
+ESZAMANLI = 2           # santral başına turlar yan yana (ÖLÇÜLDÜ canlı: 4 santral sırayla 57 s)
 ILK_GECIKME_SN = 15.0   # açılışta servis ön yüklemesi bitsin, DB ayağa kalksın
 SAYAC = {"tur": 0, "isitilan": 0, "atlanan": 0, "bos": 0, "hata": 0}   # bos: uretici 4xx (kosusu olmayan santral) — kalici durum, hata degil
 _SON_ETAG: dict[str, str] = {}
@@ -95,38 +96,61 @@ def tur(kayit: Kayit, liste: list[tuple[str, str]] | None = None, zorla: bool = 
     g = gunler()
     if kiraci:
         etag_fn = lambda t, _p: yanit_onbellegi._kiraci_etag(t)   # noqa: E731
-        getir_fn = lambda t, _p, a, u, ttl_sn: yanit_onbellegi.getir_kiraci(t, a, u, ttl_sn=ttl_sn)   # noqa: E731
+        getir_fn = lambda t, _p, a, u, ttl_sn: yanit_onbellegi.getir_kiraci(t, a, u, ttl_sn=ttl_sn, bayat_olur=False)   # noqa: E731
     else:
         etag_fn = yanit_onbellegi._portfoy_etag if portfoy else yanit_onbellegi._damga_etag
-        getir_fn = yanit_onbellegi.getir_portfoy if portfoy else yanit_onbellegi.getir
+        # 18.11 bayat-once: isitici SENKRON uretir (bayat_olur=False) — yoksa tur son bilineni dondurup arka plan kuyrugunu doldururdu
+        getir_fn = (lambda t, p, a, u, ttl_sn: yanit_onbellegi.getir_portfoy(t, p, a, u, ttl_sn=ttl_sn, bayat_olur=False)) if portfoy \
+            else (lambda t, p, a, u, ttl_sn: yanit_onbellegi.getir(t, p, a, u, ttl_sn=ttl_sn, bayat_olur=False))
     varsayilan = kiracilar if kiraci else (portfoyler if portfoy else santraller)
-    for tenant_id, plant_id in (liste if liste is not None else varsayilan()):
+
+    def _birim(tenant_id: str, plant_id: str) -> dict:
+        """Tek santral/portfoy/kiraci icin tur; sayaclar yerel (yan yana kosar, SAYAC ve _SON_ETAG tek yerde guncellenir)."""
+        b = {"isitilan": 0, "atlanan": 0, "bos": 0, "hata": 0, "ani": None, "et": None}
         ani = ("k:" + tenant_id) if kiraci else (("pf:" + plant_id) if portfoy else plant_id)
         try:
             et = etag_fn(tenant_id, plant_id) + "|" + g["bugun"]   # gun donunce de yeniden (KGUP yarin / revizyon bugun)
         except Exception:
-            sonuc["hata"] += 1
-            continue
+            b["hata"] += 1
+            return b
         if not zorla and _SON_ETAG.get(ani) == et:
-            sonuc["atlanan"] += 1
-            continue
+            b["atlanan"] += 1
+            return b
         hata = 0
         for anahtar, (uret, ttl_sn) in kayit.items():
             try:
                 getir_fn(tenant_id, plant_id, anahtar_coz(anahtar, g), lambda u=uret, t=tenant_id, p=plant_id: u(t, p), ttl_sn=ttl_sn)
-                sonuc["isitilan"] += 1
+                b["isitilan"] += 1
             except Exception as e:
                 kod = getattr(e, "status_code", None)
                 if isinstance(kod, int) and 400 <= kod < 500:
-                    sonuc["bos"] += 1    # 404/409 (kosu yok, program yok): kalici durum; onbellege girmez, etag anisini engellemez (her dakika yeniden denenmez)
+                    b["bos"] += 1    # 404/409 (kosu yok, program yok): kalici durum; onbellege girmez, etag anisini engellemez (her dakika yeniden denenmez)
                 else:
                     hata += 1    # gecici (DB) hata: sayilir, gecilir; bir sonraki turda yeniden denenir
-        sonuc["hata"] += hata
+        b["hata"] += hata
         if hata == 0:
-            _SON_ETAG[ani] = et    # 17.11 inceleme: hata varsa (geçici DB sorunu) bir sonraki turda yeniden denenir
+            b["ani"], b["et"] = ani, et    # 17.11 inceleme: hata varsa (geçici DB sorunu) bir sonraki turda yeniden denenir
+        return b
+
+    hedefler = list(liste if liste is not None else varsayilan())
+    t0 = time.monotonic()
+    if len(hedefler) > 1 and ESZAMANLI > 1:
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=ESZAMANLI, thread_name_prefix="pvq-isitici") as havuz:
+            birimler = list(havuz.map(lambda tp: _birim(*tp), hedefler))
+    else:
+        birimler = [_birim(t, p) for t, p in hedefler]
+    for b in birimler:
+        for k in ("isitilan", "atlanan", "bos", "hata"):
+            sonuc[k] += b[k]
+        if b["ani"] is not None:
+            _SON_ETAG[b["ani"]] = b["et"]
     SAYAC["tur"] += 1
     for k in ("isitilan", "atlanan", "bos", "hata"):
         SAYAC[k] += sonuc[k]
+    if sonuc["isitilan"] or sonuc["hata"]:   # 18.11: tur gunlugu (uvicorn akisi) — canlida isitici hic satir yazmiyordu, yarim kalan tur kanitlanamiyordu
+        tur_adi = "kiraci" if kiraci else ("portfoy" if portfoy else "santral")
+        print(f"ISITICI {tur_adi} {time.monotonic() - t0:5.1f} s isitilan={sonuc['isitilan']} atlanan={sonuc['atlanan']} bos={sonuc['bos']} hata={sonuc['hata']}", flush=True)
     return sonuc
 
 

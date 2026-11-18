@@ -117,3 +117,20 @@ def test_damga_degisim_kaynaklari_ve_izolasyon(temiz):
     # izolasyon: B kiracısı A'nın santral özünü/damgasını okuyamaz — santral_ozu None, SCADA/koşu boş
     db = damga_service.hesapla(b["tenant_id"], pa)
     assert db["santral_ozu"] is None and db["son_scada"] is None
+
+
+def test_denetim_isi_damgayi_degistirmez(temiz):
+    """18.11 canlı teşhis: her saat :50 iletisim_kontrol bütün yanıt önbelleğini boşaltıyordu; artık yalnız veri yazan işler damgaya girer."""
+    e = temiz; pid, a, b, pa, pb = _kur(e)
+    et0 = damga_service.etag_uret(damga_service.hesapla(a["tenant_id"], pa))
+    k0 = damga_service.etag_uret(damga_service.kiraci_hesapla(a["tenant_id"]))
+    with sistem_baglami() as s:
+        for job in ("iletisim_kontrol", "kgup_revizyon_kontrol", "ptf_kontrol"):
+            s.execute(text("INSERT INTO jobs_log(job, tenant_id, plant_id, started, finished, status, detail) VALUES (:j, CAST(:t AS uuid), :p, now(), now(), 'ok', :e)"),
+                      {"j": job, "t": a["tenant_id"], "p": pa, "e": f"senkron {e}"})
+    assert damga_service.etag_uret(damga_service.hesapla(a["tenant_id"], pa)) == et0           # denetim işleri: damga sabit
+    assert damga_service.etag_uret(damga_service.kiraci_hesapla(a["tenant_id"])) == k0
+    with sistem_baglami() as s:
+        s.execute(text("INSERT INTO jobs_log(job, tenant_id, plant_id, started, finished, status, detail) VALUES ('gece_finansal_etki', CAST(:t AS uuid), :p, now() + interval '1 second', now(), 'ok', :e)"),
+                  {"t": a["tenant_id"], "p": pa, "e": f"senkron {e}"})
+    assert damga_service.etag_uret(damga_service.hesapla(a["tenant_id"], pa)) != et0           # veri yazan iş: değişir

@@ -40,7 +40,7 @@ def test_damga_degisince_isitir_degismeyince_atlar(etkin):
     r2 = yanit_isitici.tur({"genel-bakis": (uret, 900)}, liste)
     assert r2 == {"isitilan": 0, "atlanan": 2, "bos": 0, "hata": 0} and say["n"] == 2
     # ısıtılan kayıt, uç sarmalının anahtarıyla isabet eder (üretici yine koşmaz)
-    assert yanit_onbellegi.getir("t1", "p1", "genel-bakis", lambda: uret("t1", "p1"))["n"] == 1 and say["n"] == 2
+    assert yanit_onbellegi.getir("t1", "p1", "genel-bakis", lambda: uret("t1", "p1"))["santral"] == "p1" and say["n"] == 2   # 18.11: santrallar yan yana ısınır (n sırası değişken)
     # damga değişince yeniden ısıtılır; kiracı yalıtımı korunur
     etkin["son_scada"] = "2026-11-17T06:00:00"
     yanit_onbellegi._DAMGA.clear()
@@ -134,6 +134,10 @@ def test_main_sarmali_ve_anahtarlar():
                     # 18.11 gezinme Parti 1: Finansal etki (santral, son tam ay) + Hakkında'nın iki genel ucu
                     '"finansal-etki?donem={gecen_ay}&uretim=None&itibariyle=None": (lambda t, p: _finans_isit(t, p)',
                     '"hata-dagilimi?gun=120&kova=0-24": (lambda t, p: _hata_dagilimi_uc_uret(plant_id=p, gun=120, kova="0-24"',   # 18.11 Parti 3
+                    # 18.11 canlı teşhis: kullanıcının soğuk ödediği uçlar
+                    '"dengesizlik?gun=90": (lambda t, p: _dengesizlik_uret(plant_id=p, gun=90', '"dengesizlik?gun=14": (lambda t, p: _dengesizlik_uret(plant_id=p, gun=14',
+                    '"mutabakat?donem=None&surum=None&uretim=None": (lambda t, p: _mutabakat_isit(t, p)',
+                    '"mutabakat/saatlik?donem={gecen_ay}&uretim=None&fmt=json": (lambda t, p: _mutabakat_saatlik_uret(plant_id=p, donem=yanit_isitici.gunler()["gecen_ay"], uretim=None, fmt="json"',
                     '}, kayit_g={', '"hakkinda": (lambda: _ks().hakkinda(), 600)', '"kurallar?tarih=None&segment=lisansli_serbest&gun={bugun}": (lambda: _kurallar_tablosu_uret(tarih=None, segment="lisansli_serbest"), 600)',
                     '"portfoy/tahmin?gun=7&kural=son&bugun={bugun}": (lambda t, pf: _pt().gunler(t, pf, 7, "son", None), 300)',   # 18.11 portfoy kayitlari
                     '"portfoy/sapma?donem={gecen_ay}&uretim=None&bugun={bugun}": (lambda t, pf: _sp().donem(t, pf, yanit_isitici.gunler()["gecen_ay"], None, None), yanit_onbellegi.VARSAYILAN_TTL_SN)',
@@ -184,3 +188,22 @@ def test_genel_turu_ttl_dolmadan_yeniler(etkin, monkeypatch):
     r = yanit_isitici.tur_genel(kayit)
     assert r["isitilan"] == 1 and r["atlanan"] == 1 and say["n"] == 3
     assert yanit_onbellegi.getir_genel("hakkinda", uret, ttl_sn=600) == {"n": 3}   # yenilenmis deger
+
+
+# 18.11 canlı teşhis — ısıtıcı bayat-önce katmanından geçmez: damga değişince SENKRON üretir (son bilinen varken bile), tur günlüğü, yoklama 20 s, 2 iş parçacığı
+def test_isitici_senkron_uretir_ve_gunluk(etkin, capsys):
+    say = {"n": 0}
+    def uret(t, p):
+        say["n"] += 1
+        return {"n": say["n"]}
+    liste = [("t1", "p1")]
+    assert yanit_isitici.tur({"genel-bakis": (uret, 900)}, liste)["isitilan"] == 1 and say["n"] == 1
+    etkin["son_scada"] = "2026-11-17T06:00:00"; yanit_onbellegi._DAMGA.clear()
+    assert yanit_isitici.tur({"genel-bakis": (uret, 900)}, liste)["isitilan"] == 1 and say["n"] == 2   # son bilinen vardı; yine de senkron üretti
+    yanit_onbellegi.ucustakileri_bekle(); assert say["n"] == 2                                            # arka plan kuyruğu dolmadı
+    assert yanit_onbellegi.getir("t1", "p1", "genel-bakis", lambda: uret("t1", "p1"))["n"] == 2        # ziyaretçi taze alır, bayat değil
+    cikti = capsys.readouterr().out
+    assert "ISITICI santral" in cikti and "isitilan=1" in cikti
+    assert yanit_isitici.ARALIK_SN == 20.0 and yanit_isitici.ESZAMANLI == 2
+    kaynak = Path(yanit_isitici.__file__).read_text(encoding="utf-8")
+    assert kaynak.count("ttl_sn=ttl_sn, bayat_olur=False)") == 3, "uc getir yolu (santral, portfoy, kiraci) senkron"

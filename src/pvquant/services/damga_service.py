@@ -56,14 +56,23 @@ def _ortak_damga(tenant_id, plant_id) -> dict:
     return {k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in d.items()}
 
 
+# 18.11 canli teshis: yalniz denetim/hatirlatma/yedek isleri (veri yazmaz) damgayi DEGISTIRMEZ. Olculdu: her saat :50 iletisim_kontrol
+# bes santralin ve kiracinin butun yanit onbellegini bosaltiyor, isitici 60 s sonra 57 s'lik tur atiyor, pencerede acik sekme 2,7-5,8 s
+# soguk bekliyordu (gunde ~45 gecersizlesme, ~40'i veri degistirmeyen is). Veri yazan isler (gece_*, sabah/gun ici tahmin, gunluk beklenti,
+# yakalama, kur) damgada kalir; listede OLMAYAN yeni bir is de damgayi degistirir (guvenli taraf). Alarm/kgup/piyasa zaten kendi alaninda.
+DAMGA_DISI_ISLER: tuple[str, ...] = ("iletisim_kontrol", "kgup_revizyon_kontrol", "kgup_teslim_kontrol", "ptf_kontrol", "avans_hatirlatma",
+                                     "teminat_hatirlatma", "rapor_gonderimi", "acilis_yedek", "gece_yedek")
+
+
 def _kiraci_damga(s, tenant_id) -> dict:
     """Kiraciya ait, santraldan bagimsiz damga parcalari (sistem baglami): son_piyasa (PTF/SMF guncellemesi), son_is (kiracinin ya da
-    kuresel son is kaydi). 18.11 DSG/portfoy hiz turu: santral damgasi ve portfoy damgasi ortak kullanir."""
-    from sqlalchemy import text
+    kuresel son VERI YAZAN is kaydi; DAMGA_DISI_ISLER haric). 18.11 DSG/portfoy hiz turu: santral damgasi ve portfoy damgasi ortak kullanir."""
+    from sqlalchemy import bindparam, text
     r = s.execute(text(
         "SELECT (SELECT max(guncelleme) FROM piyasa_fiyat) AS son_piyasa,"
-        " (SELECT max(started) FROM jobs_log WHERE tenant_id = CAST(:t AS uuid) OR tenant_id IS NULL) AS son_is"),
-        {"t": str(tenant_id)}).mappings().first()
+        " (SELECT max(started) FROM jobs_log WHERE (tenant_id = CAST(:t AS uuid) OR tenant_id IS NULL) AND job NOT IN :haric) AS son_is")
+        .bindparams(bindparam("haric", expanding=True)),
+        {"t": str(tenant_id), "haric": list(DAMGA_DISI_ISLER)}).mappings().first()
     return dict(r)
 
 

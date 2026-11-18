@@ -33,8 +33,10 @@ def test_isabet_iska_kiraci_ve_damga(etkin):
     assert yanit_onbellegi.getir("t2", PLANT, "x", uret) == {"n": 3}           # başka kiracı, aynı santral kimliği → paylaşılmaz
     etkin["son_scada"] = "2026-11-17T00:00:00"
     yanit_onbellegi._DAMGA.clear()  # veri değişti (damga)
-    assert yanit_onbellegi.getir("t", PLANT, "x", uret) == {"n": 4}
-    assert yanit_onbellegi.SAYAC["isabet"] == 1 and yanit_onbellegi.SAYAC["iska"] == 4
+    assert yanit_onbellegi.getir("t", PLANT, "x", uret) == {"n": 1}            # 18.11 bayat-önce: son bilinen anında, taze arka planda
+    yanit_onbellegi.ucustakileri_bekle()
+    assert yanit_onbellegi.getir("t", PLANT, "x", uret) == {"n": 4}            # taze (arka planda üretildi), bellekten
+    assert yanit_onbellegi.SAYAC["isabet"] == 2 and yanit_onbellegi.SAYAC["iska"] == 4 and yanit_onbellegi.SAYAC["bayat"] == 1
 
 
 def test_dosya_katmani_isciler_arasi(etkin):
@@ -48,7 +50,7 @@ def test_dosya_katmani_isciler_arasi(etkin):
         return {"n": say["n"], "zaman": dt.datetime(2026, 11, 16, 20, 0), "liste": [1.5, None]}
     ilk = yanit_onbellegi.getir("t", PLANT, "x", uret)
     assert ilk == {"n": 1, "zaman": "2026-11-16T20:00:00", "liste": [1.5, None]}   # jsonable_encoder: datetime → ISO
-    assert len([a for a in os.listdir(os.environ["PVQ_YANIT_ONBELLEK_DIZIN"]) if a.endswith(".json")]) == 1
+    assert len([a for a in os.listdir(os.environ["PVQ_YANIT_ONBELLEK_DIZIN"]) if a.endswith(".json")]) == 2   # 18.11: etag'li dosya + «son bilinen»
     yanit_onbellegi._KAYIT.clear()                                                   # «başka işçi»: süreç belleği boş
     assert yanit_onbellegi.getir("t", PLANT, "x", uret) == ilk and say["n"] == 1    # dosyadan isabet, üretici koşmadı
     assert yanit_onbellegi.SAYAC["dosya_isabet"] == 1
@@ -178,7 +180,9 @@ def test_getir_portfoy_portfoy_damgasiyla_ve_santraldan_ayri(etkin, monkeypatch)
     assert yanit_onbellegi.getir_portfoy("t2", "pf1", "portfoy/sapma?donem=2026-10", uret) == {"n": 3}      # baska kiraci
     assert yanit_onbellegi.getir("t1", "pf1", "portfoy/sapma?donem=2026-10", uret) == {"n": 4}              # santral anahtari ayri («pf:» on eki)
     pf["uyelik_guncelleme"] = "2026-11-18T09:00:00"; yanit_onbellegi._DAMGA.clear()
-    assert yanit_onbellegi.getir_portfoy("t1", "pf1", "portfoy/sapma?donem=2026-10", uret) == {"n": 5}      # damga degisti -> yeniden
+    assert yanit_onbellegi.getir_portfoy("t1", "pf1", "portfoy/sapma?donem=2026-10", uret) == {"n": 1}      # damga degisti -> son bilinen (bayat), taze arka planda
+    yanit_onbellegi.ucustakileri_bekle()
+    assert yanit_onbellegi.getir_portfoy("t1", "pf1", "portfoy/sapma?donem=2026-10", uret) == {"n": 5}      # taze
     def patlar():
         raise LookupError("portfoy yok")
     with pytest.raises(LookupError):
@@ -200,6 +204,8 @@ def test_getir_kiraci_kiraciya_ozel_ve_damgali(etkin, monkeypatch):
     assert yanit_onbellegi.getir_kiraci("t1", "portfoy?bugun=2026-11-18", uret, ttl_sn=300) == {"n": 1}   # isabet
     assert yanit_onbellegi.getir_kiraci("t2", "portfoy?bugun=2026-11-18", uret, ttl_sn=300) == {"n": 2}   # başka kiracı: ayrı
     d["alarm_ozu"] = "1:2026-11-18T11:00:00"; yanit_onbellegi._DAMGA.clear()   # alarm gelince damga değişir (5 s hatırlama sıfırlandı)
+    assert yanit_onbellegi.getir_kiraci("t1", "portfoy?bugun=2026-11-18", uret, ttl_sn=300) == {"n": 1}   # bayat-önce: son bilinen
+    yanit_onbellegi.ucustakileri_bekle()
     assert yanit_onbellegi.getir_kiraci("t1", "portfoy?bugun=2026-11-18", uret, ttl_sn=300) == {"n": 3}
     assert ("t1", "k:", "portfoy?bugun=2026-11-18", yanit_onbellegi._kiraci_etag("t1")) in yanit_onbellegi._KAYIT
 
@@ -214,3 +220,73 @@ def test_getir_genel_taze_yeniden_uretir(etkin):
     assert yanit_onbellegi.getir_genel("hakkinda", uret, ttl_sn=600) == {"n": 1}
     assert yanit_onbellegi.getir_genel("hakkinda", uret, ttl_sn=600, taze=True) == {"n": 2}
     assert yanit_onbellegi.getir_genel("hakkinda", uret, ttl_sn=600) == {"n": 2} and say["n"] == 2
+
+
+# 18.11 canlı teşhis — BAYAT-ÖNCE: damga değişince ya da TTL dolunca son bilinen yanıt anında ve bayrakla; taze üretim arka planda tek uçuş;
+# ısıtıcı yolu (bayat_olur=False) senkron üretir; çok eski son bilinen (BAYAT_EN_COK_SN) kullanılmaz; middleware X-Bayat başlığı.
+def test_bayat_once_bayrak_tek_ucus_ve_yas_siniri(etkin, monkeypatch):
+    import os
+    import time
+    say = {"n": 0}
+    def uret():
+        say["n"] += 1
+        time.sleep(0.05)
+        return {"n": say["n"]}
+    assert yanit_onbellegi.getir("t", PLANT, "x", uret) == {"n": 1}
+    etkin["son_scada"] = "2026-11-18T00:00:00"; yanit_onbellegi._DAMGA.clear()
+    b = yanit_onbellegi.istek_bayragi_kur()
+    assert yanit_onbellegi.getir("t", PLANT, "x", uret) == {"n": 1} and b["bayat"] is True and b["yas_sn"] >= 0   # bayat + bayrak
+    assert yanit_onbellegi.getir("t", PLANT, "x", uret) == {"n": 1}                                          # ikinci istek: tek uçuş, yeni üretim başlamaz
+    yanit_onbellegi.ucustakileri_bekle()
+    assert say["n"] == 2                                                                                      # arka planda TEK üretim
+    b2 = yanit_onbellegi.istek_bayragi_kur()
+    assert yanit_onbellegi.getir("t", PLANT, "x", uret) == {"n": 2} and b2["bayat"] is False                 # taze, bayrak yok
+    # ısıtıcı yolu: damga yine değişsin → bayat_olur=False senkron üretir, bayrak kalkmaz
+    etkin["son_scada"] = "2026-11-19T00:00:00"; yanit_onbellegi._DAMGA.clear()
+    b3 = yanit_onbellegi.istek_bayragi_kur()
+    assert yanit_onbellegi.getir("t", PLANT, "x", uret, bayat_olur=False) == {"n": 3} and b3["bayat"] is False and say["n"] == 3
+    # çok eski son bilinen kullanılmaz: damga değişsin, SON dosyası 7 saat yaşlansın → senkron üretim
+    etkin["son_scada"] = "2026-11-20T00:00:00"; yanit_onbellegi._DAMGA.clear()
+    d = os.environ["PVQ_YANIT_ONBELLEK_DIZIN"]
+    son = yanit_onbellegi._son_yolu(d, ("t", PLANT, "x", "x"))
+    eski = time.time() - 7 * 3600; os.utime(son, (eski, eski))
+    b4 = yanit_onbellegi.istek_bayragi_kur()
+    assert yanit_onbellegi.getir("t", PLANT, "x", uret) == {"n": 4} and b4["bayat"] is False
+    # hiç üretilmemiş uç: son bilinen yok → senkron
+    assert yanit_onbellegi.getir("t", PLANT, "y", uret) == {"n": 5}
+
+
+def test_bayat_once_http_basligi(etkin, monkeypatch):
+    """Middleware: bayat servis edilen yanıt X-Bayat: 1 ve X-Bayat-Yas-sn taşır; taze yanıtta başlık yok (kaynak pini + canlı istek)."""
+    from pathlib import Path
+    kaynak = Path(api_main.__file__).read_text(encoding="utf-8")
+    assert 'bayrak = yanit_onbellegi.istek_bayragi_kur()' in kaynak and 'yanit.headers["X-Bayat"] = "1"' in kaynak and '"X-Bayat-Yas-sn"' in kaynak
+    assert 'expose_headers=["Content-Disposition", "X-Sure-ms", "X-Bayat", "X-Bayat-Yas-sn"]' in kaynak
+    say = {"n": 0}
+    def uret(*a, **k):
+        say["n"] += 1
+        return {"n": say["n"]}
+    monkeypatch.setattr(api_main, "_saglik_uret", uret)
+    api_main.app.dependency_overrides[gecerli_kullanici] = lambda: {"tenant_id": "t", "sub": "u", "role": "viewer"}
+    try:
+        c = TestClient(api_main.app)
+        r1 = c.get(f"/v1/plants/{PLANT}/saglik"); assert r1.status_code == 200 and "X-Bayat" not in r1.headers
+        etkin["son_scada"] = "2026-11-18T00:00:00"; yanit_onbellegi._DAMGA.clear()
+        r2 = c.get(f"/v1/plants/{PLANT}/saglik")
+        assert r2.status_code == 200 and r2.headers.get("X-Bayat") == "1" and r2.headers.get("X-Bayat-Yas-sn") is not None and r2.json() == r1.json()
+        yanit_onbellegi.ucustakileri_bekle()
+        r3 = c.get(f"/v1/plants/{PLANT}/saglik"); assert "X-Bayat" not in r3.headers and r3.json()["n"] == 2
+    finally:
+        api_main.app.dependency_overrides.pop(gecerli_kullanici, None)
+
+
+def test_damga_disi_isler_kaynakta():
+    """18.11: denetim/hatırlatma işleri damgayı değiştirmez (sorgu NOT IN; veri yazan işler listede değil)."""
+    from pathlib import Path
+
+    from pvquant.services import damga_service
+    kaynak = Path(damga_service.__file__).read_text(encoding="utf-8")
+    assert "AND job NOT IN :haric) AS son_is" in kaynak and 'bindparam("haric", expanding=True)' in kaynak
+    assert "iletisim_kontrol" in damga_service.DAMGA_DISI_ISLER and "kgup_revizyon_kontrol" in damga_service.DAMGA_DISI_ISLER
+    for veri_yazan in ("sabah_tahmin", "gun_ici_tahmin", "gece_finansal_etki", "gece_skill", "gece_bagimsiz_dogrulama", "gunluk_beklenti", "acilis_yakalama", "gece_kur"):
+        assert veri_yazan not in damga_service.DAMGA_DISI_ISLER

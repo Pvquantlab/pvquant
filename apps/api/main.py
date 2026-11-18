@@ -48,7 +48,7 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],   # v2.264: PUT (segment) + DELETE (anahtar/webhook); v2.557: PATCH (bulut çekiş ayarı)
     allow_headers=["Authorization", "Content-Type", "X-API-Key"],
     # v2.94: rapor dosya adi — tarayici bu basligi ancak expose ile gorur
-    expose_headers=["Content-Disposition"])
+    expose_headers=["Content-Disposition", "X-Sure-ms", "X-Bayat", "X-Bayat-Yas-sn"])   # 18.11: bayat-önce başlıkları (geliştirmede çapraz kaynak)
 
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -160,6 +160,12 @@ def _yanit_isiticisini_baslat() -> None:
         "finansal-etki?donem={gecen_ay}&uretim=None&itibariyle=None": (lambda t, p: _finans_isit(t, p), yanit_onbellegi.VARSAYILAN_TTL_SN),
         # 18.11 gezinme Parti 3: Doğruluk üst KPI'ı (günlük sapma) hata dağılımından; artık açılışta istenir (canlı soğuk 1,2–2,0 s) — anahtar istemci yoluyla birebir
         "hata-dagilimi?gun=120&kova=0-24": (lambda t, p: _hata_dagilimi_uc_uret(plant_id=p, gun=120, kova="0-24", claims=_c(t)), yanit_onbellegi.VARSAYILAN_TTL_SN),
+        # 18.11 canlı teşhis: kullanıcının soğuk ödediği, ısıtıcıda olmayan uçlar — Doğruluk uzlaştırma kartı (dengesizlik?gun=90: 1,3–2,0 s),
+        # Santralim (gun=14), Mutabakat özeti (0,8–1,1 s; modül kapılı) ve saatlik kıyas (varsayılan son tam ay). Anahtarlar uç sarmalılarıyla birebir.
+        "dengesizlik?gun=90": (lambda t, p: _dengesizlik_uret(plant_id=p, gun=90, claims=_c(t)), yanit_onbellegi.VARSAYILAN_TTL_SN),
+        "dengesizlik?gun=14": (lambda t, p: _dengesizlik_uret(plant_id=p, gun=14, claims=_c(t)), yanit_onbellegi.VARSAYILAN_TTL_SN),
+        "mutabakat?donem=None&surum=None&uretim=None": (lambda t, p: _mutabakat_isit(t, p), yanit_onbellegi.VARSAYILAN_TTL_SN),
+        "mutabakat/saatlik?donem={gecen_ay}&uretim=None&fmt=json": (lambda t, p: _mutabakat_saatlik_uret(plant_id=p, donem=yanit_isitici.gunler()["gecen_ay"], uretim=None, fmt="json", claims=_c(t)), yanit_onbellegi.VARSAYILAN_TTL_SN),
     }, kayit_pf={
         # 18.11 DSG/portfoy hiz turu: portfoy sayfasinin acilis uclari (varsayilan donem = gecen ay, sayfadaki secici ile ayni); anahtarlar uc sarmaliyla birebir
         "portfoy/tahmin?gun=7&kural=son&bugun={bugun}": (lambda t, pf: _pt().gunler(t, pf, 7, "son", None), 300),
@@ -192,6 +198,18 @@ def _finans_isit(tenant_id: str, plant_id: str):
     if h and yetki_service.zorlama_kipi() == "zorla":
         raise HTTPException(h["http"], h["mesaj"])
     return _finansal_etki_uret(plant_id=plant_id, donem=yanit_isitici.gunler()["gecen_ay"], uretim=None, taze=0, itibariyle=None, claims={"tenant_id": tenant_id, "sub": "isitici", "role": "viewer"}, _kapi=None)
+
+
+def _mutabakat_isit(tenant_id: str, plant_id: str):
+    """Isitici icin mutabakat ozeti (/v1/plants/{id}/mutabakat, varsayilan donem): modul kapisi «zorla» kipinde 403 verirse 4xx -> «bos» (_finans_isit ile ayni)."""
+    from pvquant.services import yetki_service
+    try:
+        h = yetki_service.kapi_hukmu(tenant_id, modul="mutabakat")
+    except LookupError:
+        h = None
+    if h and yetki_service.zorlama_kipi() == "zorla":
+        raise HTTPException(h["http"], h["mesaj"])
+    return _mutabakat_ozet_uret(plant_id=plant_id, donem=None, surum=None, uretim=None, claims={"tenant_id": tenant_id, "sub": "isitici", "role": "viewer"}, _kapi=None)
 
 
 def _ks():
@@ -269,9 +287,14 @@ async def _sure_basligi(request: Request, call_next):
     """16.11 gezinme hızı: her yanıta X-Sure-ms (sunucuda geçen süre). 300 ms üstü /v1 istekleri uvicorn akışına «YAVAS» satırı
     olarak düşer (yol + süre; gövde ve kimlik yok) — önce/sonra ölçümü ve kalan darboğazların izi."""
     t0 = _time.perf_counter()
+    bayrak = yanit_onbellegi.istek_bayragi_kur()   # 18.11 bayat-önce: işleyici bayat servis ettiyse başlıkla söylenir (X-Bayat: 1, yaş sn)
     yanit = await call_next(request)
     ms = (_time.perf_counter() - t0) * 1000
     yanit.headers["X-Sure-ms"] = f"{ms:.0f}"
+    if bayrak["bayat"]:
+        yanit.headers["X-Bayat"] = "1"
+        yanit.headers["X-Bayat-Yas-sn"] = f"{bayrak['yas_sn']:.0f}"
+        print(f"BAYAT {bayrak['yas_sn']:5.0f} s {request.method} {request.url.path}", flush=True)
     if ms >= 300 and request.url.path.startswith("/v1/"):
         print(f"YAVAS {ms:5.0f} ms {request.method} {request.url.path}", flush=True)
     return yanit

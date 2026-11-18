@@ -19,6 +19,7 @@ mtime'ından. Yeni bağımlılık ve şema yok; dizin yazılamazsa yalnız süre
 from __future__ import annotations
 
 import contextlib
+import contextvars
 import hashlib
 import json
 import os
@@ -27,6 +28,7 @@ import threading
 import time
 from collections import OrderedDict
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 _KILIT = threading.Lock()
@@ -36,8 +38,19 @@ EN_COK = 512            # işçi başına kayıt tavanı (LRU)
 DAMGA_SN = 5.0          # damga etag'i bu kadar süre yeniden hesaplanmaz (bir sayfanın ~20 isteği tek damga sorgusu paylaşır)
 VARSAYILAN_TTL_SN = 900
 DOSYA_EN_COK = 4000       # paylaşılan dizindeki dosya tavanı; aşınca en eskiler silinir (her 50 yazmada bir bakılır)
-SAYAC = {"isabet": 0, "dosya_isabet": 0, "iska": 0, "atlandi": 0}
+SAYAC = {"isabet": 0, "dosya_isabet": 0, "iska": 0, "atlandi": 0, "bayat": 0}
 _YAZMA_SAYACI = [0]
+# 18.11 canli teshis — BAYAT-ONCE (stale-while-revalidate): damga etag'i degisince ya da TTL dolunca istek ARTIK beklemez; ayni
+# (kiraci, santral, uc) icin son bilinen yanit («SON» dosyasi, etag'siz anahtar) aninda doner, taze yanit arka planda tek ucusla uretilir
+# ve iki dosyaya yazilir. Soguk bedel yalniz hic uretilmemis uca ve BAYAT_EN_COK_SN'den eski son bilinene kalir. Durustluk: istek bayragi
+# (contextvar; middleware X-Bayat: 1 ve X-Bayat-Yas-sn basligiyla soyler; istemci «guncelleniyor» yazar ve yeniden ister). Isitici
+# bayat_olur=False ile cagirir: tur senkron uretir, arka plan kuyrugunu doldurmaz. Olculdu (canli): :50 is kosusu sonrasi acik sekme
+# 2,7-5,8 s bekliyordu; bu katmanla bekleme = dosya okuma.
+BAYAT_EN_COK_SN = 6 * 3600
+_BAYRAK: contextvars.ContextVar[dict | None] = contextvars.ContextVar("pvq_yanit_bayrak", default=None)
+_UCUSTA: set[tuple[str, str, str, str]] = set()
+_UCUS_KILIT = threading.Lock()
+_HAVUZ: ThreadPoolExecutor | None = None
 
 
 def _dizin() -> str | None:
@@ -51,6 +64,33 @@ def _dizin() -> str | None:
 
 def _dosya_yolu(d: str, k: tuple[str, str, str, str]) -> str:
     return os.path.join(d, hashlib.sha256("\x1f".join(k).encode()).hexdigest() + ".json")
+
+
+def _son_yolu(d: str, k: tuple[str, str, str, str]) -> str:
+    """Etag'siz «son bilinen» dosyasi: (kiraci, santral, uc) — her yazmada etag'li dosyanin yaninda guncellenir."""
+    return os.path.join(d, hashlib.sha256("\x1f".join((k[0], k[1], k[2], "SON")).encode()).hexdigest() + ".json")
+
+
+def istek_bayragi_kur() -> dict:
+    """Middleware her istekte cagirir; isleyici is parcaciginda (kopya baglam) AYNI sozluk nesnesi gorulur ve bayat servis isaretlenir."""
+    b = {"bayat": False, "yas_sn": 0.0}
+    _BAYRAK.set(b)
+    return b
+
+
+def _son_dosyadan(k, en_cok_sn: int):
+    d = _dizin()
+    if d is None:
+        return None
+    y = _son_yolu(d, k)
+    try:
+        yas = time.time() - os.stat(y).st_mtime
+        if yas >= en_cok_sn:
+            return None
+        with open(y, encoding="utf-8") as f:
+            return json.load(f), yas
+    except (OSError, ValueError):
+        return None
 
 
 def _dosyadan(k, ttl_sn: int):
@@ -72,10 +112,12 @@ def _dosyaya(k, deger) -> None:
     if d is None:
         return
     try:
-        fd, gecici = tempfile.mkstemp(dir=d, suffix=".tmp")
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump(deger, f, ensure_ascii=False)
-        os.replace(gecici, _dosya_yolu(d, k))
+        metin = json.dumps(deger, ensure_ascii=False)
+        for yol in (_dosya_yolu(d, k), _son_yolu(d, k)):   # 18.11: etag'li dosya + «son bilinen» dosyasi (bayat-once)
+            fd, gecici = tempfile.mkstemp(dir=d, suffix=".tmp")
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write(metin)
+            os.replace(gecici, yol)
         _YAZMA_SAYACI[0] += 1
         if _YAZMA_SAYACI[0] % 50 == 0:
             _budama(d)
@@ -146,9 +188,9 @@ def _kiraci_etag(tenant_id) -> str:
     return et
 
 
-def getir(tenant_id, plant_id, anahtar: str, uret: Callable[[], Any], ttl_sn: int = VARSAYILAN_TTL_SN) -> Any:
-    """Anahtar = (kiracı, santral, uç+parametre, damga etag). İsabet → saklanan yanıt; ıska → `uret()` koşar ve saklanır.
-    Üretici istisna atarsa hiçbir şey saklanmaz (404/422 önbelleğe girmez)."""
+def getir(tenant_id, plant_id, anahtar: str, uret: Callable[[], Any], ttl_sn: int = VARSAYILAN_TTL_SN, bayat_olur: bool = True) -> Any:
+    """Anahtar = (kiracı, santral, uç+parametre, damga etag). İsabet → saklanan yanıt; ıska → son bilinen varsa o (bayat, arka planda
+    taze üretim; bayat_olur=False ise senkron üretim), yoksa `uret()` koşar ve saklanır. Üretici istisna atarsa hiçbir şey saklanmaz."""
     if not etkin():
         SAYAC["atlandi"] += 1
         return uret()
@@ -157,10 +199,10 @@ def getir(tenant_id, plant_id, anahtar: str, uret: Callable[[], Any], ttl_sn: in
     except Exception:
         SAYAC["atlandi"] += 1
         return uret()
-    return _anahtarla((str(tenant_id), str(plant_id), anahtar, et), uret, ttl_sn)
+    return _anahtarla((str(tenant_id), str(plant_id), anahtar, et), uret, ttl_sn, bayat_olur)
 
 
-def getir_portfoy(tenant_id, portfoy_id, anahtar: str, uret: Callable[[], Any], ttl_sn: int = VARSAYILAN_TTL_SN) -> Any:
+def getir_portfoy(tenant_id, portfoy_id, anahtar: str, uret: Callable[[], Any], ttl_sn: int = VARSAYILAN_TTL_SN, bayat_olur: bool = True) -> Any:
     """18.11 DSG/portfoy hiz turu: portfoy uclari icin (kiraci, «pf:»+portfoy, uc+parametre, portfoy damgasi etag). Depolama `getir` ile
     ayni (surec LRU + paylasilan dosya katmani); yetki kapisi (_pf_kapi) cagiranda, onbellegin DISINDA kalir."""
     if not etkin():
@@ -171,10 +213,10 @@ def getir_portfoy(tenant_id, portfoy_id, anahtar: str, uret: Callable[[], Any], 
     except Exception:
         SAYAC["atlandi"] += 1
         return uret()
-    return _anahtarla((str(tenant_id), "pf:" + str(portfoy_id), anahtar, et), uret, ttl_sn)
+    return _anahtarla((str(tenant_id), "pf:" + str(portfoy_id), anahtar, et), uret, ttl_sn, bayat_olur)
 
 
-def getir_kiraci(tenant_id, anahtar: str, uret: Callable[[], Any], ttl_sn: int = VARSAYILAN_TTL_SN) -> Any:
+def getir_kiraci(tenant_id, anahtar: str, uret: Callable[[], Any], ttl_sn: int = VARSAYILAN_TTL_SN, bayat_olur: bool = True) -> Any:
     """18.11 gezinme (Parti B #3): kiracinin tum santrallerini kapsayan uclar (/v1/portfoy ailesi) icin (kiraci, «k:», uc+parametre,
     kiraci damgasi etag). Depolama `getir` ile ayni; yetki/modul kapisi cagiranda, onbellegin DISINDA."""
     if not etkin():
@@ -185,10 +227,10 @@ def getir_kiraci(tenant_id, anahtar: str, uret: Callable[[], Any], ttl_sn: int =
     except Exception:
         SAYAC["atlandi"] += 1
         return uret()
-    return _anahtarla((str(tenant_id), "k:", anahtar, et), uret, ttl_sn)
+    return _anahtarla((str(tenant_id), "k:", anahtar, et), uret, ttl_sn, bayat_olur)
 
 
-def _anahtarla(k: tuple[str, str, str, str], uret: Callable[[], Any], ttl_sn: int) -> Any:
+def _anahtarla(k: tuple[str, str, str, str], uret: Callable[[], Any], ttl_sn: int, bayat_olur: bool = True) -> Any:
     simdi = time.monotonic()
     with _KILIT:
         v = _KAYIT.get(k)
@@ -205,8 +247,24 @@ def _anahtarla(k: tuple[str, str, str, str], uret: Callable[[], Any], ttl_sn: in
             while len(_KAYIT) > EN_COK:
                 _KAYIT.popitem(last=False)
         return dosyadan
+    if bayat_olur:
+        son = _son_dosyadan(k, BAYAT_EN_COK_SN)
+        if son is not None:   # 18.11 bayat-once: son bilinen yanit aninda, taze uretim arka planda (tek ucus, 2 is parcacigi)
+            deger, yas = son
+            b = _BAYRAK.get()
+            if b is not None:
+                b["bayat"] = True
+                b["yas_sn"] = max(b.get("yas_sn", 0.0), yas)
+            SAYAC["bayat"] += 1
+            _arka_planda_uret(k, uret, ttl_sn)
+            return deger
+    return _uret_ve_sakla(k, uret)
+
+
+def _uret_ve_sakla(k: tuple[str, str, str, str], uret: Callable[[], Any]) -> Any:
     from fastapi.encoders import jsonable_encoder
     deger = jsonable_encoder(uret())   # HTTP yanıtıyla birebir aynı JSON biçimi: bellek, dosya ve ağ aynı şeyi söyler
+    simdi = time.monotonic()
     with _KILIT:
         _KAYIT[k] = (simdi, deger)
         _KAYIT.move_to_end(k)
@@ -215,6 +273,43 @@ def _anahtarla(k: tuple[str, str, str, str], uret: Callable[[], Any], ttl_sn: in
             _KAYIT.popitem(last=False)
     _dosyaya(k, deger)
     return deger
+
+
+def _arka_planda_uret(k: tuple[str, str, str, str], uret: Callable[[], Any], ttl_sn: int) -> None:
+    """Ayni anahtar icin tek ucus; kucuk havuz (2) — damga degisiminde bir sayfanin ~20 ucu siraya girer, CPU firtinasi olmaz."""
+    global _HAVUZ
+    with _UCUS_KILIT:
+        if k in _UCUSTA:
+            return
+        _UCUSTA.add(k)
+        if _HAVUZ is None:
+            _HAVUZ = ThreadPoolExecutor(max_workers=2, thread_name_prefix="pvq-bayat")
+        havuz = _HAVUZ
+
+    def _is() -> None:
+        try:
+            _uret_ve_sakla(k, uret)
+        except Exception:
+            pass   # uretici hatasi (404/DB): bir sonraki istek yeniden dener; son bilinen durur
+        finally:
+            with _UCUS_KILIT:
+                _UCUSTA.discard(k)
+
+    try:
+        havuz.submit(_is)
+    except RuntimeError:   # kapanista havuz kapali
+        with _UCUS_KILIT:
+            _UCUSTA.discard(k)
+
+
+def ucustakileri_bekle(sn: float = 5.0) -> None:
+    """Test ve kapanis icin: arka plan uretimleri bitene dek (en cok sn) bekler."""
+    t0 = time.monotonic()
+    while time.monotonic() - t0 < sn:
+        with _UCUS_KILIT:
+            if not _UCUSTA:
+                return
+        time.sleep(0.02)
 
 
 def getir_genel(anahtar: str, uret: Callable[[], Any], ttl_sn: int = 600, taze: bool = False) -> Any:
@@ -250,9 +345,12 @@ def getir_genel(anahtar: str, uret: Callable[[], Any], ttl_sn: int = 600, taze: 
 
 
 def temizle(dosyalar: bool = True) -> None:
+    ucustakileri_bekle()
     with _KILIT:
         _KAYIT.clear()
         _DAMGA.clear()
+    with _UCUS_KILIT:
+        _UCUSTA.clear()
     for k in SAYAC:
         SAYAC[k] = 0
     d = _dizin() if dosyalar else None
