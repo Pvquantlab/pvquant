@@ -19,7 +19,7 @@ const DURUM: Record<string, { etiket: string; sinif: string }> = {
 const GUVEN_SINIF: Record<string, string> = { gercek: "rozet-ok", kismi: "rozet-notr", senaryo: "rozet-uyari", veri_yok: "rozet-notr" };
 const saatTr = (iso: string | null | undefined) => iso ? tarihBicimi("tr-TR", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(iso)) : "—";
 const gunTr = (iso: string | null | undefined) => iso ? tarihBicimi("tr-TR", { day: "numeric", month: "short", year: "numeric" }).format(new Date(iso.slice(0, 10) + "T12:00:00")) : "—";
-const ayAd = (d: string) => `${d.slice(5)}.${d.slice(0, 4)}`;
+const ayAd = (d: string) => donemEtiket(d);   // 18.11 Grup 3: «10.2026» → «Ekim 2026» (ortak biçim; seçici, mesajlar, KPI etiketi)
 const tl = (v: number | null | undefined) => v == null ? "—" : sayiTr(v, 2);   // kuruşlu: bildirimdeki tutarla birebir
 const binTl = (v: number | null | undefined) => v == null ? "—" : sayiTr(v / 1000, 1);
 const yuzde = (p: number | null) => p == null ? "" : ` (${yuzdeTr(p, 1, true)})`;   // 16.11: ortak kural, işaret «%»den önce
@@ -53,9 +53,9 @@ function SaatlikDetayKarti({ plantId, donem, uretim, ds }: { plantId: string; do
           {mesaj && <span className={`ayar-durum ${mesaj.ton === "uyari" ? "" : mesaj.ton}`} style={mesaj.ton === "uyari" ? { color: "var(--amber-koyu, #8a5a00)" } : undefined}>{mesaj.metin}</span>}</div>
       </div>
       {k === undefined ? <YerTutucu yukseklik={60} /> : k === null ? <p className="soluk" style={{ margin: "10px 0 0" }}>Saatlik kıyas alınamadı.</p> : !k.yuklu ? (
-        <p className="soluk" style={{ margin: "10px 0 0", fontSize: "var(--t-ikincil)" }}>Bu dönem için saatlik detay yüklenmedi. Aylık bildirimle karşılaştırma kapsam farkı taşır; saatlik dosya yüklenince fark saat bazında ve eş kapsamlı görülür.</p>
+        <p className="soluk t-ikincil" style={{ margin: "10px 0 0" }}>Bu dönem için saatlik detay yüklenmedi. Aylık bildirimle karşılaştırma kapsam farkı taşır; saatlik dosya yüklenince fark saat bazında ve eş kapsamlı görülür.</p>
       ) : k.ortak_saat === 0 ? (
-        <p className="soluk" style={{ margin: "10px 0 0", fontSize: "var(--t-ikincil)" }}>{sayiTr(k.epias_saat)} EPİAŞ saati yüklü ama PVQuant dökümüyle ortak saat yok (döküm bu dönem için {sayiTr(k.pv_saat ?? 0)} saat).</p>
+        <p className="soluk t-ikincil" style={{ margin: "10px 0 0" }}>{sayiTr(k.epias_saat)} EPİAŞ saati yüklü ama PVQuant dökümüyle ortak saat yok (döküm bu dönem için {sayiTr(k.pv_saat ?? 0)} saat).</p>
       ) : (
         <>
           <div className="ızgara satir-4" style={{ margin: "12px 0" }}>
@@ -67,7 +67,7 @@ function SaatlikDetayKarti({ plantId, donem, uretim, ds }: { plantId: string; do
               alt={t?.kupst_fark_tl != null ? `KÜPST borcu ayrı: EPİAŞ ${sayiTr(t.kupst_epias_tl ?? 0, 2)}, PVQuant ${sayiTr(t.kupst_pvquant_tl, 2)} TL; fark ${fark(t.kupst_fark_tl)} (artı: PVQuant daha çok KÜPST borcu)` : "KÜPST sütunu yok"} />
           </div>
           {a && (
-            <p style={{ margin: "0 0 10px", fontSize: "var(--t-ikincil)", lineHeight: 1.5 }}><b>Fark ayrıştırması ({sayiTr(a.edt_farki_saat ?? 0)} saatte dengesizlik tutarı farklı, {sayiTr(a.uyumlu_saat ?? 0)} uyumlu):</b>{" "}
+            <p className="t-ikincil" style={{ margin: "0 0 10px", lineHeight: 1.5 }}><b>Fark ayrıştırması ({sayiTr(a.edt_farki_saat ?? 0)} saatte dengesizlik tutarı farklı, {sayiTr(a.uyumlu_saat ?? 0)} uyumlu):</b>{" "}
               {a.fiyat_karsilastirildi ? `${sayiTr(a.fiyat_farki_saat)} saatte fiyat (PTF/SMF)` : "fiyat karşılaştırılmadı"}; {a.uretim_karsilastirildi ? `${sayiTr(a.uretim_farki_saat)} saatte üretim (UEVM ↔ PVQuant ${k.uretim === "sayac" ? "sayaç" : "SCADA"})` : "üretim karşılaştırılmadı (UEVM sütunu yok)"};{" "}
               {a.program_karsilastirildi ? `${sayiTr(a.program_farki_saat)} saatte program (BUDÜP ↔ PVQuant programı)` : "program karşılaştırılmadı (BUDÜP sütunu yok)"};{" "}
               {a.pozisyon_karsilastirildi ? `${sayiTr(a.pozisyon_farki_saat ?? 0)} saatte dengesizlik miktarı (EDM ↔ PVQuant sapması: pozisyon / ikili anlaşma / DSG payı)` : "dengesizlik miktarı karşılaştırılmadı (EDM sütunu yok)"};{" "}
@@ -84,7 +84,7 @@ function SaatlikDetayKarti({ plantId, donem, uretim, ds }: { plantId: string; do
                   <td className="mono">{s.edt_net_epias_tl != null ? sayiTr(s.edt_net_epias_tl, 2) : "—"}</td><td className="mono">{s.edt_net_pvquant_tl != null ? sayiTr(s.edt_net_pvquant_tl, 2) : "—"}</td>
                   <td className="mono">{fark(s.edt_fark_tl)}</td><td style={sol} title={s.nedenler.map((n) => k.neden_aciklama?.[n] ?? NEDEN_ACIKLAMA[n] ?? n).join(" · ")}>{s.nedenler.length ? s.nedenler.map((n) => NEDEN_AD[n] ?? n).join(", ") : "—"}</td></tr>))}</tbody>
             </table></div>)}
-          <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "8px 0 0" }}>{k.not} Toleranslar: fiyat {sayiTr(k.tolerans.fiyat_tl_mwh, 2)} TL/MWh, miktar {sayiTr(k.tolerans.mwh * 1000, 1)} kWh, tutar {sayiTr(k.tolerans.tl, 2)} TL.{k.yuklemeler.length ? ` Kullanılan yükleme: ${k.yuklemeler.map((y) => `${EKRAN_AD[y.kaynak_ekran] ?? y.kaynak_ekran} (${saatTr(y.zaman)}, ${sayiTr(y.saat)} saat${y.versiyon ? `, sürüm ${y.versiyon}` : ""})`).join("; ")}.` : ""}</p>
+          <p className="soluk t-ikincil" style={{ margin: "8px 0 0" }}>{k.not} Toleranslar: fiyat {sayiTr(k.tolerans.fiyat_tl_mwh, 2)} TL/MWh, miktar {sayiTr(k.tolerans.mwh * 1000, 1)} kWh, tutar {sayiTr(k.tolerans.tl, 2)} TL.{k.yuklemeler.length ? ` Kullanılan yükleme: ${k.yuklemeler.map((y) => `${EKRAN_AD[y.kaynak_ekran] ?? y.kaynak_ekran} (${saatTr(y.zaman)}, ${sayiTr(y.saat)} saat${y.versiyon ? `, sürüm ${y.versiyon}` : ""})`).join("; ")}.` : ""}</p>
         </>)}
     </Kart>
   );
@@ -138,7 +138,7 @@ export function Mutabakat({ plantId }: { plantId: string }) {
       <td className="mono">{s.hesaplanir ? tl(s.pvquant_alacak_tl) : "—"}</td><td className="mono">{s.hesaplanir ? tl(s.pvquant_borc_tl) : "—"}</td>
       <td className="mono" style={{ whiteSpace: "nowrap" }} title={s.fark_alacak_tl != null ? `alacak farkı ${sayiTr(s.fark_alacak_tl, 2)} TL; borç farkı ${sayiTr(s.fark_borc_tl ?? 0, 2)} TL` : undefined}>
         {s.fark_tl != null ? `${s.fark_tl > 0 ? "+" : ""}${sayiTr(s.fark_tl, 2)}${yuzde(s.fark_pct)}` : "—"}</td>
-      <td><span className={`rozet rozet-kucuk ${DURUM[s.durum].sinif}`} title={s.dogrulama === "kismi" ? "Kısmi kapsam: EPİAŞ tutarı bütün ayı, PVQuant tutarı yalnız hesaplanan saatleri kapsar; hüküm tam ay verisiyle kesinleşir" : (s.bilesen_notu ?? s.pvquant_not ?? undefined)}>{DURUM[s.durum].etiket}{s.dogrulama === "kismi" && (s.durum === "uyumlu" || s.durum === "fark") ? " · kısmi" : ""}</span>{s.bilesen_notu ? <div className="soluk" style={{ fontSize: "var(--t-kucuk)", marginTop: 2 }}>{s.bilesen_notu}</div> : null}</td>
+      <td><span className={`rozet rozet-kucuk ${DURUM[s.durum].sinif}`} title={s.dogrulama === "kismi" ? "Kısmi kapsam: EPİAŞ tutarı bütün ayı, PVQuant tutarı yalnız hesaplanan saatleri kapsar; hüküm tam ay verisiyle kesinleşir" : (s.bilesen_notu ?? s.pvquant_not ?? undefined)}>{DURUM[s.durum].etiket}{s.dogrulama === "kismi" && (s.durum === "uyumlu" || s.durum === "fark") ? " · kısmi" : ""}</span>{s.bilesen_notu ? <div className="soluk t-kucuk" style={{ marginTop: 2 }}>{s.bilesen_notu}</div> : null}</td>
     </tr>);
   return (
     <Sayfa baslik="Mutabakat" alt="EPİAŞ uzlaştırma bildirimini PVQuant'ın yeniden hesabıyla kalem kalem karşılaştırın. EPİAŞ bildirimi esastır; PVQuant tutarları yeniden hesaptır, fark bilgi amaçlıdır."
@@ -183,7 +183,7 @@ export function Mutabakat({ plantId }: { plantId: string }) {
             <div className="form-tam dugme-sira"><button className="dugme" onClick={gonder} disabled={yukleniyor}>{yukleniyor ? "Yükleniyor…" : "Yükle"}</button>
               {mesaj && <span className={`ayar-durum ${mesaj.ton === "uyari" ? "" : mesaj.ton}`} style={mesaj.ton === "uyari" ? { color: "var(--amber-koyu, #8a5a00)" } : undefined}>{mesaj.metin}</span>}</div>
           </div>
-          <p className="form-not" style={{ marginTop: 10, fontSize: "var(--t-ikincil)" }}>Her yükleme ayrı sürüm olarak saklanır; önceki yüklemeler silinmez, dönem ve sürüm başına en yeni yükleme hesaba girer. Ön bildirim (izleyen ayın 11'i) ve nihai bildirim (15'i, iş günü) ayrı yüklenebilir; dosyadaki «Uzlaştırma Durumu» alanı seçiminizden üstündür.</p>
+          <p className="form-not t-ikincil" style={{ marginTop: 10 }}>Her yükleme ayrı sürüm olarak saklanır; önceki yüklemeler silinmez, dönem ve sürüm başına en yeni yükleme hesaba girer. Ön bildirim (izleyen ayın 11'i) ve nihai bildirim (15'i, iş günü) ayrı yüklenebilir; dosyadaki «Uzlaştırma Durumu» alanı seçiminizden üstündür.</p>
           {o.donemler.length > 0 && (
             <div className="grafik-kaydir" style={{ marginTop: 10 }}><table className="veri">
               <thead><tr><th style={sol}>Dönem</th><th style={sol}>Sürüm</th><th style={sol}>Yükleme</th><th style={sol} title="Sürüm etiketinin resmî takvimle tutarlılığı; EPİAŞ'ın uzlaştırma durumu dosyadan doğrulanamaz">Takvim</th><th style={sol}>Dosya</th><th>Kalem</th></tr></thead>
@@ -200,7 +200,7 @@ export function Mutabakat({ plantId }: { plantId: string }) {
           sag={<span className={`rozet rozet-kucuk ${GUVEN_SINIF[g.durum]}`} title={g.nedenler.join("; ") || "dönemin bütün saatleri EPİAŞ fiyatı ve bildirilen KGÜP ile hesaplandı"}>{g.etiket}</span>}>
           {(() => { const uk = m.pvquant.uretim_kaynak; const sy = m.pvquant.sayac; const sayacla = uk?.secim === "sayac" && uk.sayac_olculmus_saat + uk.sayac_tahmini_saat > 0;
             return (<>
-          <ul className="not-listesi" style={{ fontSize: "var(--t-ikincil)" }}>
+          <ul className="not-listesi t-ikincil">
             <li><b>Kapsam:</b> {sayiTr(m.pvquant.saat)}{m.pvquant.beklenen_saat ? ` / ${sayiTr(m.pvquant.beklenen_saat)} saat` : " saat"}{m.pvquant.son_saat ? `; son üretim verisi ${m.pvquant.son_saat}` : ""}{m.pvquant.hesaplanamayan_saat ? `; ${sayiTr(m.pvquant.hesaplanamayan_saat)} saat hesaplanamadı` : ""}</li>
             <li><b>Üretim:</b> {sayacla && uk ? <>{sayiTr(uk.sayac_olculmus_saat + uk.sayac_tahmini_saat)} saat sayaç ({sayiTr(uk.sayac_olculmus_saat)} ölçülmüş{uk.sayac_tahmini_saat ? `, ${sayiTr(uk.sayac_tahmini_saat)} tahmini` : ""}){uk.scada_saat ? `, ${sayiTr(uk.scada_saat)} saat SCADA (sayaç satırı olmayan saatler)` : ""}{uk.sayac_kullanilmayan_saat ? `; ${sayiTr(uk.sayac_kullanilmayan_saat)} sayaç saati SCADA satırı olmadığından hesaba girmedi` : ""}</>
               : <>SCADA ölçümü, {sayiTr(m.pvquant.saat)} saat{uk?.secim === "sayac" ? " (sayaç seçili ama dönemde sayaç verisi yok)" : ""}{sy?.yuklu ? `; Sayaç sayfasında ${sayiTr(sy.yuklu)} / ${sayiTr(sy.toplam_saat)} saat sayaç verisi var, hesaba girmedi` : ""}</>}</li>
@@ -209,8 +209,8 @@ export function Mutabakat({ plantId }: { plantId: string }) {
             {bil && <li><b>Bildirim sürümü:</b> {surumDurumu(bil)}{sd?.durum === "takvimden_once" ? ` (resmî yayın en erken ${sd.beklenen_tarih.split("-").reverse().join(".")})` : ""}</li>}
             {m.pvquant.hata && <li className="soluk">Hesap alınamadı: {m.pvquant.hata}</li>}
           </ul>
-          {m.program_notu && <p className="form-not" style={{ marginTop: 8, fontSize: "var(--t-ikincil)", color: "var(--amber-koyu, #8a5a00)" }}>{m.program_notu}</p>}
-          {m.eylem && <p className="form-not" style={{ marginTop: 8, fontSize: "var(--t-ikincil)" }}><b>Ne yapmalı:</b> {m.eylem}</p>}
+          {m.program_notu && <p className="form-not t-ikincil" style={{ marginTop: 8, color: "var(--amber-koyu, #8a5a00)" }}>{m.program_notu}</p>}
+          {m.eylem && <p className="form-not t-ikincil" style={{ marginTop: 8 }}><b>Ne yapmalı:</b> {m.eylem}</p>}
           <details className="aciklama" style={{ marginTop: 10 }}>
             <summary>Ayrıntılar: kural sürümü, güvenilirlik nedenleri, sayaç ile SCADA, sürüm takvimi</summary>
             {m.pvquant.kural_surumu && <p style={{ margin: "6px 0 0" }}><b>Kural sürümü:</b> {m.pvquant.kural_surumu}{m.pvquant.kupst_kaynak ? <>; KÜPST katsayıları: {m.pvquant.kupst_kaynak}{m.pvquant.kupst_gecersiz_kilma ? <span style={{ color: "var(--amber-koyu, #8a5a00)" }}> — resmî tablo yerine santral ayarındaki değer kullanıldı, EPİAŞ ile fark buradan doğabilir</span> : null}</> : null}</p>}   {/* v2.541: kupst_kaynak */}
@@ -222,7 +222,7 @@ export function Mutabakat({ plantId }: { plantId: string }) {
           </details>
           {m.itiraz && <details className="aciklama" style={{ marginTop: 6 }}>   {/* v2.538 (EK-3 DK-557/DK-395): itiraz süreleri ve geriye dönük düzeltme penceresi */}
             <summary>İtiraz süreleri ve geriye dönük düzeltme ({m.donem_etiket})</summary>
-            <ul className="not-listesi" style={{ fontSize: "var(--t-ikincil)", marginTop: 6 }}>
+            <ul className="not-listesi t-ikincil" style={{ marginTop: 6 }}>
               <li><b>Ön bildirime itiraz:</b> {m.itiraz.on_bildirim_itiraz_son.split(" ")[0].split("-").reverse().join(".")} 17:30'a kadar (DUY m.132/B(1))</li>
               <li><b>Faturaya itiraz:</b> tebliğden itibaren 60 gün içinde yazılı; takvime göre {m.itiraz.fatura_itiraz_60_gun.split("-").reverse().join(".")} (m.133(1))</li>
               <li><b>Geriye dönük itiraz:</b> başvuru tarihinden en fazla {sayiTr(m.itiraz.geriye_donuk.pencere_ay)} ay önceki fatura dönemi; bu dönem için son başvuru {m.itiraz.geriye_donuk.son_basvuru.split("-").reverse().join(".")}
@@ -230,7 +230,7 @@ export function Mutabakat({ plantId }: { plantId: string }) {
               <li><b>İnceleme süreleri:</b> ölçüm değerlerine itirazı TEİAŞ/dağıtım şirketi {sayiTr(m.itiraz.inceleme.olcum_teias_dagitim_gun)} gün içinde sonuçlandırır, EPİAŞ sonucu {sayiTr(m.itiraz.inceleme.olcum_epias_is_gunu)} iş günü içinde işler; ölçüm dışı itirazlar {sayiTr(m.itiraz.inceleme.olcum_disi_is_gunu)} iş günü ({m.itiraz.inceleme.dayanak})</li>
               {m.itiraz.lisanssiz && <li><b>Lisanssız tesis:</b> {m.itiraz.lisanssiz.not} İnceleme {sayiTr(m.itiraz.lisanssiz.inceleme_is_gunu)} iş günü ({m.itiraz.lisanssiz.dayanak}).</li>}
             </ul>
-            <p className="soluk" style={{ margin: "6px 0 0", fontSize: "var(--t-ikincil)" }}>{m.itiraz.dayanak}</p>
+            <p className="soluk t-ikincil" style={{ margin: "6px 0 0" }}>{m.itiraz.dayanak}</p>
           </details>}
           <details className="aciklama" style={{ marginTop: 6 }}>
             <summary>Bu sayfa nasıl çalışır</summary>

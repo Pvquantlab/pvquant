@@ -95,7 +95,7 @@ export function Olaylar({ plantId }: { plantId: string }) {
             <div className="form-tam dugme-sira"><button className="dugme" onClick={kaydet}>Kaydet</button>
               {mesaj && <span className={`ayar-durum ${mesaj.ton === "uyari" ? "" : mesaj.ton}`} style={mesaj.ton === "uyari" ? { color: "var(--amber-koyu, #8a5a00)" } : undefined}>{mesaj.metin}</span>}</div>
           </div>
-          {kural && <p className="form-not" style={{ marginTop: 10, fontSize: "var(--t-ikincil)" }}><b>{kural.etiket}:</b> {kural.not}.</p>}
+          {kural && <p className="form-not t-ikincil" style={{ marginTop: 10 }}><b>{kural.etiket}:</b> {kural.not}.</p>}
         </Kart>
         <Kart baslik="Olay türleri ve etkileri" alt="Her türün kapasite (EAK), aylık arıza sayacı ve kullanılabilirlik hesabına etkisi">
           <div className="grafik-kaydir"><table className="veri">

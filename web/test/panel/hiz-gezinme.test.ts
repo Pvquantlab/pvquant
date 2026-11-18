@@ -209,3 +209,27 @@ test("Finansal etki: bayat-önce (program ve senaryo yolu), .akis dört bölüm,
   assert.equal((cl.match(/finansalEtkiYolu\(p, donem, uretim/g) ?? []).length, 2, "api.finansalEtki ve bellekten.finansalEtki aynı yolu kurar");
   assert.equal((cl.match(/finansalEtkiSenaryoYolu\(p, donem, pozisyon, sabitMwh, uretim\)/g) ?? []).length, 2);
 });
+
+// 18.11 UI denetimi Grup 2 — 375 px: kart başlığı müşteri yüzünde de sarar; etiket + girdi kapsayıcıdan taşmaz (genel kural)
+test("Grup 2 CSS: ≤560'ta .kart-bas sarar ve başlık en az %60; .girdi-etiket ve içindeki .girdi kapsayıcıya sığar", () => {
+  const css = oku("../../src/index.css");
+  const blok = css.slice(css.indexOf("@media (max-width: 560px) {\n  /* 18.11 Grup 2"), css.indexOf("@media (max-width: 560px) {\n  /* 18.11 Grup 2") + 700);
+  assert.match(blok, /\n  \.kart-bas \{ flex-wrap: wrap; \}\n  \.kart-baslik \{ flex: 1 1 60%; \}/);
+  assert.match(css, /\.girdi-etiket \{ display: flex; flex-direction: column; gap: 5px; font-size: var\(--t-ikincil\); max-width: 100%; min-width: 0;/);
+  assert.match(css, /\n\.girdi-etiket > \.girdi \{ max-width: 100%; min-width: 0; \}/);
+  assert.doesNotMatch(css, /\.dugme-sira > \.girdi-etiket|\.ayar-kontrol > \.girdi-etiket/, "kapsamlı kopyalar genel kurala katlandı");
+  assert.match(css, /\n\.akis \.bolum > \*, \.santralim-akis \.bolum > \* \{ min-width: 0; \}/, "bölüm ızgarasındaki kart içeriğinin altına inebilir (375 px yatay taşma)");
+});
+
+// 18.11 UI denetimi Grup 3 — punto yardımcı sınıfları, kaynakta satır içi jeton puntosu kalmaz, tanım listesi kolonu içerik kadar, Mutabakat ayAd ortak biçim
+test("Grup 3: .t-* sınıfları tanımlı, satır içi fontSize: var(--t-…) kalmadı, .tanim-listesi kolonu minmax(96px, max-content), ayAd → donemEtiket", async () => {
+  const css = oku("../../src/index.css");
+  for (const k of ["ikincil", "etiket", "govde", "kucuk", "kod", "veri", "kart", "bolum"]) assert.match(css, new RegExp(`\\n\\.t-${k} \\{ font-size: var\\(--t-${k}\\); \\}`), k);
+  assert.match(css, /\.tanim-listesi li \{ display: grid; grid-template-columns: minmax\(96px, max-content\) minmax\(0, 1fr\);/);
+  const fs = await import("node:fs"); const { join } = await import("node:path");
+  const kok = decodeURIComponent(new URL("../../src/", import.meta.url).pathname); const dosyalar: string[] = [];
+  const gez = (d: string) => { for (const a of fs.readdirSync(d)) { const y = join(d, a); if (fs.statSync(y).isDirectory()) gez(y); else if (y.endsWith(".tsx")) dosyalar.push(y); } }; gez(kok);
+  const kalan = dosyalar.filter((y) => /fontSize: "var\(--t-/.test(fs.readFileSync(y, "utf8"))).map((y) => y.slice(kok.length));
+  assert.deepEqual(kalan, [], "satır içi jeton puntosu yerine .t-* sınıfı");
+  assert.match(oku("../../src/features/sayfalar/Mutabakat.tsx"), /const ayAd = \(d: string\) => donemEtiket\(d\);/);
+});

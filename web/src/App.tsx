@@ -88,8 +88,8 @@ function parcalariOnyukle() {
 function SantralYok() {
   return (
     <div style={{ maxWidth: 520, margin: "72px auto", textAlign: "center" }}>
-      <h2 style={{ fontSize: "var(--t-bolum)", marginBottom: 10 }}>Henüz santral eklenmedi</h2>
-      <p style={{ fontSize: "var(--t-ikincil)", color: "var(--ikincil)", lineHeight: 1.75 }}>
+      <h2 className="t-bolum" style={{ marginBottom: 10 }}>Henüz santral eklenmedi</h2>
+      <p className="t-ikincil" style={{ color: "var(--ikincil)", lineHeight: 1.75 }}>
         Başlamak için sol üstteki <b>+ Yeni santral bağla</b> düğmesini kullanın.
         Adı, kurulu gücü ve konumu yeterli: tahmin ilk gece otomatik olarak üretilir,
         doğruluk karnesi ölçüm geldikçe dolar.

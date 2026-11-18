@@ -146,7 +146,7 @@ export function Sayfa({ baslik, alt, sag, children }:
         <div>
           {/* 22.10: boyut CSS'ten (h1 = --t-baslik 26 px); açıklama 14 px gövde */}
           <h1>{baslik}</h1>
-          {alt && <p style={{ fontSize: "var(--t-govde)", color: "var(--ikincil)", margin: "6px 0 0", lineHeight: 1.5, maxWidth: "80ch" }}>{alt}</p>}
+          {alt && <p className="t-govde" style={{ color: "var(--ikincil)", margin: "6px 0 0", lineHeight: 1.5, maxWidth: "80ch" }}>{alt}</p>}
         </div>
         {sag}
       </div>

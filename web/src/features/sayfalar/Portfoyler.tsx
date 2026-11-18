@@ -126,7 +126,7 @@ export function Portfoyler() {
       <div className="akis">
       <section className="bolum">
       <div className="ozet-bas">Dönem<span className="sag">{sapma?.donem?.etiket ?? "seçili dönem"}</span></div>
-      <p className="form-not" style={{ margin: 0, fontSize: "var(--t-ikincil)" }}>
+      <p className="form-not t-ikincil" style={{ margin: 0 }}>
         <b>{p.ad}</b> · {TUR_ETIKET[p.tur] ?? p.tur}{p.dsg_kodu ? ` · DSG kodu ${p.dsg_kodu}` : ""}{p.kurulus_ad ? ` · ${p.kurulus_ad}` : ""} · geçerlilik {gunYaz(p.gecerli_bas)}{p.gecerli_bit ? ` – ${gunYaz(p.gecerli_bit)}` : " – süresiz"} · {sayiTr(p.uye_sayisi)} üye bugün
         {rev?.ozet && <> · <span style={{ color: "var(--metin)" }}>{rev.ozet}</span></>}
       </p>
@@ -166,7 +166,7 @@ export function Portfoyler() {
                   <td style={sol}>{u ? <Rozet sinif={DOGRULAMA_SINIF[u.dogrulama] ?? "rozet-notr"} title={`${u.kaynak}; ${gunYaz(u.gecerli_bas)}${u.gecerli_bit ? ` – ${gunYaz(u.gecerli_bit)}` : " – süresiz"}`}>{u.dogrulama_ad.toLowerCase()}</Rozet> : "—"}</td>
                 </tr>); })}</tbody>
             </table></div>
-            {sapma.katkilar?.not && <p className="form-not" style={{ margin: "10px 0 0", fontSize: "var(--t-ikincil)" }}>{sapma.katkilar.not}</p>}
+            {sapma.katkilar?.not && <p className="form-not t-ikincil" style={{ margin: "10px 0 0" }}>{sapma.katkilar.not}</p>}
           </>)}
       </Kart>
       </section>
@@ -191,9 +191,9 @@ export function Portfoyler() {
                   <thead><tr><th style={sol}>Saat</th><th>Program</th><th>Tahmin aralığı</th><th>Fark</th></tr></thead>
                   <tbody>{(rs.saatler ?? []).slice(0, 8).map((s) => <tr key={s.ts}><td style={sol} className="mono">{saatYaz(s.ts)}</td><td className="mono">{sayiTr(s.program_mwh, 1)}</td><td className="mono">{s.p10_mwh == null || s.p90_mwh == null ? "—" : `${sayiTr(s.p10_mwh, 0)}–${sayiTr(s.p90_mwh, 0)}`}</td><td className="mono">{isaretli(s.fark_mwh, 1)}</td></tr>)}</tbody>
                 </table></div>)}
-              {(rs.saatler ?? []).length > 0 && <p className="soluk" style={{ margin: "6px 0 0", fontSize: "var(--t-etiket)" }}>Aralık dışı saatler, MWh; fark = tahmin − program, en büyük fark önce.</p>}
-              {(sapma?.riskli_gunler ?? []).length > 0 && <p className="form-not" style={{ margin: "10px 0 0", fontSize: "var(--t-ikincil)" }}><b>Dönemde en çok sapan günler:</b> {sapma!.riskli_gunler!.slice(0, 3).map((d) => `${gunYaz(d.gun)} ${isaretli(d.sapma_mwh, 1)} MWh`).join("; ")}.</p>}
-              {rs.not && <p className="soluk" style={{ margin: "8px 0 0", fontSize: "var(--t-ikincil)" }}>{rs.not}</p>}
+              {(rs.saatler ?? []).length > 0 && <p className="soluk t-etiket" style={{ margin: "6px 0 0" }}>Aralık dışı saatler, MWh; fark = tahmin − program, en büyük fark önce.</p>}
+              {(sapma?.riskli_gunler ?? []).length > 0 && <p className="form-not t-ikincil" style={{ margin: "10px 0 0" }}><b>Dönemde en çok sapan günler:</b> {sapma!.riskli_gunler!.slice(0, 3).map((d) => `${gunYaz(d.gun)} ${isaretli(d.sapma_mwh, 1)} MWh`).join("; ")}.</p>}
+              {rs.not && <p className="soluk t-ikincil" style={{ margin: "8px 0 0" }}>{rs.not}</p>}
             </>)}
         </Kart>
         <Kart baslik="Revizyon önerileri" alt="Güncel tahmin ile üretim programı arasındaki farktan türeyen, dayanaklı öneriler. Karar sizindir; PVQuant program bildirmez, piyasaya teklif vermez."
@@ -202,8 +202,8 @@ export function Portfoyler() {
             <button type="button" className={hedef === "bugun" ? "secili" : undefined} onClick={() => setHedef("bugun")}>Bugün</button></div></span>}>
           {rev === undefined ? <YerTutucu yukseklik={140} /> : !rev || rev.durum !== "ok" ? <p className="soluk" style={{ margin: 0 }}>{rev?.not ?? "Öneriler alınamadı."}</p> : (
             <>
-              {rev.pencere && hedef === "yarin" && <p className="form-not" style={{ margin: "0 0 8px", fontSize: "var(--t-ikincil)" }}>{rev.pencere.durum === "pencere_acik" ? `Yarının programı için bildirim süresi açık; 15:30'a ${sayiTr(rev.pencere.dakika_kaldi)} dakika.` : rev.pencere.durum === "erken" ? "Yarının programı için bildirim 14:00–15:30 arasında yapılır." : "Yarın için bildirim süresi (15:30) geçti; değişiklik yalnız gün içi düzeltme ile."}</p>}
-              {rev.gun_ici && hedef === "bugun" && <p className="form-not" style={{ margin: "0 0 8px", fontSize: "var(--t-ikincil)" }}>{rev.gun_ici.acik ? `Bir sonraki teslimat saati için gün içi düzeltme ${sayiTr(rev.gun_ici.dakika_kaldi ?? 0)} dakika daha yapılabilir.` : "Bir sonraki teslimat saati için düzeltme süresi geçti."}</p>}
+              {rev.pencere && hedef === "yarin" && <p className="form-not t-ikincil" style={{ margin: "0 0 8px" }}>{rev.pencere.durum === "pencere_acik" ? `Yarının programı için bildirim süresi açık; 15:30'a ${sayiTr(rev.pencere.dakika_kaldi)} dakika.` : rev.pencere.durum === "erken" ? "Yarının programı için bildirim 14:00–15:30 arasında yapılır." : "Yarın için bildirim süresi (15:30) geçti; değişiklik yalnız gün içi düzeltme ile."}</p>}
+              {rev.gun_ici && hedef === "bugun" && <p className="form-not t-ikincil" style={{ margin: "0 0 8px" }}>{rev.gun_ici.acik ? `Bir sonraki teslimat saati için gün içi düzeltme ${sayiTr(rev.gun_ici.dakika_kaldi ?? 0)} dakika daha yapılabilir.` : "Bir sonraki teslimat saati için düzeltme süresi geçti."}</p>}
               <ul className="not-listesi">
                 {(rev.oneriler ?? []).map((x) => (
                   <li key={x.kod} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
@@ -247,7 +247,7 @@ export function Portfoyler() {
                     {(dsg.notlar ?? []).slice(0, 2).map((n) => <li key={n}>{n}</li>)}
                   </ul>
                 </>))}
-              {p.tur !== "dsg" && <p className="soluk" style={{ margin: "10px 0 0", fontSize: "var(--t-ikincil)" }}>Bu portföy bir dengeden sorumlu grup değil; dengesizlik tutarları santral santral hesaplanır. Netleşme hesabı yalnız DSG türündeki portföylerde yapılır.</p>}
+              {p.tur !== "dsg" && <p className="soluk t-ikincil" style={{ margin: "10px 0 0" }}>Bu portföy bir dengeden sorumlu grup değil; dengesizlik tutarları santral santral hesaplanır. Netleşme hesabı yalnız DSG türündeki portföylerde yapılır.</p>}
               <details className="aciklama" style={{ marginTop: 10 }}>
                 <summary>Sözleşme kayıtları</summary>
                 {sozlesmeler === "yetki_yok" ? <p className="soluk" style={{ margin: 0 }}>Sözleşme kayıtları editör ve yönetici yetkili kullanıcılara açıktır.</p> : sozlesmeler === undefined ? <YerTutucu yukseklik={40} /> : sozlesmeler === null ? <p className="soluk" style={{ margin: 0 }}>Sözleşme listesi alınamadı.</p> : sozlesmeler.length === 0 ? <p className="soluk" style={{ margin: 0 }}>Bu portföy için sözleşme kaydı yok; dağılım varsayımsal anahtarla gösterilir.</p> : (
@@ -256,7 +256,7 @@ export function Portfoyler() {
                     <tbody>{sozlesmeler.map((z) => <tr key={z.id}><td style={sol}>{z.tur === "dsg_uyelik" ? "DSG üyeliği" : z.tur === "toplayici" ? "toplayıcı" : z.tur === "satis" ? "satış" : "işletme"}</td><td style={{ ...sol, whiteSpace: "nowrap" }} className="mono">{gunYaz(z.gecerli_bas)}{z.gecerli_bit ? ` – ${gunYaz(z.gecerli_bit)}` : " – süresiz"}</td>
                       {/* 12.11 inceleme: dar kartta altı sütun — tarih tek satır, dağılım metni ve rozet alt alta, belge adı kendi satırında; taraflar kırılmaz */}
                       <td style={sol}>{z.dagitim_yontemi ? (DAGILIM_AD[z.dagitim_yontemi] ?? z.dagitim_yontemi) : "—"}<div><Rozet sinif={z.dagilim_etiketi.startsWith("Sözleşmeye") ? "rozet-ok" : "rozet-uyari"}>{z.dagilim_etiketi.toLowerCase()}</Rozet></div></td><td style={sol}>{z.dengesizlik_sorumlusu ? (SORUMLU_AD[z.dengesizlik_sorumlusu] ?? z.dengesizlik_sorumlusu) : "—"}</td>
-                      <td style={sol}><Rozet sinif={DOGRULAMA_SINIF[z.dogrulama] ?? "rozet-notr"}>{z.dogrulama_ad.toLowerCase()}</Rozet>{z.belge_adi ? <div className="soluk" style={{ fontSize: "var(--t-etiket)", wordBreak: "break-all" }}>{z.belge_adi}</div> : null}</td><td style={sol} className="soluk">{[z.taraf_a_ad, z.taraf_b_ad].filter(Boolean).join(" – ") || "—"}</td></tr>)}</tbody>
+                      <td style={sol}><Rozet sinif={DOGRULAMA_SINIF[z.dogrulama] ?? "rozet-notr"}>{z.dogrulama_ad.toLowerCase()}</Rozet>{z.belge_adi ? <div className="soluk t-etiket" style={{ wordBreak: "break-all" }}>{z.belge_adi}</div> : null}</td><td style={sol} className="soluk">{[z.taraf_a_ad, z.taraf_b_ad].filter(Boolean).join(" – ") || "—"}</td></tr>)}</tbody>
                   </table></div>)}
               </details>
             </>)}
@@ -288,7 +288,7 @@ export function Portfoyler() {
           <details className="aciklama"><summary>Yeni portföy</summary><PortfoyFormu onBitti={() => setYenile((n) => n + 1)} /></details>
           <details className="aciklama" onToggle={(e) => setUyelikAcik((e.currentTarget as HTMLDetailsElement).open)}><summary>Üyelik ekle ya da kapat</summary>{uyelikAcik && <UyelikFormu portfoyId={p.id} uyeler={uyeler} onBitti={() => setYenile((n) => n + 1)} />}</details>   {/* 18.11: açılınca bağlanır (santral listesi isteği) */}
           {yonetici ? <details className="aciklama"><summary>Sözleşme ekle</summary><SozlesmeFormu portfoyId={p.id} uyeler={uyeler} onBitti={() => setYenile((n) => n + 1)} /></details>
-            : <p className="soluk" style={{ margin: "8px 0 0", fontSize: "var(--t-ikincil)" }}>Sözleşme kaydını yalnız yönetici ekler.</p>}
+            : <p className="soluk t-ikincil" style={{ margin: "8px 0 0" }}>Sözleşme kaydını yalnız yönetici ekler.</p>}
         </Kart>
         </section>)}
       </div>
@@ -381,7 +381,7 @@ function SozlesmeFormu({ portfoyId, uyeler, onBitti }: { portfoyId: string; uyel
       </div>
       {(yontem === "sabit_pay" || yontem === "ozel") && <div className="ayar-kontrol" style={{ flexWrap: "wrap", gap: 10, marginTop: 10 }}>
         {uyeler.filter((u) => !u.gecerli_bit).map((u) => <label key={u.id} className="girdi-etiket">{u.santral} payı (%)<input className="girdi" type="number" min={0} max={100} step={0.1} value={paylar[u.santral] ?? ""} onChange={(e) => setPaylar({ ...paylar, [u.santral]: e.target.value })} /></label>)}
-        <span className="soluk" style={{ fontSize: "var(--t-ikincil)" }}>Paylar toplamı 100 olmalı; eksik ya da fazla ise kayıt reddedilir.</span>
+        <span className="soluk t-ikincil">Paylar toplamı 100 olmalı; eksik ya da fazla ise kayıt reddedilir.</span>
       </div>}
       <div className="ayar-kontrol" style={{ marginTop: 10 }}><button type="button" className="dugme dugme-ana" disabled={dogrulama !== "beyan" && !belge} onClick={gonder}>Kaydet</button></div>
       {durum && <p className="form-not" style={{ margin: "8px 0 0" }}>{durum}</p>}

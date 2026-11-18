@@ -85,7 +85,7 @@ export function AbonelikKarti({ tenantId, sahip, onDegisti }: { tenantId: string
             <div className="form-tam etiket-ust">Modül istisnaları (plan varsayılanının üstüne)</div>
             <div className="form-tam" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 4 }}>
               {moduller.map(([kod, m]) => (
-                <div key={kod} className="dugme-sira" style={{ gap: 10, fontSize: "var(--t-ikincil)" }}>
+                <div key={kod} className="dugme-sira t-ikincil" style={{ gap: 10 }}>
                   <span style={{ minWidth: 180 }}>{m.ad}<span className="soluk"> · plan: {m.kaynak === "plan" || m.kaynak === "cikar" ? "dâhil" : "dâhil değil"}</span></span>
                   <label className="ayar-onay"><input type="checkbox" checked={f.modul_ek.includes(kod)} onChange={(e) => istisna(kod, "modul_ek", e.target.checked)} /> ekle</label>
                   <label className="ayar-onay"><input type="checkbox" checked={f.modul_cikar.includes(kod)} onChange={(e) => istisna(kod, "modul_cikar", e.target.checked)} /> çıkar</label>

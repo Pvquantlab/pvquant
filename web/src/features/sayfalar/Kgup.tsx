@@ -74,8 +74,8 @@ export function Kgup({ plantId }: { plantId: string }) {
         ) : kgup ? (
           <>
             <div className="program-ozet">
-              <span className="sayi-buyuk">{sayiTr(kgup.toplam_mwh, 1)} <small style={{ fontSize: "var(--t-govde)", fontWeight: 400, color: "var(--soluk)" }}>MWh</small></span>
-              <span className="soluk" style={{ fontSize: "var(--t-ikincil)" }}><Meta items={[kgup.kantil.toUpperCase(), `tahmin ${kgup.kosu.run_at ? new Date(kgup.kosu.run_at).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }) : "—"}`]} /></span>
+              <span className="sayi-buyuk">{sayiTr(kgup.toplam_mwh, 1)} <small className="t-govde" style={{ fontWeight: 400, color: "var(--soluk)" }}>MWh</small></span>
+              <span className="soluk t-ikincil"><Meta items={[kgup.kantil.toUpperCase(), `tahmin ${kgup.kosu.run_at ? new Date(kgup.kosu.run_at).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }) : "—"}`]} /></span>
               <span className={`rozet ${kgup.teslim.durum === "pencere_acik" ? "rozet-ok" : "rozet-notr"}`}>
                 bildirim saati {kgup.teslim.durum === "pencere_acik" ? "açık" : kgup.teslim.durum === "erken" ? "henüz açılmadı" : "kapandı"} (14:00–15:30)
               </span>
@@ -104,13 +104,13 @@ export function Kgup({ plantId }: { plantId: string }) {
                 </div>
               </div>
             </div>
-            {kgupHata && <p style={{ color: "var(--uyari-metin)", fontSize: "var(--t-ikincil)", margin: "8px 0 0" }}>{kgupHata}</p>}
-            <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "8px 0 0" }}>
+            {kgupHata && <p className="t-ikincil" style={{ color: "var(--uyari-metin)", margin: "8px 0 0" }}>{kgupHata}</p>}
+            <p className="soluk t-ikincil" style={{ margin: "8px 0 0" }}>
               {kgup.bildirim ?? "Dosya PVQuant'ta üretildi; TPYS'ye gönderim ve kabul müşterinin sisteminden yapılır — indirilen dosya teslim edilmiş sayılmaz."}
               {kgup.sablon && ` Dosya biçimi: ${kgup.sablon.kaynak ? "müşteri dosyasından öğrenildi" : "TPYS şablonu (KGUP.csv, EAK.csv)"}.`}{kgup.sha256 && <> Dosya özeti (SHA-256): <span className="kimlik">{kgup.sha256.slice(0, 12)}…</span></>}
             </p>
             {kgup.uyarilar.length > 0 && <ul className="not-listesi uyari">{kgup.uyarilar.map((u) => <li key={u}>{u}</li>)}</ul>}
-            {kgup.sicrama_saatleri.length > 0 && <p style={{ fontSize: "var(--t-ikincil)", margin: "8px 0 0" }}>≥200 MWh ani değişim: saat {kgup.sicrama_saatleri.join(", ")}; dosyada 15 dakikalık adımlar.</p>}
+            {kgup.sicrama_saatleri.length > 0 && <p className="t-ikincil" style={{ margin: "8px 0 0" }}>≥200 MWh ani değişim: saat {kgup.sicrama_saatleri.join(", ")}; dosyada 15 dakikalık adımlar.</p>}
             {/* v2.502 (F-06): sürüm geçmişi — her indirme değiştirilemez kayıt; aynı içerik yeni sürüm açmaz; dosya bayt bayt geri alınır */}
             <details className="aciklama genis" onToggle={(e) => { if ((e.currentTarget as HTMLDetailsElement).open && surumler === undefined) surumleriYenile(); }}>   {/* 17.11: açılınca istenir */}
               <summary>Sürüm geçmişi{surumler && surumler.length > 0 ? ` (${sayiTr(surumler.length)} kayıt)` : ""}</summary>
@@ -141,15 +141,15 @@ export function Kgup({ plantId }: { plantId: string }) {
             {/* v2.503 (F-06): müşterinin TPYS'ye bildirdiği dosya — beyan kaydı + öneriyle saat saat kıyas */}
             <details className="aciklama genis" onToggle={(e) => { if ((e.currentTarget as HTMLDetailsElement).open && kiyas === null) api.kgupKiyas(plantId, kgup.gun).then((v) => { if (v) setKiyas(v); }); }}>
               <summary>Bildirilen KGÜP ile kıyas</summary>
-              <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "0 0 8px" }}>
+              <p className="soluk t-ikincil" style={{ margin: "0 0 8px" }}>
                 TPYS'ye yüklediğiniz dosyayı buraya da yükleyin; beyan olarak değiştirilemez biçimde saklanır ve PVQuant önerisiyle saat saat kıyaslanır. TPYS kabulü burada doğrulanmaz.
               </p>
               <label className="girdi-etiket">Bildirilen dosya ({new Date(kgup.gun + "T12:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" })} için)
                 <input className="girdi" type="file" accept=".csv,text/csv" onChange={(e) => { const f = e.target.files?.[0]; if (f) bildirilenYukle(kgup.gun, f); e.target.value = ""; }} /></label>
-              {yukleMesaj && <p style={{ fontSize: "var(--t-ikincil)", margin: "8px 0 0", color: yukleMesaj.startsWith("Kaydedildi") || yukleMesaj.startsWith("Aynı") ? undefined : "var(--uyari-metin)" }}>{yukleMesaj}</p>}
+              {yukleMesaj && <p className="t-ikincil" style={{ margin: "8px 0 0", color: yukleMesaj.startsWith("Kaydedildi") || yukleMesaj.startsWith("Aynı") ? undefined : "var(--uyari-metin)" }}>{yukleMesaj}</p>}
               {kiyas && kiyas.ozet && (
                 <>
-                  <p style={{ fontSize: "var(--t-ikincil)", margin: "8px 0 6px" }}>
+                  <p className="t-ikincil" style={{ margin: "8px 0 6px" }}>
                     {kiyas.ozet.ayni ? "Bildirilen program öneriyle aynı." : <>Bildirilen program öneriden {sayiTr(kiyas.ozet.farkli_saat)} saatte ayrılıyor: toplam fark {sayiTr(kiyas.ozet.fark_toplam_mwh, 3)} MWh, mutlak {sayiTr(kiyas.ozet.fark_mutlak_mwh, 3)} MWh; en büyük fark {String(kiyas.ozet.en_buyuk_fark_saat).padStart(2, "0")}:00 saatinde {sayiTr(kiyas.ozet.en_buyuk_fark_mwh, 3)} MWh.</>}
                     {kiyas.oneri && ` Kıyaslanan: öneri sürüm ${kiyas.oneri.surum}`}{kiyas.bildirilen && `, bildirilen sürüm ${kiyas.bildirilen.surum}.`}
                   </p>
@@ -164,11 +164,11 @@ export function Kgup({ plantId }: { plantId: string }) {
                   )}
                 </>
               )}
-              {kiyas && !kiyas.ozet && <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "8px 0 0" }}>{kiyas.bildirilen ? "Bu gün için indirilmiş öneri yok; kıyas yapılamadı." : "Bu gün için bildirilen dosya henüz yüklenmedi."}</p>}
+              {kiyas && !kiyas.ozet && <p className="soluk t-ikincil" style={{ margin: "8px 0 0" }}>{kiyas.bildirilen ? "Bu gün için indirilmiş öneri yok; kıyas yapılamadı." : "Bu gün için bildirilen dosya henüz yüklenmedi."}</p>}
             </details>
             <details className="aciklama genis">
               <summary>Bildirim dosyası biçimi{kgup.sablon?.kaynak ? " · müşteri dosyasından" : " · varsayılan"}</summary>
-              <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "0 0 8px" }}>
+              <p className="soluk t-ikincil" style={{ margin: "0 0 8px" }}>
                 {kgup.sablon ? <>Şu anki biçim: {kgup.sablon.kolonlar.join(" · ")}; ayraç «{kgup.sablon.ayrac}», ondalık «{kgup.sablon.ondalik}». {kgup.sablon.durum.charAt(0).toLocaleUpperCase("tr-TR") + kgup.sablon.durum.slice(1)}.</> : "Biçim bilgisi yok."}
                 {" "}Bir KGÜP dosyası seçin (CSV ya da Excel); kolon adları, sırası, ayraç ve ondalık o dosyadan öğrenilir ve sonraki KGÜP indirmeleri aynı biçimde çıkar. EAK dosyası her zaman TPYS EAK.csv biçimindedir.
               </p>
@@ -177,7 +177,7 @@ export function Kgup({ plantId }: { plantId: string }) {
                   <input className="girdi" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(e) => { const f = e.target.files?.[0]; if (f) sablonOgren(f); e.target.value = ""; }} /></label>
                 {kgup.sablon?.kaynak && <button className="dugme" onClick={sablonSifirla}>Varsayılana dön</button>}
               </div>
-              {sablonMesaj && <p style={{ fontSize: "var(--t-ikincil)", margin: "8px 0 0", color: sablonMesaj.startsWith("Öğrenildi") || sablonMesaj.startsWith("Varsayılan") ? undefined : "var(--uyari-metin)" }}>{sablonMesaj}</p>}
+              {sablonMesaj && <p className="t-ikincil" style={{ margin: "8px 0 0", color: sablonMesaj.startsWith("Öğrenildi") || sablonMesaj.startsWith("Varsayılan") ? undefined : "var(--uyari-metin)" }}>{sablonMesaj}</p>}
             </details>
             <details className="aciklama">
               <summary>Piyasa takvimi ve program kuralı</summary>
@@ -210,8 +210,8 @@ export function Kgup({ plantId }: { plantId: string }) {
         ) : (
           <>
             {rv.oneri_saatleri.length > 0
-              ? <p style={{ fontSize: "var(--t-ikincil)", margin: "0 0 8px" }}><b>Öneri:</b> saat {rv.oneri_saatleri.map((h) => `${String(h).padStart(2, "0")}:00`).join(", ")} için program güncel beklentiden eşik üstü sapıyor; bu saatlerde fark {sayiTr(rv.saatler.filter((u) => u.oneri).reduce((a, u) => a + (u.fark_mwh ?? 0), 0), 1)} MWh.{rv.ilk_revizyon_son && <> İlk saat için revizyon son anı <b>{new Date(rv.ilk_revizyon_son).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</b>.</>}</p>
-              : <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "0 0 8px" }}>Kalan saatlerde program ile güncel beklenti arasındaki fark eşiğin altında; revizyon gerekmiyor.</p>}
+              ? <p className="t-ikincil" style={{ margin: "0 0 8px" }}><b>Öneri:</b> saat {rv.oneri_saatleri.map((h) => `${String(h).padStart(2, "0")}:00`).join(", ")} için program güncel beklentiden eşik üstü sapıyor; bu saatlerde fark {sayiTr(rv.saatler.filter((u) => u.oneri).reduce((a, u) => a + (u.fark_mwh ?? 0), 0), 1)} MWh.{rv.ilk_revizyon_son && <> İlk saat için revizyon son anı <b>{new Date(rv.ilk_revizyon_son).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</b>.</>}</p>
+              : <p className="soluk t-ikincil" style={{ margin: "0 0 8px" }}>Kalan saatlerde program ile güncel beklenti arasındaki fark eşiğin altında; revizyon gerekmiyor.</p>}
             <div className="grafik-kaydir">
               <table className="veri">
                 <thead><tr><th>Saat</th><th>Program (MWh)</th><th>Güncel beklenti (MWh)</th><th>Fark (MWh)</th><th>Eşik (MWh)</th><th>Revizyon son anı</th><th></th></tr></thead>
@@ -224,7 +224,7 @@ export function Kgup({ plantId }: { plantId: string }) {
                 </tbody>
               </table>
             </div>
-            <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "8px 0 0" }}>Program: {rv.program_kaynagi}. Güncel beklenti: {rv.beklenen_kaynagi}. {rv.not}</p>
+            <p className="soluk t-ikincil" style={{ margin: "8px 0 0" }}>Program: {rv.program_kaynagi}. Güncel beklenti: {rv.beklenen_kaynagi}. {rv.not}</p>
           </>
         )}
       </Kart>

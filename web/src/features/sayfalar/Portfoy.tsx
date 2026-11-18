@@ -228,7 +228,7 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
                   </>); })()}
               </table>
             </div>
-            <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "10px 0 0" }}>Santral tahminleri toplanır; toplam, santral tahminleriyle çelişmez.{pt.yontem === "bottom-up" && " P10 ve P90 da santral değerlerinin toplamıdır; bu, santraller arasında tam bağımlılık varsayımına denk gelir ve portföy belirsizliği olarak ayrıca kalibre edilmemiştir (temkinli aralık)."} {pt.not}{pt.artik_gun ? ` Düzeltme geçmişi ${sayiTr(pt.artik_gun)} gün.` : ""}
+            <p className="soluk t-ikincil" style={{ margin: "10px 0 0" }}>Santral tahminleri toplanır; toplam, santral tahminleriyle çelişmez.{pt.yontem === "bottom-up" && " P10 ve P90 da santral değerlerinin toplamıdır; bu, santraller arasında tam bağımlılık varsayımına denk gelir ve portföy belirsizliği olarak ayrıca kalibre edilmemiştir (temkinli aralık)."} {pt.not}{pt.artik_gun ? ` Düzeltme geçmişi ${sayiTr(pt.artik_gun)} gün.` : ""}
               {(pt.santral_eksik?.length ?? 0) > 0 && <> Tahmini olmayan santral tabloda yok: {pt.santral_eksik!.join(", ")}; özet kartı bu yüzden toplam göstermez.</>}</p>
           </>
         )}
@@ -257,7 +257,7 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
                       return <td><span className={`rozet rozet-kucuk ${n.sinif}`} title={n.aciklama}>{n.etiket}</span></td>; })()}
                   </tr>))}</tbody>
               </table></div>
-              <p className="form-not" style={{ marginTop: 8, fontSize: "var(--t-ikincil)" }}>{fin.not}</p>
+              <p className="form-not t-ikincil" style={{ marginTop: 8 }}>{fin.not}</p>
             </>)}
         </Kart>)}
       {/* v2.276 (Dalga 5): DSG/toplayıcı netleştirmesi — portföy tek dengesizlik hesabına girerse ne kazanılır */}
@@ -296,15 +296,15 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
                 </select>
               </div>
             )}
-            <p className="form-not" style={{ margin: "0 0 10px", fontSize: "var(--t-ikincil)" }}>{dsg.grup_kaynagi === "uyelik" ? "Gruplar Portföy yönetimi sayfasındaki tarihli üyelik kayıtlarından kuruldu." : "Gruplar santral ayarlarındaki DSG kodu beyanıyla kuruldu; tarihli üyelik ve sözleşme kayıtları için "}{dsg.grup_kaynagi !== "uyelik" && <a href="#portfoyler">Portföy yönetimi</a>}{dsg.grup_kaynagi !== "uyelik" && " sayfasını kullanın."}</p>   {/* v2.595 (Faz 3 F3-H) */}
+            <p className="form-not t-ikincil" style={{ margin: "0 0 10px" }}>{dsg.grup_kaynagi === "uyelik" ? "Gruplar Portföy yönetimi sayfasındaki tarihli üyelik kayıtlarından kuruldu." : "Gruplar santral ayarlarındaki DSG kodu beyanıyla kuruldu; tarihli üyelik ve sözleşme kayıtları için "}{dsg.grup_kaynagi !== "uyelik" && <a href="#portfoyler">Portföy yönetimi</a>}{dsg.grup_kaynagi !== "uyelik" && " sayfasını kullanın."}</p>   {/* v2.595 (Faz 3 F3-H) */}
             {dsg.katilimci_gruplari && Object.keys(dsg.katilimci_gruplari).length > 0 && (
-              <p className="form-not" style={{ margin: "0 0 10px", fontSize: "var(--t-ikincil)" }}><b>Katılımcı toplamları:</b> {Object.entries(dsg.katilimci_gruplari).map(([k, v]) => `${k}: ${v.join(" + ")}`).join("; ")} — aynı piyasa katılımcısının santralleri tek üye olarak sayıldı; üye eşiği katılımcı toplamında (DUY m.111).</p>
+              <p className="form-not t-ikincil" style={{ margin: "0 0 10px" }}><b>Katılımcı toplamları:</b> {Object.entries(dsg.katilimci_gruplari).map(([k, v]) => `${k}: ${v.join(" + ")}`).join("; ")} — aynı piyasa katılımcısının santralleri tek üye olarak sayıldı; üye eşiği katılımcı toplamında (DUY m.111).</p>
             )}   {/* v2.541 (DK-252) */}
             {dsg.disi_nedenleri && Object.keys(dsg.disi_nedenleri).length > 0 && (
               <details className="aciklama" style={{ marginBottom: 10 }}>
                 <summary>Hesap dışı santraller ({sayiTr(Object.keys(dsg.disi_nedenleri).length)})</summary>
-                <ul className="not-listesi" style={{ fontSize: "var(--t-ikincil)", marginTop: 6 }}>{Object.entries(dsg.disi_nedenleri).map(([ad, n]) => <li key={ad}><b>{ad}:</b> {n}</li>)}</ul>
-                {dsg.katilimci_notu && <p className="soluk" style={{ margin: "6px 0 0", fontSize: "var(--t-ikincil)" }}>{dsg.katilimci_notu}</p>}
+                <ul className="not-listesi t-ikincil" style={{ marginTop: 6 }}>{Object.entries(dsg.disi_nedenleri).map(([ad, n]) => <li key={ad}><b>{ad}:</b> {n}</li>)}</ul>
+                {dsg.katilimci_notu && <p className="soluk t-ikincil" style={{ margin: "6px 0 0" }}>{dsg.katilimci_notu}</p>}
               </details>
             )}
             {dsg.gosterge === false && dsg.uyeler && Object.keys(dsg.uyeler).length > 1 && (
@@ -334,18 +334,18 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
                     </tbody>
                   </table>
                 </div>
-                <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "6px 0 0" }}>DSG içinde EDT, santralde kalan kısım ile grubun net tutarından alınan payın toplamıdır. Fark, DSG içindeki tutar ile tek başına tutar arasındaki farktır; eksi tutar santralin ödediği tutardır. Santrallerin toplamı grup toplamına eşittir. Bu hesap varsayımsaldır; EPİAŞ uzlaştırma sonucu değildir.</p>
+                <p className="soluk t-ikincil" style={{ margin: "6px 0 0" }}>DSG içinde EDT, santralde kalan kısım ile grubun net tutarından alınan payın toplamıdır. Fark, DSG içindeki tutar ile tek başına tutar arasındaki farktır; eksi tutar santralin ödediği tutardır. Santrallerin toplamı grup toplamına eşittir. Bu hesap varsayımsaldır; EPİAŞ uzlaştırma sonucu değildir.</p>
               </details>
             )}
             {dsg.gosterge === false && ((dsg.disi?.length ?? 0) > 0 || (dsg.segment_yok?.length ?? 0) > 0) && (
-              <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "0 0 8px" }}>
+              <p className="soluk t-ikincil" style={{ margin: "0 0 8px" }}>
                 {(dsg.disi?.length ?? 0) > 0 && `DSG kapsamı dışındaki santraller, dengesizliğini kendisi taşımayanlar: ${dsg.disi!.join(", ")}. `}
                 {(dsg.segment_yok?.length ?? 0) > 0 && `Segmenti seçilmemiş santraller, lisanslı güneş varsayıldı ve KÜPST hesaplanamadı; Santralim › Santral ayarlarından seçilir: ${dsg.segment_yok!.join(", ")}.`}
               </p>
             )}
             {/* 15.11: önce öz, dayanak katlanır (uzun mevzuat metni gövdeyi boğuyordu) */}
-            <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "0 0 6px" }}>Yürürlükteki kuralla yapılmış varsayımsal bir yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir.</p>
-            <details className="aciklama" style={{ margin: 0 }}><summary>Yöntem ve dayanak</summary><p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "6px 0 0" }}>{dsg.not}</p></details>
+            <p className="soluk t-ikincil" style={{ margin: "0 0 6px" }}>Yürürlükteki kuralla yapılmış varsayımsal bir yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir.</p>
+            <details className="aciklama" style={{ margin: 0 }}><summary>Yöntem ve dayanak</summary><p className="soluk t-ikincil" style={{ margin: "6px 0 0" }}>{dsg.not}</p></details>
           </>
         )}
       </Kart>
@@ -389,11 +389,11 @@ export function Portfoy({ onSec }: { onSec: (id: string) => void }) {   // 26.10
                       </table>
                     </div>
                   )}
-                  <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "6px 0 0" }}>Birim toplamı: brüt sapma {sayiTr(u.udups_mwh ?? 0, 1)} MWh, tolerans üstü {sayiTr(u.kupsm_mwh ?? 0, 1)} MWh, {sayiTr(u.n_saat)} saat{(u.hesaplanamayan_saat ?? 0) > 0 ? `, ${sayiTr(u.hesaplanamayan_saat ?? 0)} saat hesaplanamadı (1.11.2026 öncesi katsayı belirsiz)` : ""}. Santral paylarının toplamı birim toplamına eşittir.</p>
+                  <p className="soluk t-ikincil" style={{ margin: "6px 0 0" }}>Birim toplamı: brüt sapma {sayiTr(u.udups_mwh ?? 0, 1)} MWh, tolerans üstü {sayiTr(u.kupsm_mwh ?? 0, 1)} MWh, {sayiTr(u.n_saat)} saat{(u.hesaplanamayan_saat ?? 0) > 0 ? `, ${sayiTr(u.hesaplanamayan_saat ?? 0)} saat hesaplanamadı (1.11.2026 öncesi katsayı belirsiz)` : ""}. Santral paylarının toplamı birim toplamına eşittir.</p>
                 </details>
               ))}
-              <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "0 0 6px" }}>Yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir.</p>
-              <details className="aciklama" style={{ margin: 0 }}><summary>Yöntem ve dayanak</summary><p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "6px 0 0" }}>{kupst.not}</p></details>
+              <p className="soluk t-ikincil" style={{ margin: "0 0 6px" }}>Yeniden hesaptır; EPİAŞ uzlaştırma sonucu değildir.</p>
+              <details className="aciklama" style={{ margin: 0 }}><summary>Yöntem ve dayanak</summary><p className="soluk t-ikincil" style={{ margin: "6px 0 0" }}>{kupst.not}</p></details>
             </>
           )}
         </Kart>

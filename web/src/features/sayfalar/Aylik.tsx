@@ -147,7 +147,7 @@ export function Aylik({ plantId }: { plantId: string }) {
   if (birikiyor) return (
     <Sayfa baslik="Aylık beklenti" alt="Uzun dönem iklim verisinden aylık üretim aralığı.">
       <Kart baslik="Beklenti birikiyor">
-        <p style={{ fontSize: "var(--t-ikincil)", color: "var(--ikincil)", margin: 0 }}>
+        <p className="t-ikincil" style={{ color: "var(--ikincil)", margin: 0 }}>
           İklim beklentisi henüz hesaplanmadı; her ayın 1'inde uzun dönem arşivden
           otomatik olarak hesaplanır. İlk hesaptan sonra bu sayfa dolar.
         </p>
@@ -213,14 +213,14 @@ export function Aylik({ plantId }: { plantId: string }) {
                 </tbody>
               </table>
             </div>
-            <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "10px 0 0" }}>
+            <p className="soluk t-ikincil" style={{ margin: "10px 0 0" }}>
               {bk.mod}. Işınım P50 {sayiTr(bk.ghi?.p50_kwh_m2 ?? 0, 0)} kWh/m² (tek yıl P90 {sayiTr(bk.ghi?.p90_kwh_m2_1yil ?? 0, 0)}).
               {bk.tmy?.p90_yili ? ` P90 senaryo yılı: ${bk.tmy.p90_yili} (${sayiTr(bk.tmy.p90_yili_ghi ?? 0, 0)} kWh/m²); tipik meteorolojik yıl ${sayiTr(bk.tmy.tmy_ghi_kwh_m2 ?? 0, 0)} kWh/m².` : ""}
               {bk.monte_carlo ? ` Çarpımsal sınama (asimetri korunur): P90 ${sayiTr(bk.monte_carlo.p90_1yil / 1000, 0)} MWh, P99 ${sayiTr(bk.monte_carlo.p99_1yil / 1000, 0)} MWh — normal varsayımla ${Math.abs((bk.monte_carlo.p90_1yil - (bk.bir_yil?.p90 ?? 0)) / (bk.bir_yil?.p90 || 1) * 100) < 1 ? "uyumlu" : "farklı"}.` : ""}
               {bk.gelir ? ` Gelir (tarife: ${bk.gelir.tip}, ${sayiTr(bk.gelir.fiyat_tl_mwh, 0)} TL/MWh): P50 ${sayiTr(bk.gelir.p50_tl / 1e6, 2)} milyon TL/yıl, P90 tek yıl ${sayiTr(bk.gelir.p90_1yil_tl / 1e6, 2)} milyon TL, P90 10 yıl ${sayiTr(bk.gelir.p90_nyil_tl / 1e6, 2)} milyon TL.${bk.gelir.not ? " " + bk.gelir.not + "." : ""}` : ""}
               {" "}{bk.not}
             </p>
-            {bkMesaj && <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "6px 0 0" }}>{bkMesaj}</p>}
+            {bkMesaj && <p className="soluk t-ikincil" style={{ margin: "6px 0 0" }}>{bkMesaj}</p>}
           </>
         )}
       </Kart>
@@ -248,7 +248,7 @@ export function Aylik({ plantId }: { plantId: string }) {
                 </tbody>
               </table>
             </div>
-            <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "10px 0 0" }}>
+            <p className="soluk t-ikincil" style={{ margin: "10px 0 0" }}>
               Bozunma: {pd.bozunma_kaynak}. Belirsizlik tek yıl {yuzdeTr((pd.sigma_1yil ?? 0) * 100, 1)}, ömür ortalaması {yuzdeTr((pd.sigma_nyil ?? 0) * 100, 1)}.
               {pd.butce_kwh_yil ? ` Bütçe: ${sayiTr(pd.butce_kwh_yil / 1000, 0)} MWh/yıl (Santral ayarları).` : " Yıllık bütçe girilmedi (Santral ayarları); bütçe sütunu için finansal modeldeki değeri girin."}{" "}{pd.not}
             </p>
@@ -281,7 +281,7 @@ export function Aylik({ plantId }: { plantId: string }) {
                 </tbody>
               </table>
             </div>
-            <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "10px 0 0" }}>
+            <p className="soluk t-ikincil" style={{ margin: "10px 0 0" }}>
               Referans PR: {pf.referans?.etiket}. Hücre sıcaklığı: {pf.sicaklik?.etiket}.{pf.ac_sinir_kw ? ` Beklenen üretim ${sayiTr(pf.ac_sinir_kw / 1000, 2)} MW ${pf.ac_sinir_kaynak ?? "EAK"} ile üstten kesildi.` : ""}{" "}
               Işınım sensörü: {pf.sensorler.etiket}. {pf.isinim?.not} {pf.not}
             </p>
@@ -296,7 +296,7 @@ export function Aylik({ plantId }: { plantId: string }) {
       <Kart baslik="Aylık yatay ışınım (GHI) — uzun dönem P50 ve P10–P90 aralığı">
         <EChart option={option} height={320}
           ariaLabel="12 ay için uzun dönem GHI serpilisi, P10-P90 bandı ve P50 çizgisi" />
-        <p style={{ fontSize: "var(--t-ikincil)", color: "var(--soluk)", margin: "12px 0 0" }}>
+        <p className="t-ikincil" style={{ color: "var(--soluk)", margin: "12px 0 0" }}>
           <b style={{ color: "var(--ikincil)" }}>Ne gösterir:</b>{" "}
           yeşil sütun arşivin beklenen (P50) ışınımı, çentikli çizgi
           P10–P90 aralığıdır; yılların %80'i bu aralıkta kalır.{" "}
@@ -308,8 +308,7 @@ export function Aylik({ plantId }: { plantId: string }) {
       <Kart baslik="Yıl × ay ışınım tablosu (GHI)"
         sag={<span className="cip"><Meta items={["kWh/m²", "renk: değer ölçeği"]} /></span>}>
         <div style={{ overflowX: "auto" }}>
-          <table style={{ borderCollapse: "collapse", width: "100%",
-                          fontFamily: "var(--font)", fontSize: "var(--t-kod)" }}>   {/* 16.11 tek aile: yoğun veri tablosu gövde ailesinde (tabular body düzeyinde) */}
+          <table className="t-kod" style={{ borderCollapse: "collapse", width: "100%", fontFamily: "var(--font)" }}>   {/* 16.11 tek aile: yoğun veri tablosu gövde ailesinde (tabular body düzeyinde) */}
             <thead>
               <tr>
                 <th style={{ textAlign: "left", padding: "4px 6px",
@@ -373,7 +372,7 @@ export function Aylik({ plantId }: { plantId: string }) {
             </tbody>
           </table>
         </div>
-        <p style={{ fontSize: "var(--t-ikincil)", color: "var(--soluk)", margin: "12px 0 0" }}>
+        <p className="t-ikincil" style={{ color: "var(--soluk)", margin: "12px 0 0" }}>
           <b style={{ color: "var(--ikincil)" }}>Ne gösterir:</b> her hücre bir
           yılın o aydaki yatay ışınım toplamıdır (kWh/m²); sıcak tonlar yüksek ışınımı
           gösterir, ölçek tüm tabloda ortaktır.{" "}

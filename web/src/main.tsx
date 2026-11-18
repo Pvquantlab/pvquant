@@ -32,9 +32,9 @@ class HataSiniri extends Component<{ children: ReactNode }, { hata: boolean }> {
     if (!this.state.hata) return this.props.children
     if (yenileniyor) return null
     return (
-      <div role="alert" style={{ maxWidth: 520, margin: '72px auto', padding: '0 20px', textAlign: 'center', fontSize: "var(--t-kart)", lineHeight: 1.6 }}>
+      <div className="t-kart" role="alert" style={{ maxWidth: 520, margin: '72px auto', padding: '0 20px', textAlign: 'center', lineHeight: 1.6 }}>
         <p style={{ margin: 0 }}>Sayfa yüklenirken bir sorun oluştu. Sayfayı yeniden yükleyin.</p>
-        <button type="button" onClick={() => window.location.reload()} style={{ marginTop: 14, padding: '10px 18px', fontSize: "var(--t-govde)" }}>Yeniden yükle</button>
+        <button className="t-govde" type="button" onClick={() => window.location.reload()} style={{ marginTop: 14, padding: '10px 18px' }}>Yeniden yükle</button>
       </div>
     )
   }

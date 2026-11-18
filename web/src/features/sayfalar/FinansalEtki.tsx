@@ -87,7 +87,7 @@ export function FinansalEtki({ plantId }: { plantId: string }) {
   return (
     <Sayfa baslik="Finansal etki" alt={SAYFA_ALT} sag={secici}>
       <ModulNotu kod="finansal_etki" />
-      {m.senaryo && <p className="form-not" style={{ margin: "0 0 12px", fontSize: "var(--t-ikincil)", color: "var(--uyari-metin)" }}><b>Senaryo görünümü:</b> {m.senaryo.etiket}. {m.senaryo.not}</p>}
+      {m.senaryo && <p className="form-not t-ikincil" style={{ margin: "0 0 12px", color: "var(--uyari-metin)" }}><b>Senaryo görünümü:</b> {m.senaryo.etiket}. {m.senaryo.not}</p>}
       <div className="akis">
       <section className="bolum">
       <div className="ozet-bas">Dönem<span className="sag">{o.donem.etiket}</span></div>
@@ -182,7 +182,7 @@ export function FinansalEtki({ plantId }: { plantId: string }) {
               <thead><tr><th style={sol}>Neden sınıfı</th><th>Saat</th><th>Kayıp (kWh)</th><th>Gelir kaybı (TL)</th></tr></thead>
               <tbody>{du.siniflar.filter((s) => s.saat > 0).map((s) => <tr key={s.kod}><td style={{ ...sol, whiteSpace: "normal" }}>{s.ad}</td><td className="mono">{sayiTr(s.saat)}</td><td className="mono">{s.kayip_kwh == null ? "—" : sayiTr(s.kayip_kwh, 0)}</td><td className="mono">{s.kayip_tl == null ? "—" : sayiTr(s.kayip_tl, 0)}</td></tr>)}</tbody>
             </table></div>
-          ) : <p className="soluk" style={{ margin: "10px 0 0", fontSize: "var(--t-ikincil)" }}>{du.kayip?.durum === "yetersiz" ? "Dönemde üretim mümkün saat yetersiz; neden ayrışımı yapılmadı." : "Beklenen üretim verisi olmadığından neden ayrışımı yapılmadı."}</p>}
+          ) : <p className="soluk t-ikincil" style={{ margin: "10px 0 0" }}>{du.kayip?.durum === "yetersiz" ? "Dönemde üretim mümkün saat yetersiz; neden ayrışımı yapılmadı." : "Beklenen üretim verisi olmadığından neden ayrışımı yapılmadı."}</p>}
           <ul className="not-listesi">
             {du.bilesenler.map((b) => <li key={b.kod}><b>{b.ad}:</b> {b.tutar_tl == null ? b.notlar[0] ?? "hesaplanmadı" : `${yaz(b.tutar_tl)} TL`} <Rozet n={b.nitelik} /></li>)}
             {du.sozlesme?.not && <li className="soluk">{du.sozlesme.not}</li>}
