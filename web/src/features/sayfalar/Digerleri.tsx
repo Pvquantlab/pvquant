@@ -9,7 +9,7 @@ import { api, bellekten, ayniysaEskisi, rolum, RaporDenetimHata, type DenetimBul
          type ScadaOnizleme, type ScadaKayit,
          type KosuSatiri , CihazBazliHatasi} from "../../api/client";
 import type { KalibrasyonOzeti, Kayma, Hijyen, EpiasUretim, KayipAgaci, GucMatrisi, Isler, SaatProfili, KayipAyrisimi } from "../../api/types";
-import { Kart, Sayfa, Kpi, sayiTr, SayfaIskeleti, YerTutucu, Katla } from "./parcalar";
+import { Kart, Sayfa, Kpi, sayiTr, YerTutucu, Katla } from "./parcalar";
 import { yuzdeTr } from "../../lib/bicim";   // 16.11: yüzde işaret sırası tek kural (−%8,4)
 import { ModulNotu } from "./Abonelik";   // v2.609 (Faz 6 F6-D): kapalı özellik notu (uyarı kipi)
 import { Meta } from "../../lib/Meta";
@@ -663,23 +663,26 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
   type Durum = "bekliyor" | "tamam" | "hata";
   const [k, setK] = useState<KalibrasyonOzeti | null | undefined>(() => bellekten.kalibrasyon(plantId));
   const [kD, setKD] = useState<Durum>("bekliyor");
-  const [ky, setKy] = useState<Kayma | null | undefined>(undefined);   // v2.253
-  const [hj, setHj] = useState<Hijyen | null | undefined>(undefined);  // v2.254
-  const [ka, setKa] = useState<KayipAgaci | null | undefined>(undefined);
-  const [gm, setGm] = useState<GucMatrisi | null | undefined>(undefined);
-  const [sp, setSp] = useState<SaatProfili | null | undefined>(undefined);   // 04.11 v2.532: saat profili (Doğruluk'taki saat × gün haritasının yerine)
-  const [kyp, setKyp] = useState<KayipAyrisimi | null | undefined>(undefined);   // 04.11 v2.533 (P8a): gerçekleşen kayıp ayrışımı
+  // 18.11 Kalibrasyon (Grup 1): altı teşhis yanıtı da BAYAT-ÖNCE (santral geçişinde bellekte olan anında, ağdan tazelenir); sayfa .akis
+  // bölüm ritminde (kartlar 0 px bitişikti), sayfaya özel iskelet; kart başlıkları sayfa başlığını («Kalibrasyon») yinelemez.
+  const [ky, setKy] = useState<Kayma | null | undefined>(() => bellekten.kayma(plantId));   // v2.253
+  const [hj, setHj] = useState<Hijyen | null | undefined>(() => bellekten.hijyen(plantId));  // v2.254
+  const [ka, setKa] = useState<KayipAgaci | null | undefined>(() => bellekten.kayipAgaci(plantId));
+  const [gm, setGm] = useState<GucMatrisi | null | undefined>(() => bellekten.gucMatrisi(plantId));
+  const [sp, setSp] = useState<SaatProfili | null | undefined>(() => bellekten.saatProfili(plantId));   // 04.11 v2.532: saat profili (Doğruluk'taki saat × gün haritasının yerine)
+  const [kyp, setKyp] = useState<KayipAyrisimi | null | undefined>(() => bellekten.kayipAyrisimi(plantId));   // 04.11 v2.533 (P8a): gerçekleşen kayıp ayrışımı
   useEffect(() => {
     let acik = true;
     setK(bellekten.kalibrasyon(plantId)); setKD("bekliyor");
-    setHj(undefined); setKy(undefined); setKa(undefined); setGm(undefined); setSp(undefined); setKyp(undefined);
+    setHj(bellekten.hijyen(plantId)); setKy(bellekten.kayma(plantId)); setKa(bellekten.kayipAgaci(plantId));
+    setGm(bellekten.gucMatrisi(plantId)); setSp(bellekten.saatProfili(plantId)); setKyp(bellekten.kayipAyrisimi(plantId));   // 18.11 bayat-önce
     api.kalibrasyon(plantId).then((v) => { if (acik) { setK((e) => ayniysaEskisi(e, v)); setKD("tamam"); } }, () => { if (acik) { setK((e) => e ?? null); setKD("hata"); } });
-    api.hijyen(plantId).then((v) => { if (acik) setHj(v); }, () => { if (acik) setHj(null); });
-    api.kayma(plantId).then((v) => { if (acik) setKy(v); }, () => { if (acik) setKy(null); });
-    api.kayipAgaci(plantId).then((v) => { if (acik) setKa(v); }, () => { if (acik) setKa(null); });
-    api.gucMatrisi(plantId).then((v) => { if (acik) setGm(v); }, () => { if (acik) setGm(null); });
-    api.saatProfili(plantId).then((v) => { if (acik) setSp(v); }, () => { if (acik) setSp(null); });
-    api.kayipAyrisimi(plantId).then((v) => { if (acik) setKyp(v); }, () => { if (acik) setKyp(null); });
+    api.hijyen(plantId).then((v) => { if (acik) setHj((e) => ayniysaEskisi(e, v)); }, () => { if (acik) setHj(null); });
+    api.kayma(plantId).then((v) => { if (acik) setKy((e) => ayniysaEskisi(e, v)); }, () => { if (acik) setKy(null); });
+    api.kayipAgaci(plantId).then((v) => { if (acik) setKa((e) => ayniysaEskisi(e, v)); }, () => { if (acik) setKa(null); });
+    api.gucMatrisi(plantId).then((v) => { if (acik) setGm((e) => ayniysaEskisi(e, v)); }, () => { if (acik) setGm(null); });
+    api.saatProfili(plantId).then((v) => { if (acik) setSp((e) => ayniysaEskisi(e, v)); }, () => { if (acik) setSp(null); });
+    api.kayipAyrisimi(plantId).then((v) => { if (acik) setKyp((e) => ayniysaEskisi(e, v)); }, () => { if (acik) setKyp(null); });
     return () => { acik = false; };
   }, [plantId, ds]);   // 26.10 eşzamanlama
   const yuklendi = k !== undefined || kD !== "bekliyor";
@@ -761,7 +764,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
     const d = new Date(iso);
     return `${d.getDate()} ${AY[d.getMonth()]} ${d.getFullYear()}`;
   };
-  if (!yuklendi) return <SayfaIskeleti kpi={3} kart={2} />;
+  if (!yuklendi) return <KalibrasyonIskeleti />;
   return (
     <Sayfa baslik="Kalibrasyon"
       alt="Model santralinizin kendi verisiyle uyarlanır; sonucunu bu sayfada görürsünüz."
@@ -773,6 +776,9 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
           title="Kalibrasyon her ay otomatik yenilenir; elle yeniden kalibrasyon henüz panelde değil">Yeniden kalibre et</button>
         <span className="soluk" style={{ fontSize: "var(--t-etiket)", textAlign: "right" }}>her ay otomatik yenilenir; elle yenileme henüz panelde değil</span>
       </span>}>
+      <div className="akis">
+      <section className="bolum">
+      <div className="ozet-bas">Sonuç<span className="sag">kalibre model, fiziksel modele karşı</span></div>
       {yuklendi && !k && (
         <Kart baslik="Aktif kalibrasyon yok">
           <div className="bos-durum">
@@ -790,7 +796,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
           <ul className="not-listesi" style={{ marginTop: 4 }}>{k.uyarilar.map((u) => <li key={u}>{u}</li>)}</ul>
         </div>
       )}
-      <div className="ızgara satir-3" style={{ marginBottom: 14 }}>
+      <div className="ızgara satir-3">
         <Kpi etiket={`Kalibre model hatası (MAPE), Mod ${k.mode}`} deger={yzd(k.mape_sonra)}
              alt="kalibrasyon dönemi, saatlik" />
         <Kpi etiket="Fiziksel model, aynı dönem" deger={yzd(k.mape_once)}
@@ -802,7 +808,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
                : "Saatlik hata kazancı yok; sapma düzeltmesi için Mod C etkin"} />
       </div>
       <div className="ızgara" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)" }}>
-        <Kart baslik="Kalibrasyon sonuçları">
+        <Kart baslik="Katsayılar ve dönem">   {/* 18.11: «Kalibrasyon sonuçları» sayfa başlığını yineliyordu; içerik katsayı, anahtar ve tarih */}
           <table className="veri"><tbody>
             {sr("Sistem verim katsayısı", k.eta_bos === null ? "\u2014" : sayiTr(k.eta_bos, 3))}
             {sr("Çift yüzlü panel kazancı", k.bg === null ? "\u2014" : sayiTr(k.bg, 3))}
@@ -829,7 +835,7 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
         </Kart>
       </div>
       {(selale.mape || selale.sapma) && (
-        <Kart baslik="Kalibrasyonun etkisi" alt="Fiziksel modelden kalibre modele"
+        <Kart baslik="Etkisi" alt="Fiziksel modelden kalibre modele"
           sag={<span className="cip"><Meta items={["mavi: iyileşme", "kızıl: kayıp", "eksen kırpılmış"]} /></span>}>
           <div className="ızgara" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)" }}>
             {selale.mape && (
@@ -856,6 +862,9 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
         </Kart>
       )}
       </>)}
+      </section>
+      <section className="bolum">
+      <div className="ozet-bas">Veri kalitesi<span className="sag">kırpma, kısıt ve kayıp ayrışımı</span></div>
       {/* v2.254 (Dalga 3.9): kırpma (AC tavanı) ve şebeke kısıntısı — ölçüm silinmez, bayraklanır;
           kısıntı karne ve kalibrasyon dışı, kırpma yalnız kalibrasyon dışı. */}
       <Kart baslik="Veri temizliği" alt="AC sınırında kırpma ve şebeke kısıtı"
@@ -926,6 +935,9 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
             <p className="soluk" style={{ margin: 0 }}>{kyp?.durum === "yetersiz" ? "Üretim mümkün saat sayısı henüz yetersiz (en az 24 saat)." : kyp ? "Beklenen ve gerçekleşen çifti birikmedi; ölçüm yüklemeleri sürdükçe dolar." : "Kayıp ayrışımı şu anda alınamadı."}</p>
           )}
       </Kart>
+      </section>
+      <section className="bolum">
+      <div className="ozet-bas">Teşhis<span className="sag">hava verisi ve saate göre sapma</span></div>
       {/* v2.253 (Dalga 2.8b): eğitim/servis kayması — kalibrasyon arşiv meteosuyla, tahmin servisi tahmin
           meteosuyla çalışır; aynı saatlerde dağılım/sapma farkı bant sapmasının olası adresidir. */}
       <Kart baslik="Hava verisi tutarlılığı" alt="Kalibrasyon ve tahmin aynı veriyi mi görüyor?"
@@ -978,8 +990,31 @@ export function Kalibrasyon({ plantId }: { plantId: string }) {
           <p className="soluk" style={{ margin: 0 }}>{sp ? "Henüz karşılaştırılabilir tahmin–gerçekleşen çifti birikmedi; ölçüm yüklemeleri sürdükçe dolar." : "Saat profili şu anda alınamadı."}</p>
         )}
       </Kart>
+      </section>
+      <section className="bolum">
+      <div className="ozet-bas">Tipik yıl<span className="sag">kayıp zinciri ve panel verimi</span></div>
       <KayipAgaciKarti plantId={plantId} ilkVeri={ka} />
       <GucMatrisiKarti plantId={plantId} ilkVeri={gm} />
+      </section>
+      </div>
+    </Sayfa>
+  );
+}
+
+
+/** 18.11 (Grup 1) — Kalibrasyon iskeleti: başlık ve açıklama anında; üç KPI (124 px) + iki sonuç kartı (300 px) kalıbı.
+ *  Eski genel iskelet başlıksızdı (3 KPI + 2 kart alt alta). Sayı/veri yok, hareket yok. */
+function KalibrasyonIskeleti() {
+  return (
+    <Sayfa baslik="Kalibrasyon" alt="Model santralinizin kendi verisiyle uyarlanır; sonucunu bu sayfada görürsünüz.">
+      <div className="akis" role="status" aria-live="polite" aria-label="Yükleniyor">
+        <section className="bolum">
+          <div className="ozet-bas">Sonuç<span className="sag">yükleniyor…</span></div>
+          <div className="iskelet-kpi" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>{Array.from({ length: 3 }, (_, i) => <span key={i} />)}</div>
+          <div className="sira-2"><div className="iskelet-kart" style={{ height: 300 }} /><div className="iskelet-kart" style={{ height: 300 }} /></div>
+        </section>
+        <span className="gorsel-gizli">Yükleniyor…</span>
+      </div>
     </Sayfa>
   );
 }

@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
-import { api } from "../../api/client";
+import { api, bellekten } from "../../api/client";
 import type { MutabakatOzet, MutabakatSatir, SaatlikKiyas } from "../../api/types";
-import { Kart, Kpi, Sayfa, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
+import { Kart, Kpi, Sayfa, sayiTr, YerTutucu } from "./parcalar";
+import { donemEtiket } from "../../lib/donem";   // 18.11: dönem eyebrow'u ortak biçimle
 import { ModulNotu } from "./Abonelik";   // v2.609 (Faz 6 F6-D): kapalı özellik notu (uyarı kipi)
 import { Meta } from "../../lib/Meta";
 import { tarihBicimi, yuzdeTr } from "../../lib/bicim";
@@ -27,12 +28,12 @@ const oncekiAy = () => { const d = new Date(); d.setDate(1); d.setMonth(d.getMon
 
 /** v2.527 (P2b-2): EPYS saatlik detayı ↔ PVQuant dökümü — yalnız ortak saatlerde (eş kapsamlı) kıyas, fark ayrıştırması, en büyük farklı saatler, CSV */
 function SaatlikDetayKarti({ plantId, donem, uretim, ds }: { plantId: string; donem: string; uretim: string | null; ds: number }) {
-  const [k, setK] = useState<SaatlikKiyas | null | undefined>(undefined);
+  const [k, setK] = useState<SaatlikKiyas | null | undefined>(() => bellekten.saatlikKiyas(plantId, donem, uretim));   // 18.11 bayat-önce
   const [dosya, setDosya] = useState<File | null>(null); const [anahtar, setAnahtar] = useState(0);
   const [mesaj, setMesaj] = useState<{ metin: string; ton: "ok" | "hata" | "uyari" } | null>(null); const [mesgul, setMesgul] = useState(false);
   const canli = useRef(0);   // 16.11 gezinme hızı — yarış koruması: son çağrı kazanır (santral/dönem değişimi, yükleme sonrası yenileme)
-  const yukle = () => { const n = ++canli.current; return api.saatlikKiyas(plantId, donem, uretim).then((v) => { if (n === canli.current) setK(v); }, () => { if (n === canli.current) setK(null); }); };
-  useEffect(() => { setK(undefined); void yukle(); }, [plantId, donem, uretim, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const yukle = () => { const n = ++canli.current; return api.saatlikKiyas(plantId, donem, uretim).then((v) => { if (n === canli.current) setK(v); }, () => { if (n === canli.current) setK((e) => e ?? null); }); };
+  useEffect(() => { setK(bellekten.saatlikKiyas(plantId, donem, uretim)); void yukle(); }, [plantId, donem, uretim, ds]);   // eslint-disable-line react-hooks/exhaustive-deps
   const gonder = () => {
     if (!dosya) { setMesaj({ metin: "Önce EPYS'den indirdiğiniz saatlik detay dosyasını seçin (XLSX ya da CSV).", ton: "hata" }); return; }
     setMesaj(null); setMesgul(true);
@@ -100,10 +101,12 @@ const YON_AD: Record<string, string> = { fazla: "sistem fazlası", acik: "sistem
 
 export function Mutabakat({ plantId }: { plantId: string }) {
   const ds = useDamgaSurumu();
-  const [o, setO] = useState<MutabakatOzet | null | undefined>(undefined);
+  // 18.11 Mutabakat (Grup 1): özet ve saatlik kıyas BAYAT-ÖNCE (santral/dönem/sürüm/üretim geçişinde bellekte olan anında, ağdan tazelenir; yarış
+  // koruması aynen); sayfa .akis bölüm ritminde (çift .sira-2, eşit sütun); sayfaya özel iskelet (başlık anında, 4 KPI + çift kalıbı).
   const [donem, setDonem] = useState<string | null>(null);
   const [surum, setSurum] = useState<string | null>(null);
   const [uretim, setUretim] = useState<string | null>(null);   // v2.526 (P4a-2): boş = santral ayarı
+  const [o, setO] = useState<MutabakatOzet | null | undefined>(() => bellekten.mutabakat(plantId, donem, surum, uretim));
   const [mesaj, setMesaj] = useState<{ metin: string; ton: "ok" | "hata" | "uyari" } | null>(null);
   const [dosya, setDosya] = useState<File | null>(null);
   const [dosyaAnahtar, setDosyaAnahtar] = useState(0);   // yükleme sonrası dosya alanı sıfırlanır
@@ -111,8 +114,8 @@ export function Mutabakat({ plantId }: { plantId: string }) {
   const [yukSurum, setYukSurum] = useState("");
   const [yukleniyor, setYukleniyor] = useState(false);
   const canli = useRef(0);   // 16.11 gezinme hızı — yarış koruması: son çağrı kazanır
-  const yukle = () => { const n = ++canli.current; return api.mutabakat(plantId, donem, surum, uretim).then((v) => { if (n === canli.current) setO(v); }, () => { if (n === canli.current) setO(null); }); };
-  useEffect(() => { setO(undefined); void yukle(); }, [plantId, ds, donem, surum, uretim]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const yukle = () => { const n = ++canli.current; return api.mutabakat(plantId, donem, surum, uretim).then((v) => { if (n === canli.current) setO(v); }, () => { if (n === canli.current) setO((e) => e ?? null); }); };   // 18.11: tazeleme düşerse bellekteki kalır
+  useEffect(() => { setO(bellekten.mutabakat(plantId, donem, surum, uretim)); void yukle(); }, [plantId, ds, donem, surum, uretim]);   // eslint-disable-line react-hooks/exhaustive-deps
   const gonder = () => {
     if (!dosya) { setMesaj({ metin: "Önce EPYS'den indirdiğiniz bildirim dosyasını seçin (CSV ya da XLSX).", ton: "hata" }); return; }
     setMesaj(null); setYukleniyor(true);
@@ -123,7 +126,7 @@ export function Mutabakat({ plantId }: { plantId: string }) {
       setMesaj({ metin, ton: y.uyarilar.length || sd?.durum === "takvimden_once" ? "uyari" : "ok" });
       setDosya(null); setDosyaAnahtar((k) => k + 1); setDonem(y.donem); setSurum(y.surum); }).catch((e) => setMesaj({ metin: String((e as Error).message ?? e), ton: "hata" })).finally(() => setYukleniyor(false));
   };
-  if (o === undefined) return <Sayfa baslik="Mutabakat"><SayfaIskeleti kpi={4} kart={2} /></Sayfa>;
+  if (o === undefined) return <MutabakatIskeleti />;
   if (o === null) return <Sayfa baslik="Mutabakat"><p className="soluk">Mutabakat alınamadı.</p></Sayfa>;
   const m = o.secili; const oz = m.ozet; const bil = m.bildirim; const g = m.guvenilirlik; const sd = bil?.surum_dogrulama;
   const donemler = Array.from(new Set([...o.donemler.map((d) => d.donem), m.donem])).sort().reverse();
@@ -147,7 +150,10 @@ export function Mutabakat({ plantId }: { plantId: string }) {
           <option value="">son yüklenen sürüm</option>{o.surumler.map((s) => <option key={s.kod} value={s.kod}>{s.etiket}</option>)}</select>
         <select className="girdi" style={{ maxWidth: "calc(100vw - 48px)" }} value={uretim ?? ""} onChange={(e) => setUretim(e.target.value || null)} aria-label="Üretim girdisi" title="Yeniden hesapta gerçekleşen üretimin kaynağı. «Santral ayarı» Sayaç sayfasındaki kalıcı seçimdir; öbür ikisi bu sayfada geçici görünümdür (ayarla aynı olan seçenek aynı sonucu verir).">
           <option value="">üretim: santral ayarı — {o.uretim_ayari === "sayac" ? "sayaç" : "SCADA"}</option>{o.uretim_secenekleri.map((s) => <option key={s.kod} value={s.kod}>üretim: {s.kod === "sayac" ? "sayaç, yüklü saatlerde" : "SCADA"} (geçici)</option>)}</select></span>}>
-      <div className="ızgara satir-4" style={{ marginBottom: 14 }}>
+      <div className="akis">
+      <section className="bolum">
+      <div className="ozet-bas">Dönem özeti<span className="sag">{donemEtiket(m.donem)}</span></div>   {/* ortak biçim «Ekim 2026»; ayAd («10.2026») seçicide kalır */}
+      <div className="ızgara satir-4">
         <Kpi etiket={`EPİAŞ toplam alacak (${m.donem_etiket})`} bilgi="EPİAŞ bildirimindeki bütün alacak kalemlerinin toplamı (GÖP, GİP, YEK, dengesizlik, …); «Toplam» satırı hariç. PVQuant bu toplamın yalnız bir bölümünü yeniden hesaplar."
           deger={binTl(oz.bildirim_alacak_tl)} birim={oz.bildirim_alacak_tl != null ? "bin TL" : undefined}
           alt={bil ? `${surumDurumu(bil)}; yükleme ${saatTr(bil.zaman)}` : "bu dönem için bildirim yüklenmedi"} />
@@ -164,7 +170,10 @@ export function Mutabakat({ plantId }: { plantId: string }) {
           ikinci={m.saatlik_detay?.yuklu && m.saatlik_detay.toplam?.edt_net_fark_tl != null ? { etiket: `saatlik eş kapsamlı, ${sayiTr(m.saatlik_detay.ortak_saat)} saat (yalnız dengesizlik)`, deger: `${m.saatlik_detay.toplam.edt_net_fark_tl > 0 ? "+" : m.saatlik_detay.toplam.edt_net_fark_tl < 0 ? "−" : ""}${sayiTr(Math.abs(m.saatlik_detay.toplam.edt_net_fark_tl), 2)} TL` } : undefined}
           alt={oz.kiyaslanan ? (g.durum === "senaryo" ? `${sayiTr(oz.kiyaslanan)} kalem; senaryo hesabı, uyum sınıflandırması yapılmadı` : g.durum === "kismi" ? `aylık bildirim ↔ PVQuant, ${sayiTr(oz.kiyaslanan)} kalem: ${sayiTr(oz.uyumlu)} uyumlu, ${sayiTr(oz.farkli)} farklı — kapsam kısmi (${sayiTr(oz.kapsam_saat ?? m.pvquant.saat)}/${sayiTr(oz.beklenen_saat ?? 0)} saat), fark doğrulanmış değil` : `${sayiTr(oz.kiyaslanan)} kalem: ${sayiTr(oz.uyumlu)} uyumlu, ${sayiTr(oz.farkli)} farklı; ölçüt bileşen başına ${yuzdeTr(m.uyum.pct)} ya da ${sayiTr(m.uyum.tl)} TL`) : "kıyaslanacak kalem yok"} />
       </div>
-      <div className="ızgara-cift">
+      </section>
+      <section className="bolum">
+      <div className="ozet-bas">Bildirim ve girdiler<span className="sag">dosya ve hesap girdileri</span></div>
+      <div className="sira-2">
         <Kart baslik="EPİAŞ bildirimi yükleme" alt="EPYS › Uzlaştırma › Uzlaştırma Bildirimi ekranından indirdiğiniz dosya (CSV ya da XLSX). Dönem ve uzlaştırma durumu dosyadan okunur; okunamazsa buradaki seçim geçerlidir.">
           <div className="form-izgara">
             <label className="girdi-etiket form-tam">Dosya<input key={dosyaAnahtar} className="girdi" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(e) => setDosya(e.target.files?.[0] ?? null)} /></label>
@@ -234,6 +243,9 @@ export function Mutabakat({ plantId }: { plantId: string }) {
           </>); })()}
         </Kart>
       </div>
+      </section>
+      <section className="bolum">
+      <div className="ozet-bas">Kalem kalem<span className="sag">bildirim ↔ yeniden hesap</span></div>
       <Kart baslik="Uzlaştırma kalemlerinin karşılaştırılması" alt={`${m.donem_etiket} dönemi; EPİAŞ bildirimi ↔ PVQuant yeniden hesabı; fark = PVQuant net − EPİAŞ net (artı: PVQuant daha çok alacak hesaplıyor); uyum alacak ve borç bileşenlerine ayrı bakılır`}
         sag={<span className="cip"><Meta items={[bil ? surumDurumu(bil) : "bildirim yok", g.etiket, `${sayiTr(hesaplanan.length)} karşılaştırılan`, `${sayiTr(digerler.length)} yalnız bildirim`]} /></span>}>
         {m.satirlar.length === 0 ? <p className="soluk" style={{ margin: 0 }}>Bu dönem için ne bildirim ne de saatlik hesap var. Önce bildirim dosyasını yükleyin.</p> : (
@@ -243,7 +255,32 @@ export function Mutabakat({ plantId }: { plantId: string }) {
             <tbody>{hesaplanan.map(satir)}{digerler.map(satir)}</tbody>
           </table></div>)}
       </Kart>
+      </section>
+      <section className="bolum">
+      <div className="ozet-bas">Saat saat<span className="sag">yüklenen EPYS detayına göre</span></div>
       <SaatlikDetayKarti plantId={plantId} donem={m.donem} uretim={uretim} ds={ds} />
+      </section>
+      </div>
+    </Sayfa>
+  );
+}
+
+/** 18.11 (Grup 1) — Mutabakat iskeleti: başlık ve açıklama anında; dört KPI (124 px) + yükleme | girdiler çifti (320 px) kalıbı.
+ *  Eski genel iskelet başlık altında 4 KPI + 2 kart alt alta idi. Sayı/veri yok, hareket yok. */
+function MutabakatIskeleti() {
+  return (
+    <Sayfa baslik="Mutabakat" alt="EPİAŞ uzlaştırma bildirimini PVQuant'ın yeniden hesabıyla kalem kalem karşılaştırın. EPİAŞ bildirimi esastır; PVQuant tutarları yeniden hesaptır, fark bilgi amaçlıdır.">
+      <div className="akis" role="status" aria-live="polite" aria-label="Yükleniyor">
+        <section className="bolum">
+          <div className="ozet-bas">Dönem özeti<span className="sag">yükleniyor…</span></div>
+          <div className="iskelet-kpi" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>{Array.from({ length: 4 }, (_, i) => <span key={i} />)}</div>
+        </section>
+        <section className="bolum">
+          <div className="ozet-bas">Bildirim ve girdiler</div>
+          <div className="sira-2"><div className="iskelet-kart" style={{ height: 320 }} /><div className="iskelet-kart" style={{ height: 320 }} /></div>
+        </section>
+        <span className="gorsel-gizli">Yükleniyor…</span>
+      </div>
     </Sayfa>
   );
 }

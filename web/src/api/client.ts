@@ -112,6 +112,24 @@ export function bellektenOku<T>(yol: string): T | undefined {
 /** 24.10 açık tema geçiş turu — sayfaların BAYAT-ÖNCE başlangıcı (Portföy kalıbı): dönüşte bellekteki son yanıt
  *  anında çizilir, taze yanıt arkadan gelir («güncelleniyor» çipi). Yollar ve uyarlayıcılar api.* ile birebir aynıdır;
  *  yalnız okur, ağa çıkmaz. Örnek kipte undefined (bellek yok). */
+/** 18.11 Mutabakat (Grup 1): yol kurucular api.* ve bellekten.* tarafından ortak — iki yerde yazılıp ayrışmasın. */
+function mutabakatYolu(p: string, donem?: string | null, surum?: string | null, uretim?: string | null): string {
+  const q = [donem ? `donem=${donem}` : "", surum ? `surum=${surum}` : "", uretim ? `uretim=${uretim}` : ""].filter(Boolean).join("&");
+  return `/v1/plants/${p}/mutabakat${q ? `?${q}` : ""}`;
+}
+function finansalEtkiYolu(p: string, donem?: string | null, uretim?: string | null, taze = false): string {   // 18.11 Finansal etki (Grup 1)
+  const q = new URLSearchParams(); if (donem) q.set("donem", donem); if (uretim) q.set("uretim", uretim); if (taze) q.set("taze", "1");
+  return `/v1/plants/${p}/finansal-etki${q.size ? `?${q}` : ""}`;
+}
+function finansalEtkiSenaryoYolu(p: string, donem: string | null, pozisyon: "program" | "uretim" | "sabit", sabitMwh?: number | null, uretim?: string | null): string {
+  const q = new URLSearchParams({ pozisyon }); if (donem) q.set("donem", donem); if (sabitMwh != null) q.set("sabit_mwh", String(sabitMwh)); if (uretim) q.set("uretim", uretim);
+  return `/v1/plants/${p}/finansal-etki/senaryo?${q}`;
+}
+function saatlikKiyasYolu(p: string, donem?: string | null, uretim?: string | null): string {
+  const q = [donem ? `donem=${donem}` : "", uretim ? `uretim=${uretim}` : ""].filter(Boolean).join("&");
+  return `/v1/plants/${p}/mutabakat/saatlik${q ? `?${q}` : ""}`;
+}
+
 export const bellekten = {
   ozet: (p: string): SantralOzeti | undefined => { const g = bellektenOku<OzetYanit>(`/v1/plants/${p}/summary`); return g ? uyarlaOzet(g) : undefined; },
   tahmin: (p: string, u: Ufuk): TahminSerisi | undefined => { const g = bellektenOku<ForecastYanit>(`/v1/plants/${p}/forecast?hours=${UFUK_SAAT[u]}`); return g ? uyarla(g) : undefined; },
@@ -135,6 +153,30 @@ export const bellekten = {
   portfoyFinans: (id: string, donem?: string | null): PortfoyFinansT | undefined => bellektenOku<PortfoyFinansT>(`/v1/portfoyler/${id}/finansal-etki${donem ? `?donem=${encodeURIComponent(donem)}` : ""}`),
   portfoyRisk: (id: string, gun = 2): PortfoyRiskT | undefined => bellektenOku<PortfoyRiskT>(`/v1/portfoyler/${id}/risk?gun=${gun}`),
   portfoyRevizyon: (id: string, hedef: "yarin" | "bugun" = "yarin"): PortfoyRevizyonT | undefined => bellektenOku<PortfoyRevizyonT>(`/v1/portfoyler/${id}/revizyon?hedef=${hedef}`),
+  // 18.11 Doğruluk (Grup 1): karne dışındaki altı yanıt da bayat-önce (api.* yollarıyla birebir)
+  bagimsizDogrulama: (p: string, gun = 30, kural: "program" | "gun_oncesi" = "program"): BagimsizDogrulama | undefined => bellektenOku<BagimsizDogrulama>(`/v1/plants/${p}/dogrulama/bagimsiz?gun=${gun}&kural=${kural}`),
+  dengesizlik: (p: string, gun = 90): Dengesizlik | undefined => bellektenOku<Dengesizlik>(`/v1/plants/${p}/dengesizlik?gun=${gun}`),
+  backtest: (p: string, gun = 90): Backtest | undefined => bellektenOku<Backtest>(`/v1/plants/${p}/backtest?gun=${gun}`),
+  guvenilirlik: (p: string, gun = 60): Guvenilirlik | undefined => bellektenOku<Guvenilirlik>(`/v1/plants/${p}/guvenilirlik?gun=${gun}`),
+  konformal: (p: string): KonformalAyar | undefined => bellektenOku<KonformalAyar>(`/v1/plants/${p}/konformal`),
+  hataDagilimi: (p: string, gun = 120): HataDagilimi | undefined => bellektenOku<HataDagilimi>(`/v1/plants/${p}/hata-dagilimi?gun=${gun}&kova=0-24`),
+  // 18.11 Aylık (Grup 1): yıllık beklenti, P-değerleri ve performans da bayat-önce
+  bankable: (p: string): Bankable | undefined => bellektenOku<Bankable>(`/v1/plants/${p}/bankable`),
+  pDegerleri: (p: string): PDegerleri | undefined => bellektenOku<PDegerleri>(`/v1/plants/${p}/p-degerleri`),
+  performans: (p: string, ay = 12): Performans | undefined => bellektenOku<Performans>(`/v1/plants/${p}/performans?ay=${ay}`),
+  // 18.11 Kalibrasyon (Grup 1): altı teşhis yanıtı da bayat-önce
+  hijyen: (p: string, gun = 30): Hijyen | undefined => bellektenOku<Hijyen>(`/v1/plants/${p}/hijyen?gun=${gun}`),
+  kayma: (p: string, gun = 30): Kayma | undefined => bellektenOku<Kayma>(`/v1/plants/${p}/kayma?gun=${gun}`),
+  kayipAgaci: (p: string): KayipAgaci | undefined => bellektenOku<KayipAgaci>(`/v1/plants/${p}/kayip-agaci`),
+  gucMatrisi: (p: string): GucMatrisi | undefined => bellektenOku<GucMatrisi>(`/v1/plants/${p}/guc-matrisi`),
+  saatProfili: (p: string, gun = 30): SaatProfili | undefined => bellektenOku<SaatProfili>(`/v1/plants/${p}/saat-profili?gun=${gun}&kova=0-24`),
+  kayipAyrisimi: (p: string, gun = 30): KayipAyrisimi | undefined => bellektenOku<KayipAyrisimi>(`/v1/plants/${p}/kayip-ayrisimi?gun=${gun}`),
+  takvim: (p: string, gun = 90): Takvim | undefined => bellektenOku<Takvim>(`/v1/plants/${p}/takvim?gun=${gun}`),   // 18.11 Takvim (Grup 1): bayat-önce
+  mutabakat: (p: string, donem?: string | null, surum?: string | null, uretim?: string | null): MutabakatOzet | undefined => bellektenOku<MutabakatOzet>(mutabakatYolu(p, donem, surum, uretim)),   // 18.11 Mutabakat (Grup 1)
+  saatlikKiyas: (p: string, donem?: string | null, uretim?: string | null): SaatlikKiyas | undefined => bellektenOku<SaatlikKiyas>(saatlikKiyasYolu(p, donem, uretim)),
+  // 18.11 Finansal etki (Grup 1): sonuç ve senaryo bayat-önce (örnek kipte yok → undefined, sayfa ağ yolunu izler)
+  finansalEtki: (p: string, donem?: string | null, uretim?: string | null): FinansalEtki | undefined => TABAN == null ? undefined : bellektenOku<FinansalEtki>(finansalEtkiYolu(p, donem, uretim)),
+  finansalEtkiSenaryo: (p: string, donem: string | null, pozisyon: "program" | "uretim" | "sabit", sabitMwh?: number | null, uretim?: string | null): FinansalEtki | undefined => TABAN == null ? undefined : bellektenOku<FinansalEtki>(finansalEtkiSenaryoYolu(p, donem, pozisyon, sabitMwh, uretim)),
 };
 
 /** 24.10 — bayat-önce tazelemesi: taze yanıt bellekteki bayat değerle BİREBİR aynıysa eski referans korunur; böylece
@@ -574,14 +616,12 @@ export const api = {
   /** v2.584 (Faz 2 F2-F): Finansal Etki Merkezi — gece işinin kayıtlı sonucu (≤36 sa) ya da anında hesap; örnek kipte temsili. */
   finansalEtki: async (p: string, donem?: string | null, uretim?: string | null, taze = false): Promise<FinansalEtki> => {
     if (TABAN == null) return ornekFinansalEtki(donem ?? "2026-10") as unknown as FinansalEtki;
-    const q = new URLSearchParams(); if (donem) q.set("donem", donem); if (uretim) q.set("uretim", uretim); if (taze) q.set("taze", "1");
-    return getir<FinansalEtki>(`/v1/plants/${p}/finansal-etki${q.size ? `?${q}` : ""}`);
+    return getir<FinansalEtki>(finansalEtkiYolu(p, donem, uretim, taze));   // 18.11: yol tek yerde (bellekten ile birebir)
   },
   /** v2.584: pozisyon senaryosu (program | uretim | sabit MWh/saat) — kaydedilmez, «senaryo» damgalı. */
   finansalEtkiSenaryo: async (p: string, donem: string | null, pozisyon: "program" | "uretim" | "sabit", sabitMwh?: number | null, uretim?: string | null): Promise<FinansalEtki> => {
     if (TABAN == null) { const o = ornekFinansalEtki(donem ?? "2026-10") as unknown as FinansalEtki; return { ...o, kayitli: false, meta: { ...o.meta, senaryo: { pozisyon: { kaynak: pozisyon, sabit_mwh: sabitMwh ?? null }, etiket: pozisyon === "uretim" ? "üretildiği kadar satış" : pozisyon === "sabit" ? `sabit ${sabitMwh} MWh/saat` : "satış programa eşit", not: "Senaryo hesabı (örnek kip)." } } }; }
-    const q = new URLSearchParams({ pozisyon }); if (donem) q.set("donem", donem); if (sabitMwh != null) q.set("sabit_mwh", String(sabitMwh)); if (uretim) q.set("uretim", uretim);
-    return getir<FinansalEtki>(`/v1/plants/${p}/finansal-etki/senaryo?${q}`);
+    return getir<FinansalEtki>(finansalEtkiSenaryoYolu(p, donem, pozisyon, sabitMwh, uretim));
   },
   /** v2.584: dönemin kayıtlı sürümleri ve varsayımları. */
   finansalEtkiGecmis: async (p: string, donem: string | null): Promise<FinansalEtkiGecmis> => {
@@ -835,16 +875,12 @@ export const api = {
   },
   kgupSablonSifirla: (p: string): Promise<{ sablon: NonNullable<KgupOnizleme["sablon"]> }> => gonder(`/v1/plants/${p}/kgup/sablon`, "DELETE"),
   /** v2.522 (P2b-1): EPİAŞ uzlaştırma bildirimiyle mutabakat — dönem listesi + seçili dönemin kalem tablosu */
-  mutabakat: (p: string, donem?: string | null, surum?: string | null, uretim?: string | null): Promise<MutabakatOzet> => {
-    const q = [donem ? `donem=${donem}` : "", surum ? `surum=${surum}` : "", uretim ? `uretim=${uretim}` : ""].filter(Boolean).join("&");   // v2.526: uretim scada | sayac
-    return getir<MutabakatOzet>(`/v1/plants/${p}/mutabakat${q ? `?${q}` : ""}`); },
+  mutabakat: (p: string, donem?: string | null, surum?: string | null, uretim?: string | null): Promise<MutabakatOzet> => getir<MutabakatOzet>(mutabakatYolu(p, donem, surum, uretim)),   // v2.526: uretim scada | sayac; 18.11: yol tek yerde (bellekten ile birebir)
   /** v2.522: EPYS «Uzlaştırma Bildirimi» dosyasını yükle (CSV/XLSX; dönem ve sürüm boşsa dosyadan okunur) */
   /** v2.528 (P10, ENV-F04): uzlaştırma kuralı ve parametre sürüm tablosu — panelde de görünür (Hakkında) */
   kurallar: (segment?: string | null): Promise<KuralTablosu> => getir<KuralTablosu>(`/v1/kurallar${segment ? `?segment=${segment}` : ""}`),
   /** v2.527 (P2b-2): EPYS saatlik detayı — kıyas, yükleme, CSV */
-  saatlikKiyas: (p: string, donem?: string | null, uretim?: string | null): Promise<SaatlikKiyas> => {
-    const q = [donem ? `donem=${donem}` : "", uretim ? `uretim=${uretim}` : ""].filter(Boolean).join("&");
-    return getir<SaatlikKiyas>(`/v1/plants/${p}/mutabakat/saatlik${q ? `?${q}` : ""}`); },
+  saatlikKiyas: (p: string, donem?: string | null, uretim?: string | null): Promise<SaatlikKiyas> => getir<SaatlikKiyas>(saatlikKiyasYolu(p, donem, uretim)),
   saatlikYukle: async (p: string, dosya: File, donem?: string | null): Promise<SaatlikYuklemeYanit> => {
     if (TABAN == null) throw new Error("Örnek kipte yükleme yok.");
     const jeton = localStorage.getItem("pvq_token"); const fd = new FormData(); fd.append("dosya", dosya);

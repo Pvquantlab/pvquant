@@ -118,3 +118,94 @@ test("DSG ve portföyler: bayat-önce dokuz okuyucu, üyelik formu açılınca, 
   assert.match(css, /\.akis \.bolum \{ container-type: inline-size; \}/);
   assert.match(css, /@container \(min-width: 700px\) and \(max-width: 1000px\) \{ \.akis \.satir-4 \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); \} \}/);
 });
+
+// 18.11 UI denetimi Grup 1 — Doğruluk: altı yanıt bayat-önce, iki görünürlük kapısı, beş bölümlü akış, sayfaya özel iskelet
+test("Doğruluk: bayat-önce altı okuyucu, güvenilirlik ve uzlaştırma kapılı, .akis bölümleri, DogrulukIskeleti", () => {
+  const s = oku("../../src/features/sayfalar/Dogruluk.tsx");
+  for (const [ad, n] of [["hataDagilimi(plantId)", 3], ["konformal(plantId)", 2], ["backtest(plantId)", 2], ["dengesizlik(plantId)", 3], ["guvenilirlik(plantId)", 3]] as const) assert.equal((s.split(`bellekten.${ad}`).length - 1), n, `${ad}: başlangıç + ana efekt (+ kapılı efekt)`);
+  assert.match(s, /useState<BagimsizDogrulama \| null \| undefined>\(\(\) => bellekten\.bagimsizDogrulama\(plantId, donem, bdKural\)\)/);
+  assert.match(s, /const \[ortaRef, ortaGorunur\] = useGorunur<HTMLElement>\(\);/);
+  assert.match(s, /setBd\(bellekten\.bagimsizDogrulama\(plantId, donem, bdKural\)\)/);
+  assert.match(s, /const \[altRef, altGorunur\] = useGorunur<HTMLElement>\(\);/);
+  assert.match(s, /if \(!ortaGorunur\) return;[\s\S]{0,120}api\.guvenilirlik\(plantId\)/, "güvenilirlik yalnız kart görünür olunca");
+  assert.match(s, /if \(!altGorunur\) return;[\s\S]{0,200}api\.dengesizlik\(plantId\)[\s\S]{0,200}api\.hataDagilimi\(plantId\)/, "uzlaştırma + dağılım yalnız görünür olunca");
+  const ana = s.slice(s.indexOf("api.karne(plantId, donem).then((v) => { if (acik)"), s.indexOf("}, [plantId, ds]);"));
+  assert.doesNotMatch(ana, /api\.(guvenilirlik|dengesizlik|hataDagilimi)\(/, "ana efekt yalnız karne, konformal, backtest");
+  assert.match(s, /if \(!hazir\) return <DogrulukIskeleti \/>;/); assert.doesNotMatch(s, /SayfaIskeleti/);
+  assert.equal((s.match(/<section className="bolum"/g) ?? []).length, 5 + 2, "5 bölüm + iskelette 2");
+  for (const b of ["Dönem özeti", "Bağımsız doğrulama", "Günlük hata ve aralık", "Uzlaştırma", "Dağılım"]) assert.match(s, new RegExp(`<div className="ozet-bas">${b}<span className="sag">`), b);
+  const cl = oku("../../src/api/client.ts");
+  assert.match(cl, /guvenilirlik: \(p: string, gun = 60\): Guvenilirlik \| undefined => bellektenOku<Guvenilirlik>\(`\/v1\/plants\/\$\{p\}\/guvenilirlik\?gun=\$\{gun\}`\)/);
+  assert.match(cl, /hataDagilimi: \(p: string, gun = 120\): HataDagilimi \| undefined => bellektenOku<HataDagilimi>\(`\/v1\/plants\/\$\{p\}\/hata-dagilimi\?gun=\$\{gun\}&kova=0-24`\)/);
+});
+
+// 18.11 UI denetimi Grup 1 — Aylık: üç yanıt daha bayat-önce, dört bölümlü akış, sayfaya özel iskelet
+test("Aylık: bankable/P-değerleri/performans bayat-önce, .akis dört bölüm, AylikIskeleti", () => {
+  const s = oku("../../src/features/sayfalar/Aylik.tsx");
+  for (const ad of ["bankable(plantId)", "pDegerleri(plantId)", "performans(plantId)"]) assert.equal((s.split(`bellekten.${ad}`).length - 1), 2, `${ad}: başlangıç + efekt`);
+  assert.doesNotMatch(s, /setBk\(undefined\)|setPd\(undefined\)|setPf\(undefined\)/, "santral geçişinde yer tutucuya düşmez");
+  assert.match(s, /setBk\(\(e\) => ayniysaEskisi\(e, v\)\)/); assert.doesNotMatch(s, /SayfaIskeleti/);
+  assert.match(s, /if \(!hazir\) return <AylikIskeleti \/>;/);
+  assert.equal((s.match(/<section className="bolum">/g) ?? []).length, 4 + 1, "4 bölüm + iskelette 1");
+  for (const b of ["Bu ay ve yıl", "Yıl yıl ve performans", "İklim arşivi", "Gerçekleşen"]) assert.match(s, new RegExp(`<div className="ozet-bas">${b}<span className="sag">`), b);
+  const cl = oku("../../src/api/client.ts");
+  assert.match(cl, /performans: \(p: string, ay = 12\): Performans \| undefined => bellektenOku<Performans>\(`\/v1\/plants\/\$\{p\}\/performans\?ay=\$\{ay\}`\)/);
+});
+
+// 18.11 UI denetimi Grup 1 — Kalibrasyon: altı teşhis yanıtı bayat-önce, dört bölümlü akış, sayfaya özel iskelet, başlık yinelemesi yok
+test("Kalibrasyon: hijyen/kayma/kayıp ağacı/güç matrisi/saat profili/kayıp ayrışımı bayat-önce, .akis dört bölüm, KalibrasyonIskeleti", () => {
+  const s = oku("../../src/features/sayfalar/Digerleri.tsx");
+  const K = s.slice(s.indexOf("export function Kalibrasyon("), s.indexOf("function KalibrasyonIskeleti()"));
+  for (const ad of ["hijyen(plantId)", "kayma(plantId)", "kayipAgaci(plantId)", "gucMatrisi(plantId)", "saatProfili(plantId)", "kayipAyrisimi(plantId)"]) assert.equal((K.split(`bellekten.${ad}`).length - 1), 2, `${ad}: başlangıç + efekt`);
+  assert.doesNotMatch(K, /setHj\(undefined\)|setKy\(undefined\)|setSp\(undefined\)/, "santral geçişinde yer tutucuya düşmez");
+  assert.match(K, /if \(!yuklendi\) return <KalibrasyonIskeleti \/>;/);
+  assert.equal((K.match(/<section className="bolum">/g) ?? []).length, 4, "4 bölüm");
+  for (const b of ["Sonuç", "Veri kalitesi", "Teşhis", "Tipik yıl"]) assert.match(K, new RegExp(`<div className="ozet-bas">${b}<span className="sag">`), b);
+  assert.doesNotMatch(K, /baslik="Kalibrasyon sonuçları"|baslik="Kalibrasyonun etkisi"/, "kart başlığı sayfa başlığını yinelemez");
+  assert.match(K, /baslik="Katsayılar ve dönem"/); assert.match(K, /baslik="Etkisi" alt="Fiziksel modelden kalibre modele"/);
+  const cl = oku("../../src/api/client.ts");
+  assert.match(cl, /saatProfili: \(p: string, gun = 30\): SaatProfili \| undefined => bellektenOku<SaatProfili>\(`\/v1\/plants\/\$\{p\}\/saat-profili\?gun=\$\{gun\}&kova=0-24`\)/);
+});
+
+// 18.11 UI denetimi Grup 1 — Takvim: tek yanıt bayat-önce, dört bölümlü akış, sayfaya özel iskelet
+test("Takvim: bayat-önce, .akis dört bölüm, TakvimIskeleti", () => {
+  const s = oku("../../src/features/sayfalar/Takvim.tsx");
+  assert.equal((s.split("bellekten.takvim(plantId)").length - 1), 2, "başlangıç + efekt");
+  assert.doesNotMatch(s, /setT\(undefined\)/, "santral geçişinde iskelete düşmez");
+  assert.match(s, /setT\(\(e\) => ayniysaEskisi\(e, v\)\)/); assert.doesNotMatch(s, /SayfaIskeleti/);
+  assert.match(s, /if \(t === undefined\) return <TakvimIskeleti \/>;/);
+  assert.equal((s.match(/<section className="bolum">/g) ?? []).length, 4 + 3, "4 bölüm + iskelette 3");
+  for (const b of ["Yaklaşan", "Uyum", "Dönem ve gün", "Santral tarihleri"]) assert.match(s, new RegExp(`<div className="ozet-bas">${b}<span className="sag">`), b);
+  const cl = oku("../../src/api/client.ts");
+  assert.match(cl, /takvim: \(p: string, gun = 90\): Takvim \| undefined => bellektenOku<Takvim>\(`\/v1\/plants\/\$\{p\}\/takvim\?gun=\$\{gun\}`\)/, "bellek yolu api.takvim ile birebir");
+});
+
+// 18.11 UI denetimi Grup 1 — Mutabakat: özet + saatlik kıyas bayat-önce (yol kurucu ortak), dört bölümlü akış, .sira-2 çift, sayfaya özel iskelet
+test("Mutabakat: bayat-önce iki okuyucu (ortak yol kurucu), .akis dört bölüm, MutabakatIskeleti", () => {
+  const s = oku("../../src/features/sayfalar/Mutabakat.tsx");
+  assert.equal((s.split("bellekten.mutabakat(plantId, donem, surum, uretim)").length - 1), 2, "özet: başlangıç + efekt");
+  assert.equal((s.split("bellekten.saatlikKiyas(plantId, donem, uretim)").length - 1), 2, "saatlik: başlangıç + efekt");
+  assert.doesNotMatch(s, /setO\(undefined\)|setK\(undefined\)/, "geçişte iskelete düşmez");
+  assert.match(s, /if \(o === undefined\) return <MutabakatIskeleti \/>;/); assert.doesNotMatch(s, /SayfaIskeleti|ızgara-cift/);
+  assert.equal((s.match(/<section className="bolum">/g) ?? []).length, 4 + 2, "4 bölüm + iskelette 2");
+  for (const b of ["Dönem özeti", "Bildirim ve girdiler", "Kalem kalem", "Saat saat"]) assert.match(s, new RegExp(`<div className="ozet-bas">${b}<span className="sag">`), b);
+  const cl = oku("../../src/api/client.ts");
+  assert.match(cl, /function mutabakatYolu\(p: string, donem\?: string \| null, surum\?: string \| null, uretim\?: string \| null\): string/);
+  assert.equal((cl.match(/mutabakatYolu\(p, donem, surum, uretim\)/g) ?? []).length, 2, "api.mutabakat ve bellekten.mutabakat aynı yolu kurar");
+  assert.equal((cl.match(/saatlikKiyasYolu\(p, donem, uretim\)/g) ?? []).length, 2);
+});
+
+// 18.11 UI denetimi Grup 1 — Finansal etki: sonuç/senaryo bayat-önce (ortak yol kurucu), dört bölümlü akış, .sira-2 çiftler, sayfaya özel iskelet
+test("Finansal etki: bayat-önce (program ve senaryo yolu), .akis dört bölüm, FinansalEtkiIskeleti", () => {
+  const s = oku("../../src/features/sayfalar/FinansalEtki.tsx");
+  assert.match(s, /const bellektekiSonuc = \(plantId: string, kod: string, uretim: string \| null, pozisyon: "program" \| "uretim"\) =>\n  pozisyon === "program" \? bellekten\.finansalEtki\(plantId, kod, uretim\) : bellekten\.finansalEtkiSenaryo\(plantId, kod, pozisyon, null, uretim\);/);
+  assert.equal((s.split("bellektekiSonuc(plantId, kod, uretim, pozisyon)").length - 1), 2, "başlangıç + efekt (bileşen dışı saf yardımcı; efekt bağımlılığı yok)");
+  assert.doesNotMatch(s, /setO\(undefined\)/, "geçişte iskelete düşmez"); assert.match(s, /setO\(\(e\) => e \?\? null\)/, "tazeleme düşerse bellekteki kalır");
+  assert.match(s, /if \(o === undefined\) return <FinansalEtkiIskeleti secici=\{secici\} \/>;/); assert.doesNotMatch(s, /SayfaIskeleti|ızgara-cift/);
+  assert.equal((s.match(/<section className="bolum">/g) ?? []).length, 4 + 1, "4 bölüm + iskelette 1");
+  for (const b of ["Dönem", "Karşılaştırma ve eylem", "Düşüklük ve ileriye", "Hesap"]) assert.match(s, new RegExp(`<div className="ozet-bas">${b}<span className="sag">`), b);
+  assert.equal((s.match(/alt=\{SAYFA_ALT\}/g) ?? []).length, 2, "sayfa ve iskelet aynı açıklama");
+  const cl = oku("../../src/api/client.ts");
+  assert.equal((cl.match(/finansalEtkiYolu\(p, donem, uretim/g) ?? []).length, 2, "api.finansalEtki ve bellekten.finansalEtki aynı yolu kurar");
+  assert.equal((cl.match(/finansalEtkiSenaryoYolu\(p, donem, pozisyon, sabitMwh, uretim\)/g) ?? []).length, 2);
+});

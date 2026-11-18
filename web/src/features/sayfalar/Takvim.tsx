@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
-import { api } from "../../api/client";
+import { api, bellekten, ayniysaEskisi } from "../../api/client";
 import type { Takvim as TakvimTipi, TakvimOlay, TakvimBakim, KunyeTarihler } from "../../api/types";
-import { Bilgi, Kart, Sayfa, sayiTr, SayfaIskeleti } from "./parcalar";
+import { Bilgi, Kart, Sayfa, sayiTr } from "./parcalar";
 import { Meta } from "../../lib/Meta";
 import { tarihBicimi } from "../../lib/bicim";
 import { segmentKisa } from "../../lib/sozluk";
@@ -102,9 +102,11 @@ function KunyeFormu({ plantId, kunye, bugun, onKaydet }: { plantId: string; kuny
 
 export function Takvim({ plantId }: { plantId: string }) {
   const ds = useDamgaSurumu();
-  const [t, setT] = useState<TakvimTipi | null | undefined>(undefined);
-  useEffect(() => { let acik = true; setT(undefined); api.takvim(plantId, 90).then((v) => { if (acik) setT(v); }, () => { if (acik) setT(null); }); return () => { acik = false; }; }, [plantId, ds]);
-  if (t === undefined) return <SayfaIskeleti kpi={0} kart={3} />;
+  // 18.11 Takvim (Grup 1): tek yanıt BAYAT-ÖNCE (santral geçişinde bellekte olan anında, ağdan tazelenir); sayfa .akis bölüm ritminde
+  // (beş kart 0 px bitişikti), sayfaya özel iskelet (başlık anında, üç kart kalıbı).
+  const [t, setT] = useState<TakvimTipi | null | undefined>(() => bellekten.takvim(plantId));
+  useEffect(() => { let acik = true; setT(bellekten.takvim(plantId)); api.takvim(plantId, 90).then((v) => { if (acik) setT((e) => ayniysaEskisi(e, v)); }, () => { if (acik) setT((e) => e ?? null); }); return () => { acik = false; }; }, [plantId, ds]);
+  if (t === undefined) return <TakvimIskeleti />;
   if (t === null) return (
     <Sayfa baslik="Takvim" alt="Uzlaştırma, nakit ve mevzuat tarihleri.">
       <Kart baslik="Takvim alınamadı"><div className="bos-durum"><div className="bos-bas">Sunucudan yanıt alınamadı</div><p>Sayfayı yenileyin.</p></div></Kart>
@@ -118,6 +120,9 @@ export function Takvim({ plantId }: { plantId: string }) {
   const yaklasan = t.yaklasan_piyasa ?? t.yaklasan;   // v2.524: uyum tarihleri yalnız Uyum kartında
   return (
     <Sayfa baslik="Takvim" alt="Uzlaştırma, nakit ve mevzuat tarihleri; santralinizin segmentine göre.">
+      <div className="akis">
+      <section className="bolum">
+      <div className="ozet-bas">Yaklaşan<span className="sag">önümüzdeki {sayiTr(t.pencere_gun)} gün</span></div>
       <Kart baslik="Yaklaşan son tarihler" alt={`Önümüzdeki ${sayiTr(t.pencere_gun)} gün: uzlaştırma, nakit ve piyasa tarihleri. Lisans ve uyum tarihleri aşağıdaki Uyum takviminde.`}
             sag={<Meta items={[`bugün ${tarihKisa(t.bugun)}`, segmentAdi, t.segment ? undefined : "tüm segmentlerin tarihleri gösteriliyor"]} />}>
         {yaklasan.length === 0 ? <div className="bos-durum"><div className="bos-bas">Bu pencerede tarih yok</div><p>Takvim boş; segment ve santral tarihleri girildikçe dolar.</p></div> : (
@@ -143,7 +148,9 @@ export function Takvim({ plantId }: { plantId: string }) {
           <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "6px 0 0" }}>{t.not} {t.tatil_kaynak}{t.tatil_yillari.length ? ` Dinî bayramlar ${yillar} için tanımlı.` : ""}</p>
         </details>
       </Kart>
-
+      </section>
+      <section className="bolum">
+      <div className="ozet-bas">Uyum<span className="sag">önümüzdeki 12 ay</span></div>
       <Kart baslik="Uyum takvimi" alt="Önümüzdeki 12 ay: lisans ve bildirim yükümlülükleri, santral tarihlerinden türeyenler, olay kaydındaki planlı bakımların bildirim son anı."
             sag={<Meta items={[`${sayiTr(t.uyum.length)} tarih`, t.bakim.length ? `${sayiTr(t.bakim.length)} planlı bakım` : undefined]} />}>
         {t.uyum.length === 0 ? <div className="bos-durum"><div className="bos-bas">Bu segment için uyum tarihi yok</div><p>Santral tarihleri girildikçe liste dolar.</p></div> : (
@@ -173,7 +180,9 @@ export function Takvim({ plantId }: { plantId: string }) {
           <p className="soluk" style={{ fontSize: "var(--t-ikincil)", margin: "6px 0 0" }}>{t.uyum_not}{t.bakim.length ? ` ${t.bakim_kaynak}.` : ""}</p>
         </details>
       </Kart>
-
+      </section>
+      <section className="bolum">
+      <div className="ozet-bas">Dönem ve gün<span className="sag">aylık adımlar, günlük piyasa saatleri</span></div>
       <Kart baslik="Aylık uzlaştırma ve fatura takvimi" alt="Fatura dönemi takvim ayıdır; adımlar izleyen ayda (DUY m.132, m.133; lisanssızda LÜY m.23, m.25, m.26).">
         {olayKodlari.length === 0 ? <p className="soluk">Bu segment için aylık uzlaştırma adımı yok.</p> : (
           <div className="grafik-kaydir"><table className="veri takvim">
@@ -194,7 +203,6 @@ export function Takvim({ plantId }: { plantId: string }) {
           <li><b>Tutarlar</b><span>Avans, teminat ve fatura tutarları burada hesaplanmaz; EPYS bildirimi ve Takasbank dekontu esastır.</span></li>
         </ul>
       </Kart>
-
       <Kart baslik="Günlük piyasa saatleri" alt="Türkiye saati. Program ve EAK adımları her gün, avans ve teminat adımları iş günlerinde (hafta sonu ve tatilde izleyen ilk iş günü).">
         <div className="grafik-kaydir"><table className="veri takvim">
           <thead><tr><th>Saat</th><th>Günler</th><th className="esnek">Ne</th><th className="sar">Dayanak</th></tr></thead>
@@ -206,10 +214,28 @@ export function Takvim({ plantId }: { plantId: string }) {
             <td className="sar soluk" style={{ fontSize: "var(--t-etiket)", minWidth: 160, maxWidth: 360 }}><details><summary style={{ cursor: "pointer" }}>{g.kaynak.split(/[;:(]/)[0].trim()}</summary><div style={{ marginTop: 4 }}>{g.kaynak}</div></details></td></tr>)}</tbody>
         </table></div>
       </Kart>
-
+      </section>
+      <section className="bolum">
+      <div className="ozet-bas">Santral tarihleri<span className="sag">uyum takviminin girdisi</span></div>
       <Kart baslik="Santral tarihleri" alt="Lisans, kabul, işletmeye giriş, çağrı mektubu (lisanssız), poliçe, İSG kontrolü, ortaklık değişikliği ve izin iptali tarihleri; türeyen son tarihler yukarıdaki listelere «santral tarihi» etiketiyle girer.">
         <KunyeFormu plantId={plantId} kunye={t.kunye} bugun={t.bugun} onKaydet={(k) => { setT({ ...t, kunye: k }); api.takvim(plantId, 90).then((v) => setT(v), () => {}); }} />
       </Kart>
+      </section>
+      </div>
+    </Sayfa>
+  );
+}
+
+/** 18.11 (Grup 1) — Takvim iskeleti: başlık ve açıklama anında; üç kart kalıbı (yaklaşan 360, uyum 300, dönem 300 px). Sayı/veri yok, hareket yok. */
+function TakvimIskeleti() {
+  return (
+    <Sayfa baslik="Takvim" alt="Uzlaştırma, nakit ve mevzuat tarihleri; santralinizin segmentine göre.">
+      <div className="akis" role="status" aria-live="polite" aria-label="Yükleniyor">
+        <section className="bolum"><div className="ozet-bas">Yaklaşan<span className="sag">yükleniyor…</span></div><div className="iskelet-kart" style={{ height: 360 }} /></section>
+        <section className="bolum"><div className="ozet-bas">Uyum</div><div className="iskelet-kart" style={{ height: 300 }} /></section>
+        <section className="bolum"><div className="ozet-bas">Dönem ve gün</div><div className="iskelet-kart" style={{ height: 300 }} /></section>
+        <span className="gorsel-gizli">Yükleniyor…</span>
+      </div>
     </Sayfa>
   );
 }

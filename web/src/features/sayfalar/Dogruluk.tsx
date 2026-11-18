@@ -6,7 +6,8 @@ import { api, bellekten, ayniysaEskisi } from "../../api/client";
 import type { Karne, HataDagilimi, KonformalAyar, Backtest, Dengesizlik, DengesizlikGeriTest, DengesizlikSaatlik, Guvenilirlik, Yekdem, BagimsizDogrulama } from "../../api/types";
 import { EChart } from "../../lib/EChart";
 import { useTema } from "../../lib/useTema";
-import { BilgiliEtiket, Kpi, Kart, Sayfa, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
+import { BilgiliEtiket, Kpi, Kart, Sayfa, sayiTr, YerTutucu } from "./parcalar";
+import { useGorunur } from "../../lib/gorunur";   // 18.11 Doğruluk (Grup 1): sayfa altı istekleri görünürlük kapısıyla
 import { Meta } from "../../lib/Meta";
 
 const AY = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran",
@@ -291,18 +292,22 @@ export function Dogruluk({ plantId }: { plantId: string }) {
   type Durum = "bekliyor" | "tamam" | "hata";
   const [k, setK] = useState<Karne | null | undefined>(() => bellekten.karne(plantId, 60));
   const [kD, setKD] = useState<Durum>("bekliyor");
-  const [hd, setHd] = useState<HataDagilimi | null | undefined>(undefined);
+  // 18.11 Doğruluk (Grup 1): altı yanıt da BAYAT-ÖNCE (bellekte varsa santral geçişinde yer tutucu yok); güvenilirlik (1060 px) ve
+  // uzlaştırma + dağılım kartları görünürlük kapısıyla (ilk ekran 11 → 7 istek, ölçüldü); sayfa .akis bölüm ritminde, sayfaya özel iskelet.
+  const [hd, setHd] = useState<HataDagilimi | null | undefined>(() => bellekten.hataDagilimi(plantId));
   const { n, oku } = useTema();
-  const [kf, setKf] = useState<KonformalAyar | undefined>(undefined);   // v2.252
-  const [bt, setBt] = useState<Backtest | null | undefined>(undefined);   // v2.253
-  const [dz, setDz] = useState<Dengesizlik | null | undefined>(undefined);   // v2.259
-  const [gv, setGv] = useState<Guvenilirlik | null | undefined>(undefined);   // v2.271
+  const [kf, setKf] = useState<KonformalAyar | undefined>(() => bellekten.konformal(plantId));   // v2.252
+  const [bt, setBt] = useState<Backtest | null | undefined>(() => bellekten.backtest(plantId));   // v2.253
+  const [dz, setDz] = useState<Dengesizlik | null | undefined>(() => bellekten.dengesizlik(plantId));   // v2.259
+  const [gv, setGv] = useState<Guvenilirlik | null | undefined>(() => bellekten.guvenilirlik(plantId));   // v2.271
+  const [ortaRef, ortaGorunur] = useGorunur<HTMLElement>();   // P10–P90 kartı: güvenilirlik diyagramı
+  const [altRef, altGorunur] = useGorunur<HTMLElement>();     // Uzlaştırma bölümü: kalemler + sapma dağılımı
   const [gt, setGt] = useState<DengesizlikGeriTest | null | undefined>(undefined);   // v2.503 (F-07): 12 ay geri test, kart açılınca
   // v2.575 (Faz 1 F1-D): bağımsız doğrulama — dönem segmenti ve kural (program / gün öncesi) ile yeniden çekilir; mevcut karneden ayrı istek
   const [bdKural, setBdKural] = useState<"program" | "gun_oncesi">("program");
-  const [bd, setBd] = useState<BagimsizDogrulama | null | undefined>(undefined);
+  const [bd, setBd] = useState<BagimsizDogrulama | null | undefined>(() => bellekten.bagimsizDogrulama(plantId, donem, bdKural));
   useEffect(() => {
-    let acik = true; setBd(undefined);
+    let acik = true; setBd(bellekten.bagimsizDogrulama(plantId, donem, bdKural));
     api.bagimsizDogrulama(plantId, donem, bdKural).then((v) => { if (acik) setBd(v); }, () => { if (acik) setBd(null); });
     return () => { acik = false; };
   }, [plantId, donem, bdKural, ds]);
@@ -310,18 +315,29 @@ export function Dogruluk({ plantId }: { plantId: string }) {
   useEffect(() => {
     let acik = true;
     setK(bellekten.karne(plantId, donem)); setKD("bekliyor");
-    setHd(undefined); setKf(undefined); setBt(undefined); setDz(undefined); setGv(undefined); setGt(undefined);
+    setKf(bellekten.konformal(plantId)); setBt(bellekten.backtest(plantId)); setGt(undefined);
+    setGv(bellekten.guvenilirlik(plantId)); setDz(bellekten.dengesizlik(plantId)); setHd(bellekten.hataDagilimi(plantId));   // kapılı üçlü: bellekte varsa anında; ağ yalnız kart görünür olunca (aşağıdaki efektler)
     // Denendi, alınmadı (24.10, perf/analiz/acik-tema/deney): yanıt yazımlarını startTransition'a almak 4× CPU'da «tam»
     // süresini uzattı (sıcak 211 → 471 ms); düz setState kaldı.
     api.karne(plantId, donem).then((v) => { if (acik) { setK((e) => ayniysaEskisi(e, v)); setKD("tamam"); } }, () => { if (acik) { setK((e) => e ?? null); setKD("hata"); } });
     api.konformal(plantId).then((v) => { if (acik) setKf(v); }, () => { if (acik) setKf({ aktif: false }); });
-    api.dengesizlik(plantId).then((v) => { if (acik) setDz(v); }, () => { if (acik) setDz(null); });
-    api.backtest(plantId).then((v) => { if (acik) setBt(v); }, () => { if (acik) setBt(null); });
-    api.guvenilirlik(plantId).then((v) => { if (acik) setGv(v); }, () => { if (acik) setGv(null); });
-    api.hataDagilimi(plantId).then((v) => { if (acik) setHd(v); }, () => { if (acik) setHd(null); });
+    api.backtest(plantId).then((v) => { if (acik) setBt((e) => ayniysaEskisi(e, v)); }, () => { if (acik) setBt(null); });
     return () => { acik = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- donem bilerek dışarıda: istekler yalnız santral (ya da damga) değişince kurulur
   }, [plantId, ds]);
+  useEffect(() => {   // 18.11: güvenilirlik diyagramı (en ağır yanıt) kart görüş alanına yaklaşınca
+    if (!ortaGorunur) return;
+    let acik = true; setGv(bellekten.guvenilirlik(plantId));
+    api.guvenilirlik(plantId).then((v) => { if (acik) setGv((e) => ayniysaEskisi(e, v)); }, () => { if (acik) setGv(null); });
+    return () => { acik = false; };
+  }, [plantId, ds, ortaGorunur]);
+  useEffect(() => {   // 18.11: uzlaştırma kalemleri + günlük sapma dağılımı
+    if (!altGorunur) return;
+    let acik = true; setDz(bellekten.dengesizlik(plantId)); setHd(bellekten.hataDagilimi(plantId));
+    api.dengesizlik(plantId).then((v) => { if (acik) setDz((e) => ayniysaEskisi(e, v)); }, () => { if (acik) setDz(null); });
+    api.hataDagilimi(plantId).then((v) => { if (acik) setHd((e) => ayniysaEskisi(e, v)); }, () => { if (acik) setHd(null); });
+    return () => { acik = false; };
+  }, [plantId, ds, altGorunur]);
   const [ilkDonem, setIlkDonem] = useState(true);
   useEffect(() => {
     if (ilkDonem) { setIlkDonem(false); return; }   // ilk değer kapıda çekildi
@@ -558,7 +574,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
 
   const hazir = k !== undefined || kD !== "bekliyor";
   const tazeleniyor = hazir && kD === "bekliyor";   // bayat karne ekranda, taze yanıt yolda
-  if (!hazir) return <SayfaIskeleti kpi={4} kart={2} />;
+  if (!hazir) return <DogrulukIskeleti />;
   if (!k) return <div style={{ color: "var(--soluk)" }}>Doğruluk verisi alınamadı; sayfayı yenileyin.</div>;
 
   const OK = ({ yukari }: { yukari: boolean }) => (
@@ -606,7 +622,10 @@ export function Dogruluk({ plantId }: { plantId: string }) {
         </span>
         <span className="cip"><Meta items={[`Kapsanan dönem: ${donemYaz(donemIlk, donemSon)}`, tazeleniyor && "güncelleniyor", kD === "hata" && "güncellenemedi"]} /></span>
       </>}>
-      <div className="ızgara satir-4" style={{ marginBottom: 14 }}>
+      <div className="akis">
+      <section className="bolum">
+      <div className="ozet-bas">Dönem özeti<span className="sag">gece değerlendirmelerinden birikir</span></div>
+      <div className="ızgara satir-4">
         {/* v2.311: ?? 0 yokluğu ÖLÇÜME çeviriyordu — eşleşmiş gün yokken kanıt
             sayfasının en tepesi "%0,0 WMAPE" ile kusursuzluk ilan ediyordu.
             İki KPI ayrı denetlenir: backend kova ve skill_vs_naive'i bağımsız
@@ -676,7 +695,13 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           {k.cliper_ustunluk_pct == null && <p className="olcut-durum">Henüz değer yok; gece değerlendirmesinde birikiyor.</p>}
         </section>
       </div>
+      </section>
+      <section className="bolum">
+      <div className="ozet-bas">Bağımsız doğrulama<span className="sag">yayımlandığı andaki tahmin, uygun ölçümle</span></div>
       <BagimsizDogrulamaKarti bd={bd} kural={bdKural} setKural={setBdKural} gun={donem} />
+      </section>
+      <section className="bolum">
+      <div className="ozet-bas">Günlük hata ve aralık<span className="sag">referansla kıyas; P10–P90 sınavı</span></div>
       <Kart baslik="Günlük tahmin hatası (WMAPE) — referans tahminle karşılaştırma"
         sag={<span className="cip"><Meta items={["nokta: günlük", "kalın: 7 gün eğilimi", "ince gri: referans tahmin"]} /></span>}>
         {/* 22.10 üçüncü tur: hiç karşılaştırılmış gün yokken 2×240 px boş grafik yerine kompakt boş durum
@@ -713,6 +738,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
       </Kart>
       {/* v2.248 (Dalga 1.3): P10–P90 bandının sınavı — bant genişliği değil, bandın
           TUTUP TUTMADIĞI. Üç çubuk: hedef işareti (%10 / %80 / %90) ile gözlenen oran. */}
+      <div ref={ortaRef}>
       <Kart baslik="Tahmin aralığının güvenilirliği (P10–P90)"
         sag={<>
           <span className="cip">{ol?.gun_sayisi ? <Meta items={[`${sayiTr(ol.gun_sayisi)} gün`, "0–24 saat"]} /> : "henüz birikmedi"}</span>
@@ -842,6 +868,10 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           </p>
         ) : null)}
       </Kart>
+      </div>
+      </section>
+      <section className="bolum" ref={altRef}>
+      <div className="ozet-bas">Uzlaştırma<span className="sag">enerji dengesizlik ve KGÜP sapma tutarları</span></div>
       {/* 29.10 (F-01/F-02/F-03/F-09): uzlaştırma kalemleri — EDT ve KÜPST AYRI, tek sayı yok; her TL'nin yanında kural sürümü ve
           fiyat kaynağı; hesaplanamayan saat (yön eksik / segment yok) açıkça; «tasarruf/ceza» yok; teminat sadeleştirilmiş gösterge */}
       <Kart baslik="Uzlaştırma kalemleri — enerji dengesizlik tutarı ve KGÜP sapma tutarı, son dönem"
@@ -993,6 +1023,9 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           )}
         </details>
       </Kart>
+      </section>
+      <section className="bolum">
+      <div className="ozet-bas">Dağılım<span className="sag">günlük sapma histogramı</span></div>
       <Kart baslik="Günlük sapma dağılımı (tahmin − gerçekleşen)"
         sag={<span className="cip">
           {/* v2.311: μ ve σ burada sayiTr'siz basılıyordu — aynı sayı KPI'da
@@ -1023,6 +1056,29 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           </p>
         )}
       </Kart>
+      </section>
+      </div>
+    </Sayfa>
+  );
+}
+
+/** 18.11 (Grup 1) — sayfaya özel iskelet: başlık ve açıklama anında; dört KPI (124 px), dört ölçüt grubu (~96 px), bağımsız doğrulama kartı (~400 px).
+ *  Eski genel iskelet başlıksızdı ve 4 KPI + 2 kart kalıbı gerçek yerleşimle uyuşmuyordu. Sayı/veri yok, hareket yok. */
+function DogrulukIskeleti() {
+  return (
+    <Sayfa baslik="Doğruluk karnesi" alt="Tahminler her gece gerçekleşen üretimle karşılaştırılır; sonuçlar burada birikir.">
+      <div className="akis" role="status" aria-live="polite" aria-label="Yükleniyor">
+        <section className="bolum">
+          <div className="ozet-bas">Dönem özeti<span className="sag">yükleniyor…</span></div>
+          <div className="iskelet-kpi" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>{Array.from({ length: 4 }, (_, i) => <span key={i} />)}</div>
+          <div className="olcut-serit">{Array.from({ length: 4 }, (_, i) => <section key={i} className="olcut-grup"><span className="iskelet-alan" style={{ display: "block", height: 14, width: "55%" }} /><span className="iskelet-alan" style={{ display: "block", height: 22, width: "80%", marginTop: 12 }} /><span className="iskelet-alan" style={{ display: "block", height: 12, width: "70%", marginTop: 10 }} /></section>)}</div>
+        </section>
+        <section className="bolum">
+          <div className="ozet-bas">Bağımsız doğrulama</div>
+          <div className="iskelet-kart" style={{ height: 400 }} />
+        </section>
+        <span className="gorsel-gizli">Yükleniyor…</span>
+      </div>
     </Sayfa>
   );
 }

@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
-import { api } from "../../api/client";
+import { api, bellekten } from "../../api/client";
 import type { FinansalEtki as FinansalEtkiT, FinansalEtkiGecmis, FinansBilesen, FinansDonemTur, FinansNitelik } from "../../api/types";
 import { FINANS_NITELIK as NITELIK } from "../../lib/durum";
 import { donemEtiket, donemSecenekleri, TUR_AD } from "../../lib/donem";   // v2.595: ortak dönem seçenekleri
-import { HesapDurumu, Kart, Kpi, Sayfa, sayiTr, SayfaIskeleti, YerTutucu } from "./parcalar";
+import { HesapDurumu, Kart, Kpi, Sayfa, sayiTr, YerTutucu } from "./parcalar";
 import { ModulNotu } from "./Abonelik";   // v2.609 (Faz 6 F6-D): kapalı özellik notu (uyarı kipi)
 import { Meta } from "../../lib/Meta";
 import { gunYaz, sonGunYaz, tarihBicimi, yuzdeTr } from "../../lib/bicim";   // 16.11 inceleme: gün/son gün yardımcıları ortak
@@ -40,19 +40,27 @@ function BilesenSatiri({ b }: { b: FinansBilesen }) {
     </tr>);
 }
 
+const SAYFA_ALT = "Seçilen dönemde planlanan ve gerçekleşen üretim, aradaki fark ve bunun tahmini mali karşılığı. Tutarlar PVQuant'ın yeniden hesabıdır; EPİAŞ uzlaştırma sonucu değildir. Resmî değerler ayrıca işaretlenir; eksi tutar santralin ödediğidir.";   // 18.11: sayfa ve iskelet aynı açıklama (yeniden akış yok)
+
+/** 18.11: bellekteki sonuç — pozisyon «program» ise finansal etki, değilse senaryo yolu (api.* ile aynı yol kurucular); bileşen dışında, efekt bağımlılığı olmasın diye saf. */
+const bellektekiSonuc = (plantId: string, kod: string, uretim: string | null, pozisyon: "program" | "uretim") =>
+  pozisyon === "program" ? bellekten.finansalEtki(plantId, kod, uretim) : bellekten.finansalEtkiSenaryo(plantId, kod, pozisyon, null, uretim);
+
 export function FinansalEtki({ plantId }: { plantId: string }) {
   const ds = useDamgaSurumu();
   const [tur, setTur] = useState<FinansDonemTur>("ay");
   const [kod, setKod] = useState<string>(() => donemSecenekleri("ay")[1]?.kod ?? donemSecenekleri("ay")[0].kod);   // varsayılan son tam ay
   const [uretim, setUretim] = useState<string | null>(null);
   const [pozisyon, setPozisyon] = useState<"program" | "uretim">("program");
-  const [o, setO] = useState<FinansalEtkiT | null | undefined>(undefined);
+  // 18.11 Finansal etki (Grup 1): sonuç BAYAT-ÖNCE (santral/dönem/üretim/pozisyon geçişinde bellekte olan anında, ağdan tazelenir; tazeleme düşerse
+  // bellekteki kalır); sayfa .akis bölüm ritminde (çiftler .sira-2, eşit sütun); sayfaya özel iskelet (başlık + seçici anında, 4 KPI + bileşenler kartı).
+  const [o, setO] = useState<FinansalEtkiT | null | undefined>(() => bellektekiSonuc(plantId, kod, uretim, pozisyon));
   const [gecmis, setGecmis] = useState<FinansalEtkiGecmis | null | undefined>(undefined);
   const secenekler = donemSecenekleri(tur);
   useEffect(() => {
-    let acik = true; setO(undefined); setGecmis(undefined);
+    let acik = true; setO(bellektekiSonuc(plantId, kod, uretim, pozisyon)); setGecmis(undefined);
     const istek = pozisyon === "program" ? api.finansalEtki(plantId, kod, uretim) : api.finansalEtkiSenaryo(plantId, kod, pozisyon, null, uretim);
-    istek.then((v) => { if (acik) setO(v); }, () => { if (acik) setO(null); });
+    istek.then((v) => { if (acik) setO(v); }, () => { if (acik) setO((e) => e ?? null); });
     return () => { acik = false; };
   }, [plantId, kod, uretim, pozisyon, ds]);
   const turDegis = (t: FinansDonemTur) => { setTur(t); const s = donemSecenekleri(t); setKod((t === "ay" || t === "ceyrek" || t === "yil") && s[1] ? s[1].kod : s[0].kod); };
@@ -68,7 +76,7 @@ export function FinansalEtki({ plantId }: { plantId: string }) {
       <select className="girdi" value={pozisyon} onChange={(e) => setPozisyon(e.target.value as "program" | "uretim")} aria-label="Satış pozisyonu senaryosu" title="Senaryo: satışın programa eşit sayılması (varsayılan) ya da üretildiği kadar satış (dengesizlik alıcıda, yalnız KGÜP sapma tutarı kalır). Senaryo kaydedilmez.">
         <option value="program">pozisyon: santral ayarı</option><option value="uretim">senaryo: üretildiği kadar satış</option></select>
     </span>);
-  if (o === undefined) return <Sayfa baslik="Finansal etki" sag={secici}><SayfaIskeleti kpi={4} kart={3} /></Sayfa>;
+  if (o === undefined) return <FinansalEtkiIskeleti secici={secici} />;
   if (o === null) return <Sayfa baslik="Finansal etki" sag={secici}><p className="soluk">Finansal etki alınamadı; dönem kodu geçersiz ya da gelecek dönem olabilir. Başka bir dönem seçin ya da sayfayı yenileyin.</p></Sayfa>;
   const u = o.uretim; const top = o.toplam; const uz = o.uzlastirma; const r = uz.resmi; const du = o.dusukluk; const ma = o.maruziyet; const m = o.meta;
   const toplananlar = o.bilesenler.filter((b) => b.toplanir); const digerleri = o.bilesenler.filter((b) => !b.toplanir);
@@ -77,10 +85,13 @@ export function FinansalEtki({ plantId }: { plantId: string }) {
   const kapsama = u.gerceklesen.kapsama; const th = du.tahmin_hatasi;
   const durumMetni = o.kayitli ? `gece hesabı ${saatYaz(o.hesap_zamani ?? m.hesap_zamani)}` : m.senaryo ? "senaryo hesabı" : "anlık hesap";
   return (
-    <Sayfa baslik="Finansal etki" alt="Seçilen dönemde planlanan ve gerçekleşen üretim, aradaki fark ve bunun tahmini mali karşılığı. Tutarlar PVQuant'ın yeniden hesabıdır; EPİAŞ uzlaştırma sonucu değildir. Resmî değerler ayrıca işaretlenir; eksi tutar santralin ödediğidir." sag={secici}>
+    <Sayfa baslik="Finansal etki" alt={SAYFA_ALT} sag={secici}>
       <ModulNotu kod="finansal_etki" />
       {m.senaryo && <p className="form-not" style={{ margin: "0 0 12px", fontSize: "var(--t-ikincil)", color: "var(--uyari-metin)" }}><b>Senaryo görünümü:</b> {m.senaryo.etiket}. {m.senaryo.not}</p>}
-      <div className="ızgara satir-4" style={{ marginBottom: 14 }}>
+      <div className="akis">
+      <section className="bolum">
+      <div className="ozet-bas">Dönem<span className="sag">{o.donem.etiket}</span></div>
+      <div className="ızgara satir-4">
         <Kpi etiket={`Planlanan üretim (${o.donem.etiket.replace(" (süren dönem, bugüne kadar)", ", süren")})`} bilgi="Üretim programı: TPYS'ye bildirildiği beyan edilen KGÜP varsa o, yoksa bir gün önce 15:30'dan önceki son PVQuant tahmini. Ölçümsüz saatlerin programı da sayılır."
           deger={u.planlanan.mwh == null ? "—" : sayiTr(u.planlanan.mwh, 1)} birim={u.planlanan.mwh == null ? undefined : "MWh"}
           alt={`${u.planlanan.kaynak_etiket}; ${sayiTr(u.planlanan.saat)} saat${u.planlanan.tamamlanan_saat ? `, ${sayiTr(u.planlanan.tamamlanan_saat)} saati tahmin arşivinden` : ""}`} />
@@ -118,7 +129,10 @@ export function FinansalEtki({ plantId }: { plantId: string }) {
           </ul>
         </details>
       </Kart>
-      <div className="ızgara-cift">
+      </section>
+      <section className="bolum">
+      <div className="ozet-bas">Karşılaştırma ve eylem<span className="sag">bildirim, öneriler</span></div>
+      <div className="sira-2">
         <Kart baslik="Resmî bildirimle karşılaştırma" alt="Ay döneminde EPİAŞ uzlaştırma bildiriminin dengesizlik ve KGÜP sapma kalemleri, PVQuant hesabıyla yan yana. Bildirim esastır."
           sag={r.guvenilirlik?.etiket ? <span className="rozet rozet-kucuk rozet-notr">{r.guvenilirlik.etiket}</span> : undefined}>
           {r.bilesenler.length === 0 ? (
@@ -153,7 +167,10 @@ export function FinansalEtki({ plantId }: { plantId: string }) {
             </ul>)}
         </Kart>
       </div>
-      <div className="ızgara-cift">
+      </section>
+      <section className="bolum">
+      <div className="ozet-bas">Düşüklük ve ileriye<span className="sag">neden ve ufuk</span></div>
+      <div className="sira-2">
         <Kart baslik="Üretim düşüklüğü" alt="Beklenen üretim ile gerçekleşen arasındaki fark, nedenine göre. TL karşılığı satış fiyatıyla gelir kaybı tahminidir; uzlaştırma kalemi değildir ve dengesizlik satırıyla toplanmaz.">
           <dl className="kunye">
             <div><dt>Program farkı</dt><dd>{th.n_saat ? <>eksik {sayiTr(th.eksik_mwh ?? 0, 1)} MWh, fazla {sayiTr(th.fazla_mwh ?? 0, 1)} MWh <span className="kunye-not">({th.program}; mali karşılığı dengesizlik satırında)</span></> : <span className="kunye-durum eksik">Hesaplanamadı</span>}</dd></div>
@@ -189,6 +206,9 @@ export function FinansalEtki({ plantId }: { plantId: string }) {
             </>)}
         </Kart>
       </div>
+      </section>
+      <section className="bolum">
+      <div className="ozet-bas">Hesap<span className="sag">varsayımlar ve sürümler</span></div>
       <Kart baslik="Hesap bilgileri" alt="Bu sonucun hangi varsayımlarla üretildiği; aynı varsayımlarla yeniden üretilebilir.">
         <dl className="kunye">
           <div><dt>Dönem</dt><dd>{donemEtiket(o.donem.kod)}<span className="kunye-not"><span className="kunye-sayi">{gunYaz(o.donem.bas)} – {sonGunYaz(o.donem.bit)}</span>{o.donem.kirpildi && " · süren dönem, bugüne kadar"}</span></dd></div>
@@ -221,6 +241,25 @@ export function FinansalEtki({ plantId }: { plantId: string }) {
             Senaryo fiyatlı ya da sistem yönü varsayılan saat varsa satır senaryo niteliği alır; eksik satır toplamın niteliğini düşürür. Santralin taşımadığı kalemler (lisanssız dağıtım, öz tüketim) bilgi amaçlı kalır.</p>
         </details>
       </Kart>
+      </section>
+      </div>
+    </Sayfa>
+  );
+}
+
+/** 18.11 (Grup 1) — Finansal etki iskeleti: başlık, açıklama ve dönem seçici anında; dört KPI (124 px) + bileşenler kartı (300 px) kalıbı.
+ *  Eski genel iskelet 4 KPI + 3 kart alt alta idi ve sayfa açıklaması yoktu. Sayı/veri yok, hareket yok. */
+function FinansalEtkiIskeleti({ secici }: { secici: React.ReactNode }) {
+  return (
+    <Sayfa baslik="Finansal etki" alt={SAYFA_ALT} sag={secici}>
+      <div className="akis" role="status" aria-live="polite" aria-label="Yükleniyor">
+        <section className="bolum">
+          <div className="ozet-bas">Dönem<span className="sag">yükleniyor…</span></div>
+          <div className="iskelet-kpi" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>{Array.from({ length: 4 }, (_, i) => <span key={i} />)}</div>
+          <div className="iskelet-kart" style={{ height: 300 }} />
+        </section>
+        <span className="gorsel-gizli">Yükleniyor…</span>
+      </div>
     </Sayfa>
   );
 }

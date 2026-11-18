@@ -1266,6 +1266,10 @@ table.veri.dar th + th, table.veri.dar td + td { padding-left: 10px; }
 .akis .bolum { container-type: inline-size; }
 .akis .sira-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 410px), 1fr)); gap: 14px; align-items: start; }
 @container (min-width: 700px) and (max-width: 1000px) { .akis .satir-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* 18.11 Finansal etki: yarım sütun karta giren üç KPI'lı şerit (.satir-3, «Önümüzdeki günler») 1195 px pencerede 120 px'e sıkışıp değer metnini
+   taşırıyordu (ÖLÇÜLDÜ: .kpi-dg 77/70). Kart kendi kapsayıcısı: 360–480 px genişlikte 2+1; ≤360 (375 px telefon, kart ~300) tek sütun medya kuralı kalır. */
+.akis .sira-2 > * { container-type: inline-size; min-width: 0; }
+@container (min-width: 360px) and (max-width: 480px) { .akis .satir-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .iskelet-govde { display: grid; gap: 10px; align-content: start; }
 .iskelet-govde .iskelet-alan { display: block; max-width: 100%; }
 .iskelet-satirlar { display: grid; gap: 6px; }
