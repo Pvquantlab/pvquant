@@ -6,6 +6,9 @@ import { Kart, Sayfa, sayiTr, YerTutucu } from "./parcalar";
 /** v2.270 (Dalga 0) — Hakkında › Veri kaynakları ve lisanslar.
  *  Gizlilik Anayasası v2.245 istisnası: kaynak adı + lisans bağlantısı YALNIZ burada (ve rapor künyesi, README).
  *  Liste sunucunun gerçek kullanımından gelir; kullanılmayan kaynağa atıf yazılmaz. */
+/** 18.11 Parti 4 (aşamalı çizim): dört kart baştan yerinde — önceden üçü veri gelince araya giriyordu (iki istek × koşullu kart = üç aşamalı
+ *  kuruluş; canlı hakkinda 723 ms). Gövdeler ölçülen boyda yer tutucu (510/750/600/195); veri yok/alınamadı açıkça yazılır, kart kalkmaz. */
+const ALINAMADI = "Sunucudan alınamadı; örnek kipte bu liste yoktur.";   // 18.11 Parti 4 son kontrol: dört kartta aynı dürüst metin (null = örnek kip ya da hata)
 export function Hakkinda() {
   // 24.10 açık tema geçiş turu: bayat-önce — bellekte son liste varsa dönüşte anında; yoldayken yer tutucu (metin yerine)
   const [h, setH] = useState<HakkindaT | null | undefined>(() => bellektenOku<HakkindaT>("/v1/hakkinda"));
@@ -27,8 +30,8 @@ export function Hakkinda() {
   return (
     <Sayfa baslik="Hakkında" alt="Veri kaynakları, lisanslar ve işleme notu.">
       <Kart baslik="Veri kaynakları ve lisanslar">
-        {h === undefined ? <YerTutucu yukseklik={120} />
-         : !h ? <p className="soluk" style={{ margin: 0 }}>Örnek kip; kaynak listesi sunucudan gelir.</p> : (
+        {h === undefined ? <YerTutucu yukseklik={490} />
+         : !h ? <p className="soluk" style={{ margin: 0 }}>{ALINAMADI}</p> : (
           <>
             {h.uyarilar.length > 0 && <ul className="not-listesi uyari" style={{ margin: "0 0 10px" }}>{h.uyarilar.map((u) => <li key={u}>{u}</li>)}</ul>}
             <div className="grafik-kaydir">
@@ -56,8 +59,8 @@ export function Hakkinda() {
           </>
         )}
       </Kart>
-      {h && (h.mevzuat?.length ?? 0) > 0 && (
         <Kart baslik="Mevzuat ve standart dayanağı" sag={<span className="cip" title="k/l, V, B, AFL ve DSG eşiği kural tablosundan gelir; yalnız KÜPST n ve tolerans santral ayarından geçersiz kılınabilir">yalnız KÜPST n/tolerans ayardan değişir</span>}>
+          {h === undefined ? <YerTutucu yukseklik={680} /> : !h || !h.mevzuat?.length ? <p className="soluk" style={{ margin: 0 }}>{!h ? ALINAMADI : "Kayıt yok."}</p> : (<>
           <div className="grafik-kaydir">
             <table className="veri">
               <thead><tr><th style={sol}>Dayanak</th><th style={sol}>Kapsam</th><th style={sol}>Yayım (Resmî Gazete tarih-sayı, karar)</th><th style={sol}>Not</th></tr></thead>
@@ -78,15 +81,15 @@ export function Hakkinda() {
             Mevzuat değişirse kural tablosu (kural motoru) yeni sürümle güncellenir; k/l, V, B, AFL ve DSG eşiği ayarlardan değişmez.
             Yalnız KÜPST n ve tolerans Santralim › Santral ayarları'ndan geçersiz kılınabilir; geçersiz kılma Doğruluk sayfasında etiketlenir.
           </p>
+          </>)}
         </Kart>
-      )}
-      {kurallar && kurallar.satirlar.length > 0 && (
         <Kart baslik="Uzlaştırma kuralı sürüm tablosu" alt="Dengesizlik ve KGÜP sapma hesabında kullanılan katsayı ve parametrelerin geçerlilik dönemleri (lisanslı serbest piyasa); yeniden hesap bu tabloyla yapılır, EPİAŞ sonucu esastır"
           sag={<>
             <span className="cip">salt okunur · kaynak: kural motoru</span>
             {/* v2.535: kaç satırın dayanağı eksik — gizlenmez */}
-            {kurallar.satirlar.some((r) => r.dogrulama === "dogrulama_gerekli") && <span className="rozet rozet-uyari rozet-kucuk" title="Dayanağın bir parçası birincil kaynakta bulunamadı; ayrıntı satırın Dayanak alanında">{sayiTr(kurallar.satirlar.filter((r) => r.dogrulama === "dogrulama_gerekli").length)} satır doğrulama gerekli</span>}
+            {kurallar?.satirlar.some((r) => r.dogrulama === "dogrulama_gerekli") && <span className="rozet rozet-uyari rozet-kucuk" title="Dayanağın bir parçası birincil kaynakta bulunamadı; ayrıntı satırın Dayanak alanında">{sayiTr(kurallar.satirlar.filter((r) => r.dogrulama === "dogrulama_gerekli").length)} satır doğrulama gerekli</span>}
           </>}>
+          {kurallar === undefined ? <YerTutucu yukseklik={560} /> : !kurallar || kurallar.satirlar.length === 0 ? <p className="soluk" style={{ margin: 0 }}>{!kurallar ? ALINAMADI : "Kayıt yok."}</p> : (<>
           <div className="grafik-kaydir">
             <table className="veri dar">
               <thead><tr><th style={sol}>Geçerlilik</th><th style={sol}>Kural sürümü</th><th style={sol}>Rejim</th><th title="Dengesizlik katsayıları sistem yönüne göre (Karar 14030): sistem açığı / sistem fazlası; dengede ipucunda">k (açık / fazla)</th><th title="Sistem açığı / sistem fazlası">l (açık / fazla)</th><th title="Düşük fiyat eşiği (TL/MWh)">V</th><th title="KÜPST tolerans oranı (m) ve fiyat katsayısı (n; arıza eşiğinde n arıza)">KÜPST m / n</th><th title="DSG netleşme eşiği">DSG eşiği</th><th style={sol} title="doğrulandı: birincil kaynak belirli · çıkarım: yürürlük tarihi metinden çıkarım · doğrulama gerekli: dayanağın bir parçası bulunamadı · belirsiz: 2027 sonrası">Durum</th><th style={sol}>Dayanak</th></tr></thead>
@@ -116,10 +119,10 @@ export function Hakkinda() {
             </table>
           </div>
           <p className="soluk t-ikincil" style={{ margin: "10px 0 0" }}>{kurallar.satirlar.some((r) => r.dsg_esik == null) && <>DSG eşiği «—»: 1.1.2025 öncesinde üye eşiği yoktu, sapmalar DSG içinde tamamen netleşir (DUY m.111(3)-(5) 1.1.2025'ten). </>}Durum sütunu: «doğrulandı» birincil kaynak (Resmî Gazete yayımı / Kurul kararı) belirli; «çıkarım» yürürlük tarihi «yayımı takip eden fatura dönemi» ifadesinden çıkarım; «doğrulama gerekli» dayanağın bir parçası birincil kaynakta bulunamadı (hangi parça olduğu Dayanak altında). k/l, V, B, AFL ve DSG eşiği bu tablodan gelir ve ayarlardan değişmez; yalnız KÜPST n ve tolerans santral ayarından geçersiz kılınabilir (Doğruluk sayfasında etiketlenir). Dış API: GET /v1/kurallar.</p>
+          </>)}
         </Kart>
-      )}
-      {h && Object.keys(h.arsiv).length > 0 && (
         <Kart baslik="Meteoroloji arşivi" sag={<span className="cip">tahmin başına nokta serileri</span>}>
+          {h === undefined ? <YerTutucu yukseklik={180} /> : !h || Object.keys(h.arsiv).length === 0 ? <p className="soluk" style={{ margin: 0 }}>{!h ? ALINAMADI : "Arşiv boş."}</p> : (<>
           <div className="grafik-kaydir">
             <table className="veri">
               <thead><tr><th style={sol}>Kaynak</th><th style={sol} title="Arşivdeki en yeni model tahmininin başlangıç saati; indirmenin yapıldığı saat değil (o aşağıda, iş günlüğünden)">Son model tahmini</th><th>Nokta</th><th>Satır</th><th style={sol}>Kapsam</th></tr></thead>
@@ -142,8 +145,8 @@ export function Hakkinda() {
             Her gece, tahmin işinden bir saat önce hava tahmini verisi indirilir, santral noktaları çıkarılır ve saklanır; tahmin, kalibrasyon ve hava verisi
             tutarlılık denetimi aynı arşivden beslenir. Ham ızgara dosyaları tutulmaz.
           </p>
+          </>)}
         </Kart>
-      )}
     </Sayfa>
   );
 }

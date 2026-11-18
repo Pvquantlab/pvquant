@@ -160,6 +160,7 @@ export const bellekten = {
   guvenilirlik: (p: string, gun = 60): Guvenilirlik | undefined => bellektenOku<Guvenilirlik>(`/v1/plants/${p}/guvenilirlik?gun=${gun}`),
   konformal: (p: string): KonformalAyar | undefined => bellektenOku<KonformalAyar>(`/v1/plants/${p}/konformal`),
   hataDagilimi: (p: string, gun = 120): HataDagilimi | undefined => bellektenOku<HataDagilimi>(`/v1/plants/${p}/hata-dagilimi?gun=${gun}&kova=0-24`),
+  yekdem: (p: string, gun = 90): Yekdem | undefined => bellektenOku<Yekdem>(`/v1/plants/${p}/yekdem?gun=${gun}`),   // 18.11 Parti 3: Doğruluk YEKDEM kartı baştan (api.yekdem ile aynı yol)
   // 18.11 Aylık (Grup 1): yıllık beklenti, P-değerleri ve performans da bayat-önce
   bankable: (p: string): Bankable | undefined => bellektenOku<Bankable>(`/v1/plants/${p}/bankable`),
   pDegerleri: (p: string): PDegerleri | undefined => bellektenOku<PDegerleri>(`/v1/plants/${p}/p-degerleri`),
@@ -1263,7 +1264,7 @@ const ISITMA: Record<string, (p: string) => Promise<unknown>[]> = {
   santralim: (p) => [api.ozet(p), api.tahmin(p, "16d"), api.pr(p), api.saglik(p)],   // 17.11: ilk ekranın dört ucu (künye PR + veri durumu da)
   tahminler: (p) => [api.tahmin(p, "16d"), api.ozet(p)],
   aylik: (p) => [api.aylik(p), api.ozet(p)],
-  dogruluk: (p) => [api.karne(p)],
+  dogruluk: (p) => [api.karne(p), api.hataDagilimi(p)],   // 18.11 Parti 3: hata dağılımı artık açılışta (üst KPI) — ısıtma sayfanın ilk çağrısıyla birebir
   kalibrasyon: (p) => [api.kalibrasyon(p)],
   // 16.11 piyasa/finans: sayfaların ilk çağrısıyla birebir aynı yol (aksi hâlde bellek ve sunucu önbelleği ısınmaz)
   kgup: (p) => [api.kgupOnizleme(p), api.kgupRevizyon(p)],

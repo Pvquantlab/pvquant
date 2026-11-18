@@ -66,9 +66,7 @@ function SaatlikDokum({ plantId, gun }: { plantId: string; gun: number }) {
 
 /** v2.520 (P5a): YEKDEM katmanı — fiyat rejimi (işletmeye giriş tarihinden), bugünün YEK fiyatı (Cetvel I: ¢ × günün TCMB kuru; 7189: ayın EPİAŞ
  *  ilanı + yerli katkı, USD band konumu) ve YEK Yön. m.23(6) saat işareti (belirsiz). Yalnız lisanslı YEKDEM segmentinde çizilir; yeniden hesaptır. */
-function YekdemKarti({ plantId, gun }: { plantId: string; gun: number }) {
-  const [yk, setYk] = useState<Yekdem | null | undefined>(undefined);
-  useEffect(() => { let acik = true; setYk(undefined); api.yekdem(plantId, gun).then((v) => { if (acik) setYk(v); }); return () => { acik = false; }; }, [plantId, gun]);
+function YekdemKarti({ yk }: { yk: Yekdem | null | undefined }) {   // 18.11 Parti 3: veri sayfadan (açılışta çekilir, bayat-önce) — kart baştan yerinde, araya girmez
   const BANT: Record<string, string> = { icinde: "sınırlar içinde", tabanda: "alt sınırda (kırpma)", tavanda: "üst sınırda (kırpma)", kur_yok: "kur verisi yok" };
   const AYAD = (ay: string) => { const [y, m] = ay.split("-").map(Number); return `${AY[m - 1]} ${y}`; };
   // «2026-10-20 11:00» (uçtan, Türkiye saati) → «20 Eki 2026 11:00»
@@ -79,7 +77,7 @@ function YekdemKarti({ plantId, gun }: { plantId: string; gun: number }) {
   return (
     <Kart baslik="YEKDEM — fiyat rejimi, günlük YEK fiyatı ve m.23(6) saatleri"
       sag={<span className="cip">{yk ? <Meta items={[yk.rejim.etiket, `${sayiTr(yk.pencere_gun)} gün`]} /> : yk === null ? "alınamadı" : "hesaplanıyor"}</span>}>
-      {yk === undefined ? <YerTutucu yukseklik={220} /> : yk === null ? <p className="soluk" style={{ margin: 0 }}>YEKDEM bilgisi alınamadı.</p> : (
+      {yk === undefined ? <YerTutucu yukseklik={660} /> : yk === null ? <p className="soluk" style={{ margin: 0 }}>YEKDEM bilgisi alınamadı.</p> : (
         <>
           <div className="ızgara satir-4" style={{ marginBottom: 12 }}>
             <Kpi etiket="Fiyat rejimi" deger={yk.rejim.rejim === "cetvel1" ? "Cetvel I" : yk.rejim.rejim === "7189" ? "7189 sayılı CK" : "belirsiz"} ton={yk.rejim.rejim ? undefined : "uyari"}
@@ -199,7 +197,7 @@ function BagimsizDogrulamaKarti({ bd, kural, setKural, gun }:
         </span>
         <span className="cip"><Meta items={[`${sayiTr(gun)} gün`, bd === undefined ? "hesaplanıyor" : bd === null ? "alınamadı" : bd.kayitli ? `gece hesabı ${saatYaz(bd.hesap_zamani)}` : "anlık hesap", m?.n_gun != null && m.n_gun > 0 && `${sayiTr(m.n_gun)} gün değerlendirildi`]} /></span>
       </>}>
-      {bd === undefined ? <YerTutucu yukseklik={300} /> : bd === null ? (
+      {bd === undefined ? <YerTutucu yukseklik={990} /> : bd === null ? (
         <p className="soluk" style={{ margin: 0 }}>Doğrulama sonucu alınamadı; sayfayı yenileyin.</p>
       ) : !yeterli ? (
         <div className="bos-durum"><div className="bos-bas">Henüz değerlendirilecek saat yok</div>
@@ -295,6 +293,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
   // 18.11 Doğruluk (Grup 1): altı yanıt da BAYAT-ÖNCE (bellekte varsa santral geçişinde yer tutucu yok); güvenilirlik (1060 px) ve
   // uzlaştırma + dağılım kartları görünürlük kapısıyla (ilk ekran 11 → 7 istek, ölçüldü); sayfa .akis bölüm ritminde, sayfaya özel iskelet.
   const [hd, setHd] = useState<HataDagilimi | null | undefined>(() => bellekten.hataDagilimi(plantId));
+  const [yk, setYk] = useState<Yekdem | null | undefined>(() => bellekten.yekdem(plantId));   // 18.11 Parti 3: YEKDEM açılışta (65 ms), kart araya girmesin
   const { n, oku } = useTema();
   const [kf, setKf] = useState<KonformalAyar | undefined>(() => bellekten.konformal(plantId));   // v2.252
   const [bt, setBt] = useState<Backtest | null | undefined>(() => bellekten.backtest(plantId));   // v2.253
@@ -316,11 +315,15 @@ export function Dogruluk({ plantId }: { plantId: string }) {
     let acik = true;
     setK(bellekten.karne(plantId, donem)); setKD("bekliyor");
     setKf(bellekten.konformal(plantId)); setBt(bellekten.backtest(plantId)); setGt(undefined);
-    setGv(bellekten.guvenilirlik(plantId)); setDz(bellekten.dengesizlik(plantId)); setHd(bellekten.hataDagilimi(plantId));   // kapılı üçlü: bellekte varsa anında; ağ yalnız kart görünür olunca (aşağıdaki efektler)
+    setGv(bellekten.guvenilirlik(plantId)); setDz(bellekten.dengesizlik(plantId)); setHd(bellekten.hataDagilimi(plantId)); setYk(bellekten.yekdem(plantId));   // kapılı ikili (gv, dz): bellekte varsa anında; ağ yalnız kart görünür olunca
     // Denendi, alınmadı (24.10, perf/analiz/acik-tema/deney): yanıt yazımlarını startTransition'a almak 4× CPU'da «tam»
     // süresini uzattı (sıcak 211 → 471 ms); düz setState kaldı.
     api.karne(plantId, donem).then((v) => { if (acik) { setK((e) => ayniysaEskisi(e, v)); setKD("tamam"); } }, () => { if (acik) { setK((e) => e ?? null); setKD("hata"); } });
     api.konformal(plantId).then((v) => { if (acik) setKf(v); }, () => { if (acik) setKf({ aktif: false }); });
+    // 18.11 Parti 3: hata dağılımı üstteki «Günlük sapma (ortalama)» KPI'ını besler — alt kartın kapısına bağlıyken KPI kaydırılana dek «hesaplanıyor» kalıyordu;
+    // YEKDEM kartı segmenti yanıtın kendisinden (uygulanir) bilir, dz'yi beklemez (önceden dz gelince araya giriyordu: CLS 0,355)
+    api.hataDagilimi(plantId).then((v) => { if (acik) setHd((e) => ayniysaEskisi(e, v)); }, () => { if (acik) setHd(null); });
+    api.yekdem(plantId).then((v) => { if (acik) setYk(v); });
     return () => { acik = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- donem bilerek dışarıda: istekler yalnız santral (ya da damga) değişince kurulur
   }, [plantId, ds]);
@@ -331,11 +334,10 @@ export function Dogruluk({ plantId }: { plantId: string }) {
     api.backtest(plantId).then((v) => { if (acik) setBt((e) => ayniysaEskisi(e, v)); }, () => { if (acik) setBt(null); });
     return () => { acik = false; };
   }, [plantId, ds, ortaGorunur]);
-  useEffect(() => {   // 18.11: uzlaştırma kalemleri + günlük sapma dağılımı
+  useEffect(() => {   // 18.11: uzlaştırma kalemleri (Parti 3: dağılım artık açılışta — üst KPI'ı besliyor)
     if (!altGorunur) return;
-    let acik = true; setDz(bellekten.dengesizlik(plantId)); setHd(bellekten.hataDagilimi(plantId));
+    let acik = true; setDz(bellekten.dengesizlik(plantId));
     api.dengesizlik(plantId).then((v) => { if (acik) setDz((e) => ayniysaEskisi(e, v)); }, () => { if (acik) setDz(null); });
-    api.hataDagilimi(plantId).then((v) => { if (acik) setHd((e) => ayniysaEskisi(e, v)); }, () => { if (acik) setHd(null); });
     return () => { acik = false; };
   }, [plantId, ds, altGorunur]);
   const [ilkDonem, setIlkDonem] = useState(true);
@@ -883,7 +885,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
           {/* 29.10: rozet metni kısa (375 px'te başlık satırı taşıyordu); ayrıntı title ve KPI alt etiketinde */}
           {dz && <span className={`rozet ${dz.fiyat.senaryo_saat > 0 ? "rozet-uyari" : "rozet-ok"} rozet-kucuk`} title={dz.fiyat.senaryo_saat > 0 ? "Senaryo fiyatı: EPİAŞ kimliği tanımlı değil. " + dz.not : dz.not}>{dz.fiyat.senaryo_saat > 0 ? "senaryo fiyatı" : "fiyat: EPİAŞ"}</span>}
         </span>}>
-        {dz === undefined ? <YerTutucu yukseklik={411} /> : dz && dz.toplam ? (
+        {dz === undefined ? <YerTutucu yukseklik={628} /> : dz && dz.toplam ? (
           <>
             <div className="ızgara satir-4" style={{ gap: 12 }}>
               <div className="kpi"><div className="kpi-et"><BilgiliEtiket metin="Dengesizlik maliyeti · EDT" bilgi="Gerçekleşen üretim ile saatlik piyasa pozisyonu (varsayılanı üretim programı; Santralim › Program sınırları) arasındaki farkın EPİAŞ uzlaştırmasındaki karşılığı, enerji dengesizlik tutarı: eksik üretim borç, fazla üretim alacak yazar; gösterilen değer net maliyettir." /></div>
@@ -959,7 +961,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
         )}
       </Kart>
       {/* v2.520 (P5a): YEKDEM katmanı — yalnız lisanslı YEKDEM segmentinde (öbür segmentlerde fiyat yalnız tarife gelirine girer) */}
-      {dz?.segment.segment === "lisansli_yekdem" && <YekdemKarti plantId={plantId} gun={dz.pencere_gun} />}
+      {(yk === undefined || yk?.uygulanir) && <YekdemKarti yk={yk} />}
       {/* v2.503 (F-07): 12 aylık geri test — aylık tablo + karşı-olgu sütunları; istek yalnız kart açılınca (ağır sorgu) */}
       <Kart baslik="Uzlaştırma kalemleri geri testi — son 12 ay, varsayımsal yeniden hesap"
         sag={<span className="cip">{gt ? <Meta items={[`${sayiTr(gt.gun_sayisi)} gün`, gt.mekanizma && gt.mekanizma.senaryo_saat > 0 ? `senaryo fiyatı ${sayiTr(gt.mekanizma.senaryo_saat)} saat` : "fiyat: EPİAŞ"]} /> : gt === null ? "alınamadı" : "kapalı"}</span>}>
@@ -1033,7 +1035,7 @@ export function Dogruluk({ plantId }: { plantId: string }) {
             `std. sapma ${hd?.sd != null ? `${sayiTr(hd.sd, 2)} MWh` : "—"}`,
             hd?.p10 != null && hd?.p90 != null && `P10–P90: ${sayiTr(hd.p10, 2)} – ${sayiTr(hd.p90, 2)} MWh`]} />
         </span>}>
-        {hd === undefined ? <YerTutucu yukseklik={353} /> : hd && hd.kutular.length > 0 ? (
+        {hd === undefined ? <YerTutucu yukseklik={368} /> : hd && hd.kutular.length > 0 ? (
           <>
             <EChart option={dagOption} height={280}
               ariaLabel="Günlük tahmin sapması histogramı, yüzdelik çizgileriyle" />
