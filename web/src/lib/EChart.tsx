@@ -2,7 +2,8 @@
  *  Sozlesme kullanim yerlerinden: option + height + ariaLabel.
  *  Yasam dongusu: init -> setOption (degisimde) -> resize (gozlemci) -> dispose. */
 import { useEffect, useRef, useState } from "react";
-import * as echarts from "./echarts";
+import type * as echarts from "./echarts";
+import { echartsHazir, echartsYukle } from "./echartsYukle";   // 18.11 gezinme (Parti A #2): kütüphane tembel, sayfa onu beklemez
 import type { EChartsOption } from "echarts";
 
 /** 24.10 performans turu: grafik GÖRÜNÜR OLUNCA (ya da 240 px yaklaşınca) başlatılır — Santralim/Doğruluk'ta ekran
@@ -13,6 +14,14 @@ export function EChart({ option, height = 300, ariaLabel }:
   const kutuRef = useRef<HTMLDivElement | null>(null);
   const grafikRef = useRef<echarts.ECharts | null>(null);
   const [gorunur, setGorunur] = useState(() => typeof IntersectionObserver === "undefined");
+  const [kut, setKut] = useState(() => echartsHazir());
+
+  useEffect(() => {   // görünür olunca kütüphane (inmemişse) iner; inmişse kut baştan dolu, bu efekt hiç beklemez
+    if (!gorunur || kut) return;
+    let acik = true;
+    echartsYukle().then((m) => { if (acik) setKut(m); }, () => { /* ağ yoksa grafik boş kalır; sayfa çalışır */ });
+    return () => { acik = false; };
+  }, [gorunur, kut]);
 
   useEffect(() => {
     if (gorunur || !kutuRef.current) return;
@@ -24,18 +33,18 @@ export function EChart({ option, height = 300, ariaLabel }:
   }, [gorunur]);
 
   useEffect(() => {
-    if (!gorunur || !kutuRef.current) return;
-    const g = echarts.init(kutuRef.current, undefined,
+    if (!gorunur || !kut || !kutuRef.current) return;
+    const g = kut.init(kutuRef.current, undefined,
       { devicePixelRatio: Math.max(2, window.devicePixelRatio || 1) });
     grafikRef.current = g;
     const gozlemci = new ResizeObserver(() => g.resize());
     gozlemci.observe(kutuRef.current);
     return () => { gozlemci.disconnect(); g.dispose(); grafikRef.current = null; };
-  }, [gorunur]);
+  }, [gorunur, kut]);
 
   useEffect(() => {
     grafikRef.current?.setOption(option, { notMerge: true });
-  }, [option, gorunur]);
+  }, [option, gorunur, kut]);
 
   return <div ref={kutuRef} role="img" aria-label={ariaLabel}
               style={{ width: "100%", height }} />;

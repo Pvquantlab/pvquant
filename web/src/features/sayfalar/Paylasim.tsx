@@ -8,11 +8,13 @@ import { Meta } from "../../lib/Meta";
 
 /** v2.608 (Faz 5 F5-A) — PAYLAŞIM sayfası: «Kuruluşlar arası paylaşım» kartı Ayarlar'dan (Kurulus.tsx) TAŞINDI — bileşen ve mantığı
  *  aynen (bayat-önce liste, izin seçenekleri uçtan, yazma yalnız yönetici); Yönetim grubunda kendi hedefi, Ayarlar'da kalmadı (çift hedef yok). */
+const PAYLASIM_ALT = "Kuruluşlar arası veri paylaşımı: başka bir kuruluşa verdiğiniz ve sizinle paylaşılan santral verileri, izinler ve süreler.";
+
 export function Paylasim() {
   const [santraller, setSantraller] = useState<{ id: string; ad: string }[]>([]);
   useEffect(() => { api.santraller().then((l: SantralKisa[]) => setSantraller(l.map((s) => ({ id: s.id, ad: s.name })))).catch(() => {}); }, []);
   return (
-    <Sayfa baslik="Paylaşım" alt="Kuruluşlar arası veri paylaşımı: başka bir kuruluşa verdiğiniz ve sizinle paylaşılan santral verileri, izinler ve süreler.">
+    <Sayfa baslik="Paylaşım" alt={PAYLASIM_ALT}>
       <ModulNotu kod="paylasim" />
       <Paylasimlar santraller={santraller} />
     </Sayfa>
@@ -32,7 +34,7 @@ function Paylasimlar({ santraller }: { santraller: { id: string; ad: string }[] 
   const dene = async (fn: () => Promise<unknown>) => { setHata(null); setMesaj(null); try { await fn(); yenile(); } catch (e) { setHata(String((e as Error).message ?? e)); } };
   const etiket = (i: string) => liste?.izin_secenekleri.find((x) => x.deger === i)?.etiket ?? i;
   const yonetici = rolum() === "admin";
-  if (liste === null) return <SayfaIskeleti kpi={0} kart={1} />;
+  if (liste === null) return <Sayfa baslik="Paylaşım" alt={PAYLASIM_ALT}><SayfaIskeleti kpi={0} kart={1} bas={false} /></Sayfa>;   // 18.11 gezinme (Parti A #7): iskelet gerçek başlıkla
   if (!yonetici && liste.verilenler.length === 0 && liste.alinanlar.length === 0)
     return <div className="bos-durum"><div className="bos-bas">Paylaşım yok.</div><p>Kuruluşunuzun verdiği ya da aldığı paylaşım bulunmuyor; paylaşım açmak yönetici yetkisi ister.</p></div>;
   return (

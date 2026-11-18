@@ -30,7 +30,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { sayiBicimi, tarihBicimi } from "../../lib/bicim";
-import * as echarts from "../../lib/echarts";
+import type * as echarts from "../../lib/echarts";
+import { echartsHazir, echartsYukle } from "../../lib/echartsYukle";   // 18.11 gezinme (Parti A #2): kütüphane tembel; Tahminler sayfası onu beklemez
 import type { EChartsOption, SeriesOption } from "echarts";
 
 // ---------------------------------------------------------------- types
@@ -1036,6 +1037,13 @@ export default function ProductionForecastChart({
 }: ProductionForecastChartProps) {
   const ref = useRef<HTMLDivElement>(null);
   const chartRef = useRef<echarts.ECharts | null>(null);
+  const [kut, setKut] = useState(() => echartsHazir());
+  useEffect(() => {
+    if (kut) return;
+    let acik = true;
+    echartsYukle().then((m) => { if (acik) setKut(m); }, () => { /* ağ yoksa grafik boş kalır */ });
+    return () => { acik = false; };
+  }, [kut]);
   const [narrow, setNarrow] = useState(false);
   const isDark = useDomDark(dark);
   const T = CHART_TOKENS(isDark);
@@ -1086,8 +1094,8 @@ export default function ProductionForecastChart({
   );
 
   useEffect(() => {
-    if (!ref.current) return;
-    const chart = echarts.init(ref.current);
+    if (!ref.current || !kut) return;
+    const chart = kut.init(ref.current);
     chartRef.current = chart;
     const onResize = () => {
       chart.resize();
@@ -1100,11 +1108,11 @@ export default function ProductionForecastChart({
       chart.dispose();
       chartRef.current = null;
     };
-  }, []);
+  }, [kut]);
 
   useEffect(() => {
     chartRef.current?.setOption(option, { notMerge: true });
-  }, [option]);
+  }, [option, kut]);
 
   const exportCsv = () => {
     const head = ["ts", "p10", "p50", "p90", "gerceklesen_kw"];

@@ -1,10 +1,11 @@
-import { Suspense, lazy, startTransition, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { Suspense, lazy, startTransition, useCallback, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { cikis, oturumDusunce_kaydet } from "./api/client";
 import { Vitrin } from "./features/vitrin/Vitrin";
 import { Yontem } from "./features/vitrin/Yontem";
 import type { SayfaId } from "./shell/Kabuk";
 import { SAYFALAR } from "./shell/Kabuk";
-import { SANTRALSIZ } from "./shell/gruplar";   // v2.608 (F5-A): santral seçimi gerektirmeyen sayfalar tek kaynaktan
+import { GRUPLAR, SANTRALSIZ } from "./shell/gruplar";   // v2.608 (F5-A): santral seçimi gerektirmeyen sayfalar tek kaynaktan; 18.11: ön yükleme sırası yan menü sırası
+import { Sayfa, SayfaIskeleti } from "./features/sayfalar/parcalar";   // 18.11 gezinme (Parti A #1): geçiş iskeleti hedef sayfanın başlığıyla
 import { api } from "./api/client";
 import type { SantralKisa } from "./api/types";
 
@@ -41,35 +42,42 @@ function tembel<P extends object>(yukle: () => Promise<ComponentType<P>>) {
     const [K] = useState(() => hazir);
     return K ? <K {...props} /> : <Tembel {...props} />;
   }
-  return Object.assign(Bilesen, { onYukle });
+  return Object.assign(Bilesen, { onYukle, /** 18.11 gezinme (Parti A #1): parça inmiş mi — soğuksa geçişte hedef başlıklı iskelet basılır */ hazirMi: () => hazir !== null });
 }
 const Kabuk = tembel(() => import("./shell/Kabuk").then((m) => m.Kabuk));
 const Santralim = tembel(() => import("./features/santralim/Santralim").then((m) => m.Santralim));
 const GenelBakis = tembel(() => import("./features/genel/GenelBakis").then((m) => m.GenelBakis));   // v2.608 (Faz 5 F5-B): varsayılan açılış
-const Tahminler = lazy(() => import("./features/sayfalar/Tahminler").then((m) => ({ default: m.Tahminler })));
-const Kgup = lazy(() => import("./features/sayfalar/Kgup").then((m) => ({ default: m.Kgup })));   // v2.608 (Faz 5 F5-A)
-const Paylasim = lazy(() => import("./features/sayfalar/Paylasim").then((m) => ({ default: m.Paylasim })));   // v2.608 (Faz 5 F5-A)
-const Dogruluk = lazy(() => import("./features/sayfalar/Dogruluk").then((m) => ({ default: m.Dogruluk })));
-const Takvim = lazy(() => import("./features/sayfalar/Takvim").then((m) => ({ default: m.Takvim })));   // v2.518 (P3a)
-const Olaylar = lazy(() => import("./features/sayfalar/Olaylar").then((m) => ({ default: m.Olaylar })));   // v2.521 (P1a)
-const Mutabakat = lazy(() => import("./features/sayfalar/Mutabakat").then((m) => ({ default: m.Mutabakat })));   // v2.522 (P2b-1)
-const Sayac = lazy(() => import("./features/sayfalar/Sayac").then((m) => ({ default: m.Sayac })));   // v2.523 (P4a)
-const FinansalEtki = lazy(() => import("./features/sayfalar/FinansalEtki").then((m) => ({ default: m.FinansalEtki })));   // v2.584 (Faz 2 F2-F)
-const Portfoyler = lazy(() => import("./features/sayfalar/Portfoyler").then((m) => ({ default: m.Portfoyler })));   // v2.595 (Faz 3 F3-H)
-const Aylik = lazy(() => import("./features/sayfalar/Aylik").then((m) => ({ default: m.Aylik })));
-const VeriYukleme = lazy(() => import("./features/sayfalar/Digerleri").then((m) => ({ default: m.VeriYukleme })));
-const Kalibrasyon = lazy(() => import("./features/sayfalar/Digerleri").then((m) => ({ default: m.Kalibrasyon })));
-const Raporlar = lazy(() => import("./features/sayfalar/Digerleri").then((m) => ({ default: m.Raporlar })));
-const Portfoy = lazy(() => import("./features/sayfalar/Portfoy").then((m) => ({ default: m.Portfoy })));
-const Kurulus = lazy(() => import("./features/sayfalar/Kurulus").then((m) => ({ default: m.Kurulus })));   // 26.10 Faz 6
-const Hakkinda = lazy(() => import("./features/sayfalar/Hakkinda").then((m) => ({ default: m.Hakkinda })));
+const Tahminler = tembel(() => import("./features/sayfalar/Tahminler").then((m) => m.Tahminler));
+const Kgup = tembel(() => import("./features/sayfalar/Kgup").then((m) => m.Kgup));   // v2.608 (Faz 5 F5-A)
+const Paylasim = tembel(() => import("./features/sayfalar/Paylasim").then((m) => m.Paylasim));   // v2.608 (Faz 5 F5-A)
+const Dogruluk = tembel(() => import("./features/sayfalar/Dogruluk").then((m) => m.Dogruluk));
+const Takvim = tembel(() => import("./features/sayfalar/Takvim").then((m) => m.Takvim));   // v2.518 (P3a)
+const Olaylar = tembel(() => import("./features/sayfalar/Olaylar").then((m) => m.Olaylar));   // v2.521 (P1a)
+const Mutabakat = tembel(() => import("./features/sayfalar/Mutabakat").then((m) => m.Mutabakat));   // v2.522 (P2b-1)
+const Sayac = tembel(() => import("./features/sayfalar/Sayac").then((m) => m.Sayac));   // v2.523 (P4a)
+const FinansalEtki = tembel(() => import("./features/sayfalar/FinansalEtki").then((m) => m.FinansalEtki));   // v2.584 (Faz 2 F2-F)
+const Portfoyler = tembel(() => import("./features/sayfalar/Portfoyler").then((m) => m.Portfoyler));   // v2.595 (Faz 3 F3-H)
+const Aylik = tembel(() => import("./features/sayfalar/Aylik").then((m) => m.Aylik));
+const VeriYukleme = tembel(() => import("./features/sayfalar/Digerleri").then((m) => m.VeriYukleme));
+const Kalibrasyon = tembel(() => import("./features/sayfalar/Digerleri").then((m) => m.Kalibrasyon));
+const Raporlar = tembel(() => import("./features/sayfalar/Digerleri").then((m) => m.Raporlar));
+const Portfoy = tembel(() => import("./features/sayfalar/Portfoy").then((m) => m.Portfoy));
+const Kurulus = tembel(() => import("./features/sayfalar/Kurulus").then((m) => m.Kurulus));   // 26.10 Faz 6
+const Hakkinda = tembel(() => import("./features/sayfalar/Hakkinda").then((m) => m.Hakkinda));
 /** 24.10 performans turu: panel açılınca öteki sayfa parçaları BOŞ ZAMANDA sırayla indirilir — ilk ziyarette
  *  parça inişi (yavaş ağda ~200 ms) kalmaz; ilk boyamayı geciktirmez (idle + 1,5 sn sonra), veri tasarrufu/2G'de
- *  atlanır. Aynı import() ifadeleri olduğundan tembel bileşenler inmiş parçayı kullanır; veri çekilmez. */
-const ONYUKLENECEKLER = [
-  () => import("./features/santralim/Santralim"), () => import("./features/sayfalar/Portfoy"), () => import("./features/sayfalar/Tahminler"),
-  () => import("./features/sayfalar/Digerleri"), () => import("./features/sayfalar/Dogruluk"),
-  () => import("./features/sayfalar/Aylik"), () => import("./features/sayfalar/Hakkinda"),
+ *  atlanır. Aynı import() ifadeleri olduğundan tembel bileşenler inmiş parçayı kullanır; veri çekilmez.
+ *  18.11 gezinme (Parti A #8): liste 7 parçada kalmıştı (KGÜP, Mutabakat, Takvim … soğuk iniyordu; 4G'de ilk ziyaret
+ *  başlığı 150–180 ms). Artık HER sayfanın parçası (SAYFALAR ile aynı kaynaktan; test pini) yan menü sırasıyla + ECharts
+ *  (grafik sayfaları artık onu beklemez, ama görünür grafik gelince hazır olsun diye Santralim'den hemen sonra). */
+const PARCALAR: Record<SayfaId, { onYukle: () => Promise<unknown>; hazirMi: () => boolean }> = {
+  genel: GenelBakis, portfoy: Portfoy, santralim: Santralim, tahminler: Tahminler, aylik: Aylik, dogruluk: Dogruluk,
+  kalibrasyon: Kalibrasyon, veri: VeriYukleme, raporlar: Raporlar, kgup: Kgup, portfoyler: Portfoyler, mutabakat: Mutabakat,
+  finans: FinansalEtki, sayac: Sayac, olaylar: Olaylar, takvim: Takvim, paylasim: Paylasim, kurulus: Kurulus, hakkinda: Hakkinda,
+};
+const ONYUKLENECEKLER: (() => Promise<unknown>)[] = [
+  Santralim.onYukle, () => import("./lib/echarts"),
+  ...GRUPLAR.flatMap((g) => g.sayfalar).filter((id) => id !== "genel" && id !== "santralim").map((id) => PARCALAR[id].onYukle),
 ];
 function parcalariOnyukle() {
   const b = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
@@ -80,6 +88,15 @@ function parcalariOnyukle() {
   window.setTimeout(() => bosZamanda(async () => {
     for (const y of ONYUKLENECEKLER) { try { await y(); } catch { /* ağ yoksa sessiz; ziyarette yeniden denenir */ } }
   }), 1500);
+}
+
+/** 18.11 gezinme (Parti A #1): parça inerken içerik alanı — hedef sayfanın gerçek başlığı + genel iskelet (sayfaya özel iskelet
+ *  parçanın içinde; o gelince yerine oturur). Başlık çubuğu yok (bas={false}): başlık zaten gerçek. Parça inince sayfa bileşeni
+ *  tembel() sayesinde eşzamanlı çizilir — yeni Suspense sınırı askıya almaz, boş kare yok. */
+const GECIS_BASLIK: Partial<Record<SayfaId, string>> = { dogruluk: "Doğruluk karnesi", kgup: "Üretim programı (KGÜP)", portfoyler: "Portföy yönetimi" };   // h1'i yan menü adından farklı sayfalar (test: sayfa dosyasında aynı metin); Santralim'in h1'i santral adı
+function GecisIskeleti({ sayfa, santralAd }: { sayfa: SayfaId; santralAd: string }) {
+  const ad = sayfa === "santralim" ? santralAd : GECIS_BASLIK[sayfa] ?? SAYFALAR.find((s) => s.id === sayfa)?.ad ?? "";
+  return <Sayfa baslik={ad}><SayfaIskeleti kpi={4} kart={2} bas={false} /></Sayfa>;
 }
 
 /** v2.353: kiracının hiç santrali yokken sayfalar çizilmez — hepsi plantId ister
@@ -168,7 +185,19 @@ export default function App() {
   // içerik parçası/verisi gelene dek eski sayfa yerinde kalır. Eskiden vurgu da geçişle beklediğinden ilk ziyarette
   // (parça inene dek) tıklamanın görünür karşılığı yoktu.
   const [secili, setSecili] = useState<SayfaId>(() => hashBaglanti().sayfa ?? "genel");
-  const sayfaSec = (s: SayfaId) => { setSecili(s); startTransition(() => setSayfa(s)); };
+  // 18.11 gezinme (Parti A #1): parça SOĞUKSA (her mühürde parça adları değişir; 4G'de Santralim 870 ms) içerik alanına aynı karede
+  // HEDEF sayfanın başlığıyla genel iskelet basılır, sayfa parça inince geçişle gelir. Önceden geçiş eski sayfayı parça gelene dek
+  // tutuyordu («tıkladım, bir şey olmadı»). Parça inmişse eski davranış: geçiş anında biter, iskelet hiç görünmez.
+  // Sıra koruması: soğuk parça inmeden başka sayfa tıklanırsa geç gelen yükleme sayfayı değiştirmez (seciliRef). `bekleyen` acil
+  // güncellemeyle anında iskelet; sayfa ile AYNI geçişte temizlenir — arada başka bir çizim eski sayfayı bir an gösteremez.
+  const [bekleyen, setBekleyen] = useState<SayfaId | null>(null);
+  const seciliRef = useRef<SayfaId>(secili);
+  const sayfaSec = useCallback((s: SayfaId) => {
+    setSecili(s); seciliRef.current = s;
+    const gec = () => startTransition(() => { setSayfa(s); setBekleyen(null); });
+    if (PARCALAR[s].hazirMi()) gec();
+    else { setBekleyen(s); PARCALAR[s].onYukle().catch(() => {}).then(() => { if (seciliRef.current === s) gec(); }); }
+  }, []);
   // v2.353: kalıcılık TEK yerde — seçim nereden değişirse değişsin (kullanıcı
   // tıklaması, otomatik ilk santral, son santral arşivlenince boşalma) depo
   // izler. Eskiden yalnız elle seçim yazıyordu; otomatik geçişler kaydolmuyordu.
@@ -183,9 +212,9 @@ export default function App() {
     if (window.location.hash !== hedef) history.replaceState(history.state, "", hedef);
   }, [girdi, sayfa, plantId]);
   useEffect(() => {
-    const din = () => { const h = hashBaglanti(); if (h.sayfa && h.sayfa !== sayfa) { setSecili(h.sayfa); startTransition(() => setSayfa(h.sayfa as SayfaId)); } if (h.santral && h.santral !== plantId) setPlantId(h.santral); };
+    const din = () => { const h = hashBaglanti(); if (h.sayfa && h.sayfa !== sayfa) sayfaSec(h.sayfa); if (h.santral && h.santral !== plantId) setPlantId(h.santral); };
     window.addEventListener("hashchange", din); return () => window.removeEventListener("hashchange", din);
-  }, [sayfa, plantId]);
+  }, [sayfa, plantId, sayfaSec]);
   // v2.353: yedek ad "Konya GES" idi — başka müşterinin panelinde bizim
   // referans santralimizin adı görünürdü. Ad yoksa dürüst tire.
   const santralAd = santraller.find((x) => x.id === plantId)?.name ?? "—";
@@ -221,8 +250,8 @@ export default function App() {
            santraller={santraller} onSantral={santralSec} santralYenile={santralYenile}
            onCikis={() => { cikis(); setGirdi(false);
                             setGorunum("vitrin"); }}>  {/* gonullu cikis -> vitrin */}
-      {/* yan menü ve üst çubuk yerinde kalır; yalnız içerik alanı yeni sayfayı bekler */}
-      <Suspense fallback={null}>
+      {/* yan menü ve üst çubuk yerinde kalır; yalnız içerik alanı yeni sayfayı bekler (parça soğuksa hedef başlıklı iskelet) */}
+      {bekleyen ? <GecisIskeleti sayfa={bekleyen} santralAd={santralAd} /> : <Suspense fallback={null}>
       {/* v2.353: santral yokken sayfalar hiç çizilmez — her biri plantId ile
           uç çağırır ve boş kimlikte 404/asılı istek üretirdi. Portföy istisna:
           santral eklemenin ikinci yolu orada. */}
@@ -249,7 +278,7 @@ export default function App() {
       {plantId && sayfa === "aylik" && <Aylik plantId={plantId} />}
       {plantId && sayfa === "raporlar" && <Raporlar plantId={plantId} />}
       {sayfa === "hakkinda" && <Hakkinda />}
-      </Suspense>
+      </Suspense>}
     </Kabuk>
   );
   return <Suspense fallback={null}>{icerik}</Suspense>;

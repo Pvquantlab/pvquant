@@ -321,14 +321,14 @@ export function Dogruluk({ plantId }: { plantId: string }) {
     // süresini uzattı (sıcak 211 → 471 ms); düz setState kaldı.
     api.karne(plantId, donem).then((v) => { if (acik) { setK((e) => ayniysaEskisi(e, v)); setKD("tamam"); } }, () => { if (acik) { setK((e) => e ?? null); setKD("hata"); } });
     api.konformal(plantId).then((v) => { if (acik) setKf(v); }, () => { if (acik) setKf({ aktif: false }); });
-    api.backtest(plantId).then((v) => { if (acik) setBt((e) => ayniysaEskisi(e, v)); }, () => { if (acik) setBt(null); });
     return () => { acik = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- donem bilerek dışarıda: istekler yalnız santral (ya da damga) değişince kurulur
   }, [plantId, ds]);
-  useEffect(() => {   // 18.11: güvenilirlik diyagramı (en ağır yanıt) kart görüş alanına yaklaşınca
+  useEffect(() => {   // 18.11: güvenilirlik diyagramı (en ağır yanıt) kart görüş alanına yaklaşınca; Parti C #6: geri test de (aynı kartın içinde, canlı 1,3 s)
     if (!ortaGorunur) return;
-    let acik = true; setGv(bellekten.guvenilirlik(plantId));
+    let acik = true; setGv(bellekten.guvenilirlik(plantId)); setBt(bellekten.backtest(plantId));
     api.guvenilirlik(plantId).then((v) => { if (acik) setGv((e) => ayniysaEskisi(e, v)); }, () => { if (acik) setGv(null); });
+    api.backtest(plantId).then((v) => { if (acik) setBt((e) => ayniysaEskisi(e, v)); }, () => { if (acik) setBt(null); });
     return () => { acik = false; };
   }, [plantId, ds, ortaGorunur]);
   useEffect(() => {   // 18.11: uzlaştırma kalemleri + günlük sapma dağılımı

@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { SOZLUK } from "../lib/sozluk";
 import { ALARM_KURALI } from "../lib/alarmSozluk";
-import { api, isit, type AlarmSatiri, rolum } from "../api/client";   // 16.11: isit — yan menüde ısıtma
+import { api, isit, ISITMA_GECIKME_MS, type AlarmSatiri, rolum } from "../api/client";   // 16.11: isit — yan menüde ısıtma; 18.11: gecikmeli
 import { GRUPLAR, NAV_KAPALI_ANAHTAR, kapaliGruplariOku } from "./gruplar";   // v2.608 (F5-A): bileşen dosyasından ayrı (fast refresh kuralı)
 import { IkiAdimBolumu } from "../features/sayfalar/Kurulus";   // 26.10 Faz 6: 2FA kurulum kapısı
 import type { SantralOzeti, Kullanici } from "../api/types";
@@ -131,6 +131,11 @@ export function Kabuk({ sayfa, tiklanan, setSayfa, santral, plantId, onCikis, ch
   const [zilAcik, setZilAcik] = useState(false);
   // v2.265: otomatik tazeleme — damga değişince özet/koşu/alarm yeniden çekilir; kullanıcı listesi zil açılınca
   const { surum, sonYoklama } = useDamga(plantId);
+  // 18.11 gezinme (Parti C #10): ısıtma fare öğede ISITMA_GECIKME_MS durunca; ayrılınca/tıklanınca zamanlayıcı iptal (tıklamada sayfa kendi çeker)
+  const isitZaman = useRef<number | null>(null);
+  const isitIptal = () => { if (isitZaman.current != null) { window.clearTimeout(isitZaman.current); isitZaman.current = null; } };
+  const isitPlanla = (id: SayfaId) => { isitIptal(); isitZaman.current = window.setTimeout(() => { isitZaman.current = null; isit(id, plantId); }, ISITMA_GECIKME_MS); };
+  useEffect(() => isitIptal, []);
   const [kullanicilar, setKullanicilar] = useState<Kullanici[] | null>(null);
   const yazabilir = rolum() === "admin" || rolum() === "editor";
   // v2.216: sayfa-atlama paleti (⌘K) — SaaS kromunun tek "canli" parcasi;
@@ -257,8 +262,8 @@ export function Kabuk({ sayfa, tiklanan, setSayfa, santral, plantId, onCikis, ch
               <div id={`yan-grup-${g.id}`} hidden={!acik}>   {/* her zaman çizilir: aria-controls hedefi var, düğmeler sökülüp takılmaz */}
                 {g.sayfalar.map((id) => { const s = SAYFALAR.find((x) => x.id === id)!; return (
                   <button key={s.id} className="nav-btn"
-                    onClick={() => { setSayfa(s.id); setMenuAcik(false); }}
-                    onMouseEnter={() => isit(s.id, plantId)} onFocus={() => isit(s.id, plantId)}   /* 16.11 gezinme hızı: niyet anında ana veri ısıtılır */
+                    onClick={() => { isitIptal(); setSayfa(s.id); setMenuAcik(false); }}
+                    onMouseEnter={() => isitPlanla(s.id)} onMouseLeave={isitIptal} onFocus={() => isit(s.id, plantId)}   /* 16.11 gezinme hızı: niyet anında ana veri ısıtılır; 18.11: fare için 90 ms bekleme */
                     aria-current={(tiklanan ?? sayfa) === s.id ? "page" : undefined}>
                     {IKONLAR[s.id]}{s.ad}
                   </button>); })}

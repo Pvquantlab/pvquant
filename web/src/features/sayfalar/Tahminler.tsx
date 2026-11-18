@@ -98,7 +98,8 @@ export function Tahminler({ plantId, kgupGit }: { plantId: string; kgupGit?: () 
     [seri, ozet],
   );
 
-  if (!hazir) return <SayfaIskeleti kpi={0} kart={2} />;
+  // 18.11 gezinme (Parti A #7): iskelet gerçek başlıkla — önceden başlıksız genel iskelet, sayfa adı ancak veri gelince (≈360 ms) görünüyordu
+  if (!hazir) return <Sayfa baslik="Tahminler" alt="Saatlik tahmin ve geçmiş; en son tahmin."><SayfaIskeleti kpi={0} kart={2} bas={false} /></Sayfa>;
   return (
     <Sayfa
       baslik="Tahminler"

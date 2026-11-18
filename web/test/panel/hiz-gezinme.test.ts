@@ -15,8 +15,11 @@ test("istemci belleği 10 dk (damga tazeler), ısıtma beş üretim sayfasını 
 });
 
 test("yan menü düğmesi niyet anında ısıtır (fare + odak), tıklama davranışı aynı", () => {
-  const k = oku("../../src/shell/Kabuk.tsx");
-  assert.match(k, /onClick=\{\(\) => \{ setSayfa\(s\.id\); setMenuAcik\(false\); \}\}\n\s+onMouseEnter=\{\(\) => isit\(s\.id, plantId\)\} onFocus=\{\(\) => isit\(s\.id, plantId\)\}/);
+  const k = oku("../../src/shell/Kabuk.tsx"); const cl = oku("../../src/api/client.ts");
+  // 18.11 gezinme (Parti C #10): fare için 90 ms bekleme + ayrılınca iptal; odak gecikmesiz; tıklama zamanlayıcıyı iptal eder
+  assert.match(k, /onClick=\{\(\) => \{ isitIptal\(\); setSayfa\(s\.id\); setMenuAcik\(false\); \}\}\n\s+onMouseEnter=\{\(\) => isitPlanla\(s\.id\)\} onMouseLeave=\{isitIptal\} onFocus=\{\(\) => isit\(s\.id, plantId\)\}/);
+  assert.match(k, /isitZaman\.current = window\.setTimeout\(\(\) => \{ isitZaman\.current = null; isit\(id, plantId\); \}, ISITMA_GECIKME_MS\)/);
+  assert.match(cl, /export const ISITMA_GECIKME_MS = 90;/);
 });
 
 test("Santralim: her veri efekti yarış korumalı, ikincil kartlar özet gelince başlar", () => {
@@ -122,15 +125,15 @@ test("DSG ve portföyler: bayat-önce dokuz okuyucu, üyelik formu açılınca, 
 // 18.11 UI denetimi Grup 1 — Doğruluk: altı yanıt bayat-önce, iki görünürlük kapısı, beş bölümlü akış, sayfaya özel iskelet
 test("Doğruluk: bayat-önce altı okuyucu, güvenilirlik ve uzlaştırma kapılı, .akis bölümleri, DogrulukIskeleti", () => {
   const s = oku("../../src/features/sayfalar/Dogruluk.tsx");
-  for (const [ad, n] of [["hataDagilimi(plantId)", 3], ["konformal(plantId)", 2], ["backtest(plantId)", 2], ["dengesizlik(plantId)", 3], ["guvenilirlik(plantId)", 3]] as const) assert.equal((s.split(`bellekten.${ad}`).length - 1), n, `${ad}: başlangıç + ana efekt (+ kapılı efekt)`);
+  for (const [ad, n] of [["hataDagilimi(plantId)", 3], ["konformal(plantId)", 2], ["backtest(plantId)", 3], ["dengesizlik(plantId)", 3], ["guvenilirlik(plantId)", 3]] as const) assert.equal((s.split(`bellekten.${ad}`).length - 1), n, `${ad}: başlangıç + ana efekt (+ kapılı efekt)`);
   assert.match(s, /useState<BagimsizDogrulama \| null \| undefined>\(\(\) => bellekten\.bagimsizDogrulama\(plantId, donem, bdKural\)\)/);
   assert.match(s, /const \[ortaRef, ortaGorunur\] = useGorunur<HTMLElement>\(\);/);
   assert.match(s, /setBd\(bellekten\.bagimsizDogrulama\(plantId, donem, bdKural\)\)/);
   assert.match(s, /const \[altRef, altGorunur\] = useGorunur<HTMLElement>\(\);/);
-  assert.match(s, /if \(!ortaGorunur\) return;[\s\S]{0,120}api\.guvenilirlik\(plantId\)/, "güvenilirlik yalnız kart görünür olunca");
+  assert.match(s, /if \(!ortaGorunur\) return;[\s\S]{0,160}api\.guvenilirlik\(plantId\)[\s\S]{0,200}api\.backtest\(plantId\)/, "güvenilirlik ve geri test (Parti C #6) yalnız kart görünür olunca");
   assert.match(s, /if \(!altGorunur\) return;[\s\S]{0,200}api\.dengesizlik\(plantId\)[\s\S]{0,200}api\.hataDagilimi\(plantId\)/, "uzlaştırma + dağılım yalnız görünür olunca");
   const ana = s.slice(s.indexOf("api.karne(plantId, donem).then((v) => { if (acik)"), s.indexOf("}, [plantId, ds]);"));
-  assert.doesNotMatch(ana, /api\.(guvenilirlik|dengesizlik|hataDagilimi)\(/, "ana efekt yalnız karne, konformal, backtest");
+  assert.doesNotMatch(ana, /api\.(guvenilirlik|dengesizlik|hataDagilimi|backtest)\(/, "ana efekt yalnız karne, konformal (Parti C #6: geri test kapıda)");
   assert.match(s, /if \(!hazir\) return <DogrulukIskeleti \/>;/); assert.doesNotMatch(s, /SayfaIskeleti/);
   assert.equal((s.match(/<section className="bolum"/g) ?? []).length, 5 + 2, "5 bölüm + iskelette 2");
   for (const b of ["Dönem özeti", "Bağımsız doğrulama", "Günlük hata ve aralık", "Uzlaştırma", "Dağılım"]) assert.match(s, new RegExp(`<div className="ozet-bas">${b}<span className="sag">`), b);
@@ -232,4 +235,51 @@ test("Grup 3: .t-* sınıfları tanımlı, satır içi fontSize: var(--t-…) ka
   const kalan = dosyalar.filter((y) => /fontSize: "var\(--t-/.test(fs.readFileSync(y, "utf8"))).map((y) => y.slice(kok.length));
   assert.deepEqual(kalan, [], "satır içi jeton puntosu yerine .t-* sınıfı");
   assert.match(oku("../../src/features/sayfalar/Mutabakat.tsx"), /const ayAd = \(d: string\) => donemEtiket\(d\);/);
+});
+
+test("Gezinme Parti A: soğuk parçada hedef başlıklı iskelet aynı karede, ECharts tembel ve kritik yol dışında, ön yükleme listesi tüm sayfalar, Tahminler/Paylaşım başlıklı iskelet", async () => {
+  const app = oku("../../src/App.tsx");
+  // #1 geçiş iskeleti: tüm sayfa parçaları tembel() (hazirMi); soğuksa iskelet + parça inince geçiş, sıra koruması seciliRef
+  assert.match(app, /hazirMi: \(\) => hazir !== null/);
+  assert.match(app, /const \[bekleyen, setBekleyen\] = useState<SayfaId \| null>\(null\);/);
+  assert.match(app, /\{bekleyen \? <GecisIskeleti sayfa=\{bekleyen\} santralAd=\{santralAd\} \/> : <Suspense fallback=\{null\}>/);
+  assert.match(app, /else \{ setBekleyen\(s\); PARCALAR\[s\]\.onYukle\(\)\.catch\(\(\) => \{\}\)\.then\(\(\) => \{ if \(seciliRef\.current === s\) gec\(\); \}\); \}/, "soğuk: iskelet acil, sayfa parça inince; sıra koruması");
+  assert.match(app, /const gec = \(\) => startTransition\(\(\) => \{ setSayfa\(s\); setBekleyen\(null\); \}\);/, "iskelet sayfayla aynı geçişte kalkar");
+  assert.match(app, /const ad = sayfa === "santralim" \? santralAd : GECIS_BASLIK\[sayfa\] \?\? SAYFALAR\.find/);
+  // geçiş iskeletinin başlığı sayfanın gerçek h1'i ile aynı (yan menü adından farklı olanlar haritada; harita sayfa dosyasıyla uyumlu)
+  const harita = /const GECIS_BASLIK[^\n]*= \{([^}]*)\}/.exec(app)![1];
+  const DOSYA: Record<string, string> = { dogruluk: "Dogruluk.tsx", kgup: "Kgup.tsx", portfoyler: "Portfoyler.tsx" };
+  const girdiler = [...harita.matchAll(/(\w+): "([^"]+)"/g)];
+  assert.equal(girdiler.length, 3);
+  for (const [, id, baslik] of girdiler) assert.ok(oku(`../../src/features/sayfalar/${DOSYA[id]}`).includes(`baslik="${baslik}"`), `${id}: sayfa h1 «${baslik}» değil`);
+  assert.match(app, /setSecili\(s\); seciliRef\.current = s;/);
+  assert.match(app, /if \(h\.sayfa && h\.sayfa !== sayfa\) sayfaSec\(h\.sayfa\);/, "hash yolu da aynı geçiş");
+  assert.doesNotMatch(app, /lazy\(\(\) => import\("\.\/features\/(sayfalar|santralim|genel)\//, "sayfa parçaları lazy değil tembel (eşzamanlı çizim + hazirMi)");
+  // #8 ön yükleme: her tembel sayfa bileşeni PARCALAR'da; liste yan menü sırasıyla + ECharts
+  const tembeller = [...app.matchAll(/const (\w+) = tembel\(\(\) => import\("\.\/features\//g)].map((m) => m[1]).filter((a) => a !== "Kabuk");
+  const parcalar = app.slice(app.indexOf("const PARCALAR"), app.indexOf("const ONYUKLENECEKLER"));
+  assert.ok(tembeller.length >= 18, "tembel sayfa bileşenleri bulunmalı: " + tembeller.length);
+  for (const a of tembeller) assert.match(parcalar, new RegExp(`\\b${a}\\b`), `${a} ön yükleme haritasında değil`);
+  assert.match(app, /Santralim\.onYukle, \(\) => import\("\.\/lib\/echarts"\),\n  \.\.\.GRUPLAR\.flatMap\(\(g\) => g\.sayfalar\)/);
+  // #2 ECharts tembel: değer içe aktarması yalnız echartsYukle.ts'te dinamik; EChart ve kahraman grafik type-only + yükleyici
+  const kaynak = (await import("node:fs")).readFileSync;
+  const kok = new URL("../../src/", import.meta.url);
+  const yukleyici = kaynak(new URL("lib/echartsYukle.ts", kok), "utf8");
+  assert.match(yukleyici, /import type \* as E from "\.\/echarts";/);
+  assert.match(yukleyici, /soz \?\?= import\("\.\/echarts"\)/);
+  for (const yol of ["lib/EChart.tsx", "features/sayfalar/ProductionForecastChart.tsx"]) {
+    const k = kaynak(new URL(yol, kok), "utf8");
+    assert.match(k, /import type \* as echarts from "[./]*lib\/echarts"|import type \* as echarts from "\.\/echarts"/, `${yol}: yalnız tür`);
+    assert.doesNotMatch(k, /^import \* as echarts from/m, `${yol}: statik değer içe aktarması kritik yola ECharts koyar`);
+    assert.match(k, /echartsYukle\(\)\.then\(\(m\) => \{ if \(acik\) setKut\(m\); \}/, `${yol}: yükleyici`);
+    assert.match(k, /kut\.init\(/, `${yol}: init inmiş modülden`);
+  }
+  const fs = await import("node:fs"); const path = await import("node:path"); const { fileURLToPath } = await import("node:url");
+  const gez = (d: string): string[] => fs.readdirSync(d).flatMap((a) => { const y = path.join(d, a); return fs.statSync(y).isDirectory() ? gez(y) : /\.tsx?$/.test(a) ? [y] : []; });
+  const statik = gez(fileURLToPath(kok)).filter((y) => !/lib\/echartsYukle\.ts$/.test(y) && /^import \* as \w+ from "[./]*lib\/echarts"|^import \* as \w+ from "\.\/echarts"|^import \{[^}]*\} from "[./]*(lib\/)?echarts"/m.test(fs.readFileSync(y, "utf8")));
+  assert.deepEqual(statik, [], "lib/echarts'ı statik içe aktaran dosya kalmamalı");
+  // #7 Tahminler/Paylaşım: iskelet gerçek başlıkla
+  assert.match(oku("../../src/features/sayfalar/Tahminler.tsx"), /if \(!hazir\) return <Sayfa baslik="Tahminler" alt="[^"]+"><SayfaIskeleti kpi=\{0\} kart=\{2\} bas=\{false\} \/><\/Sayfa>;/);
+  assert.match(oku("../../src/features/sayfalar/Paylasim.tsx"), /if \(liste === null\) return <Sayfa baslik="Paylaşım" alt=\{PAYLASIM_ALT\}><SayfaIskeleti kpi=\{0\} kart=\{1\} bas=\{false\} \/><\/Sayfa>;/);
+  assert.match(oku("../../src/features/sayfalar/parcalar.tsx"), /\{bas && <div className="iskelet-bas">/);
 });

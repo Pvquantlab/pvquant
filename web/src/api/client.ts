@@ -1279,6 +1279,9 @@ const ISITMA: Record<string, (p: string) => Promise<unknown>[]> = {
   takvim: (p) => [api.takvim(p)],
 };
 const isitildi = new Map<string, number>();
+/** 18.11 gezinme (Parti C #10): fare menüyü tararken her geçilen sayfanın 1–5 isteği anında fırlıyordu (6 öğe → 10+ istek; canlıda 4 işçi).
+ *  Isıtma artık fare öğede bu kadar durursa başlar; ayrılırsa iptal. Klavye odağı (onFocus) niyet sayılır, gecikmesiz. */
+export const ISITMA_GECIKME_MS = 90;
 export function isit(sayfa: string, plantId?: string): void {
   if (TABAN == null || !plantId) return;
   const f = ISITMA[sayfa]; if (!f) return;

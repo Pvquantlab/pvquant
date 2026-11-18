@@ -125,10 +125,10 @@ export function YerTutucu({ yukseklik }: { yukseklik: number }) {
 /** 24.10 performans turu — sayfa iskeleti: veri gelene dek «Yükleniyor…» tek satırı yerine sayfanın kaba kalıbı
  *  (başlık, KPI sırası, kart). Boyut korunur → içerik gelince sıçrama küçülür; hareket yok (reduced-motion dostu).
  *  Sayı/veri göstermez — yalnız yer tutucu. */
-export function SayfaIskeleti({ kpi = 4, kart = 2 }: { kpi?: number; kart?: number }) {
+export function SayfaIskeleti({ kpi = 4, kart = 2, bas = true }: { kpi?: number; kart?: number; /** 18.11: gerçek <Sayfa baslik> içindeyse başlık çubuğu çizilmez */ bas?: boolean }) {
   return (
     <div className="iskelet" role="status" aria-live="polite" aria-label="Yükleniyor">
-      <div className="iskelet-bas"><span className="iskelet-h1" /><span className="iskelet-alt" /></div>
+      {bas && <div className="iskelet-bas"><span className="iskelet-h1" /><span className="iskelet-alt" /></div>}
       {kpi > 0 && <div className="iskelet-kpi" style={{ gridTemplateColumns: `repeat(${kpi}, minmax(0, 1fr))` }}>
         {Array.from({ length: kpi }, (_, i) => <span key={i} />)}</div>}
       {Array.from({ length: kart }, (_, i) => <div key={i} className="iskelet-kart" />)}
