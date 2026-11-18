@@ -217,22 +217,24 @@ def _anahtarla(k: tuple[str, str, str, str], uret: Callable[[], Any], ttl_sn: in
     return deger
 
 
-def getir_genel(anahtar: str, uret: Callable[[], Any], ttl_sn: int = 600) -> Any:
+def getir_genel(anahtar: str, uret: Callable[[], Any], ttl_sn: int = 600, taze: bool = False) -> Any:
     """Kiracıdan ve santraldan BAĞIMSIZ sistem bilgisi için (16.11 yönetim grubu: /hakkinda meteo arşivinde DISTINCT tarama,
     /kurallar sürüm tablosu). Anahtar damga taşımaz; yalnız TTL ile tazelenir. Kiracı verisi taşıyan yanıtlar için ASLA
-    kullanılmaz — çağıran, üreticinin claims/tenant okumadığını garanti eder."""
+    kullanılmaz — çağıran, üreticinin claims/tenant okumadığını garanti eder.
+    taze=True (18.11 gezinme Parti 1, isitici): bellek/dosya bakilmaz, uretilip saklanir — TTL dolmadan yenileme (ziyaretci soguk bedel odemesin)."""
     if not etkin():
         SAYAC["atlandi"] += 1
         return uret()
     k = ("*", "*", anahtar, "genel")
     simdi = time.monotonic()
-    with _KILIT:
-        v = _KAYIT.get(k)
-        if v and simdi - v[0] < ttl_sn:
-            _KAYIT.move_to_end(k)
-            SAYAC["isabet"] += 1
-            return v[1]
-    dosyadan = _dosyadan(k, ttl_sn)
+    if not taze:
+        with _KILIT:
+            v = _KAYIT.get(k)
+            if v and simdi - v[0] < ttl_sn:
+                _KAYIT.move_to_end(k)
+                SAYAC["isabet"] += 1
+                return v[1]
+    dosyadan = None if taze else _dosyadan(k, ttl_sn)
     if dosyadan is not None:
         with _KILIT:
             _KAYIT[k] = (simdi, dosyadan)

@@ -30,6 +30,9 @@ ARALIK_SN = 60.0        # damga yoklama aralığı (istemcinin görünür yoklam
 ILK_GECIKME_SN = 15.0   # açılışta servis ön yüklemesi bitsin, DB ayağa kalksın
 SAYAC = {"tur": 0, "isitilan": 0, "atlanan": 0, "bos": 0, "hata": 0}   # bos: uretici 4xx (kosusu olmayan santral) — kalici durum, hata degil
 _SON_ETAG: dict[str, str] = {}
+_SON_GENEL: dict[str, float] = {}        # 18.11 Parti 1: genel (kiracisiz) anahtar -> son uretim zamani (monotonic)
+GENEL_YENILEME_PAYI_SN = 2 * ARALIK_SN   # TTL dolmadan en az iki tur once yenile: ziyaretci hic soguk gormesin
+KayitGenel = dict[str, tuple[Callable[[], Any], int]]   # anahtar -> (uretici (parametresiz), ttl_sn)
 _KILIT_DOSYASI: Any = None
 
 Uretici = Callable[[str, str], Any]            # (tenant_id, plant_id) -> yanıt
@@ -127,6 +130,35 @@ def tur(kayit: Kayit, liste: list[tuple[str, str]] | None = None, zorla: bool = 
     return sonuc
 
 
+def tur_genel(kayit: KayitGenel, zorla: bool = False) -> dict:
+    """18.11 gezinme Parti 1: kiracidan bagimsiz genel onbellek (getir_genel: /hakkinda, /kurallar) — damga yok, yalniz TTL.
+    Her anahtar TTL dolmadan GENEL_YENILEME_PAYI_SN once taze=True ile yeniden uretilir (dosya katmani paylasilir); ilk turda hemen.
+    {bugun} yer tutucusu cozulur (kurallar gun anahtarli): gun donunce yeni anahtar hemen uretilir."""
+    sonuc = {"isitilan": 0, "atlanan": 0, "bos": 0, "hata": 0}
+    g = gunler()
+    simdi = time.monotonic()
+    for anahtar, (uret, ttl_sn) in kayit.items():
+        a = anahtar_coz(anahtar, g)
+        son = _SON_GENEL.get(a)
+        if not zorla and son is not None and simdi - son < max(ttl_sn - GENEL_YENILEME_PAYI_SN, ARALIK_SN):
+            sonuc["atlanan"] += 1
+            continue
+        try:
+            yanit_onbellegi.getir_genel(a, uret, ttl_sn=ttl_sn, taze=True)
+            _SON_GENEL[a] = simdi
+            sonuc["isitilan"] += 1
+        except Exception as e:
+            kod = getattr(e, "status_code", None)
+            if isinstance(kod, int) and 400 <= kod < 500:
+                sonuc["bos"] += 1
+                _SON_GENEL[a] = simdi
+            else:
+                sonuc["hata"] += 1
+    for k in ("isitilan", "atlanan", "bos", "hata"):
+        SAYAC[k] += sonuc[k]
+    return sonuc
+
+
 def _kilit_al() -> bool:
     """Çok işçili uvicorn'da tek ısıtıcı: paylaşılan önbellek dizininde dosya kilidi (fcntl, engelsiz). Dizin yoksa ısıtıcı koşmaz."""
     global _KILIT_DOSYASI
@@ -147,7 +179,7 @@ def _kilit_al() -> bool:
         return False
 
 
-def _dongu(kayit: Kayit, kayit_pf: Kayit | None = None, kayit_k: Kayit | None = None) -> None:
+def _dongu(kayit: Kayit, kayit_pf: Kayit | None = None, kayit_k: Kayit | None = None, kayit_g: KayitGenel | None = None) -> None:
     time.sleep(ILK_GECIKME_SN)
     while True:
         try:
@@ -157,15 +189,17 @@ def _dongu(kayit: Kayit, kayit_pf: Kayit | None = None, kayit_k: Kayit | None = 
                     tur(kayit_pf, portfoy=True)   # 18.11: portfoy uclari (kiraci, portfoy) listesiyle, portfoy damgasiyla
                 if kayit_k:
                     tur(kayit_k, kiraci=True)     # 18.11 Parti B: kiraci duzeyi uclar (/v1/portfoy ailesi) kiraci damgasiyla
+                if kayit_g:
+                    tur_genel(kayit_g)            # 18.11 Parti 1: genel uclar (/hakkinda, /kurallar) TTL dolmadan yenilenir
         except Exception:
             SAYAC["hata"] += 1
         time.sleep(ARALIK_SN)
 
 
-def baslat(kayit: Kayit, kayit_pf: Kayit | None = None, kayit_k: Kayit | None = None) -> threading.Thread | None:
+def baslat(kayit: Kayit, kayit_pf: Kayit | None = None, kayit_k: Kayit | None = None, kayit_g: KayitGenel | None = None) -> threading.Thread | None:
     """Uygulama açılışında çağrılır; etkin değilse None döner. Arka plan iş parçacığı daemon'dur (kapanışı bekletmez)."""
     if not etkin() or not kayit:
         return None
-    t = threading.Thread(target=_dongu, args=(kayit, kayit_pf, kayit_k), name="yanit-isitici", daemon=True)
+    t = threading.Thread(target=_dongu, args=(kayit, kayit_pf, kayit_k, kayit_g), name="yanit-isitici", daemon=True)
     t.start()
     return t

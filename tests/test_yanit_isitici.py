@@ -131,6 +131,10 @@ def test_main_sarmali_ve_anahtarlar():
                     '}, kayit_k={', '"portfoy?bugun={bugun}": (lambda t, _p: _ps().ozet(t), 300)', '"portfoy/tahmin?gun=7&bugun={bugun}": (lambda t, _p: _uz().portfoy_tahmini(t, gun=7), 300)',
                     '"portfoy/kupst?gun=30&anahtar=sapma&bugun={bugun}":', '"portfoy/dsg?gun=30&anahtar=sapma&grup=None&bugun={bugun}":',
                     '"portfoy/finansal-etki?donem=None&uretim=None&bugun={bugun}": (lambda t, _p: _kiraci_finans_isit(t)',
+                    # 18.11 gezinme Parti 1: Finansal etki (santral, son tam ay) + Hakkında'nın iki genel ucu
+                    '"finansal-etki?donem={gecen_ay}&uretim=None&itibariyle=None": (lambda t, p: _finans_isit(t, p)',
+                    '"hata-dagilimi?gun=120&kova=0-24": (lambda t, p: _hata_dagilimi_uc_uret(plant_id=p, gun=120, kova="0-24"',   # 18.11 Parti 3
+                    '}, kayit_g={', '"hakkinda": (lambda: _ks().hakkinda(), 600)', '"kurallar?tarih=None&segment=lisansli_serbest&gun={bugun}": (lambda: _kurallar_tablosu_uret(tarih=None, segment="lisansli_serbest"), 600)',
                     '"portfoy/tahmin?gun=7&kural=son&bugun={bugun}": (lambda t, pf: _pt().gunler(t, pf, 7, "son", None), 300)',   # 18.11 portfoy kayitlari
                     '"portfoy/sapma?donem={gecen_ay}&uretim=None&bugun={bugun}": (lambda t, pf: _sp().donem(t, pf, yanit_isitici.gunler()["gecen_ay"], None, None), yanit_onbellegi.VARSAYILAN_TTL_SN)',
                     '"portfoy/finansal-etki?donem={gecen_ay}&uretim=None&bugun={bugun}":', '"portfoy/risk?gun=2&kural=son&bugun={bugun}":', '"portfoy/revizyon-hazir?hedef=yarin&bugun={bugun}": (lambda t, pf: _rv_pf().hazirla(t, pf, "yarin", None), 300)',
@@ -161,3 +165,22 @@ def test_kiraci_turu_kiraci_damgasiyla(etkin, monkeypatch):
     assert yanit_isitici.tur(kayit, [("t1", "")], kiraci=True)["isitilan"] == 1 and say["n"] == 2   # damga degisti: yeniden isitildi
     monkeypatch.setattr(yanit_isitici, "santraller", lambda: [("t2", "p3"), ("t1", "p1"), ("t1", "p2")])
     assert yanit_isitici.kiracilar() == [("t1", ""), ("t2", "")]   # kiraci basina bir kez, sirali
+
+
+def test_genel_turu_ttl_dolmadan_yeniler(etkin, monkeypatch):
+    """18.11 gezinme Parti 1: tur_genel ilk turda uretir, TTL - 2 tur dolmadan atlar, dolunca taze=True ile yeniden uretir; uc sarmali isabet eder."""
+    yanit_onbellegi._KAYIT.clear(); yanit_isitici._SON_GENEL.clear()
+    say = {"n": 0}
+    def uret():
+        say["n"] += 1
+        return {"n": say["n"]}
+    kayit = {"hakkinda": (uret, 600), "kurallar?tarih=None&segment=lisansli_serbest&gun={bugun}": (uret, 600)}
+    assert yanit_isitici.tur_genel(kayit) == {"isitilan": 2, "atlanan": 0, "bos": 0, "hata": 0} and say["n"] == 2
+    assert yanit_isitici.tur_genel(kayit)["atlanan"] == 2 and say["n"] == 2
+    a = yanit_isitici.anahtar_coz("kurallar?tarih=None&segment=lisansli_serbest&gun={bugun}")
+    assert a.endswith(yanit_isitici.gunler()["bugun"]) and a in yanit_isitici._SON_GENEL
+    assert yanit_onbellegi.getir_genel("hakkinda", uret, ttl_sn=600) == {"n": 1} and say["n"] == 2   # uc sarmali: isabet, uretici kosmadi
+    yanit_isitici._SON_GENEL["hakkinda"] -= 600 - yanit_isitici.GENEL_YENILEME_PAYI_SN   # TTL - 120 s gecti
+    r = yanit_isitici.tur_genel(kayit)
+    assert r["isitilan"] == 1 and r["atlanan"] == 1 and say["n"] == 3
+    assert yanit_onbellegi.getir_genel("hakkinda", uret, ttl_sn=600) == {"n": 3}   # yenilenmis deger

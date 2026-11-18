@@ -202,3 +202,15 @@ def test_getir_kiraci_kiraciya_ozel_ve_damgali(etkin, monkeypatch):
     d["alarm_ozu"] = "1:2026-11-18T11:00:00"; yanit_onbellegi._DAMGA.clear()   # alarm gelince damga değişir (5 s hatırlama sıfırlandı)
     assert yanit_onbellegi.getir_kiraci("t1", "portfoy?bugun=2026-11-18", uret, ttl_sn=300) == {"n": 3}
     assert ("t1", "k:", "portfoy?bugun=2026-11-18", yanit_onbellegi._kiraci_etag("t1")) in yanit_onbellegi._KAYIT
+
+
+def test_getir_genel_taze_yeniden_uretir(etkin):
+    """18.11 gezinme Parti 1: taze=True bellek/dosyayi atlar, uretir ve saklar; sonraki normal cagri yeni degeri bulur."""
+    say = {"n": 0}
+    def uret():
+        say["n"] += 1
+        return {"n": say["n"]}
+    yanit_onbellegi._KAYIT.clear()
+    assert yanit_onbellegi.getir_genel("hakkinda", uret, ttl_sn=600) == {"n": 1}
+    assert yanit_onbellegi.getir_genel("hakkinda", uret, ttl_sn=600, taze=True) == {"n": 2}
+    assert yanit_onbellegi.getir_genel("hakkinda", uret, ttl_sn=600) == {"n": 2} and say["n"] == 2

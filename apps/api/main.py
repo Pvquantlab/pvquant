@@ -156,6 +156,10 @@ def _yanit_isiticisini_baslat() -> None:
         **{f"skill?bucket={b}&gun=60": (lambda t, p, b=b: _skill_uret(plant_id=p, bucket=b, gun=60, claims=_c(t)), yanit_onbellegi.VARSAYILAN_TTL_SN) for b in ("0-24", "24-72", "program", "gun_ici")},
         "backtest?gun=90": (lambda t, p: _backtest_uret(plant_id=p, gun=90, claims=_c(t)), yanit_onbellegi.VARSAYILAN_TTL_SN),
         "dogrulama/bagimsiz?gun=60&kural=program&taze=0": (lambda t, p: _bagimsiz_dogrulama_uret(plant_id=p, gun=60, kural="program", taze=0, claims=_c(t)), yanit_onbellegi.VARSAYILAN_TTL_SN),
+        # 18.11 gezinme Parti 1: Finansal etki sayfasının açılış ucu (varsayılan son tam ay; canlı soğuk 5,8 s) — anahtar uç sarmalı ve istemci yoluyla birebir; modül kapısı _finans_isit'te
+        "finansal-etki?donem={gecen_ay}&uretim=None&itibariyle=None": (lambda t, p: _finans_isit(t, p), yanit_onbellegi.VARSAYILAN_TTL_SN),
+        # 18.11 gezinme Parti 3: Doğruluk üst KPI'ı (günlük sapma) hata dağılımından; artık açılışta istenir (canlı soğuk 1,2–2,0 s) — anahtar istemci yoluyla birebir
+        "hata-dagilimi?gun=120&kova=0-24": (lambda t, p: _hata_dagilimi_uc_uret(plant_id=p, gun=120, kova="0-24", claims=_c(t)), yanit_onbellegi.VARSAYILAN_TTL_SN),
     }, kayit_pf={
         # 18.11 DSG/portfoy hiz turu: portfoy sayfasinin acilis uclari (varsayilan donem = gecen ay, sayfadaki secici ile ayni); anahtarlar uc sarmaliyla birebir
         "portfoy/tahmin?gun=7&kural=son&bugun={bugun}": (lambda t, pf: _pt().gunler(t, pf, 7, "son", None), 300),
@@ -171,7 +175,28 @@ def _yanit_isiticisini_baslat() -> None:
         "portfoy/kupst?gun=30&anahtar=sapma&bugun={bugun}": (lambda t, _p: _dz().portfoy_kupst_ozet(t, gun=30, dagitim_anahtari="sapma"), yanit_onbellegi.VARSAYILAN_TTL_SN),
         "portfoy/dsg?gun=30&anahtar=sapma&grup=None&bugun={bugun}": (lambda t, _p: _dz().dsg_ozet(t, gun=30, dagitim_anahtari="sapma"), yanit_onbellegi.VARSAYILAN_TTL_SN),
         "portfoy/finansal-etki?donem=None&uretim=None&bugun={bugun}": (lambda t, _p: _kiraci_finans_isit(t), yanit_onbellegi.VARSAYILAN_TTL_SN),   # en pahalı (canlı 18–23 s) en sonda
+    }, kayit_g={
+        # 18.11 gezinme Parti 1: Hakkında sayfasının iki genel ucu (10 dk TTL; canlı soğuk hakkinda 723 ms) — TTL dolmadan ısıtıcı yeniler; anahtarlar uç sarmalıyla birebir
+        "hakkinda": (lambda: _ks().hakkinda(), 600),
+        "kurallar?tarih=None&segment=lisansli_serbest&gun={bugun}": (lambda: _kurallar_tablosu_uret(tarih=None, segment="lisansli_serbest"), 600),
     })
+
+
+def _finans_isit(tenant_id: str, plant_id: str):
+    """Isitici icin santral finansal etkisi (/v1/plants/{id}/finansal-etki, varsayilan son tam ay): modul kapisi «zorla» kipinde 403 verirse 4xx -> «bos»."""
+    from pvquant.services import yanit_isitici, yetki_service
+    try:
+        h = yetki_service.kapi_hukmu(tenant_id, modul="finansal_etki")
+    except LookupError:
+        h = None
+    if h and yetki_service.zorlama_kipi() == "zorla":
+        raise HTTPException(h["http"], h["mesaj"])
+    return _finansal_etki_uret(plant_id=plant_id, donem=yanit_isitici.gunler()["gecen_ay"], uretim=None, taze=0, itibariyle=None, claims={"tenant_id": tenant_id, "sub": "isitici", "role": "viewer"}, _kapi=None)
+
+
+def _ks():
+    from pvquant.services import kaynak_service as ks
+    return ks
 
 
 def _kiraci_finans_isit(tenant_id: str):
