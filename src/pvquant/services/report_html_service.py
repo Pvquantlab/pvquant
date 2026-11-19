@@ -19,6 +19,7 @@ BOŞLUK DURUMU (E.3-a kapanışı, 9 Ağu kararları):
                                     'sabitlenmemiş' dürüst sürer (kullanıcı kararı v2.194)
 """
 from __future__ import annotations
+from typing import ClassVar
 import datetime as _dt
 import json
 import os
@@ -585,12 +586,43 @@ def _kunye(ctx):
         ]}
 
 
+class RaporVerisiEksik(ValueError):
+    """19.11 (canlı özellik testi, Bulgu 3): worker fotoğrafı (report_stats) eksik — iç ad ve karar atfı GÜNLÜĞE (str), müşteriye düz
+    Türkçe (`musteri`). Önceden `str(e)` doğrudan 409 gövdesine iniyordu («worker alanı eksik: ctx.error_dist (bkz. B1/B5 kararı …)»)."""
+
+    MUSTERI: ClassVar[dict[str, str]] = {   # RUF012: sınıf sabiti
+        "error_dist": "Hata dağılımı istatistiği bu santral için henüz üretilmedi: ölçüm ve tahminin birlikte bulunduğu en az iki gün gerekir; "
+                      "gece işi her gün yeniden dener.",
+        "uninterrupted_days": "Kesintisiz ölçüm günü sayısı henüz üretilmedi; gece işi her gün yeniden dener.",
+    }
+
+    def __init__(self, alan: str):
+        self.alan = alan
+        super().__init__("worker alanı eksik: ctx.%s (bkz. B1/B5 kararı — "
+                         "gece worker'ı report_stats'ı doldurmuş mu?)" % alan)
+
+    @property
+    def musteri(self) -> str:
+        return ("PDF rapor üretilemedi. " + self.MUSTERI.get(self.alan, "Gerekli bir istatistik henüz üretilmedi; gece işi her gün yeniden dener.")
+                + " Excel ve JSON raporları şimdi indirilebilir.")
+
+
+def musteri_rapor_hatasi(e: Exception) -> str:
+    """19.11 (Bulgu 3): rapor üretiminin ValueError'ları müşteri yüzüne iç adsız iner (dürüstlük anayasası: görünür yüzeyde yöntem/iç ad yok);
+    iç ayrıntı çağıranın günlüğüne. Tahmin yokluğu yönlendirme cümlesi, diğerleri tek genel cümle."""
+    if isinstance(e, RaporVerisiEksik):
+        return e.musteri
+    m = str(e)
+    if "tahmin üretin" in m or "tahmin uretin" in m:
+        return "Rapor için önce bir tahmin koşusu gerekir: Veri yükleme sayfasındaki «Hızlı tahminle devam et» ile tahmin üretin."
+    return "Rapor bu santral için henüz üretilemedi: gerekli veri eksik ya da tanınmadı. Ayrıntı sistem günlüğüne yazıldı; sorun sürerse destekle paylaşın."
+
+
 def _zorunlu(ctx, alan):
-    """B-kararları: eksik alan sessizce düşmez — isim isim ValueError."""
+    """B-kararları: eksik alan sessizce düşmez — isim isim hata (RaporVerisiEksik ⊂ ValueError; 19.11 müşteri metni ayrı)."""
     v = getattr(ctx, alan, None)
     if v is None:
-        raise ValueError("worker alanı eksik: ctx.%s (bkz. B1/B5 kararı — "
-                         "gece worker'ı report_stats'ı doldurmuş mu?)" % alan)
+        raise RaporVerisiEksik(alan)
     return v
 
 

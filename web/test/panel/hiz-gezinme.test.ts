@@ -86,8 +86,16 @@ test("KGÜP: bayat-önce bellek, sürüm geçmişi yalnız açılınca, iki böl
   assert.match(s, /useState<KgupRevizyon \| null \| undefined>\(\(\) => bellekten\.kgupRevizyon\(plantId\)\)/, "revizyon bellekten başlar");
   const efekt = s.slice(s.indexOf("useEffect(() => {"), s.indexOf("}, [plantId, ds]);"));
   assert.doesNotMatch(efekt, /kgupSurumler|surumleriYenile/, "sürüm geçmişi açılış isteği değil (3 → 2 istek)");
-  assert.match(efekt, /setKgup\(bellekten\.kgup\(plantId\)\); setRv\(bellekten\.kgupRevizyon\(plantId\)\);/, "santral geçişinde bellekteki anında");
-  assert.match(efekt, /setKgup\(\(e\) => \(v \? ayniysaEskisi\(e, v\) : v\)\)/, "aynı veri yeniden çizdirmez");
+  assert.match(efekt, /setRv\(bellekten\.kgupRevizyon\(plantId\)\);/, "santral geçişinde bellekteki anında");
+  // 19.11 Bulgu 2: önizleme efekti santral × seviye; seviye değişiminde eski değer bekler, santral değişiminde iskelet
+  assert.match(s, /const bellek = bellekten\.kgup\(plantId, kgupKantil\);\n\s+if \(bellek \|\| santralDegisti\) setKgup\(bellek\);/, "seviye değişiminde eski değer solgun bekler");
+  assert.match(s, /api\.kgupOnizleme\(plantId, undefined, kgupKantil\)/, "önizleme seçili seviyeyle istenir");
+  assert.match(s, /\}, \[plantId, ds, kgupKantil\]\);/, "seviye bağımlılıkta");
+  assert.match(s, /aria-busy=\{kgupBekliyor \|\| undefined\}/, "yoldayken aria-busy");
+  assert.equal((s.match(/disabled=\{kgupBekliyor\}/g) ?? []).length, 2, "yoldayken KGÜP ve EAK indirmesi kilitli (ekran eski seviye, dosya yeni seviye olmasın)");
+  assert.match(s, /\(santralDegisti \|\| e === undefined\) \? v : e/, "seviye değişiminde null yanıt eski değeri silmez (seçici sökülmez)");
+  assert.doesNotMatch(s, /api\.kgupOnizleme\(plantId\)[^,]/, "p50'ye sabit önizleme çağrısı kalmadı");
+  assert.match(s, /setKgup\(\(e\) => \(v \? ayniysaEskisi\(e, v\) : /, "aynı veri yeniden çizdirmez");   // 19.11: önizleme ikinci efekte taşındı; null dalı inceleme pini
   assert.match(s, /onToggle=\{\(e\) => \{ if \(\(e\.currentTarget as HTMLDetailsElement\)\.open && surumler === undefined\) surumleriYenile\(\); \}\}/, "açılınca istenir");
   assert.match(s, /<div className="akis">/); assert.equal((s.match(/<section className="bolum">/g) ?? []).length, 2, "Yarın / Bugün bölümleri");
   assert.match(s, /<div className="ozet-bas">Yarın<span className="sag">/); assert.match(s, /<div className="ozet-bas">Bugün<span className="sag">/);
@@ -96,7 +104,7 @@ test("KGÜP: bayat-önce bellek, sürüm geçmişi yalnız açılınca, iki böl
   assert.match(s, /function ProgramIskeleti\(\)[\s\S]*?className="program-ozet"[\s\S]*?className="dugme-grubu"/, "iskelet gerçek kalıpta");
   assert.match(s, /Array\.from\(\{ length: 13 \}/, "revizyon iskeleti 13 satır (gün ortası)");
   const cl = oku("../../src/api/client.ts");
-  assert.match(cl, /kgup: \(p: string\): KgupOnizleme \| undefined => bellektenOku<KgupOnizleme>\(`\/v1\/plants\/\$\{p\}\/kgup\?fmt=json&kantil=p50`\)/, "bellek yolu kgupOnizleme ile birebir");
+  assert.match(cl, /kgup: \(p: string, kantil = "p50"\): KgupOnizleme \| undefined => bellektenOku<KgupOnizleme>\(`\/v1\/plants\/\$\{p\}\/kgup\?fmt=json&kantil=\$\{kantil\}`\)/, "bellek yolu kgupOnizleme ile birebir (19.11: seviye parametreli)");
   assert.match(cl, /kgupRevizyon: \(p: string\): KgupRevizyon \| undefined => bellektenOku<KgupRevizyon>\(`\/v1\/plants\/\$\{p\}\/kgup\/revizyon`\)/);
   const css = oku("../../src/index.css");
   assert.match(css, /\n\.akis \{ display: grid; gap: 28px; \}/); assert.match(css, /\.akis \.bolum \{ display: grid; gap: 14px;/);

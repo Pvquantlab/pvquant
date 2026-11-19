@@ -854,6 +854,10 @@ http.createServer((req, res) => {
   if (yol in VERI) return yanit(200, VERI[yol]);
   if (/^\/v1\/plants\/[^/]+\//.test(yol)) {
     if (uc === "genel-bakis") return yanit(200, genelBakis(yol.split("/")[3]));   // v2.608 (Faz 5 F5-B)
+    if (uc === "kgup" && url.searchParams.get("fmt") === "json") {   // 19.11 Bulgu 2: önizleme seçili seviyeyi izler — örnekte seviyeye göre ölçekli yanıt
+      const k = url.searchParams.get("kantil") ?? "p50"; const f = { p10: 0.62, p25: 0.8, p50: 1, p75: 1.18, p90: 1.38 }[k] ?? 1; const g = VERI.kgup;
+      return yanit(200, { ...g, kantil: k, toplam_mwh: +(g.toplam_mwh * f).toFixed(1), satirlar: g.satirlar.map((r) => ({ ...r, kgup_mwh: +(r.kgup_mwh * f).toFixed(2) })), dosya_adi: g.dosya_adi.replace("p50", k), sha256: k === "p50" ? g.sha256 : (k.repeat(16) + g.sha256).slice(0, 64) });
+    }
     if (uc === "forecast") return yanit(200, forecast(Math.min(384, Number(url.searchParams.get("hours") ?? 384))));
     if (uc === "skill") return yanit(200, karne(url.searchParams.get("bucket") ?? "0-24", Number(url.searchParams.get("gun") ?? 60)));
     if (uc === "dogrulama/bagimsiz") return yanit(200, bagimsiz(Number(url.searchParams.get("gun") ?? 30), url.searchParams.get("kural") ?? "program"));   // v2.575 (Faz 1 F1-D)

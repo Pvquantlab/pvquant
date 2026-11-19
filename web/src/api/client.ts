@@ -176,7 +176,7 @@ export const bellekten = {
   genelBakis: (p: string): GenelBakis | undefined => bellektenOku<GenelBakis>(`/v1/plants/${p}/genel-bakis`),   // v2.608 (F5-B)
   abonelik: (): MusteriAbonelik | undefined => bellektenOku<MusteriAbonelik>("/v1/abonelik"),   // v2.609 (F6-D)
   // 17.11 KGÜP hız turu: santral geçişinde bellekteki önizleme/revizyon anında çizilir, ağdan tazelenir (kgupOnizleme/kgupRevizyon yollarıyla birebir)
-  kgup: (p: string): KgupOnizleme | undefined => bellektenOku<KgupOnizleme>(`/v1/plants/${p}/kgup?fmt=json&kantil=p50`),
+  kgup: (p: string, kantil = "p50"): KgupOnizleme | undefined => bellektenOku<KgupOnizleme>(`/v1/plants/${p}/kgup?fmt=json&kantil=${kantil}`),   // 19.11 Bulgu 2: seçili seviye
   kgupRevizyon: (p: string): KgupRevizyon | undefined => bellektenOku<KgupRevizyon>(`/v1/plants/${p}/kgup/revizyon`),
   // 18.11 DSG ve portföyler hız turu: portföy geçişinde ve sayfaya dönüşte bellekteki yanıtlar anında (api.portfoy* yollarıyla birebir)
   portfoyler: (): PortfoyKisa[] | undefined => bellektenOku<{ portfoyler: PortfoyKisa[] }>("/v1/portfoyler")?.portfoyler,

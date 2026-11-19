@@ -4147,7 +4147,7 @@ def rapor_uret(plant_id: str, fmt: str, claims=Depends(gecerli_kullanici)):
     from fastapi.responses import Response
 
     from pvquant.services import report_service
-    from pvquant.services.report_html_service import RaporDenetimHatasi
+    from pvquant.services.report_html_service import RaporDenetimHatasi, musteri_rapor_hatasi
     if fmt not in _RAPOR_MIME:
         raise HTTPException(422, f"bilinmeyen format: {fmt}")
     row = plant_service.getir(claims["tenant_id"], plant_id)
@@ -4156,7 +4156,9 @@ def rapor_uret(plant_id: str, fmt: str, claims=Depends(gecerli_kullanici)):
     try:
         veri, ad, _ts = report_service.uret(claims["tenant_id"], row, fmt)
     except ValueError as e:
-        raise HTTPException(409, str(e))   # "once tahmin uretin" durustce doner
+        # 19.11 (canlı özellik testi, Bulgu 3): iç ayrıntı («worker alanı eksik: ctx.error_dist (bkz. B1/B5 …)») GÜNLÜĞE, müşteriye düz Türkçe 409
+        print(f"RAPOR uretilemedi tenant={claims['tenant_id']} plant={plant_id} fmt={fmt}: {e}")
+        raise HTTPException(409, musteri_rapor_hatasi(e))
     except RaporDenetimHatasi as e:
         # v2.147 (Adim 4): kapinin bulgulari artik logda degil KULLANICIDA —
         # 422 + yapilandirilmis govde; SPA gosterir. Uretim kusurlari 500 kalir.

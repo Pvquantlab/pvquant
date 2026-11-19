@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDamgaSurumu } from "../../shell/damgaOlay";
 import { api, ayniysaEskisi, bellekten } from "../../api/client";
 import type { KgupRevizyon, KgupOnizleme, KgupSurum, KgupKiyas } from "../../api/types";
@@ -22,6 +22,9 @@ export function Kgup({ plantId }: { plantId: string }) {
   const [kgup, setKgup] = useState<KgupOnizleme | null | undefined>(() => bellekten.kgup(plantId));   // v2.260; 17.11 bayat-önce
   const [kgupHata, setKgupHata] = useState<string | null>(null);
   const [kgupKantil, setKgupKantil] = useState<KgupKantil>("p50");   // 29.10
+  // 19.11 (canlı özellik testi, Bulgu 2): seçici yalnız indirilecek dosyayı belirliyordu; büyük değer, seviye çipi, dosya adı ve SHA hep P50 kalıyordu
+  // (P10 seçip 1.062,9 MWh görüp 665,7 MWh indirmek). Artık önizleme seçili seviyeyi izler; yoldayken eski değer solgun bekler (iskelet seçiciyi sökerdi).
+  const [kgupBekliyor, setKgupBekliyor] = useState(false);
   const [surumler, setSurumler] = useState<KgupSurum[] | undefined>(undefined);   // v2.502 (F-06): indirilen dosyaların sürüm geçmişi
   const surumleriYenile = () => { api.kgupSurumler(plantId).then((v) => setSurumler(v)); };
   const [kiyas, setKiyas] = useState<KgupKiyas | null>(null);   // v2.503: bildirilen ↔ öneri
@@ -32,12 +35,12 @@ export function Kgup({ plantId }: { plantId: string }) {
     setSablonMesaj(null);
     api.kgupSablonOgren(plantId, dosya).then((r) => {
       setSablonMesaj(`Öğrenildi: ${r.sablon.kolonlar.join(" · ")}; ayraç «${r.sablon.ayrac}», ondalık «${r.sablon.ondalik}».${r.eslesmeyen.length ? ` Yazılmayan kolonlar: ${r.eslesmeyen.join(", ")}.` : ""}${r.uyarilar.length ? ` ${r.uyarilar.join(" ")}` : ""}`);
-      api.kgupOnizleme(plantId).then((v) => setKgup(v)).catch(() => {});
+      api.kgupOnizleme(plantId, undefined, kgupKantil).then((v) => setKgup(v)).catch(() => {});
     }).catch((e) => setSablonMesaj(String((e as Error).message ?? e)));
   };
   const sablonSifirla = () => {
     setSablonMesaj(null);
-    api.kgupSablonSifirla(plantId).then(() => { setSablonMesaj("Varsayılan biçime dönüldü."); api.kgupOnizleme(plantId).then((v) => setKgup(v)).catch(() => {}); })
+    api.kgupSablonSifirla(plantId).then(() => { setSablonMesaj("Varsayılan biçime dönüldü."); api.kgupOnizleme(plantId, undefined, kgupKantil).then((v) => setKgup(v)).catch(() => {}); })
       .catch((e) => setSablonMesaj(String((e as Error).message ?? e)));
   };
   const bildirilenYukle = (gun: string, dosya: File) => {
@@ -49,12 +52,24 @@ export function Kgup({ plantId }: { plantId: string }) {
   useEffect(() => {
     let acik = true;
     // 17.11: bellekte varsa anında (iskelet yok), yoksa iskelet; sürüm geçmişi açılış isteği değil (açılır alan açılınca)
-    setKgup(bellekten.kgup(plantId)); setRv(bellekten.kgupRevizyon(plantId));
+    setRv(bellekten.kgupRevizyon(plantId));
     setSurumler(undefined); setKiyas(null); setYukleMesaj(null); setSablonMesaj(null); setKgupHata(null);   // inceleme: önceki santralın kıyası/mesajı kalmasın
-    api.kgupOnizleme(plantId).then((v) => { if (acik) setKgup((e) => (v ? ayniysaEskisi(e, v) : v)); }, () => { if (acik) setKgup(null); });
     api.kgupRevizyon(plantId).then((v) => { if (acik) setRv((e) => (v ? ayniysaEskisi(e, v) : v)); }, () => { if (acik) setRv(null); });
     return () => { acik = false; };
   }, [plantId, ds]);   // 26.10 eşzamanlama: damga değişince yeniden çekilir
+  const oncekiSantral = useRef(plantId);
+  useEffect(() => {
+    let acik = true;
+    // 19.11 Bulgu 2: önizleme = santral × seviye. Santral geçişinde bellekte yoksa iskelet (17.11 kalıbı); yalnız seviye değişiminde
+    // eski değer solgun bekler — seçici kartın gövdesinde, iskelet onu sökerdi (odak kaybı). p50 dışı seviyeler sunucuda aynı anahtarla önbellekli.
+    const santralDegisti = oncekiSantral.current !== plantId; oncekiSantral.current = plantId;
+    const bellek = bellekten.kgup(plantId, kgupKantil);
+    if (bellek || santralDegisti) setKgup(bellek);
+    setKgupBekliyor(!bellek);
+    // inceleme: seviye değişiminde yanıt gelmezse (null) eski geçerli değer kalır ve uyarı yazılır — null kartı boşaltıp seçiciyi sökerdi (geri dönüş yolu kapanırdı)
+    api.kgupOnizleme(plantId, undefined, kgupKantil).then((v) => { if (acik) { setKgup((e) => (v ? ayniysaEskisi(e, v) : (santralDegisti || e === undefined) ? v : e)); if (!v && !santralDegisti) setKgupHata("Seçilen seviye için önizleme alınamadı; önceki seviyenin değeri gösteriliyor."); setKgupBekliyor(false); } }, () => { if (acik) { setKgup(null); setKgupBekliyor(false); } });
+    return () => { acik = false; };
+  }, [plantId, ds, kgupKantil]);
   return (
     <Sayfa baslik="Üretim programı (KGÜP)" alt="Yarının saatlik üretim programı: dosya üretme, bildirim beyanı ve kıyas; bugünün programı için revizyon önerisi. Dosya PVQuant'ta üretilir, TPYS'ye bildirim müşterinin sistemindendir.">
       {/* v2.260 (Dalga 4.13): KGÜP bildirim dosyası — D-1 15:30 öncesi koşudan saatlik program (TPYS CSV) */}
@@ -73,7 +88,7 @@ export function Kgup({ plantId }: { plantId: string }) {
           <ProgramIskeleti />
         ) : kgup ? (
           <>
-            <div className="program-ozet">
+            <div className="program-ozet" aria-busy={kgupBekliyor || undefined}>
               <span className="sayi-buyuk">{sayiTr(kgup.toplam_mwh, 1)} <small className="t-govde" style={{ fontWeight: 400, color: "var(--soluk)" }}>MWh</small></span>
               <span className="soluk t-ikincil"><Meta items={[kgup.kantil.toUpperCase(), `tahmin ${kgup.kosu.run_at ? new Date(kgup.kosu.run_at).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }) : "—"}`]} /></span>
               <span className={`rozet ${kgup.teslim.durum === "pencere_acik" ? "rozet-ok" : "rozet-notr"}`}>
@@ -90,9 +105,9 @@ export function Kgup({ plantId }: { plantId: string }) {
                   <select className="girdi" aria-label="Program seviyesi (kantil)" value={kgupKantil} onChange={(e) => setKgupKantil(e.target.value as KgupKantil)}>
                     {KGUP_KANTILLER.map((k) => <option key={k} value={k}>{k.toUpperCase()}{k === "p50" ? " (beklenen)" : k === "p10" ? " (temkinli)" : k === "p90" ? " (iddialı)" : ""}</option>)}
                   </select>
-                  <button className="dugme dugme-ana" onClick={() => { setKgupHata(null); api.kgupIndir(plantId, undefined, kgupKantil).then(surumleriYenile).catch((e) => setKgupHata(String(e.message ?? e))); }}>KGÜP (CSV)</button>
+                  <button className="dugme dugme-ana" disabled={kgupBekliyor} onClick={() => { setKgupHata(null); api.kgupIndir(plantId, undefined, kgupKantil).then(surumleriYenile).catch((e) => setKgupHata(String(e.message ?? e))); }}>KGÜP (CSV)</button>
                   {/* v2.512: EAK TPYS'de ayrı ekran ve ayrı dosya (EAK.csv; 09:00–15:30); kurulu güç farkı «kaynak yetersizliği» sütununda */}
-                  <button className="dugme" title="TPYS «EAK giriş» ekranı için ayrı dosya (EAK.csv biçimi); bildirim saati 09:00–15:30" onClick={() => { setKgupHata(null); api.kgupIndir(plantId, undefined, kgupKantil, "eak").catch((e) => setKgupHata(String(e.message ?? e))); }}>EAK (CSV)</button>
+                  <button className="dugme" disabled={kgupBekliyor} title="TPYS «EAK giriş» ekranı için ayrı dosya (EAK.csv biçimi); bildirim saati 09:00–15:30" onClick={() => { setKgupHata(null); api.kgupIndir(plantId, undefined, kgupKantil, "eak").catch((e) => setKgupHata(String(e.message ?? e))); }}>EAK (CSV)</button>
                 </div>
               </div>
               {/* v2.275: toplayıcı/DSG çıktısı — bantlı saatlik ve 15 dk (2027 hazırlığı) */}
