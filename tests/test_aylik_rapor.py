@@ -149,7 +149,7 @@ def test_api_rapor_donem_ve_gonderim(kiraci, monkeypatch):
     c = TestClient(api_main.app)
     try:
         j = c.get(f"/v1/plants/{plant['id']}/rapor-donem?donem=2026-10&fmt=json"); assert j.status_code == 200 and j.json()["ozet"]["uretim_kwh"] == 20000.0 and j.json()["donem"]["kod"] == "2026-10"
-        h = c.get(f"/v1/plants/{plant['id']}/rapor-donem?donem=2026-10"); assert h.status_code == 200 and h.headers["content-disposition"].endswith('2026-10.html"') and "<h1>" in h.text
+        h = c.get(f"/v1/plants/{plant['id']}/rapor-donem?donem=2026-10"); assert h.status_code == 200 and '2026-10.html"' in h.headers["content-disposition"] and "<h1>" in h.text
         assert kayit[-1][0][:2] == ("musteri", "rapor_donem_indir")
         assert c.get(f"/v1/plants/{plant['id']}/rapor-donem?donem=2099-01").status_code == 422 and c.get(f"/v1/plants/{plant['id']}/rapor-donem?fmt=pdf").status_code == 422
         g = c.get(f"/v1/plants/{plant['id']}/rapor-gonderim"); assert g.status_code == 200 and g.json()["aktif"] is False and g.json()["varsayilan_alicilar"] == ["ops@ornek.com"] and g.json()["posta_yapilandirildi"] is False

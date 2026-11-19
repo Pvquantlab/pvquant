@@ -282,6 +282,19 @@ def _rv_pf():
     return rv
 
 
+_TR_ASCII = str.maketrans("çğıöşüâîûÇĞİÖŞÜÂÎÛ", "cgiosuaiuCGIOSUAIU")
+
+
+def _indirme_basligi(ad: str) -> str:
+    """19.11 canlı özellik testi — Content-Disposition: ASCII sade ad (`filename=`, eski tarayıcı) + RFC 5987 UTF-8 ad (`filename*=`).
+    HTTP başlıkları latin-1 kodlanır; santral adındaki ı/ş/ğ ham yazılınca UnicodeEncodeError → uvicorn yanıtı kesiyor, Caddy 500/502
+    (Karapınar ve Kıvanç 2 GES'te Doğruluk CSV/XLSX, Raporlar JSON/Excel/PDF, şablon ve dönem raporları çalışmıyordu; ASCII adlı
+    santralde aynı uçlar 200). Bütün indirme uçları bu yardımcıdan geçer; tarayıcı `filename*` varsa Türkçe adı kullanır."""
+    from urllib.parse import quote
+    ascii_ad = ad.translate(_TR_ASCII).encode("ascii", "ignore").decode().replace('"', "").replace("\\", "").replace(" ", "_") or "pvquant"
+    return f'attachment; filename="{ascii_ad}"; filename*=UTF-8\'\'{quote(ad, safe="")}'
+
+
 @app.middleware("http")
 async def _sure_basligi(request: Request, call_next):
     """16.11 gezinme hızı: her yanıta X-Sure-ms (sunucuda geçen süre). 300 ms üstü /v1 istekleri uvicorn akışına «YAVAS» satırı
@@ -1185,7 +1198,7 @@ def portfoy_dsg_csv(gun: int = 30, anahtar: str = "sapma", grup: str | None = No
     _denetim.kaydet("musteri", "dsg_belge_indir", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="tenant", nesne_id=claims["tenant_id"],
                     ayrinti={"gun": gun, "anahtar": anahtar, "uye": len(o.get("uyeler") or {})})
     return Response(dengesizlik_service.dsg_uye_csv(o), media_type="text/csv; charset=utf-8",
-                    headers={"Content-Disposition": f'attachment; filename="pvquant_dsg_uye_dagilimi_{gun}g_{anahtar}.csv"'})
+                    headers={"Content-Disposition": _indirme_basligi(f"pvquant_dsg_uye_dagilimi_{gun}g_{anahtar}.csv")})
 
 
 @app.get("/v1/portfoy/kupst")
@@ -1242,12 +1255,12 @@ def _kgup_yaniti(tenant_id: str, plant_id: str, gun: str | None, kantil: str, fm
         _denetim.kaydet("musteri", "eak_indir", aktor_id=indiren, tenant_id=tenant_id, nesne_tur="plant", nesne_id=row["id"],   # v2.516 (#7)
                         ayrinti={"gun": g.isoformat(), "surum": arsiv["surum"], "yeni_surum": bool(arsiv.get("yeni")), "kanal": "panel" if indiren else "api"})
         return Response(content=kgup_arsiv_service.baytlar(r_eak), media_type="text/csv; charset=utf-8",
-                        headers={"Content-Disposition": f'attachment; filename="{r["eak_dosya_adi"]}"', "X-PVQ-Surum": str(arsiv["surum"]), "X-PVQ-SHA256": arsiv["sha256"]})
+                        headers={"Content-Disposition": _indirme_basligi(r["eak_dosya_adi"]), "X-PVQ-Surum": str(arsiv["surum"]), "X-PVQ-SHA256": arsiv["sha256"]})
     arsiv = kgup_arsiv_service.kaydet(tenant_id, str(row["id"]), r, indiren=indiren)   # v2.502: değiştirilemez sürüm kaydı
     _denetim.kaydet("musteri", "kgup_indir", aktor_id=indiren, tenant_id=tenant_id, nesne_tur="plant", nesne_id=row["id"],   # v2.516 (#7)
                     ayrinti={"gun": g.isoformat(), "kantil": kantil, "surum": arsiv["surum"], "yeni_surum": bool(arsiv.get("yeni")), "kanal": "panel" if indiren else "api"})
     return Response(content=kgup_arsiv_service.baytlar(r), media_type="text/csv; charset=utf-8",   # baytlar tek yerde (BOM yalnız şablon isterse; SHA-256 bu baytlarla)
-                    headers={"Content-Disposition": f'attachment; filename="{r["dosya_adi"]}"', "X-PVQ-Surum": str(arsiv["surum"]), "X-PVQ-SHA256": arsiv["sha256"]})
+                    headers={"Content-Disposition": _indirme_basligi(r["dosya_adi"]), "X-PVQ-Surum": str(arsiv["surum"]), "X-PVQ-SHA256": arsiv["sha256"]})
 
 
 @app.get("/v1/plants/{plant_id}/kgup")
@@ -1406,7 +1419,7 @@ def kgup_surum_dosyasi(plant_id: str, surum_id: str, claims=Depends(gecerli_kull
     if r is None:
         raise HTTPException(404, "sürüm yok")
     return Response(content=r["dosya"], media_type="text/csv; charset=utf-8",
-                    headers={"Content-Disposition": f'attachment; filename="{r["dosya_adi"]}"', "X-PVQ-Surum": str(r["surum"]), "X-PVQ-SHA256": r["sha256"]})
+                    headers={"Content-Disposition": _indirme_basligi(r["dosya_adi"]), "X-PVQ-Surum": str(r["surum"]), "X-PVQ-SHA256": r["sha256"]})
 
 
 # ------------------------------------------------------------------ v2.264: Dış API (X-API-Key) --------------
@@ -1639,7 +1652,7 @@ def dis_rapor_donem(plant_id: str, donem: str | None = None, fmt: str = "json", 
         return v
     from pvquant.services.mutabakat_service import _sade
     ad = f"PVQuant_donem_raporu_{_sade(row['name']).replace(' ', '_')}_{kod}.html"
-    return Response(aylik_rapor_service.html(r).encode("utf-8"), media_type="text/html; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{ad}"'})
+    return Response(aylik_rapor_service.html(r).encode("utf-8"), media_type="text/html; charset=utf-8", headers={"Content-Disposition": _indirme_basligi(ad)})
 
 
 @app.put("/v1/dis/santral/{plant_id}/ayarlar", tags=["Dış API"])
@@ -2068,7 +2081,7 @@ def _toplayici_yaniti(tenant_id: str, plant_id: str, gun: str | None, fmt: str, 
     r = toplayici_service.uret(tenant_id, row, g, fmt, adim)
     if "hata" in r:
         raise HTTPException(409, r["hata"])
-    return Response(content=r["icerik"], media_type=r["mime"], headers={"Content-Disposition": f'attachment; filename="{r["dosya_adi"]}"', "X-PVQ-Not": "toplayici sablonu"})
+    return Response(content=r["icerik"], media_type=r["mime"], headers={"Content-Disposition": _indirme_basligi(r["dosya_adi"]), "X-PVQ-Not": "toplayici sablonu"})
 
 
 @app.get("/v1/plants/{plant_id}/toplayici")
@@ -2284,11 +2297,11 @@ def dengesizlik_saatlik(plant_id: str, gun: int = 90, fmt: str = "json", n: int 
     ad = f"pvquant_uzlastirma_saatlik_{row['name'].replace(' ', '_')}_{gun}g"
     if fmt == "csv":
         return Response(dengesizlik_service.dokum_csv(df), media_type="text/csv; charset=utf-8",
-                        headers={"Content-Disposition": f'attachment; filename="{ad}.csv"'})
+                        headers={"Content-Disposition": _indirme_basligi(f"{ad}.csv")})
     if fmt == "xlsx":
         b = dengesizlik_service.dokum_xlsx(df, f"{row['name']} — saatlik uzlaştırma dökümü, son {gun} gün (yeniden hesap)", ozet.get("aylar"))
         return Response(b, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        headers={"Content-Disposition": f'attachment; filename="{ad}.xlsx"'})
+                        headers={"Content-Disposition": _indirme_basligi(f"{ad}.xlsx")})
     son = df.tail(max(1, min(int(n), 2000)))
     return {"satir": int(len(df)), "kolonlar": list(df.columns), "not": dengesizlik_service.dokum_notu(df),   # v2.520: YEKDEM'de 25 sütun
             "program": ozet.get("program"), "toplam": ozet.get("toplam"), "uretim_kaynak": ozet.get("uretim_kaynak"),   # v2.526 (P4a-2)
@@ -2344,7 +2357,7 @@ def olaylar_csv(plant_id: str, gun: int = 365, claims=Depends(gecerli_kullanici)
         raise HTTPException(404, "santral yok")
     metin = olay_service.csv_metni(olay_service.listele(claims["tenant_id"], str(row["id"]), max(7, min(gun, 400)), iptal_dahil=True), row["name"])
     return Response(metin, media_type="text/csv; charset=utf-8",
-                    headers={"Content-Disposition": f'attachment; filename="pvquant_olay_kaydi_{row["name"].replace(" ", "_")}.csv"'})
+                    headers={"Content-Disposition": _indirme_basligi(f"pvquant_olay_kaydi_{row['name'].replace(' ', '_')}.csv")})
 
 
 @app.post("/v1/plants/{plant_id}/olaylar", status_code=201)
@@ -2471,7 +2484,7 @@ def _mutabakat_saatlik_uret(plant_id: str, donem: str | None = None, uretim: str
     if fmt == "csv":
         _denetim.kaydet("musteri", "mutabakat_saatlik_indir", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"], ayrinti={"donem": k["donem"]})
         ad = f"pvquant_saatlik_kiyas_{mutabakat_service._sade(row['name']).replace(' ', '_')}_{k['donem']}.csv"
-        return Response(saatlik_detay_service.kiyas_csv(k), media_type="text/csv; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{ad}"'})
+        return Response(saatlik_detay_service.kiyas_csv(k), media_type="text/csv; charset=utf-8", headers={"Content-Disposition": _indirme_basligi(ad)})
     k["yuklemeler_tum"] = saatlik_detay_service.yuklemeler(claims["tenant_id"], plant["id"])
     return k
 
@@ -2506,7 +2519,7 @@ def sayac_csv(plant_id: str, gun: int = 30, claims=Depends(gecerli_kullanici)):
         raise HTTPException(404, "santral yok")
     f = sayac_service.fark(claims["tenant_id"], _sayac_plant(row), gun=max(7, min(gun, 400)))
     return Response(sayac_service.fark_csv(f, row["name"]), media_type="text/csv; charset=utf-8",
-                    headers={"Content-Disposition": f'attachment; filename="pvquant_sayac_scada_{sayac_service._sade(row["name"]).replace(" ", "_")}_{f["pencere_gun"]}g.csv"'})   # ASCII ad (Türkçe karakter başlıkta olmaz)
+                    headers={"Content-Disposition": _indirme_basligi(f"pvquant_sayac_scada_{sayac_service._sade(row['name']).replace(' ', '_')}_{f['pencere_gun']}g.csv")})   # ASCII ad (Türkçe karakter başlıkta olmaz)
 
 
 @app.post("/v1/plants/{plant_id}/sayac", status_code=201)
@@ -3449,7 +3462,7 @@ def rapor_sablon_uc(plant_id: str, ad: str, ay: str | None = None, gun: int = 30
         raise HTTPException(422, f"şablon: {sablon_rapor_service.SABLONLAR}")
     except ValueError as e:
         raise HTTPException(409, str(e))
-    return Response(content=icerik, media_type=("text/markdown; charset=utf-8" if fmt == "md" else "text/html; charset=utf-8"), headers={"Content-Disposition": f'attachment; filename="{dosya}"'})
+    return Response(content=icerik, media_type=("text/markdown; charset=utf-8" if fmt == "md" else "text/html; charset=utf-8"), headers={"Content-Disposition": _indirme_basligi(dosya)})
 
 
 class RaporGonderimIstek(BaseModel):
@@ -3479,7 +3492,7 @@ def rapor_donem(plant_id: str, donem: str | None = None, fmt: str = "html", clai
     _denetim.kaydet("musteri", "rapor_donem_indir", aktor_id=claims["sub"], tenant_id=claims["tenant_id"], nesne_tur="plant", nesne_id=row["id"], ayrinti={"donem": v["donem"]["kod"]})
     from pvquant.services.mutabakat_service import _sade
     ad = f"PVQuant_donem_raporu_{_sade(row['name']).replace(' ', '_')}_{v['donem']['kod']}.html"
-    return Response(aylik_rapor_service.html(r).encode("utf-8"), media_type="text/html; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{ad}"'})
+    return Response(aylik_rapor_service.html(r).encode("utf-8"), media_type="text/html; charset=utf-8", headers={"Content-Disposition": _indirme_basligi(ad)})
 
 
 @app.get("/v1/plants/{plant_id}/rapor-gonderim")
@@ -3769,7 +3782,7 @@ def scada_disa(plant_id: str, baslangic: str | None = None, bitis: str | None = 
     csv = ingest_service.scada_disa_csv(claims["tenant_id"], plant_id, baslangic, bitis)
     ad = f"pvquant_scada_{row['name'].replace(' ', '_')}.csv"
     return Response(csv, media_type="text/csv; charset=utf-8",
-                    headers={"Content-Disposition": f'attachment; filename="{ad}"'})
+                    headers={"Content-Disposition": _indirme_basligi(ad)})
 
 
 @app.delete("/v1/plants/{plant_id}/scada")
@@ -4153,7 +4166,7 @@ def rapor_uret(plant_id: str, fmt: str, claims=Depends(gecerli_kullanici)):
             "bulgular": e.bulgular})
     return Response(content=veri, media_type=_RAPOR_MIME[fmt],
                     headers={"Content-Disposition":
-                             f'attachment; filename="{ad}"'})
+                             _indirme_basligi(ad)})
 
 
 # ======================================================================================================================
