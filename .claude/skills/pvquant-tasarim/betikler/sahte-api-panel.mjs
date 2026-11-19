@@ -5,7 +5,10 @@
  *  sayfa kendi isteğini bekler.
  *  node sahte-api-panel.mjs [port=4807] ; ortam: YAVAS=<çarpan> (varsayılan 1) ; GET /_log istek günlüğü, POST /_sifirla. */
 import http from "node:http";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+// 19.11 Bulgu 7 (sürüm kayması): her yanıt X-PVQ-Yazilim taşır; değer web/.sahte-surum dosyasından okunur (yoksa «sahte-1») — dosyayı değiştirip kaymayı taklit et
+const SURUM_DOSYASI = new URL("../../../../web/.sahte-surum", import.meta.url);
+const surumOku = () => { try { return existsSync(SURUM_DOSYASI) ? readFileSync(SURUM_DOSYASI, "utf-8").trim() || "sahte-1" : "sahte-1"; } catch { return "sahte-1"; } };
 const TAKVIM = JSON.parse(readFileSync(new URL("./sahte-takvim.json", import.meta.url), "utf-8"));   // v2.518 (P3a)
 delete TAKVIM.luy_rejimi;   // v2.541: lisanslı a1 için null; a4 (lisanssız) yolda eklenir, JSON anahtarı yayılmayı ezmesin
 const PORT = Number(process.argv[2] ?? 4807);
@@ -643,7 +646,7 @@ const olayOzeti = () => { for (const o of OLAYLAR) o.evre = olayEvre(o); const a
     not: "Olay kaydı santralın kendi kaydıdır; TPYS Arıza ve Bakım bildirimi, Dâhilî Bilgi Platformu açıklaması ve TEİAŞ bildirimleri ayrıca yapılır." }; };
 http.createServer((req, res) => {
   const url = new URL(req.url, "http://x"); const yol = url.pathname;
-  res.setHeader("Access-Control-Allow-Origin", "*"); res.setHeader("Access-Control-Allow-Headers", "authorization,content-type,if-none-match"); res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS"); res.setHeader("Access-Control-Expose-Headers", "etag");
+  res.setHeader("Access-Control-Allow-Origin", "*"); res.setHeader("Access-Control-Allow-Headers", "authorization,content-type,if-none-match"); res.setHeader("Access-Control-Expose-Headers", "X-PVQ-Yazilim,X-PVQ-Surum,X-Sure-ms,X-Bayat"); res.setHeader("X-PVQ-Yazilim", surumOku()); res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS"); res.setHeader("Access-Control-Expose-Headers", "etag,X-PVQ-Yazilim");
   if (req.method === "OPTIONS") { res.writeHead(204); return res.end(); }
   if (yol === "/_log") { res.setHeader("content-type", "application/json"); return res.end(JSON.stringify(gunluk)); }
   if (yol === "/_sifirla") { gunluk.length = 0; return res.end("ok"); }

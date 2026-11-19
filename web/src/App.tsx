@@ -6,7 +6,7 @@ import type { SayfaId } from "./shell/Kabuk";
 import { SAYFALAR } from "./shell/Kabuk";
 import { GRUPLAR, SANTRALSIZ } from "./shell/gruplar";   // v2.608 (F5-A): santral seçimi gerektirmeyen sayfalar tek kaynaktan; 18.11: ön yükleme sırası yan menü sırası
 import { Sayfa, SayfaIskeleti } from "./features/sayfalar/parcalar";   // 18.11 gezinme (Parti A #1): geçiş iskeleti hedef sayfanın başlığıyla
-import { api } from "./api/client";
+import { api, yeniSurumVar } from "./api/client";   // 19.11 Bulgu 7
 import type { SantralKisa } from "./api/types";
 
 /** Performans (14.10): panel, giriş ve ECharts vitrin ziyaretçisine İNMEZ.
@@ -193,6 +193,10 @@ export default function App() {
   const [bekleyen, setBekleyen] = useState<SayfaId | null>(null);
   const seciliRef = useRef<SayfaId>(secili);
   const sayfaSec = useCallback((s: SayfaId) => {
+    if (yeniSurumVar()) {   // 19.11 Bulgu 7: api sürümü sayfa açıkken değişti → eski paketle devam etmek yerine hedef sayfada yeniden yükle (bir kez; yeni paket ilk sürümü yeniden öğrenir)
+      const santral = window.location.hash.split("/")[1];
+      history.replaceState(history.state, "", `#${s}${santral ? `/${santral}` : ""}`); window.location.reload(); return;   // replaceState: hashchange üretmez (din → sayfaSec yeniden girmez)
+    }
     window.scrollTo(0, 0);   // 18.11 Finansal etki yükleme düzeltmesi (ÖLÇÜLDÜ): kaydırılmış sayfadan geçişte konum korunuyordu → yeni sayfanın ortasına (yer tutucuların içine) iniliyordu; her sayfa geçişi başa
     setSecili(s); seciliRef.current = s;
     const gec = () => startTransition(() => { setSayfa(s); setBekleyen(null); });

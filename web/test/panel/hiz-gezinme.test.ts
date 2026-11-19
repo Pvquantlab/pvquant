@@ -263,7 +263,7 @@ test("Finansal etki: bayat-önce (program ve senaryo yolu), .akis dört bölüm,
   assert.doesNotMatch(css, /iskelet[^{]*\{[^}]*animation/, "iskelet hareketsiz");
   // sayfa geçişinde kaydırma başa (ÖLÇÜLDÜ: Genel bakış 401 px kaydırılmışken Finansal etki 401 px'te açılıyordu)
   const app = oku("../../src/App.tsx");
-  assert.match(app, /const sayfaSec = useCallback\(\(s: SayfaId\) => \{\n    window\.scrollTo\(0, 0\);/);
+  assert.match(app, /const sayfaSec = useCallback\(\(s: SayfaId\) => \{\n    if \(yeniSurumVar\(\)\) \{[\s\S]{0,700}?\n    \}\n    window\.scrollTo\(0, 0\);/);   // 19.11 Bulgu 7: sürüm kayması kapısı başa, kaydırma hemen ardından
   assert.equal((s.match(/<section className="bolum">/g) ?? []).length, 4 + 4, "4 bölüm + çerçevede 4 (aynı yapı)");
   // 18.11 Parti 2: çerçeve gerçek yapıyı taşır — kart başlık/açıklamaları KART sabitinden (sayfa 6 + çerçeve 6), dört KPI etiketi bilgiyle, gövdeler boyutlu yer tutucu
   assert.equal((s.match(/baslik=\{KART\.\w+\.baslik\} alt=\{KART\.\w+\.alt\}/g) ?? []).length, 12, "6 kart × (sayfa + çerçeve)");
@@ -372,4 +372,19 @@ test("İstemci bayat-önce: X-Bayat işlenir, geri çekilmeli yeniden isteme, ç
   const kb = oku("../../src/shell/Kabuk.tsx");
   assert.match(kb, /const \[bayat, setBayat\] = useState\(bayatSayisi\(\)\);/); assert.match(kb, /useEffect\(\(\) => bayatDinle\(\(\) => setBayat\(bayatSayisi\(\)\)\), \[\]\);/);
   assert.match(kb, /bayat > 0 && "güncelleniyor",/, "çip yalnız bayat yanıt beklerken");
+});
+
+test("19.11 Bulgu 7: sürüm kayması — X-PVQ-Yazilim ilk görülenle kıyaslanır, sonraki sayfa geçişi bir kez yeniden yükler, Kabuk çipi", () => {
+  const cl = oku("../../src/api/client.ts");
+  assert.match(cl, /export function surumIsle\(s: string \| null\): void \{\n  if \(!s\) return;\n  if \(ilkSurum === null\) \{ ilkSurum = s; return; \}\n  if \(s !== ilkSurum && !yeniSurum\) \{ yeniSurum = true;/);
+  assert.equal((cl.match(/surumIsle\(y\.headers\.get\("x-pvq-yazilim"\)\)/g) ?? []).length, 3, "getir + gonder + damga yoklaması (boşta duran sekme)");
+  assert.doesNotMatch(cl, /headers\.get\("x-pvq-surum"\)/, "X-PVQ-Surum KGÜP arşiv sürümüdür, kayma kıyasında kullanılmaz");
+  const app = oku("../../src/App.tsx");
+  assert.match(app, /const sayfaSec = useCallback\(\(s: SayfaId\) => \{\n    if \(yeniSurumVar\(\)\) \{[\s\S]{0,700}history\.replaceState\(history\.state, "", `#\$\{s\}[\s\S]{0,80}?\); window\.location\.reload\(\); return;/, "sayfa geçişinde tek sefer yeniden yükleme; hashchange üretmeden");
+  const kb = oku("../../src/shell/Kabuk.tsx");
+  assert.match(kb, /yeniSurum && "yeni sürüm yayında; sonraki sayfa geçişinde yenilenir"/);
+  assert.match(kb, /useEffect\(\(\) => surumDinle\(\(\) => setYeniSurum\(true\)\), \[\]\);/);
+  const yn = oku("../../src/api/yonetim.ts"); assert.match(yn, /surumIsle\(y\.headers\.get\("x-pvq-yazilim"\)\)/, "yönetim istemcisi de başlığı besler");
+  const pk = oku("../../src/features/yonetim/PlatformKabugu.tsx"); assert.match(pk, /if \(yeniSurumVar\(\)\) \{ window\.location\.reload\(\); return; \} setSayfa\(s\.id\);/, "platform kabuğu geçişte yeniden yükler");
+  assert.match(cl, /function kanal\(\) \{ const d = new Set<\(\) => void>\(\);/, "tek dinleyici kanalı (bayat + sürüm)");
 });

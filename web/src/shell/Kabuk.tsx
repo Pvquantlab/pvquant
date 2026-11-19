@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { SOZLUK } from "../lib/sozluk";
 import { ALARM_KURALI } from "../lib/alarmSozluk";
-import { api, bayatDinle, bayatSayisi, isit, ISITMA_GECIKME_MS, type AlarmSatiri, rolum } from "../api/client";   // 16.11: isit — yan menüde ısıtma; 18.11: gecikmeli; bayat-önce çipi
+import { api, bayatDinle, bayatSayisi, isit, ISITMA_GECIKME_MS, surumDinle, yeniSurumVar, type AlarmSatiri, rolum } from "../api/client";   // 16.11: isit — yan menüde ısıtma; 18.11: gecikmeli; bayat-önce çipi
 import { GRUPLAR, NAV_KAPALI_ANAHTAR, kapaliGruplariOku } from "./gruplar";   // v2.608 (F5-A): bileşen dosyasından ayrı (fast refresh kuralı)
 import { IkiAdimBolumu } from "../features/sayfalar/Kurulus";   // 26.10 Faz 6: 2FA kurulum kapısı
 import type { SantralOzeti, Kullanici } from "../api/types";
@@ -133,6 +133,8 @@ export function Kabuk({ sayfa, tiklanan, setSayfa, santral, plantId, onCikis, ch
   const { surum, sonYoklama } = useDamga(plantId);
   const [bayat, setBayat] = useState(bayatSayisi());   // 18.11 bayat-önce: sunucu son bilineni verdi, tazesi yolda → «güncelleniyor»
   useEffect(() => bayatDinle(() => setBayat(bayatSayisi())), []);
+  const [yeniSurum, setYeniSurum] = useState(yeniSurumVar());   // 19.11 Bulgu 7: api sürümü değişti → sonraki sayfa geçişinde yeniden yüklenir
+  useEffect(() => surumDinle(() => setYeniSurum(true)), []);
   // 18.11 gezinme (Parti C #10): ısıtma fare öğede ISITMA_GECIKME_MS durunca; ayrılınca/tıklanınca zamanlayıcı iptal (tıklamada sayfa kendi çeker)
   const isitZaman = useRef<number | null>(null);
   const isitIptal = () => { if (isitZaman.current != null) { window.clearTimeout(isitZaman.current); isitZaman.current = null; } };
@@ -426,6 +428,7 @@ export function Kabuk({ sayfa, tiklanan, setSayfa, santral, plantId, onCikis, ch
                   ozet.sapma_pct !== null && `sapma %${sayiTr(ozet.sapma_pct, 2)}`,
                   sonYoklama && `${SOZLUK.sonKontrol} ${sonYoklama.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}`,
                   bayat > 0 && "güncelleniyor",
+                  yeniSurum && "yeni sürüm yayında; sonraki sayfa geçişinde yenilenir",
                 ]} />
               </span>
             </div>

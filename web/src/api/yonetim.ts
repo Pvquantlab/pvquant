@@ -24,6 +24,7 @@ async function istek<T>(yol: string, method: "GET" | "POST" | "PUT" = "GET", gov
   } catch {   // v2.608 (F5-D inceleme): ağ/sunucu yokken tarayıcının İngilizce «Failed to fetch» metni ekrana düşmesin
     throw new YonetimHata(0, "Sunucuya ulaşılamadı. Bağlantınızı kontrol edip yeniden deneyin.");
   }
+  surumIsle(y.headers.get("x-pvq-yazilim"));   // 19.11 Bulgu 7 (inceleme): yönetim yüzü de sürüm kaymasını öğrenir (PlatformKabugu geçişte yeniden yükler)
   if (y.status === 401 && j) { platformCikis(); dusunce?.(); return new Promise<T>(() => {}); }
   if (!y.ok) {
     let mesaj = `${y.status} ${yol}`;
@@ -106,6 +107,7 @@ export interface HizmetSagligi { zaman: string; yarin?: string; donem?: string; 
 export interface AlarmOzet { acik: number; musteri: number; santral: number; en_eski: string | null; pencere_gun: number;
   kurallar: { kural: string; etiket: string; adet: number; musteri: number }[] }
 /** v2.609 (Faz 6 F6-B): kota durumu uçtan (yetki_service.kota_durumu) — limit null sınırsız, kullanım null ölçülmüyor; kaynak plan | ezme (sözleşme) */
+import { surumIsle } from "./client";   // 19.11 Bulgu 7
 import type { KotaDurum } from "./types";
 export type { KotaDurum };   // F6-D: tek tanım api/types.ts (müşteri ve platform)
 export type KotaAlani = "santral" | "kullanici" | "portfoy" | "ac_mw" | "aylik_dis_api" | "aylik_rapor" | "aylik_isleme_saat";

@@ -19,6 +19,7 @@ from pvquant.services import auth_service, plant_service, yanit_onbellegi   # 16
 from pvquant.services.karne_kurali import (
     yayin_kosu_sql as _yayin_sql,  # v2.597 (F4-B): yayımlanmış koşu süzgeci
 )
+from pvquant import surum as _surum   # 19.11 Bulgu 7: X-PVQ-Yazilim başlığı
 from pvquant.zaman import PIYASA_TZ
 
 try:
@@ -48,7 +49,7 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],   # v2.264: PUT (segment) + DELETE (anahtar/webhook); v2.557: PATCH (bulut çekiş ayarı)
     allow_headers=["Authorization", "Content-Type", "X-API-Key"],
     # v2.94: rapor dosya adi — tarayici bu basligi ancak expose ile gorur
-    expose_headers=["Content-Disposition", "X-Sure-ms", "X-Bayat", "X-Bayat-Yas-sn"])   # 18.11: bayat-önce başlıkları (geliştirmede çapraz kaynak)
+    expose_headers=["Content-Disposition", "X-Sure-ms", "X-Bayat", "X-Bayat-Yas-sn", "X-PVQ-Yazilim"])   # 18.11: bayat-önce başlıkları; 19.11 Bulgu 7: yazılım sürümü (X-PVQ-Surum KGÜP arşiv sürümüdür, karışmasın)
 
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -311,6 +312,8 @@ async def _sure_basligi(request: Request, call_next):
     yanit = await call_next(request)
     ms = (_time.perf_counter() - t0) * 1000
     yanit.headers["X-Sure-ms"] = f"{ms:.0f}"
+    if (surum := _surum.yazilim_surumu()):   # 19.11 Bulgu 7 (sürüm kayması): istemci ilk gördüğü değerle kıyaslar, değişince sonraki sayfa geçişinde yeniden yükler. Ad X-PVQ-Yazilim: X-PVQ-Surum KGÜP arşiv sürümü
+        yanit.headers["X-PVQ-Yazilim"] = surum
     if bayrak["bayat"]:
         yanit.headers["X-Bayat"] = "1"
         yanit.headers["X-Bayat-Yas-sn"] = f"{bayrak['yas_sn']:.0f}"

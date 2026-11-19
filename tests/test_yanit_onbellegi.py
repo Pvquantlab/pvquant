@@ -261,7 +261,7 @@ def test_bayat_once_http_basligi(etkin, monkeypatch):
     from pathlib import Path
     kaynak = Path(api_main.__file__).read_text(encoding="utf-8")
     assert 'bayrak = yanit_onbellegi.istek_bayragi_kur()' in kaynak and 'yanit.headers["X-Bayat"] = "1"' in kaynak and '"X-Bayat-Yas-sn"' in kaynak
-    assert 'expose_headers=["Content-Disposition", "X-Sure-ms", "X-Bayat", "X-Bayat-Yas-sn"]' in kaynak
+    assert 'expose_headers=["Content-Disposition", "X-Sure-ms", "X-Bayat", "X-Bayat-Yas-sn", "X-PVQ-Yazilim"]' in kaynak   # 19.11 Bulgu 7: yazilim surumu de expose
     say = {"n": 0}
     def uret(*a, **k):
         say["n"] += 1

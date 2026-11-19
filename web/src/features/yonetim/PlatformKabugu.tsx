@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { GunesLogo } from "../../shell/Kabuk";
 import type { Ben } from "../../api/yonetim";
+import { yeniSurumVar } from "../../api/client";   // 19.11 Bulgu 7 (inceleme): sürüm kaymasında geçiş yeniden yükler
 
 /** 24.10 Faz 2 — PLATFORM KABUĞU: müşteri kabuğunun ızgarasını ve sınıflarını (.kabuk/.yan/.ust/.nav-btn) paylaşır, santral
  *  seçici/alarm/telemetri YOKTUR. Yüz koyu sabit ve `data-yuz="platform"` ile vurgu rengi nötr lacivert (index.css): yanlış
@@ -36,7 +37,7 @@ export function PlatformKabugu({ sayfa, setSayfa, ben, onCikis, tema, children }
         <div className="logo"><GunesLogo />PVQuant</div>
         <div className="plat-yan-rozet"><span className="plat-rozet">Platform</span><span className="plat-yan-not">PVQuant personeli</span></div>
         {gorunen.map((s) => (
-          <button key={s.id} className="nav-btn" onClick={() => { setSayfa(s.id); setMenuAcik(false); }} aria-current={sayfa === s.id ? "page" : undefined}>
+          <button key={s.id} className="nav-btn" onClick={() => { if (yeniSurumVar()) { window.location.reload(); return; } setSayfa(s.id); setMenuAcik(false); }} aria-current={sayfa === s.id ? "page" : undefined}>
             {IKON[s.id]}{s.ad}
           </button>))}
         <div className="yan-alt">

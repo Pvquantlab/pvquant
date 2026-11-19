@@ -79,7 +79,7 @@ function getir<T>(yol: string): Promise<T> {
     if (!y.ok) throw new Error(`${y.status} ${yol}`);
     const veri = (await y.json()) as T;
     bellekte.set(yol, { veri, zaman: Date.now() });
-    bayatIsle(yol, y.headers.get("x-bayat") === "1");
+    bayatIsle(yol, y.headers.get("x-bayat") === "1"); surumIsle(y.headers.get("x-pvq-yazilim"));
     return veri;
   })();
   ucustakiler.set(yol, soz);
@@ -94,11 +94,25 @@ function getir<T>(yol: string): Promise<T> {
  *  veri «güncel» diye sunulmaz — çip yanar; hesap/etiket değişmez. */
 const bayatlar = new Map<string, number>();   // yol → deneme sayısı
 const bayatZamanlayici = new Map<string, number>();   // yol → planlı yeniden isteme (tek plan; sayfanın kendi isteği ikinci plan açmaz)
-const bayatDinleyiciler = new Set<() => void>();
+/** inceleme (19.11): dinleyici kanalı — bayat ve sürüm sinyalleri aynı kalıbı paylaşır (kayıt → çıkarıcı; yay). */
+function kanal() { const d = new Set<() => void>(); return { dinle: (f: () => void) => { d.add(f); return () => { d.delete(f); }; }, yay: () => { for (const f of d) f(); } }; }
+const bayatKanal = kanal();
+// 19.11 (canlı özellik testi, Bulgu 7 — sürüm kayması): api her yanıta X-PVQ-Yazilim yazar (X-PVQ-Surum KGÜP arşiv sürümüdür); sayfa ömründe ilk görülen değer saklanır, değişince
+// «yeni sürüm» bayrağı kalkar (Kabuk çipi) ve sonraki sayfa geçişi App.sayfaSec'te bir kez yeniden yükler. Hemen yenileme yok: formdaki girdi kaybolmasın.
+// Neden: v2.637 dağıtımında açık sekme eski paketle yeni api gövdesini (200 {yok:true}) alıp Kalibrasyon'da çöktü; paket kimliği derlemeye gerekmez, ilk görülenle kıyas yeter.
+let ilkSurum: string | null = null; let yeniSurum = false;
+const surumKanal = kanal();
+export function yeniSurumVar(): boolean { return yeniSurum; }
+export const surumDinle = surumKanal.dinle;
+export function surumIsle(s: string | null): void {
+  if (!s) return;
+  if (ilkSurum === null) { ilkSurum = s; return; }
+  if (s !== ilkSurum && !yeniSurum) { yeniSurum = true; surumKanal.yay(); }
+}
 const BAYAT_BEKLEME_SN = [4, 6, 10, 20, 30] as const;
 export function bayatSayisi(): number { return bayatlar.size; }
-export function bayatDinle(d: () => void): () => void { bayatDinleyiciler.add(d); return () => { bayatDinleyiciler.delete(d); }; }
-const bayatYay = () => { for (const d of bayatDinleyiciler) d(); };
+export function bayatDinle(d: () => void): () => void { return bayatKanal.dinle(d); }   // imza pinli (hiz-gezinme); gövde ortak kanal
+const bayatYay = bayatKanal.yay;
 function bayatIsle(yol: string, bayat: boolean): void {
   if (!bayat) {
     if (bayatlar.delete(yol)) { bayatYay(); damgaYay(); }   // tazesi geldi: açık sayfa yeniden çeker (bellekte taze, iskelet yok)
@@ -237,6 +251,7 @@ async function gonder<T>(yol: string, method: "POST" | "DELETE" | "PUT" | "PATCH
   const y = await fetch(`${TABAN}${yol}`, {
     method, body: govde === undefined ? undefined : JSON.stringify(govde),
     headers: { ...(jeton ? { Authorization: `Bearer ${jeton}` } : {}), ...(govde === undefined ? {} : { "Content-Type": "application/json" }) } });
+  surumIsle(y.headers.get("x-pvq-yazilim"));   // 19.11 Bulgu 7
   if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise<T>(() => {}); }
   if (!y.ok) {
     let mesaj = `${y.status} ${yol}`;
@@ -723,6 +738,7 @@ export const api = {
     if (TABAN == null) return { etag: null, veri: null, degisti: false };
     const jeton = localStorage.getItem("pvq_token");
     const y = await fetch(`${TABAN}/v1/plants/${p}/damga`, { headers: { ...(jeton ? { Authorization: `Bearer ${jeton}` } : {}), ...(etag ? { "If-None-Match": etag } : {}) } });
+    surumIsle(y.headers.get("x-pvq-yazilim"));   // 19.11 Bulgu 7 (inceleme): boşta duran sekme kaymayı 30 s'lik yoklamadan öğrenir (304'te de başlık var; middleware her yanıta yazar)
     if (y.status === 304) return { etag, veri: null, degisti: false };
     if (y.status === 401) { cikis(); oturumDusunce?.(); return new Promise(() => {}); }
     if (!y.ok) throw new Error(`${y.status} damga`);
