@@ -142,6 +142,8 @@ export function bellektenOku<T>(yol: string): T | undefined {
   if (TABAN == null) return undefined;
   return bellekte.get(yol)?.veri as T | undefined;
 }
+/** 19.11 (canlı özellik testi, Bulgu 4): iş gereği «kayıt yok» uçları (kalibrasyon, kayıp ağacı) 404 yerine 200 + {yok: true} döner — sayfalar null görmeye devam eder. */
+export function yokIseNull<T>(v: T | undefined): T | null | undefined { return v && (v as { yok?: boolean }).yok === true ? null : v; }
 
 /** 24.10 açık tema geçiş turu — sayfaların BAYAT-ÖNCE başlangıcı (Portföy kalıbı): dönüşte bellekteki son yanıt
  *  anında çizilir, taze yanıt arkadan gelir («güncelleniyor» çipi). Yollar ve uyarlayıcılar api.* ile birebir aynıdır;
@@ -171,7 +173,7 @@ export const bellekten = {
     const k0 = bellektenOku<Karne>(`/v1/plants/${p}/skill?bucket=0-24&gun=${gun}`), k1 = bellektenOku<Karne>(`/v1/plants/${p}/skill?bucket=24-72&gun=${gun}`);
     return k0 && k1 ? { ...k0, gunluk: [...k0.gunluk, ...k1.gunluk] } : undefined;
   },
-  kalibrasyon: (p: string): KalibrasyonOzeti | undefined => bellektenOku<KalibrasyonOzeti>(`/v1/plants/${p}/kalibrasyon`),
+  kalibrasyon: (p: string): KalibrasyonOzeti | null | undefined => yokIseNull(bellektenOku<KalibrasyonOzeti>(`/v1/plants/${p}/kalibrasyon`)),   // 19.11 Bulgu 4
   aylik: (p: string): AylikBeklenti | undefined => bellektenOku<AylikBeklenti>(`/v1/plants/${p}/monthly`),
   genelBakis: (p: string): GenelBakis | undefined => bellektenOku<GenelBakis>(`/v1/plants/${p}/genel-bakis`),   // v2.608 (F5-B)
   abonelik: (): MusteriAbonelik | undefined => bellektenOku<MusteriAbonelik>("/v1/abonelik"),   // v2.609 (F6-D)
@@ -202,7 +204,7 @@ export const bellekten = {
   // 18.11 Kalibrasyon (Grup 1): altı teşhis yanıtı da bayat-önce
   hijyen: (p: string, gun = 30): Hijyen | undefined => bellektenOku<Hijyen>(`/v1/plants/${p}/hijyen?gun=${gun}`),
   kayma: (p: string, gun = 30): Kayma | undefined => bellektenOku<Kayma>(`/v1/plants/${p}/kayma?gun=${gun}`),
-  kayipAgaci: (p: string): KayipAgaci | undefined => bellektenOku<KayipAgaci>(`/v1/plants/${p}/kayip-agaci`),
+  kayipAgaci: (p: string): KayipAgaci | null | undefined => yokIseNull(bellektenOku<KayipAgaci>(`/v1/plants/${p}/kayip-agaci`)),   // 19.11 Bulgu 4
   gucMatrisi: (p: string): GucMatrisi | undefined => bellektenOku<GucMatrisi>(`/v1/plants/${p}/guc-matrisi`),
   saatProfili: (p: string, gun = 30): SaatProfili | undefined => bellektenOku<SaatProfili>(`/v1/plants/${p}/saat-profili?gun=${gun}&kova=0-24`),
   kayipAyrisimi: (p: string, gun = 30): KayipAyrisimi | undefined => bellektenOku<KayipAyrisimi>(`/v1/plants/${p}/kayip-ayrisimi?gun=${gun}`),
@@ -1050,7 +1052,7 @@ export const api = {
   },
   kayipAgaci: async (p: string): Promise<KayipAgaci | null> => {
     if (TABAN == null) return null;
-    try { return await getir<KayipAgaci>(`/v1/plants/${p}/kayip-agaci`); } catch { return null; }
+    try { return yokIseNull(await getir<KayipAgaci>(`/v1/plants/${p}/kayip-agaci`)) ?? null; } catch { return null; }
   },
   kayipAgaciHesapla: (p: string): Promise<KayipAgaci> => gonder(`/v1/plants/${p}/kayip-agaci/hesapla`, "POST"),
   /** v2.283: modül davranışı (güç matrisi). */
@@ -1241,7 +1243,7 @@ export const api = {
   },
   kalibrasyon: async (p: string): Promise<KalibrasyonOzeti | null> => {
     if (TABAN == null) return null;
-    try { return await getir<KalibrasyonOzeti>(`/v1/plants/${p}/kalibrasyon`); }
+    try { return yokIseNull(await getir<KalibrasyonOzeti>(`/v1/plants/${p}/kalibrasyon`)) ?? null; }
     catch { return null; }
   },
   saatAyMatrisi: async (p: string): Promise<SaatAyMatrisi> => {

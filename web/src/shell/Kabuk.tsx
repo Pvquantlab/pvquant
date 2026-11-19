@@ -482,6 +482,12 @@ function YeniSantral({ kapat, eklendi }: { kapat: () => void; eklendi: (id: stri
   const [g, setG] = useState({ name: "", lat: "", lon: "", capacity_kwp: "", tilt: "", azimuth: "", ac_limit_kw: "", panel_tech: "bifacial", tz: "Europe/Istanbul" });
   const [hata, setHata] = useState<string | null>(null);
   const [mesgul, setMesgul] = useState(false);
+  // 19.11 (canlı özellik testi, Bulgu 6): Escape = Vazgeç (⌘K paleti ve vitrin üst çubuğuyla tutarlı); gönderim sürerken kapanmaz
+  useEffect(() => {
+    const f = (e: KeyboardEvent) => { if (e.key === "Escape" && !mesgul) kapat(); };
+    window.addEventListener("keydown", f);
+    return () => window.removeEventListener("keydown", f);
+  }, [kapat, mesgul]);
   const al = (k: keyof typeof g) => (e: { target: { value: string } }) => setG({ ...g, [k]: e.target.value });
   const say = (v: string) => (v.trim() === "" ? null : Number(v.replace(",", ".")));
   const gonderF = async () => {

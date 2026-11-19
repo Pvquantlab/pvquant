@@ -106,6 +106,9 @@ test("KGÜP: bayat-önce bellek, sürüm geçmişi yalnız açılınca, iki böl
   const cl = oku("../../src/api/client.ts");
   assert.match(cl, /kgup: \(p: string, kantil = "p50"\): KgupOnizleme \| undefined => bellektenOku<KgupOnizleme>\(`\/v1\/plants\/\$\{p\}\/kgup\?fmt=json&kantil=\$\{kantil\}`\)/, "bellek yolu kgupOnizleme ile birebir (19.11: seviye parametreli)");
   assert.match(cl, /kgupRevizyon: \(p: string\): KgupRevizyon \| undefined => bellektenOku<KgupRevizyon>\(`\/v1\/plants\/\$\{p\}\/kgup\/revizyon`\)/);
+  // 19.11 Bulgu 4: iş gereği «kayıt yok» 200 + {yok:true} → bellek ve ağ okuyucuları null'a çevirir (sayfalar değişmedi)
+  assert.match(cl, /export function yokIseNull<T>\(v: T \| undefined\): T \| null \| undefined \{ return v && \(v as \{ yok\?: boolean \}\)\.yok === true \? null : v; \}/);
+  assert.equal((cl.match(/yokIseNull\(/g) ?? []).length, 4, "kalibrasyon/kayıp ağacı bellek ve ağ (4 kullanım; tanım yokIseNull<T>)");
   const css = oku("../../src/index.css");
   assert.match(css, /\n\.akis \{ display: grid; gap: 28px; \}/); assert.match(css, /\.akis \.bolum \{ display: grid; gap: 14px;/);
   assert.match(css, /\.iskelet-satirlar \.iskelet-alan \{ height: 28px;/);

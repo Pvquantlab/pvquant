@@ -53,12 +53,18 @@ def gunler() -> dict[str, str]:
     from pvquant.zaman import PIYASA_TZ
     b = datetime.now(ZoneInfo(PIYASA_TZ)).date()
     gecen = (b.replace(day=1) - timedelta(days=1))   # 18.11 DSG/portfoy: {gecen_ay} = portfoy sayfasinin varsayilan donemi (YYYY-AA)
-    return {"bugun": b.isoformat(), "yarin": (b + timedelta(days=1)).isoformat(), "gecen_ay": gecen.strftime("%Y-%m")}
+    onceki = (gecen.replace(day=1) - timedelta(days=1))   # 19.11 Bulgu 5: {onceki_ay} = seçicideki ikinci tam ay (canlıda soğuk 2,5–6 s)
+    q = (b.month - 1) // 3   # {gecen_ceyrek} = son tam çeyrek (Finansal etki çeyrek seçicisinin varsayılanı); Ocak–Mart → önceki yılın Q4
+    gq_y, gq = (b.year, q) if q > 0 else (b.year - 1, 4)
+    return {"bugun": b.isoformat(), "yarin": (b + timedelta(days=1)).isoformat(), "gecen_ay": gecen.strftime("%Y-%m"),
+            "onceki_ay": onceki.strftime("%Y-%m"), "gecen_ceyrek": f"{gq_y}-Q{gq}"}
 
 
 def anahtar_coz(anahtar: str, g: dict[str, str] | None = None) -> str:
     g = g or gunler()
-    return anahtar.replace("{bugun}", g["bugun"]).replace("{yarin}", g["yarin"]).replace("{gecen_ay}", g["gecen_ay"])
+    for k, v in g.items():   # 19.11: bütün yer tutucular ({onceki_ay}, {gecen_ceyrek} dâhil)
+        anahtar = anahtar.replace("{" + k + "}", v)
+    return anahtar
 
 
 def santraller() -> list[tuple[str, str]]:

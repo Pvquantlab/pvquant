@@ -158,6 +158,12 @@ def _yanit_isiticisini_baslat() -> None:
         "dogrulama/bagimsiz?gun=60&kural=program&taze=0": (lambda t, p: _bagimsiz_dogrulama_uret(plant_id=p, gun=60, kural="program", taze=0, claims=_c(t)), yanit_onbellegi.VARSAYILAN_TTL_SN),
         # 18.11 gezinme Parti 1: Finansal etki sayfasının açılış ucu (varsayılan son tam ay; canlı soğuk 5,8 s) — anahtar uç sarmalı ve istemci yoluyla birebir; modül kapısı _finans_isit'te
         "finansal-etki?donem={gecen_ay}&uretim=None&itibariyle=None": (lambda t, p: _finans_isit(t, p), yanit_onbellegi.VARSAYILAN_TTL_SN),
+        # 19.11 canlı özellik testi Bulgu 5: varsayılan dışı ilk seçimler soğuktu (2,5–6 s) — seçicideki ikinci ay, son tam çeyrek, SCADA girdisi; 90 g karne (0-24/24-72) ve bağımsız doğrulama
+        "finansal-etki?donem={onceki_ay}&uretim=None&itibariyle=None": (lambda t, p: _finans_isit(t, p, yanit_isitici.gunler()["onceki_ay"]), yanit_onbellegi.VARSAYILAN_TTL_SN),
+        "finansal-etki?donem={gecen_ceyrek}&uretim=None&itibariyle=None": (lambda t, p: _finans_isit(t, p, yanit_isitici.gunler()["gecen_ceyrek"]), yanit_onbellegi.VARSAYILAN_TTL_SN),
+        "finansal-etki?donem={gecen_ay}&uretim=scada&itibariyle=None": (lambda t, p: _finans_isit(t, p, None, "scada"), yanit_onbellegi.VARSAYILAN_TTL_SN),
+        **{f"skill?bucket={b}&gun=90": (lambda t, p, b=b: _skill_uret(plant_id=p, bucket=b, gun=90, claims=_c(t)), yanit_onbellegi.VARSAYILAN_TTL_SN) for b in ("0-24", "24-72")},
+        "dogrulama/bagimsiz?gun=90&kural=program&taze=0": (lambda t, p: _bagimsiz_dogrulama_uret(plant_id=p, gun=90, kural="program", taze=0, claims=_c(t)), yanit_onbellegi.VARSAYILAN_TTL_SN),
         # 18.11 gezinme Parti 3: Doğruluk üst KPI'ı (günlük sapma) hata dağılımından; artık açılışta istenir (canlı soğuk 1,2–2,0 s) — anahtar istemci yoluyla birebir
         "hata-dagilimi?gun=120&kova=0-24": (lambda t, p: _hata_dagilimi_uc_uret(plant_id=p, gun=120, kova="0-24", claims=_c(t)), yanit_onbellegi.VARSAYILAN_TTL_SN),
         # 18.11 canlı teşhis: kullanıcının soğuk ödediği, ısıtıcıda olmayan uçlar — Doğruluk uzlaştırma kartı (dengesizlik?gun=90: 1,3–2,0 s),
@@ -188,8 +194,9 @@ def _yanit_isiticisini_baslat() -> None:
     })
 
 
-def _finans_isit(tenant_id: str, plant_id: str):
-    """Isitici icin santral finansal etkisi (/v1/plants/{id}/finansal-etki, varsayilan son tam ay): modul kapisi «zorla» kipinde 403 verirse 4xx -> «bos»."""
+def _finans_isit(tenant_id: str, plant_id: str, donem: str | None = None, uretim: str | None = None):
+    """Isitici icin santral finansal etkisi (/v1/plants/{id}/finansal-etki; donem verilmezse son tam ay, uretim None|scada): modul kapisi «zorla» kipinde 403 verirse 4xx -> «bos».
+    19.11 Bulgu 5: donem/uretim parametreli (onceki ay, gecen ceyrek, SCADA girdisi de isitilir); anahtar uc sarmalindaki f-string ile birebir (uretim None -> «None»)."""
     from pvquant.services import yanit_isitici, yetki_service
     try:
         h = yetki_service.kapi_hukmu(tenant_id, modul="finansal_etki")
@@ -197,7 +204,7 @@ def _finans_isit(tenant_id: str, plant_id: str):
         h = None
     if h and yetki_service.zorlama_kipi() == "zorla":
         raise HTTPException(h["http"], h["mesaj"])
-    return _finansal_etki_uret(plant_id=plant_id, donem=yanit_isitici.gunler()["gecen_ay"], uretim=None, taze=0, itibariyle=None, claims={"tenant_id": tenant_id, "sub": "isitici", "role": "viewer"}, _kapi=None)
+    return _finansal_etki_uret(plant_id=plant_id, donem=donem or yanit_isitici.gunler()["gecen_ay"], uretim=uretim, taze=0, itibariyle=None, claims={"tenant_id": tenant_id, "sub": "isitici", "role": "viewer"}, _kapi=None)
 
 
 def _mutabakat_isit(tenant_id: str, plant_id: str):
@@ -711,16 +718,17 @@ def _naif_wmape(r):
 
 @app.get("/v1/plants/{plant_id}/kalibrasyon")
 def kalibrasyon_uc(plant_id: str, claims=Depends(gecerli_kullanici)):
-    """Önbellekli (yanit_onbellegi, 18.11 gezinme Parti B #5): anahtar = kiracı + santral + «kalibrasyon» + değişim damgası; 404 önbelleğe girmez (istisna)."""
+    """Önbellekli (yanit_onbellegi, 18.11 gezinme Parti B #5): anahtar = kiracı + santral + «kalibrasyon» + değişim damgası.
+    19.11 (canlı özellik testi, Bulgu 4): kayıt yokluğu iş gereğidir, 404 değil 200 + {yok: true} (tarayıcı konsolunda «Failed to load resource 404» gürültüsü bitti); gövde damgaya bağlı önbellekte."""
     return yanit_onbellegi.getir(claims["tenant_id"], plant_id, "kalibrasyon", lambda: _kalibrasyon_uret(plant_id=plant_id, claims=claims))
 
 
 def _kalibrasyon_uret(plant_id: str, claims=Depends(gecerli_kullanici)):
-    """v2.122 — aktif kalibrasyon ozeti; kayit yoksa 404 (icat yok)."""
+    """v2.122 — aktif kalibrasyon ozeti; kayit yoksa 200 + {yok: true} (icat yok; 19.11 Bulgu 4: 404 degil)."""
     from pvquant.services import calib_service
     k = calib_service.kalibrasyon_ozeti(claims["tenant_id"], plant_id)
     if k is None:
-        raise HTTPException(404, "aktif kalibrasyon yok")
+        return {"yok": True, "mesaj": "aktif kalibrasyon yok"}   # 19.11 Bulgu 4: iş gereği boşluk 404 değil
     return k
 
 
@@ -3387,14 +3395,14 @@ def olay_adaylari(plant_id: str, saat: int = 72, claims=Depends(gecerli_kullanic
 
 @app.get("/v1/plants/{plant_id}/kayip-agaci")
 def kayip_agaci_uc(plant_id: str, claims=Depends(gecerli_kullanici)):
-    """v2.281 — kayıp ağacı (saklı sonuç; yoksa 404)."""
+    """v2.281 — kayıp ağacı (saklı sonuç); 19.11 Bulgu 4: hesaplanmamışsa 404 değil 200 + {yok: true} (iş gereği boşluk, konsol gürültüsü yok)."""
     from pvquant.services.calib_service import _pj
     row = plant_service.getir(claims["tenant_id"], plant_id)
     if row is None:
         raise HTTPException(404, "santral yok")
     r = _pj(row).get("kayip_agaci")
     if not r:
-        raise HTTPException(404, "henüz hesaplanmadı")
+        return {"yok": True, "mesaj": "henüz hesaplanmadı"}
     return r
 
 

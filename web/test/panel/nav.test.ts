@@ -44,3 +44,9 @@ test("yan menü: grup başlığı aria-expanded, etkin grup da katlanabilir ve s
   assert.match(kabuk, /katla\(grupAdi\(s\.id\)\)\.includes\(q\)/);
   assert.match(kabuk, /aria-current=\{\(tiklanan \?\? sayfa\) === s\.id \? "page" : undefined\}/);
 });
+
+test("19.11 Bulgu 6: «Yeni santral bağla» penceresi Escape ile kapanır (⌘K paletiyle tutarlı), gönderim sürerken kapanmaz", () => {
+  const ys = kabuk.slice(kabuk.indexOf("function YeniSantral("), kabuk.indexOf("function YeniSantral(") + 1400);
+  assert.match(ys, /if \(e\.key === "Escape" && !mesgul\) kapat\(\);/);
+  assert.match(ys, /window\.addEventListener\("keydown", f\)/); assert.match(ys, /\}, \[kapat, mesgul\]\);/);
+});

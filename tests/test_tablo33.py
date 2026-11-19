@@ -77,7 +77,7 @@ def test_kapilar(istemci):
     assert istemci.put("/v1/plants/p1/tarife", json={"tarife": {"tip": "sabit", "tl_mwh": 2500}}).json()["tarife"]["tl_mwh"] == 2500.0
     assert istemci.get("/v1/plants/p1/tarife").json()["tarife"]["tip"] == "sabit"
     assert istemci.put("/v1/plants/p1/tarife", json={"tarife": {"tip": "sabit", "tl_mwh": -5}}).status_code == 422
-    assert istemci.get("/v1/plants/p1/kayip-agaci").status_code == 404
+    r = istemci.get("/v1/plants/p1/kayip-agaci"); assert r.status_code == 200 and r.json() == {"yok": True, "mesaj": "henüz hesaplanmadı"}   # 19.11 Bulgu 4: iş gereği boşluk 404 değil
     y = istemci.get("/v1/plants/p1/rapor-sablon/fatura"); assert y.status_code == 200 and "x.html" in y.headers["content-disposition"]
     assert istemci.get("/v1/plants/p1/rapor-sablon/yok").status_code == 422
 
